@@ -8207,3 +8207,24 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   idea.** The merge order decided the winner, not the quality — so before closing a duplicate,
   diff its CONTENT against main and port what it uniquely has. Reading only its title or its PR
   body would have lost the drive-root bug.
+
+## 2026-07-27f — #448 merged; a symlinked source was destroying the converter (ADR-0299 addendum 2)
+
+- **#448 merged** (`b643a91`): the drive-root `Join-Path` abort is fixed on `main`.
+- **PR #449 (same parallel session as #447) reported a symlinked source could destroy the converter
+  and report success. It is REAL — reproduced on `main` before touching anything:** the block
+  printed `[ok] MPXJ converter deployed`, exited 0, and the converter was gone. `sf_realpath` used
+  a **logical** `pwd`, which reports the symlink's own spelling, so the self-copy skip missed it.
+- **Unlike #447, #449 is additive** — it IS rebased onto #446 (carries all 8 download/staging/
+  stderr-guard markers) — but it predates #448 and fixes **bash only**; its PowerShell
+  `Resolve-SfPath` is unchanged, and `Resolve-Path` does not dereference reparse points on 5.1.
+- **Fixed both families with TWO independent defences:** `pwd -P` (adopted from #449) so the
+  detection is correct, and **stage-then-swap** so a missed detection is survivable. Verified
+  independent by mutation: guard reverted → converter STILL survived, only the message degraded.
+  **LESSON: a detection must be right on every platform to protect anything; a staging step
+  protects even when the detection is wrong. Prefer the one that fails safe.**
+- **Third literal test pin to break on a CORRECT fix** (`cp -R "$MPXJ_SRC"` → `"$MPXJ_SRC/."`).
+  Rewritten as behaviour. **LESSON: pin literals only when the literal IS the contract.**
+- **Meta-lesson on the parallel sessions:** #447 was regressive and #449 is additive — identical
+  branch, opposite verdicts. Both were only distinguishable by diffing CONTENT against `main`.
+  Never judge a duplicate PR by its title, its ADR number, or its own description.

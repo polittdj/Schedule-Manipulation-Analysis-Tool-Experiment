@@ -163,7 +163,13 @@ a08844b17f06889397bb4229f79d1ec1de6d4ce1a3bc802d9f6856832d640288  setup.sh
 SF_MPXJ_MANIFEST_EOF
 )"
 MPXJ_DEST="$INSTALL_ROOT/tools/mpxj"
-sf_realpath() { (cd "$1" 2>/dev/null && pwd) || printf '%s\n' "$1"; }
+# `pwd -P` — the PHYSICAL path. A logical `pwd` reports the SYMLINK's own spelling, so a
+# candidate that is merely a link to the installed copy compared unequal to the destination,
+# slipped past the self-copy skip, and the copy step then rm -rf'd the real directory and
+# "copied" from the link it had just broken — destroying the converter AND printing
+# `[ok] MPXJ converter deployed`. Reproduced end-to-end before this line changed (ADR-0300;
+# the symlink case was found by the parallel #449 investigation).
+sf_realpath() { (cd "$1" 2>/dev/null && pwd -P) || printf '%s\n' "$1"; }
 MPXJ_DEST_REAL="$(sf_realpath "$MPXJ_DEST")"
 sf_sha256() {  # coreutils on Linux, shasum on macOS
   if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | awk '{print $1}'
@@ -183,10 +189,30 @@ for cand in "${SF_MPXJ_HOME:-}" "$SF_HERE/../tools/mpxj" "$SF_HERE/tools/mpxj" "
   MPXJ_SRC="$cand"
   break
 done
+# Stage the local source COMPLETELY before the destination is touched — the same
+# never-delete-what-you-cannot-replace rule the download path already follows. The self-copy
+# skip above is a detection, and a detection has to be correct on every platform and shell to
+# be safe; this one was not (it compared logical paths, so a symlink slipped through and the
+# copy destroyed the converter). Staging makes a MISSED self-copy harmless instead of fatal, so
+# the two defences are independent. `$MPXJ_SRC/.` copies the CONTENTS, so a symlinked source is
+# dereferenced into a real directory rather than staged as a link that breaks moments later.
+MPXJ_STAGED=0
 if [ -n "$MPXJ_SRC" ]; then
   mkdir -p "$INSTALL_ROOT/tools"
-  rm -rf "$MPXJ_DEST"
-  cp -R "$MPXJ_SRC" "$MPXJ_DEST"
+  MPXJ_TMP="$INSTALL_ROOT/tools/.mpxj-staging"
+  rm -rf "$MPXJ_TMP"
+  mkdir -p "$MPXJ_TMP"
+  if cp -R "$MPXJ_SRC/." "$MPXJ_TMP/" 2>/dev/null &&
+     [ -f "$MPXJ_TMP/classes/MpxjToMspdi.class" ]; then
+    MPXJ_STAGED=1
+  else
+    rm -rf "$MPXJ_TMP"
+    warn "MPXJ source at $MPXJ_SRC could not be read — any existing converter is left alone"
+  fi
+fi
+if [ "$MPXJ_STAGED" = "1" ]; then
+  rm -rf "$MPXJ_DEST"          # only now, with a complete verified copy already in hand
+  mv "$MPXJ_TMP" "$MPXJ_DEST"
   ok "MPXJ converter deployed (native .mpp import enabled)"
 elif [ -f "$MPXJ_DEST/classes/MpxjToMspdi.class" ]; then
   # already deployed by an earlier install — keep it, and say what is TRUE (never re-download

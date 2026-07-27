@@ -197,7 +197,22 @@ f80078970a148fda65e4855a48bd5b4540e5a3058f9c7562d0789ed2cb6c8719  setup.ps1
 a08844b17f06889397bb4229f79d1ec1de6d4ce1a3bc802d9f6856832d640288  setup.sh
 '@
 function Resolve-SfPath([string]$p) {
-    try { return (Resolve-Path -LiteralPath $p -ErrorAction Stop).ProviderPath } catch { return $p }
+    # Resolve-Path NORMALISES but does not DEREFERENCE: on Windows PowerShell 5.1 a symlink or
+    # `mklink /J` junction resolves to its own spelling, so a candidate that merely links to the
+    # installed copy compares unequal to the destination and slips past the self-copy skip
+    # (ADR-0300 — the bash twin of this destroyed the converter and printed success). Follow one
+    # reparse point where the platform exposes a target; the staging below is what makes a miss
+    # survivable, so this stays best-effort and never throws.
+    try {
+        $rp = (Resolve-Path -LiteralPath $p -ErrorAction Stop).ProviderPath
+        $item = Get-Item -LiteralPath $rp -Force -ErrorAction Stop
+        if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) {
+            $t = $item.Target
+            if ($t -is [array]) { $t = $t | Select-Object -First 1 }
+            if ($t) { return $t }
+        }
+        return $rp
+    } catch { return $p }
 }
 $destMpxj = Join-Path $InstallRoot "tools\mpxj"
 $destReal = Resolve-SfPath $destMpxj
@@ -222,9 +237,28 @@ foreach ($cand in $mpxjCandidates) {
     $srcMpxj = $cand
     break
 }
+# Stage the local source COMPLETELY before the destination is touched — the same rule the
+# download path follows. The self-copy skip above is a DETECTION, and a detection has to be
+# right on every platform to be safe; its bash twin was not. Staging makes a missed self-copy
+# harmless rather than fatal, so the two defences are independent (proved by mutation on the
+# bash side: with the path guard reverted, staging alone still preserved the converter).
+$mpxjStaged = $false
 if ($srcMpxj) {
-    New-Item -ItemType Directory -Force -Path $destMpxj | Out-Null
-    Copy-Item -Recurse -Force -Path (Join-Path $srcMpxj "*") -Destination $destMpxj
+    $stageMpxj = Join-Path $InstallRoot "tools\.mpxj-staging"
+    try {
+        Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $stageMpxj
+        New-Item -ItemType Directory -Force -Path $stageMpxj | Out-Null
+        Copy-Item -Recurse -Force -Path (Join-Path $srcMpxj "*") -Destination $stageMpxj
+        if (Test-Path (Join-Path $stageMpxj "classes\MpxjToMspdi.class")) { $mpxjStaged = $true }
+    } catch { $mpxjStaged = $false }
+    if (-not $mpxjStaged) {
+        Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $stageMpxj
+        Warn2 "MPXJ source at $srcMpxj could not be read — any existing converter is left alone"
+    }
+}
+if ($mpxjStaged) {
+    Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $destMpxj
+    Move-Item -Force -Path $stageMpxj -Destination $destMpxj
     Ok "MPXJ converter deployed (native .mpp import enabled)"
 } elseif (Test-Path (Join-Path $destMpxj "classes\MpxjToMspdi.class")) {
     Ok "MPXJ converter already installed — native .mpp import stays ON (existing copy kept)"

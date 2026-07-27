@@ -212,3 +212,41 @@ that quietly stops working is the same defect class as a false capability claim.
 Also replaced a stale ADR-0193 pin that asserted the removed eager expression *verbatim*. #447 made
 the general point well: **a string pin detects a rewording, never a falsehood.** The parent-of-
 script-dir layout is now asserted as a search *base*, and the eager form is asserted absent.
+
+## Addendum 2 — 2026-07-27, a symlinked source destroyed the converter and reported success
+
+**Reproduced on `main` before anything changed.** With `SF_MPXJ_HOME` pointing at a *symlink* to
+the installed copy, the shipped block printed `[ok] MPXJ converter deployed (native .mpp import
+enabled)`, exited 0, and **the converter was gone**:
+
+```
+=== BEFORE: converter present? ===  YES
+[ok] MPXJ converter deployed (native .mpp import enabled)
+=== AFTER: converter present? ===   *** DESTROYED ***
+```
+
+`sf_realpath` used a **logical** `pwd`, which reports the symlink's own spelling. So the link
+compared unequal to the destination, the self-copy skip missed it, and the copy step `rm -rf`'d the
+real directory and copied from the link it had just broken. Found by PR #449 in a parallel session.
+
+**Two independent defences, because one was not enough.**
+
+1. **`pwd -P`** — the physical path, so the detection is actually correct (#449's fix, adopted).
+   PowerShell's `Resolve-Path` normalises but does not dereference on 5.1, so `Resolve-SfPath` now
+   follows one reparse point too; that stays best-effort and never throws.
+2. **Stage the source completely before touching the destination** — the same
+   never-delete-what-you-cannot-replace rule the download path already followed. `$MPXJ_SRC/.`
+   copies the *contents*, so a symlinked source is dereferenced into a real directory.
+
+They are independent, and that was verified rather than asserted: with the `pwd -P` guard mutated
+back to a logical `pwd`, the converter **still survived** — only the message degraded from
+`already installed — stays ON` to `deployed`. **A detection has to be right on every platform to
+protect anything; staging protects even when the detection is wrong.**
+
+That is the third destructive edge in this family and the second I shipped. The pattern in all
+three: *widening what a step may select widens what it may destroy.* The durable fix is not a
+better comparison — it is never putting the only copy at risk in the first place.
+
+**A third literal test pin broke on a correct fix here** (`cp -R "$MPXJ_SRC"` → `"$MPXJ_SRC/."`),
+after the ADR-0193 pin and the `"stays OFF"` pin. Restated for the file: **pin literals only when
+the literal itself is the contract; otherwise assert the behaviour.**
