@@ -157,7 +157,10 @@ compare. `Resolve-SfPath`'s one-hop reparse follow is therefore both necessary a
   `downloaded and SHA-256 verified` (one-file) · `deployed` (python-only) · `deployed` (link setup) ·
   `already installed` ×2 (the two link shapes) · `deployed` (mutation) · `no MPXJ converter found`
   (drive root, offline). Every branch of section 3b is now exercised at least once on Windows.
-- Total windows wall-clock: **3 m 40 s** for eleven steps and seven installs.
+- Total windows wall-clock: **3 m 40 s** for ten steps and **nine installer runs** — the eight above
+  plus the drive-root mutation, which aborts before reaching 3b and so prints no MPXJ line at all.
+  (Counted from the log's outcome lines, not from the YAML: grepping `-File` over the workflow gives
+  14, because `Get-ChildItem -Recurse -File` and the 5.1 link probe match too.)
 
 ## Consequences
 
