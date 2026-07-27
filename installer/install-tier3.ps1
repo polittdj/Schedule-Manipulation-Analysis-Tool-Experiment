@@ -357,7 +357,7 @@ if ($ans -notmatch "^[Nn]") {
 }
 
 # --- 6. Start / Stop commands, shortcuts, uninstaller, README -------------------------
-Step "Creating Start/Stop shortcuts, uninstaller, and first-run README"
+Step "Creating the Schedule Forensics shortcut, uninstaller, and first-run README"
 $startCmd = Join-Path $InstallRoot "Start-ScheduleForensics.cmd"
 @"
 @echo off

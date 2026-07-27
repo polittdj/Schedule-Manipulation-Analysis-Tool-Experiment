@@ -48,9 +48,20 @@
 >   "sf-themes.css was never committed" is FALSE). Then GUIDED-MODE (5) + VOICE-DECISION (4),
 >   parked on the operator. Also open: monolith split phases 2-3; a DOM caption mechanism for the
 >   11 `NO_SVG_AXES` visuals; `_ANALYSIS_CACHE_MAX = 48` (ADR-0292); the .mpp probe UI (ADR-0293).
-> - **OWED, NOT CLAIMED:** no pwsh in this sandbox — the `.ps1` is proven by the windows smoke
->   job, and its *download* branch only by the CI run following the latest push. AXIS-TITLES batch
->   0's four-theme visual pass is still outstanding.
+> - **PowerShell IS NOW PROVEN — the owed item is discharged.** The windows runner executed the
+>   real one-file path end to end: `Downloading the MPXJ converter…` →
+>   `[ok] MPXJ converter downloaded and SHA-256 verified` → `MPXJ jars downloaded + SHA-256
+>   verified: 24` → `SMOKE INSTALL OK`. TLS hardening + the pinned commit included.
+> - **That leg found a 4th, pre-existing shipped bug on its FIRST run.** Under
+>   `$ErrorActionPreference = "Stop"` a native program writing anything to stderr is a
+>   TERMINATING error, and `java -version` prints its banner to stderr — so on any machine with
+>   java on PATH the Java *probe* aborted the install before the shortcut/uninstaller/README were
+>   created. Invisible until now because the older windows legs end with `& $venvPy -c …`, which
+>   resets `$LASTEXITCODE`. `winget install` / `ollama pull` had the same exposure. All routed
+>   through `Invoke-SfNative`; the CI leg now asserts the installer's own exit code and
+>   `Set-Location`s out of the checkout (it had been matching `$PWD\tools\mpxj`).
+> - **OWED, NOT CLAIMED:** AXIS-TITLES batch 0's four-theme visual pass is still outstanding from
+>   the prior session (needs a browser this sandbox cannot automate).
 > - **DEPLOY NOTE:** operator has **no local clone** — download `installer/install-tier2.ps1` from
 >   the GitHub web UI and run
 >   `powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\Downloads\install-tier2.ps1"`.
