@@ -80,7 +80,11 @@ def test_css_tooltips_reveal_on_a_delay_not_instantly() -> None:
 def test_floating_tip_waits_for_hover_intent_and_cancels_on_leave() -> None:
     js = (STATIC / "app.js").read_text(encoding="utf-8")
     assert "window.SF_TIP_DELAY_MS" in js  # shares the one delay constant
-    assert "setTimeout(show, delay)" in js  # reveal is deferred
+    # reveal is deferred — and the deferred path re-checks the pointer is still over the row
+    # before showing (a wheel scroll during the delay moves the row away with no mouseleave;
+    # the operator caught the resulting stranded tip over the nav rail, 2026-07-27)
+    assert "setTimeout(showIfStillHovered, delay)" in js
+    assert "document.elementFromPoint(px, py)" in js
     assert "clearTimeout(timer)" in js  # leaving early cancels it
     assert 'row.addEventListener("mouseenter", showLater)' in js
     # keyboard focus is already deliberate — it should not be delayed
