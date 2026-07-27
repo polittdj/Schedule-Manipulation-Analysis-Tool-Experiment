@@ -8325,3 +8325,14 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   orphaned the moment that branch is deleted. `mpxj_ref()` must be re-checked against `main`.**
 - **v1.0.105 -> 1.0.106**, wheel rebuilt, nine installers regenerated (ADR-0148 lockstep, since the
   static JS is packaged) — verified by watching the lockstep test fail first and pass after.
+- **CLOSED: #454 merged** (`a941a4a`), all five checks green. The windows leg is the one that
+  mattered: it re-downloaded the converter and **SHA-256-verified 24 jars against the NEW pin**
+  (`749bf07c`), which is the empirical proof that moving the pin off orphaned history is safe —
+  a claim I could otherwise only have made from `git merge-base`. The same job re-ran both
+  ADR-0300 link shapes (`Junction, SymbolicLink`) and both mutations.
+- **One local-run artefact worth naming, because it looked like a real failure.** The background
+  full-suite run reported `test_handoff_top_section_pins_the_current_pyproject_version` FAILED:
+  it started before the handoff was rewritten, so it read the old handoff (1.0.105) against the
+  new `pyproject` (1.0.106). Re-running it against the settled tree passes. **LESSON: a
+  long-running background test job is a snapshot of the tree at the moment each test executed,
+  not at the moment you read the result. When one fails, re-run THAT test before believing it.**

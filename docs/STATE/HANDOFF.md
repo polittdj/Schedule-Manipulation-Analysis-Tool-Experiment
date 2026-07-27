@@ -1,7 +1,12 @@
 # Handoff — 2026-07-27i (AXIS-TITLES batch 1: PENDING 16 -> 11; the spec's caption table is not a source; ADR-0301; v1.0.106)
 
-> ## STATUS (current) — ADR-0301. Version **1.0.106**. Highest ADR **ADR-0301**. `main` at `8770601` (batch 1 is on the branch, PR open).
-> Branch `claude/schedule-forensics-continue-gkju7l`. #451, #452, #453 all merged before this.
+> ## STATUS (current) — NOTHING IN FLIGHT. ADR-0301 merged. Version **1.0.106**. Highest ADR **ADR-0301**. `main` at `a941a4a`.
+> Branch `claude/schedule-forensics-continue-gkju7l`, restarted from merged `main`, tree clean.
+> **#451, #452, #453 and #454 all merged. No open PRs.** All five checks green on #454 —
+> and the windows leg is the one that mattered: it re-downloaded the converter and
+> **SHA-256-verified 24 jars against the NEW pin**, which is the empirical proof that moving the
+> pin off orphaned history is safe. Both ADR-0300 link shapes and both mutations ran in that
+> same job.
 >
 > - **AXIS-TITLES batch 1 done: `PENDING` 16 -> 11.** Captioned `histogram`, `curves`, `scurve`,
 >   `cei`, `resources` via `SFChartFrame.axisTitles`. Guard mutation-proved three ways (deleted
