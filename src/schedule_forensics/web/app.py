@@ -2802,10 +2802,21 @@ def create_app(
             + _export_bar("compare")
             + _skipped_notice(skipped)
             + _sources_line([prior, current])
-            + _compare_body(prior, current, cpms[-2], cpms[-1])
+            + _compare_body(
+                prior,
+                current,
+                cpms[-2],
+                cpms[-1],
+                # the pair chip's v-ordinals: position in the data-date-ordered solvable list
+                vfrom=len(schedules) - 1,
+                vto=len(schedules),
+            )
         )
         if st.target_uid is not None:
             body += _focus_panel([prior, current], [cpms[-2], cpms[-1]], st.target_uid)
+        # the panel-contract toolbar behavior (⛶ / ⤓) — a PER-PAGE include (rank-5 law:
+        # markup alone is not evidence; the script must actually load on /compare)
+        body += '\n<script src="/static/panelkit.js"></script>'
         return _page(st, "Compare", body)
 
     def _solvable_versions() -> tuple[list[Schedule], list[CPMResult], list[str]]:
@@ -7286,6 +7297,20 @@ def _prov_chip(sch: Schedule) -> str:
     )
 
 
+def _pair_prov_chip(prior: Schedule, current: Schedule, vfrom: int, vto: int) -> str:
+    """The version-PAIR provenance chip for the compare views (Mission Ops rank 5) —
+    ``v1→v2 · SOURCE: a → b · DD d1 → d2`` — the prototype's 'v4→v5' vocabulary rendered
+    with the SAME .prov-chip class as :func:`_prov_chip` (never a parallel vocabulary).
+    i18n-inert: version labels, filenames and dates must never be translated."""
+    p_dd = prior.status_date.date().isoformat() if prior.status_date is not None else "—"
+    c_dd = current.status_date.date().isoformat() if current.status_date is not None else "—"
+    return (
+        f"<span class=prov-chip data-no-i18n>v{vfrom}→v{vto} · "
+        f"SOURCE: {_e(prior.source_file or prior.name)} → "
+        f"{_e(current.source_file or current.name)} · DD {p_dd} → {c_dd}</span>"
+    )
+
+
 def _shell_tools(*, export_title: str = "") -> str:
     """The three-glyph tool strip (panelkit.js wiring): ⤓ EXCEL renders ONLY when the panel
     carries a ``data-export`` URL to an EXISTING endpoint (never a dead link — rank-3 law);
@@ -11359,26 +11384,38 @@ def _what_changed_header(
 
 
 def _compare_body(
-    prior: Schedule, current: Schedule, prior_cpm: CPMResult, current_cpm: CPMResult
+    prior: Schedule,
+    current: Schedule,
+    prior_cpm: CPMResult,
+    current_cpm: CPMResult,
+    *,
+    vfrom: int = 1,
+    vto: int = 2,
 ) -> str:
+    """Chapter-10 body (Mission Ops rank 5, ADR-0298): the two legacy tables wearing the panel
+    contract. Presentation only — every figure is the same engine output the flat panels already
+    rendered. The Net-Finish-Impact sentence MOVES into the trend panel's takeaway slot verbatim,
+    and the manipulation-signals table (the page's forensic headline) takes the verdict-band wash,
+    toned by the ENGINE's own worst severity. Loaded-term guard: the takeaway lines only restate
+    engine findings — no wording is added around the engine's signal titles."""
     manip = detect_manipulation(current, prior, current_cpm=current_cpm, prior_cpm=prior_cpm)
     trend = trend_across_versions([prior, current])
     impact = compute_net_finish_impact(current, prior, current_cpm=current_cpm, prior_cpm=prior_cpm)
     days = int(impact.value)
     if days < 0:
-        impact_html = (
-            f"<p>Net Finish Impact: <b class=fail>{days} calendar days</b> "
-            "&mdash; the project finish moved later since the prior version.</p>"
+        impact_take = (
+            f"Net Finish Impact: <b class=fail>{days} calendar days</b> "
+            "&mdash; the project finish moved later since the prior version."
         )
     elif days > 0:
-        impact_html = (
-            f"<p>Net Finish Impact: <b class=pass>+{days} calendar days</b> "
-            "&mdash; the project finish moved earlier since the prior version.</p>"
+        impact_take = (
+            f"Net Finish Impact: <b class=pass>+{days} calendar days</b> "
+            "&mdash; the project finish moved earlier since the prior version."
         )
     else:
-        impact_html = (
-            "<p>Net Finish Impact: <b class=pass>0 calendar days</b> "
-            "&mdash; the project finish is unchanged.</p>"
+        impact_take = (
+            "Net Finish Impact: <b class=pass>0 calendar days</b> "
+            "&mdash; the project finish is unchanged."
         )
     manip_rows = "".join(
         f'<tr><td class="sev-{_e(f.severity)}">{_e(f.severity)}</td><td>{_e(f.title)}</td>'
@@ -11390,12 +11427,47 @@ def _compare_body(
         f"<td>{p.completed}</td><td>{p.in_progress}</td><td>{p.critical}</td></tr>"
         for p in trend
     )
+    prov = _pair_prov_chip(prior, current, vfrom, vto)
+    # Version-trend panel: the table IS its own data drawer (no ▦ DATA — the /evm precedent) and
+    # no existing endpoint serves exactly these rows, so the toolbar is ⛶ only (never a dead ⤓).
+    trend_head = _panel_head(
+        f"Version trend &mdash; {_e(prior.source_file or 'prior')} &rarr; "
+        f"{_e(current.source_file or 'current')}",
+        tools=_shell_tools(),
+        prov=prov,
+    )
+    # Manipulation-signals panel: verdict-band wash toned by the worst ENGINE severity present
+    # (HIGH → --bad, MEDIUM/LOW → --warn, none → --ok); ⤓ EXCEL rides the EXISTING
+    # /export/xlsx/compare endpoint, which exports exactly these signals.
+    severities = {str(f.severity) for f in manip}
+    if "HIGH" in severities:
+        band_cls = "vb-at-risk"
+    elif severities:
+        band_cls = "vb-watch"
+    else:
+        band_cls = "vb-on-track"
+    if manip:
+        worst = next(s for s in ("HIGH", "MEDIUM", "LOW", "INFO") if s in severities)
+        n = len(manip)
+        sig_take = (
+            f"{n} manipulation-trend signal{'s' if n != 1 else ''} between these two versions "
+            f"&mdash; highest severity {worst}; each signal and its course of action is the "
+            "engine's own finding, listed below."
+        )
+    else:
+        sig_take = "No manipulation signals detected (honest progress)."
+    sig_head = _panel_head(
+        "Manipulation-trend signals",
+        tools=_shell_tools(export_title="Export these manipulation signals — opens in Excel"),
+        prov=prov,
+    )
     return f"""
-<div class=panel><h2>Version trend &mdash; {_e(prior.source_file or "prior")} &rarr; {_e(current.source_file or "current")}</h2>
+<div class=panel>{trend_head}
+<p class=sf-take data-no-i18n>{impact_take}</p>
 <p class=muted>Versions are ordered by data date (oldest first); the trend reads prior &rarr; current.</p>
-<table><tr><th scope=col>Version</th><th scope=col>Project finish</th><th scope=col class=metric-th>{_metric_help_cell("Completed", "completed")}</th><th scope=col class=metric-th>{_metric_help_cell("In progress", "in_progress")}</th><th scope=col class=metric-th>{_metric_help_cell("Critical", "critical")}</th></tr>{trend_rows}</table>
-{impact_html}</div>
-<div class=panel><h2>Manipulation-trend signals</h2>
+<table><tr><th scope=col>Version</th><th scope=col>Project finish</th><th scope=col class=metric-th>{_metric_help_cell("Completed", "completed")}</th><th scope=col class=metric-th>{_metric_help_cell("In progress", "in_progress")}</th><th scope=col class=metric-th>{_metric_help_cell("Critical", "critical")}</th></tr>{trend_rows}</table></div>
+<div class="panel verdict-band vb-stack {band_cls}" data-export="/export/xlsx/compare">{sig_head}
+<p class=sf-take data-no-i18n>{sig_take}</p>
 <table><tr><th scope=col>Severity</th><th scope=col>Signal</th><th scope=col>Course of action</th></tr>
 {manip_rows or "<tr><td colspan=3 class=muted>No manipulation signals detected (honest progress).</td></tr>"}</table></div>"""
 
@@ -11427,18 +11499,32 @@ def _focus_panel(schedules: list[Schedule], cpms: list[CPMResult], target: int) 
         for label, finish, pct in focus_rows
     )
     note = "" if names else '<p class="notice err">No loaded version contains that UniqueID.</p>'
-    known = [finish for _, finish, _ in focus_rows if finish != "—"]
+    known = [(label, finish) for label, finish, _ in focus_rows if finish != "—"]
     movement = ""
     if len(known) >= 2:
-        # same sign convention as Net Finish Impact: negative == moved later (a slip)
-        days = (dt.date.fromisoformat(known[0]) - dt.date.fromisoformat(known[-1])).days
+        # same sign convention as Net Finish Impact: negative == moved later (a slip).
+        # Mission Ops rank 5: the movement statement is a CITATION CARD (.finding.cite-card
+        # vocabulary) — the sentence is unchanged; the cite line names the UID and the exact
+        # versions/dates the figure was read between (presentation only, no new math).
+        days = (dt.date.fromisoformat(known[0][1]) - dt.date.fromisoformat(known[-1][1])).days
         cls, word = ("fail", "later") if days < 0 else ("pass", "earlier or unchanged")
+        sev = "MEDIUM" if days < 0 else "INFO"
         movement = (
+            f'<div class="finding cite-card sev-{sev}">'
             f"<p>Computed finish moved <b class={cls}>{days:+d} calendar days</b> "
             f"({word}) between the first and last version that schedule it.</p>"
+            f"<p class=cite data-no-i18n>UID {target} · {_e(known[0][0])} "
+            f"({_e(_mdY(known[0][1]))}) → {_e(known[-1][0])} ({_e(_mdY(known[-1][1]))})</p></div>"
         )
+    # panel contract (rank 5): headline strip + ⛶ (no endpoint serves these focus rows — no
+    # dead ⤓; the table is its own drawer — no ▦ DATA) + the first→last pair provenance chip.
+    head = _panel_head(
+        title,
+        tools=_shell_tools(),
+        prov=_pair_prov_chip(schedules[0], schedules[-1], 1, len(schedules)),
+    )
     return f"""
-<div class=panel><h2>{title}</h2>{note}
+<div class=panel>{head}{note}
 <p class=muted>The focus activity's computed finish and progress across the versions
 (its movement is charted below).</p>
 <table><tr><th scope=col>Version</th><th scope=col>Computed finish</th><th scope=col>% complete</th></tr>{rows}</table>
@@ -11631,7 +11717,8 @@ visible at a glance.</p>
 <div class="chart-host" id=marginBurndown></div></div>
 <script src="/static/trend.js"></script>
 <script src="/static/trend_drill.js"></script>
-<script src="/static/margin.js"></script>"""
+<script src="/static/margin.js"></script>
+<script src="/static/panelkit.js"></script>"""
 
 
 def _trend_data(

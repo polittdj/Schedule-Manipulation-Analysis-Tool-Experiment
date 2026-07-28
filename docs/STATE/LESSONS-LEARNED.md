@@ -435,6 +435,17 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-28 (cont. 2) — prove the gate can fail before trusting its passes
+
+- Round 5's loaded-terms audit (testimony-critical on /compare) passed 12/12 strings — and the
+  lead only accepted it after running a known-dirty CONTROL ("deliberate concealed fraud")
+  through ai.citations.introduces_loaded_terms and watching it return True. **LESSON: a guard
+  that never fires in your session is unproven — pair every all-clean audit with one control
+  case that MUST fail, in the same run, before believing the clean results.**
+- Also promoted this round: the round-4 "script include + one real click" manual step became a
+  permanent playwright-gated regression test (test_compare_panelkit.py) — checklist items that
+  survive two rounds belong in the suite, not the checklist.
+
 ### 2026-07-28 (cont.) — markup can be complete while the page is inert; click it
 
 - Round 4's implementer found /evm wearing the FULL panel-contract toolbar markup with zero
