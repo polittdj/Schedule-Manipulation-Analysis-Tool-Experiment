@@ -17020,13 +17020,36 @@ def _who_is_overloaded_header(st: SessionState, granularity: str = "month") -> s
         conc_bar = ""
     return (
         f'<h1 class="page-takeaway" data-no-i18n>{_e(takeaway)}</h1>'
+        '<p class="page-lede">Who is booked beyond their availability, and when. Each resource\'s '
+        "assigned work is spread across its activities' spans and totalled per bucket, then "
+        "compared with that resource's own capacity for the same bucket.</p>"
         f'<div class="ws-kpi">{kpi}</div>'
         f'<div class="ws-bars">{alloc_bar}{conc_bar}</div>'
     )
 
 
 def _resources_body(st: SessionState, granularity: str = "month") -> str:
-    """Resources page: per-resource loading histogram + over-allocation, and a roster table."""
+    """Resources page: per-resource loading histogram + over-allocation, and a roster table.
+
+    Panel contract (Mission Ops rank 10, ADR-0298): the three content panels wear the headline
+    strip + tools + provenance chip + one ``.sf-take``. Four deliberate decisions, each of which
+    would otherwise ship an inert or lying control:
+
+    * **⤓ EXCEL carries the RENDERED bucket** — ``/export/xlsx/resources?bucket={granularity}``,
+      never a bare URL. Capacity scales with the working days in a bucket, so an operator reading
+      the week histogram must not silently receive the month workbook (a presentation lie about
+      engine numbers). The same endpoint the page-level export bar already points at — one
+      convention, two affordances.
+    * **no ▦ DATA anywhere** — no panel carries a ``.sf-drawer``, and the two data panels' own
+      tables ARE their data (the :func:`_shell_tools` home-shell precedent). Inventing a drawer
+      here would mean emitting per-period load/capacity numbers the page does not render today.
+    * **panel-scoped ⛶** — each converted panel holds AT MOST ONE chart (the histogram panel has
+      exactly one ``.chart-host``; the other two have none), so one ⛶ can never desync a sibling.
+    * **every take figure is already on the page** — the summary take quotes only the four
+      ``{cards}`` values; the histogram and roster takes quote only roster ROW 1, which is
+      ``rl.resources[0]`` — the same object the first ``<option>`` selects and the chart therefore
+      opens on. No figure is re-derived (the header's ``worst`` max() lives in
+      :func:`_who_is_overloaded_header` and is deliberately NOT recomputed here)."""
     chosen = _latest_solvable(st)
     if chosen is None:
         return (
@@ -17093,24 +17116,75 @@ def _resources_body(st: SessionState, granularity: str = "month") -> str:
         "<b>over-allocated</b> &mdash; where that resource is booked beyond its availability. "
         "<b>Click any bar</b> to list the activities driving that bucket's load."
     )
+    # ── The panel contract for this page (see the docstring for the four decisions). The
+    # data-export URL carries the RENDERED bucket so ⤓ EXCEL can never hand back a workbook
+    # computed at a different granularity than the one on screen.
+    prov = _prov_chip(sch)
+    export_url = f"/export/xlsx/resources?bucket={granularity}"
+    tools = _shell_tools(
+        export_title=(
+            f"Export the resource-loading series and roster at the {unit} bucket — opens in Excel"
+        )
+    )
+    sum_head = _panel_head(
+        f"Resource loading &amp; over-allocation &mdash; {_e(sch.source_file or sch.name)}",
+        tools=tools,
+        prov=prov,
+    )
+    hist_head = _panel_head("Loading histogram", tools=tools, prov=prov)
+    roster_head = _panel_head("Resource roster", tools=tools, prov=prov)
+    # every figure below is ALREADY rendered verbatim on this page, read from the same variable
+    # the visible markup reads: the four {cards} values, and roster ROW 1 (rl.resources[0]) —
+    # which is also the first <option>, i.e. the resource the histogram opens on.
+    n_periods = len(rl.periods)
+    unit_s = f"{unit}{'s' if n_periods != 1 else ''}"
+    first = rl.resources[0]
+    first_days = f"{round(first.total_work_minutes / mpd, 1):g}"  # the roster row-1 Work cell
+    over_clause = (
+        f"{over_count} of them are over-allocated in at least one {unit}"
+        if over_count
+        else f"none is over-allocated in any {unit}"
+    )
+    sum_take = (
+        f"{len(rl.resources)} loaded resources carry {total_days:g} work-days across "
+        f"{n_periods} {unit_s}; {over_clause}."
+    )
+    peak_clause = f", peaking in {_e(first.peak_period)}" if first.peak_period else ""
+    hist_take = (
+        f"The histogram opens on {_e(first.name)} &mdash; {first_days} work-days across "
+        f"{first.task_count} activities{peak_clause}; bars above the dashed capacity line are "
+        f"that resource's over-allocated {unit}s."
+    )
+    roster_take = (
+        f"{len(rl.resources)} resources carry work, largest first: {_e(first.name)} at "
+        f"{first_days} work-days across {first.task_count} activities; {over_clause}."
+    )
+
+    def take(text: str) -> str:
+        return f"<p class=sf-take data-no-i18n>{text}</p>"
+
     return f"""
-<div class=panel><h2>Resource loading &amp; over-allocation &mdash; {_e(sch.source_file or sch.name)}</h2>
+<div class=panel data-export="{export_url}">{sum_head}
+{take(sum_take)}
 <p class=muted>Time-phased work per resource per {unit}, against each resource's capacity. Over-allocated
 {unit}s are flagged.</p>
 {tip}
 {cards}</div>
-<div class=panel><h2>Loading histogram</h2>
+<div class=panel data-export="{export_url}">{hist_head}
+{take(hist_take)}
 <div class=viz-controls><label>Resource <select id=resPick>{res_opts}</select></label>
 {bucket_form}<span id=resStatus class=muted></span></div>
 <div id=resChart class=chart-host></div>
 <div id=resDrill></div>
 <script type="application/json" id=resData>{blob}</script>
-<script src="/static/resources.js"></script></div>
-<div class=panel><h2>Resource roster</h2>
+<script defer src="/static/resources.js"></script></div>
+<div class=panel data-export="{export_url}">{roster_head}
+{take(roster_take)}
 <p class=muted>Every resource that carries work, sorted by total work. Over-allocated {unit}s are the
 count of {unit}s booked beyond capacity.</p>
 {roster}</div>
-{_resources_explainer()}"""
+{_resources_explainer()}
+<script src="/static/panelkit.js"></script>"""
 
 
 def _groups_field_options(fields: Sequence[str], selected: str) -> str:
