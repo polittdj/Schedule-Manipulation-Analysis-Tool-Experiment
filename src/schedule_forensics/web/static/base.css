@@ -560,6 +560,12 @@ header nav{display:flex;flex-wrap:wrap;align-items:center;gap:5px 16px;flex:1 1 
    KPI tiles (2px colored top edge), and the verdict band (gradient wash + 3px left edge).
    Tokens only; the band/KPI colors ride the verdict via the --vb-c custom property. ── */
 .tile-prov{display:flex;margin:0 0 6px}
+/* A mosaic tile-head is space-between, so a long title squeezes the contract strip until the
+   glyph and its label split across two lines (measured 27px/32px-tall buttons at the real
+   546px /performance tile width, vs 17px when they fit). Keep each glyph+label on ONE line
+   and wrap WHOLE buttons instead. Geometry only — no color, no new token. */
+.mosaic .tile-actions{flex:0 0 auto;flex-wrap:wrap;justify-content:flex-end}
+.mosaic .tile-actions button{white-space:nowrap}
 .ctl-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;
   margin:0 0 16px}
 .ctl-kpi{background:var(--panel);border:1px solid var(--line);border-top:2px solid var(--accent);
