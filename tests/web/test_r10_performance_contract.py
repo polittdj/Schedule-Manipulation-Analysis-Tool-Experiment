@@ -33,6 +33,7 @@ import threading
 import time
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote
 
 import pytest
 from fastapi.testclient import TestClient
@@ -430,4 +431,100 @@ def test_h2_a_real_stepper_tick_falsifies_nothing_this_round_rendered(served: st
             assert stepped_file.group(1) in chip, (chip, stepped_file.group(1))
         for take in after["takes"][1:]:  # [0] is the intro take, framed as the OPENING state
             assert not re.search(r"\.xml", take), take
+        browser.close()
+
+
+# ── ROUND-10 LEAD FIXES: two defects the round's own conversion INTRODUCED on this page ─────
+
+
+def test_enlarging_a_tile_does_not_clip_its_chart_below_a_scroll_fold(served: str) -> None:
+    """⛶ ENLARGE must show MORE of the chart, not a taller chart cut in half.
+
+    ``.is-big`` (``base.css``: ``grid-column:1/-1``) widens a mosaic tile 546px → 1108px, and
+    these charts are drawn WIDTH-proportional, so the SVG doubles in BOTH axes. Measured before
+    the fix: svg 516x266 → 1078x556 inside a host still clamped to ``.mosaic .tile .chart-host
+    {height:340px}`` — ``scrollHeight`` 340 → 560, i.e. ~40% of the enlarged chart (the whole X
+    axis and every month tick) below a scroll fold. ``app.css`` now gives ``.is-big`` the same
+    74vh host its ``.tile-expanded`` sibling has always had.
+
+    Asserted as the INVARIANT (no fold), not as a pixel constant, so a future host-height
+    change cannot silently re-open it.
+    """
+    from playwright.sync_api import sync_playwright
+
+    with sync_playwright() as pw:
+        browser = pw.chromium.launch(executable_path=str(CHROME))
+        page = browser.new_page(viewport={"width": 1400, "height": 950})
+        page.goto(served + "/performance", wait_until="load")
+        page.wait_for_selector("#g1Census", timeout=25000)
+        page.wait_for_timeout(300)
+
+        measure = (
+            "() => { const t = document.querySelector('.tile.panel[data-export]');"
+            " const h = t.querySelector('.chart-host');"
+            " const s = h.querySelector('svg');"
+            " return {tileW: Math.round(t.getBoundingClientRect().width),"
+            "         clientH: h.clientHeight, scrollH: h.scrollHeight,"
+            "         svgH: s ? Math.round(s.getBoundingClientRect().height) : 0}; }"
+        )
+        before = page.evaluate(measure)
+        page.locator(".tile.panel[data-export] [data-sf-big]").first.click()
+        page.wait_for_timeout(400)
+        after = page.evaluate(measure)
+
+        assert after["tileW"] > before["tileW"] + 100, (before, after)  # it really enlarged
+        assert after["svgH"] > before["svgH"], (before, after)  # and the chart really regrew
+        # THE FIX: the taller chart still fits its host — no hidden overflow.
+        assert after["scrollH"] <= after["clientH"] + 2, (
+            f"⛶ ENLARGE clips the chart: {after['scrollH'] - after['clientH']}px of the "
+            f"enlarged svg sits below the fold ({after})"
+        )
+        browser.close()
+
+
+def test_stepping_repoints_every_tile_export_at_the_file_its_chart_now_draws(
+    served: str,
+) -> None:
+    """A forensic export control must never disagree with the visual it sits on.
+
+    The server pins each tile's ``data-export`` to ``?file=<the file selected at RENDER time>``,
+    but the master stepper re-binds G1-G5 to a DIFFERENT file with no reload — so before the fix
+    the ⤓ beside a chart drawing ``Hard_File`` handed back ``Hard_File_updated3``'s datasets.
+    ``performance.js``'s ``setVersion()`` now re-points every tile alongside the file caption it
+    already writes. The stepped URL is fetched here too: honest AND alive, never a dead link.
+    """
+    from playwright.sync_api import sync_playwright
+
+    with sync_playwright() as pw:
+        browser = pw.chromium.launch(executable_path=str(CHROME))
+        page = browser.new_page(viewport={"width": 1400, "height": 950})
+        page.goto(served + "/performance", wait_until="load")
+        page.wait_for_selector("#g1Census", timeout=25000)
+        page.wait_for_timeout(300)
+
+        read = (
+            "() => ({exports: [...document.querySelectorAll('#perfGrid [data-export]')]"
+            "          .map(t => t.getAttribute('data-export')),"
+            "         step: (document.getElementById('perfStep') || {}).textContent || '',"
+            "         svg: [...document.querySelectorAll('#g1Census svg text')]"
+            "          .map(n => n.textContent).join('|')})"
+        )
+        first = page.evaluate(read)
+        page.locator("#perfNext").click()
+        page.wait_for_timeout(500)
+        after = page.evaluate(read)
+
+        stepped = re.search(r"—\s*(\S+\.xml)", after["step"])
+        assert stepped is not None, after["step"]
+        assert after["svg"] != first["svg"], "the stepper did not actually re-bind the chart"
+        assert len(after["exports"]) == len(MOUNTS)
+        want = f"/export/xlsx/performance?file={quote(stepped.group(1), safe='')}"
+        assert set(after["exports"]) == {want}, (after["exports"], want)
+        # and it is a LIVE endpoint, not a plausible-looking dead one
+        body = page.evaluate(
+            "async (u) => { const r = await fetch(u); "
+            "return {ok: r.status, n: (await r.arrayBuffer()).byteLength}; }",
+            want,
+        )
+        assert body["ok"] == 200 and body["n"] > 1000, body
         browser.close()

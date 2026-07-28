@@ -435,6 +435,65 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-28 (cont. 9) — merging mid-round does not just ship unverified code, it BLINDS the verifier
+
+**What happened.** PR #473 was merged with 7 of 12 agents complete. Beyond shipping three pages
+without any verification, it had a second-order effect nobody would predict: both adversarial
+verifiers compute their Law-2 "no number moved" proof by diffing the working tree against
+`origin/main`. Once the round's own code was merged **into** `origin/main`, that comparison went
+blind for three of the four pages — it would have reported "nothing changed" for changes it could
+no longer see. The baseline had to be re-pinned by hand to `a7a06fc`.
+
+**The lesson.** Any verification defined relative to a *moving* reference silently degrades when
+the reference moves. Pin baselines to an **immutable commit**, not to a branch name. And if a round
+must be merged early, re-pin every in-flight baseline explicitly rather than assuming the checks
+still mean what they meant when they were written.
+### 2026-07-28 (cont. 8) — a finding can be REAL AS AN OBSERVATION and WRONG AS AN ATTRIBUTION
+
+**What happened.** The no-op above was reported — by a verifier, then by the orchestrator to the
+operator twice and in a PR body — as *"round 10 shipped 43 dead ENLARGE buttons"*. The CSS analysis
+was correct and independently reproducible. The **attribution was false**: `.is-big` is
+byte-identical at the round-9 baseline `a7a06fc`, which already carried 43 `_shell_tools` call
+sites across `_analysis_body`, `_evm_body`, `_scurve_body`, `_portfolio_body`, `_ribbon_body`,
+`_compare_body` and ~20 more — and measures the same no-op there (`/scurve` 2/2, `/portfolio` 2/2,
+`/integrity` 4/4, `/evm` 4/4). It is a pre-existing property of the merged panel contract; round 10
+replicated the merged convention onto four more pages.
+
+**Why it matters.** The two readings imply different fixes. "Round 10 broke it" implies revert or
+block the round. "The contract has always been half-defined" implies a global `base.css` decision
+that touches ~9 merged pages and would move captions on `/scurve`, `/curves` and `/trend` —
+forbidden by requirement 5 without an operator decision. Acting on the wrong one would have been a
+mistaken fix, which this log has repeatedly recorded as worse than the drift it chases.
+
+**The rule already existed.** Round 9 wrote down *"check merged `main` before calling a pattern a
+defect"* after flagging `/trend`'s ⤓ buttons that turned out to be byte-for-byte the shipped
+Mission-wall precedent. It was not applied here until the lead forced the baseline re-check.
+**A rule you wrote down is not a rule you followed — verify the baseline before every attribution,
+including your own.**
+
+### 2026-07-28 (cont. 7) — a check that confirms the MECHANISM fired can pass while the FEATURE does nothing
+
+**What happened.** Round 10's four-theme verifier measured `getBoundingClientRect()` on the closest
+`.panel` immediately before and after every real ⛶ ENLARGE click and found that 8/8 buttons on
+`/cei`, 12/12 on `/resources`, 23/23 on `/forecast` and 20/20 on `/evm` moved **zero pixels** in all
+four themes. The cause is one line: `.is-big{grid-column:1/-1}` is the class's only rule, and
+`grid-column` binds only on a grid item; those panels' parent computes `display:block`.
+
+**Why it survived a standing requirement written to prevent exactly this.** Requirement 2 exists
+because round 4 shipped `/evm` with a complete toolbar and no `panelkit.js`. It says: *prove the
+script loads and click ⛶ for real, reading `is-big` back*. That assertion **succeeds perfectly**
+here — the script loads, the click lands, the class toggles, the label flips to `⛶ SHRINK`. The
+requirement asks whether the machinery ran, not whether anything happened.
+
+**The generalisable form.** Every check this project has had that passed while the feature was
+broken shares one shape: it asserted that the mechanism fired. The script loaded. The class
+toggled. The token was defined (requirement 1's "a defined token is not a painting token"). The
+caption existed (ADR-0298's first detector compared captions only against other captions, blind to
+the collision that actually happens). **Ask what would be visibly different to the operator if the
+feature worked, and measure that.** Requirement 2 is amended accordingly (ADR-0304).
+
+
+
 ### 2026-07-28 (cont. 6) — a contract's SCOPE must match the page's structure
 
 - Round 9 hit the first case where applying the panel contract literally would have made the UI
