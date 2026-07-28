@@ -133,19 +133,27 @@ def test_evm_panels_wear_the_contract_shell(client: TestClient) -> None:
         "Worst finish variances",
     ):
         assert f"<div class=panel-head><h2>{title}</h2>" in page, title
-    # provenance chip on each shelled panel, naming the file (i18n-inert)
-    assert page.count("prov-chip") == 4
+    # provenance chip on each shelled panel, naming the file (i18n-inert). FIVE, not four:
+    # /evm also hosts the SHARED "Execution metrics by field group" panel (_field_forecast_panel,
+    # the same function /forecast calls), which wears the contract as of the round-10 /forecast
+    # conversion — the four panels above plus that one.
+    assert page.count("prov-chip") == 5
     assert "SOURCE: Project5.mspdi.xml" in page
+    assert "<div class=panel-head><h2>Execution metrics by field group</h2>" in page
     # one takeaway line per shelled panel, quoting table figures
-    assert page.count("<p class=sf-take data-no-i18n>") == 4
+    assert page.count("<p class=sf-take data-no-i18n>") == 5
 
 
 def test_evm_toolbar_is_excel_plus_enlarge_no_data_toggle(client: TestClient) -> None:
     """The tables ARE their own data drawer: ⛶ on all four shells, ⤓ only where a LIVE export
     serves the panel's data (worst-variance rows have no export endpoint → no dead link)."""
     page = client.get("/evm").text
-    assert page.count("⛶ ENLARGE") == 4
+    # 5 = the four metric shells + the SHARED field-group panel (see the test above). Its ⤓ is
+    # deliberately absent while UNGROUPED: /export/xlsx/field-forecast REQUIRES a field (no
+    # field → 422), so an ungrouped panel carries no data-export and gets no Excel glyph.
+    assert page.count("⛶ ENLARGE") == 5
     assert page.count("⤓ EXCEL") == 3
+    assert page.count("⤓ EXCEL") == len(re.findall(r'<div class=panel data-export="', page))
     assert "▦ DATA" not in page
     # schedule + cost panels export the existing EVM workbook; compliance panel exports the
     # per-schedule analysis workbook (its Baseline-compliance sheet)
