@@ -8727,3 +8727,38 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
 - **LESSON: the live handoff had been version-bumped nine times while its BODY described work
   from two days earlier. A STATUS section is not current because its version line is — rotate
   the whole section when the work changes character, not just the number.**
+
+## 2026-07-28j — Ultracode round 10: /cei + /performance + /resources + /forecast (ADR-0304, v1.0.120)
+
+- **Rank 10 shipped** across two PRs. #473 (three pages) and #474 (`/forecast` + the lead's
+  repairs) were both merged by the operator; this entry closes the round with the version bump,
+  the regenerated wheel + nine installers, ADR-0304 and the durable-state refresh.
+- Structure per ADR-0240: 4 page surveys + a cross-cutting theme/panelkit/fixture/caption-baseline
+  audit → 4 **serialized** implementers (all four pages live in one 19k-line `app.py`) → 2
+  adversarial verifiers → a lead. 12 agents, 2.16M subagent tokens, 914 tool calls.
+- **Both verifiers returned FAIL and they were right to.** The lead confirmed 4 findings, refuted 4
+  (2 in detail while upholding their substance), fixed 3, and ruled SHIP with 3 open items each
+  carrying a decision-ready measurement.
+- **ADR-0304 — a toolbar that fires is not a toolbar that works.** Standing requirement 2 passed on
+  ⛶ controls that move nothing: `.is-big{grid-column:1/-1}` binds only on a grid item, so
+  `/cei` 8/8, `/resources` 12/12, `/forecast` 23/23 and `/evm` 20/20 buttons measured
+  `panelW 1308->1308`. The requirement asked for a class read-back — exactly the assertion that
+  succeeds while the feature is inert. **Amended to require a measured `getBoundingClientRect()`
+  change.**
+- **LESSON (orchestrator's own error): a finding can be REAL AS AN OBSERVATION and WRONG AS AN
+  ATTRIBUTION.** The no-op was reported as "round 10 shipped 43 dead buttons". The CSS reading was
+  correct; the attribution was not — `.is-big` is byte-identical at `a7a06fc`, which already had 43
+  `_shell_tools` call sites and measures the same no-op on `/scurve`, `/portfolio`, `/integrity`
+  and `/evm`. Round 9's "check merged `main` before calling a pattern a defect" rule covers this
+  and was not applied until the lead forced the re-check.
+- **LESSON: a mid-round merge costs the verification.** #473 merged at 7 of 12 agents — shipping
+  three pages unverified, leaving `main` red on ADR-0148, carrying a title that claimed `/forecast`
+  when the diff did not, and **moving `origin/main` so both verifiers' Law-2 baseline went blind**.
+  The comparison had to be re-pinned to `a7a06fc` by hand.
+- **LESSON: model availability is a real failure mode.** The first launch died instantly with all 8
+  agents reporting exhausted Fable 5 credits (as in round 8). Relaunched on the strongest available
+  model under ADR-0240's own clause.
+- Law 2 held: 14 rendered states diffed against `a7a06fc`, **0 schedule figures changed**; 16
+  `axisTitles` call sites md5-identical; 648 caption renders clean; loaded-terms control `True`
+  with 56 new strings and 0 flagged; promotion census zero across 5 routes × 4 themes.
+- Next: **rank 11 — `/path`, `/driving-path`, `/evolution`, `/volatility`.**
