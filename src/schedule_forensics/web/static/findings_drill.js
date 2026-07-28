@@ -36,6 +36,7 @@
     { key: "baseline_finish", label: "Baseline finish", on: false },
   ];
   var cols = null, filterText = "", selected = null, cache = {}; // cache keyed by file
+  var selectedSev = ""; // the ENGINE severity read off the clicked finding's own table row
 
   function savedState() {
     try { return JSON.parse(localStorage.getItem(COLS_KEY) || "null"); } catch (e) { return null; }
@@ -105,8 +106,18 @@
         return fields.some(function (f) { return cellValue(a, f).toLowerCase().indexOf(ql) !== -1; });
       });
       drill.textContent = "";
-      drill.appendChild(el("h3", {
+      // The drill renders as a prototype citation card (Mission Ops rank 6): the same
+      // .finding.cite-card vocabulary as the server-rendered cards, severity-toned by the
+      // ENGINE's own severity (read off the clicked finding's table row — never re-judged),
+      // with a mono cite line naming the source file behind every row shown.
+      var card = el("div", { class: "finding cite-card" + (selectedSev ? " sev-" + selectedSev : "") });
+      card.appendChild(el("h3", {
         text: 'All ' + uids.length + ' cited activities — "' + finding.title + '"',
+      }));
+      card.appendChild(el("p", {
+        class: "cite",
+        "data-no-i18n": "",
+        text: uids.length + " cited activities · SOURCE: " + file,
       }));
       var bar = el("div", { class: "hist-drill-bar" });
       var colMount = el("span", { class: "field-toggles" });
@@ -144,7 +155,7 @@
         e.preventDefault(); selected = null; filterText = ""; drill.textContent = "";
       });
       bar.appendChild(close);
-      drill.appendChild(bar);
+      card.appendChild(bar);
       var scroller = el("div", { class: "hist-drill-scroll" });
       var table = el("table", { class: "hist-drill-table" });
       var thead = el("thead");
@@ -165,7 +176,8 @@
       }
       table.appendChild(tbody);
       scroller.appendChild(table);
-      drill.appendChild(scroller);
+      card.appendChild(scroller);
+      drill.appendChild(card);
       drill.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }).catch(function () { drill.textContent = "Failed to load the activity data."; });
   }
@@ -175,6 +187,12 @@
       e.preventDefault();
       selected = parseInt(a.getAttribute("data-finding"), 10);
       filterText = "";
+      // severity for the card tone comes from the finding's OWN row (the engine's sev-* cell,
+      // rendered server-side) — whitelisted so only the four known severities ever style it
+      var row = a.closest("tr");
+      var sevCell = row && row.querySelector('td[class*="sev-"]');
+      var m = sevCell && sevCell.className.match(/sev-(HIGH|MEDIUM|LOW|INFO)/);
+      selectedSev = m ? m[1] : "";
       render();
     });
   });

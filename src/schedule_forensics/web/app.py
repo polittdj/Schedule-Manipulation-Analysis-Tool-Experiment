@@ -11005,6 +11005,62 @@ def _driving_data(
     }
 
 
+def _integrity_header(
+    prior: Schedule,
+    current: Schedule,
+    prior_cpm: CPMResult,
+    current_cpm: CPMResult,
+    findings: tuple[Finding, ...],
+) -> str:
+    """The Chapter-02 beat header for /integrity (Mission Ops rank 6, ADR-0298), modeled on the
+    other chapter-header builders: a complete-sentence takeaway h1 + muted lede (the kicker
+    itself comes from _page's spine resolution — "Schedule Integrity" is a Chapter 02 title).
+
+    Presentation only, loaded-term guard territory: the takeaway COUNTS the engine's own
+    findings for the chosen pair, quotes the worst ENGINE severity verbatim, and reads the
+    finish movement from the two versions' engine-computed CPM finishes with the exact
+    _what_changed_header wording ("moved out" / "pulled in" / "unchanged" — never an invented
+    trend word)."""
+    p_label = prior.source_file or prior.name
+    c_label = current.source_file or current.name
+    prior_fin = offset_to_datetime(prior.project_start, prior_cpm.project_finish, prior.calendar)
+    cur_fin = offset_to_datetime(
+        current.project_start, current_cpm.project_finish, current.calendar
+    )
+    fin_delta = (cur_fin.date() - prior_fin.date()).days
+    if fin_delta > 0:
+        fin = (
+            f"; the computed finish moved out {fin_delta} day{'s' if fin_delta != 1 else ''} "
+            "between them"
+        )
+    elif fin_delta < 0:
+        n = -fin_delta
+        fin = f"; the computed finish pulled in {n} day{'s' if n != 1 else ''} between them"
+    else:
+        fin = "; the computed finish is unchanged between them"
+    if findings:
+        severities = {str(f.severity) for f in findings}
+        worst = next(
+            (s for s in ("HIGH", "MEDIUM", "LOW", "INFO") if s in severities),
+            str(findings[0].severity),
+        )
+        n_f = len(findings)
+        takeaway = (
+            f"{n_f} manipulation-pattern finding{'s' if n_f != 1 else ''} between {p_label} "
+            f"and {c_label} — highest severity {worst}{fin}."
+        )
+    else:
+        takeaway = f"No manipulation-pattern findings between {p_label} and {c_label}{fin}."
+    return (
+        f'<h1 class="page-takeaway" data-no-i18n>{_e(takeaway)}</h1>'
+        '<p class="page-lede">Version-over-version change forensics for one chosen pair '
+        "&mdash; what changed between the baseline and the comparison, what each change did "
+        "to the critical / driving path, and what the finish would have been without those "
+        "changes. Every statement below is engine-computed and cited (file + UniqueID + "
+        "task); this is analysis for review, not an accusation.</p>"
+    )
+
+
 def _integrity_body(
     schedules: list[Schedule],
     cpms: list[CPMResult],
@@ -11033,6 +11089,21 @@ def _integrity_body(
     if base == cur or not (0 <= base < n):
         base = cur - 1 if cur > 0 else cur + 1
     prior_idx, cur_idx = (base, cur) if base < cur else (cur, base)
+    prior_sch, cur_sch = schedules[prior_idx], schedules[cur_idx]
+    # The pair's findings are computed ONCE, up front, so the Chapter-02 beat header can restate
+    # them (Mission Ops rank 6) and the findings panel below renders the same tuple — one engine
+    # call, one truth (never recomputed per panel).
+    try:
+        findings = detect_manipulation(
+            cur_sch, prior_sch, current_cpm=cpms[cur_idx], prior_cpm=cpms[prior_idx]
+        )
+    except (CPMError, ValueError, KeyError) as exc:  # never 500 the page on one bad pair
+        logging.getLogger("schedule_forensics").warning("integrity findings failed: %s", exc)
+        findings = ()
+    header = _integrity_header(prior_sch, cur_sch, cpms[prior_idx], cpms[cur_idx], findings)
+    # the 'A vs B' pair provenance chip (v1→v2 · SOURCE: a → b · DD d1 → d2), reused on every
+    # shelled panel of this page — the same _pair_prov_chip vocabulary as /compare (rank 5)
+    pair_prov = _pair_prov_chip(prior_sch, cur_sch, prior_idx + 1, cur_idx + 1)
 
     def _file_opts(selected: int) -> str:
         return "".join(
@@ -11053,8 +11124,15 @@ def _integrity_body(
         if n > 2
         else ""
     )
+    # A/B picker panel wearing the panel-contract shell (rank 6): headline strip + ⛶ + the
+    # pair provenance chip. The existing Excel (all findings) link stays — nothing removed.
+    picker_head = _panel_head(
+        "Version pair &mdash; baseline (A) vs comparison (B)",
+        tools=_shell_tools(),
+        prov=pair_prov,
+    )
     controls = f"""
-<div class=panel><div class=integrity-file data-no-i18n>{_e(banner_name)}</div>
+<div class=panel>{picker_head}<div class=integrity-file data-no-i18n>{_e(banner_name)}</div>
 <p class=muted>Every statement below is engine-computed and cited (file + UniqueID + task) —
 version-over-version changes and what each change did to the critical / driving path. This is
 analysis for review, not an accusation: each finding's course of action asks the analyst to
@@ -11072,11 +11150,7 @@ confirm the change was authorized.</p>
         cur_i = (
             cur_idx  # section header uses the actual comparison index (pairs are not consecutive)
         )
-        try:
-            findings = detect_manipulation(current, prior, current_cpm=ccpm, prior_cpm=pcpm)
-        except (CPMError, ValueError, KeyError) as exc:  # never 500 the page on one bad pair
-            logging.getLogger("schedule_forensics").warning("integrity findings failed: %s", exc)
-            findings = ()
+        # `findings` was computed once above (the header restates the SAME tuple — one engine call)
         rows = ""
         findings_data: list[dict[str, object]] = []  # per-finding full citation UIDs for the drill
         for f in findings:
@@ -11159,7 +11233,7 @@ confirm the change was authorized.</p>
                 # every detected revert was skipped — disclose it instead of hiding the panel
                 total_skipped = eff.skipped_unsolvable + eff.skipped_capped
                 effects_html = f"""
-<div class=change-effects><h4>Effect of each change on {tgt_label}</h4>
+<div class="panel change-effects">{_panel_head(f"Effect of each change on {tgt_label}", tools=_shell_tools(), prov=pair_prov)}
 <p class=muted>{total_skipped} change(s) were detected between these versions but none could be
 measured individually — reverting any one alone reintroduces a logic cycle. (Currently
 {_e(eff.target_name)} finishes {_e(eff.actual_target_finish)}.)</p>{skip_note}</div>"""
@@ -11250,7 +11324,7 @@ artifact(s) &mdash; SNET stamped at the data date (click to expand)</summary>
                     "reschedule artifact (see below).</p>"
                 )
                 effects_html = f"""
-<div class=change-effects><h4>Effect of each change on {tgt_label}</h4>
+<div class="panel change-effects">{_panel_head(f"Effect of each change on {tgt_label}", tools=_shell_tools(), prov=pair_prov)}
 <p class=muted>For each change below, the tool reverts <b>only that change</b> on the later version
 and re-runs CPM. A <b class=fail>positive</b> value is the working-day slip the change
 <b>hid</b> from the target's finish (restoring it would push the finish out that far); a
@@ -11278,7 +11352,7 @@ and re-runs CPM. A <b class=fail>positive</b> value is the working-day slip the 
                     f" <b>{_e(cf.target_actual_finish or '?')}</b>.</p>"
                 )
             cf_html = f"""
-<div class=counterfactual><h4>Counterfactual — without these changes</h4>
+<div class="panel counterfactual">{_panel_head("Counterfactual — without these changes", tools=_shell_tools(), prov=pair_prov)}
 <p>Activities left the critical/driving path after their own duration / logic / constraints
 changed (UIDs {_e(reverted)}). Reverting exactly those changes and re-running CPM: the project
 finish would have been <b>{_e(cf.counterfactual_finish)}</b> instead of the reported
@@ -11288,18 +11362,53 @@ finish would have been <b>{_e(cf.counterfactual_finish)}</b> instead of the repo
             if not rows
             else ""
         )
+        # Findings panel wearing the verdict-band wash (rank 6, the /compare rank-5 precedent):
+        # the tone comes from the ENGINE's own worst severity (HIGH → --bad, any → --warn,
+        # none → --ok) — never re-judged here — and the takeaway line only COUNTS the engine's
+        # findings (loaded-term guard territory: no wording added around the engine's titles).
+        severities = {str(f.severity) for f in findings}
+        if "HIGH" in severities:
+            band_cls = "vb-at-risk"
+        elif severities:
+            band_cls = "vb-watch"
+        else:
+            band_cls = "vb-on-track"
+        if findings:
+            worst = next(
+                (s for s in ("HIGH", "MEDIUM", "LOW", "INFO") if s in severities),
+                str(findings[0].severity),
+            )
+            n_f = len(findings)
+            find_take = (
+                f"{n_f} manipulation-pattern finding{'s' if n_f != 1 else ''} between these two "
+                f"versions &mdash; highest severity {worst}; each finding, its course of action "
+                "and its citations are the engine's own output, listed below."
+            )
+        else:
+            find_take = "No manipulation-pattern findings between these two versions."
+        # ⤓ EXCEL rides the EXISTING /export/xlsx/integrity endpoint (exactly these findings —
+        # never a dead link); the table is its own data drawer, so no ▦ DATA (the /evm precedent).
+        find_head = _panel_head(
+            f"{_e(labels[i])} &rarr; {_e(labels[cur_i])}",
+            tools=_shell_tools(
+                export_title="Export this pair's integrity findings — opens in Excel"
+            ),
+            prov=pair_prov,
+        )
+        export_url = f"/export/xlsx/integrity?file={quote(labels[cur_i], safe='')}"
         sections.append(f"""
-<div class=panel><h2>{_e(labels[i])} &rarr; {_e(labels[cur_i])}</h2>
+<div class="panel verdict-band vb-stack {band_cls}" data-export="{export_url}">{find_head}
+<p class=sf-take data-no-i18n>{find_take}</p>
 {f"<table class=integrity-table><tr><th scope=col>Severity</th><th scope=col>Finding</th><th scope=col>Detail</th><th scope=col>Course of action</th><th scope=col>Citations</th></tr>{rows}</table>" if rows else empty}
-{findings_drill}
+{findings_drill}</div>
 {effects_html}
-{cf_html}</div>""")
+{cf_html}""")
 
     if not sections:
         sections.append(
             "<div class=panel><p class=muted>No version pair matches the selected file.</p></div>"
         )
-    return controls + "".join(sections)
+    return header + controls + "".join(sections) + '\n<script src="/static/panelkit.js"></script>'
 
 
 def _what_changed_header(
