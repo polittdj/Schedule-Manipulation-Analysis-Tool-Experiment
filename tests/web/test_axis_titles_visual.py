@@ -48,10 +48,25 @@ CHROME = Path("/opt/pw-browsers/chromium-1194/chrome-linux/chrome")
 
 THEMES = ("console", "daylight", "apollo", "jarvis")
 SCALES = ("0.9", "1", "1.25")
-#: Pages the golden Project2/Project5 pair actually charts. ``/resources`` needs a resource
-#: picked from its dropdown and ``/margin`` needs tasks named "margin"; with these fixtures both
-#: correctly render a "no data" note and NO chart, so a missing caption there would be a false
-#: positive rather than a defect.
+#: Pages the golden Project2/Project5 pair actually charts. ``/margin`` needs tasks named
+#: "margin"; with these fixtures it correctly renders a "no data" note and NO chart, so a
+#: missing caption there would be a false positive rather than a defect.
+#:
+#: ``/resources`` is a DIFFERENT case and this comment used to state it wrongly. It said the
+#: page renders no chart with these fixtures — true only because ``resources.js`` was the one
+#: chart module that drew SYNCHRONOUSLY, ahead of the layout's ``chartframe.js``, so first paint
+#: died on ``SFChartFrame is not defined`` and the host stayed empty (measured on the round-9
+#: tree: ``svg children 0``). Round 10 fixed that with a one-word ``defer``, and the histogram
+#: now paints on load (``svg children 62``, both captions present). The page is still excluded,
+#: but for a REASON THAT IS OWED WORK, not a false positive: applying the rules below to it
+#: measures a REAL collision in 8 of 12 theme x scale combos — the X caption
+#: "Period (month commencing)" is parked over the last rotated month tick labels
+#: (e.g. console@1: overlaps "2027-09" / "2027-10" / "2028-01" by ~36x2px each; apollo@1 by
+#: ~40x4px). Nothing else fails: font-size, uppercase, inside-svg and contrast all pass.
+#: The remedy is ADR-0303's (move the LABEL, in ``resources.js``, where the collision is
+#: caused) and it needs its own measured pass — the round-10 lead deliberately did NOT adjust
+#: it, per the standing "the axis captions are finished" rule. Add "/resources" to PAGES in
+#: the same change that closes it.
 #: ``/forecast`` joined in ADR-0303 batch 3a: drift.js's captions were attempted, reverted on
 #: two measured collisions, and re-landed with the ADR-0303 clamps — this pass is what proves
 #: those collisions stay closed.

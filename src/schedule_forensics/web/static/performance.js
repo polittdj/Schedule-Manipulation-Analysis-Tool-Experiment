@@ -36,6 +36,19 @@
     var lbl = document.getElementById("perfStep");
     if (lbl) lbl.textContent = "file " + (cursor + 1) + " of " + PV.length + " — " + v.label +
       (v.status_date ? " (data date " + v.status_date + ")" : "");
+    // Round 10 (lead): the ⤓ EXCEL button panelkit.js drives follows its panel's data-export,
+    // which the server pins to the file selected at RENDER time. This stepper re-binds every
+    // G1-G5 chart to a different file without a reload, so after one step the export beside a
+    // chart handed back a DIFFERENT version's datasets than the chart was drawing. Re-point it
+    // with the same provenance the caption above already carries — a forensic export control
+    // must never disagree with the visual it sits on.
+    var href = "/export/xlsx/performance?file=" + encodeURIComponent(v.label || "");
+    var grid = document.getElementById("perfGrid");
+    if (grid) {
+      grid.querySelectorAll("[data-export]").forEach(function (tile) {
+        tile.setAttribute("data-export", href);
+      });
+    }
   }
   var NS = "http://www.w3.org/2000/svg";
   var OK = "var(--ok)", BAD = "var(--bad)", WARN = "var(--warn)", ACC = "var(--accent)";

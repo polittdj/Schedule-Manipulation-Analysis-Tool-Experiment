@@ -374,17 +374,23 @@ def test_no_number_on_the_page_changed(client: TestClient, one_version: TestClie
     assert len(drift_rows) == 2
     for _name, rest in drift_rows:
         assert rest.count("<td>") == 5  # data date + one cell per engine forecast method
-    # ── PRE-EXISTING DEFECT, PRESENT ON origin/main, RAISED NOT FIXED (round 10 report).
-    # The drift table declares FIVE <th> but every row emits SIX cells: the engine ships FOUR
-    # forecast methods (cpm, as_scheduled, rate, earned_schedule) and the row loop writes one
-    # <td> per method, so "As-scheduled" has no header and every date from "CPM" rightward is
-    # read under the WRONG header. This test PINS the current (wrong) shape so the defect
-    # cannot be lost, and must be updated in the same commit that inserts the missing
-    # <th scope=col>As-scheduled</th> between "CPM" and "Completion rate". Not fixed here: it
-    # is outside this round's panel-contract scope and needs the lead's explicit sign-off.
+    # ── FIXED BY THE ROUND-10 LEAD (was: present on origin/main and on the round-9 merge-base).
+    # The drift table used to declare FIVE <th> while every row emitted SIX cells: the engine
+    # ships FOUR forecast methods (cpm, as_scheduled, rate, earned_schedule) and the row loop
+    # writes one <td> per method, so "As-scheduled" had no header and every date from "CPM"
+    # rightward was read under the WRONG header (the as-scheduled date sat under "Completion
+    # rate", the rate under "Earned schedule", the earned-schedule date was unheaded). Measured
+    # on the goldens before the fix:
+    #   Project5 | 08/27/2026 | 01/25/2028 | 01/26/2028 | 06/10/2028 | 02/01/2029  vs 5 headers.
+    # It changed no number — it MISLABELLED four columns on a testimony-facing page. The fix is
+    # the one missing <th scope=col>As-scheduled</th>. Asserted STRUCTURALLY below (header count
+    # == row cell count) so the pair can never drift apart again if the engine adds a method.
     header = re.search(r"<tr><th scope=col>Version</th>.*?</tr>", page, re.S)
     assert header is not None
-    assert header.group(0).count("<th") == 5  # ← should become 6 when the defect is fixed
+    assert "<th scope=col>As-scheduled</th>" in header.group(0)
+    assert header.group(0).count("<th") == 6
+    for _name, rest in drift_rows:
+        assert header.group(0).count("<th") == rest.count("<td>") + 1  # +1: the version <td>
     single = one_version.get("/forecast").text
     assert "SPI(t)" in single and "0.47" in single
 

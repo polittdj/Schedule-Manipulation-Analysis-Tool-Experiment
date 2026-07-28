@@ -8848,7 +8848,7 @@ you the logic and the observed performance disagree.</p>
 version); step or play to watch the forecasts drift toward later dates as the project
 progresses. Faint markers are the prior version's forecasts.</p>
 <div id=driftChart class=chart-host></div>
-<table><tr><th scope=col>Version</th><th scope=col>Data date</th><th scope=col>CPM</th><th scope=col>Completion rate</th>
+<table><tr><th scope=col>Version</th><th scope=col>Data date</th><th scope=col>CPM</th><th scope=col>As-scheduled</th><th scope=col>Completion rate</th>
 <th scope=col>Earned schedule</th></tr>{drift_rows}</table></div>
 <script src="/static/drift.js"></script>"""
     return f"""
