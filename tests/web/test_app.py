@@ -406,3 +406,122 @@ def test_analysis_shell_never_removes_existing_functionality(client: TestClient)
         "/static/ai_polish.js",
     ):
         assert keep in page, keep
+
+
+# ── Mission Ops rank 5 (prototype screen 'cp'): the /compare body panels wear the panel
+# contract — shells + 'v1→v2' pair provenance chips + the verdict-band wash on the
+# manipulation-signals table + the focus citation card (ADR-0298). Presentation only —
+# every figure quoted is an engine output the page already rendered verbatim, and the
+# takeaway lines only RESTATE engine findings (loaded-term guard territory). ──────────────
+
+
+def _upload_pair(client: TestClient) -> None:
+    _upload(client, "Project2")
+    _upload(client, "Project5")
+
+
+def test_compare_panels_wear_the_contract_shell(client: TestClient) -> None:
+    _upload_pair(client)
+    page = client.get("/compare").text
+    # headline strips on both body panels (titles unchanged — content assertions keep holding)
+    assert (
+        "<div class=panel-head><h2>Version trend &mdash; Project2.mspdi.xml &rarr; "
+        "Project5.mspdi.xml</h2>" in page
+    )
+    assert "<div class=panel-head><h2>Manipulation-trend signals</h2>" in page
+    # the Net-Finish-Impact sentence IS the trend panel's takeaway now (figures verbatim)
+    assert (
+        "<p class=sf-take data-no-i18n>Net Finish Impact: "
+        "<b class=fail>-148 calendar days</b>" in page
+    )
+    # the 'v4→v5'-style pair provenance chip — i18n-inert (version labels never translate)
+    assert (
+        "<span class=prov-chip data-no-i18n>v1→v2 · SOURCE: Project2.mspdi.xml → "
+        "Project5.mspdi.xml · DD " in page
+    )
+    # the toolbar behavior script actually ships on THIS page (per-page include)
+    assert "/static/panelkit.js" in page
+
+
+def test_compare_manipulation_panel_wears_the_verdict_wash(client: TestClient) -> None:
+    """The band tone comes from the ENGINE's own worst severity — never re-judged here."""
+    from schedule_forensics.engine.cpm import compute_cpm
+    from schedule_forensics.engine.manipulation import detect_manipulation
+    from schedule_forensics.importers.mspdi import parse_mspdi
+
+    _upload_pair(client)
+    prior = parse_mspdi(GOLDEN / "project2_5" / "Project2.mspdi.xml")
+    current = parse_mspdi(GOLDEN / "project2_5" / "Project5.mspdi.xml")
+    manip = detect_manipulation(
+        current, prior, current_cpm=compute_cpm(current), prior_cpm=compute_cpm(prior)
+    )
+    assert manip, "golden P2→P5 must flag signals (the 2 deleted links, ADR-0112)"
+    sevs = {str(f.severity) for f in manip}
+    expected = "vb-at-risk" if "HIGH" in sevs else "vb-watch"
+    page = client.get("/compare").text
+    assert f'<div class="panel verdict-band vb-stack {expected}"' in page
+    # its takeaway only COUNTS the engine's findings (no new accusatory wording around them)
+    n = len(manip)
+    assert f"{n} manipulation-trend signal{'s' if n != 1 else ''}" in page
+    css = client.get("/static/base.css").text
+    assert ".verdict-band.vb-stack{display:block}" in css  # full panel keeps block flow
+
+
+def test_compare_identical_versions_band_reads_on_track(client: TestClient) -> None:
+    """No engine signals → the --ok band tone and the existing honest-progress wording."""
+    for name in ("vA", "vB"):  # two content-identical versions (distinct bytes via "name")
+        payload = (
+            f'{{"name": "{name}", "project_start": "2025-01-06T08:00", '
+            '"tasks": [{"unique_id": 1, "name": "A", "duration_minutes": 480}]}'
+        )
+        r = client.post(
+            "/upload", files={"files": (f"{name}.json", payload.encode(), "application/json")}
+        )
+        assert r.status_code == 200
+    page = client.get("/compare").text
+    assert "verdict-band vb-stack vb-on-track" in page
+    assert "No manipulation signals detected (honest progress)." in page
+
+
+def test_compare_toolbar_no_data_toggle_and_live_excel_target(client: TestClient) -> None:
+    """Both tables ARE their own data drawer → no ▦ DATA (the /evm precedent). ⤓ EXCEL only on
+    the signals panel — the EXISTING /export/xlsx/compare endpoint serves exactly its rows; no
+    endpoint serves the version-trend rows, so that panel gets no dead ⤓ link."""
+    _upload_pair(client)
+    page = client.get("/compare").text
+    assert "▦ DATA" not in page
+    assert page.count("⛶ ENLARGE") == 2
+    assert page.count("⤓ EXCEL") == 1
+    assert 'data-export="/export/xlsx/compare"' in page
+    assert client.get("/export/xlsx/compare").status_code == 200  # never a dead link
+
+
+def test_compare_focus_panel_is_a_citation_card(client: TestClient) -> None:
+    """The focus panel wears the shell + the movement statement becomes a .finding.cite-card
+    with a cite line naming the UID and the exact versions/dates the figure was read between."""
+    _upload_pair(client)
+    client.post("/target", data={"uid": "143", "next_url": "/compare"})
+    page = client.get("/compare").text
+    assert "<div class=panel-head><h2>Focus activity UID 143" in page
+    assert 'class="finding cite-card sev-' in page
+    assert "<p class=cite data-no-i18n>UID 143 · Project2.mspdi.xml" in page
+    assert "Computed finish moved" in page  # the sentence itself is unchanged
+    assert page.count("⛶ ENLARGE") == 3  # trend + signals + focus shells
+
+
+def test_compare_shell_never_removes_existing_functionality(client: TestClient) -> None:
+    """The never-remove law on the rank-5 conversion: the chapter header, page-level export bar,
+    sources line, trend table columns, the metric-help cells, and the signals table survive."""
+    _upload_pair(client)
+    page = client.get("/compare").text
+    for keep in (
+        'class="page-takeaway"',
+        "/export/xlsx/compare",
+        "/export/docx/compare",
+        "Project finish",
+        "In progress",
+        "Course of action",
+        "2 logic links removed since the prior version",  # the engine's own signal title
+        "Versions are ordered by data date",
+    ):
+        assert keep in page, keep

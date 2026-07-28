@@ -578,6 +578,10 @@ header nav{display:flex;flex-wrap:wrap;align-items:center;gap:5px 16px;flex:1 1 
 .verdict-band.vb-on-track{--vb-c:var(--ok)}
 .verdict-band.vb-watch{--vb-c:var(--warn)}
 .verdict-band.vb-at-risk{--vb-c:var(--bad)}
+/* rank 5 (/compare): a FULL panel (headline strip + table) wearing the verdict wash — the
+   band's flex row is for the one-line banner; a stacked panel keeps normal block flow while
+   the same --vb-c edge/gradient (and hud.css's jarvis override) paint it. */
+.verdict-band.vb-stack{display:block}
 .vb-kicker{font:700 8px ui-monospace,"IBM Plex Mono",Consolas,monospace;letter-spacing:.16em;
   text-transform:uppercase;color:var(--muted)}
 .vb-verdict{font-size:17px;font-weight:700;line-height:1.1;color:var(--vb-c,var(--ink))}

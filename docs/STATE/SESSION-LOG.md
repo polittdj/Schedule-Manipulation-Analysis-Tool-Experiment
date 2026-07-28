@@ -8602,3 +8602,22 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
 - Lead: SHIP, zero defects; gate + fidelity accepted (jarvis probe green per the standing
   requirement — second round it has run, second round the clobber family stayed dead).
   Next: rank 5 /compare, then /integrity, /portfolio.
+
+## 2026-07-28d — Ultracode round 5: /compare converted, testimony-safe; third zero-defect SHIP (v1.0.115)
+
+- Rank 5 delivered: /compare's two legacy body panels wear the shell (the Net-Finish-Impact
+  sentence moved VERBATIM into the trend panel's take), the manipulation-signals table wears the
+  verdict wash toned by the ENGINE's own worst severity (new token-pure .vb-stack modifier for
+  block flow), v1→v2 pair provenance chips, the focus panel is a citation card with a UID+versions
+  cite line, ⤓ EXCEL only on the signals panel (/export/xlsx/compare asserted 200), and /trend —
+  which shares _focus_panel — also gained the panelkit include so its new button is live.
+- **The loaded-terms audit ran at all three levels and the lead re-ran it itself at the
+  strictest posture** (source="" flags ANY intent term): all 12 new/moved strings clean, and a
+  CONTROL STRING ("deliberate concealed fraud") returned True — proving the gate was live, not
+  vacuously passing. Figures re-derived fresh from the engine on the golden pair: -148 calendar
+  days, 5 signals worst MEDIUM, vb-watch tone — page quotes match exactly.
+  **LESSON: when an audit's pass depends on a guard function, run a known-dirty control through
+  it in the same session — a gate that cannot fail is not a gate.**
+- New real-chromium test test_compare_panelkit.py pins the round-4 lesson (script loaded + one
+  real click + jarvis probe) as a permanent regression test, not a per-round manual step.
+- Next: rank 6 /integrity, then /portfolio.
