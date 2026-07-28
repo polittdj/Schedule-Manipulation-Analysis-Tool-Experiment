@@ -86,7 +86,8 @@
       if (!dtile) return;
       var on = dtile.classList.toggle("show-data");
       dataBtn.setAttribute("aria-pressed", on ? "true" : "false");
-      dataBtn.textContent = on ? "▦ Hide data" : "▦ Data";
+      // the panel-contract vocabulary (Mission Ops rank 2) — same labels panelkit.js uses
+      dataBtn.textContent = on ? "▦ HIDE DATA" : "▦ DATA";
       return;
     }
     var bigBtn = t && t.closest ? t.closest(".tile-expand") : null;
@@ -95,7 +96,7 @@
       if (!btile) return;
       var big = btile.classList.toggle("tile-expanded");
       bigBtn.setAttribute("aria-pressed", big ? "true" : "false");
-      bigBtn.textContent = big ? "⛶ Shrink" : "⛶ Enlarge";
+      bigBtn.textContent = big ? "⛶ SHRINK" : "⛶ ENLARGE";
       if (big) btile.scrollIntoView({ block: "nearest" });
     }
   });

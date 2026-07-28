@@ -45,7 +45,8 @@
     }
     head.appendChild(h3);
     var actions = document.createElement("span");
-    actions.className = "tile-actions";
+    actions.className = "tile-actions sf-tools";
+    actions.setAttribute("data-noprint", "1");
     function mkBtn(cls, text, tip) {
       var b = document.createElement("button");
       b.type = "button";
@@ -56,15 +57,34 @@
       actions.appendChild(b);
       return b;
     }
-    mkBtn("tile-expand", "\u2922 Enlarge", "Enlarge / shrink this tile");
-    mkBtn("tile-data", "\u25a6 Data");
+    // the panel-contract three-glyph strip (Mission Ops rank 2), matching the server-rendered
+    // wall tiles: DATA / EXCEL / ENLARGE; EXCEL follows the tile's data-export via panelkit.js.
+    mkBtn("tile-data", "\u25a6 DATA", "Show / hide the underlying data table");
+    var xl = mkBtn("", "\u2913 EXCEL", "Export this visual's data \u2014 opens in Excel");
+    xl.removeAttribute("aria-pressed");
+    xl.setAttribute("data-sf-excel", "");
+    xl.setAttribute("aria-label", "Export this visual's data to Excel");
+    tile.setAttribute("data-export", "/export/xlsx/trend"); // the EXISTING trend export
+    mkBtn("tile-expand", "\u26f6 ENLARGE", "Enlarge / shrink this tile");
     var open = document.createElement("a");
     open.href = "/trend";
     open.className = "btn-link";
-    open.textContent = "Open \u2197";
+    open.textContent = "Open 05 \u2192"; // chapter 05 "How it moved" hosts /trend
     actions.appendChild(open);
     head.appendChild(actions);
     tile.appendChild(head);
+    // the server-stamped provenance text ("SOURCE: file \u00b7 DD date") rides the host div
+    var provText = hostBox.getAttribute("data-prov");
+    if (provText) {
+      var provRow = document.createElement("div");
+      provRow.className = "tile-prov";
+      var chip = document.createElement("span");
+      chip.className = "prov-chip";
+      chip.setAttribute("data-no-i18n", ""); // filename + date \u2014 never machine-translated
+      chip.textContent = provText;
+      provRow.appendChild(chip);
+      tile.appendChild(provRow);
+    }
     var chartHost = document.createElement("div");
     chartHost.className = "chart-host";
     chartHost.appendChild(node);

@@ -106,6 +106,24 @@ def test_mission_two_versions_renders_every_tile(sc) -> None:  # type: ignore[no
         assert host in html
 
 
+def test_mission_one_version_omits_multiversion_excel_exports(sc) -> None:  # type: ignore[no-untyped-def]
+    """Mission Ops rank 2: the ⤓ EXCEL glyph rides only LIVE tiles, so a degraded tile never
+    links an export that would 400 below its threshold; the single-version-capable exports
+    stay wired. The verdict band + KPI tiles render even at one version — build_briefing
+    itself supports one — quoting the briefing verbatim."""
+    _st, client = sc
+    _upload(client, ("a1.xml", _mspdi("Alpha", "2025-01-10T00:00:00")))
+    html = client.get("/mission").text
+    for export in ("/export/xlsx/cei", "/export/xlsx/evolution", "/export/xlsx/trend"):
+        assert f'data-export="{export}"' not in html, export  # degraded — no dead ⤓
+    for export in ("/export/xlsx/scurve", "/export/xlsx/forecast", "/export/xlsx/curves"):
+        assert f'data-export="{export}"' in html, export
+    assert "verdict-band" in html and "Mission verdict" in html
+    assert "ctl-kpis" in html
+    # every tile — live or degraded — still carries its provenance chip
+    assert html.count("<span class=prov-chip data-no-i18n>SOURCE: ") >= 9
+
+
 def test_the_multiversion_apis_still_guard_below_two_versions(sc) -> None:  # type: ignore[no-untyped-def]
     """The tile APIs keep their honest ≥2 guards (unchanged contract for every other caller) —
     the mission wall simply no longer calls them below the threshold."""
