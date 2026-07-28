@@ -325,3 +325,84 @@ def test_compare_chapter_10_page_shell() -> None:
     assert 'class="stack-bar"' in page
     assert "CHAPTER 10 · WHAT CHANGED" in page
     assert "Chapter 11" in page
+
+
+# ── Mission Ops rank 3 (prototype screen 'st'): the /analysis source-file bar, version chip
+# picker, and the panel-contract shells (ADR-0298). Presentation only — every figure the
+# takeaway lines quote is an engine output the page already renders verbatim. ──────────────
+
+
+def test_analysis_source_file_bar_names_the_file_and_offers_version_chips(
+    client: TestClient,
+) -> None:
+    """The st-screen SOURCE-FILE bar: filename + version position + data date on a --hover-toned
+    strip, a LATEST pill on the newest version only, and per-version chips that are plain links
+    (version selection IS the URL — no second selection mechanism beside persist.js)."""
+    _upload(client, "Project2")
+    _upload(client, "Project5")
+    page = client.get("/analysis/Project5").text
+    assert "<div class=src-bar data-no-i18n>" in page  # filenames/dates are i18n-inert
+    assert "Source file" in page and "Project5.mspdi.xml" in page
+    assert "v2 of 2" in page and "data date" in page
+    assert "latest-pill" in page and "LATEST" in page  # Project5 IS the latest
+    # the chip picker: one chip per version, the active one marked (accent bg via .on)
+    assert 'href="/analysis/Project2"' in page and 'href="/analysis/Project5"' in page
+    assert '"ver-chip on" aria-current=page href="/analysis/Project5"' in page
+    assert "View another file" in page
+    # the OLDER version's page: no LATEST pill, its own chip active instead
+    older = client.get("/analysis/Project2").text
+    assert "latest-pill" not in older and "v1 of 2" in older
+    assert '"ver-chip on" aria-current=page href="/analysis/Project2"' in older
+
+
+def test_analysis_single_version_bar_has_no_chip_picker(client: TestClient) -> None:
+    _upload(client, "Project5")
+    page = client.get("/analysis/Project5").text
+    assert "<div class=src-bar data-no-i18n>" in page and "v1 of 1" in page
+    assert "ver-chip" not in page  # nothing to switch to
+    assert "latest-pill" in page  # the only version is the latest
+
+
+def test_analysis_panels_carry_the_panel_shell(client: TestClient) -> None:
+    """Every flat panel on /analysis now renders the panel contract: headline strip + three-glyph
+    tools (⤓ EXCEL only where the EXISTING analysis-workbook export serves the data — never a
+    dead link) + provenance chip + a one-line takeaway quoting existing figures."""
+    _upload(client, "Project5")
+    page = client.get("/analysis/Project5").text
+    assert page.count("panel-head") >= 16  # viz, scatter, hist, calendar, … DCMA, findings, AI
+    assert page.count("sf-take") >= 16
+    assert page.count("prov-chip") >= 16
+    assert "prov-chip data-no-i18n>SOURCE: Project5.mspdi.xml · DD " in page
+    assert "data-sf-big" in page and "⛶ ENLARGE" in page
+    # ⤓ EXCEL rides the EXISTING per-schedule analysis workbook endpoint (never a dead link)
+    assert 'data-export="/export/xlsx/analysis/Project5"' in page and "data-sf-excel" in page
+    assert client.get("/export/xlsx/analysis/Project5").status_code == 200
+    assert "/static/panelkit.js" in page
+    # the stoplight check cards restyle to the prototype citation card
+    assert 'class="finding cite-card sev-' in page
+
+
+def test_analysis_shell_never_removes_existing_functionality(client: TestClient) -> None:
+    """The never-remove law on the rank-3 conversion: the interactive grid, both charts, the
+    DCMA Acumen-parity toggle (fidelity law), the erosion group-by picker, the margin
+    confirm/reset form, and the page-level Excel/Word export bar all survive."""
+    _upload(client, "Project5")
+    page = client.get("/analysis/Project5").text
+    for keep in (
+        "id=viz",
+        "id=gridControls",
+        "id=scatterChart",
+        "id=floatHist",
+        "id=drill",
+        'action="/dcma/scope"',
+        "Acumen&nbsp;Fuse&nbsp;parity&nbsp;mode",
+        "name=erosion_field",
+        "Schedule margin",  # the margin panel (Project5 has no candidates -> no confirm form)
+        "/export/xlsx/analysis/",
+        "/export/docx/analysis/",
+        "/static/app.js",
+        "/static/scatter.js",
+        "/static/histogram.js",
+        "/static/ai_polish.js",
+    ):
+        assert keep in page, keep

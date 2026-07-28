@@ -585,3 +585,37 @@ header nav{display:flex;flex-wrap:wrap;align-items:center;gap:5px 16px;flex:1 1 
 .vb-chip{font:600 9px ui-monospace,"IBM Plex Mono",Consolas,monospace;color:var(--ink);
   border:1px solid var(--line);border-radius:9px;padding:3px 9px}
 .verdict-band .btn-link{margin-left:auto}
+
+/* ── Chapter 01 "Where we stand" (Mission Ops rank 3, prototype screen 'st'): the SOURCE-FILE
+   bar (--hover is the prototype's pn2 tone) + per-version chip picker, and the citation card
+   the stoplight check panels render. Tokens only; chips are plain <a> links (version selection
+   IS the URL — persist.js rides it, no second selection mechanism). ── */
+.src-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--hover);
+  border:1px solid var(--line);border-radius:7px;padding:9px 13px;margin:0 0 12px}
+.src-bar .src-lab{font:700 8px ui-monospace,"IBM Plex Mono",Consolas,monospace;
+  letter-spacing:.12em;color:var(--muted);text-transform:uppercase;flex:0 0 auto}
+.src-bar .src-file{font:700 11px ui-monospace,"IBM Plex Mono",Consolas,monospace;
+  color:var(--ink)}
+.src-bar .src-ver{font:600 9px ui-monospace,"IBM Plex Mono",Consolas,monospace;
+  color:var(--accent)}
+.src-bar .latest-pill{font:700 7px ui-monospace,"IBM Plex Mono",Consolas,monospace;
+  letter-spacing:.1em;color:var(--accent);border:1px solid var(--accent);border-radius:9px;
+  padding:1px 6px}
+.src-bar .src-cue{margin-left:auto;font:700 8px ui-monospace,"IBM Plex Mono",Consolas,monospace;
+  letter-spacing:.1em;color:var(--muted);text-transform:uppercase}
+.src-bar .ver-chips{display:inline-flex;gap:4px;flex-wrap:wrap}
+a.ver-chip{display:inline-block;font:600 9px ui-monospace,"IBM Plex Mono",Consolas,monospace;
+  color:var(--muted);background:transparent;border:1px solid var(--line);border-radius:5px;
+  padding:2px 7px;text-decoration:none}
+a.ver-chip:hover{color:var(--ink);border-color:var(--accent)}
+a.ver-chip.on{background:var(--accent);color:var(--btn-ink);border-color:var(--accent)}
+/* citation card (prototype 'st' findings list): pn2-toned bg, 3px severity left edge, the
+   cite line (UID list) in accent mono. (0,3,0) severity selectors out-rank app.css's legacy
+   .finding.sev-* border-left colors, so the card contract wins in every theme. */
+.finding.cite-card{border:1px solid color-mix(in srgb,var(--line) 70%,transparent);
+  border-left:3px solid var(--bad);border-radius:5px;padding:7px 10px;
+  background:color-mix(in srgb,var(--hover) 60%,transparent)}
+.finding.cite-card.sev-MEDIUM,.finding.cite-card.sev-HIGH{border-left-color:var(--bad)}
+.finding.cite-card.sev-INFO,.finding.cite-card.sev-LOW{border-left-color:var(--ok)}
+.finding.cite-card p.cite{font:500 9px ui-monospace,"IBM Plex Mono",Consolas,monospace;
+  color:var(--accent)}

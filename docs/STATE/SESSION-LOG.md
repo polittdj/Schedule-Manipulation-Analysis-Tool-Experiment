@@ -8566,3 +8566,20 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
 - Verdicts: gate verifier 13/13 PASS; fidelity verifier measured the contract character-exact in
   all four themes (29 toolbars/chips, KPI edges, band); lead HOLD→closed. Next queue item:
   /analysis source-file bar + panel shells (rank 3).
+
+## 2026-07-28b — Ultracode round 3: /analysis converted; first zero-defect round (v1.0.113)
+
+- Round 3 (4 agents, ~518k tokens) delivered rank 3: the st-screen SOURCE-FILE bar (filename +
+  v-of-n + DD + LATEST pill + version chip picker — chips are plain LINKS, so version selection
+  is the URL and persist.js rides it; no second selection state), all 16 flat panels converted
+  to the panel shell (headline strip · ⤓ EXCEL only where the EXISTING /export/xlsx/analysis
+  workbook serves the data, verified 200 in a test · ⛶ ENLARGE · prov chip · takeaway quoting
+  the panel's own figures), and the stoplight check cards restyled to prototype citation cards.
+  Acumen-parity toggle byte-untouched (diff-proven); never-remove pinned by a new test.
+- **First round with a clean lead verdict: SHIP, zero defects.** The standing jarvis-probe
+  requirement (added after three hud.css clobber bites) was executed by the implementer AND
+  re-measured by the fidelity verifier — every new class paints from tokens in all four themes.
+  **LESSON: turning a repeated defect family into a standing per-round REQUIREMENT (probe, not
+  reasoning) is what ended the family — round 3 is the proof.**
+- Gate verifier: scope/diff exact, mandated suites 89 passed, chips-reuse-persist proven, no
+  dead export links. Next queue item: /evm story header (rank 4).
