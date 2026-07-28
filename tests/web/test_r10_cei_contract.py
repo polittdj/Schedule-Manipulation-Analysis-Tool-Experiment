@@ -28,11 +28,14 @@ real ⛶ click) lives in ``test_r10_cei_panelkit.py`` — markup alone is not ev
 
 from __future__ import annotations
 
+import html
+import re
 from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
+from schedule_forensics.ai.citations import introduces_loaded_terms
 from schedule_forensics.engine.bow_wave import BowWave, SnapshotProfile
 from schedule_forensics.web.app import SessionState, _cei_body, create_app
 
@@ -272,6 +275,44 @@ def test_every_id_cei_js_reads_survives_on_both_of_its_routes(pair: TestClient) 
     mission = pair.get("/mission").text
     for ident in ("ceiChart", "prevSnap", "nextSnap", "autoPlay", "snapLabel"):
         assert f'id="{ident}"' in mission or f"id={ident}" in mission, ident
+
+
+# ── the prose asserts nothing the engine did not (standing requirement 3) ─────────────────
+
+
+def test_control_proves_the_loaded_terms_gate_can_fail() -> None:
+    """The audit below is only evidence if the SAME call flags a genuinely loaded string."""
+    assert introduces_loaded_terms("", "deliberate concealed fraud") is True
+    assert introduces_loaded_terms("", "CEI 1.00 in Jun-26 — 3 of 3 finishes landed.") is False
+
+
+def test_cei_presentation_prose_introduces_no_loaded_terms(pair: TestClient) -> None:
+    """Every server-authored takeaway / lede / take on /cei, harvested from the REAL render so
+    a future edit is audited automatically (ADR-0132's gate, run over presentation prose)."""
+    patterns = (
+        re.compile(r"<p class=sf-take data-no-i18n>(.*?)</p>", re.S),
+        re.compile(r'<h1 class="page-takeaway" data-no-i18n>(.*?)</h1>', re.S),
+        re.compile(r'<p class="page-lede">(.*?)</p>', re.S),
+        re.compile(r'<button type=button data-sf-excel title="(.*?)"', re.S),
+    )
+    page = pair.get("/cei").text
+    strings = [
+        " ".join(html.unescape(re.sub(r"<[^>]+>", " ", raw)).split())
+        for pat in patterns
+        for raw in pat.findall(page)
+    ]
+    assert len(strings) >= 6, strings  # 2 takes + h1 + lede + 2 export tooltips — never vacuous
+    for text in strings:
+        assert introduces_loaded_terms("", text) is False, text
+    joined = " || ".join(strings)
+    for fragment in (
+        "2 snapshots on one shared 18-month axis",  # the bow-wave take
+        "previously planned finishes actually landed",  # the CEI-table take
+        "Where unfinished work sits against each snapshot's data date",  # the new lede
+        "Export the bow-wave monthly finish profiles and the CEI table",  # ⤓ tooltip
+        "Export the CEI table and the bow-wave monthly finish profiles",  # ⤓ tooltip
+    ):
+        assert fragment in joined, fragment
 
 
 def test_the_pages_other_scaffolding_is_untouched(pair: TestClient) -> None:
