@@ -8639,3 +8639,24 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
 - Loaded-terms audit: control string fired True; 9-12 new strings all False in the same run —
   now a permanent test (test_integrity_shell.py). Lead re-verified everything independently
   (full web suite 1113 passed / 1 pre-existing skip). Next: rank 7 /portfolio.
+
+## 2026-07-28f — Ultracode round 7: /portfolio; THE CORE QUEUE IS COMPLETE (v1.0.117)
+
+- Rank 7 delivered, fifth consecutive zero-defect SHIP: pf-style KPI tiles via a NEW token-pure
+  .ctl-kpi.k-edge LEFT-edge variant (the prototype's pf edge differs from ctl's top edge — a
+  variant was added rather than repurposing the wrong class), the project ledger shelled with
+  per-project prov chips, DCMA/review/excluded chips as .sf-pill composed onto the existing
+  rib-* classes (values verbatim), ⤓ riding the EXISTING /export/xlsx/ribbon (200-asserted),
+  memory panel shell-only.
+- **The forms were the hazard and the proof matched it**: 28 form blocks byte-diffed against an
+  origin/main worktree across TWO states (baseline + after-exclude) — identical; the
+  exclude→restore round trip exercised end-to-end by the implementer, the gate verifier, AND
+  the lead (303s, pill badge, KPI count, ADR-0259 chip fallback all verified live). The form
+  literals are now pinned in test_portfolio_shell.py.
+- **The lead's original 7-rank core queue is COMPLETE**: home, /mission, /analysis, /evm,
+  /compare, /integrity, /portfolio all wear the merged panel contract (PRs #462-#468 merged,
+  round 7 in PR). Tail ranks 8-14 remain: /ribbon+/scorecards (8, recommended next — continues
+  the Chapter-02 beat, highest-visibility remaining legacy visual) · Ch-05 group toolbar
+  normalization (9) · Ch-06-09 per-visual (10) · Ch-03-04 headers + Gantt shells (11) ·
+  Library/Setup kicker sweep (12) · vendored IBM Plex Mono/Barlow woff2 (13) · token aliases +
+  ⊞ EXPLORE finale (14). Standing requirements carry to every tail round.

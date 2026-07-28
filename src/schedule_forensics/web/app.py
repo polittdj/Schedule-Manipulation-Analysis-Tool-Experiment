@@ -7603,8 +7603,12 @@ def _portfolio_memory_panel(st: SessionState) -> str:
     cls = "notice warn" if over else "muted"
     warn_gb = warn / 1024**3
     tail = " — over your threshold; you can keep working" if over else ""
+    # rank 7: the SHELL around the readout wears the panel contract (headline strip + ⛶ only —
+    # no export endpoint serves this estimate, so no ⤓ EXCEL; the readout, the threshold form's
+    # field names/action, and the footnote are byte-identical to the pre-shell render).
     return (
-        f'<div class=panel><h3>Memory</h3><p class="{cls}">'
+        f"<div class=panel>{_panel_head('Memory', tools=_shell_tools())}"
+        f'<p class="{cls}">'
         f"{len(st.schedules)} schedule(s) loaded &middot; estimated resident memory "
         f"<b>{format_bytes(est)}</b> (warn at {format_bytes(warn)}){tail}.</p>"
         "<form method=post action=/session/ram-threshold class=inline-form>"
@@ -7624,13 +7628,27 @@ def _portfolio_body(st: SessionState) -> str:
     number traces to the engine's cached per-version summary (v4 Feature 2 lazy tier); a Project
     whose latest version won't solve shows "—". The ONLY cross-project page (ADR-0258): analysis
     pages show one Project at a time — the "Analyze" action selects it. No new engine math
-    (reuses ``compute_summary``)."""
+    (reuses ``compute_summary``).
+
+    Mission Ops rank 7 (prototype screen 'pf', Program Portfolio): the page wears the panel
+    contract — a takeaway header, pf-style KPI tiles (the 3px LEFT-edge ``.ctl-kpi.k-edge``
+    variant), the ledger panel shelled with ``_panel_head``/``_shell_tools`` (⤓ EXCEL wired to
+    the EXISTING quality-ribbon export; ▦ DATA omitted — the table IS the data), a per-project
+    ``_prov_chip`` on every row, and the DCMA/review/excluded chips restyled to the prototype
+    pill vocabulary. PRESENTATION ONLY: every figure is one this page already computed/rendered
+    (session counts + the cached summaries), and the version-history / exclude-restore /
+    memory-threshold forms keep their field names and actions byte-identical."""
     projs = st.projects()
     active = st.active_population()
     with st._lock:
         n_pops = len(st.populations())
     pending = sum(1 for p in projs if p.pending_review)
     excluded_total = sum(1 for p in projs for v in p.versions if v.excluded)
+    # Session bookkeeping the page already renders, gathered once for the pf header/KPI tiles
+    # (rank 7): loaded-file/version COUNTS only — no engine figure is computed here.
+    n_projects = len(projs)
+    n_files = len(st.schedules)
+    included_total = sum(1 for p in projs for v in p.versions if not v.excluded)
     head_notes = ""
     if pending:
         head_notes += (
@@ -7644,9 +7662,57 @@ def _portfolio_body(st: SessionState) -> str:
             f"{'s are' if excluded_total != 1 else ' is'} excluded from analysis "
             "(still loaded &mdash; restore any time).</div>"
         )
+    # ── pf screen header (rank 7): a complete-sentence takeaway + lede quoting counts the page
+    # already renders; the chapter kicker ("PORTFOLIO") comes from _page's spine resolution. ──
+    proj_noun = "project" if n_projects == 1 else "projects"
+    file_noun = "file" if n_files == 1 else "files"
+    takeaway = (
+        f"{n_projects} {proj_noun} across {n_files} loaded {file_noun} — one row per project, "
+        "every figure quoted from its latest included version's engine summary."
+    )
+    header = (
+        f'<h1 class="page-takeaway" data-no-i18n>{takeaway}</h1>'
+        '<p class="page-lede">The one cross-project page: projects are grouped from the files '
+        "and folders you loaded, and each row quotes the engine&rsquo;s cached per-version "
+        "summary &mdash; computed, never typed.</p>"
+    )
+    # ── pf-style KPI tiles (prototype 'pf' headline stats — the 3px LEFT-edge variant of the
+    # same .ctl-kpi vocabulary). Values are the session counts computed above, nothing new. ──
+    pend_cls = " k-warn" if pending else ""
+    kpis = (
+        "<div class=ctl-kpis>"
+        '<div class="ctl-kpi k-edge"><div class=k-label>Projects</div>'
+        f"<div class=k-value data-no-i18n>{n_projects}</div>"
+        "<div class=k-sub>grouped from your files and folders</div></div>"
+        '<div class="ctl-kpi k-edge"><div class=k-label>Schedule files</div>'
+        f"<div class=k-value data-no-i18n>{n_files}</div>"
+        "<div class=k-sub>loaded versions across every project</div></div>"
+        f'<div class="ctl-kpi k-edge{pend_cls}"><div class=k-label>Pending review</div>'
+        f"<div class=k-value data-no-i18n>{pending}</div>"
+        "<div class=k-sub>duplicate/revision decisions to resolve</div></div>"
+        '<div class="ctl-kpi k-edge"><div class=k-label>Excluded</div>'
+        f"<div class=k-value data-no-i18n>{excluded_total}</div>"
+        "<div class=k-sub>versions set aside &mdash; restore any time</div></div>"
+        "</div>"
+    )
+    # ── the ledger panel shell: headline strip + ⤓/⛶ tools + a one-line takeaway. ▦ DATA is
+    # deliberately omitted (the table IS the data); ⤓ EXCEL reuses the EXISTING quality-ribbon
+    # endpoint (one row per loaded file) — the home-shell precedent, never a dead link. ──
+    take = (
+        f"<p class=sf-take data-no-i18n>{n_projects} {proj_noun} · {included_total} version"
+        f"{'' if included_total == 1 else 's'} in the analysis"
+        + (f" · {excluded_total} excluded" if excluded_total else "")
+        + (f" · {pending} pending review" if pending else "")
+        + " — expand a row for its version history.</p>"
+    )
+    tools = _shell_tools(
+        export_title="Export the quality ribbon for every loaded file — opens in Excel"
+    )
     intro = (
-        "<div class=panel><h2>Portfolio</h2>"
-        "<p class=muted>Every project loaded in this session, grouped from your files and folders. "
+        '<div class=panel data-export="/export/xlsx/ribbon">'
+        + _panel_head("Portfolio ledger &mdash; one row per project", tools=tools)
+        + take
+        + "<p class=muted>Every project loaded in this session, grouped from your files and folders. "
         "Each row is one Project; the headline is its latest included version by data date. Expand "
         "a row for the version history, or open any version's full report. Analysis pages show ONE "
         "Project at a time &mdash; pick it here (Analyze) or from the banner.</p>"
@@ -7678,7 +7744,13 @@ def _portfolio_body(st: SessionState) -> str:
                     finish = _mdY(summary.finish_iso)
                     if summary.effective_margin_days is not None:
                         margin = f"{summary.effective_margin_days:g} d"
-                    cls = "rib-pass" if summary.dcma_fail == 0 else "rib-fail"
+                    # rank 7: prototype pill vocabulary AROUND the engine's own pass/fail
+                    # counts (the values are the summary's, verbatim — only the chip restyles).
+                    cls = (
+                        "rib-pass sf-pill p-ok"
+                        if summary.dcma_fail == 0
+                        else "rib-fail sf-pill p-bad"
+                    )
                     dcma = (
                         f'<span class="{cls}">{summary.dcma_pass} pass / '
                         f"{summary.dcma_fail} fail</span>"
@@ -7689,7 +7761,7 @@ def _portfolio_body(st: SessionState) -> str:
         if p.needs_attention:
             chips += " <span class=muted>(needs attention)</span>"
         if p.pending_review:
-            chips += " <span class=rib-fail>review</span>"
+            chips += ' <span class="rib-fail sf-pill p-bad">review</span>'
         if active is not None and select_pid == active[0] and n_pops > 1:
             chips += " <span class=muted>(analyzing)</span>"
         analyze_label = "Analyze the untitled files together" if pooled else "Analyze this project"
@@ -7706,13 +7778,25 @@ def _portfolio_body(st: SessionState) -> str:
         )
         versions_html = "".join(_portfolio_version_li(st, v) for v in p.versions)
         notices = "".join(f'<div class="notice info">{_e(n)}</div>' for n in p.notices)
+        # rank 7: per-project provenance — ONE chip per row, carrying THIS project's latest
+        # included file + data date (the multi-project variant of the same _prov_chip
+        # vocabulary; i18n-inert so filenames/dates are never translated).
+        row_prov = f" {_prov_chip(sch)}" if sch is not None else ""
         rows.append(
-            f"<tr><td><details><summary><b>{_e(p.title)}</b>{chips}</summary>"
+            f"<tr><td><details><summary><b>{_e(p.title)}</b>{chips}{row_prov}</summary>"
             f"<ul>{versions_html}</ul>{notices}{analyze}</details></td>"
             f"<td>{site}</td><td>{version_count}</td><td>{data_date}</td><td>{finish}</td>"
             f"<td>{margin}</td><td>{dcma}</td></tr>"
         )
-    return intro + "".join(rows) + "</table></div>" + _portfolio_memory_panel(st)
+    return (
+        header
+        + kpis
+        + intro
+        + "".join(rows)
+        + "</table></div>"
+        + _portfolio_memory_panel(st)
+        + '\n<script src="/static/panelkit.js"></script>'
+    )
 
 
 def _portfolio_version_li(st: SessionState, v: ProjectVersion) -> str:
@@ -7725,7 +7809,7 @@ def _portfolio_version_li(st: SessionState, v: ProjectVersion) -> str:
         if sch.status_date is not None:
             dd = f" <span class=muted>&middot; data date {_mdY(sch.status_date)}</span>"
         tasks = f" <span class=muted>&middot; {len(non_summary(sch))} activities</span>"
-    badge = " <span class=rib-fail>excluded</span>" if v.excluded else ""
+    badge = ' <span class="rib-fail sf-pill p-bad">excluded</span>' if v.excluded else ""
     toggle = (
         '<form method=post action="/project/exclude" style="display:inline">'
         f'<input type=hidden name=key value="{_e(v.key)}">'

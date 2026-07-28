@@ -1,6 +1,6 @@
 # Handoff — 2026-07-27l (the caption was never the problem; ADR-0303; v1.0.109)
 
-> ## STATUS (current) — ADR-0303 pushed on `claude/schedule-forensics-continue-gkju7l`. Version **1.0.116** (Ultracode round 6: /integrity header + shells + citation-card drill; rounds 1-6 merged or in PR). Highest ADR **ADR-0303**.
+> ## STATUS (current) — ADR-0303 pushed on `claude/schedule-forensics-continue-gkju7l`. Version **1.0.117** (Ultracode round 7: /portfolio — the lead's 7-rank CORE QUEUE IS COMPLETE; tail ranks 8-14 queued, next /ribbon + /scorecards). Highest ADR **ADR-0303**.
 > **#451-#460 all merged.** The four-theme visual pass is green again — this time against a
 > detector that can actually see the collisions it is looking for.
 >

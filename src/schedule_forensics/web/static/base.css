@@ -571,6 +571,23 @@ header nav{display:flex;flex-wrap:wrap;align-items:center;gap:5px 16px;flex:1 1 
 .ctl-kpi.k-ok{border-top-color:var(--ok)}.ctl-kpi.k-ok .k-value{color:var(--ok)}
 .ctl-kpi.k-warn{border-top-color:var(--warn)}.ctl-kpi.k-warn .k-value{color:var(--warn)}
 .ctl-kpi.k-bad{border-top-color:var(--bad)}.ctl-kpi.k-bad .k-value{color:var(--bad)}
+/* rank 7 (/portfolio, prototype 'pf' headline stats): the pf tiles carry a 3px LEFT edge where
+   Mission Control's carry a 2px top edge — a variant of the SAME .ctl-kpi vocabulary (never a
+   parallel one). Declared AFTER .k-ok/.k-warn/.k-bad so the shorthand resets the top border to
+   the plain 1px line and the k-* tone rides the left edge instead. Tokens only. */
+.ctl-kpi.k-edge{border-top:1px solid var(--line);border-left:3px solid var(--accent)}
+.ctl-kpi.k-edge.k-ok{border-left-color:var(--ok)}
+.ctl-kpi.k-edge.k-warn{border-left-color:var(--warn)}
+.ctl-kpi.k-edge.k-bad{border-left-color:var(--bad)}
+/* rank 7: the prototype's status pill (its vlabel chip — 8px mono, 1px current-color border,
+   20px radius). Composes onto the existing .rib-pass/.rib-fail spans; the pass/fail VALUES are
+   the engine's, this class only restyles the chip around them. Tokens only via p-*. */
+.sf-pill{display:inline-block;font:700 8px ui-monospace,"IBM Plex Mono",Consolas,monospace;
+  letter-spacing:.08em;text-transform:uppercase;border:1px solid currentColor;
+  border-radius:20px;padding:2px 7px;vertical-align:middle}
+.sf-pill.p-ok{color:var(--ok)}
+.sf-pill.p-warn{color:var(--warn)}
+.sf-pill.p-bad{color:var(--bad)}
 .verdict-band{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:10px 14px;
   border-left:3px solid var(--vb-c,var(--accent));
   background:linear-gradient(135deg,color-mix(in srgb,var(--vb-c,var(--accent)) 12%,var(--panel)),

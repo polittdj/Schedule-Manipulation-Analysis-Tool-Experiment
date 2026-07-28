@@ -435,6 +435,23 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-28 (cont. 4) — match the proof to the page's hazard; a core queue closes
+
+- /portfolio's hazard was state-posting forms, so the round's proof was shaped to it: byte-diff
+  every <form> block against an origin/main worktree in TWO states (baseline + after-exclude),
+  then exercise the exclude→restore round trip live — done independently by the implementer,
+  the gate verifier, AND the lead. **LESSON: a generic gate proves generic safety; each page's
+  conversion needs one proof shaped to that page's specific way of breaking (forms → byte-diff
+  + round trip; drill JSON → byte capture; EVM → no-arithmetic diff audit).**
+- The prototype's pf tiles use a LEFT edge where ctl's use a TOP edge — a token-pure .k-edge
+  VARIANT was added instead of repurposing ctl's classes. **LESSON: when the design system has
+  two near-identical vocabularies, extend with a named variant rather than bending the nearest
+  existing class — the cascade pin test then documents the difference.**
+- With rank 7 shipped, the redesign's 7-rank core queue is complete in 7 PRs over ~24h, the
+  last five rounds zero-defect. The standing-requirements list (jarvis probe + promotion
+  census, panelkit real click, loaded-terms control proof) is what made the streak possible —
+  every one of them exists because an earlier round shipped the defect it now prevents.
+
 ### 2026-07-28 (cont. 3) — the clobber trap fires on PROMOTION, not just on new classes
 
 - Round 6 promoted two existing styled divs (isolated-effect, counterfactual) to `.panel` for the
