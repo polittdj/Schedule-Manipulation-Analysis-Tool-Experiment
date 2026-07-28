@@ -8544,3 +8544,25 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   theme, and MEASURE the computed style; a defined token is not a painting token.**
 - Next-round queue (lead's plan, ranked): /mission tile-contract normalization · /analysis
   source-file bar + panel shells · /evm story header · /compare · /integrity · /portfolio · …
+
+## 2026-07-28a — Ultracode round 2: /mission normalized; the lead's HOLD closed same-hour (v1.0.112)
+
+- Round 2 (4 agents, ~540k tokens) delivered the round-1 lead plan's rank-2 item: every Mission
+  Control tile normalized to the panel contract — three-glyph toolbar (⤓ EXCEL wired only to the
+  six EXISTING /export/xlsx endpoints, all spot-checked 200; degraded ADR-0262 tiles get no dead
+  link), per-tile takeaway sentences quoting the manifest/briefing verbatim, provenance chips on
+  all 29 tiles (server-stamped data-prov for the trend-lifted ones), ctl-style KPI tiles, and the
+  verdict band mirroring /briefing byte-identically. ADR-0275 isTrusted harness green.
+- **The lead ruled HOLD on one proven defect (D1): jarvis clobbered the verdict band** —
+  hud.css's broad `html[data-theme=jarvis] .panel` (0,2,1) beat `.verdict-band` (0,1,0), so the
+  band's 3px edge and wash were dead in jarvis only. Third member of the same family this session
+  (apollo scanline, jarvis --bgfx, now this). Fixed with a (0,2,2) jarvis-scoped rule reusing the
+  SAME --vb-c mechanism; **measured closed live** (computed border-left 3px rgb(255,79,102) +
+  gradient). **LESSON: any NEW contract class must be probed in jarvis specifically — hud.css's
+  broad .panel/body rules are a standing specificity trap for every future panel-contract
+  surface; grep hud.css for the element you are styling before claiming four-theme support.**
+- The lead also confirmed the mid-round commit/push (c366752) as fait accompli — accepted, on
+  the feature branch only — and flagged the missing daily log entry; this entry closes it.
+- Verdicts: gate verifier 13/13 PASS; fidelity verifier measured the contract character-exact in
+  all four themes (29 toolbars/chips, KPI edges, band); lead HOLD→closed. Next queue item:
+  /analysis source-file bar + panel shells (rank 3).

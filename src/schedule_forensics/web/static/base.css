@@ -555,3 +555,33 @@ header nav{display:flex;flex-wrap:wrap;align-items:center;gap:5px 16px;flex:1 1 
 .sf-drawer th{position:sticky;top:0;background:var(--panel);text-transform:uppercase}
 .sf-drawer td{border-bottom:1px solid color-mix(in srgb,var(--line) 55%,transparent)}
 .is-big{grid-column:1/-1}
+
+/* ── Mission Control (Mission Ops rank 2, prototype 'ctl'): per-tile provenance row, the ctl
+   KPI tiles (2px colored top edge), and the verdict band (gradient wash + 3px left edge).
+   Tokens only; the band/KPI colors ride the verdict via the --vb-c custom property. ── */
+.tile-prov{display:flex;margin:0 0 6px}
+.ctl-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;
+  margin:0 0 16px}
+.ctl-kpi{background:var(--panel);border:1px solid var(--line);border-top:2px solid var(--accent);
+  border-radius:8px;padding:11px 14px}
+.ctl-kpi .k-label{font:700 9px ui-monospace,"IBM Plex Mono",Consolas,monospace;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.ctl-kpi .k-value{font-size:20px;font-weight:700;line-height:1.2;color:var(--ink);margin:2px 0 1px}
+.ctl-kpi .k-sub{font:500 9.5px ui-monospace,"IBM Plex Mono",Consolas,monospace;color:var(--muted)}
+.ctl-kpi.k-ok{border-top-color:var(--ok)}.ctl-kpi.k-ok .k-value{color:var(--ok)}
+.ctl-kpi.k-warn{border-top-color:var(--warn)}.ctl-kpi.k-warn .k-value{color:var(--warn)}
+.ctl-kpi.k-bad{border-top-color:var(--bad)}.ctl-kpi.k-bad .k-value{color:var(--bad)}
+.verdict-band{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:10px 14px;
+  border-left:3px solid var(--vb-c,var(--accent));
+  background:linear-gradient(135deg,color-mix(in srgb,var(--vb-c,var(--accent)) 12%,var(--panel)),
+  var(--panel) 55%)}
+.verdict-band.vb-on-track{--vb-c:var(--ok)}
+.verdict-band.vb-watch{--vb-c:var(--warn)}
+.verdict-band.vb-at-risk{--vb-c:var(--bad)}
+.vb-kicker{font:700 8px ui-monospace,"IBM Plex Mono",Consolas,monospace;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--muted)}
+.vb-verdict{font-size:17px;font-weight:700;line-height:1.1;color:var(--vb-c,var(--ink))}
+.vb-chips{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.vb-chip{font:600 9px ui-monospace,"IBM Plex Mono",Consolas,monospace;color:var(--ink);
+  border:1px solid var(--line);border-radius:9px;padding:3px 9px}
+.verdict-band .btn-link{margin-left:auto}

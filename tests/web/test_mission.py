@@ -87,9 +87,81 @@ def test_mission_includes_critical_path_evolution_animation(client: TestClient) 
 
 
 def test_mission_tiles_enlarge_and_shrink(client: TestClient) -> None:
-    assert "tile-expand" in client.get("/mission").text  # per-tile enlarge control
+    page = client.get("/mission").text
+    assert "tile-expand" in page  # per-tile enlarge control
+    assert "⛶ ENLARGE" in page  # the panel-contract label (Mission Ops rank 2)
     js = client.get("/static/mission.js").text
-    assert "tile-expanded" in js and "Shrink" in js
+    assert "tile-expanded" in js and "SHRINK" in js  # contract vocabulary, panelkit.js's labels
+
+
+# ── Mission Ops rank 2 (prototype 'ctl'): the panel contract on every tile ────────────────────────
+
+
+def test_mission_tiles_carry_the_three_glyph_strip(client: TestClient) -> None:
+    """Every live tile's actions are the exact panel-contract strip — ▦ DATA / ⤓ EXCEL /
+    ⛶ ENLARGE — plus the 'Open NN →' chapter link. ⤓ follows the tile's data-export to an
+    EXISTING /export endpoint (never a new computation), handled by panelkit.js delegation."""
+    page = client.get("/mission").text
+    assert page.count("▦ DATA") >= 9  # one per live tile (9 tiles at two versions)
+    assert page.count("⤓ EXCEL") >= 9
+    assert page.count("⛶ ENLARGE") >= 9
+    for export in (
+        "/export/xlsx/scurve",
+        "/export/xlsx/cei",
+        "/export/xlsx/forecast",
+        "/export/xlsx/curves",
+        "/export/xlsx/evolution",
+        "/export/xlsx/trend",
+    ):
+        assert f'data-export="{export}"' in page, export
+    # chapter links: 04 Evolution · 05 Trend/Curves · 06 Bow Wave/CEI · 09 S-Curve/Forecast
+    for chapter_link in ("Open 04 &rarr;", "Open 05 &rarr;", "Open 06 &rarr;", "Open 09 &rarr;"):
+        assert chapter_link in page, chapter_link
+    assert "/static/panelkit.js" in page  # the ⤓ EXCEL handler (delegated, CSP-safe)
+
+
+def test_mission_tiles_carry_provenance_chips(client: TestClient) -> None:
+    """Each tile carries a SOURCE: file · DD date provenance chip, i18n-inert (filenames and
+    dates are never machine-translated)."""
+    page = client.get("/mission").text
+    assert page.count("prov-chip") >= 9
+    assert page.count("<span class=prov-chip data-no-i18n>SOURCE: ") >= 9
+    assert " · DD " in page
+    # the lifted Quality-Trend tiles read the same chip text from the host's data-prov stamp
+    assert "data-prov=" in page
+    js = client.get("/static/trend.js").text
+    assert 'getAttribute("data-prov")' in js and "prov-chip" in js
+
+
+def test_mission_tiles_carry_takeaway_sentences(client: TestClient) -> None:
+    """Each live tile carries a one-line takeaway (.sf-take) — a complete sentence whose
+    figures come only from the version manifest and the briefing's own banner."""
+    page = client.get("/mission").text
+    assert page.count("sf-take") >= 9  # one finding-sentence per live tile
+    assert "loaded versions" in page  # the manifest count lives inside the sentences
+
+
+def test_mission_verdict_band_quotes_the_briefing(client: TestClient) -> None:
+    """The verdict band (gradient wash + 3px left edge) surfaces the EXISTING Executive
+    Briefing verdict verbatim, links to /briefing, and shows the measured-to target chip."""
+    page = client.get("/mission").text
+    assert "verdict-band" in page and "Mission verdict" in page
+    m = re.search(r"<div class=vb-verdict[^>]*>([^<]+)</div>", page)
+    assert m is not None
+    verdict = m.group(1)
+    assert verdict in {"ON TRACK", "WATCH", "AT RISK", "N/A"}
+    assert verdict in client.get("/briefing").text  # the SAME string the briefing renders
+    assert 'href="/briefing"' in page  # Open the briefing →
+    assert "MEASURED TO PROJECT FINISH" in page  # no session target set in this fixture
+
+
+def test_mission_kpi_tiles_quote_the_briefing_banner(client: TestClient) -> None:
+    """The ctl KPI tiles (2px colored top edge) restate the briefing banner's own
+    label/value pairs verbatim — no figure is computed on this page."""
+    page = client.get("/mission").text
+    assert "ctl-kpis" in page and page.count("ctl-kpi") >= 5
+    for label in ("Status", "SPI (duration-based)", "Forecast finish", "Baseline finish", "Slip"):
+        assert label in page, label
 
 
 def test_mission_overview_lines_animate_in_lockstep(client: TestClient) -> None:
