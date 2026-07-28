@@ -8621,3 +8621,21 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
 - New real-chromium test test_compare_panelkit.py pins the round-4 lesson (script loaded + one
   real click + jarvis probe) as a permanent regression test, not a per-round manual step.
 - Next: rank 6 /integrity, then /portfolio.
+
+## 2026-07-28e — Ultracode round 6: /integrity converted; fourth zero-defect SHIP (v1.0.116)
+
+- Rank 6 delivered: /integrity's missing takeaway header (count + engine worst severity + finish
+  direction in _what_changed_header's exact existing wording — no invented trend words), shells
+  on the A/B picker / manipulation-findings (verdict wash + ⤓ riding the EXISTING
+  /export/xlsx/integrity, 200-asserted) / isolated-effect / counterfactual panels, pair chips on
+  all four, and the #findingsDrill rows restyled as citation cards inside findings_drill.js with
+  the drill JSON script tag proven BYTE-IDENTICAL (363 and 3273 bytes, tree vs clean worktree).
+- **The jarvis probe caught the clobber family a THIRD time**: promoting the existing
+  change-effects/counterfactual divs to .panel let jarvis's broad (0,2,1) .panel rule flatten
+  their 3px severity edges. Fixed inline with the established hud.css jarvis-scoped restoration,
+  pinned by the new browser test. **LESSON: the clobber trap fires on PROMOTION too — any div
+  that GAINS the .panel class inherits the fight with jarvis's broad rule; the probe is the
+  permanent answer, and it keeps winning.**
+- Loaded-terms audit: control string fired True; 9-12 new strings all False in the same run —
+  now a permanent test (test_integrity_shell.py). Lead re-verified everything independently
+  (full web suite 1113 passed / 1 pre-existing skip). Next: rank 7 /portfolio.

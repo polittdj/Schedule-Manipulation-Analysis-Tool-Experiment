@@ -435,6 +435,16 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-28 (cont. 3) — the clobber trap fires on PROMOTION, not just on new classes
+
+- Round 6 promoted two existing styled divs (isolated-effect, counterfactual) to `.panel` for the
+  shell — and jarvis's broad `.panel` rule immediately flattened the 3px severity edges app.css
+  had been painting. Third firing of the same family, new trigger: not a NEW class this time but
+  an existing element GAINING `.panel`. The standing computed-style probe caught it pre-verifier;
+  the hud.css jarvis-scoped restoration is now the established fix, pinned by a browser test.
+  **LESSON: audit theme-broad rules on every class ADDITION to an element, not only on new CSS —
+  `class="panel X"` means X now competes with every broad `.panel` override in every theme.**
+
 ### 2026-07-28 (cont. 2) — prove the gate can fail before trusting its passes
 
 - Round 5's loaded-terms audit (testimony-critical on /compare) passed 12/12 strings — and the
