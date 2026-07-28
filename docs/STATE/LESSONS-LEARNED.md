@@ -435,6 +435,16 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-28 (cont.) — markup can be complete while the page is inert; click it
+
+- Round 4's implementer found /evm wearing the FULL panel-contract toolbar markup with zero
+  behavior: panelkit.js is a per-page include and /evm never loaded it. No static check catches
+  this — the markup is correct, the CSS paints, node --check passes. It was caught by CLICKING
+  ⛶ ENLARGE in real chromium and reading `panel.is-big` back. **LESSON: for every page converted
+  to the shell, the checklist is "script include present + ONE real interaction probed", not
+  "markup matches the contract". A selector footnote: _page cache-busts static src to `?v=…`,
+  so exact-match script-src selectors false-negative — match on a substring.**
+
 ### 2026-07-28 — a repeated defect family ends when the probe becomes a standing requirement
 
 - Three same-family defects in one session (apollo scanline clobber, jarvis --bgfx dead token,

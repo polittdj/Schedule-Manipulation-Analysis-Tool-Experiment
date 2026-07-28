@@ -8583,3 +8583,22 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   reasoning) is what ended the family — round 3 is the proof.**
 - Gate verifier: scope/diff exact, mandated suites 89 passed, chips-reuse-persist proven, no
   dead export links. Next queue item: /evm story header (rank 4).
+
+## 2026-07-28c — Ultracode round 4: /evm converted; second consecutive zero-defect SHIP (v1.0.114)
+
+- Round 4 (4 agents, ~430k tokens) delivered rank 4: /evm's missing story header (takeaway h1
+  quoting ONLY existing MetricResult values — comparative clauses only where the engine's own
+  threshold status asserts them, em-dash on NA, cost never fabricated), the 6-card KPI strip,
+  and the four tables in the merged shell via the REUSED round-3 helpers. ⤓ EXCEL only where a
+  live endpoint serves the data (worst-variance panel gets none); NO ▦ DATA (tables are their
+  own drawer). Threshold legends/tips byte-verbatim; the shared field-group panel verified live
+  on BOTH /evm and /forecast (helper untouched).
+- **The implementer found a REAL latent gap: panelkit.js was never loaded on /evm** — full
+  toolbar markup, zero behavior. Caught only by CLICKING ⛶ in real chromium and reading
+  is-big back. **LESSON: panelkit.js is a per-page include, so a page can wear the complete
+  toolbar and be inert; "script include present + one real click" belongs on the shell
+  checklist for every converted page.** (Also: _page cache-busts static src to ?v=, so
+  exact-match script-src selectors false-negative — probe with a substring.)
+- Lead: SHIP, zero defects; gate + fidelity accepted (jarvis probe green per the standing
+  requirement — second round it has run, second round the clobber family stayed dead).
+  Next: rank 5 /compare, then /integrity, /portfolio.

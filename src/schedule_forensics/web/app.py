@@ -3347,7 +3347,7 @@ def create_app(
         schedules, _cpms, _skipped = _solvable_versions()
         panel = _field_forecast_panel(schedules, group_field, action="/evm") if schedules else ""
         bar = _export_bar("evm") if schedules else ""
-        return _page(st, "EVM", bar + _evm_body(st) + panel)
+        return _page(st, "EVM", _how_we_execute_evm_header(st) + bar + _evm_body(st) + panel)
 
     @app.get("/resources", response_class=HTMLResponse)
     def resources_view(bucket: str = Query("month")) -> HTMLResponse:
@@ -15893,6 +15893,68 @@ See the JCL explainer on the Risk Analysis page.</p></details>
 </div>"""
 
 
+def _how_we_execute_evm_header(st: SessionState) -> str:
+    """Chapter 07 "How we execute" story header for the EVM beat (Mission Ops rank 4,
+    prototype screens 'px'/'ev'): the data-driven takeaway h1 + muted lede + the ws-kpi
+    strip. Every figure is QUOTED from the same MetricResult values the page's scorecard
+    tables already show (compute_evm_indices / compute_schedule_variance / compute_bei —
+    presentation only; the EVM numbers are parity-locked). A comparative clause appears
+    ONLY when the engine's own threshold/status asserts it — never an invented trend
+    word. Empty when nothing analyzable is loaded (the body shows the load prompt); the
+    chapter kicker itself comes from _page's spine resolution ("EVM" -> Chapter 07)."""
+    chosen = _latest_solvable(st)
+    if chosen is None:
+        return ""
+    _key, sch, cpm = chosen
+    indices = compute_evm_indices(sch, cpm)
+    sv = compute_schedule_variance(sch, non_summary(sch))
+    bei = compute_bei(sch)
+    spi_t = indices.get("spi_t")
+    cpi = indices.get("cpi")
+
+    parts: list[str] = []
+    if bei.population:
+        clause = f"baselined-due work is finishing at BEI {bei.value:.2f}"
+        if bei.threshold is not None and bei.status is CheckStatus.FAIL:
+            clause += f" — below the {bei.threshold:g} execution bar"
+        elif bei.threshold is not None and bei.status is CheckStatus.PASS:
+            clause += f" — meeting the {bei.threshold:g} execution bar"
+        parts.append(clause)
+    if spi_t is not None and spi_t.status is not CheckStatus.NOT_APPLICABLE:
+        parts.append(f"Earned-Schedule SPI(t) reads {round(spi_t.value, 2)}")
+    if sv.svt_days is not None:
+        parts.append(f"SVt {sv.svt_days:+g} working days")
+    if cpi is not None and cpi.status is not CheckStatus.NOT_APPLICABLE:
+        parts.append(f"CPI {round(cpi.value, 2)}")
+    if parts:
+        sent = "; ".join(parts) + "."
+        takeaway = sent[0].upper() + sent[1:]
+    else:
+        takeaway = (
+            "No earned-value figure is defined for this file yet — it carries no "
+            "baselined-due work and no cost loading to measure (a value is never imputed)."
+        )
+
+    kpi = _stat_cards(
+        [
+            ("SPI(t) — Earned Schedule", _evm_idx_str(indices.get("spi_t"))),
+            ("SPI(t) — Acumen", _evm_idx_str(indices.get("spi_t_acumen"))),
+            ("BEI (throughput)", f"{bei.value:.2f}" if bei.population else "—"),
+            ("SVt (working days)", _evm_days_str(sv.svt_days)),
+            ("CPI (cost)", _evm_idx_str(cpi)),
+            ("TCPI (cost to-go)", _evm_idx_str(indices.get("tcpi"))),
+        ]
+    )
+    return (
+        f'<h1 class="page-takeaway" data-no-i18n>{_e(takeaway)}</h1>'
+        '<p class="page-lede">How the work is actually executing against the baseline plan '
+        "&mdash; the earned-value view. The schedule-based Earned-Schedule metrics always "
+        "compute; the cost indices (SPI / CPI / TCPI) join in when the file is cost-loaded. "
+        "Every figure below is read verbatim from the loaded file&rsquo;s computed metrics.</p>"
+        f'<div class="ws-kpi">{kpi}</div>'
+    )
+
+
 def _evm_body(st: SessionState) -> str:
     """Earned Value Management page: schedule-based EVM always, plus cost EVM when the schedule is
     cost-loaded (else gracefully N/A), baseline compliance, and the worst finish variances."""
@@ -15903,7 +15965,7 @@ def _evm_body(st: SessionState) -> str:
             "&mdash; SPI(t), schedule variance, baseline compliance, and (if the schedule is "
             "cost-loaded) SPI / CPI / TCPI.</div>"
         )
-    _key, sch, cpm = chosen
+    key, sch, cpm = chosen
     indices = compute_evm_indices(sch, cpm)
     sv = compute_schedule_variance(sch, non_summary(sch))
     compliance = compute_baseline_compliance(sch, cpm)
@@ -15993,6 +16055,81 @@ def _evm_body(st: SessionState) -> str:
         "work being touched runs efficiently but the project is not progressing through the "
         "baselined sequence &mdash; a classic under-resourced or logic-blocked pattern."
     )
+
+    # ── panel-contract shells (Mission Ops rank 4, ADR-0298): headline strip + prov chip +
+    # sf-take on each metric table. The tables ARE their own data drawer, so the toolbar is
+    # ⤓ EXCEL (only where an EXISTING export endpoint serves that data) + ⛶ ENLARGE — no
+    # ▦ DATA. Every take QUOTES the MetricResult values already rendered in the table below
+    # it (parity-locked figures, read verbatim; never a new computation).
+    evm_xlsx_title = "Export the EVM indices for every loaded version — opens in Excel"
+    prov = _prov_chip(sch)
+
+    sched_head = _panel_head(
+        "Schedule performance", tools=_shell_tools(export_title=evm_xlsx_title), prov=prov
+    )
+    cei_f = sched_idx.get("cei_finish")
+    cei_clause = (
+        f"; CEI Finish has {cei_f.count} of {cei_f.population} due activities on time "
+        f"({cei_f.value:g}%)"
+        if cei_f is not None and cei_f.population
+        else ""
+    )
+    sched_take = (
+        f"SPI(t) reads {_evm_idx_str(sched_idx.get('spi_t'))} on the Earned-Schedule method "
+        f"and {_evm_idx_str(sched_idx.get('spi_t_acumen'))} on the Acumen per-activity "
+        f"method{cei_clause}."
+    )
+
+    cost_head = _panel_head(
+        "Cost performance", tools=_shell_tools(export_title=evm_xlsx_title), prov=prov
+    )
+    if cost_loaded:
+        cost_take = (
+            f"SPI {_evm_idx_str(cost_idx.get('spi'))} · CPI {_evm_idx_str(cost_idx.get('cpi'))} "
+            f"· TCPI {_evm_idx_str(cost_idx.get('tcpi'))} — scored against the 1.0 bar."
+        )
+    else:
+        cost_take = (
+            "This schedule carries no cost, so SPI / CPI / TCPI read N/A — "
+            "a cost figure is never fabricated."
+        )
+
+    comp_head = _panel_head(
+        "Baseline compliance",
+        tools=_shell_tools(export_title=_ANALYSIS_XLSX_TITLE if key else ""),
+        prov=prov,
+    )
+    bfc = compliance.get("baseline_finish_compliance")
+    bsc = compliance.get("baseline_start_compliance")
+    comp_parts: list[str] = []
+    if bfc is not None and bfc.population and bfc.status is not CheckStatus.NOT_APPLICABLE:
+        comp_parts.append(
+            f"Baseline Finish Compliance {bfc.value:g}% ({bfc.count} of {bfc.population} on time)"
+        )
+    if bsc is not None and bsc.population and bsc.status is not CheckStatus.NOT_APPLICABLE:
+        comp_parts.append(
+            f"Baseline Start Compliance {bsc.value:g}% ({bsc.count} of {bsc.population})"
+        )
+    comp_take = (
+        "; ".join(comp_parts) + "."
+        if comp_parts
+        else "The compliance ratios read N/A — the file lacks a data date or baselined-due "
+        "work (a value is never imputed)."
+    )
+
+    worst_head = _panel_head("Worst finish variances", tools=_shell_tools(), prov=prov)
+    if sv.worst:
+        w0 = sv.worst[0]
+        worst_take = (
+            f"The latest finisher ran {w0.variance_days:+g} working days against its baseline "
+            f"(UID {w0.unique_id}); the {len(sv.worst)} worst variances are listed."
+        )
+    else:
+        worst_take = "No completed activities carry both an actual and a baseline finish yet."
+
+    def take(text: str) -> str:
+        return f"<p class=sf-take data-no-i18n>{_e(text)}</p>"
+
     return f"""
 <div class=panel><h2>Earned Value Management (EVM) &mdash; {_e(sch.source_file or sch.name)}</h2>
 <p class=muted>Performance against the baseline. The <b>schedule-based</b> metrics (Earned Schedule,
@@ -16000,27 +16137,32 @@ baseline compliance) always compute; the <b>cost</b> indices (SPI / CPI / TCPI) 
 schedule and otherwise read N/A.</p>
 {tip}
 {cards}</div>
-<div class=panel><h2>Schedule performance</h2>
+<div class=panel data-export="/export/xlsx/evm">{sched_head}
+{take(sched_take)}
 <p class=muted>Both SPI(t) methods (Earned-Schedule and Acumen per-activity) and the
 baseline-anchored Current Execution Index (finish / start).</p>
 {dual_spi}
 {_threshold_legend()}
 {_metric_scorecard_table(sched_idx)}</div>
-<div class=panel><h2>Cost performance</h2>
+<div class=panel data-export="/export/xlsx/evm">{cost_head}
+{take(cost_take)}
 <p class=muted>Cost-based EVM indices &mdash; applicable only when the schedule carries task budgets
 and actual costs.</p>
 {cost_note}
 {_metric_scorecard_table(cost_idx)}</div>
-<div class=panel><h2>Baseline compliance</h2>
+<div class=panel{_analysis_export_attr(key)}>{comp_head}
+{take(comp_take)}
 <p class=muted>How the executed work lines up with the baseline dates (BFC / BSC and the on-time
 counts).</p>
 {_threshold_legend()}
 {_metric_scorecard_table(compliance)}</div>
-<div class=panel><h2>Worst finish variances</h2>
+<div class=panel>{worst_head}
+{take(worst_take)}
 <p class=muted>Completed activities that finished latest relative to their baseline (working days;
 positive = late).</p>
 {worst_tbl}</div>
-{_evm_explainer()}"""
+{_evm_explainer()}
+<script src="/static/panelkit.js"></script>"""
 
 
 def _resource_loading_json(rl: ResourceLoading, sch: Schedule) -> str:
