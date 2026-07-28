@@ -1,6 +1,6 @@
 # Handoff — 2026-07-27l (the caption was never the problem; ADR-0303; v1.0.109)
 
-> ## STATUS (current) — ADR-0303 pushed on `claude/schedule-forensics-continue-gkju7l`. Version **1.0.118** (Ultracode round 8: /ribbon + /scorecards — tail rank 8 done; next rank 9 = /trend + /curves + /scurve toolbar normalization). Highest ADR **ADR-0303**.
+> ## STATUS (current) — ADR-0303 pushed on `claude/schedule-forensics-continue-gkju7l`. Version **1.0.119** (Ultracode round 9: /trend + /curves + /scurve — tail rank 9 done; next rank 10 = /cei + /performance + /resources + /forecast). Highest ADR **ADR-0303**.
 > **#451-#460 all merged.** The four-theme visual pass is green again — this time against a
 > detector that can actually see the collisions it is looking for.
 >

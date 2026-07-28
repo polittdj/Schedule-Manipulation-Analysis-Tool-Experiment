@@ -3427,11 +3427,18 @@ def create_app(
             sc = compute_s_curve(st.ordered(), track_uids=track)
         except ValueError as exc:
             return _page(st, "S-Curve", f"<div class=panel>{_e(exc)}</div>")
+        versions = st.ordered()
         return _page(
             st,
             "S-Curve",
-            _export_bar("scurve" + (f"?uids={uids}" if uids else ""))
-            + _scurve_body(sc, _scurve_filter_fields(st.ordered()), track_uids=track),
+            _scurve_header(sc)
+            + _export_bar("scurve" + (f"?uids={uids}" if uids else ""))
+            + _scurve_body(
+                sc,
+                _scurve_filter_fields(versions),
+                track_uids=track,
+                prov=_series_prov_chip(versions),
+            ),
         )
 
     @app.get("/api/scurve")
@@ -4192,7 +4199,10 @@ def create_app(
         return _page(
             st,
             "Finish & Slippage",
-            _export_bar("curves") + _sources_line(versions) + _curves_body(curves),
+            _curves_header(curves)
+            + _export_bar("curves")
+            + _sources_line(versions)
+            + _curves_body(curves, prov=_series_prov_chip(versions)),
         )
 
     @app.get("/api/curves")
@@ -7315,6 +7325,18 @@ def _pair_prov_chip(prior: Schedule, current: Schedule, vfrom: int, vto: int) ->
     )
 
 
+def _series_prov_chip(versions: Sequence[Schedule]) -> str:
+    """The provenance chip for a panel drawn from the WHOLE loaded series (Mission Ops rank 9):
+    one file → :func:`_prov_chip`; several → the first→last :func:`_pair_prov_chip`. The SAME
+    ``.prov-chip`` vocabulary both already speak (never a third convention) — the pattern
+    :func:`_focus_panel` established for a series panel. Empty when nothing is loaded."""
+    if not versions:
+        return ""
+    if len(versions) == 1:
+        return _prov_chip(versions[0])
+    return _pair_prov_chip(versions[0], versions[-1], 1, len(versions))
+
+
 def _shell_tools(*, export_title: str = "") -> str:
     """The three-glyph tool strip (panelkit.js wiring): ⤓ EXCEL renders ONLY when the panel
     carries a ``data-export`` URL to an EXISTING endpoint (never a dead link — rank-3 law);
@@ -8738,14 +8760,77 @@ def _forecast_data(schedules: list[Schedule], sets: list[ForecastSet]) -> dict[s
     }
 
 
-def _curves_body(curves: MonthCurves) -> str:
+def _curves_header(curves: MonthCurves) -> str:
+    """Chapter 05's story header for /curves (Mission Ops rank 9): the takeaway h1 + muted lede.
+
+    The chapter kicker is injected by the spine (:func:`_chapter_kicker`), so only the headline
+    and lede are built here. Every figure is one the page already renders — the loaded version
+    count, their labels/data dates, and the shared month axis the three charts are drawn on.
+    No engine call, no new arithmetic, and no adjective the engine did not assert."""
+    versions = curves.versions
+    if not versions:
+        return ""
+    n = len(versions)
+    months = curves.month_labels
+    latest = versions[-1]
+    dd = f" (data date {latest.status_date})" if latest.status_date else ""
+    span = f"{months[0]} → {months[-1]}" if months else "—"
+    files = f"{n} version" + ("" if n == 1 else "s")
+    takeaway = (
+        f"{files} of finish and start months on one shared {len(months)}-month axis "
+        f"({span}); the newest is {latest.label}{dd}."
+    )
+    return (
+        f'<h1 class="page-takeaway" data-no-i18n>{_e(takeaway)}</h1>'
+        '<p class="page-lede">Where finishes were promised against where they actually land, '
+        "month by month. Step or play through the loaded files to watch the finish and start "
+        "curves slide along a month axis held fixed across every frame.</p>"
+    )
+
+
+def _curves_body(curves: MonthCurves, *, prov: str = "") -> str:
     """The Finish & Slippage page (PBIX pages 6, 7, 12): three monthly-curve charts.
 
     Finishes (actual vs baseline, latest version), DATA Date Finishes (per-version
     actual-finish curves overlaid — the bow wave's line sibling), and Slippage (the
-    per-version start and finish curves). All client-side SVG over /api/curves."""
+    per-version start and finish curves). All client-side SVG over /api/curves.
+
+    Panel contract (Mission Ops rank 9): each chart panel carries the headline strip +
+    provenance chip + an ``.sf-take`` line, and the panel-level ``data-export`` points at the
+    EXISTING ``/export/xlsx/curves`` endpoint that serves exactly these curves. The three-glyph
+    tool strip is NOT duplicated in the head here: curves.js already builds this page's action
+    strip next to each chart (⛶ ENLARGE → the viewport overlay, ▦ DATA → that chart's data
+    table) and that strip is normalized to the contract vocabulary in place — relabel, never
+    rebuild — with ⤓ EXCEL added there so panelkit.js follows the panel's data-export."""
     n_versions = len(curves.versions)
     latest = curves.versions[-1].label if curves.versions else ""
+    latest_dd = curves.versions[-1].status_date if curves.versions else None
+    oldest = curves.versions[0].label if curves.versions else ""
+    months = curves.month_labels
+    n_months = len(months)
+    # a literal em dash, never the em-dash ENTITY as a value: test_presentation_fixes pins that
+    # sentinel because an entity string here would double-escape the next time it meets _e()
+    span = f"{_e(months[0])} &rarr; {_e(months[-1])}" if months else "—"
+    files = f"{n_versions} file" + ("" if n_versions == 1 else "s")
+    dd_txt = f" (data date {_e(latest_dd)})" if latest_dd else ""
+
+    def take(text: str) -> str:
+        return f"<p class=sf-take data-no-i18n>{text}</p>"
+
+    # every figure below is one the page ALREADY renders: the version labels and data dates the
+    # frame captions name, and the shared month axis the charts are drawn on. No new arithmetic.
+    finishes_take = take(
+        f"Latest version <b>{_e(latest)}</b>{dd_txt}: baselined finish months against actual "
+        f"or scheduled finish months, on the shared {n_months}-month axis ({span})."
+    )
+    datadate_take = take(
+        f"{files} on one fixed {n_months}-month axis ({span}), oldest first by data date "
+        f"&mdash; <b>{_e(oldest)}</b> through <b>{_e(latest)}</b>, one file per frame."
+    )
+    slippage_take = take(
+        f"Start and finish curves for {files} on the same {n_months}-month axis ({span}); "
+        f"the frame label names the file shown, newest being <b>{_e(latest)}</b>."
+    )
     multi = (
         ""
         if n_versions >= 2
@@ -8761,26 +8846,36 @@ def _curves_body(curves: MonthCurves) -> str:
 <option value=quarter>Quarters (year / quarter)</option>
 <option value=year>Years</option>
 </select></label></div>
-<div class=panel><h2>Finishes &mdash; actual vs baseline by month</h2>
+<div class=panel data-export="/export/xlsx/curves">{
+        _panel_head("Finishes &mdash; actual vs baseline by month", prov=prov)
+    }
+{finishes_take}
 <p class=muted>For the latest version (<b>{_e(latest)}</b>): activities counted by the month
 they were <b>baselined</b> to finish (gold) against the month they <b>actually</b> finished
 or are now scheduled to (blue). Where the blue curve sits to the right of the gold is slipped
 finish work, read month by month.</p>
 <div id=finishesChart class=chart-host></div></div>
-<div class=panel><h2>DATA Date Finishes &mdash; actual-finish curve per version</h2>
+<div class=panel data-export="/export/xlsx/curves">{
+        _panel_head("DATA Date Finishes &mdash; actual-finish curve per version", prov=prov)
+    }
+{datadate_take}
 <p class=muted>One file per frame on a month axis held fixed across every file (ADR-0150):
 step or play through the loaded versions (oldest first by data date) and watch the finish
 curve slide right &mdash; the bow wave of slipped finishes. The frame label names the file
 you are looking at.</p>{multi}
 <div id=dataDateChart class=chart-host></div></div>
-<div class=panel><h2>Slippage &mdash; start &amp; finish curves per version</h2>
+<div class=panel data-export="/export/xlsx/curves">{
+        _panel_head("Slippage &mdash; start &amp; finish curves per version", prov=prov)
+    }
+{slippage_take}
 <p class=muted>One file per frame (fixed month axis, ADR-0150): activities counted by their
 <b>start</b> month (solid) and <b>finish</b> month (dashed). Step or play through the versions
 &mdash; the whole profile sliding right is the slippage signature. The frame label names the
 file shown.</p>
 <div id=slippageChart class=chart-host></div></div>
 <script src="/static/timeaxis.js"></script>
-<script src="/static/curves.js"></script>"""
+<script src="/static/curves.js"></script>
+<script src="/static/panelkit.js"></script>"""
 
 
 def _curves_data(curves: MonthCurves) -> dict[str, object]:
@@ -11816,9 +11911,8 @@ def _trend_body(schedules: list[Schedule], cpms: list[CPMResult], target: int | 
         f"<td>{p.completed}</td><td>{p.in_progress}</td><td>{p.critical}</td></tr>"
         for p in points
     )
-    quality_items = "".join(
-        f"<li>{_e(t.sentence())}</li>" for t in compute_quality_trend(schedules, cpms)
-    )
+    qtrends = list(compute_quality_trend(schedules, cpms))
+    quality_items = "".join(f"<li>{_e(t.sentence())}</li>" for t in qtrends)
     impact = compute_net_finish_impact(
         schedules[-1], schedules[0], current_cpm=cpms[-1], prior_cpm=cpms[0]
     )
@@ -11859,6 +11953,57 @@ def _trend_body(schedules: list[Schedule], cpms: list[CPMResult], target: int | 
                 f"<td>{signal_cell}</td><td class=muted>{_e(f.course_of_action)}</td></tr>"
             )
     signals_blob = json.dumps({"findings": signal_findings}).replace("<", "\\u003c")
+
+    # ── panel contract (Mission Ops rank 9) ───────────────────────────────────────────────
+    # Headline strip + first→last provenance chip + one .sf-take per panel. Every take QUOTES a
+    # figure this page already renders (the Net Finish Impact sentence below the trend table, the
+    # loaded version labels/count, the engine's own quality-trend sentences, the signal rows) —
+    # never a new computation and never an adjective the engine did not assert.
+    # ⤓ EXCEL is added ONLY where an EXISTING endpoint serves that panel's data: /export/xlsx/trend
+    # exports the schedule-quality trend, so the trend table, the trend charts, the quality
+    # drill-down and the quality-trend sentences carry it; the manipulation-signal table has no
+    # endpoint of its own (a dead ⤓ is never shipped) and the margin burndown rides
+    # /export/xlsx/margin. The chart panels whose action strip trend.js/margin.js already build
+    # (⛶ ENLARGE / ▦ DATA next to the chart) do NOT get a second ⛶ in the head — that strip IS the
+    # panel's tool strip and is normalized in place (relabel, never rebuild).
+    prov = _series_prov_chip(schedules)
+    trend_xlsx = "Export the schedule-quality trend for every loaded version — opens in Excel"
+    n_ver = len(schedules)
+    steps = n_ver - 1
+    step_txt = f"{steps} consecutive-version step" + ("" if steps == 1 else "s")
+    oldest_label = schedules[0].source_file or schedules[0].name
+    latest_label = schedules[-1].source_file or schedules[-1].name
+
+    def take(text: str) -> str:
+        return f"<p class=sf-take data-no-i18n>{text}</p>"
+
+    trend_take = take(
+        f"Across {n_ver} versions the Net Finish Impact is <b class={cls}>{days:+d} calendar "
+        f"days</b> &mdash; the project finish moved {word} between "
+        f"<b>{_e(oldest_label)}</b> and <b>{_e(latest_label)}</b>."
+    )
+    charts_take = take(
+        f"Every chart plots the same {n_ver} versions on a locked axis, oldest first by data "
+        f"date &mdash; <b>{_e(oldest_label)}</b> through <b>{_e(latest_label)}</b>."
+    )
+    qual_take = take(
+        f"{len(qtrends)} schedule-quality metrics stepped across {n_ver} versions on a locked "
+        "bar axis; pick one to list the offending activities behind its number."
+    )
+    qtrend_take = take(
+        f"{len(qtrends)} schedule-quality metrics tracked across {n_ver} versions &mdash; each "
+        "sentence below is the engine's own trend statement, quoted verbatim."
+    )
+    n_sig = len(signal_rows)
+    signals_take = take(
+        f"{n_sig} manipulation-trend signal{'' if n_sig == 1 else 's'} across {step_txt}."
+        if n_sig
+        else f"No manipulation signals across {step_txt}."
+    )
+    margin_take = take(
+        f"Total against effective margin across {n_ver} submissions, from "
+        f"<b>{_e(oldest_label)}</b> to <b>{_e(latest_label)}</b>."
+    )
     focus_panel = _focus_panel(schedules, cpms, target) if target is not None else ""
     focus_form = f"""
 <div class=panel><form method=get action=/trend class=viz-controls>
@@ -11868,18 +12013,40 @@ placeholder="UID"> <button type=submit>Focus</button>
 {'<a class=btn-link href="/trend?target=">clear focus</a>' if target is not None else ""}
 </form></div>"""
     return f"""
-<div class=panel><h2>Version trend &mdash; {len(schedules)} versions, oldest first (by data date)</h2>
-{_user_tip("Load two or more versions (oldest first by data date) to see how the finish, criticality and schedule quality move over time &mdash; a finish that keeps sliding right is the classic bow-wave signature.")}
+<div class=panel data-export="/export/xlsx/trend">{
+        _panel_head(
+            f"Version trend &mdash; {len(schedules)} versions, oldest first (by data date)",
+            tools=_shell_tools(export_title=trend_xlsx),
+            prov=prov,
+        )
+    }
+{trend_take}
+{
+        _user_tip(
+            "Load two or more versions (oldest first by data date) to see how the finish, criticality and schedule quality move over time &mdash; a finish that keeps sliding right is the classic bow-wave signature."
+        )
+    }
 <table><tr><th scope=col>Version</th><th scope=col>Data date</th><th scope=col>Project finish</th>
 <th scope=col class=metric-th>{_metric_help_cell("Completed", "completed")}</th>
 <th scope=col class=metric-th>{_metric_help_cell("In progress", "in_progress")}</th>
-<th scope=col class=metric-th>{_metric_help_cell("Critical", "critical")}</th></tr>{trend_rows}</table>
+<th scope=col class=metric-th>{_metric_help_cell("Critical", "critical")}</th></tr>{
+        trend_rows
+    }</table>
 <p>Net Finish Impact across the series: <b class={cls}>{days:+d} calendar days</b>
 &mdash; the project finish moved {word} between the first and last version.</p></div>
 {focus_form}{focus_panel}
-<div class=panel><h2>Trend charts</h2><div id=trendCharts class="charts chart-host"
+<div class=panel data-export="/export/xlsx/trend">{_panel_head("Trend charts", prov=prov)}
+{charts_take}
+<div id=trendCharts class="charts chart-host"
 data-target="{target if target is not None else ""}"></div></div>
-<div class=panel id=qualDrillPanel><h2>Quality drill-down &amp; animation</h2>
+<div class=panel id=qualDrillPanel data-export="/export/xlsx/trend">{
+        _panel_head(
+            "Quality drill-down &amp; animation",
+            tools=_shell_tools(export_title=trend_xlsx),
+            prov=prov,
+        )
+    }
+{qual_take}
 <p class=muted>Step through the versions (oldest first) and watch the count of <b>offending
 activities</b> for each schedule-quality metric move on a <b>locked axis</b> &mdash; bar
 heights stay comparable frame to frame, so a metric that worsens stands out. Pick a metric to
@@ -11895,19 +12062,35 @@ list the exact activities behind its number in the current version (the drill-do
 <div id=qualBars class=qual-bars></div>
 <div id=qualDrill class=qual-offenders></div>
 </div></div>
-<div class=panel><h2>Schedule-quality trends</h2>
+<div class=panel data-export="/export/xlsx/trend">{
+        _panel_head(
+            "Schedule-quality trends", tools=_shell_tools(export_title=trend_xlsx), prov=prov
+        )
+    }
+{qtrend_take}
 <p class=muted>How each schedule-quality metric moves across the versions.</p>
 <ul>{quality_items}</ul></div>
-<div class=panel><h2>Manipulation-trend signals (consecutive versions)</h2>
+<div class=panel>{
+        _panel_head(
+            "Manipulation-trend signals (consecutive versions)", tools=_shell_tools(), prov=prov
+        )
+    }
+{signals_take}
 <p class=muted>Each signal with cited activities is a <b>view N tasks</b> link &mdash; click it to
 list the exact activities behind that finding (UID / name / duration / % complete / start /
 finish), add any standard or custom field, filter, and export to Excel.</p>
 <table><tr><th scope=col>Step</th><th scope=col>Severity</th><th scope=col>Signal</th><th scope=col>Course of action</th></tr>
-{"".join(signal_rows) or "<tr><td colspan=4 class=muted>No manipulation signals detected across the series (honest progress).</td></tr>"}</table>
+{
+        "".join(signal_rows)
+        or "<tr><td colspan=4 class=muted>No manipulation signals detected across the series (honest progress).</td></tr>"
+    }</table>
 <div id=findingsDrill class=findings-drill></div>
 <script type="application/json" id=findingsData>{signals_blob}</script>
 <script src="/static/findings_drill.js"></script></div>
-<div class=panel><h2>Schedule margin burndown</h2>
+<div class=panel data-export="/export/xlsx/margin">{
+        _panel_head("Schedule margin burndown", prov=prov)
+    }
+{margin_take}
 <p class=muted>Tracks <b>total</b> vs <b>effective</b> margin &mdash; the buffer protecting the project
 finish &mdash; across submissions, so margin erosion (a buffer being spent or quietly removed) is
 visible at a glance.</p>
@@ -12218,21 +12401,35 @@ def _pair_criteria(cf: list[str], cv: list[str], versions: list[Schedule]) -> li
     return out
 
 
-def _scurve_interpretation(sc: SCurve) -> str:
+def _scurve_status_point(sc: SCurve) -> tuple[float, float] | None:
+    """The latest version's ``(actual %, planned %)`` AT ITS DATA DATE — exactly the pair
+    :func:`_scurve_interpretation` already renders in prose. ``None`` when that version carries
+    no data date on the axis (a figure is never imputed). ONE source, so the panel takeaway and
+    the interpretation below it can never quote different numbers. Reads the computed curves;
+    it computes nothing itself."""
+    if not sc.versions:
+        return None
+    latest = sc.versions[-1]
+    si = latest.status_index
+    if si is None or si >= len(latest.planned):
+        return None
+    return latest.actual[si], latest.planned[si]
+
+
+def _scurve_interpretation(sc: SCurve, *, prov: str = "") -> str:
     """A grounded, always-present plain-English read of the S-curve: plan-vs-actual at the data
     date and how that gap is trending across versions — what the trend says about execution."""
     versions = sc.versions
     if not versions:
         return ""
-    latest = versions[-1]
-    si = latest.status_index
-    if si is None or si >= len(latest.planned):
+    point = _scurve_status_point(sc)
+    if point is None:
         read = (
             "This version has no data date, so plan-vs-actual can't be read at a status point; "
             "the curves show how the planned and scheduled finishes are distributed over time."
         )
     else:
-        actual, planned = latest.actual[si], latest.planned[si]
+        actual, planned = point
         gap = planned - actual
         if gap > 2:
             verdict = f"running <b>{gap:.0f} points behind plan</b> at the data date"
@@ -12271,24 +12468,89 @@ def _scurve_interpretation(sc: SCurve) -> str:
         else:
             trend = " The plan-vs-actual gap has held roughly steady across the loaded versions."
     return (
-        "<div class=panel><h2>AI interpretation</h2>"
-        f"<p>{read}{trend}</p>"
-        "<p class=muted><b>Auto-generated</b> from the S-curve's computed values &mdash; verify "
+        "<div class=panel>"
+        + _panel_head("AI interpretation", tools=_shell_tools(), prov=prov)
+        + f"<p>{read}{trend}</p>"
+        + "<p class=muted><b>Auto-generated</b> from the S-curve's computed values &mdash; verify "
         'against the chart. Enable a local model in <a href="/settings">AI Settings</a> for a '
         "fuller, model-written read.</p></div>"
     )
 
 
+def _scurve_header(sc: SCurve) -> str:
+    """Chapter 09's story header for /scurve (Mission Ops rank 9): takeaway h1 + muted lede.
+
+    The chapter kicker rides the spine. Both figures quoted here are ones the page already
+    renders — the plan-vs-actual pair at the data date (the same
+    :func:`_scurve_status_point` the AI-interpretation panel prints) and the version count."""
+    if not sc.versions:
+        return ""
+    latest = sc.versions[-1]
+    point = _scurve_status_point(sc)
+    n = len(sc.versions)
+    files = f"{n} version" + ("" if n == 1 else "s")
+    if point is None:
+        takeaway = (
+            f"{files} of cumulative progress on one fixed 0-100% scale; "
+            f"{latest.label} records no data date, so no status point is read."
+        )
+    else:
+        actual, planned = point
+        takeaway = (
+            f"At {latest.label}'s data date {actual:.0f}% of the work has finished against "
+            f"{planned:.0f}% planned, over {files}."
+        )
+    return (
+        f'<h1 class="page-takeaway" data-no-i18n>{_e(takeaway)}</h1>'
+        '<p class="page-lede">How much of the work has actually completed against how much the '
+        "baseline promised, month by month. Step or play through the loaded files to watch the "
+        "actual curve climb — and lag — against the plan.</p>"
+    )
+
+
 def _scurve_body(
-    sc: SCurve, fields: dict[str, list[str]], track_uids: list[int] | None = None
+    sc: SCurve,
+    fields: dict[str, list[str]],
+    track_uids: list[int] | None = None,
+    *,
+    prov: str = "",
 ) -> str:
     """The animated S-curve view: cumulative planned vs actual/forecast progress per version,
-    with a per-chart up-to-5-field filter over the parent file's fields."""
+    with a per-chart up-to-5-field filter over the parent file's fields.
+
+    Panel contract (Mission Ops rank 9): headline strip + ⤓ EXCEL (the EXISTING
+    ``/export/xlsx/scurve`` endpoint, which exports exactly this curve set) + ⛶ ENLARGE +
+    provenance chip + an ``.sf-take``. No ▦ DATA — this visual ships no drawer table (the
+    /evm precedent), and unlike /curves and /trend this chart owns no pre-existing
+    ⛶ / ▦ strip, so the tools sit in the head where the merged contract puts them."""
     # escape "<" so a field value can never break out of the inline <script> embed
     fields_json = json.dumps(fields).replace("<", "\\u003c")
     track_txt = ", ".join(str(u) for u in (track_uids or []))
+    export_url = "/export/xlsx/scurve" + (f"?uids={quote(track_txt)}" if track_txt else "")
+    head = _panel_head(
+        "S-Curve &mdash; cumulative progress",
+        tools=_shell_tools(
+            export_title="Export the cumulative planned vs actual curves — opens in Excel"
+        ),
+        prov=prov,
+    )
+    point = _scurve_status_point(sc)
+    latest = sc.versions[-1] if sc.versions else None
+    if latest is None:
+        take = "No version carries progress to plot."
+    elif point is None:
+        take = (
+            f"{latest.label} records no data date, so plan-vs-actual is not read at a status "
+            f"point; the curves cover {latest.activities} activities."
+        )
+    else:
+        take = (
+            f"{latest.label}: {point[0]:.0f}% finished against {point[1]:.0f}% planned at its "
+            f"data date, over {latest.activities} activities."
+        )
     return f"""
-<div class=panel><h2>S-Curve &mdash; cumulative progress</h2>
+<div class=panel data-export="{_e(export_url)}">{head}
+<p class=sf-take data-no-i18n>{_e(take)}</p>
 <p class=muted>Each version's cumulative progress on a fixed 0&ndash;100% scale: <b>gold</b> =
 planned (share of activities the baseline had finishing by each month), <b>blue</b> =
 actual / forecast (share whose actual or scheduled finish lands by each month). The dashed
@@ -12318,10 +12580,11 @@ title="Up to 20 UniqueIDs (comma/space separated) marked on every frame of the a
 </select></label>
 </div>
 <div id=scurveChart class=chart-host></div></div>
-{_scurve_interpretation(sc)}
+{_scurve_interpretation(sc, prov=prov)}
 <script id=sfScurveFields type="application/json">{fields_json}</script>
 <script src="/static/timeaxis.js"></script>
-<script src="/static/scurve.js"></script>"""
+<script src="/static/scurve.js"></script>
+<script src="/static/panelkit.js"></script>"""
 
 
 #: display convention (operator 2026-07-08): a thresholded measure that PASSES but sits at or
