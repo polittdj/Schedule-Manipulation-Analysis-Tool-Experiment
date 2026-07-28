@@ -8660,3 +8660,25 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   normalization (9) · Ch-06-09 per-visual (10) · Ch-03-04 headers + Gantt shells (11) ·
   Library/Setup kicker sweep (12) · vendored IBM Plex Mono/Barlow woff2 (13) · token aliases +
   ⊞ EXPLORE finale (14). Standing requirements carry to every tail round.
+
+## 2026-07-28g — Ultracode round 8: /ribbon + /scorecards; the LEAD AGENT DIED and the orchestrator took the role (v1.0.118)
+
+- Tail rank 8 delivered in one round (both routes share the Chapter-02 beat): the DCMA/Fuse
+  ribbon matrix shelled (⤓ riding the EXISTING /export/xlsx/ribbon, prov chip, sf-take), row
+  labels wearing the 3px k-edge, cells keeping their engine tones with centered tabular numerals
+  + hover ring, and every cell's EXISTING title= enriched with its published threshold and the
+  engine's own verdict word — read off the class `_ribbon_cell_class` already assigned, so the
+  verdict has ONE source and is never re-judged. Tooltips ride tooltips.js's existing
+  title→data-sf-hint promotion; no second tooltip system was invented. /scorecards: NASA STAT /
+  GAO-10 / SRA-readiness + reserve panels shelled, ⤓ only where /export/xlsx/scorecards serves.
+- **THE LEAD AGENT FAILED MID-ROUND (Fable 5 usage credits exhausted) and the orchestrator
+  performed the lead role itself on Opus 5** rather than shipping on the two verifiers' word.
+  Re-verified independently: scope clean (no engine/model/importers/ai), pyproject un-bumped by
+  the implementer, loaded-terms control True + all new strings False, ruff/format/mypy/bandit/
+  node green, 60 passed with the real-chromium module RUNNING, and — the critical one — the
+  ribbon matrix's numeric content dumped from an origin/main worktree and the working tree and
+  diffed: **BYTE-IDENTICAL**. Law 2 holds: a restyle moved no number.
+  **LESSON: an orchestration step can die for reasons that have nothing to do with the work
+  (credits, quota, transport). When the VERIFIER dies, the work is unverified — do the role
+  yourself before shipping; never let an infrastructure failure silently downgrade the gate.**
+- Next: rank 9 — /trend + /curves + /scurve toolbar normalization.
