@@ -8711,3 +8711,19 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   "new code looks wrong" and "new code differs from what we already shipped" are different
   findings with different remedies.**
 - Next: rank 10 — /cei + /performance + /resources + /forecast per-visual normalization.
+
+## 2026-07-28i — session close: 9 Ultracode redesign rounds shipped, handoff rotated (v1.0.119)
+
+- Session total: **PRs #451-#471 all merged.** The redesign accounts for #462-#471 — nine
+  orchestrated rounds converting home, /mission, /analysis, /evm, /compare, /integrity,
+  /portfolio (the 7-rank core queue), then /ribbon + /scorecards and the Chapter-05 group.
+  Five of the last six rounds ruled zero-defect; the two defects that did land (jarvis --bgfx
+  dead token, jarvis verdict-band clobber) were caught by the standing probe and fixed inside
+  the same session, each with a measurement rather than an argument.
+- Handoff rotated per ADR-0246: the stale 2026-07-27l section (whose body still described the
+  ADR-0303 caption work) moved to HANDOFF-ARCHIVE.md and was REPLACED with a redesign-oriented
+  STATUS carrying the five standing requirements, the remaining rank 10-14 tail, and the
+  session's hard-won rules. 9,104 bytes, one `# (prior)` heading, test_state_docs green.
+- **LESSON: the live handoff had been version-bumped nine times while its BODY described work
+  from two days earlier. A STATUS section is not current because its version line is — rotate
+  the whole section when the work changes character, not just the number.**
