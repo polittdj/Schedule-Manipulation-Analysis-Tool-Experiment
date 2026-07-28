@@ -1,7 +1,10 @@
 """Trends-animation package — Mission-Control-style controls on the dedicated chart pages.
 
 Operator directives (this package): every Trends-page visual carries the wall's per-tile
-controls (⛶ Enlarge, ▦ Data) plus — where multi-frame makes sense — a Prev / Play / Next
+controls (⛶ ENLARGE / ▦ DATA — panelkit.js's exact labels since the rank-9 conversion of
+/trend + /curves; margin.js and scatter.js still carry the older sentence-case pair, pinned
+below so their own round has to change it deliberately) plus — where multi-frame makes
+sense — a Prev / Play / Next
 stepper; the multi-schedule OVERLAYS are replaced by ANIMATION through the loaded files
 (one file per frame on the curves' date axis; a progressive reveal on a LOCKED version axis
 for the version-indexed trend charts), every frame naming its file ("file X of N — name
@@ -32,8 +35,19 @@ _FRAME_MARKERS = (
     "prefers-reduced-motion",  # Play advances one frame instead of running a timer
 )
 
-#: the wall's per-tile Enlarge conventions, reused verbatim so the pattern reads identically
-_TILE_MARKERS = ("tile-expand", "tile-expanded", "Shrink")
+#: the wall's per-tile Enlarge conventions, reused verbatim so the pattern reads identically.
+#: The *label* is asserted separately, because the two Chapter-05 scripts now speak the merged
+#: panel contract's exact vocabulary (rank 9) while margin.js / scatter.js still carry the older
+#: sentence-case labels until their own conversion round.
+_TILE_MARKERS = ("tile-expand", "tile-expanded")
+
+#: panelkit.js's EXACT label strings — the toolbar vocabulary the converted chart pages must use
+#: (rank 9: /trend + /curves normalize their per-chart strips onto it in place).
+_CONTRACT_LABELS = ("⛶ ENLARGE", "⛶ SHRINK", "▦ DATA", "▦ HIDE DATA", "⤓ EXCEL")
+
+#: the pre-conversion labels, still expected in the scripts that have NOT been normalized yet —
+#: pinned so a later round has to update this list deliberately rather than by accident.
+_LEGACY_LABELS = ("⛶ Enlarge", "⛶ Shrink")
 
 
 @pytest.fixture
@@ -57,6 +71,13 @@ def test_trend_charts_gain_steppers_enlarge_and_provenance(client: TestClient) -
     for marker in _FRAME_MARKERS + _TILE_MARKERS:
         assert marker in js, marker
     assert "tile-data" in js and "show-data" in js  # the wall's per-chart Data toggle
+    # rank 9: the per-chart strip speaks panelkit.js's EXACT labels, in a .sf-tools cluster,
+    # and never the old sentence-case ones
+    for label in _CONTRACT_LABELS:
+        assert label in js, label
+    for legacy in _LEGACY_LABELS:
+        assert legacy not in js, legacy
+    assert 'tools.className = "sf-tools"' in js
     # progressive reveal on the locked version axis + the current frame's guide marker
     assert "sf-frame-layer" in js and "sfFrameGuide" in js
     assert "i <= k" in js  # frame k reveals versions 0…k (the axis itself is drawn once)
@@ -103,6 +124,14 @@ def test_curves_animate_one_file_per_frame(client: TestClient) -> None:
     js = client.get("/static/curves.js").text
     for marker in _FRAME_MARKERS + _TILE_MARKERS:
         assert marker in js, marker
+    # rank 9: same contract vocabulary as trend.js — and each curve panel hosts exactly ONE
+    # chart, so its ⛶ IS the panelkit button (data-sf-big) rather than a second glyph
+    for label in _CONTRACT_LABELS:
+        assert label in js, label
+    for legacy in _LEGACY_LABELS:
+        assert legacy not in js, legacy
+    assert 'big.setAttribute("data-sf-big", "")' in js
+    assert 'tools.className = "sf-tools"' in js
     assert "lockTop" in js  # the count axis is pinned across frames — movement is real
     assert "one file per frame" in js
     assert "PALETTE[k % PALETTE.length]" in js  # the frame keeps its file's color identity
@@ -119,6 +148,10 @@ def test_margin_burndown_animates_on_locked_axes(client: TestClient) -> None:
     js = client.get("/static/margin.js").text
     for marker in _FRAME_MARKERS + _TILE_MARKERS:
         assert marker in js, marker
+    # NOT yet normalized (margin.js is out of the rank-9 file scope): pinned so its conversion
+    # round has to change this expectation on purpose.
+    for legacy in _LEGACY_LABELS:
+        assert legacy in js, legacy
     assert "tile-data" in js and "show-data" in js
     assert "idx <= k" in js  # progressive reveal up to the frame's version
     assert "sf-frame-guide" in js  # the current frame marked on the locked axis
@@ -130,6 +163,8 @@ def test_scatter_gains_enlarge_and_visible_provenance(client: TestClient) -> Non
     js = client.get("/static/scatter.js").text
     for marker in _TILE_MARKERS:
         assert marker in js, marker
+    for legacy in _LEGACY_LABELS:  # not yet normalized — see the margin.js note above
+        assert legacy in js, legacy
     assert '"Source: " + name' in js
     assert 'getAttribute("data-name")' in js
 

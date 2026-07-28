@@ -14,7 +14,8 @@
  * movement), with a ‹ Prev / ▶ Play / Next › stepper and a "file X of N — name (data
  * date …)" provenance label (Mission-Control conventions; reduced-motion respected). With
  * one file the classic single-version behavior is preserved. Every chart also gets the
- * wall's ⛶ Enlarge and ▦ Data toggles, and a ▶ Play all / ⏭ Step all pair (#sfPlayAll /
+ * wall's ⛶ ENLARGE and ▦ DATA toggles (the panel contract's exact labels, plus ⤓ EXCEL where
+ * the panel names an existing export endpoint), and a ▶ Play all / ⏭ Step all pair (#sfPlayAll /
  * #sfStepAll) advances every stepper in lockstep like mission.js.
  */
 "use strict";
@@ -95,44 +96,79 @@
     return shell;
   }
 
-  // Attach the Mission-Control-style control row: ⛶ Enlarge (tile-expand → tile-expanded),
-  // ▦ Data (tile-data → show-data), and — for multi-file charts — a ‹ Prev / ▶ Play / Next ›
+  // The EXISTING export endpoint the surrounding panel points at (the server stamps
+  // data-export on each curve panel), or "" when it carries none — so the ⤓ glyph is never a
+  // dead link (Mission Ops rank 9). The shell is already in the document here.
+  function sfPanelExport(node) {
+    var panel = node && node.closest ? node.closest(".panel[data-export]") : null;
+    return panel ? panel.getAttribute("data-export") : "";
+  }
+
+  // Attach the Mission-Control-style control row: ⛶ ENLARGE (tile-expand → tile-expanded),
+  // ▦ DATA (tile-data → show-data), and — for multi-file charts — a ‹ Prev / ▶ Play / Next ›
   // stepper (one FILE per frame) with the provenance label. Play honors
   // prefers-reduced-motion (one frame per press, no timer); the master "Play all" clicks
   // every .sf-frame-next so the animations advance in lockstep.
+  //
+  // Mission Ops rank 9: this row IS the chart panel's action strip, so its toggles wear the
+  // panel contract's exact label strings (▦ DATA / ▦ HIDE DATA · ⤓ EXCEL · ⛶ ENLARGE /
+  // ⛶ SHRINK) in a .sf-tools cluster. The ⛶ / ▦ wiring is the ORIGINAL one, relabelled —
+  // never rebuilt — so the viewport overlay and the per-chart data table are untouched.
   function sfChartControls(host, mount, opts) {
     var bar = document.createElement("div");
     bar.className = "viz-controls sf-chart-controls";
-    function btn(cls, text, title) {
+    // the panel-contract tool cluster inside this row. Scoped to a .sf-tools group so ONLY the
+    // three glyphs adopt the contract chip styling — the frame stepper and persist.js's injected
+    // ⟲ Reset keep the look they already had (no visual is changed by the normalization).
+    var tools = document.createElement("span");
+    tools.className = "sf-tools";
+    tools.setAttribute("data-noprint", "1");
+    function mk(parent, cls, text, title) {
       var b = document.createElement("button");
       b.type = "button";
       b.className = cls;
       b.textContent = text;
       if (title) b.title = title;
-      bar.appendChild(b);
+      parent.appendChild(b);
       return b;
     }
+    function btn(cls, text, title) { return mk(bar, cls, text, title); }
+    function toolBtn(cls, text, title) { return mk(tools, cls, text, title); }
     if (!SF_ON_WALL) { // on the Mission wall the tile header already carries these
-      var big = btn("tile-expand", "⛶ Enlarge", "Enlarge / shrink this chart");
+      // ⛶ ENLARGE is the panel contract's button here, not a second one: each curve panel hosts
+      // exactly ONE chart, so this single button carries data-sf-big (panelkit.js toggles the
+      // panel's .is-big and owns the ⛶ ENLARGE / ⛶ SHRINK label + aria-pressed — one owner, no
+      // duplicate glyph in the panel head) while the ORIGINAL wiring below still lifts the chart
+      // into its viewport overlay. The event must reach panelkit's delegated document listener,
+      // so it is NOT stopped — off the Mission wall (the only place a surrounding tile has a
+      // delegated handler, and where this whole block is skipped) nothing else listens for it.
+      var big = toolBtn("tile-expand", "⛶ ENLARGE", "Enlarge / shrink this chart");
       big.setAttribute("aria-pressed", "false");
-      big.addEventListener("click", function (e) {
-        e.stopPropagation(); // never reaches a surrounding tile's delegated handler
+      big.setAttribute("data-sf-big", "");
+      big.addEventListener("click", function () {
         var on = host.classList.toggle("tile-expanded");
-        big.setAttribute("aria-pressed", on ? "true" : "false");
-        big.textContent = on ? "⛶ Shrink" : "⛶ Enlarge";
         if (on && host.scrollIntoView) host.scrollIntoView({ block: "nearest" });
       });
       if (opts.data) {
-        var dat = btn("tile-data", "▦ Data", "Show / hide the underlying data table");
+        var dat = toolBtn("tile-data", "▦ DATA", "Show / hide the underlying data table");
         dat.setAttribute("aria-pressed", "false");
         dat.addEventListener("click", function (e) {
           e.stopPropagation();
           var on = host.classList.toggle("show-data");
           dat.setAttribute("aria-pressed", on ? "true" : "false");
-          dat.textContent = on ? "▦ Hide data" : "▦ Data";
+          dat.textContent = on ? "▦ HIDE DATA" : "▦ DATA";
         });
       }
+      // ⤓ EXCEL — only when the panel actually carries an existing endpoint. No bespoke
+      // wiring: the page's panelkit.js follows the panel's data-export from its one
+      // delegated listener (never a second mechanism).
+      if (sfPanelExport(host)) {
+        var xl = toolBtn("", "⤓ EXCEL", "Export this visual's data — opens in Excel");
+        xl.setAttribute("data-sf-excel", "");
+        xl.setAttribute("aria-label", "Export this visual's data to Excel");
+      }
     }
+    if (tools.firstChild) bar.appendChild(tools);
     var label = document.createElement("span");
     label.className = "sf-frame-label muted";
     label.setAttribute("data-no-i18n", ""); // file names / dates — never machine-translated

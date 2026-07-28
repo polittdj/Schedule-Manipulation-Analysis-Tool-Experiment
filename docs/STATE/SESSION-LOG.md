@@ -8682,3 +8682,32 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   (credits, quota, transport). When the VERIFIER dies, the work is unverified — do the role
   yourself before shipping; never let an infrastructure failure silently downgrade the gate.**
 - Next: rank 9 — /trend + /curves + /scurve toolbar normalization.
+
+## 2026-07-28h — Ultracode round 9: the Chapter-05 group (v1.0.119)
+
+- Rank 9 delivered: /trend, /curves, /scurve toolbars NORMALIZED IN PLACE (existing buttons
+  relabelled to panelkit's exact strings and moved into a NESTED .sf-tools cluster so the
+  steppers and persist.js's injected ⟲ Reset keep their look), 10 per-visual takeaways whose
+  figures were each traced to something the page already renders, prov chips (first→last pair
+  for whole-series panels), and story headers only where missing. ⤓ EXCEL added only where a
+  real endpoint serves the visual — proven by a 200 in pytest AND a real browser click that
+  produced an actual .xlsx.
+- **Design call worth keeping**: /curves' panels host exactly ONE chart each, so a
+  `_shell_tools()` ⛶ in the head would have produced a SECOND "⛶ ENLARGE" on the same panel.
+  The existing strip button carries `data-sf-big` instead — one button, panelkit owns the
+  label/aria/is-big, the original listener still lifts the chart into its overlay. /trend keeps
+  its per-chart ⛶ chart-scoped because 20 charts share one panel and a shared .is-big would
+  desync 20 labels. **LESSON: "apply the contract everywhere" is wrong when a panel's chart
+  count differs — the contract is a vocabulary, and its scope (panel vs visual) has to match
+  the page's actual structure or it produces duplicate controls.**
+- **The captions these pages cost two rounds to get right were NOT touched** — verified four
+  ways by the implementer and re-verified by me: the md5 of every axisTitles call site plus its
+  argument lines is byte-identical to origin/main in all three files.
+- The lead REJECTED the one reported deviation after checking origin/main: /trend's 20 in-strip
+  ⤓ buttons are byte-for-byte the already-merged Mission-wall precedent, so holding the branch
+  to a stricter standard than main would be inconsistent. Logged as a future-round observation:
+  if that wording is ever tightened, the wall and /trend must change in the SAME commit.
+  **LESSON: before calling a pattern a defect, check whether merged main already ships it —
+  "new code looks wrong" and "new code differs from what we already shipped" are different
+  findings with different remedies.**
+- Next: rank 10 — /cei + /performance + /resources + /forecast per-visual normalization.

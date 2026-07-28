@@ -435,6 +435,23 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-28 (cont. 6) — a contract's SCOPE must match the page's structure
+
+- Round 9 hit the first case where applying the panel contract literally would have made the UI
+  worse: /curves' panels host exactly ONE chart, so adding a `_shell_tools()` ⛶ to the head
+  would have put a SECOND "⛶ ENLARGE" on the same panel; /trend's single panel hosts 20 charts,
+  so a shared panel-scoped `.is-big` would desync 20 labels. The fix was scope-aware — /curves'
+  existing strip button carries `data-sf-big` (one button, panelkit owns the state), /trend keeps
+  its ⛶ chart-scoped and takes the contract strip in the sibling panel heads.
+  **LESSON: a design contract is a VOCABULARY, not a stamp. Before applying it to a page, count
+  what the panel actually contains — panel-scope vs visual-scope controls are different controls,
+  and applying the wrong one produces duplicates or desynced state, not consistency.**
+- The lead rejected the round's one reported deviation by checking origin/main and finding the
+  pattern already shipped there byte-for-byte (the Mission wall's per-chart ⤓ buttons).
+  **LESSON: "this looks wrong" and "this differs from what we already ship" are different
+  findings. Check merged main before calling a pattern a defect — otherwise you hold a branch to
+  a standard the product does not meet, and the 'fix' silently becomes a scope change.**
+
 ### 2026-07-28 (cont. 5) — when the VERIFIER dies, the work is unverified
 
 - Round 8's lead agent failed on an infrastructure condition (usage credits exhausted) after both
