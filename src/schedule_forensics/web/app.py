@@ -8280,11 +8280,18 @@ def _forecast_ruler(fc: ForecastSet) -> str:
     return f"<div id=forecastRuler>{''.join(parts)}{legend}</div>{spread}"
 
 
-def _forecast_explainer(fc: ForecastSet) -> str:
+def _forecast_explainer(fc: ForecastSet, *, prov: str = "") -> str:
     """Plain-English methodology for the finish forecasts (M18 item 8): one card per
     method (what it measures, the formula in words + symbols, when it is available, and this
     version's value), plus the static ruler. Every value reuses the forecast set — nothing
-    is recomputed."""
+    is recomputed.
+
+    Panel contract: head + ``.sf-take`` + the caller's provenance chip, and deliberately NO
+    ⤓ EXCEL — the ruler also plots the data date and the baseline finish, which no column of
+    ``/export/xlsx/forecast`` carries, so a ⤓ here would hand back less than the panel draws
+    (:func:`_shell_tools` drops the button when no export title is given: never a dead or
+    lying link). ``#forecastRuler`` is untouched — :func:`_forecast_ruler` keeps its exact
+    signature and its byte-exact empty-path return."""
     by = {f.method_id: f for f in fc.forecasts}
 
     def fin(mid: str) -> str:
@@ -8336,8 +8343,17 @@ def _forecast_explainer(fc: ForecastSet) -> str:
         f"<p class=method-finish>This version: <b>{value}</b></p></div>"
         for title, tag, what, how, needs, value in cards
     )
+    # Every figure the take quotes is ALREADY rendered verbatim by the cards below, from the
+    # same locals the card text is built from: `fc.completed_count`, `rate_txt` and
+    # `fc.remaining_count` (the completion-rate card's formula line) and `spi_txt` (the
+    # earned-schedule card's formula line). Nothing is recomputed.
+    take = (
+        f"{fc.completed_count} activities are done at {rate_txt} with {fc.remaining_count} to "
+        f"go, and SPI(t) reads {spi_txt} &mdash; the inputs each method below turns into a date."
+    )
     return f"""
-<div class=panel><h2>How the forecasts are computed</h2>
+<div class=panel>{_panel_head("How the forecasts are computed", tools=_shell_tools(), prov=prov)}
+<p class=sf-take data-no-i18n>{take}</p>
 <p class=muted>Each method answers "when will it really end?" from a different angle &mdash;
 the plan's own logic, the observed throughput, and the earned-schedule performance. When they
 agree you can trust the date; when they fan apart, the disagreement is itself a finding. Every
@@ -8357,7 +8373,23 @@ def _field_forecast_panel(
     any standard or custom field (e.g. a CAM code) and every version's tasks are grouped by
     its values (plus NA for unassigned), each group scored with the SAME engine functions the
     schedule-wide figures use — BEI / HMI / CEI / both SPI(t)s — plus the start-basis leading
-    index for groups that have not completed work yet."""
+    index for groups that have not completed work yet.
+
+    Panel contract (ADR-0298, shared with /evm — both routes load panelkit.js): head + tools +
+    a series provenance chip + one ``.sf-take``. Two deliberate decisions:
+
+    * **ONE CONVENTION for Excel.** This panel already carried an ``<a class=btn-link>⇩ Excel</a>``
+      INSIDE its ``<form>``. Rather than ship a second Excel control beside it, that anchor is
+      REWIRED into the head strip's ⤓ EXCEL following the panel's ``data-export`` — the same
+      ``/export/xlsx/field-forecast?field=…`` endpoint, one affordance. It stays CONDITIONAL
+      exactly as the anchor was: the endpoint REQUIRES a field (no field → 422, empty → 404),
+      so an ungrouped panel carries no ``data-export`` and :func:`_shell_tools` emits no ⤓.
+    * **a take that quotes NO figure.** This panel renders no aggregate anywhere — no row count,
+      no group count, no column total — so any number in a takeaway would be new arithmetic.
+      It gets a figure-free sentence instead of an invented one.
+
+    The ``<form>`` itself (method, action, ``name=group_field``, the option list and its
+    ``selected`` marker, and the Compute button) is otherwise byte-for-byte unchanged."""
     fields = available_fields_union(schedules)
     if group_field and group_field not in fields:
         group_field = ""
@@ -8365,8 +8397,34 @@ def _field_forecast_panel(
         f'<option value="{_e(f)}"{" selected" if f == group_field else ""}>{_e(f)}</option>'
         for f in fields
     )
+    export_attr = (
+        f' data-export="/export/xlsx/field-forecast?field={quote(group_field, safe="")}"'
+        if group_field
+        else ""
+    )
+    head = _panel_head(
+        "Execution metrics by field group",
+        tools=_shell_tools(
+            export_title=(
+                "Export this field's per-group execution metrics for every loaded version "
+                "— opens in Excel"
+            )
+            if group_field
+            else ""
+        ),
+        prov=_series_prov_chip(schedules),
+    )
+    take = (
+        "Every loaded version's activities scored group by group on this field with the same "
+        "engine metrics the schedule-wide figures use; a group with no completed work reads "
+        "N/A on the finish-anchored indices and carries the start index (SEI) instead."
+        if group_field
+        else "Pick a field to score every loaded version's activities group by group with the "
+        "same engine metrics the schedule-wide figures use."
+    )
     form = f"""
-<div class=panel><h2>Execution metrics by field group</h2>
+<div class=panel{export_attr}>{head}
+<p class=sf-take data-no-i18n>{take}</p>
 <p class=muted>Group every loaded version's activities by any <b>standard or custom field</b>
 (for example a CAM code) and score each group with the same engine metrics the schedule-wide
 figures use — <b>BEI</b>, <b>HMI</b>, <b>CEI (Finish / Start)</b>, and both <b>SPI(t)</b>
@@ -8375,7 +8433,6 @@ field are grouped as <b>NA</b>.</p>
 <form method=get action={action} class=viz-controls>
 <label>Group by <select name=group_field data-no-i18n>{opts}</select></label>
 <button type=submit>Compute</button>
-{f'<a class=btn-link href="/export/xlsx/field-forecast?field={_e(group_field)}">&#11015; Excel</a>' if group_field else ""}
 </form>"""
     if not group_field:
         return form + "</div>"
@@ -8530,8 +8587,19 @@ activity.</p>
         if rollup.rate_limiting_group
         else ""
     )
+    # Panel contract: head + chip + take, and NO ⤓ EXCEL — there is no export endpoint for
+    # compute_group_rollup anywhere in the app, and _shell_tools omits the button when no
+    # export title is given (never a dead link). The take quotes the two SPI(t) cells the
+    # table below renders VERBATIM (`spi_all` and `top_spi`, the same strings, same {:g}).
+    head = _panel_head(
+        "Project rollup &mdash; recalculated from the group-weighted data points",
+        tools=_shell_tools(),
+        prov=_prov_chip(latest),
+    )
+    take = f"Rolled up from the groups, SPI(t) reads {spi_all} against the top-down {top_spi}."
     return f"""
-<div class=panel><h2>Project rollup &mdash; recalculated from the group-weighted data points</h2>
+<div class=panel>{head}
+<p class=sf-take data-no-i18n>{take}</p>
 <p class=muted>The per-group figures above, rolled BACK UP into a project-level forecast:
 each group's <b>exact SPI(t)</b> is weighted by its <b>to-go activity count</b> (the groups
 still carrying the remaining work dominate the index), and each group's own completion
@@ -8645,7 +8713,29 @@ def _forecast_body(
     schedules: list[Schedule], cpms: list[CPMResult], sets: list[ForecastSet]
 ) -> str:
     """The multi-method finish-forecast page (M15/ADR-0030): logic vs throughput vs
-    performance, the deck's Carnac KPI cards (PBIX p13, ADR-0042), plus per-version drift."""
+    performance, the deck's Carnac KPI cards (PBIX p13, ADR-0042), plus per-version drift.
+
+    Panel contract (Mission Ops rank 10, ADR-0298): each content panel wears the headline strip
+    + tools + provenance chip + one ``.sf-take``. The deliberate decisions:
+
+    * **⤓ EXCEL points at /export/xlsx/forecast on the cards / methods / drift panels** — that
+      workbook is ``TableSet("Finish forecasts", (carnac_table(carnac), *forecast_tables(...)))``,
+      i.e. the Carnac card row IS its first sheet and the per-version method grid IS the rest.
+      The methodology panel deliberately ships WITHOUT ⤓ EXCEL: its ruler also plots the data
+      date and the baseline finish, which no forecast export column carries, so pointing there
+      would hand back less than the panel draws.
+    * **no ▦ DATA anywhere** — no panel carries a ``.sf-drawer``; the cards, the two method
+      tables and the drift table ARE their panels' data (the :func:`_shell_tools` home-shell
+      precedent), and inventing a drawer would mean emitting figures this page does not render.
+    * **panel-scoped ⛶** — the only chart on this page is the drift stepper's single
+      ``#driftChart``, alone in its panel, so one ⛶ can never desync a sibling label. The
+      stepper's Prev/Next/Auto-play strip and chartframe.js's own ``⤢`` zoom bar do a
+      different job and are left exactly as they are (never a parallel vocabulary).
+    * **every take figure is already on the page** — the cards take quotes only the "Tasks to
+      complete" and "Latest finish (CPM)" cards; the methods take quotes only the Inputs table's
+      own cells; the drift take quotes only cells the drift table itself renders (the version
+      labels and the CPM column), selected out of the rendered rows rather than re-derived. No
+      delta, no total, no new arithmetic anywhere."""
     latest_sch, latest = schedules[-1], sets[-1]
     carnac = compute_carnac_summary(latest_sch, cpms[-1], latest)
     by_id = latest_sch.tasks_by_id
@@ -8678,6 +8768,40 @@ def _forecast_body(
     cite = "; ".join(
         f"{by_id[uid].name} (UID {uid})" for uid in latest.citation_uids[:3] if uid in by_id
     )
+    # ── The panel contract for this page (see the docstring for the four decisions).
+    fc_export = "/export/xlsx/forecast"
+    prov = _prov_chip(latest_sch)
+    cards_head = _panel_head(
+        f"Forecast cards &mdash; {_e(latest_sch.name)}",
+        tools=_shell_tools(
+            export_title=(
+                "Export the finish-forecast workbook (these Carnac cards are its first "
+                "sheet) — opens in Excel"
+            )
+        ),
+        prov=prov,
+    )
+    methods_head = _panel_head(
+        f"Finish forecast &mdash; {_e(latest_sch.name)}",
+        tools=_shell_tools(
+            export_title=("Export the finish forecasts for every loaded version — opens in Excel")
+        ),
+        prov=prov,
+    )
+    # Both figures below are ALREADY rendered verbatim by _carnac_cards, read from the same
+    # `carnac` object and through the same formatters its cards use: `str(summary.to_go_count)`
+    # ("Tasks to complete") and `_mdY(summary.latest_finish)` ("Latest finish (CPM)").
+    cards_take = (
+        f"{carnac.to_go_count} activities remain to complete, and the schedule logic places "
+        f"the latest finish on {_mdY(carnac.latest_finish)}."
+    )
+    # Already rendered verbatim by the Inputs table below: "Completed activities",
+    # "To-go activities" and "Baseline (planned) finish" (same expressions, same guard).
+    methods_take = (
+        f"{latest.completed_count} activities are complete and {latest.remaining_count} are "
+        "still to go against a baseline finish of "
+        f"{_mdY(latest.planned_finish) if latest.planned_finish else 'n/a'}."
+    )
     drift = ""
     if len(sets) >= 2:
         drift_rows = "".join(
@@ -8687,8 +8811,30 @@ def _forecast_body(
             + "</tr>"
             for sch, fs in zip(schedules, sets, strict=True)
         )
+        drift_head = _panel_head(
+            "Forecast drift across versions",
+            tools=_shell_tools(
+                export_title="Export every version's finish forecasts — opens in Excel"
+            ),
+            prov=_series_prov_chip(schedules),
+        )
+
+        # The take names only cells the drift table itself renders: the first and last row's
+        # version label (`_e(sch.source_file or sch.name)`) and their CPM column value — the
+        # SAME Forecast object the row's own <td> prints, SELECTED out of the rendered set.
+        # Dates only: the table prints no delta, so a "moved N days" figure would be new math.
+        def _cpm_cell(fs: ForecastSet) -> str:
+            f = next((x for x in fs.forecasts if x.method_id == "cpm"), None)
+            return _mdY(f.finish) if (f is not None and f.finish) else "—"
+
+        drift_take = (
+            f"Across {_e(schedules[0].source_file or schedules[0].name)} to "
+            f"{_e(schedules[-1].source_file or schedules[-1].name)} the schedule-logic finish "
+            f"reads {_cpm_cell(sets[0])} then {_cpm_cell(sets[-1])}."
+        )
         drift = f"""
-<div class=panel><h2>Forecast drift across versions</h2>
+<div class=panel data-export="{fc_export}">{drift_head}
+<p class=sf-take data-no-i18n>{drift_take}</p>
 <p class=muted>The forecasts re-run per loaded version (oldest first). Forecasts that
 keep sliding right are the bow-wave signature; methods that diverge from the CPM date tell
 you the logic and the observed performance disagree.</p>
@@ -8702,18 +8848,20 @@ you the logic and the observed performance disagree.</p>
 version); step or play to watch the forecasts drift toward later dates as the project
 progresses. Faint markers are the prior version's forecasts.</p>
 <div id=driftChart class=chart-host></div>
-<table><tr><th scope=col>Version</th><th scope=col>Data date</th><th scope=col>CPM</th><th scope=col>Completion rate</th>
+<table><tr><th scope=col>Version</th><th scope=col>Data date</th><th scope=col>CPM</th><th scope=col>As-scheduled</th><th scope=col>Completion rate</th>
 <th scope=col>Earned schedule</th></tr>{drift_rows}</table></div>
 <script src="/static/drift.js"></script>"""
     return f"""
-<div class=panel><h2>Forecast cards &mdash; {_e(latest_sch.name)}</h2>
+<div class=panel data-export="{fc_export}">{cards_head}
+<p class=sf-take data-no-i18n>{cards_take}</p>
 <p class=muted>The reference deck's <i>Carnac</i> forecast KPIs (PBIX page 13): the project
 window, the forecast end dates, the completion rate, remaining and project duration,
 SPI(t), Earned Schedule, and the to-go activity count. A card with missing inputs shows
 "—" &mdash; never a fabricated value. Every figure reuses the forecast below.</p>
 {_user_tip("Independent methods (logic, the source schedule, throughput and performance) forecast the finish; where they disagree, the logic and the observed performance are telling different stories. A method whose inputs are missing shows a dash &mdash; never a fabricated date.")}
 {_carnac_cards(carnac)}</div>
-<div class=panel><h2>Finish forecast &mdash; {_e(latest_sch.name)}</h2>
+<div class=panel data-export="{fc_export}">{methods_head}
+<p class=sf-take data-no-i18n>{methods_take}</p>
 <p class=muted>Independent answers to "when will it really end": the schedule's own
 logic (CPM), the observed completion throughput, and earned-schedule performance
 (IEAC(t) = AT + (PD &minus; ES) / SPI(t)). Methods that disagree are themselves a finding.
@@ -8721,7 +8869,8 @@ A method whose inputs are missing shows "—" &mdash; never a fabricated date.</
 <table><tr><th scope=col>Method</th><th scope=col>Forecast finish</th><th scope=col>Basis</th></tr>{method_rows}</table>
 <h3>Inputs</h3><table>{inputs}</table>
 <p class=cite>Finish-controlling: {_e(cite)}</p></div>
-{_forecast_explainer(latest)}{drift}"""
+{_forecast_explainer(latest, prov=prov)}{drift}
+<script src="/static/panelkit.js"></script>"""
 
 
 def _forecast_data(schedules: list[Schedule], sets: list[ForecastSet]) -> dict[str, object]:

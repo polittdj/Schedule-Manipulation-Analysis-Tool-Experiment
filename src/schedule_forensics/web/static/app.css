@@ -635,6 +635,14 @@ th.metric-th { position: relative; }
 .mosaic .tile.tile-wide .chart-host { height: 460px; }
 .mosaic .tile.tile-expanded { grid-column: 1 / -1; }
 .mosaic .tile.tile-expanded .chart-host { height: 74vh; }
+/* Round 10 (lead): the panel contract's ⛶ ENLARGE lands base.css's `.is-big` (grid-column:1/-1),
+   which widens a mosaic tile 546px -> 1108px. The charts here are drawn width-proportional, so
+   the SVG doubles in BOTH axes (measured 516x266 -> 1078x556) while the 340px host above stays
+   clamped — ~40% of the enlarged chart, INCLUDING the whole X axis, fell below a scroll fold.
+   Give `.is-big` the same tall host `.tile-expanded` (the sibling mission.js vocabulary) has
+   always had. Geometry only, and it applies ONLY in the user-toggled enlarged state, so no
+   default caption render moves. */
+.mosaic .tile.is-big .chart-host { height: 74vh; }
 /* When a Mission-wall tile chart is enlarged via chartframe (⤢ full screen / maximize),
    RELEASE the fixed tile-host height: chartframe contain-fits the SVG to the viewport, but the
    340/460/74vh host height above would otherwise keep clamping it, clipping the fitted chart to a
