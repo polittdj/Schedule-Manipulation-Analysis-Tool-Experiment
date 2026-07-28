@@ -3387,8 +3387,10 @@ def create_app(
                 "bow-wave / CEI analysis.</div>",
             )
         track = _parse_track_uids(uids)
+        versions = st.ordered()  # read the population ONCE — the wave, the sources line and
+        # the provenance chip must all describe the SAME list
         try:
-            wave = compute_bow_wave(st.ordered(), st.target_uid, track_uids=track)
+            wave = compute_bow_wave(versions, st.target_uid, track_uids=track)
         except ValueError as exc:
             return _page(st, "Bow Wave / CEI", f"<div class=panel>{_e(exc)}</div>")
         return _page(
@@ -3396,8 +3398,8 @@ def create_app(
             "Bow Wave / CEI",
             _work_piling_header(wave)
             + _export_bar("cei")
-            + _sources_line(st.ordered())
-            + _cei_body(wave, st.target_uid, track_uids=track),
+            + _sources_line(versions)
+            + _cei_body(wave, st.target_uid, track_uids=track, prov=_series_prov_chip(versions)),
         )
 
     @app.get("/api/cei")
@@ -12323,15 +12325,76 @@ def _work_piling_header(wave: BowWave) -> str:
     )
     return (
         f'<h1 class="page-takeaway" data-no-i18n>{_e(takeaway)}</h1>'
+        '<p class="page-lede">Where unfinished work sits against each snapshot\'s data date, '
+        "and how much of each period's plan was actually executed. Step or play through the "
+        "snapshots to watch the wave move.</p>"
         f'<div class="ws-kpi">{kpi}</div>'
         f'<div class="ws-bars">{month_bar}{pile_bar}</div>'
     )
 
 
 def _cei_body(
-    wave: BowWave, target_uid: int | None = None, track_uids: list[int] | None = None
+    wave: BowWave,
+    target_uid: int | None = None,
+    track_uids: list[int] | None = None,
+    *,
+    prov: str = "",
 ) -> str:
-    """The Bow Wave / CEI view: per-snapshot animated chart + the CEI summary table."""
+    """The Bow Wave / CEI view: per-snapshot animated chart + the CEI summary table.
+
+    Panel contract (Mission Ops rank 10): a headline strip + ⤓ EXCEL (the EXISTING
+    ``/export/xlsx/cei`` endpoint, whose workbook is exactly these two visuals — the CEI
+    table and one monthly-finish profile per snapshot) + ⛶ ENLARGE + the series provenance
+    chip + one ``.sf-take`` per panel. No ▦ DATA on either: the chart ships no drawer table
+    (its ``.sr-only`` a11y fallback is injected by cei.js and is NOT an ``.sf-drawer``), and
+    the CEI panel's own table IS the data (the home-shell precedent in :func:`_shell_tools`).
+    Every figure a take quotes is already rendered verbatim elsewhere on this page — the
+    snapshot count as the "Versions compared" KPI, the month count in the finish-placement
+    bar's foot, and the label / period / planned / finished / CEI cells in the table below.
+    ``prov`` is keyword-with-default so the existing direct ``_cei_body(wave)`` unit call
+    keeps working."""
+    latest = wave.snapshots[-1] if wave.snapshots else None
+    if latest is None:
+        take_chart = "No snapshot could be profiled from the loaded versions."
+        take_table = take_chart
+    else:
+        take_chart = (
+            f"{len(wave.snapshots)} snapshots on one shared "
+            f"{len(wave.month_labels)}-month axis; the newest is {latest.label}."
+        )
+        if (
+            latest.cei is not None
+            and latest.cei_period
+            and latest.cei_planned is not None
+            and latest.cei_finished is not None
+        ):
+            take_table = (
+                f"{latest.label}: CEI {latest.cei:.2f} in {latest.cei_period} — "
+                f"{latest.cei_finished} of {latest.cei_planned} previously planned "
+                "finishes actually landed."
+            )
+        else:
+            take_table = (
+                f"{latest.label} carries no comparable prior month, so no CEI is scored for it."
+            )
+    head_chart = _panel_head(
+        "Bow Wave &mdash; Activity Finishes by month",
+        tools=_shell_tools(
+            export_title=(
+                "Export the bow-wave monthly finish profiles and the CEI table — opens in Excel"
+            )
+        ),
+        prov=prov,
+    )
+    head_table = _panel_head(
+        "CEI &mdash; Current Execution Index",
+        tools=_shell_tools(
+            export_title=(
+                "Export the CEI table and the bow-wave monthly finish profiles — opens in Excel"
+            )
+        ),
+        prov=prov,
+    )
     rows = "".join(
         f"<tr><td>{_e(s.label)}</td><td>{_e(s.cei_period or '—')}</td>"
         f"<td>{s.cei_planned if s.cei_planned is not None else '—'}</td>"
@@ -12343,7 +12406,8 @@ def _cei_body(
     )
     track_txt = ", ".join(str(u) for u in (track_uids or []))
     return f"""
-<div class=panel><h2>Bow Wave &mdash; Activity Finishes by month</h2>
+<div class=panel data-export="/export/xlsx/cei">{head_chart}
+<p class=sf-take data-no-i18n>{_e(take_chart)}</p>
 <p class=muted>Gold = baselined to finish, blue = scheduled to finish, green = actually
 finished; the dashed line is the snapshot's data date. Work that keeps sliding right shows
 as a swelling wave of blue just past each data date. Step through the snapshots or press
@@ -12369,13 +12433,15 @@ title="Up to 20 UniqueIDs (comma/space separated) marked on every snapshot of th
 <label><input id=ceiTotals type=checkbox> Running totals (cumulative)</label>
 </div>
 <div id=ceiChart class=chart-host></div></div>
-<div class=panel><h2>CEI &mdash; Current Execution Index</h2>
+<div class=panel data-export="/export/xlsx/cei">{head_table}
+<p class=sf-take data-no-i18n>{_e(take_table)}</p>
 <p class=muted>For each snapshot: of the activities the <i>previous</i> snapshot planned to
 finish in the following month, how many this snapshot re-scheduled for that month and how
 how many of those planned activities actually finished by the end of it. CEI = completed-on-time &divide; previously planned (1.00 = executed to plan; an unplanned finish in the month earns no credit).</p>
 <table><tr><th scope=col>Snapshot</th><th scope=col>Period</th><th scope=col>Previously planned</th><th scope=col>Re-scheduled</th>
 <th scope=col>Actually finished</th><th scope=col>CEI</th></tr>{rows}</table></div>
-<script src="/static/cei.js"></script>"""
+<script src="/static/cei.js"></script>
+<script src="/static/panelkit.js"></script>"""
 
 
 def _scurve_filter_fields(versions: list[Schedule]) -> dict[str, list[str]]:
