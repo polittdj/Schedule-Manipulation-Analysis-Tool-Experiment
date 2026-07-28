@@ -3387,8 +3387,10 @@ def create_app(
                 "bow-wave / CEI analysis.</div>",
             )
         track = _parse_track_uids(uids)
+        versions = st.ordered()  # read the population ONCE — the wave, the sources line and
+        # the provenance chip must all describe the SAME list
         try:
-            wave = compute_bow_wave(st.ordered(), st.target_uid, track_uids=track)
+            wave = compute_bow_wave(versions, st.target_uid, track_uids=track)
         except ValueError as exc:
             return _page(st, "Bow Wave / CEI", f"<div class=panel>{_e(exc)}</div>")
         return _page(
@@ -3396,8 +3398,8 @@ def create_app(
             "Bow Wave / CEI",
             _work_piling_header(wave)
             + _export_bar("cei")
-            + _sources_line(st.ordered())
-            + _cei_body(wave, st.target_uid, track_uids=track),
+            + _sources_line(versions)
+            + _cei_body(wave, st.target_uid, track_uids=track, prov=_series_prov_chip(versions)),
         )
 
     @app.get("/api/cei")
@@ -12323,15 +12325,76 @@ def _work_piling_header(wave: BowWave) -> str:
     )
     return (
         f'<h1 class="page-takeaway" data-no-i18n>{_e(takeaway)}</h1>'
+        '<p class="page-lede">Where unfinished work sits against each snapshot\'s data date, '
+        "and how much of each period's plan was actually executed. Step or play through the "
+        "snapshots to watch the wave move.</p>"
         f'<div class="ws-kpi">{kpi}</div>'
         f'<div class="ws-bars">{month_bar}{pile_bar}</div>'
     )
 
 
 def _cei_body(
-    wave: BowWave, target_uid: int | None = None, track_uids: list[int] | None = None
+    wave: BowWave,
+    target_uid: int | None = None,
+    track_uids: list[int] | None = None,
+    *,
+    prov: str = "",
 ) -> str:
-    """The Bow Wave / CEI view: per-snapshot animated chart + the CEI summary table."""
+    """The Bow Wave / CEI view: per-snapshot animated chart + the CEI summary table.
+
+    Panel contract (Mission Ops rank 10): a headline strip + ⤓ EXCEL (the EXISTING
+    ``/export/xlsx/cei`` endpoint, whose workbook is exactly these two visuals — the CEI
+    table and one monthly-finish profile per snapshot) + ⛶ ENLARGE + the series provenance
+    chip + one ``.sf-take`` per panel. No ▦ DATA on either: the chart ships no drawer table
+    (its ``.sr-only`` a11y fallback is injected by cei.js and is NOT an ``.sf-drawer``), and
+    the CEI panel's own table IS the data (the home-shell precedent in :func:`_shell_tools`).
+    Every figure a take quotes is already rendered verbatim elsewhere on this page — the
+    snapshot count as the "Versions compared" KPI, the month count in the finish-placement
+    bar's foot, and the label / period / planned / finished / CEI cells in the table below.
+    ``prov`` is keyword-with-default so the existing direct ``_cei_body(wave)`` unit call
+    keeps working."""
+    latest = wave.snapshots[-1] if wave.snapshots else None
+    if latest is None:
+        take_chart = "No snapshot could be profiled from the loaded versions."
+        take_table = take_chart
+    else:
+        take_chart = (
+            f"{len(wave.snapshots)} snapshots on one shared "
+            f"{len(wave.month_labels)}-month axis; the newest is {latest.label}."
+        )
+        if (
+            latest.cei is not None
+            and latest.cei_period
+            and latest.cei_planned is not None
+            and latest.cei_finished is not None
+        ):
+            take_table = (
+                f"{latest.label}: CEI {latest.cei:.2f} in {latest.cei_period} — "
+                f"{latest.cei_finished} of {latest.cei_planned} previously planned "
+                "finishes actually landed."
+            )
+        else:
+            take_table = (
+                f"{latest.label} carries no comparable prior month, so no CEI is scored for it."
+            )
+    head_chart = _panel_head(
+        "Bow Wave &mdash; Activity Finishes by month",
+        tools=_shell_tools(
+            export_title=(
+                "Export the bow-wave monthly finish profiles and the CEI table — opens in Excel"
+            )
+        ),
+        prov=prov,
+    )
+    head_table = _panel_head(
+        "CEI &mdash; Current Execution Index",
+        tools=_shell_tools(
+            export_title=(
+                "Export the CEI table and the bow-wave monthly finish profiles — opens in Excel"
+            )
+        ),
+        prov=prov,
+    )
     rows = "".join(
         f"<tr><td>{_e(s.label)}</td><td>{_e(s.cei_period or '—')}</td>"
         f"<td>{s.cei_planned if s.cei_planned is not None else '—'}</td>"
@@ -12343,7 +12406,8 @@ def _cei_body(
     )
     track_txt = ", ".join(str(u) for u in (track_uids or []))
     return f"""
-<div class=panel><h2>Bow Wave &mdash; Activity Finishes by month</h2>
+<div class=panel data-export="/export/xlsx/cei">{head_chart}
+<p class=sf-take data-no-i18n>{_e(take_chart)}</p>
 <p class=muted>Gold = baselined to finish, blue = scheduled to finish, green = actually
 finished; the dashed line is the snapshot's data date. Work that keeps sliding right shows
 as a swelling wave of blue just past each data date. Step through the snapshots or press
@@ -12369,13 +12433,15 @@ title="Up to 20 UniqueIDs (comma/space separated) marked on every snapshot of th
 <label><input id=ceiTotals type=checkbox> Running totals (cumulative)</label>
 </div>
 <div id=ceiChart class=chart-host></div></div>
-<div class=panel><h2>CEI &mdash; Current Execution Index</h2>
+<div class=panel data-export="/export/xlsx/cei">{head_table}
+<p class=sf-take data-no-i18n>{_e(take_table)}</p>
 <p class=muted>For each snapshot: of the activities the <i>previous</i> snapshot planned to
 finish in the following month, how many this snapshot re-scheduled for that month and how
 how many of those planned activities actually finished by the end of it. CEI = completed-on-time &divide; previously planned (1.00 = executed to plan; an unplanned finish in the month earns no credit).</p>
 <table><tr><th scope=col>Snapshot</th><th scope=col>Period</th><th scope=col>Previously planned</th><th scope=col>Re-scheduled</th>
 <th scope=col>Actually finished</th><th scope=col>CEI</th></tr>{rows}</table></div>
-<script src="/static/cei.js"></script>"""
+<script src="/static/cei.js"></script>
+<script src="/static/panelkit.js"></script>"""
 
 
 def _scurve_filter_fields(versions: list[Schedule]) -> dict[str, list[str]]:
@@ -16954,13 +17020,36 @@ def _who_is_overloaded_header(st: SessionState, granularity: str = "month") -> s
         conc_bar = ""
     return (
         f'<h1 class="page-takeaway" data-no-i18n>{_e(takeaway)}</h1>'
+        '<p class="page-lede">Who is booked beyond their availability, and when. Each resource\'s '
+        "assigned work is spread across its activities' spans and totalled per bucket, then "
+        "compared with that resource's own capacity for the same bucket.</p>"
         f'<div class="ws-kpi">{kpi}</div>'
         f'<div class="ws-bars">{alloc_bar}{conc_bar}</div>'
     )
 
 
 def _resources_body(st: SessionState, granularity: str = "month") -> str:
-    """Resources page: per-resource loading histogram + over-allocation, and a roster table."""
+    """Resources page: per-resource loading histogram + over-allocation, and a roster table.
+
+    Panel contract (Mission Ops rank 10, ADR-0298): the three content panels wear the headline
+    strip + tools + provenance chip + one ``.sf-take``. Four deliberate decisions, each of which
+    would otherwise ship an inert or lying control:
+
+    * **⤓ EXCEL carries the RENDERED bucket** — ``/export/xlsx/resources?bucket={granularity}``,
+      never a bare URL. Capacity scales with the working days in a bucket, so an operator reading
+      the week histogram must not silently receive the month workbook (a presentation lie about
+      engine numbers). The same endpoint the page-level export bar already points at — one
+      convention, two affordances.
+    * **no ▦ DATA anywhere** — no panel carries a ``.sf-drawer``, and the two data panels' own
+      tables ARE their data (the :func:`_shell_tools` home-shell precedent). Inventing a drawer
+      here would mean emitting per-period load/capacity numbers the page does not render today.
+    * **panel-scoped ⛶** — each converted panel holds AT MOST ONE chart (the histogram panel has
+      exactly one ``.chart-host``; the other two have none), so one ⛶ can never desync a sibling.
+    * **every take figure is already on the page** — the summary take quotes only the four
+      ``{cards}`` values; the histogram and roster takes quote only roster ROW 1, which is
+      ``rl.resources[0]`` — the same object the first ``<option>`` selects and the chart therefore
+      opens on. No figure is re-derived (the header's ``worst`` max() lives in
+      :func:`_who_is_overloaded_header` and is deliberately NOT recomputed here)."""
     chosen = _latest_solvable(st)
     if chosen is None:
         return (
@@ -17027,24 +17116,75 @@ def _resources_body(st: SessionState, granularity: str = "month") -> str:
         "<b>over-allocated</b> &mdash; where that resource is booked beyond its availability. "
         "<b>Click any bar</b> to list the activities driving that bucket's load."
     )
+    # ── The panel contract for this page (see the docstring for the four decisions). The
+    # data-export URL carries the RENDERED bucket so ⤓ EXCEL can never hand back a workbook
+    # computed at a different granularity than the one on screen.
+    prov = _prov_chip(sch)
+    export_url = f"/export/xlsx/resources?bucket={granularity}"
+    tools = _shell_tools(
+        export_title=(
+            f"Export the resource-loading series and roster at the {unit} bucket — opens in Excel"
+        )
+    )
+    sum_head = _panel_head(
+        f"Resource loading &amp; over-allocation &mdash; {_e(sch.source_file or sch.name)}",
+        tools=tools,
+        prov=prov,
+    )
+    hist_head = _panel_head("Loading histogram", tools=tools, prov=prov)
+    roster_head = _panel_head("Resource roster", tools=tools, prov=prov)
+    # every figure below is ALREADY rendered verbatim on this page, read from the same variable
+    # the visible markup reads: the four {cards} values, and roster ROW 1 (rl.resources[0]) —
+    # which is also the first <option>, i.e. the resource the histogram opens on.
+    n_periods = len(rl.periods)
+    unit_s = f"{unit}{'s' if n_periods != 1 else ''}"
+    first = rl.resources[0]
+    first_days = f"{round(first.total_work_minutes / mpd, 1):g}"  # the roster row-1 Work cell
+    over_clause = (
+        f"{over_count} of them are over-allocated in at least one {unit}"
+        if over_count
+        else f"none is over-allocated in any {unit}"
+    )
+    sum_take = (
+        f"{len(rl.resources)} loaded resources carry {total_days:g} work-days across "
+        f"{n_periods} {unit_s}; {over_clause}."
+    )
+    peak_clause = f", peaking in {_e(first.peak_period)}" if first.peak_period else ""
+    hist_take = (
+        f"The histogram opens on {_e(first.name)} &mdash; {first_days} work-days across "
+        f"{first.task_count} activities{peak_clause}; bars above the dashed capacity line are "
+        f"that resource's over-allocated {unit}s."
+    )
+    roster_take = (
+        f"{len(rl.resources)} resources carry work, largest first: {_e(first.name)} at "
+        f"{first_days} work-days across {first.task_count} activities; {over_clause}."
+    )
+
+    def take(text: str) -> str:
+        return f"<p class=sf-take data-no-i18n>{text}</p>"
+
     return f"""
-<div class=panel><h2>Resource loading &amp; over-allocation &mdash; {_e(sch.source_file or sch.name)}</h2>
+<div class=panel data-export="{export_url}">{sum_head}
+{take(sum_take)}
 <p class=muted>Time-phased work per resource per {unit}, against each resource's capacity. Over-allocated
 {unit}s are flagged.</p>
 {tip}
 {cards}</div>
-<div class=panel><h2>Loading histogram</h2>
+<div class=panel data-export="{export_url}">{hist_head}
+{take(hist_take)}
 <div class=viz-controls><label>Resource <select id=resPick>{res_opts}</select></label>
 {bucket_form}<span id=resStatus class=muted></span></div>
 <div id=resChart class=chart-host></div>
 <div id=resDrill></div>
 <script type="application/json" id=resData>{blob}</script>
-<script src="/static/resources.js"></script></div>
-<div class=panel><h2>Resource roster</h2>
+<script defer src="/static/resources.js"></script></div>
+<div class=panel data-export="{export_url}">{roster_head}
+{take(roster_take)}
 <p class=muted>Every resource that carries work, sorted by total work. Over-allocated {unit}s are the
 count of {unit}s booked beyond capacity.</p>
 {roster}</div>
-{_resources_explainer()}"""
+{_resources_explainer()}
+<script src="/static/panelkit.js"></script>"""
 
 
 def _groups_field_options(fields: Sequence[str], selected: str) -> str:
@@ -18279,6 +18419,10 @@ def _how_we_execute_header(sch: Schedule) -> str:
     )
     return (
         f'<h1 class="page-takeaway" data-no-i18n>{_e(takeaway)}</h1>'
+        '<p class="page-lede">How the work is actually being executed against the baseline: '
+        "where starts and finishes are landing month by month, whether throughput is keeping "
+        "the baseline pace, how much past-due baseline work is still being carried, and how "
+        "completed durations compared with what was planned.</p>"
         f'<div class="ws-kpi">{kpi}</div>'
         f'<div class="ws-bars">{pace_bar}{dur_bar}</div>'
     )
@@ -18287,10 +18431,29 @@ def _how_we_execute_header(sch: Schedule) -> str:
 def _performance_body(
     st: SessionState, schedules: list[Schedule], cpms: list[CPMResult], file: str
 ) -> str:
-    """The Performance-Summary page shell: version picker, the thirteen chart mounts (G1-G7 of
+    """The Performance-Summary page shell: version picker, the FOURTEEN chart mounts (G1-G7 of
     the operator's reference workbook), the DRM stat chips, and the embedded dataset
     performance.js reads. Every chart carries a hover explainer (viz-hint) like the rest of
-    the tool."""
+    the tool.
+
+    Panel contract (Mission Ops rank 10, ADR-0298): each ``.tile.panel`` wears the mission-wall
+    tile shape — tools strip in the ``.tile-head``, ``.tile-prov`` chip, one ``.sf-take``. Three
+    deliberate omissions, each of which would otherwise ship an inert glyph:
+
+    * **no ▦ DATA** on any tile — these tiles carry no ``.sf-drawer`` and no ``.sr-only`` table,
+      and ``mission.js`` (which drives ``.tile-data``) is not on this route (the
+      :func:`_shell_tools` / ``_scurve_body`` precedent of omitting the glyph);
+    * **no ⤓ EXCEL or ⛶ ENLARGE on the intro panel** — it ALREADY owns this page's Excel control
+      (the ``⬇ Excel (all datasets)`` anchor, pointing at the very URL ⤓ would follow; ADR-0298's
+      one-convention law), and it is not a grid item, so ``.is-big``'s ``grid-column:1/-1`` is
+      inert on it;
+    * **no per-file figure in any tile take** — the master stepper (performance.js ``setVersion``)
+      re-binds G1-G5 to a DIFFERENT loaded file on every tick, so a server-rendered number would
+      become false on the first ▶. The takes are structural, and the provenance chip is
+      :func:`_series_prov_chip` (a first→last RANGE that holds at every frame), never
+      :func:`_prov_chip` of one file. The one figure the intro take quotes, ``sel``, is already
+      rendered verbatim by the selected ``<option>`` and the export href below it, and is framed
+      as the opening state ("open on") that the stepper is described as moving."""
     data = _performance_data(st, schedules, cpms, file)
     blob = json.dumps(data).replace("<", "\\u003c")
     versions = cast(list[str], data["versions"])
@@ -18321,10 +18484,34 @@ def _performance_body(
         "(workoff burden), how realistic remaining durations are (DRM), and which loaded "
         "version sits in the danger quadrant of each portfolio quad.",
     )
+    # ── The panel contract for this page. The provenance chip is the SERIES chip on every
+    # visual (the stepper walks G1-G5 through the whole loaded list, so a single-file chip
+    # would be falsified on the first tick); the tools strip is panel-scoped because each
+    # .tile.panel holds EXACTLY ONE chart, so one ⛶ can never desync a sibling's label.
+    prov = _series_prov_chip(schedules)
+    head = _panel_head("Performance Analysis Summary", prov=prov)
+    # the ONLY figure any take on this page quotes: `sel`, already rendered verbatim by the
+    # selected <option> and the export href in the form directly below this line
+    intro_take = (
+        f"<p class=sf-take data-no-i18n>G1&ndash;G5 open on {_e(sel)}; the stepper below walks "
+        "them through every loaded file, while the G6/G7 quads always plot them all.</p>"
+    )
+    tile_export = f' data-export="/export/xlsx/performance?file={_e(sel)}"'
+    tile_prov = f"<div class=tile-prov>{prov}</div>"
+    tile_tools = (
+        '<span class="tile-actions sf-tools" data-noprint=1>'
+        "<button type=button data-sf-excel "
+        'title="Export every Performance-Summary dataset (this visual&#39;s series is one of '
+        'its sheets) &mdash; opens in Excel" '
+        'aria-label="Export this visual&#39;s data to Excel">⤓ EXCEL</button>'
+        "<button type=button data-sf-big aria-pressed=false "
+        'title="Enlarge / shrink this visual" '
+        'aria-label="Enlarge this visual">⛶ ENLARGE</button></span>'
+    )
     # bandit B608 false positive: this is server-rendered HTML (a <select> control + prose
     # containing the words select/from), not SQL construction.
     return f"""
-<div class=panel><h2>Performance Analysis Summary</h2>
+<div class=panel>{head}{intro_take}
 <p class=muted>Recreates the operator's <b>PerformanceAnalysisSummary</b> reference workbook
 (G1&ndash;G7) from the loaded files &mdash; no manual pasting: every series below is computed
 from the schedule's own dates, baseline, progress and logic, and matches the engine figures
@@ -18344,23 +18531,24 @@ cited on the other pages.</p>{intro}{trunc_note}
 shown at each step); the quads ring the current file's dot</span>
 </div></div>
 <div class=mosaic id=perfGrid>
-<section class="tile panel"><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: per calendar month, the tasks &amp; milestones ACTIVE in that month (span overlaps it) — total, completed, and still to-go — plus how many sit on the longest path.\n\nHOW TO READ: the to-go area right of the data date is the remaining-work profile; a hump far right of the baseline plan is the bow wave. The longest-path line shows how much of each month's work controls the finish.\n\nDECIDE: which months are overloaded with remaining work and deserve resource/logic scrutiny.">G1 &mdash; Completed vs Work-to-Go (Tasks &amp; Milestones)</h3></div><div class=chart-host id=g1Census></div></section>
-<section class="tile panel"><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: the same census restricted to NORMAL tasks (no milestones): active, to-go, and longest-path counts per month.\n\nHOW TO READ: normal tasks carry the real work; a widening gap between the active line and the to-go line left of the data date is completed work, and the to-go line right of it is the workload still ahead.\n\nDECIDE: whether the remaining normal-task load is spread or spiking.">G1 &mdash; Work-to-Go (Normal Tasks)</h3></div><div class=chart-host id=g1Normal></div></section>
-<section class="tile panel"><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: activity STARTS per month — baselined vs scheduled/forecast vs actual (lines), with stacked bars for starts that happened late vs baseline (&le;30 / 31&ndash;60 / &gt;60 days).\n\nHOW TO READ: actuals tracking under the baseline line = starts falling behind; tall late-bars show how late. Right of the data date the scheduled line is the forecast start plan.\n\nDECIDE: whether work is being initiated on pace (a start bow-wave precedes a finish bow-wave).">G2 &mdash; Activity Starts (baselined / scheduled / actual + late buckets)</h3></div><div class=chart-host id=g2Starts></div></section>
-<section class="tile panel"><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: activity FINISHES per month — baselined vs scheduled/forecast vs actual (lines) with late-finish buckets (&le;30 / 31&ndash;60 / &gt;60 days vs baseline).\n\nHOW TO READ: if starts are on pace but finishes lag, in-progress work is piling up (the classic bow wave); the late buckets show the severity distribution.\n\nDECIDE: whether completion (not initiation) is the constraint, and how much forecast finish work is stacked after the data date.">G2 &mdash; Activity Finishes (baselined / scheduled / actual + late buckets)</h3></div><div class=chart-host id=g2Finishes></div></section>
-<section class="tile panel"><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: cumulative S-curves — baselined, scheduled and actual starts and finishes accumulated over time.\n\nHOW TO READ: the horizontal gap between the baseline curve and the actual curve is schedule slip in time units; a scheduled curve bending right of baseline is the re-planned (slipped) plan.\n\nDECIDE: how far behind the baseline the schedule is running and whether the recovery slope is credible.">G2 &mdash; Cumulative S-curves (starts &amp; finishes)</h3></div><div class=chart-host id=g2Cum></div></section>
-<section class="tile panel"><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: execution-index curves for STARTS — BEI-Starts (cumulative actual &divide; cumulative baselined) and the monthly HMI-Starts hit rate with its 3-month rolling average. Curves stop at the data date; nothing is projected.\n\nHOW TO READ: BEI &lt; 0.95 (DCMA practice band) = execution behind plan; HMI is the sharper month-by-month pulse.\n\nDECIDE: whether start execution is recovering or deteriorating.">G3 &mdash; Start execution indices (BEI / HMI)</h3></div><div class=chart-host id=g3Starts></div></section>
-<section class="tile panel"><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: the same indices for FINISHES — BEI-Finishes and monthly HMI-Finishes (+ 3-mo rolling average).\n\nHOW TO READ: finish indices below the start indices mean work is started but not being closed out — the in-progress pileup signature.\n\nDECIDE: whether completion discipline (not just starts) is holding.">G3 &mdash; Finish execution indices (BEI / HMI)</h3></div><div class=chart-host id=g3Finishes></div></section>
-<section class="tile panel"><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: workoff burden for STARTS. Above the axis, each month's starts categorized: on-plan (baselined that month), early, workoff of a PAST-DUE baseline, past-due backlog now forecast here, and slipped future baseline. BELOW the axis, the same un-started work mirrored at the month its baseline promised it.\n\nHOW TO READ: below-axis bars are broken promises at their original month; the matching above-axis bars show where that work has been pushed — the further right, the bigger the bow wave.\n\nDECIDE: how much past-due work the forecast is carrying and where it has been re-stacked.">G4 &mdash; Workoff burden (starts)</h3></div><div class=chart-host id=g4Starts></div></section>
-<section class="tile panel"><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: the same workoff-burden categorization for FINISHES — where past-due baseline finishes went, and the un-finished backlog mirrored below the axis at its baselined month.\n\nHOW TO READ: a tall past-due (workoff) stack just right of the data date = a recovery plan betting on immediate catch-up; spread far right = acknowledged slip.\n\nDECIDE: whether the finish workoff plan is credible or front-loaded hope.">G4 &mdash; Workoff burden (finishes)</h3></div><div class=chart-host id=g4Finishes></div></section>
-<section class="tile panel"><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: the Duration Ratio S-curve — every COMPLETED task's actual duration &divide; baseline duration (DRM), sorted ascending against cumulative probability.\n\nHOW TO READ: DRM 1.0 = took exactly as long as baselined. The curve's crossing of 1.0 tells you what share of completed work beat its baseline; a long right tail = chronic under-estimation.\n\nDECIDE: what growth factor history supports when judging the remaining durations (and any SRA).">G5 &mdash; Duration Ratio S-curve</h3></div><div class=chart-host id=g5Scurve></div></section>
-<section class="tile panel"><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: histogram of the MIDDLE 70% of completed-task duration ratios (the workbook's convention — the tails are excluded from the bars but included in the min/avg/max chips).\n\nHOW TO READ: a mode below 1.0 = durations typically beaten; mass above 1.0 = systematic overrun. The chips carry the full-population min / average / max and the excluded-count disclosure.\n\nDECIDE: the realistic duration growth factor for forecasts.">G5 &mdash; Duration Ratio histogram (middle 70%)</h3></div><div class=chart-host id=g5Hist></div><div id=g5Stats class=stat-row></div></section>
-<section class="tile panel"><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: portfolio quad — HMI (tasks, latest period) vs CEI (finish) for EVERY loaded version; dashed guides at the 0.95 practice band used across this tool's index metrics.\n\nHOW TO READ: top-right = hitting current commitments AND closing out to plan; bottom-left = missing both. A version drifting left over time is losing period discipline.\n\nDECIDE: which version/update deserves the deep-dive first.">G3 quad &mdash; HMI vs CEI (per loaded version)</h3></div><div class=chart-host id=quadHmiCei></div></section>
-<section class="tile panel"><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: portfolio quad — to-go starts ratio vs to-go finishes ratio (remaining scheduled work &divide; work the baseline said should remain). Guides at 1.0 = carrying exactly what the baseline planned.\n\nHOW TO READ: above/right of 1.0 = more to-go work than planned (the bow wave, quantified); far above the diagonal = finishes lagging starts.\n\nDECIDE: which version is quietly accumulating un-done work.">G6 quad &mdash; To-Go Starts vs To-Go Finishes</h3></div><div class=chart-host id=quadRatio></div></section>
-<section class="tile panel"><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: portfolio quad — BEI (baseline execution) vs the share of the to-go work sitting on the critical path. Vertical guide at BEI 0.95 (DCMA practice); horizontal guide at the portfolio median critical share (labeled — no industry threshold exists for this axis).\n\nHOW TO READ: bottom-right (high BEI, low critical share) is healthy; top-left (poor execution AND a critical-heavy backlog) is the danger quadrant.\n\nDECIDE: which version pairs poor execution with a critical-path-loaded backlog.">G7 quad &mdash; BEI vs % critical of to-go work</h3></div><div class=chart-host id=quadBeiCp></div></section>
+<section class="tile panel"{tile_export}><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: per calendar month, the tasks &amp; milestones ACTIVE in that month (span overlaps it) — total, completed, and still to-go — plus how many sit on the longest path.\n\nHOW TO READ: the to-go area right of the data date is the remaining-work profile; a hump far right of the baseline plan is the bow wave. The longest-path line shows how much of each month's work controls the finish.\n\nDECIDE: which months are overloaded with remaining work and deserve resource/logic scrutiny.">G1 &mdash; Completed vs Work-to-Go (Tasks &amp; Milestones)</h3>{tile_tools}</div>{tile_prov}<div class=chart-host id=g1Census></div><p class=sf-take data-no-i18n>Every task and milestone active in each month, split completed vs still to go, with the longest-path share drawn over it.</p></section>
+<section class="tile panel"{tile_export}><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: the same census restricted to NORMAL tasks (no milestones): active, to-go, and longest-path counts per month.\n\nHOW TO READ: normal tasks carry the real work; a widening gap between the active line and the to-go line left of the data date is completed work, and the to-go line right of it is the workload still ahead.\n\nDECIDE: whether the remaining normal-task load is spread or spiking.">G1 &mdash; Work-to-Go (Normal Tasks)</h3>{tile_tools}</div>{tile_prov}<div class=chart-host id=g1Normal></div><p class=sf-take data-no-i18n>The same monthly census with milestones removed, so the line is the remaining normal-task workload on its own.</p></section>
+<section class="tile panel"{tile_export}><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: activity STARTS per month — baselined vs scheduled/forecast vs actual (lines), with stacked bars for starts that happened late vs baseline (&le;30 / 31&ndash;60 / &gt;60 days).\n\nHOW TO READ: actuals tracking under the baseline line = starts falling behind; tall late-bars show how late. Right of the data date the scheduled line is the forecast start plan.\n\nDECIDE: whether work is being initiated on pace (a start bow-wave precedes a finish bow-wave).">G2 &mdash; Activity Starts (baselined / scheduled / actual + late buckets)</h3>{tile_tools}</div>{tile_prov}<div class=chart-host id=g2Starts></div><p class=sf-take data-no-i18n>Monthly activity starts on three bases &mdash; baselined, scheduled and actual &mdash; with the late-start buckets stacked beneath them.</p></section>
+<section class="tile panel"{tile_export}><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: activity FINISHES per month — baselined vs scheduled/forecast vs actual (lines) with late-finish buckets (&le;30 / 31&ndash;60 / &gt;60 days vs baseline).\n\nHOW TO READ: if starts are on pace but finishes lag, in-progress work is piling up (the classic bow wave); the late buckets show the severity distribution.\n\nDECIDE: whether completion (not initiation) is the constraint, and how much forecast finish work is stacked after the data date.">G2 &mdash; Activity Finishes (baselined / scheduled / actual + late buckets)</h3>{tile_tools}</div>{tile_prov}<div class=chart-host id=g2Finishes></div><p class=sf-take data-no-i18n>Monthly activity finishes on the same three bases, with the late-finish buckets stacked beneath them.</p></section>
+<section class="tile panel"{tile_export}><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: cumulative S-curves — baselined, scheduled and actual starts and finishes accumulated over time.\n\nHOW TO READ: the horizontal gap between the baseline curve and the actual curve is schedule slip in time units; a scheduled curve bending right of baseline is the re-planned (slipped) plan.\n\nDECIDE: how far behind the baseline the schedule is running and whether the recovery slope is credible.">G2 &mdash; Cumulative S-curves (starts &amp; finishes)</h3>{tile_tools}</div>{tile_prov}<div class=chart-host id=g2Cum></div><p class=sf-take data-no-i18n>The same starts and finishes accumulated, so the horizontal gap between the baseline and actual curves reads as elapsed slip.</p></section>
+<section class="tile panel"{tile_export}><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: execution-index curves for STARTS — BEI-Starts (cumulative actual &divide; cumulative baselined) and the monthly HMI-Starts hit rate with its 3-month rolling average. Curves stop at the data date; nothing is projected.\n\nHOW TO READ: BEI &lt; 0.95 (DCMA practice band) = execution behind plan; HMI is the sharper month-by-month pulse.\n\nDECIDE: whether start execution is recovering or deteriorating.">G3 &mdash; Start execution indices (BEI / HMI)</h3>{tile_tools}</div>{tile_prov}<div class=chart-host id=g3Starts></div><p class=sf-take data-no-i18n>Cumulative BEI-Starts against the monthly HMI-Starts pulse and its rolling average, both stopping at the data date.</p></section>
+<section class="tile panel"{tile_export}><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: the same indices for FINISHES — BEI-Finishes and monthly HMI-Finishes (+ 3-mo rolling average).\n\nHOW TO READ: finish indices below the start indices mean work is started but not being closed out — the in-progress pileup signature.\n\nDECIDE: whether completion discipline (not just starts) is holding.">G3 &mdash; Finish execution indices (BEI / HMI)</h3>{tile_tools}</div>{tile_prov}<div class=chart-host id=g3Finishes></div><p class=sf-take data-no-i18n>The same two indices for finishes, so start discipline and closeout discipline can be read apart.</p></section>
+<section class="tile panel"{tile_export}><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: workoff burden for STARTS. Above the axis, each month's starts categorized: on-plan (baselined that month), early, workoff of a PAST-DUE baseline, past-due backlog now forecast here, and slipped future baseline. BELOW the axis, the same un-started work mirrored at the month its baseline promised it.\n\nHOW TO READ: below-axis bars are broken promises at their original month; the matching above-axis bars show where that work has been pushed — the further right, the bigger the bow wave.\n\nDECIDE: how much past-due work the forecast is carrying and where it has been re-stacked.">G4 &mdash; Workoff burden (starts)</h3>{tile_tools}</div>{tile_prov}<div class=chart-host id=g4Starts></div><p class=sf-take data-no-i18n>Un-started baseline work mirrored below the axis at the month it was promised, and above it at the month it is now forecast.</p></section>
+<section class="tile panel"{tile_export}><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: the same workoff-burden categorization for FINISHES — where past-due baseline finishes went, and the un-finished backlog mirrored below the axis at its baselined month.\n\nHOW TO READ: a tall past-due (workoff) stack just right of the data date = a recovery plan betting on immediate catch-up; spread far right = acknowledged slip.\n\nDECIDE: whether the finish workoff plan is credible or front-loaded hope.">G4 &mdash; Workoff burden (finishes)</h3>{tile_tools}</div>{tile_prov}<div class=chart-host id=g4Finishes></div><p class=sf-take data-no-i18n>The same workoff view for finishes &mdash; promised below the axis, re-planned above it.</p></section>
+<section class="tile panel"{tile_export}><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: the Duration Ratio S-curve — every COMPLETED task's actual duration &divide; baseline duration (DRM), sorted ascending against cumulative probability.\n\nHOW TO READ: DRM 1.0 = took exactly as long as baselined. The curve's crossing of 1.0 tells you what share of completed work beat its baseline; a long right tail = chronic under-estimation.\n\nDECIDE: what growth factor history supports when judging the remaining durations (and any SRA).">G5 &mdash; Duration Ratio S-curve</h3>{tile_tools}</div>{tile_prov}<div class=chart-host id=g5Scurve></div><p class=sf-take data-no-i18n>Every completed activity's actual-to-baseline duration ratio, sorted against cumulative probability.</p></section>
+<section class="tile panel"{tile_export}><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: histogram of the MIDDLE 70% of completed-task duration ratios (the workbook's convention — the tails are excluded from the bars but included in the min/avg/max chips).\n\nHOW TO READ: a mode below 1.0 = durations typically beaten; mass above 1.0 = systematic overrun. The chips carry the full-population min / average / max and the excluded-count disclosure.\n\nDECIDE: the realistic duration growth factor for forecasts.">G5 &mdash; Duration Ratio histogram (middle 70%)</h3>{tile_tools}</div>{tile_prov}<div class=chart-host id=g5Hist></div><div id=g5Stats class=stat-row></div><p class=sf-take data-no-i18n>The middle 70% of those duration ratios as a histogram; the chips beneath carry the full-population min, average and max.</p></section>
+<section class="tile panel"{tile_export}><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: portfolio quad — HMI (tasks, latest period) vs CEI (finish) for EVERY loaded version; dashed guides at the 0.95 practice band used across this tool's index metrics.\n\nHOW TO READ: top-right = hitting current commitments AND closing out to plan; bottom-left = missing both. A version drifting left over time is losing period discipline.\n\nDECIDE: which version/update deserves the deep-dive first.">G3 quad &mdash; HMI vs CEI (per loaded version)</h3>{tile_tools}</div>{tile_prov}<div class=chart-host id=quadHmiCei></div><p class=sf-take data-no-i18n>One dot per loaded version, plotting period hit rate against closeout performance inside the practice-band guides.</p></section>
+<section class="tile panel"{tile_export}><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: portfolio quad — to-go starts ratio vs to-go finishes ratio (remaining scheduled work &divide; work the baseline said should remain). Guides at 1.0 = carrying exactly what the baseline planned.\n\nHOW TO READ: above/right of 1.0 = more to-go work than planned (the bow wave, quantified); far above the diagonal = finishes lagging starts.\n\nDECIDE: which version is quietly accumulating un-done work.">G6 quad &mdash; To-Go Starts vs To-Go Finishes</h3>{tile_tools}</div>{tile_prov}<div class=chart-host id=quadRatio></div><p class=sf-take data-no-i18n>One dot per loaded version, plotting remaining scheduled starts against remaining scheduled finishes, each against what the baseline left.</p></section>
+<section class="tile panel"{tile_export}><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: portfolio quad — BEI (baseline execution) vs the share of the to-go work sitting on the critical path. Vertical guide at BEI 0.95 (DCMA practice); horizontal guide at the portfolio median critical share (labeled — no industry threshold exists for this axis).\n\nHOW TO READ: bottom-right (high BEI, low critical share) is healthy; top-left (poor execution AND a critical-heavy backlog) is the danger quadrant.\n\nDECIDE: which version pairs poor execution with a critical-path-loaded backlog.">G7 quad &mdash; BEI vs % critical of to-go work</h3>{tile_tools}</div>{tile_prov}<div class=chart-host id=quadBeiCp></div><p class=sf-take data-no-i18n>One dot per loaded version, plotting baseline execution against how much of the remaining work sits on the critical path.</p></section>
 </div>
 <script type="application/json" id=perfData>{blob}</script>
-<script src="/static/performance.js"></script>"""  # nosec B608 (HTML, not SQL)
+<script src="/static/performance.js"></script>
+<script src="/static/panelkit.js"></script>"""  # nosec B608 (HTML, not SQL)
 
 
 def _evolution_data(
