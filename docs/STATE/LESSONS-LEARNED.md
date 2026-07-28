@@ -435,6 +435,19 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-28 — a repeated defect family ends when the probe becomes a standing requirement
+
+- Three same-family defects in one session (apollo scanline clobber, jarvis --bgfx dead token,
+  jarvis verdict-band clobber): hud.css's broad per-theme rules silently out-rank new
+  panel-contract classes. Round 3 made the fix procedural — the implementer must PROBE every new
+  class's computed style in jarvis before claiming four-theme support, and the fidelity verifier
+  re-measures it — and round 3 came back the session's first zero-defect SHIP.
+  **LESSON: when the same defect family bites twice, stop fixing instances and change the
+  process: encode the check as a standing per-round requirement (a measurement, not a reminder),
+  and put it in BOTH the builder's and the verifier's mandate.**
+- Mechanism worth reusing: version chips as plain links (selection = the URL) let the existing
+  persistence ride for free — the cheapest way to avoid forking state is to not create state.
+
 ### 2026-07-27n — the first theory of a UI bug must survive the browser; and re-run surprising mutation kills
 
 - **Diagnosing the stranded float tip, the first theory (hover + scroll) was falsified by its own

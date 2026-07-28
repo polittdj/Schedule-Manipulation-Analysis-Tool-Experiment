@@ -2580,6 +2580,7 @@ def create_app(
                 erosion_field=erosion_field,
                 margin_confirmed=st.margin_overlay.get(name),
                 dcma_acumen_parity=st.dcma_acumen_parity,
+                versions=st.ordered_versions(),
             ),
             ask_schedule=name,
             chapter=_CHAPTER_BY_NUM.get(
@@ -7270,7 +7271,62 @@ focuses on it, and Compare shows its movement. Set or clear it in the header.</p
 <p class=cite>{_e(row["name"])} (UID {target}, {_e(row["source_file"] or "schedule")})</p></div>"""
 
 
-def _float_bands_panel(analysis: _Analysis) -> str:
+# ── Panel-contract helpers (Mission Ops rank 3, ADR-0298): the reusable headline strip +
+# three-glyph tools + provenance chip for the per-schedule analysis panels. Presentation only —
+# every figure a takeaway line quotes is an engine output the panel already renders verbatim.
+
+
+def _prov_chip(sch: Schedule) -> str:
+    """The panel-contract provenance chip — ``SOURCE: file · DD date``. i18n-inert
+    (filenames and dates must never be translated — rank-3 risk note)."""
+    dd = sch.status_date.date().isoformat() if sch.status_date is not None else "—"
+    return (
+        f"<span class=prov-chip data-no-i18n>SOURCE: {_e(sch.source_file or sch.name)}"
+        f" · DD {dd}</span>"
+    )
+
+
+def _shell_tools(*, export_title: str = "") -> str:
+    """The three-glyph tool strip (panelkit.js wiring): ⤓ EXCEL renders ONLY when the panel
+    carries a ``data-export`` URL to an EXISTING endpoint (never a dead link — rank-3 law);
+    ⛶ ENLARGE always. ▦ DATA is omitted on the analysis panels: each one's table IS the data
+    (the home-shell precedent)."""
+    excel = (
+        f'<button type=button data-sf-excel title="{_e(export_title)}" '
+        'aria-label="Export this panel&#39;s data to Excel">⤓ EXCEL</button>'
+        if export_title
+        else ""
+    )
+    return (
+        f"<div class=sf-tools data-noprint=1>{excel}"
+        "<button type=button data-sf-big aria-pressed=false "
+        'aria-label="Enlarge this panel">⛶ ENLARGE</button></div>'
+    )
+
+
+def _panel_head(title: str, *, tools: str = "", prov: str = "") -> str:
+    """The panel-contract headline strip: h2 + tools + provenance chip. ``title`` is HTML —
+    callers escape their own dynamic parts (the heading TEXT is unchanged; the uppercase
+    treatment is CSS, so existing content assertions keep holding)."""
+    return f"<div class=panel-head><h2>{title}</h2>{tools}{prov}</div>"
+
+
+#: ⤓ EXCEL hover text for panels whose data ships inside the existing per-schedule analysis
+#: workbook export (/export/{fmt}/analysis/{name} — DCMA, float bands, completion, findings,
+#: activities sheets). One string so every panel names the same real destination.
+_ANALYSIS_XLSX_TITLE = (
+    "Export this schedule's analysis workbook (this panel's data is one of its sheets) — "
+    "opens in Excel"
+)
+
+
+def _analysis_export_attr(key: str) -> str:
+    """The panel-level data-export URL panelkit.js follows — the EXISTING analysis workbook
+    endpoint for this schedule (never a dead link)."""
+    return f' data-export="/export/xlsx/analysis/{quote(key, safe="")}"' if key else ""
+
+
+def _float_bands_panel(analysis: _Analysis, *, key: str = "", prov: str = "") -> str:
     """The deck-style low-float bands (M15/ADR-0030): to-go work running out of room."""
     fb = analysis.float_bands
 
@@ -7279,8 +7335,15 @@ def _float_bands_panel(analysis: _Analysis) -> str:
         return f"<td>{r.count} <span class=muted>({r.value:g}%)</span></td>"
 
     pop = fb["float_total_0"].population
+    z, lt5 = fb["float_total_0"], fb["float_total_lt5"]
+    tools = _shell_tools(export_title=_ANALYSIS_XLSX_TITLE if key else "")
+    head = _panel_head("Float analysis &mdash; low-float bands", tools=tools, prov=prov)
+    take = (
+        f"<p class=sf-take data-no-i18n>{z.count} of {pop} incomplete activities sit at 0 days "
+        f"of total float; {lt5.count} sit under 5 working days.</p>"
+    )
     return f"""
-<div class=panel><h2>Float analysis &mdash; low-float bands</h2>
+<div class=panel{_analysis_export_attr(key)}>{head}{take}
 <p class=muted>Of the {pop} incomplete activities, how many are running out of room: at 0 days
 of float (critical or negative), under 5, and under 10 working days &mdash; cumulative bands on
 this schedule's calendar. A swelling low-float band is the early warning that the schedule is
@@ -7291,7 +7354,7 @@ losing its ability to absorb slips.</p>
 </table></div>"""
 
 
-def _completion_panel(analysis: _Analysis) -> str:
+def _completion_panel(analysis: _Analysis, *, key: str = "", prov: str = "") -> str:
     """The deck-style completion-performance read-out (M15/ADR-0030)."""
     cp = analysis.completion
 
@@ -7324,8 +7387,19 @@ def _completion_panel(analysis: _Analysis) -> str:
             ("elapsed_since_last_finish", "Schedule elapsed since latest actual finish"),
         )
     )
+    ahead, on_sched, behind = (
+        cp["completed_ahead"],
+        cp["completed_on_schedule"],
+        cp["completed_behind"],
+    )
+    tools = _shell_tools(export_title=_ANALYSIS_XLSX_TITLE if key else "")
+    head = _panel_head("Completion performance", tools=tools, prov=prov)
+    take = (
+        f"<p class=sf-take data-no-i18n>Completed work: {ahead.count} finished ahead of baseline "
+        f"&middot; {on_sched.count} on schedule &middot; {behind.count} behind.</p>"
+    )
     return f"""
-<div class=panel><h2>Completion performance</h2>
+<div class=panel{_analysis_export_attr(key)}>{head}{take}
 <p class=muted>How the completed work actually performed against its baseline: the
 ahead / on-schedule / behind split, the days gained and lost, and actual-vs-baseline
 durations. Day variances are calendar days.</p>
@@ -8618,7 +8692,7 @@ def _curves_data(curves: MonthCurves) -> dict[str, object]:
 _WEEKDAY_NAMES = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
 
 
-def _health_checks_panel(sch: Schedule, cpm: CPMResult) -> str:
+def _health_checks_panel(sch: Schedule, cpm: CPMResult, *, prov: str = "") -> str:
     """Extra structural health checks (handbook Fig. 6-9) as a stoplight list — green when clear,
     else the count + the first offending UIDs, with a plain-English reason for each."""
     checks = compute_health_checks(sch, cpm).checks
@@ -8635,13 +8709,22 @@ def _health_checks_panel(sch: Schedule, cpm: CPMResult) -> str:
                 hidden.append(f"&hellip; and {c.count - len(c.offenders)} beyond the citation cap")
             offs = f"<p class=cite>{_expandable_more(_e(shown), hidden)}</p>"
         cards.append(
-            f'<div class="finding sev-{"INFO" if ok else "MEDIUM"}">'
+            f'<div class="finding cite-card sev-{"INFO" if ok else "MEDIUM"}">'
             f'<div class=finding-head><span class="rk-score {badge_cls}">{badge}</span> '
             f"<b>{_e(c.label)}</b></div><p>{_e(c.description)}</p>{offs}</div>"
         )
+    flagged = sum(1 for c in checks if c.count)
+    take = (
+        f"<p class=sf-take data-no-i18n>{flagged} of {len(checks)} structural checks flag "
+        "activities.</p>"
+        if flagged
+        else f"<p class=sf-take data-no-i18n>All {len(checks)} structural checks are clear.</p>"
+    )
     return (
-        "<div class=panel><h2>Structural health checks</h2>"
-        "<p class=muted>Deterministic schedule-construction checks from the NASA Schedule "
+        "<div class=panel>"
+        + _panel_head("Structural health checks", tools=_shell_tools(), prov=prov)
+        + take
+        + "<p class=muted>Deterministic schedule-construction checks from the NASA Schedule "
         "Management Handbook (Fig. 6-9), beyond DCMA-14 &mdash; green = clear, otherwise the count "
         "and the first offending activities (the activity grid above is the full record).</p>"
         + "".join(cards)
@@ -8649,7 +8732,7 @@ def _health_checks_panel(sch: Schedule, cpm: CPMResult) -> str:
     )
 
 
-def _schedule_variance_panel(sch: Schedule) -> str:
+def _schedule_variance_panel(sch: Schedule, *, prov: str = "") -> str:
     """Schedule variance in TIME (handbook §7.3.3.1): project SVt = ES - AT (working days), plus the
     per-activity finish slip (actual - baseline). Favorable when ahead of plan (SVt >= 0)."""
     sv = compute_schedule_variance(sch, non_summary(sch))
@@ -8670,7 +8753,10 @@ def _schedule_variance_panel(sch: Schedule) -> str:
                 "against. Baseline the schedule in the source tool, then status it with progress."
             )
         return (
-            "<div class=panel><h2>Schedule variance (time)</h2>"
+            "<div class=panel>"
+            + _panel_head("Schedule variance (time)", tools=_shell_tools(), prov=prov)
+            + "<p class=sf-take data-no-i18n>Schedule variance is not computable on this file "
+            "&mdash; no actual start/finish dates are recorded yet.</p>"
             f"<p class=muted>Not computable on this file &mdash; {hint}</p></div>"
         )
     if sv.svt_days is None:
@@ -8723,9 +8809,15 @@ def _schedule_variance_panel(sch: Schedule) -> str:
     table += _var_table(
         "Largest start variances (actual &minus; baseline)", sv.worst_start, "Start"
     )
+    take = (
+        f"<p class=sf-take data-no-i18n>Schedule variance SVt reads {_e(svt_val)} &mdash; "
+        f"{sv.completed} completed activities carry a finish variance.</p>"
+    )
     return (
-        "<div class=panel><h2>Schedule variance (time)</h2>"
-        "<p class=muted>The NASA Schedule Management Handbook (&sect;7.3.3.1) time view of progress. "
+        "<div class=panel>"
+        + _panel_head("Schedule variance (time)", tools=_shell_tools(), prov=prov)
+        + take
+        + "<p class=muted>The NASA Schedule Management Handbook (&sect;7.3.3.1) time view of progress. "
         "<b>SVt = ES &minus; AT</b> (Earned Schedule minus Actual Time): positive is "
         "<b>ahead</b> of plan (favorable), negative is <b>behind</b> (unfavorable) &mdash; the "
         "count-based Earned-Schedule companion to SPI(t). Per-activity <b>finish</b> variance is a "
@@ -8740,7 +8832,9 @@ def _schedule_variance_panel(sch: Schedule) -> str:
 _EROSION_BADGE = {"green": "rk-min", "yellow": "rk-mod", "red": "rk-extreme"}
 
 
-def _float_erosion_panel(sch: Schedule, cpm: CPMResult, wbs_field: str | None = None) -> str:
+def _float_erosion_panel(
+    sch: Schedule, cpm: CPMResult, wbs_field: str | None = None, *, prov: str = ""
+) -> str:
     """Float erosion by WBS (handbook Figs 7-34/7-35): per-top-level-WBS minimum / average total
     float, critical count, and a stoplight on the group's minimum float — where buffer is thinning.
 
@@ -8764,7 +8858,8 @@ def _float_erosion_panel(sch: Schedule, cpm: CPMResult, wbs_field: str | None = 
     )
     if not fe.groups:
         return (
-            "<div class=panel><h2>Float erosion by WBS</h2>"
+            "<div class=panel>"
+            + _panel_head("Float erosion by WBS", tools=_shell_tools(), prov=prov)
             + picker
             + "<p class=muted>No schedulable activities to group.</p></div>"
         )
@@ -8785,8 +8880,15 @@ def _float_erosion_panel(sch: Schedule, cpm: CPMResult, wbs_field: str | None = 
             ("Eroded groups (min float < 0)", str(sum(1 for g in fe.groups if g.status == "red"))),
         ]
     )
+    eroded = sum(1 for g in fe.groups if g.status == "red")
+    take = (
+        f"<p class=sf-take data-no-i18n>Lowest total float across {len(fe.groups)} groups: "
+        f"{proj_min} &mdash; {eroded} group(s) eroded (min float below 0).</p>"
+    )
     return (
-        "<div class=panel><h2>Float erosion by WBS</h2>"
+        "<div class=panel>"
+        + _panel_head("Float erosion by WBS", tools=_shell_tools(), prov=prov)
+        + take
         + picker
         + f"<p class=muted>Grouping field: <b>{_e(field)}</b> (top-level dotted segment). "
         "Total float grouped by top-level WBS (NASA Schedule Management Handbook) "
@@ -8802,7 +8904,7 @@ def _float_erosion_panel(sch: Schedule, cpm: CPMResult, wbs_field: str | None = 
     )
 
 
-def _constraint_checks_panel(sch: Schedule, cpm: CPMResult) -> str:
+def _constraint_checks_panel(sch: Schedule, cpm: CPMResult, *, prov: str = "") -> str:
     """Constraint-health checks (handbook Fig. 6-9): unsatisfied hard date constraints and breached
     deadlines, as a stoplight list — green when clear, else the count + the first offending UIDs."""
     checks = compute_constraint_health(sch, cpm).checks
@@ -8820,20 +8922,29 @@ def _constraint_checks_panel(sch: Schedule, cpm: CPMResult) -> str:
             offs = f"<p class=cite>{_expandable_more(_e(shown), hidden)}</p>"
         pop = f"<span class=muted> of {c.population}</span>" if c.population else ""
         cards.append(
-            f'<div class="finding sev-{"INFO" if ok else "MEDIUM"}">'
+            f'<div class="finding cite-card sev-{"INFO" if ok else "MEDIUM"}">'
             f'<div class=finding-head><span class="rk-score {badge_cls}">{badge}</span> '
             f"<b>{_e(c.label)}</b>{pop}</div><p>{_e(c.description)}</p>{offs}</div>"
         )
+    flagged = sum(1 for c in checks if c.count)
+    take = (
+        f"<p class=sf-take data-no-i18n>{flagged} of {len(checks)} constraint checks flag "
+        "activities.</p>"
+        if flagged
+        else f"<p class=sf-take data-no-i18n>All {len(checks)} constraint checks are clear.</p>"
+    )
     return (
-        "<div class=panel><h2>Constraint health</h2>"
-        "<p class=muted>How imposed dates fare against the network logic (NASA Schedule Management "
+        "<div class=panel>"
+        + _panel_head("Constraint health", tools=_shell_tools(), prov=prov)
+        + take
+        + "<p class=muted>How imposed dates fare against the network logic (NASA Schedule Management "
         "Handbook, Fig. 6-9): a <b>hard constraint</b> the CPM date runs past cannot be honored, and "
         "a <b>deadline</b> the logic finish overruns is artificial negative float. Green = clear, "
         "otherwise the count and the first offending activities.</p>" + "".join(cards) + "</div>"
     )
 
 
-def _vertical_integration_panel(sch: Schedule) -> str:
+def _vertical_integration_panel(sch: Schedule, *, prov: str = "") -> str:
     """Vertical-integration check (handbook Fig. 6-9): summaries whose stored span does not envelope
     the work beneath them — a stoplight finding card, green when clear else the offending summaries."""
     vi = compute_vertical_integration(sch)
@@ -8854,20 +8965,29 @@ def _vertical_integration_panel(sch: Schedule) -> str:
         else "<p class=muted>No summaries with a WBS code, stored dates, and dated descendants "
         "to evaluate.</p>"
     )
+    take = (
+        f"<p class=sf-take data-no-i18n>{vi.count} of {vi.population} summary group(s) roll up "
+        "inconsistently.</p>"
+        if vi.population
+        else "<p class=sf-take data-no-i18n>No summary groups with dated descendants to "
+        "evaluate.</p>"
+    )
     return (
-        "<div class=panel><h2>Vertical integration</h2>"
-        "<p class=muted>Whether each summary (rollup) bar envelopes the detail activities beneath it "
+        "<div class=panel>"
+        + _panel_head("Vertical integration", tools=_shell_tools(), prov=prov)
+        + take
+        + "<p class=muted>Whether each summary (rollup) bar envelopes the detail activities beneath it "
         "(by WBS nesting), using the schedule's stored dates &mdash; the handbook's vertical-"
         "traceability check. A parent that starts after its earliest child or finishes before its "
         "latest is an inconsistent rollup.</p>"
-        f'<div class="finding sev-{"INFO" if ok else "MEDIUM"}">'
+        f'<div class="finding cite-card sev-{"INFO" if ok else "MEDIUM"}">'
         f'<div class=finding-head><span class="rk-score {badge_cls}">{badge}</span> '
         f"<b>Inconsistent vertical integration</b>{pop}</div>"
         f"<p>{_e(vi.description)}</p>{offs}</div>{note}</div>"
     )
 
 
-def _logic_checks_panel(sch: Schedule) -> str:
+def _logic_checks_panel(sch: Schedule, *, prov: str = "") -> str:
     """Logic-integrity checks (out-of-sequence progress, redundant logic) as a stoplight list —
     green when clear, else the count + the first offending links, with a plain-English reason."""
     checks = compute_logic_integrity(sch).checks
@@ -8875,7 +8995,7 @@ def _logic_checks_panel(sch: Schedule) -> str:
     for c in checks:
         if not c.evaluated:
             cards.append(
-                '<div class="finding sev-INFO">'
+                '<div class="finding cite-card sev-INFO">'
                 '<div class=finding-head><span class="rk-score rk-min">n/a</span> '
                 f"<b>{_e(c.label)}</b></div><p>{_e(c.description)}</p></div>"
             )
@@ -8892,13 +9012,23 @@ def _logic_checks_panel(sch: Schedule) -> str:
             offs = f"<p class=cite>{_expandable_more(_e(shown), hidden)}</p>"
         pop = f"<span class=muted> of {c.population} link(s)</span>" if c.population else ""
         cards.append(
-            f'<div class="finding sev-{"INFO" if ok else "MEDIUM"}">'
+            f'<div class="finding cite-card sev-{"INFO" if ok else "MEDIUM"}">'
             f'<div class=finding-head><span class="rk-score {badge_cls}">{badge}</span> '
             f"<b>{_e(c.label)}</b>{pop}</div><p>{_e(c.description)}</p>{offs}</div>"
         )
+    flagged = sum(1 for c in checks if c.evaluated and c.count)
+    evaluated = sum(1 for c in checks if c.evaluated)
+    take = (
+        f"<p class=sf-take data-no-i18n>{flagged} of {evaluated} evaluated logic checks flag "
+        "links.</p>"
+        if flagged
+        else f"<p class=sf-take data-no-i18n>All {evaluated} evaluated logic checks are clear.</p>"
+    )
     return (
-        "<div class=panel><h2>Logic integrity</h2>"
-        "<p class=muted>Forensic logic-construction checks from the NASA Schedule Management "
+        "<div class=panel>"
+        + _panel_head("Logic integrity", tools=_shell_tools(), prov=prov)
+        + take
+        + "<p class=muted>Forensic logic-construction checks from the NASA Schedule Management "
         "Handbook (Fig. 6-9), beyond DCMA-14 &mdash; <b>out-of-sequence</b> progress (work recorded "
         "in an order the logic forbids) and <b>redundant logic</b> (a direct link a longer path "
         "already implies). Green = clear, otherwise the count and the first offending links "
@@ -8941,7 +9071,9 @@ def _margin_terminology() -> str:
     )
 
 
-def _margin_panel(key: str, sch: Schedule, cpm: CPMResult, confirmed: frozenset[int] | None) -> str:
+def _margin_panel(
+    key: str, sch: Schedule, cpm: CPMResult, confirmed: frozenset[int] | None, *, prov: str = ""
+) -> str:
     """Schedule-margin panel: BOTH margin numbers, the MARGIN/CONTINGENCY/FLOAT glossary, and the
     operator's confirm/deny overlay of the margin-task set (name-based by default).
 
@@ -8953,7 +9085,10 @@ def _margin_panel(key: str, sch: Schedule, cpm: CPMResult, confirmed: frozenset[
     candidates = margin_candidates(sch, cpm)
     if not candidates:
         return (
-            "<div class=panel><h2>Schedule margin</h2>"
+            "<div class=panel>"
+            + _panel_head("Schedule margin", tools=_shell_tools(), prov=prov)
+            + "<p class=sf-take data-no-i18n>No schedule-margin activities found on this "
+            "schedule.</p>"
             + _margin_terminology()
             + "<p class=muted>No schedule-margin activities found &mdash; no non-summary activity is "
             "named &ldquo;margin&rdquo; and none carries a handbook alias (reserve / contingency / "
@@ -9019,8 +9154,14 @@ def _margin_panel(key: str, sch: Schedule, cpm: CPMResult, confirmed: frozenset[
         'title="Discard the confirmed set for this version and revert to the name-based default">'
         "Reset to name-based</button></div></form>"
     )
+    take = (
+        f"<p class=sf-take data-no-i18n>Total margin {m.total_margin_days:g} wd &middot; "
+        f"effective margin {m.effective_margin_days:g} wd ({_e(crit_note)}).</p>"
+    )
     return (
-        "<div class=panel><h2>Schedule margin</h2>"
+        "<div class=panel>"
+        + _panel_head("Schedule margin", tools=_shell_tools(), prov=prov)
+        + take
         + _margin_terminology()
         + "<p class=muted>Explicit buffer activities that protect the project finish. "
         "<b>Total margin</b> sums the margin activities&rsquo; durations; <b>effective margin</b> is "
@@ -9043,7 +9184,7 @@ def _margin_panel(key: str, sch: Schedule, cpm: CPMResult, confirmed: frozenset[
     )
 
 
-def _scatter_panel(key: str, sch: Schedule, cpm: CPMResult) -> str:
+def _scatter_panel(key: str, sch: Schedule, cpm: CPMResult, *, prov: str = "") -> str:
     """An activity scatter (total float x duration) on the analysis page, WITH the story
     (ADR-0150): a written health analysis naming the pressure points — long, low-float
     incomplete work — plus what the float distribution says about logic quality. Every figure
@@ -9098,10 +9239,20 @@ def _scatter_panel(key: str, sch: Schedule, cpm: CPMResult) -> str:
                 "<th scope=col>Duration (wd)</th><th scope=col>Float (wd)</th>"
                 f"<th scope=col>%</th></tr>{prows}</table></details>"
             )
+        take = (
+            f"<p class=sf-take data-no-i18n>{critical} of {n} incomplete activities have "
+            f"zero-or-negative float; {thin} more sit within 10 working days of it.</p>"
+        )
     else:
         story = "<p class=muted>No incomplete activities to analyze.</p>"
+        take = "<p class=sf-take data-no-i18n>No incomplete activities to analyze.</p>"
+    head = _panel_head(
+        "Activity scatter &mdash; float vs duration",
+        tools=_shell_tools(export_title=_ANALYSIS_XLSX_TITLE),
+        prov=prov,
+    )
     return (
-        "<div class=panel><h2>Activity scatter &mdash; float vs duration</h2>"
+        f"<div class=panel{_analysis_export_attr(key)}>{head}{take}"
         f"<p class=muted>Source: <b>{_e(sch.source_file or sch.name)}</b>. "
         "One dot per activity: <b>total float</b> (x) against <b>duration</b> (y), "
         "red = critical (progress-aware), diamonds = milestones. Long-duration, low-float "
@@ -9126,15 +9277,20 @@ _FLOAT_HIST_BANDS: tuple[tuple[str, Callable[[float], bool]], ...] = (
 )
 
 
-def _float_histogram_panel(key: str) -> str:
+def _float_histogram_panel(key: str, *, prov: str = "", take: str = "") -> str:
     """An activity total-float distribution histogram on the analysis page (handbook §6.3.2.5.2.2).
 
     Operator 2026-07-08: the chart takes the LEFT half of the panel; clicking a bar fills the
     RIGHT half with that band's activities (UID + Name by default, any other standard or custom
     column addable like the Gantt's Columns dropdown) and an Excel export of the selection.
-    """
+
+    ``take`` is the panel-contract takeaway line, built by the caller from figures the engine
+    already computed (this helper computes nothing itself — the chart is client-rendered). The
+    band drill keeps its own per-selection Excel export, so the toolbar carries no ⤓ here."""
+    head = _panel_head("Total-float distribution", tools=_shell_tools(), prov=prov)
+    take_html = f"<p class=sf-take data-no-i18n>{take}</p>" if take else ""
     return (
-        "<div class=panel><h2>Total-float distribution</h2>"
+        f"<div class=panel>{head}{take_html}"
         "<p class=muted>Activities binned by <b>total float</b> (working days), in DCMA-aligned "
         "bands. Mass at <b>0 / &lt; 0</b> is the critical-and-behind core; a spike in the "
         "<b>&gt; 44 d</b> band is float padding or missing successor logic (DCMA-06). "
@@ -9149,7 +9305,7 @@ def _float_histogram_panel(key: str) -> str:
     )
 
 
-def _calendar_panel(sch: Schedule) -> str:
+def _calendar_panel(sch: Schedule, *, prov: str = "") -> str:
     """The working calendar the analysis runs on — imported from the file (ADR-0028).
 
     Every computed date, float, and day-denominated threshold rides this calendar, so the
@@ -9187,8 +9343,13 @@ def _calendar_panel(sch: Schedule) -> str:
             "Driving Path views honor each task's own calendar (ADR-0118)."
             "</div>"
         )
+    take = (
+        f"<p class=sf-take data-no-i18n>Every computed date and float rides {_e(cal.name)}: "
+        f"{cal.working_minutes_per_day / 60:g} h/day, a {len(cal.work_weekdays)}-day work week, "
+        f"{len(cal.holidays)} holiday(s).</p>"
+    )
     return f"""
-<div class=panel><h2>Working calendar</h2>
+<div class=panel>{_panel_head("Working calendar", tools=_shell_tools(), prov=prov)}{take}
 <p class=muted>The time basis behind every computed date, float, and day-denominated
 threshold — imported from the file's project calendar (the standard 8h/Mon-Fri default
 when the file carries none).</p>
@@ -9598,10 +9759,22 @@ def _status_stack(
     )
 
 
-def _where_we_stand_header(key: str, sch: Schedule, analysis: _Analysis) -> str:
+def _where_we_stand_header(
+    key: str,
+    sch: Schedule,
+    analysis: _Analysis,
+    versions: Sequence[tuple[str, Schedule]] = (),
+) -> str:
     """Chapter 01 "Where we stand" (ADR-0197): the data-driven takeaway h1 + the six-KPI strip +
     the Activity-status-mix and Float-remaining bars — every figure read from what the report
-    already computed for this schedule (no CPM math added; missing inputs render as an em dash)."""
+    already computed for this schedule (no CPM math added; missing inputs render as an em dash).
+
+    Mission Ops rank 3 (prototype screen 'st'): ``versions`` (the session's ordered manifest,
+    oldest first) feeds the SOURCE-FILE bar — filename, version position + data date, a LATEST
+    pill, and a per-version chip picker. The chips are plain links to /analysis/<key>: version
+    selection IS the URL (exactly the navigation the src-banner's data-sf-navselect switcher
+    performs), and persist.js's per-path query-string memory rides it automatically — no second
+    selection mechanism is introduced (rank-3 risk note)."""
     cpm = analysis.cpm
     cal = sch.calendar
     makeup = compute_activity_makeup(sch)
@@ -9705,9 +9878,41 @@ def _where_we_stand_header(key: str, sch: Schedule, analysis: _Analysis) -> str:
         f"{len(floats)} incomplete activities",
     )
 
+    # ── SOURCE-FILE bar (rank 3, prototype 'st'): which file feeds THIS page, with the chip
+    # picker for the others. data-no-i18n on the whole strip — filenames, version labels and
+    # dates must never be translated (the src-banner precedent, and the chips would be mangled).
+    keys = [k for k, _s in versions]
+    pos = keys.index(key) + 1 if key in keys else 0
+    ver_lab = (
+        f"<span class=src-ver>v{pos} of {len(keys)} &middot; data date {data_date}</span>"
+        if pos
+        else f"<span class=src-ver>data date {data_date}</span>"
+    )
+    latest = "<span class=latest-pill>LATEST</span>" if pos and keys and keys[-1] == key else ""
+    chips = ""
+    if len(keys) > 1 and pos:
+        chip_links = "".join(
+            f'<a class="ver-chip{" on" if k == key else ""}"'
+            + (" aria-current=page" if k == key else "")
+            + f' href="/analysis/{quote(k, safe="")}" title="{_e(s.source_file or s.name)}">'
+            + f"v{i}</a>"
+            for i, (k, s) in enumerate(versions, start=1)
+        )
+        chips = (
+            "<span class=src-cue data-noprint=1>View another file &rarr;</span>"
+            f"<span class=ver-chips data-noprint=1>{chip_links}</span>"
+        )
+    src_bar = (
+        "<div class=src-bar data-no-i18n>"
+        "<span class=src-lab>&#128196; Source file</span>"
+        f"<span class=src-file>{_e(sch.source_file or sch.name)}</span>"
+        f"{ver_lab}{latest}{chips}</div>"
+    )
+
     export_bar = _export_bar(f"analysis/{quote(key, safe='')}")
     return (
         f'<h1 class="page-takeaway" data-no-i18n>{takeaway}{base_phrase}.</h1>'
+        f"{src_bar}"
         f'<div class="ws-kpi">{kpi}</div>'
         f'<div class="ws-bars">{status_bar}{float_bar}</div>'
         f"{export_bar}"
@@ -9723,6 +9928,7 @@ def _analysis_body(
     erosion_field: str | None = None,
     margin_confirmed: frozenset[int] | None = None,
     dcma_acumen_parity: bool = False,
+    versions: Sequence[tuple[str, Schedule]] = (),
 ) -> str:
     audit = analysis.audit
     audit_rows = "".join(
@@ -9742,8 +9948,21 @@ def _analysis_body(
     story_source = narrative if narrative is not None else analysis.narrative
     story = "".join(f"<li>{_e(s.rendered())}</li>" for s in story_source.statements)
     target_panel = _target_panel(sch, analysis, target) if target is not None else ""
+    # panel-contract chrome shared by every panel on this page (Mission Ops rank 3): the
+    # provenance chip quotes THIS schedule's file + data date; ⤓ EXCEL rides the EXISTING
+    # per-schedule analysis workbook export on the panels whose data ships inside it.
+    prov = _prov_chip(sch)
+    viz_head = _panel_head(
+        "Interactive analysis",
+        tools=_shell_tools(export_title=_ANALYSIS_XLSX_TITLE),
+        prov=prov,
+    )
+    viz_take = (
+        f"<p class=sf-take data-no-i18n>{len(analysis.activity_rows)} activities in the grid "
+        "&mdash; every row drills to its metadata, and every column is exportable.</p>"
+    )
     viz = f"""{target_panel}
-<div class=panel><h2>Interactive analysis</h2>
+<div class=panel{_analysis_export_attr(key)}>{viz_head}{viz_take}
 {_user_tip("Click a column header to sort, use the per-column <b>Filter</b> dropdowns to scope the rows, and drag a column edge to resize it. The data columns stay locked on the left while the Gantt timeline scrolls.")}
 <div id=viz data-name="{_e(key)}">
 <div class="charts chart-host" id=charts></div>
@@ -9775,21 +9994,35 @@ metadata)</span></h3>
 <div id=fieldToggles></div><div id=grid></div><div id=drill class=drill></div>
 </div></div>
 <script src="/static/app.js"></script>"""
-    return f"""{_where_we_stand_header(key, sch, analysis)}
+    fb0 = analysis.float_bands["float_total_0"]
+    hist_take = (
+        f"{fb0.count} of {fb0.population} incomplete activities sit at 0 working days of "
+        "total float — click a bar for the activities behind it."
+    )
+    dcma_head = _panel_head(
+        f"{_e(sch.name)} &mdash; DCMA-14 audit",
+        tools=_shell_tools(export_title=_ANALYSIS_XLSX_TITLE),
+        prov=prov,
+    )
+    dcma_take = (
+        f"<p class=sf-take data-no-i18n>{audit.passed} of {len(audit.checks)} DCMA checks pass "
+        f"&middot; {audit.failed} fail &middot; {audit.not_applicable} N/A.</p>"
+    )
+    return f"""{_where_we_stand_header(key, sch, analysis, versions)}
 {viz}
-{_scatter_panel(key, sch, analysis.cpm)}
-{_float_histogram_panel(key)}
-{_calendar_panel(sch)}
-{_float_bands_panel(analysis)}
-{_completion_panel(analysis)}
-{_health_checks_panel(sch, analysis.cpm)}
-{_logic_checks_panel(sch)}
-{_constraint_checks_panel(sch, analysis.cpm)}
-{_vertical_integration_panel(sch)}
-{_schedule_variance_panel(sch)}
-{_float_erosion_panel(sch, analysis.cpm, erosion_field)}
-{_margin_panel(key, sch, analysis.cpm, margin_confirmed)}
-<div class=panel><h2>{_e(sch.name)} &mdash; DCMA-14 audit</h2>
+{_scatter_panel(key, sch, analysis.cpm, prov=prov)}
+{_float_histogram_panel(key, prov=prov, take=hist_take)}
+{_calendar_panel(sch, prov=prov)}
+{_float_bands_panel(analysis, key=key, prov=prov)}
+{_completion_panel(analysis, key=key, prov=prov)}
+{_health_checks_panel(sch, analysis.cpm, prov=prov)}
+{_logic_checks_panel(sch, prov=prov)}
+{_constraint_checks_panel(sch, analysis.cpm, prov=prov)}
+{_vertical_integration_panel(sch, prov=prov)}
+{_schedule_variance_panel(sch, prov=prov)}
+{_float_erosion_panel(sch, analysis.cpm, erosion_field, prov=prov)}
+{_margin_panel(key, sch, analysis.cpm, margin_confirmed, prov=prov)}
+<div class=panel{_analysis_export_attr(key)}>{dcma_head}{dcma_take}
 <p class=muted>{audit.passed} passed &middot; {audit.failed} failed &middot; {audit.not_applicable} N/A.
 Each row shows the <b>count</b> and the <b>percentage</b> of its population,
 not just a pass/fail colour. <b>Hover or focus a check name</b> for its definition, pass/fail
@@ -9825,12 +10058,15 @@ criteria, why it matters, and what it indicates; full formulas + citations are i
 <table><tr><th scope=col>Check</th><th scope=col>Status</th><th scope=col>Count</th><th scope=col>% of tasks</th>
 <th scope=col>What it measures (how)</th>
 <th scope=col>Suggested improvement</th></tr>{audit_rows}</table></div>
-<div class=panel><h2>Risks, opportunities &amp; concerns</h2>
+<div class=panel{_analysis_export_attr(key)}>{_panel_head("Risks, opportunities &amp; concerns", tools=_shell_tools(export_title=_ANALYSIS_XLSX_TITLE), prov=prov)}
+<p class=sf-take data-no-i18n>{len(findings)} finding(s) on this schedule{" — " + str(sum(1 for f in findings if f.severity == "HIGH")) + " HIGH severity" if findings else " — schedule is well-formed"}.</p>
 <table><tr><th scope=col>Severity</th><th scope=col>Type</th><th scope=col>Finding</th><th scope=col>Course of action</th><th scope=col>Citations</th></tr>
 {find_rows or "<tr><td colspan=5 class=muted>No findings — schedule is well-formed.</td></tr>"}</table></div>
-<div class=panel><h2>AI narrative (local, cited)</h2>
+<div class=panel>{_panel_head("AI narrative (local, cited)", tools=_shell_tools(), prov=prov)}
+<p class=sf-take data-no-i18n>{len(story_source.statements)} cited statements, computed deterministically — local-AI polish swaps in when a model is active.</p>
 <ul class=story data-ai-endpoint="/api/ai/narrative?key={_e(quote(key))}">{story}</ul></div>
-<script src="/static/ai_polish.js"></script>"""
+<script src="/static/ai_polish.js"></script>
+<script src="/static/panelkit.js"></script>"""
 
 
 def _brief_body(brief: DiagnosticBrief) -> str:

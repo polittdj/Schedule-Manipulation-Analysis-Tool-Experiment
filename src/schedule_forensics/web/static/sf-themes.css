@@ -64,7 +64,8 @@ html[data-theme=apollo] body{
   font-family:'IBM Plex Mono',ui-monospace,Consolas,monospace;
 }
 html[data-theme=apollo] .panel,html[data-theme=apollo] button,html[data-theme=apollo] .btn,
-html[data-theme=apollo] input,html[data-theme=apollo] select{border-radius:0}
+html[data-theme=apollo] input,html[data-theme=apollo] select,html[data-theme=apollo] .src-bar,
+html[data-theme=apollo] a.ver-chip{border-radius:0}
 html[data-theme=apollo] h2,html[data-theme=apollo] th{text-transform:uppercase;letter-spacing:.09em}
 
 /* ── JARVIS — refined HUD (tokens only; keep hud.css effects) ── */
