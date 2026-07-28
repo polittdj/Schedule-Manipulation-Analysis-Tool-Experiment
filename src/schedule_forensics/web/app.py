@@ -3486,8 +3486,12 @@ def create_app(
             drill[key] = ribbon_offender_map(sch, analysis.cpm, analysis.audit)
         note = _skipped_notice(skipped) if skipped else ""
         header = ""
+        prov = ""
         if rows:  # the latest schedulable version anchors "Can we trust the plan?" (ADR-0198)
             lkey, lribbon, _lq = rows[-1]
+            # the matrix panel's provenance chip quotes the SAME latest version the header
+            # anchors on (Mission Ops rank 8) — presentation only, the _prov_chip vocabulary
+            prov = _prov_chip(st.schedules[lkey])
             if isinstance(lribbon, RibbonMetrics):
                 header = _can_we_trust_header(
                     st.schedules[lkey], st.analysis_for(lkey, st.schedules[lkey]), lribbon
@@ -3495,7 +3499,7 @@ def create_app(
         return _page(
             st,
             "Schedule Quality Ribbon",
-            header + _export_bar("ribbon") + _ribbon_body(rows, note, drill),
+            header + _export_bar("ribbon") + _ribbon_body(rows, note, drill, prov=prov),
         )
 
     @app.get("/volatility", response_class=HTMLResponse)
@@ -12358,6 +12362,46 @@ def _ribbon_cell_class(attr: str, r: object, quality: dict[str, MetricResult]) -
     return ""  # no published threshold — neutral
 
 
+#: rank 8 — the tooltip's verdict WORD for each cell tone, read off the class the cell already
+#: wears (single source: :func:`_ribbon_cell_class`; the title never re-judges a threshold).
+_RIBBON_CLS_VERDICT = {
+    "rib-pass": "PASS",
+    "rib-warn": "PASS, warning band (≥80% of the threshold)",
+    "rib-fail": "FAIL",
+}
+
+
+def _ribbon_cell_title(
+    label: str, attr: str, r: object, quality: dict[str, MetricResult], cls: str
+) -> str:
+    """The threshold tooltip for a ribbon-matrix cell — the EXISTING native ``title=``
+    mechanism these cells already carry (Mission Ops rank 8; never a second tooltip system).
+
+    Every figure is quoted verbatim from the quality :class:`MetricResult` (value / threshold /
+    direction) or the ribbon count the cell already shows; the verdict word comes from the class
+    :func:`_ribbon_cell_class` already assigned, so nothing is re-judged here. Unthresholded
+    measures say so — the same "neutral" vocabulary as the legend."""
+    click = "Click to list the activities behind this figure."
+    verdict = _RIBBON_CLS_VERDICT.get(cls, "")
+    q = quality.get(attr)
+    if q is not None and q.threshold is not None and verdict:
+        unit = "%" if q.unit == "%" else ""
+        comp = str(q.direction) if q.direction is not None else "<="
+        return (
+            f"{label}: {q.value:g}{unit} — published threshold {q.threshold:g}{unit} "
+            f"(pass when {comp} threshold) — {verdict}. {click}"
+        )
+    count = getattr(r, attr, None)
+    if attr in _RIBBON_ZERO_TOLERANCE and isinstance(count, int) and verdict:
+        return (
+            f"{label}: {count} — {_RIBBON_ZERO_TOLERANCE[attr]} zero-tolerance rule "
+            f"(pass when 0) — {verdict}. {click}"
+        )
+    if attr in _RIBBON_PCT5 and isinstance(count, int) and verdict:
+        return f"{label}: {count} — DCMA-05 5% rule — {verdict}. {click}"
+    return f"{label}: no published threshold — neutral. {click}"
+
+
 def _can_we_trust_header(sch: Schedule, analysis: _Analysis, ribbon: RibbonMetrics) -> str:
     """Chapter 02 "Can we trust the plan?" (ADR-0198): the data-driven takeaway + a quality-KPI
     strip + the DCMA-outcome and logic-completeness bars, for the LATEST loaded version — every
@@ -12419,8 +12463,17 @@ def _can_we_trust_header(sch: Schedule, analysis: _Analysis, ribbon: RibbonMetri
         [("Logic wired", wired, "--ok"), ("Missing logic", ribbon.missing_logic, "--bad")],
         f"{total} activities",
     )
+    # Mission Ops rank 8: the Chapter-02 beat's muted lede under the takeaway h1 (the kicker
+    # itself comes from _page's spine resolution — "Schedule Quality Ribbon" is a ch-02 title).
+    lede = (
+        '<p class="page-lede">Whether the schedule is built soundly enough to trust its '
+        "numbers &mdash; the DCMA-14 construct and the Fuse-validated ribbon measures for "
+        "every loaded version, each count computed from the schedule&rsquo;s own logic and "
+        "drillable to the activities behind it.</p>"
+    )
     return (
         f'<h1 class="page-takeaway" data-no-i18n>{takeaway}</h1>'
+        f"{lede}"
         f'<div class="ws-kpi">{kpi}</div>'
         f'<div class="ws-bars">{dcma_bar}{logic_bar}</div>'
     )
@@ -12485,13 +12538,19 @@ def _scorecard_export_table(sc: Scorecard) -> Table:
     return Table(f"{sc.name} — {sc.framework}", ("Check", "Result", "Detail", "Source"), rows)
 
 
-def _scorecard_panel(sc: Scorecard, file_key: str) -> str:
+def _scorecard_panel(sc: Scorecard, file_key: str, *, prov: str = "", export_url: str = "") -> str:
     """One assessment scorecard as a panel: a pass/fail/info chip ribbon over a detail table.
 
     Pure presentation over the validated :class:`Scorecard`; every chip's figure and the source it
     is drawn from come straight from the engine (no re-scoring here). A check that cites offending
     activities gets the ``sf-drill`` hook so clicking "(N activities)" lists them (add columns +
-    Excel) via ``drilldown.js`` against ``file_key``."""
+    Excel) via ``drilldown.js`` against ``file_key``.
+
+    Mission Ops rank 8: the panel wears the contract — headline strip + tools + provenance chip
+    (``prov``), with the existing score line restyled as the ``sf-take`` (same engine figures,
+    verbatim). ⤓ EXCEL renders only when ``export_url`` names an EXISTING endpoint (the
+    three-scorecard workbook, /export/xlsx/scorecards); ▦ DATA is omitted — the table IS the
+    data (the home-shell precedent)."""
     score = f"{sc.passed}/{sc.scored} scored checks pass" if sc.scored else "no scored checks"
     chips = "".join(
         f'<span class="sl-chip sl-{_sc_status_class(c.status)}" '
@@ -12517,13 +12576,22 @@ def _scorecard_panel(sc: Scorecard, file_key: str) -> str:
             f"<td>{_e(c.detail)}{drill}</td>"
             f"<td class=muted>{_e(c.provenance)}</td></tr>"
         )
+    export_attr = f' data-export="{_e(export_url)}"' if export_url else ""
+    tools = _shell_tools(
+        export_title=(
+            "Export the three assessment scorecards for this version — opens in Excel"
+            if export_url
+            else ""
+        )
+    )
     return (
-        f'<div class=panel data-scorecard="{_e(sc.key)}">'
-        f"<h2>{_e(sc.name)}</h2>"
-        f"<p class=muted>{_e(sc.framework)}</p>"
-        f"<p><b>{score}</b> &middot; {sc.info} informational &middot; {sc.na} n/a</p>"
-        f'<div class=stoplight-board role=list aria-label="{_e(sc.name)} ribbon">{chips}</div>'
-        "<table class=scorecard-table><tr><th scope=col>Check</th>"
+        f'<div class=panel data-scorecard="{_e(sc.key)}"{export_attr}>'
+        + _panel_head(_e(sc.name), tools=tools, prov=prov)
+        + f"<p class=muted>{_e(sc.framework)}</p>"
+        + f"<p class=sf-take data-no-i18n><b>{score}</b> &middot; {sc.info} informational "
+        f"&middot; {sc.na} n/a</p>"
+        + f'<div class=stoplight-board role=list aria-label="{_e(sc.name)} ribbon">{chips}</div>'
+        + "<table class=scorecard-table><tr><th scope=col>Check</th>"
         "<th scope=col>Result</th><th scope=col>Detail</th><th scope=col>Source</th></tr>"
         f"{rows}</table></div>"
     )
@@ -12561,10 +12629,14 @@ def _scorecards_body(
         f'<a class=btn href="/export/docx/scorecards?file={_e(current_key)}">Export (Word)</a>'
         "</form>"
     )
+    # rank 8: the panels' shared provenance chip (the assessed version) + the ⤓ EXCEL target —
+    # the EXISTING three-scorecard workbook endpoint for THIS version (never a dead link).
+    prov = _prov_chip(sch)
+    export_url = f"/export/xlsx/scorecards?file={quote(current_key, safe='')}"
     reserve = (
         "<div class=panel>"
-        "<h2>Reserve / buffer sizing</h2>"
-        "<p class=muted>How much schedule reserve protects a committed <b>project finish</b> date "
+        + _panel_head("Reserve / buffer sizing", tools=_shell_tools(), prov=prov)
+        + "<p class=muted>How much schedule reserve protects a committed <b>project finish</b> date "
         "at a chosen confidence, read from the SRA Monte-Carlo finish distribution "
         "(engine/sra.py). Enter the committed date and run — the simulation is off the page-load "
         "path so it only runs when you ask.</p>"
@@ -12577,18 +12649,29 @@ def _scorecards_body(
         "<div id=reserveOut aria-live=polite></div></div>"
     )
     panels = (
-        _scorecard_panel(stat, current_key)
-        + _scorecard_panel(gao, current_key)
-        + _scorecard_panel(ready, current_key)
+        _scorecard_panel(stat, current_key, prov=prov, export_url=export_url)
+        + _scorecard_panel(gao, current_key, prov=prov, export_url=export_url)
+        + _scorecard_panel(ready, current_key, prov=prov, export_url=export_url)
+    )
+    # rank 8: the Chapter-02 beat's muted lede under the existing takeaway h1 (the kicker
+    # comes from _page's spine resolution — "Assessment Scorecards" is a ch-02 title).
+    lede = (
+        '<p class="page-lede">Three published assessment frameworks scored on the chosen '
+        "version &mdash; NASA STAT structure checks, GAO&rsquo;s 10 scheduling best "
+        "practices, and the SRA-readiness gate &mdash; every check computed from the "
+        "schedule itself, cited to its source, and drillable to the activities behind "
+        "it.</p>"
     )
     return (
         f'<h1 class="page-takeaway" data-no-i18n>{takeaway}</h1>'
+        f"{lede}"
         f"{_sources_line([sch])}"
         f"{selector}"
         f"{panels}"
         f"{reserve}"
         "<div id=sfDrillMount></div>"  # drilldown.js loaded globally in _LAYOUT
         '<script src="/static/scorecards.js"></script>'
+        '<script src="/static/panelkit.js"></script>'
     )
 
 
@@ -12596,6 +12679,8 @@ def _ribbon_body(
     rows: list[tuple[str, object, dict[str, MetricResult]]],
     note: str,
     drill: dict[str, dict[str, tuple[int, ...]]] | None = None,
+    *,
+    prov: str = "",
 ) -> str:
     """The Acumen-Fuse-style Schedule Quality Ribbon: one row per loaded schedule, one column
     per ribbon metric — the metrics validated against the operator's Fuse workbook export.
@@ -12617,7 +12702,7 @@ def _ribbon_body(
         ("Max Float (d)", "max_float_days"),
     ]
     midcol = len(cols) // 2
-    head = "<th scope=col>Schedule</th>" + "".join(
+    head_row = "<th scope=col>Schedule</th>" + "".join(
         f"<th scope=col class=metric-th>"
         f"{_metric_help_cell(label, attr, align='right' if i >= midcol else 'left')}</th>"
         for i, (label, attr) in enumerate(cols)
@@ -12629,7 +12714,7 @@ def _ribbon_body(
         # avg/max_float_days are a placeholder 0.0 — render "—" (not a fabricated mean/max), and
         # make the cell non-clickable since there is nothing to drill (audit NEW-1).
         na_floats = getattr(r, "incomplete_float_count", 0) == 0
-        for _, attr in cols:
+        for label, attr in cols:
             if attr in _RIBBON_FLOAT_EXTRAS and na_floats:
                 cells += (
                     '<td class="rib-na" title="No incomplete activities — '
@@ -12637,12 +12722,18 @@ def _ribbon_body(
                 )
                 continue
             cls = _ribbon_cell_class(attr, r, quality)
+            # rank 8: the threshold tooltip rides the EXISTING title= these cells already carry
+            # (no second tooltip system); every figure/verdict quoted from the engine's own
+            # MetricResult and the class the cell already wears — never re-judged here.
+            title = _ribbon_cell_title(label, attr, r, quality, cls)
             cells += (
                 f'<td class="rib-cell {cls}" data-file="{_e(key)}" data-metric="{attr}" '
-                f'tabindex=0 role=button title="Click to list the activities behind this figure">'
+                f'tabindex=0 role=button title="{_e(title)}">'
                 f"{_e(getattr(r, attr))}</td>"
             )
-        body += f"<tr><td>{_e(key)}</td>{cells}</tr>"
+        # rank 8: the row label wears the 3px LEFT edge (the k-edge / cite-card family) and is
+        # i18n-inert (a filename must never be translated).
+        body += f"<tr><td class=rib-row-label data-no-i18n>{_e(key)}</td>{cells}</tr>"
     labels = {attr: label for label, attr in cols}
     # <-escape the inline-JSON embeds like every sibling embed (audit ADR-0250): a </script> in a
     # schedule key can't currently arise (keys are Path.name, no slash) but the escape is the
@@ -12657,8 +12748,24 @@ def _ribbon_body(
         "<div id=ribbonDrill class=ribbon-drill></div>"
         '<script src="/static/ribbon_drill.js"></script>'
     )
+    # ── rank 8: the matrix panel wears the contract — headline strip + ⤓/⛶ tools + prov chip +
+    # a one-line sf-take quoting totals the page already renders (row/column counts — never a
+    # re-derived metric). ▦ DATA is omitted (the matrix IS the data); ⤓ EXCEL rides the EXISTING
+    # /export/xlsx/ribbon endpoint via the panel's data-export (the home/portfolio precedent). ──
+    n_rows = len(rows)
+    take = (
+        f"<p class=sf-take data-no-i18n>{n_rows} schedule version{'s' if n_rows != 1 else ''} "
+        f"&times; {len(cols)} Fuse-validated measures — colored where a published threshold "
+        "exists; hover any cell for its threshold, click it to list the activities behind the "
+        "figure.</p>"
+    )
+    tools = _shell_tools(
+        export_title="Export the quality ribbon — one row per loaded file — opens in Excel"
+    )
+    head = _panel_head("Schedule Quality Ribbon", tools=tools, prov=prov)
     return f"""{note}
-<div class=panel><h2>Schedule Quality Ribbon</h2>
+<div class=panel data-export="/export/xlsx/ribbon">{head}
+{take}
 <p class=muted>The schedule-quality ribbon metrics, one row per loaded
 schedule. <b>Missing Logic</b> = activities missing a predecessor and/or successor;
 <b>Logic Density™</b> = logic links per activity (2&times;links &divide; activities);
@@ -12673,7 +12780,8 @@ reference schedule-quality export. <i>Float Ratio™ is omitted pending its exac
 (&ge;80% of threshold)</span> <span class=rib-fail>fail</span> &mdash; colored where a
 published threshold exists; unthresholded measures stay neutral.</span>
 <b>Click any metric cell</b> to list the activities behind that figure below.</p>
-<table><tr>{head}</tr>{body}</table></div>{drill_script}"""
+<table><tr>{head_row}</tr>{body}</table></div>{drill_script}
+<script src="/static/panelkit.js"></script>"""
 
 
 def _scurve_data(sc: SCurve) -> dict[str, object]:

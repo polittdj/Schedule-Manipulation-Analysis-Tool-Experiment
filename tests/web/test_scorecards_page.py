@@ -7,6 +7,7 @@ the chapter-02 navigation. The engine numbers themselves are pinned in tests/eng
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
@@ -79,6 +80,68 @@ def test_scorecards_export_serializes(client: TestClient) -> None:
 def test_scorecards_is_reachable_from_chapter_two(client: TestClient) -> None:
     """The page is a chapter-02 secondary ('Can we trust the plan?'), so its link is on /ribbon."""
     assert "/scorecards" in client.get("/ribbon").text
+
+
+# ── Mission Ops rank 8: panel shells on the scorecard visuals ────────────────────────────────
+
+
+def test_scorecard_panels_wear_the_contract(client: TestClient) -> None:
+    """Each scorecard panel gets the headline strip + ⤓/⛶ tools + prov chip + sf-take (the
+    existing engine figures, verbatim); ⤓ EXCEL rides the EXISTING /export/xlsx/scorecards
+    endpoint for the assessed version; ▦ DATA omitted (the table IS the data)."""
+    page = client.get("/scorecards").text
+    for name in ("NASA STAT", "GAO 10 Best Practices", "SRA-Readiness Gate"):
+        assert f"<div class=panel-head><h2>{name}</h2>" in page, name
+    assert page.count('data-export="/export/xlsx/scorecards?file=') == 3
+    assert "data-sf-excel" in page and "data-sf-big" in page
+    assert "data-sf-data" not in page  # the tables ARE the data — no ▦ DATA anywhere
+    takes = re.findall(r"<p class=sf-take data-no-i18n><b>(.*?)</b>", page)
+    assert len(takes) == 3
+    for score in takes:  # the engine's own score line, verbatim (pinned in tests/engine)
+        assert re.fullmatch(r"\d+/\d+ scored checks pass|no scored checks", score), score
+    # the assessed version's provenance chip on all three cards + the reserve panel
+    chips = re.findall(r"<span class=prov-chip data-no-i18n>(SOURCE: [^<]*· DD [^<]*)</span>", page)
+    assert len(chips) == 4 and len(set(chips)) == 1
+    # PER-PAGE include, cache-busted src (?v=…) → substring match, never the exact tag
+    assert 'src="/static/panelkit.js' in page
+    # and the ⤓ target is a live endpoint, never a dead link
+    assert client.get("/export/xlsx/scorecards").status_code == 200
+
+
+def test_reserve_panel_shell_has_no_excel_glyph(client: TestClient) -> None:
+    """No existing endpoint serves the on-demand reserve card, so its tools are ⛶ only."""
+    page = client.get("/scorecards").text
+    assert "<div class=panel-head><h2>Reserve / buffer sizing</h2>" in page
+    reserve = page.split("<div class=panel-head><h2>Reserve / buffer sizing</h2>", 1)[1]
+    head = reserve.split("</div>", 1)[0]
+    assert "data-sf-big" in head and "data-sf-excel" not in head
+    # the reserve form itself is untouched (field ids + on-demand API wiring)
+    assert "reserveForm" in reserve and "reserveDate" in reserve and "reserveRun" in reserve
+
+
+def test_scorecards_page_has_the_chapter_lede(client: TestClient) -> None:
+    page = client.get("/scorecards").text
+    assert '<p class="page-lede">' in page
+    assert "Three published assessment frameworks scored on the chosen version" in page
+
+
+def test_new_strings_never_introduce_loaded_terms(client: TestClient) -> None:
+    from schedule_forensics.ai.citations import introduces_loaded_terms
+
+    # CONTROL: the gate MUST flag a bare accusation against an empty source
+    assert introduces_loaded_terms("", "deliberate concealed fraud") is True
+
+    page = client.get("/scorecards").text
+    lede = re.search(r'<p class="page-lede">(.*?)</p>', page, re.S)
+    assert lede is not None
+    new_strings = [
+        lede.group(1),
+        *re.findall(r"<p class=sf-take data-no-i18n>(.*?)</p>", page, re.S),
+        "Export the three assessment scorecards for this version — opens in Excel",
+    ]
+    assert len(new_strings) >= 5
+    for s in new_strings:
+        assert introduces_loaded_terms("", s) is False, s
 
 
 def test_scorecards_js_is_vendored_and_air_gap_safe() -> None:

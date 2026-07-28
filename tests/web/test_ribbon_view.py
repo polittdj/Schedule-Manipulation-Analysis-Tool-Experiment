@@ -1,8 +1,15 @@
-"""Schedule Quality Ribbon view — Fuse-style per-schedule metric matrix."""
+"""Schedule Quality Ribbon view — Fuse-style per-schedule metric matrix.
+
+Mission Ops rank 8 additions: the matrix panel wears the panel contract (headline strip +
+⤓/⛶ tools + prov chip + sf-take), the row labels carry the 3px LEFT edge (k-edge / cite-card
+family), and every metric cell's EXISTING ``title=`` tooltip states its published threshold and
+the engine's own verdict — quoted, never re-judged (the verdict word is read off the class the
+cell already wears)."""
 
 from __future__ import annotations
 
 import datetime as dt
+import re
 from pathlib import Path
 
 import pytest
@@ -14,6 +21,7 @@ from schedule_forensics.model.task import Task
 from schedule_forensics.web.app import SessionState, create_app
 
 GOLD = Path(__file__).resolve().parents[1] / "fixtures" / "golden" / "project2_5"
+STATIC = Path(__file__).resolve().parents[2] / "src" / "schedule_forensics" / "web" / "static"
 
 
 @pytest.fixture
@@ -88,6 +96,98 @@ def test_ribbon_float_extras_render_na_on_all_complete_schedule() -> None:
     assert 'data-metric="max_float_days"' not in page
     # a real ribbon count (Missing Logic) is still shown as a normal clickable cell
     assert 'data-metric="missing_logic"' in page
+
+
+# ── Mission Ops rank 8: the matrix panel shell, row-label edges, threshold tooltips ──────────
+
+
+@pytest.fixture
+def loaded(client: TestClient) -> str:
+    """/ribbon with Project2 + Project5 loaded (the Fuse-validated golden pair)."""
+    for name in ("Project2.mspdi.xml", "Project5.mspdi.xml"):
+        client.post("/upload", files={"files": (name, (GOLD / name).read_bytes(), "text/xml")})
+    return client.get("/ribbon").text
+
+
+def test_ribbon_matrix_panel_wears_the_contract(client: TestClient, loaded: str) -> None:
+    """Headline strip + ⤓/⛶ tools + prov chip + sf-take; ▦ DATA omitted (the matrix IS the
+    data); ⤓ EXCEL rides the EXISTING /export/xlsx/ribbon endpoint via the panel data-export."""
+    assert '<div class=panel data-export="/export/xlsx/ribbon">' in loaded
+    assert "<div class=panel-head><h2>Schedule Quality Ribbon</h2>" in loaded
+    assert "data-sf-excel" in loaded and "data-sf-big" in loaded
+    assert "data-sf-data" not in loaded  # the matrix IS the data — no ▦ DATA anywhere
+    m = re.search(r"<p class=sf-take data-no-i18n>(.*?)</p>", loaded, re.S)
+    assert m is not None
+    assert "2 schedule versions &times; 11 Fuse-validated measures" in m.group(1)
+    # the prov chip quotes the latest anchored version (the _prov_chip vocabulary, i18n-inert)
+    chip = re.search(r"<span class=prov-chip data-no-i18n>(.*?)</span>", loaded)
+    assert chip is not None and chip.group(1).startswith("SOURCE: ") and " · DD " in chip.group(1)
+    # PER-PAGE include, cache-busted src (?v=…) → substring match, never the exact tag
+    assert 'src="/static/panelkit.js' in loaded
+    # and the ⤓ target is a live endpoint, never a dead link
+    assert client.get("/export/xlsx/ribbon").status_code == 200
+
+
+def test_ribbon_row_labels_wear_the_left_edge(loaded: str) -> None:
+    """One 3px-edge row label per loaded schedule (k-edge / cite-card family), i18n-inert."""
+    assert loaded.count("<td class=rib-row-label data-no-i18n>") == 2
+    css = (STATIC / "app.css").read_text(encoding="utf-8")
+    assert "td.rib-row-label { border-left: 3px solid var(--accent); font-weight: 600; }" in css
+    # the restyle is token-pure: the new rib rules carry no hex/rgb literals
+    block = css.split("td.rib-row-label", 1)[1].split(".ribbon-drill", 1)[0]
+    assert not re.search(r"#[0-9a-fA-F]{3}|rgb\(", block)
+
+
+def test_ribbon_cells_carry_threshold_tooltips_never_re_judged(loaded: str) -> None:
+    """Every colored cell's title states the published threshold/rule and a verdict word that
+    MATCHES the class the cell already wears (single source: _ribbon_cell_class)."""
+    cells = re.findall(r'<td class="rib-cell ?([a-z-]*)"[^>]*title="([^"]*)"', loaded)
+    assert cells, "no ribbon cells rendered"
+    saw_threshold = saw_zero = saw_neutral = False
+    for cls, title in cells:
+        if cls == "rib-fail":
+            assert "FAIL." in title, (cls, title)
+        elif cls == "rib-pass":
+            assert "PASS." in title, (cls, title)
+        elif cls == "rib-warn":
+            assert "warning band" in title, (cls, title)
+        else:
+            assert "no published threshold — neutral" in title, (cls, title)
+            saw_neutral = True
+        saw_threshold = saw_threshold or "published threshold" in title
+        saw_zero = saw_zero or "zero-tolerance rule (pass when 0)" in title
+        assert title.endswith("Click to list the activities behind this figure.")
+    assert saw_threshold and saw_zero and saw_neutral
+    # the golden pair renders real engine values inside the thresholded titles (e.g. the 5% rule)
+    assert "published threshold 5%" in loaded
+
+
+def test_ribbon_page_has_the_chapter_lede(loaded: str) -> None:
+    assert '<p class="page-lede">' in loaded
+    assert "Whether the schedule is built soundly enough to trust its numbers" in loaded
+
+
+def test_new_strings_never_introduce_loaded_terms(loaded: str) -> None:
+    from schedule_forensics.ai.citations import introduces_loaded_terms
+
+    # CONTROL: the gate MUST flag a bare accusation against an empty source
+    assert introduces_loaded_terms("", "deliberate concealed fraud") is True
+
+    lede = re.search(r'<p class="page-lede">(.*?)</p>', loaded, re.S)
+    take = re.search(r"<p class=sf-take data-no-i18n>(.*?)</p>", loaded, re.S)
+    assert lede is not None and take is not None
+    cell_re = r'<td class="rib-cell ?([a-z-]*)"[^>]*title="([^"]*)"'
+    titles = [t for _c, t in re.findall(cell_re, loaded)]
+    new_strings = [
+        lede.group(1),
+        take.group(1),
+        "Export the quality ribbon — one row per loaded file — opens in Excel",
+        "PASS, warning band (≥80% of the threshold)",
+        *titles,
+    ]
+    assert len(new_strings) >= 8
+    for s in new_strings:
+        assert introduces_loaded_terms("", s) is False, s
 
 
 def test_ribbon_export_writes_na_sentinel_for_empty_float_population() -> None:

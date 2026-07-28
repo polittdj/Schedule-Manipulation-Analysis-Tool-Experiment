@@ -895,6 +895,12 @@ td.rib-cell.rib-selected { outline: 2px solid var(--focus); outline-offset: -2px
 /* not-applicable float cell (empty incomplete-activity population): the "—" sentinel, muted and
    non-interactive — nothing to drill, and never a fabricated 0 (audit NEW-1). */
 td.rib-na { color: var(--muted); cursor: default; }
+/* rank 8 (/ribbon): the prototype ribbon-matrix grid — compact tabular count cells, a 3px
+   row-label LEFT edge (the k-edge / cite-card family), and an accent hover ring. Tokens only;
+   the pass/warn/fail tones above stay the engine's own status colors (never re-judged). */
+td.rib-row-label { border-left: 3px solid var(--accent); font-weight: 600; }
+td.rib-cell { text-align: center; font-variant-numeric: tabular-nums; }
+td.rib-cell:hover { outline: 1px solid var(--accent); outline-offset: -1px; }
 .ribbon-drill { margin-top: 14px; }
 .ribbon-drill h3 { margin: 8px 0 4px; }
 /* Integrity finding citation drill (operator 2026-07-08): the "(+N more — view all)" link opens

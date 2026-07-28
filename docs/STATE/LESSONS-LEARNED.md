@@ -435,6 +435,23 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-28 (cont. 5) — when the VERIFIER dies, the work is unverified
+
+- Round 8's lead agent failed on an infrastructure condition (usage credits exhausted) after both
+  verifiers had returned clean. The tempting read is "two greens, ship it" — but ADR-0240 puts the
+  lead there precisely because verifiers have been wrong before. The orchestrator performed the
+  lead role itself on a different model: re-ran the scope check, the loaded-terms control, every
+  static gate, the mandated suites, and the critical parity audit (ribbon matrix values dumped
+  from an origin/main worktree vs the working tree — byte-identical).
+  **LESSON: an orchestration step can die for reasons unrelated to the work. Distinguish "the
+  check passed" from "the check ran". When a verification step fails to complete, the work is
+  UNVERIFIED regardless of what the other steps said — perform the role yourself or hold.**
+- Round 8 also shows the right shape for a derived display string: the ribbon tooltip's verdict
+  word is read off the class `_ribbon_cell_class` already assigned, not recomputed from the value.
+  **LESSON: when a UI needs to restate a judgement the engine already made, read the engine's own
+  artifact (the class, the enum, the status) — recomputing it creates a second source that can
+  disagree with the first under exactly the inputs a testimony context will scrutinize.**
+
 ### 2026-07-28 (cont. 4) — match the proof to the page's hazard; a core queue closes
 
 - /portfolio's hazard was state-posting forms, so the round's proof was shaped to it: byte-diff
