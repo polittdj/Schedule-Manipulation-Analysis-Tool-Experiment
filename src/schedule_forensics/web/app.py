@@ -6110,8 +6110,11 @@ def create_app(
                 if u not in st.sra_factors or (want is not None and u not in want):
                     continue
                 # a completed activity gets no Best/Worst spread (ADR-0307) — the engine holds it
-                # at a point mass, so auto-calc must not display a range the run will not use
+                # at a point mass, so auto-calc must not leave a range the run will not use. Drop
+                # any stale entry (calculated before completion, or restored from a setup) rather
+                # than merely skipping the recalculation (ADR-0308).
                 if _is_completed(t):
+                    st.sra_bcwc.pop(u, None)
                     continue
                 rem = (
                     t.remaining_duration_minutes
@@ -6379,6 +6382,13 @@ def create_app(
             if d.get("focus"):
                 st.sra_focus_uid = uid
                 changed = True
+            # ADR-0308: a completed activity carries no Best/Worst spread, so the grid must neither
+            # derive one from a factor nor accept a hand-typed one — the run would ignore it and the
+            # operator would be looking at a range that does not exist. The factor itself is still
+            # recorded (it is the operator's ranking), only the range is refused.
+            done_task = _is_completed(task)
+            if done_task:
+                st.sra_bcwc.pop(uid, None)
             if d.get("factor") not in (None, ""):
                 try:
                     # factor 0 is VALID (no Best/Worst uncertainty -> use remaining); only 1..5 carry
@@ -6388,8 +6398,9 @@ def create_app(
                     f = None
                 if f is not None:
                     st.sra_factors[uid] = f
-                    bc, _ml, wc = factor_to_bc_wc(rem, f, tbl)
-                    st.sra_bcwc[uid] = (bc, wc)
+                    if not done_task:
+                        bc, _ml, wc = factor_to_bc_wc(rem, f, tbl)
+                        st.sra_bcwc[uid] = (bc, wc)
                     changed = True
             bc_min, wc_min = st.sra_bcwc.get(uid, (rem, rem))
             manual = False
@@ -6401,7 +6412,7 @@ def create_app(
                         continue
                     bc_min, wc_min = (minutes, wc_min) if slot == 0 else (bc_min, minutes)
                     manual = True
-            if manual:
+            if manual and not done_task:  # a completed row never takes a range (ADR-0308)
                 st.sra_bcwc[uid] = (int(bc_min), int(wc_min))
                 changed = True
             saved += int(changed)
@@ -14043,6 +14054,9 @@ def _ssi_data(sch: Schedule, result: SSIResult) -> dict[str, object]:
                 "mean_delta_days": r.mean_delta_days,
                 "probability_rating": r.probability_rating,
                 "consequence_rating": r.consequence_rating,
+                # ADR-0308: False when every affected activity is complete, so the risk fired but
+                # moved nothing — sra_ssi.js renders it as "inert (activity complete)"
+                "applied": r.applied,
             }
             for r in result.risks
         ],
@@ -14256,6 +14270,9 @@ def _ssi_grid_rows(st: SessionState, sch: Schedule, cpm: CPMResult) -> list[dict
         uid = cast("int", row["unique_id"])
         task = by_id.get(uid)
         editable = task is not None and not row["is_summary"]
+        # a completed activity carries no Best/Worst spread (ADR-0307/0308), so the grid must not
+        # SHOW one the simulation ignores, nor accept a new one
+        completed = task is not None and _is_completed(task)
         rem_days: float | None = None
         if editable and task is not None and mpd:
             rem_min = (
@@ -14266,7 +14283,7 @@ def _ssi_grid_rows(st: SessionState, sch: Schedule, cpm: CPMResult) -> list[dict
             rem_days = round(rem_min / mpd, 1)
         bc_days: float | None = None
         wc_days: float | None = None
-        if uid in st.sra_bcwc and mpd:
+        if uid in st.sra_bcwc and mpd and not completed:
             bc_days = round(st.sra_bcwc[uid][0] / mpd, 1)
             wc_days = round(st.sra_bcwc[uid][1] / mpd, 1)
         row.update(
@@ -14275,6 +14292,7 @@ def _ssi_grid_rows(st: SessionState, sch: Schedule, cpm: CPMResult) -> list[dict
                 "factor": st.sra_factors.get(uid),
                 "bc_days": bc_days,
                 "wc_days": wc_days,
+                "completed": completed,
                 "has_risk": uid in risk_uids,
                 "is_focus": uid == st.sra_focus_uid,
                 "editable": editable,
@@ -14287,7 +14305,11 @@ def _ssi_grid_rows(st: SessionState, sch: Schedule, cpm: CPMResult) -> list[dict
 
 
 _SSI_SETUP_VERSION = (
-    2  # 2: + legacy triangular (low/ml/high) + per-activity overrides (whole setup)
+    # 2: + legacy triangular (low/ml/high) + per-activity overrides (whole setup)
+    # 3: ADR-0307 corrected the Best Case (a % OF the ML, not a % to subtract), so every
+    #    factor-derived Best/Worst stored by a version <= 2 setup carries the OLD inverted value.
+    #    Loading one must NOT keep running the formula ADR-0307 fixed — see _apply_ssi_setup.
+    3
 )
 
 
@@ -14373,6 +14395,7 @@ def _apply_ssi_setup(st: SessionState, data: dict[str, object]) -> None:
     """Repopulate the SSI SessionState from a saved setup dict, validating against the active
     schedule: unknown / summary UIDs are dropped, factors clamped 1..5, probabilities 0..1."""
     chosen = _sra_selected(st)
+    by_uid: dict[int, Task] = {} if chosen is None else dict(chosen[1].tasks_by_id)
     leaf: set[int] = set()
     if chosen is not None:
         _key, sch, _cpm = chosen
@@ -14440,6 +14463,17 @@ def _apply_ssi_setup(st: SessionState, data: dict[str, object]) -> None:
                 except (TypeError, ValueError):
                     continue
     st.sra_factors = factors
+    # ADR-0308: a setup written before ADR-0307 stores Best/Worst values computed with the INVERTED
+    # Best-Case formula, and _ssi_three_point gives a stored range precedence over factor_to_bc_wc —
+    # so loading one silently re-runs the very bug ADR-0307 fixed (the committed reference setup
+    # holds 783 such pairs, e.g. UID 427 factor 5 with BC 432 on ML 480 = the old 0.90*ML). A stored
+    # entry does not record whether it was factor-derived or hand-typed, so on a pre-v3 setup we drop
+    # exactly those whose uid ALSO carries a factor (they get recomputed correctly) and keep the rest.
+    try:
+        loaded_version = int(cast("int", data.get("setup_version") or 1))
+    except (TypeError, ValueError):
+        loaded_version = 1
+    stale_factor_derived = loaded_version < 3
     bcwc: dict[int, tuple[int, int]] = {}
     raw_bcwc = data.get("bcwc_minutes")
     if isinstance(raw_bcwc, dict):
@@ -14447,6 +14481,23 @@ def _apply_ssi_setup(st: SessionState, data: dict[str, object]) -> None:
             try:
                 uid = int(key)
             except (TypeError, ValueError):
+                continue
+            if stale_factor_derived and uid in factors:
+                # recompute from the CORRECTED formula instead of trusting the stored value. The
+                # run would be right either way (_ssi_three_point falls back to the factor when no
+                # range is stored), but recomputing means the grid shows the corrected numbers and
+                # the setup round-trips instead of reading blank until the operator re-runs auto-calc.
+                task = by_uid.get(uid)
+                if task is not None and not _is_completed(task):
+                    rem_min = (
+                        task.remaining_duration_minutes
+                        if task.remaining_duration_minutes is not None
+                        else task.duration_minutes
+                    )
+                    fixed_bc, _ml, fixed_wc = factor_to_bc_wc(
+                        rem_min, factors[uid], RiskFactorTable(rows=st.sra_factor_rows)
+                    )
+                    bcwc[uid] = (fixed_bc, fixed_wc)
                 continue
             if _ok(uid) and isinstance(pair, list) and len(pair) == 2:
                 try:

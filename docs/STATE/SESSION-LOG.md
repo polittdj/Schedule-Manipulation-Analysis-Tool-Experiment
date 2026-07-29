@@ -8957,3 +8957,40 @@ MSP re-run with *Includes Risks/Opportunities = No*.
 
 **Gate.** `pytest -m parity` green (44 passed, no golden moved) · ruff · ruff format (793 files) ·
 mypy --strict · bandit exit 0 · node --check all clean. Wheel + nine installers rebuilt at v1.0.123.
+
+## 2026-07-29 (cont.4) — a guard that one code path can walk around (ADR-0308, v1.0.124)
+
+**Trigger.** ADR-0307 merged as #481 (`08c5383`). An outside reviewer (ChatGPT Codex) then raised
+three defects against that commit. All three were **re-verified by execution before anything was
+changed** — and all three were real, including one citing a committed fixture by exact value.
+
+**The unifying failure: the ADR-0307 guard could be walked around by three other code paths.**
+
+1. **The register walked around it.** Forcing a completed activity's three-point to a point mass did
+   not stop the risk loop adding each fired impact to that same activity. Executed: a 50%/20-day risk
+   on a 100%-complete driver gave `std_days=9.99` and moved **P90 by 20 working days on finished
+   work**. Now skipped in `compute_sra_ssi` *and* `compute_jcl` — and **disclosed**, because a risk
+   that fires but moves nothing is precisely the V2 pathology documented the same day.
+   `SSIRiskStat.applied=False` renders as `inert (activity complete)` in a new Status column.
+2. **Saved setups walked around it.** `_ssi_three_point` prefers a stored range over
+   `factor_to_bc_wc`, and `_apply_ssi_setup` restored `bcwc_minutes` with no version check, so every
+   pre-0307 setup kept running the inverted formula. **Not hypothetical:**
+   `00_REFERENCE_INTAKE/references/sra-ssi-setup.json` (`setup_version: 1`) holds **783** such pairs
+   — UID 427, factor 5, BC 432 on an implied ML of 480 = the old 0.900×ML, exactly as the reviewer
+   said. `_SSI_SETUP_VERSION` → 3; a pre-v3 load recomputes BC/WC wherever a factor exists.
+3. **The grid displayed what the run ignored.** Auto-calc only *skipped* recalculation, leaving a
+   stale range that the grid and setup export still showed. Now cleared at source; completed rows
+   neither display nor accept a range, while the factor (the operator's ranking) is still recorded.
+
+**Two operator decisions were taken rather than guessed** (both via AskUserQuestion): exclude-and-
+disclose for the inert risk, and recompute-where-a-factor-exists for legacy setups — with the cost
+stated plainly, that a hand-typed override on a factor-bearing activity in an old setup is replaced,
+since stored entries do not record manual-vs-derived.
+
+**The SRA parity conclusion is unchanged.** Mean +27 against MSP's +111.45, σ 125.9 against 64.74,
+deterministic percentile P40 against 5.65%. The residual remains about variance, and the carried
+anchor/equivalence finding remains the leading explanation.
+
+**Gate.** `pytest -m parity` green (44 passed, no golden moved) · ruff · ruff format (793 files) ·
+mypy --strict · bandit exit 0 · node --check clean. Four new regression tests. v1.0.124, wheel + nine
+installers rebuilt.

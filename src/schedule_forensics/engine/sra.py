@@ -748,6 +748,10 @@ class SSIRiskStat:
     mean_delta_days: float  # mean focus finish when it fired minus when it didn't (working days)
     probability_rating: int  # 1..5 from the occurrence band
     consequence_rating: int  # 1..5 (operator-entered or |impact_days| band)
+    #: False when EVERY affected activity is already complete, so the impact was applied to nothing
+    #: (ADR-0308). A risk that fires but moves nothing must never be reported as if it bit — the
+    #: panel renders this as "inert (activity complete)" beside the hit count.
+    applied: bool = True
 
 
 @dataclass(frozen=True)
@@ -1645,6 +1649,12 @@ def compute_sra_ssi(
             if fired:
                 add = round(risk.impact_days * mpd)
                 for u in risk.affected:
+                    # ADR-0308: finished work cannot be delayed by a future risk. Without this the
+                    # ADR-0307 point-mass guard was defeated — the register still added the impact
+                    # to a completed activity's duration (a 50%/20-day risk on a completed driver
+                    # produced std 9.99 wd, P90 +20 wd). Disclosed via SSIRiskStat.applied.
+                    if u in done:
+                        continue
                     if u in overrides:
                         overrides[u] = max(0, overrides[u] + add)
         for bidx, branch in enumerate(applied_branches):
@@ -1747,6 +1757,10 @@ def compute_sra_ssi(
         if c.id not in cond_plan_uids
     )
 
+    # a risk whose every affected activity is complete applied to nothing — disclosed, never silent
+    risk_applied = [
+        any((u in uid_set) and (u not in done) for u in r.affected) for r in active_risks
+    ]
     return _build_ssi_result(
         schedule,
         config,
@@ -1760,6 +1774,7 @@ def compute_sra_ssi(
         critical_counts=critical_counts,
         branch_stats=branch_stats,
         conditional_stats=conditional_stats,
+        risk_applied=risk_applied,
     )
 
 
@@ -1808,6 +1823,7 @@ def _build_ssi_result(
     critical_counts: Mapping[int, int] | None = None,
     branch_stats: tuple[SSIBranchStat, ...] = (),
     conditional_stats: tuple[SSIConditionalStat, ...] = (),
+    risk_applied: Sequence[bool] | None = None,
 ) -> SSIResult:
     n = len(finishes)
     sorted_f = sorted(finishes)
@@ -1843,7 +1859,8 @@ def _build_ssi_result(
     )
 
     rstats: list[SSIRiskStat] = []
-    for risk, occ in zip(active_risks, risk_occurred, strict=True):
+    applied_flags = list(risk_applied) if risk_applied is not None else [True] * len(active_risks)
+    for ridx, (risk, occ) in enumerate(zip(active_risks, risk_occurred, strict=True)):
         on = [float(f) for f, o in zip(finishes, occ, strict=True) if o]
         off = [float(f) for f, o in zip(finishes, occ, strict=True) if not o]
         delta = (
@@ -1864,6 +1881,7 @@ def _build_ssi_result(
                 mean_delta_days=delta,
                 probability_rating=_prob_rating(risk.probability),
                 consequence_rating=cons,
+                applied=applied_flags[ridx] if ridx < len(applied_flags) else True,
             )
         )
 

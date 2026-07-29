@@ -137,6 +137,36 @@ def test_a_completed_activity_carries_no_duration_uncertainty() -> None:
     assert compute_sra_ssi(_net(live), config=cfg, three_point=wide).std_days > 0.0
 
 
+def test_a_register_risk_never_delays_completed_work() -> None:
+    """ADR-0308: the ADR-0307 point-mass guard alone did NOT stop the register.
+
+    A risk targeting a completed activity still had its impact added to that activity's duration:
+    a 50%-probability 20-day risk on a completed driver produced std 9.99 wd and moved P90 by 20
+    working days on work that had already finished. The impact is now skipped, and because a risk
+    that fires but moves nothing must never be silent, the stat is flagged ``applied=False``.
+    """
+
+    def _net(driver: Task) -> Schedule:
+        return Schedule(
+            name="S",
+            project_start=MON,
+            tasks=(_task(1, 1), driver, _task(3, 2), _task(4, 1)),
+            relationships=(_rel(1, 2), _rel(1, 3), _rel(2, 4), _rel(3, 4)),
+        )
+
+    risk = (ScheduleRisk(id="r", name="risk", probability=0.5, impact_days=20.0, affected=(2,)),)
+    cfg = SRAConfig(iterations=200, seed=3, target_uid=4, use_risk_register=True)
+    done = compute_sra_ssi(_net(_task(2, 10, percent_complete=100.0)), config=cfg, risks=risk)
+    assert done.std_days == 0.0, "a risk must not delay an activity that is already complete"
+    assert done.p90 == done.deterministic_finish
+    assert done.risks[0].applied is False, "an inert risk must disclose itself, never fire silently"
+    assert done.risks[0].hits > 0, "it still fired — the hit count is real, the impact is not"
+    # the guard is not a blanket no-op: the same risk on live work still moves the finish
+    live = _task(2, 10, percent_complete=0.0, remaining_duration_minutes=10 * DAY)
+    hot = compute_sra_ssi(_net(live), config=cfg, risks=risk)
+    assert hot.std_days > 0.0 and hot.risks[0].applied is True
+
+
 def test_factor_zero_is_a_point_mass_no_spread() -> None:
     """A factor-0 task carries no Best/Worst spread, so it contributes no duration uncertainty to
     the focus finish — the simulated finish equals the deterministic finish."""

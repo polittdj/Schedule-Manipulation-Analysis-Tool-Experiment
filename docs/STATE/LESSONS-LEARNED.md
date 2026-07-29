@@ -435,6 +435,43 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-29 (cont.5) — a guard one code path can walk around is not a guard
+
+**What happened.** ADR-0307 corrected the SSI Best-Case rule and stopped the simulation randomising
+completed work. It merged. An outside reviewer then found **three** ways the fix did not actually
+hold, and every one of them reproduced under execution.
+
+**The pattern, which is the lesson.** Correcting a rule in the place it is *computed* is only the
+first of four jobs. The fix is not done until you have also closed:
+- **the second writer of the same state** — the risk register still added its impact to the very
+  activities the new guard had just point-massed (P90 moved 20 working days on finished work);
+- **the persisted copy of the old output** — saved setups stored Best/Worst values computed by the
+  old formula, and the loader preferred them over the corrected calculation, so an operator loading
+  a setup silently re-ran the exact bug that had just been fixed, forever;
+- **the reader that still displays it** — the grid kept showing a range the engine had stopped using.
+
+Ask, every time: *who else writes this state, who has a saved copy of the old answer, and who still
+reads it?* A guard that one code path can walk around is not a guard.
+
+**Persisted derived values are a migration problem, not a formula problem.** The moment a computed
+value is written to a file an operator can reload, correcting the formula stops being sufficient.
+Version the schema and migrate — and when the stored data cannot distinguish *derived* from
+*hand-entered* (ours could not), say so out loud and let the operator choose, rather than picking
+silently. We asked; they chose recompute-where-a-factor-exists; the cost is written into the ADR.
+
+**An outside review can be right — verify, then act, and do not let being burned before become a
+reason to dismiss.** The ADR-0306 round taught that outside findings must be re-verified because some
+are wrong. The correct conclusion was never "outside findings are wrong"; it is "**verify by
+execution, then act on what survives**". Here all three survived, one of them naming a committed
+fixture by exact value (UID 427, BC 432 on ML 480). Both failure modes are real: credulously
+accepting a bad finding, and reflexively dismissing a good one. The defence against both is the same
+executable check.
+
+**A fix that ships, is believed, and is silently bypassed is the worst outcome available.** Worse
+than not shipping — because the tool now carries a documented claim to be correct on a path where it
+is not. That is what the saved-setup hole was, and it is why it was worth a same-day follow-up rather
+than a backlog entry.
+
 ### 2026-07-29 (cont.4) — a validation that only samples the degenerate case validates nothing
 
 **What happened.** The operator reported a Law-2 fidelity defect: the same SRA run gave materially

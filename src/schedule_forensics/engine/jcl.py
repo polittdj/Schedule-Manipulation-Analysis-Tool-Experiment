@@ -275,6 +275,8 @@ def compute_jcl(
             if occ[ridx][i]:
                 add = round(risk.impact_days * mpd)
                 for u in risk.affected:
+                    if u in done:  # finished work cannot be delayed by a future risk (ADR-0308)
+                        continue
                     if u in overrides:
                         overrides[u] = max(0, overrides[u] + add)
         # cost draws come AFTER every duration draw (and consume the same per-iteration

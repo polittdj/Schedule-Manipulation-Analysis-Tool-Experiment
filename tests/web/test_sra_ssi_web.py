@@ -33,6 +33,15 @@ def client() -> TestClient:
     return c
 
 
+def _editable_uid(client: TestClient) -> int:
+    """The first editable (leaf, incomplete) grid row — a safe target for factor/BC-WC edits."""
+    return next(
+        r["unique_id"]
+        for r in client.get("/api/sra/grid").json()["rows"]
+        if r["editable"] and not r.get("completed") and (r.get("remaining_days") or 0) > 0
+    )
+
+
 def _fs_tie(client: TestClient, *, driving: bool) -> tuple[int, int]:
     """A real FS tie in the loaded Project5 — both endpoints critical when ``driving``."""
     from schedule_forensics.engine.cpm import compute_cpm
@@ -326,6 +335,79 @@ def test_factor_then_auto_calc_then_oat(client: TestClient) -> None:
     assert cols <= set(rows[0])
     # rows are sorted by total swing descending
     assert [r["total"] for r in rows] == sorted((r["total"] for r in rows), reverse=True)
+
+
+def test_a_pre_adr0307_setup_does_not_reimport_the_inverted_best_case(client: TestClient) -> None:
+    """ADR-0308: loading an old setup must not silently re-run the formula ADR-0307 fixed.
+
+    `_ssi_three_point` gives a stored Best/Worst precedence over `factor_to_bc_wc`, so a setup
+    written before the fix (its `bcwc_minutes` computed with BC = ML*(1 - sub%/100)) would keep the
+    inverted numbers forever. The committed reference setup holds 783 such pairs. A stored entry
+    does not record whether it was factor-derived or hand-typed, so a pre-v3 setup drops exactly
+    those whose uid also carries a factor; entries with no factor are the operator's own and stay.
+    """
+    import json as _json
+
+    uid = _editable_uid(client)
+    legacy = {
+        "setup_version": 2,  # pre-ADR-0307
+        "factors": {str(uid): 5},
+        # BC = 0.9 * ML: the OLD inverted factor-5 result (the corrected rule gives 0.1 * ML)
+        "bcwc_minutes": {str(uid): [432, 720], "999999": [1, 2]},
+    }
+    r = client.post(
+        "/sra/ssi/load",
+        files={"setup": ("setup.json", _json.dumps(legacy).encode(), "application/json")},
+    )
+    assert r.status_code in (200, 303)
+    rows = {row["unique_id"]: row for row in client.get("/api/sra/grid").json()["rows"]}
+    bc, wc = rows[uid]["bc_days"], rows[uid]["wc_days"]
+    assert bc is not None and wc is not None
+    # recomputed from the CORRECTED rule: BC = 10% of ML, not the stored 90%
+    assert bc == pytest.approx(round(rows[uid]["remaining_days"] * 0.1, 1), abs=0.15)
+    assert bc * 9 < wc, "the stale 0.9*ML Best Case must not have survived the load"
+
+
+def test_a_current_setup_round_trips_its_ranges_untouched(client: TestClient) -> None:
+    """The ADR-0308 migration must fire ONLY on pre-v3 setups — a setup saved by this build keeps
+    its stored ranges verbatim, so the drop is a migration and not a permanent amnesia."""
+    import json as _json
+
+    uid = _editable_uid(client)
+    client.post("/sra/factor", data={"uids": str(uid), "factor": "5"})
+    client.post("/sra/auto-calc", data={"scope": "all"})
+    saved = _json.loads(client.get("/sra/ssi/save").content)
+    assert saved["setup_version"] >= 3 and str(uid) in saved["bcwc_minutes"]
+    client.post("/sra/risk-register", data={"action": "clear"})
+    r = client.post(
+        "/sra/ssi/load",
+        files={"setup": ("setup.json", _json.dumps(saved).encode(), "application/json")},
+    )
+    assert r.status_code in (200, 303)
+    reloaded = _json.loads(client.get("/sra/ssi/save").content)
+    assert reloaded["bcwc_minutes"][str(uid)] == saved["bcwc_minutes"][str(uid)]
+
+
+def test_the_grid_neither_shows_nor_accepts_a_range_on_completed_work(client: TestClient) -> None:
+    """ADR-0308: skipping the recalculation left a stale range in session state that the grid still
+    displayed and the setup still persisted, while the run ignored it — an operator reading a
+    Best/Worst that the simulation does not use. uid 5 is 100% complete in the Project5 golden."""
+    import json as _json
+
+    client.post("/sra/factor", data={"uids": "5", "factor": "5"})
+    client.post("/sra/auto-calc", data={"scope": "all"})
+    row = next(r for r in client.get("/api/sra/grid").json()["rows"] if r["unique_id"] == 5)
+    assert row["completed"] is True
+    assert row["bc_days"] is None and row["wc_days"] is None
+    assert row["factor"] == 5, "the ranking is still recorded — only the range is refused"
+    # a hand-typed range on a completed row is refused too, not just the derived one
+    client.post(
+        "/sra/grid",
+        data={"deltas": _json.dumps([{"uid": 5, "bc_days": 1.0, "wc_days": 99.0}])},
+    )
+    row2 = next(r for r in client.get("/api/sra/grid").json()["rows"] if r["unique_id"] == 5)
+    assert row2["bc_days"] is None and row2["wc_days"] is None
+    assert "5" not in _json.loads(client.get("/sra/ssi/save").content)["bcwc_minutes"]
 
 
 def test_a_completed_activity_never_enters_the_oat_sweep(client: TestClient) -> None:
