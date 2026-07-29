@@ -1,6 +1,6 @@
 # Handoff — 2026-07-29 (an absent figure is not a zero; ADR-0306; v1.0.122)
 
-> ## STATUS (current) — **PR open (draft)**: the falsy-zero correctness pass off `origin/main` (`e74724e`, #478). Version **1.0.122**, wheel + nine installers regenerated. Highest ADR **ADR-0306**. Redesign tail rank 12 (the Library/Setup sweep) is **still next** — this round was an out-of-band correctness fix, not a UI round, so the tail queue is untouched.
+> ## STATUS (current) — **NOTHING IN FLIGHT.** The falsy-zero correctness pass MERGED as **#479** (`6e5761f`). Version **1.0.122**, wheel + nine installers regenerated. Highest ADR **ADR-0306**. Redesign tail rank 12 (the Library/Setup sweep — `/workbench`, `/groups`, `/standards`, `/margin`, `/card/{name}`, `/wbs/{name}`) is **still next**: this round was an out-of-band correctness fix, not a UI round, so the tail queue is untouched.
 >
 > ### What happened
 > An outside auditor (ChatGPT Codex) reported seven defects at `9a1e560`. An adversarial verification
