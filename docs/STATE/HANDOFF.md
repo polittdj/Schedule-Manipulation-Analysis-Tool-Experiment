@@ -1,8 +1,8 @@
 # Handoff — 2026-07-29 (round 11 shipped; the ⛶ that finally moves; ADR-0305; v1.0.121)
 
-> ## STATUS (current) — Round 11 MERGED as #476 (`aef25f6`). Version **1.0.121**, wheel + nine installers regenerated. Highest ADR **ADR-0305**. Tail rank 11 done; **next is rank 12 — the Library/Setup sweep (`/workbench`, `/groups`, `/standards`, `/margin`, `/card/{name}`, `/wbs/{name}`).**
+> ## STATUS (current) — NOTHING IN FLIGHT. Round 11 MERGED as **#476** (`aef25f6`) and its verification follow-up as **#477** (`9a1e560`). `main` green on all four checks (`test 3.11` / `test 3.13` / **`browser (measured-box proof)`** / `check`). Version **1.0.121**, wheel + nine installers regenerated. Highest ADR **ADR-0305**. Tail rank 11 done; **next is rank 12 — the Library/Setup sweep (`/workbench`, `/groups`, `/standards`, `/margin`, `/card/{name}`, `/wbs/{name}`).**
 >
-> ### ⚠️ POST-MERGE VERIFICATION VERDICT: **SHIP WITH FIXES** — and the fixes landed as a follow-up
+> ### ⚠️ POST-MERGE VERIFICATION VERDICT: **SHIP WITH FIXES** — and the fixes landed and MERGED as #477
 > Three worktree-isolated adversarial verifiers + an adjudicating lead re-ran the round after merge.
 > All three headline claims **independently reproduced** (192 pristine NO-OPs → 4; 0 MOVED→NO-OP;
 > 64/64 new-route controls move in all four themes; Law 2 clean — 13 merged routes byte-identical in
