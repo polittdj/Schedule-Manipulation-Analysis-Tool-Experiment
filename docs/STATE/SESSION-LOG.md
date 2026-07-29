@@ -8900,3 +8900,12 @@ CI, a difference visible in both logs. Fixed by `[tool.ruff.format] exclude = ["
 than by accepting the reformat: ruff wanted to collapse a quoted `dcma14._r` snippet into a 103-col
 one-liner that exists nowhere in the tree, which would have made the audit's "verbatim quote" disagree
 with the source it cites. A formatter must not rewrite evidence. Gate re-run with `python -m ruff`.
+
+**Merged.** #479 squash-merged as `6e5761f`; branch restarted from `origin/main` with `--prune` per the
+post-merge rule. CI took two rounds: round 1 red on `ruff format --check .` (the shadowed-binary /
+Markdown-code-block skew above), round 2 green. Four findings remain deliberately unfixed and are
+carried in ADR-0306 and the handoff NEXT block: **CC-01** (`offset_to_datetime` returns non-working
+dates — 74 call sites, root cause of V6, needs a Fable 5 Max CPM deep dive), **CC-05** (negative sub-day
+slack floors; parity cannot distinguish floor from truncate on our goldens, needs an SSI reference
+compare), **V3** (elapsed literals — product decision), **V1/V2** (SRA magnitude entry — needs an
+operator-visible error, so the five standing UI requirements apply). None of them is a "just patch it".
