@@ -1,6 +1,40 @@
 # Handoff — 2026-07-29 (a guard that one code path can walk around; ADR-0308; v1.0.124)
 
-> ## STATUS (current) — **ADR-0307 MERGED as #481 (`08c5383`); the ADR-0308 follow-up is in flight.** An outside reviewer (Codex) raised three defects against #481 **after** it merged; all three were re-verified BY EXECUTION and all three were real. Version **1.0.124**, wheel + nine installers regenerated. Highest ADR **ADR-0308**. Evidence: `audit/SRA-PARITY-20260729.md`. Redesign tail rank 12 (`/workbench`, `/groups`, `/standards`, `/margin`, `/card/{name}`, `/wbs/{name}`) is **still next** — two out-of-band Law-2 rounds in a row, the UI queue is untouched.
+> ## STATUS (current) — **ADR-0307 MERGED as #481 (`08c5383`). ADR-0308 pushed as draft PR #482 (`9461310`), CI running.** An outside reviewer (Codex) raised three defects against #481 **after** it merged; all three were re-verified BY EXECUTION and all three were real. Version **1.0.124**, wheel + nine installers regenerated. Highest ADR **ADR-0308**. Evidence: `audit/SRA-PARITY-20260729.md`. Redesign tail rank 12 (`/workbench`, `/groups`, `/standards`, `/margin`, `/card/{name}`, `/wbs/{name}`) is **still next** — two out-of-band Law-2 rounds in a row, the UI queue is untouched.
+>
+> ## ⇢ START HERE NEXT SESSION — a four-part job the operator has already commissioned
+> The operator ran a **falsification-oriented adversarial audit prompt** (start from "every finding is
+> wrong"; retain only what survives independently designed tests; strictly read-only; no fixes) against
+> three other models. All three reports are preserved in-repo (the container's upload dir is ephemeral):
+> `audit/external/EXTERNAL-CLAUDE-20260729.md` · `EXTERNAL-CHATGPT-20260729.md` ·
+> `EXTERNAL-GEMINI-20260729.md`. The prompt itself is quoted in the SESSION-LOG entry below.
+> **The commissioned work, in order — none of it is started:**
+> 1. **Read all three reports in full.**
+> 2. **Run the same audit independently** — findings **H1** (all-ML network + date-axis realignment),
+>    **H2** (`offset_to_datetime` non-working dates / broken inverse), **H3** (malformed SRA magnitude
+>    silently locked to zero), **H4** (elapsed/unknown duration literals), **H5** (negative sub-day
+>    driving slack floors), **H6** (pure-logic CPM vs stored MSP dates), plus **P1–P6** performance
+>    (MSPDI full-DOM parse, unbounded `SessionState.schedules`, ingestion backpressure, eager page
+>    computation, browser DOM/SVG, cache invalidation). Read-only, disposable worktree,
+>    `PYTHONDONTWRITEBYTECODE=1`, `-p no:cacheprovider`, artifacts outside the tree.
+> 3. **Comparative analysis** of all four passes — who is right, decided on quantitative reproducible
+>    evidence, not on who asserted it.
+> 4. **A remediation plan + full map of remaining work through project completion, for approval.**
+>    Do NOT implement it in that session.
+>
+> **Two things already known going in, so they are not re-derived:**
+> - **H1 and H5/H3 are NOT new.** H1 is the anchor-realignment / broken-equivalence finding this
+>   session already verified by execution (raw `compute_cpm` puts UID 152 at **2025-06-30**; the
+>   all-ML basis is **370 working days** shorter; correction ~1388 d, ~1924 d against the all-ML
+>   basis) and recorded below as FINDING 3. H5 is **CC-05** and H3 is **V1/V2**, both already carried
+>   from ADR-0306. Treat the overlap as a signal about the other passes' independence — a hypothesis
+>   to test, not a conclusion.
+> - **The Gemini report is unusable as-is and must not be acted on.** Its two "critical failures" are
+>   its own harness errors — it constructed `Calendar(start=..., end=...)` with fields the model does
+>   not define, and called `_reconcile_magnitudes()` with missing positional arguments — then proposed
+>   "fixes" that would *weaken* the frozen model and the function signature to accommodate its broken
+>   tests. It is the textbook failure the audit prompt warns about. Record it in the comparison; change
+>   nothing because of it.
 >
 > ### What ADR-0307 shipped (merged, #481)
 > The operator's SRA gave materially different answers in POLARIS vs the SSI SRA add-in for MS

@@ -8994,3 +8994,43 @@ anchor/equivalence finding remains the leading explanation.
 **Gate.** `pytest -m parity` green (44 passed, no golden moved) · ruff · ruff format (793 files) ·
 mypy --strict · bandit exit 0 · node --check clean. Four new regression tests. v1.0.124, wheel + nine
 installers rebuilt.
+
+## 2026-07-29 (cont.5) — three external adversarial audits received; the falsification pass is commissioned, not started
+
+**What happened.** After ADR-0308 was pushed as draft PR #482, the operator ran a
+**falsification-oriented adversarial audit prompt** against three other models and attached all three
+reports. The prompt's governing rules: assume every finding is WRONG and try to disprove it with
+independently designed tests; strictly read-only from a disposable clone; never regenerate expected
+values from current engine output and call that validation; classify as *oracle-gated* rather than
+*confirmed* when no authoritative oracle exists; produce a remediation plan but implement nothing.
+Its evidence hierarchy puts authoritative SSI/MSP/Acumen output first and implementation-derived
+assertions last.
+
+**The reports are now preserved in-repo** at `audit/external/` — the container's upload directory is
+ephemeral and would have taken them with it. The Gemini `.docx` was converted to markdown because the
+CUI pre-commit guard blocks that extension.
+
+**Findings alleged:** H1 (SRA solves a materially different all-ML network and hides it through
+date-axis realignment), H2 (`offset_to_datetime` returns non-working dates and fails its stated
+inverse property), H3 (malformed SRA magnitude silently becomes a locked zero), H4 (elapsed/unknown
+duration literals evaluated as ordinary working days), H5 (negative sub-day driving slack floors away
+from zero), H6 (pure-logic CPM understates progressed finishes vs stored MSP dates), plus performance
+hypotheses P1–P6.
+
+**Two observations recorded before any verification, so they are not mistaken for conclusions.**
+First, **the overlap is large and mostly not new**: H1 is precisely the anchor-realignment /
+broken-equivalence finding this session verified by execution earlier today and carried as FINDING 3;
+H5 is CC-05 and H3 is V1/V2, both carried from ADR-0306. That overlap is a useful signal about how
+independent the other passes really were — a hypothesis to test, not a verdict.
+
+Second, **the Gemini report fails its own brief and must not be acted on.** Its two "critical
+failures" are its own test-harness errors: it constructed `Calendar(start=..., end=...)` with fields
+the frozen model does not define, and called `_reconcile_magnitudes()` with missing positional
+arguments. It then proposed "fixes" that would *weaken* the model and the signature to make its broken
+tests pass — attributing harness errors to the code under test, which is exactly the failure mode the
+prompt warns against. It is recorded in the comparison and changes nothing.
+
+**Status: commissioned, not started.** The four-part job (read all three; run the audit independently;
+comparative analysis on quantitative reproducible evidence; remediation plan plus a full map of
+remaining work through completion, for approval) is written into the handoff's START HERE block and
+carried into the next session. No audit work was performed this session beyond preserving the inputs.
