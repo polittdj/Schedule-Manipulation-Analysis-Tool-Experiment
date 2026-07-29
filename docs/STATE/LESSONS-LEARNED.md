@@ -435,6 +435,54 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-29 (cont.2) — the refutation that was itself wrong, and the accusation nobody had tested
+
+**What happened.** An outside auditor handed us seven defects. Verifying them by execution confirmed all
+seven in substance — but the two things that mattered most were not on its list.
+
+**Lesson 1: adversarial verification has to cut both ways, including at the lead.** On V5 a verifier
+refuted the *lead's own* written finding, and it was right: removing the `or 1.0` on `resources.py:171`
+alone makes reported over-allocation **worse**, because the zero-capacity bucket it produces is then
+skipped by `over_allocated`'s `capacity_minutes > 0` guard. The intuitive one-line patch flips a real
+flag `True → False`. On V6 the opposite happened — a verifier's refutation was itself wrong, because its
+5,000-trial randomized probe varied calendars and offsets but **never the project start's time of day**,
+the one dimension the bug lives in. A big-N probe that holds the causal variable fixed is not evidence of
+absence; it is a confident null. **Both were settled the same way: re-run it yourself before accepting a
+verdict, whoever produced it and whichever direction it points.**
+
+**Lesson 2: in a detector, a silent default is not a wrong number — it is a wrong accusation.** The worst
+thing found was not on the outside list at all. `manipulation.py` compared `(cur.actual_cost or 0.0) <
+(prior.actual_cost or 0.0)`. An update that merely stopped carrying its Actual Cost column therefore read
+as a rollback, producing four findings — two HIGH — instructing the analyst to investigate *"expenditure
+being hidden or moved"*. The false positive was **byte-identical** to the true one: same `metric_id`, same
+title, same severity. Mixed-source version series (P6 → MSP, a changed export template) are the *normal*
+case in a delay claim. The model layer already encodes the right rule (`| None` means "the source did not
+provide it", and `CLAUDE.md` says *never assume 0*) — the engine just wasn't honouring it. **Wherever the
+output is an allegation rather than a figure, the cost of a silent default is measured in credibility, not
+decimals.**
+
+**Lesson 3: `gt` versus `ge` decided 47 of 67 sites.** The repo-wide sweep looked daunting and collapsed
+almost entirely to two model constraints: `Calendar.working_minutes_per_day` is `gt=0`, making 46
+`or 480` / `or 1` / `or 0` fallbacks **dead code**; `Resource.max_units` is `ge=0.0`, making one `or 1.0` a
+live defect that fabricates capacity. **Audit the validators first, then the call sites** — one character
+in a model definition classified most of the table, and no site should ever be called SAFE without naming
+the specific guard and executing it.
+
+**Lesson 4: report the clean results too.** `evm.py` and `dcma14._r` were hunted on their most plausible
+failure hypotheses (SPI/CPI divide-by-zero returning a plausible 1.0; an empty DCMA population rendering a
+fabricated 0% that reads as PASS) and both are **correct** — `_r` even carries the Law-2 rationale in its
+docstring. Saying so plainly is worth more than padding a findings list, and it stopped a "fix" that would
+have broken working code. What it *did* surface is a layering inconsistency worth its own round: the engine
+returns `NOT_APPLICABLE` for an empty population while the web layer reaches for `or 1` divisor guards and
+prints `0.0%`.
+
+**Lesson 5: know which fixes you are not qualified to make today.** Four findings shipped as documentation
+only — CC-01 (74 call sites, a design decision about an unenforced precondition), CC-05 (parity literally
+cannot distinguish floor from truncate on our goldens, so it needs the reference tool), V3 (a product
+decision), V1/V2 (needs UI work, so the five standing UI requirements apply). Writing down *why* each was
+deferred is what keeps the next session from "just patching" them.
+
+
 ### 2026-07-29 (cont.) — a pin that cannot fail is not a pin, and the gate moved up a level
 
 **What happened.** Round 11's whole thesis is ADR-0304's *"verify the EFFECT, not the MECHANISM"*, and

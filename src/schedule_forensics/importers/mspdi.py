@@ -306,10 +306,34 @@ def _parse_project_calendar(root: ET.Element) -> Calendar:
 
 
 def _project_calendar(root: ET.Element) -> Calendar:
+    """The project's calendar, or the 8h/Mon-Fri default **with a logged reason**.
+
+    The caller's ``except`` handler logs when the calendar is structurally *unreadable*, but the
+    UNRESOLVABLE cases below raise nothing and so used to default in total silence (audit
+    2026-07-29, V4). That matters: a file can name a calendar UID that does not exist while
+    *carrying* a real 10-hour calendar, and every duration-in-days figure downstream is then
+    overstated by 25% with nothing in the log to tell the analyst why.
+    """
     by_uid = _calendars_by_uid(root)
     target_uid = _text(root, "CalendarUID")
-    cal = _build_calendar(target_uid, by_uid) if target_uid is not None else None
-    return cal or Calendar()
+    if target_uid is None:
+        logger.warning(
+            "no project CalendarUID in the file; using the standard 8h/Mon-Fri default "
+            "(%d calendar(s) present but none designated)",
+            len(by_uid),
+        )
+        return Calendar()
+    cal = _build_calendar(target_uid, by_uid)
+    if cal is None:
+        logger.warning(
+            "project CalendarUID %r does not resolve to a readable calendar (%d present: %s); "
+            "using the standard 8h/Mon-Fri default",
+            target_uid,
+            len(by_uid),
+            ", ".join(sorted(by_uid)) or "none",
+        )
+        return Calendar()
+    return cal
 
 
 def _calendars_by_uid(root: ET.Element) -> dict[str, ET.Element]:

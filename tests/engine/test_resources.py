@@ -10,9 +10,9 @@ import datetime as dt
 from pathlib import Path
 
 from schedule_forensics.engine.cpm import compute_cpm
-from schedule_forensics.engine.resources import compute_resource_loading
+from schedule_forensics.engine.resources import ResourcePeriod, compute_resource_loading
 from schedule_forensics.importers.mspdi import parse_mspdi
-from schedule_forensics.model import Assignment, Schedule, Task
+from schedule_forensics.model import Assignment, Resource, Schedule, Task
 
 DAY = 480
 MON = dt.datetime(2026, 4, 6, 8, 0)  # a Monday
@@ -120,3 +120,54 @@ def test_golden_schedule_loads_without_error() -> None:
     for r in rl.resources:
         assert r.total_work_minutes >= 0
         assert all(p.capacity_minutes >= 0 for p in r.series)
+
+
+# ── audit 2026-07-29 (V5 + V6): zero capacity is a statement, not a missing value ──────────
+# ``Resource.max_units`` is ``ge=0.0`` (model/resource.py), so 0.0 legally means "this resource has
+# no capacity" — a placeholder, or a crew that has left. It used to be coerced to 1.0, printing an
+# invented full unit-day of capacity; and ``ResourcePeriod.over_allocated`` used to require
+# ``capacity_minutes > 0``, so the most extreme over-allocation there is — work booked against NO
+# capacity — reported False. The two fixes are paired on purpose: preserving the 0 alone would have
+# SUPPRESSED the flag instead of sharpening it.
+
+
+def _resourced(uid: int, dur_days: float, work_minutes: int, max_units: float | None) -> Schedule:
+    a = (Assignment(resource_id=7, work_minutes=work_minutes, units=1.0),)
+    return Schedule(
+        name="S",
+        project_start=MON,
+        tasks=(_task(uid, dur_days, a),),
+        resources=(Resource(unique_id=7, name="Departed crew", max_units=max_units),),
+    )
+
+
+def test_a_declared_zero_max_units_is_preserved_not_coerced_to_one() -> None:
+    sch = _resourced(1, 1, DAY, max_units=0.0)
+    r = compute_resource_loading(sch, compute_cpm(sch), granularity="day").resources[0]
+    assert r.max_units == 0.0, "a file that says MaxUnits=0 must not be reported as 1"
+    assert all(p.capacity_minutes == 0.0 for p in r.series)
+
+
+def test_a_missing_max_units_still_defaults_to_one_full_unit() -> None:
+    """The control: None means "the file did not say", which keeps the 1.0 assumption."""
+    r = compute_resource_loading(
+        _resourced(1, 1, DAY, max_units=None),
+        compute_cpm(_resourced(1, 1, DAY, None)),
+        granularity="day",
+    ).resources[0]
+    assert r.max_units == 1.0
+
+
+def test_work_booked_against_zero_capacity_is_over_allocated() -> None:
+    """Work against a zero-capacity resource is over-allocation, not a condition to hide."""
+    sch = _resourced(1, 1, DAY, max_units=0.0)
+    r = compute_resource_loading(sch, compute_cpm(sch), granularity="day").resources[0]
+    assert r.over_allocated_periods, "booked work against zero capacity must be reported"
+    over = next(p for p in r.series if p.over_allocated)
+    assert over.capacity_minutes == 0.0 and over.load_minutes > 0
+
+
+def test_an_idle_zero_capacity_bucket_is_not_over_allocated() -> None:
+    """Removing the ``capacity_minutes > 0`` guard must not make empty buckets noisy."""
+    idle = ResourcePeriod(period="2026-04", load_minutes=0.0, capacity_minutes=0.0)
+    assert idle.over_allocated is False

@@ -452,14 +452,27 @@ def _cost_changes(
         prior = prior_by_id.get(td.unique_id)
         if cur is None or prior is None:
             continue
-        if td.changed("cost") is not None:
+        # BOTH snapshots must carry the figure before a direction is asserted (audit 2026-07-29,
+        # CC-02). ``cost`` / ``actual_cost`` are ``float | None`` where None means "the source did
+        # not provide it" (model/task.py:134-135) — never 0. The previous ``or 0.0`` read an absent
+        # value as zero, so an export that simply dropped its cost column produced a HIGH
+        # "recorded actual cost reduced" finding, indistinguishable from a real rollback. A
+        # present→absent transition is a data-availability change, not a cost movement, and this
+        # module only ever speaks with the underlying delta attached.
+        pc, cc = prior.cost, cur.cost
+        if td.changed("cost") is not None and pc is not None and cc is not None:
             total_changed.append(_cite(current_file, cur))
-            if (cur.cost or 0.0) > (prior.cost or 0.0):
+            if cc > pc:
                 up += 1
             else:
                 down += 1
-        ac = td.changed("actual_cost")
-        if ac is not None and (cur.actual_cost or 0.0) < (prior.actual_cost or 0.0):
+        pac, cac = prior.actual_cost, cur.actual_cost
+        if (
+            td.changed("actual_cost") is not None
+            and pac is not None
+            and cac is not None
+            and cac < pac
+        ):
             actual_down.append(_cite(current_file, cur))
     out: list[Finding] = []
     if total_changed:
@@ -515,14 +528,29 @@ def _work_changes(
         prior = prior_by_id.get(td.unique_id)
         if cur is None or prior is None:
             continue
-        if td.changed("work_minutes") is not None and cur.percent_complete < 100.0:
+        # Both-present rule, as in :func:`_cost_changes` (audit 2026-07-29, CC-02).
+        # ``work_minutes`` / ``actual_work_minutes`` are ``int | None`` with None meaning "not
+        # provided" (model/task.py:77-78); reading that as 0 turned a dropped export column into a
+        # HIGH "recorded actual work reduced" accusation.
+        pw, cw = prior.work_minutes, cur.work_minutes
+        if (
+            td.changed("work_minutes") is not None
+            and cur.percent_complete < 100.0
+            and pw is not None
+            and cw is not None
+        ):
             plan_changed.append(_cite(current_file, cur))
-            if (cur.work_minutes or 0) > (prior.work_minutes or 0):
+            if cw > pw:
                 up += 1
             else:
                 down += 1
-        aw = td.changed("actual_work_minutes")
-        if aw is not None and (cur.actual_work_minutes or 0) < (prior.actual_work_minutes or 0):
+        paw, caw = prior.actual_work_minutes, cur.actual_work_minutes
+        if (
+            td.changed("actual_work_minutes") is not None
+            and paw is not None
+            and caw is not None
+            and caw < paw
+        ):
             actual_down.append(_cite(current_file, cur))
     out: list[Finding] = []
     if plan_changed:

@@ -8844,3 +8844,51 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
 - Recorded decision-ready, not fixed (all pre-existing): `/analysis` panel 5's lying ⛶; `/evolution`'s
   still-live target-blind export bar under a banner promising otherwise; `/volatility`'s ten ⤓ sharing
   one destination; `/mission`'s bimodal render; `#whatifData` unreachable on the TP4 fixture.
+
+## 2026-07-29 (cont.2) — the outside audit, verified by execution: an absent figure is not a zero (ADR-0306, v1.0.122)
+
+**Task.** An outside auditor (ChatGPT Codex) reported seven defects at `9a1e560`. The instruction was to
+CHECK its work, then go further: sweep the repo for the same idiom, and open the five engine modules it
+never read. Explicitly read-only at first — verify, do not fix. The operator then asked for the fixes.
+
+**Drift check first.** `HEAD` *was* `9a1e560`, zero commits since, clean tree — so nothing could be waved
+off as drift. (`origin/main` had since moved to `e74724e` / #478, docs-only; no `src/` change, so every
+finding held.)
+
+**Verdicts (all seven executed — no claim accepted on reasoning).** V1 CONFIRMED · V2 CONFIRMED ·
+V3 CONFIRMED-in-substance · V4 CONFIRMED · V5 **PARTIAL** · V6 CONFIRMED (hard case reproduced 3 ways) ·
+V7 CONFIRMED. Evidence committed as four `audit/*-20260729.md` files with every script and its verbatim
+output. The sweep found **67** sites of the falsy-zero idiom: 60 SAFE, 4 BUG, 3 UNSURE — and the whole
+table turns on one character, `gt=0` on `Calendar.working_minutes_per_day` (46 dead-code no-ops) versus
+`ge=0.0` on `Resource.max_units` (one live defect).
+
+**Two self-corrections, which are the real story.**
+- **V5:** an adversarial verifier refuted the *lead's own* first reading. The lead had written that the
+  `or 1.0` suppresses over-allocation. The opposite is true — it is the only reason a zero-capacity
+  resource flags at all, and removing it alone flips a real flag `True → False`. Re-run independently
+  before accepting. The two lines are ONE decision.
+- **V6:** a verifier's refutation was itself wrong. It ran 5,000 randomized trials concluding
+  `offset_to_datetime` never lands on a non-working day, but randomized calendars and offsets **and not
+  the project start's time of day**. Direct probe: **8 of 120 (start-hour, offset) pairs land on a
+  Saturday.** Overruled, with the probe pasted into the report.
+
+**Beyond the brief (CC- findings).** CC-02 (HIGH): `manipulation.py` read a **dropped export column** as a
+cost/work rollback — four findings, two HIGH, accusing the schedule owner of *"expenditure being hidden or
+moved"*, indistinguishable from a genuine rollback. CC-01 (HIGH): `offset_to_datetime` returns dates on
+non-working days at 01:00 on a Mon-Fri project — 74 call sites, and the root cause of V6. CC-05 (MEDIUM):
+`driving_slack` floors, so `+479` min of float reads 0 days but `−479` reads `−1` day. CC-03/CC-04:
+`evm.py` and `dcma14._r` verified **CLEAN** and reported as clean rather than padded into findings.
+
+**Shipped (ADR-0306, 13 regression tests).** manipulation both-present rule; `resources.py` V5+V6 together;
+`json_schedule` routes malformed calendar values into `Calendar`'s existing fail-closed validators;
+`mspdi`/`xer` log the unresolvable-calendar fallback. Every test pins BOTH halves — the false positive is
+gone AND the true positive still fires.
+
+**Gate.** `pytest -m parity` **green, no golden moved**; full suite 2929 passed / 24 skipped (all the
+deliberate playwright gate); ruff, ruff format, mypy --strict, bandit (exit 0), node --check clean.
+v1.0.122, wheel + nine installers regenerated.
+
+**Deliberately NOT fixed** (in ADR-0306): CC-01 (needs a Fable 5 Max CPM deep dive — 74 call sites, design
+decision), CC-05 (needs an SSI reference compare; parity cannot distinguish floor from truncate), V3
+(needs a product decision on elapsed literals), V1/V2 (needs an operator-visible error → the five standing
+UI requirements → its own round).

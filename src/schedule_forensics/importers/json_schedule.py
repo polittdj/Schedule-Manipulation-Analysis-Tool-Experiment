@@ -111,7 +111,14 @@ def _calendar(raw: dict[str, Any]) -> Calendar:
         wmpd = int(raw["working_minutes_per_day"])
     else:
         hours = raw.get("hours_per_day")
-        wmpd = round(hours * 60) if hours else 480
+        # An ABSENT hours_per_day legitimately means "use the standard 8h day". A PROVIDED one is
+        # honored verbatim — including a malformed 0, which then reaches Calendar's ``gt=0``
+        # validator and fails the import loudly (audit 2026-07-29, V7). The old truthiness test
+        # swallowed 0 and substituted 480, silently rescaling EVERY duration in the file (durations
+        # are stored in working minutes and divided by this number at the presentation boundary).
+        # It also made the two spellings of one input disagree: ``working_minutes_per_day: 0``
+        # already raised, while ``hours_per_day: 0`` quietly became 480.
+        wmpd = 480 if hours is None else round(hours * 60)
     weekdays = raw.get("work_weekdays")
     kwargs: dict[str, Any] = {
         "name": str(raw.get("name", "Standard")),
@@ -119,7 +126,10 @@ def _calendar(raw: dict[str, Any]) -> Calendar:
     }
     if raw.get("uid") is not None:
         kwargs["uid"] = int(raw["uid"])
-    if weekdays:
+    # Same rule as hours_per_day above: absent means "use Mon-Fri", but a PROVIDED empty list is
+    # malformed and must reach Calendar's "work_weekdays must not be empty" validator rather than
+    # being silently replaced by a five-day week the file never declared (audit 2026-07-29, V7).
+    if weekdays is not None:
         kwargs["work_weekdays"] = tuple(int(d) for d in weekdays)
     if raw.get("holidays"):
         kwargs["holidays"] = tuple(dt.date.fromisoformat(str(h)) for h in raw["holidays"])
