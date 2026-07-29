@@ -287,10 +287,15 @@
     if (d.risks && d.risks.length) {
       out.appendChild(el("h3", null, "Risk outcomes"));
       var rt = el("table");
-      rt.appendChild(row(["Risk", "Prob", "Impact (d)", "Hits", "Mean Δ (wd)", "P", "C"], true));
+      rt.appendChild(row(["Risk", "Prob", "Impact (d)", "Hits", "Mean Δ (wd)", "P", "C",
+        "Status"], true));
       d.risks.forEach(function (r) {
+        // ADR-0308: a risk whose every affected activity is already complete applies to nothing.
+        // It still FIRES, so it must say so rather than report a hit count that moved no date.
+        var live = r.applied !== false;
         rt.appendChild(row([r.name, r.probability + "%", r.impact_days, r.hits,
-          r.mean_delta_days, r.probability_rating, r.consequence_rating]));
+          live ? r.mean_delta_days : "—", r.probability_rating, r.consequence_rating,
+          live ? "applied" : "inert (activity complete)"]));
       });
       out.appendChild(rt);
     }

@@ -34,8 +34,15 @@ def client() -> TestClient:
 
 
 def _editable_uids(client: TestClient, n: int = 2) -> list[int]:
+    """Leaf rows that can carry a Best/Worst range.
+
+    ADR-0308: a COMPLETED activity is still `editable` (it keeps its Risk Ranking Factor) but no
+    longer accepts or displays a Best/Worst range — finished work is a recorded fact. These tests
+    are about the range, so they need incomplete rows; uids 5/6/7 of the Project5 golden are
+    100% complete and would otherwise be picked first.
+    """
     rows = client.get("/api/sra/grid").json()["rows"]
-    return [r["unique_id"] for r in rows if r["editable"]][:n]
+    return [r["unique_id"] for r in rows if r["editable"] and not r.get("completed")][:n]
 
 
 def test_grid_panel_and_scripts_render(client: TestClient) -> None:
@@ -172,7 +179,8 @@ def test_setup_save_load_round_trip(client: TestClient) -> None:
     saved = client.get("/sra/ssi/save")
     assert saved.status_code == 200
     blob = json.loads(saved.content)
-    assert blob["setup_version"] == 2 and blob["focus_uid"] == uids[0]
+    # ADR-0308 bumped the schema to 3: a pre-fix setup's Best/Worst is migrated, not trusted
+    assert blob["setup_version"] == 3 and blob["focus_uid"] == uids[0]
     assert blob["factors"][str(uids[0])] == 4 and len(blob["risks"]) == 1
 
     # wipe, then restore from the saved JSON
@@ -205,7 +213,7 @@ def test_setup_load_drops_uids_unknown_to_the_active_schedule(client: TestClient
 
 
 def test_whole_setup_save_load_round_trip_includes_legacy_fields() -> None:
-    """Save/Load is the WHOLE SRA setup (setup_version 2): the SSI factor/risk inputs AND the legacy
+    """Save/Load is the WHOLE SRA setup (setup_version 3): the SSI factor/risk inputs AND the legacy
     global triangular + per-activity overrides, so a load restores every model's inputs verbatim."""
     state = SessionState()
     client = TestClient(create_app(state))
@@ -227,7 +235,7 @@ def test_whole_setup_save_load_round_trip_includes_legacy_fields() -> None:
 
     blob = client.get("/sra/ssi/save").content
     saved = json.loads(blob)
-    assert saved["setup_version"] == 2
+    assert saved["setup_version"] == 3  # ADR-0308
     assert saved["triangular"] == {"low": 0.8, "ml": 1.0, "high": 1.3}
     assert saved["overrides_minutes"][str(uid)] == [400, 480, 720]
 

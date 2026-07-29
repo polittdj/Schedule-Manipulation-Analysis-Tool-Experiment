@@ -8957,3 +8957,80 @@ MSP re-run with *Includes Risks/Opportunities = No*.
 
 **Gate.** `pytest -m parity` green (44 passed, no golden moved) · ruff · ruff format (793 files) ·
 mypy --strict · bandit exit 0 · node --check all clean. Wheel + nine installers rebuilt at v1.0.123.
+
+## 2026-07-29 (cont.4) — a guard that one code path can walk around (ADR-0308, v1.0.124)
+
+**Trigger.** ADR-0307 merged as #481 (`08c5383`). An outside reviewer (ChatGPT Codex) then raised
+three defects against that commit. All three were **re-verified by execution before anything was
+changed** — and all three were real, including one citing a committed fixture by exact value.
+
+**The unifying failure: the ADR-0307 guard could be walked around by three other code paths.**
+
+1. **The register walked around it.** Forcing a completed activity's three-point to a point mass did
+   not stop the risk loop adding each fired impact to that same activity. Executed: a 50%/20-day risk
+   on a 100%-complete driver gave `std_days=9.99` and moved **P90 by 20 working days on finished
+   work**. Now skipped in `compute_sra_ssi` *and* `compute_jcl` — and **disclosed**, because a risk
+   that fires but moves nothing is precisely the V2 pathology documented the same day.
+   `SSIRiskStat.applied=False` renders as `inert (activity complete)` in a new Status column.
+2. **Saved setups walked around it.** `_ssi_three_point` prefers a stored range over
+   `factor_to_bc_wc`, and `_apply_ssi_setup` restored `bcwc_minutes` with no version check, so every
+   pre-0307 setup kept running the inverted formula. **Not hypothetical:**
+   `00_REFERENCE_INTAKE/references/sra-ssi-setup.json` (`setup_version: 1`) holds **783** such pairs
+   — UID 427, factor 5, BC 432 on an implied ML of 480 = the old 0.900×ML, exactly as the reviewer
+   said. `_SSI_SETUP_VERSION` → 3; a pre-v3 load recomputes BC/WC wherever a factor exists.
+3. **The grid displayed what the run ignored.** Auto-calc only *skipped* recalculation, leaving a
+   stale range that the grid and setup export still showed. Now cleared at source; completed rows
+   neither display nor accept a range, while the factor (the operator's ranking) is still recorded.
+
+**Two operator decisions were taken rather than guessed** (both via AskUserQuestion): exclude-and-
+disclose for the inert risk, and recompute-where-a-factor-exists for legacy setups — with the cost
+stated plainly, that a hand-typed override on a factor-bearing activity in an old setup is replaced,
+since stored entries do not record manual-vs-derived.
+
+**The SRA parity conclusion is unchanged.** Mean +27 against MSP's +111.45, σ 125.9 against 64.74,
+deterministic percentile P40 against 5.65%. The residual remains about variance, and the carried
+anchor/equivalence finding remains the leading explanation.
+
+**Gate.** `pytest -m parity` green (44 passed, no golden moved) · ruff · ruff format (793 files) ·
+mypy --strict · bandit exit 0 · node --check clean. Four new regression tests. v1.0.124, wheel + nine
+installers rebuilt.
+
+## 2026-07-29 (cont.5) — three external adversarial audits received; the falsification pass is commissioned, not started
+
+**What happened.** After ADR-0308 was pushed as draft PR #482, the operator ran a
+**falsification-oriented adversarial audit prompt** against three other models and attached all three
+reports. The prompt's governing rules: assume every finding is WRONG and try to disprove it with
+independently designed tests; strictly read-only from a disposable clone; never regenerate expected
+values from current engine output and call that validation; classify as *oracle-gated* rather than
+*confirmed* when no authoritative oracle exists; produce a remediation plan but implement nothing.
+Its evidence hierarchy puts authoritative SSI/MSP/Acumen output first and implementation-derived
+assertions last.
+
+**The reports are now preserved in-repo** at `audit/external/` — the container's upload directory is
+ephemeral and would have taken them with it. The Gemini `.docx` was converted to markdown because the
+CUI pre-commit guard blocks that extension.
+
+**Findings alleged:** H1 (SRA solves a materially different all-ML network and hides it through
+date-axis realignment), H2 (`offset_to_datetime` returns non-working dates and fails its stated
+inverse property), H3 (malformed SRA magnitude silently becomes a locked zero), H4 (elapsed/unknown
+duration literals evaluated as ordinary working days), H5 (negative sub-day driving slack floors away
+from zero), H6 (pure-logic CPM understates progressed finishes vs stored MSP dates), plus performance
+hypotheses P1–P6.
+
+**Two observations recorded before any verification, so they are not mistaken for conclusions.**
+First, **the overlap is large and mostly not new**: H1 is precisely the anchor-realignment /
+broken-equivalence finding this session verified by execution earlier today and carried as FINDING 3;
+H5 is CC-05 and H3 is V1/V2, both carried from ADR-0306. That overlap is a useful signal about how
+independent the other passes really were — a hypothesis to test, not a verdict.
+
+Second, **the Gemini report fails its own brief and must not be acted on.** Its two "critical
+failures" are its own test-harness errors: it constructed `Calendar(start=..., end=...)` with fields
+the frozen model does not define, and called `_reconcile_magnitudes()` with missing positional
+arguments. It then proposed "fixes" that would *weaken* the model and the signature to make its broken
+tests pass — attributing harness errors to the code under test, which is exactly the failure mode the
+prompt warns against. It is recorded in the comparison and changes nothing.
+
+**Status: commissioned, not started.** The four-part job (read all three; run the audit independently;
+comparative analysis on quantitative reproducible evidence; remediation plan plus a full map of
+remaining work through completion, for approval) is written into the handoff's START HERE block and
+carried into the next session. No audit work was performed this session beyond preserving the inputs.
