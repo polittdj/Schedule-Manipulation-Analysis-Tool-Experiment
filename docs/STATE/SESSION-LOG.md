@@ -8811,3 +8811,36 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   mid-round and deliberately **not** absorbed into an in-flight round.
 - Next: **rank 12 — the Library/Setup sweep (`/workbench`, `/groups`, `/standards`, `/margin`,
   `/card/{name}`, `/wbs/{name}`).**
+
+## 2026-07-29 (cont.) — round 11 post-merge verification, and the pin that could not fail
+
+- Round 11 merged as **#476 / `aef25f6`** while three worktree-isolated adversarial verifiers were
+  still running. Because the Law-2 baseline had been **explicitly pinned to `6b8d144`** in the
+  verifier briefs (round 10's lesson: an unpinned baseline goes blind when `origin/main` moves), the
+  merge did not invalidate the verification. Verdict: **SHIP WITH FIXES**.
+- **Independently reproduced:** 192 pristine NO-OPs → 4; **0 MOVED→NO-OP**; 64/64 new-route controls
+  move in all four themes; Law 2 clean (13 merged routes byte-identical in tokens, takes, forms, CSP
+  JSON and every `svg text` string *and* rect); both structural exclusions load-bearing (each deleted
+  and restored in a worktree); the daylight-rail rationale reproduced as a counterfactual.
+- **Adjudicated corrections:** the round's `184` flip count is **correct** (a verifier's "188" was
+  re-derived and refuted); the gate is **2913 passed**, not the 2910 quoted in the PR body.
+- **The one real defect, fixed in a follow-up:** the two rect tests that ARE the ADR-0304/0305 proof
+  never execute — `importorskip("playwright")`, and `playwright` was in no extra and no CI step.
+  Proved by running one broken tree both ways: **23 passed with playwright (regression caught) vs 21
+  passed / 2 skipped without it (green)**. Fixed with a browser-free structural guard (proved
+  load-bearing by deselecting it against the same broken tree), a `browser` extra + dedicated CI job
+  that **fails if the tests skip**, and a four-theme daylight inset guard.
+- **LESSON: every `importorskip` in a gate is a silent exemption.** Round 10 shipped a control that
+  moved nothing; round 11 shipped a test that ran nothing. Same failure class, one level up — and the
+  second is worse, because a dead control is visible to a user and a skipped test is visible to nobody.
+- **LESSON: a git worktree does not change what Python imports.** The editable-install `.pth` pins the
+  MAIN checkout's `src`, so `cd <worktree> && python serve.py` serves the main tree — a verifier
+  following the brief compares the round against itself and reports a clean baseline. Pin
+  `PYTHONPATH=<worktree>/src` and **assert the served bytes**. A pre-flight port check is not enough
+  either: a port free at 03:08 was taken by another session by 03:13.
+- **LESSON: re-derive, do not arbitrate.** One verifier refuted a count that was right; another called
+  an instrument corrupt for the wrong reason while it was broken for a different one. Both times the
+  answer was to recompute from source, not to weigh confidence.
+- Recorded decision-ready, not fixed (all pre-existing): `/analysis` panel 5's lying ⛶; `/evolution`'s
+  still-live target-blind export bar under a banner promising otherwise; `/volatility`'s ten ⤓ sharing
+  one destination; `/mission`'s bimodal render; `#whatifData` unreachable on the TP4 fixture.

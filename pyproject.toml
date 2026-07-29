@@ -60,6 +60,14 @@ schedule-forensics-report = "schedule_forensics.exhibits.cli:main"
 [project.optional-dependencies]
 # live HUD telemetry enhancer (CPU%/temps on Windows/macOS); LOCAL reads only — never network
 monitor = ["psutil>=5.9"]
+# The measured-box proof (ADR-0304/0305, standing requirement 2). DEV-ONLY, and deliberately its
+# OWN extra rather than part of `dev`: it pulls a ~150 MB browser, so the Python matrix stays lean
+# and only the dedicated `browser` CI job installs it. It is never a runtime dependency — the
+# shipped tool stays std-lib-only for I/O (Law 1) and the egress guard covers `dependencies`, not
+# this. Without it `tests/web/test_r11_panel_contract.py`'s rect assertions `importorskip`-SKIP,
+# which is how a re-inerted ⛶ measured green for a whole round.
+browser = ["playwright>=1.44"]
+
 # Quality/PM toolchain required by §7 (QC/PM regime). Pinned loosely now;
 # tightened when first wired into CI during Phase 2.
 dev = [

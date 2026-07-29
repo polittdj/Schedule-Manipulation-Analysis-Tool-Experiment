@@ -71,6 +71,57 @@ jobs:
       - name: Dependency audit (pip-audit)
         run: pip-audit --progress-spinner=off
 
+  # The MEASURED-BOX proof (ADR-0304/0305, standing requirement 2). These tests click a control
+  # for real and assert `getBoundingClientRect()` CHANGED — the only assertions in the suite that
+  # can tell a working ⛶ from one that merely flips a class and a label. They are
+  # `importorskip("playwright")`-gated, so without a browser they SKIP, and a tree whose ⛶ has been
+  # re-inerted stays green. That was measured, not supposed: the round-11 adjudicator ran the same
+  # broken tree both ways — 23 passed WITH playwright (regression caught), 21 passed / 2 skipped
+  # WITHOUT it (regression invisible). A requirement enforced only by a test that never executes is
+  # the exact round-10 failure class this ADR pair exists to retire.
+  #
+  # Deliberately a SEPARATE job, not a step in the `test` matrix: a browser adds ~1 min and a
+  # download to every matrix cell, and this project has several documented render flakes
+  # (/analysis's Gantt svg width, /curves' unsettled heights, /trend's bimodal jarvis captions).
+  # Isolating it keeps a browser hiccup attributable instead of failing the Python gate, and it is
+  # NOT in `check`'s `needs` for the same reason — promote it once it has a track record.
+  browser:
+    name: browser (measured-box proof)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install (package + dev toolchain + browser)
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e '.[dev,browser]'
+          python -m playwright install --with-deps chromium
+
+      - name: The control must move a measured box
+        run: pytest -q tests/web/test_r11_panel_contract.py -p no:cacheprovider
+
+      # A skip here is a FAILURE, not a pass. Deliberately matches ANY skip rather than a reason
+      # string: the first version of this guard grepped only for "playwright not installed" and
+      # went green in 59s while all three rect tests skipped for a DIFFERENT reason (a hardcoded
+      # vendored-chromium path that does not exist on a runner). Enumerating skip reasons is the
+      # same mistake as enumerating failure modes — assert the property you actually want, which
+      # is that nothing in this module skipped at all.
+      - name: Fail loudly if the proof silently skipped
+        run: |
+          pytest -q tests/web/test_r11_panel_contract.py -p no:cacheprovider -rs 2>&1 | tee out.txt
+          if grep -qE "^SKIPPED|[0-9]+ skipped" out.txt; then
+            echo "::error::the measured-box tests SKIPPED — the ADR-0304/0305 proof did not run"
+            grep -E "^SKIPPED" out.txt || true
+            exit 1
+          fi
+
   # Stable aggregate status (named "check") so branch protection has a single
   # context to require regardless of the matrix dimensions.
   check:

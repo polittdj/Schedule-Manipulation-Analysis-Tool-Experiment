@@ -435,6 +435,41 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-29 (cont.) — a pin that cannot fail is not a pin, and the gate moved up a level
+
+**What happened.** Round 11's whole thesis is ADR-0304's *"verify the EFFECT, not the MECHANISM"*, and
+it shipped a test module built around exactly that: two tests that click a control for real and assert
+`getBoundingClientRect()` changed. Post-merge adversarial verification then asked the one question
+nobody had: **can that test actually run where it is enforced?** It could not. Both assertions are
+`importorskip("playwright")`-gated, `playwright` was in no extra and no CI step, and the proof was
+decisive — the same deliberately-broken tree (a one-line markup edit that re-inerts ⛶, measured: the
+box does not move) reports **23 passed WITH playwright** and **21 passed / 2 skipped WITHOUT it, exit
+0**.
+
+**Why it matters more than an ordinary gap.** This is round 10's failure class reappearing one level
+up. Round 10 shipped a *control* that flipped a class and moved nothing; round 11 shipped a *test* that
+skipped and proved nothing. Both are "the machinery ran, so it must be working" — and the second is
+more dangerous, because a dead control is visible to a user while a skipped test is visible to nobody.
+**Every `skipif`/`importorskip` in a gate is a silent exemption. Ask of each one: what regression does
+this test exist to catch, and in which environment does it actually execute?** If the answer is "none
+that CI runs", the requirement is decorative.
+
+**The fix, and the shape worth reusing.** Three parts, deliberately layered so the cheap one always
+runs: (1) a **browser-free structural guard** asserting the shipped markup still matches the CSS
+selector the mechanism depends on — it caught both injected regressions, and with it deselected the
+same broken tree goes green, so it is load-bearing rather than decorative; (2) a **separate CI job**
+with the browser, which **fails loudly if the tests skip** (a skip is now an error, not a pass); (3) a
+**daylight-theme assertion**, because every other rect assertion ran in the default theme and ADR-0305's
+most subtle decision — rejecting a `vw` inset because daylight has no left rail — had nothing pinning
+it. *A guard that only runs in the easy case is the same bug in miniature.*
+
+**And a lesson about the reporters, not just the code.** Of the three verifiers, one refuted the round's
+flip count (184 → "188"); the adjudicator re-derived it and **refuted the refutation** — 184 was right.
+Another declared an instrument corrupt for a reason that turned out to be wrong, while the instrument
+*was* in fact broken for a different reason. Both times the correct move was the same: **re-derive, do
+not arbitrate.** Verify the finding, never the reporter's confidence.
+
+
 ### 2026-07-29 — three lessons from round 11: a control's effect, a shared tree, and a lying instrument
 
 **1. When you give a control an effect, measure that effect in EVERY theme — the obvious geometry can
