@@ -1,6 +1,33 @@
 # Handoff — 2026-07-29 (round 11 shipped; the ⛶ that finally moves; ADR-0305; v1.0.121)
 
-> ## STATUS (current) — Round 11 COMPLETE on branch `claude/schedule-forensics-continue-gkju7l` (draft PR open). Version **1.0.121**, wheel + nine installers regenerated. Highest ADR **ADR-0305**. Tail rank 11 done; **next is rank 12 — the Library/Setup sweep (`/workbench`, `/groups`, `/standards`, `/margin`, `/card/{name}`, `/wbs/{name}`).**
+> ## STATUS (current) — Round 11 MERGED as #476 (`aef25f6`). Version **1.0.121**, wheel + nine installers regenerated. Highest ADR **ADR-0305**. Tail rank 11 done; **next is rank 12 — the Library/Setup sweep (`/workbench`, `/groups`, `/standards`, `/margin`, `/card/{name}`, `/wbs/{name}`).**
+>
+> ### ⚠️ POST-MERGE VERIFICATION VERDICT: **SHIP WITH FIXES** — and the fixes landed as a follow-up
+> Three worktree-isolated adversarial verifiers + an adjudicating lead re-ran the round after merge.
+> All three headline claims **independently reproduced** (192 pristine NO-OPs → 4; 0 MOVED→NO-OP;
+> 64/64 new-route controls move in all four themes; Law 2 clean — 13 merged routes byte-identical in
+> tokens, takes, forms, CSP JSON and every `svg text` string *and* rect). Two counts in the round's
+> own prose were checked: **184 flips is CORRECT** (the "188" claim was adjudicated and refuted);
+> the gate is **2913 passed**, not the 2910 the PR body quoted (the difference is three
+> `test_state_docs` failures that were fixed before commit).
+>
+> **THE ONE REAL DEFECT — the round's own proof could not run where it is enforced.** The two
+> rect-measuring tests that ARE the ADR-0304/0305 proof are `importorskip("playwright")`-gated, and
+> `playwright` was in no extra and no CI step. Proved decisively by running one broken tree both
+> ways: **23 passed WITH playwright (regression caught) vs 21 passed / 2 skipped WITHOUT it
+> (regression invisible, exit 0)**. That is round 10's failure class — a requirement whose control
+> does not move — reappearing one level up, in the *test*. Fixed by:
+> 1. a **structural guard that needs no browser** (`test_every_enlarge_control_sits_on_a_panel_the_overlay_rule_can_actually_match`)
+>    — every `[data-sf-big]` panel must take the grid path (`.mosaic .tile`) or the overlay path
+>    (no `tile` class, no `.sf-tilebox` inside). Both injected regressions are caught; with the guard
+>    deselected the same broken tree is green, so it is load-bearing;
+> 2. a **`browser` extra** (`pip install -e '.[dev,browser]'`) and a dedicated **`browser` CI job**
+>    that installs chromium, runs the rect tests, and **fails loudly if they SKIP**. Kept out of the
+>    `test` matrix and out of `check`'s `needs` on purpose: a browser adds a download to every cell,
+>    and this repo has documented render flakes. Promote it into `check` once it has a track record;
+> 3. a **daylight inset guard** — the rect test now clicks in **all four themes** and asserts the box
+>    only ever grows. Nothing previously pinned ADR-0305's most subtle decision, so a "simplification"
+>    back to a `vw` inset would have regressed daylight while every console-only assertion stayed green.
 >
 > ### What shipped
 > `/path`, `/driving-path`, `/evolution` and `/volatility` now wear the panel contract — **and the
@@ -66,6 +93,17 @@
 >    its own baseline on an unmodified tree is worse than none** — it teaches the next agent to ignore
 >    a red result.
 >
+> ### ⚠️ THE HARNESS TRAP ROUND 12 MUST NOT REDISCOVER — a worktree does NOT change what Python imports
+> `pip install -e .` writes `/usr/local/lib/python3.11/dist-packages/__editable__.schedule_forensics-*.pth`
+> containing the **main checkout's** `src` path. So `cd <worktree> && python serve.py` serves the MAIN
+> tree, not the worktree — **a verifier following that instruction literally compares the round against
+> itself and reports a clean baseline.** Every server and every `pytest` in a worktree must pin
+> `PYTHONPATH=<worktree>/src`, and every measurement must **assert the served bytes** (md5 the CSS, or
+> probe for a round-only string that must be absent on pristine). One verifier caught this unaided; the
+> brief that told it otherwise was the lead's.
+> **Port pre-flight is not enough either:** a port verified free at 03:08 was taken by another session
+> by 03:13 and served the *other* tree — caught only by the md5 check at measurement time.
+>
 > ### ⚠️ NEW ORCHESTRATION HAZARD, LEARNED THE HARD WAY — `git stash` IS NOT READ-ONLY
 > The first verification launch told three "read-only" agents to `git stash` to compare against
 > pristine. They share ONE working tree: verifier L1 stashed the entire round out from under verifier
@@ -85,6 +123,22 @@
 > 3. **`/driving-path` overflows horizontally** — `scrollWidth` 1719 vs `clientWidth` 1440; the
 >    11-column drill table overflows `main`. Pre-existing on both trees; the fix is in
 >    `driving_tiers.js`, which is in the axis-caption freeze set.
+> 4. **`/evolution`'s ⤓ refusal is right but not *realised*.** The round correctly declined a panel ⤓
+>    because `export_evolution` is target-blind — then left the identical wrong export one click away
+>    as the page's pre-existing `⬇ Excel / ⬇ Word` bar, under a banner that promises the exports honour
+>    the trace options. Pre-existing (byte-identical on `6b8d144`), but the round's own reasoning —
+>    *a live-but-wrong export is worse than a dead one* — argues for closing it. **Operator decision.**
+> 5. **`/volatility`'s ten per-visual ⤓ all point at the same destination** (`/export/xlsx/volatility`).
+>    No figure is wrong — that workbook is the membership matrix every tile is drawn from, and the
+>    hover text says so — but ten buttons offering one file is a vocabulary question worth settling.
+> 6. **`/mission` has a pre-existing bimodal render** (token `100` count 36 vs 15, different svg axis
+>    maxima at a 3000ms settle) that reproduces pristine-vs-pristine. Add it to the known-flakes list
+>    beside `/analysis`'s apollo Gantt width and `/curves`' unsettled heights, or round 12 will report
+>    it as a regression.
+> 7. **`#whatifData` is unreachable on the TP4 fixture** (`compute_path_counterfactual` returns `None`
+>    for all ten version pairs), so requirement 4's byte-capture of that blob is vacuous. The golden
+>    `project2_5` fixture does exercise it — any future browser pin on the what-if panel must use that
+>    fixture, and the four new figure-bearing branches in the removed-work take render only there.
 >
 > ### Also carried forward
 > - **`docs/STATE/OPERATOR-REQUESTS.md` is NEW durable state** — the operator's 2026-07-28 notes:

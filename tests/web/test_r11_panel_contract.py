@@ -596,6 +596,53 @@ def test_the_overlay_rule_keeps_both_structural_exclusions() -> None:
     assert "3vw" not in body
 
 
+def test_every_enlarge_control_sits_on_a_panel_the_overlay_rule_can_actually_match(
+    pages: dict[str, str],
+) -> None:
+    """The MARKUP half of the overlay contract — and the one the round originally left open.
+
+    The CSS guard above proves the rule still exists. It does not prove the rule still MATCHES
+    anything: ``.panel.is-big:not(.tile):not(:has(.sf-tilebox))`` silently stops applying if a
+    panel later gains a ``tile`` class or a ``.sf-tilebox`` wrapper, and then ⛶ is inert again
+    with every other assertion in this module still green. A round-11 verifier demonstrated
+    exactly that — a one-line markup edit re-inerted the control (measured: the box did not
+    move) and the whole suite stayed at exit 0.
+
+    So assert the contract structurally, per control, with no browser: every panel carrying
+    ``[data-sf-big]`` must take ONE of the two working paths —
+
+    * the GRID path: a ``.mosaic .tile`` panel, which grows in place via ``grid-column:1/-1``
+      plus the round-10 matched pair (``/volatility``'s ten tiles); or
+    * the OVERLAY path: no ``tile`` class AND no ``.sf-tilebox`` inside it, so
+      ``.panel.is-big:not(.tile):not(:has(.sf-tilebox))`` matches.
+
+    A panel that is neither — ``.tile`` outside a ``.mosaic``, or an overlay panel that has
+    grown a ``.sf-tilebox`` — carries a control that flips a label and moves nothing, which is
+    the ADR-0304 defect this round exists to remove.
+    """
+    for route, page in pages.items():
+        for chunk in _panels(page):
+            if "data-sf-big" not in chunk:
+                continue
+            open_tag = _PANEL_OPEN.match(chunk)
+            assert open_tag is not None, f"{route}: panel chunk does not start with its open tag"
+            classes = set(re.findall(r'class="?([^">]*)"?', open_tag.group(0))[0].split())
+            heading = (_H.findall(chunk) or ["(no heading)"])[0][:60]
+            if "tile" in classes:
+                # the grid path: only legitimate inside a .mosaic, which is what supplies the
+                # grid formatting context `grid-column` needs.
+                assert "class=mosaic" in page or 'class="mosaic' in page, (
+                    f"{route}: {heading!r} is a .tile but the page has no .mosaic — "
+                    "`grid-column:1/-1` binds to nothing and ⛶ is inert"
+                )
+            else:
+                # the overlay path: `:has(.sf-tilebox)` must not exclude it.
+                assert "sf-tilebox" not in chunk, (
+                    f"{route}: {heading!r} carries ⛶ but contains a .sf-tilebox, so "
+                    ":not(:has(.sf-tilebox)) excludes it and the control is a no-op"
+                )
+
+
 def test_the_enlarged_panel_is_put_back_in_the_flow_for_print() -> None:
     """Without this, a toggled panel stays ``position:fixed`` under print media (measured
     1416x846 in all four themes) and prints as a floating card over a testimony report."""
@@ -772,3 +819,41 @@ def test_a_real_click_grows_a_volatility_mosaic_tile_in_the_flow(served: str) ->
         assert (restored["w"], restored["h"]) == (before["w"], before["h"])
         assert restored["label"] == ENLARGE_LABEL
         browser.close()
+
+
+def test_the_overlay_never_shrinks_a_panel_in_any_theme_least_of_all_daylight(served: str) -> None:
+    """The guard the inset rationale implies but the round did not write (round-11 adjudication).
+
+    ADR-0305 rejected the obvious ``inset:4vh 3vw`` — copied from the ``.sf-tilebox.tile-expanded``
+    overlay the project already ships — because **daylight has no 236px left rail**: its ``main`` is
+    x=0 w=1440 and its panels are 1384px, against x=236 w=1204 / 1148px in the other three themes.
+    A ``3vw`` inset yields 1354px, so ⛶ would have made the chart SMALLER in one theme of four —
+    round 10's ``/performance`` failure, reproduced inside its own fix.
+
+    Nothing pinned that. A later "simplification" back to a vw inset would sail through every other
+    assertion here, because they all run in the DEFAULT theme, where a vw inset still looks fine.
+    So: click for real in EVERY theme and assert the box only ever grows. Daylight is the one that
+    matters, and it is the one a console-only test can never see.
+    """
+    from playwright.sync_api import sync_playwright
+
+    widths: dict[str, tuple[int, int]] = {}
+    with sync_playwright() as p:
+        browser = p.chromium.launch(executable_path=str(CHROME))
+        for theme in ("console", "daylight", "apollo", "jarvis"):
+            page = browser.new_page(viewport={"width": 1440, "height": 900})
+            page.goto(served + DP, wait_until="load")
+            page.evaluate("(t)=>document.documentElement.setAttribute('data-theme', t)", theme)
+            page.wait_for_timeout(400)
+            before, after = _click_and_measure(page, ".panel[data-export] [data-sf-big]", 0)
+            widths[theme] = (before["w"], after["w"])
+            assert after["position"] == "fixed", (theme, after)
+            assert after["w"] > before["w"], (
+                f"{theme}: ⛶ made the panel NARROWER ({before['w']} -> {after['w']}). "
+                "A vw-based inset does this on daylight, which has no left rail — see ADR-0305."
+            )
+            page.close()
+        browser.close()
+
+    # daylight really is the widest default panel, i.e. the case the other themes cannot expose
+    assert widths["daylight"][0] > widths["console"][0], widths
