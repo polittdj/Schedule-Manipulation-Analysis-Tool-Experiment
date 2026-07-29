@@ -313,8 +313,10 @@ def test_api_ssi_returns_focus_payload_and_matrices(client: TestClient) -> None:
 
 
 def test_factor_then_auto_calc_then_oat(client: TestClient) -> None:
-    # rank tasks, auto-calculate their Best/Worst, then the deterministic sensitivity ranks them
-    client.post("/sra/factor", data={"uids": "5, 6 7", "factor": "5"})
+    # rank tasks, auto-calculate their Best/Worst, then the deterministic sensitivity ranks them.
+    # ADR-0307: these must be INCOMPLETE activities — a completed one carries no Best/Worst spread,
+    # so it is deliberately absent from the sweep (uids 5/6/7 in this golden are 100% complete).
+    client.post("/sra/factor", data={"uids": "106, 50 107", "factor": "5"})
     client.post("/sra/auto-calc", data={"scope": "all"})
     o = client.get("/api/sra/oat")
     assert o.status_code == 200
@@ -326,13 +328,26 @@ def test_factor_then_auto_calc_then_oat(client: TestClient) -> None:
     assert [r["total"] for r in rows] == sorted((r["total"] for r in rows), reverse=True)
 
 
+def test_a_completed_activity_never_enters_the_oat_sweep(client: TestClient) -> None:
+    """ADR-0307: ranking finished work must not produce a sensitivity row.
+
+    uids 5/6/7 of the Project5 golden are 100% complete with actual finishes. Before ADR-0307 the
+    auto-calc wrote them a Best/Worst derived from their FULL original duration and the sweep ranked
+    them, i.e. the tool reported schedule uncertainty about work that had already happened.
+    """
+    client.post("/sra/factor", data={"uids": "5, 6 7", "factor": "5"})
+    client.post("/sra/auto-calc", data={"scope": "all"})
+    rows = client.get("/api/sra/oat").json()["rows"]
+    assert [r for r in rows if r["uid"] in {5, 6, 7}] == []
+
+
 def test_oat_cap_disclosure_is_never_a_silent_subset(client: TestClient, monkeypatch) -> None:  # type: ignore[no-untyped-def]
     """ADR-0261 P5 / ADR-0263: above _OAT_MAX_ACTIVITIES the sweep keeps only the
     largest-ML-remaining candidates and MUST disclose the cap in the payload note (the panel
     renders it); the capped branch previously had zero test coverage."""
     import schedule_forensics.web.app as app_module
 
-    client.post("/sra/factor", data={"uids": "5, 6 7", "factor": "5"})
+    client.post("/sra/factor", data={"uids": "106, 50 107", "factor": "5"})  # incomplete (ADR-0307)
     client.post("/sra/auto-calc", data={"scope": "all"})
     monkeypatch.setattr(app_module, "_OAT_MAX_ACTIVITIES", 2)
     o = client.get("/api/sra/oat")

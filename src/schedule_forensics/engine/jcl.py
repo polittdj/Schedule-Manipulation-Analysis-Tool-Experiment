@@ -210,10 +210,13 @@ def compute_jcl(
     ]
     risk_uids = {u for r in active_risks for u in r.affected}
 
+    # a COMPLETED activity is a point mass — its duration is a recorded fact, never a forecast
+    # (ADR-0307); kept verbatim in step with compute_sra_ssi's own guard
+    done = {t.unique_id for t in tasks if _is_completed(t)}
     three: dict[int, tuple[int, int, int]] = {}
     for u in uids:
-        if u in risk_uids or u not in tp_in:
-            three[u] = (ml[u], ml[u], ml[u])  # point mass (risk-driven, or no uncertainty)
+        if u in risk_uids or u in done or u not in tp_in:
+            three[u] = (ml[u], ml[u], ml[u])  # point mass (risk-driven, completed, or no spread)
         else:
             bc, mlv, wc = tp_in[u]
             three[u] = (max(0, int(bc)), int(mlv), max(int(bc), int(wc)))

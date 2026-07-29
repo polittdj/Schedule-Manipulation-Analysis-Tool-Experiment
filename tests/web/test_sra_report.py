@@ -182,7 +182,7 @@ def test_report_documents_the_setup_and_how_to_enter_inputs(client: TestClient) 
     assert "How you enter it" in doc  # the inputs table column
     assert "Risk Ranking Factor" in doc and "no duration uncertainty" in doc  # factor 0 meaning
     assert "Risk Factors table (factor -&gt; Best/Worst case)" in doc  # the factor table heading
-    assert "% subtract (Best case)" in doc and "% add (Worst case)" in doc  # the table columns
+    assert "% of ML (Best case)" in doc and "% add (Worst case)" in doc  # the table columns
     assert "Random each iteration" in doc and "Exact percentage overall" in doc  # occurrence modes
 
 

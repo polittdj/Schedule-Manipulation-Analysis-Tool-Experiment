@@ -247,6 +247,7 @@ from schedule_forensics.engine.sra import (
     SRAResult,
     SSIResult,
     SSIRiskStat,
+    _is_completed,
     compute_oat_sensitivity,
     compute_sra,
     compute_sra_ssi,
@@ -6107,6 +6108,10 @@ def create_app(
             for t in non_summary(sch):
                 u = t.unique_id
                 if u not in st.sra_factors or (want is not None and u not in want):
+                    continue
+                # a completed activity gets no Best/Worst spread (ADR-0307) — the engine holds it
+                # at a point mass, so auto-calc must not display a range the run will not use
+                if _is_completed(t):
                     continue
                 rem = (
                     t.remaining_duration_minutes
@@ -13624,6 +13629,8 @@ def _ssi_three_point(st: SessionState, sch: Schedule) -> dict[int, tuple[int, in
     out: dict[int, tuple[int, int, int]] = {}
     for t in non_summary(sch):
         u = t.unique_id
+        if _is_completed(t):
+            continue  # completed work is a recorded fact, never a forecast (ADR-0307)
         rem = (
             t.remaining_duration_minutes
             if t.remaining_duration_minutes is not None
@@ -15156,11 +15163,11 @@ def _sra_report_blocks(
         ),
         Heading("Risk Factors table (factor -> Best/Worst case)", level=2),
         Paragraph(
-            "Best case = ML x (1 - subtract%/100); Worst case = ML x (1 + add%/100), where ML is the "
+            "Best case = ML x (best%/100); Worst case = ML x (1 + add%/100), where ML is the "
             "task's current Remaining Duration. These are the percentages used for this report:"
         ),
         DocTable(
-            ("Risk Ranking Factor", "% subtract (Best case)", "% add (Worst case)"),
+            ("Risk Ranking Factor", "% of ML (Best case)", "% add (Worst case)"),
             (
                 ("0 (no uncertainty)", "0", "0"),
                 *((f, f"{s:g}", f"{a:g}") for f, s, a in st.sra_factor_rows),
@@ -15294,7 +15301,7 @@ def _sra_report_blocks(
         Heading("Methodology & assumptions", level=1),
         Paragraph(
             "Best/Worst-case durations use ML = the current Remaining Duration; "
-            "BC = ML x (1 - subtract%/100), WC = ML x (1 + add%/100) with the per-factor percentages "
+            "BC = ML x (best%/100), WC = ML x (1 + add%/100) with the per-factor percentages "
             f"from the Risk Factors table. Occurrence mode: {result.occurrence_mode}. Correlation: "
             f"{result.correlation:g}. Risk register: {'on' if result.used_risks else 'off'}. "
             f"Sampling: {result.sampling}. Probabilistic branches: "
@@ -15464,7 +15471,7 @@ Gaussian-copula composition (LHS-then-Cholesky under a correlation matrix), std-
 uncertainty anywhere it falls back to the deterministic finish exactly like MC.</p></details>
 <h3>Risk Factors table</h3>
 <form action="/sra/factor-table" method=post>
-<table style="width:auto"><tr><th>Factor</th><th>% subtract (Best Case)</th><th>% add (Worst Case)</th></tr>
+<table style="width:auto"><tr><th>Factor</th><th>% of ML (Best Case)</th><th>% add (Worst Case)</th></tr>
 {factor_rows}</table><button type=submit>Save factor table</button></form>
 <h3>Assign Risk Ranking Factor &amp; calculate Best/Worst durations</h3>
 <form action="/sra/factor" method=post class=viz-controls>

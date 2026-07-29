@@ -1432,7 +1432,7 @@ _FIELD_GLOSSARY: dict[str, MetricDoc] = {
     "risk_ranking_factor": _gloss(
         "Risk Ranking Factor (0-5)",
         "A 0-5 rating that sets each task's Best/Worst-case spread from the factor table.",
-        "0 = no uncertainty (BC=ML=WC); 1-5 widen subtract%/add% off ML",
+        "0 = no uncertainty (BC=ML=WC); 1-5 widen the best%-of-ML / add% spread",
         "An estimator ranks the few driving tasks 1-5 by how uncertain their durations are and "
         "leaves stable work at 0, so the simulation only spreads the activities that actually "
         "carry risk.",
@@ -1440,7 +1440,7 @@ _FIELD_GLOSSARY: dict[str, MetricDoc] = {
     "bc_duration": _gloss(
         "Best Case (BC) duration",
         "The low end of a task's sampled duration range, in working days.",
-        "BC = ML x (1 - subtract%/100) from the factor",
+        "BC = ML x (best%/100) from the factor",
         "BC is the optimistic duration the Monte-Carlo can draw — collectively the BCs set how "
         "early the finish can realistically land (the acceleration opportunity).",
     ),
