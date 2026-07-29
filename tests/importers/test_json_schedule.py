@@ -590,3 +590,44 @@ def test_malformed_day_segments_does_not_raise_indexerror() -> None:
     }
     sch = parse_json_text(json.dumps(doc))  # must NOT raise IndexError
     assert sch.calendar.day_segments == ((480, 1020),)  # only the valid pair survives
+
+
+# ── audit 2026-07-29 (V7): a malformed calendar fails loud instead of being guessed ────────
+# ``hours_per_day: 0`` used to be swallowed by a truthiness test and replaced with 480, silently
+# rescaling EVERY duration in the file (durations are stored in working minutes and divided by this
+# number at the presentation boundary — a true 10h day then reads 25% long). ``work_weekdays: []``
+# was likewise replaced with a Mon-Fri week the file never declared. Both now reach Calendar's own
+# fail-closed validators, so the two spellings of one input finally agree.
+
+
+def _doc(**calendar_kw: object) -> str:
+    return json.dumps(
+        {
+            "name": "P",
+            "project_start": "2026-01-05T08:00:00",
+            "calendar": calendar_kw,
+            "tasks": [{"unique_id": 1, "name": "A", "duration_minutes": 480}],
+        }
+    )
+
+
+def test_zero_hours_per_day_is_rejected_not_silently_defaulted() -> None:
+    with pytest.raises(ImporterError):
+        parse_json_text(_doc(hours_per_day=0))
+
+
+def test_empty_work_weekdays_is_rejected_not_silently_defaulted() -> None:
+    with pytest.raises(ImporterError):
+        parse_json_text(_doc(work_weekdays=[]))
+
+
+def test_an_absent_calendar_field_still_takes_the_standard_default() -> None:
+    """The control: OMITTING a key legitimately means "use the standard day"; only a PROVIDED
+    malformed value fails."""
+    cal = parse_json_text(_doc()).calendar
+    assert cal.working_minutes_per_day == 480 and cal.work_weekdays == (0, 1, 2, 3, 4)
+
+
+def test_a_real_ten_hour_day_still_round_trips() -> None:
+    cal = parse_json_text(_doc(hours_per_day=10, work_weekdays=[0, 1, 2, 3, 4, 5])).calendar
+    assert cal.working_minutes_per_day == 600 and cal.work_weekdays == (0, 1, 2, 3, 4, 5)

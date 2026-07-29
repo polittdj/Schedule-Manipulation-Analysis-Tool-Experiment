@@ -1413,3 +1413,49 @@ def test_relationships_translate_through_the_stable_identity() -> None:
     sched = parse_xer_text(text)
     assert len(sched.relationships) == 1
     assert _rel(sched, _uid("A1000"), _uid("A1010")) is RelationshipType.FS
+
+
+# ── audit 2026-07-29 (V4): an unresolvable project calendar must say so ────────────────────
+# As in the MSPDI importer: the ``except`` handler logs an unreadable calendar, but these
+# unresolvable paths raised nothing and defaulted to 8h/Mon-Fri silently, leaving no trace that
+# every duration-in-days figure downstream rests on an assumed calendar.
+
+_XER_NO_MATCH = """ERMHDR\t19.12\t2026-01-05\tProject\tadmin\tadmin\tUSD
+%T\tPROJECT
+%F\tproj_id\tclndr_id\tproj_short_name\tplan_start_date
+%R\t1\t999\tP\t2026-01-05 08:00
+%T\tCALENDAR
+%F\tclndr_id\tclndr_name\tday_hr_cnt\tdefault_flag\tclndr_data
+%R\t1\tStandard\t10\tN\t
+%T\tTASK
+%F\ttask_id\tproj_id\ttask_code\ttask_name\ttarget_drtn_hr_cnt
+%R\t1\t1\tA1\tA\t8
+%E
+"""
+
+_XER_NO_TABLE = """ERMHDR\t19.12\t2026-01-05\tProject\tadmin\tadmin\tUSD
+%T\tPROJECT
+%F\tproj_id\tclndr_id\tproj_short_name\tplan_start_date
+%R\t1\t1\tP\t2026-01-05 08:00
+%T\tTASK
+%F\ttask_id\tproj_id\ttask_code\ttask_name\ttarget_drtn_hr_cnt
+%R\t1\t1\tA1\tA\t8
+%E
+"""
+
+
+def test_an_unmatched_project_clndr_id_is_logged_not_silently_defaulted(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    with caplog.at_level("WARNING", logger="schedule_forensics.importers.xer"):
+        sch = parse_xer_text(_XER_NO_MATCH)
+    assert sch.calendar.working_minutes_per_day == 480
+    assert "999" in caplog.text and "8h/Mon-Fri default" in caplog.text
+
+
+def test_a_missing_calendar_table_is_logged_not_silently_defaulted(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    with caplog.at_level("WARNING", logger="schedule_forensics.importers.xer"):
+        parse_xer_text(_XER_NO_TABLE)
+    assert "no CALENDAR table" in caplog.text

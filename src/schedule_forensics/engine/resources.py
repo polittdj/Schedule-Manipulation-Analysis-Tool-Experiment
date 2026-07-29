@@ -54,7 +54,18 @@ class ResourcePeriod:
 
     @property
     def over_allocated(self) -> bool:
-        return self.capacity_minutes > 0 and self.load_minutes > self.capacity_minutes + 1e-6
+        """Booked work exceeds capacity — including work booked against ZERO capacity.
+
+        The old ``capacity_minutes > 0`` conjunct made over-allocation unreportable at zero
+        capacity (audit 2026-07-29, V6): a bucket carrying real booked minutes against no capacity
+        at all — the most extreme over-allocation there is — returned ``False``. Two paths reach a
+        zero-capacity bucket: a resource whose file declares ``MaxUnits = 0`` (now preserved rather
+        than coerced to 1.0, see :func:`compute_resource_loading`), and a task whose whole span
+        falls on non-working days so the bucket has no working days to earn capacity from. Both are
+        genuine findings the analyst must see, not conditions to hide. A bucket with no load is
+        still not over-allocated (``0.0 > 0.0 + 1e-6`` is False), so idle periods stay quiet.
+        """
+        return self.load_minutes > self.capacity_minutes + 1e-6
 
 
 @dataclass(frozen=True)
@@ -168,7 +179,15 @@ def compute_resource_loading(
         res = by_id.get(rid)
         name = res.name if res is not None else f"Resource {rid}"
         rtype = str(res.type) if res is not None else "WORK"
-        max_units = (res.max_units if res is not None and res.max_units is not None else 1.0) or 1.0
+        # A DECLARED zero stays zero (audit 2026-07-29, V5). ``Resource.max_units`` is
+        # ``ge=0.0`` (model/resource.py:34), so 0.0 is a legal statement — "this resource has no
+        # capacity" (a placeholder, or a crew that has left). The ternary already substitutes 1.0
+        # for a MISSING value; the trailing ``or 1.0`` this replaces could therefore only ever fire
+        # on exactly 0.0, printing "Max units 1" for a file that says 0 and inventing a full
+        # unit-day of capacity. Paired with the :meth:`ResourcePeriod.over_allocated` fix above —
+        # alone, preserving the 0 would have SUPPRESSED the over-allocation instead of sharpening
+        # it, because the old guard skipped zero-capacity buckets.
+        max_units = res.max_units if res is not None and res.max_units is not None else 1.0
         months = load.get(rid, {})
         res_contrib = contrib.get(rid, {})
         series = []

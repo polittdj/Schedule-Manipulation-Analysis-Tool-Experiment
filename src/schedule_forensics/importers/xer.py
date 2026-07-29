@@ -587,8 +587,17 @@ def _parse_project_calendar(tables: Tables, project: Row) -> Calendar:
 
 
 def _project_calendar(tables: Tables, project: Row) -> Calendar:
+    """The project's calendar, or the 8h/Mon-Fri default **with a logged reason**.
+
+    The caller's ``except`` handler logs a structurally unreadable calendar; these unresolvable
+    paths raise nothing and used to default silently (audit 2026-07-29, V4), leaving no trace that
+    every duration-in-days figure downstream rests on an assumed calendar.
+    """
     rows = tables.get("CALENDAR", [])
     if not rows:
+        logger.warning(
+            "no CALENDAR table in the XER; using the standard 8h/Mon-Fri default",
+        )
         return Calendar()
     by_id = {cal_id: r for r in rows if (cal_id := _g(r, "clndr_id")) is not None}
     proj_cal_id = _g(project, "clndr_id")
@@ -596,6 +605,12 @@ def _project_calendar(tables: Tables, project: Row) -> Calendar:
     if row is None:
         row = next((r for r in rows if (_g(r, "default_flag") or "").upper() == "Y"), None)
     if row is None:
+        logger.warning(
+            "PROJECT.clndr_id %r matches no CALENDAR row and no default_flag=Y row exists "
+            "(%d row(s) present); using the standard 8h/Mon-Fri default",
+            proj_cal_id,
+            len(rows),
+        )
         return Calendar()
     name = _g(row, "clndr_name") or "Standard"
 

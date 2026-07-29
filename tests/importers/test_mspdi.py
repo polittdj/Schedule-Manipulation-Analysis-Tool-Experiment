@@ -969,3 +969,48 @@ def test_non_integer_outline_level_is_tolerated_not_fatal() -> None:
     )
     sch = parse_mspdi_text(_doc(body))  # must not raise
     assert sch.tasks_by_id[1].outline_level == 0
+
+
+# ── audit 2026-07-29 (V4): an unresolvable project calendar must say so ────────────────────
+# The importer's ``except`` handler logs a structurally UNREADABLE calendar, but the UNRESOLVABLE
+# paths raise nothing and used to default to 8h/Mon-Fri in total silence. That matters: a file can
+# name a calendar UID that does not exist while CARRYING a real 10-hour calendar, and every
+# duration-in-days figure downstream is then overstated by 25% with nothing in the log to say why.
+
+_TEN_HOUR_CAL = """<?xml version="1.0" encoding="UTF-8"?>
+<Project xmlns="http://schemas.microsoft.com/project">
+  <Name>P</Name><StartDate>2026-01-05T08:00:00</StartDate>
+  {calendar_uid}
+  <Calendars><Calendar><UID>1</UID><Name>Standard</Name><IsBaseCalendar>1</IsBaseCalendar>
+    <WeekDays><WeekDay><DayType>2</DayType><DayWorking>1</DayWorking>
+      <WorkingTimes><WorkingTime><FromTime>08:00:00</FromTime><ToTime>18:00:00</ToTime>
+      </WorkingTime></WorkingTimes>
+    </WeekDay></WeekDays></Calendar></Calendars>
+  <Tasks><Task><UID>1</UID><ID>1</ID><Name>A</Name><Duration>PT8H0M0S</Duration></Task></Tasks>
+</Project>"""
+
+
+def test_a_dangling_project_calendar_uid_is_logged_not_silently_defaulted(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    with caplog.at_level("WARNING", logger="schedule_forensics.importers.mspdi"):
+        sch = parse_mspdi_text(_TEN_HOUR_CAL.format(calendar_uid="<CalendarUID>999</CalendarUID>"))
+    # the default still applies (the Law-2 tolerance posture) — but it is no longer silent
+    assert sch.calendar.working_minutes_per_day == 480
+    assert "999" in caplog.text and "8h/Mon-Fri default" in caplog.text
+
+
+def test_a_missing_project_calendar_uid_is_logged_not_silently_defaulted(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    with caplog.at_level("WARNING", logger="schedule_forensics.importers.mspdi"):
+        parse_mspdi_text(_TEN_HOUR_CAL.format(calendar_uid=""))
+    assert "no project CalendarUID" in caplog.text
+
+
+def test_a_resolvable_project_calendar_logs_nothing(caplog: pytest.LogCaptureFixture) -> None:
+    """The control: a healthy file must stay quiet, so the warning keeps its signal value."""
+    with caplog.at_level("WARNING", logger="schedule_forensics.importers.mspdi"):
+        sch = parse_mspdi_text(_TEN_HOUR_CAL.format(calendar_uid="<CalendarUID>1</CalendarUID>"))
+    assert sch.calendar.working_minutes_per_day == 600  # the file's real 10-hour day
+    assert caplog.text == ""

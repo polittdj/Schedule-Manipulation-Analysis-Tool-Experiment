@@ -316,3 +316,56 @@ def test_detect_erased_actual_date() -> None:
     assert len(findings) == 1
     assert findings[0].severity is Severity.HIGH
     assert findings[0].citations[0].unique_id == 1
+
+
+# ── audit 2026-07-29 (CC-02): an ABSENT optional figure is not a movement ──────────────────
+# ``cost`` / ``actual_cost`` / ``work_minutes`` / ``actual_work_minutes`` are ``| None`` where None
+# means "the source did not provide it" (model/task.py), never 0. Reading an absent value as 0
+# manufactured a direction, so an export that merely dropped its cost column produced HIGH
+# "recorded actual cost/work reduced" findings — an accusation of concealment, indistinguishable
+# from a real rollback. These pin BOTH halves: the false positive is gone AND the true one remains.
+
+
+def _costed(uid: int, **kw: object) -> Task:
+    return Task(unique_id=uid, name=f"T{uid}", duration_minutes=10 * DAY, **kw)
+
+
+def test_dropped_cost_and_work_columns_are_not_reported_as_manipulation() -> None:
+    """The prior export recorded cost/work; the current one omits those columns entirely.
+
+    Nothing was rolled back — the fields are simply absent — so nothing may be alleged.
+    """
+    prior = _s(
+        [_costed(1, cost=12000.0, actual_cost=5000.0, work_minutes=4800, actual_work_minutes=2400)]
+    )
+    current = _s([_costed(1)])  # same activity, no cost/work figures carried
+
+    findings = detect_manipulation(current, prior)
+
+    assert [f.metric_id for f in findings] == []
+
+
+def test_a_real_cost_and_work_rollback_is_still_reported() -> None:
+    """The control for the test above: when BOTH versions carry the figure and it shrank, the
+    HIGH findings must still fire — the fix must not blind the detector."""
+    prior = _s(
+        [_costed(1, cost=12000.0, actual_cost=5000.0, work_minutes=4800, actual_work_minutes=2400)]
+    )
+    current = _s(
+        [_costed(1, cost=9000.0, actual_cost=3000.0, work_minutes=2400, actual_work_minutes=1200)]
+    )
+
+    by_id = {f.metric_id: f for f in detect_manipulation(current, prior)}
+
+    assert by_id["MANIP_ACTUAL_COST_ERASED"].severity is Severity.HIGH
+    assert by_id["MANIP_ACTUAL_WORK_ERASED"].severity is Severity.HIGH
+    assert "0 increased, 1 decreased" in by_id["MANIP_COST_CHANGE"].detail
+    assert "0 increased, 1 decreased" in by_id["MANIP_WORK_CHANGE"].detail
+
+
+def test_newly_recorded_cost_is_not_reported_as_an_increase() -> None:
+    """The mirror case: absent → present is a figure becoming available, not a cost movement."""
+    prior = _s([_costed(1)])
+    current = _s([_costed(1, cost=12000.0, actual_cost=5000.0)])
+
+    assert [f.metric_id for f in detect_manipulation(current, prior)] == []
