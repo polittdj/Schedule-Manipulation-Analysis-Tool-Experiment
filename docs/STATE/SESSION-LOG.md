@@ -8762,3 +8762,52 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   `axisTitles` call sites md5-identical; 648 caption renders clean; loaded-terms control `True`
   with 56 new strings and 0 flagged; promotion census zero across 5 routes × 4 themes.
 - Next: **rank 11 — `/path`, `/driving-path`, `/evolution`, `/volatility`.**
+
+## 2026-07-29 — Ultracode round 11: the ⛶ that finally moves (ADR-0305, v1.0.121)
+
+- **Shipped:** `/path`, `/driving-path`, `/evolution` and `/volatility` wear the panel contract, and
+  the contract's ⛶ ENLARGE works on a **block-layout** panel for the first time. Branch
+  `claude/schedule-forensics-continue-gkju7l`, restarted from merged `main` `6b8d144`. Draft PR opened.
+  `engine/`, `model/`, `importers/`, `ai/` untouched.
+- **Shape:** 5 surveys + 1 cross-cutting mechanism audit + 1 reconciling lead → 6 serialized
+  implementers → 3 adversarial verifiers → orchestrator re-verification. ~1,000 agent tool calls.
+- **ADR-0305** closes ADR-0304's deferred open item 3. Measured on untouched merged `main` with real
+  clicks in four themes: **68 MOVED / 192 NO-OP**; patched: **252 MOVED / 4 NO-OP** — 184
+  NO-OP→MOVED, **0 MOVED→NO-OP**. The 4 survivors are `/analysis` panel 5 × 4 themes, the
+  `:has(.sf-tilebox)` exclusion firing as designed.
+- **LESSON: the fix nearly repeated round 10's failure inside itself.** Copying the shipped
+  `.sf-tilebox.tile-expanded`'s `inset:4vh 3vw` was measured and rejected — **daylight has no 236px
+  left rail**, so a `3vw` box is 1354px against a 1384px daylight panel: `/scurve` daylight measured
+  `1384x752 → 1354x828`, svg `1354x436 → 1324x426`. ⛶ would have made the chart **smaller in one of
+  four themes**. Generalised: **when you give a control an effect, measure that effect in EVERY theme
+  and at every scale — the obvious geometry can be right in three of four and wrong in the fourth.**
+- **LESSON: `git stash` is not read-only, and "read-only agent" is not a property you can assert.**
+  The first verification launch told three agents to stash for a pristine comparison. They share one
+  working tree: L1 stashed the whole round out from under L3 mid-measurement **and** out from under
+  the lead's concurrent `pytest`. Caught only because `pyproject.toml` had reverted to 1.0.120.
+  Stopped the run, snapshotted a recovery patch, restored, relaunched with `isolation: "worktree"`.
+  **Any agent needing a pristine comparison gets its own worktree.**
+- **LESSON: an instrument that cannot reproduce its own baseline is worse than no instrument.** The
+  requirement-5 axis-caption baseline the lead generated hashed a balanced-paren slice per
+  `axisTitles(` match — it **missed one of `trend.js`'s five call sites** and **included
+  `chartframe.js`'s definition**. An implementer reported it as unusable; the lead re-derived, found
+  the flaw was real (for a different reason than reported), retired it, and replaced it with a
+  whole-file md5 census of the 12 owning files. A red gate nobody trusts trains agents to ignore it.
+- **LESSON: the fixture must be loaded the way the browser loads it.** Without the `file_meta`
+  companion JSON the five TP4 snapshots load as five one-version projects and `/evolution` +
+  `/volatility` render their "load at least two analyzable versions" **fallback**. Four pages were
+  measured in that empty state before the lead caught it and relaunched the survey.
+- **Deliberate negatives, each attacked and upheld:** `/path` no ⤓ (route 422s without `target`) and
+  no prov chip (version chosen client-side); `/evolution` no ⤓ anywhere (`export_evolution` ignores
+  `?target=` — byte-identical workbooks, md5 `f8e7cd26…`); `/driving-path` tier drill no ⤓
+  (`&cols=` rebuilt live vs a static `data-export` — the round-10 defect); "Corridor over time" no ⛶
+  (dead space after `#dpFit`); single-open invariant overlay-only so the Mission wall keeps two tiles.
+- **Reported, not absorbed:** `[data-noprint]` has zero CSS rules on ten contract pages (DESIGN-SYSTEM
+  §7); `/analysis` panel 5 carries two ⛶; `/driving-path` overflows horizontally. All pre-existing,
+  all decision-ready.
+- **New durable state:** `docs/STATE/OPERATOR-REQUESTS.md` captures the operator's 2026-07-28 notes
+  (per-project roll-ups with self-describing metric titles; the DCMA-11 call-out that covers the left
+  nav and will not dismiss; Launch Sequence motion + a ≥1-minute non-repeating boot hum). Raised
+  mid-round and deliberately **not** absorbed into an in-flight round.
+- Next: **rank 12 — the Library/Setup sweep (`/workbench`, `/groups`, `/standards`, `/margin`,
+  `/card/{name}`, `/wbs/{name}`).**

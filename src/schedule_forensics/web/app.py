@@ -7556,8 +7556,45 @@ def _path_body(keys: list[str], target_uid: int | None) -> str:
         f'<option value="{_e(k)}"{" selected" if k == latest else ""}>{_e(k)}</option>'
         for k in keys
     )
+    # Panel-contract head (Mission Ops rank 11): ⛶ ENLARGE ONLY.
+    #  * NO ⤓ EXCEL. `/export/xlsx/path/{name}` declares `target: int = Query(...)` — REQUIRED —
+    #    so with no session target the URL answers 422 application/json, and `st.target_uid` is
+    #    legitimately None on this page. A server-rendered `data-export` would therefore ship a
+    #    dead link in a real session state. path.js:204-213 (`updateExportLinks`) already owns a
+    #    LIVE, column-aware export bar (#pathXlsx / #pathDocx) that rebuilds on every trace —
+    #    reuse the page's existing mechanism instead of shadowing it with a stale pinned URL.
+    #  * NO `prov=`. The version this panel traces is chosen CLIENT-side by #pathSchedule, so a
+    #    server-rendered file/data-date chip would be wrong the moment the operator switches
+    #    version; #pathStatus already prints target + name + data date + coverage from the live
+    #    /api/driving payload.
+    head = _panel_head(
+        "Path analysis &mdash; driving / secondary / tertiary to a target",
+        tools=_shell_tools(),
+    )
+    # The takeaway states ONLY what the server knows at render time — the session target that the
+    # workspace opens on (path.js traces immediately when #pathTarget carries a value) and how many
+    # versions are selectable. No engine figure is invented here: the traced counts come from
+    # /api/driving and are printed live by #pathStatus.
+    if not keys:
+        take = ""
+    elif target_uid is not None:
+        where = (
+            "the only loaded version"
+            if len(keys) == 1
+            else f"the latest of {len(keys)} loaded versions"
+        )
+        take = (
+            f"<p class=sf-take data-no-i18n>Opens on the session target UID {target_uid} &mdash; traced in "
+            f"{where}; pick another version or a different UniqueID above to re-trace.</p>"
+        )
+    else:
+        avail = "1 loaded version is" if len(keys) == 1 else f"{len(keys)} loaded versions are"
+        take = (
+            "<p class=sf-take data-no-i18n>No session target is set &mdash; enter a target "
+            f"UniqueID above and press Trace; {avail} available to trace.</p>"
+        )
     return f"""
-<div class=panel><h2>Path analysis &mdash; driving / secondary / tertiary to a target</h2>
+<div class=panel>{head}{take}
 <p class=muted>Pick a schedule and a target UniqueID: the driving path (slack &le; 0) and the
 secondary/tertiary tiers within your day-bands trace back from it — data on the
 left, a scalable timeline on the right with the gold data-date line. Add/remove columns,
@@ -7616,7 +7653,8 @@ a <b>*</b> marks the successor that keeps the chain on the driving path.</p></de
 <div class="export-bar" id=pathExport style="display:none"><a id=pathXlsx href="#">&#11015; Excel</a><a id=pathDocx href="#">&#11015; Word</a></div>
 <div id=pathStatus class=muted></div>
 <div id=pathView class=path-view></div></div>
-<script src="/static/path.js"></script>"""
+<script src="/static/path.js"></script>
+<script src="/static/panelkit.js"></script>"""
 
 
 def _portfolio_memory_panel(st: SessionState) -> str:
@@ -16206,6 +16244,36 @@ def _driving_tiers_panel(
     # /api/analysis + export token, resolved by _find_schedule.
     file_label = sch.source_file or sch.name
     banner = f'<p class="dp-file-banner">Driving path computed on <b>{_e(file_label)}</b></p>'
+    # ── Panel contract (Mission Ops rank 11). The tier counts the takes quote are the SAME
+    # `buckets` the three columns below are rendered from — one pass, so a take can never
+    # disagree with the table beside it.
+    n_drv, n_sec, n_ter = (len(buckets[k]) for k in ("driving", "secondary", "tertiary"))
+    prov = _prov_chip(sch)
+    # ⤓ EXCEL for the TIERS panel only. The URL carries the very target + trace options this
+    # panel was solved with (ADR-0174 keeps the export on the same network), and every one of
+    # those three values comes from the single `<form method=get action=/driving-path>` above —
+    # there is no client-side control that can move them without a full navigation, so the
+    # server-rendered attribute cannot go stale while the operator looks at it.
+    tiers_export = (
+        f"/export/xlsx/driving-tiers/{quote(file_label, safe='')}?target={target}"
+        f"&ignore_constraints={int(ignore_constraints)}&ignore_leveling={int(ignore_leveling)}"
+    )
+    tiers_head = _panel_head(
+        f"Driving tiers to {target} &mdash; {fname}",
+        tools=_shell_tools(
+            export_title=(
+                "Export every activity driving this target, by tier, on this page's active "
+                "trace basis — opens in Excel"
+            )
+        ),
+        prov=prov,
+    )
+    tiers_take = (
+        f"<p class=sf-take data-no-i18n>{n_drv} activities sit at 0 days of driving slack to "
+        f"{fname} &mdash; the driving path itself; {n_sec} more are within "
+        f"{DEFAULT_SECONDARY_MAX_DAYS} working days and {n_ter} within "
+        f"{DEFAULT_TERTIARY_MAX_DAYS}.</p>"
+    )
     # Interactive "all driving-tier activities" chart (operator #72): one table across the three
     # tiers with a Tier + Slack(d) column, a Columns dropdown (any standard/custom field, set
     # once), a Filter box, and an Excel export of the selection — the same drill pattern as the
@@ -16227,8 +16295,18 @@ def _driving_tiers_panel(
                 "ignore_leveling": 1 if ignore_leveling else 0,
             }
         ).replace("<", "\\u003c")
+        # DELIBERATELY ⛶ ONLY, NO ⤓ / NO `data-export` on this panel. driving_tiers.js:167-172
+        # rebuilds `&cols=<live selection>` on every render and persist.js remembers the
+        # selection across visits, so a server-pinned data-export would hand the operator the
+        # DEFAULT columns while they are looking at theirs — the round-10 /performance defect.
+        # The panel's own column-aware Excel control (rendered by driving_tiers.js) is the one
+        # export here, and the take points at it.
         drill = (
-            "<div class=panel><h2>All driving-tier activities</h2>"
+            "<div class=panel>"
+            + _panel_head("All driving-tier activities", tools=_shell_tools(), prov=prov)
+            + f"<p class=sf-take data-no-i18n>The same {n_drv} driving, {n_sec} secondary and "
+            f"{n_ter} tertiary activities as the tiers above, in one table &mdash; the Excel "
+            "button beside the Columns picker exports exactly the columns you select.</p>"
             "<p class=muted>Every activity driving this target, across all three tiers, in one "
             "chart. Add any standard or custom field (set once), filter by any shown column, and "
             "export exactly your columns to Excel."
@@ -16245,7 +16323,7 @@ def _driving_tiers_panel(
             '<script src="/static/driving_tiers.js"></script></div>'
         )
     return (
-        f"<div class=panel><h2>Driving tiers to {target} &mdash; {fname}</h2>"
+        f'<div class=panel data-export="{tiers_export}">{tiers_head}{tiers_take}'
         f"{banner}"
         "<p class=muted>Activities driving this target in the latest version, by their driving "
         "slack: <b>critical</b> (0 working days &mdash; the driving path), <b>secondary</b>, and "
@@ -16305,9 +16383,35 @@ def _driving_tier_trend(schedules: list[Schedule], cpms: list[CPMResult], target
             f"<td class=num>{num(sec)}</td><td class=num>{num(ter)}</td>"
             f"<td class=num>{dtxt}</td></tr>"
         )
+    # ── Panel contract (Mission Ops rank 11). ⛶ ONLY — deliberately NO ⤓: no export endpoint
+    # serves PER-VERSION driving-slack tier counts. /export/{fmt}/driving-tiers is single-file /
+    # per-activity and /export/{fmt}/evolution is compute_path_evolution (CRITICAL-path
+    # evolution, a different analysis), so any ⤓ here would be a live-but-wrong link.
+    # The take reads the FIRST and LAST rows that actually carry counts — the same `rows` list
+    # the table below is rendered from, so the two can never disagree.
+    present = [(lbl, drv) for lbl, _dd, drv, _s, _t, _d in rows if drv is not None]
+    first_lbl, first_drv = present[0]
+    last_lbl, last_drv = present[-1]
+    if len(present) > 1 and first_lbl != last_lbl:
+        trend_take = (
+            f"<p class=sf-take data-no-i18n>The driving (0d) tier holds {last_drv} activities in "
+            f"{_e(last_lbl)}, against {first_drv} in {_e(first_lbl)} &mdash; the first loaded "
+            "version that carries this target.</p>"
+        )
+    else:
+        trend_take = (
+            f"<p class=sf-take data-no-i18n>Only {_e(first_lbl)} carries this target, so there "
+            f"is no version-to-version movement to read: {first_drv} activities at 0 days.</p>"
+        )
     return (
-        "<div class=panel><h2>Driving-slack degradation trend</h2>"
-        "<p class=muted>How the driving path to this target changes across the loaded versions "
+        "<div class=panel>"
+        + _panel_head(
+            "Driving-slack degradation trend",
+            tools=_shell_tools(),
+            prov=_series_prov_chip(schedules),
+        )
+        + trend_take
+        + "<p class=muted>How the driving path to this target changes across the loaded versions "
         "(oldest first): the count of activities at each driving-slack tier. A rising "
         "<b>driving (0d)</b> count means slack is eroding into the path &mdash; more work now "
         "controls the target's finish (ADR-0011).</p>"
@@ -16474,6 +16578,12 @@ version to see the corridor shift.</p></div>"""
         if target is not None
         else ""
     )
+    if tiers_html:
+        # panelkit.js wires the ⛶ / ⤓ controls the three tier panels carry. Conditioned on the
+        # RENDERED HTML, not on `target is not None`: with a target that no loaded version
+        # contains, both sub-builders return "" and this page must not ship a script whose
+        # controls do not exist. One statement covers all three return branches below.
+        tiers_html += '\n<script src="/static/panelkit.js"></script>'
 
     if source is None or target is None:
         hint = (
@@ -16500,10 +16610,34 @@ version to see the corridor shift.</p></div>"""
         )
 
     evo = compute_driving_path_evolution(schedules, cpms, source, target)
+    # ── Panel contract (Mission Ops rank 11). NO `tools=` on this panel: it holds ZERO tables
+    # and ZERO charts (measured: 0 tables / 0 chart-hosts / 0 svg), so ⛶ would enlarge two
+    # lines of text and ⤓ would have nothing of its own to export. It is a caption panel for
+    # the per-version records below it, and it wears a head + a series chip + one take only.
+    # Both take figures come from `evo.snapshots` — the same object the records are rendered
+    # from — and the snapshot's own `status` phrase is quoted verbatim, never paraphrased.
+    n_drives = sum(1 for s in evo.snapshots if s.between.drives)
+    last_snap = evo.snapshots[-1]
+    if n_drives == len(evo.snapshots):
+        path_take = (
+            f"<p class=sf-take data-no-i18n>{source} drives {target} in every one of the "
+            f"{len(evo.snapshots)} loaded versions; in the newest, {_e(last_snap.label)}, the "
+            f"corridor is a {_e(last_snap.status)}.</p>"
+        )
+    else:
+        path_take = (
+            f"<p class=sf-take data-no-i18n>{source} drives {target} in {n_drives} of the "
+            f"{len(evo.snapshots)} loaded versions; in the newest, {_e(last_snap.label)}, the "
+            f"state is: {_e(last_snap.status)}.</p>"
+        )
     header = (
-        f"<div class=panel><h2>Driving path: {source} &mdash; {_e(a_name)} "
-        f"&rarr; {target} &mdash; {_e(b_name)}</h2>"
-        f"<p class=muted>{len(evo.snapshots)} version(s), oldest first.</p></div>"
+        "<div class=panel>"
+        + _panel_head(
+            f"Driving path: {source} &mdash; {_e(a_name)} &rarr; {target} &mdash; {_e(b_name)}",
+            prov=_series_prov_chip(schedules),
+        )
+        + path_take
+        + f"<p class=muted>{len(evo.snapshots)} version(s), oldest first.</p></div>"
     )
 
     # animated date-axis Gantt of the corridor over the versions (ADR-0096); only when at least
@@ -16514,8 +16648,23 @@ version to see the corridor shift.</p></div>"""
     gantt_html = ""
     if has_corridor and len(schedules) > 1:
         blob = json.dumps(gantt).replace("<", "\\u003c")  # match the scurve/rem embeds (QC INFO)
+        # ── Panel contract (Mission Ops rank 11). NO `tools=` — so no ⛶ and no ⤓, both
+        # deliberately. ⛶: this panel already owns Zoom &minus;/&plus;, "View entire project"
+        # (#dpFit) and Timescale…, and driving_path.js sets `forcedPx` ONLY from #dpFit and
+        # never re-fits on a resize — measured, after a Fit the mount grows 1118 → 1386px while
+        # the corridor table stays 1102px, so ⛶ would be right before a Fit and wrong after it.
+        # ⤓: the corridor's per-version geometry has no export endpoint (driving-tiers is
+        # per-activity, evolution is the CRITICAL-path analysis). Head + series chip + take.
+        n_with = sum(1 for v in versions if v["activities"])
+        corridor_head = _panel_head("Corridor over time", prov=_series_prov_chip(schedules))
+        corridor_take = (
+            f"<p class=sf-take data-no-i18n>{n_with} of the {len(versions)} loaded versions have "
+            "a corridor to draw, and the date axis is held fixed across all of them &mdash; so "
+            "the shift between updates reads as movement on the page, not as a re-scaled "
+            "chart.</p>"
+        )
         gantt_html = f"""
-<div class=panel><h2>Corridor over time</h2>
+<div class=panel>{corridor_head}{corridor_take}
 <p class=muted>The driving corridor drawn on a date axis held fixed across every version, so it
 visibly shifts as the schedule slips. Step or play through the versions; activities that
 <b class=ev-entered>entered</b> the corridor since the prior version are outlined.</p>
@@ -17833,14 +17982,17 @@ def _evolution_body(
     focuses a UniqueID (highlighted across every frame); zoom/pan controls scope the axis. ``tier``
     scopes the stepper to a driving-slack tier (secondary/tertiary/all) instead of the float
     critical path — the activities driving the focused UID (or the project finish)."""
+    # ONE source for the tier vocabulary: the <select> options AND the panel's takeaway read the
+    # same list, so a label can never drift between the control and the sentence describing it.
+    tier_choices = [
+        ("off", "Critical path"),
+        ("secondary", f"Secondary tier (≤{DEFAULT_SECONDARY_MAX_DAYS}d slack)"),
+        ("tertiary", f"Tertiary tier (≤{DEFAULT_TERTIARY_MAX_DAYS}d slack)"),
+        ("all", "All tiers (colour-coded)"),
+    ]
     tier_opts = "".join(
         f'<option value="{v}"{" selected" if tier == v else ""}>{lbl}</option>'
-        for v, lbl in [
-            ("off", "Critical path"),
-            ("secondary", f"Secondary tier (≤{DEFAULT_SECONDARY_MAX_DAYS}d slack)"),
-            ("tertiary", f"Tertiary tier (≤{DEFAULT_TERTIARY_MAX_DAYS}d slack)"),
-            ("all", "All tiers (colour-coded)"),
-        ]
+        for v, lbl in tier_choices
     )
     focus_form = f"""
 <div class=panel><form method=get action=/evolution class=viz-controls>
@@ -17853,10 +18005,45 @@ placeholder="UID"> <button type=submit>Focus</button>
 <span class=muted>critical / secondary / tertiary by driving slack to the focused UID (or the
 project finish).</span>
 </form></div>"""
+    # ── Panel contract (Mission Ops rank 11). ONE evolution pass feeds both the stepper's take
+    # and the "Completed on the path" panel below (it used to compute its own) — same call, same
+    # arguments as the page header's `_how_stable_header`, so the take can never disagree with
+    # the churn KPI strip above it. Engine untouched: this is the figure the page already prints.
+    ev = compute_path_evolution(schedules, cpms, target_uid=target)
+    snaps = ev.snapshots
+    n_ver = len(snaps)
+    updates = max(n_ver - 1, 1)
+    entered = sum(len(s.entered) for s in snaps[1:])
+    left = sum(len(s.left) for s in snaps[1:])
+    moves = [s.finish_delta_days for s in snaps[1:] if s.finish_delta_days is not None]
+    net = sum(moves) if moves else None
+    if net is None:
+        fin = "and no version-over-version finish move is recorded"
+    elif net > 0:
+        fin = f"and the finish slipped {net} calendar day{'s' if net != 1 else ''}"
+    elif net < 0:
+        fin = f"and the finish pulled in {abs(net)} calendar day{'s' if net != -1 else ''}"
+    else:
+        fin = "while the finish held"
+    if tier == "off":
+        evo_take = (
+            f"{n_ver} frames step the critical path oldest-first on a date axis held fixed, so a "
+            f"bar reaching further right is the finish moving, not the axis rescaling: "
+            f"{entered} activit{'y' if entered == 1 else 'ies'} entered the path and {left} left "
+            f"over {updates} update{'s' if updates != 1 else ''}, {fin}."
+        )
+    else:
+        tier_label = dict(tier_choices).get(tier, tier)
+        evo_take = (
+            f"{n_ver} frames step the <b>{_e(tier_label)}</b> basis &mdash; driving slack to the "
+            "focused UID (or the project finish) &mdash; not the float critical path the churn "
+            "figures above are counted on."
+        )
     return (
         focus_form
         + f"""
-<div class=panel><h2>Critical-Path Evolution</h2>
+<div class=panel>{_panel_head("Critical-Path Evolution", tools=_shell_tools(), prov=_series_prov_chip(schedules))}
+<p class=sf-take data-no-i18n>{evo_take}</p>
 {_user_tip("The date axis is held fixed across versions, so the critical path visibly extends as the finish slips. Use <b>View entire project</b> to fit the whole timeline, and set a <b>target UID</b> to highlight one activity across every frame.")}
 <p class=muted><b>Path basis (ADR-0150):</b> with a <b>focused UID</b> the path shown is the
 <b>0-driving-slack chain to that UID</b> (the same set as the /path driving-slack view); with no
@@ -17918,21 +18105,32 @@ Use <b>Focus</b> above to highlight one activity across every version.</p>
 data-tier="{tier}" data-ignore-constraints="{int(ignore_constraints)}"
 data-ignore-leveling="{int(ignore_leveling)}"></div></div>
 <script src="/static/path_evolution.js"></script>"""
-        + _completed_on_path_panel(schedules, cpms, target)
+        + _completed_on_path_panel(schedules, cpms, target, ev=ev)
         + _counterfactual_panel(schedules, cpms, target, baseline_idx=cf_a, comparison_idx=cf_b)
+        # ⛶ wiring for the two panels above that carry `data-sf-big`. Appended to the ONE string
+        # this builder returns, so the include lands exactly once no matter which branches fired.
+        + '\n<script src="/static/panelkit.js"></script>'
     )
 
 
 def _completed_on_path_panel(
-    schedules: list[Schedule], cpms: list[CPMResult], target: int | None
+    schedules: list[Schedule],
+    cpms: list[CPMResult],
+    target: int | None,
+    *,
+    ev: PathEvolution | None = None,
 ) -> str:
     """Version-to-version record of path activities that COMPLETED — the operator's "what got
     done on the path month to month". Server-rendered from the page's evolution snapshots
     (ADR-0150) — the OPTIONED versions when the counterfactual trace options are active, the
     SAME basis the client-fetched stepper now reads (`/api/evolution` forwards the options,
     ADR-0265): for each version pair, the prior version's path activities that are complete
-    in the newer version, with their actual finishes."""
-    ev = compute_path_evolution(schedules, cpms, target_uid=target)
+    in the newer version, with their actual finishes.
+
+    ``ev`` lets the caller hand in the evolution it already computed (rank 11: the page builder
+    computes one pass and shares it) — keyword-with-default so any direct caller still works."""
+    if ev is None:
+        ev = compute_path_evolution(schedules, cpms, target_uid=target)
     basis = f"driving path to UID {target}" if target is not None else "effective critical path"
     sections: list[str] = []
     for i in range(1, len(ev.snapshots)):
@@ -17959,8 +18157,32 @@ def _completed_on_path_panel(
             f"<th scope=col>Actual finish</th><th scope=col>%</th></tr>{rows}</table>"
         )
     src_names = ", ".join(_e(s.source_file or s.name) for s in schedules)
+    # The take counts the SAME `snap.completed_on_path` tuples the sections above are built from —
+    # one pass, so the headline can never disagree with the tables underneath it.
+    periods = max(len(ev.snapshots) - 1, 0)
+    done = sum(len(s.completed_on_path) for s in ev.snapshots[1:])
+    active = sum(1 for s in ev.snapshots[1:] if s.completed_on_path)
+    if done == 0:
+        take = (
+            f"No path activity completed in any of the {periods} update "
+            f"period{'s' if periods != 1 else ''} &mdash; nothing burned off the {basis} between "
+            "versions."
+        )
+    else:
+        idle = periods - active
+        tail = f"; the other {idle} recorded none" if idle else ""
+        take = (
+            f"{done} path activit{'y' if done == 1 else 'ies'} completed across {periods} update "
+            f"period{'s' if periods != 1 else ''}, in {active} of them{tail}."
+        )
     return (
-        "<div class=panel><h2>Completed on the path &mdash; version to version</h2>"
+        "<div class=panel>"
+        + _panel_head(
+            "Completed on the path &mdash; version to version",
+            tools=_shell_tools(),
+            prov=_series_prov_chip(schedules),
+        )
+        + f"<p class=sf-take data-no-i18n>{take}</p>"
         f"<p class=muted>Basis: <b>{basis}</b>. Sources ({len(schedules)} files): {src_names}. "
         "Activities that were ON the path in one version and show complete in the next &mdash; "
         "the work that actually burned down the driving chain each period.</p>"
@@ -18057,6 +18279,9 @@ def _counterfactual_panel(
         enriched_rows=enriched,
         custom_labels=custom_labels,
         added_rows=added_rows,
+        # The two what-if panels are a version PAIR, so they take the pair chip the compare views
+        # already speak (never a third provenance vocabulary) — the same pair the picker selected.
+        prov=_pair_prov_chip(schedules[prior_idx], schedules[cur_idx], prior_idx + 1, cur_idx + 1),
     )
 
 
@@ -18106,6 +18331,16 @@ def _whatif_added_rows(
     return rows
 
 
+def _delta_words(days: int) -> str:
+    """The counterfactual finish move in words, sign preserved. ONE wording shared by the panel
+    body's emphasised line and its takeaway line, so the two can never quote different digits."""
+    if days > 0:
+        return f"+{days} day(s) later"
+    if days < 0:
+        return f"{days} day(s) earlier"
+    return "no change"
+
+
 def _render_counterfactual(
     pc: PathCounterfactual | None,
     *,
@@ -18114,8 +18349,12 @@ def _render_counterfactual(
     enriched_rows: list[dict[str, object]] | None = None,
     custom_labels: list[str] | None = None,
     added_rows: list[dict[str, object]] | None = None,
+    prov: str = "",
 ) -> str:
-    """Render the counterfactual panel from a computed result (split out for direct testing)."""
+    """Render the counterfactual panel from a computed result (split out for direct testing).
+
+    ``prov`` is the panel-contract provenance chip for the chosen version pair (rank 11) —
+    keyword-with-default because this renderer is called POSITIONALLY by the coverage tests."""
     pair_txt = (
         f"between <b data-no-i18n>{_e(pair[0])}</b> and <b data-no-i18n>{_e(pair[1])}</b>"
         if pair
@@ -18136,16 +18375,61 @@ def _render_counterfactual(
             if added_rows
             else f"<p class=muted>No activity entered the critical path {pair_txt}.</p>"
         )
+        # The take splits the SAME `added_rows` the table below renders, on the engine's own
+        # `why_entered` attribution — "slack_consumed" is the classifier's code for "nothing about
+        # this activity changed; a slip elsewhere ate its float" (engine/path_evolution.py).
+        n_add = len(added_rows)
+        unchanged = sum(1 for r in added_rows if r.get("why_entered") == "slack_consumed")
+        if n_add == 0:
+            added_take = "No activity entered the critical path between the chosen pair."
+        else:
+            added_take = (
+                f"{n_add} activit{'y' if n_add == 1 else 'ies'} entered the critical path between "
+                f"the chosen pair &mdash; {n_add - unchanged} through a change to the activity "
+                f"itself and {unchanged} because a slip elsewhere consumed its float."
+            )
         added_html = f"""
-<div class=panel><h2>What-if: work added to the critical path</h2>
+<div class=panel>{_panel_head("What-if: work added to the critical path", prov=prov)}
+<p class=sf-take data-no-i18n>{added_take}</p>
 <p class=muted>The mirror of the list above: activities that <b>entered</b> the critical (driving)
 path {pair_txt}. Each carries the engine's reason — a <b>new</b> activity, its <b>own</b> duration
 / logic / constraint change, or <b>float consumed</b> by a named slip elsewhere. Work joining the
 path is where the schedule's risk is moving: a path that churns member activities version over
 version is unstable even when the finish date holds.</p>
 {added_body}</div>"""
+    # The removed-work take reads the SAME `pc` fields the body prints verbatim below (the
+    # reverted count, the two finishes and the signed delta) — nothing is recomputed, and an
+    # uncomputable network reports the missing finish as an em dash, never a fabricated date.
+    if pc is None:
+        removed_take = (
+            "Nothing to revert between the chosen pair &mdash; no non-completed activity left "
+            "the critical path, so no schedule time here was removed by change rather than by "
+            "progress."
+        )
+    elif not pc.reverted:
+        n_gf = len(pc.gained_float)
+        removed_take = (
+            f"Nothing to revert between the chosen pair &mdash; {n_gf} "
+            f"activit{'y' if n_gf == 1 else 'ies'} left the path by gaining float, not by any "
+            "change to itself."
+            if n_gf
+            else "Nothing to revert between the chosen pair."
+        )
+    elif pc.uncomputable:
+        removed_take = (
+            f"{len(pc.reverted)} change(s) on non-completed activities took work off the path; "
+            "reverting them produces an unsolvable network (a logic cycle), so the counterfactual "
+            "finish is &mdash;."
+        )
+    else:
+        removed_take = (
+            f"{len(pc.reverted)} change(s) on non-completed activities took work off the path; "
+            f"reverting them moves the computed finish from {_e(pc.actual_finish)} to "
+            f"{_e(pc.counterfactual_finish)} ({_delta_words(pc.finish_delta_days)})."
+        )
     intro = f"""
-<div class=panel><h2>What-if: work removed from the critical path</h2>
+<div class=panel>{_panel_head("What-if: work removed from the critical path", prov=prov)}
+<p class=sf-take data-no-i18n>{removed_take}</p>
 <p class=muted>This runs on the <b>one pair you pick</b> {pair_txt} — not lumped across the whole
 history. Some activities leave the critical (driving) path between these two versions. A
 <b>completed</b> activity leaving is real progress (excluded here). An unchanged activity leaving
@@ -18165,11 +18449,13 @@ reverted to their prior values and the schedule re-run &mdash; the gap is schedu
         )
 
     def _delta(days: int) -> str:
+        """The emphasised delta the body prints — the SAME words :func:`_delta_words` gives the
+        takeaway line, wrapped in the pass/fail emphasis (one wording, not two)."""
         if days > 0:
-            return f"<b class=fail>+{days} day(s) later</b>"
+            return f"<b class=fail>{_delta_words(days)}</b>"
         if days < 0:
-            return f"<b class=pass>{days} day(s) earlier</b>"
-        return "<b>no change</b>"
+            return f"<b class=pass>{_delta_words(days)}</b>"
+        return f"<b>{_delta_words(days)}</b>"
 
     # interactive reverted-changes table: filter by any field + add standard/custom columns + Excel
     # export (operator 2026-07-08). Rows carry each activity's current fields (embedded server-side).
@@ -18324,11 +18610,76 @@ def _volatility_data(schedules: list[Schedule], cpms: list[CPMResult]) -> dict[s
 
 def _volatility_body(schedules: list[Schedule], cpms: list[CPMResult]) -> str:
     """The CP Volatility page shell: intro framed to GAO/DCMA best practice, the master
-    stepper, ten chart mounts, the scoreboard, and the embedded dataset volatility.js reads."""
+    stepper, ten chart mounts, the scoreboard, and the embedded dataset volatility.js reads.
+
+    Panel contract (Mission Ops rank 11, ADR-0298 vocabulary): the masthead and the scoreboard
+    wear :func:`_panel_head` + a :func:`_series_prov_chip` chip + one ``.sf-take``; each of the
+    ten ``.tile.panel`` mosaic tiles wears the mission-wall tile shape ``_performance_body``
+    established — tools strip inside the existing ``.tile-head``, ``.tile-prov`` chip, one
+    ``.sf-take`` under the chart. Four deliberate omissions, each of which would otherwise ship
+    an inert or dishonest control:
+
+    * **no ▦ DATA on any tile** — these tiles carry no ``.sf-drawer`` and no ``.sr-only`` table
+      (measured: 0 of each on this route), so the glyph would reveal nothing;
+    * **no tools on the masthead** — it holds ZERO visuals and ZERO tables (it is a masthead,
+      not a panel of data), and it ALREADY owns this page's Excel control (the
+      ``⇩ Excel (scoreboard)`` anchor pointing at the very URL ⤓ would follow — ADR-0298's
+      one-convention law);
+    * **no tools on the scoreboard** — same anchor, same URL, one table;
+    * **no per-version figure in any tile take** — the master stepper (volatility.js ``cursor``)
+      re-draws the churn/composition/heatmap/ribbon visuals at a DIFFERENT version on every
+      tick, so a server-rendered per-version number would become false on the first ▶. The tile
+      takes are structural; the two figure-bearing takes (masthead, scoreboard) quote only
+      whole-series values the visuals below them already print verbatim, and the provenance is
+      :func:`_series_prov_chip` (a first→last RANGE that holds at every frame).
+
+    The ten ``<h3 class=viz-hint>`` explainers are deliberately NOT routed through
+    :func:`_panel_head`: that helper emits an ``<h2>`` and would drop the ``data-sf-hint``
+    explainer this page's tiles are built around."""
     data = _volatility_data(schedules, cpms)
     blob = json.dumps(data).replace("<", "\\u003c")
+    # ── The panel contract for this page. Every figure a take quotes is read off the SAME
+    # `data` dict the embedded #volData blob carries (no second engine call), so the takes and
+    # the visuals drawn from that blob can never disagree.
+    versions = cast(list[dict[str, object]], data["versions"])
+    tasks = cast(list[dict[str, Any]], data["tasks"])
+    stability = cast("float | None", data["stability"])
+    # The gauge prints `Math.round(s * 100) + "%"` (volatility.js) — half-UP. Python's round()
+    # is half-to-even, so it is spelled out here rather than borrowed; otherwise a stability of
+    # x.xx5 would let the take and the dial it describes read differently.
+    stab_txt = "—" if stability is None else f"{int(stability * 100 + 0.5)}%"
+    full_tenure = sum(1 for t in tasks if t["tenure"] == len(versions))
+    prov = _series_prov_chip(schedules)
+    head = _panel_head(
+        "Critical-Path Volatility &mdash; membership churn across versions", prov=prov
+    )
+    intro_take = (
+        f"<p class=sf-take data-no-i18n>{len(tasks)} activities were ever on the critical path "
+        f"across the {len(versions)} loaded versions; mean similarity between consecutive paths "
+        f"is {stab_txt}.</p>"
+    )
+    board_head = _panel_head("Volatility scoreboard", prov=prov)
+    board_take = (
+        f"<p class=sf-take data-no-i18n>Every one of the {len(tasks)} activities that ever "
+        f"reached the critical path is listed here; {full_tenure} held it in all "
+        f"{len(versions)} loaded versions.</p>"
+    )
+    # One ⤓ destination for all ten tiles: the workbook is the membership matrix the visuals are
+    # drawn from, NOT a per-visual series — the hover text says exactly that and no more.
+    tile_export = ' data-export="/export/xlsx/volatility"'
+    tile_prov = f"<div class=tile-prov>{prov}</div>"
+    tile_tools = (
+        '<span class="tile-actions sf-tools" data-noprint=1>'
+        "<button type=button data-sf-excel "
+        'title="Export the critical-path membership matrix these visuals are drawn from '
+        '&mdash; opens in Excel" '
+        'aria-label="Export this visual&#39;s data to Excel">⤓ EXCEL</button>'
+        "<button type=button data-sf-big aria-pressed=false "
+        'title="Enlarge / shrink this visual" '
+        'aria-label="Enlarge this visual">⛶ ENLARGE</button></span>'
+    )
     return f"""
-<div class=panel><h2>Critical-Path Volatility &mdash; membership churn across versions</h2>
+<div class=panel>{head}{intro_take}
 <p class=muted>The critical path should be <b>stable</b>: GAO's Schedule Assessment Guide (Best
 Practice 6 — maintain a valid critical path) and the DCMA 14-point construct (the critical-path
 test and CPLI) both treat an erratic controlling chain as a schedule-health failure. A path that
@@ -18346,24 +18697,25 @@ pages use; nothing is fabricated).</p>
 <a class=btn-link href="/export/xlsx/volatility">&#11015; Excel (scoreboard)</a>
 </div></div>
 <div class=mosaic id=volGrid>
-<section class="tile panel"><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: the overall stability index — the average Jaccard similarity of consecutive critical paths (100% = the same path every update).\n\nHOW TO READ: GAO/DCMA expect a largely stable controlling chain; below ~70% the network is being rewired between updates.\n\nDECIDE: whether to ask for the change log before accepting the latest update.">Stability gauge</h3></div><div class=chart-host id=volGauge></div></section>
-<section class="tile panel"><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: path similarity between each consecutive pair of versions (Jaccard %).\n\nHOW TO READ: dips are the updates where the controlling chain was rewired — cross-reference those updates with the Schedule Integrity findings.\n\nDECIDE: which update to interrogate for logic/duration edits.">Churn timeline (Jaccard %)</h3></div><div class=chart-host id=volChurn></div></section>
-<section class="tile panel"><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: per update — how many activities stayed on, joined, and left the critical path.\n\nHOW TO READ: joined bars up, left bars down; a healthy schedule shows small bars (progress-driven turnover), not tall ones.\n\nDECIDE: which update churned the most members.">Entry / exit waterfall</h3></div><div class=chart-host id=volFlow></div></section>
-<section class="tile panel"><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: the composition of each version's path — the share carried over vs newly joined.\n\nHOW TO READ: a mostly-'stayed' area is a settled plan; a growing 'entered' share is instability.\n\nDECIDE: whether the path is converging or churning over time.">Path composition (stayed vs entered)</h3></div><div class=chart-host id=volArea></div></section>
-<section class="tile panel tile-wide"><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: the presence matrix — one row per activity ever on the critical path, one column per version; a filled cell = on the path that version. The stepper highlights the animated version.\n\nHOW TO READ: long unbroken rows are the stable backbone; gap-toothed rows are the jumpers.\n\nDECIDE: which rows deserve a 'why did this change?' interrogation.">Membership heatmap</h3></div><div class=chart-host id=volHeatmap></div></section>
-<section class="tile panel"><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: the activities that spent the most versions on the critical path.\n\nHOW TO READ: these carry the schedule — the true backbone of the finish date.\n\nDECIDE: where sustained management attention belongs.">Tenure leaderboard</h3></div><div class=chart-host id=volTenure></div></section>
-<section class="tile panel"><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: how long activities typically stay on the path (distribution of versions-on-path).\n\nHOW TO READ: a healthy path skews long (stable membership); a spike at 1 version means most members blink on and off.\n\nDECIDE: whether churn is a few bad actors or systemic.">Dwell histogram</h3></div><div class=chart-host id=volDwell></div></section>
-<section class="tile panel"><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: the biggest jumpers — activities ranked by on/off flips.\n\nHOW TO READ: an activity that repeatedly leaves and rejoins the controlling chain usually marks logic being toggled around it.\n\nDECIDE: exactly which activities' predecessors/durations to audit across updates.">Jumper leaderboard (on/off flips)</h3></div><div class=chart-host id=volJumpers></div></section>
-<section class="tile panel"><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: on-path intervals for the top jumpers as timeline strips (filled = on the path).\n\nHOW TO READ: aligned breaks across many strips point at ONE update that rewired the chain; scattered breaks are activity-level toggling.\n\nDECIDE: whether to investigate an update or an activity.">Jumper timelines</h3></div><div class=chart-host id=volStrips></div></section>
-<section class="tile panel"><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: the animated stayed/entered/left transition between the stepper's current pair of versions, as proportional ribbons.\n\nHOW TO READ: a thick 'stayed' ribbon is continuity; thick 'entered'/'left' ribbons mark a rewired update.\n\nDECIDE: step through the pairs to find the update that moved the chain.">Transition flow (animated)</h3></div><div class=chart-host id=volRibbon></div></section>
+<section class="tile panel"{tile_export}><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: the overall stability index — the average Jaccard similarity of consecutive critical paths (100% = the same path every update).\n\nHOW TO READ: GAO/DCMA expect a largely stable controlling chain; below ~70% the network is being rewired between updates.\n\nDECIDE: whether to ask for the change log before accepting the latest update.">Stability gauge</h3>{tile_tools}</div>{tile_prov}<div class=chart-host id=volGauge></div><p class=sf-take data-no-i18n>The mean similarity between consecutive critical paths on a dial whose bands are operator-set display guidance, not a published threshold.</p></section>
+<section class="tile panel"{tile_export}><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: path similarity between each consecutive pair of versions (Jaccard %).\n\nHOW TO READ: dips are the updates where the controlling chain was rewired — cross-reference those updates with the Schedule Integrity findings.\n\nDECIDE: which update to interrogate for logic/duration edits.">Churn timeline (Jaccard %)</h3>{tile_tools}</div>{tile_prov}<div class=chart-host id=volChurn></div><p class=sf-take data-no-i18n>Path similarity for each consecutive pair of versions, so the updates where the controlling chain was rewired read as dips.</p></section>
+<section class="tile panel"{tile_export}><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: per update — how many activities stayed on, joined, and left the critical path.\n\nHOW TO READ: joined bars up, left bars down; a healthy schedule shows small bars (progress-driven turnover), not tall ones.\n\nDECIDE: which update churned the most members.">Entry / exit waterfall</h3>{tile_tools}</div>{tile_prov}<div class=chart-host id=volFlow></div><p class=sf-take data-no-i18n>Per update, how many activities joined the critical path (above the axis) against how many left it (below).</p></section>
+<section class="tile panel"{tile_export}><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: the composition of each version's path — the share carried over vs newly joined.\n\nHOW TO READ: a mostly-'stayed' area is a settled plan; a growing 'entered' share is instability.\n\nDECIDE: whether the path is converging or churning over time.">Path composition (stayed vs entered)</h3>{tile_tools}</div>{tile_prov}<div class=chart-host id=volArea></div><p class=sf-take data-no-i18n>Each version's critical-path size split into the members carried over from the prior version and those newly joined.</p></section>
+<section class="tile panel tile-wide"{tile_export}><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: the presence matrix — one row per activity ever on the critical path, one column per version; a filled cell = on the path that version. The stepper highlights the animated version.\n\nHOW TO READ: long unbroken rows are the stable backbone; gap-toothed rows are the jumpers.\n\nDECIDE: which rows deserve a 'why did this change?' interrogation.">Membership heatmap</h3>{tile_tools}</div>{tile_prov}<div class=chart-host id=volHeatmap></div><p class=sf-take data-no-i18n>Membership as a matrix &mdash; activities down the side, most-volatile first; versions across the top; a filled cell marks a version the activity was on the critical path.</p></section>
+<section class="tile panel"{tile_export}><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: the activities that spent the most versions on the critical path.\n\nHOW TO READ: these carry the schedule — the true backbone of the finish date.\n\nDECIDE: where sustained management attention belongs.">Tenure leaderboard</h3>{tile_tools}</div>{tile_prov}<div class=chart-host id=volTenure></div><p class=sf-take data-no-i18n>The activities that held the critical path the longest, ranked by how many versions they spent on it.</p></section>
+<section class="tile panel"{tile_export}><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: how long activities typically stay on the path (distribution of versions-on-path).\n\nHOW TO READ: a healthy path skews long (stable membership); a spike at 1 version means most members blink on and off.\n\nDECIDE: whether churn is a few bad actors or systemic.">Dwell histogram</h3>{tile_tools}</div>{tile_prov}<div class=chart-host id=volDwell></div><p class=sf-take data-no-i18n>How many activities spent one version on the critical path, how many spent two, and so on across the loaded versions.</p></section>
+<section class="tile panel"{tile_export}><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: the biggest jumpers — activities ranked by on/off flips.\n\nHOW TO READ: an activity that repeatedly leaves and rejoins the controlling chain usually marks logic being toggled around it.\n\nDECIDE: exactly which activities' predecessors/durations to audit across updates.">Jumper leaderboard (on/off flips)</h3>{tile_tools}</div>{tile_prov}<div class=chart-host id=volJumpers></div><p class=sf-take data-no-i18n>Activities ranked by how often they left the critical path and rejoined it; when nothing changed more than once, the panel says so in words instead of drawing a bar.</p></section>
+<section class="tile panel"{tile_export}><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: on-path intervals for the top jumpers as timeline strips (filled = on the path).\n\nHOW TO READ: aligned breaks across many strips point at ONE update that rewired the chain; scattered breaks are activity-level toggling.\n\nDECIDE: whether to investigate an update or an activity.">Jumper timelines</h3>{tile_tools}</div>{tile_prov}<div class=chart-host id=volStrips></div><p class=sf-take data-no-i18n>On-path intervals as one strip per activity &mdash; the top jumpers, or the longest-tenured members when nothing has jumped &mdash; so breaks that line up across strips point at a single update.</p></section>
+<section class="tile panel"{tile_export}><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: the animated stayed/entered/left transition between the stepper's current pair of versions, as proportional ribbons.\n\nHOW TO READ: a thick 'stayed' ribbon is continuity; thick 'entered'/'left' ribbons mark a rewired update.\n\nDECIDE: step through the pairs to find the update that moved the chain.">Transition flow (animated)</h3>{tile_tools}</div>{tile_prov}<div class=chart-host id=volRibbon></div><p class=sf-take data-no-i18n>The stepper's current pair of versions as proportional ribbons: what stayed on the critical path against what joined and what left.</p></section>
 </div>
-<div class=panel><h2>Volatility scoreboard</h2>
+<div class=panel>{board_head}{board_take}
 <p class=muted>Every activity that was ever on the critical path — versions on path, longest
 unbroken streak, and on/off flips (click a column header to sort; the Excel export carries the
 full membership vector).</p>
 <div id=volTable></div></div>
 <script type="application/json" id=volData>{blob}</script>
-<script src="/static/volatility.js"></script>"""
+<script src="/static/volatility.js"></script>
+<script src="/static/panelkit.js"></script>"""
 
 
 def _perf_version_block(

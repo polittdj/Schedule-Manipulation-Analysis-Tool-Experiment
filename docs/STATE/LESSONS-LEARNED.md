@@ -435,6 +435,51 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-29 — three lessons from round 11: a control's effect, a shared tree, and a lying instrument
+
+**1. When you give a control an effect, measure that effect in EVERY theme — the obvious geometry can
+be right in three of four.** ADR-0304 taught "verify the EFFECT, not the MECHANISM." Round 11 fixed the
+block-layout ⛶ by borrowing the geometry the project already shipped for standalone charts
+(`.sf-tilebox.tile-expanded`, `inset:4vh 3vw`) — the textbook reuse move, and it would have been a
+defect. **Daylight has no 236px left rail**, so its panels are 1384px wide while console/apollo/jarvis
+are 1148px; a `3vw` inset yields **1354px**. Measured on `/scurve` daylight: panel `1384x752 → 1354x828`
+and the chart svg `1354x436 → 1324x426` — **⛶ would have made the chart smaller in one of four themes**,
+reproducing round 10's `/performance` failure *inside its own fix*. `inset:3vh 12px` is
+theme-independent. The reuse instinct was right; the assumption that "reused = safe" was not. **A
+borrowed mechanism inherits the assumptions of the context it was written for.**
+
+**2. `git stash` is not read-only, and "read-only agent" is not a property you can assert in a prompt.**
+The verification workflow told three adversarial agents to `git stash` for a pristine comparison — a
+reasonable-looking instruction. They share ONE working tree. Verifier L1 stashed the entire round out
+from under verifier L3 (mid-measurement, curling export URLs against what it believed was the patched
+tree) **and** out from under the lead's concurrent full `pytest`. Nothing in any agent's own log would
+have revealed it; it was caught only because the lead happened to re-read `pyproject.toml` and saw the
+version had reverted to 1.0.120. **Isolation is a property of the ENVIRONMENT, not of the instruction.**
+Any agent that needs to mutate the tree — even transiently, even to restore it — gets
+`isolation: "worktree"`. The recovery was clean (snapshot the stash as a patch *before* touching
+anything, stop the run, pop, verify md5s) but the real cost would have been a **false all-clear**, which
+is the failure mode this project keeps paying for.
+
+**3. An instrument that cannot reproduce its own baseline is worse than no instrument.** The lead
+generated the requirement-5 axis-caption baseline by hashing a balanced-paren slice starting at each
+`axisTitles(` match. It **missed one of `trend.js`'s five call sites** (a nested paren inside a string
+broke the scan) and **included `chartframe.js`'s function definition**. An implementer reported it as
+unusable — for a partly wrong reason (it claimed nine duplicate hashes; there were none) — and the lead
+re-derived from scratch, found the flaw was real but different, retired the file and replaced it with a
+whole-file md5 census of the 12 owning files. Two compounding lessons: **(a)** a gate that reports 16/16
+changed on an unmodified tree trains the next agent to ignore red results, which is strictly worse than
+having no gate; **(b)** *the agent was right that the instrument was broken and wrong about why* — the
+correct response was to re-derive, not to accept or dismiss the report. Verify the finding, not the
+reporter.
+
+**4. Load the fixture the way the product loads it.** Without the browser's `file_meta` companion JSON,
+the five TP4 snapshots upload as five one-version projects, and `/evolution` + `/volatility` render
+their "load at least two analyzable versions" **fallback**. Four pages were surveyed in that empty state
+before the lead noticed the pages were suspiciously thin — the same shape as round 10's `/resources`
+mistake ("a page with no chart is not a missing caption — check WHY"). A harness that boots the app is
+not the same as a harness that reproduces the user's session.
+
+
 ### 2026-07-28 (cont. 9) — merging mid-round does not just ship unverified code, it BLINDS the verifier
 
 **What happened.** PR #473 was merged with 7 of 12 agents complete. Beyond shipping three pages
