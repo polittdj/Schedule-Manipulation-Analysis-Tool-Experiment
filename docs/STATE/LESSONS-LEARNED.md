@@ -435,6 +435,31 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-29 (cont.3) — a green gate proves nothing if the binary isn't the one CI runs
+
+**What happened.** The ADR-0306 correctness pass went out with a locally-green
+`ruff format --check .` — "431 files already formatted" — and CI failed immediately on the same
+command, reporting **801** files and two reformats. The gate had not been skipped or fudged; it had
+been run against the **wrong binary**. `which -a ruff` showed a stale `/root/.local/bin/ruff` (0.15.8)
+shadowing the pip-installed `ruff` (0.16.0), and CI resolves `ruff>=0.6` to the latest. **ruff 0.16
+formats fenced ` ```python ` blocks inside Markdown; 0.15 does not** — hence 431 files vs 801, and a
+failure mode that was structurally invisible locally.
+
+**Lesson: `>=`-pinned dev tools make "I ran the gate" an ambiguous claim.** Invoke them as
+`python -m <tool>` so the resolved dependency runs, not whatever is first on `PATH`, and when a local
+file *count* differs from CI's, treat that as the signal — it is a version difference, not noise. The
+count was right there in both logs and would have caught this before the push.
+
+**Second lesson, the more interesting one: a formatter must never edit evidence.** The obvious fix —
+let ruff reformat the audit markdown — was wrong. Ruff wanted to collapse a quoted `dcma14._r` snippet
+into a 103-column one-liner; in the real file that statement is indented inside a function and stays
+multi-line, so accepting the reformat would have produced an audit report whose "verbatim quote"
+**does not appear anywhere in the tree**. In a testimony-context tool that is precisely the failure the
+audit was written to prevent. Fixed with `[tool.ruff.format] exclude = ["audit/*.md"]` and a comment
+saying why, so the next person does not helpfully "fix" it back. **Where a document's value is
+fidelity, tooling that rewrites it is a correctness bug, not a convenience.**
+
+
 ### 2026-07-29 (cont.2) — the refutation that was itself wrong, and the accusation nobody had tested
 
 **What happened.** An outside auditor handed us seven defects. Verifying them by execution confirmed all

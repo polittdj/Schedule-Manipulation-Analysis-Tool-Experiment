@@ -62,6 +62,14 @@
 >   operator-visible error → **the five standing UI requirements apply** → its own round.
 >
 > ### Harness notes worth keeping
+> - **Run the gate as `python -m ruff`, never bare `ruff`.** A stale `/root/.local/bin/ruff` (0.15.8)
+>   shadows the pip-installed one (0.16.0, what CI resolves from `ruff>=0.6`), and **ruff 0.16 formats
+>   fenced ```python blocks inside Markdown** while 0.15 does not. A locally-green
+>   `ruff format --check .` therefore went red on CI (#479, first run). Same trap applies to any
+>   `>=`-pinned dev tool: `which -a <tool>` before trusting a green gate.
+> - `[tool.ruff.format] exclude = ["audit/*.md"]` exists because of that: audit reports quote engine
+>   source and pasted output **verbatim**, and letting a formatter rewrite a quotation makes the
+>   evidence disagree with the code it cites. A formatter must never edit evidence.
 > - This container ships **no** runtime deps. `pip install -e ".[dev]"` gets the gate running; `httpx` is
 >   a declared **dev-only** dep (`pyproject.toml:80-82`) that backs `TestClient` and must never enter
 >   runtime `dependencies`. `python -m build` also needs installing.

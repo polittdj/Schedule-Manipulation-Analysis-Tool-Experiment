@@ -113,6 +113,15 @@ select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
 # meaningless; line-length is not enforced there (the logic stays readable regardless).
 "src/schedule_forensics/web/app.py" = ["E501"]
 
+[tool.ruff.format]
+# ruff >= 0.16 formats fenced ```python blocks inside Markdown. That is right for prose docs and
+# WRONG for the audit reports: those quote engine source and pasted script output VERBATIM, and a
+# formatter rewriting a quotation silently makes the evidence disagree with the code it cites
+# (e.g. it collapses dcma14's multi-line `status = (...)` — indented inside a function in the real
+# file — into a 103-col one-liner that appears nowhere in the tree). A formatter must never edit
+# evidence, so audit markdown is excluded. Everything else, including all other docs, still formats.
+exclude = ["audit/*.md"]
+
 # --- mypy: types ---------------------------------------------------------------
 [tool.mypy]
 python_version = "3.11"

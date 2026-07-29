@@ -8892,3 +8892,11 @@ v1.0.122, wheel + nine installers regenerated.
 decision), CC-05 (needs an SSI reference compare; parity cannot distinguish floor from truncate), V3
 (needs a product decision on elapsed literals), V1/V2 (needs an operator-visible error → the five standing
 UI requirements → its own round).
+
+**CI round 1 (#479).** `ruff format --check .` green locally, red on CI. Cause: a stale
+`/root/.local/bin/ruff` **0.15.8** shadowed the pip-installed **0.16.0** that CI resolves from
+`ruff>=0.6`, and **0.16 formats fenced ```python blocks inside Markdown** — 431 files locally vs 801 on
+CI, a difference visible in both logs. Fixed by `[tool.ruff.format] exclude = ["audit/*.md"]` rather
+than by accepting the reformat: ruff wanted to collapse a quoted `dcma14._r` snippet into a 103-col
+one-liner that exists nowhere in the tree, which would have made the audit's "verbatim quote" disagree
+with the source it cites. A formatter must not rewrite evidence. Gate re-run with `python -m ruff`.
