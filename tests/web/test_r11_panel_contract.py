@@ -674,7 +674,34 @@ def test_panelkit_closes_overlays_without_an_inline_handler() -> None:
 
 # ── (a) the effect, in real chromium ──────────────────────────────────────────────────────────
 
-CHROME = Path("/opt/pw-browsers/chromium-1194/chrome-linux/chrome")
+#: A pinned sandbox path is NOT a browser-availability check. The first version of this module
+#: hardcoded the dev container's vendored chromium and skipped when it was absent — so on CI, where
+#: `playwright install chromium` puts the browser in ``~/.cache/ms-playwright/…``, the rect tests
+#: SKIPPED and the job went green in 59 seconds having proved nothing. That is the third appearance
+#: of this round's own failure shape (round 10: a control that moved nothing; round 11: a test that
+#: never ran; here: a browser check that looked in one place only).
+#:
+#: So: prefer an explicitly vendored binary when one is present (offline dev containers have no
+#: download), otherwise fall back to playwright's OWN resolution by passing no ``executable_path``.
+#: ``_chrome()`` returns the kwargs for ``chromium.launch`` and is the single place that decides.
+#: GLOBBED, never a pinned build number: the vendored directory is versioned
+#: (``chromium-1194``, ``chromium_headless_shell-1194``, …) and a container bump would silently
+#: reintroduce exactly the skip described above.
+_VENDOR_ROOT = Path("/opt/pw-browsers")
+_VENDOR_GLOBS = (
+    "chromium*/chrome-linux/chrome",
+    "chromium_headless_shell*/*/chrome-headless-shell",
+)
+
+
+def _chrome() -> dict[str, Any]:
+    """Launch kwargs for chromium: the vendored binary if there is one, else playwright's own."""
+    for pattern in _VENDOR_GLOBS:
+        for candidate in sorted(_VENDOR_ROOT.glob(pattern)):
+            if candidate.exists():
+                return {"executable_path": str(candidate)}
+    return {}
+
 
 #: the probe both browser tests read — the panel's box and the computed properties that say WHICH
 #: enlarge layout it took. A class read-back is deliberately not part of the verdict.
@@ -703,8 +730,6 @@ def _free_port() -> int:
 @pytest.fixture(scope="module")
 def served() -> Any:
     pytest.importorskip("playwright", reason="playwright not installed (runtime stays stdlib-only)")
-    if not CHROME.exists():
-        pytest.skip(f"bundled chromium not at {CHROME}")
     import uvicorn
 
     app = create_app(SessionState())
@@ -751,7 +776,7 @@ def test_a_real_click_moves_a_block_layout_panel(served: str) -> None:
     from playwright.sync_api import sync_playwright
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(executable_path=str(CHROME))
+        browser = p.chromium.launch(**_chrome())
         page = browser.new_page(viewport={"width": 1440, "height": 900})
         page.goto(served + DP, wait_until="load")
         assert (
@@ -793,7 +818,7 @@ def test_a_real_click_grows_a_volatility_mosaic_tile_in_the_flow(served: str) ->
     from playwright.sync_api import sync_playwright
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(executable_path=str(CHROME))
+        browser = p.chromium.launch(**_chrome())
         page = browser.new_page(viewport={"width": 1440, "height": 900})
         page.goto(served + VOL, wait_until="load")
         assert page.evaluate("()=>document.querySelectorAll('.mosaic .tile.panel').length") == 10
@@ -839,7 +864,7 @@ def test_the_overlay_never_shrinks_a_panel_in_any_theme_least_of_all_daylight(se
 
     widths: dict[str, tuple[int, int]] = {}
     with sync_playwright() as p:
-        browser = p.chromium.launch(executable_path=str(CHROME))
+        browser = p.chromium.launch(**_chrome())
         for theme in ("console", "daylight", "apollo", "jarvis"):
             page = browser.new_page(viewport={"width": 1440, "height": 900})
             page.goto(served + DP, wait_until="load")

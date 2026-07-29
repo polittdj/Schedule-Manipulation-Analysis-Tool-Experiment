@@ -107,11 +107,18 @@ jobs:
       - name: The control must move a measured box
         run: pytest -q tests/web/test_r11_panel_contract.py -p no:cacheprovider
 
+      # A skip here is a FAILURE, not a pass. Deliberately matches ANY skip rather than a reason
+      # string: the first version of this guard grepped only for "playwright not installed" and
+      # went green in 59s while all three rect tests skipped for a DIFFERENT reason (a hardcoded
+      # vendored-chromium path that does not exist on a runner). Enumerating skip reasons is the
+      # same mistake as enumerating failure modes — assert the property you actually want, which
+      # is that nothing in this module skipped at all.
       - name: Fail loudly if the proof silently skipped
         run: |
           pytest -q tests/web/test_r11_panel_contract.py -p no:cacheprovider -rs 2>&1 | tee out.txt
-          if grep -q "playwright not installed" out.txt; then
+          if grep -qE "^SKIPPED|[0-9]+ skipped" out.txt; then
             echo "::error::the measured-box tests SKIPPED — the ADR-0304/0305 proof did not run"
+            grep -E "^SKIPPED" out.txt || true
             exit 1
           fi
 
