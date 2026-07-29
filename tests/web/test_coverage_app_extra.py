@@ -452,6 +452,10 @@ def test_driving_path_body_renders_left_the_corridor(monkeypatch) -> None:
         left=(2,),
         label="v1",
         status="connected",
+        # the real DrivingPathSnapshot carries the DrivingPathBetween it derives `status` from;
+        # the header panel's takeaway counts the versions where the source actually DRIVES the
+        # target, so the stand-in has to carry that field too (Mission Ops rank 11)
+        between=types.SimpleNamespace(drives=False),
     )
     evo = types.SimpleNamespace(snapshots=[snap])
     monkeypatch.setattr(appmod, "compute_driving_path_evolution", lambda s, c, src, tgt: evo)

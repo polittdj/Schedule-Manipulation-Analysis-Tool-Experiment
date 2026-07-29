@@ -150,6 +150,10 @@ cursor:pointer;text-decoration:underline}
   .panel,.stat-card,.dash-card,.forecast-method,.brief-cards .panel,.qual-offenders,.chart,
   table,tr{break-inside:avoid}
   .panel{border:1px solid #bbb;box-shadow:none}
+  /* An ⛶-enlarged panel is a screen-only focus overlay (`.panel.is-big:not(.tile)...` above).
+     Left alone it stays `position:fixed` under print media — measured 1416x846 in all four
+     themes — and prints as a floating card over the report. Put it back in the flow. */
+  .panel.is-big{position:static!important;inset:auto!important;box-shadow:none!important;overflow:visible!important}
   .cf-scroll,.gantt-scroll,#grid,.path-view,.evo-gantt,#forecastRuler,.sra-grid-host{overflow:visible!important;max-height:none!important}
   .gantt-grid thead{position:static!important}
   .gantt-grid .sf-frozen-col{position:static!important;left:auto!important}
@@ -555,6 +559,42 @@ header nav{display:flex;flex-wrap:wrap;align-items:center;gap:5px 16px;flex:1 1 
 .sf-drawer th{position:sticky;top:0;background:var(--panel);text-transform:uppercase}
 .sf-drawer td{border-bottom:1px solid color-mix(in srgb,var(--line) 55%,transparent)}
 .is-big{grid-column:1/-1}
+/* ── ⛶ ENLARGE on a BLOCK-LAYOUT panel (ADR-0304 amendment, Ultracode round 11) ────────────────
+   `.is-big` alone is `grid-column:1/-1` (the line above, KEPT unchanged). That is the whole rule
+   for the class, so it is INERT on any panel that is not a grid item: measured with real clicks in
+   all four themes at 1440x900, /evm 20/20 and /scurve 8/8 flipped the class and the label while
+   `getBoundingClientRect()` never changed — a control that lies. /performance's 56/56 worked only
+   because its panels ARE `.mosaic .tile` grid items.
+
+   The remedy borrows the geometry the project ALREADY ships for exactly this case —
+   `.sf-tilebox.tile-expanded` (app.css:873, a near-full-viewport overlay so a standalone chart can
+   get bigger than its panel) — rather than minting a sixth enlarge vocabulary. It applies ONLY in
+   the user-toggled `.is-big` state, so no default render moves (verified: panel + chart-host + svg
+   rects, every panel, every route, all four themes, patched vs pristine — zero differences).
+
+   THE INSET IS LOAD-BEARING, NOT COSMETIC. `4vh 3vw` (the tilebox's own inset) was rejected: in
+   the DAYLIGHT theme there is no 236px left rail — `main` is x=0 w=1440 and a panel is 1384px wide
+   — while console/apollo/jarvis have it (`main` x=236 w=1204, panel 1148). A `3vw` inset yields a
+   1354px box, which is NARROWER than a daylight panel, i.e. ⛶ would make the chart SMALLER in one
+   of four themes. That is precisely the /performance failure ADR-0304 exists to prevent. A fixed
+   12px gutter is theme-independent: 1416px, wider than every panel in every theme.
+
+   BOTH EXCLUSIONS ARE STRUCTURAL, NOT TASTE:
+   `:not(.tile)`            — keeps the round-10 matched pair intact. A mosaic tile enlarges via
+                              `grid-column:1/-1` PLUS `.mosaic .tile.is-big .chart-host{height:74vh}`
+                              (app.css), and that pair already works on the Mission wall; overlaying
+                              it instead would replace a working mechanism with a different one.
+                              Measured: /performance toggled rects 0 of 56 differ from pristine.
+   `:not(:has(.sf-tilebox))` — keeps /curves and /analysis's Activity-scatter panels from nesting two
+                              overlays. Those panels own a per-chart `.sf-tilebox.tile-expanded`
+                              overlay of their own; a panel-level overlay around it would put a
+                              fixed box inside a fixed box. Measured: they stay `position:static`.
+
+   HONEST COST (say it out loud): a panel TALLER than the overlay gets SHORTER, with an internal
+   scroller. This is a focus view, not a magnifier. ── */
+.panel.is-big:not(.tile):not(:has(.sf-tilebox)){
+  position:fixed;inset:3vh 12px;z-index:220;margin:0;overflow:auto;
+  box-shadow:0 18px 60px rgba(0,0,0,.45)}
 
 /* ── Mission Control (Mission Ops rank 2, prototype 'ctl'): per-tile provenance row, the ctl
    KPI tiles (2px colored top edge), and the verdict band (gradient wash + 3px left edge).

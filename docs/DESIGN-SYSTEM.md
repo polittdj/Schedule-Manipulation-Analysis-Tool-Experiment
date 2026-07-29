@@ -68,7 +68,13 @@ at") + right-aligned toolbar. Body: content. Foot: legend / source line (mono, m
 **Toolbar contract — every data visual ships all three:**
 - `▦ DATA` — toggles the underlying table inline (the accessibility table, made visible)
 - `⤓ EXCEL` — exports that visual's data (server: existing xlsx/csv endpoints)
-- `⛶ ENLARGE` — panel spans full width / grows; state persists per persist.js
+- `⛶ ENLARGE` — the panel grows. **Two layouts, one glyph (ADR-0305):** a `.mosaic .tile` panel
+  spans the wall in place (`grid-column:1/-1` + a `74vh` chart host) and stays in the flow, so
+  several may be open at once; any other panel lifts into a near-full-viewport **focus overlay**
+  (`.panel.is-big:not(.tile):not(:has(.sf-tilebox))`), of which only **one** may be open at a time,
+  dismissable with Escape. It is a focus view, not a magnifier: a panel taller than the overlay gets
+  an internal scroller. The enlarged state is **NOT persisted** — restoring a page with a modal
+  already up is worse than not restoring it.
 Tables get `⤓ EXCEL` only. Options (column pickers, zoom, filters) sit left of the
 toolbar as chips/selects, and persist.
 
