@@ -642,8 +642,16 @@ _MIN_PER_DAY = 480
 
 @dataclass(frozen=True)
 class RiskFactorTable:
-    """The SSI "Risk Factors" table: ranking factor 1..5 → (% to subtract for Best Case,
-    % to add for Worst Case). The default rows are SSI's (operator screenshot)."""
+    """The SSI "Risk Factors" table: ranking factor 1..5 → (Best Case **as a % of** the Most
+    Likely, % to **add** to the Most Likely for the Worst Case). The default rows are SSI's.
+
+    **The first column is a percentage OF the ML, not a percentage to subtract FROM it**
+    (ADR-0307). Read the other way the ladder is meaningless: it would give every factor the
+    same ±0.6·ML spread and make the factor a pure mean-shifter. Read correctly it is a
+    deliberately mean-neutral ladder — the triangular mean is a constant 0.8667·ML at every
+    factor, and the factor widens only the *spread* (factor 1 → [0.5, 1.1]·ML, factor 5 →
+    [0.1, 1.5]·ML). Verified against the 919 activities carrying SSI's own stored Best/Worst
+    Case durations in ``00_REFERENCE_INTAKE/mpp/SRA Large Test File2.mpp``."""
 
     rows: tuple[tuple[int, float, float], ...] = (
         (1, 50.0, 10.0),
@@ -654,7 +662,7 @@ class RiskFactorTable:
     )
 
     def for_factor(self, factor: int) -> tuple[float, float]:
-        """``(subtract%, add%)`` for a 1..5 factor (clamped into range)."""
+        """``(best-case % OF ML, % to add for the worst case)`` for a 1..5 factor (clamped)."""
         f = max(1, min(5, factor))
         for row_f, sub, add in self.rows:
             if row_f == f:
@@ -900,17 +908,24 @@ def factor_to_bc_wc(
 ) -> tuple[int, int, int]:
     """``(BestCase, MostLikely, WorstCase)`` working minutes from a 0..5 ranking factor.
 
-    SSI: *the current Remaining Duration is the Most Likely*. ``BC = ML*(1 - sub%/100)``,
-    ``WC = ML*(1 + add%/100)`` with the per-factor percentages from ``table`` — validated to match
-    SSI's stored Best/Worst Case durations exactly. **Factor 0 means NO duration uncertainty**: no
-    Best/Worst case to calculate, so BC = ML = WC = the remaining duration (a point mass).
-    ``minutes_per_day`` is unused by the maths (the ratio is unit-free) but documents the working
-    basis. Rounded to whole working minutes."""
+    SSI: *the current Remaining Duration is the Most Likely*. ``BC = ML*(best%/100)``,
+    ``WC = ML*(1 + add%/100)`` with the per-factor percentages from ``table``. **Factor 0 means NO
+    duration uncertainty**: no Best/Worst case to calculate, so BC = ML = WC = the remaining
+    duration (a point mass). ``minutes_per_day`` is unused by the maths (the ratio is unit-free)
+    but documents the working basis. Rounded to whole working minutes.
+
+    ADR-0307: the Best Case was previously computed as ``ML*(1 - sub%/100)``, reading the first
+    table column as a percentage to subtract. It is a percentage **of** the ML. Measured against
+    the 919 activities that carry SSI's own stored Best/Worst Case durations in the reference
+    ``SRA Large Test File2.mpp``: by the ML-independent WC/BC ratio test the corrected rule matches
+    897/919 (97.6%) against the old rule's 153/919 (16.6%); by direct value, 852/919 against
+    140/919. Every one of the old rule's matches is factor 1 — the degenerate band where
+    ``1 - 0.50 == 0.50`` makes the two rules agree. The Worst Case was, and remains, correct."""
     ml = max(0, int(remaining_minutes))
     if factor <= 0:  # operator: factor 0 -> no Best/Worst, use the remaining duration as-is
         return (ml, ml, ml)
-    sub, add = table.for_factor(factor)
-    bc = max(0, round(ml * (1.0 - sub / 100.0)))
+    best, add = table.for_factor(factor)
+    bc = max(0, min(ml, round(ml * (best / 100.0))))
     wc = max(ml, round(ml * (1.0 + add / 100.0)))
     return (bc, ml, wc)
 
@@ -1569,14 +1584,20 @@ def compute_sra_ssi(
     ]
     risk_uids = {u for r in active_risks for u in r.affected}
 
+    # A COMPLETED activity carries no duration uncertainty: its duration is a recorded fact, not a
+    # forecast (ADR-0307). SSI agrees — of the 634 100%-complete leaves in the reference
+    # SRA Large Test File2.mpp, zero carry a stored Best/Worst Case, while all 919 incomplete
+    # factor-bearing ones do. Without this guard a factor pasted down a whole column re-randomises
+    # finished work (one 635-day completed activity alone shifted the focus mean +84.7 wd).
+    done = {t.unique_id for t in tasks if _is_completed(t)}
     three: dict[int, tuple[int, int, int]] = {}
     for u in uids:
-        if u in risk_uids or u not in tp_in:
+        if u in risk_uids or u in done or u not in tp_in:
             three[u] = (
                 ml[u],
                 ml[u],
                 ml[u],
-            )  # point mass (risk-driven, or no factor → no uncertainty)
+            )  # point mass (risk-driven, completed, or no factor → no uncertainty)
         else:
             bc, mlv, wc = tp_in[u]
             three[u] = (max(0, int(bc)), int(mlv), max(int(bc), int(wc)))

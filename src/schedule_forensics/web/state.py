@@ -574,7 +574,7 @@ class SessionState:
     # the focus event whose finish the SSI run/OAT report (SSI "Flag for Analysis"); None =>
     # project.
     sra_focus_uid: int | None = None
-    # the Risk Factors table: (factor 1..5, % subtract for Best Case, % add for Worst Case).
+    # the Risk Factors table: (factor 1..5, Best Case as a % OF the ML, % to add for Worst Case).
     sra_factor_rows: tuple[tuple[int, float, float], ...] = field(
         default_factory=lambda: RiskFactorTable().rows
     )

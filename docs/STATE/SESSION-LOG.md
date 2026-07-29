@@ -8909,3 +8909,51 @@ dates — 74 call sites, root cause of V6, needs a Fable 5 Max CPM deep dive), *
 slack floors; parity cannot distinguish floor from truncate on our goldens, needs an SSI reference
 compare), **V3** (elapsed literals — product decision), **V1/V2** (SRA magnitude entry — needs an
 operator-visible error, so the five standing UI requirements apply). None of them is a "just patch it".
+
+## 2026-07-29 (cont.3) — the operator's SRA parity failure: a ranking factor that does not change the uncertainty (ADR-0307, v1.0.123)
+
+**Trigger.** The operator ran the same Schedule Risk Analysis in POLARIS and in the SSI SRA add-in for
+MS Project on `SRA Large Test File2.mpp` and got materially different answers — a Law-2 fidelity
+defect, with all three reference artifacts committed. Chosen over the UI redesign tail (rank 12)
+because a wrong number in a testimony context does not wait.
+
+**The incoming hypothesis was wrong, and killing it early mattered.** The handoff pointed hard at
+audit finding V2 (both risk activities have zero duration → `_affected_avg_remaining_days` returns
+0.0 → `impact_pct` collapses to 0.0 → the two SRA models disagree). It is not the cause of this
+screenshot: the labels in the image (`Deterministic finish`, `Std deviation`, `Risk / Prob /
+Impact (d) / Hits / Mean Δ (wd) / P / C`) are rendered only by `web/static/sra_ssi.js`, i.e. the
+`/sra/ssi` page, which uses the **additive** `_schedule_risks` model — and its risk table shows
+impact 100 d / 53 d with hits 1812 / 1208, so `impact_days` survived intact. V2 is real but lives on
+the legacy multiplicative `/sra` page.
+
+**The file was the reference.** The `.mpp` carries SSI's whole SRA register in custom fields
+(`SSI SRA Risk Probability`, `SSI SRA Schedule Impact`, `SSI SRA Event`) **and its own stored
+`Best Case Duration` / `Worst Case Duration` on 919 activities**. That converted an argument about
+algorithms into a measurement against the reference tool's own stored values.
+
+**Two prerequisites before blaming POLARIS.** (1) The reproduction reproduces the operator's
+screenshot on every figure, so every conclusion rests on the shipped code path. (2) **MS Project's own
+summary cells are defective** — B6/B7 are computed over the 245 *distinct* histogram dates with the
+Occurrences weights discarded (B7 reproduces to ≈11 ULP as the unweighted population sd; B6 as
+`47227 + 23322/245`). The occurrence-weighted histogram is the real target, and correcting for MSP's
+bug makes the divergence *larger*. The apparent near-match of POLARIS's "110.9 working days" to MSP's
+"107.82 days" is a coincidence trap.
+
+**Two defects fixed (ADR-0307).** The Best Case formula was **inverted** — the first column of the SSI
+Risk Factors table is the Best Case *as a % OF* the ML, not a % to subtract (corrected rule 897/919 =
+97.6% by an ML-independent WC/BC ratio test; old rule 153/919, **every one** of them factor 1, the
+degenerate band where `1 − 0.50 == 0.50`). And duration uncertainty was being applied to **completed
+work**: MSPDI omits `<RemainingDuration>` on a 100%-complete task, so the `rem or duration` fallback
+handed the full original duration to `factor_to_bc_wc` — POLARIS randomised 1722 activities where MSP
+randomised 919, and one finished 635-day activity alone shifted the focus mean +84.67 working days.
+
+**Parity is NOT achieved and the round does not claim it.** Mean offsets: as-shipped +280 → fix
+completed-work only +132 → fix both +27, against MSP's +111.45. No configuration reproduces MSP's
+spread (σ 160.8 / 111.6 / 125.9 vs 64.74) — **the residual is about variance, not the mean**. Fixing
+only the completed-work defect lands the mean *nearer* the target than the fully-correct fix, which is
+precisely the trap Law 2 exists to prevent; the BC rule is wrong against 919 stored reference values
+and was not kept because its error happened to cancel another. One artifact would settle the rest: an
+MSP re-run with *Includes Risks/Opportunities = No*.
+
+**Gate.** `pytest -m parity` green (44 passed, no golden moved) · ruff · ruff format (793 files) ·
+mypy --strict · bandit exit 0 · node --check all clean. Wheel + nine installers rebuilt at v1.0.123.

@@ -56,19 +56,85 @@ def _focus_net() -> Schedule:
 
 
 def test_factor_to_bc_wc_matches_the_ssi_formula() -> None:
+    """ADR-0307: the first table column is the Best Case **as a % of** the ML, not a % to subtract.
+
+    These are not the code's own arithmetic restated — they are SSI's OWN stored Best/Worst Case
+    durations, read off the reference ``00_REFERENCE_INTAKE/mpp/SRA Large Test File2.mpp`` (fields
+    ``Best Case Duration``/``Worst Case Duration``, populated on 919 activities). The corrected
+    rule reproduces 852/919 exactly; the previous ``ML*(1 - sub%/100)`` reproduced 140, every one
+    of them factor 1 — the degenerate band where ``1 - 0.50 == 0.50`` makes both rules agree.
+    """
     tbl = RiskFactorTable()
-    # factor 3 = subtract 30 / add 30 on a 10-day remaining duration
-    assert factor_to_bc_wc(10 * DAY, 3, tbl) == (7 * DAY, 10 * DAY, 13 * DAY)
-    # factor 5 = subtract 10 / add 50
-    assert factor_to_bc_wc(10 * DAY, 5, tbl) == (round(9 * DAY), 10 * DAY, round(15 * DAY))
-    # factor 1 = subtract 50 / add 10
+    # factor 3: BC = 30% OF the ML / WC = +30% (SSI stored, UID 6640: 115h18m -> 34h33m36s)
+    assert factor_to_bc_wc(10 * DAY, 3, tbl) == (3 * DAY, 10 * DAY, 13 * DAY)
+    # factor 5: BC = 10% OF the ML / WC = +50% (SSI stored, UID 6872: 8h02m -> 0h48m)
+    assert factor_to_bc_wc(10 * DAY, 5, tbl) == (1 * DAY, 10 * DAY, round(15 * DAY))
+    # factor 4: BC = 20% OF the ML / WC = +40% (SSI stored, UID 166: 17h35m -> 3h31m12s)
+    assert factor_to_bc_wc(10 * DAY, 4, tbl) == (2 * DAY, 10 * DAY, 14 * DAY)
+    # factor 1 is the degenerate band — the old and new rules agree here, which is exactly why the
+    # inversion survived: a validation drawn from factor-1 rows passes under either reading
     assert factor_to_bc_wc(10 * DAY, 1, tbl) == (5 * DAY, 10 * DAY, 11 * DAY)
     # ML is the REMAINING duration passed in (not any original) — the UID-35 regression
-    assert factor_to_bc_wc(1711, 2, tbl) == (round(1711 * 0.6), 1711, round(1711 * 1.2))
+    assert factor_to_bc_wc(1711, 2, tbl) == (round(1711 * 0.4), 1711, round(1711 * 1.2))
     # factor 0 = NO uncertainty: BC = ML = WC = the remaining duration (operator: a 0 means "use
     # the remaining duration, there is no Best/Worst case", never clamp it up to 1)
     assert factor_to_bc_wc(10 * DAY, 0, tbl) == (10 * DAY, 10 * DAY, 10 * DAY)
     assert factor_to_bc_wc(1711, 0, tbl) == (1711, 1711, 1711)
+    # the Best Case can never exceed the Most Likely
+    for f in range(0, 6):
+        bc, ml, wc = factor_to_bc_wc(1711, f, tbl)
+        assert bc <= ml <= wc
+
+
+def test_ssi_factor_ladder_widens_the_spread_and_holds_the_mean() -> None:
+    """The property that makes the ladder meaningful — and that the inverted rule destroyed.
+
+    Under SSI's real rule a higher Risk Ranking Factor widens the Best/Worst *spread* while the
+    triangular mean stays a constant 0.8667*ML. Under the old inverted rule every factor produced
+    the SAME 0.6*ML spread and the factor merely slid the mean later (0.8667 -> 1.1333*ML), which
+    is what biased the reference run's focus finish ~143 calendar days late.
+    """
+    tbl = RiskFactorTable()
+    ml = 100 * DAY
+    spreads, means = [], []
+    for f in range(1, 6):
+        bc, mlv, wc = factor_to_bc_wc(ml, f, tbl)
+        spreads.append(wc - bc)
+        means.append((bc + mlv + wc) / 3.0)
+    # the spread widens monotonically with the factor
+    assert spreads == sorted(spreads) and spreads[0] < spreads[-1]
+    # ...while the mean is held constant across every band
+    assert all(abs(m - means[0]) <= 1.0 for m in means)
+    assert math.isclose(means[0], 0.8667 * ml, rel_tol=1e-3)
+
+
+def test_a_completed_activity_carries_no_duration_uncertainty() -> None:
+    """ADR-0307: finished work is a recorded fact, never a forecast.
+
+    MSPDI omits ``<RemainingDuration>`` on a 100%-complete task, so the web layer's
+    ``rem if rem is not None else duration`` fallback handed the FULL original duration to
+    ``factor_to_bc_wc`` and the run then re-randomised work that had already happened. SSI never
+    does this: of the 634 100%-complete leaves in the reference SRA Large Test File2.mpp, ZERO
+    carry a stored Best/Worst Case, while all 919 incomplete factor-bearing ones do.
+    """
+
+    def _net(driver: Task) -> Schedule:
+        return Schedule(
+            name="S",
+            project_start=MON,
+            tasks=(_task(1, 1), driver, _task(3, 2), _task(4, 1)),
+            relationships=(_rel(1, 2), _rel(1, 3), _rel(2, 4), _rel(3, 4)),
+        )
+
+    cfg = SRAConfig(iterations=200, seed=7, target_uid=4)
+    # a caller hands the completed driver a wide Best/Worst anyway — the engine must ignore it
+    wide = {2: (1 * DAY, 10 * DAY, 40 * DAY)}
+    done = compute_sra_ssi(_net(_task(2, 10, percent_complete=100.0)), config=cfg, three_point=wide)
+    assert done.std_days == 0.0, "a completed activity must not inject variance"
+    assert done.p10 == done.p90 == done.deterministic_finish
+    # and the same spread on an INCOMPLETE driver still does move the finish (guard is not a no-op)
+    live = _task(2, 10, percent_complete=0.0, remaining_duration_minutes=10 * DAY)
+    assert compute_sra_ssi(_net(live), config=cfg, three_point=wide).std_days > 0.0
 
 
 def test_factor_zero_is_a_point_mass_no_spread() -> None:
@@ -171,13 +237,15 @@ def test_oat_sensitivity_ranks_the_driver_above_the_off_path_task() -> None:
     s = _focus_net()
     tbl = RiskFactorTable()
     tp = {
-        2: factor_to_bc_wc(10 * DAY, 3, tbl),  # driver: BC 7d / WC 13d
+        2: factor_to_bc_wc(10 * DAY, 3, tbl),  # driver: BC 3d / WC 13d (ADR-0307: BC = 30% OF ML)
         3: factor_to_bc_wc(2 * DAY, 3, tbl),  # off-path: tiny swing, never reaches the focus
     }
     oat = compute_oat_sensitivity(s, three_point=tp, target_uid=4)
     by = {o.unique_id: o for o in oat}
-    # the driver swings the focus both ways: BC pulls it in 3 wd, WC pushes it out 3 wd
-    assert by[2].opportunity_days == 3.0 and by[2].risk_days == 3.0 and by[2].total_days == 6.0
+    # the driver swings the focus both ways: BC pulls it in 7 wd (12 -> 5), WC pushes it out 3 wd.
+    # ADR-0307 corrected the Best Case from 70% to 30% OF the ML, so the OPPORTUNITY side of the
+    # swing widens from 3 to 7 wd; the risk side is unchanged because the WC rule was always right.
+    assert by[2].opportunity_days == 7.0 and by[2].risk_days == 3.0 and by[2].total_days == 10.0
     # the off-path task can't move the focus at all
     assert by[3].total_days == 0.0
     # sorted by total desc → the driver is first

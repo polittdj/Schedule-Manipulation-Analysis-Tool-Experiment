@@ -435,6 +435,64 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-29 (cont.4) — a validation that only samples the degenerate case validates nothing
+
+**What happened.** The operator reported a Law-2 fidelity defect: the same SRA run gave materially
+different answers in POLARIS and in MS Project. Root cause #1 was a formula inverted since ADR-0123 —
+the SSI Risk Factors table's first column is the Best Case **as a percentage OF** the Most Likely, and
+`factor_to_bc_wc` read it as a percentage **to subtract**. It had been wrong for 184 ADRs.
+
+**Why it survived so long — the actual lesson.** At factor 1 the two readings coincide: `1 − 0.50 ==
+0.50`. The docstring claimed the rule was *"validated to match SSI's stored Best/Worst Case durations
+exactly"*, and the unit test called itself the *"headline parity anchor"* — but the test asserted the
+**code's own arithmetic**, and the single line in it that agrees with the reference is the factor-1
+line. A validation drawn from the degenerate band passes under either reading. Measured against the
+reference tool's own stored values, the old rule reproduced **153/919** — and *every one* of those was
+factor 1, with **zero** of the 765 rows at factors 2–5.
+
+- **A parity test must assert values that came from the reference tool, not values recomputed by the
+  code under test.** If a test would still pass when the formula is inverted, it is not an anchor.
+- **Check that your fixture set spans the discriminating cases.** Any band where two candidate rules
+  agree is worthless as evidence. Ask "which rows could distinguish these?" before claiming validation.
+- **Sanity-check a formula against what its parameter is supposed to MEAN.** The inverted reading gave
+  every risk factor the identical ±0.6·ML spread and merely slid the mean — i.e. a *risk ranking
+  factor* that changed no uncertainty. The correct reading holds the triangular mean at a constant
+  0.8667·ML and widens only the spread. That semantic contradiction was visible without any reference
+  data at all, for 184 ADRs, and nobody looked.
+
+**Root cause #2, and a rhyme with yesterday.** Duration uncertainty was being applied to 100%-complete
+activities: MSPDI omits `<RemainingDuration>` on a finished task, so `rem if rem is not None else
+duration` handed the **full original duration** to the sampler and the run re-randomised work that had
+already happened. This is ADR-0306's "an absent figure is not a zero" with the **opposite sign** — the
+absent figure was read as the *full* value. And `_is_completed`'s own docstring already said *"A
+completed activity carries no schedule uncertainty"*: **the invariant was written down in the codebase
+and silently violated on one code path.** A documented invariant with no executable guard is a comment.
+
+**The hardest judgment call, and the one worth remembering.** Fixing *only* the completed-work defect
+lands the mean at +132 against MS Project's +111 — *closer to the target* than fixing both (+27). It
+would have been easy, and defensible-sounding, to keep the inverted Best-Case rule because the numbers
+"looked better". That is two errors cancelling, and it is exactly what Law 2 forbids. **Fix what is
+provably wrong against the reference; never tune a formula to hit a target number.** The round shipped
+saying plainly that parity is *not* achieved and naming the one artifact that would settle the rest.
+
+**Also learned.**
+- **The reference input may itself be the reference oracle.** The `.mpp` carried SSI's own stored
+  Best/Worst Case durations on 919 activities plus its whole risk register in custom fields. Reading
+  the input file's custom fields *before* theorising turned an algorithm argument into a measurement.
+- **Verify the reference tool too.** MS Project's own summary cells (B6 Mean Date, B7 Standard
+  Deviation) are computed over the 245 *distinct* histogram dates with the occurrence weights
+  discarded — they disagree with its own histogram. Had we anchored on them, the near-match of
+  POLARIS's "110.9 working days" to MSP's "107.82 days" would have argued the spread was nearly right,
+  when it is 2.5× too wide. **A reference number that disagrees with its own underlying data is not a
+  target.**
+- **Reproduce end-to-end before reasoning about the algorithm.** Converting the `.mpp` costs ~30 s and
+  2000 SRA iterations run in ~90 s. The reproduction matching the operator's screenshot on *every*
+  figure is what made every later claim trustworthy.
+- **Run a Monte-Carlo bisection against an unpatched tree, and record run provenance next to every
+  number.** A mid-run edit does not affect an already-imported module, but the *next* run picks it up:
+  two variants that should have differed came back byte-identical because the new engine guard had
+  already neutralised the input.
+
 ### 2026-07-29 (cont.3) — a green gate proves nothing if the binary isn't the one CI runs
 
 **What happened.** The ADR-0306 correctness pass went out with a locally-green
