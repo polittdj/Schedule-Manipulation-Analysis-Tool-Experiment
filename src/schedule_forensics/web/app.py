@@ -419,6 +419,12 @@ _REMAIN_DAYS_DP = 6
 #: Per-file upload cap (bytes). Local operator files; largest real exports are well under this.
 _MAX_UPLOAD_BYTES = 500 * 1024 * 1024
 
+#: Cap for a saved **SSI setup JSON** (ADR-0313) — deliberately far below `_MAX_UPLOAD_BYTES`,
+#: which is sized for an `.mpp`. A setup is scalars plus a per-UID factor / Best-Worst map, so
+#: 8 MB holds a schedule an order of magnitude larger than any reference file. Reusing the 500 MB
+#: schedule bound here would have been a cap in name only.
+_MAX_SETUP_BYTES = 8 * 1024 * 1024
+
 _LAYOUT = Template(
     """<!doctype html><html lang="{{ lang }}"><head><meta charset=utf-8>
 <meta name=viewport content="width=device-width,initial-scale=1">
@@ -5828,13 +5834,20 @@ def create_app(
                     valid.append(u)
         if label and valid:
             avg_rem = _affected_avg_remaining_days(sch, valid)
-            days, pct, dl, pl = _reconcile_magnitudes(
+            days, pct, dl, pl, problems = _reconcile_magnitudes(
                 impact_days,
                 impact_pct,
                 days_locked.strip() in ("1", "on", "true"),
                 pct_locked.strip() in ("1", "on", "true"),
                 avg_rem,
             )
+            if problems:
+                # ADR-0313: refuse the row rather than store a magnitude the operator never
+                # entered. The register is a forensic input; a silently-zeroed impact is worse
+                # than a rejected form, because nothing downstream can tell the two apart.
+                st.sra_import_msg = "Risk not added — " + " ".join(problems)
+                st.sra_import_is_error = True
+                return RedirectResponse(url="/sra", status_code=303)
             p = _clamp_float(prob, 0.0, 1.0, 0.0, scale=0.01)
             cons = int(consequence) if consequence.strip().isdigit() else None
             st.sra_risk_seq += 1
@@ -6505,14 +6518,45 @@ def create_app(
     def sra_ssi_load(setup: UploadFile) -> RedirectResponse:
         """Restore an SSI setup from a previously-saved JSON file. UIDs are validated against the
         active schedule (unknown/summary tasks dropped, factors clamped) so a setup saved on one
-        version applies cleanly to another."""
+        version applies cleanly to another.
+
+        ADR-0313: the read is **bounded** and every rejection is **reported**. This route used to
+        do an unbounded ``setup.file.read()`` and then redirect in total silence on bad JSON —
+        so an operator who picked the wrong file saw their previous setup apparently survive with
+        no indication their load had failed. Its two sibling importers already read
+        ``_MAX_UPLOAD_BYTES + 1`` and report; this is conformance to that convention, not new policy.
+        """
         st = session()
+        # A setup JSON is small by construction (scalars + per-UID factor maps), so it gets its own
+        # far tighter cap than the 500 MB schedule-file limit rather than inheriting a bound sized
+        # for an .mpp. Sized to hold a per-task factor + BC/WC entry for a schedule far larger than
+        # any reference file, with room to spare.
+        data = setup.file.read(_MAX_SETUP_BYTES + 1)
+        if len(data) > _MAX_SETUP_BYTES:
+            st.sra_import_msg = (
+                f"SSI setup not loaded — file exceeds the {_MAX_SETUP_BYTES // (1024 * 1024)} MB "
+                "cap for a setup file. Nothing on this page was changed."
+            )
+            st.sra_import_is_error = True
+            return RedirectResponse(url="/sra", status_code=303)
         try:
-            payload = json.loads(setup.file.read())
-        except (ValueError, TypeError):
+            payload = json.loads(data)
+        except (ValueError, TypeError) as exc:
+            st.sra_import_msg = (
+                f"SSI setup not loaded — that file is not readable JSON: {exc}. "
+                "Nothing on this page was changed."
+            )
+            st.sra_import_is_error = True
             return RedirectResponse(url="/sra", status_code=303)
         if isinstance(payload, dict):
             _apply_ssi_setup(st, payload)
+            st.sra_import_msg = "SSI setup loaded."
+        else:
+            st.sra_import_msg = (
+                "SSI setup not loaded — that JSON is not an SSI setup object. "
+                "Nothing on this page was changed."
+            )
+            st.sra_import_is_error = True
         return RedirectResponse(url="/sra", status_code=303)
 
     @app.get("/export/{fmt}/sra")
@@ -6661,6 +6705,7 @@ def create_app(
         chosen = _sra_selected(st)
         if chosen is None:
             st.sra_import_msg = "Load a schedule before importing a risk register."
+            st.sra_import_is_error = True
             return RedirectResponse(url="/sra", status_code=303)
         _key, sch, _cpm = chosen
         # cap the COMPRESSED upload (parity with /upload's 500 MB per-file limit) before read_xlsx,
@@ -6671,20 +6716,31 @@ def create_app(
                 f"Risk register not imported — file exceeds the "
                 f"{_MAX_UPLOAD_BYTES // (1024 * 1024)} MB cap."
             )
+            st.sra_import_is_error = True
             return RedirectResponse(url="/sra", status_code=303)
         try:
             sheets = read_xlsx(data)
         except XlsxError as exc:
             st.sra_import_msg = f"Could not read that file: {exc}"
+            st.sra_import_is_error = True
             return RedirectResponse(url="/sra", status_code=303)
         summary = _import_risk_register(st, sch, sheets)
         if "error" in summary:
             st.sra_import_msg = f"Risk register not imported — {summary['error']}."
+            st.sra_import_is_error = True
         else:
+            malformed = int(cast(int, summary.get("malformed", 0)))
             st.sra_import_msg = (
                 f"Imported {summary['imported']} risk(s); skipped {summary['skipped']} incomplete "
-                f"row(s); dropped {summary['dropped_uids']} unmatched UID(s)."
+                f"row(s); dropped {summary['dropped_uids']} unmatched UID(s)"
+                + (
+                    f"; SKIPPED {malformed} row(s) with an unreadable impact figure — "
+                    "those risks are NOT in the register."
+                    if malformed
+                    else "."
+                )
             )
+            st.sra_import_is_error = bool(malformed)
         return RedirectResponse(url="/sra", status_code=303)
 
     @app.post("/sra/import/task-risk")
@@ -6695,6 +6751,7 @@ def create_app(
         chosen = _sra_selected(st)
         if chosen is None:
             st.sra_import_msg = "Load a schedule before importing task risk inputs."
+            st.sra_import_is_error = True
             return RedirectResponse(url="/sra", status_code=303)
         _key, sch, _cpm = chosen
         # cap the COMPRESSED upload (parity with /upload's 500 MB per-file limit) before read_xlsx,
@@ -6710,10 +6767,12 @@ def create_app(
             sheets = read_xlsx(data)
         except XlsxError as exc:
             st.sra_import_msg = f"Could not read that file: {exc}"
+            st.sra_import_is_error = True
             return RedirectResponse(url="/sra", status_code=303)
         summary = _import_task_risk(st, sch, sheets)
         if "error" in summary:
             st.sra_import_msg = f"Task risk inputs not imported — {summary['error']}."
+            st.sra_import_is_error = True
         else:
             st.sra_import_msg = (
                 f"Set {summary['factors']} Risk Ranking Factor(s) and {summary['bcwc']} Best/Worst "
@@ -13875,22 +13934,94 @@ def _affected_avg_remaining_days(sch: Schedule | None, uids: Sequence[int]) -> f
     return sum(rems) / len(rems) if rems else 0.0
 
 
+#: The accepted numeric grammar for an operator-entered SRA magnitude, applied BEFORE ``float()``
+#: (ADR-0313). Deliberately stricter than **both** permissive parsers this value used to meet:
+#: Python's ``float()`` accepts ``"1_000"`` / ``"inf"`` / ``"nan"``, and JS ``parseFloat`` accepts a
+#: numeric PREFIX (``parseFloat("1.2.3") == 1.2``, ``parseFloat("5 days") == 5``). Those two
+#: permissive sets do not agree, which is exactly how the server and ``sra_risk.js`` came to read
+#: different numbers from the same keystroke. One shared grammar is the only shape in which they
+#: cannot: `tests/web/js/magnitude_cases.json` is the single case table both sides are pinned to.
+_MAGNITUDE_RE = re.compile(r"^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$")
+
+#: Longest magnitude string accepted. A real entry is a handful of characters, and this bound is
+#: what makes the overflow class unreachable (``float("1" * 400)`` is ``inf``) **without** inventing
+#: a magnitude ceiling — "how many days is too many" is a product decision, deliberately not made
+#: here, because a schedule-risk impact has no defensible universal maximum.
+_MAGNITUDE_MAX_LEN = 32
+
+
+@dataclass(frozen=True)
+class _Magnitude:
+    """One operator-entered SRA magnitude in three distinguishable states (ADR-0313).
+
+    ``absent`` (nothing typed) must stay distinct from ``invalid`` (something typed that is not a
+    number). Absent is the signal to **derive** this magnitude from the other one; collapsing the
+    two is what made an unparseable entry silently *suppress* that derivation and substitute a
+    locked zero, leaving one risk row whose two magnitudes described two different events.
+    """
+
+    value: float | None = None
+    reason: str | None = None
+
+    @property
+    def is_absent(self) -> bool:
+        return self.value is None and self.reason is None
+
+    @property
+    def is_invalid(self) -> bool:
+        return self.reason is not None
+
+
+def _parse_magnitude(raw: str, *, label: str) -> _Magnitude:
+    """Parse one SRA magnitude field into absent / valid / invalid-with-a-reason (ADR-0313).
+
+    The reason is operator-facing text, so it names the field and quotes what was entered — never
+    a stack trace and never a silent default.
+    """
+    text = raw.strip()
+    if not text:
+        return _Magnitude()
+    if len(text) > _MAGNITUDE_MAX_LEN:
+        return _Magnitude(
+            reason=f"{label} is too long (limit {_MAGNITUDE_MAX_LEN} characters) — enter a number."
+        )
+    if not _MAGNITUDE_RE.match(text):
+        return _Magnitude(reason=f"{label} is not a number: {text!r}.")
+    try:
+        value = float(text)
+    except (ValueError, OverflowError):  # pragma: no cover - the grammar already excludes these
+        return _Magnitude(reason=f"{label} is not a number: {text!r}.")
+    if not math.isfinite(value):  # pragma: no cover - "inf"/"nan" cannot match the grammar
+        return _Magnitude(reason=f"{label} is not a finite number: {text!r}.")
+    return _Magnitude(value=value)
+
+
 def _reconcile_magnitudes(
     days_str: str, pct_str: str, days_locked: bool, pct_locked: bool, avg_rem: float
-) -> tuple[float, float, bool, bool]:
+) -> tuple[float, float, bool, bool, tuple[str, ...]]:
     """Parse the two magnitudes and derive whichever the operator did not supply, using ``avg_rem``
     (days = pct/100 x avg ; pct = days/avg x 100). A field that was supplied (or flagged) is locked
-    and used verbatim. Mirrors the client-side ``sra_risk.js`` so the JS-off / load path agrees."""
-    days = _to_float(days_str, 0.0) if days_str.strip() else None
-    pct = _to_float(pct_str, 0.0) if pct_str.strip() else None
-    dl = days_locked or days is not None
-    pl = pct_locked or pct is not None
+    and used verbatim. Mirrors the client-side ``sra_risk.js`` so the JS-off / load path agrees.
+
+    Returns ``(days, pct, days_locked, pct_locked, problems)``. **``problems`` is not advisory** —
+    a caller that ignores it stores a magnitude the operator never entered (ADR-0313). An invalid
+    field yields no value at all rather than a locked zero, so the caller's only options are to
+    report or to refuse; it cannot accidentally proceed with a fabricated figure.
+    """
+    days_field = _parse_magnitude(days_str, label="Impact (working days)")
+    pct_field = _parse_magnitude(pct_str, label="Impact (%)")
+    problems = tuple(f.reason for f in (days_field, pct_field) if f.reason is not None)
+    days = days_field.value
+    pct = pct_field.value
+    # An INVALID field is not "supplied": locking it would pin the very value we refused to read.
+    dl = (days_locked and not days_field.is_invalid) or days is not None
+    pl = (pct_locked and not pct_field.is_invalid) or pct is not None
     if avg_rem > 0:
-        if days is not None and pct is None:
+        if days is not None and pct is None and not pct_field.is_invalid:
             pct = round(days / avg_rem * 100.0, 2)
-        elif pct is not None and days is None:
+        elif pct is not None and days is None and not days_field.is_invalid:
             days = round(pct / 100.0 * avg_rem, 2)
-    return (days or 0.0), (pct or 0.0), dl, pl
+    return (days or 0.0), (pct or 0.0), dl, pl, problems
 
 
 # ── SRA Excel round-trip templates (ADR-0211): export a fill-in workbook, reimport it ──────────
@@ -14049,7 +14180,7 @@ def _import_risk_register(
     c_cons = cols.get("Consequence (1-5)")
     c_aff = cols.get("Affected UIDs (; separated)")
     imported: list[UnifiedRisk] = []
-    skipped = dropped_uids = 0
+    skipped = dropped_uids = malformed = 0
     seq = 0
     for row in rows[hdr_i + 1 :]:
         name = _cell(row, c_name)
@@ -14071,7 +14202,16 @@ def _import_risk_register(
                 skipped += 1
             continue
         avg_rem = _affected_avg_remaining_days(sch, valid)
-        days, pct, dl, pl = _reconcile_magnitudes(_cell(row, c_days), "", True, False, avg_rem)
+        days, pct, dl, pl, problems = _reconcile_magnitudes(
+            _cell(row, c_days), "", True, False, avg_rem
+        )
+        if problems:
+            # ADR-0313: this function's own contract already promises "a missing figure is skipped
+            # and reported, never guessed" — that promise was untrue for a MALFORMED figure, which
+            # took the silent-zero path instead. Counted separately from `skipped` because
+            # "unreadable" and "incomplete" are different things for the operator to go fix.
+            malformed += 1
+            continue
         prob = _clamp_float(_cell(row, c_prob) or "0", 0.0, 1.0, 0.0, scale=0.01)
         cons_raw = _cell(row, c_cons)
         cons = min(5, max(1, int(float(cons_raw)))) if _is_number(cons_raw) else None
@@ -14092,7 +14232,12 @@ def _import_risk_register(
         )
     st.sra_risks = imported
     st.sra_use_risk_register = bool(imported)
-    return {"imported": len(imported), "skipped": skipped, "dropped_uids": dropped_uids}
+    return {
+        "imported": len(imported),
+        "skipped": skipped,
+        "dropped_uids": dropped_uids,
+        "malformed": malformed,
+    }
 
 
 def _import_task_risk(
@@ -16097,8 +16242,13 @@ def _sra_body(st: SessionState) -> str:
     # one-shot Excel round-trip import feedback (ADR-0211): shown once, then cleared
     import_banner = ""
     if st.sra_import_msg:
-        import_banner = f'<div class="notice ok" role=status>{_e(st.sra_import_msg)}</div>'
+        # ADR-0313: a failure must not render in the success style. `role=alert` is announced
+        # immediately by a screen reader; `role=status` is polite and can be missed entirely —
+        # which is the wrong politeness for "your risk was not added".
+        cls, role = ("notice warn", "alert") if st.sra_import_is_error else ("notice ok", "status")
+        import_banner = f'<div class="{cls}" role={role}>{_e(st.sra_import_msg)}</div>'
         st.sra_import_msg = None
+        st.sra_import_is_error = False
     low_pct = f"{st.sra_low * 100:g}"
     ml_pct = f"{st.sra_ml * 100:g}"
     high_pct = f"{st.sra_high * 100:g}"

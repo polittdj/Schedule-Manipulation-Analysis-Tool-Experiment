@@ -39,8 +39,16 @@
     });
     return n ? sum / n : 0;
   }
+  // ADR-0313: the SAME grammar the server applies (_MAGNITUDE_RE). parseFloat was WRONG here, not
+  // merely lax: it accepts a numeric PREFIX, so "1.2.3" read as 1.2 and "5 days" as 5 on this side
+  // while the server rejected both -- the two implementations this file claims to mirror silently
+  // disagreed on the same keystroke. Rejecting is the only answer that cannot diverge.
+  var MAGNITUDE_RE = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/;
+  var MAGNITUDE_MAX_LEN = 32;
   function num(el) {
-    var v = parseFloat(el.value);
+    var t = String(el.value).trim();
+    if (!t || t.length > MAGNITUDE_MAX_LEN || !MAGNITUDE_RE.test(t)) return null;
+    var v = parseFloat(t);
     return isFinite(v) ? v : null;
   }
   function round2(x) {
@@ -68,12 +76,25 @@
     }
   }
 
+  // Flag an unreadable entry WITHOUT touching its text or its lock. The lock still follows
+  // non-empty, deliberately: making it follow parseability would let derive() overwrite the field
+  // mid-keystroke while the operator is still typing "-" or "1." -- a cure worse than the disease.
+  // The server refuses the row outright (ADR-0313), so nothing fabricated can be stored either way;
+  // this is only the earlier, quieter half of the same message.
+  function mark(el) {
+    var t = String(el.value).trim();
+    if (t && num(el) === null) el.setAttribute("aria-invalid", "true");
+    else el.removeAttribute("aria-invalid");
+  }
+
   daysEl.addEventListener("input", function () {
     daysLock.value = daysEl.value.trim() === "" ? "" : "1"; // typing locks days; clearing unlocks
+    mark(daysEl);
     derive();
   });
   pctEl.addEventListener("input", function () {
     pctLock.value = pctEl.value.trim() === "" ? "" : "1"; // typing locks %; clearing unlocks
+    mark(pctEl);
     derive();
   });
   affEl.addEventListener("input", derive); // re-fit the unlocked magnitude to the new affected set

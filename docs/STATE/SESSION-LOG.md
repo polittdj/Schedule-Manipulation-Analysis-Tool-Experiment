@@ -9361,3 +9361,61 @@ declared domain. It only ever runs the measurement direction (`datetime_to_offse
 no non-working dates, but nothing enforces the domain there. Recorded in ADR-0312 as belonging to
 ADR-0118's per-task-calendar model rather than to the project anchor, so it is not mistaken for
 something this round closed.
+
+### 2026-07-30 (cont.6) — a number the operator never typed (ADR-0313, v1.0.131) — PHASE 2 COMPLETE
+
+Phase 2 **item 5** / V1/V2 / external **H3**. #486 merged as `dcb891e` first; branch restarted from
+the new `origin/main`.
+
+**The defect, measured at `avg_rem = 10.0` before any code moved:**
+
+| input | `(days, pct, days_locked, pct_locked)` | |
+|---|---|---|
+| *absent* days + valid `50` | `(5.0, 50.0, False, True)` | correct — 50 % of 10 d **derives** 5 d |
+| **garbage** days + valid `50` | **`(0.0, 50.0, True, True)`** | SSI sees 0 d, legacy sees 50 % |
+| valid `7` + **garbage** pct | **`(7.0, 0.0, True, True)`** | mirror image |
+| garbage + garbage | `(0.0, 0.0, True, True)` | both zeroed |
+
+Rows 1 vs 2 are the finding. `_reconcile_magnitudes` could tell *absent* from *present* but not
+*valid* from *garbage*, so an unreadable entry did not merely read as zero — it **suppressed the
+derivation that is the function's entire purpose** and substituted a locked zero, leaving one risk
+row whose two magnitudes describe two different events, behind a 303 with no message.
+
+That also settles the external claim precisely: ChatGPT's "additive vs legacy disagree" is **true but
+only for the mixed input** — garbage in both zeroes both, so the general phrasing overstates it.
+Gemini's "missing defaults" remains its own harness error (5 required positional args, both call
+sites pass 5).
+
+**The finding no audit had: the two implementations already disagreed.** `sra_risk.js` asserts in its
+header that *"the server mirrors this exact math."* False — JS `parseFloat` takes a numeric prefix
+and Python `float()` accepts PEP-515 underscores, so `"1.2.3"` read as **1.2** on the client and
+raised on the server; likewise `"5 days"` → 5, `"12,5"` → 12, and `"1_000"` → 1 client / **1000.0**
+server. One grammar stricter than **both** now governs each side, pinned by
+`tests/web/js/magnitude_cases.json` — read by the Python test **and** the node harness, so a case
+added once is exercised twice. **Proved able to fail:** reverting `num()` to `parseFloat` makes the
+harness exit **1** with 16 failures; restoring it exits **0**.
+
+**Shipped:** a three-state `_Magnitude` (an invalid field carries *no value*, so a caller can only
+report or refuse); a 32-character length bound that makes the overflow class unreachable **without**
+inventing a maximum number of days; an invalid field is never locked (a client-supplied `*_locked`
+flag must not pin a value the server refused to read); the Excel importer now keeps its own promise
+(*"a missing figure is skipped and reported, never guessed"* — true for EMPTY, false for MALFORMED)
+and counts malformed rows **separately** from `skipped`; `sra_import_is_error` so a failure stops
+rendering as `notice ok`/`role=status`; and `/sra/ssi/load` is bounded (`_MAX_SETUP_BYTES` 8 MB, its
+own cap rather than the 500 MB `.mpp` bound) and reports instead of redirecting in silence.
+
+**Formula injection — the plan named the wrong writer.** Measuring first showed `reports/xlsx.py` is
+**not** a vector (every string is `t="inlineStr"` inside `<is><t>`; no `<f>` element is ever emitted,
+verified by unzipping a rendered workbook), while `exhibits/csvout.py` **is** — and those CSVs carry
+task names straight from the schedule file. The guard went to the CSV writer, defusing `= + - @ \t \r`
+on **text only** so a real `-5` float stays the number −5; a test now pins the *absence* of a guard on
+the workbook writer so nobody cargo-cults one on.
+
+**Two of my own errors, both exit-code shaped.** I reported the node harness green while it was
+exiting 1: `node harness.mjs | tail -20; echo $?` reports **`tail`'s** status. The harness also had a
+state-residue bug (only the `%` field was reset between cases, so the previous case's locked days
+value re-derived a stale `%` and the loop passed for the wrong reason) — fixed by resetting both
+fields and both locks. Separately, the first twelve integration tests failed for a harness reason,
+not a product one: `TestClient` follows the 303 by default and that render **consumes** the one-shot
+banner, so `follow_redirects=False` was the fix — checking before "fixing the app" mattered, because
+the instinct on twelve red tests is to change the code under test.

@@ -269,3 +269,45 @@ def test_import_rejects_oversized_upload(
     assert state.sra_import_msg is not None
     assert "exceeds" in state.sra_import_msg and "cap" in state.sra_import_msg
     assert state.sra_risks == []  # bailed before importing anything
+
+
+# ── ADR-0313: a MALFORMED impact cell is skipped and reported, not silently zeroed ──────────────
+
+
+def test_import_skips_a_row_whose_impact_cell_is_unreadable(
+    client: TestClient, state: SessionState
+) -> None:
+    """`_import_risk_register`'s contract already promised "a missing figure is skipped and
+    reported, never guessed". That was true for an EMPTY cell and false for a MALFORMED one, which
+    took `_to_float`'s silent-zero path and landed in the register as a real risk with 0 impact."""
+    u1 = _uids(state, 1)[0]
+    _rr_upload(
+        client,
+        (
+            ("R1", "Readable", 40, 12, 4, str(u1)),
+            ("R2", "Unreadable impact", 40, "12 days", 4, str(u1)),
+        ),
+    )
+    assert [r.name for r in state.sra_risks] == ["Readable"]
+    assert state.sra_import_msg is not None
+    assert "unreadable impact figure" in state.sra_import_msg
+    assert "NOT in the register" in state.sra_import_msg
+
+
+def test_a_malformed_impact_cell_makes_the_banner_an_error(
+    client: TestClient, state: SessionState
+) -> None:
+    """Dropping a risk row is a failure, so it must not render in the success style."""
+    u1 = _uids(state, 1)[0]
+    _rr_upload(client, (("R2", "Unreadable", 40, "abc", 4, str(u1)),))
+    assert state.sra_import_is_error is True
+    page = client.get("/sra").text
+    assert 'class="notice warn" role=alert' in page
+
+
+def test_a_fully_readable_import_is_not_flagged_as_an_error(
+    client: TestClient, state: SessionState
+) -> None:
+    u1 = _uids(state, 1)[0]
+    _rr_upload(client, (("R1", "Readable", 40, 12, 4, str(u1)),))
+    assert state.sra_import_is_error is False

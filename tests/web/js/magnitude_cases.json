@@ -1,0 +1,44 @@
+{
+  "_why": "ADR-0313. The SRA magnitude grammar is implemented TWICE — web/app.py::_parse_magnitude and static/sra_risk.js::num — and sra_risk.js's own header claims 'the server mirrors this exact math'. That claim was false: Python float() and JS parseFloat have different, non-overlapping tolerances, so '1.2.3' read as 1.2 on the client and was rejected on the server. This table is the single source both sides are pinned to, so the claim is enforced instead of asserted. Add a case here and BOTH tests exercise it.",
+  "_states": "absent = nothing typed (the signal to DERIVE the other magnitude) | valid = a number | invalid = something typed that is not a number (must never become a value)",
+  "cases": [
+    { "input": "", "state": "absent" },
+    { "input": "   ", "state": "absent" },
+    { "input": "3", "state": "valid", "value": 3 },
+    { "input": "0", "state": "valid", "value": 0 },
+    { "input": "0.5", "state": "valid", "value": 0.5 },
+    { "input": ".5", "state": "valid", "value": 0.5 },
+    { "input": "1.", "state": "valid", "value": 1 },
+    { "input": "-2", "state": "valid", "value": -2 },
+    { "input": "+2", "state": "valid", "value": 2 },
+    { "input": "1e3", "state": "valid", "value": 1000 },
+    { "input": "1E3", "state": "valid", "value": 1000 },
+    { "input": "2.5e-2", "state": "valid", "value": 0.025 },
+    { "input": "  7  ", "state": "valid", "value": 7 },
+
+    { "input": "abc", "state": "invalid" },
+    { "input": "1.2.3", "state": "invalid" },
+    { "input": "5 days", "state": "invalid" },
+    { "input": "12,5", "state": "invalid" },
+    { "input": "1_000", "state": "invalid" },
+    { "input": "inf", "state": "invalid" },
+    { "input": "-inf", "state": "invalid" },
+    { "input": "Infinity", "state": "invalid" },
+    { "input": "nan", "state": "invalid" },
+    { "input": "1e400", "state": "invalid" },
+    { "input": "-", "state": "invalid" },
+    { "input": ".", "state": "invalid" },
+    { "input": "1e", "state": "invalid" },
+    { "input": "0x10", "state": "invalid" },
+    { "input": "1/2", "state": "invalid" },
+    { "input": "=1+1", "state": "invalid" },
+    { "input": "11111111111111111111111111111111111", "state": "invalid" }
+  ],
+  "_notes": {
+    "1_000": "Python float() ACCEPTS this (1000.0); JS parseFloat stops at 1. The shared grammar rejects it so neither side wins by accident.",
+    "1.2.3": "The measured divergence that motivated the ADR: parseFloat -> 1.2, float() -> ValueError.",
+    "inf": "float('inf') parses cleanly and then poisons the arithmetic downstream; the grammar excludes it textually so it can never reach float() at all.",
+    "1e400": "Overflows to inf under both parsers. Excluded by the grammar's exponent form only in combination with the finiteness check — kept as a case so a future grammar relaxation cannot reintroduce it silently.",
+    "11111111111111111111111111111111111": "35 characters: over _MAGNITUDE_MAX_LEN (32). The length bound is what makes the overflow class unreachable without inventing a maximum number of days."
+  }
+}

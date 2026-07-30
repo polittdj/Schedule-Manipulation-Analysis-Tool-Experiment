@@ -15,7 +15,15 @@ const src = readFileSync(
 );
 
 function stubEl(id) {
-  return { id, value: "", handlers: {}, addEventListener(ev, fn) { this.handlers[ev] = fn; } };
+  return {
+    id,
+    value: "",
+    handlers: {},
+    attrs: {},
+    addEventListener(ev, fn) { this.handlers[ev] = fn; },
+    setAttribute(k, v) { this.attrs[k] = v; },
+    removeAttribute(k) { delete this.attrs[k]; },
+  };
 }
 const els = {};
 for (const id of ["riskForm", "riskDays", "riskPct", "riskAffected", "riskDaysLocked", "riskPctLocked"])
@@ -64,5 +72,37 @@ check("L4: no basis clears the unlocked %", pct.value, "");
 aff.value = "2"; // avg 20
 aff.handlers.input();
 check("re-fit on affected change (1 day over 20 -> 5%)", pct.value, "5");
+
+// ADR-0313: the SHARED grammar table, read from the same JSON the server test reads. `num()` is
+// not exported, so it is exercised through the behaviour it governs: a VALID entry derives the other
+// magnitude, and an absent-or-invalid one derives nothing. That is exactly the distinction that
+// matters -- and the reason this is a real guard is that parseFloat used to pass "1.2.3" as 1.2 here
+// while the server rejected it, so this file's header claim ("the server mirrors this exact math")
+// was false and nothing caught it.
+const cases = JSON.parse(readFileSync(join(here, "magnitude_cases.json"), "utf8")).cases;
+aff.value = "1, 2"; // avg 15
+for (const c of cases) {
+  // FULL reset between cases, both fields and both locks. Resetting only the % field left the
+  // PREVIOUS case's days value still locked, so derive() re-derived a stale % and the next case
+  // asserted against a value it never produced -- the loop passed for the wrong reason.
+  days.value = ""; daysLock.value = ""; days.attrs = {};
+  pct.value = ""; pctLock.value = ""; pct.attrs = {};
+  // drive the DAYS field and read what the % field derives: 100 * value / 15, or "" for no value
+  days.value = String(c.input);
+  days.handlers.input();
+  if (c.state === "valid") {
+    const want = String(Math.round(((c.value / 15) * 100) * 100) / 100);
+    check(`grammar valid ${JSON.stringify(c.input)} derives ${want}%`, pct.value, want);
+  } else {
+    check(`grammar ${c.state} ${JSON.stringify(c.input)} derives nothing`, pct.value, "");
+  }
+  // and the invalid marking, which must never fire on a valid or absent entry
+  const flagged = days.attrs && days.attrs["aria-invalid"] === "true";
+  check(
+    `grammar ${c.state} ${JSON.stringify(c.input)} aria-invalid`,
+    Boolean(flagged),
+    c.state === "invalid",
+  );
+}
 
 process.exit(failures ? 1 : 0);
