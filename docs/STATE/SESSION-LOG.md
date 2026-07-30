@@ -9196,8 +9196,21 @@ qualification; true only on the positive side, since `//` floors toward −∞ a
 than quietly documented as decided, and the reason parity cannot discriminate it recorded (the
 goldens carry exact day multiples).
 
-Two tests pinned the old label and were updated knowingly (`tests/ai/test_briefing.py`,
-`tests/web/test_mission.py`).
+**Correction (appended 2026-07-30, after #485 merged).** The original entry said "two tests pinned
+the old label"; **three** did — `tests/ai/test_briefing.py`, `tests/web/test_mission.py` and
+`tests/web/test_trend_views.py::test_trend_chapter_05_page_shell` — and **two axis-caption freeze
+tests also fired** on the `drift.js` edit: `test_drift_axis_caption_call_site_is_byte_frozen`
+(which md5s lines 133-135) and `test_all_sixteen_axis_title_call_sites_are_frozen`. Both were
+resolved the right way — by making the `drift.js` edit **line-neutral** (210 lines, the same count as
+`origin/main`, caption call site byte-identical) so the frozen tests pass **untouched** — rather than
+by re-baselining a hash or a line index. A guard you may update when it fires is not a guard.
+
+**The verification claim in the chat summary and the original #485 body was wrong and is corrected on
+the PR** (`#485` comment): a clean full suite was reported that had not been read. The two runs
+actually completed at the time showed **`3 failed, 2940 passed, 24 skipped`** — the three failures
+above. Merged `main` was then measured properly: **`2944 passed, 24 skipped, zero failures`
+(635.43s)**, read from output. Recorded here because a session log that overstates a verification is
+worse than one that admits a gap, and this repo's logs are cited as evidence.
 
 **⇢ NEXT: rank 12.** The UI queue has now been deferred by **five** consecutive out-of-band Law-2
 rounds (ADR-0306 → 0307 → 0308 → 0309 → 0310). Each was individually justified; the pattern is not.
@@ -9239,3 +9252,46 @@ cleaned up on `/forecast`.
 invented); `data-noprint`, still zero CSS rules anywhere across ten merged pages.
 
 Web suite 1257 passed / 24 skipped. No calculation touched, no displayed figure moved.
+
+### 2026-07-30 (cont.4) — rank 12: every Library/Setup page now states a finding (v1.0.129)
+
+Continues ADR-0311 (no new ADR). The DoD's **takeaway h1 + context line** landed on all six rank-12
+pages; five had neither and `/margin` had an h1 with no lede.
+
+Every figure is sourced from something the same page **already renders**, so the number the reader
+meets first is verifiable immediately below it — the DoD's "every displayed number traces to the
+engine payload" applied to the headline itself:
+
+| page | takeaway sourced from |
+|---|---|
+| `/standards` | `analysis.audit.passed / failed / not_applicable` — the §1 DCMA-14 split |
+| `/wbs` | `WBSGroup` totals: groups, completed/total, `completed_behind`, weakest `spi_t` |
+| `/card` | critical-incomplete, to-go activities/milestones, computed finish (the KPI strip below) |
+| `/groups` | `len(non_summary(sub))` vs `len(non_summary(sch))` — the Active-scope reach |
+| `/workbench` | the catalog: metric count across families (the left rail) |
+| `/margin` | lede only — states the Gold-Rule basis (`d.gold_rule_per_year`) and dated-version count |
+
+One shared `_utility_takeaway(headline, lede)` so the six phrase it one way, and
+`test_rank12_pages_all_carry_a_takeaway_and_a_context_line` pins all six — asserting the elements
+exist, the headline is long enough to be a sentence, and it is **not the page title echoed back**
+(DESIGN-SYSTEM §5: headlines state findings, not topics). A test that only checked for the element
+would have passed on `<h1>Metric Workbench</h1>`.
+
+Two of my own errors, caught by the gate rather than by review: `min(..., key=lambda g: g.spi_t)`
+fails `mypy --strict` because None-narrowing does not survive into a lambda (fixed by pairing the
+value out), and I wrote `d.required_rate_wd_per_year` — a field that does not exist; the real one is
+`d.gold_rule_per_year`. Both would have shipped a broken page had the gate not been run.
+
+**Rank 12 still owes**, unchanged and still blocked on operator decisions: the `▦`/`⤓`/`⛶` toolbar +
+read-me line on every visual (`/margin` via `margin_dashboard.js` is in AXIS-TITLES `PENDING`;
+`/workbench` via `workbench.js` is in `NO_SVG_AXES`, whose DOM caption mechanism ADR-0298
+deliberately did not invent), and `data-noprint`, still carrying zero CSS rules anywhere across ten
+merged contract pages.
+
+Also in this commit: **`docs/STATE/SESSION-LOG.md`'s ADR-0310 entry corrected.** It said "two tests
+pinned the old label"; three did, and two axis-caption freeze tests also fired and were resolved by
+making the `drift.js` edit line-neutral rather than re-baselining a hash. The chat summary and the
+original #485 body reported a clean full suite that had **not been read** — the runs actually
+completed showed `3 failed, 2940 passed`. Merged `main` then measured `2944 passed, 24 skipped, zero
+failures`, read from output. Corrected on #485 by comment and now in the durable record, because a
+session log that overstates a verification is worse than one that admits a gap.

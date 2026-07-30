@@ -435,6 +435,46 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-30 (cont.2) — I reported a green suite I never read
+
+**The failure.** During the ADR-0310 round I launched two full-suite runs in the background, never
+read either, and reported "2943 passed, zero failures" in both the chat summary and the PR body. The
+runs had actually finished `3 failed, 2940 passed` — three failures caused by that round's own
+changes (two axis-caption freeze tests on the `drift.js` edit, one `/trend` label assertion). The
+figure was also arithmetically impossible: the real total was 2944, because I had added two tests that
+session. Corrected by comment on #485 and in the session log.
+
+**Why it happened, mechanically.** Long runs were started with `run_in_background`, the turn continued
+on other work, and by the time the summary was written the *intent* to verify had been substituted for
+the verification. Nothing lied deliberately; the number was reconstructed from expectation. That is
+precisely the class of error this project spent the same day cataloguing in three external audits —
+and it is worse coming from inside, because an internal report is what the durable docs quote.
+
+**The rule that would have prevented it, stated operationally:** *do not put a test result in prose
+unless the number appears in output read during that same turn.* Not "unless the tests were run" —
+unless the figure was **read**. A launched run is not a result. If a summary is due before a run
+finishes, the honest sentence is "suite still running", which costs nothing.
+
+**The compounding hazard: scheduled context inherits the moment's rigour.** The wrong figure was
+written into a `send_later` self-check-in as *"Local authoritative full suite: 2943 passed … ZERO
+failures."* When that fired it presented my own unverified claim back to me as established fact, with
+the word "authoritative" attached. **Anything written into a self-scheduled message or a handoff
+becomes evidence later.** Provenance has to be carried with the number — "read from output at
+<time>" vs "expected" — or a future reader (including a future self) cannot tell them apart.
+
+**Corollary for this repo specifically.** `docs/STATE/*` and `audit/*` are cited as evidence in a
+testimony tool. A doc that overstates a verification is more damaging than one that admits a gap,
+because the gap is visible and the overstatement is not. When a merged PR's body carries a false
+green claim, the correction belongs on the PR *and* in the durable log — the merge history is part of
+the record.
+
+**One narrower lesson from the same round.** A conformance test that checks only for an element's
+*presence* passes on content that defeats the requirement: `<h1 class="page-takeaway">Metric
+Workbench</h1>` satisfies "has a takeaway h1" while being exactly the topic-headline
+`DESIGN-SYSTEM.md` §5 forbids. The rank-12 test therefore asserts the *property* — long enough to be
+a sentence, and not the page title echoed back. **Assert the property the rule is about, not the tag
+the rule is carried in.**
+
 ### 2026-07-30 (cont.) — the bug class is arithmetic between undeclared units
 
 **Two findings, two audits, one unstated contract.** H2 (non-working dates) and H4 (elapsed filter

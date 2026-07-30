@@ -1,4 +1,4 @@
-# Handoff — 2026-07-30 (two time axes + rank 12 opened; ADR-0310, ADR-0311; v1.0.128)
+# Handoff — 2026-07-30 (two time axes + rank 12 opened; ADR-0310, ADR-0311; v1.0.129)
 
 > ## STATUS (current) — **Phase 2 items 1/2/4 shipped as ADR-0310 (v1.0.127). SRA parity CLOSED earlier this day (ADR-0309, #483 + #484).**
 > ADR-0310 writes down the **two time axes** (working vs wall-clock) — the shared root both external
@@ -131,7 +131,13 @@
 > no segue to render it in; pinned by `test_every_setup_rail_entry_carries_a_takeaway`.
 >
 > ## ⇢ RANK 12 STILL OWES (with its blockers named)
-> - **takeaway h1 + context line** on the five pages lacking one (only `/margin` has one) — unblocked.
+> - ~~takeaway h1 + context line~~ **DONE** — all six pages now carry a finding-shaped takeaway and a
+>   context line, sourced from figures each page ALREADY renders (`/standards` the DCMA-14 pass/fail
+>   split, `/wbs` groups + completion + weakest SPI(t), `/card` critical-incomplete + to-go + computed
+>   finish, `/groups` the filter's reach, `/workbench` the library size, `/margin` a lede stating the
+>   Gold-Rule basis). One shared `_utility_takeaway` helper; pinned by
+>   `test_rank12_pages_all_carry_a_takeaway_and_a_context_line`, which also asserts the headline is
+>   not the page title echoed back (DESIGN-SYSTEM §5: findings, not topics).
 > - **`▦`/`⤓`/`⛶` toolbar + read-me line on every visual** — none of the six has it. **Two hard
 >   dependencies:** `/margin` renders via `margin_dashboard.js`, one of the five AXIS-TITLES `PENDING`
 >   modules (batch 3b); `/workbench` via `workbench.js`, in `NO_SVG_AXES`, whose DOM caption mechanism

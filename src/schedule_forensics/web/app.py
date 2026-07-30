@@ -1729,6 +1729,19 @@ def _render_nav(state: SessionState) -> str:
     return f"<nav><div class=nav-spine>{sections}</div>{controls}</nav>"
 
 
+def _utility_takeaway(headline: str, lede: str) -> str:
+    """The takeaway h1 + context line the DoD requires of any page (ADR-0311, rank 12).
+
+    Rank 12's pages are Setup utilities and per-file drills, not spine chapters, so they take the
+    kicker/no-segue treatment ADR-0311 settled — but the DoD's *takeaway h1 + context line* applies
+    to every page regardless of where it sits in the story. `DESIGN-SYSTEM.md` §5: a headline states
+    a FINDING, not a topic. Every figure passed in here must already be rendered further down the
+    same page, so the number the reader sees first is one they can verify below it, and a missing
+    value must arrive as an em dash rather than a fabricated zero.
+    """
+    return f'<h1 class="page-takeaway" data-no-i18n>{headline}</h1><p class="page-lede">{lede}</p>'
+
+
 def _chapter_kicker(title: str, chapter: _Chapter | None = None) -> str:
     """The slim chapter kicker above a page's content: ``CHAPTER NN · NAME`` (story position).
     ``chapter`` overrides title-based resolution for dynamic-title pages (e.g. /analysis)."""
@@ -9959,7 +9972,20 @@ def _card_body(key: str, sch: Schedule, analysis: _Analysis) -> str:
             ("% elapsed since last finish", f"{stale.value:g}%" if stale.population else "—"),
         ]
     )
-    return f"""
+    _pct_done = 100.0 * makeup.complete / total
+    _head = (
+        f"{critical} incomplete activities sit on the critical path, with {_pct_done:.0f}% of the "
+        f"schedule complete."
+        if critical
+        else f"Nothing incomplete is critical, with {_pct_done:.0f}% of the schedule complete."
+    )
+    takeaway = _utility_takeaway(
+        _head,
+        f"{togo_normal} activities and {togo_ms} milestones still to go on "
+        f"<b>{_e(sch.name)}</b>; computed finish {latest_finish}. Every figure below is the one the "
+        f'<a href="/analysis/{quote(key, safe="")}">full report</a> computes.',
+    )
+    return f"""{takeaway}
 <div class=panel><h2>Schedule card &mdash; {_e(sch.name)}</h2>
 <p class=muted>The schedule's ID card (the reference deck's <i>Metrics</i> page): activity
 makeup, status, completion performance, the primary-constraint distribution, and the
@@ -9988,6 +10014,27 @@ def _wbs_body(key: str, groups: tuple[WBSGroup, ...]) -> str:
             "<div class=panel><h2>WBS breakdown</h2><p class=muted>This schedule has no "
             "schedulable activities to break down by WBS.</p></div>"
         )
+    _tot = sum(g.total for g in groups)
+    _done = sum(g.completed for g in groups)
+    _behind = sum(g.completed_behind for g in groups)
+    _pct = (100.0 * _done / _tot) if _tot else 0.0
+    # pair the value out so the None-narrowing survives into the key (mypy cannot narrow a lambda)
+    _scored_spi = [(g.wbs, g.spi_t) for g in groups if g.spi_t is not None]
+    _worst = min(_scored_spi, key=lambda pair: pair[1], default=None)
+    _head = (
+        f"{_behind} completed activities finished behind baseline across {len(groups)} WBS groups."
+        if _behind
+        else f"No completed activity finished behind baseline across {len(groups)} WBS groups."
+    )
+    takeaway = _utility_takeaway(
+        _head,
+        f"{_done} of {_tot} activities complete ({_pct:.0f}%). Weakest group by SPI(t): "
+        + (
+            f"<b>{_e(_worst[0])}</b> at {_worst[1]:g}."
+            if _worst is not None
+            else "&mdash; (no group has a computable SPI(t))."
+        ),
+    )
     completion_rows = "".join(
         f"<tr><th scope=col>{_e(g.wbs)}</th><td>{g.total}</td><td>{g.completed}</td>"
         f"<td>{g.not_completed}</td><td>{g.percent_complete:g}%</td>"
@@ -10005,7 +10052,7 @@ def _wbs_body(key: str, groups: tuple[WBSGroup, ...]) -> str:
         f"<td>{g.completed}/{g.total}</td></tr>"
         for g in groups
     )
-    return f"""
+    return f"""{takeaway}
 <div class=panel><h2>Completion metrics by WBS &mdash; {len(groups)} groups</h2>
 <p class=muted>The reference deck's <i>Completion Metrics</i> pivot (PBIX page 8), grouped by
 the top-level WBS segment: counts and completion, the ahead / on-schedule / behind split with
@@ -10990,8 +11037,16 @@ def _margin_dashboard_header(d: MarginDashboard) -> str:
             ("Trigger for action", trigger),
         ]
     )
+    lede = (
+        f"Measured to <b>{_e(target)}</b> across {len(dated)} dated version"
+        f"{'' if len(dated) == 1 else 's'}, against the NASA Gold-Rule requirement of "
+        f"{d.gold_rule_per_year:g} work days per program year. Effective margin is the "
+        "buffer that actually protects the date; the erosion rate and zero-margin date are "
+        "projections from the versions loaded, not forecasts of intent."
+    )
     return (
-        f'<h1 class="page-takeaway" data-no-i18n>{_e(takeaway)}</h1><div class="ws-kpi">{kpi}</div>'
+        f'<h1 class="page-takeaway" data-no-i18n>{_e(takeaway)}</h1>'
+        f'<p class="page-lede">{lede}</p><div class="ws-kpi">{kpi}</div>'
     )
 
 
@@ -13105,6 +13160,14 @@ def _workbench_body() -> str:
     families: dict[str, list[tuple[str, str, str]]] = {}
     for e in catalog_entries():
         families.setdefault(e.family, []).append((e.metric_id, e.name, e.describe))
+    _n_metrics = sum(len(v) for v in families.values())
+    takeaway = _utility_takeaway(
+        f"{_n_metrics} metrics across {len(families)} families are available to compare, "
+        "version by version.",
+        "Pick metrics on the left; the ribbon plots them across every loaded version oldest-first, "
+        "and any cell drills to the activities behind it. Each metric names the formula and source "
+        "the metric dictionary pins.",
+    )
     groups = ""
     for fam, metrics in families.items():
         checks = "".join(
@@ -13119,7 +13182,7 @@ def _workbench_body() -> str:
             f'<button type=button class="linkbtn wb-fam-none" data-family="{_e(fam)}">none</button>'
             f"</div>{checks}</div>"
         )
-    return f"""
+    return f"""{takeaway}
 <div class=panel>
 <h2>Metric Workbench</h2>
 <p class=muted>Pick any metrics from the <b>validated library</b> on the left; each is computed for
@@ -16907,6 +16970,24 @@ def _standards_body(
     """The Standards & Execution Indices page: DCMA-14 + the NASA/Acumen-Fuse execution indices
     + the SEM family, one formula-first row per metric, computed on the LATEST loaded file."""
     fname = _e(sch.source_file or sch.name)
+    # the takeaway states the DCMA-14 outcome the §1 section already renders (audit.passed/failed)
+    _ck = analysis.audit
+    _scored = _ck.passed + _ck.failed
+    _head = (
+        (
+            f"{_ck.failed} of {_scored} scored DCMA-14 checks fail on this schedule."
+            if _ck.failed
+            else f"All {_scored} scored DCMA-14 checks pass on this schedule."
+        )
+        if _scored
+        else "No DCMA-14 check scored on this schedule."
+    )
+    takeaway = _utility_takeaway(
+        _head,
+        f"{_ck.passed} passed &middot; {_ck.failed} failed &middot; {_ck.not_applicable} N/A on "
+        f"<b>{fname}</b>, plus the NASA/Acumen-Fuse execution indices and the SEM family below. "
+        "Every row names its formula and source.",
+    )
     intro = (
         f"<div class=panel><p>All values on this page are computed from the latest file, "
         f"<b>{fname}</b> (period metrics use the prior file's data date"
@@ -16963,7 +17044,7 @@ def _standards_body(
         f"formulas and validated against the committed Fuse SEM exports.{fri_note}",
         sem_rows,
     )
-    return intro + dcma + fuse + sem
+    return takeaway + intro + dcma + fuse + sem
 
 
 def _metric_scorecard_table(results: dict[str, MetricResult]) -> str:
@@ -18033,7 +18114,34 @@ def _groups_body(
         "<b>every</b> page across all loaded files at once. Rows are AND-ed together "
         "(one value per field)."
     )
-    return tip + form + summary + group_html + scorecard + breakdown_html
+    _all = len(non_summary(sch))
+    _sel = len(non_summary(sub))
+    if criteria:
+        _head = (
+            f"This filter selects {_sel} of {_all} activities in the preview file."
+            if _sel
+            else f"This filter selects NO activities out of {_all} in the preview file."
+        )
+        _lede = (
+            "Applied to every page and every loaded file &mdash; the scope below is live."
+            if applied
+            else "A preview only. <b>Apply to all pages</b> to make it the session scope."
+        )
+    else:
+        _head = f"No filter is active &mdash; every page sees all {_all} activities."
+        _lede = (
+            "Build a filter above to scope every metric, path and forecast on every page, across "
+            "all loaded files at once."
+        )
+    return (
+        _utility_takeaway(_head, _lede)
+        + tip
+        + form
+        + summary
+        + group_html
+        + scorecard
+        + breakdown_html
+    )
 
 
 def _how_stable_header(ev: PathEvolution) -> str:
