@@ -5,7 +5,7 @@
 > Against SSI's own committed export (2000 iterations, focus UID 152, the file's own 919 stored
 > Best/Worst ranges and its own 2 stored risks): deterministic percentile **40.70 % → 6.65 %** against
 > SSI's **5.75 %**; σ **125.5 → 65.5** calendar days against SSI's **64.744** (**1.2 %**); mean
-> **+26 → +109 d** against **+111.45**; P10/P50/P80/P90 within **7/1/0/3** days. Version **1.0.125**,
+> **+26 → +109 d** against **+111.45**; P10/P50/P80/P90 within **7/1/0/3** days. Version **1.0.126**,
 > wheel + nine installers regenerated. Highest ADR **ADR-0309**.
 > Evidence: `audit/SRA-ROOTCAUSE-20260730.md` · `audit/EXTERNAL-RECONCILIATION-20260730.md`.
 > Redesign tail **rank 12** (`/workbench`, `/groups`, `/standards`, `/margin`, `/card/{name}`,
