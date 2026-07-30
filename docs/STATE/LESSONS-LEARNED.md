@@ -435,6 +435,44 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-30 (cont.4) — a piped exit code is not the command's exit code
+
+**The failure, twice in one day, same shape.** I ran `node harness.mjs 2>&1 | tail -20; echo "exit=$?"`,
+read `exit=0`, and reported the harness green. `$?` after a pipeline is the **last** command's status
+— `tail`'s — so it is 0 essentially always. The harness was exiting **1**. Earlier the same day the
+identical shape bit differently: `pytest --timeout=1800` is not installed here, so pytest exited **0**
+having run nothing, and the launched-in-background task reported success.
+
+**Both are the same lesson at different altitudes:** a green signal is only evidence if it came from
+the thing you meant to measure. `| tail` moves the exit code; an unrecognised flag moves what ran.
+The operational rule now written into the handoff: **redirect to a file and check the exit code
+directly** (`cmd > out 2>&1; echo $?`), and grep the file for the failure marker as a second,
+independent check. Two cheap checks that disagree are far more informative than one that can't fail.
+
+**What the wrong-green was hiding was itself instructive.** The harness had a state-residue bug: it
+reset only the `%` field between cases, so the previous case's *days* value was still locked and
+`derive()` re-derived a stale `%` — the loop passed for the wrong reason on the cases it did pass.
+A test-loop that shares state between iterations is a test-loop whose passes mean nothing, and this
+is the second time this project has found a *conformance sweep* that reported the wrong answer
+(ADR-0311's probe regexed a pattern that could not match the conforming shape). **Generalises
+(→ Part V): before trusting a sweep, break it on purpose.** Reverting `num()` to the old `parseFloat`
+and confirming 16 failures is what made the fixed harness meaningful.
+
+**A third, gentler instance of the same discipline paid off immediately.** Twelve integration tests
+went red at once. The instinct on twelve red tests is that the code under test is wrong; the actual
+cause was `TestClient` following the 303 and *consuming* the one-shot banner before the test's own
+`GET`. Had I "fixed" the app I would have broken a working one-shot notice to satisfy a broken test.
+**Twelve failures at once is weak evidence about the product and strong evidence about the harness.**
+
+**Also worth keeping: measure the vulnerability before writing the guard.** The completion plan asked
+for a "spreadsheet formula-injection guard on export" and pointed at the workbook writer. Unzipping a
+rendered workbook showed it emits every string as `t="inlineStr"` and never emits an `<f>` element, so
+Excel shows `=1+1` as text — no guard needed, and one would have prefixed a visible apostrophe onto
+legitimate exhibit text. The real vector was the CSV sibling, which carries task names straight from
+the schedule file. **A plan item is a hypothesis about where the bug is, not a finding.** The durable
+form is a test that pins the *absence* of a guard where none is warranted, with the reason — otherwise
+a future round adds it back on plausibility alone.
+
 ### 2026-07-30 (cont.3) — a note that told the operator something false, caught by the probe
 
 **The lesson.** Enforcing ADR-0310's project-start precondition (ADR-0312) meant emitting an

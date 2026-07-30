@@ -12,13 +12,38 @@ import io
 from schedule_forensics.exhibits.payload import ExhibitPayload
 from schedule_forensics.exhibits.render_svg import ROW_CAP, _instability_order
 
+#: Characters that make a spreadsheet treat a CSV cell as a **formula** on open. ``csv.writer``
+#: quotes for CSV *grammar* only — quoting does not stop Excel/LibreOffice evaluating a leading
+#: ``=``/``+``/``-``/``@``, and these exhibits carry **task names straight from the schedule file**,
+#: i.e. content the tool did not author (ADR-0313).
+_FORMULA_TRIGGERS = ("=", "+", "-", "@", "\t", "\r")
+
+
+def _defuse(value: object) -> object:
+    """Prefix a leading formula trigger with ``'`` so a spreadsheet shows the text, not a result.
+
+    Applied to **text only**: a real number is written through untouched, so ``-5`` stays the
+    number -5 rather than becoming the string ``'-5``. That distinction is the whole reason this
+    guards the serialised cell rather than the source value — a negative float and a string
+    beginning with ``-`` look the same after ``str()`` and must not be treated the same.
+
+    NOTE the `.xlsx` writer needs **no** equivalent guard, verified rather than assumed:
+    ``reports/xlsx.py`` emits every string as ``t="inlineStr"`` inside ``<is><t>`` and never emits
+    an ``<f>`` element, so Excel renders ``=1+1`` as literal text there. Adding a guard to it would
+    be cargo-culted from the CSV case.
+    """
+    if isinstance(value, (bool, int, float)):
+        return value
+    text = str(value)
+    return "'" + text if text.startswith(_FORMULA_TRIGGERS) else text
+
 
 def _emit(headers: list[str], rows: list[list[object]]) -> str:
     buf = io.StringIO()
     w = csv.writer(buf, lineterminator="\n")
     w.writerow(headers)
     for r in rows:
-        w.writerow(["" if v is None else v for v in r])
+        w.writerow(["" if v is None else _defuse(v) for v in r])
     return buf.getvalue()
 
 

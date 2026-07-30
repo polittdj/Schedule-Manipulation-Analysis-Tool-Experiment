@@ -603,6 +603,11 @@ class SessionState:
     )
     #: one-shot feedback from an Excel round-trip import (ADR-0211), rendered once on /sra
     sra_import_msg: str | None = None
+    #: Whether :attr:`sra_import_msg` reports a FAILURE (ADR-0313). Without it every message —
+    #: including "not imported" and "risk not added" — rendered in the success style, so an error
+    #: was indistinguishable from a confirmation at a glance. Set alongside the message at each
+    #: site; cleared with it on render.
+    sra_import_is_error: bool = False
     # JCL joint cost-&-schedule confidence settings (ADR-0269). Blank targets (None) mean
     # "use the run's deterministic finish / EAC"; td_share is the time-dependent cost share
     # τ; the 1/1/1 multipliers mean cost-estimating uncertainty is OFF (duration-driven
