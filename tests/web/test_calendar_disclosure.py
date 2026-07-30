@@ -64,3 +64,33 @@ def test_single_calendar_panel_is_silent() -> None:
     assert "Working calendar" in html  # the panel still renders
     assert 'class="notice info"' not in html  # ...but NO disclosure (nothing to disclose)
     assert "single-calendar approximation" not in html
+
+
+def _normalised() -> Schedule:
+    """A schedule whose importer had to move the anchor (ADR-0312) — the note the panel owes."""
+    return _single().model_copy(
+        update={
+            "import_notes": (
+                "Project start time normalised from 08:00 to 00:00 on 2026-01-05: calendar "
+                "'24 Hours' works 1440 minutes per day, so a working day beginning at 08:00 "
+                "runs past midnight.",
+            )
+        }
+    )
+
+
+def test_an_import_note_reaches_the_panel_rather_than_only_the_log() -> None:
+    """ADR-0310 §5 rejected "merely warned about". The anchor normalisation moves the reference
+    every computed date is laid out from, so it has to be on the page — a console line the
+    analyst never opens is not disclosure in a testimony tool."""
+    html = _calendar_panel(_normalised())
+    assert 'class="notice warn"' in html
+    assert "On import:" in html
+    assert "normalised from 08:00 to 00:00" in html
+
+
+def test_a_file_taken_verbatim_shows_no_import_note() -> None:
+    """No cry-wolf: the empty case is every schedule in the committed corpus."""
+    html = _calendar_panel(_single())
+    assert "On import:" not in html
+    assert 'class="notice warn"' not in html

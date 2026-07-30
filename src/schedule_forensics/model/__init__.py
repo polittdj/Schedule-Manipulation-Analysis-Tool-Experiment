@@ -32,8 +32,12 @@ from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import ConstraintType, Task
 
 #: Bump on ANY change to a model's field set (see tests/model/test_schema_freeze.py).
+# 2.9.0: Schedule.import_notes (ADR-0312) AND, retroactively, Task.resume (ADR-0309) — the
+#   latter shipped in #483 with the freeze test's field set updated but this version left at
+#   2.8.0, because the guard only asserts a literal and cannot see an un-bumped add. Both
+#   additive fields are covered here rather than leaving the record wrong.
 # 2.8.0: Task priority/outline_number/stop (ADR-0234); 2.7.0: saved filters/groups (ADR-0231).
-SCHEMA_VERSION = "2.8.0"
+SCHEMA_VERSION = "2.9.0"
 
 __all__ = [
     "SCHEMA_VERSION",

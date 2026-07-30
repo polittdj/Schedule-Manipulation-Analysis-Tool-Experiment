@@ -47,6 +47,7 @@ import pydantic
 from schedule_forensics.importers._common import (
     DATE_REQUIRING_CONSTRAINTS,
     ImporterError,
+    anchored_project_start,
     clamped_percent_or_none,
     dominant_day_minutes,
     excel_serial_to_date,
@@ -154,6 +155,14 @@ def parse_xer_text(text: str, *, source_file: str | None = None) -> Schedule:
     if project_start is None:
         raise ImporterError("XER PROJECT is missing a usable plan_start_date")
 
+    # ADR-0310 §5, same enforcement as the MSPDI path (shared helper so the two cannot drift).
+    project_calendar = _parse_project_calendar(tables, project)  # ADR-0028
+    project_start, anchor_note = anchored_project_start(
+        project_start, project_calendar, source="XER"
+    )
+    if anchor_note:
+        logger.warning("%s", anchor_note)
+
     wbs_short, wbs_parent = _wbs_index(tables.get("PROJWBS", []))
     resources = _parse_resources(tables.get("RSRC", []))
     resource_name_by_id = {r.unique_id: r.name for r in resources}
@@ -201,13 +210,14 @@ def parse_xer_text(text: str, *, source_file: str | None = None) -> Schedule:
             project_finish=parse_datetime(_g(project, "plan_end_date")),
             status_date=parse_datetime(_g(project, "last_recalc_date")),
             baseline_finish=None,  # P6 baseline lives in a separate project (deferred)
-            calendar=_parse_project_calendar(tables, project),  # ADR-0028
+            calendar=project_calendar,
             tasks=tuple(tasks),
             relationships=tuple(relationships),
             resources=tuple(resources),
             # register the Activity-ID custom field (ADR-0185) as a selectable
             # grouping/display field — grouping only resolves registered labels
             custom_field_labels=(("Activity ID",) if any(t.custom_fields for t in tasks) else ()),
+            import_notes=(anchor_note,) if anchor_note else (),
         )
     except pydantic.ValidationError as exc:
         raise ImporterError(f"XER does not form a valid schedule: {exc}") from exc

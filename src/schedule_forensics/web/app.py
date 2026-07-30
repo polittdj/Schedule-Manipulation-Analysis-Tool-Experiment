@@ -9854,6 +9854,10 @@ def _calendar_panel(sch: Schedule, *, prov: str = "") -> str:
             "Driving Path views honor each task's own calendar (ADR-0118)."
             "</div>"
         )
+    # ADR-0312: how the importer had to interpret this file, on the page rather than only in a
+    # log line the analyst never sees. Empty for every file taken verbatim, which is the norm.
+    for note in sch.import_notes:
+        disclosure += f'<div class="notice warn">On import: {_e(note)}</div>'
     take = (
         f"<p class=sf-take data-no-i18n>Every computed date and float rides {_e(cal.name)}: "
         f"{cal.working_minutes_per_day / 60:g} h/day, a {len(cal.work_weekdays)}-day work week, "

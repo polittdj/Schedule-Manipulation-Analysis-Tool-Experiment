@@ -65,6 +65,16 @@ class Schedule(StrictFrozenModel):
     #: would (#10).
     saved_filters: tuple[SavedFilter, ...] = ()
     saved_groups: tuple[SavedGroup, ...] = ()
+    #: Operator-visible notes about **how the importer interpreted this file**. They name the
+    #: project-level construct that forced the interpretation (a calendar, a header field —
+    #: things the UI already renders) and never activity data: the same CUI contract
+    #: :class:`ImporterError`'s message carries. Empty for a file the importer took verbatim,
+    #: which is every schedule in the
+    #: committed corpus. Populated when an interpretation the analyst could not otherwise see
+    #: had to be made: today only the ADR-0310 §5 project-start normalisation, which moves the
+    #: anchor every computed date is laid out from. A log line is not enough for that class of
+    #: change in a testimony tool — it has to reach the page.
+    import_notes: tuple[str, ...] = ()
 
     @property
     def custom_field_by_raw_name_map(self) -> dict[str, str]:

@@ -435,6 +435,43 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-30 (cont.3) — a note that told the operator something false, caught by the probe
+
+**The lesson.** Enforcing ADR-0310's project-start precondition (ADR-0312) meant emitting an
+operator-facing sentence explaining what the importer had changed. I wrote it from my mental model:
+*"The date each activity is scheduled on is unaffected; only the time of day shown with it moves."*
+It is **false**. The whole point of the normalisation is that the rendered calendar date moves — a
+late-in-the-day instant stops spilling onto the following (possibly non-working) date. What is
+actually invariant is the **working day**, because `offset_to_datetime`'s whole-working-day term is
+a function of the offset and the calendar and never of the anchor's time of day.
+
+The probe I had already run to justify the change contained the disproof — offset 6760 rendered
+Saturday 00:40 before and Friday 16:40 after — and I only noticed on re-reading the output rather
+than the code. **A disclosure sentence is a claim about behaviour and deserves the same evidence
+standard as a computed figure.** It now has one: the reworded note's promise is pinned by
+`test_normalisation_keeps_every_activity_on_the_same_working_day`, so the prose and the code cannot
+drift apart later.
+
+**Generalises (→ Part V):** in a testimony tool, the explanatory text *is* a deliverable. We already
+gate AI-emitted figures against engine citations; hand-written disclosure prose currently has no
+such gate, and this is the second time in two rounds that a sentence was more confident than the
+measurement behind it (the first being a test result reported without reading the output). The
+cheap discipline: **when you write a sentence describing what the code does, name the test that
+would fail if it were wrong — and if there isn't one, write it.**
+
+**A second, structural miss found in the same round.** `SCHEMA_VERSION` was left at 2.8.0 when
+ADR-0309 added `Task.resume` in #483. The freeze test asserts `SCHEMA_VERSION == "2.8.0"` as a
+literal, so updating the expected field set and forgetting the version passes — the guard cannot
+see the add it exists to catch. Corrected retroactively in the 2.9.0 bump and recorded in the
+change log. **A change-control guard that is satisfied by editing the guard is not change control**;
+the same shape as ADR-0310's axis-caption freeze, which was obeyed rather than re-baselined
+precisely because a guard you may update when it fires guards nothing.
+
+**One harness trap worth writing down:** `pytest --timeout=...` is not installed here. Passing it
+makes pytest exit **0** having run nothing, which in a background task reads as a green run. Caught
+only because the previous round's lesson — *a launched run is not a result* — made me read the
+output instead of the exit code.
+
 ### 2026-07-30 (cont.2) — I reported a green suite I never read
 
 **The failure.** During the ADR-0310 round I launched two full-suite runs in the background, never

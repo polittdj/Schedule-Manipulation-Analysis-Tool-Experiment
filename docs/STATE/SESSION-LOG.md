@@ -9295,3 +9295,69 @@ original #485 body reported a clean full suite that had **not been read** — th
 completed showed `3 failed, 2940 passed`. Merged `main` then measured `2944 passed, 24 skipped, zero
 failures`, read from output. Corrected on #485 by comment and now in the durable record, because a
 session log that overstates a verification is worse than one that admits a gap.
+
+### 2026-07-30 (cont.5) — the import anchor enforced (ADR-0312, v1.0.130)
+
+Phase 2 **item 3** / external **H2c**. ADR-0310 decision 5 declared the supported project-start
+domain and required an input outside it to be *normalised or rejected at import — not merely warned
+about*. Nothing enforced it: `offset_to_datetime` has always assumed `start` sits at a working-day
+start, no importer checked, and `Calendar` has no shift-start field to check against.
+
+**Measured first, on a 24-hour calendar with a Monday 08:00 start, sweeping offsets across twelve
+calendar days at a 37-minute stride:**
+
+| | renders on a non-working date | breaks `datetime_to_offset(offset_to_datetime(k)) == k` |
+|---|---:|---:|
+| as imported (08:00) | 26 | **156** |
+| after normalisation (00:00) | 0 | 0 |
+
+The second column is the one a display-only helper cannot reach — the engine was converting an
+offset to an instant and back and getting a different number. That is exactly why ADR-0310 split
+this from CC-01: CC-01 is rendering, this was import. **CC-01 remains open and unchanged.**
+
+**Shipped:** `importers/_common.anchored_project_start()`, one shared helper called by MSPDI, XER
+and the tool's own JSON format so the three cannot drift; `modelled_shift_start()` (earliest
+`day_segments` start, else midnight — read from `Calendar.intraday_worked_minutes`' existing model
+of a segment-free calendar, not invented); `Schedule.import_notes`, rendered in the Working-calendar
+panel as a `notice warn` and round-tripped through Save `.json`; `units.MINUTES_PER_CALENDAR_DAY`.
+
+**Blast radius bounded by assertion, not by claim.** All 21 committed schedules (20 MSPDI + 1 XER,
+`per_day` 480 and 600, starts 07:00 and 08:00) are already inside the domain, so every one is
+returned byte-identical with no note. The guard asserts a **minimum corpus size** as well, so it
+cannot pass by discovering nothing — the same class of vacuous-pass that made the rank-12 survey
+report four conforming pages as broken.
+
+**A wrong claim caught before it shipped.** The first draft of the operator-facing note said "the
+date each activity is scheduled on is unaffected". The probe disproved it: the rendered calendar
+date *does* move — that is the correction. What is invariant is the **working day**, because
+`offset_to_datetime`'s whole-day term is a function of the offset and the calendar and never of the
+anchor's time of day. Reworded, and pinned by
+`test_normalisation_keeps_every_activity_on_the_same_working_day` so the note and the code cannot
+diverge later.
+
+**`SCHEMA_VERSION` 2.8.0 → 2.9.0, covering two adds.** `Schedule.import_notes`, and *retroactively*
+`Task.resume` — ADR-0309 (#483) added that field, updated the freeze test's field set, and left the
+version at 2.8.0. The guard asserts a literal equality, so it cannot see an add that was registered
+but not versioned. Recorded in `model/__init__.py`'s change log rather than silently corrected.
+
+Also fixed in the maximal JSON fixture: `import_notes` is populated there, so the writer-coverage
+introspection guard and the lossless round-trip test both exercise it instead of the field being
+added to the exclusion list.
+
+**Coverage checked rather than assumed, and it found a boundary.** Enforcing the pair
+`(project_start, project_calendar)` is only sufficient if nothing renders an offset against a
+different calendar. All **54** `offset_to_datetime` call sites in `src/` were read: every one passes
+a schedule's own project calendar, including `scorecards.reserve_recommendation`, which takes a
+`Calendar` parameter and whose sole caller passes `sch.calendar`. The rendering direction is fully
+covered.
+
+**Per-task calendars are a reachable out-of-domain pairing this ADR does NOT close.**
+`00_REFERENCE_INTAKE/mpp/Hard_File_updated4 24 hour calendar.mpp` was converted and parsed this
+round: its *project* calendar is Standard 8 h (in domain, unchanged, no note), but it carries
+per-task `24 Hours` (uid 10, 1440 min/day, 7-day week) and `Standard+Sat.` (uid 12, 930 min/day),
+both actually assigned to tasks. `driving_slack` measures stored dates against a task's own calendar
+using the *project's* anchor — for uid 10 that is `start_tod 480 + per_day 1440`, outside the
+declared domain. It only ever runs the measurement direction (`datetime_to_offset`), so it renders
+no non-working dates, but nothing enforces the domain there. Recorded in ADR-0312 as belonging to
+ADR-0118's per-task-calendar model rather than to the project anchor, so it is not mistaken for
+something this round closed.
