@@ -9034,3 +9034,79 @@ prompt warns against. It is recorded in the comparison and changes nothing.
 comparative analysis on quantitative reproducible evidence; remediation plan plus a full map of
 remaining work through completion, for approval) is written into the handoff's START HERE block and
 carried into the next session. No audit work was performed this session beyond preserving the inputs.
+
+---
+
+## 2026-07-30 — the SRA divergence closed: MS Project already decided where remaining work goes (ADR-0309, v1.0.125)
+
+**Commissioned four-part job executed** (the one `HANDOFF.md` recorded as "commissioned, not
+started"): read all three external adversarial reports, ran the audit independently at `b62ba01`,
+adjudicated all four passes on reproducible evidence, and delivered a completion plan — which the
+operator approved, choosing the **engine-wide** anchor over the SRA-scoped variant.
+
+**The finding that unlocked it: the SSI oracle was already committed.** Both external passes and
+`audit/SRA-PARITY-20260729.md` §8 recorded the SRA question as oracle-gated and asked the operator for
+a new artifact. `00_REFERENCE_INTAKE/ssi/SRA Large Test File2_SRA_Results_2026-7-29_11-57-1.xlsx` is a
+real SSI SRA export for the exact reference file (2000 iterations, focus UID 152, 245-row histogram),
+and the `.mpp` carries SSI's whole SRA *input* set in custom fields — `SSI SRA Event` → UID 152,
+`Best/Worst Case Duration` on **919** activities (0 complete), and the register's **2** risks. Input
+and output both in-tree ⇒ SRA parity became an executable test rather than a blocked question.
+
+**Root cause.** `engine/cpm.py` had **zero** references to `status_date`; ADR-0106's *"forward pass
+anchored at the status date"* clause was never implemented. Ordinary `compute_cpm` put UID 152 at
+2025-06-30, **1,388 calendar days** before its stored finish, with `_build_ssi_result` adding the
+constant back as a display correction; the all-ML basis was a further **370 working days** shorter.
+Diagnosis path: the measured signature (P90 within 8 days while P10 was 180 out) ruled out the
+distribution family before any code was read; decomposition showed the risk register alone was already
+nearly right (det 5.05 % vs SSI 5.75 %) while duration uncertainty alone put **90.65 %** of iterations
+*before* the deterministic date; restricting uncertainty to activities starting on/after the data date
+dropped σ 99.0 → 21.1, bracketing SSI's implied ≈33.
+
+**Why ADR-0108's two attempts failed, and why the premise was wrong.** They floored *every*
+in-progress task at the data date. MSPDI stores `<Stop>` and `<Resume>`; the importer read `Stop` and
+discarded `Resume`. EVM2 UID 20: `Resume 2012-09-13 08:00 + 480 remaining = 2012-09-13 17:00` = the
+stored finish exactly. EVM1 UID 18 has `Resume == Stop` and must not move — an unconditional floor
+moves it, which is exactly the EVM1 regression that killed both attempts. The ahead/behind judgement
+ADR-0108 called un-reverse-engineerable was never the question: MS Project wrote it down.
+
+**Shipped (ADR-0309).** `Task.resume` + the MSPDI read + `cpm._resume_bounds` — an early-**finish**
+floor at `offset(resume) + remaining` when `resume > stop`, the deliberate sibling of
+`_stored_date_bounds` (ADR-0034). `resume == stop` floors nothing, so a file recording no reschedule is
+byte-identical to before. Plus `tests/parity/test_sra_ssi_oracle_uid152.py`, the first SRA test whose
+expected values are read from the reference tool at run time.
+
+**Results.** det percentile **40.70 % → 6.65 %** (SSI 5.75 %); σ **125.5 → 65.5** cal d (SSI 64.744,
+**1.2 %**); mean **+26 → +109 d** (SSI +111.45); P10/P50/P80/P90 within **7/1/0/3** days.
+Duration-only σ **33.3** against the **≈33** the prior evidence file predicted before the fix. All four
+duration bases converge at 1,447,808 working minutes, so **the ADR-0106 equivalence is now true rather
+than retracted**, and CPM reaches the stored finish **to the minute** — external **H1** / **FINDING 3**
+no longer applies. **ADR-0108 partly closed**: EVM2 2012-10-01 → 2012-10-02 (Acumen 2012-10-04), NFI
+−19 → −20 (Acumen −22) = 1 of 3 working days; the other 2 are a *different* defect (the unstarted
+successor chain) and are pinned as such. EVM1 unchanged; `pytest -m parity` green at 49.
+
+**A defect in my own fix, caught by measurement.** A floor built from the *stored* remaining pins an
+in-progress finish regardless of the sampled duration and destroyed the Monte-Carlo's upside variance
+(`det_pctile = 100 %`, σ 20.3, no iteration later than deterministic). It must follow
+`duration_overrides`. The wrong version improved 3 of 6 headline metrics — recorded in the ADR so it is
+not "simplified" back.
+
+**Adjudication** (`audit/EXTERNAL-RECONCILIATION-20260730.md`). ChatGPT strongest: executed everything,
+obtained the MPXJ `GenericCriteria` oracle that settles H4's direction, only pass to measure
+performance — but over-called H1's realignment (SSI's own export anchors on the stored finish too) and
+wrongly cleared H6. External Claude honest about not executing H1/H3/P1–P6, contributed one real
+narrowing (H2b unreachable). Gemini unusable — both findings were its own harness errors
+(`Calendar` is `extra="forbid"`; `_reconcile_magnitudes` takes 5 required positionals). **All three
+missed the committed oracle.** New finding no external pass made: the **H6 presentation defect** —
+~50 finish-date surfaces, 7 basis-labelled, 21 with none, a raw `compute_cpm` value labelled
+*"Forecast finish"* in `ai/briefing.py:843` and the `/trend` header.
+
+**Corrections to repo documents:** SSI's deterministic percentile is 5.75 % (`<=`) not 5.65 % (`<`);
+`audit/SRA-PARITY-20260729.md`'s "ADR-0123's validation was self-referential / every match is factor 1"
+is wrong on the record (ADR-0123 cites UID 107/39 at factor 5 and UID 35 at factor 2); a committed SSI
+export (Project5 `SRA Sensitivity Analysis.xlsx`) shows the **pre**-0307 Best-Case ratios, so two SSI
+artifacts disagree — ADR-0307 stands for the artifact we match, stored Best/Worst wins. `HANDOFF.md`
+was one event stale and `NEXT-SESSION-PROMPT.md` three versions stale; both refreshed.
+
+**Carried, identifiers unchanged:** CC-01, CC-05, V1/V2, V3, the H6 presentation defect, the legacy
+`/sra` cross-basis defect (newly found), P1–P6, the 2 remaining EVM2 working days, and `resume` being
+an MSPDI-only read.

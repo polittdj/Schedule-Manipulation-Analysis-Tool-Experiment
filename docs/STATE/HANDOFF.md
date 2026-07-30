@@ -1,131 +1,105 @@
-# Handoff — 2026-07-29 (a guard that one code path can walk around; ADR-0308; v1.0.124)
+# Handoff — 2026-07-30 (MS Project already decided where remaining work goes; ADR-0309; v1.0.125)
 
-> ## STATUS (current) — **ADR-0307 MERGED as #481 (`08c5383`). ADR-0308 pushed as draft PR #482 (`9461310`), CI running.** An outside reviewer (Codex) raised three defects against #481 **after** it merged; all three were re-verified BY EXECUTION and all three were real. Version **1.0.124**, wheel + nine installers regenerated. Highest ADR **ADR-0308**. Evidence: `audit/SRA-PARITY-20260729.md`. Redesign tail rank 12 (`/workbench`, `/groups`, `/standards`, `/margin`, `/card/{name}`, `/wbs/{name}`) is **still next** — two out-of-band Law-2 rounds in a row, the UI queue is untouched.
+> ## STATUS (current) — **the SRA divergence is CLOSED. ADR-0309 on `claude/smat-hardened-review-pwxm33`.**
+> Against SSI's own committed export (2000 iterations, focus UID 152, the file's own 919 stored
+> Best/Worst ranges and its own 2 stored risks): deterministic percentile **40.70 % → 6.65 %** against
+> SSI's **5.75 %**; σ **125.5 → 65.5** calendar days against SSI's **64.744** (**1.2 %**); mean
+> **+26 → +109 d** against **+111.45**; P10/P50/P80/P90 within **7/1/0/3** days. Version **1.0.125**,
+> wheel + nine installers regenerated. Highest ADR **ADR-0309**.
+> Evidence: `audit/SRA-ROOTCAUSE-20260730.md` · `audit/EXTERNAL-RECONCILIATION-20260730.md`.
+> Redesign tail **rank 12** (`/workbench`, `/groups`, `/standards`, `/margin`, `/card/{name}`,
+> `/wbs/{name}`) is **still next** — three out-of-band Law-2 rounds in a row now.
 >
-> ## ⇢ START HERE NEXT SESSION — a four-part job the operator has already commissioned
-> The operator ran a **falsification-oriented adversarial audit prompt** (start from "every finding is
-> wrong"; retain only what survives independently designed tests; strictly read-only; no fixes) against
-> three other models. All three reports are preserved in-repo (the container's upload dir is ephemeral):
-> `audit/external/EXTERNAL-CLAUDE-20260729.md` · `EXTERNAL-CHATGPT-20260729.md` ·
-> `EXTERNAL-GEMINI-20260729.md`. The prompt itself is quoted in the SESSION-LOG entry below.
-> **The commissioned work, in order — none of it is started:**
-> 1. **Read all three reports in full.**
-> 2. **Run the same audit independently** — findings **H1** (all-ML network + date-axis realignment),
->    **H2** (`offset_to_datetime` non-working dates / broken inverse), **H3** (malformed SRA magnitude
->    silently locked to zero), **H4** (elapsed/unknown duration literals), **H5** (negative sub-day
->    driving slack floors), **H6** (pure-logic CPM vs stored MSP dates), plus **P1–P6** performance
->    (MSPDI full-DOM parse, unbounded `SessionState.schedules`, ingestion backpressure, eager page
->    computation, browser DOM/SVG, cache invalidation). Read-only, disposable worktree,
->    `PYTHONDONTWRITEBYTECODE=1`, `-p no:cacheprovider`, artifacts outside the tree.
-> 3. **Comparative analysis** of all four passes — who is right, decided on quantitative reproducible
->    evidence, not on who asserted it.
-> 4. **A remediation plan + full map of remaining work through project completion, for approval.**
->    Do NOT implement it in that session.
+> ## What ADR-0309 found — the oracle was already in the repo
+> Both prior external audits and `audit/SRA-PARITY-20260729.md` §8 recorded the SRA question as
+> oracle-gated and asked the operator for a new artifact. **It was already committed.**
+> `00_REFERENCE_INTAKE/ssi/SRA Large Test File2_SRA_Results_2026-7-29_11-57-1.xlsx` is a real SSI SRA
+> export for the exact reference file, and the `.mpp` carries SSI's whole SRA **input** set in custom
+> fields (`SSI SRA Event` → UID 152; `Best/Worst Case Duration` on **919** activities, 0 of them
+> complete; `SSI SRA Risk Probability`/`Schedule Impact` on **2** risks). Input and output are both
+> in-tree, so SRA parity is now an executable test:
+> **`tests/parity/test_sra_ssi_oracle_uid152.py`** — the first SRA test whose expected values come
+> from the reference tool rather than the engine's own arithmetic (ADR-0307 recorded that the previous
+> "headline parity anchor" was self-referential).
 >
-> **Two things already known going in, so they are not re-derived:**
-> - **H1 and H5/H3 are NOT new.** H1 is the anchor-realignment / broken-equivalence finding this
->   session already verified by execution (raw `compute_cpm` puts UID 152 at **2025-06-30**; the
->   all-ML basis is **370 working days** shorter; correction ~1388 d, ~1924 d against the all-ML
->   basis) and recorded below as FINDING 3. H5 is **CC-05** and H3 is **V1/V2**, both already carried
->   from ADR-0306. Treat the overlap as a signal about the other passes' independence — a hypothesis
->   to test, not a conclusion.
-> - **The Gemini report is unusable as-is and must not be acted on.** Its two "critical failures" are
->   its own harness errors — it constructed `Calendar(start=..., end=...)` with fields the model does
->   not define, and called `_reconcile_magnitudes()` with missing positional arguments — then proposed
->   "fixes" that would *weaken* the frozen model and the function signature to accommodate its broken
->   tests. It is the textbook failure the audit prompt warns about. Record it in the comparison; change
->   nothing because of it.
+> ## The root cause, and why two prior attempts failed
+> `engine/cpm.py` had **zero** references to `status_date`. ADR-0106's Decision text requires a
+> *"forward pass anchored at the status date"*; that clause was never implemented. So ordinary
+> `compute_cpm` put UID 152 at **2025-06-30**, 1,388 calendar days before its stored finish, and
+> `_build_ssi_result` added the constant back as a display correction.
+> ADR-0108 declined this fix because two attempts to floor remaining work at the data date each
+> regressed EVM1 and broke Project2/5 parity, concluding the ahead/behind judgement *"cannot be
+> reverse-engineered safely from two data points."* **Correct about the unconditional floor, wrong that
+> the judgement needed deriving — MS Project records its own answer in `<Resume>`, and the importer
+> read `<Stop>` and discarded it.** EVM2 UID 20: `Resume 2012-09-13 08:00 + 480 remaining = 2012-09-13
+> 17:00` = the stored finish, exactly. EVM1 UID 18 has `Resume == Stop` and must NOT move — an
+> unconditional floor moves it, which is precisely the regression that killed both attempts.
 >
-> ### What ADR-0307 shipped (merged, #481)
-> The operator's SRA gave materially different answers in POLARIS vs the SSI SRA add-in for MS
-> Project. The reference `.mpp` carries SSI's **own stored Best/Worst Case durations on 919
-> activities**, so it was settled by measurement. Two defects fixed: the **Best Case formula was
-> inverted** (the table's first column is a % **OF** the ML, not a % to subtract — corrected rule
-> 897/919 = 97.6% by an ML-independent WC/BC ratio test, old rule 153/919, *every* one factor 1, the
-> degenerate band where `1 − 0.50 == 0.50`), and **duration uncertainty was applied to completed
-> work** (1722 activities randomised where MSP randomised 919; one finished 635-day activity alone
-> shifted the mean +84.67 wd).
+> ## Consequences worth knowing before touching the SRA again
+> - **The ADR-0106 equivalence is now TRUE, not retracted.** All four duration bases converge at
+>   1,447,808 working minutes; ordinary `compute_cpm` reaches 2029-04-19 10:08 against a stored
+>   2029-04-19 10:07:36 — **to the minute, computed rather than imposed**. The 370-working-day
+>   compression and the 1,388-day load-bearing correction are gone, so external **H1** / the repo's
+>   **FINDING 3** ("the agreement is an identity forced by the realignment") no longer applies.
+> - **ADR-0108 is partly closed and the rest isolated.** EVM2 finish 2012-10-01 → **2012-10-02**
+>   (Acumen 2012-10-04), NFI −19 → **−20** (Acumen −22): **1 of 3 working days.** The other 2 are a
+>   **different** defect — the unstarted successor chain (UIDs 23/25/26/28/29/30 start 1–5 days before
+>   their stored dates) — pinned in `tests/engine/test_evm_acumen_reference.py`, not folded into ADR-0309.
+> - **`pytest -m parity` green (49).** Project2/5 carry 3 and 2 rescheduled tasks and did not move —
+>   the SSI driving-slack path already reads stored progress-aware dates (`driving_slack.py:120-129`).
+>   Measured BEFORE writing the change, not assumed after.
+> - **A floor built from the STORED remaining silently destroys the Monte-Carlo's upside variance**
+>   (measured: `det_pctile = 100 %`, σ 20.3, no iteration later than deterministic). It must follow
+>   `duration_overrides` — every override producer supplies a remaining-duration basis for incomplete
+>   tasks. The wrong version looked like an improvement on 3 of 6 headline metrics. Do not "simplify" it back.
+> - **Do NOT chase SSI's `Mean Date` / `Standard Deviation` cells (47322 / 107.8198).** They are
+>   computed over the 245 DISTINCT dates with the `Occurrences` weights dropped (reproduced to ~11 ULP,
+>   twice, independently). The target is the occurrence-weighted histogram: mean +111.45, σ 64.744.
+>   `test_the_summary_cells_are_not_the_parity_target` pins the trap shut. SSI's `% Cumulative
+>   Probability` column IS weighted; only those two summary cells are not.
 >
-> ### What ADR-0308 fixes — one theme: **the 0307 guard could be walked around**
-> 1. **The register walked around it.** The point-mass guard did not stop the risk loop adding each
->    fired impact to completed uids. Executed: a 50%/20-day risk on a 100%-complete driver gave
->    `std_days=9.99` and moved **P90 by 20 working days on finished work**. Now skipped in
->    `compute_sra_ssi` AND `compute_jcl`, and **disclosed** — `SSIRiskStat.applied=False` renders as
->    `inert (activity complete)` in a new Status column, because a risk that fires but moves nothing
->    is exactly the V2 pathology. The hit count still shows; only the delta reads `—`.
-> 2. **Saved setups walked around it.** `_ssi_three_point` prefers a stored range over
->    `factor_to_bc_wc`, and `_apply_ssi_setup` restored `bcwc_minutes` with no version check — so any
->    pre-0307 setup **re-ran the inverted formula forever**. Not hypothetical: the committed
->    `00_REFERENCE_INTAKE/references/sra-ssi-setup.json` (`setup_version: 1`) holds **783** such
->    pairs (UID 427, factor 5, BC 432 on ML 480 = the old 0.900×ML). `_SSI_SETUP_VERSION` → **3**; a
->    pre-v3 load **recomputes** BC/WC for any uid carrying a factor, keeps factor-less entries.
->    **Operator-accepted cost:** a hand-typed override on a factor-bearing activity in an old setup
->    is replaced (stored entries do not record manual-vs-derived, so they cannot be told apart).
-> 3. **The grid displayed what the run ignored.** Auto-calc only *skipped* recalculation, leaving a
->    stale range that `_ssi_grid_rows` and the setup export still showed. Now removed at the source;
->    the grid suppresses BC/WC for completed rows and `POST /sra/grid` refuses both derived and
->    hand-typed ranges there. **The factor is still recorded** — only the range is refused.
+> ## ⇢ NEXT — the approved plan, in order
+> Phase 2 of the approved plan (each item one ADR + one PR, sequenced so no fix can be credited to
+> error cancellation): **1** H5a docstring (zero executable lines) · **2** the working-axis vs
+> wall-clock ADR (blocks 3 and 6) · **3** H2c import warning · **4** the **H6 presentation defect
+> confirmed this session and missed by every external pass** — ~50 finish-date surfaces, only 7
+> basis-labelled, 21 with none, and a raw `compute_cpm` value labelled *"Forecast finish"* in
+> `ai/briefing.py:843` and the `/trend` header · **5** V1/V2 tri-state SRA magnitude parser.
+> Then Phase 3: **CC-01** (74 call sites, Fable-5-Max deep dive) and **V3** elapsed literals (highest
+> risk in the plan — it silently changes saved-filter populations; version the evaluator and ship a
+> migration report first). Phase 4 performance (P1–P6, measured by the external pass, unremediated).
+> Phase 5 is the untouched UI queue: rank 12 → 13 → 14, AXIS-TITLES `PENDING` 5 → empty, OR-01/02/03.
 >
-> ### Law 2 status
-> **`pytest -m parity` green — 44 passed, no golden moved.** ruff · ruff format (793 files) ·
-> mypy --strict · bandit (exit 0) · node --check all clean.
+> ## Still carried (unchanged identifiers, nothing lost)
+> **CC-01** (H2a) `offset_to_datetime` non-working dates, 74 call sites · **CC-05** (H5) negative
+> sub-day slack floor, oracle-gated · **V1/V2** (H3) SRA magnitude needs an operator-visible error ·
+> **V3** (H4) elapsed literals — direction now settled by ChatGPT's MPXJ `GenericCriteria` oracle,
+> product decision still open · the **legacy `/sra` cross-basis defect** newly found this session
+> (`_build_result` reads a full-duration deterministic against a remaining-duration sample, no
+> realignment; reaches `/api/sra`, the SRA report, `sra_conclusions`, and
+> `scorecards.reserve_recommendation`, whose dates sit on a different axis from `/api/margin/risk`) ·
+> **a committed SSI export contradicts ADR-0307's Best-Case rule** (Project5 `SRA Sensitivity
+> Analysis.xlsx` shows the pre-0307 ratios; ADR-0307 stands for the artifact we match — stored
+> Best/Worst wins, the table+rule is the operator-entered fallback) · `resume` is read from **MSPDI
+> only**, the XER path has no equivalent.
 >
-> ### ⚠️ NEXT — the SRA parity conclusion is UNCHANGED by ADR-0308
-> Mean offsets from the deterministic finish (calendar days): as-shipped **+280** → completed-work
-> fix only **+132** → both **+27**, against MS Project's **+111.45**. **No configuration reproduces
-> MSP's spread** (σ 160.8 / 111.6 / 125.9 vs **64.74**). The deterministic percentile moved P3 →
-> **P40**: 40% of POLARIS iterations finish before the deterministic date against MSP's **5.65%**.
-> Same Best/Worst values, 7× difference — **the two tools are not simulating the same network. The
-> residual is about VARIANCE, not the mean.**
-> - **DO NOT "fix" this by reverting the BC rule.** Fixing only the completed-work defect lands the
->   mean nearer the target (+132) than the correct +27 — and its σ misses just as badly. Letting one
->   error cancel another is what Law 2 forbids.
-> - **ASK THE OPERATOR FOR ONE ARTIFACT:** re-run the same SRA in MS Project with *Includes
->   Risks/Opportunities = **No***, all else identical. σ near **33 cal** ⇒ MSP varies a much smaller
->   set (most plausibly holding the status date 2025-03-10); near **99** ⇒ the difference is in how
->   the register combines with duration uncertainty.
+> ## Hypotheses KILLED — do not re-chase
+> Everything in `audit/SRA-PARITY-20260729.md` §7 (impact days as calendar not working days ·
+> `std_cal_days` as a 7/5 fudge · `mean_delta_days` overstating · float absorption · V2 as the cause of
+> the screenshot), **plus**: reverting ADR-0307's Best-Case rule (it moves the mean closer while
+> leaving σ wrong — the exact error cancellation Law 2 forbids), and an **unconditional** data-date
+> floor (ADR-0108's two reverts; ADR-0309 supersedes with the stored-`Resume` read).
 >
-> ### FINDING 3 (carried, CC-01 category) — the leading explanation for the residual
-> Verified by execution: POLARIS's raw `compute_cpm` puts UID 152 at **2025-06-30**; the page shows
-> 2029-04-19 only because `_build_ssi_result` re-anchors onto the stored finish (~1388 days; ~1924
-> against the all-ML basis it actually uses). **The ADR-0106 "all-ML reproduces `compute_cpm`"
-> equivalence is FALSE on this file** — the all-ML basis is **370 working days shorter**, because
-> `_ml_minutes` feeds 92 in-progress tasks their *remaining* rather than full duration. **The
-> simulation solves a compressed network that is not the schedule the rest of the tool displays.**
-> Deliberate and long-standing (ADR-0106/0123), load-bearing for every progressed schedule — own round.
->
-> ### Hypotheses KILLED — do not re-chase (`audit/SRA-PARITY-20260729.md` §7)
-> impact days as calendar rather than working days (the file stores `PT800H0M0S` = 100 × 480 min) ·
-> `std_cal_days` as a 7/5 fudge (a real `pstdev` over calendar ordinals) · `mean_delta_days`
-> overstating (independent Bernoulli ⇒ unbiased; SE ≈ 8.5 wd) · float absorption (both risk
-> milestones have **TF = 0**) · **audit finding V2 as the cause of the screenshot** (V2 is the legacy
-> multiplicative `/sra` page; the screenshot is the additive `/sra/ssi` page — V2 is still real, just
-> not this).
->
-> ### Still carried from ADR-0306
-> **CC-01 (HIGH)** `offset_to_datetime` returns non-working dates (`cpm.py:255-281`, 74 call sites) ·
-> **CC-05** negative sub-day slack floors (needs an SSI reference compare) · **V3** elapsed literals
-> `"2 ed" == "2 d"` (product decision) · **V1/V2** SRA magnitude entry needs an operator-visible
-> error surface (five standing UI requirements apply).
->
-> ### Harness notes worth keeping
-> - **Run dev tools as `python -m <tool>`, never bare** — a stale `/root/.local/bin/ruff` (0.15.8)
->   shadows the pip-installed 0.16.0 CI resolves. A local-vs-CI FILE COUNT mismatch is the tell (793).
-> - `[tool.ruff.format] exclude = ["audit/*.md"]` is deliberate — never let a formatter rewrite
->   quoted evidence.
-> - No runtime deps in this container: `pip install -e ".[dev]"`; `python -m build` needs installing.
->   `httpx` is dev-only and must never enter runtime `dependencies`.
-> - Full `pytest -q` ≈ 12m under load; `pytest -m parity` ≈ 35s — run parity first.
-> - **Converting the reference `.mpp` costs ~30 s** (21.8 MB MSPDI); `parse_mspdi` ~4 s; **2000 SRA
->   iterations ≈ 90 s**. Reproducing an operator run end-to-end is cheap — do it rather than
->   reasoning about the algorithm.
-> - **Run a Monte-Carlo bisection against an UNPATCHED tree** and record run provenance beside every
->   number: a mid-run edit does not affect an already-imported module, but the NEXT run picks it up —
->   two variants that should have differed came back byte-identical because a new guard had already
->   neutralised the input.
-> - **An outside review can be right.** Codex's three findings against #481 all reproduced, including
->   one citing a committed fixture by exact value (UID 427, BC 432 on ML 480). Verify by execution —
->   then act on what survives, rather than dismissing the source.
+> ## Harness notes
+> Run dev tools as `python -m <tool>` (a stale `/root/.local/bin/ruff` shadows pip's; the tell is a
+> **793** file-count mismatch). **`pip install -e .` before running the suite** — with a bare
+> `PYTHONPATH=src` the package has no distribution metadata and ~200 web tests fail with
+> `PackageNotFoundError`, which is setup contamination and not a product verdict (an external audit hit
+> the identical 211-failed/828-error pattern and correctly discounted it). Converting the reference
+> `.mpp` needs a writable `TMPDIR` (MPXJ's `UniversalProjectReader` copies OLE input to a temp `.dat`)
+> — ~9 s here, and **2000 SRA iterations ≈ 90 s**, so the new oracle test costs ~2 min. Full `pytest -q`
+> ≈ 15 m; `pytest -m parity` ≈ 40 s — run parity first. Regenerate the wheel with
+> `--outdir dist/wheel` (the default silently embeds a STALE wheel) and only ONCE after all code lands.
 
 # (prior) handoffs — archived
 

@@ -33,6 +33,7 @@ _DATE_FIELDS = (
     "baseline_start",
     "baseline_finish",
     "stop",
+    "resume",
     "constraint_date",
     "deadline",
 )
