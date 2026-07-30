@@ -9496,3 +9496,36 @@ highest ADR **ADR-0314**. OR-02 marked SHIPPED in OPERATOR-REQUESTS.
 The three operator decisions (DECISION-BRIEFS-20260730) were asked TWICE this session and remain
 unanswered — still open, still gating rank 12's remainder. Session also merged #488 (docs-only:
 the briefs + state rotation) earlier today.
+
+## 2026-07-30 (cont.3) — OR-04: the audit-gated three-tier GPU release ships (ADR-0315, v1.0.133)
+
+- **Planning first:** a full 10-PR plan + self-attack was presented and APPROVED, and the three
+  briefed decisions were ANSWERED in the approval flow (**A1 · B1 · C1**, sub-answers recorded in
+  `docs/STATE/PLAN-20260730.md`) — rank 12's remainder is ungated. Mid-planning the operator
+  reported **OR-04**: `llama-server.exe` holding dedicated GPU memory after quit.
+- **The operator's adversarial audit prompt ran REPORT-ONLY:** every code-verifiable hypothesis
+  CONFIRMED — the cross-session orphan hole (F-1..F-4), the engaged path's kill-ordering orphan
+  (F-7 Critical: unverified unload → parent terminated → image sweep finds only dead processes;
+  the operator's two "process not found" taskkills are that code's exact output), invisible
+  failures (F-5/F-6), per-cycle accumulation (F-17). The keep_alive-override and `/api/ps`-schema
+  questions were parked UNVERIFIED on named operator artifacts (audit §8). Report committed at
+  `cac0991` (`audit/VERIFICATION-REPORT-ollama-lifecycle.md`); the operator then gated the apply
+  open.
+- **Shipped (this commit):** three-tier `shutdown()` (engaged → verified unload + pid-rooted
+  tree-kill while the parent lives + visible ADR-0122 sweep; used-not-engaged → selective unload
+  only, no process touched; never-used → no-op), `record_use` marking on generate success only
+  (settings render never marks — pinned), durable marker + `reconcile_at_startup()`,
+  `keep_alive:"5m"` hardening (F-13 UNVERIFIED, stated as such), settings AI-runtime diagnostics
+  (write-only `no-binary` now renders; the four `OLLAMA_*` env values reported, never
+  overridden). NO image-name kill of the runner — rejected (LM Studio collision) and pinned by
+  test.
+- **Verification read this session:** focused suites (`tests/ai/*` + `test_ai_wiring.py`)
+  **84 passed** in 7.38 s; **proved able to fail** — src stashed → the three key tests fail
+  (3 failed, read) → popped; `ruff` + `ruff format --check` + `mypy --strict` green on 117 src
+  files; `bandit` exit 0 (a B110 fixed by logging, not nosec); `node --check` clean. **Full
+  suite on the final tree: 3136 passed, 1 skipped, exit 0 (890 s)** — one en-route failure
+  (`test_launcher`'s fake manager without `reconcile_at_startup`) fixed via the getattr-guard
+  pattern, wheel+installers rebuilt, suite re-run in full. 4-theme render of the diagnostics
+  notices measured green (64/43/64/64 px) against a live server.
+- highest ADR **ADR-0315**. OR-04 marked SHIPPED in OPERATOR-REQUESTS. Park artifacts #1/#3/#5
+  (+#4) stay open; the four-scenario smoke script rides in the PR body.

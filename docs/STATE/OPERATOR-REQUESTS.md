@@ -75,6 +75,30 @@ vendored** asset (Law 1: no remote fetch, and the air-gap test must stay green).
 
 ---
 
+## 2026-07-30 — chat report (mid-planning session)
+
+### OR-04 — Ollama's model runner keeps the GPU after quit · `SHIPPED (ADR-0315)` · **BUG**
+
+> "when I open the tool and then close the tool Ollama stays active and it is eating up my
+> Dedicated GPU memory."
+
+Reproduced by the operator (enable in AI Settings → ask → wipe → quit): `llama-server.exe`
+resident post-quit at ~10.9/12 GB dedicated VRAM and ~30 GB committed shared GPU memory, while
+both of the tool's own cleanup taskkills reported "process not found". Behavior ruling (operator,
+same day): **free the GPU on exit** — stop the runtime if the tool started it; if it is an
+external service the tool merely used, unload the model (`keep_alive: 0`); never kill a process
+the tool didn't start.
+
+Root cause per the operator-gated adversarial audit
+(`audit/VERIFICATION-REPORT-ollama-lifecycle.md`): shutdown no-opped for default-config use
+(`_engaged` set only by the Settings POST), and the engaged path's own kill ordering orphaned the
+runner (parent terminated before the `/T` tree-walk) with every failure invisible. Closed by the
+three-tier shutdown + durable marker + startup reconciliation (ADR-0315). Operator verification:
+the four-scenario smoke script in the PR body; park artifacts #1/#3/#5 (+#4) remain open in the
+audit's §8.
+
+---
+
 ## How to work this queue
 
 - Pick items up in a numbered round like any other tail work; record the ADR that closes each.

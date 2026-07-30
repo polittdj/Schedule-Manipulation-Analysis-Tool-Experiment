@@ -31,6 +31,15 @@ Opener = Callable[[str, bytes | None, float], str]
 DEFAULT_ENDPOINT = "http://127.0.0.1:11434"
 DEFAULT_MODEL = "qwen2.5:7b-instruct"
 
+#: Explicit per-request residency bound sent with every generation. ``"5m"`` equals Ollama's
+#: stock default, so consecutive asks stay warm with no added latency on a default server — but
+#: it bounds post-crash VRAM residency on a server configured with ``OLLAMA_KEEP_ALIVE=-1``
+#: ("hold forever"), where a hard-killed tool would otherwise strand the model indefinitely.
+#: Whether a per-request value reliably overrides that server-level ``-1`` is UNVERIFIED on the
+#: operator's install (ADR-0315, audit F-13) — this is a hardening layer, never the cleanup
+#: mechanism (that is the launcher's three-tier shutdown + reconciliation).
+GENERATE_KEEP_ALIVE = "5m"
+
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
     """Redirect handler that refuses every redirect (fail closed, Law 1).
@@ -190,6 +199,8 @@ class OllamaBackend:
                 "model": self.model,
                 "prompt": prompt,
                 "stream": False,
+                # bounded residency (see GENERATE_KEEP_ALIVE) — decoding options unchanged
+                "keep_alive": GENERATE_KEEP_ALIVE,
                 "options": {
                     "temperature": DETERMINISTIC_TEMPERATURE,
                     "seed": DETERMINISTIC_SEED,

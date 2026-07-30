@@ -268,6 +268,25 @@ def test_ollama_generate_sends_deterministic_decoding_options() -> None:
     assert opts["temperature"] == 0.0 and opts["seed"] == 0 and opts["top_p"] == 1.0
 
 
+def test_ollama_generate_sends_a_finite_keep_alive() -> None:
+    """ADR-0315 hardening: every generate carries ``keep_alive: "5m"`` (Ollama's stock default —
+    no added latency between asks) so post-crash VRAM residency is bounded even on a server
+    configured with ``OLLAMA_KEEP_ALIVE=-1``. Whether the per-request value overrides that
+    server setting is UNVERIFIED (audit F-13) — this pins only that we SEND it, with the
+    deterministic decoding options unchanged beside it."""
+    captured: dict[str, object] = {}
+
+    def opener(url: str, data: bytes | None, timeout: float) -> str:
+        if url.endswith("/api/generate") and data is not None:
+            captured.update(json.loads(data))
+            return json.dumps({"response": "ok"})
+        return "{}"
+
+    OllamaBackend(opener=opener).generate("Q?")
+    assert captured.get("keep_alive") == "5m"
+    assert captured.get("options") == {"temperature": 0.0, "seed": 0, "top_p": 1.0}
+
+
 def test_openai_compat_generate_sends_deterministic_temperature_and_seed() -> None:
     captured: dict[str, object] = {}
 

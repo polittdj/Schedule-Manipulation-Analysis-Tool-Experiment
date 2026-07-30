@@ -17,7 +17,7 @@ import datetime as dt
 import itertools
 import threading
 from collections import OrderedDict
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from typing import TypeVar, cast
 
@@ -515,6 +515,12 @@ class SessionState:
     )
     # the cross-check second model, cached like backend_cache (None = off/unreachable).
     second_cache: tuple[AIConfig, float, AIBackend | None] | None = None
+    #: ADR-0315 — the desktop launcher's ``OllamaLauncher.record_use``, wired by ``create_app``
+    #: when a manager exists. ``_active_backend``/``_second_backend`` wrap a routed Ollama
+    #: backend so a SUCCESSFUL generate marks the session as having actually used the model —
+    #: shutdown's used-but-never-engaged GPU-release tier depends on it. ``None`` outside the
+    #: desktop launcher (tests, ``run()``), which keeps every existing wiring unchanged.
+    ai_use_hook: Callable[[str, str], None] | None = field(default=None, repr=False, compare=False)
     # session-wide group/filter (ADR-0104): when set, EVERY metric on EVERY page — and every loaded
     # file — is scoped to the tasks matching ALL criteria. Empty tuple = no filter (full schedules).
     active_filter: tuple[Criterion, ...] = ()
