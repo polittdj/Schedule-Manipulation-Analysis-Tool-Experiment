@@ -1345,7 +1345,7 @@ _SPINE: tuple[tuple[str, tuple[_Chapter, ...]], ...] = (
                 "01",
                 "Where we stand",
                 "@analysis",
-                (),
+                (("Card", "@card"),),
                 (),
                 "Where the project stands at the data date.",
             ),
@@ -1455,19 +1455,54 @@ _SPINE: tuple[tuple[str, tuple[_Chapter, ...]], ...] = (
     (
         "SETUP",
         (
-            _Chapter("", "Margin Dashboard", "/margin", (), ("Margin Dashboard",), ""),
-            _Chapter("", "Metric Workbench", "/workbench", (), ("Metric Workbench",), ""),
+            _Chapter(
+                "",
+                "Margin Dashboard",
+                "/margin",
+                (),
+                ("Margin Dashboard",),
+                "How much schedule margin is left, and whether it is enough.",
+            ),
+            _Chapter(
+                "",
+                "Metric Workbench",
+                "/workbench",
+                (),
+                ("Metric Workbench",),
+                "Build and compare any metric against the population you choose.",
+            ),
             _Chapter(
                 "",
                 "Standards & Execution",
                 "/standards",
                 (),
                 ("Standards & Execution Indices",),
-                "",
+                "How the schedule scores against the governing standards.",
             ),
-            _Chapter("", "Groups & Filters", "/groups", (), ("Groups & Filters",), ""),
-            _Chapter("", "AI Settings", "/settings", (), ("AI Settings",), ""),
-            _Chapter("", "Metric Dictionary", "/help", (), ("Metric Dictionary",), ""),
+            _Chapter(
+                "",
+                "Groups & Filters",
+                "/groups",
+                (),
+                ("Groups & Filters",),
+                "Scope every page to the activities you care about.",
+            ),
+            _Chapter(
+                "",
+                "AI Settings",
+                "/settings",
+                (),
+                ("AI Settings",),
+                "Choose the local model and the figure-citation mode.",
+            ),
+            _Chapter(
+                "",
+                "Metric Dictionary",
+                "/help",
+                (),
+                ("Metric Dictionary",),
+                "Every metric, its formula, and where the formula comes from.",
+            ),
         ),
     ),
 )
@@ -1545,13 +1580,14 @@ _TITLE_TO_CHAPTER: dict[str, _Chapter] = _build_title_map()
 
 
 def _resolve_route(state: SessionState, route: str) -> str:
-    """Resolve a spine ``route`` to a real URL. ``@analysis`` / ``@wbs`` point at the first loaded
-    schedule's report (the dropzone when nothing is loaded)."""
-    if route in ("@analysis", "@wbs"):
+    """Resolve a spine ``route`` to a real URL. ``@analysis`` / ``@wbs`` / ``@card`` point at the
+    first loaded schedule's report (the dropzone when nothing is loaded)."""
+    _PER_FILE = {"@analysis": "/analysis/", "@wbs": "/wbs/", "@card": "/card/"}
+    base = _PER_FILE.get(route)
+    if base is not None:
         first_key = next(iter(state.schedules), None)
         if first_key is None:
             return "/" if route == "@analysis" else ""
-        base = "/analysis/" if route == "@analysis" else "/wbs/"
         return base + quote(first_key)
     return route
 
@@ -1633,8 +1669,14 @@ def _render_nav(state: SessionState) -> str:
             if ch.route in role_routes or any(rt in role_routes for _lbl, rt in ch.beats)
             else ""
         )
+        # ADR-0311: the DoD asks for a "nav entry with takeaway". A numbered chapter surfaces its
+        # takeaway through the Continue segue, but an OFF-SPINE Setup page has no segue by design —
+        # so its takeaway had nowhere to go and the four Setup entries carried "". They now carry
+        # real text, surfaced here as the link's tooltip so the takeaway reaches the reader on the
+        # one nav entry that cannot show it any other way.
+        tip = f' title="{_e(ch.takeaway)}"' if ch.takeaway else ""
         return (
-            f'<a class="nav-chapter{hl}" href="{href}">{num}'
+            f'<a class="nav-chapter{hl}" href="{href}"{tip}>{num}'
             f"<span class=ch-label>{_e(ch.label)}</span></a>{beats}"
         )
 
@@ -2608,7 +2650,15 @@ def create_app(
             return _page(st, name, _unschedulable_panel(sch, exc), ask_schedule=name)
         focus = _target_panel(sch, analysis, st.target_uid) if st.target_uid is not None else ""
         return _page(
-            st, f"{name} — card", focus + _card_body(name, sch, analysis), ask_schedule=name
+            st,
+            f"{name} — card",
+            focus + _card_body(name, sch, analysis),
+            ask_schedule=name,
+            # ADR-0311: a dynamic title can never resolve through _TITLE_TO_CHAPTER, so this page
+            # rendered with NO kicker at all. It is a per-file drill of chapter 01 (linked beside
+            # "Open report"), exactly as /wbs is one of chapter 07 — named explicitly, like /analysis.
+            chapter=_CHAPTER_BY_NUM.get("01"),
+            focus_file=name,
         )
 
     @app.get("/wbs/{name}", response_class=HTMLResponse)
@@ -2631,7 +2681,16 @@ def create_app(
                 focus = _target_panel(sch, st.analysis_for(name, sch), st.target_uid)
             except CPMError:
                 focus = ""  # unschedulable: skip the focus panel, still show the WBS pivot
-        return _page(st, f"{name} — WBS", focus + _wbs_body(name, groups), ask_schedule=name)
+        return _page(
+            st,
+            f"{name} — WBS",
+            focus + _wbs_body(name, groups),
+            ask_schedule=name,
+            # ADR-0311: /wbs was ALREADY a declared beat of chapter 07 (("WBS", "@wbs")) yet its
+            # dynamic title resolved to no chapter, so it rendered with no kicker. Named explicitly.
+            chapter=_CHAPTER_BY_NUM.get("07"),
+            focus_file=name,
+        )
 
     @app.get("/api/wbs/{name}")
     def wbs_json(name: str) -> JSONResponse:

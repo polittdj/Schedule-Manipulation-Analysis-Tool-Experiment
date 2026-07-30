@@ -1,4 +1,4 @@
-# Handoff — 2026-07-30 (two time axes, and the labels that confuse them; ADR-0310; v1.0.127)
+# Handoff — 2026-07-30 (two time axes + rank 12 opened; ADR-0310, ADR-0311; v1.0.128)
 
 > ## STATUS (current) — **Phase 2 items 1/2/4 shipped as ADR-0310 (v1.0.127). SRA parity CLOSED earlier this day (ADR-0309, #483 + #484).**
 > ADR-0310 writes down the **two time axes** (working vs wall-clock) — the shared root both external
@@ -116,7 +116,31 @@
 > Excel, but absent from the payload, so no consumer could label what it drew); the Excel title's
 > method count is derived instead of the literal "three".
 >
-> ## ⇢ NEXT — rank 12, no more Law-2 interruptions
+>
+> ## RANK 12 IS OPEN — ADR-0311 landed its first slice
+> The operator decided the vocabulary: off-spine pages get a **non-chapter kicker** and **no Continue
+> segue**; `/card` + `/wbs` get **nav entries**. Half was already shipped behaviour — `_chapter_kicker`
+> drops the `CHAPTER NN ·` prefix when `num` is empty and `_story_footer` excludes SETUP from
+> `_STORY_ORDER`, so the four Setup pages already had label-only kickers and no segue. **A prior survey
+> reported "no kicker" on all six; that was a measurement error** (the probe regexed `CHAPTER \d+ ·`,
+> which cannot match an empty-number kicker). Do not re-chase it.
+> **Shipped:** a `@card` sentinel beside `@analysis`/`@wbs`; `/card` is now a beat of chapter 01 and
+> `/wbs` names chapter 07 explicitly (both have dynamic titles that can never resolve through
+> `_TITLE_TO_CHAPTER` — the `chapter=` override exists for exactly this and they never used it); all
+> **six** Setup entries carry a takeaway, surfaced as the nav link `title` because an off-spine page has
+> no segue to render it in; pinned by `test_every_setup_rail_entry_carries_a_takeaway`.
+>
+> ## ⇢ RANK 12 STILL OWES (with its blockers named)
+> - **takeaway h1 + context line** on the five pages lacking one (only `/margin` has one) — unblocked.
+> - **`▦`/`⤓`/`⛶` toolbar + read-me line on every visual** — none of the six has it. **Two hard
+>   dependencies:** `/margin` renders via `margin_dashboard.js`, one of the five AXIS-TITLES `PENDING`
+>   modules (batch 3b); `/workbench` via `workbench.js`, in `NO_SVG_AXES`, whose DOM caption mechanism
+>   ADR-0298 "deliberately did not invent". Neither closes inside rank 12.
+> - **`data-noprint`** is set on none of the six and still has **zero CSS rules anywhere** — the open
+>   operator decision across ten merged contract pages. The DoD print checkbox is unsatisfiable until it
+>   lands.
+>
+> ## ⇢ NEXT — finish rank 12, then 13 and 14
 > **Phase 2 items 1, 2 and 4 are DONE** (ADR-0310). Remaining from Phase 2: **item 3** H2c
 > normalise-or-reject at import (ADR-0310 decision 5 specifies it) and **item 5** V1/V2 tri-state SRA
 > magnitude parser with an operator-visible error.

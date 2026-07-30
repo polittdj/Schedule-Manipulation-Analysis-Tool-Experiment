@@ -244,3 +244,23 @@ def test_upload_has_no_file_count_cap(client: TestClient) -> None:
     page = client.post("/upload", files=files).text
     assert "batch cap" not in page  # the cap message is gone
     assert f"Loaded {n}:" in page  # every file accepted
+
+
+def test_every_setup_rail_entry_carries_a_takeaway() -> None:
+    """ADR-0311: the DoD requires a nav entry WITH a takeaway.
+
+    A numbered chapter surfaces its takeaway through the Continue segue. An off-spine Setup page has
+    no segue by design, so its takeaway had nowhere to go — and all six Setup entries shipped with
+    ``""``. They now carry real text, rendered as the nav link's ``title``. Pinned because a
+    half-filled rail is exactly the silent-omission class this round was cleaning up: four of six
+    would have looked deliberate.
+    """
+    from schedule_forensics.web.app import _SPINE
+
+    setup = next(chapters for label, chapters in _SPINE if label == "SETUP")
+    missing = [c.label for c in setup if not c.takeaway.strip()]
+    assert not missing, f"Setup entries with no takeaway: {missing}"
+    # and a takeaway is a sentence, not a label echo
+    for c in setup:
+        assert c.takeaway != c.label
+        assert c.takeaway.endswith("."), f"{c.label}: takeaway should read as a sentence"

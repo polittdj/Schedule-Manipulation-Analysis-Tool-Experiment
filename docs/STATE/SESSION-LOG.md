@@ -9203,3 +9203,39 @@ Two tests pinned the old label and were updated knowingly (`tests/ai/test_briefi
 rounds (ADR-0306 → 0307 → 0308 → 0309 → 0310). Each was individually justified; the pattern is not.
 Phase 2's remainder (item 3 H2c, item 5 V1/V2), Phase 3 (CC-01, V3) and Phase 4 (P1–P6) all wait
 behind it.
+
+### 2026-07-30 (cont.3) — rank 12 opened: an off-spine page still needs somewhere to say what it is (ADR-0311, v1.0.128)
+
+Rank 12 taken after five consecutive out-of-band Law-2 rounds. It is the first per-visual batch whose
+pages are **not chapters**, so the DoD's "Chapter kicker … Continue segue" checkbox could not apply
+verbatim; the operator decided the vocabulary (non-chapter kicker, no segue, nav entries for
+`/card`+`/wbs`) before any code moved.
+
+**Half the decision was already shipped, and the prior survey was wrong about it.** `_chapter_kicker`
+drops the `CHAPTER NN ·` prefix when `num` is empty and `_story_footer` excludes SETUP from
+`_STORY_ORDER`, so the four Setup pages already rendered label-only kickers and no segue. The earlier
+survey reported "no chapter kicker" on all six — a **measurement error**, because the probe regexed
+`CHAPTER \d+ ·`, which cannot match an empty-number kicker. Lesson recorded: a conformance sweep whose
+pattern assumes the conforming shape will report conforming pages as broken.
+
+**The real gaps were the two per-file drills.** `/wbs` was ALREADY a declared beat of chapter 07 yet
+rendered no kicker; `/card` had neither nav entry nor kicker. Both have dynamic titles that can never
+resolve through `_TITLE_TO_CHAPTER` — which is precisely why `_chapter_kicker` accepts a `chapter`
+override "for dynamic-title pages (e.g. /analysis)". `/analysis` used it; these two never did. Shipped:
+a `@card` sentinel joining `@analysis`/`@wbs` under one `_PER_FILE` map, `/card` as a chapter-01 beat,
+both drills naming their chapter explicitly. Empty session still degrades to no dead link (200).
+
+**A mid-build correction worth keeping:** the four Setup takeaways I first wrote were **dead data** —
+`takeaway` fed only the Continue segue, which off-spine pages deliberately lack, so the field had
+nowhere to render on exactly the pages the DoD asks for "a nav entry with takeaway". Now surfaced as
+the nav link's `title`. Also filled `/settings` and `/help` rather than leave four of six populated
+(four-of-six reads as a deliberate distinction), and pinned the whole rail with
+`test_every_setup_rail_entry_carries_a_takeaway` — same silent-omission class ADR-0310 had just
+cleaned up on `/forecast`.
+
+**Rank 12 still owes, blockers named:** takeaway h1 + context line on five pages (unblocked); the
+`▦`/`⤓`/`⛶` toolbar + read-me line on every visual — `/margin` blocked by AXIS-TITLES `PENDING`
+(`margin_dashboard.js`), `/workbench` by `NO_SVG_AXES` (`workbench.js`, DOM caption mechanism never
+invented); `data-noprint`, still zero CSS rules anywhere across ten merged pages.
+
+Web suite 1257 passed / 24 skipped. No calculation touched, no displayed figure moved.
