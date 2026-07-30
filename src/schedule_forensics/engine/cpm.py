@@ -20,6 +20,20 @@ Scope of this engine (documented, not silently limited — Law 2):
   sparse-logic files). The affected UniqueIDs are reported on
   :attr:`CPMResult.date_driven` and surfaced as a cited finding ("dates not supported
   by logic") — honored, never silently rescheduled.
+* **A recorded progress-override reschedule is honored** (ADR-0309): this engine is
+  pure-logic EXCEPT that an in-progress task whose source stores ``resume > stop`` has
+  its remaining work floored at ``offset(resume) + remaining`` — MS Project's own
+  recorded decision to move remaining work off the actual work, read rather than
+  re-derived. It is therefore **conditionally progress-aware**: a file that records no
+  reschedule (``resume == stop``, or either absent — every fixture without progress) is
+  scheduled by logic alone and is byte-identical to the pre-ADR-0309 engine. Floored
+  UniqueIDs join :attr:`CPMResult.date_driven`, the same disclosure ADR-0034 uses.
+  **Not yet anchored:** a COMPLETED task's actual dates. The forward pass still packs
+  completed work from ``project_start``, so on a long progressed file its per-task
+  computed dates sit far before its stored actuals (measured on the reference schedule:
+  724 completed tasks, median 1458 calendar days early) — which is why consumers that
+  need real per-task dates read the stored ones first (``driving_slack.py``). The focus
+  and project finishes are unaffected, since those are driven by remaining work.
 * **Refused** (raises :class:`CPMError` rather than emit a silently-wrong schedule —
   Law 2): ``ALAP``. Its as-late-as-possible semantics are backward-pass-driven and
   interact subtly with float; it does not appear in the parity schedules and is out of

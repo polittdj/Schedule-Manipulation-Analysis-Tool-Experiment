@@ -272,30 +272,58 @@ def test_all_ml_reproduces_compute_cpm_on_a_progressed_file(schedule: Schedule) 
 def test_the_distribution_matches_ssis_own_export(
     schedule: Schedule, ssi_run: SSIResult, oracle: _Oracle
 ) -> None:
-    """The headline: shape, spread and position against SSI's 2000-iteration histogram."""
+    """The headline: shape, spread and position against SSI's 2000-iteration histogram.
+
+    Every tolerance below is **calibrated from the measured seed-to-seed spread** of this same
+    configuration, not chosen by judgement (an external review of the plan was right that an
+    uncalibrated tolerance is not a tolerance). Five seeds at 2000 iterations each
+    (12345 / 777 / 20260730 / 424242 / 99) gave:
+
+        statistic   seed range   seed sd   worst |err| vs SSI   gate here
+        det pctile     1.55 pp    0.68 pp        0.90 pp        +/- 2 pp
+        sigma          3.35 d     1.48 d         1.78 d         +/- 5 %  (3.24 d)
+        mean           4.62 d     1.87 d         2.41 d         +/- 6 d
+        P10            9.00 d     4.44 d         7.00 d         +/- 10 d
+        P50            2.00 d     0.84 d         1.00 d         +/- 5 d
+        P80            1.00 d     0.45 d         1.00 d         +/- 5 d
+        P90            3.00 d     1.64 d         3.00 d         +/- 5 d
+
+    Each gate sits above the observed noise but far below the pre-ADR-0309 error (det was off by 35
+    pp, sigma by 94 %), so it can still fail loudly. **P10 keeps the widest band on purpose**: it
+    lives in the sparse lower tail and is the noisiest estimator here (seed sd 4.4 d), so
+    tightening it would buy flakiness, not rigour. All five seeds pass every gate -- which is the
+    point: the parity is not one lucky seed.
+    """
     samples = _weighted_dates(schedule, ssi_run)
     assert len(samples) == ITERATIONS
 
     # position — where the deterministic date sits in the distribution (was P40 vs SSI's P5.75)
     assert oracle.percentile_at(oracle.current_finish) == pytest.approx(0.0575, abs=1e-4)
-    assert ssi_run.deterministic_percentile == pytest.approx(0.0575, abs=0.03)
+    assert ssi_run.deterministic_percentile == pytest.approx(0.0575, abs=0.02)
 
     # spread — occurrence-weighted sigma in calendar days (was 125.5 vs SSI's 64.74)
     oracle_sigma = st.pstdev([d.toordinal() for d in oracle.samples])
     assert oracle_sigma == pytest.approx(64.744, abs=0.01)
-    assert st.pstdev([d.toordinal() for d in samples]) == pytest.approx(oracle_sigma, rel=0.10)
+    assert st.pstdev([d.toordinal() for d in samples]) == pytest.approx(oracle_sigma, rel=0.05)
 
     # centre — occurrence-weighted mean offset from the deterministic date (SSI: +111.45 d)
     oracle_mean = st.fmean(oracle.offset(d) for d in oracle.samples)
     assert oracle_mean == pytest.approx(111.45, abs=0.01)
-    assert st.fmean(oracle.offset(d) for d in samples) == pytest.approx(oracle_mean, abs=10.0)
+    assert st.fmean(oracle.offset(d) for d in samples) == pytest.approx(oracle_mean, abs=6.0)
 
-    # the reported percentile dates, each against SSI's own quantile
-    percentiles = ((0.10, "p10_date"), (0.50, "p50_date"), (0.80, "p80_date"), (0.90, "p90_date"))
-    for pct, attr in percentiles:
+    # the reported percentile dates, each against SSI's own quantile, per-percentile tolerance
+    percentiles = (
+        (0.10, "p10_date", 10),
+        (0.50, "p50_date", 5),
+        (0.80, "p80_date", 5),
+        (0.90, "p90_date", 5),
+    )
+    for pct, attr, tol in percentiles:
         expected = oracle.offset(oracle.quantile(pct))
         actual = oracle.offset(dt.date.fromisoformat(getattr(ssi_run, attr)))
-        assert abs(actual - expected) <= 10, f"P{pct:.0%}: {actual:+d} d vs SSI {expected:+d} d"
+        assert abs(actual - expected) <= tol, (
+            f"P{pct:.0%}: {actual:+d} d vs SSI {expected:+d} d (tolerance {tol} d)"
+        )
 
 
 @needs_java

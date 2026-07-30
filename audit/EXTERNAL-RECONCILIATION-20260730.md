@@ -92,3 +92,44 @@ CC-01 (H2a, 74 call sites), CC-05 (H5, oracle-gated), V1/V2 (H3), V3 (H4, produc
 the H6 presentation defect newly confirmed here, the legacy `/sra` cross-basis defect newly found
 here, P1–P6 (measured by ChatGPT, unremediated), and the 2 remaining working days of ADR-0108's EVM2
 residual. Sequencing and exit criteria for all of them are in the approved plan.
+
+---
+
+## Round 2 — an external review of *this plan*, and what it changed
+
+2026-07-30, after ADR-0309 merged as #483. The operator put the completion plan back to ChatGPT and
+asked whether it would fix the findings. Its verdict was "no — not as written." Assessed point by
+point below; **two of its objections were correct and one of those was materially important.** It was
+reviewing the plan text, not the shipped code, which matters for reading its H1/§3.4 verdict.
+
+| Its objection | Assessment | Action |
+|---|---|---|
+| Only Phase 0+1 is the immediate deliverable, so H2–H6, retention and browser perf stay open | **Accurate**, and by design — the operator scoped this round. The plan maps the rest with exit criteria | none; scope is the operator's call |
+| **The engine-wide data-date proposal is unsafe: §3.4c floors every unfinished activity at the data date, and ADR-0108 shows MS Project applies progress override conditionally** | **CORRECT, and the best point made.** §3.4c as written *was* the unconditional floor that regressed EVM1 twice. Had it been built as specified it would have reproduced that failure | **Plan §3.4c marked SUPERSEDED.** What shipped reads MS Project's stored `<Resume>` and is conditional by construction — `resume == stop` floors nothing, so EVM1 UID 18 provably does not move |
+| The risks-on workbook does not uniquely prove the missing anchor is the only cause; compensating errors could produce a matching aggregate. Per-task ahead/on-track/behind results should remain required | **Substantially valid** — though the component decomposition (duration-only, risk-only, both) had already tested the halves separately, which it could not have known | **Ran the per-task test it asked for.** Of 92 in-progress activities, **90/92 (97.8 %) match MS Project's own stored finish exactly** (outliers UID 5376 −4 d, UID 5669 +37 d). Aggregate agreement is now backed by per-task agreement |
+| H2 is not fixed by a warning plus a display-only helper; supported late-start input still violates the conversion precondition internally | **Valid** | Plan item 3 strengthened from *warn* to **normalize or reject at import**; item 6 records why the internal and rendering halves are split rather than conflated |
+| The performance phase lacks acceptance gates | **Valid** | Phase 4 exit criteria replaced with numeric gates: 1/2/4/8-project scaling, bounded concurrency with cancellation and backpressure, RSS/latency ceilings, no regression to the persistent-MPXJ and warm-cache wins, concurrency/eviction/wipe tests, and browser heap + **accessibility tree and export completeness** |
+| KS `D ≤ 0.10` is not statistically justified and is probably too permissive for two 2000-iteration samples | **CORRECT — checkable arithmetic.** The α = 0.05 two-sample critical value at n = m = 2000 is `1.36·√(2/2000) = 0.043`, so 0.10 is ~2.3× too loose. It never shipped (the delivered test asserts percentile/σ/mean bands, not KS) but the plan was wrong | Plan corrected; **tolerances must now be floored by the measured seed-to-seed spread**, with component-level gates alongside the aggregate so cancelling errors cannot pass |
+| Historical fixes are not adequately regression-locked | **Unsubstantiated** — no specific gap named, and its own audit ran 14 controls that passed | Added to Phase 7 as a **verification** task (a named owning test per item, or a written gap), not as an assumed defect |
+| Recommendation: preserve pure-logic `compute_cpm`, add a typed progress-aware basis, migrate consumers after per-task parity | **Partly overtaken, partly right.** The shipped change is conditional on stored data with `date_driven` disclosure, following ADR-0034's existing precedent for honouring stored dates — so a separate solver is not required. But it was right that the *contract* had drifted | `cpm.py`'s module docstring now states the engine is **conditionally progress-aware**, names the condition, and records what is still NOT anchored |
+
+### What the per-task check exposed that no audit had measured
+
+Running the parity it demanded surfaced a genuine residual:
+
+```
+in-progress (0<pct<100)  n= 92 : EXACT 90/92 = 97.8%   median  +0 d
+complete   (pct==100)    n=724 : EXACT  2/724 = 0.3%   median -1458 d
+not started (pct==0)     n=907 : EXACT 583/907 = 64.3% median  +0 d
+```
+
+The forward pass still packs **completed** work from `project_start`. It does not move the focus or
+project finish (both driven by remaining work), and consumers needing real per-task dates read the
+stored ones first (`driving_slack.py`) — which is why it went unnoticed. It is now recorded in
+`cpm.py`'s module contract and carried in Phase 7 as the natural completion of ADR-0309.
+
+**Net:** the review did not overturn ADR-0309's result — the SRA numbers stand, and its central
+safety objection describes a plan paragraph that the implementation had already declined to follow for
+exactly the reason it gives. But it caught a real defect in the plan text, a real arithmetic error in a
+proposed tolerance, and a real contract gap in the shipped docstring, and the test it insisted on
+found a residual worth having. Adversarial review of a *plan* earned its keep here.

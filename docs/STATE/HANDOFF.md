@@ -1,10 +1,11 @@
-# Handoff — 2026-07-30 (MS Project already decided where remaining work goes; ADR-0309; v1.0.125)
+# Handoff — 2026-07-30 (MS Project already decided where remaining work goes; ADR-0309; v1.0.126)
 
-> ## STATUS (current) — **the SRA divergence is CLOSED. ADR-0309 on `claude/smat-hardened-review-pwxm33`.**
+> ## STATUS (current) — **the SRA divergence is CLOSED. ADR-0309 MERGED as #483 (`d3e21a8`).**
+> A follow-up round then answered an external review OF THE PLAN (see below) — v**1.0.126**.
 > Against SSI's own committed export (2000 iterations, focus UID 152, the file's own 919 stored
 > Best/Worst ranges and its own 2 stored risks): deterministic percentile **40.70 % → 6.65 %** against
 > SSI's **5.75 %**; σ **125.5 → 65.5** calendar days against SSI's **64.744** (**1.2 %**); mean
-> **+26 → +109 d** against **+111.45**; P10/P50/P80/P90 within **7/1/0/3** days. Version **1.0.125**,
+> **+26 → +109 d** against **+111.45**; P10/P50/P80/P90 within **7/1/0/3** days. Version **1.0.126**,
 > wheel + nine installers regenerated. Highest ADR **ADR-0309**.
 > Evidence: `audit/SRA-ROOTCAUSE-20260730.md` · `audit/EXTERNAL-RECONCILIATION-20260730.md`.
 > Redesign tail **rank 12** (`/workbench`, `/groups`, `/standards`, `/margin`, `/card/{name}`,
@@ -57,6 +58,32 @@
 >   twice, independently). The target is the occurrence-weighted histogram: mean +111.45, σ 64.744.
 >   `test_the_summary_cells_are_not_the_parity_target` pins the trap shut. SSI's `% Cumulative
 >   Probability` column IS weighted; only those two summary cells are not.
+>
+>
+> ## Follow-up round — an external review of the PLAN, and what it changed
+> The operator put the completion plan back to ChatGPT. Two of its objections were correct; full
+> adjudication in `audit/EXTERNAL-RECONCILIATION-20260730.md` §"Round 2".
+> - **It was right that the plan's §3.4c was unsafe.** That paragraph said *"an activity with
+>   remaining work starts no earlier than the data date"* — the **unconditional** floor ADR-0108
+>   records as regressing EVM1 twice. **The shipped code never did that** (it reads stored `<Resume>`
+>   and is conditional), so nothing had to change in the engine — but the plan text did, and would
+>   have misled the next implementer. **If you read only one thing before touching this again: the
+>   anchor is conditional on stored data, never a blanket data-date floor.**
+> - **It was right that KS `D <= 0.10` was not statistically justified** — the α=0.05 two-sample
+>   critical value at n=m=2000 is `1.36·sqrt(2/2000) = 0.043`, so it was ~2.3× too loose. It never
+>   shipped, but the principle did: **every tolerance in the oracle test is now floored by the
+>   MEASURED seed-to-seed spread** (5 seeds × 2000 iterations), and tightened accordingly — det
+>   ±3→±2 pp, σ ±10→±5 %, mean ±10→±6 d, P50/P80/P90 ±10→±5 d. **P10 keeps ±10 deliberately**: seed
+>   sd 4.4 d, worst error 7 d — it is the sparse lower tail and tightening it buys flakiness.
+>   All five seeds pass every gate, so the parity is not one lucky seed.
+> - **Its "compensating errors could fake the aggregate" objection prompted the per-task check it
+>   demanded** — and that check found a residual nobody had measured:
+>   `in-progress 90/92 EXACT (97.8 %)` · `not started 583/907 (64.3 %)` · **`complete 2/724 (0.3 %),
+>   median −1458 d`**. The forward pass still packs COMPLETED work from `project_start`. It does not
+>   move the focus or project finish (both driven by remaining work) and consumers read stored dates
+>   first, which is why it went unseen — now in `cpm.py`'s module contract and Phase 7.
+> - Unsubstantiated: "historical fixes not adequately regression-locked" (no specific gap named) —
+>   added to Phase 7 as a **verification** task, not an assumed defect.
 >
 > ## ⇢ NEXT — the approved plan, in order
 > Phase 2 of the approved plan (each item one ADR + one PR, sequenced so no fix can be credited to
