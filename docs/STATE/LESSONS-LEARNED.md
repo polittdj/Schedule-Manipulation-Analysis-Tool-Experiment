@@ -435,6 +435,53 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-30 — before reverse-engineering a reference tool's judgement, check whether it wrote it down
+
+**The five-week bug.** The SRA diverged from MS Project's SSI add-in badly enough that the
+deterministic date sat at the P40 of our own distribution against SSI's P5.75, with σ 1.94x too wide.
+ADR-0108 had diagnosed the same underlying gap on 2026-06-21, tried twice to fix it, reverted both
+times, and concluded the rule *"cannot be reverse-engineered safely from two data points."* That
+conclusion was correct about the fix that was attempted and wrong about the problem: MS Project stores
+its own answer in MSPDI's `<Resume>`, and the importer read `<Stop>` and threw `<Resume>` away.
+`Resume + remaining = the stored finish`, exactly, on the very task the prior attempts got wrong.
+
+**The generalisable rule.** We framed it as *"what rule does the reference tool use to decide?"* — a
+modelling question — when it was *"where did the reference tool record its decision?"* — a parsing
+question. `_stored_date_bounds` (ADR-0034) had already established exactly this pattern for
+*unstarted* tasks, with a docstring that even says "Started work is untouched". The started-task half
+was simply never built. **When a reference tool's behaviour looks like an un-modellable judgement,
+enumerate its file format's fields before building a model.** A discarded field is cheaper to find
+than a scheduler is to reverse-engineer.
+
+**An unconditional fix to a conditional behaviour will regress the cases the tool deliberately left
+alone.** Both prior attempts floored *every* in-progress task at the data date. EVM2 UID 20 needed
+moving (`Resume` 15 days after `Stop`); EVM1 UID 18 did not (`Resume == Stop`, remaining work
+legitimately behind the data date). One rule, two required outcomes — so any rule without the
+file's own discriminator had to break one of them. **A fix that cannot express "leave this one alone"
+is not yet a fix.**
+
+**My own fix was wrong first, and only measurement caught it.** The initial floor used the *stored*
+remaining duration, which pins an in-progress task's finish regardless of the sampled value and
+destroyed the Monte-Carlo's upside variance: all 2000 iterations finished on or before the
+deterministic date. It improved **3 of the 6** headline metrics and would have read as progress in any
+summary that did not check the maximum. The tell was `max == deterministic` and `det_pctile = 100%` —
+a distribution with no upside is not a risk analysis. **Check the shape, not just the moments.**
+
+**The oracle was in the repository the whole time.** Two external adversarial audits and our own
+evidence file all classified the SRA question as oracle-gated and asked the operator to produce a new
+artifact. The SSI export for the exact reference file was already committed under
+`00_REFERENCE_INTAKE/ssi/`, and the `.mpp` carried SSI's entire SRA *input* set in custom fields.
+Three independent passes recorded "unavailable" without enumerating the reference directory.
+**"Oracle-gated" is a claim about the repository, and it needs an `ls` before it is written down** —
+the cost of not checking was five weeks and three audits.
+
+**Corollary on reference-tool exports: reproduce their summary cells before trusting them.** SSI's
+exported `Mean Date` and `Standard Deviation` are computed over its 245 *distinct* histogram dates with
+the occurrence weights dropped, while its cumulative-probability column is properly weighted. Chasing
+the summary cell would have meant matching a 1.665x inflation, and our working-day σ sat close enough
+to it to look like success. A parity target should be **derived from the reference's rawest available
+data**, and a test should pin the trap shut so nobody "improves parity" toward the artifact later.
+
 ### 2026-07-29 (cont.5) — a guard one code path can walk around is not a guard
 
 **What happened.** ADR-0307 corrected the SSI Best-Case rule and stopped the simulation randomising

@@ -104,12 +104,20 @@ def test_evm1_project_finish_matches_acumen(evm1: Schedule) -> None:
 
 
 def test_known_residuals_are_documented(evm1: Schedule, evm2: Schedule) -> None:
-    """These DIVERGE from Acumen because the CPM does not yet reschedule an in-progress task's
-    remaining duration from the data date (MS Project progress override). Pinned to the tool's
-    CURRENT values so a future fix that closes the gap trips this test and updates it knowingly.
-    Acumen targets: EVM2 finish 2012-10-04, Net Finish Impact -22, SPI(t) 0.56."""
+    """These still DIVERGE from Acumen, but by LESS since ADR-0309 taught the CPM to honor MS
+    Project's stored ``Resume`` (its own progress-override reschedule of an in-progress task's
+    remaining duration). Pinned to the tool's CURRENT values so a future fix that closes more of
+    the gap trips this test and updates it knowingly.
+    Acumen targets: EVM2 finish 2012-10-04, Net Finish Impact -22, SPI(t) 0.56.
+
+    ADR-0309 closed **1 of the 3** working days: EVM2's UID 20 (80% complete, 480 min remaining,
+    stored ``Resume`` 2012-09-13 08:00) now finishes 2012-09-13, matching MS Project's stored
+    finish EXACTLY (it was 14 calendar days early), and the project finish moved 2012-10-01 →
+    2012-10-02. The remaining 2 working days are a DIFFERENT defect, in the unstarted successor
+    chain (UIDs 23/25/26/28/29/30 each still start 1-5 days before their stored dates), not the
+    progress override — so they are recorded here rather than folded into ADR-0309's claim."""
     c2 = compute_cpm(evm2)
     fin2 = offset_to_datetime(evm2.project_start, c2.project_finish, evm2.calendar).date()
-    assert fin2 == dt.date(2012, 10, 1)  # RESIDUAL: Acumen 2012-10-04 (3 working days short)
+    assert fin2 == dt.date(2012, 10, 2)  # RESIDUAL: Acumen 2012-10-04 (2 working days short)
     nfi = compute_net_finish_impact(evm2, evm1)
-    assert nfi.value == -19.0  # RESIDUAL: Acumen -22
+    assert nfi.value == -20.0  # RESIDUAL: Acumen -22

@@ -443,6 +443,53 @@ def _stored_date_bounds(
     return pin, floor
 
 
+def _resume_bounds(
+    schedule: Schedule, tasks: list[Task], duration_overrides: Mapping[int, int] | None
+) -> dict[int, int]:
+    """Early-FINISH floors for in-progress work MS Project has already rescheduled (ADR-0309).
+
+    The sibling of :func:`_stored_date_bounds`, which honors stored dates on *unstarted* tasks.
+    This honors them on *started* ones: MSPDI stores ``<Stop>`` (progress recorded through) and
+    ``<Resume>`` (where the REMAINING duration restarts). When ``resume > stop`` MS Project has
+    itself moved the remaining work off the actual work — the "progress override" reschedule — and
+    the remaining duration runs from ``resume``, so the finish is
+    ``offset(resume) + remaining_duration``. When ``resume == stop`` (the common case) remaining
+    work is contiguous and nothing is floored, so a schedule with no rescheduled work is
+    byte-identical to the pre-ADR-0309 engine.
+
+    This is why ADR-0108's two reverted attempts failed: they floored EVERY in-progress task's
+    remaining work at the data date, which over-corrects the tasks MS Project deliberately left
+    alone (EVM1 UID 18 — 25% complete, ``resume == stop``, remaining work legitimately in the past)
+    and so moved a finish that was already correct. The ahead/behind judgement ADR-0108 concluded
+    "cannot be reverse-engineered safely from two data points" never had to be: MS Project records
+    its own answer, and reading it is a stored-date read, not an inference (Law 2).
+
+    A FLOOR, not a pin: logic may still push the finish later than ``resume`` (a predecessor that
+    finishes after it), and the later of the two wins.
+
+    The remaining term follows ``duration_overrides`` when one is supplied for the task, because
+    **every** override producer in the codebase builds an incomplete task's override from its
+    REMAINING duration (``sra._ml_minutes``, ``sra._three_point``, or 0 for a zeroed margin task) —
+    so an override on an in-progress task *is* a remaining duration. Using the stored remaining
+    instead would pin the finish at ``resume + stored_remaining`` regardless of the sampled value,
+    which silently destroys the Monte-Carlo's upside variance on exactly the in-progress activities
+    the SRA cares about (measured: it drove every one of 2000 iterations to finish on or before the
+    deterministic date). The floor must breathe with the sample.
+    """
+    floor: dict[int, int] = {}
+    ov = duration_overrides or {}
+    for task in tasks:
+        if task.resume is None or task.stop is None or task.resume <= task.stop:
+            continue
+        uid = task.unique_id
+        remaining = ov.get(uid, task.remaining_duration_minutes)
+        if remaining is None or remaining <= 0:
+            continue  # nothing left to reschedule — an actual-only record, or zeroed margin
+        off = max(datetime_to_offset(schedule.project_start, task.resume, schedule.calendar), 0)
+        floor[uid] = off + remaining
+    return floor
+
+
 def compute_cpm(
     schedule: Schedule,
     *,
@@ -503,6 +550,7 @@ def compute_cpm(
     # stored starts honored for unstarted manual / logic-unbound tasks — ADR-0034) ----
     has_preds = frozenset(tid for tid in task_ids if preds[tid])
     stored_pin, stored_floor = _stored_date_bounds(schedule, tasks, has_preds)
+    resume_ef_floor = _resume_bounds(schedule, tasks, duration_overrides)
     elapsed_ids = {t.unique_id for t in tasks if t.duration_is_elapsed and t.duration_minutes > 0}
     ps, cal = schedule.project_start, schedule.calendar
     early_start: dict[int, int] = {}
@@ -544,9 +592,14 @@ def compute_cpm(
         else:
             es = logic_es
         early_start[tid] = es
-        early_finish[tid] = (
-            _elapsed_finish_offset(ps, cal, es, dur_s) if tid in elapsed_ids else es + dur_s
-        )
+        ef = _elapsed_finish_offset(ps, cal, es, dur_s) if tid in elapsed_ids else es + dur_s
+        # in-progress work MS Project itself rescheduled: its remaining duration runs from the
+        # stored Resume, so the finish floors there (ADR-0309). Logic may still push it later.
+        resume_ef = resume_ef_floor.get(tid)
+        if resume_ef is not None and resume_ef > ef:
+            ef = resume_ef
+            date_driven.append(tid)
+        early_finish[tid] = ef
 
     network_finish = max(early_finish.values(), default=0)
     backward_target = (

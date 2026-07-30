@@ -52,6 +52,7 @@ _EXPECTED_FIELDS: dict[type[pydantic.BaseModel], set[str]] = {
         "baseline_start",
         "baseline_finish",
         "stop",
+        "resume",
         "cost",
         "actual_cost",
         "budgeted_cost",

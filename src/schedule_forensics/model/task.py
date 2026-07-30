@@ -126,6 +126,13 @@ class Task(StrictFrozenModel):
     #: It is the stored input MS Project judges its computed *Status* column from (Complete /
     #: On Schedule / Late / Future Task, against the status date); ``None`` = no progress yet.
     stop: dt.datetime | None = None
+    #: MS Project "Resume" (MSPDI ``<Resume>``): the date the task's REMAINING work restarts.
+    #: ``resume == stop`` (the common case) means remaining work continues contiguously with the
+    #: actual work. ``resume > stop`` means MS Project has **already rescheduled** the remaining
+    #: duration away from the actual work — its own recorded progress-override decision, which the
+    #: CPM honors rather than re-deriving (ADR-0309; the ahead/behind judgement ADR-0108 found
+    #: could not be safely reverse-engineered is simply stored here). ``None`` = no progress yet.
+    resume: dt.datetime | None = None
 
     # --- cost / earned value ---
     # scheduled/actual cost may legitimately be negative in real exports (credits,

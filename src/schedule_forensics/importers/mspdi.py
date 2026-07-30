@@ -616,6 +616,7 @@ def _parse_task(
             baseline_start=bl_start,
             baseline_finish=bl_finish,
             stop=parse_datetime(_text(task_el, "Stop")),
+            resume=parse_datetime(_text(task_el, "Resume")),
             cost=parse_float(_text(task_el, "Cost")),
             actual_cost=parse_float(_text(task_el, "ActualCost")),
             budgeted_cost=bl_cost,

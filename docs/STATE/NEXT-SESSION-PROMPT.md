@@ -13,8 +13,12 @@ schedule-analysis tool; **POLARIS** in the UI). **Read `docs/STATE/HANDOFF.md` F
 section is the current state and the NEXT queue, and the SessionStart hook auto-injects it, so it is
 already in front of you.
 
-As of this file's last refresh: `main` green at **v1.0.121**, highest ADR **0305**, nothing in
-flight (round 11 merged as #476, its verification follow-up as #477). Four CI checks must be green:
+As of this file's last refresh: **v1.0.125**, highest ADR **0309** — the SRA divergence is CLOSED
+(ADR-0309; σ within 1.2 % and the deterministic percentile within 0.9 pp of SSI's own committed
+export). In flight: `claude/smat-hardened-review-pwxm33`. The commissioned four-part audit job is
+**done** (`audit/SRA-ROOTCAUSE-20260730.md`, `audit/EXTERNAL-RECONCILIATION-20260730.md`); the
+approved plan's Phase 2 is next, and the UI queue (rank 12) is still untouched after three
+out-of-band Law-2 rounds. Four CI checks must be green:
 `test (3.11)`, `test (3.13)`, **`browser (measured-box proof)`**, and the `check` aggregate.
 **Confirm `origin/main` still matches that** before starting.
 
