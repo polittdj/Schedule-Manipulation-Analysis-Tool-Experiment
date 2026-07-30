@@ -1,76 +1,56 @@
-# Handoff — 2026-07-30 (a number the operator never typed; ADR-0313; v1.0.131)
+# Handoff — 2026-07-30 (#487 merged and verified; the three gating decisions are briefed; ADR-0313; v1.0.131)
 
-> ## STATUS (current) — **PHASE 2 IS COMPLETE.** Item 5 (V1/V2 / external H3) shipped as ADR-0313; #486 (ADR-0311 rank 12 + ADR-0312 import anchor) MERGED as `dcb891e`.
-> ADR-0313 closes the **last Phase 2 item**. The SRA magnitude parser is now **tri-state**
-> (absent / valid / invalid-with-a-reason), an unreadable entry is **refused and reported** instead
-> of becoming a locked zero, and the server + `sra_risk.js` are pinned to **one shared grammar** by a
-> case table both read. Version **1.0.131**, wheel + nine installers regenerated. Highest ADR
-> **ADR-0313**. Evidence: `audit/SRA-ROOTCAUSE-20260730.md` · `audit/EXTERNAL-RECONCILIATION-20260730.md`.
+> ## STATUS (current) — **#487 MERGED as `c937ad9` and verified end-to-end. No code changed this session; the three operator decisions are now BRIEFED (`docs/STATE/DECISION-BRIEFS-20260730.md`) and awaiting answers.**
+> Version stays **1.0.131**, highest ADR **ADR-0313**, `main` at **`c937ad9`**. Post-merge CI on
+> `main@c937ad9` is fully green (CI run 30553471610: `test (3.11)` incl. coverage + parity gates,
+> `test (3.13)`, `browser (measured-box proof)`, `check`; installer-smoke run 30553471322: `linux`,
+> `windows`).
 >
-> ## The defect, measured (`avg_rem = 10.0`)
-> | input | `(days, pct, dl, pl)` | |
-> |---|---|---|
-> | *absent* days + valid `50` | `(5.0, 50.0, False, True)` | correct — 50 % of 10 d **derives** 5 d |
-> | **garbage** days + valid `50` | **`(0.0, 50.0, True, True)`** | SSI sees **0 d**, legacy sees **50 %** |
-> | valid `7` + **garbage** pct | **`(7.0, 0.0, True, True)`** | mirror image |
-> | garbage + garbage | `(0.0, 0.0, True, True)` | both zeroed |
+> ## The owed full-suite figure — READ AND CLOSED
+> The previous handoff owed a full-suite figure from a run actually read. Done, twice over, both
+> posted on #487:
+> - The previous session's own pre-bump run: `4 failed, 3062 passed, 24 skipped in 799.10s` — all
+>   four failures the ADR-0148 lockstep gate firing on the stale embedded wheel from before the
+>   1.0.131 bump; re-run green as a 60-test subset at 1.0.131 (posted 12:49Z, before merge).
+> - **The committed tree, one run, no subset carve-out:** `python -m pytest -q` on `main@c937ad9` →
+>   **`3067 passed, 24 skipped, 1 warning in 853.99s`**, exit **0** read from the file the command
+>   itself wrote (`; echo $? > file`), **zero** `FAILED`/`ERROR` lines as the independent second
+>   check. The 24 skips are the playwright-gated ones (runtime stays stdlib-only).
 >
-> Rows 1 vs 2 are the point: an invalid entry did not merely "read as zero", it **suppressed the
-> derivation that is the function's whole purpose**, leaving one risk row whose two magnitudes
-> describe **two different events** — with a 303 redirect and no message. ChatGPT's H3 "additive vs
-> legacy disagree" is **TRUE but only for the MIXED input**; garbage-in-both zeroes both, so the
-> general phrasing overstates it. **Gemini's "missing defaults" stays a harness error** (5 required
-> positional args, both call sites pass 5) — do not act on it.
+> ## ⇢ NEXT — the three decisions are briefed; the queue is waiting on answers
+> **`docs/STATE/DECISION-BRIEFS-20260730.md`** carries, for each decision, the verified state,
+> options with tradeoffs, a recommendation, and the sub-questions to confirm. Summary:
+> **(A) AXIS-TITLES batch 3b scope** — recommended: `margin_dashboard.js` first (smallest slice
+> that unblocks ADR-0311's `/margin` toolbar), rest as 3c, with the Cartesian-only triage recorded
+> in the batch ADR. **(B) `NO_SVG_AXES` DOM caption mechanism** — recommended: native `<caption>`
+> on data tables + one label slot in the shared SFGantt timescale header (covers 4 modules at a
+> stroke), with an ADR recording "one convention per medium" and a new ledger detector.
+> **(C) `data-noprint`** — recommended: the one-line `[data-noprint]{display:none!important}` in
+> base.css's A5 print block, as its own small PR with print-preview verification.
 >
-> ## The finding no audit had: the two implementations ALREADY disagreed
-> `sra_risk.js`'s header claims *"the server mirrors this exact math."* **False.** JS `parseFloat`
-> takes a numeric PREFIX and Python `float()` accepts PEP-515 underscores, so:
-> `"1.2.3"` → **1.2** client / `ValueError` server · `"5 days"` → **5** / reject ·
-> `"12,5"` → **12** / reject · `"1_000"` → 1 / **1000.0**. One grammar
-> (`^[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?$`, stricter than BOTH) now governs both sides, pinned by
-> **`tests/web/js/magnitude_cases.json`** — read by the Python test AND the node harness, so adding a
-> case exercises both. **Proved able to fail:** reverting `num()` to `parseFloat` makes the harness
-> exit **1** with 16 failures; restoring it exits **0**.
+> **Four research findings that change the picture** (each verified against the file):
+> 1. **ADR-0076 already records the print mechanism** — "a `@media print` stylesheet (base.css)",
+>    pinned by `tests/web/test_accessibility.py:102-109` asserting the rules live IN base.css. A
+>    separate `print.css` would contradict a recorded decision AND an existing test.
+> 2. **DESIGN-SYSTEM §3:78 "Tables get `⤓ EXCEL` only"** shrinks what rank 12 owes on
+>    `/workbench`: nearly all 13 `NO_SVG_AXES` entries render tables/grids, and `/workbench`
+>    already ships its Excel exports (`app.py:13259-13260`, `workbench.js:179`) — the owed work is
+>    ▦ DATA / ⛶ ENLARGE / read-me line, not the full triple.
+> 3. **ADR-0302's `y2Label` prediction does not survive the code**: `sra.js`'s CDF is single-axis
+>    (`sra.js:50-57`) and `margin_dashboard`'s burn-down is one scale carrying two named units
+>    (`:157/:162`) — no second scale exists in either.
+> 4. **`volatility.js` is byte-frozen WHOLE** (`PAGE_SCRIPTS`,
+>    `tests/web/test_r11_panel_contract.py:436-444`), so batch 3b re-baselines more than the
+>    16-site `axisTitles` census; line-neutral editing cannot work when ADDING call sites — the
+>    re-baseline must be deliberate and named.
 >
-> ## Also shipped
-> - **A length bound (32 chars), not a magnitude ceiling** — makes the overflow class unreachable
->   (`float("1"*400)` is `inf`) without deciding how many days is too many. Deliberately not decided.
-> - **An invalid field is never locked** — the client-supplied `*_locked` flag must not pin a value
->   the server refused to read.
-> - **The Excel importer keeps its own promise** (*"a missing figure is skipped and reported, never
->   guessed"* — true for EMPTY, false for MALFORMED). Malformed rows are counted **separately** from
->   `skipped`; "unreadable" and "incomplete" send the operator to different fixes.
-> - **A failure no longer renders in the success style.** Every `sra_import_msg` went out as
->   `notice ok` + `role=status`, including "not imported". `sra_import_is_error` now selects
->   `notice warn` + `role=alert` (announced immediately, not politely).
-> - **`/sra/ssi/load` is bounded and reports** — it did an unbounded `setup.file.read()` then
->   redirected in TOTAL SILENCE on bad JSON. Own cap `_MAX_SETUP_BYTES` = 8 MB, not the 500 MB `.mpp`
->   bound its two siblings use, which here would be a cap in name only.
->
-> ## Formula injection — the plan named the WRONG writer
-> - **`reports/xlsx.py` is NOT a vector.** Every string is `t="inlineStr"` inside `<is><t>` and no
->   `<f>` element is ever emitted (verified by unzipping a rendered workbook), so Excel shows `=1+1`
->   as text. A test now pins the **absence** of a guard so nobody cargo-cults one on and prefixes a
->   visible apostrophe onto legitimate exhibit text.
-> - **`exhibits/csvout.py` IS a vector** and now defuses `= + - @ \t \r` — on **text only**, so a real
->   `-5` float stays the number −5. These CSVs carry **task names straight from the schedule file**:
->   content the tool did not author and, in a delay claim, content an opposing party may have written.
->
-> ## ⇢ NEXT — Phase 2 is done, so the UI queue is finally unblocked
-> **⇢ TAKE RANK 12's REMAINDER / RANK 13 NEXT**, subject to the three operator decisions below. The
-> UI queue has now been displaced by **seven** consecutive out-of-band correctness rounds
-> (ADR-0306→0313). Every deferral was individually justified; the pattern is not.
->
-> ## ⇢ BLOCKED on operator decisions — do NOT invent answers
-> 1. **AXIS-TITLES `PENDING`** — `/margin`'s toolbar needs `margin_dashboard.js` captioned (batch 3b).
-> 2. **`NO_SVG_AXES` DOM caption mechanism** — `/workbench`'s `workbench.js`; ADR-0298 records it as
->    *"a separate design decision, deliberately not invented here."*
-> 3. **`data-noprint`** — still **zero CSS rules anywhere**, across ten already-merged contract pages.
->
-> Everything else in rank 12 is done (ADR-0311 + #486). Then rank 13 (vendored typography) and 14.
-> Behind the UI queue: **Phase 3** (CC-01, 74 call sites, Fable-5-Max deep dive; V3 elapsed literals —
-> a conformance fix per ADR-0310 but still saved-filter-population-moving) and **Phase 4** (P1–P6,
-> measured but unremediated).
+> **Not gated on the decisions** (available to any session meanwhile): OR-01/OR-02/OR-03 in
+> `docs/STATE/OPERATOR-REQUESTS.md` (OR-02 — the DCMA-11 call-out that covers the left nav and
+> will not dismiss — is a **bug**); `/analysis/{name}` panel 5's two ⛶ (one inert); `/evolution`'s
+> target-blind `⬇ Excel / ⬇ Word` bar under a banner promising otherwise; the `/resources`
+> X-caption collision; the `/performance` first-paint race. Then rank 13 (vendored typography) and
+> 14 behind rank 12. Behind the UI queue: **Phase 3** (CC-01, 74 call sites, Fable-5-Max deep
+> dive; V3 elapsed literals) and **Phase 4** (P1–P6, measured but unremediated).
 >
 > ## Still carried (unchanged identifiers, nothing lost)
 > **CC-01** (H2a) — import half closed by ADR-0312, **rendering half open**, 74 call sites; its two
@@ -129,8 +109,13 @@
 > writable `TMPDIR` (~9 s); **2000 SRA iterations ≈ 90 s**. Full `pytest -q` ≈ 14 m;
 > `pytest -m parity` ≈ 40 s — run parity first. Regenerate the wheel with `--outdir dist/wheel` (the
 > default silently embeds a STALE wheel) and only ONCE after all code lands.
+> **New this session:** a remote-session resume KILLS in-flight background work — the Workflow
+> journal + `resumeFromRunId` recovered 5 of 6 agents' results without re-running them; and a
+> handoff written before a round's last actions records **intent, not outcome** — this handoff's
+> "drive #487 to green" and "the figure is owed" were BOTH already done (merged 14:47Z; figure
+> posted 12:49Z) when the next session started. Check the live system before redoing "owed" items.
 >
-> **Standing rule, from this session's own failures:** do not put a test result in prose unless the
+> **Standing rule, from this project's own failures:** do not put a test result in prose unless the
 > number appeared in output you read that turn. **A launched run is not a result, and a piped exit
 > code is not the command's.**
 

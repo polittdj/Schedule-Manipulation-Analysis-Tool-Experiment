@@ -435,6 +435,31 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-30 (cont.5) — a "blocked" decision may already be half-answered by an old ADR
+
+- Researching the three operator decisions gating rank 12, two of the three turned out to have
+  **recorded partial answers nobody had surfaced**: `data-noprint`'s "which CSS mechanism" is
+  half-settled by **ADR-0076** (2026-06-18: the print mechanism IS base.css's `@media print`
+  block, pinned by `test_accessibility.py:102-109`), which kills the dedicated-print.css option;
+  and the `/workbench` toolbar debt is shrunk by **DESIGN-SYSTEM §3:78 "Tables get `⤓ EXCEL`
+  only"** — the full ▦/⤓/⛶ triple was never owed on a data table. **Lesson: before escalating a
+  "blocked" decision to the operator, sweep the ADR index and the design system for a prior
+  recorded decision** — the escalation may be smaller than the queue says, and an option you'd
+  present may already be foreclosed.
+- The reverse lesson from the same sweep: a recorded *prediction* is not a recorded *decision*.
+  ADR-0302's "sra.js and margin_dashboard.js can use `y2Label`" does not survive contact with the
+  rendering code (single-axis CDF; one scale, two named units) — quote the code, not the ADR, when
+  the two disagree (ADR-0301's own rule, applied to an ADR).
+- Handoff staleness, measured: this session's handoff said "#487 needs driving to green" and "the
+  figure is OWED" — both were already done (merged 14:47Z, figure posted 12:49Z) before the
+  session started. **A handoff written before the round's last actions records intent, not
+  outcome; verify PR/comment state against the live system before redoing "owed" items.**
+- Harness: a remote-session resume KILLS in-flight background work (a 6-agent research workflow
+  died with one verifier mid-flight). The workflow journal + `resumeFromRunId` recovered the five
+  finished agents' results without re-running them — background work should always be resumable
+  from its journal, and the journal is also where you check what a "completed" agent actually
+  returned.
+
 ### 2026-07-30 (cont.4) — a piped exit code is not the command's exit code
 
 **The failure, twice in one day, same shape.** I ran `node harness.mjs 2>&1 | tail -20; echo "exit=$?"`,

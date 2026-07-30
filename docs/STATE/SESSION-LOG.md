@@ -9419,3 +9419,41 @@ fields and both locks. Separately, the first twelve integration tests failed for
 not a product one: `TestClient` follows the 303 by default and that render **consumes** the one-shot
 banner, so `follow_redirects=False` was the fix — checking before "fixing the app" mattered, because
 the instinct on twelve red tests is to change the code under test.
+
+## 2026-07-30 (cont.) — #487 merged and verified end-to-end; the three gating decisions briefed, not decided (no code change)
+
+**Session start found the previous handoff's items 1–2 already done** — a handoff written before a
+round's last actions records intent, not outcome. #487 was MERGED as `c937ad9` at 14:47Z (all six
+checks green on head `b6114f7`), and the owed figure had been posted at 12:49Z (`4 failed, 3062
+passed, 24 skipped in 799.10s`, the four failures the pre-bump stale-wheel lockstep gate, re-run
+green as a 60-test subset at 1.0.131). What no run had ever read was a full-suite figure from the
+COMMITTED tree in one pass. Done this session, on `main@c937ad9`:
+**`3067 passed, 24 skipped, 1 warning in 853.99s (0:14:13)`**, exit **0** read from the file the
+command itself wrote, **zero** `FAILED`/`ERROR` lines as the independent grep check — all four
+previously-failed installer/lockstep tests inside the same run. Posted on #487. Post-merge CI on
+`main@c937ad9` verified green: CI run 30553471610 (`test (3.11)` with coverage + parity gates,
+`test (3.13)`, `browser (measured-box proof)`, `check`) + installer-smoke run 30553471322
+(`linux`, `windows`). Local branch restarted from `origin/main` with `--prune`.
+
+**The three operator decisions (rank 12's gate) were researched, cross-checked, and briefed** —
+three parallel researchers + three adversarial verifiers (one re-run after a container recycle
+killed it mid-flight; the workflow journal + `resumeFromRunId` recovered the five finished agents'
+results without re-running them), then lead re-verification of every load-bearing claim against
+the files (ADR-0240). Product: **`docs/STATE/DECISION-BRIEFS-20260730.md`** — per decision, the
+verified state, 3–4 options with tradeoffs, a recommendation, and the sub-questions to confirm.
+Four findings that change the picture, each verified first-hand: (1) **ADR-0076 already records
+the print mechanism** ("a `@media print` stylesheet (base.css)") and
+`tests/web/test_accessibility.py:102-109` pins the rules IN base.css — so the dedicated-print.css
+option contradicts a recorded decision AND an existing test; (2) **DESIGN-SYSTEM §3:78 "Tables get
+`⤓ EXCEL` only"** shrinks the `/workbench` toolbar debt (its Excel exports already exist —
+`app.py:13259-13260`, `workbench.js:179`); (3) **ADR-0302's `y2Label` prediction does not survive
+the code** (sra CDF single-axis, `sra.js:50-57`; margin burn-down one scale / two named units,
+`:157/:162`); (4) **`volatility.js` is byte-frozen WHOLE** (`PAGE_SCRIPTS`,
+`test_r11_panel_contract.py:436-444`), so batch 3b re-baselines more than the 16-site census.
+
+The decisions were put to the operator (question tool); **no answer arrived, so nothing was
+invented and no gated work was started** — per the handoff's own "do NOT invent answers" rule.
+This round is docs-only: DECISION-BRIEFS created, HANDOFF replaced (prior section moved verbatim
+to the top of HANDOFF-ARCHIVE), this entry, a LESSONS entry, NEXT-SESSION-PROMPT refreshed.
+Version stays **1.0.131**; highest ADR stays **ADR-0313**; no wheel/installer rebuild (no packaged
+file touched).

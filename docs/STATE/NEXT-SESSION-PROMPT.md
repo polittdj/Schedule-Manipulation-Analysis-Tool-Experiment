@@ -13,35 +13,29 @@ schedule-analysis tool; **POLARIS** in the UI). **Read `docs/STATE/HANDOFF.md` F
 section is the current state and the NEXT queue, and the SessionStart hook auto-injects it, so it is
 already in front of you.
 
-As of this file's last refresh: **v1.0.131**, highest ADR **0313**. **PHASE 2 IS COMPLETE.**
-The SRA divergence is CLOSED (ADR-0309; σ within 1.2 % and the deterministic percentile within
-0.9 pp of SSI's own committed export), the two time axes are written down (ADR-0310), rank 12's
+As of this file's last refresh: **v1.0.131**, highest ADR **0313**. **PHASE 2 IS COMPLETE and
+#487 IS MERGED** — `main` is at **`c937ad9`** with post-merge CI fully green and the full suite
+read green on the committed tree (`3067 passed, 24 skipped`, exit 0, figure posted on #487). The
+SRA divergence is CLOSED (ADR-0309), the two time axes are written down (ADR-0310), rank 12's
 first slices shipped (ADR-0311 + #486), the import anchor is enforced (ADR-0312), and the SRA
-magnitude parser is tri-state (ADR-0313). The commissioned four-part audit job is **done**
-(`audit/SRA-ROOTCAUSE-20260730.md`, `audit/EXTERNAL-RECONCILIATION-20260730.md`).
-`main` is at **`dcb891e`** (#486 merged). **Six** CI checks must be green: `linux`, `windows`,
+magnitude parser is tri-state (ADR-0313). **Six** CI checks must be green: `linux`, `windows`,
 `test (3.11)`, `test (3.13)`, **`browser (measured-box proof)`**, and the `check` aggregate.
 **Confirm `origin/main` still matches that** before starting.
 
-### ⇢ DO THESE THREE THINGS FIRST
+### ⇢ DO THESE THINGS FIRST
 
-1. **PR #487 is open (draft) and needs driving to green / merging.** Branch
-   `claude/smat-hardened-review-pwxm33` at **`ade0f9c`**, base `dcb891e`, ADR-0313, v1.0.131. CI was
-   in progress when the previous session ended. Check `pull_request_read` → `get_check_runs` and
-   `get_review_comments`; if red, diagnose and push a fix (drive-to-green — it is our own PR).
-2. **One verification figure is OWED and unread.** #487's body says the full local suite was still
-   running and *"its figure is deliberately not claimed here — I'll report it once read."* Honour
-   that: re-run `python -m pytest -q > out 2>&1; echo $?` and comment the figure on #487. **Caveat to
-   state as a separate fact, not collapsed:** the previous session's run began BEFORE the 1.0.131
-   bump and the wheel/installer regeneration, so `test_embedded_wheel_is_in_lockstep_with_the_source_tree`
-   and `test_handoff_top_section_pins_the_current_pyproject_version` may appear failed in it while
-   passing on the committed tree (both were re-run afterwards: installer + packaging + state docs
-   **60 passed** at 1.0.131). Do **not** quote a remembered number — read output from a run you did.
-3. **Three operator decisions gate rank 12's remainder. Do NOT invent answers — ASK.** (a)
-   AXIS-TITLES `PENDING`: `/margin`'s toolbar needs `margin_dashboard.js` captioned (batch 3b);
-   (b) the `NO_SVG_AXES` DOM caption mechanism for `/workbench`'s `workbench.js`, which ADR-0298
-   records as *"a separate design decision, deliberately not invented here"*; (c) `data-noprint`'s
-   **zero CSS rules anywhere** across ten already-merged contract pages.
+1. **Get the operator's answers to the three briefed decisions.** They gate rank 12's remainder
+   and are fully briefed in **`docs/STATE/DECISION-BRIEFS-20260730.md`** (verified state, options,
+   recommendations, sub-questions — ask from the briefs, do not re-research): **(A)** AXIS-TITLES
+   batch 3b scope (recommended: `margin_dashboard.js` first); **(B)** the `NO_SVG_AXES` DOM
+   caption mechanism (recommended: native `<caption>` + an SFGantt timescale label slot);
+   **(C)** `data-noprint` (recommended: the one-line rule in base.css's A5 print block — note
+   ADR-0076 already records base.css as THE print home, so a separate print.css is foreclosed).
+   Do NOT invent answers; if no answer arrives, work the un-gated queue below.
+2. **Un-gated work available meanwhile:** OR-02 (the DCMA-11 call-out that covers the left nav
+   and will not dismiss — **a bug**, `docs/STATE/OPERATOR-REQUESTS.md`); OR-01, OR-03;
+   `/analysis/{name}` panel 5's two ⛶ (one inert); `/evolution`'s target-blind `⬇ Excel / ⬇ Word`
+   bar; the `/resources` X-caption collision; the `/performance` first-paint race.
 
 **Standing rules (CLAUDE.md — read them, they are binding):**
 (1) **Data sovereignty (CUI)** — no schedule content or derived metric leaves the machine; AI
