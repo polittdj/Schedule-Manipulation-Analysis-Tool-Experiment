@@ -1,56 +1,47 @@
-# Handoff — 2026-07-30 (#487 merged and verified; the three gating decisions are briefed; ADR-0313; v1.0.131)
+# Handoff — 2026-07-30 (OR-02 closed under audit: the callout dismisses and never covers the nav; ADR-0314; v1.0.132)
 
-> ## STATUS (current) — **#487 MERGED as `c937ad9` and verified end-to-end. No code changed this session; the three operator decisions are now BRIEFED (`docs/STATE/DECISION-BRIEFS-20260730.md`) and awaiting answers.**
-> Version stays **1.0.131**, highest ADR **ADR-0313**, `main` at **`c937ad9`**. Post-merge CI on
-> `main@c937ad9` is fully green (CI run 30553471610: `test (3.11)` incl. coverage + parity gates,
-> `test (3.13)`, `browser (measured-box proof)`, `check`; installer-smoke run 30553471322: `linux`,
-> `windows`).
+> ## STATUS (current) — **OR-02 (the DCMA-11 callout bug) is FIXED, Ultracode-audited, and pinned by measured-box tests. Version 1.0.132, highest ADR ADR-0314, wheel + nine installers regenerated.**
+> The operator's one sentence hid THREE defects, all measured before fixing (`app.js`, the DCMA
+> overview float tip): a FOCUS-shown tip had **no reachable dismissal** (Escape/pointer-away/
+> alt-tab all stuck); the nav clamp tested `position === "fixed"` only, so **daylight's sticky
+> bar was never avoided** (hit-checked overlap at three sizes); and — the audit's find — the tips
+> are **BORN visible** (no inline `display:none` at creation while `.dcma-tip-float` CSS computes
+> visible), so every render stacked all 16 over the nav at (0,0), masked only on loads whose
+> Gantt auto-scroll fired the scroll-hide. That last one is almost certainly the operator's
+> literal *"it returns after I switch pages."*
 >
-> ## The owed full-suite figure — READ AND CLOSED
-> The previous handoff owed a full-suite figure from a run actually read. Done, twice over, both
-> posted on #487:
-> - The previous session's own pre-bump run: `4 failed, 3062 passed, 24 skipped in 799.10s` — all
->   four failures the ADR-0148 lockstep gate firing on the stale embedded wheel from before the
->   1.0.131 bump; re-run green as a 60-test subset at 1.0.131 (posted 12:49Z, before merge).
-> - **The committed tree, one run, no subset carve-out:** `python -m pytest -q` on `main@c937ad9` →
->   **`3067 passed, 24 skipped, 1 warning in 853.99s`**, exit **0** read from the file the command
->   itself wrote (`; echo $? > file`), **zero** `FAILED`/`ERROR` lines as the independent second
->   check. The 24 skips are the playwright-gated ones (runtime stays stdlib-only).
+> ## The audit earned its keep — two blockers my own probes could not see
+> Ultracode (ADR-0240): 4 dimension reviewers + adversarial verifiers, 12 findings, every one
+> lead-re-verified executably. The blockers: (1) the first fix compared the header box against
+> `window.innerWidth`, which **includes a classic scrollbar** — a full-width bar then classifies
+> as a RAIL and the tip lands off-screen at a **9px sliver**. Headless Chromium HIDES scrollbars
+> (all my probes were green); re-measured with `--hide-scrollbars` disabled: real. The shipped
+> classifier uses `document.documentElement.clientWidth`. (2) the born-visible stack above.
+> Also folded in: overflow **hidden** not auto (a scrollbar on a `pointer-events:none` element is
+> a control no input can operate — ADR-0304's own law), an 8px pointermove travel threshold (a
+> desk bump must not kill a keyboard-opened tip — ADR-0286's posture), `mark()` hides a different
+> previously tracked tip, tip ids + `aria-describedby` (the overview's `role=tooltip` was
+> orphaned), and three test-hardening findings.
 >
-> ## ⇢ NEXT — the three decisions are briefed; the queue is waiting on answers
-> **`docs/STATE/DECISION-BRIEFS-20260730.md`** carries, for each decision, the verified state,
-> options with tradeoffs, a recommendation, and the sub-questions to confirm. Summary:
-> **(A) AXIS-TITLES batch 3b scope** — recommended: `margin_dashboard.js` first (smallest slice
-> that unblocks ADR-0311's `/margin` toolbar), rest as 3c, with the Cartesian-only triage recorded
-> in the batch ADR. **(B) `NO_SVG_AXES` DOM caption mechanism** — recommended: native `<caption>`
-> on data tables + one label slot in the shared SFGantt timescale header (covers 4 modules at a
-> stroke), with an ADR recording "one convention per medium" and a new ledger detector.
-> **(C) `data-noprint`** — recommended: the one-line `[data-noprint]{display:none!important}` in
-> base.css's A5 print block, as its own small PR with print-preview verification.
+> ## Verification (all read from runs this session)
+> `tests/web/test_float_tip_dismiss.py`: **19 passed** (dismissal by Escape/pointer/blur on the
+> operator's own DCMA-11 row · tips born hidden via an INSERTION-TIME MutationObserver — post-load
+> inspection cannot tell "born hidden" from "scroll-masked" · a 4-theme × 4-viewport measured-box
+> sweep incl. the 600×700 burger header, counting only cells that actually measured a tip).
+> **Proved able to fail:** on unfixed code the dismissal test, born-hidden test, and daylight cell
+> fail (3 failed, 8.31s, read); fixed code 19 passed in 131s. All 136 existing app.js-content
+> tests green. Local vendored-chromium posture (CI's browser job deliberately runs only the r11
+> contract file). Full-suite figure for THIS tree: owed by the next gate run — do not quote one.
 >
-> **Four research findings that change the picture** (each verified against the file):
-> 1. **ADR-0076 already records the print mechanism** — "a `@media print` stylesheet (base.css)",
->    pinned by `tests/web/test_accessibility.py:102-109` asserting the rules live IN base.css. A
->    separate `print.css` would contradict a recorded decision AND an existing test.
-> 2. **DESIGN-SYSTEM §3:78 "Tables get `⤓ EXCEL` only"** shrinks what rank 12 owes on
->    `/workbench`: nearly all 13 `NO_SVG_AXES` entries render tables/grids, and `/workbench`
->    already ships its Excel exports (`app.py:13259-13260`, `workbench.js:179`) — the owed work is
->    ▦ DATA / ⛶ ENLARGE / read-me line, not the full triple.
-> 3. **ADR-0302's `y2Label` prediction does not survive the code**: `sra.js`'s CDF is single-axis
->    (`sra.js:50-57`) and `margin_dashboard`'s burn-down is one scale carrying two named units
->    (`:157/:162`) — no second scale exists in either.
-> 4. **`volatility.js` is byte-frozen WHOLE** (`PAGE_SCRIPTS`,
->    `tests/web/test_r11_panel_contract.py:436-444`), so batch 3b re-baselines more than the
->    16-site `axisTitles` census; line-neutral editing cannot work when ADDING call sites — the
->    re-baseline must be deliberate and named.
->
-> **Not gated on the decisions** (available to any session meanwhile): OR-01/OR-02/OR-03 in
-> `docs/STATE/OPERATOR-REQUESTS.md` (OR-02 — the DCMA-11 call-out that covers the left nav and
-> will not dismiss — is a **bug**); `/analysis/{name}` panel 5's two ⛶ (one inert); `/evolution`'s
-> target-blind `⬇ Excel / ⬇ Word` bar under a banner promising otherwise; the `/resources`
-> X-caption collision; the `/performance` first-paint race. Then rank 13 (vendored typography) and
-> 14 behind rank 12. Behind the UI queue: **Phase 3** (CC-01, 74 call sites, Fable-5-Max deep
-> dive; V3 elapsed literals) and **Phase 4** (P1–P6, measured but unremediated).
+> ## ⇢ NEXT
+> 1. **The three operator decisions stay OPEN and briefed** — `docs/STATE/DECISION-BRIEFS-20260730.md`
+>    (A: batch 3b scope · B: NO_SVG_AXES caption mechanism · C: `data-noprint`). Asked twice,
+>    unanswered twice — ask from the briefs, do NOT re-research, do NOT invent answers.
+> 2. **Un-gated queue:** OR-01 (roll-up titles), OR-03 (Launch Sequence motion + ≥1-min hum),
+>    `/analysis` panel 5's two ⛶, `/evolution`'s target-blind export bar, `/resources` X-caption
+>    collision, `/performance` first-paint race. Then rank 13/14 behind rank 12's gated remainder.
+> 3. Behind the UI queue: **Phase 3** (CC-01 rendering half, 74 call sites, Fable-5-Max deep dive;
+>    V3 elapsed literals) and **Phase 4** (P1–P6, measured but unremediated).
 >
 > ## Still carried (unchanged identifiers, nothing lost)
 > **CC-01** (H2a) — import half closed by ADR-0312, **rendering half open**, 74 call sites; its two
@@ -60,17 +51,13 @@
 > `engine/msp_filters.py` the sole violator of a convention the repo already follows eight times ·
 > the **legacy `/sra` cross-basis defect** (`_build_result` reads a full-duration deterministic
 > against a remaining-duration sample, no realignment; reaches `/api/sra`, the SRA report,
-> `sra_conclusions`, and `scorecards.reserve_recommendation`, whose dates sit on a different axis
-> from `/api/margin/risk`) · **a committed SSI export contradicts ADR-0307's Best-Case rule**
-> (Project5 shows the pre-0307 ratios; ADR-0307 stands for the artifact we match — stored Best/Worst
-> wins, the table+rule is the operator-entered fallback) · `resume` is read from **MSPDI only** ·
-> the forward pass still packs **completed** work from `project_start` (724 tasks, median −1458 d vs
-> stored actuals; does not move the focus or project finish — Phase 7) · **per-task calendars are an
-> out-of-domain pairing ADR-0312 does not reach** (`driving_slack` measures stored dates against a
-> task's own calendar using the PROJECT anchor; measurement direction only, and the 24 h SSI golden
-> is green) · several importer warnings (notably the **assumed** calendar, which overstates every
-> duration-in-days figure by 25 % when a 10-hour calendar fails to resolve) belong on the page via
-> `Schedule.import_notes` and have not migrated.
+> `sra_conclusions`, and `scorecards.reserve_recommendation`) · **a committed SSI export contradicts
+> ADR-0307's Best-Case rule** (Project5 shows the pre-0307 ratios; ADR-0307 stands for the artifact
+> we match) · `resume` is read from **MSPDI only** · the forward pass still packs **completed** work
+> from `project_start` (724 tasks, median −1458 d vs stored actuals; Phase 7) · **per-task calendars
+> are an out-of-domain pairing ADR-0312 does not reach** · several importer warnings (notably the
+> **assumed** calendar, +25 % on duration-days when a 10-hour calendar fails to resolve) belong on
+> the page via `Schedule.import_notes` and have not migrated.
 >
 > ## SRA parity — CLOSED, and the traps that stay shut
 > ADR-0309 (#483/#484): det percentile **40.70 % → 6.65 %** (SSI **5.75 %**), σ **125.5 → 65.5** cal d
@@ -80,44 +67,34 @@
 >   data-date floor.** ADR-0108's two reverts were both unconditional floors; EVM1 UID 18 has
 >   `resume == stop` and must not move.
 > - **A floor built from the STORED remaining destroys the Monte-Carlo's upside variance**
->   (`det_pctile = 100 %`, σ 20.3). It must follow `duration_overrides`. The wrong version improved
->   3 of 6 headline metrics. Do not "simplify" it back.
-> - **Do NOT chase SSI's `Mean Date` / `Standard Deviation` cells (47322 / 107.8198)** — computed over
->   the 245 DISTINCT dates with `Occurrences` dropped. `test_the_summary_cells_are_not_the_parity_target`
->   pins the trap shut.
+>   (`det_pctile = 100 %`, σ 20.3). It must follow `duration_overrides`. Do not "simplify" it back.
+> - **Do NOT chase SSI's `Mean Date` / `Standard Deviation` cells (47322 / 107.8198)** — computed
+>   over the 245 DISTINCT dates with `Occurrences` dropped.
+>   `test_the_summary_cells_are_not_the_parity_target` pins the trap shut.
 >
 > ## Hypotheses KILLED — do not re-chase
-> Everything in `audit/SRA-PARITY-20260729.md` §7, **plus**: reverting ADR-0307's Best-Case rule (it
-> moves the mean closer while leaving σ wrong — the exact error cancellation Law 2 forbids); an
-> **unconditional** data-date floor (ADR-0108's two reverts, superseded by ADR-0309); "the four Setup
-> pages have no chapter kicker" (ADR-0311 — the probe regexed `CHAPTER \d+ ·`, which cannot match an
-> empty-number kicker); and **"the xlsx writer needs a formula-injection guard"** (ADR-0313 — it emits
-> no `<f>`; the CSV sibling was the real vector).
+> Everything in `audit/SRA-PARITY-20260729.md` §7, **plus**: reverting ADR-0307's Best-Case rule;
+> an **unconditional** data-date floor (ADR-0108's two reverts, superseded by ADR-0309); "the four
+> Setup pages have no chapter kicker" (ADR-0311); **"the xlsx writer needs a formula-injection
+> guard"** (ADR-0313 — it emits no `<f>`; the CSV sibling was the real vector); and **"OR-02 is in
+> the hint/tooltip layer"** (the intake notes guessed `hints.js`/`vizhints.js` — the callout is
+> app.js's DCMA float tip; measured, ADR-0314).
 >
-> ## Harness notes — three exit-code traps now, all the same shape
-> Run dev tools as `python -m <tool>` (a stale `/root/.local/bin/ruff` shadows pip's; the tell is a
-> **793** file-count mismatch). **`pip install -e ".[dev]"` before running the suite** — a bare
-> `PYTHONPATH=src` gives `PackageNotFoundError` on ~200 web tests (an external audit hit the identical
-> 211-failed/828-error pattern and correctly discounted it).
-> 1. **`pytest --timeout=N` is NOT installed** — passing it makes pytest exit **0** having run nothing.
-> 2. **`cmd | tail; echo $?` reports `tail`'s status, not `cmd`'s.** This is how the node harness was
->    reported green while exiting 1. Redirect to a file and check the exit code directly.
-> 3. **CI took ~11 minutes to register check runs** on one push — `total_count: 0` means "not yet",
->    never "passed".
-> **`TestClient` follows a 303 by default**, and that render CONSUMES a one-shot banner — use
-> `follow_redirects=False` when asserting on `sra_import_msg`. Converting the reference `.mpp` needs a
-> writable `TMPDIR` (~9 s); **2000 SRA iterations ≈ 90 s**. Full `pytest -q` ≈ 14 m;
-> `pytest -m parity` ≈ 40 s — run parity first. Regenerate the wheel with `--outdir dist/wheel` (the
-> default silently embeds a STALE wheel) and only ONCE after all code lands.
-> **New this session:** a remote-session resume KILLS in-flight background work — the Workflow
-> journal + `resumeFromRunId` recovered 5 of 6 agents' results without re-running them; and a
-> handoff written before a round's last actions records **intent, not outcome** — this handoff's
-> "drive #487 to green" and "the figure is owed" were BOTH already done (merged 14:47Z; figure
-> posted 12:49Z) when the next session started. Check the live system before redoing "owed" items.
+> ## Harness notes — the traps, one line each
+> Run dev tools as `python -m <tool>` (a stale `/root/.local/bin/ruff` shadows pip's).
+> **`pip install -e ".[dev]"` before the suite** (bare `PYTHONPATH=src` fails ~200 web tests).
+> `pytest --timeout=N` is NOT installed — it exits 0 having run nothing. `cmd | tail; echo $?`
+> reports `tail`'s status. CI can take ~11 min to register check runs (`total_count: 0` = "not
+> yet"). `TestClient` follows 303 and CONSUMES one-shot banners (`follow_redirects=False`).
+> Full `pytest -q` ≈ 14 m; `pytest -m parity` ≈ 40 s. Wheel: `--outdir dist/wheel`, ONCE, after
+> all code lands. **NEW: headless Chromium hides scrollbars** — any geometry that depends on
+> viewport width MUST also be probed with `ignore_default_args=["--hide-scrollbars"]`; a
+> classic-scrollbar browser (the operator's Windows default) is ~15px narrower than headless
+> thinks. **A remote-session resume can silently revert / flip uncommitted working-tree files** —
+> diff the tree against your last known state after every resume before trusting it.
 >
-> **Standing rule, from this project's own failures:** do not put a test result in prose unless the
-> number appeared in output you read that turn. **A launched run is not a result, and a piped exit
-> code is not the command's.**
+> **Standing rule:** do not put a test result in prose unless the number appeared in output you
+> read that turn. **A launched run is not a result, and a piped exit code is not the command's.**
 
 # (prior) handoffs — archived
 

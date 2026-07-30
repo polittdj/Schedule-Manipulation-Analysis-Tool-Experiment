@@ -435,6 +435,33 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-30 (cont.6) — headless hides scrollbars, and the audit caught what the probe could not
+
+- **A green probe can be measuring a browser that does not exist on the operator's desk.** The
+  OR-02 nav-clamp compared against `window.innerWidth`; every headless probe passed because
+  headless Chromium hides scrollbars. On a classic-scrollbar browser (Windows default — the
+  operator's actual machine) `innerWidth` is ~15px wider than the layout, the full-width header
+  classified as a RAIL, and the callout landed off-screen at a measured 9px sliver. The audit's
+  reviewer caught it by reasoning from MDN semantics, then proved it with
+  `ignore_default_args=["--hide-scrollbars"]`. **Lesson: any geometry that depends on viewport
+  width must be probed WITH layout scrollbars too; and `documentElement.clientWidth`, not
+  `innerWidth`, is the layout width.**
+- **The audit found the root cause the fix had only worked around.** The DCMA tips are BORN
+  visible (no inline display:none at creation; the float CSS computes visible) — all 16 stack over
+  the nav on every render, masked only when a load happens to auto-scroll. Two rounds (07-27 and
+  this one) had each fixed a SYMPTOM strand; the reviewer read the creation path nobody was
+  looking at. **Lesson: when a bug "keeps coming back on every page change", ask what the RENDER
+  path does, not just what the event handlers fail to do.**
+- **Post-state inspection could not have tested the fix honestly**: the scroll-hide writes the
+  same inline `display:none` that birth-hiding does, so "all tips hidden after load" passes on
+  broken code. The pinning test observes the style AT INSERTION (MutationObserver microtask, which
+  runs before any scroll event can). **Lesson: when two mechanisms produce the same end state, pin
+  the mechanism, not the state.** (Same failure shape as the audit's vacuous-pass finding in my
+  own test: counting hovered rows instead of measured tips.)
+- Harness: `page.add_init_script` runs before `document.documentElement` exists — observe
+  `document`. And a mid-session harness resume flip-flopped the uncommitted working tree twice
+  (fix → pristine → fix); diff the tree after every resume before trusting it.
+
 ### 2026-07-30 (cont.5) — a "blocked" decision may already be half-answered by an old ADR
 
 - Researching the three operator decisions gating rank 12, two of the three turned out to have

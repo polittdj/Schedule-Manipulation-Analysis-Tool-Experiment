@@ -9457,3 +9457,42 @@ This round is docs-only: DECISION-BRIEFS created, HANDOFF replaced (prior sectio
 to the top of HANDOFF-ARCHIVE), this entry, a LESSONS entry, NEXT-SESSION-PROMPT refreshed.
 Version stays **1.0.131**; highest ADR stays **ADR-0313**; no wheel/installer rebuild (no packaged
 file touched).
+
+## 2026-07-30 (cont.2) — OR-02 closed under a live Ultracode audit that caught what the probes could not (ADR-0314, v1.0.132)
+
+**The operator's one sentence hid three defects.** Reproduced OR-02 from scratch (the 07-27 fix
+was a different strand): (1) a FOCUS-shown DCMA float tip had no reachable dismissal — of six
+dismissals a real operator would try, Escape / pointer-away / alt-tab all STUCK (measured 3-of-6);
+(2) the nav clamp tested `position === "fixed"` only — daylight's sticky bar was never avoided
+(hit-checked hovers overlapped the header at 1280x520 / 1280x800 / 1440x600, fixed-rail themes
+never); (3) — found by the audit, not by me — the tips are BORN VISIBLE: `dcmaPanel` created them
+with no inline `display:none` while `.dcma-tip-float` CSS computes visible, so every render
+stacked all 16 at (0,0) over the nav, masked only when the Gantt's scroll-to-data-date happened to
+fire the scroll-hide (window scrollY stayed 0 — a NESTED pane scroll; that is why the capture
+listener mattered). Defect 3 is almost certainly the literal "it returns after I switch pages."
+
+**The audit paid for itself twice** (Ultracode per ADR-0240: 4 dimension reviewers + adversarial
+verifiers, 12 findings, each lead-re-verified executably before acting). Blocker 1: the first fix
+compared the header box to `window.innerWidth`, which INCLUDES a classic scrollbar — a full-width
+bar then classifies as a rail and the tip lands off-screen at a measured 9px sliver. Every probe
+had passed because HEADLESS CHROMIUM HIDES SCROLLBARS; re-measured with
+`ignore_default_args=["--hide-scrollbars"]`: `oldIsRail True → 9px visible; newIsRail False →
+fully visible`. Shipped classifier uses `document.documentElement.clientWidth`. Blocker 2:
+defect 3, whose at-load stack the first fix's tracker-gated pointermove could not dismiss. Also
+folded in: overflow hidden not auto (ADR-0304's dead-control law vs a scrollbar on a
+pointer-events:none element), an 8px travel threshold so a desk bump cannot kill a
+keyboard-opened tip (ADR-0286), `mark()` hides a different previously tracked tip, tip ids +
+`aria-describedby` (the orphaned role=tooltip), and three test-hardening findings (vacuous-pass
+counter, layout-coupled magic coordinate, untested burger viewport).
+
+**Verification, all read this session:** `tests/web/test_float_tip_dismiss.py` 19 passed in 131s
+(dismissal on the operator's own DCMA-11 row · born-hidden via an INSERTION-TIME MutationObserver,
+because post-load inspection cannot tell born-hidden from scroll-masked · 4 themes x 4 viewports
+measured-box sweep counting only cells that measured a tip). Proved able to fail: unfixed code →
+3 failed in 8.31s (read). All 136 existing app.js-content tests green; both probes green incl. the
+scrollbar configuration; `node --check` green. **v1.0.132**, wheel + nine installers regenerated,
+highest ADR **ADR-0314**. OR-02 marked SHIPPED in OPERATOR-REQUESTS.
+
+The three operator decisions (DECISION-BRIEFS-20260730) were asked TWICE this session and remain
+unanswered — still open, still gating rank 12's remainder. Session also merged #488 (docs-only:
+the briefs + state rotation) earlier today.

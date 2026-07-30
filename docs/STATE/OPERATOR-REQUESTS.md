@@ -42,23 +42,20 @@ looking at a latest-value or an average.
 for each column is a **stated** rule (latest vs mean), and the heading must match the rule the engine
 actually applied. Do not invent an aggregate the engine does not compute.
 
-### OR-02 — A help call-out sticks over the left menu bar and cannot be dismissed · `OPEN` · **BUG**
+### OR-02 — A help call-out sticks over the left menu bar and cannot be dismissed · `SHIPPED (ADR-0314)` · **BUG**
 
 > "I keep getting this weird call-out that covers the menu bar on the left side of the screen that I
 > can't get to go away unless I switch to another page but then it will return. This should never
 > happen. It is the DCMA 11 — Missed Activities call-out which explains what it is, why it matters,
 > threshold, pass example, etc."
 
-The DCMA-11 (Missed Activities) explainer popover renders over the left nav, has no working dismiss,
-and returns after a page change. **This should never happen** — a help affordance must never trap the
-primary navigation.
-
-*Implementation notes:* likely the hint/tooltip layer (`static/hints.js`, `static/tooltips.js`,
-`static/vizhints.js` — `vizhints.js` is 50 KB and carries the metric explainers). Reproduce first
-(which route, which trigger, is it hover-persist or click-pinned, does it survive a reload), then fix
-the dismiss + the z-order/placement so it can never overlap the nav rail. Add a regression test that
-asserts the call-out's box does not intersect the nav's box — a measured-box assertion per ADR-0304,
-not a class read-back.
+Reproduced, measured, and closed as **two** defects in the DCMA-overview float tip (`app.js`, not
+the hint layer the notes guessed): a FOCUS-shown tip (what a click/tap does) had no reachable
+dismissal — Escape, pointer-away, and alt-tab all stuck — and the nav-avoidance clamp tested for a
+`fixed` header only, so daylight's `sticky` full-width bar was never avoided (overlap measured at
+three viewport sizes). Fixed with document-level Escape/pointer/blur dismissal + a fixed-OR-sticky
+clamp that clears a rail sideways and a bar downward. Both pinned by measured-box tests
+(`tests/web/test_float_tip_dismiss.py`, the operator's own DCMA-11 callout by name). ADR-0314.
 
 ### OR-03 — Launch Sequence: motion + a full-length boot hum while projects load · `OPEN`
 
