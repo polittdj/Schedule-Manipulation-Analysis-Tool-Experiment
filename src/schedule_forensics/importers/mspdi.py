@@ -38,6 +38,7 @@ import pydantic
 from schedule_forensics.importers._common import (
     DATE_REQUIRING_CONSTRAINTS,
     ImporterError,
+    anchored_project_start,
     clamped_percent_or_none,
     dominant_day_minutes,
     iso_duration_to_minutes,
@@ -143,6 +144,16 @@ def parse_mspdi_text(text: str, *, source_file: str | None = None) -> Schedule:
     if project_start is None:
         raise ImporterError("MSPDI is missing a usable Project/StartDate")
 
+    # ADR-0310 §5: the offset ↔ datetime conversion only holds while a full working day fits
+    # inside the calendar day it starts in, so the anchor is enforced here rather than left for
+    # every downstream consumer to re-derive. Normalises or rejects; never merely warns.
+    project_calendar = _parse_project_calendar(root)  # ADR-0028; defaults on any surprise
+    project_start, anchor_note = anchored_project_start(
+        project_start, project_calendar, source="MSPDI"
+    )
+    if anchor_note:
+        logger.warning("%s", anchor_note)
+
     resources = _parse_resources(root)
     resource_name_by_uid = {res.unique_id: res.name for res in resources}
     assigned_uids_by_task, assigned_names_by_task, assignments_by_task = _parse_assignments(
@@ -196,13 +207,14 @@ def parse_mspdi_text(text: str, *, source_file: str | None = None) -> Schedule:
             project_finish=project_finish,
             status_date=status_date,
             baseline_finish=baseline_finish,
-            calendar=_parse_project_calendar(root),  # ADR-0028; defaults on any surprise
+            calendar=project_calendar,
             calendars=parse_calendar_registry(root, tuple(tasks)),  # per-task cals (ADR-0118)
             tasks=tuple(tasks),
             relationships=tuple(relationships),
             resources=tuple(resources),
             custom_field_labels=custom_field_labels,
             custom_field_by_raw_name=tuple(raw_name_map.items()),
+            import_notes=(anchor_note,) if anchor_note else (),
         )
     except pydantic.ValidationError as exc:
         raise ImporterError(f"MSPDI does not form a valid schedule: {exc}") from exc

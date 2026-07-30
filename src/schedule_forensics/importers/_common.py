@@ -14,6 +14,13 @@ their source files record into the model's canonical axes:
 A parse that cannot form a valid schedule raises :class:`ImporterError` — the model
 is strict and closed, so malformed input fails loudly here rather than silently
 dropping metadata.
+
+The importer boundary is also where the engine's **offset-conversion precondition** is
+enforced (:func:`anchored_project_start`, ADR-0310 §5): a ``project_start`` whose
+time-of-day leaves no room for a full working day inside its own calendar day is
+normalised to the calendar's modelled shift start, or the file is rejected when no
+schedulable anchor exists. Downstream code may then assume the invariant holds instead
+of each consumer re-deriving it.
 """
 
 from __future__ import annotations
@@ -22,7 +29,9 @@ import datetime as dt
 import re
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 
+from schedule_forensics.model.calendar import Calendar
 from schedule_forensics.model.task import ConstraintType
+from schedule_forensics.model.units import MINUTES_PER_CALENDAR_DAY
 
 
 class ImporterError(ValueError):
@@ -262,3 +271,74 @@ def parse_percent(value: str | None) -> float:
     if parsed is None:
         return 0.0
     return min(100.0, max(0.0, parsed))
+
+
+def modelled_shift_start(calendar: Calendar) -> int:
+    """Minutes-from-midnight at which this calendar's working day begins.
+
+    A calendar that declares intraday blocks carries the shift start directly (the earliest
+    :attr:`Calendar.day_segments` start). A calendar with **no** segments is the legacy single
+    contiguous block, which :meth:`Calendar.intraday_worked_minutes` already models as running
+    from midnight — so ``0`` is *read from the existing model contract*, not invented here.
+    ``Calendar`` has no dedicated shift-start field, and ADR-0310 deliberately did not add one.
+
+    The *earliest* declared start is taken, so a wrap-around night shift (``((1320, 1440),
+    (0, 360))``) resolves to midnight. That is not a reading of the shift's true start — the
+    engine's single-contiguous-block model cannot represent a wrap-around at all (ADR-0028) —
+    but it is the anchor that keeps the offset grid inside one calendar day, which is what this
+    value is for.
+    """
+    return min((start for start, _ in calendar.day_segments), default=0)
+
+
+def anchored_project_start(
+    project_start: dt.datetime, calendar: Calendar, *, source: str
+) -> tuple[dt.datetime, str | None]:
+    """Enforce the offset-conversion precondition at the importer boundary (ADR-0310 §5).
+
+    ``engine.cpm.offset_to_datetime`` lays each working day's minutes out contiguously from
+    ``project_start``'s time-of-day. That model only holds while a full working day fits inside
+    the calendar day it starts in — the declared supported domain is
+    ``start_time_of_day + working_minutes_per_day <= MINUTES_PER_CALENDAR_DAY``. Outside it the
+    intraday remainder crosses midnight and the returned instant's ``.date()`` can be a
+    *non-working* day, breaking the offset ↔ datetime inverse property.
+
+    Returns ``(project_start, note)``. Inside the domain the start is returned **unchanged** and
+    ``note`` is ``None`` — every schedule in the committed corpus takes this path, so no computed
+    or displayed number moves. Outside it the start is **normalised** to the calendar's modelled
+    shift start on the same date and ``note`` describes the change for the operator. When even the
+    shift start cannot fit a full working day the file is **rejected**: no anchor exists that the
+    engine can schedule from, and loading it anyway would produce dates on non-working days with
+    nothing on screen to say so.
+
+    Sub-minute components are not part of the check: the engine's axis is integer minutes and
+    :func:`engine.cpm.datetime_to_offset` reads ``hour * 60 + minute``, so this matches it exactly.
+    """
+    per_day = calendar.working_minutes_per_day
+    start_tod = project_start.hour * 60 + project_start.minute
+    if start_tod + per_day <= MINUTES_PER_CALENDAR_DAY:
+        return project_start, None
+    shift_start = modelled_shift_start(calendar)
+    if shift_start + per_day > MINUTES_PER_CALENDAR_DAY:
+        raise ImporterError(
+            f"{source} cannot be scheduled: calendar {calendar.name!r} works {per_day} minutes "
+            f"per day starting at {_hhmm(shift_start)}, which does not fit inside a 24-hour day. "
+            "Correct the calendar's working times (or its hours per day) and re-export."
+        )
+    normalised = project_start.replace(
+        hour=shift_start // 60, minute=shift_start % 60, second=0, microsecond=0
+    )
+    note = (
+        f"Project start time normalised from {_hhmm(start_tod)} to {_hhmm(shift_start)} "
+        f"on {project_start.date().isoformat()}: calendar {calendar.name!r} works {per_day} "
+        f"minutes per day, so a working day beginning at {_hhmm(start_tod)} runs past midnight. "
+        "Every activity keeps the same working day either way; what this corrects is a "
+        "late-in-the-day instant spilling onto the FOLLOWING calendar date — which can be a "
+        "weekend or a holiday. Times of day shown against computed dates shift accordingly."
+    )
+    return normalised, note
+
+
+def _hhmm(minute_of_day: int) -> str:
+    """``480`` → ``"08:00"``. Formatting only — never parses back."""
+    return f"{minute_of_day // 60:02d}:{minute_of_day % 60:02d}"

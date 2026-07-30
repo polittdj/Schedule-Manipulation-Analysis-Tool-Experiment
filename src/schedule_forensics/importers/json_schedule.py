@@ -16,7 +16,7 @@ import os
 from pathlib import Path
 from typing import Any
 
-from schedule_forensics.importers._common import ImporterError
+from schedule_forensics.importers._common import ImporterError, anchored_project_start
 from schedule_forensics.model import Schedule
 from schedule_forensics.model.assignment import Assignment
 from schedule_forensics.model.calendar import Calendar
@@ -341,6 +341,23 @@ def _from_friendly(data: dict[str, Any]) -> Schedule:
     elif calendars:
         schedule_kwargs["calendar"] = calendars[0]
         schedule_kwargs["calendars"] = tuple(calendars)
+    # ADR-0310 §5, applied AFTER the project calendar is resolved (the precondition is a
+    # property of the pair, not of the start alone). A saved file that already went through
+    # this on its first import is unchanged here, so re-opening a save is idempotent.
+    project_calendar = schedule_kwargs.get("calendar")
+    saved_notes = data.get("import_notes")
+    notes: tuple[str, ...] = (
+        tuple(n for n in saved_notes if isinstance(n, str)) if isinstance(saved_notes, list) else ()
+    )
+    schedule_kwargs["project_start"], anchor_note = anchored_project_start(
+        project_start,
+        project_calendar if isinstance(project_calendar, Calendar) else Calendar(),
+        source="JSON schedule",
+    )
+    if anchor_note and anchor_note not in notes:
+        notes = (*notes, anchor_note)
+    if notes:
+        schedule_kwargs["import_notes"] = notes
     return Schedule(**schedule_kwargs)
 
 
@@ -396,6 +413,8 @@ def to_json_text(schedule: Schedule) -> str:
         out["project_title"] = schedule.project_title
     if schedule.company is not None:
         out["company"] = schedule.company
+    if schedule.import_notes:
+        out["import_notes"] = list(schedule.import_notes)
     if schedule.status_date is not None:
         out["status_date"] = schedule.status_date.isoformat()
     for finish_key, finish_val in (

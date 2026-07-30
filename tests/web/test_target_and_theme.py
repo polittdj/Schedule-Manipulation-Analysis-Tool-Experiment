@@ -264,3 +264,45 @@ def test_every_setup_rail_entry_carries_a_takeaway() -> None:
     for c in setup:
         assert c.takeaway != c.label
         assert c.takeaway.endswith("."), f"{c.label}: takeaway should read as a sentence"
+
+
+def test_rank12_pages_all_carry_a_takeaway_and_a_context_line() -> None:
+    """ADR-0311 rank 12: the DoD's takeaway h1 + context line, on all six Library/Setup pages.
+
+    Five of the six had neither and `/margin` had an h1 with no lede. The headline must state a
+    FINDING, not a topic (`DESIGN-SYSTEM.md` §5), and every figure in it must already be rendered
+    further down the same page — so this asserts the elements exist AND that the headline is not
+    merely the page's own title echoed back.
+    """
+    import re
+
+    from fastapi.testclient import TestClient
+
+    from schedule_forensics.web.app import SessionState, create_app
+
+    golden = Path(__file__).resolve().parents[1] / "fixtures" / "golden" / "project2_5"
+    client = TestClient(create_app(SessionState()))
+    for name in ("Project2", "Project5"):
+        data = (golden / f"{name}.mspdi.xml").read_bytes()
+        assert (
+            client.post("/upload", files={"files": (f"{name}.mspdi.xml", data, "text/xml")})
+        ).status_code == 200
+
+    topics = {"metric workbench", "groups & filters", "standards & execution", "margin dashboard"}
+    for url in (
+        "/workbench",
+        "/groups",
+        "/standards",
+        "/margin",
+        "/card/Project5",
+        "/wbs/Project5",
+    ):
+        page = client.get(url).text
+        h1 = re.search(r'<h1 class="page-takeaway"[^>]*>(.*?)</h1>', page, re.S)
+        lede = re.search(r'<p class="page-lede"[^>]*>(.*?)</p>', page, re.S)
+        assert h1 is not None, f"{url}: no takeaway h1"
+        assert lede is not None, f"{url}: no context line"
+        text = re.sub(r"<[^>]+>", "", h1.group(1)).strip()
+        assert len(text) > 20, f"{url}: takeaway too short to be a finding: {text!r}"
+        assert text.lower() not in topics, f"{url}: takeaway is a topic, not a finding: {text!r}"
+        assert re.sub(r"<[^>]+>", "", lede.group(1)).strip(), f"{url}: context line is empty"

@@ -9196,8 +9196,21 @@ qualification; true only on the positive side, since `//` floors toward −∞ a
 than quietly documented as decided, and the reason parity cannot discriminate it recorded (the
 goldens carry exact day multiples).
 
-Two tests pinned the old label and were updated knowingly (`tests/ai/test_briefing.py`,
-`tests/web/test_mission.py`).
+**Correction (appended 2026-07-30, after #485 merged).** The original entry said "two tests pinned
+the old label"; **three** did — `tests/ai/test_briefing.py`, `tests/web/test_mission.py` and
+`tests/web/test_trend_views.py::test_trend_chapter_05_page_shell` — and **two axis-caption freeze
+tests also fired** on the `drift.js` edit: `test_drift_axis_caption_call_site_is_byte_frozen`
+(which md5s lines 133-135) and `test_all_sixteen_axis_title_call_sites_are_frozen`. Both were
+resolved the right way — by making the `drift.js` edit **line-neutral** (210 lines, the same count as
+`origin/main`, caption call site byte-identical) so the frozen tests pass **untouched** — rather than
+by re-baselining a hash or a line index. A guard you may update when it fires is not a guard.
+
+**The verification claim in the chat summary and the original #485 body was wrong and is corrected on
+the PR** (`#485` comment): a clean full suite was reported that had not been read. The two runs
+actually completed at the time showed **`3 failed, 2940 passed, 24 skipped`** — the three failures
+above. Merged `main` was then measured properly: **`2944 passed, 24 skipped, zero failures`
+(635.43s)**, read from output. Recorded here because a session log that overstates a verification is
+worse than one that admits a gap, and this repo's logs are cited as evidence.
 
 **⇢ NEXT: rank 12.** The UI queue has now been deferred by **five** consecutive out-of-band Law-2
 rounds (ADR-0306 → 0307 → 0308 → 0309 → 0310). Each was individually justified; the pattern is not.
@@ -9239,3 +9252,112 @@ cleaned up on `/forecast`.
 invented); `data-noprint`, still zero CSS rules anywhere across ten merged pages.
 
 Web suite 1257 passed / 24 skipped. No calculation touched, no displayed figure moved.
+
+### 2026-07-30 (cont.4) — rank 12: every Library/Setup page now states a finding (v1.0.129)
+
+Continues ADR-0311 (no new ADR). The DoD's **takeaway h1 + context line** landed on all six rank-12
+pages; five had neither and `/margin` had an h1 with no lede.
+
+Every figure is sourced from something the same page **already renders**, so the number the reader
+meets first is verifiable immediately below it — the DoD's "every displayed number traces to the
+engine payload" applied to the headline itself:
+
+| page | takeaway sourced from |
+|---|---|
+| `/standards` | `analysis.audit.passed / failed / not_applicable` — the §1 DCMA-14 split |
+| `/wbs` | `WBSGroup` totals: groups, completed/total, `completed_behind`, weakest `spi_t` |
+| `/card` | critical-incomplete, to-go activities/milestones, computed finish (the KPI strip below) |
+| `/groups` | `len(non_summary(sub))` vs `len(non_summary(sch))` — the Active-scope reach |
+| `/workbench` | the catalog: metric count across families (the left rail) |
+| `/margin` | lede only — states the Gold-Rule basis (`d.gold_rule_per_year`) and dated-version count |
+
+One shared `_utility_takeaway(headline, lede)` so the six phrase it one way, and
+`test_rank12_pages_all_carry_a_takeaway_and_a_context_line` pins all six — asserting the elements
+exist, the headline is long enough to be a sentence, and it is **not the page title echoed back**
+(DESIGN-SYSTEM §5: headlines state findings, not topics). A test that only checked for the element
+would have passed on `<h1>Metric Workbench</h1>`.
+
+Two of my own errors, caught by the gate rather than by review: `min(..., key=lambda g: g.spi_t)`
+fails `mypy --strict` because None-narrowing does not survive into a lambda (fixed by pairing the
+value out), and I wrote `d.required_rate_wd_per_year` — a field that does not exist; the real one is
+`d.gold_rule_per_year`. Both would have shipped a broken page had the gate not been run.
+
+**Rank 12 still owes**, unchanged and still blocked on operator decisions: the `▦`/`⤓`/`⛶` toolbar +
+read-me line on every visual (`/margin` via `margin_dashboard.js` is in AXIS-TITLES `PENDING`;
+`/workbench` via `workbench.js` is in `NO_SVG_AXES`, whose DOM caption mechanism ADR-0298
+deliberately did not invent), and `data-noprint`, still carrying zero CSS rules anywhere across ten
+merged contract pages.
+
+Also in this commit: **`docs/STATE/SESSION-LOG.md`'s ADR-0310 entry corrected.** It said "two tests
+pinned the old label"; three did, and two axis-caption freeze tests also fired and were resolved by
+making the `drift.js` edit line-neutral rather than re-baselining a hash. The chat summary and the
+original #485 body reported a clean full suite that had **not been read** — the runs actually
+completed showed `3 failed, 2940 passed`. Merged `main` then measured `2944 passed, 24 skipped, zero
+failures`, read from output. Corrected on #485 by comment and now in the durable record, because a
+session log that overstates a verification is worse than one that admits a gap.
+
+### 2026-07-30 (cont.5) — the import anchor enforced (ADR-0312, v1.0.130)
+
+Phase 2 **item 3** / external **H2c**. ADR-0310 decision 5 declared the supported project-start
+domain and required an input outside it to be *normalised or rejected at import — not merely warned
+about*. Nothing enforced it: `offset_to_datetime` has always assumed `start` sits at a working-day
+start, no importer checked, and `Calendar` has no shift-start field to check against.
+
+**Measured first, on a 24-hour calendar with a Monday 08:00 start, sweeping offsets across twelve
+calendar days at a 37-minute stride:**
+
+| | renders on a non-working date | breaks `datetime_to_offset(offset_to_datetime(k)) == k` |
+|---|---:|---:|
+| as imported (08:00) | 26 | **156** |
+| after normalisation (00:00) | 0 | 0 |
+
+The second column is the one a display-only helper cannot reach — the engine was converting an
+offset to an instant and back and getting a different number. That is exactly why ADR-0310 split
+this from CC-01: CC-01 is rendering, this was import. **CC-01 remains open and unchanged.**
+
+**Shipped:** `importers/_common.anchored_project_start()`, one shared helper called by MSPDI, XER
+and the tool's own JSON format so the three cannot drift; `modelled_shift_start()` (earliest
+`day_segments` start, else midnight — read from `Calendar.intraday_worked_minutes`' existing model
+of a segment-free calendar, not invented); `Schedule.import_notes`, rendered in the Working-calendar
+panel as a `notice warn` and round-tripped through Save `.json`; `units.MINUTES_PER_CALENDAR_DAY`.
+
+**Blast radius bounded by assertion, not by claim.** All 21 committed schedules (20 MSPDI + 1 XER,
+`per_day` 480 and 600, starts 07:00 and 08:00) are already inside the domain, so every one is
+returned byte-identical with no note. The guard asserts a **minimum corpus size** as well, so it
+cannot pass by discovering nothing — the same class of vacuous-pass that made the rank-12 survey
+report four conforming pages as broken.
+
+**A wrong claim caught before it shipped.** The first draft of the operator-facing note said "the
+date each activity is scheduled on is unaffected". The probe disproved it: the rendered calendar
+date *does* move — that is the correction. What is invariant is the **working day**, because
+`offset_to_datetime`'s whole-day term is a function of the offset and the calendar and never of the
+anchor's time of day. Reworded, and pinned by
+`test_normalisation_keeps_every_activity_on_the_same_working_day` so the note and the code cannot
+diverge later.
+
+**`SCHEMA_VERSION` 2.8.0 → 2.9.0, covering two adds.** `Schedule.import_notes`, and *retroactively*
+`Task.resume` — ADR-0309 (#483) added that field, updated the freeze test's field set, and left the
+version at 2.8.0. The guard asserts a literal equality, so it cannot see an add that was registered
+but not versioned. Recorded in `model/__init__.py`'s change log rather than silently corrected.
+
+Also fixed in the maximal JSON fixture: `import_notes` is populated there, so the writer-coverage
+introspection guard and the lossless round-trip test both exercise it instead of the field being
+added to the exclusion list.
+
+**Coverage checked rather than assumed, and it found a boundary.** Enforcing the pair
+`(project_start, project_calendar)` is only sufficient if nothing renders an offset against a
+different calendar. All **54** `offset_to_datetime` call sites in `src/` were read: every one passes
+a schedule's own project calendar, including `scorecards.reserve_recommendation`, which takes a
+`Calendar` parameter and whose sole caller passes `sch.calendar`. The rendering direction is fully
+covered.
+
+**Per-task calendars are a reachable out-of-domain pairing this ADR does NOT close.**
+`00_REFERENCE_INTAKE/mpp/Hard_File_updated4 24 hour calendar.mpp` was converted and parsed this
+round: its *project* calendar is Standard 8 h (in domain, unchanged, no note), but it carries
+per-task `24 Hours` (uid 10, 1440 min/day, 7-day week) and `Standard+Sat.` (uid 12, 930 min/day),
+both actually assigned to tasks. `driving_slack` measures stored dates against a task's own calendar
+using the *project's* anchor — for uid 10 that is `start_tod 480 + per_day 1440`, outside the
+declared domain. It only ever runs the measurement direction (`datetime_to_offset`), so it renders
+no non-working dates, but nothing enforces the domain there. Recorded in ADR-0312 as belonging to
+ADR-0118's per-task-calendar model rather than to the project anchor, so it is not mistaken for
+something this round closed.

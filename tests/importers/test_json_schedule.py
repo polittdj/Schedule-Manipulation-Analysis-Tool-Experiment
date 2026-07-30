@@ -504,6 +504,9 @@ def _maximal_schedule():  # type: ignore[no-untyped-def]
                 clauses=(GroupClause(field="WBS", field_enum="WBS", ascending=True),),
             ),
         ),
+        # ADR-0312: an importer interpretation note must survive Save .json -> reopen, or the
+        # disclosure the analyst saw on first open silently disappears from the saved copy.
+        import_notes=("Project start time normalised from 08:00 to 00:00 on 2026-01-05.",),
     )
 
 

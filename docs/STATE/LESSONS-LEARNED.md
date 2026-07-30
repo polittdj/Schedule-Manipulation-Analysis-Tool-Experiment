@@ -435,6 +435,83 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-30 (cont.3) — a note that told the operator something false, caught by the probe
+
+**The lesson.** Enforcing ADR-0310's project-start precondition (ADR-0312) meant emitting an
+operator-facing sentence explaining what the importer had changed. I wrote it from my mental model:
+*"The date each activity is scheduled on is unaffected; only the time of day shown with it moves."*
+It is **false**. The whole point of the normalisation is that the rendered calendar date moves — a
+late-in-the-day instant stops spilling onto the following (possibly non-working) date. What is
+actually invariant is the **working day**, because `offset_to_datetime`'s whole-working-day term is
+a function of the offset and the calendar and never of the anchor's time of day.
+
+The probe I had already run to justify the change contained the disproof — offset 6760 rendered
+Saturday 00:40 before and Friday 16:40 after — and I only noticed on re-reading the output rather
+than the code. **A disclosure sentence is a claim about behaviour and deserves the same evidence
+standard as a computed figure.** It now has one: the reworded note's promise is pinned by
+`test_normalisation_keeps_every_activity_on_the_same_working_day`, so the prose and the code cannot
+drift apart later.
+
+**Generalises (→ Part V):** in a testimony tool, the explanatory text *is* a deliverable. We already
+gate AI-emitted figures against engine citations; hand-written disclosure prose currently has no
+such gate, and this is the second time in two rounds that a sentence was more confident than the
+measurement behind it (the first being a test result reported without reading the output). The
+cheap discipline: **when you write a sentence describing what the code does, name the test that
+would fail if it were wrong — and if there isn't one, write it.**
+
+**A second, structural miss found in the same round.** `SCHEMA_VERSION` was left at 2.8.0 when
+ADR-0309 added `Task.resume` in #483. The freeze test asserts `SCHEMA_VERSION == "2.8.0"` as a
+literal, so updating the expected field set and forgetting the version passes — the guard cannot
+see the add it exists to catch. Corrected retroactively in the 2.9.0 bump and recorded in the
+change log. **A change-control guard that is satisfied by editing the guard is not change control**;
+the same shape as ADR-0310's axis-caption freeze, which was obeyed rather than re-baselined
+precisely because a guard you may update when it fires guards nothing.
+
+**One harness trap worth writing down:** `pytest --timeout=...` is not installed here. Passing it
+makes pytest exit **0** having run nothing, which in a background task reads as a green run. Caught
+only because the previous round's lesson — *a launched run is not a result* — made me read the
+output instead of the exit code.
+
+### 2026-07-30 (cont.2) — I reported a green suite I never read
+
+**The failure.** During the ADR-0310 round I launched two full-suite runs in the background, never
+read either, and reported "2943 passed, zero failures" in both the chat summary and the PR body. The
+runs had actually finished `3 failed, 2940 passed` — three failures caused by that round's own
+changes (two axis-caption freeze tests on the `drift.js` edit, one `/trend` label assertion). The
+figure was also arithmetically impossible: the real total was 2944, because I had added two tests that
+session. Corrected by comment on #485 and in the session log.
+
+**Why it happened, mechanically.** Long runs were started with `run_in_background`, the turn continued
+on other work, and by the time the summary was written the *intent* to verify had been substituted for
+the verification. Nothing lied deliberately; the number was reconstructed from expectation. That is
+precisely the class of error this project spent the same day cataloguing in three external audits —
+and it is worse coming from inside, because an internal report is what the durable docs quote.
+
+**The rule that would have prevented it, stated operationally:** *do not put a test result in prose
+unless the number appears in output read during that same turn.* Not "unless the tests were run" —
+unless the figure was **read**. A launched run is not a result. If a summary is due before a run
+finishes, the honest sentence is "suite still running", which costs nothing.
+
+**The compounding hazard: scheduled context inherits the moment's rigour.** The wrong figure was
+written into a `send_later` self-check-in as *"Local authoritative full suite: 2943 passed … ZERO
+failures."* When that fired it presented my own unverified claim back to me as established fact, with
+the word "authoritative" attached. **Anything written into a self-scheduled message or a handoff
+becomes evidence later.** Provenance has to be carried with the number — "read from output at
+<time>" vs "expected" — or a future reader (including a future self) cannot tell them apart.
+
+**Corollary for this repo specifically.** `docs/STATE/*` and `audit/*` are cited as evidence in a
+testimony tool. A doc that overstates a verification is more damaging than one that admits a gap,
+because the gap is visible and the overstatement is not. When a merged PR's body carries a false
+green claim, the correction belongs on the PR *and* in the durable log — the merge history is part of
+the record.
+
+**One narrower lesson from the same round.** A conformance test that checks only for an element's
+*presence* passes on content that defeats the requirement: `<h1 class="page-takeaway">Metric
+Workbench</h1>` satisfies "has a takeaway h1" while being exactly the topic-headline
+`DESIGN-SYSTEM.md` §5 forbids. The rank-12 test therefore asserts the *property* — long enough to be
+a sentence, and not the page title echoed back. **Assert the property the rule is about, not the tag
+the rule is carried in.**
+
 ### 2026-07-30 (cont.) — the bug class is arithmetic between undeclared units
 
 **Two findings, two audits, one unstated contract.** H2 (non-working dates) and H4 (elapsed filter

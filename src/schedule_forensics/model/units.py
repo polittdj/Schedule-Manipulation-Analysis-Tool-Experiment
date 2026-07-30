@@ -32,6 +32,14 @@ from decimal import ROUND_HALF_UP, Decimal
 #: explicitly to the converters below.
 MINUTES_PER_DAY: int = 480
 
+#: Minutes in one **calendar** day — the wall-clock axis, not the working axis (ADR-0310).
+#: An ELAPSED duration is measured on this axis always; so is the ceiling that
+#: ``project_start``'s time-of-day plus a full working day must fit under for the engine's
+#: offset ↔ datetime conversion to hold. Named so the two axes cannot be confused by a bare
+#: ``1440`` (ADR-0310 decision 4: a duration literal must not carry a hard-coded
+#: minutes-per-day).
+MINUTES_PER_CALENDAR_DAY: int = 1440
+
 #: Default number of decimal places when rendering a day quantity.
 _DAY_PLACES: int = 2
 
