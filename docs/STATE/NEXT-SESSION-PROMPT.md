@@ -13,14 +13,35 @@ schedule-analysis tool; **POLARIS** in the UI). **Read `docs/STATE/HANDOFF.md` F
 section is the current state and the NEXT queue, and the SessionStart hook auto-injects it, so it is
 already in front of you.
 
-As of this file's last refresh: **v1.0.125**, highest ADR **0309** — the SRA divergence is CLOSED
-(ADR-0309; σ within 1.2 % and the deterministic percentile within 0.9 pp of SSI's own committed
-export). In flight: `claude/smat-hardened-review-pwxm33`. The commissioned four-part audit job is
-**done** (`audit/SRA-ROOTCAUSE-20260730.md`, `audit/EXTERNAL-RECONCILIATION-20260730.md`); the
-approved plan's Phase 2 is next, and the UI queue (rank 12) is still untouched after three
-out-of-band Law-2 rounds. Four CI checks must be green:
+As of this file's last refresh: **v1.0.131**, highest ADR **0313**. **PHASE 2 IS COMPLETE.**
+The SRA divergence is CLOSED (ADR-0309; σ within 1.2 % and the deterministic percentile within
+0.9 pp of SSI's own committed export), the two time axes are written down (ADR-0310), rank 12's
+first slices shipped (ADR-0311 + #486), the import anchor is enforced (ADR-0312), and the SRA
+magnitude parser is tri-state (ADR-0313). The commissioned four-part audit job is **done**
+(`audit/SRA-ROOTCAUSE-20260730.md`, `audit/EXTERNAL-RECONCILIATION-20260730.md`).
+`main` is at **`dcb891e`** (#486 merged). **Six** CI checks must be green: `linux`, `windows`,
 `test (3.11)`, `test (3.13)`, **`browser (measured-box proof)`**, and the `check` aggregate.
 **Confirm `origin/main` still matches that** before starting.
+
+### ⇢ DO THESE THREE THINGS FIRST
+
+1. **PR #487 is open (draft) and needs driving to green / merging.** Branch
+   `claude/smat-hardened-review-pwxm33` at **`ade0f9c`**, base `dcb891e`, ADR-0313, v1.0.131. CI was
+   in progress when the previous session ended. Check `pull_request_read` → `get_check_runs` and
+   `get_review_comments`; if red, diagnose and push a fix (drive-to-green — it is our own PR).
+2. **One verification figure is OWED and unread.** #487's body says the full local suite was still
+   running and *"its figure is deliberately not claimed here — I'll report it once read."* Honour
+   that: re-run `python -m pytest -q > out 2>&1; echo $?` and comment the figure on #487. **Caveat to
+   state as a separate fact, not collapsed:** the previous session's run began BEFORE the 1.0.131
+   bump and the wheel/installer regeneration, so `test_embedded_wheel_is_in_lockstep_with_the_source_tree`
+   and `test_handoff_top_section_pins_the_current_pyproject_version` may appear failed in it while
+   passing on the committed tree (both were re-run afterwards: installer + packaging + state docs
+   **60 passed** at 1.0.131). Do **not** quote a remembered number — read output from a run you did.
+3. **Three operator decisions gate rank 12's remainder. Do NOT invent answers — ASK.** (a)
+   AXIS-TITLES `PENDING`: `/margin`'s toolbar needs `margin_dashboard.js` captioned (batch 3b);
+   (b) the `NO_SVG_AXES` DOM caption mechanism for `/workbench`'s `workbench.js`, which ADR-0298
+   records as *"a separate design decision, deliberately not invented here"*; (c) `data-noprint`'s
+   **zero CSS rules anywhere** across ten already-merged contract pages.
 
 **Standing rules (CLAUDE.md — read them, they are binding):**
 (1) **Data sovereignty (CUI)** — no schedule content or derived metric leaves the machine; AI
@@ -52,10 +73,14 @@ any packaged-file change) → new ADR + refresh `HANDOFF.md`, `SESSION-LOG.md` a
 **draft PR** → `subscribe_pr_activity`. After a merge, restart the branch fresh from `origin/main`
 with `--prune`. Never put the model id in any commit/PR/code.
 
-**The work queue (rationale + detail in HANDOFF):**
+**The work queue (rationale + detail in HANDOFF).** Phase 2 is done, so the UI queue is finally
+unblocked — it has been displaced by **seven** consecutive out-of-band correctness rounds
+(ADR-0306→0313). Every deferral was individually justified; the pattern is not.
 
-1. **Redesign tail rank 12 — the Library/Setup sweep**: `/workbench`, `/groups`, `/standards`,
-   `/margin`, `/card/{name}`, `/wbs/{name}`. Then rank 13 (vendored typography — local IBM Plex Mono
+1. **Redesign tail rank 12 — the Library/Setup sweep.** Its kickers, segues, nav entries, all six
+   takeaway h1s + context lines and all six Setup rail takeaways are **DONE** (ADR-0311 + #486);
+   what remains is the `▦`/`⤓`/`⛶` toolbar + read-me line on every visual, which is blocked on
+   decisions (a) and (b) above. Then rank 13 (vendored typography — local IBM Plex Mono
    + Barlow woff2; today the stacks are name-only) and rank 14 (prototype token aliases
    `--cnv`/`--pn2`/`--glow` + universal `⊞ EXPLORE` drill wiring).
 2. **Operator decisions queued** (each already measured, none silent): `[data-noprint]` has **zero
@@ -72,6 +97,20 @@ with `--prune`. Never put the model id in any commit/PR/code.
    `SFChartFrame` first-paint race, monolith split phases 2-3, a DOM caption mechanism for the 13
    `NO_SVG_AXES` visuals, `_ANALYSIS_CACHE_MAX = 48` (ADR-0292), the `.mpp` probe UI (ADR-0293),
    GUIDED-MODE (5) + VOICE-DECISION (4).
+
+**Three EXIT-CODE traps, all the same shape — they each cost a wrong "green" this project has
+already paid for once:** (1) `pytest --timeout=N` is **not installed**, so passing it makes pytest
+exit **0** having run nothing; (2) **`cmd | tail; echo $?` reports `tail`'s status, not `cmd`'s** —
+this is how a node harness was reported green while exiting 1; redirect to a file and check the exit
+code directly, then grep the file for the failure marker as an independent second check; (3) **CI can
+take ~11 minutes to register check runs**, so `total_count: 0` means "not yet", never "passed".
+Related: **`TestClient` follows a 303 by default** and that render CONSUMES a one-shot banner, so use
+`follow_redirects=False` when asserting on `sra_import_msg`. And **`pip install -e ".[dev]"` after any
+container recycle** — a bare `PYTHONPATH=src` gives `PackageNotFoundError` on ~200 web tests.
+
+**Standing rule from two separate failures this project logged:** do not put a test result in prose
+unless the number appeared in output you read that turn. **A launched run is not a result, and a
+piped exit code is not the command's.**
 
 **Harness notes that cost real time — rebuild them, do not rediscover them** (full detail in
 HANDOFF): upload the fixtures as ONE project via the browser's `file_meta` companion JSON or
