@@ -84,7 +84,7 @@ def test_header_metadata_banner_and_verdict(golden_project5) -> None:
     assert banner_labels == [
         "Status",
         "SPI (duration-based)",
-        "Forecast finish",
+        "Schedule-logic finish (CPM)",  # ADR-0310: was "Forecast finish" — it is pure CPM
         "Baseline finish",
         "Slip",
     ]

@@ -1,7 +1,9 @@
-# Handoff — 2026-07-30 (MS Project already decided where remaining work goes; ADR-0309; v1.0.126)
+# Handoff — 2026-07-30 (two time axes, and the labels that confuse them; ADR-0310; v1.0.127)
 
-> ## STATUS (current) — **the SRA divergence is CLOSED. ADR-0309 MERGED as #483 (`d3e21a8`).**
-> A follow-up round then answered an external review OF THE PLAN (see below) — v**1.0.126**.
+> ## STATUS (current) — **Phase 2 items 1/2/4 shipped as ADR-0310 (v1.0.127). SRA parity CLOSED earlier this day (ADR-0309, #483 + #484).**
+> ADR-0310 writes down the **two time axes** (working vs wall-clock) — the shared root both external
+> audits demanded be stated before CC-01 and V3 are touched — corrects the **H6 mislabelling** no
+> external pass caught, and fixes the `_whole_days` docstring (H5a). **No computed number moves.**
 > Against SSI's own committed export (2000 iterations, focus UID 152, the file's own 919 stored
 > Best/Worst ranges and its own 2 stored risks): deterministic percentile **40.70 % → 6.65 %** against
 > SSI's **5.75 %**; σ **125.5 → 65.5** calendar days against SSI's **64.744** (**1.2 %**); mean
@@ -85,17 +87,48 @@
 > - Unsubstantiated: "historical fixes not adequately regression-locked" (no specific gap named) —
 >   added to Phase 7 as a **verification** task, not an assumed defect.
 >
-> ## ⇢ NEXT — the approved plan, in order
-> Phase 2 of the approved plan (each item one ADR + one PR, sequenced so no fix can be credited to
-> error cancellation): **1** H5a docstring (zero executable lines) · **2** the working-axis vs
-> wall-clock ADR (blocks 3 and 6) · **3** H2c import warning · **4** the **H6 presentation defect
-> confirmed this session and missed by every external pass** — ~50 finish-date surfaces, only 7
-> basis-labelled, 21 with none, and a raw `compute_cpm` value labelled *"Forecast finish"* in
-> `ai/briefing.py:843` and the `/trend` header · **5** V1/V2 tri-state SRA magnitude parser.
-> Then Phase 3: **CC-01** (74 call sites, Fable-5-Max deep dive) and **V3** elapsed literals (highest
-> risk in the plan — it silently changes saved-filter populations; version the evaluator and ship a
-> migration report first). Phase 4 performance (P1–P6, measured by the external pass, unremediated).
-> Phase 5 is the untouched UI queue: rank 12 → 13 → 14, AXIS-TITLES `PENDING` 5 → empty, OR-01/02/03.
+>
+> ## What ADR-0310 settled (read before touching CC-01 or V3)
+> - **The working axis is canonical**; wall-clock appears only at the presentation boundary and in the
+>   elapsed helpers. **Adding a working-axis quantity to a wall-clock one is a defect** — and
+>   `cpm.py:295` (`day + timedelta(minutes=intraday)`) is exactly that, which is the whole of CC-01's
+>   mechanism. Not repaired here; now it has a contract to be repaired against.
+> - **The elapsed convention was already established EIGHT times** (`1440 if duration_is_elapsed else
+>   per_day` in `state.py:1348`, `app.py:5352/9639/11344/18344/18404`, `margin_dashboard.py:188`,
+>   `dcma14.py:230`) and MPXJ's `GenericCriteria` agrees. **`engine/msp_filters.py` is the sole
+>   violator** — hard-codes `"d": 480`, never reads `duration_is_elapsed` (0 occurrences vs 24
+>   repo-wide), captures the elapsed marker in regex group 2 and discards it. **This reduces V3 from
+>   "choose semantics" to "make the outlier conform"** — but the saved-filter population still moves,
+>   so the evaluator versioning + migration report still gate it.
+> - **The supported project-start domain is `start_tod + working_minutes_per_day <= 1440`**, enforced
+>   at the IMPORTER (normalise or reject with an operator-visible message), not by a downstream
+>   warning — a warning leaves the internal inverse broken while the page looks fine.
+>   **`Calendar` gaining a real shift-start field is deliberately NOT decided** — it redefines the
+>   offset axis and needs its own round.
+>
+> ## H6 fixed (the finding no external audit caught)
+> A raw `compute_cpm` value was labelled **"Forecast finish"** in the briefing banner, propagating to
+> Mission Control and chapter 12, and again in the `/trend` header + "Current finish" card. Renamed
+> **"Schedule-logic finish (CPM)"** in all five languages. Plus: `"As-scheduled (stored dates)"` now
+> HAS a methodology card (it was the only method with none, on a page whose prose said "three" while
+> rendering four) and a lane colour (`var(--muted)`, verified in all four themes — it was falling
+> through to `var(--ink)`); `/api/forecast` now ships `basis` (mandatory on the model, exported to
+> Excel, but absent from the payload, so no consumer could label what it drew); the Excel title's
+> method count is derived instead of the literal "three".
+>
+> ## ⇢ NEXT — rank 12, no more Law-2 interruptions
+> **Phase 2 items 1, 2 and 4 are DONE** (ADR-0310). Remaining from Phase 2: **item 3** H2c
+> normalise-or-reject at import (ADR-0310 decision 5 specifies it) and **item 5** V1/V2 tri-state SRA
+> magnitude parser with an operator-visible error.
+>
+> **⇢ TAKE RANK 12 NEXT.** The UI queue has now been deferred by **five** consecutive out-of-band
+> Law-2 rounds (ADR-0306 → 0307 → 0308 → 0309 → 0310). Every deferral was individually justified;
+> the pattern is not. Rank 12 = `/workbench`, `/groups`, `/standards`, `/margin`, `/card/{name}`,
+> `/wbs/{name}`, then rank 13 (vendored typography) and rank 14, and AXIS-TITLES `PENDING` 5 → empty.
+> The five standing UI requirements apply. Do NOT take another correctness round ahead of it unless
+> something genuinely urgent surfaces — Phase 2's remainder, Phase 3 (**CC-01**, 74 call sites,
+> Fable-5-Max deep dive; **V3** elapsed literals, now a conformance fix per ADR-0310 but still
+> population-moving) and Phase 4 (P1–P6, measured but unremediated) all wait behind it.
 >
 > ## Still carried (unchanged identifiers, nothing lost)
 > **CC-01** (H2a) `offset_to_datetime` non-working dates, 74 call sites · **CC-05** (H5) negative

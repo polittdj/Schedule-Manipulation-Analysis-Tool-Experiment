@@ -164,10 +164,29 @@ def _classify(
 
 
 def _whole_days(slack_minutes: int, minutes_per_day: int) -> int:
-    """Slack in whole working days, floored — the day-granular axis SSI displays.
+    """Slack in whole working days, floored toward **negative infinity** — the day-granular axis
+    SSI displays.
 
-    Sub-day slack (time-of-day raggedness in real stored dates) reads 0 days; the curated
-    goldens' slacks are exact day multiples, so their values are unchanged (parity-safe).
+    Python's ``//`` floors, so the rounding is **asymmetric about zero**: POSITIVE sub-day slack
+    reads 0 days (``+479 // 480 == 0``) but NEGATIVE sub-day slack reads a full ``-1``
+    (``-1 // 480 == -1``), and every value in the open band ``(-minutes_per_day, 0)`` does the same.
+    An earlier version of this docstring claimed "sub-day slack reads 0 days" without qualification;
+    that is true only on the positive side (audit CC-05 / external finding H5a, confirmed on
+    per_day 480/600/720/1200).
+
+    **Whether SSI floors negatives the same way is UNVERIFIED** and needs a reference export
+    containing a driving path whose slack lies strictly between -1 and 0 working days. None exists
+    in the tracked corpus: 43 physical directional workbooks were scanned and the 15 negative values
+    found were all whole days or larger (-12.6354167, -8.6354167, -7.125, -6.125). Until such an
+    export arrives this is a documented behaviour, **not a validated decision** — do not "fix" the
+    direction on intuition, and do not treat this docstring as having settled it (ADR-0306, ADR-0309
+    round; the standing ask is recorded in the handoff's operator-artifact list).
+
+    The tier classification is unaffected either way: both :func:`_classify` and the
+    ``on_driving_path`` flag test ``<= 0``, so a ragged negative slack is DRIVING under floor and
+    truncation alike. Only the reported day NUMBER differs. The curated goldens' slacks are exact
+    day multiples, so their values are unchanged (parity-safe) — which is also why parity cannot
+    discriminate the two rules and an external oracle is required.
     """
     return slack_minutes // minutes_per_day
 

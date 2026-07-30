@@ -7957,10 +7957,12 @@ def _mission_body(
 
     # ── per-tile takeaway sentences — figures the session/briefing ALREADY computed ───────────
     banner = dict(briefing.banner) if briefing is not None else {}
-    forecast = banner.get("Forecast finish") or ""
+    forecast = banner.get("Schedule-logic finish (CPM)") or ""
     slip = banner.get("Slip") or ""
     vnoun = "version" if n_loaded == 1 else "versions"
-    fc_tail = f" &mdash; the briefing's forecast finish is {_e(forecast)}" if forecast else ""
+    fc_tail = (
+        f" &mdash; the briefing's schedule-logic (CPM) finish is {_e(forecast)}" if forecast else ""
+    )
     slip_tail = f" &mdash; the slip vs baseline reads {_e(slip)}" if slip else ""
     verdict_tail = (
         f" &mdash; the briefing verdict is {_e(briefing.verdict)}" if briefing is not None else ""
@@ -8168,7 +8170,7 @@ title="Enlarge / shrink this tile" aria-label="Enlarge this tile">⛶ ENLARGE</b
         subs = {
             "Status": "the executive briefing's verdict",
             "SPI (duration-based)": "1.00 = executing to plan",
-            "Forecast finish": "the network's computed finish",
+            "Schedule-logic finish (CPM)": "pure network logic — not a progress-aware forecast",
             "Baseline finish": "the promised finish",
             "Slip": "working days vs the baseline finish",
         }
@@ -8235,9 +8237,13 @@ def _carnac_cards(summary: CarnacSummary) -> str:
 
 
 #: lane color per forecast method (matches static/drift.js so the ruler and the animation
-#: read consistently): logic = accent, throughput = ok, performance = bad.
+#: read consistently): logic = accent, stored = muted, throughput = ok, performance = bad.
+#: ``as_scheduled`` was missing (ADR-0310, audit H6) and silently fell through to ``var(--ink)``,
+#: so the one method that reports the SOURCE TOOL's own progress-aware date was the one lane with
+#: no identity of its own.
 _FORECAST_METHOD_COLORS = {
     "cpm": "var(--accent)",
+    "as_scheduled": "var(--muted)",
     "rate": "var(--ok)",
     "earned_schedule": "var(--bad)",
 }
@@ -8364,6 +8370,20 @@ def _forecast_explainer(fc: ForecastSet, *, prov: str = "") -> str:
             "Method: the critical-path method (the longest logic-driven chain to the end).",
             "Always available once the network schedules &mdash; it never reads &#8212;.",
             fin("cpm"),
+        ),
+        (
+            "As-scheduled (stored dates)",
+            "The date the source tool itself reports",
+            "Reads the finish MS&nbsp;Project / P6 <i>stored in the file</i> rather than recomputing "
+            "it. The source tool is progress-aware &mdash; where it has rescheduled an in-progress "
+            "activity's remaining work it records that decision &mdash; so on a progressed schedule "
+            "this can sit LATER than the pure-logic CPM date above. That gap is the point of showing "
+            "both: CPM says what the network implies, this says what the file asserts.",
+            "Method: the latest stored finish among the schedule's activities &mdash; no "
+            "recalculation, so it carries whatever constraints, levelling or out-of-sequence "
+            "progress the author left in.",
+            "Needs stored finish dates in the source file, else &#8212;.",
+            fin("as_scheduled"),
         ),
         (
             "Completion-rate extrapolation",
@@ -8942,8 +8962,14 @@ def _forecast_data(schedules: list[Schedule], sets: list[ForecastSet]) -> dict[s
         "min": min(axis_dates).isoformat() if axis_dates else None,
         "max": max(axis_dates).isoformat() if axis_dates else None,
     }
-    # the method order/labels the animation plots (stable, deterministic)
-    methods = [{"id": f.method_id, "name": f.name} for f in (sets[-1].forecasts if sets else [])]
+    # the method order/labels the animation plots (stable, deterministic). ``basis`` rides along
+    # (ADR-0310, audit H6): it is mandatory on FinishForecast and exported to Excel, but the payload
+    # used to ship only id+name, so the drift chart and its table could not say what basis a date
+    # came from even in principle.
+    methods = [
+        {"id": f.method_id, "name": f.name, "basis": f.basis}
+        for f in (sets[-1].forecasts if sets else [])
+    ]
     return {
         "axis": axis,
         "methods": methods,
@@ -12059,13 +12085,13 @@ def _how_it_moved_header(schedules: list[Schedule], cpms: list[CPMResult]) -> st
     upd = f"update{'s' if updates != 1 else ''}"
     takeaway = (
         f"Across {n_ver} versions the finish {moved} — {slipped} of {updates} {upd} slipped it "
-        f"— and the current forecast finish is {_mdY(latest.project_finish)}."
+        f"— and the schedule-logic (CPM) finish is {_mdY(latest.project_finish)}."
     )
 
     kpi = _stat_cards(
         [
             ("Versions compared", str(n_ver)),
-            ("Current finish", _mdY(latest.project_finish)),
+            ("Schedule-logic finish", _mdY(latest.project_finish)),
             ("Net finish move", f"{net:+d} d" if net else "0 d"),
             ("Updates that slipped", f"{slipped} / {updates}"),
             ("Biggest single move", f"{biggest:+d} d" if biggest else "0 d"),
@@ -12074,7 +12100,7 @@ def _how_it_moved_header(schedules: list[Schedule], cpms: list[CPMResult]) -> st
     )
     behaviour = _status_stack(
         "Update behaviour",
-        "How each update moved the forecast finish vs the version before it.",
+        "How each update moved the schedule-logic (CPM) finish vs the version before it.",
         [("Slipped", slipped, "--bad"), ("Held", held, "--muted"), ("Improved", improved, "--ok")],
         f"over {updates} {upd}",
         # (no drill — these segments count version-to-version updates, not activities)
@@ -19518,13 +19544,13 @@ def _the_briefing_header(
     audit already computes (no new math)."""
     banner = dict(briefing.banner)
     spi = banner.get("SPI (duration-based)") or banner.get("SPI")
-    forecast = banner.get("Forecast finish")
+    forecast = banner.get("Schedule-logic finish (CPM)")
     slip = banner.get("Slip")
     clauses = []
     if spi:
         clauses.append(f"SPI {spi}")
     if forecast:
-        clauses.append(f"forecasting a finish of {forecast}")
+        clauses.append(f"schedule logic landing on {forecast}")
     if slip:
         clauses.append(f"a {slip} slip from baseline")
     tail = f" — {', '.join(clauses)}" if clauses else ""

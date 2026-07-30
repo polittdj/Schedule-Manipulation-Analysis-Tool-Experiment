@@ -429,8 +429,11 @@ def forecast_tables(labels: Sequence[str], sets: Sequence[ForecastSet]) -> tuple
     for label, fs in zip(labels, sets, strict=True):
         for f in fs.forecasts:
             rows.append((label, f.name, f.finish.isoformat() if f.finish else "n/a", f.basis))
+    # ADR-0310: the title said "three methods" while the loop above emits FOUR rows per version
+    # (CPM, as-scheduled, rate, earned schedule). The count is not hard-coded any more, so adding a
+    # method can never leave the heading contradicting the rows again (audit H6).
     methods = Table(
-        "Finish forecasts (three methods)",
+        f"Finish forecasts ({len(sets[-1].forecasts) if sets else 0} methods)",
         ("Version", "Method", "Forecast finish", "Basis"),
         tuple(rows),
     )

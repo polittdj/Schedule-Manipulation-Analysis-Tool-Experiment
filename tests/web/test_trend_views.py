@@ -235,7 +235,10 @@ def test_trend_chapter_05_page_shell(client: TestClient) -> None:
     assert "1 of 1 update slipped it" in page
 
     # the six-KPI strip and both composition bars
-    assert 'class="ws-kpi"' in page and "Versions compared" in page and "Current finish" in page
+    # ADR-0310 renamed this KPI: the figure is TrendPoint.project_finish, i.e. raw compute_cpm,
+    # so "Current finish" (and the header's "current forecast finish") overstated it.
+    assert 'class="ws-kpi"' in page and "Versions compared" in page
+    assert "Schedule-logic finish" in page and "Current finish" not in page
     assert "Update behaviour" in page and "Where the work stands" in page
     assert 'class="stack-bar"' in page
 
