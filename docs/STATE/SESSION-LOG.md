@@ -9110,3 +9110,45 @@ was one event stale and `NEXT-SESSION-PROMPT.md` three versions stale; both refr
 **Carried, identifiers unchanged:** CC-01, CC-05, V1/V2, V3, the H6 presentation defect, the legacy
 `/sra` cross-basis defect (newly found), P1–P6, the 2 remaining EVM2 working days, and `resume` being
 an MSPDI-only read.
+
+### 2026-07-30 (cont.) — answering an external review of the plan (v1.0.126)
+
+ADR-0309 merged as #483 (`d3e21a8`). The operator then put the completion plan back to ChatGPT, which
+returned "no — not as written." Adjudicated in `audit/EXTERNAL-RECONCILIATION-20260730.md` §Round 2.
+**Two objections were correct, and one mattered.**
+
+1. **§3.4c of the plan was unsafe and it was right to refuse it.** The paragraph specified an
+   *unconditional* data-date floor — exactly what ADR-0108 records regressing EVM1 twice. The shipped
+   implementation never did that (it reads MS Project's stored `<Resume>` and is conditional by
+   construction), so no engine change was needed — but the plan text would have misled the next
+   implementer. Marked SUPERSEDED.
+2. **KS `D <= 0.10` was not statistically justified** — checkable: the α=0.05 two-sample critical
+   value at n=m=2000 is `1.36·sqrt(2/2000) = 0.043`, ~2.3× tighter than proposed. It never shipped
+   (the test asserts percentile/σ/mean bands), but the principle applies to those bands. **Ran a
+   5-seed × 2000-iteration calibration** and re-derived every tolerance from the measured spread:
+
+   ```
+   statistic   seed range  seed sd  worst |err| vs SSI   gate
+   det pctile     1.55 pp   0.68 pp        0.90 pp       +/- 2 pp   (was 3)
+   sigma          3.35 d    1.48 d         1.78 d        +/- 5 %    (was 10)
+   mean           4.62 d    1.87 d         2.41 d        +/- 6 d    (was 10)
+   P10            9.00 d    4.44 d         7.00 d        +/- 10 d   (kept)
+   P50/P80/P90    2/1/3 d   .84/.45/1.64   1/1/3 d       +/- 5 d    (was 10)
+   ```
+   All five seeds pass every gate. P10 keeps the widest band deliberately — sparse lower tail,
+   noisiest estimator; tightening buys flakiness, not rigour.
+3. **Its "compensating errors could fake a matching aggregate" objection prompted the per-task test
+   it demanded**, which passed and then found a real residual: `in-progress 90/92 EXACT (97.8 %)`,
+   `not started 583/907`, **`complete 2/724, median −1458 d`** — the forward pass still packs
+   COMPLETED work from `project_start`. Doesn't move the focus/project finish; consumers read stored
+   dates first. Recorded in `cpm.py`'s module contract and carried in Phase 7.
+4. Also adopted: plan item 3 strengthened from *warn* to **normalize-or-reject at import** (a warning
+   leaves the conversion precondition violated internally); Phase 4 given numeric acceptance gates
+   including accessibility-tree and export-completeness; `cpm.py`'s module docstring now states the
+   engine is **conditionally progress-aware** and names what is still NOT anchored.
+5. Rejected as unsubstantiated: "historical fixes not adequately regression-locked" — no specific gap
+   named, and its own audit ran 14 controls that passed. Added as a Phase 7 **verification** task.
+
+Net: the review did not overturn ADR-0309's numbers, but it caught a real defect in the plan text, a
+real arithmetic error in a proposed tolerance, and a real contract gap in the shipped docstring — and
+the test it insisted on found a residual worth having. Adversarial review of a *plan* earned its keep.
