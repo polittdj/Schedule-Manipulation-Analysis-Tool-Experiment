@@ -840,7 +840,10 @@ def build_briefing(
     banner = (
         ("Status", verdict),
         ("SPI (duration-based)", f"{spi:.3f}" if spi is not None else "n/a"),
-        ("Forecast finish", _day(finish.date())),
+        # ADR-0310: NOT "Forecast finish" — this is raw ``compute_cpm``, which does not floor
+        # in-progress remaining work at the data date. Calling a pure-logic figure a forecast is the
+        # exact conflation the four-method /forecast page exists to expose (audit H6).
+        ("Schedule-logic finish (CPM)", _day(finish.date())),
         (
             "Baseline finish",
             _day(baseline_finish.date()) if baseline_finish else "no baseline",

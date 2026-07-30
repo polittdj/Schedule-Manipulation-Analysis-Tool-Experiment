@@ -197,3 +197,56 @@ def test_forecast_chapter_09_page_shell(client: TestClient) -> None:
     assert 'class="stack-bar"' in page
     assert "CHAPTER 09 · WHERE IT LANDS" in page
     assert "Chapter 10" in page
+
+
+def test_every_forecast_method_is_complete_on_every_surface(client: TestClient) -> None:
+    """ADR-0310 (audit H6): a forecast method must be complete EVERYWHERE it appears.
+
+    ``as_scheduled`` was absent from the lane-colour map in ``web/app.py`` AND from the duplicate
+    map in ``static/drift.js``, absent from the methodology cards, and its ``basis`` never reached
+    ``/api/forecast`` — four independent omissions all pointing at the one method that reports the
+    SOURCE TOOL's own progress-aware date. Each was individually invisible because every lookup
+    had a silent fallback. This pins all four, and pins the two colour maps to each other so the
+    pair cannot drift again (the enumeration lives in two languages; nothing else agrees them).
+    """
+    import json
+    import re
+
+    from schedule_forensics.web.app import _FORECAST_METHOD_COLORS
+
+    _upload(client, "Project5")
+    payload = client.get("/api/forecast").json()
+    methods = payload["methods"]
+    assert methods, "no forecast methods in the payload"
+
+    # 1. every method carries its BASIS, not just id+name
+    for m in methods:
+        assert m.get("basis"), f"{m['id']} ships no basis to its consumers"
+
+    # 2. every method has an explicit lane colour — no silent var(--ink) fallback
+    ids = {m["id"] for m in methods}
+    assert ids <= set(_FORECAST_METHOD_COLORS), (
+        f"methods with no lane colour: {sorted(ids - set(_FORECAST_METHOD_COLORS))}"
+    )
+
+    # 3. the duplicate map in drift.js agrees with the Python one, key for key and value for value
+    drift = (
+        Path(__file__).resolve().parents[2]
+        / "src"
+        / "schedule_forensics"
+        / "web"
+        / "static"
+        / "drift.js"
+    ).read_text(encoding="utf-8")
+    body = re.search(r"var COLORS = \{(.*?)\};", drift, re.S)
+    assert body is not None, "could not find the COLORS map in drift.js"
+    js_map = dict(re.findall(r'(\w+):\s*"([^"]+)"', body.group(1)))
+    assert js_map == _FORECAST_METHOD_COLORS, (
+        f"drift.js and app.py lane colours disagree: {js_map} vs {_FORECAST_METHOD_COLORS}"
+    )
+    assert json.dumps(js_map)  # the parsed map is plain data, not a regex artefact
+
+    # 4. every method has a methodology card on the page, named exactly as the payload names it
+    page = client.get("/forecast").text
+    for m in methods:
+        assert f"<h3>{m['name']}</h3>" in page, f"{m['name']} has no methodology card"

@@ -1,8 +1,8 @@
 /* Schedule Forensics — forecast-drift animation (Bow-Wave-style stepper).
  *
  * Dependency-free SVG (no CDN — air-gap posture). Steps through the loaded versions
- * (oldest first); each frame plots that version's three finish forecasts — Schedule
- * logic (CPM), Completion-rate, Earned-schedule — as labeled markers on a LOCKED date
+ * (oldest first); each frame plots that version's finish forecasts — Schedule logic
+ * (CPM), As-scheduled, Completion-rate, Earned-schedule — as labeled markers on a LOCKED date
  * axis spanning every version's forecasts/data dates/baseline finishes, so the time
  * scale is held fixed and the forecasts visibly drift right as the project progresses.
  * The prior version's markers stay as a faint trail. Data: the local /api/forecast.
@@ -15,7 +15,7 @@
   var NS = "http://www.w3.org/2000/svg";
   var DAY = 86400000;
   // lane color per forecast method id (theme variables; routed via style by svgEl)
-  var COLORS = { cpm: "var(--accent)", rate: "var(--ok)", earned_schedule: "var(--bad)" };
+  var COLORS = { cpm: "var(--accent)", as_scheduled: "var(--muted)", rate: "var(--ok)", earned_schedule: "var(--bad)" }; // in step with app.py's _FORECAST_METHOD_COLORS — pinned by test_forecast_views (ADR-0310)
 
   function svgEl(tag, attrs) {
     var node = document.createElementNS(NS, tag);

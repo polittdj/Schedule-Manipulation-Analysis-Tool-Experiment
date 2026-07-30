@@ -1035,6 +1035,21 @@ _TERMS: dict[str, dict[str, str]] = {
         "de": "Prognostiziertes Ende",
         "pt": "Fim previsto",
     },
+    # ADR-0310: the briefing/Mission-Control/chapter-12 label for the PURE-LOGIC CPM finish, kept
+    # verbally distinct from "Forecast finish" above (which stays for the genuinely forecast-based
+    # methods) so no translation reintroduces the conflation the English labels just removed.
+    "Schedule-logic finish (CPM)": {
+        "es": "Fin por lógica de red (CPM)",
+        "fr": "Fin selon la logique du réseau (CPM)",
+        "de": "Ende nach Netzplanlogik (CPM)",
+        "pt": "Fim pela lógica da rede (CPM)",
+    },
+    "Schedule-logic finish": {
+        "es": "Fin por lógica de red",
+        "fr": "Fin selon la logique du réseau",
+        "de": "Ende nach Netzplanlogik",
+        "pt": "Fim pela lógica da rede",
+    },
     "To-go activities": {
         "es": "Actividades pendientes",
         "fr": "Activités restantes",

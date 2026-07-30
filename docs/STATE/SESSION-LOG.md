@@ -9152,3 +9152,90 @@ returned "no — not as written." Adjudicated in `audit/EXTERNAL-RECONCILIATION-
 Net: the review did not overturn ADR-0309's numbers, but it caught a real defect in the plan text, a
 real arithmetic error in a proposed tolerance, and a real contract gap in the shipped docstring — and
 the test it insisted on found a residual worth having. Adversarial review of a *plan* earned its keep.
+
+### 2026-07-30 (cont.2) — two time axes, and the labels that confuse them (ADR-0310, v1.0.127)
+
+Phase 2 items **1, 2 and 4** of the approved plan, at the operator's "do whatever you recommend".
+**No computed number moves** — this is a contract statement plus label corrections.
+
+**Item 2 — the working-axis vs wall-clock ADR** (both external audits demanded this be written before
+CC-01 or V3 are touched; they were right). Audited rather than asserted:
+- **`cpm.py:295` is CC-01's whole mechanism**: `day + dt.timedelta(minutes=intraday)` adds a
+  *working*-minute remainder as *wall-clock* minutes. Invisible on 8h/08:00 calendars because the two
+  coincide inside the shift; crosses midnight once `start_tod + per_day >= 1440`. Not a broken
+  calendar model — one line of cross-axis arithmetic.
+- **The elapsed convention was already established EIGHT times** — `1440 if duration_is_elapsed else
+  per_day` at `state.py:1348`, `app.py:5352/9639/11344/18344/18404`, `margin_dashboard.py:188`,
+  `dcma14.py:230` — and MPXJ's `GenericCriteria` agrees. **`engine/msp_filters.py` is the sole
+  violator**: hard-codes `"d": 480`, has **zero** occurrences of `duration_is_elapsed` against 24
+  repo-wide, and captures the elapsed marker in regex group 2 then discards it. Even an *ordinary*
+  `"5d"` literal compares at 480 min/day against durations recorded on the file's own calendar.
+  **This reduces V3 from a product decision to a conformance fix** — the population-change risk and
+  its migration-report gate are unchanged.
+- Declared the supported project-start domain (`start_tod + wmpd <= 1440`), enforced at the
+  **importer** (normalise or reject), not by a downstream warning — a warning leaves the internal
+  inverse broken while the page looks fine. `Calendar` gaining a real shift-start field is
+  deliberately NOT decided; it redefines the offset axis.
+
+**Item 4 — H6, the finding no external pass caught.** A raw `compute_cpm` value was labelled
+**"Forecast finish"** in the briefing banner (`ai/briefing.py`), propagating to Mission Control's KPI
+strip and chapter 12's bottom line, and again in the `/trend` header and its "Current finish" card —
+while `engine/forecast.py` states outright that the figure does not floor in-progress remaining work
+at the data date. Renamed **"Schedule-logic finish (CPM)"** across all three consumers and translated
+into es/fr/de/pt so no locale reintroduces it. Three structural gaps on the same page also closed:
+`"As-scheduled (stored dates)"` gained the methodology card it never had (the only method without one,
+on a page whose prose said "three methods" while rendering four) and a lane colour (`var(--muted)`,
+verified defined in all four themes — it had been falling through to `var(--ink)`); `/api/forecast`
+now ships `basis` (mandatory on `FinishForecast`, exported to Excel, but absent from the payload, so
+no consumer could label what it drew); the Excel export's method count is derived, not the literal
+"three".
+
+**Item 1 — H5a/CC-05 docstring.** `_whole_days` claimed "sub-day slack reads 0 days" without
+qualification; true only on the positive side, since `//` floors toward −∞ and every value in
+`(-per_day, 0)` reads −1. Corrected, with the SSI-parity question flagged as **unverified** rather
+than quietly documented as decided, and the reason parity cannot discriminate it recorded (the
+goldens carry exact day multiples).
+
+Two tests pinned the old label and were updated knowingly (`tests/ai/test_briefing.py`,
+`tests/web/test_mission.py`).
+
+**⇢ NEXT: rank 12.** The UI queue has now been deferred by **five** consecutive out-of-band Law-2
+rounds (ADR-0306 → 0307 → 0308 → 0309 → 0310). Each was individually justified; the pattern is not.
+Phase 2's remainder (item 3 H2c, item 5 V1/V2), Phase 3 (CC-01, V3) and Phase 4 (P1–P6) all wait
+behind it.
+
+### 2026-07-30 (cont.3) — rank 12 opened: an off-spine page still needs somewhere to say what it is (ADR-0311, v1.0.128)
+
+Rank 12 taken after five consecutive out-of-band Law-2 rounds. It is the first per-visual batch whose
+pages are **not chapters**, so the DoD's "Chapter kicker … Continue segue" checkbox could not apply
+verbatim; the operator decided the vocabulary (non-chapter kicker, no segue, nav entries for
+`/card`+`/wbs`) before any code moved.
+
+**Half the decision was already shipped, and the prior survey was wrong about it.** `_chapter_kicker`
+drops the `CHAPTER NN ·` prefix when `num` is empty and `_story_footer` excludes SETUP from
+`_STORY_ORDER`, so the four Setup pages already rendered label-only kickers and no segue. The earlier
+survey reported "no chapter kicker" on all six — a **measurement error**, because the probe regexed
+`CHAPTER \d+ ·`, which cannot match an empty-number kicker. Lesson recorded: a conformance sweep whose
+pattern assumes the conforming shape will report conforming pages as broken.
+
+**The real gaps were the two per-file drills.** `/wbs` was ALREADY a declared beat of chapter 07 yet
+rendered no kicker; `/card` had neither nav entry nor kicker. Both have dynamic titles that can never
+resolve through `_TITLE_TO_CHAPTER` — which is precisely why `_chapter_kicker` accepts a `chapter`
+override "for dynamic-title pages (e.g. /analysis)". `/analysis` used it; these two never did. Shipped:
+a `@card` sentinel joining `@analysis`/`@wbs` under one `_PER_FILE` map, `/card` as a chapter-01 beat,
+both drills naming their chapter explicitly. Empty session still degrades to no dead link (200).
+
+**A mid-build correction worth keeping:** the four Setup takeaways I first wrote were **dead data** —
+`takeaway` fed only the Continue segue, which off-spine pages deliberately lack, so the field had
+nowhere to render on exactly the pages the DoD asks for "a nav entry with takeaway". Now surfaced as
+the nav link's `title`. Also filled `/settings` and `/help` rather than leave four of six populated
+(four-of-six reads as a deliberate distinction), and pinned the whole rail with
+`test_every_setup_rail_entry_carries_a_takeaway` — same silent-omission class ADR-0310 had just
+cleaned up on `/forecast`.
+
+**Rank 12 still owes, blockers named:** takeaway h1 + context line on five pages (unblocked); the
+`▦`/`⤓`/`⛶` toolbar + read-me line on every visual — `/margin` blocked by AXIS-TITLES `PENDING`
+(`margin_dashboard.js`), `/workbench` by `NO_SVG_AXES` (`workbench.js`, DOM caption mechanism never
+invented); `data-noprint`, still zero CSS rules anywhere across ten merged pages.
+
+Web suite 1257 passed / 24 skipped. No calculation touched, no displayed figure moved.

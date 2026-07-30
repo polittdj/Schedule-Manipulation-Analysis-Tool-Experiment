@@ -435,6 +435,42 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-30 (cont.) — the bug class is arithmetic between undeclared units
+
+**Two findings, two audits, one unstated contract.** H2 (non-working dates) and H4 (elapsed filter
+literals) were tracked as separate defects for weeks. Both external reviews independently said they
+share a root and demanded the axes be written down before either was touched. Writing them down took
+one document and immediately reclassified one of the two: **V3 stopped being a product decision.**
+
+**The reclassification is the lesson.** V3 was carried as "needs a product decision on elapsed
+semantics." The audit found the decision had already been made **eight times** in the codebase
+(`1440 if duration_is_elapsed else per_day`), and that MPXJ agreed, and that exactly one module never
+got the message. So the honest status was never "undecided" — it was "decided everywhere except
+here." **Before recording an item as blocked on a decision, grep for whether the decision already
+exists in the code.** A convention followed 8:1 is a convention, not an open question.
+
+**"A wrong constant" is the wrong diagnosis.** `cpm.py:295` is `day + timedelta(minutes=intraday)` —
+adding a *working*-minute remainder as *wall-clock* minutes. No constant is wrong; the units are.
+That is why it hides on every 8h/08:00 calendar (the axes coincide inside the shift) and only surfaces
+past midnight. A defect that is invisible on the entire committed corpus and reachable on supported
+input is a units defect, and units defects are found by declaring units, not by testing harder.
+
+**A mislabel can be worse than a wrong number, and it survives longer.** The briefing banner called a
+pure-logic CPM date "Forecast finish" — a figure `engine/forecast.py` explicitly documents as *not*
+progress-aware — and that label propagated to Mission Control and chapter 12. Three adversarial audits
+looked at H6; one declared it disproved because the `/forecast` page labels its four methods
+correctly. **It checked the page built to explain the distinction and not the pages that repeat the
+number.** The generalisable check: for any figure with more than one legitimate basis, enumerate every
+surface that *renders* it, not just the surface that *documents* it. ~50 finish-date surfaces; 7
+labelled.
+
+**Silence in a lookup table is a design decision nobody made.** `_FORECAST_METHOD_COLORS` had no
+`as_scheduled` entry, so that lane fell through to a default and the one method reporting the source
+tool's own answer had no visual identity. Same shape as the missing methodology card and the missing
+`basis` in the payload: three independent omissions all pointing at the same method, because nothing
+enforced that a method must be complete everywhere it appears. **When a set of things is enumerated in
+more than one place, the enumeration wants a single source or a test that they match.**
+
 ### 2026-07-30 — before reverse-engineering a reference tool's judgement, check whether it wrote it down
 
 **The five-week bug.** The SRA diverged from MS Project's SSI add-in badly enough that the

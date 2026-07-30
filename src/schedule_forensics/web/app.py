@@ -1345,7 +1345,7 @@ _SPINE: tuple[tuple[str, tuple[_Chapter, ...]], ...] = (
                 "01",
                 "Where we stand",
                 "@analysis",
-                (),
+                (("Card", "@card"),),
                 (),
                 "Where the project stands at the data date.",
             ),
@@ -1455,19 +1455,54 @@ _SPINE: tuple[tuple[str, tuple[_Chapter, ...]], ...] = (
     (
         "SETUP",
         (
-            _Chapter("", "Margin Dashboard", "/margin", (), ("Margin Dashboard",), ""),
-            _Chapter("", "Metric Workbench", "/workbench", (), ("Metric Workbench",), ""),
+            _Chapter(
+                "",
+                "Margin Dashboard",
+                "/margin",
+                (),
+                ("Margin Dashboard",),
+                "How much schedule margin is left, and whether it is enough.",
+            ),
+            _Chapter(
+                "",
+                "Metric Workbench",
+                "/workbench",
+                (),
+                ("Metric Workbench",),
+                "Build and compare any metric against the population you choose.",
+            ),
             _Chapter(
                 "",
                 "Standards & Execution",
                 "/standards",
                 (),
                 ("Standards & Execution Indices",),
-                "",
+                "How the schedule scores against the governing standards.",
             ),
-            _Chapter("", "Groups & Filters", "/groups", (), ("Groups & Filters",), ""),
-            _Chapter("", "AI Settings", "/settings", (), ("AI Settings",), ""),
-            _Chapter("", "Metric Dictionary", "/help", (), ("Metric Dictionary",), ""),
+            _Chapter(
+                "",
+                "Groups & Filters",
+                "/groups",
+                (),
+                ("Groups & Filters",),
+                "Scope every page to the activities you care about.",
+            ),
+            _Chapter(
+                "",
+                "AI Settings",
+                "/settings",
+                (),
+                ("AI Settings",),
+                "Choose the local model and the figure-citation mode.",
+            ),
+            _Chapter(
+                "",
+                "Metric Dictionary",
+                "/help",
+                (),
+                ("Metric Dictionary",),
+                "Every metric, its formula, and where the formula comes from.",
+            ),
         ),
     ),
 )
@@ -1545,13 +1580,14 @@ _TITLE_TO_CHAPTER: dict[str, _Chapter] = _build_title_map()
 
 
 def _resolve_route(state: SessionState, route: str) -> str:
-    """Resolve a spine ``route`` to a real URL. ``@analysis`` / ``@wbs`` point at the first loaded
-    schedule's report (the dropzone when nothing is loaded)."""
-    if route in ("@analysis", "@wbs"):
+    """Resolve a spine ``route`` to a real URL. ``@analysis`` / ``@wbs`` / ``@card`` point at the
+    first loaded schedule's report (the dropzone when nothing is loaded)."""
+    _PER_FILE = {"@analysis": "/analysis/", "@wbs": "/wbs/", "@card": "/card/"}
+    base = _PER_FILE.get(route)
+    if base is not None:
         first_key = next(iter(state.schedules), None)
         if first_key is None:
             return "/" if route == "@analysis" else ""
-        base = "/analysis/" if route == "@analysis" else "/wbs/"
         return base + quote(first_key)
     return route
 
@@ -1633,8 +1669,14 @@ def _render_nav(state: SessionState) -> str:
             if ch.route in role_routes or any(rt in role_routes for _lbl, rt in ch.beats)
             else ""
         )
+        # ADR-0311: the DoD asks for a "nav entry with takeaway". A numbered chapter surfaces its
+        # takeaway through the Continue segue, but an OFF-SPINE Setup page has no segue by design —
+        # so its takeaway had nowhere to go and the four Setup entries carried "". They now carry
+        # real text, surfaced here as the link's tooltip so the takeaway reaches the reader on the
+        # one nav entry that cannot show it any other way.
+        tip = f' title="{_e(ch.takeaway)}"' if ch.takeaway else ""
         return (
-            f'<a class="nav-chapter{hl}" href="{href}">{num}'
+            f'<a class="nav-chapter{hl}" href="{href}"{tip}>{num}'
             f"<span class=ch-label>{_e(ch.label)}</span></a>{beats}"
         )
 
@@ -2608,7 +2650,15 @@ def create_app(
             return _page(st, name, _unschedulable_panel(sch, exc), ask_schedule=name)
         focus = _target_panel(sch, analysis, st.target_uid) if st.target_uid is not None else ""
         return _page(
-            st, f"{name} — card", focus + _card_body(name, sch, analysis), ask_schedule=name
+            st,
+            f"{name} — card",
+            focus + _card_body(name, sch, analysis),
+            ask_schedule=name,
+            # ADR-0311: a dynamic title can never resolve through _TITLE_TO_CHAPTER, so this page
+            # rendered with NO kicker at all. It is a per-file drill of chapter 01 (linked beside
+            # "Open report"), exactly as /wbs is one of chapter 07 — named explicitly, like /analysis.
+            chapter=_CHAPTER_BY_NUM.get("01"),
+            focus_file=name,
         )
 
     @app.get("/wbs/{name}", response_class=HTMLResponse)
@@ -2631,7 +2681,16 @@ def create_app(
                 focus = _target_panel(sch, st.analysis_for(name, sch), st.target_uid)
             except CPMError:
                 focus = ""  # unschedulable: skip the focus panel, still show the WBS pivot
-        return _page(st, f"{name} — WBS", focus + _wbs_body(name, groups), ask_schedule=name)
+        return _page(
+            st,
+            f"{name} — WBS",
+            focus + _wbs_body(name, groups),
+            ask_schedule=name,
+            # ADR-0311: /wbs was ALREADY a declared beat of chapter 07 (("WBS", "@wbs")) yet its
+            # dynamic title resolved to no chapter, so it rendered with no kicker. Named explicitly.
+            chapter=_CHAPTER_BY_NUM.get("07"),
+            focus_file=name,
+        )
 
     @app.get("/api/wbs/{name}")
     def wbs_json(name: str) -> JSONResponse:
@@ -7957,10 +8016,12 @@ def _mission_body(
 
     # ── per-tile takeaway sentences — figures the session/briefing ALREADY computed ───────────
     banner = dict(briefing.banner) if briefing is not None else {}
-    forecast = banner.get("Forecast finish") or ""
+    forecast = banner.get("Schedule-logic finish (CPM)") or ""
     slip = banner.get("Slip") or ""
     vnoun = "version" if n_loaded == 1 else "versions"
-    fc_tail = f" &mdash; the briefing's forecast finish is {_e(forecast)}" if forecast else ""
+    fc_tail = (
+        f" &mdash; the briefing's schedule-logic (CPM) finish is {_e(forecast)}" if forecast else ""
+    )
     slip_tail = f" &mdash; the slip vs baseline reads {_e(slip)}" if slip else ""
     verdict_tail = (
         f" &mdash; the briefing verdict is {_e(briefing.verdict)}" if briefing is not None else ""
@@ -8168,7 +8229,7 @@ title="Enlarge / shrink this tile" aria-label="Enlarge this tile">⛶ ENLARGE</b
         subs = {
             "Status": "the executive briefing's verdict",
             "SPI (duration-based)": "1.00 = executing to plan",
-            "Forecast finish": "the network's computed finish",
+            "Schedule-logic finish (CPM)": "pure network logic — not a progress-aware forecast",
             "Baseline finish": "the promised finish",
             "Slip": "working days vs the baseline finish",
         }
@@ -8235,9 +8296,13 @@ def _carnac_cards(summary: CarnacSummary) -> str:
 
 
 #: lane color per forecast method (matches static/drift.js so the ruler and the animation
-#: read consistently): logic = accent, throughput = ok, performance = bad.
+#: read consistently): logic = accent, stored = muted, throughput = ok, performance = bad.
+#: ``as_scheduled`` was missing (ADR-0310, audit H6) and silently fell through to ``var(--ink)``,
+#: so the one method that reports the SOURCE TOOL's own progress-aware date was the one lane with
+#: no identity of its own.
 _FORECAST_METHOD_COLORS = {
     "cpm": "var(--accent)",
+    "as_scheduled": "var(--muted)",
     "rate": "var(--ok)",
     "earned_schedule": "var(--bad)",
 }
@@ -8364,6 +8429,20 @@ def _forecast_explainer(fc: ForecastSet, *, prov: str = "") -> str:
             "Method: the critical-path method (the longest logic-driven chain to the end).",
             "Always available once the network schedules &mdash; it never reads &#8212;.",
             fin("cpm"),
+        ),
+        (
+            "As-scheduled (stored dates)",
+            "The date the source tool itself reports",
+            "Reads the finish MS&nbsp;Project / P6 <i>stored in the file</i> rather than recomputing "
+            "it. The source tool is progress-aware &mdash; where it has rescheduled an in-progress "
+            "activity's remaining work it records that decision &mdash; so on a progressed schedule "
+            "this can sit LATER than the pure-logic CPM date above. That gap is the point of showing "
+            "both: CPM says what the network implies, this says what the file asserts.",
+            "Method: the latest stored finish among the schedule's activities &mdash; no "
+            "recalculation, so it carries whatever constraints, levelling or out-of-sequence "
+            "progress the author left in.",
+            "Needs stored finish dates in the source file, else &#8212;.",
+            fin("as_scheduled"),
         ),
         (
             "Completion-rate extrapolation",
@@ -8942,8 +9021,14 @@ def _forecast_data(schedules: list[Schedule], sets: list[ForecastSet]) -> dict[s
         "min": min(axis_dates).isoformat() if axis_dates else None,
         "max": max(axis_dates).isoformat() if axis_dates else None,
     }
-    # the method order/labels the animation plots (stable, deterministic)
-    methods = [{"id": f.method_id, "name": f.name} for f in (sets[-1].forecasts if sets else [])]
+    # the method order/labels the animation plots (stable, deterministic). ``basis`` rides along
+    # (ADR-0310, audit H6): it is mandatory on FinishForecast and exported to Excel, but the payload
+    # used to ship only id+name, so the drift chart and its table could not say what basis a date
+    # came from even in principle.
+    methods = [
+        {"id": f.method_id, "name": f.name, "basis": f.basis}
+        for f in (sets[-1].forecasts if sets else [])
+    ]
     return {
         "axis": axis,
         "methods": methods,
@@ -12059,13 +12144,13 @@ def _how_it_moved_header(schedules: list[Schedule], cpms: list[CPMResult]) -> st
     upd = f"update{'s' if updates != 1 else ''}"
     takeaway = (
         f"Across {n_ver} versions the finish {moved} — {slipped} of {updates} {upd} slipped it "
-        f"— and the current forecast finish is {_mdY(latest.project_finish)}."
+        f"— and the schedule-logic (CPM) finish is {_mdY(latest.project_finish)}."
     )
 
     kpi = _stat_cards(
         [
             ("Versions compared", str(n_ver)),
-            ("Current finish", _mdY(latest.project_finish)),
+            ("Schedule-logic finish", _mdY(latest.project_finish)),
             ("Net finish move", f"{net:+d} d" if net else "0 d"),
             ("Updates that slipped", f"{slipped} / {updates}"),
             ("Biggest single move", f"{biggest:+d} d" if biggest else "0 d"),
@@ -12074,7 +12159,7 @@ def _how_it_moved_header(schedules: list[Schedule], cpms: list[CPMResult]) -> st
     )
     behaviour = _status_stack(
         "Update behaviour",
-        "How each update moved the forecast finish vs the version before it.",
+        "How each update moved the schedule-logic (CPM) finish vs the version before it.",
         [("Slipped", slipped, "--bad"), ("Held", held, "--muted"), ("Improved", improved, "--ok")],
         f"over {updates} {upd}",
         # (no drill — these segments count version-to-version updates, not activities)
@@ -19518,13 +19603,13 @@ def _the_briefing_header(
     audit already computes (no new math)."""
     banner = dict(briefing.banner)
     spi = banner.get("SPI (duration-based)") or banner.get("SPI")
-    forecast = banner.get("Forecast finish")
+    forecast = banner.get("Schedule-logic finish (CPM)")
     slip = banner.get("Slip")
     clauses = []
     if spi:
         clauses.append(f"SPI {spi}")
     if forecast:
-        clauses.append(f"forecasting a finish of {forecast}")
+        clauses.append(f"schedule logic landing on {forecast}")
     if slip:
         clauses.append(f"a {slip} slip from baseline")
     tail = f" — {', '.join(clauses)}" if clauses else ""

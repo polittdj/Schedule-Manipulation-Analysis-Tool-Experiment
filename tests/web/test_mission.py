@@ -160,7 +160,14 @@ def test_mission_kpi_tiles_quote_the_briefing_banner(client: TestClient) -> None
     label/value pairs verbatim — no figure is computed on this page."""
     page = client.get("/mission").text
     assert "ctl-kpis" in page and page.count("ctl-kpi") >= 5
-    for label in ("Status", "SPI (duration-based)", "Forecast finish", "Baseline finish", "Slip"):
+    # ADR-0310 renamed the CPM tile: a pure-logic figure must not be labelled a forecast.
+    for label in (
+        "Status",
+        "SPI (duration-based)",
+        "Schedule-logic finish (CPM)",
+        "Baseline finish",
+        "Slip",
+    ):
         assert label in page, label
 
 
