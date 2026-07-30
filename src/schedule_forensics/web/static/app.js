@@ -63,26 +63,70 @@
     // clamps' floor — the viewport's TOP-LEFT CORNER, painting over the nav rail (that corner
     // is exactly where the operator screenshotted the stranded "DCMA 14 — BEI" callout,
     // 2026-07-27). No anchor, no tip.
-    if (r.width === 0 && r.height === 0) return;
+    if (r.width === 0 && r.height === 0) return false;
     tip.style.display = "block"; // must be visible to measure its size
-    // Never slide left of the fixed nav rail (console/apollo/jarvis >=761px lay the header out
-    // as a fixed 236px left column, z-index 110 — far below this tip's 10000, so the tip WOULD
-    // paint over it). Shrink to the space right of the rail rather than covering it.
+    // Never paint over the nav, whatever shape today's header takes (OR-02, ADR-0314): a RAIL
+    // (console/apollo/jarvis >=761px — a 236px fixed left column, z-index 110 vs this tip's
+    // 10000) is cleared SIDEWAYS via a left floor; a full-width BAR (daylight's sticky top bar,
+    // or the <=760px in-flow burger header while it is on screen) is cleared DOWNWARD via a top
+    // ceiling. The shape test is the header's measured box, not its position — the old guard
+    // asked for `position === "fixed"` alone, so daylight's sticky bar was never avoided
+    // (measured: hit-checked hovers put the callout over the daylight nav at three viewport
+    // sizes), and a scrolled-away in-flow header costs nothing because its bottom is <= 0.
+    // Width is compared against documentElement.clientWidth, NOT innerWidth: innerWidth includes
+    // a classic scrollbar (~15px), which made a full-width bar measure "narrower than the
+    // viewport" and classify as a rail, shoving the tip off-screen to a 9px sliver (measured in
+    // chromium with --hide-scrollbars disabled; headless hides scrollbars, which is exactly why
+    // the first version of this fix missed it).
     const header = document.querySelector("header");
-    const floor = header && getComputedStyle(header).position === "fixed"
-      ? header.getBoundingClientRect().right + pad
-      : pad;
-    tip.style.maxWidth = Math.max(180, window.innerWidth - floor - 2 * pad) + "px";
+    const hr = header ? header.getBoundingClientRect() : null;
+    const vw = document.documentElement.clientWidth;
+    const isRail = !!hr && hr.right < vw - 1;
+    const floor = isRail ? Math.max(pad, hr.right + pad) : pad;
+    const ceil = hr && !isRail ? Math.max(pad, hr.bottom + pad) : pad;
+    tip.style.maxWidth = Math.max(180, vw - floor - 2 * pad) + "px";
+    // Cap the height to what is left BELOW the bar rather than letting a tall callout choose
+    // between covering the nav and running off the bottom. overflow HIDDEN, not auto: the tip is
+    // pointer-events:none, so a scrollbar here would be a control no input could ever operate
+    // (ADR-0304's dead-control law) — wheel input passes through to the page, which scrolls,
+    // which dismisses. The clipped tail is deliberate: it engages only on viewports too short
+    // for the full text below the header, and the same content lives in the DCMA audit table's
+    // tooltips and the metric dictionary.
+    tip.style.maxHeight = Math.max(120, window.innerHeight - ceil - pad) + "px";
+    tip.style.overflowY = "hidden";
     const t = tip.getBoundingClientRect();
     let left = r.left;
-    if (left + t.width > window.innerWidth - pad) left = window.innerWidth - pad - t.width;
+    if (left + t.width > vw - pad) left = vw - pad - t.width;
     let top = r.bottom + 4;
     if (top + t.height > window.innerHeight - pad) {
       const above = r.top - 4 - t.height;
-      top = above >= pad ? above : Math.max(pad, window.innerHeight - pad - t.height);
+      top = above >= ceil ? above : Math.max(ceil, window.innerHeight - pad - t.height);
     }
     tip.style.left = Math.max(floor, left) + "px";
-    tip.style.top = Math.max(pad, top) + "px";
+    tip.style.top = Math.max(ceil, top) + "px";
+    return true;
+  }
+
+  // These tips are POINTER-TRANSPARENT (pointer-events:none), so a tip can never receive its own
+  // mouseleave — every hide has to be driven from somewhere else. Until OR-02 the only paths were
+  // the anchor row's `mouseleave`, its `blur`, and any scroll. A tip shown by FOCUS — which is
+  // what a click or a tap on a `tabindex=0` row does — is reachable by NEITHER of the first two:
+  // the pointer was never over the row, so no mouseleave, and focus stays put, so no blur. The
+  // operator was left with a callout that ignored Escape and ignored the mouse (measured
+  // 2026-07-30: Escape STICKS, moving the pointer away STICKS, alt-tab STICKS; only a scroll or a
+  // click elsewhere cleared it). `shown*` tracks the visible tip so the pointer path can ask the
+  // cheap question first and do nothing at all when no tip is up.
+  let shownTip = null;
+  let shownRow = null;
+  let moveOrigin = null; // first pointer position seen while the current tip shows
+
+  function hideFloatTips() {
+    Array.prototype.forEach.call(document.querySelectorAll(".dcma-tip-float"), (n) => {
+      n.style.display = "none";
+    });
+    shownTip = null;
+    shownRow = null;
+    moveOrigin = null;
   }
 
   // A position:fixed tip ignores scroll: the page slides under a STATIONARY pointer with no
@@ -92,28 +136,78 @@
   // (2026-07-27). Any scroll hides every float tip; the next hover/focus re-shows it. Capture
   // phase, because scrolls inside nested scrollable panes don't bubble. Same guard the shared
   // cf-tip has carried since ADR-0190 — this older mechanism predates it and never got one.
+  document.addEventListener("scroll", hideFloatTips, true);
+
+  // Escape is the dismissal every other layer in this UI honours, and the one the operator
+  // reached for first. Capture phase so a focused row can't swallow it; it hides ALL float
+  // tips, tracked or not, so it is also the rescue for any tip a bug ever strands visible.
   document.addEventListener(
-    "scroll",
-    () => {
-      Array.prototype.forEach.call(document.querySelectorAll(".dcma-tip-float"), (n) => {
-        n.style.display = "none";
-      });
+    "keydown",
+    (e) => {
+      if (e.key === "Escape" || e.key === "Esc") hideFloatTips();
     },
     true
   );
 
+  // Moving the pointer away must dismiss a FOCUS-shown tip too — the row's own mouseleave never
+  // fires for it. A small travel threshold keeps a desk bump or 1px sensor jitter from killing a
+  // deliberately keyboard-opened tip mid-read (ADR-0286's "focus is a deliberate act"): the
+  // dismissal needs real motion, measured from the first position seen while this tip shows.
+  // Costs one null-check while no tip is up, and the tip itself is pointer-transparent so
+  // elementFromPoint reports whatever is underneath it.
+  document.addEventListener(
+    "pointermove",
+    (e) => {
+      if (!shownTip || !shownRow) return;
+      if (moveOrigin === null) {
+        moveOrigin = [e.clientX, e.clientY];
+        return;
+      }
+      const dx = e.clientX - moveOrigin[0];
+      const dy = e.clientY - moveOrigin[1];
+      if (dx * dx + dy * dy < 64) return; // < 8px of travel: jitter, not intent
+      const at = document.elementFromPoint(e.clientX, e.clientY);
+      if (!at || !shownRow.contains(at)) hideFloatTips();
+    },
+    { capture: true, passive: true }
+  );
+
+  // Leaving the window (alt-tab, another app, a background tab) must not leave a callout pinned
+  // over the nav for the operator to find on their return.
+  window.addEventListener("blur", hideFloatTips);
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) hideFloatTips();
+  });
+
   function dcmaPanel(container, dcma) {
-    // a prior render's floating tips live on <body>; clear them before rebuilding
+    // a prior render's floating tips live on <body>; clear them before rebuilding. The tracker
+    // must be reset with them — a removed tip that stayed `shown*` would leave the pointer path
+    // testing a detached row forever, which never matches and so never hides anything again.
     Array.prototype.forEach.call(document.querySelectorAll(".dcma-tip-float"), (n) => n.remove());
+    shownTip = null;
+    shownRow = null;
+    moveOrigin = null;
     const box = el("div", { class: "chart dcma-overview" });
     box.appendChild(el("h3", { text: "DCMA-14 checks" }));
-    Object.keys(dcma).forEach((k) => {
+    Object.keys(dcma).forEach((k, idx) => {
       const d = dcma[k];
       const st = d.status === "PASS" ? "ok" : d.status === "FAIL" ? "bad" : "warn";
       const heading = d.label + " — " + d.name;
-      // the rich tooltip is parented to <body> (position:fixed) so the chart frame's overflow
-      // can never clip it; app.js shows/positions it on hover & keyboard focus
-      const tip = el("div", { class: "dcma-tip dcma-tip-float", role: "tooltip" });
+      // The rich tooltip is parented to <body> (position:fixed) so the chart frame's overflow
+      // can never clip it; app.js shows/positions it on hover & keyboard focus. It is BORN
+      // HIDDEN: .dcma-tip-float CSS computes visible (opacity 1 / visibility visible, the
+      // opt-out from the CSS-hover gating), so a tip created without an inline display:none is
+      // painted at the viewport's (0,0) — all 16 stacked over the nav — until the first scroll
+      // happens to hide them. On loads with an auto-scroll (the Gantt's scroll-to-data-date)
+      // that flash was masked; on loads without one the stack simply STAYED (OR-02's "it
+      // returns after I switch pages", ADR-0314). The id feeds the row's aria-describedby, the
+      // same wiring the server-rendered DCMA audit table ships (ADR-0286).
+      const tip = el("div", {
+        class: "dcma-tip dcma-tip-float",
+        role: "tooltip",
+        id: "dcma-ov-tip-" + idx,
+      });
+      tip.style.display = "none";
       tip.appendChild(el("b", { text: heading }));
       const para = (label, val) => {
         if (!val) return;
@@ -134,6 +228,7 @@
           class: "dcma-ov-row sl-" + st,
           tabindex: "0",
           "aria-label": heading + ": " + d.status + ", " + d.measure,
+          "aria-describedby": "dcma-ov-tip-" + idx,
         },
         [
           el("span", { class: "sl-dot sl-" + st, "aria-hidden": "true" }),
@@ -150,8 +245,25 @@
       let timer = null;
       let px = 0, py = 0; // last pointer position over the row, for the stale-timer check
       const clear = () => { if (timer !== null) { clearTimeout(timer); timer = null; } };
-      const hide = () => { clear(); tip.style.display = "none"; };
-      const show = () => { clear(); placeFloatTip(tip, row); };
+      const hide = () => {
+        clear();
+        tip.style.display = "none";
+        if (shownTip === tip) { shownTip = null; shownRow = null; }
+      };
+      // placeFloatTip returns false when the row has no box to anchor to (detached /
+      // display:none), in which case nothing was shown and nothing may be recorded as showing.
+      // A DIFFERENT tip already tracked is hidden first — without that, hover-show B then
+      // Tab-focus A painted two callouts at once, and blurring A left B visible but untracked,
+      // beyond the pointer path's reach forever.
+      const mark = () => {
+        if (shownTip && shownTip !== tip) hideFloatTips();
+        if (placeFloatTip(tip, row)) {
+          shownTip = tip;
+          shownRow = row;
+          moveOrigin = null;
+        }
+      };
+      const show = () => { clear(); mark(); };
       // The timer path re-checks the pointer is STILL over the row before showing: a wheel
       // scroll during the hover-intent delay moves the row away without a mouseleave, and the
       // timer would otherwise pop the tip over whatever replaced it (the scroll-hide above
@@ -160,7 +272,7 @@
       const showIfStillHovered = () => {
         clear();
         const at = document.elementFromPoint(px, py);
-        if (at && row.contains(at)) placeFloatTip(tip, row);
+        if (at && row.contains(at)) mark();
       };
       const track = (e) => { px = e.clientX; py = e.clientY; };
       const showLater = (e) => { track(e); clear(); timer = setTimeout(showIfStillHovered, delay); };

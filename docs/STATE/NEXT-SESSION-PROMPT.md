@@ -13,8 +13,8 @@ schedule-analysis tool; **POLARIS** in the UI). **Read `docs/STATE/HANDOFF.md` F
 section is the current state and the NEXT queue, and the SessionStart hook auto-injects it, so it is
 already in front of you.
 
-As of this file's last refresh: **v1.0.131**, highest ADR **0313**. **PHASE 2 IS COMPLETE and
-#487 IS MERGED** — `main` is at **`c937ad9`** with post-merge CI fully green and the full suite
+As of this file's last refresh: **v1.0.132**, highest ADR **0314**. **PHASE 2 IS COMPLETE,
+#487 AND #488 ARE MERGED, and OR-02 is FIXED under audit (ADR-0314)** — `main` is at **`c937ad9`** with post-merge CI fully green and the full suite
 read green on the committed tree (`3067 passed, 24 skipped`, exit 0, figure posted on #487). The
 SRA divergence is CLOSED (ADR-0309), the two time axes are written down (ADR-0310), rank 12's
 first slices shipped (ADR-0311 + #486), the import anchor is enforced (ADR-0312), and the SRA
@@ -32,8 +32,8 @@ magnitude parser is tri-state (ADR-0313). **Six** CI checks must be green: `linu
    **(C)** `data-noprint` (recommended: the one-line rule in base.css's A5 print block — note
    ADR-0076 already records base.css as THE print home, so a separate print.css is foreclosed).
    Do NOT invent answers; if no answer arrives, work the un-gated queue below.
-2. **Un-gated work available meanwhile:** OR-02 (the DCMA-11 call-out that covers the left nav
-   and will not dismiss — **a bug**, `docs/STATE/OPERATOR-REQUESTS.md`); OR-01, OR-03;
+2. **Un-gated work available meanwhile:** OR-01 (roll-up titles that say what they compute),
+   OR-03 (Launch Sequence motion + hum) — `docs/STATE/OPERATOR-REQUESTS.md` (OR-02 SHIPPED, ADR-0314);
    `/analysis/{name}` panel 5's two ⛶ (one inert); `/evolution`'s target-blind `⬇ Excel / ⬇ Word`
    bar; the `/resources` X-caption collision; the `/performance` first-paint race.
 
@@ -84,7 +84,7 @@ unblocked — it has been displaced by **seven** consecutive out-of-band correct
    **target-blind** yet sits under a banner promising the exports honour the trace options.
 3. **`docs/STATE/OPERATOR-REQUESTS.md`** — three operator requests raised 2026-07-28, none absorbed
    into an in-flight round: OR-01 per-project metric roll-ups whose TITLES say what they compute,
-   OR-02 the DCMA-11 call-out that covers the left nav and will not dismiss (**a bug**), OR-03
+   OR-02 **SHIPPED** (ADR-0314 — the DCMA-11 call-out: dismissal + nav clamp + born-hidden tips), OR-03
    Launch Sequence motion + a ≥1-minute non-repeating boot "Hum" for the whole load.
 4. **AXIS-TITLES batch 3b** — `PENDING` at 5 (`margin_dashboard`, `sra`, `sra_jcl`, `sra_ssi`,
    `volatility`). Plus the older backlog: the `/resources` X-caption collision, the `/performance`
