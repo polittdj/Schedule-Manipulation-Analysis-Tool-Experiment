@@ -435,6 +435,16 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-31 — Measured-box assertions must be scroll-invariant (ADR-0317)
+- Playwright's `bounding_box` is viewport-relative, and a real click legitimately SCROLLS (the
+  control's own `scrollIntoView`): the first draft of the scatter one-⛶ test failed its restore
+  assertion on a box whose width/height/x had restored to the pixel — only Y differed, because
+  the page was scrolled somewhere new. Assert the scroll-invariant axes (width/height/x) for
+  both the move and the restore; Y proves nothing either way on a fixed overlay.
+- Same round, same class as the ADR-0314 scrollbar lesson: the probe environment's geometry
+  semantics (hidden scrollbars, viewport-relative boxes) must be understood before trusting a
+  green — or a red.
+
 ### 2026-07-30 — "Engaged" is not "used": a lifecycle flag set only in Settings cannot represent default-config use (OR-04 / ADR-0315)
 - The GPU leak survived because THREE mutually reinforcing defects each looked like another's
   absence: shutdown gated on a Settings-only flag (default-config Ask-the-AI never set it), the

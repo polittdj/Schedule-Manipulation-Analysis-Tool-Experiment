@@ -9549,3 +9549,24 @@ the briefs + state rotation) earlier today.
   both fail (2 failed, read) → popped. **Full suite on the final tree: 3138 passed, 1 skipped,
   exit 0 (878 s)**; ruff/format/mypy-strict/bandit/node all green; wheel + installers rebuilt.
 - highest ADR **ADR-0316**.
+
+## 2026-07-31 — one ⛶ per panel: the scatter adopts the /curves mechanism (ADR-0317, v1.0.135)
+
+- **#491 (ADR-0316) MERGED** as `3595dd6` by the operator; branch restarted with `--prune`.
+  PR-3 of the approved queue executed: the `/analysis` scatter panel's round-11 inert-duplicate
+  ⛶ removed by adopting /curves' rank-9 mechanism — `sfControls`' single `tile-expand` button
+  wears `⛶ ENLARGE` + `data-sf-big` (panelkit owns label/aria; click not stopped) and toggles
+  `tile-expanded` (the real overlay); `_shell_tools(big=False)` at the scatter head so the
+  SERVER emits no second glyph — the r11 guard's knowing exemption closed statically, guard
+  byte-unchanged. Census: every caption digest intact; scatter.js's recorded line 102 → 111
+  (the census's own prescribed refresh; no caption byte moved).
+- **Verification read this session:** focused suites **79 passed** (new
+  `test_scatter_one_enlarge.py`: server chunk has ⤓ EXCEL but no `data-sf-big`; real-chromium
+  console/daylight + scrollbar-visible cells — ONE ⛶, click flips to ⛶ SHRINK AND grows the
+  tilebox's scroll-invariant size axes >100 px, second click restores width/height/x <2 px);
+  **proved able to fail** — src stashed → 3 failed (read) → popped. **Full suite on the final
+  tree: 3142 passed, 1 skipped, exit 0 (863 s)**; statics all green; wheel + installers rebuilt.
+- **Lesson (also in LESSONS-LEARNED):** Playwright `bounding_box` Y is viewport-relative and
+  the click's own `scrollIntoView` moves it — the first assertion draft failed on a perfectly
+  restored box; measured-box tests assert the scroll-invariant axes (width/height/x).
+- highest ADR **ADR-0317**.

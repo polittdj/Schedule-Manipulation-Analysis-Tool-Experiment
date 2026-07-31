@@ -36,9 +36,9 @@ _FRAME_MARKERS = (
 )
 
 #: the wall's per-tile Enlarge conventions, reused verbatim so the pattern reads identically.
-#: The *label* is asserted separately, because the two Chapter-05 scripts now speak the merged
-#: panel contract's exact vocabulary (rank 9) while margin.js / scatter.js still carry the older
-#: sentence-case labels until their own conversion round.
+#: The *label* is asserted separately, because the Chapter-05 scripts and scatter.js now speak
+#: the merged panel contract's exact vocabulary (rank 9; scatter normalized by ADR-0317) while
+#: margin.js still carries the older sentence-case labels until its own conversion round.
 _TILE_MARKERS = ("tile-expand", "tile-expanded")
 
 #: panelkit.js's EXACT label strings — the toolbar vocabulary the converted chart pages must use
@@ -158,13 +158,20 @@ def test_margin_burndown_animates_on_locked_axes(client: TestClient) -> None:
 
 
 def test_scatter_gains_enlarge_and_visible_provenance(client: TestClient) -> None:
-    """scatter.js: the tile-consistent ⛶ Enlarge control plus a visible 'Source: <schedule>'
-    label read from the host's data-name (the same key the plot fetches)."""
+    """scatter.js: ONE ⛶ per panel, speaking the panel contract (ADR-0317). The chart-row
+    button IS the panelkit button — it carries data-sf-big, so panelkit.js owns the
+    ⛶ ENLARGE / ⛶ SHRINK label + aria-pressed — while the original tile-expanded wiring still
+    lifts the chart into its viewport overlay. The server head emits NO second ⛶ for this
+    panel (app.py passes big=False): the round-11 inert duplicate is gone, statically. Plus
+    the visible 'Source: <schedule>' label read from the host's data-name."""
     js = client.get("/static/scatter.js").text
     for marker in _TILE_MARKERS:
         assert marker in js, marker
-    for legacy in _LEGACY_LABELS:  # not yet normalized — see the margin.js note above
-        assert legacy in js, legacy
+    for legacy in _LEGACY_LABELS:  # normalized — margin.js is now the only legacy carrier
+        assert legacy not in js, legacy
+    assert "⛶ ENLARGE" in js
+    assert 'big.setAttribute("data-sf-big", "")' in js
+    assert 'tools.className = "sf-tools"' in js
     assert '"Source: " + name' in js
     assert 'getAttribute("data-name")' in js
 
