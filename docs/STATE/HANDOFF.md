@@ -1,36 +1,39 @@
-# Handoff — 2026-07-31 (data-noprint finally hides in print: the C1 one-liner lands; ADR-0318; v1.0.136)
+# Handoff — 2026-07-31 (the /resources period labels yield to the measured caption; ADR-0319; v1.0.137)
 
-> ## STATUS (current) — **PR-4 of the approved queue SHIPPED: `[data-noprint]{display:none!important}` in base.css's A5 print block — DESIGN-SYSTEM §7's "controls hidden in print" DoD checkbox is finally satisfiable. Version 1.0.136, highest ADR ADR-0318, wheel + nine installers regenerated. #492 (ADR-0317) MERGED as `b85b874` by the operator.**
-> The attribute was set at 12 literal sites (8 in app.py incl. the `_shell_tools` helper behind
-> ~57 panel toolbars + the `/analysis` version chips; 4 in vendored JS — trend.js ×2, curves.js,
-> and scatter.js since ADR-0317) while ZERO CSS rules consumed it (measured, ADR-0305). Per the
-> operator's C1 answer with its three sub-answers (chips stay print-hidden as marked;
-> single-theme print check; the two redundant carriers keep the attribute): one line inside the
-> existing `@media print` block, `!important` because app.css's later `.tile-actions
-> {display:flex}` and base.css's own later `.sf-tools{display:inline-flex}` otherwise win.
-> ADR-0076's "base.css is THE print home" stands; a separate print.css stayed foreclosed.
-> Note en route: #492 needed a whitespace-only fixup commit — CI's `ruff format --check`
-> (0.16.1) broke two fluent-chain asserts differently than the local pre-push check reported.
+> ## STATUS (current) — **PR-5 of the approved queue SHIPPED: the last measured caption collision on a shipped chart page is CLOSED, and `/resources` joined the four-theme visual pass. Version 1.0.137, highest ADR ADR-0319, wheel + nine installers regenerated. #493 (ADR-0318) MERGED as `e29a155` by the operator.**
+> The debt round 10 recorded: after the `defer` made the histogram paint on load, the visual
+> pass measured the X caption "Period (month commencing)" parked over the last 40°-rotated
+> period tick labels in 8 of 12 theme × scale combos (console@1 ~36×2 px per label; apollo@1
+> ~40×4 px — the mono font's wider glyphs). Shipped per ADR-0303's law, applied where the
+> collision is caused: `resources.js` now runs a **measured yield** after the SVG lands in the
+> DOM — it reads the X caption's LIVE box (`text.ch-at[text-anchor=end]`) and removes any
+> rotated period label within 2 px of it. The caption never moves (standing requirement 5);
+> apollo's wider corner reserves itself by construction; a hidden/unmeasurable box skips the
+> yield rather than shredding the labels; the yielded bucket keeps its full tooltip (the label
+> is presentation, the bar is the data). Tick-cadence thinning was rejected (degrades every
+> label to protect one corner). Freeze bookkeeping per each pin's own prescribed path: the
+> 16-site census untouched (the yield sits BELOW the call site — line 243 and every digest
+> unchanged); the r10 whole-file `resources.js` digest refreshed deliberately with ADR-0319
+> named, while its load-bearing pins (call-site block digest + both caption strings) prove the
+> `axisTitles` call byte-identical.
 >
 > ## Verification (all read from runs this session)
-> New content pin (`test_accessibility.py::test_data_noprint_marked_controls_are_hidden_in_print`):
-> the rule exists AND sits inside the `@media print` braces. New measured half
-> (`tests/web/test_print_noprint.py`, real chromium, single theme per sub-answer 2): on
-> `/analysis`, print-media emulation computes `display:none` for every `[data-noprint]` element
-> (≥5 on the page) while the panel h2 still prints, and flipping back to screen media restores
-> the controls. **Proved able to fail:** src stashed → both tests fail (2 failed, read) →
-> popped. Focused suites (print pair + accessibility + header/loading): **15 passed**.
-> `ruff` (0.16.1, CI-matched) + format + `mypy --strict` (117 files) + `bandit` exit 0 +
-> `node --check` clean; wheel + nine installers regenerated. **Full suite on THIS tree (read):
-> 3144 passed, 1 skipped, exit 0, in 900 s** (browser-marked tests included).
+> `tests/web/test_axis_titles_visual.py` now walks SIX pages (`/resources` added per the file's
+> own protocol note, which now records the closure): the 12-combo measured pass is green.
+> Focused suites (visual pass + r10 resources contract + r11 census + axis-titles ledger):
+> **80 passed, 1 skipped**. **Proved able to fail:** src stashed → the visual pass reports the
+> original collisions ("overlaps 2027-08 by 20x2px", "overlaps 2027-09 by 43x2px") and exits 1
+> (read) → popped. `ruff` (0.16.1, CI-matched) + format + `mypy --strict` (117 files) +
+> `bandit` exit 0 + `node --check` clean; wheel + nine installers regenerated. **Full suite on
+> THIS tree (read): 3144 passed, 1 skipped, exit 0, in 886 s** (browser-marked tests included).
 >
 > ## ⇢ NEXT
 > 1. **The approved queue** (`docs/STATE/PLAN-20260730.md` — decisions A1 · B1 · C1 recorded;
->    do NOT re-ask): **PR-5 `/resources` X-caption yields (S–M)** → PR-6 `/evolution` exports
->    honor trace options (M) → PR-7 OR-01 roll-up titles (M) → PR-8 AXIS-TITLES 3b-i
->    `margin_dashboard` per A1 (M) → PR-9 rank-12 toolbar/read-me + B1 caption mechanism (M–L)
->    → PR-10 OR-03 launch motion + synthesized hum (M–L). margin.js's vocabulary conversion
->    stays a later round (the trends pin names it as the only legacy carrier).
+>    do NOT re-ask): **PR-6 `/evolution` exports honor trace options (M)** → PR-7 OR-01
+>    roll-up titles (M) → PR-8 AXIS-TITLES 3b-i `margin_dashboard` per A1 (M) → PR-9 rank-12
+>    toolbar/read-me + B1 caption mechanism (M–L) → PR-10 OR-03 launch motion + synthesized
+>    hum (M–L). margin.js's vocabulary conversion stays a later round (the trends pin names it
+>    as the only legacy carrier).
 > 2. **OR-04 operator park artifacts stay open** (`audit/VERIFICATION-REPORT-ollama-lifecycle.md`
 >    §8): #1 `where ollama` · #3 the `keep_alive:0`-vs-`OLLAMA_KEEP_ALIVE=-1` probe (severity
 >    fork) · #5 runner PPID + instance count · #4 the model-identity manifest — plus the

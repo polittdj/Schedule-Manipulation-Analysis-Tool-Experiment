@@ -363,11 +363,15 @@ def test_resources_js_is_deferred_so_chartframe_exists_first(client: TestClient)
 
 
 def test_axis_caption_call_site_is_untouched() -> None:
-    """Standing requirement 5: the captions are finished. This round does not touch a single
-    byte of resources.js — pinned by the whole-file digest and the call-site block."""
+    """Standing requirement 5: the captions are finished. Round 10 touched no byte of
+    resources.js; ADR-0319 later added the measured caption-yield BELOW the call site (the
+    rotated period labels yield to the caption's live box — the caption never moves), so the
+    whole-file digest was refreshed deliberately there. The LOAD-BEARING pins are unchanged:
+    the call-site block digest and the two caption strings prove the axisTitles call itself
+    is byte-identical."""
     js = Path(__file__).resolve().parents[2] / "src/schedule_forensics/web/static/resources.js"
     raw = js.read_bytes()
-    assert hashlib.md5(raw).hexdigest() == "a0afadb3c121f53283798dde8ec7f973"
+    assert hashlib.md5(raw).hexdigest() == "e225d535c080b096440fcec7e467c3f8"  # ADR-0319
     block = raw.decode().splitlines()[235:246]
     assert hashlib.md5("\n".join(block).encode()).hexdigest() == "6cd4b080306f47e19d71d1e8f18d8838"
     assert 'xLabel: "Period (" + UNIT + " commencing)",' in "\n".join(block)
