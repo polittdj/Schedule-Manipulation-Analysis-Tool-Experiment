@@ -56,6 +56,9 @@ class LogicCheck:
     description: str
     evaluated: bool = True
     offender_uids: tuple[int, ...] = ()
+    #: What ``population`` counts — the UI's "of N <unit>" suffix must not call an
+    #: activity-scoped population "links" (the dangling checks count activities).
+    population_unit: str = "link(s)"
 
 
 @dataclass(frozen=True)
@@ -190,6 +193,88 @@ def _redundant_logic(ns_ids: set[int], edges: list[tuple[int, int]]) -> LogicChe
     )
 
 
+def _dangling(schedule: Schedule, ns_ids: set[int]) -> tuple[LogicCheck, LogicCheck]:
+    """Open Start / Open Finish — "Dangling Activities" per the NASA Acumen metric library.
+
+    The Bible's definitions (``NASA Metrics_Complete_*.aft``, verbatim): **Open Start** —
+    "Activities where only the predecessor(s) are either Finish-to-Finish or Start-to-Finish
+    resulting in an open start to the activity"; **Open Finish** — "Activities where the only
+    successor(s) are either Start-to-Finish or Start-to-Start resulting in an open finish to
+    the activity". These catch what a blank-endpoint count (DCMA-01) is structurally blind
+    to: a task can have a non-blank Predecessor AND Successor column and still dangle — an
+    FF-only predecessor drives its finish but nothing drives its START; an SS-only successor
+    hangs on its start while its FINISH drives nothing. Scoped to incomplete activities (the
+    library's ribbon variant — "Remaining activities"; a finished activity's dangling end is
+    no forward-schedule risk). A task with no links at all on that side is DCMA-01's
+    missing-logic case, not a dangler.
+    """
+    by_id = schedule.tasks_by_id
+
+    def _drives(other_uid: int) -> bool:
+        # A link still ties this activity when its OTHER endpoint is a SUMMARY task —
+        # summary logic lowers onto the summary's leaves (ADR-0043), so the tie is real.
+        # An INACTIVE endpoint is off the network and ties nothing.
+        other = by_id.get(other_uid)
+        return other is not None and other.is_active
+
+    pred_types: dict[int, set[RelationshipType]] = {}
+    succ_types: dict[int, set[RelationshipType]] = {}
+    for r in schedule.relationships:
+        if r.successor_id in ns_ids and _drives(r.predecessor_id):
+            pred_types.setdefault(r.successor_id, set()).add(r.type)
+        if r.predecessor_id in ns_ids and _drives(r.successor_id):
+            succ_types.setdefault(r.predecessor_id, set()).add(r.type)
+    incomplete = sorted(uid for uid in ns_ids if by_id[uid].percent_complete < 100.0)
+    open_start = tuple(
+        uid
+        for uid in incomplete
+        if uid in pred_types and pred_types[uid] <= {RelationshipType.FF, RelationshipType.SF}
+    )
+    open_finish = tuple(
+        uid
+        for uid in incomplete
+        if uid in succ_types and succ_types[uid] <= {RelationshipType.SS, RelationshipType.SF}
+    )
+
+    def _label(uid: int) -> str:
+        return f"UID {uid} · {by_id[uid].name}"
+
+    return (
+        LogicCheck(
+            key="open_start",
+            label="Open start (dangling)",
+            count=len(open_start),
+            population=len(incomplete),
+            offenders=tuple(_label(u) for u in open_start[:_OFFENDER_CAP]),
+            description=(
+                "Incomplete activities whose only predecessors are finish-to-finish or "
+                "start-to-finish links — nothing drives the activity's START, so it hangs "
+                "without a proper logical tie ('dangling activities', Acumen Open Start). "
+                "Dangling logic distorts float and masks schedule risk even though the "
+                "Predecessor column is not blank."
+            ),
+            offender_uids=open_start[:_OFFENDER_CAP],
+            population_unit="incomplete activities",
+        ),
+        LogicCheck(
+            key="open_finish",
+            label="Open finish (dangling)",
+            count=len(open_finish),
+            population=len(incomplete),
+            offenders=tuple(_label(u) for u in open_finish[:_OFFENDER_CAP]),
+            description=(
+                "Incomplete activities whose only successors are start-to-start or "
+                "start-to-finish links — the activity's FINISH drives nothing downstream, so "
+                "it can slip without consequence ('dangling activities', Acumen Open Finish). "
+                "Dangling logic distorts float and masks schedule risk even though the "
+                "Successor column is not blank."
+            ),
+            offender_uids=open_finish[:_OFFENDER_CAP],
+            population_unit="incomplete activities",
+        ),
+    )
+
+
 def compute_logic_integrity(schedule: Schedule) -> LogicIntegrity:
     """Compute the logic-integrity checks for ``schedule`` (relationships + actuals; no CPM)."""
     ns_ids = {t.unique_id for t in non_summary(schedule)}
@@ -198,9 +283,12 @@ def compute_logic_integrity(schedule: Schedule) -> LogicIntegrity:
         for r in schedule.relationships
         if r.predecessor_id in ns_ids and r.successor_id in ns_ids
     ]
+    open_start, open_finish = _dangling(schedule, ns_ids)
     return LogicIntegrity(
         checks=(
             _out_of_sequence(schedule, ns_ids),
             _redundant_logic(ns_ids, edges),
+            open_start,
+            open_finish,
         )
     )

@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import datetime as dt
 import itertools
+import secrets
 import threading
 from collections import OrderedDict
 from collections.abc import Callable, Sequence
@@ -371,6 +372,12 @@ class _LRUCache(OrderedDict[str, _V]):
             self.popitem(last=False)
 
 
+#: Fresh every server process (OR-06): half of :attr:`SessionState.launch_token`, so a
+#: Quit-and-relaunch invalidates the browser's per-page selection memory even though
+#: localStorage itself survives the process. Not a secret — an opaque cache-scoping nonce.
+_LAUNCH_NONCE = secrets.token_hex(8)
+
+
 @dataclass
 class SessionState:
     """In-memory, local-only session: loaded schedules (by name) + AI config. No disk
@@ -639,6 +646,18 @@ class SessionState:
     # orphan would otherwise pin the dead scoped schedule until the next flip/wipe).
     wipe_gen: int = 0
     _scope_gen: int = 0
+
+    @property
+    def launch_token(self) -> str:
+        """The token that scopes the browser's per-page selection memory (ADR-0186's
+        ``sf-qs:``/``sf-ui:`` localStorage layers) to THIS server session. Composed of a
+        per-process nonce (fresh every launch) and :attr:`wipe_gen` (bumps on every session
+        wipe), so a Quit-and-relaunch AND a wipe each mint a new token; ``persist.js``
+        clears the page-memory layers when the served token differs from the one it stored.
+        Within one launch (and between wipes) the token is stable, so ADR-0186's
+        within-session page memory is untouched."""
+        return f"{_LAUNCH_NONCE}.{self.wipe_gen}"
+
     # ADR-0281 single-flight: 64 fixed striped locks so N concurrent COLD requests for one epoch
     # key compute ONCE (the winner computes; the rest wait, then hit the just-filled cache) —
     # without serialising unrelated keys (a different key almost always maps to a different stripe;

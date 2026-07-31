@@ -32,11 +32,16 @@ def test_integrity_shows_per_change_effect_on_the_target(client: TestClient) -> 
     page = client.get("/integrity").text
     assert "change-effects" in page
     assert "Effect of each change" in page
-    # the removed 188→187 link shows its computed +23 working-day effect (was hidden by removal)
+    # the removed 188→187 link shows its computed working-day effect (was hidden by removal).
+    # DELIBERATELY re-pinned +23 -> +21 (ADR-0322): this is an ENGINE-DERIVED counterfactual,
+    # and the counterfactual path crosses Hard_File's off-calendar tasks ('24 Hours' /
+    # 'Standard+Sat.' / the elapsed UID 146) — the base CPM now honors those calendars, so the
+    # single-calendar +23 carried the approximation ADR-0322 removed (old value reproduced on
+    # the pre-change engine via stash, new value verified stable on this tree).
     assert (
         "restore removed FS link 188&rarr;187" in page or "restore removed FS link 188→187" in page
     )
-    assert "+23 wd" in page
+    assert "+21 wd" in page
 
 
 def test_ai_facts_carry_the_computed_counterfactual_not_zero(client: TestClient) -> None:
@@ -52,7 +57,8 @@ def test_ai_facts_carry_the_computed_counterfactual_not_zero(client: TestClient)
     facts = manipulation_forensics_facts(schedules, cpms, target_uid=155)
     joined = " ".join(f.text for f in facts)
     assert "188→187" in joined
-    assert "+23 working day(s) LATER" in joined
+    # DELIBERATELY re-pinned +23 -> +21 (ADR-0322; same adjudication as the /integrity pin)
+    assert "+21 working day(s) LATER" in joined
     assert "hid that much slip" in joined
 
 

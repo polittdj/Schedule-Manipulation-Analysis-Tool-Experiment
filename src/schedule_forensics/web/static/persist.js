@@ -51,6 +51,36 @@
   var ls = store();
   if (!ls) return; // storage blocked — degrade to the pre-ADR-0186 behavior
 
+  // ---- launch guard (OR-06) -----------------------------------------------------------
+  // localStorage outlives the server by design, so the ADR-0186 page memory used to leak
+  // across sessions: a FRESH launch of the tool showed Target UIDs / filters from a project
+  // never loaded, even after wipe-then-Quit. The server now serves a launch token
+  // (<meta name=sf-launch> — per-process nonce + wipe generation). A token change means the
+  // remembered selections belong to a PREVIOUS session: clear BOTH page-memory layers for
+  // every page plus the per-page column-picker keys. Global preferences (theme, UI size,
+  // Timescale) are deliberately NOT page state and are never touched. Within one session the
+  // token is stable, so ADR-0186's page memory keeps working exactly as before.
+  (function () {
+    var meta = document.querySelector('meta[name="sf-launch"]');
+    if (!meta) return; // token not served — keep the pre-guard behavior
+    var token = meta.getAttribute("content") || "";
+    var seen = null;
+    try { seen = ls.getItem("sf-launch"); } catch (e) { seen = null; }
+    if (seen === token) return; // same launch, no wipe since — the memory is this session's
+    try {
+      var doomed = [];
+      for (var i = 0; i < ls.length; i++) {
+        var k = ls.key(i);
+        if (k && (k.indexOf("sf-qs:") === 0 || k.indexOf("sf-ui:") === 0)) doomed.push(k);
+      }
+      Object.keys(PAGE_KEYS).forEach(function (p) {
+        PAGE_KEYS[p].forEach(function (k) { doomed.push(k); });
+      });
+      doomed.forEach(function (k) { ls.removeItem(k); });
+      ls.setItem("sf-launch", token);
+    } catch (e) { /* storage gone mid-walk — fail open */ }
+  })();
+
   // ---- layer 1: query-string memory --------------------------------------------------
   function cleanedSearch() {
     var raw = location.search.replace(/^\?/, "");

@@ -9700,3 +9700,78 @@ the briefs + state rotation) earlier today.
   `test_float_tip_dismiss` flake did NOT appear in that run). Wheel 1.0.139 + nine
   installers regenerated after the review fixes.
 - highest ADR **ADR-0321**.
+
+## 2026-07-31 (cont.5) — the base CPM honors per-task calendars; a launch token scopes page memory (ADR-0322–0324, v1.0.140)
+
+- **Operator-directed engine-correctness deep dive (OR-05/OR-06), pre-empting the PR-8/9/10
+  queue.** First durable-state action: OR-05/OR-06 captured verbatim in OPERATOR-REQUESTS.md.
+  #496 (ADR-0321, v1.0.139) MERGED as `ffa5009` by the operator pre-session.
+- **The oracle, read in full per the directive:** all 6 slides of `Politte Schedule Tool.pptx`
+  (text, tables, notes, the four embedded screenshots read as images), both `.mpp` files
+  converted via the vendored MPXJ and every task/link/calendar field dumped and read, and the
+  uploaded copies verified byte-identical (sha256) to the committed intake blobs.
+- **OR-05 pre-change variances (measured, engine run on both files):** Jacked-1 computed
+  finish 10/28 vs MSP 10/07; the 24-Hours task (UID 19) wrongly critical with TF 0 vs stored
+  36 900 min (76.88 d); eDays slack cap-space-collapsed vs stored 3 780 (2.63 edays); the
+  dangling pair (FF-only pred / SS-only succ) invisible to every logic check; Jacked-2's
+  violated MFO milestone recomputed 0 vs stored −2 400 (−5 d). Slack stored in TENTHS of a
+  minute throughout (369000 → 36 900 min).
+- **ADR-0322 — per-task-calendar CPM:** execution calendars (elapsed = 24/7 as the degenerate
+  case), wall instants propagated between off-calendar tasks (never round-tripped through the
+  lossy axis), segment-aware role mappings, float in the TASK's own calendar minutes (the MSP
+  stored-slack basis), backward target as a wall instant (keeps QC-D2's no-fabricated-negative
+  guarantee), pin-violation slack `min(backward, pin − logic_es)`, DCMA-12 injection
+  generalized to the execution calendar. ADR-0240 protocol: a 3-lens adversarial design review
+  (MSP semantics / architecture / parity blast radius, 3 agents) ran BEFORE implementation;
+  every blocker resolved in the shipped design; lead re-validated each finding against the
+  code and the oracle numbers.
+- **ADR-0323 — Open Start / Open Finish** in `logic_integrity` per the Bible's verbatim
+  definitions ("Also known as 'Dangling Activities'"); DCMA-01's blank-endpoint semantics
+  pinned unchanged ({4, 15, 22} on Jacked 1).
+- **PowerPoint-vs-file divergence, verified and NOT chased:** the committed Jacked-2 .mpp has
+  no Deadline on Task 11 — MPXJ reads MPP14 deadlines (controls: Hard_File UID 155,
+  Large-Test UID 157), reads none here, and LastSaved 09:23 EDT predates the pptx's final
+  edit 14:29Z (=10:29 EDT). 13 d is correct for the file as saved (the slide's own no-deadline
+  outcome); the deadline pipeline is pinned end-to-end by a new test; operator can re-save.
+- **Deliberate re-baselines, each via its own pin with evidence at the pin:** QC-D2's
+  elapsed-chain {1: 0} → {1: 1440} (oracle: the eDays task's stored 3 780 for the same
+  finish-in-nonworking-time shape) and TP3 ribbon negative_float 3 → 4 (the violated MFO
+  UID 41 now correctly negative; FUSE-VALIDATION.md's own "to reconcile" row shows the
+  workbook capture never matched the committed fixture's dates).
+- **ADR-0324 (OR-06) — launch token:** `<meta name=sf-launch>` (per-process nonce +
+  `wipe_gen`) + a compare-then-clear guard in persist.js ahead of the query-string replay;
+  clears `sf-qs:*`/`sf-ui:*`/column keys on a token change only — ADR-0186 within-session
+  memory and the global prefs untouched.
+- **Verification read this session:** new multicalendar oracle suite **17 passed** (proved
+  able to fail: **14 failed / 5 passed** pre-change); dangling + oracle + ribbon + logic-panel
+  **47 passed**; OR-06 suite incl. real-Chromium proof + ADR-0186 neighbors **12 passed**
+  (proved able to fail: **4 failed** pre-fix); mid-build engine sweep **831 passed / 1
+  failed** (the TP3 adjudication above); installer lockstep **52 passed** after wheel
+  1.0.140 + nine installers regenerated; statics: ruff 0.16.1 check clean · format clean
+  (822 files) · mypy --strict "no issues in 117 source files" · bandit exit 0 · node --check
+  clean.
+- **Second ADR-0240 round on the LANDED diff** (3 lenses -> per-finding EXECUTABLE
+  refutation, 8 agents): 4 findings confirmed, every one closed in-tree with a regression
+  test — (1) a `datetime(hour=24)` crash when a working day ends at minute 1440 (BLOCKER;
+  reproduced, fixed via the `_at_minute` helper); (2) the review OVERTURNED the draft
+  two-ruler seam: wall->axis projection now uses the canonical CONTIGUOUS ruler
+  (`_wall_to_offset` == `datetime_to_offset`) while int->wall expansion stays
+  segment-aware — the confirmed repro had a successor RENDERING before its predecessor's
+  finish and a same-instant SNET out-binding the link; (3) DCMA-12 false-FAILed a perfect
+  two-task elapsed chain — fixed with the wall-axis continuity check; (4) the dangling
+  checks dropped summary-endpoint links — fixed with active-endpoint filtering. The
+  persist.js session-restore re-seed confirmation is an ADR-0324 documented residual.
+- **Full suite on the final source tree: 6 failed / 3199 passed / 1 skipped (2478 s), all
+  six dispositioned:** 5 were the SAME two adjudicated re-baseline classes surfacing in
+  sibling pins — TP3 negative-float 3 -> 4 in `test_battery.py` (x2, the violated MFO UID 41,
+  same evidence as the ribbon pin) and the Hard_File 188->187 counterfactual +23 -> +21 wd in
+  `test_change_effects_integration.py` (x2) + `test_integrity_multifile_robust.py` (x1) —
+  an ENGINE-DERIVED pin whose counterfactual path crosses Hard_File's off-calendar tasks;
+  the old +23 was reproduced on the pre-change engine via stash before re-pinning (never
+  re-pinned blind). The 6th, `test_float_tip_dismiss`, is the documented ADR-0320
+  load-dependent flake (the suite ran beside the review fan-out) and **passes in
+  isolation** (read this session). After the re-pins (test files only, no source change):
+  the five re-pinned files read **65 passed**; parity/goldens (SSI, SRA calibration,
+  project2_5, fuse critical sets) all passed inside the full run — the blast-radius
+  adjudication held exactly (only the named pins moved).
+- highest ADR **ADR-0324**.

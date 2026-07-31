@@ -99,6 +99,67 @@ audit's §8.
 
 ---
 
+## 2026-07-31 — session prompt (engine-correctness deep dive; pre-empts the PR-8/9/10 queue)
+
+### OR-05 — PowerPoint-oracle parity for the two "Jacked" schedules · `SHIPPED (ADR-0322/0323)`
+
+**Outcome:** the base CPM now honors per-task calendars (24-Hours task, eDays as the 24/7
+degenerate case) with float measured in the task's own calendar minutes — every stored Total
+Slack on both files reproduces EXACTLY (36 900 / 3 780 / 3 840 / 480 / −2 400 / 6 240 min),
+finish 10/07 / 10/09, critical sets match, a violated MSO/MFO pin reports MS Project's negative
+slack, and the Bible-named Open Start / Open Finish dangling checks catch the slide-1 pair.
+**One file-vs-slide divergence, verified and NOT chased:** the committed
+`Jacked up Schedule 2.mpp` does not contain Task 11's deadline (MPXJ provably reads MPP14
+deadlines elsewhere; the .mpp's last save 09:23 EDT predates the pptx's final edit 10:29 EDT —
+the deadline was added after the last save). The tool therefore correctly shows +13 d for
+Task 11, the slide's own stated no-deadline outcome. **Operator action if desired:** re-save
+the .mpp with the deadline set; the pipeline already flows it (pinned by test) and Task 11
+will then read −5 d.
+
+Three files are committed on `main` under `00_REFERENCE_INTAKE/mpp/` (non-CUI, operator-added via
+the GitHub web UI, `inherited_from_main`): `Jacked Up Schedule 1.mpp`, `Jacked up Schedule 2.mpp`
+(note the case difference), and `Politte Schedule Tool.pptx` (6 slides). The PowerPoint explains
+the two `.mpp` files — they are built with **KNOWN issues the tool must identify** (named classes:
+**Dangling Tasks**, **eDays/elapsed durations**, **Total Slack calculation**).
+
+Operator intent, verbatim capture: READ EVERYTHING, ASSUME NOTHING — extract and read every slide
+(text, tables, notes, embedded images), convert both `.mpp` via
+`java -cp tools/mpxj/classes:tools/mpxj/lib/* MpxjToMspdi <in> <out>` (verified working on both:
+16 and 12 tasks), and read every task/link/calendar field. Then run the tool on both files and
+compare **EVERY output** (CPM dates, Total Slack per task, DCMA-14 verdicts and offender lists,
+dangling/logic checks, float metrics, finish, margin) against the PowerPoint. **The PowerPoint is
+the oracle — the tool is known to be WRONG on these files.** For each variance: root-cause it in
+the engine, write a test that FAILS on the current code (prove-able-to-fail), prototype the fix in
+a sandbox, iterate until validated, then implement it **GENERALLY** — engine-level, applying to any
+file the tool ever runs (no special-casing these two), so future eDays / dangling-task / Total
+Slack cases are always computed correctly.
+
+Recon hooks recorded with the request (verify, they may drift): Jacked 1 carries a
+`DurationFormat=8` (eDays) task — intersects the carried debts CC-01 rendering half (74 call
+sites), V3 elapsed literals (`engine/msp_filters.py`), and CC-05 negative sub-day slack floor;
+`engine/metrics/_common.py::effective_total_float` prefers the file's STORED Total Slack over
+recomputed CPM float — triage every slack variance as stored-vs-recomputed FIRST. Engine changes
+are in scope (Law-2 work); the parity gate (`pytest -m parity`) and goldens must stay green — any
+legitimately-shifted pin gets a DELIBERATE ADR-named re-baseline via that pin's own path, never a
+silent update. If the PowerPoint and the `.mpp` bytes genuinely contradict, STOP and ask the
+operator rather than "fixing" to a misread oracle.
+
+### OR-06 — Fresh launch shows stale fields from previous sessions · `SHIPPED (ADR-0324)` · **BUG**
+
+> Operator: a fresh open of the deployed tool shows fields populated from PREVIOUS sessions
+> (e.g. Target UID from a project never loaded), even after wipe-then-Quit.
+
+Root cause is VERIFIED mechanism-level: `web/static/persist.js` (ADR-0186 per-page selection
+memory) stores `sf-qs:<path>` (query strings incl. `?target=…`) and `sf-ui:<path>` (control
+values) in browser localStorage, which survives server wipe/quit by design of localStorage —
+nothing invalidates it for a new session. Fix so a wipe and/or a fresh server launch invalidates
+the per-page selection memory (e.g. a server-issued launch/session ID that keys or clears the
+`sf-qs:`/`sf-ui:` layers), WITHOUT killing ADR-0186's within-session page memory or the global
+prefs (theme/scale/timescale are deliberately separate). UI change → DESIGN-SYSTEM.md rules; check
+for JS digest/line pins over `persist.js` BEFORE editing; own ADR.
+
+---
+
 ## How to work this queue
 
 - Pick items up in a numbered round like any other tail work; record the ADR that closes each.
