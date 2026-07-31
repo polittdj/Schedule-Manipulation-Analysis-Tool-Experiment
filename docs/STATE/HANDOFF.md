@@ -1,68 +1,36 @@
-# Handoff — 2026-07-30 (OR-04 shipped: the GPU is freed on exit in three tiers, and the three decisions are ANSWERED; ADR-0315; v1.0.133)
+# Handoff — 2026-07-30 (the /performance first paint no longer races the chart frame; ADR-0316; v1.0.134)
 
-> ## STATUS (current) — **OR-04 (`llama-server.exe` holding dedicated GPU memory after quit) is FIXED per the operator-gated lifecycle audit. Version 1.0.133, highest ADR ADR-0315, wheel + nine installers regenerated. The three briefed decisions are ANSWERED (A1 · B1 · C1) — rank 12's remainder is UNGATED.**
-> The operator's audit prompt ran REPORT-ONLY first (`audit/VERIFICATION-REPORT-ollama-lifecycle.md`,
-> committed at `cac0991`, audited tree `d508250`), then the apply was gated open. Confirmed in code:
-> the ENGAGED path's own cleanup manufactured the orphan — unverified unload → `TerminateProcess` on
-> the parent serve → an image sweep (`ollama app.exe`/`ollama.exe`) that finds only dead processes
-> while the reparented runner survives holding ~11 GB VRAM (F-7, Critical; the operator's two
-> "process not found" taskkills are that code's exact output). Used-but-never-engaged sessions
-> no-opped entirely (`_engaged` set only by the Settings POST — F-4); every failure was invisible
-> (`check=False` results discarded, listing failures silently `return 0` — F-5/F-6); nothing
-> reconciled at startup (F-2); engagement died with the process (F-1/F-3); orphans COMPOUND per
-> enable→ask→quit cycle (F-17).
->
-> ## What shipped (ADR-0315)
-> Three-tier `OllamaLauncher.shutdown()`: **engaged** → unload-all + bounded `/api/ps` re-probe
-> (`unload-incomplete` at WARNING when it doesn't drain) + **pid-rooted tree-kill of the serve WE
-> spawned while our un-reaped handle still pins its pid** (`taskkill /F /T /PID` / `killpg`; the
-> POSIX branch refuses a target sharing our own process group) + the ADR-0122 image sweep with
-> returncodes read (0/1/128 = fine, anything else WARNING); **used-but-never-engaged** →
-> `record_use(model, endpoint)` fires on generate SUCCESS only (a `_UseMarking` wrapper in
-> `_active_backend`/`_second_backend`; probes and the settings render never mark — pinned) and
-> shutdown unloads ONLY those models, touching no process (operator ruling 2026-07-30);
-> **never used** → total no-op. A durable marker (`$SF_CACHE_DIR`/ollama-engagement.json —
-> endpoint+models+ts, never schedule content) survives a hard kill; `reconcile_at_startup()`
-> (launcher, daemon thread, TCP-gated) reclaims marker-proven leftovers or surfaces
-> `orphan-suspected`, and touches NOTHING without the marker. `generate` now sends
-> `keep_alive:"5m"` (hardening — override vs `OLLAMA_KEEP_ALIVE=-1` is UNVERIFIED, F-13, park #3).
-> Settings gains AI-runtime diagnostics: `manager.status` (F-16 — `no-binary` was WRITE-ONLY) +
-> the four `OLLAMA_*` env values (reported, never overridden — F-10). NO image-name kill of the
-> runner — rejected (llama.cpp/LM Studio collision) and pinned by test.
+> ## STATUS (current) — **PR-2 of the approved queue SHIPPED: `/performance` gets the same one-word `defer` that fixed `/resources` in round 10. Version 1.0.134, highest ADR ADR-0316, wheel + nine installers regenerated. #490 (OR-04, ADR-0315) MERGED as `e38961e` by the operator.**
+> `performance.js` reads its embedded `#perfData` blob and renders synchronously at parse time,
+> and `quad()` ends in `SFChartFrame.axisTitles(...)` — but `chartframe.js` is emitted by
+> `_LAYOUT` AFTER `</main>`, so first paint threw `SFChartFrame is not defined` and the three
+> portfolio quads stayed empty until the first Prev/Next/Play click re-rendered. The fix is
+> `defer` on the script tag in `app.py` — and NOTHING else: a runtime guard at the call site was
+> deliberately rejected (ADR-0316) because the repo's digest pins (whole-file, call-site census,
+> the r10 byte-pinned quad captions) would all re-baseline for a guard the `defer` makes
+> unreachable, and the `/resources` precedent shipped `defer`-only with the JS byte-identical.
 >
 > ## Verification (all read from runs this session)
-> Focused suites (`tests/ai/test_ollama_process.py` · `test_coverage_ollama_process.py` ·
-> `test_backends.py` · `tests/web/test_ai_wiring.py`): **84 passed** in 7.38 s at first green,
-> including the operator-scenario regression (use the AI without opening Settings → close →
-> unloader called with exactly the used set, stopper/tree-kill NEVER called), alive-at-kill
-> ordering, unload verification, marker/reconciliation, the llama-server exclusion pin, and the
-> settings surfacing pair. **Proved able to fail:** src stashed → the three key tests fail
-> (3 failed, read) → popped. `ruff` + `ruff format --check` + `mypy --strict` green on 117 src
-> files; `bandit` exit 0 (one B110 fixed by logging instead of passing — this PR's own visibility
-> law); `node --check` clean on all vendored JS. **Full suite on THIS tree (read): 3136 passed,
-> 1 skipped, exit 0, in 890 s** — Playwright+vendored Chromium were installed in the container,
-> so the browser-marked tests ran locally too. One full-run failure en route (`test_launcher`'s
-> fake manager lacks `reconcile_at_startup`) was fixed with the same getattr-guard pattern as
-> `record_use`, wheel+installers rebuilt, and the suite re-run IN FULL on the final tree.
-> **4-theme render check (measured, read):** the two diagnostics notices render with real boxes
-> in console/daylight/apollo/jarvis (heights 64/43/64/64 px) against a live server with a stub
-> manager + `OLLAMA_KEEP_ALIVE=-1`. The real GPU machine is the operator's: the PR body carries
-> the four-scenario smoke script (A: the bug path — ask without Settings, quit → `ollama ps`
-> empty, runner gone, Ollama itself alive; B: ADR-0122 intact; C: never-used untouched; D:
-> hard-kill backstop).
+> `tests/web/test_r10_performance_contract.py`: **22 passed** including the two new twins of the
+> r10 `/resources` tests — the TestClient defer-pin (attribute present AND `</main>` really
+> precedes `chartframe.js`) and a real-chromium first-paint test (fresh load, zero interaction:
+> no `pageerror`, all three quad hosts painted). **Proved able to fail:** src stashed → both fail
+> (2 failed, the chromium one on the un-deferred throw) → popped. `ruff` + format + `mypy
+> --strict` (117 files) + `bandit` exit 0 + `node --check` clean; wheel + nine installers
+> regenerated. **Full suite on THIS tree (read): 3138 passed, 1 skipped, exit 0, in 878 s**
+> (browser-marked tests included — Playwright + vendored Chromium present in the container).
 >
 > ## ⇢ NEXT
-> 1. **Operator park artifacts stay open** (audit §8): #1 `where ollama` (the PATH branch), #3 the
->    `keep_alive:0`-vs-`OLLAMA_KEEP_ALIVE=-1` probe (the severity fork for the unload strategy),
->    #5 runner PPID + instance count (orphan signature + accumulation), #4 the model-identity
->    manifest. They refine, not gate, the shipped fix.
-> 2. **The approved queue** (`docs/STATE/PLAN-20260730.md` — operator-approved, decisions + red-team
->    digest recorded there; do NOT re-ask A/B/C): PR-2 `/performance` first-paint `defer` (S) →
->    PR-3 scatter panel's one-⛶ merge (S–M) → PR-4 `data-noprint` C1 one-liner (S) → PR-5
->    `/resources` X-caption yields (S–M) → PR-6 `/evolution` exports honor trace options (M) →
->    PR-7 OR-01 roll-up titles (M) → PR-8 AXIS-TITLES 3b-i `margin_dashboard` per A1 (M) → PR-9
->    rank-12 toolbar/read-me + B1 caption mechanism (M–L) → PR-10 OR-03 launch motion +
->    synthesized hum (M–L).
+> 1. **The approved queue** (`docs/STATE/PLAN-20260730.md` — operator-approved, decisions A1 ·
+>    B1 · C1 + red-team digest recorded there; do NOT re-ask): **PR-3 scatter panel's one-⛶
+>    merge (S–M)** → PR-4 `data-noprint` C1 one-liner (S) → PR-5 `/resources` X-caption yields
+>    (S–M) → PR-6 `/evolution` exports honor trace options (M) → PR-7 OR-01 roll-up titles (M) →
+>    PR-8 AXIS-TITLES 3b-i `margin_dashboard` per A1 (M) → PR-9 rank-12 toolbar/read-me + B1
+>    caption mechanism (M–L) → PR-10 OR-03 launch motion + synthesized hum (M–L).
+> 2. **OR-04 operator park artifacts stay open** (`audit/VERIFICATION-REPORT-ollama-lifecycle.md`
+>    §8): #1 `where ollama` · #3 the `keep_alive:0`-vs-`OLLAMA_KEEP_ALIVE=-1` probe (severity
+>    fork) · #5 runner PPID + instance count · #4 the model-identity manifest — plus the
+>    four-scenario smoke script from #490's PR body on the deployed build (≥ v1.0.133).
 > 3. Behind the queue: **Phase 3** (CC-01 rendering half, 74 call sites, Fable-5-Max deep dive;
 >    V3 elapsed literals) and **Phase 4** (P1–P6, measured but unremediated); rank 13/14.
 >
@@ -102,9 +70,11 @@
 > guard"** (ADR-0313 — it emits no `<f>`; the CSV sibling was the real vector); **"OR-02 is in
 > the hint/tooltip layer"** (ADR-0314 — the callout is app.js's DCMA float tip); **an image-name
 > sweep of the model runner** (ADR-0315 — `llama-server` is llama.cpp's generic binary, the tool's
-> own OpenAI-compat backend runs one; pid-rooted tree-kill instead, exclusion pinned by test); and
+> own OpenAI-compat backend runs one; pid-rooted tree-kill instead, exclusion pinned by test);
 > **asserting** that a per-request `keep_alive:0` overrides `OLLAMA_KEEP_ALIVE=-1` (UNVERIFIED,
-> audit F-13 — park #3 decides; never state it in either direction).
+> audit F-13 — park #3 decides; never state it in either direction); and **a runtime guard on
+> `performance.js:472`** (ADR-0316 — `defer` makes it unreachable and every digest pin would
+> re-baseline for nothing).
 >
 > ## Harness notes — the traps, one line each
 > Run dev tools as `python -m <tool>` (a stale `/root/.local/bin/ruff` shadows pip's).
@@ -116,9 +86,10 @@
 > all code lands. **Headless Chromium hides scrollbars** — any geometry that depends on viewport
 > width MUST also be probed with `ignore_default_args=["--hide-scrollbars"]`. **A remote-session
 > resume can silently revert / flip uncommitted working-tree files** — diff the tree after every
-> resume. **NEW:** `caplog` here needs `logger="schedule_forensics.<module>"` (the redaction layer
-> stops propagation; the importer tests carry the working pattern), and the autouse `SF_CACHE_DIR`
-> fixture isolates the new Ollama engagement marker per test for free.
+> resume. `caplog` here needs `logger="schedule_forensics.<module>"` (the redaction layer stops
+> propagation), and the autouse `SF_CACHE_DIR` fixture isolates the Ollama engagement marker per
+> test for free. **NEW:** a foreground wait on a background run: `tail --pid=<pid> -f /dev/null`
+> (no sleep, no polling); target the real `python -m pytest` pid, not the wrapper shell.
 >
 > **Standing rule:** do not put a test result in prose unless the number appeared in output you
 > read that turn. **A launched run is not a result, and a piped exit code is not the command's.**

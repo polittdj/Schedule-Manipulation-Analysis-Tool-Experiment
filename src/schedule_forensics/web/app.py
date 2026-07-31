@@ -19570,7 +19570,7 @@ shown at each step); the quads ring the current file's dot</span>
 <section class="tile panel"{tile_export}><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: portfolio quad — BEI (baseline execution) vs the share of the to-go work sitting on the critical path. Vertical guide at BEI 0.95 (DCMA practice); horizontal guide at the portfolio median critical share (labeled — no industry threshold exists for this axis).\n\nHOW TO READ: bottom-right (high BEI, low critical share) is healthy; top-left (poor execution AND a critical-heavy backlog) is the danger quadrant.\n\nDECIDE: which version pairs poor execution with a critical-path-loaded backlog.">G7 quad &mdash; BEI vs % critical of to-go work</h3>{tile_tools}</div>{tile_prov}<div class=chart-host id=quadBeiCp></div><p class=sf-take data-no-i18n>One dot per loaded version, plotting baseline execution against how much of the remaining work sits on the critical path.</p></section>
 </div>
 <script type="application/json" id=perfData>{blob}</script>
-<script src="/static/performance.js"></script>
+<script defer src="/static/performance.js"></script>
 <script src="/static/panelkit.js"></script>"""  # nosec B608 (HTML, not SQL)
 
 
