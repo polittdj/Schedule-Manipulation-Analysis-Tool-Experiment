@@ -1,41 +1,36 @@
-# Handoff — 2026-07-31 (one ⛶ per panel: the scatter adopts the /curves mechanism; ADR-0317; v1.0.135)
+# Handoff — 2026-07-31 (data-noprint finally hides in print: the C1 one-liner lands; ADR-0318; v1.0.136)
 
-> ## STATUS (current) — **PR-3 of the approved queue SHIPPED: the `/analysis` scatter panel's two Enlarge controls are ONE, and the one provably moves the measured box. Version 1.0.135, highest ADR ADR-0317, wheel + nine installers regenerated. #491 (ADR-0316) MERGED as `3595dd6` by the operator.**
-> Round 11's measured defect: the server head's `data-sf-big` ⛶ flipped its label while
-> `:has(.sf-tilebox)` kept the panel static — inert beside scatter.js's working sentence-case
-> `⛶ Enlarge`. Shipped per the plan (and /curves' rank-9 precedent): `scatter.js::sfControls` now
-> builds a `.sf-tools` cluster whose single `tile-expand` button says `⛶ ENLARGE`, carries
-> `data-sf-big` (panelkit.js owns the label/aria; the click is NOT stopped so it reaches the
-> delegated listener) and toggles `tile-expanded` (the real viewport overlay); `_shell_tools`
-> gained `big: bool = True` and the scatter head passes `big=False`, so the SERVER emits no ⛶
-> for this one panel — the r11 guard's knowing exemption (a JS-injected tilebox its static sweep
-> cannot see) is closed statically with the guard byte-unchanged. The head keeps its real
-> ⤓ EXCEL. The 16-site caption census kept every digest; only scatter.js's recorded LINE
-> refreshed (102 → 111, the census's own prescribed path — no caption byte moved).
+> ## STATUS (current) — **PR-4 of the approved queue SHIPPED: `[data-noprint]{display:none!important}` in base.css's A5 print block — DESIGN-SYSTEM §7's "controls hidden in print" DoD checkbox is finally satisfiable. Version 1.0.136, highest ADR ADR-0318, wheel + nine installers regenerated. #492 (ADR-0317) MERGED as `b85b874` by the operator.**
+> The attribute was set at 12 literal sites (8 in app.py incl. the `_shell_tools` helper behind
+> ~57 panel toolbars + the `/analysis` version chips; 4 in vendored JS — trend.js ×2, curves.js,
+> and scatter.js since ADR-0317) while ZERO CSS rules consumed it (measured, ADR-0305). Per the
+> operator's C1 answer with its three sub-answers (chips stay print-hidden as marked;
+> single-theme print check; the two redundant carriers keep the attribute): one line inside the
+> existing `@media print` block, `!important` because app.css's later `.tile-actions
+> {display:flex}` and base.css's own later `.sf-tools{display:inline-flex}` otherwise win.
+> ADR-0076's "base.css is THE print home" stands; a separate print.css stayed foreclosed.
+> Note en route: #492 needed a whitespace-only fixup commit — CI's `ruff format --check`
+> (0.16.1) broke two fluent-chain asserts differently than the local pre-push check reported.
 >
 > ## Verification (all read from runs this session)
-> Focused suites (`test_scatter_one_enlarge.py` NEW · `test_trends_animation.py` ·
-> `test_r11_panel_contract.py` · `test_ch05_panelkit.py` · `test_scatter.py` · `test_app.py`):
-> **79 passed**. The new file carries the static half (the scatter panel's server chunk has
-> `⤓ EXCEL` but NO `data-sf-big`) and the measured half — real-chromium clicks on
-> console/daylight + a **scrollbar-visible** cell: exactly ONE ⛶ on the panel; the click flips
-> the label to `⛶ SHRINK` (panelkit's delegation fired) AND grows the tilebox's
-> scroll-invariant size axes >100 px (console widens across the rail; daylight, already
-> full-width, grows tall); the second click restores width/height/x to <2 px. The trends pin
-> updated deliberately: scatter joins the contract vocabulary; `_LEGACY_LABELS` now names
-> margin.js alone. **Proved able to fail:** src stashed → the three key tests fail (3 failed,
-> read) → popped. `ruff` + format + `mypy --strict` (117 files) + `bandit` exit 0 +
+> New content pin (`test_accessibility.py::test_data_noprint_marked_controls_are_hidden_in_print`):
+> the rule exists AND sits inside the `@media print` braces. New measured half
+> (`tests/web/test_print_noprint.py`, real chromium, single theme per sub-answer 2): on
+> `/analysis`, print-media emulation computes `display:none` for every `[data-noprint]` element
+> (≥5 on the page) while the panel h2 still prints, and flipping back to screen media restores
+> the controls. **Proved able to fail:** src stashed → both tests fail (2 failed, read) →
+> popped. Focused suites (print pair + accessibility + header/loading): **15 passed**.
+> `ruff` (0.16.1, CI-matched) + format + `mypy --strict` (117 files) + `bandit` exit 0 +
 > `node --check` clean; wheel + nine installers regenerated. **Full suite on THIS tree (read):
-> 3142 passed, 1 skipped, exit 0, in 863 s** (browser-marked tests included).
+> 3144 passed, 1 skipped, exit 0, in 900 s** (browser-marked tests included).
 >
 > ## ⇢ NEXT
 > 1. **The approved queue** (`docs/STATE/PLAN-20260730.md` — decisions A1 · B1 · C1 recorded;
->    do NOT re-ask): **PR-4 `data-noprint` C1 one-liner (S)** → PR-5 `/resources` X-caption
->    yields (S–M) → PR-6 `/evolution` exports honor trace options (M) → PR-7 OR-01 roll-up
->    titles (M) → PR-8 AXIS-TITLES 3b-i `margin_dashboard` per A1 (M) → PR-9 rank-12
->    toolbar/read-me + B1 caption mechanism (M–L) → PR-10 OR-03 launch motion + synthesized
->    hum (M–L). margin.js's own vocabulary conversion stays a later round (the pin now names it
->    as the only legacy carrier).
+>    do NOT re-ask): **PR-5 `/resources` X-caption yields (S–M)** → PR-6 `/evolution` exports
+>    honor trace options (M) → PR-7 OR-01 roll-up titles (M) → PR-8 AXIS-TITLES 3b-i
+>    `margin_dashboard` per A1 (M) → PR-9 rank-12 toolbar/read-me + B1 caption mechanism (M–L)
+>    → PR-10 OR-03 launch motion + synthesized hum (M–L). margin.js's vocabulary conversion
+>    stays a later round (the trends pin names it as the only legacy carrier).
 > 2. **OR-04 operator park artifacts stay open** (`audit/VERIFICATION-REPORT-ollama-lifecycle.md`
 >    §8): #1 `where ollama` · #3 the `keep_alive:0`-vs-`OLLAMA_KEEP_ALIVE=-1` probe (severity
 >    fork) · #5 runner PPID + instance count · #4 the model-identity manifest — plus the

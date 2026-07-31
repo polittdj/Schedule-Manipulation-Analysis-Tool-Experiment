@@ -144,6 +144,14 @@ cursor:pointer;text-decoration:underline}
    keep panels/cards from splitting across pages, and let the scrollers print in full. */
 @media print{
   header,.cf-bar,.export-bar,.viz-controls,#pathControls,#pathExport,#askPanel{display:none!important}
+  /* ADR-0318 (operator decision C1): data-noprint IS the print opt-out — 12 literal sites
+     mark it (8 in app.py incl. the _shell_tools helper behind ~57 panel toolbars + the
+     /analysis version chips; 4 in vendored JS: trend.js x2, curves.js, scatter.js) but no
+     rule consumed it, so every marked control still printed (measured, ADR-0305).
+     !important: app.css's later .tile-actions{display:flex} and this file's own later
+     .sf-tools{display:inline-flex} otherwise win the cascade. Self-maintaining — a new
+     screen-only control opts in by carrying the attribute. */
+  [data-noprint]{display:none!important}
   body{background:#fff;color:#000}
   a{color:#000;text-decoration:none}
   main{padding:0}
