@@ -435,6 +435,44 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-31 — An aggregate's pool must be stated IN the figure — and the heading must state the pool the code APPLIES (OR-01 / ADR-0321)
+- OR-01's core ask ("the title alone must say latest vs average") had a second layer the
+  heading alone couldn't carry: the mean's POOL shrinks when an included version doesn't
+  solve (its audit never ran — averaging a fake 0 would poison the figure, Law 2). Putting
+  `· N versions` inside the cell made the pool size part of the number itself, so a
+  solvability drop is visible exactly where the analyst reads the value. Lesson: when a
+  stated rule has a data-dependent population, disclose the population WITH the value —
+  a heading is a constant, the pool isn't. And the review round caught the first-draft
+  heading saying "all included versions" while the code (correctly) dropped unsolvable ones —
+  a spec-supplied title is still subordinate to R13: the heading states the rule as APPLIED.
+- Baking a derived figure into an existing memo inherits the memo's invalidation contract —
+  audit it BEFORE adding the field. `margin_days` rode into the ADR-0291 card memo whose
+  epoch key covers filter/target/parity but NOT the margin overlay; `/margin/confirm` cleared
+  only the summary tier, so `/api/dashboard` served a stale (fake-zero) margin while two
+  other surfaces served the engine's new value — reproduced live by the adversarial review,
+  fixed by clearing the memo beside the summaries, pinned by a regression test that fails on
+  main. Lesson: a cache key is a claim about what can change the value; adding a value the
+  key doesn't cover falsifies the claim silently.
+- Fixture degeneracy is a finder's dream: every margin in the first-draft fixtures was
+  exactly 0.0, so a hardcoded 0 would have passed every margin pin. A name-based "Schedule
+  Margin" task made the engine value 2.0 d and a one-line guard (`margin not in (None, 0.0)`)
+  makes the degeneracy impossible to reintroduce. Lesson: for every "verbatim" pin, ask what
+  OTHER implementation would also pass it — 0.0, "", and [] are the classic impostors.
+- The four-lens adversarial fan-out (find → per-finding refutation agents → lead re-verify)
+  earned its cost in one round: three confirmed implementation defects and two test-quality
+  gaps on a diff that had already passed the full gate, statics, and a proved-able-to-fail
+  run. Green gates prove the pinned contracts hold — they say nothing about the contracts
+  nobody wrote. The refutation stage matters as much as the finding stage: one plausible
+  "5/8/5 guard is weak" finding was PROVEN false by brute force and correctly discarded.
+- Golden-SHA payload pins and additive fields coexist cleanly IF the re-baseline rides the
+  pin's own path and a row-level only-delta proof lands in the same commit (key-set pins on
+  every card shape + engine-verbatim value checks). The ADR-0296 precedent (key REMOVAL with
+  a row-level equality proof) generalized unchanged to key ADDITION.
+- `ruff format --check . | tail` swallowed a real failure ("1 file would be reformatted")
+  because the echoed `$?` was tail's — the exact `cmd | tail; echo $?` trap the harness notes
+  already warn about, hit live this session by the session's own author. The guard exists
+  because it keeps catching us: read the tool's own summary line, not the pipeline's exit.
+
 ### 2026-07-31 — Two "targets" that look synonymous are a population scope and a view focus (ADR-0320)
 - PR-6's first draft pinned `/export/evolution?target=3` ≡ "session target 3" — the
   architecture proved the test wrong, not the code: `SessionState.scope()` truncates every

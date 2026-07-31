@@ -2385,15 +2385,42 @@ def create_app(
             "once. Every file parses on this machine; nothing is uploaded, and the full forensic "
             "report is one click from every loaded version.</p>"
         )
-        rows = "".join(
-            f'<tr><td><a href="/analysis/{quote(name)}">{_e(name)}</a></td>'
-            f"<td>{len(non_summary(sch))}</td><td class=muted>{_e(sch.source_file or '-')}</td>"
-            f'<td class=row-actions><a href="/analysis/{quote(name)}">Open report</a>'
-            f' &middot; <a href="/card/{quote(name)}">Card</a>'
-            f' &middot; <a href="/wbs/{quote(name)}">WBS</a>'
-            f' &middot; <a href="/download/{quote(name)}.json">Save .json</a></td></tr>'
-            for name, sch in st.all_versions()  # every loaded file (manifest), oldest first
-        )
+        # OR-01 (ADR-0321): the manifest names, PER FILE, what each figure is — Site / Company,
+        # data date, computed finish, effective margin, DCMA-14 — dates/margin via the same
+        # cached engine summary tier the Portfolio ledger reads (st.summary_for, v4 Feature 2;
+        # never a full analysis per row). The DCMA-14 cell counts the PARITY-AWARE card tier
+        # (st.dashboard_core_for — the exact checks the health cards above it render), so one
+        # page can never show two DCMA verdicts for one file; the summary tier is default-mode
+        # only (ADR-0321 residual). An unsolvable file keeps "—" for engine figures, never a 0.
+        row_parts: list[str] = []
+        for name, sch in st.all_versions():  # every loaded file (manifest), oldest first
+            s = st.summary_for(name, sch)
+            site = _e(sch.company) if sch.company else "—"
+            dd = _mdY(s.status_date_iso) if s.status_date_iso is not None else "—"
+            fin = margin = dcma = "—"
+            if not s.unsolvable:
+                fin = _mdY(s.finish_iso)
+                if s.effective_margin_days is not None:
+                    margin = f"{s.effective_margin_days:g} d"
+            try:
+                core = st.dashboard_core_for(name, sch)
+            except CPMError:
+                core = None  # unsolvable: the DCMA cell stays "—"
+            if core is not None:
+                n_pass = sum(1 for _mid, _nm, status in core.dcma if status == "PASS")
+                n_fail = sum(1 for _mid, _nm, status in core.dcma if status == "FAIL")
+                dcma_cls = "rib-pass sf-pill p-ok" if n_fail == 0 else "rib-fail sf-pill p-bad"
+                dcma = f'<span class="{dcma_cls}">{n_pass} pass / {n_fail} fail</span>'
+            row_parts.append(
+                f'<tr><td><a href="/analysis/{quote(name)}">{_e(name)}</a></td>'
+                f"<td>{len(non_summary(sch))}</td><td class=muted>{_e(sch.source_file or '-')}</td>"
+                f"<td>{site}</td><td>{dd}</td><td>{fin}</td><td>{margin}</td><td>{dcma}</td>"
+                f'<td class=row-actions><a href="/analysis/{quote(name)}">Open report</a>'
+                f' &middot; <a href="/card/{quote(name)}">Card</a>'
+                f' &middot; <a href="/wbs/{quote(name)}">WBS</a>'
+                f' &middot; <a href="/download/{quote(name)}.json">Save .json</a></td></tr>'
+            )
+        rows = "".join(row_parts)
         file_noun = "FILE" if n_versions == 1 else "FILES"
         prov_chip = (
             f"<span class=prov-chip data-no-i18n>SOURCE: {_e(latest_file)} · DD {latest_dd}</span>"
@@ -2417,7 +2444,10 @@ def create_app(
             "<button type=button data-sf-big aria-pressed=false "
             'aria-label="Enlarge this panel">⛶ ENLARGE</button>'
             f"</div>{prov_chip}</div>"
-            "<table><tr><th scope=col>Schedule</th><th scope=col>Activities</th><th scope=col>Source</th><th scope=col></th></tr>"
+            "<table><tr><th scope=col>Schedule</th><th scope=col>Activities</th><th scope=col>Source</th>"
+            "<th scope=col>Site / Company</th><th scope=col>Data date</th>"
+            "<th scope=col>Computed finish</th><th scope=col>Effective margin</th>"
+            "<th scope=col>DCMA-14</th><th scope=col></th></tr>"
             f"{rows}</table>"
             + (
                 '<p style="margin-top:14px"><a class=btn-link href="/briefing">'
@@ -2784,10 +2814,13 @@ def create_app(
         except CPMError as exc:
             return _page(st, name, _unschedulable_panel(sch, exc), ask_schedule=name)
         focus = _target_panel(sch, analysis, st.target_uid) if st.target_uid is not None else ""
+        # OR-01 (ADR-0321): the effective margin rides the same cached summary tier the
+        # Portfolio row reads (overlay-aware, memoised) — never a second engine path.
+        margin_days = st.summary_for(name, sch).effective_margin_days
         return _page(
             st,
             f"{name} — card",
-            focus + _card_body(name, sch, analysis),
+            focus + _card_body(name, sch, analysis, margin_days=margin_days),
             ask_schedule=name,
             # ADR-0311: a dynamic title can never resolve through _TITLE_TO_CHAPTER, so this page
             # rendered with NO kicker at all. It is a per-file drill of chapter 01 (linked beside
@@ -3358,6 +3391,11 @@ def create_app(
                 # new set (the disk blobs stay valid: they hold only the name-based default,
                 # which overlaid sessions no longer consult).
                 st.summaries.clear()
+                # ADR-0321: the manifest-projection memo (ADR-0291) now bakes the summary
+                # tier's margin_days into every /api/dashboard card, and its epoch key does
+                # NOT cover the margin overlay — drop it with the summaries, or the cards
+                # keep serving the pre-confirm margin the engine no longer computes.
+                st.dash_cards.clear()
         dest = back if back.startswith("/analysis/") else f"/analysis/{quote(key, safe='')}"
         return RedirectResponse(url=dest, status_code=303)
 
@@ -8044,7 +8082,8 @@ def _portfolio_body(st: SessionState) -> str:
     file_noun = "file" if n_files == 1 else "files"
     takeaway = (
         f"{n_projects} {proj_noun} across {n_files} loaded {file_noun} — one row per project, "
-        "every figure quoted from its latest included version's engine summary."
+        "headline figures quoted from its latest included version's engine summary and the "
+        "DCMA-14 average pooled across its included, solvable versions."
     )
     header = (
         f'<h1 class="page-takeaway" data-no-i18n>{takeaway}</h1>'
@@ -8089,14 +8128,21 @@ def _portfolio_body(st: SessionState) -> str:
         + _panel_head("Portfolio ledger &mdash; one row per project", tools=tools)
         + take
         + "<p class=muted>Every project loaded in this session, grouped from your files and folders. "
-        "Each row is one Project; the headline is its latest included version by data date. Expand "
+        "Each row is one Project; the headline is its latest included version by data date. The "
+        "DCMA-14 average is the view's arithmetic mean of each included, solvable version's "
+        "engine-computed pass count &mdash; the one cross-version figure on this table. Expand "
         "a row for the version history, or open any version's full report. Analysis pages show ONE "
         "Project at a time &mdash; pick it here (Analyze) or from the banner.</p>"
         + head_notes
+        # OR-01 (ADR-0321): every roll-up heading states the aggregation rule the view actually
+        # applied — latest included version vs an average — so the title alone tells the analyst
+        # which they are reading. The average column is the ONLY non-latest figure.
         + "<table><tr>"
         "<th scope=col>Project</th><th scope=col>Site / Company</th><th scope=col>Versions</th>"
-        "<th scope=col>Latest data date</th><th scope=col>Computed finish</th>"
-        "<th scope=col>Effective margin</th><th scope=col>DCMA-14</th></tr>"
+        "<th scope=col>Latest data date</th><th scope=col>Computed finish — latest version</th>"
+        "<th scope=col>Effective margin — latest version</th>"
+        "<th scope=col>DCMA-14 — latest version</th>"
+        "<th scope=col>Avg DCMA-14 passes — included, solvable versions</th></tr>"
     )
     em = "—"  # the literal U+2014 sentinel (ADR-0219 M2: never the &mdash; entity)
     rows: list[str] = []
@@ -8131,6 +8177,25 @@ def _portfolio_body(st: SessionState) -> str:
                         f'<span class="{cls}">{summary.dcma_pass} pass / '
                         f"{summary.dcma_fail} fail</span>"
                     )
+        # OR-01 (ADR-0321): the ONE aggregate column — a VIEW-LAYER arithmetic mean over the
+        # engine's own per-version pass counts (no new engine math). The pool is every included
+        # (non-excluded), SOLVABLE version: an unsolvable audit never ran, so counting its 0
+        # would poison the mean with a fake figure (Law 2 — "—" never 0). The cell states the
+        # pool size, so a solvability drop is visible right in the figure.
+        pass_pool = [
+            vsum.dcma_pass
+            for v in p.versions
+            if not v.excluded
+            and (vsch := st.schedules.get(v.key)) is not None
+            and not (vsum := st.summary_for(v.key, vsch)).unsolvable
+        ]
+        avg_dcma = em
+        if pass_pool:
+            n_pool = len(pass_pool)
+            avg_dcma = (
+                f"{sum(pass_pool) / n_pool:.1f} of 14 · {n_pool} "
+                f"version{'' if n_pool == 1 else 's'}"
+            )
         pooled = p.origin == "filename"  # title-less loose file: analyzed as the untitled pool
         select_pid = _UNTITLED_PID if pooled else p.pid
         chips = ""
@@ -8162,7 +8227,7 @@ def _portfolio_body(st: SessionState) -> str:
             f"<tr><td><details><summary><b>{_e(p.title)}</b>{chips}{row_prov}</summary>"
             f"<ul>{versions_html}</ul>{notices}{analyze}</details></td>"
             f"<td>{site}</td><td>{version_count}</td><td>{data_date}</td><td>{finish}</td>"
-            f"<td>{margin}</td><td>{dcma}</td></tr>"
+            f"<td>{margin}</td><td>{dcma}</td><td>{avg_dcma}</td></tr>"
         )
     return (
         header
@@ -10125,12 +10190,16 @@ def _count_bar_table(headers: tuple[str, str], rows: list[tuple[str, int, float]
     )
 
 
-def _card_body(key: str, sch: Schedule, analysis: _Analysis) -> str:
+def _card_body(
+    key: str, sch: Schedule, analysis: _Analysis, *, margin_days: float | None = None
+) -> str:
     """The deck's *Metrics* page (PBIX page 1) — the schedule's ID card.
 
     Reproduces the landing-page aggregates: activity makeup, status split, completion
     performance, the primary-constraint distribution, and the KPI cards — all from the
-    engine outputs already computed for this schedule (no recomputation of the CPM)."""
+    engine outputs already computed for this schedule (no recomputation of the CPM).
+    ``margin_days`` (OR-01, ADR-0321) is the effective schedule margin from the caller's
+    cached summary tier — rendered "—" when ``None`` (unsolvable or n/a), never 0."""
     makeup = compute_activity_makeup(sch)
     constraints = compute_constraint_distribution(sch)
     cpm, comp = analysis.cpm, analysis.completion
@@ -10191,6 +10260,10 @@ def _card_body(key: str, sch: Schedule, analysis: _Analysis) -> str:
             ("Earliest start", earliest),
             ("Computed finish", latest_finish),
             ("Data date", _mdY(sch.status_date) if sch.status_date else "—"),
+            # OR-01 (ADR-0321): the two ID-card fields the deck page was missing. Values are
+            # escaped by _stat_cards itself — no pre-escape here.
+            ("Site / Company", sch.company if sch.company else "—"),
+            ("Effective margin", f"{margin_days:g} d" if margin_days is not None else "—"),
             ("Activities complete", f"{100.0 * makeup.complete / total:.1f}%"),
             ("Critical (incomplete)", str(critical)),
             ("To-go activities", str(togo_normal)),
@@ -20041,6 +20114,13 @@ def _dashboard_data(st: SessionState) -> dict[str, object]:
             "key": key,
             "name": sch.name,
             "source_file": sch.source_file,
+            # OR-01 (ADR-0321): the two per-file fields the card was missing — Site / Company
+            # (the source header, None when the source carried none) and the effective schedule
+            # margin from the SAME cached summary tier the Portfolio row reads (st.summary_for —
+            # cheap, memoised, never a full analysis; None when unsolvable or n/a, never 0).
+            # Both ride the memoised card, so a warm refresh still re-derives nothing.
+            "site": sch.company or None,
+            "margin_days": st.summary_for(key, sch).effective_margin_days,
             "activities": len(non_summary(scoped)),
             "data_date": sch.status_date.date().isoformat() if sch.status_date else None,
         }

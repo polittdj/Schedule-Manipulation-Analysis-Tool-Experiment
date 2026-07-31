@@ -359,13 +359,19 @@ def test_findings_and_narrative_follow_the_active_audit_per_mode() -> None:
 # Re-pinned 2026-07-26 (ADR-0296): the cards no longer ship the status_mix_uids arrays —
 # the ONLY delta is that key's removal; every count/date/DCMA value is unchanged, which
 # test_dashboard_status_trim.py proves at the row level against the lazy drill.
-_SHA_TWO_VERSION = "8409b3e20a181a0ac12e4c0be3365055f88c826a8c1e35bd7909bb158bb7d914"
-_SHA_UNSOLVABLE = "a30c698db9a48c3d4dc12c78a91fd8ec4e38cd2e04fc356427d25aa4556a90e8"
+# Re-pinned 2026-07-31 (ADR-0321, OR-01): every card gains exactly TWO keys — "site" (the
+# source header's Company, null when absent) and "margin_days" (the summary tier's effective
+# schedule margin, null when unsolvable/n-a) — and nothing else moves;
+# test_portfolio_rollup_titles.py::test_dashboard_cards_carry_site_and_margin_verbatim proves
+# it at the row level (full key-set pins on both card shapes + engine-verbatim values).
+# All three recomputed via _dashboard_sha on this tree, same fixtures, same modes.
+_SHA_TWO_VERSION = "60379fbbe00b619123a5e4c0a217042bcbfd1e4fa602f9f6ebbb47daaf038e03"
+_SHA_UNSOLVABLE = "52c0d0f858e601244810b26a1db5c6c190c0df8603abcd7591fb340e8e13026b"
 # Parity mode diverges from default on THIS fixture only since ADR-0283: Large Test File carries a
 # single invalid-date activity with NO baseline duration, which Acumen's `Baseline Duration > 0`
 # population excludes, so parity DCMA-09 drops 1 → 0 and its card flips FAIL → PASS (the ONLY delta
-# vs `_SHA_TWO_VERSION`). Default mode is unchanged. Re-pinned 2026-07-24.
-_SHA_TWO_VERSION_PARITY = "647cf7cc78e58e08684c6d545d4abf800cd844742b2eb4c4625b2d88da8742fe"
+# vs `_SHA_TWO_VERSION`). Default mode is unchanged. Re-pinned 2026-07-24; 2026-07-31 (ADR-0321).
+_SHA_TWO_VERSION_PARITY = "df2b13585517a2dc14bd3db5eca4f2288866aac82959a315c2249a12c84527c7"
 
 
 def test_dashboard_payload_two_versions_is_byte_identical(big: Schedule) -> None:
