@@ -382,7 +382,11 @@ PAGE_FORMS = {
     EVO: [
         ("/evolution", "12bf0d795832e2c344d1ee0a147b6295", 802),
         ("/evolution", "848cd08e4bab7156a0aa5af217475162", 743),
-        ("/evolution", "25dd6f16300d15519223ee9df9738355", 803),
+        # what-if picker refreshed by ADR-0320 (drop-nothing rule: the picker now carries the
+        # page's RESOLVED focus as a hidden input — this fixture's session target 26 — so "Run
+        # what-if" stops dropping it; was 25dd6f16300d15519223ee9df9738355 / 803). The two
+        # untouched pins above prove the round's other form bytes did not move.
+        ("/evolution", "3b6af0bf329283581a407b90b7c70192", 847),
     ],
     VOL: [],
 }

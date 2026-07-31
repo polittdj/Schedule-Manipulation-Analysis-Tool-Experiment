@@ -1,39 +1,51 @@
-# Handoff — 2026-07-31 (the /resources period labels yield to the measured caption; ADR-0319; v1.0.137)
+# Handoff — 2026-07-31 (the /evolution exports honor the page state; ADR-0320; v1.0.138)
 
-> ## STATUS (current) — **PR-5 of the approved queue SHIPPED: the last measured caption collision on a shipped chart page is CLOSED, and `/resources` joined the four-theme visual pass. Version 1.0.137, highest ADR ADR-0319, wheel + nine installers regenerated. #493 (ADR-0318) MERGED as `e29a155` by the operator.**
-> The debt round 10 recorded: after the `defer` made the histogram paint on load, the visual
-> pass measured the X caption "Period (month commencing)" parked over the last 40°-rotated
-> period tick labels in 8 of 12 theme × scale combos (console@1 ~36×2 px per label; apollo@1
-> ~40×4 px — the mono font's wider glyphs). Shipped per ADR-0303's law, applied where the
-> collision is caused: `resources.js` now runs a **measured yield** after the SVG lands in the
-> DOM — it reads the X caption's LIVE box (`text.ch-at[text-anchor=end]`) and removes any
-> rotated period label within 2 px of it. The caption never moves (standing requirement 5);
-> apollo's wider corner reserves itself by construction; a hidden/unmeasurable box skips the
-> yield rather than shredding the labels; the yielded bucket keeps its full tooltip (the label
-> is presentation, the bar is the data). Tick-cadence thinning was rejected (degrades every
-> label to protect one corner). Freeze bookkeeping per each pin's own prescribed path: the
-> 16-site census untouched (the yield sits BELOW the call site — line 243 and every digest
-> unchanged); the r10 whole-file `resources.js` digest refreshed deliberately with ADR-0319
-> named, while its load-bearing pins (call-site block digest + both caption strings) prove the
-> `axisTitles` call byte-identical.
+> ## STATUS (current) — **PR-6 of the approved queue BUILT AND FULLY GATED on this tree: the /evolution exports honor the banner's promise (trace options + focus), state their applied scope, and the page's forms stop dropping state. Version 1.0.138, highest ADR ADR-0320, wheel + nine installers regenerated. #494 (ADR-0319) MERGED as `b3e4286` by the operator.**
+> `app.py` only, per the plan's PR-6 row: the ⤓ bar now carries the LIVE query string
+> (`_evolution_state_qs`, urlencode, defaults emit nothing — bare path byte-identical);
+> `export_evolution` gained the SAME Query params as `/api/evolution`, resolves the focus with
+> the page's exact URL-first/session-fallback rule, and routes through `_optioned_versions`;
+> headings state the APPLIED scope on two carriers (TableSet-title suffix → the Word H0; a
+> prepended "Applied scope" sheet → the workbook, since xlsx never renders a TableSet title) —
+> and a chosen `tier` is DISCLOSED as not applied (gated by `_EVO_TIER_SELECT` membership,
+> which is also the injection gate) because the tier stepper never filters these tables. The
+> drop-nothing rule (`_keep_hidden`): the Focus form keeps `ignore_*`, the what-if picker keeps
+> `target`/`tier`/`ignore_*`, the clear-focus link keeps tier+options while emitting the
+> explicit empty `target=`. `_trace_option_names` is now the ONE source the banner and the
+> export headings both read. **Load-bearing finding (ADR-0320):** the session target is a
+> POPULATION scope (`SessionState.scope()` truncates every version to the target's driving
+> subtree inside `_solvable_versions`) while `?target=` is a VIEW focus on the full population
+> — the page renders those states differently and the export now MIRRORS the page in both;
+> they are not equivalent and must never be pinned as such.
 >
 > ## Verification (all read from runs this session)
-> `tests/web/test_axis_titles_visual.py` now walks SIX pages (`/resources` added per the file's
-> own protocol note, which now records the closure): the 12-combo measured pass is green.
-> Focused suites (visual pass + r10 resources contract + r11 census + axis-titles ledger):
-> **80 passed, 1 skipped**. **Proved able to fail:** src stashed → the visual pass reports the
-> original collisions ("overlaps 2027-08 by 20x2px", "overlaps 2027-09 by 43x2px") and exits 1
-> (read) → popped. `ruff` (0.16.1, CI-matched) + format + `mypy --strict` (117 files) +
-> `bandit` exit 0 + `node --check` clean; wheel + nine installers regenerated. **Full suite on
-> THIS tree (read): 3144 passed, 1 skipped, exit 0, in 886 s** (browser-marked tests included).
+> New `tests/web/test_evolution_export_options.py`: **14 passed** (bar qs live + bare default;
+> pure-logic dates replace stored `2025-01-2x` under `ignore_leveling`; URL focus + session
+> mirror; scope sheet + docx H0 suffix, absent by default; tier disclosed not applied; forms +
+> clear link carry state; explicit-default URLs byte-identical). **Proved able to fail:**
+> `app.py` stashed → **9 failed / 5 passed** (the five are the deliberate non-regression pins)
+> → popped. Neighbors (evolution view · family-B unify · path options · coverage app + extra ·
+> mission ×2 · coverage misc + new file): **127 passed**. Statics read: ruff 0.16.1 clean ·
+> format clean (816 files) · mypy --strict "no issues in 117 source files" · bandit exit 0 ·
+> node --check clean. Export-vs-page strictness parity read: non-int `ignore_*` → 422 on BOTH;
+> garbage `target` / `tier=critical` → 200 on both. **One freeze pin re-baselined per its own
+> prescribed path** (ADR-0320 named in the table): the r11 what-if-picker form pin — the
+> drop-nothing hidden input carrying the fixture's RESOLVED session focus grew it 803 → 847;
+> old md5 `25dd…` → new `3b6af0bf…`, computed from a live fixture-identical render; the two
+> untouched `/evolution` form pins (802/743) prove nothing else moved. Full suite on this
+> tree: **3157 passed, 1 skipped, 1 failed (837 s)** — the failure is `test_float_tip_dismiss`
+> (ADR-0314's browser suite, `/analysis` page this diff never touches) timing out its 4 s
+> tip-SHOW wait under full-suite load only: **18/18 rerun alone** and **54/54 in a 3× parallel
+> probe on the PRISTINE stashed tree** (all read). Load-dependent, pre-existing, CI
+> arbitrates; if CI reproduces it, its timing posture gets its own fix — never a weakened
+> contract.
 >
 > ## ⇢ NEXT
-> 1. **The approved queue** (`docs/STATE/PLAN-20260730.md` — decisions A1 · B1 · C1 recorded;
->    do NOT re-ask): **PR-6 `/evolution` exports honor trace options (M)** → PR-7 OR-01
->    roll-up titles (M) → PR-8 AXIS-TITLES 3b-i `margin_dashboard` per A1 (M) → PR-9 rank-12
->    toolbar/read-me + B1 caption mechanism (M–L) → PR-10 OR-03 launch motion + synthesized
->    hum (M–L). margin.js's vocabulary conversion stays a later round (the trends pin names it
->    as the only legacy carrier).
+> 1. **Merge #PR-6 when CI is green** (draft PR from `claude/polaris-schedule-planning-resume-8oosjw`),
+>    then the queue (`docs/STATE/PLAN-20260730.md`, decisions A1 · B1 · C1 recorded — do NOT
+>    re-ask): **PR-7 OR-01 roll-up titles (M)** → PR-8 AXIS-TITLES 3b-i `margin_dashboard` per
+>    A1 (M) → PR-9 rank-12 toolbar/read-me + B1 caption mechanism (M–L) → PR-10 OR-03 launch
+>    motion + synthesized hum (M–L). margin.js's vocabulary conversion stays a later round.
 > 2. **OR-04 operator park artifacts stay open** (`audit/VERIFICATION-REPORT-ollama-lifecycle.md`
 >    §8): #1 `where ollama` · #3 the `keep_alive:0`-vs-`OLLAMA_KEEP_ALIVE=-1` probe (severity
 >    fork) · #5 runner PPID + instance count · #4 the model-identity manifest — plus the
@@ -55,7 +67,9 @@
 > from `project_start` (724 tasks, median −1458 d vs stored actuals; Phase 7) · **per-task calendars
 > are an out-of-domain pairing ADR-0312 does not reach** · several importer warnings (notably the
 > **assumed** calendar, +25 % on duration-days when a 10-hour calendar fails to resolve) belong on
-> the page via `Schedule.import_notes` and have not migrated.
+> the page via `Schedule.import_notes` and have not migrated · **ADR-0320 residuals, recorded not
+> chased:** the Focus form still drops `cf_a`/`cf_b` (the what-if pair resets to its default on
+> refocus), and the trace-options form's pre-existing `tier=off` keep stays.
 >
 > ## SRA parity — CLOSED, and the traps that stay shut
 > ADR-0309 (#483/#484): det percentile **40.70 % → 6.65 %** (SSI **5.75 %**), σ **125.5 → 65.5** cal d
@@ -81,9 +95,12 @@
 > **asserting** that a per-request `keep_alive:0` overrides `OLLAMA_KEEP_ALIVE=-1` (UNVERIFIED,
 > audit F-13 — park #3 decides; never state it in either direction); **a runtime guard on
 > `performance.js:472`** (ADR-0316 — `defer` makes it unreachable and every digest pin would
-> re-baseline for nothing); and **asserting a fixed-overlay toggle via `bounding_box` Y** —
+> re-baseline for nothing); **asserting a fixed-overlay toggle via `bounding_box` Y** —
 > viewport-relative and scroll-polluted by the click's own `scrollIntoView`; assert the
-> scroll-invariant size axes instead (ADR-0317).
+> scroll-invariant size axes instead (ADR-0317); and **"the session target and `?target=` are
+> equivalent for /evolution exports"** (ADR-0320 — the session target truncates the POPULATION
+> via `SessionState.scope()`; `?target=` is a view focus; the export mirrors the page in both
+> states, it never equates them).
 >
 > ## Harness notes — the traps, one line each
 > Run dev tools as `python -m <tool>` (a stale `/root/.local/bin/ruff` shadows pip's).
@@ -99,8 +116,12 @@
 > propagation), and the autouse `SF_CACHE_DIR` fixture isolates the Ollama engagement marker per
 > test for free. A foreground wait on a background run: `tail --pid=<pid> -f /dev/null` (no
 > sleep, no polling); target the real `python -m pytest` pid, not the wrapper shell.
-> **NEW:** Playwright `bounding_box` is viewport-relative — a click that scrolls (its own
+> Playwright `bounding_box` is viewport-relative — a click that scrolls (its own
 > `scrollIntoView`) shifts Y for free; measured-box assertions use width/height/x.
+> **NEW:** this session's container RESTARTED repeatedly mid-run — every background process
+> (gates, workflows) dies with it and pip installs vanish: re-diff the tree AND reinstall
+> deps after every resume, run the statics FOREGROUND first so their results are locked in,
+> and treat the long pytest as re-runnable rather than assume it survived.
 >
 > **Standing rule:** do not put a test result in prose unless the number appeared in output you
 > read that turn. **A launched run is not a result, and a piped exit code is not the command's.**

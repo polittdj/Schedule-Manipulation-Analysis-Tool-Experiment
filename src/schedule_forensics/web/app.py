@@ -27,7 +27,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, cast
-from urllib.parse import quote, urlparse, urlsplit
+from urllib.parse import quote, urlencode, urlparse, urlsplit
 
 import uvicorn
 from fastapi import FastAPI, Form, Query, Request, UploadFile
@@ -4046,12 +4046,21 @@ def create_app(
             ignore_leveling=bool(ignore_leveling),
             keep={"target": target or "", "tier": tier},
         )
+        # ADR-0320: the ⤓ links carry the LIVE page state (focus / tier / trace options), so
+        # the export route can honor the options banner's "including the Excel exports" line
+        # for THIS render; a stateless render keeps the bare path byte-identical.
+        export_qs = _evolution_state_qs(
+            target=target,
+            tier=tier,
+            ignore_constraints=bool(ignore_constraints),
+            ignore_leveling=bool(ignore_leveling),
+        )
         header = _how_stable_header(compute_path_evolution(schedules, cpms, target_uid=uid))
         return _page(
             st,
             "Critical-Path Evolution",
             header
-            + _export_bar("evolution")
+            + _export_bar("evolution" + (f"?{export_qs}" if export_qs else ""))
             + _skipped_notice(skipped)
             + opt_banner
             + opt_form
@@ -5692,19 +5701,51 @@ def create_app(
         )
 
     @app.get("/export/{fmt}/evolution")
-    def export_evolution(fmt: str) -> Response:
+    def export_evolution(
+        fmt: str,
+        target: str | None = Query(None),
+        tier: str = Query("off"),
+        ignore_constraints: int = Query(0),
+        ignore_leveling: int = Query(0),
+    ) -> Response:
+        """ADR-0320: the workbook honors the SAME page state as /evolution and /api/evolution —
+        the focused UID (URL first, session fallback, exactly like the page) and the
+        counterfactual trace options via ``_optioned_versions`` — so the options banner's
+        "including the Excel exports" promise is true. Defaults reproduce the pre-0320 export
+        byte-for-byte. ``tier`` never filters these tables (the tier stepper is a different
+        on-screen lens over the same versions); a chosen tier is DISCLOSED as not applied
+        rather than silently implied."""
         if (bad := _bad_format(fmt)) is not None:
             return bad
         schedules, cpms, _skipped = _solvable_versions()
         if len(schedules) < 2:
             return JSONResponse({"error": "need at least two analyzable versions"}, status_code=400)
-        # match the on-screen view: honour the session-wide focused UID (driving-path basis)
-        ev = compute_path_evolution(schedules, cpms, target_uid=session().target_uid)
-        return _export_response(
-            fmt,
-            TableSet("Critical-path evolution", path_evolution_tables(ev)),
-            "critical-path-evolution",
+        uid = _parse_uid(target) if target is not None else session().target_uid
+        schedules, cpms, _banner = _optioned_versions(
+            schedules,
+            cpms,
+            ignore_constraints=bool(ignore_constraints),
+            ignore_leveling=bool(ignore_leveling),
         )
+        ev = compute_path_evolution(schedules, cpms, target_uid=uid)
+        applied, notes = _evolution_export_scope(
+            uid,
+            tier,
+            ignore_constraints=bool(ignore_constraints),
+            ignore_leveling=bool(ignore_leveling),
+        )
+        tables = path_evolution_tables(ev)
+        title = "Critical-path evolution"
+        if applied:
+            title += " - " + "; ".join(applied)
+        if applied or notes:
+            # the applied scope must be readable in BOTH formats: the TableSet title only
+            # reaches the Word heading, so the workbook carries its own "Applied scope" sheet.
+            scope_table = Table(
+                "Applied scope", ("Applied scope",), tuple((p,) for p in (*applied, *notes))
+            )
+            tables = (scope_table, *tables)
+        return _export_response(fmt, TableSet(title, tables), "critical-path-evolution")
 
     @app.get("/export/{fmt}/forecast")
     def export_forecast(fmt: str) -> Response:
@@ -16905,6 +16946,78 @@ def _driving_tier_trend(schedules: list[Schedule], cpms: list[CPMResult], target
     )
 
 
+def _keep_hidden(keep: dict[str, str]) -> str:
+    """Hidden inputs that carry a page's OTHER GET state through a form submit (the
+    drop-nothing rule, ADR-0320): only non-empty values are emitted, so default state stays
+    out of the resulting URL and a stateless page renders byte-identically."""
+    return "".join(
+        f'<input type=hidden name="{_e(k)}" value="{_e(v)}">' for k, v in keep.items() if v
+    )
+
+
+def _evolution_state_qs(
+    *,
+    target: str | None,
+    tier: str,
+    ignore_constraints: bool,
+    ignore_leveling: bool,
+    keep_blank_target: bool = False,
+) -> str:
+    """The /evolution GET state as a query string (ADR-0320) — only non-default values are
+    emitted, so a stateless render yields "" and every existing default URL stays
+    byte-identical. ``keep_blank_target`` emits an EMPTY ``target=`` pair even with no focus
+    (the clear-focus link: an explicit "no focus" that must override a session-wide target,
+    which an absent parameter would not)."""
+    pairs = [
+        (k, v)
+        for k, v in (
+            ("target", target or ""),
+            ("tier", tier if tier != "off" else ""),
+            ("ignore_constraints", "1" if ignore_constraints else ""),
+            ("ignore_leveling", "1" if ignore_leveling else ""),
+        )
+        if v
+    ]
+    if keep_blank_target and not (target or ""):
+        pairs.insert(0, ("target", ""))
+    return urlencode(pairs)
+
+
+def _trace_option_names(ignore_constraints: bool, ignore_leveling: bool) -> list[str]:
+    """ONE source for the active trace-option names: the options banner and the export
+    scope headings read this same list (ADR-0320), so the vocabulary can never drift
+    between the page and the workbook."""
+    return [
+        name
+        for on, name in (
+            (ignore_constraints, "constraints ignored"),
+            (ignore_leveling, "leveling delay ignored (pure-logic dates)"),
+        )
+        if on
+    ]
+
+
+def _evolution_export_scope(
+    uid: int | None, tier: str, *, ignore_constraints: bool, ignore_leveling: bool
+) -> tuple[list[str], list[str]]:
+    """What the /evolution export actually applied (ADR-0320). Returns ``(applied, notes)``:
+    ``applied`` are transforms baked into the exported rows — the focused UID's driving-path
+    basis (URL or session, same fallback as the page) and the counterfactual trace options;
+    ``notes`` are truthful clarifications for page state that does NOT reach these tables
+    (the on-screen tier stepper). Headings must never claim a scope the rows don't carry —
+    in a testimony context a wrong scope line is worse than none."""
+    applied: list[str] = []
+    if uid is not None:
+        applied.append(f"driving path to UID {uid}")
+    applied.extend(_trace_option_names(ignore_constraints, ignore_leveling))
+    notes: list[str] = []
+    if tier in _EVO_TIER_SELECT:
+        notes.append(
+            f"the on-screen tier view ({tier}) is not applied - these tables keep the path basis"
+        )
+    return applied, notes
+
+
 def _trace_options_form(
     action: str, *, ignore_constraints: bool, ignore_leveling: bool, keep: dict[str, str]
 ) -> str:
@@ -16914,9 +17027,7 @@ def _trace_options_form(
     options of the same name, which keep SSI's stored-date parity (ADR-0251).
     Direction and dependency range live on Path Analysis, whose trace is target-relative;
     this corridor/evolution pair is directional by construction (A→B / to the finish)."""
-    hidden = "".join(
-        f'<input type=hidden name="{_e(k)}" value="{_e(v)}">' for k, v in keep.items() if v
-    )
+    hidden = _keep_hidden(keep)
     ic = " checked" if ignore_constraints else ""
     il = " checked" if ignore_leveling else ""
     return f"""<form method=get action="{action}" class="viz-controls trace-options">{hidden}
@@ -16962,14 +17073,7 @@ def _optioned_versions(
             s2 = s2.model_copy(update={"tasks": tasks})
         out_s.append(s2)
         out_c.append(compute_cpm(s2))
-    opts = [
-        name
-        for on, name in (
-            (ignore_constraints, "constraints ignored"),
-            (ignore_leveling, "leveling delay ignored (pure-logic dates)"),
-        )
-        if on
-    ]
+    opts = _trace_option_names(ignore_constraints, ignore_leveling)
     banner = (
         '<div class="notice">Trace options active: ' + ", ".join(opts) + " — every date and "
         "path on this page (including the animated stepper and the Excel exports) comes from "
@@ -18523,12 +18627,29 @@ def _evolution_body(
         f'<option value="{v}"{" selected" if tier == v else ""}>{lbl}</option>'
         for v, lbl in tier_choices
     )
+    # ADR-0320 (drop-nothing rule): submitting Focus / the tier select used to DROP the
+    # active trace options, silently flipping the page back to the stored basis; the clear-
+    # focus link did the same. Both now carry the rest of the page's state (defaults emit
+    # nothing, so a stateless page renders byte-identically).
+    keep_opts = _keep_hidden(
+        {
+            "ignore_constraints": "1" if ignore_constraints else "",
+            "ignore_leveling": "1" if ignore_leveling else "",
+        }
+    )
+    clear_qs = _evolution_state_qs(
+        target=None,
+        tier=tier,
+        ignore_constraints=ignore_constraints,
+        ignore_leveling=ignore_leveling,
+        keep_blank_target=True,
+    )
     focus_form = f"""
-<div class=panel><form method=get action=/evolution class=viz-controls>
+<div class=panel><form method=get action=/evolution class=viz-controls>{keep_opts}
 Focus a specific activity across every version &mdash; UniqueID:
 <input name=target type=number min=1 value="{target if target is not None else ""}"
 placeholder="UID"> <button type=submit>Focus</button>
-{'<a class=btn-link href="/evolution?target=">clear focus</a>' if target is not None else ""}
+{f'<a class=btn-link href="/evolution?{clear_qs}">clear focus</a>' if target is not None else ""}
 <label style="margin-left:1em">Path tier:
 <select name=tier data-no-i18n data-sf-autosubmit>{tier_opts}</select></label>
 <span class=muted>critical / secondary / tertiary by driving slack to the focused UID (or the
@@ -18635,7 +18756,16 @@ data-tier="{tier}" data-ignore-constraints="{int(ignore_constraints)}"
 data-ignore-leveling="{int(ignore_leveling)}"></div></div>
 <script src="/static/path_evolution.js"></script>"""
         + _completed_on_path_panel(schedules, cpms, target, ev=ev)
-        + _counterfactual_panel(schedules, cpms, target, baseline_idx=cf_a, comparison_idx=cf_b)
+        + _counterfactual_panel(
+            schedules,
+            cpms,
+            target,
+            baseline_idx=cf_a,
+            comparison_idx=cf_b,
+            tier=tier,
+            ignore_constraints=ignore_constraints,
+            ignore_leveling=ignore_leveling,
+        )
         # ⛶ wiring for the two panels above that carry `data-sf-big`. Appended to the ONE string
         # this builder returns, so the include lands exactly once no matter which branches fired.
         + '\n<script src="/static/panelkit.js"></script>'
@@ -18727,6 +18857,9 @@ def _counterfactual_panel(
     *,
     baseline_idx: int = -1,
     comparison_idx: int = -1,
+    tier: str = "off",
+    ignore_constraints: bool = False,
+    ignore_leveling: bool = False,
 ) -> str:
     """The 'what-if' panel for a CHOSEN version pair: revert the duration/logic/constraint changes
     that took non-completed activities off the critical path, and report what the finish (and the
@@ -18735,7 +18868,9 @@ def _counterfactual_panel(
     Operator 2026-07-08: the panel previously always used the LATEST two versions, so on a long
     history it only showed the tiny most-recent update (looking like "no change") and hid the
     cumulative manipulation. It now runs on ANY two files the operator picks (Baseline A vs
-    Comparison B), defaulting to the two most recent, so first-vs-last reveals the real change."""
+    Comparison B), defaulting to the two most recent, so first-vs-last reveals the real change.
+    ADR-0320: ``tier`` / ``ignore_*`` ride the picker (with ``target``) as hidden inputs so
+    "Run what-if" keeps the rest of the page's state; defaults emit nothing."""
     if len(schedules) < 2:
         return ""
     n = len(schedules)
@@ -18757,8 +18892,18 @@ def _counterfactual_panel(
                 for i, lb in enumerate(labels)
             )
 
+        # ADR-0320 (drop-nothing rule): "Run what-if" used to reload /evolution with ONLY
+        # cf_a/cf_b, dropping the focus, tier and trace options the operator had set.
+        keep_state = _keep_hidden(
+            {
+                "target": str(target) if target is not None else "",
+                "tier": tier if tier != "off" else "",
+                "ignore_constraints": "1" if ignore_constraints else "",
+                "ignore_leveling": "1" if ignore_leveling else "",
+            }
+        )
         picker = f"""
-<form method=get action=/evolution class=viz-controls style="margin:.4em 0">
+<form method=get action=/evolution class=viz-controls style="margin:.4em 0">{keep_state}
 <span class=muted>Compare any two of the {n} loaded versions:</span>
 <label>Baseline (A) <select name=cf_a>{_opts(prior_idx)}</select></label>
 <label>Comparison (B) <select name=cf_b>{_opts(cur_idx)}</select></label>

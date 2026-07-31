@@ -435,6 +435,28 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-31 — Two "targets" that look synonymous are a population scope and a view focus (ADR-0320)
+- PR-6's first draft pinned `/export/evolution?target=3` ≡ "session target 3" — the
+  architecture proved the test wrong, not the code: `SessionState.scope()` truncates every
+  version's POPULATION to the session target's driving subtree (`subschedule_to_target`,
+  inside `_solvable_versions`), while the URL `?target=` is a view focus on the full
+  population. The deterministic xlsx writer localized the fork instantly: one cell flipped
+  (project finish 2025-01-20 → 2025-01-06). Lesson: when two inputs look synonymous, diff the
+  actual OUTPUTS before pinning equivalence — and pin the MIRROR (export matches the page in
+  each state), never the equation; a byte-deterministic export format is a first-class
+  debugging instrument for exactly this.
+- Scope-statement fidelity has a format asymmetry: the xlsx renderer never shows a TableSet
+  title (sheets come from per-Table titles, 31-char cap), the docx uses it as H0 — so "the
+  heading states the applied scope" needed TWO carriers (title suffix for Word, a prepended
+  "Applied scope" sheet for Excel). Checking what each renderer actually consumes BEFORE
+  designing the heading saved a truncated-sheet-name trap.
+- Runner instability is a plannable constraint: the container restarted repeatedly, killing
+  three background gate runs and the planned multi-agent verify fan-out, and wiping pip each
+  time. What worked: statics foreground-first (results locked in), tree re-diff + reinstall
+  after every resume, long pytest treated as re-runnable, and the verify pass done as a lead
+  self-review of the full diff. Files survive restarts; processes don't — sequence the work so
+  the tree is always the checkpoint.
+
 ### 2026-07-31 — Measured-box assertions must be scroll-invariant (ADR-0317)
 - Playwright's `bounding_box` is viewport-relative, and a real click legitimately SCROLLS (the
   control's own `scrollIntoView`): the first draft of the scatter one-⛶ test failed its restore
