@@ -47,8 +47,9 @@ def test_scatter_panel_head_has_no_second_enlarge() -> None:
     client = TestClient(create_app(state))
     data = (GOLDEN / "Project5.mspdi.xml").read_bytes()
     assert (
-        client.post("/upload", files={"files": ("Project5.mspdi.xml", data, "text/xml")})
-        .status_code
+        client.post(
+            "/upload", files={"files": ("Project5.mspdi.xml", data, "text/xml")}
+        ).status_code
         == 200
     )
     key = next(iter(state.schedules))
@@ -73,8 +74,7 @@ def served() -> Any:
     with TestClient(app) as c:
         data = (GOLDEN / "Project5.mspdi.xml").read_bytes()
         assert (
-            c.post("/upload", files={"files": ("Project5.mspdi.xml", data, "text/xml")})
-            .status_code
+            c.post("/upload", files={"files": ("Project5.mspdi.xml", data, "text/xml")}).status_code
             == 200
         )
     key = next(iter(state.schedules))
