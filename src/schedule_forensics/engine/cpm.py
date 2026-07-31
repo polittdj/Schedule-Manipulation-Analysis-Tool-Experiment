@@ -71,6 +71,7 @@ import datetime as dt
 from collections import deque
 from collections.abc import Mapping
 from dataclasses import dataclass
+from functools import lru_cache
 
 from schedule_forensics.engine.summary_logic import (
     SummaryLogicExplosion,
@@ -410,21 +411,77 @@ def _tod_at_worked(segments: tuple[tuple[int, int], ...], k: int) -> int:
     return segments[-1][1]
 
 
+@lru_cache(maxsize=64)
+def _worked_day_sets(
+    cal: Calendar,
+) -> tuple[frozenset[dt.date], frozenset[dt.date], frozenset[int]]:
+    """``(holidays, extra_working_days, work_weekdays)`` as FROZENSETS, memoized per calendar.
+
+    The model stores these as tuples, so the day-stepping wall helpers below were doing an
+    O(len(holidays)) scan per day stepped — measured as the dominant cost of the ADR-0322
+    off-calendar paths inside the SRA Monte-Carlo (139 off-calendar tasks x ~2000 solves x
+    day-walks over 100+ holidays; CI's coverage tracing multiplied it into hours). Purely a
+    lookup-structure change: same members, same answers, O(1) membership. Safe to cache —
+    ``Calendar`` is a frozen (hashable) model and the cache is small and bounded."""
+    return frozenset(cal.holidays), frozenset(cal.working_days), frozenset(cal.work_weekdays)
+
+
 def _is_worked_day(cal: Calendar, day: dt.date) -> bool:
-    """Task-calendar working-day test, honoring extra ``working_days`` exceptions."""
-    return cal.is_worked(day)
+    """Task-calendar working-day test, honoring extra ``working_days`` exceptions
+    (set-based twin of :meth:`Calendar.is_worked` — identical answers, O(1) membership)."""
+    holidays, extra_working, weekdays = _worked_day_sets(cal)
+    return day in extra_working or (day.weekday() in weekdays and day not in holidays)
+
+
+def _retreat_working_days(start_day: dt.date, k: int, calendar: Calendar) -> dt.date:
+    """The working day ``k`` working-days BEFORE ``start_day`` — the backward mirror of
+    :func:`_advance_working_days` (same full-weeks jump + short remainder + holiday
+    make-up over the traversed span, which is ``[nxt, cur)`` going backward)."""
+    if k <= 0:
+        return start_day
+    workdays = set(calendar.work_weekdays)
+    wdpw = len(workdays)
+    holidays = calendar.holidays
+    cur = start_day
+    needed = k
+    while needed > 0:
+        full_weeks, remainder = divmod(needed, wdpw)
+        nxt = cur - dt.timedelta(days=full_weeks * 7)
+        steps = remainder
+        while steps > 0:
+            nxt -= dt.timedelta(days=1)
+            if nxt.weekday() in workdays:
+                steps -= 1
+        needed = sum(1 for h in holidays if nxt <= h < cur and h.weekday() in workdays)
+        cur = nxt
+    return cur
 
 
 def _shift_worked_days(cal: Calendar, day: dt.date, n: int) -> dt.date:
     """The ``n``-th worked day after (``n>0``) / before (``n<0``) ``day`` on ``cal``,
-    counting ``day`` itself as position 0 (``day`` must be a worked day for n==0 exactness).
-    Simple bounded day-stepping — used only on off-calendar boundary paths."""
+    counting ``day`` itself as position 0.
+
+    A calendar WITHOUT ``working_days`` exceptions (the overwhelmingly common case) uses
+    the same full-weeks + holiday-adjust arithmetic as the long-proven
+    :func:`_advance_working_days` — O(weeks + holidays), never O(days), because the
+    off-calendar slack spans this walks can be months long (profiled: the day-stepping
+    version dominated the SRA Monte-Carlo). The week-jump counts weekdays over the
+    half-open traversed span, so a non-working start day is handled exactly. A calendar
+    WITH extra working days keeps the exhaustive per-day step (extras break the weekly
+    period; they are rare and few)."""
+    holidays, extra_working, weekdays = _worked_day_sets(cal)
+    if not extra_working:
+        if n == 0:
+            return day
+        if n > 0:
+            return _advance_working_days(day, n, cal)
+        return _retreat_working_days(day, -n, cal)
     step = 1 if n >= 0 else -1
     remaining = abs(n)
     cur = day
     while remaining > 0:
         cur += dt.timedelta(days=step)
-        if _is_worked_day(cal, cur):
+        if cur in extra_working or (cur.weekday() in weekdays and cur not in holidays):
             remaining -= 1
     return cur
 
@@ -559,12 +616,18 @@ def _wall_minutes_between(a: dt.datetime, b: dt.datetime, cal: Calendar, day_sta
     )
     if a.date() == b.date():
         return b_intraday - a_intraday
-    full_days_between = 0
-    cur = a.date() + dt.timedelta(days=1)
-    while cur < b.date():
-        if _is_worked_day(cal, cur):
-            full_days_between += 1
-        cur += dt.timedelta(days=1)
+    # Full worked days STRICTLY between the two dates: the proven full-weeks arithmetic
+    # (O(weeks + holidays), never a per-day walk — these spans can be months of slack)
+    # plus the calendar's extra working days a weekday-minus-holiday count misses.
+    lo, hi = a.date() + dt.timedelta(days=1), b.date()
+    full_days_between = _count_working_days(cal, lo, hi) if lo < hi else 0
+    holidays, extra_working, weekdays = _worked_day_sets(cal)
+    if extra_working:
+        full_days_between += sum(
+            1
+            for d in extra_working
+            if lo <= d < hi and (d.weekday() not in weekdays or d in holidays)
+        )
     tail = mpd - a_intraday if _is_worked_day(cal, a.date()) else 0
     return tail + full_days_between * mpd + b_intraday
 

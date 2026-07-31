@@ -145,3 +145,20 @@ can still miss BOTH DCMA-12 equalities in exotic phase cases (no oracle exercise
 and an SRA `duration_override` cannot flip a task's elapsed/normal execution-calendar
 membership mid-simulation (membership keys on the STORED duration — the pre-existing
 elapsed-branch convention, preserved).
+
+## Performance addendum (same PR, post-CI observation)
+
+The first CI run on this change ran 3+ hours: the wall helpers' day-by-day walks (with
+O(len(holidays)) tuple membership per step) dominated the SRA Monte-Carlo — 138+
+off-calendar tasks x ~2000 solves x month-scale slack spans, multiplied by coverage
+tracing. Fixed as a pure lookup/arithmetic change with byte-identical outputs, proven
+by a canonical digest over every task's full timing (ints + wall instants) on
+Large_Test_File before/after (`e3741aecd11d8dfb` both), plus the whole oracle suite and
+parity gate: (1) a memoized per-calendar frozenset index (`_worked_day_sets`; the
+`Calendar` model is frozen/hashable) replaces tuple scans; (2) `_shift_worked_days` and
+`_wall_minutes_between` use the SAME full-weeks + holiday-adjust arithmetic as the
+long-proven `_advance_working_days`/`_count_working_days` (a new `_retreat_working_days`
+mirrors the jump backward; calendars WITH `working_days` extras keep the exhaustive
+per-day step — extras break the weekly period and are rare). Measured: 836 -> 62
+ms/solve on Large_Test_File (off-calendar overhead now at par with the 33 ms fast-path
+base); the local parity gate dropped from ~28 minutes to 2m38s (46 passed).

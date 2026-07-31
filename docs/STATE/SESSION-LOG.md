@@ -9775,3 +9775,18 @@ the briefs + state rotation) earlier today.
   project2_5, fuse critical sets) all passed inside the full run — the blast-radius
   adjudication held exactly (only the named pins moved).
 - highest ADR **ADR-0324**.
+
+## 2026-07-31 (cont.6) — the ADR-0322 wall helpers stop walking day-by-day (perf addendum, same PR)
+
+- **CI's first run on #497 hit 3+ hours in the test step** — escalated per the armed check-in:
+  profiled `compute_cpm` on Large_Test_File (138 off-calendar tasks): `_wall_minutes_between` +
+  `_shift_worked_days` did day-by-day walks over month-scale slack spans with O(holidays) tuple
+  scans per step (~683k `weekday()` calls per solve), exactly the review panel's flagged SRA
+  hot loop, multiplied by coverage tracing on CI.
+- **Fix (pure speed, provably same numbers):** memoized per-calendar frozensets
+  (`_worked_day_sets`) + the proven full-weeks/holiday-adjust arithmetic for the between/shift
+  walks (new `_retreat_working_days` backward mirror; extras-bearing calendars keep the per-day
+  step). Canonical digest over every task's full timing incl. wall instants on Large_Test_File:
+  `e3741aecd11d8dfb` before AND after; 836 → 62 ms/solve; local parity gate 46 passed in
+  2m38s (was ~28 min); engine dir 848 passed; statics clean; wheel + installers regenerated,
+  lockstep 52 passed. ADR-0322 gained the performance addendum.
