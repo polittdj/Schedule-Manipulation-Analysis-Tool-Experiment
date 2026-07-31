@@ -9589,3 +9589,24 @@ the briefs + state rotation) earlier today.
   on the final tree: 3144 passed, 1 skipped, exit 0 (900 s)**; statics green; wheel +
   installers rebuilt.
 - highest ADR **ADR-0318**.
+
+## 2026-07-31 (cont.2) — the /resources period labels yield to the MEASURED caption (ADR-0319, v1.0.137)
+
+- **#493 (ADR-0318) MERGED** as `e29a155` by the operator; branch restarted with `--prune`.
+  PR-5 executed: round 10's recorded caption debt (the X caption parked over the last rotated
+  period labels, 8/12 combos) closed by ADR-0303's law where the collision is caused —
+  `resources.js` reads the X caption's LIVE box after the append and removes any rotated label
+  within 2 px (measured yield: apollo's wider mono corner reserves itself; hidden boxes skip
+  the yield; the caption never moves). Cadence thinning rejected. `/resources` added to the
+  visual pass's PAGES in the same change, per the file's own protocol note.
+- **Freeze bookkeeping, each per its own prescribed path:** the 16-site census untouched (the
+  yield sits BELOW the call site — line 243 + digests unchanged); the r10 whole-file
+  resources.js digest refreshed deliberately (ADR-0319 named in the test), its load-bearing
+  pins (call-site block digest + caption strings) proving the axisTitles call byte-identical.
+- **Verification read this session:** the 12-combo × 6-page visual pass green; focused suites
+  **80 passed, 1 skipped**; **proved able to fail** — src stashed → the pass reports the
+  original overlaps ("2027-08 by 20x2px", "2027-09 by 43x2px") and exits 1 (read) → popped.
+  **Full suite on the final tree: 3144 passed, 1 skipped, exit 0 (886 s)**; statics green;
+  wheel + installers rebuilt. Session ended here at the operator's request — next session picks
+  up at PR-6 (`/evolution` exports) from the handoff + `docs/STATE/PLAN-20260730.md`.
+- highest ADR **ADR-0319**.

@@ -245,6 +245,24 @@
       yLabel: "Work booked (working days)",
     });
     host.appendChild(s);
+    // ADR-0319 — ADR-0303's "data label yields", MEASURED: the X caption owns its corner, and
+    // the last 40°-rotated period labels were parked under it (36-40x2-4px in 8 of 12
+    // theme x scale combos). The yield runs AFTER the append (live boxes need layout) against
+    // the caption's REAL box, so apollo's wider mono glyphs are covered without guessing text
+    // metrics; the caption itself never moves (the placement is frozen, standing req. 5).
+    var xcap = null;
+    s.querySelectorAll("text.ch-at").forEach(function (t) {
+      if (t.getAttribute("text-anchor") === "end") xcap = t;
+    });
+    var capBox = xcap ? xcap.getBoundingClientRect() : null;
+    if (capBox && capBox.width) { // unmeasurable (hidden) boxes must not shred the labels
+      s.querySelectorAll("text.res-xl[transform]").forEach(function (t) {
+        var b = t.getBoundingClientRect();
+        var dx = Math.min(capBox.right, b.right) - Math.max(capBox.left, b.left);
+        var dy = Math.min(capBox.bottom, b.bottom) - Math.max(capBox.top, b.top);
+        if (dx > -2 && dy > -2) t.remove(); // yields with a 2px margin — the label, never the caption
+      });
+    }
 
     if (status) {
       status.textContent = res.total_days + " work-days total" +

@@ -52,25 +52,19 @@ SCALES = ("0.9", "1", "1.25")
 #: "margin"; with these fixtures it correctly renders a "no data" note and NO chart, so a
 #: missing caption there would be a false positive rather than a defect.
 #:
-#: ``/resources`` is a DIFFERENT case and this comment used to state it wrongly. It said the
-#: page renders no chart with these fixtures — true only because ``resources.js`` was the one
-#: chart module that drew SYNCHRONOUSLY, ahead of the layout's ``chartframe.js``, so first paint
-#: died on ``SFChartFrame is not defined`` and the host stayed empty (measured on the round-9
-#: tree: ``svg children 0``). Round 10 fixed that with a one-word ``defer``, and the histogram
-#: now paints on load (``svg children 62``, both captions present). The page is still excluded,
-#: but for a REASON THAT IS OWED WORK, not a false positive: applying the rules below to it
-#: measures a REAL collision in 8 of 12 theme x scale combos — the X caption
-#: "Period (month commencing)" is parked over the last rotated month tick labels
-#: (e.g. console@1: overlaps "2027-09" / "2027-10" / "2028-01" by ~36x2px each; apollo@1 by
-#: ~40x4px). Nothing else fails: font-size, uppercase, inside-svg and contrast all pass.
-#: The remedy is ADR-0303's (move the LABEL, in ``resources.js``, where the collision is
-#: caused) and it needs its own measured pass — the round-10 lead deliberately did NOT adjust
-#: it, per the standing "the axis captions are finished" rule. Add "/resources" to PAGES in
-#: the same change that closes it.
+#: ``/resources`` joined in ADR-0319, which closed the debt this comment used to carry: after
+#: round 10's ``defer`` made the histogram paint on load, applying the rules below measured a
+#: REAL collision in 8 of 12 theme x scale combos — the X caption "Period (month commencing)"
+#: parked over the last 40°-rotated month tick labels (console@1 by ~36x2px each; apollo@1 by
+#: ~40x4px; everything else — font-size, uppercase, inside-svg, contrast — passed). The remedy
+#: is ADR-0303's, applied where the collision is caused: ``resources.js`` measures the caption's
+#: LIVE box after the append and REMOVES any rotated period label biting into it (2px margin),
+#: so the caption never moves and apollo's wider mono glyphs are covered per-theme. This pass
+#: is what proves that yield holds in all 12 combos.
 #: ``/forecast`` joined in ADR-0303 batch 3a: drift.js's captions were attempted, reverted on
 #: two measured collisions, and re-landed with the ADR-0303 clamps — this pass is what proves
 #: those collisions stay closed.
-PAGES = ("/curves", "/scurve", "/cei", "/trend", "/forecast")
+PAGES = ("/curves", "/scurve", "/cei", "/trend", "/forecast", "/resources")
 
 #: Caption collisions accepted as debt. EMPTY, and it should stay that way — the entry below is
 #: kept as a record of why, because the wrong diagnosis here cost a full round trip.
