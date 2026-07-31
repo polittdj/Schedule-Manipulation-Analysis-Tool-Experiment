@@ -528,3 +528,43 @@ def test_stepping_repoints_every_tile_export_at_the_file_its_chart_now_draws(
         )
         assert body["ok"] == 200 and body["n"] > 1000, body
         browser.close()
+
+
+# ── the first-paint race this round fixes (the /resources defect's twin, ADR-0316) ─────────
+
+
+def test_performance_js_is_deferred_so_chartframe_exists_first(page: str) -> None:
+    """performance.js reads its embedded blob and renders SYNCHRONOUSLY at parse time
+    (``step(cursor)`` on its last line), and ``quad()`` calls ``SFChartFrame.axisTitles`` —
+    but ``chartframe.js`` is emitted by ``_LAYOUT`` AFTER ``</main>``. Without ``defer`` the
+    first paint threw ``SFChartFrame is not defined`` and the three quad tiles stayed empty
+    until the operator's first Prev/Next/Play click re-rendered — the exact defect round 10
+    fixed on the ONLY other blob-driven module (/resources)."""
+    assert re.search(r'<script defer src="/static/performance\.js', page), (
+        "performance.js must be deferred — see test_r10_resources_contract's twin"
+    )
+    # the layout really does load chartframe.js after </main>, which is WHY defer is required
+    assert page.index("</main>") < page.index("/static/chartframe.js")
+
+
+def test_first_paint_renders_the_quads_with_no_pageerror(served: str) -> None:
+    """The measured regression, in real chromium: on a FRESH load (no interaction at all) the
+    three portfolio quads must paint and the console must carry no pageerror. Able to fail:
+    drop the ``defer`` and this reads ['SFChartFrame is not defined'] with empty quad hosts."""
+    from playwright.sync_api import sync_playwright
+
+    with sync_playwright() as pw:
+        browser = pw.chromium.launch(executable_path=str(CHROME))
+        tab = browser.new_page(viewport={"width": 1400, "height": 950})
+        errors: list[str] = []
+        tab.on("pageerror", lambda e: errors.append(str(e)))
+        # never networkidle on this app: heartbeat.js (3s) / sysmon.js (2s) never settle
+        tab.goto(served + "/performance", wait_until="load")
+        tab.wait_for_selector("#quadHmiCei svg", timeout=25000)
+        assert errors == [], errors  # was ['SFChartFrame is not defined'] before the defer
+        counts = tab.evaluate(
+            "() => ['quadHmiCei','quadRatio','quadBeiCp'].map(id =>"
+            " (document.getElementById(id) || {children: []}).children.length)"
+        )
+        assert all(c > 0 for c in counts), counts  # all three painted on FIRST load
+        browser.close()

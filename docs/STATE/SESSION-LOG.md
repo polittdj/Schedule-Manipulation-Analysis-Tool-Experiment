@@ -9529,3 +9529,23 @@ the briefs + state rotation) earlier today.
   notices measured green (64/43/64/64 px) against a live server.
 - highest ADR **ADR-0315**. OR-04 marked SHIPPED in OPERATOR-REQUESTS. Park artifacts #1/#3/#5
   (+#4) stay open; the four-scenario smoke script rides in the PR body.
+
+## 2026-07-30 (cont.4) — /performance first paint: the second blob-driven module gets the same defer (ADR-0316, v1.0.134)
+
+- **#490 (OR-04, ADR-0315) MERGED** as `e38961e` by the operator (marked ready + merged);
+  branch restarted from the new tip with `--prune`. PR-2 of the approved queue
+  (`docs/STATE/PLAN-20260730.md`) executed next, exactly as planned.
+- **The defect:** `performance.js` renders synchronously at parse time from its embedded blob
+  and `quad()` ends in an unguarded `SFChartFrame.axisTitles(...)` — but `chartframe.js` loads
+  AFTER `</main>`, so first paint threw `SFChartFrame is not defined` and the three portfolio
+  quads stayed empty until the first stepper click. The `/resources` twin, fixed in round 10
+  with one word.
+- **Shipped:** `defer` on the `/performance` script tag (`app.py`) — JS byte-identical, every
+  digest pin untouched. A call-site runtime guard was deliberately rejected (ADR-0316): the
+  digest pins would all re-baseline for a guard `defer` makes unreachable.
+- **Verification read this session:** `test_r10_performance_contract.py` **22 passed** incl.
+  the two new twins (TestClient defer-pin + real-chromium first-paint: no pageerror, all three
+  quads painted on a fresh load, zero interaction); **proved able to fail** — src stashed →
+  both fail (2 failed, read) → popped. **Full suite on the final tree: 3138 passed, 1 skipped,
+  exit 0 (878 s)**; ruff/format/mypy-strict/bandit/node all green; wheel + installers rebuilt.
+- highest ADR **ADR-0316**.
