@@ -457,7 +457,8 @@ AXIS_CALL_SITES = [
     ("margin.js", 224, "0bead85c7a9f61cbc9175a125bafe2c0"),
     ("performance.js", 472, "db8ae0464072322438172fe30f85fb71"),
     ("resources.js", 243, "251b7d09fffcc7a9f8adaf5f88ab94eb"),
-    ("scatter.js", 102, "ab0a7516adc3ba20cfb65107aaf4f244"),
+    # line refreshed by ADR-0317 (sfControls grew above the call site); caption bytes intact
+    ("scatter.js", 111, "ab0a7516adc3ba20cfb65107aaf4f244"),
     ("scurve.js", 168, "537fc87d2d19ccc2af0802ebd5dbf58f"),
     ("trend.js", 479, "8bf757af762c9343299f4770bf086f1a"),
     ("trend.js", 583, "82a858e0da47d00e87cb6feffc9dac7d"),

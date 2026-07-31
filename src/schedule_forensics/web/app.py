@@ -7603,22 +7603,27 @@ def _series_prov_chip(versions: Sequence[Schedule]) -> str:
     return _pair_prov_chip(versions[0], versions[-1], 1, len(versions))
 
 
-def _shell_tools(*, export_title: str = "") -> str:
+def _shell_tools(*, export_title: str = "", big: bool = True) -> str:
     """The three-glyph tool strip (panelkit.js wiring): ⤓ EXCEL renders ONLY when the panel
     carries a ``data-export`` URL to an EXISTING endpoint (never a dead link — rank-3 law);
-    ⛶ ENLARGE always. ▦ DATA is omitted on the analysis panels: each one's table IS the data
-    (the home-shell precedent)."""
+    ⛶ ENLARGE by default. ▦ DATA is omitted on the analysis panels: each one's table IS the
+    data (the home-shell precedent). ``big=False`` omits the ⛶ for the ONE panel whose chart
+    script supplies the panel's single ⛶ itself (the /analysis scatter — the curves.js
+    pattern, ADR-0317): a second head glyph on that panel was the round-11 inert-duplicate
+    defect (it flipped its label while ``:has(.sf-tilebox)`` kept the panel static)."""
     excel = (
         f'<button type=button data-sf-excel title="{_e(export_title)}" '
         'aria-label="Export this panel&#39;s data to Excel">⤓ EXCEL</button>'
         if export_title
         else ""
     )
-    return (
-        f"<div class=sf-tools data-noprint=1>{excel}"
+    enlarge = (
         "<button type=button data-sf-big aria-pressed=false "
-        'aria-label="Enlarge this panel">⛶ ENLARGE</button></div>'
+        'aria-label="Enlarge this panel">⛶ ENLARGE</button>'
+        if big
+        else ""
     )
+    return f"<div class=sf-tools data-noprint=1>{excel}{enlarge}</div>"
 
 
 def _panel_head(title: str, *, tools: str = "", prov: str = "") -> str:
@@ -9935,7 +9940,9 @@ def _scatter_panel(key: str, sch: Schedule, cpm: CPMResult, *, prov: str = "") -
         take = "<p class=sf-take data-no-i18n>No incomplete activities to analyze.</p>"
     head = _panel_head(
         "Activity scatter &mdash; float vs duration",
-        tools=_shell_tools(export_title=_ANALYSIS_XLSX_TITLE),
+        # big=False: scatter.js supplies this panel's ONE ⛶ (data-sf-big, curves.js pattern,
+        # ADR-0317) — a second head glyph was the round-11 inert duplicate.
+        tools=_shell_tools(export_title=_ANALYSIS_XLSX_TITLE, big=False),
         prov=prov,
     )
     return (

@@ -6,9 +6,10 @@
  * pattern no count metric reveals. Data: the local /api/analysis/<name> endpoint (the activity
  * rows the grid already uses); the page's full activity grid is the accessible data table.
  *
- * Trends-animation package: the plot carries the Mission-Control tile conventions — a
- * ⛶ Enlarge toggle (tile-expand → tile-expanded) and a visible provenance label naming the
- * schedule it draws from (the host's data-name, the same key it fetches).
+ * Trends-animation package: the plot carries the Mission-Control tile conventions — the
+ * panel's ONE ⛶ toggle (tile-expand → tile-expanded, panel-contract vocabulary since
+ * ADR-0317) and a visible provenance label naming the schedule it draws from (the host's
+ * data-name, the same key it fetches).
  */
 "use strict";
 
@@ -18,6 +19,12 @@
   var NS = "http://www.w3.org/2000/svg";
 
   // ── Mission-Control-style Enlarge + provenance (Trends-animation package) ────
+  // ADR-0317: this button IS the panel's single ⛶ — the server head emits none for this
+  // panel (app.py big=False). It carries data-sf-big, so panelkit.js's delegated listener
+  // owns the ⛶ ENLARGE / ⛶ SHRINK label + aria-pressed (+ the panel's .is-big, inert here
+  // by the :has(.sf-tilebox) exclusion), while the ORIGINAL wiring below still lifts the
+  // chart into its viewport overlay (tile-expanded). The click must reach panelkit's
+  // document listener, so it is NOT stopped — the exact /curves mechanism (rank 9).
   function sfControls(host, name) {
     if (!host || !host.parentNode) return;
     var shell = document.createElement("div");
@@ -26,20 +33,22 @@
     shell.appendChild(host);
     var bar = document.createElement("div");
     bar.className = "viz-controls sf-chart-controls";
+    var tools = document.createElement("span");
+    tools.className = "sf-tools";
+    tools.setAttribute("data-noprint", "1");
     var big = document.createElement("button");
     big.type = "button";
     big.className = "tile-expand";
-    big.textContent = "⛶ Enlarge";
+    big.textContent = "⛶ ENLARGE";
     big.title = "Enlarge / shrink this chart";
     big.setAttribute("aria-pressed", "false");
-    big.addEventListener("click", function (e) {
-      e.stopPropagation();
+    big.setAttribute("data-sf-big", "");
+    big.addEventListener("click", function () {
       var on = shell.classList.toggle("tile-expanded");
-      big.setAttribute("aria-pressed", on ? "true" : "false");
-      big.textContent = on ? "⛶ Shrink" : "⛶ Enlarge";
       if (on && shell.scrollIntoView) shell.scrollIntoView({ block: "nearest" });
     });
-    bar.appendChild(big);
+    tools.appendChild(big);
+    bar.appendChild(tools);
     var label = document.createElement("span");
     label.className = "sf-frame-label muted";
     label.setAttribute("data-no-i18n", ""); // the schedule name — never machine-translated
@@ -153,7 +162,7 @@
         .filter(function (p) { return p.x != null && p.y != null; });
       if (!pts.length) { box.textContent = "No activity data to plot."; return; }
       render(pts);
-      sfControls(box, name || "current schedule"); // ⛶ Enlarge + "Source: <schedule>"
+      sfControls(box, name || "current schedule"); // the panel's one ⛶ + "Source: <schedule>"
     })
     .catch(function () { box.textContent = "Failed to load the scatter data."; });
 })();

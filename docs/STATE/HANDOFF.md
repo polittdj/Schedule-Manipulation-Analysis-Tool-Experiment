@@ -1,32 +1,41 @@
-# Handoff — 2026-07-30 (the /performance first paint no longer races the chart frame; ADR-0316; v1.0.134)
+# Handoff — 2026-07-31 (one ⛶ per panel: the scatter adopts the /curves mechanism; ADR-0317; v1.0.135)
 
-> ## STATUS (current) — **PR-2 of the approved queue SHIPPED: `/performance` gets the same one-word `defer` that fixed `/resources` in round 10. Version 1.0.134, highest ADR ADR-0316, wheel + nine installers regenerated. #490 (OR-04, ADR-0315) MERGED as `e38961e` by the operator.**
-> `performance.js` reads its embedded `#perfData` blob and renders synchronously at parse time,
-> and `quad()` ends in `SFChartFrame.axisTitles(...)` — but `chartframe.js` is emitted by
-> `_LAYOUT` AFTER `</main>`, so first paint threw `SFChartFrame is not defined` and the three
-> portfolio quads stayed empty until the first Prev/Next/Play click re-rendered. The fix is
-> `defer` on the script tag in `app.py` — and NOTHING else: a runtime guard at the call site was
-> deliberately rejected (ADR-0316) because the repo's digest pins (whole-file, call-site census,
-> the r10 byte-pinned quad captions) would all re-baseline for a guard the `defer` makes
-> unreachable, and the `/resources` precedent shipped `defer`-only with the JS byte-identical.
+> ## STATUS (current) — **PR-3 of the approved queue SHIPPED: the `/analysis` scatter panel's two Enlarge controls are ONE, and the one provably moves the measured box. Version 1.0.135, highest ADR ADR-0317, wheel + nine installers regenerated. #491 (ADR-0316) MERGED as `3595dd6` by the operator.**
+> Round 11's measured defect: the server head's `data-sf-big` ⛶ flipped its label while
+> `:has(.sf-tilebox)` kept the panel static — inert beside scatter.js's working sentence-case
+> `⛶ Enlarge`. Shipped per the plan (and /curves' rank-9 precedent): `scatter.js::sfControls` now
+> builds a `.sf-tools` cluster whose single `tile-expand` button says `⛶ ENLARGE`, carries
+> `data-sf-big` (panelkit.js owns the label/aria; the click is NOT stopped so it reaches the
+> delegated listener) and toggles `tile-expanded` (the real viewport overlay); `_shell_tools`
+> gained `big: bool = True` and the scatter head passes `big=False`, so the SERVER emits no ⛶
+> for this one panel — the r11 guard's knowing exemption (a JS-injected tilebox its static sweep
+> cannot see) is closed statically with the guard byte-unchanged. The head keeps its real
+> ⤓ EXCEL. The 16-site caption census kept every digest; only scatter.js's recorded LINE
+> refreshed (102 → 111, the census's own prescribed path — no caption byte moved).
 >
 > ## Verification (all read from runs this session)
-> `tests/web/test_r10_performance_contract.py`: **22 passed** including the two new twins of the
-> r10 `/resources` tests — the TestClient defer-pin (attribute present AND `</main>` really
-> precedes `chartframe.js`) and a real-chromium first-paint test (fresh load, zero interaction:
-> no `pageerror`, all three quad hosts painted). **Proved able to fail:** src stashed → both fail
-> (2 failed, the chromium one on the un-deferred throw) → popped. `ruff` + format + `mypy
-> --strict` (117 files) + `bandit` exit 0 + `node --check` clean; wheel + nine installers
-> regenerated. **Full suite on THIS tree (read): 3138 passed, 1 skipped, exit 0, in 878 s**
-> (browser-marked tests included — Playwright + vendored Chromium present in the container).
+> Focused suites (`test_scatter_one_enlarge.py` NEW · `test_trends_animation.py` ·
+> `test_r11_panel_contract.py` · `test_ch05_panelkit.py` · `test_scatter.py` · `test_app.py`):
+> **79 passed**. The new file carries the static half (the scatter panel's server chunk has
+> `⤓ EXCEL` but NO `data-sf-big`) and the measured half — real-chromium clicks on
+> console/daylight + a **scrollbar-visible** cell: exactly ONE ⛶ on the panel; the click flips
+> the label to `⛶ SHRINK` (panelkit's delegation fired) AND grows the tilebox's
+> scroll-invariant size axes >100 px (console widens across the rail; daylight, already
+> full-width, grows tall); the second click restores width/height/x to <2 px. The trends pin
+> updated deliberately: scatter joins the contract vocabulary; `_LEGACY_LABELS` now names
+> margin.js alone. **Proved able to fail:** src stashed → the three key tests fail (3 failed,
+> read) → popped. `ruff` + format + `mypy --strict` (117 files) + `bandit` exit 0 +
+> `node --check` clean; wheel + nine installers regenerated. **Full suite on THIS tree (read):
+> 3142 passed, 1 skipped, exit 0, in 863 s** (browser-marked tests included).
 >
 > ## ⇢ NEXT
-> 1. **The approved queue** (`docs/STATE/PLAN-20260730.md` — operator-approved, decisions A1 ·
->    B1 · C1 + red-team digest recorded there; do NOT re-ask): **PR-3 scatter panel's one-⛶
->    merge (S–M)** → PR-4 `data-noprint` C1 one-liner (S) → PR-5 `/resources` X-caption yields
->    (S–M) → PR-6 `/evolution` exports honor trace options (M) → PR-7 OR-01 roll-up titles (M) →
->    PR-8 AXIS-TITLES 3b-i `margin_dashboard` per A1 (M) → PR-9 rank-12 toolbar/read-me + B1
->    caption mechanism (M–L) → PR-10 OR-03 launch motion + synthesized hum (M–L).
+> 1. **The approved queue** (`docs/STATE/PLAN-20260730.md` — decisions A1 · B1 · C1 recorded;
+>    do NOT re-ask): **PR-4 `data-noprint` C1 one-liner (S)** → PR-5 `/resources` X-caption
+>    yields (S–M) → PR-6 `/evolution` exports honor trace options (M) → PR-7 OR-01 roll-up
+>    titles (M) → PR-8 AXIS-TITLES 3b-i `margin_dashboard` per A1 (M) → PR-9 rank-12
+>    toolbar/read-me + B1 caption mechanism (M–L) → PR-10 OR-03 launch motion + synthesized
+>    hum (M–L). margin.js's own vocabulary conversion stays a later round (the pin now names it
+>    as the only legacy carrier).
 > 2. **OR-04 operator park artifacts stay open** (`audit/VERIFICATION-REPORT-ollama-lifecycle.md`
 >    §8): #1 `where ollama` · #3 the `keep_alive:0`-vs-`OLLAMA_KEEP_ALIVE=-1` probe (severity
 >    fork) · #5 runner PPID + instance count · #4 the model-identity manifest — plus the
@@ -72,9 +81,11 @@
 > sweep of the model runner** (ADR-0315 — `llama-server` is llama.cpp's generic binary, the tool's
 > own OpenAI-compat backend runs one; pid-rooted tree-kill instead, exclusion pinned by test);
 > **asserting** that a per-request `keep_alive:0` overrides `OLLAMA_KEEP_ALIVE=-1` (UNVERIFIED,
-> audit F-13 — park #3 decides; never state it in either direction); and **a runtime guard on
+> audit F-13 — park #3 decides; never state it in either direction); **a runtime guard on
 > `performance.js:472`** (ADR-0316 — `defer` makes it unreachable and every digest pin would
-> re-baseline for nothing).
+> re-baseline for nothing); and **asserting a fixed-overlay toggle via `bounding_box` Y** —
+> viewport-relative and scroll-polluted by the click's own `scrollIntoView`; assert the
+> scroll-invariant size axes instead (ADR-0317).
 >
 > ## Harness notes — the traps, one line each
 > Run dev tools as `python -m <tool>` (a stale `/root/.local/bin/ruff` shadows pip's).
@@ -88,8 +99,10 @@
 > resume can silently revert / flip uncommitted working-tree files** — diff the tree after every
 > resume. `caplog` here needs `logger="schedule_forensics.<module>"` (the redaction layer stops
 > propagation), and the autouse `SF_CACHE_DIR` fixture isolates the Ollama engagement marker per
-> test for free. **NEW:** a foreground wait on a background run: `tail --pid=<pid> -f /dev/null`
-> (no sleep, no polling); target the real `python -m pytest` pid, not the wrapper shell.
+> test for free. A foreground wait on a background run: `tail --pid=<pid> -f /dev/null` (no
+> sleep, no polling); target the real `python -m pytest` pid, not the wrapper shell.
+> **NEW:** Playwright `bounding_box` is viewport-relative — a click that scrolls (its own
+> `scrollIntoView`) shifts Y for free; measured-box assertions use width/height/x.
 >
 > **Standing rule:** do not put a test result in prose unless the number appeared in output you
 > read that turn. **A launched run is not a result, and a piped exit code is not the command's.**
