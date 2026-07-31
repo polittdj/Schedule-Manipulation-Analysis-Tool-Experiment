@@ -435,6 +435,26 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-30 — "Engaged" is not "used": a lifecycle flag set only in Settings cannot represent default-config use (OR-04 / ADR-0315)
+- The GPU leak survived because THREE mutually reinforcing defects each looked like another's
+  absence: shutdown gated on a Settings-only flag (default-config Ask-the-AI never set it), the
+  engaged path's own cleanup ORPHANED the model runner (parent terminated before the `/T`
+  tree-walk could use it as the root), and every failure was invisible (`check=False` result
+  discarded; listing failures silently `return 0`) — the tool *believed* it cleaned up. The
+  operator's two manual "process not found" taskkills were the shipped code's exact output.
+- Method lesson: the operator's adversarial audit prompt (report-only, prove-or-refute, treat
+  docstrings as claims) caught what my own first design missed — the PR-1 draft kept the broken
+  unload→terminate→sweep order and proposed runner image names instead, which would ALSO have
+  been wrong (`llama-server` is llama.cpp's generic binary — LM Studio runs one). **PID-rooted
+  ancestry beats image names**, and "a human gates the apply" caught a wrong fix before it landed.
+- Silent best-effort cleanup is indistinguishable from success: read the returncode, verify the
+  effect (`/api/ps` re-probe), and surface status in the UI — `no-binary` had been write-only
+  since it shipped (a silent capability downgrade).
+- Harness: `caplog` here needs `logger="schedule_forensics.<module>"` (the redaction layer stops
+  propagation — the importer tests had the working pattern); the autouse `SF_CACHE_DIR` fixture
+  gave the new durable marker per-test isolation for free — piggyback on an existing isolation
+  seam before inventing one.
+
 ### 2026-07-30 (cont.6) — headless hides scrollbars, and the audit caught what the probe could not
 
 - **A green probe can be measuring a browser that does not exist on the operator's desk.** The

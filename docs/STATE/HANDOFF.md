@@ -1,47 +1,70 @@
-# Handoff — 2026-07-30 (OR-02 closed under audit: the callout dismisses and never covers the nav; ADR-0314; v1.0.132)
+# Handoff — 2026-07-30 (OR-04 shipped: the GPU is freed on exit in three tiers, and the three decisions are ANSWERED; ADR-0315; v1.0.133)
 
-> ## STATUS (current) — **OR-02 (the DCMA-11 callout bug) is FIXED, Ultracode-audited, and pinned by measured-box tests. Version 1.0.132, highest ADR ADR-0314, wheel + nine installers regenerated.**
-> The operator's one sentence hid THREE defects, all measured before fixing (`app.js`, the DCMA
-> overview float tip): a FOCUS-shown tip had **no reachable dismissal** (Escape/pointer-away/
-> alt-tab all stuck); the nav clamp tested `position === "fixed"` only, so **daylight's sticky
-> bar was never avoided** (hit-checked overlap at three sizes); and — the audit's find — the tips
-> are **BORN visible** (no inline `display:none` at creation while `.dcma-tip-float` CSS computes
-> visible), so every render stacked all 16 over the nav at (0,0), masked only on loads whose
-> Gantt auto-scroll fired the scroll-hide. That last one is almost certainly the operator's
-> literal *"it returns after I switch pages."*
+> ## STATUS (current) — **OR-04 (`llama-server.exe` holding dedicated GPU memory after quit) is FIXED per the operator-gated lifecycle audit. Version 1.0.133, highest ADR ADR-0315, wheel + nine installers regenerated. The three briefed decisions are ANSWERED (A1 · B1 · C1) — rank 12's remainder is UNGATED.**
+> The operator's audit prompt ran REPORT-ONLY first (`audit/VERIFICATION-REPORT-ollama-lifecycle.md`,
+> committed at `cac0991`, audited tree `d508250`), then the apply was gated open. Confirmed in code:
+> the ENGAGED path's own cleanup manufactured the orphan — unverified unload → `TerminateProcess` on
+> the parent serve → an image sweep (`ollama app.exe`/`ollama.exe`) that finds only dead processes
+> while the reparented runner survives holding ~11 GB VRAM (F-7, Critical; the operator's two
+> "process not found" taskkills are that code's exact output). Used-but-never-engaged sessions
+> no-opped entirely (`_engaged` set only by the Settings POST — F-4); every failure was invisible
+> (`check=False` results discarded, listing failures silently `return 0` — F-5/F-6); nothing
+> reconciled at startup (F-2); engagement died with the process (F-1/F-3); orphans COMPOUND per
+> enable→ask→quit cycle (F-17).
 >
-> ## The audit earned its keep — two blockers my own probes could not see
-> Ultracode (ADR-0240): 4 dimension reviewers + adversarial verifiers, 12 findings, every one
-> lead-re-verified executably. The blockers: (1) the first fix compared the header box against
-> `window.innerWidth`, which **includes a classic scrollbar** — a full-width bar then classifies
-> as a RAIL and the tip lands off-screen at a **9px sliver**. Headless Chromium HIDES scrollbars
-> (all my probes were green); re-measured with `--hide-scrollbars` disabled: real. The shipped
-> classifier uses `document.documentElement.clientWidth`. (2) the born-visible stack above.
-> Also folded in: overflow **hidden** not auto (a scrollbar on a `pointer-events:none` element is
-> a control no input can operate — ADR-0304's own law), an 8px pointermove travel threshold (a
-> desk bump must not kill a keyboard-opened tip — ADR-0286's posture), `mark()` hides a different
-> previously tracked tip, tip ids + `aria-describedby` (the overview's `role=tooltip` was
-> orphaned), and three test-hardening findings.
+> ## What shipped (ADR-0315)
+> Three-tier `OllamaLauncher.shutdown()`: **engaged** → unload-all + bounded `/api/ps` re-probe
+> (`unload-incomplete` at WARNING when it doesn't drain) + **pid-rooted tree-kill of the serve WE
+> spawned while our un-reaped handle still pins its pid** (`taskkill /F /T /PID` / `killpg`; the
+> POSIX branch refuses a target sharing our own process group) + the ADR-0122 image sweep with
+> returncodes read (0/1/128 = fine, anything else WARNING); **used-but-never-engaged** →
+> `record_use(model, endpoint)` fires on generate SUCCESS only (a `_UseMarking` wrapper in
+> `_active_backend`/`_second_backend`; probes and the settings render never mark — pinned) and
+> shutdown unloads ONLY those models, touching no process (operator ruling 2026-07-30);
+> **never used** → total no-op. A durable marker (`$SF_CACHE_DIR`/ollama-engagement.json —
+> endpoint+models+ts, never schedule content) survives a hard kill; `reconcile_at_startup()`
+> (launcher, daemon thread, TCP-gated) reclaims marker-proven leftovers or surfaces
+> `orphan-suspected`, and touches NOTHING without the marker. `generate` now sends
+> `keep_alive:"5m"` (hardening — override vs `OLLAMA_KEEP_ALIVE=-1` is UNVERIFIED, F-13, park #3).
+> Settings gains AI-runtime diagnostics: `manager.status` (F-16 — `no-binary` was WRITE-ONLY) +
+> the four `OLLAMA_*` env values (reported, never overridden — F-10). NO image-name kill of the
+> runner — rejected (llama.cpp/LM Studio collision) and pinned by test.
 >
 > ## Verification (all read from runs this session)
-> `tests/web/test_float_tip_dismiss.py`: **19 passed** (dismissal by Escape/pointer/blur on the
-> operator's own DCMA-11 row · tips born hidden via an INSERTION-TIME MutationObserver — post-load
-> inspection cannot tell "born hidden" from "scroll-masked" · a 4-theme × 4-viewport measured-box
-> sweep incl. the 600×700 burger header, counting only cells that actually measured a tip).
-> **Proved able to fail:** on unfixed code the dismissal test, born-hidden test, and daylight cell
-> fail (3 failed, 8.31s, read); fixed code 19 passed in 131s. All 136 existing app.js-content
-> tests green. Local vendored-chromium posture (CI's browser job deliberately runs only the r11
-> contract file). Full-suite figure for THIS tree: owed by the next gate run — do not quote one.
+> Focused suites (`tests/ai/test_ollama_process.py` · `test_coverage_ollama_process.py` ·
+> `test_backends.py` · `tests/web/test_ai_wiring.py`): **84 passed** in 7.38 s at first green,
+> including the operator-scenario regression (use the AI without opening Settings → close →
+> unloader called with exactly the used set, stopper/tree-kill NEVER called), alive-at-kill
+> ordering, unload verification, marker/reconciliation, the llama-server exclusion pin, and the
+> settings surfacing pair. **Proved able to fail:** src stashed → the three key tests fail
+> (3 failed, read) → popped. `ruff` + `ruff format --check` + `mypy --strict` green on 117 src
+> files; `bandit` exit 0 (one B110 fixed by logging instead of passing — this PR's own visibility
+> law); `node --check` clean on all vendored JS. **Full suite on THIS tree (read): 3136 passed,
+> 1 skipped, exit 0, in 890 s** — Playwright+vendored Chromium were installed in the container,
+> so the browser-marked tests ran locally too. One full-run failure en route (`test_launcher`'s
+> fake manager lacks `reconcile_at_startup`) was fixed with the same getattr-guard pattern as
+> `record_use`, wheel+installers rebuilt, and the suite re-run IN FULL on the final tree.
+> **4-theme render check (measured, read):** the two diagnostics notices render with real boxes
+> in console/daylight/apollo/jarvis (heights 64/43/64/64 px) against a live server with a stub
+> manager + `OLLAMA_KEEP_ALIVE=-1`. The real GPU machine is the operator's: the PR body carries
+> the four-scenario smoke script (A: the bug path — ask without Settings, quit → `ollama ps`
+> empty, runner gone, Ollama itself alive; B: ADR-0122 intact; C: never-used untouched; D:
+> hard-kill backstop).
 >
 > ## ⇢ NEXT
-> 1. **The three operator decisions stay OPEN and briefed** — `docs/STATE/DECISION-BRIEFS-20260730.md`
->    (A: batch 3b scope · B: NO_SVG_AXES caption mechanism · C: `data-noprint`). Asked twice,
->    unanswered twice — ask from the briefs, do NOT re-research, do NOT invent answers.
-> 2. **Un-gated queue:** OR-01 (roll-up titles), OR-03 (Launch Sequence motion + ≥1-min hum),
->    `/analysis` panel 5's two ⛶, `/evolution`'s target-blind export bar, `/resources` X-caption
->    collision, `/performance` first-paint race. Then rank 13/14 behind rank 12's gated remainder.
-> 3. Behind the UI queue: **Phase 3** (CC-01 rendering half, 74 call sites, Fable-5-Max deep dive;
->    V3 elapsed literals) and **Phase 4** (P1–P6, measured but unremediated).
+> 1. **Operator park artifacts stay open** (audit §8): #1 `where ollama` (the PATH branch), #3 the
+>    `keep_alive:0`-vs-`OLLAMA_KEEP_ALIVE=-1` probe (the severity fork for the unload strategy),
+>    #5 runner PPID + instance count (orphan signature + accumulation), #4 the model-identity
+>    manifest. They refine, not gate, the shipped fix.
+> 2. **The approved queue** (`docs/STATE/PLAN-20260730.md` — operator-approved, decisions + red-team
+>    digest recorded there; do NOT re-ask A/B/C): PR-2 `/performance` first-paint `defer` (S) →
+>    PR-3 scatter panel's one-⛶ merge (S–M) → PR-4 `data-noprint` C1 one-liner (S) → PR-5
+>    `/resources` X-caption yields (S–M) → PR-6 `/evolution` exports honor trace options (M) →
+>    PR-7 OR-01 roll-up titles (M) → PR-8 AXIS-TITLES 3b-i `margin_dashboard` per A1 (M) → PR-9
+>    rank-12 toolbar/read-me + B1 caption mechanism (M–L) → PR-10 OR-03 launch motion +
+>    synthesized hum (M–L).
+> 3. Behind the queue: **Phase 3** (CC-01 rendering half, 74 call sites, Fable-5-Max deep dive;
+>    V3 elapsed literals) and **Phase 4** (P1–P6, measured but unremediated); rank 13/14.
 >
 > ## Still carried (unchanged identifiers, nothing lost)
 > **CC-01** (H2a) — import half closed by ADR-0312, **rendering half open**, 74 call sites; its two
@@ -76,9 +99,12 @@
 > Everything in `audit/SRA-PARITY-20260729.md` §7, **plus**: reverting ADR-0307's Best-Case rule;
 > an **unconditional** data-date floor (ADR-0108's two reverts, superseded by ADR-0309); "the four
 > Setup pages have no chapter kicker" (ADR-0311); **"the xlsx writer needs a formula-injection
-> guard"** (ADR-0313 — it emits no `<f>`; the CSV sibling was the real vector); and **"OR-02 is in
-> the hint/tooltip layer"** (the intake notes guessed `hints.js`/`vizhints.js` — the callout is
-> app.js's DCMA float tip; measured, ADR-0314).
+> guard"** (ADR-0313 — it emits no `<f>`; the CSV sibling was the real vector); **"OR-02 is in
+> the hint/tooltip layer"** (ADR-0314 — the callout is app.js's DCMA float tip); **an image-name
+> sweep of the model runner** (ADR-0315 — `llama-server` is llama.cpp's generic binary, the tool's
+> own OpenAI-compat backend runs one; pid-rooted tree-kill instead, exclusion pinned by test); and
+> **asserting** that a per-request `keep_alive:0` overrides `OLLAMA_KEEP_ALIVE=-1` (UNVERIFIED,
+> audit F-13 — park #3 decides; never state it in either direction).
 >
 > ## Harness notes — the traps, one line each
 > Run dev tools as `python -m <tool>` (a stale `/root/.local/bin/ruff` shadows pip's).
@@ -87,11 +113,12 @@
 > reports `tail`'s status. CI can take ~11 min to register check runs (`total_count: 0` = "not
 > yet"). `TestClient` follows 303 and CONSUMES one-shot banners (`follow_redirects=False`).
 > Full `pytest -q` ≈ 14 m; `pytest -m parity` ≈ 40 s. Wheel: `--outdir dist/wheel`, ONCE, after
-> all code lands. **NEW: headless Chromium hides scrollbars** — any geometry that depends on
-> viewport width MUST also be probed with `ignore_default_args=["--hide-scrollbars"]`; a
-> classic-scrollbar browser (the operator's Windows default) is ~15px narrower than headless
-> thinks. **A remote-session resume can silently revert / flip uncommitted working-tree files** —
-> diff the tree against your last known state after every resume before trusting it.
+> all code lands. **Headless Chromium hides scrollbars** — any geometry that depends on viewport
+> width MUST also be probed with `ignore_default_args=["--hide-scrollbars"]`. **A remote-session
+> resume can silently revert / flip uncommitted working-tree files** — diff the tree after every
+> resume. **NEW:** `caplog` here needs `logger="schedule_forensics.<module>"` (the redaction layer
+> stops propagation; the importer tests carry the working pattern), and the autouse `SF_CACHE_DIR`
+> fixture isolates the new Ollama engagement marker per test for free.
 >
 > **Standing rule:** do not put a test result in prose unless the number appeared in output you
 > read that turn. **A launched run is not a result, and a piped exit code is not the command's.**

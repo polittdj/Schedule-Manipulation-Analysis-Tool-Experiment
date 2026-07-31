@@ -430,6 +430,86 @@ def test_cross_check_second_model_is_a_dropdown(client: TestClient) -> None:
     assert "/api/ai/models" in client.get("/static/settings.js").text
 
 
+class _RecordingManager:
+    """A manager WITH record_use — create_app wires it as the session's ai_use_hook (ADR-0315)."""
+
+    def __init__(self) -> None:
+        self.recorded: list[tuple[str, str]] = []
+        self.status = "idle"
+
+    def ensure_running(self) -> str:
+        return "started"
+
+    def shutdown(self) -> None:
+        return None
+
+    def record_use(self, model: str, endpoint: str) -> None:
+        self.recorded.append((model, endpoint))
+
+
+def test_generate_marks_use_on_the_manager_without_settings(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The operator's OR-04 scenario end-to-end (ADR-0315): the DEFAULT config drives a
+    generation without Settings ever being opened, and the manager learns the session really
+    used the model — with the CONFIG's model/endpoint, never the fake backend's attributes.
+    Able to fail: remove the _UseMarking wrap in _active_backend and nothing is recorded."""
+    mgr = _RecordingManager()
+    state = SessionState()
+    client = TestClient(create_app(state, ollama=mgr))
+    _wire(monkeypatch, _PolishBackend())  # substitute the transport; routing stays "ollama"
+    key = _load_example(client, state)
+    assert "POLISHED" in client.get(f"/api/ai/narrative?key={quote(key)}").json()["html"]
+    assert set(mgr.recorded) == {("qwen2.5:7b-instruct", "http://127.0.0.1:11434")}
+
+
+def test_settings_render_never_marks_use(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The honesty boundary (ADR-0315): opening AI Settings probes and lists models but loads
+    nothing into VRAM — it must never mark use (only a generation may)."""
+
+    class _Reachable(_PolishBackend):
+        def unavailable_reason(self) -> None:
+            return None
+
+    mgr = _RecordingManager()
+    state = SessionState()
+    client = TestClient(create_app(state, ollama=mgr))
+    monkeypatch.setattr(app_module, "_ollama_or_none", lambda cfg: _Reachable())
+    assert client.get("/settings").status_code == 200
+    assert mgr.recorded == []  # probes and model lists never mark
+
+
+def test_settings_surfaces_runtime_status_and_ollama_env(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Audit F-16/F-10 (ADR-0315): ``no-binary`` was written to a status field nothing read (a
+    silent capability downgrade), and the OLLAMA_* environment a spawned server inherits was
+    invisible. Both now render on the settings page — reported, never overridden."""
+    mgr = _RecordingManager()
+    mgr.status = "no-binary"
+    monkeypatch.setenv("OLLAMA_KEEP_ALIVE", "-1")
+    state = SessionState()
+    client = TestClient(create_app(state, ollama=mgr))
+    page = client.get("/settings").text
+    assert "AI runtime:" in page and "Ollama executable not found" in page
+    assert "OLLAMA_KEEP_ALIVE=-1" in page and "never changes them" in page
+
+
+def test_settings_stays_quiet_without_a_manager_or_env(
+    monkeypatch: pytest.MonkeyPatch, client: TestClient
+) -> None:
+    """The diagnostics block is empty for a plain app (no manager, no OLLAMA_* env) — the page
+    renders exactly as before ADR-0315."""
+    for name in (
+        "OLLAMA_KEEP_ALIVE",
+        "OLLAMA_CONTEXT_LENGTH",
+        "OLLAMA_MAX_LOADED_MODELS",
+        "OLLAMA_NUM_PARALLEL",
+    ):
+        monkeypatch.delenv(name, raising=False)
+    assert "AI runtime:" not in client.get("/settings").text
+
+
 def test_settings_explains_each_backend_and_its_cui_posture(client: TestClient) -> None:
     """Operator: explain in detail what each model/backend does and how it handles CUI (local vs
     leaving the machine)."""

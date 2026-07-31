@@ -18,6 +18,7 @@ import importlib.metadata
 import json
 import logging
 import math
+import os
 import re
 import tempfile
 import threading
@@ -706,6 +707,42 @@ def _openai_or_none(config: AIConfig) -> OpenAICompatBackend | None:
         return None
 
 
+class _UseMarking:
+    """Transparent :class:`AIBackend` wrapper reporting a SUCCESSFUL generate to the desktop
+    launcher's ``record_use`` hook (ADR-0315). Marking rides the generation only — probes,
+    model lists, and the settings render never mark (nothing but a generation loads a model
+    into VRAM) — so shutdown's used-but-never-engaged GPU-release tier fires exactly when the
+    session really used the AI. Model/endpoint are captured from the CONFIG at wrap time, not
+    read off the inner backend, so a test fake without those attributes records real values."""
+
+    def __init__(
+        self, inner: AIBackend, hook: Callable[[str, str], None], model: str, endpoint: str
+    ) -> None:
+        self._inner = inner
+        self._hook = hook
+        self._model = model
+        self._endpoint = endpoint
+        self.name = inner.name
+        self.is_local = inner.is_local
+
+    def is_available(self) -> bool:
+        return self._inner.is_available()
+
+    def list_models(self) -> tuple[str, ...]:
+        return self._inner.list_models()
+
+    def pull_model(self, model: str) -> None:
+        self._inner.pull_model(model)
+
+    def generate(self, prompt: str) -> str:
+        text = self._inner.generate(prompt)
+        try:  # marking must never break an answer
+            self._hook(self._model, self._endpoint)
+        except Exception:  # pragma: no cover - defensive; the hook is already best-effort
+            logging.getLogger(__name__).debug("could not record AI model use", exc_info=True)
+        return text
+
+
 def _model_installed(model: str, installed: tuple[str, ...]) -> bool:
     """Tolerant match of a configured model name against an Ollama install list.
 
@@ -776,6 +813,70 @@ def _ai_status_note(cfg: AIConfig) -> str:
     )
 
 
+#: The Ollama-server tuning environment the tool REPORTS but never changes (ADR-0315, audit
+#: F-10): a spawned `ollama serve` inherits this user scope wholesale, so e.g.
+#: OLLAMA_KEEP_ALIVE=-1 silently means "the model never idle-unloads from GPU memory".
+_OLLAMA_ENV_VARS = (
+    ("OLLAMA_KEEP_ALIVE", "how long a model stays in GPU memory after a request; -1 = forever"),
+    ("OLLAMA_CONTEXT_LENGTH", "context window the server allocates per loaded model"),
+    ("OLLAMA_MAX_LOADED_MODELS", "how many models the server keeps resident at once"),
+    ("OLLAMA_NUM_PARALLEL", "parallel requests per model (multiplies the KV-cache allocation)"),
+)
+
+#: Operator-readable meanings for `OllamaLauncher.status` — previously written to a field
+#: nothing rendered (audit F-16: `no-binary` was a silent capability downgrade).
+_RUNTIME_STATUS_NOTES = {
+    "no-binary": (
+        "err",
+        "Ollama executable not found — the tool cannot start or stop Ollama itself; "
+        "Ask-the-AI stays offline unless a server is already running.",
+    ),
+    "unload-incomplete": (
+        "err",
+        "the last cleanup left model(s) resident — GPU memory may still be held.",
+    ),
+    "orphan-suspected": (
+        "err",
+        "a prior session engaged the local AI but its server is gone; a leftover model-runner "
+        "process (e.g. llama-server) may still hold GPU memory — end it from Task Manager.",
+    ),
+    "failed": ("err", "the tool tried to start Ollama and the spawn failed — see the log."),
+    "started": ("info", "the tool started the local Ollama and will stop it on exit."),
+    "already-running": (
+        "info",
+        "using an Ollama that was already running (it is stopped on close per ADR-0122).",
+    ),
+    "starting": ("info", "the tool started Ollama; it was still coming up at the last check."),
+}
+
+
+def _ai_runtime_note(manager: object) -> str:
+    """AI-runtime diagnostics for the settings page (ADR-0315).
+
+    Renders the desktop launcher-manager's lifecycle status — previously written to a field
+    nothing read — plus any ``OLLAMA_*`` tuning environment the local server would inherit
+    from this user (reported, never overridden). Empty when there is nothing to say (no
+    manager, idle status, no env set), so plain/test apps render unchanged."""
+    parts: list[str] = []
+    status = getattr(manager, "status", None)
+    if isinstance(status, str):
+        note = _RUNTIME_STATUS_NOTES.get(status)
+        if note is not None:
+            cls, text = note
+            parts.append(f'<div class="notice {cls}">AI runtime: {_e(text)}</div>')
+    env_bits = [
+        f"<code>{name}={_e(val)}</code> <span class=muted>({_e(meaning)})</span>"
+        for name, meaning in _OLLAMA_ENV_VARS
+        if (val := os.environ.get(name))
+    ]
+    if env_bits:
+        parts.append(
+            '<div class="notice info">Ollama environment this machine sets (the tool reports '
+            "these, never changes them): " + " &middot; ".join(env_bits) + "</div>"
+        )
+    return "".join(parts)
+
+
 def _second_backend(state: SessionState) -> AIBackend | None:
     """The configured cross-check model, probed + cached like the primary (or ``None``).
 
@@ -806,6 +907,10 @@ def _second_backend(state: SessionState) -> AIBackend | None:
         backend = None
     if backend is not None and not backend.is_available():
         backend = None
+    hook = state.ai_use_hook
+    if backend is not None and hook is not None and cfg.second_backend == "ollama":
+        # ADR-0315: cross-check generations mark use too (same session, same VRAM).
+        backend = _UseMarking(backend, hook, cfg.second_model or cfg.model, cfg.endpoint)
     state.second_cache = (cfg, now, backend)
     return backend
 
@@ -832,6 +937,10 @@ def _active_backend(state: SessionState) -> AIBackend:
         ollama_backend=_ollama_or_none(state.ai_config),
         openai_backend=_openai_or_none(state.ai_config),
     )
+    hook = state.ai_use_hook
+    if hook is not None and backend.name == "ollama":
+        # ADR-0315: a successful generate marks REAL model use for the shutdown tiers.
+        backend = _UseMarking(backend, hook, state.ai_config.model, state.ai_config.endpoint)
     state.backend_cache = (state.ai_config, now, backend)
     return backend
 
@@ -2169,6 +2278,13 @@ def create_app(
     app.state.auto_shutdown = auto_shutdown
     app.state.idle_grace = idle_grace
     app.state.ollama = ollama  # lazy-started on AI enable, stopped on close (None in tests)
+    if ollama is not None:
+        # ADR-0315: let routed Ollama backends mark REAL use (a successful generate) on the
+        # manager, so shutdown can free GPU memory even when Settings was never opened. The
+        # getattr guard keeps managers/fakes without record_use working unchanged.
+        hook = getattr(ollama, "record_use", None)
+        if callable(hook):
+            app.state.session.ai_use_hook = hook
     app.state.last_beat = time.monotonic()
     app.state.browser_seen = False  # armed once the first heartbeat arrives
     app.state.shutting_down = False
@@ -6911,7 +7027,8 @@ def create_app(
     @app.get("/settings", response_class=HTMLResponse)
     def settings() -> HTMLResponse:
         st = session()
-        return _page(st, "AI Settings", _settings_body(st))
+        note = _ai_runtime_note(getattr(app.state, "ollama", None))
+        return _page(st, "AI Settings", _settings_body(st, runtime_note=note))
 
     @app.post("/settings")
     def update_settings(
@@ -20051,7 +20168,7 @@ answer uses more time and memory.</p></details>
 </div>"""
 
 
-def _settings_body(state: SessionState) -> str:
+def _settings_body(state: SessionState, runtime_note: str = "") -> str:
     cfg = state.ai_config
     backend, _banner = route_backend(
         cfg,
@@ -20144,7 +20261,7 @@ def _settings_body(state: SessionState) -> str:
 {_user_tip("The tool works fully offline with no AI. Turning on a local model only adds written narrative on top of the engine&rsquo;s already-computed, cited numbers &mdash; every AI figure is re-checked against those citations, and nothing ever leaves this machine.")}
 <p>Active backend: <b>{_e(backend.name)}</b> &middot; installed models: {model_list}
 &middot; cross-check model: <b>{second_status}</b></p>
-{status_note}
+{status_note}{runtime_note}
 <form action="/settings" method=post>
 <p>Classification:
 <select name=classification>

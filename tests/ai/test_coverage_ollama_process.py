@@ -106,11 +106,13 @@ def test_launcher_started_then_shutdown() -> None:
         prober=prober,
         finder=lambda: "/x/ollama",
         spawn=lambda exe, hp: proc,
-        unloader=lambda e: 0,  # hermetic — no real /api/ps call on shutdown
+        unloader=lambda e, only=None: 0,  # hermetic — no real /api/ps call on shutdown
         stopper=lambda: None,  # hermetic — no real taskkill/pkill on shutdown
+        tree_killer=lambda pid: None,  # hermetic — never tree-kill the test's own child
+        ps_reader=lambda e, t: [],  # hermetic — the post-unload verify sees a drained server
     )
     assert launcher.ensure_running() == "started"
-    launcher.shutdown()  # engaged + _proc set -> unload (no-op), _terminate, then stop-server
+    launcher.shutdown()  # engaged + _proc set -> unload+verify, tree-kill, reap, stop-server
 
 
 def test_launcher_starting_when_never_listens(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -136,7 +138,9 @@ def test_launcher_shutdown_without_engaging_is_a_no_op() -> None:
 def test_launcher_shutdown_swallows_terminate_errors(monkeypatch: pytest.MonkeyPatch) -> None:
     proc = subprocess.Popen(["/bin/true"])
     proc.wait()
-    launcher = op.OllamaLauncher(unloader=lambda e: 0, stopper=lambda: None)
+    launcher = op.OllamaLauncher(
+        unloader=lambda e, only=None: 0, stopper=lambda: None, ps_reader=lambda e, t: []
+    )
     launcher._engaged = True  # the tool managed Ollama this session, so shutdown proceeds
     launcher._proc = proc
 
@@ -167,3 +171,130 @@ def test_default_stop_server_swallows_errors(monkeypatch: pytest.MonkeyPatch) ->
 
     monkeypatch.setattr(op.subprocess, "run", boom)
     op._default_stop_server()  # missing utility / nothing to kill -> logged, never raised
+
+
+# --- ADR-0315: visible cleanup, selective unload, and the pid-rooted tree-kill --------------------
+
+_LOG = "schedule_forensics.ai.ollama_process"
+
+
+def test_stop_server_reports_real_failures_and_tolerates_no_such_process(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Audit F-6: ``check=False`` used to DISCARD the kill results, so total cleanup failure
+    looked exactly like success. A real failure now logs at WARNING; "no such process"
+    (taskkill 128 / pkill 1) stays informational. Able to fail: on the pre-ADR-0315 code no
+    log record is emitted at all."""
+    monkeypatch.setattr(
+        op.subprocess,
+        "run",
+        lambda cmd, **k: subprocess.CompletedProcess(cmd, 5, stdout="", stderr="access denied"),
+    )
+    with caplog.at_level("INFO", logger=_LOG):
+        op._default_stop_server()
+    assert "exited 5" in caplog.text and "access denied" in caplog.text
+    caplog.clear()
+    monkeypatch.setattr(
+        op.subprocess,
+        "run",
+        lambda cmd, **k: subprocess.CompletedProcess(cmd, 1, stdout="", stderr=""),
+    )
+    with caplog.at_level("INFO", logger=_LOG):
+        op._default_stop_server()
+    assert "no such process" in caplog.text
+    assert not any(r.levelname == "WARNING" for r in caplog.records)  # nothing-to-kill is fine
+
+
+def test_unload_listing_failure_is_logged_not_silent(caplog: pytest.LogCaptureFixture) -> None:
+    """Audit F-5: the bare ``except: return 0`` hid the exact post-orphan state (connection
+    refused against a dead proxy). The zero is still returned — but visibly."""
+    with caplog.at_level("WARNING", logger=_LOG):
+        assert op.unload_loaded_models("http://127.0.0.1:1", timeout=0.3) == 0
+    assert "could not list loaded Ollama models" in caplog.text
+
+
+def test_unload_only_filters_by_tolerant_base_name(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The used-but-never-engaged tier must evict ONLY what the session loaded: config
+    ``qwen2.5`` matches the loaded ``qwen2.5:7b-instruct`` (base-name rule) and the operator's
+    other model is left resident. Able to fail: drop the ``only`` filter and both unload."""
+    posts: list[str] = []
+
+    class _Resp:
+        def __enter__(self) -> _Resp:
+            return self
+
+        def __exit__(self, *a: object) -> None:
+            return None
+
+    def fake_open(req: object, timeout: float | None = None) -> _Resp:
+        posts.append(op.json.loads(req.data.decode("utf-8"))["model"])  # type: ignore[attr-defined]
+        return _Resp()
+
+    monkeypatch.setattr(
+        op, "_loaded_models", lambda ep, t: ["qwen2.5:7b-instruct", "llama3.2:latest"]
+    )
+    monkeypatch.setattr(op._DIRECT_OPENER, "open", fake_open)
+    n = op.unload_loaded_models("http://127.0.0.1:11434", only=frozenset({"qwen2.5"}))
+    assert n == 1 and posts == ["qwen2.5:7b-instruct"]
+
+
+def test_windows_stop_list_pins_the_images_and_excludes_llama_server(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """ADR-0315: the sweep stays tray-then-server, and NO runner image name is ever added —
+    ``llama-server`` is llama.cpp's generic server binary (the tool's own supported
+    OpenAI-compat backend runs one), so a name sweep could kill a server the tool doesn't own;
+    the spawned serve's runner is reaped by the pid-rooted tree-kill instead. A future
+    'helpful' image addition must trip this test and read the ADR."""
+    from types import SimpleNamespace
+
+    calls: list[list[str]] = []
+    monkeypatch.setattr(op, "sys", SimpleNamespace(platform="win32"))  # never touch real sys
+    monkeypatch.setattr(
+        op.subprocess,
+        "run",
+        lambda cmd, **k: calls.append(cmd) or subprocess.CompletedProcess(cmd, 0, "", ""),
+    )
+    op._default_stop_server()
+    images = [c[-1] for c in calls]
+    assert images == ["ollama app.exe", "ollama.exe"]  # tray first (it respawns), then server
+    assert not any("llama" in i and "server" in i for i in images)
+
+
+def test_names_match_is_tolerant_but_never_empty() -> None:
+    assert op._names_match("llama3.1", "llama3.1:8b")
+    assert op._names_match("llama3.1:8b", "llama3.1")
+    assert op._names_match("QWEN2.5:7B", "qwen2.5:7b")
+    assert not op._names_match("llama3.1", "llama3.2:1b")
+    assert not op._names_match("", "anything")
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX process groups")
+def test_kill_tree_kills_a_detached_group() -> None:
+    """The POSIX tree-kill: a child started in its own session (exactly how ``_default_spawn``
+    starts ``ollama serve``) is gone after ``_kill_tree`` — TERM, then KILL after the grace."""
+    proc = subprocess.Popen(
+        [sys.executable, "-c", "import time; time.sleep(30)"],
+        start_new_session=True,
+        stdin=subprocess.DEVNULL,
+    )
+    try:
+        op._kill_tree(proc.pid)
+        assert proc.wait(timeout=5) is not None  # killed
+    finally:
+        if proc.poll() is None:
+            proc.kill()
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX process groups")
+def test_kill_tree_refuses_our_own_process_group(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Defense-in-depth: our spawn always creates its own session, so a target sharing THIS
+    process's group is not our spawn (or the pid was recycled) — ``killpg`` must never fire."""
+    fired: list[tuple[int, int]] = []
+    monkeypatch.setattr(op.os, "killpg", lambda pgid, sig: fired.append((pgid, sig)))
+    with caplog.at_level("WARNING", logger=_LOG):
+        op._kill_tree(op.os.getpid())  # our own pid: same group by construction
+    assert fired == []
+    assert "refusing tree-kill" in caplog.text

@@ -99,6 +99,14 @@ def main(
         # backend in AI Settings. We only register the stop side now (atexit backstop for a hard
         # exit; the finally below is the graceful path). Both are no-ops if AI was never turned on.
         atexit.register(manager.shutdown)
+        # Startup reconciliation (ADR-0315): a prior session that died hard may have left a
+        # model loaded — the durable marker proves it. Off-thread and TCP-gated inside the
+        # method, so serving never waits on it; without a marker it touches nothing. The
+        # getattr guard mirrors create_app's record_use wiring: an injected manager without
+        # the method simply isn't reconciled.
+        reconcile = getattr(manager, "reconcile_at_startup", None)
+        if callable(reconcile):
+            threading.Thread(target=reconcile, daemon=True, name="sf-ollama-reconcile").start()
 
     if open_browser:
         timer(_BROWSER_DELAY, browser, args=(url,)).start()
