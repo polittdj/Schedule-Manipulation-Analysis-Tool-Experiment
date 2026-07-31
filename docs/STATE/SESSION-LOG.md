@@ -9610,3 +9610,42 @@ the briefs + state rotation) earlier today.
   wheel + installers rebuilt. Session ended here at the operator's request — next session picks
   up at PR-6 (`/evolution` exports) from the handoff + `docs/STATE/PLAN-20260730.md`.
 - highest ADR **ADR-0319**.
+
+## 2026-07-31 (cont.3) — the /evolution exports honor the page state (ADR-0320, v1.0.138)
+
+- **PR-6 of the approved queue** (`docs/STATE/PLAN-20260730.md`), `web/app.py` only: the ⤓ bar
+  carries the LIVE query string (`_evolution_state_qs`, urlencode, defaults emit nothing);
+  `export_evolution` gains `/api/evolution`'s exact Query params, the page's URL-first/
+  session-fallback focus rule, and routes through `_optioned_versions` — the options banner's
+  "including the Excel exports" line is finally true. Headings state the APPLIED scope on two
+  carriers (TableSet-title suffix → docx H0; a prepended "Applied scope" sheet → xlsx, which
+  never renders a TableSet title); a chosen `tier` is DISCLOSED as not applied
+  (`_EVO_TIER_SELECT`-gated). Drop-nothing forms via `_keep_hidden`: Focus keeps `ignore_*`,
+  the what-if picker keeps `target`/`tier`/`ignore_*`, the clear-focus link keeps tier+options
+  with the explicit empty `target=`. `_trace_option_names` is the ONE vocabulary source for
+  banner + headings.
+- **Load-bearing finding:** the session target is a POPULATION scope (`SessionState.scope()`
+  runs `subschedule_to_target` inside `_solvable_versions`) while `?target=` is a VIEW focus —
+  a draft test pinning their equivalence was wrong (workbook project-finish cell flipped
+  2025-01-20 → 2025-01-06 under the session target); replaced by the mirror pin. Recorded in
+  Hypotheses KILLED.
+- **Verification read this session:** new `tests/web/test_evolution_export_options.py`
+  **14 passed**; **proved able to fail** — `app.py` stashed → **9 failed / 5 passed** (the
+  five are the non-regression pins) → popped; neighbors **127 passed**; statics clean (ruff
+  0.16.1 · format 816 files · mypy --strict 117 files · bandit exit 0 · node --check);
+  strictness parity probes read (non-int flags 422 on page AND export; garbage target /
+  tier=critical 200 on both). Wheel 1.0.138 + nine installers regenerated. **Freeze
+  bookkeeping per the pin's own path:** the r11 what-if-picker form pin re-baselined
+  deliberately with ADR-0320 named (803/`25dd…` → 847/`3b6af0bf…`, live fixture-identical
+  render, hidden resolved-focus input; the untouched 802/743 pins prove nothing else moved);
+  Full suite on the final tree: **3157 passed, 1 skipped, 1 failed (837 s)** — the failure is
+  `test_float_tip_dismiss` (ADR-0314's `/analysis` browser suite, untouched by this diff)
+  timing out its 4 s tip-SHOW wait under full-suite load; **18/18 rerun alone** and **54/54
+  in a 3× parallel probe on the PRISTINE stashed tree** (all read) — load-dependent and
+  pre-existing; CI arbitrates.
+- Harness: the container restarted repeatedly mid-session — background gates/workflows die
+  with it and pip vanishes; statics were run FOREGROUND and the tree re-diffed + deps
+  reinstalled after every resume. The planned multi-agent verify pass was cut to a lead
+  self-review of the full diff for the same reason (ADR-0240's accuracy rule outranks the
+  orchestration preference under an unstable runner).
+- highest ADR **ADR-0320**.
