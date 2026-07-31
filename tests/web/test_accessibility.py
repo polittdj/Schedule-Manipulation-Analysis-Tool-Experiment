@@ -109,6 +109,28 @@ def test_print_stylesheet_makes_briefings_print_ready(client: TestClient) -> Non
     assert "overflow:visible" in css  # scrollers print in full
 
 
+def test_data_noprint_marked_controls_are_hidden_in_print(client: TestClient) -> None:
+    """A5 + DESIGN-SYSTEM §7 (ADR-0318, operator decision C1): ``data-noprint`` is the print
+    opt-out. Twelve literal sites set it (every ``_shell_tools`` panel toolbar, the /analysis
+    version chips, four vendored-JS carriers) but NO CSS rule consumed it, so every marked control
+    still printed (measured, ADR-0305). One global rule in base.css's A5 block — ADR-0076's
+    recorded print home — closes it; ``!important`` because app.css's later
+    ``.tile-actions{display:flex}`` and base.css's own later ``.sf-tools{display:inline-flex}``
+    otherwise win the cascade. Able to fail: remove the rule and this string is gone."""
+    css = client.get("/static/base.css").text
+    assert "[data-noprint]{display:none!important}" in css
+    # and the rule lives INSIDE the @media print block, not as a screen rule
+    print_block = css.split("@media print{", 1)[1]
+    depth, end = 1, 0
+    for i, ch in enumerate(print_block):
+        depth += ch == "{"
+        depth -= ch == "}"
+        if depth == 0:
+            end = i
+            break
+    assert "[data-noprint]{display:none!important}" in print_block[:end]
+
+
 def test_table_headers_carry_scope(client: TestClient) -> None:
     """A4 (WCAG 1.3.1): server-rendered table column headers associate with their cells."""
     from pathlib import Path

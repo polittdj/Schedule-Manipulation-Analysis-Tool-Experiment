@@ -9570,3 +9570,22 @@ the briefs + state rotation) earlier today.
   the click's own `scrollIntoView` moves it — the first assertion draft failed on a perfectly
   restored box; measured-box tests assert the scroll-invariant axes (width/height/x).
 - highest ADR **ADR-0317**.
+
+## 2026-07-31 (cont.) — data-noprint hides in print: the C1 one-liner (ADR-0318, v1.0.136)
+
+- **#492 (ADR-0317) MERGED** as `b85b874` by the operator — after a CI round: `test (3.11)` +
+  `test (3.13)` failed on `ruff format --check` (0.16.1) wanting a different fluent-chain break
+  in the new test file than the local pre-push check reported; whitespace-only fixup commit
+  pushed (`138bcbc`), CI green, merged. Branch restarted with `--prune`.
+- **PR-4 executed per decision C1** (+ its three sub-answers): one line in base.css's A5 print
+  block — `[data-noprint]{display:none!important}` — closing the measured ADR-0305 gap (12
+  literal sites marked, zero rules consumed). ADR-0076's print home stands; §7's DoD box is
+  satisfiable as written.
+- **Verification read this session:** new content pin proves the rule sits INSIDE the
+  `@media print` braces; new `test_print_noprint.py` (real chromium, single theme per
+  sub-answer 2) measures every `[data-noprint]` on `/analysis` computing `display:none` under
+  print media while the panel h2 still prints, and restored on screen media. **Proved able to
+  fail** — src stashed → 2 failed (read) → popped. Focused suites **15 passed**. **Full suite
+  on the final tree: 3144 passed, 1 skipped, exit 0 (900 s)**; statics green; wheel +
+  installers rebuilt.
+- highest ADR **ADR-0318**.
