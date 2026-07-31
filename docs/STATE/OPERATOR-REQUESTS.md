@@ -115,6 +115,12 @@ the deadline was added after the last save). The tool therefore correctly shows 
 Task 11, the slide's own stated no-deadline outcome. **Operator action if desired:** re-save
 the .mpp with the deadline set; the pipeline already flows it (pinned by test) and Task 11
 will then read −5 d.
+**CLOSED same day:** the operator re-saved the file with the deadline and uploaded it
+(operator will also add it to `00_REFERENCE_INTAKE/` on main). Verified end-to-end with ZERO
+code change: UID 32 deadline 2026-08-14 imports, stored TF −2 400 == recomputed −2 400 exactly
+(every task exact), critical set gains Task 11, DCMA-07 cites all three −5 d tasks (29/30/32) —
+the slide-6 picture precisely. The conversion is pinned as
+`tests/fixtures/mspdi/jacked_up_schedule_2_with_deadline.xml` with its own regression test.
 
 Three files are committed on `main` under `00_REFERENCE_INTAKE/mpp/` (non-CUI, operator-added via
 the GitHub web UI, `inherited_from_main`): `Jacked Up Schedule 1.mpp`, `Jacked up Schedule 2.mpp`

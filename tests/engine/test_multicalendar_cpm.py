@@ -367,3 +367,35 @@ def test_deadline_survives_import_and_drives_negative_float(tmp_path: Path) -> N
     res = compute_cpm(sch)
     assert res.timing(2).total_float == -2400
     assert res.timing(1).total_float == -2400
+
+
+# --- The operator's RE-SAVED Jacked 2 (deadline now in the bytes; slide 6 closed) -----
+
+
+def test_resaved_jacked2_deadline_reads_minus_five_days_end_to_end() -> None:
+    """The operator re-saved `Jacked up Schedule 2.mpp` WITH Task 11's deadline
+    (2026-08-14) after the original upload proved the deadline never hit disk; this
+    fixture is that file's verbatim MPXJ conversion. The slide-6 oracle now closes
+    end-to-end with no engine change: UID 32 carries the deadline, its stored Total
+    Slack (-2 400 min = -5 d) equals the recomputed float exactly, all three -5 d tasks
+    are critical, and DCMA-07 cites them. (On the pre-ADR-0322 engine this fails: the
+    violated-MFO UID 30 recomputed 0 against stored -2 400.)"""
+    import datetime as _dt
+
+    from schedule_forensics.engine.metrics.dcma14 import compute_dcma14
+
+    sch = parse_mspdi(_FIXTURES / "jacked_up_schedule_2_with_deadline.xml")
+    t32 = next(t for t in sch.tasks if t.unique_id == 32)
+    assert t32.deadline == _dt.datetime(2026, 8, 14, 17, 0)
+    res = compute_cpm(sch)
+    assert res.timing(32).total_float == -2400 == t32.stored_total_float_minutes
+    mismatches = {
+        t.unique_id: (res.timing(t.unique_id).total_float, t.stored_total_float_minutes)
+        for t in sch.tasks
+        if not t.is_summary
+        and t.stored_total_float_minutes is not None
+        and res.timing(t.unique_id).total_float != t.stored_total_float_minutes
+    }
+    assert not mismatches, f"recomputed != stored: {mismatches}"
+    assert set(res.critical_path) == {4, 33, 22, 29, 30, 32}
+    assert set(compute_dcma14(sch, cpm_result=res)["DCMA07"].offender_uids) == {29, 30, 32}
