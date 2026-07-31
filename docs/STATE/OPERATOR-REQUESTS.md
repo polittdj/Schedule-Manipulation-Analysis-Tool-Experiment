@@ -12,7 +12,7 @@ Status vocabulary: `OPEN` (not started) · `IN FLIGHT` (a round owns it) · `SHI
 
 ## 2026-07-28 — `07282026_Prompt_Notes.docx` (received mid-round-11)
 
-### OR-01 — Per-project summary must name what each metric is computing · `OPEN`
+### OR-01 — Per-project summary must name what each metric is computing · `SHIPPED (ADR-0321)`
 
 Every individual project schedule should list, **for every file**:
 

@@ -9649,3 +9649,54 @@ the briefs + state rotation) earlier today.
   self-review of the full diff for the same reason (ADR-0240's accuracy rule outranks the
   orchestration preference under an unstable runner).
 - highest ADR **ADR-0320**.
+
+
+## 2026-07-31 (cont.4) — roll-up titles state the aggregation rule (ADR-0321, v1.0.139)
+
+- **PR-7 of the approved queue** (`docs/STATE/PLAN-20260730.md`), OR-01: the Portfolio
+  ledger's three headline headings now read "Computed finish / Effective margin / DCMA-14 —
+  latest version" ("Latest data date" already stated its rule) and the ONE aggregate column
+  arrived — "Avg DCMA-14 passes — included, solvable versions", a VIEW-LAYER mean of
+  `VersionSummary.dcma_pass` over exactly that pool (cached `summary_for` tier; never
+  `analysis_for`), cell `<mean:.1f> of 14 · N versions` with N the pool size, empty pool →
+  the "—" literal (ADR-0219 M2), never 0.0. The takeaway discloses BOTH bases. An unsolvable
+  version stays OUT of the pool (its audit never ran; a fake 0 would poison the mean, Law 2)
+  — and the heading SAYS so: the review round caught the first draft claiming "all included
+  versions", a pool the code deliberately does not apply.
+- **Per-file surfaces**: home manifest rows gained Site / Company · Data date · Computed
+  finish · Effective margin · DCMA-14 — dates/margin via the summary tier, the DCMA cell via
+  the PARITY-AWARE card tier (`dashboard_core_for`) so one page never shows two DCMA verdicts
+  for one file; `/api/dashboard` cards gained exactly `site` + `margin_days` (dashboard.js
+  renders the two stats; unsolvable cards degrade as before, both null); `/card` gained the
+  same two KPI cards (route-computed `summary_for` margin — one engine path, overlay-aware).
+  New headings entered `_TERMS` in all four languages (plus "Latest data date" / "Effective
+  margin" / an invariant "DCMA-14").
+- **ADR-0240 review round (four-lens adversarial fan-out, per-finding refutation agents) on
+  the draft diff — every confirmed finding fixed before commit:** the memoised dashboard card
+  served a STALE margin after `/margin/confirm` (live repro: cards 0.0 while portfolio//card
+  said 2.0 — the memo's epoch key ignores the margin overlay; the route now clears
+  `st.dash_cards` beside `st.summaries`, pinned by a regression test that fails on main); the
+  heading overclaimed its pool ("all included"); the manifest DCMA cell was parity-blind
+  beside parity-aware cards on the same page (moved to the card tier); every margin fixture
+  was degenerate at 0.0 (v2 now carries a name-based "Schedule Margin" task → engine 2.0 d,
+  guarded nonzero); /card + dashboard.js pins decoupled label from value (now adjacent/code
+  pins). Recorded residuals (pre-existing classes): the summary tier audits default-mode only
+  (portfolio pill + avg column vs parity cards, cross-page), and the manifest Activities cell
+  is unscoped beside scope-aware figures.
+- **Freeze bookkeeping per the pins' own path:** the three `/api/dashboard` golden SHAs
+  (`test_dashboard_perf_contract.py`) re-baselined DELIBERATELY via `_dashboard_sha` on this
+  tree, ADR-0321 named at the pins; the only delta is the two added keys, proved at row level
+  by `test_portfolio_rollup_titles.py::test_dashboard_cards_carry_site_and_margin_verbatim`
+  (full key-set pins on both card shapes + engine-verbatim values).
+- **Verification read this session:** new `tests/web/test_portfolio_rollup_titles.py`
+  **15 passed**; **proved able to fail** — `src/` stashed → **13 failed / 2 passed** (the
+  passers are the engine-oracle fixture guard and the em-dash non-regression pin) → popped;
+  golden re-pins + memo + status-trim **23 passed**; neighbors **169 passed, 1 skipped**
+  (known INCIDENTAL_SVG); statics clean (ruff 0.16.1 check + format · mypy --strict 117
+  files · bandit exit 0 · node --check). Full suite on the final tree: **3173 passed,
+  1 skipped, 0 failed (1190 s)** — installers in lockstep, no flake
+  (an earlier pre-review-fix run read 4 failed / 3165 passed / 1 skipped in 1305 s — the four
+  were installer-lockstep on then-stale artifacts; ADR-0320's load-dependent
+  `test_float_tip_dismiss` flake did NOT appear in that run). Wheel 1.0.139 + nine
+  installers regenerated after the review fixes.
+- highest ADR **ADR-0321**.

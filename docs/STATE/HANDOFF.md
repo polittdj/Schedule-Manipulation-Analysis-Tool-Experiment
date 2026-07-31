@@ -1,51 +1,55 @@
-# Handoff — 2026-07-31 (the /evolution exports honor the page state; ADR-0320; v1.0.138)
+# Handoff — 2026-07-31 (roll-up titles state the aggregation rule; ADR-0321; v1.0.139)
 
-> ## STATUS (current) — **PR-6 of the approved queue BUILT AND FULLY GATED on this tree: the /evolution exports honor the banner's promise (trace options + focus), state their applied scope, and the page's forms stop dropping state. Version 1.0.138, highest ADR ADR-0320, wheel + nine installers regenerated. #494 (ADR-0319) MERGED as `b3e4286` by the operator.**
-> `app.py` only, per the plan's PR-6 row: the ⤓ bar now carries the LIVE query string
-> (`_evolution_state_qs`, urlencode, defaults emit nothing — bare path byte-identical);
-> `export_evolution` gained the SAME Query params as `/api/evolution`, resolves the focus with
-> the page's exact URL-first/session-fallback rule, and routes through `_optioned_versions`;
-> headings state the APPLIED scope on two carriers (TableSet-title suffix → the Word H0; a
-> prepended "Applied scope" sheet → the workbook, since xlsx never renders a TableSet title) —
-> and a chosen `tier` is DISCLOSED as not applied (gated by `_EVO_TIER_SELECT` membership,
-> which is also the injection gate) because the tier stepper never filters these tables. The
-> drop-nothing rule (`_keep_hidden`): the Focus form keeps `ignore_*`, the what-if picker keeps
-> `target`/`tier`/`ignore_*`, the clear-focus link keeps tier+options while emitting the
-> explicit empty `target=`. `_trace_option_names` is now the ONE source the banner and the
-> export headings both read. **Load-bearing finding (ADR-0320):** the session target is a
-> POPULATION scope (`SessionState.scope()` truncates every version to the target's driving
-> subtree inside `_solvable_versions`) while `?target=` is a VIEW focus on the full population
-> — the page renders those states differently and the export now MIRRORS the page in both;
-> they are not equivalent and must never be pinned as such.
+> ## STATUS (current) — **PR-7 of the approved queue BUILT AND FULLY GATED on this tree: OR-01 roll-up titles — every Portfolio ledger heading states the rule it applied (latest vs average), the NEW "Avg DCMA-14 passes — all included versions" column is the view-layer mean of the engine's own per-version pass counts, and the per-file surfaces (home manifest · dashboard cards · /card) name Site/Company · data date · computed finish · effective margin · DCMA-14 per file. Version 1.0.139, highest ADR ADR-0321, wheel + nine installers regenerated. #495 (ADR-0320) MERGED as `aef69db` by the operator.**
+> Per the plan's PR-7 row: `_portfolio_body`'s three headline headings gained "— latest
+> version" (Latest data date already stated its rule) and the ONE aggregate column arrived —
+> "Avg DCMA-14 passes — included, solvable versions", VIEW-LAYER arithmetic only (mean of
+> `VersionSummary.dcma_pass` over exactly that pool via the cached `summary_for` tier; never
+> `analysis_for`), cell `<mean:.1f> of 14 · N versions` with N the pool size so a solvability
+> drop is visible in the figure, empty pool → the "—" literal (ADR-0219 M2), never 0.0. The
+> takeaway discloses BOTH bases. Home manifest rows gained the five per-file columns —
+> dates/margin from the summary tier, the DCMA cell from the PARITY-AWARE card tier so one
+> page never shows two verdicts for one file; `/api/dashboard` cards gained exactly `site` +
+> `margin_days` (dashboard.js renders them; unsolvable cards degrade as before with both
+> null); `/card` gained the same two KPI cards; `/margin/confirm` now clears `st.dash_cards`
+> beside `st.summaries` (the memo bakes `margin_days`; without it the cards served a stale
+> pre-confirm margin — live-reproduced). New headings entered `_TERMS` in all four languages
+> (plus "Latest data date" / "Effective margin" / invariant "DCMA-14"). **The three
+> `/api/dashboard` golden SHAs were DELIBERATELY re-baselined via their own `_dashboard_sha`
+> path (ADR-0321 named at the pins): the only delta is the two added keys, proved at row
+> level by the new test's full key-set + engine-verbatim value pins.** ADR-0240 review round
+> (four-lens adversarial fan-out + per-finding refutation) ran on the draft diff; every
+> confirmed finding is fixed in this tree, and the parity-blind summary tier + the unscoped
+> manifest Activities cell are recorded residuals in ADR-0321.
 >
 > ## Verification (all read from runs this session)
-> New `tests/web/test_evolution_export_options.py`: **14 passed** (bar qs live + bare default;
-> pure-logic dates replace stored `2025-01-2x` under `ignore_leveling`; URL focus + session
-> mirror; scope sheet + docx H0 suffix, absent by default; tier disclosed not applied; forms +
-> clear link carry state; explicit-default URLs byte-identical). **Proved able to fail:**
-> `app.py` stashed → **9 failed / 5 passed** (the five are the deliberate non-regression pins)
-> → popped. Neighbors (evolution view · family-B unify · path options · coverage app + extra ·
-> mission ×2 · coverage misc + new file): **127 passed**. Statics read: ruff 0.16.1 clean ·
-> format clean (816 files) · mypy --strict "no issues in 117 source files" · bandit exit 0 ·
-> node --check clean. Export-vs-page strictness parity read: non-int `ignore_*` → 422 on BOTH;
-> garbage `target` / `tier=critical` → 200 on both. **One freeze pin re-baselined per its own
-> prescribed path** (ADR-0320 named in the table): the r11 what-if-picker form pin — the
-> drop-nothing hidden input carrying the fixture's RESOLVED session focus grew it 803 → 847;
-> old md5 `25dd…` → new `3b6af0bf…`, computed from a live fixture-identical render; the two
-> untouched `/evolution` form pins (802/743) prove nothing else moved. Full suite on this
-> tree: **3157 passed, 1 skipped, 1 failed (837 s)** — the failure is `test_float_tip_dismiss`
-> (ADR-0314's browser suite, `/analysis` page this diff never touches) timing out its 4 s
-> tip-SHOW wait under full-suite load only: **18/18 rerun alone** and **54/54 in a 3× parallel
-> probe on the PRISTINE stashed tree** (all read). Load-dependent, pre-existing, CI
-> arbitrates; if CI reproduces it, its timing posture gets its own fix — never a weakened
-> contract.
+> New `tests/web/test_portfolio_rollup_titles.py`: **15 passed** (non-degeneracy guard —
+> distinct 5/9/5 pass counts AND a nonzero 2.0 d engine margin; heading-row pin; takeaway
+> bases; the average equals the mean of ENGINE pass counts; mixed-solvability pool disclosed
+> in the cell — 4 included, "· 3 versions"; "—" when nothing solves; exclusion shifts mean
+> AND stated N, reversibly; home-manifest fields engine-verbatim + unsolvable keeps "—" never
+> "0 pass"; manifest DCMA cell EQUALS the same-page health cards; margin-confirm reaches the
+> cards immediately; card key-set + value pins; dashboard.js stat pins; /card label+value
+> adjacent; i18n completeness). **Proved able to fail:** `src/` stashed → **13 failed / 2
+> passed** (the passers are the engine-oracle fixture guard and the em-dash non-regression
+> pin) → popped — the margin-confirm regression test FAILS on main, catching the live stale-
+> memo defect. Golden re-pins + memo + status-trim: **23 passed**. Neighbors (portfolio
+> shell/panelkit · home shell · landing · card view · i18n · coverage app ×2 · project scope
+> · global filter · presentation fixes · cache tiers · drill ×2 · axis titles): **169 passed,
+> 1 skipped** (known INCIDENTAL_SVG). Statics read: ruff 0.16.1 check clean · format clean ·
+> mypy --strict "no issues in 117 source files" · bandit exit 0 · node --check clean. Full
+> suite on the final tree (post-review-fixes, post-regeneration): **3173 passed, 1 skipped,
+> 0 failed (1190 s)** — installers in lockstep, no flake. An
+> earlier pre-review-fix full run read 4 failed / 3165 passed / 1 skipped (1305 s) — the four
+> were the installer-lockstep tests on then-stale artifacts, and `test_float_tip_dismiss`
+> (ADR-0320's load-dependent flake) did NOT fail that run.
 >
 > ## ⇢ NEXT
-> 1. **Merge #PR-6 when CI is green** (draft PR from `claude/polaris-schedule-planning-resume-8oosjw`),
+> 1. **Merge PR-7 when CI is green** (draft PR from `claude/polaris-pr7-or01-rollup-5lc2ba`),
 >    then the queue (`docs/STATE/PLAN-20260730.md`, decisions A1 · B1 · C1 recorded — do NOT
->    re-ask): **PR-7 OR-01 roll-up titles (M)** → PR-8 AXIS-TITLES 3b-i `margin_dashboard` per
->    A1 (M) → PR-9 rank-12 toolbar/read-me + B1 caption mechanism (M–L) → PR-10 OR-03 launch
->    motion + synthesized hum (M–L). margin.js's vocabulary conversion stays a later round.
+>    re-ask): **PR-8 AXIS-TITLES 3b-i `margin_dashboard` per A1 (M)** → PR-9 rank-12
+>    toolbar/read-me + B1 caption mechanism (M–L) → PR-10 OR-03 launch motion + synthesized
+>    hum (M–L). margin.js's vocabulary conversion stays a later round.
 > 2. **OR-04 operator park artifacts stay open** (`audit/VERIFICATION-REPORT-ollama-lifecycle.md`
 >    §8): #1 `where ollama` · #3 the `keep_alive:0`-vs-`OLLAMA_KEEP_ALIVE=-1` probe (severity
 >    fork) · #5 runner PPID + instance count · #4 the model-identity manifest — plus the
@@ -118,10 +122,10 @@
 > sleep, no polling); target the real `python -m pytest` pid, not the wrapper shell.
 > Playwright `bounding_box` is viewport-relative — a click that scrolls (its own
 > `scrollIntoView`) shifts Y for free; measured-box assertions use width/height/x.
-> **NEW:** this session's container RESTARTED repeatedly mid-run — every background process
-> (gates, workflows) dies with it and pip installs vanish: re-diff the tree AND reinstall
-> deps after every resume, run the statics FOREGROUND first so their results are locked in,
-> and treat the long pytest as re-runnable rather than assume it survived.
+> This queue's containers RESTART repeatedly mid-run — every background process (gates,
+> workflows) dies with it and pip installs vanish: re-diff the tree AND reinstall deps after
+> every resume, run the statics FOREGROUND first so their results are locked in, and treat the
+> long pytest as re-runnable rather than assume it survived.
 >
 > **Standing rule:** do not put a test result in prose unless the number appeared in output you
 > read that turn. **A launched run is not a result, and a piped exit code is not the command's.**

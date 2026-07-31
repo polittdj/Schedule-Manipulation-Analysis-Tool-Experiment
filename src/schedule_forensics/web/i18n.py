@@ -1111,6 +1111,49 @@ _TERMS: dict[str, dict[str, str]] = {
         "de": "Standort / Firma",
         "pt": "Local / Empresa",
     },
+    # — OR-01 roll-up titles (ADR-0321): every heading states the aggregation rule it applied —
+    "Latest data date": {
+        "es": "Última fecha de datos",
+        "fr": "Dernière date des données",
+        "de": "Letzter Datenstichtag",
+        "pt": "Última data dos dados",
+    },
+    "Computed finish — latest version": {
+        "es": "Fin calculado — última versión",
+        "fr": "Fin calculée — dernière version",
+        "de": "Berechnetes Ende — letzte Version",
+        "pt": "Fim calculado — última versão",
+    },
+    "Effective margin — latest version": {
+        "es": "Margen efectivo — última versión",
+        "fr": "Marge effective — dernière version",
+        "de": "Effektive Marge — letzte Version",
+        "pt": "Margem efetiva — última versão",
+    },
+    "DCMA-14 — latest version": {
+        "es": "DCMA-14 — última versión",
+        "fr": "DCMA-14 — dernière version",
+        "de": "DCMA-14 — letzte Version",
+        "pt": "DCMA-14 — última versão",
+    },
+    "Avg DCMA-14 passes — included, solvable versions": {
+        "es": "Promedio de comprobaciones DCMA-14 superadas — versiones incluidas y calculables",
+        "fr": "Moyenne des contrôles DCMA-14 réussis — versions incluses et calculables",
+        "de": "Durchschnittlich bestandene DCMA-14-Prüfungen — einbezogene, berechenbare Versionen",
+        "pt": "Média de verificações DCMA-14 aprovadas — versões incluídas e calculáveis",
+    },
+    "DCMA-14": {  # invariant acronym — a catalog hit keeps it verbatim, off the AI fallback
+        "es": "DCMA-14",
+        "fr": "DCMA-14",
+        "de": "DCMA-14",
+        "pt": "DCMA-14",
+    },
+    "Effective margin": {
+        "es": "Margen efectivo",
+        "fr": "Marge effective",
+        "de": "Effektive Marge",
+        "pt": "Margem efetiva",
+    },
     "Exclude": {"es": "Excluir", "fr": "Exclure", "de": "Ausschließen", "pt": "Excluir"},
     "Restore": {
         "es": "Restaurar",

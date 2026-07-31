@@ -96,6 +96,11 @@
           ? " (" + (c.finish_delta_days > 0 ? "+" : "") + c.finish_delta_days + "d vs base)" : "");
         grid.appendChild(stat("Computed finish", fin));
         grid.appendChild(stat("Data date", c.data_date || "—"));
+        // OR-01: the two per-file fields the card was missing — Site/Company and the effective
+        // schedule margin (engine summary tier). "—" when the source/engine has none, never 0.
+        grid.appendChild(stat("Site / Company", c.site || "—"));
+        grid.appendChild(stat("Effective margin",
+          c.margin_days != null ? c.margin_days + " d" : "—"));
         card.appendChild(grid);
 
         card.appendChild(el("p", "chart-desc",
