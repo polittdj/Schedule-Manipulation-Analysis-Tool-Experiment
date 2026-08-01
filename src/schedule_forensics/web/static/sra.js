@@ -34,6 +34,27 @@
   // short, axis-friendly date label from an ISO datetime ("2026-06-20T…") → "2026-06-20"
   function shortDate(iso) { return String(iso).slice(0, 10); }
 
+  // ADR-0329 (batch 3c-i) — ADR-0303's "data label yields", measured LIVE (the /resources
+  // precedent): the X caption owns its bottom-right corner, and a rotated date tick whose REAL
+  // rendered box bites it (2px margin) is removed — the caption itself never moves (placement
+  // frozen, standing requirement 5). Runs AFTER the svg is in the DOM (live boxes need layout),
+  // against the caption's real box, so apollo's wider mono glyphs are covered per theme.
+  function yieldTicksToCaption(svg, ticks) {
+    var cap = null;
+    svg.querySelectorAll("text.ch-at").forEach(function (t) {
+      if (t.getAttribute("text-anchor") === "end") cap = t;
+    });
+    if (!cap) return;
+    var cb = cap.getBoundingClientRect();
+    if (!cb || !cb.width) return; // unmeasurable (hidden) boxes must not shred the labels
+    ticks.forEach(function (t) {
+      var b = t.getBoundingClientRect();
+      var dx = Math.min(cb.right, b.right) - Math.max(cb.left, b.left);
+      var dy = Math.min(cb.bottom, b.bottom) - Math.max(cb.top, b.top);
+      if (dx > -2 && dy > -2) t.remove(); // the label yields, never the caption
+    });
+  }
+
   // 1:1 pixel geometry (operator 2026-07-08): the viewBox width IS the container's pixel width,
   // so text renders at its design size (10-12px) no matter how wide the panel or a full-screen
   // expand is — extra width becomes extra PLOT area, never bigger fonts. The charts re-render
@@ -69,7 +90,8 @@
       svg.appendChild(lab);
     });
 
-    // x date labels, thinned
+    // x date labels, thinned (collected so the X caption's live-box yield can prune them)
+    var ticks = [];
     var step = Math.max(1, Math.ceil(n / 12));
     for (var i = 0; i < n; i++) {
       if (i % step === 0 || i === n - 1) {
@@ -79,6 +101,7 @@
         });
         ml.textContent = shortDate(cdf[i][0]);
         svg.appendChild(ml);
+        ticks.push(ml);
       }
     }
 
@@ -124,13 +147,21 @@
         x1: dx, y1: padT, x2: dx, y2: y(0), stroke: BAD, "stroke-width": 2, "stroke-dasharray": "6 4",
       }));
       svg.appendChild(svgEl("circle", { cx: dx, cy: dy, r: 4, fill: BAD }));
-      var dlab = svgEl("text", { x: dx + 6, y: padT + 10, fill: BAD, "font-size": 11, "font-weight": 700 });
+      // padT+24, not +10: the Y caption owns the top-left band (ADR-0329 — the data label
+      // yields, ADR-0303); the label still tags its full-height dashed marker line.
+      var dlab = svgEl("text", { x: dx + 6, y: padT + 24, fill: BAD, "font-size": 11, "font-weight": 700 });
       dlab.textContent = "deterministic finish — P" + det.percentile;
       svg.appendChild(dlab);
     }
 
+    // Axis captions via the ONE shared helper (ADR-0298; this module joined in ADR-0329).
+    SFChartFrame.axisTitles(svg, { L: padL, R: W - padR, T: padT, B: H - padB }, {
+      xLabel: "Finish date",
+      yLabel: "Cumulative probability",
+    });
     if (window.SFA11y) SFA11y.label(svg, "Finish-date confidence S-curve");
     box.appendChild(svg);
+    yieldTicksToCaption(svg, ticks);
 
     if (window.SFA11y) {
       box.appendChild(SFA11y.table(
@@ -170,6 +201,7 @@
       svg.appendChild(lab);
     });
 
+    var ticks = [];
     var step = Math.max(1, Math.ceil(n / 12));
     for (var i = 0; i < n; i++) {
       var b = hist[i];
@@ -190,11 +222,18 @@
         });
         ml.textContent = shortDate(b[0]);
         svg.appendChild(ml);
+        ticks.push(ml);
       }
     }
 
+    // Axis captions via the ONE shared helper (ADR-0298; this module joined in ADR-0329).
+    SFChartFrame.axisTitles(svg, { L: padL, R: W - padR, T: padT, B: H - padB }, {
+      xLabel: "Finish date",
+      yLabel: "Simulated finishes",
+    });
     if (window.SFA11y) SFA11y.label(svg, "Finish-date distribution histogram");
     box.appendChild(svg);
+    yieldTicksToCaption(svg, ticks);
 
     if (window.SFA11y) {
       box.appendChild(SFA11y.table(
@@ -206,6 +245,8 @@
   }
 
   // ── #sraSens: the duration-sensitivity tornado + table ────────────────────────────────
+  // TORNADO — recorded not-an-axis-chart (ADR-0329, decision A1): a centre axis with
+  // name-labelled rows has no X/Y scale for SFChartFrame.axisTitles to name.
   function renderSens(data) {
     var box = document.getElementById("sraSens");
     if (!box) return;
@@ -303,6 +344,7 @@
   }
 
   // ── #sraRisk: the discrete risk-driver tornado + table ────────────────────────────────
+  // TORNADO — recorded not-an-axis-chart (ADR-0329, decision A1), same call as #sraSens.
   function renderRiskDrivers(data) {
     var box = document.getElementById("sraRisk");
     if (!box) return;

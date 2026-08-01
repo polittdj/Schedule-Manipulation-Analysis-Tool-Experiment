@@ -10150,3 +10150,51 @@ the briefs + state rotation) earlier today.
   --strict "no issues in 117 source files". No version bump, no wheel/installer rebuild
   (nothing packaged changed) — deliberate, per the #500 docs-only precedent; CI runs the full
   matrix on #504.
+
+## 2026-08-01g — batch 3c-i: sra + volatility join the caption convention (ADR-0329, v1.0.145)
+
+- The operator's second **continue** of the session took up batch 3c after #504 merged. Survey
+  first (the ADR-0311 lesson), which split the batch honestly: `sra_jcl.js`/`sra_ssi.js`
+  render only on a Run click — unmeasurable captions under the current visual harness — so
+  **3c-i ships the measurable half** (sra.js + volatility.js) and 3c-ii stays in PENDING with
+  its prerequisite recorded (a click-driving serve).
+- **Shipped:** six charts captioned via the ONE helper (CDF + histogram; churn/flow/area/
+  dwell), 18 → 24 AXIS_CALL_SITES (deliberate re-baseline, prior 18 byte-untouched), two
+  hand-rolled quasi-captions retired (flow's annotation; dwell's centred caption), the CDF
+  det-label moved out of the Y band, rotated ticks yielding via the ADR-0319 live-box remove,
+  dwell count labels statically clamped out of both bands, tornado/gauge/heatmap/leaderboard/
+  strips/ribbon recorded NOT-axis-charts (decision A1, ADR-0329), PAGE_SCRIPTS volatility
+  digest re-baselined (0d38b34e… → 67a62558…), `/sra` + `/volatility` joining the visual
+  PAGES matrix.
+- **The measured pass caught a real defect pre-ship:** volatility.js draws at PARSE time and
+  loads before chartframe.js — the new bare helper call threw `SFChartFrame is not defined`
+  and killed the whole page ("no captions rendered" × all 12 /volatility cells, watched
+  live). Third member of the ADR-0316 defer family; fixed per the recorded precedent (one
+  `defer` on the script tag in app.py; call-site guard stays rejected).
+- **Verification read this session:** census + freeze **54 passed** · the measured visual
+  pass **1 passed in 86 s** (9 pages × 4 themes × 3 scales, zero collisions,
+  KNOWN_COLLISIONS still empty) · neighbors (sra view/ssi-web/grid/zero-margin/file-select ·
+  bar-drill · accessibility) **99 passed** · installer lockstep vs the fresh 1.0.145 wheel
+  **52 passed** · statics: ruff "All checks passed!" · format clean (835) · mypy --strict
+  clean (117) · bandit exit 0 · node --check clean. **Proved able to fail, watched:** the
+  three ledgers FAIL on the stashed pre-change tree (census unclassified · 24 ≠ 18 ·
+  volatility byte-freeze) — plus the live pre-defer visual failure above. Version bumped +
+  wheel/installers rebuilt BEFORE the full background suite launched (the recorded
+  sequencing); **the full-suite run is IN FLIGHT at this commit — its result lands in the
+  next append, never stated unread** (the standing rule).
+
+## 2026-08-01g (append) — the full-suite result, read and adjudicated
+
+- **Full suite `python -m pytest -q`: 2 failed, 3250 passed, 1 skipped in 17m48s.** (The
+  background task reported exit 0 — the PIPE's exit, `| tail`, the recorded trap; the summary
+  line above is the read result.) Both failures are the **pre-adjudicated /analysis focus→tip
+  intermittent pair** — `test_float_tip_dismiss` AND its scroll sibling, the exact carried
+  item — with the known signature (the 4 s focus→tip `wait_for_function` timeout). Isolated
+  re-runs this turn: dismiss **pass**; scroll **fail · fail · pass · fail** (the documented
+  container-dependent flake rate). This round's diff cannot touch the family by construction:
+  `git diff` shows sra.js, volatility.js, ONE script-tag line inside the /volatility body,
+  pyproject, ledgers and docs — /analysis and app.js untouched. Carried, not chased, per the
+  standing adjudication.
+- The six newly-captioned charts' suites all passed INSIDE the full run (part of the 3250),
+  including the measured visual pass on the formatted tree. Draft PR **#505** opened
+  (head `57caa26`), session subscribed, check-in armed.

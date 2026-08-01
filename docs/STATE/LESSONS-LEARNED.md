@@ -435,6 +435,22 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-01f — The measured pass catches what content tests cannot (batch 3c-i)
+- Adding a bare `SFChartFrame.axisTitles` call to volatility.js passed EVERY content ledger
+  (census, 24-site freeze, byte-digest) and node --check — and broke the entire /volatility
+  page: the module draws synchronously at parse time and its script tag loads BEFORE
+  chartframe.js, so the first draw threw `SFChartFrame is not defined` and every chart died.
+  Only the MEASURED visual pass saw it ("no captions rendered" in all 12 cells). This is the
+  third member of the ADR-0316 defer family (/performance, /resources before it); the lesson
+  is now standing in HANDOFF: check the page's script ORDER before calling any SFChartFrame
+  API from a parse-time renderer, and fix with `defer` on the tag, never a call-site guard.
+- Scope honesty split batch 3c: sra_jcl/sra_ssi render only on a Run click, so their captions
+  are UNMEASURABLE by the current visual harness — shipping them "captioned" this round would
+  have been the exact vice the ledgers exist to prevent (a conformance claim nobody measured).
+  3c-i ships the measurable half; 3c-ii's prerequisite (a click-driving serve) is recorded in
+  the PENDING comment, the ADR, and HANDOFF ⇢ NEXT. A ledger that shrinks honestly beats one
+  that empties fast.
+
 ### 2026-08-01e — Module-scoped browser fixtures meet the app's own dedup (PR-10, OR-03)
 - The new chromium suite's first run failed in a way the feature couldn't explain: the
   gesture-flow test uploaded the same golden bytes an EARLIER test had already loaded into the
