@@ -2515,13 +2515,23 @@ def create_app(
 </div>
 <div id=loadOverlay class=load-overlay hidden role=status aria-live=assertive aria-hidden=true>
   <div class=load-card>
-    <div class=load-spinner aria-hidden=true></div>
+    <div class=load-orbit aria-hidden=true>
+      <div class=load-spinner aria-hidden=true></div>
+      <span class="orbit-dot orbit-a"></span>
+      <span class="orbit-dot orbit-b"></span>
+      <span class="orbit-dot orbit-c"></span>
+    </div>
     <p class=load-title>Loading your project(s)&hellip;</p>
     <p class=muted>Importing and analyzing &mdash; large files can take a moment. The tool is
       working, not stuck.</p>
+    <div class=load-audio>
+      <button type=button id=humMute aria-pressed=false aria-label="Mute the loading hum">&#9834; HUM</button>
+      <input id=humVol type=range min=0 max=100 step=5 value=40 aria-label="Loading hum volume">
+    </div>
   </div>
 </div>
 {loaded}
+<script src="/static/launch_audio.js"></script>
 <script src="/static/home.js"></script>
 <script src="/static/panelkit.js"></script>"""
         tip = _guide(

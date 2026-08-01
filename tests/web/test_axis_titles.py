@@ -47,6 +47,7 @@ EXEMPT = {
     "heartbeat.js",
     "hints.js",
     "home.js",
+    "launch_audio.js",
     "legend_toggle.js",
     "mission.js",
     "panelkit.js",

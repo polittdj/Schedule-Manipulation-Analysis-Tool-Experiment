@@ -10032,3 +10032,43 @@ the briefs + state rotation) earlier today.
 - HANDOFF ⇢ NEXT item 1 ("merge the draft PR") is SATISFIED by this merge — the next
   session proceeds straight to PR-10; the /analysis focus→tip intermittent stays a carried
   item, not a regression to chase.
+
+## 2026-08-01e (PR-10) — OR-03 launch motion + the synthesized Boot Audio Hum (ADR-0328, v1.0.144)
+
+- **PR-10 BUILT AND GATED** per PLAN-20260730 row 10, decisions executed as recorded (WebAudio
+  synthesis, no asset; gesture-only priming — pick/folder/example-submit/drop, NOT
+  `input.onchange`; hum spans gesture→POST-resolution, fades ≤200 ms pre-navigation; visible
+  mute+volume persisted `sf-hum-mute`/`sf-hum-vol`, audible-at-low-gain default; CSS-only
+  orbiting craft dots, `_AUTOPLAY_JS` untouched). New `static/launch_audio.js` (shuffled-
+  pitch-bag swell scheduler, 8-pitch A-rooted set, detuned 55/55.7 Hz bed, every gain move a
+  linearRamp, `FADE_CAP_MS = 200`); home.js wires prime/start/stop/fade through one guarded
+  `hum()` helper (audio can never block a load); `.load-orbit` + three token-colored
+  transform-only `.orbit-dot`s with their OWN reduced-motion `animation:none` line beside the
+  pinned `.load-spinner` literal; DESIGN-SYSTEM gains §8 Audio + a DoD bullet; ADR-0328;
+  `launch_audio.js` triaged into the axis-census EXEMPT bucket (PAGE_SCRIPTS digests, the 18
+  axis call sites, and `_AUTOPLAY_JS` all hold as-is).
+- **Verification (read this session):** new `test_launch_sequence.py` (8 content) +
+  `test_launch_audio_chromium.py` (6 behavioral, real chromium incl. AudioContext-construction
+  counting, a route-HELD load phase, `fadeOut(99999)` <1.5 s proving the 200 ms cap,
+  mute/volume persistence across navigation+reload, 4-theme × 2-viewport scrollbar-visible
+  geometry). **Proved able to fail, watched: 13 of 14 FAIL on the stashed pre-change tree**
+  (the one both-tree pass is the `_AUTOPLAY_JS` pin equality — an invariant guard);
+  post-change **14 passed** (re-run green after the formatter reflowed the chromium module).
+  Nearest six existing suites (header_and_loading · landing · home_shell · axis_titles ·
+  accessibility · static_cache): **70 passed, 1 skipped** (standing INCIDENTAL_SVG skip).
+  Statics foreground: ruff check "All checks passed!" · format clean (833 files) ·
+  mypy --strict "no issues in 117 source files" · bandit exit 0 · node --check clean on every
+  static JS. Version 1.0.143 → **1.0.144** BEFORE the suite launch (the recorded sequencing);
+  wheel + nine installers regenerated ONCE (`dist/wheel` cleared first — the stale-wheel
+  trap); installer lockstep vs the fresh wheel: **52 passed**. State-docs guard: 3 passed +
+  the session-log ADR check, green after this entry.
+- **Full suite `python -m pytest -q`: LAUNCHED in background this session; result appended
+  below once the run completes and is read** (a launched run is not a result). The /analysis
+  focus→tip family remains the pre-adjudicated intermittent — not to be chased as a
+  regression if it appears.
+- **Trap caught and logged (LESSONS-LEARNED 2026-08-01e):** the chromium suite's first run
+  failed because a MODULE-scoped served app + a byte-identical golden re-upload hit ADR-0259's
+  dedup (redirect home, not /analysis) — fixed by giving the completing test its own golden
+  (Project5); plus the two Playwright patterns (never sleep in a sync route handler — park the
+  route and resolve it from the test body; count AudioContext constructions via
+  `add_init_script` to prove gesture-only priming).

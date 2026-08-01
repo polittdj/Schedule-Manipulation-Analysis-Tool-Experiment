@@ -110,6 +110,28 @@ transition:border-color .15s,background .15s;background:var(--dz-bg)}
 .load-title{font-size:16px;font-weight:700;margin:0 0 6px;color:var(--ink)}
 @keyframes sf-spin{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion: reduce){.load-spinner{animation:none}}
+/* OR-03 launch motion (ADR-0328): craft dots orbiting the spinner — transform-only CSS, theme
+   tokens, zero JS — so a long import visibly "flies", never reads as frozen. */
+.load-orbit{position:relative;width:128px;height:128px;margin:0 auto 14px;
+  display:flex;align-items:center;justify-content:center}
+.load-orbit .load-spinner{margin:0}
+.orbit-dot{position:absolute;top:50%;left:50%;width:8px;height:8px;margin:-4px 0 0 -4px;
+  border-radius:50%;background:var(--accent);animation:sf-orbit 2.8s linear infinite}
+.orbit-a{--orbit-r:56px}
+.orbit-b{--orbit-r:42px;width:6px;height:6px;margin:-3px 0 0 -3px;background:var(--ok);
+  animation-duration:4.6s;animation-direction:reverse}
+.orbit-c{--orbit-r:61px;width:5px;height:5px;margin:-2.5px 0 0 -2.5px;background:var(--warn);
+  animation-duration:6.7s;animation-delay:-2.2s}
+@keyframes sf-orbit{from{transform:rotate(0turn) translateX(var(--orbit-r,56px))}
+  to{transform:rotate(1turn) translateX(var(--orbit-r,56px))}}
+@media (prefers-reduced-motion: reduce){.orbit-dot{animation:none}}
+/* OR-03 hum controls: always-visible mute + volume on the load card (WCAG 1.4.2 — the hum is
+   audible by default, so its off-switch is visible on the card, never buried in settings). */
+.load-audio{margin-top:14px;display:flex;gap:10px;align-items:center;justify-content:center}
+.load-audio button{background:none;border:1px solid var(--line);border-radius:6px;color:var(--ink);
+  font:inherit;font-size:12px;font-weight:600;padding:4px 10px;cursor:pointer}
+.load-audio button[aria-pressed="true"]{color:var(--muted);border-style:dashed}
+.load-audio input[type=range]{width:120px;accent-color:var(--accent)}
 .dz-icon{font-size:34px;color:var(--accent);line-height:1}
 .dz-title{font-size:16px;margin:10px 0 4px}
 .dz-actions{margin-top:16px;display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap}

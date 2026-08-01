@@ -121,3 +121,16 @@ marking (see the briefing .doc pattern).
 - [ ] No remote asset (air-gap test stays green); no calculation touched
 - [ ] No engine/calculation change; every displayed number traces to the engine payload;
       missing values show `—`, never a fabricated figure
+- [ ] Any sound follows the audio rule (§8): synthesized, gesture-primed, visibly controllable
+
+## 8. Audio (the Boot Audio Hum rule — ADR-0328)
+Sound in this tool is SYNTHESIZED WebAudio, never a shipped asset (the air-gap and the lean
+wheel/installers both stay trivially true). An `AudioContext` is created/resumed ONLY inside a
+genuine user-gesture handler (autoplay policy — a programmatic event never primes); playback
+scoped to one page phase must FADE (≤200 ms) before any navigation, never hard-cut. Any sound
+that starts automatically carries a VISIBLE mute + volume control near the sound's home
+(WCAG 1.4.2 asks for a control, not silence — the operator chose audible-at-low-gain defaults),
+persisted in localStorage under the `sf-*` house pattern. Every gain change is a ramp (a stepped
+gain clicks). Generative patterns beat loops: a shuffled-bag pattern has no loop point and so no
+seam to mix. The one shipped sound is the Launch Sequence's Boot Audio Hum
+(`static/launch_audio.js`); anything louder, longer, or on more pages is a new operator decision.

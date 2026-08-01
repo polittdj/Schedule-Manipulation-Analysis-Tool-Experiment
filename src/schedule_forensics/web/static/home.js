@@ -30,6 +30,22 @@
     var ov = document.getElementById('loadOverlay');
     if (ov) { ov.hidden = !show; ov.setAttribute('aria-hidden', show ? 'false' : 'true'); }
   }
+  // OR-03 (ADR-0328): the Boot Audio Hum rides the load overlay. One guarded helper so audio can
+  // NEVER block or break a load — no SFLaunchAudio (script missing, API absent), no sound, same
+  // upload. prime() is called ONLY from the genuine gesture handlers below (pick / folder /
+  // example submit / drop — deliberately NOT from input.onchange, which browsers may not treat
+  // as user activation); start/stop/fade follow the overlay's own lifecycle.
+  function hum(action) {
+    var a = window.SFLaunchAudio;
+    if (!a) return Promise.resolve();
+    try {
+      if (action === 'prime') a.prime();
+      else if (action === 'start') a.start();
+      else if (action === 'stop') return a.stop() || Promise.resolve();
+      else if (action === 'fade') return a.fadeOut(180) || Promise.resolve();
+    } catch (e) { /* audio is decoration; the load always wins */ }
+    return Promise.resolve();
+  }
   function showNotice(html) {
     if (!notice) return;
     notice.innerHTML = html;
@@ -125,17 +141,18 @@
     hideNotice();
     dz.classList.add('busy');
     overlay(true);
+    hum('start');
     var r;
     try {
       r = await preread(picked);
     } catch (e) {
-      overlay(false); dz.classList.remove('busy');
+      overlay(false); dz.classList.remove('busy'); hum('stop');
       showNotice('Could not read the selected files. Please try again.');
       return;
     }
     if (!r.readable.length) {
       // nothing readable — stay on the page and explain, instead of a dead browser error tab
-      overlay(false); dz.classList.remove('busy');
+      overlay(false); dz.classList.remove('busy'); hum('stop');
       showNotice(skipHint(r.skipped));
       return;
     }
@@ -146,9 +163,11 @@
     try {
       var resp = await fetch('/upload', { method: 'POST', body: fd, headers: { 'X-SF-Ajax': '1' } });
       var data = await resp.json();
+      // the hum spans gesture -> POST resolution; fade (<=200ms) BEFORE the navigation cuts it
+      try { await hum('fade'); } catch (e2) { /* never hold the redirect for audio */ }
       window.location = (data && data.redirect) || '/';
     } catch (e) {
-      overlay(false); dz.classList.remove('busy');
+      overlay(false); dz.classList.remove('busy'); hum('stop');
       var msg = 'The upload could not be completed.';
       if (r.skipped.length) msg += ' ' + skipHint(r.skipped);
       showNotice(msg);
@@ -156,11 +175,14 @@
   }
 
   var exampleForm = document.getElementById('exampleForm');
-  if (exampleForm) exampleForm.addEventListener('submit', function () { overlay(true); });
+  if (exampleForm) {
+    // native form navigation: the hum plays while the server imports and ends at unload
+    exampleForm.addEventListener('submit', function () { hum('prime'); hum('start'); overlay(true); });
+  }
   var pick = document.getElementById('pickBtn');
-  if (pick) pick.onclick = function () { input.click(); };
+  if (pick) pick.onclick = function () { hum('prime'); input.click(); };
   var pickFolder = document.getElementById('pickFolderBtn');
-  if (pickFolder && folderInput) pickFolder.onclick = function () { folderInput.click(); };
+  if (pickFolder && folderInput) pickFolder.onclick = function () { hum('prime'); folderInput.click(); };
   input.onchange = function () { if (input.files && input.files.length) upload(input); };
   if (folderInput) folderInput.onchange = function () {
     if (folderInput.files && folderInput.files.length) upload(folderInput);
@@ -170,6 +192,7 @@
   window.addEventListener('dragover', function (ev) { ev.preventDefault(); }, false);
   window.addEventListener('drop', function (ev) {
     ev.preventDefault();
+    hum('prime'); // a drop is a genuine gesture — the context may be born here
     dz.classList.remove('over');
     upload({ files: ev.dataTransfer && ev.dataTransfer.files });
   }, false);
