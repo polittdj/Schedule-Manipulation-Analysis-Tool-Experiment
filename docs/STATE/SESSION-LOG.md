@@ -10345,3 +10345,55 @@ the briefs + state rotation) earlier today.
 - The two skips are the structural pair: the emptied `PENDING`'s empty parametrize and the
   standing `path.js` `INCIDENTAL_SVG` skip.
 - Draft PR **#508** opened (head `4aadd91`), session subscribed, check-in armed.
+
+## 2026-08-01j — Phase 1a: a wipe is total, by reflection (ADR-0332, v1.0.148)
+
+- **Phase 0 MERGED as `5c829e4` (#508)** — all six CI checks green, no review threads. The stop
+  hook then flagged the two now-orphaned branch commits as "unverified"; **the correct response was
+  to RESTART the branch from `origin/main`, not to amend them** — they were squash-merged published
+  history, and rewriting them would fork the branch and break the CUI guard's `inherited_from_main`
+  rule. Recorded because the hook's suggested remedy is wrong in exactly this situation. The repo's
+  entire recent history (12/12 commits, including the operator's merges) uses `polittdj@gmail.com`,
+  so the author identity was left alone rather than made inconsistent for future commits.
+- **Phase 1a built (ADR-0332).** A reflection sweep of `SessionState` against `/session/wipe` found
+  the handler reset fields by NAMING them and had fallen behind: **72 declared fields, 36 untouched;
+  minus 6 cleared indirectly via `set_filter(())`/`set_saved_group(None)` and 3 internals = 27
+  fields of real operator state survived a wipe.** The whole SRA setup (factor rows, per-UID Risk
+  Ranking Factors, Best/Worst pairs, correlation matrix, cached Criticality Index), all seven
+  `jcl_*` settings, `margin_rate` (while `margin_band_*` WERE reset), `translations` (AI
+  translations of imported ACTIVITY NAMES), and `dcma_acumen_parity` — a metric-MODE flag.
+  **Law 2, not housekeeping:** those SRA maps are keyed by UniqueID, so project B silently
+  inherited project A's risk inputs wherever UIDs collided.
+- **Fix: reset by reflection.** `SessionState.reset()` returns every field to its constructed
+  default except `WIPE_PRESERVED` (7 entries, each justified in source: `language`,
+  `ram_warn_bytes`, `ai_config`, `wipe_gen`, `ai_use_hook`, `_lock`, `_stripes`). The default is
+  now RESET — the next field added is wiped without anyone remembering. Every default the old
+  enumeration set was verified identical to the dataclass default BEFORE the swap, so the change is
+  behaviour-preserving for the 36 it handled and behaviour-fixing for the 27 it did not.
+  ADR-0263's ordering (bump `wipe_gen`, then clear the on-disk cache, same lock) is unchanged, and
+  `wipe_gen` is preserved precisely so the sweep cannot rewind that guard to 0.
+- **Client side:** the ADR-0324 launch guard gained `GLOBAL_KEYS` — `sf-story-visited` holds each
+  visited chapter's `data-route`, and the analysis chapter's resolves to
+  `/analysis/<the operator's FILENAME>`, so a previous project's name outlived every launch AND
+  every wipe. Preferences are deliberately NOT swept: a blanket `sf-`/`sf.` prefix sweep would
+  un-mute the ADR-0328 boot hum and reset theme/scale on every launch — a regression dressed as a
+  fix.
+- **Read results:** new `test_session_wipe_is_total.py` **5 passed** (incl. a control asserting the
+  fixture dirtied ≥40 fields, so the sweep cannot pass vacuously); session neighbours together with
+  it **81 passed**; statics foreground ruff/format(838)/mypy(117)/node all clean.
+  **Proved able to fail, watched:** reverting ONLY the handler — keeping the new API so the failure
+  is behavioural rather than an ImportError — fails the route test with `assert {7: 3} == {}`, the
+  per-UID Risk Ranking Factor still resident after a wipe; reverting `persist.js` fails the browser
+  test with `'["/analysis/SecretProject.mpp","/"]'` still stored.
+- **A test bug caught, where the FIX was right and the TEST was wrong.** The first browser
+  assertion required `sf-story-visited` to be absent after the sweep. It is not: the guard clears
+  it and `story.js`, on that same load, legitimately re-records the chapter being viewed now. The
+  assertion was corrected to the property that matters — nothing from the PREVIOUS project remains
+  — rather than a stricter condition the design never promised.
+- **Explicitly NOT fixed here, and stated so in the ADR:** the launcher half. On the deployed
+  install the shortcut pins 8321 and there is no instance detection, so a relaunch can land on the
+  surviving previous process. That is blocked on one operator measurement (one PID or two on a
+  second launch — the answer differs on Windows, where `SO_REUSEADDR` may let the second bind
+  succeed).
+- Version bumped to **1.0.148** BEFORE the background suite; wheel + nine installers regenerated
+  ONCE. **The full-suite run is IN FLIGHT at this line — its result lands in the next append.**

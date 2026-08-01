@@ -114,19 +114,36 @@ def test_stale_launch_clears_page_memory_and_live_launch_keeps_it(served: Any) -
             "() => { localStorage.setItem('sf-qs:/sra', '?target=6077');"
             ' localStorage.setItem(\'sf-ui:/sra\', \'{"#staleField":{"v":"6077"}}\');'
             " localStorage.setItem('sf-findings-drill-cols', 'stale');"
+            # ADR-0332: story progress is CROSS-page, so the two per-page prefixes above never
+            # matched it — and its entries are chapter data-routes, which for the analysis
+            # chapter resolve to "/analysis/<the operator's filename>". A schedule name from a
+            # previous project therefore sat in browser storage indefinitely and tinted a
+            # brand-new session's progress strip.
+            " localStorage.setItem('sf-story-visited', '[\"/analysis/SecretProject.mpp\"]');"
             " localStorage.setItem('sf-theme', 'daylight');"
+            # a preference that must SURVIVE: muting the ADR-0328 boot hum is an operator choice,
+            # not session state, and a sweep that un-mutes it every launch is a regression.
+            " localStorage.setItem('sf-hum-mute', '1');"
             " localStorage.setItem('sf-launch', 'deadbeef.0'); }"
         )
         page.reload(wait_until="domcontentloaded")
         remaining = page.evaluate(
             "() => [localStorage.getItem('sf-qs:/sra'), localStorage.getItem('sf-ui:/sra'),"
             " localStorage.getItem('sf-findings-drill-cols'),"
-            " localStorage.getItem('sf-theme'), localStorage.getItem('sf-launch')]"
+            " localStorage.getItem('sf-theme'), localStorage.getItem('sf-launch'),"
+            " localStorage.getItem('sf-story-visited'), localStorage.getItem('sf-hum-mute')]"
         )
         assert remaining[0] is None, "stale sf-qs survived a new launch"
         assert remaining[1] is None, "stale sf-ui survived a new launch"
         assert remaining[2] is None, "stale column-picker key survived a new launch"
         assert remaining[3] == "daylight", "global theme pref must NOT be cleared"
+        # NOT `is None`: the guard clears the key, and then story.js — running on this same load —
+        # legitimately re-records the chapter being viewed right now. The property that matters is
+        # that nothing from the PREVIOUS project remains, so assert on the content.
+        assert "SecretProject" not in (remaining[5] or ""), (
+            f"a previous project's filename survived in sf-story-visited: {remaining[5]!r}"
+        )
+        assert remaining[6] == "1", "the boot-hum mute is a PREFERENCE and must not be cleared"
         live_token = remaining[4]
         assert live_token and live_token != "deadbeef.0"
 

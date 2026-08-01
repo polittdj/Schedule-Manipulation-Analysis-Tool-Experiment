@@ -435,6 +435,40 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-01j — A list of things to clear is a leak with a delay fuse
+- `/session/wipe` reset fields by **naming** them. That is correct exactly once — on the day it is
+  written. Measured today: **72 declared fields, 27 of real operator state surviving a "wipe"**,
+  including the entire SRA setup, the whole JCL configuration, and `dcma_acumen_parity`, a flag
+  that changes what the engine *computes*. Nobody removed anything; fields were simply added over
+  months and the handler was never the place people thought to look. **The generalizable rule: when
+  correctness depends on a human remembering to update a list, invert the default.** `reset()` now
+  restores every field and preserving one requires naming it — so the next field added is safe
+  because of the mechanism, not because of anyone's diligence.
+- **Severity came from the KEY, not the field.** `sra_factors` and `sra_bcwc` are keyed by
+  UniqueID, so a surviving map is not stale trivia — load a different project and it silently
+  adopts the previous project's risk inputs wherever UIDs collide. When triaging "leftover state",
+  ask what the data is keyed by: shared-key state crosses tenants silently, unique-key state
+  usually just looks wrong.
+- **The right revert is the CALLER, not the API.** The first able-to-fail attempt reverted both the
+  new `reset()` and its caller — the tests then failed with an ImportError, which proves nothing
+  about behaviour. Reverting only the handler produced the honest failure: `assert {7: 3} == {}`,
+  the exact per-UID factor that would leak. When a change adds an API *and* a call site, revert the
+  call site to prove the defect is real.
+- **A fix can be right while its test is wrong.** The browser assertion demanded
+  `sf-story-visited` be *absent* after the launch sweep; it is not, because `story.js` legitimately
+  re-records the chapter being viewed on that same load. The failure looked like the fix not
+  working. Before weakening a fix to satisfy a test, check whether the test asserts something the
+  design never promised — here the real property was "nothing from the previous project remains".
+- **"Clear everything" is not automatically the safest option.** A blanket `sf-`/`sf.` localStorage
+  sweep would have un-muted the boot hum and reset the theme on every launch. Session state and
+  operator preferences live in the same namespace and must be split by intent, not by prefix.
+- **Do not amend published history to satisfy a hook.** After the squash-merge the stop hook
+  flagged the orphaned branch commits as unverified and suggested amending them. Amending would
+  have forked the branch from `main` and broken the CUI guard's `inherited_from_main` rule; the
+  correct response was restarting the branch from `origin/main`, which is already the documented
+  procedure. A tool's suggested remedy is a default, not an instruction — check it against the
+  repo's own rules first.
+
 ### 2026-08-01i — A test can measure the wrong thing for eleven batches and stay green
 - The axis-caption convention shipped **eleven batches** and a four-theme × three-scale measured
   pass, and every one of them was blind to the defect that mattered: a caption drawn *over a

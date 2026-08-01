@@ -19,7 +19,7 @@ import secrets
 import threading
 from collections import OrderedDict
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from typing import TypeVar, cast
 
 from schedule_forensics.ai import (
@@ -376,6 +376,32 @@ class _LRUCache(OrderedDict[str, _V]):
 #: Quit-and-relaunch invalidates the browser's per-page selection memory even though
 #: localStorage itself survives the process. Not a secret — an opaque cache-scoping nonce.
 _LAUNCH_NONCE = secrets.token_hex(8)
+
+
+#: The ONLY fields :meth:`SessionState.reset` leaves alone (ADR-0332). Everything else returns to
+#: its constructed default, so a field added later is wiped by DEFAULT rather than by remembering.
+#: Each entry needs a reason, and `test_session_wipe_is_total.py` pins that this set stays small.
+WIPE_PRESERVED: frozenset[str] = frozenset(
+    {
+        # Operator preferences, not session data — the same reasoning that keeps the browser's
+        # theme/scale across a launch. A wipe clears what was ANALYSED, not how it is displayed.
+        "language",
+        "ram_warn_bytes",
+        # Handled bespoke by the caller: the AI classification is carried across deliberately and
+        # the backend is forced back to null (see the /session/wipe handler).
+        "ai_config",
+        # A monotonic guard, not state: it is BUMPED on wipe so an in-flight pre-wipe compute can
+        # never re-insert the operator's data afterwards (ADR-0263). Resetting it to 0 would
+        # re-open exactly that window.
+        "wipe_gen",
+        # Application wiring installed by create_app (the Ollama record-use hook, ADR-0315) —
+        # clearing it would silently unwire the running app, not clean the session.
+        "ai_use_hook",
+        # Concurrency primitives. Replacing a lock that another thread may hold is a data race.
+        "_lock",
+        "_stripes",
+    }
+)
 
 
 @dataclass
@@ -791,6 +817,29 @@ class SessionState:
         self._matched.clear()
         self._perf_memo.clear()  # identity-keyed (P3): must never outlive the scope epoch
         self._scope_gen += 1  # ADR-0263: a store computed under the old epoch must be skipped
+
+    def reset(self) -> None:
+        """Return every field to its constructed default except :data:`WIPE_PRESERVED` (ADR-0332).
+
+        A wipe used to reset fields by NAMING them, and the list fell behind the dataclass: 27
+        fields of real operator state survived a "wipe" — the whole SRA setup (factor rows,
+        per-UID Risk Ranking Factors, Best/Worst pairs, the correlation matrix, the cached
+        Criticality Index), the entire JCL cost configuration, ``margin_rate``, the AI
+        ``translations`` of imported activity names, and — worst — ``dcma_acumen_parity``, a
+        metric-MODE flag that changes what the engine computes. Because the SRA maps are keyed by
+        **UniqueID**, a different project loaded after a wipe silently inherited the previous
+        project's risk inputs wherever UIDs collided: a Law-2 exposure, not a cosmetic one.
+
+        Enumerating fields cannot stay correct — the next field added is the next leak. So the
+        default is now RESET and preserving something requires naming it in ``WIPE_PRESERVED``,
+        which ``tests/web/test_session_wipe_is_total.py`` forces a new field's author to consider.
+        """
+        fresh = SessionState()
+        with self._lock:
+            for f in fields(self):
+                if f.name in WIPE_PRESERVED:
+                    continue
+                setattr(self, f.name, getattr(fresh, f.name))
 
     def set_filter(self, criteria: Sequence[Criterion]) -> None:
         """Set (or clear, with ``()``) the session-wide FIELD filter and invalidate the scope/

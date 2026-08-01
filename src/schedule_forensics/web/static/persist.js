@@ -44,6 +44,10 @@
     "/ribbon": ["sf-ribbon-drill-cols"],
     "/driving-path": ["sf-driving-tiers-cols"],
   };
+  // NOT per-page: cross-page session state that must die with the launch (ADR-0332). Keep this
+  // list to keys that hold SCHEDULE-DERIVED data or progress through the loaded project — never
+  // operator preferences, which survive on purpose.
+  var GLOBAL_KEYS = ["sf-story-visited"];
 
   function store() {
     try { return window.localStorage; } catch (e) { return null; }
@@ -60,6 +64,15 @@
   // every page plus the per-page column-picker keys. Global preferences (theme, UI size,
   // Timescale) are deliberately NOT page state and are never touched. Within one session the
   // token is stable, so ADR-0186's page memory keeps working exactly as before.
+  //
+  // ADR-0332 adds GLOBAL_KEYS. The sweep above only matched the two per-page prefixes and a
+  // hardcoded column-picker list, so `sf-story-visited` — which story.js fills with each visited
+  // chapter's data-route, and the analysis chapter's route resolves to "/analysis/<the operator's
+  // FILENAME>" — outlived every launch AND every wipe. Inside one session that name is already in
+  // the URL and on the page, so nothing is gained by hiding it there; what matters is that a
+  // schedule name from a previous project must not sit in browser storage indefinitely, nor tint
+  // a brand-new session's progress strip. Preferences (theme, scale, telemetry dock, the boot-hum
+  // mute) stay untouched by design: a wipe clears what was ANALYSED, not how the tool looks.
   (function () {
     var meta = document.querySelector('meta[name="sf-launch"]');
     if (!meta) return; // token not served — keep the pre-guard behavior
@@ -76,6 +89,7 @@
       Object.keys(PAGE_KEYS).forEach(function (p) {
         PAGE_KEYS[p].forEach(function (k) { doomed.push(k); });
       });
+      GLOBAL_KEYS.forEach(function (k) { doomed.push(k); });
       doomed.forEach(function (k) { ls.removeItem(k); });
       ls.setItem("sf-launch", token);
     } catch (e) { /* storage gone mid-walk — fail open */ }

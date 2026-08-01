@@ -7369,53 +7369,28 @@ def create_app(
     def wipe() -> RedirectResponse:
         st = session()
         with st._lock:  # atomic vs any in-flight render (QC audit D18)
-            st.schedules.clear()
-            st.file_meta.clear()
-            st.content_hashes.clear()
-            st.active_project = None  # back to auto-resolution (ADR-0258)
-            st.excluded_keys.clear()  # duplicate-review excludes die with the session (ADR-0259)
-            st.margin_overlay.clear()  # drop the operator's confirmed schedule-margin overlay
-            st.margin_band_dates = None  # drop the Fig 5-30 band phase dates (ADR-0254)
-            st.margin_band_rates = FIG_5_30_DEFAULT_RATES
-            st.margin_risk_pcts = (DEFAULT_WATCH_PCT, DEFAULT_CORRECTIVE_PCT)
-            st.role = None  # back to "Show everything" (ADR-0255)
-            st.analyses.clear()
-            st.summaries.clear()
-            st.cpms.clear()
-            st.dash_cores.clear()  # ADR-0281 dashboard card tier
-            st.dash_cards.clear()  # ADR-0291 manifest-projection memo
-            st._perf_memo.clear()
-            st.polished.clear()
-            st.set_filter(())  # drop the session-wide field filter and its scope cache
-            st.set_saved_group(None)  # drop the session-wide saved group
-            st.filter_mode = "reduce"  # back to the default (reduce) filter mode
-            st.flash = None
-            st.target_uid = None
-            st.sra_focus_uid = None  # target_uid + sra_focus_uid are coupled (see set_target)
+            # ADR-0332: reset by REFLECTION, not by naming fields. This handler used to enumerate
+            # them and had fallen 27 fields behind the dataclass — the whole SRA setup (factors,
+            # Best/Worst pairs, the correlation matrix, the cached Criticality Index), every JCL
+            # cost setting, margin_rate, the AI translations of imported activity names, and
+            # dcma_acumen_parity (a metric-MODE flag) all survived a "wipe". Since the SRA maps
+            # are keyed by UniqueID, the next project loaded inherited the previous one's risk
+            # inputs wherever UIDs collided. `reset()` now returns every field to its default
+            # except state.WIPE_PRESERVED, so a NEW field is wiped by default.
+            st.reset()
             # ADR-0263: bump the wipe generation FIRST, then clear the on-disk CUI cache (parsed
             # schedules + derived metrics) UNDER the same lock that gates every store — so an
             # in-flight compute that started pre-wipe can never re-insert the operator's data
             # (in memory or on disk) after this point. "Nothing survives the reset" holds.
+            # wipe_gen is in WIPE_PRESERVED precisely so reset() cannot rewind this guard to 0.
             st.wipe_gen += 1
             get_default_cache().clear()
-            # reset the SRA manual inputs back to the screening defaults (ADR-0263: under the
-            # SAME lock — a reader iterating sra_overrides/sra_risks mid-clear is the D18 class)
-            st.sra_low = 0.9
-            st.sra_ml = 1.0
-            st.sra_high = 1.10
-            st.sra_overrides.clear()
-            st.sra_risks.clear()
-            st.sra_risk_seq = 0
-            st.sra_branches.clear()
-            st.sra_branch_seq = 0
-            st.sra_conditionals.clear()
-            st.sra_conditional_seq = 0
             # A wipe is a full reset: turn the AI back off and stop any local model it is
             # running, so a wiped session never leaves Ollama consuming RAM/CPU (operator
             # report: Ollama survived a Wipe → Quit). Re-enabling is one click in AI Settings.
+            # The classification is carried across deliberately — it describes the OPERATOR's
+            # handling posture, not the schedules that were just discarded.
             st.ai_config = AIConfig(classification=st.ai_config.classification, backend="null")
-            st.backend_cache = None
-            st.second_cache = None
         manager = getattr(app.state, "ollama", None)
         if manager is not None:
             threading.Thread(target=manager.shutdown, daemon=True).start()
