@@ -7,34 +7,40 @@ kickoff steers a fresh session at work that is already done.)
 
 ---
 
-You are resuming the **Schedule-Manipulation-Analysis-Tool** (a local, offline, CUI-safe forensic
-schedule-analysis tool; **POLARIS** in the UI). **Read `docs/STATE/HANDOFF.md` FIRST** — its top
-section is the current state and the NEXT queue, and the SessionStart hook auto-injects it, so it is
-already in front of you.
-
-As of this file's last refresh: **v1.0.140**, highest ADR **0324**. The 2026-07-31
-engine-correctness deep dive (OR-05/OR-06) is BUILT AND GATED on branch
-`claude/polaris-engine-correctness-5y3ge1`: the base CPM honors per-task calendars
-(ADR-0322 — recomputed float now equals MS Project's stored Total Slack exactly on the
-Jacked oracle files), Open Start / Open Finish dangling checks landed (ADR-0323), and the
-launch token closed the stale-page-memory bug (ADR-0324). Container is fresh each session:
-`pip install -e ".[dev]"` plus `pip install playwright 'ruff==0.16.1' build` before anything.
+Resume POLARIS (Schedule-Manipulation-Analysis-Tool). **Read `docs/STATE/HANDOFF.md` FIRST**
+(auto-injected). As of last session: **v1.0.143**, highest ADR **0327**; **PR-9b (#501) is
+MERGED** as `a0a5bbd` — the rank-12 toolbar/read-me sweep is DONE, including the codex-review
+addendum (population-accurate chips; `_target_panel` converted). Verify with
+`git fetch --prune origin` and restart your branch from `origin/main`. Fresh container:
+`pip install -e ".[dev]"` plus `pip install playwright 'ruff==0.16.1' build` first.
 
 ### ⇢ DO THESE THINGS FIRST
 
-1. `git fetch origin` and check whether the deep-dive PR (branch
-   `claude/polaris-engine-correctness-5y3ge1`) is MERGED. If it is open with red CI, drive it
-   to green; if merged, restart your branch from `origin/main` with `--prune`.
-2. Then RESUME the approved queue (`docs/STATE/PLAN-20260730.md`, decisions A1 · B1 · C1
-   recorded — do NOT re-ask): **PR-8 AXIS-TITLES 3b-i `margin_dashboard` per A1 (M)** →
-   PR-9 rank-12 toolbar/read-me + B1 caption mechanism (M–L) → PR-10 OR-03 launch motion +
-   synthesized hum (M–L).
-3. Operator note pending: the committed `Jacked up Schedule 2.mpp` does NOT contain Task 11's
-   deadline (verified — see OPERATOR-REQUESTS OR-05 outcome); if the operator re-saves it
-   with the deadline, Task 11 reads −5 d end-to-end with no code change.
+1. `git fetch --prune origin`; confirm `a0a5bbd` (#501) is main's ancestor and check whether
+   the session-close docs PR is merged; restart your branch fresh from `origin/main`.
+2. Then BUILD **PR-10 — OR-03 launch motion + synthesized hum** (`docs/STATE/PLAN-20260730.md`
+   row 10; decisions recorded — do NOT re-ask): WebAudio synthesis, NO audio asset (wheel +
+   nine installers stay lean); hum spans gesture→POST-resolution, fades ≤200 ms before
+   navigation (cross-page audio out of scope, in the ADR); primed only in genuine gesture
+   handlers (pick/folder/example-submit/drop — NOT `input.onchange`); shuffled-pitch-bag
+   swell scheduler, all gains ramped; visible mute+volume on `.load-card`, persisted in
+   localStorage (theme.js/sysmon.js/persist.js pattern); audible-at-low-gain default + the
+   DESIGN-SYSTEM audio rule; motion = CSS-only orbiting craft dots (transform-only, token
+   colors, zero JS — the pinned `_AUTOPLAY_JS` list stays untouched; reduced-motion gets its
+   own `animation:none` BESIDE the pinned `.load-spinner{animation:none}` literal). Tests:
+   `test_launch_sequence.py` (content) + `test_launch_audio_chromium.py` (float-tip skip
+   posture; no context pre-gesture; mute persists; 4-theme × 2-viewport scrollbar-visible
+   geometry).
+3. Behind it: OR-04 park artifacts (`audit/VERIFICATION-REPORT-ollama-lifecycle.md` §8) ·
+   SVG batch 3c · the 7-module `DOM_PENDING` ledger · Phase 3 (CC-01 rendering half, 74
+   sites, Fable 5 Max) · Phase 4 (P1–P6) · rank 13/14. Known intermittent: the /analysis
+   focus→tip test family (dismiss + scroll siblings) fails ~half of isolated runs —
+   pre-existing, adjudicated in HANDOFF's carried list; do not chase it as a regression.
 
 Standing rules (CLAUDE.md, binding): Law 1 CUI · Law 2 fidelity ("—" never 0; never weaken a
 test; a fast wrong number is worthless) · ADR-0240 model/audit protocol · READ EVERYTHING,
 ASSUME NOTHING, VERIFY EVERYTHING. Full gate before every commit; statics FOREGROUND first;
 proved-able-to-fail on every new behavioral test; HANDOFF rotation + SESSION-LOG +
-LESSONS-LEARNED same commit; wheel + nine installers ONCE after all code lands.
+LESSONS-LEARNED same commit; wheel + nine installers ONCE after all code lands (bump the
+version BEFORE launching the full background suite, or its installer-lockstep tests
+red-herring against the stale wheel).
