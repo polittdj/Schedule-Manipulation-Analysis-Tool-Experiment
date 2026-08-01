@@ -483,3 +483,119 @@ def test_card_enlarge_measurably_lifts_in_chromium(served_gold: str) -> None:
         page.wait_for_selector(".card-cols", timeout=10000)
         _prove_measured_enlarge(page, ".panel:has(.card-cols)")
         browser.close()
+
+
+# ── (h) the codex-review round (PR #501): population-accurate chips + the target panel ────────
+# Five bot findings, each verified against the code before acting (ADR-0327 addendum): the
+# /margin and /workbench series chips were built from EVERY loaded version while their panels
+# draw only the ANALYZABLE subset (_margin_dashboard_for / _workbench_versions both skip
+# CPMError versions) — a chip could name a file that contributes nothing; the /groups
+# breakdown and saved-group previews carried tools but no source attribution (an enlarged
+# overlay hides the page's file picker); and _target_panel still rendered a bare h2 — the
+# ADR's original consequence bullet claiming it "already rendered head-strip markup" was a
+# MISREAD of the /path workspace head, caught by the external review.
+
+
+def _cyclic_version(name: str, day: int) -> Schedule:
+    """A dated but CPM-unsolvable version (1↔2 logic cycle) — the population the chips must
+    NOT count or name (the coverage-suite `_cyclic` pattern)."""
+    s = dt.datetime(2026, 6, day, 8, 0)
+    f = dt.datetime(2026, 6, day + 1, 17, 0)
+    return Schedule(
+        name=name,
+        source_file=f"{name}.xml",
+        project_start=dt.datetime(2026, 6, 1),
+        status_date=dt.datetime(2026, 6, day + 2),
+        tasks=(
+            _t(1, "A", 1, start=s, finish=f, baseline_finish=f),
+            _t(2, "B", 1, start=s, finish=f, baseline_finish=f),
+        ),
+        relationships=(_r(1, 2), _r(2, 1)),
+    )
+
+
+@pytest.fixture(scope="module")
+def mixed_client() -> TestClient:
+    """Four solvable margin versions PLUS one unsolvable (cycle) version — the chip's honest
+    population is 4, the raw loaded count is 5."""
+    st = SessionState()
+    for status, m in _MARGINS:
+        v = _margin_version(status, m)
+        st.schedules[v.source_file] = v
+    cyc = _cyclic_version("tangled", 20)
+    st.schedules[cyc.source_file] = cyc
+    return TestClient(create_app(st))
+
+
+def test_series_chips_name_only_the_analyzable_population(mixed_client: TestClient) -> None:
+    """The provenance chip must describe the population the panel actually draws — the
+    solvable subset — never the raw loaded list (a chip naming a file that contributes no
+    row/point/column misattributes the visual's source)."""
+    margin = mixed_client.get("/margin").text
+    for title in (
+        "Margin &amp; Contingency Burn-Down",
+        "Margin Erosion Trend (MET)",
+        "Per-version figures",
+    ):
+        chunk = _panel_titled(margin, title)
+        assert "v1→v4" in chunk, (title, "chip must span the 4 SOLVABLE versions, not 5")
+        assert "tangled.xml" not in chunk, (title, "the unsolvable file contributes nothing")
+    workbench = mixed_client.get("/workbench").text
+    wb = _panel_titled(workbench, "Metric Workbench")
+    assert "v1→v4" in wb, "workbench chip must match /api/workbench's solvable population"
+    assert "tangled.xml" not in wb
+
+
+def test_target_panel_wears_the_contract(client: TestClient) -> None:
+    """The shared session-target focus panel joins the contract on all three render sites
+    (/card, /wbs, /analysis): head strip + ⛶ + this file's chip, NO ⤓ (single-activity view;
+    no export sheet carries its variance/flag cells). The absent-UID branch stays a bare
+    notice. A FRESH client so the module's cached ``pages`` fixture is never target-polluted."""
+    c = TestClient(create_app(SessionState()))
+    for name in ("Project2.mspdi.xml", "Project5.mspdi.xml"):
+        r = c.post("/upload", files={"files": (name, (GOLD / name).read_bytes(), "text/xml")})
+        assert r.status_code == 200
+    c.post("/target", data={"uid": "143", "next_url": "/"})
+    for route in ("/card/Project5", "/wbs/Project5", "/analysis/Project5"):
+        page = c.get(route).text
+        chunk = _panel_titled(page, "Target activity")
+        assert _glyphs(chunk) == {"big"}, (route, "target panel must carry ⛶ and only ⛶")
+        assert "prov-chip" in chunk, (route, "target panel must attribute its file")
+        assert "data-export" not in chunk, route
+    c.post("/target", data={"uid": "999999", "next_url": "/"})
+    absent = c.get("/card/Project5").text
+    chunk = _panel_titled(absent, "Target activity UID 999999")
+    assert "sf-tools" not in chunk, "the absent-UID NOTICE branch stays bare"
+
+
+def test_groups_preview_pivots_carry_the_preview_file_chip(client: TestClient) -> None:
+    """The breakdown and saved-group preview pivots are single-file data visuals whose
+    enlarged overlay hides the page's file picker — each must carry the preview file's own
+    chip, like the metric-scorecard preview beside them."""
+    page = client.get("/groups?breakdown=Activity Type").text
+    chunk = _panel_titled(page, "Breakdown by Activity Type")
+    assert "prov-chip" in chunk and "SOURCE: Project5" in chunk
+    # saved group: the saved-views mini fixture (model-carried group), rendered via the route
+    from schedule_forensics.model.saved_view import GroupClause, SavedGroup
+
+    st = SessionState()
+    sch = _margin_version("2026-02-27", 40)
+    grouped = Schedule(
+        name=sch.name,
+        source_file=sch.source_file,
+        project_start=sch.project_start,
+        status_date=sch.status_date,
+        tasks=sch.tasks,
+        relationships=sch.relationships,
+        saved_groups=(
+            SavedGroup(
+                name="Milestones",
+                clauses=(GroupClause(field="Milestone", field_enum="MILESTONE", ascending=True),),
+            ),
+        ),
+    )
+    st.schedules[grouped.source_file] = grouped
+    c = TestClient(create_app(st))
+    page = c.get("/groups", params={"saved_group": "Milestones"}).text
+    chunk = _panel_titled(page, "Grouped preview")
+    assert "prov-chip" in chunk and "SOURCE: 2026-02-27.mpp" in chunk

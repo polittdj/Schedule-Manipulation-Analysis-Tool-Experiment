@@ -9980,3 +9980,28 @@ the briefs + state rotation) earlier today.
   app-wide (▦ refused everywhere), no standards/groups/card export (refusals recorded; §1's
   analysis-workbook wiring is the recon's own verify-sheet-coverage-first pattern), the
   orphaned /wbs export now wired, zero prior `_panel_head` call sites in the six bodies.
+
+## 2026-08-01 (cont.3) — the codex-review round on PR #501: five findings, five fixes (ADR-0327 addendum)
+
+- The operator marked #501 ready for review; Codex (automated) left five P2 comments on the
+  pre-merge head. **Each was verified against the code before acting; all five were real,**
+  including one that overturned a claim in ADR-0327 itself:
+  1. **/workbench + /margin series chips** were built from every RAW loaded version while
+     both panels draw only the analyzable subset (`_workbench_versions` /
+     `_margin_dashboard_for` skip CPMError) — a chip could name an unschedulable file that
+     contributes nothing. Fixed: workbench route feeds the chip from `_workbench_versions()`;
+     margin derives it from the new `_solvable_scoped_versions()` (the dashboard's own loop,
+     factored so the population rule has ONE owner; analyses cached, zero added engine work).
+  2. **/groups breakdown + saved-group previews** had tools but no attribution (an enlarged
+     overlay hides the file picker) — both now carry the preview file's `_prov_chip`.
+  3. **`_target_panel` was BARE** — my ADR consequence bullet claiming it "already rendered
+     head-strip markup" was a MISREAD (the /path workspace head at a nearby line); the /wbs
+     route comment repeated it. Converted for real on all three render sites (/analysis,
+     /card, /wbs): head + ⛶ + file chip; ⤓ refused (single-activity view, no covering
+     sheet); absent-UID branch stays a bare notice. ADR text struck-and-corrected, comment
+     rewritten, lesson logged.
+- **Proved able to fail, watched:** the three new r12 tests
+  (`test_series_chips_name_only_the_analyzable_population` on a mixed solvable+cyclic
+  fixture · `test_target_panel_wears_the_contract` on all three sites + the bare notice
+  branch · `test_groups_preview_pivots_carry_the_preview_file_chip`) — **3 failed** against
+  the pre-fix tree, then r12 module **17 passed** post-fix.

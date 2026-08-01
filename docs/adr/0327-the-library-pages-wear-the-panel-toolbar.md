@@ -76,9 +76,11 @@ with the ⤓/▦ decisions resolved panel-by-panel from the survey, never by bla
 
 ## Consequences
 
-* The six pages' focus panels (`_target_panel`), which already rendered head-strip markup,
-  now actually have panelkit.js to drive them on /card and /wbs — the round-5 "markup alone
-  is not evidence" gap closes as a side effect.
+* ~~The six pages' focus panels (`_target_panel`), which already rendered head-strip markup,
+  now actually have panelkit.js to drive them on /card and /wbs.~~ **Corrected by the
+  addendum below:** that claim was a misread — `_target_panel` rendered a BARE `<h2>` (the
+  head-strip markup read was the /path workspace panel). External review caught it; the
+  addendum converts the helper for real.
 * No JS file changed — every byte-frozen `PAGE_SCRIPTS` baseline and the 16-site axisTitles
   census hold as-is. No engine code touched; no displayed figure moves.
 * The promotion census is unchanged on every page (7/2/5/5/3/3 panels on the test fixtures,
@@ -99,3 +101,35 @@ with the ⤓/▦ decisions resolved panel-by-panel from the survey, never by bla
   sheets.
 * ADR-0311's remaining DoD item for these pages, `data-noprint` (decision C1), ships as its
   own PR-4 per the plan.
+
+## Addendum (2026-08-01, same PR) — the codex-review round
+
+An external automated review (Codex, on the PR) raised five findings; each was verified
+against the code before acting, and all five were REAL:
+
+1. **Series-chip population mismatch, /workbench and /margin** — both chips were built from
+   every raw loaded version while their panels draw only the ANALYZABLE subset
+   (`_workbench_versions()` / `_margin_dashboard_for()` skip `CPMError` versions), so a chip
+   could name an unschedulable file that contributes no column, row or chart point. Fixed:
+   the workbench route passes `_workbench_versions()`'s schedules; the margin body derives
+   its chip from the new `_solvable_scoped_versions()` — the SAME loop the dashboard
+   computes from, factored out so the population rule has one owner. Analyses are cached, so
+   neither chip adds engine work.
+2. **The /groups breakdown and saved-group previews carried tools but no attribution** — an
+   enlarged overlay hides the page's file picker, leaving their counts sourceless while the
+   sibling scorecard preview kept its chip. Both pivots now take the preview file's
+   `_prov_chip`; their empty branches stay bare notices.
+3. **`_target_panel` was bare** — and this ADR's original consequence bullet claiming it
+   "already rendered head-strip markup" was a misread (the /path workspace head at a nearby
+   line). The helper now wears the contract on its three render sites (/analysis, /card,
+   /wbs — all load panelkit.js): head strip + ⛶ + this file's chip; ⤓ refused (single-
+   activity view; no export sheet carries its variance/flag cells as drawn); the absent-UID
+   branch stays a bare notice. The /wbs route comment that repeated the misread is
+   corrected in place.
+
+The lesson is logged in LESSONS-LEARNED: a verification you remember making is not a
+verification — the misread line number was real code, just the wrong function, and only an
+independent reader caught it. Tests: `test_series_chips_name_only_the_analyzable_population`
+(a mixed solvable+cyclic fixture), `test_target_panel_wears_the_contract` (all three sites +
+the bare notice branch), and `test_groups_preview_pivots_carry_the_preview_file_chip` — all
+three watched failing against the pre-addendum tree first.

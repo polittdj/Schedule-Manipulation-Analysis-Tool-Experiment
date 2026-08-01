@@ -2863,9 +2863,11 @@ def create_app(
             except CPMError:
                 focus = ""  # unschedulable: skip the focus panel, still show the WBS pivot
         body = focus + _wbs_body(name, groups, prov=_prov_chip(sch))
-        # the include rides ONLY a render that carries a contract control (the r11 law) — the
-        # no-groups branch is a bare notice, but a session-target focus panel above it still
-        # needs the driver, so the gate reads the ASSEMBLED body, not one builder's branch
+        # the include rides ONLY a render that carries a contract control (the r11 law), so
+        # the gate reads the ASSEMBLED body, not one builder's branch: the no-groups branch
+        # and the absent-UID focus notice are bare, while a POPULATED focus panel carries ⛶
+        # since the codex-review round (_target_panel wears the contract now — the original
+        # comment here claimed it already did, a misread corrected in the ADR-0327 addendum)
         if "data-sf-" in body:
             body += '\n<script src="/static/panelkit.js"></script>'
         return _page(
@@ -4790,8 +4792,13 @@ def create_app(
                 "Metric Workbench",
                 "<div class=panel>Load one or more schedules to build the metric workbench.</div>",
             )
+        # the chip's population must be the ribbon's population: the SOLVABLE subset
+        # /api/workbench serves (codex-review round, ADR-0327 addendum) — the raw loaded
+        # list can include an unschedulable version the ribbon never draws
         return _page(
-            st, "Metric Workbench", _workbench_body([s for _k, s in st.ordered_versions()])
+            st,
+            "Metric Workbench",
+            _workbench_body([s for _k, s, _c, _a in _workbench_versions()]),
         )
 
     @app.get("/api/workbench")
@@ -7613,7 +7620,17 @@ def _unschedulable_panel(sch: Schedule, exc: CPMError) -> str:
 
 
 def _target_panel(sch: Schedule, analysis: _Analysis, target: int) -> str:
-    """The session target activity's metrics in THIS schedule (or a gentle absence note)."""
+    """The session target activity's metrics in THIS schedule (or a gentle absence note).
+
+    Panel contract (codex-review round, ADR-0327 addendum): the populated panel wears the
+    head strip + ⛶ ENLARGE + this file's provenance chip on all three render sites
+    (/analysis, /card/{name}, /wbs/{name} — all of which load panelkit.js). The original
+    ADR-0327 text claimed this helper already rendered the head strip — that was a MISREAD
+    of the /path workspace head, caught by external review and corrected here. ⤓ EXCEL is
+    deliberately refused: this is a single-activity view, and no export sheet carries its
+    variance/flag cells as drawn (the analysis workbook's activities sheet is the whole
+    population with different columns) — the round's covers-what-it-draws bar. The
+    absent-UID branch is a NOTICE and stays bare."""
     row = next((r for r in analysis.activity_rows if r["unique_id"] == target), None)
     if row is None:
         return (
@@ -7658,8 +7675,13 @@ def _target_panel(sch: Schedule, analysis: _Analysis, target: int) -> str:
             ("Flags", flags or "—"),
         )
     )
+    head = _panel_head(
+        f"Target activity &mdash; UID {target}: {_e(row['name'])}",
+        tools=_shell_tools(),
+        prov=_prov_chip(sch),
+    )
     return f"""
-<div class=panel><h2>Target activity &mdash; UID {target}: {_e(row["name"])}</h2>
+<div class=panel>{head}
 <p class=muted>The session-wide target: the trace below runs to it automatically, the Trend page
 focuses on it, and Compare shows its movement. Set or clear it in the header.</p>
 <table>{cells}{variance}</table>
@@ -11279,9 +11301,11 @@ def _export_bar(path: str, *, xlsx_id: str = "", docx_id: str = "") -> str:
 # ── Executive Margin Dashboard (NASA Margin/Contingency Burn-Down + Margin Erosion Trend) ──────
 
 
-def _margin_dashboard_for(st: SessionState) -> MarginDashboard:
-    """Build the margin/contingency dashboard from the loaded versions (oldest -> newest), scoped to
-    the active group/filter, measured to the session target milestone (else the project finish)."""
+def _solvable_scoped_versions(st: SessionState) -> list[tuple[str, Schedule, CPMResult]]:
+    """Loaded versions oldest→newest whose network solves, each as (label, scoped schedule,
+    cpm) — the ONE population rule the margin dashboard computes from AND the provenance chip
+    describes (codex-review round, ADR-0327 addendum: a chip built from the raw loaded list
+    could name an unschedulable version that contributes no row or chart point)."""
     versions: list[tuple[str, Schedule, CPMResult]] = []
     for key, raw in st.ordered_versions():
         try:
@@ -11289,8 +11313,14 @@ def _margin_dashboard_for(st: SessionState) -> MarginDashboard:
         except CPMError:
             continue
         versions.append((raw.source_file or raw.name, a.scoped, a.cpm))
+    return versions
+
+
+def _margin_dashboard_for(st: SessionState) -> MarginDashboard:
+    """Build the margin/contingency dashboard from the loaded versions (oldest -> newest), scoped to
+    the active group/filter, measured to the session target milestone (else the project finish)."""
     return compute_margin_dashboard(
-        versions,
+        _solvable_scoped_versions(st),
         target_uid=st.target_uid,
         gold_rule_per_year=st.margin_rate,
         margin_uids=st.confirmed_margin_union(),
@@ -11611,7 +11641,10 @@ def _margin_dashboard_body(st: SessionState) -> str:
     data = _margin_dashboard_data(d)
     data["band"] = _band_payload(st, d)
     blob = json.dumps(data).replace("<", "\\u003c")
-    prov = _series_prov_chip(st.ordered())
+    # the chip describes the SAME population the dashboard computed from — the solvable
+    # subset — never the raw loaded list (codex-review round; analyses are cached, so this
+    # re-walk costs nothing beyond what _margin_dashboard_for already paid)
+    prov = _series_prov_chip([s for _lbl, s, _c in _solvable_scoped_versions(st)])
     margin_tools = _shell_tools(
         export_title=(
             "Export the margin dashboard workbook (per-version figures + erosion summary) — "
@@ -18428,8 +18461,11 @@ field to score each of its values separately (one BEI per group) on the preview 
 <script src="/static/groups.js"></script>"""
 
 
-def _groups_breakdown_table(sub: Schedule, field: str) -> str:
-    """One row per distinct value of ``field`` in ``sub`` — population, % complete, and BEI."""
+def _groups_breakdown_table(sub: Schedule, field: str, *, prov: str = "") -> str:
+    """One row per distinct value of ``field`` in ``sub`` — population, % complete, and BEI.
+    ``prov`` is the preview FILE's chip (codex-review round): the enlarged overlay hides the
+    page's file picker, so the pivot must attribute its own source like the scorecard preview
+    beside it. The no-values branch is a notice and stays bare."""
     groups = group_values(sub, field)
     if not groups:
         return (
@@ -18461,7 +18497,7 @@ def _groups_breakdown_table(sub: Schedule, field: str) -> str:
     # covers this pivot (and it truncates at 200 values, so a partial export would also lie).
     return (
         f"<div class=panel>"
-        f"{_panel_head(f'Breakdown by {_e(field)} &mdash; {len(groups)} value(s)', tools=_shell_tools())}"
+        f"{_panel_head(f'Breakdown by {_e(field)} &mdash; {len(groups)} value(s)', tools=_shell_tools(), prov=prov)}"
         "<p class=muted>One row per distinct value of the chosen field within the current "
         "scope: activity count, completion, and the value's own BEI (baseline throughput).</p>"
         "<table class=card-table><tr><th scope=col>Value</th><th scope=col>Activities</th>"
@@ -18623,9 +18659,11 @@ def _saved_views_panel(st: SessionState, schedules: list[Schedule]) -> str:
 {"".join(active_bits)}</div>"""
 
 
-def _saved_group_table(sch: Schedule, group: SavedGroup) -> str:
+def _saved_group_table(sch: Schedule, group: SavedGroup, *, prov: str = "") -> str:
     """The active saved group realized on the preview file: one row per bucket (in the group's
-    own order), with the bucket's activity count and completion split. Presentation only."""
+    own order), with the bucket's activity count and completion split. Presentation only.
+    ``prov`` is the preview FILE's chip (codex-review round) — same rationale as the
+    breakdown pivot: an enlarged overlay must keep its own source attribution."""
     buckets = group_by_clauses(sch, group)
     by_id = sch.tasks_by_id
     rows = []
@@ -18644,7 +18682,7 @@ def _saved_group_table(sch: Schedule, group: SavedGroup) -> str:
     )
     return (
         f"<div class=panel>"
-        f"{_panel_head(f'Grouped preview — {_e(group.display_name)}', tools=_shell_tools())}"
+        f"{_panel_head(f'Grouped preview — {_e(group.display_name)}', tools=_shell_tools(), prov=prov)}"
         "<p class=muted>Buckets in the group's own order (each clause's direction honored; "
         "MS Project semantics). Grouping never changes a metric.</p>"
         '<div style="overflow-x:auto"><table class=data-table><thead><tr><th>Group</th>'
@@ -18761,14 +18799,14 @@ def _groups_body(
         )
 
     breakdown_html = (
-        _groups_breakdown_table(sub, breakdown)
+        _groups_breakdown_table(sub, breakdown, prov=_prov_chip(sch))
         if breakdown and breakdown in available_fields(sch)
         else ""
     )
     # the session-wide SAVED group realized on the (scoped) preview file — presentation only
     group_html = ""
     if st is not None and st.active_saved_group is not None:
-        group_html = _saved_group_table(st.scope(sch), st.active_saved_group)
+        group_html = _saved_group_table(st.scope(sch), st.active_saved_group, prov=_prov_chip(sch))
     tip = _user_tip(
         "Build a filter here and <b>Apply to all pages</b> to scope <b>every</b> metric on "
         "<b>every</b> page across all loaded files at once. Rows are AND-ed together "

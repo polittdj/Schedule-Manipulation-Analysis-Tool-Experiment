@@ -70,6 +70,14 @@
 > · **test_float_tip_dismiss is a measured intermittent** (≈half of isolated runs fail
 > the 4 s focus→tip wait on this container; /analysis bytes identical to main modulo the
 > launch token) — an OR-02-adjacent hardening item, mechanism undetermined.
+> · **Codex-review round (ADR-0327 addendum, same PR):** five bot findings, all verified
+> real and fixed — /workbench + /margin chips now derive from the SOLVABLE population
+> (`_solvable_scoped_versions` — one owner for the rule), the /groups breakdown +
+> saved-group previews carry the preview file's chip, and **`_target_panel` is converted
+> for real** (the ADR's "already wore the head strip" claim was a misread of the /path
+> workspace head — struck and corrected in the ADR; ⤓ refused on the target panel,
+> single-activity view). r12 module now **17 passed**, the three new tests watched
+> failing first.
 >
 > ## SRA parity — CLOSED, and the traps that stay shut
 > ADR-0309: det percentile **40.70 % → 6.65 %** (SSI **5.75 %**), σ **125.5 → 65.5** cal d
