@@ -10121,3 +10121,32 @@ the briefs + state rotation) earlier today.
   proceeds to OR-04; the /analysis focus→tip intermittent stays a carried item; OR-03
   residuals (operator's-ear acceptance, held ogg fallback, /example unload cut) stay parked
   in ADR-0328.
+
+## 2026-08-01f — the OR-04 §8 park list becomes a one-command collection kit (docs/tests/tooling)
+
+- The operator said **continue** after #503 merged, so the next queue item was taken up in the
+  same session, stacked on the open docs PR #504 (serial-safe: same branch, no cross-branch
+  state-docs conflict; PR retitled). Recon first: all six §8 items are OPERATOR-run probes on
+  the deployed Windows box (the audit's human gate — "no implementation until the artifacts
+  arrive" — stands untouched), the named deposit folder `audit/operator-artifacts/` did not
+  exist, and #490's four-scenario ADR-0315 smoke lived ONLY in that PR's body.
+- **Banked:** `audit/operator-artifacts/README.md` (the deposit contract: six output slots by
+  filename mapped to §8 items and F-IDs · the A–D smoke brought in-repo verbatim-adapted ·
+  the no-schedule-content / review-before-commit note · the F-17 two-cycle instruction) and
+  `collect-ollama-artifacts.ps1` (PowerShell 5+, transcripted, try/catch per probe: where.exe
+  + Get-Command + OLLAMA_* env → 01; raw /api/ps JSON → 02; the keep_alive:0 override
+  sequence with the 10 s wait and before/after /api/ps → 03; the F-18 manifest search by sha
+  under C:\Tool\Ollama and %USERPROFILE%\.ollama → 04-manifest/; the Win32_Process
+  llama-server.exe survey with parent lookups and instance count → 05). Read-only and
+  loopback-only BY CONSTRUCTION and BY TEST; never `ollama list`/`ollama run` (the audit's
+  DON'T — either respawns the server).
+- **Verification read this session:** `tests/test_operator_kit.py` (new, 6 content tests:
+  two-sided deposit contract vs §8's text · slots+smoke+safety note · the DON'T on code lines
+  only (prose-safe) · loopback-only URL sweep · read-only (no taskkill/Stop-Process/
+  Start-Process/Remove-Item/Stop-Service) · every §8 probe present). **Proved able to fail,
+  watched: all 6 FAIL with the kit stashed → 6 passed restored.** Guards suite alongside:
+  **74 passed**. state-docs guard **4 passed** after the HANDOFF rotation (2026-08-01e →
+  archive, 2026-08-01f written). Statics: ruff "All checks passed!" · format clean · mypy
+  --strict "no issues in 117 source files". No version bump, no wheel/installer rebuild
+  (nothing packaged changed) — deliberate, per the #500 docs-only precedent; CI runs the full
+  matrix on #504.

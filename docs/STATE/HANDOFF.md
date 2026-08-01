@@ -1,68 +1,50 @@
-# Handoff — 2026-08-01e (PR-10: OR-03 launch motion + the synthesized Boot Audio Hum; ADR-0328; v1.0.144)
+# Handoff — 2026-08-01f (PR-10 MERGED; the OR-04 collection kit banked; ADR-0328; v1.0.144)
 
-> ## STATUS (current) — **PR-10 BUILT AND GATED on this tree (OR-03, PLAN-20260730 row 10 —
-> decisions executed as recorded, none re-asked): the Launch Sequence gains CSS-only orbiting
-> craft dots around the (untouched) spinner and a SYNTHESIZED WebAudio Boot Audio Hum — no
-> asset ships anywhere.** New `static/launch_audio.js` (shuffled-pitch-bag swell scheduler over
-> an 8-pitch A-rooted set + a detuned two-oscillator bed; generative ⇒ no loop point ⇒ no seam;
-> every gain move is a linearRamp; `FADE_CAP_MS = 200`). home.js primes the context in exactly
-> the four genuine gesture handlers (pick / folder / example-submit / drop — deliberately NOT
-> `input.onchange`), starts the hum with the overlay, stops it on every error path, and on the
-> fetch path FADES (≤200 ms) **before** `window.location` navigates; all through one guarded
-> `hum()` helper so audio can never block a load. `/example` stays a native form navigation —
-> its hum ends at unload, recorded not hidden (ADR-0328). Visible mute + volume on
-> `.load-card`, persisted `sf-hum-mute`/`sf-hum-vol` (theme.js house pattern), audible-at-
-> low-gain default (slider 40/100, squared curve, ceiling 0.32; WCAG 1.4.2 = a control, not
-> silence; volume-move unmutes). Motion: `.load-orbit` + three `.orbit-dot`s
-> (--accent/--ok/--warn; radii 56/42/61 px via `--orbit-r`; 2.8/4.6/6.7 s; transform-only
-> keyframes; zero JS) with its OWN `@media (prefers-reduced-motion: reduce){.orbit-dot{
-> animation:none}}` line BESIDE the pinned `.load-spinner{animation:none}` literal (unchanged).
-> The pinned `_AUTOPLAY_JS` list untouched; `launch_audio.js` triaged into the axis-census
-> EXEMPT bucket; PAGE_SCRIPTS digests + 18 axis call sites hold as-is. DESIGN-SYSTEM gains
-> **§8 Audio** + a DoD bullet (§7 numbering intact). Version 1.0.144, highest ADR ADR-0328,
-> wheel + nine installers regenerated ONCE after the code landed (bump BEFORE suite, the
-> recorded sequencing).**
+> ## STATUS (current) — **PR-10 (#503, OR-03 launch motion + the synthesized Boot Audio Hum,
+> ADR-0328, v1.0.144) MERGED by the operator as `839c659`** — CI fully green on the merged head
+> (all six checks; the one CI-only failure, a `from tests.web...` import that resolves locally
+> but not on the runner, was fixed by pinning `_AUTOPLAY_JS` by TEXT). **This round then banked
+> the OR-04 §8 park list as a turnkey collection kit** (PR #504, docs/tests/tooling only — no
+> runtime code, no version change): `audit/operator-artifacts/` is now a real folder holding
+> the deposit-contract README (the six §8 slots by filename + the four-scenario ADR-0315 smoke
+> A–D brought in-repo from #490's PR body + the review-before-commit / no-schedule-content
+> note) and `collect-ollama-artifacts.ps1` — ONE command on the deployed Windows box that runs
+> probes §8-1/2/3/5 (+4's manifest search) read-only and loopback-only, never invoking
+> `ollama list`/`ollama run` (the audit's DON'T), writing outputs beside itself for a web-UI
+> commit. The audit's human gate is unchanged: NO lifecycle implementation until the operator
+> deposits the artifacts — the kit only makes the gate one command wide. Highest ADR stays
+> **ADR-0328**; version stays **1.0.144** (nothing packaged changed; wheel + installers NOT
+> rebuilt, correctly).
 >
 > ## Verification (all read from runs this session)
-> `test_launch_sequence.py` (8 content: card markup incl. controls INSIDE the card ·
-> transform-only keyframes · token-only orbit colors · zero-JS motion · the two reduced-motion
-> lines side by side · assetless synthesis (static tree globbed for audio extensions) ·
-> shuffled-bag/lookahead/jitter markers · prime-count == 4 with BOTH onchange handlers
-> regex-excluded · `hum('fade')` indexed BEFORE `window.location` · ≥3 `hum('stop')` ·
-> `_AUTOPLAY_JS` pin equality · DESIGN-SYSTEM §8 pin) + `test_launch_audio_chromium.py`
-> (6 behavioral, REAL chromium: zero AudioContexts after page load AND during a held
-> programmatic-change load (silent by design, which then completes) · one context per gesture,
-> hum state RUNNING across a held POST, an orbit dot's computed transform measurably different
-> between two 300 ms samples, then the release lands /analysis · `fadeOut(99999)` resolves
-> <1.5 s proving the 200 ms cap, closed ⇒ a new gesture builds context #2 · mute set DURING a
-> load survives the navigation + reload, volume persists, volume-move unmutes · card geometry
-> in 4 themes × 2 viewports with scrollbars VISIBLE: orbit + both controls inside the card,
-> controls non-overlapping). **Proved able to fail, watched: 13 of 14 FAIL on the stashed
-> pre-change tree; the one both-tree pass is the `_AUTOPLAY_JS` pin equality (invariant
-> guard). Post-change: 14 passed.** Six nearest existing suites (header_and_loading · landing ·
-> home_shell · axis_titles · accessibility · static_cache): **70 passed, 1 skipped** (the
-> standing INCIDENTAL_SVG path.js skip). Statics foreground: ruff check "All checks passed!" ·
-> format clean (833 files) · mypy --strict "no issues in 117 source files" · bandit exit 0 ·
-> node --check clean on every static JS. Installer lockstep vs the fresh 1.0.144 wheel:
-> **52 passed**. Full-suite result: see SESSION-LOG (recorded after the run completed — a
-> launched run is not a result).
+> `tests/test_operator_kit.py` (new, 6 tests): kit exists where the audit points (two-sided
+> contract check against §8's own text) · README names all six deposit slots + the A–D smoke +
+> the commit-safety note · the collector's CODE lines never invoke `ollama list`/`ollama run`
+> (prose-comment-safe check) · loopback-only (every URL in the script starts
+> `http://127.0.0.1`) · read-only (no taskkill/Stop-Process/Start-Process/Remove-Item/
+> Stop-Service) · each §8 probe present (where.exe · /api/ps · keep_alive=0 + /api/generate ·
+> the F-18 sha · Win32_Process llama-server.exe · instance count · the 10 s wait). **Proved
+> able to fail, watched: all 6 FAIL with the kit stashed; 6 passed restored.** Guards suite
+> with it: **74 passed**. state-docs guard **4 passed**. Statics: ruff "All checks passed!" ·
+> format clean · mypy --strict "no issues in 117 source files". Prior rounds' full-suite +
+> CI-green record: see SESSION-LOG 2026-08-01e entries.
 >
 > ## ⇢ NEXT
-> 1. **Merge the draft PR for this round when CI is green** (branch
->    `claude/polaris-pr10-or03-motion-uzgvc0`), then:
-> 2. **OR-04 operator park artifacts** (`audit/VERIFICATION-REPORT-ollama-lifecycle.md` §8):
->    #1 `where ollama` · #3 keep_alive probe · #5 runner PPID · #4 model-identity manifest —
->    plus #490's four-scenario smoke on the deployed build.
-> 3. Behind the queue: SVG batch 3c (sra/sra_jcl/sra_ssi/volatility; tornados recorded
+> 1. **Merge the draft PR #504** (session close + the OR-04 kit; docs/tests/tooling only) when
+>    CI is green.
+> 2. **The OR-04 ball is with the operator:** on the deployed box, run
+>    `audit/operator-artifacts/collect-ollama-artifacts.ps1` right after one Ask-the-AI
+>    question, review the outputs, commit them to the same folder via the web UI (plus
+>    `smoke-results.md` for the A–D verdicts). Those artifacts settle F-12/F-13/F-15/F-16/
+>    F-17/F-18 and re-open the lifecycle work if anything contradicts ADR-0315's shipped fix.
+> 3. Behind the gate: SVG batch 3c (sra/sra_jcl/sra_ssi/volatility; tornados recorded
 >    not-axis-charts per A1) · the 7-module `DOM_PENDING` ledger · Phase 3 (CC-01 rendering
->    half, 74 sites) · Phase 4 (P1–P6) · rank 13/14.
-> 4. OR-03 residuals if ever wanted (ADR-0328): operator's-ear acceptance on the deployed
->    build (the vendored-ogg fallback stays HELD if the synthesis grates); /example → fetch
->    path if its at-unload cut ever matters; cross-page audio is out of scope by the
->    navigation boundary.
-> 5. ADR-0327 residuals unchanged: a `/export/{fmt}/standards` workbook would let §2/§3 join
->    the ⤓ set; analysis-workbook makeup/status/constraint sheets would let /card's pivots
->    join. `data-noprint` (C1) shipped as PR-4.
+>    half, 74 sites, Fable 5 Max) · Phase 4 (P1–P6) · rank 13/14.
+> 4. OR-03 residuals stay parked in ADR-0328: operator's-ear acceptance of the hum on the
+>    deployed build (vendored-ogg fallback HELD) · /example → fetch path only if its at-unload
+>    cut ever matters · cross-page audio out of scope by the navigation boundary.
+> 5. ADR-0327 residuals unchanged (a /export standards workbook; analysis-workbook makeup/
+>    status/constraint sheets for /card's pivots).
 >
 > ## Still carried (unchanged identifiers, nothing lost)
 > **CC-01** (H2a) rendering half open, 74 call sites (eDays slack renders 7.88 d where MSP
@@ -79,9 +61,8 @@
 > tier-scale on it by design (same schedule-date axis).
 > · **the /analysis focus→tip family is a measured intermittent** (test_float_tip_dismiss
 > AND its scroll sibling; ≈half of isolated runs fail the 4 s focus→tip wait on this
-> container; the no-target /analysis render is byte-identical across the round's trees) —
-> an OR-02-adjacent hardening item, mechanism undetermined. Adjudicated: do NOT chase as a
-> regression.
+> container; byte-identical no-target /analysis render across trees) — an OR-02-adjacent
+> hardening item, mechanism undetermined. Adjudicated: do NOT chase as a regression.
 >
 > ## SRA parity — CLOSED, and the traps that stay shut
 > ADR-0309: det percentile **40.70 % → 6.65 %** (SSI **5.75 %**), σ **125.5 → 65.5** cal d
@@ -97,36 +78,33 @@
 >
 > ## Hypotheses KILLED — do not re-chase
 > Everything in `audit/SRA-PARITY-20260729.md` §7 and the archived lists (ADR-0307 revert ·
-> unconditional floor · ADR-0311→0327 items), **plus this round:** "the hum needs an audio
-> asset or a seam-mixed loop" (synthesis has no loop point — the seam requirement is satisfied
-> by construction, and the ogg fallback stays HELD, not shipped); "`input.onchange` can prime
-> the AudioContext" (excluded by decision AND asserted — a programmatic change runs a silent
-> load); "the orbit needs JS or a new stepper entry" (transform-only CSS; `_AUTOPLAY_JS` is a
-> pin, not a place for audio).
+> unconditional floor · ADR-0311→0328 items — incl. this round's: an audio asset / seam-mixed
+> loop; onchange priming; a JS orbit), **plus this round:** "the §8 park list has an in-repo
+> implementation half" (it does NOT — every §8 item runs on the operator's deployed box; the
+> in-repo share was exactly the collection kit + smoke doc, now done) and "`from tests.web...`
+> imports are fine in tests" (local-only sys.path luck; pin cross-module invariants by TEXT).
 >
 > ## Harness notes — the traps, one line each
 > Run dev tools as `python -m <tool>` (a stale `/root/.local/bin/ruff` shadows pip's).
 > **`pip install -e ".[dev]"` before the suite** (bare `PYTHONPATH=src` fails ~200 web tests).
 > `pytest --timeout=N` is NOT installed — it exits 0 having run nothing. `cmd | tail; echo $?`
-> reports `tail`'s status — **read the tool's own summary line** (the formatter reflowed one
-> test file again this session). **`pkill -f` with a pattern in the killer's own command
-> line kills the killer** (kill by PID). CI can take ~11 min to register check runs.
-> `TestClient` follows 303 and CONSUMES one-shot banners (`follow_redirects=False`). Parity
-> marker ≈2m38s (ADR-0322 perf addendum). Headless Chromium hides scrollbars
-> (`ignore_default_args=["--hide-scrollbars"]` shows them). A remote-session resume can
-> silently revert working-tree files — re-diff after every resume. `caplog` needs
+> reports `tail`'s status — **read the tool's own summary line**. **`pkill -f` with a pattern
+> in the killer's own command line kills the killer** (kill by PID). CI can take ~11 min to
+> register check runs. `TestClient` follows 303 and CONSUMES one-shot banners
+> (`follow_redirects=False`). Parity marker ≈2m38s (ADR-0322 perf addendum). Headless Chromium
+> hides scrollbars (`ignore_default_args=["--hide-scrollbars"]` shows them). A remote-session
+> resume can silently revert working-tree files — re-diff after every resume. `caplog` needs
 > `logger="schedule_forensics.<module>"`. Playwright `bounding_box` is viewport-relative.
 > **localStorage is per-ORIGIN** (second served app instance: write theme/scale AFTER landing
 > on its origin). Containers RESTART mid-run: statics FOREGROUND first, long pytest
 > re-runnable, reinstall pip after every resume. After a squash-merge: `git fetch --prune
 > origin && git remote set-head origin -a && git checkout -B <branch> origin/main`.
-> **Version-bump sequencing:** bump pyproject BEFORE the full background suite starts (the
-> installer-lockstep tests in THAT run red-herring against a not-yet-rebuilt wheel) — bump,
-> rebuild wheel+installers, THEN launch. **NEW (this round):** in a MODULE-scoped chromium
-> suite, a test that lets its upload COMPLETE must use bytes no earlier test loaded — the
-> byte-identical dedup (ADR-0259) redirects home, not /analysis (first run failed exactly so).
-> **Never sleep inside a sync-Playwright route handler** (it runs on the event loop and
-> freezes the page's own waits) — park the route object and resolve it from the test body.
+> **Version-bump sequencing:** bump pyproject BEFORE the full background suite starts — bump,
+> rebuild wheel+installers, THEN launch. In a MODULE-scoped chromium suite, a completing
+> upload must use bytes no earlier test loaded (byte-identical dedup redirects home). **Never
+> sleep inside a sync-Playwright route handler** (event-loop freeze) — park the route object,
+> resolve it from the test body. **Never `from tests.web...` in a test** — importable locally,
+> ModuleNotFoundError on CI; pin by text.
 >
 > **Standing rule:** do not put a test result in prose unless the number appeared in output you
 > read that turn. **A launched run is not a result, and a piped exit code is not the command's.**
