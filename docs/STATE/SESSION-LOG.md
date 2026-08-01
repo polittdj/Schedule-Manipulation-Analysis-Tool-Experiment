@@ -10072,3 +10072,22 @@ the briefs + state rotation) earlier today.
   (Project5); plus the two Playwright patterns (never sleep in a sync route handler — park the
   route and resolve it from the test body; count AudioContext constructions via
   `add_init_script` to prove gesture-only priming).
+
+## 2026-08-01e (append) — the full-suite result, read and adjudicated
+
+- **Full suite `python -m pytest -q`: 2 failed, 3246 passed, 1 skipped in 16m07s.** Both
+  failures adjudicated NOT-THIS-ROUND, each re-verified on the committed tree this turn:
+  1. `test_state_docs::test_session_log_references_latest_adr` — a launch-order race with
+     this session's own flow: the suite launched at 07:00, BEFORE the 2026-08-01e SESSION-LOG
+     entry existed, so it read a log that did not yet cite ADR-0328. On the committed tree:
+     **4 passed**.
+  2. `test_float_tip_scroll::test_focus_shown_tip_hides_on_scroll_and_stays_off_the_rail` —
+     the pre-adjudicated /analysis focus→tip intermittent (its exact signature: the 4 s
+     `wait_for_function` timeout). Isolated re-runs this turn: **fail · pass · pass** —
+     the handoff's measured ≈half-rate flake, and this round's diff never touches the
+     float-tip family or /analysis (the only app.py edit is the "/" dashboard overlay
+     markup). Carried item, not chased, per the standing adjudication.
+- The two new PR-10 modules passed INSIDE the full run (part of the 3246) as well as in
+  their dedicated runs. Draft PR **#503** opened (branch
+  `claude/polaris-pr10-or03-motion-uzgvc0`, head `ff3cb1a`), session subscribed, hourly
+  check-in armed.
