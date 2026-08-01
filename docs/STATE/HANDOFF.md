@@ -1,56 +1,92 @@
-# Handoff — 2026-08-01j (Phase 1a: a wipe is total, by reflection; ADR-0332; v1.0.148)
+# Handoff — 2026-08-01k (Phase 2: observers read records, telemetry probes on demand; ADR-0333; v1.0.149)
 
-> ## STATUS (current) — **Phase 1a BUILT AND GATED on this tree (ADR-0332).** Phase 0 MERGED as
-> `5c829e4` (#508). A reflection sweep of `SessionState` vs the `/session/wipe` handler found the
-> handler reset fields by NAMING them and had fallen behind the dataclass: of **72 declared fields,
-> 27 of real operator state survived a wipe** — the whole SRA setup (factor rows, per-UID Risk
-> Ranking Factors, Best/Worst pairs, the correlation matrix, the cached Criticality Index), all
-> seven `jcl_*` cost settings, `margin_rate` (while `margin_band_*` WERE reset — an unnoticed
-> inconsistency), `translations` (AI translations of imported ACTIVITY NAMES), and
-> **`dcma_acumen_parity` — a metric-MODE flag**. **This is Law 2, not housekeeping:** the SRA maps
-> are keyed by UniqueID, so project B silently inherited project A's risk inputs wherever UIDs
-> collided. **Fix: `SessionState.reset()` returns every field to its default except a named
-> `WIPE_PRESERVED` (7 entries, each justified) — the default is now RESET, so the NEXT field added
-> is wiped without anyone remembering.** Client side: the ADR-0324 launch guard gained
-> `GLOBAL_KEYS` for cross-page schedule-derived keys — `sf-story-visited` stored
-> `/analysis/<the operator's FILENAME>` and outlived every launch and wipe. Preferences
-> (theme/scale/telemetry/**boot-hum mute**) deliberately NOT swept — a blanket prefix sweep would
-> un-mute ADR-0328's hum every launch. Version **1.0.148**, highest ADR **ADR-0332**.
+> ## STATUS (current) — **Phase 2 BUILT AND GATED on this tree (ADR-0333).** Phase 1a MERGED as
+> `8e1f319` (#509). **Phase 1b was NOT started: the operator's measurement has not arrived.**
+> Checked `docs/STATE/OPERATOR-REQUESTS.md`, `audit/operator-artifacts/` (drop zone holds only its
+> README + the Ollama collector), every untracked path, and the git log since 2026-07-30 — no
+> netstat capture anywhere. Per the standing instruction, Phase 2 was done instead and **the
+> launcher was not guessed at**.
+>
+> Phase 2 found and fixed **two measured defects**, and recorded that the idle-pump half was
+> already correct so it is not re-chased: the client pumps are exactly `sysmon.js` (2 s) and
+> `heartbeat.js` (3 s), the heartbeat is UNTOUCHED (pausing it loses the session), and
+> `sysmon.js`'s `poll()` already early-returns while `document.hidden`.
+>
+> **(1) Three document-wide `MutationObserver`s re-scanned the whole page per inserted node.**
+> `vizhints.js` re-ran a full-document heading sweep and re-tested every heading against a
+> **114-entry** catalog (a heading matching nothing is never marked, so it is re-scanned forever);
+> `gantt.js` ran three full-document attach passes; `chartframe.js` re-ran `applyZoom()` per
+> mutation, forcing synchronous layout on every `.cf-zoom-box`. Two of them **re-arm themselves
+> with their own writes** — `stickyScrollbar` appends its proxy bar to `<body>`, `attachColumnMovers`
+> appends a grip `<span>` to every header cell — a 2× echo measured on `/curves` (20 inserts drove
+> **80** `table.gantt-grid` sweeps, not 40). `tooltips.js` (ADR-0286) was ALREADY correct and is
+> the exemplar, not a defect — the prior handoff's "tooltips.js:71-79" pointer names the model to
+> copy. Fixed records-based + one flush per frame, plus `eachMatch(root, sel, fn)` in `gantt.js`
+> which tests `root.matches(sel)` BEFORE walking it — the correctness half, since `querySelectorAll`
+> returns only DESCENDANTS and the inserted node may BE the pane.
+>
+> **(2) `web/system.py::_slow_loop` was `while True` — launch-to-quit telemetry.** The first
+> `/api/system` request started it and it then spawned two subprocesses (on Windows two `powershell`
+> children) **every 5 s until the process exited**, whether or not anyone was looking; `sysmon.js`'s
+> `document.hidden` skip is client-side and cannot reach a server loop. This is the operator's
+> reported "two PowerShell probes every 5 s from launch to quit", now ROOT-CAUSED. Fixed:
+> `snapshot()` stamps a demand clock + sets an Event; the loop parks on that Event after
+> `_IDLE_AFTER` (30 s) with zero subprocesses, and wakes straight into a probe. **No value is
+> fabricated** — an unavailable field stays `None` → "—" (Law 2). Version **1.0.149**, highest ADR
+> **ADR-0333**.
 >
 > ## Verification (all read from runs this session)
-> New `tests/web/test_session_wipe_is_total.py`: **5 passed**, including a CONTROL asserting the
-> fixture dirtied ≥40 fields (so the sweep cannot pass vacuously). Session neighbours
-> (launch-invalidation · session-consistency · saved-filter · sra-view · jcl-web · ai-wiring)
-> together with it: **81 passed**. **Proved able to fail, watched:** reverting ONLY the handler
-> (keeping the new API, so the failure is behavioural not an ImportError) fails the route test with
-> `assert {7: 3} == {}` — the per-UID Risk Ranking Factor still resident after a wipe; reverting
-> `persist.js` fails the browser test with `'["/analysis/SecretProject.mpp","/"]'` still stored.
-> Statics foreground: ruff "All checks passed!" · format clean (838) · mypy --strict clean (117) ·
-> node --check clean. Full-suite result: see SESSION-LOG (recorded after the run completed).
+> **The metric is nodes SCANNED, not calls made** — scoping a query does not reduce the call count
+> (it can raise it slightly); it collapses what each call walks. Measured in the bundled chromium,
+> `/analysis/Project5`, 30 insertions one per frame: heading sweep **1,275 → 84** nodes;
+> `table.gantt-grid` **62 → 0**; gantt panes **31 → 0** (1,368 → 84, ~16×), each heading walked
+> costing up to 114 substring compares on top. **No wall-clock is asserted anywhere** — the storm
+> is rAF-bound and elapsed time is flat (887 ms both), so a timing gate would assert nothing and
+> flake on CI.
+> Eight new gates, **all proved able to fail by reverting the CALLER and keeping the API**, watched:
+> reverting `vizhints.js`'s callback → *"observer ignores what was actually inserted"* and
+> *1,211 walked, bound 162*; `gantt.js`'s → *62 gantt-grid nodes for 30 unrelated insertions*;
+> `chartframe.js`'s → the coalesce contract; dropping `eachMatch`'s root test → the root contract;
+> deleting the park block → ***"46 extra probes after the idle window"***; un-arming `snapshot()`
+> → *"must release a parked probe thread"*. `tests/perf/` **17 passed**. The 10 tests pinning the
+> three edited modules: **152 passed, 1 failed** — the byte-freeze pin on `gantt.js`, re-baselined
+> DELIBERATELY (see below). Statics foreground: ruff "All checks passed!" · format clean (451) ·
+> mypy --strict clean (117) · bandit EXIT=0 · `node --check` clean on all **60** JS files
+> (per-file — `node --check a.js b.js` silently checks only the first). **Full suite on the FINAL
+> tree: 3265 passed, 2 skipped, 0 failed in 18m53s** — test count up by exactly 9 (the 7 new perf
+> contracts + the 2 browser gates); the carried /analysis focus→tip intermittent passed this run
+> and stays adjudicated either way.
 >
-> ## ⇢ NEXT — the approved plan (`/root/.claude/plans/merry-juggling-owl.md`)
-> 1. **Phase 1b — the launcher, and it is BLOCKED ON ONE OPERATOR MEASUREMENT.** On the deployed
+> **`gantt.js` digest re-baselined** in `tests/web/test_r11_panel_contract.py`
+> (`9fa3a69…` → `d313413…`), following that file's own convention. The pin guards chart geometry;
+> verified inapplicable — the diff is confined to the three attachers + the boot IIFE, `gantt.js`
+> has **zero** `axisTitles` call sites (the census test asserts this independently and stayed
+> green), and `buildTierScale`/`paintGrid`/`gridLines`/`timeTiers` are untouched.
+>
+> ## ⇢ NEXT — the approved plan (HANDOFF ⇢ NEXT is the queue; the plan file is GONE from disk)
+> 1. **Phase 1b — the launcher. STILL BLOCKED ON THE ONE OPERATOR MEASUREMENT.** On the deployed
 >    box: launch, close ONLY the browser, then `netstat -ano | findstr :8321` — **one PID or two?**
->    — then relaunch and re-check. One PID ⇒ the second launch died mute and the browser reattached
->    to the survivor. TWO ⇒ Windows `SO_REUSEADDR` let a second server bind the same port (uvicorn
->    never sets `SO_EXCLUSIVEADDRUSE`), so routing is indeterminate and a bind-error reporter would
->    fix nothing. Either way the fix is an explicit single-instance PROBE before serving; the answer
->    decides what the test must pin. **Do NOT "move the browser timer after serve_fn" — `serve_fn`
->    blocks for process life.** Disk cache: clear on CLEAN SHUTDOWN + atexit, never at launch
->    (launch-clearing leaves data at rest over the between-sessions window and throws away a 9×
->    warm start), plus a size and age cap.
-> 2. **Phase 2 — performance.** Idle pumps are exactly TWO: `sysmon.js` (2 s) and `heartbeat.js`
->    (3 s). **Do NOT pause the heartbeat** — `idle_grace=600` would shut the tool down after 10
->    minutes minimized and LOSE THE SESSION. Lead the observer fix with the records-based rewrite
->    (`tooltips.js:71-79`, walk `addedNodes`); scoping is the secondary belt. The `setInterval(…,
->    1600)` steppers are Play-GATED, not idle (11 modules / 12 sites incl. `margin.js` and
->    `driving_path.js`) — real crash-prevention work, wrong bucket. New caches MUST key through
->    `_cache_key`/`_invalidate_scope` (filter+target scoped) or they serve a differently-scoped
->    number — Law 2.
-> 3. **Phase 3 — UI (hybrid).** Four unconverted Act III pages (`/sra`, `/risks`, `/briefing`,
->    `/brief`), `DOM_PENDING` (7), then the DoD ledgers. DD-line ledger must EXCLUDE non-time-axis
->    charts (`histogram.js`, `scatter.js`, `sra_jcl.js` cost axis).
-> 4. Behind: Phase 4 engine · Phase 5 monolith split 2–3 · Phase 6 docs/operator queue (OR-04).
+>    — then relaunch and re-check. One ⇒ the second launch died mute (uvicorn `sys.exit` into
+>    `os.devnull` under `pythonw`) and the non-daemon browser timer — started BEFORE the bind —
+>    opened onto the surviving old process and its old `SessionState` (which also defeats
+>    ADR-0324's launch token). TWO ⇒ Windows `SO_REUSEADDR` let a second server bind the same port
+>    (uvicorn never sets `SO_EXCLUSIVEADDRUSE`), routing indeterminate — a bind-error reporter
+>    would fix nothing. Either way the fix is an explicit single-instance PROBE before serving,
+>    then per "always start clean" `POST /api/shutdown` the old instance, wait for the port, start
+>    fresh; if it will not release, **FAIL VISIBLY** rather than open a browser onto an unknown
+>    session. **Do NOT "move the browser timer after `serve_fn`" — `serve_fn` blocks for process
+>    life.** A Linux-only port test pins the WRONG platform. Also: clear the on-disk cache on clean
+>    shutdown + atexit, **NEVER at launch**, plus a size and age cap. **If it still has not
+>    arrived, say so and take Phase 3 — do not guess.**
+> 2. **Phase 3 — UI (hybrid: keep Mission Ops, graft the Command Deck's best ideas).** The four
+>    unconverted Act III pages (`/sra`, `/risks`, `/briefing`, `/brief` — zero
+>    panelkit/`_panel_head`/`_shell_tools`/`sf-take`), then `DOM_PENDING`'s 7, then the DoD
+>    ledgers. The DD-line ledger must EXCLUDE non-time-axis charts (`histogram.js`, `scatter.js`,
+>    `sra_jcl.js` cost axis).
+> 3. **Phase 4 engine** (`import_notes` propagation · the 3 falsy-zero rows · CC-01's rendering
+>    half — "74 sites" is an approximate grep, RE-DERIVE it · SRA-LEGACY · V3) · **Phase 5**
+>    monolith split 2–3 (`app.py` is 20.9k lines, 2.8k LARGER than ADR-0297 left it) · **Phase 6**
+>    docs/operator queue. The OR-04 collection run stays with the operator.
 >
 > ## Still carried (unchanged identifiers, nothing lost)
 > **CC-01** rendering half, ~74 call sites (an approximate grep — RE-DERIVE) · **CC-05**
@@ -60,33 +96,41 @@
 > ADR-0322 residuals · importer warnings belong on the page via `Schedule.import_notes` ·
 > ADR-0320/0325/0326 notes · **the /analysis focus→tip family is a measured intermittent** —
 > adjudicated, do NOT chase · **ADR-0332 scope note:** a within-session `sf-story-visited` still
-> records the current chapter's route (filename included) — deliberate, the name is already in the
-> URL; only cross-session persistence was the exposure.
+> records the current chapter's route (filename included) — deliberate, only cross-session
+> persistence was the exposure · **ADR-0333 scope note:** `sysmon.js`'s 2 s `setInterval` still
+> ticks while hidden (its `poll()` early-returns, so it costs a no-op callback) — deliberately not
+> cleared; `translate.js` / `legend_toggle.js` were already records-based / lazily scoped.
 >
 > ## Hypotheses KILLED — do not re-chase
 > Everything in `audit/SRA-PARITY-20260729.md` §7 and the archived lists, **plus:** "the caption can
-> move out of the ink" (placement frozen; the data cannot yield when the data IS the plot — halo);
-> "a blanket white halo" (two of three chart families are not on white); "ink-present ⇒
-> halo-required is a sufficient test" (true on 79 % of renders — measure pixels); **"listing the
-> fields to reset is maintainable"** (it fell 27 behind — reset by reflection); "a blanket
-> `sf-`/`sf.` localStorage sweep" (un-mutes the boot hum, resets theme — split state from prefs).
+> move out of the ink" (placement frozen — halo); "a blanket white halo" (two of three chart
+> families are not on white); "ink-present ⇒ halo-required is a sufficient test" (true on 79 % of
+> renders — measure pixels); "listing the fields to reset is maintainable" (it fell 27 behind —
+> reset by reflection); "a blanket `sf-`/`sf.` localStorage sweep" (un-mutes the boot hum, resets
+> theme); **NEW — "`tooltips.js` is one of the observer defects"** (it was already correct; it is
+> the EXEMPLAR); **"querySelectorAll CALL COUNT measures observer cost"** (scoping holds calls flat
+> or raises them — measure NODES RETURNED); **"a shared observer helper module is the clean fix"**
+> (ADR-0316 load-order risk on the pages emitting `gantt.js`; keep each module self-contained);
+> **"`sysmon.js` is an unfixed idle pump"** (it already skips while `document.hidden` — the cost
+> was the SERVER loop).
 >
 > ## Harness notes — the traps, one line each
-> Run dev tools as `python -m <tool>`. **`pip install -e ".[dev]"` after EVERY container restart.**
-> `pytest --timeout=N` is NOT installed. **Read the tool's own summary line** (`| tail` masks the
-> real exit code). `pkill -f` with the pattern in the killer's own command line kills the killer.
-> CI can take ~11 min to register check runs. `TestClient` follows 303 and CONSUMES one-shot
-> banners. Parity marker ≈2m38s. Headless Chromium hides scrollbars. `caplog` needs
-> `logger="schedule_forensics.<module>"`. **Playwright `bounding_box` and `page.screenshot(clip=…)`
-> are VIEWPORT-relative — a node below the fold needs `handle.screenshot()`.** **localStorage is
-> per-ORIGIN.** Containers RESTART mid-run: statics FOREGROUND first, reinstall pip after resume.
-> After a squash-merge: `git fetch --prune origin && git remote set-head origin -a && git checkout
-> -B <branch> origin/main` — **NEVER amend the merged commits to satisfy the stop hook** (they are
-> published history; restarting the branch is the fix). **Version-bump sequencing:** bump BEFORE
-> the suite. Never sleep in a sync-Playwright route handler. Never `from tests.web...` in a test.
-> **A parse-time-rendering JS module + a later chartframe.js = first-paint crash** (ADR-0316).
-> **A stray `*/` makes CSS error-recovery swallow the NEXT rule silently — only a computed-style
-> read catches it.** **`cd` in a Bash call persists across calls — use absolute paths.**
+> Run dev tools as `python -m <tool>`. **`pip install -e ".[dev]"` after EVERY container restart**
+> (plus `playwright`, `ruff==0.16.1`, `build`). `pytest --timeout=N` is NOT installed. **Read the
+> tool's own summary line** (`| tail` masks the real exit code). **`node --check a.js b.js` checks
+> only the FIRST file — loop per file.** `pkill -f` with the pattern in the killer's own command
+> line kills the killer. CI can take ~11 min to register check runs. `TestClient` follows 303 and
+> CONSUMES one-shot banners. Parity marker ≈2m38s. Headless Chromium hides scrollbars. `caplog`
+> needs `logger="schedule_forensics.<module>"`. **Playwright `bounding_box` and
+> `page.screenshot(clip=…)` are VIEWPORT-relative.** **localStorage is per-ORIGIN.** Bundled
+> chromium is at `/opt/pw-browsers/chromium-1194/chrome-linux/chrome` — a bare `launch()` dies.
+> Containers RESTART mid-run: statics FOREGROUND first, reinstall pip after resume. After a
+> squash-merge: `git fetch --prune origin && git remote set-head origin -a && git checkout -B
+> <branch> origin/main` — **NEVER amend the merged commits to satisfy the stop hook.**
+> **Version-bump sequencing:** bump BEFORE the suite. Never sleep in a sync-Playwright route
+> handler. Never `from tests.web...` in a test. **A parse-time-rendering JS module + a later
+> chartframe.js = first-paint crash** (ADR-0316). **A stray `*/` makes CSS error-recovery swallow
+> the NEXT rule silently.** **`cd` in a Bash call persists across calls — use absolute paths.**
 > **When reverting to prove able-to-fail, revert the CALLER not the API** — reverting both turns a
 > behavioural failure into an ImportError, which proves nothing.
 >

@@ -607,29 +607,61 @@
     return null;
   }
 
+  var HEAD_SEL = ".panel h2, .panel h3, .chart h3, .tile-head h3, main h2, main h3";
+
+  function hintHeading(h) {
+    if (h.hasAttribute("data-sf-hint")) return; // Mission tiles carry richer server hints
+    var hint = hintFor(h.textContent || "");
+    if (!hint) return;
+    h.setAttribute("data-sf-hint", hint);
+    h.classList.add("viz-hint");
+    h.setAttribute("tabindex", "0"); // keyboard users get the callout on focus too
+  }
+
   function decorate(root) {
-    var heads = (root || document).querySelectorAll(
-      ".panel h2, .panel h3, .chart h3, .tile-head h3, main h2, main h3"
-    );
-    Array.prototype.forEach.call(heads, function (h) {
-      if (h.hasAttribute("data-sf-hint")) return; // Mission tiles carry richer server hints
-      var hint = hintFor(h.textContent || "");
-      if (!hint) return;
-      h.setAttribute("data-sf-hint", hint);
-      h.classList.add("viz-hint");
-      h.setAttribute("tabindex", "0"); // keyboard users get the callout on focus too
-    });
+    var scope = root || document;
+    // The observer hands us the node that was actually inserted, and that node may BE a heading —
+    // querySelectorAll only ever returns DESCENDANTS, so test the root itself before walking it.
+    if (scope.nodeType === 1 && scope.matches && scope.matches(HEAD_SEL)) hintHeading(scope);
+    var heads = scope.querySelectorAll ? scope.querySelectorAll(HEAD_SEL) : [];
+    Array.prototype.forEach.call(heads, hintHeading);
   }
 
   function start() {
     decorate(document);
-    // charts add their headings after fetch — decorate anything that appears later
-    if (window.MutationObserver) {
-      var mo = new MutationObserver(function () { decorate(document); });
-      mo.observe(document.body, { childList: true, subtree: true });
-    } else {
+    // charts add their headings after fetch — decorate anything that appears later.
+    //
+    // Records-based and frame-coalesced (tooltips.js's shape). Re-scanning the WHOLE document on
+    // every mutation meant one full-document heading sweep per inserted node, and each heading
+    // that matches no catalog entry re-ran the 114-entry substring scan every time — measured at
+    // one such sweep per insertion on /analysis and /curves. Walking only what was inserted also
+    // makes the observer's own echo cheap: decorating sets attributes, but the sibling Gantt/
+    // tooltip attachers append nodes, and those records now carry no headings to sweep.
+    if (!window.MutationObserver) {
       setTimeout(function () { decorate(document); }, 1500);
+      return;
     }
+    var pending = [];
+    var queued = false;
+    function flush() {
+      queued = false;
+      var batch = pending;
+      pending = [];
+      for (var i = 0; i < batch.length; i++) decorate(batch[i]);
+    }
+    var mo = new MutationObserver(function (records) {
+      for (var r = 0; r < records.length; r++) {
+        var added = records[r].addedNodes;
+        for (var n = 0; n < added.length; n++) {
+          if (added[n].nodeType === 1) pending.push(added[n]);
+        }
+      }
+      if (!pending.length || queued) return;
+      queued = true;
+      if (window.requestAnimationFrame) window.requestAnimationFrame(flush);
+      else window.setTimeout(flush, 16);
+    });
+    mo.observe(document.body, { childList: true, subtree: true });
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
   else start();

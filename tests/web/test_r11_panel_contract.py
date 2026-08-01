@@ -450,9 +450,15 @@ PAGE_SCRIPTS = {
     "volatility.js": "67a625584f35c78f067ae27446883d2a",
     # DELIBERATE re-baseline (ADR-0326, decision B1): buildTierScale gained the ONE timescale
     # caption slot (a `data-ts-caption`-fed row above the tiers; pages without the marker render
-    # byte-identically). 2a4ccb612899cf141bbf30af3b64286e → the digest below; no other byte of
-    # the module moved, and no axisTitles call exists in it (asserted by the census).
-    "gantt.js": "9fa3a69245deec12de6f1d71698a24b0",
+    # byte-identically). 2a4ccb612899cf141bbf30af3b64286e → 9fa3a69245deec12de6f1d71698a24b0.
+    # DELIBERATE re-baseline (ADR-0333, Phase 2 perf): the boot MutationObserver became
+    # records-based + frame-coalesced and the three attachers now route through `eachMatch`
+    # (which also tests the ROOT, not only its descendants — the correctness half). The diff is
+    # confined to attachStickyScrollbars / attachColumnMovers / attachColumnDrag and the boot
+    # IIFE; NO drawing code moved — gantt.js contains zero axisTitles call sites (asserted by
+    # the census below) and buildTierScale / paintGrid / gridLines / timeTiers are untouched, so
+    # no caption, axis or tick can have moved with it. 9fa3a69245deec12de6f1d71698a24b0 → below.
+    "gantt.js": "d31341313ceaddb852f9e10c73718c52",
 }
 
 #: all 28 ``SFChartFrame.axisTitles(`` call sites, frozen with their ARGUMENT OBJECT — the caption
