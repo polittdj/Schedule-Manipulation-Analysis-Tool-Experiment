@@ -134,35 +134,42 @@ DOM_PENDING = {
     "whatif.js",
 }
 
-#: SVG axis charts not yet captioned. This list SHRINKS one batch at a time and reaching empty
-#: is the completion signal for AXIS-TITLES. A module may not be parked here once it calls the
-#: helper, and may not be listed here unless it really renders SVG — both are asserted.
-PENDING = {
-    # ``drift.js`` graduated in ADR-0303 batch 3a after being attempted and reverted once. The
-    # placement answer its revert note demanded turned out to be ADR-0303's law — the caption
-    # stays fixed, the DATA yields: the method rows sit 12px lower (``padT + 26``, H grown to
-    # match) clearing the Y caption's 136x6px hit on the first row name, and the last row's
-    # forecast date label clamps to ``H - padB - 15`` clearing the X caption's 75x3px hit at
-    # 90% scale. Both collisions are MEASURED closed by ``test_axis_titles_visual.py``, which
-    # walks ``/forecast`` in every theme at every scale.
-    #
-    # ``margin_dashboard.js`` graduated in ADR-0325 (batch 3b-i, decision A1): both charts
-    # captioned, the two local "status date" quasi-captions retired into the helper, the
-    # legends yielding the top-left corner to the Y caption, and ``/margin`` joining the
-    # measured visual pass with its own margin-carrying serve.
-    #
-    # ``sra.js`` + ``volatility.js`` graduated in ADR-0329 (batch 3c-i): the six axis charts
-    # between them captioned (CDF + histogram; churn + flow + area + dwell), two hand-rolled
-    # quasi-captions retired into the helper, rotated ticks + the dwell count labels yielding
-    # per ADR-0303, and ``/sra`` + ``/volatility`` joining the measured visual pass. The
-    # tornado pair, gauge, heatmap, leaderboards, strips and ribbon are recorded
-    # NOT-axis-charts (decision A1) in the ADR — no call, deliberately.
-    #
-    # The two below are batch 3c-ii: their charts render only after a Run button click, so the
-    # measured visual pass needs a click-driving serve first — deliberately split, not skipped.
-    "sra_jcl.js",
-    "sra_ssi.js",
-}
+#: SVG axis charts not yet captioned. This list SHRANK one batch at a time, and it is now
+#: EMPTY — the completion signal for AXIS-TITLES (reached in ADR-0330, batch 3c-ii). It stays
+#: as the triage bucket for any NEW SVG chart module: a module may not be parked here once it
+#: calls the helper, and may not be listed here unless it really renders SVG — both asserted.
+#:
+#: How it emptied (the graduation record, kept because each entry carries a re-usable lesson):
+#:
+#: ``drift.js`` graduated in ADR-0303 batch 3a after being attempted and reverted once. The
+#: placement answer its revert note demanded turned out to be ADR-0303's law — the caption
+#: stays fixed, the DATA yields: the method rows sit 12px lower (``padT + 26``, H grown to
+#: match) clearing the Y caption's 136x6px hit on the first row name, and the last row's
+#: forecast date label clamps to ``H - padB - 15`` clearing the X caption's 75x3px hit at
+#: 90% scale. Both collisions are MEASURED closed by ``test_axis_titles_visual.py``, which
+#: walks ``/forecast`` in every theme at every scale.
+#:
+#: ``margin_dashboard.js`` graduated in ADR-0325 (batch 3b-i, decision A1): both charts
+#: captioned, the two local "status date" quasi-captions retired into the helper, the
+#: legends yielding the top-left corner to the Y caption, and ``/margin`` joining the
+#: measured visual pass with its own margin-carrying serve.
+#:
+#: ``sra.js`` + ``volatility.js`` graduated in ADR-0329 (batch 3c-i): the six axis charts
+#: between them captioned (CDF + histogram; churn + flow + area + dwell), two hand-rolled
+#: quasi-captions retired into the helper, rotated ticks + the dwell count labels yielding
+#: per ADR-0303, and ``/sra`` + ``/volatility`` joining the measured visual pass. The
+#: tornado pair, gauge, heatmap, leaderboards, strips and ribbon are recorded
+#: NOT-axis-charts (decision A1) in the ADR — no call, deliberately.
+#:
+#: ``sra_jcl.js`` + ``sra_ssi.js`` graduated in ADR-0330 (batch 3c-ii, the finale): the four
+#: on-demand charts captioned (JCL football + cost S-curve; SSI S-curve + histogram), the
+#: football's two corner quadrant %-labels clamped out of the caption bands (the ADR-0303
+#: yield, the dwell-precedent static mechanism), and the measured pass taught to CLICK — a
+#: dedicated cost-loaded serve (``served_sra``) because the golden pair gates the JCL panel
+#: closed (no budgeted cost) and degenerates the SSI S-curve to one point (no spread). The
+#: FICSM strip is a labeled bar strip and the 5x5 matrices are natively-labeled HTML tables —
+#: recorded not-axis-charts (decision A1 / ADR-0326's other medium), no call, deliberately.
+PENDING: set[str] = set()
 
 CALLS_HELPER = re.compile(r"SFChartFrame\.axisTitles\s*\(")
 #: Caption-drawing done any way other than the shared helper — the fragmentation this guards.

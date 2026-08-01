@@ -435,6 +435,34 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-01h — A recorded prerequisite can hide a false premise of its own (batch 3c-ii)
+- The 3c-i handoff recorded 3c-ii's prerequisite as "teach the visual harness to CLICK the Run
+  buttons (#jclRun, #ssiRun) on /sra" — accurate, and still understated in a way that would
+  have sunk the naive build: **the golden pair cannot exercise those panels at all.** The JCL
+  panel is cost-gated (`cost_loaded_total > 0`, the honest-SCL rule) and Project2/Project5
+  carry no budgeted cost, so the golden `/sra` renders NO `#jclRun` and no `sra_jcl.js` tag —
+  a harness that "clicked the buttons" there would have waited on a button that does not
+  exist. And with no Best/Worst spread set, `/api/sra/ssi` returns a ONE-point S-curve —
+  captions measured on a degenerate chart. Ten minutes of empirical probing (boot the app with
+  the goldens, GET the page, hit both APIs) surfaced both facts BEFORE any harness code was
+  written. Lesson (the 2026-07-31 "a handoff is a claim, not a fact" lesson, recurring in a
+  new costume): a prerequisite recorded by a PRIOR session is still a claim — re-derive what
+  the fixture can actually RENDER before building measurement on top of it. The fix was the
+  ADR-0325 dedicated-serve precedent generalized: a clicked cell gets its own serve
+  (`served_sra`, synthetic cost-loaded + `sra_bcwc` spread) and the golden cell stays
+  byte-identical to what the prior batch measured.
+- Anti-masking pairs with clicking: on a page whose self-running charts already caption, "some
+  captions rendered" is a DEAD assertion for an on-demand panel. The strict per-host wait
+  (`#jclCharts text.ch-at`, never suppressed) plus a per-route caption floor (12 = 6 charts
+  × 2) is what makes the clicked cell falsifiable — and the able-to-fail proof used exactly
+  that lever (stash the modules, watch the TimeoutError name the host).
+- Yield-mechanism choice is data-shape-driven, now twice recorded: rotated TICKS yield by
+  live-box REMOVE (many, redundant, theme-width-dependent — ADR-0319); a CORNER DATA LABEL
+  that collides by construction yields by static band-clamp (removal would delete it every
+  render; vertical separation is theme-width-independent — the dwell precedent, now the
+  football's quadrant %-labels). Picking remove for the football would have silently deleted
+  two quadrant shares from every render.
+
 ### 2026-08-01f — The measured pass catches what content tests cannot (batch 3c-i)
 - Adding a bare `SFChartFrame.axisTitles` call to volatility.js passed EVERY content ledger
   (census, 24-site freeze, byte-digest) and node --check — and broke the entire /volatility

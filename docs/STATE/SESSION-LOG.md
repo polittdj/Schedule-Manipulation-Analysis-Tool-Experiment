@@ -10216,3 +10216,43 @@ the briefs + state rotation) earlier today.
 - Carried unchanged: the OR-04 operator collection run · DOM_PENDING (7) · Phase 3/4 ·
   rank 13/14 · the /analysis focus→tip intermittent (adjudicated) · OR-03 residuals
   (ADR-0328).
+
+## 2026-08-01h — batch 3c-ii: the on-demand SRA panels captioned; AXIS-TITLES COMPLETE (ADR-0330, v1.0.146)
+
+- Branch restarted from `origin/main` (`abe88b9` — the #506 session-close docs commit;
+  `085da7b`/#505 verified as its ancestor first). Fresh-container install per the kickoff.
+- **The 3c-ii survey found the recorded prerequisite understated:** the golden pair renders NO
+  `#jclRun` (the JCL panel is cost-gated — `cost_loaded_total > 0` — and Project2/Project5
+  carry no budgeted cost; even the `sra_jcl.js` script tag is absent) and its factor-less SSI
+  run returns a ONE-point S-curve. Clicking alone could never measure these panels on the
+  golden serve. Empirical probes (TestClient + both APIs) established this BEFORE harness code.
+- **Built (ADR-0330):** `sra_jcl.js` football (x Finish date · y EAC) + cost S-curve (x EAC ·
+  y Cumulative probability) and `sra_ssi.js` S-curve (x Finish date · y Cumulative
+  probability) + histogram (x Finish date · y Simulated finishes) join
+  `SFChartFrame.axisTitles` — 24 → 28 call sites, prior 24 byte-untouched. The football's two
+  corner quadrant %-labels clamp statically out of both caption bands (`mt+10 → mt+24`,
+  `H−mb−6 → H−mb−20`; the ADR-0303 yield, dwell-precedent mechanism — live-box remove
+  rejected, it would delete a by-construction-colliding data label). FICSM strip + 5×5
+  matrices recorded not-axis-charts (A1 / ADR-0326). **`PENDING` is EMPTY — the AXIS-TITLES
+  completion signal.**
+- **The measured pass learned to CLICK on a serve that can chart:** new `served_sra` fixture
+  (synthetic 4-task cost-loaded schedule + `st.sra_bcwc` Best/Worst spread — the
+  `served_margin` precedent), new `/sra+run` cell clicking `#ssiRun` + `#jclRun` with a strict
+  never-suppressed per-host caption wait and a `MIN_CAPTIONS=12` floor (anti-masking: the
+  page's self-run CDF/histogram captions cannot hide a dead clicked panel). The plain golden
+  `/sra` cell is untouched. Caption contrast measured against `.ssi-svg`'s hardcoded white
+  canvas: console 3.07:1 (slimmest) / daylight 5.5 / apollo 3.9 / jarvis 3.4 — all clear the
+  3.0 floor; recorded in the ADR as a future-theme tripwire.
+- **Read results:** census + freeze suites **52 passed, 2 skipped** (one skip IS the emptied
+  PENDING's empty parametrize). Measured visual pass (now 10 pages × 4 themes × 3 scales):
+  **1 passed in 103.7 s**, zero collisions; pre-probe of the clicked cell alone: 144 caption
+  renders, zero problems. Neighbor suites: **122 passed**. Statics foreground: ruff "All
+  checks passed!" · format clean (835 files) · mypy "no issues in 117 source files" · bandit
+  exit 0 · node --check clean. **Proved able to fail, watched:** strict-wait
+  `TimeoutError: waiting for locator("#ssiCharts text.ch-at")` on the stashed pre-caption
+  tree; census `assert not {'sra_jcl.js', 'sra_ssi.js'}`; freeze `assert 24 == 28`.
+- Version bumped to **1.0.146** BEFORE the full background suite (the recorded sequencing);
+  wheel + nine installers regenerated ONCE. An ADR-0240 multi-lens audit (4 finders, one
+  adversarial verifier per finding) launched on the diff; lead-validated outcome recorded
+  below when read. **The full-suite run is IN FLIGHT at this line — its result lands in the
+  next append, never stated unread** (the standing rule).

@@ -455,7 +455,7 @@ PAGE_SCRIPTS = {
     "gantt.js": "9fa3a69245deec12de6f1d71698a24b0",
 }
 
-#: all 24 ``SFChartFrame.axisTitles(`` call sites, frozen with their ARGUMENT OBJECT — the caption
+#: all 28 ``SFChartFrame.axisTitles(`` call sites, frozen with their ARGUMENT OBJECT — the caption
 #: strings live on the lines that FOLLOW the call, so hashing the opening line alone collides nine
 #: ways (b1c0ee5f…) and would pass while a caption changed. Recipe (reproducible, and the reason
 #: this list is re-derivable rather than a retyped number): for each ``static/*.js`` line
@@ -482,6 +482,15 @@ AXIS_CALL_SITES = [
     # per decision A1, so sra.js deliberately has exactly two sites).
     ("sra.js", 158, "64bb2f94bddb55096f33fc5ad2f3b359"),
     ("sra.js", 230, "212ab8024ef3dd634f0ccf3f9fa69654"),
+    # sra_jcl.js (football + cost S-curve) and sra_ssi.js (S-curve + histogram) joined in
+    # ADR-0330 (batch 3c-ii, the AXIS-TITLES finale) — a DELIBERATE 24 → 28 re-baseline: the
+    # 24 prior entries' bytes are untouched, these are additions, not moves. The FICSM strip
+    # is a labeled bar strip and the 5x5 matrices are natively-labeled HTML tables — recorded
+    # not-axis-charts (decision A1 / ADR-0326), so each module deliberately has exactly two.
+    ("sra_jcl.js", 136, "0e6da88592cfc355a9a1e0d6a7b0c181"),
+    ("sra_jcl.js", 189, "798a2b7383480f0a6ec01af37e853c15"),
+    ("sra_ssi.js", 240, "8f3c2211e1edca2deddab9a50da9b8fa"),
+    ("sra_ssi.js", 273, "06b60f6f8f812bde4b6d0e5d278828e7"),
     ("trend.js", 479, "8bf757af762c9343299f4770bf086f1a"),
     ("trend.js", 583, "82a858e0da47d00e87cb6feffc9dac7d"),
     ("trend.js", 708, "7cff421ad9b3b74b5f8907093822f67f"),
@@ -500,7 +509,7 @@ AXIS_CALL_SITES = [
 
 
 def _axis_call_sites() -> list[tuple[str, int, str]]:
-    """Re-derive the 18 frozen call sites from disk (see AXIS_CALL_SITES for the recipe)."""
+    """Re-derive the frozen call sites from disk (see AXIS_CALL_SITES for the recipe)."""
     out: list[tuple[str, int, str]] = []
     for js in sorted(STATIC.glob("*.js")):
         lines = js.read_text(encoding="utf-8").splitlines()
@@ -527,15 +536,16 @@ def test_the_seven_page_owned_scripts_are_byte_frozen() -> None:
         assert hashlib.md5(path.read_bytes()).hexdigest() == digest, name
 
 
-def test_all_twenty_four_axis_title_call_sites_are_frozen() -> None:
-    """Standing requirement 5: the axis captions are finished — nothing may move one. 24 is the
+def test_all_twenty_eight_axis_title_call_sites_are_frozen() -> None:
+    """Standing requirement 5: the axis captions are finished — nothing may move one. 28 is the
     real count (``grep -c 'SFChartFrame.axisTitles(' static/*.js``; 16 → 18 in ADR-0325 when
     margin_dashboard.js's two charts were captioned; 18 → 24 in ADR-0329 when sra.js's two and
-    volatility.js's four joined in batch 3c-i); chartframe.js's definition and export are
-    not call sites."""
+    volatility.js's four joined in batch 3c-i; 24 → 28 in ADR-0330 when sra_jcl.js's two and
+    sra_ssi.js's two joined in batch 3c-ii, emptying the PENDING ledger); chartframe.js's
+    definition and export are not call sites."""
     sites = _axis_call_sites()
-    assert len(sites) == 24, len(sites)
-    assert len({d for _n, _l, d in sites}) == 24, "a hash collided — the freeze is not selective"
+    assert len(sites) == 28, len(sites)
+    assert len({d for _n, _l, d in sites}) == 28, "a hash collided — the freeze is not selective"
     # THE LOAD-BEARING HALF: same files, same caption bytes. A failure here means a caption moved
     # — STOP AND REPORT, do not refresh the constant.
     assert [(n, d) for n, _l, d in sites] == [(n, d) for n, _l, d in AXIS_CALL_SITES], (
