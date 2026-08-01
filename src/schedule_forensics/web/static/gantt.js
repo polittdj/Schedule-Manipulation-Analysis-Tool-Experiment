@@ -274,13 +274,23 @@ window.SFGantt = (function () {
     pane._sfStickyRefresh = function () { measure(); place(); };
   }
 
+  /* Every attacher below may be handed either the whole document (boot) or the single node a
+     MutationObserver just saw inserted — and that node may BE the pane/table we want, because
+     querySelectorAll only ever returns DESCENDANTS. So each one tests the root itself first. */
+  var PANE_SEL = "#grid, .gantt-scroll, .path-view, .sra-grid-scroll";
+  var GRID_SEL = "table.gantt-grid";
+
+  function eachMatch(root, sel, fn) {
+    var scope = root || document;
+    if (scope.nodeType === 1 && scope.matches && scope.matches(sel)) fn(scope);
+    var found = scope.querySelectorAll ? scope.querySelectorAll(sel) : [];
+    Array.prototype.forEach.call(found, fn);
+  }
+
   // Attach the sticky scrollbar to every standard Gantt scroll pane on the page (called on load
   // by app.js / the page scripts; safe to call repeatedly — each pane is decorated once).
   function attachStickyScrollbars(root) {
-    var panes = (root || document).querySelectorAll(
-      "#grid, .gantt-scroll, .path-view, .sra-grid-scroll"
-    );
-    Array.prototype.forEach.call(panes, stickyScrollbar);
+    eachMatch(root, PANE_SEL, stickyScrollbar);
   }
 
   /* -------- unlimited right scroll (operator 2026-07-10, ADR-0187) --------------------
@@ -365,8 +375,7 @@ window.SFGantt = (function () {
     }, 0);
   }
   function attachColumnMovers(root) {
-    var tables = (root || document).querySelectorAll("table.gantt-grid");
-    Array.prototype.forEach.call(tables, function (table) {
+    eachMatch(root, GRID_SEL, function (table) {
       var head = table.tHead && table.tHead.rows[0];
       if (!head) return;
       Array.prototype.forEach.call(head.cells, function (th) {
@@ -402,8 +411,7 @@ window.SFGantt = (function () {
     });
   }
   function attachColumnDrag(root) {
-    var tables = (root || document).querySelectorAll("table.gantt-grid");
-    Array.prototype.forEach.call(tables, function (table) {
+    eachMatch(root, GRID_SEL, function (table) {
       var head = table.tHead && table.tHead.rows[0];
       if (!head) return;
       Array.prototype.forEach.call(head.cells, function (th) {
@@ -500,19 +508,47 @@ window.SFGantt = (function () {
 // pane (idempotent), so every Gantt across the tool inherits it with no per-page wiring.
 (function () {
   "use strict";
+  function attachAll(root) {
+    SFGantt.attachStickyScrollbars(root);
+    SFGantt.attachColumnMovers(root);
+    SFGantt.attachColumnDrag(root);
+  }
+
   function boot() {
     if (!window.SFGantt) return;
     SFGantt.attachStickyScrollbars(document);
     SFGantt.attachColumnMovers(document);
     SFGantt.attachColumnDrag(document);
-    if (window.MutationObserver) {
-      var obs = new MutationObserver(function () {
-        SFGantt.attachStickyScrollbars(document);
-        SFGantt.attachColumnMovers(document);
-        SFGantt.attachColumnDrag(document);
-      });
-      obs.observe(document.body, { childList: true, subtree: true });
+    if (!window.MutationObserver) return;
+    // Records-based and frame-coalesced. Re-attaching over the WHOLE document on every mutation
+    // cost three full-document selector passes per inserted node — and it re-armed itself with
+    // its own writes, because stickyScrollbar appends its proxy bar to <body> and
+    // attachColumnMovers appends a grip <span> to each header cell. That echo doubled every
+    // insertion (measured: 20 inserts on /curves drove 80 `table.gantt-grid` sweeps, not 40).
+    // Walking only the inserted nodes ends the echo — a grip span carries no table — and the
+    // per-frame flush collapses a burst of inserts into one pass. The attachers stay idempotent
+    // per pane/cell, so a re-inserted node is never decorated twice.
+    var pending = [];
+    var queued = false;
+    function flush() {
+      queued = false;
+      var batch = pending;
+      pending = [];
+      for (var i = 0; i < batch.length; i++) attachAll(batch[i]);
     }
+    var obs = new MutationObserver(function (records) {
+      for (var r = 0; r < records.length; r++) {
+        var added = records[r].addedNodes;
+        for (var n = 0; n < added.length; n++) {
+          if (added[n].nodeType === 1) pending.push(added[n]);
+        }
+      }
+      if (!pending.length || queued) return;
+      queued = true;
+      if (window.requestAnimationFrame) window.requestAnimationFrame(flush);
+      else window.setTimeout(flush, 16);
+    });
+    obs.observe(document.body, { childList: true, subtree: true });
   }
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", boot);

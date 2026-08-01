@@ -309,8 +309,21 @@
       reflowSoon();
     });
 
-    // re-apply the current zoom to SVGs drawn later (async fetch, or stepper re-renders)
-    var obs = new MutationObserver(function () { applyZoom(); });
+    // Re-apply the current zoom to SVGs drawn later (async fetch, or stepper re-renders),
+    // coalesced to ONE pass per frame. applyZoom re-walks every <svg> in the host and forces
+    // synchronous layout on every ".cf-zoom-box" (offsetWidth/offsetHeight), so a chart that
+    // rebuilds node-by-node across frames used to pay that per mutation, on every framed host
+    // on the page. Only the frame's final state is observable, so the coalesced pass is
+    // equivalent — and it cannot self-trigger, because applyZoom writes styles, not children.
+    var zoomQueued = false;
+    function reapplyZoomSoon() {
+      if (zoomQueued) return;
+      zoomQueued = true;
+      var run = function () { zoomQueued = false; applyZoom(); };
+      if (window.requestAnimationFrame) window.requestAnimationFrame(run);
+      else window.setTimeout(run, 16);
+    }
+    var obs = new MutationObserver(reapplyZoomSoon);
     obs.observe(host, { childList: true, subtree: true });
 
     // hover call-outs are wired ONCE at document level (ADR-0190) — nothing per-frame

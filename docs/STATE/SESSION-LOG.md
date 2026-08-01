@@ -10414,3 +10414,86 @@ the briefs + state rotation) earlier today.
   `docs/STATE/NEXT-SESSION-PROMPT.md` refreshed in the same PR so the kickoff cannot steer a fresh
   session at finished work — it carries the Phase 1b blocker (the operator's one-PID-or-two
   measurement) and the four red-team corrections that would otherwise be re-derived.
+
+## 2026-08-01k — Phase 2: observers read records, telemetry probes on demand (ADR-0333, v1.0.149)
+
+- **Phase 1b was NOT started — the operator's measurement has not arrived.** Verified before
+  building, not assumed: `docs/STATE/OPERATOR-REQUESTS.md` carries no netstat capture,
+  `audit/operator-artifacts/` holds only its README + the Ollama collector, `git status
+  --untracked-files=all` is clean, and no commit since 2026-07-30 touches the audit or operator
+  paths. Per the standing instruction the launcher was **not guessed at** and Phase 2 was taken
+  instead. The Phase 1b brief is carried forward verbatim in HANDOFF ⇢ NEXT.
+- **The prior handoff's Phase 2 framing needed one correction, made from code:** `tooltips.js:71-79`
+  is ALREADY records-based — it is the **exemplar to copy**, not one of the defects. The real
+  offenders were found by grepping every `MutationObserver` in `static/`: `vizhints.js`,
+  `gantt.js` and `chartframe.js`; `translate.js` was already records-based and `legend_toggle.js`
+  is lazily scoped, so both were left alone.
+- **Measured before changing anything** (bundled chromium, real server, golden Project2/Project5).
+  30 insertions one-per-frame on `/analysis/Project5` cost **5 `querySelectorAll` calls each, four
+  of them full-document**; 20 insertions into a `.chart-host` on `/curves` cost **201 calls**. The
+  `table.gantt-grid` sweep came back **80 for 20 inserts, not 40** — a 2× echo, root-caused in the
+  source: `stickyScrollbar` appends its proxy bar to `<body>` and `attachColumnMovers` appends a
+  grip `<span>` to every header cell, so the observers **re-arm themselves with their own writes**.
+- **The metric had to be corrected mid-measurement, and it matters.** After the fix the *call
+  count* barely moved (150 → 150 on /analysis; it can even rise, since each batched root gets its
+  own now-trivial query). Scoping does not reduce calls — it collapses what each call walks. Re-run
+  against a stashed baseline counting **nodes returned**: heading sweep **1,275 → 84**,
+  `table.gantt-grid` **62 → 0**, gantt panes **31 → 0** (1,368 → 84, ~16×), with each heading
+  walked costing up to 114 catalog substring compares on top.
+- **No wall-clock is asserted anywhere.** The synthetic storm is rAF-bound — 30 paced frames
+  dominate it — and elapsed time is flat before and after (**887 ms both**). A timing gate here
+  would assert nothing and flake on CI.
+- **Second defect, found while verifying the "idle pumps" claim and root-caused:**
+  `web/system.py::_slow_loop` was `while True`. The first `/api/system` request started it and it
+  then spawned two subprocesses (on Windows two `powershell` children) **every 5 s until the
+  process exited**, regardless of demand. `sysmon.js` already skips its fetch while
+  `document.hidden`, but that gate is client-side and **cannot reach a server loop** — which is
+  exactly why the operator saw probes "from launch to quit". Fixed demand-gated: `snapshot()`
+  stamps a monotonic clock and sets an Event, the loop parks on it after `_IDLE_AFTER` (30 s) at
+  zero subprocesses and wakes straight into a probe. No value is fabricated — an unavailable field
+  stays `None` → "—" (Law 2).
+- **Deliberately NOT changed:** the heartbeat (pausing it with `idle_grace=600` would shut the tool
+  down after 10 min minimized and lose the session), `sysmon.js`'s interval, the Play-gated
+  `setInterval(…, 1600)` steppers (11 modules — real crash-prevention work, wrong bucket).
+- **Eight new gates, every one proved able to fail by reverting the CALLER and keeping the API**
+  (reverting both would turn a behavioural failure into an ImportError): reverting `vizhints.js`'s
+  callback → `"observer ignores what was actually inserted"` and `1,211 walked, bound 162`;
+  `gantt.js`'s → `62 gantt-grid nodes walked for 30 unrelated insertions`; `chartframe.js`'s → the
+  coalesce contract; dropping `eachMatch`'s root test → the root contract; deleting the park block
+  → **`46 extra probes after the idle window`**; un-arming `snapshot()` → `"must release a parked
+  probe thread"`. Source contracts live in `tests/perf/test_perf_regression.py` so **CI (no
+  browser) still fails** on a regression; the browser measurement is the new
+  `tests/perf/test_observer_storm.py`, skipped without the bundled chromium like the visual pass.
+  `tests/perf/` **17 passed**.
+- **One deliberate re-baseline:** `gantt.js`'s byte-freeze digest in
+  `tests/web/test_r11_panel_contract.py` (`9fa3a69…` → `d313413…`), following that file's own
+  convention. The pin guards chart geometry; verified inapplicable — the diff is confined to the
+  three attachers + the boot IIFE, `gantt.js` has **zero** `axisTitles` call sites (the census test
+  asserts this independently and stayed green), and `buildTierScale`/`paintGrid`/`gridLines`/
+  `timeTiers` are untouched. The 10 tests pinning the edited modules: 152 passed, that 1 failure.
+- Statics foreground: ruff "All checks passed!" · format clean (451) · mypy --strict clean (117) ·
+  bandit EXIT=0 · `node --check` clean on all **60** JS files — run **per file**, after noticing
+  that `node --check a.js b.js` silently checks only the first.
+- Version bumped to **1.0.149** BEFORE the background suite. **The full-suite run is IN FLIGHT at
+  this line — its result lands in the next append.**
+
+## 2026-08-01k (append) — the Phase 2 full-suite result, read on the FINAL tree
+
+- **Full suite `python -m pytest -q`: 3265 passed, 2 skipped, 0 failed in 18m53s.** Exit read from
+  the command's own summary line, not from a pipe. Test count up by exactly **9** vs the previous
+  round's 3258 collected — the 7 new gates in `tests/perf/test_perf_regression.py` (2 parametrized
+  body-observer contracts + `eachMatch` root + chartframe coalesce + 3 telemetry) and the 2 in the
+  new `tests/perf/test_observer_storm.py`.
+- **Zero failures — including the carried `/analysis` focus→tip intermittent**, which passed this
+  run. It remains adjudicated and is NOT to be chased either way; a green run is not evidence it is
+  fixed, only that it is intermittent as documented.
+- **The first suite launch of this session was DISCARDED, deliberately.** It was started before a
+  late comment reorder in `gantt.js` changed that file's bytes (and therefore its byte-freeze
+  digest), so its result would have described a tree that no longer existed. It was stopped, the
+  wheel + nine installers were regenerated ONCE on the final tree, statics were re-run foreground,
+  and the suite above was run against exactly the tree being committed. **A suite result is only
+  worth recording if the tree it ran on is the tree that ships.**
+- **A stale abbreviated digest was caught before commit:** the full-hash `sed` that propagated the
+  re-baseline did not match the `bc18307…`-style ELLIPSIS forms quoted in the ADR, HANDOFF and this
+  log, so three docs briefly carried a digest that no file had. Corrected to `d313413…`. Abbreviated
+  hashes in prose do not get updated by a hash-for-hash substitution — grep for the prefix too.

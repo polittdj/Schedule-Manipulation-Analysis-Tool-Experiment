@@ -535,6 +535,52 @@ those fixed defects in earlier "closed" fixes:
   football's quadrant %-labels). Picking remove for the football would have silently deleted
   two quadrant shares from every render.
 
+### 2026-08-01k — Optimise the metric before the code, and check the pump you were told about (Phase 2 / ADR-0333)
+
+- **The unit you measure decides whether you can see your own fix.** The obvious meter for a
+  MutationObserver storm is "how many `querySelectorAll` calls per insertion". It is the wrong one.
+  After scoping the three observers to their records the call count was **flat** (150 → 150 on
+  `/analysis`) and on one page it *rose* — each batched root now gets its own query. The property
+  that actually changed is what each call has to **walk**: nodes returned went **1,368 → 84**
+  (~16x). Had the gate been written against call count it would have read as "no improvement" and
+  the fix would have been reverted as useless. **Pick the metric from the mechanism, not from
+  what's easy to count** — and if the first metric shows nothing after a change you have reasoned
+  through, suspect the metric before the change.
+- **Verify the brief's own premises against the code before building on them.** The carried plan
+  named `tooltips.js:71-79` in the observer fix. Reading it first showed it was **already**
+  records-based — it is the exemplar to copy, and the real offenders (`vizhints.js`, `gantt.js`,
+  `chartframe.js`) were only found by grepping every `MutationObserver` in `static/`. A handoff
+  pointer is a lead, not a finding. (READ EVERYTHING, ASSUME NOTHING, VERIFY EVERYTHING earned its
+  keep twice this round.)
+- **A client-side guard cannot fix a server-side loop, and "it already pauses" deserves one more
+  question.** The brief listed `sysmon.js` (2 s) as an idle pump. It already skips its fetch while
+  `document.hidden` — so the client half was fine and it would have been easy to tick it off.
+  Asking *what does that fetch actually start* found `web/system.py::_slow_loop`: a `while True`
+  daemon spawning two subprocesses (two `powershell` children on Windows) **every 5 s from the
+  first request until the process exits**, which no amount of `document.hidden` can reach. That is
+  the operator's long-standing "probes from launch to quit", root-caused only because the pump was
+  followed across the client/server boundary instead of being checked off on the client side.
+- **An observer that writes to the DOM re-arms itself.** `stickyScrollbar` appends its proxy bar to
+  `<body>`; `attachColumnMovers` appends a grip `<span>` to every header cell. Both run *from* a
+  body-wide `childList` observer, so every insertion was paid for **twice** (measured: 80
+  `table.gantt-grid` sweeps for 20 inserts, not 40). Records-based scoping fixes this for free —
+  the echo's own record carries no table — where an rAF debounce alone would not have, because the
+  echo lands in a later frame. **When an observer callback mutates, check whether its own writes
+  fall inside what it observes.**
+- **`querySelectorAll` returns DESCENDANTS ONLY, so scoping an observer is a correctness change,
+  not just a perf change.** Handing an attacher the node that was inserted breaks it silently if
+  that node *is* the target (an async Gantt inserted as a bare `.gantt-scroll` would lose its
+  scrollbar). Every scoped walk needs a `root.matches(sel)` test before the descendant query — and
+  that check earned its own gate, because nothing else would have failed.
+- **The harness lies quietly: `node --check a.js b.js` checks only the FIRST file.** The documented
+  gate command uses a glob, so 59 of 60 modules were never syntax-checked by it. Loop per file.
+- **A byte-freeze pin is a question, not a verdict.** `gantt.js`'s digest pin exists to catch a
+  caption/axis/tick moving. Re-baselining it is legitimate *only* after showing the property it
+  guards cannot have changed — here: the diff is confined to three attachers and the boot IIFE, the
+  module has zero `axisTitles` sites (asserted independently by a census test that stayed green),
+  and no drawing function is in the diff. Record the old→new digest and the reasoning inline, as
+  that file's own convention already does.
+
 ### 2026-08-01f — The measured pass catches what content tests cannot (batch 3c-i)
 - Adding a bare `SFChartFrame.axisTitles` call to volatility.js passed EVERY content ledger
   (census, 24-site freeze, byte-digest) and node --check — and broke the entire /volatility

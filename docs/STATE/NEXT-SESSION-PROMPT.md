@@ -8,26 +8,26 @@ kickoff steers a fresh session at work that is already done.)
 ---
 
 Resume POLARIS (Schedule-Manipulation-Analysis-Tool). **Read `docs/STATE/HANDOFF.md` FIRST**
-(auto-injected). As of last session: **v1.0.148**, highest ADR **0332**. Three merges landed:
-**#507** (batch 3c-ii, ADR-0330 — AXIS-TITLES complete) as `02decef`, **#508** (Phase 0, ADR-0331 —
-the caption halo + a pixel-measuring visual pass) as `5c829e4`, and **#509** (Phase 1a, ADR-0332 —
-a wipe resets by reflection). Verify with `git fetch --prune origin` and restart your branch from
-`origin/main`. Fresh container: `pip install -e ".[dev]"` plus
-`pip install playwright 'ruff==0.16.1' build` first.
+(auto-injected). As of last session: **v1.0.149**, highest ADR **0333**. Last merge landed was
+**#509** (Phase 1a, ADR-0332) as `8e1f319`; **Phase 2 (ADR-0333)** was built on top of it — verify
+whether its PR merged with `git fetch --prune origin`, then restart your branch from `origin/main`.
+Fresh container: `pip install -e ".[dev]"` plus `pip install playwright 'ruff==0.16.1' build` first.
 
-**We are executing an operator-APPROVED completion plan** (`/root/.claude/plans/merry-juggling-owl.md`
-— if that path is gone, HANDOFF ⇢ NEXT carries the same queue). Order: **perf + session first**,
-then UI (hybrid: keep Mission Ops, graft the Command Deck's best ideas), then engine. Phases 0 and
-1a are done.
+**We are executing an operator-APPROVED completion plan.** The plan file
+(`/root/.claude/plans/merry-juggling-owl.md`) is **GONE from disk** — HANDOFF ⇢ NEXT is now the
+only copy of the queue, so treat it as authoritative. Order: perf + session first, then UI (hybrid:
+keep Mission Ops, graft the Command Deck's best ideas), then engine. **Phases 0, 1a and 2 are
+done.**
 
 ### ⇢ DO THESE THINGS FIRST
 
-1. `git fetch --prune origin`; confirm #509 is merged and restart your branch fresh from
-   `origin/main`. **Never amend merged commits to satisfy the stop hook** — restarting the branch
-   is the fix (they are published history; rewriting them breaks the CUI guard's
-   `inherited_from_main` rule).
-2. **Phase 1b — the launcher. CHECK FOR THE OPERATOR'S MEASUREMENT BEFORE BUILDING.** The
-   operator was asked to run, on the DEPLOYED box: launch → close ONLY the browser →
+1. `git fetch --prune origin`; confirm what merged and restart your branch fresh from `origin/main`.
+   **Never amend merged commits to satisfy the stop hook** — restarting the branch is the fix (they
+   are published history; rewriting them breaks the CUI guard's `inherited_from_main` rule).
+2. **Phase 1b — the launcher. CHECK FOR THE OPERATOR'S MEASUREMENT BEFORE BUILDING.** It had NOT
+   arrived as of 2026-08-01k — checked `docs/STATE/OPERATOR-REQUESTS.md`,
+   `audit/operator-artifacts/`, every untracked path and the git log. Check again the same way; do
+   not assume either outcome. The ask, on the DEPLOYED box: launch → close ONLY the browser →
    `netstat -ano | findstr :8321` → relaunch → re-check. **One PID or two?**
    * **One** ⇒ the second launch died mute (uvicorn `sys.exit()` into `os.devnull` under
      `pythonw`) and the non-daemon browser timer — started BEFORE the bind — opened onto the
@@ -44,36 +44,34 @@ then UI (hybrid: keep Mission Ops, graft the Command Deck's best ideas), then en
    A Linux-only port test pins the WRONG platform — write it as an explicit POSIX-behaviour test
    plus a probe-logic unit test that runs everywhere. Also in 1b: clear the on-disk cache on
    **clean shutdown + atexit, never at launch** (launch-clearing leaves data at rest over the
-   between-sessions window and throws away a 9× warm start), plus a size and age cap.
-   **If the measurement has not arrived, say so and do Phase 2 instead — do not guess.**
-3. **Phase 2 — performance.** The idle pumps are exactly TWO: `sysmon.js` (2 s) and
-   `heartbeat.js` (3 s). **Do NOT pause the heartbeat** — `idle_grace=600` would shut the tool
-   down after 10 minutes minimized and LOSE the session (data loss introduced by a perf item).
-   Lead the observer fix with the **records-based** rewrite (`tooltips.js:71-79`, walk
-   `addedNodes`) and rAF/debounce; scoping to `<main>` is the secondary belt and needs an
-   assertion that no `.panel`/`.chart`/`.tile-head` renders outside it. The `setInterval(…,1600)`
-   steppers are **Play-gated, not idle** (11 modules / 12 sites, incl. `margin.js` and
-   `driving_path.js`) — real crash-prevention work, wrong bucket. Windows telemetry spawns two
-   PowerShell probes every 5 s from launch to quit — measurable only on the operator's box.
-   **Any new cache MUST key through `_cache_key`/`_invalidate_scope`** (filter + target scoped) or
-   it serves a differently-scoped number — Law 2, not a perf detail. Extend
-   `tests/perf/test_perf_regression.py`; no absolute wall-clock gates in CI.
-4. Behind: **Phase 3 UI** (the four unconverted Act III pages `/sra`, `/risks`, `/briefing`,
-   `/brief` — zero panelkit/`_panel_head`/`_shell_tools`/`sf-take`; then `DOM_PENDING`'s 7
-   modules; the DD-line ledger must EXCLUDE non-time-axis charts) · **Phase 4 engine**
-   (`import_notes` propagation · the 3 falsy-zero rows · CC-01's rendering half — the "74 sites"
-   is an approximate grep, RE-DERIVE it · SRA-LEGACY · V3) · **Phase 5** monolith split 2–3
-   (`app.py` is 20.9k lines, 2.8k LARGER than ADR-0297 left it) · **Phase 6** docs/operator queue.
-   **The OR-04 ball stays with the operator** (run
+   between-sessions window and throws away a 9x warm start), plus a size and age cap.
+   **If the measurement still has not arrived, say so and do Phase 3 instead — do not guess.**
+3. **Phase 3 — UI (hybrid).** The four unconverted Act III pages (`/sra`, `/risks`, `/briefing`,
+   `/brief` — zero panelkit/`_panel_head`/`_shell_tools`/`sf-take`); then `DOM_PENDING`'s 7
+   modules; then the DoD ledgers. **The DD-line ledger must EXCLUDE non-time-axis charts**
+   (`histogram.js`, `scatter.js`, `sra_jcl.js`'s cost axis). Any UI change follows
+   `docs/DESIGN-SYSTEM.md` and is verified in all four themes.
+4. Behind: **Phase 4 engine** (`import_notes` propagation · the 3 falsy-zero rows · CC-01's
+   rendering half — the "74 sites" is an approximate grep, RE-DERIVE it · SRA-LEGACY · V3) ·
+   **Phase 5** monolith split 2–3 (`app.py` is 20.9k lines, 2.8k LARGER than ADR-0297 left it) ·
+   **Phase 6** docs/operator queue. **The OR-04 ball stays with the operator** (run
    `audit/operator-artifacts/collect-ollama-artifacts.ps1` on the deployed box after one
    Ask-the-AI question; commit outputs + `smoke-results.md`). Known intermittent: the /analysis
    focus→tip family — adjudicated, do NOT chase as a regression.
 
+**Phase 2 closed these — do not re-chase them:** the three document-wide MutationObservers are now
+records-based + frame-coalesced (`vizhints.js`, `gantt.js`, `chartframe.js`); `tooltips.js` was
+already correct and is the EXEMPLAR, never a defect; `translate.js` / `legend_toggle.js` were
+already records-based / lazily scoped; the telemetry probe thread is demand-gated (it was
+`while True`, two subprocesses every 5 s launch-to-quit); the heartbeat is deliberately untouched.
+**Measure observer cost as NODES RETURNED, never as querySelectorAll CALL COUNT** — scoping holds
+the call count flat or raises it while collapsing the work ~16x.
+
 Standing rules (CLAUDE.md, binding): Law 1 CUI · Law 2 fidelity ("—" never 0; never weaken a
 test; a fast wrong number is worthless) · ADR-0240 model/audit protocol · READ EVERYTHING,
-ASSUME NOTHING, VERIFY EVERYTHING. Full gate before every commit; statics FOREGROUND first;
-proved-able-to-fail on every new behavioral test (**revert the CALLER, not the API** — reverting
-both turns a behavioural failure into an ImportError, which proves nothing); HANDOFF rotation +
-SESSION-LOG + LESSONS-LEARNED same commit; wheel + nine installers ONCE after all code lands
-(bump the version BEFORE launching the full background suite, or its installer-lockstep tests
-red-herring against the stale wheel).
+ASSUME NOTHING, VERIFY EVERYTHING. Full gate before every commit; statics FOREGROUND first
+(and `node --check` **per file** — a glob checks only the first); proved-able-to-fail on every new
+behavioral test (**revert the CALLER, not the API** — reverting both turns a behavioural failure
+into an ImportError, which proves nothing); HANDOFF rotation + SESSION-LOG + LESSONS-LEARNED same
+commit; wheel + nine installers ONCE after all code lands (bump the version BEFORE launching the
+full background suite, or its installer-lockstep tests red-herring against the stale wheel).

@@ -16,6 +16,13 @@ Design (ADR-0147, the "telemetry works on the operator's Windows box" fix):
   temperature via sensors / WMI thermal zone) can take hundreds of ms to seconds, so they run
   on a lazily-started background daemon thread and ``snapshot()`` serves the latest cached
   values instantly. Probes that keep failing stop being retried (``_MAX_FAILURES``).
+* **The probe thread is DEMAND-GATED** (ADR-0333). It used to be ``while True`` — once the first
+  request started it, it spawned two subprocesses (on Windows, two ``powershell`` children) every
+  five seconds until the process quit, whether or not anyone was looking. ``sysmon.js`` already
+  skips its fetch while ``document.hidden``, but that gate is client-side and could not reach
+  this loop, so a minimized tool kept paying for telemetry nobody could see. The loop now parks
+  on an Event once no ``snapshot()`` has been asked for in ``_IDLE_AFTER`` seconds and wakes on
+  the next request, probing immediately rather than waiting out a cadence tick.
 * Any value a platform cannot provide is ``None`` and the widget renders "—" instead of failing.
 """
 
@@ -26,6 +33,7 @@ import shutil
 import subprocess  # nosec B404 — fixed local argv only (nvidia-smi / vm_stat / powershell)
 import sys
 import threading
+import time
 from typing import Any
 
 #: Windows-only ``CREATE_NO_WINDOW`` (0 / no-op on POSIX). The deployed desktop app runs
@@ -270,11 +278,19 @@ def _disk() -> dict[str, Any]:
 _SLOW_INTERVAL = 5.0
 #: a probe that fails this many times in a row stops being retried (no powershell respawn churn)
 _MAX_FAILURES = 3
+#: Park the probe thread this long after the last ``snapshot()`` request. ``sysmon.js`` polls
+#: every 2s while the dock is on and the page is visible, so a real viewer re-arms demand ~15
+#: times inside this window — the loop can only park when nobody is asking (dock toggled off,
+#: window minimized, browser closed but the server still up).
+_IDLE_AFTER = 30.0
 
 _slow_lock = threading.Lock()
 _slow_started = False
 _slow_cache: dict[str, Any] = {"gpu": dict(_GPU_NONE), "cpu_temp_c": None}
 _slow_failures = {"gpu": 0, "temp": 0}
+#: monotonic timestamp of the last ``snapshot()`` call, and the gate the parked loop waits on.
+_last_demand = [0.0]
+_demand = threading.Event()
 
 
 def parse_nvidia_smi_line(line: str) -> dict[str, Any]:
@@ -435,8 +451,25 @@ def _win_cpu_temp() -> float | None:  # pragma: no cover - Windows only
         return None
 
 
-def _slow_loop() -> None:  # pragma: no cover - timing loop; probes are tested directly
+def probing_wanted(now: float | None = None) -> bool:
+    """True while something has asked for a snapshot recently enough to keep probing.
+
+    Split out of the loop so the park decision is testable without running a timing loop.
+    """
+    return (_last_demand[0] > 0.0) and (
+        (time.monotonic() if now is None else now) - _last_demand[0] <= _IDLE_AFTER
+    )
+
+
+def _slow_loop() -> None:  # pragma: no cover - timing loop; the park decision is tested directly
     while True:
+        if not probing_wanted():
+            # Nobody is watching: drop to ZERO subprocesses until the next request. Waking
+            # `continue`s straight into a probe, so the first post-idle poll refreshes within
+            # one probe rather than waiting out a full cadence tick.
+            _demand.clear()
+            _demand.wait()
+            continue
         if _slow_failures["gpu"] < _MAX_FAILURES:
             gpu = _probe_gpu()
             _slow_failures["gpu"] = 0 if gpu != _GPU_NONE else _slow_failures["gpu"] + 1
@@ -464,7 +497,14 @@ def snapshot() -> dict[str, Any]:
     """One telemetry sample; instant and safe on every platform (missing values are ``None``).
 
     Fast fields are read inline; GPU and CPU temperature come from the background probe cache
-    (first request starts the probe thread, so those may be ``None`` for the first seconds)."""
+    (first request starts the probe thread, so those may be ``None`` for the first seconds).
+
+    Requesting a snapshot is also what ARMS the probe thread (ADR-0333): the loop parks after
+    ``_IDLE_AFTER`` seconds without a request, so the first call after an idle spell serves the
+    last real reading and the thread re-probes immediately behind it. Values are never
+    fabricated — a field the platform cannot provide stays ``None`` and renders "—"."""
+    _last_demand[0] = time.monotonic()
+    _demand.set()
     _ensure_slow_thread()
     return {
         "cpu": {

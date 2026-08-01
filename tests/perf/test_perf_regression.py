@@ -16,6 +16,11 @@ equal-or-better implementation passes:
 * **#4 (analysis-cache LRU)** — the analysis cache residency must stay bounded no matter how
   many versions are opened (memory ∝ residency), and evicted entries must recompute, not accumulate.
 
+* **ADR-0333 (the client-side observer storm)** — the three document-wide ``MutationObserver``
+  callbacks must stay records-based and frame-coalesced. Gated two ways: a source contract that
+  runs everywhere (below), and a browser measurement of the node volume actually scanned
+  (``tests/perf/test_observer_storm.py``, which skips without the bundled chromium).
+
 The remaining audit-F items are gated by their own PRs when the underlying work lands: import peak
 memory rides #9 (MSPDI streaming), AI-cancellation behavior rides #10, and CPM/SRA/filter *latency*
 gates need a benchmark harness with warm-up + a machine baseline (out of scope for a deterministic
@@ -27,7 +32,13 @@ from __future__ import annotations
 
 import datetime as dt
 import gc
+import re
+import threading
+import time
 import tracemalloc
+from pathlib import Path
+
+import pytest
 
 from schedule_forensics.engine import sra as sra_mod
 from schedule_forensics.engine.cpm import compute_cpm
@@ -38,6 +49,7 @@ from schedule_forensics.model.task import Task
 from schedule_forensics.web.app import _ANALYSIS_CACHE_MAX, SessionState, _LRUCache
 
 _DAY = 480
+STATIC = Path(__file__).resolve().parents[2] / "src" / "schedule_forensics" / "web" / "static"
 
 
 def _chain(n: int, prefix: str) -> Schedule:
@@ -264,3 +276,163 @@ def test_epoch_hit_is_cheaper_than_the_compute_it_replaces() -> None:
     st.analysis_for("big", sch)
     hit = time.perf_counter() - t0
     assert hit < miss  # a resident hit beats a full engine pass (in practice by >10x)
+
+
+# ── ADR-0333: the document-wide MutationObservers stay records-based + frame-coalesced ───────────
+#
+# These are SOURCE contracts, deliberately: they run on CI (which has no browser) and they pin the
+# two properties that a well-meaning refactor silently drops. The node volume they stand for is
+# measured for real in ``tests/perf/test_observer_storm.py``. The property is not cosmetic — the
+# pre-fix form re-scanned the WHOLE document on every inserted node, and because the callbacks
+# append their own nodes (a sticky proxy bar to <body>, a grip <span> to each header cell) they
+# re-armed themselves, doubling the sweep per insertion.
+
+#: (module, the callback's own identifier) for every observer that watches ``document.body``
+#: subtree-wide. Each must consume MutationRecords and defer its pass to a frame.
+_BODY_OBSERVERS = (
+    ("vizhints.js", "decorate"),
+    ("gantt.js", "attachAll"),
+)
+
+
+@pytest.mark.parametrize(("module", "worker"), _BODY_OBSERVERS)
+def test_body_observers_are_records_based_and_frame_coalesced(module: str, worker: str) -> None:
+    """REGRESSION GATE: a body-wide observer must (a) read ``records``/``addedNodes`` rather than
+    re-scanning from ``document``, and (b) flush at most once per frame.
+
+    Reverting either module's observer callback to ``new MutationObserver(function () {
+    <worker>(document); })`` fails this — that form neither names ``addedNodes`` nor schedules a
+    frame, and it is exactly the shape that was measured re-walking 1,275 heading nodes for 30
+    insertions where the records-based form walks 84.
+    """
+    js = (STATIC / module).read_text(encoding="utf-8")
+    body = js[js.index("new MutationObserver") :]
+    assert "addedNodes" in body, f"{module}: observer ignores what was actually inserted"
+    assert "requestAnimationFrame" in body, f"{module}: observer pass is not frame-coalesced"
+    # the worker must run over the batched roots, never over the whole document again
+    assert re.search(rf"{worker}\(batch\[i\]\)", js), f"{module}: worker not applied to the batch"
+    assert f"{worker}(document)" not in body, f"{module}: observer still rescans the document"
+
+
+def test_gantt_attachers_test_the_root_itself_not_only_its_descendants() -> None:
+    """REGRESSION GATE (the correctness half of the scoping change): once the observer hands an
+    attacher the node that was inserted, that node may BE the pane or the grid — and
+    ``querySelectorAll`` only ever returns DESCENDANTS. ``eachMatch`` must test the root first,
+    or an async-built Gantt inserted as a bare ``.gantt-scroll`` silently loses its scrollbar.
+
+    Dropping the ``scope.matches(sel)`` line makes this fail.
+    """
+    js = (STATIC / "gantt.js").read_text(encoding="utf-8")
+    each = js[js.index("function eachMatch") : js.index("function attachStickyScrollbars")]
+    assert "scope.matches" in each and "fn(scope)" in each
+    # and all three attachers go through it — none may re-introduce a document-wide walk
+    for fn in ("attachStickyScrollbars", "attachColumnMovers", "attachColumnDrag"):
+        chunk = js[js.index(f"function {fn}(root)") :][:400]
+        assert "eachMatch(root," in chunk, fn
+        assert "(root || document).querySelectorAll" not in chunk, fn
+
+
+def test_chartframe_zoom_reapply_is_frame_coalesced() -> None:
+    """REGRESSION GATE: ``applyZoom`` re-walks every ``<svg>`` in the host AND forces synchronous
+    layout on every ``.cf-zoom-box`` (``offsetWidth``/``offsetHeight``), so the per-host observer
+    must coalesce to one pass per frame rather than firing it per mutation. Only the frame's final
+    state is observable, so this is equivalence, not a behaviour trade.
+
+    Reverting to ``new MutationObserver(function () { applyZoom(); })`` fails this.
+    """
+    js = (STATIC / "chartframe.js").read_text(encoding="utf-8")
+    assert "function reapplyZoomSoon" in js
+    assert "new MutationObserver(reapplyZoomSoon)" in js
+    guard = js[js.index("function reapplyZoomSoon") : js.index("new MutationObserver(")]
+    assert "zoomQueued" in guard and "requestAnimationFrame" in guard
+
+
+# ── ADR-0333: the telemetry probe thread is demand-gated, not launch-to-quit ─────────────────────
+
+
+def test_probing_is_wanted_only_while_something_is_asking() -> None:
+    """REGRESSION GATE (deterministic — the park decision, with no timing loop): the slow-probe
+    thread must probe only while ``snapshot()`` is being called.
+
+    It used to be ``while True``: the first request started it and it then spawned two
+    subprocesses (two ``powershell`` children on Windows) every 5s until the process quit, even
+    with the browser minimized — ``sysmon.js``'s ``document.hidden`` skip is client-side and
+    cannot reach a server loop. Deleting the ``probing_wanted()`` check from ``_slow_loop`` (or
+    making this function return a constant ``True``) restores that behaviour and fails here.
+    """
+    from schedule_forensics.web import system
+
+    original = system._last_demand[0]
+    try:
+        system._last_demand[0] = 0.0
+        assert not system.probing_wanted(), "must not probe before anything has ever asked"
+
+        now = 1000.0
+        system._last_demand[0] = now
+        assert system.probing_wanted(now), "a fresh request must keep the probes running"
+        assert system.probing_wanted(now + system._IDLE_AFTER - 0.1), "still inside the window"
+        assert not system.probing_wanted(now + system._IDLE_AFTER + 0.1), "idle ⇒ park"
+    finally:
+        system._last_demand[0] = original
+
+
+def test_a_snapshot_request_rearms_the_parked_probe_thread() -> None:
+    """REGRESSION GATE: ``snapshot()`` is what ARMS the loop — it stamps the demand clock and
+    sets the Event a parked thread is blocked on. Without both, a loop that has parked once can
+    never wake and the GPU/temperature fields freeze at their last values forever.
+
+    Removing either line from ``snapshot()`` fails this.
+    """
+    from schedule_forensics.web import system
+
+    system._demand.clear()
+    system._last_demand[0] = 0.0
+    system.snapshot()
+    assert system._demand.is_set(), "snapshot() must release a parked probe thread"
+    assert system.probing_wanted(), "snapshot() must stamp the demand clock"
+
+
+def test_the_probe_loop_really_stops_and_restarts(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    """REGRESSION GATE (behavioural, count-based — no wall-clock threshold is asserted): run the
+    REAL ``_slow_loop`` with the probes stubbed and the cadence compressed, and watch the probe
+    COUNT stop growing once demand lapses, then grow again after a fresh request.
+
+    The margins are deliberately loose (the idle window is 50ms and the observation window 40x
+    that), because what is asserted is a state transition — probing → parked → probing — not a
+    duration.
+    """
+    from schedule_forensics.web import system
+
+    calls = {"n": 0}
+    probed = threading.Event()
+
+    def _stub_gpu() -> dict[str, object]:
+        calls["n"] += 1
+        probed.set()
+        return dict(system._GPU_NONE)
+
+    monkeypatch.setattr(system, "_probe_gpu", _stub_gpu)
+    monkeypatch.setattr(system, "_probe_cpu_temp", lambda: None)
+    monkeypatch.setattr(system, "_SLOW_INTERVAL", 0.01)
+    monkeypatch.setattr(system, "_IDLE_AFTER", 0.05)
+    # the stubs report "nothing found", which is what _MAX_FAILURES counts — keep retrying
+    monkeypatch.setattr(system, "_MAX_FAILURES", 10**9)
+    monkeypatch.setattr(system, "_slow_failures", {"gpu": 0, "temp": 0})
+
+    system._demand.clear()
+    system._last_demand[0] = time.monotonic()
+    threading.Thread(target=system._slow_loop, daemon=True).start()
+
+    assert probed.wait(5.0), "the loop never probed while demand was fresh"
+    time.sleep(2.0)  # >> _IDLE_AFTER: demand lapses and the loop must park
+    parked_at = calls["n"]
+    time.sleep(0.5)
+    assert calls["n"] == parked_at, (
+        f"the probe thread kept spawning while nobody was asking: {calls['n'] - parked_at} "
+        "extra probes after the idle window"
+    )
+    assert not system._demand.is_set(), "a parked loop must have cleared the demand gate"
+
+    probed.clear()
+    system.snapshot()  # a viewer comes back
+    assert probed.wait(5.0), "the parked loop never woke on a new request"
