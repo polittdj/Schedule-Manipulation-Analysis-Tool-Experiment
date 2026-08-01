@@ -110,6 +110,27 @@
   // shared mini axis helpers for the version-indexed charts
   function vx(i, W, padL, padR) { return padL + (N <= 1 ? 0 : (i * (W - padL - padR)) / (N - 1)); }
 
+  // ADR-0329 (batch 3c-i) — ADR-0303's "data label yields", measured LIVE (the /resources
+  // precedent): the X caption owns its bottom-right corner, and a rotated version tick whose
+  // REAL rendered box bites it (2px margin) is removed — the caption itself never moves
+  // (placement frozen, standing requirement 5). The svgs here are already in the DOM when the
+  // draw functions run, so the boxes are measurable immediately.
+  function yieldTicksToCaption(svg, ticks) {
+    var cap = null;
+    svg.querySelectorAll("text.ch-at").forEach(function (t) {
+      if (t.getAttribute("text-anchor") === "end") cap = t;
+    });
+    if (!cap) return;
+    var cb = cap.getBoundingClientRect();
+    if (!cb || !cb.width) return; // unmeasurable (hidden) boxes must not shred the labels
+    ticks.forEach(function (t) {
+      var b = t.getBoundingClientRect();
+      var dx = Math.min(cb.right, b.right) - Math.max(cb.left, b.left);
+      var dy = Math.min(cb.bottom, b.bottom) - Math.max(cb.top, b.top);
+      if (dx > -2 && dy > -2) t.remove(); // the label yields, never the caption
+    });
+  }
+
   // ── 2. churn timeline — Jaccard % per consecutive pair (revealed to the cursor) ─────
   function drawChurn() {
     var W = 460, H = 240, padL = 40, padR = 12, padT = 18, padB = 46;
@@ -136,10 +157,18 @@
       tip(c, p.from + " → " + p.to + ": " + Math.round(p.jaccard * 100) + "% of the path carried over");
       svg.appendChild(c);
     });
+    var ticks = [];
     for (var i = 0; i < N; i++) {
-      txt(svg, vx(i, W, padL, padR), H - padB + 14, shortLabel(i), { anchor: "end" })
-        .setAttribute("transform", "rotate(-30 " + vx(i, W, padL, padR) + " " + (H - padB + 14) + ")");
+      var tl = txt(svg, vx(i, W, padL, padR), H - padB + 14, shortLabel(i), { anchor: "end" });
+      tl.setAttribute("transform", "rotate(-30 " + vx(i, W, padL, padR) + " " + (H - padB + 14) + ")");
+      ticks.push(tl);
     }
+    // Axis captions via the ONE shared helper (ADR-0298; this module joined in ADR-0329).
+    SFChartFrame.axisTitles(svg, { L: padL, R: W - padR, T: padT, B: H - padB }, {
+      xLabel: "Schedule version",
+      yLabel: "Path carried over",
+    });
+    yieldTicksToCaption(svg, ticks);
   }
 
   // ── 3. entry/exit waterfall — entered up, left down, per version (to the cursor) ────
@@ -168,11 +197,19 @@
       if (p.entered) txt(svg, x + bw / 2, mid - eh - 3, "+" + p.entered, { anchor: "middle", fill: BAD });
       if (p.left) txt(svg, x + bw / 2, mid + lh + 10, "−" + p.left, { anchor: "middle", fill: ACC });
     });
-    txt(svg, padL, padT - 4, "joined ↑ / left ↓ vs the prior version", {});
+    // (the old local "joined ↑ / left ↓ vs the prior version" annotation retired into the
+    // Y caption below — one convention per medium, ADR-0329 following the 3b-i precedent)
+    var ticks = [];
     for (var i = 0; i < N; i++) {
-      txt(svg, vx(i, W, padL, padR), H - padB + 14, shortLabel(i), { anchor: "end" })
-        .setAttribute("transform", "rotate(-30 " + vx(i, W, padL, padR) + " " + (H - padB + 14) + ")");
+      var tl = txt(svg, vx(i, W, padL, padR), H - padB + 14, shortLabel(i), { anchor: "end" });
+      tl.setAttribute("transform", "rotate(-30 " + vx(i, W, padL, padR) + " " + (H - padB + 14) + ")");
+      ticks.push(tl);
     }
+    SFChartFrame.axisTitles(svg, { L: padL, R: W - padR, T: padT, B: H - padB }, {
+      xLabel: "Schedule version",
+      yLabel: "Joined ↑ / left ↓",
+    });
+    yieldTicksToCaption(svg, ticks);
   }
 
   // ── 4. composition area — stayed vs entered share of each version's path ───────────
@@ -205,10 +242,17 @@
       txt(svg, padL - 4, y(most * g) + 3, Math.round(most * g), { anchor: "end" });
     });
     txt(svg, padL, padT - 4, "green = carried over · red = newly joined", {});
+    var ticks = [];
     for (var i2 = 0; i2 < N; i2++) {
-      txt(svg, vx(i2, W, padL, padR), H - padB + 14, shortLabel(i2), { anchor: "end" })
-        .setAttribute("transform", "rotate(-30 " + vx(i2, W, padL, padR) + " " + (H - padB + 14) + ")");
+      var tl = txt(svg, vx(i2, W, padL, padR), H - padB + 14, shortLabel(i2), { anchor: "end" });
+      tl.setAttribute("transform", "rotate(-30 " + vx(i2, W, padL, padR) + " " + (H - padB + 14) + ")");
+      ticks.push(tl);
     }
+    SFChartFrame.axisTitles(svg, { L: padL, R: W - padR, T: padT, B: H - padB }, {
+      xLabel: "Schedule version",
+      yLabel: "Activities on path",
+    });
+    yieldTicksToCaption(svg, ticks);
   }
 
   // ── 5. membership heatmap — rows = ever-critical activities, cols = versions ───────
@@ -308,10 +352,22 @@
       drill(bar, TASKS.filter(function (t) { return t.tenure === bucket; }).map(function (t) { return t.uid; }),
         LATEST, bucket + " version(s) on the critical path");
       svg.appendChild(bar);
-      if (cnt) txt(svg, padL + i * bw + bw / 2, H - padB - bh - 3, String(cnt), { anchor: "middle" });
+      if (cnt) {
+        // count labels stay out of BOTH caption bands (ADR-0329, data yields): a very tall
+        // bar's label drops below the Y-caption line, a very short bar's label rises above
+        // the X-caption line — the label keeps its bar's x, so the association holds.
+        var ly = Math.max(H - padB - bh - 3, padT + 24);
+        if (ly > H - padB - 20) ly = H - padB - 20;
+        txt(svg, padL + i * bw + bw / 2, ly, String(cnt), { anchor: "middle" });
+      }
       txt(svg, padL + i * bw + bw / 2, H - padB + 12, String(i + 1), { anchor: "middle" });
     });
-    txt(svg, W / 2, H - 4, "versions on the critical path", { anchor: "middle" });
+    // (the old centred "versions on the critical path" hand-rolled caption retired into the
+    // X caption below — one convention per medium, ADR-0329 following the 3b-i precedent)
+    SFChartFrame.axisTitles(svg, { L: padL, R: W - padR, T: padT, B: H - padB }, {
+      xLabel: "Versions on path",
+      yLabel: "Activities",
+    });
   }
 
   // ── 8. jumper leaderboard — most on/off flips ───────────────────────────────────────

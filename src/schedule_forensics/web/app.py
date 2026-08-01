@@ -19720,7 +19720,7 @@ unbroken streak, and on/off flips (click a column header to sort; the Excel expo
 full membership vector).</p>
 <div id=volTable></div></div>
 <script type="application/json" id=volData>{blob}</script>
-<script src="/static/volatility.js"></script>
+<script defer src="/static/volatility.js"></script>
 <script src="/static/panelkit.js"></script>"""
 
 

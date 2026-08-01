@@ -443,7 +443,11 @@ PAGE_SCRIPTS = {
     "driving_tiers.js": "f44f6d35ce10798aafb7ed298dcd7570",
     "path_evolution.js": "f901da4e52b223174f5d3fed6ebbdeda",
     "whatif.js": "b1b911b3cb0c2c87f02aa8e7f4f6d533",
-    "volatility.js": "0d38b34ee6d2824125b498b196473a4c",
+    # DELIBERATE re-baseline (ADR-0329, batch 3c-i): volatility.js's four axis charts (churn /
+    # flow / area / dwell) joined the shared caption helper, two hand-rolled quasi-captions
+    # retired into it, and the dwell count labels + rotated version ticks now yield to the
+    # caption bands. 0d38b34ee6d2824125b498b196473a4c → the digest below.
+    "volatility.js": "67a625584f35c78f067ae27446883d2a",
     # DELIBERATE re-baseline (ADR-0326, decision B1): buildTierScale gained the ONE timescale
     # caption slot (a `data-ts-caption`-fed row above the tiers; pages without the marker render
     # byte-identically). 2a4ccb612899cf141bbf30af3b64286e → the digest below; no other byte of
@@ -451,7 +455,7 @@ PAGE_SCRIPTS = {
     "gantt.js": "9fa3a69245deec12de6f1d71698a24b0",
 }
 
-#: all 18 ``SFChartFrame.axisTitles(`` call sites, frozen with their ARGUMENT OBJECT — the caption
+#: all 24 ``SFChartFrame.axisTitles(`` call sites, frozen with their ARGUMENT OBJECT — the caption
 #: strings live on the lines that FOLLOW the call, so hashing the opening line alone collides nine
 #: ways (b1c0ee5f…) and would pass while a caption changed. Recipe (reproducible, and the reason
 #: this list is re-derivable rather than a retyped number): for each ``static/*.js`` line
@@ -472,12 +476,25 @@ AXIS_CALL_SITES = [
     # line refreshed by ADR-0317 (sfControls grew above the call site); caption bytes intact
     ("scatter.js", 111, "ab0a7516adc3ba20cfb65107aaf4f244"),
     ("scurve.js", 168, "537fc87d2d19ccc2af0802ebd5dbf58f"),
+    # sra.js's two axis charts (CDF + histogram) joined in ADR-0329 (batch 3c-i) — a DELIBERATE
+    # 18 → 24 re-baseline together with volatility.js's four below: the 18 prior entries' bytes
+    # are untouched, these are additions, not moves (the tornado pair is recorded NOT-axis-chart
+    # per decision A1, so sra.js deliberately has exactly two sites).
+    ("sra.js", 158, "64bb2f94bddb55096f33fc5ad2f3b359"),
+    ("sra.js", 230, "212ab8024ef3dd634f0ccf3f9fa69654"),
     ("trend.js", 479, "8bf757af762c9343299f4770bf086f1a"),
     ("trend.js", 583, "82a858e0da47d00e87cb6feffc9dac7d"),
     ("trend.js", 708, "7cff421ad9b3b74b5f8907093822f67f"),
     ("trend.js", 826, "389cb5d55cdb709d1a8e5b86950de32a"),
     ("trend.js", 916, "d85c285c5166c824a0a44425e134b581"),
     ("trend_drill.js", 110, "a1c40e6c60bfb1261bb35bf2ef062930"),
+    # volatility.js's four axis charts (churn / flow / area / dwell) — the other half of the
+    # ADR-0329 additions; the gauge, heatmap, leaderboards, strips and ribbon are recorded
+    # not-axis-charts in the ADR and deliberately carry no call.
+    ("volatility.js", 167, "8c64c5ab839509d5d25bea94ba0a876d"),
+    ("volatility.js", 208, "aca00688358fe1649c8d336926fcf09b"),
+    ("volatility.js", 251, "a844068a9341c1c9dfca76cb02ed6a71"),
+    ("volatility.js", 367, "9d5073f5fb5ff864e7022352d287fad6"),
     ("wbs.js", 133, "7b0515f0ff194d2abf03d21133f627b7"),
 ]
 
@@ -510,14 +527,15 @@ def test_the_seven_page_owned_scripts_are_byte_frozen() -> None:
         assert hashlib.md5(path.read_bytes()).hexdigest() == digest, name
 
 
-def test_all_eighteen_axis_title_call_sites_are_frozen() -> None:
-    """Standing requirement 5: the axis captions are finished — nothing may move one. 18 is the
+def test_all_twenty_four_axis_title_call_sites_are_frozen() -> None:
+    """Standing requirement 5: the axis captions are finished — nothing may move one. 24 is the
     real count (``grep -c 'SFChartFrame.axisTitles(' static/*.js``; 16 → 18 in ADR-0325 when
-    margin_dashboard.js's two charts were captioned); chartframe.js's definition and export are
+    margin_dashboard.js's two charts were captioned; 18 → 24 in ADR-0329 when sra.js's two and
+    volatility.js's four joined in batch 3c-i); chartframe.js's definition and export are
     not call sites."""
     sites = _axis_call_sites()
-    assert len(sites) == 18, len(sites)
-    assert len({d for _n, _l, d in sites}) == 18, "a hash collided — the freeze is not selective"
+    assert len(sites) == 24, len(sites)
+    assert len({d for _n, _l, d in sites}) == 24, "a hash collided — the freeze is not selective"
     # THE LOAD-BEARING HALF: same files, same caption bytes. A failure here means a caption moved
     # — STOP AND REPORT, do not refresh the constant.
     assert [(n, d) for n, _l, d in sites] == [(n, d) for n, _l, d in AXIS_CALL_SITES], (

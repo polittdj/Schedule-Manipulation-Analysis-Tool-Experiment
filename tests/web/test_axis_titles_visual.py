@@ -67,7 +67,23 @@ SCALES = ("0.9", "1", "1.25")
 #: ``/forecast`` joined in ADR-0303 batch 3a: drift.js's captions were attempted, reverted on
 #: two measured collisions, and re-landed with the ADR-0303 clamps — this pass is what proves
 #: those collisions stay closed.
-PAGES = ("/curves", "/scurve", "/cei", "/trend", "/forecast", "/resources", "/margin")
+#: ``/sra`` + ``/volatility`` joined in ADR-0329 (batch 3c-i). ``/sra`` self-runs its simulation
+#: on page load (fetch /api/sra — 200 in ~1.4s on the golden pair with auto screening defaults,
+#: well inside the 5s caption wait below), so its CDF + histogram captions render for real;
+#: ``/volatility`` charts from its embedded blob immediately (the golden pair is 2 versions —
+#: enough for every version-indexed chart). The tornado/gauge/leaderboard family renders no
+#: caption and is deliberately not measured (recorded not-axis-charts, decision A1).
+PAGES = (
+    "/curves",
+    "/scurve",
+    "/cei",
+    "/trend",
+    "/forecast",
+    "/resources",
+    "/margin",
+    "/sra",
+    "/volatility",
+)
 
 #: Caption collisions accepted as debt. EMPTY, and it should stay that way — the entry below is
 #: kept as a record of why, because the wrong diagnosis here cost a full round trip.

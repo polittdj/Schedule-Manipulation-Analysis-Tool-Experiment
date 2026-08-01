@@ -150,10 +150,18 @@ PENDING = {
     # captioned, the two local "status date" quasi-captions retired into the helper, the
     # legends yielding the top-left corner to the Y caption, and ``/margin`` joining the
     # measured visual pass with its own margin-carrying serve.
-    "sra.js",
+    #
+    # ``sra.js`` + ``volatility.js`` graduated in ADR-0329 (batch 3c-i): the six axis charts
+    # between them captioned (CDF + histogram; churn + flow + area + dwell), two hand-rolled
+    # quasi-captions retired into the helper, rotated ticks + the dwell count labels yielding
+    # per ADR-0303, and ``/sra`` + ``/volatility`` joining the measured visual pass. The
+    # tornado pair, gauge, heatmap, leaderboards, strips and ribbon are recorded
+    # NOT-axis-charts (decision A1) in the ADR — no call, deliberately.
+    #
+    # The two below are batch 3c-ii: their charts render only after a Run button click, so the
+    # measured visual pass needs a click-driving serve first — deliberately split, not skipped.
     "sra_jcl.js",
     "sra_ssi.js",
-    "volatility.js",
 }
 
 CALLS_HELPER = re.compile(r"SFChartFrame\.axisTitles\s*\(")
