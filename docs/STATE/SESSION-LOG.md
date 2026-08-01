@@ -9887,3 +9887,61 @@ the briefs + state rotation) earlier today.
   immediately after reads **18 passed in 1m36s**, and the diff touches no float-tip path
   (gantt.js's slot, workbench captions, CSS siblings, four body markers). Chromium timing
   under full-suite load is the known class.
+
+## 2026-08-01 (cont.2) — PR-9b: the Library pages wear the panel toolbar (rank 12, second slice; ADR-0327, v1.0.143)
+
+- Session start: PR-8 (#498 → `469cef0`) and PR-9a (#499 → `a29b747`) both MERGED by the
+  operator — verified on fetched `origin/main` before branching; designated branch
+  `claude/polaris-pr-9b-toolbar-ns95de` restarted from `origin/main` (the stale remote-
+  tracking ref was pruned). Fresh container: `pip install -e ".[dev]"` + playwright/ruff/
+  build first.
+- **PR-9b (PLAN-20260730 PR-9 row, first half — decisions A1·B1·C1 stand, none re-asked):**
+  the six Library/Setup pages surveyed FRESH (every visual + every export endpoint's actual
+  content read before editing), then converted to the panel contract (ADR-0327): one
+  panelkit.js include per page, `_panel_head` + `_shell_tools` per data visual, muted
+  read-me per visual, provenance chips (series chip on cross-version panels, file chip on
+  single-file ones).
+- **⤓ wired only where an existing export covers the drawing:** /margin burn-down + MET +
+  per-version figures → `/export/xlsx/margin` (its two sheets ARE those figures);
+  /standards §1 → the analysis workbook (DCMA sheet); /wbs both pivots →
+  `/export/xlsx/wbs/{name}` (`wbs_breakdown_tables` = exactly the two pivots).
+- **⤓ refused, recorded AND asserted:** margin risk panel (Zero-margin toggle is live state
+  a static `data-export` cannot follow — the r10 class); workbench head strip (the panel's
+  own labeled Excel/Word links are the §3:78 ⤓, per ADR-0326 — a glyph would duplicate one
+  URL in one panel; the drill's own export rebuilds `&cols=` per render); standards §2/§3
+  (NO export carries the Fuse/SEM families — verified against the workbench catalog: DCMA-14
+  + Schedule Quality + Float only, 21 entries; and the performance workbook: census/flow/
+  burden/DRM/quads); /groups page-wide (URL-preview scope ≠ the applied scope every export
+  reads); /card page-wide (KPI set is no sheet; pivots 1-of-4 covered — the /forecast
+  methodology precedent).
+- **No ▦ anywhere** (every candidate's numbers are visible tables on the same page — the
+  home-shell precedent; no .sf-drawer minted). **⛶ on every data visual**; forms (margin
+  rate/band, filter builder), status notices (no-filter Active scope) and empty states get
+  nothing; /groups and /wbs gate the include on a `data-sf-` control in the ASSEMBLED body
+  (a summaries-only preview, or the no-groups branch under a focus panel). `_panel_head`
+  gained `h2_attrs=" data-no-i18n"` so /margin's translation-pinned headings survive.
+  NO JS edited — every PAGE_SCRIPTS freeze and the axisTitles census hold untouched.
+- **New `tests/web/test_r12_library_toolbar.py`** (r11-style): include exactly-once (cache-
+  busted form) + empty-state absence · ⤓ liveness with per-page COUNT pins 3/0/1/0/0/2
+  (vacuity guard) · per-panel glyph anatomy with every refusal paired to a presence
+  assertion · read-mes (four NEW ones by content) · promotion census 7/2/5/5/3/3 ·
+  loaded-terms gate control-first · REAL chromium ⛶ proofs on /margin and /card
+  (getBoundingClientRect changes, position:fixed, Escape restores — the r11 measured
+  standard). **Proved able to fail, watched: 12 of 14 FAIL on the stashed pre-change tree;**
+  the two both-tree passes are invariant guards (empty states clean; census EQUAL pre/post —
+  the no-new-panels cross-check). Post-change **14 passed**.
+- Existing six-page suites: **70 passed**. Neighbor sweep (r11 contract + DOM captions +
+  portfolio panelkit + integrity shell): **36 passed**. Statics foreground: ruff check
+  "All checks passed!" · `ruff format --check` clean, **829 files** (after the formatter
+  reflowed BOTH edited files — the read-the-summary-line trap, hit again) · mypy --strict
+  "no issues in 117 source files" · bandit exit 0 · node --check clean (all static JS).
+- Sequencing lesson (logged in LESSONS-LEARNED): the pyproject bump landed AFTER the full
+  background suite launched, so THAT run's installer-lockstep tests red-herring against the
+  1.0.142 wheel — wheel + nine installers regenerated ONCE after code landed, then
+  tests/installer re-run for the real result (recorded below when read).
+- Version **1.0.143**, highest ADR **ADR-0327**. Full-suite and installer-lockstep numbers
+  recorded below after their runs completed.
+- Installer lockstep + packaging + state-docs guards after the 1.0.143 wheel + nine
+  installers: **60 passed** (foreground re-run, read). Adjacent ledger/a11y/airgap/
+  presentation suites: **85 passed, 1 pre-existing deliberate skip** (INCIDENTAL_SVG).
+  Full-suite number: appended below once its run completes and is read.

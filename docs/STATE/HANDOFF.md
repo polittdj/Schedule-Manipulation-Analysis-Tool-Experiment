@@ -1,60 +1,58 @@
-# Handoff — 2026-08-01b (PR-9a: one caption convention per medium — B1 shipped; ADR-0326; v1.0.142)
+# Handoff — 2026-08-01c (PR-9b: the Library pages wear the panel toolbar; ADR-0327; v1.0.143)
 
-> ## STATUS (current) — **PR-9a BUILT AND GATED on this tree (decision B1, split out of PR-9
-> per the plan's "may split"; the rank-12 toolbar/read-me sweep is now PR-9b): DOM visuals
-> caption natively in `.ch-at`'s new DOM sibling voice (`.ch-atd` — same token/case, `color`
-> for `fill`). Mechanism 1: `workbench.js` builds a native `<table><caption>` on BOTH its
-> tables (ribbon "Selected metrics × schedule version"; drill "Activities behind {metric} —
-> one row per activity"). Mechanism 2: `gantt.js`'s shared `buildTierScale` renders ONE
-> caption-slot row above the tiers whenever the served page carries `data-ts-caption`
-> (`app.py::_TS_CAPTION_MARK`) — four one-line server opt-ins label all four Gantt-family
-> consumers (/path · /evolution · /driving-path · /sra's SSI grid, all "Schedule dates")
-> with ZERO consumer-module edits; /mission's tile and /analysis stay deliberately
-> unmarked. The ledger gained the B1 executable detectors: `DOM_TABLE_CAPTIONED` ·
-> `TIMESCALE_CAPTIONED` · `DOM_PENDING` (7 left) partition `NO_SVG_AXES` with `gantt.js`
-> named as the slot primitive; `DOM_PENDING` reaching empty closes ADR-0298's deferral.
-> ADR-0311's recorded `/workbench` blocker is CLEARED (tables are ⤓-only per DESIGN-SYSTEM
-> §3:78, already shipped — its remaining owed work is read-me + ▦/⛶ in PR-9b).
-> `gantt.js`'s PAGE_SCRIPTS freeze re-baselined DELIBERATELY (`2a4ccb61… → 9fa3a692…`,
-> named in the ADR; a MutationObserver alternative was rejected as a timing-races class).
-> DESIGN-SYSTEM §4 states the per-medium rule. Version 1.0.142, highest ADR ADR-0326,
-> wheel + nine installers regenerated. Earlier today: PR-8 (#498, ADR-0325, v1.0.141)
-> MERGED as `469cef0` by the operator; OR-05 verified closed end-to-end (the re-uploaded
-> Jacked-2 carries Task 11's deadline; −5 d live).**
+> ## STATUS (current) — **PR-9b BUILT AND GATED on this tree (the rank-12 toolbar/read-me
+> sweep — PLAN-20260730 PR-9 row's first half; PR-8 #498 and PR-9a #499 both MERGED by the
+> operator before this round): the six Library/Setup pages (/margin · /workbench · /standards
+> · /groups · /card/{name} · /wbs/{name}) each carry ONE panelkit.js include +
+> `_panel_head`/`_shell_tools` per data visual + a muted read-me per visual (ADR-0327).
+> ⤓ EXCEL wired ONLY where an existing export covers what the panel draws: /margin's three
+> data panels → the ONE margin workbook; /standards §1 → the analysis workbook's DCMA sheet;
+> /wbs both pivots → the WBS workbook (its two sheets ARE the pivots). ⤓ REFUSED with
+> reasons recorded AND asserted: margin risk panel (live Zero-margin toggle vs static
+> data-export — the r10 defect class), workbench head strip (its labeled Excel/Word links
+> already are the §3:78 ⤓ — a glyph would duplicate one URL in one panel), standards §2/§3
+> (NO export carries the Fuse/SEM families — recorded residual), /groups page-wide
+> (URL-preview scope ≠ applied scope every export reads), /card page-wide (KPI set is no
+> sheet; pivots 1-of-4 covered). NO ▦ anywhere (every panel's numbers are visible tables on
+> the same page — home-shell precedent; no .sf-drawer invented). ⛶ on every data visual;
+> forms/notices/empty states get NOTHING, and /groups + /wbs gate the include on a control
+> actually in the assembled body (r11 dead-promise law). `_panel_head` gained `h2_attrs` so
+> /margin's data-no-i18n headings survive. NO JS files touched — all PAGE_SCRIPTS freezes
+> and the 16-site axisTitles census hold as-is. Version 1.0.143, highest ADR ADR-0327,
+> wheel + nine installers regenerated ONCE after the code landed.**
 >
 > ## Verification (all read from runs this session)
-> `test_dom_captions.py` (new): server pins + REAL-chromium proof — the slot renders on all
-> four opted-in pages (token 11px, uppercase, its box ENDS above the first tier band),
-> workbench's ribbon caption renders in the same voice, and /analysis renders NO slot
-> (leak guard). **Proved able to fail, watched:** a dropped marker failed the server pin AND
-> the ledger count; the pre-slot gantt.js failed the ledger detector; the slot assertion
-> itself failed three real ways during development (/path and /driving-path draw NO
-> timescale without a target/trace — the fixture sets target 143 and traces 142 → 143;
-> 26 → 143 is critical-but-not-driving and embeds nothing). Neighbor sweep (timescale,
-> gantt×6, workbench, driving, path, sra, evolution, colresize, accessibility):
-> **403 passed**. Caption suites post-format: **59 passed**. Statics: ruff check clean ·
-> format clean (828 files — the formatter caught ONE reflow in app.py, the known
-> read-the-summary-line trap) · mypy --strict "no issues in 117 source files" · bandit
-> exit 0 · node --check clean (gantt/workbench/timescale). Installer lockstep **52 passed**
-> after wheel 1.0.142 + nine installers. Full-suite result: see SESSION-LOG (recorded after
-> the run completed — a launched run is not a result).
+> `test_r12_library_toolbar.py` (new, r11-style): include exactly-once + empty-state absence
+> · ⤓ liveness with per-page COUNT pins (3/0/1/0/0/2 — no vacuous pass) · per-panel glyph
+> anatomy incl. every refusal paired with a presence assertion · read-mes (the four NEW ones
+> by content) · promotion census 7/2/5/5/3/3 · loaded-terms gate with its control · REAL
+> chromium: ⛶ measurably lifts the /margin burn-down and /card pivots panels into the fixed
+> overlay and Escape restores the box. **Proved able to fail, watched: 12 of 14 tests FAIL
+> on the pre-change tree (git stash); the two both-tree passes are the invariant guards
+> (clean empty states; census equal pre/post — the no-new-panels cross-check).** Post-change:
+> **14 passed**. Six-page existing suites: **70 passed**. Neighbor sweep (r11 contract, DOM
+> captions, portfolio panelkit, integrity shell): **36 passed**. Statics foreground: ruff
+> check "All checks passed!" · format clean (829 files — the formatter reflowed BOTH edited
+> files first, the known read-the-summary-line trap) · mypy --strict "no issues in 117
+> source files" · bandit exit 0 · node --check clean. Full-suite + installer-lockstep
+> results: see SESSION-LOG (recorded after the runs completed — a launched run is not a
+> result).
 >
 > ## ⇢ NEXT
 > 1. **Merge the draft PR for this round when CI is green** (branch
->    `claude/polaris-engine-correctness-resume-e52fpp`), then:
-> 2. **PR-9b — the rank-12 toolbar/read-me sweep** (the six Library/Setup pages;
->    `docs/STATE/PLAN-20260730.md` PR-9 row's first half): per page one `panelkit.js`
->    include + `_panel_head`/`_shell_tools` (⤓ only where a real export exists — dead ⤓ is
->    a defect class; tables ⤓-only per §3:78; ▦ needs a `.sf-drawer`) + read-me
->    `<p class=muted>` after `<p class=sf-take>` (canonical app.py:8559-8566 area — re-grep,
->    app.py moved). /margin unblocked by ADR-0325; /workbench unblocked by ADR-0326.
-> 3. Then **PR-10 OR-03 launch motion + synthesized hum** (plan row 10, decisions recorded).
-> 4. **OR-04 operator park artifacts stay open** (`audit/VERIFICATION-REPORT-ollama-lifecycle.md`
+>    `claude/polaris-pr-9b-toolbar-ns95de`), then:
+> 2. **PR-10 — OR-03 launch motion + synthesized hum** (plan row 10, decisions recorded;
+>    WebAudio synthesis, no asset; motion CSS-only; the pinned `_AUTOPLAY_JS` list stays
+>    untouched; tests per the plan row).
+> 3. **OR-04 operator park artifacts stay open** (`audit/VERIFICATION-REPORT-ollama-lifecycle.md`
 >    §8): #1 `where ollama` · #3 keep_alive probe · #5 runner PPID · #4 model-identity
 >    manifest — plus #490's four-scenario smoke on the deployed build.
-> 5. Behind the queue: SVG batch 3c (sra/sra_jcl/sra_ssi/volatility; tornados recorded
+> 4. Behind the queue: SVG batch 3c (sra/sra_jcl/sra_ssi/volatility; tornados recorded
 >    not-axis-charts per A1) · the 7-module `DOM_PENDING` ledger · Phase 3 (CC-01 rendering
 >    half, 74 sites) · Phase 4 (P1–P6) · rank 13/14.
+> 5. ADR-0327 residuals if ever wanted: a `/export/{fmt}/standards` workbook would let
+>    §2/§3 join the ⤓ set; analysis-workbook makeup/status/constraint sheets would let
+>    /card's pivots join. `data-noprint` (C1) ships as its own PR-4.
 >
 > ## Still carried (unchanged identifiers, nothing lost)
 > **CC-01** (H2a) rendering half open, 74 call sites (eDays slack renders 7.88 d where MSP
@@ -84,30 +82,33 @@
 >
 > ## Hypotheses KILLED — do not re-chase
 > Everything in `audit/SRA-PARITY-20260729.md` §7 and the archived lists (ADR-0307 revert ·
-> unconditional floor · ADR-0311→0325 items), **plus this round:** "26 → 143 can seed a
-> driving-path trace" (critical-together ≠ driving; the server embeds nothing — use
-> 142 → 143); "/path and /driving-path chart without a target/trace" (they render picker
-> notes and NO timescale — a slot assertion there is vacuous); "the timescale slot can ride
-> a MutationObserver instead of the frozen builder" (rejected: rebuild races on /evolution's
-> frames and the dialog's repaints for zero gain); and "an overlay caption can sit in the
-> tier header" (every band row is occupied — the slot is its OWN row by construction).
+> unconditional floor · ADR-0311→0326 items), **plus this round:** "the six pages need new
+> export endpoints to satisfy the toolbar" (the sweep wires EXISTING exports only; new
+> endpoints are the recorded residual, not this round's scope); "tables take big=False"
+> (no shipped table panel omits ⛶ — the sole big=False is the /analysis scatter whose chart
+> script supplies its own); "the no-filter /groups Active-scope panel takes the toolbar"
+> (it is a status NOTICE — branch 1 with criteria is the data visual); and "census pins can
+> be written from the post-change render alone" (they must be verified EQUAL on the stashed
+> pre-change tree, or the test cannot catch panel minting).
 >
 > ## Harness notes — the traps, one line each
 > Run dev tools as `python -m <tool>` (a stale `/root/.local/bin/ruff` shadows pip's).
 > **`pip install -e ".[dev]"` before the suite** (bare `PYTHONPATH=src` fails ~200 web tests).
 > `pytest --timeout=N` is NOT installed — it exits 0 having run nothing. `cmd | tail; echo $?`
-> reports `tail`'s status — **read the tool's own summary line** (bit AGAIN this session:
-> "1 file would be reformatted" behind a clean-looking pipe). **`pkill -f` with a pattern in
-> the killer's own command line kills the killer** (kill by PID). CI can take ~11 min to
-> register check runs. `TestClient` follows 303 and CONSUMES one-shot banners
-> (`follow_redirects=False`). Parity marker ≈2m38s (ADR-0322 perf addendum). Headless
-> Chromium hides scrollbars. A remote-session resume can silently revert working-tree
-> files — re-diff after every resume. `caplog` needs `logger="schedule_forensics.<module>"`.
-> Playwright `bounding_box` is viewport-relative. **localStorage is per-ORIGIN** (second
-> served app instance: write theme/scale AFTER landing on its origin). Containers RESTART
-> mid-run: statics FOREGROUND first, long pytest re-runnable, reinstall pip after every
-> resume. After a squash-merge: `git fetch --prune origin && git remote set-head origin -a
-> && git checkout -B <branch> origin/main`.
+> reports `tail`'s status — **read the tool's own summary line** (the formatter reflowed BOTH
+> edited files again this session). **`pkill -f` with a pattern in the killer's own command
+> line kills the killer** (kill by PID). CI can take ~11 min to register check runs.
+> `TestClient` follows 303 and CONSUMES one-shot banners (`follow_redirects=False`). Parity
+> marker ≈2m38s (ADR-0322 perf addendum). Headless Chromium hides scrollbars. A remote-session
+> resume can silently revert working-tree files — re-diff after every resume. `caplog` needs
+> `logger="schedule_forensics.<module>"`. Playwright `bounding_box` is viewport-relative.
+> **localStorage is per-ORIGIN** (second served app instance: write theme/scale AFTER landing
+> on its origin). Containers RESTART mid-run: statics FOREGROUND first, long pytest
+> re-runnable, reinstall pip after every resume. After a squash-merge: `git fetch --prune
+> origin && git remote set-head origin -a && git checkout -B <branch> origin/main`.
+> **Version-bump sequencing:** bump pyproject BEFORE the full background suite starts and the
+> installer-lockstep tests in THAT run red-herring against the not-yet-rebuilt wheel — bump,
+> rebuild wheel+installers, THEN launch the suite (or re-run tests/installer after).
 >
 > **Standing rule:** do not put a test result in prose unless the number appeared in output you
 > read that turn. **A launched run is not a result, and a piped exit code is not the command's.**

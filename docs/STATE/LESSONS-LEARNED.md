@@ -435,6 +435,32 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-01c — A refused button needs the same proof as a wired one, and a census pinned from one tree proves nothing (PR-9b / ADR-0327)
+- The rank-12 sweep's hard part was not adding toolbars — it was deciding, per panel, which
+  glyph would LIE. Every ⤓ decision came down to reading what the export endpoint actually
+  emits (the margin workbook's two sheets; `wbs_breakdown_tables` being exactly the two
+  page pivots; the workbench catalog stopping at 21 entries — no Fuse/SEM anywhere) rather
+  than what its name suggests. Two refusals were live-state refusals (margin's Zero-margin
+  toggle, workbench's per-render `&cols=`) — the r10 static-attribute defect class shows up
+  wherever a panel has options, and the check is mechanical: does anything on the panel
+  change what the pinned URL would return?
+- Absence assertions pass vacuously on ANY broken tree, so every "no ⤓ here" test pairs
+  with a presence assertion in the same chunk (`_panel_titled` asserts unique + glyph set
+  `== {"big"}`), and the ⤓-liveness loop pins per-page COUNTS — on the pre-change tree the
+  collector finds zero exports and the count pin is what fails. Watched: 12 of 14 tests
+  fail stashed; the 2 both-tree passes are deliberate invariants (empty states clean;
+  panel census EQUAL pre/post — a census pinned only from the post-change render could
+  never catch panel minting, so the stash run is part of the test's provenance, recorded
+  in its docstring).
+- The no-filter /groups "Active scope" panel taught the branch lesson again: the SAME
+  heading is a status notice in one branch and a data visual in another — the toolbar
+  belongs to the branch with the reach table, and the first test draft (toolbar on the
+  heading wherever it appears) failed honestly against the deliberate notice branch.
+- Sequencing gotcha for the ritual: the pyproject bump landed after the full background
+  suite launched, so that run's installer-lockstep tests red-herring against the old wheel.
+  Bump → rebuild wheel+installers → THEN launch the suite (or re-run tests/installer after
+  and record that number). Promoted to the handoff's harness notes.
+
 ### 2026-08-01b — A vacuous pass hides in "the page loaded"; make the fixture EARN the assertion (PR-9a / ADR-0326)
 - The chromium slot proof failed three times before it could pass, and every failure was the
   FIXTURE's, not the mechanism's: /path renders NO timescale without a session target,

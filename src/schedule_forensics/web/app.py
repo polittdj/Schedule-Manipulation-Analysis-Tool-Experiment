@@ -2862,10 +2862,16 @@ def create_app(
                 focus = _target_panel(sch, st.analysis_for(name, sch), st.target_uid)
             except CPMError:
                 focus = ""  # unschedulable: skip the focus panel, still show the WBS pivot
+        body = focus + _wbs_body(name, groups, prov=_prov_chip(sch))
+        # the include rides ONLY a render that carries a contract control (the r11 law) — the
+        # no-groups branch is a bare notice, but a session-target focus panel above it still
+        # needs the driver, so the gate reads the ASSEMBLED body, not one builder's branch
+        if "data-sf-" in body:
+            body += '\n<script src="/static/panelkit.js"></script>'
         return _page(
             st,
             f"{name} — WBS",
-            focus + _wbs_body(name, groups),
+            body,
             ask_schedule=name,
             # ADR-0311: /wbs was ALREADY a declared beat of chapter 07 (("WBS", "@wbs")) yet its
             # dynamic title resolved to no chapter, so it rendered with no kicker. Named explicitly.
@@ -4784,7 +4790,9 @@ def create_app(
                 "Metric Workbench",
                 "<div class=panel>Load one or more schedules to build the metric workbench.</div>",
             )
-        return _page(st, "Metric Workbench", _workbench_body())
+        return _page(
+            st, "Metric Workbench", _workbench_body([s for _k, s in st.ordered_versions()])
+        )
 
     @app.get("/api/workbench")
     def workbench_json() -> JSONResponse:
@@ -7722,11 +7730,14 @@ def _shell_tools(*, export_title: str = "", big: bool = True) -> str:
     return f"<div class=sf-tools data-noprint=1>{excel}{enlarge}</div>"
 
 
-def _panel_head(title: str, *, tools: str = "", prov: str = "") -> str:
+def _panel_head(title: str, *, tools: str = "", prov: str = "", h2_attrs: str = "") -> str:
     """The panel-contract headline strip: h2 + tools + provenance chip. ``title`` is HTML —
     callers escape their own dynamic parts (the heading TEXT is unchanged; the uppercase
-    treatment is CSS, so existing content assertions keep holding)."""
-    return f"<div class=panel-head><h2>{title}</h2>{tools}{prov}</div>"
+    treatment is CSS, so existing content assertions keep holding). ``h2_attrs`` carries a
+    pre-existing heading attribute through a conversion (leading space included, e.g.
+    ``" data-no-i18n"``) — the /margin headings were deliberately translation-pinned and
+    joining the contract must not silently unpin them."""
+    return f"<div class=panel-head><h2{h2_attrs}>{title}</h2>{tools}{prov}</div>"
 
 
 #: ⤓ EXCEL hover text for panels whose data ships inside the existing per-schedule analysis
@@ -10223,7 +10234,16 @@ def _card_body(
     performance, the primary-constraint distribution, and the KPI cards — all from the
     engine outputs already computed for this schedule (no recomputation of the CPM).
     ``margin_days`` (OR-01, ADR-0321) is the effective schedule margin from the caller's
-    cached summary tier — rendered "—" when ``None`` (unsolvable or n/a), never 0."""
+    cached summary tier — rendered "—" when ``None`` (unsolvable or n/a), never 0.
+
+    Panel contract (rank 12 toolbar sweep, ADR-0327): both panels wear the head strip +
+    ⛶ ENLARGE + this file's provenance chip. **Neither carries ⤓ EXCEL** — no existing export
+    covers what they draw: the ID-card KPI set is not a sheet of any workbook (the analysis
+    workbook's summary sheet is a different item list), and the pivots panel mixes ONE covered
+    table (completion performance IS an analysis-workbook sheet) with three uncovered ones
+    (makeup / status / constraint appear in no export), so a panel-level ⤓ would hand back
+    less than the panel draws (the /forecast methodology precedent). No ▦ DATA: the pivots
+    ARE tables and the KPI cards' figures all render on the card itself."""
     makeup = compute_activity_makeup(sch)
     constraints = compute_constraint_distribution(sch)
     cpm, comp = analysis.cpm, analysis.completion
@@ -10310,17 +10330,29 @@ def _card_body(
         f"<b>{_e(sch.name)}</b>; computed finish {latest_finish}. Every figure below is the one the "
         f'<a href="/analysis/{quote(key, safe="")}">full report</a> computes.',
     )
+    prov = _prov_chip(sch)
+    card_head = _panel_head(
+        f"Schedule card &mdash; {_e(sch.name)}", tools=_shell_tools(), prov=prov
+    )
+    pivots_head = _panel_head(
+        "Makeup, status &amp; performance pivots", tools=_shell_tools(), prov=prov
+    )
     return f"""{takeaway}
-<div class=panel><h2>Schedule card &mdash; {_e(sch.name)}</h2>
+<div class=panel>{card_head}
 <p class=muted>The schedule's ID card (the reference deck's <i>Metrics</i> page): activity
 makeup, status, completion performance, the primary-constraint distribution, and the
 headline KPI cards — every figure computed from this file and verifiable on the
 <a href="/analysis/{quote(key, safe="")}">full report</a>.</p>
 {cards}</div>
-<div class="panel"><div class=card-cols>
+<div class="panel">{pivots_head}
+<p class=muted>Four pivots of the same activity population: task makeup, current status,
+how completed work landed against baseline, and the primary-constraint distribution &mdash;
+each as a count with its share of the population as an inline bar.</p>
+<div class=card-cols>
 <div>{makeup_tbl}</div><div>{status_tbl}</div>
 <div>{perf_tbl}</div><div>{constraint_tbl}</div>
-</div></div>"""
+</div></div>
+<script src="/static/panelkit.js"></script>"""
 
 
 def _num(value: float | None, *, suffix: str = "") -> str:
@@ -10328,12 +10360,21 @@ def _num(value: float | None, *, suffix: str = "") -> str:
     return f"{value:g}{suffix}" if value is not None else "—"
 
 
-def _wbs_body(key: str, groups: tuple[WBSGroup, ...]) -> str:
+def _wbs_body(key: str, groups: tuple[WBSGroup, ...], *, prov: str = "") -> str:
     """The deck's *Completion Metrics* (PBIX 8) + *SPI and Earned Schedule* (PBIX 9) pages.
 
     Two WBS pivots over one version: a completion-by-WBS table (counts, %, ahead/on/behind,
     duration ratio) and the SPI(t)/Earned-Schedule-by-WBS combo chart + table. Grouped by
-    the top-level WBS segment; every figure verifiable on the full report."""
+    the top-level WBS segment; every figure verifiable on the full report.
+
+    Panel contract (rank 12 toolbar sweep, ADR-0327): both panels wear the head strip + tools
+    + this file's provenance chip (``prov``), with ⤓ EXCEL on both pointing at the EXISTING
+    WBS workbook (/export/xlsx/wbs/{key}) — its two sheets are EXACTLY these two pivots
+    (reports/tables.py::wbs_breakdown_tables). No ▦ DATA: the completion pivot IS a table,
+    and the combo chart's numbers are the ES table rendered directly beneath it in the same
+    panel (the home-shell precedent). The no-groups branch renders a bare notice with NO
+    controls — the ROUTE appends the panelkit include, gated on a control actually being in
+    the assembled body (a focus panel above this body carries controls of its own)."""
     if not groups:
         return (
             "<div class=panel><h2>WBS breakdown</h2><p class=muted>This schedule has no "
@@ -10377,8 +10418,19 @@ def _wbs_body(key: str, groups: tuple[WBSGroup, ...]) -> str:
         f"<td>{g.completed}/{g.total}</td></tr>"
         for g in groups
     )
+    wbs_export = f"/export/xlsx/wbs/{quote(key, safe='')}"
+    wbs_tools = _shell_tools(
+        export_title=(
+            "Export the WBS breakdown workbook (completion + SPI(t)/Earned-Schedule sheets) — "
+            "opens in Excel"
+        )
+    )
+    completion_head = _panel_head(
+        f"Completion metrics by WBS &mdash; {len(groups)} groups", tools=wbs_tools, prov=prov
+    )
+    es_head = _panel_head("SPI(t) &amp; Earned Schedule by WBS", tools=wbs_tools, prov=prov)
     return f"""{takeaway}
-<div class=panel><h2>Completion metrics by WBS &mdash; {len(groups)} groups</h2>
+<div class=panel data-export="{wbs_export}">{completion_head}
 <p class=muted>The reference deck's <i>Completion Metrics</i> pivot (PBIX page 8), grouped by
 the top-level WBS segment: counts and completion, the ahead / on-schedule / behind split with
 average calendar days, and the actual-vs-baseline duration ratio. Every figure is verifiable
@@ -10389,7 +10441,7 @@ on the <a href="/analysis/{quote(key, safe="")}">full report</a>.</p>
 <th scope=col>Avg ahead</th><th scope=col>Avg late</th><th scope=col>Avg var</th>
 <th scope=col>Longer</th><th scope=col>Shorter</th><th scope=col>Dur min</th><th scope=col>Dur avg</th><th scope=col>Dur max</th></tr>
 {completion_rows}</table></div></div>
-<div class=panel><h2>SPI(t) &amp; Earned Schedule by WBS</h2>
+<div class=panel data-export="{wbs_export}">{es_head}
 <p class=muted>The deck's <i>SPI and Earned Schedule</i> pivot + combo (PBIX page 9). Per WBS
 group: the count-based <b>SPI(t)</b> (Earned Schedule &divide; Actual Time; &lt; 1 = behind),
 the <b>Earned Schedule</b> and <b>Actual Time</b> in working days. A group with no completions
@@ -11506,10 +11558,18 @@ in the SMP).</p>
 def _margin_risk_panel(st: SessionState) -> str:
     """The §7.3.3.2.3 risk-based margin-sufficiency panel shell (F3c tier-b, ADR-0254). The SRA
     run is OFF the page-load path — clicking the button fetches ``/api/margin/risk`` (the repo's
-    SRA doctrine); the shell only carries the cited explanation and the result container."""
+    SRA doctrine); the shell only carries the cited explanation and the result container.
+
+    Rank 12 (ADR-0327): the panel wears the head strip with ⛶ ENLARGE only. ⤓ EXCEL is
+    deliberately refused — the Zero-margin toggle switches which curve the result shows while
+    ``panelkit.js`` follows a STATIC ``data-export``, so a pinned URL would export the default
+    curve while the operator looks at the Fig 7-43 one (the round-10 live-state defect class);
+    the page's export bar carries the parameterized export instead. No provenance chip either:
+    the fetched result echoes its own run parameters in-panel, and a static chip could
+    contradict them."""
     watch, ca = st.margin_risk_pcts
     return f"""
-<div class=panel><h2 data-no-i18n>Risk-based margin sufficiency (SRA)</h2>
+<div class=panel>{_panel_head("Risk-based margin sufficiency (SRA)", tools=_shell_tools(), h2_attrs=" data-no-i18n")}
 <p class=muted data-no-i18n>&sect;7.3.3.2.3 (Sufficiency of Margin): "using a stochastic tracking curve
 takes the results from a routine SRA and plots the results against organizational margin
 requirements." Runs the seeded SSI SRA (same engine and inputs as the Risk Analysis page), then reads
@@ -11532,11 +11592,32 @@ def _margin_dashboard_body(st: SessionState) -> str:
     """The Margin Dashboard page: the takeaway + KPI header, the operator rate control (F3c), the
     Fig 5-30 band control + risk-sufficiency panel (F3c-fuller, ADR-0254), the two reference charts
     (burn-down + erosion trend), the per-version table, and the embedded dataset
-    margin_dashboard.js reads."""
+    margin_dashboard.js reads.
+
+    Panel contract (rank 12 toolbar sweep, ADR-0327): the two charts and the per-version table
+    wear the headline strip + tools + the whole-series provenance chip, with ⤓ EXCEL on all
+    three pointing at the ONE existing margin workbook (/export/xlsx/margin — the per-version
+    figures ARE its first sheet and the erosion summary its second). The deliberate refusals:
+
+    * **no ⤓ on the risk-sufficiency panel** — its Zero-margin toggle changes which curve the
+      panel shows while ``panelkit.js`` reads a STATIC ``data-export``; a pinned URL would hand
+      the operator the default curve while they are looking at the Fig 7-43 one (the round-10
+      /performance live-state defect class). The export bar at the top of the page is the
+      export path for that read.
+    * **no ▦ DATA anywhere** — the per-version table IS the two charts' data, rendered on the
+      same page (the home-shell precedent); a drawer would duplicate it.
+    * the rate and band panels are OPERATOR CONTROLS (forms), not data visuals — no toolbar."""
     d = _margin_dashboard_for(st)
     data = _margin_dashboard_data(d)
     data["band"] = _band_payload(st, d)
     blob = json.dumps(data).replace("<", "\\u003c")
+    prov = _series_prov_chip(st.ordered())
+    margin_tools = _shell_tools(
+        export_title=(
+            "Export the margin dashboard workbook (per-version figures + erosion summary) — "
+            "opens in Excel"
+        )
+    )
 
     def _row(m: MarginMonth) -> str:
         pct = f"{100 * m.pct_available:.1f}%" if m.pct_available is not None else "—"
@@ -11566,7 +11647,13 @@ def _margin_dashboard_body(st: SessionState) -> str:
         + _export_bar("margin")
         + _margin_rate_control(st.margin_rate)
         + _margin_band_control(st)
-        + '<div class="panel"><h2 data-no-i18n>Margin &amp; Contingency Burn-Down</h2>'
+        + '<div class="panel" data-export="/export/xlsx/margin">'
+        + _panel_head(
+            "Margin &amp; Contingency Burn-Down",
+            tools=margin_tools,
+            prov=prov,
+            h2_attrs=" data-no-i18n",
+        )
         + _margin_terminology()
         + '<p class="muted" data-no-i18n>Per status date: effective schedule <b>margin</b> (work days) '
         "stacked with <b>contingency</b> (weekends + holidays to the target), against the NASA "
@@ -11579,13 +11666,30 @@ def _margin_dashboard_body(st: SessionState) -> str:
         "margin activities&rsquo; durations) and <b>effective margin</b> (the buffer on the driving "
         "chain) can differ &mdash; both are reported.</p>"
         '<div class="chart-host" id="marginBurndownChart"></div></div>'
-        '<div class="panel"><h2 data-no-i18n>Margin Erosion Trend (MET)</h2>'
-        f'<p class="muted" data-no-i18n>Effective margin (work days) over the status dates with a '
+        '<div class="panel" data-export="/export/xlsx/margin">'
+        + _panel_head(
+            "Margin Erosion Trend (MET)",
+            tools=margin_tools,
+            prov=prov,
+            h2_attrs=" data-no-i18n",
+        )
+        + f'<p class="muted" data-no-i18n>Effective margin (work days) over the status dates with a '
         f"least-squares erosion line extrapolated to zero{fit}. The projected zero-margin date is "
         "the honest linear read of the current trend, not a commitment.</p>"
         '<div class="chart-host" id="marginErosionChart"></div></div>'
         + _margin_risk_panel(st)
-        + '<div class="panel"><h2 data-no-i18n>Per-version figures</h2>'
+        + '<div class="panel" data-export="/export/xlsx/margin">'
+        + _panel_head(
+            "Per-version figures",
+            tools=margin_tools,
+            prov=prov,
+            h2_attrs=" data-no-i18n",
+        )
+        + '<p class="muted" data-no-i18n>One row per loaded status date — the exact figures the '
+        "two charts above draw: planned / effective / total margin, the consumed slice, the "
+        "calendar contingency, the NASA requirement at that date, and the corrective-action and "
+        "trigger flags. <b>⤓ EXCEL</b> exports these rows (plus the erosion summary) as one "
+        "workbook.</p>"
         "<table><tr><th scope=col>Status date</th><th scope=col>Planned (wd)</th>"
         "<th scope=col>Effective (wd)</th><th scope=col>Total (wd)</th><th scope=col>Consumed</th>"
         "<th scope=col>Contingency</th><th scope=col>Total avail.</th>"
@@ -11597,6 +11701,7 @@ def _margin_dashboard_body(st: SessionState) -> str:
         # SFChartFrame.axisTitles at render time (ADR-0325) — same load-order defect and same fix
         # as resources.js / performance.js (ADR-0316, the blob-driven-module defer family)
         '<script defer src="/static/margin_dashboard.js"></script>'
+        '<script src="/static/panelkit.js"></script>'
     )
 
 
@@ -13479,12 +13584,26 @@ def _can_we_trust_header(sch: Schedule, analysis: _Analysis, ribbon: RibbonMetri
     )
 
 
-def _workbench_body() -> str:
+def _workbench_body(versions: Sequence[Schedule]) -> str:
     """The Metric Workbench (ADR-0204): an Acumen-style page — the selectable metric library on
     the left, the ribbon (chosen metrics x versions, oldest-first) on the right, and a
     click-to-drill grid (filter / sort / group / add columns / Excel) below. The library is
     server-rendered so it works before JS; ``workbench.js`` reads the checkboxes to draw the
-    ribbon and drill via ``/api/workbench`` + ``/api/workbench/drill``."""
+    ribbon and drill via ``/api/workbench`` + ``/api/workbench/drill``.
+
+    Panel contract (rank 12 toolbar sweep, ADR-0327; blocker cleared by ADR-0326): the one
+    panel wears the head strip + ⛶ ENLARGE + the whole-series provenance chip (``versions``).
+    The deliberate decisions:
+
+    * **⤓ EXCEL is NOT in the strip** — the ribbon's exports already ship as the panel's own
+      labeled links (Export ribbon Excel / Word, pinned by test_workbench_view), which is how
+      DESIGN-SYSTEM §3:78 "tables get ⤓ EXCEL only" was recorded satisfied in ADR-0326; a head
+      glyph would be a SECOND affordance for the same URL inside one panel (the round-11
+      inert-duplicate class). The drill grid ships its own export button (workbench.js) that
+      rebuilds ``&cols=<live selection>`` per render — exactly what a static ``data-export``
+      cannot follow (the round-10 defect).
+    * **no ▦ DATA** — the ribbon and drill ARE tables; a drawer would duplicate the panel's
+      own content (the home-shell precedent)."""
     families: dict[str, list[tuple[str, str, str]]] = {}
     for e in catalog_entries():
         families.setdefault(e.family, []).append((e.metric_id, e.name, e.describe))
@@ -13512,7 +13631,7 @@ def _workbench_body() -> str:
         )
     return f"""{takeaway}
 <div class=panel>
-<h2>Metric Workbench</h2>
+{_panel_head("Metric Workbench", tools=_shell_tools(), prov=_series_prov_chip(list(versions)))}
 <p class=muted>Pick any metrics from the <b>validated library</b> on the left; each is computed for
 every loaded schedule <b>independently</b> and laid out oldest&rarr;newest, Acumen-style. Click any
 value to list the activities behind it &mdash; then filter, sort, group by a project field, add
@@ -13530,7 +13649,8 @@ columns, and export. Every figure is the same gate-locked number the rest of the
 </div>
 <div id=wbDrill class=wb-drill></div>
 </div>
-<script src="/static/workbench.js"></script>"""
+<script src="/static/workbench.js"></script>
+<script src="/static/panelkit.js"></script>"""
 
 
 def _sc_status_class(status: str) -> str:
@@ -17436,9 +17556,27 @@ def _standards_rows(items: Sequence[tuple[AuditCheck | MetricResult | None, str,
     return "".join(out)
 
 
-def _standards_section(title: str, note: str, rows_html: str) -> str:
+def _standards_section(
+    title: str,
+    note: str,
+    rows_html: str,
+    *,
+    tools: str = "",
+    prov: str = "",
+    take: str = "",
+    export_url: str = "",
+) -> str:
+    """One formula-first metric family as a contract panel (rank 12, ADR-0327): head strip +
+    tools + provenance chip, an optional ``.sf-take`` (data-driven counts), the muted ``note``
+    as the read-me line, then the table. ``export_url`` becomes the panel ``data-export``
+    panelkit.js follows — pass it ONLY with a covering endpoint (dead/lying ⤓ is a defect
+    class; the Fuse/SEM families have no covering export today, so their panels carry ⛶ only).
+    Defaults keep the pre-rank-12 shape byte-compatible for any caller that passes none."""
+    export_attr = f' data-export="{_e(export_url)}"' if export_url else ""
+    take_html = f"<p class=sf-take data-no-i18n>{take}</p>" if take else ""
     return (
-        f"<div class=panel><h2>{title}</h2><p class=muted>{note}</p>"
+        f"<div class=panel{export_attr}>{_panel_head(title, tools=tools, prov=prov)}"
+        f"{take_html}<p class=muted>{note}</p>"
         '<div style="overflow-x:auto"><table class=card-table>'
         "<tr><th scope=col>Metric</th><th scope=col>Value</th><th scope=col>Status</th>"
         "<th scope=col>Threshold</th><th scope=col>Formula</th><th scope=col>Source</th></tr>"
@@ -17477,13 +17615,26 @@ def _standards_body(
         "entries the metric dictionary pins to the NASA Acumen metric library; each family "
         "below names its framework.</p></div>"
     )
-    # §1 DCMA-14 — re-projected from the cached audit (no new math)
+    # §1 DCMA-14 — re-projected from the cached audit (no new math). The panel contract
+    # (rank 12, ADR-0327): the old counts note becomes the .sf-take (same figures, verbatim),
+    # a read-me line explains the row anatomy, and ⤓ EXCEL points at the EXISTING per-schedule
+    # analysis workbook — its DCMA-14 sheet is this table's measured data (the formula/source
+    # columns are pinned dictionary metadata, not measurements; docs/METRIC-DICTIONARY.md
+    # carries them).
     audit = analysis.audit
+    prov = _prov_chip(sch)
     dcma_rows = _standards_rows([(c, c.metric_id, "") for c in audit.checks])
     dcma = _standards_section(
         "DCMA-14 point assessment",
-        f"{audit.passed} passed · {audit.failed} failed · {audit.not_applicable} N/A on {fname}.",
+        "One row per DCMA-14 check: the measured value, its PASS / FAIL / N&#47;A status, the "
+        "pass threshold, and the verbatim library formula and source. ⤓ EXCEL exports this "
+        "schedule's analysis workbook — the DCMA-14 sheet is this table's data.",
         dcma_rows,
+        tools=_shell_tools(export_title=_ANALYSIS_XLSX_TITLE),
+        prov=prov,
+        take=f"{audit.passed} passed · {audit.failed} failed · {audit.not_applicable} N/A "
+        f"on {fname}.",
+        export_url=f"/export/xlsx/analysis/{quote(key, safe='')}",
     )
     # §2 NASA / Acumen-Fuse execution indices (single-file forms; CEI needs a prior version)
     idx: list[tuple[AuditCheck | MetricResult | None, str, str]] = []
@@ -17504,11 +17655,16 @@ def _standards_body(
     if "spi_t_acumen" in evm:
         idx.append((evm["spi_t_acumen"], "spi_t_acumen", ""))
     cei_note = "" if prior is not None else " CEI needs ≥2 loaded versions — load a prior update."
+    # §2/§3 carry ⛶ only: NO existing export covers the Fuse-index or SEM families (the
+    # workbench workbook stops at DCMA-14 / Schedule Quality / Float; the performance workbook
+    # ships different datasets) — a ⤓ here would lie (ADR-0327 records the residual).
     fuse = _standards_section(
         "NASA / Acumen-Fuse execution indices",
         "Hit-or-Miss, Current/Baseline Execution, Forecast Execution, Float Ratio™, MEI and "
         f"SPI(t) — the Fuse-parity forms the /performance trends chart over time.{cei_note}",
         _standards_rows(idx),
+        tools=_shell_tools(),
+        prov=prov,
     )
     # §3 Schedule Execution Metrics (SEM) — the full Bible family (engine/metrics/sem.py),
     # validated verbatim against the committed Fuse DCMA report SEM rows (ADR-0238)
@@ -17525,8 +17681,10 @@ def _standards_body(
         "The Bible's SEM family (SEM01-SEM09), computed verbatim from the pinned library "
         f"formulas and validated against the committed Fuse SEM exports.{fri_note}",
         sem_rows,
+        tools=_shell_tools(),
+        prov=prov,
     )
-    return takeaway + intro + dcma + fuse + sem
+    return takeaway + intro + dcma + fuse + sem + '\n<script src="/static/panelkit.js"></script>'
 
 
 def _metric_scorecard_table(results: dict[str, MetricResult]) -> str:
@@ -18298,8 +18456,14 @@ def _groups_breakdown_table(sub: Schedule, field: str) -> str:
         if len(groups) > limit
         else ""
     )
+    # rank 12 (ADR-0327): the populated pivot wears the contract head (h3 → the panel-anatomy
+    # h2; the pinned assertions match the TEXT, which is unchanged) + ⛶. No ⤓ — no export
+    # covers this pivot (and it truncates at 200 values, so a partial export would also lie).
     return (
-        f"<div class=panel><h3>Breakdown by {_e(field)} &mdash; {len(groups)} value(s)</h3>"
+        f"<div class=panel>"
+        f"{_panel_head(f'Breakdown by {_e(field)} &mdash; {len(groups)} value(s)', tools=_shell_tools())}"
+        "<p class=muted>One row per distinct value of the chosen field within the current "
+        "scope: activity count, completion, and the value's own BEI (baseline throughput).</p>"
         "<table class=card-table><tr><th scope=col>Value</th><th scope=col>Activities</th>"
         "<th scope=col>% complete</th><th scope=col>BEI</th></tr>"
         f"{''.join(rows)}</table>{more}</div>"
@@ -18479,7 +18643,8 @@ def _saved_group_table(sch: Schedule, group: SavedGroup) -> str:
         else ""
     )
     return (
-        f"<div class=panel><h2>Grouped preview — {_e(group.display_name)}</h2>"
+        f"<div class=panel>"
+        f"{_panel_head(f'Grouped preview — {_e(group.display_name)}', tools=_shell_tools())}"
         "<p class=muted>Buckets in the group's own order (each clause's direction honored; "
         "MS Project semantics). Grouping never changes a metric.</p>"
         '<div style="overflow-x:auto"><table class=data-table><thead><tr><th>Group</th>'
@@ -18499,9 +18664,19 @@ def _groups_body(
 ) -> str:
     """The Groups & Filters view: build a filter that scopes EVERY metric on EVERY page across ALL
     loaded files (ADR-0104), see its reach per file, and preview the scorecard/breakdown on one
-    file. ``applied`` marks whether ``criteria`` is the live session scope (vs a URL preview)."""
+    file. ``applied`` marks whether ``criteria`` is the live session scope (vs a URL preview).
+
+    Panel contract (rank 12 toolbar sweep, ADR-0327): the data-visual panels (the Active-scope
+    reach table, the preview scorecard, the breakdown and saved-group pivots) wear the head
+    strip + ⛶ ENLARGE + a provenance chip. **No panel carries ⤓ EXCEL** — no existing export
+    covers what these panels draw, and the preview scorecard can show an UNAPPLIED URL-preview
+    scope while every export route reads the APPLIED session scope, so a pinned URL could hand
+    the operator different figures than the panel shows (the round-10 live-state defect class).
+    The filter-builder form and the status-notice Active-scope branches are not data visuals —
+    no toolbar. No ▦ DATA: each panel's table IS its data (the home-shell precedent)."""
     form = _groups_form(versions, version_key, sch, criteria, breakdown)
     sub = filter_schedule(sch, criteria) if criteria else sch
+    series_prov = _series_prov_chip([s for _k, s in versions])
 
     if criteria:
 
@@ -18522,7 +18697,9 @@ def _groups_body(
             else "Not applied yet &mdash; <b>Apply to all pages</b> to scope "
         )
         summary = (
-            f"<div class=panel><h2>Active scope</h2><p>{chips}</p>"
+            f"<div class=panel>"
+            f"{_panel_head('Active scope', tools=_shell_tools(), prov=series_prov)}"
+            f"<p>{chips}</p>"
             f"<p class=muted>{live}<b>every metric on every page</b>, for all loaded files "
             "(logical AND across rows).</p>"
             f"<p class=muted><b>{matched}</b> of {total} activities match in the preview file.</p>"
@@ -18577,7 +18754,8 @@ def _groups_body(
             table = f'<p class="notice err">Network for this scope cannot be solved: {_e(exc)}</p>'
         preview_name = _e(sch.source_file or sch.name)
         scorecard = (
-            f"<div class=panel><h2>Preview &mdash; metric scorecard for {preview_name}</h2>"
+            f"<div class=panel>"
+            f"{_panel_head(f'Preview &mdash; metric scorecard for {preview_name}', tools=_shell_tools(), prov=_prov_chip(sch))}"
             f"<p class=muted>The same scope drives this file's full report and every other page.</p>"
             f"{cards}{table}</div>"
         )
@@ -18615,7 +18793,7 @@ def _groups_body(
             "Build a filter above to scope every metric, path and forecast on every page, across "
             "all loaded files at once."
         )
-    return (
+    body = (
         _utility_takeaway(_head, _lede)
         + tip
         + form
@@ -18624,6 +18802,12 @@ def _groups_body(
         + scorecard
         + breakdown_html
     )
+    # the include rides ONLY a render that actually carries a contract control (the r11 law:
+    # a script with nothing to drive is a dead promise — e.g. a summaries-only preview file
+    # renders notice panels with no toolbar at all)
+    if "data-sf-" in body:
+        body += '\n<script src="/static/panelkit.js"></script>'
+    return body
 
 
 def _how_stable_header(ev: PathEvolution) -> str:
