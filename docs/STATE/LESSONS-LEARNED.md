@@ -459,6 +459,11 @@ those fixed defects in earlier "closed" fixes:
   synthesis over a ≥60 s asset also kept ~10 MB out of the wheel + nine installers. The
   operator's ear remains the acceptance (fallback held, ADR-0328).
 
+- CI postscript: the round's ONE CI failure was `from tests.web.test_accessibility import
+  _AUTOPLAY_JS` inside a test — importable locally (sys.path luck), `ModuleNotFoundError` on
+  CI. Never import one test module from another here; pin cross-module invariants by TEXT
+  (read the sibling file, assert the literal), which is also the stronger assertion.
+
 ### 2026-08-01d — A verification you remember making is not a verification (the codex round on PR-9b)
 - An external automated reviewer raised five findings on #501; all five survived my
   re-verification, including one that overturned a sentence in the round's own ADR: I had

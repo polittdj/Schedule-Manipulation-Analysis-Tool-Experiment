@@ -136,12 +136,16 @@ def test_home_primes_only_in_gesture_handlers_and_fades_before_navigating(
 
 def test_the_autoplay_stepper_pin_is_untouched() -> None:
     """The plan's explicit freeze: ``_AUTOPLAY_JS`` (the five reduced-motion-gated stepper
-    charts) gains no member from this round — the hum is audio, not a motion stepper."""
-    from tests.web.test_accessibility import _AUTOPLAY_JS
-
-    expected = ("cei.js", "drift.js", "path_evolution.js", "scurve.js", "trend_drill.js")
-    assert expected == _AUTOPLAY_JS
-    assert "launch_audio.js" not in _AUTOPLAY_JS
+    charts) gains no member from this round — the hum is audio, not a motion stepper. Pinned
+    by TEXT, not by import: ``from tests.web...`` resolves locally but not on CI (the ``tests``
+    package is not importable there — ModuleNotFoundError, the round's one CI failure), and the
+    text pin is stronger anyway: launch_audio.js may not appear ANYWHERE in the module."""
+    src = (Path(__file__).parent / "test_accessibility.py").read_text(encoding="utf-8")
+    pin = (
+        '_AUTOPLAY_JS = ("cei.js", "drift.js", "path_evolution.js", "scurve.js", "trend_drill.js")'
+    )
+    assert pin in src, "the pinned _AUTOPLAY_JS literal changed"
+    assert "launch_audio.js" not in src
 
 
 def test_design_system_records_the_audio_rule() -> None:

@@ -10091,3 +10091,16 @@ the briefs + state rotation) earlier today.
   their dedicated runs. Draft PR **#503** opened (branch
   `claude/polaris-pr10-or03-motion-uzgvc0`, head `ff3cb1a`), session subscribed, hourly
   check-in armed.
+
+## 2026-08-01e (CI) — the 3.13 job's one failure: a test-to-test import that only works locally
+
+- CI `test (3.13)` on #503 head `c69c0da`: **1 failed, 3182 passed, 35 skipped** — every
+  chromium/playwright module skipped by design (incl. the new `test_launch_audio_chromium`),
+  coverage gate 95.30% ≥ 70%, and the single failure was
+  `test_the_autoplay_stepper_pin_is_untouched`: `from tests.web.test_accessibility import
+  _AUTOPLAY_JS` raises `ModuleNotFoundError: No module named 'tests'` on CI (the `tests`
+  package resolves locally by sys.path luck only; no other test in the repo imports across
+  test modules — greped). Fixed by pinning the `_AUTOPLAY_JS` literal by TEXT (read the
+  sibling file, assert the exact tuple line + that `launch_audio.js` appears nowhere in it) —
+  the house md5/text-pin idiom, and strictly stronger than the import. Module re-run locally:
+  **8 passed**; ruff "All checks passed!", format repo-clean (833 files).
