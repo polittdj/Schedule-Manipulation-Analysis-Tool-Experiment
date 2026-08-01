@@ -10182,3 +10182,19 @@ the briefs + state rotation) earlier today.
   wheel/installers rebuilt BEFORE the full background suite launched (the recorded
   sequencing); **the full-suite run is IN FLIGHT at this commit — its result lands in the
   next append, never stated unread** (the standing rule).
+
+## 2026-08-01g (append) — the full-suite result, read and adjudicated
+
+- **Full suite `python -m pytest -q`: 2 failed, 3250 passed, 1 skipped in 17m48s.** (The
+  background task reported exit 0 — the PIPE's exit, `| tail`, the recorded trap; the summary
+  line above is the read result.) Both failures are the **pre-adjudicated /analysis focus→tip
+  intermittent pair** — `test_float_tip_dismiss` AND its scroll sibling, the exact carried
+  item — with the known signature (the 4 s focus→tip `wait_for_function` timeout). Isolated
+  re-runs this turn: dismiss **pass**; scroll **fail · fail · pass · fail** (the documented
+  container-dependent flake rate). This round's diff cannot touch the family by construction:
+  `git diff` shows sra.js, volatility.js, ONE script-tag line inside the /volatility body,
+  pyproject, ledgers and docs — /analysis and app.js untouched. Carried, not chased, per the
+  standing adjudication.
+- The six newly-captioned charts' suites all passed INSIDE the full run (part of the 3250),
+  including the measured visual pass on the formatted tree. Draft PR **#505** opened
+  (head `57caa26`), session subscribed, check-in armed.
