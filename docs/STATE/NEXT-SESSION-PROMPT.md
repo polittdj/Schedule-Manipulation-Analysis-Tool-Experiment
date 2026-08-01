@@ -8,31 +8,37 @@ kickoff steers a fresh session at work that is already done.)
 ---
 
 Resume POLARIS (Schedule-Manipulation-Analysis-Tool). **Read `docs/STATE/HANDOFF.md` FIRST**
-(auto-injected). As of last session: **v1.0.144**, highest ADR **0328**; **PR-10 (#503) is
-MERGED** as `839c659` — OR-03 is DONE (CSS-only orbit motion + the synthesized Boot Audio Hum,
-gesture-primed, ≤200 ms pre-navigation fade, persisted mute/volume). Verify with
+(auto-injected). As of last session: **v1.0.145**, highest ADR **0329**; a three-merge day —
+**#503 (PR-10/OR-03, ADR-0328)**, **#504 (session close + the OR-04 collection kit)**, and
+**#505 (batch 3c-i, ADR-0329)** all MERGED; #505 landed as `085da7b`. Verify with
 `git fetch --prune origin` and restart your branch from `origin/main`. Fresh container:
 `pip install -e ".[dev]"` plus `pip install playwright 'ruff==0.16.1' build` first.
 
 ### ⇢ DO THESE THINGS FIRST
 
-1. `git fetch --prune origin`; confirm `839c659` (#503) is main's ancestor and check whether
+1. `git fetch --prune origin`; confirm `085da7b` (#505) is main's ancestor and check whether
    the session-close docs PR is merged; restart your branch fresh from `origin/main`.
-2. Then take up **OR-04 operator park artifacts**
-   (`audit/VERIFICATION-REPORT-ollama-lifecycle.md` §8): #1 `where ollama` · #3 keep_alive
-   probe · #5 runner PPID · #4 model-identity manifest — plus #490's four-scenario smoke on
-   the deployed build. These are OPERATOR-run items on the deployed tool: the session's share
-   is whatever is buildable/checkable in-repo (scripts, docs, fakes) — re-read the §8 park
-   list on this tree before deciding scope, and coordinate anything operator-facing through
-   the handoff rather than guessing at their machine.
-3. Behind it: SVG batch 3c (sra/sra_jcl/sra_ssi/volatility; tornados recorded not-axis-charts
-   per A1) · the 7-module `DOM_PENDING` ledger · Phase 3 (CC-01 rendering half, 74 sites,
-   Fable 5 Max) · Phase 4 (P1–P6) · rank 13/14. OR-03 residuals stay parked in ADR-0328:
-   operator's-ear acceptance of the synthesis on the deployed build (vendored-ogg fallback
-   HELD), /example → fetch path only if its at-unload cut ever matters. Known intermittent:
-   the /analysis focus→tip test family (dismiss + scroll siblings) fails ~half of isolated
-   runs — pre-existing, adjudicated in HANDOFF's carried list; do not chase it as a
-   regression.
+2. Then BUILD **batch 3c-ii — sra_jcl.js + sra_ssi.js join the caption convention** (the
+   AXIS-TITLES finale: PENDING → empty closes the ledger for good). Prerequisite FIRST: teach
+   `test_axis_titles_visual.py` to CLICK the Run buttons (`#jclRun`, `#ssiRun`) on `/sra` —
+   both modules fetch and render only on demand, so their captions are unmeasurable until the
+   harness clicks (the recorded reason for the 3c split, ADR-0329). Then caption: the JCL
+   football (x finish date · y EAC — its corner quadrant %-labels sit EXACTLY in both caption
+   corners and must yield per ADR-0303, likely the live-box mechanism), the cost S-curve
+   (x EAC · y cumulative %), the SSI S-curve (x finish date · y cumulative %) and SSI
+   histogram (x finish date · y simulated finishes). The FICSM strip is a labeled bar strip →
+   recorded not-axis-chart (decision A1); the 5×5 matrices are natively-labeled HTML tables
+   (ADR-0326's other medium). Both modules draw inside fetch callbacks (chartframe.js long
+   loaded) — the ADR-0316 defer trap does NOT bite here, but CHECK script order anyway (the
+   standing harness note). AXIS_CALL_SITES re-baselines 24 → N deliberately, prior entries
+   byte-untouched; neither module is in PAGE_SCRIPTS.
+3. Behind it: **the OR-04 ball stays with the operator** (run
+   `audit/operator-artifacts/collect-ollama-artifacts.ps1` on the deployed box after one
+   Ask-the-AI question; commit outputs + `smoke-results.md`) · the 7-module `DOM_PENDING`
+   ledger · Phase 3 (CC-01 rendering half, 74 sites, Fable 5 Max) · Phase 4 (P1–P6) · rank
+   13/14 · OR-03 residuals parked in ADR-0328 (operator's-ear hum acceptance; ogg fallback
+   HELD). Known intermittent: the /analysis focus→tip family (dismiss + scroll siblings) —
+   pre-existing, adjudicated in HANDOFF's carried list; do not chase it as a regression.
 
 Standing rules (CLAUDE.md, binding): Law 1 CUI · Law 2 fidelity ("—" never 0; never weaken a
 test; a fast wrong number is worthless) · ADR-0240 model/audit protocol · READ EVERYTHING,

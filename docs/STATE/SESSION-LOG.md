@@ -10198,3 +10198,21 @@ the briefs + state rotation) earlier today.
 - The six newly-captioned charts' suites all passed INSIDE the full run (part of the 3250),
   including the measured visual pass on the formatted tree. Draft PR **#505** opened
   (head `57caa26`), session subscribed, check-in armed.
+
+## 2026-08-01 (close) — session ended by the operator; batch 3c-i MERGED (the three-merge day)
+
+- **#505 (batch 3c-i, ADR-0329, v1.0.145) MERGED by the operator as `085da7b`** — sra.js +
+  volatility.js are captioned, the 18 → 24 call-site and volatility byte-digest re-baselines
+  are law, /sra + /volatility are in the measured visual matrix, and the /volatility defer
+  fix (the measured pass's live catch) shipped with it. The operator marked ready and
+  squash-merged; the still-armed 17:02Z check-in trigger deleted, watch auto-unsubscribed.
+- **The full day, in merges:** #503 (PR-10/OR-03 — the Launch Sequence's orbit motion + the
+  synthesized Boot Audio Hum, ADR-0328, v1.0.144) · #504 (session close + the OR-04 §8
+  collection kit) · #505 (batch 3c-i, ADR-0329, v1.0.145). Three PRs built, gated,
+  drive-to-green'd (one CI-only import fix on #503), merged.
+- Branch restarted from `origin/main` (`085da7b`); `docs/STATE/NEXT-SESSION-PROMPT.md`
+  refreshed to the **batch 3c-ii** kickoff (click-driving visual harness → caption the
+  football / cost S-curve / SSI S-curve + histogram → PENDING empty closes AXIS-TITLES).
+- Carried unchanged: the OR-04 operator collection run · DOM_PENDING (7) · Phase 3/4 ·
+  rank 13/14 · the /analysis focus→tip intermittent (adjudicated) · OR-03 residuals
+  (ADR-0328).
