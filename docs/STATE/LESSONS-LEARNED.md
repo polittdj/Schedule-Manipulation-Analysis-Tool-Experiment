@@ -435,6 +435,44 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-01i — A test can measure the wrong thing for eleven batches and stay green
+- The axis-caption convention shipped **eleven batches** and a four-theme × three-scale measured
+  pass, and every one of them was blind to the defect that mattered: a caption drawn *over a
+  histogram bar* prints at **1.17:1**. The pass measured contrast against the element's resolved
+  CSS `background` and overlap only against sibling `<text>` — so `<rect>`/`<polyline>` ink was
+  invisible to *both* checks. It measured **text vs text and called it legibility.** The lesson
+  generalizes past captions: when you write a check, name the failure it is supposed to catch and
+  then ask what the check actually reads. Ours read the *stylesheet's* backdrop, not the *painted*
+  one, and those differ exactly where charts are interesting.
+- **Corollary — an assertion whose antecedent is almost always true is a markup check in
+  disguise.** "Ink is under the caption, so the halo must be set" sounds like a measurement, but
+  ink is under **792 of 1008** renders, so it decays toward `assert rule in stylesheet` — the very
+  ADR-0304 anti-pattern the file exists to prevent. The honest version screenshots the caption and
+  measures the modal colour of its own box. Cost: one PNG decode (stdlib `zlib`, since Pillow is
+  not a dependency). Value: it failed on the real defect at 1.17:1 and *discriminated* — the one
+  caption with no bar behind it still read 3.07:1 in the same run.
+- **A stray `*/` is a silent, total CSS failure.** Putting new rationale outside the closing
+  comment marker made the parser error-recover and swallow the entire `.ch-at` rule.
+  `node --check` does not read CSS, ruff and mypy do not read CSS, and a source grep still found
+  the text. Only reading **computed style from a real render** caught it — the same principle as
+  ADR-0304's measured box, applied to a stylesheet.
+- **Read the CSS before assuming a colour.** The draft fix painted a blanket white halo; two of
+  the three chart families are not on white (`.res-svg` and `.evo-gantt svg` use
+  `var(--gantt-canvas)`). The token indirection (`--sf-ch-canvas`) is not decoration — it is what
+  makes one rule correct on three different backdrops.
+- **A bug that cannot reproduce in development will not be found by development.** The
+  session-retention defect needs a *fixed* port; the deployed shortcut pins 8321 while every dev
+  launch takes an ephemeral one. Same code, different origin, opposite behavior. When an operator
+  reports something the team cannot reproduce, check whether the deployment differs from the dev
+  path *in configuration* before doubting the report.
+- **Adversarial review pays even when the plan is careful.** Red-teaming the approved plan
+  overturned four of its proposed fixes before any of them were built — most sharply, that pausing
+  the heartbeat to save CPU would have let `idle_grace` shut the tool down after ten minutes
+  minimized and **lose the operator's whole session**: a data-loss defect introduced by a
+  *performance* item. Also: agents that die mid-run must never be counted as agreement — 9 of 17
+  audit verifiers died on credit exhaustion and the harness bucketed their findings as "refuted"
+  by a falsy check. Unverified is not cleared.
+
 ### 2026-08-01h — A recorded prerequisite can hide a false premise of its own (batch 3c-ii)
 - The 3c-i handoff recorded 3c-ii's prerequisite as "teach the visual harness to CLICK the Run
   buttons (#jclRun, #ssiRun) on /sra" — accurate, and still understated in a way that would

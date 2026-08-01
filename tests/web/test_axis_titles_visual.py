@@ -127,6 +127,14 @@ KNOWN_COLLISIONS: set[tuple[str, str]] = set()
 CONTRAST_FLOOR = 3.0
 TOKEN_PX = 11.0
 
+#: ADR-0331 — the probe also reports the INK under each caption and the caption's halo.
+#: The original probe measured contrast against the resolved CSS *background* and overlap only
+#: against sibling ``<text>``, so ``<rect>``/``<polyline>`` ink was invisible to both checks — which
+#: is exactly how a caption printing at 1.05-1.54:1 over a histogram bar shipped green (ADR-0330's
+#: charts). ``ink`` counts non-text shapes whose real rendered box overlaps the caption's; ``po`` /
+#: ``stroke`` / ``sw`` report the halo that makes such a caption legible. Deliberately a bbox
+#: sweep, NOT ``getIntersectionList``: its support and semantics differ between engines, and a
+#: bounding-box overlap is the property being asserted anyway.
 _PROBE = """() => {
   const out = [];
   document.querySelectorAll('text.ch-at').forEach(n => {
@@ -135,9 +143,19 @@ _PROBE = """() => {
     let bg = 'rgb(0,0,0)', el = svg || n;
     while (el) { const c = getComputedStyle(el).backgroundColor;
       if (c && !c.startsWith('rgba(0, 0, 0, 0)')) { bg = c; break; } el = el.parentElement; }
+    let ink = 0;
+    if (svg) {
+      svg.querySelectorAll('rect,polyline,path,circle,line').forEach(s => {
+        const b = s.getBoundingClientRect();
+        if (!b.width && !b.height) return;
+        if (Math.min(r.right, b.right) - Math.max(r.left, b.left) > 0 &&
+            Math.min(r.bottom, b.bottom) - Math.max(r.top, b.top) > 0) ink++;
+      });
+    }
     out.push({text: n.textContent, x: Math.round(r.x), y: Math.round(r.y),
               w: Math.round(r.width), h: Math.round(r.height), fs: cs.fontSize,
               tt: cs.textTransform, fill: cs.fill || cs.color, bg,
+              ink, po: cs.paintOrder, stroke: cs.stroke, sw: cs.strokeWidth,
               svg: sr ? {x: Math.round(sr.x), y: Math.round(sr.y),
                          w: Math.round(sr.width), h: Math.round(sr.height)} : null,
               siblings: svg ? [...svg.querySelectorAll('text')]
@@ -168,6 +186,84 @@ def _contrast(fg: tuple[float, float, float], bg: tuple[float, float, float]) ->
 def _rgb(s: str) -> tuple[float, float, float]:
     n = [float(x) for x in s.replace("rgba(", "").replace("rgb(", "").rstrip(")").split(",")[:3]]
     return (n[0], n[1], n[2])
+
+
+def _png_pixels(data: bytes) -> tuple[int, int, list[tuple[int, int, int]]]:
+    """Decode a Playwright screenshot to RGB pixels using the STANDARD LIBRARY only.
+
+    Pillow is not a project dependency (Law 1 keeps the runtime stdlib-only, and the dev extra
+    has no imaging stack), so the honest pixel check decodes the PNG itself: zlib for the IDAT
+    stream plus the five PNG filter types. Screenshots are 8-bit RGB/RGBA, non-interlaced.
+    """
+    import struct
+    import zlib
+
+    pos, w, h, ctype, idat = 8, 0, 0, 6, b""
+    while pos < len(data):
+        (length,) = struct.unpack(">I", data[pos : pos + 4])
+        kind = data[pos + 4 : pos + 8]
+        body = data[pos + 8 : pos + 8 + length]
+        if kind == b"IHDR":
+            w, h, depth, ctype = (*struct.unpack(">IIBB", body[:10]),)[:4]
+            assert depth == 8 and ctype in (2, 6), (depth, ctype)
+        elif kind == b"IDAT":
+            idat += body
+        elif kind == b"IEND":
+            break
+        pos += 12 + length
+
+    chan = 4 if ctype == 6 else 3
+    raw = zlib.decompress(idat)
+    stride = w * chan
+    out: list[tuple[int, int, int]] = []
+    prev = bytearray(stride)
+    at = 0
+    for _ in range(h):
+        filt = raw[at]
+        line = bytearray(raw[at + 1 : at + 1 + stride])
+        at += 1 + stride
+        for i in range(stride):
+            a = line[i - chan] if i >= chan else 0
+            b = prev[i]
+            c = prev[i - chan] if i >= chan else 0
+            if filt == 1:
+                line[i] = (line[i] + a) & 0xFF
+            elif filt == 2:
+                line[i] = (line[i] + b) & 0xFF
+            elif filt == 3:
+                line[i] = (line[i] + ((a + b) >> 1)) & 0xFF
+            elif filt == 4:
+                p = a + b - c
+                pa, pb, pc = abs(p - a), abs(p - b), abs(p - c)
+                line[i] = (line[i] + (a if pa <= pb and pa <= pc else b if pb <= pc else c)) & 0xFF
+        for i in range(0, stride, chan):
+            out.append((line[i], line[i + 1], line[i + 2]))
+        prev = line
+    return w, h, out
+
+
+def _modal_color(px: list[tuple[int, int, int]]) -> tuple[float, float, float]:
+    """The most common colour in a clip — the caption's REAL local backdrop. Glyph strokes are
+    sparse relative to the box they sit in, so the mode is what the eye reads the text against.
+
+    Quantising groups anti-aliased near-duplicates together, but the bucket CENTRE is not the
+    colour: a pure-white backdrop buckets to 252 and scores 2.99:1 against console's ``--muted``
+    where the true value is 3.07:1 — enough to fail a 3.0 floor on a correct render. So the mode
+    picks the bucket and the returned colour is the true mean of the pixels inside it.
+    """
+    from collections import Counter, defaultdict
+
+    buckets: defaultdict[tuple[int, int, int], list[tuple[int, int, int]]] = defaultdict(list)
+    for r, g, b in px:
+        buckets[(r // 8, g // 8, b // 8)].append((r, g, b))
+    key, _ = Counter({k: len(v) for k, v in buckets.items()}).most_common(1)[0]
+    hits = buckets[key]
+    n = len(hits)
+    return (
+        sum(p[0] for p in hits) / n,
+        sum(p[1] for p in hits) / n,
+        sum(p[2] for p in hits) / n,
+    )
 
 
 def _free_port() -> int:
@@ -322,6 +418,7 @@ def test_captions_survive_every_theme_and_scale(
     problems: list[str] = []
     known_hit: set[tuple[str, str]] = set()
     measured = 0
+    inked = 0
     geometry: dict[str, list[tuple[Any, ...]]] = {}
 
     def _base_for(route: str) -> str:
@@ -398,6 +495,24 @@ def test_captions_survive_every_theme_and_scale(
                         ratio = _contrast(_rgb(c["fill"]), _rgb(c["bg"]))
                         if ratio < CONTRAST_FLOOR:
                             problems.append(f"{label}: contrast {ratio:.2f}:1 < {CONTRAST_FLOOR}")
+                        # ADR-0331: the contrast above is measured against the CANVAS. That is only
+                        # the colour actually behind the glyphs when nothing is drawn there — and
+                        # on a bar/line chart something usually is. Where ink overlaps the caption,
+                        # the halo is what keeps the canvas contrast true, so require it.
+                        if c["ink"]:
+                            inked += 1
+                            if not str(c["po"]).startswith("stroke"):
+                                problems.append(
+                                    f"{label}: {c['ink']} ink shape(s) under it, paint-order="
+                                    f"{c['po']!r} — the halo is not painted under the fill"
+                                )
+                            if str(c["stroke"]) in ("none", "") or not float(
+                                str(c["sw"]).removesuffix("px") or 0
+                            ):
+                                problems.append(
+                                    f"{label}: {c['ink']} ink shape(s) under it but no halo "
+                                    f"(stroke={c['stroke']!r}, width={c['sw']!r})"
+                                )
                         # against EVERY other text in the same svg — a caption colliding with a
                         # tick label or a row name is the likeliest real collision, and comparing
                         # captions only to captions cannot see it.
@@ -422,6 +537,12 @@ def test_captions_survive_every_theme_and_scale(
         browser.close()
 
     assert measured >= 100, f"only {measured} caption renders measured — the pass proved little"
+    # The ink check is only worth anything if ink is actually FOUND under captions. If a future
+    # refactor stopped reporting it, every halo assertion above would pass vacuously.
+    assert inked >= 20, (
+        f"only {inked} caption renders had ink beneath them — the ADR-0331 halo check is not "
+        "exercising anything; verify the probe still sweeps non-text shapes"
+    )
     # The debt list may only shrink. An entry that no longer collides has been FIXED, and leaving
     # it listed would hide the next regression at that exact spot.
     stale = KNOWN_COLLISIONS - known_hit
@@ -434,4 +555,65 @@ def test_captions_survive_every_theme_and_scale(
     # is why every theme is measured above rather than one standing in for the rest.
     varied = [r for r, runs in geometry.items() if len(set(runs)) > 1]
     print(f"\n  measured {measured} caption renders, {len(THEMES)} themes x {len(SCALES)} scales")
+    print(f"  caption renders with chart ink beneath them (halo required): {inked}")
     print(f"  pages whose caption geometry differs by theme (expected — apollo is mono): {varied}")
+
+
+def test_the_degenerate_single_bin_histogram_is_still_legible(served: str) -> None:
+    """The worst case for ADR-0331, and it needs no fixture of its own: run the SSI simulation on
+    the GOLDEN pair, which carries no Best/Worst spread, so the engine returns a one-point S-curve
+    and a ONE-BIN histogram (``engine/sra.py``'s documented ``hi == lo`` path). That single bar
+    spans the whole plot, so it lies under BOTH captions at once — the shape that proves a caption
+    can be buried by data no yield rule could ever move, because the bar IS the chart.
+
+    Kept separate from the matrix above so it costs one page load rather than twelve — and it is
+    where the check is made of PIXELS rather than of CSS. The matrix asserts the halo's computed
+    style, which is cheap and did catch a real breakage; but "ink is under the caption, so the
+    halo must be set" has an antecedent that is true on essentially every gridded chart, so on its
+    own it decays into asserting that a stylesheet rule exists — the very ADR-0304 anti-pattern
+    this file exists to avoid. Here we screenshot each caption and measure what the glyphs are
+    ACTUALLY read against: the modal colour of the caption's own box. Without the halo that is the
+    bar fill (~1.17:1); with it, the canvas (~3.07:1 in console, the slimmest theme).
+    """
+    from playwright.sync_api import sync_playwright
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch(executable_path=str(CHROME))
+        page = browser.new_page(viewport={"width": 1600, "height": 1100})
+        page.goto(served + "/sra", wait_until="domcontentloaded")
+        page.click("#ssiRun", timeout=10000)
+        page.wait_for_selector("#ssiCharts text.ch-at", timeout=10000, state="attached")
+        page.wait_for_timeout(200)
+        caps = [c for c in page.evaluate(_PROBE) if c["ink"]]
+        # Element screenshots, not a clipped page shot: these captions sit far below the fold and
+        # `clip` is viewport-relative, so a page shot of their box is "outside the resulting
+        # image". Handle screenshots scroll the node into view themselves.
+        by_text = {c["text"]: c for c in caps}
+        shots: dict[str, bytes] = {}
+        for handle in page.query_selector_all("#ssiCharts text.ch-at"):
+            label = (handle.text_content() or "").strip()
+            if label in by_text:
+                handle.scroll_into_view_if_needed()
+                shots[label] = handle.screenshot()
+        browser.close()
+
+    assert caps, "no caption had ink beneath it — the degenerate case did not render as expected"
+    assert shots, "no caption screenshots captured — the pixel check proved nothing"
+    problems = []
+    for c in caps:
+        shot = shots.get(c["text"])
+        if shot is None:
+            continue
+        _w, _h, px = _png_pixels(shot)
+        backdrop = _modal_color(px)
+        ratio = _contrast(_rgb(c["fill"]), backdrop)
+        print(
+            f"\n  “{c['text']}” over {c['ink']} ink shape(s): "
+            f"reads against rgb{tuple(int(v) for v in backdrop)} at {ratio:.2f}:1"
+        )
+        if ratio < CONTRAST_FLOOR:
+            problems.append(
+                f"“{c['text']}”: measured {ratio:.2f}:1 against its REAL backdrop "
+                f"rgb{tuple(int(v) for v in backdrop)} — below {CONTRAST_FLOOR}"
+            )
+    assert not problems, "caption illegible where it actually sits:\n  " + "\n  ".join(problems)

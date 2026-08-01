@@ -10256,3 +10256,70 @@ the briefs + state rotation) earlier today.
   adversarial verifier per finding) launched on the diff; lead-validated outcome recorded
   below when read. **The full-suite run is IN FLIGHT at this line — its result lands in the
   next append, never stated unread** (the standing rule).
+
+## 2026-08-01 (merged) — batch 3c-ii MERGED as `02decef` (#507); the deferred record
+
+- **#507 merged by the operator**; GitHub deleted the head branch. Two things the merged commit
+  does NOT contain, recorded here because plan mode deferred the final push:
+  - **Full suite on that tree: 3 failed, 3247 passed, 2 skipped in 17m51s.** Adjudicated:
+    `tests/test_state_docs.py::test_session_log_references_latest_adr` was a **docs-edit race**
+    (the suite launched while the ADR/HANDOFF/SESSION-LOG edits were mid-flight) — re-run
+    standalone immediately after: **4 passed**. The other two are the pre-adjudicated
+    `/analysis` focus→tip pair; isolated re-runs this session: **fail · fail · pass**, the
+    documented ~50 % rate. Carried, not chased.
+  - **The ADR-0240 audit outcome.** One finding survived adversarial verification (the caption
+    over chart ink, now ADR-0331). **Caveat that must ride with it: 9 of the 17 audit agents died
+    on credit exhaustion, and the harness bucketed their findings as "refuted" via a falsy check
+    — those are UNVERIFIED, not cleared.** Two were re-checked by hand and are non-issues; the
+    rest are unadjudicated.
+
+## 2026-08-01i — Phase 0: the caption halo + a pixel-measuring visual pass (ADR-0331, v1.0.147)
+
+- **A read-only deep dive produced an operator-approved completion plan**
+  (`/root/.claude/plans/merry-juggling-owl.md`): three parallel read-only surveys (backlog, UI
+  status, perf/session), a lead re-verification pass, an adversarial red-team of the plan itself,
+  and four operator decisions — UI = **hybrid** (Mission Ops architecture + the Command Deck's
+  best ideas), new-session = **always start clean**, order = **perf + session first**, and #507
+  merged as-is with the caption fix as the first follow-up.
+- **Two root causes were verified first-hand and are now written down.** Session retention: the
+  deployed install pins `$AppPort = 8321`, `launcher.py` has no instance detection, the old
+  process survives (`idle_grace=600`; `_liveness` refreshes `last_beat` on every request), and the
+  browser timer is non-daemon and starts BEFORE the bind — so a relaunch lands on the OLD process
+  and its OLD `SessionState`, which also defeats ADR-0324 (same process ⇒ same launch token). This
+  is invisible in development because a dev launch takes an ephemeral port, i.e. a new origin
+  every time. Lag: `sysmon.js`'s 2 s poll rewrites four blocks via `innerHTML`, feeding two
+  **document-wide** MutationObservers (`gantt.js:514`, `vizhints.js:629`) that re-scan the whole
+  DOM; plus uncached cross-version families behind `/trend`, per-page work that walks every task
+  of every version, and on Windows a 5 s PowerShell probe loop.
+- **BUILT (ADR-0331):** `.ch-at` gains a halo — `paint-order:stroke fill` with
+  `stroke:var(--sf-ch-canvas)` — so each glyph carries its own backdrop. Placement unmoved
+  (ADR-0298/0303 stand), **no JS touched**, all 28 frozen call-site digests byte-identical. The
+  halo colour is a token because the canvas is not uniform: default `var(--panel)`, `.ssi-svg`
+  `#fff`, `.res-svg` + `.evo-gantt svg` `var(--gantt-canvas)`.
+- **The measured pass now reads pixels.** The probe sweeps `rect,polyline,path,circle,line` and
+  requires the halo's computed style wherever ink is found (broad — **792 of 1008** renders);
+  the degenerate single-bin case screenshots each caption and measures the modal colour of its own
+  box against the 3.0 floor (sharp). PNG decoded with **stdlib zlib** — Pillow is not a dependency.
+- **Read results:** visual **2 passed in 106.6 s** (1008 renders, 792 inked, zero collisions);
+  census + freeze + neighbours **94 passed, 2 skipped**; statics foreground ruff/format(836)/mypy
+  (117)/node all clean. **Proved able to fail, watched:** halo stashed → the pixel test reports
+  `rgb(61,142,195)` (`.ch-bar`) at **1.17:1** vs the predicted 1.166, while the caption with no bar
+  behind it still reads 3.07:1 — it discriminates; restored → 3.06:1 everywhere.
+- **Two mistakes of our own, caught and recorded.** (1) The first CSS edit put the new rationale
+  OUTSIDE the closing `*/`; error-recovery swallowed the `.ch-at` rule, `paint-order` computed to
+  `normal`, and the new assertion failed at once — a broken stylesheet no Python test, `node
+  --check`, or grep would have seen. (2) The modal-colour helper first returned the quantisation
+  bucket's CENTRE, scoring a pure-white backdrop at 2.99:1 where the truth is 3.07:1 — it would
+  have failed a correct render. It now returns the mean of the winning bucket.
+- **The red-team of the plan returned 12 findings**; the material ones are folded into HANDOFF ⇢
+  NEXT so Phase 1/2 cannot inherit the errors: Windows `SO_REUSEADDR` may let the second bind
+  SUCCEED (so the fix is an explicit instance probe, not a bind-error reporter, and the Linux test
+  would pin the wrong platform); "move the browser timer after `serve_fn`" is wrong because
+  `serve_fn` blocks for process life; **pausing `heartbeat.js` would shut the tool down after 10
+  minutes minimized and lose the session**; the 1600 ms steppers are Play-gated, not idle; the
+  wipe gap is **35** fields including **`dcma_acumen_parity`** (Law-2 relevant); clear the disk
+  cache on clean shutdown, not at launch; a blanket localStorage sweep would un-mute the ADR-0328
+  boot hum; and the DD-line ledger must exclude non-time-axis charts.
+- Version bumped to **1.0.147** BEFORE the background suite (the recorded sequencing); wheel + nine
+  installers regenerated ONCE. **The full-suite run is IN FLIGHT at this line — its result lands in
+  the next append, never stated unread.**

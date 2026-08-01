@@ -317,7 +317,7 @@ h2.viz-hint:hover, h3.viz-hint:hover { text-decoration-color: var(--accent); }
 .gantt-scroll, .path-view { border-radius: 4px; }
 /* the Critical-Path Evolution is an SVG Gantt — give its plot the same white MS-Project canvas */
 .evo-gantt { border: 1px solid var(--line); border-radius: 4px; padding: 2px; }
-.evo-gantt svg { background: var(--gantt-canvas); display: block; }
+.evo-gantt svg { background: var(--gantt-canvas); --sf-ch-canvas: var(--gantt-canvas); display: block; }
 /* summary rows: dark + bold on every Gantt grid (the activity grid, the SSI grid, the trace) */
 .gantt-grid tr.sum td, #grid tr.sum td { color: var(--sum-ink); font-weight: 700; }
 
@@ -352,7 +352,9 @@ h2.viz-hint:hover, h3.viz-hint:hover { text-decoration-color: var(--accent); }
 
 /* Resources page: loading histogram + over-allocation flags. */
 .res-over { color: var(--bad); font-weight: 700; }
-.res-svg { background: var(--gantt-canvas); border: 1px solid var(--line); border-radius: 4px; }
+/* --sf-ch-canvas (ADR-0331): the Gantt-family canvas, so the caption halo follows it. */
+.res-svg { background: var(--gantt-canvas); --sf-ch-canvas: var(--gantt-canvas);
+  border: 1px solid var(--line); border-radius: 4px; }
 .res-svg .res-ax { stroke: #5a6878; stroke-width: 1; }
 .res-svg .res-grid { stroke: #e3e8ee; stroke-width: 1; }
 .res-svg .res-bar { fill: #3d8ec4; }
@@ -832,7 +834,9 @@ tr.sra-risk td { box-shadow: inset 3px 0 0 var(--warn); }
    the host and the cf-scroll pans the magnified copy. */
 .ssi-chart { display: block; width: 380px; max-width: 100%; }
 .ssi-chart-t { font-size: 10px; font-weight: 700; color: var(--ink); margin-bottom: 2px; }
-.ssi-svg { background: #fff; border: 1px solid var(--line); border-radius: 4px; }
+/* --sf-ch-canvas (ADR-0331): this family's canvas is a hardcoded white, so an axis caption's
+   halo must be white here — not the panel colour the default assumes. */
+.ssi-svg { background: #fff; --sf-ch-canvas: #fff; border: 1px solid var(--line); border-radius: 4px; }
 .ssi-svg .ch-ax { stroke: #5a6878; stroke-width: 1; }
 .ssi-svg .ch-grid { stroke: #e3e8ee; stroke-width: 1; }
 .ssi-svg .ch-line { fill: none; stroke: #0b6bcb; stroke-width: 1.4; }
