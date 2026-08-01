@@ -8,34 +8,31 @@ kickoff steers a fresh session at work that is already done.)
 ---
 
 Resume POLARIS (Schedule-Manipulation-Analysis-Tool). **Read `docs/STATE/HANDOFF.md` FIRST**
-(auto-injected). As of last session: **v1.0.143**, highest ADR **0327**; **PR-9b (#501) is
-MERGED** as `a0a5bbd` — the rank-12 toolbar/read-me sweep is DONE, including the codex-review
-addendum (population-accurate chips; `_target_panel` converted). Verify with
+(auto-injected). As of last session: **v1.0.144**, highest ADR **0328**; **PR-10 (#503) is
+MERGED** as `839c659` — OR-03 is DONE (CSS-only orbit motion + the synthesized Boot Audio Hum,
+gesture-primed, ≤200 ms pre-navigation fade, persisted mute/volume). Verify with
 `git fetch --prune origin` and restart your branch from `origin/main`. Fresh container:
 `pip install -e ".[dev]"` plus `pip install playwright 'ruff==0.16.1' build` first.
 
 ### ⇢ DO THESE THINGS FIRST
 
-1. `git fetch --prune origin`; confirm `a0a5bbd` (#501) is main's ancestor and check whether
+1. `git fetch --prune origin`; confirm `839c659` (#503) is main's ancestor and check whether
    the session-close docs PR is merged; restart your branch fresh from `origin/main`.
-2. Then BUILD **PR-10 — OR-03 launch motion + synthesized hum** (`docs/STATE/PLAN-20260730.md`
-   row 10; decisions recorded — do NOT re-ask): WebAudio synthesis, NO audio asset (wheel +
-   nine installers stay lean); hum spans gesture→POST-resolution, fades ≤200 ms before
-   navigation (cross-page audio out of scope, in the ADR); primed only in genuine gesture
-   handlers (pick/folder/example-submit/drop — NOT `input.onchange`); shuffled-pitch-bag
-   swell scheduler, all gains ramped; visible mute+volume on `.load-card`, persisted in
-   localStorage (theme.js/sysmon.js/persist.js pattern); audible-at-low-gain default + the
-   DESIGN-SYSTEM audio rule; motion = CSS-only orbiting craft dots (transform-only, token
-   colors, zero JS — the pinned `_AUTOPLAY_JS` list stays untouched; reduced-motion gets its
-   own `animation:none` BESIDE the pinned `.load-spinner{animation:none}` literal). Tests:
-   `test_launch_sequence.py` (content) + `test_launch_audio_chromium.py` (float-tip skip
-   posture; no context pre-gesture; mute persists; 4-theme × 2-viewport scrollbar-visible
-   geometry).
-3. Behind it: OR-04 park artifacts (`audit/VERIFICATION-REPORT-ollama-lifecycle.md` §8) ·
-   SVG batch 3c · the 7-module `DOM_PENDING` ledger · Phase 3 (CC-01 rendering half, 74
-   sites, Fable 5 Max) · Phase 4 (P1–P6) · rank 13/14. Known intermittent: the /analysis
-   focus→tip test family (dismiss + scroll siblings) fails ~half of isolated runs —
-   pre-existing, adjudicated in HANDOFF's carried list; do not chase it as a regression.
+2. Then take up **OR-04 operator park artifacts**
+   (`audit/VERIFICATION-REPORT-ollama-lifecycle.md` §8): #1 `where ollama` · #3 keep_alive
+   probe · #5 runner PPID · #4 model-identity manifest — plus #490's four-scenario smoke on
+   the deployed build. These are OPERATOR-run items on the deployed tool: the session's share
+   is whatever is buildable/checkable in-repo (scripts, docs, fakes) — re-read the §8 park
+   list on this tree before deciding scope, and coordinate anything operator-facing through
+   the handoff rather than guessing at their machine.
+3. Behind it: SVG batch 3c (sra/sra_jcl/sra_ssi/volatility; tornados recorded not-axis-charts
+   per A1) · the 7-module `DOM_PENDING` ledger · Phase 3 (CC-01 rendering half, 74 sites,
+   Fable 5 Max) · Phase 4 (P1–P6) · rank 13/14. OR-03 residuals stay parked in ADR-0328:
+   operator's-ear acceptance of the synthesis on the deployed build (vendored-ogg fallback
+   HELD), /example → fetch path only if its at-unload cut ever matters. Known intermittent:
+   the /analysis focus→tip test family (dismiss + scroll siblings) fails ~half of isolated
+   runs — pre-existing, adjudicated in HANDOFF's carried list; do not chase it as a
+   regression.
 
 Standing rules (CLAUDE.md, binding): Law 1 CUI · Law 2 fidelity ("—" never 0; never weaken a
 test; a fast wrong number is worthless) · ADR-0240 model/audit protocol · READ EVERYTHING,
