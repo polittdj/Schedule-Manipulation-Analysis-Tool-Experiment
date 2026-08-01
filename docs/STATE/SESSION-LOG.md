@@ -9790,3 +9790,51 @@ the briefs + state rotation) earlier today.
   `e3741aecd11d8dfb` before AND after; 836 → 62 ms/solve; local parity gate 46 passed in
   2m38s (was ~28 min); engine dir 848 passed; statics clean; wheel + installers regenerated,
   lockstep 52 passed. ADR-0322 gained the performance addendum.
+
+## 2026-08-01 — PR-8: margin_dashboard captions (batch 3b-i, A1) + the operator's Jacked-2 re-upload verified
+
+- Resumed on `claude/polaris-engine-correctness-resume-e52fpp`; #497 (ADR-0322–0324, v1.0.140)
+  MERGED by the operator as `afb8e72`; the branch was already exactly at `origin/main`.
+- **OR-05 closed end-to-end, zero code change:** the operator deleted + re-uploaded
+  `Jacked up Schedule 2.mpp` (blob `db7ac6ef` → `a7d2f9c6`). Verified this session: a fresh
+  MPXJ conversion of the live .mpp is byte-identical to the committed
+  `jacked_up_schedule_2_with_deadline.xml` fixture except `<CurrentDate>` (the conversion
+  timestamp); the bytes carry Task 11's `<Deadline>2026-08-14T17:00:00</Deadline>`; the OLD
+  fixture has zero deadlines (as documented). Affected engine suites (`multicalendar`,
+  `dangling`, `ribbon`, `elapsed_axis`, `test_battery`) **80 passed** — UID 32 reads −5 d
+  end-to-end exactly as `test_resaved_jacked2_deadline_reads_minus_five_days_end_to_end`
+  pinned. The prior handoff's "tell the operator" item is overtaken by events.
+- **PR-8 (ADR-0325) built:** both `margin_dashboard.js` charts captioned via
+  `SFChartFrame.axisTitles` (burn-down "Status date" × "Days (margin + contingency)" — the
+  stack mixes work-day margin with calendar-day contingency, so the caption asserts no single
+  basis; erosion "Status date" × "Effective margin (working days)"); the two local
+  `"status date"` quasi-captions retired; `y2Label` dropped (single scale verified, per A1);
+  legends yield the helper's corner ((L+4, T+2) → (L+4, T+24)); the risk-sufficiency P10–P90
+  strip recorded as NOT an axis chart (1-D number line).
+- **The load-order defect the first measured run caught:** margin_dashboard.js executes at
+  parse time, chartframe.js loads in the layout footer — the direct helper call threw
+  `SFChartFrame is not defined` and NEITHER chart rendered ("no captions rendered" in all
+  12 theme × scale combos, watched). Fix: `defer` on the script tag (ADR-0316's blob-driven
+  family, third member); the module's own guarded `SFChartFrame.scan()` call was the tell.
+  Pinned by `test_margin_dashboard_js_is_deferred_so_chartframe_exists_first` (watched fail
+  on the un-deferred tag).
+- **Census 16 → 18, deliberate and named** (A1's recorded procedure): the two new sites
+  `margin_dashboard.js:233` (`06f121de…`) / `:309` (`ebda9aa1…`); the 16 priors
+  byte-identical; the OLD census run against this tree **failed (18 ≠ 16), watched** — the
+  freeze bites on additions. Ledger `PENDING` 5 → 4 (`sra.js`, `sra_jcl.js`, `sra_ssi.js`,
+  `volatility.js` = batch 3c).
+- **`/margin` joined the measured visual pass with its own serve** (four synthetic
+  status-dated versions eroding 40 → 10 wd — the golden pair renders NO margin chart by
+  design); localStorage is per-ORIGIN, so theme/scale are written after landing on the
+  second origin. Post-fix: **720 caption renders measured clean** (4 themes × 3 scales ×
+  7 pages, zero problems; `KNOWN_COLLISIONS` stays empty); ledger/census/margin-view/legend
+  suites **69 passed**; the defer + visual pair re-run **15 passed**; restore-check
+  **39 passed**.
+- Statics (read this session): ruff check clean · `ruff format --check` "825 files already
+  formatted" · mypy --strict "no issues in 117 source files" · bandit exit 0 · node --check
+  clean. Version 1.0.140 → **1.0.141**; wheel + nine installers regenerated; installer suite
+  **52 passed**. highest ADR **ADR-0325**.
+- **Full suite (this tree): 3206 passed, 1 skipped** (the deliberate INCIDENTAL_SVG path.js
+  skip) **in 17m13s** — the chromium visual pass ran INSIDE the suite (playwright + bundled
+  chromium present on this container). The log's `SUITE EXIT: 0` is tail's status per the
+  known pipe trap; the result line above is pytest's own summary, read from its output.

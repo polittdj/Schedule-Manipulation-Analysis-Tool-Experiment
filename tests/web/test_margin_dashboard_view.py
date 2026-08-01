@@ -70,6 +70,23 @@ def test_margin_page_renders_both_charts_and_nav_entry() -> None:
     assert "trigger" in body.lower()  # the below-requirement takeaway
 
 
+def test_margin_dashboard_js_is_deferred_so_chartframe_exists_first() -> None:
+    """margin_dashboard.js renders synchronously and (since ADR-0325) calls
+    ``SFChartFrame.axisTitles``, but ``_LAYOUT`` emits chartframe.js AFTER ``<main>``.
+    Without ``defer`` the page threw ``SFChartFrame is not defined`` and rendered NEITHER
+    chart (measured in chromium — the visual pass reported "no captions rendered" in all
+    twelve theme x scale combos). Same defect family and same fix as resources.js /
+    performance.js (ADR-0316)."""
+    import re
+
+    page = _client(_MARGINS).get("/margin").text
+    assert re.search(r'<script defer src="/static/margin_dashboard\.js', page), (
+        "margin_dashboard.js must be deferred — see the docstring"
+    )
+    # the layout really does load chartframe.js after <main>, which is WHY defer is required
+    assert page.index("</main>") < page.index("/static/chartframe.js")
+
+
 def test_dashboard_api_carries_the_workbook_columns_and_erosion() -> None:
     d = _client(_MARGINS).get("/api/margin/dashboard").json()
     assert d["have_margin_tasks"] is True

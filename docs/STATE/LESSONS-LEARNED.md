@@ -435,6 +435,31 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-01 — A guard someone already wrote is a load-order hazard sign, and only a measured run reads it (PR-8 / ADR-0325)
+- Adding the first `SFChartFrame.axisTitles` call to `margin_dashboard.js` threw
+  `SFChartFrame is not defined` and killed BOTH charts — the module executes at parse time,
+  chartframe.js loads in the layout footer. The tell was already in the file: its last line
+  guards `if (window.SFChartFrame && SFChartFrame.scan)`. Lesson: an existing defensive guard
+  around a dependency is DOCUMENTATION that the dependency can be absent at that point; before
+  adding a direct call to the same dependency, ask why the guard is there. The fix was the
+  established family fix (`defer`, ADR-0316 — third member), not a new invention.
+- No static check could see it: node --check, ruff, the ledger tests, and the census all
+  passed on the broken page. The first REAL chromium run failed 12/12 combos instantly.
+  Lesson: for UI work, the measured pass is not a formality — schedule it before believing
+  the change works, and treat "the sibling modules do it unguarded" as evidence about THEIR
+  load order, not yours (they render on DOMContentLoaded or are themselves deferred).
+- localStorage is per-ORIGIN: serving `/margin` from a second app instance meant the
+  theme/scale writes silently bound to the FIRST origin until the navigation order was fixed
+  (land on the target origin, then write, then reload). A cross-origin fixture is easy to get
+  subtly wrong in a way that still "passes" — the probe would have measured default-theme
+  pages. Verify the knob actually turned, not just that the page loaded.
+- The operator's Jacked-2 re-upload closed OR-05 exactly as the prior session predicted
+  ("the pipeline already flows it") — and the verification cost one MPXJ conversion + one
+  byte-diff because the fixture had been committed as the file's VERBATIM conversion. Lesson:
+  pinning a fixture as "verbatim conversion of X" makes "did X really change / does the
+  fixture match reality" a one-command check forever; cheap provenance discipline pays off
+  on the first real-world file swap.
+
 ### 2026-07-31 — An aggregate's pool must be stated IN the figure — and the heading must state the pool the code APPLIES (OR-01 / ADR-0321)
 - OR-01's core ask ("the title alone must say latest vs average") had a second layer the
   heading alone couldn't carry: the mean's POOL shrinks when an included version doesn't

@@ -223,8 +223,17 @@
       { color: WARN, label: "Corrective ≥ 50%" },
     ];
     if (bandPts.length) legendItems.push({ color: ACC, label: "Fig 5-30 band (operator-set)", op: 0.2 });
-    legend(svg, L + 4, T + 2, legendItems);
-    txt(svg, R, B + 12, "status date", { anchor: "end", size: 8.5 });
+    // The caption's placement is FIXED (ADR-0298/0303); the legend is the element that yields,
+    // starting one caption-height below the plot top so the two never share the corner.
+    legend(svg, L + 4, T + 24, legendItems);
+    // Axis captions via the ONE shared helper (ADR-0298/0301; batch 3b-i ADR-0325). The bars
+    // stack margin (WORK days) with contingency (calendar non-working days), so the Y caption
+    // counts "days" without asserting a single basis. The old bottom-right "status date"
+    // quasi-caption retires into the helper's X slot. One scale only — no y2Label (A1).
+    SFChartFrame.axisTitles(svg, { L: L, R: R, T: T, B: B }, {
+      xLabel: "Status date",
+      yLabel: "Days (margin + contingency)",
+    });
   }
 
   /* ------------------------------------------------------ MET: erosion line + zero-margin date */
@@ -288,13 +297,19 @@
       zt.setAttribute("data-series", "Zero-margin date");
     }
     var rate = DATA.erosion_wd_per_month;
-    legend(svg, L + 4, T + 2, [
+    // same yield as the burn-down: the Y caption owns the top-left corner (ADR-0303/0325)
+    legend(svg, L + 4, T + 24, [
       { color: ACC, label: "Effective margin (wd)" },
       // explicit stable key: the label carries a dynamic rate, but the mark's data-series does not
       { color: WARN, label: "Erosion trend" + (rate ? " (" + rate + " wd/mo)" : ""), dash: "6 4", key: "Erosion trend" },
       { color: BAD, label: "Zero-margin date", dash: "3 3" },
     ]);
-    txt(svg, R, B + 12, "status date", { anchor: "end", size: 8.5 });
+    // Axis captions via the ONE shared helper (ADR-0298/0301; batch 3b-i ADR-0325). Single
+    // scale — no y2Label (A1); the "status date" quasi-caption retires into the X slot.
+    SFChartFrame.axisTitles(svg, { L: L, R: R, T: T, B: B }, {
+      xLabel: "Status date",
+      yLabel: "Effective margin (working days)",
+    });
   }
 
   /* ---------------------- risk-based margin sufficiency (SRA; §7.3.3.2.3) — button-triggered */
