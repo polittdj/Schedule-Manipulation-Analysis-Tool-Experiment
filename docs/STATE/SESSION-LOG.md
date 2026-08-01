@@ -10397,3 +10397,20 @@ the briefs + state rotation) earlier today.
   succeed).
 - Version bumped to **1.0.148** BEFORE the background suite; wheel + nine installers regenerated
   ONCE. **The full-suite run is IN FLIGHT at this line — its result lands in the next append.**
+
+## 2026-08-01j (append) — the Phase 1a full-suite result, read and adjudicated
+
+- **Full suite `python -m pytest -q`: 1 failed, 3255 passed, 2 skipped in 17m12s.** (Exit 0 came
+  from the PIPE via `| tail`, the recorded trap; the summary line above is the read result.) Test
+  count up by exactly **5** vs the previous round — the new `test_session_wipe_is_total.py`.
+- **The single failure is `test_float_tip_dismiss`**, one half of the carried, pre-adjudicated
+  `/analysis` focus→tip intermittent (only one of the pair fell this time, consistent with the
+  documented ~50 % rate). Isolated re-runs immediately afterwards: **pass · fail**. Carried, not
+  chased.
+- **This round's `src/` diff cannot reach that family:** `state.py` (the `reset()` sweep +
+  `WIPE_PRESERVED`), the `/session/wipe` handler in `app.py`, and `persist.js`'s launch-guard
+  `GLOBAL_KEYS`. No `/analysis` template and no `app.js`.
+- Draft PR **#509** opened (head `4961ec5`), session subscribed, check-in armed.
+  `docs/STATE/NEXT-SESSION-PROMPT.md` refreshed in the same PR so the kickoff cannot steer a fresh
+  session at finished work — it carries the Phase 1b blocker (the operator's one-PID-or-two
+  measurement) and the four red-team corrections that would otherwise be re-derived.
