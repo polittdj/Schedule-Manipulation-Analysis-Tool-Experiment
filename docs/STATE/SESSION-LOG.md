@@ -10323,3 +10323,25 @@ the briefs + state rotation) earlier today.
 - Version bumped to **1.0.147** BEFORE the background suite (the recorded sequencing); wheel + nine
   installers regenerated ONCE. **The full-suite run is IN FLIGHT at this line — its result lands in
   the next append, never stated unread.**
+
+## 2026-08-01i (append) — the full-suite result, read and adjudicated
+
+- **Full suite `python -m pytest -q`: 2 failed, 3249 passed, 2 skipped in 18m24s.** (The
+  background task reported exit 0 — that is the PIPE's status via `| tail`, the recorded trap;
+  the summary line above is the read result.) Total tests up by one: the new degenerate
+  single-bin pixel test.
+- **Both failures are the pre-adjudicated `/analysis` focus→tip pair** — `test_float_tip_dismiss`
+  and `test_float_tip_scroll`, the exact carried item, with the known 4 s focus→tip
+  `wait_for_function` signature. Isolated re-runs on this tree immediately afterwards:
+  **pass · fail** — the documented ~50 % rate, reproduced. Carried, not chased, per the standing
+  adjudication.
+- **This round's diff cannot touch that family by construction:** `git show --stat` is two CSS
+  files, one visual test, the docs set, pyproject and the regenerated installers — `/analysis`
+  and `app.js` are untouched.
+- **`tests/test_state_docs.py` PASSED in this run**, which retires the question left open by the
+  previous round: its failure there was the docs-edit race (the suite had been launched while the
+  ADR/HANDOFF/SESSION-LOG edits were still in flight), not a real drift. Same guard, clean tree,
+  green.
+- The two skips are the structural pair: the emptied `PENDING`'s empty parametrize and the
+  standing `path.js` `INCIDENTAL_SVG` skip.
+- Draft PR **#508** opened (head `4aadd91`), session subscribed, check-in armed.
