@@ -23,7 +23,14 @@ _FUSE = {
     "Project2": (GOLD / "Project2.mspdi.xml", 6, 2.79, 41, 0, 0, 2, 0, 10),
     "TP1": (TP / "TP1_Library_Progressed.xml", 4, 2.61, 11, 0, 0, 3, 0, 1),
     "TP2": (TP / "TP2_Bridge_4x10_Calendar.xml", 2, 2.63, 7, 0, 0, 0, 0, 1),
-    "TP3": (TP / "TP3_Outage_DCMA_Seeded.xml", 8, 2.38, 5, 2, 3, 3, 1, 2),
+    # TP3 negative_float DELIBERATELY re-pinned 3 → 4 (multi-calendar/constraint-slack ADR):
+    # UID 41's Must-Finish-On is violated by its predecessor chain (logic finish 06-30 vs MFO
+    # 06-26), and MS Project reports a violated pin as NEGATIVE slack on the pinned task itself
+    # — proven by the Jacked-2 oracle (UID 30, same SNET-pred→MFO shape, STORED TotalSlack
+    # -2400). The workbook's 3 was captured against a TP3 artifact whose finish diverges from
+    # this fixture by 5 days (docs/FUSE-VALIDATION.md "to reconcile" row), so the committed
+    # fixture never matched that capture's dates to begin with.
+    "TP3": (TP / "TP3_Outage_DCMA_Seeded.xml", 8, 2.38, 5, 2, 4, 3, 1, 2),
     "TP4v1": (TP / "TP4_DataCenter_v1.xml", 2, 2.67, 8, 0, 0, 0, 0, 1),
     "TP4v2": (TP / "TP4_DataCenter_v2.xml", 2, 2.67, 7, 0, 0, 0, 0, 1),
     "TP4v3": (TP / "TP4_DataCenter_v3.xml", 2, 2.67, 7, 0, 0, 0, 0, 1),

@@ -197,8 +197,14 @@ def test_tp3_seeded_dcma_violations_register_with_the_seeded_counts() -> None:
     assert hard.count == 2
     assert {c.unique_id for c in hard.citations} == {24, 41}
     negative = checks["Negative Float"]
-    assert negative.count == 3  # the MFO-capped chain tail
-    assert {c.unique_id for c in negative.citations} == {24, 28, 29}
+    # DELIBERATELY re-pinned 3 -> 4 (ADR-0322): UID 41's own Must-Finish-On is violated by
+    # its predecessor chain, and MS Project reports a violated pin as negative slack on the
+    # pinned task itself (Jacked-2 oracle, UID 30: STORED TotalSlack -2400 for the same
+    # SNET-pred -> MFO shape). The Fuse capture's 3 predates that semantics and was taken
+    # against a TP3 artifact whose finish differs from this fixture by 5 days
+    # (docs/FUSE-VALIDATION.md "to reconcile" row).
+    assert negative.count == 4  # the MFO-capped chain tail + the violated MFO itself
+    assert {c.unique_id for c in negative.citations} == {24, 28, 29, 41}
     assert checks["High Duration"].count == 2  # 50-day and 60-day tasks
     # 31 (actual finish after DD) + 4 stale stored forecasts (ADR-0176 Bible basis): 25/26/32
     # never started with both stored dates past, plus 14 — IN PROGRESS with its stored forecast
@@ -223,7 +229,8 @@ def test_tp3_schedule_quality_matches_the_operators_fuse_ribbon() -> None:
     assert sq["logic_density"].value == 2.38
     assert sq["critical"].count == 5  # Fuse: 5 (42%)
     assert sq["hard_constraints"].count == 2
-    assert sq["negative_float"].count == 3
+    # DELIBERATELY re-pinned 3 -> 4 (ADR-0322, same adjudication as the DCMA-07 pin above)
+    assert sq["negative_float"].count == 4
     # Insufficient Detail™: the authoritative library's Bible formula (current Original duration /
     # project CALENDAR span > 10%, ADR-0084), which matches Acumen's Large-File report (43). The
     # operator RE-RAN TP3 through this library in Acumen and confirmed 9 (the earlier 2026-06-12

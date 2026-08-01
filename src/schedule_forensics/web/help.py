@@ -1379,7 +1379,9 @@ _FIELD_GLOSSARY: dict[str, MetricDoc] = {
     "total_float": _gloss(
         "Total Float",
         "Working days an activity can slip without delaying the project finish.",
-        "late_finish - early_finish (from the CPM pass)",
+        "late_finish - early_finish (from the CPM pass); an activity on its own calendar "
+        "(a task calendar or an elapsed duration) measures the same window in ITS calendar's "
+        "working minutes, exactly as MS Project stores Total Slack",
         "An owner uses the 0-day band as the live critical path; a band of activities at 1-2 days "
         "of total float is the 'near-critical' work that becomes critical with one bad week.",
         "Zero or negative total float = the activity drives (or is past) the finish.",

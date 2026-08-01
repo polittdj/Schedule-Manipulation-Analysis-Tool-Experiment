@@ -122,7 +122,10 @@ def test_integrity_two_file_picker_compares_the_chosen_pair() -> None:
     page = c.get("/integrity?a=0&b=3").text
     assert "change-effects" in page
     assert "188&rarr;187" in page or "188→187" in page
-    assert "+23 wd" in page
+    # DELIBERATELY re-pinned +23 -> +21 (ADR-0322): engine-derived counterfactual whose path
+    # crosses Hard_File's off-calendar tasks — see test_change_effects_integration.py for the
+    # full adjudication (old value reproduced on the pre-change engine, new value verified).
+    assert "+21 wd" in page
 
 
 def test_integrity_guards_same_file_for_a_and_b() -> None:

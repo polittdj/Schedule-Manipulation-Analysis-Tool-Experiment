@@ -429,6 +429,7 @@ _MAX_SETUP_BYTES = 8 * 1024 * 1024
 _LAYOUT = Template(
     """<!doctype html><html lang="{{ lang }}"><head><meta charset=utf-8>
 <meta name=viewport content="width=device-width,initial-scale=1">
+<meta name=sf-launch content="{{ launch_token }}">
 <title>{{ title }} — POLARIS</title>
 <link rel=icon href="/static/favicon.ico">
 <script id=sfI18nBoot type="application/json">{{ i18n_boot_json }}</script>
@@ -1959,6 +1960,9 @@ def _page(
                 ).replace("<", "\\u003c"),
                 cui_class=cui_class,
                 cui_text=cui_text,
+                # OR-06: scopes the browser's ADR-0186 page-selection memory to this
+                # launch + wipe generation (persist.js clears its layers on a change)
+                launch_token=state.launch_token,
             )
         ),
         status_code=status_code,
@@ -9808,7 +9812,11 @@ def _logic_checks_panel(sch: Schedule, *, prov: str = "") -> str:
             if c.count > len(c.offenders):
                 hidden.append(f"&hellip; and {c.count - len(c.offenders)} beyond the citation cap")
             offs = f"<p class=cite>{_expandable_more(_e(shown), hidden)}</p>"
-        pop = f"<span class=muted> of {c.population} link(s)</span>" if c.population else ""
+        pop = (
+            f"<span class=muted> of {c.population} {_e(c.population_unit)}</span>"
+            if c.population
+            else ""
+        )
         cards.append(
             f'<div class="finding cite-card sev-{"INFO" if ok else "MEDIUM"}">'
             f'<div class=finding-head><span class="rk-score {badge_cls}">{badge}</span> '
@@ -9827,10 +9835,13 @@ def _logic_checks_panel(sch: Schedule, *, prov: str = "") -> str:
         + _panel_head("Logic integrity", tools=_shell_tools(), prov=prov)
         + take
         + "<p class=muted>Forensic logic-construction checks from the NASA Schedule Management "
-        "Handbook (Fig. 6-9), beyond DCMA-14 &mdash; <b>out-of-sequence</b> progress (work recorded "
-        "in an order the logic forbids) and <b>redundant logic</b> (a direct link a longer path "
-        "already implies). Green = clear, otherwise the count and the first offending links "
-        "(written predecessor&rarr;successor by UniqueID).</p>" + "".join(cards) + "</div>"
+        "Handbook (Fig. 6-9) and the Acumen metric library, beyond DCMA-14 &mdash; "
+        "<b>out-of-sequence</b> progress (work recorded in an order the logic forbids), "
+        "<b>redundant logic</b> (a direct link a longer path already implies), and the "
+        "<b>Open start / Open finish</b> dangling checks (an activity whose only links leave "
+        "its start undriven or its finish driving nothing &mdash; invisible to a blank-"
+        "Predecessor/Successor count). Green = clear, otherwise the count and the first "
+        "offenders.</p>" + "".join(cards) + "</div>"
     )
 
 

@@ -552,6 +552,41 @@ those fixed defects in earlier "closed" fixes:
   `document`. And a mid-session harness resume flip-flopped the uncommitted working tree twice
   (fix → pristine → fix); diff the tree after every resume before trusting it.
 
+### 2026-07-31 — an oracle can contradict its own file, and the bytes decide (OR-05 deep dive)
+
+- **The PowerPoint said −5 d; the .mpp said +13 d.** Slide 6 shows Task 11 with a deadline-driven
+  −5 d Total Slack, but the committed `.mpp` carries no Deadline field at all. Resolution came from
+  EVIDENCE, not preference: MPXJ provably reads MPP14 deadlines (positive controls: Hard_File
+  UID 155, Large-Test UID 157), read none here, and the file's LastSaved (09:23 EDT) predates the
+  pptx's final edit (10:29 EDT) — the deadline was added in the live MSP session after the last
+  save and never hit disk. **Lesson: when the oracle and the artifact disagree, timestamp the
+  artifacts and build a positive control before "fixing" the engine toward either** — the correct
+  engine output here (13 d) is the one the slide itself names as the no-deadline outcome.
+- **MS Project's stored values are a second oracle riding inside the file.** MSPDI slack fields are
+  tenths of a minute; the stored TotalSlack on every off-calendar task (369000 → 36 900 min =
+  76.88 d at /480; 37800 → 3 780 = 2.63 edays) told us EXACTLY which axis MSP measures slack on —
+  the task's OWN calendar's minutes, displayed over the project's minutes-per-day. The whole
+  multi-calendar design fell out of reading those numbers before writing any code.
+- **A "safe approximation" pin can hide a real under-measurement for a year.** QC-D2's cap-space
+  elapsed slack (pinned {1: 0}) prevented fabricated negatives but silently zeroed REAL slack
+  across non-working gaps — the Jacked-1 eDays task (stored 3 780 for the same shape) finally
+  proved it. Deliberately re-pinned to 1440 with the oracle cited at the pin. **Lesson: an
+  approximation adopted to kill a false negative deserves a follow-up oracle for the false-zero
+  direction.** Same shape at TP3: the Fuse workbook's neg-float 3 was captured against an artifact
+  FUSE-VALIDATION.md itself marks "to reconcile" (finish differs 5 d from the fixture) — a pin's
+  provenance note is what makes a later re-baseline adjudicable.
+- **Design-review-before-implementation caught the blocker class cheaply**: the 3-lens ADR-0240
+  panel (MSP semantics / architecture / parity blast radius) flagged the start-role int round-trip
+  as oracle-contradicting while the code was still unwritten; the implementation propagated wall
+  instants between off-calendar tasks instead and the 17-test oracle suite passed first run. The
+  blast-radius lens's adjudication split (SSI goldens must not move; fuse per-UID; SRA
+  deterministic anchors hold) turned the parity gate from a hazard into the verification plan.
+- **OR-06 in one sentence: localStorage outlives the server by design, so server-session state
+  cached client-side needs a server-issued epoch.** A per-process nonce + wipe-generation meta tag
+  and a compare-then-clear in persist.js closed it without touching ADR-0186's within-session
+  memory; the Playwright test seeds the operator's exact stale-Target-UID shape and proves both
+  halves (stale cleared, live kept, theme untouched).
+
 ### 2026-07-30 (cont.5) — a "blocked" decision may already be half-answered by an old ADR
 
 - Researching the three operator decisions gating rank 12, two of the three turned out to have

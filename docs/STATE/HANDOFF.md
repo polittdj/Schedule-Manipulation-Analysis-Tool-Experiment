@@ -1,131 +1,120 @@
-# Handoff — 2026-07-31 (roll-up titles state the aggregation rule; ADR-0321; v1.0.139)
+# Handoff — 2026-07-31 (the base CPM honors per-task calendars; ADR-0324; v1.0.140)
 
-> ## STATUS (current) — **PR-7 of the approved queue BUILT AND FULLY GATED on this tree: OR-01 roll-up titles — every Portfolio ledger heading states the rule it applied (latest vs average), the NEW "Avg DCMA-14 passes — all included versions" column is the view-layer mean of the engine's own per-version pass counts, and the per-file surfaces (home manifest · dashboard cards · /card) name Site/Company · data date · computed finish · effective margin · DCMA-14 per file. Version 1.0.139, highest ADR ADR-0321, wheel + nine installers regenerated. #495 (ADR-0320) MERGED as `aef69db` by the operator.**
-> Per the plan's PR-7 row: `_portfolio_body`'s three headline headings gained "— latest
-> version" (Latest data date already stated its rule) and the ONE aggregate column arrived —
-> "Avg DCMA-14 passes — included, solvable versions", VIEW-LAYER arithmetic only (mean of
-> `VersionSummary.dcma_pass` over exactly that pool via the cached `summary_for` tier; never
-> `analysis_for`), cell `<mean:.1f> of 14 · N versions` with N the pool size so a solvability
-> drop is visible in the figure, empty pool → the "—" literal (ADR-0219 M2), never 0.0. The
-> takeaway discloses BOTH bases. Home manifest rows gained the five per-file columns —
-> dates/margin from the summary tier, the DCMA cell from the PARITY-AWARE card tier so one
-> page never shows two verdicts for one file; `/api/dashboard` cards gained exactly `site` +
-> `margin_days` (dashboard.js renders them; unsolvable cards degrade as before with both
-> null); `/card` gained the same two KPI cards; `/margin/confirm` now clears `st.dash_cards`
-> beside `st.summaries` (the memo bakes `margin_days`; without it the cards served a stale
-> pre-confirm margin — live-reproduced). New headings entered `_TERMS` in all four languages
-> (plus "Latest data date" / "Effective margin" / invariant "DCMA-14"). **The three
-> `/api/dashboard` golden SHAs were DELIBERATELY re-baselined via their own `_dashboard_sha`
-> path (ADR-0321 named at the pins): the only delta is the two added keys, proved at row
-> level by the new test's full key-set + engine-verbatim value pins.** ADR-0240 review round
-> (four-lens adversarial fan-out + per-finding refutation) ran on the draft diff; every
-> confirmed finding is fixed in this tree, and the parity-blind summary tier + the unscoped
-> manifest Activities cell are recorded residuals in ADR-0321.
+> ## STATUS (current) — **OR-05 + OR-06 BUILT AND GATED on this tree (operator-directed
+> engine-correctness deep dive, pre-empting the PR-8/9/10 queue): the base CPM now honors
+> per-task calendars (ADR-0322 — the elapsed branch generalized: eDays = the 24/7 calendar),
+> a violated MSO/MFO pin reports MS Project's negative slack, Open Start / Open Finish
+> dangling checks landed per the Bible (ADR-0323), and a server launch token now scopes the
+> browser's ADR-0186 page-selection memory (ADR-0324 — the operator's stale-Target-UID bug).
+> Version 1.0.140, highest ADR ADR-0324, wheel + nine installers regenerated. #496
+> (ADR-0321, v1.0.139) MERGED as `ffa5009` by the operator — the prior handoff's "merge
+> PR-7" line is satisfied.**
+> The oracle: `00_REFERENCE_INTAKE/mpp/Jacked Up Schedule 1.mpp`, `Jacked up Schedule 2.mpp`
+> and the 6-slide `Politte Schedule Tool.pptx` (operator-committed, non-CUI), READ IN FULL —
+> every slide, every task/link/calendar field, plus MS Project's own stored values (slack in
+> tenths of a minute). Pre-change variances measured on the real engine: computed finish
+> 10/28 vs MSP 10/07 (the 24-Hours task burned as 15 project days across the September
+> void), the 24h task wrongly critical (TF 0 vs stored 36 900 min = 76.88 d), eDays slack
+> collapsed by cap-space math (vs stored 3 780 min = 2.63 edays), the violated MFO milestone
+> placid at 0 vs stored −2 400, and the dangling pair invisible to every logic check.
+> Post-change: **recomputed float == stored Total Slack EXACTLY, task by task, on both
+> files**; finishes 10/07 / 10/09; critical sets match MSP; wall instants ride
+> `TaskTiming.*_wall` (project-axis ints stay canonical). **PowerPoint-vs-file divergence,
+> verified and documented (NOT chased): the committed Jacked-2 .mpp does not contain Task
+> 11's deadline** (MPXJ reads MPP14 deadlines fine — positive controls Hard_File UID 155 /
+> Large-Test UID 157; the .mpp's last save 09:23 EDT predates the pptx's final edit
+> 10:29 EDT). The tool's +13 d is the slide's own stated no-deadline outcome; if the
+> operator re-saves the .mpp with the deadline, the pipeline already flows it (pinned).
 >
 > ## Verification (all read from runs this session)
-> New `tests/web/test_portfolio_rollup_titles.py`: **15 passed** (non-degeneracy guard —
-> distinct 5/9/5 pass counts AND a nonzero 2.0 d engine margin; heading-row pin; takeaway
-> bases; the average equals the mean of ENGINE pass counts; mixed-solvability pool disclosed
-> in the cell — 4 included, "· 3 versions"; "—" when nothing solves; exclusion shifts mean
-> AND stated N, reversibly; home-manifest fields engine-verbatim + unsolvable keeps "—" never
-> "0 pass"; manifest DCMA cell EQUALS the same-page health cards; margin-confirm reaches the
-> cards immediately; card key-set + value pins; dashboard.js stat pins; /card label+value
-> adjacent; i18n completeness). **Proved able to fail:** `src/` stashed → **13 failed / 2
-> passed** (the passers are the engine-oracle fixture guard and the em-dash non-regression
-> pin) → popped — the margin-confirm regression test FAILS on main, catching the live stale-
-> memo defect. Golden re-pins + memo + status-trim: **23 passed**. Neighbors (portfolio
-> shell/panelkit · home shell · landing · card view · i18n · coverage app ×2 · project scope
-> · global filter · presentation fixes · cache tiers · drill ×2 · axis titles): **169 passed,
-> 1 skipped** (known INCIDENTAL_SVG). Statics read: ruff 0.16.1 check clean · format clean ·
-> mypy --strict "no issues in 117 source files" · bandit exit 0 · node --check clean. Full
-> suite on the final tree (post-review-fixes, post-regeneration): **3173 passed, 1 skipped,
-> 0 failed (1190 s)** — installers in lockstep, no flake. An
-> earlier pre-review-fix full run read 4 failed / 3165 passed / 1 skipped (1305 s) — the four
-> were the installer-lockstep tests on then-stale artifacts, and `test_float_tip_dismiss`
-> (ADR-0320's load-dependent flake) did NOT fail that run.
+> New `tests/engine/test_multicalendar_cpm.py` **17 passed** (exact-minute float table,
+> stored==recomputed sweeps both files, wall instants through the void, free floats,
+> critical sets, off-calendar chaining, offset-0 start-role, fast-path sentinel, deadline
+> pipeline) — **proved able to fail: 14 failed / 5 passed pre-change** (the five passers are
+> deliberate regression pins). New `tests/engine/test_dangling_logic.py` + oracle + ribbon +
+> logic-panel neighbors **47 passed**. OR-06 `tests/web/test_launch_invalidation.py` (incl.
+> a real-Chromium proof seeding the operator's exact stale-Target-UID shape) + the ADR-0186
+> page-memory suite **12 passed** — **proved able to fail: 4 failed pre-fix**. Mid-build
+> engine sweep **831 passed / 1 failed** → the one failure (TP3 ribbon neg-float 3→4) was
+> ADJUDICATED against FUSE-VALIDATION.md's own "to reconcile" note and deliberately
+> re-pinned (ADR-0322 §Verification), as was QC-D2's elapsed-chain pin {1:0}→{1:1440}
+> (oracle: the eDays task's stored 3 780 for the same shape). Statics read this session:
+> ruff 0.16.1 check clean · format clean (822 files) · mypy --strict "no issues in 117
+> source files" · bandit exit 0 · node --check clean. Installer lockstep **52 passed** after
+> wheel 1.0.140 + nine installers regenerated. Full-suite result: see SESSION-LOG (the run
+> completed after this section was drafted; its numbers are recorded there — a launched run
+> is not a result).
 >
 > ## ⇢ NEXT
-> 1. **Merge PR-7 when CI is green** (draft PR from `claude/polaris-pr7-or01-rollup-5lc2ba`),
->    then the queue (`docs/STATE/PLAN-20260730.md`, decisions A1 · B1 · C1 recorded — do NOT
->    re-ask): **PR-8 AXIS-TITLES 3b-i `margin_dashboard` per A1 (M)** → PR-9 rank-12
->    toolbar/read-me + B1 caption mechanism (M–L) → PR-10 OR-03 launch motion + synthesized
->    hum (M–L). margin.js's vocabulary conversion stays a later round.
-> 2. **OR-04 operator park artifacts stay open** (`audit/VERIFICATION-REPORT-ollama-lifecycle.md`
->    §8): #1 `where ollama` · #3 the `keep_alive:0`-vs-`OLLAMA_KEEP_ALIVE=-1` probe (severity
->    fork) · #5 runner PPID + instance count · #4 the model-identity manifest — plus the
->    four-scenario smoke script from #490's PR body on the deployed build (≥ v1.0.133).
-> 3. Behind the queue: **Phase 3** (CC-01 rendering half, 74 call sites, Fable-5-Max deep dive;
->    V3 elapsed literals) and **Phase 4** (P1–P6, measured but unremediated); rank 13/14.
+> 1. **Merge the draft PR for this round when CI is green** (branch
+>    `claude/polaris-engine-correctness-5y3ge1`), then RESUME the approved queue
+>    (`docs/STATE/PLAN-20260730.md`, decisions A1 · B1 · C1 recorded — do NOT re-ask):
+>    **PR-8 AXIS-TITLES 3b-i `margin_dashboard` per A1 (M)** → PR-9 rank-12 toolbar/read-me
+>    + B1 caption mechanism (M–L) → PR-10 OR-03 launch motion + synthesized hum (M–L).
+> 2. **Tell the operator about the Jacked-2 deadline divergence** (OPERATOR-REQUESTS OR-05
+>    outcome note): re-saving the .mpp with the deadline makes Task 11 read −5 d end-to-end.
+> 3. **OR-04 operator park artifacts stay open** (`audit/VERIFICATION-REPORT-ollama-lifecycle.md`
+>    §8): #1 `where ollama` · #3 the `keep_alive:0`-vs-`OLLAMA_KEEP_ALIVE=-1` probe · #5
+>    runner PPID + instance count · #4 the model-identity manifest — plus the four-scenario
+>    smoke script from #490's PR body on the deployed build.
+> 4. Behind the queue: **Phase 3** (CC-01 rendering half, 74 call sites — now WITH a live
+>    oracle example: the eDays task's slack displays 7.88 d where MSP shows 2.63 edays; the
+>    minutes beneath are exact) and **Phase 4** (P1–P6); rank 13/14.
 >
 > ## Still carried (unchanged identifiers, nothing lost)
-> **CC-01** (H2a) — import half closed by ADR-0312, **rendering half open**, 74 call sites; its two
-> named residuals are ADR-0312's inclusive boundary (`start_tod + per_day == 1440` renders an
-> exact-multiple offset at 00:00 of the FOLLOWING date) and `Calendar` still having no shift-start
-> field · **CC-05** (H5) negative sub-day slack floor, oracle-gated · **V3** (H4) elapsed literals,
-> `engine/msp_filters.py` the sole violator of a convention the repo already follows eight times ·
-> the **legacy `/sra` cross-basis defect** (`_build_result` reads a full-duration deterministic
-> against a remaining-duration sample, no realignment; reaches `/api/sra`, the SRA report,
-> `sra_conclusions`, and `scorecards.reserve_recommendation`) · **a committed SSI export contradicts
-> ADR-0307's Best-Case rule** (Project5 shows the pre-0307 ratios; ADR-0307 stands for the artifact
-> we match) · `resume` is read from **MSPDI only** · the forward pass still packs **completed** work
-> from `project_start` (724 tasks, median −1458 d vs stored actuals; Phase 7) · **per-task calendars
-> are an out-of-domain pairing ADR-0312 does not reach** · several importer warnings (notably the
-> **assumed** calendar, +25 % on duration-days when a 10-hour calendar fails to resolve) belong on
-> the page via `Schedule.import_notes` and have not migrated · **ADR-0320 residuals, recorded not
-> chased:** the Focus form still drops `cf_a`/`cf_b` (the what-if pair resets to its default on
-> refocus), and the trace-options form's pre-existing `tier=off` keep stays.
+> **CC-01** (H2a) — import half closed by ADR-0312, **rendering half open**, 74 call sites; new
+> named example from this round: elapsed-task slack renders /480 (7.88 d) where MSP shows
+> 2.63 edays — metric surfaces deliberately KEEP /480 (the proven Acumen-parity basis; ADR-0322
+> residuals) · **CC-05** (H5) negative sub-day slack floor, oracle-gated · **V3** (H4) elapsed
+> literals, `engine/msp_filters.py` · the **legacy `/sra` cross-basis defect** · **a committed
+> SSI export contradicts ADR-0307's Best-Case rule** (Project5; ADR-0307 stands) · `resume` is
+> read from **MSPDI only** · the forward pass still packs **completed** work from
+> `project_start` (Phase 7) · ~~per-task calendars out-of-domain~~ **CLOSED by ADR-0322** —
+> new residuals recorded there instead: cross-calendar link lag on the project axis (no
+> oracle), the resume-floor MFO-violation corner, lossy int LS/LF projections for
+> off-calendar tasks (walls exact) · importer warnings (assumed calendar +25 %) still belong
+> on the page via `Schedule.import_notes` · **ADR-0320 residuals** (Focus form drops
+> `cf_a`/`cf_b`; trace-options `tier=off` keep).
 >
 > ## SRA parity — CLOSED, and the traps that stay shut
-> ADR-0309 (#483/#484): det percentile **40.70 % → 6.65 %** (SSI **5.75 %**), σ **125.5 → 65.5** cal d
-> (SSI **64.744**, 1.2 %), mean **+26 → +109** (SSI **+111.45**), P10/P50/P80/P90 within
-> **7/1/0/3** days, all five calibration seeds passing.
-> - **The anchor is CONDITIONAL on stored data — MS Project's own `<Resume>` — never a blanket
->   data-date floor.** ADR-0108's two reverts were both unconditional floors; EVM1 UID 18 has
->   `resume == stop` and must not move.
-> - **A floor built from the STORED remaining destroys the Monte-Carlo's upside variance**
->   (`det_pctile = 100 %`, σ 20.3). It must follow `duration_overrides`. Do not "simplify" it back.
-> - **Do NOT chase SSI's `Mean Date` / `Standard Deviation` cells (47322 / 107.8198)** — computed
->   over the 245 DISTINCT dates with `Occurrences` dropped.
+> ADR-0309 (#483/#484): det percentile **40.70 % → 6.65 %** (SSI **5.75 %**), σ **125.5 →
+> 65.5** cal d (SSI **64.744**, 1.2 %), mean **+26 → +109** (SSI **+111.45**), P10/P50/P80/P90
+> within **7/1/0/3** days, all five calibration seeds passing.
+> - **The anchor is CONDITIONAL on stored data — never a blanket data-date floor** (ADR-0108's
+>   two reverts were both unconditional floors; EVM1 UID 18 has `resume == stop`, must not move).
+> - **A floor built from the STORED remaining destroys the Monte-Carlo's upside variance** —
+>   it must follow `duration_overrides`. Do not "simplify" it back.
+> - **Do NOT chase SSI's `Mean Date` / `Standard Deviation` cells (47322 / 107.8198)** —
 >   `test_the_summary_cells_are_not_the_parity_target` pins the trap shut.
+> - NEW (ADR-0322 blast-radius review, verified): the SSI driving-slack goldens are
+>   **stored-date-insulated** from base-CPM changes — treat ANY diff there as an
+>   implementation bug, never a re-baseline.
 >
 > ## Hypotheses KILLED — do not re-chase
-> Everything in `audit/SRA-PARITY-20260729.md` §7, **plus**: reverting ADR-0307's Best-Case rule;
-> an **unconditional** data-date floor (ADR-0108's two reverts, superseded by ADR-0309); "the four
-> Setup pages have no chapter kicker" (ADR-0311); **"the xlsx writer needs a formula-injection
-> guard"** (ADR-0313 — it emits no `<f>`; the CSV sibling was the real vector); **"OR-02 is in
-> the hint/tooltip layer"** (ADR-0314 — the callout is app.js's DCMA float tip); **an image-name
-> sweep of the model runner** (ADR-0315 — `llama-server` is llama.cpp's generic binary, the tool's
-> own OpenAI-compat backend runs one; pid-rooted tree-kill instead, exclusion pinned by test);
-> **asserting** that a per-request `keep_alive:0` overrides `OLLAMA_KEEP_ALIVE=-1` (UNVERIFIED,
-> audit F-13 — park #3 decides; never state it in either direction); **a runtime guard on
-> `performance.js:472`** (ADR-0316 — `defer` makes it unreachable and every digest pin would
-> re-baseline for nothing); **asserting a fixed-overlay toggle via `bounding_box` Y** —
-> viewport-relative and scroll-polluted by the click's own `scrollIntoView`; assert the
-> scroll-invariant size axes instead (ADR-0317); and **"the session target and `?target=` are
-> equivalent for /evolution exports"** (ADR-0320 — the session target truncates the POPULATION
-> via `SessionState.scope()`; `?target=` is a view focus; the export mirrors the page in both
-> states, it never equates them).
+> Everything in `audit/SRA-PARITY-20260729.md` §7 and the prior handoff's list (ADR-0307
+> revert · unconditional data-date floor · ADR-0311/0313/0314/0315/0316/0317/0320 items),
+> **plus this round:** "the Jacked-2 slide's −5 d for Task 11 means the engine must produce
+> −5 d on the committed file" (the deadline is NOT in the saved bytes — proven via MPXJ
+> positive controls + save-vs-edit timestamps; 13 d is correct for the file as saved);
+> "cap-space slack is safe for elapsed tasks" (it under-measures across non-working gaps —
+> the stored 3 780 disproves it); "a violated MFO's TF is 0 because LS−ES is 0" (MSP stores
+> the violation: −2 400, now reproduced); and "per-task calendars can stay disclosure-only"
+> (the 24h-task finish error was three weeks of project finish).
 >
 > ## Harness notes — the traps, one line each
 > Run dev tools as `python -m <tool>` (a stale `/root/.local/bin/ruff` shadows pip's).
 > **`pip install -e ".[dev]"` before the suite** (bare `PYTHONPATH=src` fails ~200 web tests).
 > `pytest --timeout=N` is NOT installed — it exits 0 having run nothing. `cmd | tail; echo $?`
-> reports `tail`'s status. CI can take ~11 min to register check runs (`total_count: 0` = "not
-> yet"). `TestClient` follows 303 and CONSUMES one-shot banners (`follow_redirects=False`).
-> Full `pytest -q` ≈ 14 m; `pytest -m parity` ≈ 40 s. Wheel: `--outdir dist/wheel`, ONCE, after
-> all code lands. **Headless Chromium hides scrollbars** — any geometry that depends on viewport
-> width MUST also be probed with `ignore_default_args=["--hide-scrollbars"]`. **A remote-session
-> resume can silently revert / flip uncommitted working-tree files** — diff the tree after every
-> resume. `caplog` here needs `logger="schedule_forensics.<module>"` (the redaction layer stops
-> propagation), and the autouse `SF_CACHE_DIR` fixture isolates the Ollama engagement marker per
-> test for free. A foreground wait on a background run: `tail --pid=<pid> -f /dev/null` (no
-> sleep, no polling); target the real `python -m pytest` pid, not the wrapper shell.
-> Playwright `bounding_box` is viewport-relative — a click that scrolls (its own
-> `scrollIntoView`) shifts Y for free; measured-box assertions use width/height/x.
-> This queue's containers RESTART repeatedly mid-run — every background process (gates,
-> workflows) dies with it and pip installs vanish: re-diff the tree AND reinstall deps after
-> every resume, run the statics FOREGROUND first so their results are locked in, and treat the
-> long pytest as re-runnable rather than assume it survived.
+> reports `tail`'s status. **`pkill -f` with a pattern that appears in the killer's own shell
+> command line kills the killer** (bit this session — exit 144; kill by PID). CI can take
+> ~11 min to register check runs. `TestClient` follows 303 and CONSUMES one-shot banners
+> (`follow_redirects=False`). On THIS container the parity marker alone ran ~28 min (SRA
+> Monte-Carlo, single-core) — the handoff's old "≈40 s" does not hold here; foreground wait =
+> `tail --pid=<real pytest pid> -f /dev/null`. Headless Chromium hides scrollbars. A
+> remote-session resume can silently revert working-tree files — re-diff after every resume.
+> `caplog` needs `logger="schedule_forensics.<module>"`. Playwright `bounding_box` is
+> viewport-relative — assert width/height/x. Containers RESTART mid-run: statics FOREGROUND
+> first, treat long pytest as re-runnable, reinstall pip after every resume.
 >
 > **Standing rule:** do not put a test result in prose unless the number appeared in output you
 > read that turn. **A launched run is not a result, and a piped exit code is not the command's.**

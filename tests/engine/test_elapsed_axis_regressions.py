@@ -38,14 +38,21 @@ def test_weekend_spanning_elapsed_task_has_zero_not_negative_float_qc_d2() -> No
     assert t.late_start == t.early_start and t.late_finish == t.early_finish
 
 
-def test_elapsed_chain_and_monday_control_keep_zero_float_qc_d2() -> None:
+def test_elapsed_chain_measures_the_calendar_gap_as_slack_qc_d2() -> None:
+    """DELIBERATE re-baseline (multi-calendar CPM ADR; was ``{1: 0}`` under cap-space
+    slack): the elapsed task finishes Sunday 08:00 and its Standard-calendar successor
+    cannot start before Monday 08:00 — MS Project measures that 24 wall-hours as REAL
+    slack on the elapsed axis (oracle: Jacked 1's eDays task stores 3 780 min for
+    exactly this shape — finish inside non-working time, successor gated by its own
+    calendar). Still never NEGATIVE (the D2 defect this file pins): the lone-task
+    controls in the sibling tests stay 0."""
     sch = Schedule(
         name="d2x",
         project_start=_FRIDAY,
         tasks=(_elapsed(2880), Task(unique_id=2, name="N", duration_minutes=480)),
         relationships=(Relationship(predecessor_id=1, successor_id=2),),
     )
-    assert {u: x.total_float for u, x in compute_cpm(sch).timings.items()} == {1: 0, 2: 0}
+    assert {u: x.total_float for u, x in compute_cpm(sch).timings.items()} == {1: 1440, 2: 0}
     mon = compute_cpm(Schedule(name="c", project_start=_MONDAY, tasks=(_elapsed(2880),)))
     assert mon.timings[1].total_float == 0
 

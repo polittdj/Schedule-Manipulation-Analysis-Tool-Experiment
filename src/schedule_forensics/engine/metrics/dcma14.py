@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from collections import Counter
 
-from schedule_forensics.engine.cpm import CPMResult, compute_cpm
+from schedule_forensics.engine.cpm import CPMResult, compute_cpm, execution_calendar_of
 from schedule_forensics.engine.metrics._common import (
     CheckStatus,
     Direction,
@@ -532,24 +532,30 @@ def _critical_path_test(schedule: Schedule, result: CPMResult) -> MetricResult:
         )
     target = by_id[min(targets)]
     delay_min = _CRITICAL_PATH_TEST_DELAY_DAYS * schedule.calendar.working_minutes_per_day
-    if target.duration_is_elapsed:
-        # An elapsed activity's duration_minutes are WALL-CLOCK: injecting working minutes into it
-        # re-interprets the delay on the wrong axis and the finish moves by the wrong amount, so a
-        # structurally perfect schedule failed the test (QC audit D3). Inject the delay on the
-        # task's own axis (100 days x 1440) and compute the EXPECTED working-offset movement of
-        # its finish exactly, from its start instant (a working-grid point — unambiguous).
-        import datetime as _dt
+    exec_cal = execution_calendar_of(schedule, target)
+    if exec_cal is not None:
+        # An off-calendar activity's duration_minutes are ITS OWN calendar's minutes (wall-clock
+        # for an elapsed task): injecting project working minutes re-interprets the delay on the
+        # wrong axis and the finish moves by the wrong amount, so a structurally perfect schedule
+        # failed the test (QC audit D3; generalized from elapsed to any execution calendar).
+        # Inject 100 days on the task's own axis and compute the EXPECTED working-offset movement
+        # of its finish exactly, from its true wall finish instant.
+        from schedule_forensics.engine.cpm import _advance_wall, _offset_to_wall, _wall_to_offset
 
-        from schedule_forensics.engine.cpm import datetime_to_offset, offset_to_datetime
-
-        delay_inj = _CRITICAL_PATH_TEST_DELAY_DAYS * 1440
+        delay_inj = _CRITICAL_PATH_TEST_DELAY_DAYS * exec_cal.working_minutes_per_day
         cal = schedule.calendar
-        start_instant = offset_to_datetime(
-            schedule.project_start, result.timings[target.unique_id].early_start, cal
-        )
-        old_finish = start_instant + _dt.timedelta(minutes=target.duration_minutes)
-        new_finish = old_finish + _dt.timedelta(minutes=delay_inj)
-        expected = datetime_to_offset(schedule.project_start, new_finish, cal) - datetime_to_offset(
+        tod0 = schedule.project_start.hour * 60 + schedule.project_start.minute
+        old_finish = result.timings[target.unique_id].early_finish_wall
+        if old_finish is None:  # defensive: an exec-calendar task always carries its wall;
+            # a sane finish-role reconstruction beats a garbage expected-delta (silent FAIL)
+            old_finish = _offset_to_wall(
+                schedule.project_start,
+                result.timings[target.unique_id].early_finish,
+                schedule.calendar,
+                role="finish",
+            )
+        new_finish = _advance_wall(old_finish, delay_inj, exec_cal, tod0)
+        expected = _wall_to_offset(schedule.project_start, new_finish, cal) - _wall_to_offset(
             schedule.project_start, old_finish, cal
         )
     else:
@@ -567,6 +573,27 @@ def _critical_path_test(schedule: Schedule, result: CPMResult) -> MetricResult:
     # recompute cannot newly cycle/refuse — any CPMError propagates (fail loud).
     new_result = compute_cpm(perturbed)
     moved = new_result.project_finish - result.project_finish == expected
+    if not moved and result.project_finish_wall and new_result.project_finish_wall:
+        # Multi-calendar networks re-quantize the axis delta at every calendar boundary,
+        # so a structurally PERFECT chain can miss the axis equality (review-confirmed:
+        # two chained elapsed tasks — the downstream task's weekend collapse shifts by a
+        # day). Continuity's wall-axis signature is exact instead: the PROJECT finish
+        # instant must shift by the same wall time as the TESTED activity's own finish.
+        from schedule_forensics.engine.cpm import _offset_to_wall
+
+        t_old = result.timings[target.unique_id].early_finish_wall or _offset_to_wall(
+            schedule.project_start,
+            result.timings[target.unique_id].early_finish,
+            schedule.calendar,
+            role="finish",
+        )
+        t_new = new_result.timings[target.unique_id].early_finish_wall or _offset_to_wall(
+            schedule.project_start,
+            new_result.timings[target.unique_id].early_finish,
+            schedule.calendar,
+            role="finish",
+        )
+        moved = new_result.project_finish_wall - result.project_finish_wall == t_new - t_old
     measured = 0.0 if moved else 1.0
     return MetricResult(
         "DCMA12",
