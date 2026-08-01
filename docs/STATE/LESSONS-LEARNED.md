@@ -435,6 +435,52 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-01d — A verification you remember making is not a verification (the codex round on PR-9b)
+- An external automated reviewer raised five findings on #501; all five survived my
+  re-verification, including one that overturned a sentence in the round's own ADR: I had
+  "verified" that `_target_panel` already wore the head strip, but the `_panel_head` call I
+  read was the /path WORKSPACE panel a few hundred lines away — real code, wrong function.
+  The wrong belief then propagated into an ADR consequence bullet AND a route comment
+  ("the focus panel carries controls of its own") that shaped the include-gating design.
+  Only an independent reader caught it. Lesson: when a claim names a specific helper, the
+  verification must read THAT helper's return statement, not a nearby lookalike — and a
+  claim repeated in two places is not twice as checked, it is one unchecked claim with two
+  copies.
+- The population-mismatch pair (chips built from every loaded version while the panels draw
+  the CPMError-skipping subset) is a class worth naming: **any decoration that DESCRIBES a
+  population must be derived from the same code path that COMPUTES the population** — two
+  loops that "obviously agree" drift the day one gains a skip. The fix factored the loop to
+  one owner (`_solvable_scoped_versions`) instead of duplicating the skip in the chip line.
+- Also confirmed the round's refusal discipline pays: all five bot findings were about the
+  panels' HONESTY (attribution, population, missing contract), none about the ⤓ refusals —
+  the covers-what-it-draws bar held under independent review.
+
+### 2026-08-01c — A refused button needs the same proof as a wired one, and a census pinned from one tree proves nothing (PR-9b / ADR-0327)
+- The rank-12 sweep's hard part was not adding toolbars — it was deciding, per panel, which
+  glyph would LIE. Every ⤓ decision came down to reading what the export endpoint actually
+  emits (the margin workbook's two sheets; `wbs_breakdown_tables` being exactly the two
+  page pivots; the workbench catalog stopping at 21 entries — no Fuse/SEM anywhere) rather
+  than what its name suggests. Two refusals were live-state refusals (margin's Zero-margin
+  toggle, workbench's per-render `&cols=`) — the r10 static-attribute defect class shows up
+  wherever a panel has options, and the check is mechanical: does anything on the panel
+  change what the pinned URL would return?
+- Absence assertions pass vacuously on ANY broken tree, so every "no ⤓ here" test pairs
+  with a presence assertion in the same chunk (`_panel_titled` asserts unique + glyph set
+  `== {"big"}`), and the ⤓-liveness loop pins per-page COUNTS — on the pre-change tree the
+  collector finds zero exports and the count pin is what fails. Watched: 12 of 14 tests
+  fail stashed; the 2 both-tree passes are deliberate invariants (empty states clean;
+  panel census EQUAL pre/post — a census pinned only from the post-change render could
+  never catch panel minting, so the stash run is part of the test's provenance, recorded
+  in its docstring).
+- The no-filter /groups "Active scope" panel taught the branch lesson again: the SAME
+  heading is a status notice in one branch and a data visual in another — the toolbar
+  belongs to the branch with the reach table, and the first test draft (toolbar on the
+  heading wherever it appears) failed honestly against the deliberate notice branch.
+- Sequencing gotcha for the ritual: the pyproject bump landed after the full background
+  suite launched, so that run's installer-lockstep tests red-herring against the old wheel.
+  Bump → rebuild wheel+installers → THEN launch the suite (or re-run tests/installer after
+  and record that number). Promoted to the handoff's harness notes.
+
 ### 2026-08-01b — A vacuous pass hides in "the page loaded"; make the fixture EARN the assertion (PR-9a / ADR-0326)
 - The chromium slot proof failed three times before it could pass, and every failure was the
   FIXTURE's, not the mechanism's: /path renders NO timescale without a session target,
