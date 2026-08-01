@@ -73,6 +73,15 @@ SCALES = ("0.9", "1", "1.25")
 #: ``/volatility`` charts from its embedded blob immediately (the golden pair is 2 versions —
 #: enough for every version-indexed chart). The tornado/gauge/leaderboard family renders no
 #: caption and is deliberately not measured (recorded not-axis-charts, decision A1).
+#: ``/sra+run`` joined in ADR-0330 (batch 3c-ii): the SAME ``/sra`` route, but measured on its
+#: OWN app instance (``served_sra``, the /margin precedent) with both Run buttons CLICKED. The
+#: SSI and JCL panels render only on demand, and the golden pair cannot exercise them anyway —
+#: its files carry no budgeted cost, so the JCL panel renders its honest "needs a cost-loaded
+#: schedule" note and no #jclRun at all, and with no Best/Worst spread set the SSI S-curve
+#: degenerates to a single point. ``served_sra`` loads a synthetic cost-loaded schedule with
+#: real per-task spread so all four on-demand charts (SSI S-curve + histogram, JCL football +
+#: cost S-curve) carry real data. The plain ``/sra`` cell above stays exactly what ADR-0329
+#: measured (the golden pair's self-running CDF + histogram).
 PAGES = (
     "/curves",
     "/scurve",
@@ -83,7 +92,24 @@ PAGES = (
     "/margin",
     "/sra",
     "/volatility",
+    "/sra+run",
 )
+
+#: On-demand panels per PAGES entry: (Run button, chart host) pairs. Each button is clicked on
+#: every load and the host is then REQUIRED to grow a caption (a strict wait, never suppressed):
+#: the page's self-running CDF/histogram captions would otherwise mask a dead clicked panel,
+#: because "some captions rendered" cannot see which panel they came from.
+CLICK_RUNS: dict[str, tuple[tuple[str, str], ...]] = {
+    "/sra+run": (
+        ("#ssiRun", "#ssiCharts"),
+        ("#jclRun", "#jclCharts"),
+    ),
+}
+#: The routes above are sentinels, not URLs — the real route each one loads.
+REAL_ROUTE = {"/sra+run": "/sra"}
+#: Per-route caption floors (same masking hazard): /sra+run must show ALL six charts' captions —
+#: sra.js's self-run CDF + histogram (4) + the SSI pair (4) + the JCL pair (4) = 12.
+MIN_CAPTIONS = {"/sra+run": 12}
 
 #: Caption collisions accepted as debt. EMPTY, and it should stay that way — the entry below is
 #: kept as a record of why, because the wrong diagnosis here cost a full round trip.
@@ -245,7 +271,51 @@ def served_margin() -> Any:
     server.should_exit = True
 
 
-def test_captions_survive_every_theme_and_scale(served: str, served_margin: str) -> None:
+@pytest.fixture(scope="module")
+def served_sra() -> Any:
+    """A third server for the CLICKED ``/sra+run`` cell (ADR-0330): a synthetic cost-loaded
+    schedule (``budgeted_cost`` on every working task — the JCL panel's gate) with real
+    per-task Best/Worst spread (``st.sra_bcwc`` — without it the SSI run is a point mass and
+    the S-curve degenerates to one point), so the four on-demand charts chart for real. The
+    values are arbitrary but ASYMMETRIC (worst further than best) so the deterministic finish
+    sits inside the distribution, the football cloud spans all four quadrants, and the
+    frontier renders."""
+    import datetime as dt
+
+    from schedule_forensics.model.relationship import Relationship, RelationshipType
+    from schedule_forensics.model.schedule import Schedule
+    from schedule_forensics.model.task import Task
+    from schedule_forensics.web.app import SessionState, create_app
+
+    day = 480
+    sch = Schedule(
+        name="SRA-Fixture",
+        source_file="sra_fixture.mpp",
+        project_start=dt.datetime(2026, 1, 5, 8, 0),
+        tasks=(
+            Task(unique_id=1, name="Design", duration_minutes=20 * day, budgeted_cost=50000.0),
+            Task(unique_id=2, name="Build", duration_minutes=30 * day, budgeted_cost=120000.0),
+            Task(unique_id=3, name="Test", duration_minutes=15 * day, budgeted_cost=40000.0),
+            Task(unique_id=4, name="Deliver", duration_minutes=0, is_milestone=True),
+        ),
+        relationships=(
+            Relationship(predecessor_id=1, successor_id=2, type=RelationshipType.FS, lag_minutes=0),
+            Relationship(predecessor_id=2, successor_id=3, type=RelationshipType.FS, lag_minutes=0),
+            Relationship(predecessor_id=3, successor_id=4, type=RelationshipType.FS, lag_minutes=0),
+        ),
+    )
+    st = SessionState()
+    st.schedules[sch.source_file] = sch
+    st.sra_bcwc = {1: (16 * day, 30 * day), 2: (24 * day, 45 * day), 3: (12 * day, 25 * day)}
+
+    server, base = _serve(create_app(st))
+    yield base
+    server.should_exit = True
+
+
+def test_captions_survive_every_theme_and_scale(
+    served: str, served_margin: str, served_sra: str
+) -> None:
     """The whole Definition-of-Done line, as one executable assertion."""
     from playwright.sync_api import sync_playwright
 
@@ -255,7 +325,11 @@ def test_captions_survive_every_theme_and_scale(served: str, served_margin: str)
     geometry: dict[str, list[tuple[Any, ...]]] = {}
 
     def _base_for(route: str) -> str:
-        return served_margin if route == "/margin" else served
+        if route == "/margin":
+            return served_margin
+        if route in CLICK_RUNS:
+            return served_sra
+        return served
 
     with sync_playwright() as p:
         browser = p.chromium.launch(executable_path=str(CHROME))
@@ -264,17 +338,25 @@ def test_captions_survive_every_theme_and_scale(served: str, served_margin: str)
 
         def load(route: str, theme: str, scale: str) -> list[dict[str, Any]]:
             base = _base_for(route)
-            # localStorage is per-ORIGIN and /margin runs on its own port: land on the target
-            # origin first, so the theme/scale written below binds to the page being measured.
+            real = REAL_ROUTE.get(route, route)
+            # localStorage is per-ORIGIN and /margin + /sra+run run on their own ports: land on
+            # the target origin first, so the theme/scale below binds to the page being measured.
             if not page.url.startswith(base):
-                page.goto(base + route, wait_until="domcontentloaded")
+                page.goto(base + real, wait_until="domcontentloaded")
             page.evaluate(
                 "([t,s])=>{localStorage.setItem('sf-theme',t);localStorage.setItem('sf-scale',s)}",
                 [theme, scale],
             )
             # NEVER wait for networkidle: heartbeat.js polls every 3s and sysmon.js every 2s, so
             # the network never goes idle and every load would burn its full timeout.
-            page.goto(base + route, wait_until="domcontentloaded")
+            page.goto(base + real, wait_until="domcontentloaded")
+            # On-demand panels: click every Run first (the fetches overlap), THEN require each
+            # panel's captions. Strict, never suppressed — a clicked panel that renders no
+            # caption must fail loudly here, not hide behind the page's self-run captions.
+            for button, _host in CLICK_RUNS.get(route, ()):
+                page.click(button, timeout=10000)
+            for _button, host in CLICK_RUNS.get(route, ()):
+                page.wait_for_selector(f"{host} text.ch-at", timeout=10000, state="attached")
             with contextlib.suppress(Exception):  # a page may legitimately chart nothing
                 page.wait_for_selector("text.ch-at", timeout=5000, state="attached")
             page.wait_for_timeout(150)
@@ -288,6 +370,11 @@ def test_captions_survive_every_theme_and_scale(served: str, served_margin: str)
                     if not caps:
                         problems.append(f"{where}: no captions rendered")
                         continue
+                    floor = MIN_CAPTIONS.get(route, 0)
+                    if len(caps) < floor:
+                        problems.append(
+                            f"{where}: only {len(caps)} of >= {floor} captions rendered"
+                        )
                     if scale == "1":
                         geometry.setdefault(route, []).append(
                             tuple((c["text"], c["x"], c["y"], c["w"]) for c in caps)

@@ -235,6 +235,12 @@
       s.appendChild(txt(svg("text", { x: ml, y: H - 6, class: "ch-xl" }), points[0].date));
       s.appendChild(txt(svg("text", { x: W - mr, y: H - 6, class: "ch-xl", "text-anchor": "end" }),
         points[points.length - 1].date));
+      // Axis captions via the ONE shared helper (ADR-0298; this module joined in ADR-0330,
+      // batch 3c-ii). The date bounds above sit at H-6, BELOW the X caption's band (B-4).
+      SFChartFrame.axisTitles(s, { L: ml, R: W - mr, T: mt, B: H - mb }, {
+        xLabel: "Finish date",
+        yLabel: "Cumulative probability",
+      });
     }
     wrap.appendChild(s);
     return wrap;
@@ -262,6 +268,12 @@
       s.appendChild(txt(svg("text", { x: ml, y: H - 6, class: "ch-xl" }), bins[0].date));
       s.appendChild(txt(svg("text", { x: W - mr, y: H - 6, class: "ch-xl", "text-anchor": "end" }),
         bins[bins.length - 1].date));
+      // Axis captions via the ONE shared helper (ADR-0298; this module joined in ADR-0330,
+      // batch 3c-ii). Only a charted histogram is captioned (no bins = no scale to name).
+      SFChartFrame.axisTitles(s, { L: ml, R: W - mr, T: mt, B: H - mb }, {
+        xLabel: "Finish date",
+        yLabel: "Simulated finishes",
+      });
     }
     wrap.appendChild(s);
     return wrap;

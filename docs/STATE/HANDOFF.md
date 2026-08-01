@@ -1,57 +1,55 @@
-# Handoff — 2026-08-01g (batch 3c-i: sra + volatility join the caption convention; ADR-0329; v1.0.145)
+# Handoff — 2026-08-01h (batch 3c-ii: the on-demand SRA panels captioned — AXIS-TITLES COMPLETE; ADR-0330; v1.0.146)
 
-> ## STATUS (current) — **Batch 3c-i BUILT AND GATED on this tree (the AXIS-TITLES queue's
-> remaining-four, first half; ADR-0329): `sra.js`'s CDF + histogram and `volatility.js`'s
-> churn / flow / area / dwell all caption via the ONE shared helper (18 → 24 call sites, a
-> DELIBERATE re-baseline, prior 18 entries byte-untouched).** Two hand-rolled quasi-captions
-> RETIRED into the helper (flow's "joined ↑ / left ↓…" annotation; dwell's centred "versions
-> on the critical path"). Every collision closed where caused (ADR-0303, data yields): the CDF
-> det-finish label moved out of the Y-caption band (padT+24); rotated date/version ticks yield
-> to the X caption via the ADR-0319 LIVE-box remove (local `yieldTicksToCaption` per module,
-> 2px margin, apollo mono covered); dwell count labels statically clamped out of BOTH bands.
-> **Recorded NOT-axis-charts (decision A1, in the ADR):** sra's two tornados · volatility's
-> gauge, heatmap, two leaderboards, strips, ribbon; sra_ssi's 5×5s are natively-labeled HTML
-> tables (other medium). **`/volatility` joined the ADR-0316 `defer` family** — the measured
-> pass caught volatility.js (parse-time renderer, loads before chartframe.js) throwing
-> `SFChartFrame is not defined` on the new call: one word in app.py, guard rejected per the
-> recorded precedent. `/sra` + `/volatility` joined the visual PAGES matrix (sra self-runs
-> /api/sra ≈1.4 s on the goldens; volatility charts from its blob). PAGE_SCRIPTS volatility
-> digest deliberately re-baselined (0d38b34e… → 67a62558…). **3c-ii deliberately split, not
-> skipped:** `sra_jcl.js` + `sra_ssi.js` stay in PENDING — their charts render only on a Run
-> click, so the visual harness must learn to click first. Earlier this session: **PR-10 (#503,
-> OR-03, ADR-0328) and #504 (session close + the OR-04 collection kit) both MERGED** by the
-> operator. Version **1.0.145**, highest ADR **ADR-0329**, wheel + nine installers regenerated
-> ONCE after the code landed (bump BEFORE suite, the recorded sequencing).**
+> ## STATUS (current) — **Batch 3c-ii BUILT AND GATED on this tree (ADR-0330): `sra_jcl.js`'s
+> football + cost S-curve and `sra_ssi.js`'s S-curve + histogram caption via the ONE shared
+> helper (24 → 28 call sites, a DELIBERATE re-baseline, prior 24 entries byte-untouched), and
+> the SVG `PENDING` ledger is EMPTY — the recorded AXIS-TITLES completion signal.** The
+> football's two corner quadrant %-labels sat EXACTLY in both caption corners; both clamp
+> statically out of the bands (`mt+10 → mt+24`, `H−mb−6 → H−mb−20` — the ADR-0303 yield, the
+> dwell-precedent static mechanism; live-box remove REJECTED, it would delete a
+> by-construction-colliding data label). **The measured pass learned to CLICK, on a serve that
+> can chart:** the survey found the 3c-i prerequisite understated — the golden pair carries no
+> budgeted cost, so `/sra` there renders NO `#jclRun` (the honest-SCL gate) and no
+> `sra_jcl.js` tag at all, and with no Best/Worst spread the SSI S-curve degenerates to ONE
+> point. `served_sra` (the `served_margin` precedent) loads a synthetic 4-task cost-loaded
+> schedule + `st.sra_bcwc` spread; the new `/sra+run` cell clicks BOTH Run buttons with a
+> strict never-suppressed per-panel caption wait + a MIN_CAPTIONS=12 floor (a dead clicked
+> panel cannot hide behind the page's self-run captions). The plain `/sra` golden cell stays
+> exactly what ADR-0329 measured. FICSM strip + the 5×5 matrices: recorded not-axis-charts
+> (decision A1 / ADR-0326's other medium). Neither module is in PAGE_SCRIPTS — no byte-freeze
+> digest moved. Caption contrast on `.ssi-svg`'s hardcoded WHITE canvas measured in all four
+> themes (console 3.07:1 the slimmest — recorded in the ADR as the first thing a future theme
+> would break). Version **1.0.146**, highest ADR **ADR-0330**, wheel + nine installers
+> regenerated ONCE after the code landed (bump BEFORE suite, the recorded sequencing).
 >
 > ## Verification (all read from runs this session)
-> Census + freeze suites: **54 passed** (module classification · 24-site count+uniqueness ·
-> the load-bearing file+digest equality · PAGE_SCRIPTS). The MEASURED visual pass
-> (9 pages × 4 themes × 3 scales, caption-vs-every-sibling-text, ≥2px both axes): **1 passed
-> in 86 s**, zero collisions, KNOWN_COLLISIONS still EMPTY. Neighbor suites (sra view /
-> ssi-web / grid / zero-margin / file-select · bar-drill · accessibility): **99 passed**.
-> Installer lockstep vs the fresh 1.0.145 wheel: **52 passed**. **Proved able to fail,
-> watched:** the three ledgers FAIL on the stashed pre-change tree (census unclassified ·
-> 24 ≠ 18 · volatility byte-freeze), and the visual pass itself was watched failing LIVE on
-> the pre-`defer` tree ("no captions rendered" × every /volatility cell — the failure that
-> exposed the defer find). Statics foreground: ruff "All checks passed!" · format clean (835
-> files) · mypy --strict "no issues in 117 source files" · bandit exit 0 · node --check clean.
-> Full-suite result: see SESSION-LOG (recorded after the run completed — a launched run is
-> not a result).
+> Census + freeze suites: **52 passed, 2 skipped** (one skip IS the emptied PENDING's empty
+> parametrize; the other the standing path.js INCIDENTAL_SVG skip). The MEASURED visual pass
+> (10 pages × 4 themes × 3 scales, caption-vs-every-sibling-text, ≥2px both axes): **1 passed
+> in 103.7 s**, zero collisions, KNOWN_COLLISIONS still EMPTY; a 12-combo pre-probe of the
+> clicked cell alone: **144 caption renders, zero problems**. Neighbor suites (sra view /
+> ssi-web / jcl-web / grid / zero-margin / file-select / chart-callouts / bar-drill /
+> accessibility): **122 passed**. **Proved able to fail, watched:** the visual pass dies on
+> the strict wait on the pre-caption tree (`TimeoutError: waiting for locator("#ssiCharts
+> text.ch-at")`), the census reports both modules unclassified, the freeze counts 24 ≠ 28.
+> Statics foreground: ruff "All checks passed!" · format clean (835 files) · mypy --strict
+> "no issues in 117 source files" · bandit exit 0 · node --check clean. An ADR-0240
+> multi-lens audit (4 finders + adversarial verifiers) ran on the diff; lead-validated
+> outcome in SESSION-LOG. Full-suite + installer-lockstep results: see SESSION-LOG (recorded
+> after the run completed — a launched run is not a result).
 >
 > ## ⇢ NEXT
 > 1. **Merge the draft PR for this round when CI is green** (branch
->    `claude/polaris-pr10-or03-motion-uzgvc0`), then:
-> 2. **Batch 3c-ii** — `sra_jcl.js` + `sra_ssi.js`: teach the visual harness to CLICK their
->    Run buttons (both fetch and render on demand), then caption the football (its corner
->    quadrant %-labels sit exactly in BOTH caption corners — they must yield), the cost
->    S-curve, and the SSI S-curve + histogram; the FICSM strip is a labeled bar strip →
->    recorded not-axis-chart. PENDING → empty closes AXIS-TITLES for good.
-> 3. **The OR-04 ball stays with the operator:** run
+>    `claude/polaris-batch-3c-ii-captions-3szmiw`), then:
+> 2. **The OR-04 ball stays with the operator:** run
 >    `audit/operator-artifacts/collect-ollama-artifacts.ps1` on the deployed box (after one
 >    Ask-the-AI question), review, commit outputs + `smoke-results.md` (A–D verdicts).
-> 4. Behind: the 7-module `DOM_PENDING` ledger · Phase 3 (CC-01 rendering half, 74 sites,
->    Fable 5 Max) · Phase 4 (P1–P6) · rank 13/14 · OR-03 residuals parked in ADR-0328
->    (operator's-ear hum acceptance; ogg fallback HELD).
+> 3. **The DOM medium's caption ledger is now the only caption work left:** `DOM_PENDING`
+>    (7 modules — drilldown, driving_tiers, findings_drill, ribbon_drill, scorecards,
+>    sra_risk, whatif) under ADR-0326's B1 mechanisms, batch-at-a-time like the SVG one.
+> 4. Behind: Phase 3 (CC-01 rendering half, 74 sites, Fable 5 Max) · Phase 4 (P1–P6) ·
+>    rank 13/14 · OR-03 residuals parked in ADR-0328 (operator's-ear hum acceptance; ogg
+>    fallback HELD).
 >
 > ## Still carried (unchanged identifiers, nothing lost)
 > **CC-01** (H2a) rendering half open, 74 call sites (eDays slack renders 7.88 d where MSP
@@ -80,16 +78,20 @@
 > - **Do NOT chase SSI's Mean/StdDev cells (47322 / 107.8198)** — pinned shut.
 > - The SSI driving-slack goldens are **stored-date-insulated** from base-CPM changes — any
 >   diff there is an implementation bug, never a re-baseline.
-> - The 3c-i captions touch NO engine number: JS presentation + one script-tag attribute only.
+> - The 3c-ii captions touch NO engine number: JS presentation + test files only (app.py
+>   untouched this round).
+> - **The golden pair's cost-LESSNESS is load-bearing** (the JCL honest-requirement gate,
+>   pinned by test_jcl_web.py) — never "fix" it by cost-loading the goldens; the clicked
+>   visual cell has its own synthetic serve (`served_sra`) for exactly this reason.
 >
 > ## Hypotheses KILLED — do not re-chase
 > Everything in `audit/SRA-PARITY-20260729.md` §7 and the archived lists (ADR-0307 revert ·
-> unconditional floor · ADR-0311→0328 items), **plus this round:** "the four PENDING modules
-> can ship as one measured batch" (jcl/ssi render only on Run clicks — unmeasurable captions
-> until the harness clicks; split recorded, not skipped); "volatility.js can call the helper
-> bare like the fetch-rendered modules" (it draws at PARSE time before chartframe.js loads —
-> the ADR-0316 defer family, third member); "tornados/gauges/leaderboards need captions"
-> (no axis scale to name — decision A1, recorded in ADR-0329).
+> unconditional floor · ADR-0311→0329 items), **plus this round:** "clicking the Run buttons
+> on the golden serve is enough for 3c-ii" (the golden pair renders NO #jclRun — the JCL
+> panel is cost-gated closed — and its SSI S-curve is a 1-point degenerate; the clicked cell
+> NEEDS its own cost-loaded, spread-bearing serve); "the football's corner labels can yield
+> via the ADR-0319 live-box REMOVE" (they collide by construction — removal would delete the
+> data label every render; the static band-clamp is the recorded mechanism).
 >
 > ## Harness notes — the traps, one line each
 > Run dev tools as `python -m <tool>` (a stale `/root/.local/bin/ruff` shadows pip's).
@@ -101,7 +103,8 @@
 > (`follow_redirects=False`). Parity marker ≈2m38s. Headless Chromium hides scrollbars
 > (`ignore_default_args=["--hide-scrollbars"]`). Re-diff after every remote resume. `caplog`
 > needs `logger="schedule_forensics.<module>"`. Playwright `bounding_box` is
-> viewport-relative. **localStorage is per-ORIGIN.** Containers RESTART mid-run: statics
+> viewport-relative. **localStorage is per-ORIGIN** (the visual pass now spans THREE origins —
+> land on the target origin before writing theme/scale). Containers RESTART mid-run: statics
 > FOREGROUND first, long pytest re-runnable, reinstall pip after every resume. After a
 > squash-merge: `git fetch --prune origin && git remote set-head origin -a &&
 > git checkout -B <branch> origin/main`. **Version-bump sequencing:** bump pyproject BEFORE
@@ -111,6 +114,8 @@
 > test body. Never `from tests.web...` in a test (CI ModuleNotFoundError) — pin by text.
 > **A parse-time-rendering JS module + a later chartframe.js = first-paint crash** — the
 > ADR-0316 defer family; check the page's script ORDER before calling any SFChartFrame API.
+> **An on-demand panel needs a strict per-host wait AND a caption floor in the visual pass** —
+> "some captions rendered" cannot see a dead clicked panel behind a self-running chart.
 >
 > **Standing rule:** do not put a test result in prose unless the number appeared in output you
 > read that turn. **A launched run is not a result, and a piped exit code is not the command's.**

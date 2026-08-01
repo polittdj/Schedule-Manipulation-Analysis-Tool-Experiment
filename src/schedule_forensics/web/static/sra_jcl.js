@@ -109,12 +109,16 @@
         "Deterministic (all-ML): " + d.deterministic.date + " — " + money(d.deterministic.eac)));
     }
     // quadrant shares in the corners (top-left = on time & on cost region is bottom-left in
-    // cost space; label each corner with its share and a call-out naming the quadrant)
+    // cost space; label each corner with its share and a call-out naming the quadrant).
+    // Two corners are ALSO caption corners (ADR-0330): the Y caption owns the top-left band
+    // (L+4, T+9) and the X caption the bottom-right (R, B-4) — those two labels clamp out of
+    // the bands statically (the ADR-0303 yield, the dwell-precedent mechanism: the data label
+    // yields, the caption never moves). The other two corners are free by construction.
     var q = d.quadrants;
     [
       { x: ml + 4, y: H - mb - 6, a: "start", v: q.both, n: "on time & on cost" },
-      { x: ml + 4, y: mt + 10, a: "start", v: q.date_only, n: "on time, over cost" },
-      { x: W - mr - 4, y: H - mb - 6, a: "end", v: q.cost_only, n: "late, on cost" },
+      { x: ml + 4, y: mt + 24, a: "start", v: q.date_only, n: "on time, over cost" },
+      { x: W - mr - 4, y: H - mb - 20, a: "end", v: q.cost_only, n: "late, on cost" },
       { x: W - mr - 4, y: mt + 10, a: "end", v: q.neither, n: "late & over cost" },
     ].forEach(function (c) {
       s.appendChild(titled(txt(svg("text", {
@@ -127,6 +131,12 @@
     s.appendChild(txt(svg("text", { x: ml, y: H - 6, class: "ch-xl" }), isoDay(x0)));
     s.appendChild(txt(svg("text", { x: W - mr, y: H - 6, class: "ch-xl", "text-anchor": "end" }),
       isoDay(x1)));
+    // Axis captions via the ONE shared helper (ADR-0298; this module joined in ADR-0330,
+    // batch 3c-ii). The date bounds above sit at H-6, BELOW the X caption's band (B-4).
+    SFChartFrame.axisTitles(s, { L: ml, R: W - mr, T: mt, B: H - mb }, {
+      xLabel: "Finish date",
+      yLabel: "EAC",
+    });
     wrap.appendChild(s);
     return wrap;
   }
@@ -174,6 +184,12 @@
       s.appendChild(txt(svg("text", { x: ml, y: H - 6, class: "ch-xl" }), money(x0)));
       s.appendChild(txt(svg("text", { x: W - mr, y: H - 6, class: "ch-xl", "text-anchor": "end" }),
         money(x1)));
+      // Axis captions via the ONE shared helper (ADR-0298; this module joined in ADR-0330,
+      // batch 3c-ii). The cost bounds above sit at H-6, BELOW the X caption's band (B-4).
+      SFChartFrame.axisTitles(s, { L: ml, R: W - mr, T: mt, B: H - mb }, {
+        xLabel: "EAC",
+        yLabel: "Cumulative probability",
+      });
     }
     wrap.appendChild(s);
     return wrap;
