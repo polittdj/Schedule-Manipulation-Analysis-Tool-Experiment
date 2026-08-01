@@ -10015,3 +10015,20 @@ the briefs + state rotation) earlier today.
   (launch token normalized; both fixtures set no target — the round's only /analysis delta
   is inside `if target is not None`), and isolated re-runs on this tree read pass·pass then
   fail·pass. Pre-existing intermittent, both siblings now named in HANDOFF's carried item.
+
+## 2026-08-01 (close) — session ended by the operator; PR-9b MERGED
+
+- **#501 (PR-9b, ADR-0327, v1.0.143) MERGED by the operator as `a0a5bbd`** — the rank-12
+  toolbar/read-me sweep is DONE: six pages on the panel contract, the codex-review addendum
+  (population-accurate chips via `_solvable_scoped_versions` · preview chips ·
+  `_target_panel` converted on all three sites) included, both full-suite adjudications
+  recorded. The operator resolved the mid-flight #500 conflict question ("i think i messed
+  up") — it was the routine stacked-docs conflict; merge-resolved, recon file deleted per
+  its own contract.
+- Branch restarted from `origin/main` (`a0a5bbd`), the PR watch auto-unsubscribed on merge,
+  and the armed hourly check-in trigger deleted. `docs/STATE/NEXT-SESSION-PROMPT.md`
+  refreshed to the PR-10 kickoff (OR-03 launch motion + synthesized hum, decisions
+  recorded).
+- HANDOFF ⇢ NEXT item 1 ("merge the draft PR") is SATISFIED by this merge — the next
+  session proceeds straight to PR-10; the /analysis focus→tip intermittent stays a carried
+  item, not a regression to chase.
