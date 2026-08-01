@@ -435,6 +435,35 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-01e — Module-scoped browser fixtures meet the app's own dedup (PR-10, OR-03)
+- The new chromium suite's first run failed in a way the feature couldn't explain: the
+  gesture-flow test uploaded the same golden bytes an EARLIER test had already loaded into the
+  module-scoped served app, ADR-0259's byte-identical dedup collapsed it ("skipped
+  byte-identical upload"), the server redirected home instead of `/analysis/...`, and the
+  test's `wait_for_url` burned its full 30 s. The app behaved exactly as designed — the TEST
+  design forgot the app has memory. Lesson: in a module-scoped browser suite, any test that
+  lets its upload COMPLETE must use bytes no earlier test loaded (Project2 vs Project5), and
+  the fixture comment should say so; the alternative (function-scoped servers) buys isolation
+  with ~6 uvicorn boots per run.
+- Two reusable Playwright patterns landed with the suite: (1) NEVER sleep inside a sync-API
+  route handler — it runs on the event loop and freezes the very waits the test then issues;
+  park the route object in a list and `continue_()`/`fulfill()` it from the test body, which
+  turns "the load phase" into a deterministic, test-controlled window (held POST ⇒ assert
+  mid-load state ⇒ release ⇒ assert landing). (2) To prove a gesture-only autoplay policy,
+  wrap `window.AudioContext` with a counting delegate in `add_init_script` — construction
+  counts make "no context before a gesture / exactly one per gesture / a programmatic change
+  primes nothing" assertable without ever asserting sound.
+- Sound design under Law 2's cousin ("fidelity over speed" has a UI cousin: honesty over
+  flash): the operator's "no audible seam" requirement dissolves entirely if the sound is
+  GENERATIVE — a shuffled pitch bag has no loop point, so there is nothing to mix. Choosing
+  synthesis over a ≥60 s asset also kept ~10 MB out of the wheel + nine installers. The
+  operator's ear remains the acceptance (fallback held, ADR-0328).
+
+- CI postscript: the round's ONE CI failure was `from tests.web.test_accessibility import
+  _AUTOPLAY_JS` inside a test — importable locally (sys.path luck), `ModuleNotFoundError` on
+  CI. Never import one test module from another here; pin cross-module invariants by TEXT
+  (read the sibling file, assert the literal), which is also the stronger assertion.
+
 ### 2026-08-01d — A verification you remember making is not a verification (the codex round on PR-9b)
 - An external automated reviewer raised five findings on #501; all five survived my
   re-verification, including one that overturned a sentence in the round's own ADR: I had
