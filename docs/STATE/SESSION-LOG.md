@@ -9887,3 +9887,18 @@ the briefs + state rotation) earlier today.
   immediately after reads **18 passed in 1m36s**, and the diff touches no float-tip path
   (gantt.js's slot, workbench captions, CSS siblings, four body markers). Chromium timing
   under full-suite load is the known class.
+
+## 2026-08-01 (close) — session ended by the operator; PR-9b recon banked
+
+- #499 (PR-9a, ADR-0326, v1.0.142) MERGED by the operator as `a29b747`; branch restarted
+  from origin/main; both watch triggers deleted.
+- PR-9b recon completed and banked as **`docs/STATE/RECON-PR9B-20260801.md`** (docs-only):
+  the six-page survey (visuals · toolbar state · export-endpoint truth table · h1/read-me
+  gaps · panelkit/_shell_tools contract), produced by a survey agent and **lead-verified on
+  its four load-bearing claims** (no `.sf-drawer` exists app-wide; no export route for
+  standards/groups/card — `/export/{fmt}/scorecards` substring-matches "card", a grep trap;
+  the /wbs export route ~:5839 exists UNLINKED; zero `_panel_head`/`_shell_tools` calls in
+  the six bodies). Per-line anchors are recon — re-grep before editing. The recon file is
+  working state: DELETE it in the PR that completes the sweep.
+- Next session: PR-9b per the recon + HANDOFF ⇢ NEXT (the handoff's "merge the draft PR"
+  item is satisfied — #499 is merged; proceed straight to the sweep).
