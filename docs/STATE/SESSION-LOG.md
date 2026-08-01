@@ -10104,3 +10104,20 @@ the briefs + state rotation) earlier today.
   sibling file, assert the exact tuple line + that `launch_audio.js` appears nowhere in it) —
   the house md5/text-pin idiom, and strictly stronger than the import. Module re-run locally:
   **8 passed**; ruff "All checks passed!", format repo-clean (833 files).
+
+## 2026-08-01 (close) — session ended; PR-10 MERGED
+
+- **#503 (PR-10, ADR-0328, v1.0.144) MERGED by the operator as `839c659`** — OR-03 is DONE:
+  the Launch Sequence's CSS-only orbit motion + the synthesized, gesture-primed Boot Audio
+  Hum with persisted mute/volume shipped. The operator marked the draft ready-for-review and
+  squash-merged; CI was fully green on head `cb7fc42` (all six checks — the `_AUTOPLAY_JS`
+  text-pin fix had cleared both pytest jobs; browser measured-box proof, linux, windows,
+  check all success; mergeable_state clean).
+- Branch restarted from `origin/main` (`839c659`), the PR watch auto-unsubscribed on merge,
+  and the armed hourly check-in trigger deleted. `docs/STATE/NEXT-SESSION-PROMPT.md`
+  refreshed to the OR-04 kickoff (operator park artifacts, §8 of the ollama-lifecycle
+  verification report; queue behind unchanged).
+- HANDOFF ⇢ NEXT item 1 ("merge the draft PR") is SATISFIED by this merge — the next session
+  proceeds to OR-04; the /analysis focus→tip intermittent stays a carried item; OR-03
+  residuals (operator's-ear acceptance, held ogg fallback, /example unload cut) stay parked
+  in ADR-0328.
