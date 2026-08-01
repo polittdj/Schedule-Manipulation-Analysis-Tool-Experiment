@@ -9888,6 +9888,20 @@ the briefs + state rotation) earlier today.
   (gantt.js's slot, workbench captions, CSS siblings, four body markers). Chromium timing
   under full-suite load is the known class.
 
+## 2026-08-01 (close) — session ended by the operator; PR-9b recon banked
+
+- #499 (PR-9a, ADR-0326, v1.0.142) MERGED by the operator as `a29b747`; branch restarted
+  from origin/main; both watch triggers deleted.
+- PR-9b recon completed and banked as **`docs/STATE/RECON-PR9B-20260801.md`** (docs-only):
+  the six-page survey (visuals · toolbar state · export-endpoint truth table · h1/read-me
+  gaps · panelkit/_shell_tools contract), produced by a survey agent and **lead-verified on
+  its four load-bearing claims** (no `.sf-drawer` exists app-wide; no export route for
+  standards/groups/card — `/export/{fmt}/scorecards` substring-matches "card", a grep trap;
+  the /wbs export route ~:5839 exists UNLINKED; zero `_panel_head`/`_shell_tools` calls in
+  the six bodies). Per-line anchors are recon — re-grep before editing. The recon file is
+  working state: DELETE it in the PR that completes the sweep.
+- Next session: PR-9b per the recon + HANDOFF ⇢ NEXT (the handoff's "merge the draft PR"
+  item is satisfied — #499 is merged; proceed straight to the sweep).
 ## 2026-08-01 (cont.2) — PR-9b: the Library pages wear the panel toolbar (rank 12, second slice; ADR-0327, v1.0.143)
 
 - Session start: PR-8 (#498 → `469cef0`) and PR-9a (#499 → `a29b747`) both MERGED by the
@@ -9958,3 +9972,11 @@ the briefs + state rotation) earlier today.
   Same test was the previous session's single full-suite failure. Mechanism undetermined
   (the test's 4 s focus→tip wait vs a product focus-listener attach race) — logged as an
   OR-02-adjacent hardening item, NOT chased mid-round (red-team R11).
+- Merge-resolution note (this PR): `origin/main` moved under the branch when the operator
+  merged **#500** (the banked PR-9b recon, `92989e5`) — SESSION-LOG tails merged with both
+  entries kept in chronological order, and **`docs/STATE/RECON-PR9B-20260801.md` DELETED
+  per its own recorded contract** ("DELETE it in the PR that completes the sweep" — this PR
+  is that sweep). Its four lead-verified claims all match what shipped: no `.sf-drawer`
+  app-wide (▦ refused everywhere), no standards/groups/card export (refusals recorded; §1's
+  analysis-workbook wiring is the recon's own verify-sheet-coverage-first pattern), the
+  orphaned /wbs export now wired, zero prior `_panel_head` call sites in the six bodies.
