@@ -67,9 +67,10 @@
 > annotation is data-dependent (data yields, never the caption) · ADR-0326 notes: /mission's
 > path-evolution tile deliberately unmarked; a marked page's caption applies to every
 > tier-scale on it by design (same schedule-date axis).
-> · **test_float_tip_dismiss is a measured intermittent** (≈half of isolated runs fail
-> the 4 s focus→tip wait on this container; /analysis bytes identical to main modulo the
-> launch token) — an OR-02-adjacent hardening item, mechanism undetermined.
+> · **the /analysis focus→tip family is a measured intermittent** (test_float_tip_dismiss
+> AND its scroll sibling; ≈half of isolated runs fail the 4 s focus→tip wait on this
+> container; the no-target /analysis render is byte-identical across the round's trees) —
+> an OR-02-adjacent hardening item, mechanism undetermined.
 > · **Codex-review round (ADR-0327 addendum, same PR):** five bot findings, all verified
 > real and fixed — /workbench + /margin chips now derive from the SOLVABLE population
 > (`_solvable_scoped_versions` — one owner for the rule), the /groups breakdown +

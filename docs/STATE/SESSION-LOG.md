@@ -10005,3 +10005,13 @@ the briefs + state rotation) earlier today.
   fixture · `test_target_panel_wears_the_contract` on all three sites + the bare notice
   branch · `test_groups_preview_pivots_carry_the_preview_file_chip`) — **3 failed** against
   the pre-fix tree, then r12 module **17 passed** post-fix.
+- **Full suite (codex-round tree): 2 failed, 3232 passed, 1 skipped in 16m15s.** The
+  installer race did NOT recur (wheel rebuilt BEFORE launch — the sequencing lesson
+  applied). Both failures are the /analysis focus→tip family: the already-adjudicated
+  `test_float_tip_dismiss` intermittent plus its sibling
+  `test_float_tip_scroll::test_focus_shown_tip_hides_on_scroll_and_stays_off_the_rail`
+  (same `_show_by_focus`-style mechanism). Adjudicated the same way, measured: the
+  no-target /analysis render is BYTE-IDENTICAL between this tree and pre-round `1a45cc0`
+  (launch token normalized; both fixtures set no target — the round's only /analysis delta
+  is inside `if target is not None`), and isolated re-runs on this tree read pass·pass then
+  fail·pass. Pre-existing intermittent, both siblings now named in HANDOFF's carried item.
