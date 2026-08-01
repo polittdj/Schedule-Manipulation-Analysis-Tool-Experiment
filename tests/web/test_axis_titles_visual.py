@@ -48,9 +48,12 @@ CHROME = Path("/opt/pw-browsers/chromium-1194/chrome-linux/chrome")
 
 THEMES = ("console", "daylight", "apollo", "jarvis")
 SCALES = ("0.9", "1", "1.25")
-#: Pages the golden Project2/Project5 pair actually charts. ``/margin`` needs tasks named
-#: "margin"; with these fixtures it correctly renders a "no data" note and NO chart, so a
-#: missing caption there would be a false positive rather than a defect.
+#: Pages the golden Project2/Project5 pair actually charts — plus ``/margin``, which that pair
+#: CANNOT chart (its months need activities named "margin" and status-dated versions; the golden
+#: pair correctly renders a "no data" note and NO chart, so measuring it there would prove
+#: nothing). ``/margin`` joined in ADR-0325 (batch 3b-i) and is served from its OWN app instance
+#: loaded with synthetic status-dated margin versions (``served_margin``) so both its charts
+#: really render; ``_base_for`` routes it there.
 #:
 #: ``/resources`` joined in ADR-0319, which closed the debt this comment used to carry: after
 #: round 10's ``defer`` made the histogram paint on load, applying the rules below measured a
@@ -64,7 +67,7 @@ SCALES = ("0.9", "1", "1.25")
 #: ``/forecast`` joined in ADR-0303 batch 3a: drift.js's captions were attempted, reverted on
 #: two measured collisions, and re-landed with the ADR-0303 clamps — this pass is what proves
 #: those collisions stay closed.
-PAGES = ("/curves", "/scurve", "/cei", "/trend", "/forecast", "/resources")
+PAGES = ("/curves", "/scurve", "/cei", "/trend", "/forecast", "/resources", "/margin")
 
 #: Caption collisions accepted as debt. EMPTY, and it should stay that way — the entry below is
 #: kept as a record of why, because the wrong diagnosis here cost a full round trip.
@@ -137,10 +140,24 @@ pytest.importorskip("playwright", reason="playwright not installed (deliberate: 
 pytestmark = pytest.mark.skipif(not CHROME.exists(), reason=f"bundled chromium not at {CHROME}")
 
 
+def _serve(app: Any) -> Any:
+    """Boot ``app`` on a free loopback port and yield the base URL (the browser needs
+    same-origin /static, so a TestClient is not enough)."""
+    import uvicorn
+
+    port = _free_port()
+    server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=port, log_level="error"))
+    threading.Thread(target=server.run, daemon=True).start()
+    for _ in range(100):
+        if server.started:
+            break
+        time.sleep(0.1)
+    return server, f"http://127.0.0.1:{port}"
+
+
 @pytest.fixture(scope="module")
 def served() -> Any:
-    """A real HTTP server with two versions loaded — the browser needs same-origin /static."""
-    import uvicorn
+    """A real HTTP server with the two golden versions loaded."""
     from fastapi.testclient import TestClient
 
     from schedule_forensics.web.app import SessionState, create_app
@@ -152,18 +169,67 @@ def served() -> Any:
             r = c.post("/upload", files={"files": (f"{name}.mspdi.xml", payload, "text/xml")})
             assert r.status_code == 200, (name, r.status_code)
 
-    port = _free_port()
-    server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=port, log_level="error"))
-    threading.Thread(target=server.run, daemon=True).start()
-    for _ in range(100):
-        if server.started:
-            break
-        time.sleep(0.1)
-    yield f"http://127.0.0.1:{port}"
+    server, base = _serve(app)
+    yield base
     server.should_exit = True
 
 
-def test_captions_survive_every_theme_and_scale(served: str) -> None:
+@pytest.fixture(scope="module")
+def served_margin() -> Any:
+    """A second server whose versions ``/margin`` can actually chart: four status-dated
+    versions with a margin activity eroding 40 → 10 wd (the same synthetic shape
+    ``test_margin_dashboard_view.py`` pins), so the burn-down AND the erosion trend (2+
+    dated points, a projected zero-margin date) both render their captions for real."""
+    import datetime as dt
+
+    from schedule_forensics.model.relationship import Relationship, RelationshipType
+    from schedule_forensics.model.schedule import Schedule
+    from schedule_forensics.model.task import Task
+    from schedule_forensics.web.app import SessionState, create_app
+
+    def version(status: str, margin_days: float) -> Schedule:
+        day = 480
+        return Schedule(
+            name=status,
+            source_file=f"{status}.mpp",
+            project_start=dt.datetime(2026, 1, 5, 8, 0),
+            status_date=dt.datetime.fromisoformat(status),
+            tasks=(
+                Task(unique_id=1, name="Work", duration_minutes=500 * day),
+                Task(
+                    unique_id=2,
+                    name="Schedule MARGIN: pre-delivery",
+                    duration_minutes=int(margin_days * day),
+                ),
+                Task(unique_id=3, name="Deliver SV1", duration_minutes=0, is_milestone=True),
+            ),
+            relationships=(
+                Relationship(
+                    predecessor_id=1, successor_id=2, type=RelationshipType.FS, lag_minutes=0
+                ),
+                Relationship(
+                    predecessor_id=2, successor_id=3, type=RelationshipType.FS, lag_minutes=0
+                ),
+            ),
+        )
+
+    st = SessionState()
+    for status, margin_days in (
+        ("2026-02-27", 40),
+        ("2026-03-31", 30),
+        ("2026-04-30", 20),
+        ("2026-05-29", 10),
+    ):
+        v = version(status, margin_days)
+        st.schedules[v.source_file] = v
+    st.target_uid = 3
+
+    server, base = _serve(create_app(st))
+    yield base
+    server.should_exit = True
+
+
+def test_captions_survive_every_theme_and_scale(served: str, served_margin: str) -> None:
     """The whole Definition-of-Done line, as one executable assertion."""
     from playwright.sync_api import sync_playwright
 
@@ -172,19 +238,27 @@ def test_captions_survive_every_theme_and_scale(served: str) -> None:
     measured = 0
     geometry: dict[str, list[tuple[Any, ...]]] = {}
 
+    def _base_for(route: str) -> str:
+        return served_margin if route == "/margin" else served
+
     with sync_playwright() as p:
         browser = p.chromium.launch(executable_path=str(CHROME))
         page = browser.new_page(viewport={"width": 1600, "height": 1100})
         page.goto(served + "/", wait_until="domcontentloaded")
 
         def load(route: str, theme: str, scale: str) -> list[dict[str, Any]]:
+            base = _base_for(route)
+            # localStorage is per-ORIGIN and /margin runs on its own port: land on the target
+            # origin first, so the theme/scale written below binds to the page being measured.
+            if not page.url.startswith(base):
+                page.goto(base + route, wait_until="domcontentloaded")
             page.evaluate(
                 "([t,s])=>{localStorage.setItem('sf-theme',t);localStorage.setItem('sf-scale',s)}",
                 [theme, scale],
             )
             # NEVER wait for networkidle: heartbeat.js polls every 3s and sysmon.js every 2s, so
             # the network never goes idle and every load would burn its full timeout.
-            page.goto(served + route, wait_until="domcontentloaded")
+            page.goto(base + route, wait_until="domcontentloaded")
             with contextlib.suppress(Exception):  # a page may legitimately chart nothing
                 page.wait_for_selector("text.ch-at", timeout=5000, state="attached")
             page.wait_for_timeout(150)

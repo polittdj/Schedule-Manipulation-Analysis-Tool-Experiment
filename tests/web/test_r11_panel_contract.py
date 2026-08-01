@@ -447,7 +447,7 @@ PAGE_SCRIPTS = {
     "gantt.js": "2a4ccb612899cf141bbf30af3b64286e",
 }
 
-#: all 16 ``SFChartFrame.axisTitles(`` call sites, frozen with their ARGUMENT OBJECT — the caption
+#: all 18 ``SFChartFrame.axisTitles(`` call sites, frozen with their ARGUMENT OBJECT — the caption
 #: strings live on the lines that FOLLOW the call, so hashing the opening line alone collides nine
 #: ways (b1c0ee5f…) and would pass while a caption changed. Recipe (reproducible, and the reason
 #: this list is re-derivable rather than a retyped number): for each ``static/*.js`` line
@@ -459,6 +459,10 @@ AXIS_CALL_SITES = [
     ("drift.js", 133, "d7cd43e8092e02ef82449a52592578d6"),
     ("histogram.js", 243, "5dccee80ef65513a4e5775abc5604271"),
     ("margin.js", 224, "0bead85c7a9f61cbc9175a125bafe2c0"),
+    # the two margin_dashboard.js sites joined in ADR-0325 (batch 3b-i) — a DELIBERATE 16 → 18
+    # re-baseline: the 16 prior entries' bytes are untouched, these are additions, not moves
+    ("margin_dashboard.js", 233, "06f121defd65ee8d9016d95d7b658045"),
+    ("margin_dashboard.js", 309, "ebda9aa1ac5ec542bead6a76250803d8"),
     ("performance.js", 472, "db8ae0464072322438172fe30f85fb71"),
     ("resources.js", 243, "251b7d09fffcc7a9f8adaf5f88ab94eb"),
     # line refreshed by ADR-0317 (sfControls grew above the call site); caption bytes intact
@@ -475,7 +479,7 @@ AXIS_CALL_SITES = [
 
 
 def _axis_call_sites() -> list[tuple[str, int, str]]:
-    """Re-derive the 16 frozen call sites from disk (see AXIS_CALL_SITES for the recipe)."""
+    """Re-derive the 18 frozen call sites from disk (see AXIS_CALL_SITES for the recipe)."""
     out: list[tuple[str, int, str]] = []
     for js in sorted(STATIC.glob("*.js")):
         lines = js.read_text(encoding="utf-8").splitlines()
@@ -502,13 +506,14 @@ def test_the_seven_page_owned_scripts_are_byte_frozen() -> None:
         assert hashlib.md5(path.read_bytes()).hexdigest() == digest, name
 
 
-def test_all_sixteen_axis_title_call_sites_are_frozen() -> None:
-    """Standing requirement 5: the axis captions are finished — nothing may move one. 16 is the
-    real count (``grep -c 'SFChartFrame.axisTitles(' static/*.js``); chartframe.js's definition
-    and export are not call sites."""
+def test_all_eighteen_axis_title_call_sites_are_frozen() -> None:
+    """Standing requirement 5: the axis captions are finished — nothing may move one. 18 is the
+    real count (``grep -c 'SFChartFrame.axisTitles(' static/*.js``; 16 → 18 in ADR-0325 when
+    margin_dashboard.js's two charts were captioned); chartframe.js's definition and export are
+    not call sites."""
     sites = _axis_call_sites()
-    assert len(sites) == 16, len(sites)
-    assert len({d for _n, _l, d in sites}) == 16, "a hash collided — the freeze is not selective"
+    assert len(sites) == 18, len(sites)
+    assert len({d for _n, _l, d in sites}) == 18, "a hash collided — the freeze is not selective"
     # THE LOAD-BEARING HALF: same files, same caption bytes. A failure here means a caption moved
     # — STOP AND REPORT, do not refresh the constant.
     assert [(n, d) for n, _l, d in sites] == [(n, d) for n, _l, d in AXIS_CALL_SITES], (

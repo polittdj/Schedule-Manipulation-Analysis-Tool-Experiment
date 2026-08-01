@@ -11580,7 +11580,10 @@ def _margin_dashboard_body(st: SessionState) -> str:
         "<th scope=col>% available</th><th scope=col>Corrective</th><th scope=col>Trigger</th></tr>"
         f"{rows or '<tr><td colspan=12 class=muted>No dated versions loaded.</td></tr>'}</table></div>"
         f'<script type="application/json" id=marginDashData>{blob}</script>'
-        '<script src="/static/margin_dashboard.js"></script>'
+        # defer: the layout emits chartframe.js AFTER <main>, and margin_dashboard.js now calls
+        # SFChartFrame.axisTitles at render time (ADR-0325) — same load-order defect and same fix
+        # as resources.js / performance.js (ADR-0316, the blob-driven-module defer family)
+        '<script defer src="/static/margin_dashboard.js"></script>'
     )
 
 

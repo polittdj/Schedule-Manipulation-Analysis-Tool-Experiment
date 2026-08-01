@@ -111,7 +111,11 @@ PENDING = {
     # forecast date label clamps to ``H - padB - 15`` clearing the X caption's 75x3px hit at
     # 90% scale. Both collisions are MEASURED closed by ``test_axis_titles_visual.py``, which
     # walks ``/forecast`` in every theme at every scale.
-    "margin_dashboard.js",
+    #
+    # ``margin_dashboard.js`` graduated in ADR-0325 (batch 3b-i, decision A1): both charts
+    # captioned, the two local "status date" quasi-captions retired into the helper, the
+    # legends yielding the top-left corner to the Y caption, and ``/margin`` joining the
+    # measured visual pass with its own margin-carrying serve.
     "sra.js",
     "sra_jcl.js",
     "sra_ssi.js",
