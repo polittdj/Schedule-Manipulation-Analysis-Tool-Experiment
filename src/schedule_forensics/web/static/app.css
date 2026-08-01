@@ -180,6 +180,18 @@
 .g-scale-rows-1 { height: 18px; }
 .g-scale-rows-2 { height: 36px; }
 .g-scale-rows-3 { height: 54px; }
+/* The B1 timescale caption slot (ADR-0326): one extra 18px row ABOVE the tiers on pages that
+   serve a `data-ts-caption` marker. The slot is its own row — never an overlay — so it cannot
+   collide with band labels; the tier tops shift below it (inline in the SFTimescale branch,
+   these overrides in the fixed fallback branch). */
+.g-tscap { position: absolute; top: 0; left: 6px; right: 6px; height: 18px; line-height: 18px; text-align: right; }
+.g-scale-capped { height: 72px; }
+.g-scale-capped.g-scale-rows-1 { height: 36px; }
+.g-scale-capped.g-scale-rows-2 { height: 54px; }
+.g-scale-capped.g-scale-rows-3 { height: 72px; }
+.g-scale-capped .g-tier-yr { top: 18px; }
+.g-scale-capped .g-tier-qtr { top: 36px; }
+.g-scale-capped .g-tier-mo { top: 54px; }
 .g-tier-noticks .g-band { border-left: none; }
 .g-scale-nosep .g-band { border-bottom: none; }
 .g-band-warn { font-style: italic; color: var(--warn); text-align: center; }

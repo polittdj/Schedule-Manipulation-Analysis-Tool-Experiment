@@ -100,6 +100,39 @@ INCIDENTAL_SVG = {
     "path.js",
 }
 
+#: DOM visuals captioned via decision B1's TABLE mechanism (ADR-0326): a native
+#: ``<table><caption class="ch-atd">`` built with the table — announced by screen readers,
+#: in-flow for print. Subset of ``NO_SVG_AXES``: the bucket records the MEDIUM, this records
+#: the caption state within it.
+DOM_TABLE_CAPTIONED = {
+    "workbench.js",
+}
+
+#: DOM Gantt-family modules whose time axis is named by decision B1's OTHER mechanism: the ONE
+#: caption slot ``gantt.js``'s shared ``buildTierScale`` renders above the tiers whenever the
+#: served page carries a ``data-ts-caption`` marker (``app.py``'s ``_TS_CAPTION_MARK``). One
+#: shared edit labels all four consumers at a stroke; ``gantt.js`` itself is the primitive that
+#: RENDERS the slot, not a consumer, so it stays outside both captioned buckets.
+TIMESCALE_CAPTIONED = {
+    "driving_path.js",
+    "path.js",
+    "path_evolution.js",
+    "sra_grid.js",
+}
+
+#: NO_SVG_AXES entries still awaiting a caption under the B1 mechanisms — the DOM medium's
+#: remaining-work ledger, mirroring ``PENDING`` for SVG. Shrinks deliberately; reaching empty
+#: closes ADR-0298's deferral for good.
+DOM_PENDING = {
+    "drilldown.js",
+    "driving_tiers.js",
+    "findings_drill.js",
+    "ribbon_drill.js",
+    "scorecards.js",
+    "sra_risk.js",
+    "whatif.js",
+}
+
 #: SVG axis charts not yet captioned. This list SHRINKS one batch at a time and reaching empty
 #: is the completion signal for AXIS-TITLES. A module may not be parked here once it calls the
 #: helper, and may not be listed here unless it really renders SVG — both are asserted.
@@ -179,6 +212,68 @@ def test_no_svg_axes_entries_really_render_no_svg(name: str) -> None:
     assert not RENDERS_SVG.search(_src(STATIC / name)), (
         f"{name} does render SVG — move it to PENDING (or caption it) rather than exempting it"
     )
+
+
+def test_dom_caption_buckets_partition_no_svg_axes() -> None:
+    """The B1 ledger stays honest the same way the SVG one does: every DOM visual is in exactly
+    one caption state — table-captioned, timescale-captioned, still pending, or the one named
+    primitive — and nothing outside NO_SVG_AXES can claim a DOM caption state."""
+    assert DOM_TABLE_CAPTIONED <= NO_SVG_AXES
+    assert TIMESCALE_CAPTIONED <= NO_SVG_AXES
+    assert DOM_PENDING <= NO_SVG_AXES
+    assert not DOM_TABLE_CAPTIONED & TIMESCALE_CAPTIONED
+    assert not (DOM_TABLE_CAPTIONED | TIMESCALE_CAPTIONED) & DOM_PENDING
+    leftover = NO_SVG_AXES - DOM_TABLE_CAPTIONED - TIMESCALE_CAPTIONED - DOM_PENDING
+    assert leftover == {"gantt.js"}, (
+        "every NO_SVG_AXES module must be table-captioned, timescale-captioned, in DOM_PENDING, "
+        f"or the slot-rendering primitive itself — unclassified: {sorted(leftover)}"
+    )
+
+
+DOM_CAPTION_CALL = re.compile(r"""el\("caption",\s*\{\s*class:\s*"ch-atd"\s*\}""")
+
+
+@pytest.mark.parametrize("name", sorted(DOM_TABLE_CAPTIONED))
+def test_dom_table_captioned_modules_really_build_a_caption(name: str) -> None:
+    """The executable detector for B1's table mechanism: the module must build a native
+    ``<caption class="ch-atd">`` (workbench builds one per table — ribbon and drill grid)."""
+    assert DOM_CAPTION_CALL.search(_src(STATIC / name)), (
+        f"{name} is listed DOM_TABLE_CAPTIONED but builds no <caption class='ch-atd'>"
+    )
+
+
+@pytest.mark.parametrize("name", sorted(TIMESCALE_CAPTIONED))
+def test_timescale_captioned_modules_really_consume_the_slotted_header(name: str) -> None:
+    """The executable detector for B1's timescale mechanism, half one: every listed module must
+    actually draw its header through the shared builder that renders the slot."""
+    assert "SFGantt.buildTierScale(" in _src(STATIC / name), (
+        f"{name} is listed TIMESCALE_CAPTIONED but never calls SFGantt.buildTierScale"
+    )
+
+
+def test_the_timescale_slot_exists_and_every_consumer_page_serves_the_marker() -> None:
+    """The executable detector, half two: the slot must exist in the shared builder, and the
+    caption text must actually be SERVED — ``app.py`` carries ``_TS_CAPTION_MARK`` on the four
+    hosting pages (/path, /evolution, /driving-path, /sra). A module cannot count as captioned
+    by a slot no page feeds."""
+    gantt = _src(STATIC / "gantt.js")
+    assert 'querySelector("[data-ts-caption]")' in gantt
+    assert "g-tscap ch-atd" in gantt, "the slot row must carry the DOM caption class"
+    app = (ROOT / "src" / "schedule_forensics" / "web" / "app.py").read_text(encoding="utf-8")
+    assert app.count("_TS_CAPTION_MARK") >= 5, (  # the definition + four page insertions
+        "every TIMESCALE_CAPTIONED hosting page must serve the data-ts-caption marker"
+    )
+    css = (STATIC / "app.css").read_text(encoding="utf-8")
+    for rule in (".g-tscap", ".g-scale-capped"):
+        assert rule in css, f"{rule} missing — the slot would render unstyled"
+
+
+def test_the_dom_caption_class_reads_the_token_not_a_literal() -> None:
+    """`.ch-atd` is `.ch-at`'s DOM sibling: same token, same case rule — only `color` may
+    differ from the SVG class's `fill` (ADR-0326's one-convention-per-medium)."""
+    css = (STATIC / "base.css").read_text(encoding="utf-8")
+    assert "font-size:var(--sf-fs-axis-title)" in css.split(".ch-atd{", 1)[1].split("}", 1)[0]
+    assert "color:var(--muted)" in css.split(".ch-atd{", 1)[1].split("}", 1)[0]
 
 
 def test_the_incidental_svg_exception_cannot_rot() -> None:

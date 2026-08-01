@@ -435,6 +435,27 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-01b — A vacuous pass hides in "the page loaded"; make the fixture EARN the assertion (PR-9a / ADR-0326)
+- The chromium slot proof failed three times before it could pass, and every failure was the
+  FIXTURE's, not the mechanism's: /path renders NO timescale without a session target,
+  /driving-path renders none without a trace, and the first trace pair tried (26 → 143 —
+  both critical) is not a DRIVING pair, so the server embeds no corridor at all. Lesson:
+  for a rendered assertion, first prove the thing the assertion lives ON actually renders
+  under the fixture — otherwise the test would have "passed" against an empty page the
+  moment the wait was softened. The vacuity conditions are now recorded IN the test file.
+- "Critical together" ≠ "driving": two activities can share the critical set while the
+  driving-path tracer correctly refuses the pair. The distinction cost a probe cycle;
+  it is exactly the kind of domain nuance worth writing down where the next fixture
+  author will trip on it.
+- Mechanism placement beats mechanism cleverness: the timescale caption could have ridden a
+  MutationObserver (zero frozen-file edits) but would rebuild-race /evolution's animation
+  frames and the Timescale dialog's repaints forever. One deliberate, named, re-baselined
+  edit in the frozen shared builder makes the slot exist WHENEVER the header exists, by
+  construction. A freeze is friction, not a wall — pay it once, in the open, in the ADR.
+- The `cmd | tail` exit-code trap bit AGAIN ("1 file would be reformatted" behind a
+  clean-looking pipeline) — second hit in two days. The guard that keeps catching us is
+  earning its place in the handoff verbatim: read the tool's own summary line.
+
 ### 2026-08-01 — A guard someone already wrote is a load-order hazard sign, and only a measured run reads it (PR-8 / ADR-0325)
 - Adding the first `SFChartFrame.axisTitles` call to `margin_dashboard.js` threw
   `SFChartFrame is not defined` and killed BOTH charts — the module executes at parse time,

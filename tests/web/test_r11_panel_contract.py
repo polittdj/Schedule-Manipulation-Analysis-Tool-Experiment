@@ -444,7 +444,11 @@ PAGE_SCRIPTS = {
     "path_evolution.js": "f901da4e52b223174f5d3fed6ebbdeda",
     "whatif.js": "b1b911b3cb0c2c87f02aa8e7f4f6d533",
     "volatility.js": "0d38b34ee6d2824125b498b196473a4c",
-    "gantt.js": "2a4ccb612899cf141bbf30af3b64286e",
+    # DELIBERATE re-baseline (ADR-0326, decision B1): buildTierScale gained the ONE timescale
+    # caption slot (a `data-ts-caption`-fed row above the tiers; pages without the marker render
+    # byte-identically). 2a4ccb612899cf141bbf30af3b64286e → the digest below; no other byte of
+    # the module moved, and no axisTitles call exists in it (asserted by the census).
+    "gantt.js": "9fa3a69245deec12de6f1d71698a24b0",
 }
 
 #: all 18 ``SFChartFrame.axisTitles(`` call sites, frozen with their ARGUMENT OBJECT — the caption
