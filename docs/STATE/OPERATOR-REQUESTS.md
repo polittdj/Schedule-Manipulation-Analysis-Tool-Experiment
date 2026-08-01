@@ -155,6 +155,36 @@ operator rather than "fixing" to a misread oracle.
 > Operator: a fresh open of the deployed tool shows fields populated from PREVIOUS sessions
 > (e.g. Target UID from a project never loaded), even after wipe-then-Quit.
 
+**OPERATOR MEASUREMENT, 2026-08-01, on the deployed box (v1.0.149) — THE ANSWER IS ONE PID.**
+This is the datum Phase 1b was blocked on. Captured verbatim because it took three runs to get a
+valid one and it must never have to be re-collected:
+
+| step | LISTENING on 8321 | `pythonw` processes |
+| --- | --- | --- |
+| after stopping | none | none |
+| after **1st** launch | **18664** | 18664 + 39740, both 19:33:17 |
+| after closing **only the browser** | **18664** (survives) | 18664 + 39740, both 19:33:17 |
+| after **2nd** launch | **18664** | 18664 + 39740, **both still 19:33:17** |
+
+**The second launch produced NOTHING — no new listener, and no fourth process even transiently
+(25 s later the process list is byte-identical).** So the second launcher started, failed to take
+the port, exited mute, and its already-queued browser timer opened onto the OLD server. That is
+the handoff's branch one, confirmed: `sys.exit` into `os.devnull` under `pythonw`, browser timer
+armed BEFORE the bind. It also defeats ADR-0324's launch token — same process, same token.
+
+**Consequence for this item: OR-06 has a SECOND, deeper cause than the localStorage one below.**
+The stale fields are not only browser memory — **the server itself is the previous session**, still
+holding the previously loaded schedules and settings in RAM. No client-side sweep could ever have
+fixed that half.
+
+Two corroborating facts from the same session: an earlier snapshot showed PID 24788 LISTENING with
+**zero** ESTABLISHED connections — a survivor inside its grace window; and the watchdog grace is
+`idle_grace=600.0` (`web/app.py`), i.e. the server legitimately outlives the browser by up to **10
+minutes**, which is the window in which a relaunch lands on the old process. A first attempt at the
+measurement showed the server gone 25 s after the browser closed — that run is DISCARDED as invalid
+(it contradicts the 600 s grace; Quit was evidently clicked), and is recorded here only so the
+contradiction is not re-investigated as a finding.
+
 Root cause is VERIFIED mechanism-level: `web/static/persist.js` (ADR-0186 per-page selection
 memory) stores `sf-qs:<path>` (query strings incl. `?target=…`) and `sf-ui:<path>` (control
 values) in browser localStorage, which survives server wipe/quit by design of localStorage —
