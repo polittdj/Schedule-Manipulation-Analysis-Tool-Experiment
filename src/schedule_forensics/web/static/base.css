@@ -9,7 +9,12 @@
    set — .ch-at reads it, no chart hard-codes a number. 11px matches the UI base size
    below and the DESIGN-SYSTEM §1 compact standard; the queued CRISPNESS readability
    floor moves this single value rather than editing 30 chart modules. */
---sf-fs-axis-title:11px}
+--sf-fs-axis-title:11px;
+/* The colour a caption's halo is painted in (ADR-0331) — ALWAYS the backdrop the caption is
+   actually drawn on, which is not uniform: most charts sit on the panel, but .ssi-svg is a
+   hardcoded white canvas and the Gantt-family SVGs use --gantt-canvas. Each family overrides
+   this in app.css; the default covers everything that simply sits on the panel. */
+--sf-ch-canvas:var(--panel)}
 html[data-theme=light]{--bg:#f2f5f9;--panel:#ffffff;--ink:#1a2330;--muted:#5a6878;--accent:#0b6bcb;
 --ok:#17803a;--warn:#996b00;--bad:#cf222e;--line:#d6dde7;
 --header-bg:#e9eef5;--field-bg:#eef1f6;--btn-ink:#ffffff;--hover:#eef2f7;
@@ -39,9 +44,17 @@ font:11px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
    Uppercase + tracking is the convention adopted from AXIS-TITLES-PATCH §3 so every caption
    reads the same whatever case the chart passes; the size comes from the token above, never
    from a number in JS. Font-family is deliberately NOT set: captions inherit exactly like the
-   tick labels beside them, so the queued type/vendored-font work owns that question alone. */
+   tick labels beside them, so the queued type/vendored-font work owns that question alone.
+
+   ADR-0331 adds the HALO. ADR-0298 fixed the caption's placement inside the plot and ADR-0303
+   ruled that a colliding DATA label yields — but on a bar chart the data IS the whole plot, so
+   nothing can yield: a caption over a bar measured 1.05-1.54:1 against the bar fill in the four
+   themes (illegible) even though it cleared 3.07-5.52:1 against the canvas. `paint-order` draws
+   the stroke UNDER the fill, so each glyph carries its own backdrop and the canvas contrast
+   applies wherever the caption happens to sit. Placement still never moves. */
 .ch-at{font-size:var(--sf-fs-axis-title);fill:var(--muted);font-weight:700;
-text-transform:uppercase;letter-spacing:.08em}
+text-transform:uppercase;letter-spacing:.08em;
+paint-order:stroke fill;stroke:var(--sf-ch-canvas);stroke-width:3px;stroke-linejoin:round}
 /* The DOM sibling (decision B1, ADR-0326): the same caption voice for HTML visuals — native
    <table><caption> and the SFGantt timescale slot — where SVG `fill` does not apply. One
    token, one case rule, one tracking; only the color property differs by medium. */
