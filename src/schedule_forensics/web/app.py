@@ -1905,6 +1905,15 @@ def _story_footer(state: SessionState, title: str, chapter: _Chapter | None = No
     return f"<div class=story-foot>{progress}{cont}</div>"
 
 
+#: The B1 timescale-caption marker (ADR-0326): a page that serves this names its time axis, and
+#: gantt.js's shared buildTierScale renders ONE caption row above the tiers on every timescale
+#: header the page builds (initial draw, Timescale-dialog repaints, animation frames alike).
+#: All four Gantt-family consumers (path.js, path_evolution.js, driving_path.js, sra_grid.js)
+#: draw calendar-date tiers, so one honest label serves them all. Hidden: the visible caption is
+#: the slot the JS builds; this span only carries the text to it.
+_TS_CAPTION_MARK = '<span data-ts-caption="Schedule dates" hidden></span>'
+
+
 def _page(
     state: SessionState,
     title: str,
@@ -3119,7 +3128,9 @@ def create_app(
                 )
             except CPMError:
                 header = ""
-        return _page(st, "Path Analysis", header + _path_body(keys, st.target_uid))
+        return _page(
+            st, "Path Analysis", _TS_CAPTION_MARK + header + _path_body(keys, st.target_uid)
+        )
 
     def _ask_response(
         st: SessionState, facts: tuple[CitedStatement, ...], text: str
@@ -4101,7 +4112,8 @@ def create_app(
         return _page(
             st,
             "Critical-Path Evolution",
-            header
+            _TS_CAPTION_MARK
+            + header
             + _export_bar("evolution" + (f"?{export_qs}" if export_qs else ""))
             + _skipped_notice(skipped)
             + opt_banner
@@ -4239,7 +4251,8 @@ def create_app(
         return _page(
             st,
             "Driving Path",
-            _skipped_notice(skipped)
+            _TS_CAPTION_MARK
+            + _skipped_notice(skipped)
             + opt_banner
             + _driving_path_body(
                 schedules,
@@ -16531,7 +16544,7 @@ def _sra_body(st: SessionState) -> str:
 {import_banner}
 {top_file_panel}
 {_sra_explainers()}
-{_ssi_panel(st)}
+{_TS_CAPTION_MARK}{_ssi_panel(st)}
 {_correlation_matrix_panel(st)}
 {_jcl_panel(st)}
 <div class=panel><h2>Legacy SRA &mdash; Monte-Carlo (multiplicative risk drivers)</h2>

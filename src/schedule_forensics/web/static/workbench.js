@@ -49,6 +49,10 @@
     if (!metrics.length) { host.appendChild(el("p", { class: "muted" }, "Select one or more metrics on the left.")); return; }
 
     var table = el("table", { class: "wb-matrix" });
+    // Native <caption> (decision B1, ADR-0326): the DOM medium's own caption element — announced
+    // with the table, in-flow for print. Names the ribbon's dimensions; the version columns carry
+    // only concrete per-version labels, so the column DIMENSION is otherwise unnamed.
+    table.appendChild(el("caption", { class: "ch-atd" }, "Selected metrics × schedule version"));
     var thead = el("thead");
     var hr = el("tr");
     hr.appendChild(el("th", { scope: "col" }, "Metric"));
@@ -203,6 +207,8 @@
     gridHost.appendChild(count);
 
     var table = el("table", { class: "wb-grid" });
+    // Native <caption> (B1, ADR-0326): the drill's row unit, stated on the table itself.
+    table.appendChild(el("caption", { class: "ch-atd" }, "Activities behind " + drill.name + " — one row per activity"));
     var thead = el("thead");
     var hr = el("tr");
     cols.forEach(function (c) {

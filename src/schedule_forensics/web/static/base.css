@@ -42,6 +42,12 @@ font:11px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
    tick labels beside them, so the queued type/vendored-font work owns that question alone. */
 .ch-at{font-size:var(--sf-fs-axis-title);fill:var(--muted);font-weight:700;
 text-transform:uppercase;letter-spacing:.08em}
+/* The DOM sibling (decision B1, ADR-0326): the same caption voice for HTML visuals — native
+   <table><caption> and the SFGantt timescale slot — where SVG `fill` does not apply. One
+   token, one case rule, one tracking; only the color property differs by medium. */
+.ch-atd{font-size:var(--sf-fs-axis-title);color:var(--muted);font-weight:700;
+text-transform:uppercase;letter-spacing:.08em}
+caption.ch-atd{caption-side:top;text-align:left;padding:2px 0 4px}
 a{color:var(--accent);text-decoration:none}header{background:var(--header-bg);border-bottom:1px solid var(--line);
 /* slim band (operator 2026-07-10, ADR-0194): the globe is out of the flex flow (absolute,
    top-right), so the header is only as tall as the brand + nav; the right padding reserves

@@ -1,114 +1,113 @@
-# Handoff — 2026-08-01 (PR-8: the margin dashboard joins the one caption convention; ADR-0325; v1.0.141)
+# Handoff — 2026-08-01b (PR-9a: one caption convention per medium — B1 shipped; ADR-0326; v1.0.142)
 
-> ## STATUS (current) — **PR-8 of the approved queue BUILT AND GATED on this tree (AXIS-TITLES
-> batch 3b-i per decision A1): both `margin_dashboard.js` charts captioned via the ONE shared
-> helper (burn-down "Status date" × "Days (margin + contingency)" — the bars stack work-day
-> margin with calendar-day contingency, so the caption asserts no single basis; erosion
-> "Status date" × "Effective margin (working days)"), the two local `"status date"`
-> quasi-captions retired, `y2Label` dropped (single scale verified, per A1), the in-SVG
-> legends yield the helper's corner ((L+4, T+2) → (L+4, T+24)), and the page's script tag
-> gains `defer` — margin_dashboard.js executes at parse time BEFORE the layout-footer
-> chartframe.js, so the direct `SFChartFrame.axisTitles` call threw and NEITHER chart
-> rendered (measured: 12/12 combos "no captions rendered" pre-fix; ADR-0316's blob-driven
-> defer family, third member). `/margin` joined the measured visual pass with its OWN serve
-> (four synthetic status-dated versions eroding 40 → 10 wd — the golden pair legitimately
-> charts nothing there); the call-site census re-baselined 16 → 18 DELIBERATELY (the 16
-> priors byte-identical; A1 recorded the procedure). Version 1.0.141, highest ADR ADR-0325,
-> wheel + nine installers regenerated. #497 (ADR-0322–0324, v1.0.140) MERGED as `afb8e72`
-> by the operator.**
-> **OR-05 is now closed END-TO-END with zero code change: the operator deleted + re-uploaded
-> `Jacked up Schedule 2.mpp` (blob `db7ac6ef` → `a7d2f9c6`, commits `ef3adc1`/`9ec7265`) —
-> the re-saved bytes DO carry Task 11's deadline (`2026-08-14T17:00:00`), verified this
-> session by a fresh MPXJ conversion byte-identical to the committed
-> `jacked_up_schedule_2_with_deadline.xml` fixture (only `<CurrentDate>` differs, the
-> conversion timestamp). UID 32 reads −5 d end-to-end exactly as the prior handoff predicted
-> (`test_resaved_jacked2_deadline_reads_minus_five_days_end_to_end` already pinned it); the
-> "tell the operator" NEXT item is overtaken by events.**
+> ## STATUS (current) — **PR-9a BUILT AND GATED on this tree (decision B1, split out of PR-9
+> per the plan's "may split"; the rank-12 toolbar/read-me sweep is now PR-9b): DOM visuals
+> caption natively in `.ch-at`'s new DOM sibling voice (`.ch-atd` — same token/case, `color`
+> for `fill`). Mechanism 1: `workbench.js` builds a native `<table><caption>` on BOTH its
+> tables (ribbon "Selected metrics × schedule version"; drill "Activities behind {metric} —
+> one row per activity"). Mechanism 2: `gantt.js`'s shared `buildTierScale` renders ONE
+> caption-slot row above the tiers whenever the served page carries `data-ts-caption`
+> (`app.py::_TS_CAPTION_MARK`) — four one-line server opt-ins label all four Gantt-family
+> consumers (/path · /evolution · /driving-path · /sra's SSI grid, all "Schedule dates")
+> with ZERO consumer-module edits; /mission's tile and /analysis stay deliberately
+> unmarked. The ledger gained the B1 executable detectors: `DOM_TABLE_CAPTIONED` ·
+> `TIMESCALE_CAPTIONED` · `DOM_PENDING` (7 left) partition `NO_SVG_AXES` with `gantt.js`
+> named as the slot primitive; `DOM_PENDING` reaching empty closes ADR-0298's deferral.
+> ADR-0311's recorded `/workbench` blocker is CLEARED (tables are ⤓-only per DESIGN-SYSTEM
+> §3:78, already shipped — its remaining owed work is read-me + ▦/⛶ in PR-9b).
+> `gantt.js`'s PAGE_SCRIPTS freeze re-baselined DELIBERATELY (`2a4ccb61… → 9fa3a692…`,
+> named in the ADR; a MutationObserver alternative was rejected as a timing-races class).
+> DESIGN-SYSTEM §4 states the per-medium rule. Version 1.0.142, highest ADR ADR-0326,
+> wheel + nine installers regenerated. Earlier today: PR-8 (#498, ADR-0325, v1.0.141)
+> MERGED as `469cef0` by the operator; OR-05 verified closed end-to-end (the re-uploaded
+> Jacked-2 carries Task 11's deadline; −5 d live).**
 >
 > ## Verification (all read from runs this session)
-> Re-uploaded-oracle sweep: `test_multicalendar_cpm.py` + `test_dangling_logic.py` +
-> `test_ribbon.py` + `test_elapsed_axis_regressions.py` + `test_projects/test_battery.py`
-> **80 passed**. PR-8: ledger/census/margin-view/legend suites **69 passed** post-change;
-> visual pass **720 caption renders measured clean** (4 themes × 3 scales × 7 pages, zero
-> problems, `KNOWN_COLLISIONS` stays empty) — **proved able to fail three ways, watched:**
-> the un-deferred tag failed 12/12 combos ("no captions rendered"), the OLD census against
-> this tree failed (18 ≠ 16), the defer pin failed on the un-deferred page. Statics:
-> ruff check clean · format clean (825 files) · mypy --strict "no issues in 117 source
-> files" · bandit exit 0 · node --check clean. Installer lockstep **52 passed** after wheel
-> 1.0.141 + nine installers regenerated. Full-suite result: see SESSION-LOG (recorded there
-> after the run completed — a launched run is not a result).
+> `test_dom_captions.py` (new): server pins + REAL-chromium proof — the slot renders on all
+> four opted-in pages (token 11px, uppercase, its box ENDS above the first tier band),
+> workbench's ribbon caption renders in the same voice, and /analysis renders NO slot
+> (leak guard). **Proved able to fail, watched:** a dropped marker failed the server pin AND
+> the ledger count; the pre-slot gantt.js failed the ledger detector; the slot assertion
+> itself failed three real ways during development (/path and /driving-path draw NO
+> timescale without a target/trace — the fixture sets target 143 and traces 142 → 143;
+> 26 → 143 is critical-but-not-driving and embeds nothing). Neighbor sweep (timescale,
+> gantt×6, workbench, driving, path, sra, evolution, colresize, accessibility):
+> **403 passed**. Caption suites post-format: **59 passed**. Statics: ruff check clean ·
+> format clean (828 files — the formatter caught ONE reflow in app.py, the known
+> read-the-summary-line trap) · mypy --strict "no issues in 117 source files" · bandit
+> exit 0 · node --check clean (gantt/workbench/timescale). Installer lockstep **52 passed**
+> after wheel 1.0.142 + nine installers. Full-suite result: see SESSION-LOG (recorded after
+> the run completed — a launched run is not a result).
 >
 > ## ⇢ NEXT
 > 1. **Merge the draft PR for this round when CI is green** (branch
->    `claude/polaris-engine-correctness-resume-e52fpp`), then RESUME the approved queue
->    (`docs/STATE/PLAN-20260730.md`, decisions A1 · B1 · C1 recorded — do NOT re-ask):
->    **PR-9 rank-12 toolbar/read-me + B1 caption mechanism (M–L, may split)** → PR-10 OR-03
->    launch motion + synthesized hum (M–L).
-> 2. **OR-04 operator park artifacts stay open** (`audit/VERIFICATION-REPORT-ollama-lifecycle.md`
->    §8): #1 `where ollama` · #3 the `keep_alive:0`-vs-`OLLAMA_KEEP_ALIVE=-1` probe · #5
->    runner PPID + instance count · #4 the model-identity manifest — plus the four-scenario
->    smoke script from #490's PR body on the deployed build.
-> 3. Behind the queue: **batch 3c** (the four remaining PENDING modules: `sra.js`,
->    `sra_jcl.js`, `sra_ssi.js`, `volatility.js` — tornados already recorded as
->    not-axis-charts by A1), **Phase 3** (CC-01 rendering half, 74 call sites — live oracle
->    example: the eDays task's slack displays 7.88 d where MSP shows 2.63 edays; the minutes
->    beneath are exact) and **Phase 4** (P1–P6); rank 13/14.
+>    `claude/polaris-engine-correctness-resume-e52fpp`), then:
+> 2. **PR-9b — the rank-12 toolbar/read-me sweep** (the six Library/Setup pages;
+>    `docs/STATE/PLAN-20260730.md` PR-9 row's first half): per page one `panelkit.js`
+>    include + `_panel_head`/`_shell_tools` (⤓ only where a real export exists — dead ⤓ is
+>    a defect class; tables ⤓-only per §3:78; ▦ needs a `.sf-drawer`) + read-me
+>    `<p class=muted>` after `<p class=sf-take>` (canonical app.py:8559-8566 area — re-grep,
+>    app.py moved). /margin unblocked by ADR-0325; /workbench unblocked by ADR-0326.
+> 3. Then **PR-10 OR-03 launch motion + synthesized hum** (plan row 10, decisions recorded).
+> 4. **OR-04 operator park artifacts stay open** (`audit/VERIFICATION-REPORT-ollama-lifecycle.md`
+>    §8): #1 `where ollama` · #3 keep_alive probe · #5 runner PPID · #4 model-identity
+>    manifest — plus #490's four-scenario smoke on the deployed build.
+> 5. Behind the queue: SVG batch 3c (sra/sra_jcl/sra_ssi/volatility; tornados recorded
+>    not-axis-charts per A1) · the 7-module `DOM_PENDING` ledger · Phase 3 (CC-01 rendering
+>    half, 74 sites) · Phase 4 (P1–P6) · rank 13/14.
 >
 > ## Still carried (unchanged identifiers, nothing lost)
-> **CC-01** (H2a) — import half closed by ADR-0312, **rendering half open**, 74 call sites;
-> elapsed-task slack renders /480 (7.88 d) where MSP shows 2.63 edays — metric surfaces
-> deliberately KEEP /480 (the proven Acumen-parity basis; ADR-0322 residuals) · **CC-05** (H5)
-> negative sub-day slack floor, oracle-gated · **V3** (H4) elapsed literals,
-> `engine/msp_filters.py` · the **legacy `/sra` cross-basis defect** · **a committed SSI export
-> contradicts ADR-0307's Best-Case rule** (Project5; ADR-0307 stands) · `resume` is read from
-> **MSPDI only** · the forward pass still packs **completed** work from `project_start`
-> (Phase 7) · ADR-0322 residuals: cross-calendar link lag on the project axis (no oracle), the
-> resume-floor MFO-violation corner, lossy int LS/LF projections for off-calendar tasks (walls
-> exact) · importer warnings (assumed calendar +25 %) still belong on the page via
-> `Schedule.import_notes` · **ADR-0320 residuals** (Focus form drops `cf_a`/`cf_b`;
-> trace-options `tier=off` keep) · ADR-0325 note: the erosion chart's "zero margin" annotation
-> is data-dependent — if a future dataset parks it under the Y caption, that is ADR-0303's
-> data-label-yields case, fixed in `margin_dashboard.js`, never by moving the caption.
+> **CC-01** (H2a) rendering half open, 74 call sites (eDays slack renders 7.88 d where MSP
+> shows 2.63 edays; metric surfaces deliberately KEEP /480) · **CC-05** (H5) negative sub-day
+> slack floor, oracle-gated · **V3** (H4) elapsed literals, `engine/msp_filters.py` · the
+> **legacy `/sra` cross-basis defect** · **Project5's SSI export contradicts ADR-0307's
+> Best-Case rule** (ADR-0307 stands) · `resume` is MSPDI-only · Phase 7: the forward pass
+> packs completed work from `project_start` · ADR-0322 residuals (cross-calendar lag ·
+> resume-floor MFO corner · lossy int LS/LF for off-calendar tasks) · importer warnings
+> belong on the page via `Schedule.import_notes` · ADR-0320 residuals (Focus form drops
+> `cf_a`/`cf_b`; trace-options `tier=off`) · ADR-0325 note: the erosion "zero margin"
+> annotation is data-dependent (data yields, never the caption) · ADR-0326 notes: /mission's
+> path-evolution tile deliberately unmarked; a marked page's caption applies to every
+> tier-scale on it by design (same schedule-date axis).
 >
 > ## SRA parity — CLOSED, and the traps that stay shut
-> ADR-0309 (#483/#484): det percentile **40.70 % → 6.65 %** (SSI **5.75 %**), σ **125.5 →
-> 65.5** cal d (SSI **64.744**, 1.2 %), mean **+26 → +109** (SSI **+111.45**), P10/P50/P80/P90
-> within **7/1/0/3** days, all five calibration seeds passing.
-> - **The anchor is CONDITIONAL on stored data — never a blanket data-date floor** (ADR-0108's
->   two reverts were both unconditional floors; EVM1 UID 18 has `resume == stop`, must not move).
-> - **A floor built from the STORED remaining destroys the Monte-Carlo's upside variance** —
->   it must follow `duration_overrides`. Do not "simplify" it back.
-> - **Do NOT chase SSI's `Mean Date` / `Standard Deviation` cells (47322 / 107.8198)** —
->   `test_the_summary_cells_are_not_the_parity_target` pins the trap shut.
-> - The SSI driving-slack goldens are **stored-date-insulated** from base-CPM changes — treat
->   ANY diff there as an implementation bug, never a re-baseline (ADR-0322 blast-radius review).
+> ADR-0309: det percentile **40.70 % → 6.65 %** (SSI **5.75 %**), σ **125.5 → 65.5** cal d
+> (SSI **64.744**), mean **+26 → +109** (SSI **+111.45**), P10/P50/P80/P90 within **7/1/0/3**
+> days, five calibration seeds passing.
+> - **The anchor is CONDITIONAL on stored data — never a blanket data-date floor** (EVM1
+>   UID 18 has `resume == stop`, must not move).
+> - **A floor from the STORED remaining destroys the upside variance** — follow
+>   `duration_overrides`; do not "simplify" it back.
+> - **Do NOT chase SSI's Mean/StdDev cells (47322 / 107.8198)** — pinned shut.
+> - The SSI driving-slack goldens are **stored-date-insulated** from base-CPM changes — any
+>   diff there is an implementation bug, never a re-baseline.
 >
 > ## Hypotheses KILLED — do not re-chase
-> Everything in `audit/SRA-PARITY-20260729.md` §7 and the archived handoffs' lists (ADR-0307
-> revert · unconditional data-date floor · ADR-0311/0313/0314/0315/0316/0317/0320/0322–0324
-> items), **plus this round:** "the committed Jacked-2 lacks Task 11's deadline" — TRUE of the
-> ORIGINAL upload, now FALSE: the operator's re-upload carries it (verify against blob
-> `a7d2f9c6`, not memory); "margin_dashboard could reuse the parse-time script pattern" (it
-> executes before the layout-footer chartframe.js — the guarded `scan()` call at its bottom was
-> the tell; defer is the family fix); and "the golden pair can serve /margin's visual pass"
-> (no margin-named tasks, no status-dated months — it renders NO chart there by design).
+> Everything in `audit/SRA-PARITY-20260729.md` §7 and the archived lists (ADR-0307 revert ·
+> unconditional floor · ADR-0311→0325 items), **plus this round:** "26 → 143 can seed a
+> driving-path trace" (critical-together ≠ driving; the server embeds nothing — use
+> 142 → 143); "/path and /driving-path chart without a target/trace" (they render picker
+> notes and NO timescale — a slot assertion there is vacuous); "the timescale slot can ride
+> a MutationObserver instead of the frozen builder" (rejected: rebuild races on /evolution's
+> frames and the dialog's repaints for zero gain); and "an overlay caption can sit in the
+> tier header" (every band row is occupied — the slot is its OWN row by construction).
 >
 > ## Harness notes — the traps, one line each
 > Run dev tools as `python -m <tool>` (a stale `/root/.local/bin/ruff` shadows pip's).
 > **`pip install -e ".[dev]"` before the suite** (bare `PYTHONPATH=src` fails ~200 web tests).
 > `pytest --timeout=N` is NOT installed — it exits 0 having run nothing. `cmd | tail; echo $?`
-> reports `tail`'s status. **`pkill -f` with a pattern that appears in the killer's own shell
-> command line kills the killer** (exit 144; kill by PID). CI can take ~11 min to register
-> check runs. `TestClient` follows 303 and CONSUMES one-shot banners (`follow_redirects=False`).
-> Parity marker: ~2m38s after the ADR-0322 perf addendum (the old "~28 min on this container"
-> note is dead). Headless Chromium hides scrollbars. A remote-session resume can silently
-> revert working-tree files — re-diff after every resume. `caplog` needs
-> `logger="schedule_forensics.<module>"`. Playwright `bounding_box` is viewport-relative —
-> assert width/height/x. **localStorage is per-ORIGIN**: a second served app instance needs
-> theme/scale written AFTER landing on its origin (`test_axis_titles_visual.py`). Containers
-> RESTART mid-run: statics FOREGROUND first, treat long pytest as re-runnable, reinstall pip
-> after every resume. After the operator squash-merges, restart the branch with
-> `git fetch --prune origin && git remote set-head origin -a && git checkout -B <branch> origin/main`.
+> reports `tail`'s status — **read the tool's own summary line** (bit AGAIN this session:
+> "1 file would be reformatted" behind a clean-looking pipe). **`pkill -f` with a pattern in
+> the killer's own command line kills the killer** (kill by PID). CI can take ~11 min to
+> register check runs. `TestClient` follows 303 and CONSUMES one-shot banners
+> (`follow_redirects=False`). Parity marker ≈2m38s (ADR-0322 perf addendum). Headless
+> Chromium hides scrollbars. A remote-session resume can silently revert working-tree
+> files — re-diff after every resume. `caplog` needs `logger="schedule_forensics.<module>"`.
+> Playwright `bounding_box` is viewport-relative. **localStorage is per-ORIGIN** (second
+> served app instance: write theme/scale AFTER landing on its origin). Containers RESTART
+> mid-run: statics FOREGROUND first, long pytest re-runnable, reinstall pip after every
+> resume. After a squash-merge: `git fetch --prune origin && git remote set-head origin -a
+> && git checkout -B <branch> origin/main`.
 >
 > **Standing rule:** do not put a test result in prose unless the number appeared in output you
 > read that turn. **A launched run is not a result, and a piped exit code is not the command's.**

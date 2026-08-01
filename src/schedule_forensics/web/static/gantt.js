@@ -89,6 +89,17 @@ window.SFGantt = (function () {
   // falls back to the original fixed Year/Quarter/Month stack.
   function buildTierScale(axis, baseClass, anchorIso) {
     var scale = el("div", { class: baseClass + " g-scale-tiered", style: "width:" + axis.width + "px" });
+    // The ONE timescale caption slot (decision B1, ADR-0326): a page that names its time axis —
+    // a served `data-ts-caption` marker anywhere in the body — gets one caption row above the
+    // tiers. Built WITH the header, so every rebuild (Timescale dialog, animation frames,
+    // saves) keeps it; pages without the marker are byte-for-byte unchanged.
+    var capHost = document.querySelector("[data-ts-caption]");
+    var capText = capHost ? capHost.getAttribute("data-ts-caption") : "";
+    var capOff = capText ? 18 : 0;
+    if (capText) {
+      scale.classList.add("g-scale-capped");
+      scale.appendChild(el("div", { class: "g-tscap ch-atd", text: capText }));
+    }
     var ts = window.SFTimescale;
     if (ts) {
       ts.axisHint(axis); // the dialog's preview mirrors the page's real span
@@ -100,7 +111,7 @@ window.SFGantt = (function () {
         // reuse the yr/qtr/mo row styling top-down so fonts/weights read like MS Project
         var cls = i === 0 ? "yr" : i === n - 1 ? "mo" : "qtr";
         var tierEl = el("div", { class: "g-tier g-tier-" + cls + (row.ticks ? "" : " g-tier-noticks") });
-        tierEl.style.top = (i * 18) + "px";
+        tierEl.style.top = (capOff + i * 18) + "px";
         row.bands.forEach(function (b) {
           tierEl.appendChild(el("div", {
             class: "g-band" + (b.warn ? " g-band-warn" : ""), title: b.label, text: b.label,

@@ -9838,3 +9838,52 @@ the briefs + state rotation) earlier today.
   skip) **in 17m13s** — the chromium visual pass ran INSIDE the suite (playwright + bundled
   chromium present on this container). The log's `SUITE EXIT: 0` is tail's status per the
   known pipe trap; the result line above is pytest's own summary, read from its output.
+
+## 2026-08-01 (cont.) — PR-9a: one caption convention per medium (decision B1; ADR-0326, v1.0.142)
+
+- #498 (PR-8, ADR-0325, v1.0.141) MERGED by the operator as `469cef0` minutes after the
+  draft went up; branch restarted from origin/main with --prune; PR-9 split per the plan's
+  "may split" — this round is the B1 caption-mechanism half (PR-9a), the rank-12
+  toolbar/read-me sweep becomes PR-9b.
+- **`.ch-atd` (base.css):** `.ch-at`'s DOM sibling — same `--sf-fs-axis-title` token,
+  uppercase + tracking, `color:var(--muted)` where SVG styles `fill`; a ledger test pins
+  token-not-literal. `caption.ch-atd{caption-side:top;text-align:left}`.
+- **Mechanism 1 — native `<table><caption>`:** workbench.js builds one on BOTH tables
+  (ribbon "Selected metrics × schedule version" — the version columns carry only concrete
+  labels, so the column DIMENSION was the unnamed one; drill "Activities behind {metric} —
+  one row per activity" — the row-unit claim the h3 doesn't carry).
+- **Mechanism 2 — the ONE SFGantt timescale slot:** `buildTierScale` (gantt.js) renders a
+  caption-slot ROW above the tiers when the served page carries `data-ts-caption`
+  (`_TS_CAPTION_MARK`, a hidden span). Four one-line server opt-ins (/path, /evolution,
+  /driving-path, /sra) label all four Gantt-family consumers "Schedule dates" with ZERO
+  consumer-module edits; the slot is its own 18px row (`.g-scale-capped` shifts tier tops
+  inline in the SFTimescale branch, via CSS in the fixed fallback) so band-label collisions
+  are impossible by construction. /mission's tile and /analysis deliberately unmarked.
+  gantt.js's PAGE_SCRIPTS freeze re-baselined DELIBERATELY (`2a4ccb61… → 9fa3a692…`, named
+  in ADR-0326; MutationObserver alternative rejected — rebuild races on /evolution frames).
+- **Ledger detectors (test_axis_titles.py):** `DOM_TABLE_CAPTIONED` {workbench} ·
+  `TIMESCALE_CAPTIONED` {driving_path, path, path_evolution, sra_grid} · `DOM_PENDING`
+  (7 modules) partition `NO_SVG_AXES` with gantt.js named as the slot primitive; detectors
+  are executable (caption-building regex; buildTierScale consumption; slot present in
+  gantt.js AND fed — marker count ≥5 in app.py, styled in app.css). `DOM_PENDING` → empty
+  is ADR-0298's deferral closing for good. ADR-0311's /workbench blocker CLEARED.
+- **Rendered proof (new test_dom_captions.py, real chromium):** slot on all four pages
+  (11px, uppercase, box ENDS above the first tier), workbench ribbon caption same voice,
+  /analysis leak-guard NO slot. **Proved able to fail, watched:** dropped marker → server
+  pin AND ledger count failed; pre-slot gantt.js → ledger detector failed; and the slot
+  assertion failed three REAL ways in development — /path draws NO timescale without a
+  session target (fixture now posts target 143), /driving-path draws none without a
+  RESOLVING trace (26→143 is critical-but-not-driving and embeds nothing; 142→143 works).
+- Neighbor sweep (timescale/gantt/workbench/driving/path/sra/evolution/colresize/
+  accessibility): **403 passed**. Caption suites post-format: **59 passed**. Statics: ruff
+  check clean · format clean 828 files (the formatter caught ONE app.py reflow — the
+  read-the-summary-line trap, hit again) · mypy --strict clean (117 files) · bandit exit 0 ·
+  node --check clean. DESIGN-SYSTEM §4 gained the per-medium rule. Version **1.0.142**;
+  wheel + nine installers regenerated; installer suite **52 passed**. highest ADR
+  **ADR-0326**.
+- **Full suite (this tree): 3216 passed, 1 failed, 1 deliberate skip in 15m24s** — the one
+  failure (`test_float_tip_dismiss.py::test_the_dcma11_callout_can_be_dismissed_every_way_an_
+  operator_would_try`, real-chromium) was ADJUDICATED A FLAKE: the whole module re-run alone
+  immediately after reads **18 passed in 1m36s**, and the diff touches no float-tip path
+  (gantt.js's slot, workbench captions, CSS siblings, four body markers). Chromium timing
+  under full-suite load is the known class.
