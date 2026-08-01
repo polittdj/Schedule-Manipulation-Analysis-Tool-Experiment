@@ -67,6 +67,9 @@
 > annotation is data-dependent (data yields, never the caption) · ADR-0326 notes: /mission's
 > path-evolution tile deliberately unmarked; a marked page's caption applies to every
 > tier-scale on it by design (same schedule-date axis).
+> · **test_float_tip_dismiss is a measured intermittent** (≈half of isolated runs fail
+> the 4 s focus→tip wait on this container; /analysis bytes identical to main modulo the
+> launch token) — an OR-02-adjacent hardening item, mechanism undetermined.
 >
 > ## SRA parity — CLOSED, and the traps that stay shut
 > ADR-0309: det percentile **40.70 % → 6.65 %** (SSI **5.75 %**), σ **125.5 → 65.5** cal d

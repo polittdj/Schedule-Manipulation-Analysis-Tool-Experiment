@@ -9945,3 +9945,16 @@ the briefs + state rotation) earlier today.
   installers: **60 passed** (foreground re-run, read). Adjacent ledger/a11y/airgap/
   presentation suites: **85 passed, 1 pre-existing deliberate skip** (INCIDENTAL_SVG).
   Full-suite number: appended below once its run completes and is read.
+- **Full suite (this tree): 5 failed, 3226 passed, 1 skipped in 15m31s.** Adjudicated:
+  the FOUR installer failures are the predicted mid-run wheel race (the suite launched
+  before the 1.0.143 wheel/installers were rebuilt; the tests read files at execution
+  time) — isolated re-run against the committed tree: **52 passed**. The fifth,
+  `test_float_tip_dismiss::test_the_dcma11_callout_can_be_dismissed_every_way_an_operator_
+  would_try`, is a PRE-EXISTING INTERMITTENT, this time measured rather than waved off:
+  it fails ~half of isolated runs on this tree (fail·fail·pass·fail·pass·pass across six
+  runs), AND the served /analysis page is byte-identical between `a29b747` and this tree
+  modulo the random ADR-0324 launch token (equal length, md5s compared, only the token
+  line differs) — this diff cannot reach the test through the page, and no JS/CSS moved.
+  Same test was the previous session's single full-suite failure. Mechanism undetermined
+  (the test's 4 s focus→tip wait vs a product focus-listener attach race) — logged as an
+  OR-02-adjacent hardening item, NOT chased mid-round (red-team R11).
