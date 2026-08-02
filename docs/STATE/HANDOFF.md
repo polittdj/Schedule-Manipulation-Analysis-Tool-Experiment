@@ -1,7 +1,9 @@
 # Handoff — 2026-08-01l (Phase 1b: the launcher claims the port before it serves; ADR-0334; v1.0.150)
 
-> ## STATUS (current) — **Phase 1b BUILT AND GATED on this tree (ADR-0334).** Phase 2 MERGED as
-> `1e51079` (#510). **THE OPERATOR MEASUREMENT ARRIVED** and is banked verbatim in
+> ## STATUS (current) — **Phase 1b MERGED as `e0b0fcf` (#511), ADR-0334.** Phase 2 merged as
+> `1e51079` (#510), ADR-0333. `main` is at **v1.0.150** and its installers embed the 1.0.150 wheel
+> (verified). Working tree clean, branch restarted from `origin/main`; no check-ins armed.
+> **THE OPERATOR MEASUREMENT ARRIVED** and is banked verbatim in
 > `docs/STATE/OPERATOR-REQUESTS.md` (OR-06) — committed on its own first (`3eb317b`) so it can
 > never be lost or need re-collecting. **THE ANSWER IS ONE PID.**
 >
