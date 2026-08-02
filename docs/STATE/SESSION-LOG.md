@@ -10726,3 +10726,47 @@ the briefs + state rotation) earlier today.
   (launcher, upload_cache, vertical_integration, analysis_cache_lru, session_consistency) 67
   passed. No caller changed — `web/app.py` and `launcher.py` are untouched apart from the SIGKILL
   row of the exit-census table, which now points at the marker.
+
+## 2026-08-02c — ADR-0337: Phase 3's first UI conversion — chapter 12 joins the panel contract (v1.0.153)
+
+- **#515 (ADR-0336) merged as `1bcf01a`** — all six CI checks green including `windows`, no review
+  comments raised. Branch restarted from it with `--prune`.
+- **Phase 3 opened with a measurement, and it corrected the queue twice.** Every report page was
+  rendered against the `project2_5` goldens and its contract markers counted:
+  - **`/driving-path` is NOT a fifth unconverted page.** Its all-zeros reading is its EMPTY STATE
+    (no target UID entered); `/path` is the populated variant and already carries the contract. A
+    source grep would have added it to the work list.
+  - **A `<div class=panel[ >]` regex silently misses the QUOTED form** (`<div class="panel
+    brief-doc">`), so the first census called `/briefing` a 1-panel page when it renders 4. Every
+    figure was re-measured on BOTH trees — the converted one and the pristine tree at `1bcf01a`,
+    restored from a scratchpad copy and put back (never `git checkout`).
+- **Converted chapter 12 (`/briefing` + `/brief`), panel counts unchanged:** `/briefing` 4 panels,
+  heads/tools/⛶/takes/chips `0,0,0,0,0 → 1,1,1,1,1`; `/brief` 8 panels, `0,0,0,0,0 → 7,7,7,1,7`.
+  Both gained `panelkit.js` (exactly once), and `/brief` gained the takeaway h1 it never had.
+- **Why chapter 12 rather than `/sra`, sized before choosing:** `/sra` alone is ≈550 lines of
+  rendering (`_sra_body` 146 + `_sra_report_blocks` 295 + `_sra_explainers` 66 +
+  `_sra_overrides_table` 42) — not one reviewable PR under "one page shell per PR". Chapter 12 is
+  ≈180 lines across two pages that are ONE chapter. Chapter 11 (`/sra` + `/risks`, ≈755 lines) is
+  next, as its own PR.
+- **The defect this round was really about:** `ai_polish.js` replaces the WHOLE of `#briefingBody`
+  with what `/api/ai/briefing` re-renders, so the provenance chip had to become a PARAMETER. A chip
+  `_briefing_body` built for itself would vanish the moment a local model was active — no error, no
+  layout change, just a briefing wearing no provenance, in the one configuration the suite does not
+  exercise by default. Both call sites now pass `_series_prov_chip(schedules)` (the SERIES chip:
+  both pages are built from every solvable version at once), and a test drives the endpoint with a
+  stub backend. The toolbar itself was never at risk — panelkit.js binds ONE delegated listener on
+  `document`, so buttons arriving via innerHTML keep working; checked, not assumed.
+- **Eight reverts, every one of the CALLER, each killing its gate:** V1 the AI path drops the chip ·
+  V2 `/brief` loses panelkit.js · V3 a heading skips `_panel_head` · V4 the panel export is removed
+  · V5 the takeaway is dropped · V6 the conversion mints a panel · V7 the shared status bars grow a
+  head · V8 the wrap alters heading TEXT. **Plus two CSS reverts** (jarvis hiding the tool strip,
+  apollo rendering the chip transparent) to prove the four-theme computed-style probe can fail at
+  all — a theme assertion that cannot fail is worth nothing.
+- **Scope deliberately not widened, and pinned by a test:** the Ask panel is global chrome `_page`
+  adds everywhere, and the two `.panel.status-stack` bars come from `_status_stack`, shared with
+  other chapter headers (`/sra` among them). Converting either would be a cross-cutting change
+  wearing a chapter-12 label, and would hand ⤓ EXCEL to panels no workbook covers. ▦ DATA is
+  refused on both routes: these panels ARE prose and tables, so the glyph would be inert.
+- Verification: new contract module 8 tests, new chromium four-theme module 4, and the affected
+  existing modules (briefing_view, brief_duo, ai_polish, export_endpoints, airgap, csp, a11y,
+  ask_everywhere, global_filter, hud_layer) **91 passed** together with the new ones.

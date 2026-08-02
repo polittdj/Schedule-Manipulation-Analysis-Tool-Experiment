@@ -435,6 +435,36 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-02c — The measurement corrected the work list twice before a line was written
+- **Two of the four "unconverted pages" facts in the queue were wrong, and both errors came from
+  grepping instead of rendering.** Rendering every report page and counting its contract markers
+  showed (a) **`/driving-path` is not an unconverted page at all** — its all-zeros reading is its
+  EMPTY STATE with no target UID entered, and `/path` is the populated variant, already converted;
+  and (b) a `<div class=panel[ >]` regex **silently misses the quoted form** `<div class="panel
+  brief-doc">`, which under-counted `/briefing` by three panels. **Lesson: for a UI census, measure
+  the OUTPUT, not the source — and when you write the matcher, enumerate the spellings the codebase
+  actually uses before you trust a zero.** A count that is quietly wrong is worse than no count,
+  because it becomes the baseline everything downstream is compared against.
+- **The bug worth catching this round was invisible in every default configuration.**
+  `ai_polish.js` replaces the WHOLE of `#briefingBody` with what `/api/ai/briefing` re-renders. A
+  provenance chip built *inside* the render function would therefore vanish the instant a local
+  model was active — no error, no layout shift, just a briefing wearing no provenance, in the one
+  configuration the suite never exercises by default. Making the chip a **parameter** both call
+  sites pass is what fixes it. **Lesson: when a fragment of a page is re-rendered by a second
+  endpoint, everything that fragment carries has to be supplied by BOTH callers — and the test has
+  to drive the second endpoint, because the first one will look perfect forever.**
+- **A theme assertion that has never been made to fail is decoration.** The four-theme
+  computed-style probe passed on the first run, which proves nothing on its own; two CSS reverts
+  (jarvis hiding the tool strip, apollo rendering the chip fully transparent) were needed to show
+  it discriminates. This is the same shape as yesterday's vacuous residue gate, in a different
+  medium. **Lesson: any assertion about rendered appearance needs a deliberate ugly-render revert
+  before it counts — the failure mode of a style test is silence, not noise.**
+- **Sizing before choosing changed the plan, cheaply.** Measuring the four pages' rendering
+  functions (`/sra` ≈550 lines vs chapter 12's ≈180) turned "do them in the order they were listed"
+  into "do the coherent 180-line chapter first, give `/sra` its own PR". Two minutes of counting
+  bought a reviewable diff. **Lesson: when a rule says "one X per PR", measure X before committing
+  to a batch — the listed order is rarely a size order.**
+
 ### 2026-08-02b — A `-k` filter deselected the test the revert was aimed at; and a gate that the file-unlink made vacuous
 - **The able-to-fail discipline nearly gave a false green, twice in one change, both times through
   the harness rather than the code.** First: the revert that removes launch-clearing was run under
