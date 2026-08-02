@@ -8,53 +8,59 @@ kickoff steers a fresh session at work that is already done.)
 ---
 
 Resume POLARIS (Schedule-Manipulation-Analysis-Tool). **Read `docs/STATE/HANDOFF.md` FIRST**
-(auto-injected). As of last session: **v1.0.150**, highest ADR **0334**. **Both of last session's PRs are
-MERGED** — #510 (Phase 2, ADR-0333) as `1e51079` and #511 (Phase 1b, ADR-0334) as `e0b0fcf`.
-`git fetch --prune origin` and restart your branch from `origin/main` (nothing is in flight).
-Fresh container:
-`pip install -e ".[dev]"` plus `pip install playwright 'ruff==0.16.1' build` first.
+(auto-injected). As of last session: **v1.0.151**, highest ADR **0335**. **PR #513 (Phase 1b
+remainder, ADR-0335) is MERGED** as `e0fdf85`, all six checks green including `windows`.
+`git fetch --prune origin` and restart your branch from `origin/main` — **nothing is in flight**.
+Fresh container: `pip install -e ".[dev]"` plus `pip install playwright 'ruff==0.16.1' build`.
 
-**Phases 0, 1a, 1b (launcher half) and 2 are DONE.** The operator measurement Phase 1b was blocked
-on ARRIVED and is banked in `docs/STATE/OPERATOR-REQUESTS.md` (OR-06), committed on its own as
-`3eb317b`. **The answer was ONE PID** — the second launch produced no listener and no process at
-all; it exited mute and its already-armed browser timer opened onto the OLD server. That was the
-SERVER-side half of OR-06. **Do not re-collect that measurement, and do not re-open the
-double-bind theory — it is measured false.**
+**Phases 0, 1a, 1b (BOTH halves) and 2 are DONE.** The disk cache now empties itself on every quit
+(the operator's decision), seals before it clears, and `prune()` bounds what a hard kill leaves.
+**Do not re-open any of it** — see the measured-false list below.
 
 ### ⇢ DO THESE THINGS FIRST
 
-1. `git fetch --prune origin`; confirm what merged and restart your branch fresh from `origin/main`.
-   **Never amend merged commits to satisfy the stop hook** — restarting the branch is the fix.
-2. **Phase 1b REMAINDER — the disk cache. Held back deliberately; ASK THE OPERATOR FIRST.**
-   The approved wording is: clear on **clean shutdown + atexit, NEVER at launch** (launch-clearing
-   leaves data at rest across the whole between-sessions window), plus a **size and age cap** as
-   the belt for a hard kill that never cleared. `engine/cache.py` already has `clear()`; it needs a
-   `prune(max_bytes, max_age)` plus wiring into `_trigger_shutdown` and `launcher.main`'s
-   `finally`. **Confirm the intent before building:** clearing on every quit does discard the
-   cross-session warm start, and that is a CUI-at-rest policy call the operator owns, not an
-   inference. Any new cache key MUST route through `_cache_key`/`_invalidate_scope` — Law 2.
-3. **Phase 3 — UI (hybrid).** The four unconverted Act III pages (`/sra`, `/risks`, `/briefing`,
-   `/brief` — zero panelkit/`_panel_head`/`_shell_tools`/`sf-take`); then `DOM_PENDING`'s 7
-   modules; then the DoD ledgers. **The DD-line ledger must EXCLUDE non-time-axis charts**
-   (`histogram.js`, `scatter.js`, `sra_jcl.js`'s cost axis). Follow `docs/DESIGN-SYSTEM.md` and
-   verify in all four themes.
-4. Behind: **Phase 4 engine** (`import_notes` · the 3 falsy-zero rows · CC-01's rendering half —
-   "74 sites" is an approximate grep, RE-DERIVE it · SRA-LEGACY · V3) · **Phase 5** monolith split
-   2–3 (`app.py` 20.9k lines) · **Phase 6** docs/operator queue. **OR-04 stays with the operator.**
-   Known intermittent: the /analysis focus→tip family — adjudicated, do NOT chase.
+1. `git fetch --prune origin`; confirm `origin/main` is at `e0fdf85` or later and restart your
+   branch fresh from it. **Never amend merged commits to satisfy the stop hook** — restarting the
+   branch is the fix.
+2. **Phase 3 — UI (hybrid: keep Mission Ops, graft the Command Deck's best ideas).** This is the
+   head of the queue. The four unconverted Act III pages (`/sra`, `/risks`, `/briefing`, `/brief` —
+   zero panelkit/`_panel_head`/`_shell_tools`/`sf-take`); then `DOM_PENDING`'s 7 modules; then the
+   DoD ledgers. **The DD-line ledger must EXCLUDE non-time-axis charts** (`histogram.js`,
+   `scatter.js`, `sra_jcl.js`'s cost axis). Follow `docs/DESIGN-SYSTEM.md` and **verify in all four
+   themes**. Never touch `engine/` for a UI change; one page shell per PR, never big-bang.
+3. Behind: **Phase 4 engine** (`import_notes` propagation · the 3 falsy-zero rows · CC-01's
+   rendering half — "74 sites" is an approximate grep, **RE-DERIVE it** · SRA-LEGACY · V3) ·
+   **Phase 5** monolith split 2–3 (`app.py` ~20.9k lines) · **Phase 6** docs/operator queue.
+   **OR-04 stays with the operator.**
 
-**Measured-false, do not re-chase:** two servers bound 8321 simultaneously · the surviving server
-is itself the bug (`idle_grace=600` is by design — the bug is relaunching ONTO it) · a bind-probe
+### ⇢ OPEN — the operator's call, do NOT take it unilaterally
+
+Because a clean quit now clears everything, hard-kill residue actually survives **until the end of
+the next clean session**, not the 24 h the age cap implies: the age cap only ever bites at a launch,
+so a kill-then-relaunch-in-five-minutes keeps rows the size cap alone will not evict. Closing that
+deterministically means deleting every row **not written by the current launch** — which is
+**clear-at-launch by another name**, the one thing the approved wording forbids. Ask before acting.
+
+**Measured-false, do not re-chase:** two servers bound 8321 simultaneously · the surviving server is
+itself the bug (`idle_grace=600` is by design — the bug is relaunching ONTO it) · a bind-probe
 answers "is the port taken?" (false on Windows — connect-probe) · a hardened urllib opener contains
-an empty `ProxyHandler` (urllib never registers a handler that installs no methods — assert
-ABSENCE) · `tooltips.js` is an observer defect (it is the EXEMPLAR) · querySelectorAll CALL COUNT
-measures observer cost (measure NODES RETURNED).
+an empty `ProxyHandler` (assert **ABSENCE**) · `tooltips.js` is an observer defect (it is the
+EXEMPLAR) · querySelectorAll CALL COUNT measures observer cost (measure **NODES RETURNED**) ·
+**`secure_delete=ON` is the obvious Law-1 hardening for the cache** (26 s on the quit path, blows
+ADR-0334's 20 s handover, and redundant once `clear()` unlinks) · **a bare DELETE leaves plaintext,
+so a residue test is a real gate** (false on this box — Debian compiles `SECURE_DELETE` ON; assert
+**RECLAIMED SIZE**, which is portable) · **`wipe_gen` stops a late write re-populating the cache**
+(false: only `/session/wipe` bumps it) · **`atexit`/`finally` cover a graceful stop** (false for
+SIGTERM — only the ASGI lifespan does). Known intermittent: the /analysis focus→tip family —
+adjudicated, do **NOT** chase.
 
 Standing rules (CLAUDE.md, binding): Law 1 CUI · Law 2 fidelity ("—" never 0; never weaken a test)
 · ADR-0240 model/audit protocol · READ EVERYTHING, ASSUME NOTHING, VERIFY EVERYTHING. Full gate
 before every commit; statics FOREGROUND first (`node --check` **per file** — a glob checks only the
-first); proved-able-to-fail on every new behavioral test (**revert the CALLER, not the API**);
-HANDOFF rotation + SESSION-LOG + LESSONS-LEARNED same commit; wheel + nine installers ONCE after
-all code lands (bump the version BEFORE the background suite).
+first); proved-able-to-fail on every new behavioral test (**revert the CALLER, not the API — then
+confirm the revert actually removed the behaviour**, and make sure the fixture can discriminate at
+all); HANDOFF rotation + SESSION-LOG + LESSONS-LEARNED same commit; wheel + nine installers ONCE
+after all code lands (bump the version BEFORE the background suite).
 **NEVER `git checkout <file>` to undo a temporary test mutation** — it discards unstaged real work
-in that file; `cp` from a scratchpad copy instead.
+in that file; `cp` from a scratchpad copy instead. **`pkill -f <pat>` kills the killer** when the
+pattern appears in its own command line.

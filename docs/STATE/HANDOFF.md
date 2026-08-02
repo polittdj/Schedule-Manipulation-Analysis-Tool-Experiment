@@ -1,8 +1,13 @@
 # Handoff — 2026-08-02 (Phase 1b remainder: the disk cache empties itself on every quit; ADR-0335; v1.0.151)
 
-> ## STATUS (current) — **Phase 1b is COMPLETE. The operator answered the cache question: CLEAR IT
-> ON EVERY QUIT.** ADR-0335, v1.0.151, built on this tree. Session opened by confirming #512 was
-> already merged (`4691276`) and restarting the branch from `origin/main`.
+> ## STATUS (current) — **Phase 1b is COMPLETE and MERGED as `e0fdf85` (#513), ADR-0335.** The
+> operator answered the cache question: **CLEAR IT ON EVERY QUIT.** `main` is at **v1.0.151** and
+> its committed installers embed the 1.0.151 wheel (the lockstep gate passed on the final tree).
+> **All six CI checks green before merge — including `windows`** (the job that actually exercises
+> the new `chmod` hardening and the unlink fallback) and both Python 3.11 and 3.13. No review
+> comments were raised. Working tree clean, branch restarted from `origin/main` with `--prune`,
+> **no check-ins armed** (the one-hour PR check-in was deleted on merge). Session opened by
+> confirming #512 was already merged (`4691276`).
 >
 > The on-disk SQLite cache holds **parsed schedule content + derived metrics** and was cleared in
 > exactly ONE place — `/session/wipe`. Quitting left everything parsed sitting in
