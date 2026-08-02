@@ -10680,3 +10680,49 @@ the briefs + state rotation) earlier today.
   end of the next clean session rather than the 24 h the age cap implies, because the age cap only
   bites at a launch. The deterministic fix is clear-at-launch by another name, which the approved
   wording forbids. Carried in HANDOFF ⇢ NEXT and in the refreshed kickoff.
+
+## 2026-08-02b — ADR-0336: a launch clears only what a killed run left behind (v1.0.152)
+
+- **Opened by confirming #514 was already merged** (`e1c81cf`, `origin/main`'s tip — the docs-only
+  session-close PR). Branch restarted from it with `--prune`; deps reinstalled in the fresh
+  container (`pip install -e ".[dev]"`, `playwright`, `ruff==0.16.1`, `build`).
+- **Asked the operator the one question ADR-0335 left open, and they chose the dirty-flag clear.**
+  Implemented as **ADR-0336**: a write **claims** the on-disk cache for the running process (one
+  `meta` row, `key='run'`, written inside the SAME transaction as the content row it vouches for,
+  once per run rather than per write), a clear **releases** it, and a launch that still finds
+  someone else's claim empties the cache. A launch after a clean quit finds no marker and clears
+  nothing, so ADR-0335's approved "never clear at launch" stays true as written.
+- **The hole, stated precisely:** `prune()`'s age cap is only ever evaluated AT a launch, so a hard
+  kill followed by a prompt relaunch left every row inside both caps — the residue was carried
+  through the whole next session, and the clean quit that ended *that* one was the first thing to
+  remove it. "A day at most" was really "until the end of the next clean session".
+- **Three deliberate non-choices**, each recorded in the ADR: not a **pid** (reused, and
+  `os.kill(pid, 0)` asks a question on POSIX but TERMINATES the target on Windows — a token needs
+  only equality and carries no platform behaviour); not keyed on **`seal()`** (both `clear()`
+  callers must release, because after a `/session/wipe` the session keeps working and its next
+  write re-claims — keying on `_sealed` would have meant trusting all four ADR-0335 shutdown
+  layers to seal first); and not **clear-at-launch** (a marker-less cache from an older build still
+  takes the prune path, pinned by its own test).
+- **Six reverts, each reverting the CALLER, every new gate proved able to fail:** R1 never
+  launch-clears → 2 fail · R2 clears at EVERY launch → 2 fail · R3 drops the identity comparison →
+  1 fails · R4 drops the `_claimed` reset → 1 fails · R5 `clear()` stops releasing → 2 fail · R6
+  writes never claim → 2 fail.
+- **R5 caught a VACUOUS gate, and only because the revert was actually run.** The clean-quit test
+  passed against a build that never released anything: `clear()` *unlinks the database file*, so
+  the marker goes with it either way. The explicit `DELETE` earns its place only on the **Windows
+  fallback** path (an open reader refuses the unlink → the tables are emptied in place), where the
+  marker would be the one row to survive its own session. The test now forces that path and asserts
+  the file still exists, so it cannot drift back to proving nothing.
+- **A harness trap worth its own line:** a `-k` filter silently DESELECTED the very test R1
+  targeted, so the first revert looked like a 1-test failure. Run the whole module when proving
+  able-to-fail.
+- **Measured, not grepped — the Phase 3 scope was re-derived off rendered HTML** (every report page
+  rendered against the `project2_5` goldens and its contract markers counted). The four unconverted
+  Act III pages are confirmed: `/sra` 13 panels, `/risks` 8, `/brief` 8, `/briefing` 1, all with
+  zero `panel-head` / `sf-tools` / `sf-take` / `prov-chip` / panelkit. **`/driving-path` reads as
+  zero too but is NOT unconverted** — that is its empty state with no target UID entered; `/path`
+  is the populated variant and carries the contract.
+- Verification: `tests/engine/test_cache.py` 22 → 27 tests, all passing; the cache-adjacent modules
+  (launcher, upload_cache, vertical_integration, analysis_cache_lru, session_consistency) 67
+  passed. No caller changed — `web/app.py` and `launcher.py` are untouched apart from the SIGKILL
+  row of the exit-census table, which now points at the marker.

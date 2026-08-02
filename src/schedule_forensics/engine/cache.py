@@ -19,11 +19,32 @@ content lives on disk:
 * it is **cleared on every quit** — the graceful stop (``web.app._trigger_shutdown``) plus an
   ``atexit`` backstop and the ``finally`` in ``launcher.main``. The operator chose this over the
   cross-session warm start: the tool leaves nothing of theirs on the disk when it is not running.
-* Clearing deliberately does **not** happen at launch. Launch-clearing would leave the previous
-  session's content at rest across the whole between-sessions window, which is exactly the window
-  that matters. :meth:`ScheduleCache.prune` is the belt for the one case the clears cannot cover —
-  a hard kill (SIGKILL, power loss) where neither the graceful stop nor ``atexit`` ever ran: it
-  bounds an inherited cache by **size and age**, and it is a prune, never a wipe.
+* Clearing deliberately does **not** happen at an ordinary launch. Blanket launch-clearing would
+  leave the previous session's content at rest across the whole between-sessions window, which is
+  exactly the window that matters. A launch clears only when it can PROVE it inherited a cache
+  from a run that never cleared on its way out — see the run marker below (ADR-0336).
+* :meth:`ScheduleCache.prune` remains the belt for what a launch does not clear: it bounds an
+  inherited cache by **size and age**, and it is a prune, never a wipe.
+
+**The run marker (ADR-0336).** Clear-on-quit made a hard kill (SIGKILL, power loss) the only way
+content survives — but the age cap is only ever evaluated *at a launch*, so a kill followed by a
+relaunch five minutes later carried the dead session's parsed schedules through the whole next
+session, and the clean quit that ended *it* was the first thing to remove them. The window the
+24 h cap implied was therefore much wider in practice. It is closed by a single ``meta`` row:
+a write **claims** the cache for this run, a clear **releases** it. So a marker still present at
+the next launch means rows were written by a run that never reached a clear — a hard kill — and
+that launch empties the cache before doing anything else. A launch after a clean quit finds no
+marker and clears nothing, which is what keeps the rule above true.
+
+The claim is keyed on :data:`_RUN_ID`, a token minted once per **process**, rather than on a pid:
+``os.kill(pid, 0)`` is a liveness probe on POSIX but on Windows ``os.kill`` *terminates* the
+target, and a pid alone is reusable. Two cache objects inside one process therefore recognise
+each other and never clear each other's rows (the test suite builds many). Two concurrent
+*processes* sharing one ``$SF_CACHE_DIR`` do not: the second reads the first's marker as a dead
+run and clears. That is deliberate and correctness-safe — the cost of an unnecessary clear is a
+re-parse, never a wrong number (Law 2) — and ADR-0334's port claim already makes two live servers
+the abnormal case; it is the same trade the ADR-0335 scope note takes for a predecessor's
+``finally``.
 
 Every operation fails soft: a missing / locked / corrupt cache degrades to a miss and the tool
 recomputes from source, so the cache can never sink a load or serve a wrong number.
@@ -35,6 +56,7 @@ import functools
 import hashlib
 import logging
 import os
+import secrets
 import sqlite3
 import threading
 import time
@@ -59,6 +81,14 @@ DEFAULT_MAX_AGE = 24 * 60 * 60
 #: How far into the future a ``written_at`` may sit before it is treated as unknown-age and pruned.
 #: Covers ordinary clock skew/NTP correction without letting a backwards jump strand a row forever.
 _CLOCK_SLACK = 15 * 60
+
+#: Identity of THIS process for the run marker (ADR-0336), minted once at import. A random token
+#: rather than a pid: pids are reused, and the portable liveness probe does not exist
+#: (``os.kill(pid, 0)`` asks a question on POSIX but *terminates* the target on Windows). Only the
+#: equality test matters — "this marker is mine" vs "it belongs to a run that is not me".
+_RUN_ID = secrets.token_hex(8)
+#: The ``meta`` key under which a run claims the cache. One row, rewritten in place.
+_RUN_KEY = "run"
 
 
 @functools.lru_cache(maxsize=1)
@@ -113,13 +143,25 @@ class ScheduleCache:
         self.max_age = max_age
         self._write_lock = threading.Lock()
         self._sealed = False
+        #: Whether this run has already claimed the cache (so the marker is written once, on the
+        #: first write, instead of on every one). Reset by :meth:`clear`, which releases it.
+        self._claimed = False
         self._ready = self._init_db()
-        # ADR-0335: opening a cache that already has rows in it means the previous session did NOT
-        # clear on the way out — it was killed. Bound what it left. This is a PRUNE, not the wipe
-        # that deliberately does not happen at launch: only over-age / over-cap rows leave, so a
-        # cache the operator is legitimately mid-way through using is untouched.
         if self._ready:
-            self.prune()
+            # ADR-0336: a marker left by a run that is not this one is proof the previous session
+            # never reached a clear — it was killed — so everything here is residue and goes now.
+            # Waiting for the age cap was the hole: the cap is only ever evaluated at a launch, so
+            # a kill followed by a prompt relaunch carried that residue through a whole further
+            # session. An ordinary launch (no marker: the last run cleared on its way out) falls
+            # through to the prune instead, which is what keeps "no clear at launch" true.
+            if self._left_by_a_dead_run():
+                self.clear()
+            else:
+                # ADR-0335: a cache with rows but no marker was written by a build older than the
+                # marker, or pruned back by one. Bound what it left. This is a PRUNE, not a wipe:
+                # only over-age / over-cap rows leave, so a cache the operator is legitimately
+                # mid-way through using is untouched.
+                self.prune()
 
     def _restrict_permissions(self) -> None:
         """Make the cache readable only by its owner (Law 1, on a shared machine).
@@ -148,6 +190,12 @@ class ScheduleCache:
                     "CREATE TABLE IF NOT EXISTS summaries "
                     "(chash TEXT, ever TEXT, summary_json TEXT, "
                     "written_at REAL NOT NULL DEFAULT 0.0, PRIMARY KEY (chash, ever))"
+                )
+                # ADR-0336's run marker. Holds no schedule content — only which run last wrote —
+                # so it is deliberately outside everything that counts or bounds CONTENT: the byte
+                # trim, the age prune, and :meth:`_is_empty`'s "is the operator's data gone?".
+                conn.execute(
+                    "CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)"
                 )
                 migrated = self._add_written_at(conn)
             self._restrict_permissions()
@@ -212,6 +260,45 @@ class ScheduleCache:
         # finishes.
         return conn
 
+    # --- the run marker (ADR-0336) --------------------------------------------------------------
+    def _left_by_a_dead_run(self) -> bool:
+        """True when the cache still carries a claim from a run that is not this process.
+
+        Read once, at construction, BEFORE this run claims anything. A marker survives only if
+        the run that wrote it never reached :meth:`clear` — every graceful exit clears, and every
+        clear releases — so its presence means a hard kill.
+
+        Fails soft in the honest direction: a cache we cannot read is not proof of a dead run, and
+        guessing "yes" would delete a working cache on any transient lock.
+        """
+        try:
+            with closing(self._connect()) as conn:
+                row = conn.execute("SELECT value FROM meta WHERE key=?", (_RUN_KEY,)).fetchone()
+        except sqlite3.Error:
+            return False
+        return row is not None and row[0] != _RUN_ID
+
+    @staticmethod
+    def _claim_run(conn: sqlite3.Connection) -> None:
+        """Record that THIS run has written content. Runs inside the caller's write transaction.
+
+        Folding it into the write rather than giving it its own connection is what makes the
+        marker free: the claim commits with the row it is vouching for, so there is no window in
+        which content is on the disk unclaimed, and no second transaction on the write path.
+        """
+        conn.execute("INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)", (_RUN_KEY, _RUN_ID))
+
+    def _release_run(self) -> None:
+        """Drop the claim — the content it vouched for is gone. Caller holds ``self._write_lock``.
+
+        Called from :meth:`clear` for both of its outcomes. After a successful unlink the database
+        is brand new and there is no marker to remove, but the fallback path leaves the file (and
+        the marker) in place, so the release has to be explicit rather than implied by the unlink.
+        """
+        self._claimed = False
+        with suppress(sqlite3.Error, OSError), closing(self._connect()) as conn, conn:
+            conn.execute("DELETE FROM meta WHERE key=?", (_RUN_KEY,))
+
     # --- parsed schedules ---------------------------------------------------------------------
     def get_schedule(self, chash: str) -> Schedule | None:
         if not self._ready:
@@ -243,7 +330,10 @@ class ScheduleCache:
                     "(chash, ever, model_json, written_at) VALUES (?, ?, ?, ?)",
                     (chash, engine_version(), payload, time.time()),
                 )
+                if not self._claimed:
+                    self._claim_run(conn)  # ADR-0336: content on disk is now claimed by this run
                 oversize = self._db_bytes(conn) > self.max_bytes
+            self._claimed = True  # only after the transaction actually committed
         except (sqlite3.Error, ValueError, OSError):
             return  # a cache write must never sink a load
         if oversize:
@@ -274,7 +364,10 @@ class ScheduleCache:
                     "(chash, ever, summary_json, written_at) VALUES (?, ?, ?, ?)",
                     (chash, engine_version(), summary_json, time.time()),
                 )
+                if not self._claimed:
+                    self._claim_run(conn)  # ADR-0336: content on disk is now claimed by this run
                 oversize = self._db_bytes(conn) > self.max_bytes
+            self._claimed = True  # only after the transaction actually committed
         except (sqlite3.Error, OSError):
             return
         if oversize:
@@ -296,10 +389,12 @@ class ScheduleCache:
     def prune(self, *, max_bytes: int | None = None, max_age: float | None = None) -> int:
         """Bound the cache by **age** then **size**, and return how many rows left.
 
-        This is the belt for the one exit the clears cannot cover: a hard kill (SIGKILL, power
-        loss, a pulled plug) after which the next launch inherits a cache nobody emptied. It is
-        deliberately not a wipe — a session mid-way through its work keeps everything inside both
-        caps, so the within-session speed-up survives.
+        It runs on the write path (past the byte cap) and at every launch that does not already
+        clear. Since ADR-0336 a hard kill is normally caught by the run marker and cleared
+        outright, so what reaches this at a launch is a cache with **no** marker: one written by a
+        build older than the marker, or already pruned back by one. It is deliberately not a wipe
+        — a session mid-way through its work keeps everything inside both caps, so the
+        within-session speed-up survives.
 
         Superseded engine generations go **unconditionally** and first. ``engine_version()`` is a
         content hash of the parse+compute source, so every build the operator installs strands the
@@ -463,7 +558,8 @@ class ScheduleCache:
         self._sealed = True
 
     def clear(self) -> bool:
-        """Drop everything — a session wipe, and every quit (ADR-0335). True if the cache is empty.
+        """Drop everything — a session wipe, every quit (ADR-0335), and a launch that inherited a
+        killed run's cache (ADR-0336). True if the cache is empty.
 
         The local CUI cache holds derived metrics + parsed schedule content, so neither a wipe nor
         a quit may leave anything behind, and the database is **deleted outright** rather than
@@ -502,6 +598,12 @@ class ScheduleCache:
                         conn.execute("DELETE FROM summaries")
                     self._vacuum_locked()  # the rebuild is what removes the freed rows' bytes
             self._ready = self._init_db()  # recreate the (now empty) database for continued use
+            # ADR-0336: the content this run claimed is gone, so the claim goes with it. This is
+            # what makes a clean quit invisible to the next launch — and it is deliberately NOT
+            # conditional on ``_sealed``. A wipe releases too: the session carries on, and its
+            # next write re-claims. Tying the release to the quit path instead would have meant
+            # trusting every one of the four shutdown layers to seal first.
+            self._release_run()
             empty = unlinked or self._is_empty()
         if not empty:
             logger.warning(
