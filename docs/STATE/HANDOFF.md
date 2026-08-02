@@ -1,17 +1,22 @@
 # Handoff — 2026-08-02e (Phase 3 UI: /sra joins the panel contract — Act III complete; ADR-0339; v1.0.155)
 
-> ## STATUS (current) — **`/sra` converted; Act III's panel contract is COMPLETE.** ADR-0339,
-> **v1.0.155**. `/sra` was the last unconverted Act III route and it is now inside both census
-> modules, so every route in the act is covered. Branch `claude/phase-3-sra-conversion-aalyl4`,
-> restarted from `origin/main` (`9f6861b`) with `--prune`. Full suite **3319 passed, 2 skipped**
-> before the docs/installer commit (the 8 failures in that run were the expected version-bump
-> installer lockstep + the state-doc guards, plus ONE real defect in this change — see below).
+> ## STATUS (current) — **MERGED. `/sra` converted; Act III's panel contract is COMPLETE.**
+> PR **#519** (ADR-0339, **v1.0.155**) merged as **`17a9c64`**. `/sra` was the last unconverted Act
+> III route and is now inside both census modules, so every route in the act is covered. Branch
+> restarted from `origin/main` with `--prune`, working tree clean, **no check-ins armed** (the PR
+> check-in was deleted on merge). Full suite **on the merged tree: 3329 passed, 2 skipped, 1
+> failed** — the single failure is the ADJUDICATED `/analysis` focus→tip intermittent
+> (`test_float_tip_dismiss` this run, `test_float_tip_scroll` the run before — the family alternates,
+> which is itself the evidence). Confirmed pre-existing by running those modules against
+> `origin/main`'s own `app.py` **before** this change: 2/1/1 failures there vs 1/1/1 on the branch.
+> Do NOT chase it.
 >
 > ## `/sra`, before → after (panel count UNCHANGED at 15)
 > heads/tools/⛶/takes/chips **0,0,0,0,0 → 12,12,12,12,12**, panelkit **0 → 1**, and it gained the
 > DoD **context line** it never had (`page-lede` **0 → 1**; the takeaway h1 was already there).
 > Three panels stay bare by the standing scope note: the two `_status_stack` header bars and the
-> global Ask panel. Contract module **9 → 14** tests, chromium **6 → 9**.
+> global Ask panel. Contract module **9 → 18** tests, chromium **6 → 9** (the 9→14 figure that
+> appeared here mid-session predated the audit's four extra gates — 18 is the merged count).
 >
 > ## Two carried figures were wrong — both corrected
 > 1. **`_sra_report_blocks` does not render `/sra`.** The carried ≈550-line estimate attributed 295

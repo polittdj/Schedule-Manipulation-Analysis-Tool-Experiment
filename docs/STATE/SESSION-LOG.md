@@ -10900,3 +10900,12 @@ the briefs + state rotation) earlier today.
   missed; **J2 is the lying-link regression itself** — the JCL panel keeps its ⤓ while the export
   stops carrying the JCL sheets.
 - Contract module **9 → 18** tests; chromium **6 → 9**.
+- **PR #519 merged as `17a9c64`; `main` is at v1.0.155.** Suite re-run on the MERGED tree to get an
+  honest baseline: **3329 passed, 2 skipped, 1 failed** — the failure is the adjudicated
+  `/analysis` focus→tip intermittent (`test_float_tip_dismiss` that run, `test_float_tip_scroll` the
+  run before; the family alternates, which is the evidence it is a flake and not a regression).
+- **Two stale figures had survived into the merged handoff** and were corrected in a docs-only
+  follow-up: the STATUS line still said "3319 passed" and "contract module 9 → 14", both written
+  mid-session BEFORE the adversarial audit added four more gates, and both corrected only lower down
+  in the same document. **Lesson: when a later section supersedes an earlier number in the same doc,
+  fix the earlier one — the next session reads STATUS first and carries whatever it says.**
