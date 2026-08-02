@@ -7838,6 +7838,23 @@ _BRIEF_XLSX_TITLE = (
     "opens in Excel"
 )
 
+#: The panel-level export every converted /sra panel follows (ADR-0339) — the EXISTING SRA tables
+#: workbook (`@app.get("/export/{fmt}/sra")`), the same one the SSI panel's own button already
+#: offers. Rank-3 law: ⤓ EXCEL renders ONLY where the data really rides that workbook, so the two
+#: panels whose content is NOT in it — the "which model" explainer (pure guidance, no data) and a
+#: JCL panel on a file with no cost loading (its sheets ship only when the file is cost-loaded) —
+#: carry the head, the ⛶ and the chip but no ⤓.
+_SRA_EXPORT = ' data-export="/export/xlsx/sra"'
+#: Deliberately NOT "this panel's data is one of its sheets" (the wording the /analysis and /risks
+#: workbooks use). This workbook holds the SRA run setup, the focus-finish results, the OAT
+#: sensitivity and the risk register — so for the three LEGACY Monte-Carlo chart panels it carries
+#: the equivalent SSI-model sheet rather than that panel's own series. Naming the workbook is true
+#: for all ten panels; claiming per-panel sheet identity would not be (Law 2).
+_SRA_XLSX_TITLE = (
+    "Export the SRA workbook — run setup, focus-finish results, OAT sensitivity and the risk "
+    "register — opens in Excel"
+)
+
 
 def _analysis_export_attr(key: str) -> str:
     """The panel-level data-export URL panelkit.js follows — the EXISTING analysis workbook
@@ -16256,10 +16273,15 @@ _OCC_EXACT = (
 )
 
 
-def _ssi_panel(st: SessionState) -> str:
+def _ssi_panel(st: SessionState, *, prov: str = "", tools: str = "", export_attr: str = "") -> str:
     """The SSI Schedule Risk & Opportunity Analysis controls (ADR-0123): focus event, Risk Factors
     table + per-task ranking + auto-calc, occurrence/correlation run options, the risk register, and
-    the run/sensitivity buttons feeding ``/api/sra/ssi`` and ``/api/sra/oat`` (run off page-load)."""
+    the run/sensitivity buttons feeding ``/api/sra/ssi`` and ``/api/sra/oat`` (run off page-load).
+
+    Panel contract (ADR-0339). The take quotes the two counts the panel ALREADY renders as a
+    ``<p class=muted>`` further down, so it re-states a figure the reader can verify in place
+    rather than introducing one; it reads correctly at zero (an unranked schedule).
+    """
     # field help for the JS-rendered SRA tables (run results + OAT sensitivity) — same hover call-out
     field_help_json = json.dumps(
         field_help_payload(
@@ -16296,8 +16318,14 @@ def _ssi_panel(st: SessionState) -> str:
         f'<option value="{n}"{" selected" if n == 1000 else ""}>{n}</option>'
         for n in (500, 1000, 2000, 5000)
     )
+    ranked, bcwc = len(st.sra_factors), len(st.sra_bcwc)
+    ssi_head = _panel_head("Schedule Risk &amp; Opportunity Analysis", tools=tools, prov=prov)
+    ssi_take = (
+        f"<p class=sf-take data-no-i18n>{ranked} task{'' if ranked == 1 else 's'} ranked; "
+        f"{bcwc} with calculated Best/Worst durations.</p>"
+    )
     return f"""
-<div class=panel><h2>Schedule Risk &amp; Opportunity Analysis</h2>
+<div class=panel{export_attr}>{ssi_head}{ssi_take}
 <p class=muted>Rank each task 1&ndash;5 (Risk Ranking Factor), auto-calculate
 its Best/Worst Case from the factor table, attach discrete risks with an additive schedule impact in
 days, and run a Monte-Carlo to a chosen <b>focus event</b>. The current Remaining Duration is the Most
@@ -16480,10 +16508,17 @@ skipped &mdash; nothing is fabricated, and you get a summary of exactly what lan
 <script src="/static/sra_grid.js"></script></div>"""
 
 
-def _correlation_matrix_panel(st: SessionState) -> str:
+def _correlation_matrix_panel(
+    st: SessionState, *, prov: str = "", tools: str = "", export_attr: str = ""
+) -> str:
     """The correlation-matrix editor (ADR-0270): pairwise correlations + shared-driver groups
     over the uncertain activities, a clear control, and a post-run feasibility badge host. A
-    non-empty matrix overrides the blanket scalar correlation and drives a multivariate copula."""
+    non-empty matrix overrides the blanket scalar correlation and drives a multivariate copula.
+
+    Panel contract (ADR-0339). The take counts what is entered and names which correlation is
+    therefore driving the run — the fact that actually changes the answer — so it stays true on
+    an empty matrix (the blanket scalar) as well as a populated one.
+    """
     pairs = st.sra_corr_pairs
     groups = st.sra_corr_groups
     rows = ""
@@ -16505,8 +16540,20 @@ def _correlation_matrix_panel(st: SessionState) -> str:
             "<p class=muted>No correlation matrix entered &mdash; the blanket scalar correlation "
             "above drives the run.</p>"
         )
+    n_pairs, n_groups = len(pairs), len(groups)
+    corr_head = _panel_head("Correlation matrix (advanced)", tools=tools, prov=prov)
+    driver = (
+        "this matrix overrides the blanket scalar"
+        if (pairs or groups)
+        else f"the blanket scalar &rho;&nbsp;=&nbsp;{st.sra_correlation:g} drives the run"
+    )
+    corr_take = (
+        f"<p class=sf-take data-no-i18n>{n_pairs} pairwise correlation"
+        f"{'' if n_pairs == 1 else 's'} and {n_groups} shared-driver group"
+        f"{'' if n_groups == 1 else 's'} entered &mdash; {driver}.</p>"
+    )
     return f"""
-<div class=panel><h2>Correlation matrix (advanced)</h2>
+<div class=panel{export_attr}>{corr_head}{corr_take}
 <p class=muted>Beyond the single blanket correlation above, enter <b>pairwise</b> correlations
 between specific activities, or <b>shared-driver groups</b> (activities with a common cause &mdash;
 one crew, one vendor, one test rig &mdash; that move together, the Hulett risk-driver idea). A
@@ -16532,16 +16579,42 @@ vs commercial tools (ADR-0005/0106).</p>
 <div id=corrBadge></div></div>"""
 
 
-def _jcl_panel(st: SessionState) -> str:
+def _jcl_panel(st: SessionState, *, prov: str = "") -> str:
     """The Joint Cost-&-Schedule Confidence (JCL / FICSM) panel (ADR-0269), gated on a
     cost-loaded file (the same non-summary Σ budgeted_cost > 0 rule as the cost EVM
-    indices). A duration-only file renders the honest requirement note — never a number."""
+    indices). A duration-only file renders the honest requirement note — never a number.
+
+    Panel contract (ADR-0339). This is the ONE panel that builds its own tool strip instead of
+    taking the page's: the JCL sheets ride ``/export/xlsx/sra`` only once the file is cost-loaded,
+    so on a duration-only file ⤓ EXCEL would point at a workbook that carries no JCL data. The
+    rank-3 law is "never a dead OR LYING link", so the ⤓ is gated on the same ``loaded`` flag the
+    panel's own body is — head, ⛶ and chip stay either way. The take likewise refuses to imply a
+    number the gate forbids: unloaded, it states the SCL/JCL distinction rather than a confidence.
+    """
     chosen = _sra_selected(st)
     scoped = chosen[1] if chosen is not None else None
     loaded = scoped is not None and cost_loaded_total(scoped) > 0.0
+    tools = _shell_tools(export_title=_SRA_XLSX_TITLE if loaded else "")
+    if loaded:
+        take = (
+            f"<p class=sf-take data-no-i18n>Cost-loaded &mdash; the joint run is available, and "
+            f"its frontier is drawn at your {st.jcl_confidence * 100:g}% confidence target.</p>"
+        )
+    elif scoped is None:
+        take = (
+            "<p class=sf-take data-no-i18n>No analyzable version selected &mdash; the joint run "
+            "needs a schedule whose CPM solves.</p>"
+        )
+    else:
+        take = (
+            "<p class=sf-take data-no-i18n>No budgeted cost on this file &mdash; a run here "
+            "would be a schedule-only confidence level (SCL), never a JCL.</p>"
+        )
     head = (
-        "<div class=panel><h2>Joint Cost-&amp;-Schedule Confidence (JCL / FICSM)</h2>"
-        "<p class=muted>The probability of finishing <b>at or below a target cost AND on or "
+        f"<div class=panel{_SRA_EXPORT if loaded else ''}>"
+        + _panel_head("Joint Cost-&amp;-Schedule Confidence (JCL / FICSM)", tools=tools, prov=prov)
+        + take
+        + "<p class=muted>The probability of finishing <b>at or below a target cost AND on or "
         "before a target date</b>, from one joint Monte-Carlo (NASA NPR&nbsp;7120.5F / CEH "
         "App.&nbsp;J; the policy anchor is ~70%). The cost dimension rides the <i>same</i> "
         "sampled durations as the SSI run above — time-dependent cost burns at each "
@@ -16607,12 +16680,24 @@ screen, zoom) and hover call-outs.</p>
 <script src="/static/sra_jcl.js"></script></div>"""
 
 
-def _sra_explainers() -> str:
+def _sra_explainers(*, prov: str = "") -> str:
     """Detailed, example-rich "which model, and when" guidance for the SRA page: the two Monte-Carlo
     models the tool offers (SSI additive vs legacy multiplicative) and JCL — what each does, its
-    pros/cons, and when to reach for it. Collapsible so it never crowds the working controls."""
-    return """
-<div class=panel><h2>Which risk model should I use? (pros, cons &amp; examples)</h2>
+    pros/cons, and when to reach for it. Collapsible so it never crowds the working controls.
+
+    Panel contract (ADR-0339), with NO ⤓ EXCEL: this panel is guidance prose — it holds no figure
+    the SRA workbook could carry, so offering an export would be a lying link (rank-3). It builds
+    its own ⛶-only strip rather than taking the page's ⤓-bearing one.
+    """
+    head = _panel_head(
+        "Which risk model should I use? (pros, cons &amp; examples)",
+        tools=_shell_tools(),
+        prov=prov,
+    )
+    return f"""
+<div class=panel>{head}
+<p class=sf-take data-no-i18n>Three models compared below &mdash; SSI additive-days, the legacy
+multiplicative risk-driver Monte-Carlo, and joint cost+schedule (JCL).</p>
 <p class=muted>This page offers two schedule risk models. They answer the same question &mdash; "how
 confident am I in the finish?" &mdash; with different math. Open each below. JCL is explained too, so
 it is clear why a cost+schedule confidence is a separate thing.</p>
@@ -16758,10 +16843,18 @@ def _what_could_go_wrong_header(st: SessionState) -> str:
         ],
         "deterministic flags on the selected file",
     )
+    # ADR-0339: the h1 was always here; the DoD's *context line* was not (measured `page-lede` 0 on
+    # the pristine tree). Routing both through `_utility_takeaway` renders the same h1 byte-for-byte
+    # and adds the missing lede, so /sra stops being the one Act III page with half the rule.
     return (
-        f'<h1 class="page-takeaway" data-no-i18n>{_e(takeaway)}</h1>'
-        f'<div class="ws-kpi">{kpi}</div>'
-        f'<div class="ws-bars">{exposure_bar}{flags_bar}</div>'
+        _utility_takeaway(
+            _e(takeaway),
+            "Deterministic structural risk on the selected file first &mdash; float exposure, "
+            "constraints and the registered risks &mdash; then the Monte-Carlo models below turn "
+            "it into a finish-date confidence.",
+        )
+        + f'<div class="ws-kpi">{kpi}</div>'
+        + f'<div class="ws-bars">{exposure_bar}{flags_bar}</div>'
     )
 
 
@@ -16772,6 +16865,17 @@ def _sra_body(st: SessionState) -> str:
     the session's manual risk inputs) and renders the confidence S-curve, finish-date histogram,
     and the sensitivity tornado. Running 1000x CPM during the page render would hang on a large
     schedule, so the page opens instantly and the run happens off the page-load path.
+
+    Panel contract (ADR-0339). Two consequences of that deferred run shape the conversion:
+
+    * the provenance chip is the SINGLE-file :func:`_prov_chip` of the SRA-selected version, not a
+      series or pair chip. Every model on this page resolves its schedule through
+      :func:`_sra_selected` — the top panel exists to say so — and a first→last series chip would
+      name versions no figure on the page came from. (The mirror image of ADR-0338's decision on
+      ``/risks``, where the findings genuinely came from a pair.)
+    * four of these panels are EMPTY chart hosts until the operator runs the simulation, so their
+      takes state what the panel will draw and from what, rather than a figure the server does not
+      have. Law 2: a take that quoted a P50 before any run would be fabricating one.
     """
     iter_opts = "".join(
         f'<option value="{n}"{" selected" if n == 1000 else ""}>{n}</option>'
@@ -16798,8 +16902,22 @@ def _sra_body(st: SessionState) -> str:
         f"<p class=muted>Active file: <b>{_e(selected_key) if selected_key else '—'}</b> "
         f"{'(latest solvable version)' if st.sra_file is None else ''}</p>"
     )
+    # The page's shared contract furniture. When NOTHING solves there is no selected file, so
+    # `/export/xlsx/sra` answers 400 — the ⤓ would be a dead link, which rank 3 forbids. The whole
+    # strip degrades together with the chip: head + ⛶ only, and no panel-level data-export.
+    solvable = scoped is not None
+    prov = _prov_chip(scoped) if scoped is not None else ""
+    tools = _shell_tools(export_title=_SRA_XLSX_TITLE if solvable else "")
+    export_attr = _SRA_EXPORT if solvable else ""
+    # the SELECTOR's population (active project, exclusions dropped), not every loaded file —
+    # `len(st.schedules)` spans other projects and would not match the dropdown beside it
+    n_loaded = len(st.ordered_versions())
     top_file_panel = (
-        "<div class=panel><h2>Schedule file for the SRA</h2>"
+        f"<div class=panel{export_attr}>"
+        + _panel_head("Schedule file for the SRA", tools=tools, prov=prov)
+        + f"<p class=sf-take data-no-i18n>{n_loaded} version"
+        f"{'' if n_loaded == 1 else 's'} in this project; every SRA model on this page runs "
+        f"against {_e(selected_key) if selected_key else '—'}.</p>"
         "<p class=muted>Choose which loaded version <b>every</b> SRA model on this page runs "
         "against &mdash; the SSI Schedule Risk &amp; Opportunity model, the one-at-a-time "
         "sensitivity, and the legacy Monte-Carlo all use this same file.</p>"
@@ -16840,16 +16958,40 @@ def _sra_body(st: SessionState) -> str:
             "overrides). A duration-only run is a <i>schedule</i> confidence level &mdash; a "
             "cost-loaded file unlocks the joint cost+schedule (JCL) panel above (ADR-0269).</div>"
         )
+    n_risks = len(st.sra_risks)
+    n_over = len(st.sra_overrides)
+    # The four deferred-run panels + the two that describe pending inputs. Each head/take pair is
+    # built here so the (long) template below stays readable.
+    h_legacy = _panel_head(
+        "Legacy SRA &mdash; Monte-Carlo (multiplicative risk drivers)", tools=tools, prov=prov
+    )
+    h_means = _panel_head("What the results mean", tools=tools, prov=prov)
+    h_inputs = _panel_head("Risk inputs", tools=tools, prov=prov)
+    h_drivers = _panel_head("Risk drivers (tornado)", tools=tools, prov=prov)
+    h_cdf = _panel_head("Finish-date confidence (S-curve)", tools=tools, prov=prov)
+    h_hist = _panel_head("Finish-date distribution", tools=tools, prov=prov)
+    h_sens = _panel_head("Duration sensitivity (tornado)", tools=tools, prov=prov)
+    t_inputs = (
+        f"<p class=sf-take data-no-i18n>Global triangular {low_pct}/{ml_pct}/{high_pct}% of each "
+        f"remaining duration, with {n_over} per-activity override"
+        f"{'' if n_over == 1 else 's'}.</p>"
+    )
+    t_drivers = (
+        f"<p class=sf-take data-no-i18n>{n_risks} risk{'' if n_risks == 1 else 's'} registered "
+        "&mdash; ranked here by the mean finish slip each contributes once the simulation runs.</p>"
+    )
     # B608 is bandit's SQL heuristic tripping on HTML ("<select ..." + "drawn from the latest
     # run" in one f-string) — this is a server-rendered page template, no SQL anywhere.
     return f"""
 {import_banner}
 {top_file_panel}
-{_sra_explainers()}
-{_TS_CAPTION_MARK}{_ssi_panel(st)}
-{_correlation_matrix_panel(st)}
-{_jcl_panel(st)}
-<div class=panel><h2>Legacy SRA &mdash; Monte-Carlo (multiplicative risk drivers)</h2>
+{_sra_explainers(prov=prov)}
+{_TS_CAPTION_MARK}{_ssi_panel(st, prov=prov, tools=tools, export_attr=export_attr)}
+{_correlation_matrix_panel(st, prov=prov, tools=tools, export_attr=export_attr)}
+{_jcl_panel(st, prov=prov)}
+<div class=panel{export_attr}>{h_legacy}
+<p class=sf-take data-no-i18n>Runs on demand &mdash; 1000 iterations of the trusted CPM solver by
+default, sampling a triangular distribution.</p>
 <p class=muted>A seeded Monte-Carlo simulation samples each activity's duration from its
 distribution and recomputes the network finish through the trusted CPM solver, building a
 finish-date confidence curve. The deterministic CPM finish is marked against the distribution
@@ -16865,12 +17007,14 @@ below P50). Per-activity criticality and duration sensitivity drive the tornado.
 <button id=sraRun type=button>Run simulation</button>
 </div>
 <p id=sraStatus class=muted aria-live=polite></p></div>
-<div class=panel><h2>What the results mean</h2>
+<div class=panel{export_attr}>{h_means}
+<p class=sf-take data-no-i18n>Template sentences filled with the run's own figures &mdash; nothing
+here is AI-generated, and nothing appears until you run the simulation above.</p>
 <p class=muted>Plain-language conclusions drawn from the latest run &mdash; each card names the
 evidence figures behind it (nothing here is AI-generated; the sentences are templates filled with
 the run's own numbers). Refreshed on every run and included first in the Excel export.</p>
 <div id=sraConclusions class=sra-conclusions data-no-i18n></div></div>
-<div class=panel><h2>Risk inputs</h2>
+<div class=panel{export_attr}>{h_inputs}{t_inputs}
 <p class=muted>These uncertainty ranges feed the next simulation run. The <b>global</b> triangular
 applies to every activity's <i>remaining</i> duration (the standard "Quick Risk" screening
 approach); completed work is fixed at its actuals (no uncertainty). Per-activity 3-point overrides
@@ -16890,7 +17034,7 @@ take precedence over the global for the activities you elicit.</p>
 <button type=submit>Add override</button>
 </form>
 {_sra_overrides_table(st, scoped)}</div>
-<div class=panel><h2>Risk drivers (tornado)</h2>
+<div class=panel{export_attr}>{h_drivers}{t_drivers}
 <p class=muted>Register risks <b>once</b> in the <b>Risk / Opportunity register</b> above (the Schedule
 Risk &amp; Opportunity Analysis panel) &mdash; each carries both an additive-days (SSI) and a
 multiplicative-% (legacy) magnitude and feeds this Monte-Carlo. This tornado ranks each registered
@@ -16898,17 +17042,24 @@ risk by the mean project-finish slip it contributes: the difference between the 
 iterations the risk fired and the iterations it did not (working days), with its observed occurrence
 rate. Empty until a risk is registered.</p>
 <div id=sraRisk class=chart-host></div></div>
-<div class=panel><h2>Finish-date confidence (S-curve)</h2>
+<div class=panel{export_attr}>{h_cdf}
+<p class=sf-take data-no-i18n>Drawn from the run above &mdash; cumulative confidence by date, with
+the deterministic CPM finish marked at the percentile it lands on.</p>
 <p class=muted>Cumulative probability of finishing on or before each date, with P10/P50/P80/P90
 markers and the deterministic CPM finish annotated with the percentile it sits at.</p>
 <div id=sraCdf class=chart-host></div></div>
-<div class=panel><h2>Finish-date distribution</h2>
+<div class=panel{export_attr}>{h_hist}
+<p class=sf-take data-no-i18n>The same run's finish dates as a histogram &mdash; how many of the
+iterations landed in each date bin.</p>
 <div id=sraHist class=chart-host></div></div>
-<div class=panel><h2>Duration sensitivity (tornado)</h2>
+<div class=panel{export_attr}>{h_sens}
+<p class=sf-take data-no-i18n>Ranks the activities whose duration most drives the finish, by
+Spearman rank correlation over the run's iterations.</p>
 <p class=muted>The activities whose duration most drives the project finish (Spearman rank
 correlation), with each activity's Criticality Index and Schedule Sensitivity Index.</p>
 <div id=sraSens class=chart-host></div></div>
-<script src="/static/sra.js"></script>"""  # nosec B608 (HTML, not SQL)
+<script src="/static/sra.js"></script>
+<script src="/static/panelkit.js"></script>"""  # nosec B608 (HTML, not SQL)
 
 
 def _sra_data(

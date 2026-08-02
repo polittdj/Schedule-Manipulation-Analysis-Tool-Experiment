@@ -435,6 +435,51 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-02e — The assertion was looser than the rule, so it could not fail (ADR-0339, `/sra`)
+- **The adversarial audit found six real defects in code that had already passed a 14-revert proof
+  pass.** The reverts prove a gate can fail; they say nothing about the states nobody wrote a gate
+  for. Every one of the six lived in an unexercised SESSION STATE — no solvable version, a
+  cost-loaded file, an excluded version, a non-empty risk register. **Lesson: "I proved my tests can
+  fail" and "I tested the feature" are different claims. Enumerate the states the code branches on
+  and render each one; the branch you never rendered is where the false statement is hiding.**
+- **The most dangerous defect was a link that was correct in every state I had rendered.** `⤓ EXCEL`
+  pointed at `/export/xlsx/sra`, which is real — but that endpoint answers **400** when no version
+  solves, and in that state the whole page still offered ten of them. **Lesson: "the endpoint
+  exists" is not the rank-3 test. The test is "the endpoint answers, in THIS page's current state" —
+  a link's validity is a function of session state, not of the route table.**
+- **A finding being right about the flaw and wrong about the fix is normal; adjudicate both.** Of
+  nine audit findings, six were real, and three were not — two mirrored the page's own pre-existing
+  semantics (changing them would have been a silent behaviour change wearing a UI-conversion label),
+  and one was right in a way I had not expected: two of my own assertions compared only module
+  constants. **Lesson: re-verify every finding against the code before touching anything, and when a
+  reviewer is right about your own test being decorative, delete the assert rather than defend it.**
+- **Fourth consecutive PR whose revert pass found a gate that could not fail — and this was a new
+  shape.** `test_the_sra_takeaway_quotes_figures_the_page_renders_below_it` searched the KPI strip
+  for "the label, then the number" with `.*?` under `re.DOTALL`. That dot-star spans the **whole
+  six-card strip**, so any card's digit satisfied any label. Rewriting the headline to quote two
+  figures the page never renders left it green. **Lesson: when a rule says "this figure belongs to
+  that label", the assertion has to bind them. A regex whose wildcard can cross the boundary the
+  rule is about is not testing the rule — it is testing that both things exist somewhere.** Parse
+  the structure into pairs and compare exactly; `re.DOTALL` plus `.*?` across a repeated element is
+  the tell.
+- **The carried line-count was attributing 295 of `/sra`'s ~550 lines to a function that does not
+  render the page.** `_sra_report_blocks` builds the **`.docx` export**, not the HTML. Nobody had
+  checked which call site it had; the number had been copied forward across several handoffs.
+  **Lesson: an estimate assembled from function lengths is only as good as the claim that those
+  functions are on the path. Confirm the call site, not the symbol name.**
+- **Rank 3 ("never a dead link") was free on three routes and only bit on the fourth.** Every panel
+  on `/briefing`, `/brief` and `/risks` had its data in the page's workbook, so ⤓-count == strip
+  count automatically and the rule looked satisfied without ever being exercised. `/sra` has two
+  panels whose data is genuinely not in that workbook (guidance prose; JCL on a file with no cost
+  loading). **Lesson: a rule that has never cost you anything has never been tested. Assert the
+  SHORTFALL, not just the presence — otherwise "give everything a ⤓ for consistency" passes.**
+- **A style probe that reads `querySelector('.panel-head')` cannot tell 1 from 12.** Removing the
+  head strip from three `/sra` panels left the four-theme probe green, because another panel's head
+  was still first in the document. It is not vacuous — two CSS reverts fail it on every route — but
+  its per-route strength is "at least one head renders". **Lesson: know what a passing style test
+  actually proved. Pair it with the markup census that counts, and probe any NEW strip shape
+  separately** (here, the ⛶-with-no-⤓ strip got its own four-theme test).
+
 ### 2026-08-02d — A rule tested on one route is not tested; and the gate I wrote found a defect in my own headline
 - **The revert discipline caught a coverage hole no amount of reading would have.** Dropping
   `/risks`'s takeaway h1 — a Definition-of-Done requirement — failed **nothing**, because the

@@ -1,8 +1,8 @@
-"""Act III's panel-contract census — ADR-0337 (chapter 12) and ADR-0338 (`/risks`).
+"""Act III's panel-contract census — ADR-0337 (chapter 12), ADR-0338 (`/risks`), ADR-0339 (`/sra`).
 
 One module for the whole act, because the census discipline is the same for every route joining
-the contract and the fixtures are worth sharing. It grows a row per conversion PR; `/sra` is the
-last one still outside it.
+the contract and the fixtures are worth sharing. It grew a row per conversion PR; with `/sra` in,
+**every Act III route is inside it** and the census is complete.
 
 The numbers were measured on BOTH trees for every route: the converted one, and the pristine tree
 immediately before it (restored from a scratchpad copy, re-rendered, then put back — never
@@ -22,12 +22,20 @@ What this file pins, in order of how quietly it could rot:
 * the contract vocabulary lands where it was planned, counted rather than eyeballed;
 * the headings still read the same, so every existing substring assertion in
   `test_briefing_view.py` and `test_risks.py` survives the `_panel_head` wrap;
-* every `data-export` is a REAL workbook, fetched and checked — never a dead link.
+* every `data-export` is a REAL workbook, fetched and checked — never a dead link;
+* (ADR-0339) on `/sra`, that last rule has TEETH rather than being automatic: two of its twelve
+  converted panels deliberately carry NO ⤓ EXCEL, because their content does not ride
+  `/export/xlsx/sra`. Rank 3 is "never a dead OR LYING link", and a lying one renders fine;
+* (ADR-0339) `/sra`'s chip is the SINGLE-file chip of the SRA-selected version. Two versions are
+  loaded in these fixtures, so a series/pair chip would render `v1→v2` here and the page would be
+  claiming figures it never computed — that is what the chip test discriminates against.
 """
 
 from __future__ import annotations
 
+import io
 import re
+import zipfile
 from pathlib import Path
 
 import pytest
@@ -41,6 +49,9 @@ GOLDEN = Path(__file__).resolve().parents[1] / "fixtures" / "golden" / "project2
 BRIEFING = "/briefing"
 BRIEF = "/brief"
 RISKS = "/risks"  # chapter 11's sub-page (ADR-0338), same contract, same census discipline
+SRA = "/sra"  # chapter 11 proper (ADR-0339) — the last Act III route to join
+
+ROUTES = (BRIEFING, BRIEF, RISKS, SRA)
 
 #: both spellings of a panel opener — bare (`<div class=panel>`) and quoted
 #: (`<div class="panel brief-doc">`). Missing the second is how the first "before" census
@@ -80,7 +91,7 @@ def pages() -> dict[str, str]:
             c.post("/upload", files={"files": (f"{name}.mspdi.xml", data, "text/xml")}).status_code
             == 200
         )
-    return {route: c.get(route).text for route in (BRIEFING, BRIEF, RISKS)}
+    return {route: c.get(route).text for route in ROUTES}
 
 
 @pytest.fixture
@@ -97,16 +108,25 @@ def client() -> TestClient:
 #: `.panel` per route, BOTH spellings, measured on the pristine tree AND the converted one.
 #: `/briefing` = 2 `.panel.status-stack` header bars + the `.panel.brief-doc` + the Ask panel.
 #: `/brief` = the lead panel + 6 sections + the Ask panel.
-PANEL_CENSUS = {BRIEFING: 4, BRIEF: 8, RISKS: 8}
+#: `/sra` = 2 `.panel.status-stack` header bars + 12 converted panels + the Ask panel. The
+#: long-carried estimate said 13 panels; rendering the pristine page said **15**.
+PANEL_CENSUS = {BRIEFING: 4, BRIEF: 8, RISKS: 8, SRA: 15}
 
 #: the contract vocabulary each route NEWLY carries: heads, tool strips, ⛶, takes, chips.
-#: All five were **0** on both routes before this round (measured on the pristine tree).
+#: All five were **0** on every route before its own round (measured on the pristine tree).
 CONTRACT_CENSUS = {
     #          heads, tools, ⛶, takes, chips
     BRIEFING: (1, 1, 1, 1, 1),
     BRIEF: (7, 7, 7, 1, 7),
     RISKS: (7, 7, 7, 7, 7),
+    SRA: (12, 12, 12, 12, 12),
 }
+
+#: ⤓ EXCEL per route. Everywhere else it equals the tool-strip count; on `/sra` it is deliberately
+#: SHORT BY TWO — the "which risk model" explainer is guidance prose with no data in any workbook,
+#: and the JCL panel's sheets ride `/export/xlsx/sra` only once the file is cost-loaded (these
+#: fixtures are not). Both would otherwise ship a ⤓ that opens a workbook without their data.
+EXCEL_CENSUS = {BRIEFING: 1, BRIEF: 7, RISKS: 7, SRA: 10}
 
 
 def test_the_panel_count_is_unchanged_by_the_conversion(pages: dict[str, str]) -> None:
@@ -160,6 +180,23 @@ def test_the_headings_still_read_the_same(pages: dict[str, str]) -> None:
     # count badge is INSIDE the heading, so the wrap has to preserve the whole opening string.
     for heading in ("<h2>Risks <span", "<h2>Opportunities <span", "<h2>Risk matrix"):
         assert heading in pages[RISKS], heading
+    # `/sra` has the most existing substring assertions of the four (test_sra*.py, test_jcl*.py,
+    # test_correlation*.py all read these) — all 12 converted headings, verbatim.
+    for heading in (
+        "<h2>Schedule file for the SRA</h2>",
+        "<h2>Which risk model should I use? (pros, cons &amp; examples)</h2>",
+        "<h2>Schedule Risk &amp; Opportunity Analysis</h2>",
+        "<h2>Correlation matrix (advanced)</h2>",
+        "<h2>Joint Cost-&amp;-Schedule Confidence (JCL / FICSM)</h2>",
+        "<h2>Legacy SRA &mdash; Monte-Carlo (multiplicative risk drivers)</h2>",
+        "<h2>What the results mean</h2>",
+        "<h2>Risk inputs</h2>",
+        "<h2>Risk drivers (tornado)</h2>",
+        "<h2>Finish-date confidence (S-curve)</h2>",
+        "<h2>Finish-date distribution</h2>",
+        "<h2>Duration sensitivity (tornado)</h2>",
+    ):
+        assert heading in pages[SRA], heading
 
 
 def test_every_data_export_on_every_converted_route_is_a_real_workbook(
@@ -168,11 +205,85 @@ def test_every_data_export_on_every_converted_route_is_a_real_workbook(
     """The rank-3 law: ⤓ EXCEL renders ONLY where the panel carries a `data-export` to an endpoint
     that exists. Fetched, not assumed — a route that 404s is the failure mode this catches."""
     urls = {u for page in pages.values() for u in re.findall(r'data-export="([^"]+)"', page)}
-    assert urls == {"/export/xlsx/briefing", "/export/xlsx/brief", "/export/xlsx/risks"}, urls
+    assert urls == {
+        "/export/xlsx/briefing",
+        "/export/xlsx/brief",
+        "/export/xlsx/risks",
+        "/export/xlsx/sra",
+    }, urls
     for url in sorted(urls):
         r = client.get(url)
         assert r.status_code == 200, url
         assert r.content[:2] == b"PK", url  # a real xlsx (zip container)
+
+
+def test_the_excel_glyph_renders_only_where_the_data_really_rides_that_workbook(
+    pages: dict[str, str],
+) -> None:
+    """Rank 3 is "never a dead OR LYING link", and this is the round that makes it bite.
+
+    On `/briefing`, `/brief` and `/risks` every converted panel's data is in the page's workbook,
+    so ⤓-count == tool-strip-count and the rule costs nothing. `/sra` is the first route where it
+    does not: the "which risk model should I use?" panel is pure guidance (no figure any workbook
+    carries) and the JCL panel's sheets only exist once the file is cost-loaded. Both still get
+    the head, the ⛶ and the chip — they lose only the glyph that would lie.
+
+    So this asserts the SHORTFALL, not just the presence: a later round that hands every strip a ⤓
+    "for consistency" is exactly the regression this catches.
+    """
+    for route, page in pages.items():
+        assert page.count("data-sf-excel") == EXCEL_CENSUS[route], route
+        # …and it never renders on a panel with nowhere to send the operator. The count alone is
+        # only the NEGATIVE half of rank 3 — a ⤓ sitting on a panel that carries no `data-export`
+        # is an inert button, and panelkit.js reads the URL off the PANEL. So pair them: every
+        # panel bearing a ⤓ must also bear the export the glyph will follow.
+        assert page.count("data-sf-excel") <= page.count("sf-tools"), route
+        # split on the PANEL opener (`_PANEL` deliberately does not match `panel-head`, which a
+        # plain `"<div class=panel"` split does — that cut each chunk after the attributes)
+        for body in _PANEL.split(page)[1:]:
+            if "data-sf-excel" in body:
+                assert "data-export=" in body, (route, body[:200])
+    # (the shortfall is 12 strips - 2 = 10; asserted against the PAGE above, not against
+    # the constants — comparing two module constants here would be a tautology)
+    sra = pages[SRA]
+    # Anchor on the H2, not the words: "Joint Cost-&-Schedule Confidence" also appears in the
+    # explainer panel's own JCL <details> prose, and splitting on that matched the wrong panel.
+    for bare, marker in (
+        ("<h2>Which risk model should I use? (pros, cons &amp; examples)</h2>", "explainer panel"),
+        (
+            "<h2>Joint Cost-&amp;-Schedule Confidence (JCL / FICSM)</h2>",
+            "JCL panel on a duration-only file",
+        ),
+    ):
+        # from the heading to the head strip's closing </div>: the ⤓ must not be in it
+        head = sra.split(bare, 1)[1].split("</div>", 1)[0]
+        assert "data-sf-excel" not in head, marker
+        assert "data-sf-big" in head, marker  # but it DID keep the rest of the contract
+
+
+def test_the_sra_chip_names_the_selected_file_and_is_not_a_pair_chip(pages: dict[str, str]) -> None:
+    """`/sra`'s provenance decision, and the mirror image of ADR-0338's.
+
+    Every model on this page — SSI, OAT, JCL and the legacy Monte-Carlo — resolves its schedule
+    through `_sra_selected`; the top panel exists purely to say which file that is. So the chip is
+    the SINGLE-file `_prov_chip` of that version. `/risks` went the other way for a real reason
+    (its change findings genuinely come from a version PAIR).
+
+    TWO versions are loaded in these fixtures, so this discriminates: `_series_prov_chip` would
+    render `v1→v2 · SOURCE: Project2… → Project5…` here, naming a version no figure on the page was
+    computed from.
+    """
+    page = pages[SRA]
+    chips = re.findall(r"<span class=prov-chip[^>]*>(.*?)</span>", page, re.S)
+    assert len(chips) == CONTRACT_CENSUS[SRA][4]
+    assert len(set(chips)) == 1, f"the page runs one file; the chips disagree: {set(chips)}"
+    chip = chips[0]
+    assert chip.startswith("SOURCE: "), chip
+    assert "→" not in chip, f"a pair/series chip on a single-file page: {chip}"
+    # and it names the file the page says every model runs against
+    active = re.search(r"every SRA model on this page runs against ([^<.]+)\.", page)
+    assert active is not None
+    assert active.group(1).strip().split(".")[0] in chip, (active.group(1), chip)
 
 
 # ── the two panels the round deliberately did NOT convert ─────────────────────────────────────
@@ -189,11 +300,16 @@ def test_the_ask_panel_and_the_header_bars_stay_bare(pages: dict[str, str]) -> N
     for page in pages.values():
         ask = page.split("<div class=panel id=askPanel>", 1)[1].split("</div>", 1)[0]
         assert "panel-head" not in ask and "sf-tools" not in ask
-    bars = pages[BRIEFING].count('<div class="panel status-stack">')
-    assert bars == 2, bars
-    for chunk in pages[BRIEFING].split('<div class="panel status-stack">')[1:]:
-        head = chunk.split("</div>", 1)[0]
-        assert "panel-head" not in head and "prov-chip" not in head
+    # `/sra` carries the SAME two `_status_stack` bars (it is one of the headers that share it), so
+    # the scope note is asserted on BOTH routes rather than only the one that first raised it.
+    for route in (BRIEFING, SRA):
+        bars = pages[route].count('<div class="panel status-stack">')
+        assert bars == 2, (route, bars)
+        for chunk in pages[route].split('<div class="panel status-stack">')[1:]:
+            head = chunk.split("</div>", 1)[0]
+            assert "panel-head" not in head and "prov-chip" not in head, route
+    # the three bare panels + the twelve converted ones account for every `.panel` on /sra
+    # (15 = 12 + 3) — a relation between constants, so it is a comment, not an assert
 
 
 # ── the one that rots silently ────────────────────────────────────────────────────────────────
@@ -231,6 +347,106 @@ def test_the_ai_polished_briefing_still_carries_the_contract(
 
 
 # ── the DoD's takeaway rule ───────────────────────────────────────────────────────────────────
+
+#: routes whose takeaway carries the DoD's *context line* as well as the headline. `/briefing` is
+#: the one Act III route still rendering a bare h1 — measured, not assumed, and left alone here
+#: because it is ADR-0337's page and this round is `/sra`'s. Named so the gap is recorded rather
+#: than hidden by a loop that quietly skips it.
+LEDE_ROUTES = (BRIEF, RISKS, SRA)
+
+
+def test_every_act3_route_carries_the_dod_takeaway(pages: dict[str, str]) -> None:
+    """The W4 lesson from ADR-0338, generalized — the reason that round shipped a vacuous gate was
+    a per-route rule with a HARD-CODED route key, so dropping `/risks`'s takeaway h1 failed nothing.
+
+    A loop over `pages` is the fix: every route added to this module from here on is covered the
+    moment it joins the census, with no second edit to remember.
+    """
+    for route, page in pages.items():
+        assert 'class="page-takeaway"' in page, route
+        assert page.count('<h1 class="page-takeaway"') == 1, route
+    for route in LEDE_ROUTES:
+        assert 'class="page-lede"' in pages[route], route
+        assert pages[route].index("page-takeaway") < pages[route].index("page-lede"), route
+
+
+def test_the_sra_takeaway_quotes_figures_the_page_renders_below_it(pages: dict[str, str]) -> None:
+    """`_utility_takeaway`'s hard half, on `/sra`: every figure in the headline must be rendered
+    AGAIN further down the same page, so the number the reader meets first is verifiable by
+    reading on.
+
+    `/sra`'s headline states the critical and near-critical counts; both are re-rendered by the KPI
+    strip immediately below it. The literal `5` in "within 5 days of float" is a THRESHOLD, not a
+    measured figure — it is matched as part of the phrase rather than pulled out as a number, which
+    is precisely the distinction a naive "every digit in the h1" check would get wrong.
+
+    Each figure is bound to ITS OWN stat card. The first version of this test searched the KPI
+    strip for "the label, then the number" with a dot-star under `re.DOTALL`, which spans the whole
+    six-card strip — so ANY card's digit satisfied ANY label and the assertion could not fail. It
+    was caught by running the revert (W7): swapping the headline to quote `incomplete` and `neg`
+    left the test green. Parse the cards, then compare exactly.
+    """
+    page = pages[SRA]
+    h1 = re.search(r'<h1 class="page-takeaway"[^>]*>(.*?)</h1>', page, re.S)
+    assert h1 is not None
+    text = h1.group(1)
+    m = re.match(r"(\d+) activities drive the finish and (\d+) more are near-critical", text)
+    assert m is not None, text
+    crit, near = m.group(1), m.group(2)
+    # EVERY figure in the h1, not just the leading pair: the headline appends ", with N risks
+    # registered" whenever the register is non-empty, and a test that binds only the first two
+    # would let a fabricated third through. Anything after the threshold phrase is checked here.
+    tail = (
+        text.split("(within 5 days of float)", 1)[1] if "(within 5 days of float)" in text else ""
+    )
+    extra = re.findall(r"\d+", tail)
+    assert len(extra) <= 1, f"unbound figures in the takeaway: {extra} ({text})"
+    # the KPI strip below re-states both — parsed as (label -> value), never as a loose span
+    kpi = page.split('<div class="ws-kpi">', 1)[1].split('<div class="ws-bars">', 1)[0]
+    cards = {
+        label: value
+        for value, label in re.findall(
+            r"<div class=stat-card><div class=stat-value>(.*?)</div>"
+            r"<div class=stat-label>(.*?)</div></div>",
+            kpi,
+        )
+    }
+    assert cards, kpi[:400]
+    assert cards.get("Critical activities") == crit, (crit, cards)
+    assert cards.get("Near-critical (\u22645d)") == near, (near, cards)
+    if extra:
+        assert cards.get("Registered risks") == extra[0], (extra, cards)
+    assert page.index("page-takeaway") < page.index("ws-kpi")
+
+
+def test_no_sra_take_quotes_a_simulation_figure_before_any_run(pages: dict[str, str]) -> None:
+    """Law 2 on a page whose charts are EMPTY at render time.
+
+    Four `/sra` panels are bare chart hosts until the operator runs the Monte-Carlo (`sra.js`
+    fetches `/api/sra`; running 1000x CPM during the page render would hang the page). A take on
+    one of those panels therefore cannot quote a P50, a mean finish, or a sensitivity — the server
+    has not computed one. It has to say what the panel will draw and from what.
+
+    This pins that the four deferred panels' takes stay figure-free, which is the honest shape, and
+    that the panels really are empty at render (so the rule is not vacuous on this fixture).
+    """
+    page = pages[SRA]
+    for host in ("sraCdf", "sraHist", "sraSens", "sraRisk"):
+        assert f"<div id={host} class=chart-host></div>" in page, f"{host} is not empty at render"
+    for heading in (
+        "Finish-date confidence (S-curve)",
+        "Finish-date distribution",
+        "Duration sensitivity (tornado)",
+        "What the results mean",
+    ):
+        chunk = page.split(heading, 1)[1]
+        take = re.search(r"<p class=sf-take[^>]*>(.*?)</p>", chunk, re.S)
+        assert take is not None, heading
+        # percentile labels, day/percent quantities, ISO dates and bare 4-digit years: the shapes
+        # a fabricated simulation result would actually take. (The docstring names "a mean finish"
+        # — a DATE — so the pattern has to cover dates, not only P-labels and units.)
+        forbidden = r"\bP\d{1,2}\b|\d+(\.\d+)?\s*(days|%)|\d{4}-\d{2}-\d{2}|\b(19|20)\d{2}\b"
+        assert not re.search(forbidden, take.group(1)), (heading, take.group(1))
 
 
 def test_the_risks_takeaway_quotes_figures_the_page_renders_below_it(
@@ -278,3 +494,133 @@ def test_the_brief_takeaway_quotes_figures_the_page_renders_below_it(pages: dict
     assert f"{sections} sections" in take.group(1)
     assert f"{cited} cited statement" in take.group(1)
     assert page.index("page-takeaway") < page.index("sf-take")
+
+
+# ── the JCL panel's OTHER branch ──────────────────────────────────────────────────────────────
+
+
+def _cost_loaded_client() -> TestClient:
+    """A session holding a COST-LOADED schedule, so `/sra`'s JCL panel takes its `loaded` branch.
+
+    The golden fixtures this module otherwise uses are duration-only, so every other assertion
+    about the JCL panel here exercises the gate in its OFF state only. Built in memory the same
+    way `test_jcl_web.py` does — the panel gates on `cost_loaded_total(...) > 0`, nothing more.
+    """
+    import datetime as dt
+
+    from schedule_forensics.model.relationship import Relationship, RelationshipType
+    from schedule_forensics.model.schedule import Schedule
+    from schedule_forensics.model.task import Task
+
+    day = 480
+    tasks = tuple(
+        Task(
+            unique_id=u,
+            name=f"T{u}",
+            duration_minutes=int(d * day),
+            budgeted_cost={2: 1000.0, 3: 50.0}.get(u, 0.0),
+        )
+        for u, d in ((1, 1), (2, 10), (3, 2), (4, 1))
+    )
+    rels = tuple(
+        Relationship(predecessor_id=p, successor_id=s, type=RelationshipType.FS, lag_minutes=0)
+        for p, s in ((1, 2), (1, 3), (2, 4), (3, 4))
+    )
+    st = SessionState()
+    st.schedules["costed"] = Schedule(
+        name="J", project_start=dt.datetime(2025, 1, 6, 8, 0), tasks=tasks, relationships=rels
+    )
+    return TestClient(create_app(st))
+
+
+def test_the_jcl_panel_gains_its_excel_glyph_only_when_the_file_is_cost_loaded() -> None:
+    """The ⤓ gate on `_jcl_panel` has TWO branches and the module's goldens only render one.
+
+    On a duration-only file the JCL sheets are not in `/export/xlsx/sra` at all, so the panel ships
+    head + ⛶ + chip and NO ⤓ (asserted above, on the goldens). This is the other half: once the
+    file is cost-loaded the sheets really do ride that workbook, so the ⤓ appears and the panel
+    carries the export. Without this, a regression that stopped appending the JCL sheets to the
+    export while the panel kept its ⤓ would be invisible — a lying link, which is the exact failure
+    rank 3 exists to prevent.
+    """
+    c = _cost_loaded_client()
+    page = c.get("/sra").text
+    assert "Needs a cost-loaded schedule" not in page, "the fixture did not open the JCL gate"
+    head = page.split("<h2>Joint Cost-&amp;-Schedule Confidence (JCL / FICSM)</h2>", 1)[1]
+    strip = head.split("</div>", 1)[0]
+    assert "data-sf-excel" in strip, "the cost-loaded JCL panel lost its ⤓"
+    assert "data-sf-big" in strip
+    # …and the workbook it points at is real, and really carries the JCL sheets
+    assert 'data-export="/export/xlsx/sra"' in page
+    r = c.get("/export/xlsx/sra")
+    assert r.status_code == 200 and r.content[:2] == b"PK"
+    with zipfile.ZipFile(io.BytesIO(r.content)) as z:
+        sheets = z.read("xl/workbook.xml").decode("utf-8", "replace")
+    assert "JCL" in sheets, f"the ⤓ points at a workbook with no JCL sheet: {sheets[:400]}"
+
+
+def test_the_sra_contract_degrades_honestly_when_no_version_solves() -> None:
+    """The state where `/export/xlsx/sra` answers **400**, and therefore where a ⤓ would lie.
+
+    `_sra_selected` returns None when no loaded version's CPM solves. The export endpoint refuses
+    with 400 in exactly that case, so a panel still offering ⤓ EXCEL would be handing the operator
+    a button that errors — a dead link, which is what rank 3 forbids. The provenance chip has
+    nothing to attribute either. Both degrade together with the export attribute; the head and the
+    ⛶ stay, because enlarging a panel needs no data.
+
+    Built from a CYCLIC network — the cheapest genuinely unsolvable schedule.
+    """
+    import datetime as dt
+
+    from schedule_forensics.model.relationship import Relationship, RelationshipType
+    from schedule_forensics.model.schedule import Schedule
+    from schedule_forensics.model.task import Task
+
+    tasks = tuple(Task(unique_id=u, name=f"T{u}", duration_minutes=480) for u in (1, 2, 3))
+    rels = tuple(
+        Relationship(predecessor_id=p, successor_id=s, type=RelationshipType.FS, lag_minutes=0)
+        for p, s in ((1, 2), (2, 3), (3, 1))  # the cycle
+    )
+    st = SessionState()
+    st.schedules["cyc"] = Schedule(
+        name="C", project_start=dt.datetime(2025, 1, 6, 8, 0), tasks=tasks, relationships=rels
+    )
+    c = TestClient(create_app(st))
+
+    assert c.get("/export/xlsx/sra").status_code == 400, "the fixture is solvable after all"
+    page = c.get("/sra").text
+    assert page.count("data-sf-excel") == 0, "a ⤓ pointing at an endpoint that answers 400"
+    assert 'data-export="/export/xlsx/sra"' not in page
+    assert page.count("<span class=prov-chip") == 0, "a chip attributing figures to no version"
+    # the rest of the contract survives — a panel with no data can still be enlarged
+    assert page.count("<div class=panel-head>") == 12
+    assert page.count("data-sf-big") == 12
+    # and the JCL take states the REAL reason, not "no budgeted cost" (which would be a claim about
+    # cost loading this page cannot make when it never resolved a file at all)
+    assert "No analyzable version selected" in page
+    assert "No budgeted cost on this file" not in page
+
+
+def test_the_sra_file_take_counts_the_selector_population_not_every_loaded_file() -> None:
+    """The take beside the file picker must count the SAME versions the picker offers.
+
+    `len(st.schedules)` is every loaded file — it spans other Projects and operator-EXCLUDED
+    versions (ADR-0258/0259), neither of which `/sra` can run against. `st.ordered_versions()` is
+    the analysis population, which is what the dropdown is built from. On the goldens the two
+    numbers are identical (2 and 2), so nothing distinguishes them until a version is excluded —
+    which is exactly why this test excludes one.
+    """
+    st = SessionState()
+    c = TestClient(create_app(st))
+    for name in ("Project2", "Project5"):
+        data = (GOLDEN / f"{name}.mspdi.xml").read_bytes()
+        c.post("/upload", files={"files": (f"{name}.mspdi.xml", data, "text/xml")})
+    assert len(st.schedules) == 2
+    st.excluded_keys.add(next(iter(st.schedules)))  # the operator drops one version
+    assert len(st.ordered_versions()) == 1, "the exclusion did not narrow the population"
+
+    page = c.get("/sra").text
+    take = re.search(r"<p class=sf-take[^>]*>(.*?)</p>", page, re.S)
+    assert take is not None
+    assert "1 version in this project" in take.group(1), take.group(1)
+    assert "2 versions" not in take.group(1), take.group(1)
