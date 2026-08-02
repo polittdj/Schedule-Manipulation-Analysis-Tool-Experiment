@@ -76,13 +76,34 @@
 >   copies and re-ran: **run 1 = 1 failure, run 2 = 2 failures on the SAME pristine files**. The
 >   variance is pre-existing and independent of this change. Still do NOT chase.
 >
-> ## Next: the OTHER Phase-3 unit, untouched
-> **The DoD ledgers.** Confirmed by search this session: **no DD-line ledger exists yet** — this is
-> a BUILD, not an edit. `DESIGN-SYSTEM.md` §chart-contract says the DD line is required "on every
-> **time-axis** chart", and the ledger must therefore EXCLUDE non-time-axis charts —
-> `histogram.js`, `scatter.js`, and `sra_jcl.js`'s **COST** axis. Model it on
-> `test_axis_titles.py`: a named list per bucket, every module in exactly one, anchored to the
-> filesystem so a new chart cannot slip through.
+> ## Next: the DD-line ledger — RESEARCH DONE, ledger not yet written
+> **No DD-line ledger exists** (searched `tests/` — confirmed). This is a BUILD. The population was
+> censused this session **from evidence, not grep**: every chart DECLARES its own X axis in its
+> `SFChartFrame.axisTitles` call, so the 28 call sites were parsed and split by `xLabel`. Start
+> from this table, not from a fresh guess:
+>
+> | bucket | members (by call site) |
+> | --- | --- |
+> | **TIME-AXIS — the rule applies** | `cei` (Month) · `curves` (Month) · `drift` (Forecast finish date) · `margin_dashboard` ×2 (Status date) · `scurve` (Month) · `sra` ×2 (Finish date) · `sra_jcl` L136 (Finish date) · `sra_ssi` ×2 (Finish date) · `resources` (Period … commencing) |
+> | **NOT time-axis — EXCLUDE** | `histogram` (Total float band) · `scatter` (Total float) · **`sra_jcl` L189 (EAC — the COST axis)** · `trend_drill` (Schedule-quality metric) · `wbs` (WBS branch) · `volatility` L367 (Versions on path) |
+> | **VERSION-axis — EXCLUDE, and this one is NOT in the brief** | `margin` · `trend` ×5 · `volatility` L167/L208/L251 (all "Schedule version") |
+> | **needs per-call classification** | `performance.js` L472 — its `opts` is a VARIABLE passed by the caller, so its xLabel cannot be read statically like the other 27 |
+>
+> **The version-axis category is the finding.** The brief named three exclusions; there are **nine
+> more**, and the version-axis family is the interesting one: a "Schedule version" axis is ordered
+> by time but CATEGORICAL — one tick per loaded file — so a DD line has no position on it (every
+> version has its OWN data date). Excluding it is a judgment the ledger must state, not assume.
+>
+> **Two more measured facts before writing the ledger:**
+> 1. **There is NO shared DD-line helper.** `cei.js` (L147) and `curves.js` (L339) each hand-roll a
+>    dashed marker, and the label they render is lowercase **`"data date"`** — not the
+>    `DD` / `DATA DATE` `DESIGN-SYSTEM.md` §chart-contract specifies. So this is the SVG-caption
+>    situation before ADR-0298: several implementations, no convention. Decide helper-vs-ledger
+>    FIRST — and mind the ADR-0340 lesson that WHERE a helper lives is a load-order question.
+> 2. **Four time-axis charts have NO data-date mention at all** (`grep -ci`): `sra.js`,
+>    `sra_jcl.js`, `sra_ssi.js`, `resources.js`. Those are the candidate PENDING bucket — but
+>    VERIFY each by rendering it before recording it as a gap (a grep count is not a render, and
+>    "74 sites" is already on this handoff's do-not-trust list for exactly that reason).
 >
 > Behind: **Phase 4 engine** (`import_notes` propagation · the 3 falsy-zero rows · CC-01's rendering
 > half — "74 sites" is an approximate grep, RE-DERIVE it · SRA-LEGACY · V3) · **Phase 5** monolith
