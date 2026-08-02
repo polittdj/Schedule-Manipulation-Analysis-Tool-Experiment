@@ -153,6 +153,9 @@
       }));
       var scroller = el("div", { class: "hist-drill-scroll" });
       var table = el("table", { class: "hist-drill-table" });
+      // B1's table caption (ADR-0326 / ADR-0340): the row unit. The heading above carries the
+      // count and the source file; the caption names what ONE ROW of this table is.
+      SFGantt.tableCaption(table, "Activities behind " + label + " — one row per activity");
       var thead = el("thead");
       var hr = el("tr");
       fields.forEach(function (f) { hr.appendChild(el("th", { text: f.label })); });

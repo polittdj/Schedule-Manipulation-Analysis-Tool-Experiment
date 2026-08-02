@@ -440,9 +440,18 @@ def test_the_embedded_json_payloads_are_byte_frozen(pages: dict[str, str]) -> No
 PAGE_SCRIPTS = {
     "path.js": "f04f15d478b9f1181e28f963c8181745",
     "driving_path.js": "027a0d438a9337e408e7fb1997a24d44",
-    "driving_tiers.js": "f44f6d35ce10798aafb7ed298dcd7570",
+    # DELIBERATE re-baseline (ADR-0340): the tier table gained its B1 <caption class="ch-atd">
+    # via SFGantt.tableCaption. The diff is ONE call plus its comment, inserted between the
+    # `el("table", …)` and the `<thead>` build; no axis, tick, bar or column logic is touched.
+    # f44f6d35ce10798aafb7ed298dcd7570 → the digest below.
+    "driving_tiers.js": "b1ce5866859110bb86d374e26c3d1cc8",
     "path_evolution.js": "f901da4e52b223174f5d3fed6ebbdeda",
-    "whatif.js": "b1b911b3cb0c2c87f02aa8e7f4f6d533",
+    # DELIBERATE re-baseline (ADR-0340): both counterfactual grids gained a B1 caption, and the
+    # text is per-table (carried in each `initTable` config) because the two grids share a column
+    # header set and are otherwise indistinguishable. Same shape as driving_tiers above — one
+    # call plus two config lines; no rendering logic moved.
+    # b1b911b3cb0c2c87f02aa8e7f4f6d533 → the digest below.
+    "whatif.js": "99759c4bc170b644367b4dd99fb071b4",
     # DELIBERATE re-baseline (ADR-0329, batch 3c-i): volatility.js's four axis charts (churn /
     # flow / area / dwell) joined the shared caption helper, two hand-rolled quasi-captions
     # retired into it, and the dwell count labels + rotated version ticks now yield to the
@@ -458,7 +467,16 @@ PAGE_SCRIPTS = {
     # IIFE; NO drawing code moved — gantt.js contains zero axisTitles call sites (asserted by
     # the census below) and buildTierScale / paintGrid / gridLines / timeTiers are untouched, so
     # no caption, axis or tick can have moved with it. 9fa3a69245deec12de6f1d71698a24b0 → below.
-    "gantt.js": "d31341313ceaddb852f9e10c73718c52",
+    # DELIBERATE re-baseline (ADR-0340): gantt.js gained `tableCaption`, the ONE implementation of
+    # B1's table-caption mechanism, plus its one export-object entry. The diff is PURELY ADDITIVE
+    # (zero removed lines — verified with `git diff`): a new function and a new key. No existing
+    # function is touched, so buildTierScale / paintGrid / gridLines / timeTiers still cannot have
+    # moved a caption, axis or tick — and the 28-call-site census below still passes unchanged,
+    # which is the independent check on that claim. It lives HERE rather than in chartframe.js
+    # because the layout emits chartframe.js after </main> while every captioned table is built by
+    # a body script; whatif.js captions at parse time, so the SVG helper's home would have been
+    # undefined at that instant. d31341313ceaddb852f9e10c73718c52 → below.
+    "gantt.js": "ced1b1939ecdb061ffe523c70562e0b7",
 }
 
 #: all 28 ``SFChartFrame.axisTitles(`` call sites, frozen with their ARGUMENT OBJECT — the caption

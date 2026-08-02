@@ -82,9 +82,11 @@ toolbar as chips/selects, and persist.
 - One coordinate treatment: dotted reading grid, hairline axes, 8–9px mono tick labels.
 - **One caption convention per medium (ADR-0298/0326):** SVG charts caption axes via
   `SFChartFrame.axisTitles` (`.ch-at`, corner placement); DOM visuals caption natively —
-  a data table carries `<caption class="ch-atd">`, and a Gantt-family timescale carries
-  the ONE slot row `buildTierScale` renders from the page's `data-ts-caption` marker.
-  Same token, same case, same color voice; only the mechanism follows the medium.
+  a data table carries `<caption class="ch-atd">` via `SFGantt.tableCaption`, and a
+  Gantt-family timescale carries the ONE slot row `buildTierScale` renders from the page's
+  `data-ts-caption` marker. Both DOM mechanisms live in `gantt.js` because it is head-loaded
+  and every captioned table is built by a body script (ADR-0340); no other module may name
+  `.ch-atd`. Same token, same case, same color voice; only the mechanism follows the medium.
 - Data date: always a red vertical line labeled `DD` / `DATA DATE`, on every
   time-axis chart, no exceptions.
 - Series semantics: baseline = muted dashed · current/actual = accent solid ·

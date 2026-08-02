@@ -120,6 +120,10 @@
 
       var scroller = el("div", { class: "hist-drill-scroll" });
       var table = el("table", { class: "hist-drill-table" });
+      // B1's table caption (ADR-0326 / ADR-0340). Per-table text: the two grids carry the SAME
+      // column headers and sit on the same page, so the caption is the only thing that says
+      // which direction off/onto the critical path a given grid describes.
+      SFGantt.tableCaption(table, cfg.caption);
       var thead = el("thead");
       var hr = el("tr");
       fields.forEach(function (f) { hr.appendChild(el("th", { text: f.label })); });
@@ -150,6 +154,7 @@
     dataId: "whatifData",
     colsKey: "sf-whatif-cols",
     countNoun: "change(s)",
+    caption: "Activities whose own changes took them OFF the critical path — one row per activity",
     exportPath: "/export/xlsx/whatif",
     baseCols: [
       { key: "unique_id", label: "UID", on: true },
@@ -165,6 +170,7 @@
     dataId: "whatifAddedData",
     colsKey: "sf-whatif-added-cols",
     countNoun: "activity(ies)",
+    caption: "Activities ADDED to the critical path between the two versions — one row per activity",
     exportPath: "/export/xlsx/whatif-added",
     baseCols: [
       { key: "unique_id", label: "UID", on: true },

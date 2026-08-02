@@ -50,6 +50,9 @@
 
     var table = el("table");
     table.className = "scorecard-table";
+    // B1's table caption (ADR-0326 / ADR-0340): the rows are confidence levels, not activities —
+    // the one table in this family whose row unit is a percentile, so naming it matters most.
+    SFGantt.tableCaption(table, "Schedule reserve by confidence level — one row per percentile");
     var hr = el("tr");
     ["Confidence", "Finish date", "Reserve needed"].forEach(function (h) {
       var th = el("th", h);
