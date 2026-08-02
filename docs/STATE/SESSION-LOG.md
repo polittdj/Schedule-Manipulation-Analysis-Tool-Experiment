@@ -10497,3 +10497,71 @@ the briefs + state rotation) earlier today.
   re-baseline did not match the `bc18307…`-style ELLIPSIS forms quoted in the ADR, HANDOFF and this
   log, so three docs briefly carried a digest that no file had. Corrected to `d313413…`. Abbreviated
   hashes in prose do not get updated by a hash-for-hash substitution — grep for the prefix too.
+
+## 2026-08-01l — Phase 1b: the launcher claims the port before it serves (ADR-0334, v1.0.150)
+
+- **THE OPERATOR MEASUREMENT ARRIVED, and it decided the fix.** Banked verbatim in
+  `OPERATOR-REQUESTS.md` (OR-06) and **committed on its own first** (`3eb317b`) before any code, so
+  a context exhaustion could not lose a datum that took three runs on the deployed box to obtain.
+  **ONE PID:** 1st launch ⇒ listener 18664 (18664 + 39740, both 19:33:17); closing only the browser
+  leaves 18664 alive; 2nd launch ⇒ **still 18664, same 19:33:17, process list byte-identical**. The
+  second launch produced no listener and **no fourth process even transiently** — it exited mute and
+  its already-armed browser timer opened onto the OLD server. Branch ONE; `SO_REUSEADDR`
+  double-binding did NOT occur, so the bind-error-reporter idea would have fixed nothing.
+- **Two operator runs, one discarded — and saying so mattered.** The first run showed the server
+  gone 25 s after the browser closed, which contradicts `idle_grace=600`. Rather than build on it,
+  the contradiction was checked against the code (no `beforeunload`/`pagehide` shutdown path exists;
+  the only fast stop is the Quit button), the run was called invalid, and the operator — who had
+  independently said "I think I did it wrong" — re-ran it. The second run matches the code exactly.
+  **A measurement that contradicts the source is a measurement to re-take, not a finding.**
+- **This is the SERVER-side half of OR-06.** The stale fields were never only browser memory, which
+  is why the symptom survived ADR-0324 and ADR-0332: the *server itself* is the previous session.
+- Fix: `claim_port()` before the browser timer and before the bind — connect-probe → `/api/whoami`
+  → not-us ⇒ refuse visibly · ours ⇒ `POST /api/shutdown`, poll 20 s → released ⇒ serve fresh ·
+  still held ⇒ refuse visibly naming the pid. **The browser timer is NOT moved after `serve_fn`**
+  (it blocks for process life); **connect-probe, never bind-probe** (Windows lets a second bind
+  succeed against a served port). New `/api/whoami` is deliberately not `/api/heartbeat`, and
+  `_liveness` exempts it — a probe must not refresh the beat of the process it is replacing.
+- **LAW 1 CATCH, and the more important half of a bandit finding.** B310 fired on the new `urlopen`.
+  The lint was trivially silenceable; the underlying hazard was not: urllib's DEFAULT opener reads
+  the machine's proxy settings, so on a corporate-managed Windows laptop (the operator's is
+  NASA-managed) even `http://127.0.0.1:8321` can be routed through the company proxy — the probe
+  would be refused (a live predecessor misread as "not ours") or **sent off-machine**. Fixed with an
+  empty `ProxyHandler`, the same hardening `ai/ollama.py` already applies. **A security linter
+  pointing at a line is worth reading as a question, not a nuisance.**
+- **A gate written from a wrong model of urllib, caught and corrected.** The first proxy assertion
+  required a present-but-empty `ProxyHandler` and failed on correct code. `ProxyHandler({})`
+  installs no `<scheme>_open` methods, so `OpenerDirector.add_handler` never registers it — a
+  hardened opener carries NO `ProxyHandler` at all. The gate now asserts **absence of a populated
+  one** and documents why. Proved able to fail under `HTTP_PROXY=http://corp:8080`.
+- **Nine new gates, each proved able to fail by reverting the CALLER** (API kept, so the failure is
+  behavioural): removing the claim from `main` ⇒ `assert ['browser','serve'] ==
+  ['claim','browser','serve']` — **the measured bug verbatim**; dropping the middleware exemption ⇒
+  "the probe refreshed the predecessor's heartbeat"; standing down a stranger ⇒ "a stranger's port
+  was sent a shutdown request". `tests/test_launcher_single_instance.py` + `test_launcher.py`:
+  **21 passed**. Deliberately NOT a Linux port test — bind semantics differ per platform, so the
+  **decision logic** is what is pinned; exactly one test touches a real socket.
+- **Self-inflicted, recorded so it is not repeated:** `git checkout src/schedule_forensics/launcher.py`
+  was used to undo a temporary prove-able-to-fail mutation and **discarded all the unstaged real
+  work in that file**. Recovered from a scratchpad copy and re-applied. **Never `git checkout` a
+  file that carries unstaged work — `cp` from a scratchpad copy.**
+- **Scope held deliberately:** the disk-cache half of Phase 1b (clear on clean shutdown + atexit,
+  never at launch, plus size/age caps) was NOT done. It is a CUI-at-rest policy decision with a real
+  cross-session warm-start trade-off and deserves its own round with the operator's intent
+  confirmed, rather than riding a change whose evidence is a launcher measurement. Carried in
+  HANDOFF ⇢ NEXT as item 1, with the implementation points named.
+- Statics: ruff clean · format clean (452) · mypy --strict clean (117) · **bandit EXIT=0** (it was
+  EXIT=1 mid-round — a real gate failure, fixed at the cause). Version bumped to **1.0.150** BEFORE
+  the background suite; wheel + nine installers regenerated once. **The full-suite run is IN FLIGHT
+  at this line — its result lands in the next append.**
+
+## 2026-08-01l (append) — the Phase 1b full-suite result, read on the FINAL tree
+
+- **Full suite `python -m pytest -q`: 3276 passed, 2 skipped, 0 failed in 17m39s.** Read from the
+  command's own summary line. Test count up by exactly **11** vs the previous round's 3267
+  collected — the 9 gates in `tests/test_launcher_single_instance.py` plus the 2 `/api/whoami`
+  contract tests in the same file.
+- **Zero failures, including the carried `/analysis` focus→tip intermittent** (passed this run;
+  still adjudicated either way — a green run is not evidence it is fixed).
+- The suite ran against exactly the tree being committed: version bumped to 1.0.150 first, wheel +
+  nine installers regenerated once, statics re-run foreground, and no source touched afterwards.

@@ -535,6 +535,49 @@ those fixed defects in earlier "closed" fixes:
   football's quadrant %-labels). Picking remove for the football would have silently deleted
   two quadrant shares from every render.
 
+### 2026-08-01l — Wait for the measurement, then let it kill your theory (Phase 1b / ADR-0334)
+
+- **Blocking on one measurement for two sessions was the right call, and the data proves it.** The
+  two candidate mechanisms — "the second launch died mute" vs "Windows let two servers bind the
+  same port" — needed OPPOSITE fixes. The measurement showed the second launch produced **no
+  listener and no process at all**, killing the double-bind theory outright. A bind-error reporter,
+  the obvious fix under the other theory, would have changed nothing. **When two hypotheses imply
+  different fixes, the cost of guessing is not "a bit of rework" — it is shipping something that
+  looks like a fix and is not.**
+- **A measurement that contradicts the source is a measurement to re-take.** The operator's first
+  run showed the server dying 25 s after the browser closed. That contradicts `idle_grace=600`, so
+  before building on it the code was checked for any faster stop path (there is none — only the
+  Quit button). The run was called invalid and re-run; the second matched the code exactly. Had the
+  first been accepted, the conclusion would have been "the tool shuts down cleanly, there is no
+  bug" — the precise opposite of the truth.
+- **Bank a hard-won datum on its own, before the code that uses it.** The measurement took three
+  attempts on a machine only the operator can reach. It was committed alone (docs-only) before any
+  implementation started, so no later failure — running out of context, a bad merge, a mistaken
+  `git checkout` — could cost another round trip to a human. **Irreplaceable inputs get their own
+  commit.**
+- **Read a security linter as a question, not a nuisance.** Bandit's B310 on a new `urlopen` was
+  trivially silenceable with a `# nosec`. Asking *why* it flags urlopen surfaced a genuine Law 1
+  hazard: urllib's default opener reads system proxy settings, so on a corporate-managed laptop
+  even a `127.0.0.1` request can be routed through the company proxy — refused, or sent
+  off-machine. The codebase had already solved this once in `ai/ollama.py`; the new code had
+  silently re-introduced it. **The lint was noise; the reason behind it was not.**
+- **A test that fails on correct code is a broken model, not a broken system — fix the model.** The
+  first proxy gate asserted the opener contained a present-but-empty `ProxyHandler`. It failed
+  against the correct implementation. `ProxyHandler({})` installs no `<scheme>_open` methods, so
+  `OpenerDirector.add_handler` never registers it: a hardened opener carries **no** `ProxyHandler`
+  at all, and absence IS the property. The temptation is to delete the inconvenient assertion;
+  the right move is to learn the API and assert the true property, with the reasoning written down
+  so the next reader does not re-make the wrong assumption.
+- **NEVER `git checkout <file>` to undo a temporary test mutation.** Reverting a prove-able-to-fail
+  edit that way discarded every unstaged change in `launcher.py` — the entire round's
+  implementation. Recovered only because a scratchpad copy existed. **`cp` from a scratchpad copy;
+  `git checkout` is for files with nothing of yours in them.**
+- **Deferring half a phase is a decision to state, not a scope to quietly shrink.** The disk-cache
+  half of Phase 1b was held back because it is a CUI-at-rest policy call with a real cross-session
+  warm-start trade-off — it needs the operator's intent, not an inference from a launcher
+  measurement. It is named in HANDOFF ⇢ NEXT with its implementation points, so deferral costs
+  nothing but is visible to everyone.
+
 ### 2026-08-01k — Optimise the metric before the code, and check the pump you were told about (Phase 2 / ADR-0333)
 
 - **The unit you measure decides whether you can see your own fix.** The obvious meter for a
