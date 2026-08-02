@@ -12,6 +12,18 @@ from schedule_forensics import launcher, net_guard
 from schedule_forensics.logging_redaction import CUIJsonFormatter, CUIRedactingFilter
 
 
+@pytest.fixture(autouse=True)
+def atexit_registry(monkeypatch: pytest.MonkeyPatch) -> list[Any]:
+    """Capture what ``launcher.main`` registers with ``atexit`` instead of letting it reach the
+    real registry. Every ``main()`` call arms a backstop bound to that test's throwaway cache (and
+    to any injected Ollama manager); left alone they all fire at interpreter exit, long after the
+    tmp dirs are gone and, for a deliberately-raising fake manager, printing a traceback that has
+    nothing to do with the test that produced it."""
+    registered: list[Any] = []
+    monkeypatch.setattr(launcher.atexit, "register", lambda fn: registered.append(fn) or fn)
+    return registered
+
+
 class _ImmediateTimer:
     """A threading.Timer stand-in that runs the callback synchronously on start()."""
 
@@ -187,6 +199,84 @@ def test_main_fails_closed_before_serving_when_egress_guard_trips(
             timer=_ImmediateTimer,
         )
     assert served == [] and opened == []  # fail closed: refused before any side effect
+
+
+def test_main_clears_the_disk_cache_when_serving_ends() -> None:
+    """ADR-0335. The `finally` is the authoritative clear: it runs only after uvicorn has drained
+    every in-flight request, so nothing can be written to disk after it. `_trigger_shutdown`
+    fires earlier (while requests are still draining) and the lifespan hook covers SIGTERM —
+    this one covers the ordinary return from serve()."""
+    from schedule_forensics.engine.cache import get_default_cache
+
+    cache = get_default_cache()
+
+    def serve_and_cache(app: Any, **kwargs: Any) -> None:
+        cache.put_summary("mid-session", '{"v":1}')  # the session did some work
+
+    assert launcher.main(port=45681, open_browser=False, serve=serve_and_cache) is None
+    assert cache.get_summary("mid-session") is None  # nothing of the operator's is left on disk
+
+
+def test_main_registers_an_atexit_clear_bound_to_this_launchs_cache(
+    atexit_registry: list[Any],
+) -> None:
+    """The backstop must be bound to the cache INSTANCE, never a lazy `get_default_cache()` at
+    exit time: `$SF_CACHE_DIR` is resolved at construction, so a late lookup would resolve to a
+    different database than the one this session actually used — in the test suite, the
+    developer's real ~/.cache/schedule-forensics."""
+    from schedule_forensics.engine.cache import get_default_cache
+
+    launcher.main(port=45682, open_browser=False, serve=lambda *a, **k: None, manage_ollama=False)
+
+    cache = get_default_cache()
+    cache.put_summary("post-quit", '{"v":1}')  # something survived the graceful clear
+    assert cache.clear in atexit_registry, "no atexit backstop bound to this launch's cache"
+    for fn in atexit_registry:
+        fn()
+    assert cache.get_summary("post-quit") is None  # the backstop emptied THIS cache
+
+
+def test_the_disk_cache_is_cleared_even_if_stopping_ollama_blows_up() -> None:
+    """Law 1 goes first in the `finally`: a manager that raises must not cost us the CUI clear.
+    The reverse order would leave parsed schedule content on disk whenever Ollama misbehaved."""
+    from schedule_forensics.engine.cache import get_default_cache
+
+    class _ExplodingManager:
+        def shutdown(self) -> None:
+            raise RuntimeError("ollama refused to stop")
+
+    cache = get_default_cache()
+
+    def serve_and_cache(app: Any, **kwargs: Any) -> None:
+        cache.put_summary("mid-session", '{"v":1}')
+
+    with pytest.raises(RuntimeError, match="refused to stop"):
+        launcher.main(
+            port=45683, open_browser=False, serve=serve_and_cache, ollama=_ExplodingManager()
+        )
+    assert cache.get_summary("mid-session") is None
+
+
+def test_a_refused_launch_never_touches_the_predecessors_cache(
+    atexit_registry: list[Any],
+) -> None:
+    """ADR-0334 + ADR-0335 together. When `claim_port` refuses (a live predecessor kept the
+    port), this process is not the session that owns the cache — the predecessor still is, and it
+    is still using it. Registering the backstop before the claim would wipe a running session's
+    cache from a launch that never served anything."""
+    from schedule_forensics.engine.cache import get_default_cache
+
+    cache = get_default_cache()
+    cache.put_summary("predecessors", '{"v":1}')
+
+    def refuse(host: str, port: int) -> str:
+        raise launcher.PortUnavailable("still held")
+
+    with pytest.raises(launcher.PortUnavailable):
+        launcher.main(port=45684, open_browser=False, serve=lambda *a, **k: None, claim=refuse)
+
+    assert atexit_registry == []  # nothing armed
+    assert cache.get_summary("predecessors") == '{"v":1}'  # the running session kept its cache
 
 
 def test_main_can_skip_ollama_management() -> None:

@@ -103,6 +103,68 @@ def test_wipe_clears_the_on_disk_cache(sc: tuple[SessionState, TestClient]) -> N
     assert st.schedules == {}
 
 
+def test_a_graceful_stop_takes_the_on_disk_cache_with_it(
+    sc: tuple[SessionState, TestClient],
+) -> None:
+    """ADR-0335: the operator's rule is that nothing of theirs stays on the disk once the tool is
+    not running. Every graceful exit funnels through ``_trigger_shutdown`` — the in-page Quit
+    control, ``POST /api/shutdown`` (including a launcher standing its predecessor down), and the
+    browser-gone watchdog."""
+    _st, client = sc
+    payload = _mspdi("Quitting", "2025-01-10T00:00:00")
+    client.post("/upload", files=[("files", ("v.xml", payload, "text/xml"))])
+    ch = content_hash(payload)
+    assert get_default_cache().get_schedule(ch) is not None  # the parse was cached
+
+    client.post("/api/shutdown")
+    assert get_default_cache().get_schedule(ch) is None  # a quit leaves no CUI on disk
+
+
+def test_an_import_finishing_after_quit_cannot_re_populate_the_cache(
+    sc: tuple[SessionState, TestClient], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The measured hole that ``ScheduleCache.seal()`` closes (ADR-0335).
+
+    uvicorn's graceful shutdown keeps serving until in-flight requests drain, so an import that
+    began before the operator hit Quit finishes AFTER the clear and used to write the schedule it
+    had just parsed straight back to disk. ADR-0263's ``wipe_gen`` does not cover this: only
+    ``/session/wipe`` bumps that generation, never a shutdown. Here the quit lands mid-parse,
+    which is exactly the ordering that was reproduced end-to-end against a real server."""
+    st, client = sc
+    real = app_module._parse_upload
+
+    def quit_midway(name: str, data: bytes) -> object:
+        parsed = real(name, data)
+        app_module._trigger_shutdown(client.app)  # the operator hits Quit while this import runs
+        return parsed
+
+    monkeypatch.setattr(app_module, "_parse_upload", quit_midway)
+    payload = _mspdi("InFlight", "2025-01-10T00:00:00")
+    client.post("/upload", files=[("files", ("v.xml", payload, "text/xml"))])
+
+    assert st.schedules != {}  # the import itself still completed — the session is unharmed
+    assert get_default_cache().get_schedule(content_hash(payload)) is None
+
+
+def test_the_asgi_lifespan_shutdown_clears_the_cache() -> None:
+    """The hook that covers SIGTERM — and the only one that does (ADR-0335).
+
+    Measured with a real server in a subprocess: uvicorn handles SIGTERM gracefully, but
+    ``capture_signals`` restores the original handler and re-raises the captured signal, so the
+    process dies of the default SIGTERM disposition *before* ``serve()`` returns — the launcher's
+    ``finally`` and the ``atexit`` backstop both never run (exit ``-15``, no hooks). SIGINT
+    escapes only because ``serve()`` deliberately suppresses ``KeyboardInterrupt``. Without this
+    hook, an operator on macOS or Linux who logs out or shuts the machine down — a normal way to
+    finish for the day — left the whole parsed-schedule cache on the disk.
+    """
+    payload = _mspdi("Lifespan", "2025-01-10T00:00:00")
+    ch = content_hash(payload)
+    with TestClient(create_app(SessionState())) as client:  # `with` is what runs the lifespan
+        client.post("/upload", files=[("files", ("v.xml", payload, "text/xml"))])
+        assert get_default_cache().get_schedule(ch) is not None
+    assert get_default_cache().get_schedule(ch) is None  # torn down → nothing left on disk
+
+
 def test_portfolio_reads_the_in_memory_summary_cache(
     sc: tuple[SessionState, TestClient], monkeypatch: pytest.MonkeyPatch
 ) -> None:

@@ -23,7 +23,7 @@ import re
 import tempfile
 import threading
 import time
-from collections.abc import Callable, Sequence
+from collections.abc import AsyncIterator, Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, cast
@@ -2286,7 +2286,7 @@ def create_app(
     # reached the runtime — the app refuses to build rather than serve with a leak path.
     configure_logging()
     assert_local_only()
-    app = FastAPI(title="POLARIS", docs_url=None, redoc_url=None)
+    app = FastAPI(title="POLARIS", docs_url=None, redoc_url=None, lifespan=_cui_lifespan)
     app.state.session = state if state is not None else SessionState()
     app.state.auto_shutdown = auto_shutdown
     app.state.idle_grace = idle_grace
@@ -20842,14 +20842,66 @@ switch <b>Ollama</b> off), then sign out and back in.</p>
 <script src="/static/settings.js"></script>"""
 
 
+@contextlib.asynccontextmanager
+async def _cui_lifespan(app: FastAPI) -> AsyncIterator[None]:
+    """Clear the on-disk CUI cache as the ASGI app is torn down (ADR-0335).
+
+    This is the hook that covers **SIGTERM**, and it is the only one that does. Measured, with a
+    real server in a subprocess: uvicorn does handle SIGTERM gracefully, but ``capture_signals``
+    restores the original handler and then re-raises the signal it captured, so the process dies
+    of the default SIGTERM disposition *before* ``serve()`` returns — ``launcher.main``'s
+    ``finally`` and the ``atexit`` backstop both never run (exit ``-15``, no hooks). SIGINT
+    escapes that fate only because ``serve()`` deliberately suppresses ``KeyboardInterrupt``.
+
+    | exit | lifespan | `finally` | `atexit` |
+    | --- | --- | --- | --- |
+    | Quit / `POST /api/shutdown` / watchdog / SIGINT | ✓ | ✓ | ✓ |
+    | **SIGTERM** (logout, `kill`, system shutdown) | **✓** | ✗ | ✗ |
+    | SIGKILL / `TerminateProcess` (Task Manager) | ✗ | ✗ | ✗ — :meth:`ScheduleCache.prune` |
+
+    Without this, an operator on macOS or Linux who simply logs out or shuts the machine down —
+    a normal way to finish for the day — left the whole parsed-schedule cache on disk. Nothing
+    is awaited before the clear: on a double Ctrl+C uvicorn sets ``force_exit`` and skips the
+    ASGI shutdown event, and this body then runs only via task cancellation.
+    """
+    try:
+        yield
+    finally:
+        cache = get_default_cache()
+        cache.seal()  # the app is going away; nothing may write to disk from here on
+        cache.clear()
+
+
 def _trigger_shutdown(app: FastAPI) -> None:
-    """Request a graceful server stop, once (idempotent). No-op if no server is wired."""
+    """Request a graceful server stop, once (idempotent). No-op if no server is wired.
+
+    ADR-0335: a stop is also when the on-disk CUI cache (parsed schedule content + derived
+    metrics) leaves the disk. Every graceful exit funnels through here — the in-page Quit
+    control, ``POST /api/shutdown`` (including the stand-down a new launcher sends its
+    predecessor, ADR-0334), and the browser-gone watchdog — so this is the one place that covers
+    them all. ``launcher.main`` clears again in its ``finally`` and registers an ``atexit``
+    backstop; this site is what covers ``web.app.run()``/``serve()`` used without the launcher.
+
+    Order matters, and all three steps are deliberate:
+
+    1. **Seal first.** uvicorn keeps serving until in-flight requests drain, so an import that
+       started before Quit finishes *after* this clear and writes the schedule it just parsed
+       back to disk (measured). ADR-0263's ``wipe_gen`` does not cover a shutdown — only
+       ``/session/wipe`` bumps it. Sealing is instantaneous and closes that window for good.
+    2. **Then request the stop**, so the listening socket starts closing immediately: a
+       predecessor being stood down has only ``launcher._HANDOVER_TIMEOUT`` seconds to release
+       the port before the replacement launch refuses to start.
+    3. **Then clear**, off the critical path.
+    """
     if app.state.shutting_down:
         return
     app.state.shutting_down = True
+    cache = get_default_cache()
+    cache.seal()
     callback = app.state.request_shutdown
     if callback is not None:
         callback()
+    cache.clear()
 
 
 def _is_idle(browser_seen: bool, idle_seconds: float, grace: float) -> bool:
