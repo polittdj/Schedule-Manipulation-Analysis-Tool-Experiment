@@ -81,6 +81,29 @@ window.SFGantt = (function () {
     return { years: years, quarters: quarters, months: months };
   }
 
+  // B1's TABLE mechanism (ADR-0326), promoted here to its ONE implementation (ADR-0340). The
+  // DOM medium's answer to SFChartFrame.axisTitles: an HTML visual cannot carry an SVG <text>,
+  // so a table names its own dimensions with a native <caption class="ch-atd"> — announced by
+  // screen readers as the table's name, in flow for print, styled by the same
+  // --sf-fs-axis-title token the SVG captions read.
+  //
+  // Why it lives HERE and not in chartframe.js, which owns the SVG helper: the layout emits
+  // chartframe.js AFTER <main>, while every captioned table is built by a script inside the
+  // body. whatif.js renders SYNCHRONOUSLY at parse time, so a window.SFChartFrame helper would
+  // still be undefined at the moment it draws — the caption would silently never appear, and a
+  // source-level test would happily pass. gantt.js is head-loaded, already renders the OTHER B1
+  // caption mechanism (the timescale slot below), and is already the shared DOM utility these
+  // very drill tables call for fmtMDY. One head-loaded home, no load-order hazard.
+  //
+  // insertBefore(firstChild), not appendChild: <caption> must be the table's FIRST child. Doing
+  // it in the helper means a caller cannot get it wrong by calling late.
+  function tableCaption(table, text) {
+    if (!table || !text) return null;
+    var cap = el("caption", { class: "ch-atd", text: text });
+    table.insertBefore(cap, table.firstChild);
+    return cap;
+  }
+
   // The stacked timescale header element (Microsoft Project timeline). `baseClass` is the
   // page's own scale class (so its width/flex rules still apply); `anchorIso`, when given,
   // draws the data-date / now line through the header. When the SFTimescale module is loaded
@@ -492,6 +515,7 @@ window.SFGantt = (function () {
 
   return {
     DAY_MS: DAY_MS, MONTHS: MONTHS, el: el, fmtMDY: fmtMDY,
+    tableCaption: tableCaption,
     timeTiers: timeTiers, buildTierScale: buildTierScale,
     gridLines: gridLines, paintGrid: paintGrid, paintNonwork: paintNonwork,
     freezeColumns: freezeColumns,

@@ -10909,3 +10909,66 @@ the briefs + state rotation) earlier today.
   mid-session BEFORE the adversarial audit added four more gates, and both corrected only lower down
   in the same document. **Lesson: when a later section supersedes an earlier number in the same doc,
   fix the earlier one — the next session reads STATUS first and carries whatever it says.**
+
+## 2026-08-02f — Phase 3 UI: the DOM caption ledger reaches EMPTY (ADR-0340, v1.0.156)
+- Checked **#520 FIRST** as the kickoff asked: already merged as **`d3ff6ed`**. Branch restarted
+  from `origin/main` with `--prune`; fresh container set up (`pip install -e ".[dev]"`, playwright,
+  ruff 0.16.1, build).
+- **`DOM_PENDING` 7 → 0.** With `PENDING` empty since ADR-0330, **ADR-0298's deferral is closed in
+  both media** — every data visual in the tree names its own dimensions.
+- Six modules gained a table caption (`drilldown`, `driving_tiers`, `findings_drill`,
+  `ribbon_drill`, `scorecards`, `whatif` — the last for BOTH grids, which share a column-header set
+  and are otherwise indistinguishable). `scorecards` is the only one whose row unit is a
+  **percentile** rather than an activity.
+- **The seventh was never captionable.** `sra_risk.js` builds no DOM at all (no `createElement`,
+  no `appendChild`, no `innerHTML`) — it writes `.value` into server-rendered inputs and toggles
+  `aria-invalid`. Mis-triaged into the DOM ledger at ADR-0326; it had overstated the remaining work
+  by one for four ADRs. Moved to `EXEMPT`: **re-triaged, not captioned.**
+- **Promoted the mechanism to ONE helper, `SFGantt.tableCaption`** (and converted `workbench.js`'s
+  two inline captions to it). Forced by a real constraint: the seven callers' module-local `el()`
+  helpers take **three different signatures**, so a detector accepting all three would have been
+  **looser than the rule** — the standing gate-shape #4. One call shape, one tight detector.
+- **The load-order finding, and the reason the helper is NOT in `chartframe.js`:** the layout emits
+  `chartframe.js` **after `</main>`**, every captioned table is built by a **body** script, and
+  `whatif.js` renders **synchronously at parse time**. A `window.SFChartFrame` helper would have
+  been `undefined` at that instant — two grids silently uncaptioned **with the whole source-level
+  suite still green**. `gantt.js` is head-loaded, already renders the OTHER B1 mechanism, and is
+  already the shared DOM utility four of these six call for `fmtMDY`. The ordering is now pinned by
+  a test that tells a future reader to RE-DERIVE the placement rather than delete it.
+- `insertBefore(firstChild)`, not `appendChild` — `<caption>` must be the table's first child, and
+  six of seven call sites sit next to a `<thead>` append.
+- **Three reverts, and the third is the one that matters.** Helper `insertBefore` → `appendChild`:
+  harness **4 fail**. Helper neutered to `return null`: chromium **11/11 fail** (229 s of real
+  timeouts). **`whatif.js`'s caller removed alone: 5 fail, 6 pass** — the 5 being the whatif test
+  plus the 4 theme rows (both on `/evolution`), the other six modules still green. **An
+  all-or-nothing revert cannot tell you the tests are not all coupled to one global; a
+  single-caller revert can.**
+- New gates: `dom_caption_harness.mjs` (18 checks, executes the helper), 
+  `test_dom_captions_chromium.py` (11 tests, drives every caption through its REAL trigger —
+  parse-time / post-fetch / click / modal / a live Monte-Carlo run — in all four themes), plus a
+  DOM anti-fragmentation rule (only `gantt.js` may name `.ch-atd`) and the script-ordering pin.
+  `test_axis_titles.py` 35 → 37.
+- **Next unit confirmed by search, not assumed: no DD-line ledger exists yet** — the DoD-ledger
+  work is a BUILD, not an edit, and must EXCLUDE non-time-axis charts (`histogram.js`,
+  `scatter.js`, `sra_jcl.js`'s COST axis) per `DESIGN-SYSTEM.md`'s "every **time-axis** chart".
+- **Full-suite triage: 3347 passed / 2 skipped / 6 failed, all six adjudicated.** 4 installer
+  failures were the version bump invalidating the embedded wheel — rebuilt wheel + nine installers,
+  `tests/installer` **52 passed**. 1 was REAL: the r11 byte-freeze over page-owned scripts, and
+  `driving_tiers.js` / `whatif.js` / `gantt.js` were **deliberately re-baselined** with a recorded
+  reason (the ADR-0326/0329/0333 precedent). The other **four frozen scripts were untouched** — the
+  freeze doing its job — `gantt.js`'s diff is **purely additive (zero removed lines)**, and the
+  sibling **28-call-site axis census passed unchanged**, the independent check that no SVG caption
+  moved. The 6th was the adjudicated float-tip intermittent.
+- **The float-tip flake was RE-VERIFIED rather than waved through.** `app.py` is untouched by this
+  change, but `gantt.js` is layout-global and new since the adjudication, so all 8 statics were
+  swapped to `origin/main`'s own copies and the pair re-run twice: **1 failure, then 2 failures, on
+  the SAME pristine files.** The alternation is pre-existing and independent of this change.
+- **Corrected two of my own figures before they could be carried.** The handoff first said
+  `test_axis_titles.py` went 35 → 37; the "35" was measured AFTER the edits, so it was never a
+  baseline. Re-measured by checking out `origin/main`'s own copy of the file: **29 → 37**. The
+  chromium module was written up as 11 tests and is **15** (the modal theme rows were added later).
+  Same failure mode as last session's stale STATUS figures — a number written mid-session and not
+  re-read once the work grew.
+- Tooling lesson: **`pgrep -f <pat>` self-matches exactly like `pkill -f`** — a waiter looping on
+  its own pattern never exits. Hit it live; use `[p]ytest` or just let the background task notify.
+

@@ -158,6 +158,11 @@
       card.appendChild(bar);
       var scroller = el("div", { class: "hist-drill-scroll" });
       var table = el("table", { class: "hist-drill-table" });
+      // B1's table caption (ADR-0326 / ADR-0340): the row unit — which finding these activities
+      // are cited BY is the table's dimension, not any one column.
+      SFGantt.tableCaption(
+        table, 'Activities cited by "' + finding.title + '" — one row per activity'
+      );
       var thead = el("thead");
       var hr = el("tr");
       fields.forEach(function (f) { hr.appendChild(el("th", { text: f.label })); });

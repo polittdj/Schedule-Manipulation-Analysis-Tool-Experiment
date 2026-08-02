@@ -435,6 +435,44 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-02f — Where a shared helper LIVES is a correctness question (ADR-0340, DOM captions)
+- **The bug that was one decision away, and would have been silent.** `chartframe.js` owns the SVG
+  caption helper, so it is the obvious home for the DOM one. It is the wrong home: the layout emits
+  `chartframe.js` **after `</main>`**, every captioned table is built by a script **inside** the
+  body, and `whatif.js` renders **synchronously at parse time**. A `window.SFChartFrame.tableCaption`
+  would have been `undefined` at the moment whatif draws — its two grids would render uncaptioned
+  **with every source-level assertion in the suite still green**, because a source pin proves a call
+  EXISTS, never that it was REACHED. Caught by reading the layout's script order before writing the
+  helper, not by a test. **Lesson (generalizes → Part VI): before adding a function to a shared
+  module, check WHEN that module loads relative to its callers. For a browser, "which file exports
+  it" is a load-order decision wearing an architecture costume.**
+- **The single-caller revert is a different instrument from the all-or-nothing revert.** Neutering
+  the helper failed 11 of 11 chromium tests — satisfying, and nearly uninformative: it is exactly
+  what a suite would do if all eleven tests were coupled to one global and only one module were
+  really covered. Removing **one caller** (`whatif.js`) failed **5 and passed 6**, which is the
+  proof that each test tracks its own module. **Lesson (generalizes → Part III): when N tests cover
+  N subjects through a shared dependency, revert the SHARED thing to prove they bite, then revert
+  ONE SUBJECT to prove they discriminate. The first revert alone cannot distinguish "N tests" from
+  "one test run N times".**
+- **A remaining-work ledger must be re-verified against the code, not just worked down.**
+  `sra_risk.js` sat in `DOM_PENDING` for four ADRs as "a DOM visual awaiting a caption". It builds
+  no DOM at all — no `createElement`, no `appendChild`, no `innerHTML`. It could never have been
+  captioned, so the ledger had overstated the work by ~14% since it was written, and the honest
+  close was a **re-triage to `EXEMPT`**, not a caption. **Lesson: an inherited ledger entry is a
+  claim like any other (READ EVERYTHING, ASSUME NOTHING). This is also the argument for named lists
+  over counts — a count would have been quietly wrong and unfalsifiable; a named list let one read
+  of one file settle it.**
+- **A convention that survives one caller can still be unimplementable at seven.** ADR-0326's
+  inline `el("caption", {class:"ch-atd"}, …)` was fine for `workbench.js` alone. The other six
+  modules' local `el()` helpers take **three different signatures**, so keeping the inline form
+  would have forced a detector regex that accepted all three — **looser than the rule it enforces**,
+  the recurring vacuous-gate shape #4. Promoting to one helper was the cheaper answer AND the
+  tighter gate. **Lesson: when the test you would have to write must get looser to accommodate the
+  code, that is the code telling you to unify it.**
+- Tooling: **`pgrep -f <pat>` self-matches exactly like `pkill -f`** — a wait-loop polling for its
+  own pattern never terminates. Same family as the already-recorded `pkill` trap; use `[p]ytest`,
+  or just let the background task's own completion notification arrive.
+
 ### 2026-08-02e — The assertion was looser than the rule, so it could not fail (ADR-0339, `/sra`)
 - **The adversarial audit found six real defects in code that had already passed a 14-revert proof
   pass.** The reverts prove a gate can fail; they say nothing about the states nobody wrote a gate

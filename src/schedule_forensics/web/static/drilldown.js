@@ -130,6 +130,9 @@
     gridHost.appendChild(el("p", { class: "muted" }, rows.length + " activit" + (rows.length === 1 ? "y" : "ies")));
 
     var table = el("table", { class: "scorecard-table sf-drill-grid" });
+    // B1's table caption (ADR-0326 / ADR-0340): the modal's row unit. The dialog heading names
+    // the segment that was clicked; the caption names what ONE ROW of the grid is.
+    SFGantt.tableCaption(table, "Activities behind " + state.title + " — one row per activity");
     var hr = el("tr");
     cols.forEach(function (c) {
       var th = el("th", { scope: "col", class: "sf-drill-sortable" });

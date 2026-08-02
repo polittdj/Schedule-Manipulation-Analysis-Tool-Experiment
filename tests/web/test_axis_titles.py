@@ -32,6 +32,14 @@ STATIC = ROOT / "src" / "schedule_forensics" / "web" / "static"
 #: Chrome, frames, rulers and utilities — they render no data visual of their own.
 #: ``timeaxis`` / ``timescale`` are the shared rulers consumed by charts that carry their own
 #: captions; ``chartframe`` is the frame (and now the caption helper's home).
+#:
+#: ``sra_risk.js`` moved here from ``NO_SVG_AXES`` in ADR-0340. It was parked as a DOM visual
+#: awaiting a caption, but it renders NO visual at all and never could: it constructs no DOM
+#: whatsoever (no ``createElement``, no ``appendChild``, no ``innerHTML``) — it is the risk
+#: form's days<->% derivation, and its entire output is writing ``.value`` back into inputs the
+#: SERVER rendered and toggling ``aria-invalid``. A caption needs something to caption, so its
+#: place in the remaining-work ledger overstated that work by one for four ADRs. Re-triaged, not
+#: captioned: the honest close, and the reason the DOM ledger is a named list rather than a count.
 EXEMPT = {
     "a11y.js",
     "ai_polish.js",
@@ -53,6 +61,7 @@ EXEMPT = {
     "panelkit.js",
     "persist.js",
     "settings.js",
+    "sra_risk.js",
     "story.js",
     "sysmon.js",
     "target.js",
@@ -80,7 +89,6 @@ NO_SVG_AXES = {
     "ribbon_drill.js",
     "scorecards.js",
     "sra_grid.js",
-    "sra_risk.js",
     "whatif.js",
     "workbench.js",
 }
@@ -105,7 +113,20 @@ INCIDENTAL_SVG = {
 #: ``<table><caption class="ch-atd">`` built with the table — announced by screen readers,
 #: in-flow for print. Subset of ``NO_SVG_AXES``: the bucket records the MEDIUM, this records
 #: the caption state within it.
+#:
+#: ADR-0340 completed the bucket and, in doing so, promoted the mechanism to ONE implementation:
+#: ``SFGantt.tableCaption``. Before, the convention was an inline ``el("caption", …)`` — which
+#: these seven modules cannot spell the same way, because their local ``el()`` helpers take three
+#: different signatures (``(tag, attrs, text)``, ``(tag, {text})``, ``(tag, text, cls)``). A
+#: detector that accepted all three would have been looser than the rule it claims to enforce.
+#: One helper, one call shape, one tight detector — the same move ADR-0298 made for SVG.
 DOM_TABLE_CAPTIONED = {
+    "drilldown.js",
+    "driving_tiers.js",
+    "findings_drill.js",
+    "ribbon_drill.js",
+    "scorecards.js",
+    "whatif.js",
     "workbench.js",
 }
 
@@ -122,17 +143,21 @@ TIMESCALE_CAPTIONED = {
 }
 
 #: NO_SVG_AXES entries still awaiting a caption under the B1 mechanisms — the DOM medium's
-#: remaining-work ledger, mirroring ``PENDING`` for SVG. Shrinks deliberately; reaching empty
-#: closes ADR-0298's deferral for good.
-DOM_PENDING = {
-    "drilldown.js",
-    "driving_tiers.js",
-    "findings_drill.js",
-    "ribbon_drill.js",
-    "scorecards.js",
-    "sra_risk.js",
-    "whatif.js",
-}
+#: remaining-work ledger, mirroring ``PENDING`` for SVG. It is now EMPTY (ADR-0340), which with
+#: ``PENDING`` already empty (ADR-0330) closes ADR-0298's deferral for good: every data visual in
+#: the tree, in BOTH media, names its own dimensions.
+#:
+#: How it emptied, in one batch, because the answer was one shared helper rather than seven:
+#: six modules gained a ``SFGantt.tableCaption`` call on the table they already built
+#: (``drilldown`` the drill modal's grid, ``driving_tiers`` the tier table, ``findings_drill`` the
+#: cited-activity list, ``ribbon_drill`` the metric drill, ``scorecards`` the reserve table — the
+#: one whose row unit is a PERCENTILE, not an activity — and ``whatif`` BOTH of its grids, which
+#: share a column header set and so are distinguishable only by caption). The seventh,
+#: ``sra_risk.js``, was never captionable and moved to ``EXEMPT``; see the note there.
+#:
+#: It stays as the triage bucket for any NEW DOM visual: a module may not be parked here once it
+#: calls the helper (asserted by the partition test + the detector below).
+DOM_PENDING: set[str] = set()
 
 #: SVG axis charts not yet captioned. This list SHRANK one batch at a time, and it is now
 #: EMPTY — the completion signal for AXIS-TITLES (reached in ADR-0330, batch 3c-ii). It stays
@@ -246,15 +271,62 @@ def test_dom_caption_buckets_partition_no_svg_axes() -> None:
     )
 
 
-DOM_CAPTION_CALL = re.compile(r"""el\("caption",\s*\{\s*class:\s*"ch-atd"\s*\}""")
+DOM_CAPTION_CALL = re.compile(r"SFGantt\.tableCaption\s*\(")
+#: The DOM medium's caption class. Only the module that IMPLEMENTS the two B1 mechanisms may
+#: name it; a caller naming it directly is a second convention (see the test below).
+DOM_CAPTION_CLASS = "ch-atd"
+#: The one module allowed to name it — it implements BOTH B1 mechanisms.
+DOM_CAPTION_OWNER = "gantt.js"
 
 
 @pytest.mark.parametrize("name", sorted(DOM_TABLE_CAPTIONED))
 def test_dom_table_captioned_modules_really_build_a_caption(name: str) -> None:
-    """The executable detector for B1's table mechanism: the module must build a native
-    ``<caption class="ch-atd">`` (workbench builds one per table — ribbon and drill grid)."""
+    """The executable detector for B1's table mechanism: the module must caption its table
+    through the shared helper (workbench and whatif each caption two tables)."""
     assert DOM_CAPTION_CALL.search(_src(STATIC / name)), (
-        f"{name} is listed DOM_TABLE_CAPTIONED but builds no <caption class='ch-atd'>"
+        f"{name} is listed DOM_TABLE_CAPTIONED but never calls SFGantt.tableCaption"
+    )
+
+
+def test_no_module_reimplements_the_dom_caption() -> None:
+    """The DOM medium's copy of THE regression this file exists for.
+
+    ``test_no_module_reimplements_the_caption_helper`` closes this for SVG; before ADR-0340 the
+    DOM side had no equivalent, and it was drifting in exactly the predicted way — ``workbench.js``
+    hand-rolled the caption element inline, so a second caller would have hand-rolled its own,
+    in its own ``el()`` dialect. Now the class is named in ONE module, which is also the only
+    module that renders either B1 mechanism (the table caption and the timescale slot).
+    """
+    offenders = [
+        p.name for p in modules() if p.name != DOM_CAPTION_OWNER and DOM_CAPTION_CLASS in _src(p)
+    ]
+    assert not offenders, (
+        f"DOM captions must be built only by SFGantt.tableCaption / buildTierScale's slot in "
+        f"{DOM_CAPTION_OWNER} — these name .{DOM_CAPTION_CLASS} themselves: " + ", ".join(offenders)
+    )
+
+
+def test_the_dom_caption_helper_is_reachable_before_every_caller_runs() -> None:
+    """Placement, not merely existence — the load-order trap ADR-0340 was written around.
+
+    Every table-captioning module is a script inside ``<main>``; the layout emits
+    ``chartframe.js`` (the SVG helper's home) AFTER ``<main>``, and ``whatif.js`` renders
+    SYNCHRONOUSLY at parse time. Had the DOM helper been added to ``SFChartFrame``, whatif's
+    caption would silently never render while every source-level assertion above still passed.
+    ``gantt.js`` is emitted in the head, before ``<main>`` — that ordering IS the fix, so it is
+    pinned here rather than left as a comment.
+    """
+    app = (ROOT / "src" / "schedule_forensics" / "web" / "app.py").read_text(encoding="utf-8")
+    # Anchor to the LAYOUT, not to whichever occurrence comes first in a 21k-line file:
+    # gantt.js is also re-included by an individual page, and "<main>" also appears in a comment.
+    head = app[app.index("_LAYOUT = Template(") : app.index("<main>{{ banner }}")]
+    assert '<script src="/static/gantt.js"></script>' in head, (
+        "gantt.js must be emitted in the layout HEAD, before <main> — every table-captioning "
+        "module is a body script, and whatif.js captions at parse time"
+    )
+    assert app.index("</main>") < app.index('<script src="/static/chartframe.js"></script>'), (
+        "this test's premise moved: chartframe.js is no longer emitted after </main>, so the "
+        "reason the DOM helper lives in gantt.js needs re-deriving (do not just delete this)"
     )
 
 
@@ -356,6 +428,24 @@ def test_the_helper_is_available_on_every_page() -> None:
     """chartframe.js is layout-global, so no chart has to import anything to caption its axes."""
     app = (ROOT / "src" / "schedule_forensics" / "web" / "app.py").read_text(encoding="utf-8")
     assert '<script src="/static/chartframe.js"></script>' in app
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node not on PATH (local-gate tool)")
+def test_the_dom_caption_helper_behaves_under_node() -> None:
+    """The DOM helper's behaviour, for the same reason the SVG one has a harness (ADR-0289): the
+    ledger above proves a module CALLS ``SFGantt.tableCaption``, never that the call produces a
+    caption. The harness boots gantt.js against a DOM stub and drives it — including the
+    assertion that only execution can make: the caption lands as the table's FIRST child even
+    when rows already exist (an ``appendChild`` implementation passes every source pin in this
+    file and fails there)."""
+    node = shutil.which("node")
+    assert node is not None
+    harness = Path(__file__).parent / "js" / "dom_caption_harness.mjs"
+    proc = subprocess.run(  # fixed argv, repo-local harness
+        [node, str(harness)], cwd=ROOT, capture_output=True, text=True, timeout=120
+    )
+    assert proc.returncode == 0, f"harness failed:\n{proc.stdout}\n{proc.stderr}"
+    assert proc.stdout.rstrip().endswith("OK dom captions"), proc.stdout
 
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="node not on PATH (local-gate tool)")

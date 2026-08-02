@@ -173,6 +173,9 @@
       mount.appendChild(bar);
       var scroller = el("div", { class: "hist-drill-scroll" });
       var table = el("table", { class: "hist-drill-table" });
+      // B1's table caption (ADR-0326 / ADR-0340): the tier column is this table's organising
+      // dimension and the rows are activities — neither is named by the column headers alone.
+      SFGantt.tableCaption(table, "Driving-path activities by tier — one row per activity");
       var thead = el("thead");
       var hr = el("tr");
       fields.forEach(function (f) { hr.appendChild(el("th", { text: f.label })); });
