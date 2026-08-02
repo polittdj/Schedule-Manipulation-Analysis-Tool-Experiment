@@ -2338,7 +2338,12 @@ def create_app(
             return response
         finally:
             app.state.active_requests -= 1
-            app.state.last_beat = time.monotonic()
+            # ADR-0334: a LAUNCHER probing the port is not the operator being present. Refreshing
+            # the beat for /api/whoami would push a predecessor's shutdown clock forward by the
+            # full idle_grace at the exact moment it is being replaced — so the one endpoint whose
+            # caller is another process, not a browser, is exempt. Every other path still counts.
+            if request.url.path != "/api/whoami":
+                app.state.last_beat = time.monotonic()
 
     def session() -> SessionState:
         s: SessionState = app.state.session
@@ -2349,6 +2354,29 @@ def create_app(
         app.state.last_beat = time.monotonic()
         app.state.browser_seen = True
         return JSONResponse({"ok": True})
+
+    @app.get("/api/whoami")
+    def whoami() -> JSONResponse:
+        """Identify this server process to a LAUNCHER probing the port (ADR-0334).
+
+        Deliberately side-effect-free, which is the whole reason it is not ``/api/heartbeat``:
+        a probe must not refresh ``last_beat`` or set ``browser_seen`` on the instance it is
+        about to ask to stand down — doing so would extend the life of the very process being
+        replaced, and could arm a watchdog that had never seen a browser at all.
+
+        Carries no schedule content (Law 1) — just enough for the launcher to tell "an older
+        copy of ME" from "some unrelated program squatting on 8321", which is the difference
+        between a clean handover and failing visibly.
+        """
+        return JSONResponse(
+            {
+                "app": "schedule-forensics",
+                "pid": os.getpid(),
+                "version": _ASSET_VERSION,
+                "launch_token": app.state.session.launch_token,
+            },
+            headers={"Cache-Control": "no-store"},
+        )
 
     @app.get("/api/system")
     def system_snapshot() -> JSONResponse:

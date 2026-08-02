@@ -11,10 +11,14 @@ without binding a real port.
 from __future__ import annotations
 
 import atexit
+import logging
 import os
 import socket
 import sys
 import threading
+import time
+import urllib.error
+import urllib.request
 import webbrowser
 from collections.abc import Callable
 
@@ -30,6 +34,10 @@ _BROWSER_DELAY = 1.0
 
 Serve = Callable[..., None]
 Browser = Callable[[str], bool]
+#: Injectable port-claim step (ADR-0334); ``None`` disables it for tests that never bind.
+Claim = Callable[[str, int], str]
+
+logger = logging.getLogger(__name__)
 
 
 def _ensure_streams() -> None:
@@ -56,6 +64,140 @@ def find_free_port(host: str = DEFAULT_HOST) -> int:
     return port
 
 
+# ── single-instance handover (ADR-0334) ──────────────────────────────────────────────────────
+#
+# MEASURED on the deployed box, 2026-08-01 (docs/STATE/OPERATOR-REQUESTS.md, OR-06): launching the
+# desktop icon while a previous server still held 8321 produced NO new listener and NO new process
+# even transiently — the second launcher exited mute (uvicorn's bind failure -> ``sys.exit`` into
+# the ``os.devnull`` sink ``_ensure_streams`` installs) while its ALREADY-ARMED browser timer
+# opened a window onto the OLD server, with the previous session's schedules and settings still in
+# memory. The operator reads that as "the tool remembered things I never loaded". It also defeats
+# ADR-0324's launch token, because same process means same token.
+#
+# The survivor is not a bug in itself: ``idle_grace`` is 600s, so a server legitimately outlives
+# its browser by up to ten minutes. That ten-minute window is exactly when a relaunch lands on it.
+#
+# So the port is CLAIMED before anything else happens — before the browser timer is armed, and
+# before uvicorn is asked to bind. Note the timer is NOT moved after ``serve_fn``: ``serve_fn``
+# blocks for the life of the process, so a timer started after it would never run.
+
+#: How long to wait for a stood-down predecessor to release the port before giving up.
+_HANDOVER_TIMEOUT = 20.0
+#: Poll interval while waiting for the port to come free.
+_HANDOVER_POLL = 0.25
+#: Per-request timeout for the probe / stand-down calls — loopback, so this is generous.
+_PROBE_TIMEOUT = 2.0
+
+#: A DIRECT opener for the loopback probe — the same hardening ``ai/ollama.py`` applies, and for
+#: the same Law 1 reason. urllib's DEFAULT opener reads the machine's proxy settings, so on a
+#: corporate-managed Windows laptop even ``http://127.0.0.1:8321`` can be routed through the
+#: company proxy: the probe would either be refused (a live predecessor misread as "not ours", so
+#: the launcher refuses to start for no reason) or, far worse, sent off-machine. An empty
+#: ``ProxyHandler`` makes ``build_opener`` skip its system-proxy-reading default and connect
+#: directly. Bandit's B310 does not apply: the scheme is a literal ``http://`` in an f-string over
+#: a loopback host we just constructed, and no redirect can move it.
+_LOOPBACK_OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+
+
+class PortUnavailable(RuntimeError):
+    """The port cannot be claimed, so the tool refuses to serve.
+
+    Raised instead of binding anyway. On Windows a second bind can *succeed* even while another
+    process holds the port (uvicorn sets ``SO_REUSEADDR`` and never ``SO_EXCLUSIVEADDRUSE``),
+    which would route requests indeterminately between two servers — a testimony tool must never
+    be in that state. ``__main__`` turns this into a visible native message box under ``pythonw``.
+    """
+
+
+def probe_instance(
+    host: str, port: int, *, timeout: float = _PROBE_TIMEOUT
+) -> dict[str, object] | None:
+    """Ask whatever holds ``port`` to identify itself.
+
+    Returns the ``/api/whoami`` payload when the occupant is one of OUR servers, or ``None`` when
+    the port is free, unreachable, or held by something that is not us. Std-lib only (Law 1: no
+    ``requests``/``httpx`` may enter the runtime) and loopback-only by construction.
+    """
+    import json
+
+    url = f"http://{host}:{port}/api/whoami"
+    try:
+        with _LOOPBACK_OPENER.open(url, timeout=timeout) as resp:
+            if resp.status != 200:
+                return None
+            payload = json.loads(resp.read().decode("utf-8"))
+    except (urllib.error.URLError, OSError, ValueError, json.JSONDecodeError):
+        return None
+    if not isinstance(payload, dict) or payload.get("app") != "schedule-forensics":
+        return None  # something else answers on this port — not ours to shut down
+    return payload
+
+
+def port_is_free(host: str, port: int) -> bool:
+    """True when nothing is accepting connections on ``host:port``.
+
+    A connect probe, deliberately NOT a bind probe: on Windows a bind can succeed against a port
+    another process is already serving, so binding would answer the wrong question.
+    """
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.settimeout(_PROBE_TIMEOUT)
+        return sock.connect_ex((host, port)) != 0
+
+
+def _stand_down(host: str, port: int, *, timeout: float = _PROBE_TIMEOUT) -> None:
+    """Ask the predecessor to shut down (best effort — the wait below is what decides)."""
+    req = urllib.request.Request(f"http://{host}:{port}/api/shutdown", method="POST", data=b"")
+    try:
+        with _LOOPBACK_OPENER.open(req, timeout=timeout):
+            pass
+    except (urllib.error.URLError, OSError):
+        pass  # it may drop the connection as it exits; the release wait is the real check
+
+
+def claim_port(
+    host: str,
+    port: int,
+    *,
+    timeout: float = _HANDOVER_TIMEOUT,
+    poll: float = _HANDOVER_POLL,
+    sleep: Callable[[float], None] | None = None,
+    now: Callable[[], float] | None = None,
+) -> str:
+    """Make ``host:port`` ours before serving, or raise :class:`PortUnavailable`.
+
+    Returns what happened: ``"free"`` (nothing was there) or ``"handover"`` (a predecessor was
+    stood down and released it). "Always start clean" is the operator's stated rule — a
+    predecessor is REPLACED, never reused, so the new session starts with nothing carried over.
+    """
+    _sleep = sleep if sleep is not None else time.sleep
+    _now = now if now is not None else time.monotonic
+
+    if port_is_free(host, port):
+        return "free"
+
+    who = probe_instance(host, port)
+    if who is None:
+        raise PortUnavailable(
+            f"Port {port} is in use by another program (it does not answer as Schedule "
+            f"Forensics). Close whatever is using it, or free the port, then try again."
+        )
+
+    logger.info("port %d held by a previous session (pid %s) — standing it down", port, who["pid"])
+    _stand_down(host, port)
+
+    deadline = _now() + timeout
+    while _now() < deadline:
+        if port_is_free(host, port):
+            return "handover"
+        _sleep(poll)
+    raise PortUnavailable(
+        f"The previous Schedule Forensics session (pid {who.get('pid')}) did not release port "
+        f"{port} within {timeout:.0f}s. It is still running, so this launch stopped rather than "
+        f"open a window onto an unknown session. Quit it from its own window, or end that "
+        f"process, then try again."
+    )
+
+
 def main(
     host: str = DEFAULT_HOST,
     port: int | None = None,
@@ -66,6 +208,7 @@ def main(
     timer: type[threading.Timer] = threading.Timer,
     manage_ollama: bool = True,
     ollama: OllamaLauncher | None = None,
+    claim: Claim | None = claim_port,
 ) -> None:
     """Start the local dashboard and open it in the browser.
 
@@ -91,6 +234,13 @@ def main(
     browser = browser or webbrowser.open
     chosen_port = port if port is not None else find_free_port(host)
     url = f"http://{host}:{chosen_port}"
+
+    # ADR-0334: claim the port BEFORE arming the browser timer. Everything below this line
+    # assumes the port is ours; if it could not be claimed this raises and __main__ shows the
+    # operator why, instead of a browser silently opening onto the previous session.
+    if claim is not None:
+        claim(host, chosen_port)
+
     print(f"POLARIS — serving the dashboard at {url}  (close the window to stop)")
 
     manager = ollama if ollama is not None else OllamaLauncher() if manage_ollama else None

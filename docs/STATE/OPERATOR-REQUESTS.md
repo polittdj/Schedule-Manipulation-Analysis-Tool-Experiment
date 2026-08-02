@@ -150,7 +150,7 @@ legitimately-shifted pin gets a DELIBERATE ADR-named re-baseline via that pin's 
 silent update. If the PowerPoint and the `.mpp` bytes genuinely contradict, STOP and ask the
 operator rather than "fixing" to a misread oracle.
 
-### OR-06 — Fresh launch shows stale fields from previous sessions · `SHIPPED (ADR-0324)` · **BUG**
+### OR-06 — Fresh launch shows stale fields from previous sessions · `SHIPPED (ADR-0324 + ADR-0332 + ADR-0334)` · **BUG**
 
 > Operator: a fresh open of the deployed tool shows fields populated from PREVIOUS sessions
 > (e.g. Target UID from a project never loaded), even after wipe-then-Quit.
