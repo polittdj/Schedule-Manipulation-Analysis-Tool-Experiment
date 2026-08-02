@@ -10659,3 +10659,24 @@ the briefs + state rotation) earlier today.
   residue actually survives until the end of the next clean session, not 24 h. Closing that
   deterministically means deleting every row not written by the current launch — clear-at-launch by
   another name, which the approved wording forbids.
+
+## 2026-08-02 — session close: #513 merged, Phase 1b fully done, Phase 3 is next
+
+- **#513 (Phase 1b remainder, ADR-0335) merged as `e0fdf85`.** `main` is at **v1.0.151**; its
+  committed installers embed the 1.0.151 wheel (the lockstep gate passed on the final tree).
+  **All six CI checks green before merge — including `windows`**, which is the job that actually
+  exercises the new `chmod` 0600/0700 hardening and the unlink-with-fallback, and both Python 3.11
+  and 3.13. No review comments were raised. Branch restarted from `origin/main` with `--prune`,
+  working tree clean, **no check-ins armed** (the one-hour PR check-in was deleted on merge).
+- **Phase 1b is complete in both halves.** ADR-0334 took the launcher (claim the port before
+  serving); ADR-0335 took the cache (empty it on every quit, seal before clearing, prune as the
+  hard-kill belt). The queue's head is now **Phase 3 — UI**.
+- **Verified during cleanup, and worth recording because it is the session's own subject matter:**
+  the real `~/.cache/schedule-forensics` was **never created** on this box. Every probe and every
+  test wrote to an isolated directory — which is exactly what the conftest `SF_CACHE_DIR` fixture
+  and the decision to bind the cache INSTANCE at launch (rather than resolve `get_default_cache()`
+  lazily at exit) were meant to guarantee. 2.3 GB of probe scratch cleared.
+- **Left OPEN for the operator, deliberately not taken:** hard-kill residue now survives until the
+  end of the next clean session rather than the 24 h the age cap implies, because the age cap only
+  bites at a launch. The deterministic fix is clear-at-launch by another name, which the approved
+  wording forbids. Carried in HANDOFF ⇢ NEXT and in the refreshed kickoff.
