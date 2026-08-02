@@ -10972,3 +10972,40 @@ the briefs + state rotation) earlier today.
 - Tooling lesson: **`pgrep -f <pat>` self-matches exactly like `pkill -f`** — a waiter looping on
   its own pattern never exits. Hit it live; use `[p]ytest` or just let the background task notify.
 
+## 2026-08-02g — Phase 3 UI: the DD-line population becomes a ledger (ADR-0341, v1.0.157)
+- **PR #521 (ADR-0340) MERGED as `a2bfa87`** with all 6 checks green; branch restarted from
+  `origin/main` with `--prune`, stale upstream unset.
+- Built `tests/web/test_dd_line_ledger.py` (**32 tests**) — the DD-line counterpart to
+  `test_axis_titles.py`. **No `src/` change**: the ledger makes the gap visible and un-driftable
+  first; closing it is the next unit.
+- **The population is re-derived, never hand-listed.** Every chart declares its own X axis in its
+  `SFChartFrame.axisTitles` call, so the ledger is keyed by `(module, line)` and each entry is
+  CHECKED against the xLabel justifying it. Keyed by CALL SITE because `sra_jcl.js` carries BOTH a
+  time-axis chart (L136) and the COST axis (L189) — a module-keyed ledger could not say that.
+- **12 exclusions, not the 3 in the brief.** The extra family is the VERSION axis (`margin`,
+  `trend` x5, `volatility` x3): ordered by time but categorical, one tick per loaded file, so a DD
+  line has no position on it — every version has its own data date.
+- **The collision that fixes check ORDER:** `margin.js`'s xLabel is "Schedule version (data date)"
+  — it says "data date" and must NOT carry a DD line. Version check runs BEFORE the date check,
+  the same shape as `ai/qa.py`'s identifier-before-derivation rule.
+- **THE finding: FOUR hand-rolled implementations that disagree with each other** — `cei`/`curves`
+  draw `var(--accent)` dashed `6 5`; `drift`/`scurve` draw `var(--muted)` dotted `2 3`; `drift`
+  puts NO label on its line at all. Not one matches the spec ("a RED line labeled DD / DATA DATE"),
+  and each hard-codes `"font-size": 10`. Pinned as executable records so closing any part fails the
+  ledger. `DD_PENDING` = **8**, and it is DERIVED from the tree, so it cannot over- or under-state.
+- **CORRECTION of my own prior handoff.** It said "4 time-axis charts have no data-date mention"
+  and "cei.js and curves.js each hand-roll" — both from `grep -ci "data.date"`, which counts
+  MENTIONS (comments, `statusDate` variables). Real numbers: **8 pending, 4 implementations**. A
+  byte-exact detector then failed the OTHER way, missing `drift` (no label) and `scurve` (date
+  appended). The anchor that works is the `//` comment naming the block — deliberately NOT a style
+  match, because the styles ARE the finding.
+- **3 reverts, each on a different gate:** removing `scurve.js`'s marker → 3 fail incl. the derived
+  pending ledger; `cei.js`'s `BLUE` → `var(--danger)` → the implementations test fails, proving the
+  module-scope ALIAS is resolved rather than pattern-matched; `histogram.js`'s xLabel → "Finish
+  date" → its `NOT_TIME_AXIS` predicate fails, proving the exclusion list cannot shelter a chart
+  that really plots against time.
+- Two slicing bugs surfaced only by RUNNING: the first slice read `cei.js`'s DOCSTRING (it says
+  "dashed data-date marker" there too), and a fixed 700-char window over-ran into the next block —
+  harmless for three modules, but `drift.js` has no label so the spill supplied a `textContent` and
+  a `font-size` from unrelated code and two assertions read the wrong bytes.
+
