@@ -1,70 +1,113 @@
-# Handoff — 2026-08-02d (Phase 3 UI: /risks joins the panel contract; ADR-0338; v1.0.154)
+# Handoff — 2026-08-02e (Phase 3 UI: /sra joins the panel contract — Act III complete; ADR-0339; v1.0.155)
 
-> ## STATUS (current) — **THREE PRs this session, ALL MERGED, nothing in flight.** #515
-> (ADR-0336, the dirty-flag cache clear the operator chose) as **`1bcf01a`** · #516 (ADR-0337,
-> chapter 12 — `/briefing` + `/brief`) as **`400f51d`** · #517 (ADR-0338, `/risks`) as
-> **`1835839`**. Every one had all six CI checks green — including `windows` — and drew no review
-> comments. `main` is at **v1.0.154**; the committed installers embed the 1.0.154 wheel. Working
-> tree clean, branch restarted from `origin/main` with `--prune`, **no check-ins armed**. Session
-> opened by confirming #514 was already merged (`e1c81cf`). Test count **3299 → 3319**.
+> ## STATUS (current) — **`/sra` converted; Act III's panel contract is COMPLETE.** ADR-0339,
+> **v1.0.155**. `/sra` was the last unconverted Act III route and it is now inside both census
+> modules, so every route in the act is covered. Branch `claude/phase-3-sra-conversion-aalyl4`,
+> restarted from `origin/main` (`9f6861b`) with `--prune`. Full suite **3319 passed, 2 skipped**
+> before the docs/installer commit (the 8 failures in that run were the expected version-bump
+> installer lockstep + the state-doc guards, plus ONE real defect in this change — see below).
 >
-> **`/sra` is the ONE thing left of the four unconverted Act III routes**, and it is the whole of
-> the next UI unit — see ⇢ NEXT.
+> ## `/sra`, before → after (panel count UNCHANGED at 15)
+> heads/tools/⛶/takes/chips **0,0,0,0,0 → 12,12,12,12,12**, panelkit **0 → 1**, and it gained the
+> DoD **context line** it never had (`page-lede` **0 → 1**; the takeaway h1 was already there).
+> Three panels stay bare by the standing scope note: the two `_status_stack` header bars and the
+> global Ask panel. Contract module **9 → 14** tests, chromium **6 → 9**.
 >
-> ## `/sra` is the LAST unconverted Act III route — and it is bigger than the estimate said
-> Measured this session off rendered HTML: **`/sra` renders 15 panels** (not the 13 the earlier
-> estimate assumed) across ≈550 lines in four helpers (`_sra_body` 146 · `_sra_report_blocks` 295 ·
-> `_sra_explainers` 66 · `_sra_overrides_table` 42). Chapter 11 as a whole would have been a
-> ~755-line diff, so `/risks` was taken alone and **`/sra` gets its own PR — it is the whole of the
-> next UI unit.**
->
-> ## `/risks`, before → after (panel count UNCHANGED at 8)
-> heads/tools/⛶/takes/chips **0,0,0,0,0 → 7,7,7,7,7**, panelkit 0 → 1, and it gained the
-> **takeaway h1 it never had** (`page-takeaway` 0 → 1). The 8th panel is the global Ask panel and
-> stays bare, as on chapter 12.
+> ## Two carried figures were wrong — both corrected
+> 1. **`_sra_report_blocks` does not render `/sra`.** The carried ≈550-line estimate attributed 295
+>    lines to it; it builds the **`.docx`** report for `/export/{fmt}/sra`. The page's 15 panels come
+>    from `_sra_body`, `_sra_explainers`, `_sra_overrides_table`, `_ssi_panel`,
+>    `_correlation_matrix_panel`, `_jcl_panel` and `_what_could_go_wrong_header`.
+> 2. **15 panels re-confirmed** on this tree (the long-carried "13" stays dead).
 >
 > ## Three decisions worth carrying
-> 1. **The chip is the PAIR chip.** `/risks` computes `recommend(current, prior, …)` — most findings
->    describe the current version, but the CHANGE findings come from the pair, so a single-file chip
->    would under-describe exactly the findings that motivated loading a second version. It uses the
->    **real version indices** (`len(solv)-1 → len(solv)`), not `_series_prov_chip`'s positional
->    `1→2`, because the pair is the last two solvable versions rather than the first and last.
-> 2. **The empty returns are untouched.** `_risk_matrix([]) == ""` and `_risk_ranking([]) == ""` are
->    pinned by `test_risks.py`; a head strip over no matrix would be a box announcing nothing.
->    `_risks_section` DOES always render, so its take is worded to hold at **zero** — a take written
->    only for the populated case leaves a clean schedule wearing a headline that reads as a defect.
-> 3. **The Act III census module was renamed** `test_ch12_*` → `test_act3_*` (both the contract and
->    the chromium module). A file called "ch12" asserting on a chapter-11 route is a name that lies;
->    it now grows a row per conversion PR, with `/sra` the last route outside it.
+> 1. **The chip is the SINGLE-file chip** — deliberately the mirror image of ADR-0338. Every model
+>    on `/sra` (SSI, OAT, JCL, legacy MC) resolves through `_sra_selected`, and the top panel exists
+>    to say which file that is. A series chip would render `v1→v2` and claim versions no figure on
+>    the page came from. `/risks` went the other way because its change findings really are a pair.
+> 2. **⤓ EXCEL is SHORT BY TWO, on purpose.** This is the first route where rank 3 ("never a dead
+>    **or lying** link") costs something: the "which risk model" explainer is guidance prose, and the
+>    JCL panel's sheets ride `/export/xlsx/sra` only once the file is cost-loaded. Both keep head +
+>    ⛶ + chip and lose only the glyph that would lie. The test asserts the **shortfall**, so
+>    "give every strip a ⤓ for consistency" fails.
+> 3. **Four takes are figure-free by necessity.** Those panels are empty chart hosts until `sra.js`
+>    fetches `/api/sra` — quoting a P50 at render time would be fabricating one (Law 2). They state
+>    what the panel will draw and from what; the other eight quote figures the panel itself renders,
+>    each worded to read correctly at **zero**.
 >
-> ## The two gaps the reverts found — neither visible by reading the tests
-> - **W4: dropping `/risks`'s takeaway h1 failed NOTHING.** The takeaway test read `/brief` only, so
->   a per-route rule had no per-route assertion. **A per-route DoD rule needs a per-route gate.**
-> - **Writing that gate then exposed a real Law-2 defect in my own headline:** it quoted
->   `len(findings)`, a SUM of three separately-rendered counts that appeared nowhere else on the
->   page — which `_utility_takeaway`'s own contract forbids. Fixed in the RENDER (the lead take now
->   states the total), then pinned by W5.
+> ## The gate that was vacuous — found by RUNNING the revert, again
+> `test_the_sra_takeaway_quotes_figures_the_page_renders_below_it` **could not fail**: it searched
+> the KPI strip for "label … number" with `.*?` under `re.DOTALL`, and that dot-star spans the whole
+> six-card strip, so **any card's digit satisfied any label**. Rewriting the headline to quote two
+> figures the page never renders (`incomplete`, `neg`) left it green. Fixed by parsing the strip into
+> `label -> value` pairs and comparing each figure to **its own** card. **NEW named shape: an
+> assertion whose wildcard crosses the very boundary the rule is about.** Four PRs in a row have now
+> shipped a would-be-vacuous gate caught only by the revert pass.
+>
+> ## The adversarial audit found SIX more real defects — all in my own new code
+> A four-lens audit (vacuous gates · Law-2 · render-correctness across session states · consistency
+> with the converted routes) ran over the diff; **every finding was re-verified by the lead against
+> the code before anything was touched** (ADR-0240). Six confirmed and fixed:
+> 1. **The ⤓ was a DEAD LINK whenever no version solves** — `/export/xlsx/sra` answers **400** in
+>    that state. The export attr, the ⤓ and the chip now degrade together (`solvable`); head + ⛶ stay.
+> 2. **The JCL take said "No budgeted cost on this file" when the real reason was that nothing
+>    solved** — a false claim about a possibly cost-loaded file. Third branch added.
+> 3. **The JCL loaded take read a SETTING as a result** — `st.jcl_confidence` is the target the
+>    frontier is drawn at, not a computed JCL. Reworded.
+> 4. **"N versions loaded" counted `len(st.schedules)`** — every loaded file, across other Projects
+>    and EXCLUDED versions — while the picker beside it is built from `ordered_versions()`.
+> 5. **The takeaway gate bound only the FIRST TWO figures** — the h1 appends ", with N risks
+>    registered", so a fabricated third passed. Every figure in the h1 is now bound.
+> 6. **The ⤓ test asserted only the NEGATIVE half of rank 3** — a ⤓ on a panel with no `data-export`
+>    is an inert button and passed. Glyph and export are now paired per panel.
+>
+> Three were **REFUTED** by the lead and not acted on: the "Risk inputs" take does mirror the panel's
+> own semantics (`st.sra_overrides` IS the legacy per-activity override set); the correlation take
+> reuses the panel's pre-existing "drives the run" wording verbatim (re-litigating that is not a UI
+> conversion's job); and two constant-vs-constant assertions were flagged as tautological — which was
+> **correct**, so they were DELETED rather than defended.
+>
+> ## The real defect this round, caught by an EXISTING gate
+> `test_no_mdash_entity_sentinel_values_remain_in_app_source` failed on my own new take: I wrote the
+> missing-file sentinel as `'&mdash;'` when the required form is the literal `'—'` (the line
+> directly below mine already used it). Fixed in the render. **A blanket source-level ban is worth
+> more than it looks — it caught a value that would have rendered fine and escaped wrong later.**
 >
 > ## Verification (every number read from a run this session)
-> **ADR-0336: 6 reverts** — R5 caught a VACUOUS gate (the clean-quit test passed against a build
-> that never released anything, because `clear()` UNLINKS the file; the explicit `DELETE` only bites
-> on the **Windows fallback**, which the test now forces). Full suite **3304 passed, 2 skipped**.
-> **ADR-0337: 8 caller-reverts + 2 CSS reverts** (jarvis hiding the tool strip; apollo rendering the
-> chip transparent) — the four-theme probe passed first try, which proves nothing on its own. Full
-> suite **3316 passed, 2 skipped** (3304 + 12).
-> **ADR-0338: 5 caller-reverts** — W1 the view stops passing the chip · W2 `/risks` loses panelkit ·
-> W3 the panel export is dropped · W4 the takeaway h1 is dropped · W5 the take stops stating the
-> total. Contract module 8 → 9 tests, chromium 4 → 6; risks-adjacent modules **74 passed**.
+> **14 reverts, all confirmed to change the RENDERED page before the module ran, every module run
+> WHOLE** (a `-k` filter can silently deselect the target): W1 extra panel · W2 head dropped · W3
+> panelkit dropped · W4 / W4b the explainer given a ⤓ (markup + browser) · W5a chip names the wrong
+> file · W5b chip becomes a series chip · W6a the lede dropped · **W7 the vacuous one** · W8 a
+> fabricated P50 in a take · W9 panelkit dropped (browser) · W10 `/sra`'s heads removed · **C1**
+> jarvis hides `.sf-tools` · **C2** apollo renders the chip transparent. C1/C2 fail **all four**
+> theme rows including `/sra`, so the style probe is live on this route.
+> **Plus 8 audit-driven reverts:** **A1** the export attr stops degrading · **A2** the ⤓ stops
+> degrading · **A3** the JCL take reverts to the false claim · **A4** the version count reverts to
+> `len(st.schedules)` — which needed an **EXCLUDED version** to discriminate, since the two counts
+> are identical on the goldens · **A5** the h1 appends an unbound figure · **A6** a fabricated
+> mean-finish **DATE**, which the guard's original pattern missed · **J1/J2** the cost-loaded JCL
+> branch, where **J2 is the lying-link regression itself** (the panel keeps its ⤓ while the export
+> stops carrying the JCL sheets). Contract module **9 → 18** tests, chromium **6 → 9**.
+>
+> ## Two limits worth carrying
+> When NOTHING solves, `_what_could_go_wrong_header` returns `""` so `/sra` has **no takeaway at
+> all** — pre-existing empty-state behaviour, recorded not widened into this PR.
+>
+> ## A limit worth carrying (found by W10)
+> `test_the_head_strip_survives_all_four_themes` probes only the **FIRST** `.panel-head` on a page —
+> removing three of `/sra`'s heads left it green because another panel's head was still first. It is
+> not vacuous (C1/C2 fail it) but its per-route strength is "at least one head renders". The markup
+> census counts; the NEW ⛶-only strip shape got its **own** four-theme test.
 >
 > ## ⇢ NEXT — the queue
-> 1. **Phase 3: `/sra` — 15 panels, ≈550 lines, its own PR.** The last unconverted Act III route.
->    Then `DOM_PENDING`'s 7 modules, then the DoD ledgers — **the DD-line ledger must EXCLUDE
->    non-time-axis charts** (`histogram.js`, `scatter.js`, `sra_jcl.js`'s cost axis). Follow
->    `docs/DESIGN-SYSTEM.md`; verify in all four themes; never touch `engine/` for a UI change.
-> 2. **Phase 4 engine** (`import_notes` propagation · the 3 falsy-zero rows · CC-01's rendering
->    half — "74 sites" is an approximate grep, RE-DERIVE it · SRA-LEGACY · V3) · **Phase 5**
->    monolith split 2–3 (`app.py` ~21k lines) · **Phase 6** docs/operator queue. OR-04 stays with
->    the operator.
+> 1. **`DOM_PENDING`'s 7 modules**, then the **DoD ledgers** — the DD-line ledger must **EXCLUDE**
+>    non-time-axis charts (`histogram.js`, `scatter.js`, `sra_jcl.js`'s cost axis).
+> 2. **Phase 4 engine** (`import_notes` propagation · the 3 falsy-zero rows · CC-01's rendering half
+>    — "74 sites" is an approximate grep, RE-DERIVE it · SRA-LEGACY · V3) · **Phase 5** monolith
+>    split 2–3 (`app.py` ~21k lines) · **Phase 6** docs/operator queue. OR-04 stays with the operator.
+> 3. **Carried UI gap (measured, not fixed):** `/briefing`, `/path` and `/compare` render a bare
+>    takeaway h1 with **no** `page-lede`. The lede is the majority pattern (`/evm`, `/scurve`,
+>    `/margin`, `/groups`, `/integrity` carry one). Each is another page's PR.
 >
 > ## Still carried (unchanged identifiers, nothing lost)
 > **CC-01** rendering half, ~74 call sites (an approximate grep — RE-DERIVE) · **CC-05**
@@ -74,11 +117,12 @@
 > export contradicts ADR-0307 (ADR-0307 stands) · `resume` is MSPDI-only · Phase 7 forward-pass
 > packing · ADR-0322 residuals · importer warnings belong on the page via `Schedule.import_notes` ·
 > ADR-0320/0325/0326 notes · **the /analysis focus→tip family is a measured intermittent** —
-> adjudicated, do NOT chase · ADR-0332/0333 scope notes · ADR-0335 scope note (a predecessor's
-> `finally` runs AFTER the port is released) · **ADR-0336 scope note:** two concurrent processes
-> sharing one `$SF_CACHE_DIR` read each other's marker as a dead run and clear — correctness-safe
-> (a re-parse), accepted not engineered · **ADR-0337/0338 scope note:** the Ask panel and the shared
-> `_status_stack` bars stay bare, pinned by a test.
+> adjudicated, do NOT chase (it failed once in this session's `tests/web` run and passed alone
+> immediately after) · ADR-0332/0333 scope notes · ADR-0335 scope note · **ADR-0336 scope note:**
+> two concurrent processes sharing one `$SF_CACHE_DIR` read each other's marker as a dead run and
+> clear — correctness-safe, accepted not engineered · **ADR-0337/0338/0339 scope note:** the Ask
+> panel and the shared `_status_stack` bars stay bare, pinned by a test on BOTH `/briefing` and
+> `/sra`.
 >
 > ## Hypotheses KILLED — do not re-chase
 > Everything in `audit/SRA-PARITY-20260729.md` §7 and the archived lists, **plus:** the caption/halo
@@ -96,37 +140,44 @@
 > "a pid identifies the run that holds the cache" (false: reused, and `os.kill(pid, 0)` TERMINATES
 > on Windows) · "asserting a clean quit leaves no claim is a real gate" (false on the unlink path —
 > force the Windows FALLBACK) · "`/driving-path` is a fifth unconverted page" (false: that is its
-> EMPTY STATE; `/path` is the populated, already-converted variant) · "counting `<div class=panel`
-> finds every panel" (false: it misses the QUOTED `class="panel …"` form) · **NEW — "a DoD rule
-> tested on one route is tested"** (false: dropping `/risks`'s takeaway h1 failed nothing until it
-> got its OWN gate) · **NEW — "`/sra` is 13 panels"** (measured: **15**).
+> EMPTY STATE) · "counting `<div class=panel` finds every panel" (false: it misses the QUOTED form) ·
+> "a DoD rule tested on one route is tested" (false) · "`/sra` is 13 panels" (measured: **15**) ·
+> **NEW — "`_sra_report_blocks` renders `/sra`"** (false: it builds the **.docx** export) ·
+> **NEW — "a rank-3 ⤓ rule that has always passed is tested"** (false: it was FREE on all three
+> earlier routes; it only bites where a panel's data is genuinely not in the workbook) ·
+> **NEW — "a four-theme head-strip probe covers a page's heads"** (false: it reads only the FIRST
+> `.panel-head`).
 >
 > ## Harness notes — the traps, one line each
 > Run dev tools as `python -m <tool>`. **`pip install -e ".[dev]"` after EVERY container restart**
 > (plus `playwright`, `ruff==0.16.1`, `build`). `pytest --timeout=N` is NOT installed. **Read the
 > tool's own summary line** (`| tail` masks the real exit code). **`node --check a.js b.js` checks
 > only the FIRST file — loop per file.** **NEVER `git checkout <file>` to undo a temporary
-> mutation — `cp` from a scratchpad copy** (used repeatedly this session, for app.py and app.css).
-> **When reverting to prove able-to-fail, revert the CALLER — and check the revert actually removed
-> the behaviour.** **A `-k` filter can silently DESELECT the very test the revert targets — run the
-> whole module.** **A theme/computed-style assertion needs its own CSS revert to prove it can
-> fail.** **pytest stdout to a FILE is block-buffered — the dot count lags badly; not a stall.**
-> **The /risks page title is `Risks & Opportunities` in source (NOT `&amp;`) — an Edit that assumes
-> the entity will not match.** **A hash-for-hash `sed` does NOT update abbreviated digests quoted in
-> prose — grep the prefix too.** `pkill -f` with the pattern in the killer's own command line kills
-> the killer. CI can take ~11 min to register check runs; `test (3.11)`/`(3.13)` run ~30 min.
-> `TestClient` follows 303 and CONSUMES one-shot banners; **plain `TestClient(app)` does NOT run the
-> lifespan — only `with TestClient(app)` does.** Parity marker ≈2m38s. Headless Chromium hides
-> scrollbars. `caplog` needs `logger="schedule_forensics.<module>"`. **Playwright `bounding_box` /
-> `page.screenshot(clip=…)` are VIEWPORT-relative.** **localStorage is per-ORIGIN.** Bundled
-> chromium: `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`. Containers RESTART mid-run:
-> statics FOREGROUND first, reinstall pip after resume. After a squash-merge:
+> mutation — `cp` from a scratchpad copy.** **When reverting to prove able-to-fail, revert the
+> CALLER — and check the revert actually removed the behaviour** (this session's harness re-rendered
+> the page after every revert before running the module). **A `-k` filter can silently DESELECT the
+> very test the revert targets — run the whole module.** **A theme/computed-style assertion needs
+> its own CSS revert to prove it can fail.** **`re.DOTALL` + `.*?` across a repeated element makes a
+> "this value belongs to that label" assertion vacuous — parse into pairs instead.** **pytest stdout
+> to a FILE is block-buffered — the dot count lags badly; not a stall.** **The missing-value sentinel
+> in `app.py` is the literal `—`, never `&mdash;`** (a source-level gate enforces it). **The /risks
+> page title is `Risks & Opportunities` in source (NOT `&amp;`).** **A hash-for-hash `sed` does NOT
+> update abbreviated digests quoted in prose — grep the prefix too.** `pkill -f` with the pattern in
+> the killer's own command line kills the killer. CI can take ~11 min to register check runs;
+> `test (3.11)`/`(3.13)` run ~30 min. Full local suite ≈17 min. `TestClient` follows 303 and CONSUMES
+> one-shot banners; **plain `TestClient(app)` does NOT run the lifespan — only `with` does.** Parity
+> marker ≈2m38s. Headless Chromium hides scrollbars. `caplog` needs
+> `logger="schedule_forensics.<module>"`. **Playwright `bounding_box` / `page.screenshot(clip=…)` are
+> VIEWPORT-relative.** **localStorage is per-ORIGIN.** Bundled chromium:
+> `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`. Containers RESTART mid-run: statics
+> FOREGROUND first, reinstall pip after resume. After a squash-merge:
 > `git fetch --prune origin && git remote set-head origin -a && git checkout -B <branch>
 > origin/main` — **NEVER amend the merged commits.** **Version-bump sequencing:** bump BEFORE the
-> suite. Never sleep in a sync-Playwright route handler. Never `from tests.web...` in a test.
-> **A parse-time-rendering JS module + a later chartframe.js = first-paint crash** (ADR-0316).
-> **A stray `*/` makes CSS error-recovery swallow the NEXT rule silently.** **`cd` in a Bash call
-> persists across calls — use absolute paths.**
+> suite (this session's 4 installer failures were exactly that, and are expected). Never sleep in a
+> sync-Playwright route handler. Never `from tests.web...` in a test. **A parse-time-rendering JS
+> module + a later chartframe.js = first-paint crash** (ADR-0316). **A stray `*/` makes CSS
+> error-recovery swallow the NEXT rule silently.** **`cd` in a Bash call persists across calls — use
+> absolute paths.**
 >
 > **Standing rule:** do not put a test result in prose unless the number appeared in output you
 > read that turn. **A launched run is not a result, and a piped exit code is not the command's.**

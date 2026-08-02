@@ -1,4 +1,4 @@
-"""Act III's panel contract in a REAL browser, in ALL FOUR themes — ADR-0337 / ADR-0338.
+"""Act III's panel contract in a REAL browser, in ALL FOUR themes — ADR-0337 / 0338 / 0339.
 
 Markup alone is not evidence (the round-4 latent-gap lesson): panelkit.js is a PER-PAGE include,
 so a page can render ⛶ / ⤓ with no script to drive them, and a theme can render the head strip
@@ -8,7 +8,7 @@ broad `html[data-theme=jarvis] .panel` rules are what flattened the verdict band
 
 Proved here, in bundled chromium:
 
-* panelkit.js genuinely drives `/briefing`, `/brief` and `/risks` — click ⛶ on a converted
+* panelkit.js genuinely drives `/briefing`, `/brief`, `/risks` and `/sra` — click ⛶ on a converted
   panel, read `.is-big` back off it, and see the label flip (then toggle back);
 * in each of the four themes, on every converted route: the head strip lays out (the h2 and
   the tool strip sit on one row, tools to the right), the tool strip is really on screen, and
@@ -80,6 +80,10 @@ def served() -> Any:
         ("/briefing", ".panel.brief-doc"),
         ("/brief", ".panel[data-export]"),
         ("/risks", ".panel[data-export]"),
+        # /sra's FIRST [data-export] panel is the file-picker; the two `_status_stack` bars
+        # above it are deliberately bare, so this also proves the ⛶ landed on a CONVERTED box
+        # rather than on whichever .panel happens to come first in the document.
+        ("/sra", ".panel[data-export]"),
     ],
 )
 def test_panelkit_actually_drives_the_converted_panel(served: str, route: str, panel: str) -> None:
@@ -114,7 +118,7 @@ def test_panelkit_actually_drives_the_converted_panel(served: str, route: str, p
         browser.close()
 
 
-@pytest.mark.parametrize("route", ["/briefing", "/brief", "/risks"])
+@pytest.mark.parametrize("route", ["/briefing", "/brief", "/risks", "/sra"])
 def test_the_head_strip_survives_all_four_themes(served: str, route: str) -> None:
     """Computed style, not markup (the standing rank-2/D1 lesson).
 
@@ -163,4 +167,60 @@ def test_the_head_strip_survives_all_four_themes(served: str, route: str) -> Non
             assert probe["chipDisplay"] != "none", (theme, route, probe)
             # a chip rendered fully transparent is "present" in the DOM and invisible on screen
             assert "rgba(0, 0, 0, 0)" not in probe["chipColor"], (theme, route, probe)
+        browser.close()
+
+
+def test_the_excel_less_tool_strip_survives_all_four_themes(served: str) -> None:
+    """The ⛶-only strip is a NEW shape this round introduces (ADR-0339), and the test above would
+    never see it.
+
+    That probe reads `document.querySelector('.panel-head')` — the FIRST head on the page. On
+    `/sra` that is the file-picker panel, which carries the full ⤓ + ⛶ strip. The two panels whose
+    data does not ride the SRA workbook get a strip with ONE button instead, and a one-button flex
+    row is exactly the kind of thing a theme can collapse to zero width without touching the HTML.
+    Probed here on its own, in all four themes.
+    """
+    from playwright.sync_api import sync_playwright
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch(executable_path=str(CHROME))
+        page = browser.new_page(viewport={"width": 1360, "height": 900})
+        page.goto(served + "/sra", wait_until="domcontentloaded")
+        page.wait_for_selector(".panel-head", timeout=10000)
+
+        # the head strip that has a ⛶ but no ⤓ — located by that shape, not by position
+        found = page.evaluate(
+            """() => [...document.querySelectorAll('.panel-head')]
+                 .filter(h => h.querySelector('[data-sf-big]') &&
+                              !h.querySelector('[data-sf-excel]')).length"""
+        )
+        assert found == 2, f"expected the explainer + JCL strips to be the ⛶-only pair, got {found}"
+
+        for theme in THEMES:
+            page.evaluate(f"() => document.documentElement.setAttribute('data-theme','{theme}')")
+            page.wait_for_timeout(80)
+            probe = page.evaluate(
+                """() => {
+                  const head = [...document.querySelectorAll('.panel-head')]
+                    .filter(h => h.querySelector('[data-sf-big]') &&
+                                 !h.querySelector('[data-sf-excel]'))[0];
+                  const tools = head.querySelector('.sf-tools');
+                  const btn = tools.querySelector('[data-sf-big]');
+                  const tb = tools.getBoundingClientRect();
+                  const bb = btn.getBoundingClientRect();
+                  const chip = head.querySelector('.prov-chip');
+                  return {
+                    toolsW: tb.width, toolsH: tb.height,
+                    btnW: bb.width, btnH: bb.height,
+                    toolsVisible: getComputedStyle(tools).visibility,
+                    chipColor: getComputedStyle(chip).color,
+                    chipDisplay: getComputedStyle(chip).display,
+                  };
+                }"""
+            )
+            assert probe["toolsW"] > 0 and probe["toolsH"] > 0, (theme, probe)
+            assert probe["btnW"] > 0 and probe["btnH"] > 0, (theme, probe)
+            assert probe["toolsVisible"] != "hidden", (theme, probe)
+            assert probe["chipDisplay"] != "none", (theme, probe)
+            assert "rgba(0, 0, 0, 0)" not in probe["chipColor"], (theme, probe)
         browser.close()

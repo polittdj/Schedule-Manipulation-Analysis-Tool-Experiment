@@ -10829,3 +10829,74 @@ the briefs + state rotation) earlier today.
 - **Kickoff refreshed** for the next session: `/sra` (15 panels, ≈550 lines, the last unconverted
   Act III route) is the head of the queue, with the Act III census modules named as the place to
   extend rather than duplicate.
+
+## 2026-08-02e — Phase 3 UI: `/sra` joins the panel contract (ADR-0339, v1.0.155) — Act III complete
+
+- **`/sra` converted — the last unconverted Act III route.** Panel count unchanged at **15**;
+  contract vocabulary **0,0,0,0,0 → 12,12,12,12,12**; `panelkit.js` 0 → 1; and the page gained the
+  DoD **context line** it never had (`page-lede` 0 → 1 — the takeaway h1 was already present).
+  Three panels stay bare by the standing scope note: the two `_status_stack` header bars and the
+  global Ask panel. `tests/web/test_act3_panel_contract.py` 9 → 14 tests;
+  `tests/web/test_act3_themes_chromium.py` 6 → 9. **Every Act III route is now inside both census
+  modules.**
+- **Two carried figures were wrong and are corrected.** `_sra_report_blocks` — credited with 295 of
+  `/sra`'s ≈550 rendering lines across several handoffs — **does not render this page**; it builds
+  the `.docx` report for `/export/{fmt}/sra`. And 15 panels was re-confirmed by rendering the
+  pristine page (the long-carried "13" stays dead).
+- **The chip is the SINGLE-file chip, deliberately the mirror image of ADR-0338.** Every model on
+  `/sra` resolves its schedule through `_sra_selected`; a series chip would render `v1→v2` and claim
+  versions no figure on the page came from. Two versions are loaded in the fixtures, so the test
+  discriminates.
+- **⤓ EXCEL is short by two, on purpose — the first route where rank 3 costs anything.** The
+  "which risk model" explainer is guidance prose, and the JCL panel's sheets ride
+  `/export/xlsx/sra` only once the file is cost-loaded. Both keep head + ⛶ + chip. The test asserts
+  the **shortfall**, so a later "give every strip a ⤓ for consistency" fails.
+- **Four takes are figure-free by necessity** — those panels are empty chart hosts until `sra.js`
+  fetches `/api/sra`, so quoting a P50 at render time would fabricate one (Law 2).
+- **A gate that could not fail, found by running the revert — the fourth PR in a row.**
+  `test_the_sra_takeaway_quotes_figures_the_page_renders_below_it` searched the KPI strip with
+  `.*?` under `re.DOTALL`, which spans the whole six-card strip, so **any card's digit satisfied
+  any label**. Rewriting the headline to quote two unrendered figures left it green. Fixed by
+  parsing the strip into `label -> value` pairs. **New named shape: an assertion whose wildcard
+  crosses the boundary the rule is about.**
+- **A real defect caught by an EXISTING gate.**
+  `test_no_mdash_entity_sentinel_values_remain_in_app_source` failed on my own new take: the
+  missing-file sentinel was written `'&mdash;'` where the required form is the literal `'—'` — the
+  line directly below it already used the literal. Fixed in the render.
+- **14 reverts run**, each confirmed to change the RENDERED page before its module was run, and
+  every module run WHOLE: W1 extra panel · W2 head dropped · W3 panelkit dropped · W4/W4b the ⤓
+  regression (markup + browser) · W5a/W5b the chip (wrong file / series form) · W6a lede dropped ·
+  **W7 the vacuous one** · W8 fabricated P50 · W9 panelkit dropped in-browser · W10 heads removed ·
+  **C1** jarvis hides `.sf-tools` · **C2** apollo renders the chip transparent. C1/C2 fail all four
+  theme rows including `/sra`.
+- **A limit recorded (found by W10):** `test_the_head_strip_survives_all_four_themes` probes only
+  the FIRST `.panel-head` on a page, so it cannot distinguish 1 head from 12. Not vacuous (C1/C2
+  fail it), but its per-route strength is "at least one head renders". The new ⛶-only strip shape
+  therefore got its own four-theme test.
+- **Carried UI gap, measured not fixed:** `/briefing`, `/path` and `/compare` render a bare takeaway
+  h1 with no `page-lede`, while `/evm`, `/scurve`, `/margin`, `/groups` and `/integrity` carry one.
+  Each is another page's PR.
+- Full suite before the docs/installer commit: **3319 passed, 2 skipped**, with 8 failures that were
+  the expected version-bump installer lockstep (4) + the state-doc guards (3) + the one real
+  `&mdash;` defect (1), all resolved in this commit.
+- **An adversarial four-lens audit (ADR-0240) then found SIX more real defects, all in this
+  session's own new code**, every one re-verified by the lead against the code before being touched:
+  (1) the ⤓ was a **dead link** whenever no version solves — `/export/xlsx/sra` answers 400 there,
+  so the export attr, the ⤓ and the chip now degrade together; (2) the JCL take claimed "No budgeted
+  cost on this file" when the real reason was that nothing solved; (3) the JCL loaded take read
+  `st.jcl_confidence` — a target SETTING — as a computed result; (4) "N versions loaded" counted
+  every loaded file across other Projects and excluded versions instead of the picker's own
+  population; (5) the takeaway gate bound only the first two figures, so the h1's appended risk
+  count was unchecked; (6) the ⤓ test asserted only rank 3's negative half, so a ⤓ on a panel with
+  no `data-export` — an inert button — would have passed.
+- **Three audit findings were REFUTED by the lead** and deliberately not acted on: the "Risk inputs"
+  take mirrors the panel's own semantics; the correlation take reuses the page's pre-existing
+  wording; and (correctly flagged) two constant-vs-constant assertions were tautological, so they
+  were **deleted** rather than defended — in a file whose purpose is "no vacuous gates", an assert
+  no app change can move reads as coverage and is worse than a comment.
+- **8 further reverts** proved the audit-driven fixes (A1–A6, J1–J2). A4 needed an **excluded
+  version** to discriminate at all, because `len(st.schedules)` and `len(st.ordered_versions())` are
+  identical on the goldens; A6 caught a fabricated **date**, a shape the guard's first pattern
+  missed; **J2 is the lying-link regression itself** — the JCL panel keeps its ⤓ while the export
+  stops carrying the JCL sheets.
+- Contract module **9 → 18** tests; chromium **6 → 9**.
