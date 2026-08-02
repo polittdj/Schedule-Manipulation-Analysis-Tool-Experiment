@@ -1,10 +1,15 @@
-"""Chapter 12 (`/briefing` + `/brief`) joins the Mission Ops panel contract — ADR-0337.
+"""Act III's panel-contract census — ADR-0337 (chapter 12) and ADR-0338 (`/risks`).
 
-The census numbers below were measured on BOTH trees: the converted one, and the pristine tree at
-`1bcf01a` (restored from a scratchpad copy, re-rendered, then put back). That matters more than it
-sounds — a first pass at the "before" figures used a `<div class=panel[ >]` regex that silently
-misses the QUOTED form (`<div class="panel brief-doc">`), and so reported `/briefing` as a 1-panel
-page when it renders 4. The panel counts here are the honest both-forms totals.
+One module for the whole act, because the census discipline is the same for every route joining
+the contract and the fixtures are worth sharing. It grows a row per conversion PR; `/sra` is the
+last one still outside it.
+
+The numbers were measured on BOTH trees for every route: the converted one, and the pristine tree
+immediately before it (restored from a scratchpad copy, re-rendered, then put back — never
+`git checkout`). That matters more than it sounds — a first pass at the chapter-12 "before"
+figures used a `<div class=panel[ >]` regex that silently misses the QUOTED form
+(`<div class="panel brief-doc">`), and so reported `/briefing` as a 1-panel page when it renders 4.
+Every panel count here is the honest both-spellings total.
 
 What this file pins, in order of how quietly it could rot:
 
@@ -16,7 +21,7 @@ What this file pins, in order of how quietly it could rot:
   inherit jarvis's broad `.panel` rules, i.e. a promotion nobody designed);
 * the contract vocabulary lands where it was planned, counted rather than eyeballed;
 * the headings still read the same, so every existing substring assertion in
-  `test_briefing_view.py` survives the `_panel_head` wrap;
+  `test_briefing_view.py` and `test_risks.py` survives the `_panel_head` wrap;
 * every `data-export` is a REAL workbook, fetched and checked — never a dead link.
 """
 
@@ -35,6 +40,7 @@ GOLDEN = Path(__file__).resolve().parents[1] / "fixtures" / "golden" / "project2
 
 BRIEFING = "/briefing"
 BRIEF = "/brief"
+RISKS = "/risks"  # chapter 11's sub-page (ADR-0338), same contract, same census discipline
 
 #: both spellings of a panel opener — bare (`<div class=panel>`) and quoted
 #: (`<div class="panel brief-doc">`). Missing the second is how the first "before" census
@@ -74,7 +80,7 @@ def pages() -> dict[str, str]:
             c.post("/upload", files={"files": (f"{name}.mspdi.xml", data, "text/xml")}).status_code
             == 200
         )
-    return {route: c.get(route).text for route in (BRIEFING, BRIEF)}
+    return {route: c.get(route).text for route in (BRIEFING, BRIEF, RISKS)}
 
 
 @pytest.fixture
@@ -91,7 +97,7 @@ def client() -> TestClient:
 #: `.panel` per route, BOTH spellings, measured on the pristine tree AND the converted one.
 #: `/briefing` = 2 `.panel.status-stack` header bars + the `.panel.brief-doc` + the Ask panel.
 #: `/brief` = the lead panel + 6 sections + the Ask panel.
-PANEL_CENSUS = {BRIEFING: 4, BRIEF: 8}
+PANEL_CENSUS = {BRIEFING: 4, BRIEF: 8, RISKS: 8}
 
 #: the contract vocabulary each route NEWLY carries: heads, tool strips, ⛶, takes, chips.
 #: All five were **0** on both routes before this round (measured on the pristine tree).
@@ -99,6 +105,7 @@ CONTRACT_CENSUS = {
     #          heads, tools, ⛶, takes, chips
     BRIEFING: (1, 1, 1, 1, 1),
     BRIEF: (7, 7, 7, 1, 7),
+    RISKS: (7, 7, 7, 7, 7),
 }
 
 
@@ -130,7 +137,7 @@ def test_the_contract_vocabulary_lands_where_it_was_planned(pages: dict[str, str
         assert page.count("⛶ SHRINK") == 0, route  # the label flips in JS, never server-side
 
 
-def test_panelkit_is_included_exactly_once_on_both_routes(pages: dict[str, str]) -> None:
+def test_panelkit_is_included_exactly_once_on_every_converted_route(pages: dict[str, str]) -> None:
     """A page can render the ⛶ / ⤓ buttons with no script to drive them (the round-4 latent-gap
     lesson), and a page can load it twice and double-fire every click."""
     for route, page in pages.items():
@@ -149,15 +156,19 @@ def test_the_headings_still_read_the_same(pages: dict[str, str]) -> None:
         assert heading in pages[BRIEFING], heading
     for heading in ("The finish story", "How to verify any claim in this brief"):
         assert f"<h2>{heading}</h2>" in pages[BRIEF], heading
+    # test_risks.py asserts these two as `<h2>Risks <span` / `<h2>Opportunities <span` — the
+    # count badge is INSIDE the heading, so the wrap has to preserve the whole opening string.
+    for heading in ("<h2>Risks <span", "<h2>Opportunities <span", "<h2>Risk matrix"):
+        assert heading in pages[RISKS], heading
 
 
-def test_every_data_export_on_both_routes_is_a_real_workbook(
+def test_every_data_export_on_every_converted_route_is_a_real_workbook(
     client: TestClient, pages: dict[str, str]
 ) -> None:
     """The rank-3 law: ⤓ EXCEL renders ONLY where the panel carries a `data-export` to an endpoint
     that exists. Fetched, not assumed — a route that 404s is the failure mode this catches."""
     urls = {u for page in pages.values() for u in re.findall(r'data-export="([^"]+)"', page)}
-    assert urls == {"/export/xlsx/briefing", "/export/xlsx/brief"}, urls
+    assert urls == {"/export/xlsx/briefing", "/export/xlsx/brief", "/export/xlsx/risks"}, urls
     for url in sorted(urls):
         r = client.get(url)
         assert r.status_code == 200, url
@@ -220,6 +231,33 @@ def test_the_ai_polished_briefing_still_carries_the_contract(
 
 
 # ── the DoD's takeaway rule ───────────────────────────────────────────────────────────────────
+
+
+def test_the_risks_takeaway_quotes_figures_the_page_renders_below_it(
+    pages: dict[str, str],
+) -> None:
+    """Same DoD rule as `/brief`, and it needs its OWN gate.
+
+    Dropping `/risks`'s takeaway h1 failed nothing until this existed — the `/brief` test only
+    reads `/brief`, so a per-route rule needs a per-route assertion. Found by running the revert
+    (W4), not by reading the tests.
+
+    It also pins the harder half of `_utility_takeaway`'s contract: every figure in the headline
+    must be rendered AGAIN further down the same page, so the reader can verify it by reading on.
+    The total (`len(findings)`) is a SUM of three separately-rendered counts, so the lead panel's
+    take was changed to state the total explicitly rather than leave the headline quoting a number
+    that appears nowhere else.
+    """
+    page = pages[RISKS]
+    assert 'class="page-takeaway"' in page and 'class="page-lede"' in page
+    h1 = re.search(r'<h1 class="page-takeaway"[^>]*>(.*?)</h1>', page, re.S)
+    assert h1 is not None
+    total, high = (int(n) for n in re.findall(r"\d+", h1.group(1)))
+    take = re.search(r"<p class=sf-take[^>]*>(.*?)</p>", page, re.S)
+    assert take is not None
+    assert f"{total} finding" in take.group(1), (h1.group(1), take.group(1))
+    assert f"{high} at HIGH severity" in take.group(1), (h1.group(1), take.group(1))
+    assert page.index("page-takeaway") < page.index("sf-take")
 
 
 def test_the_brief_takeaway_quotes_figures_the_page_renders_below_it(pages: dict[str, str]) -> None:

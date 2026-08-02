@@ -1,4 +1,4 @@
-"""Chapter 12's panel contract in a REAL browser, in ALL FOUR themes — ADR-0337.
+"""Act III's panel contract in a REAL browser, in ALL FOUR themes — ADR-0337 / ADR-0338.
 
 Markup alone is not evidence (the round-4 latent-gap lesson): panelkit.js is a PER-PAGE include,
 so a page can render ⛶ / ⤓ with no script to drive them, and a theme can render the head strip
@@ -8,11 +8,11 @@ broad `html[data-theme=jarvis] .panel` rules are what flattened the verdict band
 
 Proved here, in bundled chromium:
 
-* panelkit.js genuinely drives `/briefing` and `/brief` — click ⛶ on a converted panel, read
-  `.is-big` back off it, and see the label flip (then toggle back);
-* in each of the four themes, on both routes: the head strip lays out (the h2 and the tool strip
-  sit on one row, tools to the right), the tool strip is really on screen, and the provenance chip
-  resolves to a VISIBLE colour rather than inheriting something transparent.
+* panelkit.js genuinely drives `/briefing`, `/brief` and `/risks` — click ⛶ on a converted
+  panel, read `.is-big` back off it, and see the label flip (then toggle back);
+* in each of the four themes, on every converted route: the head strip lays out (the h2 and
+  the tool strip sit on one row, tools to the right), the tool strip is really on screen, and
+  the provenance chip resolves to a VISIBLE colour rather than inheriting something transparent.
 
 Skips unless playwright + the bundled chromium are present (same posture as
 `test_compare_panelkit.py` — the runtime stays stdlib-only, Law 1)."""
@@ -76,7 +76,11 @@ def served() -> Any:
 
 @pytest.mark.parametrize(
     ("route", "panel"),
-    [("/briefing", ".panel.brief-doc"), ("/brief", ".panel[data-export]")],
+    [
+        ("/briefing", ".panel.brief-doc"),
+        ("/brief", ".panel[data-export]"),
+        ("/risks", ".panel[data-export]"),
+    ],
 )
 def test_panelkit_actually_drives_the_converted_panel(served: str, route: str, panel: str) -> None:
     """ONE real interaction per route: the button is wired, not merely rendered."""
@@ -110,7 +114,7 @@ def test_panelkit_actually_drives_the_converted_panel(served: str, route: str, p
         browser.close()
 
 
-@pytest.mark.parametrize("route", ["/briefing", "/brief"])
+@pytest.mark.parametrize("route", ["/briefing", "/brief", "/risks"])
 def test_the_head_strip_survives_all_four_themes(served: str, route: str) -> None:
     """Computed style, not markup (the standing rank-2/D1 lesson).
 

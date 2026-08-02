@@ -5994,14 +5994,32 @@ def create_app(
             target_uid=st.target_uid,
             acumen_parity=st.dcma_acumen_parity,  # ADR-0282 Option A: findings follow the parity audit
         )
+        # ADR-0338 provenance: the findings are computed from the CURRENT version, and the change
+        # findings from the PAIR — so when a prior exists the chip names both, with the real
+        # version indices rather than 1→2. A single-file chip would under-describe exactly the
+        # findings that motivated loading a second version.
+        prov = (
+            _pair_prov_chip(prior, current, len(solv) - 1, len(solv))
+            if prior is not None
+            else _prov_chip(current)
+        )
+        n_high = sum(1 for f in findings if f.severity == Severity.HIGH)
+        takeaway = _utility_takeaway(
+            f"{len(findings)} finding{'s' if len(findings) != 1 else ''} on this version "
+            f"&mdash; {n_high} at HIGH severity.",
+            "Forward-looking risks, current issues and recovery opportunities, each scored "
+            "likelihood &times; impact and carrying the citation it was derived from.",
+        )
         # Render the deterministic narrative immediately so the page never blocks on the model; the
         # local-AI polish (when a model is active) is fetched asynchronously by ai_polish.js via
         # /api/ai/narrative and swapped in. The old synchronous per-statement generate on page load
         # made this page hang (effectively "won't open") on big workbooks with a slow local model.
         body = (
-            _export_bar("risks")
+            takeaway
+            + _export_bar("risks")
             + _skipped_notice(skipped)
-            + _risks_body(current, findings, cur_an.narrative, key)
+            + _risks_body(current, findings, cur_an.narrative, key, prov=prov)
+            + '<script src="/static/panelkit.js"></script>'
         )
         return _page(st, "Risks & Opportunities", body, ask_schedule=key)
 
@@ -11176,9 +11194,14 @@ def _finding_card(f: Finding) -> str:
 <p class=cite>Cited: {cites}{_e(more)}</p></div>"""
 
 
-def _risk_matrix(items: list[Finding]) -> str:
+def _risk_matrix(items: list[Finding], *, prov: str = "", tools: str = "") -> str:
     """A 5x5 Likelihood (columns) by Impact (rows) heat-map of the risks + issues, each placed by
-    its quantified scores; cells carry the conventional risk colour and the count landing there."""
+    its quantified scores; cells carry the conventional risk colour and the count landing there.
+
+    Panel contract (ADR-0338): head strip + tools + chip + one ``.sf-take``. The empty return is
+    unchanged and load-bearing — ``test_risks`` pins ``_risk_matrix([]) == ""``, and a panel head
+    rendered over no matrix would be a box announcing nothing.
+    """
     if not items:
         return ""
     counts: dict[tuple[int, int], int] = {}
@@ -11217,8 +11240,12 @@ def _risk_matrix(items: list[Finding]) -> str:
             ("rk-extreme", "Extreme"),
         )
     )
+    hot = sum(1 for f in items if f.risk_score >= 12)  # the High + Extreme bands (_risk_band)
     return (
-        "<div class=panel><h2>Risk matrix &mdash; likelihood &times; impact</h2>"
+        f"<div class=panel{_RISKS_EXPORT}>"
+        + _panel_head("Risk matrix &mdash; likelihood &times; impact", tools=tools, prov=prov)
+        + f"<p class=sf-take data-no-i18n>{hot} of {len(items)} risks and issues land in the "
+        "High or Extreme bands.</p>"
         "<p class=muted>Each risk and issue placed by its quantified likelihood of occurrence and "
         "severity of schedule impact; cell colour is the conventional 5&times;5 risk heat "
         "(score = likelihood &times; impact, 1&ndash;25). The number in a cell is how many items "
@@ -11232,9 +11259,13 @@ def _risk_matrix(items: list[Finding]) -> str:
     )
 
 
-def _risk_ranking(items: list[Finding]) -> str:
+def _risk_ranking(items: list[Finding], *, prov: str = "", tools: str = "") -> str:
     """The risks + issues ranked by score (highest first) as labelled bars, each annotated with the
-    quantified float, driving float to the target, and working-day exposure."""
+    quantified float, driving float to the target, and working-day exposure.
+
+    Panel contract (ADR-0338). Empty return unchanged — ``test_risks`` pins
+    ``_risk_ranking([]) == ""``.
+    """
     if not items:
         return ""
     ranked = sorted(items, key=lambda f: (-f.risk_score, SEVERITY_ORDER[f.severity], f.metric_id))
@@ -11259,8 +11290,12 @@ def _risk_ranking(items: list[Finding]) -> str:
             f"{_IMPACT_LABELS[f.impact_score]} impact ({_e(band_label)}){quant_txt}</div>"
             f"</div></li>"
         )
+    top = ranked[0]
     return (
-        "<div class=panel><h2>Risk ranking &mdash; highest score first</h2>"
+        f"<div class=panel{_RISKS_EXPORT}>"
+        + _panel_head("Risk ranking &mdash; highest score first", tools=tools, prov=prov)
+        + f"<p class=sf-take data-no-i18n>Highest risk score: {top.risk_score}/25 &mdash; "
+        f"{_e(top.title)}.</p>"
         "<p class=muted>Risks and issues ordered by score, with the quantified slack (total float, "
         "and driving float to the target when one is set) and the working-day schedule exposure if "
         "the item is realised.</p>"
@@ -11268,16 +11303,42 @@ def _risk_ranking(items: list[Finding]) -> str:
     )
 
 
-def _risks_section(title: str, lead: str, items: list[Finding], empty: str) -> str:
+def _risks_section(
+    title: str, lead: str, items: list[Finding], empty: str, *, prov: str = "", tools: str = ""
+) -> str:
+    """One findings section (Risks / Issues / Opportunities) as a contract panel (ADR-0338).
+
+    The take is worded to hold when the section is EMPTY as well as populated — these three panels
+    always render, so a take that only made sense with items would leave a panel wearing a headline
+    that reads as a defect on a clean schedule.
+    """
     body = "".join(_finding_card(f) for f in items) if items else f"<p class=muted>{empty}</p>"
+    high = sum(1 for f in items if f.severity == Severity.HIGH)
     return (
-        f"<div class=panel><h2>{title} <span class=muted>({len(items)})</span></h2>"
+        f"<div class=panel{_RISKS_EXPORT}>"
+        + _panel_head(f"{title} <span class=muted>({len(items)})</span>", tools=tools, prov=prov)
+        + f"<p class=sf-take data-no-i18n>{len(items)} identified &mdash; {high} at HIGH "
+        "severity.</p>"
         f"<p class=muted>{lead}</p>{body}</div>"
     )
 
 
+#: The panel-level export every /risks panel follows — the EXISTING risks workbook endpoint
+#: (`@app.get("/export/{fmt}/risks")`), the same one the page's export bar already offers, so
+#: ⤓ EXCEL is never a dead link (rank-3 law, ADR-0338).
+_RISKS_EXPORT = ' data-export="/export/xlsx/risks"'
+_RISKS_XLSX_TITLE = (
+    "Export the risks workbook (this panel's findings are one of its sheets) — opens in Excel"
+)
+
+
 def _risks_body(
-    sch: Schedule, findings: tuple[Finding, ...], narrative: Narrative, ai_key: str = ""
+    sch: Schedule,
+    findings: tuple[Finding, ...],
+    narrative: Narrative,
+    ai_key: str = "",
+    *,
+    prov: str = "",
 ) -> str:
     """The Risks, Issues & Opportunities page: a high-level read first, then the cited detail.
 
@@ -11293,9 +11354,10 @@ def _risks_body(
     def _by_score(items: list[Finding]) -> list[Finding]:
         return sorted(items, key=lambda f: (-f.risk_score, SEVERITY_ORDER[f.severity], f.metric_id))
 
+    tools = _shell_tools(export_title=_RISKS_XLSX_TITLE)
     threats = risks + issues
-    matrix = _risk_matrix(threats)
-    ranking = _risk_ranking(threats)
+    matrix = _risk_matrix(threats, prov=prov, tools=tools)
+    ranking = _risk_ranking(threats, prov=prov, tools=tools)
 
     # prioritized, de-duplicated recovery actions across risks + issues (most severe first)
     seen: set[str] = set()
@@ -11312,15 +11374,25 @@ def _risks_body(
             for a in actions
         )
         recovery = (
-            "<div class=panel><h2>Recovery plan &mdash; prioritized actions</h2>"
+            f"<div class=panel{_RISKS_EXPORT}>"
+            + _panel_head("Recovery plan &mdash; prioritized actions", tools=tools, prov=prov)
+            + f"<p class=sf-take data-no-i18n>{len(actions)} prioritized action"
+            f"{'s' if len(actions) != 1 else ''}, most severe first.</p>"
             "<p class=muted>The highest-leverage actions to recover the plan, most severe first, "
             "each tied to the finding that motivates it.</p>"
             f"<ol class=recovery-list>{action_items}</ol></div>"
         )
 
     high_note = f" &mdash; {high} flagged HIGH severity" if high else ""
+    summary_head = _panel_head(
+        f"Risks, Issues &amp; Opportunities &mdash; {_e(sch.name)}", tools=tools, prov=prov
+    )
     summary = f"""
-<div class=panel><h2>Risks, Issues &amp; Opportunities &mdash; {_e(sch.name)}</h2>
+<div class=panel{_RISKS_EXPORT}>{summary_head}
+<p class=sf-take data-no-i18n>{len(findings)} finding{"s" if len(findings) != 1 else ""}:
+{len(risks)} risk{"s" if len(risks) != 1 else ""}, {len(issues)}
+issue{"s" if len(issues) != 1 else ""} and {len(opps)} opportunit{"ies" if len(opps) != 1 else "y"}
+&mdash; {high} at HIGH severity.</p>
 <p>At a glance: <b class=fail>{len(risks)} risk(s)</b>,
 <b class=sev-MEDIUM>{len(issues)} issue(s)</b>, and
 <b class=pass>{len(opps)} opportunity(ies)</b>{high_note}. The plain-English read is below; the
@@ -11343,18 +11415,24 @@ themselves are engine-computed and cited.</p></div>
             "Future-facing threats to the plan, highest risk score first.",
             _by_score(risks),
             "No forward-looking risks identified in this version.",
+            prov=prov,
+            tools=tools,
         )
         + _risks_section(
             "Issues (current concerns)",
             "Quality / integrity problems present right now, including manipulation signals.",
             _by_score(issues),
             "No current concerns identified in this version.",
+            prov=prov,
+            tools=tools,
         )
         + _risks_section(
             "Opportunities",
             "Levers to recover or improve the schedule.",
             _by_score(opps),
             "No specific opportunities surfaced from the current signals.",
+            prov=prov,
+            tools=tools,
         )
     )
 

@@ -1,72 +1,61 @@
-# Handoff — 2026-08-02c (Phase 3 UI: chapter 12 joins the panel contract; ADR-0337; v1.0.153)
+# Handoff — 2026-08-02d (Phase 3 UI: /risks joins the panel contract; ADR-0338; v1.0.154)
 
-> ## STATUS (current) — **TWO merges this session.** #515 (ADR-0336, the dirty-flag cache clear the
-> operator chose) merged as **`1bcf01a`**, all six checks green including `windows`, no review
-> comments. This branch then carries **ADR-0337 — Phase 3's FIRST UI conversion: chapter 12
-> (`/briefing` + `/brief`) joins the Mission Ops panel contract.** Session opened by confirming
-> #514 was already merged (`e1c81cf`).
+> ## STATUS (current) — **THREE PRs this session, two already merged.** #515 (ADR-0336, the
+> dirty-flag cache clear the operator chose) merged as **`1bcf01a`**; #516 (ADR-0337, chapter 12 —
+> `/briefing` + `/brief`) merged as **`400f51d`**, both with all six CI checks green and no review
+> comments. This branch carries **ADR-0338 — `/risks` joins the panel contract**, the second Phase-3
+> UI conversion. Session opened by confirming #514 was already merged (`e1c81cf`).
 >
-> ## Two measurements that changed what got built
-> 1. **`/driving-path` is NOT an unconverted page.** It reads as all-zeros only because the probe
->    caught its EMPTY STATE (no target UID entered); `/path` is the populated variant and already
->    carries the contract. A source grep would have put it in the queue.
-> 2. **A `<div class=panel[ >]` regex silently misses the QUOTED form** (`<div class="panel
->    brief-doc">`), so the first census called `/briefing` a 1-panel page when it renders **4**.
->    Every count below is the both-spellings total, measured on BOTH trees — the converted one and
->    the pristine tree at `1bcf01a`, restored from a scratchpad copy and put back (never
->    `git checkout`).
+> ## `/sra` is the LAST unconverted Act III route — and it is bigger than the estimate said
+> Measured this session off rendered HTML: **`/sra` renders 15 panels** (not the 13 the earlier
+> estimate assumed) across ≈550 lines in four helpers (`_sra_body` 146 · `_sra_report_blocks` 295 ·
+> `_sra_explainers` 66 · `_sra_overrides_table` 42). Chapter 11 as a whole would have been a
+> ~755-line diff, so `/risks` was taken alone and **`/sra` gets its own PR — it is the whole of the
+> next UI unit.**
 >
-> ## Chapter 12, before → after (panel counts UNCHANGED — the conversion decorates, never mints)
-> `/briefing` 4 panels: heads/tools/⛶/takes/chips **0,0,0,0,0 → 1,1,1,1,1**, panelkit 0 → 1 ·
-> `/brief` 8 panels: **0,0,0,0,0 → 7,7,7,1,7**, panelkit 0 → 1, and it gained the **takeaway h1 it
-> never had** (`page-takeaway` 0 → 1). A minted `.panel` would silently enrol in jarvis's broad
-> `.panel` rules, so the census pins the count.
+> ## `/risks`, before → after (panel count UNCHANGED at 8)
+> heads/tools/⛶/takes/chips **0,0,0,0,0 → 7,7,7,7,7**, panelkit 0 → 1, and it gained the
+> **takeaway h1 it never had** (`page-takeaway` 0 → 1). The 8th panel is the global Ask panel and
+> stays bare, as on chapter 12.
 >
-> ## Why chapter 12 and not `/sra` (sized before choosing)
-> `/sra` alone is `_sra_body` 146 + `_sra_report_blocks` 295 + `_sra_explainers` 66 +
-> `_sra_overrides_table` 42 ≈ **550 lines** — not one reviewable PR. Chapter 12 is ≈180 lines across
-> two pages that are ONE chapter (same nav entry, `/brief` is `/briefing`'s sub-page). **Chapter 11
-> (`/sra` + `/risks`, ≈755 lines) is next, as its own PR.**
+> ## Three decisions worth carrying
+> 1. **The chip is the PAIR chip.** `/risks` computes `recommend(current, prior, …)` — most findings
+>    describe the current version, but the CHANGE findings come from the pair, so a single-file chip
+>    would under-describe exactly the findings that motivated loading a second version. It uses the
+>    **real version indices** (`len(solv)-1 → len(solv)`), not `_series_prov_chip`'s positional
+>    `1→2`, because the pair is the last two solvable versions rather than the first and last.
+> 2. **The empty returns are untouched.** `_risk_matrix([]) == ""` and `_risk_ranking([]) == ""` are
+>    pinned by `test_risks.py`; a head strip over no matrix would be a box announcing nothing.
+>    `_risks_section` DOES always render, so its take is worded to hold at **zero** — a take written
+>    only for the populated case leaves a clean schedule wearing a headline that reads as a defect.
+> 3. **The Act III census module was renamed** `test_ch12_*` → `test_act3_*` (both the contract and
+>    the chromium module). A file called "ch12" asserting on a chapter-11 route is a name that lies;
+>    it now grows a row per conversion PR, with `/sra` the last route outside it.
 >
-> ## The one that would have rotted silently
-> `ai_polish.js` does `node.innerHTML = d.html` over the WHOLE of `#briefingBody`, and that HTML
-> comes from `/api/ai/briefing` re-rendering `_briefing_body`. So the provenance chip is a
-> **parameter**, not something the function builds: a chip it could not build for itself would
-> vanish the moment a local model was active — no error, no layout change, just a briefing wearing
-> no provenance, in the one configuration the suite never exercises by default. Both call sites now
-> pass `_series_prov_chip(schedules)` (the SERIES chip: both pages are built from every solvable
-> version at once), and a test drives the endpoint with a stub backend to prove it. **The toolbar
-> was never at risk — panelkit.js binds ONE delegated listener on `document`, so buttons arriving
-> via innerHTML keep working. Checked, not assumed.**
+> ## The two gaps the reverts found — neither visible by reading the tests
+> - **W4: dropping `/risks`'s takeaway h1 failed NOTHING.** The takeaway test read `/brief` only, so
+>   a per-route rule had no per-route assertion. **A per-route DoD rule needs a per-route gate.**
+> - **Writing that gate then exposed a real Law-2 defect in my own headline:** it quoted
+>   `len(findings)`, a SUM of three separately-rendered counts that appeared nowhere else on the
+>   page — which `_utility_takeaway`'s own contract forbids. Fixed in the RENDER (the lead take now
+>   states the total), then pinned by W5.
 >
 > ## Verification (every number read from a run this session)
-> **ADR-0336: SIX reverts** (R1 never launch-clears → 2 fail · R2 clears at EVERY launch → 2 · R3
-> drops the identity comparison → 1 · R4 drops the `_claimed` reset → 1 · R5 `clear()` stops
-> releasing → 2 · R6 writes never claim → 2). **R5 caught a VACUOUS gate** — the clean-quit test
-> passed against a build that never released anything, because `clear()` UNLINKS the database file
-> so the marker dies with it either way; the explicit `DELETE` only matters on the **Windows
-> fallback** path, which the test now forces (and asserts `db.exists()` so it cannot drift back).
-> **ADR-0337: EIGHT reverts, all of the CALLER** — V1 the AI path drops the chip · V2 `/brief`
-> loses panelkit.js · V3 a heading skips `_panel_head` · V4 the panel export is removed · V5 the
-> takeaway is dropped · V6 the conversion mints a panel · V7 the shared status bars grow a head ·
-> V8 the wrap alters heading TEXT. **Plus TWO CSS reverts to prove the four-theme browser probe can
-> fail at all** (jarvis hiding the tool strip; apollo rendering the chip transparent) — a theme
-> assertion that cannot fail is worth nothing.
-> ADR-0336 full suite: **3304 passed, 2 skipped, 0 failed in 27m14s** (3299 baseline + 5).
-> Chapter-12 modules: contract 8, chromium 4, affected existing modules **91 passed**.
->
-> ## Scope deliberately NOT widened (pinned by a test)
-> The **Ask panel** is global chrome `_page` adds everywhere; the two `.panel.status-stack` bars on
-> `/briefing` come from `_status_stack`, which several chapter headers share (`/sra` among them).
-> Converting either here would be a cross-cutting change wearing a chapter-12 label, and would hand
-> ⤓ EXCEL to panels whose data no workbook carries. ▦ DATA is refused on both routes: these panels
-> ARE prose and tables, so the glyph would be inert.
+> **ADR-0336: 6 reverts** — R5 caught a VACUOUS gate (the clean-quit test passed against a build
+> that never released anything, because `clear()` UNLINKS the file; the explicit `DELETE` only bites
+> on the **Windows fallback**, which the test now forces). Full suite **3304 passed, 2 skipped**.
+> **ADR-0337: 8 caller-reverts + 2 CSS reverts** (jarvis hiding the tool strip; apollo rendering the
+> chip transparent) — the four-theme probe passed first try, which proves nothing on its own. Full
+> suite **3316 passed, 2 skipped** (3304 + 12).
+> **ADR-0338: 5 caller-reverts** — W1 the view stops passing the chip · W2 `/risks` loses panelkit ·
+> W3 the panel export is dropped · W4 the takeaway h1 is dropped · W5 the take stops stating the
+> total. Contract module 8 → 9 tests, chromium 4 → 6; risks-adjacent modules **74 passed**.
 >
 > ## ⇢ NEXT — the queue
-> 1. **Phase 3 continues: chapter 11 (`/sra` + `/risks`)**, its own PR. Then `DOM_PENDING`'s 7
->    modules, then the DoD ledgers — **the DD-line ledger must EXCLUDE non-time-axis charts**
->    (`histogram.js`, `scatter.js`, `sra_jcl.js`'s cost axis). Follow `docs/DESIGN-SYSTEM.md`;
->    verify in all four themes; never touch `engine/` for a UI change.
+> 1. **Phase 3: `/sra` — 15 panels, ≈550 lines, its own PR.** The last unconverted Act III route.
+>    Then `DOM_PENDING`'s 7 modules, then the DoD ledgers — **the DD-line ledger must EXCLUDE
+>    non-time-axis charts** (`histogram.js`, `scatter.js`, `sra_jcl.js`'s cost axis). Follow
+>    `docs/DESIGN-SYSTEM.md`; verify in all four themes; never touch `engine/` for a UI change.
 > 2. **Phase 4 engine** (`import_notes` propagation · the 3 falsy-zero rows · CC-01's rendering
 >    half — "74 sites" is an approximate grep, RE-DERIVE it · SRA-LEGACY · V3) · **Phase 5**
 >    monolith split 2–3 (`app.py` ~21k lines) · **Phase 6** docs/operator queue. OR-04 stays with
@@ -80,11 +69,11 @@
 > export contradicts ADR-0307 (ADR-0307 stands) · `resume` is MSPDI-only · Phase 7 forward-pass
 > packing · ADR-0322 residuals · importer warnings belong on the page via `Schedule.import_notes` ·
 > ADR-0320/0325/0326 notes · **the /analysis focus→tip family is a measured intermittent** —
-> adjudicated, do NOT chase · ADR-0332 scope note · ADR-0333 scope note (`sysmon.js`'s interval
-> still ticks while hidden) · ADR-0335 scope note (a predecessor's `finally` runs AFTER the port is
-> released) · **ADR-0336 scope note:** two concurrent processes sharing one `$SF_CACHE_DIR` read
-> each other's marker as a dead run and clear — correctness-safe (a re-parse), accepted not
-> engineered · **ADR-0337 scope note:** the Ask panel and the shared `_status_stack` bars stay bare.
+> adjudicated, do NOT chase · ADR-0332/0333 scope notes · ADR-0335 scope note (a predecessor's
+> `finally` runs AFTER the port is released) · **ADR-0336 scope note:** two concurrent processes
+> sharing one `$SF_CACHE_DIR` read each other's marker as a dead run and clear — correctness-safe
+> (a re-parse), accepted not engineered · **ADR-0337/0338 scope note:** the Ask panel and the shared
+> `_status_stack` bars stay bare, pinned by a test.
 >
 > ## Hypotheses KILLED — do not re-chase
 > Everything in `audit/SRA-PARITY-20260729.md` §7 and the archived lists, **plus:** the caption/halo
@@ -101,27 +90,29 @@
 > `/session/wipe` bumps it) · "`atexit`/`finally` cover a graceful stop" (false for SIGTERM) ·
 > "a pid identifies the run that holds the cache" (false: reused, and `os.kill(pid, 0)` TERMINATES
 > on Windows) · "asserting a clean quit leaves no claim is a real gate" (false on the unlink path —
-> force the Windows FALLBACK) · **NEW — "`/driving-path` is a fifth unconverted page"** (false: that
-> is its EMPTY STATE; `/path` is the populated, already-converted variant) · **NEW — "counting
-> `<div class=panel` finds every panel"** (false: it misses the QUOTED `class="panel …"` form, which
-> under-counted `/briefing` by three).
+> force the Windows FALLBACK) · "`/driving-path` is a fifth unconverted page" (false: that is its
+> EMPTY STATE; `/path` is the populated, already-converted variant) · "counting `<div class=panel`
+> finds every panel" (false: it misses the QUOTED `class="panel …"` form) · **NEW — "a DoD rule
+> tested on one route is tested"** (false: dropping `/risks`'s takeaway h1 failed nothing until it
+> got its OWN gate) · **NEW — "`/sra` is 13 panels"** (measured: **15**).
 >
 > ## Harness notes — the traps, one line each
 > Run dev tools as `python -m <tool>`. **`pip install -e ".[dev]"` after EVERY container restart**
 > (plus `playwright`, `ruff==0.16.1`, `build`). `pytest --timeout=N` is NOT installed. **Read the
 > tool's own summary line** (`| tail` masks the real exit code). **`node --check a.js b.js` checks
 > only the FIRST file — loop per file.** **NEVER `git checkout <file>` to undo a temporary
-> mutation — `cp` from a scratchpad copy** (used twice this session, for app.py and app.css).
+> mutation — `cp` from a scratchpad copy** (used repeatedly this session, for app.py and app.css).
 > **When reverting to prove able-to-fail, revert the CALLER — and check the revert actually removed
 > the behaviour.** **A `-k` filter can silently DESELECT the very test the revert targets — run the
-> whole module** (hit this session). **A theme/computed-style assertion needs its own CSS revert to
-> prove it can fail.** **pytest stdout to a FILE is block-buffered — the dot count lags badly; do
-> not read it as a stall.** **A hash-for-hash `sed` does NOT update abbreviated digests quoted in
+> whole module.** **A theme/computed-style assertion needs its own CSS revert to prove it can
+> fail.** **pytest stdout to a FILE is block-buffered — the dot count lags badly; not a stall.**
+> **The /risks page title is `Risks & Opportunities` in source (NOT `&amp;`) — an Edit that assumes
+> the entity will not match.** **A hash-for-hash `sed` does NOT update abbreviated digests quoted in
 > prose — grep the prefix too.** `pkill -f` with the pattern in the killer's own command line kills
-> the killer. CI can take ~11 min to register check runs; `test (3.13)` ran ~30 min. `TestClient`
-> follows 303 and CONSUMES one-shot banners; **plain `TestClient(app)` does NOT run the lifespan —
-> only `with TestClient(app)` does.** Parity marker ≈2m38s. Headless Chromium hides scrollbars.
-> `caplog` needs `logger="schedule_forensics.<module>"`. **Playwright `bounding_box` /
+> the killer. CI can take ~11 min to register check runs; `test (3.11)`/`(3.13)` run ~30 min.
+> `TestClient` follows 303 and CONSUMES one-shot banners; **plain `TestClient(app)` does NOT run the
+> lifespan — only `with TestClient(app)` does.** Parity marker ≈2m38s. Headless Chromium hides
+> scrollbars. `caplog` needs `logger="schedule_forensics.<module>"`. **Playwright `bounding_box` /
 > `page.screenshot(clip=…)` are VIEWPORT-relative.** **localStorage is per-ORIGIN.** Bundled
 > chromium: `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`. Containers RESTART mid-run:
 > statics FOREGROUND first, reinstall pip after resume. After a squash-merge:

@@ -435,6 +435,30 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-02d — A rule tested on one route is not tested; and the gate I wrote found a defect in my own headline
+- **The revert discipline caught a coverage hole no amount of reading would have.** Dropping
+  `/risks`'s takeaway h1 — a Definition-of-Done requirement — failed **nothing**, because the
+  takeaway test read `/brief` only. Both routes were converted in the same style, both were "in the
+  test file", and the suite was green. **Lesson: a per-route rule needs a per-route assertion. A
+  test that loops over `pages.items()` looks like coverage; a test that hard-codes one key is
+  coverage for one key, and the difference is invisible until you break the other one.**
+- **Writing that missing gate immediately exposed a real Law-2 defect in code I had just written.**
+  The `/risks` headline quoted `len(findings)` — a SUM of three counts that were each rendered
+  separately and never as a total. `_utility_takeaway`'s own contract says every figure in a
+  headline must appear again further down the page so the reader can verify it, and mine could not
+  be. Fixed in the render, not the test. **Lesson: the act of writing an honest gate is itself a
+  design review — if the assertion is awkward to write, that is usually the code telling you the
+  property does not actually hold.**
+- **Estimates about someone else's code decay silently.** `/sra` was carried in the handoff as "13
+  panels"; it renders **15**. The number had been repeated across several handoffs without being
+  re-measured. **Lesson: a figure that travels through documents needs a re-measurement stamp, not
+  a citation — and "approximately" in a handoff (like CC-01's "~74 sites") should be read as "this
+  was never verified", because that is what it means.**
+- **Rename the test file when its scope outgrows its name.** `test_ch12_panel_contract.py` asserting
+  on a chapter-11 route is a name that lies, and names that lie are how the next person misses that
+  coverage already exists. Renaming to `test_act3_*` cost one `git mv`. **Lesson: a misleading test
+  filename is a bug with a very long fuse.**
+
 ### 2026-08-02c — The measurement corrected the work list twice before a line was written
 - **Two of the four "unconverted pages" facts in the queue were wrong, and both errors came from
   grepping instead of rendering.** Rendering every report page and counting its contract markers
