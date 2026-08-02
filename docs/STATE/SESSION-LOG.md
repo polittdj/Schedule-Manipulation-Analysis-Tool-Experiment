@@ -10770,3 +10770,35 @@ the briefs + state rotation) earlier today.
 - Verification: new contract module 8 tests, new chromium four-theme module 4, and the affected
   existing modules (briefing_view, brief_duo, ai_polish, export_endpoints, airgap, csp, a11y,
   ask_everywhere, global_filter, hud_layer) **91 passed** together with the new ones.
+
+## 2026-08-02d — ADR-0338: /risks joins the panel contract (v1.0.154)
+
+- **#516 (ADR-0337, chapter 12) merged as `400f51d`** — all six CI checks green, no review
+  comments. Branch restarted from it with `--prune`. Third PR of the session opened on top.
+- **Measured `/sra` before scheduling it, and the estimate was wrong: it renders 15 panels**, not
+  13, across ≈550 lines in four helpers. Chapter 11 as one PR would be a ~755-line diff, so
+  `/risks` was taken alone and **`/sra` is the whole of the next UI unit**.
+- **`/risks` converted, panel count unchanged at 8:** heads/tools/⛶/takes/chips
+  `0,0,0,0,0 → 7,7,7,7,7`, panelkit 0 → 1, and it gained the takeaway h1 it never had.
+- **The chip is the PAIR chip**, with the REAL version indices (`len(solv)-1 → len(solv)`) rather
+  than `_series_prov_chip`'s positional `1→2`: `/risks` computes `recommend(current, prior, …)`, so
+  the change findings come from the pair, and the pair here is the last two solvable versions, not
+  the first and last. Renders as
+  `v1→v2 · SOURCE: Project2.mspdi.xml → Project5.mspdi.xml · DD 2026-05-24 → 2026-08-27`.
+- **Two gaps found by running the reverts, neither visible by reading the tests:**
+  - **W4 — dropping `/risks`'s takeaway h1 failed NOTHING**, because the takeaway test read
+    `/brief` only. A per-route DoD rule needs a per-route gate.
+  - **Writing that gate exposed a real Law-2 defect in my own headline:** it quoted
+    `len(findings)`, a SUM of three separately-rendered counts that appeared nowhere else on the
+    page — which `_utility_takeaway`'s contract forbids. Fixed in the RENDER (the lead take now
+    states the total), then pinned by W5.
+- **Empty returns deliberately preserved:** `_risk_matrix([]) == ""` / `_risk_ranking([]) == ""`
+  are pinned by `test_risks.py`, and a head strip over no matrix would be a box announcing nothing.
+  `_risks_section` always renders, so its take is worded to hold at zero — a take written only for
+  the populated case leaves a clean schedule wearing a headline that reads as a defect.
+- **Renamed the Act III census modules** `test_ch12_panel_contract.py` →
+  `test_act3_panel_contract.py` and `test_ch12_themes_chromium.py` → `test_act3_themes_chromium.py`.
+  A file called "ch12" asserting on a chapter-11 route is a name that lies; they now grow a row per
+  conversion PR, with `/sra` the last route outside them.
+- Five caller-reverts (W1–W5) each kill their gate and nothing else. Contract module 8 → 9 tests,
+  chromium 4 → 6 (both now cover `/risks`); risks-adjacent modules **74 passed**.
