@@ -1,10 +1,15 @@
 # Handoff — 2026-08-02d (Phase 3 UI: /risks joins the panel contract; ADR-0338; v1.0.154)
 
-> ## STATUS (current) — **THREE PRs this session, two already merged.** #515 (ADR-0336, the
-> dirty-flag cache clear the operator chose) merged as **`1bcf01a`**; #516 (ADR-0337, chapter 12 —
-> `/briefing` + `/brief`) merged as **`400f51d`**, both with all six CI checks green and no review
-> comments. This branch carries **ADR-0338 — `/risks` joins the panel contract**, the second Phase-3
-> UI conversion. Session opened by confirming #514 was already merged (`e1c81cf`).
+> ## STATUS (current) — **THREE PRs this session, ALL MERGED, nothing in flight.** #515
+> (ADR-0336, the dirty-flag cache clear the operator chose) as **`1bcf01a`** · #516 (ADR-0337,
+> chapter 12 — `/briefing` + `/brief`) as **`400f51d`** · #517 (ADR-0338, `/risks`) as
+> **`1835839`**. Every one had all six CI checks green — including `windows` — and drew no review
+> comments. `main` is at **v1.0.154**; the committed installers embed the 1.0.154 wheel. Working
+> tree clean, branch restarted from `origin/main` with `--prune`, **no check-ins armed**. Session
+> opened by confirming #514 was already merged (`e1c81cf`). Test count **3299 → 3319**.
+>
+> **`/sra` is the ONE thing left of the four unconverted Act III routes**, and it is the whole of
+> the next UI unit — see ⇢ NEXT.
 >
 > ## `/sra` is the LAST unconverted Act III route — and it is bigger than the estimate said
 > Measured this session off rendered HTML: **`/sra` renders 15 panels** (not the 13 the earlier

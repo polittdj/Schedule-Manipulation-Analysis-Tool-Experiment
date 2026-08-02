@@ -10802,3 +10802,30 @@ the briefs + state rotation) earlier today.
   conversion PR, with `/sra` the last route outside them.
 - Five caller-reverts (W1–W5) each kill their gate and nothing else. Contract module 8 → 9 tests,
   chromium 4 → 6 (both now cover `/risks`); risks-adjacent modules **74 passed**.
+
+## 2026-08-02e — session close: #515, #516 and #517 all merged; `/sra` is next
+
+- **#517 (ADR-0338, `/risks`) merged as `1835839`** — all six CI checks green, no review comments.
+  That closes the session's third and last PR; `main` is at **v1.0.154** and its committed
+  installers embed the 1.0.154 wheel. Branch restarted from `origin/main` with `--prune`, working
+  tree clean, **no check-ins armed** (all three PR check-ins were deleted on merge).
+- **Session total: three merged PRs, test count 3299 → 3319.**
+  - **#515 / ADR-0336** — the operator's open cache question, answered and implemented. A write
+    claims the disk cache for the running process, a clear releases it, and a launch that finds a
+    foreign claim empties it, so hard-kill residue leaves at the very next launch instead of
+    surviving until the end of the next clean session.
+  - **#516 / ADR-0337** — chapter 12 (`/briefing` + `/brief`) joins the panel contract.
+  - **#517 / ADR-0338** — `/risks` joins it.
+- **Every one of the three shipped an assertion that could not fail, and every one was found only
+  by RUNNING the revert.** Three distinct shapes, now written into the kickoff by name: (1) the
+  code under test destroys its own evidence (`clear()` unlinks the file, so the marker dies either
+  way — the assertion only bites on the Windows fallback); (2) a rendered-appearance assertion
+  nobody has made fail (the four-theme probe needed two deliberate CSS reverts); (3) a per-route
+  rule tested on one route (dropping `/risks`'s takeaway h1 failed nothing). The third then
+  surfaced a real Law-2 defect in a headline written the same hour.
+- **Two carried figures were re-measured and both were wrong:** `/sra` is **15** panels, not the 13
+  repeated across several handoffs; and `/driving-path` is not a fifth unconverted page at all —
+  that reading was its empty state. Recorded in the killed-hypotheses list so neither returns.
+- **Kickoff refreshed** for the next session: `/sra` (15 panels, ≈550 lines, the last unconverted
+  Act III route) is the head of the queue, with the Act III census modules named as the place to
+  extend rather than duplicate.
