@@ -435,6 +435,38 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-02b — A `-k` filter deselected the test the revert was aimed at; and a gate that the file-unlink made vacuous
+- **The able-to-fail discipline nearly gave a false green, twice in one change, both times through
+  the harness rather than the code.** First: the revert that removes launch-clearing was run under
+  `pytest -k "dead_run or no_run_marker or …"`, and the filter silently **deselected the very test
+  it targeted** (`…a_killed_runs_cache_empties_it` contains neither substring). The output read
+  "1 failed, 3 passed, 23 deselected" and looked like a clean single-gate result. **Lesson: when
+  proving able-to-fail, run the whole module — never a `-k` subset.** A filter you wrote from
+  memory of the test names is one typo away from proving nothing, and the failure mode is silent.
+- **Second: a gate that could not fail because the code under it destroys its own evidence.** The
+  "a clean quit leaves no claim behind" test passed against a build whose `clear()` never released
+  the claim — because `clear()` **unlinks the database file**, so the marker vanishes with it
+  either way. The explicit `DELETE` only matters on the *other* path, the Windows fallback where an
+  open reader refuses the unlink and the tables are emptied in place. **Lesson: when the operation
+  under test has two implementations, ask which one your fixture actually exercises** — and if the
+  cheap path erases the evidence, force the other one and assert the precondition (`db.exists()`)
+  so the test cannot drift back to proving nothing.
+- **This is the fourth ADR in a row where a gate had to be run against a revert before it was worth
+  anything.** The pattern is now unmistakable: writing the assertion is the easy half; the half
+  that finds the vacuous gates is *executing the counterfactual*. Both of this session's near-misses
+  were invisible to review and to a green run.
+- **A design lesson that generalizes beyond this repo: `os.kill(pid, 0)` is not a portable liveness
+  probe.** It asks a question on POSIX but on **Windows it terminates the target** — a probe that
+  kills what it probes. Combined with pid reuse, that ruled out the pid-based design entirely; a
+  random per-process token needs only an equality test and carries no platform behaviour at all.
+  **When you only need identity, do not reach for something that also carries semantics.**
+- **Process lesson that paid off: asking cost one turn and changed the design.** ADR-0335 flagged
+  this residue window as the operator's call rather than fixing it unilaterally, because the
+  obvious fix was "clear at launch" by another name — the one shape the approved wording forbade.
+  Presenting the four options with the trade-offs stated got a decision (the dirty flag) that is
+  strictly better than what either side would have taken alone. **Flagging a boundary is not
+  stalling; taking it unilaterally is how you ship a change that has to be reverted.**
+
 ### 2026-08-02 — The obvious hardening was the regression, and the residue test was vacuous
 - **`PRAGMA secure_delete=ON` looked like textbook Law-1 hardening for the CUI disk cache. Measuring
   it killed it.** It zeroes every deleted byte in place at **~12.5 ms/MB**: **26.08 s** to clear a

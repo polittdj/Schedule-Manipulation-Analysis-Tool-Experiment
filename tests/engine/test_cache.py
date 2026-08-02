@@ -377,3 +377,129 @@ def test_a_lost_migration_disables_the_cache_instead_of_half_working(
     c = ScheduleCache(db)
     assert c._ready is False  # disabled outright, rather than half-migrated and silently useless
     assert c.get_summary("anything") is None  # a disabled cache is a miss, never an error
+
+
+# --- the run marker: a launch that inherits a killed run's cache (ADR-0336) ---------------------
+
+
+def _as_another_process(monkeypatch: pytest.MonkeyPatch, tag: str = "another-process") -> None:
+    """Make the NEXT ``ScheduleCache`` believe it belongs to a different OS process.
+
+    The marker's whole question is "did the run that wrote these rows reach a clear?", and the
+    only honest way to ask it in-process is to change who "this run" is. Repointing ``_RUN_ID``
+    is exactly what a relaunch does; nothing else about the cache is touched.
+    """
+    import schedule_forensics.engine.cache as cache_mod
+
+    monkeypatch.setattr(cache_mod, "_RUN_ID", tag)
+
+
+def test_a_launch_that_inherits_a_killed_runs_cache_empties_it(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The hole ADR-0335 left open. Clearing on every quit made a hard kill the only way content
+    survives — but the age cap is evaluated only AT a launch, so a kill followed by a prompt
+    relaunch carried the dead session's parsed schedules through the whole next session, and the
+    clean quit that ended *that* one was the first thing to remove them.
+
+    The row here is deliberately fresh and tiny, so it sits comfortably inside both prune caps:
+    against the old constructor (prune only) it survives, which is what makes this a real gate
+    rather than a re-test of the age cap.
+    """
+    db = tmp_path / "c.sqlite3"
+    killed = ScheduleCache(db)
+    killed.put_summary("parsed", '{"activity":"INSTALL-REACTOR-VESSEL"}')
+    # ...and the process dies here: no clear, no seal, no atexit — a SIGKILL.
+    assert killed.prune() == 0, "fixture cannot discriminate: the caps would have evicted it anyway"
+
+    _as_another_process(monkeypatch)
+    relaunched = ScheduleCache(db)
+    assert relaunched.get_summary("parsed") is None, "a killed run's content survived the relaunch"
+    assert b"INSTALL-REACTOR-VESSEL" not in db.read_bytes()  # off the disk, not merely unreachable
+
+
+def test_a_launch_leaves_a_cache_with_no_run_marker_alone(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The guard against the fix degenerating into clear-at-launch, which the operator's approved
+    wording forbids: launch-clearing would leave the previous session's content at rest across the
+    whole between-sessions window instead of removing it when that session ended.
+
+    A cache with rows but no marker — one written by a build older than ADR-0336 — is exactly that
+    case, and it must be PRUNED, not emptied. The rows are stamped fresh so the age cap keeps
+    them; if the launch clears unconditionally, they vanish and this fails.
+    """
+    db = tmp_path / "c.sqlite3"
+    older_build = ScheduleCache(db)
+    older_build.put_summary("kept", '{"v":1}')
+    with sqlite3.connect(db) as conn:
+        conn.execute("DELETE FROM meta")  # a build that predates the marker wrote no claim
+
+    _as_another_process(monkeypatch)
+    relaunched = ScheduleCache(db)
+    assert relaunched.get_summary("kept") == '{"v":1}', "an ordinary launch wiped the cache"
+
+
+def test_a_second_cache_object_in_this_process_is_not_a_dead_run(tmp_path: Path) -> None:
+    """The claim identifies the PROCESS, not the cache object. Two ``ScheduleCache`` instances on
+    one database are ordinary — the test suite builds them constantly, and a re-resolved
+    ``$SF_CACHE_DIR`` would too — and the second must recognise the first's claim as its own
+    rather than reading it as a dead run and deleting live rows.
+
+    (A pid would not have been enough: pids are reused, and the portable liveness probe does not
+    exist — ``os.kill(pid, 0)`` asks a question on POSIX but TERMINATES the target on Windows.)
+    """
+    db = tmp_path / "c.sqlite3"
+    first = ScheduleCache(db)
+    first.put_summary("live", '{"v":1}')
+
+    second = ScheduleCache(db)  # same process → same run id
+    assert second.get_summary("live") == '{"v":1}', "a sibling cache object wiped live rows"
+    assert first.get_summary("live") == '{"v":1}'
+
+
+def test_a_clean_quit_on_the_windows_fallback_path_still_leaves_no_claim(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """What makes a clean quit invisible to the next launch is that the clear RELEASES the claim.
+
+    The unlink path proves nothing about that release — it deletes the database file, so the
+    marker goes with it whether or not anything released it, and a first version of this test
+    passed against a build that never released at all. The explicit ``DELETE`` earns its place on
+    the other path only: Windows refuses the unlink while a concurrent reader holds the file open,
+    ``clear()`` falls back to emptying the tables, and the marker is then the one row that would
+    survive its own session — a clean quit that the NEXT launch reads as a hard kill and answers
+    by clearing a cache that was already empty.
+    """
+    db = tmp_path / "c.sqlite3"
+    quitting = ScheduleCache(db)
+    quitting.put_summary("worked", '{"v":1}')
+    monkeypatch.setattr(ScheduleCache, "_unlink_db", lambda self: False)  # Windows refuses
+    quitting.seal()  # the quit path seals, then clears
+    assert quitting.clear() is True
+    assert db.exists(), "fixture cannot discriminate: the file went away, so did the marker"
+
+    _as_another_process(monkeypatch)
+    assert ScheduleCache(db)._left_by_a_dead_run() is False
+
+
+def test_a_wipe_releases_the_claim_and_the_next_write_re_claims(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """``/session/wipe`` clears without ending the session, so the release must be recoverable:
+    the operator imports again, and those rows are the live run's — a kill after them has to be
+    caught by the next launch exactly as before the wipe.
+
+    Without the re-claim the marker stays released while real content accumulates, and the whole
+    protection silently switches off for the rest of the session.
+    """
+    db = tmp_path / "c.sqlite3"
+    session = ScheduleCache(db)
+    session.put_summary("before-wipe", '{"v":1}')
+    assert session.clear() is True  # /session/wipe — NOT a quit, so no seal
+    session.put_summary("after-wipe", '{"v":2}')  # the session carries on working
+    assert session.get_summary("after-wipe") == '{"v":2}'
+    # ...and the process is killed here.
+
+    _as_another_process(monkeypatch)
+    assert ScheduleCache(db).get_summary("after-wipe") is None, "post-wipe content was left claimed"

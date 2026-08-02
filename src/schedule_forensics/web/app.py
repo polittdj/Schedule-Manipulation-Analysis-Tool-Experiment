@@ -20857,7 +20857,13 @@ async def _cui_lifespan(app: FastAPI) -> AsyncIterator[None]:
     | --- | --- | --- | --- |
     | Quit / `POST /api/shutdown` / watchdog / SIGINT | ✓ | ✓ | ✓ |
     | **SIGTERM** (logout, `kill`, system shutdown) | **✓** | ✗ | ✗ |
-    | SIGKILL / `TerminateProcess` (Task Manager) | ✗ | ✗ | ✗ — :meth:`ScheduleCache.prune` |
+    | SIGKILL / `TerminateProcess` (Task Manager) | ✗ | ✗ | ✗ — see below |
+
+    The SIGKILL row is the one no in-process hook can ever cover, and since ADR-0336 it is handled
+    from the other end: the run marker a write leaves in the cache is still there at the next
+    launch, which reads it as proof the previous run never reached a clear and empties the cache
+    before doing anything else. :meth:`ScheduleCache.prune` remains the belt for what that does not
+    reach — a cache written by a build older than the marker.
 
     Without this, an operator on macOS or Linux who simply logs out or shuts the machine down —
     a normal way to finish for the day — left the whole parsed-schedule cache on disk. Nothing
