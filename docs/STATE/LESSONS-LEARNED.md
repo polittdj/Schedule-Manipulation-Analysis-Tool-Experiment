@@ -435,6 +435,84 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-02 — The obvious hardening was the regression, and the residue test was vacuous
+- **`PRAGMA secure_delete=ON` looked like textbook Law-1 hardening for the CUI disk cache. Measuring
+  it killed it.** It zeroes every deleted byte in place at **~12.5 ms/MB**: **26.08 s** to clear a
+  1 GiB cache — on the *quit* path, and **past ADR-0334's 20 s handover budget**, so the very next
+  launch would have raised `PortUnavailable` and refused to start. The fix that previous session
+  shipped would have been regressed by this session's "hardening". Deleting the database FILE does
+  the same job in **0.12 s** and removes strictly more (the whole file, not merely its pages).
+  **Generalizable: for erasure, completion probability is part of the security property. A slow
+  erase that gets interrupted leaves more behind than a fast one that finishes** — and "more
+  thorough per byte" is not the same as "more thorough".
+- **A test that cannot fail is not a gate, and this one hid behind a compile flag.** The natural
+  assertion for "the cache was cleared" is *the activity names are no longer in the file bytes*. On
+  this box it **passes no matter what the code does**, because Debian compiles sqlite with
+  `SQLITE_SECURE_DELETE` ON, so even a bare DELETE scrubs. Two independent audit lenses reached
+  **opposite** conclusions on disk residue for exactly this reason — one probed the platform
+  default, one forced it off. Only the revert experiment exposed it: reverting to a bare DELETE left
+  the test green. The gate now leads with **reclaimed file size**, which discriminates on every
+  platform. **Generalizable: when an assertion depends on a platform/compile default, it is testing
+  the platform, not your code — find the property that holds everywhere.**
+- **The able-to-fail ritual caught FOUR vacuous gates today, and only because it was actually run.**
+  Besides the residue test above, the byte-cap test used an accented-Latin payload at 1.15
+  bytes/character; rounding to whole rows landed the *buggy* character-counting code on the *same*
+  answer as the correct code, so it passed against the very bug it was written for. Fixed with a
+  3 bytes/character payload **plus an assertion on the fixture's own ratio**, so it can never
+  silently stop discriminating. **Generalizable: a test built on a fixture whose margin is small
+  relative to its rounding is not testing what its name says. Assert the property that makes the
+  fixture discriminating, not just the outcome.**
+- **And one revert was wrong the first time.** The first attempt left the VACUUM in place while
+  removing only the unlink, so the behaviour under test was still present and the green result
+  looked like a vacuous test. **Reverting the caller is necessary but not sufficient — confirm the
+  revert actually removed the behaviour the test names**, or the ritual quietly certifies nothing.
+- **Two more vacuous gates, same family, different mechanism.** The "cleared even when the cache
+  cannot be opened" test corrupted the database by overwriting the WHOLE file — which destroyed the
+  payload in its own fixture, so it passed no matter what the code did (fixed: smash only the
+  16-byte header, and assert the content is still present before clearing). And the migration test
+  only ever exercised the success path, where verifying the ALTER and not verifying it agree; the
+  branch that mattered needed a connection stub whose ALTERs are lost to a lock. **Generalizable:
+  the two ways a gate goes vacuous are (i) the fixture's setup already achieves the outcome, and
+  (ii) the test only walks the path where the bug and the fix behave identically. Both are invisible
+  until you revert the code and watch it stay green.**
+- **The audit's best catches were in MY OWN new code, not in the old code it was pointed at.** Four
+  real defects, none of which the tests I had already written would have caught: the `ALTER`
+  migration suppressed by exception type, so an ALTER lost to a lock looked exactly like a harmless
+  duplicate-column race and left the schema behind while reporting success; `prune()` returned a
+  count of rows its own rolled-back transaction had not actually removed; `clear()` short-circuited
+  on `_ready` and reported "nothing left behind" for a corrupt database still full of schedules; and
+  the age window had no upper bound, so a backwards clock jump made a row **immortal** rather than
+  late — **a case my own code comment explicitly claimed was safe.** *Generalizable: the comment
+  asserting an edge case is handled is exactly the place to point a reviewer, because it is the one
+  claim nobody re-derives.*
+- **The parallel audit paid for itself precisely where intuition was weakest — the boring edges.**
+  Beyond the two blockers, it surfaced three real Law-1 gaps nobody would have thought to look for:
+  `VACUUM` writes its rebuild to a **plaintext transient in `/var/tmp`**, outside the directory the
+  module documents as its boundary; the WAL can hold the rebuild while pre-prune pages stay legible
+  in the main file; and the cache was created **world-readable `0644` in a `0755` directory**. None
+  are exotic — all three are defaults doing what defaults do. **Generalizable: when the requirement
+  is "this data does not persist", enumerate every file the storage engine touches, not just the
+  one you named.**
+- **"We already guard that" deserves re-reading, not recall.** ADR-0263's `wipe_gen` was believed to
+  stop late writes re-populating the cache. It does — for **wipes**. Only `/session/wipe` bumps that
+  generation, so a *shutdown* was completely uncovered, and an import finishing during uvicorn's
+  drain wrote 181 KB of parsed schedule straight back into a cache that had just reported itself
+  clear (reproduced end-to-end before fixing). **The fix went on the cache OBJECT (`seal()`), not on
+  the two call sites** — same inversion as 2026-08-01j: covering a future write site by mechanism
+  rather than by whoever remembers.
+- **Exit hooks are not interchangeable, and only measurement says which fire.** Measured per signal:
+  **SIGTERM runs NOTHING** — not `finally`, not `atexit` (exit `-15`) — because uvicorn handles it
+  gracefully and then `capture_signals` **re-raises the captured signal**, killing the process
+  before `serve()` returns. SIGINT survives only because `serve()` already suppresses
+  `KeyboardInterrupt`, a line written for an unrelated reason years earlier. The ASGI **lifespan**
+  hook is the only one that covers a macOS/Linux logout or system shutdown. **Generalizable: never
+  reason about cleanup coverage from the shape of the code — send the signals and read the exits.**
+- **Scope honesty beat scope creep.** The measurement showed the age cap barely bites (a clean quit
+  clears everything, so hard-kill residue really survives *until the next clean session*, not 24 h).
+  The deterministic fix — drop every row not written by the current launch — is **clear-at-launch by
+  another name**, which the operator's approved wording forbids. Flagged in the handoff as their
+  call rather than quietly redefining their decision.
+
 ### 2026-08-01j — A list of things to clear is a leak with a delay fuse
 - `/session/wipe` reset fields by **naming** them. That is correct exactly once — on the day it is
   written. Measured today: **72 declared fields, 27 of real operator state surviving a "wipe"**,

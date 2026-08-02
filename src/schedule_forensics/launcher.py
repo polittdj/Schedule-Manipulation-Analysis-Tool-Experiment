@@ -23,6 +23,7 @@ import webbrowser
 from collections.abc import Callable
 
 from schedule_forensics.ai.ollama_process import OllamaLauncher
+from schedule_forensics.engine.cache import get_default_cache
 from schedule_forensics.logging_redaction import configure_logging
 from schedule_forensics.net_guard import assert_local_only, is_loopback_host
 from schedule_forensics.web.app import create_app
@@ -241,6 +242,17 @@ def main(
     if claim is not None:
         claim(host, chosen_port)
 
+    # ADR-0335 (Law 1, CUI at rest). The on-disk cache holds parsed schedule content and derived
+    # metrics; the operator's rule is that it leaves the disk on every quit. Bind THIS launch's
+    # instance now — not a lazy `get_default_cache()` at exit time — so both the graceful clear in
+    # the `finally` and the atexit backstop empty the database this session actually used, whatever
+    # `$SF_CACHE_DIR` happens to say by then. Constructing it here also runs its prune, which is
+    # what bounds a cache inherited from a session that was killed rather than quit; it is a prune
+    # and NOT a wipe, because clearing at launch would leave the previous session's content at rest
+    # across the whole between-sessions window instead of removing it when that session ended.
+    cache = get_default_cache()
+    atexit.register(cache.clear)
+
     print(f"POLARIS — serving the dashboard at {url}  (close the window to stop)")
 
     manager = ollama if ollama is not None else OllamaLauncher() if manage_ollama else None
@@ -263,6 +275,11 @@ def main(
     try:
         serve_fn(create_app(auto_shutdown=True, ollama=manager), host=host, port=chosen_port)
     finally:
+        # Law 1 goes first: the operator's schedule content leaves the disk before anything else
+        # gets a chance to fail. `clear()` is fail-soft by contract (it never raises), so putting
+        # it ahead of the Ollama stop cannot cost us the Ollama stop — while the reverse order
+        # would let a manager that throws leave CUI at rest.
+        cache.clear()
         if manager is not None:
             manager.shutdown()
     print("POLARIS — dashboard stopped.")

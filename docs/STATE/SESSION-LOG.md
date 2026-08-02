@@ -10588,3 +10588,74 @@ the briefs + state rotation) earlier today.
   discards the cross-session warm start. The implementation points are named in HANDOFF ⇢ NEXT
   (`engine/cache.py` needs `prune(max_bytes, max_age)`; wiring into `_trigger_shutdown` and
   `launcher.main`'s `finally`). **Ask before building.**
+
+## 2026-08-02 — Phase 1b remainder: the disk cache empties itself on every quit (ADR-0335, v1.0.151)
+
+- **The operator answered the deferred question: CLEAR IT ON EVERY QUIT.** That unblocked the half
+  ADR-0334 held back. #512 was confirmed already merged (`4691276`); branch restarted from
+  `origin/main`. The on-disk SQLite cache holds parsed schedule content + derived metrics and was
+  cleared in exactly ONE place (`/session/wipe`) — quitting left it all on disk indefinitely.
+- **`secure_delete=ON` was implemented, measured, and REMOVED — the measurement changed the design.**
+  It zeroes deleted bytes in place at ~12.5 ms/MB: **26.08 s to clear a 1 GiB cache**, on the quit
+  path, **exceeding ADR-0334's 20 s handover budget** — a relaunch would have raised
+  `PortUnavailable` and refused to start, regressing exactly what the previous session shipped.
+  `clear()` now unlinks the database file instead: **26.08 s → 0.12 s**, and strictly more complete.
+  *A slow erase that gets interrupted leaves more behind than a fast one that finishes.*
+- **Reproduced end-to-end, then fixed: an in-flight import re-populated the cache AFTER the quit
+  cleared it.** uvicorn serves until requests drain, so an import begun before Quit finished after
+  the clear and wrote 181 KB of `model_json` back. **ADR-0263's `wipe_gen` does not cover shutdown —
+  only `/session/wipe` bumps it.** `ScheduleCache.seal()` now precedes every clear; sealing the
+  cache OBJECT covers both write sites and any future one, with no session lock.
+- **Measured per signal: SIGTERM runs NO exit hook at all** (exit `-15`; `finally` and `atexit` both
+  silent). uvicorn handles it gracefully but `capture_signals` re-raises the captured signal, killing
+  the process before `serve()` returns — SIGINT survives only because `serve()` already suppresses
+  `KeyboardInterrupt`. An **ASGI lifespan hook** was added; it is the only hook covering a
+  macOS/Linux logout or system shutdown. Starlette 1.3.1 removed `on_event`, so `lifespan=` is the
+  only route. SIGKILL still survives by design — that is what `prune()` is the belt for.
+- **`prune(max_bytes, max_age)`** (1 GiB / 24 h) removes superseded engine generations
+  unconditionally, then age, then size newest-first, VACUUMing only when something left. Runs at
+  construction and on the write-path size gate — a **prune, never a wipe**, so the operator's "never
+  clear at launch" rule stands. `written_at REAL` added to both tables with an idempotent
+  `ALTER TABLE` migration for v1.0.150 caches.
+- **Nineteen revert experiments proved every new gate can fail — including FOUR that initially could
+  NOT, every one found only because the reverts were actually run.** (a) The "no plaintext left in
+  the file" assertion is **vacuous on a `SECURE_DELETE` build** (Debian compiles it ON, so a bare
+  DELETE scrubs regardless) — two audit lenses reached *opposite* conclusions on disk residue for
+  precisely this reason; it now leads with reclaimed file size. (b) The byte-cap test used a 1.15
+  bytes/char payload, and rounding to whole rows landed the *buggy* character-counting code on the
+  *same* answer as the correct code (now 3 bytes/char, and it asserts the fixture's own ratio).
+  (c) The "cleared even when unopenable" test smashed the WHOLE file, destroying the payload in its
+  own fixture, so it passed regardless (now only the 16-byte header). (d) The migration test only
+  exercised the success path, where verifying and not verifying agree.
+- **Three more Law-1 gaps closed, all found by the parallel audit and re-verified first-hand — every
+  one a default behaving normally:** `VACUUM` wrote its rebuild to a plaintext transient in
+  `/var/tmp`, outside the boundary the module documents (`temp_store_directory` now pins it inside);
+  the WAL could hold the rebuild while pre-prune pages stayed legible in the main file
+  (`wal_checkpoint(TRUNCATE)`); and the cache was created world-readable `0644` in a `0755`
+  directory (now `0600`/`0700`, best-effort — Windows ACLs do not map onto these bits).
+- **A real bug in my own byte cap:** SQLite's `length()` on TEXT counts **characters**, while the
+  cap is compared against real page bytes — so on non-ASCII activity names (the tool ships
+  EN/ES/FR/DE/PT) the belt allowed more on the disk than it promised. Now
+  `length(CAST(… AS BLOB))`.
+- **Four correctness fixes in this change's OWN new code, all forced by the audit and each verified
+  first-hand before being acted on:** the `ALTER` migration now **verifies** instead of suppressing
+  by exception type (an ALTER lost to a lock looked identical to a harmless duplicate-column race,
+  leaving the old schema behind while `_init_db` reported success — a cache that is silently a
+  permanent miss); `prune()` **returned rows that had been rolled back** (the body is one
+  transaction, so the honest count on failure is 0); `clear()` **short-circuited on `_ready`**,
+  reporting "nothing left behind" for a corrupt database still full of the last session's schedules;
+  and **the age window had no upper bound**, so a backwards clock jump made a future-stamped row
+  IMMORTAL rather than merely late — my own comment had claimed the opposite. Plus `busy_timeout`
+  before the `journal_mode=WAL` switch, and a 90%-of-cap trim target so the page-bytes gate stops
+  re-firing.
+- **Full suite on the final tree: 3299 passed, 2 skipped, 0 failed in 20m12s** (baseline 3276; +23
+  = cache +16, upload_cache +3, launcher +4). Statics on the same tree: ruff clean, format clean
+  (452), mypy --strict clean (117), bandit EXIT=0, `node --check` per file 60/60. An earlier
+  intermediate run had two failures, neither a defect: the installer wheel-lockstep gate correctly
+  catching source edited after the installers were built, and the Chromium audio-persistence test,
+  which passed 10/10 in isolation and clean in the final run — that run took 26m46s because 1 GiB
+  SQLite probes were competing for the box.
+- **Flagged for the operator, not taken:** because a clean quit now clears everything, hard-kill
+  residue actually survives until the end of the next clean session, not 24 h. Closing that
+  deterministically means deleting every row not written by the current launch — clear-at-launch by
+  another name, which the approved wording forbids.
