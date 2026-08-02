@@ -1,69 +1,75 @@
-# Handoff — 2026-08-02b (a launch clears only what a killed run left behind; ADR-0336; v1.0.152)
+# Handoff — 2026-08-02c (Phase 3 UI: chapter 12 joins the panel contract; ADR-0337; v1.0.153)
 
-> ## STATUS (current) — **the operator's open cache question is ANSWERED and IMPLEMENTED.** They
-> chose the **dirty-flag clear**, and ADR-0336 lands it: a write **claims** the on-disk cache for
-> the running process, a clear **releases** it, and a launch that still finds someone else's claim
-> knows the previous run never reached a clear — a hard kill — and empties the cache before doing
-> anything else. A launch after a clean quit finds no marker and clears nothing, so ADR-0335's
-> approved "**never clear at launch**" wording stays true as written. Session opened by confirming
-> **#514 was already merged** (`e1c81cf`, `origin/main`'s tip) and restarting the branch from it.
+> ## STATUS (current) — **TWO merges this session.** #515 (ADR-0336, the dirty-flag cache clear the
+> operator chose) merged as **`1bcf01a`**, all six checks green including `windows`, no review
+> comments. This branch then carries **ADR-0337 — Phase 3's FIRST UI conversion: chapter 12
+> (`/briefing` + `/brief`) joins the Mission Ops panel contract.** Session opened by confirming
+> #514 was already merged (`e1c81cf`).
 >
-> ## What the hole actually was (and why the 24 h cap did not close it)
-> `prune()`'s age cap is only ever evaluated **at a launch**. Once clearing-on-quit became the rule
-> that produced a consequence nobody chose: kill a session hard → relaunch five minutes later →
-> every row is inside both caps, so the constructor's prune evicts **nothing** → the residue is
-> carried through that entire next session, and the first thing to remove it is the *clean quit
-> that ends it*. "A day at most" was in practice "until the end of the next clean session".
+> ## Two measurements that changed what got built
+> 1. **`/driving-path` is NOT an unconverted page.** It reads as all-zeros only because the probe
+>    caught its EMPTY STATE (no target UID entered); `/path` is the populated variant and already
+>    carries the contract. A source grep would have put it in the queue.
+> 2. **A `<div class=panel[ >]` regex silently misses the QUOTED form** (`<div class="panel
+>    brief-doc">`), so the first census called `/briefing` a 1-panel page when it renders **4**.
+>    Every count below is the both-spellings total, measured on BOTH trees — the converted one and
+>    the pristine tree at `1bcf01a`, restored from a scratchpad copy and put back (never
+>    `git checkout`).
 >
-> ## The design, and the three things that were deliberately NOT done
-> One `meta` row (`key='run'`) holding a **per-process token**. Claimed inside the SAME transaction
-> as the content row it vouches for (no unclaimed window, no second write-path transaction), once
-> per run, not per write.
-> 1. **Not the pid.** Pids are reused and the portable liveness probe does not exist: `os.kill(pid,
->    0)` asks a question on POSIX but on Windows **terminates the target**. Only equality is ever
->    needed, so a token carries no platform behaviour at all.
-> 2. **Not keyed on `seal()`.** `clear()` has two callers with different intent — the quit (sealed)
->    and `/session/wipe` (not sealed, session continues) — and BOTH must release: after a wipe the
->    session keeps working and its next write **re-claims**, so a kill after the wipe is caught
->    exactly as a kill before it. Keying on `_sealed` would have meant trusting each of ADR-0335's
->    four shutdown layers to seal first; keying on the operation trusts nothing.
-> 3. **Not clear-at-launch.** A cache with rows but NO marker (an older build's) still takes the
->    prune path untouched — pinned by its own test, which is the guard against this quietly
->    degenerating into the thing the operator ruled out.
+> ## Chapter 12, before → after (panel counts UNCHANGED — the conversion decorates, never mints)
+> `/briefing` 4 panels: heads/tools/⛶/takes/chips **0,0,0,0,0 → 1,1,1,1,1**, panelkit 0 → 1 ·
+> `/brief` 8 panels: **0,0,0,0,0 → 7,7,7,1,7**, panelkit 0 → 1, and it gained the **takeaway h1 it
+> never had** (`page-takeaway` 0 → 1). A minted `.panel` would silently enrol in jarvis's broad
+> `.panel` rules, so the census pins the count.
+>
+> ## Why chapter 12 and not `/sra` (sized before choosing)
+> `/sra` alone is `_sra_body` 146 + `_sra_report_blocks` 295 + `_sra_explainers` 66 +
+> `_sra_overrides_table` 42 ≈ **550 lines** — not one reviewable PR. Chapter 12 is ≈180 lines across
+> two pages that are ONE chapter (same nav entry, `/brief` is `/briefing`'s sub-page). **Chapter 11
+> (`/sra` + `/risks`, ≈755 lines) is next, as its own PR.**
+>
+> ## The one that would have rotted silently
+> `ai_polish.js` does `node.innerHTML = d.html` over the WHOLE of `#briefingBody`, and that HTML
+> comes from `/api/ai/briefing` re-rendering `_briefing_body`. So the provenance chip is a
+> **parameter**, not something the function builds: a chip it could not build for itself would
+> vanish the moment a local model was active — no error, no layout change, just a briefing wearing
+> no provenance, in the one configuration the suite never exercises by default. Both call sites now
+> pass `_series_prov_chip(schedules)` (the SERIES chip: both pages are built from every solvable
+> version at once), and a test drives the endpoint with a stub backend to prove it. **The toolbar
+> was never at risk — panelkit.js binds ONE delegated listener on `document`, so buttons arriving
+> via innerHTML keep working. Checked, not assumed.**
 >
 > ## Verification (every number read from a run this session)
-> **SIX reverts, each reverting the CALLER**, and every new gate proved able to fail: R1 never
-> launch-clears → 2 fail · R2 clears at EVERY launch → 2 fail · R3 drops the identity comparison →
-> 1 fails · R4 drops the `_claimed` reset → 1 fails · R5 `clear()` stops releasing → 2 fail · R6
-> writes never claim → 2 fail. **R5 caught a VACUOUS gate**: the clean-quit test passed against a
-> build that never released anything, because `clear()` **unlinks the database file**, so the
-> marker goes with it either way. The explicit `DELETE` earns its place only on the **Windows
-> fallback** path (an open reader refuses the unlink → tables emptied in place), where the marker
-> would be the one row to survive its own session. The test now forces that path **and asserts the
-> file still exists**, so it cannot drift back to proving nothing. `tests/engine/test_cache.py`
-> 22 → 27; cache-adjacent modules (launcher, upload_cache, vertical_integration, analysis_cache_lru,
-> session_consistency) 67 passed.
+> **ADR-0336: SIX reverts** (R1 never launch-clears → 2 fail · R2 clears at EVERY launch → 2 · R3
+> drops the identity comparison → 1 · R4 drops the `_claimed` reset → 1 · R5 `clear()` stops
+> releasing → 2 · R6 writes never claim → 2). **R5 caught a VACUOUS gate** — the clean-quit test
+> passed against a build that never released anything, because `clear()` UNLINKS the database file
+> so the marker dies with it either way; the explicit `DELETE` only matters on the **Windows
+> fallback** path, which the test now forces (and asserts `db.exists()` so it cannot drift back).
+> **ADR-0337: EIGHT reverts, all of the CALLER** — V1 the AI path drops the chip · V2 `/brief`
+> loses panelkit.js · V3 a heading skips `_panel_head` · V4 the panel export is removed · V5 the
+> takeaway is dropped · V6 the conversion mints a panel · V7 the shared status bars grow a head ·
+> V8 the wrap alters heading TEXT. **Plus TWO CSS reverts to prove the four-theme browser probe can
+> fail at all** (jarvis hiding the tool strip; apollo rendering the chip transparent) — a theme
+> assertion that cannot fail is worth nothing.
+> ADR-0336 full suite: **3304 passed, 2 skipped, 0 failed in 27m14s** (3299 baseline + 5).
+> Chapter-12 modules: contract 8, chromium 4, affected existing modules **91 passed**.
 >
-> ## Scope note (accepted, not overlooked)
-> Two concurrent processes sharing one `$SF_CACHE_DIR` read each other's marker as a dead run and
-> clear. The cost is a re-parse, never a wrong number (Law 2); ADR-0334's port claim already makes
-> two live servers abnormal; and it is the same trade ADR-0335's scope note takes for a
-> predecessor's `finally`. **No caller changed** — `web/app.py` and `launcher.py` are untouched
-> except for the SIGKILL row of the exit-census table, which now points at the marker.
+> ## Scope deliberately NOT widened (pinned by a test)
+> The **Ask panel** is global chrome `_page` adds everywhere; the two `.panel.status-stack` bars on
+> `/briefing` come from `_status_stack`, which several chapter headers share (`/sra` among them).
+> Converting either here would be a cross-cutting change wearing a chapter-12 label, and would hand
+> ⤓ EXCEL to panels whose data no workbook carries. ▦ DATA is refused on both routes: these panels
+> ARE prose and tables, so the glyph would be inert.
 >
-> ## ⇢ NEXT — the approved plan (HANDOFF ⇢ NEXT is the queue)
-> 1. **Phase 3 — UI (hybrid: keep Mission Ops, graft the Command Deck's best ideas).** THE HEAD OF
->    THE QUEUE. The four unconverted Act III pages — **re-measured this session off rendered HTML,
->    not grep**: `/sra` (13 panels), `/risks` (8), `/brief` (8), `/briefing` (1), all with **zero**
->    `panel-head` / `sf-tools` / `sf-take` / `prov-chip` / panelkit. Then `DOM_PENDING`'s 7 modules,
->    then the DoD ledgers (the DD-line ledger must EXCLUDE non-time-axis charts: `histogram.js`,
->    `scatter.js`, `sra_jcl.js`'s cost axis). Follow `docs/DESIGN-SYSTEM.md`; verify in all four
->    themes; one page shell per PR; never touch `engine/` for a UI change.
->    **Measured and worth keeping:** `/driving-path`'s zeros are its EMPTY STATE (no target UID
->    entered), not an unconverted page — `/path` is the populated variant and is converted.
+> ## ⇢ NEXT — the queue
+> 1. **Phase 3 continues: chapter 11 (`/sra` + `/risks`)**, its own PR. Then `DOM_PENDING`'s 7
+>    modules, then the DoD ledgers — **the DD-line ledger must EXCLUDE non-time-axis charts**
+>    (`histogram.js`, `scatter.js`, `sra_jcl.js`'s cost axis). Follow `docs/DESIGN-SYSTEM.md`;
+>    verify in all four themes; never touch `engine/` for a UI change.
 > 2. **Phase 4 engine** (`import_notes` propagation · the 3 falsy-zero rows · CC-01's rendering
 >    half — "74 sites" is an approximate grep, RE-DERIVE it · SRA-LEGACY · V3) · **Phase 5**
->    monolith split 2–3 (`app.py` ~20.9k lines) · **Phase 6** docs/operator queue. OR-04 stays with
+>    monolith split 2–3 (`app.py` ~21k lines) · **Phase 6** docs/operator queue. OR-04 stays with
 >    the operator.
 >
 > ## Still carried (unchanged identifiers, nothing lost)
@@ -74,10 +80,11 @@
 > export contradicts ADR-0307 (ADR-0307 stands) · `resume` is MSPDI-only · Phase 7 forward-pass
 > packing · ADR-0322 residuals · importer warnings belong on the page via `Schedule.import_notes` ·
 > ADR-0320/0325/0326 notes · **the /analysis focus→tip family is a measured intermittent** —
-> adjudicated, do NOT chase · ADR-0332 scope note (within-session `sf-story-visited`) · ADR-0333
-> scope note (`sysmon.js`'s interval still ticks while hidden; its `poll()` early-returns) ·
-> ADR-0335 scope note (a predecessor's `finally` runs AFTER the port is released, so it can delete
-> rows a successor just cached — correctness-safe, noted not engineered).
+> adjudicated, do NOT chase · ADR-0332 scope note · ADR-0333 scope note (`sysmon.js`'s interval
+> still ticks while hidden) · ADR-0335 scope note (a predecessor's `finally` runs AFTER the port is
+> released) · **ADR-0336 scope note:** two concurrent processes sharing one `$SF_CACHE_DIR` read
+> each other's marker as a dead run and clear — correctness-safe (a re-parse), accepted not
+> engineered · **ADR-0337 scope note:** the Ask panel and the shared `_status_stack` bars stay bare.
 >
 > ## Hypotheses KILLED — do not re-chase
 > Everything in `audit/SRA-PARITY-20260729.md` §7 and the archived lists, **plus:** the caption/halo
@@ -89,31 +96,35 @@
 > bug" (false: `idle_grace=600` is by design) · "a bind-probe answers 'is the port taken?'" (false
 > on Windows — connect-probe) · "a hardened opener contains an empty ProxyHandler" (false — assert
 > ABSENCE) · "`secure_delete=ON` is the obvious Law-1 cache hardening" (MEASURED false: 26 s on the
-> quit path, blows ADR-0334's 20 s handover) · "a bare DELETE leaves plaintext so a residue test is
-> a real gate" (false on Debian — `SECURE_DELETE` is compiled ON; assert RECLAIMED SIZE) ·
-> "`wipe_gen` stops a late write re-populating the cache" (only `/session/wipe` bumps it) ·
-> "`atexit`/`finally` cover a graceful stop" (false for SIGTERM — only the ASGI lifespan does) ·
-> **NEW — "a pid identifies the run that holds the cache"** (false: reused, and `os.kill(pid, 0)`
-> TERMINATES on Windows) · **NEW — "asserting a clean quit leaves no claim is a real gate"** (false
-> on the unlink path, which destroys the marker with the file — force the Windows FALLBACK).
+> quit path) · "a bare DELETE leaves plaintext so a residue test is a real gate" (false on Debian —
+> assert RECLAIMED SIZE) · "`wipe_gen` stops a late write re-populating the cache" (only
+> `/session/wipe` bumps it) · "`atexit`/`finally` cover a graceful stop" (false for SIGTERM) ·
+> "a pid identifies the run that holds the cache" (false: reused, and `os.kill(pid, 0)` TERMINATES
+> on Windows) · "asserting a clean quit leaves no claim is a real gate" (false on the unlink path —
+> force the Windows FALLBACK) · **NEW — "`/driving-path` is a fifth unconverted page"** (false: that
+> is its EMPTY STATE; `/path` is the populated, already-converted variant) · **NEW — "counting
+> `<div class=panel` finds every panel"** (false: it misses the QUOTED `class="panel …"` form, which
+> under-counted `/briefing` by three).
 >
 > ## Harness notes — the traps, one line each
 > Run dev tools as `python -m <tool>`. **`pip install -e ".[dev]"` after EVERY container restart**
 > (plus `playwright`, `ruff==0.16.1`, `build`). `pytest --timeout=N` is NOT installed. **Read the
 > tool's own summary line** (`| tail` masks the real exit code). **`node --check a.js b.js` checks
-> only the FIRST file — loop per file.** **NEVER `git checkout <file>` to undo a temporary test
-> mutation — `cp` from a scratchpad copy instead.** **When reverting to prove able-to-fail, revert
-> the CALLER not the API — and check the revert actually removed the behaviour.** **A `-k` filter
-> can silently DESELECT the very test the revert targets — run the whole module** (hit this
-> session: R1 looked like a 1-test failure until the file was run whole). **A hash-for-hash `sed`
-> does NOT update abbreviated `bc18307…` digests quoted in prose — grep the prefix too.** `pkill -f`
-> with the pattern in the killer's own command line kills the killer. CI can take ~11 min to
-> register check runs. `TestClient` follows 303 and CONSUMES one-shot banners; **plain
-> `TestClient(app)` does NOT run the lifespan — only `with TestClient(app)` does.** Parity marker
-> ≈2m38s. Headless Chromium hides scrollbars. `caplog` needs `logger="schedule_forensics.<module>"`.
-> **Playwright `bounding_box` / `page.screenshot(clip=…)` are VIEWPORT-relative.** **localStorage is
-> per-ORIGIN.** Bundled chromium: `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`. Containers
-> RESTART mid-run: statics FOREGROUND first, reinstall pip after resume. After a squash-merge:
+> only the FIRST file — loop per file.** **NEVER `git checkout <file>` to undo a temporary
+> mutation — `cp` from a scratchpad copy** (used twice this session, for app.py and app.css).
+> **When reverting to prove able-to-fail, revert the CALLER — and check the revert actually removed
+> the behaviour.** **A `-k` filter can silently DESELECT the very test the revert targets — run the
+> whole module** (hit this session). **A theme/computed-style assertion needs its own CSS revert to
+> prove it can fail.** **pytest stdout to a FILE is block-buffered — the dot count lags badly; do
+> not read it as a stall.** **A hash-for-hash `sed` does NOT update abbreviated digests quoted in
+> prose — grep the prefix too.** `pkill -f` with the pattern in the killer's own command line kills
+> the killer. CI can take ~11 min to register check runs; `test (3.13)` ran ~30 min. `TestClient`
+> follows 303 and CONSUMES one-shot banners; **plain `TestClient(app)` does NOT run the lifespan —
+> only `with TestClient(app)` does.** Parity marker ≈2m38s. Headless Chromium hides scrollbars.
+> `caplog` needs `logger="schedule_forensics.<module>"`. **Playwright `bounding_box` /
+> `page.screenshot(clip=…)` are VIEWPORT-relative.** **localStorage is per-ORIGIN.** Bundled
+> chromium: `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`. Containers RESTART mid-run:
+> statics FOREGROUND first, reinstall pip after resume. After a squash-merge:
 > `git fetch --prune origin && git remote set-head origin -a && git checkout -B <branch>
 > origin/main` — **NEVER amend the merged commits.** **Version-bump sequencing:** bump BEFORE the
 > suite. Never sleep in a sync-Playwright route handler. Never `from tests.web...` in a test.

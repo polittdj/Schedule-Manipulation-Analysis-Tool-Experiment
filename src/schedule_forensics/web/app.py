@@ -5933,10 +5933,28 @@ def create_app(
                 "diagnostic brief.</div>",
             )
         brief = build_brief(schedules, cpms)
+        # ADR-0337 (chapter 12, DoD): the takeaway h1 + context line every page owes, stated as a
+        # FINDING with a number in it. Both figures are rendered again in the panels below — the
+        # section count and the cited-statement count — so the reader can verify the headline by
+        # reading on, and neither is newly computed here.
+        cited = sum(len(s.paragraphs) for s in brief.sections)
+        versions = len(schedules)
+        takeaway = _utility_takeaway(
+            f"{cited} cited statement{'s' if cited != 1 else ''} across "
+            f"{len(brief.sections)} sections — every one traceable to a schedule, a UID and an "
+            "activity.",
+            f"The forensic narrative built from {versions} loaded version"
+            f"{'s' if versions != 1 else ''}: what the schedule says, in prose, with the citation "
+            "for each claim beside it.",
+        )
         return _page(
             st,
             "Diagnostic Brief",
-            _export_bar("brief") + _skipped_notice(skipped) + _brief_body(brief),
+            takeaway
+            + _export_bar("brief")
+            + _skipped_notice(skipped)
+            + _brief_body(brief, prov=_series_prov_chip(schedules))
+            + '<script src="/static/panelkit.js"></script>',
         )
 
     @app.get("/risks", response_class=HTMLResponse)
@@ -7123,8 +7141,12 @@ def create_app(
             )
             + _skipped_notice(skipped)
             + '<div id=briefingBody data-ai-endpoint="/api/ai/briefing">'
-            + _briefing_body(briefing)
+            + _briefing_body(briefing, prov=_series_prov_chip(schedules))
             + '</div><script src="/static/ai_polish.js"></script>'
+            # ADR-0337: panelkit.js drives the head strip's ⤓ / ⛶. It is loaded ONCE per page and
+            # binds a delegated listener on `document`, so it keeps driving the briefing after
+            # ai_polish.js swaps `#briefingBody`'s innerHTML out from under it.
+            + '<script src="/static/panelkit.js"></script>'
         )
         return _page(st, "Executive Briefing", body)
 
@@ -7167,7 +7189,10 @@ def create_app(
             briefing = build_briefing(
                 schedules, cpms=cpms, backend=backend, acumen_parity=st.dcma_acumen_parity
             )
-            html = _briefing_body(briefing)
+            # ADR-0337: the SAME provenance chip the server-rendered body carries. ai_polish.js
+            # replaces the whole of `#briefingBody`, so omitting it here would make the chip
+            # disappear the moment a local model polished the briefing.
+            html = _briefing_body(briefing, prov=_series_prov_chip(schedules))
         except Exception:
             logger.warning("AI briefing endpoint failed; client keeps the deterministic briefing")
             return JSONResponse({"polished": False})
@@ -7780,6 +7805,18 @@ def _panel_head(title: str, *, tools: str = "", prov: str = "", h2_attrs: str = 
 #: activities sheets). One string so every panel names the same real destination.
 _ANALYSIS_XLSX_TITLE = (
     "Export this schedule's analysis workbook (this panel's data is one of its sheets) — "
+    "opens in Excel"
+)
+
+#: ⤓ EXCEL hover text for the chapter-12 document pages (ADR-0337). Both name a REAL endpoint the
+#: page already offers in its export bar — ``/export/xlsx/briefing`` and ``/export/xlsx/brief`` —
+#: so the glyph never points at a route that does not exist.
+_BRIEFING_XLSX_TITLE = (
+    "Export the executive briefing workbook (this document's sections are its sheets) — "
+    "opens in Excel"
+)
+_BRIEF_XLSX_TITLE = (
+    "Export the diagnostic brief workbook (this document's sections are its sheets) — "
     "opens in Excel"
 )
 
@@ -11026,16 +11063,37 @@ criteria, why it matters, and what it indicates; full formulas + citations are i
 <script src="/static/panelkit.js"></script>"""
 
 
-def _brief_body(brief: DiagnosticBrief) -> str:
-    """The Diagnostic Brief page: cited prose + the finish table, print-friendly."""
+def _brief_body(brief: DiagnosticBrief, *, prov: str = "") -> str:
+    """The Diagnostic Brief page: cited prose + the finish table, print-friendly.
+
+    Panel contract (ADR-0337, chapter 12): every panel wears the head strip + ⤓ EXCEL + ⛶ and the
+    SERIES provenance chip, and the lead panel carries the one ``.sf-take``. The chip is the series
+    form because a ``DiagnosticBrief`` is built from every solvable version at once
+    (:func:`_solvable_versions`), so naming a single file would misdescribe what the prose is drawn
+    from — the same reasoning :func:`_series_prov_chip` was introduced for.
+
+    ⤓ EXCEL points at ``/export/xlsx/brief``, the endpoint the page's own export bar already
+    offers, so the glyph can never be a dead link (rank-3 law). ▦ DATA is deliberately absent:
+    these panels ARE prose and tables, so there is no hidden drawer for it to reveal.
+    """
+    tools = _shell_tools(export_title=_BRIEF_XLSX_TITLE)
+    export = ' data-export="/export/xlsx/brief"'
+    # The take counts what the page renders directly below it — sections, and the cited statements
+    # inside them — so the first number the reader meets is one they can verify by looking down.
+    cited = sum(len(s.paragraphs) for s in brief.sections)
     parts = [
-        f"<div class=panel><h2>{_e(brief.title)}</h2>",
+        f"<div class=panel{export}>",
+        _panel_head(_e(brief.title), tools=tools, prov=prov),
+        f"<p class=sf-take data-no-i18n>{len(brief.sections)} sections, {cited} cited "
+        f"statement{'s' if cited != 1 else ''} — every one carrying its schedule, UID and "
+        "activity.</p>",
         f"<p class=muted>Report generated on {brief.generated_on.strftime('%A, %B %d, %Y')}. "
         "Every claim carries its citation [schedule, UID, activity] — see the final "
         "section for how to verify.</p></div>",
     ]
     for section in brief.sections:
-        parts.append(f"<div class=panel><h2>{_e(section.heading)}</h2>")
+        parts.append(f"<div class=panel{export}>")
+        parts.append(_panel_head(_e(section.heading), tools=tools, prov=prov))
         for stmt in section.paragraphs:
             parts.append(f"<p>{_e(stmt.rendered())}</p>")
         if section.table is not None:
@@ -20519,11 +20577,23 @@ def _the_briefing_header(
     )
 
 
-def _briefing_body(briefing: ExecutiveBriefing) -> str:
+def _briefing_body(briefing: ExecutiveBriefing, *, prov: str = "") -> str:
     """Render the leadership Executive Briefing (ADR-0121): a metadata header + a verdict banner,
     then the numbered forensic sections (Bottom Line, Performance, Critical Path Then & Now, Health
     Dashboard, Risks & Opportunities, Recommended Actions, How to Verify) as a single continuous
-    document. Every statement and every table row carries its file + UID + task citation (§6)."""
+    document. Every statement and every table row carries its file + UID + task citation (§6).
+
+    Panel contract (ADR-0337, chapter 12): the one ``.panel.brief-doc`` this renders wears the head
+    strip + ⤓ EXCEL + ⛶ and the SERIES provenance chip (a briefing is built from every solvable
+    version at once), plus a single ``.sf-take``.
+
+    ``prov`` is a PARAMETER rather than something built here, and that is load-bearing: this
+    function is also what ``/api/ai/briefing`` re-renders, and ``ai_polish.js`` replaces the whole
+    of ``#briefingBody`` with the result. A chip built from a schedule this function cannot see
+    would simply vanish on the AI swap, leaving a polished briefing wearing no provenance — so
+    both call sites pass the same chip. (The toolbar itself is safe either way: panelkit.js binds
+    ONE delegated listener on ``document``, so buttons that arrive via ``innerHTML`` still work.)
+    """
     verdict_slug = briefing.verdict.lower().replace(" ", "-").replace("/", "")
     meta = "".join(
         f"<tr><th scope=row>{_e(k)}</th><td>{_e(v)}</td></tr>" for k, v in briefing.meta_rows
@@ -20536,10 +20606,19 @@ def _briefing_body(briefing: ExecutiveBriefing) -> str:
     # full-width header (title + meta + verdict banner), then the numbered sections tiled into a
     # responsive card grid so the briefing fills the whole page width and each section stays cleanly
     # boxed instead of running down one narrow column.
+    cited = sum(len(s.statements) for s in briefing.sections)
     header = (
-        '<div class="panel brief-doc">'
-        f"<h2>{_e(briefing.title)}</h2>"
-        f"<p class=brief-subtitle>{_e(briefing.subtitle)}</p>"
+        '<div class="panel brief-doc" data-export="/export/xlsx/briefing">'
+        + _panel_head(
+            _e(briefing.title),
+            tools=_shell_tools(export_title=_BRIEFING_XLSX_TITLE),
+            prov=prov,
+        )
+        # the take counts what is rendered directly below it, so the first number the reader meets
+        # is one they can verify by looking down the page
+        + f"<p class=sf-take data-no-i18n>{len(briefing.sections)} sections, {cited} cited "
+        f"statement{'s' if cited != 1 else ''} — the verdict reads "
+        f"{_e(briefing.verdict)}.</p>" + f"<p class=brief-subtitle>{_e(briefing.subtitle)}</p>"
         f"<table class=brief-meta>{meta}</table>"
         f'<div class="brief-banner verdict-{_e(verdict_slug)}">{banner}</div>'
         "<p class=muted>Every statement and table row cites file + UniqueID + task name. "
