@@ -8,9 +8,10 @@ kickoff steers a fresh session at work that is already done.)
 ---
 
 Resume POLARIS (Schedule-Manipulation-Analysis-Tool). **Read `docs/STATE/HANDOFF.md` FIRST**
-(auto-injected). As of last session: **v1.0.150**, highest ADR **0334**. #510 (Phase 2, ADR-0333)
-merged as `1e51079`; **Phase 1b (ADR-0334)** was built on top — verify whether its PR merged with
-`git fetch --prune origin`, then restart your branch from `origin/main`. Fresh container:
+(auto-injected). As of last session: **v1.0.150**, highest ADR **0334**. **Both of last session's PRs are
+MERGED** — #510 (Phase 2, ADR-0333) as `1e51079` and #511 (Phase 1b, ADR-0334) as `e0b0fcf`.
+`git fetch --prune origin` and restart your branch from `origin/main` (nothing is in flight).
+Fresh container:
 `pip install -e ".[dev]"` plus `pip install playwright 'ruff==0.16.1' build` first.
 
 **Phases 0, 1a, 1b (launcher half) and 2 are DONE.** The operator measurement Phase 1b was blocked

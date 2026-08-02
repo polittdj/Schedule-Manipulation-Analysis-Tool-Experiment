@@ -10565,3 +10565,26 @@ the briefs + state rotation) earlier today.
   still adjudicated either way — a green run is not evidence it is fixed).
 - The suite ran against exactly the tree being committed: version bumped to 1.0.150 first, wheel +
   nine installers regenerated once, statics re-run foreground, and no source touched afterwards.
+
+## 2026-08-02 — session close: both PRs merged, Phase 1b's cache half left as an operator decision
+
+- **#510 (Phase 2, ADR-0333) merged as `1e51079`; #511 (Phase 1b, ADR-0334) merged as `e0b0fcf`.**
+  `main` is at **v1.0.150**; verified its committed installers embed the 1.0.150 wheel, so the
+  operator's one-command update from `main` delivers this session's work. Branch restarted from
+  `origin/main`, working tree clean, **no check-in triggers armed** (the #511 one fired once as a
+  stale wake after the merge webhook, was verified as already-merged, and was not re-armed).
+- **This session's shape is worth recording: the blocked item unblocked mid-session.** It opened
+  with Phase 1b blocked on an operator measurement that had not arrived; per the standing rule the
+  launcher was NOT guessed at and Phase 2 was taken instead. The operator then produced the
+  measurement live, so Phase 1b was built in the same session — two ADRs, two merged PRs.
+  **Refusing to guess did not cost the phase; it bought a correct fix instead of a plausible one.**
+- **OR-06 is now fully closed** (`SHIPPED (ADR-0324 + ADR-0332 + ADR-0334)`) — its three causes
+  turned out to be per-page localStorage, cross-page schedule-derived localStorage, and a relaunch
+  landing on the SURVIVING previous server. Only the third explains why the symptom outlived the
+  first two fixes.
+- **OPEN, and it is the operator's call, not an inference — first item next session:** the disk
+  cache. Clear on clean shutdown + atexit (never at launch) with size/age caps, vs keep it with
+  caps only. Clearing on every quit removes parsed schedule content from disk between sessions but
+  discards the cross-session warm start. The implementation points are named in HANDOFF ⇢ NEXT
+  (`engine/cache.py` needs `prune(max_bytes, max_age)`; wiring into `_trigger_shutdown` and
+  `launcher.main`'s `finally`). **Ask before building.**
