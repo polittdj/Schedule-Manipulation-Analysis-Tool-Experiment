@@ -11366,3 +11366,36 @@ post-merge run (3403 passed, 0 failed). So neither "flaky" nor "deterministic" i
 correction over-claimed, and the next run caught it.**
 
 Wheel + nine installers rebuilt at **v1.0.160**.
+
+### Merged — #528 as `2262e6d`, after two merge rounds
+
+Three PRs shipped 2026-08-03: **#527** (`d57e230`, skills), **#529** (`f8a87d3`, the ADR-uniqueness
+guard), **#528** (`2262e6d`, ADR-0345 — the audit adjudication + the logging-isolation fix).
+
+**Two concurrent sessions collided on ADR-0344.** Both branched from `1119162`, both took
+"highest + 1". #527 merged first, so #528 renumbered **0344 → 0345** across the ADR, its body,
+`tests/`, `audit/EXTERNAL-AUDIT-20260803.md` and the state docs. #529 — a third session — found the
+same collision independently and shipped **`test_adr_numbers_are_unique`**. #528 already carried the
+renumber, so it passed the new guard on arrival; all **5** state-doc guards green.
+
+**The guard is worth reading for its own sake.** The four *pre-existing* assertions in
+`tests/test_state_docs.py` all stayed GREEN over the corrupted record — `_latest_adr_number()` takes
+`max()` so both `0344` files resolved to 344, and both durable docs legitimately contained the string
+`ADR-0344` because *both* PRs wrote it. **A guard passing on exactly the thing it exists to protect** —
+the same failure shape #528 spent the session fixing (a `caplog` test that cannot fail on the pytest
+CI resolves), in a different costume.
+
+Every conflict resolution kept BOTH contributions; the handoff STATUS was rewritten each round to
+describe the real state rather than either side's. Final gate on the merged tree: **3404 passed,
+3 skipped, 0 failed**.
+
+**Correction carried, now with a tally.** The `/analysis` focus→tip test is **load-sensitive** —
+not "intermittent", and not "deterministic locally" as this session first over-corrected to after it
+failed 3/3 in one window. Across **five** full-suite runs today: **fail · fail · pass · pass · fail**.
+The last failure came on a **docs-only** diff (four markdown files), which is proof by construction
+that it is environmental. A 4000 ms `playwright wait_for_function` budget this container misses under
+load. Pre-existing ✔ (fails identically on `origin/main` with changes stashed), never red on CI ✔.
+**Do NOT chase — but do not call it deterministic or flaky either; call it load-sensitive.**
+
+**Next:** P0-2 — constraints file + upper bounds + a floor-version CI leg (the root cause behind
+audit claims #1 and #2; both #529's guard and #528's fixture are patches on symptoms of it).
