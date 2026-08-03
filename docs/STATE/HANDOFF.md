@@ -1,8 +1,11 @@
 # Handoff — 2026-08-03d (External audit adjudicated; the logging-isolation leak closed; ADR-0345; v1.0.160)
 
-> ## STATUS (current) — **IN FLIGHT as #528.** #527 and #529 are MERGED; the renumber is DONE.
-> Branch `claude/polaris-phase-4-engine-zpo69e`, merged up to `origin/main` at **`f8a87d3`**.
-> ADR-**0345**, **v1.0.160**.
+> ## STATUS (current) — **MERGED, nothing in flight.** Three PRs shipped 2026-08-03.
+> **PR #528 squash-merged as `2262e6d`** with all six CI checks green, after two merge rounds
+> (#527 `d57e230`, then #529 `f8a87d3`). Branch restarted from the new `origin/main` with
+> `--prune`. ADR-**0345**, **v1.0.160**. Final local gate on the merged tree: ruff · ruff-format
+> (459) · mypy-strict (117) · bandit 0 · `node --check` 60/60 · full suite **3404 passed,
+> 3 skipped, 0 failed**.
 >
 > ## The ADR-0344 collision — found by #529, already resolved here
 > Two sessions branched from `1119162`, both took "highest + 1", and both landed on **0344**.
@@ -79,7 +82,9 @@
 > with changes stashed** (so: pre-existing ✔, not ours ✔), then **passed** in the next full run.
 > So it is **load-sensitive, not deterministic and not random**: `playwright wait_for_function`
 > with a **4000 ms** budget, which this container misses only when busy. Never fails on CI ✔.
-> *Do not restate "deterministic" — one clean run disproved it.*
+> Tally across five full runs today: **fail · fail · pass · pass · fail** — the last on a
+> **docs-only** diff, which proves by construction it is environmental. *Do not restate
+> "deterministic"; do not restate "flaky". It is load-sensitive.*
 > `pgrep -f` self-matches. pytest stdout to a FILE is block-buffered (`python -u`). `cd` persists
 > across Bash calls. `--bad` is the red token. Never `git checkout <file>` to undo a test mutation —
 > `cp` from a scratchpad copy. `/briefing`, `/path`, `/compare` still carry no `page-lede`; the

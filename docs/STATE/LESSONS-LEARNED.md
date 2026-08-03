@@ -435,6 +435,30 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-03e — Concurrent sessions collide on identifiers, and a guard can pass on the thing it protects
+- **Two sessions branched from the same `main`, both took "highest ADR + 1", and both got 0344.** Not
+  a mistake either could have avoided alone: "highest + 1" is correct locally and wrong globally the
+  moment a second branch is open. A third session found it and shipped
+  `test_adr_numbers_are_unique`. **The lesson is about identifier allocation, not about carelessness:
+  any "next free number" convention is a race unless something enforces uniqueness at merge.** Same
+  class as a database sequence vs. `SELECT MAX(id)+1`.
+- **The four pre-existing guards in `tests/test_state_docs.py` all stayed GREEN over the corrupted
+  record.** `_latest_adr_number()` takes `max()`, so both `0344` files resolved to 344; and both
+  durable docs legitimately contained `ADR-0344` because *both* PRs wrote it. **A guard going green
+  on exactly the condition it exists to detect** — and note it took a *human-noticed* symptom to find
+  it, not the test suite. This is the same shape as the defect this session fixed (a `caplog` test
+  that cannot fail on the pytest version CI resolves). **When you add a guard, ask what corrupted
+  state would still satisfy it.**
+- **Merge conflicts in append-only durable docs are a signal, not a chore.** Both rounds conflicted
+  only in `HANDOFF.md` / `SESSION-LOG.md` / `LESSONS-LEARNED.md` — files three sessions were all
+  appending to. Resolution was always "keep BOTH", but the STATUS section had to be *rewritten* each
+  round rather than picked from either side, because neither side described reality after the merge.
+  **A conflict in a status document means the status is now something neither branch knew.**
+- **I over-corrected once and the next run caught me.** After the `/analysis` focus→tip test failed
+  3/3 I replaced "intermittent" with "deterministic locally" — then two full runs passed it.
+  Load-sensitive is the honest word. **A correction is a claim too, and inherits the same evidentiary
+  burden as the thing it corrects.** Three data points beat one, in both directions.
+
 ### 2026-08-03d — Audit an audit the way you'd audit code: test its confidence, not just its doubts
 - **The claim the reviewer was surest about was the one most wrong — by 17×.** It named one
   polluting test; a per-test bisect found seventeen across three modules. Meanwhile all three of its
