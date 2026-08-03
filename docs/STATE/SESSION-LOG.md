@@ -11142,3 +11142,75 @@ rebuild. The known-intermittent `/analysis` focus→tip family did NOT fire.
 **Merged.** PR #525 → **`f063463`**, all **six** CI checks green (`check` · `linux` · `windows` ·
 `browser (measured-box proof)` · `test (3.11)` · `test (3.13)`), no review comments. Branch
 restarted from the new `origin/main` with `--prune` per the post-squash-merge rule.
+
+### 2026-08-03c — an external audit, adjudicated by measurement; the logging leak closed (ADR-0344, v1.0.160)
+
+The operator submitted a 13-claim external review and asked that each be validated or refuted by
+testing, not reading. All 13 were tested; full evidence in `audit/EXTERNAL-AUDIT-20260803.md`.
+
+**Headline: no product-correctness defect.** No computed number, metric, parity value or rendered
+figure is implicated. The real findings are CI reproducibility (#1, #2) and repo hygiene (#3-#5, #7).
+
+- **#2 was 17× larger than reported, and is the session's work.** The review named one polluting
+  test. A per-test bisect named **seventeen**, across three modules — `test_cli_guards.py` (1),
+  `test_launcher.py` (12), `test_logging_redaction.py` (4) — with **four** victims (the importer
+  calendar-warning `caplog` tests). Root cause is right: `configure_logging()` sets
+  `propagate=False` (correct, Law 1) and nothing restored it; `caplog` captures by propagation.
+- **It is version-sensitive, which is why CI never saw it.** Same tree: pytest **8.0.2 / 8.4.2**
+  fail (full suite **5 failed / 3301 passed**), **9.1.1** passes (**3400 passed**) because it also
+  attaches its capture handler to the logger itself. The leak is live on 9.1.1 regardless — probed
+  directly. The project declares `minversion = "8.0"` and `pytest>=8` **unbounded**, so which
+  behaviour a checkout gets is the resolver's choice, not the repo's.
+- **The fix is one autouse fixture, not seventeen edits.** `_restore_redacting_logging` in
+  `tests/conftest.py` snapshots and restores. Per-site requests were rejected explicitly: they fix
+  17 sites and not the 18th, and the symptom is invisible on the pytest CI installs.
+- **The regression test pins STATE, not the symptom — on purpose.** A `caplog` test would pass on
+  pytest 9 with or without the fix (coverage theatre on the version CI actually uses). The leak
+  itself is version-independent, so `test_b` asserting restored `propagate`/`_configured`/handlers
+  **fails on BOTH 9.1.1 and 8.4.2** when the fixture is reverted, while the true-positive twin
+  `test_a` (configure_logging really does stop propagation) passes. Discrimination, both versions.
+- **#1 refuted as stated, confirmed as structure.** Clean `pip install -e '.[dev]'` succeeded on
+  **3.11.15 AND 3.13.12** (rc=0 both; 1488 web tests collect). The reviewer's collection failure was
+  an env with neither httpx nor httpx2. But there are no upper bounds and no lock file — and
+  `pyproject.toml` already *silences* the starlette httpx deprecation via `filterwarnings` instead
+  of bounding it. #2 is the existence proof that this is not theoretical.
+- **#3 confirmed at 89 mismatches but SCOPED.** All in `00_REFERENCE_INTAKE/`; a bulk-upload
+  name/content rotation (one DOCX ZIP wears four names; `concepts_a.docx` is byte-identical to a
+  PDF). **Everything the product depends on is intact**: 65/65 shipped statics, both `.aft`
+  libraries parse (1443 / 1403 metrics), 16 goldens + 1 XER + 20 `.mpp`. That measurement is what
+  turns a scary finding into a provenance chore.
+- **Three of my own sniffer hits were false positives** — a 64-byte decode window splitting a
+  multi-byte UTF-8 char in three `.py` files. Checked before reporting. The tool you audit with
+  needs auditing too.
+- **I also got one wrong mid-session and corrected it**: the pytest-8 run's 5th failure looked like
+  a second version incompatibility; it is `ModuleNotFoundError: playwright`, same as the 2 errors —
+  two modules use a bare import where `test_r11_panel_contract.py:817` uses `importorskip`.
+- **The audit's three "VERIFIED CONTROL" items all reproduced exactly**: MPXJ recompile SHA-256
+  `1a2c05dc…` identical; installer/packaging/operator-kit 52+4+6 = **62 passed**; egress guards
+  **68 passed**; parity **49 passed** with its oracle limitation intact (13 `case.json` references
+  vs 2 real artifacts — already documented in `PATH-FORWARD.md` §C-7).
+- **#8's policy half is genuinely unverifiable here** — `check: needs: test` confirmed from the
+  YAML, but no branch-protection read is available to this environment. Flagged for the operator.
+
+- **My own first regression test was wrong, and the full suite caught it.** `test_b` asserted a
+  *pristine* `propagate is True`; it passed the module in isolation and **failed the full suite**.
+  Bisected by directory to **`tests/perf`**, whose module-scoped `served` fixture starts a real
+  server: higher-scoped fixtures set up BEFORE function-scoped ones, so that configuration happens
+  outside any per-test window and a function-scoped restore cannot undo it. The assertion claimed
+  more than the mechanism delivers. Rewritten to compare against the baseline `test_a` records —
+  exact under either condition, and the revert probe still fails it on 9.1.1 alone, 9.1.1 after
+  `tests/perf`, and 8.4.2. **The lesson is not "the test was flaky" — it is that I asserted a
+  property I had not established the fixture could provide.**
+
+**Gate, measured:** ruff · ruff-format (459) · mypy-strict (117) · bandit 0 · `node --check` 60/60
+· full suite **3402 passed, 3 skipped, 1 failed in 18:31**.
+
+**The one failure is pre-existing and NOT mine — and the "intermittent" label needs correcting.**
+`tests/web/test_float_tip_dismiss.py::test_the_dcma11_callout_can_be_dismissed_every_way_an_operator
+_would_try` fails **3/3** here, and fails **identically on `origin/main` with my changes stashed**.
+It has **zero** logging references. Cause: `playwright Page.wait_for_function: Timeout 4000ms
+exceeded` — a browser-timing assertion under container load. So: *pre-existing* ✔ (proved by
+stash), *never fails on CI* ✔ (unchanged), but **not "intermittent" in this container — it is a
+deterministic 4 s timeout**. Carried forward with that correction rather than the old wording.
+
+Wheel + nine installers rebuilt at **v1.0.160**.
