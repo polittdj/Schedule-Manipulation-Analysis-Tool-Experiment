@@ -11461,3 +11461,29 @@ stays, now paired with the bound and the pin that carry the real risk · `pytest
 
 **Next:** P1 — intake manifest + extension↔content regression test · reconcile R-03/R-12 · CUI hook
 hardening · Action SHA pinning. Then Fable 5: CC-01 · SRA-LEGACY · V3.
+
+## 2026-08-03g — #531 merged; the floor measurement reproduced on CI; ritual check-count corrected (docs only)
+
+**PR #531 squash-merged as `a1511ea`** with all **seven** checks green. Branch restarted from the new
+`origin/main` with `--prune`. ADR-**0346**, **v1.0.161**. No code changed in this entry — durable
+state only.
+
+**CI independently reproduced the floor measurement, to the test.** The new `floor` job on a clean
+ubuntu runner returned **3315 passed, 44 skipped** (11:28) and parity **49 passed** — identical
+counts to the local run on this container. The job log was read rather than the checkmark trusted:
+its "The floors must actually be the floors" step printed `pinned == installed` for every pin, and
+pytest's own header (`pytest-8.0.0`, `plugins: anyio-4.14.2, cov-5.0.0`) is independent confirmation
+that the constraints bound instead of the job silently testing the newest resolution. The P0-3 guard
+is visible working there too — `tests/perf/test_observer_storm.py:73: playwright not installed
+(runtime stays stdlib-only)`, a line that was an **ERROR** before this PR.
+
+**Ritual drift corrected.** `.claude/skills/session-close/SKILL.md` listed **six** checks for an
+installer-touching PR; ADR-0346's `floor` job makes it **seven**, and unlike `browser` it IS in
+`check`'s `needs`. A checklist that under-counts is how a session concludes a run is complete when it
+is not — the same failure shape the skill itself warns about.
+
+**Lesson added:** a webhook is a report about the past. A "marked ready for review" event arrived
+*after* the PR had already been merged; a fresh `pull_request_read method=get` settled it in one call.
+
+**Next:** P1 — intake manifest + extension↔content regression test · reconcile R-03/R-12 · CUI hook
+hardening · Action SHA pinning (which must also cover the two `@v5`/`@v6` uses the `floor` job added).

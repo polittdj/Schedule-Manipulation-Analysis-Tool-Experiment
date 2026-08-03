@@ -1,9 +1,19 @@
 # Handoff — 2026-08-03f (P0 closed: the dependencies are bounded, and the floor found a Law 1 defect; ADR-0346; v1.0.161)
 
-> ## STATUS (current) — branch `claude/resume-polaris-v1-geq9o7`, draft PR open, CI pending.
+> ## STATUS (current) — **MERGED, nothing in flight.** PR #531 squash-merged as `a1511ea`.
 > **ADR-0346**, **v1.0.161**. The audit's P0-2 (bound the dependencies) and P0-3 (`importorskip`)
 > are both delivered in one unit, because P0-3 had to land first — the new floor CI leg would have
 > been red on day one from two bare `from playwright.sync_api import …`.
+> All **SEVEN** checks green — the new `floor` job makes it seven, not the six the session-close
+> ritual used to list, on any PR that also trips `installer-smoke.yml`'s path filter.
+>
+> **CI independently reproduced the floor measurement, to the test.** The `floor` job on a clean
+> ubuntu runner: **3315 passed, 44 skipped** (11:28) and parity **49 passed** — identical counts to
+> the local run. Its pin-verification step printed `pinned == installed` for every pin, and pytest's
+> own header (`pytest-8.0.0`, `plugins: … cov-5.0.0`) confirms the constraints actually bound rather
+> than the job silently testing the newest resolution. **`minversion = "8.0"` is now a measurement.**
+> The new guard is visible working there too: `tests/perf/test_observer_storm.py:73: playwright not
+> installed` — that line was an **ERROR** before this PR.
 >
 > ## THE HEADLINE — the floor job found an air-gap violation on its first run
 > `pyproject.toml` declared `fastapi>=0.110`. **fastapi 0.110.0 and 0.110.1 serialize a
