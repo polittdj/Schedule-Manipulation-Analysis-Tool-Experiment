@@ -8,8 +8,9 @@ kickoff steers a fresh session at work that is already done.)
 ---
 
 Resume POLARIS (Schedule-Manipulation-Analysis-Tool). Read `docs/STATE/HANDOFF.md` FIRST
-(auto-injected). As of last session: **v1.0.161, highest ADR 0346** (P0-2 dependency bounding +
-P0-3 `importorskip`). `git fetch --prune origin && git remote set-head origin -a && git checkout -B
+(auto-injected). As of last session: **v1.0.161, highest ADR 0346**. **Nothing is in flight** —
+PR #531 (`a1511ea`, P0-2 dependency bounding + P0-3 `importorskip`) squash-merged 2026-08-03 with
+all **seven** checks green (the new `floor` job makes it seven). `git fetch --prune origin && git remote set-head origin -a && git checkout -B
 <branch> origin/main` (then `git branch --unset-upstream`). Fresh container:
 `pip install -e ".[dev]"` plus `pip install playwright build`. **`ruff` no longer needs a manual
 pin** — `pyproject.toml` now bounds it at `>=0.16.1,<0.17`, so `.[dev]` installs the gate's ruff.

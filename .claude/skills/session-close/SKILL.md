@@ -123,8 +123,10 @@ git push -u origin <branch>                        # retry 2s/4s/8s/16s on netwo
   restart the branch from the latest default branch and open a **new** PR. Never stack new commits on
   already-merged history.
 - CI takes ~11 min to register checks; `test (3.11)`/`test (3.13)` run ~30 min. On a PR that touches
-  the installers, **six** checks must go green: `check` · `linux` · `windows` ·
-  `browser (measured-box proof)` · `test (3.11)` · `test (3.13)`. `linux`/`windows` come from
+  the installers, **seven** checks must go green: `check` · `floor (declared minimum)` · `linux` ·
+  `windows` · `browser (measured-box proof)` · `test (3.11)` · `test (3.13)`. `floor` is new in
+  ADR-0346 — it installs at `constraints/floor.txt`, asserts the pins actually bound, then runs the
+  suite and parity; it IS in `check`'s `needs` (unlike `browser`). `linux`/`windows` come from
   `installer-smoke.yml`, which is **path-filtered** to `installer/**`, `tools/installer/**` and its own
   workflow file — so a PR outside those paths legitimately shows **four**. Confirm which set applies
   before calling a run incomplete.

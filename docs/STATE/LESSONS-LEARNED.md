@@ -479,6 +479,12 @@ those fixed defects in earlier "closed" fixes:
   land first — the floor CI leg would have been red on day one from the two bare playwright imports.
   When a new gate is about to run somewhere nothing ran before, fix what it will find before you
   turn it on, or its first result teaches you nothing about the thing you built it for.
+- **A webhook is a report about the past, not the present.** A "PR marked ready for review" event
+  arrived AFTER the PR had already been squash-merged; acting on it would have had me watching a
+  closed PR. The notice says so itself — verify with a fresh fetch when the state gates the next
+  action. `mcp__github__pull_request_read method=get` returned `merged: true` and settled it in one
+  call. Same family as the drift-guard race above: **both are stale-read bugs, one in a file and one
+  in an event stream.**
 - **Do not run the suite while you are editing the durable docs.** My first clean-floor run came back
   `3 failed, 3312 passed` — all three in `tests/test_state_docs.py`, which reads
   `HANDOFF.md`/`SESSION-LOG.md` **from disk at test time**, and I was mid-rotation (the file still
