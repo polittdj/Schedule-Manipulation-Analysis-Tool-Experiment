@@ -483,14 +483,22 @@ def test_promotion_census_no_element_newly_becomes_a_panel(
 
 # ── standing requirement 5: the axis captions are FROZEN ───────────────────────────────────
 
-#: md5 of ``static/drift.js`` lines 133-135 — the ONE SFChartFrame.axisTitles call site
+#: md5 of ``static/drift.js``'s 3-line SFChartFrame.axisTitles block — the ONE call site
 #: reachable from /forecast. Baseline from the round-10 cross-cutting audit §E.1.
+#:
+#: The block is LOCATED BY CONTENT, not by a hard-coded line offset. It was `lines[132:135]`
+#: until ADR-0342 added drift's data-date marker three lines above it: the caption was
+#: byte-identical (this same md5 matched at the new offset) but the test failed anyway, because
+#: it was pinning the caption's ADDRESS as well as its bytes. A freeze should fail when the
+#: frozen thing changes, not when something above it moves. Same md5, same three lines, same
+#: assertions — only the way the block is found is now robust.
 DRIFT_AXIS_MD5 = "d7cd43e8092e02ef82449a52592578d6"
 
 
 def test_drift_axis_caption_call_site_is_byte_frozen() -> None:
     lines = (STATIC / "drift.js").read_text(encoding="utf-8").split("\n")
-    block = "\n".join(lines[132:135])
+    start = next(i for i, ln in enumerate(lines) if "SFChartFrame.axisTitles(" in ln)
+    block = "\n".join(lines[start : start + 3])
     assert "SFChartFrame.axisTitles(" in block
     assert 'xLabel: "Forecast finish date", yLabel: "Forecast method",' in block
     assert hashlib.md5(block.encode()).hexdigest() == DRIFT_AXIS_MD5

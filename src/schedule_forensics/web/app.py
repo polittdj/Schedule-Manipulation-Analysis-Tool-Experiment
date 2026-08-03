@@ -221,7 +221,11 @@ from schedule_forensics.engine.recommendations import (
     Finding,
     Severity,
 )
-from schedule_forensics.engine.resources import ResourceLoading, compute_resource_loading
+from schedule_forensics.engine.resources import (
+    ResourceLoading,
+    bucket_key,
+    compute_resource_loading,
+)
 from schedule_forensics.engine.s_curve import SCurve, compute_s_curve
 from schedule_forensics.engine.saved_grouping import (
     find_saved_filter,
@@ -18389,6 +18393,15 @@ def _resource_loading_json(rl: ResourceLoading, sch: Schedule) -> str:
         # provenance + drill wiring (operator 2026-07-10): the drill fetches field data from
         # /api/analysis/<source_file> and builds its Excel link against the same file
         "source_file": sch.source_file or sch.name,
+        # The data-date line (ADR-0342). The BUCKET KEY is computed HERE, with the engine's own
+        # bucket_key, rather than re-derived in JS: the three granularities include ISO week
+        # numbering (YYYY-Www, Monday-start), and a second implementation of that in the browser
+        # is exactly the kind of drift this round is closing. None when the schedule carries no
+        # status date — the chart then draws no marker rather than one at an assumed position.
+        "status_date": sch.status_date.date().isoformat() if sch.status_date else None,
+        "status_period": (
+            bucket_key(sch.status_date.date(), rl.granularity) if sch.status_date else None
+        ),
         "resources": [
             {
                 "id": r.resource_id,

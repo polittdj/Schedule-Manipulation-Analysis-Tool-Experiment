@@ -336,15 +336,11 @@
 
     // (month/quarter/year scale is the stacked tier header drawn above the plot)
 
-    // dashed data-date marker (right edge of the data-date month)
+    // data-date marker via the ONE shared helper (ADR-0342) — placement unchanged.
     if (statusIndex != null) {
-      var sx = x(statusIndex);
-      svg.appendChild(svgEl("line", {
-        x1: sx, y1: padT, x2: sx, y2: y(0), stroke: BLUE, "stroke-width": 2, "stroke-dasharray": "6 5",
-      }));
-      var sl = svgEl("text", { x: sx, y: padT - 4, "text-anchor": "middle", fill: BLUE, "font-size": 10 });
-      sl.textContent = "data date";
-      svg.appendChild(sl);
+      SFGantt.dataDateLine(svg, {
+        x: x(statusIndex), top: padT, bottom: y(0), iso: months[statusIndex],
+      });
     }
 
     // the lines — keep a ref per series so the legend can show/hide each

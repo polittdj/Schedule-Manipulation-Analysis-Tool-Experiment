@@ -169,7 +169,12 @@ def test_cei_js_renders_grouped_bars_and_autoplay(client: TestClient) -> None:
     js = client.get("/static/cei.js").text
     assert "Baselined to Finish" in js and "Scheduled to Finish" in js and "Finished" in js
     assert "setInterval" in js and "Auto-play" in js  # the animated movie mode
-    assert "CEI – " in js and "data date" in js  # noqa: RUF001 — the deck's en-dash callout
+    assert "CEI – " in js  # noqa: RUF001 — the deck's en-dash callout
+    # the data-date marker is still drawn, but since ADR-0342 cei.js no longer owns its label:
+    # it calls the ONE shared helper, which writes the DD / DATA DATE text from gantt.js. The
+    # marker itself is covered far more strongly by test_dd_line_ledger + test_dd_line_render
+    # (which assert it PAINTS, in the red token, in all four themes).
+    assert "SFGantt.dataDateLine(" in js
 
 
 def test_trend_focus_uid(client: TestClient) -> None:

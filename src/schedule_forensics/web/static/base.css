@@ -61,6 +61,17 @@ paint-order:stroke fill;stroke:var(--sf-ch-canvas);stroke-width:3px;stroke-linej
 .ch-atd{font-size:var(--sf-fs-axis-title);color:var(--muted);font-weight:700;
 text-transform:uppercase;letter-spacing:.08em}
 caption.ch-atd{caption-side:top;text-align:left;padding:2px 0 4px}
+/* The data-date marker (ADR-0342), drawn by the ONE helper SFGantt.dataDateLine. DESIGN-SYSTEM
+   §chart-contract asks for a RED vertical line labeled DD / DATA DATE on every time-axis chart;
+   before this, four hand-rolled copies drew two different colours, two dash patterns and three
+   labelling schemes, each hard-coding "font-size": 10. Colour is --bad (red in all four themes)
+   and the type size reads the SAME --sf-fs-axis-title token as .ch-at, so the queued crispness
+   change still moves one value. The label carries .ch-at's halo for the same reason .ch-at does:
+   a DD label sits over the plot, where nothing can yield (ADR-0331). */
+.ch-dd line{stroke:var(--bad);stroke-width:2;stroke-dasharray:6 4}
+.ch-dd text{font-size:var(--sf-fs-axis-title);fill:var(--bad);font-weight:700;
+text-transform:uppercase;letter-spacing:.08em;
+paint-order:stroke fill;stroke:var(--sf-ch-canvas);stroke-width:3px;stroke-linejoin:round}
 a{color:var(--accent);text-decoration:none}header{background:var(--header-bg);border-bottom:1px solid var(--line);
 /* slim band (operator 2026-07-10, ADR-0194): the globe is out of the flex flow (absolute,
    top-right), so the header is only as tall as the brand + nav; the right padding reserves

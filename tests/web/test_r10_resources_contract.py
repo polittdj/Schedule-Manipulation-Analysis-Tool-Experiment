@@ -368,10 +368,16 @@ def test_axis_caption_call_site_is_untouched() -> None:
     rotated period labels yield to the caption's live box — the caption never moves), so the
     whole-file digest was refreshed deliberately there. The LOAD-BEARING pins are unchanged:
     the call-site block digest and the two caption strings prove the axisTitles call itself
-    is byte-identical."""
+    is byte-identical.
+
+    ADR-0342 did the same thing again, and for the same reason: it added the data-date marker
+    (``SFGantt.dataDateLine``) immediately BELOW the call site, so the whole-file digest is
+    refreshed here deliberately while the two load-bearing pins below are unchanged — verified,
+    not assumed: the 11-line call-site block still hashes to the SAME
+    ``6cd4b080306f47e19d71d1e8f18d8838`` it did before the change."""
     js = Path(__file__).resolve().parents[2] / "src/schedule_forensics/web/static/resources.js"
     raw = js.read_bytes()
-    assert hashlib.md5(raw).hexdigest() == "e225d535c080b096440fcec7e467c3f8"  # ADR-0319
+    assert hashlib.md5(raw).hexdigest() == "091f3c4bd64010f84096919aa2ae08d8"  # ADR-0342
     block = raw.decode().splitlines()[235:246]
     assert hashlib.md5("\n".join(block).encode()).hexdigest() == "6cd4b080306f47e19d71d1e8f18d8838"
     assert 'xLabel: "Period (" + UNIT + " commencing)",' in "\n".join(block)

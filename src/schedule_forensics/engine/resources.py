@@ -28,7 +28,7 @@ from schedule_forensics.model.calendar import Calendar
 GRANULARITIES = ("day", "week", "month")
 
 
-def _bucket_key(day: dt.date, granularity: str) -> str:
+def bucket_key(day: dt.date, granularity: str) -> str:
     """Bucket a calendar day into a sortable period key for the chosen granularity.
 
     ``day`` -> ``YYYY-MM-DD``; ``week`` -> ISO ``YYYY-Www`` (Monday-start ISO week);
@@ -109,7 +109,7 @@ def _period_working_days(
     while day <= hi and guard < 2_000_000:
         guard += 1
         if _is_working(cal, day):
-            key = _bucket_key(day, granularity)
+            key = bucket_key(day, granularity)
             out[key] = out.get(key, 0) + 1
         day += dt.timedelta(days=1)
     return out
@@ -165,7 +165,7 @@ def compute_resource_loading(
             res_load = load.setdefault(a.resource_id, {})
             res_contrib = contrib.setdefault(a.resource_id, {})
             for day in wdays:
-                key = _bucket_key(day, granularity)
+                key = bucket_key(day, granularity)
                 res_load[key] = res_load.get(key, 0.0) + per_day
                 bucket_tasks = res_contrib.setdefault(key, {})
                 bucket_tasks[task.unique_id] = bucket_tasks.get(task.unique_id, 0.0) + per_day

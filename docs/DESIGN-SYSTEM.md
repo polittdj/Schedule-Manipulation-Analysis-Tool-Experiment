@@ -88,7 +88,15 @@ toolbar as chips/selects, and persist.
   and every captioned table is built by a body script (ADR-0340); no other module may name
   `.ch-atd`. Same token, same case, same color voice; only the mechanism follows the medium.
 - Data date: always a red vertical line labeled `DD` / `DATA DATE`, on every
-  time-axis chart, no exceptions.
+  time-axis chart, no exceptions. **One mechanism (ADR-0342):** `SFGantt.dataDateLine`,
+  in `gantt.js` for the same head-loaded reason `tableCaption` is — most charted pages
+  draw at parse time, before `chartframe.js` exists. Colour and type come from `.ch-dd`
+  (`--bad`, and the same `--sf-fs-axis-title` token the captions read); no chart may
+  hand-roll a marker or hard-code its size. **"Time axis" is narrower than "ordered by
+  time" and narrower than "denominated in dates"** — a *version* axis (one tick per
+  loaded file) and an *outcome* axis (a distribution over a simulated finish) both carry
+  dates and take no DD line, because neither has a position for one. The population is a
+  derived ledger, not a list: `tests/web/test_dd_line_ledger.py`.
 - Series semantics: baseline = muted dashed · current/actual = accent solid ·
   forecast = warn dashed · critical = red. Milestones are 45°-rotated squares.
 - Every chart carries a one-line "how to read this" in muted text.
@@ -117,7 +125,10 @@ marking (see the briefing .doc pattern).
 - [ ] Tokens only; renders correctly in all 4 themes + both densities + 90–125% scale
 - [ ] Chapter kicker, takeaway h1, context line, Continue segue, nav entry with takeaway
       (the story-chrome and all 12 page shells have landed — the full spine applies)
-- [ ] Every visual: DD line, legend, read-me line, ▦/⤓/⛶ toolbar, options persist
+- [ ] Every visual: legend, read-me line, ▦/⤓/⛶ toolbar, options persist — and a DD line
+      via `SFGantt.dataDateLine` **if its x is a real calendar axis**; if it is a version or
+      outcome axis it takes none, and either way the chart must be bucketed in
+      `tests/web/test_dd_line_ledger.py`, which fails until it is (ADR-0342)
 - [ ] CUI bars print; controls hidden in print (`data-noprint` / `.cf-bar` pattern)
 - [ ] Keyboard focus ring visible (`--focus`); reduced-motion kills animation/timers
 - [ ] No remote asset (air-gap test stays green); no calculation touched

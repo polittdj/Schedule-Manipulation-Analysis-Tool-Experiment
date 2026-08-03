@@ -91,13 +91,13 @@
 
     // (month/quarter/year scale is the stacked tier header drawn above the plot)
 
-    // dashed data-date marker
+    // data-date marker via the ONE shared helper (ADR-0342). The date this used to append to the
+    // label now rides in the marker's <title>, so chartframe's shared hover call-out still shows
+    // it without the label growing wider than the months it sits between.
     if (v.status_index != null) {
-      var sx = x(v.status_index);
-      svg.appendChild(svgEl("line", { x1: sx, y1: padT, x2: sx, y2: y(0), stroke: "var(--muted)", "stroke-width": 1.5, "stroke-dasharray": "2 3" }));
-      var sl = svgEl("text", { x: sx, y: padT - 4, "text-anchor": "middle", fill: "var(--muted)", "font-size": 10 });
-      sl.textContent = v.status_date ? "data date " + v.status_date : "data date";
-      svg.appendChild(sl);
+      SFGantt.dataDateLine(svg, {
+        x: x(v.status_index), top: padT, bottom: y(0), iso: v.status_date,
+      });
     }
 
     curve(svg, v.planned, GOLD, x, y, false);
