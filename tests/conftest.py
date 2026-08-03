@@ -54,6 +54,48 @@ def reset_redacting_logging() -> Iterator[None]:
 
 
 @pytest.fixture(autouse=True)
+def _restore_redacting_logging() -> Iterator[None]:
+    """Undo any ``configure_logging`` a test triggers, so logging state cannot leak forward.
+
+    ``configure_logging`` sets ``propagate = False`` on the ``schedule_forensics`` logger — correct
+    and deliberate for the shipped tool (records must not escape to an unredacted root handler,
+    Law 1) — and installs a process-global handler. It is reached from ``cli.main()``,
+    ``launcher.main()`` and, on first use, from ``get_logger()``, so **17 tests across three
+    modules** configured it and left it configured (measured 2026-08-03 by per-test bisect:
+    ``tests/exhibits/test_cli_guards.py`` 1, ``tests/test_launcher.py`` 12,
+    ``tests/test_logging_redaction.py`` 4).
+
+    With ``propagate = False`` in force, pytest's ``caplog`` — which captures by propagation to the
+    root logger — sees nothing, so a later test asserting on a warning reads an empty
+    ``caplog.text``. That is **version-sensitive**: pytest 9.1.x additionally attaches its capture
+    handler to the ``schedule_forensics`` logger itself and masks the leak, while **pytest 8.0.2
+    and 8.4.2 fail** the four importer calendar-warning tests (``test_mspdi.py`` twice,
+    ``test_xer.py`` twice). ``pytest>=8`` is unbounded, so which behaviour a checkout gets is
+    decided by the resolver, not by this repository.
+
+    Restoring here rather than adding a fixture request to each of the 17 sites is deliberate: the
+    next test to call an entry point would otherwise reintroduce the leak silently. The
+    companion :func:`reset_redacting_logging` is unrelated and stays — it *pre*-clears so a
+    startup-wiring test must freshly install the handler; this one *post*-restores. Being autouse,
+    this fixture is set up first and torn down last, so it runs after that fixture's own restore.
+    """
+    import schedule_forensics.logging_redaction as lr
+
+    root = logging.getLogger("schedule_forensics")
+    saved_handlers = root.handlers[:]
+    saved_propagate = root.propagate
+    saved_level = root.level
+    saved_configured = lr._configured
+    try:
+        yield
+    finally:
+        root.handlers[:] = saved_handlers
+        root.propagate = saved_propagate
+        root.setLevel(saved_level)
+        lr._configured = saved_configured
+
+
+@pytest.fixture(autouse=True)
 def _isolate_schedule_cache(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Give every test its own empty SQLite schedule cache (v4 Feature 2), so a test never reads or
     writes the operator's real ``~/.cache/schedule-forensics`` and one test's cached bytes can never

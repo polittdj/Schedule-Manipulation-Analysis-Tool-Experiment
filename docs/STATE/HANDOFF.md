@@ -1,124 +1,95 @@
-# Handoff — 2026-08-03c (The standing rituals become invoked skills; ADR-0344; v1.0.159)
+# Handoff — 2026-08-03d (External audit adjudicated; the logging-isolation leak closed; ADR-0345; v1.0.160)
 
-> ## STATUS (current) — **MERGED, nothing in flight.** Seven project skills live under `.claude/skills/`.
-> **PR #527 squash-merged as `d57e230`** with all **four** CI checks green — `check` · `test (3.11)` ·
-> `test (3.13)` · `browser (measured-box proof)`, the last including its "Fail loudly if the proof
-> silently skipped" step. **Four, not six, is correct here:** `linux`/`windows` come from
-> `installer-smoke.yml`, path-filtered to `installer/**`, and this PR touched neither. The branch was
-> restarted from the new `origin/main` at `d57e230` with `--prune`. ADR-**0344**, **v1.0.159**
-> (unchanged — nothing under `src/` was touched, so no wheel/installer rebuild; the ADR-0148 lockstep
-> test was run to confirm it).
+> ## STATUS (current) — **IN FLIGHT as #528.** #527 and #529 are MERGED; the renumber is DONE.
+> Branch `claude/polaris-phase-4-engine-zpo69e`, merged up to `origin/main` at **`f8a87d3`**.
+> ADR-**0345**, **v1.0.160**.
 >
-> ## ⚠ ADR-0344 IS A COLLISION — PR #528 must renumber to 0345
-> PR **#528** (`claude/polaris-phase-4-engine-zpo69e`, branched from `1119162` **before** this merge)
-> also numbers its decision **ADR-0344**: `0344-a-test-that-configures-logging-must-not-configure-the-next-one.md`
-> vs this one's `0344-standing-rituals-become-invoked-skills.md`. If it merges as-is, `main` carries
-> **two `0344-*.md` files** — two unrelated decisions sharing an identifier that gets cited in a
-> testimony context. **`tests/test_state_docs.py` CANNOT catch it:** `_latest_adr_number()` takes
-> `max()`, both files resolve to `344`, and both durable docs legitimately contain `ADR-0344`, so all
-> four assertions pass over a corrupted record. #527 took the number first, so #528 renumbers. Flagged
-> on that PR. **The guard now EXISTS** (operator-authorised): `test_adr_numbers_are_unique` in
-> `tests/test_state_docs.py` asserts one ADR per sequence number. **Proved able to fail** with the real
-> colliding filename from #528: **1 failed, 4 passed** — the narrow failure is the new test, and the
-> four pre-existing assertions staying GREEN is the empirical proof that they never could catch this.
-> #528 will be red until it renumbers to 0345, which is the intended effect. **No new ADR was minted
-> for the guard, deliberately:** taking 0345 right now would collide with the very renumber #528 has
-> been asked to make, and the guard enforces an existing convention rather than deciding a new one.
+> ## The ADR-0344 collision — found by #529, already resolved here
+> Two sessions branched from `1119162`, both took "highest + 1", and both landed on **0344**.
+> #527 (skills) took it first and merged, so **this branch renumbered 0344 → 0345** —
+> `docs/adr/0345-a-test-that-configures-logging-must-not-configure-the-next-one.md`, with every
+> citation updated (ADR body, `tests/`, `audit/EXTERNAL-AUDIT-20260803.md`, the state docs).
+> #529 then shipped the guard that makes it impossible to repeat: **`test_adr_numbers_are_unique`**
+> in `tests/test_state_docs.py`. It is worth reading — the four *pre-existing* assertions in that
+> module all stayed GREEN over the corrupted record (`_latest_adr_number()` takes `max()`, and both
+> durable docs legitimately contained `ADR-0344` because both PRs wrote it), which is the empirical
+> proof that a guard can go green on exactly the thing it exists to protect. **This branch passes
+> the new guard.**
 >
-> ## What landed — and what the search actually found
-> The ask was "find and install skills that would help this project." **Both catalogs were searched
-> first and both came back empty of anything new**: the account skill catalog already has
-> `schedule-forensics`, `session-token-guardian` and `docx`/`xlsx`/`pptx`/`pdf` enabled, and the only
-> plugin marketplace is `knowledge-work-plugins` (data · marketing · design · operations), whose
-> `engineering` and `design` plugins are already on. **There was nothing to install.** That empty
-> result is recorded in ADR-0344 so the next session does not repeat the search.
+> ## Already merged and usable — #527's seven project skills (`.claude/skills/`)
+> `full-gate` · `prove-able-to-fail` · `render-verify` · `metric-parity` · `ui-change` ·
+> `cui-guard` · `session-close`. They encode the standing rituals that prose reminders kept losing.
+> **Use them** — `session-close` carries this exact rotation's shape, `full-gate` the piped-exit-code
+> and per-file `node --check` traps, `render-verify` the ADR-0343 "I did not execute the page" class.
+> Both skill catalogs were searched and had nothing new to install; that empty result is ADR-0344 so
+> nobody repeats the search.
 >
-> The real gap is the one `LESSONS-LEARNED.md` Part III already named — **"prose reminders decayed;
-> tests didn't."** Where a ritual is expressible as a test it already is one (drift guard, wheel
-> lockstep, dictionary sync, DD-line ledger). The residue governs *session conduct*, not tree
-> contents, and a test can only catch it after it was done wrong. Seven skills now carry it:
+> ## The audit verdict — 13 claims, every one tested (this branch)
+> **No product-correctness defect was found.** No computed number, metric, parity value or rendered
+> figure is implicated. Full evidence: `audit/EXTERNAL-AUDIT-20260803.md`.
 >
-> | skill | what it prevents recurring |
-> | --- | --- |
-> | `full-gate` | a piped exit code hiding a real failure · `node --check` on a glob checking only file 1 · reporting a suite nobody read |
-> | `prove-able-to-fail` | ADR-0304's class — a green assertion over a control that moves nothing; a `-k` filter deselecting the target |
-> | `render-verify` | ADR-0343's class — "I did not execute the rendered page"; source call sites read as rendered charts |
-> | `metric-parity` | stored-vs-recomputed float triage · hard-coded 480 · a golden re-pinned silently |
-> | `ui-change` | the Mission Ops DoD, the one-mechanism table, `--bad` (not `--danger`), the literal `—` |
-> | `cui-guard` | Law 1 — the blocklist's two exceptions, std-lib-only runtime, fail-closed AI, no remote asset |
-> | `session-close` | this rotation's exact shape · ADR-0148's stale-wheel class · the twice-repeated doc drift |
+> | # | claim | verdict |
+> | --- | --- | --- |
+> | 1 | dependency reproducibility | structure CONFIRMED; stated failure REFUTED (clean 3.11 **and** 3.13 installs rc=0) |
+> | 2 | test pollution | **CONFIRMED — 17 polluters / 4 victims, not 1** |
+> | 3 | mislabeled intake files | CONFIRMED (**89**), but SCOPED to `00_REFERENCE_INTAKE/` |
+> | 4 | stale risk register (R-03, R-12) | CONFIRMED |
+> | 5 | CUI hook coverage | CONFIRMED, wider than reported |
+> | 6 | license placeholder | CONFIRMED verbatim |
+> | 7 | mutable action tags + unchecksummed ollama | CONFIRMED |
+> | 8 | `check` doesn't gate on `browser` | mechanism CONFIRMED; **policy half unverifiable here** |
+> | 9 | MPXJ class == source | **REPRODUCED** (`1a2c05dc…` both) |
+> | 10 | installer lockstep 62 | **REPRODUCED** (52+4+6, all pass) |
+> | 11 | egress guards 68 | **REPRODUCED** |
+> | 12 | parity 49 + oracle limit | **REPRODUCED**; limit real and already documented in-repo |
 >
-> ## Verification — the recipe was EXECUTED, not drafted
-> `render-verify`'s Tier-1 renderer was run before it was written down: `/cei` against the five
-> committed `TP4_DataCenter` fixtures → **200, 25,850 bytes**, and the real takeaway `h1` read back
-> from the response. Its launch-nonce normalisation (`sf-launch` content + `?v=` cache-bust) is what
-> makes a two-tree render diff mean anything. `full-gate`'s prerequisites were executed in this
-> container: `pip install -e ".[dev]"` resolves **1.0.159**, and the vendored chromium the browser
-> tier globs for is present at `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`. All seven files
-> parse as YAML with `name` == directory name; descriptions are 488–567 chars against a 1,536 cap;
-> none shadows a bundled skill (`/review`, `/code-review`, `/security-review`, `/simplify`, `/run`).
+> **#3 is scoped, and that is the important part.** Verified intact: **65/65** shipped static
+> assets, both `.aft` libraries (**1443** / **1403** `<Metric>`), **16** golden MSPDI + **1** XER +
+> **20** `.mpp`. The corruption is a bulk-upload name/content rotation in intake only.
 >
-> ## The limitation was recorded — then measured away in the same session
-> It was first written down honestly: *"this session cannot observe the skills loading"*, because the
-> documented mechanic says a **newly created** top-level skills directory needs a restart to be
-> watched. **It did not hold.** All seven appeared in this session's live skill listing with **no
-> restart** — and the listed `cui-guard` text was the *edited* description, written minutes after the
-> file was created, proving the loader re-read from disk rather than a cached snapshot. The restart
-> caveat evidently applies to a skills directory created outside an already-watched parent; `.claude/`
-> existed here and only `.claude/skills/` was new. **The claim in the ADR is now the measurement, and
-> the superseded caveat is left visible rather than deleted.** Committing them (rather than
-> `~/.claude/skills/`) stays deliberate and verified: **cloud/web sessions and routines load project
-> skills from the cloned repo and ignore `~/.claude/skills/` entirely**, which is how this project is
-> actually driven.
+> ## What landed — ADR-0345
+> `configure_logging()` sets `propagate=False` (correct, Law 1) and **17 tests** across
+> `test_cli_guards.py` (1) · `test_launcher.py` (12) · `test_logging_redaction.py` (4) left it set.
+> `caplog` captures by propagation, so 4 importer calendar-warning tests read an empty
+> `caplog.text`. **Version-sensitive:** pytest **8.0.2 / 8.4.2 FAIL** (full suite 5 failed / 3301
+> passed), **9.1.1 passes** — it also attaches its handler to the logger itself and masks the leak.
+> The project declares `minversion = "8.0"` and `pytest>=8` unbounded, so the resolver decides.
+> Fix: **one autouse fixture**, `tests/conftest.py::_restore_redacting_logging`. Per-site requests
+> were rejected — they fix 17 sites and not the 18th.
 >
-> ## Next — Phase 4 continues, unchanged by this
-> **CC-01's rendering half** — *"74 sites" is an approximate grep, **RE-DERIVE it** before touching
-> anything*; ADR-0240 reserves it for a **Fable 5 Max** deep dive · **SRA-LEGACY**
-> (`audit/SRA-ROOTCAUSE-20260730.md`) · **V3** (`engine/msp_filters.py` hard-codes `"d": 480`;
-> ADR-0310 made it a conformance fix, but it MOVES saved-filter populations — it needs its
-> migration-report gate). Then **Phase 5** monolith split 2–3 (`app.py` **21,333** lines, `state.py`
-> **1,479**) and **Phase 6** docs/operator queue. OR-03 and OR-06's launch-sequence half remain in
-> `OPERATOR-REQUESTS.md`; OR-04 stays with the operator.
+> `tests/test_logging_isolation.py` (2) pins the **state, not the symptom** (a caplog test would
+> pass on pytest 9 either way). Revert `autouse=True`→`False`: `test_b` fails on 9.1.1 alone, 9.1.1
+> after `tests/perf`, and 8.4.2 — true-positive twin `test_a` green in every case.
+> **My first draft asserted a PRISTINE state and failed the full suite** — bisected to `tests/perf`,
+> whose module-scoped fixture configures logging before any function-scoped one can snapshot it.
 >
-> ## The gate, measured — and the one red triaged by VARYING COUNT
-> `ruff check` pass · `ruff format --check .` **867 clean** (0.16.1) · `mypy --strict` **117 files** ·
-> `bandit` **exit 0** · `node --check` **60/60** · full suite **3400 passed, 3 skipped, 1 failed
-> (16:33)** · `pytest -m parity` **49 passed**. The red was `test_float_tip_scroll` — the documented
-> `/analysis` focus→tip family. Four samples of the same 19 tests: **1 failed** (suite, with changes) ·
-> **2 failed** (targeted, with changes) · **0 failed** (targeted, PRISTINE at `1119162`) · **1 failed**
-> (targeted, with changes). The diff is markdown-only so it cannot be causal, and **the proof is the
-> varying count on an identical tree, NOT the pristine pass** — *a pristine-tree pass is not a
-> discriminator when the difference cannot be causal; it is just another sample of a flaky test.*
-> **Verified why it ran here at all:** `playwright` is its own `[browser]` extra, NOT `[dev]`; CI's
-> `test (3.11)`/`(3.13)` install `.[dev]` (so every playwright-gated test SKIPS) and the `browser` job
-> installs `.[dev,browser]` but runs **only** `test_r11_panel_contract.py`. This family **never
-> executes on CI** — the mechanism behind "has NEVER failed on CI." Both facts are now in `full-gate`.
+> ## Next — the audit's remaining P0/P1 (Opus 5 until Thu 01:00)
+> **P0-2 constraints/upper bounds** (root cause of #1 AND #2 — `filterwarnings` already silences the
+> starlette httpx deprecation instead of bounding it) · **P0-3** `pytest.importorskip` in
+> `tests/perf/test_observer_storm.py` and `tests/web/test_launch_invalidation.py` (they ERROR, not
+> skip, without playwright) · **P1** intake manifest + extension↔content regression test ·
+> risk-register reconcile (R-03/R-12) · CUI hook hardening (`.json` content sniff, `.p6xml`,
+> `*.mpp.*`) · Action SHA pinning.
+> **Fable 5 (Thu):** CC-01 · SRA-LEGACY · V3. **Operator only:** license, branch-protection read,
+> intake re-upload, proprietary-tool reruns for #12.
 >
-> ## Carried forward, unchanged
-> `/groups`' breakdown "Activities" column still counts summary rows (`len(uids)`) — measured,
-> deliberately NOT fixed (ADR-0343). `/briefing`, `/path`, `/compare` render a bare takeaway h1 with
-> NO `page-lede`. **Known intermittent: the `/analysis` focus→tip family** — adjudicated,
-> pre-existing, has NEVER failed on CI. Do NOT chase. `pgrep -f <pat>` self-matches like `pkill -f`.
-> pytest stdout to a FILE is block-buffered (use `python -u`). `cd` in a Bash call persists — use
-> absolute paths. `pytest --timeout=` is NOT installed and its usage error exits **0** through a
-> `| tail` pipeline. `--bad` is the red token; `--danger` does not exist. Source call sites ≠ rendered
-> charts. Never `git checkout <file>` to undo a temporary test mutation — `cp` from a scratchpad copy.
+> ## Carried forward
+> **The `/analysis` focus→tip family — measured twice, and the second measurement corrected the
+> first.** Still do NOT chase. It failed **3/3** in one window AND **identically on `origin/main`
+> with changes stashed** (so: pre-existing ✔, not ours ✔), then **passed** in the next full run.
+> So it is **load-sensitive, not deterministic and not random**: `playwright wait_for_function`
+> with a **4000 ms** budget, which this container misses only when busy. Never fails on CI ✔.
+> *Do not restate "deterministic" — one clean run disproved it.*
+> `pgrep -f` self-matches. pytest stdout to a FILE is block-buffered (`python -u`). `cd` persists
+> across Bash calls. `--bad` is the red token. Never `git checkout <file>` to undo a test mutation —
+> `cp` from a scratchpad copy. `/briefing`, `/path`, `/compare` still carry no `page-lede`; the
+> `/groups` "Activities" column still counts summary rows.
 >
-> ## The skills caught a defect in their own commit — with the trap they document
-> `ruff format --check .` read **green, 458 files**, before commit. That was a stale **0.15.8** in
-> `/root/.local/bin` shadowing the **0.16.1** `pip` had just installed to `/usr/local/bin`. They differ
-> in SCOPE, not style: 0.16.x also formats fenced `python` blocks **inside markdown** — the same tree is
-> **458** files to one binary and **867** to the other — so `render-verify/SKILL.md`'s python recipe
-> would have gone red on CI (which resolves `ruff>=0.6` to latest). Reformatted; **867 clean** under
-> the explicit `/usr/local/bin/ruff`. `which -a ruff` vs `pip show ruff` is now step 0 of `full-gate`,
-> with the measured counts. **This is 2026-07-29 cont.3 — "a green gate proves nothing if the binary
-> isn't the one CI runs" — in a new costume: a stale wheel then, a shadowed linter now.**
->
-> **New this session:** an empty search result is a deliverable, not a dead end — it is what converts
-> "install a skill" into "the knowledge already exists here, unindexed." And the ladder from Part III
-> has a middle rung: law (CLAUDE.md) → **invoked procedure (a skill)** → executable guard (a test).
-> Reach for the highest rung that fits; a ritual about *how to verify* cannot be a test, because the
-> test is the thing it is telling you to distrust.
+> **New this session:** *an audit's confidence deserves as much testing as its doubts.* Three
+> "VERIFIED CONTROL" items reproduced exactly; the one HIGH it was surest about was **17× larger**.
+> My own magic-byte sniffer produced 3 false positives (a 64-byte window splitting a multi-byte
+> char) — audit your audit tooling. And **a per-test fixture cannot undo a higher-scoped one**:
+> assert the guarantee your mechanism provides, not the outcome you wish it provided.
 
 # (prior) handoffs — archived
 

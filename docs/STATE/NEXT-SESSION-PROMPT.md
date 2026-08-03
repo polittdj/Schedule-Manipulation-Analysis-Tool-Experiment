@@ -8,11 +8,14 @@ kickoff steers a fresh session at work that is already done.)
 ---
 
 Resume POLARIS (Schedule-Manipulation-Analysis-Tool). Read `docs/STATE/HANDOFF.md` FIRST
-(auto-injected). As of last session: **v1.0.159, highest ADR 0344**. ADR-0306's three carried
-UNSURE falsy-zero rows are CLOSED (ADR-0343, PR #525 → `f063463`). ADR-0344 committed **seven
-project skills** under `.claude/skills/`. `git fetch --prune origin && git remote set-head origin -a
-&& git checkout -B <branch> origin/main` (then `git branch --unset-upstream`) and start the next
-unit. Fresh container: `pip install -e ".[dev]"` plus
+(auto-injected). As of last session: **v1.0.160, highest ADR 0345**. ADR-0344 committed
+**seven project skills** under `.claude/skills/` (#527 → `d57e230`) — **use them**, especially
+`session-close`, `full-gate`, `prove-able-to-fail`, `render-verify`. **PR #528 (ADR-0345) was IN
+FLIGHT at session end** — check it FIRST (`pull_request_read` get_status); it adjudicates a 13-claim
+external audit (`audit/EXTERNAL-AUDIT-20260803.md`) and closes a logging-isolation leak. If merged:
+`git fetch --prune origin && git remote set-head origin -a && git checkout -B <branch> origin/main`
+(then `git branch --unset-upstream`). **Check the highest ADR on disk before picking a number** —
+#527 and #528 both chose 0344 while open, and #528 had to renumber to 0345. Fresh container: `pip install -e ".[dev]"` plus
 `pip install playwright 'ruff==0.16.1' build`.
 
 ⇢ USE THE SKILLS — they exist so you do not re-derive them
@@ -35,7 +38,18 @@ fabricating branch with its true-positive twin.
 `over_allocated` fix that must now SURFACE the non-working-day bucket). Do not "fix" it.
 **Do NOT re-search the skill catalogs** — ADR-0344 recorded both searches as empty of anything new.
 
-⇢ NEXT — Phase 4 continues, then 5 and 6
+⇢ NEXT — the external audit's remaining P0/P1 (Opus 5), then Phase 4
+**P0-2 constraints file + upper bounds + a floor-version CI leg** — the root cause of audit #1 AND
+#2: no bounds, no lock, and `pyproject.toml` already *silences* the starlette httpx deprecation via
+`filterwarnings` instead of bounding it. The suite's pass/fail depends on resolution date (pytest
+8.x fails, 9.1.1 passes, same tree). · **P0-3** `pytest.importorskip` in
+`tests/perf/test_observer_storm.py` + `tests/web/test_launch_invalidation.py` (they ERROR, not skip,
+without playwright) · **P1** intake manifest + extension↔content regression test (89 mismatched
+files, ALL in `00_REFERENCE_INTAKE/`, product verified unaffected) · reconcile risks R-03/R-12 ·
+CUI hook hardening (`.json` content sniff, `.p6xml`, `*.mpp.*`) · Action SHA pinning.
+**Operator only:** license selection · branch-protection required contexts · intake re-upload.
+
+⇢ THEN — Phase 4 continues, then 5 and 6
 **CC-01's rendering half** — *"74 sites" is an approximate grep, **RE-DERIVE it** before touching
 anything*; ADR-0240 reserves this for a **Fable 5 Max** deep dive on the CPM date machinery ·
 **SRA-LEGACY** (`audit/SRA-ROOTCAUSE-20260730.md`) · **V3** (`engine/msp_filters.py` hard-codes

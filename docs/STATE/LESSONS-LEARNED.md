@@ -435,6 +435,46 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-03d — Audit an audit the way you'd audit code: test its confidence, not just its doubts
+- **The claim the reviewer was surest about was the one most wrong — by 17×.** It named one
+  polluting test; a per-test bisect found seventeen across three modules. Meanwhile all three of its
+  "VERIFIED CONTROL" items reproduced exactly. **Generalization: a finding's confidence label tells
+  you about the auditor's process, not about the codebase.** Budget verification by *blast radius if
+  true*, not by how sure the reporter sounded. A one-line "HIGH" and a one-line "VERIFIED" both cost
+  the same to check and only one of them was load-bearing.
+- **"Cannot reproduce" is a result only after you've found the variable.** The pollution didn't
+  reproduce on our pytest. Stopping there would have closed a real defect as noise. Pinning pytest
+  8.0.2 / 8.4.2 / 9.1.1 against the *same tree* produced fail / fail / pass — and the tie-breaker was
+  probing the logger state directly, which showed the leak is live on 9.1.1 too and merely *masked*.
+  **When a defect won't reproduce, enumerate what differs between the two environments and bisect
+  that, rather than reporting non-reproduction.**
+- **Pin the invariant, not the symptom, when the symptom is version-dependent.** The obvious
+  regression test (a `caplog` assertion) would have passed on the pytest CI resolves whether or not
+  the bug was fixed — a test that cannot fail where it runs. The *leak* is version-independent, so
+  asserting restored logger state fails on every version. **Ask "on which versions/configs can this
+  test fail?" before writing it; if the answer excludes CI, you're writing coverage theatre.**
+- **Fix the class, not the instances, when the instance count is unbounded.** Seventeen per-site
+  fixture requests would have been mechanical and complete — and useless against the eighteenth.
+  One autouse fixture closes the class. The rule of thumb: *if the defect is "someone forgot to call
+  cleanup", the fix is almost never "remind everyone".*
+- **Audit your audit tooling.** My own magic-byte sniffer reported three `.py` files as binary; a
+  64-byte decode window had split a multi-byte UTF-8 character. Caught only because "three test
+  files are secretly binary" was implausible enough to re-check. **A measurement that surprises you
+  is first evidence about your instrument.**
+- **A per-test fixture cannot undo a higher-scoped fixture, and my first regression test assumed it
+  could.** pytest sets up session/module-scoped fixtures *before* function-scoped ones, so
+  `tests/perf`'s module-scoped server had already configured logging by the time my autouse snapshot
+  ran. Asserting "pristine" passed the module alone and failed the full suite. **Assert the
+  guarantee your mechanism actually provides, not the outcome you wish it provided** — here,
+  "the next test starts where this one started", which is exact regardless of what set the baseline.
+  Corollary: *a new test that passes in isolation has not been tested; run it in the full suite
+  before you believe it.*
+- **Scope is the difference between alarm and a chore.** "89 tracked files have contents that don't
+  match their names" reads catastrophic. Measuring what the *product* depends on — 65/65 statics,
+  both `.aft` libraries parsing at 1443/1403 metrics, 16 goldens + 1 XER + 20 `.mpp` all intact —
+  converted it into a provenance cleanup with zero correctness impact. **Always measure the blast
+  radius before you rank the severity; the count is not the severity.**
+
 ### 2026-08-03c — An empty search result is a deliverable; and the ladder has a middle rung (ADR-0344)
 
 - **The ask was "find and install skills."** Both catalogs were searched *first*: the account skill

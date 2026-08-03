@@ -92,6 +92,7 @@
 > the NEXT card's value; the first KPI read of this session was off by one and reported
 > `Planned = 0` where the page actually said `—`.
 
+
 # (prior) Handoff — 2026-08-03 (Phase 3 UI: the DD-line gap closes into ONE helper; ADR-0342; v1.0.158)
 
 > ## STATUS (current) — **IN FLIGHT.** `DD_PENDING` is EMPTY; the DD line has one implementation.
