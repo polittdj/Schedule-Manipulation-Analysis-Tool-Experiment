@@ -144,13 +144,13 @@
       }
     }
 
-    // dashed data-date marker (right edge of the data-date month, as in the deck)
+    // data-date marker via the ONE shared helper (ADR-0342). Placement is unchanged: the RIGHT
+    // edge of the data-date month, as in the deck. Colour/label/type now come from the theme.
     if (snap.status_index != null) {
-      var sx = padL + (snap.status_index + 1) * slot;
-      svg.appendChild(svgEl("line", { x1: sx, y1: padT, x2: sx, y2: y(0), stroke: BLUE, "stroke-width": 2, "stroke-dasharray": "6 5" }));
-      var sl = svgEl("text", { x: sx, y: padT - 4, "text-anchor": "middle", fill: BLUE, "font-size": 10 });
-      sl.textContent = "data date";
-      svg.appendChild(sl);
+      SFGantt.dataDateLine(svg, {
+        x: padL + (snap.status_index + 1) * slot, top: padT, bottom: y(0),
+        iso: months[snap.status_index],
+      });
     }
 
     // item F: mark where the focused target activity lands this snapshot (scheduled + actual)

@@ -435,6 +435,55 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-03 — "Denominated in dates" is not "a time axis" (ADR-0342, the DD-line gap closes)
+- **The pending list was 8. Six of the eight were not work at all** — they were two
+  misclassifications wearing a date's name, and both were caught by *rendering* rather than by
+  reading the bucket they sat in.
+  - `margin_dashboard`'s burn-down declared `xLabel: "Status date"`. Rendered in chromium with
+    deliberately IRREGULAR status dates (1 week, 1 week, then **15** weeks apart) it spaced all
+    four versions **evenly** — the 15-week jump got the same pixel width as the 1-week gaps, and
+    two ticks both read "2026-03". It is one slot per loaded version: `margin.js`'s categorical
+    axis, mislabelled. Its sibling erosion chart, in the SAME module, is linear in milliseconds
+    and extends its domain to the projected zero-margin date, so the data date is a real and
+    genuinely useful position there. **One module, two charts, two opposite answers.**
+  - The five SRA "Finish date" charts plot a *distribution over a simulated outcome*. Measured:
+    schedule status date **2026-08-27**, `/api/sra` CDF domain **2028-01-21 → 2028-01-28** — the
+    data date is ~17 months to the LEFT of a 7-day, index-spaced window. Clamping a marker to the
+    left edge would assert the data date IS the earliest simulated finish (Law 2). The tell was
+    already in the tree: `sra_jcl.js`'s SIBLING cost axis was *already* excluded, and it is the
+    same joint distribution with the other variable on x.
+- **Lesson (generalizes → Part V/VI): the unit of a quantity is not its semantics.** A date-valued
+  axis can be categorical (one tick per version), an outcome distribution (one tick per simulated
+  finish), or a calendar — and only the last one has a place to put "now". Ask *what one step along
+  this axis means*, not what the values look like. The `ai/qa.py` identifier-before-derivation
+  ordering is the same shape: check what a token IS before checking what it looks like.
+- **The revert discipline paid again, and the discriminating revert is the one that taught.**
+  Neutering the shared helper failed all 4 render tests while all **34** source-ledger tests kept
+  passing — which is itself the finding: *a source census cannot catch a broken helper*, so the
+  render module is not redundant with the ledger. Then removing ONE caller (`resources.js`) failed
+  exactly 1 and passed the other 3. And a third revert on the CSS alone (`--bad` → `--accent`)
+  failed 4 including the ledger's design-system test — style assertions really are silent without
+  their own revert.
+- **A host list guessed from the ledger's keys under-reported by two.** `curves.js` has ONE
+  `axisTitles` call site in source and renders THREE charts through it (`#finishesChart`,
+  `#dataDateChart`, `#slippageChart`). The first render test asserted 4 hosts and failed on
+  `curves.js: 0` — not a code bug, a wrong selector. **Source call sites and rendered charts are
+  different populations; probe the page for the second one.** (Fixed by listing every `[id]` that
+  contains an `svg` on a live `/mission` and reading what came back: 6 markers, 6 hosts.)
+- **A MATCHING COUNT IS NOT AN IDENTIFICATION — the near-miss of the session.** The suite showed
+  6 failures; I had just fixed 6 test files; I wrote that the 6 were mine and was about to treat
+  the run as explained. They were not the same 6. Mapping the progress-output indices back to
+  `pytest --collect-only -q` showed **4 of them were `tests/installer/test_installers.py`** — the
+  embedded-wheel-in-lockstep-with-the-source-tree checks, failing because static assets and the
+  version had changed and the wheel had not been rebuilt yet. Only 2 were mine. **Lesson: when a
+  count matches your expectation, that is a coincidence until you have the NAMES.** The cheap
+  identification, worth remembering: strip the `[ nn%]` suffixes from `-q` progress output, take
+  the indices of `F`/`E`, and read those lines out of `pytest --collect-only -q` — it works
+  mid-run, without waiting for the summary.
+- **Also:** `pytest --timeout=300` is not available here (no `pytest-timeout`), and the arg error
+  exited **0** through the pipeline — an exit code from a `| tail` pipeline is the tail's, so a
+  "passing" background run can be a usage error. Check for the summary line, not the status.
+
 ### 2026-08-02g — A grep count is not a census, in BOTH directions (ADR-0341, the DD-line ledger)
 - **The same mistake, three times in one session, and the third time I made it in a handoff.** A
   `grep -ci "data.date"` census said 4 charts lacked a data-date marker; the real number is 8,

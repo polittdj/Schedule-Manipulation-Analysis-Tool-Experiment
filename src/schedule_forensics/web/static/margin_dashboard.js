@@ -230,8 +230,15 @@
     // stack margin (WORK days) with contingency (calendar non-working days), so the Y caption
     // counts "days" without asserting a single basis. The old bottom-right "status date"
     // quasi-caption retires into the helper's X slot. One scale only — no y2Label (A1).
+    // The X caption names the VERSION, not the date (ADR-0342). Measured in chromium with
+    // deliberately irregular status dates (1 week, 1 week, then 15 weeks apart): this chart's
+    // x(i) = L + (R-L)*i/(n-1) spaced all four EVENLY — the 15-week jump got the same pixel
+    // width as the 1-week gaps. It is one slot per loaded version, exactly margin.js's axis,
+    // so calling it "Status date" claimed a calendar the chart does not draw. It also means a
+    // data-date line has no position here: every version has its own data date. The erosion
+    // chart below is the one with a real continuous time axis.
     SFChartFrame.axisTitles(svg, { L: L, R: R, T: T, B: B }, {
-      xLabel: "Status date",
+      xLabel: "Schedule version (status date)",
       yLabel: "Days (margin + contingency)",
     });
   }
@@ -296,6 +303,13 @@
       var zt = txt(svg, zx, T + 8, "zero margin " + shortDate(DATA.zero_margin_date), { anchor: zx > R - 90 ? "end" : "start", fill: BAD, size: 8.5 });
       zt.setAttribute("data-series", "Zero-margin date");
     }
+    // data-date marker (ADR-0342). This axis IS continuous calendar time — x(t) is linear in
+    // ms and tmax is EXTENDED to the projected zero-margin date — so the latest version's
+    // status date is exactly the boundary between measured history (left) and projection
+    // (right), which is the most useful thing this chart can be annotated with.
+    var last = pts[pts.length - 1];
+    SFGantt.dataDateLine(svg, { x: x(last.t), top: T, bottom: B, iso: last.iso });
+
     var rate = DATA.erosion_wd_per_month;
     // same yield as the burn-down: the Y caption owns the top-left corner (ADR-0303/0325)
     legend(svg, L + 4, T + 24, [

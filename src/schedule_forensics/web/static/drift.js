@@ -87,10 +87,13 @@
       pl.textContent = "baseline " + v.planned_finish;
       svg.appendChild(pl);
     }
-    // data-date marker
+    // data-date marker via the ONE shared helper (ADR-0342). This line was previously the only
+    // one of the four with NO label on it at all — named only in a legend note; it now carries
+    // the same DD label as every other time-axis chart.
     if (v.as_of) {
-      var ax = x(Date.parse(v.as_of));
-      svg.appendChild(svgEl("line", { x1: ax, y1: padT, x2: ax, y2: H - padB, stroke: "var(--muted)", "stroke-width": 1.5, "stroke-dasharray": "2 3" }));
+      SFGantt.dataDateLine(svg, {
+        x: x(Date.parse(v.as_of)), top: padT, bottom: H - padB, iso: v.as_of,
+      });
     }
 
     var prior = index > 0 ? versions[index - 1] : null;
@@ -152,7 +155,10 @@
     var refs = document.createElement("span");
     refs.className = "chart-legend-item";
     refs.style.color = "var(--muted)";
-    refs.textContent = "— gold dashed = baseline finish · grey dotted = data date";
+    // the data-date half of this note used to be the ONLY place drift named its marker (the line
+    // itself carried no label); the shared helper labels the line DD, so the note now matches
+    // what is actually drawn — red dashed, not grey dotted (ADR-0342).
+    refs.textContent = "— gold dashed = baseline finish · red dashed DD = data date";
     leg.appendChild(refs);
     box.appendChild(leg);
 

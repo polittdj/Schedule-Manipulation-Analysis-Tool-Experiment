@@ -244,6 +244,24 @@
       xLabel: "Period (" + UNIT + " commencing)",
       yLabel: "Work booked (working days)",
     });
+    // data-date marker via the ONE shared helper (ADR-0342). This is the spec's own
+    // "distribution over months -> columns with DD marker" case: unlike a version axis, the
+    // buckets here are EQUAL-length calendar periods, so the marker has a real position.
+    // The bucket KEY is computed server-side by the engine's own bucket_key (ISO week
+    // numbering is not worth a second implementation in the browser); we place the line on the
+    // RIGHT edge of the data-date bucket — elapsed to the left, remaining to the right — which
+    // is cei.js's long-standing placement. A data date outside the loaded work's span finds no
+    // bucket and draws NOTHING, rather than clamping to an edge it does not occupy.
+    if (payload.status_period) {
+      var ddi = -1;
+      series.forEach(function (p, i) { if (p.period === payload.status_period) ddi = i; });
+      if (ddi >= 0) {
+        SFGantt.dataDateLine(s, {
+          x: ml + (plotW * (ddi + 1)) / series.length, top: mt, bottom: H - mb,
+          iso: payload.status_date,
+        });
+      }
+    }
     host.appendChild(s);
     // ADR-0319 — ADR-0303's "data label yields", MEASURED: the X caption owns its corner, and
     // the last 40°-rotated period labels were parked under it (36-40x2-4px in 8 of 12

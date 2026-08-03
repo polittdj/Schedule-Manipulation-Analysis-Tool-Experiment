@@ -11014,3 +11014,54 @@ the briefs + state rotation) earlier today.
 - The `/analysis` focus→tip intermittent **passed on CI for both PRs**, which further supports the
   standing adjudication that it is a local-environment flake and not a regression. Still do not chase.
 
+
+## 2026-08-03 — Phase 3 UI: the DD-line gap closes into ONE helper (ADR-0342, v1.0.158)
+- **PR #523 (docs-only session close) MERGED as `5413b6b`** — checked FIRST, as the kickoff asked.
+  Branch restarted from `origin/main` with `--prune`, upstream unset.
+- **ONE helper: `SFGantt.dataDateLine`**, in head-loaded `gantt.js` beside `tableCaption`. The home
+  was decided by LOAD ORDER first (ADR-0340's lesson): `_LAYOUT` emits `chartframe.js` AFTER
+  `</main>`, and most time-axis charts are parse-time body scripts, so a `SFChartFrame` helper would
+  be undefined when they draw. A test now pins the layout's script order so the home cannot outlive
+  its reason. Colour/type come from `.ch-dd` in `base.css` — `--bad` (red; there is no `--danger`)
+  and the SAME `--sf-fs-axis-title` token the captions read, replacing four hard-coded `10`s.
+- **The four hand-rolled copies are retired** (`cei`, `curves`, `drift`, `scurve`). `drift`'s legend
+  note ("grey dotted = data date") was corrected to match what is now drawn; `scurve`'s appended
+  date moved into the marker's `<title>`, where chartframe's shared hover call-out shows it.
+- **Two reclassifications, both from a RENDER, and they account for 6 of the 8 "pending".**
+  - `margin_dashboard`'s burn-down: rendered with irregular status dates (1wk, 1wk, **15wk**) it
+    spaced all four versions EVENLY — one slot per loaded version. It is `margin.js`'s categorical
+    axis wearing a date's name; caption now reads "Schedule version (status date)", moved to
+    `VERSION_AXIS`. Its SIBLING erosion chart is linear in ms and extends to the projected
+    zero-margin date, so the data date is the measured/projected boundary — it KEPT its entry and
+    now draws the marker. One module, two charts, two answers.
+  - The five SRA "Finish date" sites are a new **`OUTCOME_AXIS`** family: a distribution over a
+    simulated outcome. Measured on `project2_5` — status date **2026-08-27**, `/api/sra` CDF domain
+    **2028-01-21 → 2028-01-28**, i.e. the data date is ~17 months LEFT of a 7-day index-spaced
+    window. Clamping to the edge would assert the data date IS the earliest simulated finish
+    (Law 2). `sra_jcl.js`'s SIBLING cost axis was already excluded — same joint distribution.
+- **`resources.js`** is the one chart that was genuinely pending. Its buckets are equal-length
+  calendar periods, so the marker has a real position. The bucket KEY is computed server-side by
+  the engine's own `bucket_key` (renamed from `_bucket_key`, two internal callers) rather than
+  re-deriving ISO week numbering in JS; the line sits on the data-date bucket's RIGHT edge, and a
+  data date outside the loaded span draws NOTHING.
+- **`DD_PENDING` is EMPTY.** Buckets: `TIME_AXIS` 6 · `VERSION_AXIS` 10 · `OUTCOME_AXIS` 5 ·
+  `NOT_TIME_AXIS` 6 · `OPTS_NOT_LITERAL` 1. The detector changed with the code: anchored on the
+  CALL now (one implementation), counted PER MODULE against that module's time-axis chart count —
+  `margin_dashboard` is exactly why a module-level "has a marker" flag would have been wrong.
+- **`tests/web/test_dd_line_render.py` is new** and carries what a source ledger cannot: the marker
+  paints on BOTH load-order families, in the red token (resolved live against `--bad`/`--accent`/
+  `--muted`, so it holds in every theme rather than pinning a hex), at the axis-caption type size,
+  and the `margin_dashboard` adjudication is RENDERED — erosion has it, burn-down does not.
+- **Proved-able-to-fail, three reverts on three different gates:** neuter the SHARED helper → all 4
+  render tests fail while all 34 ledger tests still PASS (a source census cannot catch a broken
+  helper); remove ONE caller (`resources.js`) → exactly 1 fails, 3 pass (they discriminate);
+  `.ch-dd line` `--bad` → `--accent` → 4 fail including the ledger's design-system test.
+- **A guessed host list under-reported by two:** `curves.js` has ONE `axisTitles` call site and
+  renders THREE charts through it. Fixed by probing a live `/mission` for every `[id]` containing an
+  `svg` — 6 markers, 6 hosts. Source call sites and rendered charts are different populations.
+- **A matching count is not an identification (the near-miss).** The suite showed 6 failures right
+  after 6 test files were fixed; the natural reading was wrong. Mapping progress-output indices to
+  `pytest --collect-only -q` named them: **4 were `tests/installer/`** (embedded-wheel lockstep,
+  failing because the wheel had not been rebuilt after the static/version change), only 2 were the
+  web fixes. Identify by NAME, never by count. Wheel + nine installers rebuilt at v1.0.158 before
+  the final gate; `tests/installer` 52 passed.

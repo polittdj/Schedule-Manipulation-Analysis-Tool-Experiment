@@ -4,25 +4,54 @@
 ``DATA DATE``, on every time-axis chart, no exceptions." The DoD checklist repeats it. Nothing
 enforced it, so this module is the census — the DD-line counterpart to ``test_axis_titles.py``.
 
-**The population is re-derived, never hand-listed.** Every chart already DECLARES its own X axis,
-in the ``SFChartFrame.axisTitles`` call ADR-0298 made universal. So the buckets below are keyed by
-``(module, line)`` and every one is re-read from disk and CHECKED against the xLabel that justifies
-it. A hand-typed list of "the time-axis charts" would be a second source of truth that drifts the
-first time a chart is added; this cannot, because a new call site fails the partition test and a
-re-labelled axis fails its bucket's predicate.
+**The population is re-derived, never hand-listed.** Every chart already DECLARES its own axes,
+in the ``SFChartFrame.axisTitles`` call ADR-0298 made universal. So the buckets below are keyed
+by ``(module, line)`` and every one is re-read from disk and CHECKED against the labels that
+justify it. A hand-typed list of "the time-axis charts" would be a second source of truth that
+drifts the first time a chart is added; this cannot, because a new call site fails the partition
+test and a re-labelled axis fails its bucket's predicate.
 
-**"Time axis" is narrower than "ordered by time" — the finding this census produced.** The brief
-named three exclusions (``histogram``, ``scatter``, and ``sra_jcl``'s COST axis). There are twelve.
-The extra family is the **version axis**: ``margin``, ``trend``'s five charts and three of
-``volatility``'s plot against "Schedule version" — ordered by time, but CATEGORICAL, one tick per
-loaded file. A DD line has no position on such an axis, because *every version has its own data
-date*; drawing one would have to pick a version and would assert something the engine never says.
-That exclusion is a judgment, so it is stated here rather than assumed.
+**"Time axis" is narrower than "ordered by time", and narrower again than "denominated in
+dates".** The brief named three exclusions. There are twenty-one, in three families:
 
-Note the collision it creates, and why the order of the checks below matters: ``margin.js``'s
-xLabel is **"Schedule version (data date)"** — it contains the words "data date" while being the
-clearest case of an axis that must NOT carry a DD line. The version check therefore runs BEFORE the
-date check, exactly as ``ai/qa.py``'s identifier check runs before its derivation check.
+* the **version axis** (``margin``, ``margin_dashboard``'s burn-down, ``trend``'s five and three
+  of ``volatility``'s): ordered by time, but CATEGORICAL, one tick per loaded file. A DD line has
+  no position on such an axis because *every version has its own data date*.
+* the **outcome axis** (ADR-0342 — ``sra`` x2, ``sra_jcl`` L136, ``sra_ssi`` x2): a distribution
+  over a SIMULATED FINISH, which is denominated in dates but is not a timeline. See below; this
+  family was measured, not assumed.
+* plain **non-time** axes (float bands, WBS branches, a metric, ``sra_jcl``'s EAC).
+
+Note the collision the version family creates, and why the order of the checks below matters:
+``margin.js``'s xLabel is **"Schedule version (data date)"** — it contains the words "data date"
+while being the clearest case of an axis that must NOT carry a DD line. The version check
+therefore runs BEFORE the date check, exactly as ``ai/qa.py``'s identifier check runs before its
+derivation check.
+
+**Two reclassifications this round, both from measurement (ADR-0342).**
+
+``margin_dashboard``'s burn-down was in TIME_AXIS with xLabel "Status date". Rendered in chromium
+with deliberately irregular status dates — 1 week, 1 week, then 15 weeks apart — it spaced all
+four versions EVENLY: its ``x(i) = L + (R-L)*i/(n-1)`` is one slot per loaded version, so the
+15-week jump got the same pixel width as the 1-week gaps and two ticks both read "2026-03". It is
+``margin.js``'s axis wearing a date's name. Its caption now names the version and it sits in
+VERSION_AXIS. Its SIBLING, the erosion chart, is the opposite case and stayed: ``x(t)`` is linear
+in milliseconds and ``tmax`` is EXTENDED to the projected zero-margin date, so the latest status
+date is exactly the boundary between measured history and projection — the same render bunched
+the first three versions at the left and put the fourth far right. One module, two charts, two
+different answers, which is why this ledger is keyed by CALL SITE.
+
+The five SRA sites all declared "Finish date" and were all recorded as pending. They are a
+distribution over a simulated OUTCOME, and the data date is not on that axis at all — measured on
+the ``project2_5`` golden: schedule status date **2026-08-27**, ``/api/sra`` CDF domain
+**2028-01-21 → 2028-01-28**. The data date sits ~17 months to the LEFT of a 7-day, index-spaced
+window. That is structural rather than fixture-specific — a Monte Carlo of the project finish
+samples an outcome that is necessarily at or after the data date — so clamping a marker to the
+left edge would assert the data date IS the earliest simulated finish, a figure the engine never
+produced (Law 2). The internal-consistency check agrees: ``sra_jcl.js`` L136 is the joint
+(finish, EAC) scatter whose SIBLING cost axis at L189 was already excluded, and ``histogram.js`` /
+``scatter.js`` — distributions over an outcome variable — were already excluded too. The only
+thing that made these five look different is that their outcome is denominated in dates.
 """
 
 from __future__ import annotations
@@ -38,22 +67,16 @@ STATIC = ROOT / "src" / "schedule_forensics" / "web" / "static"
 #: Charts whose X axis is a real calendar/period axis — the DD line's population.
 TIME_AXIS = {
     ("cei.js", 226),
-    ("curves.js", 385),
-    ("drift.js", 133),
-    ("margin_dashboard.js", 233),
-    ("margin_dashboard.js", 309),
+    ("curves.js", 381),
+    ("drift.js", 136),
+    ("margin_dashboard.js", 323),
     ("resources.js", 243),
     ("scurve.js", 168),
-    ("sra.js", 158),
-    ("sra.js", 230),
-    ("sra_jcl.js", 136),
-    ("sra_ssi.js", 240),
-    ("sra_ssi.js", 273),
 }
 
 #: X is a quantity, a category or a metric — not time. The DD line does not apply.
-#: ``sra_jcl.js`` L189 is the COST axis (EAC) the brief called out: the SAME module carries a
-#: time-axis chart at L136, which is why this ledger is keyed by CALL SITE and not by module.
+#: ``sra_jcl.js`` L189 is the COST axis the brief called out: the SAME module carries a
+#: finish-date chart at L136, which is why this ledger is keyed by CALL SITE and not by module.
 NOT_TIME_AXIS = {
     ("histogram.js", 243),
     ("scatter.js", 111),
@@ -66,6 +89,7 @@ NOT_TIME_AXIS = {
 #: Ordered by time, but categorical — one tick per loaded version. See the module docstring.
 VERSION_AXIS = {
     ("margin.js", 224),
+    ("margin_dashboard.js", 240),
     ("trend.js", 479),
     ("trend.js", 583),
     ("trend.js", 708),
@@ -76,6 +100,18 @@ VERSION_AXIS = {
     ("volatility.js", 251),
 }
 
+#: Denominated in dates, but a DISTRIBUTION over a simulated outcome rather than a timeline
+#: (ADR-0342). Kept as its own family — not folded into NOT_TIME_AXIS — precisely because the
+#: label IS a date, so the exclusion is a judgment that has to be stated and checked, not one
+#: the "is it a date?" predicate can make on its own.
+OUTCOME_AXIS = {
+    ("sra.js", 158),
+    ("sra.js", 230),
+    ("sra_jcl.js", 136),
+    ("sra_ssi.js", 240),
+    ("sra_ssi.js", 273),
+}
+
 #: ``performance.js`` passes its caption options through as a VARIABLE (``opts``), built by the
 #: quad-chart caller, so its xLabel is the one of the 28 that cannot be read statically. It is
 #: recorded here rather than guessed into a bucket — the honest state, and the assertion below
@@ -84,22 +120,14 @@ OPTS_NOT_LITERAL = {
     ("performance.js", 472),
 }
 
-#: Time-axis charts that draw NO data-date marker today — the remaining-work ledger, mirroring
-#: ``DOM_PENDING``. It is re-derived below, so fixing one chart FAILS this test until the entry is
-#: removed; it can never silently overstate or understate the work.
-DD_PENDING = {
-    ("margin_dashboard.js", 233),
-    ("margin_dashboard.js", 309),
-    ("resources.js", 243),
-    ("sra.js", 158),
-    ("sra.js", 230),
-    ("sra_jcl.js", 136),
-    ("sra_ssi.js", 240),
-    ("sra_ssi.js", 273),
-}
+#: Time-axis charts that draw NO data-date marker today. **EMPTY since ADR-0342** — every
+#: time-axis chart draws the marker through the one shared helper. It is DERIVED below, so this
+#: cannot silently overstate or understate: delete ``resources.js``'s call and the test fails.
+DD_PENDING: set[tuple[str, int]] = set()
 
 CALL = "SFChartFrame.axisTitles("
 X_LABEL = re.compile(r'xLabel:\s*"([^"]*)"')
+Y_LABEL = re.compile(r'yLabel:\s*"([^"]*)"')
 
 #: A version axis names the VERSION, whatever else it also mentions. Checked FIRST — margin.js's
 #: "Schedule version (data date)" would otherwise read as a date axis.
@@ -107,11 +135,15 @@ VERSION_RE = re.compile(r"\bversion", re.I)
 #: A time axis names a date, a month, or a period. Deliberately anchored to whole words: "EAC" and
 #: "Total float band (working days)" must not match, and "days" alone must never imply a calendar.
 TIME_RE = re.compile(r"\bdate\b|\bmonth\b|^Period \(", re.I)
+#: What makes an outcome axis an outcome axis: the Y is a probability, a simulated count or a
+#: cost — the chart is a DISTRIBUTION, not a timeline. This is the half of the judgment that can
+#: be checked mechanically, so it is.
+OUTCOME_Y_RE = re.compile(r"probability|simulated|^EAC$", re.I)
 
 
-def _call_sites() -> list[tuple[str, int, str | None]]:
-    """Re-derive every axis-caption call site and its declared xLabel from disk."""
-    out: list[tuple[str, int, str | None]] = []
+def _call_sites() -> list[tuple[str, int, str | None, str | None]]:
+    """Re-derive every axis-caption call site and its declared labels from disk."""
+    out: list[tuple[str, int, str | None, str | None]] = []
     for js in sorted(STATIC.glob("*.js")):
         lines = js.read_text(encoding="utf-8").splitlines()
         for i, line in enumerate(lines):
@@ -123,20 +155,26 @@ def _call_sites() -> list[tuple[str, int, str | None]]:
                     chunk.append(follow)
                     if follow.strip().startswith("});"):
                         break
-            m = X_LABEL.search("\n".join(chunk))
-            out.append((js.name, i + 1, m.group(1) if m else None))
+            blob = "\n".join(chunk)
+            mx, my = X_LABEL.search(blob), Y_LABEL.search(blob)
+            out.append((js.name, i + 1, mx.group(1) if mx else None, my.group(1) if my else None))
     return out
 
 
 def _labels() -> dict[tuple[str, int], str | None]:
-    return {(n, ln): x for n, ln, x in _call_sites()}
+    return {(n, ln): x for n, ln, x, _y in _call_sites()}
+
+
+def _y_labels() -> dict[tuple[str, int], str | None]:
+    return {(n, ln): y for n, ln, _x, y in _call_sites()}
 
 
 def test_every_chart_is_bucketed_exactly_once() -> None:
     """The anti-regression property: a NEW chart cannot slip past the DD-line rule unnoticed,
     and a chart that MOVES cannot silently keep a stale classification."""
-    sites = {(n, ln) for n, ln, _x in _call_sites()}
-    buckets = TIME_AXIS | NOT_TIME_AXIS | VERSION_AXIS | OPTS_NOT_LITERAL
+    sites = {(n, ln) for n, ln, _x, _y in _call_sites()}
+    families = (TIME_AXIS, NOT_TIME_AXIS, VERSION_AXIS, OUTCOME_AXIS, OPTS_NOT_LITERAL)
+    buckets = set().union(*families)
 
     stale = buckets - sites
     assert not stale, (
@@ -146,15 +184,15 @@ def test_every_chart_is_bucketed_exactly_once() -> None:
     unbucketed = sites - buckets
     assert not unbucketed, (
         "these charts are in no DD-line bucket — put each in TIME_AXIS (a calendar/period axis, "
-        "so it MUST carry a data-date line), NOT_TIME_AXIS, or VERSION_AXIS: "
+        "so it MUST carry a data-date line), NOT_TIME_AXIS, VERSION_AXIS or OUTCOME_AXIS: "
         f"{sorted(unbucketed)}"
     )
-    for a, b, an, bn in (
-        (TIME_AXIS, NOT_TIME_AXIS, "TIME_AXIS", "NOT_TIME_AXIS"),
-        (TIME_AXIS, VERSION_AXIS, "TIME_AXIS", "VERSION_AXIS"),
-        (NOT_TIME_AXIS, VERSION_AXIS, "NOT_TIME_AXIS", "VERSION_AXIS"),
-    ):
-        assert not a & b, f"{an} and {bn} overlap: {sorted(a & b)}"
+    names = ("TIME_AXIS", "NOT_TIME_AXIS", "VERSION_AXIS", "OUTCOME_AXIS", "OPTS_NOT_LITERAL")
+    for i, a in enumerate(families):
+        for j in range(i + 1, len(families)):
+            assert not a & families[j], (
+                f"{names[i]} and {names[j]} overlap: {sorted(a & families[j])}"
+            )
 
 
 @pytest.mark.parametrize("site", sorted(TIME_AXIS))
@@ -196,6 +234,26 @@ def test_version_axis_entries_really_declare_a_version_axis(site: tuple[str, int
     )
 
 
+@pytest.mark.parametrize("site", sorted(OUTCOME_AXIS))
+def test_outcome_axis_entries_are_distributions_not_timelines(site: tuple[str, int]) -> None:
+    """The exclusion that needs BOTH halves stated, because the X label alone argues the other
+    way (ADR-0342). X really is denominated in dates — that is why these five were mistaken for
+    the DD line's population — and Y really is a distribution quantity (a probability, a
+    simulated count, a cost). Re-label an SRA chart's Y to something that is not a distribution
+    and it stops qualifying for this exemption and has to be re-argued.
+    """
+    x, y = _labels()[site], _y_labels()[site]
+    assert x is not None and y is not None, f"{site}: labels are not literals"
+    assert TIME_RE.search(x), (
+        f"{site}: xLabel {x!r} is not date-denominated — this family is specifically for axes "
+        "that LOOK like time; a plain non-time axis belongs in NOT_TIME_AXIS"
+    )
+    assert OUTCOME_Y_RE.search(y), (
+        f"{site}: yLabel {y!r} is not a distribution quantity, so the 'it plots an outcome, not "
+        "a timeline' exemption does not apply — re-argue this entry or move it to TIME_AXIS"
+    )
+
+
 @pytest.mark.parametrize("site", sorted(OPTS_NOT_LITERAL))
 def test_the_unreadable_entry_really_is_unreadable(site: tuple[str, int]) -> None:
     """The escape hatch cannot rot (the INCIDENTAL_SVG lesson): an entry parked here must really
@@ -206,26 +264,27 @@ def test_the_unreadable_entry_really_is_unreadable(site: tuple[str, int]) -> Non
     )
 
 
-#: Detecting a marker is itself a lesson. The first detector here matched the literal bytes of
-#: ``cei.js``'s implementation (``"stroke-dasharray": "6 5"`` plus ``textContent = "data date"``)
-#: and reported exactly two modules — agreeing with a `grep -ci "data.date"` census and with the
-#: handoff note written from it. Both were WRONG, in opposite directions: the grep counted
-#: MENTIONS (comments, ``statusDate`` variables) and over-reported; the byte-match required
-#: ``cei.js``'s exact style and under-reported. ``drift.js`` and ``scurve.js`` both draw a real
-#: marker and neither matched — drift labels its line only in a legend note, and scurve appends the
-#: date to the label (``"data date " + v.status_date``).
+#: Detecting a marker is itself a lesson, twice over. The FIRST detector matched the literal
+#: bytes of ``cei.js``'s implementation and reported two modules, agreeing with a
+#: ``grep -ci "data.date"`` census that was ALSO wrong — in the opposite direction (the grep
+#: counted mentions and over-reported; the byte-match required one module's exact style and
+#: under-reported, missing ``drift``'s unlabelled line and ``scurve``'s suffixed label). The
+#: anchor then became the code comment naming the block, deliberately NOT a style match, because
+#: the styles were the finding.
 #:
-#: So the anchor is the thing all four implementations share and that a reader must write
-#: deliberately: the code comment naming the block. It is deliberately NOT a style match, because
-#: the styles disagree — which is the finding recorded below.
-MARKER_BLOCK = re.compile(r"//\s*(?:dashed )?data-date marker")
+#: Now that there is ONE implementation the honest anchor is the CALL itself — and it is counted
+#: PER MODULE against that module's time-axis chart count, not merely "does this module mention
+#: it anywhere". ``margin_dashboard.js`` is exactly why: it draws two charts and only ONE of them
+#: takes a marker, so a module-level "has a marker" flag would have called it covered whichever
+#: chart drew. Call sites, all the way down.
+MARKER_CALL = "SFGantt.dataDateLine("
 
 
-def _modules_with_a_marker() -> set[str]:
+def _marker_calls_by_module() -> dict[str, int]:
     return {
-        js.name
+        js.name: js.read_text(encoding="utf-8").count(MARKER_CALL)
         for js in sorted(STATIC.glob("*.js"))
-        if MARKER_BLOCK.search(js.read_text(encoding="utf-8"))
+        if js.name != "gantt.js"  # the helper's own definition + export, not a call site
     }
 
 
@@ -234,11 +293,14 @@ def test_the_pending_ledger_matches_what_the_code_actually_draws() -> None:
 
     A hand-maintained list of "charts still missing a DD line" can overstate the work (an entry
     that was fixed and never removed) or understate it (a chart that lost its marker). Both are
-    silent. Re-deriving means the ledger cannot disagree with the tree: give ``resources.js`` a
-    marker and this test fails until its entry is removed.
+    silent. Re-deriving means the ledger cannot disagree with the tree: delete ``resources.js``'s
+    call and this fails until its entry is put back.
     """
-    drawn = _modules_with_a_marker()
-    derived = {site for site in TIME_AXIS if site[0] not in drawn}
+    calls = _marker_calls_by_module()
+    wanted: dict[str, int] = {}
+    for name, _ln in TIME_AXIS:
+        wanted[name] = wanted.get(name, 0) + 1
+    derived = {site for site in TIME_AXIS if calls.get(site[0], 0) < wanted.get(site[0], 0)}
     assert derived == DD_PENDING, (
         "DD_PENDING no longer matches the tree. If a chart GAINED a data-date marker, delete its "
         f"entry; if one LOST its marker, that is a regression. derived={sorted(derived)} "
@@ -246,109 +308,98 @@ def test_the_pending_ledger_matches_what_the_code_actually_draws() -> None:
     )
     assert DD_PENDING <= TIME_AXIS, "only a time-axis chart can be pending a data-date line"
     # the excluded families must never appear as "pending" — that is the whole point of excluding
-    assert not DD_PENDING & (NOT_TIME_AXIS | VERSION_AXIS)
+    assert not DD_PENDING & (NOT_TIME_AXIS | VERSION_AXIS | OUTCOME_AXIS)
 
 
-#: The four hand-rolled implementations, and the fact that matters: THEY DISAGREE. Recorded as
-#: (module, stroke colour, dasharray, label form) read from each marker block.
-#: ``stroke`` is recorded as (expression AS WRITTEN in the block, token it resolves to) — cei and
-#: curves reference a module-scope alias (``BLUE``), drift and scurve inline the token. Resolving
-#: the alias is the difference between checking what the code SAYS and what it RENDERS.
-MARKER_STYLES = {
-    "cei.js": (("BLUE", "var(--accent)"), "6 5", 'textContent = "data date"'),
-    "curves.js": (("BLUE", "var(--accent)"), "6 5", 'textContent = "data date"'),
-    "drift.js": (('"var(--muted)"', "var(--muted)"), "2 3", None),  # no label on the line at all
-    "scurve.js": (
-        ('"var(--muted)"', "var(--muted)"),
-        "2 3",
-        'textContent = v.status_date ? "data date "',
-    ),
-}
+def test_every_time_axis_chart_draws_the_marker_and_nothing_else_does() -> None:
+    """The population is closed in BOTH directions (ADR-0342).
 
-
-def _marker_block(name: str) -> str:
-    """The marker's CODE block — anchored past the module docstring.
-
-    Two slicing bugs were found by RUNNING this, not by reading it. ``cei.js`` says "dashed
-    data-date marker" in its header comment as well as at the code, so slicing from the first
-    occurrence read the DOCSTRING — hence anchoring on the ``//`` comment form. Then a fixed
-    700-character window over-ran into the NEXT block, which matters only for ``drift.js``: its
-    marker carries no label, so the spill supplied a ``textContent`` and a ``font-size`` from
-    unrelated code and made two assertions read the wrong bytes. The block therefore ends at the
-    blank line that actually terminates it in all four files.
+    Forwards: every module carrying a time-axis chart calls the helper once per such chart.
+    Backwards: no module OUTSIDE that population calls it — an SRA chart quietly gaining a DD
+    line would put a marker on an axis the data date is not on, which is the thing the outcome-
+    axis measurement ruled out.
     """
-    src = (STATIC / name).read_text(encoding="utf-8")
-    m = MARKER_BLOCK.search(src)
-    assert m is not None, f"{name}: no data-date marker block"
-    end = src.find("\n\n", m.start())
-    return src[m.start() : end if end != -1 else m.start() + 700]
-
-
-def test_the_marker_has_four_implementations_that_disagree_with_each_other() -> None:
-    """The finding that decides HOW the pending work gets done — and it is worse than "a copy".
-
-    ``cei``/``curves`` draw ``var(--accent)`` dashed ``6 5``; ``drift``/``scurve`` draw
-    ``var(--muted)`` dotted ``2 3``; and ``drift`` puts no label on its line at all, naming the
-    marker only in a legend note. So the same contract element renders in two different colours,
-    two different dash patterns and three different labelling schemes depending on which page the
-    analyst is looking at. That is precisely the pre-ADR-0298 caption situation, and with eight
-    charts still pending the answer is ONE helper rather than four more copies — remembering
-    ADR-0340's lesson that WHERE it lives is a load-order question, not a filing one.
-    """
-    drawn = _modules_with_a_marker()
-    assert drawn == set(MARKER_STYLES), (
-        "the set of modules hand-drawing a data-date marker changed — if a FIFTH copy appeared, "
-        f"stop and promote this into a shared helper instead: {sorted(drawn)}"
-    )
-    for name, ((expr, token), dash, label) in sorted(MARKER_STYLES.items()):
-        block = _marker_block(name)
-        src = (STATIC / name).read_text(encoding="utf-8")
-        assert f"stroke: {expr}" in block, f"{name}: marker stroke is no longer {expr} — re-derive"
-        # resolve a bare IDENTIFIER to the token it renders; a quoted literal already is one
-        if not expr.startswith('"'):
-            assert f'{expr} = "{token}"' in src, (
-                f"{name}: {expr} no longer resolves to {token} — the marker's RENDERED colour "
-                "changed even though the block did not"
-            )
-        assert f'"stroke-dasharray": "{dash}"' in block, f"{name}: dash pattern moved"
-        if label is None:
-            assert "textContent" not in block, (
-                f"{name} gained a label on its marker line — good, but the ledger must record it"
-            )
-        else:
-            assert label in block, f"{name}: marker label moved — re-derive the record"
-    # exactly the divergence, stated as a number so closing it is visible
-    assert len({(c, d) for c, d, _l in MARKER_STYLES.values()}) == 2, (
-        "the two rendering styles converged (or a third appeared) — update the ADR and this test"
+    calls = _marker_calls_by_module()
+    wanted: dict[str, int] = {}
+    for name, _ln in TIME_AXIS:
+        wanted[name] = wanted.get(name, 0) + 1
+    # NB: no `wanted == {<literal>}` assertion here. That would be a relation between two module
+    # constants wearing an `assert` — no change to the app can move it, so it reads as coverage
+    # and is worse than a comment. Every assertion below compares the ledger to the TREE.
+    for name, want in sorted(wanted.items()):
+        assert calls.get(name, 0) == want, (
+            f"{name}: {calls.get(name, 0)} marker call(s) for {want} time-axis chart(s)"
+        )
+    strays = {n: c for n, c in calls.items() if c and n not in wanted}
+    assert not strays, (
+        "a module with no time-axis chart is drawing a data-date marker — for the SRA family "
+        f"that would place it off its own axis (see the module docstring): {strays}"
     )
 
 
-def test_the_marker_contradicts_the_design_system_in_recorded_ways() -> None:
-    """``DESIGN-SYSTEM.md`` §chart-contract asks for "a **red** vertical line labeled ``DD`` /
-    ``DATA DATE``". NOT ONE of the four implementations does that: two draw the accent colour, two
-    the muted colour, none is red, and every label is lowercase "data date" or absent.
+def test_the_marker_has_exactly_one_implementation() -> None:
+    """The finding this round closed: there were FOUR hand-rolled copies that disagreed with each
+    other — ``cei``/``curves`` drew ``var(--accent)`` dashed ``6 5``, ``drift``/``scurve`` drew
+    ``var(--muted)`` dotted ``2 3``, ``drift`` put no label on its line at all and ``scurve``
+    appended the date to its label. Two colours, two dash patterns, three labelling schemes for
+    the same contract element, and not one of them red.
 
-    Both hard-code ``"font-size": 10`` where they label at all — the numeric-type-in-JS fork
-    ADR-0298 removed from axis captions and ADR-0195 forbids generally.
+    Now there is one. This pins that: the helper is defined once, in the head-loaded module, and
+    no chart re-implements it. A FIFTH copy appearing is the regression to catch.
+    """
+    gantt = (STATIC / "gantt.js").read_text(encoding="utf-8")
+    assert gantt.count("function dataDateLine(") == 1
+    assert "dataDateLine: dataDateLine" in gantt, "the helper is not exported"
+    # the old label form, which every hand-rolled copy wrote, is gone from every chart module
+    for js in sorted(STATIC.glob("*.js")):
+        src = js.read_text(encoding="utf-8")
+        assert 'textContent = "data date"' not in src, f"{js.name}: a hand-rolled marker label"
+        assert '"data date " +' not in src, f"{js.name}: a hand-rolled marker label"
 
-    This pins the CURRENT state deliberately, the way a PENDING entry does: closing any part of the
-    gap FAILS this test and forces the ledger to be updated in the same commit. It records the
-    deviation; it does not bless it.
+
+def test_the_helper_lives_where_the_load_order_requires() -> None:
+    """ADR-0340's lesson, applied: WHERE a shared drawing helper lives is a load-order question,
+    not a filing one. ``_LAYOUT`` emits ``chartframe.js`` AFTER ``</main>``, so a parse-time body
+    script — which is what cei/curves/drift/scurve are — would find a ``window.SFChartFrame``
+    helper undefined at the moment it draws, and the marker would silently never appear.
+    ``gantt.js`` is head-loaded, so it is defined for the deferred family too.
+    """
+    layout = (ROOT / "src" / "schedule_forensics" / "web" / "app.py").read_text(encoding="utf-8")
+    head = layout.index('<script src="/static/gantt.js"></script>')
+    main = layout.index("<main>{{ banner }}{{ body }}</main>")
+    frame = layout.index('<script src="/static/chartframe.js"></script>')
+    assert head < main < frame, (
+        "the layout's script order changed — re-derive the helper's home before trusting it"
+    )
+    assert "dataDateLine" not in (STATIC / "chartframe.js").read_text(encoding="utf-8")
+
+
+def test_the_marker_now_matches_the_design_system() -> None:
+    """The deviations this ledger recorded are CLOSED (ADR-0342).
+
+    ``DESIGN-SYSTEM.md`` §chart-contract asks for "a **red** vertical line labeled ``DD`` /
+    ``DATA DATE``". Previously NOT ONE of the four implementations did that: two drew the accent
+    colour, two the muted colour, none was red, every label was lowercase "data date" or absent,
+    and each hard-coded ``"font-size": 10`` — the numeric-type-in-JS fork ADR-0298 removed from
+    axis captions and ADR-0195 forbids generally.
+
+    Colour and type now come from the theme, so this asserts against ``base.css`` rather than a
+    JS block: ``--bad`` is the red token (there is no ``--danger``), and the type size reads the
+    SAME ``--sf-fs-axis-title`` token as ``.ch-at`` so the queued crispness change still moves
+    one value.
     """
     spec = (ROOT / "docs" / "DESIGN-SYSTEM.md").read_text(encoding="utf-8")
     assert "red vertical line labeled `DD` / `DATA DATE`" in spec, (
         "the design system's DD-line wording changed — re-derive this ledger against the new rule"
     )
-    for name in sorted(MARKER_STYLES):
-        block = _marker_block(name)
-        assert "var(--danger)" not in block and "var(--bad)" not in block, (
-            f"{name}: the marker is RED now — the colour deviation is CLOSED, update this test"
-        )
-        assert "DATA DATE" not in block, (
-            f"{name}: the marker label is uppercase now — that deviation is CLOSED, update this"
-        )
-        if "textContent" in block:
-            assert '"font-size": 10' in block, (
-                f"{name}: the hard-coded marker type size is gone — if it reads a token now, that "
-                "deviation is CLOSED; update this test"
-            )
+    css = (STATIC / "base.css").read_text(encoding="utf-8")
+    rule = css[css.index(".ch-dd line") : css.index(".ch-dd line") + 420]
+    assert "stroke:var(--bad)" in rule, "the marker is no longer drawn in the red token"
+    assert "fill:var(--bad)" in rule, "the marker's label is no longer red"
+    assert "font-size:var(--sf-fs-axis-title)" in rule, "the label hard-codes a type size again"
+    assert "text-transform:uppercase" in rule, "the DD label is no longer uppercase"
+    # and the label the helper writes is the spec's compact form
+    gantt = (STATIC / "gantt.js").read_text(encoding="utf-8")
+    assert 'label.textContent = "DD";' in gantt
+    assert '"DATA DATE "' in gantt, "the full spec label no longer reaches the hover call-out"
+    assert '"font-size": 10' not in gantt

@@ -104,6 +104,60 @@ window.SFGantt = (function () {
     return cap;
   }
 
+  // ── the data-date marker: ONE implementation for every time-axis chart (ADR-0342) ──────────
+  // DESIGN-SYSTEM.md §chart-contract: "Data date: always a red vertical line labeled `DD` /
+  // `DATA DATE`, on every time-axis chart, no exceptions."
+  //
+  // It replaces FOUR hand-rolled copies that disagreed with each other: cei/curves drew
+  // var(--accent) dashed "6 5", drift/scurve drew var(--muted) dotted "2 3", drift put no label
+  // on its line at all and scurve appended the date to its label. Two colours, two dash
+  // patterns, three labelling schemes — the same contract element rendering differently
+  // depending on which page the analyst was looking at, and not one of them red.
+  //
+  // Why it lives HERE, beside tableCaption, and not in chartframe.js which owns the SVG axis
+  // caption: the layout emits chartframe.js AFTER <main>, and most of the time-axis charts
+  // (cei, curves, drift, scurve, sra, sra_jcl, sra_ssi) are parse-time body scripts — a
+  // window.SFChartFrame helper would be undefined at the moment they draw, which is exactly
+  // the defect ADR-0316 had to fix with `defer` on the blob-driven trio (margin_dashboard,
+  // resources, performance). gantt.js is head-loaded, so it is defined for BOTH families.
+  // Same load-order reasoning and same home as tableCaption (ADR-0340).
+  //
+  // The label is the spec's compact form "DD"; the ISO date rides in an SVG <title> so
+  // chartframe's shared hover call-out shows the full "DATA DATE <iso>" without spending plot
+  // width on charts whose x span is only a few hundred pixels. Colour and type size come from
+  // the theme (.ch-dd in base.css) — never a hard-coded number, the numeric-type-in-JS fork
+  // ADR-0298 removed from axis captions and ADR-0195 forbids generally.
+  var SVG_NS = "http://www.w3.org/2000/svg";
+
+  function dataDateLine(svg, opts) {
+    if (!svg || !opts) return null;
+    var x = Number(opts.x);
+    var top = Number(opts.top);
+    var bottom = Number(opts.bottom);
+    // a chart with no data date (or an unplottable one) draws NOTHING rather than a line at 0 —
+    // Law 2: a marker in the wrong place asserts a data date the schedule never carried.
+    if (!isFinite(x) || !isFinite(top) || !isFinite(bottom)) return null;
+    var g = document.createElementNS(SVG_NS, "g");
+    g.setAttribute("class", "ch-dd");
+    var line = document.createElementNS(SVG_NS, "line");
+    line.setAttribute("x1", x);
+    line.setAttribute("y1", top);
+    line.setAttribute("x2", x);
+    line.setAttribute("y2", bottom);
+    g.appendChild(line);
+    var label = document.createElementNS(SVG_NS, "text");
+    label.setAttribute("x", x);
+    label.setAttribute("y", top - 4);
+    label.setAttribute("text-anchor", "middle");
+    label.textContent = "DD";
+    g.appendChild(label);
+    var title = document.createElementNS(SVG_NS, "title");
+    title.textContent = opts.iso ? "DATA DATE " + opts.iso : "DATA DATE";
+    g.appendChild(title);
+    svg.appendChild(g);
+    return g;
+  }
+
   // The stacked timescale header element (Microsoft Project timeline). `baseClass` is the
   // page's own scale class (so its width/flex rules still apply); `anchorIso`, when given,
   // draws the data-date / now line through the header. When the SFTimescale module is loaded
@@ -515,7 +569,7 @@ window.SFGantt = (function () {
 
   return {
     DAY_MS: DAY_MS, MONTHS: MONTHS, el: el, fmtMDY: fmtMDY,
-    tableCaption: tableCaption,
+    tableCaption: tableCaption, dataDateLine: dataDateLine,
     timeTiers: timeTiers, buildTierScale: buildTierScale,
     gridLines: gridLines, paintGrid: paintGrid, paintNonwork: paintNonwork,
     freezeColumns: freezeColumns,

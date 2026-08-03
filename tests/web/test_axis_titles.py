@@ -103,9 +103,19 @@ NO_SVG_AXES = {
 #: table rows. There is no chart root, no plot rect, no tick text — nothing
 #: ``SFChartFrame.axisTitles`` can attach to.
 #:
+#: ``gantt.js`` joined for the same reason under ADR-0342. It is still the HTML-Gantt primitive
+#: module — it draws no chart and owns no axis — but it is now also the home of
+#: ``SFGantt.dataDateLine``, the ONE data-date marker helper, which emits a 3-node SVG group
+#: (``line`` + ``text`` + ``title``) into a chart the CALLER owns. It lives here for the same
+#: load-order reason ``tableCaption`` does (ADR-0340): the layout emits ``gantt.js`` in the head
+#: and ``chartframe.js`` after ``</main>``, so a marker helper filed with the axis captions would
+#: be undefined when the parse-time chart modules draw. An annotation is not an axis, so
+#: ``NO_SVG_AXES`` remains the right bucket — but the shortcut assertion below has to be told.
+#:
 #: Keeping this list separate and explicit is the point: a real chart cannot land in
 #: ``NO_SVG_AXES`` quietly, because parking it there ALSO requires naming it here, with a reason.
 INCIDENTAL_SVG = {
+    "gantt.js",
     "path.js",
 }
 

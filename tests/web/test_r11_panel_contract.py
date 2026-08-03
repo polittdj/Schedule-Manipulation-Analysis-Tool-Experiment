@@ -476,7 +476,16 @@ PAGE_SCRIPTS = {
     # because the layout emits chartframe.js after </main> while every captioned table is built by
     # a body script; whatif.js captions at parse time, so the SVG helper's home would have been
     # undefined at that instant. d31341313ceaddb852f9e10c73718c52 → below.
-    "gantt.js": "ced1b1939ecdb061ffe523c70562e0b7",
+    # DELIBERATE re-baseline (ADR-0342): gantt.js gained `dataDateLine`, the ONE implementation of
+    # the data-date marker, retiring four hand-rolled copies that drew two different colours, two
+    # dash patterns and three labelling schemes. `git diff --numstat` is 55 added / 1 removed, and
+    # the single removed line is the EXPORT line itself (`tableCaption: tableCaption,` → the same
+    # key plus `dataDateLine: dataDateLine,`) — no existing function is touched, so buildTierScale
+    # / paintGrid / gridLines / timeTiers still cannot have moved a caption, axis or tick. The
+    # 28-call-site census below is the independent check, and it passes unchanged. Same head-loaded
+    # home and the same load-order reason as tableCaption above.
+    # ced1b1939ecdb061ffe523c70562e0b7 → below.
+    "gantt.js": "5132b5bc50d3df762e1d1833a68892ae",
 }
 
 #: all 28 ``SFChartFrame.axisTitles(`` call sites, frozen with their ARGUMENT OBJECT — the caption
@@ -487,14 +496,24 @@ PAGE_SCRIPTS = {
 #: whose strip starts ``});`` (a one-line call is taken alone), join with ``\n``, md5.
 AXIS_CALL_SITES = [
     ("cei.js", 226, "fbf047e07c947cda865470118fcf4bcd"),
-    ("curves.js", 385, "be3566a1f0c0feb3319053688753b574"),
-    ("drift.js", 133, "d7cd43e8092e02ef82449a52592578d6"),
+    # ADR-0342 moved three call sites WITHOUT touching their bytes — the data-date marker helper
+    # call was inserted above each. Digests below are the SAME numbers as before the change
+    # (verified by re-deriving and matching on digest, not by retyping): curves 385 -> 381,
+    # drift 133 -> 136, margin_dashboard 309 -> 323. A line refresh with intact caption bytes is
+    # the ADR-0317 precedent already recorded further down this list.
+    ("curves.js", 381, "be3566a1f0c0feb3319053688753b574"),
+    ("drift.js", 136, "d7cd43e8092e02ef82449a52592578d6"),
     ("histogram.js", 243, "5dccee80ef65513a4e5775abc5604271"),
     ("margin.js", 224, "0bead85c7a9f61cbc9175a125bafe2c0"),
     # the two margin_dashboard.js sites joined in ADR-0325 (batch 3b-i) — a DELIBERATE 16 → 18
     # re-baseline: the 16 prior entries' bytes are untouched, these are additions, not moves
-    ("margin_dashboard.js", 233, "06f121defd65ee8d9016d95d7b658045"),
-    ("margin_dashboard.js", 309, "ebda9aa1ac5ec542bead6a76250803d8"),
+    # The ONE deliberate CAPTION-BYTES change in ADR-0342, and the only one in this list: the
+    # burn-down's xLabel went "Status date" -> "Schedule version (status date)". Rendered in
+    # chromium with irregular status dates (1wk, 1wk, 15wk) it spaced all four versions EVENLY —
+    # its x(i) is one slot per loaded version, so it is a categorical VERSION axis and the old
+    # caption claimed a calendar the chart does not draw. Its sibling at L323 is untouched.
+    ("margin_dashboard.js", 240, "ced4d3cbd7fd8e61debbbdb148d0ada6"),
+    ("margin_dashboard.js", 323, "ebda9aa1ac5ec542bead6a76250803d8"),
     ("performance.js", 472, "db8ae0464072322438172fe30f85fb71"),
     ("resources.js", 243, "251b7d09fffcc7a9f8adaf5f88ab94eb"),
     # line refreshed by ADR-0317 (sfControls grew above the call site); caption bytes intact
