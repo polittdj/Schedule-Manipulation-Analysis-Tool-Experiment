@@ -9,10 +9,10 @@ kickoff steers a fresh session at work that is already done.)
 
 Resume POLARIS (Schedule-Manipulation-Analysis-Tool). Read `docs/STATE/HANDOFF.md` FIRST
 (auto-injected). As of last session: **v1.0.159, highest ADR 0343**. ADR-0306's three carried
-UNSURE falsy-zero rows are CLOSED. **PR #525 (ADR-0343) was IN FLIGHT at session end** — check it
-FIRST (`pull_request_read` get_status). If merged: `git fetch --prune origin && git remote set-head
-origin -a && git checkout -B <branch> origin/main` (then `git branch --unset-upstream`). If open,
-drive it green. Fresh container: `pip install -e ".[dev]"` plus
+UNSURE falsy-zero rows are CLOSED. **PR #525 (ADR-0343) MERGED as `f063463`** with all six CI
+checks green — **nothing is in flight.** `git fetch --prune origin && git remote set-head origin -a
+&& git checkout -B <branch> origin/main` (then `git branch --unset-upstream`) and start the next
+unit. Fresh container: `pip install -e ".[dev]"` plus
 `pip install playwright 'ruff==0.16.1' build`.
 
 ⇢ WHAT'S DONE — do NOT re-open
