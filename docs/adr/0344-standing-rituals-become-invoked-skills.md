@@ -86,11 +86,16 @@ skill would have been invisible exactly where it is needed.
   still unregistered and still needs a human.
 - **No version bump, no wheel/installer rebuild.** Nothing under `src/` changed, so the ADR-0148
   lockstep test is unaffected. Verified by running the installer suite.
-- **This session cannot observe the skills loading.** Claude Code watches skill directories for live
-  edits, but a *newly created* top-level skills directory requires a restart to be watched, and the
-  session's skill listing was built before `.claude/skills/` existed. Recorded rather than claimed:
-  the load is verified from the documented mechanic and by the files' validity, not by observing this
-  session invoke them.
+- ~~This session cannot observe the skills loading.~~ **Superseded by measurement, same session.**
+  The caveat above was written from the documented mechanic ("a *newly created* top-level skills
+  directory requires a restart to be watched"). It did not hold here: **all seven appeared in this
+  session's live skill listing with no restart**, and the listed `cui-guard` text was the *edited*
+  description — written minutes after the file was first created — so the loader was demonstrably
+  re-reading the files from disk, not a cached snapshot. The documented restart caveat evidently
+  applies to a skills directory created outside a watched parent; `.claude/` already existed here and
+  only `.claude/skills/` was new. **Recorded as measured, not as assumed** — and left visible rather
+  than quietly deleted, because the sequence *(state the limitation → then measure it away)* is the
+  behaviour ADR-0240 asks for.
 - **The rituals are not converted to tests.** Where a guard *is* expressible as a test it already is
   one; these seven are the residue that governs session conduct. If any of them later becomes
   testable, the test wins — Part III's ladder still ends at executable guards.

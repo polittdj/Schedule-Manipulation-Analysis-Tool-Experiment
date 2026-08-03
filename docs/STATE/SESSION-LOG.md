@@ -11188,9 +11188,14 @@ and the structural code — `model/task.py`, `engine/metrics/_common.py`, `test_
   1,536-char listing cap; none shadows a bundled skill.
 - The `.claude/skills/` discovery path, the cloud-session behavior and the name-from-directory rule
   were checked against the Claude Code skills reference rather than assumed.
-- **Recorded limitation:** this session cannot observe the skills loading — a newly created top-level
-  skills directory needs a restart to be watched, and the session's skill listing predates the
-  directory. Stated as a documented mechanic, not as an observation.
+- **Recorded limitation, then MEASURED AWAY in the same session.** It was first written down as
+  "this session cannot observe the skills loading," reasoning from the documented mechanic (*a newly
+  created top-level skills directory needs a restart to be watched*). It did not hold: all seven
+  appeared in the live skill listing with **no restart**, and the listed `cui-guard` text was the
+  **edited** description — written minutes after the file was created — proving the loader re-read from
+  disk rather than replaying a snapshot. The caveat evidently governs a skills directory created
+  outside an already-watched parent (`.claude/` existed; only `.claude/skills/` was new). ADR-0344 and
+  the handoff now carry the measurement with the superseded claim left **visible**.
 
 ### The gate caught a defect in this very commit — with the trap the new skill documents
 `ruff format --check .` read **green, "458 files already formatted"**, before commit. That was a

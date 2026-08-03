@@ -486,6 +486,17 @@ those fixed defects in earlier "closed" fixes:
   itself"; the sharper form is "a compound condition built on a self-matching pgrep can report the
   OPPOSITE of the truth."** Cost nothing only because the signal was confirmed with `ps` before being
   acted on — *never act on a completion signal you built yourself without an independent check.*
+- **A stated limitation is a standing invitation to measure it — and this one fell within the hour.**
+  The commit went out saying "this session cannot observe the skills loading," reasoning from the
+  documented mechanic (*a newly created top-level skills directory needs a restart to be watched*).
+  Minutes later all seven appeared in the live skill listing with **no restart**, and the listed
+  `cui-guard` text was the **edited** description — so the loader was re-reading from disk, not
+  replaying a snapshot. The caveat evidently governs a skills directory created outside an
+  already-watched parent (`.claude/` existed; only `.claude/skills/` was new). **The lesson is the
+  same one ADR-0343 bought, pointed at myself: when a record names the evidence it lacks, that
+  sentence is the experiment.** Corrected in the ADR and handoff with the superseded claim left
+  VISIBLE — a limitation quietly deleted teaches nothing, and reading *"stated, then measured away"*
+  is how a future session learns the move.
 - **A skill is a checklist, never an oracle.** Each rule cites the ADR or lessons date that bought it
   so a future session can verify it against the code; per ADR-0240 anything parity-, engine-,
   testimony- or CUI-relevant is still re-validated by the lead before it lands.

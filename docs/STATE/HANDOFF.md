@@ -38,12 +38,16 @@
 > parse as YAML with `name` == directory name; descriptions are 488–567 chars against a 1,536 cap;
 > none shadows a bundled skill (`/review`, `/code-review`, `/security-review`, `/simplify`, `/run`).
 >
-> ## The limitation, recorded rather than papered over
-> **This session cannot observe the skills loading.** Claude Code watches skill directories for live
-> edits, but a *newly created* top-level skills directory needs a restart to be watched, and this
-> session's skill listing was built before `.claude/skills/` existed. The load rests on the
-> documented mechanic plus the files' validity — not on an observation. Committing them (rather than
-> `~/.claude/skills/`) is deliberate and verified: **cloud/web sessions and routines load project
+> ## The limitation was recorded — then measured away in the same session
+> It was first written down honestly: *"this session cannot observe the skills loading"*, because the
+> documented mechanic says a **newly created** top-level skills directory needs a restart to be
+> watched. **It did not hold.** All seven appeared in this session's live skill listing with **no
+> restart** — and the listed `cui-guard` text was the *edited* description, written minutes after the
+> file was created, proving the loader re-read from disk rather than a cached snapshot. The restart
+> caveat evidently applies to a skills directory created outside an already-watched parent; `.claude/`
+> existed here and only `.claude/skills/` was new. **The claim in the ADR is now the measurement, and
+> the superseded caveat is left visible rather than deleted.** Committing them (rather than
+> `~/.claude/skills/`) stays deliberate and verified: **cloud/web sessions and routines load project
 > skills from the cloned repo and ignore `~/.claude/skills/` entirely**, which is how this project is
 > actually driven.
 >
