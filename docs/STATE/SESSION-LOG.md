@@ -11240,3 +11240,55 @@ playwright-gated test **skips**; the `browser` job installs `.[dev,browser]` but
 why it "has NEVER failed on CI." Installing playwright locally switches on ~19 browser tests no CI job
 runs. Now recorded in the `full-gate` skill with the table, so the next session triages it in one read
 instead of re-deriving it.
+
+### Merged, and an ADR number collision found on the way out
+**PR #527 squash-merged as `d57e230`**, all **four** CI checks green — `check` · `test (3.11)` ·
+`test (3.13)` · `browser (measured-box proof)` (including its "Fail loudly if the proof silently
+skipped" step). Four rather than six is correct: `linux`/`windows` come from `installer-smoke.yml`,
+path-filtered to `installer/**`, untouched here. Notably CI's **Format check (ruff)** passed — the step
+the shadowed-linter catch above was protecting; with the 0.15.8 binary's blessing it would have failed.
+Branch restarted from the new `origin/main` with `--prune`.
+
+**`pull_request_read: get_status` reported `total_count: 0` / `pending` 35 min after the push, while CI
+had in fact already run and SUCCEEDED.** That API reads legacy *commit statuses*; this repo reports via
+Actions *check runs*, which it does not surface. `actions_list: list_workflow_runs` showed the truth
+(run `30826152973`, `completed/success`) plus the earlier `b17ae5ed` run `cancelled` by ci.yml's own
+`cancel-in-progress` concurrency group. **A zero from `get_status` is not evidence that CI has not
+run** — a fresh instance of "the instrument was lying," and one worth knowing before drive-to-green
+logic concludes a PR is stuck.
+
+**ADR-0344 collides.** PR **#528** (branched from `1119162`, before this merge) numbers a different
+decision ADR-0344 — `0344-a-test-that-configures-logging-must-not-configure-the-next-one.md` vs this
+session's `0344-standing-rituals-become-invoked-skills.md`. **`tests/test_state_docs.py` cannot catch
+it:** `_latest_adr_number()` takes `max()`, so both resolve to `344` and both durable docs legitimately
+contain `ADR-0344` — four assertions green over an ambiguous record. #527 took the number first, so
+#528 renumbers to 0345; flagged on that PR with the conflict/rebase guidance. A duplicate-number guard
+is the obvious executable-guard candidate and was deliberately NOT added unilaterally, because it turns
+an in-flight PR red — an operator coordination call.
+
+### The duplicate-ADR guard (operator-authorised), proved able to fail
+`tests/test_state_docs.py::test_adr_numbers_are_unique` asserts one ADR per four-digit sequence
+number. Added after the #527/#528 collision above, on the operator's explicit go-ahead (the guard
+turns an in-flight PR red until it renumbers, which was theirs to authorise).
+
+**Proved able to fail** using the REAL colliding filename from #528:
+
+| tree | `tests/test_state_docs.py` |
+| --- | --- |
+| baseline | **5 passed** |
+| + `0344-a-test-that-configures-logging-must-not-configure-the-next-one.md` | **1 failed, 4 passed** |
+| file removed again | **5 passed** |
+
+The **4 passed** in the middle row is the finding, not a footnote: it is the measurement proving the
+four pre-existing assertions can never catch a duplicate. `_latest_adr_number()` takes `max()`, so both
+files resolve to `344`, and both durable docs legitimately contain `ADR-0344` because *both* PRs wrote
+it. The failure set is narrow — only the new test — which is what a real pin looks like. The mutation
+was a NEW untracked file, so it was removed with `rm`, never `git checkout`.
+
+**No new ADR was minted for the guard, deliberately.** Taking 0345 would have collided with the very
+renumber #528 has been asked to make; and the guard enforces an existing convention (ADR numbering)
+rather than recording a new decision. The highest ADR on disk stays 0344, which both durable docs
+already cite, so the drift guard is satisfied without churn.
+
+**Lesson recorded:** "highest + 1" is not a concurrency-safe allocator, and a guard derived via `max()`
+is blind to duplicates by construction.

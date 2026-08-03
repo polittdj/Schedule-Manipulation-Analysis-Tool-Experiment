@@ -1,9 +1,29 @@
 # Handoff — 2026-08-03c (The standing rituals become invoked skills; ADR-0344; v1.0.159)
 
-> ## STATUS (current) — **IN FLIGHT.** Seven project skills committed under `.claude/skills/`.
-> Branch `claude/repo-audit-skills-vbm0ka`, from `origin/main` at **`1119162`**. ADR-**0344**,
-> **v1.0.159** (unchanged — nothing under `src/` was touched, so no wheel/installer rebuild;
-> the ADR-0148 lockstep test was run to confirm it).
+> ## STATUS (current) — **MERGED, nothing in flight.** Seven project skills live under `.claude/skills/`.
+> **PR #527 squash-merged as `d57e230`** with all **four** CI checks green — `check` · `test (3.11)` ·
+> `test (3.13)` · `browser (measured-box proof)`, the last including its "Fail loudly if the proof
+> silently skipped" step. **Four, not six, is correct here:** `linux`/`windows` come from
+> `installer-smoke.yml`, path-filtered to `installer/**`, and this PR touched neither. The branch was
+> restarted from the new `origin/main` at `d57e230` with `--prune`. ADR-**0344**, **v1.0.159**
+> (unchanged — nothing under `src/` was touched, so no wheel/installer rebuild; the ADR-0148 lockstep
+> test was run to confirm it).
+>
+> ## ⚠ ADR-0344 IS A COLLISION — PR #528 must renumber to 0345
+> PR **#528** (`claude/polaris-phase-4-engine-zpo69e`, branched from `1119162` **before** this merge)
+> also numbers its decision **ADR-0344**: `0344-a-test-that-configures-logging-must-not-configure-the-next-one.md`
+> vs this one's `0344-standing-rituals-become-invoked-skills.md`. If it merges as-is, `main` carries
+> **two `0344-*.md` files** — two unrelated decisions sharing an identifier that gets cited in a
+> testimony context. **`tests/test_state_docs.py` CANNOT catch it:** `_latest_adr_number()` takes
+> `max()`, both files resolve to `344`, and both durable docs legitimately contain `ADR-0344`, so all
+> four assertions pass over a corrupted record. #527 took the number first, so #528 renumbers. Flagged
+> on that PR. **The guard now EXISTS** (operator-authorised): `test_adr_numbers_are_unique` in
+> `tests/test_state_docs.py` asserts one ADR per sequence number. **Proved able to fail** with the real
+> colliding filename from #528: **1 failed, 4 passed** — the narrow failure is the new test, and the
+> four pre-existing assertions staying GREEN is the empirical proof that they never could catch this.
+> #528 will be red until it renumbers to 0345, which is the intended effect. **No new ADR was minted
+> for the guard, deliberately:** taking 0345 right now would collide with the very renumber #528 has
+> been asked to make, and the guard enforces an existing convention rather than deciding a new one.
 >
 > ## What landed — and what the search actually found
 > The ask was "find and install skills that would help this project." **Both catalogs were searched
