@@ -1,91 +1,104 @@
-# Handoff — 2026-08-03b (Phase 4 opens: the three UNSURE falsy-zero rows, settled by rendering; ADR-0343; v1.0.159)
+# Handoff — 2026-08-03c (The standing rituals become invoked skills; ADR-0344; v1.0.159)
 
-> ## STATUS (current) — **MERGED, nothing in flight.** ADR-0306's three carried UNSURE rows are CLOSED.
-> **PR #525 merged as `f063463`** with all **six** CI checks green (`check` · `linux` · `windows` ·
-> `browser (measured-box proof)` · `test (3.11)` · `test (3.13)`) and no review comments. The
-> branch was restarted from the new `origin/main` at `f063463`.
-> ADR-**0343**, **v1.0.159**. Wheel + nine installers rebuilt at 1.0.159 BEFORE the final gate.
+> ## STATUS (current) — **IN FLIGHT.** Seven project skills committed under `.claude/skills/`.
+> Branch `claude/repo-audit-skills-vbm0ka`, from `origin/main` at **`1119162`**. ADR-**0344**,
+> **v1.0.159** (unchanged — nothing under `src/` was touched, so no wheel/installer rebuild;
+> the ADR-0148 lockstep test was run to confirm it).
 >
-> ## What landed — Phase 4's first unit, and it needed a RENDER, not a read
-> The 2026-07-29 falsy-zero sweep closed 4 BUG rows (ADR-0306) and left **3 UNSURE**, for one
-> stated reason: *"I did not execute the rendered page."* That is the only thing that could settle
-> them. Rendered — **all three fabricate.**
+> ## What landed — and what the search actually found
+> The ask was "find and install skills that would help this project." **Both catalogs were searched
+> first and both came back empty of anything new**: the account skill catalog already has
+> `schedule-forensics`, `session-token-guardian` and `docx`/`xlsx`/`pptx`/`pdf` enabled, and the only
+> plugin marketplace is `knowledge-work-plugins` (data · marketing · design · operations), whose
+> `engineering` and `design` plugins are already on. **There was nothing to install.** That empty
+> result is recorded in ADR-0344 so the next session does not repeat the search.
 >
-> * **`/cei` (rows 1-2).** `cei_planned`/`cei_finished` are `None` when the snapshot has no
->   comparable prior month; `or 0` fed that absence to an **unguarded** `_status_stack`. On two
->   undated versions the page said, in one viewport: takeaway *"**No month could be CEI-scored**"*,
->   KPI cards *"—"* for both fields, and a panel headed *"**Latest scored month**"* drawing
->   *"Finished 0 / Short of plan 0 / **0 planned in the month**"*.
-> * **`/groups` (row 3).** `group_values` scans EVERY task, summaries included, but completion is
->   computed over `non_summary`. `or 1` supplied a denominator for a numerator that is also 0 →
->   `0%` beside a BEI cell already reading `—` for that same empty population.
+> The real gap is the one `LESSONS-LEARNED.md` Part III already named — **"prose reminders decayed;
+> tests didn't."** Where a ritual is expressible as a test it already is one (drift guard, wheel
+> lockstep, dictionary sync, DD-line ledger). The residue governs *session conduct*, not tree
+> contents, and a test can only catch it after it was done wrong. Seven skills now carry it:
 >
-> **One helper — `_stack_not_measured`** — a sibling of `_status_stack` reusing the SAME panel
-> shell (one panel chrome, not two; the two-up grid does not reflow). `planned`/`finished` keep
-> their `None`; the takeaway's guard gains conjuncts that cannot change its branch (`cei` is
-> `None` whenever `planned` is absent OR zero) but let the checker see the precondition.
->
-> ## The counts — RE-DERIVED, and the first one was wrong
-> | fixture · field | rows | empty-population rows rendering `0%` | honest `0%` rows |
-> | --- | --- | --- | --- |
-> | Project5 · WBS | 145 | **19** | 99 |
-> | Project5 · Activity Type | 2 | **1** (`Summary`, 19 activities) | 0 |
-> | Project2 · WBS | 145 | **19** | 106 |
-> | Project2 · Activity Type | 2 | **1** | 0 |
->
-> The first count taken was **118** — every row whose cell read `0%`. Re-deriving the population
-> per value cut it to 19. **A matching cell value is not an identification** (the same trap the
-> prior session paid for, in a new costume).
->
-> ## Verification — a render diff, then two independent reverts
-> Rendered on both sides and diffed (launch nonce normalised): `/cei` on the **golden pair** is
-> **byte-identical**; `/groups?breakdown=Critical` and `…=% Complete` are **byte-identical** (no
-> empty-population value); WBS moved 19 cells and Activity Type 1, and nothing else.
->
-> | revert | result |
+> | skill | what it prevents recurring |
 > | --- | --- |
-> | `/cei` caller → `or 0` + unconditional bar | **2** fail (both `/cei`-unscored); 9 pass, incl. the scored twin |
-> | `/groups` caller → `or 1` | **6** fail (empty-population, both fixtures); the honest-zero twin PASSES |
+> | `full-gate` | a piped exit code hiding a real failure · `node --check` on a glob checking only file 1 · reporting a suite nobody read |
+> | `prove-able-to-fail` | ADR-0304's class — a green assertion over a control that moves nothing; a `-k` filter deselecting the target |
+> | `render-verify` | ADR-0343's class — "I did not execute the rendered page"; source call sites read as rendered charts |
+> | `metric-parity` | stored-vs-recomputed float triage · hard-coded 480 · a golden re-pinned silently |
+> | `ui-change` | the Mission Ops DoD, the one-mechanism table, `--bad` (not `--danger`), the literal `—` |
+> | `cui-guard` | Law 1 — the blocklist's two exceptions, std-lib-only runtime, fail-closed AI, no remote asset |
+> | `session-close` | this rotation's exact shape · ADR-0148's stale-wheel class · the twice-repeated doc drift |
 >
-> Neither revert fails the whole module — that is the point. `tests/web/test_absent_is_not_zero.py`
-> (**11**) derives every expectation from `group_values`/`non_summary` at test time rather than
-> transcribing it, asserts the whole-table invariant (a percentage appears **iff** the value has a
-> non-summary activity behind it), and pairs each fabricating branch with its **true-positive
-> twin** — the goldens' really-scored month still reports `3 of 3` / CEI `1.00`, and the 99/106
-> genuinely-0% WBS rows still read `0%`.
+> ## Verification — the recipe was EXECUTED, not drafted
+> `render-verify`'s Tier-1 renderer was run before it was written down: `/cei` against the five
+> committed `TP4_DataCenter` fixtures → **200, 25,850 bytes**, and the real takeaway `h1` read back
+> from the response. Its launch-nonce normalisation (`sf-launch` content + `?v=` cache-bust) is what
+> makes a two-tree render diff mean anything. `full-gate`'s prerequisites were executed in this
+> container: `pip install -e ".[dev]"` resolves **1.0.159**, and the vendored chromium the browser
+> tier globs for is present at `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`. All seven files
+> parse as YAML with `name` == directory name; descriptions are 488–567 chars against a 1,536 cap;
+> none shadows a bundled skill (`/review`, `/code-review`, `/security-review`, `/simplify`, `/run`).
 >
-> ## Next — Phase 4 continues
-> Remaining in the queue: **CC-01's rendering half** — *"74 sites" is an approximate grep,
-> **RE-DERIVE it** before touching anything* (ADR-0240 reserves this for a Fable 5 Max deep dive) ·
-> **SRA-LEGACY** · **V3** (`msp_filters.py` hard-codes `"d": 480`; ADR-0310 reduced it from a
-> product decision to a conformance fix, but it MOVES saved-filter populations — it needs its
-> migration-report gate). Then **Phase 5** monolith split 2-3 (`app.py` is **21,333** lines after
-> this change, `state.py` 1,479 — measured) and **Phase 6** docs/operator queue. OR-04 stays with
-> the operator.
+> ## The limitation was recorded — then measured away in the same session
+> It was first written down honestly: *"this session cannot observe the skills loading"*, because the
+> documented mechanic says a **newly created** top-level skills directory needs a restart to be
+> watched. **It did not hold.** All seven appeared in this session's live skill listing with **no
+> restart** — and the listed `cui-guard` text was the *edited* description, written minutes after the
+> file was created, proving the loader re-read from disk rather than a cached snapshot. The restart
+> caveat evidently applies to a skills directory created outside an already-watched parent; `.claude/`
+> existed here and only `.claude/skills/` was new. **The claim in the ADR is now the measurement, and
+> the superseded caveat is left visible rather than deleted.** Committing them (rather than
+> `~/.claude/skills/`) stays deliberate and verified: **cloud/web sessions and routines load project
+> skills from the cloned repo and ignore `~/.claude/skills/` entirely**, which is how this project is
+> actually driven.
 >
-> **Recorded, measured, deliberately NOT fixed** (ADR-0343 §"Deliberately NOT done"): the
-> breakdown's **"Activities" column still counts summary rows** — `len(uids)` straight from
-> `group_values` — so the `Summary` row reads "19 activities" while its completion and BEI are both
-> `—`. Fixing it MOVES a displayed population figure rather than removing a fabricated one.
-> Carried UI gap (measured, NOT fixed): `/briefing`, `/path` and `/compare` render a bare takeaway
-> h1 with NO `page-lede`, while `/evm`, `/scurve`, `/margin`, `/groups`, `/integrity` carry one.
+> ## Next — Phase 4 continues, unchanged by this
+> **CC-01's rendering half** — *"74 sites" is an approximate grep, **RE-DERIVE it** before touching
+> anything*; ADR-0240 reserves it for a **Fable 5 Max** deep dive · **SRA-LEGACY**
+> (`audit/SRA-ROOTCAUSE-20260730.md`) · **V3** (`engine/msp_filters.py` hard-codes `"d": 480`;
+> ADR-0310 made it a conformance fix, but it MOVES saved-filter populations — it needs its
+> migration-report gate). Then **Phase 5** monolith split 2–3 (`app.py` **21,333** lines, `state.py`
+> **1,479**) and **Phase 6** docs/operator queue. OR-03 and OR-06's launch-sequence half remain in
+> `OPERATOR-REQUESTS.md`; OR-04 stays with the operator.
+>
+> ## The gate, measured — and the one red triaged by VARYING COUNT
+> `ruff check` pass · `ruff format --check .` **867 clean** (0.16.1) · `mypy --strict` **117 files** ·
+> `bandit` **exit 0** · `node --check` **60/60** · full suite **3400 passed, 3 skipped, 1 failed
+> (16:33)** · `pytest -m parity` **49 passed**. The red was `test_float_tip_scroll` — the documented
+> `/analysis` focus→tip family. Four samples of the same 19 tests: **1 failed** (suite, with changes) ·
+> **2 failed** (targeted, with changes) · **0 failed** (targeted, PRISTINE at `1119162`) · **1 failed**
+> (targeted, with changes). The diff is markdown-only so it cannot be causal, and **the proof is the
+> varying count on an identical tree, NOT the pristine pass** — *a pristine-tree pass is not a
+> discriminator when the difference cannot be causal; it is just another sample of a flaky test.*
+> **Verified why it ran here at all:** `playwright` is its own `[browser]` extra, NOT `[dev]`; CI's
+> `test (3.11)`/`(3.13)` install `.[dev]` (so every playwright-gated test SKIPS) and the `browser` job
+> installs `.[dev,browser]` but runs **only** `test_r11_panel_contract.py`. This family **never
+> executes on CI** — the mechanism behind "has NEVER failed on CI." Both facts are now in `full-gate`.
 >
 > ## Carried forward, unchanged
-> **Known intermittent: the `/analysis` focus→tip family** (`test_float_tip_dismiss` /
-> `test_float_tip_scroll`) — adjudicated, pre-existing, has NEVER failed on CI. Do NOT chase.
-> `pgrep -f <pat>` self-matches exactly like `pkill -f`. pytest stdout to a FILE is block-buffered
-> (use `python -u`). `cd` in a Bash call persists across calls — use absolute paths.
-> `pytest --timeout=` is NOT installed here and its usage error exits **0** through a `| tail`
-> pipeline. `--bad` is the red token; `--danger` does not exist. Source call sites ≠ rendered
-> charts. Never `git checkout <file>` to undo a temporary test mutation — `cp` from a scratchpad
-> copy (used twice this session, for both reverts).
+> `/groups`' breakdown "Activities" column still counts summary rows (`len(uids)`) — measured,
+> deliberately NOT fixed (ADR-0343). `/briefing`, `/path`, `/compare` render a bare takeaway h1 with
+> NO `page-lede`. **Known intermittent: the `/analysis` focus→tip family** — adjudicated,
+> pre-existing, has NEVER failed on CI. Do NOT chase. `pgrep -f <pat>` self-matches like `pkill -f`.
+> pytest stdout to a FILE is block-buffered (use `python -u`). `cd` in a Bash call persists — use
+> absolute paths. `pytest --timeout=` is NOT installed and its usage error exits **0** through a
+> `| tail` pipeline. `--bad` is the red token; `--danger` does not exist. Source call sites ≠ rendered
+> charts. Never `git checkout <file>` to undo a temporary test mutation — `cp` from a scratchpad copy.
 >
-> **New this session:** the page carried the answer in its own KPI strip the whole time. Two of the
-> three rows were a *self-contradiction inside one viewport* — takeaway and cards already correct,
-> one panel disagreeing — which is what makes them findable by rendering and invisible to a grep.
-> Also: `_stat_cards` emits **value THEN label**, so a regex reading forward from a label picks up
-> the NEXT card's value; the first KPI read of this session was off by one and reported
-> `Planned = 0` where the page actually said `—`.
+> ## The skills caught a defect in their own commit — with the trap they document
+> `ruff format --check .` read **green, 458 files**, before commit. That was a stale **0.15.8** in
+> `/root/.local/bin` shadowing the **0.16.1** `pip` had just installed to `/usr/local/bin`. They differ
+> in SCOPE, not style: 0.16.x also formats fenced `python` blocks **inside markdown** — the same tree is
+> **458** files to one binary and **867** to the other — so `render-verify/SKILL.md`'s python recipe
+> would have gone red on CI (which resolves `ruff>=0.6` to latest). Reformatted; **867 clean** under
+> the explicit `/usr/local/bin/ruff`. `which -a ruff` vs `pip show ruff` is now step 0 of `full-gate`,
+> with the measured counts. **This is 2026-07-29 cont.3 — "a green gate proves nothing if the binary
+> isn't the one CI runs" — in a new costume: a stale wheel then, a shadowed linter now.**
+>
+> **New this session:** an empty search result is a deliverable, not a dead end — it is what converts
+> "install a skill" into "the knowledge already exists here, unindexed." And the ladder from Part III
+> has a middle rung: law (CLAUDE.md) → **invoked procedure (a skill)** → executable guard (a test).
+> Reach for the highest rung that fits; a ritual about *how to verify* cannot be a test, because the
+> test is the thing it is telling you to distrust.
 
 # (prior) handoffs — archived
 

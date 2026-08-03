@@ -435,6 +435,72 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-03c — An empty search result is a deliverable; and the ladder has a middle rung (ADR-0344)
+
+- **The ask was "find and install skills."** Both catalogs were searched *first*: the account skill
+  catalog (8 keyword sets) and the plugin marketplace. Both came back with **nothing new** — the
+  relevant skills (`schedule-forensics`, `session-token-guardian`, `docx`/`xlsx`/`pptx`/`pdf`) and
+  plugins (`engineering`, `design`) were already enabled. The honest answer to "install skills" was
+  **there is nothing to install**, and saying so is what converted the task into the real one.
+- **The lesson: report the empty search, don't route around it.** An unrecorded null result gets
+  re-run by the next session at full cost. ADR-0344 pins which catalogs were searched, with what
+  keywords, and what came back — the same discipline the audits use for a *refuted* finding.
+- **Part III's ladder has three rungs, not two.** "Prose reminders decayed; tests didn't" is right,
+  and this repo has faithfully converted process failures into executable guards wherever a guard was
+  expressible: the drift guard, the wheel↔source lockstep, the dictionary sync, the DD-line ledger.
+  But a whole class of ritual **cannot** be a test, because it governs *how a session works* rather
+  than what the tree contains — how to run the gate so a piped exit code can't hide a failure, how to
+  prove a test can fail, when to render instead of read, the handoff rotation's exact shape (a test
+  can only catch that one *after* it was done wrong). The rungs are: **law (CLAUDE.md) → invoked
+  procedure (a skill) → executable guard (a test)**. Reach for the highest rung that fits.
+- **A ritual about how to VERIFY cannot itself be a test** — the test is the thing it is telling you
+  to distrust. That is the structural reason `prove-able-to-fail` and `render-verify` had to be
+  procedures rather than assertions.
+- **Wrote the recipe by running it, not by drafting it.** `render-verify`'s Tier-1 renderer was
+  executed before it was written into the skill: `/cei` on the five committed `TP4_DataCenter`
+  fixtures → 200, 25,850 bytes, real takeaway `h1` read back. It immediately taught its own rule —
+  without normalising the per-launch `sf-launch` nonce and the `?v=` cache-bust, every two-tree render
+  diff is pure noise. A recipe that has never been run is a guess with formatting.
+- **Verified the mechanism instead of assuming it**, and the check paid: project skills load from
+  `.claude/skills/<name>/SKILL.md` with no registration, the *command* comes from the **directory**
+  name (frontmatter `name` is only a display label for a project skill), cloud/web sessions load
+  project skills from the cloned repo and **ignore `~/.claude/skills/` entirely** — which is why these
+  are committed — and a *newly created* top-level skills directory needs a restart to be watched. That
+  last one is a limitation this session **cannot** verify away, so it is recorded in the ADR and the
+  handoff as a documented mechanic rather than dressed up as an observation.
+- **The skills caught a defect in their own commit, via the trap they document.** `ruff format --check .`
+  read **green (458 files)** before commit — from a stale **0.15.8** in `/root/.local/bin` shadowing the
+  **0.16.1** `pip` had just installed to `/usr/local/bin`. The two differ in *scope*, not style: 0.16.x
+  also formats fenced `python` blocks **inside markdown**, so the same tree is **458** files to one and
+  **867** to the other, and `render-verify/SKILL.md`'s python recipe would have failed CI (which
+  resolves `ruff>=0.6` to latest). Found by asking "is the binary on PATH the one I installed?" —
+  `which -a ruff` vs `pip show ruff`. **This is 2026-07-29 cont.3 ("a green gate proves nothing if the
+  binary isn't the one CI runs") in a new costume: that time it was a stale wheel, this time a
+  shadowed linter.** The generalised rule now lives in the `full-gate` skill with the measured file
+  counts: *a version check is part of the gate, not a preamble to it.*
+- **And the `pgrep -f` self-match trap fired on me the same hour, in a new costume.** A waiter built as
+  `until [ ! -d /proc/$(pgrep -f "pytest -q" | head -1) ] || ! pgrep -f "[p]ython …"` printed
+  **"SUITE FINISHED"** while pytest was still burning CPU (PID 18033, 9:12). The bracketed clause was
+  correct; the *unbracketed* one self-matched the waiter's own command line and `head -1` picked a PID
+  that had already exited, so `! -d /proc/<pid>` went true. **The documented trap is "pgrep finds
+  itself"; the sharper form is "a compound condition built on a self-matching pgrep can report the
+  OPPOSITE of the truth."** Cost nothing only because the signal was confirmed with `ps` before being
+  acted on — *never act on a completion signal you built yourself without an independent check.*
+- **A stated limitation is a standing invitation to measure it — and this one fell within the hour.**
+  The commit went out saying "this session cannot observe the skills loading," reasoning from the
+  documented mechanic (*a newly created top-level skills directory needs a restart to be watched*).
+  Minutes later all seven appeared in the live skill listing with **no restart**, and the listed
+  `cui-guard` text was the **edited** description — so the loader was re-reading from disk, not
+  replaying a snapshot. The caveat evidently governs a skills directory created outside an
+  already-watched parent (`.claude/` existed; only `.claude/skills/` was new). **The lesson is the
+  same one ADR-0343 bought, pointed at myself: when a record names the evidence it lacks, that
+  sentence is the experiment.** Corrected in the ADR and handoff with the superseded claim left
+  VISIBLE — a limitation quietly deleted teaches nothing, and reading *"stated, then measured away"*
+  is how a future session learns the move.
+- **A skill is a checklist, never an oracle.** Each rule cites the ADR or lessons date that bought it
+  so a future session can verify it against the code; per ADR-0240 anything parity-, engine-,
+  testimony- or CUI-relevant is still re-validated by the lead before it lands.
+
 ### 2026-08-03b — An audit that names its own blind spot is telling you the experiment to run
 - **The three UNSURE rows of the 2026-07-29 falsy-zero sweep sat open for five weeks, and the sweep
   had already written down how to close them:** *"I did not execute the rendered page."* Not a

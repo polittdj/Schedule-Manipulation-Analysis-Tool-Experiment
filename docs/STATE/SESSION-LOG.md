@@ -11142,3 +11142,101 @@ rebuild. The known-intermittent `/analysis` focus→tip family did NOT fire.
 **Merged.** PR #525 → **`f063463`**, all **six** CI checks green (`check` · `linux` · `windows` ·
 `browser (measured-box proof)` · `test (3.11)` · `test (3.13)`), no review comments. Branch
 restarted from the new `origin/main` with `--prune` per the post-squash-merge rule.
+
+---
+
+## 2026-08-03c — Repo-wide read, then the standing rituals become invoked skills (ADR-0344)
+
+- **Session:** repo audit → skills   **Next session:** Phase 4 continues (CC-01 rendering half)
+- **Branch:** `claude/repo-audit-skills-vbm0ka`, from `origin/main` at `1119162`
+- **Milestone:** read the repository in full; find and install skills that help it. **ADR-0344**,
+  v1.0.159 (unchanged — nothing under `src/` touched).
+
+### What was read
+The whole durable-state spine and the code that backs it: `CLAUDE.md`, `README.md`,
+`pyproject.toml`, `.claude/` (settings, both hooks, both agents), `.githooks/pre-commit`, both CI
+workflows, `docs/STATE/HANDOFF.md` + `NEXT-SESSION-PROMPT.md` + `OPERATOR-REQUESTS.md`,
+`docs/DESIGN-SYSTEM.md`, `LESSONS-LEARNED.md` Parts I–VIII, the 344-ADR index, the `audit/` ledger,
+and the structural code — `model/task.py`, `engine/metrics/_common.py`, `test_state_docs.py`,
+`test_aft_formula_audit.py`, `test_dd_line_ledger.py`, `test_r11_panel_contract.py`,
+`tools/installer/build_installers.py`. Measured, not assumed: 1,453 tracked files · 461 `.py` ·
+57,833 lines of `src/` (`app.py` **21,333**, `state.py` **1,479**) · 65,437 lines of tests ·
+344 ADRs · 438 markdown files.
+
+### What changed
+- **Both skill catalogs were searched first, and both came back empty of anything new.** The account
+  catalog already has `schedule-forensics`, `session-token-guardian`, `docx`/`xlsx`/`pptx`/`pdf`; the
+  only marketplace is `knowledge-work-plugins` (data · marketing · design · operations) and its
+  `engineering`/`design` plugins are already enabled. **Nothing was installable.** ADR-0344 records
+  the empty result so it is not re-run.
+- **Seven project skills committed under `.claude/skills/`** — `full-gate`, `prove-able-to-fail`,
+  `render-verify`, `metric-parity`, `ui-change`, `cui-guard`, `session-close` — one per documented
+  recurring failure class, each rule citing the ADR or lessons date that bought it, plus a
+  `README.md` mapping skill → failures prevented and its relationship to `qc-checker` and the
+  SessionStart hook.
+- No `settings.json` change (skills need no registration, and the assistant stays barred from its own
+  hook config); no version bump; no wheel/installer rebuild.
+
+### Verification
+- `render-verify`'s Tier-1 recipe was **executed before being written down**: `/cei` against the five
+  committed `TP4_DataCenter` fixtures → **200, 25,850 bytes**, real takeaway `h1` read back. The
+  launch-nonce normalisation it prescribes (`sf-launch` content + `?v=` cache-bust) is what makes a
+  two-tree render diff meaningful.
+- `full-gate`'s prerequisites executed here: `pip install -e ".[dev]"` → **1.0.159**; the vendored
+  chromium its browser tier globs for is present at `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`.
+- All seven parse as YAML with `name` == directory name; descriptions 488–567 chars against the
+  1,536-char listing cap; none shadows a bundled skill.
+- The `.claude/skills/` discovery path, the cloud-session behavior and the name-from-directory rule
+  were checked against the Claude Code skills reference rather than assumed.
+- **Recorded limitation, then MEASURED AWAY in the same session.** It was first written down as
+  "this session cannot observe the skills loading," reasoning from the documented mechanic (*a newly
+  created top-level skills directory needs a restart to be watched*). It did not hold: all seven
+  appeared in the live skill listing with **no restart**, and the listed `cui-guard` text was the
+  **edited** description — written minutes after the file was created — proving the loader re-read from
+  disk rather than replaying a snapshot. The caveat evidently governs a skills directory created
+  outside an already-watched parent (`.claude/` existed; only `.claude/skills/` was new). ADR-0344 and
+  the handoff now carry the measurement with the superseded claim left **visible**.
+
+### The gate caught a defect in this very commit — with the trap the new skill documents
+`ruff format --check .` read **green, "458 files already formatted"**, before commit. That was a
+stale **ruff 0.15.8** in `/root/.local/bin` shadowing the **0.16.1** `pip` had just installed to
+`/usr/local/bin`. The two differ in **scope**, not style: 0.16.x also formats fenced `python` blocks
+**inside markdown**, so the same tree is **458** files to one binary and **867** to the other. Under
+the real binary, `.claude/skills/render-verify/SKILL.md`'s python recipe **would be reformatted** —
+i.e. CI (`pip install -e '.[dev]'` → `ruff>=0.6` → latest) would have gone red on a docs-only commit.
+Reformatted with the explicit path; **867 files already formatted, exit 0.** `which -a ruff` vs
+`pip show ruff` is now step 0 of the `full-gate` skill, with the measured counts. This is
+**2026-07-29 cont.3 — "a green gate proves nothing if the binary isn't the one CI runs" — in a new
+costume**: a stale wheel then, a shadowed linter now.
+
+### Full gate, measured
+`ruff check src/ tests/` pass · `ruff format --check .` **867 clean** (0.16.1 binary) · `mypy
+--strict` **117 files** clean · `bandit` **exit 0** · `node --check` **60/60** · `tests/test_state_docs.py`
++ `tests/installer` **56 passed** (the drift guard and the ADR-0148 wheel lockstep, run explicitly
+because this commit touches the state docs and no `src/`) · full suite **3400 passed, 3 skipped,
+1 failed in 993.65s (16:33)** · `pytest -m parity` **49 passed** (145.65s).
+
+### The one failure, triaged to a flake by VARYING COUNT — not by a pristine pass
+The failure was `test_float_tip_scroll.py::test_focus_shown_tip_hides_on_scroll_and_stays_off_the_rail`
+(`Page.wait_for_function: Timeout 4000ms exceeded`) — the documented `/analysis` focus→tip family.
+Four samples of the same 19 tests:
+
+| run | tree | result |
+| --- | --- | --- |
+| full suite | with changes | **1 failed** (scroll) |
+| targeted | with changes | **2 failed** (scroll + dismiss) |
+| targeted | **pristine** (`git stash`, HEAD `1119162`) | **0 failed**, 19 passed |
+| targeted | with changes | **1 failed** (scroll) |
+
+The diff is **markdown only**, so it cannot be causal — and the *proof* is the **varying count on an
+identical tree** (2, then 1), not the pristine pass. **A pristine-tree pass is not a discriminator
+when the difference cannot be causal; it is just another sample of a flaky test.** Not chased, not
+"fixed" by widening the 4 s timeout (that weakens a test to silence an environment).
+
+**Why it ran here at all, verified from `ci.yml` + `pyproject.toml`:** `playwright` lives in its own
+`[browser]` extra, **not** `[dev]`. CI's `test (3.11)`/`(3.13)` install `.[dev]` → every
+playwright-gated test **skips**; the `browser` job installs `.[dev,browser]` but runs **only**
+`tests/web/test_r11_panel_contract.py`. So this family **never executes on CI** — which is exactly
+why it "has NEVER failed on CI." Installing playwright locally switches on ~19 browser tests no CI job
+runs. Now recorded in the `full-gate` skill with the table, so the next session triages it in one read
+instead of re-deriving it.
