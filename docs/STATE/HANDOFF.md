@@ -64,10 +64,12 @@
 > intake re-upload, proprietary-tool reruns for #12.
 >
 > ## Carried forward
-> **The `/analysis` focus→tip family, re-characterised:** still do NOT chase, but it is NOT
-> "intermittent" here — `test_float_tip_dismiss` fails **3/3** locally and **identically on
-> `origin/main` with changes stashed**. Cause: `playwright wait_for_function` **4000 ms** timeout
-> under container load. Pre-existing ✔, never fails on CI ✔, deterministic locally.
+> **The `/analysis` focus→tip family — measured twice, and the second measurement corrected the
+> first.** Still do NOT chase. It failed **3/3** in one window AND **identically on `origin/main`
+> with changes stashed** (so: pre-existing ✔, not ours ✔), then **passed** in the next full run.
+> So it is **load-sensitive, not deterministic and not random**: `playwright wait_for_function`
+> with a **4000 ms** budget, which this container misses only when busy. Never fails on CI ✔.
+> *Do not restate "deterministic" — one clean run disproved it.*
 > `pgrep -f` self-matches. pytest stdout to a FILE is block-buffered (`python -u`). `cd` persists
 > across Bash calls. `--bad` is the red token. Never `git checkout <file>` to undo a test mutation —
 > `cp` from a scratchpad copy. `/briefing`, `/path`, `/compare` still carry no `page-lede`; the

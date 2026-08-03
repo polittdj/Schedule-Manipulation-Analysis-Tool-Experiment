@@ -11308,7 +11308,9 @@ figure is implicated. The real findings are CI reproducibility (#1, #2) and repo
 _would_try` fails **3/3** here, and fails **identically on `origin/main` with my changes stashed**.
 It has **zero** logging references. Cause: `playwright Page.wait_for_function: Timeout 4000ms
 exceeded` — a browser-timing assertion under container load. So: *pre-existing* ✔ (proved by
-stash), *never fails on CI* ✔ (unchanged), but **not "intermittent" in this container — it is a
-deterministic 4 s timeout**. Carried forward with that correction rather than the old wording.
+stash), *never fails on CI* ✔ (unchanged), but **load-sensitive**: it failed 3/3 in one window and **passed** in the
+post-merge run (3403 passed, 0 failed). So neither "flaky" nor "deterministic" is right — a
+4 s `wait_for_function` budget this container misses only under load. **My own first
+correction over-claimed, and the next run caught it.**
 
 Wheel + nine installers rebuilt at **v1.0.160**.
