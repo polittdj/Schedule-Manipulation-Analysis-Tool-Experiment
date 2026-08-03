@@ -11399,3 +11399,65 @@ load. Pre-existing ✔ (fails identically on `origin/main` with changes stashed)
 
 **Next:** P0-2 — constraints file + upper bounds + a floor-version CI leg (the root cause behind
 audit claims #1 and #2; both #529's guard and #528's fixture are patches on symptoms of it).
+
+## 2026-08-03f — P0 closed: the dependencies are bounded, and the floor found a Law 1 defect (ADR-0346, v1.0.161)
+
+**Branch:** `claude/resume-polaris-v1-geq9o7` · **ADR-0346** · **v1.0.161** · delivers the external
+audit's **P0-2** (bound the dependencies) and **P0-3** (`importorskip`) in one unit.
+
+**Sequencing note that mattered.** The prompt said P0-2 first, but P0-3 had to land first: the new
+floor CI leg would have been red on day one from two bare `from playwright.sync_api import …`, and
+its first result would have taught nothing about dependency bounding. *Fix what a new gate will find
+before you turn it on.*
+
+**The headline — the floor job found an air-gap violation on its first run.** `pyproject.toml`
+declared `fastapi>=0.110`. fastapi **0.110.0** and **0.110.1** serialize a `RequestValidationError`
+with pydantic's `url` key intact, so a 422 body served by the air-gapped tool carries
+`https://errors.pydantic.dev/<ver>/v/missing` — an **external reference on the CUI boundary**, on
+**10 routes**. `tests/web/test_airgap.py::test_every_get_route_serves_no_external_reference` catches
+it perfectly and always would have; nothing had ever *installed* the bottom of the declared range
+for it to look at. Isolated to fastapi and not pydantic by holding each fixed: 0.110.0 fails under
+pydantic **2.6.0 AND 2.13.4**; 0.110.2 / 0.110.3 / 0.111.0 / 0.112.0 / 0.115.0 / 0.141.1 all pass.
+**Floor raised to `fastapi>=0.110.2`.**
+
+**Three declared floors were false, all measured:**
+
+| declared | measured |
+| --- | --- |
+| `pydantic>=2` beside `fastapi>=0.110` | **unsatisfiable** — fastapi 0.110 excludes pydantic 2.0.0/2.0.1/2.1.0 |
+| `pydantic>=2` (once installable) | 2.0.2 · 2.4.2 · 2.5.0 · 2.5.3 FAIL `test_cache_does_not_perturb_hash_or_equality`; **2.6.0** first to pass |
+| `fastapi>=0.110` | **air-gap violation** on 10 routes; **0.110.2** first clean |
+
+The pydantic row is a *product* mechanism, not a tooling one: its generated `hash_func` hashed
+`self.__dict__.values()`, which on a frozen `Schedule` includes the `tasks_by_id` cache →
+`TypeError: unhashable type: 'mappingproxy'`.
+
+**What changed.** Upper bounds on every requirement (`setuptools` the one named exemption, asserted
+by **equality** so it cannot grow silently) · `constraints/floor.txt` (8 pins) and
+`constraints/known-good.txt` (59 pins, the full `.[dev]` closure on 3.11, where **starlette** is
+pinned — nothing under `src/` imports it) · a new CI job **`floor`** that resolves the lock,
+installs at the floors, **verifies the floors actually bound**, and runs the suite + parity, wired
+into `check`'s `needs` · `tests/test_dependency_bounds.py` (7 assertions) · `ruff>=0.16.1,<0.17`
+so `.[dev]` installs the gate's ruff and the manual pin is retired ·
+`pytest.importorskip("playwright")` in `tests/perf/test_observer_storm.py` (module-level) and
+`tests/web/test_launch_invalidation.py` (in the `served` fixture, so no uvicorn server is started
+only to be discarded).
+
+**Verified.** All 7 guard assertions proved able to fail on their own targeted mutations, tree
+restored byte-identical from a scratchpad copy · the guard caught a real defect on its first run —
+`pip freeze` omits `setuptools`, so the first `known-good.txt` dropped the ONE pin that exists for a
+CVE remediation (regenerate with `--all`) · the "floors must actually bind" CI step proved able to
+fail (7 of 8 pins unbound against the current venv, `rc=1`) · P0-3 before→after in a lean venv
+(pytest 8.0.2, no playwright): `1 failed, 3 passed, 2 errors` → `3 passed, 2 skipped`, and with
+playwright present all 6 tests still collect · `tests/guards` 68 passed · installer lockstep 62
+passed · wheel + nine installers rebuilt at v1.0.161, `Requires-Dist: fastapi<1,>=0.110.2` in the
+shipped metadata — **a bounds change is a shipped change even when `src/` is untouched**.
+
+**Deliberately not done:** Actions stay on mutable tags (audit #7 / P1 — one mechanical sweep, and
+that sweep must also cover the two the new `floor` job adds) · the installers do not yet install
+with `-c constraints/known-good.txt` (62 lockstep tests; its own unit) · the `filterwarnings` ignore
+stays, now paired with the bound and the pin that carry the real risk · `pytest-cov` / `bandit` /
+`pip-audit` floors are ADVISORY and bounded rather than bisected.
+
+**Next:** P1 — intake manifest + extension↔content regression test · reconcile R-03/R-12 · CUI hook
+hardening · Action SHA pinning. Then Fable 5: CC-01 · SRA-LEGACY · V3.

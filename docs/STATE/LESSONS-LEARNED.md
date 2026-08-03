@@ -435,6 +435,59 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-03f — A declared range nobody runs is not a claim, it is a wish (ADR-0346)
+- **THE HEADLINE: the new floor job found a Law 1 defect on its very first run.** `fastapi>=0.110`
+  had been in `pyproject.toml` for a year. fastapi **0.110.0 and 0.110.1** serialize a
+  `RequestValidationError` with pydantic's `url` key intact, so a 422 body served by the air-gapped
+  tool carries `https://errors.pydantic.dev/<ver>/v/missing` — an **external reference on the CUI
+  boundary**, on 10 routes. `tests/web/test_airgap.py` catches it perfectly and always would have;
+  nothing had ever *installed* the bottom of the range for it to look at. Isolated to fastapi, not
+  pydantic (0.110.0 leaks under both 2.6.0 and 2.13.4; 0.110.2+ is clean under both). Floor raised to
+  `>=0.110.2`. **Two correct controls that never meet prove nothing — the job is what introduces
+  them.** That is a general lesson about coverage: ask not only "is there a test?" but "is there a
+  configuration in which that test has ever been asked the question?"
+- **Two of our own declared floors were false, and one of them could never have installed.**
+  `pyproject.toml` said `pydantic>=2` and `fastapi>=0.110`. Those two lines are *unsatisfiable
+  together*: fastapi 0.110 itself excludes pydantic 2.0.0/2.0.1/2.1.0. Nobody had ever tried,
+  because nothing installs the bottom of a range. Bisected the real floor: 2.0.2 · 2.4.2 · 2.5.0 ·
+  2.5.3 all fail `test_cache_does_not_perturb_hash_or_equality` (pydantic's generated `hash_func`
+  hashed `self.__dict__.values()`, which on a frozen `Schedule` includes the `tasks_by_id` cache →
+  `TypeError: unhashable type: 'mappingproxy'`); **2.6.0 is the first that passes**. The frozen-model
+  identity contract this whole engine rests on simply did not hold below 2.6.
+- **The lesson generalizes past dependencies:** a range, a threshold, a "supports X" — if no run
+  exercises the boundary, the boundary is decoration. `minversion = "8.0"` had been in the file for
+  months and nothing could contradict it. The fix is not a stricter number, it is a job that stands
+  on the number.
+- **The guard caught a real defect on its own first run — in my own artifact.** `pip freeze` silently
+  omits `setuptools` (pip treats it, `pip` and `wheel` as "self" packages), so the first
+  `known-good.txt` capture dropped the ONE pin that exists for a CVE remediation (ADR-0250). I would
+  not have noticed by reading it; 58 plausible lines look exactly like 59. **A capture tool's
+  default exclusions are part of your data, and you have to ask what they are** — the same shape as
+  July's magic-byte sniffer whose 64-byte window invented three false positives.
+- **A constraints file that does not bind is the measured-box failure wearing a new hat.** Constraints
+  only apply to packages that actually get installed, so a typo'd or renamed pin is a *silent no-op*
+  and the floor job goes green having tested the newest resolution — proving the opposite of what its
+  name says. So the job asserts the INSTALLED versions, and I proved that step can fail (run it
+  against the current venv: 7 of 8 pins unbound, `rc=1`). **Every job needs an answer to "what would
+  make this pass while proving nothing?"**
+- **Silencing is not bounding.** `filterwarnings` had been quietly swallowing starlette's
+  httpx→httpx2 deprecation. That is not wrong on its own — the warning is upstream and unactionable
+  in a product that imports neither — but it was the *whole* answer to a transition that will
+  `RuntimeError` the entire web suite the day the fallback is dropped. A suppressed warning should
+  always be paired with the bound that handles the thing it was warning about.
+- **Sequencing note worth keeping:** the prompt said do P0-2 first, but P0-3 (`importorskip`) had to
+  land first — the floor CI leg would have been red on day one from the two bare playwright imports.
+  When a new gate is about to run somewhere nothing ran before, fix what it will find before you
+  turn it on, or its first result teaches you nothing about the thing you built it for.
+- **Do not run the suite while you are editing the durable docs.** My first clean-floor run came back
+  `3 failed, 3312 passed` — all three in `tests/test_state_docs.py`, which reads
+  `HANDOFF.md`/`SESSION-LOG.md` **from disk at test time**, and I was mid-rotation (the file still
+  held its `__NEW_SECTION__` marker). Nothing was wrong with the floor. I **re-ran rather than
+  reconstruct `3312 + 3`**: a composite you assemble by argument is not a measurement, and this
+  number was about to become an ADR's headline evidence. Corollary: the drift guard has a *time*
+  dependency. The docs must be structurally complete before any suite starts — substituting a count
+  into an otherwise-finished section afterwards is harmless; leaving a placeholder in one is not.
+
 ### 2026-08-03e — Concurrent sessions collide on identifiers, and a guard can pass on the thing it protects
 - **Two sessions branched from the same `main`, both took "highest ADR + 1", and both got 0344.** Not
   a mistake either could have avoided alone: "highest + 1" is correct locally and wrong globally the

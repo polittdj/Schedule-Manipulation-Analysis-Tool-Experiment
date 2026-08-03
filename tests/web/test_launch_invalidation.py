@@ -76,6 +76,14 @@ _chrome = sorted(CHROME_DIR.glob("chromium-*/chrome-linux/chrome")) if CHROME_DI
 @pytest.fixture()
 def served() -> Any:
     """The real app on a real port (persist.js needs a browser, not TestClient)."""
+    # The `_chrome` skipif below covers the BROWSER; this covers the pip PACKAGE, which is a
+    # separate extra (`.[browser]`) and absent from a plain `.[dev]` env. Without it the bare
+    # `from playwright.sync_api import …` in the test body ERRORED rather than skipped — measured
+    # on pytest 8.0.2 as `1 failed, 3 passed, 2 errors` across this module and
+    # tests/perf/test_observer_storm.py. Guarding here rather than in the test body also means the
+    # uvicorn server is never started just to be torn down (ADR-0346). Mirrors
+    # tests/web/test_r11_panel_contract.py's `served`.
+    pytest.importorskip("playwright", reason="playwright not installed (runtime stays stdlib-only)")
     import uvicorn
 
     st = SessionState()

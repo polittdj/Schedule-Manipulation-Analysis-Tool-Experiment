@@ -122,11 +122,91 @@ jobs:
             exit 1
           fi
 
+  # The DECLARED MINIMUM, executed (ADR-0346). The `test` matrix above installs unbounded and
+  # therefore always measures the NEWEST resolution; nothing measured the oldest one we claim to
+  # support. That gap was not theoretical — the same commit gave pytest 8.0.2 FAIL / 8.4.2 FAIL /
+  # 9.1.1 PASS (ADR-0345), and two of the declared floors turned out to be untrue the moment
+  # anyone tried them: `pydantic>=2` would not even INSTALL beside `fastapi>=0.110` (fastapi 0.110
+  # excludes pydantic 2.0.0/2.0.1/2.1.0), and pydantic 2.0.2-2.5.3 failed the frozen-model hash
+  # test. So `minversion = "8.0"` and every `>=` in pyproject.toml are now propositions this job
+  # either confirms or reddens.
+  #
+  # Python 3.11 deliberately: it is `requires-python`'s own minimum, so this is the oldest
+  # supported corner of the support matrix in both dimensions at once.
+  #
+  # NOT a lint/type job. ruff and mypy are absent from constraints/floor.txt because their OUTPUT
+  # is version-sensitive by design — running `ruff format --check` at an old ruff measures the
+  # formatter, not the product. Those are bounded narrowly in pyproject.toml instead.
+  floor:
+    name: floor (declared minimum)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            pyproject.toml
+            constraints/floor.txt
+
+      # Cheap (~30s, no build) and it keeps the lock from rotting into fiction:
+      # tests/test_dependency_bounds.py proves known-good.txt AGREES with the declared ranges, but
+      # only a resolver can prove it is still satisfiable together.
+      - name: The known-good lock must still resolve
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --dry-run -e '.[dev]' -c constraints/known-good.txt
+
+      - name: Install at the declared floors
+        run: python -m pip install -e . -c constraints/floor.txt pytest pytest-cov httpx
+
+      # THE STEP THAT STOPS THIS JOB PROVING THE WRONG PROPOSITION. A constraints file only binds
+      # packages that actually get installed, so a typo'd or renamed pin is a silent no-op and the
+      # job would go green having tested the very latest resolution — the same failure shape as the
+      # measured-box tests that skipped and passed (ADR-0304/0305). Assert the INSTALLED versions.
+      - name: The floors must actually be the floors
+        run: |
+          python - <<'PY'
+          from importlib.metadata import version
+          from pathlib import Path
+          from packaging.utils import canonicalize_name
+          from packaging.version import Version
+
+          bad = []
+          for raw in Path("constraints/floor.txt").read_text(encoding="utf-8").splitlines():
+              line = raw.split("#", 1)[0].strip()
+              if not line:
+                  continue
+              name, _, pinned = line.partition("==")
+              name, pinned = canonicalize_name(name.strip()), Version(pinned.strip())
+              got = Version(version(name))
+              print(f"{name:20} pinned {pinned}  installed {got}")
+              if got != pinned:
+                  bad.append(f"{name}: pinned {pinned}, installed {got}")
+          if bad:
+              raise SystemExit("::error::floor constraints did not bind: " + "; ".join(bad))
+          PY
+
+      - name: Tests at the declared floor
+        run: pytest -q -p no:cacheprovider
+
+      # Law 2: a reported number must not depend on which pydantic the resolver picked.
+      - name: Parity gate at the declared floor (Acumen Fuse v8.11.0 + SSI golden, §6.B)
+        run: pytest -m parity -p no:cacheprovider
+
   # Stable aggregate status (named "check") so branch protection has a single
   # context to require regardless of the matrix dimensions.
+  #
+  # `floor` IS in `needs` (unlike `browser`, which is excluded for its documented render flakes):
+  # it runs no browser, is fully deterministic, and a red floor means the support range declared in
+  # pyproject.toml is false — which must block a merge without waiting on a branch-protection
+  # settings change (external audit #8, which is otherwise operator-only).
   check:
     name: check
-    needs: test
+    needs: [test, floor]
     runs-on: ubuntu-latest
     steps:
       - run: echo "all matrix jobs passed"
