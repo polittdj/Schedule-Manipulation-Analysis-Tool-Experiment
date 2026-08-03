@@ -1,11 +1,15 @@
 # Handoff — 2026-08-02g (Phase 3 UI: the DD-line population becomes a ledger; ADR-0341; v1.0.157)
 
-> ## STATUS (current) — **IN FLIGHT.** ADR-0340 MERGED as `a2bfa87`; the DD-line ledger is built.
-> **PR #521 (ADR-0340, v1.0.156) MERGED as `a2bfa87`** — all 6 checks were green; branch restarted
-> from `origin/main` with `--prune`. `DOM_PENDING` is empty and AXIS-TITLES is closed in both media.
-> This branch now carries **ADR-0341, v1.0.157**: `tests/web/test_dd_line_ledger.py` (**32 tests**),
-> the DD-line counterpart to `test_axis_titles.py`. **No `src/` change** — the ledger makes the gap
-> visible and un-driftable; closing it is the next unit.
+> ## STATUS (current) — **BOTH MERGED, nothing in flight.** Phase 3's two remaining units are DONE.
+> **PR #521** (ADR-0340, v1.0.156) merged as **`a2bfa87`** and **PR #522** (ADR-0341, v1.0.157)
+> merged as **`60d1b50`** — each had **all 6 checks green** (check · linux · windows · test 3.11 ·
+> test 3.13 · browser) and drew no review comments. Branch restarted from `origin/main` with
+> `--prune`, working tree clean, **no check-ins armed**.
+>
+> `DOM_PENDING` is EMPTY, so with `PENDING` empty since ADR-0330 **AXIS-TITLES is closed in both
+> media**. `tests/web/test_dd_line_ledger.py` (**32 tests**) is the DD-line counterpart to
+> `test_axis_titles.py`; it carries **no `src/` change** by design — it makes the gap visible and
+> un-driftable, and CLOSING it is the next unit.
 >
 > ## What the census found (all measured, none inherited)
 > The population is **re-derived, never hand-listed**: every chart declares its own X axis in its

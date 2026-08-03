@@ -11008,4 +11008,9 @@ the briefs + state rotation) earlier today.
   "dashed data-date marker" there too), and a fixed 700-char window over-ran into the next block —
   harmless for three modules, but `drift.js` has no label so the spill supplied a `textContent` and
   a `font-size` from unrelated code and two assertions read the wrong bytes.
+- **Session close: BOTH PRs merged.** #521 (ADR-0340) as `a2bfa87`, #522 (ADR-0341) as `60d1b50`,
+  each with all 6 checks green and no review comments. Branch restarted from `origin/main` with
+  `--prune`, check-ins deleted. `main` is at **v1.0.157**.
+- The `/analysis` focus→tip intermittent **passed on CI for both PRs**, which further supports the
+  standing adjudication that it is a local-environment flake and not a regression. Still do not chase.
 
