@@ -10792,6 +10792,22 @@ def _status_stack(
     )
 
 
+def _stack_not_measured(title: str, desc: str, note: str) -> str:
+    """The :func:`_status_stack` shell with the bar replaced by a stated absence (ADR-0343).
+
+    A stacked bar built from figures the source never provided renders every segment at 0 and a
+    "0 of 0" foot — which reads as a *measurement of zero*, not as "not measured". Law 2 forbids
+    that: an absent figure is an em dash, never a zero. The panel keeps its place in the two-up
+    grid (so the layout does not reflow around a missing sibling) and says what is absent, exactly
+    as the KPI cards beside it already render "—" for the same fields. Same shell as
+    :func:`_status_stack` deliberately — one panel chrome, not two."""
+    return (
+        f'<div class="panel status-stack"><h2>{_e(title)}</h2>'
+        f'<p class="muted">{_e(desc)}</p>'
+        f'<p class="muted">{_e(note)}</p></div>'
+    )
+
+
 def _where_we_stand_header(
     key: str,
     sch: Schedule,
@@ -13244,8 +13260,16 @@ def _work_piling_header(wave: BowWave) -> str:
     scored = [s.cei for s in snaps if s.cei is not None]
     under = sum(1 for c in scored if c < 1.0)
     cei = latest.cei
-    planned = latest.cei_planned or 0
-    finished = latest.cei_finished or 0
+    # ADR-0343 / Law 2 (ADR-0306 sweep row 1-2, settled by rendering the page). ``cei_planned``
+    # and ``cei_finished`` are ``None`` when the snapshot has no comparable prior month — the
+    # preceding version carries no data date, or the month following it falls outside the profiled
+    # window (``bow_wave.py``: both are set only inside the ``lo <= period <= hi`` block). The old
+    # ``or 0`` turned that absence into a measured zero and fed it to the month bar below, which
+    # then drew "Finished 0 / Short of plan 0 / 0 planned in the month" under the heading "Latest
+    # scored month" — on a page whose own takeaway said "No month could be CEI-scored" and whose
+    # KPI cards rendered "—" for these very two fields. One panel contradicted the strip above it.
+    planned = latest.cei_planned
+    finished = latest.cei_finished
 
     # the latest version's finish placement on the shared month axis, split at the data date
     si = latest.status_index
@@ -13258,7 +13282,10 @@ def _work_piling_header(wave: BowWave) -> str:
     def _fin(x: int) -> str:
         return f"{x} finish" if x == 1 else f"{x} finishes"
 
-    if cei is not None and latest.cei_period:
+    # ``cei`` is ``round(done / planned)`` and is ``None`` whenever ``planned`` is absent OR zero,
+    # so the two extra conjuncts cannot change which branch a schedule takes — they state the
+    # precondition the f-string already relied on, and let the checker see it.
+    if cei is not None and latest.cei_period and planned is not None and finished is not None:
         takeaway = (
             f"In {latest.cei_period} the project completed {finished} of the {planned} "
             f"finishes it had planned (CEI {cei:.2f}) — execution ran under plan in "
@@ -13282,20 +13309,28 @@ def _work_piling_header(wave: BowWave) -> str:
             ("Versions compared", str(n_ver)),
             ("Latest CEI", f"{cei:.2f}" if cei is not None else "—"),
             ("CEI month", latest.cei_period or "—"),
-            ("Planned that month", str(planned) if latest.cei_planned is not None else "—"),
-            (
-                "Finished that month",
-                str(finished) if latest.cei_finished is not None else "—",
-            ),
+            ("Planned that month", str(planned) if planned is not None else "—"),
+            ("Finished that month", str(finished) if finished is not None else "—"),
             ("Months under plan", f"{under} / {len(scored)}" if scored else "—"),
         ]
     )
-    month_bar = _status_stack(
-        "Latest scored month",
-        f"Plan vs done in {latest.cei_period or 'the latest period'} — the CEI numerator and denominator.",
-        [("Finished", finished, "--ok"), ("Short of plan", max(planned - finished, 0), "--bad")],
-        f"{planned} planned in the month",
-    )
+    if planned is not None and finished is not None:
+        month_bar = _status_stack(
+            "Latest scored month",
+            f"Plan vs done in {latest.cei_period or 'the latest period'} — the CEI numerator and denominator.",
+            [
+                ("Finished", finished, "--ok"),
+                ("Short of plan", max(planned - finished, 0), "--bad"),
+            ],
+            f"{planned} planned in the month",
+        )
+    else:
+        month_bar = _stack_not_measured(
+            "Monthly plan vs done",
+            "Plan vs done in the latest CEI-scored month — the CEI numerator and denominator.",
+            "No month is scored: no version carries a comparable prior month-over-month plan to "
+            "measure execution against, so the numerator and denominator are absent — not zero.",
+        )
     pile_bar = _status_stack(
         "Where the finishes sit",
         f"The newest version's finish months, split at the data date — {latest.label}.",
@@ -18791,13 +18826,22 @@ def _groups_breakdown_table(sub: Schedule, field: str, *, prov: str = "") -> str
     for value, uids in shown:
         group = filter_schedule(sub, [(field, value)])
         tasks = non_summary(group)
-        total = len(tasks) or 1
+        total = len(tasks)
         complete = sum(1 for t in tasks if t.percent_complete >= 100.0)
         bei = compute_bei(group)
         bei_cell = f"{round(bei.value, 2)}" if bei.population else "<span class=muted>—</span>"
+        # ADR-0343 / Law 2 (ADR-0306 sweep row 3, settled by rendering the page). ``group_values``
+        # scans EVERY task, summaries included, so a value carried only by rollup rows — WBS "0",
+        # Activity Type "Summary" (19 activities on both goldens) — reaches here with an EMPTY
+        # non-summary population. The old ``or 1`` put a fabricated denominator under a numerator
+        # that is also 0 and rendered "0%", i.e. "nothing in this group is complete", beside a BEI
+        # cell already reading "—" for that same empty population. Measured: 19 of 145 WBS rows and
+        # 1 of 2 Activity Type rows on each golden. An empty population is NOT_APPLICABLE — the
+        # rule ``engine/metrics/dcma14.py`` already applies to its own denominators.
+        pct_cell = f"{100.0 * complete / total:.0f}%" if total else "<span class=muted>—</span>"
         rows.append(
             f"<tr><td>{_e(value)}</td><td class=num>{len(uids)}</td>"
-            f"<td class=num>{100.0 * complete / total:.0f}%</td>"
+            f"<td class=num>{pct_cell}</td>"
             f"<td class=num>{bei_cell} <span class=muted>({bei.count}/{bei.population})</span></td></tr>"
         )
     more = (

@@ -11065,3 +11065,76 @@ the briefs + state rotation) earlier today.
   failing because the wheel had not been rebuilt after the static/version change), only 2 were the
   web fixes. Identify by NAME, never by count. Wheel + nine installers rebuilt at v1.0.158 before
   the final gate; `tests/installer` 52 passed.
+
+### 2026-08-03b — Phase 4 opens: the three UNSURE falsy-zero rows, settled by rendering (ADR-0343, v1.0.159)
+
+PR #524 was already merged when the session opened (`8fad93e`) — checked FIRST, per the kickoff.
+Branch restarted from `origin/main`, upstream unset. Phase 3's UI queue is closed, so this is the
+first unit of **Phase 4 (engine/Law-2)**.
+
+**The item was chosen because the audit named what would settle it.** `audit/FALSY-ZERO-SWEEP-
+20260729.md` closed 4 BUG rows under ADR-0306 and left **3 UNSURE**, with one stated reason:
+*"I did not execute the rendered page."* Nothing in the source could resolve them. Rendered — **all
+three fabricate.**
+
+- **Verified first that the 4 BUG rows really were closed** before assuming the 3 UNSURE were what
+  remained. Three are fixed outright (`json_schedule.py` ×2, `resources.py` max_units); the fourth,
+  `resources.py`'s `or [sd]`, is *still there on purpose* — ADR-0306 paired it with the
+  `over_allocated` fix, whose docstring names the non-working-day bucket as a case it must now
+  surface rather than hide. Not re-opened.
+- **`/cei` (rows 1-2).** `cei_planned`/`cei_finished` are `None` when a snapshot has no comparable
+  prior month (`bow_wave` sets them, and `cei_period`, only inside its `lo <= period <= hi` block).
+  `or 0` fed that absence to an **unguarded** `_status_stack`. Two undated versions — an MSPDI
+  without `<StatusDate>` is ordinary, and `order_versions` sorts undated files LAST so the newest
+  snapshot's predecessor is undated too — rendered, in one viewport: takeaway *"No month could be
+  CEI-scored"*, KPI cards *"—"* for both fields, and a panel headed *"Latest scored month"* drawing
+  *"Finished 0 / Short of plan 0 / 0 planned in the month"*.
+- **`/groups` (row 3).** `group_values` scans EVERY task, summaries included, but completion is
+  computed over `non_summary`, so a value carried only by rollup rows arrives with an EMPTY
+  population and `or 1` rendered `0%` — beside a BEI cell already reading `—` for that same empty
+  population. **19 of 145** WBS rows and **1 of 2** Activity Type rows (`Summary`, 19 activities),
+  on *each* committed golden.
+- **The fix: `_stack_not_measured`**, a sibling of `_status_stack` reusing the SAME panel shell —
+  one panel chrome, not two, and the two-up grid does not reflow. `planned`/`finished` keep their
+  `None`; the takeaway's guard gains conjuncts that cannot change its branch (`cei` is `None`
+  whenever `planned` is absent OR zero) but let mypy see the precondition. The breakdown's
+  completion cell renders `<span class=muted>—</span>`, matching its own row's BEI cell.
+- **A matching count is not an identification — again, in a new costume.** The first count taken
+  after rendering was **118**: every WBS row whose cell read `0%`. Re-deriving the population per
+  value cut it to **19** — the other 99 are honest zeros over real activities. The count was
+  reported to nobody because it was re-derived before it was written down.
+- **Verified by render-diff, not by assertion.** Dumped both pages on both sides of the change
+  (launch nonce normalised): `/cei` on the golden pair is **byte-identical**;
+  `/groups?breakdown=Critical` and `…=% Complete` are **byte-identical** (no empty-population
+  value); WBS moved 19 cells, Activity Type 1, nothing else. `git stash push <file>` + `cp` from a
+  scratchpad copy, never `git checkout`.
+- **Proved able to fail, once per surface, independently.** `/cei` caller back to `or 0` +
+  unconditional bar → **2** fail (both `/cei`-unscored), 9 pass including the scored twin;
+  `/groups` caller back to `or 1` → **6** fail (empty-population, both fixtures), the honest-zero
+  twin still PASSES. Neither revert fails the whole module — N-of-N on a shared revert is also what
+  one test run N times looks like.
+- **`tests/web/test_absent_is_not_zero.py` (11)** derives every expectation from
+  `group_values`/`non_summary` at test time rather than transcribing counts, asserts the
+  whole-table invariant (a percentage appears **iff** the value has a non-summary activity behind
+  it), and pairs each fabricating branch with its **true-positive twin**.
+- **`_stat_cards` emits value THEN label.** The session's first KPI read used a regex scanning
+  forward from each label and so reported the NEXT card's value — `Planned = 0` where the page
+  actually said `—`. Caught by the values being internally inconsistent ("CEI month = 0").
+- **Recorded, measured, deliberately NOT fixed:** the breakdown's "Activities" column still counts
+  summary rows (`len(uids)`), so the `Summary` row reads "19 activities" while completion and BEI
+  are both `—`. Fixing that MOVES a displayed population figure rather than removing a fabricated
+  one — ADR-0343 §"Deliberately NOT done".
+
+Wheel + nine installers rebuilt at **v1.0.159 BEFORE** the final gate run (last session's lesson)
+— **and then rebuilt AGAIN**, because a three-line comment edit (pointing the code references at
+ADR-0343 instead of 0306) landed after the build and `test_embedded_wheel_is_in_lockstep_with_the
+_source_tree` compares **byte-for-byte**. It failed exactly as predicted and was named before the
+summary was read. *"Build before the gate" is necessary but not sufficient: the rule is REBUILD
+AFTER THE LAST BYTE OF `src/` CHANGES — a comment is a byte.*
+
+**Full gate, measured (not estimated):** `ruff check` pass · `ruff format --check` 458 clean ·
+`mypy --strict` 117 files clean · `bandit` exit 0 · `node --check` 60/60 · `pytest -m parity`
+**49 passed** (249.90s) · full suite **3400 passed, 3 skipped, 1 failed in 1650.50s (27:30)** —
+the one failure being the stale-wheel lockstep above; `tests/installer` **52 passed** after the
+rebuild. The known-intermittent `/analysis` focus→tip family did NOT fire.
+`app.py` measured at **21,333** lines, `state.py` **1,479**.

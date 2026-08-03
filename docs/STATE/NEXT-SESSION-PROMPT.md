@@ -7,85 +7,84 @@ kickoff steers a fresh session at work that is already done.)
 
 ---
 
-Resume POLARIS (Schedule-Manipulation-Analysis-Tool). **Read `docs/STATE/HANDOFF.md` FIRST**
-(auto-injected). As of last session: **v1.0.154**, highest ADR **0338**. **Three PRs merged —
-#515 (ADR-0336) `1bcf01a`, #516 (ADR-0337) `400f51d`, #517 (ADR-0338) `1835839`** — all with six
-CI checks green and no review comments. `git fetch --prune origin` and restart your branch from
-`origin/main` — **nothing is in flight**. Fresh container: `pip install -e ".[dev]"` plus
+Resume POLARIS (Schedule-Manipulation-Analysis-Tool). Read `docs/STATE/HANDOFF.md` FIRST
+(auto-injected). As of last session: **v1.0.159, highest ADR 0343**. ADR-0306's three carried
+UNSURE falsy-zero rows are CLOSED. **PR #525 (ADR-0343) was IN FLIGHT at session end** — check it
+FIRST (`pull_request_read` get_status). If merged: `git fetch --prune origin && git remote set-head
+origin -a && git checkout -B <branch> origin/main` (then `git branch --unset-upstream`). If open,
+drive it green. Fresh container: `pip install -e ".[dev]"` plus
 `pip install playwright 'ruff==0.16.1' build`.
 
-**Phases 0, 1a, 1b and 2 are DONE, and the cache question is CLOSED.** The operator chose the
-dirty-flag clear (ADR-0336): a write claims the disk cache, a clear releases it, and a launch that
-finds a foreign claim empties it — so hard-kill residue leaves at the very next launch, while a
-launch after a clean quit still clears nothing. **Do not re-open any of it.**
+⇢ WHAT'S DONE — do NOT re-open
+Phase 3 UI is closed (all three DoD ledgers: SVG captions, DOM captions, DD line). Phase 4's first
+unit is closed: `/cei`'s `or 0` and `/groups`' `or 1` no longer fabricate a zero where the figure is
+absent. `_stack_not_measured` is the ONE not-measured panel; `tests/web/test_absent_is_not_zero.py`
+(11) derives its expectations from `group_values`/`non_summary` at test time and pairs every
+fabricating branch with its true-positive twin.
+**The 4 BUG rows of the falsy-zero sweep were re-verified as already closed** — including
+`resources.py`'s `or [sd]`, which is **deliberately still in the tree** (ADR-0306 paired it with the
+`over_allocated` fix that must now SURFACE the non-working-day bucket). Do not "fix" it.
 
-### ⇢ DO THIS FIRST — Phase 3 UI: `/sra` is the last unconverted Act III route
+⇢ NEXT — Phase 4 continues, then 5 and 6
+**CC-01's rendering half** — *"74 sites" is an approximate grep, **RE-DERIVE it** before touching
+anything*; ADR-0240 reserves this for a **Fable 5 Max** deep dive on the CPM date machinery ·
+**SRA-LEGACY** (`audit/SRA-ROOTCAUSE-20260730.md`) · **V3** (`engine/msp_filters.py` hard-codes
+`"d": 480` and discards the elapsed marker it captures in regex group 2; ADR-0310 reduced it from a
+product decision to a **conformance fix**, but it MOVES saved-filter populations — it needs its
+migration-report gate). Then **Phase 5** monolith split 2–3 (`app.py` **21,333** lines, `state.py`
+**1,479** — measured) and **Phase 6** docs/operator queue. OR-04 stays with the operator.
+Carried, measured, NOT fixed: the `/groups` breakdown's **"Activities" column counts summary rows**
+(`len(uids)`), so the `Summary` row reads "19 activities" beside `—` completion and `—` BEI —
+fixing it MOVES a displayed population figure (ADR-0343 §"Deliberately NOT done"). `/briefing`,
+`/path` and `/compare` render a bare takeaway h1 with NO `page-lede`, while `/evm`, `/scurve`,
+`/margin`, `/groups`, `/integrity` carry one.
 
-`/briefing`, `/brief` (ADR-0337) and `/risks` (ADR-0338) are converted and merged. **`/sra` is all
-that is left of the four**, and it is the whole of the next UI unit:
+⇢ THE TRAPS THIS SESSION PAID FOR — check for these BY NAME
+1. **An audit that names its own blind spot is handing you the experiment.** Three rows sat UNSURE
+   for five weeks behind one sentence — *"I did not execute the rendered page."* Rendering settled
+   all three in an hour. **When a prior finding states the evidence it lacked, that sentence IS the
+   task definition** — re-reading the source cannot resolve it.
+2. **A MATCHING COUNT IS NOT AN IDENTIFICATION** (second consecutive session). 118 WBS rows read
+   `0%` and matched the hypothesis; re-deriving the population per value cut it to **19** — the
+   other 99 were honest zeros. *A number that matches your hypothesis is the moment to re-derive
+   it, not the moment to write it down.*
+3. **The defect class: a self-contradiction inside ONE viewport.** Takeaway said "no month could be
+   scored", KPI cards said "—", and the panel between them drew "Latest scored month · 0 planned in
+   the month". Invisible to grep (the `or 0` looks like every other `or 0`), invisible to a unit
+   test of either half, glaring on render. **Cheap high-yield check: render any page that mixes an
+   em-dash KPI strip with a chart, on an input where the figure is absent, and see if the two halves
+   still agree.**
+4. **Verify the premise of the queue item before working it.** A stale audit row and a deliberate
+   exception look identical from the table; only the code says which.
+5. **Read the emitter before writing the parser.** `_stat_cards` emits **value THEN label**, so a
+   regex scanning forward from a label reports the NEXT card's value. The first KPI read claimed the
+   page said `Planned = 0` when it said `—`.
+6. **A revert that fails the WHOLE module proves nothing.** Two independent reverts: `/cei` → 2 of
+   11 fail, `/groups` → 6 of 11 fail, each leaving the other surface AND its own true-positive twin
+   green.
 
-* **15 panels** (measured off rendered HTML — the long-carried "13" was WRONG), ≈550 lines across
-  `_sra_body` (146) · `_sra_report_blocks` (295) · `_sra_explainers` (66) · `_sra_overrides_table`
-  (42). It already has a `page-takeaway` h1; it has **zero** heads/tools/⛶/takes/chips/panelkit.
-* The pattern to copy is in the merged PRs: `_panel_head` + `_shell_tools(export_title=…)` + a
-  provenance chip + one `.sf-take` per panel, `data-export` to an EXISTING endpoint, and
-  `panelkit.js` included **exactly once**.
-* **Extend `tests/web/test_act3_panel_contract.py` and `tests/web/test_act3_themes_chromium.py`** —
-  they are already the Act III census and grow a row per conversion; `/sra` is the last route
-  outside them. Measure the before-census on the pristine tree (`cp` to scratchpad,
-  `git show HEAD:… >`, re-render, `cp` back) — **never `git checkout`**.
-* Then `DOM_PENDING`'s 7 modules, then the DoD ledgers. **The DD-line ledger must EXCLUDE
-  non-time-axis charts** (`histogram.js`, `scatter.js`, `sra_jcl.js`'s cost axis). Follow
-  `docs/DESIGN-SYSTEM.md`, **verify in all four themes**, never touch `engine/` for a UI change,
-  one page per PR.
+⇢ Measured-false, do NOT re-chase
+The DD-line gap is 8 charts (only 1 was real work) · `margin_dashboard` is one chart (**two**, with
+OPPOSITE answers) · the SRA "Finish date" charts want a DD line (their domain is ~17 MONTHS from the
+data date) · `--danger` is the red token (**`--bad`** — `--danger` does not exist) ·
+`pytest --timeout=` is available (it is NOT installed, and the usage error exits **0** through a
+`| tail` pipeline) · source call sites == rendered charts (`curves.js` has ONE `axisTitles` call
+site and renders THREE charts) · `/driving-path` is a fifth unconverted page (that is its EMPTY
+STATE) · counting `<div class=panel` finds every panel (it misses the QUOTED form).
+**Known intermittent: the `/analysis` focus→tip family** (`test_float_tip_dismiss` /
+`test_float_tip_scroll`) — adjudicated, pre-existing, has NEVER failed on CI. Do NOT chase.
 
-Behind: **Phase 4 engine** (`import_notes` propagation · the 3 falsy-zero rows · CC-01's rendering
-half — "74 sites" is an approximate grep, **RE-DERIVE it** · SRA-LEGACY · V3) · **Phase 5** monolith
-split 2–3 (`app.py` ~21k lines) · **Phase 6** docs/operator queue. **OR-04 stays with the operator.**
-
-### ⇢ The three gate-shapes that keep proving vacuous — check for these BY NAME
-
-Every one of the last three PRs shipped an assertion that could not fail, and every one was found
-only by RUNNING the revert:
-
-1. **The code under test destroys its own evidence.** "A clean quit leaves no claim behind" passed
-   against a build that never released anything, because `clear()` **unlinks the database file** —
-   the marker dies with it either way. The assertion only bites on the Windows FALLBACK path.
-   *Ask which of the two implementations your fixture actually exercises.*
-2. **A rendered-appearance assertion nobody has made fail.** The four-theme computed-style probe
-   passed first try; it took two deliberate CSS reverts (jarvis hiding the tool strip, apollo
-   rendering the chip transparent) to show it discriminated. *A style test's failure mode is
-   silence.*
-3. **A per-route rule tested on one route.** Dropping `/risks`'s takeaway h1 failed NOTHING — the
-   takeaway test hard-coded `/brief`. *A loop over `pages.items()` is coverage; a hard-coded key is
-   coverage for one key.* Writing the missing gate then exposed a real Law-2 defect in the new
-   headline, which quoted a SUM the page never rendered.
-
-**Measured-false, do not re-chase:** two servers bound 8321 simultaneously · the surviving server is
-itself the bug (`idle_grace=600` is by design) · a bind-probe answers "is the port taken?" (false on
-Windows — connect-probe) · a hardened urllib opener contains an empty `ProxyHandler` (assert
-**ABSENCE**) · `tooltips.js` is an observer defect (it is the EXEMPLAR) · querySelectorAll CALL
-COUNT measures observer cost (measure **NODES RETURNED**) · `secure_delete=ON` is the obvious Law-1
-cache hardening (26 s on the quit path, blows ADR-0334's 20 s handover) · a bare DELETE leaves
-plaintext so a residue test is a real gate (false on Debian — assert **RECLAIMED SIZE**) ·
-`wipe_gen` stops a late write re-populating the cache (only `/session/wipe` bumps it) ·
-`atexit`/`finally` cover a graceful stop (false for SIGTERM — only the ASGI lifespan does) ·
-**a pid identifies the run holding the cache** (reused, and `os.kill(pid, 0)` **TERMINATES** on
-Windows) · **`/driving-path` is a fifth unconverted page** (that is its EMPTY STATE; `/path` is the
-populated, already-converted variant) · **counting `<div class=panel` finds every panel** (it misses
-the QUOTED `class="panel …"` form). Known intermittent: the /analysis focus→tip family —
-adjudicated, do **NOT** chase.
-
-Standing rules (CLAUDE.md, binding): Law 1 CUI · Law 2 fidelity ("—" never 0; never weaken a test)
-· ADR-0240 model/audit protocol · READ EVERYTHING, ASSUME NOTHING, VERIFY EVERYTHING. Full gate
-before every commit; statics FOREGROUND first (`node --check` **per file** — a glob checks only the
-first); proved-able-to-fail on every new behavioral test (**revert the CALLER, not the API — then
-confirm the revert actually removed the behaviour**, and make sure the fixture can discriminate at
-all — **run the WHOLE module; a `-k` filter can silently deselect the very test you are targeting**);
-HANDOFF rotation + SESSION-LOG + LESSONS-LEARNED same commit; wheel + nine installers ONCE after all
-code lands (bump the version BEFORE the background suite).
-**NEVER `git checkout <file>` to undo a temporary test mutation** — it discards unstaged real work
-in that file; `cp` from a scratchpad copy instead. **`pkill -f <pat>` kills the killer** when the
-pattern appears in its own command line. **pytest stdout redirected to a FILE is block-buffered** —
-the dot count lags badly and is not a stall. **The `/risks` page title is `Risks & Opportunities`
-in source (NOT `&amp;`)** — an Edit that assumes the entity will not match.
+Standing rules (CLAUDE.md, binding): Law 1 CUI · Law 2 fidelity ("—" never 0; never weaken a test) ·
+ADR-0240 model/audit protocol · READ EVERYTHING, ASSUME NOTHING, VERIFY EVERYTHING. Full gate before
+every commit; statics FOREGROUND first (`node --check` PER FILE — a glob checks only the first);
+proved-able-to-fail on every new behavioral test (revert the CALLER, confirm the revert changed the
+RENDER, run the WHOLE module — a `-k` filter can silently deselect the very test you are targeting);
+HANDOFF rotation + SESSION-LOG + LESSONS-LEARNED same commit; wheel + nine installers ONCE (bump the
+version BEFORE the suite, REBUILD if you touch code after; wheel at `dist/wheel/`, then
+`tools/installer/build_installers.py`). NEVER `git checkout <file>` to undo a temporary test
+mutation — `cp` from a scratchpad copy. The missing-value sentinel in `app.py` is the literal `—`,
+never `&mdash;`. **`pgrep -f <pat>` self-matches exactly like `pkill -f`.** pytest stdout to a FILE
+is block-buffered (use `python -u`) — an empty output file is not a stall. `cd` in a Bash call
+persists across calls — use absolute paths. **A number written mid-session is not a measurement** —
+re-read it before it lands in a handoff. Full local suite **~21 min**; CI takes ~11 min to register
+checks and `test (3.11)`/`(3.13)` run ~30 min.
