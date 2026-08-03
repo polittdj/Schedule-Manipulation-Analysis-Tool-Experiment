@@ -24,15 +24,54 @@ PYPROJECT = REPO_ROOT / "pyproject.toml"
 _ADR_FILE = re.compile(r"^(\d{4})-.*\.md$")
 
 
-def _latest_adr_number() -> int:
-    """Highest ADR sequence number among ``docs/adr/NNNN-*.md`` files."""
-    numbers = []
+def _adr_numbers() -> list[tuple[int, str]]:
+    """Every ``docs/adr/NNNN-*.md`` as ``(number, filename)`` — duplicates INCLUDED."""
+    found = []
     for path in ADR_DIR.iterdir():
         match = _ADR_FILE.match(path.name)
         if match:
-            numbers.append(int(match.group(1)))
-    assert numbers, f"no ADR files found in {ADR_DIR}"
-    return max(numbers)
+            found.append((int(match.group(1)), path.name))
+    assert found, f"no ADR files found in {ADR_DIR}"
+    return found
+
+
+def _latest_adr_number() -> int:
+    """Highest ADR sequence number among ``docs/adr/NNNN-*.md`` files."""
+    return max(number for number, _ in _adr_numbers())
+
+
+def test_adr_numbers_are_unique() -> None:
+    """No two ADRs may share a sequence number.
+
+    Two concurrent sessions each branched from the same ``main``, each picked "highest + 1",
+    and both landed on **0344** — one for the skills commit (#527, merged) and one for a
+    logging-isolation fix (#528). An ADR number is a *cited identifier* in this project: ADRs
+    are quoted by number in handoffs, session logs, commit messages, PR bodies, code comments
+    and the parity/testimony narrative. Two decisions under one number makes every such
+    citation ambiguous, and the ambiguity is unfixable later without rewriting published
+    history.
+
+    **None of the other assertions in this module can catch it.** ``_latest_adr_number()``
+    takes ``max()``, so duplicate ``0344``s both resolve to ``344``; ``HANDOFF.md`` and
+    ``SESSION-LOG.md`` then legitimately contain the string ``ADR-0344`` because *both* PRs
+    wrote it. Every existing check passes over a corrupted record — a guard going green on
+    exactly the thing it exists to protect. Hence this test: assert the *property* (numbers
+    are unique), not the symptom.
+
+    The fix when this fails is always to renumber the LATER-merged ADR, never to delete or
+    reuse the earlier one.
+    """
+    by_number: dict[int, list[str]] = {}
+    for number, name in _adr_numbers():
+        by_number.setdefault(number, []).append(name)
+    duplicates = {n: sorted(names) for n, names in by_number.items() if len(names) > 1}
+    assert not duplicates, (
+        "docs/adr/ has more than one ADR per sequence number — an ADR number is a cited "
+        "identifier and must be unique:\n"
+        + "\n".join(f"  ADR-{n:04d}: {', '.join(names)}" for n, names in sorted(duplicates.items()))
+        + "\nRenumber the ADR that merged LATER to the next free number (and update its "
+        "references in HANDOFF.md / SESSION-LOG.md / LESSONS-LEARNED.md and its commit/PR text)."
+    )
 
 
 def test_handoff_references_latest_adr() -> None:

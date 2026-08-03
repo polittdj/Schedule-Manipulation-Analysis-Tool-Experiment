@@ -1,10 +1,20 @@
 # Handoff — 2026-08-03d (External audit adjudicated; the logging-isolation leak closed; ADR-0345; v1.0.160)
 
-> ## STATUS (current) — **IN FLIGHT as #528.** #527 (skills) MERGED as `d57e230`.
-> Branch `claude/polaris-phase-4-engine-zpo69e`, based on `1119162`, **merged with `origin/main`
-> (`d57e230`)** to resolve the four state-doc conflicts #527 created. ADR-**0345**, **v1.0.160**.
-> **ADR number collision resolved:** #527 took 0344 while this branch was open, so this work
-> renumbered 0344 → **0345**. Check the highest ADR on disk before choosing a number.
+> ## STATUS (current) — **IN FLIGHT as #528.** #527 and #529 are MERGED; the renumber is DONE.
+> Branch `claude/polaris-phase-4-engine-zpo69e`, merged up to `origin/main` at **`f8a87d3`**.
+> ADR-**0345**, **v1.0.160**.
+>
+> ## The ADR-0344 collision — found by #529, already resolved here
+> Two sessions branched from `1119162`, both took "highest + 1", and both landed on **0344**.
+> #527 (skills) took it first and merged, so **this branch renumbered 0344 → 0345** —
+> `docs/adr/0345-a-test-that-configures-logging-must-not-configure-the-next-one.md`, with every
+> citation updated (ADR body, `tests/`, `audit/EXTERNAL-AUDIT-20260803.md`, the state docs).
+> #529 then shipped the guard that makes it impossible to repeat: **`test_adr_numbers_are_unique`**
+> in `tests/test_state_docs.py`. It is worth reading — the four *pre-existing* assertions in that
+> module all stayed GREEN over the corrupted record (`_latest_adr_number()` takes `max()`, and both
+> durable docs legitimately contained `ADR-0344` because both PRs wrote it), which is the empirical
+> proof that a guard can go green on exactly the thing it exists to protect. **This branch passes
+> the new guard.**
 >
 > ## Already merged and usable — #527's seven project skills (`.claude/skills/`)
 > `full-gate` · `prove-able-to-fail` · `render-verify` · `metric-parity` · `ui-change` ·

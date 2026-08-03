@@ -537,6 +537,20 @@ those fixed defects in earlier "closed" fixes:
   sentence is the experiment.** Corrected in the ADR and handoff with the superseded claim left
   VISIBLE — a limitation quietly deleted teaches nothing, and reading *"stated, then measured away"*
   is how a future session learns the move.
+- **Two concurrent sessions minted the same ADR number, and the drift guard was structurally blind to
+  it.** #527 (skills) and #528 (logging isolation) each branched from `1119162`, each took
+  "highest + 1", and both produced **ADR-0344**. `_latest_adr_number()` takes `max()`, so duplicates
+  both resolve to `344`, and both durable docs legitimately contain `ADR-0344` because *both* PRs wrote
+  it — **all four existing assertions pass over a corrupted record.** An ADR number is a *cited
+  identifier* here (handoffs, logs, commits, PR bodies, code comments, the testimony narrative), so a
+  duplicate is not cosmetic and cannot be fixed later without rewriting published history.
+  `test_adr_numbers_are_unique` now asserts the property. **Proved able to fail with the REAL colliding
+  filename: 1 failed, 4 passed** — and the four green ones are the finding, not a footnote: they are the
+  measurement that the old guards could never have caught it. Lesson: **"highest + 1" is not a
+  concurrency-safe allocator**, and a guard derived via `max()` is blind to duplicates by construction.
+  Sub-lesson on the fix itself: **do not mint a new ADR number to record a fix for ADR-number
+  collisions** — taking 0345 would have collided with the renumber #528 was just asked to make. A guard
+  that enforces an existing convention does not need a new decision record.
 - **A skill is a checklist, never an oracle.** Each rule cites the ADR or lessons date that bought it
   so a future session can verify it against the code; per ADR-0240 anything parity-, engine-,
   testimony- or CUI-relevant is still re-validated by the lead before it lands.
