@@ -68,6 +68,21 @@ from a defect that fabricates a capacity figure on a served page.
 
 ## UNSURE — reachable, but I could not settle the display contract without more context
 
+> **SETTLED 2026-08-03 (ADR-0343).** All three rows were resolved the only way they could be: by
+> rendering the pages. **All three fabricate.** `app.py:12455-12456` fed the `or 0` to an unguarded
+> `_status_stack`, which drew *"Finished 0 / Short of plan 0 / 0 planned in the month"* under the
+> heading *"Latest scored month"* — on a page whose own takeaway read *"No month could be
+> CEI-scored"* and whose KPI cards rendered `—` for those same two fields. `app.py:17581` rendered
+> `0%` completion for a value carried only by summary rows, beside a BEI cell already rendering `—`
+> for that same empty population: **19 of 145** WBS rows and **1 of 2** Activity Type rows on *each*
+> committed golden. The honest limit quoted below was the right call — the answer was not derivable
+> from the source alone, and the sweep was correct not to guess it.
+>
+> One correction to the reasoning, not the classification: the first count taken after rendering was
+> **118** — every WBS row whose cell read `0%`. Re-deriving the population per value cut it to 19;
+> the other 99 are honest zeros over real activities. A matching cell value is not an
+> identification.
+
 | File:line | Code | What is missing |
 |---|---|---|
 | `web/app.py:12455` | `planned = latest.cei_planned or 0` | `cei_planned: int \| None` (`engine/bow_wave.py:92`). `None` means *not computable* (no prior snapshot); `or 0` renders it as **"0 planned"**. Whether that is a Law-2 fabrication depends on how the cell is rendered — I did not establish whether the surrounding template distinguishes 0 from "—". A legitimate `0` and a `None` become indistinguishable either way. |

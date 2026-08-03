@@ -1,91 +1,90 @@
-# Handoff — 2026-08-03 (Phase 3 UI: the DD-line gap closes into ONE helper; ADR-0342; v1.0.158)
+# Handoff — 2026-08-03b (Phase 4 opens: the three UNSURE falsy-zero rows, settled by rendering; ADR-0343; v1.0.159)
 
-> ## STATUS (current) — **IN FLIGHT.** `DD_PENDING` is EMPTY; the DD line has one implementation.
-> Branch `claude/dd-line-gap-closure-6u9op1`, restarted from `origin/main` at **`5413b6b`**
-> (#523 was already merged when this session opened — checked FIRST, as the kickoff asked).
-> ADR-0342, **v1.0.158**. Not yet pushed at the time of writing; drive the PR to green.
+> ## STATUS (current) — **IN FLIGHT.** ADR-0306's three carried UNSURE rows are CLOSED.
+> Branch `claude/polaris-phase-4-engine-zpo69e`, restarted from `origin/main` at **`8fad93e`**
+> (#524 was already merged when this session opened — checked FIRST, as the kickoff asked).
+> ADR-**0343**, **v1.0.159**. Wheel + nine installers rebuilt at 1.0.159 BEFORE the final gate.
 >
-> ## What landed
-> **ONE helper — `SFGantt.dataDateLine`** — in head-loaded `gantt.js`, beside `tableCaption`. The
-> home was decided by LOAD ORDER before anything else (ADR-0340's lesson): `_LAYOUT` emits
-> `chartframe.js` AFTER `</main>`, and most time-axis charts are parse-time body scripts, so a
-> `SFChartFrame` helper would be `undefined` when they draw. **A test pins the layout's script
-> order**, so the home cannot outlive its justification. Colour/type come from `.ch-dd` in
-> `base.css`: `--bad` (red — there is no `--danger`) and the SAME `--sf-fs-axis-title` token the
-> captions read, replacing four hard-coded `"font-size": 10`.
+> ## What landed — Phase 4's first unit, and it needed a RENDER, not a read
+> The 2026-07-29 falsy-zero sweep closed 4 BUG rows (ADR-0306) and left **3 UNSURE**, for one
+> stated reason: *"I did not execute the rendered page."* That is the only thing that could settle
+> them. Rendered — **all three fabricate.**
 >
-> The four hand-rolled copies are **retired** (`cei`, `curves`, `drift`, `scurve`). `drift`'s legend
-> note ("grey dotted") was corrected to match what is drawn; `scurve`'s appended date moved into the
-> marker's `<title>`, where chartframe's shared hover call-out shows it.
+> * **`/cei` (rows 1-2).** `cei_planned`/`cei_finished` are `None` when the snapshot has no
+>   comparable prior month; `or 0` fed that absence to an **unguarded** `_status_stack`. On two
+>   undated versions the page said, in one viewport: takeaway *"**No month could be CEI-scored**"*,
+>   KPI cards *"—"* for both fields, and a panel headed *"**Latest scored month**"* drawing
+>   *"Finished 0 / Short of plan 0 / **0 planned in the month**"*.
+> * **`/groups` (row 3).** `group_values` scans EVERY task, summaries included, but completion is
+>   computed over `non_summary`. `or 1` supplied a denominator for a numerator that is also 0 →
+>   `0%` beside a BEI cell already reading `—` for that same empty population.
 >
-> ## The finding: 6 of the 8 "pending" charts were never work
-> Both reclassifications came from a RENDER, not from the bucket they sat in.
+> **One helper — `_stack_not_measured`** — a sibling of `_status_stack` reusing the SAME panel
+> shell (one panel chrome, not two; the two-up grid does not reflow). `planned`/`finished` keep
+> their `None`; the takeaway's guard gains conjuncts that cannot change its branch (`cei` is
+> `None` whenever `planned` is absent OR zero) but let the checker see the precondition.
 >
-> * **`margin_dashboard` splits.** Rendered with deliberately irregular status dates (1wk, 1wk,
->   **15wk**), the burn-down spaced all four versions **EVENLY** — the 15-week jump got the same
->   pixel width as the 1-week gaps and two ticks both read "2026-03". It is one slot per loaded
->   version: `margin.js`'s categorical axis wearing a date's name. Caption now reads **"Schedule
->   version (status date)"**; moved to `VERSION_AXIS`. Its SIBLING erosion chart is the opposite —
->   `x(t)` linear in ms, domain EXTENDED to the projected zero-margin date — so the data date is
->   the measured/projected boundary. It kept its entry and now draws the marker.
-> * **The five SRA "Finish date" sites are a new `OUTCOME_AXIS` family.** Measured on `project2_5`:
->   status date **2026-08-27**, `/api/sra` CDF domain **2028-01-21 → 2028-01-28** — the data date is
->   ~17 months LEFT of a 7-day, index-spaced window. Clamping to the edge would assert the data date
->   IS the earliest simulated finish (Law 2). The tell was already in the tree: `sra_jcl.js`'s
->   SIBLING cost axis was already excluded, and it is the same joint distribution with the other
->   variable on x.
+> ## The counts — RE-DERIVED, and the first one was wrong
+> | fixture · field | rows | empty-population rows rendering `0%` | honest `0%` rows |
+> | --- | --- | --- | --- |
+> | Project5 · WBS | 145 | **19** | 99 |
+> | Project5 · Activity Type | 2 | **1** (`Summary`, 19 activities) | 0 |
+> | Project2 · WBS | 145 | **19** | 106 |
+> | Project2 · Activity Type | 2 | **1** | 0 |
 >
-> **Only `resources.js` was genuinely pending.** Its buckets are equal-length calendar periods, so
-> the marker has a real position. The bucket KEY is computed server-side by the engine's own
-> `bucket_key` (renamed from `_bucket_key`; two internal callers) rather than re-deriving ISO week
-> numbering in JS. Right edge of the data-date bucket; a data date outside the span draws NOTHING.
+> The first count taken was **118** — every row whose cell read `0%`. Re-deriving the population
+> per value cut it to 19. **A matching cell value is not an identification** (the same trap the
+> prior session paid for, in a new costume).
 >
-> ## Buckets (all derived) and the detector change
-> `TIME_AXIS` **6** · `VERSION_AXIS` **10** · `OUTCOME_AXIS` **5** · `NOT_TIME_AXIS` **6** ·
-> `OPTS_NOT_LITERAL` **1** · `DD_PENDING` **empty**. The detector moved with the code: anchored on
-> the CALL (there is one implementation now), counted **PER MODULE against that module's time-axis
-> chart count** — `margin_dashboard` is exactly why a module-level "has a marker anywhere" flag
-> would have been wrong.
+> ## Verification — a render diff, then two independent reverts
+> Rendered on both sides and diffed (launch nonce normalised): `/cei` on the **golden pair** is
+> **byte-identical**; `/groups?breakdown=Critical` and `…=% Complete` are **byte-identical** (no
+> empty-population value); WBS moved 19 cells and Activity Type 1, and nothing else.
 >
-> ## Verification — 3 reverts on 3 different gates
 > | revert | result |
 > | --- | --- |
-> | neuter the **shared** helper | **all 4** render tests fail — and **34 ledger tests still PASS** |
-> | remove **one** caller (`resources.js`) | **exactly 1** fails, other 3 pass — they DISCRIMINATE |
-> | `.ch-dd line` `--bad` → `--accent` (CSS only) | **4** fail, incl. the ledger's design-system test |
+> | `/cei` caller → `or 0` + unconditional bar | **2** fail (both `/cei`-unscored); 9 pass, incl. the scored twin |
+> | `/groups` caller → `or 1` | **6** fail (empty-population, both fixtures); the honest-zero twin PASSES |
 >
-> The first is the important one *because of what passed*: a source census cannot catch a broken
-> helper, so `test_dd_line_render.py` is not redundant with the ledger. The second is the proof
-> ADR-0340's lesson demanded — N/N failing on a shared revert is also what one test run N times
-> looks like.
+> Neither revert fails the whole module — that is the point. `tests/web/test_absent_is_not_zero.py`
+> (**11**) derives every expectation from `group_values`/`non_summary` at test time rather than
+> transcribing it, asserts the whole-table invariant (a percentage appears **iff** the value has a
+> non-summary activity behind it), and pairs each fabricating branch with its **true-positive
+> twin** — the goldens' really-scored month still reports `3 of 3` / CEI `1.00`, and the 99/106
+> genuinely-0% WBS rows still read `0%`.
 >
-> ## Next
-> Phase 3 UI's DoD ledgers are now closed in all three (captions SVG + DOM, DD line). Behind:
-> **Phase 4 engine** (`import_notes` propagation · the 3 falsy-zero rows · CC-01's rendering half —
-> "74 sites" is an approximate grep, RE-DERIVE it · SRA-LEGACY · V3) · **Phase 5** monolith split
-> 2–3 (`app.py` ~21k lines) · **Phase 6** docs/operator queue. OR-04 stays with the operator.
+> ## Next — Phase 4 continues
+> Remaining in the queue: **CC-01's rendering half** — *"74 sites" is an approximate grep,
+> **RE-DERIVE it** before touching anything* (ADR-0240 reserves this for a Fable 5 Max deep dive) ·
+> **SRA-LEGACY** · **V3** (`msp_filters.py` hard-codes `"d": 480`; ADR-0310 reduced it from a
+> product decision to a conformance fix, but it MOVES saved-filter populations — it needs its
+> migration-report gate). Then **Phase 5** monolith split 2-3 (`app.py` is **21,333** lines after
+> this change, `state.py` 1,479 — measured) and **Phase 6** docs/operator queue. OR-04 stays with
+> the operator.
+>
+> **Recorded, measured, deliberately NOT fixed** (ADR-0343 §"Deliberately NOT done"): the
+> breakdown's **"Activities" column still counts summary rows** — `len(uids)` straight from
+> `group_values` — so the `Summary` row reads "19 activities" while its completion and BEI are both
+> `—`. Fixing it MOVES a displayed population figure rather than removing a fabricated one.
 > Carried UI gap (measured, NOT fixed): `/briefing`, `/path` and `/compare` render a bare takeaway
 > h1 with NO `page-lede`, while `/evm`, `/scurve`, `/margin`, `/groups`, `/integrity` carry one.
 >
 > ## Carried forward, unchanged
-> **Known intermittent: the `/analysis` focus→tip family** — alternates run to run, re-verified
-> pre-existing on `origin/main`'s own statics, and it has NEVER failed on CI. Do NOT chase.
-> `pgrep -f <pat>` self-matches exactly like `pkill -f`. pytest stdout to a FILE is block-buffered.
-> `cd` in a Bash call persists across calls — use absolute paths.
+> **Known intermittent: the `/analysis` focus→tip family** (`test_float_tip_dismiss` /
+> `test_float_tip_scroll`) — adjudicated, pre-existing, has NEVER failed on CI. Do NOT chase.
+> `pgrep -f <pat>` self-matches exactly like `pkill -f`. pytest stdout to a FILE is block-buffered
+> (use `python -u`). `cd` in a Bash call persists across calls — use absolute paths.
+> `pytest --timeout=` is NOT installed here and its usage error exits **0** through a `| tail`
+> pipeline. `--bad` is the red token; `--danger` does not exist. Source call sites ≠ rendered
+> charts. Never `git checkout <file>` to undo a temporary test mutation — `cp` from a scratchpad
+> copy (used twice this session, for both reverts).
 >
-> **New this session:** a host list guessed from the ledger's `(module, line)` keys **under-reported
-> by two** — `curves.js` has ONE `axisTitles` call site and renders THREE charts through it. Source
-> call sites and rendered charts are different populations; PROBE the page for the second one.
-> Also: `pytest --timeout=` is not installed here, and the usage error exited **0** through a
-> `| tail` pipeline — check for the summary line, never the status.
->
-> **A MATCHING COUNT IS NOT AN IDENTIFICATION.** The suite showed 6 failures right after I fixed 6
-> test files, and I wrote that they were mine. **4 of the 6 were `tests/installer/`** — the
-> embedded-wheel lockstep checks, failing because the wheel had not been rebuilt after the static
-> assets and version changed. Identify by NAME: strip the `[ nn%]` suffixes from `-q` progress
-> output, take the indices of `F`/`E`, and read those lines out of `pytest --collect-only -q`.
-> Works mid-run, no waiting for the summary. **The installer suite fails by design until the wheel
-> is rebuilt — build it BEFORE the final gate run, not after.**
+> **New this session:** the page carried the answer in its own KPI strip the whole time. Two of the
+> three rows were a *self-contradiction inside one viewport* — takeaway and cards already correct,
+> one panel disagreeing — which is what makes them findable by rendering and invisible to a grep.
+> Also: `_stat_cards` emits **value THEN label**, so a regex reading forward from a label picks up
+> the NEXT card's value; the first KPI read of this session was off by one and reported
+> `Planned = 0` where the page actually said `—`.
 
 # (prior) handoffs — archived
 

@@ -435,6 +435,54 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-03b — An audit that names its own blind spot is telling you the experiment to run
+- **The three UNSURE rows of the 2026-07-29 falsy-zero sweep sat open for five weeks, and the sweep
+  had already written down how to close them:** *"I did not execute the rendered page."* Not a
+  hedge — a **protocol**. Rendering the two pages settled all three inside an hour, and all three
+  fabricated. **When a prior finding states the evidence it lacked, that sentence IS the task
+  definition.** Re-reading the source for a sixth time would never have resolved it, because the
+  answer was never in the source: it was in the template's `is not None` on the line below.
+- **The defect shape worth naming: a self-contradiction inside one viewport.** On `/cei`, the
+  takeaway said *"No month could be CEI-scored"* and the KPI cards said *"—"* — both correct —
+  while a panel between them drew *"Latest scored month · 0 planned in the month"*. Nothing was
+  wrong with the data or the engine; **one consumer of a nullable field forgot it was nullable.**
+  This class is invisible to a grep (the `or 0` looks like every other `or 0`) and invisible to a
+  unit test of either component, but it is *glaring* the instant you render. Cheap, high-yield
+  check: for any page mixing an em-dash KPI strip with a chart, render an input where the figure is
+  absent and see whether the two halves still agree.
+- **A matching count is not an identification — the second consecutive session to pay for it, in a
+  new costume.** Last session it was 6 test failures matching 6 fixed files (4 were unrelated
+  installer lockstep). This session it was **118** WBS rows reading `0%` matching a suspected
+  fabrication; re-deriving the population per value cut it to **19**, with 99 honest zeros. The
+  generalization: *a number that matches your hypothesis is the moment to re-derive it, not the
+  moment to write it down.* Same discipline as the standing rule "a number written mid-session is
+  not a measurement".
+- **Verify the premise of the queue item before working it.** The handoff said "the 3 falsy-zero
+  rows"; before touching them, the 4 supposedly-CLOSED BUG rows were re-checked. Three were fixed —
+  but the fourth, `resources.py`'s `or [sd]`, is **still in the tree on purpose**: ADR-0306 paired
+  it with the `over_allocated` fix, whose docstring names the non-working-day bucket as a case it
+  must now *surface*. Had that been "fixed" on the strength of the audit table alone, it would have
+  re-hidden the exact over-allocation ADR-0306 exposed. **A stale audit row and a deliberate
+  exception look identical from the table; only the code says which.**
+- **Read the emitter before writing the parser.** `_stat_cards` emits **value THEN label**, so the
+  session's first KPI probe — a regex scanning forward from each label — reported the *next* card's
+  value and claimed the page said `Planned = 0` when it said `—`. Caught only because the results
+  were internally absurd ("CEI month = 0"). A scraping regex over your own templates is a piece of
+  code that can be wrong; sanity-check it against a case whose answer you already know.
+- **A revert that fails the whole module proves nothing.** Two independent reverts were run, one
+  per surface: the `/cei` revert failed 2 of 11 and the `/groups` revert failed 6 of 11, each
+  leaving the other surface's tests — and its own true-positive twin — green. N-of-N failing is
+  also what one test copy-pasted N times looks like.
+- **"Build the wheel before the gate" is necessary but not sufficient.** Last session's lesson was
+  followed — wheel + nine installers built at v1.0.159 before the suite — and the gate still failed
+  on `test_embedded_wheel_is_in_lockstep_with_the_source_tree`, because a **three-line comment
+  edit** landed afterwards and the test compares **byte-for-byte**. The sharpened rule:
+  **REBUILD AFTER THE LAST BYTE OF `src/` CHANGES — a comment is a byte.** The recovery was cheap
+  only because the failure was *predicted and named* the moment the edit was made, rather than
+  triaged from a summary line 27 minutes later. Corollary worth keeping: when you knowingly
+  invalidate an artifact mid-session, write down which test will fail before it does — that turns a
+  red gate from a surprise into a checklist item.
+
 ### 2026-08-03 — "Denominated in dates" is not "a time axis" (ADR-0342, the DD-line gap closes)
 - **The pending list was 8. Six of the eight were not work at all** — they were two
   misclassifications wearing a date's name, and both were caught by *rendering* rather than by
