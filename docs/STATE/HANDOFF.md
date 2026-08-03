@@ -1,8 +1,9 @@
 # Handoff — 2026-08-03b (Phase 4 opens: the three UNSURE falsy-zero rows, settled by rendering; ADR-0343; v1.0.159)
 
-> ## STATUS (current) — **IN FLIGHT.** ADR-0306's three carried UNSURE rows are CLOSED.
-> Branch `claude/polaris-phase-4-engine-zpo69e`, restarted from `origin/main` at **`8fad93e`**
-> (#524 was already merged when this session opened — checked FIRST, as the kickoff asked).
+> ## STATUS (current) — **MERGED, nothing in flight.** ADR-0306's three carried UNSURE rows are CLOSED.
+> **PR #525 merged as `f063463`** with all **six** CI checks green (`check` · `linux` · `windows` ·
+> `browser (measured-box proof)` · `test (3.11)` · `test (3.13)`) and no review comments. The
+> branch was restarted from the new `origin/main` at `f063463`.
 > ADR-**0343**, **v1.0.159**. Wheel + nine installers rebuilt at 1.0.159 BEFORE the final gate.
 >
 > ## What landed — Phase 4's first unit, and it needed a RENDER, not a read

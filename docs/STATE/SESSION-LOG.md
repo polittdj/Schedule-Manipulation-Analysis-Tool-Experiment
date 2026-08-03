@@ -11138,3 +11138,7 @@ AFTER THE LAST BYTE OF `src/` CHANGES — a comment is a byte.*
 the one failure being the stale-wheel lockstep above; `tests/installer` **52 passed** after the
 rebuild. The known-intermittent `/analysis` focus→tip family did NOT fire.
 `app.py` measured at **21,333** lines, `state.py` **1,479**.
+
+**Merged.** PR #525 → **`f063463`**, all **six** CI checks green (`check` · `linux` · `windows` ·
+`browser (measured-box proof)` · `test (3.11)` · `test (3.13)`), no review comments. Branch
+restarted from the new `origin/main` with `--prune` per the post-squash-merge rule.
