@@ -8,12 +8,21 @@ kickoff steers a fresh session at work that is already done.)
 ---
 
 Resume POLARIS (Schedule-Manipulation-Analysis-Tool). Read `docs/STATE/HANDOFF.md` FIRST
-(auto-injected). As of last session: **v1.0.159, highest ADR 0343**. ADR-0306's three carried
-UNSURE falsy-zero rows are CLOSED. **PR #525 (ADR-0343) MERGED as `f063463`** with all six CI
-checks green — **nothing is in flight.** `git fetch --prune origin && git remote set-head origin -a
+(auto-injected). As of last session: **v1.0.159, highest ADR 0344**. ADR-0306's three carried
+UNSURE falsy-zero rows are CLOSED (ADR-0343, PR #525 → `f063463`). ADR-0344 committed **seven
+project skills** under `.claude/skills/`. `git fetch --prune origin && git remote set-head origin -a
 && git checkout -B <branch> origin/main` (then `git branch --unset-upstream`) and start the next
 unit. Fresh container: `pip install -e ".[dev]"` plus
 `pip install playwright 'ruff==0.16.1' build`.
+
+⇢ USE THE SKILLS — they exist so you do not re-derive them
+`.claude/skills/` now carries the standing rituals as invoked procedures (see its `README.md`):
+**`full-gate`** (the gate + real-vs-environment triage) · **`prove-able-to-fail`** (falsify any new
+test/guard BEFORE trusting it) · **`render-verify`** (render and MEASURE the page; a tested Tier-1
+recipe + the measured-box tier) · **`metric-parity`** (Law 2 vs the Bible and the oracles) ·
+**`ui-change`** (the Mission Ops DoD) · **`cui-guard`** (Law 1) · **`session-close`** (ADR +
+handoff rotation + logs + wheel/installers + PR). They are law-citing checklists, **not oracles** —
+ADR-0240 still applies, and the lead re-verifies anything parity-, engine-, testimony- or CUI-relevant.
 
 ⇢ WHAT'S DONE — do NOT re-open
 Phase 3 UI is closed (all three DoD ledgers: SVG captions, DOM captions, DD line). Phase 4's first
@@ -24,6 +33,7 @@ fabricating branch with its true-positive twin.
 **The 4 BUG rows of the falsy-zero sweep were re-verified as already closed** — including
 `resources.py`'s `or [sd]`, which is **deliberately still in the tree** (ADR-0306 paired it with the
 `over_allocated` fix that must now SURFACE the non-working-day bucket). Do not "fix" it.
+**Do NOT re-search the skill catalogs** — ADR-0344 recorded both searches as empty of anything new.
 
 ⇢ NEXT — Phase 4 continues, then 5 and 6
 **CC-01's rendering half** — *"74 sites" is an approximate grep, **RE-DERIVE it** before touching
