@@ -63,6 +63,15 @@ HEAD_SEL = ".panel h2, .panel h3, .chart h3, .tile-head h3, main h2, main h3"
 GRID_SEL = "table.gantt-grid"
 PANE_SEL = "#grid, .gantt-scroll, .path-view, .sra-grid-scroll"
 
+#: Two INDEPENDENT preconditions, and both must be checked. The chromium path check alone was not
+#: enough: in a lean venv that HAS the bundled browser but NOT the pip package (a plain
+#: `pip install -e '.[dev]'` — `browser` is its own extra), the skipif passed, the module-scoped
+#: `storm` fixture reached its bare `from playwright.sync_api import …`, and both tests ERRORED
+#: instead of skipping. Measured on pytest 8.0.2: `1 failed, 3 passed, 2 errors`. `importorskip` is
+#: module-level here because EVERY test in this module needs the browser — checking it before the
+#: `served` fixture also means no uvicorn server is started only to be thrown away (ADR-0346).
+pytest.importorskip("playwright", reason="playwright not installed (runtime stays stdlib-only)")
+
 pytestmark = pytest.mark.skipif(not CHROME.exists(), reason=f"bundled chromium not at {CHROME}")
 
 
