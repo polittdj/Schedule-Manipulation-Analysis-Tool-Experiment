@@ -1,4 +1,4 @@
-# ADR-0344 — A test that configures logging must not configure the next one
+# ADR-0345 — A test that configures logging must not configure the next one
 
 **Status:** Accepted · **Date:** 2026-08-03 · **Audit:** external review 2026-08-03, lead item 2
 (HIGH CI reliability / LOW product impact) · **Related:** ADR-0250 (dependency floors)

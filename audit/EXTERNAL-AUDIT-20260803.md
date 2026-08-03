@@ -82,7 +82,7 @@ with six green checks.
 incompatibility; a skip-vs-error gap. (An earlier reading of mine called it a pytest-8
 incompatibility — wrong, corrected here.)
 
-Fixed under **ADR-0344**.
+Fixed under **ADR-0345**.
 
 ## 3 — Mislabeled tracked intake files · CONFIRMED (89), but scoped to non-product files
 
@@ -219,7 +219,7 @@ marks the formerly engine-pinned §E subset explicitly. Upgrading any row from "
 |---|---|
 | **Release blockers** | none |
 | **Numerical defects** | none found by this audit (CC-01 / SRA-LEGACY pre-date it, are tracked, and are reserved for a Fable 5 Max deep dive per ADR-0240) |
-| **CI reliability** | #2 (fixed, ADR-0344), #1 (next unit) |
+| **CI reliability** | #2 (fixed, ADR-0345), #1 (next unit) |
 | **Repo hygiene / provenance** | #3, #4, #5, #7 |
 | **Legal** | #6 — operator only |
 
@@ -231,7 +231,7 @@ number the tool reports today.
 
 ## Remediation order
 
-**P0** — logging isolation (**done**, ADR-0344) · constraints file + upper bounds + a floor-version
+**P0** — logging isolation (**done**, ADR-0345) · constraints file + upper bounds + a floor-version
 CI leg · `importorskip` in the two bare-import modules.
 **P1** — intake manifest with an extension↔content regression test · reconcile R-03/R-12 · harden
 the CUI hook (`.json` content sniff, `.p6xml`, `*.mpp.*`) · pin Actions to SHAs.

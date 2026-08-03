@@ -1,4 +1,4 @@
-"""ADR-0344 — a test that configures logging must not change the next test's logging.
+"""ADR-0345 — a test that configures logging must not change the next test's logging.
 
 ``configure_logging`` sets ``propagate = False`` on the ``schedule_forensics`` logger. That is
 right for the shipped tool (Law 1: records must never reach an unredacted root handler) and wrong

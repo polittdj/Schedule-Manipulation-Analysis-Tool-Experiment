@@ -11143,7 +11143,7 @@ rebuild. The known-intermittent `/analysis` focus→tip family did NOT fire.
 `browser (measured-box proof)` · `test (3.11)` · `test (3.13)`), no review comments. Branch
 restarted from the new `origin/main` with `--prune` per the post-squash-merge rule.
 
-### 2026-08-03c — an external audit, adjudicated by measurement; the logging leak closed (ADR-0344, v1.0.160)
+### 2026-08-03c — an external audit, adjudicated by measurement; the logging leak closed (ADR-0345, v1.0.160)
 
 The operator submitted a 13-claim external review and asked that each be validated or refuted by
 testing, not reading. All 13 were tested; full evidence in `audit/EXTERNAL-AUDIT-20260803.md`.

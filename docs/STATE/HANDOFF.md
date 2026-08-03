@@ -1,8 +1,8 @@
-# Handoff — 2026-08-03c (External audit adjudicated; the logging-isolation leak closed; ADR-0344; v1.0.160)
+# Handoff — 2026-08-03c (External audit adjudicated; the logging-isolation leak closed; ADR-0345; v1.0.160)
 
 > ## STATUS (current) — **IN FLIGHT.** 13 external audit claims adjudicated by measurement; P0-1 fixed.
 > Branch `claude/polaris-phase-4-engine-zpo69e` from `origin/main` at **`1119162`**.
-> ADR-**0344**, **v1.0.160**. Nothing else in flight (#525, #526 merged earlier today).
+> ADR-**0345**, **v1.0.160**. Nothing else in flight (#525, #526 merged earlier today).
 >
 > ## The audit verdict — 13 claims, every one tested
 > **No product-correctness defect was found.** No computed number, metric, or rendered figure is
@@ -27,7 +27,7 @@
 > assets, both `.aft` libraries (**1443** / **1403** `<Metric>`), **16** golden MSPDI + **1** XER +
 > **20** `.mpp`. The corruption is a bulk-upload name/content rotation in intake only.
 >
-> ## What landed — ADR-0344
+> ## What landed — ADR-0345
 > `configure_logging()` sets `propagate=False` (correct, Law 1) and **17 tests** across
 > `test_cli_guards.py` (1) · `test_launcher.py` (12) · `test_logging_redaction.py` (4) left it set.
 > `caplog` captures by propagation, so 4 importer calendar-warning tests read an empty
