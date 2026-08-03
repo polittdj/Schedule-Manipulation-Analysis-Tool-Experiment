@@ -1,9 +1,25 @@
 # Handoff — 2026-08-03c (The standing rituals become invoked skills; ADR-0344; v1.0.159)
 
-> ## STATUS (current) — **IN FLIGHT.** Seven project skills committed under `.claude/skills/`.
-> Branch `claude/repo-audit-skills-vbm0ka`, from `origin/main` at **`1119162`**. ADR-**0344**,
-> **v1.0.159** (unchanged — nothing under `src/` was touched, so no wheel/installer rebuild;
-> the ADR-0148 lockstep test was run to confirm it).
+> ## STATUS (current) — **MERGED, nothing in flight.** Seven project skills live under `.claude/skills/`.
+> **PR #527 squash-merged as `d57e230`** with all **four** CI checks green — `check` · `test (3.11)` ·
+> `test (3.13)` · `browser (measured-box proof)`, the last including its "Fail loudly if the proof
+> silently skipped" step. **Four, not six, is correct here:** `linux`/`windows` come from
+> `installer-smoke.yml`, path-filtered to `installer/**`, and this PR touched neither. The branch was
+> restarted from the new `origin/main` at `d57e230` with `--prune`. ADR-**0344**, **v1.0.159**
+> (unchanged — nothing under `src/` was touched, so no wheel/installer rebuild; the ADR-0148 lockstep
+> test was run to confirm it).
+>
+> ## ⚠ ADR-0344 IS A COLLISION — PR #528 must renumber to 0345
+> PR **#528** (`claude/polaris-phase-4-engine-zpo69e`, branched from `1119162` **before** this merge)
+> also numbers its decision **ADR-0344**: `0344-a-test-that-configures-logging-must-not-configure-the-next-one.md`
+> vs this one's `0344-standing-rituals-become-invoked-skills.md`. If it merges as-is, `main` carries
+> **two `0344-*.md` files** — two unrelated decisions sharing an identifier that gets cited in a
+> testimony context. **`tests/test_state_docs.py` CANNOT catch it:** `_latest_adr_number()` takes
+> `max()`, both files resolve to `344`, and both durable docs legitimately contain `ADR-0344`, so all
+> four assertions pass over a corrupted record. #527 took the number first, so #528 renumbers. Flagged
+> on that PR. **A guard for the duplicate case does not exist yet** — it is the obvious
+> turn-a-process-failure-into-a-test candidate, deliberately NOT added here because it would turn an
+> in-flight PR red and that is a coordination call for the operator, not a unilateral one.
 >
 > ## What landed — and what the search actually found
 > The ask was "find and install skills that would help this project." **Both catalogs were searched
