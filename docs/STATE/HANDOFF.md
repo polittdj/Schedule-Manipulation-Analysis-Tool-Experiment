@@ -17,9 +17,13 @@
 > testimony context. **`tests/test_state_docs.py` CANNOT catch it:** `_latest_adr_number()` takes
 > `max()`, both files resolve to `344`, and both durable docs legitimately contain `ADR-0344`, so all
 > four assertions pass over a corrupted record. #527 took the number first, so #528 renumbers. Flagged
-> on that PR. **A guard for the duplicate case does not exist yet** — it is the obvious
-> turn-a-process-failure-into-a-test candidate, deliberately NOT added here because it would turn an
-> in-flight PR red and that is a coordination call for the operator, not a unilateral one.
+> on that PR. **The guard now EXISTS** (operator-authorised): `test_adr_numbers_are_unique` in
+> `tests/test_state_docs.py` asserts one ADR per sequence number. **Proved able to fail** with the real
+> colliding filename from #528: **1 failed, 4 passed** — the narrow failure is the new test, and the
+> four pre-existing assertions staying GREEN is the empirical proof that they never could catch this.
+> #528 will be red until it renumbers to 0345, which is the intended effect. **No new ADR was minted
+> for the guard, deliberately:** taking 0345 right now would collide with the very renumber #528 has
+> been asked to make, and the guard enforces an existing convention rather than deciding a new one.
 >
 > ## What landed — and what the search actually found
 > The ask was "find and install skills that would help this project." **Both catalogs were searched

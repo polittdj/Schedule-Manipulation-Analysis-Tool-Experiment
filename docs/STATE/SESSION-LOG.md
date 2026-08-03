@@ -11265,3 +11265,30 @@ contain `ADR-0344` — four assertions green over an ambiguous record. #527 took
 #528 renumbers to 0345; flagged on that PR with the conflict/rebase guidance. A duplicate-number guard
 is the obvious executable-guard candidate and was deliberately NOT added unilaterally, because it turns
 an in-flight PR red — an operator coordination call.
+
+### The duplicate-ADR guard (operator-authorised), proved able to fail
+`tests/test_state_docs.py::test_adr_numbers_are_unique` asserts one ADR per four-digit sequence
+number. Added after the #527/#528 collision above, on the operator's explicit go-ahead (the guard
+turns an in-flight PR red until it renumbers, which was theirs to authorise).
+
+**Proved able to fail** using the REAL colliding filename from #528:
+
+| tree | `tests/test_state_docs.py` |
+| --- | --- |
+| baseline | **5 passed** |
+| + `0344-a-test-that-configures-logging-must-not-configure-the-next-one.md` | **1 failed, 4 passed** |
+| file removed again | **5 passed** |
+
+The **4 passed** in the middle row is the finding, not a footnote: it is the measurement proving the
+four pre-existing assertions can never catch a duplicate. `_latest_adr_number()` takes `max()`, so both
+files resolve to `344`, and both durable docs legitimately contain `ADR-0344` because *both* PRs wrote
+it. The failure set is narrow — only the new test — which is what a real pin looks like. The mutation
+was a NEW untracked file, so it was removed with `rm`, never `git checkout`.
+
+**No new ADR was minted for the guard, deliberately.** Taking 0345 would have collided with the very
+renumber #528 has been asked to make; and the guard enforces an existing convention (ADR numbering)
+rather than recording a new decision. The highest ADR on disk stays 0344, which both durable docs
+already cite, so the drift guard is satisfied without churn.
+
+**Lesson recorded:** "highest + 1" is not a concurrency-safe allocator, and a guard derived via `max()`
+is blind to duplicates by construction.
