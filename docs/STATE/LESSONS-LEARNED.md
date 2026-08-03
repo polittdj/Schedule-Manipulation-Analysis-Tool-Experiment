@@ -435,6 +435,35 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-02g — A grep count is not a census, in BOTH directions (ADR-0341, the DD-line ledger)
+- **The same mistake, three times in one session, and the third time I made it in a handoff.** A
+  `grep -ci "data.date"` census said 4 charts lacked a data-date marker; the real number is 8,
+  because the grep counts MENTIONS — comments, `statusDate` variables, legend text. I then wrote a
+  byte-exact detector matching the one implementation I had read (`cei.js`), and it failed the
+  OPPOSITE way: it reported two implementations where there are four, missing `drift.js` (which
+  labels its marker only in a legend note) and `scurve.js` (which appends the date to the label).
+  **Lesson (generalizes → Part V): a loose detector over-reports and a tight one under-reports, and
+  BOTH read as authoritative. Anchor on the thing every implementation must write deliberately —
+  here the `//` comment naming the block — and then RUN it against the tree and read what comes
+  back. Deliberately do NOT anchor on style when the styles are what you are measuring.**
+- **Derive the pending list; never declare it.** `DD_PENDING` is computed from the tree and compared
+  to the record, so it cannot overstate the work (a fixed entry nobody removed) or understate it (a
+  chart that lost its marker). A declared list is silent in both failure modes. This is the property
+  `DOM_PENDING` earned the hard way one ADR earlier, applied from the start this time.
+- **When N tests cover N subjects, revert one SUBJECT, not just the shared thing** (carried forward
+  from ADR-0340 and applied again): reverting `histogram.js`'s xLabel to a date proved the exclusion
+  list cannot shelter a chart that genuinely plots against time — a property no amount of reverting
+  the detector could show.
+- **Two slicing bugs, both invisible to reading.** Slicing from the first occurrence of a phrase
+  read `cei.js`'s DOCSTRING rather than its code (the header comment uses the same words), and a
+  fixed-size window over-ran into the next block — harmless for three modules and wrong for the one
+  whose block is short. **Lesson: a text window over source needs a real terminator, and the module
+  that breaks it is the one shaped differently from the one you developed against.**
+- **A ledger can record a violation without blessing it.** Nothing in the tree matches the design
+  system's DD-line rule (none is red, no label is uppercase, all hard-code a type size). Pinning the
+  CURRENT state means closing any part of the gap FAILS the ledger and forces it updated in the same
+  commit — the PENDING pattern applied to a spec deviation rather than to missing work.
+
 ### 2026-08-02f — Where a shared helper LIVES is a correctness question (ADR-0340, DOM captions)
 - **The bug that was one decision away, and would have been silent.** `chartframe.js` owns the SVG
   caption helper, so it is the obvious home for the DOM one. It is the wrong home: the layout emits
