@@ -27,10 +27,12 @@ the two classes the audit did not count, and the arithmetic closes to the file:
 
 | class | files | why this manifest counts it |
 | --- | ---: | --- |
-| `.XLS` holding an OOXML package | 7 | `.xls` denotes OLE2/BIFF; a zip-packaged workbook is `.xlsx`. Same application, wrong container — still a mislabel. |
-| `.json` holding prose | 3 | `.json` is the tool's **own Save format**, so this is the one mislabel a user could actually hit. |
+| `.XLS` holding an OOXML package | 7 | `.xls` denotes OLE2/BIFF; a zip-packaged |
+| | | workbook is `.xlsx`. Same application, wrong container — still a mislabel. |
+| `.json` holding prose | 3 | `.json` is the tool's **own Save format**, so this is |
+| | | the one mislabel a user could actually hit. |
 
-`99 − 7 − 3 = 89`. Neither count is wrong; this one states its rule and a test re-derives it.
+`99 - 7 - 3 = 89`. Neither count is wrong; this one states its rule and a test re-derives it.
 
 ### Known divergence — the two `Project5_TAMPERED.mpp` copies
 

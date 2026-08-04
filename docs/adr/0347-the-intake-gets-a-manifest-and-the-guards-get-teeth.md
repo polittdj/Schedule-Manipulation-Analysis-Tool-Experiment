@@ -142,6 +142,14 @@ exact three-stage original, which is now recorded in both the hook and the test.
 * Hook behaviour verified end-to-end in a scratch repo against the audit's exact gap table:
   every previously-allowed path now BLOCKED, and prose `.txt`, config `.json`, both allow-prefixes
   and the MPXJ jar still allowed.
+* **The documented local gate was NARROWER than CI, and CI caught this PR because of it.**
+  CLAUDE.md and `.claude/skills/full-gate/SKILL.md` both prescribed `ruff check src/ tests/`; CI
+  runs **`ruff check .`**. `tools/` is in neither `src/` nor `tests/`, so the whole local gate went
+  green while CI found **6** errors in `tools/intake_manifest.py` (two dead `# noqa: S*` for rules
+  this repo does not enable, two >100-col table rows, two U+2212 MINUS SIGN literals). Both docs now
+  say `ruff check .`. This is ADR-0346's own lesson landing on the gate itself: *two correct
+  controls that never meet prove nothing* — a local gate that cannot see a directory CI lints is
+  not a gate, it is a subset.
 * **The full suite found a coupling three targeted runs could not.** `tests/guards/` was green
   through every iteration; the redaction failure lives in `tests/test_logging_redaction.py`, a
   module that reads the hook from a completely different subsystem. Scoped runs are for the

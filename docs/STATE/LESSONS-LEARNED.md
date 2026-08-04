@@ -444,6 +444,15 @@ those fixed defects in earlier "closed" fixes:
   reading it. The suffix set is now **closed**, and a test fails if the clause ever widens again.
   **Generalizes: for every widened matcher, diff old-vs-new over the actual corpus.** A pattern is
   a claim about a population you have not looked at until you look.
+- **Run CI's command, not your paraphrase of it.** CLAUDE.md and the `full-gate` skill both said
+  `ruff check src/ tests/`; CI runs `ruff check .`. Every file under `tools/` was therefore linted
+  by CI and invisible to the documented local gate — so a clean local gate meant nothing for the
+  new `tools/intake_manifest.py`, and CI returned 6 errors. **A gate that is a subset of CI is not
+  a gate.** When a check exists in two places, diff the invocations, not the intent: the scope
+  argument is part of the command. Both docs now carry `ruff check .` verbatim. (ADR-0346 taught
+  this about dependency floors — "two correct controls that never meet prove nothing"; it applies
+  to the gate itself, and the only reason it surfaced here is that CI happened to be the *broader*
+  of the two, which is not something to rely on.)
 - **Widening one guard's blocklist can open a hole in a different subsystem — and only the FULL
   suite knows.** Adding `.p6xml`/`.xlsm` to the CUI pre-commit guard turned
   `tests/test_logging_redaction.py` red: that test pins the log redactor's `SENSITIVE_EXTENSIONS`

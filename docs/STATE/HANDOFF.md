@@ -35,6 +35,14 @@
 > hook from an entirely different subsystem, and only the FULL suite knew they were wired together.
 > Because `src/` changed, this became a **shipped** change: v1.0.162 + wheel + nine installers.
 >
+> ## THE TRAP THIS SESSION PAID FOR — the documented gate was NARROWER than CI
+> CLAUDE.md and the `full-gate` skill both said **`ruff check src/ tests/`**. CI runs
+> **`ruff check .`**. `tools/` is in neither, so the entire local gate went GREEN and CI came back
+> red with **6** errors in `tools/intake_manifest.py` (two dead `# noqa: S*` for rules this repo
+> does not enable, two >100-col table rows, two U+2212 MINUS SIGN literals). **Both docs now say
+> `ruff check .`** — run the CI command, not a subset of it. ADR-0346's lesson landing on the gate
+> itself: *two correct controls that never meet prove nothing.*
+>
 > ## The numbers, re-derived — and the audit's 89 reconciled to the file
 > **406 tracked intake files, 332,633,606 bytes, 99 mismatches, 27 duplicate-content groups over
 > 63 files.** The audit reported 89 and 24/54. `99 − 7 − 3 = 89` **exactly**: the 7 are `.XLS`

@@ -11579,6 +11579,17 @@ blocked-extension files under ADR-0152's `inherited_from_main` rule, the other t
 `*.mspdi.xml.gz` goldens which the new `gz` suffix newly matched. In both cases the test was
 over-claiming and reading the failure beat rewriting the subject.
 
+**The documented local gate was a SUBSET of CI's, and CI caught this PR because of it.** CLAUDE.md
+and `.claude/skills/full-gate/SKILL.md` both prescribed `ruff check src/ tests/`; CI runs
+`ruff check .`. `tools/` is in neither directory, so the full local gate went green and
+`test (3.11)` / `test (3.13)` both came back red with **6** errors in `tools/intake_manifest.py` —
+two dead `# noqa: S101`/`S314` (this repo does not enable ruff's flake8-bandit rules, so the
+suppressions were themselves violations), two table rows past 100 cols inside the generated
+preamble, and two U+2212 MINUS SIGN characters in a string literal (RUF001). All six fixed, the
+manifest regenerated, and **both docs corrected to `ruff check .`**. Exactly ADR-0346's lesson
+applied to the gate itself: a local gate that cannot see a directory CI lints is not a gate, it is
+a subset — and the only reason it surfaced is that CI is broader, which will not always be true.
+
 **Environment note:** `ruff` on PATH was a stale **0.15.8** shim at `/root/.local/bin/ruff`,
 shadowing the 0.16.1 that `.[dev]` installs. Run the gate's ruff as `python -m ruff`.
 

@@ -78,7 +78,7 @@ this protocol: **READ EVERYTHING, ASSUME NOTHING, VERIFY EVERYTHING** — verify
 Full gate — run before every commit. CI (Python 3.11 + 3.13) runs the Python steps plus pip-audit and enforces the coverage gates; the `node --check` step is local-only, and plain local `pytest -q` does NOT collect coverage (the 85/70 numbers are CI-enforced):
 
 ```bash
-ruff check src/ tests/
+ruff check .                                           # THE WHOLE TREE — CI runs exactly this (ADR-0347)
 ruff format --check .
 python -m mypy src/                                    # strict
 bandit -q -r src                                       # only a non-zero EXIT is a failure (nosec warnings are not)

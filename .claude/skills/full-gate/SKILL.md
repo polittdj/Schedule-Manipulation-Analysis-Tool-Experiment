@@ -45,7 +45,11 @@ Run the cheap checks before the suite (last measured **27:30** locally; budget 2
 them in the **foreground** — a backgrounded static check whose output you never read is not a check.
 
 ```bash
-ruff check src/ tests/
+ruff check .                # THE WHOLE TREE. CI runs `ruff check .`, so a narrower scope
+                            # here is GREEN LOCALLY AND RED ON CI for anything outside
+                            # src//tests/ — e.g. tools/. Cost the P1 unit a CI round
+                            # (ADR-0347): 6 errors in tools/intake_manifest.py that the
+                            # documented command could not see.
 ruff format --check .
 python -m mypy src/                       # strict
 bandit -q -r src ; echo "bandit exit: $?"
