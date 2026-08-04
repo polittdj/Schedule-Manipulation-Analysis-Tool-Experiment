@@ -435,6 +435,32 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-04 — A finding is a hypothesis with a citation, not a measurement (ADR-0348)
+- **Re-derive the numbers in a finding's own headline before you act on it.** CC-01 was filed as
+  "non-working dates at **74 call sites**". Neither number survived. `74` was
+  `grep -rn ... src/ | wc -l` (**75**) minus the one `def` — a count of *mentions*, imports and
+  docstrings included; the AST count of real invocations is **53**. The named mechanism
+  (non-working landings) was already closed by ADR-0312 and is **unreachable** on all 14 committed
+  schedules. Acting on the finding as written would have produced a fix for a defect that was not
+  there, and left the one that was.
+- **The defect a finding cannot see is the expensive one.** Chasing the reported symptom surfaced a
+  much larger one the framing could not describe: a day-multiple offset names one instant with two
+  spellings, and the code always picked the finish spelling — so **98.5 % of comparable Project5
+  start dates** disagreed with MS Project's own, and every Gantt bar was drawn one day too wide. It
+  never lands on a non-working day, so "non-working dates" could not find it.
+- **Coincidental agreement is how a wrong number survives.** `_elapsed_finish_offset` was wrong for
+  8 of 18 (start, duration) pairs — but *right* for every whole-1440 elapsed duration, because the
+  spelling gap happens to equal the non-working gap. The cases anyone would test by hand were the
+  cases that agreed.
+- **Use the oracle to settle taste questions.** The naive fix — spell every start as a start —
+  inverted **159 of 169** milestones (`ES == EF` → start after finish). Rather than argue the
+  convention, ask the reference tool: MS Project spells an instantaneous event end-of-day (EVM1
+  3/3, and 0 for the start form). The rule became one helper instead of an argument, and the
+  regression never shipped.
+- **A guard that fails on its first run may be right about you.** The new AST census guard fired on
+  `span_start_datetime`'s own sanctioned branch. The fix was to scope it to *consumers* by name —
+  not to relax the pattern, and not to delete the case.
+
 ### 2026-08-03h — The obvious implementation of a guard is where the false positive lives (ADR-0347)
 - **A guard's naive form is the dangerous one.** Hardening the CUI hook to catch `data.mpp.bak`
   needs the `$` anchor relaxed. The obvious relaxation — *blocked extension followed by any dot* —

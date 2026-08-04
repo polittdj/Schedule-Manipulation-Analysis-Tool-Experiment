@@ -248,8 +248,14 @@ def _elapsed_finish_offset(
 
     MS Project elapsed durations ("1 eday") ignore both task and project calendars —
     the finish is start + N clock minutes, then mapped back onto the working axis
-    (a Saturday-morning finish reads as Friday end-of-day for successors)."""
-    start_dt = offset_to_datetime(project_start, max(start_offset, 0), calendar)
+    (a Saturday-morning finish reads as Friday end-of-day for successors).
+
+    The start instant is materialised with :func:`offset_to_start_datetime`: this is the one
+    place the day-boundary spelling is *arithmetic* rather than display (ADR-0348). Reading a
+    boundary start as the previous day's 16:00 rather than this day's 08:00 shifts the clock
+    origin by the whole non-working gap, so every elapsed duration that is not a whole multiple
+    of 1440 lands short — by up to a full working day."""
+    start_dt = offset_to_start_datetime(project_start, max(start_offset, 0), calendar)
     return datetime_to_offset(project_start, start_dt + dt.timedelta(minutes=minutes), calendar)
 
 
@@ -324,6 +330,52 @@ def offset_to_datetime(start: dt.datetime, minutes: int, calendar: Calendar) -> 
     target_date = _advance_working_days(day.date(), advance, calendar)
     day += dt.timedelta(days=(target_date - day.date()).days)  # preserve time-of-day exactly
     return day + dt.timedelta(minutes=intraday)
+
+
+def offset_to_start_datetime(start: dt.datetime, minutes: int, calendar: Calendar) -> dt.datetime:
+    """Resolve an offset that denotes the **beginning** of work (ADR-0348).
+
+    The working axis is contiguous, so a day-boundary offset names one instant that has two
+    equally valid wall-clock spellings: the **end** of working day ``k-1`` and the **start** of
+    working day ``k``. :func:`offset_to_datetime` always chooses the first (``remainder == 0``
+    takes the ``intraday = per_day`` branch), which is right for a finish and one working day
+    early for a start — a 1-day task then draws a 2-day bar, and its start reads as the previous
+    working day (the previous *Friday* across a weekend).
+
+    This resolves the same instant the other way for offsets that carry a start role. Away from
+    the boundary the two agree exactly, so it delegates; only the ``remainder == 0`` case differs.
+    ``offset_to_datetime`` and the offsets themselves are deliberately untouched — the offset and
+    its inverse are correct, and every finish-role site depends on the end-of-day spelling
+    (ADR-0310: CC-01 is a *rendering* problem, not an arithmetic one).
+    """
+    if minutes < 0:
+        raise ValueError("offset_to_start_datetime: minutes must be >= 0")
+    per_day = calendar.working_minutes_per_day
+    quotient, remainder = divmod(minutes, per_day)
+    if remainder:
+        return offset_to_datetime(start, minutes, calendar)
+    day = start
+    while day.date().weekday() not in calendar.work_weekdays or day.date() in calendar.holidays:
+        day = _next_working_day(day, calendar)
+    target_date = _advance_working_days(day.date(), quotient, calendar)
+    return day + dt.timedelta(days=(target_date - day.date()).days)
+
+
+def span_start_datetime(
+    start: dt.datetime, early_start: int, early_finish: int, calendar: Calendar
+) -> dt.datetime:
+    """The wall-clock start of a task's span, for display beside its finish (ADR-0348).
+
+    A task that consumes working time begins at the *start* spelling of its early start, so
+    a one-day task draws a one-day bar on the day it is worked. A **zero-duration instant**
+    (milestone) has no beginning distinct from the instant itself, and MS Project spells it
+    with the end-of-day form — measured on the committed corpus, that form reproduces MSP's
+    own stored date while the start form reads a working day late. Using the start form here
+    would also render a milestone's start one working day *after* its finish.
+    """
+    if early_finish > early_start:
+        return offset_to_start_datetime(start, max(early_start, 0), calendar)
+    return offset_to_datetime(start, max(early_start, 0), calendar)
 
 
 # --- per-task execution calendars (wall-clock arithmetic at calendar boundaries) ----------

@@ -1,133 +1,105 @@
-# Handoff — 2026-08-03g (P1 closed: the intake gets a manifest and the guards get teeth; ADR-0347; v1.0.162)
+# Handoff — 2026-08-04 (CC-01's rendering half closed: one instant, two spellings; ADR-0348; v1.0.163)
 
-> ## STATUS (current) — **MERGED, nothing in flight.** PR #533 squash-merged as `ef1ce1f`.
-> ADR-0347, **v1.0.162**. The audit's whole **P1** queue in one unit: intake manifest +
-> extension&harr;content regression test · R-03/R-12 reconciled (R-14 opened) · CUI hook hardened ·
-> nine actions pinned to SHAs. It started as a docs+tests unit needing no bump; **the full suite
-> proved otherwise** — see the third headline. Wheel + nine installers rebuilt at **v1.0.162**.
-> **All SIX checks green** on `546c502`: `test (3.11)` · `test (3.13)` · `floor (declared minimum)` ·
-> `browser (measured-box proof)` · `windows` · `linux`. The nine SHA-pinned action references all
-> resolved — every job started, which is the practical proof the pins are valid.
+> ## STATUS (current) — **branch pushed, draft PR open.** ADR-0348, **v1.0.163**.
+> **CC-01 / external H2a is CLOSED.** The finding's own two headline numbers were both wrong, and
+> re-deriving them — the one instruction this work carried — is what found the real defect. Wheel +
+> nine installers rebuilt at **v1.0.163**. Full local suite: **3479 passed, 3 skipped**, the only
+> real failure the expected wheel-lockstep (fixed by the rebuild) plus the named load-sensitive
+> `/analysis` focus→tip family.
 >
-> ## THE CI ROUND THIS UNIT COST — the documented gate was a SUBSET of CI's
-> The first push went red on **both** `test` jobs. CLAUDE.md and `.claude/skills/full-gate/SKILL.md`
-> both prescribed **`ruff check src/ tests/`**; CI runs **`ruff check .`**. `tools/` is in neither,
-> so the entire local gate was green while CI found **6** errors in `tools/intake_manifest.py` — two
-> dead `# noqa: S101`/`S314` (this repo does not enable ruff's flake8-bandit rules, so the
-> suppressions were themselves RUF100 violations), two >100-col rows in the generated preamble, and
-> two U+2212 MINUS SIGN literals. Fixed in `546c502`, and **both docs now say `ruff check .`** —
-> the root cause, not the symptom. *A local gate that cannot see a directory CI lints is not a
-> gate, it is a subset* — ADR-0346's "two correct controls that never meet" landing on the gate
-> itself, and it only surfaced because CI happened to be the BROADER of the two.
+> ## THE CENSUS — "74 call sites" was never a count of call sites
+> `grep -rn offset_to_datetime src/` returns **75** lines; minus the one `def`, **74**. That is a
+> count of *non-definition mentions* — imports and docstrings included. An AST pass finds **53**
+> genuine invocations in `src/` (37 more in `tests/`). It reconciles exactly, and it reproduces at
+> the audit commit too, so the number was never a site count in the first place.
 >
-> ## THE HEADLINE — a divergence the audit did not report, on the authoritative parity input
-> The two tracked copies of **`Project5_TAMPERED.mpp`** are the **same size with different bytes**
-> — 102 of 817,152 (0.0125%). The audit said "tracked twice" and stopped. Measured, not assumed:
-> the differing runs sit entirely in the OLE2 **VBA-project storage**; through MPXJ both yield
-> MSPDI identical but for `<CurrentDate>` (the conversion clock); through the product importer both
-> yield an **equal `Schedule`** — 145 tasks, identical calendars, identical CPM timings, the same
-> 4-task critical path (ADR-0112), the same project finish. **No parity exposure.** Both hashes
-> are now pinned. `mpp/Project5.mpp` is byte-identical to `mpp/Project5_TAMPERED.mpp`.
+> ## THE REPORTED DEFECT WAS ALREADY CLOSED — and ADR-0312 manufactures its residual
+> All 53 src sites pass `start = <schedule>.project_start` **and** `calendar = <schedule>.calendar`
+> — no arbitrary datetime, no per-task calendar (the per-task-calendar hypothesis was tested and is
+> **false**). So ADR-0312's importer precondition genuinely holds everywhere, and a non-working
+> landing needs the `tod + per_day == **1440**` equality. Measured on all 14 committed schedules:
+> every one is `480 + 480 = 960`; **zero** reach it. The files *named* `_24hr`/`_24h` carry a
+> **480-minute project calendar** — their 24-hour character is per-task. But ADR-0312's own
+> normalisation drives a continuous-operations file **onto** that boundary (24 h + 08:00 start →
+> midnight → `0 + 1440`). The import fix manufactures the one input the residual still trips on.
 >
-> ## THE SECOND HEADLINE — the new content detector failed OPEN on its first real-sized input
-> `git show ":$path" | head -c 65536 | grep -qaE "$sig"` passed every small fixture and was WRONG.
-> `set -o pipefail` takes the last non-zero status, and a truncating reader SIGPIPEs its upstream,
-> so the pipeline reports FAILURE even when grep MATCHED. Measured: a **281 KB** saved schedule was
-> **ALLOWED** while a 4 KB one was blocked — failing open at exactly the size a real schedule is.
-> Fixed with a process substitution (`git show` leaves the pipeline status, and the truncation
-> window goes with it). **Falsifying the regression test taught a second thing:** reverting to the
-> two-stage `git show | grep -q` does NOT reproduce it — that form wins the same race — so the test
-> is only honest against the exact three-stage original. Both facts are recorded in the hook.
+> ## THE DEFECT THAT WAS ACTUALLY THERE — on the ordinary 8-hour corpus
+> A day-multiple offset names **one instant with two spellings**: the *end* of working day `k-1`
+> and the *start* of day `k`. `offset_to_datetime` always picks the first (`remainder == 0` →
+> `intraday = per_day`). Right for a finish; **one working day early for a start**. Against MS
+> Project's own stored dates, restricted to tasks where the engine already agrees on the *finish*
+> so only spelling can differ: **Project5 1/67 → 67/67**, EVM1 4/11 → 11/11, Large_Test_File
+> 135/897 → 787/897. Every Gantt bar was drawn **one day too wide** (a 1-day task spanned 2 days).
 >
-> ## THE THIRD HEADLINE — hardening the hook exposed a LEAK in a different subsystem
-> Adding `.p6xml`/`.xlsm` to the guard turned `tests/test_logging_redaction.py` red, and it was
-> **RIGHT**: that test pins the redactor's `SENSITIVE_EXTENSIONS` to the hook's blocklist, and the
-> redactor covered neither. `redact("import failed for Runway Program.p6xml")` returned the file
-> name **VERBATIM** — a Law 1 leak into logs. Both are now redacted (`<file:p6xml#…>`). Only the
-> test's *extraction* was stale (it read the old `blocked_re='\.(exts)$'` shape); its claim was
-> sound. **`tests/guards/` was green through every iteration** — this lives in a module reading the
-> hook from an entirely different subsystem, and only the FULL suite knew they were wired together.
-> Because `src/` changed, this became a **shipped** change: v1.0.162 + wheel + nine installers.
+> ## THE ONE PLACE IT IS ARITHMETIC, NOT DISPLAY
+> `_elapsed_finish_offset` builds an elapsed task's clock origin from that spelling. Reading a
+> boundary start as the previous day's 16:00 moves the origin by the whole non-working gap:
+> **8 of 18** (start-offset, duration) pairs returned a wrong offset, short by up to a full working
+> day. Whole-1440 durations were right **by coincidence** — the spelling gap equals the non-working
+> gap — which is why nothing caught it. A wrong *number* into successors/float/critical path, i.e.
+> Law 2, not CC-01's bucket. **Unreachable on the corpus** (1 elapsed task in 14 files, 0 trip), so
+> the fix moves no committed figure.
 >
-> ## THE TRAP THIS SESSION PAID FOR — the documented gate was NARROWER than CI
-> CLAUDE.md and the `full-gate` skill both said **`ruff check src/ tests/`**. CI runs
-> **`ruff check .`**. `tools/` is in neither, so the entire local gate went GREEN and CI came back
-> red with **6** errors in `tools/intake_manifest.py` (two dead `# noqa: S*` for rules this repo
-> does not enable, two >100-col table rows, two U+2212 MINUS SIGN literals). **Both docs now say
-> `ruff check .`** — run the CI command, not a subset of it. ADR-0346's lesson landing on the gate
-> itself: *two correct controls that never meet prove nothing.*
->
-> ## The numbers, re-derived — and the audit's 89 reconciled to the file
-> **406 tracked intake files, 332,633,606 bytes, 99 mismatches, 27 duplicate-content groups over
-> 63 files.** The audit reported 89 and 24/54. `99 − 7 − 3 = 89` **exactly**: the 7 are `.XLS`
-> files holding OOXML packages, the 3 are `.json` files holding prose. Neither count is wrong —
-> this one states its rule and a test re-derives it. **The rotation reached neither the product nor
-> the oracles**: both `.aft` at 1443/1403 `<Metric>`, 20/20 `.mpp` OLE2, 65/65 statics clean, every
-> golden well-formed — all asserted from the BYTES, never from the manifest.
+> ## THE NAIVE FIX WAS WRITTEN, MEASURED, AND REJECTED
+> Spelling *every* start as a start inverts milestones: `ES == EF`, so start renders one working day
+> **after** finish — **159 of 169** zero-duration tasks in Large_Test_File. The oracle settles it:
+> MS Project spells an instantaneous event **end-of-day** (EVM1 **3/3** vs 0 for the start form;
+> Large_Test_File 52 vs 16). So `span_start_datetime` carries the rule and zero-duration keeps the
+> end-of-day form. Measuring beat reasoning, and it caught a regression that would have shipped.
 >
 > ## What landed
-> * **`docs/INTAKE-MANIFEST.md`** + `tools/intake_manifest.py` + `tests/guards/test_intake_manifest.py`
->   (10). Hashes the committed **BLOB**, not the working tree: `.gitattributes` sets `* text=auto`,
->   so **128** intake files check out CRLF on Windows. Working-tree hashing would have passed CI
->   (every pytest job is `ubuntu-latest`) and failed on the operator's own machine.
-> * **`docs/risks.md`** — R-03 residual re-scoped to what is actually open (**no `.pbix` has ever
->   been deposited**; `pbix/` and `metrics_library/` hold only `.gitkeep`), R-12 **Resolved**,
->   **R-14** opened for intake provenance.
-> * **CUI hook, second detector.** `.p6xml`/`.xlsm` added; the `$` anchor replaced by a **closed**
->   backup-suffix set; and a **content sniff** of the STAGED bytes of `.json`/`.txt`/extension-less
->   files for three decisive signatures (Save-`.json`, MSPDI root, XER header). `.json` is the
->   tool's own Save format and is deliberately not in `.gitignore` — extension alone never covered
->   it. `src/schedule_forensics/web/examples/` joins `tests/fixtures/` as an allow-prefix.
-> * **Nine actions pinned to commit SHAs**, each with a `# vX.Y.Z` note;
->   `tests/guards/test_workflow_action_pins.py` (5) requires **both**, and carries a vacuity guard.
-> * Test delta: `test_precommit_blocklist.py` **21 → 46**, plus 10 + 5 new = **+40**.
+> * **`offset_to_start_datetime`** (start spelling; delegates away from the boundary) and
+>   **`span_start_datetime`** (adds the zero-duration rule) in `engine/cpm.py`.
+>   `offset_to_datetime` and every offset are **untouched** — ADR-0310 pre-rejected changing them,
+>   and 29 finish-role sites depend on the end-of-day form.
+> * **Six start-role usages migrated**: `_elapsed_finish_offset` (arithmetic),
+>   `engine/resources.py` loading span, and four in `web/app.py` (two compare-Gantt bar builders,
+>   the trace start, the basis-start fallback). The other 47 are finish-role or axis/bucket.
+> * **Two new test modules (+29)**: `tests/engine/test_day_boundary_spelling.py` and
+>   `tests/engine/test_day_boundary_corpus.py` — the latter carries the **oracle** tests and an
+>   **AST census guard** that fails if any `offset_to_datetime` call in `src/` is handed a
+>   start-role offset again, with `span_start_datetime`'s body the single *named* exemption and a
+>   vacuity check that the detector fires on the shape it hunts.
 >
 > ## Verification
-> * **All 40 new assertions proved able to fail**, across 16 targeted mutations — including a REAL
->   rotation of a shipped static (`sf-themes.css` given the favicon's bytes) and a corrupted golden.
->   Every tree restored **byte-identical** from a scratchpad copy; never `git checkout`.
-> * **Two new tests failed on their first run and BOTH were right.** One caught that the intake
->   legitimately tracks blocked-extension files under ADR-0152's `inherited_from_main` rule (my
->   assertion was wrong, not the hook); the other caught that the repo tracks `*.mspdi.xml.gz`
->   goldens, which the new `gz` suffix newly matched. Both were narrowed to the real claim.
-> * **One mutation silently did NOTHING and nearly passed as evidence** — a `python3 -c "..."` in
->   double quotes let the shell expand `$signature_re` before Python saw it, so the replace never
->   matched and the suite went green, indistinguishable from "this test cannot fail". Mutate by
->   heredoc with `assert anchor in source`, and re-read the file to confirm it changed.
-> * Hook verified end-to-end in a scratch repo against the audit's exact gap table.
+> * **Four mutations, each proved to fail the right tests** — start spelling reverted (6 fail,
+>   both oracle tests among them), elapsed origin reverted (7), milestone rule removed (5,
+>   including both inversion guards), one display site reverted (the census guard alone).
+>   Every mutation asserted its anchor, re-read the file to confirm it changed, and the tree was
+>   restored **byte-identical from a scratchpad copy** (md5 verified) — never `git checkout`.
+> * The census guard **failed on its first run and was right**: it caught `span_start_datetime`'s
+>   own sanctioned branch. Scoped to consumers by name rather than weakened.
 >
 > ## Deliberately NOT done
-> * **The 99 mislabelled files are NOT renamed** — `FILE-NAMES.md` says "tests probe these literal
->   paths". This is a provenance record, not a cleanup.
-> * **`tests/fixtures/` keeps its unconditional allowance** (CLAUDE.md documents it as intent; the
->   goldens legitimately hold schedule JSON). Narrowing it is an operator policy call.
-> * **Actions pinned, not upgraded** — `checkout` v7 / `setup-python` v7 exist; that is its own unit.
+> * **The `== 1440` boundary is documented, not repaired.** No committed schedule reaches it, and
+>   repairing it means deciding what "the end of Friday" reads as on a 24-hour Mon–Fri calendar —
+>   a question with **no oracle in the corpus**. Recorded in ADR-0348 so the next
+>   continuous-operations file meets a citation, not a surprise.
+> * The 20 `OTHER`-role sites (axis ticks, SRA bins, forecast bounds) were classified and left.
 >
 > ## Next
-> **Phase 4 continues:** CC-01's rendering half (*"74 sites" is an approximate grep — RE-DERIVE it*;
-> ADR-0240 reserves it for a **Fable 5 Max** deep dive on the CPM date machinery) · **SRA-LEGACY**
-> (`audit/SRA-ROOTCAUSE-20260730.md`) · **V3** (`engine/msp_filters.py` hard-codes `"d": 480` and
-> discards the elapsed marker from regex group 2 — ADR-0310 made it a conformance fix, but it MOVES
-> saved-filter populations and needs its migration-report gate). Then **Phase 5** monolith split 2–3
-> (`app.py` 21,333 lines, `state.py` 1,479) and **Phase 6** docs/operator queue.
-> **Operator only:** license selection (LICENSE grants no rights) · branch-protection required
-> contexts · intake re-upload · proprietary-tool reruns (engine==golden → engine==Fuse) · OR-04.
+> **Phase 4 continues:** **SRA-LEGACY** (`audit/SRA-ROOTCAUSE-20260730.md`) · **V3**
+> (`engine/msp_filters.py` hard-codes `"d": 480` and discards the elapsed marker in regex group 2;
+> ADR-0310 made it a conformance fix, but it MOVES saved-filter populations and needs its
+> migration-report gate). Then **Phase 5** monolith split 2–3 (`app.py` ~21.3k lines, `state.py`
+> 1,479) and **Phase 6** docs/operator queue.
+> **Operator only:** license selection · branch-protection required contexts · intake re-upload ·
+> proprietary-tool reruns (engine==golden → engine==Fuse) · OR-04.
 >
 > ## Carried forward
-> The `/analysis` focus→tip family is **load-sensitive** — not intermittent, not deterministic.
-> Pre-existing, never red on CI. Do NOT chase. `/briefing`, `/path`, `/compare` still carry no
-> `page-lede`; the `/groups` "Activities" column still counts summary rows (ADR-0343). The nine
-> installers still do not install with `-c constraints/known-good.txt` (62 lockstep tests; own unit).
-> `pgrep -f` self-matches. pytest stdout to a FILE is block-buffered (`python -u`). Never
+> The `/analysis` focus→tip family is **load-sensitive** — `test_float_tip_dismiss` failed again
+> this session with its documented signature verbatim (`Page.wait_for_function` 4000 ms timeout)
+> and passes in isolation; never red on CI. Do NOT chase. `/briefing`, `/path`, `/compare` still
+> carry no `page-lede`; `/groups` "Activities" still counts summary rows (ADR-0343). The nine
+> installers still do not install with `-c constraints/known-good.txt` (62 lockstep tests; own
+> unit). **Run `ruff check .` — the WHOLE tree**, and run ruff as **`python -m ruff`** (a stale
+> 0.15.8 shim at `/root/.local/bin/ruff` shadows the 0.16.1 `.[dev]` installs). Never
 > `git checkout <file>` to undo a test mutation — `cp` from a scratchpad copy.
-> **`ruff` on PATH may be a STALE 0.15.8 shim** (`/root/.local/bin/ruff`) shadowing the 0.16.1 that
-> `.[dev]` installs — run the gate's ruff as **`python -m ruff`**.
 >
-> **New this session:** *the obvious implementation of a guard is where the false positive lives* —
-> "blocked extension followed by any dot" silently claimed `jakarta.xml.bind-api-3.0.1.jar`, whose
-> **Java package name** merely contains `.xml.`, and would have wedged every MPXJ upgrade. And:
-> **a test that fails on its first run is not necessarily a bug in the code** — two of these were
-> the test over-claiming, and reading the failure beat rewriting the subject.
+> **New this session:** *a finding is a hypothesis with a citation, not a measurement.* Both of
+> CC-01's headline numbers were wrong, the mechanism it named was unreachable, and the defect that
+> was really there — 98.5 % of comparable Project5 starts — was invisible to its framing. Re-running
+> the citation, not the conclusion, is what found it.
 
 # (prior) handoffs — archived
 
