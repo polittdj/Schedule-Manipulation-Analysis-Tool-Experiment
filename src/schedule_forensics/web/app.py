@@ -80,6 +80,7 @@ from schedule_forensics.engine.cpm import (
     datetime_to_offset,
     off_project_calendars,
     offset_to_datetime,
+    span_start_datetime,
 )
 from schedule_forensics.engine.dcma_audit import AuditCheck, Citation
 from schedule_forensics.engine.diff import diff_versions
@@ -12059,6 +12060,16 @@ def _driving_data(
             return None
         return offset_to_datetime(sch.project_start, max(ordinal, 0), cal).date().isoformat()
 
+    def day_start(ordinal: int | None, finish_ordinal: int | None) -> str | None:
+        """Start-role sibling of :func:`day` (ADR-0348 day-boundary spelling)."""
+        if ordinal is None:
+            return None
+        return (
+            span_start_datetime(sch.project_start, max(ordinal, 0), finish_ordinal or 0, cal)
+            .date()
+            .isoformat()
+        )
+
     # Driving links: each traced activity's immediate logic successors that are themselves on the
     # trace to the target — the "what is this linked to on the way to the target" detail (e.g.
     # UID 8022 → UID 152). on_path marks the successor that keeps the chain on the 0-slack path.
@@ -12087,7 +12098,7 @@ def _driving_data(
             start_iso: str | None = task.start.date().isoformat()
             finish_iso: str | None = task.finish.date().isoformat()
         else:
-            start_iso, finish_iso = day(start_ord), day(finish_ord)
+            start_iso, finish_iso = day_start(start_ord, finish_ord), day(finish_ord)
         rows.append(
             {
                 "unique_id": uid,
@@ -17202,7 +17213,7 @@ def _task_iso_dates(
     cal = sch.calendar
     s, f = basis_start.get(uid), basis_finish.get(uid)
     si = (
-        offset_to_datetime(sch.project_start, max(s, 0), cal).date().isoformat()
+        span_start_datetime(sch.project_start, max(s, 0), f or 0, cal).date().isoformat()
         if s is not None
         else None
     )
@@ -20424,7 +20435,9 @@ def _evolution_data(
         if timing is None:
             return None, None
         sch = schedules[idx]
-        start = offset_to_datetime(sch.project_start, timing.early_start, sch.calendar).date()
+        start = span_start_datetime(
+            sch.project_start, timing.early_start, timing.early_finish, sch.calendar
+        ).date()
         finish = offset_to_datetime(sch.project_start, timing.early_finish, sch.calendar).date()
         axis_dates.extend((start, finish))
         return start.isoformat(), finish.isoformat()
@@ -20589,7 +20602,9 @@ def _evolution_tier_data(
         if timing is None:
             return None, None
         sch = schedules[idx]
-        start = offset_to_datetime(sch.project_start, timing.early_start, sch.calendar).date()
+        start = span_start_datetime(
+            sch.project_start, timing.early_start, timing.early_finish, sch.calendar
+        ).date()
         finish = offset_to_datetime(sch.project_start, timing.early_finish, sch.calendar).date()
         axis_dates.extend((start, finish))
         return start.isoformat(), finish.isoformat()

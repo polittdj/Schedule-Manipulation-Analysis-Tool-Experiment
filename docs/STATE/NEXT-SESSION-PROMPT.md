@@ -8,12 +8,14 @@ kickoff steers a fresh session at work that is already done.)
 ---
 
 Resume POLARIS (Schedule-Manipulation-Analysis-Tool). Read `docs/STATE/HANDOFF.md` FIRST
-(auto-injected). As of last session: **v1.0.161, highest ADR 0346**. **Nothing is in flight** —
-PR #531 (`a1511ea`, P0-2 dependency bounding + P0-3 `importorskip`) squash-merged 2026-08-03 with
-all **seven** checks green (the new `floor` job makes it seven). `git fetch --prune origin && git remote set-head origin -a && git checkout -B
-<branch> origin/main` (then `git branch --unset-upstream`). Fresh container:
-`pip install -e ".[dev]"` plus `pip install playwright build`. **`ruff` no longer needs a manual
-pin** — `pyproject.toml` now bounds it at `>=0.16.1,<0.17`, so `.[dev]` installs the gate's ruff.
+(auto-injected). As of last session: **v1.0.163, highest ADR 0348**. **Nothing is in flight** —
+PR #533 (ADR-0347, P1) and #534 squash-merged; the ADR-0348 unit (CC-01's rendering half) followed.
+`git fetch --prune origin && git remote set-head origin -a && git checkout -B <branch> origin/main`
+(then `git branch --unset-upstream`). Fresh container: `pip install -e ".[dev]"` plus
+`pip install playwright build`. **`ruff` no longer needs a manual pin** — `pyproject.toml` bounds it
+at `>=0.16.1,<0.17` — but a stale **0.15.8 shim** may sit at `/root/.local/bin/ruff` and shadow it,
+so run the gate's ruff as **`python -m ruff`**, and run **`ruff check .` — THE WHOLE TREE** (CI runs
+exactly that; `src/ tests/` is a strict subset that misses `tools/`).
 
 ⇢ USE THE SKILLS — they exist so you do not re-derive them
 `.claude/skills/` carries the standing rituals as invoked procedures (see its `README.md`):
@@ -42,35 +44,29 @@ from drifting. **Do not "restore" the old floors** — all three were measured f
 `https://errors.pydantic.dev/<ver>/v/missing` inside 422 bodies on 10 routes (Law 1). **0.110.2** is
 the first clean release and is now the floor. The floor job found this on its first run.
 
-⇢ DO THIS FIRST — P1, the audit's remaining hygiene queue
-**Intake manifest + an extension↔content regression test** (**89** mismatched tracked files, ALL in
-`00_REFERENCE_INTAKE/`, product verified unaffected — 65/65 statics, both `.aft` at 1443/1403
-metrics, 16 goldens + 1 XER + 20 `.mpp` intact) · **reconcile risks R-03/R-12** (both stale: the two
-`.mpp` ARE tracked, twice each; the intake IS committed) · **CUI hook hardening** (it ALLOWS
-`schedule.json`, `notes.txt`, `data.mpp.bak`, `sched.p6xml` — and `.json` is the tool's own Save
-format) · **pin GitHub Actions to SHAs** — all on mutable `@v4`/`@v5`/`@v6`, **including the two the
-new `floor` job adds**; ADR-0346 left them on tags deliberately so the sweep is one mechanical commit,
-not a mixed-style file.
-**Operator only:** license selection (LICENSE is expressly a placeholder granting no rights) ·
-branch-protection required contexts · intake re-upload · proprietary-tool reruns to upgrade parity
-from engine==golden to engine==Fuse.
-
-⇢ THEN — Phase 4 continues, then 5 and 6
-**CC-01's rendering half** — *"74 sites" is an approximate grep, **RE-DERIVE it** before touching
-anything*; ADR-0240 reserves this for a **Fable 5 Max** deep dive on the CPM date machinery ·
+⇢ DO THIS FIRST — Phase 4 continues (P0, P1 and CC-01 are all CLOSED)
 **SRA-LEGACY** (`audit/SRA-ROOTCAUSE-20260730.md`) · **V3** (`engine/msp_filters.py` hard-codes
 `"d": 480` and discards the elapsed marker it captures in regex group 2; ADR-0310 reduced it from a
 product decision to a **conformance fix**, but it MOVES saved-filter populations — it needs its
-migration-report gate). Then **Phase 5** monolith split 2–3 (`app.py` **21,333** lines, `state.py`
-**1,479** — measured) and **Phase 6** docs/operator queue. OR-04 stays with the operator.
+migration-report gate). Then **Phase 5** monolith split 2–3 (`app.py` ~**21.3k** lines, `state.py`
+**1,479**) and **Phase 6** docs/operator queue.
+
+⇢ WHAT'S DONE — do NOT re-open
+**P0 (ADR-0346)** dependency bounding · **P1 (ADR-0347)** intake manifest + hardened CUI hook +
+SHA-pinned actions · **CC-01 / external H2a (ADR-0348)**. Do NOT rename the 99 mislabelled intake
+files, do NOT narrow `tests/fixtures/`, do NOT "simplify" the CUI hook's process substitution back
+into a pipeline (it fails OPEN). On ADR-0348 specifically: **`offset_to_datetime` and every offset
+are deliberately untouched** — 29 finish-role sites depend on the end-of-day spelling; a start-role
+offset goes through **`span_start_datetime`**, and an AST census guard fails if one does not. The
+`tod + per_day == 1440` boundary is **documented, not repaired** (no committed schedule reaches it;
+repairing it needs an oracle the corpus does not contain).
+**Operator only:** license selection (LICENSE is expressly a placeholder granting no rights) ·
+branch-protection required contexts · intake re-upload · proprietary-tool reruns to upgrade parity
+from engine==golden to engine==Fuse · OR-04.
 Carried, measured, NOT fixed: the `/groups` breakdown's **"Activities" column counts summary rows**
-(`len(uids)`), so the `Summary` row reads "19 activities" beside `—` completion and `—` BEI —
-fixing it MOVES a displayed population figure (ADR-0343 §"Deliberately NOT done"). `/briefing`,
-`/path` and `/compare` render a bare takeaway h1 with NO `page-lede`, while `/evm`, `/scurve`,
-`/margin`, `/groups`, `/integrity` carry one.
-Also carried from ADR-0346 §"Deliberately NOT done": the nine installers embed a wheel whose
-*metadata* now carries the bounds, but they do **not** install with `-c constraints/known-good.txt`
-— that touches 62 lockstep tests and is its own unit.
+(ADR-0343) · `/briefing`, `/path` and `/compare` render a bare takeaway h1 with NO `page-lede` ·
+the nine installers do **not** install with `-c constraints/known-good.txt` (62 lockstep tests; own
+unit).
 
 ⇢ THE TRAPS THIS SESSION PAID FOR — check for these BY NAME
 1. **A declared range nobody runs is decoration — and one of ours hid a Law 1 defect.** The air-gap
@@ -104,6 +100,9 @@ EMPTY STATE) · counting `<div class=panel` finds every panel (it misses the QUO
 **`pydantic>=2` is a safe floor** (it is not; 2.6 is).
 **The `/analysis` focus→tip family** (`test_float_tip_dismiss` / `test_float_tip_scroll`) is
 **load-sensitive** — not intermittent, not deterministic. Pre-existing, never red on CI. Do NOT chase.
+**CC-01's "74 call sites"** was never a call-site count (75 src token hits minus the one `def`; the
+AST count is **53**), and its named mechanism — non-working dates — is **unreachable** on all 14
+committed schedules. Do not re-derive it a third time; ADR-0348 records the measurement.
 
 Standing rules (CLAUDE.md, binding): Law 1 CUI · Law 2 fidelity ("—" never 0; never weaken a test) ·
 ADR-0240 model/audit protocol · READ EVERYTHING, ASSUME NOTHING, VERIFY EVERYTHING. Full gate before

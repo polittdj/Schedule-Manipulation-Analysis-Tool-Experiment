@@ -11623,3 +11623,61 @@ places, diff the invocations, not the intent; the scope argument is part of the 
 it for a Fable 5 Max deep dive on the CPM date machinery) · SRA-LEGACY
 (`audit/SRA-ROOTCAUSE-20260730.md`) · V3 (`engine/msp_filters.py`, needs its migration-report gate).
 Then Phase 5 monolith split 2–3 and Phase 6 docs/operator queue.
+
+## 2026-08-04 — CC-01's rendering half: one instant, two spellings (ADR-0348, v1.0.163)
+
+**Closed CC-01 / external H2a**, the last engine item ahead of SRA-LEGACY and V3. The session's
+one standing instruction was to re-derive the finding's "74 sites" before touching anything, and
+that instruction is what produced everything below: **both of CC-01's headline numbers were wrong,
+and the defect that was actually present was invisible to the way the finding framed it.**
+
+**The census.** `74` is not a call-site count. `grep -rn offset_to_datetime src/` returns **75**
+lines; minus the single `def`, 74 — i.e. *non-definition mentions*, imports and docstrings
+included. An AST pass counting `ast.Call` invocations finds **53** in `src/` and 37 in `tests/`.
+The same 75 reproduces at the audit commit `9a1e560`, so the label never matched the measure.
+
+**The reported mechanism is closed and unreachable.** All 53 src sites pass
+`start = <schedule>.project_start` and `calendar = <schedule>.calendar`; the hypothesis that some
+site passes a **per-task** calendar (ADR-0322) — which would have defeated ADR-0312's precondition
+— was tested and is **false**. So a non-working landing needs `tod + per_day == 1440` exactly. All
+14 committed schedules are `480 + 480 = 960`; **zero** reach it, and the goldens *named* `_24hr` /
+`_24h` carry a 480-minute **project** calendar. The sharp edge, recorded but not repaired:
+ADR-0312's own normalisation drives a 24-hour file **onto** that boundary (08:00 → midnight →
+`0 + 1440`), so the import fix manufactures the residual's only trigger.
+
+**The real defect.** A day-multiple offset names one instant with two spellings — the *end* of
+working day `k-1` and the *start* of day `k`. `offset_to_datetime` always takes the first, which
+is right for a finish and one working day early for a start. Measured against MS Project's own
+stored dates, restricted to tasks where the engine already agrees on the *finish* so only spelling
+can differ: **Project5 1/67 → 67/67**, EVM1 4/11 → 11/11, Large_Test_File 135/897 → 787/897. Every
+Gantt bar was drawn one day too wide.
+
+**The arithmetic instance.** `_elapsed_finish_offset` builds an elapsed task's clock origin from
+that spelling, so **8 of 18** (start-offset, duration) pairs returned a wrong offset — short by up
+to a full working day. Whole-1440 durations agreed *by coincidence* (the spelling gap equals the
+non-working gap), which is why nothing caught it. Law 2, not a rendering bucket; unreachable on the
+corpus (1 elapsed task, 0 tripping), so the fix moves no committed figure.
+
+**The naive fix was written, measured and rejected.** Spelling every start as a start inverts
+milestones (`ES == EF`): **159 of 169** zero-duration tasks in Large_Test_File would have rendered
+start *after* finish. The oracle decides — MS Project spells an instantaneous event end-of-day
+(EVM1 **3/3** vs 0). `span_start_datetime` carries that rule so no call site re-derives it.
+
+**Landed:** `offset_to_start_datetime` + `span_start_datetime` in `engine/cpm.py`
+(`offset_to_datetime` and every offset untouched — ADR-0310 pre-rejected changing them, and 29
+finish-role sites depend on the end-of-day form) · six start-role usages migrated
+(`_elapsed_finish_offset`, `engine/resources.py`, four in `web/app.py`) · **+29 tests** across
+`tests/engine/test_day_boundary_spelling.py` and `tests/engine/test_day_boundary_corpus.py`,
+the latter carrying the oracle tests and an **AST census guard** against reintroduction (with
+`span_start_datetime`'s body the single named exemption, plus a vacuity check).
+
+**Verification:** four mutations, each proved to fail the right tests (6 / 7 / 5 / 1); every
+mutation asserted its anchor and re-read the file to confirm it changed; tree restored
+byte-identical from a scratchpad copy, md5 verified. The census guard **failed on its first run and
+was right** — it caught `span_start_datetime`'s own sanctioned branch, and was scoped to consumers
+by name rather than weakened. Full suite **3479 passed, 3 skipped**; the wheel-lockstep failure was
+expected (packaged source changed) and cleared by the v1.0.163 rebuild; `test_float_tip_dismiss`
+failed with the documented load-sensitive signature and passes in isolation.
+
+**Next:** SRA-LEGACY (`audit/SRA-ROOTCAUSE-20260730.md`) · V3 (`engine/msp_filters.py`, needs its
+migration-report gate) · Phase 5 monolith split 2–3 · Phase 6 docs/operator queue.

@@ -19,7 +19,11 @@ from __future__ import annotations
 import datetime as dt
 from dataclasses import dataclass
 
-from schedule_forensics.engine.cpm import CPMResult, offset_to_datetime
+from schedule_forensics.engine.cpm import (
+    CPMResult,
+    offset_to_datetime,
+    span_start_datetime,
+)
 from schedule_forensics.engine.metrics._common import non_summary
 from schedule_forensics.model import Schedule
 from schedule_forensics.model.calendar import Calendar
@@ -146,7 +150,7 @@ def compute_resource_loading(
         timing = cpm.timings.get(task.unique_id)
         if timing is None:
             continue
-        sd = offset_to_datetime(ps, timing.early_start, cal).date()
+        sd = span_start_datetime(ps, timing.early_start, timing.early_finish, cal).date()
         fd = offset_to_datetime(ps, max(timing.early_finish, timing.early_start), cal).date()
         lo = sd if lo is None else min(lo, sd)
         hi = fd if hi is None else max(hi, fd)
