@@ -1,10 +1,24 @@
 # Handoff — 2026-08-03g (P1 closed: the intake gets a manifest and the guards get teeth; ADR-0347; v1.0.162)
 
-> ## STATUS (current) — **PR open (draft), CI running.** ADR-0347, **v1.0.162**.
-> The audit's whole **P1** queue lands in one unit: intake manifest + extension&harr;content
-> regression test · R-03/R-12 reconciled (R-14 opened) · CUI hook hardened · nine actions pinned
-> to SHAs. It started as a docs+tests unit needing no bump; **the full suite proved otherwise** —
-> see the third headline. Wheel + nine installers rebuilt at **v1.0.162**.
+> ## STATUS (current) — **MERGED, nothing in flight.** PR #533 squash-merged as `ef1ce1f`.
+> ADR-0347, **v1.0.162**. The audit's whole **P1** queue in one unit: intake manifest +
+> extension&harr;content regression test · R-03/R-12 reconciled (R-14 opened) · CUI hook hardened ·
+> nine actions pinned to SHAs. It started as a docs+tests unit needing no bump; **the full suite
+> proved otherwise** — see the third headline. Wheel + nine installers rebuilt at **v1.0.162**.
+> **All SIX checks green** on `546c502`: `test (3.11)` · `test (3.13)` · `floor (declared minimum)` ·
+> `browser (measured-box proof)` · `windows` · `linux`. The nine SHA-pinned action references all
+> resolved — every job started, which is the practical proof the pins are valid.
+>
+> ## THE CI ROUND THIS UNIT COST — the documented gate was a SUBSET of CI's
+> The first push went red on **both** `test` jobs. CLAUDE.md and `.claude/skills/full-gate/SKILL.md`
+> both prescribed **`ruff check src/ tests/`**; CI runs **`ruff check .`**. `tools/` is in neither,
+> so the entire local gate was green while CI found **6** errors in `tools/intake_manifest.py` — two
+> dead `# noqa: S101`/`S314` (this repo does not enable ruff's flake8-bandit rules, so the
+> suppressions were themselves RUF100 violations), two >100-col rows in the generated preamble, and
+> two U+2212 MINUS SIGN literals. Fixed in `546c502`, and **both docs now say `ruff check .`** —
+> the root cause, not the symptom. *A local gate that cannot see a directory CI lints is not a
+> gate, it is a subset* — ADR-0346's "two correct controls that never meet" landing on the gate
+> itself, and it only surfaced because CI happened to be the BROADER of the two.
 >
 > ## THE HEADLINE — a divergence the audit did not report, on the authoritative parity input
 > The two tracked copies of **`Project5_TAMPERED.mpp`** are the **same size with different bytes**

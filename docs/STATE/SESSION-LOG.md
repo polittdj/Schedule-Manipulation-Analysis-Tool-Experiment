@@ -11595,3 +11595,31 @@ shadowing the 0.16.1 that `.[dev]` installs. Run the gate's ruff as `python -m r
 
 **Next:** Phase 4 — CC-01's rendering half (re-derive the "74 sites" grep first; Fable 5 Max) ·
 SRA-LEGACY · V3. Then Phase 5 monolith split 2–3 and Phase 6.
+
+## 2026-08-04a — #533 merged; all six checks green; the gate/CI scope gap closed (docs only)
+
+**PR #533 squash-merged as `ef1ce1f`.** ADR-**0347**, **v1.0.162**. Branch restarted from the new
+`origin/main` with `--prune`. No code changed in this entry — durable state only, correcting a
+handoff STATUS that still read "PR open (draft), CI running".
+
+**All six checks green on `546c502`** — `test (3.11)`, `test (3.13)`, `floor (declared minimum)`,
+`browser (measured-box proof)`, `windows`, `linux` — each read from the check-run API rather than
+inferred from the merge. Two are worth naming: **`floor`** proves the new
+`tests/guards/test_intake_manifest.py`, which streams ~317 MB of intake blobs through
+`git cat-file`, works at the declared minimums (pytest 8.0.0 / pydantic 2.6 / fastapi 0.110.2) and
+not merely on the newest resolution; **`windows` + `linux`** exercise the v1.0.162 wheel and the
+nine rebuilt installers end-to-end. That all six jobs *started* is also the practical confirmation
+that the nine SHA-pinned action references resolve.
+
+**The unit cost one CI round, and the cause was the gate itself.** The first push went red on both
+`test` jobs at `ruff check .` with 6 errors in `tools/intake_manifest.py`. The local gate had been
+green because CLAUDE.md and `.claude/skills/full-gate/SKILL.md` both prescribed
+`ruff check src/ tests/` — and `tools/` is in neither directory, so a 500-line new file was linted
+by CI and invisible locally. Both docs now carry `ruff check .` verbatim. Recorded in
+LESSONS-LEARNED Part VIII: *run CI's command, not your paraphrase of it — when a check exists in two
+places, diff the invocations, not the intent; the scope argument is part of the command.*
+
+**Next:** Phase 4 — CC-01's rendering half (re-derive the "74 sites" grep first; ADR-0240 reserves
+it for a Fable 5 Max deep dive on the CPM date machinery) · SRA-LEGACY
+(`audit/SRA-ROOTCAUSE-20260730.md`) · V3 (`engine/msp_filters.py`, needs its migration-report gate).
+Then Phase 5 monolith split 2–3 and Phase 6 docs/operator queue.
