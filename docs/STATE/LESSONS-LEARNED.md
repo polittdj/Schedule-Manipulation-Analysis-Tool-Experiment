@@ -435,6 +435,78 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-03h — The obvious implementation of a guard is where the false positive lives (ADR-0347)
+- **A guard's naive form is the dangerous one.** Hardening the CUI hook to catch `data.mpp.bak`
+  needs the `$` anchor relaxed. The obvious relaxation — *blocked extension followed by any dot* —
+  silently claims `tools/mpxj/lib/jakarta.xml.bind-api-3.0.1.jar`, whose **Java package name**
+  merely contains `.xml.`, and would have blocked every future MPXJ upgrade with a nonsense reason.
+  It was found by sweeping the real tracked tree with the new pattern *before* trusting it, not by
+  reading it. The suffix set is now **closed**, and a test fails if the clause ever widens again.
+  **Generalizes: for every widened matcher, diff old-vs-new over the actual corpus.** A pattern is
+  a claim about a population you have not looked at until you look.
+- **Run CI's command, not your paraphrase of it.** CLAUDE.md and the `full-gate` skill both said
+  `ruff check src/ tests/`; CI runs `ruff check .`. Every file under `tools/` was therefore linted
+  by CI and invisible to the documented local gate — so a clean local gate meant nothing for the
+  new `tools/intake_manifest.py`, and CI returned 6 errors. **A gate that is a subset of CI is not
+  a gate.** When a check exists in two places, diff the invocations, not the intent: the scope
+  argument is part of the command. Both docs now carry `ruff check .` verbatim. (ADR-0346 taught
+  this about dependency floors — "two correct controls that never meet prove nothing"; it applies
+  to the gate itself, and the only reason it surfaced here is that CI happened to be the *broader*
+  of the two, which is not something to rely on.)
+- **Widening one guard's blocklist can open a hole in a different subsystem — and only the FULL
+  suite knows.** Adding `.p6xml`/`.xlsm` to the CUI pre-commit guard turned
+  `tests/test_logging_redaction.py` red: that test pins the log redactor's `SENSITIVE_EXTENSIONS`
+  to the hook's blocklist, and the redactor covered neither, so `redact("… Runway Program.p6xml")`
+  returned the file name **verbatim** — a Law 1 leak into logs, created by an edit that looked
+  purely additive. `tests/guards/` stayed green through every iteration of the work; the coupling
+  lives in another module entirely. **Scoped runs are for the edit-debug loop; only the whole suite
+  knows what a file is wired to** — and a "docs and tests only, no version bump" unit became a
+  shipped change (v1.0.162, wheel + nine installers) *because* the full suite ran before the ritual
+  step, not after.
+- **`set -o pipefail` turns every early-exiting reader into a fail-open switch.** The new CUI
+  content sniff shipped as `git show ":$p" | head -c 65536 | grep -qaE "$sig"`. It passed every
+  small fixture. It was wrong: pipefail takes the last non-zero status, and a truncating reader
+  SIGPIPEs its upstream, so the pipeline reports FAILURE *even when grep matched* — the guard
+  allowed a **281 KB** saved schedule while blocking a 4 KB one. **A security check must never
+  derive its verdict from a pipeline's aggregate status under pipefail;** put the producer in a
+  process substitution so only the matcher's own exit code is the answer. And test guards at
+  *realistic* input size — below the pipe buffer the producer finishes first and the bug is
+  invisible. (Falsifying the fix taught a corollary: the two-stage `git show | grep -q` does NOT
+  reproduce it — it wins the same race — so a mutation must restore the exact original shape, not
+  a plausible-looking variant, or you prove nothing.)
+- **Verify that your mutation actually mutated.** One falsification this session ran
+  `python3 -c "...$signature_re..."` inside double quotes; the shell expanded the variable before
+  Python saw it, the replace never matched, the file never changed, and the suite went green —
+  which reads exactly like "this test cannot fail". Apply mutations by heredoc, `assert anchor in
+  source`, and re-read the file to confirm the change before trusting the run. Same family as the
+  already-recorded "a `-k` filter can silently deselect the very test you are targeting".
+- **A test that fails on its first run is not automatically a bug in the subject.** Two of this
+  session's new tests went red immediately and *both* were the test over-claiming: one asserted "no
+  tracked file matches the block pattern" when the intake legitimately tracks `.docx`/`.xlsx`/`.mpp`
+  under ADR-0152's `inherited_from_main` rule; the other flagged `*.mspdi.xml.gz` goldens that live
+  under an allow-prefix. Reading the failure and narrowing the claim beat "fixing" the hook. The
+  reflex to change the subject under test is how a correct control gets weakened.
+- **Hash the committed blob, not the working tree.** `.gitattributes` sets `* text=auto`, so **128**
+  intake files check out CRLF on Windows and LF on Linux. A working-tree manifest would have been
+  green on CI forever (every pytest job is `ubuntu-latest`) and broken on the operator's own
+  Windows machine — the platform this tool actually ships nine installers for. ADR-0346's lesson,
+  one layer down: *ask not "does this pass?" but "in which configurations has it ever been asked?"*
+- **A manifest that only agrees with itself proves nothing.** The intake guard deliberately splits
+  into a *sync* half (re-derive the scan, compare to the doc) and a *live* half that never consults
+  the doc — both `.aft` parse at 1443/1403 `<Metric>`, 20/20 `.mpp` are OLE2, 65/65 shipped statics
+  match their extensions. Only the live half can answer "did the rotation reach the product?".
+- **Re-derive an inherited number before building on it.** The audit's "89 mismatched files" came
+  out at **99** under a stated rule; `99 − 7 − 3 = 89` reconciles it exactly (7 `.XLS` holding OOXML
+  packages, 3 `.json` holding prose). And re-deriving surfaced what the audit had *missed*: the two
+  copies of `Project5_TAMPERED.mpp` — ADR-0112's authoritative parity input — are the same size with
+  **different bytes**. Proving that harmless took MPXJ conversion plus a model/CPM comparison, not a
+  hex dump: same 145 tasks, same calendars, same CPM timings, same 4-task critical path.
+- **Decisive-or-silent beats thorough.** The classifier calls a mismatch only from a magic
+  signature, an OOXML part name, an OLE2 stream name, or a *complete* JSON/XML parse; "no decisive
+  signal" is its own answer and is never reported. Likewise the hook does not sniff prose for
+  schedule-shaped tables — no decisive signature exists, and **a guard that fires on documents gets
+  switched off, after which it guards nothing.** Coverage you cannot defend is negative coverage.
+
 ### 2026-08-03f — A declared range nobody runs is not a claim, it is a wish (ADR-0346)
 - **THE HEADLINE: the new floor job found a Law 1 defect on its very first run.** `fastapi>=0.110`
   had been in `pyproject.toml` for a year. fastapi **0.110.0 and 0.110.1** serialize a
