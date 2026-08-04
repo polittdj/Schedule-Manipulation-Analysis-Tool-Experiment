@@ -3,21 +3,50 @@
 #
 # Rejects any staged schedule / Office / Power BI / pickle artifact so that
 # Controlled Unclassified Information can never be committed, even with `git add -f`.
-# Two exceptions only:
-#   1. Synthetic, hand-authored, non-CUI test fixtures under tests/fixtures/.
+#
+# TWO detectors:
+#   1. EXTENSION — a blocked extension anywhere in the trailing suffix chain, so
+#      `data.mpp.bak` and `export.xlsx.1` are caught too (the pattern used to anchor
+#      hard on `$`; audit 2026-08-03 §5).
+#   2. CONTENT — a staged .json / .txt / extension-less file whose bytes carry a
+#      schedule signature: the tool's OWN "Save .json" format, an MSPDI root, or a
+#      P6 XER header. `.json` is deliberately NOT in .gitignore (tracked config must
+#      stay visible) and IS the tool's save format, so extension alone could never
+#      have covered it. Only these three signatures count — a guard that fired on
+#      prose would be turned off, and then it guards nothing.
+#
+# TWO exceptions:
+#   1. Synthetic, hand-authored, non-CUI content under the allow-prefixes below:
+#      test fixtures, and the shipped example schedules the app itself loads.
 #   2. INHERITED blobs (operator-approved 2026-07-08): a staged file whose exact blob
 #      already exists at the same path on origin/main is upstream content flowing through
 #      a merge — the operator committed the reference exports to main via the GitHub web
 #      UI (which no local hook can see), so blocking the identical bytes here would only
 #      wedge every merge while adding zero protection. Any NEW or MODIFIED schedule
-#      binary is still blocked.
+#      artifact is still blocked, by either detector.
 #
 # Activate with:  git config core.hooksPath .githooks
 # (the SessionStart hook does this automatically each session).
 set -euo pipefail
 
-blocked_re='\.(mpp|mpt|mpx|xer|xml|pmxml|csv|xls|xlsx|pbix|mspdi|pkl|pickle|aft|docx|doc)$'
-allow_prefix='tests/fixtures/'
+# A blocked extension at the end of the name, or carrying a backup/copy suffix (`data.mpp.bak`,
+# `export.xlsx.1`, `sched.mpp~`, `plan.csv.gz`). The suffix set is CLOSED on purpose: the obvious
+# "blocked ext followed by any dot" wedges `tools/mpxj/lib/jakarta.xml.bind-api-3.0.1.jar`, whose
+# Java package name simply contains ".xml." — measured against the tracked tree, not assumed.
+blocked_re='\.(mpp|mpt|mpx|xer|xml|pmxml|p6xml|csv|xls|xlsx|xlsm|pbix|mspdi|pkl|pickle|aft|docx|doc)(~?$|\.(bak|backup|old|orig|copy|tmp|temp|save|sav|gz|[0-9]+)~?$)'
+
+# Names whose content is worth sniffing: the tool's save format, a plain-text rename, or no
+# extension at all. Deliberately NOT .md/.py/.js — docs and code legitimately quote the format.
+sniff_re='\.(json|txt)($|\.)'
+
+# Decisive schedule signatures. Each identifies a real schedule serialization; none of them
+# occurs in prose or in configuration.
+signature_re='"tasks"[[:space:]]*:[[:space:]]*\[|xmlns="http://schemas\.microsoft\.com/project"|^ERMHDR[[:space:]|,]'
+
+allow_prefixes=(
+  'tests/fixtures/'                        # synthetic, hand-authored, non-CUI fixtures
+  'src/schedule_forensics/web/examples/'   # the shipped demo schedules the app loads
+)
 
 inherited_from_main() {
   # true only when the staged blob is byte-identical to origin/main's blob at this path
@@ -27,24 +56,53 @@ inherited_from_main() {
   [ "$staged" = "$upstream" ]
 }
 
+is_allowed_prefix() {
+  local path="$1" prefix
+  for prefix in "${allow_prefixes[@]}"; do
+    case "$path" in "$prefix"*) return 0 ;; esac
+  done
+  return 1
+}
+
+carries_schedule_content() {
+  # Sniff the STAGED bytes, not the working tree — the commit is what matters.
+  #
+  # Process substitution, NOT a pipeline. `set -o pipefail` (line 1) makes the pipeline's status
+  # the LAST non-zero one, and a truncating/early-exiting reader kills its upstream with SIGPIPE —
+  # so `git show | head -c N | grep -q` reports FAILURE even when grep MATCHED, and the guard
+  # fails OPEN on precisely the large files a real schedule produces. Measured 2026-08-03: a
+  # 281 KB saved schedule was ALLOWED; every small fixture passed, because git finishes writing
+  # before the reader exits. Do NOT "simplify" this back into a pipeline: the two-stage form
+  # `git show | grep -q` merely wins the same race more often, which is worse, not better.
+  # Here `git show` is not part of the pipeline at all, so its death cannot become our verdict —
+  # and grep reads to EOF or first match, so there is no truncation window either.
+  grep -qaE "$signature_re" <(git show ":$1" 2>/dev/null)
+}
+
 violations=()
+reasons=()
 while IFS= read -r path; do
   [ -z "$path" ] && continue
-  case "$path" in
-    "$allow_prefix"*) continue ;;  # synthetic non-CUI fixtures are allowed
-  esac
-  if printf '%s\n' "$path" | grep -qiE "$blocked_re"; then
-    inherited_from_main "$path" && continue  # upstream-identical blob riding a merge
-    violations+=("$path")
+  is_allowed_prefix "$path" && continue
+  base=${path##*/}
+  reason=""
+  if printf '%s\n' "$base" | grep -qiE "$blocked_re"; then
+    reason="blocked extension"
+  elif printf '%s\n' "$base" | grep -qiE "$sniff_re" || [ "$base" = "${base%.*}" ]; then
+    carries_schedule_content "$path" && reason="schedule content under a non-schedule name"
   fi
+  [ -z "$reason" ] && continue
+  inherited_from_main "$path" && continue  # upstream-identical blob riding a merge
+  violations+=("$path")
+  reasons+=("$reason")
 done < <(git diff --cached --name-only --diff-filter=AMR)  # renames scanned too (QC audit D26)
 
 if [ "${#violations[@]}" -gt 0 ]; then
   {
     echo "COMMIT BLOCKED — CUI/schedule artifacts must never be committed (Law 1):"
-    for v in "${violations[@]}"; do echo "  - $v"; done
+    for i in "${!violations[@]}"; do echo "  - ${violations[$i]}  (${reasons[$i]})"; done
     echo
-    echo "If a file is a synthetic, non-CUI test fixture, place it under ${allow_prefix}."
+    echo "If a file is a synthetic, non-CUI test fixture, place it under ${allow_prefixes[0]}."
     echo "Real schedule data stays out of git (see .gitignore)."
   } >&2
   exit 1

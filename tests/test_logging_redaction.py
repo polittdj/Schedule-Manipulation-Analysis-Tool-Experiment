@@ -27,15 +27,32 @@ def test_sensitive_extensions_cover_every_precommit_cui_extension() -> None:
     # Audit: the log redactor's SENSITIVE_EXTENSIONS omitted doc/docx/aft (and pkl/pickle), which
     # the pre-commit CUI guard DOES treat as CUI — so those file names leaked through logs. Pin the
     # two sets together: every extension the guard blocks as CUI must also be redacted in logs.
+    #
+    # ADR-0347 gave blocked_re a backup-suffix clause, so it is no longer `\.(exts)$` — read the
+    # extension alternation itself rather than the pattern's old overall shape. That widening made
+    # this test go red for exactly the RIGHT reason: `.p6xml` and `.xlsm` became CUI extensions the
+    # guard blocks, and the redactor did not cover them, so those file names leaked into logs
+    # verbatim. The extraction is deliberately anchored on the FIRST group after `\.`, which is the
+    # extension list in either shape.
     text = _PRECOMMIT.read_text(encoding="utf-8")
-    m = re.search(r"blocked_re='\\\.\(([^)]+)\)\$'", text)
-    assert m, "could not read blocked_re from .githooks/pre-commit"
+    m = re.search(r"blocked_re='\\\.\(([a-z0-9|]+)\)", text)
+    assert m, "could not read the extension alternation from .githooks/pre-commit blocked_re"
     blocked = set(m.group(1).split("|"))
     missing = blocked - set(lr.SENSITIVE_EXTENSIONS)
     assert not missing, f"log redactor omits CUI extensions the pre-commit guard blocks: {missing}"
 
 
-@pytest.mark.parametrize("name", ["NASA Metrics.aft", "Reference Export.docx", "schedule.pkl"])
+@pytest.mark.parametrize(
+    "name",
+    [
+        "NASA Metrics.aft",
+        "Reference Export.docx",
+        "schedule.pkl",
+        # ADR-0347: newly blocked by the guard, so newly required here.
+        "Runway Program.p6xml",
+        "Cost Model.xlsm",
+    ],
+)
 def test_redacts_the_newly_covered_cui_extensions(name: str) -> None:
     out = lr.redact(f"import failed for '{name}'")
     stem = name.rsplit(".", 1)[0]

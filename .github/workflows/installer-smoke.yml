@@ -44,7 +44,7 @@ jobs:
       # and BEFORE the checkout step.
       - name: Enable Windows long paths for checkout
         run: git config --system core.longpaths true
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
       - name: Parse all three PowerShell installers (syntax gate)
         shell: pwsh
         run: |
@@ -114,7 +114,7 @@ jobs:
           $jars = (Get-ChildItem (Join-Path $env:SF_INSTALL_ROOT "tools\mpxj\lib")).Count
           Write-Host "MPXJ jars downloaded + SHA-256 verified: $jars"
 
-      - uses: actions/setup-python@v5  # a 3.12 python.exe first on PATH for the leg below
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5.6.0 — a 3.12 python.exe first on PATH for the leg below
         with:
           python-version: "3.12"
       - name: Smoke-run tier1 with only python.exe discoverable (no py launcher)
@@ -401,7 +401,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
       - name: Syntax-check the sh/command installers
         run: |
           for f in installer/install-*.sh installer/install-*.command; do

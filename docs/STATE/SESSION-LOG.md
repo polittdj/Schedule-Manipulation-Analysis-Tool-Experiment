@@ -11487,3 +11487,100 @@ is not — the same failure shape the skill itself warns about.
 
 **Next:** P1 — intake manifest + extension↔content regression test · reconcile R-03/R-12 · CUI hook
 hardening · Action SHA pinning (which must also cover the two `@v5`/`@v6` uses the `floor` job added).
+
+## 2026-08-03h — P1 closed: the intake gets a manifest, and three guards get teeth (ADR-0347)
+
+The 2026-08-03 external audit's whole **P1** queue in one unit. ADR-**0347**, **v1.0.162** — wheel
+and nine installers rebuilt. It was planned as a docs+tests unit needing no bump; the full suite
+proved otherwise (see the redaction leak below), which is exactly why the bump/rebuild step comes
+after the whole suite and not after a scoped run.
+
+**Hardening the hook exposed a Law 1 LEAK in a different subsystem.** Adding `.p6xml`/`.xlsm` to
+the guard turned `tests/test_logging_redaction.py` red — and it was **right**. That test pins the
+redactor's `SENSITIVE_EXTENSIONS` to the hook's blocklist (every extension the guard calls CUI must
+also be redacted from logs), and the redactor covered neither:
+`redact("import failed for Runway Program.p6xml")` returned the file name **verbatim**. Both are
+now redacted (`<file:p6xml#…>`); `xls`/`xlsx` still resolve correctly, the alternation's `\b`
+handling the prefix collision. Only the test's *extraction* was stale — it read the old
+`blocked_re='\.(exts)$'` shape that the new backup-suffix clause ended — so it now reads the
+extension alternation itself. **`tests/guards/` was green through every iteration of this work.**
+The failure lives in a module that reads the hook from a completely different subsystem; scoped
+runs are for the edit-debug loop, and only the whole suite knows what a file is wired to.
+
+**A divergence the audit did not report, on the authoritative parity input.** The two tracked copies
+of `Project5_TAMPERED.mpp` are the **same size with different bytes** — 102 of 817,152 (0.0125%).
+The audit recorded it as "tracked twice" and stopped. Measured rather than assumed: the differing
+runs sit entirely in the OLE2 **VBA-project storage**; through MPXJ both yield MSPDI identical but
+for `<CurrentDate>` (the conversion clock); through the product importer both yield an **equal
+`Schedule`** — 145 tasks, identical calendars, identical CPM timings, the same 4-task critical path
+(ADR-0112), the same project finish. **No parity exposure**, and both hashes are now pinned.
+
+**Re-derived the intake numbers instead of inheriting them.** 406 tracked files, 332,633,606 bytes,
+**99** mismatches, **27** duplicate-content groups over **63** files — against the audit's 89 and
+24/54. The mismatch gap reconciles to the file: `99 − 7 − 3 = 89`, the 7 being `.XLS` files holding
+OOXML packages and the 3 being `.json` files holding prose. Neither count is wrong; this one states
+its rule and a test re-derives it. What matters is the scope measurement: the rotation reached
+**neither the product nor the oracles** — both `.aft` at 1443/1403 `<Metric>`, 20/20 `.mpp` OLE2,
+65/65 shipped statics clean, every golden well-formed, all asserted from the BYTES, never from the
+manifest (a manifest that only agreed with itself would prove nothing).
+
+**The manifest hashes the committed BLOB, not the working tree.** `.gitattributes` sets
+`* text=auto`, so **128** intake files check out CRLF on Windows and LF on Linux. Working-tree
+hashing would have gone green on CI — every pytest job is `ubuntu-latest` — and failed on the
+operator's own machine. Same shape as ADR-0346's lesson, one layer down: *ask not "does this pass?"
+but "in which configurations has it ever been asked?"*
+
+**The CUI hook gets a second detector.** `.p6xml`/`.xlsm` added; the `$` anchor replaced by a
+**closed** backup-suffix set (`data.mpp.bak`, `export.xlsx.1`, `sched.mpp~`, `plan.csv.gz`); and a
+content sniff of the **staged** bytes of `.json`/`.txt`/extension-less files for three decisive
+signatures — the tool's own Save-`.json` format, an MSPDI root, a P6 XER header. `.json` is
+deliberately absent from `.gitignore` and **is the tool's own Save format**, so extension alone
+could never have covered it. `src/schedule_forensics/web/examples/` joins `tests/fixtures/` as an
+allow-prefix. **The obvious implementation was wrong and measuring caught it:** "blocked extension
+followed by any dot" silently claims `tools/mpxj/lib/jakarta.xml.bind-api-3.0.1.jar`, whose *Java
+package name* merely contains `.xml.` — every future MPXJ upgrade would have been blocked with a
+nonsense reason.
+
+**The new content detector failed OPEN on its first real-sized input — the most important find of
+the session.** `git show ":$path" | head -c 65536 | grep -qaE "$sig"` passed every small fixture
+and was wrong: `set -o pipefail` takes the last non-zero status, and a truncating reader SIGPIPEs
+its upstream, so the pipeline reports FAILURE even when grep MATCHED. Measured — a **281 KB** saved
+schedule was **ALLOWED** while a 4 KB one was blocked, i.e. the guard failed open at exactly the
+size a real schedule is. Fixed with a process substitution, which takes `git show` out of the
+pipeline status and removes the truncation window with it. Found by testing at realistic size, not
+by reading the line. Falsifying the regression test then taught a second thing: reverting to the
+two-stage `git show | grep -q` does **not** reproduce it — that form wins the same race — so the
+test is only honest against the exact three-stage original. Both facts are now in the hook's
+comment, because the natural instinct is to "simplify" the process substitution back to a pipe.
+
+**A mutation silently did nothing and nearly passed as evidence.** One falsification ran
+`python3 -c "...replace('...$signature_re...')..."` in double quotes, so the shell expanded
+`$signature_re` before Python saw it; the anchor never matched, the file never changed, and the
+suite went green — indistinguishable from "this test cannot fail". Mutations are now applied by
+heredoc with `assert anchor in source`, and the file is re-read to confirm it changed before any
+result is trusted. Same family as "a `-k` filter can silently deselect the very test you target".
+
+**R-03 / R-12 reconciled, R-14 opened.** R-03's "open item: the two source `.mpp` not yet in the
+provided set" was stale (both tracked, twice each); its residual is re-scoped to what is genuinely
+open — **no `.pbix` has ever been deposited** (`pbix/` and `metrics_library/` hold only `.gitkeep`)
+plus the operator's proprietary-tool reruns. R-12's entire premise was ended by ADR-0151/0152:
+**Resolved**. R-14 now carries intake provenance with the manifest as its mitigation.
+
+**Nine actions pinned to commit SHAs**, each with a `# vX.Y.Z` note, including the two ADR-0346's
+`floor` job added. Pinned, not upgraded. The guard requires **both** the SHA and the note — a bare
+40-hex pin is unmaintainable, and an unmaintainable pin gets reverted — and carries a vacuity check
+so an empty sweep cannot make it pass.
+
+**Verification.** All **40** new assertions proved able to fail across 16 targeted mutations,
+including a *real* rotation of a shipped static (`sf-themes.css` given the favicon ICO's bytes) and
+a corrupted golden; every tree restored byte-identical from a scratchpad copy. **Two new tests
+failed on their first run and both were right** — one caught that the intake legitimately tracks
+blocked-extension files under ADR-0152's `inherited_from_main` rule, the other that the repo tracks
+`*.mspdi.xml.gz` goldens which the new `gz` suffix newly matched. In both cases the test was
+over-claiming and reading the failure beat rewriting the subject.
+
+**Environment note:** `ruff` on PATH was a stale **0.15.8** shim at `/root/.local/bin/ruff`,
+shadowing the 0.16.1 that `.[dev]` installs. Run the gate's ruff as `python -m ruff`.
+
+**Next:** Phase 4 — CC-01's rendering half (re-derive the "74 sites" grep first; Fable 5 Max) ·
+SRA-LEGACY · V3. Then Phase 5 monolith split 2–3 and Phase 6.
