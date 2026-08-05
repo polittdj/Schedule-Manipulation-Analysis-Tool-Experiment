@@ -13,6 +13,27 @@ parity** with **Acumen Fuse v8.11.0** and the **SSI** MS Project add-on, audits 
 with a **local-AI** narrative — every number and sentence **cited** (file + UniqueID + task name).
 The two laws: **(1) data sovereignty (CUI runtime)** and **(2) fidelity over speed.**
 
+## Open operator decisions (post-build tracking)
+
+> Tracked here so it is not forgotten across sessions. Added 2026-08-05 at the operator's request;
+> this item was never noted anywhere before, and the material below has instead grown across ~90
+> sessions.
+
+- **OD-1 — Reconcile the unrequested lessons-learned material (PR #412, squash commit `cd46f0e`,
+  2026-07-19).** The operator has stated this material was **not** wanted in the repository — it was
+  produced for information only and was committed/merged by that session's workflow, not by operator
+  intent. **Decision pending — KEEP, REMOVE, or RELOCATE** the following, per operator direction:
+  - `docs/STATE/LESSONS-LEARNED.md` — grew from 451 lines to ~3,300+ across ~90 commits; the
+    `.claude/skills/session-close` ritual now appends to it every session (ADR-0344).
+  - `docs/REBUILD-PROMPT.md` — unchanged since creation.
+  - the `CLAUDE.md` **"UPDATE THIS LOG DAILY"** standing rule and its embedding in
+    `.claude/skills/session-close/SKILL.md` — this is what makes every session keep editing the log.
+
+  Until the operator decides, **do not expand these further.** A clean removal is a *targeted* commit
+  off `origin/main` (delete the two docs; remove the `CLAUDE.md` rule + the session-close skill's
+  lessons-log step) — **not** `git revert cd46f0e`, which conflicts because later commits (~90)
+  modified `LESSONS-LEARNED.md` after it was created. Owner: **operator**.
+
 ## Architecture (see ADR-0004)
 ```
                          ┌──────────────────────────────────────────────┐
