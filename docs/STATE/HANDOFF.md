@@ -1,83 +1,69 @@
-# Handoff — 2026-08-05 (monolith split phase 2: the page chrome moves out; ADR-0349; v1.0.164)
+# Handoff — 2026-08-05 (monolith split phase 3 opens: the shared kernel comes out first; ADR-0350; v1.0.165)
 
-> ## STATUS (current) — **branch pushed, draft PR open.** ADR-0349, **v1.0.164**.
-> **ADR-0297's queued phase 2 is CLOSED.** `web/app.py` **21,348 → 20,255**; the page chrome is
-> **`web/chrome.py` (1,294 lines)**, extracted verbatim. Wheel + nine installers rebuilt at
-> **v1.0.164**. The `HANDOFF.md` STATUS line that still claimed PR #535 was open is corrected in
-> the archived section (it merged as `e9a48c9`).
+> ## STATUS (current) — **branch pushed, draft PR open.** ADR-0350, **v1.0.165**.
+> **Phase 3 is OPEN, and its queued order was WRONG — measured, not guessed.** The plan said
+> "slice by page family, largest first (`driving` 585)". `driving`'s AST closure drags
+> **`_panel_head` (reached by 47 families, 62 direct referrers)** and **`_shell_tools` (41/52)**
+> with it — so cutting a page first would have moved the shared panel strip *into a page module*
+> and left 60-odd unrelated helpers importing their panel header from `web/driving.py`. Every
+> later slice would have inherited that inversion. So phase 3 opens with the shared layer:
+> **`web/components.py` (308 lines)**, `app.py` **20,192 → 19,944** (−248). Wheel + nine
+> installers rebuilt at **v1.0.165**.
 >
-> ## THE SEAM WAS MEASURED, NOT EYEBALLED
-> An AST pass over `app.py`'s **344** top-level symbols took the transitive closure of `_page`:
-> **30 names, and it is CLOSED** — nothing the moved code calls stays behind. That property is
-> what made the cut safe *and* what made it small. Four of the thirty were nowhere near the
-> chrome region and came anyway because the closure demanded it: `_e` (**473** call sites),
-> `_expandable_more`, and `_criteria_text`/`_criterion_value_list`/`_OP_TEXT` from line ~18.7k —
-> the last confirmed by its own docstring, "*for chips/banner*". `_ask_panel_html` cost nothing:
-> it references only `_e`, so the AI **panel** moved without dragging the AI **backend** block.
+> ## MEMBERSHIP IS THE CLOSURE'S VERDICT
+> A symbol is in iff **≥3 page families** reach it — then no page can own it. That set is
+> **16 names / 233 lines of moved code and it is CLOSED** (calls nothing left behind). The
+> **≥2** band was rejected on inspection, not on size: it is **page-PAIR machinery**, not
+> primitives. `_conditional_section` / `_unified_risk_section` / `_branch_section` / `_OCC_*` are
+> all "sra, ssi" with **`_ssi_panel` as their only direct referrer**; `_render_counterfactual`
+> (179 ln) is "counterfactual, evolution" via `_counterfactual_panel` alone. Those travel with
+> their pages. Left behind on purpose: `_SRA_XLSX_TITLE` / `_BRIEFING_XLSX_TITLE`, the two
+> sibling ⤓ EXCEL strings sitting *immediately beside* `_ANALYSIS_XLSX_TITLE` — **adjacency is
+> not cohesion**, and this time it cuts against tidiness.
 >
-> ## THE TRAP WAS NOT PHASE 1'S
-> ADR-0297's hazard was **monkeypatching**. It did not bite — a targeted search found **zero**
-> tests patching any of the thirty. Phase 2's hazard is **source-text guards**: tests that
-> `read_text()` a module by path and assert on what they find. Moving `_LAYOUT` did not make them
-> fail honestly. One raised `ValueError` (loud, fine) — but `test_bar_drill`'s
-> `count('…drilldown.js…') == 1` would have gone from counting **one** include to **zero**, and
-> `test_presentation_fixes`'s `assert '"&mdash;"' not in src` would have gone on passing over a
-> file that no longer holds the code it guards. **A guard that stopped guarding still reports
-> success.** Same shape as phase 1's silent patch, different door.
+> ## THE TRAP WAS PHASE 2'S, ONE MODULE WIDER
+> Not "the subject moved out of the file the guard reads" but **"the view layer grew a module the
+> guard does not read."** `test_presentation_fixes`'s `&mdash;` sentinel guard read `app.py` +
+> `chrome.py`; **`_stat_cards` — the function the very next test exercises for that exact
+> double-escape — moved to `components.py`.** It would have stayed green over a shrunken subject.
+> `test_bar_drill`'s once-only `drilldown.js` count had the same shape. Both now read **all three**
+> view modules, and the module list is no longer left to the next cutter: the contract test pins
+> `VIEW_MODULES` / `LAYER_ORDER` and **fails** when a view module is added without widening them.
 >
-> ## TWO DIRECTIONS, KEPT DISTINCT
-> Guards whose subject is the **layout's internal script order** (`test_axis_titles` ×2,
-> `test_dd_line_ledger`) now read `chrome.py` — order is only meaningful inside the module that
-> defines it. Guards whose subject is the **whole view layer** now read **both** modules:
-> `test_bar_drill`'s once-only include exists to catch a page re-including `drilldown.js` in
-> `app.py`, which is exactly where such a re-include would land. Pointing it at `chrome.py` alone
-> would have kept it green while re-opening the hole it guards — that was caught and reverted
-> mid-change.
->
-> ## PROOF: EVERY SERVED PAGE IS BYTE-IDENTICAL
-> All **31** HTML routes rendered with the example schedule, before and after, in the SAME
-> interpreter (pre-split `app.py` swapped back, `chrome.py` parked): **31/31 identical SHA-256**.
-> The oracle was then proved sensitive — one character changed in `_LAYOUT` moves **30 of 31**
-> hashes (the 31st is `/whatif`'s 404, which renders no layout). For a change whose served bytes
-> are provably unchanged, this dominates a browser pass. Verbatim was proved separately and
-> mechanically: non-blank-line multiset **20,179 → 20,179**; the only six lines that left were
-> imports `ruff --fix` removed from `app.py` because their sole consumers had moved.
->
-> ## What landed
-> * **`web/chrome.py`** — `_LAYOUT` + `_bust_static`, the always-on banners, the story spine +
->   nav, the explainers, `_ask_panel_html`, `_e`, and **`_page`**. `app.py` re-exports all 35
->   names with `X as X`. `chrome.py` takes the **E501 exemption** (31 over-long lines are the
->   HTML itself) — ADR-0297 predicted exactly this for the HTML-carrying phases.
-> * **Deliberately left in `app.py`:** `_STATIC_DIR` (the mount; a test imports it from
->   `web.app`), `_OAT_MAX_ACTIVITIES` (ADR-0297 already ruled), the AI **backend** block, and
->   `_TS_CAPTION_MARK` — a page-*body* constant that merely sits between `_story_footer` and
->   `_page`. **Adjacency is not cohesion.**
-> * **`tests/web/test_monolith_split_contract.py` (+3)** — re-exports resolve to the SAME objects
->   (`is`, not `==`), `chrome` never imports `app`, and `_LAYOUT` is defined exactly once, in the
->   file the source-text guards read. That last one is a **signpost for phase 3**: when `_LAYOUT`
->   moves again it fails and names the three guard files to repoint in the same commit.
+> ## PROOF — AND THE ORACLE WAS BROKEN BEFORE IT WAS TRUSTED
+> **60/60 routes byte-identical**, including the parametrized `/analysis/{name}`, `/card/{name}`,
+> `/wbs/{name}` — where this kernel is used most and which a page-list oracle would have missed.
+> But two runs of the **unchanged** tree first disagreed on **34 of 61**: a per-process launch
+> token (`<meta name=sf-launch>` / `/api/whoami`) + pid, stable only *within* one interpreter —
+> which is exactly why ADR-0349 said "in the SAME interpreter". Normalized those two; excluded
+> `/api/system` (live uptime) by name; only then is 60/60 evidence. Oracle then falsified: one
+> char in `_panel_head` moves **20 of 60**, and the 40 that hold were **checked** (zero
+> `class=panel-head` in their HTML) with `/margin` (4, moved) as positive control. Verbatim proved
+> mechanically: non-blank multiset **19,100 → 19,100**; the 52 added lines are entirely the
+> re-export block (25) + preamble (27), the 1 removed is `field_or_metric_doc`.
 >
 > ## Verification
-> * **Five mutations, each proved to fail the right test**, each verified-mutated by re-reading
->   the file and restored byte-identically from a scratchpad copy (never `git checkout`): dropped
->   re-export → names `_guide`; stale shadowing copy → names `_TITLE_TO_CHAPTER`; **deferred**
->   `from …web.app import` inside a chrome function → caught by the AST check *and it imports
->   cleanly*, which is the whole point (the module-level form detonates on its own); a second
->   `_LAYOUT` elsewhere → fails and names the guards; `gantt.js` moved out of the layout head
->   (the real ADR-0340 defect) → fails both repointed guards against `chrome.py`.
+> **Five mutations, each proved to fail the right test**, each verified-mutated by re-reading the
+> file and restored from a scratchpad copy (never `git checkout`): dropped re-export → names
+> `_panel_head`; **deferred** `from …web import app` inside a `components` function → fails the
+> layering test *and imports cleanly*, which is the whole point; `"components.py"` dropped from
+> `test_bar_drill`'s tuple → enumeration test fails; `"&mdash;"` planted in `components.py` and a
+> second `drilldown.js` include planted there → both repointed guards fail, which is what proves
+> the repointing widened their reach rather than just moving it.
 >
 > ## Next
-> **Phase 3** — the ~11k lines of `_*_body`/`_*_panel`/`_*_data` presentation helpers → per-page
-> modules; routes stay in `app.py` until the helpers are out. It moves ~9× phase 2's code, so
-> sweep for **both** traps before cutting, the way the closure was computed here, and reuse the
-> before/after render diff (it is cheap and decisive). Then: the three pages with no `page-lede`
-> (`/briefing`, `/path`, `/compare`); `/groups` "Activities" counting summary rows (ADR-0343);
-> the nine installers not installing with `-c constraints/known-good.txt` (62 lockstep tests, own
-> unit); Phase 6 docs/operator queue.
+> **Phase 3 continues, now genuinely per-page** — with the kernel out, `driving`'s closure is its
+> own 5 entry points + `_task_iso_dates` + `_corridor_chips`. Order by size: `driving` 585 ·
+> `evolution` 429 · `integrity` 402 · `margin` 379 · `trend` 348 · `ssi` 335 · `mission` 304 ·
+> `how` 290 · `sra` 264 · `what` 257 · `where` 235 · `portfolio` 231 · `evm` 208 · `forecast` 204.
+> Phase 4 MUST add its module to `LAYER_ORDER` + `VIEW_MODULES` (the contract test says so by
+> failing). Two 2-family names (`_task_name_across`, `_EVO_TIER_LABEL`) stay in `app.py` until
+> both owners have moved. Then: the three pages with no `page-lede` (`/briefing`, `/path`,
+> `/compare`); `/groups` "Activities" counting summary rows (ADR-0343); the nine installers not
+> installing with `-c constraints/known-good.txt` (62 lockstep tests, own unit); Phase 6 docs.
 > **Reserved for Fable 5 Max (ADR-0240), do NOT start on Opus:** **SRA-LEGACY**
-> (`audit/SRA-ROOTCAUSE-20260730.md`) · ADR-0348's **`tod + per_day == 1440`** residual (no
-> oracle in the corpus) · **V3** (`engine/msp_filters.py` — moves saved-filter populations;
-> needs its migration-report gate).
+> (`audit/SRA-ROOTCAUSE-20260730.md`) · ADR-0348's **`tod + per_day == 1440`** residual (no oracle
+> in the corpus) · **V3** (`engine/msp_filters.py` — moves saved-filter populations).
 > **Operator only:** license selection · branch-protection required contexts · intake re-upload ·
 > proprietary-tool reruns (engine==golden → engine==Fuse) · OR-04.
 >
@@ -89,10 +75,12 @@
 > `/root/.local/bin/ruff` shadows the 0.16.1 `.[dev]` installs). Never `git checkout <file>` to
 > undo a test mutation — `cp` from a scratchpad copy.
 >
-> **New this session:** *splitting a module silently narrows every test that names the file.*
-> Moving code cannot break a `read_text()` guard's syntax, only its subject — so the guard keeps
-> passing while its reach shrinks to nothing. Before the next cut, list the guards that name the
-> file, not just the callers that import from it.
+> **New this session:** *a stated number carries the timestamp of the tree it was measured from.*
+> ADR-0349's `20,255` was honestly measured — before `ruff --fix`/`format` ran. The merged file
+> was **20,192**; corrected in all three docs. Same failure one step further in than ADR-0348's:
+> not a recollection, a measurement taken too early. And: **settle the tree, `md5sum` what you
+> touched, run, then re-verify the md5s** — step four is what turns "I don't think I edited
+> anything" into evidence.
 
 # (prior) handoffs — archived
 

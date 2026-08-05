@@ -53,7 +53,13 @@ def test_no_mdash_entity_sentinel_values_remain_in_app_source() -> None:
     # regression guard: a quoted "&mdash;"/'&mdash;' value would double-escape through _e again
     # ADR-0349: `_e` and the banner/shell markup moved to `web/chrome.py`, so a guard that read
     # `app.py` alone would have quietly stopped covering the very module that now owns `_e`.
-    src = "".join(p.read_text(encoding="utf-8") for p in (APP_SRC, APP_SRC.with_name("chrome.py")))
+    # ADR-0350: `_stat_cards` — the function the test ABOVE exercises for this exact
+    # double-escape — moved to `web/components.py`. This claim is "nowhere in the view layer",
+    # so it reads EVERY view module; each split narrows it silently until the new one is added.
+    src = "".join(
+        p.read_text(encoding="utf-8")
+        for p in (APP_SRC, APP_SRC.with_name("chrome.py"), APP_SRC.with_name("components.py"))
+    )
     assert '"&mdash;"' not in src
     assert "'&mdash;'" not in src
 

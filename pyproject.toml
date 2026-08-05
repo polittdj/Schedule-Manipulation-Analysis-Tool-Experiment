@@ -16,7 +16,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "schedule-forensics"
-version = "1.0.164"
+version = "1.0.165"
 description = "Local, NASA-themed forensic schedule-analysis tool (CUI-safe, offline)."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -163,6 +163,12 @@ select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
 # has no HTML in it, still earns none.
 "src/schedule_forensics/web/app.py" = ["E501"]
 "src/schedule_forensics/web/chrome.py" = ["E501"]
+# `components.py` is the shared presentation kernel, extracted verbatim from app.py (ADR-0350).
+# Only ONE line actually needs the exemption — a `_metric_help_cell` docstring line that was
+# already over-long inside app.py's exempt region. Re-wrapping it to earn a clean E501 would
+# break the byte-for-byte property the whole extraction rests on, and verbatim outranks a rule
+# that exists for code. The exemption travels with the code, exactly as it did for chrome.py.
+"src/schedule_forensics/web/components.py" = ["E501"]
 
 [tool.ruff.format]
 # ruff >= 0.16 formats fenced ```python blocks inside Markdown. That is right for prose docs and

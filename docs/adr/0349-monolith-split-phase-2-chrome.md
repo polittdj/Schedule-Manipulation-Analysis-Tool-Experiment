@@ -25,7 +25,8 @@ and `app.py` re-exports with the explicit `X as X` idiom so old import paths kee
 the per-page explainers (`_EXPLAINERS`, `_explain`, `_guide`, `_page_explainer`), the Mission-Ops
 story spine (`_Chapter`, `_SPINE`, `_render_nav`, `_render_target_control`, `_role_strip`,
 `_chapter_kicker`, `_story_footer`, `_utility_takeaway`), the Ask-the-AI panel, and **`_page`**
-itself — the single chokepoint every route returns through. `app.py` drops to **20,255 lines**.
+itself — the single chokepoint every route returns through. `app.py` drops to **20,192 lines**
+(−1,156).
 
 **The seam was chosen by measurement, not by eye.** An AST pass over `app.py`'s 344 top-level
 symbols computed the transitive closure of `_page`: **30 names, and it is closed** — nothing the
