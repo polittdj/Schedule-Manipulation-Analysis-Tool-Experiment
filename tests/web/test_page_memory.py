@@ -61,7 +61,11 @@ def test_evolution_gains_dates_on_bars(client: TestClient) -> None:
 def test_driving_path_corridor_gains_find_and_dates_on_bars() -> None:
     # the corridor panel only renders when a real driving corridor exists across versions
     # (which the golden pair doesn't produce), so assert on the template + script wiring
-    app_src = (STATIC.parent / "app.py").read_text(encoding="utf-8")
+    # ADR-0351: that template moved to `web/driving.py`. This guard's subject is the driving-path
+    # markup itself, so it FOLLOWS the subject — and because no fixture can render this panel,
+    # this source-text check is the only coverage it has. Reading app.py here would leave the
+    # panel guarded by nothing at all.
+    app_src = (STATIC.parent / "driving.py").read_text(encoding="utf-8")
     assert "dpFind" in app_src and "dpBarDates" in app_src
     dp_js = (STATIC / "driving_path.js").read_text(encoding="utf-8")
     assert "dpFind" in dp_js and "dpBarDates" in dp_js and "SFTaskInfo.openFrom" in dp_js

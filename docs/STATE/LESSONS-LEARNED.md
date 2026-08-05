@@ -435,6 +435,62 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-05 (cont.3) — An oracle can be deterministic, sensitive-looking, and still prove nothing (ADR-0351)
+- **60/60 byte-identical, and it was worth exactly zero.** The render diff said every route was
+  unchanged after moving the driving-path family. Then the mandatory falsification: one character
+  changed inside a moved function moved **0 of 60** hashes. Reloading with the Project2/Project5
+  golden pair (63 routes) — still **0 of 63**. `tests/web/test_page_memory.py` already said why:
+  the corridor panel "only renders when a real driving corridor exists across versions (**which
+  the golden pair doesn't produce**)". The oracle was deterministic, it had a clean null result,
+  and it had *just* been proved sensitive on the previous cut — none of which makes it sensitive
+  to **this** code. **Sensitivity is a property of the oracle AND the change, never of the oracle
+  alone.** Re-falsify per cut, against the code that actually moved.
+- **The honest fallback is narrower, and should be stated as such.** What replaced it:
+  per-definition AST byte-identity against the pre-move source, **9/9 identical**. That is a real
+  measurement and it is *weaker* than a behavioural diff — so the ADR, the handoff and the PR all
+  say which functions have no test coverage (`_driving_tiers_panel`, `_driving_tier_trend`,
+  `_task_name_across`, `_EVO_TIER_LABEL`) rather than letting "60/60" imply cover it never had.
+  A named gap ("a fixture that produces a real driving corridor") is worth more than a confident
+  number that means nothing.
+- **A re-export makes the monkeypatch trap SILENT again.** ADR-0297's trap was a patch that no
+  longer intercepts. The nastier variant: `_driving_path_gantt` and `_corridor_chips` are still
+  re-exported by `app.py`, so `monkeypatch.setattr(appmod, …)` **succeeds** — while the caller,
+  now in `driving.py`, resolves them through its own namespace. No `AttributeError`, no failure,
+  the test just quietly asserts against the real renderers. Only its sibling patch
+  (`compute_driving_path_evolution`, which app.py no longer binds at all) failed loudly and
+  dragged the other two into the light. **The re-export that keeps callers working is exactly
+  what keeps the patch from erroring.**
+- **My first sweep for that had a hole, and the hole was a category error.** It compared patch
+  targets against the names `driving.py` *imports*. `_driving_path_gantt` and `_corridor_chips`
+  are names it *defines*. The sweep has to cover **every name the new module BINDS** — imported,
+  defined, or assigned — because binding is what shadows the patch.
+- **Two source-text guards, two opposite correct directions, same commit.** `test_page_memory`'s
+  `dpFind` check **FOLLOWS** its subject into `driving.py` (its claim is about the driving-path
+  markup). The whole-view-layer guards **WIDEN** to include `driving.py` (their claim is "nowhere
+  in the view layer"). Pointing either the other way looks equally reasonable and is wrong: the
+  question is always what the guard is a claim *about*, never where the code went.
+- **A falsification can itself be wrong in the direction that flatters you — twice in one unit.**
+  Both read exactly like "this guard cannot fail", and both were my mutation, not the guard:
+  (1) removing `dpFind` from `driving.py` replaced only the **first** of **two** occurrences;
+  (2) `id=dpFind` → `id=dpFindZ` replaced all of them and the guard *still* passed, because the
+  assertion is `"id=dpFind" in src` and the original anchor is a **substring of the
+  replacement**. A suffix does not delete a substring. The working mutation was a same-length
+  non-superstring (`id=dpQind`). **The rule that covers both: after mutating, assert the ORIGINAL
+  anchor is ABSENT from the re-read file.** "I changed the file" is not "I removed the thing the
+  assertion looks for" — and the gap between those two is exactly where a false negative lives.
+- **A source-text guard can reach its file through the module OBJECT, and then no grep finds it.**
+  `test_gantt_find_coverage` reads `Path(app_module.__file__)`, not a literal `"app.py"`. The
+  standing sweep — `grep -rln 'app\.py' tests/` — could never have listed it. It survived the
+  pre-cut sweep, three sibling repointings, ruff, mypy and every targeted run, and was caught
+  **only by the full 20-minute suite**. Two consequences: the sweep must also cover
+  `__file__)\.read_text` and `inspect.getsource`; and **the fast checks do not substitute for the
+  full suite on a refactor that moves code between modules** — the failure mode here is invisible
+  to every cheaper check by construction.
+- **The guard I wrote last unit paid off on its first real outing.** Adding `driving.py` to
+  `VIEW_MODULES` immediately failed `test_whole_view_layer_guards_actually_read_the_whole_view_layer`
+  and named both files to widen. Pinning the enumeration converted a thing-to-remember into a
+  thing-that-fails — which is the only version that survives contact with the next session.
+
 ### 2026-08-05 (cont.2) — The queued plan was wrong, and only the dependency graph could say so (ADR-0350)
 - **A line census is not a dependency measurement, and the plan was built on the wrong one.**
   Phase 3 was queued as "slice by page family, largest first" — `driving` (585 lines) first. The

@@ -16,6 +16,7 @@ from schedule_forensics.model.relationship import Relationship, RelationshipType
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
 from schedule_forensics.web import app as appmod
+from schedule_forensics.web import driving as drvmod
 from schedule_forensics.web.app import SessionState, create_app
 
 # --- small fakes + builders (inlined; never imported across test packages, for CI sys.path) ------
@@ -458,11 +459,15 @@ def test_driving_path_body_renders_left_the_corridor(monkeypatch) -> None:
         between=types.SimpleNamespace(drives=False),
     )
     evo = types.SimpleNamespace(snapshots=[snap])
-    monkeypatch.setattr(appmod, "compute_driving_path_evolution", lambda s, c, src, tgt: evo)
+    # ADR-0351: `_driving_path_body` and everything it calls live in `web/driving.py` now, so the
+    # patches must land on THAT module — the one whose code does the calling (ADR-0297's trap).
+    # `appmod` still RE-EXPORTS `_driving_path_gantt`/`_corridor_chips`, so patching it here would
+    # succeed and silently do nothing, and this test would assert against the real renderers.
+    monkeypatch.setattr(drvmod, "compute_driving_path_evolution", lambda s, c, src, tgt: evo)
     monkeypatch.setattr(
-        appmod, "_driving_path_gantt", lambda *a, **k: {"versions": [{"activities": []}]}
+        drvmod, "_driving_path_gantt", lambda *a, **k: {"versions": [{"activities": []}]}
     )
-    monkeypatch.setattr(appmod, "_corridor_chips", lambda snap: "chips")
+    monkeypatch.setattr(drvmod, "_corridor_chips", lambda snap: "chips")
     out = _driving_path_body([sch], [compute_cpm(sch)], source=1, target=3)
     assert "Left the corridor" in out and "route shifted" in out and "corridor length +2" in out
 

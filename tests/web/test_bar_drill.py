@@ -42,7 +42,8 @@ def test_drilldown_runtime_is_loaded_globally_not_per_page() -> None:
     # otherwise shrinks this count's reach without ever turning it red.
     web = REPO / "src" / "schedule_forensics" / "web"
     app_src = "".join(
-        (web / m).read_text(encoding="utf-8") for m in ("app.py", "chrome.py", "components.py")
+        (web / m).read_text(encoding="utf-8")
+        for m in ("app.py", "chrome.py", "components.py", "driving.py")
     )
     assert app_src.count('<script src="/static/drilldown.js"></script>') == 1
 

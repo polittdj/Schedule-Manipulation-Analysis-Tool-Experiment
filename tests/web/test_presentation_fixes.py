@@ -56,9 +56,16 @@ def test_no_mdash_entity_sentinel_values_remain_in_app_source() -> None:
     # ADR-0350: `_stat_cards` — the function the test ABOVE exercises for this exact
     # double-escape — moved to `web/components.py`. This claim is "nowhere in the view layer",
     # so it reads EVERY view module; each split narrows it silently until the new one is added.
+    # ADR-0351 adds `driving.py`. The contract test names the module list, so this widening is
+    # forced rather than remembered — that is the point of pinning `VIEW_MODULES`.
     src = "".join(
         p.read_text(encoding="utf-8")
-        for p in (APP_SRC, APP_SRC.with_name("chrome.py"), APP_SRC.with_name("components.py"))
+        for p in (
+            APP_SRC,
+            APP_SRC.with_name("chrome.py"),
+            APP_SRC.with_name("components.py"),
+            APP_SRC.with_name("driving.py"),
+        )
     )
     assert '"&mdash;"' not in src
     assert "'&mdash;'" not in src
