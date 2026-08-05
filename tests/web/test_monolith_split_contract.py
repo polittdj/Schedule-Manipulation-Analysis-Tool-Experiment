@@ -34,6 +34,7 @@ import schedule_forensics.web.app as app_mod
 import schedule_forensics.web.chrome as chrome_mod
 import schedule_forensics.web.components as components_mod
 import schedule_forensics.web.driving as driving_mod
+import schedule_forensics.web.evolution as evolution_mod
 
 WEB = Path(app_mod.__file__).parent
 
@@ -42,6 +43,7 @@ EXTRACTED = {
     "chrome.py": chrome_mod,
     "components.py": components_mod,
     "driving.py": driving_mod,
+    "evolution.py": evolution_mod,
 }
 
 #: The view layer, lowest layer FIRST. A module may import only from those before it — that is
@@ -49,14 +51,21 @@ EXTRACTED = {
 #: `driving.py` sits ABOVE `components.py`: a page module consumes the shared kernel, never the
 #: reverse. That ordering is what forced `_task_name_across` / `_EVO_TIER_LABEL` DOWN into
 #: `components` in ADR-0351 — `driving` needs both, and reaching up into `app` would be a cycle.
-LAYER_ORDER = ("state.py", "chrome.py", "components.py", "driving.py", "app.py")
+LAYER_ORDER = (
+    "state.py",
+    "chrome.py",
+    "components.py",
+    "driving.py",
+    "evolution.py",
+    "app.py",
+)
 
 #: Guards whose claim is "nowhere in the view layer" (as opposed to "in this module's markup").
 #: They read raw source BY PATH, so a new view module shrinks their reach without going red.
 WHOLE_VIEW_LAYER_GUARDS = ("test_bar_drill.py", "test_presentation_fixes.py")
 
 #: The modules such a guard has to read. Markup-carrying only — `state.py` holds no HTML.
-VIEW_MODULES = ("app.py", "chrome.py", "components.py", "driving.py")
+VIEW_MODULES = ("app.py", "chrome.py", "components.py", "driving.py", "evolution.py")
 
 
 def _module_level_names(path: Path) -> set[str]:

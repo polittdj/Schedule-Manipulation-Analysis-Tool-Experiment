@@ -435,6 +435,43 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-05 (cont.4) — A coverage probe can measure the anchor instead of the function (ADR-0352)
+- **The probe that flattered itself.** To find out which members of the evolution family the
+  render oracle actually exercises, I mutated each one's markup and re-rendered.
+  `_render_counterfactual` "moved 24 routes" — it looked thoroughly covered. It was not: the
+  anchor I picked was `class=sf-take`, a **generic** class used across the whole UI, and
+  `str.replace()` changed it **file-wide**. I had measured the anchor's blast radius, not the
+  function's. Scoped to the member's own AST line span, the same function moves **0**.
+  **A mutation must be confined to the thing you are making a claim about** — otherwise the
+  result is real, reproducible, and about something else.
+- **Run the coverage probe BEFORE the cut, not after.** ADR-0351 learned that a render diff can
+  be vacuous; this slice checked *first* whether each member was renderable at all, and got a
+  per-member map instead of a single reassuring 66/66. Two members (286 lines) came back
+  uncovered — so the ADR, the handoff and the PR say which parts the diff speaks for and which
+  parts rest on per-definition byte-identity. **The point of the check is not to pass it; it is
+  to know which of your evidence is load-bearing.**
+- **A widened sweep proved its worth one slice later.** ADR-0351 widened the monkeypatch sweep
+  from "names the new module imports" to "every name the new module BINDS". This slice's silent
+  case — `appmod.compute_path_evolution`, still bound in `app.py` for its own callers, so the
+  patch succeeds and does nothing once the callee moves — is exactly the shape the narrow version
+  missed last time. **The test that proves the fix is the revert:** changing `evomod` back to
+  `appmod` turns the test red, which is the difference between "my fix works" and "it passes
+  anyway".
+- **The full suite found it AGAIN, and the count is now four.** Two more sites of the same read
+  coupling live in `tests/perf/test_perf_regression.py`. Every fast check passed them; only the
+  20-minute run does not. That is the second time in two slices the full suite caught a class of
+  defect nothing cheaper can see — the pattern is now reliable enough to plan around rather than
+  be surprised by.
+- **A monkeypatch is not the only way a test binds to a module.** `test_session_consistency` did
+  `real = app_module.compute_cpm` purely to *capture* the real callable, then patched
+  `state_module`. `ruff --fix` removed `compute_cpm` from `app.py` when its last consumer moved,
+  and the **read** broke. Reads are couplings too — sweep for attribute access on a module, not
+  just `setattr`.
+- **The prefix finds a family; the closure defines it.** Seeding `_evolution_*` alone left two
+  helpers being pulled by functions that would have stayed behind. Naming conventions are a
+  search hint, never the membership test — same lesson as ADR-0349's "adjacency is not cohesion",
+  one level up: *nomenclature is not cohesion either.*
+
 ### 2026-08-05 (cont.3) — An oracle can be deterministic, sensitive-looking, and still prove nothing (ADR-0351)
 - **60/60 byte-identical, and it was worth exactly zero.** The render diff said every route was
   unchanged after moving the driving-path family. Then the mandatory falsification: one character

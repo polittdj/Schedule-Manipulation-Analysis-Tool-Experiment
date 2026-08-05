@@ -180,7 +180,10 @@ def test_p2_population_pass_never_builds_the_full_analysis(monkeypatch) -> None:
 
     counts = {"analysis": 0, "cpm": 0}
     real_analysis = app_module._compute_analysis
-    real_cpm = app_module.compute_cpm
+    # ADR-0352: read the real callable from the SAME module this test patches. `app.py`
+    # stopped binding `compute_cpm` once its last consumer moved to `web/evolution.py`;
+    # `SessionState` has always resolved it through `web/state.py`, which is the patch target.
+    real_cpm = state_module.compute_cpm
 
     def counting_analysis(sch, cpm=None, **kwargs):  # type: ignore[no-untyped-def]
         counts["analysis"] += 1
@@ -205,11 +208,13 @@ def test_p2_cpm_tier_is_epoch_keyed_and_resident(monkeypatch) -> None:  # type: 
     """REGRESSION GATE (P2's epoch dimension, ADR-0263): each scope epoch solves once per
     version, and toggling the filter back re-serves the RESIDENT solves — zero new solves.
     The original P2 gate only exercised the default epoch; this closes the audit gap."""
-    import schedule_forensics.web.app as app_module
     import schedule_forensics.web.state as state_module
 
     counts = {"cpm": 0}
-    real_cpm = app_module.compute_cpm
+    # ADR-0352: read the real callable from the SAME module this test patches. `app.py`
+    # stopped binding `compute_cpm` once its last consumer moved to `web/evolution.py`;
+    # `SessionState` has always resolved it through `web/state.py`, which is the patch target.
+    real_cpm = state_module.compute_cpm
 
     def counting_cpm(sch, **kw):  # type: ignore[no-untyped-def]
         counts["cpm"] += 1
