@@ -470,6 +470,34 @@ those fixed defects in earlier "closed" fixes:
   it needs no guard. The **deferred** form, inside a function body, is how someone would *work
   around* the cycle: it imports fine, runs fine, and quietly makes the cut circular. That is the
   case the AST guard earns its place on, and the mutation that proves it.
+### 2026-08-05 — A guard that names a destination does not check that anything arrived
+- **The handoff rotation is two moves, and only one of them is tested.** ADR-0246 says: REPLACE the
+  live section in `HANDOFF.md` *and* MOVE the outgoing one to the top of `HANDOFF-ARCHIVE.md`.
+  Resolving #528's conflict did the first and skipped the second, so `2026-08-03c` (#527, ADR-0344)
+  vanished from **both** docs. It stayed missing through five subsequent merges (`2262e6d` →
+  `e9a48c9`) while every rotation in between was performed correctly — a silent, one-time loss that
+  nothing downstream re-detects. Restored verbatim from `d57e230`.
+- **Why all five state-docs guards passed on it.** They check the *source* side only: `HANDOFF.md`
+  ≤64 KB, exactly one `# (prior)` heading, latest ADR present in HANDOFF + SESSION-LOG, ADR numbers
+  unique. Every one of those is satisfied by a section that was deleted rather than moved.
+  `HANDOFF-ARCHIVE.md` appears in `tests/test_state_docs.py` **only** in a docstring and two
+  assertion *failure strings* — prose that tells you where to put the section, with no assertion
+  that ever opens the file. Naming a destination in an error message is not coverage of it.
+- **Two obvious guards are dead ends — recorded so the next attempt skips them.** (1) *ADR-number
+  contiguity across handoff headings*: measured, not assumed — 179 archived sections name only 58
+  distinct ADRs, with ~170 legitimate gaps (most sessions never numbered their heading). The guard
+  would fire on almost everything. (2) *Compare the live section against the previous commit's*:
+  defeated by CI's shallow `fetch-depth: 1` checkout. A real guard needs a different invariant;
+  the gap is left open deliberately rather than filled with a flaky or false-positive test.
+- **A recovery plan goes stale faster than the defect does.** The plan written on 08-03 said
+  "prepend after the archive's 4-line header" — correct that day, wrong by 08-05, when three newer
+  sections (`08-03d`, `08-03f`, `08-03g`) had been archived ahead of it and the correct slot had
+  moved to *between* `08-03d` and `08-03b`. Re-derive an insertion point from the file at the
+  moment you act; a stored line number is a guess about a file you have not read yet.
+- **Near-miss worth naming:** `2026-08-03e` looked like a second dropped section. It is a
+  LESSONS-LEARNED entry label, never a handoff heading (`git log -S` located it in this file, not
+  in `HANDOFF.md`). Checking cost one command; assuming would have "restored" a section that never
+  existed.
 
 ### 2026-08-04 — A finding is a hypothesis with a citation, not a measurement (ADR-0348)
 - **Re-derive the numbers in a finding's own headline before you act on it.** CC-01 was filed as

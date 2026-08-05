@@ -11682,6 +11682,36 @@ failed with the documented load-sensitive signature and passes in isolation.
 **Next:** SRA-LEGACY (`audit/SRA-ROOTCAUSE-20260730.md`) · V3 (`engine/msp_filters.py`, needs its
 migration-report gate) · Phase 5 monolith split 2–3 · Phase 6 docs/operator queue.
 
+## 2026-08-05 — The handoff section #528 dropped is restored (docs only)
+
+**What happened.** A post-merge check on #528 found `2026-08-03c` (#527, ADR-0344) missing from both
+`HANDOFF.md` and `HANDOFF-ARCHIVE.md`. #528's conflict resolution replaced the live section without
+moving the outgoing one to the archive — the second half of the ADR-0246 rotation. The loss survived
+five merges (`2262e6d` → `e9a48c9`); every rotation after #528 was correct, so the chain simply read
+`08-03d → 08-03b`.
+
+**Verified before touching anything.**
+- Drop localized to exactly one commit by walking live-heading vs archive-top across `d57e230..e9a48c9`:
+  at `f8a87d3` the live section was `08-03c` with archive top `08-03b` (consistent); at `2262e6d` the
+  live section became `08-03d` and the archive top was **still** `08-03b`.
+- `2026-08-03e` ruled out as a second drop — it is a LESSONS-LEARNED entry label, not a handoff
+  heading (`git log -S`, confirmed present only in `LESSONS-LEARNED.md`).
+- No duplicate four-digit ADR prefixes on `main` (346 ADRs, highest 0345 at the time of the check) —
+  #529's `test_adr_numbers_are_unique` held across #528's merge.
+
+**Change.** Restored the section verbatim from `d57e230:docs/STATE/HANDOFF.md` (lines 1–102, heading
+demoted `# Handoff` → `# (prior) Handoff`, 8,503 bytes), inserted at its **chronological** slot —
+between `08-03d` and `08-03b`, not at the top of the archive, since three newer sections had been
+archived in the interim. Byte-for-byte match against the source asserted before commit.
+
+**Left open deliberately.** No new guard. The archive is referenced in `tests/test_state_docs.py`
+only in a docstring and two failure strings, so a dropped section passes all five assertions; but
+ADR-number contiguity is unusable (179 archived sections, 58 distinct ADRs, ~170 legitimate gaps)
+and a previous-commit comparison is defeated by CI's shallow checkout. Recorded in LESSONS-LEARNED
+rather than filled with a false-positive-prone test.
+
+**Next:** SRA-LEGACY (`audit/SRA-ROOTCAUSE-20260730.md`) · V3 (`engine/msp_filters.py`, needs its
+migration-report gate) · Phase 5 monolith split 2–3 · Phase 6 docs/operator queue.
 ## 2026-08-05 — Monolith split phase 2: the page chrome moves out (ADR-0349, v1.0.164)
 
 **Branch** `claude/polaris-phase-5-split-w30grg`, restarted from `origin/main` at `e9a48c9`.
