@@ -364,7 +364,9 @@ def test_the_helper_lives_where_the_load_order_requires() -> None:
     helper undefined at the moment it draws, and the marker would silently never appear.
     ``gantt.js`` is head-loaded, so it is defined for the deferred family too.
     """
-    layout = (ROOT / "src" / "schedule_forensics" / "web" / "app.py").read_text(encoding="utf-8")
+    # `_LAYOUT` moved to `web/chrome.py` (ADR-0349, monolith split phase 2). This guard reads the
+    # layout's INTERNAL script order, which is only meaningful inside the module that defines it.
+    layout = (ROOT / "src" / "schedule_forensics" / "web" / "chrome.py").read_text(encoding="utf-8")
     head = layout.index('<script src="/static/gantt.js"></script>')
     main = layout.index("<main>{{ banner }}{{ body }}</main>")
     frame = layout.index('<script src="/static/chartframe.js"></script>')

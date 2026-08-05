@@ -1,107 +1,98 @@
-# Handoff — 2026-08-04 (CC-01's rendering half closed: one instant, two spellings; ADR-0348; v1.0.163)
+# Handoff — 2026-08-05 (monolith split phase 2: the page chrome moves out; ADR-0349; v1.0.164)
 
-> ## STATUS (current) — **MERGED, nothing in flight.** PR #535 squash-merged as `e9a48c9`.
-> ADR-0348, **v1.0.163**. **All six checks green** on `2ee8fa5`: `test (3.11)` · `test (3.13)` ·
-> `floor (declared minimum)` · `browser (measured-box proof)` · `windows` · `linux`.
-> **CC-01 / external H2a is CLOSED.** The finding's own two headline numbers were both wrong, and
-> re-deriving them — the one instruction this work carried — is what found the real defect. Wheel +
-> nine installers rebuilt at **v1.0.163**. Full local suite: **3479 passed, 3 skipped**, the only
-> real failure the expected wheel-lockstep (fixed by the rebuild) plus the named load-sensitive
-> `/analysis` focus→tip family.
+> ## STATUS (current) — **branch pushed, draft PR open.** ADR-0349, **v1.0.164**.
+> **ADR-0297's queued phase 2 is CLOSED.** `web/app.py` **21,348 → 20,255**; the page chrome is
+> **`web/chrome.py` (1,294 lines)**, extracted verbatim. Wheel + nine installers rebuilt at
+> **v1.0.164**. The `HANDOFF.md` STATUS line that still claimed PR #535 was open is corrected in
+> the archived section (it merged as `e9a48c9`).
 >
-> ## THE CENSUS — "74 call sites" was never a count of call sites
-> `grep -rn offset_to_datetime src/` returns **75** lines; minus the one `def`, **74**. That is a
-> count of *non-definition mentions* — imports and docstrings included. An AST pass finds **53**
-> genuine invocations in `src/` (37 more in `tests/`). It reconciles exactly, and it reproduces at
-> the audit commit too, so the number was never a site count in the first place.
+> ## THE SEAM WAS MEASURED, NOT EYEBALLED
+> An AST pass over `app.py`'s **344** top-level symbols took the transitive closure of `_page`:
+> **30 names, and it is CLOSED** — nothing the moved code calls stays behind. That property is
+> what made the cut safe *and* what made it small. Four of the thirty were nowhere near the
+> chrome region and came anyway because the closure demanded it: `_e` (**473** call sites),
+> `_expandable_more`, and `_criteria_text`/`_criterion_value_list`/`_OP_TEXT` from line ~18.7k —
+> the last confirmed by its own docstring, "*for chips/banner*". `_ask_panel_html` cost nothing:
+> it references only `_e`, so the AI **panel** moved without dragging the AI **backend** block.
 >
-> ## THE REPORTED DEFECT WAS ALREADY CLOSED — and ADR-0312 manufactures its residual
-> All 53 src sites pass `start = <schedule>.project_start` **and** `calendar = <schedule>.calendar`
-> — no arbitrary datetime, no per-task calendar (the per-task-calendar hypothesis was tested and is
-> **false**). So ADR-0312's importer precondition genuinely holds everywhere, and a non-working
-> landing needs the `tod + per_day == **1440**` equality. Measured on all 14 committed schedules:
-> every one is `480 + 480 = 960`; **zero** reach it. The files *named* `_24hr`/`_24h` carry a
-> **480-minute project calendar** — their 24-hour character is per-task. But ADR-0312's own
-> normalisation drives a continuous-operations file **onto** that boundary (24 h + 08:00 start →
-> midnight → `0 + 1440`). The import fix manufactures the one input the residual still trips on.
+> ## THE TRAP WAS NOT PHASE 1'S
+> ADR-0297's hazard was **monkeypatching**. It did not bite — a targeted search found **zero**
+> tests patching any of the thirty. Phase 2's hazard is **source-text guards**: tests that
+> `read_text()` a module by path and assert on what they find. Moving `_LAYOUT` did not make them
+> fail honestly. One raised `ValueError` (loud, fine) — but `test_bar_drill`'s
+> `count('…drilldown.js…') == 1` would have gone from counting **one** include to **zero**, and
+> `test_presentation_fixes`'s `assert '"&mdash;"' not in src` would have gone on passing over a
+> file that no longer holds the code it guards. **A guard that stopped guarding still reports
+> success.** Same shape as phase 1's silent patch, different door.
 >
-> ## THE DEFECT THAT WAS ACTUALLY THERE — on the ordinary 8-hour corpus
-> A day-multiple offset names **one instant with two spellings**: the *end* of working day `k-1`
-> and the *start* of day `k`. `offset_to_datetime` always picks the first (`remainder == 0` →
-> `intraday = per_day`). Right for a finish; **one working day early for a start**. Against MS
-> Project's own stored dates, restricted to tasks where the engine already agrees on the *finish*
-> so only spelling can differ: **Project5 1/67 → 67/67**, EVM1 4/11 → 11/11, Large_Test_File
-> 135/897 → 787/897. Every Gantt bar was drawn **one day too wide** (a 1-day task spanned 2 days).
+> ## TWO DIRECTIONS, KEPT DISTINCT
+> Guards whose subject is the **layout's internal script order** (`test_axis_titles` ×2,
+> `test_dd_line_ledger`) now read `chrome.py` — order is only meaningful inside the module that
+> defines it. Guards whose subject is the **whole view layer** now read **both** modules:
+> `test_bar_drill`'s once-only include exists to catch a page re-including `drilldown.js` in
+> `app.py`, which is exactly where such a re-include would land. Pointing it at `chrome.py` alone
+> would have kept it green while re-opening the hole it guards — that was caught and reverted
+> mid-change.
 >
-> ## THE ONE PLACE IT IS ARITHMETIC, NOT DISPLAY
-> `_elapsed_finish_offset` builds an elapsed task's clock origin from that spelling. Reading a
-> boundary start as the previous day's 16:00 moves the origin by the whole non-working gap:
-> **8 of 18** (start-offset, duration) pairs returned a wrong offset, short by up to a full working
-> day. Whole-1440 durations were right **by coincidence** — the spelling gap equals the non-working
-> gap — which is why nothing caught it. A wrong *number* into successors/float/critical path, i.e.
-> Law 2, not CC-01's bucket. **Unreachable on the corpus** (1 elapsed task in 14 files, 0 trip), so
-> the fix moves no committed figure.
->
-> ## THE NAIVE FIX WAS WRITTEN, MEASURED, AND REJECTED
-> Spelling *every* start as a start inverts milestones: `ES == EF`, so start renders one working day
-> **after** finish — **159 of 169** zero-duration tasks in Large_Test_File. The oracle settles it:
-> MS Project spells an instantaneous event **end-of-day** (EVM1 **3/3** vs 0 for the start form;
-> Large_Test_File 52 vs 16). So `span_start_datetime` carries the rule and zero-duration keeps the
-> end-of-day form. Measuring beat reasoning, and it caught a regression that would have shipped.
+> ## PROOF: EVERY SERVED PAGE IS BYTE-IDENTICAL
+> All **31** HTML routes rendered with the example schedule, before and after, in the SAME
+> interpreter (pre-split `app.py` swapped back, `chrome.py` parked): **31/31 identical SHA-256**.
+> The oracle was then proved sensitive — one character changed in `_LAYOUT` moves **30 of 31**
+> hashes (the 31st is `/whatif`'s 404, which renders no layout). For a change whose served bytes
+> are provably unchanged, this dominates a browser pass. Verbatim was proved separately and
+> mechanically: non-blank-line multiset **20,179 → 20,179**; the only six lines that left were
+> imports `ruff --fix` removed from `app.py` because their sole consumers had moved.
 >
 > ## What landed
-> * **`offset_to_start_datetime`** (start spelling; delegates away from the boundary) and
->   **`span_start_datetime`** (adds the zero-duration rule) in `engine/cpm.py`.
->   `offset_to_datetime` and every offset are **untouched** — ADR-0310 pre-rejected changing them,
->   and 29 finish-role sites depend on the end-of-day form.
-> * **Six start-role usages migrated**: `_elapsed_finish_offset` (arithmetic),
->   `engine/resources.py` loading span, and four in `web/app.py` (two compare-Gantt bar builders,
->   the trace start, the basis-start fallback). The other 47 are finish-role or axis/bucket.
-> * **Two new test modules (+29)**: `tests/engine/test_day_boundary_spelling.py` and
->   `tests/engine/test_day_boundary_corpus.py` — the latter carries the **oracle** tests and an
->   **AST census guard** that fails if any `offset_to_datetime` call in `src/` is handed a
->   start-role offset again, with `span_start_datetime`'s body the single *named* exemption and a
->   vacuity check that the detector fires on the shape it hunts.
+> * **`web/chrome.py`** — `_LAYOUT` + `_bust_static`, the always-on banners, the story spine +
+>   nav, the explainers, `_ask_panel_html`, `_e`, and **`_page`**. `app.py` re-exports all 35
+>   names with `X as X`. `chrome.py` takes the **E501 exemption** (31 over-long lines are the
+>   HTML itself) — ADR-0297 predicted exactly this for the HTML-carrying phases.
+> * **Deliberately left in `app.py`:** `_STATIC_DIR` (the mount; a test imports it from
+>   `web.app`), `_OAT_MAX_ACTIVITIES` (ADR-0297 already ruled), the AI **backend** block, and
+>   `_TS_CAPTION_MARK` — a page-*body* constant that merely sits between `_story_footer` and
+>   `_page`. **Adjacency is not cohesion.**
+> * **`tests/web/test_monolith_split_contract.py` (+3)** — re-exports resolve to the SAME objects
+>   (`is`, not `==`), `chrome` never imports `app`, and `_LAYOUT` is defined exactly once, in the
+>   file the source-text guards read. That last one is a **signpost for phase 3**: when `_LAYOUT`
+>   moves again it fails and names the three guard files to repoint in the same commit.
 >
 > ## Verification
-> * **Four mutations, each proved to fail the right tests** — start spelling reverted (6 fail,
->   both oracle tests among them), elapsed origin reverted (7), milestone rule removed (5,
->   including both inversion guards), one display site reverted (the census guard alone).
->   Every mutation asserted its anchor, re-read the file to confirm it changed, and the tree was
->   restored **byte-identical from a scratchpad copy** (md5 verified) — never `git checkout`.
-> * The census guard **failed on its first run and was right**: it caught `span_start_datetime`'s
->   own sanctioned branch. Scoped to consumers by name rather than weakened.
->
-> ## Deliberately NOT done
-> * **The `== 1440` boundary is documented, not repaired.** No committed schedule reaches it, and
->   repairing it means deciding what "the end of Friday" reads as on a 24-hour Mon–Fri calendar —
->   a question with **no oracle in the corpus**. Recorded in ADR-0348 so the next
->   continuous-operations file meets a citation, not a surprise.
-> * The 20 `OTHER`-role sites (axis ticks, SRA bins, forecast bounds) were classified and left.
+> * **Five mutations, each proved to fail the right test**, each verified-mutated by re-reading
+>   the file and restored byte-identically from a scratchpad copy (never `git checkout`): dropped
+>   re-export → names `_guide`; stale shadowing copy → names `_TITLE_TO_CHAPTER`; **deferred**
+>   `from …web.app import` inside a chrome function → caught by the AST check *and it imports
+>   cleanly*, which is the whole point (the module-level form detonates on its own); a second
+>   `_LAYOUT` elsewhere → fails and names the guards; `gantt.js` moved out of the layout head
+>   (the real ADR-0340 defect) → fails both repointed guards against `chrome.py`.
 >
 > ## Next
-> **Phase 4 continues:** **SRA-LEGACY** (`audit/SRA-ROOTCAUSE-20260730.md`) · **V3**
-> (`engine/msp_filters.py` hard-codes `"d": 480` and discards the elapsed marker in regex group 2;
-> ADR-0310 made it a conformance fix, but it MOVES saved-filter populations and needs its
-> migration-report gate). Then **Phase 5** monolith split 2–3 (`app.py` ~21.3k lines, `state.py`
-> 1,479) and **Phase 6** docs/operator queue.
+> **Phase 3** — the ~11k lines of `_*_body`/`_*_panel`/`_*_data` presentation helpers → per-page
+> modules; routes stay in `app.py` until the helpers are out. It moves ~9× phase 2's code, so
+> sweep for **both** traps before cutting, the way the closure was computed here, and reuse the
+> before/after render diff (it is cheap and decisive). Then: the three pages with no `page-lede`
+> (`/briefing`, `/path`, `/compare`); `/groups` "Activities" counting summary rows (ADR-0343);
+> the nine installers not installing with `-c constraints/known-good.txt` (62 lockstep tests, own
+> unit); Phase 6 docs/operator queue.
+> **Reserved for Fable 5 Max (ADR-0240), do NOT start on Opus:** **SRA-LEGACY**
+> (`audit/SRA-ROOTCAUSE-20260730.md`) · ADR-0348's **`tod + per_day == 1440`** residual (no
+> oracle in the corpus) · **V3** (`engine/msp_filters.py` — moves saved-filter populations;
+> needs its migration-report gate).
 > **Operator only:** license selection · branch-protection required contexts · intake re-upload ·
 > proprietary-tool reruns (engine==golden → engine==Fuse) · OR-04.
 >
 > ## Carried forward
-> The `/analysis` focus→tip family is **load-sensitive** — `test_float_tip_dismiss` failed again
-> this session with its documented signature verbatim (`Page.wait_for_function` 4000 ms timeout)
-> and passes in isolation; never red on CI. Do NOT chase. `/briefing`, `/path`, `/compare` still
-> carry no `page-lede`; `/groups` "Activities" still counts summary rows (ADR-0343). The nine
-> installers still do not install with `-c constraints/known-good.txt` (62 lockstep tests; own
-> unit). **Run `ruff check .` — the WHOLE tree**, and run ruff as **`python -m ruff`** (a stale
-> 0.15.8 shim at `/root/.local/bin/ruff` shadows the 0.16.1 `.[dev]` installs). Never
-> `git checkout <file>` to undo a test mutation — `cp` from a scratchpad copy.
+> The `/analysis` focus→tip family is **load-sensitive** — passes in isolation, never red on CI.
+> Do NOT chase. Do NOT re-derive CC-01's "74 call sites" (ADR-0348 records it). `pydantic>=2` is
+> NOT a safe floor (2.6 is); `fastapi>=0.110` is an AIR-GAP VIOLATION (0.110.2 is the floor).
+> **Run `ruff check .` — the WHOLE tree**, as **`python -m ruff`** (a stale 0.15.8 shim at
+> `/root/.local/bin/ruff` shadows the 0.16.1 `.[dev]` installs). Never `git checkout <file>` to
+> undo a test mutation — `cp` from a scratchpad copy.
 >
-> **New this session:** *a finding is a hypothesis with a citation, not a measurement.* Both of
-> CC-01's headline numbers were wrong, the mechanism it named was unreachable, and the defect that
-> was really there — 98.5 % of comparable Project5 starts — was invisible to its framing. Re-running
-> the citation, not the conclusion, is what found it.
+> **New this session:** *splitting a module silently narrows every test that names the file.*
+> Moving code cannot break a `read_text()` guard's syntax, only its subject — so the guard keeps
+> passing while its reach shrinks to nothing. Before the next cut, list the guards that name the
+> file, not just the callers that import from it.
 
 # (prior) handoffs — archived
 

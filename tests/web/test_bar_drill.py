@@ -34,7 +34,12 @@ def client() -> TestClient:
 
 def test_drilldown_runtime_is_loaded_globally_not_per_page() -> None:
     """drilldown.js is included once in the layout so every page's bars drill (no double-load)."""
-    app_src = (REPO / "src" / "schedule_forensics" / "web" / "app.py").read_text(encoding="utf-8")
+    # The layout moved to `web/chrome.py` (ADR-0349), but this guard's subject is "exactly ONE
+    # include anywhere in the view layer" — a page re-including it in `app.py` is precisely the
+    # double-load it exists to catch. So it counts across BOTH modules: pointing it at chrome.py
+    # alone would keep it green while re-opening the hole it guards.
+    web = REPO / "src" / "schedule_forensics" / "web"
+    app_src = "".join((web / m).read_text(encoding="utf-8") for m in ("app.py", "chrome.py"))
     assert app_src.count('<script src="/static/drilldown.js"></script>') == 1
 
 

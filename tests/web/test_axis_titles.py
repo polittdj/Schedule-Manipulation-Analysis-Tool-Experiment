@@ -326,9 +326,12 @@ def test_the_dom_caption_helper_is_reachable_before_every_caller_runs() -> None:
     ``gantt.js`` is emitted in the head, before ``<main>`` — that ordering IS the fix, so it is
     pinned here rather than left as a comment.
     """
-    app = (ROOT / "src" / "schedule_forensics" / "web" / "app.py").read_text(encoding="utf-8")
-    # Anchor to the LAYOUT, not to whichever occurrence comes first in a 21k-line file:
-    # gantt.js is also re-included by an individual page, and "<main>" also appears in a comment.
+    # ADR-0349 (monolith split, phase 2): `_LAYOUT` — and therefore every script-order fact this
+    # test asserts — now lives in `web/chrome.py`. The subject is the LAYOUT, so the guard follows
+    # it; reading `app.py` here would silently pass on a file that no longer contains the layout.
+    app = (ROOT / "src" / "schedule_forensics" / "web" / "chrome.py").read_text(encoding="utf-8")
+    # Anchor to the LAYOUT, not to whichever occurrence comes first in the file: gantt.js is also
+    # re-included by an individual page, and "<main>" also appears in a comment.
     head = app[app.index("_LAYOUT = Template(") : app.index("<main>{{ banner }}")]
     assert '<script src="/static/gantt.js"></script>' in head, (
         "gantt.js must be emitted in the layout HEAD, before <main> — every table-captioning "
@@ -436,7 +439,8 @@ def test_the_helper_takes_its_size_from_the_token_not_a_literal() -> None:
 
 def test_the_helper_is_available_on_every_page() -> None:
     """chartframe.js is layout-global, so no chart has to import anything to caption its axes."""
-    app = (ROOT / "src" / "schedule_forensics" / "web" / "app.py").read_text(encoding="utf-8")
+    # the layout moved to `web/chrome.py` (ADR-0349) — "layout-global" is a claim about the layout
+    app = (ROOT / "src" / "schedule_forensics" / "web" / "chrome.py").read_text(encoding="utf-8")
     assert '<script src="/static/chartframe.js"></script>' in app
 
 
