@@ -1,94 +1,91 @@
-# Handoff — 2026-08-05 (phase 3 slice 2: the driving-path family; the oracle that proved nothing; ADR-0351; v1.0.166)
+# Handoff — 2026-08-05 (phase 3 slice 3: the evolution family + the pre-flight coverage check; ADR-0352; v1.0.167)
 
-> ## STATUS (current) — **branch pushed, draft PR open.** ADR-0351, **v1.0.166**.
-> ADR-0350 (slice 1, the shared kernel) **MERGED as `0674dd9`** (PR #540). Slice 2 extracts the
-> **driving-path page family → `web/driving.py` (842 lines)**, `app.py` **19,944 → 19,139**
-> (−805). First per-PAGE module. Wheel + nine installers rebuilt at **v1.0.166**.
+> ## STATUS (current) — **branch pushed, draft PR open.** ADR-0352, **v1.0.167**.
+> ADR-0351 (slice 2, driving) **MERGED as `d0ca992`** (PR #541); ADR-0350 merged as `0674dd9`
+> (#540). Slice 3 extracts the **/evolution page family → `web/evolution.py` (1,075 lines)**,
+> `app.py` **19,139 → 18,128** (−1,011). Running total this session: **20,192 → 18,128**.
+> Wheel + nine installers rebuilt at **v1.0.167**.
 >
-> ## ADR-0350's "the LAST slice of a pair collects them" WAS WRONG
-> It said `_task_name_across` / `_EVO_TIER_LABEL` stay in `app.py` until both owners move. But
-> **`driving.py` needs both**, so leaving them would force a page module to import UPWARD — a
-> cycle, caught by the layering test I added last unit. Corrected rule, now binding:
-> **a symbol an extracted module needs must live AT OR BELOW that module's layer; the FIRST
-> slice of a pair forces the descent, not the last.** Both descended into `components.py`.
-> `LAYER_ORDER` is now `state → chrome → components → driving → app`.
+> ## THE PREFIX HEURISTIC UNDER-REACHED — THE CLOSURE DEFINES THE FAMILY
+> Seeding only `_evolution_*` left `_trace_option_names` pulled by `_optioned_versions` and
+> `_keep_hidden` pulled by `_trace_options_form` — helpers that would have STAYED in `app.py`.
+> Seeding the trace-options pair too gives **16 names / 991 lines where every external referrer
+> is `create_app`** (a route: stays put, imports downward). **The prefix finds a family; the
+> closure defines it.**
 >
-> ## THE RENDER DIFF PROVED NOTHING HERE — AND ONLY FALSIFICATION SHOWED IT
-> It reported **60/60 byte-identical**. Then the mandatory sensitivity check: one char inside a
-> moved `driving.py` function moved **0 of 60**. Reloading with the Project2/Project5 golden pair
-> (63 routes, deterministic) — still **0 of 63**. The repo already knew why:
-> `test_page_memory.py` says the corridor panel "only renders when a real driving corridor exists
-> across versions (**which the golden pair doesn't produce**)". **No fixture in the corpus can
-> render this family's deep panels.** So the render diff is NOT the oracle here; it only proves
-> the 63 routes that do render are unchanged. Had I skipped the falsification I would have
-> shipped quoting 60/60 as proof of code it never touched.
-> **What replaced it:** per-definition AST byte-identity against the pre-move source — **9/9
-> identical** (`_driving_tiers_panel` 8,000 B, `_driving_tier_trend` 4,443 B, …). Plus file-level
-> verbatim (47 added = preamble + re-exports + one `PathTier` import; **0 removed**).
-> **Coverage stated plainly:** 5 of 7 moved driving names have direct unit tests;
-> **`_driving_tiers_panel` and `_driving_tier_trend` have NONE**, nor do `_task_name_across` /
-> `_EVO_TIER_LABEL`. Their only guard is `test_page_memory`'s source-text check.
-> **NAMED GAP: a fixture that produces a real driving corridor.** Until one exists this family
-> cannot be refactored with behavioural evidence again. Worth its own unit.
+> ## THE PRE-FLIGHT COVERAGE CHECK — RUN BEFORE CUTTING, AND IT PAID TWICE
+> ADR-0351's rule, applied for the first time BEFORE the cut. Mutating each member **scoped to
+> its own AST line span** and re-rendering gives a per-member map: `_evolution_body` 1 route ·
+> `_completed_on_path_panel` 1 · `_whatif_added_rows` 4 · `_optioned_versions` (bytes change
+> under `ignore_constraints=1`) · **`_counterfactual_panel` (107 ln) 0** ·
+> **`_render_counterfactual` (179 ln) 0**. So the render diff IS meaningful here (unlike slice
+> 2) — but for MOST of the slice, not all. Both facts measured, 286 uncovered lines named.
+> **The first probe was INVALID and flattered the result:** it picked `class=sf-take` — a
+> GENERIC class — and `str.replace()`d it file-wide, so 24 routes moved and the member looked
+> well covered. **A file-wide substitution measures the ANCHOR, not the FUNCTION.** Span-scoped,
+> the same member moves 0.
+> **Oracle extended** with three `/evolution` query-param variants (`?target=1`,
+> `?ignore_constraints=1&ignore_leveling=1`, `?target=1&cf_a=0&cf_b=1&tier=critical`) — a real
+> gain: `_optioned_versions` went from unrendered to rendered. `cf_a`/`cf_b` still do not fire
+> the counterfactual under the golden pair (same corpus limit as driving).
 >
-> ## BOTH TRAPS FIRED, ONE OF EACH KIND, IN ONE COMMIT
-> **Phase 1's (monkeypatch):** `test_coverage_app_extra` patches three names on `web.app` then
-> calls `_driving_path_body`. One failed LOUDLY (`AttributeError`). The other two are the
-> dangerous shape — `_driving_path_gantt` / `_corridor_chips` are **still re-exported by
-> `app.py`**, so the patch SUCCEEDS and does NOTHING while the caller (now in `driving.py`)
-> resolves them locally; the test would have asserted against the real renderers. All three now
-> patch `drvmod`. **My first sweep missed them** because it compared against names `driving.py`
-> *imports*; these are names it *defines*. **Sweep every name the new module BINDS, imported or
-> defined.**
-> **Phase 2's (source text):** `test_page_memory` read `app.py` for `dpFind`/`dpBarDates`, which
-> moved. Direction matters and differs from last unit's: this guard's subject is the driving-path
-> markup, so it **FOLLOWS** the subject to `driving.py`; the two whole-view-layer guards
-> **WIDEN**. Getting it backwards would have left the one untestable panel guarded by nothing.
-> **Phase 2's a THIRD time, and the sweep COULD NOT have found it.**
-> `test_gantt_find_coverage` reads **`Path(app_module.__file__)`** — the module OBJECT, not a
-> literal `"app.py"` — so `grep -rln 'app\.py' tests/` never listed it. It survived the pre-cut
-> sweep, three sibling repointings and every fast check, and **only the full 20-min suite caught
-> it.** The standing sweep is incomplete as written: **also grep `__file__)\.read_text` and
-> `getsource`.** A repo-wide check found one other (`test_installers`, whose subject
-> `@app.post("/api/shutdown")` correctly stayed in `app.py`).
-> **ADR-0350's enumeration guard worked on its first real outing** — adding `driving.py` to
-> `VIEW_MODULES` made it fail and name both files to widen. It does NOT cover the `__file__`
-> class (that guard's claim is "this markup exists", a follow-the-subject case).
+> ## PROOF
+> Verbatim: 58 added (preamble + re-exports), **1 removed** (`urllib.parse` narrowed by
+> `ruff --fix` once `urlencode`'s last consumer moved). **Per-definition byte-identity 16/16** —
+> the load-bearing evidence for the two members nothing renders. **66/66 routes byte-identical**,
+> tree md5-verified across the run.
+>
+> ## BOTH TRAPS AGAIN — AND LAST SLICE'S WIDENED SWEEP EARNED ITS KEEP
+> **The SILENT monkeypatch fired for real:** `test_coverage_app_extra` patched
+> `appmod.compute_path_evolution` then called `_evolution_data`. `app.py` **still binds** that
+> name for its own callers, so the patch SUCCEEDS and does NOTHING once the callee moves. Now
+> patches `evomod` — and reverting that one word turns the test RED, which is what proves the
+> fix is load-bearing. **A second, subtler one:** `test_session_consistency` did
+> `real = app_module.compute_cpm` merely to capture the real callable, then patched
+> `state_module`; `ruff --fix` deleted `compute_cpm` from `app.py` entirely, so the READ raised
+> `AttributeError`. It now reads from the module it patches. **ADR-0351's widened sweep (every
+> name the new module BINDS, imported OR defined) found both** — the imports-only version would
+> have missed the silent one. **A THIRD/FOURTH site surfaced only in the FULL SUITE:**
+> `tests/perf/test_perf_regression.py` reads `app_module.compute_cpm` twice for the same reason.
+> **A READ is a coupling too, and no `setattr` sweep sees it.** New standing sweep: parse `app.py`
+> for the names it still binds, then flag any `app_module.<name>`/`appmod.<name>` in `tests/`
+> naming something absent — repo-wide it found exactly these and nothing else. **ADR-0350's enumeration guard fired for the SECOND consecutive
+> slice**, naming `evolution.py` and both guard files. Two for two.
 >
 > ## Verification
-> Five mutations, each verified-mutated by re-reading the file and restored from a scratchpad
-> copy: dropped re-export → contract names `_driving_data`; **deferred** upward import in
-> `_corridor_chips` → layering guard; `dpFind` removed → repointed page-memory guard;
-> `id=dpFind` broken → repointed gantt-find guard; plus the enumeration guard's live failure.
-> **TWO mutations were themselves wrong first, both flattering** — each read exactly like "this
-> guard cannot fail": (1) replacing only the FIRST of two `dpFind` occurrences; (2) `id=dpFind`
-> → `id=dpFind**Z**`, where the guard asserts `"id=dpFind" in src` and the original is a
-> **SUBSTRING of the replacement**. Working mutation: a same-length non-superstring (`id=dpQind`).
-> **Rule: after mutating, assert the ORIGINAL anchor is ABSENT from the re-read file.**
+> Four mutations, each verified-mutated and restored from a scratchpad copy: dropped re-export →
+> contract names `_evolution_body`; `evolution.py` removed from the whole-layer guard →
+> enumeration test fails; **`evomod` → `appmod` revert → the coverage test fails**, proving the
+> patch target matters rather than coincidentally passing; **deferred** upward import in
+> `_delta_words` → layering guard fails.
 >
 > ## Next
-> Twelve page families remain: `evolution` 429 · `integrity` 402 · `margin` 379 · `trend` 348 ·
-> `ssi` 335 · `mission` 304 · `how` 290 · `sra` 264 · `what` 257 · `where` 235 · `portfolio` 231 ·
-> `evm` 208 · `forecast` 204. **Each must add its module to `LAYER_ORDER` + `VIEW_MODULES`** (the
-> contract test fails until it does), **run the monkeypatch sweep over ALL names the new module
-> binds**, and **check whether its family is renderable by any fixture BEFORE quoting a render
-> diff**. Then: a driving-corridor fixture · the three pages with no `page-lede` (`/briefing`,
-> `/path`, `/compare`) · `/groups` "Activities" counting summary rows (ADR-0343) · the nine
-> installers vs `-c constraints/known-good.txt` (62 lockstep tests, own unit) · Phase 6 docs.
-> **Reserved for Fable 5 Max (ADR-0240), do NOT start on Opus:** **SRA-LEGACY**
-> (`audit/SRA-ROOTCAUSE-20260730.md`) · ADR-0348's **`tod + per_day == 1440`** residual · **V3**
-> (`engine/msp_filters.py`).
-> **Operator only:** license selection · branch-protection required contexts · intake re-upload ·
+> **Eleven page families remain:** `integrity` 402 · `margin` 379 · `trend` 348 · `ssi` 335 ·
+> `mission` 304 · `how` 290 · `sra` 264 · `what` 257 · `where` 235 · `portfolio` 231 · `evm` 208 ·
+> `forecast` 204. **Per-slice checklist, now four items:** (1) seed the closure by BEHAVIOUR not
+> prefix; (2) add the module to `LAYER_ORDER` + `VIEW_MODULES` (the contract test fails until you
+> do); (3) sweep monkeypatches over EVERY name the new module BINDS, imported or defined;
+> (4) run the **span-scoped** pre-flight coverage probe BEFORE quoting a render diff.
+> Then: **a fixture that fires a driving corridor AND /evolution's counterfactual** (one fixture
+> may close both named gaps) · the three pages with no `page-lede` (`/briefing`, `/path`,
+> `/compare`) · `/groups` "Activities" counting summary rows (ADR-0343) · the nine installers vs
+> `-c constraints/known-good.txt` (62 lockstep tests, own unit) · Phase 6 docs.
+> **Reserved for Fable 5 Max (ADR-0240), do NOT start on Opus:** **SRA-LEGACY** · ADR-0348's
+> **`tod + per_day == 1440`** residual · **V3** (`engine/msp_filters.py`).
+> **Operator only:** license selection · branch-protection contexts · intake re-upload ·
 > proprietary-tool reruns · OR-04.
 >
 > ## Carried forward
-> The `/analysis` focus→tip family is **load-sensitive** — passes in isolation, never red on CI.
-> Do NOT chase (re-confirmed: it fails WORSE on the pre-change tree). Do NOT re-derive CC-01's
+> The `/analysis` focus→tip family is **load-sensitive** — passes in isolation, PASSED ON CI while
+> failing locally, and a DIFFERENT member fails each run. Do NOT chase. Do NOT re-derive CC-01's
 > "74 call sites". `pydantic>=2` is NOT a safe floor (2.6 is); `fastapi>=0.110` is an AIR-GAP
 > VIOLATION (0.110.2 is the floor). **Run `ruff check .` — the WHOLE tree**, as **`python -m
 > ruff`**. Never `git checkout <file>` to undo a mutation — `cp` from a scratchpad copy. The
-> render oracle needs the launch-token/pid normalization and `/api/system` excluded, or it is
-> nondeterministic across processes.
+> render oracle needs launch-token/pid normalization and `/api/system` excluded. **After mutating,
+> assert the ORIGINAL anchor is ABSENT from the re-read file** (a suffix leaves it as a substring;
+> a single-occurrence replace leaves the others). **The fast checks do NOT substitute for the full
+> suite on a code-moving refactor** — slice 2's `__file__`-based guard was invisible to every
+> cheaper check.
 
 # (prior) handoffs — archived
 

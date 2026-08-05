@@ -16,7 +16,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "schedule-forensics"
-version = "1.0.166"
+version = "1.0.167"
 description = "Local, NASA-themed forensic schedule-analysis tool (CUI-safe, offline)."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -172,6 +172,9 @@ select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
 # `driving.py` is the /driving-path page family, extracted verbatim (ADR-0351). It carries the
 # page's HTML f-strings, so the exemption travels with them exactly as it did for chrome.py.
 "src/schedule_forensics/web/driving.py" = ["E501"]
+# `evolution.py` is the /evolution page family, extracted verbatim (ADR-0352); it carries the
+# page's HTML f-strings, so the exemption travels with them.
+"src/schedule_forensics/web/evolution.py" = ["E501"]
 
 [tool.ruff.format]
 # ruff >= 0.16 formats fenced ```python blocks inside Markdown. That is right for prose docs and

@@ -17,6 +17,7 @@ from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
 from schedule_forensics.web import app as appmod
 from schedule_forensics.web import driving as drvmod
+from schedule_forensics.web import evolution as evomod
 from schedule_forensics.web.app import SessionState, create_app
 
 # --- small fakes + builders (inlined; never imported across test packages, for CI sys.path) ------
@@ -425,8 +426,11 @@ def test_evolution_data_handles_activities_absent_from_a_version(monkeypatch) ->
             _ev_snap(label="v2", critical=(999,), left=(888,), left_changes=(left_change,)),
         ]
     )
+    # ADR-0352: `_evolution_data` lives in `web/evolution.py` now, so the patch must land on THAT
+    # module — `app.py` still binds `compute_path_evolution` for its own callers, so patching
+    # `appmod` here would succeed and silently do nothing (ADR-0297's trap, ADR-0351's variant).
     monkeypatch.setattr(
-        appmod, "compute_path_evolution", lambda schedules, cpms, target_uid=None: evo
+        evomod, "compute_path_evolution", lambda schedules, cpms, target_uid=None: evo
     )
     data = _evolution_data([s0, s1], cpms, None)
     snaps = data["snapshots"]

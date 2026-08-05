@@ -11881,3 +11881,52 @@ anchor is ABSENT from the re-read file.**
 the monkeypatch sweep over all bound names, and check fixture-renderability before quoting a render
 diff · a driving-corridor fixture · the three pages with no `page-lede` · `/groups` Activities
 (ADR-0343) · the nine installers vs `-c constraints/known-good.txt`.
+
+## 2026-08-05 — Phase 3 slice 3: the evolution family + the pre-flight coverage check (ADR-0352, v1.0.167)
+
+ADR-0351 merged as `d0ca992` (PR #541); its STATUS is corrected to MERGED in the archived handoff.
+Slice 3 extracts the **/evolution page family → `web/evolution.py` (1,075 lines)**; `app.py`
+**19,139 → 18,128** (−1,011). Session running total: **20,192 → 18,128**.
+
+**The prefix heuristic under-reached.** Seeding only `_evolution_*` left `_trace_option_names`
+pulled by `_optioned_versions` and `_keep_hidden` pulled by `_trace_options_form` — helpers that
+would have stayed in `app.py`. Seeding the trace-options pair too gives 16 names / 991 lines where
+**every external referrer is `create_app`** (a route: stays put, imports downward). The prefix
+finds a family; the closure defines it.
+
+**The pre-flight coverage check ran BEFORE the cut for the first time, and paid twice.** Mutating
+each member scoped to its own AST line span and re-rendering gave a per-member map: `_evolution_body`
+1 route, `_completed_on_path_panel` 1, `_whatif_added_rows` 4, `_optioned_versions` (bytes change
+under `ignore_constraints=1`), and **`_counterfactual_panel` (107 ln) + `_render_counterfactual`
+(179 ln) = 0**. So the render diff is meaningful here — unlike slice 2 — but for most of the slice,
+not all, and the 286 uncovered lines are named. **The first probe was invalid and flattered the
+result**: it chose `class=sf-take`, a GENERIC class, and replaced it file-wide, so 24 routes moved
+and the member looked well covered. A file-wide substitution measures the anchor, not the function.
+The oracle was also extended with three `/evolution` query-param variants, which moved
+`_optioned_versions` from unrendered to rendered.
+
+**Proof.** Verbatim: 58 added (preamble + re-exports), 1 removed (`urllib.parse` narrowed by
+`ruff --fix` once `urlencode`'s last consumer moved). **Per-definition byte-identity 16/16** — the
+load-bearing evidence for the two members nothing renders. **66/66 routes byte-identical**, tree
+md5-verified across the run.
+
+**Both traps again.** The SILENT monkeypatch fired for real: `test_coverage_app_extra` patched
+`appmod.compute_path_evolution` then called `_evolution_data`; `app.py` still binds that name for
+its own callers, so the patch succeeded and did nothing. It now patches `evomod`, and reverting
+that one word turns the test red — which is what proves the fix load-bearing. A second, subtler
+one: `test_session_consistency` read `app_module.compute_cpm` merely to capture the real callable
+before patching `state_module`; `ruff --fix` deleted `compute_cpm` from `app.py` entirely, so the
+read raised `AttributeError`. It now reads from the module it patches. **ADR-0351's widened sweep
+(every name the new module BINDS, imported or defined) found both** — the imports-only version
+would have missed the silent one. A third and fourth site surfaced only in the FULL
+SUITE: `tests/perf/test_perf_regression.py` reads `app_module.compute_cpm` twice for the same
+reason. A read is a coupling too and no `setattr` sweep sees it; a new standing sweep parses
+`app.py` for the names it still binds and flags any `app_module.<name>` access in `tests/` naming
+something absent. **ADR-0350's enumeration guard fired for the second consecutive
+slice.**
+
+**Next:** eleven page families remain, each needing the now-four-item checklist (behaviour-seeded
+closure · `LAYER_ORDER`/`VIEW_MODULES` · bound-name monkeypatch sweep · span-scoped pre-flight
+coverage probe) · a fixture that fires both a driving corridor and /evolution's counterfactual ·
+the three pages with no `page-lede` · `/groups` Activities (ADR-0343) · the nine installers vs
+`-c constraints/known-good.txt`.

@@ -59,12 +59,15 @@ def test_cpm_scoped_for_pair_survives_a_mid_solve_scope_change(monkeypatch) -> N
     """A filter change landing DURING the (outside-the-lock) network solve must not produce a
     mixed pair: the returned schedule is the one the solve was computed from (the pre-flip
     population), never the new epoch's."""
-    import schedule_forensics.web.app as app_module
     import schedule_forensics.web.state as state_module
 
     st = SessionState()
     sch = _chain(6, "v0")
-    real = app_module.compute_cpm
+    # ADR-0352: read the real callable from the SAME module this test patches. `app.py` stopped
+    # binding `compute_cpm` once its last consumer moved to `web/evolution.py`, and reading it
+    # from there was only ever incidental — `st.cpm_scoped_for` has always resolved it through
+    # `web/state.py`, which is what the patch below targets.
+    real = state_module.compute_cpm
 
     flipped = {"done": False}
 
