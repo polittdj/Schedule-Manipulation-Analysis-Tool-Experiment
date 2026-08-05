@@ -1,10 +1,13 @@
 # Handoff — 2026-08-05 (phase 3 slice 3: the evolution family + the pre-flight coverage check; ADR-0352; v1.0.167)
 
-> ## STATUS (current) — **branch pushed, draft PR open.** ADR-0352, **v1.0.167**.
-> ADR-0351 (slice 2, driving) **MERGED as `d0ca992`** (PR #541); ADR-0350 merged as `0674dd9`
-> (#540). Slice 3 extracts the **/evolution page family → `web/evolution.py` (1,075 lines)**,
-> `app.py` **19,139 → 18,128** (−1,011). Running total this session: **20,192 → 18,128**.
-> Wheel + nine installers rebuilt at **v1.0.167**.
+> ## STATUS (current) — **MERGED** as `db6a48a` (PR #542). ADR-0352, **v1.0.167**.
+> **Nothing is in flight.** All three phase-3 slices this session are merged: #540 (`0674dd9`,
+> ADR-0350 shared kernel) · #541 (`d0ca992`, ADR-0351 driving) · #542 (`db6a48a`, ADR-0352
+> evolution). Branch restarted from `origin/main`; working tree clean.
+> Slice 3 extracted the **/evolution page family → `web/evolution.py` (1,075 lines)**, `app.py`
+> **19,139 → 18,128** (−1,011). **Session total: `app.py` 20,192 → 18,128 (−2,064)**, with
+> `components.py` 327 / `driving.py` 842 / `evolution.py` 1,075 alongside the existing
+> `chrome.py` 1,294 / `state.py` 1,479. Wheel + nine installers rebuilt at **v1.0.167**.
 >
 > ## THE PREFIX HEURISTIC UNDER-REACHED — THE CLOSURE DEFINES THE FAMILY
 > Seeding only `_evolution_*` left `_trace_option_names` pulled by `_optioned_versions` and
