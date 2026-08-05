@@ -51,7 +51,9 @@ def test_stat_card_missing_value_renders_em_dash_not_the_escaped_entity() -> Non
 
 def test_no_mdash_entity_sentinel_values_remain_in_app_source() -> None:
     # regression guard: a quoted "&mdash;"/'&mdash;' value would double-escape through _e again
-    src = APP_SRC.read_text(encoding="utf-8")
+    # ADR-0349: `_e` and the banner/shell markup moved to `web/chrome.py`, so a guard that read
+    # `app.py` alone would have quietly stopped covering the very module that now owns `_e`.
+    src = "".join(p.read_text(encoding="utf-8") for p in (APP_SRC, APP_SRC.with_name("chrome.py")))
     assert '"&mdash;"' not in src
     assert "'&mdash;'" not in src
 

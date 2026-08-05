@@ -16,7 +16,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "schedule-forensics"
-version = "1.0.163"
+version = "1.0.164"
 description = "Local, NASA-themed forensic schedule-analysis tool (CUI-safe, offline)."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -155,9 +155,14 @@ src = ["src", "tests"]
 select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
 
 [tool.ruff.lint.per-file-ignores]
-# The web view module embeds HTML/CSS string literals where an 80-100 col limit is
+# The web view modules embed HTML/CSS string literals where an 80-100 col limit is
 # meaningless; line-length is not enforced there (the logic stays readable regardless).
+# `chrome.py` is app.py's page shell, extracted verbatim (ADR-0349) — the `_LAYOUT` skeleton
+# and the nav/banner f-strings ARE the HTML, so the exemption travels with them. ADR-0297
+# anticipated this: the split's HTML-carrying modules take the exemption; `state.py`, which
+# has no HTML in it, still earns none.
 "src/schedule_forensics/web/app.py" = ["E501"]
+"src/schedule_forensics/web/chrome.py" = ["E501"]
 
 [tool.ruff.format]
 # ruff >= 0.16 formats fenced ```python blocks inside Markdown. That is right for prose docs and

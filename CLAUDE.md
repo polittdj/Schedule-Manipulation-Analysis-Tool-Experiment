@@ -147,8 +147,18 @@ HTML + vendored JS charts**, with the AI layer polishing narrative on top of alr
 - **`web/app.py`** — the UI's routes + server-rendered HTML + a Jinja layout in one (large) file;
   since ADR-0297 (monolith split, phase 1) the session-state machinery lives in **`web/state.py`**
   (`SessionState`, `_LRUCache` + cache caps, `_Analysis`/`_compute_analysis`, `_activity_rows`),
-  re-exported by `web.app` so old import paths keep working. Tests that monkeypatch engine
-  callables patch the module whose code CALLS them (state vs app — see the ADR).
+  and since ADR-0349 (phase 2) the **page chrome** lives in **`web/chrome.py`** (`_LAYOUT`, the
+  always-on banners, the story spine + nav, the explainers, `_e`, and **`_page`** — the shell every
+  route returns through). Both are re-exported by `web.app` so old import paths keep working; the
+  dependency runs one way, `chrome` → `state` → engine/ai/model, pinned by
+  `tests/web/test_monolith_split_contract.py`. **Two traps, one per phase.** Phase 1's: tests that
+  monkeypatch engine callables patch the module whose code CALLS them (state vs app — see the ADR).
+  Phase 2's: tests that read a module's **source text** by path (the `_LAYOUT` script-order guards in
+  `test_axis_titles` / `test_dd_line_ledger` / `test_bar_drill`, the `&mdash;` sentinel guard in
+  `test_presentation_fixes`) do NOT fail when their subject moves — they quietly search a file that
+  no longer contains it. Repoint them in the same commit: an order-within-the-layout guard follows
+  `_LAYOUT`; a "nowhere in the view layer" guard must read **both** modules. Phase 3 (the ~11k lines
+  of `_*_body`/`_*_panel`/`_*_data` presentation helpers) is still queued.
   `SessionState` is the in-memory, per-process session (loaded `schedules`, `ai_config`,
   `active_filter`, `language`, caches). The per-schedule analysis chokepoint is `_Analysis`, built once
   by `_compute_analysis(sch)` (a single CPM pass reused by every view) and cached via

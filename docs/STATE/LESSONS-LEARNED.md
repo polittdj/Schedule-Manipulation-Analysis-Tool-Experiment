@@ -435,6 +435,42 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-05 — Splitting a module silently narrows every test that names the file (ADR-0349)
+- **The lesson.** Moving code out of a file cannot break a `read_text()` guard's *syntax* — only
+  its *subject*. `tests/web/test_bar_drill.py` asserts
+  `app_src.count('<script src="/static/drilldown.js"></script>') == 1` to catch a double-load.
+  After `_LAYOUT` moved to `chrome.py` that count went from **one** to **zero**, and
+  `test_presentation_fixes`'s `assert '"&mdash;"' not in src` would have gone on passing over a
+  file that no longer contains the code it guards. Both stay green. **A guard that has stopped
+  guarding still reports success** — the same failure shape as ADR-0297's silent monkeypatch,
+  arriving through a different door. Before the next cut, list the tests that name the FILE, not
+  just the callers that import from it: `grep -rln 'app\.py' tests/`.
+- **Repoint in the right direction, and the two directions differ.** A guard on the layout's
+  *internal script order* follows `_LAYOUT` (order is only meaningful inside one module). A guard
+  meaning *"nowhere in the view layer"* must read **both** modules. `test_bar_drill` was first
+  repointed the wrong way — to `chrome.py` alone — which would have kept it green while re-opening
+  the exact double-load hole it exists to catch, since a stray re-include would land in `app.py`.
+  Caught and corrected mid-change. Ask what the guard is a claim *about*, not where its subject
+  currently lives.
+- **Compute the seam; do not choose it.** An AST transitive closure of `_page` over `app.py`'s 344
+  top-level symbols returned **30 names and was closed** — proof that nothing moved would call
+  something left behind. It also *found* members no reading would have grouped together (`_e`,
+  473 call sites; `_criteria_text` from 18k lines away) and *excluded* one that sat physically
+  inside the block (`_TS_CAPTION_MARK`, a page-body constant between `_story_footer` and `_page`).
+  **Adjacency is not cohesion.** The closure is cheap to compute and it is the difference between
+  a defensible cut and a plausible one.
+- **For a verbatim refactor, render-and-diff beats every other oracle.** All 31 HTML routes
+  rendered before and after *in the same interpreter* (pre-split `app.py` swapped back in,
+  `chrome.py` parked): **31/31 byte-identical SHA-256**. Then the oracle was itself falsified —
+  one character changed in `_LAYOUT` moved **30 of 31** hashes, the 31st being a 404 that renders
+  no layout, which is the right answer and explains itself. An identical response cannot render
+  differently, so this dominates a browser pass here. Reuse it for phase 3.
+- **The mutation worth keeping is the one that imports cleanly.** A module-level
+  `from …web.app import X` inside `chrome.py` detonates on its own with a circular-import error —
+  it needs no guard. The **deferred** form, inside a function body, is how someone would *work
+  around* the cycle: it imports fine, runs fine, and quietly makes the cut circular. That is the
+  case the AST guard earns its place on, and the mutation that proves it.
+
 ### 2026-08-04 — A finding is a hypothesis with a citation, not a measurement (ADR-0348)
 - **Re-derive the numbers in a finding's own headline before you act on it.** CC-01 was filed as
   "non-working dates at **74 call sites**". Neither number survived. `74` was

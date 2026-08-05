@@ -11681,3 +11681,51 @@ failed with the documented load-sensitive signature and passes in isolation.
 
 **Next:** SRA-LEGACY (`audit/SRA-ROOTCAUSE-20260730.md`) · V3 (`engine/msp_filters.py`, needs its
 migration-report gate) · Phase 5 monolith split 2–3 · Phase 6 docs/operator queue.
+
+## 2026-08-05 — Monolith split phase 2: the page chrome moves out (ADR-0349, v1.0.164)
+
+**Branch** `claude/polaris-phase-5-split-w30grg`, restarted from `origin/main` at `e9a48c9`.
+Model constraint: Fable 5 unavailable, so ADR-0240's reserved deep-dive items (SRA-LEGACY,
+ADR-0348's `1440` residual, V3) were left untouched and the Opus-appropriate headline unit —
+ADR-0297's queued phase 2 — was taken instead.
+
+**The seam was measured, not eyeballed.** An AST pass over `app.py`'s 344 top-level symbols took
+the transitive closure of `_page`: **30 names, and it is closed** — nothing the moved code calls
+stays behind in `app.py`. That is what made the cut safe and what kept it small. Four of the thirty
+sat nowhere near the chrome region and came because the closure demanded it: `_e` (473 call sites),
+`_expandable_more`, and `_criteria_text`/`_criterion_value_list`/`_OP_TEXT` from line ~18.7k — the
+last confirmed by its own docstring, "*for chips/banner*". `_ask_panel_html` cost nothing (it
+references only `_e`), so the AI **panel** moved without the AI **backend** block.
+
+**The trap was not phase 1's.** ADR-0297's monkeypatch hazard did not bite — zero tests patch any
+of the thirty. Phase 2's hazard is **source-text guards**: tests that `read_text()` a module by
+path. Moving `_LAYOUT` did not make them fail honestly. One raised `ValueError` (loud), but
+`test_bar_drill`'s `count('…drilldown.js…') == 1` would have gone from counting one include to
+**zero**, and `test_presentation_fixes`'s `'"&mdash;"' not in src` would have kept passing over a
+file that no longer holds the code it guards. Four guards repointed, in two deliberately distinct
+directions: layout-internal script order follows `_LAYOUT` to `chrome.py`; "nowhere in the view
+layer" reads **both** modules. The `test_bar_drill` case was first repointed the wrong way (to
+`chrome.py` alone, which would have kept it green while re-opening the double-load hole) and
+corrected mid-change.
+
+**Landed:** `web/chrome.py` (1,294 lines) — `_LAYOUT` + `_bust_static`, the always-on banners, the
+story spine + nav, the explainers, `_ask_panel_html`, `_e`, `_page`; `app.py` **21,348 → 20,255**
+with all 35 names re-exported `X as X`; `chrome.py` takes the E501 exemption (the 31 over-long
+lines are the HTML itself, exactly as ADR-0297 predicted for the HTML-carrying phases). Left
+behind on purpose: `_STATIC_DIR`, `_OAT_MAX_ACTIVITIES`, the AI backend block, and
+`_TS_CAPTION_MARK` — a page-body constant that merely sits between `_story_footer` and `_page`
+(adjacency is not cohesion). **+3 tests** in `tests/web/test_monolith_split_contract.py`.
+
+**Verification.** Verbatim proved mechanically: non-blank-line multiset **20,179 → 20,179**, the
+only six lines leaving being imports `ruff --fix` removed from `app.py` because their sole
+consumers had moved. Behaviour-freedom proved by rendering all **31** HTML routes before and after
+in the same interpreter: **31/31 byte-identical SHA-256**, with the oracle itself proved sensitive
+(one character in `_LAYOUT` moves 30 of 31; the 31st is `/whatif`'s 404, which renders no layout).
+Five mutations, each proved to fail the right test, each verified-mutated by re-reading the file
+and restored byte-identically from a scratchpad copy — the most useful being a **deferred**
+`from …web.app import` inside a chrome function, which imports cleanly and is caught only by the
+AST check.
+
+**Next:** phase 3 (the ~11k lines of presentation helpers — ~9× this cut, so sweep for both traps
+first and reuse the render diff) · the three pages with no `page-lede` · `/groups` Activities
+counting summary rows (ADR-0343) · the nine installers vs `-c constraints/known-good.txt`.
