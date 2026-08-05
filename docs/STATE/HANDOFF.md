@@ -1,6 +1,8 @@
 # Handoff — 2026-08-04 (CC-01's rendering half closed: one instant, two spellings; ADR-0348; v1.0.163)
 
-> ## STATUS (current) — **branch pushed, draft PR open.** ADR-0348, **v1.0.163**.
+> ## STATUS (current) — **MERGED, nothing in flight.** PR #535 squash-merged as `e9a48c9`.
+> ADR-0348, **v1.0.163**. **All six checks green** on `2ee8fa5`: `test (3.11)` · `test (3.13)` ·
+> `floor (declared minimum)` · `browser (measured-box proof)` · `windows` · `linux`.
 > **CC-01 / external H2a is CLOSED.** The finding's own two headline numbers were both wrong, and
 > re-deriving them — the one instruction this work carried — is what found the real defect. Wheel +
 > nine installers rebuilt at **v1.0.163**. Full local suite: **3479 passed, 3 skipped**, the only
