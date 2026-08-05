@@ -11739,7 +11739,7 @@ layer" reads **both** modules. The `test_bar_drill` case was first repointed the
 corrected mid-change.
 
 **Landed:** `web/chrome.py` (1,294 lines) — `_LAYOUT` + `_bust_static`, the always-on banners, the
-story spine + nav, the explainers, `_ask_panel_html`, `_e`, `_page`; `app.py` **21,348 → 20,255**
+story spine + nav, the explainers, `_ask_panel_html`, `_e`, `_page`; `app.py` **21,348 → 20,192** (−1,156)
 with all 35 names re-exported `X as X`; `chrome.py` takes the E501 exemption (the 31 over-long
 lines are the HTML itself, exactly as ADR-0297 predicted for the HTML-carrying phases). Left
 behind on purpose: `_STATIC_DIR`, `_OAT_MAX_ACTIVITIES`, the AI backend block, and
@@ -11759,3 +11759,66 @@ AST check.
 **Next:** phase 3 (the ~11k lines of presentation helpers — ~9× this cut, so sweep for both traps
 first and reuse the render diff) · the three pages with no `page-lede` · `/groups` Activities
 counting summary rows (ADR-0343) · the nine installers vs `-c constraints/known-good.txt`.
+
+## 2026-08-05 — Monolith split phase 3 opens: the shared kernel comes out first (ADR-0350, v1.0.165)
+
+**Docs corrections first (folded into this unit, no separate PR).** `HANDOFF.md`'s STATUS still
+read "branch pushed, draft PR open" for PR #539, which had MERGED as `f6959d1` — corrected in the
+archived section. And the `app.py` line count was **wrong in three places**: ADR-0349, `HANDOFF.md`
+and this log all said `21,348 → 20,255`. The merged file is **20,192**; the real reduction is
+**1,156**, not 1,093. 20,255 came off the extraction script *before* `ruff check --fix` removed six
+now-unused imports and `ruff format` collapsed the blank-line runs the cut created. `chrome.py`
+1,294 and `state.py` 1,479 were correct and are unchanged.
+
+**The queued phase-3 order was wrong, and measuring it is what showed that.** The plan was "slice
+by page family, largest first" starting at `driving` (585 lines). `driving`'s AST transitive
+closure is 15 names / 870 lines, and only seven are its own: the rest are shared primitives,
+including **`_panel_head` (reached by 47 families, 62 direct referrers)** and **`_shell_tools`
+(41/52)**. Cutting a page first would have moved the shared panel strip into `web/driving.py` and
+left ~60 unrelated helpers importing their panel header from a page module — an inversion every
+one of the remaining thirteen slices would have inherited or duplicated.
+
+**Landed:** `web/components.py` (308 lines) — the panel-contract strip, `_stat_cards`,
+`_metric_help_cell`, `_status_stack`, `_export_bar`, `_mdY`/`_user_tip`/`_status_class`, the
+analysis-export pair and the two SRA resolvers; `app.py` **20,192 → 19,944** (−248) with all 16
+names re-exported `X as X`; `components.py` takes the E501 exemption for **one** line (a
+`_metric_help_cell` docstring already over-long inside app.py's exempt region — re-wrapping it
+would break verbatim, and verbatim outranks a rule that exists for code). Membership was the
+closure's verdict: in iff **≥3 page families** reach it (16 names / 233 lines of moved code,
+**CLOSED**). The **≥2** band was rejected on inspection — it is page-PAIR machinery, not
+primitives (`_conditional_section`/`_unified_risk_section`/`_branch_section`/`_OCC_*` are all
+"sra, ssi" with `_ssi_panel` as their only direct referrer; `_render_counterfactual`, 179 lines, is
+reached via `_counterfactual_panel` alone). Left behind on purpose: `_SRA_XLSX_TITLE` /
+`_BRIEFING_XLSX_TITLE`, sitting immediately beside `_ANALYSIS_XLSX_TITLE` — adjacency is not
+cohesion, this time against tidiness. Layering `app → components → chrome → state` is now pinned.
+
+**The trap was phase 2's, one module wider.** Not "the subject moved out of the file the guard
+reads" but "the view layer grew a module the guard does not read". `test_presentation_fixes`'s
+`&mdash;` sentinel guard read `app.py` + `chrome.py`, and `_stat_cards` — the function the very
+next test in that file exercises for that exact double-escape — moved to `components.py`. It would
+have stayed green over a shrunken subject. `test_bar_drill`'s once-only `drilldown.js` count had
+the same shape. Both repointed to read all three view modules, and the enumeration is no longer
+left to the next cutter: the contract test pins `VIEW_MODULES`/`LAYER_ORDER` and fails when a view
+module is added without widening them.
+
+**Verification.** Verbatim proved mechanically: non-blank multiset **19,100 → 19,100** — the 52
+added lines are entirely the re-export block (25) plus the new module's preamble (27), the single
+removed line is `field_or_metric_doc`, dropped by `ruff --fix` because its sole consumer moved.
+Behaviour-freedom: **60/60 routes byte-identical**, including the parametrized `/analysis/{name}`,
+`/card/{name}` and `/wbs/{name}` — where this kernel is used most, and which a page-list oracle
+would have missed. **The oracle was broken before it was trusted**: two runs of the *unchanged*
+tree disagreed on **34 of 61** routes, caused by a per-process launch token
+(`<meta name=sf-launch>` / `/api/whoami`) plus the pid — stable only within one interpreter, which
+is exactly why ADR-0349's method said "in the SAME interpreter". Normalizing those two leaves
+`/api/system` (live uptime/rss) varying by construction; it is excluded by name. Only then is
+60/60 evidence. The oracle was then falsified: one character in `_panel_head` moves **20 of 60**,
+and the 40 that hold were checked directly (zero `class=panel-head` in their rendered HTML) with
+`/margin` (4 occurrences, moved) as the positive control. **Five mutations**, each proved to fail
+the right test, each verified-mutated by re-reading the file and restored from a scratchpad copy —
+the most useful being a **deferred** `from …web import app` inside a `components` function, which
+imports cleanly and is caught only by the layering check.
+
+**Next:** phase 3 continues, now genuinely per-page (`driving`'s closure is down to its own five
+entry points + `_task_iso_dates` + `_corridor_chips`) · phase 4 must add its module to
+`LAYER_ORDER`/`VIEW_MODULES` · the three pages with no `page-lede` · `/groups` Activities counting
+summary rows (ADR-0343) · the nine installers vs `-c constraints/known-good.txt`.

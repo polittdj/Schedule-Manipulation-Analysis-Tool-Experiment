@@ -432,10 +432,34 @@ from schedule_forensics.web.chrome import (
 from schedule_forensics.web.chrome import (
     _utility_takeaway as _utility_takeaway,
 )
+
+# ADR-0350 (phase 3 of the monolith split): the SHARED presentation kernel — the panel-contract
+# strip (``_panel_head``/``_shell_tools``/the provenance chips), the stat cards, the metric help
+# cell, the status stack, the export bar and the shared formatters — lives in
+# ``web/components.py`` now, extracted verbatim. Membership was measured: every name below is
+# reached by the closure of THREE OR MORE page families, so no page module could own it. Same
+# ``X as X`` re-export idiom as phases 1-2. The phase-2 trap applies here too: tests that read a
+# module's SOURCE TEXT by path do not fail when their subject moves — repoint them in the same
+# commit as any further extraction.
+from schedule_forensics.web.components import _ANALYSIS_XLSX_TITLE as _ANALYSIS_XLSX_TITLE
+from schedule_forensics.web.components import _analysis_export_attr as _analysis_export_attr
+from schedule_forensics.web.components import _export_bar as _export_bar
+from schedule_forensics.web.components import _latest_solvable as _latest_solvable
+from schedule_forensics.web.components import _mdY as _mdY
+from schedule_forensics.web.components import _metric_help_cell as _metric_help_cell
+from schedule_forensics.web.components import _pair_prov_chip as _pair_prov_chip
+from schedule_forensics.web.components import _panel_head as _panel_head
+from schedule_forensics.web.components import _prov_chip as _prov_chip
+from schedule_forensics.web.components import _series_prov_chip as _series_prov_chip
+from schedule_forensics.web.components import _shell_tools as _shell_tools
+from schedule_forensics.web.components import _sra_selected as _sra_selected
+from schedule_forensics.web.components import _stat_cards as _stat_cards
+from schedule_forensics.web.components import _status_class as _status_class
+from schedule_forensics.web.components import _status_stack as _status_stack
+from schedule_forensics.web.components import _user_tip as _user_tip
 from schedule_forensics.web.help import (
     METRIC_DICTIONARY,
     field_help_payload,
-    field_or_metric_doc,
     metric_doc,
     reliability_dimension,
 )
@@ -992,39 +1016,6 @@ def _clamp_float(
     """Parse ``value`` times ``scale``, clamp to ``[lo, hi]``; non-numeric keeps ``default``."""
     parsed = _to_float(value, default / scale if scale else default)
     return max(lo, min(hi, parsed * scale))
-
-
-def _mdY(value: dt.date | dt.datetime | str | None) -> str:
-    """A displayed date as ``MM/DD/YYYY`` (operator convention), never a time-of-day.
-
-    Accepts a date, a datetime (time dropped), or an ISO ``YYYY-MM-DD[Txx]`` string; ``None``
-    or an unparsable string renders as an em dash. Data payloads/exports stay ISO — this is
-    the presentation boundary only."""
-    if value is None:
-        return "—"
-    if isinstance(value, str):
-        try:
-            parsed: dt.date = dt.date.fromisoformat(value[:10])
-        except ValueError:
-            return value
-    elif isinstance(value, dt.datetime):
-        parsed = value.date()
-    else:
-        parsed = value
-    return f"{parsed.month:02d}/{parsed.day:02d}/{parsed.year:04d}"
-
-
-def _user_tip(text: str) -> str:
-    """A small, consistent "User Tip" call-out to guide the operator on a page or control.
-
-    ``text`` is a developer-authored static string (it may contain simple inline HTML such as
-    ``<b>`` for emphasis); it is never operator input, so it is embedded as-is. Rendered the same
-    way everywhere so tips read consistently across the tool.
-    """
-    return (
-        '<p class="user-tip" role="note"><span class="ut-badge">User Tip</span> '
-        f"<span>{text}</span></p>"
-    )
 
 
 def _sources_line(schedules: Sequence[Schedule]) -> str:
@@ -6525,11 +6516,6 @@ def _parse_upload(name: str, data: bytes) -> Schedule:
         return load_schedule(temp_path)
 
 
-def _status_class(status: object) -> str:
-    # the values are CSS class names (not secrets); B105 is a false positive here.
-    return {"PASS": "pass", "FAIL": "fail"}.get(str(status), "na")  # nosec B105
-
-
 def _stoplight_board(checks: tuple[AuditCheck, ...]) -> str:
     """The handbook's canonical at-a-glance metric stoplight (Figs 7-10..7-38): one chip per DCMA-14
     check, green PASS / red FAIL / grey N/A, with the value + threshold. Pure presentation over the
@@ -6639,88 +6625,6 @@ focuses on it, and Compare shows its movement. Set or clear it in the header.</p
 <p class=cite>{_e(row["name"])} (UID {target}, {_e(row["source_file"] or "schedule")})</p></div>"""
 
 
-# ── Panel-contract helpers (Mission Ops rank 3, ADR-0298): the reusable headline strip +
-# three-glyph tools + provenance chip for the per-schedule analysis panels. Presentation only —
-# every figure a takeaway line quotes is an engine output the panel already renders verbatim.
-
-
-def _prov_chip(sch: Schedule) -> str:
-    """The panel-contract provenance chip — ``SOURCE: file · DD date``. i18n-inert
-    (filenames and dates must never be translated — rank-3 risk note)."""
-    dd = sch.status_date.date().isoformat() if sch.status_date is not None else "—"
-    return (
-        f"<span class=prov-chip data-no-i18n>SOURCE: {_e(sch.source_file or sch.name)}"
-        f" · DD {dd}</span>"
-    )
-
-
-def _pair_prov_chip(prior: Schedule, current: Schedule, vfrom: int, vto: int) -> str:
-    """The version-PAIR provenance chip for the compare views (Mission Ops rank 5) —
-    ``v1→v2 · SOURCE: a → b · DD d1 → d2`` — the prototype's 'v4→v5' vocabulary rendered
-    with the SAME .prov-chip class as :func:`_prov_chip` (never a parallel vocabulary).
-    i18n-inert: version labels, filenames and dates must never be translated."""
-    p_dd = prior.status_date.date().isoformat() if prior.status_date is not None else "—"
-    c_dd = current.status_date.date().isoformat() if current.status_date is not None else "—"
-    return (
-        f"<span class=prov-chip data-no-i18n>v{vfrom}→v{vto} · "
-        f"SOURCE: {_e(prior.source_file or prior.name)} → "
-        f"{_e(current.source_file or current.name)} · DD {p_dd} → {c_dd}</span>"
-    )
-
-
-def _series_prov_chip(versions: Sequence[Schedule]) -> str:
-    """The provenance chip for a panel drawn from the WHOLE loaded series (Mission Ops rank 9):
-    one file → :func:`_prov_chip`; several → the first→last :func:`_pair_prov_chip`. The SAME
-    ``.prov-chip`` vocabulary both already speak (never a third convention) — the pattern
-    :func:`_focus_panel` established for a series panel. Empty when nothing is loaded."""
-    if not versions:
-        return ""
-    if len(versions) == 1:
-        return _prov_chip(versions[0])
-    return _pair_prov_chip(versions[0], versions[-1], 1, len(versions))
-
-
-def _shell_tools(*, export_title: str = "", big: bool = True) -> str:
-    """The three-glyph tool strip (panelkit.js wiring): ⤓ EXCEL renders ONLY when the panel
-    carries a ``data-export`` URL to an EXISTING endpoint (never a dead link — rank-3 law);
-    ⛶ ENLARGE by default. ▦ DATA is omitted on the analysis panels: each one's table IS the
-    data (the home-shell precedent). ``big=False`` omits the ⛶ for the ONE panel whose chart
-    script supplies the panel's single ⛶ itself (the /analysis scatter — the curves.js
-    pattern, ADR-0317): a second head glyph on that panel was the round-11 inert-duplicate
-    defect (it flipped its label while ``:has(.sf-tilebox)`` kept the panel static)."""
-    excel = (
-        f'<button type=button data-sf-excel title="{_e(export_title)}" '
-        'aria-label="Export this panel&#39;s data to Excel">⤓ EXCEL</button>'
-        if export_title
-        else ""
-    )
-    enlarge = (
-        "<button type=button data-sf-big aria-pressed=false "
-        'aria-label="Enlarge this panel">⛶ ENLARGE</button>'
-        if big
-        else ""
-    )
-    return f"<div class=sf-tools data-noprint=1>{excel}{enlarge}</div>"
-
-
-def _panel_head(title: str, *, tools: str = "", prov: str = "", h2_attrs: str = "") -> str:
-    """The panel-contract headline strip: h2 + tools + provenance chip. ``title`` is HTML —
-    callers escape their own dynamic parts (the heading TEXT is unchanged; the uppercase
-    treatment is CSS, so existing content assertions keep holding). ``h2_attrs`` carries a
-    pre-existing heading attribute through a conversion (leading space included, e.g.
-    ``" data-no-i18n"``) — the /margin headings were deliberately translation-pinned and
-    joining the contract must not silently unpin them."""
-    return f"<div class=panel-head><h2{h2_attrs}>{title}</h2>{tools}{prov}</div>"
-
-
-#: ⤓ EXCEL hover text for panels whose data ships inside the existing per-schedule analysis
-#: workbook export (/export/{fmt}/analysis/{name} — DCMA, float bands, completion, findings,
-#: activities sheets). One string so every panel names the same real destination.
-_ANALYSIS_XLSX_TITLE = (
-    "Export this schedule's analysis workbook (this panel's data is one of its sheets) — "
-    "opens in Excel"
-)
-
 #: ⤓ EXCEL hover text for the chapter-12 document pages (ADR-0337). Both name a REAL endpoint the
 #: page already offers in its export bar — ``/export/xlsx/briefing`` and ``/export/xlsx/brief`` —
 #: so the glyph never points at a route that does not exist.
@@ -6749,12 +6653,6 @@ _SRA_XLSX_TITLE = (
     "Export the SRA workbook — run setup, focus-finish results, OAT sensitivity and the risk "
     "register — opens in Excel"
 )
-
-
-def _analysis_export_attr(key: str) -> str:
-    """The panel-level data-export URL panelkit.js follows — the EXISTING analysis workbook
-    endpoint for this schedule (never a dead link)."""
-    return f' data-export="/export/xlsx/analysis/{quote(key, safe="")}"' if key else ""
 
 
 def _float_bands_panel(analysis: _Analysis, *, key: str = "", prov: str = "") -> str:
@@ -9203,16 +9101,6 @@ when the file carries none).</p>
 </table></div>"""
 
 
-def _stat_cards(cards: list[tuple[str, str]]) -> str:
-    """A responsive grid of label/value stat cards (the deck's KPI-card row)."""
-    items = "".join(
-        f"<div class=stat-card><div class=stat-value>{_e(value)}</div>"
-        f"<div class=stat-label>{_e(label)}</div></div>"
-        for label, value in cards
-    )
-    return f"<div class=stat-grid>{items}</div>"
-
-
 def _count_bar_table(headers: tuple[str, str], rows: list[tuple[str, int, float]]) -> str:
     """A count + percent table with an inline percent bar (deck pie/pivot, as a table)."""
     body = "".join(
@@ -9571,40 +9459,6 @@ def _dcma_metric_cell(check: AuditCheck) -> str:
     )
 
 
-def _metric_help_cell(label: str, metric_id: str, *, align: str = "left") -> str:
-    """Inner HTML for a metric column header: the label plus a hover/focus call-out from the in-tool
-    dictionary — what the metric is, how it's calculated, a real-world example of how it's used, and
-    what it indicates. Falls back to the plain label when the metric isn't documented. Reuses the
-    DCMA tooltip styling; wrap the result in a positioned cell (``<th class=metric-th>``). ``align``
-    'right' anchors the pop-out to the cell's right edge so a wide table's right columns don't clip."""
-    doc = field_or_metric_doc(metric_id)
-    if doc is None:
-        return _e(label)
-    tip_id = f"mh-{_e(metric_id)}"
-    tip_cls = "dcma-tip mtip mtip-right" if align == "right" else "dcma-tip mtip"
-    used = doc.use_case or doc.importance
-    rich = [
-        f"<b>{_e(doc.name)}</b>",
-        f"<p>{_e(doc.definition)}</p>",
-        f"<p><b>How it&#39;s calculated:</b> {_e(doc.formula)}</p>",
-    ]
-    title = f"{doc.name}. {doc.definition} How it's calculated: {doc.formula}."
-    if used:
-        rich.append(f"<p><b>Real-world use:</b> {_e(used)}</p>")
-        title += f" Real-world use: {used}"
-    if doc.indicates:
-        rich.append(f"<p><b>Indicates:</b> {_e(doc.indicates)}</p>")
-        title += f" Indicates: {doc.indicates}"
-    if doc.threshold:
-        rich.append(f"<p><b>Threshold:</b> {_e(doc.threshold)}</p>")
-    return (
-        f'<span class="dcma-metric mhelp" tabindex=0 role=button aria-describedby="{tip_id}" '
-        f'title="{_e(title)}">{_e(label)} '
-        f"<span class=dcma-info aria-hidden=true>&#9432;</span></span>"
-        f'<div class="{tip_cls}" id="{tip_id}" role=tooltip>{"".join(rich)}</div>'
-    )
-
-
 def _dcma_count_cells(check: AuditCheck) -> str:
     """The Count + '% of tasks' cells, matching how Acumen Fuse shows each metric — the raw
     count over its population plus the percentage, instead of only a pass/fail colour.
@@ -9621,66 +9475,6 @@ def _dcma_count_cells(check: AuditCheck) -> str:
             f"<td class=num>{pct:.1f}%</td>"
         )
     return f"<td class=num>{check.count}</td><td class=num>{dash}</td>"
-
-
-def _status_stack(
-    title: str,
-    desc: str,
-    segments: list[tuple[str, int, str]],
-    foot: str,
-    drill: list[tuple[tuple[int, ...], str]] | None = None,
-) -> str:
-    """A single stacked bar with a legend of labelled counts — the redesign's composition visual
-    (Activity status mix; Float remaining). ``segments`` = (label, count, css-var color).
-
-    ``drill`` (optional, parallel to ``segments``) makes a segment CLICKABLE: entry ``i`` is
-    ``(activity_uids, file_key)``; a segment with a non-empty UID set + file gets the ``sf-drill``
-    hook (data-uids / data-file / data-title) that ``drilldown.js`` turns into a "list the
-    activities behind this segment + add columns + Excel" grid. Omit ``drill`` (default) and every
-    existing caller renders byte-for-byte as before."""
-    total = sum(c for _, c, _ in segments) or 1
-
-    def _drill_attrs(i: int, label: str) -> tuple[str, str]:
-        """(extra class, extra attributes) for segment/legend ``i`` when it is drillable."""
-        if not drill or i >= len(drill):
-            return "", ""
-        uids, fkey = drill[i]
-        if not uids or not fkey:
-            return "", ""
-        payload = ",".join(str(u) for u in uids)
-        attrs = (
-            f' data-uids="{_e(payload)}" data-file="{_e(fkey)}" '
-            f'data-title="{_e(f"{title} — {label}")}" role="button" tabindex="0"'
-        )
-        return " sf-drill", attrs
-
-    seg_html = []
-    for i, (label, c, color) in enumerate(segments):
-        if c <= 0:
-            continue
-        cls, attrs = _drill_attrs(i, label)
-        tip = f"{label}: {c}" + (" — click to list the activities" if cls else "")
-        seg_html.append(
-            f'<span class="stack-seg{cls}" style="width:{100.0 * c / total:.3f}%;'
-            f'background:var({color})" title="{_e(tip)}"{attrs}></span>'
-        )
-    bar = "".join(seg_html)
-    legend_html = []
-    for i, (label, c, color) in enumerate(segments):
-        cls, attrs = _drill_attrs(i, label)
-        legend_html.append(
-            f'<span class="stack-key{cls}"{attrs}>'
-            f'<span class="stack-dot" style="background:var({color})"></span>'
-            f"{_e(label)} <b>{c}</b></span>"
-        )
-    legend = "".join(legend_html)
-    return (
-        f'<div class="panel status-stack"><h2>{_e(title)}</h2>'
-        f'<p class="muted">{_e(desc)}</p>'
-        f'<div class="stack-bar" role="img" aria-label="{_e(title)}">{bar}</div>'
-        f'<div class="stack-legend">{legend}</div>'
-        f'<div class="stack-foot">{_e(foot)}</div></div>'
-    )
 
 
 def _stack_not_measured(title: str, desc: str, note: str) -> str:
@@ -10362,16 +10156,6 @@ themselves are engine-computed and cited.</p></div>
             prov=prov,
             tools=tools,
         )
-    )
-
-
-def _export_bar(path: str, *, xlsx_id: str = "", docx_id: str = "") -> str:
-    """The per-view 'download as Excel / Word' links (local files only — Law 1)."""
-    a = f' id="{xlsx_id}"' if xlsx_id else ""
-    b = f' id="{docx_id}"' if docx_id else ""
-    return (
-        f'<div class="export-bar"><a{a} href="/export/xlsx/{path}">&#11015; Excel</a>'
-        f'<a{b} href="/export/docx/{path}">&#11015; Word</a></div>'
     )
 
 
@@ -13122,38 +12906,6 @@ def _cei_data(wave: BowWave, target_uid: int | None = None) -> dict[str, object]
             for s in wave.snapshots
         ],
     }
-
-
-def _latest_solvable(st: SessionState) -> tuple[str, Schedule, CPMResult] | None:
-    """The newest analyzable version (key, scoped schedule, cpm), scoped to the session filter.
-
-    The same selection ``/api/sra`` and ``POST /sra/risk`` share: iterate the loaded versions
-    oldest-first, keep the last one whose CPM solves, and return its scoped schedule + CPM. Returns
-    ``None`` when nothing loaded version is analyzable (the caller surfaces the empty state)."""
-    chosen: tuple[str, Schedule, CPMResult] | None = None
-    for key, raw in st.ordered_versions():
-        try:
-            analysis = st.analysis_for(key, raw)
-        except CPMError:
-            continue
-        chosen = (key, analysis.scoped, analysis.cpm)
-    return chosen
-
-
-def _sra_selected(st: SessionState) -> tuple[str, Schedule, CPMResult] | None:
-    """The schedule the SRA runs against — the operator's pick (``st.sra_file``) when it names a
-    loaded, solvable version, otherwise the latest-solvable default. One resolver shared by the
-    page, the simulation API, and the override POST so all three always agree on the file."""
-    key = st.sra_file
-    if key is not None and key in st.schedules:
-        raw = st.schedules[key]
-        try:
-            analysis = st.analysis_for(key, raw)
-        except CPMError:
-            pass  # the chosen file no longer solves (e.g. filtered to nothing) -> fall back
-        else:
-            return (key, analysis.scoped, analysis.cpm)
-    return _latest_solvable(st)
 
 
 def _sra_overrides_table(st: SessionState, sch: Schedule | None) -> str:

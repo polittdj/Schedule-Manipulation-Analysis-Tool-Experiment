@@ -435,6 +435,73 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-05 (cont.2) — The queued plan was wrong, and only the dependency graph could say so (ADR-0350)
+- **A line census is not a dependency measurement, and the plan was built on the wrong one.**
+  Phase 3 was queued as "slice by page family, largest first" — `driving` (585 lines) first. The
+  AST closure said otherwise: `driving` drags **`_panel_head` (reached by 47 families, 62 direct
+  referrers)** and **`_shell_tools` (41/52)**. Cutting a page first would have moved the shared
+  panel strip *into a page module*, leaving ~60 unrelated helpers importing their panel header
+  from `web/driving.py` — an inversion every one of the remaining thirteen slices inherits or
+  duplicates. The queued order was not merely suboptimal; it was the single order that poisons
+  the rest. **Run the closure before you trust the plan, including a plan you wrote yourself.**
+- **When a shared layer exists, extract IT first — the threshold is a real decision.** A symbol
+  reached by ≥2 families is *shared*; by ≥3 is *infrastructure*. Both sets were closed, but the
+  2-family band turned out to be **page-PAIR machinery**, not primitives: `_conditional_section`,
+  `_unified_risk_section`, `_branch_section` and the `_OCC_*` constants are all "sra, ssi" and
+  every one has **`_ssi_panel` as its only direct referrer**; `_render_counterfactual` (179 lines)
+  reaches two families through `_counterfactual_panel` alone. A components module holding a
+  179-line counterfactual renderer is not a components module. The `#families` number alone would
+  have shipped it — reading the *referrers* is what separated the two bands.
+- **The trap repeated in a form the previous fix did not cover.** ADR-0349 taught "a guard whose
+  subject moves keeps passing over a file that no longer holds it". Phase 3's variant is the
+  mirror: **the subject stayed put and the view layer grew a module the guard does not read.**
+  `test_presentation_fixes`'s `&mdash;` guard read `app.py` + `chrome.py`; `_stat_cards` — the
+  function the very next test exercises for that exact double-escape — moved to `components.py`.
+  Green, over a shrunken subject. The durable fix is not to repoint again but to **pin the
+  enumeration**: `VIEW_MODULES`/`LAYER_ORDER` are now constants a contract test checks, so phase 4
+  cannot add a module without the guards going red. Repointing fixes one cut; pinning fixes all of
+  them.
+- **An oracle you have not run twice is not deterministic — it is merely untested.** Two runs of
+  the *unchanged* tree disagreed on **34 of 61** routes. Cause: a per-process launch token plus
+  the pid, constant *within* one interpreter — which is precisely why ADR-0349's method said "in
+  the SAME interpreter", a phrase I would have read as incidental had I not tripped over it. Had I
+  skipped the stability check I would have "discovered" that a verbatim refactor changed 34 pages
+  and spent the session chasing a nonce. **Establish the null result before you measure the
+  effect**: run the oracle against no change at all, and only then trust 60/60.
+- **Falsify the oracle in the direction of its blind spot, not just its sensitivity.** One
+  character in `_panel_head` moved 20 of 60 hashes — but 40 held, which is the number that could
+  hide a gap. Checking them directly (zero `class=panel-head` in their rendered HTML, with
+  `/margin`'s 4 as a positive control) is what turned "40 unchanged" from a worry into a result.
+  The first version of this oracle also omitted `/analysis/{name}`, `/card/{name}` and
+  `/wbs/{name}` — the three parametrized pages where this kernel is used *most*. A page-list
+  oracle that skips the parametrized pages is a coverage hole shaped exactly like the change.
+
+### 2026-08-05 (cont.) — A measurement taken before the tree settles is a measurement of nothing
+- **The suite half: I invalidated three ~20-minute runs by working during them.** A full-suite run
+  measures the tree *at one moment*. While pytest was running I bumped the version, rebuilt the
+  wheel and the nine installers, and added a comment — so each run was reporting on a tree that no
+  longer existed by the time it finished. Three runs, ~60 minutes, all of it unusable; the suite
+  then had to be re-run clean against a settled tree. The lockstep test caught the post-build
+  comment edit and **was right to**. A green result is only evidence about the bytes that were on
+  disk when the collector read them.
+- **The docs half: the same error, in a number I published.** ADR-0349, `HANDOFF.md` and
+  `SESSION-LOG.md` all stated `app.py` went `21,348 → **20,255**`. The merged file is **20,192**
+  (`git show f6959d1:src/schedule_forensics/web/app.py | wc -l`). 20,255 was printed by the
+  extraction script *before* `ruff check --fix` removed the six now-unused imports and `ruff
+  format` collapsed the blank-line runs the cut created. The real reduction is **1,156** lines, not
+  1,093. Nothing was wrong with the refactor — only with **when** I read the tape. Corrected in all
+  three files.
+- **The discipline, and it is four steps.** Settle the tree → `md5sum` what you touched → run →
+  **re-verify the md5s afterwards** to prove the tree held for the whole run. Step four is the one
+  that converts "I think I didn't edit anything" into evidence, and it is the one I skipped. For a
+  published figure the same rule reads: take the number from the *committed* artifact, not from the
+  tool that produced it, because the formatters run in between.
+- **Why this is ADR-0348's own lesson pointed inward.** That ADR's finding was that a stated number
+  must be a measurement rather than a recollection. The failure mode one step further in is a
+  number that *was* measured — honestly, with a real command — but against a tree that had already
+  moved. Same standard, later clock. This repo's rule is that a stated number is a measurement;
+  the corollary is that a measurement carries the timestamp of the tree it was taken from.
+
 ### 2026-08-05 — Splitting a module silently narrows every test that names the file (ADR-0349)
 - **The lesson.** Moving code out of a file cannot break a `read_text()` guard's *syntax* — only
   its *subject*. `tests/web/test_bar_drill.py` asserts
