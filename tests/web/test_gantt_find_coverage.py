@@ -49,9 +49,13 @@ def test_every_gantt_page_ships_the_name_or_uid_find(client: TestClient) -> None
 def test_driving_path_corridor_ships_the_find(client: TestClient) -> None:
     # the corridor panel (and its Find) renders only once a source→target pair with a real
     # corridor is chosen, so pin BOTH sources of truth: the template string and the JS wiring
-    import schedule_forensics.web.app as app_module
+    # ADR-0351: that template moved to `web/driving.py`, and this guard FOLLOWS its subject.
+    # It reached the source through `app_module.__file__` rather than a literal "app.py", which
+    # is why a `grep -rln 'app\.py' tests/` sweep did not list it — module-object reads have to
+    # be swept for separately, or a split narrows them invisibly.
+    import schedule_forensics.web.driving as driving_module
 
-    src = Path(app_module.__file__).read_text(encoding="utf-8")
+    src = Path(driving_module.__file__).read_text(encoding="utf-8")
     assert "id=dpFind" in src and "UID or name" in src
     js = client.get("/static/driving_path.js").text
     assert "SFGantt.findTask(mount, dpFind.value" in js

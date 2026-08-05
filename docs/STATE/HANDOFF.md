@@ -1,86 +1,94 @@
-# Handoff — 2026-08-05 (monolith split phase 3 opens: the shared kernel comes out first; ADR-0350; v1.0.165)
+# Handoff — 2026-08-05 (phase 3 slice 2: the driving-path family; the oracle that proved nothing; ADR-0351; v1.0.166)
 
-> ## STATUS (current) — **branch pushed, draft PR open.** ADR-0350, **v1.0.165**.
-> **Phase 3 is OPEN, and its queued order was WRONG — measured, not guessed.** The plan said
-> "slice by page family, largest first (`driving` 585)". `driving`'s AST closure drags
-> **`_panel_head` (reached by 47 families, 62 direct referrers)** and **`_shell_tools` (41/52)**
-> with it — so cutting a page first would have moved the shared panel strip *into a page module*
-> and left 60-odd unrelated helpers importing their panel header from `web/driving.py`. Every
-> later slice would have inherited that inversion. So phase 3 opens with the shared layer:
-> **`web/components.py` (308 lines)**, `app.py` **20,192 → 19,944** (−248). Wheel + nine
-> installers rebuilt at **v1.0.165**.
+> ## STATUS (current) — **branch pushed, draft PR open.** ADR-0351, **v1.0.166**.
+> ADR-0350 (slice 1, the shared kernel) **MERGED as `0674dd9`** (PR #540). Slice 2 extracts the
+> **driving-path page family → `web/driving.py` (842 lines)**, `app.py` **19,944 → 19,139**
+> (−805). First per-PAGE module. Wheel + nine installers rebuilt at **v1.0.166**.
 >
-> ## MEMBERSHIP IS THE CLOSURE'S VERDICT
-> A symbol is in iff **≥3 page families** reach it — then no page can own it. That set is
-> **16 names / 233 lines of moved code and it is CLOSED** (calls nothing left behind). The
-> **≥2** band was rejected on inspection, not on size: it is **page-PAIR machinery**, not
-> primitives. `_conditional_section` / `_unified_risk_section` / `_branch_section` / `_OCC_*` are
-> all "sra, ssi" with **`_ssi_panel` as their only direct referrer**; `_render_counterfactual`
-> (179 ln) is "counterfactual, evolution" via `_counterfactual_panel` alone. Those travel with
-> their pages. Left behind on purpose: `_SRA_XLSX_TITLE` / `_BRIEFING_XLSX_TITLE`, the two
-> sibling ⤓ EXCEL strings sitting *immediately beside* `_ANALYSIS_XLSX_TITLE` — **adjacency is
-> not cohesion**, and this time it cuts against tidiness.
+> ## ADR-0350's "the LAST slice of a pair collects them" WAS WRONG
+> It said `_task_name_across` / `_EVO_TIER_LABEL` stay in `app.py` until both owners move. But
+> **`driving.py` needs both**, so leaving them would force a page module to import UPWARD — a
+> cycle, caught by the layering test I added last unit. Corrected rule, now binding:
+> **a symbol an extracted module needs must live AT OR BELOW that module's layer; the FIRST
+> slice of a pair forces the descent, not the last.** Both descended into `components.py`.
+> `LAYER_ORDER` is now `state → chrome → components → driving → app`.
 >
-> ## THE TRAP WAS PHASE 2'S, ONE MODULE WIDER
-> Not "the subject moved out of the file the guard reads" but **"the view layer grew a module the
-> guard does not read."** `test_presentation_fixes`'s `&mdash;` sentinel guard read `app.py` +
-> `chrome.py`; **`_stat_cards` — the function the very next test exercises for that exact
-> double-escape — moved to `components.py`.** It would have stayed green over a shrunken subject.
-> `test_bar_drill`'s once-only `drilldown.js` count had the same shape. Both now read **all three**
-> view modules, and the module list is no longer left to the next cutter: the contract test pins
-> `VIEW_MODULES` / `LAYER_ORDER` and **fails** when a view module is added without widening them.
+> ## THE RENDER DIFF PROVED NOTHING HERE — AND ONLY FALSIFICATION SHOWED IT
+> It reported **60/60 byte-identical**. Then the mandatory sensitivity check: one char inside a
+> moved `driving.py` function moved **0 of 60**. Reloading with the Project2/Project5 golden pair
+> (63 routes, deterministic) — still **0 of 63**. The repo already knew why:
+> `test_page_memory.py` says the corridor panel "only renders when a real driving corridor exists
+> across versions (**which the golden pair doesn't produce**)". **No fixture in the corpus can
+> render this family's deep panels.** So the render diff is NOT the oracle here; it only proves
+> the 63 routes that do render are unchanged. Had I skipped the falsification I would have
+> shipped quoting 60/60 as proof of code it never touched.
+> **What replaced it:** per-definition AST byte-identity against the pre-move source — **9/9
+> identical** (`_driving_tiers_panel` 8,000 B, `_driving_tier_trend` 4,443 B, …). Plus file-level
+> verbatim (47 added = preamble + re-exports + one `PathTier` import; **0 removed**).
+> **Coverage stated plainly:** 5 of 7 moved driving names have direct unit tests;
+> **`_driving_tiers_panel` and `_driving_tier_trend` have NONE**, nor do `_task_name_across` /
+> `_EVO_TIER_LABEL`. Their only guard is `test_page_memory`'s source-text check.
+> **NAMED GAP: a fixture that produces a real driving corridor.** Until one exists this family
+> cannot be refactored with behavioural evidence again. Worth its own unit.
 >
-> ## PROOF — AND THE ORACLE WAS BROKEN BEFORE IT WAS TRUSTED
-> **60/60 routes byte-identical**, including the parametrized `/analysis/{name}`, `/card/{name}`,
-> `/wbs/{name}` — where this kernel is used most and which a page-list oracle would have missed.
-> But two runs of the **unchanged** tree first disagreed on **34 of 61**: a per-process launch
-> token (`<meta name=sf-launch>` / `/api/whoami`) + pid, stable only *within* one interpreter —
-> which is exactly why ADR-0349 said "in the SAME interpreter". Normalized those two; excluded
-> `/api/system` (live uptime) by name; only then is 60/60 evidence. Oracle then falsified: one
-> char in `_panel_head` moves **20 of 60**, and the 40 that hold were **checked** (zero
-> `class=panel-head` in their HTML) with `/margin` (4, moved) as positive control. Verbatim proved
-> mechanically: non-blank multiset **19,100 → 19,100**; the 52 added lines are entirely the
-> re-export block (25) + preamble (27), the 1 removed is `field_or_metric_doc`.
+> ## BOTH TRAPS FIRED, ONE OF EACH KIND, IN ONE COMMIT
+> **Phase 1's (monkeypatch):** `test_coverage_app_extra` patches three names on `web.app` then
+> calls `_driving_path_body`. One failed LOUDLY (`AttributeError`). The other two are the
+> dangerous shape — `_driving_path_gantt` / `_corridor_chips` are **still re-exported by
+> `app.py`**, so the patch SUCCEEDS and does NOTHING while the caller (now in `driving.py`)
+> resolves them locally; the test would have asserted against the real renderers. All three now
+> patch `drvmod`. **My first sweep missed them** because it compared against names `driving.py`
+> *imports*; these are names it *defines*. **Sweep every name the new module BINDS, imported or
+> defined.**
+> **Phase 2's (source text):** `test_page_memory` read `app.py` for `dpFind`/`dpBarDates`, which
+> moved. Direction matters and differs from last unit's: this guard's subject is the driving-path
+> markup, so it **FOLLOWS** the subject to `driving.py`; the two whole-view-layer guards
+> **WIDEN**. Getting it backwards would have left the one untestable panel guarded by nothing.
+> **Phase 2's a THIRD time, and the sweep COULD NOT have found it.**
+> `test_gantt_find_coverage` reads **`Path(app_module.__file__)`** — the module OBJECT, not a
+> literal `"app.py"` — so `grep -rln 'app\.py' tests/` never listed it. It survived the pre-cut
+> sweep, three sibling repointings and every fast check, and **only the full 20-min suite caught
+> it.** The standing sweep is incomplete as written: **also grep `__file__)\.read_text` and
+> `getsource`.** A repo-wide check found one other (`test_installers`, whose subject
+> `@app.post("/api/shutdown")` correctly stayed in `app.py`).
+> **ADR-0350's enumeration guard worked on its first real outing** — adding `driving.py` to
+> `VIEW_MODULES` made it fail and name both files to widen. It does NOT cover the `__file__`
+> class (that guard's claim is "this markup exists", a follow-the-subject case).
 >
 > ## Verification
-> **Five mutations, each proved to fail the right test**, each verified-mutated by re-reading the
-> file and restored from a scratchpad copy (never `git checkout`): dropped re-export → names
-> `_panel_head`; **deferred** `from …web import app` inside a `components` function → fails the
-> layering test *and imports cleanly*, which is the whole point; `"components.py"` dropped from
-> `test_bar_drill`'s tuple → enumeration test fails; `"&mdash;"` planted in `components.py` and a
-> second `drilldown.js` include planted there → both repointed guards fail, which is what proves
-> the repointing widened their reach rather than just moving it.
+> Five mutations, each verified-mutated by re-reading the file and restored from a scratchpad
+> copy: dropped re-export → contract names `_driving_data`; **deferred** upward import in
+> `_corridor_chips` → layering guard; `dpFind` removed → repointed page-memory guard;
+> `id=dpFind` broken → repointed gantt-find guard; plus the enumeration guard's live failure.
+> **TWO mutations were themselves wrong first, both flattering** — each read exactly like "this
+> guard cannot fail": (1) replacing only the FIRST of two `dpFind` occurrences; (2) `id=dpFind`
+> → `id=dpFind**Z**`, where the guard asserts `"id=dpFind" in src` and the original is a
+> **SUBSTRING of the replacement**. Working mutation: a same-length non-superstring (`id=dpQind`).
+> **Rule: after mutating, assert the ORIGINAL anchor is ABSENT from the re-read file.**
 >
 > ## Next
-> **Phase 3 continues, now genuinely per-page** — with the kernel out, `driving`'s closure is its
-> own 5 entry points + `_task_iso_dates` + `_corridor_chips`. Order by size: `driving` 585 ·
-> `evolution` 429 · `integrity` 402 · `margin` 379 · `trend` 348 · `ssi` 335 · `mission` 304 ·
-> `how` 290 · `sra` 264 · `what` 257 · `where` 235 · `portfolio` 231 · `evm` 208 · `forecast` 204.
-> Phase 4 MUST add its module to `LAYER_ORDER` + `VIEW_MODULES` (the contract test says so by
-> failing). Two 2-family names (`_task_name_across`, `_EVO_TIER_LABEL`) stay in `app.py` until
-> both owners have moved. Then: the three pages with no `page-lede` (`/briefing`, `/path`,
-> `/compare`); `/groups` "Activities" counting summary rows (ADR-0343); the nine installers not
-> installing with `-c constraints/known-good.txt` (62 lockstep tests, own unit); Phase 6 docs.
+> Twelve page families remain: `evolution` 429 · `integrity` 402 · `margin` 379 · `trend` 348 ·
+> `ssi` 335 · `mission` 304 · `how` 290 · `sra` 264 · `what` 257 · `where` 235 · `portfolio` 231 ·
+> `evm` 208 · `forecast` 204. **Each must add its module to `LAYER_ORDER` + `VIEW_MODULES`** (the
+> contract test fails until it does), **run the monkeypatch sweep over ALL names the new module
+> binds**, and **check whether its family is renderable by any fixture BEFORE quoting a render
+> diff**. Then: a driving-corridor fixture · the three pages with no `page-lede` (`/briefing`,
+> `/path`, `/compare`) · `/groups` "Activities" counting summary rows (ADR-0343) · the nine
+> installers vs `-c constraints/known-good.txt` (62 lockstep tests, own unit) · Phase 6 docs.
 > **Reserved for Fable 5 Max (ADR-0240), do NOT start on Opus:** **SRA-LEGACY**
-> (`audit/SRA-ROOTCAUSE-20260730.md`) · ADR-0348's **`tod + per_day == 1440`** residual (no oracle
-> in the corpus) · **V3** (`engine/msp_filters.py` — moves saved-filter populations).
+> (`audit/SRA-ROOTCAUSE-20260730.md`) · ADR-0348's **`tod + per_day == 1440`** residual · **V3**
+> (`engine/msp_filters.py`).
 > **Operator only:** license selection · branch-protection required contexts · intake re-upload ·
-> proprietary-tool reruns (engine==golden → engine==Fuse) · OR-04.
+> proprietary-tool reruns · OR-04.
 >
 > ## Carried forward
 > The `/analysis` focus→tip family is **load-sensitive** — passes in isolation, never red on CI.
-> Do NOT chase. Do NOT re-derive CC-01's "74 call sites" (ADR-0348 records it). `pydantic>=2` is
-> NOT a safe floor (2.6 is); `fastapi>=0.110` is an AIR-GAP VIOLATION (0.110.2 is the floor).
-> **Run `ruff check .` — the WHOLE tree**, as **`python -m ruff`** (a stale 0.15.8 shim at
-> `/root/.local/bin/ruff` shadows the 0.16.1 `.[dev]` installs). Never `git checkout <file>` to
-> undo a test mutation — `cp` from a scratchpad copy.
->
-> **New this session:** *a stated number carries the timestamp of the tree it was measured from.*
-> ADR-0349's `20,255` was honestly measured — before `ruff --fix`/`format` ran. The merged file
-> was **20,192**; corrected in all three docs. Same failure one step further in than ADR-0348's:
-> not a recollection, a measurement taken too early. And: **settle the tree, `md5sum` what you
-> touched, run, then re-verify the md5s** — step four is what turns "I don't think I edited
-> anything" into evidence.
+> Do NOT chase (re-confirmed: it fails WORSE on the pre-change tree). Do NOT re-derive CC-01's
+> "74 call sites". `pydantic>=2` is NOT a safe floor (2.6 is); `fastapi>=0.110` is an AIR-GAP
+> VIOLATION (0.110.2 is the floor). **Run `ruff check .` — the WHOLE tree**, as **`python -m
+> ruff`**. Never `git checkout <file>` to undo a mutation — `cp` from a scratchpad copy. The
+> render oracle needs the launch-token/pid normalization and `/api/system` excluded, or it is
+> nondeterministic across processes.
 
 # (prior) handoffs — archived
 

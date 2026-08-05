@@ -11822,3 +11822,62 @@ imports cleanly and is caught only by the layering check.
 entry points + `_task_iso_dates` + `_corridor_chips`) · phase 4 must add its module to
 `LAYER_ORDER`/`VIEW_MODULES` · the three pages with no `page-lede` · `/groups` Activities counting
 summary rows (ADR-0343) · the nine installers vs `-c constraints/known-good.txt`.
+
+## 2026-08-05 — Phase 3 slice 2: the driving-path family, and the oracle that proved nothing (ADR-0351, v1.0.166)
+
+ADR-0350 merged as `0674dd9` (PR #540); its STATUS line is corrected to MERGED in the archived
+handoff section. Slice 2 extracts the **driving-path page family → `web/driving.py` (842 lines)**;
+`app.py` **19,944 → 19,139** (−805). First per-PAGE module. With the shared kernel out, `driving`'s
+closure fell from 15 names / 870 lines to **9 names / 793**, seven of them the page's own.
+
+**ADR-0350's own forward plan was wrong, and the test I wrote last unit caught it.** That ADR said
+`_task_name_across` / `_EVO_TIER_LABEL` would "stay in `app.py` until both owners have moved; the
+last slice of a pair collects them." `driving.py` needs both, so leaving them there forces a page
+module to import UPWARD — a cycle. Corrected rule, now binding: **a symbol an extracted module
+needs must live at or below that module's layer; the FIRST slice of a pair forces the descent, not
+the last.** Both descended into `components.py`; `LAYER_ORDER` is now
+`state → chrome → components → driving → app`.
+
+**The render diff proved nothing here, and only the mandatory falsification revealed it.** It
+reported 60/60 byte-identical. One character changed inside a moved `driving.py` function then
+moved **0 of 60** hashes. Reloading with the Project2/Project5 golden pair (63 routes,
+deterministic) still moved **0 of 63**. The repo had already written down why —
+`tests/web/test_page_memory.py`: the corridor panel "only renders when a real driving corridor
+exists across versions (which the golden pair doesn't produce)". **No fixture in the corpus can
+render this family's deep panels**, so the render diff only proves the 63 routes that DO render are
+unchanged. Quoting 60/60 as proof of the moved code would have been false, and I would have done it
+had I skipped the sensitivity check. Replaced with **per-definition AST byte-identity against the
+pre-move source: 9/9 identical** (`_driving_tiers_panel` 8,000 B, `_driving_tier_trend` 4,443 B, …),
+plus file-level verbatim (47 added = preamble + re-exports + one `PathTier` import; **0 removed**).
+Coverage stated plainly: 5 of 7 moved driving names have direct unit tests; `_driving_tiers_panel`,
+`_driving_tier_trend`, `_task_name_across` and `_EVO_TIER_LABEL` have none. **Named gap: a fixture
+that produces a real driving corridor**, without which this family cannot be refactored with
+behavioural evidence again.
+
+**Both traps fired, one of each kind, in one commit.** Phase 1's: `test_coverage_app_extra` patches
+three names on `web.app` then calls `_driving_path_body`. One failed loudly (`AttributeError`); the
+other two are the dangerous shape — `_driving_path_gantt` / `_corridor_chips` are still re-exported
+by `app.py`, so the patch succeeds and does nothing while the caller resolves them through
+`driving.py`. The test would have asserted against the real renderers. All three now patch
+`drvmod`. My first sweep missed them because it compared against names `driving.py` *imports*;
+these are names it *defines* — the sweep must cover every name the new module BINDS. Phase 2's:
+`test_page_memory` read `app.py` for `dpFind`/`dpBarDates`, which moved; this guard FOLLOWS its
+subject to `driving.py` (unlike the whole-view-layer guards, which WIDEN), and since no fixture can
+render that panel it is the only coverage it has. **And a third time, undetectably:**
+`test_gantt_find_coverage` reads `Path(app_module.__file__)` — the module OBJECT, not a literal
+`"app.py"` — so `grep -rln 'app\.py' tests/` never listed it. It survived the pre-cut sweep, three
+sibling repointings and every fast check, and **only the full 20-minute suite caught it**. The
+standing sweep must also cover `__file__)\.read_text` and `inspect.getsource`. **ADR-0350's enumeration guard worked on its
+first real outing** — adding `driving.py` to `VIEW_MODULES` made it fail and name both files.
+
+**Verification.** Five mutations, each verified-mutated and restored from a scratchpad copy. **Two
+were themselves wrong first, both flattering** — each read exactly like "this guard cannot fail":
+replacing only the FIRST of two `dpFind` occurrences; and `id=dpFind` -> `id=dpFindZ`, where the
+guard asserts `"id=dpFind" in src` and the original is a SUBSTRING of the replacement (a suffix
+does not delete a substring; `id=dpQind` worked). **Rule: after mutating, assert the ORIGINAL
+anchor is ABSENT from the re-read file.**
+
+**Next:** twelve page families remain; each must add its module to `LAYER_ORDER`/`VIEW_MODULES`, run
+the monkeypatch sweep over all bound names, and check fixture-renderability before quoting a render
+diff · a driving-corridor fixture · the three pages with no `page-lede` · `/groups` Activities
+(ADR-0343) · the nine installers vs `-c constraints/known-good.txt`.

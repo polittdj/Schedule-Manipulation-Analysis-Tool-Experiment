@@ -29,6 +29,7 @@ from collections.abc import Sequence
 from urllib.parse import quote
 
 from schedule_forensics.engine.cpm import CPMError, CPMResult
+from schedule_forensics.engine.driving_slack import PathTier
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.web.chrome import _e
 from schedule_forensics.web.help import field_or_metric_doc
@@ -306,3 +307,21 @@ def _sra_selected(st: SessionState) -> tuple[str, Schedule, CPMResult] | None:
         else:
             return (key, analysis.scoped, analysis.cpm)
     return _latest_solvable(st)
+
+
+def _task_name_across(schedules: list[Schedule], uid: int) -> str | None:
+    """The activity's name from the newest version that has it (None if no version does)."""
+    for sch in reversed(schedules):
+        task = sch.tasks_by_id.get(uid)
+        if task is not None:
+            return task.name
+    return None
+
+
+#: Evolution tier modes → the driving-slack tiers (ADR-0011) to include. "off" = the float
+#: critical-path view (the page default, with its rich entered/left attribution).
+_EVO_TIER_LABEL = {
+    PathTier.DRIVING: "driving",
+    PathTier.SECONDARY: "secondary",
+    PathTier.TERTIARY: "tertiary",
+}
