@@ -5414,18 +5414,27 @@ def create_app(
             return RedirectResponse(url="/sra", status_code=303)
         _key, sch, _cpm = chosen
         factors, bcwc = _file_stored_sra_inputs(sch)
-        if not factors and not bcwc:
+        stored_risks = _file_stored_risks(sch)
+        if not factors and not bcwc and not stored_risks:
             st.sra_import_msg = (
                 "This schedule carries no stored SRA fields ('SRA Risk Ranking Factors' / "
-                "Best/Worst Case Duration) — nothing to load."
+                "Best/Worst Case Duration / SSI SRA Risk fields) — nothing to load."
             )
             st.sra_import_is_error = True
         else:
             st.sra_factors = factors
             st.sra_bcwc = bcwc
+            # ADR-0360: the register rides along — SSI reads its risks off these same fields,
+            # so loading factors without them reproduced the input mismatch by another door.
+            # A file with NO stored risk fields leaves the operator's register untouched.
+            risk_note = ""
+            if stored_risks:
+                st.sra_risks = stored_risks
+                risk_note = f" and {len(stored_risks)} register risk(s)"
             st.sra_import_msg = (
                 f"Loaded the schedule's own stored SRA inputs: {len(factors)} Risk Ranking "
-                f"Factor(s) and {len(bcwc)} Best/Worst Case pair(s) (incomplete activities)."
+                f"Factor(s), {len(bcwc)} Best/Worst Case pair(s){risk_note} "
+                "(incomplete activities)."
             )
             st.sra_import_is_error = False
         return RedirectResponse(url="/sra", status_code=303)
@@ -5459,6 +5468,33 @@ def create_app(
                 bc, _ml, wc = factor_to_bc_wc(rem, st.sra_factors[u], tbl)
                 st.sra_bcwc[u] = (bc, wc)
         return RedirectResponse(url="/sra", status_code=303)
+
+    def _sra_reuse_key(st: SessionState, key: str) -> tuple[object, ...]:
+        """The full resolved-input identity of an SSI run / OAT sweep (ADR-0360 export reuse).
+
+        Compared by equality, never hashed. Any input change — a factor, a Best/Worst pair, a
+        register row, the focus, the sampler, the correlation spec, the factor table, or the
+        schedule bytes themselves (``content_hashes``) — changes the tuple, so a cached result
+        can never be served across an input edit or a re-uploaded file of the same name."""
+        return (
+            key,
+            st.content_hashes.get(key),
+            st.sra_focus_uid,
+            st.sra_use_risk_register,
+            st.sra_occurrence_mode,
+            st.sra_correlation,
+            _correlation_spec(st),
+            st.sra_sampling,
+            st.sra_lhs_centered,
+            st.sra_factor_rows,
+            tuple(sorted(st.sra_factors.items())),
+            tuple(sorted(st.sra_bcwc.items())),
+            tuple(sorted(st.sra_overrides.items())),
+            (st.sra_low, st.sra_ml, st.sra_high),
+            tuple(st.sra_risks),
+            tuple(st.sra_branches),
+            tuple(st.sra_conditionals),
+        )
 
     @app.get("/api/sra/ssi")
     def sra_ssi_json(
@@ -5500,6 +5536,9 @@ def create_app(
         # its bars by "how often critical" — the grid is a separate fetch, so it reads the last run.
         st.sra_criticality = {int(u): ci for u, ci in result.criticality}
         st.sra_criticality_iters = result.iterations
+        # ADR-0360: remember the run under its full input identity so ⤓ EXCEL exports THIS
+        # result instead of re-running the model for minutes on click.
+        st.sra_run_cache = (_sra_reuse_key(st, _key), result)
         return JSONResponse(_ssi_data(sch, result))
 
     @app.post("/sra/jcl-config")
@@ -5628,18 +5667,24 @@ def create_app(
             three_point = {u: three_point[u] for u in keep}
         # the OAT sweep is one CPM solve per task — offload it on big schedules too
         heavy = len(sch.tasks_by_id) >= OFFLOAD_TASK_THRESHOLD
-        try:
-            oat = run_maybe_offloaded(
-                heavy,
-                compute_oat_sensitivity,
-                sch,
-                three_point=three_point,
-                target_uid=st.sra_focus_uid,
-                exclude_uids=exclude,
-                risks=oat_risks,
-            )
-        except Exception as exc:
-            return JSONResponse({"error": str(exc)}, status_code=422)
+        oat_key = (_sra_reuse_key(st, _key), tuple(sorted(three_point.items())))
+        ocache = st.sra_oat_cache
+        if ocache is not None and ocache[0] == oat_key:
+            oat = cast(tuple[OATSensitivity, ...], ocache[1])  # ADR-0360: same inputs, same rows
+        else:
+            try:
+                oat = run_maybe_offloaded(
+                    heavy,
+                    compute_oat_sensitivity,
+                    sch,
+                    three_point=three_point,
+                    target_uid=st.sra_focus_uid,
+                    exclude_uids=exclude,
+                    risks=oat_risks,
+                )
+            except Exception as exc:
+                return JSONResponse({"error": str(exc)}, status_code=422)
+            st.sra_oat_cache = (oat_key, oat)
         names = sch.tasks_by_id
         mpd = sch.calendar.working_minutes_per_day or 480
         payload: dict[str, object] = {
@@ -5853,24 +5898,41 @@ def create_app(
             lhs_centered=st.sra_lhs_centered,
         )
         heavy = len(sch.tasks_by_id) >= OFFLOAD_TASK_THRESHOLD
-        result = run_maybe_offloaded(
-            heavy,
-            compute_sra_ssi,
-            sch,
-            config=cfg,
-            three_point=tp,
-            risks=_schedule_risks(st),
-            branches=_schedule_branches(st),
-            conditionals=_schedule_conditionals(st),
-        )
-        oat = run_maybe_offloaded(
-            heavy,
-            compute_oat_sensitivity,
-            sch,
-            three_point=tp,
-            target_uid=st.sra_focus_uid,
-            risks=_schedule_risks(st) if st.sra_use_risk_register else (),
-        )
+        # ADR-0360: this endpoint used to re-run the Monte-Carlo AND the full OAT sweep on
+        # every ⤓ EXCEL click — measured 140 s on the committed 2,125-task SRA schedule, which
+        # reads as a dead button. When the page has already run on identical inputs, export
+        # EXACTLY that result (fidelity bonus: the workbook now always matches the screen —
+        # including the operator's chosen iteration count instead of a hardcoded 2000).
+        rk = _sra_reuse_key(st, _key)
+        rcache = st.sra_run_cache
+        if rcache is not None and rcache[0] == rk:
+            result = cast(SSIResult, rcache[1])
+        else:
+            result = run_maybe_offloaded(
+                heavy,
+                compute_sra_ssi,
+                sch,
+                config=cfg,
+                three_point=tp,
+                risks=_schedule_risks(st),
+                branches=_schedule_branches(st),
+                conditionals=_schedule_conditionals(st),
+            )
+            st.sra_run_cache = (rk, result)
+        oat_key = (rk, tuple(sorted(tp.items())))
+        ocache = st.sra_oat_cache
+        if ocache is not None and ocache[0] == oat_key:
+            oat = cast(tuple[OATSensitivity, ...], ocache[1])
+        else:
+            oat = run_maybe_offloaded(
+                heavy,
+                compute_oat_sensitivity,
+                sch,
+                three_point=tp,
+                target_uid=st.sra_focus_uid,
+                risks=_schedule_risks(st) if st.sra_use_risk_register else (),
+            )
+            st.sra_oat_cache = (oat_key, oat)
         if fmt == "docx":
             # the comprehensive narrative SRA report (PM summary -> per-section detail + vector
             # charts + the 5x5 matrices + assumptions); ADR-0124
@@ -12580,6 +12642,49 @@ locks {lock} and is used as-entered for that model). A negative value is an oppo
 _SRA_FACTOR_FIELD = "SRA Risk Ranking Factors"
 _SRA_BC_FIELD = "Best Case Duration"
 _SRA_WC_FIELD = "Worst Case Duration"
+_SRA_RISK_PROB_FIELD = "SSI SRA Risk Probability"
+_SRA_RISK_IMPACT_FIELD = "SSI SRA Schedule Impact"
+
+
+def _file_stored_risks(sch: Schedule) -> list[UnifiedRisk]:
+    """The schedule's OWN stored register risks, read verbatim (ADR-0360 closing an ADR-0356
+    gap): SSI reads ``SSI SRA Risk Probability`` / ``SSI SRA Schedule Impact`` off the file, so
+    "Load from schedule" must carry the register too — factors + Best/Worst alone left the
+    session's register empty while SSI ran two risks, which is an input mismatch by another
+    door. The days magnitude is the file's (locked); the legacy % derives from the affected
+    activity's remaining duration exactly as the register form would."""
+    mpd = sch.calendar.working_minutes_per_day or 480
+    out: list[UnifiedRisk] = []
+    for t in non_summary(sch):
+        if _is_completed(t):
+            continue
+        fields = dict(t.custom_fields)
+        prob_raw = fields.get(_SRA_RISK_PROB_FIELD)
+        impact_raw = fields.get(_SRA_RISK_IMPACT_FIELD)
+        impact_minutes = iso_duration_to_minutes(impact_raw) if impact_raw else None
+        if not prob_raw or not impact_minutes:  # absent OR zero impact — no risk to model
+            continue
+        try:
+            prob = max(0.0, min(1.0, float(str(prob_raw))))
+        except (TypeError, ValueError):
+            continue
+        impact_days = impact_minutes / mpd
+        rem = t.remaining_duration_minutes
+        rem = rem if rem is not None else t.duration_minutes
+        pct = (impact_minutes / rem * 100.0) if rem else 0.0
+        out.append(
+            UnifiedRisk(
+                id=f"R{t.unique_id}",
+                name=t.name,
+                probability=prob,
+                affected=(t.unique_id,),
+                impact_days=round(impact_days, 2),
+                impact_pct=round(pct, 2),
+                days_locked=True,
+                pct_locked=False,
+            )
+        )
+    return out
 
 
 def _file_stored_sra_inputs(sch: Schedule) -> tuple[dict[int, int], dict[int, tuple[int, int]]]:

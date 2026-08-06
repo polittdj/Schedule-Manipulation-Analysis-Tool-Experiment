@@ -642,6 +642,13 @@ class SessionState:
     sra_criticality_iters: int = (
         0  # the iteration count of the run that produced the tint (provenance)
     )
+    #: ADR-0360: the last SSI run / OAT sweep, each stored as ``(resolved-inputs key, result)``
+    #: so the Excel/Word export hands back EXACTLY what the page showed instead of silently
+    #: re-running a multi-minute model on click (``/export/xlsx/sra`` measured 140 s on a
+    #: 2,125-task file). Any input change — factor, Best/Worst, register row, focus, sampler,
+    #: or the schedule bytes — changes the key and invalidates the entry.
+    sra_run_cache: tuple[object, object] | None = None
+    sra_oat_cache: tuple[object, object] | None = None
     #: one-shot feedback from an Excel round-trip import (ADR-0211), rendered once on /sra
     sra_import_msg: str | None = None
     #: Whether :attr:`sra_import_msg` reports a FAILURE (ADR-0313). Without it every message —
