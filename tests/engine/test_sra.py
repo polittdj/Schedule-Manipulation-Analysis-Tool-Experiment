@@ -18,7 +18,7 @@ import statistics
 
 import pytest
 
-from schedule_forensics.engine.cpm import compute_cpm
+from schedule_forensics.engine.cpm import compute_cpm, offset_to_datetime
 from schedule_forensics.engine.sra import (
     ActivityRisk,
     RiskEvent,
@@ -30,6 +30,7 @@ from schedule_forensics.engine.sra import (
     _sample_triangular,
     _spearman,
     compute_sra,
+    stored_finish_correction,
 )
 from schedule_forensics.model.relationship import Relationship, RelationshipType
 from schedule_forensics.model.schedule import Schedule
@@ -77,7 +78,7 @@ def test_equivalence_most_likely_matches_compute_cpm() -> None:
     # auto_low == auto_high == 1.0 collapses every triangular to its mode (= own duration
     # for the not-started tasks here), so every iteration reproduces the deterministic run.
     cfg = SRAConfig(iterations=200, auto_low=1.0, auto_most_likely=1.0, auto_high=1.0)
-    r = compute_sra(s, cpm, config=cfg)
+    r = compute_sra(s, config=cfg)
     assert r.deterministic_finish == cpm.project_finish
     assert r.p10 == r.p50 == r.p80 == r.p90 == cpm.project_finish
     assert r.mean == float(cpm.project_finish)
@@ -109,7 +110,7 @@ def test_pert_equivalence_at_point_mass() -> None:
     cfg = SRAConfig(
         iterations=200, auto_low=1.0, auto_most_likely=1.0, auto_high=1.0, distribution="pert"
     )
-    r = compute_sra(s, cpm, config=cfg)
+    r = compute_sra(s, config=cfg)
     assert r.p10 == r.p50 == r.p80 == r.p90 == cpm.project_finish
 
 
@@ -128,12 +129,11 @@ def test_pert_sampler_in_range_mean_and_degenerate() -> None:
 
 def test_pert_run_deterministic_and_differs_from_triangular() -> None:
     s = _two_path_network()
-    cpm = compute_cpm(s)
-    a = compute_sra(s, cpm, config=SRAConfig(iterations=400, distribution="pert"))
-    b = compute_sra(s, cpm, config=SRAConfig(iterations=400, distribution="pert"))
+    a = compute_sra(s, config=SRAConfig(iterations=400, distribution="pert"))
+    b = compute_sra(s, config=SRAConfig(iterations=400, distribution="pert"))
     assert a == b  # reproducible for a fixed seed
     assert a.p10 <= a.p50 <= a.p80 <= a.p90  # monotone percentiles
-    tri = compute_sra(s, cpm, config=SRAConfig(iterations=400, distribution="triangular"))
+    tri = compute_sra(s, config=SRAConfig(iterations=400, distribution="triangular"))
     assert (a.p10, a.p90) != (tri.p10, tri.p90)  # different shape -> different spread
 
 
@@ -142,18 +142,16 @@ def test_pert_run_deterministic_and_differs_from_triangular() -> None:
 
 def test_same_seed_identical_result() -> None:
     s = _two_path_network()
-    cpm = compute_cpm(s)
     cfg = SRAConfig(iterations=300, seed=42)
-    a = compute_sra(s, cpm, config=cfg)
-    b = compute_sra(s, cpm, config=cfg)
+    a = compute_sra(s, config=cfg)
+    b = compute_sra(s, config=cfg)
     assert a == b
 
 
 def test_different_seed_differs_but_valid() -> None:
     s = _two_path_network()
-    cpm = compute_cpm(s)
-    a = compute_sra(s, cpm, config=SRAConfig(iterations=300, seed=1))
-    b = compute_sra(s, cpm, config=SRAConfig(iterations=300, seed=2))
+    a = compute_sra(s, config=SRAConfig(iterations=300, seed=1))
+    b = compute_sra(s, config=SRAConfig(iterations=300, seed=2))
     assert a != b  # different draws
     # both are valid distributions with spread (auto default is active)
     for r in (a, b):
@@ -187,8 +185,7 @@ def test_criticality_index_picks_the_longer_path() -> None:
     """On two parallel paths the (much) longer path is critical ≈ always; the short
     off-path activity ≈ never."""
     s = _two_path_network()
-    cpm = compute_cpm(s)
-    r = compute_sra(s, cpm, config=SRAConfig(iterations=400))
+    r = compute_sra(s, config=SRAConfig(iterations=400))
     ci = {a.unique_id: a.criticality_index for a in r.activities}
     assert ci[2] > 0.95  # the 10-day path activity
     assert ci[3] < 0.05  # the 1-day off-path activity
@@ -202,8 +199,7 @@ def test_criticality_index_picks_the_longer_path() -> None:
 
 def test_percentiles_monotonic_and_in_range() -> None:
     s = _two_path_network()
-    cpm = compute_cpm(s)
-    r = compute_sra(s, cpm, config=SRAConfig(iterations=400))
+    r = compute_sra(s, config=SRAConfig(iterations=400))
     assert r.p10 <= r.p50 <= r.p80 <= r.p90
     lo = r.histogram[0][0]
     hi = r.histogram[-1][1]
@@ -233,8 +229,7 @@ def test_percentile_empty_raises() -> None:
 def test_auto_default_applied_and_spreads() -> None:
     """No overrides -> auto triangular default fires (auto_used) and the finish spreads."""
     s = _linear_chain()
-    cpm = compute_cpm(s)
-    r = compute_sra(s, cpm, config=SRAConfig(iterations=400))
+    r = compute_sra(s, config=SRAConfig(iterations=400))
     assert r.auto_used is True
     assert r.p90 > r.p10  # the 90/100/110 default produces a real distribution
     # deterministic finish sits below P50 of the right-skewed distribution (GAO pattern)
@@ -254,7 +249,7 @@ def test_manual_override_respected_and_no_auto() -> None:
         )
         for t in s.tasks
     }
-    r = compute_sra(s, cpm, config=SRAConfig(iterations=400), overrides=overrides)
+    r = compute_sra(s, config=SRAConfig(iterations=400), overrides=overrides)
     assert r.auto_used is False
     # every range starts at the deterministic duration and only inflates -> finish >= det
     assert r.p10 >= cpm.project_finish
@@ -264,13 +259,12 @@ def test_manual_override_respected_and_no_auto() -> None:
 def test_partial_override_marks_auto_used() -> None:
     """One manual activity + the rest on auto -> auto_used stays True (the run is mixed)."""
     s = _linear_chain()
-    cpm = compute_cpm(s)
     overrides = {
         1: ActivityRisk(
             unique_id=1, optimistic_minutes=DAY, most_likely_minutes=DAY, pessimistic_minutes=DAY
         )
     }
-    r = compute_sra(s, cpm, config=SRAConfig(iterations=200), overrides=overrides)
+    r = compute_sra(s, config=SRAConfig(iterations=200), overrides=overrides)
     assert r.auto_used is True
 
 
@@ -283,8 +277,7 @@ def test_completed_activity_is_fixed_no_uncertainty() -> None:
         [_task(1, 2, percent_complete=100.0), _task(2, 3)],
         [_rel(1, 2)],
     )
-    cpm = compute_cpm(s)
-    r = compute_sra(s, cpm, config=SRAConfig(iterations=200))
+    r = compute_sra(s, config=SRAConfig(iterations=200))
     # the completed predecessor never varies; only the open successor spreads the finish
     sens = {a.unique_id: a.duration_sensitivity for a in r.activities}
     assert sens[1] == 0.0  # flat (fixed) series -> zero correlation
@@ -300,15 +293,13 @@ def test_constraints_flagged() -> None:
         ],
         [_rel(1, 2)],
     )
-    cpm = compute_cpm(s)
-    r = compute_sra(s, cpm, config=SRAConfig(iterations=100))
+    r = compute_sra(s, config=SRAConfig(iterations=100))
     assert r.constraints_flagged == (2,)
 
 
 def test_cdf_and_histogram_shape() -> None:
     s = _two_path_network()
-    cpm = compute_cpm(s)
-    r = compute_sra(s, cpm, config=SRAConfig(iterations=400))
+    r = compute_sra(s, config=SRAConfig(iterations=400))
     # CDF is monotone non-decreasing in offset and in cumulative probability, ending at 1.0
     offsets = [pt[0] for pt in r.cdf]
     probs = [pt[1] for pt in r.cdf]
@@ -323,8 +314,7 @@ def test_cdf_and_histogram_shape() -> None:
 
 def test_iso_dates_present_and_ordered() -> None:
     s = _linear_chain()
-    cpm = compute_cpm(s)
-    r = compute_sra(s, cpm, config=SRAConfig(iterations=300))
+    r = compute_sra(s, config=SRAConfig(iterations=300))
     # ISO 8601 finish dates are emitted and ordered with their percentiles
     for iso in (r.p10_date, r.p50_date, r.p90_date, r.deterministic_finish_date):
         dt.datetime.fromisoformat(iso)
@@ -333,9 +323,73 @@ def test_iso_dates_present_and_ordered() -> None:
 
 def test_zero_iterations_rejected() -> None:
     s = _linear_chain()
-    cpm = compute_cpm(s)
     with pytest.raises(ValueError, match="iterations"):
-        compute_sra(s, cpm, config=SRAConfig(iterations=0))
+        compute_sra(s, config=SRAConfig(iterations=0))
+
+
+# --- the deterministic anchor + date axis on a PROGRESSED schedule (ADR-0353) ------
+
+
+def _progressed_chain(**finishes: dt.datetime) -> Schedule:
+    """A(10d, 50% complete, 5d remaining) -> B(2d), NO Resume reschedule (the EVM1 class).
+
+    The ordinary full-duration CPM finish is 12d; the all-ML/remaining basis the simulation
+    samples around is 7d — the two axes genuinely diverge, and no ``resume > stop`` floor
+    (ADR-0309) exists to reconcile them. ``finishes`` optionally sets stored ``finish`` dates
+    (``a=...``, ``b=...``) for the date-axis leg.
+    """
+    a = _task(
+        1,
+        10,
+        percent_complete=50.0,
+        remaining_duration_minutes=5 * DAY,
+        finish=finishes.get("a"),
+    )
+    b = _task(2, 2, finish=finishes.get("b"))
+    return _sched([a, b], [_rel(1, 2)])
+
+
+def test_deterministic_anchor_shares_the_simulation_basis() -> None:
+    """ADR-0353 leg A: the anchor is the all-ML solve, NOT the full-duration CPM finish.
+
+    Before the fix the anchor was ``compute_cpm(s).project_finish`` (12d) bisected against a
+    remaining-basis distribution centred on 7d — ``deterministic_percentile`` saturated at
+    ~1.0 and the realism card called a progressed plan "conservative" (EVM1 measured 0.991).
+    """
+    s = _progressed_chain()
+    r = compute_sra(s, config=SRAConfig(iterations=300))
+    all_ml = compute_cpm(s, duration_overrides={1: 5 * DAY, 2: 2 * DAY}).project_finish
+    assert r.deterministic_finish == all_ml  # the simulation's own basis
+    assert r.deterministic_finish != compute_cpm(s).project_finish  # not the full-duration axis
+    # a same-basis anchor sits INSIDE its distribution, not above nearly all of it
+    assert 0.2 <= r.deterministic_percentile <= 0.8
+
+
+def test_dates_realign_to_the_stored_plan_axis() -> None:
+    """ADR-0353 leg B: displayed dates carry the stored-finish correction (the SSI pattern).
+
+    Pure-CPM offsets pack completed work at the project start, so the naive conversion lands
+    weeks early on a progressed file (Project2 measured 15 days). The deterministic date must
+    land exactly on the latest STORED finish (the anchor), and every percentile date must
+    carry the SAME constant — relative spacing unchanged.
+    """
+    stored_latest = dt.datetime(2025, 3, 18, 17, 0)  # far beyond the naive 7d axis
+    s = _progressed_chain(a=dt.datetime(2025, 3, 14, 17, 0), b=stored_latest)
+    r = compute_sra(s, config=SRAConfig(iterations=200))
+    assert r.deterministic_finish_date == stored_latest.isoformat()
+    corr = stored_finish_correction(s, None, r.deterministic_finish)
+    assert corr > dt.timedelta(days=30)  # the realignment is real, not a rounding artifact
+    naive_p80 = offset_to_datetime(s.project_start, max(r.p80, 0), s.calendar)
+    assert r.p80_date == (naive_p80 + corr).isoformat()
+
+
+def test_unprogressed_schedule_needs_no_correction_and_keeps_the_plain_anchor() -> None:
+    """The two legs are inert where they should be: no progress -> all-ML == plain CPM
+    (the ADR-0106 equivalence), and no stored finishes -> zero date correction."""
+    s = _linear_chain()
+    r = compute_sra(s, config=SRAConfig(iterations=200))
+    assert r.deterministic_finish == compute_cpm(s).project_finish
+    assert stored_finish_correction(s, None, r.deterministic_finish) == dt.timedelta(0)
 
 
 # --- the statistics primitives ----------------------------------------------------
@@ -356,10 +410,9 @@ def test_no_risks_byte_identical_to_omitted_param() -> None:
     """``risks=()`` makes no extra rng draws -> a result identical to omitting the param,
     and identical p50/p90 to a pre-risk baseline computed inline."""
     s = _two_path_network()
-    cpm = compute_cpm(s)
     cfg = SRAConfig(iterations=300, seed=99)
-    baseline = compute_sra(s, cpm, config=cfg)  # the pre-risk path (no `risks` kwarg)
-    with_empty = compute_sra(s, cpm, config=cfg, risks=())
+    baseline = compute_sra(s, config=cfg)  # the pre-risk path (no `risks` kwarg)
+    with_empty = compute_sra(s, config=cfg, risks=())
     assert with_empty == baseline
     assert with_empty.risk_drivers == ()
     # the duration draw sequence is untouched -> identical percentiles
@@ -370,9 +423,8 @@ def test_certain_risk_doubles_activity_and_pushes_finish_later() -> None:
     """A certain (p=1) x2 multiplicative risk on the single critical activity roughly
     doubles its contribution -> p50 strictly later than the no-risk run; hits == iters."""
     s = _two_path_network()  # uid 2 is the 10-day critical-chain activity
-    cpm = compute_cpm(s)
     cfg = SRAConfig(iterations=300, seed=7)
-    base = compute_sra(s, cpm, config=cfg)
+    base = compute_sra(s, config=cfg)
     risk = RiskEvent(
         id="R1",
         name="double the long leg",
@@ -382,7 +434,7 @@ def test_certain_risk_doubles_activity_and_pushes_finish_later() -> None:
         impact_high=2.0,
         affected=(2,),
     )
-    r = compute_sra(s, cpm, config=cfg, risks=[risk])
+    r = compute_sra(s, config=cfg, risks=[risk])
     assert r.p50 > base.p50
     assert len(r.risk_drivers) == 1
     assert r.risk_drivers[0].id == "R1"
@@ -392,9 +444,8 @@ def test_certain_risk_doubles_activity_and_pushes_finish_later() -> None:
 def test_zero_probability_risk_has_no_effect() -> None:
     """A p=0 risk never fires: finishes identical to the no-risk run; hits 0; delta 0.0."""
     s = _two_path_network()
-    cpm = compute_cpm(s)
     cfg = SRAConfig(iterations=300, seed=3)
-    base = compute_sra(s, cpm, config=cfg)
+    base = compute_sra(s, config=cfg)
     risk = RiskEvent(
         id="R0",
         name="never",
@@ -404,7 +455,7 @@ def test_zero_probability_risk_has_no_effect() -> None:
         impact_high=5.0,
         affected=(2,),
     )
-    r = compute_sra(s, cpm, config=cfg, risks=[risk])
+    r = compute_sra(s, config=cfg, risks=[risk])
     # the risk draws an occurrence (always False) but never an impact -> finishes unchanged
     assert (r.p10, r.p50, r.p80, r.p90) == (base.p10, base.p50, base.p80, base.p90)
     assert r.cdf == base.cdf
@@ -417,7 +468,6 @@ def test_partial_probability_risk_positive_delta() -> None:
     """A 0.5-probability overrun risk on a critical activity -> occurred iterations finish
     later (mean_delta_days > 0) and 0 < hits < iterations."""
     s = _two_path_network()
-    cpm = compute_cpm(s)
     cfg = SRAConfig(iterations=500, seed=11)
     risk = RiskEvent(
         id="R5",
@@ -428,7 +478,7 @@ def test_partial_probability_risk_positive_delta() -> None:
         impact_high=2.5,
         affected=(2,),
     )
-    r = compute_sra(s, cpm, config=cfg, risks=[risk])
+    r = compute_sra(s, config=cfg, risks=[risk])
     driver = r.risk_drivers[0]
     assert 0 < driver.hits < cfg.iterations
     assert driver.mean_delta_days > 0
@@ -439,7 +489,6 @@ def test_shared_risk_correlates_two_parallel_activities() -> None:
     (shared-driver correlation): the driver delta is positive and, on the iterations it
     fires, both legs grow by the same factor so they stay co-critical."""
     s = _balanced_two_path()
-    cpm = compute_cpm(s)
     cfg = SRAConfig(iterations=500, seed=21)
     risk = RiskEvent(
         id="RS",
@@ -450,7 +499,7 @@ def test_shared_risk_correlates_two_parallel_activities() -> None:
         impact_high=2.0,
         affected=(2, 3),
     )
-    r = compute_sra(s, cpm, config=cfg, risks=[risk])
+    r = compute_sra(s, config=cfg, risks=[risk])
     # the shared driver lengthens the project on the iterations it fires
     assert r.risk_drivers[0].mean_delta_days > 0
     # both co-mapped parallel legs are critical a large fraction of the time (they move
@@ -464,9 +513,8 @@ def test_risk_dangling_uids_ignored_no_extra_draws() -> None:
     """A risk whose `affected` UIDs are all absent is inert -> result identical to no-risk
     (it gets no rng draws and produces no RiskDriver)."""
     s = _two_path_network()
-    cpm = compute_cpm(s)
     cfg = SRAConfig(iterations=200, seed=5)
-    base = compute_sra(s, cpm, config=cfg)
+    base = compute_sra(s, config=cfg)
     risk = RiskEvent(
         id="GHOST",
         name="missing targets",
@@ -476,21 +524,20 @@ def test_risk_dangling_uids_ignored_no_extra_draws() -> None:
         impact_high=2.0,
         affected=(9999,),
     )
-    r = compute_sra(s, cpm, config=cfg, risks=[risk])
+    r = compute_sra(s, config=cfg, risks=[risk])
     assert r == base  # no draws consumed, no driver emitted
 
 
 def test_risks_deterministic_same_seed() -> None:
     """Same seed + same risks -> identical result."""
     s = _two_path_network()
-    cpm = compute_cpm(s)
     cfg = SRAConfig(iterations=300, seed=77)
     risks = [
         RiskEvent("A", "a", 0.4, 1.1, 1.3, 1.6, (2,)),
         RiskEvent("B", "b", 0.7, 1.0, 1.2, 1.5, (2, 3)),
     ]
-    a = compute_sra(s, cpm, config=cfg, risks=risks)
-    b = compute_sra(s, cpm, config=cfg, risks=risks)
+    a = compute_sra(s, config=cfg, risks=risks)
+    b = compute_sra(s, config=cfg, risks=risks)
     assert a == b
     assert len(a.risk_drivers) == 2
     # sorted by abs(mean_delta_days) desc then id

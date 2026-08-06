@@ -11942,3 +11942,19 @@ The `HANDOFF.md` STATUS line is corrected to MERGED **in the same session that p
 than by the next one. That drift — a STATUS still reading "draft PR open" for a merged PR, injected
 into every subsequent session by the SessionStart hook — was item 0 of this session's own kickoff,
 inherited from the two sessions before it. Closing it here breaks the chain.
+
+## 2026-08-06 — SRA-LEGACY closed: one basis, one axis (ADR-0353, v1.0.168)
+
+Branch `claude/powershell-tool-update-eymwwe` (restarted from `d7c6768`). First ADR-0240 Fable 5
+Max reserved item done. The legacy `/sra` path's cross-basis defect (rootcause §6, external audit
+P2 "SRA-LEGACY") measured on all four goldens BEFORE any edit: EVM1 (0 resume>stop) det_pct 0.9910
+— a false "conservative" realism verdict; Project2 buffer at committed = stored plan finish read
+confidence 1.0000 / P80 reserve 0.0 wd with a 15 d 1 h naive-date error. Fix mirrors the SSI
+path's own contract: `compute_sra` computes its own all-ML anchor (the `cpm` parameter REMOVED),
+and `_build_result` / `_sra_data` / `reserve_recommendation` / the buffer route all carry
+`stored_finish_correction` (ADR-0256's pattern). Post-fix: EVM1 det_pct 0.4930; P2 buffer 0.4900 /
+2.4 wd on the stored axis; det_pct unchanged to 4 dp on the three resume-floored goldens; sim
+offsets byte-identical everywhere. Verified by five mutations (each original-anchor-absent-checked,
+each failing exactly its guard, each restored from scratchpad copies); parity 49 passed; full gate
+green. Docs: ADR-0353, handoff rotated, this entry, lessons entry, kickoff refreshed; wheel + nine
+installers rebuilt at v1.0.168.

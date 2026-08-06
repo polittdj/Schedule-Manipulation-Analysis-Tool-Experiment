@@ -119,7 +119,7 @@ def test_conclusions_thread_the_schedule_calendar_into_day_counts() -> None:
         relationships=(_rel(1, 2), _rel(2, 3)),
     )
     cpm = compute_cpm(sch)
-    result = compute_sra(sch, cpm, config=SRAConfig(iterations=500, seed=7))
+    result = compute_sra(sch, config=SRAConfig(iterations=500, seed=7))
     pred = next(c for c in conclusions_from_sra(sch, cpm, result) if c.topic == "Predictability")
     window = dict(pred.evidence)["Window"]
     diff = result.p90 - result.p10
@@ -150,7 +150,7 @@ def test_correlation_card_only_when_informative() -> None:
 def test_conclusions_from_sra_covers_the_core_topics() -> None:
     sch = _sched()
     cpm = compute_cpm(sch)
-    result = compute_sra(sch, cpm, config=SRAConfig(iterations=300, seed=42))
+    result = compute_sra(sch, config=SRAConfig(iterations=300, seed=42))
     concl = conclusions_from_sra(sch, cpm, result)
     topics = [c.topic for c in concl]
     for expected in (
@@ -170,8 +170,8 @@ def test_conclusions_from_sra_covers_the_core_topics() -> None:
 def test_conclusions_are_deterministic_for_a_seed() -> None:
     sch = _sched()
     cpm = compute_cpm(sch)
-    a = conclusions_from_sra(sch, cpm, compute_sra(sch, cpm, config=SRAConfig(300, seed=7)))
-    b = conclusions_from_sra(sch, cpm, compute_sra(sch, cpm, config=SRAConfig(300, seed=7)))
+    a = conclusions_from_sra(sch, cpm, compute_sra(sch, config=SRAConfig(300, seed=7)))
+    b = conclusions_from_sra(sch, cpm, compute_sra(sch, config=SRAConfig(300, seed=7)))
     assert a == b
 
 
@@ -239,7 +239,7 @@ def _assert_figures_backed(conclusions: tuple[Conclusion, ...]) -> None:
 def test_findings_carry_no_unbacked_figures() -> None:
     sch = _sched()
     cpm = compute_cpm(sch)
-    result = compute_sra(sch, cpm, config=SRAConfig(iterations=300, seed=42))
+    result = compute_sra(sch, config=SRAConfig(iterations=300, seed=42))
     _assert_figures_backed(conclusions_from_sra(sch, cpm, result))
     _assert_figures_backed(conclusions_from_ssi(sch, _ssi(p10=8 * DAY, p90=12 * DAY)))
 
@@ -247,7 +247,7 @@ def test_findings_carry_no_unbacked_figures() -> None:
 def test_dict_form_matches_the_cards() -> None:
     sch = _sched()
     cpm = compute_cpm(sch)
-    result = compute_sra(sch, cpm, config=SRAConfig(iterations=200, seed=3))
+    result = compute_sra(sch, config=SRAConfig(iterations=200, seed=3))
     concl = conclusions_from_sra(sch, cpm, result)
     dicts = conclusions_as_dicts(concl)
     assert len(dicts) == len(concl)

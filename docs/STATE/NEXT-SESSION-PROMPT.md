@@ -8,8 +8,9 @@ kickoff steers a fresh session at work that is already done.)
 ---
 
 Resume POLARIS (Schedule-Manipulation-Analysis-Tool). Read `docs/STATE/HANDOFF.md` FIRST
-(auto-injected). As of last session: **v1.0.163, highest ADR 0348**. **Nothing is in flight** —
-PR #533 (ADR-0347, P1) and #534 squash-merged; the ADR-0348 unit (CC-01's rendering half) followed.
+(auto-injected). As of last session: **v1.0.168, highest ADR 0353** — the SRA-LEGACY fix (first
+ADR-0240 Fable 5 Max reserved item) on a pushed branch with a draft PR; if it has since merged,
+restart the branch:
 `git fetch --prune origin && git remote set-head origin -a && git checkout -B <branch> origin/main`
 (then `git branch --unset-upstream`). Fresh container: `pip install -e ".[dev]"` plus
 `pip install playwright build`. **`ruff` no longer needs a manual pin** — `pyproject.toml` bounds it
@@ -44,16 +45,24 @@ from drifting. **Do not "restore" the old floors** — all three were measured f
 `https://errors.pydantic.dev/<ver>/v/missing` inside 422 bodies on 10 routes (Law 1). **0.110.2** is
 the first clean release and is now the floor. The floor job found this on its first run.
 
-⇢ DO THIS FIRST — Phase 4 continues (P0, P1 and CC-01 are all CLOSED)
-**SRA-LEGACY** (`audit/SRA-ROOTCAUSE-20260730.md`) · **V3** (`engine/msp_filters.py` hard-codes
-`"d": 480` and discards the elapsed marker it captures in regex group 2; ADR-0310 reduced it from a
-product decision to a **conformance fix**, but it MOVES saved-filter populations — it needs its
-migration-report gate). Then **Phase 5** monolith split 2–3 (`app.py` ~**21.3k** lines, `state.py`
-**1,479**) and **Phase 6** docs/operator queue.
+⇢ DO THIS FIRST — the remaining Fable 5 Max reserved items (ADR-0240), then phase 3 families
+**SRA-LEGACY is CLOSED (ADR-0353)** — do NOT re-open; see WHAT'S DONE. Remaining reserved:
+**V3** (`engine/msp_filters.py` hard-codes `"d": 480` and discards the elapsed marker it captures
+in regex group 2; ADR-0310 reduced it from a product decision to a **conformance fix**, but it
+MOVES saved-filter populations — it needs its migration-report gate) · **ADR-0348's
+`tod + per_day == 1440` residual** (decision-shaped; no oracle in the corpus). Then the twelve
+remaining page families (`integrity` 402 first) under ADR-0350/0351/0352's rules, and **Phase 6**
+docs/operator queue.
 
 ⇢ WHAT'S DONE — do NOT re-open
 **P0 (ADR-0346)** dependency bounding · **P1 (ADR-0347)** intake manifest + hardened CUI hook +
-SHA-pinned actions · **CC-01 / external H2a (ADR-0348)**. Do NOT rename the 99 mislabelled intake
+SHA-pinned actions · **CC-01 / external H2a (ADR-0348)** · **monolith split slices 1–3
+(ADR-0350/0351/0352**: `components.py`/`driving.py`/`evolution.py`, `app.py` 20,192 → 18,128**)** ·
+**SRA-LEGACY (ADR-0353)**: `compute_sra` computes its own all-ML anchor (the `cpm` parameter is
+REMOVED — do not "restore" it), and the legacy date surface carries `stored_finish_correction`.
+EVM2's deterministic date now displays the stored **2012-10-04** — that is the anchoring absorbing
+ADR-0108's known 2-wd residual into the DISPLAY, deliberate and SSI-consistent; do NOT re-report
+it as a date bug. Do NOT rename the 99 mislabelled intake
 files, do NOT narrow `tests/fixtures/`, do NOT "simplify" the CUI hook's process substitution back
 into a pipeline (it fails OPEN). On ADR-0348 specifically: **`offset_to_datetime` and every offset
 are deliberately untouched** — 29 finish-role sites depend on the end-of-day spelling; a start-role
@@ -89,6 +98,12 @@ unit).
 6. **A guard can pass on exactly the thing it protects** (ADR-0344's duplicate: all four
    `test_state_docs.py` assertions stayed GREEN over it). **"Next free number" is a race** — check the
    highest ADR on disk immediately before you commit; `test_adr_numbers_are_unique` now enforces it.
+7. **A green suite over identity cases is a vacuous gate** (ADR-0353): every `test_sra.py` synthetic
+   is unprogressed, so "full-duration anchor" ≡ "remaining anchor" by construction and 30+ green
+   tests never touched the cross-basis defect. Ask of a two-instrument disagreement: do the
+   fixtures make the instruments identical?
+8. **`grep -c` exits 1 on a zero count** — an `&&`-chained "assert-absent then run" mutation step
+   silently stops at the grep and the test never runs. Chain verification greps with `;`.
 
 ⇢ Measured-false, do NOT re-chase
 The DD-line gap is 8 charts (only 1 was real work) · `margin_dashboard` is one chart (**two**, with
