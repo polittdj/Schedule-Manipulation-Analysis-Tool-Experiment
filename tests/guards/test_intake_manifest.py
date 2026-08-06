@@ -114,12 +114,13 @@ def test_the_metric_bibles_parse_with_their_pinned_counts() -> None:
 
 
 def test_every_intake_mpp_is_an_ms_project_ole2_document(entries: list[Any]) -> None:
-    """21 native schedules; a rotated .mpp would break the MPXJ conversion path silently.
+    """22 native schedules; a rotated .mpp would break the MPXJ conversion path silently.
 
-    The 21st is ``mpp/24Hour Calendar.mpp`` — the ADR-0357 boundary oracle, committed by the
-    operator via web upload on 2026-08-06 (main d0b703e), inventoried the same day."""
+    The 21st is ``mpp/24Hour Calendar.mpp`` — the ADR-0357 boundary oracle (main d0b703e);
+    the 22nd is the root-level ``SRA Large Test File2.mpp`` — the 2026-08-06 SRA parity
+    schedule, committed with SSI's SRA + Sensitivity workbooks (main f1f13f9)."""
     mpp = [e for e in entries if e.ext == ".mpp"]
-    assert len(mpp) == 21
+    assert len(mpp) == 22
     assert {e.family for e in mpp} == {"ole2-project"}
 
 
