@@ -11958,3 +11958,22 @@ offsets byte-identical everywhere. Verified by five mutations (each original-anc
 each failing exactly its guard, each restored from scratchpad copies); parity 49 passed; full gate
 green. Docs: ADR-0353, handoff rotated, this entry, lessons entry, kickoff refreshed; wheel + nine
 installers rebuilt at v1.0.168.
+
+## 2026-08-06 (cont.) — V3 closed: duration literals conform to the vendored MPXJ (ADR-0354, v1.0.169)
+
+Same branch, second Fable 5 Max item. The reference was read from the vendored mpxj-16.2.0 jar's
+own bytecode (javap on GenericCriteria / Duration.convertUnits / TimeUnit): criteria normalize to
+HOURS with the file's ProjectProperties; elapsed units are wall-clock constants (ey = 524160 min =
+364 d); week/year scale on MinutesPerWeek (x52) — two conformance defects beyond the audit's
+elapsed headline. The sidecar literal vocabulary is CLOSED (Duration.toString), so unknown units
+now fail closed instead of guessing 480/unit. Calendar gained minutes_per_week/days_per_month
+(MSPDI-read, Save-round-tripped — the writer-coverage guard caught the writer half). The audit's
+"evaluator versioning + migration report" gate, which existed only as a phrase, is defined:
+EVALUATOR_VERSION = 2, v1 kept verbatim report-only behind a ContextVar, selection_migration_delta
+feeding a /groups Active-scope note ("now selects N (was M)"). Prompt answers store RAW and coerce
+per schedule at scope(). Pins: the audit's executed example inverted (`> 2.0ed` → 2 matches, was
+6); five mutations each fired exactly its guard — the per-schedule-calendar one only after its
+test gained a 1,500-minute discriminator (the identity-case trap's second appearance in one day).
+No committed artifact moves (no views sidecar in the corpus; the ten pinned real filters are
+field-to-field). Engine+importer+web 1,264 passed; parity 49; full gate green. ADR-0354; wheel +
+nine installers at v1.0.169.

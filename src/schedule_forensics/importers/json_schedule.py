@@ -127,6 +127,11 @@ def _calendar(raw: dict[str, Any]) -> Calendar:
     }
     if raw.get("uid") is not None:
         kwargs["uid"] = int(raw["uid"])
+    # project-level duration-scale properties (ADR-0354) — absent stays None (MPXJ defaults)
+    if raw.get("minutes_per_week") is not None:
+        kwargs["minutes_per_week"] = int(raw["minutes_per_week"])
+    if raw.get("days_per_month") is not None:
+        kwargs["days_per_month"] = int(raw["days_per_month"])
     # Same rule as hours_per_day above: absent means "use Mon-Fri", but a PROVIDED empty list is
     # malformed and must reach Calendar's "work_weekdays must not be empty" validator rather than
     # being silently replaced by a five-day week the file never declared (audit 2026-07-29, V7).
@@ -369,6 +374,9 @@ def _calendar_out(cal: Calendar) -> dict[str, Any]:
         "name": cal.name,
         "hours_per_day": cal.working_minutes_per_day / 60,
         "working_minutes_per_day": cal.working_minutes_per_day,
+        # project-level duration-scale properties (ADR-0354); None = the source didn't say
+        "minutes_per_week": cal.minutes_per_week,
+        "days_per_month": cal.days_per_month,
         "work_weekdays": list(cal.work_weekdays),
         # holidays / working-day exceptions / intraday segments round-trip exactly so a
         # re-opened file keeps the SSI driving-slack parity inputs (audit C1)

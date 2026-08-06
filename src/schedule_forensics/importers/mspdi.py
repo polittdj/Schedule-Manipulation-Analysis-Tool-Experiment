@@ -148,6 +148,15 @@ def parse_mspdi_text(text: str, *, source_file: str | None = None) -> Schedule:
     # inside the calendar day it starts in, so the anchor is enforced here rather than left for
     # every downstream consumer to re-derive. Normalises or rejects; never merely warns.
     project_calendar = _parse_project_calendar(root)  # ADR-0028; defaults on any surprise
+    # Project-level duration-scale properties (ADR-0354): MinutesPerWeek / DaysPerMonth feed the
+    # MPXJ-conformant week/month/year duration literals in saved filters. Absent (or a
+    # degenerate 0) stays None — consumers fall back to MPXJ's own defaults, never a guess.
+    mpw = _int(root, "MinutesPerWeek")
+    dpm = _int(root, "DaysPerMonth")
+    if mpw or dpm:
+        project_calendar = project_calendar.model_copy(
+            update={"minutes_per_week": mpw or None, "days_per_month": dpm or None}
+        )
     project_start, anchor_note = anchored_project_start(
         project_start, project_calendar, source="MSPDI"
     )

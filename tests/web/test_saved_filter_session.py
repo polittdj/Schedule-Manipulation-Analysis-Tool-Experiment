@@ -153,3 +153,49 @@ def test_ordered_applies_the_saved_filter_to_every_version() -> None:
     st.set_saved_filter(_svt_filter())
     for scoped in st.ordered():
         assert {t.unique_id for t in scoped.tasks} == {1}  # the filter reached both versions
+
+
+def test_duration_prompt_coerces_per_schedule_calendar() -> None:
+    """ADR-0354: raw prompt answers are stored and a duration answer scales on EACH loaded
+    file's own calendar at scope() time — one session filter, two calendars, two thresholds.
+
+    The 1,500-minute task is the discriminator: "3d" is 1,440 min on the standard file (task
+    survives) but 1,800 min on the 10-hour file (task drops). Coercing on anything other than
+    each schedule's OWN calendar collapses the two outcomes."""
+    from schedule_forensics.model.calendar import Calendar
+
+    st = SessionState()
+    std = Schedule(
+        name="std",
+        source_file="std.mpp",
+        project_start=dt.datetime(2027, 1, 1, 8),
+        tasks=(_t(1, "short"), Task(unique_id=2, name="border", duration_minutes=1500)),
+    )
+    ten = Schedule(
+        name="ten",
+        source_file="ten.mpp",
+        project_start=dt.datetime(2027, 1, 1, 8),
+        calendar=Calendar(working_minutes_per_day=600),
+        tasks=(
+            Task(unique_id=1, name="short10", duration_minutes=600),
+            Task(unique_id=2, name="border10", duration_minutes=1500),
+        ),
+    )
+    st.schedules[std.source_file] = std
+    st.schedules[ten.source_file] = ten
+    longer = SavedFilter(
+        name="Longer than...",
+        prompt_count=1,
+        criteria=Criterion(
+            operator="IS_GREATER_THAN",
+            field="Duration",
+            field_enum="DURATION",
+            operands=(Operand(kind="prompt", text="longer than:"),),
+        ),
+    )
+    st.set_saved_filter(longer, {"longer than:": "3d"})
+    assert st.saved_filter_prompts == {"longer than:": "3d"}  # RAW, not pre-coerced
+    # standard file: 3d = 1440 min -> the 1,500-min task survives
+    assert {t.unique_id for t in st.scope(std).tasks} == {2}
+    # 10-hour file: the SAME answer is 1800 min -> the 1,500-min task drops
+    assert {t.unique_id for t in st.scope(ten).tasks} == set()
