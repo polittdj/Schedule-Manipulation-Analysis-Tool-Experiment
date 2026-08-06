@@ -32,6 +32,9 @@ from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import ConstraintType, Task
 
 #: Bump on ANY change to a model's field set (see tests/model/test_schema_freeze.py).
+# 2.11.0: Calendar.declared_minutes_per_day (ADR-0355) — the file's own MinutesPerDay
+#   duration-scale SETTING, distinct from the calendar's derived day length; MPXJ scales
+#   day/month filter literals by the declared property (Codex C1).
 # 2.10.0: Calendar.minutes_per_week / days_per_month (ADR-0354) — the project-level duration
 #   scale MPXJ's Duration.convertUnits uses for week/month/year filter literals; optional,
 #   None = "the source didn't provide it" (MPXJ defaults 2400/20 at the consumer).
@@ -40,7 +43,7 @@ from schedule_forensics.model.task import ConstraintType, Task
 #   2.8.0, because the guard only asserts a literal and cannot see an un-bumped add. Both
 #   additive fields are covered here rather than leaving the record wrong.
 # 2.8.0: Task priority/outline_number/stop (ADR-0234); 2.7.0: saved filters/groups (ADR-0231).
-SCHEMA_VERSION = "2.10.0"
+SCHEMA_VERSION = "2.11.0"
 
 __all__ = [
     "SCHEMA_VERSION",

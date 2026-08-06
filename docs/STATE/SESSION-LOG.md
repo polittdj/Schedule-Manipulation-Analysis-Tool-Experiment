@@ -11977,3 +11977,16 @@ test gained a 1,500-minute discriminator (the identity-case trap's second appear
 No committed artifact moves (no views sidecar in the corpus; the ten pinned real filters are
 field-to-field). Engine+importer+web 1,264 passed; parity 49; full gate green. ADR-0354; wheel +
 nine installers at v1.0.169.
+
+## 2026-08-06 (cont.2) — ADR-0355: four Codex findings on ADR-0354, all confirmed, all hardened (v1.0.170)
+
+Same branch (restarted from a100184). The operator relayed four Codex comments on merged #545;
+each re-verified against code + the vendored bytecode before editing — all four real, one
+(C4's fail-open on < / !=) partly contradicting ADR-0354's own shipped claim, one (C1) a gap
+between the ADR's correct bytecode read and its implementation. Fixes: declared_minutes_per_day
+(SCHEMA 2.11.0) drives d/mo literals; raw-answer per-parser coercion in the migration delta;
+importer sanitization ahead of model_copy; a _Malformed sentinel failing every operator.
+Four mutations each fired its guard — C1's only after its pin gained a 600-minute discriminator
+(the third identity-case catch in one day). Statics + 457 impacted + parity 49 green; full
+suite before commit. ADR-0355; v1.0.170 wheel + nine installers. The 1440 residual now waits
+on the operator's 24h reference .mpp (measured: corpus _24h files are off-boundary).

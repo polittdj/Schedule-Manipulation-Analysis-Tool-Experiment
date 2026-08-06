@@ -29,10 +29,14 @@ class Calendar(StrictFrozenModel):
     uid: int = 0
     name: str = "Standard"
     working_minutes_per_day: int = Field(default=MINUTES_PER_DAY, gt=0)
-    #: Project-level ``MinutesPerWeek`` / ``DaysPerMonth`` (MSPDI project properties), used by
-    #: MPXJ's ``Duration.convertUnits`` for week/month/year duration literals (ADR-0354).
-    #: ``None`` = the source didn't provide them; consumers fall back to MPXJ's own defaults
-    #: (2400 / 20), never to a derived guess.
+    #: Project-level ``MinutesPerDay`` / ``MinutesPerWeek`` / ``DaysPerMonth`` (MSPDI project
+    #: properties), used by MPXJ's ``Duration.convertUnits`` for duration literals (ADR-0354,
+    #: hardened ADR-0355). ``declared_minutes_per_day`` is the file's own duration-scale
+    #: SETTING and can legitimately differ from ``working_minutes_per_day`` (the calendar's
+    #: derived dominant day length) — MPXJ scales ``1d`` literals by the declared property,
+    #: not the calendar. ``None`` = the source didn't provide them; consumers fall back to
+    #: MPXJ's own defaults (480 / 2400 / 20), never to a derived guess.
+    declared_minutes_per_day: int | None = Field(default=None, gt=0)
     minutes_per_week: int | None = Field(default=None, gt=0)
     days_per_month: int | None = Field(default=None, gt=0)
     work_weekdays: tuple[int, ...] = (0, 1, 2, 3, 4)  # date.weekday(): Mon=0 .. Sun=6

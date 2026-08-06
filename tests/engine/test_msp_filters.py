@@ -410,8 +410,17 @@ def test_duration_literal_table_matches_mpxj_convert_units() -> None:
     default); an unknown token fails closed — Duration.toString() is a closed vocabulary.
     """
     std = Calendar()
-    ten = Calendar(working_minutes_per_day=600, minutes_per_week=3000, days_per_month=22)
-    ten_no_props = Calendar(working_minutes_per_day=600)  # file declared no MPW/DPM
+    ten = Calendar(
+        working_minutes_per_day=600,
+        declared_minutes_per_day=600,
+        minutes_per_week=3000,
+        days_per_month=22,
+    )
+    ten_no_props = Calendar(working_minutes_per_day=600)  # file declared NO properties at all
+    # ADR-0355 (Codex C1): the day scale is the DECLARED Project/MinutesPerDay SETTING, which
+    # can differ from the calendar's derived day length — an 8-hour duration setting on a
+    # 10-hour calendar evaluates '1d' as 480, exactly as MPXJ's TimeUnitDefaultsContainer does
+    setting_8h_cal_10h = Calendar(working_minutes_per_day=600, declared_minutes_per_day=480)
 
     # ordinary units, standard calendar (MPXJ defaults 2400 mpw / 20 dpm)
     assert _parse_duration_literal("5.0d", std) == 2400
@@ -428,9 +437,14 @@ def test_duration_literal_table_matches_mpxj_convert_units() -> None:
     assert _parse_duration_literal("1.0w", ten) == 3000
     assert _parse_duration_literal("1.0mo", ten) == 600 * 22
     assert _parse_duration_literal("1.0y", ten) == 3000 * 52
-    # absent MPW/DPM fall back to MPXJ's own defaults — never a derived 5 x day guess
+    # absent properties fall back to MPXJ's own defaults — never a derived guess:
+    # day 480 (NOT the calendar's 600), week 2400 (NOT 5 x day), month 480 x 20
+    assert _parse_duration_literal("1.0d", ten_no_props) == 480
     assert _parse_duration_literal("1.0w", ten_no_props) == 2400
-    assert _parse_duration_literal("1.0mo", ten_no_props) == 600 * 20
+    assert _parse_duration_literal("1.0mo", ten_no_props) == 480 * 20
+    # the declared-vs-derived split (C1): the SETTING wins for literals
+    assert _parse_duration_literal("1.0d", setting_8h_cal_10h) == 480
+    assert _parse_duration_literal("1.0mo", setting_8h_cal_10h) == 480 * 20
 
     # elapsed units are calendar-blind wall-clock constants, on EVERY calendar
     for cal in (std, ten):
@@ -508,6 +522,78 @@ def test_prompt_answers_coerce_on_the_schedules_own_calendar() -> None:
         criteria=leaf("IS_GREATER_THAN", "Duration", "DURATION", prompt("longer than:")),
     )
     std = coerce_prompt_answers(dr, {"longer than:": "3d"}, Calendar())
-    ten = coerce_prompt_answers(dr, {"longer than:": "3d"}, Calendar(working_minutes_per_day=600))
+    ten = coerce_prompt_answers(
+        dr,
+        {"longer than:": "3d"},
+        Calendar(working_minutes_per_day=600, declared_minutes_per_day=600),
+    )
     assert std == {"longer than:": 1440}
     assert ten == {"longer than:": 1800}
+
+
+# --- ADR-0355 (Codex findings on ADR-0354): the four hardenings -------------------------------
+
+
+def test_malformed_duration_literal_fails_closed_on_every_operator() -> None:
+    """C4: a corrupted literal must never BROADEN a population. ``None`` rides the
+    null-ordering rules (a ``None`` right sorts less), so before ADR-0355 ``Duration < 5xyz``
+    and ``!= 5xyz`` matched EVERY task; the sentinel fails the leaf whatever the operator."""
+    sch = _duration_population()
+
+    def dur_leaf(op: str, *texts: str) -> SavedFilter:
+        return SavedFilter(
+            name=op,
+            criteria=leaf(
+                "IS_WITHIN" if op == "WITHIN" else ("IS_NOT_WITHIN" if op == "NOTWITHIN" else op),
+                "Duration",
+                "DURATION",
+                *(lit(t, "Duration") for t in texts),
+            ),
+        )
+
+    for op in ("IS_LESS_THAN", "IS_LESS_THAN_OR_EQUAL_TO", "DOES_NOT_EQUAL"):
+        assert select(sch, dur_leaf(op, "5 xyz")) == (), op  # pre-0355: matched ALL 8
+    for op in ("IS_GREATER_THAN", "IS_GREATER_THAN_OR_EQUAL_TO", "EQUALS"):
+        assert select(sch, dur_leaf(op, "5 xyz")) == (), op
+    assert select(sch, dur_leaf("NOTWITHIN", "5 xyz", "6.0d")) == ()  # pre-0355: matched ALL
+    assert select(sch, dur_leaf("WITHIN", "5 xyz", "6.0d")) == ()
+    # the REAL null operand keeps its MPXJ semantics — Duration EQUALS <null> is untouched
+    null_eq = SavedFilter(name="null", criteria=leaf("EQUALS", "Duration", "DURATION", NULL))
+    assert select(sch, null_eq) == ()  # every task HAS a duration; None matches only None
+
+
+def test_day_and_month_literals_scale_by_the_declared_setting() -> None:
+    """C1 end-to-end: Project/MinutesPerDay is the duration-scale SETTING; the calendar's
+    derived 600-minute day must not leak into ``1d`` literals when the file declares 480."""
+    cal = Calendar(working_minutes_per_day=600, declared_minutes_per_day=480)
+    tasks = (
+        Task(unique_id=1, name="D480", duration_minutes=480),
+        Task(unique_id=2, name="D600", duration_minutes=600),  # the discriminator
+        Task(unique_id=3, name="D960", duration_minutes=960),
+    )
+    sch = Schedule(name="c1", project_start=dt.datetime(2027, 1, 4, 0), calendar=cal, tasks=tasks)
+    # '1.0d' = 480 (the SETTING): the 600-minute task exceeds it. Under the derived 600-minute
+    # day (the pre-ADR-0355 reading) 600 > 600 is False and the task drops — the discriminator
+    # that keeps this pin able to fail.
+    assert select(sch, _dur_gt("1.0d")) == (2, 3)
+
+
+def test_prompt_only_movement_surfaces_in_the_migration_delta() -> None:
+    """C2: the delta coerces RAW answers under EACH parser — a '3d' answer is 1,440 minutes
+    under v1's hard table and 1,800 under v2 on a declared-600 file, so the two legs select
+    different populations. Before ADR-0355 both legs received the v2-coerced value and
+    prompt-only movement never produced the migration notice."""
+    cal = Calendar(working_minutes_per_day=600, declared_minutes_per_day=600)
+    sch = Schedule(
+        name="c2",
+        project_start=dt.datetime(2027, 1, 4, 0),
+        calendar=cal,
+        tasks=(Task(unique_id=1, name="border", duration_minutes=1500),),
+    )
+    longer = SavedFilter(
+        name="Longer than...",
+        prompt_count=1,
+        criteria=leaf("IS_GREATER_THAN", "Duration", "DURATION", prompt("longer than:")),
+    )
+    delta = selection_migration_delta(sch, longer, {"longer than:": "3d"})
+    assert delta == ((1,), ())  # v1: 1500 > 1440 matches; v2: 1500 > 1800 does not

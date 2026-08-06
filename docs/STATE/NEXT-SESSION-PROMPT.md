@@ -8,9 +8,9 @@ kickoff steers a fresh session at work that is already done.)
 ---
 
 Resume POLARIS (Schedule-Manipulation-Analysis-Tool). Read `docs/STATE/HANDOFF.md` FIRST
-(auto-injected). As of last session: **v1.0.169, highest ADR 0354** — SRA-LEGACY (ADR-0353,
-merged as #544) and V3 (ADR-0354, pushed, draft PR) both closed in one day; if the PR has since
-merged, restart the branch:
+(auto-injected). As of last session: **v1.0.170, highest ADR 0355, SCHEMA 2.11.0** — SRA-LEGACY
+(ADR-0353, #544), V3 (ADR-0354, #545) and the four-Codex-findings hardening (ADR-0355, pushed,
+draft PR) all closed in one day; if the PR has since merged, restart the branch:
 `git fetch --prune origin && git remote set-head origin -a && git checkout -B <branch> origin/main`
 (then `git branch --unset-upstream`). Fresh container: `pip install -e ".[dev]"` plus
 `pip install playwright build`. **`ruff` no longer needs a manual pin** — `pyproject.toml` bounds it
@@ -46,6 +46,10 @@ from drifting. **Do not "restore" the old floors** — all three were measured f
 the first clean release and is now the floor. The floor job found this on its first run.
 
 ⇢ DO THIS FIRST — the last Fable 5 Max reserved item (ADR-0240), then phase 3 families
+**The 1440 unit WAITS on the operator's 24h reference .mpp** (they committed to supplying it —
+convert via MPXJ, read MSP's OWN stored whole-day-boundary Finish spellings, then bless
+next-midnight or build the finish-spelling helper; the corpus _24h files are OFF-boundary,
+measured). Do NOT repair toward 23:59 without that oracle.
 **SRA-LEGACY (ADR-0353) and V3 (ADR-0354) are CLOSED** — do NOT re-open; see WHAT'S DONE. The
 one remaining reserved item: **ADR-0348's `tod + per_day == 1440` residual** (decision-shaped;
 no oracle in the corpus — bring the operator a concrete proposal for what "end of Friday" reads

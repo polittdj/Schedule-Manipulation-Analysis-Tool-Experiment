@@ -186,7 +186,6 @@ from schedule_forensics.engine.metrics.vertical_integration import compute_verti
 from schedule_forensics.engine.month_curves import MonthCurves, compute_month_curves
 from schedule_forensics.engine.msp_filters import (
     EVALUATOR_VERSION,
-    coerce_prompt_answers,
     required_prompts,
     selection_migration_delta,
 )
@@ -16818,9 +16817,9 @@ def _groups_body(
         # population vs the retired hard-coded 480-minute table — the operator sees the shift
         # instead of silently inheriting it. Version-invariant filters render no note.
         mig_note = ""
-        delta = selection_migration_delta(
-            sch, saved, coerce_prompt_answers(saved, st.saved_filter_prompts, sch.calendar)
-        )
+        # RAW answers — the delta coerces them under EACH evaluator version internally, so
+        # prompt-only population movement surfaces too (ADR-0355, Codex C2)
+        delta = selection_migration_delta(sch, saved, st.saved_filter_prompts)
         if delta is not None and set(delta[0]) != set(delta[1]):
             v1_n, v2_n = len(delta[0]), len(delta[1])
             mig_note = (

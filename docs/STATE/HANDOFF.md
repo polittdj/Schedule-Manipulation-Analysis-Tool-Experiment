@@ -1,59 +1,55 @@
-# Handoff — 2026-08-06 (V3 closed: duration literals conform to the vendored MPXJ; ADR-0354; v1.0.169)
+# Handoff — 2026-08-06 (ADR-0355: four Codex findings on the literal fix, all confirmed, all hardened; v1.0.170)
 
-> ## STATUS (current) — **branch pushed, draft PR open.** ADR-0354, **v1.0.169**.
-> Second ADR-0240 Fable 5 Max item done the same day as the first: **V3 / external H4 is
-> closed**. `msp_filters` duration literals now implement the vendored mpxj-16.2.0
-> `Duration.convertUnits` **read from its own bytecode via javap** — elapsed units are
-> wall-clock (ed 1440 · ew 10080 · emo 43200 · **ey 524160 = 364 d, 52x7**), ordinary units
-> scale on the schedule's OWN properties (**week = MinutesPerWeek, year = MinutesPerWeek x 52**
-> — two conformance defects BEYOND the audit's elapsed headline, invisible to it), `%`/`e%`
-> pass through (MPXJ's switch default, mirrored), unknown units **fail closed** (the sidecar
-> vocabulary is closed: criteria literals are `Duration.toString()`). `Calendar` gains
-> `minutes_per_week`/`days_per_month` (MSPDI-read, Save-round-tripped; absent → MPXJ's 2400/20).
-> **The gate the audit required is now defined**: `EVALUATOR_VERSION = 2`, v1's parser kept
-> verbatim report-only behind a ContextVar, `selection_migration_delta` → the `/groups`
-> Active-scope panel shows "now selects N (was M)" whenever a duration-literal filter's
-> population moved. Prompt answers store RAW and coerce per schedule at `scope()` (a "3d"
-> answer is 1,800 min on a 10-hour file). Wheel + nine installers at **v1.0.169**.
+> ## STATUS (current) — **branch pushed, draft PR open.** ADR-0355, **v1.0.170**, SCHEMA 2.11.0.
+> The operator relayed four Codex review comments on merged #545 (ADR-0354); ALL FOUR verified
+> real and fixed the same session: **C1** the literal day scale is the DECLARED
+> `Project/MinutesPerDay` SETTING, not the calendar's derived day length (new
+> `Calendar.declared_minutes_per_day`, absent → MPXJ's 480 — the absent-property fallback for
+> `d`/`mo` deliberately CHANGED from derived to 480); **C2** `selection_migration_delta` now
+> takes RAW prompt answers and coerces under EACH parser inside the ContextVar scope, so
+> prompt-only movement surfaces (pinned: `((1,), ())` on a 1,500-min border task); **C3** the
+> importer sanitizes non-positive duration-scale properties BEFORE `model_copy` (which bypasses
+> `gt=0`); **C4** ADR-0354's "fails closed" was HALF-TRUE — `None` rides the null-ordering
+> rules, so `Duration < 5xyz` / `!= 5xyz` matched EVERY task; a `_Malformed` sentinel now fails
+> any touching leaf on every operator, `EQUALS <null>` untouched. Wheel + nine installers at
+> **v1.0.170**.
 >
-> ## MEASURED
-> The audit's executed example inverted into a pin: `Duration > 2.0ed` on the 8-task 1..8-day
-> population → **(7, 8)**, was (3..8); unknown unit → **()**, was 6 matches. **No committed
-> artifact moves** — the corpus carries no views sidecar, and the ten pinned real filters use
-> duration fields only field-to-field (version-invariant). Movement is disclosed, not silent,
-> wherever a real duration-literal filter exists.
+> ## THE DISCRIMINATOR LESSON FIRED A THIRD TIME IN ONE DAY
+> C1's end-to-end pin PASSED under its own mutation — the population made the 480 and 600
+> thresholds select identically. A 600-minute discriminator task fixed it. Three scales in one
+> day: a whole SUITE of identity fixtures (ADR-0353), one test's identity CALENDAR (ADR-0354),
+> one test's identity POPULATION (here). The question is always: do the fixtures make the two
+> readings equal by construction? **Run the mutation BEFORE trusting any new pin.**
 >
-> ## VERIFICATION SHAPE
-> Five mutations, each failing exactly its guard, each original-anchor-absent-checked, each
-> restored from scratchpad copies: elapsed-day→480 · year→mpw x 48 · ContextVar reset dropped ·
-> importer stamp dropped · per-schedule calendar→default. **The fifth fired only after its test
-> gained a 1,500-minute discriminator task** — the first draft passed under the mutation
-> (identity-case trap, twice in one day: ADR-0353's suite-wide version, then this single-test
-> version). The writer-coverage introspection guard caught the Save-writer half of the
-> round-trip on its own. Engine+importer+web 1,264 passed · parity 49 · full gate green.
+> ## OPEN — the 1440 boundary (last ADR-0240 reserved item) WAITS ON THE OPERATOR'S FILE
+> The operator is supplying a reference `.mpp` with tasks on a 24-hour calendar. When it
+> arrives: convert via MPXJ, read MS PROJECT'S OWN stored Start/Finish spellings at whole-day
+> boundaries (the corpus's `_24h` files are off-boundary — 17:00/09:00 anchors, weekend-working
+> calendars — measured, insufficient), then either bless current next-midnight rendering as
+> MSP-conformant or build the finish-spelling mirror of `offset_to_start_datetime`. Current
+> measured behavior: EVERY whole-day finish on a midnight-anchored 24h Mon-Fri calendar renders
+> as next-day 00:00 ("end of Friday" = Sat 00:00); starts already correct; inverse property
+> intact; no committed schedule reaches it. Do NOT repair toward the intuitive 23:59 without
+> the oracle — MSP may match current behavior and the "fix" would CREATE the parity break.
 >
 > ## Next
-> Last Fable 5 Max reserved item (ADR-0240): **the `tod + per_day == 1440` boundary residual**
-> (ADR-0348; decision-shaped, no oracle in the corpus — bring the operator a concrete proposal
-> for what "end of Friday" reads as on a 24-hour calendar; recon done: `offset_to_datetime`'s
-> `remainder == 0` branch at cpm.py:326 x ADR-0312's midnight normalisation manufactures the
-> input). Then the standing queue: twelve page families (`integrity` 402 first, each adding to
-> `LAYER_ORDER` + `VIEW_MODULES` + the monkeypatch sweep over ALL bound names + the
-> renderability pre-flight) · a driving-corridor fixture · the three `page-lede`-less pages ·
+> The 1440 unit on the operator's file · twelve page families (`integrity` 402 first, per
+> ADR-0350/0351/0352 rules) · a driving-corridor fixture · the three `page-lede`-less pages ·
 > `/groups` "Activities" counting summary rows (ADR-0343) · nine installers vs
 > `-c constraints/known-good.txt` · Phase 6 docs. **Operator only:** license ·
-> branch-protection contexts · intake re-upload · proprietary-tool reruns · OR-04.
+> branch-protection contexts · intake re-upload · proprietary-tool reruns · OR-04 · the 24h
+> reference `.mpp` upload.
 >
 > ## Carried forward
-> SRA-LEGACY (ADR-0353) and V3 (ADR-0354) are CLOSED — do not re-open; EVM2's det date
-> displaying stored 2012-10-04 is the anchoring absorbing ADR-0108's 2-wd residual into the
-> display (deliberate). `%`/`e%` pass-through and the 364-day elapsed year are MPXJ's OWN
-> bytecode behaviour — mirrored deliberately, do NOT "fix" toward intuition. XER still has no
-> `resume` read and no saved-filter sidecar. The `/analysis` focus→tip family is load-sensitive
-> — do NOT chase. `pydantic>=2` is NOT a safe floor (2.6 is); `fastapi>=0.110` is an AIR-GAP
-> VIOLATION (0.110.2 floor). Run `ruff check .` — the WHOLE tree — as `python -m ruff`. Never
-> `git checkout <file>` to undo a mutation — `cp` from a scratchpad copy. `grep -c` exits 1 on
-> zero count — chain mutation-absence checks with `;`, never `&&`.
+> ADR-0353/0354/0355 closed — do not re-open. `%`/`e%` pass-through, the 364-day elapsed year,
+> and (new) the 480 absent-property day default are MPXJ's OWN behaviour — do NOT "fix" toward
+> intuition. **DATE literals still share C4's None shape** (pre-existing, recorded in ADR-0355,
+> deliberately not expanded into this unit — a future unit needs its own adjudication).
+> EVALUATOR_VERSION stays 2 (corrections to an unexposed v2, not a v3). The `/analysis`
+> focus→tip family is load-sensitive — do NOT chase. `pydantic>=2` is NOT a safe floor (2.6
+> is); `fastapi>=0.110` is an AIR-GAP VIOLATION (0.110.2 floor). Run `ruff check .` — WHOLE
+> tree — as `python -m ruff`. Never `git checkout` to undo a mutation — `cp` from scratchpad.
+> `grep -c` exits 1 on zero count — chain absence checks with `;`.
 
 # (prior) handoffs — archived
 

@@ -1039,3 +1039,18 @@ def test_absent_duration_scale_properties_stay_none() -> None:
     sch0 = parse_mspdi_text(_doc(zero))
     assert sch0.calendar.minutes_per_week is None
     assert sch0.calendar.days_per_month is None
+
+
+def test_declared_minutes_per_day_read_and_negatives_sanitized() -> None:
+    """ADR-0355: Project/MinutesPerDay is read (C1), and NEGATIVE duration-scale properties
+    stay None (C3 — model_copy bypasses the model's gt=0 validation, so the importer must
+    sanitize; a malformed document must not invert week/year filter thresholds)."""
+    body = (
+        "<MinutesPerDay>480</MinutesPerDay>"
+        "<MinutesPerWeek>-2400</MinutesPerWeek><DaysPerMonth>-20</DaysPerMonth>"
+        "<Tasks><Task><UID>1</UID><Name>A</Name><Duration>PT8H0M0S</Duration></Task></Tasks>"
+    )
+    sch = parse_mspdi_text(_doc(body))
+    assert sch.calendar.declared_minutes_per_day == 480
+    assert sch.calendar.minutes_per_week is None  # -2400 sanitized, not stored
+    assert sch.calendar.days_per_month is None  # -20 sanitized, not stored

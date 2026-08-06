@@ -646,7 +646,7 @@ def test_duration_scale_properties_round_trip() -> None:
     from schedule_forensics.model.schedule import Schedule
     from schedule_forensics.model.task import Task
 
-    cal = Calendar(minutes_per_week=3000, days_per_month=22)
+    cal = Calendar(declared_minutes_per_day=600, minutes_per_week=3000, days_per_month=22)
     sch = Schedule(
         name="rt",
         project_start=dt.datetime(2025, 1, 6, 8),
@@ -654,6 +654,7 @@ def test_duration_scale_properties_round_trip() -> None:
         tasks=(Task(unique_id=1, name="a", duration_minutes=480),),
     )
     back = parse_json_text(to_json_text(sch))
+    assert back.calendar.declared_minutes_per_day == 600
     assert back.calendar.minutes_per_week == 3000
     assert back.calendar.days_per_month == 22
     plain = Schedule(

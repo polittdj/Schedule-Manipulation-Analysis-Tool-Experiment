@@ -72,8 +72,9 @@ _EXPECTED_FIELDS: dict[type[pydantic.BaseModel], set[str]] = {
         "uid",
         "name",
         "working_minutes_per_day",
-        # project-level duration-scale properties (ADR-0354): MPXJ-conformant week/month/year
-        # duration literals in saved filters; None = the source didn't provide them
+        # project-level duration-scale properties (ADR-0354/0355): MPXJ-conformant duration
+        # literals in saved filters; None = the source didn't provide them
+        "declared_minutes_per_day",
         "minutes_per_week",
         "days_per_month",
         "work_weekdays",
@@ -105,7 +106,7 @@ _EXPECTED_FIELDS: dict[type[pydantic.BaseModel], set[str]] = {
 
 
 def test_schema_version() -> None:
-    assert model.SCHEMA_VERSION == "2.10.0"
+    assert model.SCHEMA_VERSION == "2.11.0"
 
 
 @pytest.mark.parametrize("cls", list(_EXPECTED_FIELDS))

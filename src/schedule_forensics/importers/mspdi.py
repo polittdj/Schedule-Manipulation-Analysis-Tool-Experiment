@@ -148,14 +148,26 @@ def parse_mspdi_text(text: str, *, source_file: str | None = None) -> Schedule:
     # inside the calendar day it starts in, so the anchor is enforced here rather than left for
     # every downstream consumer to re-derive. Normalises or rejects; never merely warns.
     project_calendar = _parse_project_calendar(root)  # ADR-0028; defaults on any surprise
-    # Project-level duration-scale properties (ADR-0354): MinutesPerWeek / DaysPerMonth feed the
-    # MPXJ-conformant week/month/year duration literals in saved filters. Absent (or a
-    # degenerate 0) stays None — consumers fall back to MPXJ's own defaults, never a guess.
-    mpw = _int(root, "MinutesPerWeek")
-    dpm = _int(root, "DaysPerMonth")
-    if mpw or dpm:
+
+    # Project-level duration-scale properties (ADR-0354; hardened ADR-0355): MinutesPerDay /
+    # MinutesPerWeek / DaysPerMonth feed the MPXJ-conformant duration literals in saved
+    # filters. Absent, zero, or NEGATIVE values stay None (model_copy bypasses the model's
+    # gt=0 validation, so the sanitizing happens HERE — a malformed document must not invert
+    # week/year thresholds); consumers fall back to MPXJ's own defaults, never a guess.
+    def _positive(tag: str) -> int | None:
+        v = _int(root, tag)
+        return v if v is not None and v > 0 else None
+
+    mpd_prop = _positive("MinutesPerDay")
+    mpw = _positive("MinutesPerWeek")
+    dpm = _positive("DaysPerMonth")
+    if mpd_prop or mpw or dpm:
         project_calendar = project_calendar.model_copy(
-            update={"minutes_per_week": mpw or None, "days_per_month": dpm or None}
+            update={
+                "declared_minutes_per_day": mpd_prop,
+                "minutes_per_week": mpw,
+                "days_per_month": dpm,
+            }
         )
     project_start, anchor_note = anchored_project_start(
         project_start, project_calendar, source="MSPDI"
