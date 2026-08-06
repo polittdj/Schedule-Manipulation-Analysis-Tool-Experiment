@@ -127,7 +127,11 @@ def _calendar(raw: dict[str, Any]) -> Calendar:
     }
     if raw.get("uid") is not None:
         kwargs["uid"] = int(raw["uid"])
-    # project-level duration-scale properties (ADR-0354) — absent stays None (MPXJ defaults)
+    # project-level duration-scale properties (ADR-0354/0355) — absent stays None (MPXJ
+    # defaults); a provided non-positive value reaches Calendar's gt=0 validator and fails
+    # the import loudly (this path constructs, so validation actually runs)
+    if raw.get("declared_minutes_per_day") is not None:
+        kwargs["declared_minutes_per_day"] = int(raw["declared_minutes_per_day"])
     if raw.get("minutes_per_week") is not None:
         kwargs["minutes_per_week"] = int(raw["minutes_per_week"])
     if raw.get("days_per_month") is not None:
@@ -374,7 +378,8 @@ def _calendar_out(cal: Calendar) -> dict[str, Any]:
         "name": cal.name,
         "hours_per_day": cal.working_minutes_per_day / 60,
         "working_minutes_per_day": cal.working_minutes_per_day,
-        # project-level duration-scale properties (ADR-0354); None = the source didn't say
+        # project-level duration-scale properties (ADR-0354/0355); None = the source didn't say
+        "declared_minutes_per_day": cal.declared_minutes_per_day,
         "minutes_per_week": cal.minutes_per_week,
         "days_per_month": cal.days_per_month,
         "work_weekdays": list(cal.work_weekdays),

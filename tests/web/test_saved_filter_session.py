@@ -175,7 +175,7 @@ def test_duration_prompt_coerces_per_schedule_calendar() -> None:
         name="ten",
         source_file="ten.mpp",
         project_start=dt.datetime(2027, 1, 1, 8),
-        calendar=Calendar(working_minutes_per_day=600),
+        calendar=Calendar(working_minutes_per_day=600, declared_minutes_per_day=600),
         tasks=(
             Task(unique_id=1, name="short10", duration_minutes=600),
             Task(unique_id=2, name="border10", duration_minutes=1500),

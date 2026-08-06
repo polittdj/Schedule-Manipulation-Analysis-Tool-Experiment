@@ -11977,3 +11977,44 @@ test gained a 1,500-minute discriminator (the identity-case trap's second appear
 No committed artifact moves (no views sidecar in the corpus; the ten pinned real filters are
 field-to-field). Engine+importer+web 1,264 passed; parity 49; full gate green. ADR-0354; wheel +
 nine installers at v1.0.169.
+
+## 2026-08-06 (cont.2) — ADR-0355: four Codex findings on ADR-0354, all confirmed, all hardened (v1.0.170)
+
+Same branch (restarted from a100184). The operator relayed four Codex comments on merged #545;
+each re-verified against code + the vendored bytecode before editing — all four real, one
+(C4's fail-open on < / !=) partly contradicting ADR-0354's own shipped claim, one (C1) a gap
+between the ADR's correct bytecode read and its implementation. Fixes: declared_minutes_per_day
+(SCHEMA 2.11.0) drives d/mo literals; raw-answer per-parser coercion in the migration delta;
+importer sanitization ahead of model_copy; a _Malformed sentinel failing every operator.
+Four mutations each fired its guard — C1's only after its pin gained a 600-minute discriminator
+(the third identity-case catch in one day). Statics + 457 impacted + parity 49 green; full
+suite before commit. ADR-0355; v1.0.170 wheel + nine installers. The 1440 residual now waits
+on the operator's 24h reference .mpp (measured: corpus _24h files are off-boundary).
+
+## 2026-08-06 (cont.3) — The SSI delta root-caused: stale setup, engine exonerated, grid learns to read the file (ADR-0356, v1.0.171)
+
+Operator supplied a new Large_Test_File2.mpp + SSI workbook + setup JSON reporting a significant
+MC delta. Measured against the occurrence-weighted histogram (the workbook's own Mean cell is 95 d
+off its weighted mean — the documented trap): centers matched, our fired-risk lobe ran σ≈110 vs
+SSI's 41.9, max +790 vs +575. Decomposition (durations-only / risks-only) put ALL excess in the
+duration inputs; the setup proved stale against the file (605/783 factors disagree, 939 absent,
+400/435 BC/WC stale — each side the ADR-0307 table on its own factor). Disproof attempted and
+failed: file-true inputs land σ 157.3 vs oracle 153.4 (2.5%), P50 within 8 d — engine exonerated.
+R2 in neither run (R1+R2 overshoots; import route verified good). Product defect fixed: the app
+could not read the file's own stored SRA fields — new /sra/load-from-schedule verbatim seed +
+setup_version 4 vintage fingerprint + CHECK-INPUTS warning with counts. Sandbox effectiveness on
+the real artifacts: fixed path reproduces the exoneration figures exactly. Four mutations fired
+(the fingerprint pin only after de-self-referencing — fourth discriminator catch today); version
+pins 3→4 re-baselined; SSI/SRA suites + parity 49 green. ADR-0356; v1.0.171 wheel + installers.
+
+## 2026-08-06 (cont.4) — The 1440 boundary blessed by the operator's oracle (ADR-0357; pin only)
+
+The promised 24Hour_Calendar.mpp arrived and answered ADR-0348's open question from its raw
+bytes: MSP stores raw instants (01:00/02:00 finishes, instant-contiguous successor handoffs),
+zero midnight-spelled stored dates anywhere, and the MSPDI datetime format has no "24:00" —
+next-day 00:00 is the only representable spelling of a day-boundary instant. Verdict: current
+next-midnight rendering IS the MSP convention; 23:59 would have created a parity break.
+tests/engine/test_1440_boundary.py pins finish/start-role/inverse at the boundary, proven
+able-to-fail by mutating the branch to per_day - 1 (2 failed, restored green). All three
+ADR-0240 reserved items are now closed. ADR-0357; no version bump (test + docs only, rides
+the v1.0.171 commit).

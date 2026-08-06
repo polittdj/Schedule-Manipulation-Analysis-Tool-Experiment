@@ -8,9 +8,11 @@ kickoff steers a fresh session at work that is already done.)
 ---
 
 Resume POLARIS (Schedule-Manipulation-Analysis-Tool). Read `docs/STATE/HANDOFF.md` FIRST
-(auto-injected). As of last session: **v1.0.169, highest ADR 0354** — SRA-LEGACY (ADR-0353,
-merged as #544) and V3 (ADR-0354, pushed, draft PR) both closed in one day; if the PR has since
-merged, restart the branch:
+(auto-injected). As of last session: **v1.0.171, highest ADR 0356, SCHEMA 2.11.0** — one day closed
+SRA-LEGACY (ADR-0353, #544), V3 (ADR-0354, #545), the Codex hardening (ADR-0355) AND the
+operator's SSI-delta root-cause (ADR-0356: stale setup, engine exonerated at sigma 2.5%, the
+grid now reads the file's own stored SRA fields + vintage warning), the last two on PR #546;
+if it has since merged, restart the branch:
 `git fetch --prune origin && git remote set-head origin -a && git checkout -B <branch> origin/main`
 (then `git branch --unset-upstream`). Fresh container: `pip install -e ".[dev]"` plus
 `pip install playwright build`. **`ruff` no longer needs a manual pin** — `pyproject.toml` bounds it
@@ -45,14 +47,12 @@ from drifting. **Do not "restore" the old floors** — all three were measured f
 `https://errors.pydantic.dev/<ver>/v/missing` inside 422 bodies on 10 routes (Law 1). **0.110.2** is
 the first clean release and is now the floor. The floor job found this on its first run.
 
-⇢ DO THIS FIRST — the last Fable 5 Max reserved item (ADR-0240), then phase 3 families
-**SRA-LEGACY (ADR-0353) and V3 (ADR-0354) are CLOSED** — do NOT re-open; see WHAT'S DONE. The
-one remaining reserved item: **ADR-0348's `tod + per_day == 1440` residual** (decision-shaped;
-no oracle in the corpus — bring the operator a concrete proposal for what "end of Friday" reads
-as on a 24-hour calendar; recon done: `offset_to_datetime`'s `remainder == 0` branch at
-cpm.py:326 interacts with ADR-0312's midnight normalisation, which manufactures the input). Then
-the twelve remaining page families (`integrity` 402 first) under ADR-0350/0351/0352's rules, and
-**Phase 6** docs/operator queue.
+⇢ DO THIS FIRST — phase 3 families (ALL THREE ADR-0240 reserved items are CLOSED)
+**SRA-LEGACY (ADR-0353), V3 (ADR-0354/0355), the SSI-delta root-cause (ADR-0356) and the 1440
+boundary (ADR-0357 — blessed by the operator's 24Hour_Calendar.mpp oracle: next-midnight IS
+MSP's convention, pinned in tests/engine/test_1440_boundary.py; 23:59 would CREATE a parity
+break) are all CLOSED — do NOT re-open any of them.** Next: the twelve remaining page families
+(`integrity` 402 first) under ADR-0350/0351/0352's rules, and **Phase 6** docs/operator queue.
 
 ⇢ WHAT'S DONE — do NOT re-open
 **P0 (ADR-0346)** dependency bounding · **P1 (ADR-0347)** intake manifest + hardened CUI hook +

@@ -49,9 +49,23 @@ PromptValues = dict[str, FieldValue]
 _DUR_LITERAL_RE = re.compile(r"^\s*([\d.]+)\s*(e)?([a-z%]*)\s*$", re.IGNORECASE)
 
 #: MPXJ's TimeUnitDefaultsContainer defaults, used when the source file does not declare the
-#: project property (MPXJ mirrors MS Project's own 2400 min/week and 20 days/month).
+#: project property (MPXJ mirrors MS Project's own 480 min/day, 2400 min/week, 20 days/month).
+_DEFAULT_MINUTES_PER_DAY = 480
 _DEFAULT_MINUTES_PER_WEEK = 2400
 _DEFAULT_DAYS_PER_MONTH = 20
+
+
+class _Malformed:
+    """Sentinel for an unparsable duration literal (ADR-0355, Codex C4).
+
+    ``None`` is a REAL operand value here — the ``EQUALS <null>`` absent-value test — and it
+    deliberately rides MPXJ's null-ordering rules (a ``None`` right sorts LESS), so returning
+    ``None`` for a corrupted literal made ``Duration < 5xyz`` / ``!= 5xyz`` match EVERY task:
+    fail-open in the broadening direction. A malformed literal is not a value at all; any leaf
+    that touches this sentinel fails closed in :func:`_eval_leaf`, whatever the operator."""
+
+
+_MALFORMED = _Malformed()
 
 #: MPXJ elapsed-unit → wall-clock minutes, decoded from the vendored mpxj-16.2.0
 #: ``Duration.convertUnits`` bytecode (ADR-0354): day 1440 · week 10080 (7 d) · month 43200
@@ -127,7 +141,11 @@ def _parse_duration_literal(text: str, calendar: Calendar) -> int | None:
     if m.group(2):  # the elapsed marker MPXJ writes as the unit's leading "e"
         per = _ELAPSED_UNIT_MINUTES.get(unit)
         return None if per is None else round(float(m.group(1)) * per)
-    mpd = calendar.working_minutes_per_day
+    # MPXJ scales day/month literals by the DECLARED Project/MinutesPerDay property
+    # (TimeUnitDefaultsContainer), which can legitimately differ from the calendar's derived
+    # dominant day length — an 8-hour duration SETTING on a 10-hour calendar evaluates
+    # ``1d`` as 480, not 600 (ADR-0355, Codex C1). Absent property -> MPXJ's own default.
+    mpd = calendar.declared_minutes_per_day or _DEFAULT_MINUTES_PER_DAY
     mpw = calendar.minutes_per_week or _DEFAULT_MINUTES_PER_WEEK
     dpm = calendar.days_per_month or _DEFAULT_DAYS_PER_MONTH
     working: dict[str, int] = {
@@ -159,18 +177,23 @@ def _normalize_lhs(value: FieldValue, kind: FieldKind) -> FieldValue:
     return value
 
 
-def _coerce_literal(text: str | None, kind: FieldKind, calendar: Calendar) -> FieldValue:
+def _coerce_literal(
+    text: str | None, kind: FieldKind, calendar: Calendar
+) -> FieldValue | _Malformed:
     """Coerce a filter's literal string to the left field's axis (a literal date is **not**
     truncated). ``calendar`` supplies the schedule's own day/week/month scale for duration
     literals (ADR-0354) — hard-coding 480 min/day compared apples to oranges on any other
-    calendar.
+    calendar. An unparsable DURATION literal returns :data:`_MALFORMED`, never ``None`` —
+    ``None`` is the real ``EQUALS <null>`` operand and rides the null-ordering rules, which
+    would fail OPEN on ``<`` / ``!=`` (ADR-0355, Codex C4).
     """
     if text is None:
         return None
     if kind is FieldKind.DATE:
         return parse_datetime(text)
     if kind is FieldKind.DURATION_MINUTES:
-        return _parse_duration_literal(text, calendar)
+        parsed = _parse_duration_literal(text, calendar)
+        return _MALFORMED if parsed is None else parsed
     if kind is FieldKind.BOOLEAN:
         return text.strip().lower() in {"1", "true", "yes"}
     if kind in (FieldKind.NUMERIC, FieldKind.CURRENCY, FieldKind.PERCENT):
@@ -180,11 +203,12 @@ def _coerce_literal(text: str | None, kind: FieldKind, calendar: Calendar) -> Fi
 
 def _resolve_operand(
     schedule: Schedule, task: Task, operand: Operand, lhs_kind: FieldKind, prompts: PromptValues
-) -> FieldValue:
+) -> FieldValue | _Malformed:
     """The right-hand value for a leaf, per its kind: a literal coerced to the LHS axis; a
     referenced
     field resolved on the same task and normalized by ITS OWN kind; a prompt answer (raw); or
-    ``None``."""
+    ``None``. A malformed duration literal propagates :data:`_MALFORMED` so the leaf fails
+    closed (ADR-0355)."""
     if operand.kind == "null":
         return None
     if operand.kind == "prompt":
@@ -271,9 +295,13 @@ def _eval_leaf(schedule: Schedule, task: Task, node: Criterion, prompts: PromptV
     if op in ("IS_WITHIN", "IS_NOT_WITHIN"):
         b0 = _resolve_operand(schedule, task, ops[0], lhs_kind, prompts) if len(ops) > 0 else None
         b1 = _resolve_operand(schedule, task, ops[1], lhs_kind, prompts) if len(ops) > 1 else None
+        if isinstance(b0, _Malformed) or isinstance(b1, _Malformed):
+            return False  # a corrupted literal must never broaden a population (ADR-0355)
         within = _within(lhs, b0, b1)
         return within if op == "IS_WITHIN" else not within
     rhs = _resolve_operand(schedule, task, ops[0], lhs_kind, prompts) if ops else None
+    if isinstance(rhs, _Malformed):
+        return False  # fail closed on EVERY operator — None would fail OPEN on < / != (C4)
     if op == "EQUALS":
         return _equals(lhs, rhs)
     if op == "DOES_NOT_EQUAL":
@@ -379,11 +407,14 @@ def coerce_prompt_answers(
 
     walk(filt.criteria)
     cal = calendar if calendar is not None else Calendar()
-    return {
+    coerced = {
         label: _coerce_literal(text, kinds.get(label, FieldKind.UNRESOLVED), cal)
         for label, text in answers.items()
         if text != ""
     }
+    # a malformed typed answer behaves as UNANSWERED (the pre-existing posture for an absent
+    # prompt) — the sentinel never leaks into PromptValues (ADR-0355)
+    return {k: v for k, v in coerced.items() if not isinstance(v, _Malformed)}
 
 
 def filter_reads_duration_literals(filt: SavedFilter) -> bool:
@@ -405,7 +436,7 @@ def filter_reads_duration_literals(filt: SavedFilter) -> bool:
 
 
 def selection_migration_delta(
-    schedule: Schedule, filt: SavedFilter, prompts: PromptValues | None = None
+    schedule: Schedule, filt: SavedFilter, prompt_answers: dict[str, str] | None = None
 ) -> tuple[tuple[int, ...], tuple[int, ...]] | None:
     """``(v1_selection, v2_selection)`` for a filter whose population can move under ADR-0354.
 
@@ -414,13 +445,17 @@ def selection_migration_delta(
     discarded) beside the live v2 (MPXJ-conformant) selection, so the operator sees exactly
     which population moved and by how much. ``None`` when the filter carries no duration
     literal/prompt (its selection is version-invariant, and the report would be noise).
-    ``prompts`` must be the v2-coerced values; the v1 leg re-parses only LITERALS (a prompt
-    answer's coercion difference is folded into the v2 leg the operator is already shown)."""
+    ``prompt_answers`` are the operator's RAW typed strings — each leg coerces them under its
+    OWN parser (the ContextVar covers prompt coercion and literal evaluation alike), so a
+    duration-typed answer like ``"3d"`` compares the historical 1,440-minute threshold with
+    the calendar-true one and prompt-only movement surfaces too (ADR-0355, Codex C2)."""
     if not filter_reads_duration_literals(filt):
         return None
+    raw = prompt_answers or {}
     token = _USE_V1_LITERALS.set(True)
     try:
-        v1 = select(schedule, filt, prompts)
+        v1_prompts = coerce_prompt_answers(filt, raw, schedule.calendar)
+        v1 = select(schedule, filt, v1_prompts)
     finally:
         _USE_V1_LITERALS.reset(token)
-    return v1, select(schedule, filt, prompts)
+    return v1, select(schedule, filt, coerce_prompt_answers(filt, raw, schedule.calendar))

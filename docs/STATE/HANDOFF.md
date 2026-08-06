@@ -1,59 +1,60 @@
-# Handoff — 2026-08-06 (V3 closed: duration literals conform to the vendored MPXJ; ADR-0354; v1.0.169)
+# Handoff — 2026-08-06 (SSI delta root-caused ADR-0356; the 1440 boundary blessed by the operator's oracle ADR-0357; v1.0.171)
 
-> ## STATUS (current) — **branch pushed, draft PR open.** ADR-0354, **v1.0.169**.
-> Second ADR-0240 Fable 5 Max item done the same day as the first: **V3 / external H4 is
-> closed**. `msp_filters` duration literals now implement the vendored mpxj-16.2.0
-> `Duration.convertUnits` **read from its own bytecode via javap** — elapsed units are
-> wall-clock (ed 1440 · ew 10080 · emo 43200 · **ey 524160 = 364 d, 52x7**), ordinary units
-> scale on the schedule's OWN properties (**week = MinutesPerWeek, year = MinutesPerWeek x 52**
-> — two conformance defects BEYOND the audit's elapsed headline, invisible to it), `%`/`e%`
-> pass through (MPXJ's switch default, mirrored), unknown units **fail closed** (the sidecar
-> vocabulary is closed: criteria literals are `Duration.toString()`). `Calendar` gains
-> `minutes_per_week`/`days_per_month` (MSPDI-read, Save-round-tripped; absent → MPXJ's 2400/20).
-> **The gate the audit required is now defined**: `EVALUATOR_VERSION = 2`, v1's parser kept
-> verbatim report-only behind a ContextVar, `selection_migration_delta` → the `/groups`
-> Active-scope panel shows "now selects N (was M)" whenever a duration-literal filter's
-> population moved. Prompt answers store RAW and coerce per schedule at `scope()` (a "3d"
-> answer is 1,800 min on a 10-hour file). Wheel + nine installers at **v1.0.169**.
+> ## STATUS (current) — **pushed to the open PR #546 branch.** ADR-0356, **v1.0.171**.
+> The operator reported a significant SSI-vs-tool delta on a NEW `Large_Test_File2.mpp`
+> (md5 differs from the committed intake) + their saved setup + SSI's workbook. Full
+> ADR-0240 rigor, measured end to end: **the engine is exonerated** — on file-true inputs it
+> lands σ within 2.5% (157.3 vs 153.4), P50 within 8 d of SSI's occurrence-weighted
+> histogram (NEVER the workbook's unweighted Mean/StdDev cells — 95 d off their own weighted
+> mean here). **Root cause: the session replayed a setup captured against an earlier vintage**
+> (605/783 factors stale, 939 file-factor tasks absent, 400/435 BC/WC stale; the fired-risk
+> lobe ran σ≈110 vs SSI's 41.9 purely from stale factor-5 ranges). R2 in the register template
+> was in NEITHER run (R1+R2 overshoots the oracle; the register import route handles the
+> operator's workbook perfectly — verified by running it).
+> **The product defect:** the app could not read the schedule's OWN stored SRA fields at all —
+> a stale setup was the only way to fill the grid, silently. Fixed twice over (ADR-0356):
+> `POST /sra/load-from-schedule` seeds factors+BC/WC VERBATIM from the file's fields, and
+> setup_version 4 stamps a vintage fingerprint with a CHECK-INPUTS warning (with counts) on
+> every mismatched load. Sandbox effectiveness test on the REAL artifacts: the fixed path
+> reproduces the exoneration figures exactly (det_pct 0.1280, mean +330.1, σ 157.3).
 >
-> ## MEASURED
-> The audit's executed example inverted into a pin: `Duration > 2.0ed` on the 8-task 1..8-day
-> population → **(7, 8)**, was (3..8); unknown unit → **()**, was 6 matches. **No committed
-> artifact moves** — the corpus carries no views sidecar, and the ten pinned real filters use
-> duration fields only field-to-field (version-invariant). Movement is disclosed, not silent,
-> wherever a real duration-literal filter exists.
+> ## THE SELF-AGREEING ORACLE — fourth discriminator catch in ONE day
+> The fingerprint pin re-called the SAME helper as its oracle, so the constant-hash mutation
+> passed ("" == ""). Re-pinned on independent properties (64-hex + vintage sensitivity).
+> Day's tally: identity fixtures (0353) · identity calendar (0354) · identity population
+> (0355) · self-referential oracle (0356). **Run the mutation BEFORE trusting any pin.**
 >
-> ## VERIFICATION SHAPE
-> Five mutations, each failing exactly its guard, each original-anchor-absent-checked, each
-> restored from scratchpad copies: elapsed-day→480 · year→mpw x 48 · ContextVar reset dropped ·
-> importer stamp dropped · per-schedule calendar→default. **The fifth fired only after its test
-> gained a 1,500-minute discriminator task** — the first draft passed under the mutation
-> (identity-case trap, twice in one day: ADR-0353's suite-wide version, then this single-test
-> version). The writer-coverage introspection guard caught the Save-writer half of the
-> round-trip on its own. Engine+importer+web 1,264 passed · parity 49 · full gate green.
+> ## Carried findings from the dive (recorded, not chased)
+> P80/P90 residual ~20 cal d on this file family ← the importer skips its six RECURRING
+> calendar-exception patterns (single-block model, logged at import) — its own unit + oracle.
+> The uploaded artifacts are NOT committed (operator's call; they'd make a strong second
+> parity oracle — the current one is `ssi_uid152`). The workbook Mean/StdDev-cell trap held
+> again. bandit B608 false-positives on HTML f-strings when text contains "from" — the house
+> `# nosec B608 (HTML, not SQL)` on the closing line is the pattern.
+>
+> ## THE 1440 BOUNDARY IS CLOSED — ADR-0357 (all three ADR-0240 reserved items now done)
+> The operator's `24Hour_Calendar.mpp` settled it: MS Project stores the RAW instant
+> (T01:00/T02:00 finishes, instant-contiguous handoffs), ZERO midnight-spelled stored dates,
+> and MSPDI cannot represent "24:00" — next-day 00:00 is the ONLY spelling of a day-boundary
+> instant. Current rendering is MSP's own convention; the intuitive 23:59 "repair" would have
+> CREATED the parity break. Pinned by `tests/engine/test_1440_boundary.py` (mutation-proven
+> against exactly that repair). No code changed. Oracle file NOT committed (operator's call).
 >
 > ## Next
-> Last Fable 5 Max reserved item (ADR-0240): **the `tod + per_day == 1440` boundary residual**
-> (ADR-0348; decision-shaped, no oracle in the corpus — bring the operator a concrete proposal
-> for what "end of Friday" reads as on a 24-hour calendar; recon done: `offset_to_datetime`'s
-> `remainder == 0` branch at cpm.py:326 x ADR-0312's midnight normalisation manufactures the
-> input). Then the standing queue: twelve page families (`integrity` 402 first, each adding to
-> `LAYER_ORDER` + `VIEW_MODULES` + the monkeypatch sweep over ALL bound names + the
-> renderability pre-flight) · a driving-corridor fixture · the three `page-lede`-less pages ·
-> `/groups` "Activities" counting summary rows (ADR-0343) · nine installers vs
-> `-c constraints/known-good.txt` · Phase 6 docs. **Operator only:** license ·
-> branch-protection contexts · intake re-upload · proprietary-tool reruns · OR-04.
+> Twelve page
+> families (`integrity` 402 first, ADR-0350/0351/0352 rules) · driving-corridor fixture ·
+> three `page-lede`-less pages · `/groups` Activities counting summary rows (ADR-0343) ·
+> installers vs known-good constraints · Phase 6 docs. **Operator:** license ·
+> branch-protection · intake re-upload (+ optionally THIS file family as a second oracle) ·
+> proprietary reruns · OR-04 · the 24h `.mpp` · whether R2 should be in both runs.
 >
 > ## Carried forward
-> SRA-LEGACY (ADR-0353) and V3 (ADR-0354) are CLOSED — do not re-open; EVM2's det date
-> displaying stored 2012-10-04 is the anchoring absorbing ADR-0108's 2-wd residual into the
-> display (deliberate). `%`/`e%` pass-through and the 364-day elapsed year are MPXJ's OWN
-> bytecode behaviour — mirrored deliberately, do NOT "fix" toward intuition. XER still has no
-> `resume` read and no saved-filter sidecar. The `/analysis` focus→tip family is load-sensitive
-> — do NOT chase. `pydantic>=2` is NOT a safe floor (2.6 is); `fastapi>=0.110` is an AIR-GAP
-> VIOLATION (0.110.2 floor). Run `ruff check .` — the WHOLE tree — as `python -m ruff`. Never
-> `git checkout <file>` to undo a mutation — `cp` from a scratchpad copy. `grep -c` exits 1 on
-> zero count — chain mutation-absence checks with `;`, never `&&`.
+> ADR-0353/0354/0355/0356 closed — do not re-open. `%`/`e%` pass-through, 364-day elapsed
+> year, 480 absent-property default = MPXJ's OWN behaviour. DATE literals still share C4's
+> None shape (recorded in ADR-0355). EVALUATOR_VERSION stays 2. The `/analysis` focus→tip
+> family is load-sensitive — do NOT chase. `pydantic>=2` NOT a safe floor (2.6); `fastapi>=
+> 0.110` an AIR-GAP VIOLATION (0.110.2). `ruff check .` whole tree as `python -m ruff`. Never
+> `git checkout` to undo a mutation — `cp` from scratchpad. `grep -c` exits 1 on zero.
 
 # (prior) handoffs — archived
 
