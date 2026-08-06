@@ -435,6 +435,20 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-06 (cont.3) — A parity delta is a claim about INPUTS before it is a claim about engines
+- **ADR-0356.** "Same data in both tools" was the premise and the defect: the tool's session
+  held a setup captured against an earlier schedule vintage (605/783 factors stale), while SSI
+  read the file. The engine reproduced SSI to σ 2.5% the moment inputs were file-true. Lesson:
+  before decomposing algorithms, DIFF THE INPUTS — cheapest experiment, biggest prior.
+- **The product owns input provenance.** The app had no way to read the schedule's own stored
+  SRA fields (only the parity TEST did), so stale replay was inevitable and silent. A tool used
+  in testimony must either read the file's inputs itself or loudly say whose inputs it ran.
+- **The self-agreeing oracle:** a pin that re-calls the function under test agrees with any
+  mutation of it. Pin independent properties (shape + sensitivity), never round-trips through
+  the same code. Fourth discriminator-class catch in one day — promoted candidate for Part V.
+- **The unweighted-summary-cell trap held again** (Mean Date 95 d off the weighted mean).
+  July's rule survives contact: parity targets come from the occurrence-weighted histogram.
+
 ### 2026-08-06 (cont.2) — A fail-closed claim is only as true as the operators you tested
 - **C4 (ADR-0355).** ADR-0354 claimed unknown duration units "fail closed" and pinned it —
   with a GREATER_THAN filter, the one direction where a None RHS happens to not match. The

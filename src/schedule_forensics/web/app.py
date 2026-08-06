@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import contextlib
 import datetime as dt
+import hashlib
 import json
 import logging
 import math
@@ -264,6 +265,7 @@ from schedule_forensics.importers import (
     supported_extensions,
     to_json_text,
 )
+from schedule_forensics.importers._common import iso_duration_to_minutes
 from schedule_forensics.importers.mpp_mpxj import mpp_capability, mpxj_batch_session
 from schedule_forensics.logging_redaction import configure_logging
 from schedule_forensics.model.saved_view import SavedFilter, SavedGroup
@@ -5394,6 +5396,35 @@ def create_app(
                 st.sra_factors[int(tok)] = f
         return RedirectResponse(url="/sra", status_code=303)
 
+    @app.post("/sra/load-from-schedule")
+    def sra_load_from_schedule() -> RedirectResponse:
+        """Seed the SSI grid from the SCHEDULE'S OWN stored SRA fields (ADR-0356) — the values
+        SSI itself reads. Replaces the session's factors + Best/Worst pairs wholesale, so the
+        run analyzes what the file says instead of whatever a stale setup replayed."""
+        st = session()
+        chosen = _sra_selected(st)
+        if chosen is None:
+            st.sra_import_msg = "Load a schedule before loading its stored SRA inputs."
+            st.sra_import_is_error = True
+            return RedirectResponse(url="/sra", status_code=303)
+        _key, sch, _cpm = chosen
+        factors, bcwc = _file_stored_sra_inputs(sch)
+        if not factors and not bcwc:
+            st.sra_import_msg = (
+                "This schedule carries no stored SRA fields ('SRA Risk Ranking Factors' / "
+                "Best/Worst Case Duration) — nothing to load."
+            )
+            st.sra_import_is_error = True
+        else:
+            st.sra_factors = factors
+            st.sra_bcwc = bcwc
+            st.sra_import_msg = (
+                f"Loaded the schedule's own stored SRA inputs: {len(factors)} Risk Ranking "
+                f"Factor(s) and {len(bcwc)} Best/Worst Case pair(s) (incomplete activities)."
+            )
+            st.sra_import_is_error = False
+        return RedirectResponse(url="/sra", status_code=303)
+
     @app.post("/sra/auto-calc")
     def ssi_auto_calc(scope: str = Form("all"), uids: str = Form("")) -> RedirectResponse:
         st = session()
@@ -5764,7 +5795,19 @@ def create_app(
             return RedirectResponse(url="/sra", status_code=303)
         if isinstance(payload, dict):
             _apply_ssi_setup(st, payload)
-            st.sra_import_msg = "SSI setup loaded."
+            # ADR-0356: a setup replayed onto a changed schedule must announce itself — the
+            # root-caused SSI delta was exactly this, silent (605 of 783 factors stale).
+            chosen = _sra_selected(st)
+            warning = (
+                _setup_vintage_warning(st, chosen[1], payload.get("schedule_fingerprint"))
+                if chosen is not None
+                else None
+            )
+            if warning:
+                st.sra_import_msg = f"SSI setup loaded — CHECK INPUTS: {warning}"
+                st.sra_import_is_error = True
+            else:
+                st.sra_import_msg = "SSI setup loaded."
         else:
             st.sra_import_msg = (
                 "SSI setup not loaded — that JSON is not an SSI setup object. "
@@ -12927,6 +12970,105 @@ locks {lock} and is used as-entered for that model). A negative value is an oppo
 <script src="/static/sra_risk.js"></script>"""
 
 
+#: The custom-field labels MS Project files in the SSI ecosystem store their SRA inputs under
+#: (verified on both committed reference families). Read VERBATIM — the same values SSI reads.
+_SRA_FACTOR_FIELD = "SRA Risk Ranking Factors"
+_SRA_BC_FIELD = "Best Case Duration"
+_SRA_WC_FIELD = "Worst Case Duration"
+
+
+def _file_stored_sra_inputs(sch: Schedule) -> tuple[dict[int, int], dict[int, tuple[int, int]]]:
+    """The schedule's OWN stored SSI inputs, read verbatim (ADR-0356; Law 2: these are the very
+    values SSI itself reads, so no derivation happens here).
+
+    Factors come from the ``SRA Risk Ranking Factors`` custom field (1..5; 0/blank = none);
+    Best/Worst pairs from ``Best Case Duration`` / ``Worst Case Duration`` when BOTH are
+    present. Incomplete leaves only — a completed activity's duration is a recorded fact, not
+    a forecast (ADR-0307). The root-caused SSI delta (ADR-0356) happened because the session
+    could not read these fields at all: a stale setup was the only way to populate the grid,
+    and it replayed a different vintage's factors onto an edited file, silently."""
+    factors: dict[int, int] = {}
+    bcwc: dict[int, tuple[int, int]] = {}
+    for t in non_summary(sch):
+        if _is_completed(t):
+            continue
+        fields = dict(t.custom_fields)
+        raw_f = fields.get(_SRA_FACTOR_FIELD)
+        if raw_f not in (None, ""):
+            try:
+                f = int(float(str(raw_f)))
+            except (TypeError, ValueError):
+                f = 0
+            if 1 <= f <= 5:
+                factors[t.unique_id] = f
+        b = fields.get(_SRA_BC_FIELD)
+        w = fields.get(_SRA_WC_FIELD)
+        bm = iso_duration_to_minutes(b) if b else None
+        wm = iso_duration_to_minutes(w) if w else None
+        if bm is not None and wm is not None:
+            bcwc[t.unique_id] = (bm, wm)
+    return factors, bcwc
+
+
+def _schedule_sra_fingerprint(sch: Schedule) -> dict[str, object]:
+    """A compact identity of the schedule's SRA-input vintage, stamped into saved setups
+    (ADR-0356). The hash covers the FILE's stored factors + Best/Worst pairs, so two versions
+    of one schedule whose SRA fields changed get different fingerprints even at equal task
+    counts."""
+    factors, bcwc = _file_stored_sra_inputs(sch)
+    canon = ";".join(
+        f"{u}:{factors.get(u, 0)}:{bcwc.get(u, (0, 0))[0]}:{bcwc.get(u, (0, 0))[1]}"
+        for u in sorted(set(factors) | set(bcwc))
+    )
+    return {
+        "source_file": sch.source_file,
+        "schedule_name": sch.name,
+        "tasks": len(sch.tasks),
+        "status_date": sch.status_date.isoformat() if sch.status_date else None,
+        "stored_sra_hash": hashlib.sha256(canon.encode("utf-8")).hexdigest(),
+        "stored_factor_count": len(factors),
+        "stored_bcwc_count": len(bcwc),
+    }
+
+
+def _setup_vintage_warning(st: SessionState, sch: Schedule, fingerprint: object) -> str | None:
+    """The ADR-0356 mismatch warning: how the JUST-LOADED setup disagrees with the ACTIVE
+    schedule's own stored SRA fields, with counts — or ``None`` when nothing disagrees.
+
+    Runs against the live comparison regardless of whether the setup carries a fingerprint
+    (a v3 setup has none but can still be stale); the fingerprint, when present and different,
+    adds where the setup came from. The run will still use the SETUP's values — the warning
+    exists so the operator chooses that knowingly instead of silently."""
+    f_file, b_file = _file_stored_sra_inputs(sch)
+    f_dis = sum(1 for u, f in st.sra_factors.items() if u in f_file and f_file[u] != f)
+    f_missing = sum(1 for u in f_file if u not in st.sra_factors)
+    b_dis = sum(1 for u, p in st.sra_bcwc.items() if u in b_file and b_file[u] != p)
+    if not (f_dis or f_missing or b_dis):
+        return None
+    parts: list[str] = []
+    if isinstance(fingerprint, dict):
+        fp_now = _schedule_sra_fingerprint(sch)
+        if fingerprint.get("stored_sra_hash") not in (None, fp_now["stored_sra_hash"]):
+            src = (
+                fingerprint.get("source_file") or fingerprint.get("schedule_name") or "another file"
+            )
+            parts.append(
+                f"This setup was captured against a different vintage of the schedule ({src})."
+            )
+    detail: list[str] = []
+    if f_dis:
+        detail.append(f"{f_dis} factor(s) disagree with the file's stored Risk Ranking Factors")
+    if f_missing:
+        detail.append(f"{f_missing} file factor task(s) are absent from the setup")
+    if b_dis:
+        detail.append(f"{b_dis} Best/Worst pair(s) differ from the file's stored durations")
+    parts.append(
+        "Loaded values vs this schedule's own stored SRA fields: " + "; ".join(detail) + ". "
+        "The run will use the LOADED values — use 'Load from schedule' to run the file's own."
+    )
+    return " ".join(parts)
+
+
 def _ssi_three_point(st: SessionState, sch: Schedule) -> dict[int, tuple[int, int, int]]:
     """Per-task ``(BestCase, MostLikely=remaining, WorstCase)`` minutes for the SSI run — a manual /
     auto Best-Worst override when present, else derived from the task's Risk Ranking Factor. Tasks
@@ -13690,7 +13832,10 @@ _SSI_SETUP_VERSION = (
     # 3: ADR-0307 corrected the Best Case (a % OF the ML, not a % to subtract), so every
     #    factor-derived Best/Worst stored by a version <= 2 setup carries the OLD inverted value.
     #    Loading one must NOT keep running the formula ADR-0307 fixed — see _apply_ssi_setup.
-    3
+    # 4: ADR-0356 — the setup carries a schedule_fingerprint (the SRA-input vintage it was
+    #    captured against), so loading it onto a changed schedule can say WHERE it came from.
+    #    The stale-vs-file comparison itself runs on every load, fingerprint or not.
+    4
 )
 
 
@@ -13698,8 +13843,11 @@ def _ssi_setup_dict(st: SessionState) -> dict[str, object]:
     """The WHOLE SRA setup as a plain, versioned, JSON-serialisable dict (Save/Load + Excel) — both
     models: the SSI factor/BC-WC/risk inputs AND the legacy global triangular + per-activity
     overrides, so a load restores every model's inputs verbatim."""
+    chosen = _sra_selected(st)
     return {
         "setup_version": _SSI_SETUP_VERSION,
+        # ADR-0356: the SRA-input vintage this setup was captured against (None with no schedule)
+        "schedule_fingerprint": None if chosen is None else _schedule_sra_fingerprint(chosen[1]),
         "focus_uid": st.sra_focus_uid,
         "occurrence_mode": st.sra_occurrence_mode,
         "use_risk_register": st.sra_use_risk_register,
@@ -14978,6 +15126,8 @@ onto the first cell to fill the column down across every task in one go. Edits q
 <div id=ssiOatOut></div>
 <h3>Save / load setup &amp; export</h3>
 <div class=viz-controls>
+<form action="/sra/load-from-schedule" method=post style="display:inline">
+<button type=submit title="Seed the grid from the schedule's OWN stored fields ('SRA Risk Ranking Factors' + Best/Worst Case Duration) — the same values SSI reads. Replaces the current factors and Best/Worst pairs.">Load from schedule</button></form>
 <a class=btn href="/sra/ssi/save" download>Save setup (JSON)</a>
 <form action="/sra/ssi/load" method=post enctype="multipart/form-data" style="display:inline">
 <label>Load setup <input type=file name=setup accept="application/json,.json"></label>
@@ -15005,7 +15155,7 @@ skipped &mdash; nothing is fabricated, and you get a summary of exactly what lan
 <button type=submit>Import</button></form></div>
 <script id=sfFieldHelp type="application/json">{field_help_json}</script>
 <script src="/static/gantt.js"></script><script src="/static/sra_ssi.js"></script>
-<script src="/static/sra_grid.js"></script></div>"""
+<script src="/static/sra_grid.js"></script></div>"""  # nosec B608 (HTML, not SQL)
 
 
 def _correlation_matrix_panel(
