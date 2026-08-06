@@ -11930,3 +11930,15 @@ closure · `LAYER_ORDER`/`VIEW_MODULES` · bound-name monkeypatch sweep · span-
 coverage probe) · a fixture that fires both a driving corridor and /evolution's counterfactual ·
 the three pages with no `page-lede` · `/groups` Activities (ADR-0343) · the nine installers vs
 `-c constraints/known-good.txt`.
+
+### 2026-08-05 (close) — all three phase-3 slices merged (docs only)
+
+#542 merged as `db6a48a`, completing the session's three slices: #540 (`0674dd9`, ADR-0350 shared
+kernel) · #541 (`d0ca992`, ADR-0351 driving) · #542 (`db6a48a`, ADR-0352 evolution). `web/app.py`
+**20,192 → 18,128** (−2,064) across the three, with `components.py` 327 / `driving.py` 842 /
+`evolution.py` 1,075 extracted verbatim beside the existing `chrome.py` 1,294 / `state.py` 1,479.
+
+The `HANDOFF.md` STATUS line is corrected to MERGED **in the same session that produced it** rather
+than by the next one. That drift — a STATUS still reading "draft PR open" for a merged PR, injected
+into every subsequent session by the SessionStart hook — was item 0 of this session's own kickoff,
+inherited from the two sessions before it. Closing it here breaks the chain.
