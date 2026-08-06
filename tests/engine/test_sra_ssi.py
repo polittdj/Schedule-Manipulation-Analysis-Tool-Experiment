@@ -1,10 +1,12 @@
 """SSI Schedule Risk & Opportunity Analysis engine (ADR-0123) — the parity-anchored SSI path.
 
 Pins the DETERMINISTIC facts validated against the operator's SSI exports: the BC/WC formula
-(ML = remaining), the all-ML == ``compute_cpm`` equivalence, focus-event targeting, the additive
-risk model (a risk-bearing task carries no Best/Worst uncertainty), the occurrence modes, the
-deterministic OAT sensitivity, and the optional correlation. The stochastic distribution is NOT
-claimed bit-exact vs SSI's RNG (std-lib Mersenne Twister  !=  SSI's generator — ADR-0005/0106)."""
+(ML = remaining), the all-ML == ``compute_cpm`` equivalence, focus-event targeting, the
+duration-REPLACING risk model (ADR-0359 — a fired risk's impact replaces the affected
+activity's duration, and the activity samples its own Best/Worst when the risk does not fire),
+the occurrence modes, the deterministic OAT sensitivity, and the optional correlation. The
+stochastic distribution is NOT claimed bit-exact vs SSI's RNG (std-lib Mersenne Twister !=
+SSI's generator — ADR-0005/0106)."""
 
 from __future__ import annotations
 
@@ -205,30 +207,60 @@ def test_target_uid_none_reports_project_finish() -> None:
     assert r.deterministic_finish == cpm.project_finish == 12 * DAY
 
 
-# --- additive risk + risk-excludes-Best/Worst ----------------------------------------
+# --- risk replaces the affected duration (ADR-0359) ----------------------------------
 
 
-def test_additive_risk_adds_working_days_to_the_affected_task() -> None:
-    """A risk firing every iteration adds exactly impact_days x 480 minutes to its task."""
+def test_a_fired_risk_replaces_the_affected_tasks_duration_with_its_impact() -> None:
+    """SSI semantics (ADR-0359, measured on SSI's own 2026-08-06 Sensitivity export): a fired
+    risk's impact REPLACES the affected activity's duration — it does not stack on the ML. The
+    committed R/O rows pin it: a 321-wd impact on a 16.52-wd-ML task slips the focus 304.48 wd
+    (= impact - ML), not 321.
+
+    The discriminator here is deliberately an impact SMALLER than the ML: under replacement the
+    focus finish lands EARLIER than the deterministic 12 d (1+5+1 = 7 d), which the old
+    ``ML + impact`` arithmetic (1+15+1 = 17 d) can never produce."""
     s = _focus_net()
     risk = ScheduleRisk(id="R", name="r", probability=1.0, impact_days=5.0, affected=(2,))
     r = compute_sra_ssi(s, config=SRAConfig(iterations=20, target_uid=4), risks=[risk])
-    # task 2 ML 10d + 5d impact → focus 4 finishes at 1+15+1 = 17 days, every iteration
-    assert r.p10 == r.p50 == r.p90 == 17 * DAY
+    assert r.p10 == r.p50 == r.p90 == 7 * DAY
     assert r.risks[0].hits == 20
 
 
-def test_a_risk_bearing_task_carries_no_best_worst_uncertainty() -> None:
-    """SSI: a task with a risk does NOT also apply its Best/Worst duration uncertainty — the risk
-    drives it. So even with a wide factor on task 2, a sure risk pins the finish (no spread)."""
+def test_two_fired_risks_on_one_task_replace_with_their_summed_impacts() -> None:
+    """Two risks firing on the same activity in one iteration replace its duration with the SUM
+    of their impacts (5+3 = 8 d → focus 1+8+1 = 10 d) — not the last one to fire, and never
+    stacked on the ML (which would give 1+18+1 = 20 d)."""
+    s = _focus_net()
+    risks = [
+        ScheduleRisk(id="R1", name="a", probability=1.0, impact_days=5.0, affected=(2,)),
+        ScheduleRisk(id="R2", name="b", probability=1.0, impact_days=3.0, affected=(2,)),
+    ]
+    r = compute_sra_ssi(s, config=SRAConfig(iterations=10, target_uid=4), risks=risks)
+    assert r.p10 == r.p50 == r.p90 == 10 * DAY
+
+
+def test_a_risk_bearing_task_samples_its_best_worst_when_the_risk_does_not_fire() -> None:
+    """SSI lists the R/O tasks in its OWN Sensitivity export as duration rows too (ADR-0359):
+    a risk-affected activity keeps its Best/Worst sampling in the iterations the risk does NOT
+    fire; a fired risk then replaces the draw outright.
+
+    Two halves, each a discriminator: a sure-fire risk pins the finish (the replacement wins
+    every iteration, wide factor notwithstanding), while a never-fire risk leaves the factor's
+    spread fully alive — the old point-mass forcing produced zero spread there."""
     s = _focus_net()
     tbl = RiskFactorTable()
     tp = {2: factor_to_bc_wc(10 * DAY, 5, tbl)}  # a wide Best/Worst on the driver
-    risk = ScheduleRisk(id="R", name="r", probability=1.0, impact_days=5.0, affected=(2,))
+    sure = ScheduleRisk(id="R", name="r", probability=1.0, impact_days=5.0, affected=(2,))
     r = compute_sra_ssi(
-        s, config=SRAConfig(iterations=50, target_uid=4), three_point=tp, risks=[risk]
+        s, config=SRAConfig(iterations=50, target_uid=4), three_point=tp, risks=[sure]
     )
-    assert r.p10 == r.p90 == 17 * DAY  # no Best/Worst variance — the risk replaced it
+    assert r.p10 == r.p90 == 7 * DAY  # replaced every iteration — no Best/Worst variance
+    never = ScheduleRisk(id="R", name="r", probability=0.0, impact_days=5.0, affected=(2,))
+    r2 = compute_sra_ssi(
+        s, config=SRAConfig(iterations=50, target_uid=4), three_point=tp, risks=[never]
+    )
+    assert r2.std_days > 0.0, "not-fired iterations must sample the activity's Best/Worst"
+    assert r2.risks[0].hits == 0
 
 
 def test_use_risk_register_false_drops_the_risk() -> None:
@@ -287,6 +319,26 @@ def test_oat_excludes_listed_uids() -> None:
     tp = {2: factor_to_bc_wc(10 * DAY, 3, RiskFactorTable())}
     oat = compute_oat_sensitivity(s, three_point=tp, target_uid=4, exclude_uids=frozenset({2}))
     assert all(o.unique_id != 2 for o in oat)
+
+
+def test_oat_emits_a_fired_alone_risk_row_with_replace_semantics() -> None:
+    """The register contributes R/O rows to the OAT tornado (ADR-0359), exactly as SSI's
+    Sensitivity export ranks them: the risk fired ALONE, its impact REPLACING the affected
+    activity's remaining duration. Impact 20 d on the 10-d driver → focus 1+20+1 = 22 d,
+    a 10-wd slip over the 12-d baseline (the old additive arithmetic would say 20)."""
+    s = _focus_net()
+    tp = {2: factor_to_bc_wc(10 * DAY, 3, RiskFactorTable())}
+    risk = ScheduleRisk(id="R9", name="storm", probability=0.4, impact_days=20.0, affected=(2,))
+    oat = compute_oat_sensitivity(s, three_point=tp, target_uid=4, risks=[risk])
+    ro = [o for o in oat if o.risk_id is not None]
+    assert len(ro) == 1
+    row = ro[0]
+    assert row.risk_id == "R9" and row.risk_name == "storm" and row.unique_id == 2
+    assert row.opportunity_days == 0.0 and row.risk_days == 10.0 and row.total_days == 10.0
+    # the affected activity ALSO keeps its own duration row — SSI lists both
+    assert any(o.unique_id == 2 and o.risk_id is None for o in oat)
+    # rows stay one ranked list: the 10-wd R/O row sorts with (here, level with) the driver's own
+    assert [o.total_days for o in oat] == sorted((o.total_days for o in oat), reverse=True)
 
 
 # --- correlation ---------------------------------------------------------------------

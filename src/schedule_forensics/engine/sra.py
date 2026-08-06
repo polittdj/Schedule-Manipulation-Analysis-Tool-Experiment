@@ -690,15 +690,17 @@ class RiskFactorTable:
 
 @dataclass(frozen=True)
 class ScheduleRisk:
-    """An SSI risk-register entry — a discrete risk/opportunity with an **additive** schedule
-    impact in working days on its affected task(s).
+    """An SSI risk-register entry — a discrete risk/opportunity whose schedule impact, while it
+    fires, REPLACES the affected task(s)' remaining duration (ADR-0359).
 
-    When it fires (per :class:`SRAConfig.occurrence_mode`) ``impact_days`` working days are added to
-    each affected activity's sampled duration (SSI: a positive impact is a risk/delay, a negative
-    one an opportunity/acceleration). A risk-bearing task carries **no** Best/Worst duration
-    uncertainty in the run — the risk drives it instead (the SSI behaviour the operator confirmed).
-    ``consequence_rating`` (1..5) is the operator's severity for the 5x5 matrix; ``None`` derives it
-    from the ``|impact_days|`` band."""
+    When it fires (per :class:`SRAConfig.occurrence_mode`) each affected activity's sampled
+    duration is replaced by ``impact_days`` working days — measured against SSI's own 2026-08-06
+    Sensitivity export, whose fired-alone slips fall short of the impact by exactly the affected
+    activity's ML. In the iterations it does NOT fire the activity samples its own Best/Worst
+    like any other (SSI lists the R/O tasks as duration-sensitivity rows too). Several risks
+    firing on one activity replace with their summed impacts. ``consequence_rating`` (1..5) is
+    the operator's severity for the 5x5 matrix; ``None`` derives it from the ``|impact_days|``
+    band."""
 
     id: str
     name: str
@@ -752,6 +754,11 @@ class OATSensitivity:
     opportunity_days: float
     risk_days: float
     total_days: float
+    #: set on an R/O row (ADR-0359): the register risk applied fired-alone to its affected
+    #: activity — SSI's Sensitivity export ranks these among the duration rows.
+    risk_id: str | None = None
+    risk_name: str | None = None
+    risk_probability: float | None = None
 
 
 @dataclass(frozen=True)
@@ -1556,10 +1563,14 @@ def compute_sra_ssi(
     ``three_point`` maps a ``unique_id`` to ``(BestCase, MostLikely, WorstCase)`` minutes for the
     activities that carry **duration uncertainty** (a Risk Ranking Factor or a manual Best/Worst);
     activities absent from it are a **point mass** at their ML (blank factor => no uncertainty). A
-    **risk-affected** activity is always a point mass - the risk impact drives it, not a Best/Worst
-    draw. Each iteration recomputes the finish through ``compute_cpm`` so the simulation
-    can't diverge from the gate-locked engine; with everything point-mass at ML the reported finish
-    equals ``compute_cpm``'s focus finish (the equivalence a test pins).
+    **risk-affected** activity samples its own three-point like any other in the iterations its
+    risk does NOT fire; when the risk fires, the impact **replaces** the activity's duration
+    outright (SSI semantics, measured against SSI's own 2026-08-06 Sensitivity export: the
+    fired-alone focus slip is ``impact``, not ``ML + impact`` — the two committed R/O rows pin the
+    difference to exactly the affected tasks' ML durations). Each iteration recomputes the finish
+    through ``compute_cpm`` so the simulation can't diverge from the gate-locked engine; with
+    everything point-mass at ML the reported finish equals ``compute_cpm``'s focus finish (the
+    equivalence a test pins).
 
     ``config.correlation`` > 0 applies a single-factor **Gaussian copula** across the sampled
     activities (one shared normal per iteration), countering the central-limit cancelling of
@@ -1604,22 +1615,25 @@ def compute_sra_ssi(
     active_risks = [
         r for r in risks if config.use_risk_register and any(u in uid_set for u in r.affected)
     ]
-    risk_uids = {u for r in active_risks for u in r.affected}
 
     # A COMPLETED activity carries no duration uncertainty: its duration is a recorded fact, not a
     # forecast (ADR-0307). SSI agrees — of the 634 100%-complete leaves in the reference
     # SRA Large Test File2.mpp, zero carry a stored Best/Worst Case, while all 919 incomplete
     # factor-bearing ones do. Without this guard a factor pasted down a whole column re-randomises
     # finished work (one 635-day completed activity alone shifted the focus mean +84.7 wd).
+    # A RISK-AFFECTED activity is NOT forced to a point mass (ADR-0359, superseding the ADR-0307
+    # reading): SSI's own Sensitivity export lists the two R/O tasks as duration-sensitivity rows
+    # with their stored Best/Worst, so in the iterations the risk does not fire the activity
+    # samples its three-point like any other; a fired risk then REPLACES the draw (below).
     done = {t.unique_id for t in tasks if _is_completed(t)}
     three: dict[int, tuple[int, int, int]] = {}
     for u in uids:
-        if u in risk_uids or u in done or u not in tp_in:
+        if u in done or u not in tp_in:
             three[u] = (
                 ml[u],
                 ml[u],
                 ml[u],
-            )  # point mass (risk-driven, completed, or no factor → no uncertainty)
+            )  # point mass (completed, or no factor → no uncertainty)
         else:
             bc, mlv, wc = tp_in[u]
             three[u] = (max(0, int(bc)), int(mlv), max(int(bc), int(wc)))
@@ -1661,6 +1675,7 @@ def compute_sra_ssi(
         overrides = _iteration_duration_overrides(
             rng, config, uids, three, prepared, plan=plan, iteration=i
         )
+        fired_impact: dict[int, int] = {}
         for ridx, risk in enumerate(active_risks):
             fired = occ[ridx][i]
             risk_occurred[ridx].append(fired)
@@ -1673,8 +1688,17 @@ def compute_sra_ssi(
                     # produced std 9.99 wd, P90 +20 wd). Disclosed via SSIRiskStat.applied.
                     if u in done:
                         continue
-                    if u in overrides:
-                        overrides[u] = max(0, overrides[u] + add)
+                    fired_impact[u] = fired_impact.get(u, 0) + add
+        # ADR-0359: a fired risk's impact REPLACES the affected activity's sampled duration — it
+        # does not stack on top of it. Measured against SSI's 2026-08-06 exports on the committed
+        # SRA Large Test File2.mpp: SSI's fired-alone focus slip is 304.48 wd for a 321-wd impact
+        # on a 16.52-wd-ML task (and 35.03 for 45 on a 9.97-wd ML) — short of the impact by
+        # EXACTLY the ML, so fired duration == impact. Under the old `ML + impact` the whole
+        # distribution ran +25-35 cal d long at P50-P90; with replacement it lands within 1-3 d.
+        # Several risks firing on one activity in one iteration replace with their summed impacts.
+        for u, impact in fired_impact.items():
+            if u in overrides:
+                overrides[u] = max(0, impact)
         for bidx, branch in enumerate(applied_branches):
             if branch_fired[bidx][i]:  # fire → the fragnet takes a sampled 3-point rework duration
                 dur = _sample_triangular(
@@ -1961,15 +1985,22 @@ def compute_oat_sensitivity(
     three_point: Mapping[int, tuple[int, int, int]],
     target_uid: int | None = None,
     exclude_uids: frozenset[int] = frozenset(),
+    risks: Sequence[ScheduleRisk] = (),
 ) -> tuple[OATSensitivity, ...]:
     """SSI's deterministic one-at-a-time sensitivity (NOT the Monte-Carlo Spearman tornado).
 
-    Baseline = the focus finish with every activity at its ML (= remaining). For each activity that
-    has a 3-point estimate (skipping ``exclude_uids`` — the risk-bearing tasks), re-solve the finish
-    with just that activity forced to Best then Worst, and report the opportunity/risk day swing.
-    Cost: 2*N ``compute_cpm`` solves — call it off the page-load path. Sorted by total desc."""
+    Baseline = the focus finish with every activity at its ML (= remaining). For each activity
+    that has a 3-point estimate (skipping ``exclude_uids``), re-solve the finish with just that
+    activity forced to Best then Worst, and report the opportunity/risk day swing. Each register
+    ``risk`` additionally contributes an **R/O row** (ADR-0359): the risk fired ALONE, its impact
+    REPLACING each affected activity's remaining duration (SSI semantics — the replacement, not a
+    stack, is what SSI's own Sensitivity export reproduces to two decimals), everything else at
+    ML. A risk-affected activity still gets its own duration row too — SSI lists both.
+    Cost: 2*N + R ``compute_cpm`` solves — call it off the page-load path. Sorted by total desc."""
     tasks = sorted(non_summary(schedule), key=lambda t: t.unique_id)
     ml = {t.unique_id: _ml_minutes(t) for t in tasks}
+    uid_set = {t.unique_id for t in tasks}
+    done = {t.unique_id for t in tasks if _is_completed(t)}
     baseline = _finish_of(compute_cpm(schedule, duration_overrides=ml), target_uid)
     mpd = schedule.calendar.working_minutes_per_day or _MIN_PER_DAY
     out: list[OATSensitivity] = []
@@ -1993,6 +2024,32 @@ def compute_oat_sensitivity(
                 opportunity_days=opp,
                 risk_days=risk,
                 total_days=round(opp + risk, 1),
+            )
+        )
+    for r in risks:
+        affected = [u for u in sorted(r.affected) if u in uid_set and u not in done]
+        if not affected:
+            continue
+        impact = round(r.impact_days * mpd)
+        fired = _finish_of(
+            compute_cpm(schedule, duration_overrides={**ml, **{u: impact for u in affected}}),
+            target_uid,
+        )
+        slip = round((fired - baseline) / mpd, 1)
+        out.append(
+            OATSensitivity(
+                unique_id=affected[0],
+                bc_minutes=ml[affected[0]],
+                wc_minutes=impact,
+                ml_minutes=ml[affected[0]],
+                event_finish_bc=baseline,
+                event_finish_wc=fired,
+                opportunity_days=0.0,
+                risk_days=slip,
+                total_days=slip,
+                risk_id=r.id,
+                risk_name=r.name,
+                risk_probability=r.probability,
             )
         )
     out.sort(key=lambda o: (-o.total_days, o.unique_id))

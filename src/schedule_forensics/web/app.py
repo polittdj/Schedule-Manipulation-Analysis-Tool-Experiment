@@ -5610,11 +5610,11 @@ def create_app(
         if chosen is None:
             return JSONResponse({"error": "No analyzable schedule loaded."}, status_code=400)
         _key, sch, _cpm = chosen
-        exclude = (
-            frozenset(u for r in st.sra_risks for u in r.affected)
-            if st.sra_use_risk_register
-            else frozenset()
-        )
+        # ADR-0359: risk-affected activities keep their own duration rows AND the register
+        # contributes fired-alone R/O rows — SSI's Sensitivity export lists both, so nothing
+        # is excluded any more.
+        exclude: frozenset[int] = frozenset()
+        oat_risks = _schedule_risks(st) if st.sra_use_risk_register else ()
         three_point = _ssi_three_point(st, sch)
         # ADR-0261 P5: the sweep is TWO CPM solves per candidate activity and was unbounded — a
         # huge schedule could pin the worker for hours. Above the cap, sweep only the candidates
@@ -5636,6 +5636,7 @@ def create_app(
                 three_point=three_point,
                 target_uid=st.sra_focus_uid,
                 exclude_uids=exclude,
+                risks=oat_risks,
             )
         except Exception as exc:
             return JSONResponse({"error": str(exc)}, status_code=422)
@@ -5645,7 +5646,14 @@ def create_app(
             "rows": [
                 {
                     "uid": o.unique_id,
-                    "name": names[o.unique_id].name if o.unique_id in names else "",
+                    # an R/O row (ADR-0359) is the register risk fired alone on its affected
+                    # activity — named for the risk, like SSI's own Sensitivity export
+                    "name": (
+                        f"R/O — {o.risk_name or o.risk_id}"
+                        if o.risk_id
+                        else (names[o.unique_id].name if o.unique_id in names else "")
+                    ),
+                    "risk_id": o.risk_id,
                     "bc_days": round(o.bc_minutes / mpd, 1),
                     "wc_days": round(o.wc_minutes / mpd, 1),
                     "ml_days": round(o.ml_minutes / mpd, 1),
@@ -5855,18 +5863,13 @@ def create_app(
             branches=_schedule_branches(st),
             conditionals=_schedule_conditionals(st),
         )
-        exclude = (
-            frozenset(u for r in st.sra_risks for u in r.affected)
-            if st.sra_use_risk_register
-            else frozenset()
-        )
         oat = run_maybe_offloaded(
             heavy,
             compute_oat_sensitivity,
             sch,
             three_point=tp,
             target_uid=st.sra_focus_uid,
-            exclude_uids=exclude,
+            risks=_schedule_risks(st) if st.sra_use_risk_register else (),
         )
         if fmt == "docx":
             # the comprehensive narrative SRA report (PM summary -> per-section detail + vector
@@ -12424,7 +12427,8 @@ def _branch_section(st: SessionState) -> str:
     return f"""<details class=explainer><summary><b>Probabilistic branches</b> &mdash; discrete rework that fires in p% of iterations (the bi-modal risk view, Hulett)</summary>
 <p class=muted>A <b>probabilistic branch</b> models a discrete failure/rework that, when it fires,
 inserts an extra activity onto an existing Finish&ndash;to&ndash;Start tie &mdash; delaying everything
-downstream by its sampled duration. Unlike a risk (which adds days to an <i>existing</i> task), a
+downstream by its sampled duration. Unlike a risk (whose impact replaces an <i>existing</i> task's
+remaining duration while it fires), a
 branch is a <b>new node</b> on the chosen link, so it only moves the finish when it becomes the
 driving path, and it produces the <b>bi-modal</b> finish distribution (a spike at "no failure" plus a
 shifted lump when the rework happens) the deterministic plan hides. Durations are working days; a
@@ -12544,8 +12548,10 @@ def _unified_risk_section(st: SessionState) -> str:
     )
     return f"""
 <h3>Risk / Opportunity register</h3>
-<p class=muted>Enter a risk <b>once</b> &mdash; it feeds <b>both</b> the additive-days (SSI) and the
-multiplicative-% (legacy) Monte-Carlo. Type a <b>days</b> impact <i>or</i> a <b>%</b> impact and the
+<p class=muted>Enter a risk <b>once</b> &mdash; it feeds <b>both</b> the days-impact (SSI) and the
+multiplicative-% (legacy) Monte-Carlo. While the risk fires, the days impact <b>replaces</b> the
+affected tasks' remaining duration (SSI semantics, ADR-0359). Type a <b>days</b> impact <i>or</i> a
+<b>%</b> impact and the
 other auto-calculates from the affected tasks' remaining duration; edit either to override it (it
 locks {lock} and is used as-entered for that model). A negative value is an opportunity.</p>
 <form id=riskForm action="/sra/risk-register" method=post class=viz-controls>
@@ -12713,7 +12719,8 @@ def _risk_events(st: SessionState) -> tuple[RiskEvent, ...]:
 
 
 def _schedule_risks(st: SessionState) -> tuple[ScheduleRisk, ...]:
-    """The SSI additive-days ScheduleRisks derived from the unified register."""
+    """The SSI days-impact ScheduleRisks derived from the unified register (a fired impact
+    REPLACES the affected task's remaining duration — ADR-0359)."""
     return tuple(
         ScheduleRisk(
             id=r.id,
@@ -14187,7 +14194,7 @@ def _sra_chart_tornado(oat: Sequence[OATSensitivity]) -> Chart | None:
             rects.append((0.5 - opp, y0, 0.5, y1, "43A047"))
         if risk > 0:
             rects.append((0.5, y0, 0.5 + risk, y1, "E53935"))
-        labels.append(ChartText(-0.015, yc, str(o.unique_id), "r", 11, "33414E"))
+        labels.append(ChartText(-0.015, yc, o.risk_id or str(o.unique_id), "r", 11, "33414E"))
         labels.append(ChartText(1.0, yc, f"{o.total_days:g} wd", "l", 11, "33414E"))
     center = (((0.5, 0.0), (0.5, 1.0)), "555555", 9525)
     return Chart(
@@ -15180,7 +15187,17 @@ def _sra_body(st: SessionState) -> str:
         # immediately by a screen reader; `role=status` is polite and can be missed entirely —
         # which is the wrong politeness for "your risk was not added".
         cls, role = ("notice warn", "alert") if st.sra_import_is_error else ("notice ok", "status")
-        import_banner = f'<div class="{cls}" role={role}>{_e(st.sra_import_msg)}</div>'
+        # ADR-0359: the ADR-0356 CHECK-INPUTS vintage warning carries its own remedy — the
+        # root-caused deltas were BOTH stale-setup replays, and a warning the operator must
+        # leave the banner to act on is a warning that gets run past. One click seeds the grid
+        # verbatim from the active schedule's stored SRA fields.
+        fix_btn = (
+            '<form action="/sra/load-from-schedule" method=post style="display:inline;margin-left:8px">'
+            "<button type=submit>Use the file's own values</button></form>"
+            if "CHECK INPUTS" in st.sra_import_msg
+            else ""
+        )
+        import_banner = f'<div class="{cls}" role={role}>{_e(st.sra_import_msg)}{fix_btn}</div>'
         st.sra_import_msg = None
         st.sra_import_is_error = False
     low_pct = f"{st.sra_low * 100:g}"
@@ -15285,7 +15302,8 @@ take precedence over the global for the activities you elicit.</p>
 {_sra_overrides_table(st, scoped)}</div>
 <div class=panel{export_attr}>{h_drivers}{t_drivers}
 <p class=muted>Register risks <b>once</b> in the <b>Risk / Opportunity register</b> above (the Schedule
-Risk &amp; Opportunity Analysis panel) &mdash; each carries both an additive-days (SSI) and a
+Risk &amp; Opportunity Analysis panel) &mdash; each carries both a days-impact (SSI &mdash; the impact
+replaces the affected task's remaining duration while it fires, ADR-0359) and a
 multiplicative-% (legacy) magnitude and feeds this Monte-Carlo. This tornado ranks each registered
 risk by the mean project-finish slip it contributes: the difference between the mean finish over the
 iterations the risk fired and the iterations it did not (working days), with its observed occurrence

@@ -3,10 +3,10 @@
 A **parity-isolated** extension of the SSI Monte-Carlo (ADR-0123): the duration dimension
 replicates :func:`schedule_forensics.engine.sra.compute_sra_ssi`'s draw discipline *exactly*
 (same per-iteration ``random.Random(seed + i)``, ascending-``unique_id`` draws, point-mass
-rules, Gaussian-copula option, additive risks from the same disjoint occurrence stream, the
-same trusted ``compute_cpm(duration_overrides=…)`` chokepoint and stored-finish date-axis
-realignment) — so the joint sample's finish marginal is **identical** to the SSI S-curve on
-the same inputs (a test pins the equivalence; one story, no second truth).
+rules, Gaussian-copula option, duration-replacing risks from the same disjoint occurrence
+stream (ADR-0359), the same trusted ``compute_cpm(duration_overrides=…)`` chokepoint and
+stored-finish date-axis realignment) — so the joint sample's finish marginal is **identical**
+to the SSI S-curve on the same inputs (a test pins the equivalence; one story, no second truth).
 
 The cost dimension rides the *same* sampled durations (NASA CEH v4.0 App. J / Hulett
 integrated cost-schedule risk). Per iteration::
@@ -208,15 +208,16 @@ def compute_jcl(
     active_risks = [
         r for r in risks if config.use_risk_register and any(u in uid_set for u in r.affected)
     ]
-    risk_uids = {u for r in active_risks for u in r.affected}
 
     # a COMPLETED activity is a point mass — its duration is a recorded fact, never a forecast
     # (ADR-0307); kept verbatim in step with compute_sra_ssi's own guard
     done = {t.unique_id for t in tasks if _is_completed(t)}
     three: dict[int, tuple[int, int, int]] = {}
     for u in uids:
-        if u in risk_uids or u in done or u not in tp_in:
-            three[u] = (ml[u], ml[u], ml[u])  # point mass (risk-driven, completed, or no spread)
+        if u in done or u not in tp_in:
+            # point mass (completed, or no spread). Risk-affected activities sample their own
+            # three-point when the risk does not fire (ADR-0359, matching compute_sra_ssi).
+            three[u] = (ml[u], ml[u], ml[u])
         else:
             bc, mlv, wc = tp_in[u]
             three[u] = (max(0, int(bc)), int(mlv), max(int(bc), int(wc)))
@@ -271,14 +272,20 @@ def compute_jcl(
         overrides = _iteration_duration_overrides(
             rng, config, uids, three, prepared, plan=plan, iteration=i
         )
+        fired_impact: dict[int, int] = {}
         for ridx, risk in enumerate(active_risks):
             if occ[ridx][i]:
                 add = round(risk.impact_days * mpd)
                 for u in risk.affected:
                     if u in done:  # finished work cannot be delayed by a future risk (ADR-0308)
                         continue
-                    if u in overrides:
-                        overrides[u] = max(0, overrides[u] + add)
+                    fired_impact[u] = fired_impact.get(u, 0) + add
+        # ADR-0359: a fired risk's impact REPLACES the affected activity's sampled duration
+        # (SSI semantics, measured — see compute_sra_ssi), keeping the JCL finish marginal
+        # identical to the SSI run's.
+        for u, impact in fired_impact.items():
+            if u in overrides:
+                overrides[u] = max(0, impact)
         # cost draws come AFTER every duration draw (and consume the same per-iteration
         # stream only when the multipliers are on) — the duration stream is untouched.
         cost = completed_total
