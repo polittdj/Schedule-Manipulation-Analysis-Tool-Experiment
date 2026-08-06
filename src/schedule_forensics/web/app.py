@@ -185,8 +185,10 @@ from schedule_forensics.engine.metrics.sem import compute_sem
 from schedule_forensics.engine.metrics.vertical_integration import compute_vertical_integration
 from schedule_forensics.engine.month_curves import MonthCurves, compute_month_curves
 from schedule_forensics.engine.msp_filters import (
+    EVALUATOR_VERSION,
     coerce_prompt_answers,
     required_prompts,
+    selection_migration_delta,
 )
 from schedule_forensics.engine.path_counterfactual import (
     compute_path_counterfactual,
@@ -3272,7 +3274,8 @@ def create_app(
                         # (mirrors MS Project's modal prompt)
                         prompt_form = _saved_prompt_form(saved, raw_answers, st.filter_mode)
                     else:
-                        st.set_saved_filter(saved, coerce_prompt_answers(saved, raw_answers))
+                        # RAW answers — coercion happens per schedule at selection (ADR-0354)
+                        st.set_saved_filter(saved, raw_answers)
         if (sg_name := qp.get("saved_group")) is not None:
             # the SAVED-group picker: "" clears; grouping is presentation-only (never a metric)
             st.set_saved_group(find_saved_group(schedules, sg_name) if sg_name else None)
@@ -16810,11 +16813,28 @@ def _groups_body(
                 f"<b>{len(matched_set)}</b> of {len(sch.tasks)} tasks match in the preview file "
                 "(Highlight mode — matches are only MARKED; metrics stay whole-schedule)."
             )
+        # ADR-0354 migration report: when this filter compares a DURATION against a literal or
+        # prompt, show how the corrected (MPXJ-conformant) duration semantics moved its
+        # population vs the retired hard-coded 480-minute table — the operator sees the shift
+        # instead of silently inheriting it. Version-invariant filters render no note.
+        mig_note = ""
+        delta = selection_migration_delta(
+            sch, saved, coerce_prompt_answers(saved, st.saved_filter_prompts, sch.calendar)
+        )
+        if delta is not None and set(delta[0]) != set(delta[1]):
+            v1_n, v2_n = len(delta[0]), len(delta[1])
+            mig_note = (
+                f"<p class=muted><b>Duration semantics corrected (evaluator v{EVALUATOR_VERSION}, "
+                f"ADR-0354):</b> in the preview file this filter now selects <b>{v2_n}</b> "
+                f"activities; the retired 480-minute-day reading selected {v1_n}. Elapsed "
+                f"literals (“2.0ed”) now measure wall-clock time, and day/week/month/"
+                f"year literals use this file's own calendar scale.</p>"
+            )
         summary = (
             f"<div class=panel><h2>Active scope</h2><p>Saved filter "
             f"<b>{_e(saved.display_name)}</b> "
             f'<span class="dp-chip">{_e(_criteria_text(saved.criteria))}</span></p>'
-            f"<p class=muted>{reach}</p></div>"
+            f"<p class=muted>{reach}</p>{mig_note}</div>"
         )
     else:
         summary = (

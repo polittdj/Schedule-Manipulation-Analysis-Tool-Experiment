@@ -1014,3 +1014,28 @@ def test_a_resolvable_project_calendar_logs_nothing(caplog: pytest.LogCaptureFix
         sch = parse_mspdi_text(_TEN_HOUR_CAL.format(calendar_uid="<CalendarUID>1</CalendarUID>"))
     assert sch.calendar.working_minutes_per_day == 600  # the file's real 10-hour day
     assert caplog.text == ""
+
+
+def test_project_duration_scale_properties_read() -> None:
+    """ADR-0354: MinutesPerWeek / DaysPerMonth (project properties) land on the calendar so
+    week/month/year duration literals in saved filters scale like MPXJ's convertUnits."""
+    body = (
+        "<MinutesPerWeek>3000</MinutesPerWeek><DaysPerMonth>22</DaysPerMonth>"
+        "<Tasks><Task><UID>1</UID><Name>A</Name><Duration>PT8H0M0S</Duration></Task></Tasks>"
+    )
+    sch = parse_mspdi_text(_doc(body))
+    assert sch.calendar.minutes_per_week == 3000
+    assert sch.calendar.days_per_month == 22
+
+
+def test_absent_duration_scale_properties_stay_none() -> None:
+    """Absent (and degenerate 0) properties stay None — consumers use MPXJ's own defaults,
+    never a derived guess (the falsy-zero rule: absence is not a measured value)."""
+    body = "<Tasks><Task><UID>1</UID><Name>A</Name><Duration>PT8H0M0S</Duration></Task></Tasks>"
+    sch = parse_mspdi_text(_doc(body))
+    assert sch.calendar.minutes_per_week is None
+    assert sch.calendar.days_per_month is None
+    zero = "<MinutesPerWeek>0</MinutesPerWeek><DaysPerMonth>0</DaysPerMonth>" + body
+    sch0 = parse_mspdi_text(_doc(zero))
+    assert sch0.calendar.minutes_per_week is None
+    assert sch0.calendar.days_per_month is None

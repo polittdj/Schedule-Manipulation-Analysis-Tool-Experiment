@@ -435,6 +435,25 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-06 (cont.) — The reference tool's bytecode beats every secondhand account of it
+- **V3 (ADR-0354).** Three prior documents described the elapsed-literal defect; none could say
+  what conformance MEANT for week/month/year or unknown units. One javap session on the vendored
+  mpxj jar settled all of it — and exposed two more defects (year = mpw x 52, week = the file's
+  MinutesPerWeek) that no amount of re-reading the audits would have found, plus a genuine MPXJ
+  quirk (%/e% pass through unscaled) that intuition would have "fixed" into a parity break.
+  Lesson: when the repo VENDORS the reference implementation, its bytecode is the cheapest
+  oracle available — read it before designing, not after disagreeing.
+- **The identity-case trap fired twice in one day, at two scales.** ADR-0353: a whole suite of
+  unprogressed fixtures made two duration bases coincide. ADR-0354: ONE test whose only file used
+  the standard calendar made "the schedule's calendar" and "the default calendar" coincide — the
+  mutation for exactly that distinction PASSED until a 1,500-minute discriminator task forced the
+  two readings apart. Same question both times: do the fixtures make the two instruments equal by
+  construction?
+- **An introspection guard found the half I forgot.** The Save-writer coverage test
+  (every model field must be emitted) failed the moment Calendar gained two fields — the writer
+  I had searched for under the wrong names and concluded "doesn't exist". A guard that enumerates
+  the contract beats a contributor's grep vocabulary.
+
 ### 2026-08-06 — A defect can be invisible to a whole suite because every fixture is the identity case
 - **SRA-LEGACY (ADR-0353).** The legacy SRA's anchor was the full-duration CPM finish bisected
   against a remaining-basis distribution. Every synthetic in `test_sra.py` is unprogressed —

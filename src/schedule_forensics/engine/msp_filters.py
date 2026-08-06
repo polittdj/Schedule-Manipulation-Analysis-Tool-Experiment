@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import datetime as dt
 import re
+from contextvars import ContextVar
 
 from schedule_forensics.engine.msp_field_resolver import (
     FieldKind,
@@ -37,6 +38,7 @@ from schedule_forensics.engine.msp_field_resolver import (
     resolve_field,
 )
 from schedule_forensics.importers._common import parse_datetime, parse_float
+from schedule_forensics.model.calendar import Calendar
 from schedule_forensics.model.saved_view import BRANCH_OPERATORS, Criterion, Operand, SavedFilter
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
@@ -44,10 +46,40 @@ from schedule_forensics.model.task import Task
 #: Prompt answers supplied by the operator (prompt label → typed value).
 PromptValues = dict[str, FieldValue]
 
-_DUR_LITERAL_RE = re.compile(r"^\s*([\d.]+)\s*(e)?([a-z]*)\s*$", re.IGNORECASE)
-#: MS Project duration-unit → working minutes (m = minute, h = hour, d = 8h day, w = 5d week,
-#: mo/y).
-_DUR_UNIT_MINUTES: dict[str, int] = {
+_DUR_LITERAL_RE = re.compile(r"^\s*([\d.]+)\s*(e)?([a-z%]*)\s*$", re.IGNORECASE)
+
+#: MPXJ's TimeUnitDefaultsContainer defaults, used when the source file does not declare the
+#: project property (MPXJ mirrors MS Project's own 2400 min/week and 20 days/month).
+_DEFAULT_MINUTES_PER_WEEK = 2400
+_DEFAULT_DAYS_PER_MONTH = 20
+
+#: MPXJ elapsed-unit → wall-clock minutes, decoded from the vendored mpxj-16.2.0
+#: ``Duration.convertUnits`` bytecode (ADR-0354): day 1440 · week 10080 (7 d) · month 43200
+#: (30 d) · year 524160 (**364 d** = 52x7, not 365). Calendars are ignored by design.
+_ELAPSED_UNIT_MINUTES: dict[str, int] = {
+    "m": 1, "h": 60, "d": 1440, "w": 10080, "mo": 43200, "y": 524160, "%": 1,
+}  # fmt: skip
+
+#: Long-form unit spellings tolerated on top of MPXJ's canonical one-token vocabulary
+#: (``Duration.toString()`` emits only ``m h d w mo % y`` and their ``e``-prefixed elapsed
+#: forms; the aliases keep hand-typed prompt answers like ``"5 days"`` working).
+_UNIT_ALIASES: dict[str, str] = {
+    "min": "m", "mins": "m", "minute": "m", "minutes": "m",
+    "hr": "h", "hrs": "h", "hour": "h", "hours": "h",
+    "day": "d", "days": "d",
+    "wk": "w", "wks": "w", "week": "w", "weeks": "w",
+    "mon": "mo", "mons": "mo", "month": "mo", "months": "mo",
+    "yr": "y", "yrs": "y", "year": "y", "years": "y",
+}  # fmt: skip
+
+#: The evaluator's duration-literal semantics version (ADR-0354). v1 hard-coded 480-minute days
+#: and silently read elapsed/unknown units as working days; v2 conforms to the vendored MPXJ
+#: ``Duration.convertUnits``. Bump on any future change that can move a saved-filter population.
+EVALUATOR_VERSION = 2
+
+#: v1's table, kept VERBATIM and used ONLY by :func:`selection_migration_delta` (the
+#: migration report shows the operator how a saved filter's population moved under v2).
+_V1_UNIT_MINUTES: dict[str, int] = {
     "m": 1, "min": 1, "mins": 1, "minute": 1, "minutes": 1,
     "h": 60, "hr": 60, "hrs": 60, "hour": 60, "hours": 60,
     "d": 480, "day": 480, "days": 480,
@@ -55,18 +87,54 @@ _DUR_UNIT_MINUTES: dict[str, int] = {
     "mo": 9600, "mon": 9600, "mons": 9600, "month": 9600, "months": 9600,
     "y": 115200, "yr": 115200, "yrs": 115200, "year": 115200, "years": 115200,
 }  # fmt: skip
+_V1_LITERAL_RE = re.compile(r"^\s*([\d.]+)\s*(e)?([a-z]*)\s*$", re.IGNORECASE)
+
+#: Internal switch flipped only by :func:`selection_migration_delta` to re-evaluate a filter
+#: under the retired v1 literal semantics. A ContextVar so the public evaluator signatures stay
+#: stable and concurrent requests cannot see each other's mode.
+_USE_V1_LITERALS: ContextVar[bool] = ContextVar("msp_filters_use_v1_literals", default=False)
 
 
-def _parse_duration_literal(text: str) -> int | None:
-    """A filter's duration literal (``"0.0d"``, ``"5 days"``) → working minutes; ``None`` if
-    unparsable
-    (a bare number is read as days, MS Project's default duration unit)."""
+def _parse_duration_literal_v1(text: str) -> int | None:
+    """The retired pre-ADR-0354 parse (hard 480-minute days; elapsed marker discarded; unknown
+    unit read as days). Report-only — never used for a live selection."""
+    m = _V1_LITERAL_RE.match(text)
+    if not m:
+        return None
+    unit = (m.group(3) or "d").lower()
+    per = _V1_UNIT_MINUTES.get(unit, 480)
+    return round(float(m.group(1)) * per)
+
+
+def _parse_duration_literal(text: str, calendar: Calendar) -> int | None:
+    """A filter's duration literal (``"5.0d"``, ``"2.0ed"``, ``"5 days"``) → comparison minutes.
+
+    Conforms to the vendored MPXJ ``Duration.convertUnits`` (ADR-0354): ordinary units scale by
+    the schedule's OWN ``working_minutes_per_day`` / ``minutes_per_week`` / ``days_per_month``
+    (week is minutes-per-week, NOT 5 x day; year is minutes-per-week x 52); elapsed units
+    (``e``-marked) are wall-clock constants regardless of calendar; ``%``/``e%`` pass the value
+    through unscaled (MPXJ's switch default — mirrored, not repaired). A bare number reads as
+    days (MS Project's default duration unit). ``Duration.toString()`` is a closed vocabulary,
+    so an unknown unit can only mean a corrupted sidecar and fails closed (``None`` — the
+    malformed-leaf convention), never a silent guess."""
+    if _USE_V1_LITERALS.get():
+        return _parse_duration_literal_v1(text)
     m = _DUR_LITERAL_RE.match(text)
     if not m:
         return None
     unit = (m.group(3) or "d").lower()
-    per = _DUR_UNIT_MINUTES.get(unit, 480)  # unknown/elapsed unit → treat as days
-    return round(float(m.group(1)) * per)
+    unit = _UNIT_ALIASES.get(unit, unit)
+    if m.group(2):  # the elapsed marker MPXJ writes as the unit's leading "e"
+        per = _ELAPSED_UNIT_MINUTES.get(unit)
+        return None if per is None else round(float(m.group(1)) * per)
+    mpd = calendar.working_minutes_per_day
+    mpw = calendar.minutes_per_week or _DEFAULT_MINUTES_PER_WEEK
+    dpm = calendar.days_per_month or _DEFAULT_DAYS_PER_MONTH
+    working: dict[str, int] = {
+        "m": 1, "h": 60, "d": mpd, "w": mpw, "mo": mpd * dpm, "y": mpw * 52, "%": 1,
+    }  # fmt: skip
+    per = working.get(unit)
+    return None if per is None else round(float(m.group(1)) * per)
 
 
 def _day_start(value: FieldValue) -> FieldValue:
@@ -91,16 +159,18 @@ def _normalize_lhs(value: FieldValue, kind: FieldKind) -> FieldValue:
     return value
 
 
-def _coerce_literal(text: str | None, kind: FieldKind) -> FieldValue:
+def _coerce_literal(text: str | None, kind: FieldKind, calendar: Calendar) -> FieldValue:
     """Coerce a filter's literal string to the left field's axis (a literal date is **not**
-    truncated).
+    truncated). ``calendar`` supplies the schedule's own day/week/month scale for duration
+    literals (ADR-0354) — hard-coding 480 min/day compared apples to oranges on any other
+    calendar.
     """
     if text is None:
         return None
     if kind is FieldKind.DATE:
         return parse_datetime(text)
     if kind is FieldKind.DURATION_MINUTES:
-        return _parse_duration_literal(text)
+        return _parse_duration_literal(text, calendar)
     if kind is FieldKind.BOOLEAN:
         return text.strip().lower() in {"1", "true", "yes"}
     if kind in (FieldKind.NUMERIC, FieldKind.CURRENCY, FieldKind.PERCENT):
@@ -122,7 +192,7 @@ def _resolve_operand(
     if operand.kind == "field":
         rf = resolve_field(schedule, task, operand.text or "", field_enum=operand.field_enum)
         return _normalize_lhs(rf.value, rf.kind)
-    return _coerce_literal(operand.text, lhs_kind)  # literal
+    return _coerce_literal(operand.text, lhs_kind, schedule.calendar)  # literal
 
 
 def _compare(lhs: FieldValue, rhs: FieldValue) -> int | None:
@@ -278,7 +348,9 @@ def required_prompts(filt: SavedFilter) -> tuple[str, ...]:
     return tuple(labels)
 
 
-def coerce_prompt_answers(filt: SavedFilter, answers: dict[str, str]) -> PromptValues:
+def coerce_prompt_answers(
+    filt: SavedFilter, answers: dict[str, str], calendar: Calendar | None = None
+) -> PromptValues:
     """The operator's typed prompt answers coerced onto each prompt's comparison axis.
 
     MS Project types a prompt's answer by the field it is compared against ("Show tasks that
@@ -287,7 +359,12 @@ def coerce_prompt_answers(filt: SavedFilter, answers: dict[str, str]) -> PromptV
     same rule a literal uses (:func:`_coerce_literal` — so a date stays untruncated, a duration
     parses "3d", a number parses plainly). A label compared against several fields keeps the
     first-seen kind (MS Project reuses one answer the same way); an unanswered label is simply
-    absent (the evaluator treats a missing prompt as a ``None`` operand)."""
+    absent (the evaluator treats a missing prompt as a ``None`` operand).
+
+    ``calendar`` scales any duration-typed answer onto that schedule's own axis (ADR-0354).
+    The session applies one filter across EVERY loaded file, so the caller coerces per
+    schedule at selection time; ``None`` falls back to the standard calendar (a duration
+    answer then reads 480-minute days — only correct for standard-calendar files)."""
     kinds: dict[str, FieldKind] = {}
 
     def walk(node: Criterion | None) -> None:
@@ -301,8 +378,49 @@ def coerce_prompt_answers(filt: SavedFilter, answers: dict[str, str]) -> PromptV
             walk(child)
 
     walk(filt.criteria)
+    cal = calendar if calendar is not None else Calendar()
     return {
-        label: _coerce_literal(text, kinds.get(label, FieldKind.UNRESOLVED))
+        label: _coerce_literal(text, kinds.get(label, FieldKind.UNRESOLVED), cal)
         for label, text in answers.items()
         if text != ""
     }
+
+
+def filter_reads_duration_literals(filt: SavedFilter) -> bool:
+    """True iff any leaf compares a DURATION field against a literal or prompt operand — the
+    only shape whose selection can move between evaluator versions (ADR-0354). Field-to-field
+    duration comparisons stay on the stored minutes axis in every version."""
+
+    def walk(node: Criterion | None) -> bool:
+        if node is None:
+            return False
+        if node.operator in BRANCH_OPERATORS:
+            return any(walk(c) for c in node.children)
+        lhs_kind = field_kind(node.field or "", field_enum=node.field_enum)
+        if lhs_kind is not FieldKind.DURATION_MINUTES:
+            return False
+        return any(op.kind in ("literal", "prompt") for op in node.operands)
+
+    return walk(filt.criteria)
+
+
+def selection_migration_delta(
+    schedule: Schedule, filt: SavedFilter, prompts: PromptValues | None = None
+) -> tuple[tuple[int, ...], tuple[int, ...]] | None:
+    """``(v1_selection, v2_selection)`` for a filter whose population can move under ADR-0354.
+
+    The migration report the evaluator-version bump is gated on: re-runs the SAME selection
+    under the retired v1 duration-literal semantics (hard 480-minute days, elapsed marker
+    discarded) beside the live v2 (MPXJ-conformant) selection, so the operator sees exactly
+    which population moved and by how much. ``None`` when the filter carries no duration
+    literal/prompt (its selection is version-invariant, and the report would be noise).
+    ``prompts`` must be the v2-coerced values; the v1 leg re-parses only LITERALS (a prompt
+    answer's coercion difference is folded into the v2 leg the operator is already shown)."""
+    if not filter_reads_duration_literals(filt):
+        return None
+    token = _USE_V1_LITERALS.set(True)
+    try:
+        v1 = select(schedule, filt, prompts)
+    finally:
+        _USE_V1_LITERALS.reset(token)
+    return v1, select(schedule, filt, prompts)

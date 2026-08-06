@@ -8,9 +8,9 @@ kickoff steers a fresh session at work that is already done.)
 ---
 
 Resume POLARIS (Schedule-Manipulation-Analysis-Tool). Read `docs/STATE/HANDOFF.md` FIRST
-(auto-injected). As of last session: **v1.0.168, highest ADR 0353** — the SRA-LEGACY fix (first
-ADR-0240 Fable 5 Max reserved item) on a pushed branch with a draft PR; if it has since merged,
-restart the branch:
+(auto-injected). As of last session: **v1.0.169, highest ADR 0354** — SRA-LEGACY (ADR-0353,
+merged as #544) and V3 (ADR-0354, pushed, draft PR) both closed in one day; if the PR has since
+merged, restart the branch:
 `git fetch --prune origin && git remote set-head origin -a && git checkout -B <branch> origin/main`
 (then `git branch --unset-upstream`). Fresh container: `pip install -e ".[dev]"` plus
 `pip install playwright build`. **`ruff` no longer needs a manual pin** — `pyproject.toml` bounds it
@@ -45,14 +45,14 @@ from drifting. **Do not "restore" the old floors** — all three were measured f
 `https://errors.pydantic.dev/<ver>/v/missing` inside 422 bodies on 10 routes (Law 1). **0.110.2** is
 the first clean release and is now the floor. The floor job found this on its first run.
 
-⇢ DO THIS FIRST — the remaining Fable 5 Max reserved items (ADR-0240), then phase 3 families
-**SRA-LEGACY is CLOSED (ADR-0353)** — do NOT re-open; see WHAT'S DONE. Remaining reserved:
-**V3** (`engine/msp_filters.py` hard-codes `"d": 480` and discards the elapsed marker it captures
-in regex group 2; ADR-0310 reduced it from a product decision to a **conformance fix**, but it
-MOVES saved-filter populations — it needs its migration-report gate) · **ADR-0348's
-`tod + per_day == 1440` residual** (decision-shaped; no oracle in the corpus). Then the twelve
-remaining page families (`integrity` 402 first) under ADR-0350/0351/0352's rules, and **Phase 6**
-docs/operator queue.
+⇢ DO THIS FIRST — the last Fable 5 Max reserved item (ADR-0240), then phase 3 families
+**SRA-LEGACY (ADR-0353) and V3 (ADR-0354) are CLOSED** — do NOT re-open; see WHAT'S DONE. The
+one remaining reserved item: **ADR-0348's `tod + per_day == 1440` residual** (decision-shaped;
+no oracle in the corpus — bring the operator a concrete proposal for what "end of Friday" reads
+as on a 24-hour calendar; recon done: `offset_to_datetime`'s `remainder == 0` branch at
+cpm.py:326 interacts with ADR-0312's midnight normalisation, which manufactures the input). Then
+the twelve remaining page families (`integrity` 402 first) under ADR-0350/0351/0352's rules, and
+**Phase 6** docs/operator queue.
 
 ⇢ WHAT'S DONE — do NOT re-open
 **P0 (ADR-0346)** dependency bounding · **P1 (ADR-0347)** intake manifest + hardened CUI hook +
@@ -62,7 +62,11 @@ SHA-pinned actions · **CC-01 / external H2a (ADR-0348)** · **monolith split sl
 REMOVED — do not "restore" it), and the legacy date surface carries `stored_finish_correction`.
 EVM2's deterministic date now displays the stored **2012-10-04** — that is the anchoring absorbing
 ADR-0108's known 2-wd residual into the DISPLAY, deliberate and SSI-consistent; do NOT re-report
-it as a date bug. Do NOT rename the 99 mislabelled intake
+it as a date bug. **V3 (ADR-0354)**: duration literals implement the vendored MPXJ
+`Duration.convertUnits` (bytecode-read) — `%`/`e%` pass-through and the **364-day elapsed year**
+are MPXJ's OWN behaviour, mirrored deliberately; do NOT "fix" them toward intuition. Unknown
+units fail CLOSED (the sidecar vocabulary is closed). Prompt answers store RAW and coerce per
+schedule at `scope()`. Do NOT rename the 99 mislabelled intake
 files, do NOT narrow `tests/fixtures/`, do NOT "simplify" the CUI hook's process substitution back
 into a pipeline (it fails OPEN). On ADR-0348 specifically: **`offset_to_datetime` and every offset
 are deliberately untouched** — 29 finish-role sites depend on the end-of-day spelling; a start-role

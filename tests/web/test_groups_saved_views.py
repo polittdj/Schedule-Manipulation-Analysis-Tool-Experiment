@@ -148,12 +148,15 @@ def test_interactive_filter_gates_on_prompts_then_applies() -> None:
         },
     )
     assert st.active_saved_filter is not None
+    # RAW answers are stored (ADR-0354) — coercion happens per schedule at selection time,
+    # so a duration-typed answer can scale on each file's own calendar
     assert st.saved_filter_prompts == {
-        "after:": dt.datetime(2027, 1, 1),
-        "before:": dt.datetime(2027, 1, 31),
+        "after:": "2027-01-01",
+        "before:": "2027-01-31",
     }
     sch = st.schedules["s.mpp"]
     # T1 is inside the window; T2 starts after it; T3 has no dates (null sorts greater on Finish)
+    # — the SELECTION is unchanged by the raw storage (the coerced datetimes reappear at scope())
     assert 1 in {t.unique_id for t in st.scope(sch).tasks}
     assert 2 not in {t.unique_id for t in st.scope(sch).tasks}
 
@@ -202,3 +205,38 @@ def test_coerce_prompt_answers_types_by_lhs_kind() -> None:
         ),
     )
     assert coerce_prompt_answers(dur, {"longer than:": "3d"}) == {"longer than:": 3 * DAY}
+
+
+def _dur_gt_2ed() -> SavedFilter:
+    return SavedFilter(
+        name="Long (elapsed)",
+        criteria=Criterion(
+            operator="IS_GREATER_THAN",
+            field="Duration",
+            field_enum="DURATION",
+            operands=(Operand(kind="literal", text="2.0ed", value_type="Duration"),),
+        ),
+    )
+
+
+def test_migration_note_renders_only_when_the_population_moved() -> None:
+    """ADR-0354's migration report: a duration-literal filter whose selection differs between
+    evaluator v1 (480-min table, elapsed discarded) and v2 (MPXJ-conformant) shows the note
+    with both counts; a version-invariant filter (no duration literal) never does."""
+    st = SessionState()
+    sch = Schedule(
+        name="d",
+        source_file="d.mpp",
+        project_start=dt.datetime(2027, 1, 4, 8),
+        tasks=tuple(Task(unique_id=u, name=f"D{u}", duration_minutes=u * DAY) for u in range(1, 9)),
+        saved_filters=(_dur_gt_2ed(), _svt()),
+    )
+    st.schedules[sch.source_file] = sch
+    client = TestClient(create_app(st))
+    page = client.get("/groups", params={"saved_filter": "Long (elapsed)", "mode": "reduce"}).text
+    assert "Duration semantics corrected" in page
+    assert "<b>2</b>" in page  # v2 selects the 7- and 8-day tasks
+    assert "selected 6" in page  # v1's elapsed-as-working reading selected 6
+    # a name filter is version-invariant -> no note
+    page2 = client.get("/groups", params={"saved_filter": "SVT-", "mode": "reduce"}).text
+    assert "Duration semantics corrected" not in page2

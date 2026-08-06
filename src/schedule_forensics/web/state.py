@@ -65,7 +65,7 @@ from schedule_forensics.engine.metrics._common import (
     MetricResult,
     is_effective_critical,
 )
-from schedule_forensics.engine.msp_field_resolver import FieldValue
+from schedule_forensics.engine.msp_filters import coerce_prompt_answers as _coerce_prompts
 from schedule_forensics.engine.msp_filters import select as _select_saved
 from schedule_forensics.engine.path_trace import subschedule_to_target
 from schedule_forensics.engine.projects import (
@@ -567,8 +567,10 @@ class SessionState:
     # setting one clears the other (two ways to name one session scope). None = no saved filter.
     active_saved_filter: SavedFilter | None = None
     # Operator answers for an interactive saved filter ("Date Range..." → 2 prompts), keyed by the
-    # prompt label; passed straight to the evaluator. Empty until the operator answers.
-    saved_filter_prompts: dict[str, FieldValue] = field(default_factory=dict)
+    # prompt label — stored RAW (the typed strings) and coerced per schedule at selection time
+    # (ADR-0354): a duration answer like "3d" must scale on EACH file's own calendar, and the
+    # session applies one filter across every loaded file. Empty until the operator answers.
+    saved_filter_prompts: dict[str, str] = field(default_factory=dict)
     # Filter MODE, applying to BOTH filter sources. "reduce" = today's behaviour (drop non-matching
     # tasks). "highlight" = keep the FULL population and only MARK the matches — scope() does not
     # reduce; the match set is carried to grids/gantt via highlight_uids().
@@ -704,9 +706,12 @@ class SessionState:
             return cached[1]
         matched: frozenset[int] | None
         if self.active_saved_filter is not None:
-            matched = frozenset(
-                _select_saved(sch, self.active_saved_filter, self.saved_filter_prompts)
+            # prompt answers coerce on THIS schedule's calendar (ADR-0354) — a "3d" duration
+            # answer is 1,800 minutes on a 10-hour file and 1,440 on an 8-hour one
+            prompts = _coerce_prompts(
+                self.active_saved_filter, self.saved_filter_prompts, sch.calendar
             )
+            matched = frozenset(_select_saved(sch, self.active_saved_filter, prompts))
         elif self.active_filter:
             matched = frozenset(select(sch, self.active_filter))
         else:
@@ -852,11 +857,12 @@ class SessionState:
             self._invalidate_scope()
 
     def set_saved_filter(
-        self, saved: SavedFilter | None, prompts: dict[str, FieldValue] | None = None
+        self, saved: SavedFilter | None, prompts: dict[str, str] | None = None
     ) -> None:
         """Set (or clear) the session-wide SAVED (MS Project) filter. Clears any field filter
         (mutual
-        exclusivity). ``prompts`` supplies the operator's answers for an interactive filter."""
+        exclusivity). ``prompts`` supplies the operator's RAW typed answers for an interactive
+        filter — coercion happens per schedule at selection time (ADR-0354)."""
         with self._lock:
             self.active_saved_filter = saved
             self.saved_filter_prompts = dict(prompts or {})

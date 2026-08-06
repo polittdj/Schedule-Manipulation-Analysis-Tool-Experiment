@@ -1,62 +1,59 @@
-# Handoff — 2026-08-06 (SRA-LEGACY closed: one basis, one axis; ADR-0353; v1.0.168)
+# Handoff — 2026-08-06 (V3 closed: duration literals conform to the vendored MPXJ; ADR-0354; v1.0.169)
 
-> ## STATUS (current) — **branch pushed, draft PR open.** ADR-0353, **v1.0.168**.
-> First Fable 5 Max reserved item (ADR-0240) done: the legacy `/sra` cross-basis defect carried
-> since `audit/SRA-ROOTCAUSE-20260730.md` §6 is **closed**. `compute_sra` now computes its own
-> **all-ML anchor** (the `cpm` parameter is REMOVED — a foreign-basis anchor is structurally
-> unrepresentable), and the whole legacy date surface (`*_date` fields, `_sra_data`'s
-> S-curve/histogram/mean/marker, `reserve_recommendation` rows, the buffer route's committed
-> conversion) carries `stored_finish_correction` — ADR-0256's pattern, finally adopted by the
-> path it was written for. Wheel + nine installers rebuilt at **v1.0.168**.
+> ## STATUS (current) — **branch pushed, draft PR open.** ADR-0354, **v1.0.169**.
+> Second ADR-0240 Fable 5 Max item done the same day as the first: **V3 / external H4 is
+> closed**. `msp_filters` duration literals now implement the vendored mpxj-16.2.0
+> `Duration.convertUnits` **read from its own bytecode via javap** — elapsed units are
+> wall-clock (ed 1440 · ew 10080 · emo 43200 · **ey 524160 = 364 d, 52x7**), ordinary units
+> scale on the schedule's OWN properties (**week = MinutesPerWeek, year = MinutesPerWeek x 52**
+> — two conformance defects BEYOND the audit's elapsed headline, invisible to it), `%`/`e%`
+> pass through (MPXJ's switch default, mirrored), unknown units **fail closed** (the sidecar
+> vocabulary is closed: criteria literals are `Duration.toString()`). `Calendar` gains
+> `minutes_per_week`/`days_per_month` (MSPDI-read, Save-round-tripped; absent → MPXJ's 2400/20).
+> **The gate the audit required is now defined**: `EVALUATOR_VERSION = 2`, v1's parser kept
+> verbatim report-only behind a ContextVar, `selection_migration_delta` → the `/groups`
+> Active-scope panel shows "now selects N (was M)" whenever a duration-literal filter's
+> population moved. Prompt answers store RAW and coerce per schedule at `scope()` (a "3d"
+> answer is 1,800 min on a 10-hour file). Wheel + nine installers at **v1.0.169**.
 >
-> ## MEASURED, BOTH SIDES (all four goldens, before any code was written)
-> **Leg A (basis):** EVM1 (2 in-progress, 0 resume>stop — the class ADR-0309's floor cannot
-> rescue) det_pct **0.9910 → 0.4930**; the realism card stops calling a progressed plan
-> "conservative". EVM2/P2/P5 (all resume-floored): det_pct **unchanged to 4 dp** — blast radius
-> exactly the resume-less class. **Leg B (dates):** correction measured **15 d 1 h on Project2**;
-> its buffer panel at committed = stored plan finish went **confidence 1.0000 / P80 reserve
-> 0.0 wd → 0.4900 / 2.4 wd** — the optimistic-direction failure, inverted. Sim offsets
-> p10/p50/p80/p90 **byte-identical pre/post everywhere** (the simulation itself untouched).
+> ## MEASURED
+> The audit's executed example inverted into a pin: `Duration > 2.0ed` on the 8-task 1..8-day
+> population → **(7, 8)**, was (3..8); unknown unit → **()**, was 6 matches. **No committed
+> artifact moves** — the corpus carries no views sidecar, and the ten pinned real filters use
+> duration fields only field-to-field (version-invariant). Movement is disclosed, not silent,
+> wherever a real duration-literal filter exists.
 >
-> ## VERIFICATION SHAPE (prove-able-to-fail, all five fired)
-> Five mutations, each verified original-anchor-ABSENT by re-reading the file, each failing
-> exactly its guard, each restored from a scratchpad copy (never `git checkout`): anchor
-> reverted → basis test + both web pins; engine correction zeroed → date-axis test; reserve row
-> correction dropped → scorecards pin; `_sra_data` correction zeroed → `/api/sra` pin; committed
-> converted naively → buffer pin. New pins: `tests/engine/test_sra.py` (progressed chain),
-> `tests/engine/test_scorecards.py` (correction moves dates, never offsets/confidence),
-> `tests/web/test_sra_stored_axis.py` (end-to-end, inline resume-less progressed MSPDI).
-> Parity **49 passed**. The synthetic SRA suite was byte-identical by construction (unprogressed,
-> no stored finishes) — which is WHY the defect lived: no fixture exercised the forensic target.
->
-> ## TRAPS PAID FOR THIS SESSION
-> `grep -c` **exits 1 on zero count** — it silently short-circuited an `&&`-chained mutation run;
-> chain verification greps with `;` not `&&`. A repo-wide sed for `key, sch, a = picked` hit
-> THREE routes (two still use `a`) — line-target sed repairs, then whole-tree ruff. PATH ruff is
-> stale 0.15.8 (`/root/.local/bin`); the gate ran `python -m ruff` = 0.16.1 (the CI resolver).
+> ## VERIFICATION SHAPE
+> Five mutations, each failing exactly its guard, each original-anchor-absent-checked, each
+> restored from scratchpad copies: elapsed-day→480 · year→mpw x 48 · ContextVar reset dropped ·
+> importer stamp dropped · per-schedule calendar→default. **The fifth fired only after its test
+> gained a 1,500-minute discriminator task** — the first draft passed under the mutation
+> (identity-case trap, twice in one day: ADR-0353's suite-wide version, then this single-test
+> version). The writer-coverage introspection guard caught the Save-writer half of the
+> round-trip on its own. Engine+importer+web 1,264 passed · parity 49 · full gate green.
 >
 > ## Next
-> Fable 5 Max queue (ADR-0240): **V3** (`engine/msp_filters.py` elapsed literals — product
-> decision first: elapsed axis vs reject-with-warning; present measured options) · **ADR-0348's
-> `tod + per_day == 1440` residual** (no oracle in corpus — decision-shaped). Then the standing
-> queue: twelve page families (`integrity` 402 · `margin` 379 · `trend` 348 · `ssi` 335 ·
-> `mission` 304 · `how` 290 · `sra` 264 · `what` 257 · `where` 235 · `portfolio` 231 · `evm` 208
-> · `forecast` 204) each adding to `LAYER_ORDER` + `VIEW_MODULES` + the monkeypatch sweep over
-> ALL bound names + the renderability pre-flight · a driving-corridor fixture · the three
-> `page-lede`-less pages (`/briefing`, `/path`, `/compare`) · `/groups` "Activities" counting
-> summary rows (ADR-0343) · nine installers vs `-c constraints/known-good.txt` (62 lockstep
-> tests) · Phase 6 docs. **Operator only:** license · branch-protection contexts · intake
-> re-upload · proprietary-tool reruns · OR-04.
+> Last Fable 5 Max reserved item (ADR-0240): **the `tod + per_day == 1440` boundary residual**
+> (ADR-0348; decision-shaped, no oracle in the corpus — bring the operator a concrete proposal
+> for what "end of Friday" reads as on a 24-hour calendar; recon done: `offset_to_datetime`'s
+> `remainder == 0` branch at cpm.py:326 x ADR-0312's midnight normalisation manufactures the
+> input). Then the standing queue: twelve page families (`integrity` 402 first, each adding to
+> `LAYER_ORDER` + `VIEW_MODULES` + the monkeypatch sweep over ALL bound names + the
+> renderability pre-flight) · a driving-corridor fixture · the three `page-lede`-less pages ·
+> `/groups` "Activities" counting summary rows (ADR-0343) · nine installers vs
+> `-c constraints/known-good.txt` · Phase 6 docs. **Operator only:** license ·
+> branch-protection contexts · intake re-upload · proprietary-tool reruns · OR-04.
 >
 > ## Carried forward
-> XER importer has NO `resume` read (P6 suspend/resume differs — unmeasured, rootcause §6).
-> EVM2's det date now displays stored 2012-10-04: ADR-0108's 2-wd residual is absorbed into the
-> DISPLAY by the anchoring (SSI-consistent, deliberate, ADR-0353 Consequences); offset space
-> still shows it — do NOT re-report it as a new date bug. Correction fidelity is day-scale
-> (sub-day constants slide within the day — EVM1's 7 h). The `/analysis` focus→tip family is
-> load-sensitive — do NOT chase. `pydantic>=2` is NOT a safe floor (2.6 is); `fastapi>=0.110`
-> is an AIR-GAP VIOLATION (0.110.2 floor). Run `ruff check .` — the WHOLE tree — as
-> `python -m ruff`. Never `git checkout <file>` to undo a mutation — `cp` from a scratchpad copy.
+> SRA-LEGACY (ADR-0353) and V3 (ADR-0354) are CLOSED — do not re-open; EVM2's det date
+> displaying stored 2012-10-04 is the anchoring absorbing ADR-0108's 2-wd residual into the
+> display (deliberate). `%`/`e%` pass-through and the 364-day elapsed year are MPXJ's OWN
+> bytecode behaviour — mirrored deliberately, do NOT "fix" toward intuition. XER still has no
+> `resume` read and no saved-filter sidecar. The `/analysis` focus→tip family is load-sensitive
+> — do NOT chase. `pydantic>=2` is NOT a safe floor (2.6 is); `fastapi>=0.110` is an AIR-GAP
+> VIOLATION (0.110.2 floor). Run `ruff check .` — the WHOLE tree — as `python -m ruff`. Never
+> `git checkout <file>` to undo a mutation — `cp` from a scratchpad copy. `grep -c` exits 1 on
+> zero count — chain mutation-absence checks with `;`, never `&&`.
 
 # (prior) handoffs — archived
 

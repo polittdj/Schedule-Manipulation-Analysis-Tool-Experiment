@@ -636,3 +636,31 @@ def test_an_absent_calendar_field_still_takes_the_standard_default() -> None:
 def test_a_real_ten_hour_day_still_round_trips() -> None:
     cal = parse_json_text(_doc(hours_per_day=10, work_weekdays=[0, 1, 2, 3, 4, 5])).calendar
     assert cal.working_minutes_per_day == 600 and cal.work_weekdays == (0, 1, 2, 3, 4, 5)
+
+
+def test_duration_scale_properties_round_trip() -> None:
+    """ADR-0354: minutes_per_week / days_per_month survive Save -> re-open; None stays None."""
+    import datetime as dt
+
+    from schedule_forensics.model.calendar import Calendar
+    from schedule_forensics.model.schedule import Schedule
+    from schedule_forensics.model.task import Task
+
+    cal = Calendar(minutes_per_week=3000, days_per_month=22)
+    sch = Schedule(
+        name="rt",
+        project_start=dt.datetime(2025, 1, 6, 8),
+        calendar=cal,
+        tasks=(Task(unique_id=1, name="a", duration_minutes=480),),
+    )
+    back = parse_json_text(to_json_text(sch))
+    assert back.calendar.minutes_per_week == 3000
+    assert back.calendar.days_per_month == 22
+    plain = Schedule(
+        name="rt2",
+        project_start=dt.datetime(2025, 1, 6, 8),
+        tasks=(Task(unique_id=1, name="a", duration_minutes=480),),
+    )
+    back2 = parse_json_text(to_json_text(plain))
+    assert back2.calendar.minutes_per_week is None
+    assert back2.calendar.days_per_month is None
