@@ -15135,6 +15135,12 @@ def _what_could_go_wrong_header(st: SessionState) -> str:
         return ""
     mpd = sch.calendar.working_minutes_per_day or 480
     crit = near = comfy = incomplete = neg = 0
+    # per-segment UID sets so the two status bars drill (ADR-0360): a click on a segment lists
+    # exactly the activities it counts, through the shared sf-drill grid (+ columns + Excel).
+    crit_uids: list[int] = []
+    near_uids: list[int] = []
+    comfy_uids: list[int] = []
+    neg_uids: list[int] = []
     for task in non_summary(sch):
         if task.is_complete:
             continue
@@ -15145,18 +15151,30 @@ def _what_could_go_wrong_header(st: SessionState) -> str:
         tf_days = effective_total_float(task, timing.total_float) / mpd
         if tf_days < 0:
             neg += 1
+            neg_uids.append(task.unique_id)
         if tf_days <= 0:
             crit += 1
+            crit_uids.append(task.unique_id)
         elif tf_days <= 5:
             near += 1
+            near_uids.append(task.unique_id)
         else:
             comfy += 1
+            comfy_uids.append(task.unique_id)
 
     def _count(metric_id: str) -> int:
         return next((c.count for c in audit.checks if c.metric_id == metric_id), 0)
 
     hard = _count("DCMA05")
+    hard_uids = tuple(
+        c.unique_id
+        for chk in audit.checks
+        if chk.metric_id == "DCMA05"
+        for c in chk.citations
+        if c.unique_id
+    )
     risks = len(st.sra_risks)
+    risk_uids = tuple(dict.fromkeys(u for r in st.sra_risks for u in r.affected))
 
     def _acts(n: int) -> str:
         return "activity" if n == 1 else "activities"
@@ -15186,23 +15204,37 @@ def _what_could_go_wrong_header(st: SessionState) -> str:
     )
     exposure_bar = _status_stack(
         "Float exposure",
-        "Incomplete activities by how much total float protects them from driving the finish.",
+        "Incomplete activities by how much total float protects them from driving the finish. "
+        "Hover a segment for its count; click it to list the activities underneath "
+        "(add any field, export to Excel).",
         [
             ("Critical", crit, "--bad"),
             ("Near-critical", near, "--warn"),
             ("Comfortable", comfy, "--ok"),
         ],
         f"{incomplete} incomplete {_acts(incomplete)}",
+        drill=[
+            (tuple(crit_uids), key),
+            (tuple(near_uids), key),
+            (tuple(comfy_uids), key),
+        ],
     )
     flags_bar = _status_stack(
         "Risk flags",
-        "The structural risk sources the simulation and register draw on.",
+        "The structural risk sources the simulation and register draw on. "
+        "Hover a segment for its count; click it to list the activities underneath "
+        "(add any field, export to Excel).",
         [
             ("Negative float", neg, "--bad"),
             ("Hard constraints", hard, "--warn"),
             ("Registered risks", risks, "--accent"),
         ],
         "deterministic flags on the selected file",
+        drill=[
+            (tuple(neg_uids), key),
+            (hard_uids, key),
+            (risk_uids, key),
+        ],
     )
     # ADR-0339: the h1 was always here; the DoD's *context line* was not (measured `page-lede` 0 on
     # the pristine tree). Routing both through `_utility_takeaway` renders the same h1 byte-for-byte

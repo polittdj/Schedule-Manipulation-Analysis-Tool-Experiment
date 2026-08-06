@@ -51,16 +51,111 @@ def _percent_bucket(t: Task) -> str:
     return "In Progress" if t.percent_complete > 0.0 else "Not Started"
 
 
-#: Built-in single-valued groupable fields → a string value per task (``None`` when unset).
-STANDARD_FIELDS: dict[str, Callable[[Task], str | None]] = {
-    "WBS": lambda t: t.wbs,
-    "Activity Type": _activity_type,
-    "Constraint Type": lambda t: t.constraint_type.value if t.constraint_type else None,
-    "Resource": lambda t: "; ".join(t.resource_names) or None,
-    "Critical": lambda t: (
+def _iso(value: object) -> str | None:
+    """A stored datetime rendered verbatim (date + minutes); ``None`` stays ``None`` — the
+    source didn't provide it, and Law 2 forbids inventing a value."""
+    import datetime as _dt
+
+    if isinstance(value, _dt.datetime):
+        return value.isoformat(sep=" ", timespec="minutes")
+    return None
+
+
+def _days(s: Schedule, minutes: int | None, *, elapsed: bool = False) -> str | None:
+    """Working minutes → the tool's presentation-days convention (``_activity_rows``' own:
+    per-day = the project calendar's working minutes, 480 fallback); an ELAPSED duration is
+    calendar time, so it divides by 1440 and says so (ADR-0354's vocabulary)."""
+    if minutes is None:
+        return None
+    if elapsed:
+        return f"{round(minutes / 1440, 2):g} ed"
+    per_day = s.calendar.working_minutes_per_day or 480
+    return f"{round(minutes / per_day, 2):g}"
+
+
+def _hours(minutes: int | None) -> str | None:
+    return None if minutes is None else f"{round(minutes / 60, 2):g}"
+
+
+def _yesno(flag: bool) -> str:
+    return "Yes" if flag else "No"
+
+
+def _cost(value: float | None) -> str | None:
+    return None if value is None else f"{round(value, 2):g}"
+
+
+def _task_calendar(s: Schedule, t: Task) -> str | None:
+    if t.calendar_uid is None:
+        return s.calendar.name
+    for cal in s.calendars:
+        if cal.uid == t.calendar_uid:
+            return cal.name
+    return str(t.calendar_uid)
+
+
+#: Built-in single-valued groupable fields → a string value per task (``None`` when unset —
+#: the source didn't provide it, never a fabricated 0). ADR-0360 widened this from six fields
+#: to every task-level field the model carries VERBATIM from the file (the operator: any
+#: standard MS Project field or custom field must be addable to a drill's underlying data and
+#: flow into its export). Values are strings because grouping matches on MS Project's stored
+#: string form; numeric fields use the presentation-day/hour conventions the activity grid
+#: already renders, so no second truth appears.
+STANDARD_FIELDS: dict[str, Callable[[Schedule, Task], str | None]] = {
+    "WBS": lambda s, t: t.wbs,
+    "Activity Type": lambda s, t: _activity_type(t),
+    "Constraint Type": lambda s, t: t.constraint_type.value if t.constraint_type else None,
+    "Resource": lambda s, t: "; ".join(t.resource_names) or None,
+    "Critical": lambda s, t: (
         None if t.stored_is_critical is None else ("Yes" if t.stored_is_critical else "No")
     ),
-    "% Complete": _percent_bucket,
+    "% Complete": lambda s, t: _percent_bucket(t),
+    # --- identity / outline ---------------------------------------------------------------
+    "Outline Level": lambda s, t: str(t.outline_level),
+    "Outline Number": lambda s, t: t.outline_number,
+    "Calendar": _task_calendar,
+    "Priority": lambda s, t: None if t.priority is None else str(t.priority),
+    # --- durations (the grid's day convention; elapsed says so) ---------------------------
+    "Duration (d)": lambda s, t: _days(s, t.duration_minutes, elapsed=t.duration_is_elapsed),
+    "Remaining Duration (d)": lambda s, t: _days(
+        s, t.remaining_duration_minutes, elapsed=t.duration_is_elapsed
+    ),
+    "Baseline Duration (d)": lambda s, t: _days(
+        s, t.baseline_duration_minutes, elapsed=t.duration_is_elapsed
+    ),
+    "Estimated Duration": lambda s, t: _yesno(t.is_estimated_duration),
+    # --- work -----------------------------------------------------------------------------
+    "Work (h)": lambda s, t: _hours(t.work_minutes),
+    "Actual Work (h)": lambda s, t: _hours(t.actual_work_minutes),
+    "Baseline Work (h)": lambda s, t: _hours(t.baseline_work_minutes),
+    # --- flags ----------------------------------------------------------------------------
+    "Milestone": lambda s, t: _yesno(t.is_milestone),
+    "Summary": lambda s, t: _yesno(t.is_summary),
+    "Level of Effort": lambda s, t: _yesno(t.is_level_of_effort),
+    "Active": lambda s, t: _yesno(t.is_active),
+    "Manually Scheduled": lambda s, t: _yesno(t.is_manual),
+    # --- constraints / progress -----------------------------------------------------------
+    "Constraint Date": lambda s, t: _iso(t.constraint_date),
+    "Deadline": lambda s, t: _iso(t.deadline),
+    "Physical % Complete": lambda s, t: (
+        None if t.physical_percent_complete is None else f"{t.physical_percent_complete:g}"
+    ),
+    "Total Slack (d)": lambda s, t: _days(s, t.stored_total_float_minutes),
+    # --- stored dates (verbatim from the file) --------------------------------------------
+    "Start": lambda s, t: _iso(t.start),
+    "Finish": lambda s, t: _iso(t.finish),
+    "Actual Start": lambda s, t: _iso(t.actual_start),
+    "Actual Finish": lambda s, t: _iso(t.actual_finish),
+    "Baseline Start": lambda s, t: _iso(t.baseline_start),
+    "Baseline Finish": lambda s, t: _iso(t.baseline_finish),
+    "Stop": lambda s, t: _iso(t.stop),
+    "Resume": lambda s, t: _iso(t.resume),
+    # --- costs ----------------------------------------------------------------------------
+    "Cost": lambda s, t: _cost(t.cost),
+    "Actual Cost": lambda s, t: _cost(t.actual_cost),
+    "Budgeted Cost": lambda s, t: _cost(t.budgeted_cost),
+    # --- text -----------------------------------------------------------------------------
+    "Notes": lambda s, t: t.notes,
 }
 
 
@@ -86,7 +181,7 @@ def field_value(schedule: Schedule, task: Task, field: str) -> str | None:
     if field in schedule.custom_field_labels:
         return task.custom_field(field)
     accessor = STANDARD_FIELDS.get(field)
-    return accessor(task) if accessor is not None else None
+    return accessor(schedule, task) if accessor is not None else None
 
 
 def task_matches(schedule: Schedule, task: Task, criteria: Sequence[Criterion]) -> bool:
