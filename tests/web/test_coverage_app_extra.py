@@ -512,7 +512,11 @@ def test_ask_response_skips_agreement_when_an_answer_is_empty(monkeypatch) -> No
     st.schedules["s"] = _three_task("s")
     second = types.SimpleNamespace(name="second", model="m")
     monkeypatch.setattr(appmod, "_second_backend", lambda state: second)
-    monkeypatch.setattr(appmod, "answer_question", lambda backend, facts, text, mode: ("", ()))
+    monkeypatch.setattr(
+        appmod,
+        "answer_question",
+        lambda backend, facts, text, mode, data_block=None: ("", ()),
+    )
     c = TestClient(create_app(st), raise_server_exceptions=False)
     r = c.post("/api/ask/s", data={"question": "anything"})
     assert r.status_code == 200

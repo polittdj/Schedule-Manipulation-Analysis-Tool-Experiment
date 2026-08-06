@@ -12051,3 +12051,20 @@ census guard went red on an untouched intake, exactly as designed. Classifier-ve
 `ole2-project`/no-mismatch, manifest regenerated (407/21/99), the 20→21 pin carries the
 provenance, CLAUDE.md census updated. v1.0.172, wheel + nine installers rebuilt, full gate
 green (see ADR-0358).
+
+## 2026-08-06 (evening) — Risk-replace semantics; exports answer; unrestricted AI; the battery (ADR-0359/0360/0361, v1.0.173)
+
+Branch claude/polaris-resume-handoff-div159 restarted from main 37f2ba4 (#547 merged by the
+operator). Absorbed the f1f13f9 oracle set into the census (410/22/99). ADR-0359: SSI's new
+Sensitivity export pinned the risk semantics to two decimals (fired impact REPLACES the
+affected duration; the engine added — fixed in compute_sra_ssi + compute_jcl + OAT R/O rows;
+distribution lands within 1-3 d / sigma 1.8% of the weighted histogram; new v2 parity oracle;
+4 pins mutation-proven). ADR-0360: the dead Excel click was a measured 139.8-s silent
+recompute — run/OAT reuse caches (0.1 s warm; workbook == screen), panelkit PREPARING
+feedback with navigation fallback, register seeding in Load-from-schedule + one-click on the
+vintage warning, /sra bars joined sf-drill, STANDARD_FIELDS widened 6 -> full catalog; three
+new guard files, each mutation-proven. ADR-0361: unrestricted Q&A mode (verbatim, invited to
+calculate, 400-row data block; Law 1 unmoved, Null stays closed) + the known-pass/known-fail
+battery (clean program passes everything populated; 14 declared-collateral seeded twins; page
+renders on 3 corpora; 9 wrong seeds diagnosed by measurement while building). v1.0.173,
+wheel + nine installers rebuilt, full gate green.

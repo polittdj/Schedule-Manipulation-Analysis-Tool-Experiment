@@ -57,6 +57,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from schedule_forensics.ai.citations import introduces_loaded_terms
+from schedule_forensics.engine.grouping import STANDARD_FIELDS
 from schedule_forensics.web.app import SessionState, create_app
 
 GOLDEN = Path(__file__).resolve().parents[1] / "fixtures" / "golden" / "project2_5"
@@ -85,16 +86,15 @@ GLOBAL_FORM_ACTIONS = ["/session/wipe", "/target", "/target", "/language"]
 
 #: the field <option> list the golden pair produces — BYTE-EXACT origin/main bytes. Pinning it
 #: is what makes the form diff a real byte-diff rather than a re-render of whatever we emit.
+#: The form's option list = the engine's own field catalog (ADR-0360 widened it from six
+#: standard fields to the full task-level set) + the golden pair's two custom fields. Derived
+#: from STANDARD_FIELDS so the pin follows the catalog while the byte-exactness claim — the
+#: SAME form on both routes, selected marker included — keeps its full force.
 FIELD_OPTIONS = (
     '<option value="">— pick a field —</option>'
-    '<option value="WBS">WBS</option>'
-    '<option value="Activity Type">Activity Type</option>'
-    '<option value="Constraint Type">Constraint Type</option>'
-    '<option value="Resource">Resource</option>'
-    '<option value="Critical">Critical</option>'
-    '<option value="% Complete">% Complete</option>'
-    '<option value="Trace Log">Trace Log</option>'
-    '<option value="Driving Slack">Driving Slack</option>'
+    + "".join(f'<option value="{f}">{f}</option>' for f in STANDARD_FIELDS)
+    + '<option value="Trace Log">Trace Log</option>'
+    + '<option value="Driving Slack">Driving Slack</option>'
 )
 
 
