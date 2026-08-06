@@ -35,6 +35,7 @@ import schedule_forensics.web.chrome as chrome_mod
 import schedule_forensics.web.components as components_mod
 import schedule_forensics.web.driving as driving_mod
 import schedule_forensics.web.evolution as evolution_mod
+import schedule_forensics.web.integrity as integrity_mod
 
 WEB = Path(app_mod.__file__).parent
 
@@ -44,6 +45,7 @@ EXTRACTED = {
     "components.py": components_mod,
     "driving.py": driving_mod,
     "evolution.py": evolution_mod,
+    "integrity.py": integrity_mod,
 }
 
 #: The view layer, lowest layer FIRST. A module may import only from those before it — that is
@@ -57,6 +59,7 @@ LAYER_ORDER = (
     "components.py",
     "driving.py",
     "evolution.py",
+    "integrity.py",
     "app.py",
 )
 
@@ -65,7 +68,14 @@ LAYER_ORDER = (
 WHOLE_VIEW_LAYER_GUARDS = ("test_bar_drill.py", "test_presentation_fixes.py")
 
 #: The modules such a guard has to read. Markup-carrying only — `state.py` holds no HTML.
-VIEW_MODULES = ("app.py", "chrome.py", "components.py", "driving.py", "evolution.py")
+VIEW_MODULES = (
+    "app.py",
+    "chrome.py",
+    "components.py",
+    "driving.py",
+    "evolution.py",
+    "integrity.py",
+)
 
 
 def _module_level_names(path: Path) -> set[str]:
