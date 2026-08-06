@@ -816,6 +816,7 @@ def answer_question(
     question: str,
     *,
     mode: str = "strict",
+    data_block: str | None = None,
 ) -> tuple[str | None, tuple[CitedStatement, ...]]:
     """(model answer or ``None``, the cited facts used). Fail-closed; mode-gated.
 
@@ -838,6 +839,13 @@ def answer_question(
     * **interpretive** — the model's text is returned verbatim, ungated; the operator opts
       into raw model analysis and the "AI can err — verify against the citations" disclaimer
       rides every answer. (This mode does NOT guarantee sourced figures.)
+    * **unrestricted** (ADR-0361) — the operator's full-power opt-in: verbatim and ungated
+      like interpretive, and the model is explicitly INVITED to calculate new figures and
+      interpret without restraint; when the caller supplies ``data_block`` (the bounded
+      per-activity data table) it rides the prompt as raw material for those calculations.
+      Locality is untouched — the backend is the same loopback-validated one every mode uses
+      (Law 1 lives at backend construction, not here), and the standing disclaimer rides
+      every answer.
 
     The strict/annotate gate is **role-aware** (audit F-11; hardened ADR-0138): it splits a figure
     that appears as an engine value from one that appears only as an activity name/UID, and the
@@ -847,7 +855,26 @@ def answer_question(
     shown = relevant_facts(facts, question)
     if backend.name == "null":
         return None, shown
-    if mode in ("interpretive", "annotate"):
+    if mode == "unrestricted":
+        evidence = model_evidence(facts, question)
+        data = f"\n\nACTIVITY DATA:\n{data_block}" if data_block else ""
+        prompt = (
+            "You are a senior forensic schedule analyst with full analytical latitude. The "
+            "cited facts (and the activity data, when present) below are computed by the "
+            "scheduling engine from the loaded project. The operator has chosen unrestricted "
+            "mode: use the full power of your reasoning.\n"
+            "- Answer the question directly first, then go as deep as the data allows.\n"
+            "- You MAY calculate new figures — differences, ratios, rates, projections, "
+            "distributions, groupings — from the facts and the activity data, and you MAY "
+            "interpret, hypothesize and recommend without restraint. Show your arithmetic "
+            "for any figure you derive so the analyst can check it.\n"
+            "- Distinguish what the data shows from what you infer.\n"
+            "Write in clear, well-structured plain English.\n\nFACTS:\n"
+            + "\n".join(f"- {f.text}" for f in evidence)
+            + data
+            + f"\n\nQUESTION: {question}\nANSWER:"
+        )
+    elif mode in ("interpretive", "annotate"):
         # A live local model gets the WHOLE cited picture (free analysis, still grounded) —
         # not just the slice shown to the analyst — so it can reason across the schedule.
         evidence = model_evidence(facts, question)

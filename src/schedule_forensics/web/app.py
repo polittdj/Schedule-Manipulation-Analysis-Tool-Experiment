@@ -2090,8 +2090,55 @@ def create_app(
             st, "Path Analysis", _TS_CAPTION_MARK + header + _path_body(keys, st.target_uid)
         )
 
+    _UNRESTRICTED_MAX_ROWS = 400
+
+    def _unrestricted_data_block(st: SessionState, name: str, sch: Schedule) -> str | None:
+        """The bounded per-activity data table the UNRESTRICTED mode feeds the model
+        (ADR-0361) — the raw material for "calculate new data". Engine-computed rows, one
+        line per activity, truncation disclosed IN the block so the model can say so."""
+        try:
+            rows = st.analysis_for(name, sch).activity_rows
+        except CPMError:
+            return None
+        head = (
+            "UID|Name|WBS|Dur(d)|Rem(d)|%Complete|Start|Finish|TotalFloat(d)|Critical|"
+            "Constraint|Resources"
+        )
+        lines = [head]
+        for r in rows[:_UNRESTRICTED_MAX_ROWS]:
+            if r.get("is_summary"):
+                continue
+            lines.append(
+                "|".join(
+                    str(v if v is not None else "—")
+                    for v in (
+                        r.get("unique_id"),
+                        r.get("name"),
+                        r.get("wbs"),
+                        r.get("duration_days"),
+                        r.get("remaining_duration_days"),
+                        r.get("percent_complete"),
+                        r.get("start"),
+                        r.get("finish"),
+                        r.get("total_float_days"),
+                        r.get("is_critical"),
+                        r.get("constraint_type"),
+                        r.get("resource_names"),
+                    )
+                )
+            )
+        if len(rows) > _UNRESTRICTED_MAX_ROWS:
+            lines.append(
+                f"(first {_UNRESTRICTED_MAX_ROWS} of {len(rows)} activities by schedule "
+                "order — say so if the question needs the rest)"
+            )
+        return "\n".join(lines)
+
     def _ask_response(
-        st: SessionState, facts: tuple[CitedStatement, ...], text: str
+        st: SessionState,
+        facts: tuple[CitedStatement, ...],
+        text: str,
+        data_block: str | None = None,
     ) -> JSONResponse:
         """Shared Q&A response: route the backend(s), answer in the configured mode.
 
@@ -2099,13 +2146,17 @@ def create_app(
         independently and a deterministic figure-agreement note is computed — the
         engine compares, never a third model."""
         mode = st.ai_config.qa_mode
-        answer, used = answer_question(_active_backend(st), facts, text, mode=mode)
+        answer, used = answer_question(
+            _active_backend(st), facts, text, mode=mode, data_block=data_block
+        )
         second_answer: str | None = None
         second_model: str | None = None
         agreement: str | None = None
         second = _second_backend(st)
         if second is not None:
-            second_answer, _ = answer_question(second, facts, text, mode=mode)
+            second_answer, _ = answer_question(
+                second, facts, text, mode=mode, data_block=data_block
+            )
             second_model = f"{second.name}/{getattr(second, 'model', '') or 'default'}"
             if answer and second_answer:
                 agreement = figure_agreement(answer, second_answer)
@@ -2159,7 +2210,12 @@ def create_app(
                 facts += manipulation_forensics_facts(schedules, cpms, target_uid=st.target_uid)
         except CPMError as exc:
             return JSONResponse({"error": str(exc)}, status_code=422)
-        return _ask_response(st, facts, text)
+        block = (
+            _unrestricted_data_block(st, name, sch)
+            if st.ai_config.qa_mode == "unrestricted"
+            else None
+        )
+        return _ask_response(st, facts, text, data_block=block)
 
     @app.post("/api/ask")
     def ask_workbook(question: str = Form("")) -> JSONResponse:
@@ -2170,6 +2226,7 @@ def create_app(
         text = question.strip()[:500]
         if not text:
             return JSONResponse({"error": "ask a question"}, status_code=422)
+        unrestricted = st.ai_config.qa_mode == "unrestricted"
         if len(st.schedules) == 1:
             key, sch = next(iter(st.schedules.items()))
             try:
@@ -2177,7 +2234,8 @@ def create_app(
                 facts += driving_path_facts(sch, st.analysis_for(key, sch).cpm, text)
             except CPMError as exc:
                 return JSONResponse({"error": str(exc)}, status_code=422)
-            return _ask_response(st, facts, text)
+            block = _unrestricted_data_block(st, key, sch) if unrestricted else None
+            return _ask_response(st, facts, text, data_block=block)
         schedules, cpms, _skipped = _solvable_versions()
         if not schedules:
             return JSONResponse({"error": "no analyzable versions loaded"}, status_code=422)
@@ -2188,7 +2246,14 @@ def create_app(
         # critical path, the reverted-changes counterfactual, the focus's baseline variance —
         # so "what was shortened to keep UID X from slipping?" is answerable with citations
         facts += manipulation_forensics_facts(schedules, cpms, target_uid=st.target_uid)
-        return _ask_response(st, facts, text)
+        # unrestricted mode (ADR-0361) feeds the newest version's activity table as raw data
+        block = None
+        if unrestricted:
+            newest = schedules[-1]
+            newest_key = next((k for k, s in st.schedules.items() if s.name == newest.name), None)
+            if newest_key is not None:
+                block = _unrestricted_data_block(st, newest_key, st.schedules[newest_key])
+        return _ask_response(st, facts, text, data_block=block)
 
     @app.get("/api/driving-path")
     def driving_path_answer(uid: int = Query(...), scope: str = Query("")) -> JSONResponse:
@@ -6265,7 +6330,7 @@ def create_app(
             cls = Classification(classification)
         except ValueError:
             cls = Classification.CLASSIFIED  # unknown -> safe default
-        if qa_mode not in ("annotate", "strict", "interpretive"):
+        if qa_mode not in ("annotate", "strict", "interpretive", "unrestricted"):
             qa_mode = "annotate"
         if second_backend not in ("none", "ollama", "openai"):
             second_backend = "none"
@@ -17885,6 +17950,10 @@ AI-derived</option>
 engine never computed is discarded wholesale</option>
 <option value=interpretive{sel("interpretive", cfg.qa_mode)}>Interpretive — the model's text is
 shown verbatim, ungated (raw analysis; no sourced-figure guarantee — verify against the citations)</option>
+<option value=unrestricted{sel("unrestricted", cfg.qa_mode)}>Unrestricted — full model power: the
+model also receives the per-activity data table, may CALCULATE new figures and interpret without
+restraint, verbatim and ungated. Still 100% local; no sourced-figure guarantee — verify anything
+you rely on against the citations</option>
 </select></p>
 <p>Cross-check second model:
 <select name=second_backend id=secondBackend>
