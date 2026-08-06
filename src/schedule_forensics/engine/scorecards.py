@@ -652,6 +652,7 @@ def reserve_recommendation(
     *,
     percentiles: Sequence[int] = (50, 70, 80, 90),
     committed_date_display: str | None = None,
+    date_correction: _dt.timedelta = _dt.timedelta(0),
 ) -> ReserveRecommendation:
     """Size the schedule reserve to hit ``committed_offset`` at each confidence level.
 
@@ -661,6 +662,12 @@ def reserve_recommendation(
     working-minutes/day conversion is the schedule calendar's, matching the rest of the tool.
     ``committed_date_display`` overrides the echoed committed date (the caller passes the operator's
     literal input so a calendar-boundary offset round-trip cannot shift the shown date by a day).
+    ``date_correction`` is the run's stored-date-axis realignment
+    (``sra.stored_finish_correction`` — ADR-0353): on a progressed schedule the CDF's offsets pack
+    completed work at the project start, so rendering their dates naively lands early (Project2
+    measured 15 days). The caller must convert ``committed_offset`` on the SAME corrected axis
+    (``datetime_to_offset(start, committed - correction, cal)``) so the confidence read and the
+    reserve arithmetic compare like with like; row dates here get the correction added back.
     """
     wmpd = calendar.working_minutes_per_day or 480
     rows: list[ReserveRow] = []
@@ -673,7 +680,9 @@ def reserve_recommendation(
             ReserveRow(
                 percentile=pct,
                 finish_offset=finish,
-                finish_date=offset_to_datetime(project_start, max(finish, 0), calendar)
+                finish_date=(
+                    offset_to_datetime(project_start, max(finish, 0), calendar) + date_correction
+                )
                 .date()
                 .isoformat(),
                 reserve_days=reserve_days,
@@ -682,7 +691,9 @@ def reserve_recommendation(
     return ReserveRecommendation(
         committed_offset=committed_offset,
         committed_date=committed_date_display
-        or offset_to_datetime(project_start, max(committed_offset, 0), calendar).date().isoformat(),
+        or (offset_to_datetime(project_start, max(committed_offset, 0), calendar) + date_correction)
+        .date()
+        .isoformat(),
         committed_confidence=round(_confidence_at(cdf, committed_offset), 4),
         rows=tuple(rows),
         recommended_p70_days=reserve_by_pct.get(70, 0.0),

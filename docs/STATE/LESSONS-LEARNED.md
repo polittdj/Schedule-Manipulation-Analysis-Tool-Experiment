@@ -435,6 +435,23 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-06 — A defect can be invisible to a whole suite because every fixture is the identity case
+- **SRA-LEGACY (ADR-0353).** The legacy SRA's anchor was the full-duration CPM finish bisected
+  against a remaining-basis distribution. Every synthetic in `test_sra.py` is unprogressed —
+  remaining ≡ duration — so the two bases coincide and 30+ green tests never touched the defect.
+  The fix's own equivalence pin passes byte-identically on those fixtures; only a NEW progressed,
+  resume-less fixture (the EVM1 class) could fail it. Lesson: when a defect is "X and Y disagree",
+  check whether the suite's fixtures make X ≡ Y by construction — a green suite over identity
+  cases is a vacuous gate (the blind-spot-fixture rule, ADR-0136, in a new costume).
+- **Measure both sides before designing.** Running the four goldens first showed leg A's blast
+  radius was exactly the resume-less class (det_pct unchanged to 4 dp on the other three) — which
+  turned "will this break parity?" from a fear into a prediction that then held.
+- **`grep -c` exits 1 on a zero count.** An `&&`-chained "assert-absent then run test" mutation
+  step silently stopped at the grep; the test never ran. Chain verification greps with `;`, or
+  the protocol's absence check eats the run it guards.
+- **A repo-wide sed for a 3-token unpack line hit three routes.** Two still used the variable →
+  F821 at import time. Same-shape lines recur in a 18k-line module; line-targeted sed only.
+
 ### 2026-08-05 (cont.4) — A coverage probe can measure the anchor instead of the function (ADR-0352)
 - **The probe that flattered itself.** To find out which members of the evolution family the
   render oracle actually exercises, I mutated each one's markup and re-rendered.

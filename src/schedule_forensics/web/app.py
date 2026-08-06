@@ -4198,24 +4198,32 @@ def create_app(
         picked = _pick_scorecard_version(file)
         if picked is None:
             return JSONResponse({"error": "no analyzable schedule loaded"}, status_code=400)
-        key, sch, a = picked
+        key, sch, _a = picked
         committed_dt = _parse_committed_date(committed)
         if committed_dt is None:
             return JSONResponse(
                 {"error": "a committed date (YYYY-MM-DD) is required"}, status_code=422
             )
         iters = max(100, min(5000, iterations))
-        sra = compute_sra(sch, a.cpm, config=SRAConfig(iterations=iters))
+        sra = compute_sra(sch, config=SRAConfig(iterations=iters))
+        # The operator's committed date lives on the STORED plan-date axis; the CDF's offsets live
+        # on the pure-CPM axis (completed work packed at the project start). Convert the committed
+        # date through the run's constant realignment so confidence/reserve compare like with like
+        # (ADR-0353 — before this, a progressed file read 100% confidence / 0 reserve).
+        correction = stored_finish_correction(sch, None, sra.deterministic_finish)
         # a committed finish DATE means "finish by the end of that day", so map it to the start of
         # the next day (strictly after any finish on the committed day) for the confidence/reserve.
         end_of_day = committed_dt + dt.timedelta(days=1)
-        committed_offset = datetime_to_offset(sch.project_start, end_of_day, sch.calendar)
+        committed_offset = datetime_to_offset(
+            sch.project_start, end_of_day - correction, sch.calendar
+        )
         rec = reserve_recommendation(
             sra.cdf,
             committed_offset,
             sch.project_start,
             sch.calendar,
             committed_date_display=committed_dt.date().isoformat(),
+            date_correction=correction,
         )
         return JSONResponse(
             {
@@ -5287,7 +5295,6 @@ def create_app(
                 heavy,
                 compute_sra,
                 sch,
-                cpm,
                 config=config,
                 overrides=overrides,
                 risks=_risk_events(st),
@@ -15556,12 +15563,19 @@ correlation), with each activity's Criticality Index and Schedule Sensitivity In
 def _sra_data(
     st: SessionState, sch: Schedule, cpm: CPMResult, result: SRAResult
 ) -> dict[str, object]:
-    """The SRA results payload for ``sra.js`` — offsets resolved to ISO dates on the calendar."""
+    """The SRA results payload for ``sra.js`` — offsets resolved to ISO dates on the calendar.
+
+    Every offset→date conversion here applies the run's stored-date-axis realignment
+    (``sra.stored_finish_correction`` — the ADR-0256 pattern, adopted by the legacy model in
+    ADR-0353), so the S-curve, histogram, mean and deterministic marker land on the identical
+    date axis as the result's own ``*_date`` fields (pinned by test).
+    """
     cal = sch.calendar
     ps = sch.project_start
+    correction = stored_finish_correction(sch, None, result.deterministic_finish)
 
     def _iso(offset: int) -> str:
-        return offset_to_datetime(ps, max(offset, 0), cal).isoformat()
+        return (offset_to_datetime(ps, max(offset, 0), cal) + correction).isoformat()
 
     names = sch.tasks_by_id
     # tornado: the most influential activities by |duration sensitivity| (top 20)

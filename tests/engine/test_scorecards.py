@@ -197,3 +197,26 @@ def test_reserve_when_committed_beats_everything() -> None:
     rec = reserve_recommendation(_CDF, 500, _START, _CAL)
     assert rec.committed_confidence == pytest.approx(1.0)
     assert all(r.reserve_days == 0.0 for r in rec.rows)
+
+
+def test_reserve_dates_carry_the_stored_axis_correction() -> None:
+    """ADR-0353: ``date_correction`` realigns every rendered date onto the stored plan axis.
+
+    On a progressed schedule the CDF's offsets pack completed work at the project start, so
+    the naive conversion lands early (Project2 measured 15 days — the buffer panel read 100%
+    confidence / 0 reserve against a committed date the distribution actually straddles).
+    The offset-space arithmetic (confidence, reserve days) must be untouched by the constant.
+    """
+    corr = dt.timedelta(days=30)
+    rec = reserve_recommendation(_CDF, 150, _START, _CAL, date_correction=corr)
+    base = reserve_recommendation(_CDF, 150, _START, _CAL)
+    # all four offsets land on 2026-01-01 naively (each < 480 min); +30 days -> 2026-01-31
+    assert all(r.finish_date == "2026-01-01" for r in base.rows)
+    assert all(r.finish_date == "2026-01-31" for r in rec.rows)
+    # the committed-date fallback echo sits on the same corrected axis
+    assert base.committed_date == "2026-01-01"
+    assert rec.committed_date == "2026-01-31"
+    # offset-space figures are correction-invariant
+    assert rec.committed_confidence == base.committed_confidence
+    assert [r.reserve_days for r in rec.rows] == [r.reserve_days for r in base.rows]
+    assert [r.finish_offset for r in rec.rows] == [r.finish_offset for r in base.rows]

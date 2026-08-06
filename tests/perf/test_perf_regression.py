@@ -41,7 +41,6 @@ from pathlib import Path
 import pytest
 
 from schedule_forensics.engine import sra as sra_mod
-from schedule_forensics.engine.cpm import compute_cpm
 from schedule_forensics.engine.sra import SRAConfig, compute_sra
 from schedule_forensics.model.relationship import Relationship, RelationshipType
 from schedule_forensics.model.schedule import Schedule
@@ -82,7 +81,6 @@ def test_sra_ranks_the_finish_vector_once_not_per_activity(monkeypatch) -> None:
     """
     n = 8
     sch = _chain(n, "sra")
-    cpm = compute_cpm(sch)
 
     calls = {"count": 0}
     real = sra_mod._average_ranks
@@ -92,7 +90,7 @@ def test_sra_ranks_the_finish_vector_once_not_per_activity(monkeypatch) -> None:
         return real(values)
 
     monkeypatch.setattr(sra_mod, "_average_ranks", _counting)
-    compute_sra(sch, cpm, config=SRAConfig(iterations=50, seed=1))
+    compute_sra(sch, config=SRAConfig(iterations=50, seed=1))
 
     assert calls["count"] == n + 1  # 1 hoisted finish rank + n per-activity duration ranks
     assert calls["count"] < 2 * n  # strictly better than the pre-hoist re-ranking, for n > 1

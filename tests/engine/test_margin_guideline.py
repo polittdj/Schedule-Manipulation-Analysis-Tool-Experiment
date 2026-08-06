@@ -16,7 +16,6 @@ import datetime as dt
 
 import pytest
 
-from schedule_forensics.engine.cpm import compute_cpm
 from schedule_forensics.engine.margin_guideline import (
     FIG_5_30_DEFAULT_RATES,
     GuidelineBandConfig,
@@ -131,7 +130,7 @@ def test_cdf_at_reproduces_deterministic_percentile_on_a_real_sra_result() -> No
     # bisect_right(sorted_finishes, D)/n and builds the CDF from the SAME samples, so the
     # step read at D must reproduce the stored figure exactly.
     sch = _sched([_task(1, 2), _task(2, 3), _task(3, 1)], [_rel(1, 2), _rel(2, 3)])
-    result = compute_sra(sch, compute_cpm(sch), config=SRAConfig(iterations=300, seed=7))
+    result = compute_sra(sch, config=SRAConfig(iterations=300, seed=7))
     assert _cdf_at(result.cdf, result.deterministic_finish) == result.deterministic_percentile
 
 

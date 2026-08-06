@@ -366,7 +366,6 @@ def _three_point(
 
 def compute_sra(
     schedule: Schedule,
-    cpm: CPMResult,
     *,
     config: SRAConfig = _DEFAULT_CONFIG,
     overrides: Mapping[int, ActivityRisk] | None = None,
@@ -374,8 +373,14 @@ def compute_sra(
 ) -> SRAResult:
     """Run the seeded Monte-Carlo SRA and return the :class:`SRAResult`.
 
-    ``cpm`` is the deterministic :func:`compute_cpm` result for ``schedule`` (its
-    ``project_finish`` is the deterministic anchor compared against the simulated CDF).
+    The deterministic anchor is the **all-ML solve** — ``compute_cpm`` with every activity
+    overridden to :func:`_ml_minutes` (a completed task's own duration, else its remaining) —
+    exactly :func:`compute_sra_ssi`'s anchor, so the simulation, the anchor and the percentile
+    share one duration basis (ADR-0353). The ordinary full-duration ``compute_cpm`` finish is
+    NOT comparable to a remaining-basis distribution: on a progressed file without stored
+    ``Resume`` reschedules it sits above nearly every sample (EVM1 measured
+    ``deterministic_percentile`` 0.991 — a false "conservative plan" verdict), which is why
+    this function no longer accepts a caller-supplied anchor at all.
     ``overrides`` is the manual 3-point path; un-overridden activities use the auto
     triangular default (ADR-0106). Each iteration ``i`` samples durations from
     ``random.Random(config.seed + i)`` (draws ordered by ``unique_id``) and recomputes the
@@ -394,6 +399,12 @@ def compute_sra(
         raise ValueError("SRAConfig.iterations must be >= 1")
 
     tasks = sorted(non_summary(schedule), key=lambda t: t.unique_id)
+    # The anchor: the all-ML solve on the SAME remaining-duration basis the iterations sample
+    # (ADR-0353; the {uid: _ml_minutes(t)} map is byte-identical to deterministic_margin_bounds'
+    # D and compute_sra_ssi's ml_finish — one instrument). On an unprogressed schedule this
+    # equals the plain compute_cpm finish (the ADR-0106 equivalence, pinned by test).
+    ml = {t.unique_id: _ml_minutes(t) for t in tasks}
+    deterministic = compute_cpm(schedule, duration_overrides=ml).project_finish
     three_point: dict[int, tuple[float, float, float]] = {}
     auto_used = False
     for task in tasks:
@@ -444,7 +455,7 @@ def compute_sra(
 
     return _build_result(
         schedule,
-        cpm,
+        deterministic,
         config,
         auto_used,
         tasks,
@@ -495,7 +506,7 @@ def _risk_drivers(
 
 def _build_result(
     schedule: Schedule,
-    cpm: CPMResult,
+    deterministic: int,
     config: SRAConfig,
     auto_used: bool,
     tasks: Sequence[Task],
@@ -523,8 +534,8 @@ def _build_result(
     p90 = round(_percentile(sorted_finishes_f, 90))
     mean = statistics.fmean(finishes_f)
 
-    deterministic = cpm.project_finish
-    # fraction of iterations finishing on or before the deterministic finish
+    # fraction of iterations finishing on or before the deterministic (all-ML) finish — same
+    # duration basis as the samples, so the percentile is a real read (ADR-0353)
     det_pct = bisect.bisect_right(sorted_finishes, deterministic) / n
 
     activities: list[ActivitySensitivity] = []
@@ -554,9 +565,16 @@ def _build_result(
 
     cal = schedule.calendar
     ps = schedule.project_start
+    # Realign the pure-CPM date axis onto the STORED plan dates (ADR-0353): completed work
+    # packs at the project start, so on a progressed schedule the naive conversion lands early
+    # (Project2 measured 15 days). Same constant correction as the SSI result — the
+    # deterministic date lands on the latest stored finish; relative spacing is unchanged.
+    # Zero when the schedule stores no finishes. Callers converting OTHER offsets from this
+    # run reuse stored_finish_correction(schedule, None, deterministic) — ADR-0256's pattern.
+    correction = stored_finish_correction(schedule, None, deterministic)
 
     def _iso(offset: int) -> str:
-        return offset_to_datetime(ps, max(offset, 0), cal).isoformat()
+        return (offset_to_datetime(ps, max(offset, 0), cal) + correction).isoformat()
 
     return SRAResult(
         iterations=config.iterations,
