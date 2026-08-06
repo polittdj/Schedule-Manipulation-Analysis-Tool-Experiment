@@ -435,6 +435,27 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-06 (cont.4) — Put the trap check IN the tooling, and the tooling catches you
+
+- The span-scoped coverage probe was written fresh this session with ADR-0351's rule baked in
+  as an assert: after mutating, the ORIGINAL anchor must be absent from the re-read span.
+  The very first header probe then used `page-takeaway` → `page-takeaway`**`Q`** — a suffixed
+  replacement, the exact substring shape ADR-0351 documented — and the harness refused to
+  render it. Same-length non-superstring (`page-tekeaway`) worked. **A trap rule that lives
+  only in a checklist fires only when someone re-reads the checklist; a rule compiled into the
+  harness fires every time.**
+- An EMPTY sweep result is only evidence when the sweep harness has been shown able to find
+  things. This slice's three standing sweeps (monkeypatch targets, source-text readers,
+  attribute reads) all came back empty — trustworthy because the same harness shapes found
+  driving's 3 and evolution's 4+2 last time, and because mutation 1 (dropped re-export)
+  proved the contract half still fails loudly on this very cut.
+- The render diff's value is decided by the pre-flight probe, per family: driving 0/60,
+  evolution most-but-not-all, integrity 6/79 for BOTH members. Running ADR-0352's probe before
+  the cut is what let 79/79 be quoted as proof rather than vacuous green.
+- A five-version fixture load (TP4_DataCenter v1..v5 as ONE project) turned out to be the only
+  way any current fixture renders /integrity's n>2 picker and both non-empty verdict bands —
+  worth keeping in the render harness as Oracle B alongside the golden pair.
+
 ### 2026-08-06 (cont.3) — A parity delta is a claim about INPUTS before it is a claim about engines
 - **ADR-0356.** "Same data in both tools" was the premise and the defect: the tool's session
   held a setup captured against an earlier schedule vintage (605/783 factors stale), while SSI

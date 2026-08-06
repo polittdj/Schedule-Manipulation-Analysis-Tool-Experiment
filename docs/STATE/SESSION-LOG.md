@@ -12018,3 +12018,36 @@ tests/engine/test_1440_boundary.py pins finish/start-role/inverse at the boundar
 able-to-fail by mutating the branch to per_day - 1 (2 failed, restored green). All three
 ADR-0240 reserved items are now closed. ADR-0357; no version bump (test + docs only, rides
 the v1.0.171 commit).
+
+## 2026-08-06 — Phase 3 slice 4: the /integrity family out of the monolith (ADR-0358, v1.0.172)
+
+Branch `claude/polaris-resume-handoff-div159` (restarted from origin/main 293fbac after #546's
+squash-merge). Extracted `_integrity_header` + `_integrity_body` (2 names / 402 lines — the
+behaviour-seeded AST closure equals the prefix pair exactly; sole external referrer
+`create_app`) VERBATIM into `web/integrity.py` (446 lines). `app.py` 18,311 → 17,910.
+`LAYER_ORDER` gains `integrity.py` between `evolution.py` and `app.py`; `VIEW_MODULES` and both
+whole-view-layer guards (`test_bar_drill`, `test_presentation_fixes`) widened; E501 exemption
+travels with the moved HTML f-strings. Nothing descended into `components.py` (first slice
+where the pair-descent rule had no work); `ruff --fix` dropped the one import
+(`engine.change_effects`) whose last app.py consumer moved — the same line lives verbatim in
+the new module's preamble.
+
+Verified: per-definition byte-identity 2/2 (2,654 + 19,996 B) · non-blank multiset 38 added /
+0 removed · 79/79 routes byte-identical across TWO deterministic oracles (golden pair + a new
+TP4_DataCenter five-version load that renders /integrity's n>2 picker, both non-empty verdict
+bands, the order-normalisation and out-of-range branches) · oracle falsified (one char in the
+moved body moves exactly the six /integrity pages) · span-scoped pre-flight probe BEFORE the
+cut: both members render, 6 routes each — first slice where the render diff covers the whole
+family. All three standing sweeps EMPTY (monkeypatch over all 18 bound names, source-text
+subjects, attribute-reads of the two unbound names) — first slice with zero test repointing.
+Five guard mutations fail/restore-green. Named gap: the `artifact-cluster` SNET-reschedule
+branch renders on no fixture (byte-identity is its only guard). The probe harness's
+assert-original-absent check caught a suffixed `page-takeawayQ` mutation — ADR-0351's
+substring trap firing inside the probe tooling itself.
+
+Absorbed in passing: the operator committed the ADR-0357 oracle
+(`00_REFERENCE_INTAKE/mpp/24Hour Calendar.mpp`, main d0b703e web upload) — the ADR-0347
+census guard went red on an untouched intake, exactly as designed. Classifier-verified
+`ole2-project`/no-mismatch, manifest regenerated (407/21/99), the 20→21 pin carries the
+provenance, CLAUDE.md census updated. v1.0.172, wheel + nine installers rebuilt, full gate
+green (see ADR-0358).
