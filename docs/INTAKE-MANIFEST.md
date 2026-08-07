@@ -51,8 +51,8 @@ finish. **No parity exposure**, and both hashes are pinned below so a future cha
 
 | measure | value |
 | --- | ---: |
-| tracked files | 407 |
-| total bytes | 333,289,478 |
+| tracked files | 410 |
+| total bytes | 342,791,738 |
 | extension&harr;content mismatches | 99 |
 | duplicate-content groups | 27 |
 | files in a duplicate group | 63 |
@@ -69,8 +69,8 @@ finish. **No parity exposure**, and both hashes are pinned below so a future cha
 | `json` | 11 |
 | `mp4` | 2 |
 | `ole2-ppt` | 1 |
-| `ole2-project` | 21 |
-| `ooxml-excel` | 83 |
+| `ole2-project` | 22 |
+| `ooxml-excel` | 85 |
 | `ooxml-ppt` | 1 |
 | `ooxml-word` | 15 |
 | `pdf` | 23 |
@@ -382,9 +382,12 @@ body under several names, not random corruption.
 | `00_REFERENCE_INTAKE/Redesign Explorations.dc.html` | 39,945 | `.html` | `html` | — | `9e3f71004e2e9214d322c712cf1549e7f379ede74f094d563a7b06e61beb8866` |
 | `00_REFERENCE_INTAKE/SP-20240014019.pdf` | 14,471,540 | `.pdf` | `pdf` | — | `31360e10aa89bd28a6ebd02e1bb91fe9104fc6a25afb307b0b7d1025d712c775` |
 | `00_REFERENCE_INTAKE/SP-20240014326.pdf` | 6,669,330 | `.pdf` | `pdf` | — | `4cd6b6d0afd1c0f21e1c4b3593319532ce1087522233be6036a484efae80aa11` |
+| `00_REFERENCE_INTAKE/SRA - Large Test File2_SRA_Results_2026-8-6.xlsx` | 33,444 | `.xlsx` | `ooxml-excel` | — | `8059db102ebb58536eb9921befbfa21aa9bae4943d5076c8f3f0731f84a738fc` |
 | `00_REFERENCE_INTAKE/SRA Large Test File2 POLARIS Output.jpg` | 100,771 | `.jpg` | `jpeg` | — | `972495066208bfb80487f8c08c033e7ca8a0c99f37c68b0f8eabd4f0c3cbf806` |
+| `00_REFERENCE_INTAKE/SRA Large Test File2.mpp` | 9,443,328 | `.mpp` | `ole2-project` | — | `82522dcdfb0859211ffdfb2bb33319c61660e6ee69c3ae1249e612a1f5eeb751` |
 | `00_REFERENCE_INTAKE/SRA Risk - Project5_TAMPERED - SRA.xlsx` | 17,442 | `.xlsx` | `ooxml-excel` | — | `bcc86d136d481d1f99e261aadfde754d0aef68f91a179b218840c34c7357360d` |
 | `00_REFERENCE_INTAKE/SRA Sensitivity Analysis.xlsx` | 13,257 | `.xlsx` | `ooxml-excel` | — | `b77cc5ef833cfbc2bf0f0f59d6a58827e069e623bde989310310224d5f0eefaa` |
+| `00_REFERENCE_INTAKE/Sensitivity - Large Test File2_SRA_Results_2026-8-6.xlsx` | 25,488 | `.xlsx` | `ooxml-excel` | — | `f02dc5e6d60b09e5b34c7ffc6d228cb1f395687774a71099573f7fbe467d6bee` |
 | `00_REFERENCE_INTAKE/UI-INVENTORY.md` | 12,213 | `.md` | `text` | — | `6c4cb72391495841f458ecbfc592d266383531e03593548ec6b57b042e68738d` |
 | `00_REFERENCE_INTAKE/UID_145_Directional_Path_Analysis_2026-6-22-11-35-10.xlsx` | 17,216 | `.xlsx` | `ooxml-excel` | — | `3c0e7c35b0aba8a6d7c1240210819529f45aeba7d10d9e3bc5758632bfdb80b7` |
 | `00_REFERENCE_INTAKE/UID_145_Directional_Path_Analysis_2026-6-23-12-28-46.xlsx` | 11,110 | `.xlsx` | `ooxml-excel` | — | `c4a48fa436e9c3452cf4fbc70367d9962bf81bd16211f617229db643a05faba0` |

@@ -21,6 +21,7 @@ from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
 from schedule_forensics.web.app import (
     SessionState,
+    UnifiedRisk,
     _file_stored_sra_inputs,
     _schedule_sra_fingerprint,
     create_app,
@@ -178,3 +179,73 @@ def test_saved_setup_carries_the_fingerprint() -> None:
         }
     )
     assert _schedule_sra_fingerprint(changed)["stored_sra_hash"] != h
+
+
+# --- the register rides along (ADR-0360, closing an ADR-0356 gap) ---------------------
+
+
+def _sched_with_stored_risk() -> Schedule:
+    """A risk carrier (prob+impact), a prob-only row (excluded — the pair rule), and a
+    completed carrier (excluded — ADR-0308's 'finished work cannot be delayed')."""
+    return Schedule(
+        name="r",
+        source_file="r.mpp",
+        project_start=dt.datetime(2027, 1, 4, 8),
+        tasks=(
+            _t(
+                1,
+                "risk-carrier",
+                remaining_duration_minutes=2 * DAY,
+                custom_fields=(
+                    ("SSI SRA Risk Probability", "0.60"),
+                    ("SSI SRA Schedule Impact", "PT40H0M0S"),  # 2400 min = 5 wd
+                ),
+            ),
+            _t(2, "prob-only", custom_fields=(("SSI SRA Risk Probability", "0.9"),)),
+            _t(
+                3,
+                "completed-carrier",
+                percent_complete=100.0,
+                custom_fields=(
+                    ("SSI SRA Risk Probability", "0.5"),
+                    ("SSI SRA Schedule Impact", "PT8H0M0S"),
+                ),
+            ),
+        ),
+    )
+
+
+def test_load_from_schedule_seeds_the_register_from_the_files_risk_fields() -> None:
+    """SSI reads its register off these fields, so 'Load from schedule' must carry them too —
+    factors alone left the session register empty while SSI ran the file's risks (an input
+    mismatch by another door). Days come from the file (locked); the legacy % derives from
+    the affected activity's remaining duration."""
+    client, st = _client(_sched_with_stored_risk())
+    r = client.post("/sra/load-from-schedule", follow_redirects=False)
+    assert r.status_code == 303
+    assert [risk.id for risk in st.sra_risks] == ["R1"]
+    risk = st.sra_risks[0]
+    assert risk.probability == 0.60 and risk.impact_days == 5.0 and risk.affected == (1,)
+    assert risk.days_locked is True
+    assert risk.impact_pct == 250.0  # 2400 impact / 960 remaining minutes
+    assert "1 register risk(s)" in (st.sra_import_msg or "")
+
+
+def test_load_from_schedule_keeps_the_register_when_the_file_has_no_risk_fields() -> None:
+    """A file with no stored risk fields says nothing about the register — an operator-entered
+    register must survive the factor/BCWC seed rather than be silently cleared."""
+    client, st = _client(_sched_with_stored_fields())
+    st.sra_risks = [
+        UnifiedRisk(
+            id="R1",
+            name="manual",
+            probability=0.5,
+            affected=(1,),
+            impact_days=3.0,
+            impact_pct=10.0,
+        )
+    ]
+    r = client.post("/sra/load-from-schedule", follow_redirects=False)
+    assert r.status_code == 303
+    assert [risk.name for risk in st.sra_risks] == ["manual"]
+    assert "register risk" not in (st.sra_import_msg or "")

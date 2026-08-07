@@ -2090,8 +2090,55 @@ def create_app(
             st, "Path Analysis", _TS_CAPTION_MARK + header + _path_body(keys, st.target_uid)
         )
 
+    _UNRESTRICTED_MAX_ROWS = 400
+
+    def _unrestricted_data_block(st: SessionState, name: str, sch: Schedule) -> str | None:
+        """The bounded per-activity data table the UNRESTRICTED mode feeds the model
+        (ADR-0361) — the raw material for "calculate new data". Engine-computed rows, one
+        line per activity, truncation disclosed IN the block so the model can say so."""
+        try:
+            rows = st.analysis_for(name, sch).activity_rows
+        except CPMError:
+            return None
+        head = (
+            "UID|Name|WBS|Dur(d)|Rem(d)|%Complete|Start|Finish|TotalFloat(d)|Critical|"
+            "Constraint|Resources"
+        )
+        lines = [head]
+        for r in rows[:_UNRESTRICTED_MAX_ROWS]:
+            if r.get("is_summary"):
+                continue
+            lines.append(
+                "|".join(
+                    str(v if v is not None else "—")
+                    for v in (
+                        r.get("unique_id"),
+                        r.get("name"),
+                        r.get("wbs"),
+                        r.get("duration_days"),
+                        r.get("remaining_duration_days"),
+                        r.get("percent_complete"),
+                        r.get("start"),
+                        r.get("finish"),
+                        r.get("total_float_days"),
+                        r.get("is_critical"),
+                        r.get("constraint_type"),
+                        r.get("resource_names"),
+                    )
+                )
+            )
+        if len(rows) > _UNRESTRICTED_MAX_ROWS:
+            lines.append(
+                f"(first {_UNRESTRICTED_MAX_ROWS} of {len(rows)} activities by schedule "
+                "order — say so if the question needs the rest)"
+            )
+        return "\n".join(lines)
+
     def _ask_response(
-        st: SessionState, facts: tuple[CitedStatement, ...], text: str
+        st: SessionState,
+        facts: tuple[CitedStatement, ...],
+        text: str,
+        data_block: str | None = None,
     ) -> JSONResponse:
         """Shared Q&A response: route the backend(s), answer in the configured mode.
 
@@ -2099,13 +2146,17 @@ def create_app(
         independently and a deterministic figure-agreement note is computed — the
         engine compares, never a third model."""
         mode = st.ai_config.qa_mode
-        answer, used = answer_question(_active_backend(st), facts, text, mode=mode)
+        answer, used = answer_question(
+            _active_backend(st), facts, text, mode=mode, data_block=data_block
+        )
         second_answer: str | None = None
         second_model: str | None = None
         agreement: str | None = None
         second = _second_backend(st)
         if second is not None:
-            second_answer, _ = answer_question(second, facts, text, mode=mode)
+            second_answer, _ = answer_question(
+                second, facts, text, mode=mode, data_block=data_block
+            )
             second_model = f"{second.name}/{getattr(second, 'model', '') or 'default'}"
             if answer and second_answer:
                 agreement = figure_agreement(answer, second_answer)
@@ -2159,7 +2210,12 @@ def create_app(
                 facts += manipulation_forensics_facts(schedules, cpms, target_uid=st.target_uid)
         except CPMError as exc:
             return JSONResponse({"error": str(exc)}, status_code=422)
-        return _ask_response(st, facts, text)
+        block = (
+            _unrestricted_data_block(st, name, sch)
+            if st.ai_config.qa_mode == "unrestricted"
+            else None
+        )
+        return _ask_response(st, facts, text, data_block=block)
 
     @app.post("/api/ask")
     def ask_workbook(question: str = Form("")) -> JSONResponse:
@@ -2170,6 +2226,7 @@ def create_app(
         text = question.strip()[:500]
         if not text:
             return JSONResponse({"error": "ask a question"}, status_code=422)
+        unrestricted = st.ai_config.qa_mode == "unrestricted"
         if len(st.schedules) == 1:
             key, sch = next(iter(st.schedules.items()))
             try:
@@ -2177,7 +2234,8 @@ def create_app(
                 facts += driving_path_facts(sch, st.analysis_for(key, sch).cpm, text)
             except CPMError as exc:
                 return JSONResponse({"error": str(exc)}, status_code=422)
-            return _ask_response(st, facts, text)
+            block = _unrestricted_data_block(st, key, sch) if unrestricted else None
+            return _ask_response(st, facts, text, data_block=block)
         schedules, cpms, _skipped = _solvable_versions()
         if not schedules:
             return JSONResponse({"error": "no analyzable versions loaded"}, status_code=422)
@@ -2188,7 +2246,14 @@ def create_app(
         # critical path, the reverted-changes counterfactual, the focus's baseline variance —
         # so "what was shortened to keep UID X from slipping?" is answerable with citations
         facts += manipulation_forensics_facts(schedules, cpms, target_uid=st.target_uid)
-        return _ask_response(st, facts, text)
+        # unrestricted mode (ADR-0361) feeds the newest version's activity table as raw data
+        block = None
+        if unrestricted:
+            newest = schedules[-1]
+            newest_key = next((k for k, s in st.schedules.items() if s.name == newest.name), None)
+            if newest_key is not None:
+                block = _unrestricted_data_block(st, newest_key, st.schedules[newest_key])
+        return _ask_response(st, facts, text, data_block=block)
 
     @app.get("/api/driving-path")
     def driving_path_answer(uid: int = Query(...), scope: str = Query("")) -> JSONResponse:
@@ -5414,18 +5479,27 @@ def create_app(
             return RedirectResponse(url="/sra", status_code=303)
         _key, sch, _cpm = chosen
         factors, bcwc = _file_stored_sra_inputs(sch)
-        if not factors and not bcwc:
+        stored_risks = _file_stored_risks(sch)
+        if not factors and not bcwc and not stored_risks:
             st.sra_import_msg = (
                 "This schedule carries no stored SRA fields ('SRA Risk Ranking Factors' / "
-                "Best/Worst Case Duration) — nothing to load."
+                "Best/Worst Case Duration / SSI SRA Risk fields) — nothing to load."
             )
             st.sra_import_is_error = True
         else:
             st.sra_factors = factors
             st.sra_bcwc = bcwc
+            # ADR-0360: the register rides along — SSI reads its risks off these same fields,
+            # so loading factors without them reproduced the input mismatch by another door.
+            # A file with NO stored risk fields leaves the operator's register untouched.
+            risk_note = ""
+            if stored_risks:
+                st.sra_risks = stored_risks
+                risk_note = f" and {len(stored_risks)} register risk(s)"
             st.sra_import_msg = (
                 f"Loaded the schedule's own stored SRA inputs: {len(factors)} Risk Ranking "
-                f"Factor(s) and {len(bcwc)} Best/Worst Case pair(s) (incomplete activities)."
+                f"Factor(s), {len(bcwc)} Best/Worst Case pair(s){risk_note} "
+                "(incomplete activities)."
             )
             st.sra_import_is_error = False
         return RedirectResponse(url="/sra", status_code=303)
@@ -5459,6 +5533,33 @@ def create_app(
                 bc, _ml, wc = factor_to_bc_wc(rem, st.sra_factors[u], tbl)
                 st.sra_bcwc[u] = (bc, wc)
         return RedirectResponse(url="/sra", status_code=303)
+
+    def _sra_reuse_key(st: SessionState, key: str) -> tuple[object, ...]:
+        """The full resolved-input identity of an SSI run / OAT sweep (ADR-0360 export reuse).
+
+        Compared by equality, never hashed. Any input change — a factor, a Best/Worst pair, a
+        register row, the focus, the sampler, the correlation spec, the factor table, or the
+        schedule bytes themselves (``content_hashes``) — changes the tuple, so a cached result
+        can never be served across an input edit or a re-uploaded file of the same name."""
+        return (
+            key,
+            st.content_hashes.get(key),
+            st.sra_focus_uid,
+            st.sra_use_risk_register,
+            st.sra_occurrence_mode,
+            st.sra_correlation,
+            _correlation_spec(st),
+            st.sra_sampling,
+            st.sra_lhs_centered,
+            st.sra_factor_rows,
+            tuple(sorted(st.sra_factors.items())),
+            tuple(sorted(st.sra_bcwc.items())),
+            tuple(sorted(st.sra_overrides.items())),
+            (st.sra_low, st.sra_ml, st.sra_high),
+            tuple(st.sra_risks),
+            tuple(st.sra_branches),
+            tuple(st.sra_conditionals),
+        )
 
     @app.get("/api/sra/ssi")
     def sra_ssi_json(
@@ -5500,6 +5601,9 @@ def create_app(
         # its bars by "how often critical" — the grid is a separate fetch, so it reads the last run.
         st.sra_criticality = {int(u): ci for u, ci in result.criticality}
         st.sra_criticality_iters = result.iterations
+        # ADR-0360: remember the run under its full input identity so ⤓ EXCEL exports THIS
+        # result instead of re-running the model for minutes on click.
+        st.sra_run_cache = (_sra_reuse_key(st, _key), result)
         return JSONResponse(_ssi_data(sch, result))
 
     @app.post("/sra/jcl-config")
@@ -5610,11 +5714,11 @@ def create_app(
         if chosen is None:
             return JSONResponse({"error": "No analyzable schedule loaded."}, status_code=400)
         _key, sch, _cpm = chosen
-        exclude = (
-            frozenset(u for r in st.sra_risks for u in r.affected)
-            if st.sra_use_risk_register
-            else frozenset()
-        )
+        # ADR-0359: risk-affected activities keep their own duration rows AND the register
+        # contributes fired-alone R/O rows — SSI's Sensitivity export lists both, so nothing
+        # is excluded any more.
+        exclude: frozenset[int] = frozenset()
+        oat_risks = _schedule_risks(st) if st.sra_use_risk_register else ()
         three_point = _ssi_three_point(st, sch)
         # ADR-0261 P5: the sweep is TWO CPM solves per candidate activity and was unbounded — a
         # huge schedule could pin the worker for hours. Above the cap, sweep only the candidates
@@ -5628,24 +5732,38 @@ def create_app(
             three_point = {u: three_point[u] for u in keep}
         # the OAT sweep is one CPM solve per task — offload it on big schedules too
         heavy = len(sch.tasks_by_id) >= OFFLOAD_TASK_THRESHOLD
-        try:
-            oat = run_maybe_offloaded(
-                heavy,
-                compute_oat_sensitivity,
-                sch,
-                three_point=three_point,
-                target_uid=st.sra_focus_uid,
-                exclude_uids=exclude,
-            )
-        except Exception as exc:
-            return JSONResponse({"error": str(exc)}, status_code=422)
+        oat_key = (_sra_reuse_key(st, _key), tuple(sorted(three_point.items())))
+        ocache = st.sra_oat_cache
+        if ocache is not None and ocache[0] == oat_key:
+            oat = cast(tuple[OATSensitivity, ...], ocache[1])  # ADR-0360: same inputs, same rows
+        else:
+            try:
+                oat = run_maybe_offloaded(
+                    heavy,
+                    compute_oat_sensitivity,
+                    sch,
+                    three_point=three_point,
+                    target_uid=st.sra_focus_uid,
+                    exclude_uids=exclude,
+                    risks=oat_risks,
+                )
+            except Exception as exc:
+                return JSONResponse({"error": str(exc)}, status_code=422)
+            st.sra_oat_cache = (oat_key, oat)
         names = sch.tasks_by_id
         mpd = sch.calendar.working_minutes_per_day or 480
         payload: dict[str, object] = {
             "rows": [
                 {
                     "uid": o.unique_id,
-                    "name": names[o.unique_id].name if o.unique_id in names else "",
+                    # an R/O row (ADR-0359) is the register risk fired alone on its affected
+                    # activity — named for the risk, like SSI's own Sensitivity export
+                    "name": (
+                        f"R/O — {o.risk_name or o.risk_id}"
+                        if o.risk_id
+                        else (names[o.unique_id].name if o.unique_id in names else "")
+                    ),
+                    "risk_id": o.risk_id,
                     "bc_days": round(o.bc_minutes / mpd, 1),
                     "wc_days": round(o.wc_minutes / mpd, 1),
                     "ml_days": round(o.ml_minutes / mpd, 1),
@@ -5845,29 +5963,41 @@ def create_app(
             lhs_centered=st.sra_lhs_centered,
         )
         heavy = len(sch.tasks_by_id) >= OFFLOAD_TASK_THRESHOLD
-        result = run_maybe_offloaded(
-            heavy,
-            compute_sra_ssi,
-            sch,
-            config=cfg,
-            three_point=tp,
-            risks=_schedule_risks(st),
-            branches=_schedule_branches(st),
-            conditionals=_schedule_conditionals(st),
-        )
-        exclude = (
-            frozenset(u for r in st.sra_risks for u in r.affected)
-            if st.sra_use_risk_register
-            else frozenset()
-        )
-        oat = run_maybe_offloaded(
-            heavy,
-            compute_oat_sensitivity,
-            sch,
-            three_point=tp,
-            target_uid=st.sra_focus_uid,
-            exclude_uids=exclude,
-        )
+        # ADR-0360: this endpoint used to re-run the Monte-Carlo AND the full OAT sweep on
+        # every ⤓ EXCEL click — measured 140 s on the committed 2,125-task SRA schedule, which
+        # reads as a dead button. When the page has already run on identical inputs, export
+        # EXACTLY that result (fidelity bonus: the workbook now always matches the screen —
+        # including the operator's chosen iteration count instead of a hardcoded 2000).
+        rk = _sra_reuse_key(st, _key)
+        rcache = st.sra_run_cache
+        if rcache is not None and rcache[0] == rk:
+            result = cast(SSIResult, rcache[1])
+        else:
+            result = run_maybe_offloaded(
+                heavy,
+                compute_sra_ssi,
+                sch,
+                config=cfg,
+                three_point=tp,
+                risks=_schedule_risks(st),
+                branches=_schedule_branches(st),
+                conditionals=_schedule_conditionals(st),
+            )
+            st.sra_run_cache = (rk, result)
+        oat_key = (rk, tuple(sorted(tp.items())))
+        ocache = st.sra_oat_cache
+        if ocache is not None and ocache[0] == oat_key:
+            oat = cast(tuple[OATSensitivity, ...], ocache[1])
+        else:
+            oat = run_maybe_offloaded(
+                heavy,
+                compute_oat_sensitivity,
+                sch,
+                three_point=tp,
+                target_uid=st.sra_focus_uid,
+                risks=_schedule_risks(st) if st.sra_use_risk_register else (),
+            )
+            st.sra_oat_cache = (oat_key, oat)
         if fmt == "docx":
             # the comprehensive narrative SRA report (PM summary -> per-section detail + vector
             # charts + the 5x5 matrices + assumptions); ADR-0124
@@ -6200,7 +6330,7 @@ def create_app(
             cls = Classification(classification)
         except ValueError:
             cls = Classification.CLASSIFIED  # unknown -> safe default
-        if qa_mode not in ("annotate", "strict", "interpretive"):
+        if qa_mode not in ("annotate", "strict", "interpretive", "unrestricted"):
             qa_mode = "annotate"
         if second_backend not in ("none", "ollama", "openai"):
             second_backend = "none"
@@ -12424,7 +12554,8 @@ def _branch_section(st: SessionState) -> str:
     return f"""<details class=explainer><summary><b>Probabilistic branches</b> &mdash; discrete rework that fires in p% of iterations (the bi-modal risk view, Hulett)</summary>
 <p class=muted>A <b>probabilistic branch</b> models a discrete failure/rework that, when it fires,
 inserts an extra activity onto an existing Finish&ndash;to&ndash;Start tie &mdash; delaying everything
-downstream by its sampled duration. Unlike a risk (which adds days to an <i>existing</i> task), a
+downstream by its sampled duration. Unlike a risk (whose impact replaces an <i>existing</i> task's
+remaining duration while it fires), a
 branch is a <b>new node</b> on the chosen link, so it only moves the finish when it becomes the
 driving path, and it produces the <b>bi-modal</b> finish distribution (a spike at "no failure" plus a
 shifted lump when the rework happens) the deterministic plan hides. Durations are working days; a
@@ -12544,8 +12675,10 @@ def _unified_risk_section(st: SessionState) -> str:
     )
     return f"""
 <h3>Risk / Opportunity register</h3>
-<p class=muted>Enter a risk <b>once</b> &mdash; it feeds <b>both</b> the additive-days (SSI) and the
-multiplicative-% (legacy) Monte-Carlo. Type a <b>days</b> impact <i>or</i> a <b>%</b> impact and the
+<p class=muted>Enter a risk <b>once</b> &mdash; it feeds <b>both</b> the days-impact (SSI) and the
+multiplicative-% (legacy) Monte-Carlo. While the risk fires, the days impact <b>replaces</b> the
+affected tasks' remaining duration (SSI semantics, ADR-0359). Type a <b>days</b> impact <i>or</i> a
+<b>%</b> impact and the
 other auto-calculates from the affected tasks' remaining duration; edit either to override it (it
 locks {lock} and is used as-entered for that model). A negative value is an opportunity.</p>
 <form id=riskForm action="/sra/risk-register" method=post class=viz-controls>
@@ -12574,6 +12707,49 @@ locks {lock} and is used as-entered for that model). A negative value is an oppo
 _SRA_FACTOR_FIELD = "SRA Risk Ranking Factors"
 _SRA_BC_FIELD = "Best Case Duration"
 _SRA_WC_FIELD = "Worst Case Duration"
+_SRA_RISK_PROB_FIELD = "SSI SRA Risk Probability"
+_SRA_RISK_IMPACT_FIELD = "SSI SRA Schedule Impact"
+
+
+def _file_stored_risks(sch: Schedule) -> list[UnifiedRisk]:
+    """The schedule's OWN stored register risks, read verbatim (ADR-0360 closing an ADR-0356
+    gap): SSI reads ``SSI SRA Risk Probability`` / ``SSI SRA Schedule Impact`` off the file, so
+    "Load from schedule" must carry the register too — factors + Best/Worst alone left the
+    session's register empty while SSI ran two risks, which is an input mismatch by another
+    door. The days magnitude is the file's (locked); the legacy % derives from the affected
+    activity's remaining duration exactly as the register form would."""
+    mpd = sch.calendar.working_minutes_per_day or 480
+    out: list[UnifiedRisk] = []
+    for t in non_summary(sch):
+        if _is_completed(t):
+            continue
+        fields = dict(t.custom_fields)
+        prob_raw = fields.get(_SRA_RISK_PROB_FIELD)
+        impact_raw = fields.get(_SRA_RISK_IMPACT_FIELD)
+        impact_minutes = iso_duration_to_minutes(impact_raw) if impact_raw else None
+        if not prob_raw or not impact_minutes:  # absent OR zero impact — no risk to model
+            continue
+        try:
+            prob = max(0.0, min(1.0, float(str(prob_raw))))
+        except (TypeError, ValueError):
+            continue
+        impact_days = impact_minutes / mpd
+        rem = t.remaining_duration_minutes
+        rem = rem if rem is not None else t.duration_minutes
+        pct = (impact_minutes / rem * 100.0) if rem else 0.0
+        out.append(
+            UnifiedRisk(
+                id=f"R{t.unique_id}",
+                name=t.name,
+                probability=prob,
+                affected=(t.unique_id,),
+                impact_days=round(impact_days, 2),
+                impact_pct=round(pct, 2),
+                days_locked=True,
+                pct_locked=False,
+            )
+        )
+    return out
 
 
 def _file_stored_sra_inputs(sch: Schedule) -> tuple[dict[int, int], dict[int, tuple[int, int]]]:
@@ -12713,7 +12889,8 @@ def _risk_events(st: SessionState) -> tuple[RiskEvent, ...]:
 
 
 def _schedule_risks(st: SessionState) -> tuple[ScheduleRisk, ...]:
-    """The SSI additive-days ScheduleRisks derived from the unified register."""
+    """The SSI days-impact ScheduleRisks derived from the unified register (a fired impact
+    REPLACES the affected task's remaining duration — ADR-0359)."""
     return tuple(
         ScheduleRisk(
             id=r.id,
@@ -14187,7 +14364,7 @@ def _sra_chart_tornado(oat: Sequence[OATSensitivity]) -> Chart | None:
             rects.append((0.5 - opp, y0, 0.5, y1, "43A047"))
         if risk > 0:
             rects.append((0.5, y0, 0.5 + risk, y1, "E53935"))
-        labels.append(ChartText(-0.015, yc, str(o.unique_id), "r", 11, "33414E"))
+        labels.append(ChartText(-0.015, yc, o.risk_id or str(o.unique_id), "r", 11, "33414E"))
         labels.append(ChartText(1.0, yc, f"{o.total_days:g} wd", "l", 11, "33414E"))
     center = (((0.5, 0.0), (0.5, 1.0)), "555555", 9525)
     return Chart(
@@ -15023,6 +15200,12 @@ def _what_could_go_wrong_header(st: SessionState) -> str:
         return ""
     mpd = sch.calendar.working_minutes_per_day or 480
     crit = near = comfy = incomplete = neg = 0
+    # per-segment UID sets so the two status bars drill (ADR-0360): a click on a segment lists
+    # exactly the activities it counts, through the shared sf-drill grid (+ columns + Excel).
+    crit_uids: list[int] = []
+    near_uids: list[int] = []
+    comfy_uids: list[int] = []
+    neg_uids: list[int] = []
     for task in non_summary(sch):
         if task.is_complete:
             continue
@@ -15033,18 +15216,30 @@ def _what_could_go_wrong_header(st: SessionState) -> str:
         tf_days = effective_total_float(task, timing.total_float) / mpd
         if tf_days < 0:
             neg += 1
+            neg_uids.append(task.unique_id)
         if tf_days <= 0:
             crit += 1
+            crit_uids.append(task.unique_id)
         elif tf_days <= 5:
             near += 1
+            near_uids.append(task.unique_id)
         else:
             comfy += 1
+            comfy_uids.append(task.unique_id)
 
     def _count(metric_id: str) -> int:
         return next((c.count for c in audit.checks if c.metric_id == metric_id), 0)
 
     hard = _count("DCMA05")
+    hard_uids = tuple(
+        c.unique_id
+        for chk in audit.checks
+        if chk.metric_id == "DCMA05"
+        for c in chk.citations
+        if c.unique_id
+    )
     risks = len(st.sra_risks)
+    risk_uids = tuple(dict.fromkeys(u for r in st.sra_risks for u in r.affected))
 
     def _acts(n: int) -> str:
         return "activity" if n == 1 else "activities"
@@ -15074,23 +15269,37 @@ def _what_could_go_wrong_header(st: SessionState) -> str:
     )
     exposure_bar = _status_stack(
         "Float exposure",
-        "Incomplete activities by how much total float protects them from driving the finish.",
+        "Incomplete activities by how much total float protects them from driving the finish. "
+        "Hover a segment for its count; click it to list the activities underneath "
+        "(add any field, export to Excel).",
         [
             ("Critical", crit, "--bad"),
             ("Near-critical", near, "--warn"),
             ("Comfortable", comfy, "--ok"),
         ],
         f"{incomplete} incomplete {_acts(incomplete)}",
+        drill=[
+            (tuple(crit_uids), key),
+            (tuple(near_uids), key),
+            (tuple(comfy_uids), key),
+        ],
     )
     flags_bar = _status_stack(
         "Risk flags",
-        "The structural risk sources the simulation and register draw on.",
+        "The structural risk sources the simulation and register draw on. "
+        "Hover a segment for its count; click it to list the activities underneath "
+        "(add any field, export to Excel).",
         [
             ("Negative float", neg, "--bad"),
             ("Hard constraints", hard, "--warn"),
             ("Registered risks", risks, "--accent"),
         ],
         "deterministic flags on the selected file",
+        drill=[
+            (tuple(neg_uids), key),
+            (hard_uids, key),
+            (risk_uids, key),
+        ],
     )
     # ADR-0339: the h1 was always here; the DoD's *context line* was not (measured `page-lede` 0 on
     # the pristine tree). Routing both through `_utility_takeaway` renders the same h1 byte-for-byte
@@ -15180,7 +15389,17 @@ def _sra_body(st: SessionState) -> str:
         # immediately by a screen reader; `role=status` is polite and can be missed entirely —
         # which is the wrong politeness for "your risk was not added".
         cls, role = ("notice warn", "alert") if st.sra_import_is_error else ("notice ok", "status")
-        import_banner = f'<div class="{cls}" role={role}>{_e(st.sra_import_msg)}</div>'
+        # ADR-0359: the ADR-0356 CHECK-INPUTS vintage warning carries its own remedy — the
+        # root-caused deltas were BOTH stale-setup replays, and a warning the operator must
+        # leave the banner to act on is a warning that gets run past. One click seeds the grid
+        # verbatim from the active schedule's stored SRA fields.
+        fix_btn = (
+            '<form action="/sra/load-from-schedule" method=post style="display:inline;margin-left:8px">'
+            "<button type=submit>Use the file's own values</button></form>"
+            if "CHECK INPUTS" in st.sra_import_msg
+            else ""
+        )
+        import_banner = f'<div class="{cls}" role={role}>{_e(st.sra_import_msg)}{fix_btn}</div>'
         st.sra_import_msg = None
         st.sra_import_is_error = False
     low_pct = f"{st.sra_low * 100:g}"
@@ -15285,7 +15504,8 @@ take precedence over the global for the activities you elicit.</p>
 {_sra_overrides_table(st, scoped)}</div>
 <div class=panel{export_attr}>{h_drivers}{t_drivers}
 <p class=muted>Register risks <b>once</b> in the <b>Risk / Opportunity register</b> above (the Schedule
-Risk &amp; Opportunity Analysis panel) &mdash; each carries both an additive-days (SSI) and a
+Risk &amp; Opportunity Analysis panel) &mdash; each carries both a days-impact (SSI &mdash; the impact
+replaces the affected task's remaining duration while it fires, ADR-0359) and a
 multiplicative-% (legacy) magnitude and feeds this Monte-Carlo. This tornado ranks each registered
 risk by the mean project-finish slip it contributes: the difference between the mean finish over the
 iterations the risk fired and the iterations it did not (working days), with its observed occurrence
@@ -17730,6 +17950,10 @@ AI-derived</option>
 engine never computed is discarded wholesale</option>
 <option value=interpretive{sel("interpretive", cfg.qa_mode)}>Interpretive — the model's text is
 shown verbatim, ungated (raw analysis; no sourced-figure guarantee — verify against the citations)</option>
+<option value=unrestricted{sel("unrestricted", cfg.qa_mode)}>Unrestricted — full model power: the
+model also receives the per-activity data table, may CALCULATE new figures and interpret without
+restraint, verbatim and ungated. Still 100% local; no sourced-figure guarantee — verify anything
+you rely on against the citations</option>
 </select></p>
 <p>Cross-check second model:
 <select name=second_backend id=secondBackend>

@@ -8,10 +8,13 @@ kickoff steers a fresh session at work that is already done.)
 ---
 
 Resume POLARIS (Schedule-Manipulation-Analysis-Tool). Read `docs/STATE/HANDOFF.md` FIRST
-(auto-injected; it ALWAYS wins over this prompt). As of last close: **v1.0.172, highest ADR 0358,
-SCHEMA 2.11.0** — phase 3 slice 4 (the /integrity family → `web/integrity.py`) pushed on the
-draft PR for `claude/polaris-resume-handoff-div159`; if it has since squash-merged, restart the
-branch: `git fetch --prune origin && git remote set-head origin -a &&
+(auto-injected; it ALWAYS wins over this prompt). As of last close: **v1.0.173, highest ADR 0361,
+SCHEMA 2.11.0** — ADR-0359 (fired risk REPLACES the affected duration — SSI's Sensitivity
+export pinned it; distribution within 1-3 d of the weighted histogram), ADR-0360 (export
+reuse 140 s → 0.1 s + PREPARING feedback + register seeding + /sra bars drill + full field
+catalog), ADR-0361 (unrestricted AI mode + the known-pass/known-fail battery) pushed on the
+draft PR for `claude/polaris-resume-handoff-div159`; if it has since squash-merged, restart
+the branch: `git fetch --prune origin && git remote set-head origin -a &&
 git checkout -B <branch> origin/main` (then `git branch --unset-upstream`). Fresh container:
 `pip install -e ".[dev]"` plus `pip install build` (playwright optional, browser tests
 skip-gate). Run ruff as **`python -m ruff`** and always **`ruff check .` — THE WHOLE TREE**.
@@ -28,14 +31,17 @@ MPXJ's OWN behaviour — never "fix" toward intuition; EVALUATOR_VERSION stays 2
 (Codex hardenings; DATE literals still share the None shape — a FUTURE unit) · ADR-0356 (SSI
 delta = STALE SETUP, engine exonerated σ 2.5%; `POST /sra/load-from-schedule`; the workbook's
 Mean/StdDev cells are UNWEIGHTED — the occurrence-weighted histogram is the only oracle) ·
-ADR-0357 (1440 boundary BLESSED: next-midnight IS the MSP convention; 23:59 would CREATE a
-parity break) · P0 floors (ADR-0346: `pydantic>=2.6`, `fastapi>=0.110.2` — 0.110.0/1 are an
+ADR-0357 (1440 boundary) · ADR-0359 (fired risk REPLACES the affected duration; risk-affected
+tasks sample their 3-point when not fired — measured on SSI's own Sensitivity export, never
+re-open toward additive) · ADR-0360 (export == screen via the run-reuse cache) · ADR-0361
+(unrestricted AI is opt-in and ungated BY DESIGN; Law 1 unmoved) · P0 floors (ADR-0346: `pydantic>=2.6`, `fastapi>=0.110.2` — 0.110.0/1 are an
 AIR-GAP VIOLATION; do not "restore" old floors) · P1 intake manifest + hardened CUI hook
 (ADR-0347).
 
 ⇢ DO THIS FIRST — the standing queue
-Phase 3 next family: **`margin` (379 by the stale ADR-0350 census — RE-MEASURE the closure
-first)**, then trend 348 · ssi 335 · mission 304 · how 290 · sra 264 · what 257 · where 235 ·
+Battery phase 2 (same pair pattern, framework in tests/test_projects/test_pass_fail_battery.py):
+cei · hmi · fei/bri · evm · schedule_quality · forecast · SRA-readiness. Then phase 3 next
+family: **`margin` (379 by the stale ADR-0350 census — RE-MEASURE the closure first)**, then trend 348 · ssi 335 · mission 304 · how 290 · sra 264 · what 257 · where 235 ·
 portfolio 231 · evm 208 · forecast 204. EACH slice: behaviour-seeded closure (prefix is a
 finder, closure is the definition) · span-scoped pre-flight coverage probe BEFORE quoting any
 render diff · verbatim cut + `X as X` re-exports · add the module to LAYER_ORDER +

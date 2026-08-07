@@ -81,9 +81,44 @@
       btn.setAttribute("aria-pressed", show ? "true" : "false");
       return;
     }
-    // ⤓ EXCEL: the export URL lives on the panel (or the button itself as an override)
+    // ⤓ EXCEL: the export URL lives on the panel (or the button itself as an override).
+    // ADR-0360: some exports re-run a model server-side (the SRA workbook measured 140 s on a
+    // 2,125-task file) and plain navigation gives ZERO feedback for the whole wait — the
+    // button reads as dead. Fetch keeps the button honestly in PREPARING state until the
+    // bytes are here, then hands the browser a same-origin blob download; any failure falls
+    // back to the pre-existing navigation so nothing regresses.
     var url = btn.getAttribute("data-export") || panel.getAttribute("data-export");
-    if (url) window.location.href = url;
+    if (!url) return;
+    if (btn.hasAttribute("data-sf-busy")) return; // one in-flight export per button
+    var label = btn.textContent;
+    btn.setAttribute("data-sf-busy", "1");
+    btn.setAttribute("aria-busy", "true");
+    btn.textContent = "⤓ PREPARING…";
+    fetch(url, { credentials: "same-origin" })
+      .then(function (res) {
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        var dispo = res.headers.get("Content-Disposition") || "";
+        var m = /filename="?([^";]+)"?/.exec(dispo);
+        return res.blob().then(function (blob) {
+          var a = document.createElement("a");
+          a.href = URL.createObjectURL(blob);
+          a.download = m ? m[1] : "export.xlsx";
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(function () {
+            URL.revokeObjectURL(a.href);
+          }, 60000);
+        });
+      })
+      .catch(function () {
+        window.location.href = url;
+      })
+      .then(function () {
+        btn.removeAttribute("data-sf-busy");
+        btn.setAttribute("aria-busy", "false");
+        btn.textContent = label;
+      });
   });
 
   // Escape dismisses the focus overlay (it is the only enlarge state that hides the page under it).

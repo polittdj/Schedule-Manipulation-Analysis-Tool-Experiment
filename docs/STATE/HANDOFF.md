@@ -1,71 +1,77 @@
-# Handoff — 2026-08-06 (Phase 3 slice 4: the integrity family is out of the monolith; ADR-0358; v1.0.172)
+# Handoff — 2026-08-06 (evening: risk-replace semantics ADR-0359; exports answer ADR-0360; unrestricted AI + battery ADR-0361; v1.0.173)
 
-> ## STATUS (current) — **pushed, draft PR open.** ADR-0358, **v1.0.172**, SCHEMA 2.11.0.
-> Phase 3 slice 4 landed: the /integrity page family (`_integrity_header` + `_integrity_body`,
-> 2 names / 402 lines) moved VERBATIM into **`web/integrity.py`** (446 lines). `app.py` 18,311
-> → 17,910. `LAYER_ORDER` = state → chrome → components → driving → evolution → integrity →
-> app. Behaviour-seeded closure == the prefix pair exactly; sole external referrer
-> `create_app`; NOTHING descended into components (first slice where the pair-descent rule had
-> no work). One import moved with the code (`change_effects` — ruff dropped it from app.py, the
-> preamble carries it verbatim, multiset shows it in neither direction).
-> **Proof:** per-definition byte-identity 2/2 (2,654 + 19,996 B) · multiset 38 added / 0
-> removed (all preamble + re-export block) · **79/79 routes byte-identical** on TWO oracles ·
-> oracle FALSIFIED (one char in the moved body moves exactly the six /integrity pages).
-> **Pre-flight probe (ADR-0352's method, span-scoped): both members render — 6 routes each.**
-> First slice where the render diff covers the whole family (driving covered 0, evolution left
-> 2 members dark). Oracle B is new and worth keeping: TP4_DataCenter v1..v5 loaded as one
-> project renders /integrity five ways (n>2 picker, both non-empty verdict bands, the
-> order-normalisation and out-of-range re-pick branches). Named gap: the `artifact-cluster`
-> collapsible (SNET-at-data-date reschedule artifacts) renders on NO fixture — guarded by
-> byte-identity only, like evolution's counterfactual pair.
-> **All three standing sweeps ran and came back EMPTY** (monkeypatch over all 18 bound names,
-> alias-aware; source-text readers — every subject stayed put, `_TS_CAPTION_MARK` still 5 in
-> app.py; attribute-reads of the two names app.py no longer binds). First slice with zero test
-> repointing. Five guard mutations all fail/restore-green (dropped re-export · deferred upward
-> import · narrowed enumeration tuple · planted `&mdash;` sentinel · planted second
-> drilldown.js include).
+> ## STATUS (current) — **pushed, draft PR open.** ADR-0359/0360/0361, **v1.0.173**, SCHEMA 2.11.0.
+> The operator merged #547 (slice 4) and filed a five-part directive with NEW committed
+> oracles (main `f1f13f9`: the 2,125-task SRA schedule + SSI's 5000-iter SRA histogram +
+> SSI's Sensitivity export — absorbed into the census: 410 files / 22 mpp / mismatches 99).
 >
-> ## Absorbed in passing — the 24h oracle is now COMMITTED intake
-> Main's `d0b703e` (operator web upload, 2026-08-06 13:06) committed
-> `00_REFERENCE_INTAKE/mpp/24Hour Calendar.mpp` — the ADR-0357 oracle, previously "NOT
-> committed (operator's call)"; the call has been exercised. The ADR-0347 census guard caught
-> it in this session's full gate (4 red intake tests on an untouched intake). Absorbed:
-> classifier-verified `ole2-project`, NO mismatch; manifest regenerated (407 files / 21 mpp /
-> mismatches still 99); the 20→21 pin carries the provenance; CLAUDE.md census updated. The
-> ADR-0357 boundary pin can now run against committed intake in a future unit if wanted.
+> ## ADR-0359 — the SRA delta's engine term, pinned to two decimals and fixed
+> Inputs first (ADR-0356's lesson): the operator's session replayed a 783-task-vintage setup
+> (98/435 factors agree, 0/406 BC/WC agree) — session-side, largest term. On FILE-TRUE inputs
+> the engine still ran +25 mean / +32-35 cal at P50-P90. SSI's Sensitivity export cracked it:
+> all 64 duration rows matched the engine's OAT to <=0.01 wd (CPM/calendars/ML EXACT), and the
+> two R/O rows fell short of the impact by EXACTLY the affected tasks' MLs (321-304.48=16.52;
+> 45-35.03=9.97): **a fired risk's impact REPLACES the affected activity's remaining duration
+> — the engine was ADDING it**, and the affected task samples its own Best/Worst when not
+> fired (SSI lists the R/O tasks as duration rows too). Fixed in compute_sra_ssi AND
+> compute_jcl; OAT gains ranked R/O rows. Landing: mean +414.6 vs SSI +417.9 cal, sigma 155.2
+> vs 152.4, P10-P90 within 1-3 d of the weighted histogram; risk means 305.9/37.9 vs SSI's
+> 304.48/35.03. New parity oracle test_sra_ssi_oracle_uid152_v2.py (OAT row-for-row +
+> distribution + risk outcomes); July oracle still 5/5; four new pins mutation-proven
+> (replace->add: 4 fail). The sharp discriminator: impact < ML pulls the finish BELOW
+> deterministic — impossible under add.
 >
-> ## The trap that fired THIS session (and the harness caught it)
-> The span-scoped probe's first header mutation was `page-takeaway` → `page-takeawayQ` — a
-> SUFFIXED replacement, ADR-0351's substring trap in the probe's OWN tooling. The harness's
-> assert-ORIGINAL-anchor-absent check (written in because of ADR-0351) refused it before any
-> render was trusted; the working mutation was same-length non-superstring (`page-tekeaway`).
-> The rule is now proven to belong IN the harness, not just in the checklist.
+> ## ADR-0360 — "Export to Excel does nothing" = a measured 140-second silent recompute
+> All wires were present (precise-parser sweep: 0 dead of every page; the first regex probe's
+> 45 were ITS OWN false positives). /export/xlsx/sra re-ran the MC + full 919-task OAT on
+> every click: 139.8 s measured, zero feedback. Fixed: run/OAT caches keyed by the FULL
+> resolved-input identity incl. schedule bytes (140 s -> 0.1 s warm; the workbook now equals
+> the SCREEN — the operator's iterations, not a hardcoded 2000); panelkit's EXCEL click shows
+> busy-guarded "PREPARING…" via fetch->blob with navigation fallback; Load-from-schedule now
+> seeds the RISK REGISTER from the file's SSI fields (R7443 86%/321d, R7433 63%/45d — the
+> exact percentages the operator's register showed) and the CHECK-INPUTS warning carries a
+> one-click "Use the file's own values". Standing guards: test_export_wiring (every button
+> wired + every wire answers), test_sra_export_reuse, both mutation-proven.
+>
+> ## ADR-0360 also — the /sra bars drill; every drill offers every field
+> Float-exposure/Risk-flags segments joined sf-drill (hover names count; click lists exactly
+> the counted activities). STANDARD_FIELDS widened 6 -> full task-level catalog (verbatim
+> values, None never 0) — every drill's add-column list, /groups filters, and drill exports
+> now offer any ingested MS Project field + all custom fields. test_sra_bars_drill pins it
+> end-to-end (mutation-proven).
+>
+> ## ADR-0361 — unrestricted AI mode + the known-pass/known-fail battery
+> Fourth opt-in Q&A mode: verbatim, ungated, INVITED to calculate; receives a bounded
+> 400-row activity data block. Law 1 unmoved (same loopback backends; Null stays closed —
+> pinned). Battery: a measured-CLEAN 25-activity program (every populated DCMA check PASSES)
+> + 14 seeded twins with DECLARED collateral and a no-undeclared-flips assertion; pairs for
+> float bands, completion, manipulation (honest re-status = zero findings); every page
+> renders on clean/wrecked/TP4 corpora. Nine wrong seed assumptions died on contact and are
+> encoded (DCMA08 flags BASELINE duration; the CP test is only defeated by a mid-chain MFO
+> pinning a task's own finish; late-vs-baseline must not cross the DD...). 21 passed,
+> harness mutation-proven.
 >
 > ## Next
-> Eleven page families remain — **`margin` 379 next**, then trend 348 · ssi 335 · mission 304
-> · how 290 · sra 264 · what 257 · where 235 · portfolio 231 · evm 208 · forecast 204 (counts
-> are the ADR-0350 census, three slices old — RE-MEASURE the closure before cutting; ADR-0350/
-> 0351/0352/0358 rules: behaviour-seeded closure, span-scoped pre-flight probe, all three
-> sweeps, five mutations). Then: driving-corridor fixture (would also light /evolution's
-> counterfactual and /integrity's artifact-cluster wants its own SNET fixture) · three
-> `page-lede`-less pages (/briefing, /path, /compare) · `/groups` Activities counting summary
-> rows (ADR-0343) · installers vs known-good constraints (62 lockstep tests, own unit) ·
-> P80/P90 recurring-calendar-exception residual (own unit + oracle) · Phase 6 docs.
-> **Operator:** license · branch-protection contexts · intake re-upload (optionally the
-> 2026-08-06 artifacts as a second parity oracle) · proprietary reruns · OR-04 · whether R2
-> belongs in both SSI and tool runs.
+> Battery phase 2: cei · hmi · fei/bri · evm · schedule_quality · forecast · SRA-readiness
+> pairs (framework in place). Phase 3 monolith split resumes at **margin 379** (re-measure
+> the closure; ADR-0350/0351/0352/0358 rules). Then: driving-corridor fixture · the three
+> page-lede-less pages · /groups Activities counting summary rows (ADR-0343) · installers vs
+> known-good constraints · the P80/P90 recurring-calendar-exception residual (own unit;
+> note ADR-0359 showed OAT deltas match SSI exactly, so the recurring-exception effect did
+> NOT surface in this comparison) · Phase 6 docs. **Operator:** license · branch-protection ·
+> proprietary reruns · OR-04 · whether the July mpp/ oracle should re-export under replace
+> semantics for a tighter v1 tolerance band.
 >
 > ## Carried forward
-> ADR-0353/0354/0355/0356/0357 closed — do not re-open (SRA legacy anchor · MPXJ literal
-> conformance · Codex hardenings · stale-setup exoneration + /sra/load-from-schedule · 1440
-> next-midnight IS the MSP convention). Phase-3 recipe: monkeypatch sweep covers names the
-> module BINDS (imported or defined) + `__file__`/getsource reads + attribute READS; render
-> diff is only evidence AFTER the pre-flight probe says the family renders; assert the
-> original anchor ABSENT after every mutation. `pydantic>=2` NOT a safe floor (2.6);
-> `fastapi>=0.110` an AIR-GAP VIOLATION (0.110.2). `ruff check .` whole tree as
-> `python -m ruff`. Never `git checkout` to undo a mutation — `cp` from scratchpad.
-> `grep -c` exits 1 on zero — chain with `;`. The `/analysis` focus→tip family is
-> load-sensitive — do NOT chase. bandit B608 on HTML f-strings with "from" → house
+> ADR-0353..0358 closed — do not re-open. The workbook Mean/StdDev cells are UNWEIGHTED
+> (held again); the occurrence-weighted histogram is the only oracle. A parity delta is a
+> claim about INPUTS first (two sessions running). Run the mutation BEFORE trusting any pin;
+> assert the ORIGINAL anchor absent (the probe harness caught its own suffixed mutation
+> AGAIN this session — the in-harness assert works). `pydantic>=2` NOT a safe floor (2.6);
+> `fastapi>=0.110` an AIR-GAP VIOLATION (0.110.2 floor). `ruff check .` whole tree as
+> `python -m ruff`. Never `git checkout` to undo a mutation — cp from scratchpad.
+> `grep -c` exits 1 on zero — chain with `;`. The /analysis focus->tip family is
+> load-sensitive — do NOT chase. bandit B608 on HTML f-strings with "from" → the house
 > `# nosec B608 (HTML, not SQL)`.
 
 # (prior) handoffs — archived

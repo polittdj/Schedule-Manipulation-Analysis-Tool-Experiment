@@ -435,6 +435,29 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-06 (cont.5) — The reference tool's own export is the semantics decoder
+
+- **ADR-0359.** Two sessions of SRA-delta work (0356, 0359) both ended at the same doorstep:
+  the DETERMINISTIC rows of the reference tool's own export. SSI's Sensitivity sheet said in
+  two numbers (321−304.48 = the ML exactly, twice) what no amount of distribution-fitting
+  could: fired impact REPLACES the duration. Distribution comparisons localize; deterministic
+  comparisons ADJUDICATE. Get the reference tool to emit something deterministic and diff that
+  first.
+- **A latency cliff reads as a dead control.** "Export does nothing" was a fully-wired button
+  ahead of a measured 139.8-s synchronous model re-run. Before hunting broken wiring, TIME the
+  handler on the operator-scale artifact. And the first regex sweep "found" 45 dead buttons
+  that a real parser showed were its own window artifacts — the anchor-vs-function trap now
+  has a UI-sweep variant.
+- **The battery's failures were the product.** Nine of fourteen seeded defects did not flag on
+  the first try, and every one was a WRONG ASSUMPTION about the check, not a broken check
+  (DCMA08 reads the baseline duration; the CP test survives every pure-logic mutation and only
+  a mid-chain self-MFO defeats it). A pass/fail pair per metric is a specification test of the
+  test-writer as much as of the engine — with declared collateral, it catches over-broad seeds
+  and over-eager checks symmetrically.
+- **Export must equal screen.** The old export re-ran the model at a hardcoded 2000 iterations
+  — a DIFFERENT number than the page showed, silently. Reuse-not-recompute fixed latency and a
+  fidelity hole at once.
+
 ### 2026-08-06 (cont.4) — Put the trap check IN the tooling, and the tooling catches you
 
 - The span-scoped coverage probe was written fresh this session with ADR-0351's rule baked in
