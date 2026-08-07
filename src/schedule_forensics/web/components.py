@@ -28,7 +28,7 @@ import datetime as dt
 from collections.abc import Sequence
 from urllib.parse import quote
 
-from schedule_forensics.engine.cpm import CPMError, CPMResult
+from schedule_forensics.engine.cpm import CPMError, CPMResult, offset_to_datetime
 from schedule_forensics.engine.driving_slack import PathTier
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.web.chrome import _e
@@ -356,3 +356,67 @@ def _margin_terminology() -> str:
         "float, because margin that sits on a path with float protects nothing.</p>"
         "</div></details>"
     )
+
+
+# The trend focus pair descended here in the trend slice (ADR-0364): `web/trend.py` needs
+# `_focus_panel` (`_trend_body` embeds it) and so does the /compare route still in
+# `app.py` - a symbol an extracted module needs must live at or below that module's layer
+# (the ADR-0351 rule: the FIRST slice of a pair forces the descent). Both consumers are
+# render-proven: /trend?target=<uid> and /compare with the session target set.
+def _focus_rows(
+    schedules: list[Schedule], cpms: list[CPMResult], target: int
+) -> list[tuple[str, str, str]]:
+    """Per version: (label, the focus UID's computed finish date, % complete) — '—' if absent."""
+    rows: list[tuple[str, str, str]] = []
+    for sch, cpm in zip(schedules, cpms, strict=True):
+        label = sch.source_file or sch.name
+        timing = cpm.timings.get(target)
+        task = sch.tasks_by_id.get(target)
+        if timing is None or task is None:
+            rows.append((label, "—", "—"))
+            continue
+        finish = offset_to_datetime(sch.project_start, timing.early_finish, sch.calendar)
+        rows.append((label, finish.date().isoformat(), f"{task.percent_complete:g}%"))
+    return rows
+
+
+def _focus_panel(schedules: list[Schedule], cpms: list[CPMResult], target: int) -> str:
+    names = [s.tasks_by_id[target].name for s in schedules if target in s.tasks_by_id]
+    title = f"Focus activity UID {target}" + (f" &mdash; {_e(names[0])}" if names else "")
+    focus_rows = _focus_rows(schedules, cpms, target)
+    rows = "".join(
+        # focus_rows keeps ISO (the movement math below parses it); format at render only
+        f"<tr><td>{_e(label)}</td><td>{_e(_mdY(finish))}</td><td>{_e(pct)}</td></tr>"
+        for label, finish, pct in focus_rows
+    )
+    note = "" if names else '<p class="notice err">No loaded version contains that UniqueID.</p>'
+    known = [(label, finish) for label, finish, _ in focus_rows if finish != "—"]
+    movement = ""
+    if len(known) >= 2:
+        # same sign convention as Net Finish Impact: negative == moved later (a slip).
+        # Mission Ops rank 5: the movement statement is a CITATION CARD (.finding.cite-card
+        # vocabulary) — the sentence is unchanged; the cite line names the UID and the exact
+        # versions/dates the figure was read between (presentation only, no new math).
+        days = (dt.date.fromisoformat(known[0][1]) - dt.date.fromisoformat(known[-1][1])).days
+        cls, word = ("fail", "later") if days < 0 else ("pass", "earlier or unchanged")
+        sev = "MEDIUM" if days < 0 else "INFO"
+        movement = (
+            f'<div class="finding cite-card sev-{sev}">'
+            f"<p>Computed finish moved <b class={cls}>{days:+d} calendar days</b> "
+            f"({word}) between the first and last version that schedule it.</p>"
+            f"<p class=cite data-no-i18n>UID {target} · {_e(known[0][0])} "
+            f"({_e(_mdY(known[0][1]))}) → {_e(known[-1][0])} ({_e(_mdY(known[-1][1]))})</p></div>"
+        )
+    # panel contract (rank 5): headline strip + ⛶ (no endpoint serves these focus rows — no
+    # dead ⤓; the table is its own drawer — no ▦ DATA) + the first→last pair provenance chip.
+    head = _panel_head(
+        title,
+        tools=_shell_tools(),
+        prov=_pair_prov_chip(schedules[0], schedules[-1], 1, len(schedules)),
+    )
+    return f"""
+<div class=panel>{head}{note}
+<p class=muted>The focus activity's computed finish and progress across the versions
+(its movement is charted below).</p>
+<table><tr><th scope=col>Version</th><th scope=col>Computed finish</th><th scope=col>% complete</th></tr>{rows}</table>
+{movement}</div>"""

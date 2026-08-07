@@ -12117,3 +12117,25 @@ test_presentation_fixes widened (the enumeration guard fired live, fourth consec
 v1.0.173 → v1.0.174; wheel + nine installers rebuilt AFTER the bump. Statics green (ruff
 0.16.1 whole-tree via python -m · format 909 clean · mypy 123 files 0 · bandit exit 0 · node
 per-file 0); full suite + parity run to green before commit (counts in the PR). ADR-0363.
+
+## 2026-08-07 (cont.2) — phase 3 slice 6: the trend family out of the monolith (ADR-0364, v1.0.175)
+
+Same session, same branch (restarted from origin/main after the operator squash-merged #550
+mid-session; the queue continued at `trend`). The stale "348" re-measured: 7 names / 502
+lines partitioned three ways — a CLOSED 3-name / 424-line move set → new `web/trend.py`
+(483 lines); the `_focus_rows`/`_focus_panel` pair DESCENDED into `components.py` (2-family
+with the /compare route; BOTH consumers render-proven — the oracle gained a set-target POST
++ `/compare [target-set]` pseudo-route sequenced after the target-less sweep, plus
+`/trend?target=3` and the instantiated trend exports; 80 routes, double-render
+deterministic); `_parse_uid`/`_sources_line` stay (10/8 families). `export_trend` stays
+whole. `app.py` 17,681 → 17,197 (wc-verified); `web.trend` sorts AFTER `web.state`, so its
+re-export block closes the import section. Proof: 5/5 byte-identity; multiset 57/1 (the 1 =
+components' cpm import widened by `offset_to_datetime`); 80/80 routes identical; both
+falsifications EXACT; five guard mutations red→restored md5-verified. Sweep 1 found its
+first real candidate (`test_manifest_projection_memo` patching `app_mod.non_summary`) —
+cleared by verification: the spied /api/dashboard projection path never crosses a moved
+member. Process lesson recorded: a timeout-backgrounded Bash call RESTARTS its command —
+the falsification harness briefly ran twice; backups anchor-grep-verified clean, strays
+killed, cases re-run serially. v1.0.174 → v1.0.175; wheel + nine installers rebuilt after
+the bump; lockstep 52/52. Statics green; full suite + parity run to green before commit
+(counts in the PR). ADR-0364.

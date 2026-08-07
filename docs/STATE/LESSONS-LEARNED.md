@@ -435,6 +435,26 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-07 (cont.2) — A timeout-backgrounded Bash call RESTARTS its command; never let a mutate-restore harness ride one
+
+- The trend slice's falsification harness (mutate trend.py → snapshot → restore, two cases)
+  ran as one foreground Bash call that hit the 300s timeout and was "moved to the
+  background". The move is a RESTART: the whole command ran again from the top, so for a
+  window two instances were mutating and restoring the same files. Caught because the
+  probe discipline demands md5/anchor checks at every step: the `.cut` backups were
+  anchor-grep-verified clean (`trendCharts` ×1, mutated form ×0) before anything was
+  trusted, strays killed, and both cases re-run serially as short self-contained calls.
+- Lesson (now in the handoff): each mutate→snapshot→restore cycle gets its OWN short call,
+  never a long compound one that can be timeout-backgrounded mid-mutation. Corollary: after
+  ANY interrupted mutation harness, verify the backup's cleanliness by anchor, not by
+  trusting the choreography.
+- Same slice, the sweep's first REAL candidate: `test_manifest_projection_memo` patches
+  `app_mod.non_summary`, which trend.py now also binds. Cleared by verification — the spied
+  path (/api/dashboard projection memo) never crosses a moved member and app.py still binds
+  the name. A sweep hit is a candidate, not a verdict; verification decides, both ways.
+- And the re-read rule caught its second number this session: trend.py "482 lines" was the
+  pre-I001-fix count; wc on the settled file says 483.
+
 ### 2026-08-07 (cont.) — A coverage gap can be an ORACLE gap: widen the oracle before calling it unreachable
 
 - The margin slice's pre-flight probe (ADR-0363) initially showed `_wmpd_label` at 0 routes
