@@ -16,7 +16,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "schedule-forensics"
-version = "1.0.175"
+version = "1.0.176"
 description = "Local, NASA-themed forensic schedule-analysis tool (CUI-safe, offline)."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -184,6 +184,11 @@ select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
 # `trend.py` is the /trend page family, extracted verbatim (ADR-0364); it carries the
 # page's HTML f-strings, so the exemption travels with them.
 "src/schedule_forensics/web/trend.py" = ["E501"]
+# `ssi.py` is the SSI run machinery, extracted verbatim (ADR-0365). No HTML here — nine
+# over-long COMMENT/docstring lines ride the verbatim rule: re-wrapping them to earn a clean
+# E501 would break the byte-for-byte property the extraction rests on (the components.py
+# precedent, one module later).
+"src/schedule_forensics/web/ssi.py" = ["E501"]
 
 [tool.ruff.format]
 # ruff >= 0.16 formats fenced ```python blocks inside Markdown. That is right for prose docs and

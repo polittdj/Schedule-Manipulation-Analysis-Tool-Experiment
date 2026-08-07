@@ -51,8 +51,8 @@ finish. **No parity exposure**, and both hashes are pinned below so a future cha
 
 | measure | value |
 | --- | ---: |
-| tracked files | 410 |
-| total bytes | 342,791,738 |
+| tracked files | 416 |
+| total bytes | 391,576,827 |
 | extension&harr;content mismatches | 99 |
 | duplicate-content groups | 27 |
 | files in a duplicate group | 63 |
@@ -62,7 +62,7 @@ finish. **No parity exposure**, and both hashes are pinned below so a future cha
 | family | files |
 | --- | ---: |
 | `empty` | 7 |
-| `gzip` | 5 |
+| `gzip` | 6 |
 | `html` | 10 |
 | `ico` | 1 |
 | `jpeg` | 48 |
@@ -70,7 +70,7 @@ finish. **No parity exposure**, and both hashes are pinned below so a future cha
 | `mp4` | 2 |
 | `ole2-ppt` | 1 |
 | `ole2-project` | 22 |
-| `ooxml-excel` | 85 |
+| `ooxml-excel` | 89 |
 | `ooxml-ppt` | 1 |
 | `ooxml-word` | 15 |
 | `pdf` | 23 |
@@ -78,7 +78,7 @@ finish. **No parity exposure**, and both hashes are pinned below so a future cha
 | `riff` | 1 |
 | `text` | 95 |
 | `xml` | 13 |
-| `zip` | 5 |
+| `zip` | 6 |
 
 ## Extension&harr;content mismatches
 
@@ -343,6 +343,12 @@ body under several names, not random corruption.
 | `00_REFERENCE_INTAKE/ASTROLABE.dc.html` | 11,579,637 | `.html` | `mp4` | **yes** | `76a2ed782f76e978ef71b9e9f4fb6fb691c89f6d6bc6e4cdca015ec2e80ba46d` |
 | `00_REFERENCE_INTAKE/AXIS-TITLES-PATCH.md` | 15,505 | `.md` | `text` | — | `2f28495273f129d15bee600432b3c594dc878b7c0f9b7152e7d8a1b9ce451c21` |
 | `00_REFERENCE_INTAKE/Ai Result Comparision.docx` | 22,047 | `.docx` | `ooxml-word` | — | `cf973ce581fabbaf73e4b3a7fb790797fc9b5884886b23c4646f7f2e98483e28` |
+| `00_REFERENCE_INTAKE/AlltheProjects - Detailed Metric Report.xlsx` | 7,113,127 | `.xlsx` | `ooxml-excel` | — | `8be962a01268e917714615b3bf1cc5e1a97bbea3da0317b8a450f7e0b1a36496` |
+| `00_REFERENCE_INTAKE/AlltheProjects - Metric History Report.xlsx` | 832,579 | `.xlsx` | `ooxml-excel` | — | `aebb14fde4b2cdea7b81e8a712d4671523be6a1d4d052e2240dd4b59a93db2ca` |
+| `00_REFERENCE_INTAKE/AlltheProjects - Quick Add Metrics .xlsx` | 289,844 | `.xlsx` | `ooxml-excel` | — | `f2a42b758fa845c9d969c8ed3772479ad9ac4ff64216959fc15906b85ed62fe8` |
+| `00_REFERENCE_INTAKE/AlltheProjects Analysis Report - Quick Add Metrics.xlsx` | 17,135,711 | `.xlsx` | `ooxml-excel` | — | `27dd2b20d235d088b093157a71499e7e49af1772fceb0a15661047708ac92a05` |
+| `00_REFERENCE_INTAKE/AlltheProjects.afw` | 13,691,894 | `.afw` | `gzip` | — | `ef93356e1bc762d8e14e05d65e797e60366cfccbaaea2be158fbbe261cb1bc91` |
+| `00_REFERENCE_INTAKE/AlltheProjects.zip` | 9,721,934 | `.zip` | `zip` | — | `7d961a5e9eea903312233075766c5887e518ca95be09babee530a3e5820a1a87` |
 | `00_REFERENCE_INTAKE/CLAUDE-CODE-HANDOFF.md` | 622,463 | `.md` | `png` | **yes** | `e872aa3eaa02bc8ee62f1d4c51badb92fb69570608e44ee17547df23a0bbe888` |
 | `00_REFERENCE_INTAKE/CLAUDE.md` | 19,402 | `.md` | `text` | — | `0eaa90b0faf5e0f925fdd087761c6329c869a5a6bba4372a11efd7c68712c75a` |
 | `00_REFERENCE_INTAKE/CRISPNESS-PATCH.md` | 15,284 | `.md` | `text` | — | `b6f06061546996c098a31b2218d45c135510fd34013ba1ad1ba1bbf8293ebf0c` |

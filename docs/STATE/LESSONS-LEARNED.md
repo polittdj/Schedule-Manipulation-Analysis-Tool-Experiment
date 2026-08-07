@@ -435,6 +435,35 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-07 (cont.3) — A non-zero pytest exit is not a failing test; and the census prefix can claim a member the closure disowns
+
+- Slice 7's guard mutations 4–5 first ran against GUESSED test ids
+  (`test_no_double_escaped_mdash…`, `test_drilldown_js_loaded_exactly_once` — neither
+  exists). pytest exited non-zero having collected NOTHING, and an exit-code check read
+  that as "RED — guard caught it". The harness's ran-signature assertion (the failure
+  summary must NAME the test) exposed the lie; the re-run against the real ids
+  (`test_no_mdash_entity_sentinel_values_remain_in_app_source`,
+  `test_drilldown_runtime_is_loaded_globally_not_per_page`) produced genuine `1 failed`
+  reds and green-after-restore. **Lesson: a mutation is "caught" only when the failure
+  summary names the test that ran — assert `1 failed`, never just a non-zero exit.** This
+  is the flattering-falsification class (ADR-0351's substring anchor, slice 6's restart)
+  in a third costume.
+- The stale "ssi 335" census was `_ssi_panel` + `_ssi_data` by PREFIX — and the
+  behaviour-seeded closure put the panel (the family's flagship, 235 of the 335 lines)
+  OUT of the family entirely: its sole referrer is `_sra_body`, so it is /sra page family.
+  **Lesson: the prefix is a finder, the closure is the definition — and the divergence can
+  be the family's biggest member, not an edge case.** The sra census "264" is now known to
+  be ~700+ in truth; re-measure before believing any queued number.
+- The oracle's launch token is `{hex16}.{wipe_gen}`; a hex-only normalizer regex silently
+  normalized NOTHING and 48 of 96 labels flapped between processes. The two-process
+  determinism gate caught it before any probe number was quoted — which is exactly why
+  that gate runs first. **Lesson: prove the oracle deterministic across PROCESSES (not
+  runs in one interpreter) before quoting any diff from it.**
+- The seeded Monte-Carlo (`SRAConfig.seed=12345`, per-iteration `Random(seed+i)`) makes
+  `/api/sra/ssi` byte-stable — a simulation endpoint CAN sit in a byte-identity oracle
+  when the engine is deterministic by design (Law 2 / ADR-0005 paying off in test
+  infrastructure, not just in parity).
+
 ### 2026-08-07 (cont.2) — A timeout-backgrounded Bash call RESTARTS its command; never let a mutate-restore harness ride one
 
 - The trend slice's falsification harness (mutate trend.py → snapshot → restore, two cases)
