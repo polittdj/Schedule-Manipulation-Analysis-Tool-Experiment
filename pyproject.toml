@@ -16,7 +16,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "schedule-forensics"
-version = "1.0.174"
+version = "1.0.175"
 description = "Local, NASA-themed forensic schedule-analysis tool (CUI-safe, offline)."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -181,6 +181,9 @@ select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
 # `margin.py` is the /margin page family, extracted verbatim (ADR-0363); it carries the
 # page's HTML f-strings, so the exemption travels with them.
 "src/schedule_forensics/web/margin.py" = ["E501"]
+# `trend.py` is the /trend page family, extracted verbatim (ADR-0364); it carries the
+# page's HTML f-strings, so the exemption travels with them.
+"src/schedule_forensics/web/trend.py" = ["E501"]
 
 [tool.ruff.format]
 # ruff >= 0.16 formats fenced ```python blocks inside Markdown. That is right for prose docs and

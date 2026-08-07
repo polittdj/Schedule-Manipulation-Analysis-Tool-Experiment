@@ -8,11 +8,11 @@ kickoff steers a fresh session at work that is already done.)
 ---
 
 Resume POLARIS (Schedule-Manipulation-Analysis-Tool). Read `docs/STATE/HANDOFF.md` FIRST
-(auto-injected; it ALWAYS wins over this prompt). As of last close: **v1.0.174, highest ADR
-0363, SCHEMA 2.11.0** — ADR-0363 (phase 3 slice 5: the /margin family into `web/margin.py`;
-the terminology trio descended into `components.py`; 13/13 byte-identity; 76/76 routes;
-first fully-covered render diff) pushed on the draft PR for
-`claude/polaris-resume-handoff-o4qcpx`; if it has since squash-merged, restart the branch:
+(auto-injected; it ALWAYS wins over this prompt). As of last close: **v1.0.175, highest ADR
+0364, SCHEMA 2.11.0** — ADR-0364 (phase 3 slice 6: the /trend family into `web/trend.py`;
+the `_focus_rows`/`_focus_panel` pair descended into `components.py` with BOTH consumers
+render-proven; 5/5 byte-identity; 80/80 routes) pushed on the draft PR for
+`claude/polaris-resume-handoff-o4qcpx` (slice 5, ADR-0363/#550, already squash-merged); if it has since squash-merged, restart the branch:
 `git fetch --prune origin && git remote set-head origin -a && git checkout -B <branch>
 origin/main` (then `git branch --unset-upstream`). Fresh container:
 `pip install -e ".[dev]"` plus `pip install build` (playwright optional, browser tests
@@ -22,11 +22,13 @@ the strongest model. Use the skills (`.claude/skills/`): `full-gate`, `prove-abl
 `metric-parity`, `ui-change`, `cui-guard`, `render-verify`, `session-close`.
 
 ⇢ WHAT'S DONE — do NOT re-open
-Monolith split: phases 1–2 (`state.py`, `chrome.py`) + phase 3 slices 1–5
+Monolith split: phases 1–2 (`state.py`, `chrome.py`) + phase 3 slices 1–6
 (`components.py` ADR-0350 · `driving.py` ADR-0351 · `evolution.py` ADR-0352 · `integrity.py`
-ADR-0358 · **`margin.py` ADR-0363** — `app.py` 20,192 → 17,681; the `_HB`/`_HB_MARGIN_SEC`/
-`_margin_terminology` trio lives in `components.py` now, ready-made for the /analysis slice;
-`_HB_CONSUME_SEC` stays in app.py DELIBERATELY — dead constant, no closure claims it).
+ADR-0358 · `margin.py` ADR-0363 · **`trend.py` ADR-0364** — `app.py` 20,192 → 17,197; the
+`_HB` trio AND the `_focus_rows`/`_focus_panel` pair live in `components.py` now, ready-made
+for the /analysis and /compare slices; `_HB_CONSUME_SEC` stays in app.py DELIBERATELY —
+dead constant, no closure claims it; `web.trend` sorts AFTER `web.state`, so its re-export
+block closes the import section).
 ADR-0353 SRA-LEGACY · ADR-0354 V3 (duration literals = vendored MPXJ `Duration.convertUnits`;
 `%`/`e%` pass-through and the 364-day elapsed year are MPXJ's OWN behaviour — never "fix"
 toward intuition; EVALUATOR_VERSION stays 2) · ADR-0355 (Codex hardenings; DATE literals still
@@ -43,10 +45,10 @@ for fixture-floor metrics) · P0 floors (ADR-0346: `pydantic>=2.6`, `fastapi>=0.
 hardened CUI hook (ADR-0347).
 
 ⇢ DO THIS FIRST — the standing queue
-Phase 3 monolith split, next family: **`trend` (348 by the stale ADR-0350 census — RE-MEASURE
-the closure first; margin's "379" measured as 417+21 split THREE ways)**, then ssi 335 ·
-mission 304 · how 290 · sra 264 · what 257 · where 235 · portfolio 231 · evm 208 · forecast
-204. EACH slice: behaviour-seeded closure (prefix is a finder, closure is the definition — and
+Phase 3 monolith split, next family: **`ssi` (335 by the stale ADR-0350 census — RE-MEASURE
+the closure first; both re-measured slices partitioned THREE ways: margin 417+21, trend
+424+55+shared)**, then mission 304 · how 290 · sra 264 · what 257 · where 235 · portfolio
+231 · evm 208 · forecast 204. EACH slice: behaviour-seeded closure (prefix is a finder, closure is the definition — and
 it can PARTITION: margin's closure held a descent trio and untouchable SRA names) ·
 span-scoped pre-flight coverage probe BEFORE quoting any render diff (a member at 0 moved may
 be an ORACLE gap: ask what would EXECUTE it — an export, a POST-lit branch, a query param —
@@ -85,7 +87,10 @@ whether R2 belongs in both SSI and tool runs.
    probe, and treat "0 moved" as a claim about the ORACLE until the widening question is asked.
 4. NEVER mutate the tree while a full suite runs — settle the tree FIRST, docs included
    (`test_state_docs` reads HANDOFF/SESSION-LOG mid-suite; slice 5 stopped and relaunched the
-   suite for exactly this).
+   suite for exactly this). And a mutate→restore harness must NEVER ride a foreground Bash
+   call that can be timeout-backgrounded: the move RESTARTS the command — slice 6's
+   falsification briefly ran twice concurrently. One short call per
+   mutate→snapshot→restore cycle; after any interruption, verify backups by ANCHOR-GREP.
 5. `grep -c` exits 1 on zero count — chain mutation-absence checks with `;` never `&&`.
 6. A parity delta is a claim about INPUTS before it is a claim about engines — diff inputs
    first; the SSI workbook's Mean/StdDev cells are UNWEIGHTED.
@@ -107,6 +112,9 @@ a driving corridor (ADR-0351) or /evolution's counterfactual (ADR-0352) or /inte
 artifact-cluster (ADR-0358) — per-definition byte-identity is the guard there, not renders.
 `_wmpd_label`'s PAGE branch (mixed 480/1440 bases) is likewise fixture-unreachable — but its
 EXPORT path is oracle-covered since ADR-0363; do not re-chase the page branch.
+`test_manifest_projection_memo`'s `app_mod.non_summary` patch is VERIFIED CORRECT
+(ADR-0364): the spied /api/dashboard projection never crosses a moved member — the sweep
+will keep flagging it; clear it by the same verification, do not repoint it.
 
 Standing rules (binding): Law 1 CUI · Law 2 fidelity ("—" never 0; never weaken a test) ·
 READ EVERYTHING, ASSUME NOTHING, VERIFY EVERYTHING · full gate before every commit (statics
@@ -115,7 +123,7 @@ SESSION-LOG + LESSONS-LEARNED in the same commit · wheel + nine installers ONCE
 shipped-code change (bump version BEFORE the suite; REBUILD if code changes after;
 `pyproject.toml` metadata ships in the wheel, so a bounds change is a shipped change) · never
 `git checkout <file>` to undo a mutation — `cp` from a scratchpad copy · a number written
-mid-session is not a measurement — re-read it before it lands in a handoff (slice 5's 17,688
-was pre-`ruff --fix`; wc said 17,681). Full local suite ~21 min — exceeds a 10-min foreground
+mid-session is not a measurement — re-read it before it lands in a handoff (slice 5's 17,688 was pre-`ruff --fix`;
+slice 6's 482 was pre-I001-fix — wc decides). Full local suite ~21 min — exceeds a 10-min foreground
 timeout, so run it `python -u` in the BACKGROUND and read the tail; CI registers checks ~11
 min in; `test (3.11)`/`(3.13)` ~30 min.

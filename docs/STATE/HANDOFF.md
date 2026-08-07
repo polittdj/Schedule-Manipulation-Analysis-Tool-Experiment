@@ -1,55 +1,59 @@
-# Handoff — 2026-08-07 (phase 3 slice 5: the margin family out of the monolith; ADR-0363; v1.0.174)
+# Handoff — 2026-08-07 (phase 3 slice 6: the trend family out of the monolith; ADR-0364; v1.0.175)
 
-> ## STATUS (current) — **pushed, draft PR open.** ADR-0363, **v1.0.174** (shipped code changed:
-> `app.py`, `components.py`, new `web/margin.py` — wheel + nine installers REBUILT after the
-> bump), SCHEMA 2.11.0. The standing queue's first line resumed: phase 3 monolith split,
-> `margin`.
+> ## STATUS (current) — **pushed, draft PR open.** ADR-0364, **v1.0.175** (shipped code changed:
+> `app.py`, `components.py`, new `web/trend.py` — wheel + nine installers REBUILT after the
+> bump), SCHEMA 2.11.0. Slice 5 (#550, ADR-0363) squash-merged by the operator earlier the
+> same day; the queue continued at `trend`.
 >
-> ## ADR-0363 — phase 3 slice 5: /margin out of the monolith, first fully-covered render diff
-> The stale "margin 379" census was RE-MEASURED first: the behaviour-seeded closure gives
-> 19 names / 494 lines partitioned THREE ways by referrers — a 10-name / 417-line CLOSED move
-> set (every external referrer `create_app`) into **`web/margin.py`** (490 lines with
-> preamble); a 2-family trio (`_HB` / `_HB_MARGIN_SEC` / `_margin_terminology`) DESCENDED into
-> `components.py` (shared with `_margin_panel`, which is the /analysis family's and stays —
-> the ADR-0351 first-slice-forces-the-descent rule); and the SRA-side names untouched (only
-> the create_app-nested `_margin_risk_data` reaches them). `_HB_CONSUME_SEC` stays in app.py:
-> dead constant, no closure claims it (adjacency is not cohesion). `app.py` 18,134 → 17,681.
-> LAYER_ORDER … → integrity → **margin** → app. Proof: 13/13 per-definition byte-identity;
-> multiset 60 added / 0 removed (preamble + re-exports + descent comment only — even the five
-> ruff-dropped app.py imports cancel against margin.py's); **76/76 routes byte-identical** on
-> the golden-pair oracle. First slice where the probe covers the WHOLE family: the oracle
-> gained `POST /margin/band` (else `_band_payload` returns None on line one) and the
-> instantiated `/export/{xlsx,docx}/margin` (proven deterministic — and the ONLY path that
-> executes `_wmpd_label`: 0 moved without them, 2 with). Falsified in BOTH new modules, both
-> EXACT vs the pre-flight map. All three sweeps empty WITH a self-test (harness first found
-> the 4 known drvmod/evomod sites). Five guard mutations red→restored (md5-verified, cp never
-> git checkout); the enumeration guard's fourth consecutive live catch.
+> ## ADR-0364 — phase 3 slice 6: /trend out of the monolith; the sweep's first real candidate
+> The stale "trend 348" census RE-MEASURED: the behaviour-seeded closure gives 7 names /
+> 502 lines partitioned THREE ways — a 3-name / 424-line CLOSED move set
+> (`_how_it_moved_header` · `_trend_body` · `_trend_data`) into **`web/trend.py`** (483
+> lines); the `_focus_rows`/`_focus_panel` pair DESCENDED into `components.py` (2-family:
+> `_trend_body` embeds it AND the /compare route calls it — and unlike every earlier
+> descent, BOTH consumers are render-proven: `/trend?target=3` + the new
+> `/compare [target-set]` pseudo-route, a set-target POST sequenced AFTER the target-less
+> sweep); `_parse_uid` (10 families) and `_sources_line` (8) stay. `export_trend` stays
+> whole (builds from `compute_quality_trend` directly — that import stays in app.py while
+> trend.py imports it independently). `app.py` 17,681 → 17,197. NOTE: `web.trend` sorts
+> AFTER `web.state` — the re-export block lands at the END of the import section, unlike
+> every previous page module. Proof: 5/5 per-definition byte-identity; multiset 57 added /
+> 1 removed (the one removal = components' cpm import line re-added widened with
+> `offset_to_datetime`, the pair's single genuine dependency); **80/80 routes
+> byte-identical**; falsified in BOTH new locations, both EXACT; five guard mutations
+> red→restored md5-verified (enumeration guard's fifth consecutive live catch). **Sweep 1
+> found its first REAL candidate**: `test_manifest_projection_memo` patches
+> `app_mod.non_summary` — cleared by verification (the spied path is /api/dashboard's
+> projection, which never crosses a moved member; app.py still binds it, 41 usages).
+> Process note: a 300s-timeout Bash call that gets "moved to background" RESTARTS its
+> command — the falsification harness ran twice concurrently until caught (backups verified
+> clean by anchor-grep, strays killed, both cases re-run serially foreground).
 >
 > ## Next
-> Phase 3 resumes at **trend 348** (stale census — RE-MEASURE the closure first; this slice's
-> "379" measured as 417+21 split three ways). Then: driving-corridor fixture · the three
-> page-lede-less pages (/briefing, /path, /compare) · /groups Activities counting summary rows
-> (ADR-0343) · installers vs known-good constraints · the P80/P90 recurring-calendar-exception
-> residual (own unit) · Phase 6 docs. Battery future-work: a stored-slack fixture would let
-> `cei_critical` leave NA. **Operator:** license · branch-protection · proprietary reruns ·
-> OR-04 · whether the July mpp/ oracle should re-export under replace semantics.
+> Phase 3 resumes at **ssi 335** (stale census — RE-MEASURE first; margin's "379" measured
+> 417+21 three ways, trend's "348" measured 424+55+shared). Then: driving-corridor fixture ·
+> the three page-lede-less pages (/briefing, /path, /compare) · /groups Activities counting
+> summary rows (ADR-0343) · installers vs known-good constraints · the P80/P90
+> recurring-calendar-exception residual (own unit) · Phase 6 docs. **Operator:** license ·
+> branch-protection · proprietary reruns · OR-04 · whether the July mpp/ oracle should
+> re-export under replace semantics.
 >
 > ## Carried forward
-> ADR-0353..0362 closed — do not re-open. The slice recipe held for its fifth outing:
-> behaviour-seeded closure (the prefix finds, the closure DEFINES — and here it also
-> partitions) · span-scoped pre-flight probe BEFORE quoting any render diff (widen the oracle
-> when a member's only consumer is an export or a POST-lit branch) · verbatim cut + `X as X`
-> re-exports · contract/guard widening · the three sweeps (empty is evidence only with a
-> self-test) · per-definition byte-identity + multiset + falsified render diff · five guard
-> mutations restored from scratchpad cp. A number written mid-session is not a measurement —
-> the 17,688 in the draft ADR was pre-`ruff --fix`; wc says 17,681 (caught by the re-read
-> rule). The workbook Mean/StdDev cells are UNWEIGHTED. A parity delta is a claim about INPUTS
-> first. `pydantic>=2` NOT a safe floor (2.6); `fastapi>=0.110` an AIR-GAP VIOLATION (0.110.2
-> floor). `ruff check .` whole tree as `python -m ruff` (a stale 0.15.8 shadows PATH). `grep
-> -c` exits 1 on zero — chain with `;`. The /analysis focus→tip family is load-sensitive — do
-> NOT chase. bandit B608 on HTML f-strings with "from" → house `# nosec B608 (HTML, not
-> SQL)`. Full suite > 10-min foreground timeout — run `python -u` in background and READ the
-> tail; never mutate the tree (docs included — test_state_docs reads them) while it runs.
+> ADR-0353..0363 closed — do not re-open. The slice recipe held for its sixth outing; new
+> permanent additions: (1) a member at 0 moved may be an ORACLE gap — ask what would
+> EXECUTE it (an export, a POST-lit branch, a query param) and widen the oracle before
+> calling it unreachable (margin's `_wmpd_label`, trend's `/compare [target-set]`);
+> (2) long-running mutate-then-restore harnesses must NOT ride a foreground Bash call that
+> can be timeout-backgrounded — the restart runs the mutation twice; keep each
+> mutate→snapshot→restore cycle its own short call. A number written mid-session is not a
+> measurement (slice 6's "482" was pre-I001-fix; wc says 483). The workbook Mean/StdDev
+> cells are UNWEIGHTED. A parity delta is a claim about INPUTS first. `pydantic>=2` NOT a
+> safe floor (2.6); `fastapi>=0.110` an AIR-GAP VIOLATION (0.110.2 floor). `ruff check .`
+> whole tree as `python -m ruff` (stale 0.15.8 shadows PATH). `grep -c` exits 1 on zero —
+> chain with `;`. The /analysis focus→tip family is load-sensitive — do NOT chase. bandit
+> B608 on HTML f-strings with "from" → house `# nosec B608 (HTML, not SQL)`. Full suite >
+> 10-min foreground timeout — background with `python -u` and READ the tail; never mutate
+> the tree (docs included) while it runs.
 
 # (prior) handoffs — archived
 
