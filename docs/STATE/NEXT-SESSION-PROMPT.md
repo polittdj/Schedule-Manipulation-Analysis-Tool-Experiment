@@ -46,7 +46,10 @@ PASSES (finding present, magnitude missing — queued below).
    signed, fix the label; fractional-day fixtures (60/235/240/241 min ±) — NO such test
    exists today. `prove-able-to-fail` applies.
 2. **Parity milestone-population decision (audit F5)**: `_baselined` (dcma14.py:84-85)
-   excludes ALL milestones; CLAUDE.md says "milestones kept"; Fuse's NASA-lib Missing
+   excludes ALL milestones; the parity docstrings THEMSELVES say "KEEPING milestones
+   (IncludeMilestone = 1)" (dcma14.py:62-63,80,249; state.py:498) — a milestone can never
+   carry >= 1 day of baseline DURATION, so the kept-milestone claim is vacuous as coded
+   (baseline PRESENCE is the plausible intended test); Fuse's NASA-lib Missing
    Logic COUNTS TP4's milestone UID 26 (parity 0 vs Fuse 1; ordinary matches). DECIDE
    which Fuse metric parity mirrors, RE-PIN against the ADR-0280 Large-Test oracles
    BEFORE changing anything (a mistaken "fix" is worse than the drift), fix doc or code.
@@ -65,7 +68,11 @@ three sweeps with positive control · byte-identity + falsified diff · five gua
 mutations, named-failure rule). Then: stored-SRA-fields MSPDI fixture · driving-corridor
 fixture · the three page-lede-less pages (/briefing, /path, /compare) · /groups
 Activities (ADR-0343) · installers vs known-good constraints · P80/P90
-recurring-exception residual · Phase 6 docs.
+recurring-exception residual · the audit's doc-drift sweep (docs/PARITY-REPORT.md still
+says the reference .mpps are git-ignored/not-committed and calls Project2.mpp "CUI
+intake" — superseded by ADR-0151/0152; docs/FINAL-REPORT.md asserts blanket "Exact match
+to Acumen Fuse + SSI" beyond the three documented evidence tiers; CLAUDE.md's "phase 3
+still queued" and single-E501-exemption lines lag reality) · Phase 6 docs.
 **Operator only:** re-convert FX-03/FX-04 (open the authored .xml, VERIFY UID17=5d /
 UID131=1w before save — MS Project re-derives Duration from stored dates and silently
 un-edits otherwise; F9; the finish MUST move) then re-run Fuse and replace the two

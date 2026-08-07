@@ -21,8 +21,10 @@
 > (build_briefing rebuilt by 4 callers; ~0.56 s with two 9 MB files) · sub-day
 > counterfactual effects render "no effect" (`round()` at change_effects.py:117-123,
 > exactly-half-day drops via banker's; NO fractional-day test exists) · `_baselined`
-> (dcma14.py:84-85) excludes ALL milestones from the parity population — CLAUDE.md says
-> "milestones kept", and Fuse's NASA-lib Missing Logic COUNTS the TP4 milestone UID 26
+> (dcma14.py:84-85) excludes ALL milestones from the parity population — the parity
+> docstrings THEMSELVES say "KEEPING milestones (Acumen sets IncludeMilestone = 1)"
+> (dcma14.py:62-63,80,249; state.py:498), and Fuse's NASA-lib Missing Logic COUNTS the
+> TP4 milestone UID 26
 > (parity 0 vs Fuse 1; ordinary matches) · /integrity omits the change-effects panel
 > silently on unmeasurable targets; skipped changes disclosed count-only · FX-06's
 > baseline finding names UID 131 but shows NO magnitude/old-new dates · ~150 MB RSS
