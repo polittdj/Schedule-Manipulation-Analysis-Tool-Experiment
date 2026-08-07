@@ -1,66 +1,73 @@
-# Handoff — 2026-08-07 (phase 3 slice 7: the ssi run machinery out of the monolith; ADR-0365; v1.0.176)
+# Handoff — 2026-08-07 (triple session: full read-only audit · FX fixture verdicts · intake guard re-greened; no new ADR; v1.0.176)
 
-> ## STATUS (current) — **pushed, draft PR open.** ADR-0365, **v1.0.176** (shipped code changed:
-> `app.py`, `components.py`, new `web/ssi.py` — wheel + nine installers REBUILT after the
-> bump), SCHEMA 2.11.0. Slice 6 (#551, ADR-0364) squash-merged by the operator at 17:24Z;
-> the operator also web-uploaded SIX new reference files (`AlltheProjects` .zip/.afw/4×.xlsx,
-> ~49 MB) — the intake manifest is REGENERATED in this commit (410 → 416 tracked files,
-> mismatches stay 99; CLAUDE.md count updated).
+> ## STATUS (current) — **pushed, draft PR open** on `claude/schedule-tool-audit-hhjbtp`
+> (branched fresh from `main` cac9bea after #552 squash-merged at 19:46Z). **Docs + one
+> test pin only — NO shipped code changed** (no version bump, no installer rebuild; still
+> ADR-0365, **v1.0.176**, SCHEMA 2.11.0). This commit re-greens `main`: the operator's
+> 2026-08-07 16:39Z web upload (16 FX files + `FX.afw`, commits 9ba7203/cac9bea) landed
+> AFTER slice 7's manifest regeneration, so `tests/guards/test_intake_manifest.py` was
+> RED on main (4 tests). Fixed by regeneration: **416 → 433 tracked files, mismatches
+> stay 99**, CLAUDE.md count updated, and the `.mpp` census pin moved 22 → **28** (the
+> six FX conversions, all verified genuine OLE2; pin mutation-proven able to fail).
 >
-> ## ADR-0365 — phase 3 slice 7: the SSI run machinery; the census flagship left the family
-> The stale "ssi 335" census RE-MEASURED: it was `_ssi_panel` (235) + `_ssi_data` (102) by
-> prefix — and the closure puts THE PANEL OUT OF THE FAMILY (sole referrer `_sra_body` → it
-> is /sra page family, as is `_ssi_export_tables` 248). The behaviour-seeded closure over
-> the nine SSI routes gives 15 names / 611 lines partitioned three ways: an 11-name /
-> 576-line move set into **`web/ssi.py`** (644 lines: `_ssi_data` · `_ssi_grid_rows` · the
-> setup Save/Load cluster · the three stored-field constants); THREE descents into
-> `components.py` (`_REMAIN_DAYS_DP` · `_affected_avg_remaining_days` ·
-> `_ssi_matrix_counts` — each needed by a mover AND a staying sra member); stays =
-> `_ssi_three_point` (7 route families) · `_correlation_spec` (6) · `_schedule_*` ·
-> `_MAX_SETUP_BYTES` (upload-cap trio) · `_file_stored_risks`. `app.py` 17,197 → 16,581.
-> NOTE: `web.ssi` sorts BEFORE `web.state` (unlike trend) — the re-export block is mid-list.
-> Oracle grew 80 → 96 labels: + sra exports/templates, + `[ssi-api]` (the MC is SEEDED:
-> `SRAConfig.seed=12345`, per-iteration `Random(seed+i)` — byte-stable at 300 iters),
-> + a crafted v4 setup load (exact_overall/LHS/correlation/days-only risk/branch/
-> conditional/droppable UIDs) with four after-renders, + a v2 load lighting the ADR-0307
-> stale-factor recompute. Launch token is `{hex16}.{wipe_gen}` — a hex-only normalizer
-> misses it and 48 labels flap. Proof: 14/14 per-definition byte-identity; multiset 69
-> added / 1 removed (the removal = app's parenthesized `SSIRiskStat,`, re-added as
-> components' own import; `import hashlib` migrated app→ssi invisibly); **96/96 routes
-> byte-identical**; falsified in BOTH new locations, all NINE render-visible members EXACT
-> vs their probe sets; five guard mutations red→restored md5-verified (enumeration guard's
-> sixth live catch). Probe zeros stated: the stored-fields cluster is oracle-dark but
-> unit-covered (`test_ssi_grid_from_schedule`); `_REMAIN_DAYS_DP` 6→2dp is value-invisible
-> on whole-day fixtures. Sweeps: one hit = the standing `app_mod.non_summary` memo patch
-> (doubles as the live positive control; cleared by the ADR-0364 verification, unchanged).
+> ## What else this session produced (evidence OUTSIDE the repo, delivered to operator)
+> 1. **Full adversarial read-only audit at cac9bea** (per the operator's ChatGPT audit
+> spec; evidence package in the session workspace, 10 deliverables + harnesses, repo
+> untouched). Headlines: statics + suite green except the intake guard (now fixed);
+> "UniversalProjectReader rejects Project2.mpp" REFUTED (28/28 .mpp read by both readers
+> — the old failure was the broken host Java loader); "dashboard recomputes per project"
+> REFUTED empirically at HEAD (warm / = 0 solves; upload precomputes); REAL findings:
+> `/briefing` does 4 uncached CPM solves + a duplicate DCMA audit on EVERY request
+> (build_briefing rebuilt by 4 callers; ~0.56 s with two 9 MB files) · sub-day
+> counterfactual effects render "no effect" (`round()` at change_effects.py:117-123,
+> exactly-half-day drops via banker's; NO fractional-day test exists) · `_baselined`
+> (dcma14.py:84-85) excludes ALL milestones from the parity population — CLAUDE.md says
+> "milestones kept", and Fuse's NASA-lib Missing Logic COUNTS the TP4 milestone UID 26
+> (parity 0 vs Fuse 1; ordinary matches) · /integrity omits the change-effects panel
+> silently on unmeasurable targets; skipped changes disclosed count-only · FX-06's
+> baseline finding names UID 131 but shows NO magnitude/old-new dates · ~150 MB RSS
+> retained per loaded 9 MB .mpp, no per-file unload · Negative Float has NO formula in
+> the AFT (prose only) — sub-day semantics ORACLE-GATED · 3 web tests call GET /target
+> where only POST exists (silently not exercising focus).
+> 2. **FX fixture verdicts (operator had already run Fuse — exports committed).**
+> FX-01: Fuse Days Late EXCLUDES milestones (8 unchanged). FX-02: CLAMPED at zero (4,
+> not −2). FX-05: Missing Preds +1 as predicted but Missing Logic +3 (two dropped links
+> open THREE ends — 142/131/141; SMAT matches Fuse UID-exactly 5→8). FX-03/FX-04:
+> **MS Project silently REVERTED both duration cuts on XML import** (Duration re-derived
+> from stale stored dates) — their .mpp/Fuse numbers oracle the UNCHANGED schedules;
+> operator re-export needed. SMAT-side positive controls ran on the authored XMLs and
+> PASSED EXACTLY (+10 wd / +15 wd; /integrity renders "restore UID 17 … +10 wd").
+> FX-06 trap PASSED: finish frozen AND a HIGH DECM-29I401a baseline finding.
 >
 > ## Next
-> Phase 3 resumes at **mission 304** (stale census — RE-MEASURE; expect sra to measure
-> ~700+ over its "264": the panel 235 + export tables 248 + `_file_stored_risks` wait
-> there). Then: the stored-SRA-fields MSPDI fixture (named oracle gap — unlocks the
-> stored-fields cluster end-to-end AND the /sra slice) · driving-corridor fixture · the
-> three page-lede-less pages (/briefing, /path, /compare) · /groups Activities counting
-> summary rows (ADR-0343) · installers vs known-good constraints · the P80/P90
-> recurring-calendar-exception residual (own unit) · Phase 6 docs. **Operator:** license ·
-> branch-protection · proprietary reruns · OR-04 · whether the July mpp/ oracle should
-> re-export under replace semantics.
+> Phase 3 monolith split resumes at **mission 304** (stale census — RE-MEASURE the
+> closure first; expect sra ~700+ over its "264"). NEW queue items from the audit
+> (P0 first): sub-day effect display (keep minutes; "<1 wd" label; F1/F7) · parity
+> milestone-population decision (F5 — re-pin against the ADR-0280 Large-Test oracles
+> BEFORE changing; doc contradicts code either way) · /briefing memoisation (P1) ·
+> integrity disclosure (target-unavailable banner, skipped identities, baseline-finding
+> magnitude; F2/F4). Then the standing queue: stored-SRA-fields MSPDI fixture ·
+> driving-corridor fixture · three page-lede-less pages · /groups Activities (ADR-0343)
+> · installers vs known-good constraints · P80/P90 recurring-exception residual · Phase 6
+> docs. **Operator:** re-convert FX-03/04 (verify UID17=5d/UID131=1w BEFORE save; F9;
+> finish must move) + re-run Fuse · one Acumen run on a crafted sub-day-negative-float
+> schedule closes the O1 oracle gap · license · branch-protection · proprietary reruns ·
+> OR-04 · July mpp/ re-export decision.
 >
 > ## Carried forward
-> ADR-0353..0364 closed — do not re-open. Slice recipe held for its seventh outing; new
-> permanent additions: (1) a NON-ZERO pytest exit is not a failing test — collection
-> errors exit non-zero too; a mutation is "caught" only when the failure summary NAMES the
-> test (slice 7's mutations 4–5 first ran against guessed ids and the exit-code check lied
-> RED); (2) the census prefix can put a member IN the family the closure puts OUT — the
-> panel precedent. A number written mid-session is not a measurement (wc decides). The
-> workbook Mean/StdDev cells are UNWEIGHTED. A parity delta is a claim about INPUTS first.
-> `pydantic>=2` NOT a safe floor (2.6); `fastapi>=0.110` an AIR-GAP VIOLATION (0.110.2
-> floor). `ruff check .` whole tree as `python -m ruff` (stale 0.15.8 shadows PATH).
-> `grep -c` exits 1 on zero — chain with `;`. The /analysis focus→tip family is
-> load-sensitive — do NOT chase. bandit B608 on HTML f-strings with "from" → house
-> `# nosec B608 (HTML, not SQL)`. Full suite > 10-min foreground timeout — background with
-> `python -u` and READ the tail; never mutate the tree (docs included) while it runs;
-> mutate→restore harnesses live in ONE background python orchestrator, never a
-> timeout-backgroundable foreground call.
+> ADR-0353..0365 closed — do not re-open. Highest ADR stays 0365 (this session: docs +
+> one test pin, no ADR-worthy decision). MS Project XML import DERIVES Duration from
+> stored dates — a duration-only fixture whose stored dates disagree gets silently
+> un-edited on .mpp conversion; future duration fixtures must carry recalc-consistent
+> stored dates. SMAT floors predecessor-less unstarted tasks at stored start
+> (cpm.py `_stored_date_bounds`) — an unmoored task does NOT slide to the data date;
+> FX-05's isolated rows {+0, −29} with joint 0 are the canonical non-additivity exhibit.
+> Parity evidence is three-tiered (runtime external oracle / transcription / engine-
+> pinned) — never report it as uniform equivalence. The strongest external-oracle parity
+> tests skip without Java — check whether CI installs a JDK. A number written mid-session
+> is not a measurement (wc decides). `grep -c` exits 1 on zero — chain with `;`. Full
+> suite > 10-min foreground — background `python -u`, read the tail. The /analysis
+> focus→tip family is load-sensitive — do NOT chase.
 
 # (prior) handoffs — archived
 

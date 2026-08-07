@@ -435,6 +435,41 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-07 (cont.4) — MS Project un-edits your fixture; the read-only audit's verdicts; a prediction that fails is a result
+
+- **MS Project XML import DERIVES Duration from stored dates.** The operator converted the
+  six FX single-variable MSPDI fixtures to `.mpp` per the fixture protocol — and the two
+  duration-cut fixtures (FX-03 UID17 15d→5d, FX-04 UID131 4w→1w) came back with their
+  edits silently REVERTED: the authored XMLs carried the new Duration but the old stored
+  Start/Finish, and MS Project resolved the conflict dates-first. Baseline edits and the
+  logic drop survived. Their Fuse exports therefore oracle the UNCHANGED schedules.
+  **Lesson: a duration-only fixture must ship recalc-consistent stored dates, and every
+  .mpp conversion must be diffed against its source before its exports are trusted as an
+  oracle** (`diff_versions` on the round-trip is the two-minute check that found this).
+- **The fixtures answered their pre-registered questions anyway** — the Fuse side from the
+  surviving four, the SMAT side from the authored XMLs directly: Fuse `Days Late`
+  EXCLUDES milestones (FX-01: 8 unchanged) and CLAMPS at zero (FX-02: 4, not −2); two
+  dropped links open THREE logic ends (FX-05: Missing Logic +3, not the predicted +1 —
+  SMAT matches Fuse UID-exactly); the Schedule Integrity engine PASSES its first true
+  positive controls (+10 wd / +15 wd exact); the FX-06 baseline-shift trap PASSES
+  (finish frozen, HIGH DECM-29I401a finding) though the finding omits the magnitude.
+  Two author predictions failed and both failures taught more than the passes.
+- **The adversarial read-only audit (evidence outside the repo) landed four correctness
+  P0/P1s**: sub-day counterfactual deltas render "no effect" (banker's `round()` even
+  drops an exactly-half-day effect; no fractional-day test existed); the parity
+  population filter `_baselined` excludes ALL milestones while CLAUDE.md says
+  "milestones kept" (Fuse counts the TP4 milestone — parity 0 vs Fuse 1, ordinary mode
+  matches); `/briefing` re-runs 4 CPM solves + a duplicate audit on EVERY request; and
+  the old "UniversalProjectReader rejects .mpp" story is REFUTED (28/28 read; the real
+  culprit was the broken host Java loader). **Lesson: an environment defect can
+  masquerade as a product defect for weeks — re-run the exact repro on a known-good
+  runtime before believing any importer allegation.**
+- **Delegated reader agents died 5-of-8 and 3-of-5 on retry** in this session's fabric;
+  the lead's inline verification with executable probes carried the audit. Lesson: the
+  recon-then-lead-reverify pattern also needs a *liveness* fallback — never let a dead
+  delegate silently become a coverage gap; enumerate what each dead reader owed and
+  re-cover it inline before closing.
+
 ### 2026-08-07 (cont.3) — A non-zero pytest exit is not a failing test; and the census prefix can claim a member the closure disowns
 
 - Slice 7's guard mutations 4–5 first ran against GUESSED test ids
