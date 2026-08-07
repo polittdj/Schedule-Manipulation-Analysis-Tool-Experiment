@@ -435,6 +435,29 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-08 — a revert that changes nothing "passes"; a dedupe makes a stale-memo test wrong; exactly-half rounds to even
+
+- Proving the ADR-0369 qa guard able to fail, the mutation script spliced with
+  `s.index("    return tuple(facts)")` — which matched the FIRST occurrence in the file (an
+  earlier function), so the "reverted" block was inserted upstream and the file went on to
+  RE-DECLARE the still-guarded function below the cut. Python's later `def` wins at import:
+  the revert changed nothing, the test stayed green, and only the prove-able-to-fail rule
+  ("if the revert did not move the output, your revert was wrong") caught it. Lesson: anchor
+  splice targets uniquely (`s.index(needle, after_pos)`) and grep the mutated PROPERTY into
+  evidence before trusting any revert run.
+- The first ADR-0368 memo-invalidation test re-uploaded the same golden bytes and expected a
+  rebuild — but ADR-0259's hash-first dedupe leaves the session untouched on byte-identical
+  uploads, so the identity-keyed memo legitimately survived. The failing test was RIGHT and
+  the expectation wrong. Lesson: an invalidation test must change the bytes, and the dedupe
+  path deserves its own twin assertion (memo SURVIVES an identical re-upload).
+- Audit F1's sharpest tooth: `round(240/480)` is 0 — Python rounds exact halves to even, so a
+  true half-day counterfactual effect rendered "no effect". When pinning legacy rounding,
+  pin the half-day case BY NAME (240→0, 241→1) or the worst case stays invisible forever.
+- Audit F5 resolved as DOC-fix, not code-fix: the AFT's own PrimaryFilter settled in one read
+  what looked like a code/doc contradiction ("check whether the reference tool wrote it
+  down" pays again), and the alternative hypothesis died as 4 NAMED pin failures — recorded
+  as measured-false so nobody re-chases it.
+
 ### 2026-08-07 (cont.4) — MS Project un-edits your fixture; the read-only audit's verdicts; a prediction that fails is a result
 
 - **MS Project XML import DERIVES Duration from stored dates.** The operator converted the

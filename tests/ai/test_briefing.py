@@ -207,3 +207,27 @@ def test_empty_scope_is_cited_and_says_nothing_to_brief() -> None:
         for section in b.sections:
             assert_all_cited(section.statements)
         assert "nothing to brief" in b.sections[0].statements[0].text
+
+
+def test_build_briefing_runs_exactly_one_dcma_audit(
+    golden_project5: Schedule, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Audit P1 (ADR-0368): build_briefing audits once and hands that audit to recommend()
+    (ADR-0281's ``precomputed_audit``) — previously recommend() reran the full DCMA audit,
+    each run embedding the DCMA-12 delay-injection CPM re-solve, on every briefing build.
+    Counted at BOTH from-import bindings (the binding-wrap lesson: a from-import bound
+    before the wrap escapes a single-module patch)."""
+    import schedule_forensics.ai.briefing as briefing_mod
+    import schedule_forensics.engine.recommendations as rec_mod
+
+    calls: list[str] = []
+    real = briefing_mod.audit_schedule
+
+    def counting(*a: object, **k: object) -> object:
+        calls.append("audit")
+        return real(*a, **k)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(briefing_mod, "audit_schedule", counting)
+    monkeypatch.setattr(rec_mod, "audit_schedule", counting)
+    build_briefing([golden_project5], today=TODAY)
+    assert calls == ["audit"]

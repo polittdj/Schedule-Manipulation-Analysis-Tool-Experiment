@@ -225,6 +225,152 @@ def test_measurement_cap_starves_artifacts_not_real_changes() -> None:
     assert r.skipped_capped_artifacts == n_genuine  # …and disclosed as artifact-pattern
     # the disclosed artifact total (measured + capped) is the true detected count
     assert len(artifacts) + r.skipped_capped_artifacts == n_artifacts
+    # ADR-0369: every capped change is disclosed by IDENTITY too, not count-only
+    assert len(r.skipped_capped_labels) == r.skipped_capped
+    assert all("constraint" in lb for lb in r.skipped_capped_labels)
+
+
+def test_sub_day_effects_carry_exact_minutes_and_days_keep_rounding() -> None:
+    """Audit F1 (2026-08-07): ``round()`` maps a true sub-day effect — even exactly half a day,
+    via round-half-even — to 0 working days, which the page rendered "no effect". The int-day
+    fields keep their legacy rounding (pinned here, unchanged contract for every consumer); the
+    NEW ``*_minutes`` fields carry the exact truth the presentation renders as "<1 wd"."""
+    # (cut_minutes, legacy_rounded_days) — derived from round(minutes/480): 240 is EXACTLY half
+    # a working day and round-half-even sends it to 0 (not 1); 241 crosses to 1; 60/235 round 0.
+    for cut, days in ((60, 0), (235, 0), (240, 0), (241, 1)):
+        rels = [Relationship(predecessor_id=1, successor_id=2)]
+        prior = _sched(
+            [
+                Task(unique_id=1, name="T1", duration_minutes=10 * DAY + cut),
+                _task(2, 0, is_milestone=True),
+            ],
+            rels,
+        )
+        current = _sched([_task(1, 10), _task(2, 0, is_milestone=True)], rels)
+        r = compute_change_effects(prior, current, target_uid=2)
+        assert r is not None
+        e = next(x for x in r.per_change if x.kind == "duration_restored")
+        # restoring the prior (longer) duration pushes the milestone out exactly `cut` minutes
+        assert e.target_finish_delta_minutes == cut
+        assert e.project_finish_delta_minutes == cut
+        assert e.target_finish_delta_days == days
+        assert e.project_finish_delta_days == days
+        # single measured change → the aggregate carries the same exact minutes
+        assert r.aggregate_target_finish_delta_minutes == cut
+        assert r.aggregate_project_finish_delta_minutes == cut
+        assert r.aggregate_target_finish_delta_days == days
+
+
+def test_sub_day_negative_effect_keeps_sign_in_minutes() -> None:
+    # current RAISED the duration by 240 min: reverting pulls the milestone IN — negative minutes
+    rels = [Relationship(predecessor_id=1, successor_id=2)]
+    prior = _sched([_task(1, 10), _task(2, 0, is_milestone=True)], rels)
+    current = _sched(
+        [
+            Task(unique_id=1, name="T1", duration_minutes=10 * DAY + 240),
+            _task(2, 0, is_milestone=True),
+        ],
+        rels,
+    )
+    r = compute_change_effects(prior, current, target_uid=2)
+    assert r is not None
+    e = next(x for x in r.per_change if x.kind == "duration_restored")
+    assert e.target_finish_delta_minutes == -240
+    assert e.target_finish_delta_days == 0  # legacy round-half-even pinned (unchanged)
+    assert r.aggregate_target_finish_delta_minutes == -240
+
+
+def test_duration_label_shows_sub_day_durations_exactly() -> None:
+    """Audit F7: the floor-divided label rendered a 240→60 min cut as "cut 0→0 wd". A fractional
+    side now renders 2-dp days with the exact minutes riding along; whole-day pairs keep the old
+    label text verbatim (the true-positive twin)."""
+    rels = [Relationship(predecessor_id=1, successor_id=2)]
+    prior = _sched(
+        [Task(unique_id=1, name="T1", duration_minutes=240), _task(2, 0, is_milestone=True)], rels
+    )
+    current = _sched(
+        [Task(unique_id=1, name="T1", duration_minutes=60), _task(2, 0, is_milestone=True)], rels
+    )
+    r = compute_change_effects(prior, current, target_uid=2)
+    assert r is not None
+    e = next(x for x in r.per_change if x.kind == "duration_restored")
+    assert "0→0 wd" not in e.label
+    assert e.label == "restore UID 1 duration (cut 0.12→0.5 wd (60→240 min))"
+    # whole-day twin: the pre-fix label text is preserved byte-for-byte
+    prior2 = _sched([_task(1, 20), _task(2, 0, is_milestone=True)], rels)
+    current2 = _sched([_task(1, 10), _task(2, 0, is_milestone=True)], rels)
+    r2 = compute_change_effects(prior2, current2, target_uid=2)
+    assert r2 is not None
+    e2 = next(x for x in r2.per_change if x.kind == "duration_restored")
+    assert e2.label == "restore UID 1 duration (cut 10→20 wd)"
+
+
+def test_sub_day_lag_label_does_not_collapse_to_zero_days() -> None:
+    # a removed FS link carrying a 240-min lag: the old label floor-divided it to "(lag +0d)"
+    tasks = [_task(1, 10), _task(2, 10), _task(3, 0, is_milestone=True)]
+    current = _sched(tasks, [Relationship(predecessor_id=2, successor_id=3)])
+    prior = _sched(
+        tasks,
+        [
+            Relationship(predecessor_id=1, successor_id=2, lag_minutes=240),
+            Relationship(predecessor_id=2, successor_id=3),
+        ],
+    )
+    r = compute_change_effects(prior, current, target_uid=3)
+    assert r is not None
+    link = next(e for e in r.per_change if e.kind == "logic_restored")
+    assert "(lag +0d)" not in link.label
+    assert "+240 min" in link.label
+    # whole-day-lag twin keeps the old byte-identical form
+    prior2 = _sched(
+        tasks,
+        [
+            Relationship(predecessor_id=1, successor_id=2, lag_minutes=2 * DAY),
+            Relationship(predecessor_id=2, successor_id=3),
+        ],
+    )
+    r2 = compute_change_effects(prior2, current, target_uid=3)
+    assert r2 is not None
+    link2 = next(e for e in r2.per_change if e.kind == "logic_restored")
+    assert "(lag +2d)" in link2.label
+
+
+def test_target_unavailable_returns_a_disclosed_sentinel_not_none() -> None:
+    """Audit F2 (ADR-0369): an unresolvable target used to return None — indistinguishable from
+    "no changes detected" — so /integrity omitted the panel silently. The sentinel report names
+    the failed target, carries NO measurement (per_change empty, aggregate_solved False), and
+    the no-changes case still returns None (the contract every caller relies on)."""
+    rels = [Relationship(predecessor_id=1, successor_id=2)]
+    prior = _sched([_task(1, 20), _task(2, 0, is_milestone=True)], rels)
+    current = _sched([_task(1, 10), _task(2, 0, is_milestone=True)], rels)
+    r = compute_change_effects(prior, current, target_uid=999)  # UID 999 does not exist
+    assert r is not None
+    assert r.target_unavailable is True
+    assert r.target_uid == 999 and r.target_name == ""
+    assert r.per_change == () and r.aggregate_solved is False
+    assert r.actual_target_finish == ""
+    # true-positive twin: a resolvable target measures normally, flag off
+    ok = compute_change_effects(prior, current, target_uid=2)
+    assert ok is not None and ok.target_unavailable is False and ok.per_change
+    # and the no-changes contract is unchanged: identical pair → None (never a sentinel)
+    assert compute_change_effects(current, current, target_uid=2) is None
+
+
+def test_unsolvable_revert_labels_are_disclosed() -> None:
+    """Audit F2 (ADR-0369): the skip COUNT was disclosed but not WHICH change — the labels
+    tuple carries the same plain-English text a measured row would have carried."""
+    tasks = [_task(1, 10), _task(2, 10), _task(3, 0, is_milestone=True)]
+    prior = _sched(tasks, [Relationship(predecessor_id=1, successor_id=2)])
+    current = _sched(tasks, [Relationship(predecessor_id=2, successor_id=1)])
+    # diff: removed 1→2, added 2→1. Restoring 1→2 onto current (which has 2→1) closes a logic
+    # cycle → that revert is unsolvable; dropping the added 2→1 measures fine.
+    r = compute_change_effects(prior, current, target_uid=3)
+    assert r is not None
+    assert r.skipped_unsolvable == 1
+    assert r.skipped_unsolvable_labels == ("restore removed FS link 1→2",)
+    assert len(r.skipped_unsolvable_labels) == r.skipped_unsolvable
+    measured = [e.label for e in r.per_change]
+    assert "remove added FS link 2→1" in measured  # the solvable twin was measured, not listed
 
 
 def test_relationship_type_is_preserved_in_the_key() -> None:

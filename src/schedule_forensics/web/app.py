@@ -1981,17 +1981,13 @@ def create_app(
         # 4xx — the ADR-0258 known pre-existing defect). Counts are ACTIVE-population-scoped,
         # the same truth the tile APIs serve. The solve pass now runs even for one loaded
         # version (Mission Ops rank 2): the verdict band + KPI tiles read the EXISTING
-        # Executive Briefing verbatim — the same build_briefing(...) call /briefing makes,
-        # deterministic (Null backend), figures re-used, never re-computed here.
+        # Executive Briefing verbatim — the same memoised briefing /briefing renders
+        # (st.briefing_for, ADR-0368), deterministic (Null backend), never re-computed here.
         ordered = st.ordered()
         n_loaded = len(ordered)
         schedules, cpms, _skipped = _solvable_versions()
         n_solvable = len(schedules) if n_loaded >= 2 else 0
-        briefing = (
-            build_briefing(schedules, cpms=cpms, acumen_parity=st.dcma_acumen_parity)
-            if schedules
-            else None
-        )
+        briefing = st.briefing_for(schedules, cpms) if schedules else None
         return _page(
             st,
             "Mission Control",
@@ -6238,7 +6234,7 @@ def create_app(
         schedules, cpms, _skipped = _solvable_versions()
         if not schedules:
             return JSONResponse({"error": "need at least one analyzable schedule"}, status_code=400)
-        briefing = build_briefing(schedules, cpms=cpms, acumen_parity=st.dcma_acumen_parity)
+        briefing = st.briefing_for(schedules, cpms)
         if fmt == "docx":
             blocks = cast("list[Block]", briefing_blocks(briefing))
             return Response(
@@ -6268,7 +6264,7 @@ def create_app(
         # synchronous per-section AI polish on page load made this page hang (effectively "won't
         # open") on big workbooks with a slow local model. ai_polish.js fetches /api/ai/briefing in
         # the background and swaps in the local-AI-polished version when a model is active.
-        briefing = build_briefing(schedules, cpms=cpms, acumen_parity=st.dcma_acumen_parity)
+        briefing = st.briefing_for(schedules, cpms)
         body = (
             _the_briefing_header(
                 briefing,

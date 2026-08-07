@@ -26,6 +26,7 @@ from schedule_forensics.ai import (
     AIBackend,
     AIConfig,
 )
+from schedule_forensics.ai.briefing import ExecutiveBriefing, build_briefing
 from schedule_forensics.ai.citations import Narrative
 from schedule_forensics.ai.narrative import build_narrative
 from schedule_forensics.engine import (
@@ -454,6 +455,15 @@ class SessionState:
     #: was otherwise re-derived for every version on every dashboard refresh even when fully warm.
     #: Plain dict, epoch-keyed exactly like ``dash_cores``, cleared on wipe.
     dash_cards: dict[str, tuple[Schedule, dict[str, object]]] = field(default_factory=dict)
+    #: ADR-0368 (audit P1): the deterministic Executive Briefing memo — exactly ONE entry, the
+    #: current epoch's: (scope signature, ordered solvable schedules, report day, briefing).
+    #: /briefing, Mission Control and the briefing exports all render this same deterministic
+    #: document; it was rebuilt on EVERY request (a full DCMA audit + findings pass — each audit
+    #: embedding the DCMA-12 delay-injection CPM re-solve). Identity-checked like every tier (a
+    #: re-upload creates new Schedule objects); day-checked (the report stamps "today");
+    #: SINGLE-entry so epoch flips can never accumulate retained schedule lists. Wiped by
+    #: default (not in the keep-set). The live-model variant (/api/ai/briefing) is never cached.
+    briefing_memo: tuple[str, tuple[Schedule, ...], dt.date, ExecutiveBriefing] | None = None
     # ADR-0261 P3: per-version Performance-page memo, keyed by the SCOPED schedule's object
     # identity (one scoped object per version per epoch, courtesy of the scope memo):
     # id -> (scoped ref, effective-critical set, serialized G1-G5 block, truncated flag). The
@@ -494,9 +504,10 @@ class SessionState:
     # (report trace, trend focus, compare movement) defaults to this when set.
     target_uid: int | None = None
     # DCMA Acumen parity mode (ADR-0280): when True, the DCMA-14 checks use Acumen Fuse's exact
-    # definitions from the NASA metric library — baselined population (Baseline Duration >= 1 day,
-    # milestones kept), whole-day float, Resources on Baseline Cost/Work, stored-float CPLI,
-    # two-term
+    # definitions from the NASA metric library — baselined population (Baseline Duration >= 1 day;
+    # milestones are not class-excluded but the duration predicate still drops the ordinary
+    # zero-baseline-duration milestone, ADR-0367), whole-day float, Resources on Baseline
+    # Cost/Work, stored-float CPLI, two-term
     # BEI. Verified UID-exact on the operator's Large Test File / File2. Part of the analysis cache
     # signature so a toggle re-keys, never serving a stale audit. Supersedes the former
     # milestone-scope + CPLI toggles (0277/0278/0279).
@@ -1146,6 +1157,46 @@ class SessionState:
         SAME epoch key, and at worst two unrelated keys share a stripe (they serialise; the result
         is still byte-identical to computing them apart)."""
         return self._stripes[hash(ck) % len(self._stripes)]
+
+    def briefing_for(self, schedules: list[Schedule], cpms: list[CPMResult]) -> ExecutiveBriefing:
+        """The deterministic Executive Briefing for the current epoch, built at most once
+        (ADR-0368, audit P1).
+
+        Keyed by the scope signature (which already folds in the Acumen-parity toggle, so a
+        toggle re-keys — never a stale audit verdict), the report day (the document stamps
+        "today"), and the IDENTITY of the exact ordered solvable set the caller resolved (a
+        re-upload creates new Schedule objects, forcing a rebuild — the same identity check as
+        every other tier). A cold build runs under the ADR-0281 single-flight stripe so N
+        concurrent first requests build once. Only the Null-backend deterministic build is
+        memoised; the live-model polish (/api/ai/briefing) stays uncached by design.
+        """
+        sig = self.scope_signature()
+        day = dt.date.today()
+
+        def _hit() -> ExecutiveBriefing | None:
+            memo = self.briefing_memo
+            if (
+                memo is not None
+                and memo[0] == sig
+                and memo[2] == day
+                and len(memo[1]) == len(schedules)
+                and all(a is b for a, b in zip(memo[1], schedules, strict=True))
+            ):
+                return memo[3]
+            return None
+
+        cached = _hit()
+        if cached is not None:
+            return cached
+        with self._stripe_for(f"briefing\x1f{sig}"):
+            cached = _hit()  # a prior stripe holder may have filled this epoch
+            if cached is not None:
+                return cached
+            briefing = build_briefing(
+                schedules, cpms=cpms, today=day, acumen_parity=self.dcma_acumen_parity
+            )
+            self.briefing_memo = (sig, tuple(schedules), day, briefing)
+        return briefing
 
     def analysis_for(self, key: str, sch: Schedule) -> _Analysis:
         """The cached analysis for ``key`` over the active scope.

@@ -12207,3 +12207,42 @@ conversions documented in its docstring (pin mutation-proven: 27 → named `1 fa
 restored, anchor-grep-verified). Guard family 15/15 green; full suite re-run to green
 before push (counts in the PR). No shipped code changed — no version bump, no installer
 rebuild. Highest ADR stays 0365.
+
+## 2026-08-08 — the audit's four P0s: sub-day fidelity · parity F5 adjudicated · briefing memo · integrity disclosure (ADR-0366..0369; v1.0.177)
+
+Branch `claude/polaris-schedule-tool-resume-u67l5w` from `main` dbcc8d2 (#553 had squash-merged;
+the container clone is shallow depth-50, so the "forced update"/"ahead 50 behind 50" on fetch was
+a shallow-island artifact, NOT a history rewrite — verified via merge-base/island counts before
+any work). Shipped code changed: v1.0.176 → **v1.0.177**, wheel + nine installers rebuilt once.
+
+1. **ADR-0366 (audit F1/F7).** Exact `*_minutes` fields on ChangeEffect/Report (int-day fields
+   and their round-half-even pinned: 60/235/240→0, 241→1); /integrity renders signed "<1 wd"
+   (sort, artifact no-effect count, aggregate all by minutes); duration + lag labels carry
+   fractional days + exact minutes (whole-day byte-identical); qa per-change fact truthful.
+   Verified: 4 caller-level reverts → 5/3/2/1 NAMED failures, twins green; golden pins
+   ("+21 wd", "33 of 33") unchanged.
+2. **ADR-0367 (audit F5).** Re-pinned the oracles FIRST (full parity gate 52/52, 11:36; dcma14
+   module 26/26), read the AFT verbatim (DCMA "1. Logic": IncludeMilestone=true PLUS Baseline
+   Duration GreaterThan 0; "Missing Logic": EMPTY filter), ran the audit's presence-hypothesis
+   as an experiment → 4 named ADR-0280 pin failures → REFUTED. Code stays; four docstring/
+   comment sites corrected (dcma14 ×3, state ×1). No number moved anywhere.
+3. **ADR-0368 (audit P1).** recommend(precomputed_audit=) from build_briefing (one DCMA audit
+   per build); SessionState.briefing_for single-entry memo (scope signature + report day +
+   set identity; ADR-0281 stripes; auto-wipe) shared by /briefing, / and the export;
+   /api/ai/briefing uncached by design. Guards: cold==warm byte-identical, build-count 1
+   across three surfaces, toggle re-keys, dedupe-vs-changed-bytes both asserted. Reverts:
+   memo bypass → 2 named; key-ignores-signature → 1; audit hand-off dropped → 1.
+4. **ADR-0369 (audit F2/F4).** target_unavailable sentinel + /integrity banner ("no changes"
+   still None); skipped-revert identity lists (len==count); DECM-29I401a per-movement
+   magnitudes (moved/set/erased, +N calendar days); qa never states figures for
+   non-measurements and stops overclaiming "EVERY" on partial aggregates. Reverts: 2/1/3/2
+   named failures (the qa revert itself had to be fixed first — the splice had re-declared
+   the guarded function; logged in LESSONS-LEARNED).
+
+Gate: statics green foreground; node --check per file; installer lockstep green. Full suite
+first run: **1 failed / 3510 passed / 44 skipped (22:44)** — the failure was the OLD
+None-for-summary-target contract pin in `test_integrity_multifile_robust.py`, which ADR-0369
+deliberately replaced with the disclosed sentinel (the targeted sweep missed that module; the
+full suite exists for exactly this). Test updated to pin the sentinel; re-run tail on the PR. Docs: handoff rotated (2026-08-07 triple
+session → archive top), this entry, LESSONS-LEARNED 2026-08-08 entry, NEXT-SESSION-PROMPT
+refreshed to mission 304 + standing queue.

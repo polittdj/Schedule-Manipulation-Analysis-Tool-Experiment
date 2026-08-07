@@ -823,8 +823,16 @@ def build_briefing(
     verdict = _verdict(slip, spi, dcma_fails)
     prior = ordered[-2] if len(ordered) >= 2 else None
     prior_cpm = cpm_list[-2] if len(ordered) >= 2 else None
+    # precomputed_audit (ADR-0281/0368): the audit above is EXACTLY (subject, subject_cpm,
+    # acumen_parity) — handing it in kills the duplicate DCMA audit (each embeds the DCMA-12
+    # delay-injection CPM re-solve) that recommend() otherwise reran on every briefing build.
     findings = recommend(
-        subject, prior, current_cpm=subject_cpm, prior_cpm=prior_cpm, acumen_parity=acumen_parity
+        subject,
+        prior,
+        current_cpm=subject_cpm,
+        prior_cpm=prior_cpm,
+        precomputed_audit=audit,
+        acumen_parity=acumen_parity,
     )
 
     meta_rows = (
