@@ -8,12 +8,13 @@ kickoff steers a fresh session at work that is already done.)
 ---
 
 Resume POLARIS (Schedule-Manipulation-Analysis-Tool). Read `docs/STATE/HANDOFF.md` FIRST
-(auto-injected; it ALWAYS wins over this prompt). As of last close: **v1.0.173 (unchanged —
-ADR-0362 is tests-only), highest ADR 0362, SCHEMA 2.11.0** — ADR-0362 (battery phase 2: all
-seven queued families measured then pinned; flip-set EQUALITY; 8 engine mutations each red)
-pushed on the draft PR for `claude/polaris-resume-handoff-div159`; if it has since
-squash-merged, restart the branch: `git fetch --prune origin && git remote set-head origin -a
-&& git checkout -B <branch> origin/main` (then `git branch --unset-upstream`). Fresh container:
+(auto-injected; it ALWAYS wins over this prompt). As of last close: **v1.0.174, highest ADR
+0363, SCHEMA 2.11.0** — ADR-0363 (phase 3 slice 5: the /margin family into `web/margin.py`;
+the terminology trio descended into `components.py`; 13/13 byte-identity; 76/76 routes;
+first fully-covered render diff) pushed on the draft PR for
+`claude/polaris-resume-handoff-o4qcpx`; if it has since squash-merged, restart the branch:
+`git fetch --prune origin && git remote set-head origin -a && git checkout -B <branch>
+origin/main` (then `git branch --unset-upstream`). Fresh container:
 `pip install -e ".[dev]"` plus `pip install build` (playwright optional, browser tests
 skip-gate). Run ruff as **`python -m ruff`** and always **`ruff check .` — THE WHOLE TREE**.
 Model protocol: ADR-0240 stands — parity-, engine-, testimony- or CUI-relevant work stays on
@@ -21,42 +22,48 @@ the strongest model. Use the skills (`.claude/skills/`): `full-gate`, `prove-abl
 `metric-parity`, `ui-change`, `cui-guard`, `render-verify`, `session-close`.
 
 ⇢ WHAT'S DONE — do NOT re-open
-Monolith split: phases 1–2 (`state.py`, `chrome.py`) + phase 3 slices 1–4
-(`components.py` ADR-0350 · `driving.py` ADR-0351 · `evolution.py` ADR-0352 · **`integrity.py`
-ADR-0358** — `app.py` 20,192 → 17,910). ADR-0353 SRA-LEGACY · ADR-0354 V3 (duration literals =
-vendored MPXJ `Duration.convertUnits`; `%`/`e%` pass-through and the 364-day elapsed year are
-MPXJ's OWN behaviour — never "fix" toward intuition; EVALUATOR_VERSION stays 2) · ADR-0355
-(Codex hardenings; DATE literals still share the None shape — a FUTURE unit) · ADR-0356 (SSI
-delta = STALE SETUP, engine exonerated σ 2.5%; `POST /sra/load-from-schedule`; the workbook's
-Mean/StdDev cells are UNWEIGHTED — the occurrence-weighted histogram is the only oracle) ·
-ADR-0357 (1440 boundary) · ADR-0359 (fired risk REPLACES the affected duration; risk-affected
-tasks sample their 3-point when not fired — measured on SSI's own Sensitivity export, never
-re-open toward additive) · ADR-0360 (export == screen via the run-reuse cache) · ADR-0361
-(unrestricted AI is opt-in and ungated BY DESIGN; Law 1 unmoved) · **ADR-0362 (battery phase 2
-COMPLETE: cei/hmi/fei-bri/evm/schedule_quality/forecast/SRA-readiness all paired — do not
-re-add; `_dated`/`_wide` enriched variants exist for fixture-floor metrics)** · P0 floors
-(ADR-0346: `pydantic>=2.6`, `fastapi>=0.110.2` — 0.110.0/1 are an
-AIR-GAP VIOLATION; do not "restore" old floors) · P1 intake manifest + hardened CUI hook
-(ADR-0347).
+Monolith split: phases 1–2 (`state.py`, `chrome.py`) + phase 3 slices 1–5
+(`components.py` ADR-0350 · `driving.py` ADR-0351 · `evolution.py` ADR-0352 · `integrity.py`
+ADR-0358 · **`margin.py` ADR-0363** — `app.py` 20,192 → 17,681; the `_HB`/`_HB_MARGIN_SEC`/
+`_margin_terminology` trio lives in `components.py` now, ready-made for the /analysis slice;
+`_HB_CONSUME_SEC` stays in app.py DELIBERATELY — dead constant, no closure claims it).
+ADR-0353 SRA-LEGACY · ADR-0354 V3 (duration literals = vendored MPXJ `Duration.convertUnits`;
+`%`/`e%` pass-through and the 364-day elapsed year are MPXJ's OWN behaviour — never "fix"
+toward intuition; EVALUATOR_VERSION stays 2) · ADR-0355 (Codex hardenings; DATE literals still
+share the None shape — a FUTURE unit) · ADR-0356 (SSI delta = STALE SETUP, engine exonerated σ
+2.5%; `POST /sra/load-from-schedule`; the workbook's Mean/StdDev cells are UNWEIGHTED — the
+occurrence-weighted histogram is the only oracle) · ADR-0357 (1440 boundary) · ADR-0359 (fired
+risk REPLACES the affected duration; risk-affected tasks sample their 3-point when not fired —
+measured on SSI's own Sensitivity export, never re-open toward additive) · ADR-0360 (export ==
+screen via the run-reuse cache) · ADR-0361 (unrestricted AI is opt-in and ungated BY DESIGN;
+Law 1 unmoved) · ADR-0362 (battery phase 2 COMPLETE: cei/hmi/fei-bri/evm/schedule_quality/
+forecast/SRA-readiness all paired — do not re-add; `_dated`/`_wide` enriched variants exist
+for fixture-floor metrics) · P0 floors (ADR-0346: `pydantic>=2.6`, `fastapi>=0.110.2` —
+0.110.0/1 are an AIR-GAP VIOLATION; do not "restore" old floors) · P1 intake manifest +
+hardened CUI hook (ADR-0347).
 
 ⇢ DO THIS FIRST — the standing queue
-Phase 3 monolith split, next
-family: **`margin` (379 by the stale ADR-0350 census — RE-MEASURE the closure first)**, then trend 348 · ssi 335 · mission 304 · how 290 · sra 264 · what 257 · where 235 ·
-portfolio 231 · evm 208 · forecast 204. EACH slice: behaviour-seeded closure (prefix is a
-finder, closure is the definition) · span-scoped pre-flight coverage probe BEFORE quoting any
-render diff · verbatim cut + `X as X` re-exports · add the module to LAYER_ORDER +
-VIEW_MODULES + EXTRACTED (contract test fails until it does) + widen `test_bar_drill` /
-`test_presentation_fixes` · run ALL THREE standing sweeps (monkeypatch over every name the
-module BINDS, imported or defined; `"app.py"`/`__file__`/getsource source-text readers;
-attribute-READS of names app.py no longer binds) · per-definition byte-identity + non-blank
-multiset + falsified render diff · the five guard mutations (restore from scratchpad `cp`,
-NEVER `git checkout`; assert the ORIGINAL anchor ABSENT after every mutation). Then: a
-driving-corridor fixture (would also light /evolution's counterfactual; /integrity's
-`artifact-cluster` wants its own SNET-at-data-date fixture) · the three `page-lede`-less pages
-(/briefing, /path, /compare) · `/groups` "Activities" counting summary rows (ADR-0343) · the
-nine installers vs `-c constraints/known-good.txt` (62 lockstep tests, own unit) · the P80/P90
-~20-cal-d recurring-calendar-exception residual on the Large_Test_File2 family (own unit +
-oracle) · Phase 6 docs.
+Phase 3 monolith split, next family: **`trend` (348 by the stale ADR-0350 census — RE-MEASURE
+the closure first; margin's "379" measured as 417+21 split THREE ways)**, then ssi 335 ·
+mission 304 · how 290 · sra 264 · what 257 · where 235 · portfolio 231 · evm 208 · forecast
+204. EACH slice: behaviour-seeded closure (prefix is a finder, closure is the definition — and
+it can PARTITION: margin's closure held a descent trio and untouchable SRA names) ·
+span-scoped pre-flight coverage probe BEFORE quoting any render diff (a member at 0 moved may
+be an ORACLE gap: ask what would EXECUTE it — an export, a POST-lit branch, a query param —
+and widen the oracle; the margin exports proved deterministic and stay in the harness) ·
+verbatim cut + `X as X` re-exports · add the module to LAYER_ORDER + VIEW_MODULES + EXTRACTED
+(contract test fails until it does) + widen `test_bar_drill` / `test_presentation_fixes` · run
+ALL THREE standing sweeps (monkeypatch over every name the module BINDS, imported or defined;
+`"app.py"`/`__file__`/getsource source-text readers; attribute-READS of names app.py no longer
+binds) WITH a positive-control self-test · per-definition byte-identity + non-blank multiset +
+falsified render diff · the five guard mutations (restore from scratchpad `cp`, NEVER `git
+checkout`; assert the ORIGINAL anchor ABSENT after every mutation). Then: a driving-corridor
+fixture (would also light /evolution's counterfactual; /integrity's `artifact-cluster` wants
+its own SNET-at-data-date fixture) · the three `page-lede`-less pages (/briefing, /path,
+/compare) · `/groups` "Activities" counting summary rows (ADR-0343) · the nine installers vs
+`-c constraints/known-good.txt` (62 lockstep tests, own unit) · the P80/P90 ~20-cal-d
+recurring-calendar-exception residual on the Large_Test_File2 family (own unit + oracle) ·
+Phase 6 docs.
 **Operator only:** license · branch-protection contexts · intake re-upload (optionally the
 2026-08-06 artifacts as a second committed parity oracle) · proprietary reruns · OR-04 ·
 whether R2 belongs in both SSI and tool runs.
@@ -70,11 +77,15 @@ whether R2 belongs in both SSI and tool runs.
    assert-original-absent rule COMPILED INTO the probe harness caught its own first suffixed
    mutation (`page-takeawayQ`).
 2. An EMPTY sweep is evidence only if the harness has found things before (or a mutation
-   proves it still fails loudly). Slice 4's three sweeps were all empty — and mutation 1
-   (dropped re-export) is what made that trustworthy.
+   proves it still fails loudly). Slice 5 compiled this in: the sweep harness SELF-TESTS by
+   first locating the four known drvmod/evomod patch sites before its empty result counts.
 3. The render diff's meaning is decided PER FAMILY by the pre-flight probe: driving 0/60,
-   evolution partial, integrity 6/79 both members. Never quote N/N without the probe.
-4. NEVER mutate the tree while a full suite runs — settle the tree, THEN launch.
+   evolution partial, integrity 6/79, margin 13/13 (first full cover — after widening the
+   oracle with the band POST + the instantiated margin exports). Never quote N/N without the
+   probe, and treat "0 moved" as a claim about the ORACLE until the widening question is asked.
+4. NEVER mutate the tree while a full suite runs — settle the tree FIRST, docs included
+   (`test_state_docs` reads HANDOFF/SESSION-LOG mid-suite; slice 5 stopped and relaunched the
+   suite for exactly this).
 5. `grep -c` exits 1 on zero count — chain mutation-absence checks with `;` never `&&`.
 6. A parity delta is a claim about INPUTS before it is a claim about engines — diff inputs
    first; the SSI workbook's Mean/StdDev cells are UNWEIGHTED.
@@ -94,6 +105,8 @@ unreachable on all committed schedules; ADR-0348 records it). The `/groups` Acti
 counting summary rows is RECORDED (ADR-0343), queued, not a new find. TP4/goldens cannot render
 a driving corridor (ADR-0351) or /evolution's counterfactual (ADR-0352) or /integrity's
 artifact-cluster (ADR-0358) — per-definition byte-identity is the guard there, not renders.
+`_wmpd_label`'s PAGE branch (mixed 480/1440 bases) is likewise fixture-unreachable — but its
+EXPORT path is oracle-covered since ADR-0363; do not re-chase the page branch.
 
 Standing rules (binding): Law 1 CUI · Law 2 fidelity ("—" never 0; never weaken a test) ·
 READ EVERYTHING, ASSUME NOTHING, VERIFY EVERYTHING · full gate before every commit (statics
@@ -102,6 +115,7 @@ SESSION-LOG + LESSONS-LEARNED in the same commit · wheel + nine installers ONCE
 shipped-code change (bump version BEFORE the suite; REBUILD if code changes after;
 `pyproject.toml` metadata ships in the wheel, so a bounds change is a shipped change) · never
 `git checkout <file>` to undo a mutation — `cp` from a scratchpad copy · a number written
-mid-session is not a measurement — re-read it before it lands in a handoff. Full local suite
-~21 min — exceeds a 10-min foreground timeout, so run it `python -u` in the BACKGROUND and
-read the tail; CI registers checks ~11 min in; `test (3.11)`/`(3.13)` ~30 min.
+mid-session is not a measurement — re-read it before it lands in a handoff (slice 5's 17,688
+was pre-`ruff --fix`; wc said 17,681). Full local suite ~21 min — exceeds a 10-min foreground
+timeout, so run it `python -u` in the BACKGROUND and read the tail; CI registers checks ~11
+min in; `test (3.11)`/`(3.13)` ~30 min.

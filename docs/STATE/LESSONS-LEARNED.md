@@ -435,6 +435,26 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-07 (cont.) — A coverage gap can be an ORACLE gap: widen the oracle before calling it unreachable
+
+- The margin slice's pre-flight probe (ADR-0363) initially showed `_wmpd_label` at 0 routes
+  moved — the same shape ADR-0351/0352 recorded as "no fixture can render this member." But the
+  member's OTHER consumer was `/export/{fmt}/margin`, which the oracle simply never rendered
+  (parametrized `{fmt}` routes were skipped wholesale). Instantiating `/export/xlsx/margin` +
+  `/export/docx/margin` — and double-render-proving the workbook bytes deterministic first —
+  took the member from 0 to 2. Likewise `_band_payload` probes as unreachable until the harness
+  POSTs `/margin/band`: its first line returns None without stored phase dates.
+- Lesson: before recording a member as render-unreachable, ask what would EXECUTE it — an
+  export, a POST-lit branch, a query param — and widen the oracle to include that path. "0
+  moved" is a claim about the oracle as much as about the member. The exports proved
+  deterministic, so they stay in the harness for future slices.
+- Same session, the re-read rule caught a real number drift: the draft ADR said app.py →
+  17,688 (a mid-session print, pre-`ruff --fix`); wc on the settled tree says 17,681. A number
+  written mid-session is not a measurement.
+- And trap #4 fired in mild form: the full suite was launched, THEN the ADR file was written —
+  but `test_state_docs` reads the docs mid-suite, so the suite was stopped, the tree settled
+  (docs + wheel + installers), and the suite relaunched. Docs are part of the tree.
+
 ### 2026-08-07 — A synthetic fixture that "fails" a metric is usually describing itself
 
 - Battery phase 2 (ADR-0362): before pinning anything, a probe measured all seven queued
