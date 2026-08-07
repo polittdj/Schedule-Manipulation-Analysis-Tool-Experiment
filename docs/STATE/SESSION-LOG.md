@@ -12170,3 +12170,40 @@ projection-memo patch — doubles as the live positive control; cleared by the s
 verification as ADR-0364. v1.0.175 → v1.0.176; wheel + nine installers rebuilt after the
 bump. Statics green; full suite + parity run to green before commit (counts in the PR).
 ADR-0365.
+
+## 2026-08-07 (cont.4) — triple session: adversarial read-only audit · FX fixture verdicts · intake guard re-greened (docs + one test pin; no ADR; still v1.0.176)
+
+Branch `claude/schedule-tool-audit-hhjbtp` (fresh from origin/main cac9bea after the
+operator squash-merged #552 at 19:46Z and web-uploaded the FX suite at 16:39Z). Three
+operator prompts run in order. (1) The full ChatGPT-spec adversarial READ-ONLY audit at
+cac9bea — disposable clone + venv, all harnesses/evidence outside the repo, reviewed
+worktree proven clean; 10-deliverable evidence package sent to the operator. Statics
+green; full suite 3488 passed / 44 env-gated skips / 4 failed — all four the intake
+manifest guard (the FX upload post-dated slice 7's regeneration). Seeded allegations
+adjudicated: UniversalProjectReader-rejects-.mpp REFUTED (28/28 by both readers — prior
+failure was the host's broken Java loader); per-project dashboard recompute REFUTED
+empirically (CPMResult-construction spy: warm / = 0 solves; upload precomputes; the v1
+binding-wrap spy undercounted and was discarded — test-the-test in action); sub-day
+counterfactual rounding CONFIRMED by execution (60/235/240-min true effects all render
+"no effect"; banker's drops exactly-half-day); broad-diff-vs-few-effects REPRODUCED on
+the Hard_File chain (106/394/324 → 6/12/54) and decomposed (only links/duration/
+constraint are reverted; progress fields detected-but-never-measured); `_baselined`
+parity population excludes ALL milestones — CLAUDE.md says "milestones kept", Fuse
+counts TP4's milestone UID 26 (parity 0 vs Fuse 1, ordinary matches); /briefing does 4
+uncached solves + a duplicate audit EVERY request (~0.56 s at 2×9 MB files); ~150 MB RSS
+retained per big file, no per-file unload; AFT Negative Float has NO formula (prose
+only) — sub-day semantics oracle-gated; AFT 20260708 byte-matches the seeded sha
+(1403 metrics confirmed; "179 groups" not reproduced — 455 MetricGroup elements).
+(2) FX fixtures: manifest SHA256s all verified; survival diff found MS Project REVERTED
+both duration cuts on XML import (FX-03/04 .mpp = unchanged schedules; their Fuse
+numbers void; operator re-export queued) while FX-01/02/05/06 survived. Verdicts:
+Days Late excludes milestones (8 unchanged) and clamps at zero (4); Missing Logic +3
+for two dropped links (three ends opened; SMAT matches Fuse UID-exactly 5→8); Schedule
+Integrity positive controls PASS exactly (+10/+15 wd, page-rendered); FX-06 trap PASSES
+(finish frozen + HIGH DECM-29I401a finding; magnitude display gap filed). (3) This
+commit: regenerated docs/INTAKE-MANIFEST.md (416 → 433 tracked files, mismatches stay
+99), CLAUDE.md count updated, the `.mpp` census pin moved 22 → 28 with the six FX
+conversions documented in its docstring (pin mutation-proven: 27 → named `1 failed`,
+restored, anchor-grep-verified). Guard family 15/15 green; full suite re-run to green
+before push (counts in the PR). No shipped code changed — no version bump, no installer
+rebuild. Highest ADR stays 0365.

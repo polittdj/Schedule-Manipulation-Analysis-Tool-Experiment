@@ -114,13 +114,19 @@ def test_the_metric_bibles_parse_with_their_pinned_counts() -> None:
 
 
 def test_every_intake_mpp_is_an_ms_project_ole2_document(entries: list[Any]) -> None:
-    """22 native schedules; a rotated .mpp would break the MPXJ conversion path silently.
+    """28 native schedules; a rotated .mpp would break the MPXJ conversion path silently.
 
     The 21st is ``mpp/24Hour Calendar.mpp`` — the ADR-0357 boundary oracle (main d0b703e);
     the 22nd is the root-level ``SRA Large Test File2.mpp`` — the 2026-08-06 SRA parity
-    schedule, committed with SSI's SRA + Sensitivity workbooks (main f1f13f9)."""
+    schedule, committed with SSI's SRA + Sensitivity workbooks (main f1f13f9); the 23rd-28th
+    are the six FX tamper fixtures (``mpp/*_FX0[1-6]_*.mpp``), the operator's 2026-08-07
+    MS Project conversions of the single-variable MSPDI fixtures (main 9ba7203) — all six
+    verified genuine OLE2 and readable by the vendored MPXJ. NOTE (read-only audit
+    2026-08-07): the FX-03/FX-04 conversions do NOT carry their duration cuts — MS Project
+    re-derived Duration from the stale stored dates on import — so those two are
+    byte-genuine .mpp files whose Fuse exports oracle the UNCHANGED schedules."""
     mpp = [e for e in entries if e.ext == ".mpp"]
-    assert len(mpp) == 22
+    assert len(mpp) == 28
     assert {e.family for e in mpp} == {"ole2-project"}
 
 

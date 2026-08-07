@@ -51,8 +51,8 @@ finish. **No parity exposure**, and both hashes are pinned below so a future cha
 
 | measure | value |
 | --- | ---: |
-| tracked files | 416 |
-| total bytes | 391,576,827 |
+| tracked files | 433 |
+| total bytes | 408,264,781 |
 | extension&harr;content mismatches | 99 |
 | duplicate-content groups | 27 |
 | files in a duplicate group | 63 |
@@ -62,22 +62,22 @@ finish. **No parity exposure**, and both hashes are pinned below so a future cha
 | family | files |
 | --- | ---: |
 | `empty` | 7 |
-| `gzip` | 6 |
+| `gzip` | 7 |
 | `html` | 10 |
 | `ico` | 1 |
 | `jpeg` | 48 |
-| `json` | 11 |
+| `json` | 12 |
 | `mp4` | 2 |
 | `ole2-ppt` | 1 |
-| `ole2-project` | 22 |
-| `ooxml-excel` | 89 |
+| `ole2-project` | 28 |
+| `ooxml-excel` | 92 |
 | `ooxml-ppt` | 1 |
 | `ooxml-word` | 15 |
 | `pdf` | 23 |
 | `png` | 65 |
 | `riff` | 1 |
 | `text` | 95 |
-| `xml` | 13 |
+| `xml` | 19 |
 | `zip` | 6 |
 
 ## Extension&harr;content mismatches
@@ -357,6 +357,7 @@ body under several names, not random corruption.
 | `00_REFERENCE_INTAKE/DESIGN-GUIDE.md` | 752,246 | `.md` | `png` | **yes** | `1d4990ed7da7d4f0fcfba5700a8aed1382813b7660d8fc72530efc8bc0d71a56` |
 | `00_REFERENCE_INTAKE/Executive Summary Large Test File.docx` | 25,269 | `.docx` | `ooxml-word` | — | `250cff6a9bb9afcffbed97a4e5d21dc3e8e9c51d6017e3519c4d857574044f11` |
 | `00_REFERENCE_INTAKE/FILE-NAMES.md` | 3,724 | `.md` | `text` | — | `74f9c749991b1ee0d8bf768f8db84dc86058e72e6c0fa84f2e592399e7cdf5f2` |
+| `00_REFERENCE_INTAKE/FX.afw` | 9,698,680 | `.afw` | `gzip` | — | `557bbd61d11656b8702a0a5b33cee8f5cbb7cc592baf7754972e2aae52b1a454` |
 | `00_REFERENCE_INTAKE/GUIDED-MODE.md` | 19,863 | `.md` | `text` | — | `bd0d725fce7f48fd20b9c7428b414b9fa394ce99a586c4fa54b12fd161a9c222` |
 | `00_REFERENCE_INTAKE/HANDOFF.md` | 24,107 | `.md` | `text` | — | `f0c4a7096f2413feb247ce2bb1d049a546f6db36ce308f0dfa1130dc4347b6b1` |
 | `00_REFERENCE_INTAKE/Hard_File Forensic Analysis Report.xlsx` | 60,214 | `.xlsx` | `ooxml-excel` | — | `808ece07db72c4a6c7aff20c57d8dbbf83b2ce074461ab046c3d23835534489c` |
@@ -528,6 +529,10 @@ body under several names, not random corruption.
 | `00_REFERENCE_INTAKE/motion.css` | 5,795 | `.css` | `text` | — | `548dfc648228697465f0d62403bb901041a94cbc6b80e58b361a7a82784f8455` |
 | `00_REFERENCE_INTAKE/mpp/.gitkeep` | 0 | `(none)` | `empty` | — | `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` |
 | `00_REFERENCE_INTAKE/mpp/24Hour Calendar.mpp` | 655,872 | `.mpp` | `ole2-project` | — | `88c8b673bfb3d41e6c8b0ef19dd0d3a49364b6b8179cb8d82d8e9c363a7a81f2` |
+| `00_REFERENCE_INTAKE/mpp/FIXTURE-MANIFEST.json` | 3,777 | `.json` | `json` | — | `9421a2a287be0f93d4d4ce89b9333133b79c755e3569ccf173ada578a6cc55b2` |
+| `00_REFERENCE_INTAKE/mpp/FX_Analysis_Report.xlsx` | 569,882 | `.xlsx` | `ooxml-excel` | — | `31db66f3e2d0d33b368b405e52aea7494a983f3bb32db1b37ff1ea49603ca3d4` |
+| `00_REFERENCE_INTAKE/mpp/FX_Detailed_Metric_Report.xlsx` | 340,744 | `.xlsx` | `ooxml-excel` | — | `c20eda160c19c7930c51c2cf66489a2fbae6200388d103ede2be89ceb90cb1f7` |
+| `00_REFERENCE_INTAKE/mpp/FX_Metric_History_Report.xlsx` | 766,709 | `.xlsx` | `ooxml-excel` | — | `9cbc4d9ac79a1e979357f3d78e2ecd85d9f868bcf7a7dafd4a210a7fb7a6294f` |
 | `00_REFERENCE_INTAKE/mpp/Hard_File.mpp` | 1,295,360 | `.mpp` | `ole2-project` | — | `6a5fe4868499add6c8ccbc6e3bd8d3ced165b0cae9f64cf7aa2067891b7668bc` |
 | `00_REFERENCE_INTAKE/mpp/Hard_File_updated.mpp` | 1,288,192 | `.mpp` | `ole2-project` | — | `cfd9a76304d113fc14b3899e64313374a821c5e3259a371d5284c17c67a4ea60` |
 | `00_REFERENCE_INTAKE/mpp/Hard_File_updated2.mpp` | 1,468,928 | `.mpp` | `ole2-project` | — | `8921ca095f200c48d00cff673c5b70138113eed1451826f04c2d21ed31385b1a` |
@@ -545,8 +550,20 @@ body under several names, not random corruption.
 | `00_REFERENCE_INTAKE/mpp/Project3.mpp` | 691,712 | `.mpp` | `ole2-project` | — | `66da8e7d58cb592b84b49b6245460c14a0122043ebce48654c0df289a16ab5bd` |
 | `00_REFERENCE_INTAKE/mpp/Project4.mpp` | 692,224 | `.mpp` | `ole2-project` | — | `0348c097889898b939fbff7c02fa98cdab1548622c5ace0bc7fb3f94e2c02baf` |
 | `00_REFERENCE_INTAKE/mpp/Project5.mpp` | 817,152 | `.mpp` | `ole2-project` | — | `0d1ab6f3b684143d5ca547afcd06f12ccbf3acab2fc9a0ee465a1a456252f818` |
+| `00_REFERENCE_INTAKE/mpp/Project5_FX04_TamperDuration.mpp` | 626,176 | `.mpp` | `ole2-project` | — | `6d5d1d7188a6a532e3927eeb8cf45600b3e1e270e2d6924ae3c8cbcaa93bd9da` |
+| `00_REFERENCE_INTAKE/mpp/Project5_FX04_TamperDuration.xml` | 750,236 | `.xml` | `xml` | — | `ff3331dadf95339b9de205ec978c53658870271634703ff6c68038b5695a5998` |
+| `00_REFERENCE_INTAKE/mpp/Project5_FX05_TamperLogicDrop.mpp` | 626,176 | `.mpp` | `ole2-project` | — | `485d80dffedb1a42b75decc7e0b81a38b39da919e0216f6af6e5640d5fc99476` |
+| `00_REFERENCE_INTAKE/mpp/Project5_FX05_TamperLogicDrop.xml` | 749,697 | `.xml` | `xml` | — | `6e91aba9523496a66d47bbdcce2f446ce44ea9fe13be0fd50d57482769cfea8d` |
+| `00_REFERENCE_INTAKE/mpp/Project5_FX06_TamperBaselineShift.mpp` | 626,176 | `.mpp` | `ole2-project` | — | `1248d46a4fcdb361e62a5cec871e5b445fb717e521b0074048901230e6051810` |
+| `00_REFERENCE_INTAKE/mpp/Project5_FX06_TamperBaselineShift.xml` | 750,237 | `.xml` | `xml` | — | `ccb599f77d91b683ac9dd5fe9d2877144531ab024b1f1802909336e51810014f` |
 | `00_REFERENCE_INTAKE/mpp/Project5_TAMPERED.mpp` | 817,152 | `.mpp` | `ole2-project` | — | `0d1ab6f3b684143d5ca547afcd06f12ccbf3acab2fc9a0ee465a1a456252f818` |
 | `00_REFERENCE_INTAKE/mpp/SRA Large Test File2.mpp` | 9,956,864 | `.mpp` | `ole2-project` | — | `6d7b0147a70b8faedcfdd2e82661483ec379f57cc283abe221342504862b77a8` |
+| `00_REFERENCE_INTAKE/mpp/TP4_DataCenter_v3_FX01_MilestoneLate.mpp` | 355,328 | `.mpp` | `ole2-project` | — | `934d9037a379496ee7a125805404d2cdd00cac78243412c9bf7186e75cbd3238` |
+| `00_REFERENCE_INTAKE/mpp/TP4_DataCenter_v3_FX01_MilestoneLate.xml` | 72,335 | `.xml` | `xml` | — | `0a79b4032ad591c3d283f80aa8ffc01360abf16e061a5606549709f491785852` |
+| `00_REFERENCE_INTAKE/mpp/TP4_DataCenter_v3_FX02_EarlyFinish.mpp` | 303,616 | `.mpp` | `ole2-project` | — | `dd397d66ee9e7569ab5fc8e3ace1b504744965a11bad15ce2cd8a3beeaf06878` |
+| `00_REFERENCE_INTAKE/mpp/TP4_DataCenter_v3_FX02_EarlyFinish.xml` | 72,286 | `.xml` | `xml` | — | `eacbec654e5efbdee603970f82d67f63ed8270d60ae8b320a231642fa8670363` |
+| `00_REFERENCE_INTAKE/mpp/TP4_DataCenter_v3_FX03_DurationCut.mpp` | 303,616 | `.mpp` | `ole2-project` | — | `6c8fc436283fa9a3b63fb35b5df20e17540b6b7b6c9fcf26cd31bae86d00baab` |
+| `00_REFERENCE_INTAKE/mpp/TP4_DataCenter_v3_FX03_DurationCut.xml` | 72,283 | `.xml` | `xml` | — | `9501b42bc1d78471595ed8fe4c8ffbc76082ca6b12495907e127443fd61146cf` |
 | `00_REFERENCE_INTAKE/nasa-ibr-handbook-5-1.pdf` | 2,694,054 | `.pdf` | `pdf` | — | `fd1b310f4b4e3f45a982b627eac0faf06d240cbd063520c29406c794a039e7a9` |
 | `00_REFERENCE_INTAKE/nasa-wbs-handbook.pdf` | 4,388,576 | `.pdf` | `pdf` | — | `90f63f49ed287c059c5fce37788ff11cda2dd005d0c806b3a5040b0b49126db7` |
 | `00_REFERENCE_INTAKE/overlap.png` | 57,642 | `.png` | `jpeg` | **yes** | `42876758eb2395bdb60332591f644989bde9e42a469657bbefb2b67f64ac3a1e` |
