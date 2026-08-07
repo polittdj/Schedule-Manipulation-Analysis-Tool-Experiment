@@ -1,78 +1,54 @@
-# Handoff — 2026-08-06 (evening: risk-replace semantics ADR-0359; exports answer ADR-0360; unrestricted AI + battery ADR-0361; v1.0.173)
+# Handoff — 2026-08-07 (battery phase 2: the seven queued families, measured then pinned; ADR-0362; v1.0.173 unchanged)
 
-> ## STATUS (current) — **pushed, draft PR open.** ADR-0359/0360/0361, **v1.0.173**, SCHEMA 2.11.0.
-> The operator merged #547 (slice 4) and filed a five-part directive with NEW committed
-> oracles (main `f1f13f9`: the 2,125-task SRA schedule + SSI's 5000-iter SRA histogram +
-> SSI's Sensitivity export — absorbed into the census: 410 files / 22 mpp / mismatches 99).
+> ## STATUS (current) — **pushed, draft PR open.** ADR-0362, **v1.0.173** (tests-only — no
+> rebuild; the shipped tree is byte-identical to merged #548), SCHEMA 2.11.0.
+> The operator merged #548 and said "Continue" → the standing queue resumed at its first
+> line, battery phase 2 (the seven families ADR-0361 queued).
 >
-> ## ADR-0359 — the SRA delta's engine term, pinned to two decimals and fixed
-> Inputs first (ADR-0356's lesson): the operator's session replayed a 783-task-vintage setup
-> (98/435 factors agree, 0/406 BC/WC agree) — session-side, largest term. On FILE-TRUE inputs
-> the engine still ran +25 mean / +32-35 cal at P50-P90. SSI's Sensitivity export cracked it:
-> all 64 duration rows matched the engine's OAT to <=0.01 wd (CPM/calendars/ML EXACT), and the
-> two R/O rows fell short of the impact by EXACTLY the affected tasks' MLs (321-304.48=16.52;
-> 45-35.03=9.97): **a fired risk's impact REPLACES the affected activity's remaining duration
-> — the engine was ADDING it**, and the affected task samples its own Best/Worst when not
-> fired (SSI lists the R/O tasks as duration rows too). Fixed in compute_sra_ssi AND
-> compute_jcl; OAT gains ranked R/O rows. Landing: mean +414.6 vs SSI +417.9 cal, sigma 155.2
-> vs 152.4, P10-P90 within 1-3 d of the weighted histogram; risk means 305.9/37.9 vs SSI's
-> 304.48/35.03. New parity oracle test_sra_ssi_oracle_uid152_v2.py (OAT row-for-row +
-> distribution + risk outcomes); July oracle still 5/5; four new pins mutation-proven
-> (replace->add: 4 fail). The sharp discriminator: impact < ML pulls the finish BELOW
-> deterministic — impossible under add.
->
-> ## ADR-0360 — "Export to Excel does nothing" = a measured 140-second silent recompute
-> All wires were present (precise-parser sweep: 0 dead of every page; the first regex probe's
-> 45 were ITS OWN false positives). /export/xlsx/sra re-ran the MC + full 919-task OAT on
-> every click: 139.8 s measured, zero feedback. Fixed: run/OAT caches keyed by the FULL
-> resolved-input identity incl. schedule bytes (140 s -> 0.1 s warm; the workbook now equals
-> the SCREEN — the operator's iterations, not a hardcoded 2000); panelkit's EXCEL click shows
-> busy-guarded "PREPARING…" via fetch->blob with navigation fallback; Load-from-schedule now
-> seeds the RISK REGISTER from the file's SSI fields (R7443 86%/321d, R7433 63%/45d — the
-> exact percentages the operator's register showed) and the CHECK-INPUTS warning carries a
-> one-click "Use the file's own values". Standing guards: test_export_wiring (every button
-> wired + every wire answers), test_sra_export_reuse, both mutation-proven.
->
-> ## ADR-0360 also — the /sra bars drill; every drill offers every field
-> Float-exposure/Risk-flags segments joined sf-drill (hover names count; click lists exactly
-> the counted activities). STANDARD_FIELDS widened 6 -> full task-level catalog (verbatim
-> values, None never 0) — every drill's add-column list, /groups filters, and drill exports
-> now offer any ingested MS Project field + all custom fields. test_sra_bars_drill pins it
-> end-to-end (mutation-proven).
->
-> ## ADR-0361 — unrestricted AI mode + the known-pass/known-fail battery
-> Fourth opt-in Q&A mode: verbatim, ungated, INVITED to calculate; receives a bounded
-> 400-row activity data block. Law 1 unmoved (same loopback backends; Null stays closed —
-> pinned). Battery: a measured-CLEAN 25-activity program (every populated DCMA check PASSES)
-> + 14 seeded twins with DECLARED collateral and a no-undeclared-flips assertion; pairs for
-> float bands, completion, manipulation (honest re-status = zero findings); every page
-> renders on clean/wrecked/TP4 corpora. Nine wrong seed assumptions died on contact and are
-> encoded (DCMA08 flags BASELINE duration; the CP test is only defeated by a mid-chain MFO
-> pinning a task's own finish; late-vs-baseline must not cross the DD...). 21 passed,
-> harness mutation-proven.
+> ## ADR-0362 — battery phase 2: cei · hmi · fei/bri · evm · schedule_quality · forecast · SRA-readiness
+> Every figure MEASURED before pinned (probe first, assert second). Two structural facts
+> drove the design: (1) the bare 25-task program CANNOT honestly pass two families —
+> Acumen Missing Logic has a 2/N structural floor (the first task + terminal milestone are
+> always open ends: 8% on N=25) and Insufficient Detail divides by the STORED-finish span
+> (span 1 day on a fixture with no stored dates → everything flags). Not engine defects —
+> enriched variants instead: `_dated` (stored dates = actuals-else-baselines + WBS) and
+> `_wide` (N=41 → floor 4.9%). (2) cei/hmi/fei-bri are informational (status always NA) —
+> their pairs pin VALUES + offender uids, not status flips. EVM pins all THIRTEEN
+> thresholds PASS on clean and four seeds flip EXACTLY their declared sets (set equality —
+> stronger than phase 1: an expected flip that fails to happen also fails). Forecast: the
+> four methods answer (CPM 2026-12-04 · stored 2026-12-06 · rate 2026-08-26 · ES
+> 2026-08-14); un-finishing two tasks pushes rate/IEAC out a YEAR while logic/stored stand
+> still — the divergence IS the finding; missing inputs answer None with honest bases.
+> Readiness: 7 gates flip one-for-one; the hard-constraint seed's critical-path collateral
+> mirrors phase 1's DCMA05→DCMA12. Two PERMANENT discriminators pinned: work that NEVER
+> STARTS fails SPI/SPI(t) at 0.5 but leaves SPI(t)-Acumen PASSING at 1.44 (the per-activity
+> average only sees STARTED work — ADR-0176); a late-vs-baseline start fails Started Late
+> but leaves Baseline Start Compliance at 100% (Half-Step numerator compares to baseline
+> FINISH — ADR-0083). Battery now 41 tests; 8 targeted engine mutations each went red on
+> exactly their pair and every module restored byte-identical (cp, never git checkout).
 >
 > ## Next
-> Battery phase 2: cei · hmi · fei/bri · evm · schedule_quality · forecast · SRA-readiness
-> pairs (framework in place). Phase 3 monolith split resumes at **margin 379** (re-measure
-> the closure; ADR-0350/0351/0352/0358 rules). Then: driving-corridor fixture · the three
-> page-lede-less pages · /groups Activities counting summary rows (ADR-0343) · installers vs
-> known-good constraints · the P80/P90 recurring-calendar-exception residual (own unit;
-> note ADR-0359 showed OAT deltas match SSI exactly, so the recurring-exception effect did
-> NOT surface in this comparison) · Phase 6 docs. **Operator:** license · branch-protection ·
-> proprietary reruns · OR-04 · whether the July mpp/ oracle should re-export under replace
-> semantics for a tighter v1 tolerance band.
+> Phase 3 monolith split resumes at **margin 379** (re-measure the closure first;
+> ADR-0350/0351/0352/0358 rules). Then: driving-corridor fixture · the three page-lede-less
+> pages · /groups Activities counting summary rows (ADR-0343) · installers vs known-good
+> constraints · the P80/P90 recurring-calendar-exception residual (own unit; ADR-0359's OAT
+> match says the effect did NOT surface there) · Phase 6 docs. Battery future-work (not
+> queued as a unit): a stored-slack fixture would let `cei_critical` leave NA. **Operator:**
+> license · branch-protection · proprietary reruns · OR-04 · whether the July mpp/ oracle
+> should re-export under replace semantics for a tighter v1 band.
 >
 > ## Carried forward
-> ADR-0353..0358 closed — do not re-open. The workbook Mean/StdDev cells are UNWEIGHTED
-> (held again); the occurrence-weighted histogram is the only oracle. A parity delta is a
-> claim about INPUTS first (two sessions running). Run the mutation BEFORE trusting any pin;
-> assert the ORIGINAL anchor absent (the probe harness caught its own suffixed mutation
-> AGAIN this session — the in-harness assert works). `pydantic>=2` NOT a safe floor (2.6);
-> `fastapi>=0.110` an AIR-GAP VIOLATION (0.110.2 floor). `ruff check .` whole tree as
-> `python -m ruff`. Never `git checkout` to undo a mutation — cp from scratchpad.
-> `grep -c` exits 1 on zero — chain with `;`. The /analysis focus->tip family is
-> load-sensitive — do NOT chase. bandit B608 on HTML f-strings with "from" → the house
-> `# nosec B608 (HTML, not SQL)`.
+> ADR-0353..0361 closed — do not re-open. The battery discipline is now: probe FIRST, pin
+> the measured value, mutation-prove, restore from scratchpad cp. A synthetic fixture that
+> "fails" a population-floor or span-derived metric is telling you about the FIXTURE (2/N
+> open ends; stored-finish span) — enrich the fixture, never weaken the metric. The
+> workbook Mean/StdDev cells are UNWEIGHTED; the occurrence-weighted histogram is the only
+> SRA oracle. A parity delta is a claim about INPUTS first. `pydantic>=2` NOT a safe floor
+> (2.6); `fastapi>=0.110` an AIR-GAP VIOLATION (0.110.2 floor). `ruff check .` whole tree
+> as `python -m ruff`. `grep -c` exits 1 on zero — chain with `;`. The /analysis focus->tip
+> family is load-sensitive — do NOT chase. bandit B608 on HTML f-strings with "from" → the
+> house `# nosec B608 (HTML, not SQL)`. The full suite now exceeds a 10-min foreground
+> timeout — run it `python -u` in the background and READ the tail.
 
 # (prior) handoffs — archived
 

@@ -12068,3 +12068,27 @@ calculate, 400-row data block; Law 1 unmoved, Null stays closed) + the known-pas
 battery (clean program passes everything populated; 14 declared-collateral seeded twins; page
 renders on 3 corpora; 9 wrong seeds diagnosed by measurement while building). v1.0.173,
 wheel + nine installers rebuilt, full gate green.
+
+## 2026-08-07 — Battery phase 2: the seven queued families, measured then pinned (ADR-0362, v1.0.173 unchanged)
+
+Branch claude/polaris-resume-handoff-div159 restarted from main 7b7d113 (#548 merged by the
+operator at 03:29Z; watch closed, check-in trigger deleted). Operator said "Continue" → the
+standing queue resumed at battery phase 2. ADR-0362: a probe measured all seven families
+BEFORE any pin — two "failures" on the bare program were the FIXTURE, not the engine
+(Missing Logic's 2/N structural floor; Insufficient Detail ÷ stored-finish span of 1 day) →
+enriched variants `_dated` (stored dates + WBS) and `_wide` (N=41, floor 4.9%). Pairs landed:
+CEI (rolled-back prior snapshot; miss cites UID 3, start cut unmoved), HMI (miss cites UID 2;
+non-advancing period honestly NA), FEI/BRI (0.91/0.95 → 1.00/1.05 bow wave; BRI 1.0 → 0.5),
+EVM (thirteen thresholds PASS on clean; four seeds flip EXACTLY their declared sets — set
+equality, stronger than phase 1), schedule_quality (offender-exact fails for orphan/duration/
+lag seeds on the wide program), forecast (four methods answer; un-finishing two tasks pushes
+rate/IEAC out a year while logic/stored stand still; missing inputs answer None with honest
+bases), SRA-readiness (7 gates flip one-for-one; hard-constraint seed's critical-path
+collateral mirrors phase 1's DCMA05→DCMA12). Two permanent discriminators pinned: never-
+started work leaves SPI(t)-Acumen PASSING (started-work-only average, ADR-0176) and a
+late-vs-baseline start leaves Baseline Start Compliance at 100% (Half-Step compares to
+baseline FINISH, ADR-0083). Battery 41/41; 8 targeted engine mutations each red on exactly
+their pair, all modules restored byte-identical from scratchpad copies. Tests-only — no
+version bump, no wheel/installer rebuild. Statics green (ruff whole-tree 0 · format 907 clean
+· mypy 122 files 0 · bandit exit 0 · node per-file 0); full suite + parity run to green
+before commit (counts in the PR).

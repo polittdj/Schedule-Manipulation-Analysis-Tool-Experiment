@@ -435,6 +435,32 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-07 — A synthetic fixture that "fails" a metric is usually describing itself
+
+- Battery phase 2 (ADR-0362): before pinning anything, a probe measured all seven queued
+  families on the phase-1 clean program — and two families "failed" it. Acumen Missing Logic
+  has a structural 2/N floor (the first task and the terminal milestone are ALWAYS open ends
+  → 8% on N=25 vs the 5% bar), and Insufficient Detail divides by the STORED-finish span,
+  which is 1 day on a fixture carrying no stored dates (everything flags at once).
+- Neither was an engine defect and neither was "fixed": the fixture was enriched instead
+  (`_dated` adds stored dates + WBS exactly as every real import carries; `_wide` takes the
+  population to 41 so the structural floor is 4.9%). The lesson generalizes: when a
+  hand-built fixture trips a population-floor or denominator-derived metric, first ask what
+  the METRIC divides by that the fixture doesn't carry — enrich the fixture, never weaken
+  the metric, and never file the engine bug before that question is answered.
+- Measurement handed over two semantic edges worth pinning permanently: work that NEVER
+  STARTS fails SPI and SPI(t) at 0.5 while SPI(t)-Acumen stays PASSING at 1.44 (its average
+  only sees started work — ADR-0176's population, now a pinned discriminator), and a
+  late-vs-baseline start fails Started Late while Baseline Start Compliance holds 100%
+  (Half-Step numerator compares to the baseline FINISH — ADR-0083's asymmetry, now pinned).
+- Upgrade over phase 1: the EVM and readiness pairs assert flip-set EQUALITY (moved ==
+  declared), not just no-undeclared — an expected flip that fails to happen now fails the
+  battery too. Eight targeted engine mutations each went red on exactly their family's pair;
+  every module restored byte-identical from scratchpad copies.
+- Operational: the full suite now exceeds a 10-minute foreground timeout in this container —
+  run it `python -u` in the background and read the tail; a foreground kill (exit 143) is
+  the harness's timeout, not a hang.
+
 ### 2026-08-06 (cont.5) — The reference tool's own export is the semantics decoder
 
 - **ADR-0359.** Two sessions of SRA-delta work (0356, 0359) both ended at the same doorstep:

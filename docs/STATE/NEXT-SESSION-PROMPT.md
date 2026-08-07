@@ -8,14 +8,12 @@ kickoff steers a fresh session at work that is already done.)
 ---
 
 Resume POLARIS (Schedule-Manipulation-Analysis-Tool). Read `docs/STATE/HANDOFF.md` FIRST
-(auto-injected; it ALWAYS wins over this prompt). As of last close: **v1.0.173, highest ADR 0361,
-SCHEMA 2.11.0** — ADR-0359 (fired risk REPLACES the affected duration — SSI's Sensitivity
-export pinned it; distribution within 1-3 d of the weighted histogram), ADR-0360 (export
-reuse 140 s → 0.1 s + PREPARING feedback + register seeding + /sra bars drill + full field
-catalog), ADR-0361 (unrestricted AI mode + the known-pass/known-fail battery) pushed on the
-draft PR for `claude/polaris-resume-handoff-div159`; if it has since squash-merged, restart
-the branch: `git fetch --prune origin && git remote set-head origin -a &&
-git checkout -B <branch> origin/main` (then `git branch --unset-upstream`). Fresh container:
+(auto-injected; it ALWAYS wins over this prompt). As of last close: **v1.0.173 (unchanged —
+ADR-0362 is tests-only), highest ADR 0362, SCHEMA 2.11.0** — ADR-0362 (battery phase 2: all
+seven queued families measured then pinned; flip-set EQUALITY; 8 engine mutations each red)
+pushed on the draft PR for `claude/polaris-resume-handoff-div159`; if it has since
+squash-merged, restart the branch: `git fetch --prune origin && git remote set-head origin -a
+&& git checkout -B <branch> origin/main` (then `git branch --unset-upstream`). Fresh container:
 `pip install -e ".[dev]"` plus `pip install build` (playwright optional, browser tests
 skip-gate). Run ruff as **`python -m ruff`** and always **`ruff check .` — THE WHOLE TREE**.
 Model protocol: ADR-0240 stands — parity-, engine-, testimony- or CUI-relevant work stays on
@@ -34,13 +32,15 @@ Mean/StdDev cells are UNWEIGHTED — the occurrence-weighted histogram is the on
 ADR-0357 (1440 boundary) · ADR-0359 (fired risk REPLACES the affected duration; risk-affected
 tasks sample their 3-point when not fired — measured on SSI's own Sensitivity export, never
 re-open toward additive) · ADR-0360 (export == screen via the run-reuse cache) · ADR-0361
-(unrestricted AI is opt-in and ungated BY DESIGN; Law 1 unmoved) · P0 floors (ADR-0346: `pydantic>=2.6`, `fastapi>=0.110.2` — 0.110.0/1 are an
+(unrestricted AI is opt-in and ungated BY DESIGN; Law 1 unmoved) · **ADR-0362 (battery phase 2
+COMPLETE: cei/hmi/fei-bri/evm/schedule_quality/forecast/SRA-readiness all paired — do not
+re-add; `_dated`/`_wide` enriched variants exist for fixture-floor metrics)** · P0 floors
+(ADR-0346: `pydantic>=2.6`, `fastapi>=0.110.2` — 0.110.0/1 are an
 AIR-GAP VIOLATION; do not "restore" old floors) · P1 intake manifest + hardened CUI hook
 (ADR-0347).
 
 ⇢ DO THIS FIRST — the standing queue
-Battery phase 2 (same pair pattern, framework in tests/test_projects/test_pass_fail_battery.py):
-cei · hmi · fei/bri · evm · schedule_quality · forecast · SRA-readiness. Then phase 3 next
+Phase 3 monolith split, next
 family: **`margin` (379 by the stale ADR-0350 census — RE-MEASURE the closure first)**, then trend 348 · ssi 335 · mission 304 · how 290 · sra 264 · what 257 · where 235 ·
 portfolio 231 · evm 208 · forecast 204. EACH slice: behaviour-seeded closure (prefix is a
 finder, closure is the definition) · span-scoped pre-flight coverage probe BEFORE quoting any
@@ -82,6 +82,10 @@ whether R2 belongs in both SSI and tool runs.
    zombie; wait it out server-side, then cancel + rerun (or an empty re-anchor commit).
 8. bandit B608 false-positives on HTML f-strings containing "from" — house fix is
    `# nosec B608 (HTML, not SQL)` on the closing triple-quote line.
+9. A synthetic fixture that "fails" a metric may be describing ITSELF: population-floor
+   metrics (Missing Logic's 2/N structural open ends) and denominator-derived metrics
+   (Insufficient Detail ÷ STORED-finish span) need an enriched fixture (`_dated`/`_wide`,
+   ADR-0362) — enrich the fixture, never weaken the metric, never file the engine bug first.
 
 ⇢ Measured-false / load-sensitive, do NOT re-chase
 The `/analysis` focus→tip family is load-sensitive — do NOT chase. `pydantic>=2` is NOT a safe
@@ -99,4 +103,5 @@ shipped-code change (bump version BEFORE the suite; REBUILD if code changes afte
 `pyproject.toml` metadata ships in the wheel, so a bounds change is a shipped change) · never
 `git checkout <file>` to undo a mutation — `cp` from a scratchpad copy · a number written
 mid-session is not a measurement — re-read it before it lands in a handoff. Full local suite
-~21 min; CI registers checks ~11 min in; `test (3.11)`/`(3.13)` ~30 min.
+~21 min — exceeds a 10-min foreground timeout, so run it `python -u` in the BACKGROUND and
+read the tail; CI registers checks ~11 min in; `test (3.11)`/`(3.13)` ~30 min.
