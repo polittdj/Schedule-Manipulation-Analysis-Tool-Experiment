@@ -12139,3 +12139,34 @@ the falsification harness briefly ran twice; backups anchor-grep-verified clean,
 killed, cases re-run serially. v1.0.174 → v1.0.175; wheel + nine installers rebuilt after
 the bump; lockstep 52/52. Statics green; full suite + parity run to green before commit
 (counts in the PR). ADR-0364.
+
+## 2026-08-07 (cont.3) — phase 3 slice 7: the ssi run machinery out of the monolith (ADR-0365, v1.0.176)
+
+Branch `claude/polaris-resume-handoff-lw8osf` (fresh from origin/main after the operator
+squash-merged #551 at 17:24Z). First: the operator's six web-uploaded `AlltheProjects`
+reference files (~49 MB: .zip, .afw, 4×.xlsx) made the intake manifest stale — regenerated
+(410 → 416 tracked files, mismatches stay 99, `.afw` sniffs gzip but unknown extensions
+carry no expectation), CLAUDE.md's count updated, manifest guard 10/10 green. Then the
+slice: the stale "ssi 335" census re-measured — it was `_ssi_panel` (235) + `_ssi_data`
+(102) by prefix, and the closure puts the PANEL OUT of the family (sole referrer
+`_sra_body`; `_ssi_export_tables` 248 likewise sra-family). Behaviour-seeded closure over
+the nine SSI routes: 15 names / 611 lines three ways — 11 movers / 576 lines → new
+`web/ssi.py` (644 lines); 3 descents / 34 lines → `components.py` (`_REMAIN_DAYS_DP`,
+`_affected_avg_remaining_days`, `_ssi_matrix_counts`); stays = `_ssi_three_point` (7
+families), `_correlation_spec` (6), `_schedule_*`, `_MAX_SETUP_BYTES`,
+`_file_stored_risks`. `app.py` 17,197 → 16,581 (wc-verified). `web.ssi` sorts BEFORE
+`web.state` — re-export block mid-list, unlike trend's end-of-section. Oracle rebuilt and
+grown 80 → 96 labels (sra exports + templates; `[ssi-api]` — the MC is seeded, byte-stable;
+crafted v4 + v2 setup loads with after-renders; launch token is `{hex16}.{wipe_gen}`, a
+hex-only normalizer flaps 48 labels). Probe: 9 members render-proven (`_ssi_matrix_counts`
+proven on BOTH sides of its descent — mover via `[ssi-api]`, stayer via bare
+`/export/*/sra`); 5 zeros stated with their unit-test backing. Proof: 14/14 per-definition
+byte-identity; multiset 69/1; 96/96 routes byte-identical; falsified in both new locations,
+all nine EXACT vs their probe sets; five guard mutations red→restored md5-verified (the
+enumeration guard's sixth live catch) — with one false red itself caught: pytest exit-4 on
+two GUESSED test ids read as RED until the ran-signature check exposed it (the lesson is
+in LESSONS-LEARNED and the ADR). Sweeps: one hit, the standing `app_mod.non_summary`
+projection-memo patch — doubles as the live positive control; cleared by the same
+verification as ADR-0364. v1.0.175 → v1.0.176; wheel + nine installers rebuilt after the
+bump. Statics green; full suite + parity run to green before commit (counts in the PR).
+ADR-0365.

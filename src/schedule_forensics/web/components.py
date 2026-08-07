@@ -30,6 +30,7 @@ from urllib.parse import quote
 
 from schedule_forensics.engine.cpm import CPMError, CPMResult, offset_to_datetime
 from schedule_forensics.engine.driving_slack import PathTier
+from schedule_forensics.engine.sra import SSIRiskStat
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.web.chrome import _e
 from schedule_forensics.web.help import field_or_metric_doc
@@ -420,3 +421,53 @@ def _focus_panel(schedules: list[Schedule], cpms: list[CPMResult], target: int) 
 (its movement is charted below).</p>
 <table><tr><th scope=col>Version</th><th scope=col>Computed finish</th><th scope=col>% complete</th></tr>{rows}</table>
 {movement}</div>"""
+
+
+# ---- descended in ADR-0365 (phase 3, slice 7): 2-family names the ssi cut forced down ----
+# `_REMAIN_DAYS_DP` / `_affected_avg_remaining_days`: `_apply_ssi_setup` moved to ``web/ssi.py``
+# while `_unified_risk_section` / `_import_risk_register` stay in ``app.py`` (sra family);
+# `_ssi_matrix_counts`: `_ssi_data` moved while `_sra_matrix_chart` / `_ssi_export_tables` stay.
+# A symbol an extracted module needs must live at or below that module's layer (ADR-0351).
+
+#: Decimal places for the per-task remaining-days values shared with the client SRA derive math
+#: (``window.SF_REMAIN_DAYS``). The server and client MUST round each per-task value at the SAME
+#: precision before averaging, or their derived days↔% magnitudes diverge for sub-day tasks
+#: (audit M5). 6 dp keeps sub-day tasks from collapsing to 0 while still matching exactly.
+_REMAIN_DAYS_DP = 6
+
+
+def _affected_avg_remaining_days(sch: Schedule | None, uids: Sequence[int]) -> float:
+    """Average REMAINING duration (working days) of the affected leaf tasks — the basis the days↔%
+    auto-derive uses so the additive and multiplicative magnitudes produce the same TOTAL schedule
+    impact across the affected set. 0.0 when nothing is known (then no derivation is possible)."""
+    if sch is None:
+        return 0.0
+    mpd = sch.calendar.working_minutes_per_day or 480
+    rems: list[float] = []
+    for u in uids:
+        t = sch.tasks_by_id.get(u)
+        if t is not None and not t.is_summary:
+            rem = (
+                t.remaining_duration_minutes
+                if t.remaining_duration_minutes is not None
+                else t.duration_minutes
+            )
+            # round each per-task value at the SAME precision the client receives in
+            # SF_REMAIN_DAYS so the two averages match exactly for sub-day tasks (audit M5)
+            rems.append(round(rem / mpd, _REMAIN_DAYS_DP))
+    return sum(rems) / len(rems) if rems else 0.0
+
+
+def _ssi_matrix_counts(risks: Sequence[SSIRiskStat], *, opportunity: bool) -> list[list[int]]:
+    """A 5x5 ``[consequence-1][probability-1]`` count grid for the risks (impact >= 0) or the
+    opportunities (impact < 0) — the operator's Risk / Opportunity Assessment Matrix."""
+    grid = [[0] * 5 for _ in range(5)]
+    for r in risks:
+        if (r.impact_days < 0) == opportunity:
+            # clamp defensively: a hand-edited / third-party setup.json can carry a rating outside
+            # 1..5 (the form route clamps, the load route did too after the fix below) and must never
+            # IndexError or silently mis-bin a forensic export
+            c = min(5, max(1, r.consequence_rating))
+            p = min(5, max(1, r.probability_rating))
+            grid[c - 1][p - 1] += 1
+    return grid

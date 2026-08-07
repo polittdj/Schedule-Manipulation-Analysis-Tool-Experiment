@@ -51,6 +51,7 @@ def test_drilldown_runtime_is_loaded_globally_not_per_page() -> None:
             "evolution.py",
             "integrity.py",
             "margin.py",
+            "ssi.py",
             "trend.py",
         )
     )
