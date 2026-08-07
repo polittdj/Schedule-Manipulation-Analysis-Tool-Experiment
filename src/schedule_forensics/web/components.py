@@ -325,3 +325,34 @@ _EVO_TIER_LABEL = {
     PathTier.SECONDARY: "secondary",
     PathTier.TERTIARY: "tertiary",
 }
+
+
+# The margin-terminology glossary + its two handbook-citation constants descended here in
+# the margin slice (ADR-0363): `web/margin.py` needs them (`_margin_dashboard_body`) and so
+# does the /analysis margin panel still in `app.py` - and a symbol an extracted module needs
+# must live at or below that module's layer (the ADR-0351 rule: the FIRST slice of a pair
+# forces the descent). The sibling `_HB_CONSUME_SEC` stayed in `app.py`: nothing anywhere
+# references it, so no closure claims it (adjacency is not cohesion, ADR-0349/0350).
+_HB = "NASA Schedule Management Handbook"
+_HB_MARGIN_SEC = "&sect;5.5.11, Establish and Allocate Margin"
+
+
+def _margin_terminology() -> str:
+    """A collapsed MARGIN vs CONTINGENCY vs FLOAT glossary, cited to the handbook — the three are
+    routinely conflated and the distinction is load-bearing for the burn-down (F3a)."""
+    return (
+        "<details class=explain><summary>MARGIN vs CONTINGENCY vs FLOAT &mdash; what each term means"
+        "</summary><div class=explain-body>"
+        f"<h4>Schedule margin</h4><p>A <b>separately-planned, visible buffer activity</b> the planner "
+        f"inserts before a committed milestone to absorb risk and uncertainty &mdash; it has a real "
+        f"working-day duration in the schedule. The {_HB} ({_HB_MARGIN_SEC}) manages margin as an "
+        f"explicit activity and &ldquo;places emphasis on identifying and managing schedule margin over "
+        f"float.&rdquo;</p>"
+        "<h4>Contingency</h4><p>Here, the schedule calendar&rsquo;s <b>non-working time</b> "
+        "(weekends + holidays) between the status date and the target &mdash; unplanned cushion in the "
+        "calendar, distinct from the work-day margin (no overlap).</p>"
+        "<h4>Float (slack)</h4><p>A <b>computed</b> CPM quantity: how long an activity can slip without "
+        "moving the finish. It is not planned buffer &mdash; the handbook manages margin <i>over</i> "
+        "float, because margin that sits on a path with float protects nothing.</p>"
+        "</div></details>"
+    )

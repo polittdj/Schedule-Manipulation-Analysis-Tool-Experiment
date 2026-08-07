@@ -1,54 +1,55 @@
-# Handoff — 2026-08-07 (battery phase 2: the seven queued families, measured then pinned; ADR-0362; v1.0.173 unchanged)
+# Handoff — 2026-08-07 (phase 3 slice 5: the margin family out of the monolith; ADR-0363; v1.0.174)
 
-> ## STATUS (current) — **pushed, draft PR open.** ADR-0362, **v1.0.173** (tests-only — no
-> rebuild; the shipped tree is byte-identical to merged #548), SCHEMA 2.11.0.
-> The operator merged #548 and said "Continue" → the standing queue resumed at its first
-> line, battery phase 2 (the seven families ADR-0361 queued).
+> ## STATUS (current) — **pushed, draft PR open.** ADR-0363, **v1.0.174** (shipped code changed:
+> `app.py`, `components.py`, new `web/margin.py` — wheel + nine installers REBUILT after the
+> bump), SCHEMA 2.11.0. The standing queue's first line resumed: phase 3 monolith split,
+> `margin`.
 >
-> ## ADR-0362 — battery phase 2: cei · hmi · fei/bri · evm · schedule_quality · forecast · SRA-readiness
-> Every figure MEASURED before pinned (probe first, assert second). Two structural facts
-> drove the design: (1) the bare 25-task program CANNOT honestly pass two families —
-> Acumen Missing Logic has a 2/N structural floor (the first task + terminal milestone are
-> always open ends: 8% on N=25) and Insufficient Detail divides by the STORED-finish span
-> (span 1 day on a fixture with no stored dates → everything flags). Not engine defects —
-> enriched variants instead: `_dated` (stored dates = actuals-else-baselines + WBS) and
-> `_wide` (N=41 → floor 4.9%). (2) cei/hmi/fei-bri are informational (status always NA) —
-> their pairs pin VALUES + offender uids, not status flips. EVM pins all THIRTEEN
-> thresholds PASS on clean and four seeds flip EXACTLY their declared sets (set equality —
-> stronger than phase 1: an expected flip that fails to happen also fails). Forecast: the
-> four methods answer (CPM 2026-12-04 · stored 2026-12-06 · rate 2026-08-26 · ES
-> 2026-08-14); un-finishing two tasks pushes rate/IEAC out a YEAR while logic/stored stand
-> still — the divergence IS the finding; missing inputs answer None with honest bases.
-> Readiness: 7 gates flip one-for-one; the hard-constraint seed's critical-path collateral
-> mirrors phase 1's DCMA05→DCMA12. Two PERMANENT discriminators pinned: work that NEVER
-> STARTS fails SPI/SPI(t) at 0.5 but leaves SPI(t)-Acumen PASSING at 1.44 (the per-activity
-> average only sees STARTED work — ADR-0176); a late-vs-baseline start fails Started Late
-> but leaves Baseline Start Compliance at 100% (Half-Step numerator compares to baseline
-> FINISH — ADR-0083). Battery now 41 tests; 8 targeted engine mutations each went red on
-> exactly their pair and every module restored byte-identical (cp, never git checkout).
+> ## ADR-0363 — phase 3 slice 5: /margin out of the monolith, first fully-covered render diff
+> The stale "margin 379" census was RE-MEASURED first: the behaviour-seeded closure gives
+> 19 names / 494 lines partitioned THREE ways by referrers — a 10-name / 417-line CLOSED move
+> set (every external referrer `create_app`) into **`web/margin.py`** (490 lines with
+> preamble); a 2-family trio (`_HB` / `_HB_MARGIN_SEC` / `_margin_terminology`) DESCENDED into
+> `components.py` (shared with `_margin_panel`, which is the /analysis family's and stays —
+> the ADR-0351 first-slice-forces-the-descent rule); and the SRA-side names untouched (only
+> the create_app-nested `_margin_risk_data` reaches them). `_HB_CONSUME_SEC` stays in app.py:
+> dead constant, no closure claims it (adjacency is not cohesion). `app.py` 18,134 → 17,681.
+> LAYER_ORDER … → integrity → **margin** → app. Proof: 13/13 per-definition byte-identity;
+> multiset 60 added / 0 removed (preamble + re-exports + descent comment only — even the five
+> ruff-dropped app.py imports cancel against margin.py's); **76/76 routes byte-identical** on
+> the golden-pair oracle. First slice where the probe covers the WHOLE family: the oracle
+> gained `POST /margin/band` (else `_band_payload` returns None on line one) and the
+> instantiated `/export/{xlsx,docx}/margin` (proven deterministic — and the ONLY path that
+> executes `_wmpd_label`: 0 moved without them, 2 with). Falsified in BOTH new modules, both
+> EXACT vs the pre-flight map. All three sweeps empty WITH a self-test (harness first found
+> the 4 known drvmod/evomod sites). Five guard mutations red→restored (md5-verified, cp never
+> git checkout); the enumeration guard's fourth consecutive live catch.
 >
 > ## Next
-> Phase 3 monolith split resumes at **margin 379** (re-measure the closure first;
-> ADR-0350/0351/0352/0358 rules). Then: driving-corridor fixture · the three page-lede-less
-> pages · /groups Activities counting summary rows (ADR-0343) · installers vs known-good
-> constraints · the P80/P90 recurring-calendar-exception residual (own unit; ADR-0359's OAT
-> match says the effect did NOT surface there) · Phase 6 docs. Battery future-work (not
-> queued as a unit): a stored-slack fixture would let `cei_critical` leave NA. **Operator:**
-> license · branch-protection · proprietary reruns · OR-04 · whether the July mpp/ oracle
-> should re-export under replace semantics for a tighter v1 band.
+> Phase 3 resumes at **trend 348** (stale census — RE-MEASURE the closure first; this slice's
+> "379" measured as 417+21 split three ways). Then: driving-corridor fixture · the three
+> page-lede-less pages (/briefing, /path, /compare) · /groups Activities counting summary rows
+> (ADR-0343) · installers vs known-good constraints · the P80/P90 recurring-calendar-exception
+> residual (own unit) · Phase 6 docs. Battery future-work: a stored-slack fixture would let
+> `cei_critical` leave NA. **Operator:** license · branch-protection · proprietary reruns ·
+> OR-04 · whether the July mpp/ oracle should re-export under replace semantics.
 >
 > ## Carried forward
-> ADR-0353..0361 closed — do not re-open. The battery discipline is now: probe FIRST, pin
-> the measured value, mutation-prove, restore from scratchpad cp. A synthetic fixture that
-> "fails" a population-floor or span-derived metric is telling you about the FIXTURE (2/N
-> open ends; stored-finish span) — enrich the fixture, never weaken the metric. The
-> workbook Mean/StdDev cells are UNWEIGHTED; the occurrence-weighted histogram is the only
-> SRA oracle. A parity delta is a claim about INPUTS first. `pydantic>=2` NOT a safe floor
-> (2.6); `fastapi>=0.110` an AIR-GAP VIOLATION (0.110.2 floor). `ruff check .` whole tree
-> as `python -m ruff`. `grep -c` exits 1 on zero — chain with `;`. The /analysis focus->tip
-> family is load-sensitive — do NOT chase. bandit B608 on HTML f-strings with "from" → the
-> house `# nosec B608 (HTML, not SQL)`. The full suite now exceeds a 10-min foreground
-> timeout — run it `python -u` in the background and READ the tail.
+> ADR-0353..0362 closed — do not re-open. The slice recipe held for its fifth outing:
+> behaviour-seeded closure (the prefix finds, the closure DEFINES — and here it also
+> partitions) · span-scoped pre-flight probe BEFORE quoting any render diff (widen the oracle
+> when a member's only consumer is an export or a POST-lit branch) · verbatim cut + `X as X`
+> re-exports · contract/guard widening · the three sweeps (empty is evidence only with a
+> self-test) · per-definition byte-identity + multiset + falsified render diff · five guard
+> mutations restored from scratchpad cp. A number written mid-session is not a measurement —
+> the 17,688 in the draft ADR was pre-`ruff --fix`; wc says 17,681 (caught by the re-read
+> rule). The workbook Mean/StdDev cells are UNWEIGHTED. A parity delta is a claim about INPUTS
+> first. `pydantic>=2` NOT a safe floor (2.6); `fastapi>=0.110` an AIR-GAP VIOLATION (0.110.2
+> floor). `ruff check .` whole tree as `python -m ruff` (a stale 0.15.8 shadows PATH). `grep
+> -c` exits 1 on zero — chain with `;`. The /analysis focus→tip family is load-sensitive — do
+> NOT chase. bandit B608 on HTML f-strings with "from" → house `# nosec B608 (HTML, not
+> SQL)`. Full suite > 10-min foreground timeout — run `python -u` in background and READ the
+> tail; never mutate the tree (docs included — test_state_docs reads them) while it runs.
 
 # (prior) handoffs — archived
 

@@ -36,6 +36,7 @@ import schedule_forensics.web.components as components_mod
 import schedule_forensics.web.driving as driving_mod
 import schedule_forensics.web.evolution as evolution_mod
 import schedule_forensics.web.integrity as integrity_mod
+import schedule_forensics.web.margin as margin_mod
 
 WEB = Path(app_mod.__file__).parent
 
@@ -46,6 +47,7 @@ EXTRACTED = {
     "driving.py": driving_mod,
     "evolution.py": evolution_mod,
     "integrity.py": integrity_mod,
+    "margin.py": margin_mod,
 }
 
 #: The view layer, lowest layer FIRST. A module may import only from those before it — that is
@@ -60,6 +62,7 @@ LAYER_ORDER = (
     "driving.py",
     "evolution.py",
     "integrity.py",
+    "margin.py",
     "app.py",
 )
 
@@ -75,6 +78,7 @@ VIEW_MODULES = (
     "driving.py",
     "evolution.py",
     "integrity.py",
+    "margin.py",
 )
 
 

@@ -12092,3 +12092,28 @@ their pair, all modules restored byte-identical from scratchpad copies. Tests-on
 version bump, no wheel/installer rebuild. Statics green (ruff whole-tree 0 · format 907 clean
 · mypy 122 files 0 · bandit exit 0 · node per-file 0); full suite + parity run to green
 before commit (counts in the PR).
+
+## 2026-08-07 (cont.) — phase 3 slice 5: the margin family out of the monolith (ADR-0363, v1.0.174)
+
+Branch `claude/polaris-resume-handoff-o4qcpx` (restarted from origin/main after #549
+squash-merged). The standing queue's first line: `margin`, and the stale "379" was re-measured
+before anything was cut. The behaviour-seeded closure partitioned 19 names / 494 lines three
+ways: a CLOSED 10-name / 417-line move set → new `web/margin.py` (490 lines with preamble);
+the `_HB`/`_HB_MARGIN_SEC`/`_margin_terminology` trio DESCENDED into `components.py` (shared
+with the /analysis family's `_margin_panel` — ADR-0351's first-slice-forces-the-descent rule,
+and the pre-flight probe MEASURED the 2-family shape: the trio moves both /analysis pages +
+both /margin variants); the SRA-side names stayed (only the create_app-nested
+`_margin_risk_data` reaches them). `_HB_CONSUME_SEC` stayed: dead constant, no closure claims
+it. `app.py` 18,134 → 17,681 (wc-verified — the mid-session 17,688 was pre-`ruff --fix`).
+Verification: 13/13 per-definition byte-identity; non-blank multiset 60 added / 0 removed;
+76/76 routes byte-identical on the golden-pair oracle (double-render deterministic, launch
+token + pid normalized, /api/system excluded); oracle widened this slice with POST
+/margin/band + instantiated /export/{xlsx,docx}/margin (proven deterministic; the only path
+executing `_wmpd_label`); falsified in BOTH new modules, both EXACT vs the pre-flight
+per-member map; three standing sweeps empty with a positive-control self-test; five guard
+mutations red→restored-green, every restore md5-verified from scratchpad copies. Contract
+updates: margin.py into EXTRACTED/LAYER_ORDER/VIEW_MODULES, test_bar_drill +
+test_presentation_fixes widened (the enumeration guard fired live, fourth consecutive slice).
+v1.0.173 → v1.0.174; wheel + nine installers rebuilt AFTER the bump. Statics green (ruff
+0.16.1 whole-tree via python -m · format 909 clean · mypy 123 files 0 · bandit exit 0 · node
+per-file 0); full suite + parity run to green before commit (counts in the PR). ADR-0363.
