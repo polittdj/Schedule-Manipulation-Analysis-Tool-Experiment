@@ -1,0 +1,62 @@
+[
+  {
+    "file": "TP4_DataCenter_v3_FX01_MilestoneLate.xml",
+    "base": "TP4_DataCenter_v3.mpp",
+    "change": "UID 11 (milestone \"Notice to proceed\") BaselineFinish 2026-01-05T08:00 -> 2025-12-29T08:00",
+    "question": "Does Fuse Days Late include milestones?",
+    "predict": "Days Late = 8 if milestones EXCLUDED; 15 if INCLUDED. (UID 11 ActualFinish 2026-01-05 is now 7 calendar days after baseline.)",
+    "recalc_needed": false,
+    "sha256": "0a79b4032ad591c3d283f80aa8ffc01360abf16e061a5606549709f491785852",
+    "bytes": 72335
+  },
+  {
+    "file": "TP4_DataCenter_v3_FX02_EarlyFinish.xml",
+    "base": "TP4_DataCenter_v3.mpp",
+    "change": "UID 18 (\"Power distribution units\") BaselineFinish 2026-03-20T17:00 -> 2026-03-30T17:00 (ActualFinish 2026-03-24 is now 6 calendar days EARLY)",
+    "question": "Is Days Late signed (early finishes subtract) or clamped at zero?",
+    "predict": "Days Late = -2 if SIGNED (4 + -6); = 4 if CLAMPED at zero.",
+    "recalc_needed": false,
+    "sha256": "eacbec654e5efbdee603970f82d67f63ed8270d60ae8b320a231642fa8670363",
+    "bytes": 72286
+  },
+  {
+    "file": "TP4_DataCenter_v3_FX03_DurationCut.xml",
+    "base": "TP4_DataCenter_v3.mpp",
+    "change": "UID 17 (\"Raised floor & containment\", critical, 0% complete, TF=0) Duration 15.0d -> 5d",
+    "question": "Schedule Integrity positive control: does reverting a CPM-active duration change move the target UID?",
+    "predict": "After MS Project recalc, project finish should pull in ~10 WORKING days from 2026-06-05 toward ~2026-05-22. Reverting 5d -> 15d must push UID 26 back by that same amount. A zero-impact result here is a BUG.",
+    "recalc_needed": true,
+    "sha256": "9501b42bc1d78471595ed8fe4c8ffbc76082ca6b12495907e127443fd61146cf",
+    "bytes": 72283
+  },
+  {
+    "file": "Project5_FX04_TamperDuration.xml",
+    "base": "Project5.mpp",
+    "change": "UID 131 (\"Set HVAC trim and test and balance\", critical, 0% complete, TF=0) Duration 4.0w -> 1w",
+    "question": "Single-variable manipulation with a hand-checkable CPM impact on the Project5 critical chain (131 -> 142 -> 144/145).",
+    "predict": "After recalc, project finish should pull in ~3 weeks (15 working days) from 2028-01-26. Reverting must restore 2028-01-26 exactly.",
+    "recalc_needed": true,
+    "sha256": "ff3331dadf95339b9de205ec978c53658870271634703ff6c68038b5695a5998",
+    "bytes": 750236
+  },
+  {
+    "file": "Project5_FX05_TamperLogicDrop.xml",
+    "base": "Project5.mpp",
+    "change": "UID 142 (\"Complete punch list items\") ALL predecessors removed. Removed: [('141', 'FS', '0.0d'), ('131', 'FS', '0.0d')]",
+    "question": "Does the tool detect logic REMOVAL, and does reverting it restore the driven date?",
+    "predict": "After recalc, UID 142 becomes logic-unbound and should slide to the project start / data date, pulling the finish chain in. Fuse \"Missing Predecessors\" and \"Missing Logic\" counts must each increase by 1 vs Project5.",
+    "recalc_needed": true,
+    "sha256": "6e91aba9523496a66d47bbdcce2f446ce44ea9fe13be0fd50d57482769cfea8d",
+    "bytes": 749697
+  },
+  {
+    "file": "Project5_FX06_TamperBaselineShift.xml",
+    "base": "Project5.mpp",
+    "change": "UID 131 BaselineFinish 2027-06-16T17:00 -> +60 calendar days",
+    "question": "Baseline-only mutation: CPM-inert by construction. Does the tool report it on the BASELINE-VARIANCE axis rather than reporting 0 impact?",
+    "predict": "Project finish MUST NOT move (baselines are not CPM inputs). Forecast-axis impact = 0 and that is CORRECT. Baseline-variance axis MUST show a 60-day concealment. If the tool shows nothing at all, that is the defect.",
+    "recalc_needed": false,
+    "sha256": "ccb599f77d91b683ac9dd5fe9d2877144531ab024b1f1802909336e51810014f",
+    "bytes": 750237
+  }
+]
