@@ -486,6 +486,12 @@ from schedule_forensics.web.help import (
 # now, extracted verbatim. Same ``X as X`` re-export idiom.
 from schedule_forensics.web.integrity import _integrity_body as _integrity_body
 from schedule_forensics.web.integrity import _integrity_header as _integrity_header
+from schedule_forensics.web.integrity import _integrity_ledger_tables as _integrity_ledger_tables
+from schedule_forensics.web.integrity import _lag_chip as _lag_chip
+from schedule_forensics.web.integrity import _ledger_was_now as _ledger_was_now
+from schedule_forensics.web.integrity import _logic_changes_panel as _logic_changes_panel
+from schedule_forensics.web.integrity import _target_effect_html as _target_effect_html
+from schedule_forensics.web.integrity import _was_now as _was_now
 
 # ADR-0363 (phase 3, slice 5): the /margin page family - the Executive Margin Dashboard
 # (burn-down, Fig 5-30 band, erosion trend, risk-sufficiency shell) - lives in
@@ -2082,6 +2088,27 @@ def create_app(
                 skipped.append(key)
         return schedules, cpms, analyses, skipped
 
+    def _pair_versions() -> tuple[list[Schedule], list[CPMResult], list[str]]:
+        """``_solvable_versions`` for version-PAIR forensics (operator 2026-08-08): the active
+        filter applies, but the session Target UID does NOT truncate the population — it is the
+        counterfactual's MEASUREMENT ANCHOR, not a population cut. Diffing the target-truncated
+        pair fabricated changes (cone membership read as file changes) and measured false
+        "no effect" reverts (a restored link whose predecessor left the current cone dangles
+        into a missing task, so CPM drops it) — see ``SessionState.scope_pair``. Versions whose
+        full network cannot solve are skipped and named, exactly as ``_solvable_versions``."""
+        st = session()
+        schedules: list[Schedule] = []
+        cpms: list[CPMResult] = []
+        skipped: list[str] = []
+        for key, sch in st.ordered_versions():
+            try:
+                scoped, cpm = st.cpm_pair_for(key, sch)
+                cpms.append(cpm)
+                schedules.append(scoped)
+            except CPMError:
+                skipped.append(key)
+        return schedules, cpms, skipped
+
     def _skipped_notice(skipped: list[str]) -> str:
         if not skipped:
             return ""
@@ -2229,9 +2256,13 @@ def create_app(
         try:
             facts = _schedule_facts(st, name, sch)
             facts += driving_path_facts(sch, st.analysis_for(name, sch).cpm, text)
-            schedules, cpms, _skipped = _solvable_versions()
-            if len(schedules) >= 2:
-                facts += manipulation_forensics_facts(schedules, cpms, target_uid=st.target_uid)
+            # PAIR versions (operator 2026-08-08): the manipulation facts diff a version pair,
+            # so the target must anchor the measurement, never truncate the populations.
+            pair_schedules, pair_cpms, _pskipped = _pair_versions()
+            if len(pair_schedules) >= 2:
+                facts += manipulation_forensics_facts(
+                    pair_schedules, pair_cpms, target_uid=st.target_uid
+                )
         except CPMError as exc:
             return JSONResponse({"error": str(exc)}, status_code=422)
         block = (
@@ -2268,8 +2299,14 @@ def create_app(
         facts += driving_path_facts(schedules[-1], cpms[-1], text)
         # cross-version manipulation forensics (ADR-0150): duration cuts on the driving/
         # critical path, the reverted-changes counterfactual, the focus's baseline variance —
-        # so "what was shortened to keep UID X from slipping?" is answerable with citations
-        facts += manipulation_forensics_facts(schedules, cpms, target_uid=st.target_uid)
+        # so "what was shortened to keep UID X from slipping?" is answerable with citations.
+        # PAIR versions (operator 2026-08-08): the facts diff a version pair, so the target
+        # must anchor the measurement, never truncate the populations being diffed.
+        pair_schedules, pair_cpms, _pskipped = _pair_versions()
+        if len(pair_schedules) >= 2:
+            facts += manipulation_forensics_facts(
+                pair_schedules, pair_cpms, target_uid=st.target_uid
+            )
         # unrestricted mode (ADR-0361) feeds the newest version's activity table as raw data
         block = None
         if unrestricted:
@@ -3192,7 +3229,10 @@ def create_app(
         predecessor). The custom-field exception filter was removed (operator 2026-07-09: "the
         Exception Field makes no sense")."""
         st = session()
-        schedules, cpms, skipped = _solvable_versions()
+        # PAIR versions (operator 2026-08-08): the diff/findings/counterfactuals must see the
+        # two versions' REAL networks — the session Target UID anchors the measurement inside
+        # _integrity_body, it must never truncate the populations being diffed (_pair_versions).
+        schedules, cpms, skipped = _pair_versions()
         if len(schedules) < 2:
             return _page(
                 st,
@@ -4745,28 +4785,40 @@ def create_app(
         return _export_response(fmt, tableset, "whatif-added")
 
     @app.get("/export/{fmt}/integrity")
-    def export_integrity(fmt: str, file: str = Query("")) -> Response:
-        """Every integrity finding across the analyzed version pairs."""
+    def export_integrity(
+        fmt: str, file: str = Query(""), a: int = Query(-1), b: int = Query(-1)
+    ) -> Response:
+        """Every integrity finding across the analyzed version pairs. With a valid ``a``/``b``
+        pair (the page's picker, operator 2026-08-08) the workbook restricts the findings to
+        exactly that pair AND adds the UNDERLYING change ledger (every change's was→now,
+        exact minute deltas, per-change effects on the session target, skipped reverts named)
+        plus the logic changes as their own sheet; a legacy call without ``a``/``b`` keeps the
+        findings-only shape. PAIR versions throughout: the Target UID anchors the ledger's
+        measurement, it never truncates the populations being diffed (_pair_versions)."""
         if (bad := _bad_format(fmt)) is not None:
             return bad
-        schedules, cpms, _skipped = _solvable_versions()
+        st = session()
+        schedules, cpms, _skipped = _pair_versions()
         if len(schedules) < 2:
             return JSONResponse({"error": "need two versions"}, status_code=422)
         labels = [sch.source_file or sch.name for sch in schedules]
+        n = len(schedules)
+        chosen: tuple[int, int] | None = None
+        if 0 <= a < n and 0 <= b < n and a != b:
+            chosen = (a, b) if a < b else (b, a)  # chronological, like the page
+        pair_indices = [chosen] if chosen is not None else [(i, i + 1) for i in range(n - 1)]
         body = []
-        for i in range(len(schedules) - 1):
-            if file and labels[i + 1] != file:
+        for pi, ci in pair_indices:
+            if chosen is None and file and labels[ci] != file:
                 continue
-            prior, current = schedules[i], schedules[i + 1]
-            for f in detect_manipulation(
-                current, prior, current_cpm=cpms[i + 1], prior_cpm=cpms[i]
-            ):
+            prior, current = schedules[pi], schedules[ci]
+            for f in detect_manipulation(current, prior, current_cpm=cpms[ci], prior_cpm=cpms[pi]):
                 cites = "; ".join(
                     f"UID {c.unique_id} — {c.task_name}" for c in f.citations if c.unique_id
                 )
                 body.append(
                     (
-                        f"{labels[i]} → {labels[i + 1]}",
+                        f"{labels[pi]} → {labels[ci]}",
                         str(f.severity),
                         f.metric_id,
                         f.title,
@@ -4784,10 +4836,15 @@ def create_app(
             "Course of action",
             "Citations",
         )
-        tableset = TableSet(
-            "Schedule Integrity findings",
-            (Table("Integrity findings", headers, tuple(body)),),
-        )
+        tables: tuple[Table, ...] = (Table("Integrity findings", headers, tuple(body)),)
+        if chosen is not None:
+            tables += _integrity_ledger_tables(
+                schedules[chosen[0]],
+                schedules[chosen[1]],
+                cpms[chosen[1]],
+                st.target_uid,
+            )
+        tableset = TableSet("Schedule Integrity findings", tables)
         return _export_response(fmt, tableset, "schedule-integrity")
 
     @app.get("/export/{fmt}/trend")

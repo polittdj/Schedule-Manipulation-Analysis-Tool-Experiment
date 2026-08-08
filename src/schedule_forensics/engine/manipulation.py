@@ -36,7 +36,7 @@ from dataclasses import dataclass
 
 from schedule_forensics.engine.cpm import CPMResult, compute_cpm, offset_to_datetime
 from schedule_forensics.engine.dcma_audit import Citation
-from schedule_forensics.engine.diff import VersionDiff, diff_versions
+from schedule_forensics.engine.diff import LinkKey, VersionDiff, diff_versions
 from schedule_forensics.engine.recommendations import (
     SEVERITY_ORDER,
     Category,
@@ -76,17 +76,20 @@ def detect_manipulation(
     cur_by_id = {t.unique_id: t for t in current.tasks}
     findings: list[Finding] = []
 
+    per_day = current.calendar.working_minutes_per_day or 480
     findings.extend(_deleted_tasks(diff, prior_by_id, prior_critical, prior.source_file))
     findings.extend(_deactivated_tasks(diff, cur_by_id, prior_critical, current.source_file))
-    findings.extend(_deleted_logic(diff, prior_by_id, prior.source_file))
-    findings.extend(_shortened_durations(diff, prior_by_id, cur_by_id, current.source_file))
+    findings.extend(_deleted_logic(diff, prior_by_id, prior.source_file, per_day=per_day))
+    findings.extend(
+        _shortened_durations(diff, prior_by_id, cur_by_id, current.source_file, per_day=per_day)
+    )
     findings.extend(
         _constraint_tightening(diff, prior_by_id, cur_by_id, cpm_current, current.source_file)
     )
     findings.extend(_calendar_loosening(prior, current, current.source_file))
     findings.extend(_baseline_date_changes(diff, cur_by_id, current.source_file))
     findings.extend(_actual_date_changes(diff, cur_by_id, current.source_file))
-    findings.extend(_added_logic(diff, cur_by_id, current.source_file))
+    findings.extend(_added_logic(diff, cur_by_id, current.source_file, per_day=per_day))
     findings.extend(_cost_changes(diff, prior_by_id, cur_by_id, current.source_file))
     findings.extend(_work_changes(diff, prior_by_id, cur_by_id, current.source_file))
     findings.extend(_resource_assignment_edits(prior, current, current.source_file))
@@ -165,8 +168,29 @@ def _deactivated_tasks(
     ]
 
 
+def _link_list(links: tuple[LinkKey, ...], per_day: int) -> str:
+    """The first few links verbatim — ``FS 188→187`` (+ lag when nonzero), the rest counted —
+    so a logic finding names WHICH relationships changed (operator 2026-08-08), the same
+    first-6-then-count shape as the baseline/duration magnitude lists. Lag renders whole days
+    bare and a sub-day lag as fractional days (the ADR-0366 rule: never collapse to +0d)."""
+    from schedule_forensics.engine.change_effects import _wd_text  # deferred: import cycle
+
+    parts: list[str] = []
+    for pred, succ, ltype, lag in links[:6]:
+        lag_txt = ""
+        if lag:
+            if lag % per_day == 0:
+                lag_txt = f" (lag {lag // per_day:+d}d)"
+            else:
+                lag_txt = f" (lag {'+' if lag > 0 else '-'}{_wd_text(abs(lag), per_day)}d)"
+        parts.append(f"{ltype.value} {pred}→{succ}{lag_txt}")
+    shown = "; ".join(parts)
+    more = f"; +{len(links) - 6} more, all cited" if len(links) > 6 else ""
+    return f"{shown}{more}"
+
+
 def _deleted_logic(
-    diff: VersionDiff, prior_by_id: dict[int, Task], prior_file: str | None
+    diff: VersionDiff, prior_by_id: dict[int, Task], prior_file: str | None, *, per_day: int = 480
 ) -> list[Finding]:
     if not diff.removed_links:
         return []
@@ -183,7 +207,8 @@ def _deleted_logic(
             metric_id="MANIP_DELETED_LOGIC",
             title=f"{len(diff.removed_links)} logic links removed since the prior version",
             detail=f"{len(diff.removed_links)} relationships present in the prior version are "
-            "gone — removing logic can stop a delay from propagating to successors.",
+            "gone — removing logic can stop a delay from propagating to successors. Removed: "
+            f"{_link_list(diff.removed_links, per_day)}.",
             course_of_action="Verify each removed relationship was genuinely incorrect, not "
             "deleted to break a chain that would otherwise push the finish.",
             citations=tuple(seen.values()),
@@ -196,8 +221,16 @@ def _shortened_durations(
     prior_by_id: dict[int, Task],
     cur_by_id: dict[int, Task],
     current_file: str | None,
+    *,
+    per_day: int = 480,
 ) -> list[Finding]:
+    # sub-day-safe working-day rendering — ONE definition (the ADR-0366 helper); deferred
+    # import because change_effects → path_evolution → THIS module at import time (a top-level
+    # import is a genuine cycle, proven before this landed)
+    from schedule_forensics.engine.change_effects import _wd_text
+
     offenders: list[Citation] = []
+    cuts: list[str] = []  # per-activity magnitude (operator 2026-08-08): was → now + wd removed
     for td in diff.changed_tasks:
         if td.changed("duration_minutes") is None:
             continue
@@ -205,8 +238,20 @@ def _shortened_durations(
         prior = prior_by_id[td.unique_id]
         if cur.duration_minutes < prior.duration_minutes and cur.percent_complete < 100.0:
             offenders.append(_cite(current_file, cur))
+            removed = prior.duration_minutes - cur.duration_minutes
+            cuts.append(
+                f"UID {td.unique_id} '{cur.name}' was {_wd_text(prior.duration_minutes, per_day)}"
+                f" wd → now {_wd_text(cur.duration_minutes, per_day)} wd "
+                f"({_wd_text(removed, per_day)} wd removed; {cur.percent_complete:g}% complete)"
+            )
     if not offenders:
         return []
+    # the finding previously stated the pattern with NO magnitude (the operator's 2026-08-08
+    # report: "I want to know what the duration was and what it is now, how many days were
+    # removed") — the first few cuts verbatim, the rest counted; every activity cited either way
+    # (the ADR-0369 _baseline_date_changes shape).
+    shown = "; ".join(cuts[:6])
+    more = f"; +{len(cuts) - 6} further cut(s), all cited" if len(cuts) > 6 else ""
     return [
         Finding(
             category=Category.CONCERN,
@@ -214,7 +259,7 @@ def _shortened_durations(
             metric_id="MANIP_SHORTENED_DURATION",
             title=f"{len(offenders)} incomplete activities had their duration shortened",
             detail="Total duration was reduced on still-incomplete work — a common way to "
-            "absorb a slip without moving the finish date.",
+            f"absorb a slip without moving the finish date. {shown}{more}.",
             course_of_action="Confirm the shorter durations reflect a real plan change with "
             "basis, not compression to mask a slip.",
             citations=tuple(offenders),
@@ -426,7 +471,7 @@ def _actual_date_changes(
 
 
 def _added_logic(
-    diff: VersionDiff, cur_by_id: dict[int, Task], current_file: str | None
+    diff: VersionDiff, cur_by_id: dict[int, Task], current_file: str | None, *, per_day: int = 480
 ) -> list[Finding]:
     """New relationships added since the prior version (operator 2026-07-09, ADR-0176).
 
@@ -449,7 +494,7 @@ def _added_logic(
             title=f"{len(diff.added_links)} logic links added since the prior version",
             detail=f"{len(diff.added_links)} relationships exist now that were not in the prior "
             "version — added logic can re-sequence work, re-route float, or push a competing "
-            "chain off the critical path.",
+            f"chain off the critical path. Added: {_link_list(diff.added_links, per_day)}.",
             course_of_action="Confirm each added relationship models real execution logic "
             "(e.g. an open end being repaired), not a re-sequencing that manufactures float "
             "or moves criticality.",

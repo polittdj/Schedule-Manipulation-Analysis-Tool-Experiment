@@ -115,14 +115,27 @@ def test_integrity_renders_200_with_more_than_two_files(n: int) -> None:
 
 
 def test_integrity_does_not_500_with_a_summary_target_set() -> None:
+    # POST — /target is POST-only; the old GET was a silent 405 that never set the focus, so
+    # this test exercised the no-target path for its whole life (2026-08-08 root-cause session).
+    # UID 0 can't ride the form (_parse_uid: non-positive clears), so DERIVE a real summary UID
+    # from the loaded file — in tasks_by_id but excluded from CPM timings, the guarded case.
     c = _client_with(4)
-    c.get("/target?uid=0")  # a summary UID as the focus
-    assert c.get("/integrity?a=0&b=3").status_code == 200
+    st = c.app.state.session  # type: ignore[attr-defined]
+    sch = next(s for _k, s in st.ordered_versions())
+    summary_uid = next(t.unique_id for t in sch.tasks if t.is_summary and t.unique_id > 0)
+    c.post("/target", data={"uid": str(summary_uid), "next_url": "/"})
+    page = c.get("/integrity?a=0&b=3")
+    assert page.status_code == 200
+    # and with the target REALLY set, the summary UID renders the ADR-0369 disclosure banner
+    assert "target unavailable" in page.text
 
 
 def test_integrity_two_file_picker_compares_the_chosen_pair() -> None:
     c = _client_with(4)
-    c.get("/target?uid=155")
+    # POST — the old GET 405'd silently, so the +21 pin below rode the AUTO-chosen target
+    # (155 happens to be the last critical task); now the pin holds with 155 explicitly set,
+    # measured on the raw pair (the 2026-08-08 pair-scope fix)
+    c.post("/target", data={"uid": "155", "next_url": "/"})
     # ordered oldest-first: idx0 = a Hard_File, idx3 = a Hard_File_updated -> the 188->187 case
     page = c.get("/integrity?a=0&b=3").text
     assert "change-effects" in page
