@@ -20,7 +20,11 @@ import json
 import logging
 from urllib.parse import quote
 
-from schedule_forensics.engine.change_effects import ChangeEffect, compute_change_effects
+from schedule_forensics.engine.change_effects import (
+    ChangeEffect,
+    _wd_text,
+    compute_change_effects,
+)
 from schedule_forensics.engine.cpm import (
     CPMError,
     CPMResult,
@@ -32,12 +36,143 @@ from schedule_forensics.engine.path_counterfactual import (
 )
 from schedule_forensics.engine.recommendations import Finding
 from schedule_forensics.model.schedule import Schedule
+from schedule_forensics.reports.tables import Cell, Table
 from schedule_forensics.web.chrome import _e
 from schedule_forensics.web.components import (
     _pair_prov_chip,
     _panel_head,
     _shell_tools,
 )
+
+
+def _lag_chip(lag: int | None, per_day: int) -> str:
+    """Signed lag text for a logic link (empty when no lag): whole days bare (``+2d``), a
+    sub-day lag as fractional working days (never a collapsed ``+0d`` — the ADR-0366 rule)."""
+    if not lag:
+        return ""
+    if lag % per_day == 0:
+        return f" {lag // per_day:+d}d"
+    return f" {'+' if lag > 0 else '-'}{_wd_text(abs(lag), per_day)}d"
+
+
+def _was_now(e: ChangeEffect, per_day: int) -> str:
+    """The "was → is now" cell (operator 2026-08-08): the engine's STRUCTURED before→after
+    fields rendered per kind — a duration as working days with the removed/added delta and the
+    activity's % complete, a constraint as its two descriptors, a logic link as its identity
+    and which side of the pair carries it. A row the engine gave no structure for shows the
+    literal — sentinel, never a re-parse of the label and never a fabricated figure."""
+    if (
+        e.kind == "duration_restored"
+        and e.prior_duration_minutes is not None
+        and e.current_duration_minutes is not None
+    ):
+        was = _wd_text(e.prior_duration_minutes, per_day)
+        now = _wd_text(e.current_duration_minutes, per_day)
+        delta = e.current_duration_minutes - e.prior_duration_minutes
+        delta_txt = f"{'+' if delta > 0 else '-'}{_wd_text(abs(delta), per_day)} wd"
+        verb = "added" if delta > 0 else "removed"
+        pct = f"; {e.percent_complete:g}% complete" if e.percent_complete is not None else ""
+        return f"was {was} wd → now {now} wd ({delta_txt} {verb}{pct})"
+    if e.kind == "constraint_restored" and e.prior_constraint and e.current_constraint:
+        pct = f"; {e.percent_complete:g}% complete" if e.percent_complete is not None else ""
+        return f"was {e.prior_constraint} → now {e.current_constraint}{pct}"
+    if e.kind in ("logic_restored", "logic_dropped") and len(e.citation_uids) == 2 and e.link_type:
+        pred, succ = e.citation_uids
+        link = f"{e.link_type}{_lag_chip(e.lag_minutes, per_day)} {pred}→{succ}"
+        if e.kind == "logic_restored":
+            return f"link {link} — was present, now removed"
+        return f"link {link} — was absent, now added"
+    return "—"
+
+
+def _target_effect_html(e: ChangeEffect) -> str:
+    """The signed target-finish effect cell — EXACTLY the change-effects table's rendering
+    (whole days ``{:+d} wd``, a true sub-day mover as signed ``<1 wd``, else the muted
+    "no effect"), factored so the logic diagram and the table can never disagree."""
+    d = e.target_finish_delta_days
+    m = e.target_finish_delta_minutes or d  # minutes, falling back to days
+    cls = "fail" if m > 0 else "ok" if m < 0 else "muted"
+    if d:
+        return f"<b class={cls}>{d:+d} wd</b>"
+    if m:
+        # a true sub-day effect that rounds to 0 wd — signed, never "no effect"
+        return f"<b class={cls}>{'+' if m > 0 else '-'}&lt;1 wd</b>"
+    return "<span class=muted>no effect</span>"
+
+
+def _logic_changes_panel(
+    logic: list[ChangeEffect],
+    skipped_logic: int,
+    prior_sch: Schedule,
+    cur_sch: Schedule,
+    per_day: int,
+    pair_prov: str,
+    export_url: str,
+) -> str:
+    """The before→after logic diagram (operator 2026-08-08): every removed/added relationship
+    drawn predecessor —TYPE lag→ successor with UIDs AND names, which side of the pair carries
+    it, and the measured effect of reversing that one change on the target — the visual form of
+    the SAME engine rows the change-effects table measures (one truth, never a second diff)."""
+    if not logic and not skipped_logic:
+        return ""
+    prior_by = prior_sch.tasks_by_id
+    cur_by = cur_sch.tasks_by_id
+    n_rem = sum(1 for e in logic if e.kind == "logic_restored")
+    n_add = len(logic) - n_rem
+    rows = ""
+    for e in logic:
+        removed = e.kind == "logic_restored"
+        pred, succ = e.citation_uids[0], e.citation_uids[1]
+
+        def _node(uid: int, *, from_prior: bool) -> str:
+            # a removed link's endpoints may exist only in the BASELINE (that absence is the
+            # root cause this page now measures correctly) — name from the side that carries
+            # the link, falling back to the other side, else the bare UID.
+            primary = prior_by if from_prior else cur_by
+            fallback = cur_by if from_prior else prior_by
+            t = primary.get(uid) or fallback.get(uid)
+            name = f" &middot; {_e(t.name)}" if t is not None and t.name else ""
+            return f"<span class=logic-node data-no-i18n>UID {uid}{name}</span>"
+
+        cls = "removed" if removed else "added"
+        arrow_txt = _e(f"{e.link_type}{_lag_chip(e.lag_minutes, per_day)}")
+        tag = "removed in B" if removed else "added in B"
+        rows += (
+            f'<div class="logic-row {cls}">'
+            f"{_node(pred, from_prior=removed)}"
+            f'<span class="logic-arrow {cls}" data-no-i18n>&#8212;{arrow_txt}&#8212;&#9654;</span>'
+            f"{_node(succ, from_prior=removed)}"
+            f'<span class="logic-tag {cls}">{tag}</span>'
+            f"<span class=logic-effect>reverting: {_target_effect_html(e)} on target</span>"
+            "</div>"
+        )
+    skip_note = (
+        f"<p class=muted>{skipped_logic} further logic change(s) could not be individually "
+        "measured — each is named in the skipped list in the change-effects panel above.</p>"
+        if skipped_logic
+        else ""
+    )
+    head = _panel_head(
+        "Logic changes &mdash; before &rarr; after",
+        tools=_shell_tools(
+            export_title="Export the underlying change ledger (every change's was→now and "
+            "measured effect) — opens in Excel"
+        ),
+        prov=pair_prov,
+    )
+    take = (
+        f"{n_rem} relationship(s) removed and {n_add} added between A (baseline) and B "
+        "(comparison), each with its measured effect on the target."
+    )
+    return f"""
+<div class="panel logic-changes" data-export="{export_url}">{head}
+<p class=sf-take data-no-i18n>{_e(take)}</p>
+<p class=muted>Each row is one relationship drawn predecessor &rarr; successor (link type and
+lag on the arrow). A <b class=fail>struck red</b> row existed in A and is gone in B &mdash;
+reverting would restore it; a <b class=ok>green</b> row is new in B &mdash; reverting would
+remove it. The chip on the right is the engine-measured working-day movement of the target's
+finish if that one change were reversed.</p>
+<div class=logic-diagram>{rows}</div>{skip_note}</div>"""
 
 
 def _integrity_header(
@@ -166,6 +301,12 @@ def _integrity_body(
         tools=_shell_tools(),
         prov=pair_prov,
     )
+    # ONE export URL for the whole page (operator 2026-08-08): the existing findings endpoint,
+    # now carrying the chosen pair (a/b) so the workbook adds the underlying change ledger +
+    # logic changes for exactly this pair (legacy ?file= alone keeps the findings-only shape).
+    export_url = (
+        f"/export/xlsx/integrity?file={quote(labels[cur_idx], safe='')}&a={prior_idx}&b={cur_idx}"
+    )
     controls = f"""
 <div class=panel>{picker_head}<div class=integrity-file data-no-i18n>{_e(banner_name)}</div>
 <p class=muted>Every statement below is engine-computed and cited (file + UniqueID + task) —
@@ -176,7 +317,7 @@ confirm the change was authorized.</p>
 <form method=get action=/integrity class=viz-controls>
 {picker}
 <button type=submit>Apply</button>
-<a class=btn-link href="/export/xlsx/integrity?file={_e(labels[cur_idx])}">&#11015; Excel (all findings)</a>
+<a class=btn-link href="{export_url}">&#11015; Excel (findings + change ledger)</a>
 </form></div>"""
 
     sections: list[str] = []
@@ -315,8 +456,9 @@ figures are shown rather than a wrong figure.</p></div>"""
 measured individually — reverting any one alone reintroduces a logic cycle. (Currently
 {_e(eff.target_name)} finishes {_e(eff.actual_target_finish)}.)</p>{skip_note}</div>"""
             else:
+                per_day = current.calendar.working_minutes_per_day or 480
 
-                def _eff_rows(changes: list[ChangeEffect]) -> str:
+                def _eff_rows(changes: list[ChangeEffect], *, per_day: int = per_day) -> str:
                     out = ""
                     # sort by the EXACT minute effect so a real sub-day effect outranks a true
                     # zero (audit F1 — round() made both read "no effect" and sort together)
@@ -326,16 +468,7 @@ measured individually — reverting any one alone reintroduces a logic cycle. (C
                             -abs(ce.target_finish_delta_minutes or ce.target_finish_delta_days)
                         ),
                     ):
-                        d = e.target_finish_delta_days
-                        m = e.target_finish_delta_minutes or d  # minutes, falling back to days
-                        cls = "fail" if m > 0 else "ok" if m < 0 else "muted"
-                        if d:
-                            effect_txt = f"<b class={cls}>{d:+d} wd</b>"
-                        elif m:
-                            # a true sub-day effect that rounds to 0 wd — signed, never "no effect"
-                            effect_txt = f"<b class={cls}>{'+' if m > 0 else '-'}&lt;1 wd</b>"
-                        else:
-                            effect_txt = "<span class=muted>no effect</span>"
+                        effect_txt = _target_effect_html(e)
                         pd_ = e.project_finish_delta_days
                         pm = e.project_finish_delta_minutes or pd_
                         if pd_:
@@ -345,8 +478,12 @@ measured individually — reverting any one alone reintroduces a logic cycle. (C
                         else:
                             proj_txt = "0 wd"
                         cites = ", ".join(f"UID {u}" for u in e.citation_uids)
+                        # the was→now cell (operator 2026-08-08): the engine's structured
+                        # before→after specifics, next to the revert label they belong to
                         out += (
-                            f"<tr><td>{_e(e.label)}</td><td>{effect_txt}</td>"
+                            f"<tr><td>{_e(e.label)}</td>"
+                            f"<td class=was-now data-no-i18n>{_e(_was_now(e, per_day))}</td>"
+                            f"<td>{effect_txt}</td>"
                             f"<td>{proj_txt}</td>"
                             f"<td class=cite>{_e(cites)}</td></tr>"
                         )
@@ -389,6 +526,7 @@ measured individually — reverting any one alone reintroduces a logic cycle. (C
 artifact(s) &mdash; SNET stamped at the data date (click to expand)</summary>
 <p class=muted>{art_note}</p>
 <table class=integrity-table><tr><th scope=col>Change (reverted)</th>
+<th scope=col>Was &rarr; is now</th>
 <th scope=col>Effect on target finish</th><th scope=col>Effect on project finish</th>
 <th scope=col>Citations</th></tr>{_eff_rows(artifacts)}</table></details>"""
                 agg = eff.aggregate_target_finish_delta_days
@@ -421,6 +559,7 @@ artifact(s) &mdash; SNET stamped at the data date (click to expand)</summary>
                 )
                 main_table = (
                     "<table class=integrity-table><tr><th scope=col>Change (reverted)</th>"
+                    "<th scope=col>Was &rarr; is now</th>"
                     "<th scope=col>Effect on target finish</th>"
                     "<th scope=col>Effect on project finish</th>"
                     f"<th scope=col>Citations</th></tr>{eff_rows}</table>"
@@ -428,13 +567,39 @@ artifact(s) &mdash; SNET stamped at the data date (click to expand)</summary>
                     else "<p class=muted>Every change between these versions is an MS Project "
                     "reschedule artifact (see below).</p>"
                 )
+                # ⤓ EXCEL on this panel exports the UNDERLYING change ledger (operator
+                # 2026-08-08): the same per-change rows — was→now, exact minutes, effects —
+                # through the existing /export/{fmt}/integrity endpoint with the pair pinned.
                 effects_html = f"""
-<div class="panel change-effects">{_panel_head(f"Effect of each change on {tgt_label}", tools=_shell_tools(), prov=pair_prov)}
+<div class="panel change-effects" data-export="{export_url}">{_panel_head(f"Effect of each change on {tgt_label}", tools=_shell_tools(export_title="Export the underlying change ledger (every change's was→now and measured effect) — opens in Excel"), prov=pair_prov)}
 <p class=muted>For each change below, the tool reverts <b>only that change</b> on the later version
 and re-runs CPM. A <b class=fail>positive</b> value is the working-day slip the change
 <b>hid</b> from the target's finish (restoring it would push the finish out that far); a
 <b class=ok>negative</b> value means the change pushed the finish out.{agg_line}</p>{skip_note}
 {main_table}{artifact_html}</div>"""
+                # the before→after logic diagram (operator 2026-08-08) — built from the SAME
+                # measured rows (genuine, non-artifact), so diagram and table cannot disagree
+                logic_rows = [
+                    e
+                    for e in genuine
+                    if e.kind in ("logic_restored", "logic_dropped")
+                    and len(e.citation_uids) == 2
+                    and e.link_type  # no structure → no diagram row (the — rule, never "None")
+                ]
+                n_skipped_logic = sum(
+                    1
+                    for lbl in (*eff.skipped_unsolvable_labels, *eff.skipped_capped_labels)
+                    if " link " in lbl
+                )
+                effects_html += _logic_changes_panel(
+                    logic_rows,
+                    n_skipped_logic,
+                    prior,
+                    current,
+                    per_day,
+                    pair_prov,
+                    export_url,
+                )
         cf_html = ""
         try:
             cf = compute_path_counterfactual(prior, current, pcpm, ccpm, target_uid=target_uid)
@@ -493,14 +658,16 @@ finish would have been <b>{_e(cf.counterfactual_finish)}</b> instead of the repo
             find_take = "No manipulation-pattern findings between these two versions."
         # ⤓ EXCEL rides the EXISTING /export/xlsx/integrity endpoint (exactly these findings —
         # never a dead link); the table is its own data drawer, so no ▦ DATA (the /evm precedent).
+        # Since 2026-08-08 the page-level export_url pins the pair (a/b), so the workbook also
+        # carries the underlying change ledger + logic changes for exactly this pair.
         find_head = _panel_head(
             f"{_e(labels[i])} &rarr; {_e(labels[cur_i])}",
             tools=_shell_tools(
-                export_title="Export this pair's integrity findings — opens in Excel"
+                export_title="Export this pair's integrity findings + change ledger — opens "
+                "in Excel"
             ),
             prov=pair_prov,
         )
-        export_url = f"/export/xlsx/integrity?file={quote(labels[cur_i], safe='')}"
         sections.append(f"""
 <div class="panel verdict-band vb-stack {band_cls}" data-export="{export_url}">{find_head}
 <p class=sf-take data-no-i18n>{find_take}</p>
@@ -514,3 +681,202 @@ finish would have been <b>{_e(cf.counterfactual_finish)}</b> instead of the repo
             "<div class=panel><p class=muted>No version pair matches the selected file.</p></div>"
         )
     return header + controls + "".join(sections) + '\n<script src="/static/panelkit.js"></script>'
+
+
+def _ledger_was_now(e: ChangeEffect, per_day: int) -> tuple[str, str, str, str]:
+    """The (was, is-now, delta, % complete) EXPORT cells for one measured change — the same
+    structured engine fields the page's was→now column renders, split into columns an analyst
+    can sort/filter. A row the engine gave no structure for shows the — sentinel (Law 2:
+    missing shows —, never a fabricated figure)."""
+    if (
+        e.kind == "duration_restored"
+        and e.prior_duration_minutes is not None
+        and e.current_duration_minutes is not None
+    ):
+        delta = e.current_duration_minutes - e.prior_duration_minutes
+        delta_txt = f"{'+' if delta > 0 else '-'}{_wd_text(abs(delta), per_day)} wd"
+        pct = f"{e.percent_complete:g}%" if e.percent_complete is not None else "—"
+        return (
+            f"{_wd_text(e.prior_duration_minutes, per_day)} wd",
+            f"{_wd_text(e.current_duration_minutes, per_day)} wd",
+            delta_txt,
+            pct,
+        )
+    if e.kind == "constraint_restored" and e.prior_constraint and e.current_constraint:
+        pct = f"{e.percent_complete:g}%" if e.percent_complete is not None else "—"
+        return (e.prior_constraint, e.current_constraint, "—", pct)
+    if e.kind in ("logic_restored", "logic_dropped") and len(e.citation_uids) == 2 and e.link_type:
+        link = (
+            f"{e.link_type}{_lag_chip(e.lag_minutes, per_day)} "
+            f"{e.citation_uids[0]}→{e.citation_uids[1]}"
+        )
+        if e.kind == "logic_restored":
+            return (f"link {link}", "removed", "—", "—")
+        return ("no link", f"link {link} added", "—", "—")
+    return ("—", "—", "—", "—")
+
+
+def _integrity_ledger_tables(
+    prior: Schedule,
+    current: Schedule,
+    current_cpm: CPMResult,
+    target_uid: int | None,
+) -> tuple[Table, ...]:
+    """The underlying change-ledger tables for ONE chosen pair (operator 2026-08-08): every
+    measured change with its was→now specifics, exact minute deltas and per-change effects on
+    the chosen target and the project finish; every skipped revert NAMED (never count-only);
+    the aggregate line when the joint re-solve succeeded; and the logic changes as their own
+    sheet. Engine truth only — the same ``compute_change_effects`` call the page renders, so
+    workbook and page can never disagree."""
+    try:
+        eff = compute_change_effects(prior, current, current_cpm, target_uid=target_uid)
+    except (CPMError, ValueError, KeyError) as exc:
+        logging.getLogger("schedule_forensics").warning("ledger export failed: %s", exc)
+        eff = None
+    if eff is None:
+        return (Table("Change ledger", ("Note",), (("No changes detected between this pair.",),)),)
+    if eff.target_unavailable:
+        note = (
+            f"The chosen focus activity UID {eff.target_uid} does not resolve to a scheduled "
+            "activity in the comparison version — no change effects were measured (no figure "
+            "is exported rather than a wrong one). Pick a different focus, or clear it."
+        )
+        return (Table("Change ledger", ("Note",), ((note,),)),)
+    per_day = current.calendar.working_minutes_per_day or 480
+    tgt = f"UID {eff.target_uid} ({eff.target_name})" + (
+        " — last task on the critical path" if eff.target_is_last_critical else ""
+    )
+    headers = (
+        "Kind",
+        "Change (reverted)",
+        "Was",
+        "Is now",
+        "Delta",
+        "% complete",
+        f"Effect on target {tgt} (wd)",
+        "Effect on target (working min)",
+        "Effect on project finish (wd)",
+        "Effect on project finish (working min)",
+        "MS Project reschedule artifact",
+        "Citations (UniqueID)",
+    )
+    rows: list[tuple[Cell, ...]] = []
+    ordered = sorted(
+        eff.per_change,
+        key=lambda ce: -abs(ce.target_finish_delta_minutes or ce.target_finish_delta_days),
+    )
+    for e in ordered:
+        was, now, delta, pct = _ledger_was_now(e, per_day)
+        rows.append(
+            (
+                e.kind,
+                e.label,
+                was,
+                now,
+                delta,
+                pct,
+                e.target_finish_delta_days,
+                e.target_finish_delta_minutes,
+                e.project_finish_delta_days,
+                e.project_finish_delta_minutes,
+                "yes" if e.is_reschedule_artifact else "",
+                ", ".join(str(u) for u in e.citation_uids),
+            )
+        )
+    if eff.per_change and eff.aggregate_solved:
+        partial = bool(eff.skipped_unsolvable or eff.skipped_capped)
+        agg_label = f"ALL {len(eff.per_change)} MEASURED CHANGE(S) REVERTED TOGETHER" + (
+            " (skipped changes excluded)" if partial else ""
+        )
+        rows.append(
+            (
+                "aggregate",
+                agg_label,
+                "—",
+                "—",
+                "—",
+                "—",
+                eff.aggregate_target_finish_delta_days,
+                eff.aggregate_target_finish_delta_minutes,
+                eff.aggregate_project_finish_delta_days,
+                eff.aggregate_project_finish_delta_minutes,
+                "",
+                "",
+            )
+        )
+    for lbl in eff.skipped_unsolvable_labels:
+        rows.append(
+            (
+                "skipped — cyclic revert (unmeasurable)",
+                lbl,
+                "—",
+                "—",
+                "—",
+                "—",
+                None,
+                None,
+                None,
+                None,
+                "",
+                "",
+            )
+        )
+    for lbl in eff.skipped_capped_labels:
+        rows.append(
+            (
+                "skipped — beyond measurement cap",
+                lbl,
+                "—",
+                "—",
+                "—",
+                "—",
+                None,
+                None,
+                None,
+                None,
+                "",
+                "",
+            )
+        )
+    ledger = Table("Change ledger", headers, tuple(rows))
+
+    logic_headers = (
+        "Change",
+        "Predecessor UID",
+        "Predecessor name",
+        "Link",
+        "Lag",
+        "Successor UID",
+        "Successor name",
+        "Effect on target (wd)",
+        "Effect on target (working min)",
+        "Effect on project finish (wd)",
+    )
+    prior_by = prior.tasks_by_id
+    cur_by = current.tasks_by_id
+    logic_rows: list[tuple[Cell, ...]] = []
+    for e in ordered:
+        if e.kind not in ("logic_restored", "logic_dropped") or len(e.citation_uids) != 2:
+            continue
+        removed = e.kind == "logic_restored"
+        pred, succ = e.citation_uids[0], e.citation_uids[1]
+        primary, fallback = (prior_by, cur_by) if removed else (cur_by, prior_by)
+        p_t = primary.get(pred) or fallback.get(pred)
+        s_t = primary.get(succ) or fallback.get(succ)
+        logic_rows.append(
+            (
+                "removed in comparison" if removed else "added in comparison",
+                pred,
+                p_t.name if p_t is not None else "—",
+                e.link_type or "—",
+                _lag_chip(e.lag_minutes, per_day).strip() or "0d",
+                succ,
+                s_t.name if s_t is not None else "—",
+                e.target_finish_delta_days,
+                e.target_finish_delta_minutes,
+                e.project_finish_delta_days,
+            )
+        )
+    if logic_rows:
+        return (ledger, Table("Logic changes", logic_headers, tuple(logic_rows)))
+    return (ledger,)

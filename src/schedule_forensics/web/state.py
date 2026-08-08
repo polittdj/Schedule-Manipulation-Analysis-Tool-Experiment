@@ -572,6 +572,9 @@ class SessionState:
     # schedule keeps one identity across a request and the analysis cache below still hits. Cleared
     # whenever the filter changes (set_filter) or the session is wiped.
     _scoped: dict[int, tuple[Schedule, Schedule]] = field(default_factory=dict)
+    # the PAIR-scope twin of `_scoped` (operator 2026-08-08): filter-only, never target-truncated
+    # (see scope_pair). Same identity contract; cleared wherever `_scoped` is.
+    _pair_scoped: dict[int, tuple[Schedule, Schedule]] = field(default_factory=dict)
     # --- feature #10: session-wide SAVED (MS Project) filters & groups + HIGHLIGHT mode ----------
     # The session-wide SAVED FILTER — a faithful MS Project criteria tree (the reproduction
     # counterpart of the flat, field-based `active_filter` above). MUTUALLY EXCLUSIVE with it:
@@ -777,6 +780,37 @@ class SessionState:
             self._scoped[id(sch)] = (sch, scoped)
             return scoped
 
+    def scope_pair(self, sch: Schedule) -> Schedule:
+        """``sch`` reduced to the active filter ONLY — never truncated to the Target UID.
+
+        Version-PAIR forensics (/integrity's diff + findings + per-change counterfactuals, their
+        export, and the AI manipulation facts) must diff the two versions' REAL networks. The
+        Target-UID truncation keeps each version's ancestors-of-target under that version's OWN
+        logic, so the truncated populations differ wherever the changes themselves rewired the
+        cone: the diff then reads cone membership as file changes (fabricated added/removed
+        tasks and links), and restoring a genuinely-removed link whose predecessor chain left
+        the current cone dangles into a missing task — CPM drops the dangling edge and the
+        revert measures a false "no effect" (the 2026-08-08 operator report). The target still
+        reaches those engines — as the MEASUREMENT ANCHOR (``target_uid=``), never as a
+        population cut. The filter branch is ``scope()``'s own, verbatim; memoised in
+        ``_pair_scoped`` under the same identity contract as ``_scoped``."""
+        with self._lock:
+            matched = self._match_uids(sch)
+            reducing = matched is not None and self.filter_mode == "reduce"
+            if not reducing:
+                return sch  # only the target could narrow, and pair scope never applies it
+            cached = self._pair_scoped.get(id(sch))
+            if cached is not None and cached[0] is sch:
+                return cached[1]
+            kept = matched if matched is not None else frozenset()
+            if self.active_saved_filter is not None and (
+                self.active_saved_filter.show_related_summary_rows
+            ):
+                kept = with_ancestors(sch, kept)
+            scoped = filter_to_uids(sch, kept)
+            self._pair_scoped[id(sch)] = (sch, scoped)
+            return scoped
+
     def highlight_uids(self, sch: Schedule) -> frozenset[int] | None:
         """When a filter is active in **highlight** mode, the UIDs of ``sch``'s matching tasks (to
         shade rows / outline bars). ``None`` when no filter is active or the mode is ``reduce`` —
@@ -786,7 +820,7 @@ class SessionState:
                 return None
             return self._match_uids(sch)
 
-    def _scope_signature(self) -> str:
+    def _scope_signature(self, *, include_target: bool = True) -> str:
         """Canonical token for everything that can change an analysis POPULATION (ADR-0261 P1).
 
         ``""`` when nothing narrows — the default epoch, whose cache keys stay the bare session
@@ -796,7 +830,13 @@ class SessionState:
         canonical dump + the operator's prompt answers, or the flat criteria tuple's repr; the
         Target UID contributes whenever set. Always the FULL canonical text, never a hash — a
         hash collision could serve a wrong number, so there is nothing to collide. Callers hold
-        ``self._lock``."""
+        ``self._lock``.
+
+        ``include_target=False`` yields the PAIR epoch (operator 2026-08-08): the signature
+        :meth:`scope_pair` populations live under — identical to the full signature whenever no
+        target is set, so the pair epoch shares those cache entries instead of duplicating
+        them, and setting a target leaves the pair epoch key (and its resident full-network
+        solves) untouched."""
         parts: list[str] = []
         if self.filter_mode == "reduce":
             if self.active_saved_filter is not None:
@@ -806,7 +846,7 @@ class SessionState:
                     parts.append("P=" + repr(prompts))
             elif self.active_filter:
                 parts.append("F=" + repr(self.active_filter))
-        if self.target_uid is not None:
+        if include_target and self.target_uid is not None:
             parts.append(f"T={self.target_uid}")
         # DCMA Acumen parity mode (ADR-0280): contributes only when ENABLED, so the default epoch's
         # key shape is byte-identical to before — an analysis's audit differs under this flag, so it
@@ -837,6 +877,7 @@ class SessionState:
         different population ⇒ a different signature ⇒ a different cache key (proven by
         tests/web/test_scope_epoch_cache.py). A wipe still clears everything explicitly."""
         self._scoped.clear()
+        self._pair_scoped.clear()  # the pair twin follows `_scoped` everywhere (2026-08-08)
         self._matched.clear()
         self._perf_memo.clear()  # identity-keyed (P3): must never outlive the scope epoch
         self._scope_gen += 1  # ADR-0263: a store computed under the old epoch must be skipped
@@ -1262,6 +1303,45 @@ class SessionState:
                 ck = self._cache_key(key, self._scope_signature())
                 gen = self.wipe_gen
                 scoped = self.scope(sch)
+                pre = self.cpms.get_lru(ck)
+                if pre is not None and pre[0] is sch:
+                    return scoped, pre[1]  # a prior stripe holder already solved this epoch
+                full = self.analyses.get_lru(ck)
+                if full is not None and full[0] is sch:
+                    self.cpms.put(ck, (sch, full[1].cpm))
+                    return scoped, full[1].cpm
+            cpm = compute_cpm(scoped)
+            with self._lock:
+                if self.wipe_gen == gen:  # ADR-0263: never re-populate a wiped session
+                    self.cpms.put(ck, (sch, cpm))
+            return scoped, cpm
+
+    def cpm_pair_for(self, key: str, sch: Schedule) -> tuple[Schedule, CPMResult]:
+        """The ``(pair-scoped schedule, CPM solve)`` pair for ``key`` — the Target-UID
+        truncation EXCLUDED (operator 2026-08-08; :meth:`scope_pair` states why the truncated
+        pair fabricates diffs and measures false "no effect" reverts).
+
+        Same one-lock-window consistency (ADR-0263) and stripe single-flight (ADR-0281) as
+        :meth:`cpm_scoped_for`, keyed by the PAIR epoch (``_scope_signature(include_target=
+        False)``): with no target set the key — and therefore the cache entry — is byte-
+        identical to :meth:`cpm_scoped_for`'s, and with a target set it re-serves the resident
+        full-population solves from before the target was chosen instead of re-solving."""
+        with self._lock:  # fast path: a resident solve (or a resident full analysis') — no stripe
+            ck = self._cache_key(key, self._scope_signature(include_target=False))
+            scoped = self.scope_pair(sch)
+            pre = self.cpms.get_lru(ck)
+            if pre is not None and pre[0] is sch:
+                return scoped, pre[1]
+            full = self.analyses.get_lru(ck)
+            if full is not None and full[0] is sch:
+                self.cpms.put(ck, (sch, full[1].cpm))
+                return scoped, full[1].cpm
+        # miss: single-flight the solve on the key's stripe (taken OUTSIDE _lock — stripe → _lock)
+        with self._stripe_for(ck):
+            with self._lock:
+                ck = self._cache_key(key, self._scope_signature(include_target=False))
+                gen = self.wipe_gen
+                scoped = self.scope_pair(sch)
                 pre = self.cpms.get_lru(ck)
                 if pre is not None and pre[0] is sch:
                     return scoped, pre[1]  # a prior stripe holder already solved this epoch

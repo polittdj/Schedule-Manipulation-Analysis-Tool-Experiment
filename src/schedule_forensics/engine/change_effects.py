@@ -52,6 +52,21 @@ class ChangeEffect:
     #: real file differences (never dropped), but the UI clusters them under an explanatory
     #: label so dozens of tool-generated rows don't read as deliberate manual constraint edits.
     is_reschedule_artifact: bool = False
+    #: Structured before→after specifics (operator 2026-08-08): the page's was→now column, the
+    #: logic-change visual and the change-ledger export read THESE — never re-parse the label.
+    #: ``None`` when a field does not apply to the kind. logic_* kinds: ``citation_uids`` is
+    #: (predecessor, successor) and link_type / lag_minutes are set. duration_restored: the
+    #: exact minute pair (prior = what the duration WAS, current = what it is NOW) plus the
+    #: current task's percent complete. constraint_restored: the two constraint descriptors
+    #: ("SNET 2026-07-31" form) plus percent complete. Computed, never persisted (no schema
+    #: change), and every field defaults so existing constructions are untouched.
+    link_type: str | None = None
+    lag_minutes: int | None = None
+    prior_duration_minutes: int | None = None
+    current_duration_minutes: int | None = None
+    prior_constraint: str | None = None
+    current_constraint: str | None = None
+    percent_complete: float | None = None
 
 
 #: Cap on the number of changes reverted individually (each revert = one full CPM pass). A huge
@@ -235,6 +250,13 @@ def compute_change_effects(
         agg_next: Schedule,
         *,
         is_artifact: bool = False,
+        link_type: str | None = None,
+        lag_minutes: int | None = None,
+        prior_duration_minutes: int | None = None,
+        current_duration_minutes: int | None = None,
+        prior_constraint: str | None = None,
+        current_constraint: str | None = None,
+        percent_complete: float | None = None,
     ) -> Schedule:
         """Measure ONE reverted change; return the aggregate to carry forward.
 
@@ -269,6 +291,13 @@ def compute_change_effects(
                 target_finish_delta_minutes=tgt_minutes,
                 project_finish_delta_minutes=proj_minutes,
                 is_reschedule_artifact=is_artifact,
+                link_type=link_type,
+                lag_minutes=lag_minutes,
+                prior_duration_minutes=prior_duration_minutes,
+                current_duration_minutes=current_duration_minutes,
+                prior_constraint=prior_constraint,
+                current_constraint=current_constraint,
+                percent_complete=percent_complete,
             )
         )
         return agg_next
@@ -294,6 +323,8 @@ def compute_change_effects(
             (pred, succ),
             _with_link_restored(current, link),
             _with_link_restored(aggregate, link),
+            link_type=key[2].value,
+            lag_minutes=key[3],
         )
 
     # 2. added logic links (in current, not prior) → drop each
@@ -307,13 +338,15 @@ def compute_change_effects(
             (pred, succ),
             _with_link_dropped(current, key),
             _with_link_dropped(aggregate, key),
+            link_type=key[2].value,
+            lag_minutes=key[3],
         )
 
     # 3. duration / constraint changes on activities present in both versions → restore prior
     # value. Reschedule-ARTIFACT constraint reverts are deferred to run AFTER every real change
     # (see below): on a pair large enough to hit the measurement cap, the cap must starve the
     # statusing noise, never a deliberate edit.
-    deferred_artifacts: list[tuple[int, str, dict[str, object]]] = []
+    deferred_artifacts: list[tuple[int, str, dict[str, object], str, str, float]] = []
     for td in diff.changed_tasks:
         uid = td.unique_id
         prior_t = prior_by_id.get(uid)
@@ -341,6 +374,9 @@ def compute_change_effects(
                 (uid,),
                 _with_task_field(current, uid, upd),
                 _with_task_field(aggregate, uid, upd),
+                prior_duration_minutes=prior_t.duration_minutes,
+                current_duration_minutes=cur_t.duration_minutes,
+                percent_complete=cur_t.percent_complete,
             )
         # a DATE-only constraint move (same type, new date) is just as real as a type flip —
         # e.g. MS Project re-stamping an existing SNET at a new data date — so trigger on either
@@ -376,8 +412,12 @@ def compute_change_effects(
                 "constraint_type": prior_t.constraint_type,
                 "constraint_date": prior_t.constraint_date,
             }
+            was_desc = _con_desc(prior_t.constraint_type, prior_t.constraint_date)
+            now_desc = _con_desc(cur_t.constraint_type, cur_t.constraint_date)
             if is_artifact:
-                deferred_artifacts.append((uid, label, update))
+                deferred_artifacts.append(
+                    (uid, label, update, was_desc, now_desc, cur_t.percent_complete)
+                )
             else:
                 aggregate = _try_revert(
                     "constraint_restored",
@@ -385,11 +425,14 @@ def compute_change_effects(
                     (uid,),
                     _with_task_field(current, uid, update),
                     _with_task_field(aggregate, uid, update),
+                    prior_constraint=was_desc,
+                    current_constraint=now_desc,
+                    percent_complete=cur_t.percent_complete,
                 )
 
     # 4. the deferred reschedule-artifact constraint reverts — measured last, so on a capped pair
     # the unmeasured remainder is the zero-effect statusing noise, not the deliberate changes.
-    for uid, label, update in deferred_artifacts:
+    for uid, label, update, was_desc, now_desc, pct in deferred_artifacts:
         aggregate = _try_revert(
             "constraint_restored",
             label,
@@ -397,6 +440,9 @@ def compute_change_effects(
             _with_task_field(current, uid, update),
             _with_task_field(aggregate, uid, update),
             is_artifact=True,
+            prior_constraint=was_desc,
+            current_constraint=now_desc,
+            percent_complete=pct,
         )
 
     # Nothing to say ONLY when no change was detected at all. If changes WERE detected but every

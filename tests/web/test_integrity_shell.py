@@ -99,15 +99,18 @@ def test_integrity_panels_wear_the_contract_shells(page: str) -> None:
         "<div class=panel-head><h2>Version pair &mdash; baseline (A) vs comparison (B)</h2>" in page
     )
     assert "Baseline (A)" in page and "Comparison (B)" in page
-    # findings / effects / counterfactual shells
+    # findings / effects / logic-diagram / counterfactual shells (the change-effects panel
+    # carries data-export since 2026-08-08 — its ⤓ EXCEL serves the underlying change ledger)
     assert re.search(r"<div class=panel-head><h2>[^<]*&rarr;[^<]*</h2>", page)
-    assert '<div class="panel change-effects"><div class=panel-head>' in page
+    assert '<div class="panel change-effects" data-export=' in page
     assert "Effect of each change on" in page
+    assert '<div class="panel logic-changes" data-export=' in page
+    assert "Logic changes &mdash; before &rarr; after" in page
     assert '<div class="panel counterfactual"><div class=panel-head>' in page
     assert "Counterfactual — without these changes" in page
     # the 'A vs B' pair provenance chip on every shelled panel (i18n-inert)
     chips = re.findall(r"<span class=prov-chip data-no-i18n>v1→v3 · SOURCE: ", page)
-    assert len(chips) == 4, f"expected 4 pair chips, found {len(chips)}"
+    assert len(chips) == 5, f"expected 5 pair chips, found {len(chips)}"
     # the toolbar behavior script actually ships on THIS page (per-page include)
     assert "/static/panelkit.js" in page
 
@@ -125,17 +128,19 @@ def test_integrity_findings_panel_wears_the_verdict_wash(page: str) -> None:
 
 def test_integrity_toolbar_excel_targets_are_live(page: str) -> None:
     """⤓ EXCEL only where an EXISTING endpoint serves the data — every target answers 200;
-    the tables are their own data drawer, so no ▦ DATA (the /evm precedent)."""
+    the tables are their own data drawer, so no ▦ DATA (the /evm precedent). Since 2026-08-08
+    the findings, change-effects and logic-diagram panels all export — one shared URL that
+    pins the pair (a/b), so the workbook carries the underlying change ledger too."""
     assert "▦ DATA" not in page
-    assert page.count("⛶ ENLARGE") == 4
-    assert page.count("⤓ EXCEL") == 1  # only the findings panel has a live per-panel export
+    assert page.count("⛶ ENLARGE") == 5  # + the logic-changes diagram panel (2026-08-08)
+    assert page.count("⤓ EXCEL") == 3  # findings + change-effects + logic diagram
     urls = set(re.findall(r'data-export="([^"]+)"', page))
-    assert urls == {"/export/xlsx/integrity?file=Project5.mpp.xml"}
+    assert urls == {"/export/xlsx/integrity?file=Project5.mpp.xml&a=0&b=2"}
     c = _client()
     for url in urls:
         assert c.get(url).status_code == 200, url
-    # the legacy Excel (all findings) link is kept — nothing removed
-    assert "Excel (all findings)" in page
+    # the picker's Excel link is kept — now naming the ledger it carries
+    assert "Excel (findings + change ledger)" in page
 
 
 def test_integrity_drill_json_script_tag_is_untouched(page: str) -> None:

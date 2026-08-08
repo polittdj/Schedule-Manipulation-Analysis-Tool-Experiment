@@ -435,6 +435,39 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-08 (b) — one session knob, two semantics: the population cut silently redefined the measurement; and a test whose setup can 405 tests nothing
+
+- The Target UID means BOTH "truncate every view to my driving sub-network" (ADR-0268) and
+  "measure the counterfactual on me" (`compute_change_effects(target_uid=)`). On /integrity
+  both landed at once — and the truncation derives from each version's OWN logic, i.e. from the
+  very network the diffed changes rewire, so the pair diff compared two different cones as the
+  files: a restored link dangled into a missing predecessor (false "no effect"), cone-membership
+  changes read as file changes (fabricated rows), and out-of-cone edits vanished. **Lesson:
+  version-PAIR analytics must never inherit a population cut derived from the thing being
+  diffed; when one session knob feeds two semantics, enumerate every page where both land and
+  look for the collision.** (ADR-0370: `scope_pair` / `cpm_pair_for` / `_pair_versions`.)
+- The only "target set" /integrity tests called `GET /target` — a POST-only route. The 405 was
+  swallowed, the target stayed unset, and the "+21 wd" pin passed for its whole life on the
+  NO-target path (the auto-target happened to be 155). The operator found in production what CI
+  structurally could not see. **Lesson: a test whose setup step can fail silently is not
+  testing what its name says — assert the setup took** (the repaired tests assert the 303 /
+  the rendered banner).
+- Keying the new pair epoch as the TARGET-LESS scope signature made the fix ~free: with no
+  target set the pair cache IS the ordinary cache (byte-identical keys), and setting a target
+  re-serves the resident full-network solves. **Design a new cache epoch as a projection of the
+  existing one before minting a second cache.**
+- The M2 mutation script asserted its expected needle counts, found (2,2) instead of the
+  predicted (3,3), and refused to write — the following "10 passed" run was correctly discarded
+  as unmutated-tree noise. **Put the landed-count assert INSIDE the mutation script, before the
+  write** — it converts "verify the mutation landed" from a discipline into a mechanism.
+- `_parse_uid` maps 0 → "clear focus", so the project-summary row (UID 0) cannot be set as the
+  target via the form — a test wanting "summary as target" must derive a real ≥ 1 summary UID
+  from the fixture.
+- With playwright freshly installed, five browser tests failed that NO CI job runs — and all
+  five **reproduced identically on a pristine origin/main worktree** (pip -e re-pointed there
+  and back), while the float-tip flake passed there. **A pristine-tree control is the cheap,
+  decisive adjudicator for "my diff or the environment?" — one worktree, two pip -e flips.**
+
 ### 2026-08-08 — a revert that changes nothing "passes"; a dedupe makes a stale-memo test wrong; exactly-half rounds to even
 
 - Proving the ADR-0369 qa guard able to fail, the mutation script spliced with

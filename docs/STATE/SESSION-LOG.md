@@ -12246,3 +12246,52 @@ deliberately replaced with the disclosed sentinel (the targeted sweep missed tha
 full suite exists for exactly this). Test updated to pin the sentinel; re-run tail on the PR. Docs: handoff rotated (2026-08-07 triple
 session → archive top), this entry, LESSONS-LEARNED 2026-08-08 entry, NEXT-SESSION-PROMPT
 refreshed to mission 304 + standing queue.
+
+## 2026-08-08 (b) — branch `claude/polaris-schedule-tool-resume-wm2ipt` — the target-UID /integrity root cause; pair scope; was→now + logic diagram + change-ledger export (ADR-0370, v1.0.178)
+
+Operator report: with a focus Target UID selected, /integrity's "effect of each change if
+reversed to that UID" was wrong. Root cause: the ADR-0268 target truncation — `scope()` reduces
+EVERY version to `subschedule_to_target` (the target's ancestors under THAT version's own
+logic) — fed /integrity two differently-truncated cones as if they were the files. Three lies,
+all demonstrated by the new truncated-pair POSITIVE CONTROL: a restored link whose predecessor
+left the comparison cone dangles (cpm.py drops half-dangling edges) and measures a false
+"no effect" (true +7 wd read 0); links/tasks present in both real files read as removed/added
+(fabricated rows); edits outside the cone are invisible (the duration cut vanished). Undetected
+for its whole life because the only "target set" tests called GET on the POST-only /target —
+silent 405, target never set, pins rode the no-target path (the queued "3 web tests calling
+GET /target" item; all three now POST and assert the 303/banner).
+
+Fix (ADR-0370): the target's two meanings separated — pair forensics (/integrity page,
+/export/{fmt}/integrity, both ai/qa manipulation-facts call sites) run on new
+`SessionState.scope_pair` / `cpm_pair_for` / app `_pair_versions()`: the reduce-filter still
+applies, the target never truncates, the target anchors the measurement. Pair epoch =
+target-less scope signature ⇒ shared cache entries; setting a target re-serves resident solves.
+Same session, the operator's detail asks: structured `ChangeEffect` before→after fields
+(computed, never persisted; SCHEMA 2.11.0); the "Was → is now" column ("was 5 wd → now 3 wd
+(-2 wd removed; 0% complete)"); `_shortened_durations` + both logic findings name each
+cut/link (first 6 + counted remainder); the "Logic changes — before → after" diagram panel
+(pred —TYPE lag—▶ succ with names, struck-red removed / green added, measured effect chip;
+tokens-only, 4-theme chromium-measured); ⤓ EXCEL on all three panels → "Change ledger" +
+"Logic changes" sheets on /export/{fmt}/integrity?a=&b= (wd AND exact minutes, % complete,
+artifact flag, aggregate row, skipped reverts NAMED; legacy no-a/b keeps the findings-only
+shape).
+
+Verified: tests/web/test_integrity_target_scope.py (10 — the control pair's target/project
+effects DIFFER: link +7/+1 wd, duration 0/+2 wd, aggregate +9/+3 wd, so a wrong-network
+measurement cannot coincide) + tests/web/test_integrity_logic_diagram_chromium.py (4 themes,
+computed style). Mutation matrix all NARROW + NAMED: route→_solvable_versions 3 fails ·
+cpm_pair_for→full scope 5 · generic detail 1 · link_type unpopulated 3; tree restored
+byte-identical (cmp ×5). Statics green (python -m ruff 0.16.1 whole tree · format · mypy
+strict 125 · bandit 0 · node per file). Full suite first run **12 failed / 3606 passed /
+3 skipped (28:15)**: 4 installer-lockstep (pre-rebuild, the guard doing its job) + 1
+state-docs (pre-rotation, ditto) + 1 REAL (integrity.py's new names not re-exported by
+web.app — fixed, monolith contract 21/21) + 6 playwright-only tests NO CI job runs, all
+**reproduced identically on a pristine origin/main worktree** (blob-URL download reporting on
+/trend /curves /scurve /cei + the SRA single-bin histogram caption contrast; the float-tip
+flake passed on the pristine re-run) — pre-existing/environmental, adjudicated by control,
+not chased. Wheel + nine installers rebuilt at v1.0.178 after the last code change (lockstep
+56/56). Parity gate **52 passed / 0 failed (10:36)** on the final tree. Docs: handoff rotated (four-P0s
+section → archive top), this entry, LESSONS-LEARNED 2026-08-08 (b) entry, NEXT-SESSION-PROMPT
+refreshed. Queued new: /compare · trend.py:162 · evolution.py:505 + app.py's other
+detect_manipulation/path_counterfactual sites (same exposure class); the reduce-filter
+pair-diff caveat (documented in ADR-0370).

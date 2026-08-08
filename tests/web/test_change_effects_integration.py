@@ -45,9 +45,10 @@ def test_integrity_shows_per_change_effect_on_the_target(client: TestClient) -> 
 
 
 def test_ai_facts_carry_the_computed_counterfactual_not_zero(client: TestClient) -> None:
-    # target UID 155 set → the Ask-the-AI fact base gets the engine-computed effect, so the model
-    # can no longer answer "zero effect" for the 188→187 logic change.
-    client.get("/target?uid=155")
+    # target UID 155 set (POST — /target is POST-only; the old GET was a silent 405) → the
+    # Ask-the-AI fact base gets the engine-computed effect, so the model can no longer answer
+    # "zero effect" for the 188→187 logic change.
+    client.post("/target", data={"uid": "155", "next_url": "/"})
     from schedule_forensics.ai.qa import manipulation_forensics_facts
     from schedule_forensics.engine.cpm import compute_cpm
 

@@ -1141,3 +1141,22 @@ tr.row-found td.sf-frozen-col { background: #fff3b0; }
 .evo-grid tbody tr { cursor: pointer; }
 .evo-durbadge { position: absolute; top: 1px; font-size: 11px; color: var(--warn); pointer-events: none; }
 .evo-why { font-size: 11px; white-space: nowrap; }
+/* Logic-change before→after diagram (/integrity, operator 2026-08-08): each removed/added
+   relationship as predecessor —TYPE lag—▶ successor with the measured revert effect. Removed
+   links strike red (--bad), added links read green (--ok). Tokens-only, all 4 themes; rows wrap
+   on narrow shells so the effect chip never forces a horizontal scroll. */
+.logic-diagram { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.logic-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); }
+.logic-row.removed { border-color: color-mix(in srgb, var(--bad) 55%, var(--line)); }
+.logic-row.added { border-color: color-mix(in srgb, var(--ok) 55%, var(--line)); }
+.logic-node { border: 1px solid var(--border); border-radius: 4px; padding: 2px 8px;
+  background: var(--field-bg); color: var(--ink); }
+.logic-arrow { font-weight: 600; letter-spacing: .04em; white-space: nowrap; }
+.logic-arrow.removed { color: var(--bad); text-decoration: line-through; }
+.logic-arrow.added { color: var(--ok); }
+.logic-tag { font-size: .78em; border-radius: 3px; padding: 1px 6px; text-transform: uppercase;
+  letter-spacing: .06em; white-space: nowrap; }
+.logic-tag.removed { color: var(--bad); background: var(--bad-bg); }
+.logic-tag.added { color: var(--ok); background: var(--ok-bg); }
+.logic-effect { margin-left: auto; white-space: nowrap; color: var(--muted); }

@@ -1,103 +1,85 @@
-# Handoff — 2026-08-08 (the 2026-08-07 audit's four P0s landed: sub-day fidelity · parity F5 adjudicated · briefing memo · integrity disclosure; ADR-0366..0369; v1.0.177)
+# Handoff — 2026-08-08 (the target-UID /integrity root cause fixed: pair scope; was→now, logic diagram, change-ledger export; ADR-0370; v1.0.178)
 
-> ## STATUS (current) — **pushed, draft PR open** on `claude/polaris-schedule-tool-resume-u67l5w`
-> (branched from `main` dbcc8d2 after #553 squash-merged 22:57Z). **Shipped code changed** —
-> version bumped **v1.0.176 → v1.0.177** BEFORE the suite; wheel + nine installers rebuilt once
-> after the last code change (SCHEMA stays 2.11.0 — the new engine fields are computed, never
-> persisted). Highest ADR now **ADR-0369**. All four audit P0s landed, every new guard
-> mutation-proven able to fail with a NARROW, NAMED failure set and green twins:
+> ## STATUS (current) — **pushed, draft PR open** on `claude/polaris-schedule-tool-resume-wm2ipt`
+> (branched from `main` 3de301f after #554 squash-merged). **Shipped code changed** — version
+> bumped **v1.0.177 → v1.0.178** BEFORE the suite; wheel + nine installers rebuilt once after
+> the last code change (SCHEMA stays 2.11.0 — the new ChangeEffect fields are computed, never
+> persisted). Highest ADR now **ADR-0370**.
 >
-> 1. **Sub-day effects (F1/F7, ADR-0366).** `ChangeEffect`/`ChangeEffectsReport` carry exact
-> `*_minutes` fields; the int-day fields are untouched and their legacy round-half-even is now
-> itself PINNED (60/235/240 → 0 — 240 is exactly half a day and banker's sends it to 0 — and
-> 241 → 1). /integrity renders signed `+<1 wd` / `-<1 wd` (rows sort by minutes; the artifact
-> "N of M have no effect" counts by minutes; aggregate `+<1 working day`); the duration label
-> renders "cut 0.12→0.5 wd (60→240 min)" and a sub-day lag "(lag +0.5d / +240 min)" — every
-> whole-day label byte-identical to before; the qa fact says "less than one working day
-> LATER/EARLIER", never "no effect", for a real sub-day mover. Golden pins hold unchanged
-> ("+21 wd", "33 of 33 have no effect"). Four reverts → 5/3/2/1 named failures.
-> 2. **Parity milestone population (F5, ADR-0367) — CODE CONFIRMED CORRECT; the docstrings were
-> the defect.** AFT verbatim: DCMA "1. Logic" = `IncludeMilestone=true` PLUS FilterExpression
-> `Baseline Duration GreaterThan 0` (second copy adds `EV Method NotEqual LOE Value`); the
-> NASA-lib "Missing Logic" family = `IncludeMilestone=true` with an EMPTY FilterExpressions.
-> The audit's TP4 row was a CROSS-METRIC comparison: schedule_quality/ribbon mirrors Missing
-> Logic (TP4 1=1; FX-05 5→8 UID-exact), DCMA-01-parity mirrors "1. Logic". The audit's
-> baseline-PRESENCE hypothesis FAILS 4 named ADR-0280 pins (population / Resources /
-> day-grained neg-float / DCMA-09 scope) — **measured-false, do not re-chase**. Full parity
-> gate re-pinned green at HEAD first (52 passed / 0 failed, 11:36). Fix is DOCS ONLY:
-> dcma14.py ×3 + state.py ×1 now state that milestone-ness is neither inclusion nor exclusion
-> and the duration predicate drops ordinary milestones BY DESIGN. ACUMEN-PARITY-MODE.md was
-> already correct; help.py/METRIC-DICTIONARY never carried the claim (untouched).
-> 3. **/briefing memo (P1, ADR-0368).** `build_briefing` hands its audit to
-> `recommend(precomputed_audit=)` — ONE DCMA audit per build (each audit embeds the DCMA-12
-> delay-injection CPM re-solve). `SessionState.briefing_for` memoises the deterministic build:
-> SINGLE-entry, keyed scope_signature (the parity toggle folds in) + report day + solvable-set
-> IDENTITY, ADR-0281 stripe single-flight, auto-wiped (not in the wipe keep-set). /briefing,
-> / (Mission Control) and /export/{fmt}/briefing share it; /api/ai/briefing stays live-built
-> (non-deterministic by design). Guards: cold==warm BYTE-IDENTICAL with build-count 1 across
-> all three surfaces; parity toggle re-keys 1→2→3; ADR-0259 byte-identical re-upload dedupes
-> (memo legitimately survives) while CHANGED bytes force a rebuild.
-> 4. **Integrity disclosure (F2/F4, ADR-0369).** An unresolvable focus target now returns a
-> sentinel report (`target_unavailable=True`, no figures, aggregate_solved False) and the page
-> renders a banner naming the failed target and the remedy — "no changes detected" still
-> returns None (contract kept). `skipped_unsolvable_labels` / `skipped_capped_labels`
-> (len==count by construction) render as `<details class=skipped-changes>` identity lists in
-> both branches. The DECM-29I401a detail states each movement — "UID 1 baseline finish
-> 2025-02-01 → 2025-03-03 (+30 calendar days)", set/erased phrased as such, first 6 verbatim +
-> counted remainder (the FX-06 magnitude gap). qa: the sentinel emits NO change-effect facts;
-> the aggregate fact only when ≥1 revert measured AND the joint solve succeeded, phrased
-> "EVERY detected change" only when nothing was skipped (else the ADR-0358 partial wording).
+> **The operator's 2026-08-08 report is CLOSED.** "Select a target UID → change effects
+> reversed to that UID are wrong" root-caused and fixed: `scope()` truncates every version to
+> `subschedule_to_target` (the target's ancestors under EACH version's OWN logic), and
+> /integrity diffed those two different cones as the files — (1) a restored link whose
+> predecessor left the comparison cone DANGLED (cpm.py drops edges with a missing endpoint) so
+> a true +7/+21 wd effect measured 0 "no effect"; (2) links/tasks present in both real files
+> read as removed/added (fabricated rows); (3) edits outside the cone were invisible. Every
+> gate stayed green because the only "target set" tests called GET /target — a POST-only route
+> — so the 405 left the target unset and the pins rode the no-target path (the queued "3 web
+> tests calling GET /target" item; all three now POST and assert the 303/banner).
+> **Fix:** the target's two meanings are separated — single-version metric views keep the
+> ADR-0268 truncation; version-PAIR forensics (/integrity page + /export/{fmt}/integrity +
+> both ai/qa manipulation-facts call sites) run on `SessionState.scope_pair` /
+> `cpm_pair_for` / app `_pair_versions()` (filter still applies; target = measurement anchor
+> only). The pair epoch is the TARGET-LESS scope signature, so its cache entries are the
+> ordinary epoch's whenever no target is set, and setting a target re-serves resident solves.
+>
+> **The same message's detail asks are DONE:** `ChangeEffect` carries structured before→after
+> fields (link type + lag, prior/current duration minutes, prior/current constraint, % complete
+> — computed, never persisted); the /integrity effects tables gain a "Was → is now" column
+> ("was 5 wd → now 3 wd (-2 wd removed; 0% complete)"); `_shortened_durations` names each cut
+> (UID, name, was→now wd, wd removed, % complete; first 6 + counted remainder — the ADR-0369
+> shape) and both logic findings name their links ("Removed: FS 2→3"); a new "Logic changes —
+> before → after" panel draws every removed/added relationship predecessor —TYPE lag—▶
+> successor with names, struck-red/green, tag (removed/added in B) and the measured revert
+> effect chip — built from the SAME ChangeEffect rows as the table; ⤓ EXCEL on all three
+> panels exports the new "Change ledger" + "Logic changes" sheets
+> (/export/{fmt}/integrity?a=&b= — was/now/delta/% complete, effects in wd AND exact minutes,
+> artifact flag, aggregate row, every skipped revert NAMED; legacy no-a/b calls keep the
+> findings-only shape).
 >
 > ## Verification
-> Statics green (ruff whole-tree · format · mypy strict 125 files · bandit) · full parity gate
-> 52/52 at HEAD before any P0-2 decision (11:36; 14 playwright-gated skips) · every touched
-> module green (engine change_effects 15 · manipulation 8 · dcma14 26 · web subday 4 ·
-> disclosure 4 · briefing_memo 3 · ai briefing 16 · integration pins 9) · node --check per
-> file · installer lockstep test green · FULL suite first run **1 failed / 3510 passed /
-> 44 skipped (22:44)** — the one failure was `test_change_effects_returns_none_for_a_summary_
-> target`, the OLD None-contract pin that ADR-0369 deliberately replaced (module missed by the
-> targeted sweep; the full suite exists for exactly this) — test updated to pin the sentinel,
-> re-run tail reported on the PR.
+> Statics green (python -m ruff 0.16.1 check whole tree · format 923 files · mypy strict 125 ·
+> bandit exit 0 · node --check per file). New tests: tests/web/test_integrity_target_scope.py
+> (10 — including the truncated-pair POSITIVE CONTROL that demonstrates all three lies) +
+> tests/web/test_integrity_logic_diagram_chromium.py (4-theme computed-style measurement,
+> skip-gated). Mutation matrix — every guard proven able to fail with NARROW, NAMED sets:
+> route→_solvable_versions = 3 named fails / cpm_pair_for→full scope = 5 / generic detail = 1 /
+> link_type unpopulated = 3; tree restored byte-identical (cmp ×5). Renders verified in
+> chromium: 4-theme probe green + console/daylight screenshots read correctly. Full suite +
+> parity: see SESSION-LOG (this session) for counts.
 >
 > ## Next
-> Phase 3 monolith split resumes at **mission 304** (stale census — RE-MEASURE the closure
-> first; expect sra ~700+ over its "264"; the panel 235 + `_ssi_export_tables` 248 +
-> `_file_stored_risks` wait there). Then: how 290 · sra (re-measured) · what 257 · where 235 ·
-> portfolio 231 · evm 208 · forecast 204 — each per the ADR-0365 recipe. Standing queue:
-> stored-SRA-fields MSPDI fixture · driving-corridor fixture · the three page-lede-less pages
-> (/briefing /path /compare) · /groups Activities (ADR-0343) · installers vs known-good
-> constraints · P80/P90 recurring-exception residual · the audit's doc-drift sweep
-> (PARITY-REPORT still says the reference .mpps are git-ignored + calls Project2.mpp "CUI
-> intake" — superseded by ADR-0151/0152; FINAL-REPORT blanket "exact match" beyond the three
-> evidence tiers; CLAUDE.md's phase-3 + single-E501 lines lag) · ~150 MB RSS retained per
-> loaded 9 MB file (no per-file unload) · 3 web tests calling GET /target where only POST
-> exists · Phase 6 docs. **Operator:** re-convert FX-03/04 (open the authored .xml, VERIFY
-> UID17=5d / UID131=1w before save — the finish MUST move) + re-run Fuse and replace the two
-> oracles · one Acumen run on a crafted sub-day-negative-float schedule (closes the
-> Negative-Float O1 oracle gap — the AFT has NO formula for it) · license · branch-protection
-> contexts · proprietary reruns · OR-04 · July mpp/ re-export decision.
+> Queued NEW (same exposure class, operator scope was /integrity): `/compare`, `/trend`'s
+> findings roll-up (web/trend.py:162), `/evolution`'s counterfactual (evolution.py:505) and
+> app.py's other detect_manipulation / path_counterfactual call sites still receive
+> target-truncated pairs; the reduce-FILTER can in principle fabricate pair-diffs the same way
+> (documented caveat, ADR-0370). Then the standing queue unchanged: phase-3 monolith split
+> mission 304 (stale census — RE-MEASURE first; expect sra ~700+) · how 290 · sra · what 257 ·
+> where 235 · portfolio 231 · evm 208 · forecast 204 · stored-SRA-fields MSPDI fixture ·
+> driving-corridor fixture · three page-lede-less pages · /groups Activities (ADR-0343) ·
+> installers vs known-good constraints · P80/P90 recurring-exception residual · doc-drift sweep
+> (PARITY-REPORT git-ignored claim + Project2 "CUI intake"; FINAL-REPORT blanket "exact match";
+> CLAUDE.md phase-3/E501 lines) · ~150 MB RSS per loaded file · Phase 6 docs. **Operator:**
+> re-convert FX-03/04 (verify UID17=5d / UID131=1w before save) + re-run Fuse · one Acumen run
+> on a crafted sub-day-negative-float schedule · license · branch-protection contexts ·
+> proprietary reruns · OR-04 · July mpp/ re-export decision.
 >
 > ## Carried forward
-> ADR-0353..0369 closed — do not re-open. Two NEW named traps this session paid for:
-> (1) **a revert that changes nothing "passes"** — a python `s.index()` splice grabbed the
-> FIRST `return tuple(facts)` in qa.py and silently RE-DECLARED the still-guarded function
-> below the cut; the "revert" changed no behavior and the test stayed green. Anchor splices
-> uniquely (`s.index(needle, after)`), and verify the mutation LANDED (grep the mutated
-> property) before trusting any revert run. (2) **ADR-0259 hash-dedupe vs memo tests** — a
-> byte-identical re-upload leaves the session untouched, so an identity-keyed memo
-> LEGITIMATELY survives it; an invalidation test must upload CHANGED bytes (and assert the
-> dedupe twin). Standing traps: MS Project XML import derives Duration from stored dates ·
-> an environment defect can masquerade as a product defect (the Java-loader story) ·
-> binding-wrap spies undercount — patch the module that CALLS (state, not app) or count at a
-> construction chokepoint · a mutation is "caught" only when the failure summary NAMES the
-> test · NEVER mutate the tree while a suite runs (the parity gate alone is 11.6 min;
-> docs included) · an empty sweep is evidence only with a positive control · `grep -c` exits
-> 1 on zero — chain with `;` · parity evidence is three-tiered — never report uniform
-> equivalence · SMAT floors predecessor-less unstarted tasks at stored start; per-row
-> counterfactuals are non-additive BY DESIGN · bandit B608 → house nosec on HTML f-strings ·
-> pydantic floor 2.6 / fastapi 0.110.2 (air-gap) · the /analysis focus→tip family is
-> load-sensitive — do NOT chase. A number written mid-session is not a measurement (wc
-> decides). Full suite ~20 min — background `python -u`, read the tail.
+> ADR-0353..0370 closed — do not re-open. NEW traps this session paid for: (1) **a session
+> knob with two semantics collides silently** — the Target UID is both a population cut and a
+> measurement anchor; on /integrity both landed at once and the cut was derived from the very
+> logic being diffed. When one knob feeds two meanings, enumerate the pages where both land.
+> (2) **a test whose setup can 405 silently tests nothing** — GET on the POST-only /target left
+> the target unset for the pin's whole life; assert the setup took (the 303) in any test whose
+> name claims state was set. (3) `_parse_uid` maps 0 → "clear", so the project-summary row
+> cannot be set as focus via the form — derive a real ≥1 summary UID in tests. Standing traps
+> unchanged (anchored splices · ADR-0259 dedupe vs memo · round-half-even 240→0 · MSPDI
+> re-derives Duration · env-defect masquerade · binding-wrap spies · named-failure rule · never
+> mutate a running suite's tree · empty sweep needs a positive control · `grep -c` exits 1 on
+> zero · three-tier parity evidence · stored-start floors / non-additive rows · B608 house
+> nosec · pydantic 2.6 / fastapi 0.110.2 floors · /analysis focus→tip family is load-sensitive
+> — with playwright installed locally the tip family can fail intermittently; it is NOT a CI
+> signal). A number written mid-session is not a measurement (wc decides).
 
 # (prior) handoffs — archived
 
