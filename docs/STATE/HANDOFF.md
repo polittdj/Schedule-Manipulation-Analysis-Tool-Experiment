@@ -1,75 +1,81 @@
-# Handoff — 2026-08-08 (c) (the ADR-0370 exposure sweep closed: every version-pair forensic surface on the pair scope; ADR-0371; v1.0.179)
+# Handoff — 2026-08-08 (d) (phase 3 slice 8: the mission wall out of the monolith; the oracle that measured the weather; ADR-0372; v1.0.180)
 
-> ## STATUS (current) — **pushed, draft PR open** on `claude/polaris-schedule-tool-resume-wm3gvt`
-> (branched from `main` 72a7e1a after #555 squash-merged 04:52Z). **Shipped code changed** —
-> version bumped **v1.0.178 → v1.0.179** BEFORE the suite; wheel + nine installers rebuilt once
-> after the last code change (SCHEMA stays 2.11.0 — no persisted field changed). Highest ADR
-> now **ADR-0371**.
+> ## STATUS (current) — **pushed, draft PR open** on `claude/polaris-schedule-tool-resume-obnrld`
+> (branched from `main` 6975145 after #556 squash-merged). **Shipped code changed** — version
+> bumped **v1.0.179 → v1.0.180** BEFORE the suite; wheel + nine installers rebuilt once after
+> the last code change (SCHEMA stays 2.11.0 — no persisted field changed). Highest ADR now
+> **ADR-0372**.
 >
-> **The ADR-0370 exposure sweep is CLOSED (queue item 1).** The caller-by-caller census of
-> every population call site found the truncated pairs still feeding ten surfaces, and the
-> control pair measured the stakes: on the truncated pair `detect_manipulation` FABRICATES the
-> tool's worst accusation — a HIGH "2 activities deleted since the prior version" — while
-> hiding the real duration cut; unanchored `compute_path_evolution` near-inverts entered/left
-> (Wire "entered", Dig+Pour "left" vs the truth: only Roof left); the counterfactual starves
-> to None. Moved WHOLESALE to `_pair_versions()`: /compare (diff_versions header KPIs +
-> signals + focus rows) · /export/{fmt}/compare · /evolution · /api/evolution ·
-> /export/{fmt}/evolution · /export/{fmt}/whatif · /export/{fmt}/whatif-added ·
-> /export/{fmt}/mission's path-evolution tables (its quality trend stays focused, same basis
-> as /export/{fmt}/trend). SURGICAL dual-population (series keep ADR-0268 focus; pair diffs
-> get pair populations): /trend's pairwise signal roll-up (`_trend_body` pair kwargs) ·
-> `build_brief`'s manipulation + remaining-cut questions · `build_briefing` section 3.1's
-> entered/left (threaded via `SessionState.briefing_for` from /mission, /briefing,
-> /export/{fmt}/briefing, /api/ai/briefing; memo needs NO new key — pair populations are a
-> pure function of files+filter, both already in the signature). STAYED focused (value series,
-> the focus is the feature): trend series/header//api/trend//export/trend ·
-> net-finish-impact · driving-path · forecast · evm · performance · volatility · cei/scurve/
-> curves · the per-file report (narrative built with no prior). /api/evolution +
-> /export/whatif-added are behavior-INVARIANT consistency moves (anchored chains ⊆ cone —
-> no test CAN fail for them; recorded honestly in the ADR, no matrix row).
+> **Phase-3 slice 8 is CLOSED (queue item 1): `_mission_body` → `web/mission.py` (329
+> lines), app.py 16,685 → 16,384.** The re-measured census CONFIRMED the closure exactly for
+> the first time (mission 304 = the one function; no descents — externals are only `_e` /
+> `Schedule` / `ExecutiveBriefing`; the export route contributes NO movers). `LAYER_ORDER`
+> `… → trend → ssi → mission → app`; E501 exemption travels; re-export sorts mid-list
+> (margin < mission < offload). The re-measure re-priced the WHOLE queue (wc-truth, prefix
+> census): sra 840 — and its closure will pull `_ssi_panel` 235 + `_ssi_export_tables` 248 +
+> `_file_stored_risks` + both risk-field constants (ADR-0365 measured them out of ssi), so
+> expect ~1,300+ · forecast 391 · what 289 · portfolio 253 · evm 239 · where 235 · how 214
+> (the stale "how 290 · what 257 · portfolio 231 · evm 208 · forecast 204" queue numbers are
+> superseded).
 >
 > ## Verification
-> Statics green (python -m ruff check whole tree · format · mypy strict 125 · bandit exit 0 ·
-> node --check per file). New tests: tests/web/test_pair_scope_exposure_sweep.py (11 — the
-> tri-engine truncated-pair POSITIVE CONTROL, one page/export truth pin per moved surface,
-> every web test POSTs /target and asserts the 303, function-tier build_brief/build_briefing
-> pins whose in-test controls assert the truncated output differs). Mutation matrix 8/8:
-> every route wiring reverted one at a time → exactly ONE named failure each, 10 green twins,
-> tree restored byte-identical (cmp + anchor-grep ×10). Full suite + parity: see SESSION-LOG
-> (this session) for counts. No markup/token/layout changed — population wiring only; the
-> no-target render is byte-stable structurally (no target ⇒ scope_pair IS scope, ADR-0370).
+> Oracle rebuilt 96 → **151 labels** (every parameterless GET incl. APIs · both export fmts
+> ×25 exports · 8 named exports on TP4 v5 · the evolution/trend variants · ssi api/grid/save
+> · a [target-set] sequence POSTing REAL UID 17 with 303 asserted, ten pages + seven exports,
+> then cleared). Double-render determinism across two separate processes BEFORE any claim;
+> three normalizers, each earned by evidence (launch token `{hex16}.{wipe_gen}` · whoami
+> `"pid"` · **/api/system VALUES — the falsification run moved a 4th label, payload-diffed to
+> `memory.percent` 4.6→4.7: live host telemetry crossing a 1-dp boundary, the env-masquerade
+> trap caught by diffing the payload, not believing the label**). Pre-flight probe:
+> `_mission_body` moves exactly 3 labels (/mission bare + [target-set] + [target-cleared]);
+> the mission exports do NOT move (the export never calls the body); zero oracle-dark members
+> — the first slice with none. Proof: per-definition byte-identity 1/1 (asserted inside the
+> cut script) · multiset 28 added / 0 removed (first slice with zero removals — nothing
+> narrowed) · **151/151 routes byte-identical pristine vs cut** · falsified in the new
+> location, EXACT pre-flight set, restore md5-verified. Sweeps: monkeypatch + attr-read over
+> the 4 bound names — zero hits, positive-controlled by the standing `app_mod.non_summary`
+> patch; source-text sweep over all 12 app.py readers, positive-controlled (`mission.js` ∈
+> axis_titles ∩ body), every hit adjudicated (EXEMPT lists / rendered pages / generic words).
+> Mutation battery 6/6: re-export deletion · deferred upward import · both enumeration drops
+> · `"&mdash;"` sentinel · drilldown double-load — each exactly ONE named failure, twins
+> green (the enumeration guard's 7th/8th consecutive live catch), tree restored from
+> scratchpad copies, md5 + anchor-grep ×4. Statics green (python -m ruff check WHOLE TREE ·
+> format · mypy strict 126 · bandit exit 0 · node --check per file). Full suite + parity:
+> counts in SESSION-LOG (this session).
 >
 > ## Next
-> The queue resumes at phase-3 monolith split mission 304 (stale census — RE-MEASURE the
-> closure first; expect sra ~700+ over its "264": panel 235 + _ssi_export_tables 248 +
-> _file_stored_risks wait there). Then: how 290 · sra (re-measured) · what 257 · where 235 ·
-> portfolio 231 · evm 208 · forecast 204 — EACH slice per the ADR-0365 recipe. Then the
-> standing queue unchanged: stored-SRA-fields MSPDI fixture · driving-corridor fixture ·
+> The queue resumes at phase-3 slice 9 — by re-measured size: **sra** (~1,300+ closure;
+> descents pre-staged by ADR-0365; the slice-7 crafted v4/v2 setup-load oracle sequences MUST
+> return for it) · forecast 391 · what 289 · portfolio 253 · evm 239 · where 235 · how 214 —
+> EACH per the ADR-0365 recipe (closure before cut · span-scoped probe · this battery). Then
+> the standing queue unchanged: stored-SRA-fields MSPDI fixture · driving-corridor fixture ·
 > three page-lede-less pages (/briefing, /path, /compare) · /groups Activities (ADR-0343) ·
 > installers vs known-good constraints · P80/P90 recurring-exception residual · doc-drift
 > sweep (PARITY-REPORT git-ignored claim + Project2 "CUI intake"; FINAL-REPORT blanket "exact
-> match"; CLAUDE.md phase-3/E501 lines) · ~150 MB RSS per loaded file · Phase 6 docs.
-> **Operator:** re-convert FX-03/04 (verify UID17=5d / UID131=1w before save) + re-run Fuse ·
-> one Acumen run on a crafted sub-day-negative-float schedule · license · branch-protection
-> contexts · proprietary reruns · OR-04 · July mpp/ re-export decision.
+> match"; CLAUDE.md phase-3/E501 lines — mission.py joins the E501 list, deliberately NOT
+> patched into CLAUDE.md here) · ~150 MB RSS per loaded file · Phase 6 docs. **Operator:**
+> re-convert FX-03/04 (verify UID17=5d / UID131=1w before save) + re-run Fuse · one Acumen
+> run on a crafted sub-day-negative-float schedule · license · branch-protection contexts ·
+> proprietary reruns · OR-04 · July mpp/ re-export decision.
 >
 > ## Carried forward
-> ADR-0353..0371 closed — do not re-open. NEW this session: (1) the "one knob, two semantics"
-> trap generalizes — the sweep found the SAME collision on ten more surfaces; when a fix
-> separates two meanings of one knob, CENSUS every caller of the old accessor in the same
-> round or queue it explicitly (ADR-0370 did; this session closed it). (2) An anchored
-> computation can be truncation-INVARIANT (driving-slack chains ⊆ the target cone) — measure
-> before pinning: two of the ten surfaces cannot produce an observable failure, and the
-> honest record is an ADR paragraph, not a vacuous test. (3) Measure the control on EVERY
-> engine the sweep re-bases (detect_manipulation / path_evolution / counterfactual gave three
-> DIFFERENT lie shapes from one fixture). Standing traps unchanged (silent-405 setup ·
-> anchored splices with landed-count asserts · ADR-0259 dedupe vs memo · round-half-even
-> 240→0 · MSPDI re-derives Duration · env-defect masquerade · binding-wrap spies ·
-> named-failure rule · never mutate a running suite's tree · empty sweep needs a positive
-> control · `grep -c` exits 1 on zero · three-tier parity evidence · stored-start floors /
-> non-additive rows · B608 house nosec · pydantic 2.6 / fastapi 0.110.2 floors · /analysis
-> focus→tip family load-sensitive · five playwright-only failures pre-existing, CI-invisible).
-> A number written mid-session is not a measurement (wc decides).
+> ADR-0353..0372 closed — do not re-open. NEW this session: (1) **an oracle label serving
+> live telemetry is weather, not behavior** — /api/system was byte-stable across three runs
+> by LUCK and flipped during the falsification render; normalize VALUES (keep shape) up
+> front, and adjudicate every unexpected mover by payload diff before believing a dependency
+> (stability observed n times is not determinism). (2) A scratchpad-resident harness must
+> hardcode the repo root — a walk-up from OUTSIDE the repo loops at `/` (a silent 5-min
+> hang); any root-walk must fail loudly at `/`. (3) The prefix census CAN equal the closure
+> (mission: 1 function, 0 descents) — it is a fine finder when the family is one function;
+> the closure check cost minutes and is still owed every slice. Standing traps unchanged
+> (silent-405 setup · anchored splices with landed-count asserts · ADR-0259 dedupe vs memo ·
+> round-half-even 240→0 · MSPDI re-derives Duration · env-defect masquerade · binding-wrap
+> spies · named-failure rule (pytest exit ≠ failing test — assert the test RAN) · never
+> mutate a running suite's tree · empty sweep needs a positive control · `grep -c` exits 1
+> on zero · three-tier parity evidence · stored-start floors / non-additive rows · B608
+> house nosec · pydantic 2.6 / fastapi 0.110.2 floors · /analysis focus→tip family
+> load-sensitive · five playwright-only failures pre-existing, CI-invisible). A number
+> written mid-session is not a measurement (wc decides).
 
 # (prior) handoffs — archived
 
