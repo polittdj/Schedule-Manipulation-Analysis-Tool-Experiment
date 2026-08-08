@@ -138,21 +138,21 @@ def test_export_honors_the_url_focus(sc) -> None:  # type: ignore[no-untyped-def
     assert "driving path to UID 3" in _pkg_text(focused)
 
 
-def test_export_session_focus_applies_the_sessions_own_rule(sc) -> None:  # type: ignore[no-untyped-def]
-    """A session-wide Target UID truncates the POPULATION (``SessionState.scope`` runs
-    ``subschedule_to_target`` inside ``_solvable_versions``), while a URL ``?target=`` is a
-    view focus on the FULL population — the page renders those two states differently, and
-    the export mirrors the page in both (it used to read only the session target). Both are
-    focused on UID 3 and say so; only the session-scoped rows lose the full network's
-    finish."""
+def test_export_session_focus_matches_the_url_focus(sc) -> None:  # type: ignore[no-untyped-def]
+    """A session-wide Target UID and a URL ``?target=`` are ONE focus rule (ADR-0371): both
+    anchor the driving-path scope, and NEITHER truncates the version-pair populations the
+    evolution tables diff. The session spelling used to truncate (the ADR-0320 mirror pin
+    recorded that split faithfully at the time) — but the truncated pair fabricated
+    entered/left rows from cone membership, so the page and its export now run on the pair
+    scope and the two spellings of the focus produce the same workbook content."""
     st, client = sc
     by_url = _pkg_text(_export(client, "?target=3"))
     st.target_uid = 3
     by_session = _pkg_text(_export(client))
     assert "driving path to UID 3" in by_url and "driving path to UID 3" in by_session
-    assert "2025-01-20" in by_url  # full population: v1's leveled project finish stays
-    assert "2025-01-20" not in by_session  # truncated to C + its drivers: it's gone
-    assert "2025-01-06" in by_session  # the truncated network finishes at C's own finish
+    assert "2025-01-20" in by_url  # the full population's v1 leveled finish stays…
+    assert "2025-01-20" in by_session  # …under the session spelling too (no truncation)
+    assert by_session == by_url  # one focus rule, one basis — equal sheet text
 
 
 # ── 4. export headings state the applied scope ────────────────────────────────────────────────────

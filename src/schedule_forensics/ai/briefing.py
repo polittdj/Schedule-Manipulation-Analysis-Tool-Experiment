@@ -427,7 +427,16 @@ def _performance(schedule: Schedule, cpm: CPMResult) -> list[BriefingSection]:
     return sections
 
 
-def _critical_path(schedules: list[Schedule], cpms: list[CPMResult]) -> list[BriefingSection]:
+def _critical_path(
+    schedules: list[Schedule],
+    cpms: list[CPMResult],
+    pair_schedules: list[Schedule],
+    pair_cpms: list[CPMResult],
+) -> list[BriefingSection]:
+    """Section 3. The intro reads the (possibly focused) newest version; section 3.1's
+    entered/left diff runs on the PAIR populations (ADR-0371) — the Target UID never
+    truncates the versions being diffed, so a cone-membership change can never read as
+    "moved onto/off the critical path"."""
     schedule, cpm = schedules[-1], cpms[-1]
     drivers = _finish_drivers(schedule, cpm)
     # progress-aware effective basis (stored Critical flag first) — the pure-logic CPM set
@@ -441,16 +450,17 @@ def _critical_path(schedules: list[Schedule], cpms: list[CPMResult]) -> list[Bri
     )
     sections = [BriefingSection("3. The Critical Path — Then and Now", (intro,), level=1)]
 
-    if len(schedules) >= 2:
-        snap = compute_path_evolution(schedules, cpms).snapshots[-1]
+    if len(pair_schedules) >= 2:
+        snap = compute_path_evolution(pair_schedules, pair_cpms).snapshots[-1]
+        pair_cur = pair_schedules[-1]
         entered_rows = tuple(
             (
                 str(uid),
-                schedule.tasks_by_id[uid].name if uid in schedule.tasks_by_id else "<unknown>",
+                pair_cur.tasks_by_id[uid].name if uid in pair_cur.tasks_by_id else "<unknown>",
             )
             for uid in snap.entered
         )
-        left_prior = schedules[-2]
+        left_prior = pair_schedules[-2]
         left_rows = tuple(
             (
                 str(uid),
@@ -462,7 +472,7 @@ def _critical_path(schedules: list[Schedule], cpms: list[CPMResult]) -> list[Bri
             f"Comparing the two most recent versions, {len(snap.stayed)} of {len(snap.critical)} "
             f"critical activities are unchanged. {len(snap.entered)} moved onto the critical path "
             f"and {len(snap.left)} moved off — a measure of how stable the plan is.",
-            _cite(schedule, snap.critical[:10]) or drivers,
+            _cite(pair_cur, snap.critical[:10]) or drivers,
         )
         sub = BriefingSection("3.1 What Changed Between the Versions", (change_stmt,), level=2)
         sections.append(sub)
@@ -475,7 +485,7 @@ def _critical_path(schedules: list[Schedule], cpms: list[CPMResult]) -> list[Bri
                     table=BriefingTable(
                         ("UID", "Activity"),
                         entered_rows,
-                        tuple(_cite(schedule, (uid,)) for uid in snap.entered),
+                        tuple(_cite(pair_cur, (uid,)) for uid in snap.entered),
                     ),
                 )
             )
@@ -786,6 +796,8 @@ def build_briefing(
     cpms: list[CPMResult] | None = None,
     today: dt.date | None = None,
     acumen_parity: bool = False,
+    pair_schedules: list[Schedule] | None = None,
+    pair_cpms: list[CPMResult] | None = None,
 ) -> ExecutiveBriefing:
     """Build the cited leadership Executive Briefing for the loaded version(s).
 
@@ -796,6 +808,10 @@ def build_briefing(
     ``acumen_parity`` (ADR-0282 Option A / ADR-0285) sources the DCMA fail-count that drives the
     verdict AND the findings from the Acumen-parity audit, so with parity mode on the briefing
     agrees with the parity ribbon. Default off is the pure-logic read, byte-identical to before.
+
+    ``pair_schedules``/``pair_cpms`` (ADR-0371) are the PAIR-scope populations section 3.1's
+    entered/left diff runs on — the session Target UID never truncates them. ``None`` falls
+    back to the primary populations (correct whenever those are already unscoped).
     """
     if not schedules:
         raise ValueError("the briefing needs at least one schedule version")
@@ -805,6 +821,12 @@ def build_briefing(
     else:
         by_id = {id(s): c for s, c in zip(schedules, cpms, strict=True)}
         cpm_list = [by_id[id(s)] for s in ordered]
+    if pair_schedules is None or pair_cpms is None:
+        pair_ordered, pair_cpm_list = ordered, cpm_list
+    else:  # same data-date ordering + identity re-map as the primary populations
+        pair_ordered = order_versions(pair_schedules)
+        pair_by_id = {id(s): c for s, c in zip(pair_schedules, pair_cpms, strict=True)}
+        pair_cpm_list = [pair_by_id[id(s)] for s in pair_ordered]
     report_day = today if today is not None else dt.date.today()
 
     if not any(any(not t.is_summary for t in s.tasks) for s in ordered):
@@ -870,7 +892,7 @@ def build_briefing(
         dcma_applicable=len(applicable),
     )
     sections += _performance(subject, subject_cpm)
-    sections += _critical_path(ordered, cpm_list)
+    sections += _critical_path(ordered, cpm_list, pair_ordered, pair_cpm_list)
     sections += _dashboard(
         subject,
         subject_cpm,

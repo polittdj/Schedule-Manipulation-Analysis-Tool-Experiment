@@ -131,8 +131,22 @@ def _how_it_moved_header(schedules: list[Schedule], cpms: list[CPMResult]) -> st
     )
 
 
-def _trend_body(schedules: list[Schedule], cpms: list[CPMResult], target: int | None = None) -> str:
-    """The multi-version trend view: table, quality-trend sentences, pairwise signals, charts."""
+def _trend_body(
+    schedules: list[Schedule],
+    cpms: list[CPMResult],
+    target: int | None = None,
+    *,
+    pair_schedules: list[Schedule] | None = None,
+    pair_cpms: list[CPMResult] | None = None,
+) -> str:
+    """The multi-version trend view: table, quality-trend sentences, pairwise signals, charts.
+
+    ``pair_schedules``/``pair_cpms`` (ADR-0371) are the PAIR-scope populations the pairwise
+    manipulation signals diff — the Target UID never truncates them (a truncated pair
+    fabricated deleted-task findings from cone membership and missed real cuts outside the
+    cone). The series, header and focus panels stay on the focused ``schedules`` (the page's
+    ``?target=`` feature, ADR-0268). ``None`` falls back to ``schedules``/``cpms`` — the
+    correct basis whenever the caller's populations are already unscoped (no target set)."""
     points = trend_across_versions(schedules, cpms)
     trend_rows = "".join(
         f"<tr><td>{_e(p.source_file or p.version_index)}</td>"
@@ -154,12 +168,16 @@ def _trend_body(schedules: list[Schedule], cpms: list[CPMResult], target: int | 
     # with a PER-FINDING file (a signal cites its own version: deletions cite the prior, most
     # others cite the current).
     signal_findings: list[dict[str, object]] = []
-    for i in range(len(schedules) - 1):
-        prior, current = schedules[i], schedules[i + 1]
+    sig_schedules = pair_schedules if pair_schedules is not None else schedules
+    sig_cpms = pair_cpms if pair_cpms is not None else cpms
+    for i in range(len(sig_schedules) - 1):
+        prior, current = sig_schedules[i], sig_schedules[i + 1]
         p_label = prior.source_file or prior.name
         c_label = current.source_file or current.name
         step = f"{_e(p_label)} &rarr; {_e(c_label)}"
-        for f in detect_manipulation(current, prior, current_cpm=cpms[i + 1], prior_cpm=cpms[i]):
+        for f in detect_manipulation(
+            current, prior, current_cpm=sig_cpms[i + 1], prior_cpm=sig_cpms[i]
+        ):
             task_cites = [c for c in f.citations if c.unique_id > 0]
             cite_file = next((c.source_file for c in task_cites if c.source_file), None)
             signal_cell = _e(f.title)
