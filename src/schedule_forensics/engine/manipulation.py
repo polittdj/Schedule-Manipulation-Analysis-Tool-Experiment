@@ -326,13 +326,40 @@ def _calendar_loosening(
 def _baseline_date_changes(
     diff: VersionDiff, cur_by_id: dict[int, Task], current_file: str | None
 ) -> list[Finding]:
-    offenders = tuple(
-        _cite(current_file, cur_by_id[td.unique_id])
-        for td in diff.changed_tasks
-        if td.changed("baseline_start") is not None or td.changed("baseline_finish") is not None
-    )
+    offenders: list[Citation] = []
+    moves: list[str] = []  # per-activity magnitude (audit F4, ADR-0369): old → new + day delta
+    for td in diff.changed_tasks:
+        ds = td.changed("baseline_start")
+        df = td.changed("baseline_finish")
+        if ds is None and df is None:
+            continue
+        offenders.append(_cite(current_file, cur_by_id[td.unique_id]))
+        for field_label, d in (("baseline start", ds), ("baseline finish", df)):
+            if d is None:
+                continue
+            before, after = d.before, d.after
+            if isinstance(before, dt.datetime) and isinstance(after, dt.datetime):
+                delta = (after.date() - before.date()).days
+                moves.append(
+                    f"UID {td.unique_id} {field_label} {before.date().isoformat()} → "
+                    f"{after.date().isoformat()} ({delta:+d} calendar days)"
+                )
+            elif isinstance(after, dt.datetime):
+                moves.append(
+                    f"UID {td.unique_id} {field_label} set to {after.date().isoformat()} "
+                    "(was unset)"
+                )
+            elif isinstance(before, dt.datetime):
+                moves.append(
+                    f"UID {td.unique_id} {field_label} erased (was {before.date().isoformat()})"
+                )
     if not offenders:
         return []
+    # the finding previously stated the pattern with NO magnitude — FX-06's frozen finish named
+    # UID 131 but showed neither the old/new dates nor the day delta (audit F4). Show the first
+    # few movements verbatim; every affected activity is cited either way.
+    shown = "; ".join(moves[:6])
+    more = f"; +{len(moves) - 6} further movement(s), all cited" if len(moves) > 6 else ""
     return [
         Finding(
             category=Category.CONCERN,
@@ -340,10 +367,10 @@ def _baseline_date_changes(
             metric_id="MANIP_BASELINE_CHANGE",
             title=f"{len(offenders)} activities had baseline dates changed (DECM 29I401a)",
             detail="Baseline start/finish dates moved between snapshots — re-baselining can "
-            "absorb variance so a slip never shows against the baseline.",
+            f"absorb variance so a slip never shows against the baseline. {shown}{more}.",
             course_of_action="Confirm each baseline change followed an authorized re-baseline, "
             "not an edit to mask schedule variance.",
-            citations=offenders,
+            citations=tuple(offenders),
         )
     ]
 

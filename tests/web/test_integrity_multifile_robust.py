@@ -86,7 +86,7 @@ def test_change_effects_skips_a_cyclic_revert_instead_of_raising() -> None:
     assert all("188" not in e.label for e in report.per_change)  # (sanity: synthetic labels)
 
 
-def test_change_effects_returns_none_for_a_summary_target() -> None:
+def test_change_effects_discloses_a_summary_target_instead_of_none() -> None:
     xml_a = gzip.decompress((GOLDEN / "Hard_File.mspdi.xml.gz").read_bytes()).decode()
     xml_b = gzip.decompress((GOLDEN / "Hard_File_updated.mspdi.xml.gz").read_bytes()).decode()
     from schedule_forensics.importers.mspdi import parse_mspdi_text
@@ -95,7 +95,12 @@ def test_change_effects_returns_none_for_a_summary_target() -> None:
     b = parse_mspdi_text(xml_b, source_file="B.mpp")
     # UID 0 is the project-summary row: in tasks_by_id but excluded from CPM timings
     assert 0 in b.tasks_by_id and 0 not in compute_cpm(b).timings
-    assert compute_change_effects(a, b, target_uid=0) is None  # guarded, no KeyError
+    # guarded, no KeyError — and since ADR-0369 the unresolvable target is DISCLOSED (a
+    # sentinel report with target_unavailable=True and no figures), never a silent None
+    # indistinguishable from "no changes detected"; /integrity renders the banner from it.
+    r = compute_change_effects(a, b, target_uid=0)
+    assert r is not None and r.target_unavailable is True
+    assert r.per_change == () and r.aggregate_solved is False
 
 
 # ── web: /integrity never 500s with >2 files and offers the two-file picker ───────────────

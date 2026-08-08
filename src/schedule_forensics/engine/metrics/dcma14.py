@@ -59,9 +59,16 @@ def compute_dcma14(
     (ADR-0280). The unifying rule is Acumen's population filter **Baseline Duration > 0**, where its
     Baseline Duration is truncated to WHOLE DAYS (a sub-day baseline reads as 0). Under parity the
     work checks (Logic 01, SS/FF 04, Hard 05, High/Neg float 06/07, Resources 10, Missed 11) scope
-    to baselined activities (>= 1 working day of baseline), KEEPING milestones (Acumen sets
-    ``IncludeMilestone = 1``; the milestone-exclusion scope, ADR-0277/0278, was a coincidental proxy
-    and is superseded). It also compares Total Float in whole days; flags **Resources** on
+    to baselined activities (>= 1 working day of baseline). Milestone-ness is neither an inclusion
+    nor an exclusion (the library sets ``IncludeMilestone = 1``, so milestones are not filtered as
+    a CLASS — the milestone-exclusion scope, ADR-0277/0278, was a coincidental proxy and is
+    superseded) — but the baseline-duration predicate still applies to them, so an ordinary
+    zero-baseline-duration milestone IS excluded by the filter and only a milestone carrying >= 1
+    whole working day of baseline duration stays (audit F5 adjudication, ADR-0367: presence-of-
+    baseline was tested as the alternative reading and fails the ADR-0280 pins; the library's
+    non-DCMA "Missing Logic" family carries an EMPTY filter — all non-summary activities,
+    milestones included — and is mirrored by ``schedule_quality``/``ribbon``, NOT by this check).
+    It also compares Total Float in whole days; flags **Resources** on
     ``Baseline Cost = 0 AND Baseline Work = 0`` (not "no resource name"); scores **CPLI** on the
     stored float + stored finish (folds in ADR-0279); and scores **BEI** with Acumen's two-term
     denominator.
@@ -77,8 +84,10 @@ def compute_dcma14(
 
     # Acumen-parity population (ADR-0280): Acumen's DCMA metrics filter on Baseline Duration > 0,
     # truncated to whole days (a sub-day baseline reads as 0). Parity scopes the work checks to
-    # activities with >= 1 working day of baseline, KEEPING milestones (the milestone scope was a
-    # proxy). Default = the full non-summary population (byte-identical).
+    # activities with >= 1 working day of baseline. Milestones are not excluded as a class
+    # (IncludeMilestone=1; the ADR-0277/0278 milestone scope was a proxy), but the duration
+    # predicate applies to them too — a zero-baseline-duration milestone falls out HERE, by
+    # design (ADR-0367). Default = the full non-summary population (byte-identical).
     mpd = schedule.calendar.working_minutes_per_day
 
     def _baselined(t: Task) -> bool:
@@ -246,7 +255,8 @@ def compute_dcma14(
     #
     # Population (ADR-0283): the NASA library's "9. Invalid Forecast/Actual Dates" metrics carry the
     # SAME universal PrimaryFilter as the other work checks — Baseline Duration > 0 (whole days),
-    # keeping milestones (IncludeMilestone=1). ADR-0280 scoped every other check to that population
+    # milestones not class-excluded (IncludeMilestone=1) yet still subject to the duration
+    # predicate (ADR-0367). ADR-0280 scoped every other check to that population
     # but left DCMA-09 on the full non-summary set; that over-flags no-baseline placeholders/
     # milestones whose stored forecast dates precede the data date. Parity scopes to ap_tasks (the
     # baselined population); each date condition self-excludes the wrong completion state (a

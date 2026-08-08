@@ -369,3 +369,50 @@ def test_newly_recorded_cost_is_not_reported_as_an_increase() -> None:
     current = _s([_costed(1, cost=12000.0, actual_cost=5000.0)])
 
     assert [f.metric_id for f in detect_manipulation(current, prior)] == []
+
+
+def test_baseline_change_detail_states_magnitude_and_handles_set_and_erased() -> None:
+    """Audit F4 (ADR-0369): the DECM-29I401a detail now names each movement — old → new dates
+    with a signed calendar-day delta; a newly-SET baseline and an ERASED one are stated as
+    such (never a fabricated delta against a date that does not exist)."""
+    prior = _s(
+        [
+            Task(
+                unique_id=1,
+                name="A",
+                duration_minutes=DAY,
+                baseline_finish=dt.datetime(2025, 2, 1, 17, 0),
+            ),
+            Task(unique_id=2, name="B", duration_minutes=DAY),
+            Task(
+                unique_id=3,
+                name="C",
+                duration_minutes=DAY,
+                baseline_start=dt.datetime(2025, 1, 6, 8, 0),
+            ),
+        ]
+    )
+    current = _s(
+        [
+            Task(
+                unique_id=1,
+                name="A",
+                duration_minutes=DAY,
+                baseline_finish=dt.datetime(2025, 3, 3, 17, 0),
+            ),
+            Task(
+                unique_id=2,
+                name="B",
+                duration_minutes=DAY,
+                baseline_finish=dt.datetime(2025, 5, 1, 17, 0),
+            ),
+            Task(unique_id=3, name="C", duration_minutes=DAY),
+        ]
+    )
+    f = next(
+        f for f in detect_manipulation(current, prior) if f.metric_id == "MANIP_BASELINE_CHANGE"
+    )
+    # moved: 2025-02-01 → 2025-03-03 is exactly +30 calendar days (derived: 27 Feb days + 3)
+    assert "UID 1 baseline finish 2025-02-01 → 2025-03-03 (+30 calendar days)" in f.detail
+    assert "UID 2 baseline finish set to 2025-05-01 (was unset)" in f.detail
+    assert "UID 3 baseline start erased (was 2025-01-06)" in f.detail

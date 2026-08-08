@@ -40,6 +40,12 @@ class ChangeEffect:
     citation_uids: tuple[int, ...]  # the activities the change touches (for citation)
     target_finish_delta_days: int  # working days on the target (>0 = the change hid a slip)
     project_finish_delta_days: int  # working days on the whole project finish
+    #: EXACT working-minute deltas behind the rounded day figures. round() maps a true sub-day
+    #: effect (even exactly half a day, via round-half-even) to 0 "no effect" — a Law 2 lie the
+    #: 2026-08-07 audit (F1) caught. The day fields keep their rounded meaning; presentation reads
+    #: these to render a signed "<1 wd" instead of "no effect" when the truth is sub-day.
+    target_finish_delta_minutes: int = 0
+    project_finish_delta_minutes: int = 0
     #: True for the MS Project "reschedule uncompleted work" statusing artifact: the CURRENT
     #: version carries an SNET constraint stamped exactly at its own data date. Project writes
     #: these automatically when uncompleted work is rescheduled past the status date — they are
@@ -68,6 +74,9 @@ class ChangeEffectsReport:
     per_change: tuple[ChangeEffect, ...]
     aggregate_target_finish_delta_days: int  # all reverts applied together, on the target
     aggregate_project_finish_delta_days: int
+    #: exact working-minute aggregates behind the rounded day figures (see ChangeEffect)
+    aggregate_target_finish_delta_minutes: int = 0
+    aggregate_project_finish_delta_minutes: int = 0
     #: reverts whose isolated re-solve produced a logic cycle (can't be measured) — disclosed,
     #: not silently dropped. A cyclic revert is skipped from BOTH the per-change list and the
     #: aggregate so one impossible counterfactual never 500s or corrupts the page.
@@ -81,6 +90,18 @@ class ChangeEffectsReport:
     #: False when even the acyclic-subset aggregate re-solve cycled; then the aggregate deltas
     #: are 0 and the UI omits the "all changes together" line rather than showing a wrong figure.
     aggregate_solved: bool = True
+    #: the LABELS of the skipped reverts (audit F2, ADR-0369) — count-only disclosure hid WHICH
+    #: changes went unmeasured; each label is the same plain-English text a measured row carries.
+    #: ``len(skipped_unsolvable_labels) == skipped_unsolvable`` and likewise for capped.
+    skipped_unsolvable_labels: tuple[str, ...] = ()
+    skipped_capped_labels: tuple[str, ...] = ()
+    #: True when the chosen target could not be resolved to a scheduled activity (absent UID,
+    #: summary/unscheduled row, or no critical path to auto-anchor on). The report then carries
+    #: the FAILED target's identity with per_change empty and aggregate_solved False, so the
+    #: page renders a target-unavailable banner instead of silently omitting the panel — the
+    #: old contract returned None for BOTH "no target" and "no changes", indistinguishably
+    #: (audit F2, ADR-0369).
+    target_unavailable: bool = False
 
 
 def _last_critical_uid(schedule: Schedule, cpm: CPMResult) -> int | None:
@@ -114,13 +135,27 @@ def _with_task_field(current: Schedule, uid: int, updates: Mapping[str, object])
     return current.model_copy(update={"tasks": tasks})
 
 
-def _finish_delta_wd(base: CPMResult, cf: CPMResult, uid: int, per_day: int) -> int:
-    """Working-day movement of ``uid``'s early finish, cf minus base (0 if either is missing)."""
+def _finish_delta_minutes(base: CPMResult, cf: CPMResult, uid: int) -> int:
+    """EXACT working-minute movement of ``uid``'s early finish, cf minus base (0 if missing)."""
     b = base.timings.get(uid)
     c = cf.timings.get(uid)
     if b is None or c is None:
         return 0
-    return round((c.early_finish - b.early_finish) / per_day)
+    return c.early_finish - b.early_finish
+
+
+def _finish_delta_wd(base: CPMResult, cf: CPMResult, uid: int, per_day: int) -> int:
+    """Working-day movement of ``uid``'s early finish, cf minus base (0 if either is missing)."""
+    return round(_finish_delta_minutes(base, cf, uid) / per_day)
+
+
+def _wd_text(minutes: int, per_day: int) -> str:
+    """A duration in working days with sub-day fidelity: whole days render as bare integers
+    (byte-identical to the old floor-divided label on every whole-day value), a fractional
+    value renders to 2 dp — so a sub-day duration can never disappear into "0"."""
+    if minutes % per_day == 0:
+        return str(minutes // per_day)
+    return f"{minutes / per_day:.2f}".rstrip("0").rstrip(".")
 
 
 def compute_change_effects(
@@ -149,14 +184,31 @@ def compute_change_effects(
     )
     # The target must be a SCHEDULED activity: it has to carry CPM timings for a finish delta to
     # exist. A summary / level-of-effort / unscheduled UID (e.g. the project-summary UID 0) is in
-    # tasks_by_id but NOT in timings — indexing it would KeyError and 500 the whole page, so bail
-    # cleanly to None (the page then simply omits the change-effects panel for this pair).
+    # tasks_by_id but NOT in timings — indexing it would KeyError and 500 the whole page. This
+    # used to bail to None, indistinguishable from "no changes detected", so the page omitted
+    # the panel SILENTLY (audit F2). Now it returns a sentinel report naming the failed target
+    # (ADR-0369): per_change empty, every figure 0, aggregate_solved False — nothing a consumer
+    # could mistake for a measurement, and enough identity for the disclosure banner.
     if (
         resolved_target is None
         or resolved_target not in current.tasks_by_id
         or resolved_target not in base_cpm.timings
     ):
-        return None
+        bad = resolved_target if resolved_target is not None else target_uid
+        bad_name = (
+            current.tasks_by_id[bad].name if bad is not None and bad in current.tasks_by_id else ""
+        )
+        return ChangeEffectsReport(
+            target_uid=bad if bad is not None else 0,
+            target_name=bad_name,
+            target_is_last_critical=target_uid is None,
+            actual_target_finish="",
+            per_change=(),
+            aggregate_target_finish_delta_days=0,
+            aggregate_project_finish_delta_days=0,
+            aggregate_solved=False,
+            target_unavailable=True,
+        )
     target_name = current.tasks_by_id[resolved_target].name
 
     diff = diff_versions(prior, current)
@@ -171,6 +223,9 @@ def compute_change_effects(
     skipped_unsolvable = 0
     skipped_capped = 0
     skipped_capped_artifacts = 0
+    # the identities behind the skip counts (ADR-0369) — disclosed, never count-only
+    skipped_unsolvable_labels: list[str] = []
+    skipped_capped_labels: list[str] = []
 
     def _try_revert(
         kind: str,
@@ -192,6 +247,7 @@ def compute_change_effects(
         nonlocal aggregate, skipped_unsolvable, skipped_capped, skipped_capped_artifacts
         if len(effects) >= _MAX_CHANGE_EFFECTS:
             skipped_capped += 1
+            skipped_capped_labels.append(label)
             if is_artifact:
                 skipped_capped_artifacts += 1
             return aggregate
@@ -199,18 +255,19 @@ def compute_change_effects(
             cf_cpm = compute_cpm(cf_schedule)
         except CPMError:
             skipped_unsolvable += 1
+            skipped_unsolvable_labels.append(label)
             return aggregate
+        tgt_minutes = _finish_delta_minutes(base_cpm, cf_cpm, resolved_target)
+        proj_minutes = cf_cpm.project_finish - base_cpm.project_finish
         effects.append(
             ChangeEffect(
                 kind=kind,
                 label=label,
                 citation_uids=uids,
-                target_finish_delta_days=_finish_delta_wd(
-                    base_cpm, cf_cpm, resolved_target, per_day
-                ),
-                project_finish_delta_days=round(
-                    (cf_cpm.project_finish - base_cpm.project_finish) / per_day
-                ),
+                target_finish_delta_days=round(tgt_minutes / per_day),
+                project_finish_delta_days=round(proj_minutes / per_day),
+                target_finish_delta_minutes=tgt_minutes,
+                project_finish_delta_minutes=proj_minutes,
                 is_reschedule_artifact=is_artifact,
             )
         )
@@ -222,9 +279,15 @@ def compute_change_effects(
         if link is None:
             continue
         pred, succ = key[0], key[1]
-        label = f"restore removed {key[2].value} link {pred}→{succ}" + (
-            f" (lag {key[3] // per_day:+d}d)" if key[3] else ""
+        # whole-day lags keep the old floor-divided text byte-identical; a sub-day lag renders
+        # its fractional days + exact minutes instead of collapsing to "+0d" (audit F7 class)
+        lag_txt = (
+            f" (lag {key[3] // per_day:+d}d)"
+            if key[3] % per_day == 0
+            else f" (lag {'+' if key[3] > 0 else '-'}{_wd_text(abs(key[3]), per_day)}d / "
+            f"{key[3]:+d} min)"
         )
+        label = f"restore removed {key[2].value} link {pred}→{succ}" + (lag_txt if key[3] else "")
         aggregate = _try_revert(
             "logic_restored",
             label,
@@ -260,10 +323,17 @@ def compute_change_effects(
         dur = td.changed("duration_minutes")
         if dur is not None and prior_t.duration_minutes != cur_t.duration_minutes:
             verb = "cut" if cur_t.duration_minutes < prior_t.duration_minutes else "raised"
-            label = (
-                f"restore UID {uid} duration ({verb} "
-                f"{cur_t.duration_minutes // per_day}→{prior_t.duration_minutes // per_day} wd)"
+            # sub-day fidelity (audit F7): the old floor-divided label rendered a 240→60 min cut
+            # as "cut 0→0 wd". Whole-day pairs stay byte-identical; a fractional side renders to
+            # 2 dp with the exact minutes riding along so no duration change can vanish.
+            cur_wd = _wd_text(cur_t.duration_minutes, per_day)
+            prior_wd = _wd_text(prior_t.duration_minutes, per_day)
+            exact = (
+                f" ({cur_t.duration_minutes}→{prior_t.duration_minutes} min)"
+                if "." in cur_wd or "." in prior_wd
+                else ""
             )
+            label = f"restore UID {uid} duration ({verb} {cur_wd}→{prior_wd} wd{exact})"
             upd = {"duration_minutes": prior_t.duration_minutes}
             aggregate = _try_revert(
                 "duration_restored",
@@ -345,12 +415,16 @@ def compute_change_effects(
     # whenever any change was skipped/capped — the UI must not label a partial total "every change".
     agg_target_delta = 0
     agg_project_delta = 0
+    agg_target_minutes = 0
+    agg_project_minutes = 0
     aggregate_solved = bool(effects)  # no measured reverts -> no meaningful aggregate
     if effects:
         try:
             agg_cpm = compute_cpm(aggregate)
-            agg_target_delta = _finish_delta_wd(base_cpm, agg_cpm, resolved_target, per_day)
-            agg_project_delta = round((agg_cpm.project_finish - base_cpm.project_finish) / per_day)
+            agg_target_minutes = _finish_delta_minutes(base_cpm, agg_cpm, resolved_target)
+            agg_project_minutes = agg_cpm.project_finish - base_cpm.project_finish
+            agg_target_delta = round(agg_target_minutes / per_day)
+            agg_project_delta = round(agg_project_minutes / per_day)
         except CPMError:
             aggregate_solved = False
 
@@ -365,8 +439,12 @@ def compute_change_effects(
         per_change=tuple(effects),
         aggregate_target_finish_delta_days=agg_target_delta,
         aggregate_project_finish_delta_days=agg_project_delta,
+        aggregate_target_finish_delta_minutes=agg_target_minutes,
+        aggregate_project_finish_delta_minutes=agg_project_minutes,
         skipped_unsolvable=skipped_unsolvable,
         skipped_capped=skipped_capped,
         skipped_capped_artifacts=skipped_capped_artifacts,
         aggregate_solved=aggregate_solved,
+        skipped_unsolvable_labels=tuple(skipped_unsolvable_labels),
+        skipped_capped_labels=tuple(skipped_capped_labels),
     )

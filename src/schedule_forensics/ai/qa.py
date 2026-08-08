@@ -437,7 +437,9 @@ def manipulation_forensics_facts(
     # changes whose endpoints stay on the critical path (e.g. a removed predecessor link), so the
     # AI, given only that, previously answered "zero effect" when the real effect is non-zero.
     eff = compute_change_effects(prior, current, cur_cpm, target_uid=target_uid)
-    if eff is not None:
+    # target_unavailable (ADR-0369): the sentinel report carries no measurement — emitting its
+    # zeroed aggregate as a fact would hand the model a fabricated "+0 working day(s)".
+    if eff is not None and not eff.target_unavailable:
         tgt_desc = f"UID {eff.target_uid} '{eff.target_name}'" + (
             " (the last task on the critical path)" if eff.target_is_last_critical else ""
         )
@@ -458,6 +460,14 @@ def manipulation_forensics_facts(
                     f"reverting it moves the finish {e.target_finish_delta_days:+d} working "
                     f"day(s) (the change pushed the finish out)"
                 )
+            elif e.target_finish_delta_minutes:
+                # a true sub-day effect (rounds to 0 wd) — never state "no effect" (audit F1)
+                direction = (
+                    "LATER — the change hid a sub-day slip"
+                    if e.target_finish_delta_minutes > 0
+                    else "EARLIER (the change pushed the finish out by under a day)"
+                )
+                verdict = f"reverting it moves the finish less than one working day {direction}"
             else:
                 verdict = "reverting it does not move the finish (no effect on this target)"
             facts.append(
@@ -468,16 +478,29 @@ def manipulation_forensics_facts(
                     eff_cites,
                 )
             )
-        agg_cite = (Citation(cur_label, eff.target_uid, eff.target_name),)
-        facts.append(
-            CitedStatement(
-                f"Aggregate change effect on {tgt_desc}: with EVERY detected change reverted "
-                f"together, the target finish moves {eff.aggregate_target_finish_delta_days:+d} "
-                f"working day(s) (currently {eff.actual_target_finish}) and the project finish "
-                f"moves {eff.aggregate_project_finish_delta_days:+d} working day(s).",
-                agg_cite,
+        # The aggregate is a real figure only when at least one revert was measured AND the joint
+        # re-solve succeeded — otherwise the zeros are non-figures and stating them would be the
+        # exact "no effect" fabrication this module exists to prevent (ADR-0369). And when any
+        # change was skipped/capped, the aggregate folds in ONLY the measured reverts — say so
+        # (the page's ADR-0358 wording), never "EVERY detected change".
+        if eff.per_change and eff.aggregate_solved:
+            partial = bool(eff.skipped_unsolvable or eff.skipped_capped)
+            scope_txt = (
+                f"the {len(eff.per_change)} individually-measured change(s) reverted together "
+                "(skipped changes excluded)"
+                if partial
+                else "EVERY detected change reverted together"
             )
-        )
+            agg_cite = (Citation(cur_label, eff.target_uid, eff.target_name),)
+            facts.append(
+                CitedStatement(
+                    f"Aggregate change effect on {tgt_desc}: with {scope_txt}, "
+                    f"the target finish moves {eff.aggregate_target_finish_delta_days:+d} "
+                    f"working day(s) (currently {eff.actual_target_finish}) and the project "
+                    f"finish moves {eff.aggregate_project_finish_delta_days:+d} working day(s).",
+                    agg_cite,
+                )
+            )
     return tuple(facts)
 
 

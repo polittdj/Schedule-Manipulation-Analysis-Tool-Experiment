@@ -237,7 +237,28 @@ confirm the change was authorized.</p>
         ) as exc:  # defense in depth; the engine already guards
             logging.getLogger("schedule_forensics").warning("change effects failed: %s", exc)
             eff = None
-        if eff is not None and (eff.per_change or eff.skipped_unsolvable or eff.skipped_capped):
+        if eff is not None and eff.target_unavailable:
+            # the chosen target cannot anchor a measurement — disclose it, never a silent
+            # omission (audit F2, ADR-0369). No effect figure is shown rather than a wrong one.
+            if eff.target_is_last_critical:
+                why = (
+                    "no activity on the current critical path carries CPM timings to anchor "
+                    "the measurement"
+                )
+            else:
+                who = f"UID {eff.target_uid}" + (
+                    f" ({_e(eff.target_name)})" if eff.target_name else ""
+                )
+                why = (
+                    f"the chosen focus activity {who} does not resolve to a scheduled activity "
+                    f"in {_e(labels[cur_idx])} — it is absent, unscheduled, or a summary row"
+                )
+            effects_html = f"""
+<div class="panel change-effects">{_panel_head("Effect of each change &mdash; target unavailable", tools=_shell_tools(), prov=pair_prov)}
+<p class=muted>Per-change counterfactual effects could not be measured for this pair: {why}.
+Pick a different focus activity (or clear the focus) to measure change effects here. No effect
+figures are shown rather than a wrong figure.</p></div>"""
+        elif eff is not None and (eff.per_change or eff.skipped_unsolvable or eff.skipped_capped):
             tgt_label = f"UID {eff.target_uid} ({_e(eff.target_name)})" + (
                 " — the last task on the critical path" if eff.target_is_last_critical else ""
             )
@@ -264,6 +285,27 @@ confirm the change was authorized.</p>
                     )
                 notes.append(cap_note)
             skip_note = f"<p class=muted>{' '.join(_e(x) for x in notes)}</p>" if notes else ""
+
+            # the identities behind the skip counts (audit F2, ADR-0369): a count-only
+            # disclosure hid WHICH changes went unmeasured — list each skipped revert verbatim
+            def _skip_list(summary: str, skipped_labels: tuple[str, ...]) -> str:
+                if not skipped_labels:
+                    return ""
+                items = "".join(f"<li>{_e(x)}</li>" for x in skipped_labels)
+                return (
+                    f"<details class=skipped-changes><summary>&#9432; {summary}</summary>"
+                    f"<ul>{items}</ul></details>"
+                )
+
+            skip_note += _skip_list(
+                f"the {eff.skipped_unsolvable} change(s) that could not be measured "
+                "(click to list)",
+                eff.skipped_unsolvable_labels,
+            )
+            skip_note += _skip_list(
+                f"the {eff.skipped_capped} change(s) beyond the measurement cap (click to list)",
+                eff.skipped_capped_labels,
+            )
             if not eff.per_change:
                 # every detected revert was skipped — disclose it instead of hiding the panel
                 total_skipped = eff.skipped_unsolvable + eff.skipped_capped
@@ -276,19 +318,36 @@ measured individually — reverting any one alone reintroduces a logic cycle. (C
 
                 def _eff_rows(changes: list[ChangeEffect]) -> str:
                     out = ""
-                    for e in sorted(changes, key=lambda ce: -abs(ce.target_finish_delta_days)):
+                    # sort by the EXACT minute effect so a real sub-day effect outranks a true
+                    # zero (audit F1 — round() made both read "no effect" and sort together)
+                    for e in sorted(
+                        changes,
+                        key=lambda ce: (
+                            -abs(ce.target_finish_delta_minutes or ce.target_finish_delta_days)
+                        ),
+                    ):
                         d = e.target_finish_delta_days
-                        cls = "fail" if d > 0 else "ok" if d < 0 else "muted"
-                        effect_txt = (
-                            f"<b class={cls}>{d:+d} wd</b>"
-                            if d
-                            else "<span class=muted>no effect</span>"
-                        )
+                        m = e.target_finish_delta_minutes or d  # minutes, falling back to days
+                        cls = "fail" if m > 0 else "ok" if m < 0 else "muted"
+                        if d:
+                            effect_txt = f"<b class={cls}>{d:+d} wd</b>"
+                        elif m:
+                            # a true sub-day effect that rounds to 0 wd — signed, never "no effect"
+                            effect_txt = f"<b class={cls}>{'+' if m > 0 else '-'}&lt;1 wd</b>"
+                        else:
+                            effect_txt = "<span class=muted>no effect</span>"
+                        pd_ = e.project_finish_delta_days
+                        pm = e.project_finish_delta_minutes or pd_
+                        if pd_:
+                            proj_txt = f"{'+' if pd_ > 0 else ''}{pd_} wd"
+                        elif pm:
+                            proj_txt = f"{'+' if pm > 0 else '-'}&lt;1 wd"
+                        else:
+                            proj_txt = "0 wd"
                         cites = ", ".join(f"UID {u}" for u in e.citation_uids)
                         out += (
                             f"<tr><td>{_e(e.label)}</td><td>{effect_txt}</td>"
-                            f"<td>{'+' if e.project_finish_delta_days > 0 else ''}"
-                            f"{e.project_finish_delta_days} wd</td>"
+                            f"<td>{proj_txt}</td>"
                             f"<td class=cite>{_e(cites)}</td></tr>"
                         )
                     return out
@@ -303,7 +362,12 @@ measured individually — reverting any one alone reintroduces a logic cycle. (C
                 artifact_html = ""
                 n_art_total = len(artifacts) + eff.skipped_capped_artifacts
                 if artifacts:
-                    n_noeff = sum(1 for e in artifacts if not e.target_finish_delta_days)
+                    # "no effect" counted on the EXACT minutes — a sub-day mover is not "no effect"
+                    n_noeff = sum(
+                        1
+                        for e in artifacts
+                        if not (e.target_finish_delta_minutes or e.target_finish_delta_days)
+                    )
                     art_note = (
                         f"{n_art_total} constraint change(s) look like the MS Project "
                         "&ldquo;reschedule uncompleted work&rdquo; statusing artifact: the later "
@@ -328,10 +392,16 @@ artifact(s) &mdash; SNET stamped at the data date (click to expand)</summary>
 <th scope=col>Effect on target finish</th><th scope=col>Effect on project finish</th>
 <th scope=col>Citations</th></tr>{_eff_rows(artifacts)}</table></details>"""
                 agg = eff.aggregate_target_finish_delta_days
-                agg_txt = (
-                    f"<b class={'fail' if agg > 0 else 'ok' if agg < 0 else 'muted'}>{agg:+d} "
-                    f"working day(s)</b>"
-                )
+                agg_m = eff.aggregate_target_finish_delta_minutes or agg
+                agg_cls = "fail" if agg_m > 0 else "ok" if agg_m < 0 else "muted"
+                if agg:
+                    agg_val = f"{agg:+d} working day(s)"
+                elif agg_m:
+                    # sub-day aggregate (rounds to 0) — signed, never "+0 working day(s)"
+                    agg_val = f"{'+' if agg_m > 0 else '-'}&lt;1 working day"
+                else:
+                    agg_val = f"{agg:+d} working day(s)"
+                agg_txt = f"<b class={agg_cls}>{agg_val}</b>"
                 # "all changes together" line — the aggregate folds in ONLY the individually-
                 # measured reverts, so state that count honestly and, when any change was skipped/
                 # capped, say the total EXCLUDES them rather than over-claiming "every change".
