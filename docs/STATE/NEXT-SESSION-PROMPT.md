@@ -8,60 +8,60 @@ kickoff steers a fresh session at work that is already done.)
 ---
 
 Resume POLARIS (Schedule-Manipulation-Analysis-Tool). Read `docs/STATE/HANDOFF.md` FIRST
-(auto-injected; it ALWAYS wins over this prompt). As of last close: **v1.0.179, highest ADR
-0371, SCHEMA 2.11.0** — the 2026-08-08 (c) session closed the ADR-0370 exposure sweep
-(ADR-0371): a caller-by-caller census found TEN surfaces still diffing target-truncated pairs;
-on the control pair the truncation FABRICATED a HIGH "activities deleted" accusation while
-hiding the real cut. /compare + its export, /evolution + /api/evolution + its export, both
-whatif exports, and /export/mission's evolution tables now run WHOLESALE on `_pair_versions()`;
-/trend's signal roll-up, `build_brief`'s pair questions and `build_briefing` section 3.1 take
-surgical `pair_*` populations (per-version value series keep the ADR-0268 focus by design;
-/api/evolution + whatif-added are behavior-invariant consistency moves, recorded in the ADR).
-Shipped code changed → wheel + nine installers rebuilt; draft PR open on
-`claude/polaris-schedule-tool-resume-wm3gvt`; if it has since squash-merged, restart the
-branch: `git fetch --prune origin && git remote set-head origin -a && git checkout -B <branch>
-origin/main` (then `git branch --unset-upstream`). If still open, subscribe to its PR
-activity and drive CI to green before new work — shipped code + installers, so expect the
-SEVEN-check set (check · floor · linux · windows · browser · test 3.11 · test 3.13). Fresh
-container: `pip install -e ".[dev]"` plus `pip install build` (playwright optional, browser
-tests skip-gate — installing it locally wakes ~19 tests NO CI job runs; five of them fail
-PRE-EXISTINGLY, adjudicated on a pristine-main worktree 2026-08-08: the blob-URL download
-reporting on /trend /curves /scurve /cei and the SRA single-bin histogram caption contrast —
-do not chase as regressions). Run ruff as **`python -m ruff`** and always **`ruff check .` —
-THE WHOLE TREE**. Model protocol: ADR-0240 stands — parity-, engine-, testimony- or
-CUI-relevant work stays on the strongest model. Use the skills (`.claude/skills/`):
-`full-gate`, `prove-able-to-fail`, `metric-parity`, `ui-change`, `cui-guard`, `render-verify`,
-`session-close`.
+(auto-injected; it ALWAYS wins over this prompt). As of last close: **v1.0.180, highest ADR
+0372, SCHEMA 2.11.0** — the 2026-08-08 (d) session closed phase-3 slice 8 (ADR-0372):
+`_mission_body` → `web/mission.py` (329 lines; app.py 16,685 → 16,384), the FIRST slice whose
+re-measured census equalled its closure exactly (1 mover / 0 descents / multiset 28 added /
+0 removed), proven on a rebuilt 151-label oracle (double-render determinism across two
+processes; 151/151 byte-identical pristine vs cut; falsified in the new location to the EXACT
+pre-flight set after the /api/system flap was payload-diffed to `memory.percent` — live
+telemetry, weather not behavior, values normalized). Mutation battery 6/6 named (the
+enumeration guard's 7th/8th consecutive live catch). Shipped code changed → wheel + nine
+installers rebuilt; draft PR open on `claude/polaris-schedule-tool-resume-obnrld`; if it has
+since squash-merged, restart the branch: `git fetch --prune origin && git remote set-head
+origin -a && git checkout -B <branch> origin/main` (then `git branch --unset-upstream`). If
+still open, subscribe to its PR activity and drive CI to green before new work — shipped code
++ installers, so expect the SEVEN-check set (check · floor · linux · windows · browser · test
+3.11 · test 3.13). Fresh container: `pip install -e ".[dev]"` plus `pip install build`
+(playwright optional, browser tests skip-gate — installing it locally wakes ~19 tests NO CI
+job runs; five of them fail PRE-EXISTINGLY, adjudicated on a pristine-main worktree
+2026-08-08: the blob-URL download reporting on /trend /curves /scurve /cei and the SRA
+single-bin histogram caption contrast — do not chase as regressions). Run ruff as
+**`python -m ruff`** and always **`ruff check .` — THE WHOLE TREE**. Model protocol: ADR-0240
+stands — parity-, engine-, testimony- or CUI-relevant work stays on the strongest model. Use
+the skills (`.claude/skills/`): `full-gate`, `prove-able-to-fail`, `metric-parity`,
+`ui-change`, `cui-guard`, `render-verify`, `session-close`.
 
 ⇢ WHAT'S DONE — do NOT re-open
-Monolith split: phases 1–2 (`state.py`, `chrome.py`) + phase 3 slices 1–7 (`components.py`
+Monolith split: phases 1–2 (`state.py`, `chrome.py`) + phase 3 slices 1–8 (`components.py`
 ADR-0350 · `driving.py` ADR-0351 · `evolution.py` ADR-0352 · `integrity.py` ADR-0358 ·
-`margin.py` ADR-0363 · `trend.py` ADR-0364 · `ssi.py` ADR-0365). The intake manifest is
-CURRENT at 433 files / 99 mismatches; the `.mpp` census pin is 28 (regenerate, never
-hand-edit). The 2026-08-07 audit's four P0s are CLOSED (ADR-0366..0369). The target-UID pair
-scope is CLOSED end-to-end: /integrity (ADR-0370) AND the full exposure sweep (ADR-0371 —
-compare/trend/evolution/whatif/mission-export/brief/briefing; 11 pins in
-tests/web/test_pair_scope_exposure_sweep.py; mutation matrix 8/8 named). FX fixture verdicts
-are FINAL.
+`margin.py` ADR-0363 · `trend.py` ADR-0364 · `ssi.py` ADR-0365 · `mission.py` ADR-0372). The
+intake manifest is CURRENT at 433 files / 99 mismatches; the `.mpp` census pin is 28
+(regenerate, never hand-edit). The 2026-08-07 audit's four P0s are CLOSED (ADR-0366..0369).
+The target-UID pair scope is CLOSED end-to-end (ADR-0370 + ADR-0371; 11 pins in
+tests/web/test_pair_scope_exposure_sweep.py). FX fixture verdicts are FINAL.
 
 ⇢ DO THIS FIRST — the queue
-1. Phase 3 monolith split resumes at **mission 304** (stale census — RE-MEASURE the closure
-first; expect sra ~700+ over its "264": the panel 235 + `_ssi_export_tables` 248 +
-`_file_stored_risks` wait there). Then: how 290 · sra (re-measured) · what 257 · where 235 ·
-portfolio 231 · evm 208 · forecast 204 — EACH slice per the ADR-0365 recipe.
+1. Phase 3 monolith split resumes at slice 9 — by the 2026-08-08 (d) re-measured census
+(wc-truth; each family still owes its OWN closure before cutting): **sra** (prefix 840; the
+closure will pull `_ssi_panel` 235 + `_ssi_export_tables` 248 + `_file_stored_risks` + both
+risk-field constants per ADR-0365, so expect ~1,300+; descents pre-staged; the slice-7
+crafted v4/v2 setup-load oracle sequences MUST return for it) · forecast 391 · what 289 ·
+portfolio 253 · evm 239 · where 235 · how 214 — EACH slice per the ADR-0365 recipe (closure
+before cut · span-scoped probe · the six-mutation battery).
 2. Then the standing queue: stored-SRA-fields MSPDI fixture · driving-corridor fixture · the
 three page-lede-less pages (/briefing, /path, /compare) · /groups Activities (ADR-0343) ·
 installers vs known-good constraints · P80/P90 recurring-exception residual · the audit's
 doc-drift sweep (docs/PARITY-REPORT.md still says the reference .mpps are git-ignored and
 calls Project2.mpp "CUI intake" — superseded by ADR-0151/0152; docs/FINAL-REPORT.md blanket
-"Exact match" beyond the three evidence tiers; CLAUDE.md's phase-3 + single-E501 lines lag) ·
-~150 MB RSS retained per loaded 9 MB file (no per-file unload) · Phase 6 docs. Operator only:
-re-convert FX-03/FX-04 (open the authored .xml, VERIFY UID17=5d / UID131=1w before save — MS
-Project re-derives Duration from stored dates and silently un-edits otherwise; the finish
-MUST move) then re-run Fuse and replace the two oracles · one Acumen run on a crafted
-sub-day-negative-float schedule (closes the Negative-Float O1 oracle gap — the AFT has NO
-formula for it) · license · branch-protection contexts · proprietary reruns · OR-04 · July
-mpp/ re-export decision.
+"Exact match" beyond the three evidence tiers; CLAUDE.md's phase-3 + single-E501 lines lag —
+mission.py joined the E501 list) · ~150 MB RSS retained per loaded 9 MB file (no per-file
+unload) · Phase 6 docs. Operator only: re-convert FX-03/FX-04 (open the authored .xml, VERIFY
+UID17=5d / UID131=1w before save — MS Project re-derives Duration from stored dates and
+silently un-edits otherwise; the finish MUST move) then re-run Fuse and replace the two
+oracles · one Acumen run on a crafted sub-day-negative-float schedule (closes the
+Negative-Float O1 oracle gap — the AFT has NO formula for it) · license · branch-protection
+contexts · proprietary reruns · OR-04 · July mpp/ re-export decision.
 
 ⇢ THE TRAPS PAID FOR — check BY NAME
 1. **One session knob, two semantics** (ADR-0370/0371): the Target UID is a population cut AND
@@ -86,7 +86,8 @@ twin deserves its own assert.
 two `pip -e` flips is the cheap decisive adjudicator**.
 10. A binding-wrap spy undercounts — patch the module that CALLS or count at a construction
 choke point.
-11. A mutation is "caught" only when the failure summary NAMES the test.
+11. A mutation is "caught" only when the failure summary NAMES the test (pytest exit ≠
+failing test — assert the test RAN).
 12. NEVER mutate the tree while a suite runs (docs included); restore from scratchpad `cp`,
 never `git checkout`; verify by ANCHOR-GREP.
 13. An EMPTY sweep is evidence only with a positive-control self-test; `grep -c` exits 1 on
@@ -98,6 +99,12 @@ non-additive BY DESIGN.
 16. bandit B608 on HTML f-strings with "from" → house `# nosec B608 (HTML, not SQL)`.
 17. `_parse_uid` maps 0 → "clear", so UID 0 can never be the focus via the form — derive a
 real ≥1 summary UID in tests.
+18. **An oracle label serving live telemetry is weather, not behavior** (ADR-0372):
+/api/system was byte-stable across three renders by LUCK, then flipped `memory.percent`
+mid-battery. Normalize telemetry VALUES (keep shape) BEFORE the first byte-identity claim;
+adjudicate every unexpected mover by PAYLOAD DIFF before believing a dependency.
+19. A scratchpad-resident harness must HARDCODE the repo root — a walk-up from outside the
+repo loops silently at `/` (`Path('/').parent == Path('/')`); any root-walk must fail loudly.
 
 ⇢ Measured-false / load-sensitive, do NOT re-chase
 Baseline-PRESENCE as the parity population (F5) — 4 named ADR-0280 pin failures; the AFT's
