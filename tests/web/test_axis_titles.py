@@ -354,16 +354,27 @@ def test_timescale_captioned_modules_really_consume_the_slotted_header(name: str
 
 def test_the_timescale_slot_exists_and_every_consumer_page_serves_the_marker() -> None:
     """The executable detector, half two: the slot must exist in the shared builder, and the
-    caption text must actually be SERVED — ``app.py`` carries ``_TS_CAPTION_MARK`` on the four
-    hosting pages (/path, /evolution, /driving-path, /sra). A module cannot count as captioned
-    by a slot no page feeds."""
+    caption text must actually be SERVED on the four hosting pages (/path, /evolution,
+    /driving-path, /sra). A module cannot count as captioned by a slot no page feeds.
+
+    Repointed with the split (the ADR-0349 trap): ``_TS_CAPTION_MARK`` is DEFINED in
+    ``components.py`` since ADR-0373 descended it (the /sra body moved to ``sra.py`` while
+    three routes still serve the marker from ``app.py``), so the counter reads each file
+    for what it actually holds — three route insertions in ``app.py``, the /sra body's one
+    in ``sra.py``, the definition in ``components.py``."""
     gantt = _src(STATIC / "gantt.js")
     assert 'querySelector("[data-ts-caption]")' in gantt
     assert "g-tscap ch-atd" in gantt, "the slot row must carry the DOM caption class"
-    app = (ROOT / "src" / "schedule_forensics" / "web" / "app.py").read_text(encoding="utf-8")
-    assert app.count("_TS_CAPTION_MARK") >= 5, (  # the definition + four page insertions
-        "every TIMESCALE_CAPTIONED hosting page must serve the data-ts-caption marker"
+    web = ROOT / "src" / "schedule_forensics" / "web"
+    app = (web / "app.py").read_text(encoding="utf-8")
+    sra = (web / "sra.py").read_text(encoding="utf-8")
+    components = (web / "components.py").read_text(encoding="utf-8")
+    assert "_TS_CAPTION_MARK = " in components, "the marker's definition left components.py"
+    # the re-export line carries the name twice (`X as X`); the three route insertions are extra
+    assert app.count("_TS_CAPTION_MARK") >= 5, (
+        "the /path, /evolution and /driving-path routes must serve the data-ts-caption marker"
     )
+    assert sra.count("_TS_CAPTION_MARK") >= 1, "the /sra body must serve the data-ts-caption marker"
     css = (STATIC / "app.css").read_text(encoding="utf-8")
     for rule in (".g-tscap", ".g-scale-capped"):
         assert rule in css, f"{rule} missing — the slot would render unstyled"

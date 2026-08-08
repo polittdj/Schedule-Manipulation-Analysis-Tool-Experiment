@@ -12390,3 +12390,51 @@ Measured (post-entry, final tree): parity gate **52 passed / 15 skipped, exit 0*
 state-docs guard module **5/5 green** (a first draft of this entry wrote "10/10" BEFORE the
 run — the wc-decides rule caught it in-session; corrected to the measured count before
 commit). ADR-0372.
+
+## 2026-08-08 (e) — branch `claude/polaris-schedule-tool-resume-vdowl5` — phase 3 slice 9: the /sra page family out of the monolith (ADR-0373, v1.0.181)
+
+Branch created at origin/main 41c5462 (after #557 squash-merged). The queue's slice:
+re-measure, then cut the /sra family. Census (ast spans, wc-truth): prefix 847 / 13 names;
+behaviour-seeded closure 32 names / 1,756 lines — `_ssi_panel` 235 + `_ssi_export_tables`
+248 IN, exactly as ADR-0365 §2 priced; partition 30 movers / 1,741 (22 regions, five
+extended by eye to carry their `#:` doc-comment blocks) + 2 descents / 15
+(`_TS_CAPTION_MARK` — /path, /driving-path, /evolution routes serve the marker;
+`_schedule_risks` — `_margin_risk_data` + five /api routes). Cut: `web/sra.py` 1,848
+lines, app.py 16,384 → 14,597, components.py 473 → 503 (wc-verified); per-region
+byte-identity 24/24 asserted inside the cut script and re-verified after ruff-fix and
+after format; final multiset 104 added / 8 removed (all 8 import-shape artifacts — zero
+code lines); 12 mover-only imports dropped from app.py, sweep-clean; LAYER_ORDER
+`… → ssi → mission → sra → app`; contract/EXTRACTED/VIEW_MODULES + both whole-view-layer
+guard tuples widened; `test_axis_titles`' `_TS_CAPTION_MARK` counter repointed same
+commit; E501 exemption travels (pyproject). `sra.py` imports nothing from `web.ssi`.
+Oracle rebuilt per ADR-0372 and grown 151 → 294 labels (all parameterless GETs incl.
+validation-4xx bodies · both fmts × 27 exports · 8 named exports on TP4 v5 · variants ·
+full-surface [target-set]/[target-cleared] · the slice-7 v4/v2 setup-load sequences
+returned, 303s asserted); double-render determinism across two processes, 0 flapping,
+three normalizers inherited. The FIRST crafted v4 payload aimed at COMPLETED tasks
+(uids 12–15) measured two false darks — scurve/tornado probed 0 twice (stronger-anchor
+re-probe separated weak-anchor from dark) until the payload was re-aimed at the live
+critical chain (22/23/24, real FS ties); both then lit at [v4] DOCX sra. Pre-flight:
+29/32 render-proven (xlsx→export-tables, docx→report-blocks+charts+NASA — structural
+sets); 3 oracle-dark = the ADR-0365 stored-fields trio, route-covered by
+test_load_from_schedule_seeds_the_register_from_the_files_risk_fields + uid152 parity
+oracles. Post-cut: 294/294 byte-identical pristine vs cut; falsified in the new locations
+32/32 EXACT (dark stayed dark), restores md5-verified. Sweeps: monkeypatch+attr over 70
+bound names — zero hits (control non_summary 2×); source-text over 15 app.py readers,
+positive-controlled (sra_grid.js ∈ axis_titles ∩ _ssi_panel), every hit adjudicated;
+dropped-import sweep clean. Mutation battery 6/6 named, twins green (enumeration guard's
+9th/10th consecutive live catch); mutation 2's first shape (upward import in a NEW
+top-level def) drew the re-export guard too — defensive overlap recorded as a true
+positive; the battery-patch that reshaped it first missed silently via unanchored heredoc
+replace (patch-the-patcher lesson, LESSONS-LEARNED (e)). Statics green (python -m ruff
+check WHOLE TREE · format --check · mypy strict 127 files · bandit exit 0 · node --check
+per file). v1.0.180 → v1.0.181 bumped BEFORE the suite; wheel + nine installers rebuilt
+once after the last code change. Docs (ADR-0373 · handoff rotation (d)→archive top ·
+this entry · LESSONS-LEARNED (e)) finalized BEFORE the suite started — the (d) session's
+trap-12 brush not repeated. Full suite + parity: measured counts appended below after
+the runs complete on this final tree. ADR-0373.
+Measured (final tree, docs already final when the runs started): full suite **3536 passed /
+45 skipped / 0 failed, exit 0, in 25:03** (background, python -u; +3 tests vs slice 8 — the
+sra.py contract params); parity gate **52 passed / 15 skipped, exit 0, in 11:51**;
+NEXT-SESSION-PROMPT refreshed for slice 10 (forecast 391 first). State-docs guard module
+re-run green after this append.
