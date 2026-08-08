@@ -62,11 +62,19 @@ def build_brief(
     cpms: list[CPMResult],
     *,
     today: dt.date | None = None,
+    pair_schedules: list[Schedule] | None = None,
+    pair_cpms: list[CPMResult] | None = None,
 ) -> DiagnosticBrief:
     """Build the cited Diagnostic Brief over the loaded, analyzable versions.
 
     Versions must arrive in forensic (data-date) order with their CPM results —
     exactly what the web layer's ``_solvable_versions`` produces.
+
+    ``pair_schedules``/``pair_cpms`` (ADR-0371) are the PAIR-scope populations the
+    version-pair questions diff (manipulation + remaining-cut) — the session Target UID
+    never truncates them, so a cone-membership change can never read as a deleted activity
+    and an edit outside the cone is never invisible. ``None`` falls back to the primary
+    populations — correct whenever those are already unscoped (no target set).
     """
     if not schedules:
         raise ValueError("the diagnostic brief needs at least one analyzable schedule")
@@ -75,7 +83,12 @@ def build_brief(
         _summary_section(schedules, cpms),
         _finish_story_section(schedules, cpms),
         _trends_section(schedules, cpms),
-        _questions_section(schedules, cpms),
+        _questions_section(
+            schedules,
+            cpms,
+            pair_schedules if pair_schedules is not None else schedules,
+            pair_cpms if pair_cpms is not None else cpms,
+        ),
         _risk_recovery_section(schedules, cpms),
         _how_to_verify_section(schedules),
     ]
@@ -170,11 +183,19 @@ def _finish_story_section(schedules: list[Schedule], cpms: list[CPMResult]) -> B
     return BriefSection("The finish story", tuple(paragraphs), table)
 
 
-def _questions_section(schedules: list[Schedule], cpms: list[CPMResult]) -> BriefSection:
-    """The heart of the brief: outliers and contradictions, each phrased as a question."""
+def _questions_section(
+    schedules: list[Schedule],
+    cpms: list[CPMResult],
+    pair_schedules: list[Schedule],
+    pair_cpms: list[CPMResult],
+) -> BriefSection:
+    """The heart of the brief: outliers and contradictions, each phrased as a question.
+
+    The two version-PAIR question families diff ``pair_schedules`` (never target-truncated,
+    ADR-0371); the latest-version families keep the focused primary populations."""
     paragraphs: list[CitedStatement] = []
-    paragraphs.extend(_manipulation_questions(schedules, cpms))
-    paragraphs.extend(_remaining_cut_questions(schedules))
+    paragraphs.extend(_manipulation_questions(pair_schedules, pair_cpms))
+    paragraphs.extend(_remaining_cut_questions(pair_schedules))
     paragraphs.extend(_stale_forecast_questions(schedules[-1]))
     paragraphs.extend(_duration_stretch_questions(schedules[-1]))
     paragraphs.extend(_high_float_questions(schedules[-1], cpms[-1]))

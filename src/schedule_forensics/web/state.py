@@ -1199,7 +1199,14 @@ class SessionState:
         is still byte-identical to computing them apart)."""
         return self._stripes[hash(ck) % len(self._stripes)]
 
-    def briefing_for(self, schedules: list[Schedule], cpms: list[CPMResult]) -> ExecutiveBriefing:
+    def briefing_for(
+        self,
+        schedules: list[Schedule],
+        cpms: list[CPMResult],
+        *,
+        pair_schedules: list[Schedule] | None = None,
+        pair_cpms: list[CPMResult] | None = None,
+    ) -> ExecutiveBriefing:
         """The deterministic Executive Briefing for the current epoch, built at most once
         (ADR-0368, audit P1).
 
@@ -1210,6 +1217,11 @@ class SessionState:
         every other tier). A cold build runs under the ADR-0281 single-flight stripe so N
         concurrent first requests build once. Only the Null-backend deterministic build is
         memoised; the live-model polish (/api/ai/briefing) stays uncached by design.
+
+        ``pair_schedules``/``pair_cpms`` (ADR-0371) feed section 3.1's version-pair diff.
+        They need no key of their own: the pair populations are a pure function of the loaded
+        files and the reduce-filter — both already discriminated by the scope signature and
+        the identity check — so a memo hit can never serve a stale pair.
         """
         sig = self.scope_signature()
         day = dt.date.today()
@@ -1234,7 +1246,12 @@ class SessionState:
             if cached is not None:
                 return cached
             briefing = build_briefing(
-                schedules, cpms=cpms, today=day, acumen_parity=self.dcma_acumen_parity
+                schedules,
+                cpms=cpms,
+                today=day,
+                acumen_parity=self.dcma_acumen_parity,
+                pair_schedules=pair_schedules,
+                pair_cpms=pair_cpms,
             )
             self.briefing_memo = (sig, tuple(schedules), day, briefing)
         return briefing

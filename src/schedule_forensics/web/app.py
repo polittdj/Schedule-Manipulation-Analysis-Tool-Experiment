@@ -1993,7 +1993,14 @@ def create_app(
         n_loaded = len(ordered)
         schedules, cpms, _skipped = _solvable_versions()
         n_solvable = len(schedules) if n_loaded >= 2 else 0
-        briefing = st.briefing_for(schedules, cpms) if schedules else None
+        # PAIR versions for the briefing's critical-path section 3.1 (ADR-0371): entered/left
+        # diffs the version pair, so the target never truncates it.
+        pair_schedules, pair_cpms, _pskipped = _pair_versions()
+        briefing = (
+            st.briefing_for(schedules, cpms, pair_schedules=pair_schedules, pair_cpms=pair_cpms)
+            if schedules
+            else None
+        )
         return _page(
             st,
             "Mission Control",
@@ -2017,7 +2024,11 @@ def create_app(
             )
         # Forensic order is by data date (the Acumen/SSI ProjectTimeNow pattern), not load
         # order; unschedulable versions (e.g. a logic cycle) are skipped, never a 500.
-        schedules, cpms, skipped = _solvable_versions()
+        # PAIR versions (ADR-0371, the ADR-0370 exposure sweep): the whole page is a version-
+        # PAIR diff (diff_versions header, manipulation signals, focus rows), so the Target UID
+        # must never truncate the populations being diffed — the truncated pair fabricated
+        # "removed" activities/links from cone membership and hid real edits outside the cone.
+        schedules, cpms, skipped = _pair_versions()
         if len(schedules) < 2:
             return _page(
                 st,
@@ -2378,6 +2389,11 @@ def create_app(
         # an explicit ?target= (even blank, from the Focus form) wins; otherwise the
         # session-wide target focuses the trend automatically
         uid = _parse_uid(target) if target is not None else st.target_uid
+        # PAIR versions for the pairwise manipulation-signal roll-up ONLY (ADR-0371): the
+        # series/header stay on the focused scope (the page's ?target= feature), but the
+        # signals diff version pairs — on the truncated pair they fabricated deleted-task
+        # findings from cone membership and missed real cuts outside the cone.
+        pair_schedules, pair_cpms, _pskipped = _pair_versions()
         return _page(
             st,
             "Trend",
@@ -2385,7 +2401,7 @@ def create_app(
             + _export_bar("trend")
             + _skipped_notice(skipped)
             + _sources_line(schedules)
-            + _trend_body(schedules, cpms, uid),
+            + _trend_body(schedules, cpms, uid, pair_schedules=pair_schedules, pair_cpms=pair_cpms),
         )
 
     @app.get("/api/trend")
@@ -3086,7 +3102,12 @@ def create_app(
             )
             return _export_response(fmt, note, "mission")
         tables: list[Table] = list(trend_tables(compute_quality_trend(schedules, cpms)))
-        tables.extend(path_evolution_tables(compute_path_evolution(schedules, cpms)))
+        # PAIR versions for the evolution tables ONLY (ADR-0371): entered/left diffs version
+        # pairs, so the target never truncates; the quality trend stays on the focused scope
+        # (per-version series — the same basis as /export/{fmt}/trend).
+        pair_schedules, pair_cpms, _pskipped = _pair_versions()
+        if len(pair_schedules) >= 2:
+            tables.extend(path_evolution_tables(compute_path_evolution(pair_schedules, pair_cpms)))
         tableset = TableSet("Mission Control — underlying series", tuple(tables))
         return _export_response(fmt, tableset, "mission")
 
@@ -3161,7 +3182,11 @@ def create_app(
         cf_b: int = Query(-1),
     ) -> HTMLResponse:
         st = session()
-        schedules, cpms, skipped = _solvable_versions()
+        # PAIR versions (ADR-0371): every panel here diffs a version pair — path_evolution's
+        # entered/left + per-step signals, the counterfactual, the what-if tables. The focus
+        # semantics are delivered by the target_uid ANCHOR (the 0-driving-slack chain to the
+        # target), never by truncating the populations being diffed.
+        schedules, cpms, skipped = _pair_versions()
         if len(schedules) < 2:
             return _page(
                 st,
@@ -3271,9 +3296,10 @@ def create_app(
         """The stepper's feed. ADR-0265 (closing the ADR-0251 disclosure): it accepts the SAME
         counterfactual trace options as the /evolution page, so the client-fetched chart and
         the server-rendered panels share ONE basis. Defaults reproduce the stored-schedule
-        payload byte-for-byte (the /mission wall passes no options)."""
+        payload byte-for-byte (the /mission wall passes no options). PAIR versions (ADR-0371):
+        the stepper diffs version pairs, so the target anchors and never truncates."""
         st = session()
-        schedules, cpms, _skipped = _solvable_versions()
+        schedules, cpms, _skipped = _pair_versions()
         if len(schedules) < 2:
             return JSONResponse({"error": "need at least two analyzable versions"}, status_code=400)
         uid = _parse_uid(target) if target is not None else st.target_uid
@@ -4682,10 +4708,12 @@ def create_app(
     ) -> Response:
         """The 'What-if' reverted-changes list for a chosen version pair, with any extra columns
         the operator toggled on — the Evolution counterfactual table's Excel export (operator
-        2026-07-08)."""
+        2026-07-08). PAIR versions (ADR-0371): the counterfactual restores prior links/durations
+        onto the comparison network, so the target anchors the measurement and never truncates
+        (a truncated pair starved the restore into a false "no changes to revert")."""
         if (bad := _bad_format(fmt)) is not None:
             return bad
-        schedules, cpms, _skipped = _solvable_versions()
+        schedules, cpms, _skipped = _pair_versions()
         labels = [s.source_file or s.name for s in schedules]
         if a not in labels or b not in labels:
             return JSONResponse({"error": "unknown file(s)"}, status_code=404)
@@ -4740,10 +4768,11 @@ def create_app(
         fmt: str, a: str = Query(""), b: str = Query(""), cols: str = Query("")
     ) -> Response:
         """The 'What-if' work-ADDED-to-the-critical-path list for a chosen version pair, with any
-        extra columns the operator toggled on (operator 2026-07-09 — the mirror of /whatif)."""
+        extra columns the operator toggled on (operator 2026-07-09 — the mirror of /whatif).
+        PAIR versions (ADR-0371): entered-the-path attribution diffs the version pair."""
         if (bad := _bad_format(fmt)) is not None:
             return bad
-        schedules, cpms, _skipped = _solvable_versions()
+        schedules, cpms, _skipped = _pair_versions()
         labels = [s.source_file or s.name for s in schedules]
         if a not in labels or b not in labels:
             return JSONResponse({"error": "unknown file(s)"}, status_code=404)
@@ -4889,10 +4918,10 @@ def create_app(
         "including the Excel exports" promise is true. Defaults reproduce the pre-0320 export
         byte-for-byte. ``tier`` never filters these tables (the tier stepper is a different
         on-screen lens over the same versions); a chosen tier is DISCLOSED as not applied
-        rather than silently implied."""
+        rather than silently implied. PAIR versions (ADR-0371): same basis as the page."""
         if (bad := _bad_format(fmt)) is not None:
             return bad
-        schedules, cpms, _skipped = _solvable_versions()
+        schedules, cpms, _skipped = _pair_versions()
         if len(schedules) < 2:
             return JSONResponse({"error": "need at least two analyzable versions"}, status_code=400)
         uid = _parse_uid(target) if target is not None else session().target_uid
@@ -4973,9 +5002,10 @@ def create_app(
 
     @app.get("/export/{fmt}/compare")
     def export_compare(fmt: str) -> Response:
+        # PAIR versions (ADR-0371): the signals diff the version pair — same basis as /compare.
         if (bad := _bad_format(fmt)) is not None:
             return bad
-        schedules, cpms, _skipped = _solvable_versions()
+        schedules, cpms, _skipped = _pair_versions()
         if len(schedules) < 2:
             return JSONResponse({"error": "need at least two analyzable versions"}, status_code=400)
         manip = detect_manipulation(
@@ -4999,7 +5029,11 @@ def create_app(
                 + "<div class=panel>Load at least one analyzable schedule to build the "
                 "diagnostic brief.</div>",
             )
-        brief = build_brief(schedules, cpms)
+        # PAIR versions for the brief's version-pair questions (ADR-0371): the manipulation
+        # and remaining-cut questions diff version pairs; the single-version sections keep
+        # the focused scope (ADR-0268).
+        pair_schedules, pair_cpms, _pskipped = _pair_versions()
+        brief = build_brief(schedules, cpms, pair_schedules=pair_schedules, pair_cpms=pair_cpms)
         # ADR-0337 (chapter 12, DoD): the takeaway h1 + context line every page owes, stated as a
         # FINDING with a number in it. Both figures are rendered again in the panels below — the
         # section count and the cited-statement count — so the reader can verify the headline by
@@ -6260,7 +6294,9 @@ def create_app(
         schedules, cpms, _skipped = _solvable_versions()
         if not schedules:
             return JSONResponse({"error": "need at least one analyzable schedule"}, status_code=400)
-        brief = build_brief(schedules, cpms)
+        # PAIR versions for the version-pair questions (ADR-0371) — same basis as /brief.
+        pair_schedules, pair_cpms, _pskipped = _pair_versions()
+        brief = build_brief(schedules, cpms, pair_schedules=pair_schedules, pair_cpms=pair_cpms)
         if fmt == "docx":
             blocks = cast("list[Block]", brief_blocks(brief))
             return Response(
@@ -6291,7 +6327,11 @@ def create_app(
         schedules, cpms, _skipped = _solvable_versions()
         if not schedules:
             return JSONResponse({"error": "need at least one analyzable schedule"}, status_code=400)
-        briefing = st.briefing_for(schedules, cpms)
+        # PAIR versions for section 3.1's entered/left (ADR-0371) — same basis as /briefing.
+        pair_schedules, pair_cpms, _pskipped = _pair_versions()
+        briefing = st.briefing_for(
+            schedules, cpms, pair_schedules=pair_schedules, pair_cpms=pair_cpms
+        )
         if fmt == "docx":
             blocks = cast("list[Block]", briefing_blocks(briefing))
             return Response(
@@ -6321,7 +6361,11 @@ def create_app(
         # synchronous per-section AI polish on page load made this page hang (effectively "won't
         # open") on big workbooks with a slow local model. ai_polish.js fetches /api/ai/briefing in
         # the background and swaps in the local-AI-polished version when a model is active.
-        briefing = st.briefing_for(schedules, cpms)
+        # PAIR versions for section 3.1's entered/left (ADR-0371): the diff never truncates.
+        pair_schedules, pair_cpms, _pskipped = _pair_versions()
+        briefing = st.briefing_for(
+            schedules, cpms, pair_schedules=pair_schedules, pair_cpms=pair_cpms
+        )
         body = (
             _the_briefing_header(
                 briefing,
@@ -6375,9 +6419,16 @@ def create_app(
         backend = _active_backend(st)
         if backend.name == "null":
             return JSONResponse({"polished": False})
+        # PAIR versions for section 3.1's entered/left (ADR-0371) — same basis as /briefing.
+        pair_schedules, pair_cpms, _pskipped = _pair_versions()
         try:
             briefing = build_briefing(
-                schedules, cpms=cpms, backend=backend, acumen_parity=st.dcma_acumen_parity
+                schedules,
+                cpms=cpms,
+                backend=backend,
+                acumen_parity=st.dcma_acumen_parity,
+                pair_schedules=pair_schedules,
+                pair_cpms=pair_cpms,
             )
             # ADR-0337: the SAME provenance chip the server-rendered body carries. ai_polish.js
             # replaces the whole of `#briefingBody`, so omitting it here would make the chip

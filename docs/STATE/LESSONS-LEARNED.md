@@ -435,6 +435,26 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-08 (c) — a "queued exposure class" is a census, not a list; and an anchored computation can make a truncation harmless
+
+- ADR-0370's queue named four exposure sites; the caller-by-caller census found TEN (the
+  mission export's evolution tables, the briefing's section 3.1, the brief's two pair
+  questions and both whatif exports were never named). When a fix separates two meanings of
+  one knob, enumerate EVERY caller of the old accessor in the same round — the named list is
+  where you start, not where you stop.
+- Measuring the control on every engine paid immediately: one fixture produced three
+  DIFFERENT lie shapes (a fabricated HIGH deleted-task accusation, near-inverted entered/left,
+  a counterfactual starved to None). The fabricated HIGH reached the Diagnostic Brief's
+  HIGH-only questions — the truncation was literally authoring the tool's worst accusation.
+- Two surfaces (anchored /api/evolution, /export/whatif-added) turned out
+  truncation-INVARIANT: a driving-slack chain to the target only walks ancestors, and the
+  ADR-0268 cone IS the ancestor set. The honest artifact for an unpinnable-but-correct move
+  is an ADR paragraph saying no test CAN fail — not a vacuous test that passes either way.
+- Probe-then-pin kept every assertion real: render each surface first, read the measured
+  strings, then write the test. Eleven tests passed first run AND the 8-mutation matrix
+  produced exactly one named failure each — first-run green is trustworthy only because the
+  mutations proved the pins can fail.
+
 ### 2026-08-08 (b) — one session knob, two semantics: the population cut silently redefined the measurement; and a test whose setup can 405 tests nothing
 
 - The Target UID means BOTH "truncate every view to my driving sub-network" (ADR-0268) and

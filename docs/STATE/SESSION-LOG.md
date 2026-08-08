@@ -12295,3 +12295,58 @@ section → archive top), this entry, LESSONS-LEARNED 2026-08-08 (b) entry, NEXT
 refreshed. Queued new: /compare · trend.py:162 · evolution.py:505 + app.py's other
 detect_manipulation/path_counterfactual sites (same exposure class); the reduce-filter
 pair-diff caveat (documented in ADR-0370).
+
+## 2026-08-08 (c) — branch `claude/polaris-schedule-tool-resume-wm3gvt` — the ADR-0370 exposure sweep closed: every version-pair forensic surface on the pair scope (ADR-0371, v1.0.179)
+
+Queue item 1 from the (b) handoff: `/compare`, /trend's findings roll-up, /evolution's
+counterfactual and app.py's other detect_manipulation / compute_path_counterfactual call sites
+still received TARGET-TRUNCATED pairs — the class ADR-0370 fixed for /integrity. A
+caller-by-caller census of every `_solvable_versions` / `_solvable_versions_full` /
+`st.ordered()` site in app.py (plus the brief/briefing/narrative feeders) classified each as
+pair-diff vs per-version-value; the ADR-0370 control pair then measured the stakes on each
+engine: `detect_manipulation` on the truncated pair FABRICATES a HIGH "2 activities deleted
+since the prior version" while hiding the real duration cut (MEDIUM shortened-duration); an
+unanchored `compute_path_evolution` near-inverts entered/left (Wire "entered", Dig+Pour "left"
+vs the truth: only Roof left); `compute_path_counterfactual` starves to None. The fabricated
+HIGH reached the Diagnostic Brief's HIGH-only questions verbatim.
+
+Landed (ADR-0371): moved WHOLESALE to `_pair_versions()` — /compare (diff_versions header
+KPIs + signals + focus rows) · /export/{fmt}/compare · /evolution · /api/evolution ·
+/export/{fmt}/evolution · /export/{fmt}/whatif · /export/{fmt}/whatif-added ·
+/export/{fmt}/mission's path-evolution tables (quality trend stays focused, the
+/export/{fmt}/trend basis). SURGICAL dual-population — /trend's pairwise signal roll-up
+(`_trend_body` pair kwargs) · `build_brief`'s `_manipulation_questions` +
+`_remaining_cut_questions` · `build_briefing` section 3.1's entered/left snapshot + names +
+citations (`_critical_path`), threaded via `SessionState.briefing_for` (memo needs NO new key:
+pair populations are a pure function of files+filter, both already discriminated by the scope
+signature + identity check) from /mission, /briefing, /export/{fmt}/briefing,
+/api/ai/briefing. STAYED focused: the per-version value series (trend series/header,
+/api/trend, /export/trend, net-finish-impact, driving-path, forecast, evm, performance,
+volatility, cei/scurve/curves, the per-file report). /api/evolution + /export/whatif-added
+are behavior-INVARIANT consistency moves (anchored driving-slack chains ⊆ the target cone) —
+recorded honestly in the ADR with no mutation row, because no observable failure exists.
+
+Verified: tests/web/test_pair_scope_exposure_sweep.py (11) — the tri-engine truncated-pair
+POSITIVE CONTROL, one page/export truth pin per moved surface (every web test POSTs /target
+and asserts the 303 — the (b) silent-405 trap), and function-tier build_brief/build_briefing
+pins whose in-test controls assert the truncated output differs (the brief control fabricates
+"activities deleted" and cannot see the 24-wd remaining-cut on Dig; the briefing control says
+"1 moved onto ... and 2 moved off"). Mutation matrix 8/8: each route wiring reverted one at a
+time (anchored splices, landed-count asserted before write) → exactly ONE named failure each
+with 10 green twins; tree restored byte-identical (cmp) and anchor-grep re-counted 10
+pair-fetch sites. Statics green (python -m ruff check whole tree · format · mypy strict 125 ·
+bandit exit 0 · node --check per file). Version bumped v1.0.178 → v1.0.179 BEFORE the suite;
+wheel + nine installers rebuilt after the last code change. Docs: handoff rotated ((b) section
+→ archive top), this entry, LESSONS-LEARNED 2026-08-08 (c) entry, NEXT-SESSION-PROMPT
+refreshed. Full-suite + parity counts: appended below after the runs completed.
+
+Suite counts (re-read from the logs, post-run): full suite **1 failed / 3531 passed /
+45 skipped (22:25)** — the one failure was `test_export_session_focus_applies_the_sessions_own_rule`,
+the ADR-0320 mirror pin that faithfully recorded the OLD split (URL focus = full population,
+session focus = truncated population); that split IS the ADR-0371 defect, so the pin was
+re-pointed to the new truth with a STRONGER assert (`test_export_session_focus_matches_the_url_focus`:
+both spellings keep the full population and produce EQUAL sheet text; its failure on the old
+wiring in this very run is the able-to-fail evidence). Module re-run after the re-point:
+14/14. Parity gate **52 passed / 15 skipped (11:13)** on the final tree, exit 0. Tests-only
+re-point after the wheel build ⇒ no rebuild owed (the lockstep compares packaged
+schedule_forensics/** only).
