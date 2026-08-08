@@ -12350,3 +12350,43 @@ wiring in this very run is the able-to-fail evidence). Module re-run after the r
 14/14. Parity gate **52 passed / 15 skipped (11:13)** on the final tree, exit 0. Tests-only
 re-point after the wheel build ⇒ no rebuild owed (the lockstep compares packaged
 schedule_forensics/** only).
+
+## 2026-08-08 (d) — phase 3 slice 8: the mission wall out of the monolith (ADR-0372, v1.0.180)
+
+Branch `claude/polaris-schedule-tool-resume-obnrld` (created at origin/main 6975145 after
+the operator squash-merged #556). The queue's slice: re-measure, then cut the mission
+family. The re-measured census (ast spans, wc-truth) CONFIRMED the closure exactly for the
+first time — mission 304 = `_mission_body` alone, sole referrer the `/mission` route; NO
+descents (externals only `_e`/`Schedule`/`ExecutiveBriefing`); the export route contributes
+no movers. Re-priced the whole queue: sra 840 by prefix (closure will add `_ssi_panel` 235
++ `_ssi_export_tables` 248 + `_file_stored_risks` + 2 constants → ~1,300+) · forecast 391 ·
+what 289 · portfolio 253 · evm 239 · where 235 · how 214. Cut: `web/mission.py` 329 lines,
+app.py 16,685 → 16,384 (wc-verified); per-definition byte-identity 1/1 asserted inside the
+cut script; multiset 28 added / 0 removed (first slice with zero removals); LAYER_ORDER
+`… → ssi → mission → app`; E501 exemption travels; contract/EXTRACTED/VIEW_MODULES + both
+whole-view-layer guard tuples widened in the same commit. Oracle rebuilt 96 → 151 labels
+(all parameterless GETs incl. APIs, both export fmts ×25, 8 named exports on TP4 v5, the
+established variants, a [target-set] sequence on REAL UID 17 with 303s asserted);
+double-render determinism across two processes; three normalizers (launch token · whoami
+pid · /api/system VALUES — the falsification run moved a 4th label, payload-diffed to
+memory.percent 4.6→4.7, live host telemetry crossing a 1-dp boundary: weather, not
+behavior; normalized, all four runs re-adjudicated from saved bodies). Pre-flight:
+`_mission_body` moves exactly 3 labels; post-cut 151/151 byte-identical pristine vs cut;
+falsified in the new location to the EXACT set, restores md5-verified. Sweeps: monkeypatch
++ attr-read over the 4 bound names — zero hits, positive-controlled (`app_mod.non_summary`
+found); source-text literal sweep over all 12 app.py readers, positive-controlled
+(mission.js ∈ axis_titles ∩ body), every hit adjudicated. Mutation battery 6/6, each
+exactly ONE named failure, twins green (enumeration guard's 7th/8th consecutive live
+catch), tree restored from scratchpad copies (md5 + anchor-grep). Statics green (python -m
+ruff check WHOLE TREE · format · mypy strict 126 files · bandit exit 0 · node --check per
+file). v1.0.179 → v1.0.180 bumped BEFORE the suite; wheel + nine installers rebuilt once.
+Full suite (background, python -u): **3533 passed / 45 skipped / 1 failed in 24:13 — the
+one failure was `test_session_log_references_latest_adr`, the drift guard firing because
+this very entry had not been written yet while the handoff rotation landed mid-run** (docs
+were edited while the suite ran — a trap-12 brush, recorded in LESSONS-LEARNED; code was
+final before the suite started, so the 3533 code results stand); the state-docs module
+re-run green on the final tree after this entry, and the parity gate re-run separately.
+Measured (post-entry, final tree): parity gate **52 passed / 15 skipped, exit 0** (11:54);
+state-docs guard module **5/5 green** (a first draft of this entry wrote "10/10" BEFORE the
+run — the wc-decides rule caught it in-session; corrected to the measured count before
+commit). ADR-0372.

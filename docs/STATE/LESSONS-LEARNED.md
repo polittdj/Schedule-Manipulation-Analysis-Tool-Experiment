@@ -435,6 +435,36 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-08 (d) — an oracle label that reports the machine is weather; stability observed n times is not determinism
+
+- The mission slice's falsification run moved FOUR oracle labels where the pre-flight said
+  three. The fourth was `/api/system` — payload-diffed to exactly one key, `memory.percent`
+  4.6→4.7. The endpoint serves LIVE host telemetry; it had been byte-stable across three
+  full renders by luck (1-dp rounding) and crossed the boundary mid-battery. A mutation in
+  `mission.py` cannot change the machine's memory — the env-defect masquerade, caught by
+  diffing the payload instead of believing the label. Lesson: normalize telemetry VALUES
+  (keep the shape) BEFORE the first byte-identity claim, and adjudicate every unexpected
+  mover by payload diff before believing a dependency exists.
+- The oracle harness hung silently for 5+ minutes on its first run: its repo-root walk-up
+  started from the SCRATCHPAD (outside the repo), and `Path('/').parent == Path('/')` loops
+  forever. A session harness should hardcode the root; any walk-up must fail loudly at `/`.
+- The good news case: the re-measured census EQUALLED the closure for the first time
+  (mission 304 = one function, 0 descents, multiset 28 added / 0 removed — nothing
+  narrowed). The prefix census is a fine finder when the family is one function; the
+  closure check cost minutes and stays owed every slice.
+- The battery's two sentinel mutations (em-dash, drilldown double-load) are the
+  true-positive proof the WIDENED guards read the new module — without this slice's tuple
+  edits both would have passed silently. Seventh and eighth consecutive live catches for
+  the enumeration guard.
+- Two in-session catches of our own standing rules, recorded as paid-for: (1) the handoff
+  rotation + ADR landed while the full suite was RUNNING — trap 12 says docs included, and
+  the drift guard duly failed mid-rotation inside that run (code was final pre-suite, so
+  code results stand; the state-docs module was re-run green on the final tree). Sequence
+  the close: docs first OR suite first, never interleaved. (2) A session-log draft wrote
+  "state-docs guard 10/10" before the run existed — the module has FIVE tests; wc-decides
+  caught it pre-commit. A count you have not read from a run output is a prediction, and
+  predictions do not belong in the log.
+
 ### 2026-08-08 (c) — a "queued exposure class" is a census, not a list; and an anchored computation can make a truncation harmless
 
 - ADR-0370's queue named four exposure sites; the caller-by-caller census found TEN (the
