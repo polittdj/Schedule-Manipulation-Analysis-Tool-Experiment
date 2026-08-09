@@ -180,10 +180,9 @@ from schedule_forensics.engine.msp_filters import (
 from schedule_forensics.engine.path_counterfactual import (
     compute_path_counterfactual,
 )
-from schedule_forensics.engine.path_evolution import PathEvolution, compute_path_evolution
+from schedule_forensics.engine.path_evolution import compute_path_evolution
 from schedule_forensics.engine.projects import (
     Project,
-    ProjectVersion,
 )
 from schedule_forensics.engine.recommendations import (
     SEVERITY_ORDER,
@@ -453,6 +452,7 @@ from schedule_forensics.web.evolution import _evolution_data as _evolution_data
 from schedule_forensics.web.evolution import _evolution_export_scope as _evolution_export_scope
 from schedule_forensics.web.evolution import _evolution_state_qs as _evolution_state_qs
 from schedule_forensics.web.evolution import _evolution_tier_data as _evolution_tier_data
+from schedule_forensics.web.evolution import _how_stable_header as _how_stable_header
 from schedule_forensics.web.evolution import _keep_hidden as _keep_hidden
 from schedule_forensics.web.evolution import _optioned_versions as _optioned_versions
 from schedule_forensics.web.evolution import _project_finish_uid as _project_finish_uid
@@ -516,6 +516,13 @@ from schedule_forensics.web.offload import (
     shutdown_offload,
 )
 
+# ADR-0375 (phase 3, slice 11): the /portfolio page family - the cross-project rollup
+# ledger, the resident-memory panel and the version-history rows - lives in
+# ``web/portfolio.py`` now, extracted verbatim. Same ``X as X`` re-export idiom.
+from schedule_forensics.web.portfolio import _portfolio_body as _portfolio_body
+from schedule_forensics.web.portfolio import _portfolio_memory_panel as _portfolio_memory_panel
+from schedule_forensics.web.portfolio import _portfolio_version_li as _portfolio_version_li
+
 # ADR-0373 (phase 3, slice 9): the /sra page family - the panel wall (SSI panel, correlation
 # matrix, JCL, overrides, risk/branch/conditional sections), the report/export tables and
 # charts, the page body and the /api/sra data builder - lives in ``web/sra.py`` now,
@@ -550,6 +557,7 @@ from schedule_forensics.web.sra import _sra_report_blocks as _sra_report_blocks
 from schedule_forensics.web.sra import _ssi_export_tables as _ssi_export_tables
 from schedule_forensics.web.sra import _ssi_panel as _ssi_panel
 from schedule_forensics.web.sra import _unified_risk_section as _unified_risk_section
+from schedule_forensics.web.sra import _what_could_go_wrong_header as _what_could_go_wrong_header
 
 # ADR-0365 (phase 3, slice 7): the SSI run machinery - the /api/sra/ssi dataset builder, the
 # factor grid rows and the setup Save/Load - lives in ``web/ssi.py`` now, extracted verbatim.
@@ -7283,265 +7291,6 @@ a <b>*</b> marks the successor that keeps the chain on the driving path.</p></de
 <script src="/static/panelkit.js"></script>"""
 
 
-def _portfolio_memory_panel(st: SessionState) -> str:
-    """A compact resident-memory readout + the operator's warn-threshold control (v4 Feature 2).
-
-    Estimate only, and a warning only — the tool never blocks a load. Lets an operator loading a
-    folder of thousands see roughly how much RAM the loaded schedules occupy and tune when the tool
-    should flag it."""
-    est = estimate_resident_bytes(st.schedules.values())
-    warn = st.ram_warn_bytes
-    over = est > warn
-    cls = "notice warn" if over else "muted"
-    warn_gb = warn / 1024**3
-    tail = " — over your threshold; you can keep working" if over else ""
-    # rank 7: the SHELL around the readout wears the panel contract (headline strip + ⛶ only —
-    # no export endpoint serves this estimate, so no ⤓ EXCEL; the readout, the threshold form's
-    # field names/action, and the footnote are byte-identical to the pre-shell render).
-    return (
-        f"<div class=panel>{_panel_head('Memory', tools=_shell_tools())}"
-        f'<p class="{cls}">'
-        f"{len(st.schedules)} schedule(s) loaded &middot; estimated resident memory "
-        f"<b>{format_bytes(est)}</b> (warn at {format_bytes(warn)}){tail}.</p>"
-        "<form method=post action=/session/ram-threshold class=inline-form>"
-        "<label>Warn above <input type=number name=gb min=1 step=1 "
-        f'value="{warn_gb:g}" style="width:6em"> GB</label> '
-        "<button type=submit>Update</button></form>"
-        "<p class=muted>Schedules stay in memory for instant comparative analysis. This is an "
-        "estimate; on a large workstation even a big portfolio fits.</p></div>"
-    )
-
-
-def _portfolio_body(st: SessionState) -> str:
-    """The Portfolio Manager rollup: one row per Project (grouped from the loaded files/folders),
-    each showing its latest INCLUDED version's headline — computed finish, effective schedule
-    margin, DCMA-14 pass/fail — plus its Site/Company (ADR-0260) and an expandable version history
-    (each version links to its full report, with the ADR-0259 exclude/restore toggle). Every
-    number traces to the engine's cached per-version summary (v4 Feature 2 lazy tier); a Project
-    whose latest version won't solve shows "—". The ONLY cross-project page (ADR-0258): analysis
-    pages show one Project at a time — the "Analyze" action selects it. No new engine math
-    (reuses ``compute_summary``).
-
-    Mission Ops rank 7 (prototype screen 'pf', Program Portfolio): the page wears the panel
-    contract — a takeaway header, pf-style KPI tiles (the 3px LEFT-edge ``.ctl-kpi.k-edge``
-    variant), the ledger panel shelled with ``_panel_head``/``_shell_tools`` (⤓ EXCEL wired to
-    the EXISTING quality-ribbon export; ▦ DATA omitted — the table IS the data), a per-project
-    ``_prov_chip`` on every row, and the DCMA/review/excluded chips restyled to the prototype
-    pill vocabulary. PRESENTATION ONLY: every figure is one this page already computed/rendered
-    (session counts + the cached summaries), and the version-history / exclude-restore /
-    memory-threshold forms keep their field names and actions byte-identical."""
-    projs = st.projects()
-    active = st.active_population()
-    with st._lock:
-        n_pops = len(st.populations())
-    pending = sum(1 for p in projs if p.pending_review)
-    excluded_total = sum(1 for p in projs for v in p.versions if v.excluded)
-    # Session bookkeeping the page already renders, gathered once for the pf header/KPI tiles
-    # (rank 7): loaded-file/version COUNTS only — no engine figure is computed here.
-    n_projects = len(projs)
-    n_files = len(st.schedules)
-    included_total = sum(1 for p in projs for v in p.versions if not v.excluded)
-    head_notes = ""
-    if pending:
-        head_notes += (
-            f'<div class="notice info">{pending} Project'
-            f"{'s have' if pending != 1 else ' has'} an unresolved duplicate/revision decision "
-            "&mdash; expand the row and exclude one copy, or keep both as revisions.</div>"
-        )
-    if excluded_total:
-        head_notes += (
-            f'<div class="notice info">{excluded_total} version'
-            f"{'s are' if excluded_total != 1 else ' is'} excluded from analysis "
-            "(still loaded &mdash; restore any time).</div>"
-        )
-    # ── pf screen header (rank 7): a complete-sentence takeaway + lede quoting counts the page
-    # already renders; the chapter kicker ("PORTFOLIO") comes from _page's spine resolution. ──
-    proj_noun = "project" if n_projects == 1 else "projects"
-    file_noun = "file" if n_files == 1 else "files"
-    takeaway = (
-        f"{n_projects} {proj_noun} across {n_files} loaded {file_noun} — one row per project, "
-        "headline figures quoted from its latest included version's engine summary and the "
-        "DCMA-14 average pooled across its included, solvable versions."
-    )
-    header = (
-        f'<h1 class="page-takeaway" data-no-i18n>{takeaway}</h1>'
-        '<p class="page-lede">The one cross-project page: projects are grouped from the files '
-        "and folders you loaded, and each row quotes the engine&rsquo;s cached per-version "
-        "summary &mdash; computed, never typed.</p>"
-    )
-    # ── pf-style KPI tiles (prototype 'pf' headline stats — the 3px LEFT-edge variant of the
-    # same .ctl-kpi vocabulary). Values are the session counts computed above, nothing new. ──
-    pend_cls = " k-warn" if pending else ""
-    kpis = (
-        "<div class=ctl-kpis>"
-        '<div class="ctl-kpi k-edge"><div class=k-label>Projects</div>'
-        f"<div class=k-value data-no-i18n>{n_projects}</div>"
-        "<div class=k-sub>grouped from your files and folders</div></div>"
-        '<div class="ctl-kpi k-edge"><div class=k-label>Schedule files</div>'
-        f"<div class=k-value data-no-i18n>{n_files}</div>"
-        "<div class=k-sub>loaded versions across every project</div></div>"
-        f'<div class="ctl-kpi k-edge{pend_cls}"><div class=k-label>Pending review</div>'
-        f"<div class=k-value data-no-i18n>{pending}</div>"
-        "<div class=k-sub>duplicate/revision decisions to resolve</div></div>"
-        '<div class="ctl-kpi k-edge"><div class=k-label>Excluded</div>'
-        f"<div class=k-value data-no-i18n>{excluded_total}</div>"
-        "<div class=k-sub>versions set aside &mdash; restore any time</div></div>"
-        "</div>"
-    )
-    # ── the ledger panel shell: headline strip + ⤓/⛶ tools + a one-line takeaway. ▦ DATA is
-    # deliberately omitted (the table IS the data); ⤓ EXCEL reuses the EXISTING quality-ribbon
-    # endpoint (one row per loaded file) — the home-shell precedent, never a dead link. ──
-    take = (
-        f"<p class=sf-take data-no-i18n>{n_projects} {proj_noun} · {included_total} version"
-        f"{'' if included_total == 1 else 's'} in the analysis"
-        + (f" · {excluded_total} excluded" if excluded_total else "")
-        + (f" · {pending} pending review" if pending else "")
-        + " — expand a row for its version history.</p>"
-    )
-    tools = _shell_tools(
-        export_title="Export the quality ribbon for every loaded file — opens in Excel"
-    )
-    intro = (
-        '<div class=panel data-export="/export/xlsx/ribbon">'
-        + _panel_head("Portfolio ledger &mdash; one row per project", tools=tools)
-        + take
-        + "<p class=muted>Every project loaded in this session, grouped from your files and folders. "
-        "Each row is one Project; the headline is its latest included version by data date. The "
-        "DCMA-14 average is the view's arithmetic mean of each included, solvable version's "
-        "engine-computed pass count &mdash; the one cross-version figure on this table. Expand "
-        "a row for the version history, or open any version's full report. Analysis pages show ONE "
-        "Project at a time &mdash; pick it here (Analyze) or from the banner.</p>"
-        + head_notes
-        # OR-01 (ADR-0321): every roll-up heading states the aggregation rule the view actually
-        # applied — latest included version vs an average — so the title alone tells the analyst
-        # which they are reading. The average column is the ONLY non-latest figure.
-        + "<table><tr>"
-        "<th scope=col>Project</th><th scope=col>Site / Company</th><th scope=col>Versions</th>"
-        "<th scope=col>Latest data date</th><th scope=col>Computed finish — latest version</th>"
-        "<th scope=col>Effective margin — latest version</th>"
-        "<th scope=col>DCMA-14 — latest version</th>"
-        "<th scope=col>Avg DCMA-14 passes — included, solvable versions</th></tr>"
-    )
-    em = "—"  # the literal U+2014 sentinel (ADR-0219 M2: never the &mdash; entity)
-    rows: list[str] = []
-    for p in projs:
-        # the headline version is the latest NON-excluded one — excluding a stray copy flips the
-        # row to the kept file (ADR-0259); a project with every version excluded shows "—"
-        latest = next((v for v in reversed(p.versions) if not v.excluded), None)
-        sch = st.schedules.get(latest.key) if latest is not None else None
-        data_date = finish = margin = dcma = site = em
-        if sch is not None:
-            if sch.company:
-                site = _e(sch.company)
-            # the lazy summary tier (v4 Feature 2): finish/margin/DCMA without a fresh CPM per row —
-            # cached in-memory and, for uploads, on disk. Equals the fully-computed row (never a
-            # different number); an unsolvable version leaves the headline as "—", never a 500.
-            summary = st.summary_for(latest.key, sch) if latest is not None else None
-            if summary is not None:
-                if summary.status_date_iso is not None:
-                    data_date = _mdY(summary.status_date_iso)
-                if not summary.unsolvable:
-                    finish = _mdY(summary.finish_iso)
-                    if summary.effective_margin_days is not None:
-                        margin = f"{summary.effective_margin_days:g} d"
-                    # rank 7: prototype pill vocabulary AROUND the engine's own pass/fail
-                    # counts (the values are the summary's, verbatim — only the chip restyles).
-                    cls = (
-                        "rib-pass sf-pill p-ok"
-                        if summary.dcma_fail == 0
-                        else "rib-fail sf-pill p-bad"
-                    )
-                    dcma = (
-                        f'<span class="{cls}">{summary.dcma_pass} pass / '
-                        f"{summary.dcma_fail} fail</span>"
-                    )
-        # OR-01 (ADR-0321): the ONE aggregate column — a VIEW-LAYER arithmetic mean over the
-        # engine's own per-version pass counts (no new engine math). The pool is every included
-        # (non-excluded), SOLVABLE version: an unsolvable audit never ran, so counting its 0
-        # would poison the mean with a fake figure (Law 2 — "—" never 0). The cell states the
-        # pool size, so a solvability drop is visible right in the figure.
-        pass_pool = [
-            vsum.dcma_pass
-            for v in p.versions
-            if not v.excluded
-            and (vsch := st.schedules.get(v.key)) is not None
-            and not (vsum := st.summary_for(v.key, vsch)).unsolvable
-        ]
-        avg_dcma = em
-        if pass_pool:
-            n_pool = len(pass_pool)
-            avg_dcma = (
-                f"{sum(pass_pool) / n_pool:.1f} of 14 · {n_pool} "
-                f"version{'' if n_pool == 1 else 's'}"
-            )
-        pooled = p.origin == "filename"  # title-less loose file: analyzed as the untitled pool
-        select_pid = _UNTITLED_PID if pooled else p.pid
-        chips = ""
-        if p.needs_attention:
-            chips += " <span class=muted>(needs attention)</span>"
-        if p.pending_review:
-            chips += ' <span class="rib-fail sf-pill p-bad">review</span>'
-        if active is not None and select_pid == active[0] and n_pops > 1:
-            chips += " <span class=muted>(analyzing)</span>"
-        analyze_label = "Analyze the untitled files together" if pooled else "Analyze this project"
-        analyze = (
-            '<form method=post action="/project/select" style="display:inline">'
-            f'<input type=hidden name=pid value="{_e(select_pid)}">'
-            '<input type=hidden name=next_url value="/portfolio">'
-            f"<button type=submit class=btn-link>{analyze_label} &#8599;</button></form>"
-        )
-        included = sum(1 for v in p.versions if not v.excluded)
-        excluded_n = len(p.versions) - included
-        version_count = str(included) + (
-            f" <span class=muted>(+{excluded_n} excluded)</span>" if excluded_n else ""
-        )
-        versions_html = "".join(_portfolio_version_li(st, v) for v in p.versions)
-        notices = "".join(f'<div class="notice info">{_e(n)}</div>' for n in p.notices)
-        # rank 7: per-project provenance — ONE chip per row, carrying THIS project's latest
-        # included file + data date (the multi-project variant of the same _prov_chip
-        # vocabulary; i18n-inert so filenames/dates are never translated).
-        row_prov = f" {_prov_chip(sch)}" if sch is not None else ""
-        rows.append(
-            f"<tr><td><details><summary><b>{_e(p.title)}</b>{chips}{row_prov}</summary>"
-            f"<ul>{versions_html}</ul>{notices}{analyze}</details></td>"
-            f"<td>{site}</td><td>{version_count}</td><td>{data_date}</td><td>{finish}</td>"
-            f"<td>{margin}</td><td>{dcma}</td><td>{avg_dcma}</td></tr>"
-        )
-    return (
-        header
-        + kpis
-        + intro
-        + "".join(rows)
-        + "</table></div>"
-        + _portfolio_memory_panel(st)
-        + '\n<script src="/static/panelkit.js"></script>'
-    )
-
-
-def _portfolio_version_li(st: SessionState, v: ProjectVersion) -> str:
-    """One version row in a Portfolio project's expandable history: the report link, data date,
-    activity count (the differentiators a duplicate-review decision needs), the excluded badge,
-    and the ADR-0259 exclude/restore toggle (reversible, never deletes)."""
-    sch = st.schedules.get(v.key)
-    dd = tasks = ""
-    if sch is not None:
-        if sch.status_date is not None:
-            dd = f" <span class=muted>&middot; data date {_mdY(sch.status_date)}</span>"
-        tasks = f" <span class=muted>&middot; {len(non_summary(sch))} activities</span>"
-    badge = ' <span class="rib-fail sf-pill p-bad">excluded</span>' if v.excluded else ""
-    toggle = (
-        '<form method=post action="/project/exclude" style="display:inline">'
-        f'<input type=hidden name=key value="{_e(v.key)}">'
-        f'<input type=hidden name=excluded value="{0 if v.excluded else 1}">'
-        f"<button type=submit class=btn-link>{'Restore' if v.excluded else 'Exclude'}</button>"
-        "</form>"
-    )
-    return (
-        f'<li><a class=btn-link href="/analysis/{quote(v.key)}">{_e(v.filename)}</a>'
-        f"{dd}{tasks}{badge} &middot; {toggle}</li>"
-    )
-
-
 def _curves_header(curves: MonthCurves) -> str:
     """Chapter 05's story header for /curves (Mission Ops rank 9): the takeaway h1 + muted lede.
 
@@ -11150,138 +10899,6 @@ def _jcl_export_tables(result: JCLResult) -> tuple[Table, ...]:
     return (headline, frontier, sample)
 
 
-def _what_could_go_wrong_header(st: SessionState) -> str:
-    """Chapter 11 "What could go wrong" (ADR-0209): the data-driven takeaway + a risk-exposure
-    KPI strip + the float-exposure and risk-flag bars. The Monte-Carlo runs client-side on
-    demand, so the header reports the DETERMINISTic structural risk of the SRA-selected file
-    (float exposure + constraint/negative-float/registered-risk flags) — no simulation, no new
-    math; every figure comes from the cached analysis + the risk register."""
-    chosen = _sra_selected(st)
-    if chosen is None:
-        return ""
-    key, sch, cpm = chosen
-    try:
-        audit = st.analysis_for(key, st.schedules[key]).audit
-    except (CPMError, KeyError):
-        return ""
-    mpd = sch.calendar.working_minutes_per_day or 480
-    crit = near = comfy = incomplete = neg = 0
-    # per-segment UID sets so the two status bars drill (ADR-0360): a click on a segment lists
-    # exactly the activities it counts, through the shared sf-drill grid (+ columns + Excel).
-    crit_uids: list[int] = []
-    near_uids: list[int] = []
-    comfy_uids: list[int] = []
-    neg_uids: list[int] = []
-    for task in non_summary(sch):
-        if task.is_complete:
-            continue
-        incomplete += 1
-        timing = cpm.timings.get(task.unique_id)
-        if timing is None:
-            continue
-        tf_days = effective_total_float(task, timing.total_float) / mpd
-        if tf_days < 0:
-            neg += 1
-            neg_uids.append(task.unique_id)
-        if tf_days <= 0:
-            crit += 1
-            crit_uids.append(task.unique_id)
-        elif tf_days <= 5:
-            near += 1
-            near_uids.append(task.unique_id)
-        else:
-            comfy += 1
-            comfy_uids.append(task.unique_id)
-
-    def _count(metric_id: str) -> int:
-        return next((c.count for c in audit.checks if c.metric_id == metric_id), 0)
-
-    hard = _count("DCMA05")
-    hard_uids = tuple(
-        c.unique_id
-        for chk in audit.checks
-        if chk.metric_id == "DCMA05"
-        for c in chk.citations
-        if c.unique_id
-    )
-    risks = len(st.sra_risks)
-    risk_uids = tuple(dict.fromkeys(u for r in st.sra_risks for u in r.affected))
-
-    def _acts(n: int) -> str:
-        return "activity" if n == 1 else "activities"
-
-    if incomplete == 0:
-        takeaway = (
-            "Every activity is complete — there is no remaining work for the risk simulation to "
-            "put at risk."
-        )
-    else:
-        risk_clause = f", with {risks} risk{'s' if risks != 1 else ''} registered" if risks else ""
-        takeaway = (
-            f"{crit} {_acts(crit)} drive the finish and {near} more are near-critical "
-            f"(within 5 days of float){risk_clause} — run the Monte-Carlo below to quantify the "
-            "finish-date confidence."
-        )
-
-    kpi = _stat_cards(
-        [
-            ("Critical activities", str(crit)),
-            ("Near-critical (≤5d)", str(near)),
-            ("Negative float", str(neg)),
-            ("Hard constraints", str(hard)),
-            ("Registered risks", str(risks)),
-            ("Incomplete activities", str(incomplete)),
-        ]
-    )
-    exposure_bar = _status_stack(
-        "Float exposure",
-        "Incomplete activities by how much total float protects them from driving the finish. "
-        "Hover a segment for its count; click it to list the activities underneath "
-        "(add any field, export to Excel).",
-        [
-            ("Critical", crit, "--bad"),
-            ("Near-critical", near, "--warn"),
-            ("Comfortable", comfy, "--ok"),
-        ],
-        f"{incomplete} incomplete {_acts(incomplete)}",
-        drill=[
-            (tuple(crit_uids), key),
-            (tuple(near_uids), key),
-            (tuple(comfy_uids), key),
-        ],
-    )
-    flags_bar = _status_stack(
-        "Risk flags",
-        "The structural risk sources the simulation and register draw on. "
-        "Hover a segment for its count; click it to list the activities underneath "
-        "(add any field, export to Excel).",
-        [
-            ("Negative float", neg, "--bad"),
-            ("Hard constraints", hard, "--warn"),
-            ("Registered risks", risks, "--accent"),
-        ],
-        "deterministic flags on the selected file",
-        drill=[
-            (tuple(neg_uids), key),
-            (hard_uids, key),
-            (risk_uids, key),
-        ],
-    )
-    # ADR-0339: the h1 was always here; the DoD's *context line* was not (measured `page-lede` 0 on
-    # the pristine tree). Routing both through `_utility_takeaway` renders the same h1 byte-for-byte
-    # and adds the missing lede, so /sra stops being the one Act III page with half the rule.
-    return (
-        _utility_takeaway(
-            _e(takeaway),
-            "Deterministic structural risk on the selected file first &mdash; float exposure, "
-            "constraints and the registered risks &mdash; then the Monte-Carlo models below turn "
-            "it into a finish-date confidence.",
-        )
-        + f'<div class="ws-kpi">{kpi}</div>'
-        + f'<div class="ws-bars">{exposure_bar}{flags_bar}</div>'
-    )
-
-
 def _standards_value_cell(m: AuditCheck | MetricResult) -> str:
     # NB: the informational indices (Fuse/SEM) carry NA *status* by design (no pass/fail
     # threshold) while still computing a real value — so the display keys on whether a
@@ -12566,79 +12183,6 @@ def _groups_body(
     if "data-sf-" in body:
         body += '\n<script src="/static/panelkit.js"></script>'
     return body
-
-
-def _how_stable_header(ev: PathEvolution) -> str:
-    """Chapter 04 "How stable is the path" (ADR-0200): the data-driven takeaway + a churn KPI strip
-    + the Latest-critical-path and Total-churn bars, from the per-version critical-path snapshots.
-    Every figure is read from the evolution the page already computed (no engine math)."""
-    snaps = ev.snapshots
-    n_ver = len(snaps)
-    updates = max(n_ver - 1, 1)
-    entered = sum(len(s.entered) for s in snaps[1:])
-    left = sum(len(s.left) for s in snaps[1:])
-    latest = snaps[-1]
-    crit_now = len(latest.critical)
-    moves = [s.finish_delta_days for s in snaps[1:] if s.finish_delta_days is not None]
-    net = sum(moves) if moves else None
-    churn = entered + left
-
-    def _acts(x: int) -> str:
-        return "activity" if x == 1 else "activities"
-
-    if churn == 0:
-        stability = "held completely steady"
-    elif churn <= updates:
-        stability = "stayed largely stable"
-    else:
-        stability = "churned"
-    if net is None:
-        fin = ""
-    elif net > 0:
-        fin = f", and the finish slipped {net} calendar day{'s' if net != 1 else ''}"
-    elif net < 0:
-        fin = f", and the finish pulled in {abs(net)} calendar day{'s' if net != -1 else ''}"
-    else:
-        fin = ", while the finish held"
-    takeaway = (
-        f"Across {n_ver} versions the critical path {stability} — {entered} {_acts(entered)} "
-        f"entered it and {left} left{fin}."
-    )
-
-    kpi = _stat_cards(
-        [
-            ("Versions compared", str(n_ver)),
-            ("Critical now", str(crit_now)),
-            ("Entered (all updates)", str(entered)),
-            ("Left (all updates)", str(left)),
-            ("Net finish move", f"{net:+d} d" if net is not None else "—"),
-            ("Churn per update", f"{churn / updates:.1f}"),
-        ]
-    )
-    # the latest file resolves the segment activities (entered/left UIDs are matched against it)
-    fkey = latest.label
-    churn_entered_uids = tuple(sorted({u for s in snaps[1:] for u in s.entered}))
-    churn_left_uids = tuple(sorted({u for s in snaps[1:] for u in s.left}))
-    latest_bar = _status_stack(
-        "Latest critical path",
-        f"How the newest version's path formed — {latest.label}.",
-        [("Entered", len(latest.entered), "--ok"), ("Stayed", len(latest.stayed), "--muted")],
-        f"{crit_now} on the path now; {len(latest.left)} left since the prior version",
-        drill=[(tuple(latest.entered), fkey), (tuple(latest.stayed), fkey)],
-    )
-    churn_bar = _status_stack(
-        "Total churn",
-        "Activities that entered vs left the critical path across every update.",
-        [("Entered", entered, "--ok"), ("Left", left, "--bad")],
-        f"over {updates} update{'s' if updates != 1 else ''}",
-        drill=[(churn_entered_uids, fkey), (churn_left_uids, fkey)],
-    )
-    return (
-        f'<h1 class="page-takeaway" data-no-i18n>{takeaway}</h1>'
-        f'<div class="ws-kpi">{kpi}</div>'
-        f'<div class="ws-bars">{latest_bar}{churn_bar}</div>'
-        "<div id=sfDrillMount></div>"  # drilldown.js loaded globally in _LAYOUT
-    )
 
 
 def _volatility_data(schedules: list[Schedule], cpms: list[CPMResult]) -> dict[str, object]:

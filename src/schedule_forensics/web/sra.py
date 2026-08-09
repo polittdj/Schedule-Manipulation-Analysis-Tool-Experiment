@@ -31,9 +31,9 @@ import datetime as dt
 import json
 from collections.abc import Sequence
 
-from schedule_forensics.engine.cpm import CPMResult, offset_to_datetime
+from schedule_forensics.engine.cpm import CPMError, CPMResult, offset_to_datetime
 from schedule_forensics.engine.jcl import cost_loaded_total
-from schedule_forensics.engine.metrics._common import non_summary
+from schedule_forensics.engine.metrics._common import effective_total_float, non_summary
 from schedule_forensics.engine.sra import (
     OATSensitivity,
     SRAResult,
@@ -50,7 +50,7 @@ from schedule_forensics.importers._common import iso_duration_to_minutes
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.reports.docx import Block, Chart, ChartText, DocTable, Heading, Paragraph
 from schedule_forensics.reports.tables import Cell, Table, TableSet
-from schedule_forensics.web.chrome import _e
+from schedule_forensics.web.chrome import _e, _utility_takeaway
 from schedule_forensics.web.components import (
     _REMAIN_DAYS_DP,
     _TS_CAPTION_MARK,
@@ -61,6 +61,8 @@ from schedule_forensics.web.components import (
     _shell_tools,
     _sra_selected,
     _ssi_matrix_counts,
+    _stat_cards,
+    _status_stack,
     _user_tip,
 )
 from schedule_forensics.web.help import field_help_payload
@@ -1864,3 +1866,135 @@ def _sra_data(
         # filled with the run's own figures; sra.js renders them under the run controls
         "conclusions": conclusions_as_dicts(conclusions_from_sra(sch, cpm, result)),
     }
+
+
+def _what_could_go_wrong_header(st: SessionState) -> str:
+    """Chapter 11 "What could go wrong" (ADR-0209): the data-driven takeaway + a risk-exposure
+    KPI strip + the float-exposure and risk-flag bars. The Monte-Carlo runs client-side on
+    demand, so the header reports the DETERMINISTic structural risk of the SRA-selected file
+    (float exposure + constraint/negative-float/registered-risk flags) — no simulation, no new
+    math; every figure comes from the cached analysis + the risk register."""
+    chosen = _sra_selected(st)
+    if chosen is None:
+        return ""
+    key, sch, cpm = chosen
+    try:
+        audit = st.analysis_for(key, st.schedules[key]).audit
+    except (CPMError, KeyError):
+        return ""
+    mpd = sch.calendar.working_minutes_per_day or 480
+    crit = near = comfy = incomplete = neg = 0
+    # per-segment UID sets so the two status bars drill (ADR-0360): a click on a segment lists
+    # exactly the activities it counts, through the shared sf-drill grid (+ columns + Excel).
+    crit_uids: list[int] = []
+    near_uids: list[int] = []
+    comfy_uids: list[int] = []
+    neg_uids: list[int] = []
+    for task in non_summary(sch):
+        if task.is_complete:
+            continue
+        incomplete += 1
+        timing = cpm.timings.get(task.unique_id)
+        if timing is None:
+            continue
+        tf_days = effective_total_float(task, timing.total_float) / mpd
+        if tf_days < 0:
+            neg += 1
+            neg_uids.append(task.unique_id)
+        if tf_days <= 0:
+            crit += 1
+            crit_uids.append(task.unique_id)
+        elif tf_days <= 5:
+            near += 1
+            near_uids.append(task.unique_id)
+        else:
+            comfy += 1
+            comfy_uids.append(task.unique_id)
+
+    def _count(metric_id: str) -> int:
+        return next((c.count for c in audit.checks if c.metric_id == metric_id), 0)
+
+    hard = _count("DCMA05")
+    hard_uids = tuple(
+        c.unique_id
+        for chk in audit.checks
+        if chk.metric_id == "DCMA05"
+        for c in chk.citations
+        if c.unique_id
+    )
+    risks = len(st.sra_risks)
+    risk_uids = tuple(dict.fromkeys(u for r in st.sra_risks for u in r.affected))
+
+    def _acts(n: int) -> str:
+        return "activity" if n == 1 else "activities"
+
+    if incomplete == 0:
+        takeaway = (
+            "Every activity is complete — there is no remaining work for the risk simulation to "
+            "put at risk."
+        )
+    else:
+        risk_clause = f", with {risks} risk{'s' if risks != 1 else ''} registered" if risks else ""
+        takeaway = (
+            f"{crit} {_acts(crit)} drive the finish and {near} more are near-critical "
+            f"(within 5 days of float){risk_clause} — run the Monte-Carlo below to quantify the "
+            "finish-date confidence."
+        )
+
+    kpi = _stat_cards(
+        [
+            ("Critical activities", str(crit)),
+            ("Near-critical (≤5d)", str(near)),
+            ("Negative float", str(neg)),
+            ("Hard constraints", str(hard)),
+            ("Registered risks", str(risks)),
+            ("Incomplete activities", str(incomplete)),
+        ]
+    )
+    exposure_bar = _status_stack(
+        "Float exposure",
+        "Incomplete activities by how much total float protects them from driving the finish. "
+        "Hover a segment for its count; click it to list the activities underneath "
+        "(add any field, export to Excel).",
+        [
+            ("Critical", crit, "--bad"),
+            ("Near-critical", near, "--warn"),
+            ("Comfortable", comfy, "--ok"),
+        ],
+        f"{incomplete} incomplete {_acts(incomplete)}",
+        drill=[
+            (tuple(crit_uids), key),
+            (tuple(near_uids), key),
+            (tuple(comfy_uids), key),
+        ],
+    )
+    flags_bar = _status_stack(
+        "Risk flags",
+        "The structural risk sources the simulation and register draw on. "
+        "Hover a segment for its count; click it to list the activities underneath "
+        "(add any field, export to Excel).",
+        [
+            ("Negative float", neg, "--bad"),
+            ("Hard constraints", hard, "--warn"),
+            ("Registered risks", risks, "--accent"),
+        ],
+        "deterministic flags on the selected file",
+        drill=[
+            (tuple(neg_uids), key),
+            (hard_uids, key),
+            (risk_uids, key),
+        ],
+    )
+    # ADR-0339: the h1 was always here; the DoD's *context line* was not (measured `page-lede` 0 on
+    # the pristine tree). Routing both through `_utility_takeaway` renders the same h1 byte-for-byte
+    # and adds the missing lede, so /sra stops being the one Act III page with half the rule.
+    return (
+        _utility_takeaway(
+            _e(takeaway),
+            "Deterministic structural risk on the selected file first &mdash; float exposure, "
+            "constraints and the registered risks &mdash; then the Monte-Carlo models below turn "
+            "it into a finish-date confidence.",
+        )
+        + f'<div class="ws-kpi">{kpi}</div>'
+        + f'<div class="ws-bars">{exposure_bar}{flags_bar}</div>'
+    )

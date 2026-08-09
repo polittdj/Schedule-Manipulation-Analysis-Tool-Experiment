@@ -47,6 +47,8 @@ from schedule_forensics.web.components import (
     _panel_head,
     _series_prov_chip,
     _shell_tools,
+    _stat_cards,
+    _status_stack,
     _user_tip,
 )
 from schedule_forensics.web.state import _iso_date
@@ -1073,3 +1075,76 @@ def _evolution_tier_data(
         "max": max(axis_dates).isoformat() if axis_dates else None,
     }
     return {"axis": axis, "snapshots": snapshots, "target": target, "tier": tier}
+
+
+def _how_stable_header(ev: PathEvolution) -> str:
+    """Chapter 04 "How stable is the path" (ADR-0200): the data-driven takeaway + a churn KPI strip
+    + the Latest-critical-path and Total-churn bars, from the per-version critical-path snapshots.
+    Every figure is read from the evolution the page already computed (no engine math)."""
+    snaps = ev.snapshots
+    n_ver = len(snaps)
+    updates = max(n_ver - 1, 1)
+    entered = sum(len(s.entered) for s in snaps[1:])
+    left = sum(len(s.left) for s in snaps[1:])
+    latest = snaps[-1]
+    crit_now = len(latest.critical)
+    moves = [s.finish_delta_days for s in snaps[1:] if s.finish_delta_days is not None]
+    net = sum(moves) if moves else None
+    churn = entered + left
+
+    def _acts(x: int) -> str:
+        return "activity" if x == 1 else "activities"
+
+    if churn == 0:
+        stability = "held completely steady"
+    elif churn <= updates:
+        stability = "stayed largely stable"
+    else:
+        stability = "churned"
+    if net is None:
+        fin = ""
+    elif net > 0:
+        fin = f", and the finish slipped {net} calendar day{'s' if net != 1 else ''}"
+    elif net < 0:
+        fin = f", and the finish pulled in {abs(net)} calendar day{'s' if net != -1 else ''}"
+    else:
+        fin = ", while the finish held"
+    takeaway = (
+        f"Across {n_ver} versions the critical path {stability} — {entered} {_acts(entered)} "
+        f"entered it and {left} left{fin}."
+    )
+
+    kpi = _stat_cards(
+        [
+            ("Versions compared", str(n_ver)),
+            ("Critical now", str(crit_now)),
+            ("Entered (all updates)", str(entered)),
+            ("Left (all updates)", str(left)),
+            ("Net finish move", f"{net:+d} d" if net is not None else "—"),
+            ("Churn per update", f"{churn / updates:.1f}"),
+        ]
+    )
+    # the latest file resolves the segment activities (entered/left UIDs are matched against it)
+    fkey = latest.label
+    churn_entered_uids = tuple(sorted({u for s in snaps[1:] for u in s.entered}))
+    churn_left_uids = tuple(sorted({u for s in snaps[1:] for u in s.left}))
+    latest_bar = _status_stack(
+        "Latest critical path",
+        f"How the newest version's path formed — {latest.label}.",
+        [("Entered", len(latest.entered), "--ok"), ("Stayed", len(latest.stayed), "--muted")],
+        f"{crit_now} on the path now; {len(latest.left)} left since the prior version",
+        drill=[(tuple(latest.entered), fkey), (tuple(latest.stayed), fkey)],
+    )
+    churn_bar = _status_stack(
+        "Total churn",
+        "Activities that entered vs left the critical path across every update.",
+        [("Entered", entered, "--ok"), ("Left", left, "--bad")],
+        f"over {updates} update{'s' if updates != 1 else ''}",
+        drill=[(churn_entered_uids, fkey), (churn_left_uids, fkey)],
+    )
+    return (
+        f'<h1 class="page-takeaway" data-no-i18n>{takeaway}</h1>'
+        f'<div class="ws-kpi">{kpi}</div>'
+        f'<div class="ws-bars">{latest_bar}{churn_bar}</div>'
+        "<div id=sfDrillMount></div>"  # drilldown.js loaded globally in _LAYOUT
+    )

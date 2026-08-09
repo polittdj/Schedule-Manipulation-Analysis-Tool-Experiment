@@ -16,7 +16,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "schedule-forensics"
-version = "1.0.182"
+version = "1.0.183"
 description = "Local, NASA-themed forensic schedule-analysis tool (CUI-safe, offline)."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -175,6 +175,9 @@ select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
 # `evolution.py` is the /evolution page family, extracted verbatim (ADR-0352); it carries the
 # page's HTML f-strings, so the exemption travels with them.
 "src/schedule_forensics/web/evolution.py" = ["E501"]
+# `portfolio.py` is the /portfolio page family, extracted verbatim (ADR-0375); one ledger-intro
+# line was already over-long inside app.py's exempt region, and verbatim outranks re-wrapping.
+"src/schedule_forensics/web/portfolio.py" = ["E501"]
 # `forecast.py` is the /forecast page family, extracted verbatim (ADR-0374); it carries the
 # page's HTML f-strings, so the exemption travels with them.
 "src/schedule_forensics/web/forecast.py" = ["E501"]
