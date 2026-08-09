@@ -12495,3 +12495,39 @@ vs slice 9 — the forecast.py contract params; the informative pre-rebuild run 
 stale v1.0.181 embedded wheel + the handoff version pin awaiting rotation); parity gate
 **52 passed / 15 skipped, exit 0, in 14:14**; NEXT-SESSION-PROMPT refreshed for slice 11
 (what 289 first). State-docs guard module re-run green after this append.
+
+## 2026-08-09 (b) — phase 3 slice 11: /portfolio out; the question-word censuses dissolve (ADR-0375; v1.0.183)
+Branch `claude/polaris-schedule-tool-resume-m2ulco` (from main 6f5d816 after #559
+squash-merged). Queue item 1 executed: slice 11. The queue's "what 289" dissolved under the
+referrer walk — three chapter headers, three families (path/compare/sra); "how 214" the same
+(evm/evolution/performance); "where 158" is `_where_we_stand_header`, an /analysis member
+(sole referrer `_analysis_body`). SEVEN misfiled members across three phantom censuses where
+ADR-0374 found one. The slice cut THREE ways: the /portfolio family → NEW web/portfolio.py
+(287 lines; census-exact 253/3 = closure; no descents; app.py 7286–7542) plus the two
+ruling-lag headers into their families' EXISTING modules — `_what_could_go_wrong_header`
+(130) → sra.py, `_how_stable_header` (71) → evolution.py. app.py 13,814 → 13,359 (wc-truth).
+LAYER_ORDER … → forecast → portfolio → app; portfolio.py joins the E501 list; contract
+EXTRACTED/LAYER_ORDER/VIEW_MODULES + both enumeration guards widened in the same commit.
+Oracle rebuilt per ADR-0372: **494 labels** (full surface incl. variants in both target
+states; target UID 22 live-chain). **The first shape manufactured a false dark**: five
+distinct TP4 Titles → five 1-version projects → ADR-0258 active population = v5 alone →
+multi-version pages all placeholder, `_how_stable_header` probed 0. Adjudicated by payload
+(the body held the placeholder), fixed by title-stripping the uploads into the untitled
+pool (ONE 5-version population; 4xx 133 → 88). Determinism ×2 processes 0 flapping, proven
+twice. Probe 5/5 render-proven zero dark (3/3/3/3/12). Proof: byte-identity 3/3 (pre+post,
+zero reformats, region P re-verified after ruff import-sort) · multiset 44/3 zero code
+lines removed · dropped-import sweep 0 (ProjectVersion/PathEvolution; SessionState control
+live) · **494/494 byte-identical pristine vs cut** · falsify in new locations 5/5 EXACT
+label lists. Sweeps: monkeypatch+attr 24 names 0 hits on moved (non_summary control 1+1);
+source-text 7 readers all adjudicated (panelkit.js control ∈ _portfolio_body) — zero
+repoints, second consecutive slice. Battery 6/6 named (enumeration guard 13th/14th
+consecutive catches; mutations 2/5 in-body from the start). v1.0.182 → v1.0.183 bumped,
+wheel + nine installers rebuilt BEFORE the final suite (ADR-0374 CF#3 order held). Statics
+green (python -m ruff check whole tree · format --check · mypy strict 129 files · bandit
+exit 0 · node --check per file). ADR-0375; HANDOFF rotated (slice-10 section → archive
+top); NEXT-SESSION-PROMPT refreshed for slice 12 (analysis 356 first).
+Measured (final tree, docs and installers final when the runs started): full suite
+**3540 passed / 45 skipped / 0 failed, exit 0, in 21:20** (background, python -u; +2 tests
+vs slice 10 — the portfolio.py contract params); parity gate **52 passed / 15 skipped,
+exit 0, in 9:35**. All skips deliberately environment-gated (playwright / Java / CUI
+intake). State-docs guard module re-run green after this fill.

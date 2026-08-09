@@ -39,6 +39,7 @@ import schedule_forensics.web.forecast as forecast_mod
 import schedule_forensics.web.integrity as integrity_mod
 import schedule_forensics.web.margin as margin_mod
 import schedule_forensics.web.mission as mission_mod
+import schedule_forensics.web.portfolio as portfolio_mod
 import schedule_forensics.web.sra as sra_mod
 import schedule_forensics.web.ssi as ssi_mod
 import schedule_forensics.web.trend as trend_mod
@@ -58,6 +59,7 @@ EXTRACTED = {
     "mission.py": mission_mod,
     "sra.py": sra_mod,
     "forecast.py": forecast_mod,
+    "portfolio.py": portfolio_mod,
 }
 
 #: The view layer, lowest layer FIRST. A module may import only from those before it — that is
@@ -78,6 +80,7 @@ LAYER_ORDER = (
     "mission.py",
     "sra.py",
     "forecast.py",
+    "portfolio.py",
     "app.py",
 )
 
@@ -96,6 +99,7 @@ VIEW_MODULES = (
     "integrity.py",
     "margin.py",
     "mission.py",
+    "portfolio.py",
     "sra.py",
     "ssi.py",
     "trend.py",

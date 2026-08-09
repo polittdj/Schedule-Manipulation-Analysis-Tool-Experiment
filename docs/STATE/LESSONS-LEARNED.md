@@ -435,6 +435,27 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-09 (b) — a census family can be a phantom; the oracle's fixture population is a render condition
+
+- Slice 11 opened on the queue's "what 289" and found NO family there: `_what_drives_header` →
+  /path, `_what_changed_header` → /compare, `_what_could_go_wrong_header` → /sra. The "how" and
+  "where" censuses dissolved the same way — seven misfiled members across three question-word
+  censuses. The prefix census groups by the first word of a NAME; chapter headers are named for
+  their QUESTION, not their page. Only the referrer walk assigns membership.
+- Two of the seven belonged to families already cut (slices 3 and 9 predate ADR-0374's header
+  ruling); they moved retroactively to sra.py/evolution.py this slice. The other five STAY until
+  their families' slices — a header must not invent its family's module.
+- The oracle's first shape manufactured a false dark: the five TP4 snapshots carry five distinct
+  `<Title>`s, so they formed five one-version projects, the ADR-0258 active population was v5
+  alone, and every multi-version page rendered its "load two versions" placeholder —
+  `_how_stable_header` probed 0 moved with the member fully reachable. Payload adjudication (the
+  saved body held the placeholder) caught it BEFORE a wasted stronger-anchor round. Fix: strip
+  `<Title>` on upload so the snapshots join the untitled pool as one five-version population —
+  4xx labels fell 133 → 88, widening the render surface for every future slice.
+- The lesson pairs with ADR-0374's: read the member's render condition off the ROUTE, and read
+  the population off the FIXTURES. A byte-stable oracle full of placeholders is deterministic
+  and nearly blind.
+
 ### 2026-08-09 — the prefix census can file a member under the wrong FAMILY; a render-conditional member needs its condition in the oracle
 
 - Slice 10's closure walk found `_where_it_lands_header` (77 lines) in the /forecast family —
