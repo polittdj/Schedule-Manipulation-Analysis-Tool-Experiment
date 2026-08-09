@@ -12590,3 +12590,36 @@ Measured (final tree, docs and installers final when the runs started): full sui
 CUI intake). Statics: python -m ruff check WHOLE TREE pass · format --check 936 files zero
 reformats · mypy strict 130 files · bandit exit 0 · node --check per file. State-docs guard
 module re-run green after this fill.
+
+## 2026-08-09 (d) — phase 3 slice 13: the /evm family out; the fingerprint re-scoped (ADR-0377; v1.0.185)
+
+Branch `claude/polaris-v1-resume-s4h74l` (restarted from main e9c7ef8 after #561 squash-merged).
+**ADR-0377.** Version 1.0.184 → 1.0.185; wheel + nine installers rebuilt once (SCHEMA 2.11.0
+unchanged). The /evm family → NEW `web/evm.py` (378 lines; six movers, one contiguous block
+app.py 9816–10149) + `_metric_scorecard_table` (9795–9813) DESCENDED to components.py
+(mover `_evm_body` + stayer `_groups_body`, ADR-0351/0365 rule; components gains the
+`MetricResult` import). app.py 12,082 → 11,735 wc-truth. LAYER_ORDER … → analysis → evm → app;
+evm.py joins the pyproject E501 list; EXTRACTED/LAYER_ORDER/VIEW_MODULES + both
+whole-view-layer guard tuples gain "evm.py". app.py's only import drop:
+`compute_baseline_compliance` (re-lands in evm.py).
+
+Verification: 498-label oracle (title-stripped TP4 pool, UID 22, three normalizers,
+determinism ×2 processes 0 flapping) — **the 88-count 4xx fingerprint spans ALL FOUR stages**
+(69 = loaded stages only; first check false-alarmed at 69 vs 88 and was adjudicated by
+payload: all seventeen 400s are [empty]-stage no-schedule guards; /openapi.json is the 60th
+parameterless GET). Pre-flight probe 7/7 render-proven zero dark (six movers 6 labels each;
+the descent 9 — /groups moved live, the first descent probe-proving its second family).
+Per-region byte-identity 1/1 + descent, re-verified post-ruff, format zero reformats.
+Multiset 48 added / 1 removed (zero code lines; quiescence md5-verified first).
+Dropped-import sweep 0 readers (control 181 files). 498/498 byte-identical pristine vs cut.
+Falsified in new locations 7/7 EXACT label lists (anchors absent from post-cut app.py).
+Monkeypatch sweep over 25 bound names: one hit — the standing `app_mod.non_summary` control,
+re-verified green post-cut. Source-text sweep 5 readers, every hit adjudicated
+(`panelkit.js` positive control; `"BEI (throughput)"` is a `_stat_cards` call argument),
+zero repoints. Mutation battery 6/6 named (1/33 ×4 · 1/5 · 1/6; enumeration guard's 17th/18th
+catches). Statics: python -m ruff check WHOLE TREE pass · format --check 938 files zero reformats · mypy
+strict 131 files · bandit exit 0 · node --check 60/60 static JS files. Full suite (after the
+rebuild, per ADR-0374's lockstep sequencing) **3544 passed / 45 skipped, exit 0, in 24:48**
+(+2 tests vs slice 12 — the evm.py contract params); parity gate **52 passed / 15 skipped,
+3522 deselected, exit 0, in 11:52**. All skips deliberately environment-gated (playwright /
+Java / CUI intake). State-docs guard module re-run green after this fill.
