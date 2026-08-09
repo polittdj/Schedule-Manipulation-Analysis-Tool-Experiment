@@ -44,6 +44,7 @@ def test_drilldown_runtime_is_loaded_globally_not_per_page() -> None:
     app_src = "".join(
         (web / m).read_text(encoding="utf-8")
         for m in (
+            "analysis.py",
             "app.py",
             "chrome.py",
             "components.py",

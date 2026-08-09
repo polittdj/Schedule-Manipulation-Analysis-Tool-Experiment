@@ -30,6 +30,7 @@ from pathlib import Path
 
 import pytest
 
+import schedule_forensics.web.analysis as analysis_mod
 import schedule_forensics.web.app as app_mod
 import schedule_forensics.web.chrome as chrome_mod
 import schedule_forensics.web.components as components_mod
@@ -60,6 +61,7 @@ EXTRACTED = {
     "sra.py": sra_mod,
     "forecast.py": forecast_mod,
     "portfolio.py": portfolio_mod,
+    "analysis.py": analysis_mod,
 }
 
 #: The view layer, lowest layer FIRST. A module may import only from those before it — that is
@@ -81,6 +83,7 @@ LAYER_ORDER = (
     "sra.py",
     "forecast.py",
     "portfolio.py",
+    "analysis.py",
     "app.py",
 )
 
@@ -90,6 +93,7 @@ WHOLE_VIEW_LAYER_GUARDS = ("test_bar_drill.py", "test_presentation_fixes.py")
 
 #: The modules such a guard has to read. Markup-carrying only — `state.py` holds no HTML.
 VIEW_MODULES = (
+    "analysis.py",
     "app.py",
     "chrome.py",
     "components.py",

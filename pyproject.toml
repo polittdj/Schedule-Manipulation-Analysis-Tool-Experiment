@@ -16,7 +16,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "schedule-forensics"
-version = "1.0.183"
+version = "1.0.184"
 description = "Local, NASA-themed forensic schedule-analysis tool (CUI-safe, offline)."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -203,6 +203,10 @@ select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
 # exemption travels with them, exactly as it did for chrome/driving/evolution/integrity/
 # margin/trend/ssi/mission.
 "src/schedule_forensics/web/sra.py" = ["E501"]
+# `analysis.py` is the /analysis page family, extracted verbatim (ADR-0376) — the report body,
+# the chapter-01 header and the per-schedule panels ARE HTML f-strings, so the exemption
+# travels with them.
+"src/schedule_forensics/web/analysis.py" = ["E501"]
 
 [tool.ruff.format]
 # ruff >= 0.16 formats fenced ```python blocks inside Markdown. That is right for prose docs and

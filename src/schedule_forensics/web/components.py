@@ -34,7 +34,7 @@ from schedule_forensics.engine.sra import ScheduleRisk, SSIRiskStat
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.web.chrome import _e
 from schedule_forensics.web.help import field_or_metric_doc
-from schedule_forensics.web.state import SessionState
+from schedule_forensics.web.state import SessionState, _Analysis
 
 
 def _mdY(value: dt.date | dt.datetime | str | None) -> str:
@@ -502,3 +502,78 @@ def _schedule_risks(st: SessionState) -> tuple[ScheduleRisk, ...]:
         )
         for r in st.sra_risks
     )
+
+
+# ---- descended in ADR-0376 (phase 3, slice 12): a 3-family name the analysis cut sent down ----
+# `_target_panel`: `_analysis_body` moved to `web/analysis.py` while the /card and /wbs routes
+# (create_app closures in `web/app.py`) render the same session-target panel — three families,
+# the ADR-0350 components threshold. Verbatim, byte-identical to the app.py original.
+
+
+def _target_panel(sch: Schedule, analysis: _Analysis, target: int) -> str:
+    """The session target activity's metrics in THIS schedule (or a gentle absence note).
+
+    Panel contract (codex-review round, ADR-0327 addendum): the populated panel wears the
+    head strip + ⛶ ENLARGE + this file's provenance chip on all three render sites
+    (/analysis, /card/{name}, /wbs/{name} — all of which load panelkit.js). The original
+    ADR-0327 text claimed this helper already rendered the head strip — that was a MISREAD
+    of the /path workspace head, caught by external review and corrected here. ⤓ EXCEL is
+    deliberately refused: this is a single-activity view, and no export sheet carries its
+    variance/flag cells as drawn (the analysis workbook's activities sheet is the whole
+    population with different columns) — the round's covers-what-it-draws bar. The
+    absent-UID branch is a NOTICE and stays bare."""
+    row = next((r for r in analysis.activity_rows if r["unique_id"] == target), None)
+    if row is None:
+        return (
+            f"<div class=panel><h2>Target activity UID {target}</h2>"
+            f'<p class="notice err">This schedule does not contain UniqueID {target}.</p></div>'
+        )
+    variance = ""
+    if row["finish"] and row["baseline_finish"]:
+        days = (
+            dt.date.fromisoformat(str(row["finish"]))
+            - dt.date.fromisoformat(str(row["baseline_finish"]))
+        ).days
+        cls = "fail" if days > 0 else "pass"
+        variance = (
+            f"<tr><th scope=col>Finish vs baseline</th>"
+            f"<td><b class={cls}>{days:+d} calendar days</b></td></tr>"
+        )
+    flags = ", ".join(
+        label
+        for label, on in (
+            ("critical", row["is_critical"]),
+            ("milestone", row["is_milestone"]),
+            ("summary", row["is_summary"]),
+        )
+        if on
+    )
+    cells = "".join(
+        f"<tr><th scope=col>{label}</th><td>{_e(value)}</td></tr>"
+        for label, value in (
+            ("Start", row["start"] or "—"),
+            ("Finish", row["finish"] or "—"),
+            ("Baseline finish", row["baseline_finish"] or "—"),
+            (
+                "Total float (days)",
+                row["total_float_days"] if row["total_float_days"] is not None else "—",
+            ),
+            (
+                "Free float (days)",
+                row["free_float_days"] if row["free_float_days"] is not None else "—",
+            ),
+            ("% complete", row["percent_complete"]),
+            ("Flags", flags or "—"),
+        )
+    )
+    head = _panel_head(
+        f"Target activity &mdash; UID {target}: {_e(row['name'])}",
+        tools=_shell_tools(),
+        prov=_prov_chip(sch),
+    )
+    return f"""
+<div class=panel>{head}
+<p class=muted>The session-wide target: the trace below runs to it automatically, the Trend page
+focuses on it, and Compare shows its movement. Set or clear it in the header.</p>
+<table>{cells}{variance}</table>
+<p class=cite>{_e(row["name"])} (UID {target}, {_e(row["source_file"] or "schedule")})</p></div>"""
