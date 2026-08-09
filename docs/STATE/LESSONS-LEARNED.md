@@ -435,6 +435,38 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-09 — the prefix census can file a member under the wrong FAMILY; a render-conditional member needs its condition in the oracle
+
+- Slice 10's closure walk found `_where_it_lands_header` (77 lines) in the /forecast family —
+  its sole referrer is `forecast_view`, and it is chapter 09's ("Where it lands") header. The
+  prefix census had filed those 77 lines under the **where** family ("where 235"), which
+  re-prices to 158 once the closure claims the member. Prior slices proved the prefix
+  UNDERCOUNTS a family (the finder-vs-definition lesson); this is the sharper failure mode:
+  the prefix can put a member in the WRONG family entirely, because a name's leading word is
+  not its referrer graph. Lesson: the census numbers are finders for SIZING, never membership
+  — only the closure's referrer walk assigns a member to a family.
+- `_group_rollup_panel` renders ONLY when a group field is chosen (`… if group_field else ""`
+  in the route) — a parameterless-GET oracle can never light it, however wide. The [grouped]
+  variants (/forecast + /evm ?group_field=Resource + both field-forecast exports) were added
+  at oracle-DESIGN time because the route source showed the condition, so the pre-flight
+  probe measured 1 real move instead of reporting a false dark and burning a
+  stronger-anchor round. Lesson: read each member's render CONDITION off the route before
+  building the oracle, and give every conditional member a label that satisfies its
+  condition — the slice-9 lesson ("aim at work that can move") generalizes to "aim at
+  states that can render".
+- The full-suite run started before the installer rebuild honestly failed the lockstep
+  family (the committed installers still embedded the v1.0.181 wheel while src/ had moved).
+  Not a defect — a sequencing cost: the informative run validates the code, but the
+  reportable claim needs bump → build → docs → THEN the one full suite on the final tree.
+  Lesson: the lockstep guard makes "rebuild the installers" a PREREQUISITE of the final
+  suite run, not a follow-up — schedule it before the run whose counts will be quoted.
+- The slice itself was the recipe running clean end-to-end: zero oracle-dark members (the
+  conditional-label design above), zero reader repoints (verified, not assumed — the moved
+  text carries no _TS_CAPTION_MARK/data-ts-caption/drilldown.js), 54/0 multiset, 9/9 EXACT
+  falsification, 6/6 named battery with the in-body mutation shapes applied from ADR-0373
+  rather than re-derived. Five families remain: what 289 · portfolio 253 · evm 239 ·
+  how 214 · where 158.
+
 ### 2026-08-08 (e) — a crafted payload aimed at completed tasks measures history, not reach; patch the patcher with landed-count discipline
 
 - The sra slice's crafted v4 setup payload (slice-7's sequences, returning per ADR-0365)

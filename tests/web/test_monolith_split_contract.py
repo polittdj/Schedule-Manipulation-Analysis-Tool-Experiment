@@ -35,6 +35,7 @@ import schedule_forensics.web.chrome as chrome_mod
 import schedule_forensics.web.components as components_mod
 import schedule_forensics.web.driving as driving_mod
 import schedule_forensics.web.evolution as evolution_mod
+import schedule_forensics.web.forecast as forecast_mod
 import schedule_forensics.web.integrity as integrity_mod
 import schedule_forensics.web.margin as margin_mod
 import schedule_forensics.web.mission as mission_mod
@@ -56,6 +57,7 @@ EXTRACTED = {
     "ssi.py": ssi_mod,
     "mission.py": mission_mod,
     "sra.py": sra_mod,
+    "forecast.py": forecast_mod,
 }
 
 #: The view layer, lowest layer FIRST. A module may import only from those before it — that is
@@ -75,6 +77,7 @@ LAYER_ORDER = (
     "ssi.py",
     "mission.py",
     "sra.py",
+    "forecast.py",
     "app.py",
 )
 
@@ -89,6 +92,7 @@ VIEW_MODULES = (
     "components.py",
     "driving.py",
     "evolution.py",
+    "forecast.py",
     "integrity.py",
     "margin.py",
     "mission.py",
