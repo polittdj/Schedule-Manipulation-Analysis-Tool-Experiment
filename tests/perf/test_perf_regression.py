@@ -239,14 +239,19 @@ def test_p3_performance_dataset_is_memoised_per_epoch(monkeypatch) -> None:  # t
     per-version blocks are memoised for the scope epoch (and recompute after a scope change)."""
     import schedule_forensics.web.app as app_module
 
+    # ADR-0378: `_perf_version_block` — the CALLER of `work_to_go_census` — moved to
+    # `web/performance.py`, so the spy must patch THAT module's binding. Patching `app_module`
+    # here would silently no-op (the ADR-0297 phase-1 trap: patch the module whose code calls).
+    import schedule_forensics.web.performance as perf_module
+
     calls = {"n": 0}
-    real = app_module.work_to_go_census
+    real = perf_module.work_to_go_census
 
     def counting(sch, crit):  # type: ignore[no-untyped-def]
         calls["n"] += 1
         return real(sch, crit)
 
-    monkeypatch.setattr(app_module, "work_to_go_census", counting)
+    monkeypatch.setattr(perf_module, "work_to_go_census", counting)
     st = SessionState()
     keys = [f"v{i}" for i in range(3)]
     raw = {k: _chain(6, k) for k in keys}

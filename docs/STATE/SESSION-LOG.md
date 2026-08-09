@@ -12623,3 +12623,59 @@ rebuild, per ADR-0374's lockstep sequencing) **3544 passed / 45 skipped, exit 0,
 (+2 tests vs slice 12 — the evm.py contract params); parity gate **52 passed / 15 skipped,
 3522 deselected, exit 0, in 11:52**. All skips deliberately environment-gated (playwright /
 Java / CUI intake). State-docs guard module re-run green after this fill.
+
+## 2026-08-09 (e) — phase 3 slice 14: the /performance family out; the first census-exact closure (ADR-0378; v1.0.186)
+
+Branch `claude/polaris-v1-resume-w49pj3`, restarted from `main` a0d6124 after #562 squash-merged.
+**ADR-0378.** Version 1.0.185 → 1.0.186; wheel + nine installers rebuilt once (SCHEMA 2.11.0
+unchanged — no persisted field moved).
+
+The /performance page family left the monolith into NEW `web/performance.py` (383 lines): four
+movers in one contiguous block, app.py 10761–11092 — `_perf_version_block`, `_performance_data`,
+`_how_we_execute_header`, `_performance_body` — and, for the first time since ADR-0364, **no
+descent**. app.py 11,735 → 11,403 (wc-truth). LAYER_ORDER `… → analysis → evm → performance →
+app`; the re-export block lands above portfolio's (isort: performance < portfolio); performance.py
+joins pyproject's per-file E501 list; EXTRACTED + LAYER_ORDER + VIEW_MODULES + both
+whole-view-layer guard tuples gain "performance.py".
+
+Two findings. **The closure is census-EXACT — the first in phase 3**: 4 names / 326 ast lines both
+by prefix and by referrer walk (1.00×, against 1.15× mildest and 3.6× widest before). It is exact
+only because ADR-0375's ruling-lag finding had already been folded into the queue by hand; the walk
+still assigns membership. **The export route SHARES a mover, ending the five-slice streak**:
+`export_performance` builds its five tables from `_performance_data`, so both export formats sit
+inside the family's proven surface. No descent was needed — the one shared name the walk surfaced
+(`_sources_line`) is called by the ROUTE, not by any mover, and routes stay in `create_app`.
+
+Verification. Oracle rebuilt per ADR-0372/0375/0377: 498 labels, title-stripped TP4 pool asserted
+untitled before any render, target UID 22 with POSTs 303-asserted, three normalizers each made
+LOUD (raise on zero-match). Determinism ×2 separate processes: 0 flapping. ADR-0377's published
+fingerprint caught TWO harness errors before any claim was made — the first build read 404:38 per
+loaded stage against the recipe's 404:4, adjudicated by payload to (1) the valid fmts being xlsx
+and docx, not csv, and (2) the `{name}` key dropping the `.xml`. Corrected, the harness reproduces
+ADR-0377 exactly (88 all-stages / 69 loaded-stages). Pre-flight probe 4/4 render-proven, ZERO dark
+members (fifth consecutive): `_perf_version_block` 9 · `_performance_data` 9 (page AND xlsx AND
+docx × three states) · `_how_we_execute_header` 3 · `_performance_body` 3 — two anchors re-cut
+after a page-only first reading understated each 9-label member as 6 and 3. Per-region
+byte-identity IDENTICAL in-script, from disk, and again after `ruff --fix` dropped app.py's five
+mover-only imports. Multiset 51 added / 0 removed — zero code lines removed. Dropped-import sweep
+FOUR readers in two files — and the first sweep MISSED them, because it was a regex over the alias
+`app_mod` while both spies spell it `app_module`; it reported 0 with its positive control (182
+files) live, and the full suite caught it (`AttributeError: … has no attribute
+'work_to_go_census'`). The corrected sweep is alias-agnostic (bare NAME across tests/) and finds
+exactly 4 references, all `work_to_go_census`, in tests/perf/test_perf_regression.py and
+tests/web/test_session_consistency.py; both spies were repointed to web/performance.py — the module
+whose code CALLS the function — and each repoint was proven load-bearing (reverting the patch
+target to app_module fails exactly those two tests). 498/498 byte-identical pristine vs cut. Falsified in the new
+locations 4/4 EXACT label lists, anchors asserted absent from post-cut app.py. Monkeypatch sweep
+over 27 bound names: one hit, `compute_activity_makeup` — slice 12's standing ADR-0291
+adjudication, re-verified green post-cut, not a new one. Source-text sweep 5 readers, every hit
+adjudicated (`mission.js` lives only in a docstring; test_axis_titles uses it as an EXEMPT static-JS
+filename), zero repoints. Mutation battery 6/6 named (1/35 ×4 · 1/5 · 1/6; enumeration guard's
+19th/20th catches), plus a seventh for the spy repoint. Full suite: first run 2 failed / 3544
+passed (the sweep miss); after the repoint 3546 passed / 45 skipped, exit 0, in 27:39 (+2 vs slice
+13 — the performance.py contract params). Parity gate 52 passed / 15 skipped, 3524 deselected,
+exit 0, in 14:11. All skips environment-gated (playwright / Java / CUI intake). Statics: ruff whole
+tree pass · format --check 940 files zero reformats · mypy strict 132 files · bandit exit 0 ·
+node --check 60/60. The multiset's quiescence guard had to be
+rewritten: `pgrep -f pytest` fired on
+a clean tree because the checking shell carries the heredoc in its own argv.

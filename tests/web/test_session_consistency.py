@@ -91,11 +91,15 @@ def test_perf_memo_never_serves_a_block_stored_across_an_epoch_flip(monkeypatch)
     store is generation-guarded, so the next request recomputes from the new epoch's pair."""
     import schedule_forensics.web.app as app_module
 
+    # ADR-0378: `_perf_version_block` moved to `web/performance.py`; it resolves
+    # `work_to_go_census` in ITS OWN module globals, so the spy patches `perf_module`.
+    import schedule_forensics.web.performance as perf_module
+
     st = SessionState()
     sch = _chain(6, "v0")
     scoped, cpm = st.cpm_scoped_for("v0", sch)
 
-    real_census = app_module.work_to_go_census
+    real_census = perf_module.work_to_go_census
     flip = {"armed": True}
 
     def flipping_census(s, crit):  # type: ignore[no-untyped-def]
@@ -104,7 +108,7 @@ def test_perf_memo_never_serves_a_block_stored_across_an_epoch_flip(monkeypatch)
             st.set_filter([("Task Name", "v0-2")])  # epoch flips mid-block-compute
         return real_census(s, crit)
 
-    monkeypatch.setattr(app_module, "work_to_go_census", flipping_census)
+    monkeypatch.setattr(perf_module, "work_to_go_census", flipping_census)
     app_module._perf_version_block(st, scoped, cpm)
     # the flip cleared the memo and bumped the scope generation — the late store was skipped
     assert st._perf_memo == {}
