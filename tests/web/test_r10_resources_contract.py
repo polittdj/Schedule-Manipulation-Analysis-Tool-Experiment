@@ -244,13 +244,15 @@ def test_takes_read_as_prose_when_nothing_is_over_allocated(
 ) -> None:
     """The zero-over-allocation branch must read as prose, never as a bare ``0`` — and it must
     still quote only figures the page renders. Driven by substituting the ENGINE RESULT (the
-    engine itself is never touched): app.py is the module whose code calls the helper."""
+    engine itself is never touched): ``web/resources.py`` is the module whose code calls the
+    helper (ADR-0379 moved the family out of app.py; patching app.py would no longer reach the
+    page's own call — the ADR-0297 phase-1 trap)."""
     from schedule_forensics.engine.resources import (
         ResourceLoad,
         ResourceLoading,
         ResourcePeriod,
     )
-    from schedule_forensics.web import app as app_mod
+    from schedule_forensics.web import resources as res_mod
 
     clean = ResourceLoading(
         periods=("2025-01", "2025-02"),
@@ -271,7 +273,7 @@ def test_takes_read_as_prose_when_nothing_is_over_allocated(
         has_work=True,
         working_minutes_per_day=480,
     )
-    monkeypatch.setattr(app_mod, "compute_resource_loading", lambda *a, **k: clean)
+    monkeypatch.setattr(res_mod, "compute_resource_loading", lambda *a, **k: clean)
     page = client.get("/resources").text
     takes = _takes(page)
     assert len(takes) == 3

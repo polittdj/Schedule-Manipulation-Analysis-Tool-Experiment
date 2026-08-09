@@ -12679,3 +12679,68 @@ tree pass · format --check 940 files zero reformats · mypy strict 132 files ·
 node --check 60/60. The multiset's quiescence guard had to be
 rewritten: `pgrep -f pytest` fired on
 a clean tree because the checking shell carries the heredoc in its own argv.
+
+## 2026-08-09 (f) — phase 3 slice 15: the /resources family out of the monolith; the oracle that was blind to it (ADR-0379, v1.0.187)
+
+Branch restarted from main 70b0c4b after #563 squash-merged (designated branch
+`claude/polaris-phase3-slice14-nvtp39` — the NAME says slice14, the WORK is slice 15). Fresh
+container: `pip install -e ".[dev]"` + `pip install build`.
+
+Closure before cut (ADR-0365). The referrer walk seeded by BEHAVIOUR found a third entry point the
+prefix census never reaches — `export_resource_drill` (`/export/{fmt}/resource-drill`) — alongside
+`/resources` and `/export/{fmt}/resources`. Closure 5 names / 308 ast lines; MOVERS 4 / 306,
+census-exact (1.00×, 2nd consecutive). The fifth name, `_cell` (2 lines), is pulled in by that
+third ROUTE, is referred to by six other export routes and two importers, and by NO mover — so
+ADR-0378's route-only-referrer rule keeps it in app.py. NO descent. The
+export-contributes-no-movers streak RESUMES (ADR-0378 broke it at five): both export routes build
+their tables straight from `compute_resource_loading`.
+
+THE HEADLINE: the inherited 498-label oracle was STRUCTURALLY BLIND to this family. The first
+pre-flight probe read 0 labels for ALL FOUR movers. Adjudicated by payload before anything was
+touched: `/resources` renders 19,040 bytes per loaded stage carrying none of the four anchors, and
+the five-snapshot TP4 pool contains ZERO <Assignment>, ZERO <Resource>, ZERO <Work> elements — so
+`_who_is_overloaded_header` returns "" and `_resources_body` takes its no-loading branch. The
+family short-circuits BY DESIGN on the population every slice since ADR-0372 has rendered. The
+oracle was EXTENDED, not reinterpreted: a fifth stage `[resloaded]` uploads the project2_5 goldens
+(164/165 assignments over 33 resources) with the render condition asserted (five markers, raise
+otherwise) BEFORE the stage is measured. The inherited 498 stay byte-comparable, so ADR-0377's
+fingerprint remains a self-check — and reproduces exactly. Oracle now 644 labels: [empty]
+{200:41,400:17,422:2}; [loaded]/[target]/[cleared]/[resloaded] {200:123,404:4,422:19} each; 4xx 69
+loaded-stages / 88 inherited-all / 111 all-five. Determinism x2 separate processes: 0 flapping. The
+fingerprint caught a harness error first (404:6 vs the recipe's 404:4 — payload diff named it: two
+`[grouped]` labels pointed at routes that DON'T EXIST, /dashboard and /activities; re-pointed at
+/scorecards and /resources).
+
+The cut: four movers in ONE contiguous block (app.py 9807-10118) into NEW web/resources.py (362
+lines). app.py 11,403 -> 11,095 wc-truth. LAYER_ORDER `... -> evm -> performance -> resources ->
+app`; re-export block BELOW portfolio's (isort portfolio < resources < sra); resources.py joins the
+pyproject E501 list; EXTRACTED + LAYER_ORDER + VIEW_MODULES + both whole-view-layer guard tuples
+gain "resources.py".
+
+Pre-flight probe 4/4 render-proven, ZERO dark (sixth consecutive) — 2 labels each, all in the new
+[resloaded] stage. Per-region byte-identity IDENTICAL three times (in-script, from disk, and again
+after `ruff --fix` dropped app.py's two mover-only imports; sha256 ab1eb5e7... both sides);
+format-check 941 files zero reformats. Multiset 54 added / 0 removed — ZERO code lines removed
+(quiescent tree, md5-verified first, /proc quiescence check). Dropped-import sweep by BARE NAME:
+`bucket_key` 0 readers; `ResourceLoading` 2 hits, both importing straight from the ENGINE and never
+through web.app — harmless. 644/644 byte-identical pristine vs cut. Falsified in the new location
+4/4 EXACT label lists, all anchors asserted ABSENT from post-cut app.py.
+
+Sweeps. The monkeypatch sweep's FIRST form was a line regex and its positive control RETURNED ZERO
+— because `monkeypatch.setattr(` calls wrap across lines, putting module and attribute on the next
+line; no alias fix would have helped (ADR-0378's lesson, one layer deeper). Replaced with an AST
+sweep over every test file: 188 setattr calls found, control reproduced, ONE real hit —
+tests/web/test_r10_resources_contract.py:274 patching `app_mod.compute_resource_loading`, the
+ADR-0297 phase-1 trap live. Repointed to web.resources and PROVEN load-bearing (reverting the
+target fails exactly `test_takes_read_as_prose_when_nothing_is_over_allocated`). The sweep's alias
+census — appmod 18, app_module 15, app_mod 3 — is the quantitative case for sweep-by-bare-name.
+Source-text sweep: 5 app.py-source readers, every hit adjudicated (all also present in the STAYING
+app.py, belonging to the two whole-view-layer guards this commit widens); _TS_CAPTION_MARK,
+data-ts-caption, drilldown.js, _LAYOUT and mission.js verified ABSENT from the moved text; zero
+source-text repoints.
+
+Mutation battery 6/6 named (1/36 x4 · 1/4 · 1/5; enumeration guard's 21st/22nd consecutive
+catches), plus a seventh proving the spy repoint. Shipped code changed -> version bumped
+v1.0.186 -> v1.0.187 BEFORE the suite; wheel + nine installers rebuilt once, PRECEDING the final
+suite run. Statics: ruff whole tree pass · format --check 941 files zero reformats · mypy strict
+133 files · bandit exit 0 · node --check 60/60.
