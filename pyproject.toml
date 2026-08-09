@@ -16,7 +16,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "schedule-forensics"
-version = "1.0.184"
+version = "1.0.185"
 description = "Local, NASA-themed forensic schedule-analysis tool (CUI-safe, offline)."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -207,6 +207,10 @@ select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
 # the chapter-01 header and the per-schedule panels ARE HTML f-strings, so the exemption
 # travels with them.
 "src/schedule_forensics/web/analysis.py" = ["E501"]
+# `evm.py` is the /evm page family, extracted verbatim (ADR-0377) — the explainer/tip HTML
+# and the dual-SPI(t) methodology text were already over-long inside app.py's exempt region,
+# and verbatim outranks re-wrapping.
+"src/schedule_forensics/web/evm.py" = ["E501"]
 
 [tool.ruff.format]
 # ruff >= 0.16 formats fenced ```python blocks inside Markdown. That is right for prose docs and

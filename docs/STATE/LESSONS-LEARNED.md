@@ -435,6 +435,31 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-09 (d) — a fingerprint is only as good as its stated scope; a silent normalizer is a flap factory
+
+- Slice 13 (the /evm family) rebuilt the 498-label oracle and the fingerprint check read 69
+  where ADR-0375/0376 said 88. The adjudicate-before-use rule fired exactly as designed — and
+  the payload-level answer was that the POPULATION was identical: the 88 spans ALL FOUR stages
+  (the seventeen 400s are [empty]-stage no-schedule guards), while the prior ADRs' prose said
+  "the three loaded stages" (which measure 69 = 12×404 + 57×422, ADR-0374's own number).
+  **The lesson: a population fingerprint must carry its stage-scope with it — a right number
+  compared at the wrong scope false-alarms every time, and an unstated scope converts a
+  five-second check into an adjudication round.** ADR-0377 pins both numbers.
+- The first determinism pass flapped 4 whoami labels. Payload diff: `pid` only — the pid
+  normalizer's JSON parse was dying on a non-UTF-8 token placeholder and `except: pass`
+  swallowed it. A normalizer that can fail silently is itself a flap factory; the fix was an
+  ASCII placeholder, and the flap was adjudicated by payload BEFORE touching the harness.
+- The route enumeration undercounted the parameterless-GET class at 59 because an
+  isinstance(APIRoute) filter skips `/openapi.json` (a plain starlette Route). "Pages AND
+  APIs, no silent caps" includes it. Enumerate by method + path, never by route class.
+- The descent's pre-flight probe moved /groups × 3 states on top of the /evm labels — the
+  first time a descent's SECOND family was render-proven in the same probe that proved the
+  first. A mover+stayer adjudication that can be probe-proven should be: the closure names
+  the referrer, the probe proves it executes.
+- The prefix undercount was mild this time (299 → 343, 1.15×) — but both unprefixed members
+  (`_threshold_legend`, `_metric_scorecard_table`) were exactly the shapes the census cannot
+  see. The referrer walk stays the definition even on a nearly census-exact family.
+
 ### 2026-08-09 (c) — a closure can run 3.6× its prefix; never measure a tree a battery is mutating
 
 - Slice 12 opened on "analysis 356" and the referrer walk returned **26 names / 1,275 lines** —

@@ -30,6 +30,7 @@ from urllib.parse import quote
 
 from schedule_forensics.engine.cpm import CPMError, CPMResult, offset_to_datetime
 from schedule_forensics.engine.driving_slack import PathTier
+from schedule_forensics.engine.metrics._common import MetricResult
 from schedule_forensics.engine.sra import ScheduleRisk, SSIRiskStat
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.web.chrome import _e
@@ -577,3 +578,24 @@ def _target_panel(sch: Schedule, analysis: _Analysis, target: int) -> str:
 focuses on it, and Compare shows its movement. Set or clear it in the header.</p>
 <table>{cells}{variance}</table>
 <p class=cite>{_e(row["name"])} (UID {target}, {_e(row["source_file"] or "schedule")})</p></div>"""
+
+
+def _metric_scorecard_table(results: dict[str, MetricResult]) -> str:
+    """A compact check/value/status table from a DCMA-14 result dict (over any (sub)schedule)."""
+    rows = []
+    for m in results.values():
+        if m.unit == "ratio":  # CPLI / BEI — an index
+            valcell = f"{round(m.value, 2)}"
+        elif m.population:
+            pct = m.value if m.unit == "%" else 100.0 * m.count / m.population
+            valcell = f"{m.count} <span class=muted>of {m.population}</span> ({pct:.1f}%)"
+        else:
+            valcell = str(m.count)
+        rows.append(
+            f"<tr><td>{_e(m.name)}</td><td class=num>{valcell}</td>"
+            f'<td class="{_status_class(m.status)}">{_e(m.status)}</td></tr>'
+        )
+    return (
+        "<table class=card-table><tr><th scope=col>Check</th><th scope=col>Value</th>"
+        f"<th scope=col>Status</th></tr>{''.join(rows)}</table>"
+    )

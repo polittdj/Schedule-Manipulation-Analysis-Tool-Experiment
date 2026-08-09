@@ -35,6 +35,7 @@ import schedule_forensics.web.app as app_mod
 import schedule_forensics.web.chrome as chrome_mod
 import schedule_forensics.web.components as components_mod
 import schedule_forensics.web.driving as driving_mod
+import schedule_forensics.web.evm as evm_mod
 import schedule_forensics.web.evolution as evolution_mod
 import schedule_forensics.web.forecast as forecast_mod
 import schedule_forensics.web.integrity as integrity_mod
@@ -62,6 +63,7 @@ EXTRACTED = {
     "forecast.py": forecast_mod,
     "portfolio.py": portfolio_mod,
     "analysis.py": analysis_mod,
+    "evm.py": evm_mod,
 }
 
 #: The view layer, lowest layer FIRST. A module may import only from those before it — that is
@@ -84,6 +86,7 @@ LAYER_ORDER = (
     "forecast.py",
     "portfolio.py",
     "analysis.py",
+    "evm.py",
     "app.py",
 )
 
@@ -98,6 +101,7 @@ VIEW_MODULES = (
     "chrome.py",
     "components.py",
     "driving.py",
+    "evm.py",
     "evolution.py",
     "forecast.py",
     "integrity.py",
