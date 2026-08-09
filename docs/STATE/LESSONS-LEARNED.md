@@ -435,6 +435,49 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-09 (e) — a census can be exact and still not be the definition; a quiescence guard can match its own shell
+
+- Slice 14 (the /performance family) is the FIRST phase-3 closure to land census-exact: 4 names /
+  326 ast lines by prefix, the identical 4 / 326 by referrer walk (1.00×, against a 3.6× worst
+  case). Tempting conclusion: the census is trustworthy now. Wrong conclusion — it agreed only
+  because ADR-0375's ruling-lag finding had already been hand-folded into the queue. **The walk
+  stays the definition; a census that agrees is a finder that got lucky.**
+- The five-slice "the export route contributes NO movers" streak ended: `export_performance` reads
+  `_performance_data`. That changed what a probe anchor has to reach — the first anchor rode the
+  TableSet title, which reaches the page and the DOCX body but NOT xlsx sheet content, so a
+  9-label member measured 6. A second, on a quad row value, measured 9. **When a member feeds an
+  export, anchor the probe on what the export's own tables render, not on the page.** ADR-0373's
+  stronger-anchor round is not just for 0-move members.
+- A shared name does NOT automatically force a descent. `_sources_line` is referred to by seven
+  routes and `_scorecards_body`, but by no mover — it enters the closure through the family's own
+  route body, and routes live in `create_app`, which imports downward and stays. **Adjudicate a
+  shared name by WHO refers to it, not by how many.**
+- The multiset diff's "never measure a tree a battery is mutating" guard was `pgrep -f pytest`. It
+  fired on a provably clean tree: the shell running the check carries the heredoc — including the
+  word `pytest` — in its own argv, and the `[p]ytest` bracket trick fails for the same reason. Fixed
+  by scanning `/proc` for python processes excluding this pid. **A self-referential guard is worse
+  than no guard: it cries wolf on a clean tree, and the natural "fix" is to delete it.** Adjudicate
+  the match before touching the guard.
+- **The dropped-import sweep reported "0 readers" and was WRONG.** `ruff --fix` dropped five
+  now-unused engine imports from app.py; the sweep asked who reads them through `web.app` as a
+  regex over `app_mod.<name>` — the repo's dominant alias. Two tests spell it `app_module` and
+  patch `app_module.work_to_go_census` to spy on the P3 memo. The sweep returned zero **with its
+  positive control (182 files) live**, which is indistinguishable from a clean result; the full
+  suite caught it. Two lessons: **sweep by the BARE NAME, never by a module-qualified expression**
+  (the name is the only invariant — aliases, `getattr` and re-exports all defeat a qualified
+  regex); and **a positive control proves the sweep RUNS, not that its PATTERN is right** —
+  ADR-0353's rule is necessary, not sufficient, unless the control exercises the same pattern the
+  sweep depends on.
+- The fix was the ADR-0297 phase-1 trap again (patch the module whose code CALLS the function, not
+  the one that re-exports it). Both spies were repointed to `web/performance.py` and then **proven
+  load-bearing**: reverting the patch target to `app_module` fails exactly those two tests, so
+  neither passes vacuously. **A repoint is a code change and owes the same prove-able-to-fail
+  round as a new test** — a rename that passes either way is a test that has quietly stopped
+  testing.
+- The published oracle fingerprint paid for itself twice in one session: it caught that the export
+  fmts are xlsx/docx (not csv) and that `{name}` keys drop the `.xml`, both BEFORE any byte-identity
+  claim. **A recipe worth writing down is one a fresh harness can be re-derived from.**
+
 ### 2026-08-09 (d) — a fingerprint is only as good as its stated scope; a silent normalizer is a flap factory
 
 - Slice 13 (the /evm family) rebuilt the 498-label oracle and the fingerprint check read 69
