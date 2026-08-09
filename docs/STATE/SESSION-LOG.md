@@ -12438,3 +12438,60 @@ Measured (final tree, docs already final when the runs started): full suite **35
 sra.py contract params); parity gate **52 passed / 15 skipped, exit 0, in 11:51**;
 NEXT-SESSION-PROMPT refreshed for slice 10 (forecast 391 first). State-docs guard module
 re-run green after this append.
+
+## 2026-08-09 — branch `claude/polaris-schedule-tool-resume-5t4g8w` — phase 3 slice 10: the /forecast page family out of the monolith (ADR-0374, v1.0.182)
+
+Resumed after #558 squash-merged (branch fresh from main 6823d49; the prior remote branch
+pruned). Queue item 1: slice 10 per the ADR-0365 recipe. The behaviour-seeded closure over
+`/forecast` + `/api/forecast` + the two export routes re-priced the prefix census 391/4 →
+**9 names / 778 lines, one contiguous block** (app.py 7534–8311): `_carnac_cards`,
+`_FORECAST_METHOD_COLORS` (+ `#:` block extended by eye), `_forecast_ruler`,
+`_forecast_explainer`, `_field_forecast_panel`, `_group_rollup_panel`,
+`_where_it_lands_header` (the prefix census had filed it under WHERE — its sole referrer is
+`forecast_view`; where re-prices 235 → 158), `_forecast_body`, `_forecast_data`. NO descents,
+no stays beyond the routes. The 2-family ruling: `_field_forecast_panel` (forecast_view +
+evm_view) MOVES with its eponymous family — route referrers never block (ADR-0373 CF#4), no
+mover references it so the layering forces no descent (ADR-0351), 2 < 3 the components
+threshold (ADR-0350); /evm reaches it via the re-export. Cut VERBATIM into `web/forecast.py`
+(830 lines wc); app.py 14,583 → 13,814; `LAYER_ORDER` `… → sra → forecast → app`; re-export
+block between evolution and help; E501 travels (8 lines); contract tuples widened
+(EXTRACTED/LAYER_ORDER/VIEW_MODULES + test_bar_drill + test_presentation_fixes).
+
+Verification: oracle rebuilt per ADR-0372, grown 294 → **420 labels** (60 parameterless GETs
+incl. 4xx bodies · 27 exports × both fmts · 7 {name} pages + 8 {name} exports × both fmts on
+TP4 v5 · variants · full-surface [target-set]/[target-cleared], 303s asserted · NEW four
+[grouped] labels — /forecast + /evm ?group_field=Resource + both field-forecast exports —
+without which `_group_rollup_panel` (renders only when a field is chosen) and the panel's
+deep table would be dark by construction); anchors on the live critical chain BY DESIGN
+(target UID 22 — the ADR-0373 lesson applied at design time); three normalizers inherited;
+double-render determinism across two processes, 0 flapping. Pre-flight probe **9/9
+render-proven, ZERO dark members** (first multi-member slice with none): panel 8 (incl. both
+/evm states — the 2-family reach measured live), body/header/cards/colors/ruler/explainer 4
+each, data 3, rollup 1 (the grouped variant, its only render condition); the exports moved
+for NO member. Proof: per-region byte-identity **9/9** (in-script, pre- and post-write;
+format check zero reformats) · multiset **54 added / 0 removed** (zero code lines; the 3
+ruff-dropped app.py imports — CarnacSummary/ForecastSet/compute_group_rollup, each
+mover-only — net out against forecast.py's identical member lines) · dropped-import sweep
+clean (zero readers via web.app; pattern live elsewhere) · **420/420 byte-identical pristine
+vs cut** · falsified in the new locations **9/9 EXACT** (label lists, not counts), restores
+md5-verified. Sweeps: monkeypatch+attr over all 29 bound names — zero hits in both shapes
+(control non_summary found 1 setattr + 1 read = the prior "2×"); source-text over all 5
+app.py readers — 11 hits, all adjudicated (control panelkit.js ∈ axis_titles ∩
+_forecast_body; chartframe reads chrome.py; CSS literals read css files;
+_TS_CAPTION_MARK/data-ts-caption/drilldown.js verified absent from moved text) — first slice
+with zero reader repoints. Battery **6/6 named**, twins green (enumeration guard's 11th/12th
+consecutive live catch); mutations 2 and 5 in-body from the start (ADR-0373's
+defensive-overlap finding applied, not re-derived). Statics green (python -m ruff check
+WHOLE TREE — two ruffs on PATH, python -m pins 0.16.2/931-file scope · format --check ·
+mypy strict 128 files · bandit exit 0 · node --check per file). v1.0.181 → v1.0.182 bumped
+BEFORE the suite; an INFORMATIVE full-suite run on the pre-rebuild tree failed only the
+installer lockstep family (embedded wheel still v1.0.181 — expected, sequence not defect);
+wheel + nine installers then rebuilt once after the last code change, docs finalized, and
+the FINAL full suite + parity ran on the final tree. ADR-0374.
+Measured (final tree, docs and installers final when the runs started): full suite
+**3538 passed / 45 skipped / 0 failed, exit 0, in 27:13** (background, python -u; +2 tests
+vs slice 9 — the forecast.py contract params; the informative pre-rebuild run had read
+**5 failed / 3533 passed** with all five sequence-explained: 4× installer lockstep at the
+stale v1.0.181 embedded wheel + the handoff version pin awaiting rotation); parity gate
+**52 passed / 15 skipped, exit 0, in 14:14**; NEXT-SESSION-PROMPT refreshed for slice 11
+(what 289 first). State-docs guard module re-run green after this append.

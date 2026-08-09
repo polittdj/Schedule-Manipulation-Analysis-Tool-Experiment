@@ -1,91 +1,101 @@
-# Handoff — 2026-08-08 (e) (phase 3 slice 9: the /sra page family out of the monolith; the payload aimed off the critical path; ADR-0373; v1.0.181)
+# Handoff — 2026-08-09 (phase 3 slice 10: the /forecast page family out of the monolith; the first slice with no dark member; ADR-0374; v1.0.182)
 
-> ## STATUS (current) — **pushed, draft PR open** on `claude/polaris-schedule-tool-resume-vdowl5`
-> (branched from `main` 41c5462 after #557 squash-merged). **Shipped code changed** — version
-> bumped **v1.0.180 → v1.0.181** BEFORE the suite; wheel + nine installers rebuilt once after
+> ## STATUS (current) — **pushed, draft PR open** on `claude/polaris-schedule-tool-resume-5t4g8w`
+> (branched from `main` 6823d49 after #558 squash-merged). **Shipped code changed** — version
+> bumped **v1.0.181 → v1.0.182** BEFORE the suite; wheel + nine installers rebuilt once after
 > the last code change (SCHEMA stays 2.11.0 — no persisted field changed). Highest ADR now
-> **ADR-0373**.
+> **ADR-0374**.
 >
-> **Phase-3 slice 9 is CLOSED (queue item 1): the /sra page family → `web/sra.py` (1,848
-> lines; 30 names / 22 regions), app.py 16,384 → 14,597.** The re-measured census priced
-> ADR-0365's prediction exactly: prefix 847 / 13 names, closure 32 names / 1,756 lines —
-> `_ssi_panel` (235) and `_ssi_export_tables` (248) are IN (the prefix is a finder, the
-> closure is the definition). TWO descents into `components.py` (`_TS_CAPTION_MARK` — three
-> other routes serve the marker; `_schedule_risks` — margin + five /api routes derive it);
-> `_ssi_three_point`/`_risk_events`/`_schedule_branches`/`_schedule_conditionals` stay
-> (route machinery no page owns). `LAYER_ORDER` `… → ssi → mission → sra → app`; E501
-> travels; `sra.py` imports NOTHING from `web.ssi` (panel/data split — the run machinery is
-> upstream of routes, not of the page family). Constants carried their `#:` doc-comment
-> blocks (ast spans do not see comments — five regions extended BY EYE before the cut).
-> `test_axis_titles`' `_TS_CAPTION_MARK` counter repointed in the same commit (the ADR-0349
-> trap, not tripped).
+> **Phase-3 slice 10 is CLOSED (queue item 1): the /forecast page family → `web/forecast.py`
+> (830 lines; 9 names / one contiguous block, app.py 7534–8311), app.py 14,583 → 13,814
+> (wc-truth).** The re-measured census: prefix 391 / 4 names, closure **9 names / 778 lines**
+> — `_carnac_cards`, `_FORECAST_METHOD_COLORS` (+ its `#:` block, extended by eye),
+> `_field_forecast_panel`, `_group_rollup_panel` and `_where_it_lands_header` carry no
+> `_forecast` prefix (the prefix is a finder, the closure is the definition — fifth
+> consecutive confirmation). **`_where_it_lands_header` was filed under the WHERE family by
+> the prefix census** (its 77 lines are chapter 09's header; sole referrer `forecast_view`)
+> — where re-prices 235 → 158. **NO descents, NO stays beyond the routes** (smallest closure
+> shape since mission). The slice's 2-family ruling: `_field_forecast_panel` (forecast_view
+> + evm_view, operator 2026-07-10) MOVES with its eponymous family — both referrers are
+> create_app routes (never blockers, ADR-0373 CF#4), no mover references it (no forced
+> descent, ADR-0351), 2 families < the components threshold of 3 (ADR-0350). /evm reaches
+> it via the re-export; when /evm is cut the panel is already below it. `LAYER_ORDER`
+> `… → mission → sra → forecast → app`; re-export block between evolution and help; E501
+> travels (8 lines).
 >
 > ## Verification
-> Oracle rebuilt per the ADR-0372 recipe and grown 151 → **294 labels** (every parameterless
-> GET incl. validation-4xx bodies · both fmts × 27 exports · 8 named exports on TP4 v5 · the
-> variants · [target-set]/[target-cleared] now re-rendering the FULL GET+export surface ·
-> the slice-7 crafted v4/v2 setup-load sequences RETURNED with 12+4 after-renders, 303s
-> asserted). Double-render determinism across two processes, 0 flapping, three normalizers
-> inherited. **The first crafted v4 payload measured two FALSE darks**: it aimed factors/
-> bcwc/risk/branch at UIDs 12–15 — tasks the v5 snapshot has COMPLETED — so ADR-0308 made
-> every risk inert, the S-curve collapsed to one point and OAT was all-zero; scurve+tornado
-> probed 0 twice (a stronger-anchor re-probe separated weak-anchor from dark). Re-aimed at
-> the LIVE critical chain (factor 22 · bcwc 23 · override 24 · risk→22 · branch across the
-> real 22→24 FS tie · conditional plans 24→25 · focus=project finish) both light at
-> [v4] DOCX sra. Pre-flight probe: 29/32 render-proven (xlsx→`_ssi_export_tables`,
-> docx→`_sra_report_blocks`+charts+NASA constants — structural sets); 3 oracle-dark = the
-> SAME ADR-0365 stored-fields trio, route-covered in Python by
-> `test_load_from_schedule_seeds_the_register_from_the_files_risk_fields` + the uid152
-> parity oracles. Proof: per-region byte-identity **24/24** (asserted in the cut script,
-> re-verified after ruff-fix AND after format) · multiset **104 added / 8 removed — zero
-> code lines, all 8 import-shape artifacts** · 12 app.py imports dropped, sweep-clean ·
-> **294/294 routes byte-identical pristine vs cut** · falsified in the new locations
-> **32/32 EXACT** (dark stayed dark), restores md5-verified. Sweeps: monkeypatch+attr over
-> all 70 bound names — zero hits (control `app_mod.non_summary` found 2×); source-text over
-> all 15 app.py readers, positive-controlled (`sra_grid.js` ∈ axis_titles ∩ `_ssi_panel`),
-> every hit adjudicated. Mutation battery **6/6 named**, twins green (enumeration guard's
-> 9th/10th consecutive live catch); mutation 2's FIRST shape (upward import in a NEW
-> top-level def) drew the re-export guard TOO — a defensive-overlap true positive; and the
-> battery-patch that reshaped it first MISSED silently via unanchored heredoc replace (patch
-> the patcher with landed-count discipline). Statics green (python -m ruff check WHOLE TREE
-> · format · mypy strict 127 · bandit exit 0 · node --check per file). Full suite + parity:
-> counts in SESSION-LOG (this session).
+> Oracle rebuilt per the ADR-0372 recipe and grown 294 → **420 labels** (every parameterless
+> GET incl. validation-4xx bodies · both fmts × 27 exports · the 7 {name} pages AND all 8
+> {name} exports both fmts on TP4 v5 · the established variants · [target-set]/
+> [target-cleared] re-rendering the FULL GET+export surface, 303s asserted · **NEW: four
+> [grouped] labels** — /forecast + /evm ?group_field=Resource and both field-forecast
+> exports — without which `_group_rollup_panel` (renders ONLY when a field is chosen) and
+> the panel's deep table would be oracle-dark by construction). Anchors on the live critical
+> chain BY DESIGN (target UID 22, incomplete, finish-moving — ADR-0373's lesson applied at
+> design time, not paid for again). Three normalizers inherited. Double-render determinism
+> across two processes, 0 flapping. **Pre-flight probe: 9/9 render-proven — the first
+> multi-member slice with ZERO oracle-dark members** (panel 8 moves incl. both /evm states —
+> the 2-family reach measured live; body/header/cards/colors/ruler/explainer 4 each; data 3;
+> rollup 1 = the grouped variant, its only render condition; exports moved for NO member —
+> the routes never call the family). Proof: per-region byte-identity **9/9** (asserted in
+> the cut script pre- AND post-write; format check zero reformats) · multiset **54 added /
+> 0 removed — zero code lines removed**, the 3 ruff-dropped app.py imports (CarnacSummary /
+> ForecastSet / compute_group_rollup, each mover-only) net out against forecast.py's
+> identical member lines · dropped-import sweep clean (all consumers import engine.forecast
+> directly; the web.app import pattern live elsewhere) · **420/420 routes byte-identical
+> pristine vs cut** · falsified in the new locations **9/9 EXACT** (label LISTS, not counts),
+> restores md5-verified. Sweeps: monkeypatch+attr over all 29 bound names — zero hits in
+> both shapes (control `app_mod.non_summary` found: 1 setattr + 1 read = the prior "2×");
+> source-text over all 5 app.py readers — 11 hits all adjudicated (control `panelkit.js` ∈
+> axis_titles ∩ `_forecast_body`; chartframe reads chrome.py; CSS literals read css;
+> `_TS_CAPTION_MARK`/`data-ts-caption`/`drilldown.js` verified ABSENT from moved text) —
+> **first slice with zero reader repoints needed**. Mutation battery **6/6 named**, twins
+> green (enumeration guard's 11th/12th consecutive live catch); mutations 2 and 5 used the
+> in-body form from the start (ADR-0373's defensive-overlap finding applied, not re-derived).
+> Statics green (python -m ruff check WHOLE TREE — two ruffs on PATH, `python -m` pins
+> 0.16.2/931-file scope · format · mypy strict 128 · bandit exit 0 · node --check per file).
+> Full suite + parity: counts in SESSION-LOG (this session).
 >
 > ## Next
-> The queue resumes at phase-3 slice 10 — by re-measured prefix (each family owes its OWN
-> closure): **forecast 391** · what 289 · portfolio 253 · evm 239 · where 235 · how 214 —
-> EACH per the ADR-0365 recipe (closure before cut · span-scoped probe · the six-mutation
-> battery). Then the standing queue unchanged: stored-SRA-fields MSPDI fixture (would light
-> the three dark members from a FILE) · driving-corridor fixture · three page-lede-less
-> pages (/briefing, /path, /compare) · /groups Activities (ADR-0343) · installers vs
-> known-good constraints · P80/P90 recurring-exception residual · doc-drift sweep
-> (PARITY-REPORT git-ignored claim + Project2 "CUI intake"; FINAL-REPORT blanket "exact
-> match"; CLAUDE.md phase-3/E501 lines — sra.py now ALSO joins the E501 list unpatched
-> there) · ~150 MB RSS per loaded file · Phase 6 docs. **Operator:** re-convert FX-03/04
-> (verify UID17=5d / UID131=1w before save) + re-run Fuse · one Acumen run on a crafted
-> sub-day-negative-float schedule · license · branch-protection contexts · proprietary
-> reruns · OR-04 · July mpp/ re-export decision.
+> The queue resumes at phase-3 slice 11 — by the post-cut prefix census (wc-truth; each
+> family owes its OWN closure): **what 289** · portfolio 253 · evm 239 · how 214 · where 158
+> — EACH per the ADR-0365 recipe (closure before cut · span-scoped probe · the six-mutation
+> battery · the ADR-0372 oracle recipe; the 420-label set from this slice is the current
+> widest reference, and its [grouped] labels are the only execution proof for the rollup —
+> keep them). When /evm is cut, `_field_forecast_panel` is already below it. Then the
+> standing queue unchanged: stored-SRA-fields MSPDI fixture (would light ADR-0373's three
+> oracle-dark members from a FILE) · driving-corridor fixture · three page-lede-less pages
+> (/briefing, /path, /compare) · /groups Activities (ADR-0343) · installers vs known-good
+> constraints · P80/P90 recurring-exception residual · doc-drift sweep (PARITY-REPORT
+> git-ignored claim + Project2 "CUI intake"; FINAL-REPORT blanket "exact match"; CLAUDE.md
+> phase-3/E501 lines — forecast.py now ALSO joins the E501 list unpatched there) · ~150 MB
+> RSS per loaded file · Phase 6 docs. **Operator:** re-convert FX-03/04 (verify UID17=5d /
+> UID131=1w before save) + re-run Fuse · one Acumen run on a crafted sub-day-negative-float
+> schedule · license · branch-protection contexts · proprietary reruns · OR-04 · July mpp/
+> re-export decision.
 >
 > ## Carried forward
-> ADR-0353..0373 closed — do not re-open. NEW this session: (1) **a crafted oracle payload
-> must be aimed at the LIVE critical chain** — completed-task UIDs measure the fixture's
-> history, not the member's reach (two false darks until the re-aim); and a 0-move probe is
-> believed dark only after a SECOND, stronger anchor also moves 0. (2) **Patch the patcher
-> with landed-count discipline** — an unanchored heredoc replace on the battery script
-> missed silently and re-ran last hour's mutation; use exact-match edits that fail loudly.
-> (3) Constants carry `#:` doc-comment blocks the ast span does NOT see — extend regions by
-> eye before any byte moves. (4) A census "external referrer" that is a create_app route is
-> NEVER a blocker (routes import downward) — but a nested create_app helper (e.g.
-> `_margin_risk_data`) marks a 2-family name for DESCENT. Standing traps unchanged
-> (silent-405 setup · anchored splices with landed-count asserts · ADR-0259 dedupe vs memo ·
-> round-half-even 240→0 · MSPDI re-derives Duration · env-defect masquerade · binding-wrap
-> spies · named-failure rule (pytest exit ≠ failing test — assert the test RAN) · never
-> mutate a running suite's tree, docs included · empty sweep needs a positive control ·
-> `grep -c` exits 1 on zero · three-tier parity evidence · stored-start floors /
-> non-additive rows · B608 house nosec · pydantic 2.6 / fastapi 0.110.2 floors · /analysis
-> focus→tip family load-sensitive · five playwright-only failures pre-existing,
-> CI-invisible · oracle telemetry labels normalized by VALUE · scratchpad harnesses
-> hardcode the repo root). A number written mid-session is not a measurement (wc decides).
+> ADR-0353..0374 closed — do not re-open. NEW this session: (1) **the prefix census can file
+> a member under the WRONG family entirely** — `_where_it_lands_header` sat in the "where"
+> number while belonging to /forecast; only the closure's referrer walk catches the
+> misattribution (the census numbers are finders for SIZING, never membership). (2) **A
+> render-conditional member needs its condition IN the oracle** — `_group_rollup_panel`
+> renders only when `group_field` is set; the [grouped] variants were added at design time
+> so the probe measured 1 real move instead of a false dark. (3) An informative suite run
+> STARTED before the installer rebuild honestly fails the lockstep test — the final claim
+> is the re-run on the final tree (bump → build → docs → full suite, in that order, next
+> time). Standing traps unchanged (live-chain payload aim · patch the patcher with
+> landed-count discipline · `#:` blocks extended by eye · route referrers never block, a
+> nested create_app HELPER marks descent · silent-405 setup · anchored splices with
+> landed-count asserts · ADR-0259 dedupe vs memo · round-half-even 240→0 · MSPDI re-derives
+> Duration · env-defect masquerade · binding-wrap spies · named-failure rule · never mutate
+> a running suite's tree, docs included · empty sweep needs a positive control · `grep -c`
+> exits 1 on zero · three-tier parity evidence · stored-start floors / non-additive rows ·
+> B608 house nosec · pydantic 2.6 / fastapi 0.110.2 floors · /analysis focus→tip family
+> load-sensitive · five playwright-only failures pre-existing, CI-invisible · oracle
+> telemetry labels normalized by VALUE · scratchpad harnesses hardcode the repo root ·
+> two ruffs on PATH — run `python -m ruff`). A number written mid-session is not a
+> measurement (wc decides).
 
 # (prior) handoffs — archived
 

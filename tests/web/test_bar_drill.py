@@ -49,6 +49,7 @@ def test_drilldown_runtime_is_loaded_globally_not_per_page() -> None:
             "components.py",
             "driving.py",
             "evolution.py",
+            "forecast.py",
             "integrity.py",
             "margin.py",
             "mission.py",
