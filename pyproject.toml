@@ -16,7 +16,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "schedule-forensics"
-version = "1.0.180"
+version = "1.0.181"
 description = "Local, NASA-themed forensic schedule-analysis tool (CUI-safe, offline)."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -192,6 +192,11 @@ select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
 # `mission.py` is the Mission Control wall body, extracted verbatim (ADR-0372); it carries the
 # tiles' HTML f-strings and hover-hint one-liners, so the exemption travels with them.
 "src/schedule_forensics/web/mission.py" = ["E501"]
+# `sra.py` is the /sra page family, extracted verbatim from app.py (ADR-0373) — the SSI panel,
+# correlation/JCL panels, register sections and report blocks ARE HTML f-strings, so the
+# exemption travels with them, exactly as it did for chrome/driving/evolution/integrity/
+# margin/trend/ssi/mission.
+"src/schedule_forensics/web/sra.py" = ["E501"]
 
 [tool.ruff.format]
 # ruff >= 0.16 formats fenced ```python blocks inside Markdown. That is right for prose docs and

@@ -30,7 +30,7 @@ from urllib.parse import quote
 
 from schedule_forensics.engine.cpm import CPMError, CPMResult, offset_to_datetime
 from schedule_forensics.engine.driving_slack import PathTier
-from schedule_forensics.engine.sra import SSIRiskStat
+from schedule_forensics.engine.sra import ScheduleRisk, SSIRiskStat
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.web.chrome import _e
 from schedule_forensics.web.help import field_or_metric_doc
@@ -471,3 +471,34 @@ def _ssi_matrix_counts(risks: Sequence[SSIRiskStat], *, opportunity: bool) -> li
             p = min(5, max(1, r.probability_rating))
             grid[c - 1][p - 1] += 1
     return grid
+
+
+# ---- descended in ADR-0373 (phase 3, slice 9): 2-family names the sra cut forced down ----
+# `_TS_CAPTION_MARK`: `_sra_body` moved to ``web/sra.py`` while the /path, /driving-path and
+# /evolution routes (create_app) also serve the marker - four hosting pages, one honest label
+# (the ADR-0326 rationale rides in the #: block below, verbatim).
+# `_schedule_risks`: `_ssi_export_tables` moved while `_margin_risk_data` and five /api
+# routes (create_app) still derive the same ScheduleRisks from the session register.
+#: The B1 timescale-caption marker (ADR-0326): a page that serves this names its time axis, and
+#: gantt.js's shared buildTierScale renders ONE caption row above the tiers on every timescale
+#: header the page builds (initial draw, Timescale-dialog repaints, animation frames alike).
+#: All four Gantt-family consumers (path.js, path_evolution.js, driving_path.js, sra_grid.js)
+#: draw calendar-date tiers, so one honest label serves them all. Hidden: the visible caption is
+#: the slot the JS builds; this span only carries the text to it.
+_TS_CAPTION_MARK = '<span data-ts-caption="Schedule dates" hidden></span>'
+
+
+def _schedule_risks(st: SessionState) -> tuple[ScheduleRisk, ...]:
+    """The SSI days-impact ScheduleRisks derived from the unified register (a fired impact
+    REPLACES the affected task's remaining duration — ADR-0359)."""
+    return tuple(
+        ScheduleRisk(
+            id=r.id,
+            name=r.name,
+            probability=r.probability,
+            impact_days=r.impact_days,
+            affected=r.affected,
+            consequence_rating=r.consequence_rating,
+        )
+        for r in st.sra_risks
+    )

@@ -435,6 +435,38 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-08 (e) — a crafted payload aimed at completed tasks measures history, not reach; patch the patcher with landed-count discipline
+
+- The sra slice's crafted v4 setup payload (slice-7's sequences, returning per ADR-0365)
+  aimed its factors/bcwc/risk/branch at UIDs 12–15 — tasks the TP4 v5 snapshot has
+  COMPLETED. ADR-0308's own rule ("finished work cannot be delayed") made every risk inert:
+  the focus finish never moved, the S-curve collapsed to one point, the OAT sweep was
+  all-zero — and `_sra_chart_scurve` / `_sra_chart_tornado` probed 0 moved labels TWICE
+  (the second probe with stronger anchors — chart titles, not colors — is what separated
+  *weak anchor* from *genuinely unreachable*). Re-aimed at the live critical chain (factor
+  on 22, bcwc on 23, override on 24, risk→22, branch across the real 22→24 FS tie,
+  conditional plans across 24→25, focus = project finish), both chart builders lit at
+  `[v4] DOCX sra`. Lesson: a crafted oracle payload must target INCOMPLETE, finish-moving
+  work on the live critical chain — and a 0-move probe is believed dark only after a
+  second, stronger anchor also moves nothing.
+- The mutation battery's own patch script betrayed it: reshaping mutation 2 (the deferred
+  upward import) was first applied with an unanchored heredoc string-replace that MISSED
+  silently — the battery re-ran and reproduced the old two-failure result verbatim, which
+  briefly read as "the reshape didn't help" when in fact the reshape never landed. An
+  exact-match edit that fails loudly on no-match found it immediately. Lesson: the
+  landed-count discipline applies to the HARNESS scripts too — patch the patcher with
+  tools that refuse to no-op.
+- Mutation 2's FIRST shape was itself a finding: wrapping the upward import in a NEW
+  top-level def drew TWO named failures — the layering test AND the re-export guard (a
+  name `sra.py` defines that `app.py` does not re-export). The contract's tests overlap
+  defensively; recorded in ADR-0373 as a true positive, then reshaped in-body for the
+  clean single-name proof.
+- Census mechanics that paid off: constants carry `#:` doc-comment blocks the ast span
+  cannot see — five regions were extended by eye before any byte moved, and the
+  per-region byte-identity assert then covered comment + code together. And the closure
+  again out-measured the prefix (32 names/1,756 lines vs 13/847) — ADR-0365's "the prefix
+  is a finder, the closure is the definition", third confirmation.
+
 ### 2026-08-08 (d) — an oracle label that reports the machine is weather; stability observed n times is not determinism
 
 - The mission slice's falsification run moved FOUR oracle labels where the pre-flight said
