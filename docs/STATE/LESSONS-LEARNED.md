@@ -435,6 +435,28 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-09 (c) — a closure can run 3.6× its prefix; never measure a tree a battery is mutating
+
+- Slice 12 opened on "analysis 356" and the referrer walk returned **26 names / 1,275 lines** —
+  the page's twelve panels, six DCMA builders and two constants carry no `_analysis` prefix, so
+  the prefix census saw three names where the family had twenty-six. Largest undercount ratio of
+  the split so far (sra was 2.1×). The census number sizes the QUEUE; only the closure sizes the
+  CUT.
+- The first multiset diff was measured WHILE the falsification battery held one member mutated —
+  and the diff itself carried the battery's `PRB12X` marker line as an "added" line. The standing
+  "never mutate a running suite's tree" trap has a reverse form: **never MEASURE a tree a battery
+  is mutating**. Re-measured after md5-verifying the tree against the post-cut snapshots; only
+  the clean figure (100 added / 3 removed) was reported anywhere.
+- The monkeypatch sweep's adjudication list GREW: `app_mod.compute_activity_makeup` joined the
+  standing `non_summary` hit because analysis.py now binds a name the ADR-0291 projection-memo
+  spies patch. Both spy /api/dashboard through app.py's own binding (the test renders no
+  /analysis page), so the patch's reach is intact — but a future slice that moves the DASHBOARD
+  family must repoint those spies to the module whose code calls them.
+- The 4xx histogram doubled as a population fingerprint: this slice's rebuilt oracle rendered
+  **88** loaded-stage 4xx labels — exactly ADR-0375's post-title-strip count — which proved the
+  title-stripped pool re-formed the same population without re-deriving the grouping by hand.
+  Cheap, and worth checking FIRST on every future oracle rebuild.
+
 ### 2026-08-09 (b) — a census family can be a phantom; the oracle's fixture population is a render condition
 
 - Slice 11 opened on the queue's "what 289" and found NO family there: `_what_drives_header` →

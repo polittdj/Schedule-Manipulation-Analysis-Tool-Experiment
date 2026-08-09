@@ -12531,3 +12531,62 @@ Measured (final tree, docs and installers final when the runs started): full sui
 vs slice 10 — the portfolio.py contract params); parity gate **52 passed / 15 skipped,
 exit 0, in 9:35**. All skips deliberately environment-gated (playwright / Java / CUI
 intake). State-docs guard module re-run green after this fill.
+
+
+## 2026-08-09 (c) — phase 3 slice 12: the /analysis family out of the monolith; the largest prefix undercount yet (ADR-0376; v1.0.184)
+
+Branch `claude/polaris-phase3-slice11-a2syfo` (the container's designated branch name — the WORK
+is slice 12), restarted from `main` ff2fe2b after #560 squash-merged; no open PRs at session
+start. Queue item 1: the /analysis family, priced 356 by the closure-re-priced census. The
+referrer walk found **26 names / 1,275 region lines — 3.6× the prefix, the largest undercount
+ratio yet**: seventeen of the eighteen app.py names `_analysis_body` references are
+sole-referrer movers with no `_analysis` prefix (twelve page panels, five more DCMA builders,
+`_cites_cell`, `_WEEKDAY_NAMES`, `_EROSION_BADGE`). Cut: **25 movers in NINE non-contiguous
+regions** (app.py 6894–9201) → NEW `web/analysis.py` (1,297 lines), plus **the first descent
+since sra**: `_target_panel` (67) → components.py at the ADR-0350 3+-family threshold
+(`_analysis_body` + /card + /wbs routes; components' state import widened to
+`_Analysis, SessionState`). `_where_we_stand_header` moved WITH the family per ADR-0375's
+ruling. app.py **13,358 → 12,096** (wc-truth). LAYER_ORDER … → portfolio → analysis → app;
+analysis.py joins pyproject's E501 list; contract EXTRACTED/LAYER_ORDER/VIEW_MODULES + both
+enumeration guards widened in the same commit ("analysis.py" sorts FIRST, before app.py).
+Stays adjudicated by referrer: `_unschedulable_panel` (2 routes) · `_find_schedule` (3) ·
+`_FLOAT_HIST_BANDS` (route-only) · `_HB_CONSUME_SEC` (zero referrers — the components.py:335
+documented stay) · the briefing/brief titles · `_stack_not_measured` · `_count_bar_table` ·
+`_num`. Export route: NO movers (mission shape, fourth consecutive).
+Oracle rebuilt per ADR-0372 with the ADR-0375 title-stripped TP4 pool: **498 labels** — the
+494 shape with the [empty] stage widened to ALL 60 parameterless GETs (no silent caps); the
+loaded-stage 4xx histogram **88 (17×400 + 12×404 + 59×422) matches ADR-0375's post-title-strip
+count exactly — the population fingerprint**. Untitled-pool assert runs in-harness before any
+render. Target UID 22. Determinism ×2 separate processes: 0 flapping. Probe **26/26
+render-proven, ZERO dark members** (third consecutive slice); branch states read off the
+rendered v5 body before anchor choice (margin NO-candidates branch, erosion groups present,
+variance computable, 7 findings). Probe shape: 20 page movers 3 each · 3 API movers 3 each ·
+`_dcma_label` 6 (both surfaces) · `_target_panel` 3 (target-set only). Proof: per-region
+byte-identity **9/9 + descent** in-script pre AND post, re-verified after ruff import surgery,
+format-check zero reformats · multiset **100 added / 3 removed, zero code lines removed**
+(ActivityVariance,/off_project_calendars, re-land in single-line imports; components' state
+import superseded) · dropped-import sweep **0 readers of the 14 dropped names** (control: 181
+files import from web.app) · **498/498 byte-identical pristine vs cut** · falsify in new
+locations **26/26 EXACT label lists** (anchors asserted ABSENT from post-cut app.py).
+Monkeypatch sweep over all 71 bound names: two hits, both `test_manifest_projection_memo` —
+the standing `non_summary` control AND `compute_activity_makeup` (NEW this slice: analysis.py
+binds a name the memo spies patch; both spy /api/dashboard through app.py's OWN binding, no
+/analysis render in the test — adjudicated, module green post-cut). Source-text sweep: 33
+readers, every hit adjudicated (panelkit.js ∈ axis_titles ∩ `_analysis_body` the positive
+control; `_TS_CAPTION_MARK`/`data-ts-caption`/drilldown tag absent from moved text) — **zero
+reader repoints, third consecutive slice**. Battery **6/6 named** (enumeration guard's
+15th/16th consecutive live catches; mutations 2+5 in-body from the start). **One measurement
+discarded as self-polluted**: the first multiset diff ran while the falsify battery held a
+member mutated — the diff carried the battery's own PRB12X marker line; re-measured on the
+quiescent tree (md5-verified against the post-cut snapshots first) and only the clean 100/3 is
+reported. v1.0.183 → v1.0.184 bumped BEFORE the suite; wheel + nine installers rebuilt once
+after the last code change (the rebuild precedes the final suite run). ADR-0376; HANDOFF
+rotated (slice-11 section → archive top); NEXT-SESSION-PROMPT refreshed for slice 13 (evm 299
+first).
+Measured (final tree, docs and installers final when the runs started): full suite
+**3542 passed / 45 skipped / 0 failed, exit 0, in 28:41** (detached background, python -u;
++2 tests vs slice 11 — the analysis.py contract params); parity gate **52 passed /
+15 skipped, exit 0, in 13:12**. All skips deliberately environment-gated (playwright / Java /
+CUI intake). Statics: python -m ruff check WHOLE TREE pass · format --check 936 files zero
+reformats · mypy strict 130 files · bandit exit 0 · node --check per file. State-docs guard
+module re-run green after this fill.
