@@ -47,6 +47,7 @@ def test_drilldown_runtime_is_loaded_globally_not_per_page() -> None:
             "analysis.py",
             "app.py",
             "chrome.py",
+            "compare.py",
             "components.py",
             "driving.py",
             "evm.py",
