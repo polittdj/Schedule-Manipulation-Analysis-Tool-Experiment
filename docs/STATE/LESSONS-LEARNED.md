@@ -4270,4 +4270,29 @@ feature worked, and measure that.** Requirement 2 is amended accordingly (ADR-03
 - Lesson captured today: the project's single most valuable habit — *git-as-memory + verify-first +
   turn every miss into a test* — is exactly why a retrospective this complete was even possible.
 
+### 2026-08-10 (e) — two wrong sources agreed with each other; and `ast` columns are BYTES (ADR-0384)
+- **What happened:** the session opened attached to `SMAT-SANDBOX` (the mirror, frozen at v1.0.4 /
+  ADR-0194 / an unsplit 12,209-line `app.py`) while the resume prompt described POLARIS at v1.0.186
+  and asked for phase-3 slice 15. Both were wrong, and they were wrong *consistently enough to feel
+  like context*: the prompt's branch name matched the container's branch, and the mirror's own
+  `HANDOFF.md` agreed with the mirror's tree. Production was in fact at v1.0.191 / ADR-0383 with
+  slices 15–19 already shipped.
+- **What worked:** two commands settled it — `grep '^version' pyproject.toml` and
+  `ls src/schedule_forensics/web/`. A repo that has done fourteen extraction slices *looks* like it;
+  one that has done none cannot fake the module list. Cost: a few minutes, before any work.
+- **Lesson (generalizes → Part V):** "READ EVERYTHING, ASSUME NOTHING, VERIFY EVERYTHING" has to
+  include **which repository you are standing in**. A resume prompt is a claim about the world;
+  so is a handoff; two claims agreeing is not corroboration when they share an origin. Verify the
+  artifact, not the narrative — and do it before the first edit, not after the first failing test.
+- **The second lesson, paid for in an hour:** `ast` reports `col_offset` as a **UTF-8 byte** offset.
+  The pre-flight probe character-indexed it, and every marker on a line carrying `—`/`·`/`⤓`/`⛶`
+  landed several columns early. This time it produced a `SyntaxError` at import — the cheap failure.
+  On a different line shape the identical skew lands *inside a string literal*, the module imports
+  fine, and the probe silently measures a member it corrupted. Splice on `bytes`, and `ast.parse`
+  the result before writing it: **a probe that does not parse is not a measurement**, and a probe
+  that parses but was mis-spliced is worse than no probe at all.
+- **Also:** a free-name pass that finds *nothing* is still evidence. ADR-0383 added it because four
+  constants hid from the call graph; running it here and reporting the empty result is what
+  separates "this block owns no constants" from "nobody looked."
+
 <!-- Append new dated entries ABOVE this line, newest first. Keep Parts I–VII current when a lesson generalizes. -->
