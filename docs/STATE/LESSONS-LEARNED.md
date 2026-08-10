@@ -435,6 +435,46 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-09 (f) — an oracle can be BLIND to a whole family; a positive control that cannot see the pattern it certifies
+
+- **The instrument, not the code, was the finding.** Slice 15's pre-flight probe reported **all
+  four** /resources movers as dark — 0 labels moved each. Four dark members in one family is not a
+  credible product reading, so it was adjudicated by payload before anything was changed: the
+  five-snapshot TP4 pool carries **zero `<Assignment>`, zero `<Resource>`, zero `<Work>`**
+  elements, so `_who_is_overloaded_header` returns `""` and `_resources_body` takes its no-loading
+  branch. The population every slice since ADR-0372 has rendered **cannot exercise this family at
+  all**. The lesson generalizes past ADR-0374/0375 ("a render-conditional member needs its
+  condition in the oracle"): it is not always ONE conditional member — an entire family can be
+  invisible, and **a blind instrument reports blindness as innocence**. *Before recording a member
+  dark, prove the oracle CAN render it.*
+- **Extend the oracle; never re-base it.** The fix added a fifth stage (`[resloaded]`, the
+  project2_5 goldens: 164/165 assignments over 33 resources) with the render condition asserted
+  before the stage is measured. The inherited 498 labels were left byte-for-byte alone — which is
+  precisely what let ADR-0377's published fingerprint keep acting as a self-check on the new
+  harness. Swapping the population instead would have silently re-based every future slice's
+  reference and destroyed the only independent check available.
+- **A positive control proves the sweep RUNS; only a control that exercises the sweep's own
+  weakness proves its PATTERN.** ADR-0378 paid for "sweep by bare NAME, not by a module-qualified
+  regex". This session hit the next layer: the monkeypatch sweep was a *line* regex, and it
+  returned **zero on ADR-0378's own control name** — because `monkeypatch.setattr(` calls wrap
+  across lines, putting the module and attribute on the following line. No alias fix would have
+  helped. Replaced with an **AST sweep** (188 setattr calls across `tests/`, control reproduced,
+  one real hit). **Prefer a parser to a regex whenever the thing being matched is syntax.**
+- The same sweep's alias census is the quantitative case for the bare-name rule: `mpp_mpxj` 23 ·
+  `launcher` 18 · **`appmod` 18** · **`app_module` 15** · `state_module` 9 · `state_mod` 6 ·
+  **`app_mod` 3**. Three distinct aliases for `web.app`, and the "dominant idiom" the earlier
+  sweep was aimed at is only the **third** most common.
+- **The behaviour seed can surface an entry point the prefix cannot.** Seeding the closure from
+  routes found `export_resource_drill` (`/export/{fmt}/resource-drill`) — the click-through Excel
+  export behind one loading bar, unreachable by any `_resource*` name sweep. It was also the only
+  reason the closure exceeded the census, and it forced (and lost) the descent question: it pulls
+  `_cell`, which no mover touches, so ADR-0378's route-only-referrer rule kept it in place.
+- The one monkeypatch hit was the **ADR-0297 phase-1 trap live again** — a spy patching
+  `app_mod.compute_resource_loading` to drive the page's zero-over-allocation branch. Repointed to
+  `web.resources` and proven load-bearing by reverting the target (fails exactly the named test).
+  That trap has now fired in three separate slices; it is a permanent cost of the split, not a
+  one-off.
+
 ### 2026-08-09 (e) — a census can be exact and still not be the definition; a quiescence guard can match its own shell
 
 - Slice 14 (the /performance family) is the FIRST phase-3 closure to land census-exact: 4 names /

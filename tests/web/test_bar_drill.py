@@ -57,6 +57,7 @@ def test_drilldown_runtime_is_loaded_globally_not_per_page() -> None:
             "mission.py",
             "performance.py",
             "portfolio.py",
+            "resources.py",
             "sra.py",
             "ssi.py",
             "trend.py",
