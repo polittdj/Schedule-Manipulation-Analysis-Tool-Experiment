@@ -435,6 +435,39 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-10 (b) — an instrument that lives in the scratchpad is re-derived, not inherited (phase 3 slice 17, ADR-0381)
+
+- **The oracle did not survive the container, and nine slices never noticed.** Every slice since
+  ADR-0372 has "inherited" a 648-label route oracle that exists only as prose in the ADRs plus a
+  harness in a scratchpad directory a fresh container does not have. Rebuilt from the route
+  surface this session, the *mechanically derived* part reproduced on the nose — `[empty]` 60
+  `{200:41,400:17,422:2}`, the 60 parameterless GETs, the `404:4` per loaded stage ADR-0379
+  repaired — and the ~14 hand-authored variant labels per loaded stage did not, because the ADRs
+  name a few in passing and record **none** of their URLs. Corpus: 592, not 648.
+- **The generalisable shape:** the parts of an instrument that were added *because they were hard
+  to reach* are exactly the parts a rebuild cannot recover. Derived coverage heals itself;
+  hand-authored coverage decays. Any harness whose result is quoted in a decision record has to
+  live in the repo — as a fixture or a script, not as a paragraph describing one.
+- **Not padding the number back was the call.** Inventing 56 replacement labels would have
+  produced a corpus with the published *count* and different *content*, which every future slice
+  would then compare against. A smaller honest corpus with its scope stated beats a familiar
+  number that no longer means what it says (ADR-0377's rule, applied to the corpus itself).
+- **Check the shadowing order in any origin resolver.** The closure harness reported
+  `_what_drives_header` as sharing the name `analysis` with an outer binding — it was the
+  function's own **parameter**, flagged because the resolver consulted the nested-scope table
+  before the local one. Caught before it reached a finding, but a phantom shared name costs a
+  whole descent argument, and the failure mode is silent.
+- **A sweep's blind spot is often already written down in the code it sweeps.** The first
+  source-text pass detected readers by path literal only — precisely the gap
+  `test_gantt_find_coverage.py` documents in its own comment (a guard reaching source via
+  `app_module.__file__` was invisible to a `grep -rln 'app\.py' tests/` sweep). Re-run with three
+  detectors it found 203 readers and zero moved literals. *Read the comments in the files a sweep
+  targets before trusting the sweep.*
+- **A route's URL does not assign it to a family.** `/export/{fmt}/path/{name}` renders the
+  *driving* trace; it contributed no movers to the /path cut. Membership is the referrer walk,
+  not the path string — the same lesson the prefix census keeps teaching, one level up.
+
+
 ### 2026-08-10 — a census miss is a warning about the ORACLE (phase 3 slice 16, ADR-0380)
 
 - Cut the /scurve family into `web/scurve.py` (7 movers, app.py 11,095 -> 10,871). The prefix

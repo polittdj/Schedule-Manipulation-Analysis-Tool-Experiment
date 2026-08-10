@@ -41,6 +41,7 @@ import schedule_forensics.web.forecast as forecast_mod
 import schedule_forensics.web.integrity as integrity_mod
 import schedule_forensics.web.margin as margin_mod
 import schedule_forensics.web.mission as mission_mod
+import schedule_forensics.web.path as path_mod
 import schedule_forensics.web.performance as performance_mod
 import schedule_forensics.web.portfolio as portfolio_mod
 import schedule_forensics.web.resources as resources_mod
@@ -70,6 +71,7 @@ EXTRACTED = {
     "performance.py": performance_mod,
     "resources.py": resources_mod,
     "scurve.py": scurve_mod,
+    "path.py": path_mod,
 }
 
 #: The view layer, lowest layer FIRST. A module may import only from those before it — that is
@@ -96,6 +98,7 @@ LAYER_ORDER = (
     "performance.py",
     "resources.py",
     "scurve.py",
+    "path.py",
     "app.py",
 )
 
@@ -116,6 +119,7 @@ VIEW_MODULES = (
     "integrity.py",
     "margin.py",
     "mission.py",
+    "path.py",
     "performance.py",
     "portfolio.py",
     "resources.py",
