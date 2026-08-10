@@ -473,6 +473,18 @@ those fixed defects in earlier "closed" fixes:
   `FAILED` — so the first falsification reported NOT PROVEN against a guard that had failed exactly
   as designed. Had the script not asserted its own expectation, the session would have "learned"
   that a working guard was dead.
+- **`python -m pytest` and a bare `pytest` do not share a `sys.path`, and CI runs the bare one.**
+  A new guard imported its helper as `from tests.web.oracle_corpus import ...`. That resolves only
+  because `python -m pytest` prepends the CWD; a bare `pytest` does not, so the module was fine
+  across a 3569-test local run and died in COLLECTION on three CI jobs at once (floor, test 3.11,
+  test 3.13) with `ModuleNotFoundError: No module named 'tests'`. `tests/` is not a package. The
+  repo already had the answer in the sibling guard — `spec_from_file_location`, the same idiom
+  `test_intake_manifest.py` uses for `tools/`; the failing spelling was the ONLY `from tests.`
+  import in the tree, which is the tell. **Reproduce CI's path with `PYTHONSAFEPATH=1 python -m
+  pytest`** — it suppresses exactly the CWD prepend that hides this class of defect, and
+  `--collect-only` under it sweeps the whole tree in 8 seconds. Do not reach for a bare `pytest`
+  to reproduce it: like ruff, a second `pytest` lives on PATH belonging to another interpreter,
+  and it fails on an unrelated `conftest` import instead.
 - **Measured, not assumed, is cheap when you already have the AST.** The claim "the export route
   contributes no movers" was settled by computing `export_compare`'s app-level callee set (empty),
   not by reading it. Same for "no shared name forces a descent" — every referrer resolved to the

@@ -87,7 +87,12 @@
 > PROVEN against a guard that had failed correctly; (4) **a filter that flags nearly everything
 > has not swept** — `__file__` appears in almost every test, so "178 source-text readers, 665
 > candidates" was noise until the filter demanded a real view-source idiom (6 readers, 0
-> repoints). Standing traps unchanged (a census can be exact and still not be membership · a
+> repoints); (5) **`python -m pytest` prepends the CWD to `sys.path` and a bare `pytest` does
+> not, and CI runs the bare one** — a `from tests.…` helper import passed a full local suite and
+> died in COLLECTION on three CI jobs; `tests/` is not a package, so load a cross-directory test
+> helper with `spec_from_file_location` (the `test_intake_manifest.py` idiom) and reproduce CI's
+> path with `PYTHONSAFEPATH=1 python -m pytest` (`--collect-only` sweeps the tree in 8s). Standing
+> traps unchanged (a census can be exact and still not be membership · a
 > page-only anchor understates an export-feeding member · route-only referrers never force a
 > descent · sweep by BARE NAME · a quiescence guard can match its own shell · fingerprints carry
 > their SCOPE · a normalizer that fails silently is a flap factory · mutate by OFFSET not

@@ -12961,3 +12961,18 @@ app.py is 10,505 lines, down from 16,685 when phase 3 began. What remains is rou
 feature work is queued against it). The next monolith decision is a scoping decision, not another
 slice off a known list — take a fresh prefix census against the post-cut file and price the
 candidates by referrer walk before committing to a phase 4.
+
+**CI round 1 (PR #567).** Three jobs failed in COLLECTION, not execution — floor, test (3.11) and
+test (3.13) — with `ModuleNotFoundError: No module named 'tests'` from
+`tests/guards/test_render_oracle_corpus.py`. Cause: the guard imported its helper as
+`from tests.web.oracle_corpus import ...`, which resolves under `python -m pytest` (the CWD is
+prepended to sys.path) but not under a bare `pytest`, which is what CI runs. `tests/` is not a
+package, and that import was the ONLY `from tests.` spelling in the tree — the repo's own
+convention, in the sibling guard `test_intake_manifest.py`, is `spec_from_file_location`. Fixed by
+loading `tests/web/oracle_corpus.py` by path. The failure was reproduced BEFORE the fix and the
+fix proven after, both under `PYTHONSAFEPATH=1 python -m pytest` (which suppresses exactly the CWD
+prepend); a bare `pytest` is NOT a usable reproduction here because a second pytest lives on PATH
+under another interpreter and dies on an unrelated conftest import. Whole-tree `--collect-only`
+under the CI-equivalent path: 3599 collected, zero errors. Statics re-run clean; guards/installer/
+packaging/state-docs 184 passed. Test-only change — src/ untouched, so the wheel and the nine
+installers stay at v1.0.190 and remain in lockstep (no rebuild owed).

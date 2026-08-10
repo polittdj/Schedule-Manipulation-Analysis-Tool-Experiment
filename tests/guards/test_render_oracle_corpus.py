@@ -21,21 +21,44 @@ So the corpus is committed, and these guards keep it honest:
 
 from __future__ import annotations
 
+import importlib.util
+import sys
 from pathlib import Path
+from types import ModuleType
 
 import pytest
 from fastapi.testclient import TestClient
-from tests.web.oracle_corpus import (
-    NORMALIZERS,
-    STAGE_NAMES,
-    VARIANT_LABELS,
-    _enter_stage,
-    corpus,
-    histogram,
-    normalize_all,
-)
 
 from schedule_forensics.web.app import SessionState, create_app
+
+ROOT = Path(__file__).resolve().parents[2]
+
+
+def _load_corpus() -> ModuleType:
+    """Import ``tests/web/oracle_corpus.py`` BY PATH; ``tests/`` is not a package.
+
+    `from tests.web.oracle_corpus import ...` works under `python -m pytest` — which prepends the
+    CWD to `sys.path` — and fails under a bare `pytest`, which does not. CI runs the bare form, so
+    the package-path spelling passed locally and died in collection on three jobs at once. The
+    sibling guard (`test_intake_manifest.py`, loading `tools/`) already had the answer.
+    """
+    path = ROOT / "tests" / "web" / "oracle_corpus.py"
+    spec = importlib.util.spec_from_file_location("oracle_corpus", path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["oracle_corpus"] = module  # registered before exec: NamedTuple resolves via it
+    spec.loader.exec_module(module)
+    return module
+
+
+_oc = _load_corpus()
+NORMALIZERS = _oc.NORMALIZERS
+STAGE_NAMES = _oc.STAGE_NAMES
+VARIANT_LABELS = _oc.VARIANT_LABELS
+_enter_stage = _oc._enter_stage
+corpus = _oc.corpus
+histogram = _oc.histogram
+normalize_all = _oc.normalize_all
 
 LABELS = Path(__file__).parent / "render_oracle_labels.txt"
 
