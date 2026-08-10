@@ -1,113 +1,113 @@
-# Handoff — 2026-08-09 (f) (phase 3 slice 15: the /resources family out — the oracle that was blind to it; ADR-0379; v1.0.187)
+# Handoff — 2026-08-10 (phase 3 slice 16: the /scurve family out — the member BOTH instruments missed; ADR-0380; v1.0.188)
 
-> ## STATUS (current) — **pushed, draft PR open** on `claude/polaris-phase3-slice14-nvtp39`
-> (branch restarted from `main` 70b0c4b after #563 squash-merged — this container's designated
-> branch; the branch NAME says slice14, the WORK is slice 15). **Shipped code changed** — version
-> bumped **v1.0.186 → v1.0.187** BEFORE the suite; wheel + nine installers rebuilt once after the
+> ## STATUS (current) — **pushed, draft PR open** on `claude/polaris-phase3-slice14-uhqmyv`
+> (branch restarted from `main` 88a8d37 after #564 squash-merged — this container's designated
+> branch; the branch NAME says slice14, the WORK is slice 16). **Shipped code changed** — version
+> bumped **v1.0.187 → v1.0.188** BEFORE the suite; wheel + nine installers rebuilt once after the
 > last code change (SCHEMA stays 2.11.0 — no persisted field changed). Highest ADR now
-> **ADR-0379**.
+> **ADR-0380**.
 >
-> **Phase-3 slice 15 is CLOSED (queue item 1): the /resources family → NEW `web/resources.py`**
-> (362 lines; **four movers in ONE contiguous block**, app.py 9807–10118: `_resource_loading_json`
-> · `_resources_explainer` · `_who_is_overloaded_header` · `_resources_body`) and **NO descent**.
-> app.py **11,403 → 11,095** wc-truth. `LAYER_ORDER` `… → evm → performance → resources → app`;
-> the re-export block lands BELOW portfolio's (isort: portfolio < resources < sra); resources.py
-> joins the pyproject E501 list; EXTRACTED + LAYER_ORDER + VIEW_MODULES + both whole-view-layer
-> guard tuples gain "resources.py".
+> **Phase-3 slice 16 is CLOSED (queue item 1): the /scurve family → NEW `web/scurve.py`**
+> (283 lines; **seven movers in TWO contiguous blocks**, app.py 8324–8530 and 9016–9040:
+> `_scurve_filter_fields` · `_pair_criteria` · `_scurve_status_point` · `_scurve_interpretation`
+> · `_scurve_header` · `_scurve_body` · `_scurve_data`) and **NO descent**. app.py
+> **11,095 → 10,871** wc-truth. `LAYER_ORDER` `… → performance → resources → scurve → app`;
+> the re-export block lands BELOW resources' (isort: resources < scurve < sra); scurve.py joins
+> the pyproject E501 list; EXTRACTED + LAYER_ORDER + VIEW_MODULES + both whole-view-layer guard
+> tuples gain "scurve.py".
 >
-> **HEADLINE — the inherited 498-label oracle was STRUCTURALLY BLIND to this family.** The first
-> pre-flight probe read **0 labels for all four movers**. Not a product finding, not a probe
-> defect: the five-snapshot TP4 pool carries **zero `<Assignment>`, zero `<Resource>`, zero
-> `<Work>`** elements, so `_who_is_overloaded_header` returns `""` and `_resources_body` takes its
-> no-loading branch — the whole family short-circuits BY DESIGN on the population every slice
-> since ADR-0372 has rendered. Adjudicated by payload before anything was touched, then the oracle
-> was **extended, not reinterpreted**: a fifth stage `[resloaded]` uploads the `project2_5`
-> goldens (164/165 assignments over 33 resources) with the render CONDITION asserted before the
-> stage is measured. **The inherited 498 are untouched**, so ADR-0377's fingerprint stays
-> checkable as a subset — and reproduces exactly. *A dark reading is a claim about the INSTRUMENT
-> first; prove the oracle CAN render a member before recording it dark.*
+> **HEADLINE — the census's blind spot and the ORACLE's were the SAME member.** The closure is
+> 13 names / 250 ast lines; the movers are **7 / 222** against the prefix census's **6 / 212**
+> (1.05× lines, 1.17× names). The extra name is **`_pair_criteria`** — the cf/cv validator
+> reachable only from `/api/scurve`, carrying no `_scurve` prefix. It was ALSO invisible to the
+> inherited 644-label oracle, for an unrelated reason: **no inherited label supplies cf/cv**, so
+> it did no work on any of the 648 renders. Two independent instruments, two independent causes,
+> ONE member — because both blindnesses share a root: the member is off the obvious path.
+> *A census miss is a warning about the ORACLE, not just the queue.*
 >
-> **Closure census-EXACT again (2nd consecutive), and it found a route the prefix never would.**
-> Movers 4 names / 306 ast lines vs the census's 4 / 306 (1.00×); the closure itself is 5 / 308.
-> The behaviour seed surfaced a THIRD entry point — `export_resource_drill`
-> (`/export/{fmt}/resource-drill`), unreachable by any `_resource*` prefix — and that route is the
-> only reason the closure exceeds the census: it pulls in `_cell` (2 lines), which is referred to
-> by six other export routes and two importers and by **no mover**. Route-only referrer ⇒ no
-> descent (ADR-0378). **The export-contributes-no-movers streak RESUMES** (broken at five by
-> ADR-0378): both export routes build their tables straight from `compute_resource_loading`.
+> **No descent, adjudicated by referrer.** Six shared names, all pinned to app.py: `_parse_uid`
+> · `_parse_uid_list` (pinned by NON-route referrers `_drill_uid_set` / `_import_risk_register`)
+> · `_parse_track_uids` (pinned by /cei's routes) · `_MAX_TRACK_UIDS` (cohesion) ·
+> **`_CF_QUERY` / `_CV_QUERY`** — FastAPI `Query` singletons that exist only as route-signature
+> defaults and are referenced by NO mover. Checked mechanically: across **220 extracted names /
+> 15 slices, not one** route-signature default has ever lived in an extracted module. Route
+> plumbing stays with the routes; presentation moves. **The export contributes NO movers**
+> (`export_scurve` builds from `compute_s_curve`) — that streak is now TWO consecutive.
 >
 > ## Verification
-> Oracle **644 labels** = the inherited 498 + the new `[resloaded]` 146. Fingerprint reproduced
-> EXACTLY: `[empty]` {200:41,400:17,422:2} · `[loaded]`/`[target]`/`[cleared]`/`[resloaded]`
-> {200:123,404:4,422:19} each · 4xx **69 loaded-stages / 88 inherited-all / 111 all-five**.
-> Determinism ×2 separate processes: **0 flapping**. The fingerprint caught a harness error before
-> any claim (first build read 404:6 — payload diff named it: two `[grouped]` labels pointed at
-> routes that DON'T EXIST, `/dashboard` and `/activities`; re-pointed at `/scorecards` and
-> `/resources`). Pre-flight probe **4/4 render-proven, ZERO dark** (sixth consecutive) — 2 labels
-> each, all in `[resloaded]`. Proof: per-region byte-identity IDENTICAL (in-script, from disk, and
-> again after `ruff --fix` dropped app.py's two mover-only imports — `sha256 ab1eb5e7…` both
-> sides; format-check zero reformats over 941 files) · multiset **54 added / 0 removed — ZERO code
-> lines removed** (measured on a quiescent tree, md5-verified first, `/proc` quiescence check) ·
-> dropped-import sweep by BARE NAME: `bucket_key` 0 readers, `ResourceLoading` 2 hits both
-> importing straight from the ENGINE, never through `web.app` — harmless · **644/644
-> byte-identical pristine vs cut** · falsified in the new location **4/4 EXACT label lists**
-> (anchors also asserted ABSENT from post-cut app.py). Sweeps: monkeypatch/attr (AST, alias-agnostic) over all 18 bound
-> names → **one hit**, `test_r10_resources_contract.py:274` patching
-> `app_mod.compute_resource_loading` — the **ADR-0297 phase-1 trap live**; repointed to
-> `web.resources` and PROVEN load-bearing (reverting the target fails exactly
-> `…nothing_is_over_allocated`). Source-text 5 readers → every hit adjudicated, zero repoints.
-> Battery **6/6 named** (1/36 ×4 · 1/4 · 1/5; enumeration guard's 21st/22nd consecutive catches)
-> plus a seventh for the spy repoint. Full suite **3548 passed / 45 skipped, exit 0**. Parity
-> **52 passed / 15 skipped, exit 0**; all skips environment-gated. Statics green (python -m ruff
-> check WHOLE TREE · format --check 942 files zero reformats at the final gate, 941 at cut time ·
-> mypy strict 133 · bandit exit 0 · node --check 60/60).
+> Oracle **EXTENDED 644 → 648**, never re-based: one label added, `[scurve-filter]
+> /api/scurve?cf&cv`, whose payload-change is asserted BEFORE it is recorded. The inherited 644
+> reproduce ADR-0379's fingerprint EXACTLY on the pristine tree (`[empty]` 60 {200:41,400:17,
+> 422:2} · four loaded stages 146 each {200:123,404:4,422:19} · 4xx **69/88/111**) — including
+> the `404:4` ADR-0379 had to repair. The extension moves loaded stages to 147 / `200:124` and
+> **leaves the 4xx fingerprint unchanged**, which is what proves it purely additive. Determinism
+> ×2 separate processes: **0 flapping** at both 644 and 648. Pre-flight probe **7/7
+> render-proven, ZERO dark** (seventh consecutive) — `_scurve_data` 8 · `_pair_criteria` 4 (the
+> NEW label only; 0/648 without it) · the other five 4 each. **Stronger-anchor round fired:**
+> `_scurve_status_point` first read 3/4 because `[target]` renders 100% vs 100% and the anchor
+> was a SWAP — a permutation is the identity on equal values. Re-run with an ADDITIVE marker it
+> reads 4/4. *Mutate by offset, not by permutation.* Proof: per-region byte-identity IDENTICAL
+> (in-script, from disk, and again after `ruff --fix` dropped app.py's now-unused `SCurve`;
+> `sha256 4811f34f46cb…`) · **648/648 byte-identical pristine vs cut** · falsified in the new
+> location **7/7 EXACT label lists** (anchors also asserted ABSENT from post-cut app.py) ·
+> multiset 306 added / 237 removed with **236 of 237 removed lines reappearing verbatim — ZERO
+> member code lines removed** (the one exception is the s_curve import NARROWED by ruff, its
+> edited form present as an addition). Sweeps: dropped-import by BARE NAME (`SCurve`) **0
+> readers**; monkeypatch/attr (AST, alias-agnostic) over all 19 bound names **ZERO hits** (192
+> setattr calls found, ADR-0378's control reproduced; **no ADR-0297 trap** — `compute_s_curve` is
+> called by the ROUTES, which stay, and every test imports it straight from the engine);
+> source-text sweep 6 python-source readers → one candidate (`'scurve.js'` at
+> test_dd_line_ledger.py:74) **adjudicated FALSE** (a static-JS ledger key, not app.py markup) →
+> **zero repoints**. Battery **6/6 named** (1/39 ×4 · 1/5 · 1/6; enumeration guard's 23rd/24th
+> consecutive catches). Full suite **3550 passed / 45 skipped, exit 0** (+2 vs slice 15's 3548
+> — the two parametrized contract cases scurve.py adds). Parity **52 passed / 15 skipped,
+> exit 0**; all skips environment-gated. Statics green (python -m ruff check WHOLE TREE ·
+> format --check 944 files zero reformats at the final gate, 943 at cut time · mypy strict
+> 134 · bandit exit 0 · node --check 60/60).
 >
 > ## Next
-> The queue resumes at phase-3 slice 16 — by the post-cut prefix census (wc-truth; each family
-> owes its OWN closure, membership NAMED because the prefix is a finder): **scurve 212** ·
-> **path 194** (incl. `_what_drives_header` 80) · **compare 166** (incl. `_what_changed_header`
-> 79) — EACH per the ADR-0365 recipe (closure before cut · span-scoped probe · six-mutation
-> battery · the ADR-0372 oracle recipe). **The oracle to inherit is now 644 labels with the
-> `[resloaded]` stage**; fmts are xlsx/docx, `{name}` keys drop the `.xml`, /openapi.json is the
-> 60th parameterless GET. groups (430 by prefix) stays OUTSIDE the phase-3 list while ADR-0343
-> feature work is queued. Then the standing queue unchanged: stored-SRA-fields MSPDI fixture ·
-> driving-corridor fixture · three page-lede-less pages (/briefing, /path, /compare) · /groups
-> Activities (ADR-0343) · installers vs known-good constraints · P80/P90 recurring-exception
-> residual · doc-drift sweep (PARITY-REPORT git-ignored claim + Project2 "CUI intake";
-> FINAL-REPORT blanket "exact match"; CLAUDE.md phase-3/E501 lines — resources.py now ALSO joins
-> the E501 list unpatched there) · ~150 MB RSS per loaded file · Phase 6 docs. **Operator:**
-> re-convert FX-03/04 (verify UID17=5d / UID131=1w before save) + re-run Fuse · one Acumen run on
-> a crafted sub-day-negative-float schedule · license · branch-protection contexts · proprietary
-> reruns · OR-04 · July mpp/ re-export decision.
+> The queue resumes at phase-3 slice 17 — by the post-cut prefix census (wc-truth; each family
+> owes its OWN closure, membership NAMED because the prefix is a finder): **path 194** (incl.
+> `_what_drives_header` 80) · **compare 166** (incl. `_what_changed_header` 79) — EACH per the
+> ADR-0365 recipe (closure before cut · span-scoped probe · six-mutation battery · the ADR-0372
+> oracle recipe). **The oracle to inherit is now 648 labels with the `[scurve-filter]` label**;
+> fmts are xlsx/docx, `{name}` keys drop the `.xml`, /openapi.json is the 60th parameterless GET.
+> groups (430 by prefix) stays OUTSIDE the phase-3 list while ADR-0343 feature work is queued.
+> Then the standing queue unchanged: stored-SRA-fields MSPDI fixture · driving-corridor fixture ·
+> three page-lede-less pages (/briefing, /path, /compare) · /groups Activities (ADR-0343) ·
+> installers vs known-good constraints · P80/P90 recurring-exception residual · doc-drift sweep
+> (PARITY-REPORT git-ignored claim + Project2 "CUI intake"; FINAL-REPORT blanket "exact match";
+> CLAUDE.md phase-3/E501 lines — scurve.py now ALSO joins the E501 list unpatched there) ·
+> ~150 MB RSS per loaded file · Phase 6 docs. **Operator:** re-convert FX-03/04 (verify
+> UID17=5d / UID131=1w before save) + re-run Fuse · one Acumen run on a crafted
+> sub-day-negative-float schedule · license · branch-protection contexts · proprietary reruns ·
+> OR-04 · July mpp/ re-export decision.
 >
 > ## Carried forward
-> ADR-0353..0379 closed — do not re-open. NEW this session: (1) **an oracle can be BLIND to a
-> whole family** — four dark members on one page was the signal that the POPULATION, not the code,
-> was wrong; prove the instrument can render a member before recording it dark. (2) **Extend the
-> oracle, never re-base it** — keeping the inherited 498 byte-comparable is what let ADR-0377's
-> fingerprint act as a self-check. (3) **A positive control that cannot see the pattern it
-> certifies is worthless**: the monkeypatch sweep's line-regex returned ZERO on ADR-0378's own
-> control name, because `monkeypatch.setattr(` calls WRAP ACROSS LINES. Replaced with an AST sweep
-> (188 setattr calls found, control reproduced, one real hit). The alias census is the
-> quantitative case for sweep-by-bare-name: `appmod` 18 · `app_module` 15 · `app_mod` 3 — three
-> aliases for `web.app`, and the "dominant idiom" is only the third most common. **Prefer a parser
-> to a regex when the thing matched is syntax.** (4) The behaviour seed can surface an ENTRY POINT
-> the prefix cannot (`export_resource_drill`). Standing traps unchanged (a census can be exact and
-> still not be membership · a page-only anchor understates an export-feeding member · route-only
-> referrers never force a descent · sweep by BARE NAME · a quiescence guard can match its own
-> shell · fingerprints carry their SCOPE · /openapi.json is the 60th parameterless GET · a
-> normalizer that fails silently is a flap factory · closure can run 3.6× its prefix · never
-> MEASURE a tree a battery is mutating · the monkeypatch adjudication list grows as families move ·
-> census families can be phantoms · ruling-lag headers move retroactively · the installer lockstep
-> guard makes the rebuild a PREREQUISITE of the final suite · live-chain payload aim · patch the
-> patcher with landed-count discipline · `#:` blocks extended by eye · silent-405 setup · anchored
-> splices with landed-count asserts · ADR-0259 dedupe vs memo · round-half-even 240→0 · MSPDI
-> re-derives Duration · env-defect masquerade · binding-wrap spies · named-failure rule · empty
-> sweep needs a positive control · `grep -c` exits 1 on zero · three-tier parity evidence · B608
-> house nosec · pydantic 2.6 / fastapi 0.110.2 floors · five playwright-only failures pre-existing,
-> CI-invisible · oracle telemetry normalized by VALUE · scratchpad harnesses hardcode the repo
-> root · two ruffs on PATH — run `python -m ruff`). A number written mid-session is not a
-> measurement (wc decides).
+> ADR-0353..0380 closed — do not re-open. NEW this session: (1) **a census miss is a warning
+> about the ORACLE too** — the name a finder cannot see is disproportionately the name an
+> instrument cannot exercise, because both follow from the member being off the obvious path;
+> check the second instrument whenever the first one misses. (2) **Mutate by OFFSET, not by
+> PERMUTATION** — a swap has fixed points, and a scoped or fully-progressed population is exactly
+> where the values coincide (`_scurve_status_point` read 3/4 at 100% vs 100%). (3) **Zero
+> precedent is evidence**: 220 extracted names over 15 slices carried no route-signature default,
+> which is what pinned `_CF_QUERY`/`_CV_QUERY` to app.py. (4) A probe mutation that DISABLES a
+> member can trip the oracle's own render-condition guard — mutate the VALUE it produces instead,
+> so the guard stays meaningful during every probe run. Standing traps unchanged (a census can be
+> exact and still not be membership · a page-only anchor understates an export-feeding member ·
+> route-only referrers never force a descent · sweep by BARE NAME · a quiescence guard can match
+> its own shell · fingerprints carry their SCOPE · /openapi.json is the 60th parameterless GET ·
+> a normalizer that fails silently is a flap factory · never MEASURE a tree a battery is
+> mutating · the monkeypatch adjudication list grows as families move · census families can be
+> phantoms · ruling-lag headers move retroactively · the installer lockstep guard makes the
+> rebuild a PREREQUISITE of the final suite · patch the patcher with landed-count discipline ·
+> `#:` blocks extended by eye · silent-405 setup · ADR-0259 dedupe vs memo · round-half-even
+> 240→0 · MSPDI re-derives Duration · env-defect masquerade · binding-wrap spies · named-failure
+> rule · empty sweep needs a positive control · `grep -c` exits 1 on zero · three-tier parity
+> evidence · B608 house nosec · pydantic 2.6 / fastapi 0.110.2 floors · five playwright-only
+> failures pre-existing, CI-invisible · oracle telemetry normalized by VALUE · scratchpad
+> harnesses hardcode the repo root · two ruffs on PATH — run `python -m ruff`). A number written
+> mid-session is not a measurement (wc decides).
 
 # (prior) handoffs — archived
 

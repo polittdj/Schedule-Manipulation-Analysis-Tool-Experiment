@@ -16,7 +16,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "schedule-forensics"
-version = "1.0.187"
+version = "1.0.188"
 description = "Local, NASA-themed forensic schedule-analysis tool (CUI-safe, offline)."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -198,6 +198,10 @@ select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
 # `mission.py` is the Mission Control wall body, extracted verbatim (ADR-0372); it carries the
 # tiles' HTML f-strings and hover-hint one-liners, so the exemption travels with them.
 "src/schedule_forensics/web/mission.py" = ["E501"]
+# `scurve.py` is the /scurve page family, extracted verbatim (ADR-0380). Two interpretation
+# strings (the "ahead of the baseline" read and the "narrowed by N points" trend clause) were
+# already over-long inside app.py's exempt region; verbatim outranks re-wrapping.
+"src/schedule_forensics/web/scurve.py" = ["E501"]
 # `sra.py` is the /sra page family, extracted verbatim from app.py (ADR-0373) — the SSI panel,
 # correlation/JCL panels, register sections and report blocks ARE HTML f-strings, so the
 # exemption travels with them, exactly as it did for chrome/driving/evolution/integrity/
