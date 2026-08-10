@@ -435,6 +435,44 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-10 (d) — a queue is a record of what was NOTICED, not of what exists (phase 4 scoping + slice 19, ADR-0383)
+
+- **The published list being exhausted was not the file being exhausted.** ADR-0382 correctly
+  reported that the phase-3 page-family list had no entries left, and asked the next session to
+  re-scope before assuming a phase 4. Doing that re-scope — a structural census of `app.py` plus a
+  referrer walk seeded on every route's FULL surface (page + `/api` + `/export`) — found
+  **fourteen page families still in the file, worth 2,709 mover lines**, about a quarter of the
+  monolith. Nothing was wrong with the old queue; it simply recorded the families someone had
+  noticed. **Generalizes (→ Part IV):** before declaring a phase, a backlog or a sweep complete,
+  re-derive the population from the code. A list that has been worked to the end proves the list
+  is finished, never the work.
+- **A closure computed over `def`s alone strands the constants the block owns.** The referrer walk
+  is a call graph, so four module-level constants sitting physically inside the /risks block and
+  read only by it (`_IMPACT_LABELS`, `_LIKELIHOOD_LABELS`, `_RISKS_EXPORT`, `_RISKS_XLSX_TITLE`)
+  were invisible to it. What caught them was the separate free-name pass that classifies every
+  name a mover references as import / constant / app-level function / app-level **assignment** —
+  and, for `_RISKS_EXPORT`, extending the region by eye past the three-line `#:` doc-comment block
+  that sits outside its AST span (standing trap 21). Left behind they would have failed at first
+  render with a `NameError`, which is the cheap failure — but only by luck.
+- **The SHAPE of a sweep can be wrong even when its pattern is right.** The dropped-import sweep
+  was first run as a line-prefix regex over the diff (`^-from` / `^-import`) and reported ZERO.
+  It was wrong: all three real drops (`SEVERITY_ORDER`, `Category`, `Finding`) came out of a
+  *parenthesized* `from … import (…)` block, where a removed name is the line `-    Category,` and
+  matches no import-prefix pattern. An independent AST comparison of the two trees' import **sets**
+  found them. ADR-0378's lesson was "sweep by bare NAME, not a module-qualified regex"; this is the
+  same failure one level up. **Generalizes (→ Part V):** when a sweep answers a question about
+  program structure (imports, calls, bindings), run it over the structure — a diff is a rendering,
+  and rendering-shaped patterns miss whatever the renderer chose to nest.
+- **What the instrument returned.** ADR-0382 committed the render oracle one session before a cold
+  container needed it, and it rebuilt the inherited fingerprint (648 labels, `[empty]` 60
+  `{200:41,400:17,422:2}`, four loaded stages of 147) with zero prose archaeology — the first
+  cold-start test of that decision, passed. Slice 19 then ran clean on it: probe 8/8 render-proven
+  with zero dark members, 648/648 byte-identical pristine vs cut, 8/8 falsified in the new
+  location with exact label lists, multiset 59 added / 0 removed, battery 6/6 named.
+- **Also:** the prefix undercounted this family 2.27× by lines and 4.0× by names — `_risk_matrix`,
+  `_risk_ranking`, `_finding_card`, `_finding_quant`, `_risk_band` and `_wd` carry no `risks`
+  prefix. The prefix stays a finder; the walk stays the definition.
+
 ### 2026-08-10 (c) — committing the instrument is what found the rot in it (phase 3 slice 18, ADR-0382)
 
 - **The fix for a decaying oracle is a file, not a better ADR.** ADR-0381 measured the decay

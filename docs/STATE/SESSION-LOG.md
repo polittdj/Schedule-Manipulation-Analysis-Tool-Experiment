@@ -12976,3 +12976,85 @@ under another interpreter and dies on an unrelated conftest import. Whole-tree `
 under the CI-equivalent path: 3599 collected, zero errors. Statics re-run clean; guards/installer/
 packaging/state-docs 184 passed. Test-only change — src/ untouched, so the wheel and the nine
 installers stay at v1.0.190 and remain in lockstep (no rebuild owed).
+
+---
+
+## S-2026-08-10d — Phase 4 scoped by measurement; slice 19: the /risks family out (ADR-0383)
+
+- **Session:** 2026-08-10 (d)   **Next session:** phase 4 slice 20
+- **Model/mode:** claude-opus-5 (ADR-0240 protocol: engine/parity-relevant work on the strongest model)
+- **Branch:** `claude/polaris-phase3-slice14-jmti4s` (restarted from `main` 364c1f9 after #567 squash-merged)
+- **Version:** v1.0.190 -> **v1.0.191** (shipped code changed; SCHEMA stays 2.11.0)
+- **Highest ADR:** **ADR-0383**
+
+### What changed
+
+**(1) Phase 4 scoped, by measurement rather than memory.** ADR-0382 declared the published
+phase-3 page-family list exhausted and asked for a fresh census before committing to a phase 4.
+The census: `app.py` at 10,505 lines is 585 import lines, 106 module-level functions / 3,806 ast
+lines, 2 classes / 53, 35 assignments / 105, and `create_app` at 5,503 ast lines (1294-6796)
+carrying 135 routes — routes 52% of the file, module-level helpers 36%. A referrer walk seeded on
+every route's full surface (page + `/api` + `/export`) found **fourteen page families still in the
+file, worth 2,709 mover lines** (2,279 excluding `groups`, fenced by ADR-0343). The published list
+was exhausted; the file was not.
+
+**(2) Slice 19: the /risks family -> new `web/risks.py`** (349 lines): eight functions and four
+constants in ONE contiguous block (app.py 7458-7759), no descent. app.py 10,505 -> **10,215**
+wc-truth. The closure ran 2.27x the prefix by lines and 4.0x by names (prefix `risks` = 2 names /
+121 ast lines; walk = 8 / 275) because `_risk_matrix`, `_risk_ranking`, `_finding_card`,
+`_finding_quant`, `_risk_band` and `_wd` carry no `risks` prefix at all. `export_risks`
+contributes no movers, measured — its app-level callee set is empty, it re-derives the findings
+itself — which is what licenses the page-only probe anchor (fifth consecutive).
+
+The four constants are the slice's own finding: a closure computed over `def`s is a call graph and
+cannot see `_IMPACT_LABELS` / `_LIKELIHOOD_LABELS` / `_RISKS_EXPORT` / `_RISKS_XLSX_TITLE`. The
+free-name pass caught them, and `_RISKS_EXPORT`'s three-line `#:` doc-comment block sits outside
+its AST span (standing trap 21), so the region was extended by eye.
+
+### Tests / parity
+
+The render oracle committed in ADR-0382 rebuilt the inherited fingerprint on a cold container with
+no prose archaeology — `[empty]` 60 `{200:41,400:17,422:2}` and four loaded stages of 147
+`{200:124,404:4,422:19}`, 648 total; determinism across two separate processes, 0 flapping. That
+is the first cold-start test of the decision to commit the instrument, and it passed.
+
+Probe 8/8 render-proven, ZERO dark (tenth consecutive slice): every member moves exactly the four
+loaded-stage `GET /risks` labels, and `[empty] GET /risks` correctly does not move because the
+placeholder branch calls no member. `_wd` — the 3-line formatter, the likeliest dark member —
+fires, so no stronger-anchor round was needed. Per-region byte identity held in-script, from disk,
+and again after `ruff --fix` + `ruff format` (sha256 `154962d7e95b`). 648/648 byte-identical
+pristine vs cut. Falsified in the new location 8/8 with exact label lists, every anchor also
+asserted absent from post-cut app.py. Multiset 59 added / 0 removed — zero code lines removed.
+Battery 6/6 named (1/45 x4, 1/5, 1/6; the enumeration guard's 29th and 30th consecutive catches).
+
+### The sweeps — and a sweep that reported ZERO and was wrong
+
+The dropped-import sweep found THREE drops: `ruff --fix` removed `SEVERITY_ORDER`, `Category` and
+`Finding` from app.py because the eight movers were its last consumers. Adjudicated safe by an
+AST, alias-agnostic check — zero callers reach any of them through `web.app` — with `create_app`
+(177 files) as the positive control.
+
+**Its first run reported ZERO and was wrong.** It was a line-prefix regex over the diff
+(`^-from` / `^-import`), and all three drops came out of a parenthesized `from ... import (...)`
+block, where a removed name is the line `-    Category,` and matches no import-prefix pattern. An
+independent AST comparison of the two trees' import sets caught it. ADR-0378's lesson was "sweep
+by bare NAME, not a module-qualified regex"; this is the same failure one level up — a diff is the
+wrong surface for a question about imports.
+
+Monkeypatch/setattr sweep: ZERO hits on all twelve moved names (196 setattr-style calls across 498
+files; ADR-0378's control `compute_activity_makeup` at `test_manifest_projection_memo.py:74`
+reproduces). No ADR-0297 trap — the caller `risks_view` stays in app.py. Import sweep: three live
+readers at `tests/web/test_risks.py:83` left un-repointed on purpose, as a standing live check of
+the `X as X` re-export. Source-text sweep: five genuine view-source readers, zero repoints (the
+region carries no `_TS_CAPTION_MARK`).
+
+Shipped code changed -> version bumped v1.0.190 -> v1.0.191 BEFORE the suite; wheel + nine
+installers rebuilt once after the last code change, PRECEDING the final suite run.
+
+### Next
+
+Phase 4 slice 20 comes off the priced table, zero-descent first: `standards` (161), `wbs` (110),
+`brief` (44), then `scorecards` (151) and `card` (140) whose only shared names are route-only.
+Re-price by referrer walk at the time rather than trusting this table — that is the session's own
+lesson. `settings` (318), `briefing` (194) and `cei` (262) carry real descents and cost more than
+their line counts suggest.

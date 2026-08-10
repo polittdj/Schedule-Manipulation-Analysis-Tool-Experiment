@@ -16,7 +16,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "schedule-forensics"
-version = "1.0.190"
+version = "1.0.191"
 description = "Local, NASA-themed forensic schedule-analysis tool (CUI-safe, offline)."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -231,6 +231,10 @@ select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
 # and roster panels' prose and the explainer's `<p>` copy ARE HTML string literals, over-long
 # inside app.py's exempt region already; the exemption travels with them.
 "src/schedule_forensics/web/resources.py" = ["E501"]
+# `risks.py` is the /risks page family, extracted verbatim (ADR-0383) — the risk-matrix
+# caption and the AI-read block ARE HTML string literals, already over-long inside app.py's
+# exempt region, so the exemption travels with them.
+"src/schedule_forensics/web/risks.py" = ["E501"]
 
 [tool.ruff.format]
 # ruff >= 0.16 formats fenced ```python blocks inside Markdown. That is right for prose docs and
