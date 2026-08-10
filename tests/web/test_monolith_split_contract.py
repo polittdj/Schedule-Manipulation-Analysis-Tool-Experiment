@@ -33,6 +33,7 @@ import pytest
 import schedule_forensics.web.analysis as analysis_mod
 import schedule_forensics.web.app as app_mod
 import schedule_forensics.web.chrome as chrome_mod
+import schedule_forensics.web.compare as compare_mod
 import schedule_forensics.web.components as components_mod
 import schedule_forensics.web.driving as driving_mod
 import schedule_forensics.web.evm as evm_mod
@@ -72,6 +73,7 @@ EXTRACTED = {
     "resources.py": resources_mod,
     "scurve.py": scurve_mod,
     "path.py": path_mod,
+    "compare.py": compare_mod,
 }
 
 #: The view layer, lowest layer FIRST. A module may import only from those before it — that is
@@ -99,6 +101,7 @@ LAYER_ORDER = (
     "resources.py",
     "scurve.py",
     "path.py",
+    "compare.py",
     "app.py",
 )
 
@@ -111,6 +114,7 @@ VIEW_MODULES = (
     "analysis.py",
     "app.py",
     "chrome.py",
+    "compare.py",
     "components.py",
     "driving.py",
     "evm.py",

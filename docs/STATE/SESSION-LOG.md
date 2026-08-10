@@ -12871,3 +12871,108 @@ catches). Shipped code changed -> version bumped v1.0.188 -> v1.0.189 BEFORE the
 nine installers rebuilt once, PRECEDING the final suite run. Statics: ruff whole tree pass ·
 format --check 945 files zero reformats · mypy strict 135 files · bandit exit 0 · node --check
 60/60.
+
+---
+
+## 2026-08-10 (c) — phase 3 slice 18: the /compare family out, and the oracle committed (ADR-0382, v1.0.190)
+
+Fresh container; PR #566 (slice 17) had squash-merged, so the designated branch
+`claude/polaris-phase3-slice14-hcymqt` was restarted from `main` 24e9dd1 per the post-squash
+recipe (`git fetch --prune origin && git remote set-head origin -a && git checkout -B <branch>
+origin/main`). Two things closed: the last page family on the published phase-3 list, and
+ADR-0381's open item.
+
+**The closure.** Seeded by behaviour (the `/compare` page route and `/export/{fmt}/compare`),
+the referrer walk found 2 names / 166 ast lines — census-EXACT against the prefix (1.00x), and
+unlike slice 14's exactness nothing had been hand-folded into the queue beforehand. Every other
+name the two members touch resolves to an import from an already-cut module (`_e` from chrome;
+six names from components; `Schedule` from model; six from the engine), so there was no descent
+and no shared name to adjudicate. `export_compare` contributes no movers, and this was MEASURED
+rather than assumed — its app-level callee set is empty, because it re-derives the signals
+itself (`detect_manipulation` -> `findings_table` -> `_export_response`). That is what licenses
+a page-only probe anchor here; ADR-0378's understatement trap is checked off, not waved past.
+`_sources_line` / `_export_bar` / `_skipped_notice` / `_focus_panel` / `_pair_versions` are
+route-only referrers and stay.
+
+**The oracle, committed.** Every slice since ADR-0372 rebuilt the render corpus from ADR prose
+in a scratchpad; ADR-0381 measured the cost (648 -> 592 on a fresh container) and named the fix.
+It now lives in the repo: `tests/web/oracle_corpus.py` (a self-healing `app.routes`-derived half
+plus a hand-authored variant half written out by URL), `tests/guards/render_oracle_labels.txt`
+(the 648 labels by name) and `tests/guards/test_render_oracle_corpus.py` (four guards). The
+rebuild reproduces the inherited fingerprint exactly at EVERY stage: `[empty]` 60
+`{200:41,400:17,422:2}` and four loaded stages of 147 `{200:124,404:4,422:19}`, total 648. That
+is shape identity, NOT proven label-for-label recovery — the original list was never recorded,
+so it cannot be diffed, and the claim is written that way. What removes the risk permanently is
+the file, not the match.
+
+Committing it found three things prose had hidden. SIX of twelve prose-drafted variants were
+decoration: FastAPI ignores an undeclared query parameter, so `/evolution?view=tiers`,
+`/resources?field=Status`, `/path?target=22`, `/api/sra/grid` and `/sra/ssi/save` rendered
+byte-identical to their bare labels and reached no new code. Rewritten against the actual route
+signatures (`tier`, `ignore_constraints`/`ignore_leveling`, `cf_a`/`cf_b`, `bucket`, `uids`,
+`iterations`/`distribution`, `target`) all ten are distinct, and a guard now fails on any variant
+that is not. The launch-token normalizer had been pinning ONE of two spellings — the page's
+`<meta name=sf-launch>` and `/api/whoami`'s `"launch_token"` JSON key — leaving five labels
+flapping until adjudicated by payload diff (never by touching the harness first). And `[empty]`
+deliberately excludes the `{name}` labels, because with no schedules loaded they all 404 on the
+same missing file and measure the fixture pool rather than the code; that reasoning is now in
+the builder so a future rebuild cannot "helpfully" add them.
+
+All four new guards were proven able to fail before being trusted (mutate -> the named test
+fails -> restore -> green), which is four falsification runs on top of the six-mutation battery.
+
+**Probe and proof.** Span-scoped anchors (count == 1 in file, line inside the member's own AST
+span, additive markers, md5-verified restores): 2/2 render-proven, ZERO dark, ninth consecutive
+slice. Each member moves exactly the four loaded `/compare` labels; `[empty] GET /compare`
+correctly does not move, because with fewer than two schedules the route returns its placeholder
+and calls neither member. Per-region byte-identity IDENTICAL asserted in-script before the write,
+re-read from disk after, and a third time after `ruff --fix` + `ruff format` (sha256
+b667721aebe1... / ea823b325325...). 648/648 byte-identical pristine vs cut, fingerprint held on
+the cut tree. Falsified in the new location 2/2 EXACT label lists, each anchor also asserted
+ABSENT from post-cut app.py. Multiset 49 added / 1 removed — zero member code lines removed.
+
+**The sweeps, and the streak that ended.** The dropped-import sweep found drops for the first
+time in seventeen slices: `ruff --fix` removed `compute_net_finish_impact`, `diff_versions` and
+`trend_across_versions` from app.py, because the two moved members were their only consumers
+there. Adjudicated safe by an AST, alias-agnostic check — zero callers reach any of the three
+through `web.app`, by either `from schedule_forensics.web.app import <name>` or `<alias>.<name>`
+on a module bound to web.app — with `create_app` (184 files) as the positive control proving the
+sweep runs. Every real consumer imports from the engine directly. Monkeypatch/setattr sweep: ZERO
+hits on both names, 193 setattr calls found, ADR-0378's control reproduced; no ADR-0297 trap,
+since the caller `compare` stays in app.py. The source-text sweep needed sharpening: a first pass
+using `__file__` as a detector called 178 files "readers" (nearly every test uses `__file__` to
+locate fixtures) and produced 665 candidates that were common words like "project" and
+"critical". Requiring a genuine view-source idiom beside a real read call cut it to 6 readers —
+including `test_gantt_find_coverage.py`, the file whose own comment documents this blind spot —
+whose nine candidates are all `"schedule_forensics"` used as a path segment. Zero repoints.
+
+Mutation battery 6/6 named (1/42 x4 · 1/4 · 1/5; enumeration guard's 27th/28th consecutive
+catches). A harness bug was caught before it produced a false finding: the runner parsed pytest's
+`FAILED ...` line with `split(" ")[0]`, which is the literal word FAILED, and reported NOT PROVEN
+against a guard that had failed correctly — the named-failure rule's own instrument needs the
+same scepticism as the code under it.
+
+Shipped code changed -> version bumped v1.0.189 -> v1.0.190 BEFORE the suite; wheel + nine
+installers rebuilt once, PRECEDING the final suite run.
+
+**Consequence for the next session: the published phase-3 page-family list is EXHAUSTED.**
+app.py is 10,505 lines, down from 16,685 when phase 3 began. What remains is routes
+(`create_app`), residual shared helpers, and `groups` (still outside the list while ADR-0343
+feature work is queued against it). The next monolith decision is a scoping decision, not another
+slice off a known list — take a fresh prefix census against the post-cut file and price the
+candidates by referrer walk before committing to a phase 4.
+
+**CI round 1 (PR #567).** Three jobs failed in COLLECTION, not execution — floor, test (3.11) and
+test (3.13) — with `ModuleNotFoundError: No module named 'tests'` from
+`tests/guards/test_render_oracle_corpus.py`. Cause: the guard imported its helper as
+`from tests.web.oracle_corpus import ...`, which resolves under `python -m pytest` (the CWD is
+prepended to sys.path) but not under a bare `pytest`, which is what CI runs. `tests/` is not a
+package, and that import was the ONLY `from tests.` spelling in the tree — the repo's own
+convention, in the sibling guard `test_intake_manifest.py`, is `spec_from_file_location`. Fixed by
+loading `tests/web/oracle_corpus.py` by path. The failure was reproduced BEFORE the fix and the
+fix proven after, both under `PYTHONSAFEPATH=1 python -m pytest` (which suppresses exactly the CWD
+prepend); a bare `pytest` is NOT a usable reproduction here because a second pytest lives on PATH
+under another interpreter and dies on an unrelated conftest import. Whole-tree `--collect-only`
+under the CI-equivalent path: 3599 collected, zero errors. Statics re-run clean; guards/installer/
+packaging/state-docs 184 passed. Test-only change — src/ untouched, so the wheel and the nine
+installers stay at v1.0.190 and remain in lockstep (no rebuild owed).

@@ -435,6 +435,61 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-10 (c) — committing the instrument is what found the rot in it (phase 3 slice 18, ADR-0382)
+
+- **The fix for a decaying oracle is a file, not a better ADR.** ADR-0381 measured the decay
+  (648 -> 592 rebuilding from prose in a fresh container) and named the cure; this session applied
+  it. The corpus now lives in `tests/web/oracle_corpus.py` + a committed 648-line label list + four
+  guards. The half derived from `app.routes` was always self-healing; the hand-authored half was
+  always the casualty. Nine slices re-derived it and each rebuild could only recover what the prose
+  pinned.
+- **The act of writing it down is what exposed the defects — prose hid them.** SIX of twelve
+  variants reconstructed from ADR prose were **decoration**: FastAPI silently ignores an undeclared
+  query parameter, so `/evolution?view=tiers`, `/resources?field=Status`, `/path?target=22`,
+  `/api/sra/grid` and `/sra/ssi/save` rendered byte-identical to their bare labels and reached no
+  new code at all. They would have padded the count while covering nothing. **Check a hand-authored
+  oracle label against the route SIGNATURE, never against an ADR's description of it** — and guard
+  it, which this slice now does.
+- **A normalizer can be right and still incomplete.** The launch token is described in the recipe as
+  `{hex16}.{wipe_gen}`, which is true — but it has TWO spellings, the page's `<meta name=sf-launch>`
+  and `/api/whoami`'s `"launch_token"` JSON key. Pinning one left five labels flapping. Adjudicating
+  by payload diff before touching the harness (the standing rule) turned a "flaky oracle" into a
+  one-line pattern fix.
+- **Ending a zero-finding streak is a result, not a regression.** Sixteen consecutive slices
+  reported "0 dropped imports"; the seventeenth found three (`compute_net_finish_impact`,
+  `diff_versions`, `trend_across_versions`) because this family was app.py's LAST consumer of them.
+  A streak measures the code met so far, not the sweep's redundancy. The adjudication that made it
+  safe was AST + alias-agnostic with a 184-file positive control — "zero readers" is only a
+  measurement when the sweep is proven to run.
+- **A filter that flags nearly everything has not swept.** The first source-text pass used
+  `__file__` as a detector and called 178 files "source-text readers", producing 665 candidate
+  literals that were words like "project" and "critical". Almost every test uses `__file__` to find
+  fixtures. Demanding a genuine view-source idiom (`getsource` / `<module>.__file__` /
+  `with_name("*.py")` / a literal `"app.py"`) *beside* a real read call cut it to 6 readers and 0
+  repoints. Widening a detector (ADR-0381) and narrowing its filter are both required; only one was
+  learned last time.
+- **The named-failure rule's own instrument needs the same scepticism as the code under it.** The
+  mutation runner parsed pytest's `FAILED <nodeid>` line with `split(" ")[0]` — the literal word
+  `FAILED` — so the first falsification reported NOT PROVEN against a guard that had failed exactly
+  as designed. Had the script not asserted its own expectation, the session would have "learned"
+  that a working guard was dead.
+- **`python -m pytest` and a bare `pytest` do not share a `sys.path`, and CI runs the bare one.**
+  A new guard imported its helper as `from tests.web.oracle_corpus import ...`. That resolves only
+  because `python -m pytest` prepends the CWD; a bare `pytest` does not, so the module was fine
+  across a 3569-test local run and died in COLLECTION on three CI jobs at once (floor, test 3.11,
+  test 3.13) with `ModuleNotFoundError: No module named 'tests'`. `tests/` is not a package. The
+  repo already had the answer in the sibling guard — `spec_from_file_location`, the same idiom
+  `test_intake_manifest.py` uses for `tools/`; the failing spelling was the ONLY `from tests.`
+  import in the tree, which is the tell. **Reproduce CI's path with `PYTHONSAFEPATH=1 python -m
+  pytest`** — it suppresses exactly the CWD prepend that hides this class of defect, and
+  `--collect-only` under it sweeps the whole tree in 8 seconds. Do not reach for a bare `pytest`
+  to reproduce it: like ruff, a second `pytest` lives on PATH belonging to another interpreter,
+  and it fails on an unrelated `conftest` import instead.
+- **Measured, not assumed, is cheap when you already have the AST.** The claim "the export route
+  contributes no movers" was settled by computing `export_compare`'s app-level callee set (empty),
+  not by reading it. Same for "no shared name forces a descent" — every referrer resolved to the
+  route, which imports downward.
+
 ### 2026-08-10 (b) — an instrument that lives in the scratchpad is re-derived, not inherited (phase 3 slice 17, ADR-0381)
 
 - **The oracle did not survive the container, and nine slices never noticed.** Every slice since

@@ -64,6 +64,7 @@ def test_no_mdash_entity_sentinel_values_remain_in_app_source() -> None:
             APP_SRC,
             APP_SRC.with_name("analysis.py"),
             APP_SRC.with_name("chrome.py"),
+            APP_SRC.with_name("compare.py"),
             APP_SRC.with_name("components.py"),
             APP_SRC.with_name("driving.py"),
             APP_SRC.with_name("evm.py"),
