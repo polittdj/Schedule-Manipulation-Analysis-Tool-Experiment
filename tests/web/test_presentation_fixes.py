@@ -72,6 +72,7 @@ def test_no_mdash_entity_sentinel_values_remain_in_app_source() -> None:
             APP_SRC.with_name("integrity.py"),
             APP_SRC.with_name("margin.py"),
             APP_SRC.with_name("mission.py"),
+            APP_SRC.with_name("path.py"),
             APP_SRC.with_name("performance.py"),
             APP_SRC.with_name("portfolio.py"),
             APP_SRC.with_name("resources.py"),

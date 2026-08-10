@@ -12808,3 +12808,66 @@ strict 134 files · bandit exit 0 · node --check 60/60. Full suite 3550 passed 
 exit 0 (+2 vs slice 15's 3548 — the two new parametrized contract cases scurve.py adds to
 EXTRACTED and LAYER_ORDER). Parity 52 passed / 15 skipped, exit 0; all skips
 environment-gated (playwright / Java).
+
+## 2026-08-10 (b) — phase 3 slice 17: the /path family out of the monolith; the instrument that did not survive the container (ADR-0381, v1.0.189)
+
+Closed queue item 1: the /path page family extracted VERBATIM into NEW `web/path.py` (240 lines)
+— TWO movers in ONE contiguous block (app.py 6972-7167): `_what_drives_header` and `_path_body`.
+NO descent. app.py 10,871 -> 10,675 wc-truth. LAYER_ORDER `... -> resources -> scurve -> path`;
+the re-export block sorts below offload's (isort: offload < path < performance); path.py joins the
+pyproject E501 list; EXTRACTED + LAYER_ORDER + VIEW_MODULES + both whole-view-layer guard tuples
+gain "path.py".
+
+The closure is CENSUS-EXACT — 2 names / 194 ast lines both ways, 1.00x — and unlike slice 14's
+exactness (ADR-0378, exact only because a prior ADR's ruling had been hand-folded into the queue)
+NOTHING was folded in first: the walk was run cold and landed on the census. Every other name the
+two members touch resolves to an IMPORT from an already-cut module (chrome, components, state,
+model, engine), so there was nothing to descend into and no shared name to adjudicate. The export
+route contributes NO movers — `/export/{fmt}/path/{name}` is the DRIVING trace export despite its
+URL, building from `_driving_data` (web.driving), `_optioned_versions` (web.evolution) and
+`driving_table` (reports.tables); the streak is now three consecutive. A harness bug was caught
+BEFORE it produced a false finding: the origin resolver checked the nested scope before the local
+one, so `_what_drives_header`'s own PARAMETER `analysis` read as a shared name.
+
+HEADLINE — the oracle did not survive the container, and this is the first slice to MEASURE that.
+Every slice since ADR-0372 has inherited a harness that lives ONLY in the scratchpad; a fresh
+container has none. Rebuilt from the route surface, everything `app.routes` determines reproduced
+exactly: `[empty]` 60 {200:41,400:17,422:2} on the nose, the 60 parameterless GETs, and the 404:4
+per loaded stage that ADR-0379 had to repair. What did NOT reproduce is the ~14 hand-authored
+variant labels per loaded stage — the ADRs name some in prose and record none of their URLs. So
+this slice's corpus is 592 labels, not 648, and every number carries that scope (ADR-0377). The
+oracle was NOT padded back to 648: inventing replacements would have produced the same number
+over different content, which is worse than a smaller honest corpus.
+
+Verification: corpus 592 labels ([empty] 60 {200:41,400:17,422:2} · four loaded stages 133 each
+{200:111,404:4,422:18}; 4xx 107 over all five stages). Determinism x2 separate processes: 0
+flapping. One purely-additive family-specific extension — `[path-export]` x2 fmts with
+`?target=22`, because `export_path` declares `target: int = Query(...)` REQUIRED so the inherited
+label is a 422 that never renders the export body. Pre-flight probe 2/2 render-proven, ZERO dark
+(eighth consecutive): `_what_drives_header` 4 · `_path_body` 4, each the four loaded /path labels;
+`[empty] GET /path` correctly does NOT move (the placeholder branch calls neither member).
+
+Proof: per-region byte-identity IDENTICAL asserted in-script before the write, re-read from disk
+after, and a third time after `ruff --fix` re-sorted the re-export block (sha256 d85a3c7698e8...)
+· 592/592 byte-identical pristine vs cut, fingerprint held on the cut tree · falsified in the new
+location 2/2 EXACT label lists, each anchor also asserted ABSENT from post-cut app.py · multiset
+44 added / 0 removed — ZERO member code lines removed, every added line being path.py's own
+header/imports plus the two re-exports.
+
+Sweeps: dropped-import by BARE NAME — 0 dropped (app.py's module-level import set 443 -> 445, the
+two re-exports; ruff removed nothing because every name the moved code used is still used
+elsewhere), the set difference positive-controlled so "none" is a measurement. Monkeypatch/attr
+(AST, alias-agnostic) ZERO hits on both names; 192 setattr calls found, ADR-0378's control
+reproduced. No ADR-0297 trap this slice — the caller `path_view` STAYS in app.py, so a patch of
+`app_mod._path_body` would still rebind the global it reads. Source-text sweep WIDENED to three
+detectors (path literal · `__file__` · `getsource`) after the first pass reproduced the very blind
+spot `test_gantt_find_coverage.py` documents in its own comment: 203 readers, ZERO moved literals
+asserted, zero repoints; the four first-pass candidates adjudicated false (three read the RENDERED
+page via `client.get("/path").text`, one reads `static/path.js`, plus "app.py" itself, which
+matched only because the new module docstring names it).
+
+Mutation battery 6/6 named (1/40 x4 · 1/4 · 1/5; enumeration guard's 25th/26th consecutive
+catches). Shipped code changed -> version bumped v1.0.188 -> v1.0.189 BEFORE the suite; wheel +
+nine installers rebuilt once, PRECEDING the final suite run. Statics: ruff whole tree pass ·
+format --check 945 files zero reformats · mypy strict 135 files · bandit exit 0 · node --check
+60/60.
