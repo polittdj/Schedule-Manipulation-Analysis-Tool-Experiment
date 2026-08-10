@@ -435,6 +435,38 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-10 — a census miss is a warning about the ORACLE (phase 3 slice 16, ADR-0380)
+
+- Cut the /scurve family into `web/scurve.py` (7 movers, app.py 11,095 -> 10,871). The prefix
+  census said 6 names / 212 lines; the referrer walk said 7 / 222. The extra name,
+  `_pair_criteria`, is reachable only from `/api/scurve` and carries no `_scurve` prefix.
+- **The lesson that generalises.** That same member was ALSO invisible to the inherited
+  644-label oracle — for a completely different reason: no inherited label supplies the `cf`/`cv`
+  query params, so it did no work on any of the 648 renders. Two independent instruments (a name
+  finder and a render oracle), two independent causes, ONE member. That is not coincidence: both
+  blindnesses follow from the same root — the member sits off the obvious path. **So when the
+  cheap instrument misses something, treat it as a warning about the expensive one.** Had the
+  walk not found it, the slice would have shipped with a clean 648/648 byte-identity and a silent
+  dark reading, and nothing downstream would have complained.
+- **Mutate by OFFSET, not by PERMUTATION.** `_scurve_status_point` first probed 3/4 — `[target]`
+  did not move. Adjudicated by payload before touching anything: under the target scope the page
+  renders 100% finished against 100% planned, and the anchor was a *swap* of `(actual, planned)`.
+  A permutation applied to equal values is the identity. Re-run with an additive marker
+  (`actual + 11.0`) it reads 4/4. A swap/reorder mutation reads dark exactly where the values
+  coincide — which is precisely where a scoped or fully-progressed population puts them. The
+  mutation must have no fixed points on the data the oracle actually renders.
+- **Zero precedent is evidence.** `_CF_QUERY`/`_CV_QUERY` looked movable (S-curve-specific by
+  their own doc-comment) but are FastAPI `Query` singletons used only as route-signature
+  defaults. Checking mechanically rather than from memory — 220 already-extracted names across 15
+  slices, not one route-signature default among them — turned a judgement call into a decision.
+  Route plumbing stays with the routes; presentation moves.
+- **A probe that DISABLES a member can trip the oracle's own render-condition guard.** The first
+  `_pair_criteria` mutation emptied the criteria list, which collapsed the filtered payload onto
+  the unfiltered one and fired the guard that exists to prove the condition is live. Mutating the
+  VALUE the member produces instead keeps the guard meaningful during every probe run — and the
+  guard firing was itself evidence the label genuinely depends on the member.
+
+
 ### 2026-08-09 (f) — an oracle can be BLIND to a whole family; a positive control that cannot see the pattern it certifies
 
 - **The instrument, not the code, was the finding.** Slice 15's pre-flight probe reported **all

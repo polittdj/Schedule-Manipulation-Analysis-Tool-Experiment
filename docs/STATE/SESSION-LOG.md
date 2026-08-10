@@ -12744,3 +12744,67 @@ catches), plus a seventh proving the spy repoint. Shipped code changed -> versio
 v1.0.186 -> v1.0.187 BEFORE the suite; wheel + nine installers rebuilt once, PRECEDING the final
 suite run. Statics: ruff whole tree pass · format --check 941 files zero reformats · mypy strict
 133 files · bandit exit 0 · node --check 60/60.
+
+## 2026-08-10 — phase 3 slice 16: the /scurve family out of the monolith; the member BOTH instruments missed (ADR-0380, v1.0.188)
+
+Extracted the /scurve page family verbatim into `web/scurve.py` (283 lines): SEVEN movers in TWO
+contiguous blocks (app.py 8324-8530 and 9016-9040) — `_scurve_filter_fields`, `_pair_criteria`,
+`_scurve_status_point`, `_scurve_interpretation`, `_scurve_header`, `_scurve_body`,
+`_scurve_data`. NO descent. app.py 11,095 -> 10,871 wc-truth. LAYER_ORDER becomes
+`... -> performance -> resources -> scurve -> app`; re-export block below resources' (isort:
+resources < scurve < sra); scurve.py joins the pyproject E501 list (two interpretation strings
+already over-long inside app.py's exempt region); EXTRACTED + LAYER_ORDER + VIEW_MODULES + both
+whole-view-layer guard tuples gain "scurve.py".
+
+The closure is 13 names / 250 ast lines; movers 7 / 222 against the prefix census's 6 / 212
+(1.05x lines, 1.17x names). The extra name is `_pair_criteria` — the cf/cv validator reachable
+only from `/api/scurve`, carrying no `_scurve` prefix. THE HEADLINE: it was also invisible to the
+inherited 644-label oracle, for an unrelated reason — no inherited label supplies cf/cv, so it did
+no work on any of the 648 renders. Two independent instruments, two independent causes, one
+member; both blindnesses share a root (the member is off the obvious path). A census miss is a
+warning about the ORACLE, not just the queue.
+
+No descent, adjudicated by referrer: six shared names all pinned to app.py — `_parse_uid`,
+`_parse_uid_list` (pinned by NON-route referrers `_drill_uid_set` / `_import_risk_register`),
+`_parse_track_uids` (pinned by /cei's routes), `_MAX_TRACK_UIDS` (cohesion), and
+`_CF_QUERY`/`_CV_QUERY` — FastAPI Query singletons existing only as route-signature defaults and
+referenced by NO mover. Checked mechanically: across 220 extracted names over 15 slices, not one
+route-signature default has ever lived in an extracted module. The export route contributes no
+movers (`export_scurve` builds straight from `compute_s_curve`) — streak now two consecutive.
+
+Oracle EXTENDED 644 -> 648, never re-based: one label added, `[scurve-filter] /api/scurve?cf&cv`,
+whose payload-change is asserted before it is recorded. The inherited 644 reproduce ADR-0379's
+fingerprint EXACTLY on the pristine tree ([empty] 60 {200:41,400:17,422:2}; four loaded stages 146
+each {200:123,404:4,422:19}; 4xx 69/88/111), including the 404:4 ADR-0379 had to repair. The
+extension moves loaded stages to 147 / 200:124 and leaves the 4xx fingerprint UNCHANGED, which is
+what proves it purely additive. Determinism x2 separate processes: 0 flapping at both 644 and 648.
+
+Pre-flight probe 7/7 render-proven, ZERO dark (seventh consecutive): `_scurve_data` 8,
+`_pair_criteria` 4 (the NEW label only — 0/648 without it), the other five 4 each. Stronger-anchor
+round fired: `_scurve_status_point` first read 3/4 because [target] renders 100% vs 100% and the
+anchor was a SWAP — a permutation is the identity on equal values. Adjudicated by payload, re-run
+with an ADDITIVE marker, reads 4/4. Mutate by offset, not by permutation.
+
+Proof: per-region byte-identity IDENTICAL (in-script, from disk, and again after `ruff --fix`
+dropped app.py's now-unused SCurve import; sha256 4811f34f46cb...) · 648/648 byte-identical
+pristine vs cut · falsified in the new location 7/7 EXACT label lists (anchors also asserted
+ABSENT from post-cut app.py) · multiset 306 added / 237 removed with 236 of 237 removed lines
+reappearing verbatim — ZERO member code lines removed (the one exception is the s_curve import
+NARROWED by ruff, its edited form present as an addition), measured on a quiescent tree with the
+/proc-based check. Sweeps: dropped-import by BARE NAME (`SCurve`) 0 readers; monkeypatch/attr
+(AST, alias-agnostic) over all 19 bound names ZERO hits (192 setattr calls found, ADR-0378's
+control reproduced across wrapped lines; alias census appmod 18 / app_module 15 / app_mod 3). No
+ADR-0297 trap this slice — `compute_s_curve` is called by the ROUTES, which stay in app.py, and
+every test imports it straight from the engine. Source-text sweep: 6 python-source readers, one
+candidate (`'scurve.js'` at test_dd_line_ledger.py:74) adjudicated FALSE — a static-JS ledger key
+naming static/scurve.js, matching only because the moved HTML contains the script tag; zero
+repoints.
+
+Mutation battery 6/6 named (1/39 x4 · 1/5 · 1/6; enumeration guard's 23rd/24th consecutive
+catches). Shipped code changed -> version bumped v1.0.187 -> v1.0.188 BEFORE the suite; wheel +
+nine installers rebuilt once, PRECEDING the final suite run. Statics: ruff whole tree pass ·
+format --check 944 files zero reformats at the final gate (943 at cut time) · mypy
+strict 134 files · bandit exit 0 · node --check 60/60. Full suite 3550 passed / 45 skipped,
+exit 0 (+2 vs slice 15's 3548 — the two new parametrized contract cases scurve.py adds to
+EXTRACTED and LAYER_ORDER). Parity 52 passed / 15 skipped, exit 0; all skips
+environment-gated (playwright / Java).
