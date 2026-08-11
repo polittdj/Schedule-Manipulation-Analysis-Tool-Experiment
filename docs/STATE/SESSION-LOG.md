@@ -13246,3 +13246,97 @@ Acumen scope differences correctly (SN01 engine 126 schedulable vs Acumen's 144 
 missing_logic all-activity 6/7 vs report-scoped incomplete 4/5) but `web/help.py` does not, so an
 analyst comparing side by side has no in-tool explanation. Both are exact at their own scope, so that
 is a consistency fix, not an accuracy one.
+
+---
+
+## S-2026-08-10g — Phase 4 slice 21: the /wbs family out; app.py under 10k (ADR-0386)
+
+- **Session:** 2026-08-10 (g)   **Next session:** phase 4 slice 22
+- **Model/mode:** claude-opus-5 (ADR-0240 protocol)
+- **Branch:** `claude/polaris-phase3-slice14-uvrdwf` (restarted from `main` 4825c33 after #569 and #570 squash-merged)
+- **Version:** v1.0.192 -> **v1.0.193** (shipped code changed; SCHEMA stays 2.11.0)
+- **Highest ADR:** **ADR-0386**
+
+### An ADR number was taken mid-session
+
+This slice was written as ADR-0385. While it was in flight, PR #570 squash-merged onto `main`
+carrying its own ADR-0385 (the parity-record work). The collision surfaced only because a
+`git fetch --unshallow` — run for an unrelated reason — moved `origin/main` under the branch.
+Renumbered to **0386**, rebased onto 4825c33, every reference updated (ADR filename and title,
+`wbs.py` docstring, app.py re-export comment, pyproject E501 comment). **A parallel session can
+take your ADR number: fetch before you choose it, and again before you commit.**
+
+### What changed
+
+**Slice 21: the /wbs page family -> NEW `web/wbs.py` (154 lines): THREE functions in ONE
+contiguous block** (app.py 7294-7407), **no descent**. `app.py` **10,046 -> 9,937** wc-truth —
+**below 10,000 lines for the first time**, from 17,197 when phase 3 began.
+
+**The prefix misses a member.** Prefix census 2 names / 107 ast lines; the referrer walk over all
+THREE routes finds **3 / 110** — `_num`, a three-line optional-number formatter, carries no `wbs`
+prefix and is a member. A bare-NAME sweep confirms it independently: definition plus seven call
+sites, all inside `_wbs_body`. Slice 20's closure was census-exact 1.00x; this is the immediate
+counter-example to reading that as licence.
+
+**`export_wbs` contributes no movers, and two instruments say so.** Its app-level callee set is
+empty (it re-derives through `reports/tables.py::wbs_breakdown_tables`), and when each member was
+mutated the four `/export/{xlsx,docx}/wbs/...` labels did not move.
+
+### Three instrument findings
+
+**A probe's marker must match the member's RETURN TYPE.** `_wbs_data` returns a `dict`. ADR-0384's
+str-concat marker would have raised TypeError at render, turning every `/api/wbs` label into a 500
+— which the probe would have scored as "this member moves lots of labels". A dict member gets an
+additive key instead.
+
+**A sweep's POPULATION is part of its claim.** The four sweeps first ran over 646 Python files
+against slice 20's 507. The extra 138 were `build/` — a stale copy of `src/` left by the v1.0.192
+wheel build, carrying `standards.py` but not `wbs.py`. No verdict changed (clean re-run: 508
+files, identical hits, control still 177), but a stale snapshot can invent a reader OR miss one and
+reports the same confident "0 hits" either way — and the positive control fires inside the stale
+copy too, so it does not catch this. Sweeps now exclude build/dist/.venv/caches and state the file
+count beside the verdict.
+
+**The MPXJ installer pin drifts to the build container's clone boundary.** `mpxj_ref()` computes
+"the last commit that touched `tools/mpxj`" with `git log -1 -- tools/mpxj`; in a `--depth 1`
+clone that returns the shallow boundary, because git reports the boundary commit as introducing
+every file. Measured: the committed installers pinned `f0634639` (which did NOT touch tools/mpxj);
+this container shallow pinned `41fb122` (also did not); after `git fetch --unshallow` the answer is
+`42d92dc` (which did, ADR-0232 / #370). Nothing broke — every candidate is a real pushed commit
+whose tools/mpxj bytes are identical, so the URL resolves and the baked-in manifest matches — but
+the pin has been drifting session to session and **slice 20 shipped that drift as an unintended
+diff**. This slice's installers are built on an unshallowed clone and pin `42d92dc`. The durable
+fix (make `mpxj_ref()` refuse a shallow clone or deepen until the path is genuinely touched) is
+QUEUED, not silently patched here — it is installer machinery and deserves its own round.
+
+### A census-harness note: `brief` is a PREFIX of `briefing`
+
+The census seed matches route paths by SUBSTRING, so seeding `brief` swallowed `/briefing`,
+`/export/{fmt}/briefing` and `/api/ai/briefing` and reported one 8-name family with three descents
+— two of ADR-0383's families fused. Seeded on exact route lists they separate and reproduce that
+table: `brief` = 1 mover / 44 ast lines / 0 descents; `briefing` = 4 movers / 194 / 3 descents (the
+AI-backend helpers). ADR-0383's table records 4 descents for briefing; this walk finds 3 — not
+adjudicated here, but briefing must be re-priced before it is cut.
+
+### Verification
+
+Oracle rebuilt the inherited fingerprint: `[empty]` 60 `{200:41,400:17,422:2}`, four loaded stages
+of 147 `{200:124,404:4,422:19}`, 648 total; determinism across two separate processes, 0 flapping.
+Probe 3/3 render-proven, ZERO dark (twelfth consecutive slice). Per-region byte identity held
+in-script, from disk, and after `ruff --fix` + `ruff format` (region sha256 `267f40832493`).
+648/648 byte-identical pristine vs cut. Falsified in the new location 3/3 with exact label lists,
+every `def` asserted absent from post-cut app.py. Multiset 45 added / 1 removed — zero code lines
+removed. Battery 6/6 named (1/49 x4, 1/5, 1/6; the enumeration guard's 33rd and 34th consecutive
+catches). Sweeps: dropped-import ONE (`WBSGroup`, zero readers through web.app, control 177 files);
+monkeypatch/setattr ZERO on all 10 bound names; import sweep ONE live reader left un-repointed on
+purpose (`test_coverage_app_extra.py:228`, a standing check of the `X as X` re-export);
+source-text 13 readers, zero repoints.
+
+Shipped code changed -> version bumped v1.0.192 -> v1.0.193 BEFORE the suite; wheel + nine
+installers rebuilt once after the last code change, PRECEDING the final suite run.
+
+### Next
+
+Phase 4 slice 22: `brief` (44, 0 descents) is the last zero-descent family, then `scorecards` (151)
+and `card` (140). Re-price by referrer walk, seeding `brief` on `/brief` + `/export/{fmt}/brief`
+ONLY. `mpxj_ref()` shallow-clone hardening joins the standing queue.

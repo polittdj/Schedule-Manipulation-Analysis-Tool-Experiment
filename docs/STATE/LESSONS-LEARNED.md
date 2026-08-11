@@ -4342,4 +4342,29 @@ feature worked, and measure that.** Requirement 2 is amended accordingly (ADR-03
   constants hid from the call graph; running it here and reporting the empty result is what
   separates "this block owns no constants" from "nobody looked."
 
+### 2026-08-10 (g) — three instruments that were measuring themselves (ADR-0386)
+- **The sweep measured a stale copy of the tree.** The post-cut sweeps ran over 646 Python files
+  where the previous slice's ran over 507. The extra 138 were `build/` — a snapshot of `src/` left
+  by the previous slice's wheel build, carrying the *previous* module and not this one's. No
+  verdict changed on the clean re-run (508 files), but a stale snapshot fails in both directions:
+  it can invent a reader that no longer exists and it can miss one added since. **The positive
+  control does not save you — it fires inside the stale copy too.** Lesson: a sweep's POPULATION is
+  part of its claim; exclude build artifacts and print the file count next to the verdict.
+- **The probe's marker was the wrong type.** `_wbs_data` returns a `dict`; the inherited
+  string-concat marker would have raised TypeError and turned every `/api/wbs` render into a 500 —
+  which the probe scores as "this member moves lots of labels". A mis-typed marker does not measure
+  a dark member, it measures the probe. Match the marker to the return type.
+- **The installer's MPXJ pin drifts to the container's clone boundary.** `mpxj_ref()` runs
+  `git log -1 -- tools/mpxj`; in a `--depth 1` clone that returns the shallow boundary, because git
+  reports the boundary commit as introducing every file. Three different builds produced three
+  different pins, and only the unshallowed one (`42d92dc`) actually touched the path. Harmless so
+  far — identical bytes at every candidate — but the previous slice shipped the drift, and it would
+  recur silently forever. **Anything derived from `git log` is a function of how deep the clone is.**
+- **And a process one:** a parallel session took our ADR number mid-flight (#570 landed its own
+  ADR-0385). We only noticed because an unrelated `git fetch` moved `origin/main` underneath us.
+  Fetch before choosing an ADR number, and again before committing.
+- **What worked:** two independent instruments agreeing. The call graph said `export_wbs`
+  contributes no movers; the render probe independently showed its export labels do not move. When
+  a probe is already running, the second confirmation is nearly free — take it.
+
 <!-- Append new dated entries ABOVE this line, newest first. Keep Parts I–VII current when a lesson generalizes. -->
