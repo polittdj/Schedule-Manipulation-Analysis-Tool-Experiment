@@ -13058,3 +13058,103 @@ Phase 4 slice 20 comes off the priced table, zero-descent first: `standards` (16
 Re-price by referrer walk at the time rather than trusting this table — that is the session's own
 lesson. `settings` (318), `briefing` (194) and `cei` (262) carry real descents and cost more than
 their line counts suggest.
+
+---
+
+## S-2026-08-10e — Phase 4 slice 20: the /standards family out; the byte offset that broke the probe (ADR-0384)
+
+- **Session:** 2026-08-10 (e)   **Next session:** phase 4 slice 21
+- **Model/mode:** claude-opus-5 (ADR-0240 protocol: engine/parity-relevant work on the strongest model)
+- **Branch:** `claude/polaris-phase3-slice14-uvrdwf` (created fresh from `main` 41fb122 after #568 squash-merged)
+- **Version:** v1.0.191 -> **v1.0.192** (shipped code changed; SCHEMA stays 2.11.0)
+- **Highest ADR:** **ADR-0384**
+
+### The container was pointed at the wrong repository
+
+This session started attached to `polittdj/SMAT-SANDBOX` — the private mirror described in its own
+`SANDBOX.md`, frozen at the 2026-07-11 mirror commit: **v1.0.4, highest ADR 0194, app.py 12,209
+lines, no split modules at all** (no `state.py`, no `chrome.py`, none of phase 3), no
+`.claude/skills/`. Its `HANDOFF.md` agreed with the tree and disagreed with the resume prompt. The
+designated branch existed there but sat at exactly `main` with zero commits.
+
+The resume prompt was **independently stale by five slices**: it asked for slice 15
+(resources/scurve/path/compare), all four of which had shipped here as ADR-0379..0382, plus slice
+19 (ADR-0383). Two wrong sources agreed with each other. `pyproject.toml`'s version and
+`ls src/schedule_forensics/web/` settled it in one command each. The operator authorized attaching
+this repo with push access and branching fresh from `main` 41fb122; no work was done in the mirror.
+
+### What changed
+
+**Slice 20: the /standards page family -> NEW `web/standards.py` (227 lines): FOUR functions in
+ONE contiguous block** (app.py 8764-8930), **no descent**. `app.py` **10,215 -> 10,046** wc-truth.
+`LAYER_ORDER` becomes `... -> risks -> standards -> app`; `standards.py` joins pyproject's E501
+list; `EXTRACTED`, `LAYER_ORDER`, `VIEW_MODULES` and both whole-view-layer guard tuples gain
+`"standards.py"`.
+
+**The closure is census-exact — 1.00x.** Prefix and referrer walk both give 4 names / 161 ast
+lines. That is the second exact closure of the split (ADR-0378 was the first) and it still is not
+what assigns membership: ADR-0383's own family ran 2.27x its prefix and 4.0x by names. The walk
+decides; agreement is a coincidence of this family's naming.
+
+**First family whose seed surface is a single page GET.** `/standards` has **no export route at
+all** — the route census finds one route, and a whole-tree grep for the four names returns nothing
+outside `app.py`. The page's Excel affordance points at the *analysis* workbook, which
+`export_analysis` serves without calling a member. ADR-0378's page-only-anchor trap is therefore
+checked off by measurement rather than waved past. The free-name pass (ADR-0383's addition) found
+**zero** module-level constants owned by the block — a pass that finds nothing is still evidence.
+
+### The instrument bug: `ast` col_offset is a UTF-8 BYTE offset
+
+The probe's first run planted its markers by character-indexing `ast` column offsets. `ast` reports
+`col_offset` in bytes, and this region carries em-dashes, `·`, `⤓` and `⛶`, so every edit on a line
+with non-ASCII before the column landed several columns early. It emitted
+`) + "SFPROBE1"   if m.unit == "count":` — a SyntaxError at import, which is the cheap failure. On
+a different line shape the same skew lands inside a string literal and the probe measures a member
+it silently corrupted. Fixed by splicing on `bytes` and `ast.parse`-ing the result before writing:
+a probe that does not parse is not a measurement.
+
+### Verification
+
+The committed oracle rebuilt the inherited fingerprint on a second cold container with no prose
+archaeology — `[empty]` 60 `{200:41,400:17,422:2}`, four loaded stages of 147
+`{200:124,404:4,422:19}`, 648 total; determinism across two separate processes, 0 flapping.
+
+Probe 4/4 render-proven, ZERO dark (eleventh consecutive slice): every member moves exactly the
+four loaded-stage `GET /standards` labels, and `[empty] GET /standards` correctly does not move
+because the placeholder branch calls no member. Per-region byte identity held in-script, from disk,
+and again after `ruff --fix` + `ruff format` (region sha256 `39f910ab432c`; the formatter reported
+the file unchanged). 648/648 byte-identical pristine vs cut. Falsified in the new location 4/4 with
+exact label lists, every `def` also asserted absent from post-cut app.py. Multiset 60 added / 2
+removed — zero code lines removed; both removals are import-line rewrites from the dropped set.
+Battery 6/6 named (1/47 x4, 1/5, 1/6; the enumeration guard's 31st and 32nd consecutive catches).
+
+### The sweeps — nine dropped imports, the largest set yet
+
+`ruff --fix` removed **nine** names from app.py — `AuditCheck`, `metric_doc` and seven `compute_*`
+(`bri`, `cei`, `completion_performance`, `fei`, `float_ratio`, `hmi`, `sem`) — because the four
+movers were app.py's last consumers of all nine. Adjudicated safe by an AST, alias-agnostic check:
+zero callers reach any of them through `web.app`, with `create_app` (177 files) as the positive
+control. `compute_evm_indices` is NOT in the set: `export_evm` still reads it in app.py, which is
+the shared-import shape ADR-0377 recorded. One drop (`    metric_doc,`) came out of a parenthesized
+block — the shape ADR-0383's first sweep could not see — and was caught because this sweep compared
+the two trees' import SETS by AST from the start.
+
+Monkeypatch/setattr sweep: ZERO hits on all 29 names `standards.py` binds (196 setattr-style calls
+across 507 files; ADR-0378's control `compute_activity_makeup` at
+`test_manifest_projection_memo.py:74` reproduces). No ADR-0297 trap — the caller `standards_view`
+stays in app.py. Import sweep: ZERO readers, ZERO repoints. Source-text sweep: 13 app.py-source
+readers, zero repoints — the region carries no `drilldown.js`, no `"&mdash;"` and no
+`_TS_CAPTION_MARK`. It does carry two `panelkit.js` occurrences (a docstring mention in
+`_standards_section` plus the real `<script src>` in `_standards_body`), so app.py's count falls
+19 -> 17; every `panelkit` guard in the suite asserts over the RENDERED page, not app.py's source,
+so none is affected. The arithmetic is stated because an unexplained count is an unshipped one.
+
+Shipped code changed -> version bumped v1.0.191 -> v1.0.192 BEFORE the suite; wheel + nine
+installers rebuilt once after the last code change, PRECEDING the final suite run.
+
+### Next
+
+Phase 4 slice 21, zero-descent first: `wbs` (110) and `brief` (44) are what remains of the
+zero-descent set, then `scorecards` (151) and `card` (140) whose only shared names are route-only.
+Re-price by referrer walk at the time rather than trusting ADR-0383's table. `settings` (318),
+`briefing` (194) and `cei` (262) carry real descents and cost more than their line counts suggest.

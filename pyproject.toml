@@ -16,7 +16,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "schedule-forensics"
-version = "1.0.191"
+version = "1.0.192"
 description = "Local, NASA-themed forensic schedule-analysis tool (CUI-safe, offline)."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -235,6 +235,10 @@ select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
 # caption and the AI-read block ARE HTML string literals, already over-long inside app.py's
 # exempt region, so the exemption travels with them.
 "src/schedule_forensics/web/risks.py" = ["E501"]
+# `standards.py` is the /standards page family, extracted verbatim (ADR-0384) — the DCMA-14 and
+# Fuse/SEM section notes ARE HTML string literals, already over-long inside app.py's exempt
+# region, so the exemption travels with them.
+"src/schedule_forensics/web/standards.py" = ["E501"]
 
 [tool.ruff.format]
 # ruff >= 0.16 formats fenced ```python blocks inside Markdown. That is right for prose docs and
