@@ -13217,6 +13217,22 @@ satisfied by the string `ADR-0108`, so it asserts `"108 UIDs"` and was falsified
 row while leaving every ADR-0108 mention intact. This is also why the commit waited for the full
 suite rather than the targeted modules.
 
+### A fourth finding, caught on this PR's own CI
+
+`floor` went green with the skip guard live, which ANSWERS the experiment: the GitHub runner has
+Java, so the eight SSI/Acumen Monte-Carlo oracles have been running on every PR all along and are
+now protected. `setup-java` is not needed.
+
+Looking closely at why it passed surfaced a defect in the guard itself. GitHub's default `run:`
+shell is `bash -e {0}` — `-e` without `pipefail` — so `pytest ... | tee parity.txt` takes tee's exit
+code. The step replaced a bare `pytest -m parity` that failed the job on a parity failure; the piped
+version would not have. The skip guard had been bought at the price of the failure guard.
+`set -o pipefail` added to both jobs and commented as load-bearing, then verified as a three-branch
+truth table against the exact block shape: clean run 0, oracles skipped 1, a parity test failed 1
+(it was 0 before the fix). The browser job lacks this hole only because its tee'd check is preceded
+by a separate un-piped pytest step — replacing a bare run rather than adding beside it is what
+removed that protection.
+
 ### Deliberately not done
 
 `setup-java` was NOT pinned into CI. Action pins require a 40-hex SHA, and adding the JDK alongside

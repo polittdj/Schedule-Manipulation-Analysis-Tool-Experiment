@@ -76,6 +76,12 @@ jobs:
       # mistake as enumerating failure modes (the browser guard's own lesson).
       - name: Parity gate, and it must not silently skip (Acumen Fuse v8.11.0 + SSI golden, §6.B)
         run: |
+          # `set -o pipefail` is LOAD-BEARING, not hygiene. GitHub's default `run:` shell is
+          # `bash -e {0}` — `-e` WITHOUT pipefail — so `pytest ... | tee` yields TEE's exit code
+          # and a genuine parity FAILURE would exit 0. This step replaced a bare `pytest -m
+          # parity`, so without pipefail the skip guard would have been bought at the price of
+          # the failure guard: hardened against silently NOT RUNNING, opened to silently FAILING.
+          set -o pipefail
           pytest -m parity tests/parity tests/engine/test_ssi_leveled_uid152.py \
             tests/importers/test_msp_views.py -q -rs -p no:cacheprovider 2>&1 | tee parity.txt
           if grep -qE "^SKIPPED|[0-9]+ skipped" parity.txt; then
@@ -227,6 +233,12 @@ jobs:
       # mistake as enumerating failure modes (the browser guard's own lesson).
       - name: Parity gate at the declared floor, and it must not silently skip (§6.B)
         run: |
+          # `set -o pipefail` is LOAD-BEARING, not hygiene. GitHub's default `run:` shell is
+          # `bash -e {0}` — `-e` WITHOUT pipefail — so `pytest ... | tee` yields TEE's exit code
+          # and a genuine parity FAILURE would exit 0. This step replaced a bare `pytest -m
+          # parity`, so without pipefail the skip guard would have been bought at the price of
+          # the failure guard: hardened against silently NOT RUNNING, opened to silently FAILING.
+          set -o pipefail
           pytest -m parity tests/parity tests/engine/test_ssi_leveled_uid152.py \
             tests/importers/test_msp_views.py -q -rs -p no:cacheprovider 2>&1 | tee parity.txt
           if grep -qE "^SKIPPED|[0-9]+ skipped" parity.txt; then

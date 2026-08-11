@@ -81,6 +81,22 @@ satisfied by the string `ADR-0108`, so a gutted SSI row would still have passed.
 `"108 UIDs"`, and the falsification gutted the SSI row while leaving every `ADR-0108` mention intact
 to prove the guard was not passing incidentally.
 
+## Finding 4 — the guard's own first version traded one silence for another
+
+Caught on this PR's own CI, before merge. GitHub's default `run:` shell is `bash -e {0}` — `-e`
+**without** `pipefail` — so in `pytest ... | tee parity.txt` the step takes **tee's** exit code. The
+step this replaced was a bare `pytest -m parity`, which failed the job on a parity failure. The
+piped replacement did not: it would have been **hardened against the oracles silently not running,
+and opened to them silently failing.** Strictly worse for the case Law 2 cares about most.
+
+`set -o pipefail` is therefore load-bearing here, not hygiene, and is commented as such in both
+jobs. The `browser` job does not have this hole because its tee'd skip-check is preceded by a
+separate un-piped `pytest` step; replacing the bare run rather than adding to it is what removed
+that protection, and is the part worth remembering.
+
+Verified as a three-branch truth table against the exact block shape: clean run -> 0; oracles
+skipped -> 1; a parity test failed -> **1** (0 before the fix).
+
 ## Decision
 
 1. **Correct both parity records** to the measured truth, and state plainly that the entry had
@@ -111,6 +127,9 @@ to prove the guard was not passing incidentally.
 | resurrect the `⚠ stale, \`xfail\`` row | `…xfail_claim_stays_retired` |
 | gut the SSI row, leave `ADR-0108` intact | `…test_parity_report_states_the_headline_results` |
 | un-name the `ssi_uid67` oracle | `…test_parity_report_states_the_headline_results` |
+
+- **The guard block's own truth table**, run against the exact CI shape: clean → 0 · oracles
+  skipped → 1 · a parity test failed → **1** (it was **0** before `set -o pipefail`).
 
 - **The CI guard was proven end-to-end**, not just read: with `java` hidden the 8 oracle tests skip
   and the guard's own `grep` FIRES; against the real clean run it stays SILENT (no false positive).

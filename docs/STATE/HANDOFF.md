@@ -41,6 +41,19 @@
 > bare `"108"` is satisfied by the string **`ADR-0108`**; it now asserts `"108 UIDs"`, falsified by
 > gutting the SSI row with every `ADR-0108` mention left intact.
 >
+> **(4) THE GUARD'S OWN FIRST VERSION TRADED ONE SILENCE FOR ANOTHER — caught on this PR's CI.**
+> GitHub's default `run:` shell is `bash -e {0}`, `-e` WITHOUT pipefail, so `pytest … | tee` takes
+> **tee's** exit code. Replacing the bare `pytest -m parity` with a piped step meant a genuine
+> parity FAILURE would have exited 0 — hardened against the oracles silently not running, opened to
+> them silently failing. `set -o pipefail` added to both jobs and commented as load-bearing.
+> Three-branch truth table on the exact block: clean → 0 · skipped → 1 · **failed → 1** (was 0).
+> The `browser` job lacks this hole only because its tee'd check is preceded by an un-piped run —
+> **replacing a bare run rather than adding to it is what removed that protection.**
+>
+> **CI ANSWERED THE EXPERIMENT: `floor` PASSED with the skip guard live** ⇒ the runner HAS Java and
+> the 8 SSI/Acumen Monte-Carlo oracles HAVE been running on every PR all along. They are now
+> protected. `setup-java` is therefore NOT needed — do not add it.
+>
 > ## Verification
 > Parity gate full: **52 passed, 0 failed, 12m35s**; every skip in the unscoped run is
 > playwright/UI, **no parity test skipped**. Scoped: **52 passed, 0 skipped**. The two new guards

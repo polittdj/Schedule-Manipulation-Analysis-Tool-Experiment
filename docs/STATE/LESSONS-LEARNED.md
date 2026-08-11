@@ -468,6 +468,13 @@ those fixed defects in earlier "closed" fixes:
 - **A falsification that fails to fail may be the MUTATION's fault, not the guard's.** The first
   attempt changed one of several `108` occurrences and reported NOT PROVEN; the guard was fine, the
   mutation was partial. Check the mutation's own reach before concluding a guard is weak.
+- **A guard can trade one silence for another.** The parity skip-guard's first version piped pytest
+  into `tee`; GitHub's default `run:` shell is `bash -e` WITHOUT `pipefail`, so the step took tee's
+  exit code and a genuine parity FAILURE would have passed. It replaced a bare `pytest -m parity`
+  that did fail correctly — so the net effect was protection against not-running bought at the price
+  of protection against failing. **Generalizes (→ Part IV):** when you REPLACE a check rather than
+  add beside it, enumerate what the old one caught that the new one does not. Write the truth table:
+  clean → 0, skipped → 1, failed → 1.
 - **Do not fix and mask in the same change.** The tempting completion was to add `setup-java`
   beside the guard. That would have made the guard pass whether or not CI had *ever* run the
   oracles — destroying the one measurement worth having. Ship the guard alone; let CI answer.
