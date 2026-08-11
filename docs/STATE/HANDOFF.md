@@ -1,107 +1,117 @@
-# Handoff — 2026-08-10 (e) (phase 4 slice 20: the /standards family out; ADR-0384; v1.0.192)
+# Handoff — 2026-08-10 (f) (parity: the record understated the gate, and the gate could stop measuring; ADR-0385; v1.0.192 unchanged)
 
-> ## STATUS (current) — **pushed, draft PR open** on `claude/polaris-phase3-slice14-uvrdwf`
-> (this container's designated branch, created fresh from `main` 41fb122 after #568 squash-merged —
-> the branch NAME says slice14, the WORK is slice 20). **Shipped code changed** — version bumped
-> **v1.0.191 → v1.0.192** BEFORE the suite; wheel + nine installers rebuilt once after the last
-> code change (SCHEMA stays 2.11.0 — no persisted field changed). Highest ADR now **ADR-0384**.
+> ## STATUS (current) — **pushed, draft PR open** on `claude/polaris-phase3-slice14-jmti4s`
+> (this container's designated branch, restarted from `main` bb4035a after #569 squash-merged).
+> **NO version bump and NO installer rebuild** — `src/` is untouched; this is evidence, tests and
+> CI only, so the wheel + nine installers stay at **v1.0.192** and remain in lockstep. Highest ADR
+> now **ADR-0385**. SCHEMA stays 2.11.0.
 >
-> **Container note.** This session started attached to `polittdj/SMAT-SANDBOX` — the private
-> mirror, frozen at its 2026-07-11 mirror commit (v1.0.4, ADR-0194, app.py 12,209 lines, no split
-> modules at all). The resume prompt was ALSO five slices stale (it asked for slice 15:
-> resources/scurve/path/compare, all shipped as ADR-0379..0382). Operator authorized attaching
-> this repo with push access and branching fresh from `main`. **Verify which repo you are in
-> before believing a resume prompt** — `pyproject.toml`'s version and `ls src/schedule_forensics/web/`
-> settle it in one command each.
+> **Operator asked for whatever most improves accuracy/consistency vs Acumen, SSI and MS Project.**
+> The big levers are operator-gated (licences), so the question became: what is reachable from
+> here that actually moves *measured* fidelity? Measuring first found TWO things.
 >
-> **Slice 20: the /standards page family → NEW `web/standards.py`** (227 lines; **FOUR functions
-> in ONE contiguous block**, app.py 8764–8930) and **NO descent**. app.py **10,215 → 10,046**
-> wc-truth. `LAYER_ORDER` `… → risks → standards → app`; standards.py joins the pyproject E501
-> list; EXTRACTED + LAYER_ORDER + VIEW_MODULES + both whole-view-layer guard tuples gain
-> "standards.py".
+> **(1) The parity record claimed an SSI gap that had been CLOSED for a month.** Both
+> `case.json._deltas.ssi_driving_slack_golden` AND `docs/PARITY-REPORT.md` said SSI driving slack
+> had a stale golden and a live **`xfail`** "pending a fresh SSI export". Every clause was false:
+> `tests/fixtures/golden/ssi_uid143` **does not exist**, `test_ssi_driving_slack_exact` **does not
+> exist**, and the replacement export **arrived 2026-07-08** (ADR-0154/0155). What replaced it —
+> both IN the parity gate, both **exact by UniqueID** on the authoritative `Project5_TAMPERED.mpp`
+> — is `ssi_uid67` (Directional Path, Driving Slack ≤ 0 d: the exact **20-task** Path-01
+> membership, all at 0 days) and `ssi_uid145` (all-dependencies: **108 UIDs** + tiers 2/3/8/95).
+> So the tool's own record **UNDERSTATED measured SSI fidelity** — the expensive direction to be
+> wrong in for a testimony artifact. Corrected in both places.
 >
-> **The closure is CENSUS-EXACT (1.00×)** — prefix and referrer walk both give 4 names / 161 ast
-> lines. That is the second exact closure of the split (ADR-0378 was the first) and it is still
-> not what assigns membership: ADR-0383's own family ran 2.27× its prefix. **The walk decides;
-> agreement is a coincidence of naming.** This is also the first family whose seed surface is a
-> SINGLE page GET — `/standards` has **no export route at all** (route census + whole-tree grep
-> agree), so ADR-0378's page-only-anchor trap is checked off by measurement, not waved past. The
-> free-name pass found **zero** module-level constants owned by the block — a pass that finds
-> nothing is still evidence.
+> **(2) The Law 2 gate could silently stop measuring.** The `browser` job has carried a
+> *"Fail loudly if the proof silently skipped"* step since ADR-0305; **the parity gate had no
+> equivalent**, while being conditional three ways (`needs_java` on the SSI SRA Monte-Carlo
+> oracles via vendored MPXJ, `needs_mpp`/`needs_artifacts` on `00_REFERENCE_INTAKE/`, and a
+> `pytest.skip` inside `_oracle_workbook()`). Measured, not hypothesised: with `java` hidden,
+> **8 of the 52 parity tests vanish in 0.25 s and `pytest -m parity` exits 0** — a green badge
+> over a run that compared nothing to Acumen or SSI. Both the `test` and `floor` jobs' parity
+> steps are now the guarded form (run · `tee` · fail on ANY skip), **scoped to the parity PATHS**
+> because a bare `-m parity` also collects-and-skips the playwright modules and would
+> false-positive forever. Runtime unchanged — the guarded step REPLACES the old one.
+>
+>
+> **(3) A GUARD WAS PINNING THE STALE CLAIM.** Correcting the report turned
+> `tests/web/test_docs.py::test_parity_report_states_the_headline_results` RED: it asserted
+> `"107" in parity`, and `107` appeared **only** in the two retired `ssi_uid143` lines. A doc guard
+> was holding the false statement up — the easy "fix" was to put the stale number back. Repointed
+> to the live oracles, made stronger (2 assertions where there was 1), then tightened again because
+> bare `"108"` is satisfied by the string **`ADR-0108`**; it now asserts `"108 UIDs"`, falsified by
+> gutting the SSI row with every `ADR-0108` mention left intact.
+>
+> **(4) THE GUARD'S OWN FIRST VERSION TRADED ONE SILENCE FOR ANOTHER — caught on this PR's CI.**
+> GitHub's default `run:` shell is `bash -e {0}`, `-e` WITHOUT pipefail, so `pytest … | tee` takes
+> **tee's** exit code. Replacing the bare `pytest -m parity` with a piped step meant a genuine
+> parity FAILURE would have exited 0 — hardened against the oracles silently not running, opened to
+> them silently failing. `set -o pipefail` added to both jobs and commented as load-bearing.
+> Three-branch truth table on the exact block: clean → 0 · skipped → 1 · **failed → 1** (was 0).
+> The `browser` job lacks this hole only because its tee'd check is preceded by an un-piped run —
+> **replacing a bare run rather than adding to it is what removed that protection.**
+>
+> **CI ANSWERED THE EXPERIMENT: `floor` PASSED with the skip guard live** ⇒ the runner HAS Java and
+> the 8 SSI/Acumen Monte-Carlo oracles HAVE been running on every PR all along. They are now
+> protected. `setup-java` is therefore NOT needed — do not add it.
 >
 > ## Verification
-> **The oracle imported clean on a second cold container** — `python tests/web/oracle_corpus.py`
-> rebuilt the inherited fingerprint with no prose archaeology: `[empty]` 60 `{200:41,400:17,422:2}`,
-> four loaded stages of 147 `{200:124,404:4,422:19}`, **648** total; determinism ×2 processes
-> **0 flapping**. Probe **4/4 render-proven, ZERO dark** (eleventh consecutive) — every member
-> moves exactly the four loaded `/standards` labels; `[empty] GET /standards` correctly does NOT
-> move (placeholder branch calls no member). Per-region byte-identity IDENTICAL in-script, from
-> disk, and again after `ruff --fix` + `format` (sha256 `39f910ab432c`) · **648/648 byte-identical**
-> pristine vs cut · falsified in the new location **4/4 EXACT label lists** (every `def` also
-> asserted ABSENT from post-cut app.py) · multiset **60 added / 2 removed — ZERO code lines
-> removed** (both removals are import-line rewrites from the dropped set:
-> `…dcma_audit import AuditCheck, Citation` → `… import Citation`, and the parenthesized member
-> `    metric_doc,`). Battery **6/6 named** (1/47 ×4 · 1/5 · 1/6; the enumeration guard's 31st/32nd
-> consecutive catches).
->
-> **NEW TRAP — `ast` `col_offset` is a UTF-8 BYTE offset.** The probe's first run character-indexed
-> it and every marker on a line carrying `—`/`·`/`⤓`/`⛶` landed columns early, emitting
-> `) + "SFPROBE1"   if m.unit == "count":` — a SyntaxError at import, the cheap failure. On a
-> different line shape the same skew lands INSIDE a string literal and the probe measures a member
-> it silently corrupted. Splice on `bytes` and `ast.parse` the result before writing: **a probe
-> that does not parse is not a measurement.**
->
-> **The dropped-import sweep found NINE** — `AuditCheck`, `metric_doc` and seven `compute_*`
-> (`bri`, `cei`, `completion_performance`, `fei`, `float_ratio`, `hmi`, `sem`); the four movers
-> were app.py's last consumers of all nine. Adjudicated safe: **zero** callers reach any through
-> `web.app` (AST, alias-agnostic; positive control `create_app` = 177 files). `compute_evm_indices`
-> is NOT in the set — `export_evm` still reads it, the shared-import shape ADR-0377 recorded. One
-> drop (`    metric_doc,`) came out of a parenthesized block — ADR-0383's lesson held because the
-> sweep compared import SETS by AST from the start. Monkeypatch/setattr sweep **ZERO hits** on all
-> 29 bound names (196 setattrs / 507 files; ADR-0378's control reproduces). Import sweep **ZERO
-> readers, ZERO repoints**. Source-text sweep: 13 app.py-source readers, zero repoints — the region
-> carries no `drilldown.js`, no `"&mdash;"`, no `_TS_CAPTION_MARK`; it does carry TWO `panelkit.js`
-> occurrences (a docstring mention + the real `<script src>`) so app.py's count falls 19 → 17, and
-> every `panelkit` guard asserts over the RENDERED page, not app.py source.
+> Parity gate full: **52 passed, 0 failed, 12m35s**; every skip in the unscoped run is
+> playwright/UI, **no parity test skipped**. Scoped: **52 passed, 0 skipped**. The two new guards
+> **proven able to fail**, each by a NAMED test, restores md5-verified (cite `golden/ssi_uid999`
+> → `…never_cites_a_golden_that_does_not_exist`; resurrect the `⚠ stale, xfail` row →
+> `…xfail_claim_stays_retired`). The **CI guard proven end-to-end**: java hidden → 8 oracle tests
+> skip → its own `grep` FIRES; against the real clean run it stays SILENT (no false positive).
+> `case.json` edit is ONE line, structurally verified that only that `_deltas` key changed.
+> Report numbers were READ from the goldens first (uid67 = 20 UIDs / 20 at zero slack;
+> uid145 = 108 UIDs / tiers 2-3-8-95), never transcribed from prose.
 >
 > ## Next
-> **Phase 4 slice 21, zero-descent first** — `wbs` (110, 0/0) and `brief` (44, 0/0) are what is
-> left of the zero-descent set, then `scorecards` (151) and `card` (140) whose only shared names
-> are route-only. **Re-price by referrer walk at the time; do NOT assume ADR-0383's table.**
-> `settings` (318), `briefing` (194) and `cei` (262) carry real descents and cost more than their
-> line counts suggest. Then the standing queue unchanged: stored-SRA-fields MSPDI fixture ·
-> driving-corridor fixture · three page-lede-less pages (/briefing, /path, /compare) · /groups
-> Activities (ADR-0343) · installers vs known-good constraints · P80/P90 recurring-exception
-> residual · doc-drift sweep (PARITY-REPORT git-ignored claim + Project2 "CUI intake";
-> FINAL-REPORT blanket "exact match"; CLAUDE.md phase-3/E501 lines — `standards.py` now ALSO joins
-> the E501 list unpatched there) · ~150 MB RSS per loaded file · Phase 6 docs. **Operator:**
-> re-convert FX-03/04 (verify UID17=5d / UID131=1w before save) + re-run Fuse · one Acumen run on
-> a crafted sub-day-negative-float schedule · license · branch-protection contexts · proprietary
-> reruns · OR-04 · July mpp/ re-export decision.
+> **Deliberately NOT done, and it is the honest next step: `setup-java` is NOT pinned into CI.**
+> Action pins require a 40-hex SHA (`tests/guards/test_workflow_action_pins.py`), and adding the
+> JDK *with* the guard would have MASKED the answer. If CI has been running the oracles all along
+> the guard passes; if it has not, **this PR's CI is where that surfaces** — and the fix is a
+> SHA-pinned `actions/setup-java` in the `test` and `floor` jobs. **Watch this PR's parity step.**
+> Then: the in-tool metric dictionary still does not warn an analyst about the two *scope*
+> differences vs Acumen that `PARITY-REPORT.md` documents correctly — `SN01` (engine 126
+> schedulable vs Acumen's §E header 144 incl. 18 WBS summaries) and `missing_logic` (engine
+> all-activity 6/7 vs Acumen's report-scoped incomplete = DCMA01 4/5). Both are EXACT at their own
+> scope, so this is a consistency fix for side-by-side comparison, not an accuracy one: add the
+> reference-tool scope note to `web/help.py` and regenerate `docs/METRIC-DICTIONARY.md`.
+> Then phase 4 slice 21 (`wbs` 110, `brief` 44 zero-descent; re-price by referrer walk) and the
+> standing queue: stored-SRA-fields MSPDI fixture · driving-corridor fixture · three page-lede-less
+> pages · /groups Activities (ADR-0343) · installers vs known-good constraints · P80/P90 residual ·
+> doc-drift sweep (PARITY-REPORT's git-ignored claim + Project2 "CUI intake" are STILL unfixed —
+> this session only corrected the SSI section; FINAL-REPORT blanket "exact match"; CLAUDE.md
+> phase-3/E501 lines) · ~150 MB RSS per loaded file · Phase 6 docs.
+> **Operator (the only remaining ways to raise measured fidelity vs the three tools):** one Acumen
+> run on a crafted sub-day-negative-float schedule (closes the Negative-Float O1 gap the `.aft` has
+> NO formula for) · re-convert FX-03/04 (verify UID17=5d / UID131=1w before save) + re-run Fuse ·
+> license · branch-protection contexts · proprietary reruns · OR-04 · July mpp/ re-export decision.
 >
 > ## Carried forward
-> ADR-0353..0384 closed — do not re-open. **The oracle no longer needs rebuilding: import it.**
-> `python tests/web/oracle_corpus.py --out <dir>` renders the corpus; run it with
-> `PYTHONPATH=<tree>/src SF_ORACLE_FIXTURES=<repo>/tests/fixtures` against a pristine worktree and
-> the cut tree and diff. Regenerate the label list in the same commit as any route change. NEW
-> lessons this session: (1) **`ast` col_offset is a BYTE offset** — splice on bytes, re-parse before
-> writing; (2) **verify the REPO before believing the resume prompt** — a mirror and a stale prompt
-> agreed with each other and disagreed with reality; (3) **a census can be exact twice and still
-> not be membership** — the walk decides, every time. Standing traps unchanged (a page-only anchor
-> understates an export-feeding member · route-only referrers never force a descent · sweep by BARE
-> NAME · a diff is the wrong surface for an import question · a quiescence guard can match its own
-> shell · fingerprints carry their SCOPE · a normalizer that fails silently is a flap factory ·
-> mutate by OFFSET not permutation · never MEASURE a tree a battery is mutating · the monkeypatch
-> adjudication list grows as families move · census families can be phantoms · ruling-lag headers
-> move retroactively · the installer lockstep guard makes the rebuild a PREREQUISITE of the final
-> suite · patch the patcher with landed-count discipline · silent-405 setup · ADR-0259 dedupe vs
-> memo · round-half-even 240→0 · MSPDI re-derives Duration · env-defect masquerade · binding-wrap
-> spies · named-failure rule (and its own parser) · empty sweep needs a positive control ·
-> `grep -c` exits 1 on zero · three-tier parity evidence · B608 house nosec · pydantic 2.6 /
-> fastapi 0.110.2 floors · five playwright-only failures pre-existing, CI-invisible · oracle
-> telemetry normalized by VALUE · scratchpad harnesses hardcode the repo root · `python -m pytest`
-> prepends CWD to `sys.path` and bare `pytest` does NOT — CI runs the bare one · two ruffs on PATH,
-> run `python -m ruff`). A number written mid-session is not a measurement (wc decides).
+> ADR-0353..0385 closed — do not re-open. **The oracle no longer needs rebuilding: import it**
+> (`python tests/web/oracle_corpus.py --out <dir>`, `PYTHONPATH=<tree>/src
+> SF_ORACLE_FIXTURES=<repo>/tests/fixtures`). NEW lessons this session: (1) **a residual ledger is
+> a CLAIM, not a fact** — it was true when written and nobody re-read it when the gap closed; an
+> evidence record needs a guard exactly like code does; (2) **string-pinning a correction only
+> catches that instance** — pin the property that generalises (every golden cited BY PATH must
+> exist; a historical mention is a bare name, because a path is an instruction to go and look);
+> (3) **a conditional gate is a gate that can stop being one** — `needs_java` + green + 0.25 s is
+> indistinguishable from "passed" unless something asserts nothing skipped; (4) **do not fix and
+> mask in the same change** — adding `setup-java` beside the guard would have hidden whether CI
+> ever ran the oracles. Standing traps unchanged (a quiescence guard can match its own shell — it
+> did again here, adjudicate by scanning `/proc` for real python processes · `ast` col_offset is a
+> BYTE offset · a page-only anchor understates an export-feeding member · route-only referrers
+> never force a descent · sweep by BARE NAME · a diff is the wrong surface for an import question ·
+> fingerprints carry their SCOPE · a normalizer that fails silently is a flap factory · never
+> MEASURE or MUTATE a tree a suite is running against · patch the patcher with landed-count
+> discipline · named-failure rule and its own parser · empty sweep needs a positive control ·
+> `grep -c` exits 1 on zero · three-tier parity evidence · stored-vs-recomputed float is the
+> single most-repeated engine ambiguity — triage a slack variance there FIRST · B608 house nosec ·
+> pydantic 2.6 / fastapi 0.110.2 floors · five playwright-only failures pre-existing, CI-invisible ·
+> `python -m pytest` prepends CWD to `sys.path` and bare `pytest` does NOT — CI runs the bare one ·
+> two ruffs on PATH, run `python -m ruff`). A number written mid-session is not a measurement.
+
 
 # (prior) handoffs — archived
 
