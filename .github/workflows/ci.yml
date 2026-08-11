@@ -62,8 +62,27 @@ jobs:
       - name: Engine coverage gate (>=85%)
         run: coverage report --include='*/schedule_forensics/engine/*' --fail-under=85
 
-      - name: Parity gate (Acumen Fuse v8.11.0 + SSI golden, §6.B)
-        run: pytest -m parity -p no:cacheprovider
+      # A skip in the PARITY gate is a FAILURE, not a pass — the same rule the `browser` job's
+      # measured-box proof already enforces above, applied to Law 2's own gate. The strongest
+      # parity tier is conditional: the SSI SRA Monte-Carlo oracles convert `SRA Large Test
+      # File2.mpp` through the vendored MPXJ and carry `needs_java`, and three more carry
+      # `needs_mpp`/`needs_artifacts` on files in `00_REFERENCE_INTAKE/`. Lose java or lose an
+      # artifact and those tests SKIP — silently, and green — leaving a "parity gate passed"
+      # badge over a gate that never compared anything to Acumen or SSI.
+      #
+      # Scoped to the parity PATHS deliberately: a bare `pytest -m parity` also COLLECTS (and
+      # skips) the playwright modules, so a whole-run skip match would false-positive forever.
+      # Matches ANY skip rather than a reason string — enumerating skip reasons is the same
+      # mistake as enumerating failure modes (the browser guard's own lesson).
+      - name: Parity gate, and it must not silently skip (Acumen Fuse v8.11.0 + SSI golden, §6.B)
+        run: |
+          pytest -m parity tests/parity tests/engine/test_ssi_leveled_uid152.py \
+            tests/importers/test_msp_views.py -q -rs -p no:cacheprovider 2>&1 | tee parity.txt
+          if grep -qE "^SKIPPED|[0-9]+ skipped" parity.txt; then
+            echo "::error::the parity oracles SKIPPED — Law 2's gate did not run in full"
+            grep -E "^SKIPPED" parity.txt || true
+            exit 1
+          fi
 
       - name: Security (bandit)
         run: bandit -q -r src
@@ -194,8 +213,27 @@ jobs:
         run: pytest -q -p no:cacheprovider
 
       # Law 2: a reported number must not depend on which pydantic the resolver picked.
-      - name: Parity gate at the declared floor (Acumen Fuse v8.11.0 + SSI golden, §6.B)
-        run: pytest -m parity -p no:cacheprovider
+      # A skip in the PARITY gate is a FAILURE, not a pass — the same rule the `browser` job's
+      # measured-box proof already enforces above, applied to Law 2's own gate. The strongest
+      # parity tier is conditional: the SSI SRA Monte-Carlo oracles convert `SRA Large Test
+      # File2.mpp` through the vendored MPXJ and carry `needs_java`, and three more carry
+      # `needs_mpp`/`needs_artifacts` on files in `00_REFERENCE_INTAKE/`. Lose java or lose an
+      # artifact and those tests SKIP — silently, and green — leaving a "parity gate passed"
+      # badge over a gate that never compared anything to Acumen or SSI.
+      #
+      # Scoped to the parity PATHS deliberately: a bare `pytest -m parity` also COLLECTS (and
+      # skips) the playwright modules, so a whole-run skip match would false-positive forever.
+      # Matches ANY skip rather than a reason string — enumerating skip reasons is the same
+      # mistake as enumerating failure modes (the browser guard's own lesson).
+      - name: Parity gate at the declared floor, and it must not silently skip (§6.B)
+        run: |
+          pytest -m parity tests/parity tests/engine/test_ssi_leveled_uid152.py \
+            tests/importers/test_msp_views.py -q -rs -p no:cacheprovider 2>&1 | tee parity.txt
+          if grep -qE "^SKIPPED|[0-9]+ skipped" parity.txt; then
+            echo "::error::the parity oracles SKIPPED — Law 2's gate did not run in full"
+            grep -E "^SKIPPED" parity.txt || true
+            exit 1
+          fi
 
   # Stable aggregate status (named "check") so branch protection has a single
   # context to require regardless of the matrix dimensions.

@@ -435,6 +435,46 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-10 (f) — a residual ledger is a claim, not a fact; a conditional gate can stop being a gate (ADR-0385)
+
+- **The parity record understated the tool.** Asked for whatever most improves accuracy against
+  Acumen/SSI/MS Project, the first move was to *measure* rather than to fix — and measuring found
+  that both `case.json._deltas` and `docs/PARITY-REPORT.md` described an SSI driving-slack gap
+  with a live `xfail` that had been CLOSED for a month. The golden directory was deleted, the test
+  was deleted, and two replacement exports (`ssi_uid67` 20-UID Path-01 membership, `ssi_uid145`
+  108 UIDs) were passing in the gate. **Generalizes (→ Part V):** an evidence record is written
+  when a gap is real and nobody re-reads it when the gap closes. Understating fidelity is not the
+  harmless direction — for a testimony artifact it volunteers a weakness that does not exist.
+- **Pin the property, not the prose.** The obvious fix was to string-pin the corrected sentences.
+  That catches exactly one instance. The property that generalizes is *the parity evidence may not
+  cite a golden fixture that does not exist* — a path citation is an instruction to go and look,
+  so historical mentions get written as bare names instead. That guard would have caught this the
+  day the fixture was deleted.
+- **A conditional gate is a gate that can stop being one.** `pytest -m parity` is gate-locked by
+  the build contract, but eight of its 52 tests carry `needs_java` and three more carry
+  `needs_mpp`/`needs_artifacts`. Hiding `java` from `PATH`: **8 skipped in 0.25 s, exit 0.** A
+  green "Parity gate" badge over a run that compared nothing to Acumen or SSI. The `browser` job
+  had already learned this and carries a "fail loudly if the proof silently skipped" step; Law 2's
+  own gate did not. **Generalizes (→ Part IV):** every skip-conditional proof needs an assertion
+  that it ran, and it must match ANY skip — enumerating skip reasons is the same mistake as
+  enumerating failure modes.
+- **A guard can pin a decayed statement and make the correction look like a regression.** Removing
+  the false SSI row reddened a doc guard asserting `"107" in parity` — a number that existed ONLY in
+  the retired rows. The cheap response is to restore the stale number and stay green. **Generalizes
+  (→ Part V):** when a guard reddens on a correction, ask what the guard was actually pinning before
+  assuming the change is wrong. And prefer assertions that cannot be satisfied incidentally: bare
+  `"108"` is satisfied by `ADR-0108`, so the repointed guard asserts `"108 UIDs"` and was falsified
+  by gutting the SSI row with the ADR references left intact.
+- **A falsification that fails to fail may be the MUTATION's fault, not the guard's.** The first
+  attempt changed one of several `108` occurrences and reported NOT PROVEN; the guard was fine, the
+  mutation was partial. Check the mutation's own reach before concluding a guard is weak.
+- **Do not fix and mask in the same change.** The tempting completion was to add `setup-java`
+  beside the guard. That would have made the guard pass whether or not CI had *ever* run the
+  oracles — destroying the one measurement worth having. Ship the guard alone; let CI answer.
+- **The quiescence trap fired again**, exactly as the handoff warned: `pgrep -f pytest` reported a
+  live suite on a tree where none was running, because the checking shell carries the string in its
+  own argv. Adjudicated by scanning `/proc` for real python processes excluding self.
+
 ### 2026-08-10 (d) — a queue is a record of what was NOTICED, not of what exists (phase 4 scoping + slice 19, ADR-0383)
 
 - **The published list being exhausted was not the file being exhausted.** ADR-0382 correctly

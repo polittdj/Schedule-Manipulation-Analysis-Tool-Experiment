@@ -34,5 +34,10 @@ def test_final_report_maps_every_requirement_group() -> None:
 
 def test_parity_report_states_the_headline_results() -> None:
     parity = (DOCS / "PARITY-REPORT.md").read_text()
-    assert "107" in parity and "Net Finish Impact" in parity  # SSI 107/107 + the headline slip
+    # SSI per-UniqueID coverage + the headline slip. REPOINTED (ADR-0385): this asserted "107",
+    # a number that appeared ONLY in the retired `ssi_uid143` row — so the guard was pinning the
+    # stale claim in place, and correcting the report read as a regression. The live oracles are
+    # `ssi_uid145` (108 UniqueIDs, all-dependencies) and `ssi_uid67` (the 20-task Path-01 set).
+    assert "108 UIDs" in parity and "Net Finish Impact" in parity  # not bare "108": ADR-0108
+    assert "ssi_uid67" in parity and "ssi_uid145" in parity  # both live oracles named, not one
     assert "NOT_APPLICABLE" in parity  # cost EVM honestly NA, not fabricated

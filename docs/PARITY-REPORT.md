@@ -77,20 +77,29 @@ would require inventing holidays absent from the file or adopting a different ca
 is precisely the failure `docs/TEST-PROJECTS.md` anticipates ("if it shifts, the calendar didn't survive
 the trip").
 
-## SSI — driving slack (Project5, **live gate = focus UID 145**)
+## SSI — driving slack (Project5, **live gate = focus UID 67 + focus UID 145**)
 
-The live SSI driving-slack parity runs on the **authoritative** `Project5_TAMPERED.mpp`, focus UID 145
-("Issue final request for payment"), against the committed SSI Directional Path export
-`tests/fixtures/golden/ssi_uid145/case.json` (`test_ssi_driving_slack_uid145_exact`). The **prior focus
-UID 143** table (107 UIDs, 36/12/12 tiers) was validated against the *prior* Project5 (37 stored-critical)
-and is now **stale / `xfail`** (ADR-0112) pending a fresh SSI export for the current file.
+SSI driving-slack parity runs on the **authoritative** `Project5_TAMPERED.mpp` through **two** committed
+SSI Directional Path Tool exports, both asserted in the parity gate and both **exact by UniqueID**:
+
+- **focus UID 67** ("Pour roof slab"), Dependency Range = *Driving Slack ≤ 0 d* — pins the exact 20-task
+  Path-01 membership, every member at 0 days
+  (`tests/fixtures/golden/ssi_uid67/case.json`, `test_ssi_driving_slack_uid67_exact`).
+- **focus UID 145** ("Issue final request for payment"), *Get all dependencies* — 108 UniqueIDs plus the
+  tier counts (`tests/fixtures/golden/ssi_uid145/case.json`, `test_ssi_driving_slack_uid145_exact`).
+
+The **prior focus UID 143** golden was validated against the *prior* Project5 (37 stored-critical) and
+went stale when ADR-0112 established the authoritative file (4 stored-critical). The replacement export
+arrived 2026-07-08 (ADR-0154/0155); that golden and its `xfail` test were **removed from the tree**.
+**No SSI driving-slack `xfail` remains** — this section and the golden's own caveat went on describing
+one long after it was closed, understating measured SSI fidelity (ADR-0385).
 
 | Check | Golden (SSI) | Computed | Status |
 |---|---|---|---|
+| Path-01 membership (focus 67, Driving Slack ≤ 0 d) | 20 UIDs | 20 UIDs | ✅ exact, UID-for-UID |
 | Driving Slack (days) per UniqueID (focus 145) | 108 UIDs | 108 UIDs | ✅ exact, all 108 |
 | Driving / Secondary / Tertiary / Beyond tiers | 2 / 3 / 8 / 95 | 2 / 3 / 8 / 95 | ✅ exact |
 | Focus on driving path (144→145), slack 0 | yes | yes | ✅ |
-| ~~focus UID 143 (prior file)~~ | ~~107 / 36-12-12~~ | — | ⚠ stale, `xfail` (ADR-0112) |
 
 ## Acumen Fuse §A — Schedule-Quality summary (Project2 / Project5)
 

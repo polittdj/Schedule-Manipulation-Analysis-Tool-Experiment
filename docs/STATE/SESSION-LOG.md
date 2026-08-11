@@ -13158,3 +13158,75 @@ Phase 4 slice 21, zero-descent first: `wbs` (110) and `brief` (44) are what rema
 zero-descent set, then `scorecards` (151) and `card` (140) whose only shared names are route-only.
 Re-price by referrer walk at the time rather than trusting ADR-0383's table. `settings` (318),
 `briefing` (194) and `cei` (262) carry real descents and cost more than their line counts suggest.
+
+---
+
+## S-2026-08-10f — Parity: the record understated the gate, and the gate could stop measuring (ADR-0385)
+
+- **Session:** 2026-08-10 (f)   **Next session:** watch this PR's parity step; then the dictionary scope notes
+- **Model/mode:** claude-opus-5 (ADR-0240: parity-relevant work stays on the strongest model)
+- **Branch:** `claude/polaris-phase3-slice14-jmti4s` (restarted from `main` bb4035a after #569 squash-merged)
+- **Version:** **v1.0.192 unchanged** — `src/` untouched, so no wheel/installer rebuild is owed
+- **Highest ADR:** **ADR-0385**
+
+### What changed
+
+The operator asked for whatever most improves accuracy and consistency against Acumen Fuse, SSI and
+MS Project. The largest levers are operator-gated (they need licences), so the session measured
+first and found two reachable things.
+
+**(1) The parity record claimed an SSI gap that had been closed for a month.** Both
+`tests/fixtures/golden/project2_5/case.json`'s `_deltas` and `docs/PARITY-REPORT.md` stated that SSI
+driving-slack parity ran on a stale golden with a live `xfail` "pending a fresh SSI export". Verified
+against the tree, every clause was false: `tests/fixtures/golden/ssi_uid143` does not exist,
+`test_ssi_driving_slack_exact` does not exist, and the replacement export arrived 2026-07-08
+(ADR-0154/0155). SSI driving slack is now covered by two exports, both in the parity gate and both
+exact by UniqueID on the authoritative `Project5_TAMPERED.mpp`: `ssi_uid67` (Directional Path,
+Driving Slack <= 0 d, the exact 20-task Path-01 membership, every member at 0 days) and `ssi_uid145`
+(all-dependencies, 108 UniqueIDs plus tiers 2/3/8/95). The record understated measured SSI fidelity.
+Corrected in both places; the numbers written into the report were read out of the goldens first.
+
+**(2) The Law 2 gate could silently stop measuring.** The `browser` job has carried a "fail loudly
+if the proof silently skipped" step since ADR-0305. The parity gate had no equivalent while being
+conditional three ways: `needs_java` (the SSI SRA Monte-Carlo oracles convert through vendored
+MPXJ), `needs_mpp`/`needs_artifacts` on `00_REFERENCE_INTAKE/`, and a `pytest.skip` inside
+`_oracle_workbook()`. Measured with `java` hidden from `PATH`: **8 skipped in 0.25 s, exit 0** — a
+green parity badge over a run that compared nothing to Acumen or SSI. Both the `test` and `floor`
+jobs now run the guarded form (run, `tee`, fail on ANY skip), scoped to the parity paths because a
+bare `-m parity` also collects and skips the playwright modules. The guarded step replaces the old
+one, so runtime is unchanged.
+
+### Tests / parity
+
+Parity gate full: 52 passed, 0 failed, 12m35s; every skip in the unscoped run is playwright/UI and
+no parity test skipped. Scoped to the parity paths: 52 passed, 0 skipped. Two new guards added to
+`tests/test_parity_report_sync.py`, both proven able to fail by a NAMED test with md5-verified
+restores: citing `golden/ssi_uid999` reddens `test_the_parity_evidence_never_cites_a_golden_that_does_not_exist`,
+and resurrecting the `stale, xfail` row reddens `test_the_ssi_driving_slack_xfail_claim_stays_retired`.
+The CI guard was proven end-to-end rather than read: with java hidden the eight oracle tests skip and
+the guard's own grep fires, and against the real clean run it stays silent.
+
+### A third finding: a guard was pinning the stale claim
+
+The full suite caught what the targeted runs had not: correcting the report reddened
+`tests/web/test_docs.py::test_parity_report_states_the_headline_results`, which asserted
+`"107" in parity`. That number appeared ONLY in the two retired `ssi_uid143` lines, so a doc guard
+was holding the false statement in place and the path of least resistance was to restore the stale
+number. Repointed to the live oracles and made stronger, then tightened once more: bare `"108"` is
+satisfied by the string `ADR-0108`, so it asserts `"108 UIDs"` and was falsified by gutting the SSI
+row while leaving every ADR-0108 mention intact. This is also why the commit waited for the full
+suite rather than the targeted modules.
+
+### Deliberately not done
+
+`setup-java` was NOT pinned into CI. Action pins require a 40-hex SHA, and adding the JDK alongside
+the guard would have masked the very question the guard exists to answer. If CI has been running the
+oracles all along the guard passes; if it has not, this PR's parity step is where it surfaces.
+
+### Next
+
+Watch this PR's parity step. Then the in-tool metric dictionary: `PARITY-REPORT.md` documents the two
+Acumen scope differences correctly (SN01 engine 126 schedulable vs Acumen's 144 all-rows;
+missing_logic all-activity 6/7 vs report-scoped incomplete 4/5) but `web/help.py` does not, so an
+analyst comparing side by side has no in-tool explanation. Both are exact at their own scope, so that
+is a consistency fix, not an accuracy one.
