@@ -1,7 +1,7 @@
 # ADR-0386 — Phase 4 slice 21: the /wbs family, and the sweep that measured a stale copy of src/
 
 - **Status:** Accepted
-- **Date:** 2026-08-10
+- **Date:** 2026-08-11
 - **Continues:** ADR-0350 (the kernel), ADR-0351 (the descent rule — *not* fired), ADR-0352 (the
   span-scoped pre-flight probe), ADR-0365 (closure-before-cut; the named-failure rule), ADR-0372
   (the oracle recipe), ADR-0375 (the title-stripped TP4 pool), ADR-0377 (the stage-scoped

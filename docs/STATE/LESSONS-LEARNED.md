@@ -4342,7 +4342,7 @@ feature worked, and measure that.** Requirement 2 is amended accordingly (ADR-03
   constants hid from the call graph; running it here and reporting the empty result is what
   separates "this block owns no constants" from "nobody looked."
 
-### 2026-08-10 (g) — three instruments that were measuring themselves (ADR-0386)
+### 2026-08-11 — three instruments that were measuring themselves (ADR-0386)
 - **The sweep measured a stale copy of the tree.** The post-cut sweeps ran over 646 Python files
   where the previous slice's ran over 507. The extra 138 were `build/` — a snapshot of `src/` left
   by the previous slice's wheel build, carrying the *previous* module and not this one's. No

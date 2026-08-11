@@ -1,4 +1,4 @@
-# Handoff — 2026-08-10 (g) (phase 4 slice 21: the /wbs family out — app.py under 10k; ADR-0386; v1.0.193)
+# Handoff — 2026-08-11 (phase 4 slice 21: the /wbs family out — app.py under 10k; ADR-0386; v1.0.193)
 
 > ## STATUS (current) — **pushed, draft PR open** on `claude/polaris-phase3-slice14-uvrdwf`
 > (this container's designated branch, restarted from `main` **4825c33** after #569 AND #570

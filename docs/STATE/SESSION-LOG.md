@@ -13249,9 +13249,13 @@ is a consistency fix, not an accuracy one.
 
 ---
 
-## S-2026-08-10g — Phase 4 slice 21: the /wbs family out; app.py under 10k (ADR-0386)
+## S-2026-08-11 — Phase 4 slice 21: the /wbs family out; app.py under 10k (ADR-0386)
 
-- **Session:** 2026-08-10 (g)   **Next session:** phase 4 slice 22
+> Dating note: the preceding entry (#570, ADR-0385) is headed `S-2026-08-10f` but its commit
+> 4825c33 is stamped 2026-08-11 13:22 -0400. Left verbatim — it is that session's record. This
+> entry is dated from its own commit (f47ec75, 2026-08-11 17:44 -0400).
+
+- **Session:** 2026-08-11   **Next session:** phase 4 slice 22
 - **Model/mode:** claude-opus-5 (ADR-0240 protocol)
 - **Branch:** `claude/polaris-phase3-slice14-uvrdwf` (restarted from `main` 4825c33 after #569 and #570 squash-merged)
 - **Version:** v1.0.192 -> **v1.0.193** (shipped code changed; SCHEMA stays 2.11.0)
