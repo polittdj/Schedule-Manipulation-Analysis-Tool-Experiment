@@ -16,7 +16,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "schedule-forensics"
-version = "1.0.192"
+version = "1.0.193"
 description = "Local, NASA-themed forensic schedule-analysis tool (CUI-safe, offline)."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -239,6 +239,10 @@ select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
 # Fuse/SEM section notes ARE HTML string literals, already over-long inside app.py's exempt
 # region, so the exemption travels with them.
 "src/schedule_forensics/web/standards.py" = ["E501"]
+# `wbs.py` is the /wbs page family, extracted verbatim (ADR-0386) — the two pivot tables'
+# `<th scope=col>` header rows ARE HTML string literals, already over-long inside app.py's
+# exempt region, so the exemption travels with them.
+"src/schedule_forensics/web/wbs.py" = ["E501"]
 
 [tool.ruff.format]
 # ruff >= 0.16 formats fenced ```python blocks inside Markdown. That is right for prose docs and

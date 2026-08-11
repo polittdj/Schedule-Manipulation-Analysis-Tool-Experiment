@@ -52,6 +52,7 @@ import schedule_forensics.web.sra as sra_mod
 import schedule_forensics.web.ssi as ssi_mod
 import schedule_forensics.web.standards as standards_mod
 import schedule_forensics.web.trend as trend_mod
+import schedule_forensics.web.wbs as wbs_mod
 
 WEB = Path(app_mod.__file__).parent
 
@@ -78,6 +79,7 @@ EXTRACTED = {
     "compare.py": compare_mod,
     "risks.py": risks_mod,
     "standards.py": standards_mod,
+    "wbs.py": wbs_mod,
 }
 
 #: The view layer, lowest layer FIRST. A module may import only from those before it — that is
@@ -108,6 +110,7 @@ LAYER_ORDER = (
     "compare.py",
     "risks.py",
     "standards.py",
+    "wbs.py",
     "app.py",
 )
 
@@ -139,6 +142,7 @@ VIEW_MODULES = (
     "ssi.py",
     "standards.py",
     "trend.py",
+    "wbs.py",
 )
 
 
