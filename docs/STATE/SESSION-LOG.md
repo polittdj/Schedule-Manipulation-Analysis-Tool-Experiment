@@ -13344,3 +13344,89 @@ installers rebuilt once after the last code change, PRECEDING the final suite ru
 Phase 4 slice 22: `brief` (44, 0 descents) is the last zero-descent family, then `scorecards` (151)
 and `card` (140). Re-price by referrer walk, seeding `brief` on `/brief` + `/export/{fmt}/brief`
 ONLY. `mpxj_ref()` shallow-clone hardening joins the standing queue.
+
+## 2026-08-11 (b) — phase 4 slice 22: three page families out + one descent (ADR-0387, v1.0.194)
+
+Branch `claude/polaris-phase3-slice15-0153ur`, started AT `main` a14ced0 (#571 already
+squash-merged, so no restart was needed). The branch NAME says slice15; the WORK is slice 22.
+
+### What moved
+
+Three page families, extracted verbatim, plus one descent:
+`web/brief.py` (86 lines: `_BRIEF_XLSX_TITLE`, `_brief_body`) · `web/card.py` (184:
+`_count_bar_table`, `_card_body`) · `web/scorecards.py` (204: `_parse_committed_date`,
+`_sc_status_class`, `_scorecard_export_table`, `_scorecard_panel`, `_scorecards_body`) ·
+`_sources_line` DESCENDED into `components.py`. app.py 9,936 -> 9,593 wc-truth.
+
+Three in one slice because they are the zero-descent set the queue named and 339 mover lines is an
+ordinary slice size; the evidence is per family regardless.
+
+### The finding
+
+The first render probe scored `_brief_body` oracle-dark. It is not. The harness diffed
+`manifest.json`'s VALUES, and `oracle_corpus._iter_out` names each body file
+`sha256(LABEL)[:16].bin` — derived from the LABEL, not the content — so the compared value is
+constant across every run of every tree. The probe could not have reported a difference for any
+member. Fixed: it compares body bytes, and a positive control now runs first and ABORTS on zero,
+with a second independent check that the marker text reached a rendered body.
+
+### Closures
+
+The walk was rebuilt from scratch and first reproduced ADR-0386's re-priced table
+(`brief` 1/44/0, `briefing` 4/194/3) before being trusted. Then `brief` 1/44, `card` 2/140,
+`scorecards` 5/151. The prefix misses a member in two of three (`_count_bar_table`,
+`_sc_status_class`, `_parse_committed_date` — the last living 6,500 lines away at line 1206), and
+in the other direction a `brief` NAME census sweeps in all three `briefing` names.
+`_unschedulable_panel` was reached but is not a member (route-shared with `/analysis`).
+
+`_sources_line` descended because a MOVER calls it: `scorecards.py` may only import downward, so
+reaching back into `app.py` would close a cycle. Same resolution as ADR-0351/0376/0377.
+
+The exports split three ways, measured: `brief` contributes no movers (call graph and probe agree),
+`card` has no export route, `scorecards` DOES share the page's surface — `_scorecard_export_table`
+moves 8 export labels, the first such family since ADR-0378.
+
+### The oracle was extended
+
+`_parse_committed_date` was genuinely dark: `scorecards_buffer_json` REQUIRES `committed`, so the
+bare label 422s before the parser runs. Added one variant,
+`/api/scorecards/buffer?committed=2026-07-17&iterations=100` — the date is the TP4 pool's own
+deterministic finish, which makes the render non-degenerate (confidence 0.49, non-zero P70/P80).
+Corpus 648 -> 652; `render_oracle_labels.txt` regenerated in the same commit. The member then moves
+exactly those 4 labels and nothing else, so the variant is proven load-bearing (battery mutation 7).
+
+### Verification
+
+Probe 9/9 render-proven, ZERO dark (thirteenth consecutive slice). Fingerprint (scope: all five
+stages) `[empty]` 60 `{200:41,400:17,422:2}` + four loaded stages of 148 `{200:125,404:4,422:19}`
+= 652 total; determinism across two separate processes on BOTH trees, 0 flapping. 652/652
+byte-identical pristine vs cut. Per-definition byte-identity 10/10 IDENTICAL, verified by a
+separate script re-reading both trees from disk after `ruff --fix` + `ruff format`, with every
+`def` asserted absent from post-cut app.py. Multiset 152 added / 5 removed — ZERO code lines
+removed (2 dropped-import members + 3 deliberately rewritten `#:` lines). Battery 7/7 caught BY
+NAME (the enumeration guard's 35th and 36th consecutive catches). mypy strict clean over 142 files;
+`ruff check .` clean whole-tree.
+
+Sweeps (population stated: 511 .py files, build/dist/.venv/caches excluded): dropped-import TWO
+(`DiagnosticBrief`, `Scorecard` — zero readers through web.app, control `create_app` = 177 files);
+monkeypatch/setattr run TWICE — ZERO on the 10 MOVED names, but the moved names are the wrong
+population (the ADR-0297 trap fires on names a new module BINDS): re-swept over all 43 bound
+names it found ONE, `card.py` binding `non_summary`, patched as `app_mod.non_summary` by
+test_manifest_projection_memo.py:77. Adjudicated NOT a new trap and measured, not argued: the
+spy's subject `_dashboard_data` stays in app.py, and because that test asserts (0,0,0) on a WARM
+dashboard the cold case was forced — scope=24, makeup=6, non_summary=12, so the spy is live;
+import sweep ZERO live readers;
+source-text 9 files reference app.py by path, zero repoints, every marker guard classified by name.
+
+One non-verbatim byte: the `#:` block documenting BOTH chapter-12 export titles was split, because
+"Both name a REAL endpoint" stops being true of either file alone once one constant leaves.
+
+Shipped code changed -> version bumped v1.0.193 -> v1.0.194 BEFORE the suite; wheel + nine
+installers rebuilt once after the last code change, PRECEDING the final suite run.
+
+### Next
+
+Phase 4 slice 23. The zero-descent set is exhausted — all eight remaining families carry descents.
+`briefing` (4 movers / 194 / 3 descents) is next by size; `settings` (318) and `cei` (262) also
+carry real ones. Re-price by referrer walk; ADR-0383's table has now been wrong about `briefing`
+once. `mpxj_ref()` shallow-clone hardening remains queued.

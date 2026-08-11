@@ -435,6 +435,56 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-11 (b) — the instrument reported zero because it could not report anything else (ADR-0387)
+
+Phase 4 slice 22 cut three page families out of the monolith (`brief`, `card`, `scorecards`) and
+descended one shared name into `components.py`. The extraction itself was routine. The lesson was
+not.
+
+- **A probe whose failure mode is SILENCE cannot be sanity-checked by reading its output.** The
+  pre-flight render probe scored `_brief_body` as oracle-dark. It is not dark — `/brief` renders its
+  body at all four loaded stages. The harness had diffed `manifest.json`'s *values*, and the oracle
+  names each body file `sha256(LABEL)[:16] + ".bin"` — **derived from the label, not the content**.
+  That value is constant across every run of every tree. The comparison could not have reported a
+  difference for any member, including one that changed every byte of every page. It said "0 moved"
+  in exactly the voice a real discovery would use. This is the repo's most-repeated defect class —
+  a green check that could never fail — and it turned up *inside the instrument built to detect it*.
+- **The fix is a control that ABORTS, not one that prints.** The probe now compares body bytes, and
+  a positive control runs BEFORE any finding is trusted and halts the run if it moves nothing. A
+  second, independent check asserts the marker text actually reached a rendered body. Two
+  instruments that can fail differently beat one that can only fail silently.
+- **Check what a name is DERIVED from before you diff it.** A 16-hex filename looks
+  content-addressed. This one is label-addressed. The generalisation: an identifier that *looks*
+  like a digest is not evidence of one — read the function that mints it.
+- **A descent is forced by a MOVER, not by sharing.** `_sources_line` is called by eight page
+  routes (which never block a move — routes import downward) *and* by `_scorecards_body`. That last
+  one is what forced it down into `components.py`: a view module may only import downward, so
+  reaching back into `app.py` would have closed a cycle. Sharing alone is not a descent; a mover
+  calling the shared name is.
+- **An export's relationship to its page is per-family, and must be measured each time.** Three
+  families in one slice gave three different answers: `brief` — export contributes no movers (call
+  graph and render probe agree); `card` — no export route at all; `scorecards` — the export DOES
+  share the page's surface, and `_scorecard_export_table` moves eight export labels. A page-only
+  probe anchor would have measured that member at zero and called it dark.
+- **Extending the oracle is part of the method, not a deviation.** `_parse_committed_date` was
+  genuinely dark, because the route *requires* a `committed` query parameter and the corpus never
+  sent one — the bare label 422s before the parser's live path runs. The answer was to add the
+  render condition (one variant, corpus 648 → 652), not to write the member off as unreachable.
+  Choosing the pool's own deterministic finish as the date is what made the render non-degenerate.
+- **A shared doc-comment is not a movable unit.** `_BRIEF_XLSX_TITLE` sat under a `#:` block
+  documenting BOTH chapter-12 export titles: *"Both name a REAL endpoint…"*. The constant's bytes
+  moved verbatim, but the comment had to be split — leaving it intact would have left a false
+  sentence in `app.py` and no sentence at all in `brief.py`. Verbatim extraction governs CODE;
+  prose that describes a pair stops being true when the pair is broken.
+- **A plausible module name is not a measurement.** This slice's own ADR first stated that
+  `export_brief` re-derives through `reports/brief_tables.py`. Reading the route showed no such
+  module exists on that path — it renders via `ai.brief.brief_blocks`. Caught before it landed, but
+  it is the same failure as any other unverified claim, and it was *in the document whose job is to
+  be the record*.
+- **What worked:** rebuilding the referrer walk from scratch and checking it reproduced the PREVIOUS
+  slice's published numbers before trusting it on three families it had never seen. An instrument
+  that agrees with a known answer has earned one unknown.
+
 ### 2026-08-10 (f) — a residual ledger is a claim, not a fact; a conditional gate can stop being a gate (ADR-0385)
 
 - **The parity record understated the tool.** Asked for whatever most improves accuracy against
