@@ -1,6 +1,11 @@
 # ADR-0108 — EVM cost-loaded Acumen goldens + the in-progress data-date scheduling gap
 
-Status: accepted (2026-06-21)
+Status: accepted (2026-06-21). **Decision 2 superseded by [ADR-0391](0391-actual-start-is-a-scheduling-floor.md)
+(2026-08-12)**, which closed the understatement without the data-date inference this ADR reverted
+twice — a recorded `actual_start` is a forward floor, a stored-date read needing no ahead/behind
+judgement. ADR-0391 also corrects this ADR's *diagnosis* of the EVM2 residual: all six divergent
+EVM2 activities are 0% complete with no actuals at all, so that residual is a sub-day /
+segmented-calendar effect, not an in-progress data-date one, and it remains open.
 
 ## Context
 

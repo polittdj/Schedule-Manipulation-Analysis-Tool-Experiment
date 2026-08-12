@@ -54,18 +54,29 @@ the TP4 series, Project2, TP1, and TP3.
 | TP4_DataCenter_v2 | 2026-06-05 | 2026-06-05 | match |
 | TP4_DataCenter_v3 | 2026-06-05 | 2026-06-05 | match |
 | TP4_DataCenter_v4 | 2026-06-26 | 2026-06-26 | match |
-| TP1_Library_Progressed | 2026-09-16 | 2026-09-17 | −1 day (finish-date convention / minor calendar rounding) |
+| TP1_Library_Progressed | 2026-09-17 | 2026-09-17 | match (was −1 day; closed by ADR-0391) |
 | TP3_Outage_DCMA_Seeded | 2026-06-25 | 2026-06-30 | −5 days (to reconcile) |
-| TP4_DataCenter_v5 | 2026-06-26 | 2026-07-17 | **known**: committed MSPDI computes 06-26; Fuse ran the `.mpp` (see HANDOFF / TEST-PROJECTS v5 manifest) |
+| TP4_DataCenter_v5 | 2026-07-17 | 2026-07-17 | match (was the ADR-0108 understatement, CPM 06-26; closed by ADR-0391) |
 | TP2_Bridge_4x10_Calendar | 2026-11-04 | 2026-09-24 | **known**: MS Project dropped the 4×10 calendar's 4 holiday exceptions on `.mpp` save; the committed XML (4 holidays → 11-04) is authoritative (PARITY-REPORT R-04) |
 | Project2 | 2027-08-30 | 2027-09-14 | the committed golden + native `.mpp` both compute 08-30 (zero field diffs, per HANDOFF); the workbook's "Project2" differs — operator to confirm it is the same file/version |
 
-**Reading:** the tool reproduces Fuse's finish on the unambiguous TP4 v1–v4 cases and matches all
-completion counts; the gaps are either documented fixture/calendar caveats (TP2, v5), a ±1-day
-finish-date convention (TP1), or files in the operator's workbook that differ from the committed
-fixtures (Project2, TP3). **No CPM change was made** — the engine remains pinned to the curated
-Acumen-parity goldens (`pytest -m parity`, 10/10); these differences are file/definition matters,
-not engine regressions.
+**Reading:** the tool now reproduces Fuse's finish on **all five** TP4 snapshots and on TP1, and
+matches every completion count. The two remaining gaps are a documented calendar caveat (TP2 —
+MS Project dropped the 4×10 holiday exceptions on `.mpp` save) and files in the operator's workbook
+that differ from the committed fixtures (Project2, TP3).
+
+TP4 v5 and TP1 closed with **ADR-0391**, which made a recorded `actual_start` a forward floor in
+the CPM: a pure forward pass had been re-packing late-started work at its logic start and pulling
+the successor chain — and the project finish — back with it. That was a real CPM change, and it is
+gate-checked: `pytest -m parity` stays green, and the project finish is unchanged on all four
+genuine MS Project exports (Project2 2027-08-30, Project5 2028-01-25, EVM1 2012-09-12, EVM2
+2012-10-02). Against MS Project's own stored `EarlyFinish`, per-task disagreements fell 132 → 117
+with none in the engine-later direction.
+
+Note what this table is: Fuse read the `.mpp`s MS Project produced from the committed XML, so it is
+the **independent** oracle for the synthetic battery — whose own XML carries no MS Project computed
+fields (`tests/engine/test_fixture_provenance.py`). Pin a battery date against this column, not
+against the fixture's own `<Finish>`.
 
 ## Fuse reference — per-project summary (all 14 workbook projects)
 

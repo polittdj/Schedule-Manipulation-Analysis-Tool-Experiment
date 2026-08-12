@@ -13634,3 +13634,105 @@ A dedicated `web/backends.py` for the AI-backend kernel was considered and delib
 NOT moved (permitted, but it would widen the monkeypatch trap across the seven sites that still
 work). Both are queued. The mpxj shallow-clone trap was pre-empted again — `git fetch --unshallow`
 before the build, pin `42d92dc` — and the build still has no guard.
+
+## 2026-08-12 (d) — ADR-0108 closed: a recorded actual start is a scheduling floor (ADR-0391, v1.0.198)
+
+Branch `claude/polaris-data-date-fix-065mz7` from `main` b72f887. Target: **BAND 1 item 001** of
+`docs/PLAN/DEFINITION-OF-DONE-V2.md` — the engine understating a real slip, the one open item that
+made the tool report a number wrong in the direction that matters in a testimony context.
+
+**Reproduced first.** TP4 v1–v4 agree with their stored finishes; **v5 was 21 calendar days early**
+(engine 2026-06-26, stored 2026-07-17). Per-task diff located it at **UID 19**: `ActualStart
+2026-04-27`, but the pure forward pass scheduled it at its logic start **2026-01-26** — 91 days
+early — and the whole successor chain (21 → 24 → 25 → 26) came back with it. `cpm.py` had **zero**
+`status_date` references, as the audit said; but the data date turned out not to be the mechanism.
+
+**The operator interrupted, and was right.** Directive: establish whether TP4 needs regenerating to
+carry `Stop`/`Resume`, or whether TEST-PROJECTS.md's "MSP truth" needs re-deriving, *before*
+touching `cpm.py` — "attempting a CPM change against a fixture that can't express the input is how
+the first two attempts died." The first cut of the fix was reverted to pristine (`git checkout`,
+verified by grep) and the fixture question settled by measurement:
+
+* `tools/make_test_projects.py::_schedule()` does `t.start = st.started` — it **pins started tasks
+  at their actual dates** and its docstring asserts that is "exactly as MS Project would". So
+  reproducing v5's stored 07-17 with an actual-start floor was **circular on its own**.
+* **Marker census** (now the committed guard `tests/engine/test_fixture_provenance.py`): Project2/5
+  + EVM1/2 carry `EarlyStart`/`EarlyFinish`/`LateStart`/`LateFinish`/`Critical` on every task and
+  `Stop`/`Resume` on 28/35/4/6. TP1/TP3/TP4 carry **ZERO** of all of them, no `SaveVersion`, no
+  `CreationDate`. The battery is generator output, not an MS Project export.
+* **Regenerating TP4 with `Stop`/`Resume` would change no number**: ADR-0309's floor fires only on
+  `resume > stop`, and MS Project writes `resume == stop` for contiguous progress. The input this
+  fix reads is `ActualStart`, which the battery *does* carry.
+
+**The corroboration already existed, uncross-referenced.** `docs/FUSE-VALIDATION.md` records the
+operator's **Acumen Fuse** run over all 14 test projects; Fuse's computed finish for TP4 v5 is
+**2026-07-17**. MS Project rescheduled the XML on import, the operator saved the `.mpp`, Fuse read
+it. Generator and licensed reference tool agree — **the engine was the outlier**. The real doc
+defect was that neither TEST-PROJECTS.md's caveat nor the old guard pointed at that Fuse run, so
+the committed XML read as if it were itself an MS Project oracle. Both now cross-reference it.
+
+**The fix.** `_actual_start_bounds` floors a started task at its recorded start,
+`es = max(logic_es, offset(actual_start))`, in both forward-pass branches. A stored-date **read**,
+the third of the family with ADR-0034 and ADR-0309 — not the data-date **inference** ADR-0108
+reverted twice. A floor, never a pin, so it can only push work later; MSO/MFO pins keep priority.
+Floored UIDs go on a **new** `CPMResult.actual_start_driven`, deliberately NOT `date_driven` — that
+tuple drives a CONCERN telling the analyst to tie the activity into the network, which would be a
+false manipulation signal on every progressed schedule (724 activities on the reference file).
+
+**Measured against the real oracles.** Fuse agreement **4/5 → 5/5** on TP4; **TP1's −1-day gap
+closed too** (09-16 → 09-17). Both now ASSERTED in `test_fuse_reference.py` rather than excused;
+TP3's −5d stays open. **No project finish moved on any genuine MSPDI golden.** Engine-vs-MSP
+`EarlyFinish` disagreements **132 → 117**, **zero** engine-later. Only 2 activities floor on each
+of Project2/5, 0 on EVM1/2.
+
+**ADR-0108's headline case is misattributed — recorded, not fixed.** EVM2's residual is described
+there as in-progress data-date behaviour, but **all six divergent activities are 0% complete with
+no actuals**. The calendar has a lunch break (08:00–12:00, 13:00–17:00) and the chain diverges at
+UID 23, duration `PT12H`: engine 12:00, MSP 17:00, half-day propagating. That is DoD item 050's
+sub-day / segmented-calendar class. Why MSP spans a 12-hour duration across three days is **not yet
+known** and is named as unexplained rather than smoothed over. ADR-0108 now carries a
+superseded-by pointer that corrects both its decision and its diagnosis.
+
+**Verification.** Mutation battery **7/7 caught**, controls green, md5-verified restores (engine:
+delete the floor → 8 failures; read `task.start` instead of `actual_start` → 1; merge into
+`date_driven` → 2; drop the `> es` guard → 2. provenance: battery gains `EarlyFinish` → 1; loses
+`ActualStart` → 1; golden loses its computed schedule → 1). `mypy --strict` clean over 149 files —
+and it caught a real defect, `started` bound as both `int` and `datetime` in one scope. `ruff check
+.` clean whole-tree, `ruff format --check` 976 files, bandit exit 0, battery 73/73, installer 52/52,
+`pytest -m parity` green, full suite green.
+
+**The mpxj shallow-clone trap FIRED for real.** The container clone was shallow and the pin
+resolved to **79865bc** instead of the true **42d92dc** — caught by diffing against `origin/main`'s
+committed installers, fixed with `git fetch --unshallow` + rebuild. A second trap rode with it:
+piping `build_installers.py` into `head -3` SIGPIPE-killed the build after three files, leaving the
+`.ps1` set correct and `.sh`/`.command` stale; all nine pins are now verified identical. **DoD item
+117 (a shallow-clone guard in the build) is no longer theoretical** — it has now cost real time.
+
+Superseded `tests/engine/test_data_date_finish_gap.py` (it pinned the GAP) with
+`tests/engine/test_progressed_finish_fidelity.py` (it pins the AGREEMENT, against Fuse). The
+"As-scheduled (stored dates)" forecast method stays: a completed task's actual **finish** is still
+not anchored, which is the deliberate remaining half of ADR-0391.
+
+**Late finding — the gzipped goldens, and the regression we accepted.** The first blast-radius
+sweep globbed `tests/fixtures/**/*.xml` and so MISSED every `.mspdi.xml.gz` golden — including
+`Large_Test_File`, the operator's primary 2,126-activity reference. Measured before/after against
+MSP's own `EarlyFinish`: **Large_Test_File 826 → 164** disagreements with understatement **813 →
+138** (finish unchanged, −1d vs MSP), and `Large_Test_File_Leveled` 863 → 201. That is the "724
+completed tasks, median 1458 calendar days early" defect the cpm docstring has carried for months.
+The cost: `Hard_File_updated`'s project finish moves +21d → +29d from MSP's stored finish and
+`updated2` +20d → +35d. An **incomplete-only** floor was measured as the alternative — it keeps
+every Fuse win and spares `updated2`, but Large_Test_File stays at **826 → 826**, because the whole
+gain lives in the COMPLETED tasks. Accepted with the operator's decision, on three grounds: the
+Hard_File family was already +19..+42d off before this change, the drift is in the SAFE (later)
+direction, and the cause is the named remaining half (start anchored, finish still
+`start + duration`, so completed work that ran SHORT overshoots).
+
+Five test modules moved with it and each was re-verified rather than re-fitted: the 188→187
+counterfactual **+21 → +15 wd** at three sites, the `/evolution` + `/volatility` byte-frozen
+payloads (with `/driving-path`'s unchanged pair as the control), the brief's finish table
+(2026-06-26 → 2026-07-17), and `test_path_options`'s ADR-0251 divergence demonstrator, which moved
+UID 67 → 70. UID 67 stopped diverging *because* the floor anchors its path's started work —
+dropping a constraint cannot pull work earlier than the date it actually began — and 33 Project5 /
+39 Project2 targets still diverge, so the ADR-0251 contract holds; the test now asserts both facts.
+**Lesson: a fixture sweep's GLOB is part of its claim** — the same failure family as "a sweep's
+population/pattern is part of its claim", and it hid the single largest effect of the change.

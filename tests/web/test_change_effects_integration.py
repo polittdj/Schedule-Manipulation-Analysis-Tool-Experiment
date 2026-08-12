@@ -33,15 +33,16 @@ def test_integrity_shows_per_change_effect_on_the_target(client: TestClient) -> 
     assert "change-effects" in page
     assert "Effect of each change" in page
     # the removed 188→187 link shows its computed working-day effect (was hidden by removal).
-    # DELIBERATELY re-pinned +23 -> +21 (ADR-0322): this is an ENGINE-DERIVED counterfactual,
-    # and the counterfactual path crosses Hard_File's off-calendar tasks ('24 Hours' /
-    # 'Standard+Sat.' / the elapsed UID 146) — the base CPM now honors those calendars, so the
-    # single-calendar +23 carried the approximation ADR-0322 removed (old value reproduced on
-    # the pre-change engine via stash, new value verified stable on this tree).
+    # DELIBERATELY re-pinned +23 -> +21 (ADR-0322) -> +15 (ADR-0391). This is an ENGINE-DERIVED
+    # counterfactual, so a base-CPM change legitimately moves it: ADR-0322 was the off-calendar
+    # honoring, and ADR-0391 floors a started activity at its recorded actual_start, which holds
+    # part of this path in place that the old engine let slide back. Reverting the link therefore
+    # recovers less. Old value reproduced on the pre-change engine (git show b72f887), new value
+    # verified stable across two processes on this tree.
     assert (
         "restore removed FS link 188&rarr;187" in page or "restore removed FS link 188→187" in page
     )
-    assert "+21 wd" in page
+    assert "+15 wd" in page
 
 
 def test_ai_facts_carry_the_computed_counterfactual_not_zero(client: TestClient) -> None:
@@ -58,8 +59,10 @@ def test_ai_facts_carry_the_computed_counterfactual_not_zero(client: TestClient)
     facts = manipulation_forensics_facts(schedules, cpms, target_uid=155)
     joined = " ".join(f.text for f in facts)
     assert "188→187" in joined
-    # DELIBERATELY re-pinned +23 -> +21 (ADR-0322; same adjudication as the /integrity pin)
-    assert "+21 working day(s) LATER" in joined
+    # DELIBERATELY re-pinned +23 -> +21 (ADR-0322) -> +15 (ADR-0391); same adjudication as the
+    # /integrity pin above. The point of the test is unchanged and is the reason it exists: the
+    # fact base carries a NON-ZERO engine-computed effect, so the model cannot answer "no effect".
+    assert "+15 working day(s) LATER" in joined
     assert "hid that much slip" in joined
 
 

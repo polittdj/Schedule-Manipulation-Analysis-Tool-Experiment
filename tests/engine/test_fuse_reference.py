@@ -3,9 +3,16 @@
 The operator ran Acumen Fuse on a workbook of all the test projects and provided the exports
 (see docs/FUSE-VALIDATION.md). These tests pin the agreement on the fixtures that live in the
 repo: the tool's NORMAL (non-milestone) completed-activity count matches Fuse exactly, and the
-TP4 v1-v4 computed finish dates match Fuse. The known differences (TP2 calendar caveat, TP4 v5
-fixture/manifest, the workbook's Project2 differing from the committed golden) are documented in
+TP4 v1-v5 plus TP1 computed finish dates match Fuse. The remaining differences (TP2 calendar
+caveat, TP3, the workbook's Project2 differing from the committed golden) are documented in
 docs/FUSE-VALIDATION.md and deliberately not asserted here.
+
+This is the INDEPENDENT oracle for the synthetic battery. Those files are generator output and
+carry none of MS Project's computed fields, so their own ``<Finish>`` cannot confirm an engine
+rule (``tests/engine/test_fixture_provenance.py``); Fuse read the ``.mpp``s MS Project produced
+from them, so this column can. ADR-0391 is why TP4 v5 and TP1 are now asserted rather than
+excused: a recorded ``actual_start`` became a forward floor, closing a 21-day understatement on
+v5 and a 1-day gap on TP1.
 """
 
 from __future__ import annotations
@@ -29,17 +36,13 @@ _REFERENCE: dict[str, tuple[Path, int, str | None]] = {
         20,
         None,
     ),  # workbook's Project2 differs (08-30 vs 09-14)
-    "TP1_Library_Progressed": (TP / "TP1_Library_Progressed.xml", 4, None),  # -1d convention
+    "TP1_Library_Progressed": (TP / "TP1_Library_Progressed.xml", 4, "2026-09-17"),  # ADR-0391
     "TP3_Outage_DCMA_Seeded": (TP / "TP3_Outage_DCMA_Seeded.xml", 8, None),  # -5d, to reconcile
     "TP4_DataCenter_v1": (TP / "TP4_DataCenter_v1.xml", 1, "2026-06-05"),
     "TP4_DataCenter_v2": (TP / "TP4_DataCenter_v2.xml", 3, "2026-06-05"),
     "TP4_DataCenter_v3": (TP / "TP4_DataCenter_v3.xml", 5, "2026-06-05"),
     "TP4_DataCenter_v4": (TP / "TP4_DataCenter_v4.xml", 7, "2026-06-26"),
-    "TP4_DataCenter_v5": (
-        TP / "TP4_DataCenter_v5.xml",
-        7,
-        None,
-    ),  # committed MSPDI 06-26 vs Fuse .mpp 07-17
+    "TP4_DataCenter_v5": (TP / "TP4_DataCenter_v5.xml", 7, "2026-07-17"),  # ADR-0391
 }
 
 

@@ -9,8 +9,12 @@ dates that MSP honors. The engine now:
 * FLOORS an unstarted, **logic-unbound** auto task (no predecessors) at its stored start;
 * reports every honored divergence on ``CPMResult.date_driven`` (the cited
   "dates not supported by logic" finding);
-* leaves started/completed work and logic-true schedules untouched — the curated parity
+* leaves this rule off started/completed work and logic-true schedules — the curated parity
   goldens compute byte-identically (run ``pytest -m parity`` after any change here).
+
+Started work is anchored by a SEPARATE rule with a separate disclosure: ADR-0391 floors a task
+at its recorded ``actual_start`` and reports it on ``CPMResult.actual_start_driven``. Keep the
+two straight — this module owns the stored-``<Start>`` floor only.
 """
 
 from __future__ import annotations
@@ -76,8 +80,20 @@ def test_linked_auto_task_is_logic_driven_even_with_later_stored_start() -> None
     assert r.date_driven == ()
 
 
-def test_started_task_is_never_floored() -> None:
-    # actuals anchor the record — the floor applies to UNSTARTED work only
+def test_stored_start_floor_does_not_apply_to_started_work() -> None:
+    """ADR-0034's floor is UNSTARTED-only: a task's stored ``<Start>`` never floors started work.
+
+    Task 2 is the pure case — 50% complete with no recorded ``actual_start``, so nothing anchors
+    it and it packs at the project start exactly as before. ``date_driven`` stays empty on both:
+    the "dates not supported by logic" finding is about stored *plan* dates, and neither task
+    contributes one.
+
+    Task 1 carries a recorded ``actual_start`` and is therefore floored there instead — by
+    ADR-0391, a DIFFERENT rule reading a DIFFERENT field. ADR-0034 declined started work because
+    "actuals anchor the record"; ADR-0391 is that anchoring finally being applied. The two are
+    pinned together here so the boundary between them cannot blur: stored ``<Start>`` → unstarted
+    only; recorded ``actual_start`` → a floor wherever it exists.
+    """
     s = _sched(
         [
             _task(1, 2, start=_day(10), finish=_day(12), actual_start=_day(10)),
@@ -85,9 +101,24 @@ def test_started_task_is_never_floored() -> None:
         ]
     )
     r = compute_cpm(s)
+    assert r.timing(1).early_start == 10 * DAY  # the ACTUAL start, not the stored plan start
+    assert r.timing(2).early_start == 0  # no actual -> untouched, as ADR-0034 requires
+    assert r.date_driven == ()  # neither is a "date not supported by logic"
+    assert r.actual_start_driven == (1,)  # reported on its own channel instead
+
+
+def test_a_started_task_without_an_actual_start_is_still_never_floored() -> None:
+    """The ADR-0034 contract, isolated from ADR-0391 so it cannot be masked.
+
+    A percent-complete with no ``actual_start`` records progress but no instant to anchor to.
+    Nothing may floor it — not the stored ``<Start>``, not ADR-0391. Without this, deleting the
+    ``actual_start is None`` guard in ``_actual_start_bounds`` would still pass the test above.
+    """
+    s = _sched([_task(1, 2, start=_day(10), finish=_day(12), percent_complete=75.0)])
+    r = compute_cpm(s)
     assert r.timing(1).early_start == 0
-    assert r.timing(2).early_start == 0
     assert r.date_driven == ()
+    assert r.actual_start_driven == ()
 
 
 def test_floor_propagates_through_a_sparse_chain() -> None:

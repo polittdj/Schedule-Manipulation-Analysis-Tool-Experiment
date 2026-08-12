@@ -115,15 +115,22 @@ def test_ignore_options_diverge_by_page_family_as_documented(client: TestClient)
     ):
         assert client.get("/api/driving/Project5?target=67" + extra).json()["rows"] == base, extra
 
-    # family B — /driving-path tiers panel: the re-solve genuinely moves the driving tier
-    def tier_uids(extra: str = "") -> set[int]:
-        html = client.get("/driving-path?target=67&file=Project5.mspdi.xml" + extra).text
+    # family B — /driving-path tiers panel: the re-solve genuinely moves the driving tier.
+    # The demonstrating target moved 67 -> 70 under ADR-0391: a started activity is now floored
+    # at its recorded actual_start, so on UID 67's path the counterfactual no longer moves
+    # anything — dropping a constraint cannot pull work earlier than the date it actually began.
+    # That is the floor behaving correctly, not the contract lapsing: 33 Project5 targets (and 39
+    # on Project2) still diverge, and UID 70 is one of them.
+    def tier_uids(extra: str = "", target: int = 70) -> set[int]:
+        html = client.get(f"/driving-path?target={target}&file=Project5.mspdi.xml" + extra).text
         m = re.search(r"id=drivingTiersData>(.*?)</script>", html, re.S)
         assert m is not None
         blob = json.loads(m.group(1).replace("\\u003c", "<"))
         return {r["uid"] for r in blob["rows"] if r["tier"] == "driving"}
 
     assert tier_uids("&ignore_constraints=1&ignore_leveling=1") != tier_uids()
+    # and the anchoring above is itself asserted, so this file records WHY 67 was retired
+    assert tier_uids("&ignore_constraints=1&ignore_leveling=1", target=67) == tier_uids(target=67)
     # and the active-options banner names the divergence from the source tools
     page = client.get("/driving-path?target=67&file=Project5.mspdi.xml&ignore_leveling=1").text
     assert "counterfactual view" in page and "will not match those tools" in page

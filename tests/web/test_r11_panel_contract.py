@@ -399,8 +399,13 @@ JSON_BLOBS = {
         "drivingTiersData": ("558abbe2ec446a340ffb710591390389", 624),
         "dpData": ("2bde4ed12211f191120e6cfbe1e1dcd2", 7360),
     },
-    EVO: {"whatifAddedData": ("05b0b79b8e18b4e41957d591597d7c08", 702)},
-    VOL: {"volData": ("e7ebbdd72e837aae35807d3c33893b27", 2026)},
+    # Re-frozen for ADR-0391 (an ENGINE change, i.e. exactly the Law-2 event this pin is for —
+    # NOT a markup round). Flooring a started activity at its recorded actual_start makes TP4's
+    # UID 19 enter the what-if with ``why_entered: slack_consumed`` and adds the corresponding
+    # volatility rows; both payloads grow. The /driving-path pair below is UNCHANGED, which is the
+    # control: only the payloads fed by the progressed TP4 series moved.
+    EVO: {"whatifAddedData": ("677aeba6ee1a7d66901167d9f5d0382d", 796)},
+    VOL: {"volData": ("56d0047fe531f7e0232bfce8b3a50f30", 2280)},
     PATH: {},
 }
 
