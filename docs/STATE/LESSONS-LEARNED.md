@@ -481,6 +481,21 @@ not.
   module exists on that path — it renders via `ai.brief.brief_blocks`. Caught before it landed, but
   it is the same failure as any other unverified claim, and it was *in the document whose job is to
   be the record*.
+- **A durable doc nobody's ritual OWNS goes stale silently.** `docs/STATE/NEXT-SESSION-PROMPT.md`
+  was EIGHT SLICES out of date — last refreshed at slice 14 / v1.0.186 / ADR-0378, while the repo
+  was at slice 21 / v1.0.193 / ADR-0386. It is the file the kickoff prompt is pasted from, so this
+  session was handed "resume at slice 15" for work finished five slices earlier, and only the
+  auto-injected handoff caught it. The file's own header says to refresh it whenever the queue
+  changes; seven consecutive sessions didn't, because nothing FAILS when it rots. The handoff has
+  a drift guard (`tests/test_state_docs.py`) and never rots; this file has none and always does.
+  **The docs that stay current are the ones a test fails over.**
+- **Check what "normal" is before calling something slow.** The CI `test` jobs ran 61 minutes and
+  I treated that as anomalous, because the kickoff prompt said "~30 min". Four consecutive prior
+  runs measured 57.5 / 60.7 / 61.8 / 62.5 minutes — ~60 is the norm and the estimate was wrong by
+  2×. The structural reason was available the whole time: `floor` runs the same suite WITHOUT
+  coverage in 22 minutes, while `test` adds coverage instrumentation, a second pytest for the
+  parity gate, mypy, bandit and pip-audit. One query against history beat three rounds of
+  speculation — **a baseline is cheaper to look up than to guess at.**
 - **What worked:** rebuilding the referrer walk from scratch and checking it reproduced the PREVIOUS
   slice's published numbers before trusting it on three families it had never seen. An instrument
   that agrees with a known answer has earned one unknown.

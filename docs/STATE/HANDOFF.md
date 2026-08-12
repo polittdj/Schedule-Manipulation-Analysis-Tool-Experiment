@@ -105,6 +105,19 @@
 > re-run Fuse · one Acumen run on a crafted sub-day-negative-float schedule · license ·
 > branch-protection contexts · proprietary reruns · OR-04 · July mpp/ re-export decision.
 >
+> **Two durable-state fixes landed after CI went green** (docs-only, second CI cycle spent
+> deliberately). (1) `docs/STATE/NEXT-SESSION-PROMPT.md` was **EIGHT SLICES STALE** — last
+> refreshed at slice 14 / v1.0.186 / ADR-0378 — and is the file the kickoff prompt is pasted from,
+> so THIS session was handed "resume at slice 15" for work finished five slices earlier. Rewritten
+> to slice-22 state. It has no drift guard (unlike HANDOFF, which `tests/test_state_docs.py`
+> pins), which is exactly why it rotted: **the docs that stay current are the ones a test fails
+> over.** Refreshing it is part of session close. (2) Its CI timing was wrong by 2×: **CI is ~60
+> MINUTES end-to-end**, measured over four consecutive runs (57.5 / 60.7 / 61.8 / 62.5), and the
+> two `test` jobs take ~61 min each because they add coverage instrumentation + a SECOND pytest
+> for the parity gate + mypy/bandit/pip-audit on top of what `floor` runs in 22 min. `check` is a
+> gate job (`needs: [test, floor]`) and registers only after they finish. CI has
+> `cancel-in-progress: true` — never push while a run you need the signal from is in flight.
+>
 > ## Carried forward
 > ADR-0353..0387 closed — do not re-open. **The oracle is committed: import it, don't rebuild it.**
 > `python tests/web/oracle_corpus.py --out <dir>` with `PYTHONPATH=<tree>/src

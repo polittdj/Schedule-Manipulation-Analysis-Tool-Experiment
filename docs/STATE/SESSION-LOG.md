@@ -13430,3 +13430,19 @@ Phase 4 slice 23. The zero-descent set is exhausted — all eight remaining fami
 `briefing` (4 movers / 194 / 3 descents) is next by size; `settings` (318) and `cei` (262) also
 carry real ones. Re-price by referrer walk; ADR-0383's table has now been wrong about `briefing`
 once. `mpxj_ref()` shallow-clone hardening remains queued.
+
+### Post-green addendum
+
+All seven CI checks passed on PR #572 (check · floor · linux · windows · browser · test 3.11 ·
+test 3.13). Two durable-state fixes then landed as a docs-only follow-up commit, spending a second
+CI cycle on purpose:
+
+1. `docs/STATE/NEXT-SESSION-PROMPT.md` was EIGHT SLICES stale (slice 14 / v1.0.186 / ADR-0378)
+   and is the file the kickoff prompt is pasted from — it handed this session "resume at slice 15"
+   for work finished five slices earlier. Only the auto-injected handoff caught it. Rewritten to
+   slice-22 state. It carries no drift guard, unlike HANDOFF.md; that is why it rotted for seven
+   consecutive sessions.
+2. Its CI timing was wrong by 2×. Measured over four consecutive runs, CI is ~60 minutes
+   end-to-end (57.5 / 60.7 / 61.8 / 62.5); the two `test` jobs are ~61 min each because they add
+   coverage instrumentation, a second pytest for the parity gate, mypy, bandit and pip-audit on
+   top of the suite `floor` runs without coverage in 22 min.
