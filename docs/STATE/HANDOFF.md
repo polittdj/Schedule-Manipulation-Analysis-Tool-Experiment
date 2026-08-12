@@ -1,6 +1,23 @@
 # Handoff — 2026-08-12 (c) (phase 4 slice 25: the LAST page family out; ADR-0390; v1.0.197)
 
-> ## STATUS (current) — **pushed, draft PR open** on `claude/polaris-settings-extraction-kvhryw`
+> ## STATUS (current) — **MERGED.** #575 (slice 25) and #576 (probe fixture · SRA-vs-SSI
+> measurements · Definition of Done v2 · the parity-oracle fix) are both in `main` at **b72f887**,
+> all CI green. The branch has been restarted from the new `main`. **Read
+> `docs/PLAN/DEFINITION-OF-DONE-V2.md` before planning anything** — the operator has declared a
+> second finish line and made all **117** items REQUIREMENTS ("I don't want to skip anything"),
+> banded by how wrong the tool is rather than by effort. The old standing queue is superseded.
+>
+> Landed after the slice-25 text below: **(a)** `docs/PLAN/SRA-VS-SSI-LARGE-TEST-FILE2.md` — two of
+> the operator's three SRA complaints REVERSE on measurement (our Mean/StdDev are within 3 days and
+> 3.4% of SSI's OWN exported distribution; the sensitivity VALUES match to one decimal) while the
+> third is real and under-reported (the tornado mislabels risk drivers with their host task's name;
+> the run is ~2.9 min with **63% of the work provably irrelevant** to the focus event).
+> **(b)** The Negative-Float probe fixture + guard, awaiting ONE operator Fuse run.
+> **(c)** A parity-oracle defect fixed: `test_sra_ssi_oracle_uid152.py` chose its input with
+> `sorted(glob(...))[-1]`, so the operator's second SSI upload silently re-pointed every assertion
+> at a different distribution and reported as a numeric regression. Pinned by name now.
+>
+> (historical, slice 25) — originally pushed as a draft PR on `claude/polaris-settings-extraction-kvhryw`
 > (this container's designated branch). It started AT `main` **c03bf28** — #574 had already
 > squash-merged, so no restart was needed. **Shipped code changed** — version bumped
 > **v1.0.196 → v1.0.197** BEFORE the suite; wheel + nine installers rebuilt once after the last
