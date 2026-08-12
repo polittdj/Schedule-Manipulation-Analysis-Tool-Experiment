@@ -9,14 +9,29 @@ deliberate manipulation. The DCMA/float/driving/manipulation counts in the table
 and the two sides should agree (definitional residuals are flagged where they exist;
 `docs/PARITY-REPORT.md` documents the known classes).
 
-> **"Sched. finish" caveat (audit F-02).** The *Sched. finish* column is the **MS-Project-stored**
-> finish (the date the source file carries), **not** necessarily the engine's pure-logic CPM finish.
-> They agree on logic-consistent files but diverge on out-of-sequence / progressed schedules, where
-> the CPM does not floor in-progress remaining work at the data date (ADR-0108). The clearest case is
-> **TP4 v5: stored 2026-07-17 vs CPM 2026-06-26** — a real ~3-week understatement now **guarded** by
-> `tests/engine/test_data_date_finish_gap.py` and **surfaced** in the forecast page's new
-> "As-scheduled (stored dates)" method. The general battery test only asserts `cpm.project_finish > 0`,
-> so the per-file finish *dates* are not otherwise test-pinned.
+> **Where the "Sched. finish" column comes from (audit F-02 — closed by ADR-0391).** These are the
+> dates the committed XML carries, and they are written by `tools/make_test_projects.py`, whose
+> scheduler pins a started activity at its actual dates. They are **constructed truth, not an MS
+> Project export**: the battery carries none of MS Project's own computed fields (`EarlyStart`,
+> `EarlyFinish`, `TotalSlack`, `Critical`) and no `Stop`/`Resume` — pinned in both directions by
+> `tests/engine/test_fixture_provenance.py`. So never read a value out of these files as "what MS
+> Project computed", and never confirm an engine rule against a file whose dates were written by
+> that same rule.
+>
+> The independent corroboration is the operator's **Acumen Fuse** run over the whole battery, in
+> [`FUSE-VALIDATION.md`](FUSE-VALIDATION.md): MS Project reschedules the XML on import, the operator
+> saved the `.mpp`, and Fuse computed the finishes. **Fuse agrees with this column on all five TP4
+> snapshots.** That agreement — not the XML alone — is what makes a TP4 finish evidence.
+>
+> **TP4 v5 was the exception until ADR-0391.** The engine computed 2026-06-26 against Fuse's
+> 2026-07-17: a real ~3-week understatement, because a pure forward pass re-packed the late-started
+> UID 19 at its logic start and dragged the whole successor chain back with it. Making a recorded
+> `actual_start` a forward floor closed it — the engine now matches Fuse on **5/5** TP4 snapshots
+> (and on TP1, whose former −1-day gap closed with it), pinned by
+> `tests/engine/test_progressed_finish_fidelity.py`. The forecast page's "As-scheduled (stored
+> dates)" method stays, because a completed activity's actual **finish** is still not anchored. The
+> general battery test only asserts `cpm.project_finish > 0`; the per-file dates are pinned by the
+> modules named above and by `tests/engine/test_fuse_reference.py`.
 
 - **Files:** `tests/fixtures/test_projects/TP*.xml` (committed; the only
   schedule-format path allowed in git — synthetic fixtures only, Law 1).
@@ -30,7 +45,7 @@ and the two sides should agree (definitional residuals are flagged where they ex
 | `TP1_Library_Progressed.xml` | Ragged actual times → day-floored driving tiers (ADR-0032), completion performance, 3-method forecast | 2026-03-31 | 2026-09-17 **09:00** |
 | `TP2_Bridge_4x10_Calendar.xml` | 4×10 Mon–Thu calendar + 4 holidays → calendar-true day math, float bands, 44-day boundary | 2026-04-06 | 2026-11-04 |
 | `TP3_Outage_DCMA_Seeded.xml` | Every DCMA-14 check with hand-seeded, counted violations | 2026-04-30 | 2026-06-26 |
-| `TP4_DataCenter_v1..v5.xml` | Trend, Compare, Bow Wave/CEI, forecast drift, manipulation signals | monthly, Jan–May 2026 | v1–v3: 06-05 · v4: 06-26 · **v5: stored 07-17 (CPM 06-26 — see caveat)** |
+| `TP4_DataCenter_v1..v5.xml` | Trend, Compare, Bow Wave/CEI, forecast drift, manipulation signals | monthly, Jan–May 2026 | v1–v3: 06-05 · v4: 06-26 · v5: 07-17 |
 
 ## Getting the files into MS Project
 
@@ -190,7 +205,7 @@ use **"Get all dependencies"** for the apples-to-apples comparison.
 
 Also worth eyeballing on this file: the report's **Completion performance** panel
 (2 ahead / 2 on / 1 behind, avg 1.5 d early / 5 calendar-days late, MEI 1.00) and
-**/forecast** (CPM 2026-09-16 · completion-rate 2027-01-31 · IEAC(t) 2027-09-21 — a
+**/forecast** (CPM 2026-09-17 · completion-rate 2027-01-31 · IEAC(t) 2027-09-21 — a
 deliberately wide spread: progress is slower than plan).
 
 ## TP2 — Bridge (4×10 calendar + holidays) → verify with **Fuse** + MS Project dates
@@ -250,7 +265,15 @@ Same 14-task project statused monthly (Jan–May 2026). Load **all five** into t
 
 ## What a discrepancy means
 
-These files are constructed truth: dates were computed with MS Project's own working
--time semantics, and the tool's numbers are pinned by tests. So a disagreement between
-the tool and SSI/Fuse on a TP file is a real, reportable finding about one of the two
-sides — not noise. Send the file name, the check/UID, and both numbers.
+These files are constructed truth: `tools/make_test_projects.py` computes their dates
+with MS Project's working-time semantics, MS Project reschedules them on import, and
+the operator's Acumen Fuse run over the resulting `.mpp`s corroborates the finishes
+([`FUSE-VALIDATION.md`](FUSE-VALIDATION.md)). The tool's numbers are pinned by tests.
+So a disagreement between the tool and SSI/Fuse on a TP file is a real, reportable
+finding about one of the two sides — not noise. Send the file name, the check/UID, and
+both numbers.
+
+One caution when a disagreement is about a *date*: the committed XML is generator
+output and carries none of MS Project's own computed fields, so it cannot by itself
+settle which side is right — reach for the Fuse column or a fresh MS Project run
+instead. `tests/engine/test_fixture_provenance.py` keeps that distinction honest.

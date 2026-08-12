@@ -1,140 +1,124 @@
-# Handoff — 2026-08-12 (c) (phase 4 slice 25: the LAST page family out; ADR-0390; v1.0.197)
+# Handoff — 2026-08-12 (d) (ADR-0108 closed: a recorded actual start is a scheduling floor; ADR-0391; v1.0.198)
 
-> ## STATUS (current) — **pushed, draft PR open** on `claude/polaris-settings-extraction-kvhryw`
-> (this container's designated branch). It started AT `main` **c03bf28** — #574 had already
-> squash-merged, so no restart was needed. **Shipped code changed** — version bumped
-> **v1.0.196 → v1.0.197** BEFORE the suite; wheel + nine installers rebuilt once after the last
-> code change (SCHEMA stays 2.11.0). Highest ADR now **ADR-0390** (re-fetched before numbering
-> AND before committing).
+> ## STATUS (current) — **pushed, draft PR open** on `claude/polaris-data-date-fix-065mz7`
+> (this container's designated branch). It started AT `main` **b72f887** (#576 already
+> squash-merged, no restart needed). **Shipped code changed** — version bumped **v1.0.197 →
+> v1.0.198**; wheel + nine installers rebuilt (SCHEMA stays 2.11.0). Highest ADR now **ADR-0391**
+> (re-fetched before numbering AND before committing).
 >
-> **Slice 25: the `settings` family → `web/settings.py` (525 lines), TWELVE names / 437 ast
-> lines, ZERO forced descents.** `app.py` **8,482 → 8,037** wc-truth (17,197 when phase 3 began).
-> `LAYER_ORDER` `… → volatility → settings → app`; `settings.py` joins pyproject's E501 list,
-> `EXTRACTED`, `LAYER_ORDER`, `VIEW_MODULES` and BOTH whole-view-layer guard tuples.
+> **BAND 1 item 001 of `docs/PLAN/DEFINITION-OF-DONE-V2.md` is CLOSED** — the one open item that
+> made the tool report a number wrong in the direction that matters. It was **not** the data date.
 >
-> **OUTSIDE THE FENCED `groups`, `app.py` NO LONGER HOLDS A PAGE FAMILY.** Phase 4's
-> page-family work is DONE. The monolith split's remaining work is not "another slice".
+> ## The mechanism was never the data date — it was an ignored ActualStart
+> TP4 v5's UID 19 carries `ActualStart 2026-04-27`; the pure forward pass re-packed it at its logic
+> start **2026-01-26** (91 days early) and dragged the successor chain — and the project finish —
+> back with it. 65d late against 50d float → the finish moves **15 working days**, exactly
+> 06-26 → **07-17**. `_actual_start_bounds` now floors a started task at its recorded start:
+> `es = max(logic_es, offset(actual_start))`. **A stored-date READ, the third of the family with
+> ADR-0034 and ADR-0309 — not the data-date INFERENCE ADR-0108 reverted twice**, and it needs no
+> `Stop`/`Resume`, which the synthetic battery cannot express at all.
 >
-> ## THE FINDING — the record's 3 descent candidates were really 5, one hop further out
-> ADR-0389 asked slice 25 to test whether `settings`' three candidates are FORCED. Both halves
-> moved. The 7 movers and 347 ast lines reproduce EXACTLY (measured twice — ast, and
-> independently by awk). The candidate list does not: `_settings_body` calls `_second_backend`,
-> and `_second_backend` needs `_BACKEND_PROBE_TTL` and `_UseMarking`, both shared with the stayer
-> `_active_backend` in the IDENTICAL shape the record used to flag the other three. **The closure
-> had been taken to a fixed point of the MOVERS, not of the BLOCKERS** — and the second hop is
-> where a cut breaks: the recorded price would have produced a module that does not import, or a
-> `settings` → `app` cycle.
+> ## The operator's challenge changed the session, and was right
+> Mid-session directive: *don't touch cpm.py until you establish whether TP4 should be regenerated
+> to carry Stop/Resume, or whether TEST-PROJECTS.md's "MSP truth" needs re-deriving — attempting a
+> CPM change against a fixture that can't express the input is how the first two attempts died.*
+> The first cut of the fix WAS circular and was reverted to pristine before measuring further:
+> `tools/make_test_projects.py::_schedule()` does `t.start = st.started` — it pins started tasks at
+> their actual dates and its docstring claims that is "exactly as MS Project would". Reproducing
+> TP4 v5's stored 07-17 with an actual-start floor therefore proved nothing on its own.
 >
-> **ZERO descents are forced.** AST scan over **32** modules — the 31 already-extracted view
-> modules (list read from `EXTRACTED`, never hand-typed) PLUS **`state.py`**, which is in
-> `LAYER_ORDER` but not `EXTRACTED` and is the BOTTOM layer, so a referrer there would force a
-> descent too — across FOUR channels (`ImportFrom` alias, `ast.Name`, `ast.Attribute.attr` for the
-> `app_mod._foo` reach, `ast.Constant` strings for `getattr` dispatch): **zero references to any of
-> the twelve**. Positive control `_e` = **29 of 32**, and all three misses (`ssi.py`,
-> `volatility.py`, `state.py`) are exactly the modules with no HTML — the control's shortfall is
-> EXPLAINED rather than tolerated. An adversarial verifier re-derived it over a superset (all **91**
-> names bound at `app.py` module level): also zero. `components.py` was
-> rejected on ITS OWN CHARTER (membership measured at 3+ families of shared PRESENTATION
-> primitives; AI-backend construction is neither), not on layering. Fenced `groups` (8 movers,
-> 430 ast lines) has zero overlap and zero blockers — placing `settings` directly below `app`
-> cannot force a descent when `groups` is eventually cut.
+> **Marker census settled the provenance** (now a committed guard): Project2/5 + EVM1/2 carry
+> EarlyStart/EarlyFinish/LateStart/LateFinish/Critical on **every** task and Stop/Resume on 28/35/4/6;
+> TP1/TP3/TP4 carry **ZERO** of all of them, no SaveVersion, no CreationDate. The battery is
+> generator output, not an MS Project export.
 >
-> ## The oracle grew an EIGHTH stage: 948 → 1096
-> The probe ran TWICE against TWO instruments, so "dark" and "lit" are two measurements, not one
-> plus a story. **Probe A (committed 7-stage oracle): 7/12 render-proven, 5 DARK**, control
-> `_page` **263** decomposing as `[empty]` 29 + 6 × 39. One cause, not five: EVERY stage runs on
-> the shipped default `AIConfig`, so the corpus had never rendered a non-default backend, a
-> configured second model, an attached launcher manager, or any `OLLAMA_*` environment.
-> **`[aiconfig]`** is that render condition — every form key is one `update_settings` DECLARES,
-> `classification` stays CLASSIFIED, both endpoints stay loopback (**no egress**, Law 1), the
-> stage runs LAST, and `render()` now snapshots/restores `os.environ` so the mutation cannot
-> escape. **Probe B's control was a FORWARD PREDICTION** — 29 + 7 × 39 = **302** — and landed
-> exactly, 39 in the new stage. `_openai_or_none` then moves exactly ONE label,
-> `[aiconfig] GET /settings`, and nothing else. **`_UseMarking` and `_BACKEND_PROBE_TTL` stay
-> dark BY CONSTRUCTION** (a wrapper needing a live model; a cache TTL that cannot change bytes) —
-> unit-covered, reported as a NAMED GAP, not smoothed over.
+> ## But the number was corroborated all along — by Fuse, in a doc nothing cross-referenced
+> `docs/FUSE-VALIDATION.md` records the operator's **Acumen Fuse** run over all 14 test projects.
+> Fuse's computed finish for TP4 v5 is **2026-07-17**. MS Project rescheduled the XML on import, the
+> operator saved the `.mpp`, Fuse read it. So the generator and a licensed reference tool agree and
+> **the engine was the outlier** — the 21-day understatement was real, not a fixture artifact. The
+> actual doc defect was that TEST-PROJECTS.md's caveat and the old guard never pointed AT that Fuse
+> run, so the committed XML read as if it were itself an MS Project oracle. Both now cross-reference it.
 >
-> ## The ADR-0297 monkeypatch trap FIRED — and the repoint is per CALL SITE, not per name
-> Sweep population **518** `.py` files (517 pre-cut) over the 25 names `settings.py` BINDS: 187
-> `X.setattr(mod, "name", …)` calls, **21 hits** → **14 repointed, 7 deliberately left alone**.
-> `_ollama_or_none` and `_second_backend` each appear on BOTH sides — patched then driven through
-> `/settings` the consumer MOVED; through `/api/ask` it did NOT. A name-keyed repoint would have
-> broken seven working tests while fixing fourteen. **The FIRST sweep was WRONG and the battery's
-> pre-mutation control caught it** — its regex anchored on `monkeypatch.setattr` while
-> `test_coverage_app.py` binds `mp = monkeypatch`, hiding FOUR sites; the battery's baseline went
-> RED before any mutation was applied. A sweep's PATTERN is part of its claim, like its population.
-> **Three of the fourteen would have passed SILENTLY**, so
-> the non-zero case was FORCED with counting spies: app-globals **0×** / settings-globals **1×**
-> on all three, and the control is the MIRROR IMAGE on the same name (`_active_backend`: **1× /
-> 0×**).
+> ## Measured against the real oracles, not the generator
+> **Fuse agreement 4/5 → 5/5** on TP4, and **TP1's −1-day gap closed too** (09-16 → **09-17**,
+> Fuse's date). Both are now ASSERTED in `test_fuse_reference.py` instead of excused. TP3's −5d
+> stays open. **No project finish moved on any genuine MSPDI golden** (Project2 2027-08-30 ·
+> Project5 2028-01-25 · EVM1 2012-09-12 · EVM2 2012-10-02). Engine-vs-MSP `EarlyFinish`
+> disagreements **132 → 117** with **ZERO** in the engine-LATER direction. Only 2 activities floor
+> on each of Project2/5, 0 on EVM1/2 — a narrow change.
 >
-> ## Verbatim text is not always verbatim behaviour
-> `_UseMarking` logs via `logging.getLogger(__name__)`. The line moves byte-for-byte; `__name__`
-> is not text, so the logger name follows the module (`web.app` → `web.settings`). Nothing
-> observes it (it fires only when a `record_use` hook raises); rewriting it to a literal would
-> trade a verbatim move for a hard-coded lie, so it moved as-is and is NAMED in the ADR. It is the
-> only module-identity-sensitive construct in the moved bytes — grep `__name__` / `__file__` /
-> `__module__` / `globals()` / `sys.modules` before claiming byte-identity means behaviour-identity.
+> ## The gzipped goldens: a 5x win, and an ACCEPTED regression named out loud
+> A first sweep globbed only `*.xml` and MISSED the `.mspdi.xml.gz` goldens. Measured before/after
+> against MSP's own `EarlyFinish`: **Large_Test_File 826 → 164** disagreements, understatement
+> **813 → 138**, finish unchanged (−1d vs MSP) — the "724 completed tasks, median 1458 days early"
+> defect the cpm docstring has carried for months. **Cost: `Hard_File_updated` +21d → +29d and
+> `updated2` +20d → +35d** from MSP's stored finish. Accepted on measurement: an **incomplete-only**
+> floor was tried and keeps every Fuse win but leaves Large_Test_File at **826 → 826** — the whole
+> gain lives in the COMPLETED tasks. The Hard_File family was already +19..+42d off, the drift is in
+> the SAFE (later) direction, and the cause is the named remaining half (start anchored, finish
+> still `start + duration`, so completed work that ran SHORT overshoots).
+> Four Hard_File pins moved and were each re-verified: the 188→187 counterfactual **+21 → +15 wd**
+> (×3 sites) and the `/evolution` + `/volatility` byte-frozen payloads — `/driving-path`'s pair is
+> UNCHANGED and is the control. `test_path_options` moved its ADR-0251 demonstrator UID 67 → 70:
+> 67 stopped diverging *because* its started work is now anchored, and 33 Project5 / 39 Project2
+> targets still diverge, so the contract holds. The test asserts BOTH.
+>
+> ## ADR-0108's own headline case is MISATTRIBUTED — recorded, not fixed
+> EVM2's residual (tool 10-01/02 vs Acumen 10-04) is described there as an in-progress data-date
+> problem. **All six divergent EVM2 activities are 0% complete with NO actuals at all.** The
+> calendar carries a lunch break (08:00–12:00, 13:00–17:00) and the chain diverges at UID 23,
+> duration `PT12H` — engine lands 12:00, MSP 17:00, and the half-day propagates. That is the
+> sub-day / segmented-calendar class (**DoD item 050**), not the data-date class. Unexplained
+> remainder named honestly: why MSP spans a 12-hour duration across three days is NOT yet known.
+>
+> ## The disclosure had to get its own channel
+> `date_driven` feeds a CONCERN — "N scheduled dates are not supported by logic", course-of-action
+> "tie these activities into the network". Routing floored actuals there would emit a **false
+> manipulation signal on every progressed schedule** (724 activities on the reference file). New
+> `CPMResult.actual_start_driven` carries it instead, pinned by a test.
 >
 > ## Verification
-> **1096/1096 byte-identical** pristine vs cut, `diff -r` itself SHOWN TO FAIL (one-byte append →
-> exit 1; md5-verified restore → exit 0) · reproducibility control on BOTH instruments (948/948,
-> 1096/1096) so the probe's zeros are real zeros · verbatim BY CONSTRUCTION (the moved text is a
-> byte slice of `app.py`, re-read FROM DISK and asserted present in `settings.py`; all 12
-> definitions asserted ABSENT from `app.py`) · **dropped imports ZERO** (`/api/ai/models` stayed
-> and still uses the backend classes) · determinism ×2 processes on BOTH trees, **0 flapping**, the
-> second pair reproducing byte-identity independently · **battery 6/6 caught BY NAME** (M6 caught by
-> BOTH repointed tests, so the repoint is proven to REACH the moved code; **M7 oracle-scored** — unit
-> selection rc=0 / zero named failures, oracle **8 differing labels**, matching the probe's own
-> independent count for `_ai_backend_explainer`) · `mypy --strict` clean over **149** files ·
-> `ruff check .` clean whole-tree · bandit exit 0 · `node --check` clean · corpus re-rendered AFTER
-> the battery, byte-identical to the pre-battery cut render.
+> **Mutation battery 7/7 caught, controls GREEN, md5-verified restores.** Engine: delete the floor
+> (8 failures) · read `task.start` instead of `actual_start` (1) · merge into `date_driven` (2) ·
+> drop the `> es` guard so it pins rather than floors (2). Provenance guard: battery file gains an
+> `EarlyFinish` (1) · loses its `ActualStart` (1) · a real golden loses its computed schedule (1).
+> `mypy --strict` clean over 149 files (it caught a real defect — `started` bound as both `int` and
+> `datetime` in one scope) · `ruff check .` clean whole-tree · `ruff format --check` 976 files ·
+> bandit exit 0 · battery 73/73 · installer 52/52 · `pytest -m parity` green · full suite green.
+>
+> **The `mpxj_ref()` shallow-clone trap FIRED for real this time.** The container clone was shallow;
+> the pin resolved to **79865bc** instead of the true **42d92dc**. Caught by comparing against
+> `origin/main`'s committed installers, fixed with `git fetch --unshallow` + rebuild. A second trap
+> rode with it: `build_installers.py | head -3` SIGPIPE-killed the build after three files, leaving
+> `.ps1` correct and `.sh`/`.command` stale — all nine pins are now verified identical.
+> **DoD item 117 (a shallow-clone guard in the build) is no longer theoretical.**
 >
 > ## Next
-> **The page-family queue is EMPTY.** Two follow-ups this slice deliberately declined, both queued
-> rather than done: (1) **`web/backends.py`** — promote the five-name AI-backend kernel out of the
-> `settings` page module into its own module; layer-legal, more cohesive, and a SEPARATE
-> architectural decision that would have made neither reviewable if merged into this slice.
-> (2) **`_active_backend`** — route-reached only, so moving it is permitted, but it would widen the
-> monkeypatch trap across the seven call sites that currently still work; measured trade, declined.
-> Then the standing queue: **`mpxj_ref()` shallow-clone hardening** · stored-SRA-fields MSPDI
-> fixture · driving-corridor fixture · three page-lede-less pages · `/groups` Activities (ADR-0343)
-> · installers vs known-good constraints · P80/P90 residual · the doc-drift sweep
-> (`docs/PARITY-REPORT.md` still calls the reference .mpps git-ignored; `docs/FINAL-REPORT.md`'s
-> blanket "Exact match"; `LESSONS-LEARNED` Part VIII's 2026-08-10(e) straggler) · ~150 MB RSS per
-> loaded file · Phase 6 docs.
-> **Operator:** re-convert FX-03/04 + re-run Fuse · one Acumen run on a crafted sub-day-negative-
-> float schedule · license · branch-protection contexts · proprietary reruns · OR-04 · July mpp/
-> re-export decision.
+> Band 1 is DONE (001 closed here; 002/003 are the SRA labelling items). Nearest real work:
+> **EVM2's sub-day / segmented-calendar divergence** (DoD 050 — now precisely located at a `PT12H`
+> duration on a lunch-break calendar) · completed-task actual **FINISH** anchoring (the remaining
+> half of ADR-0391, named in the cpm docstring) · TP3's −5d Fuse gap · **DoD 117** shallow-clone
+> guard in `build_installers.py`, now evidenced · SRA R-1/R-2 labelling.
+> **Operator:** re-convert FX-03/04 + re-run Fuse · one Acumen run on the sub-day-negative-float
+> schedule · license · branch-protection contexts · OR-04.
 >
 > ## Carried forward
-> ADR-0353..0390 closed — do not re-open. **The oracle is committed: import it, don't rebuild it.**
-> `python tests/web/oracle_corpus.py --out <dir>` with `PYTHONPATH=<tree>/src
-> SF_ORACLE_FIXTURES=<repo>/tests/fixtures`, against a pristine worktree and the cut tree, then
-> `diff -r` on the DIRECTORIES (filenames are LABEL-addressed). NEW lessons: (1) a closure is not
-> closed until it stops growing — iterate to a fixed point of the BLOCKERS and say which hop each
-> member arrived on; (2) relabelling a figure is not re-measuring it; (3) the monkeypatch repoint
-> is keyed on the CALLER, not the name, and the two sets share names; (4) verbatim text is not
-> always verbatim behaviour (`__name__`); (5) "what has the corpus NEVER rendered?" is now the
-> standing FIRST question — two consecutive slices found dark members with a whole-class cause;
-> (6) a control whose shortfall you can EXPLAIN beats a perfect one; (7) PREDICT the control, then
-> run it; (8) **never mutate an instrument a measurement is using** (the mirror of "never measure a
-> tree a battery is mutating" — editing `oracle_corpus.py` mid-probe changed the label set under a
-> running probe; it aborted cleanly, and the redo is why the before/after columns exist).
-> Standing traps unchanged (an instrument is not evidence until shown to FAIL · a probe's marker
-> must match the RETURN TYPE · a priced table is a snapshot · a control that names a VALUE beats
-> one that names a direction · `ast` col_offset is a BYTE offset · a census can be exact and still
-> not be membership · route-only referrers never force a descent · sweep by BARE NAME · a sweep's
-> POPULATION is part of its claim · a prefix that is a prefix OF ANOTHER FAMILY fuses two censuses
-> · the MPXJ pin drifts in a shallow clone · a parallel session can take your ADR number · never
-> MEASURE a tree a battery is mutating · a normalizer that fails silently is a flap factory ·
-> fingerprints carry their SCOPE · the installer lockstep guard makes the rebuild a PREREQUISITE of
-> the final suite · round-half-even 240→0 · MSPDI re-derives Duration · env-defect masquerade ·
-> named-failure rule · empty sweep needs a positive control · `grep -c` exits 1 on zero · B608
-> house nosec · pydantic 2.6 / fastapi 0.110.2 floors · five playwright-only failures pre-existing,
-> CI-invisible · scratchpad harnesses hardcode the repo root · `python -m pytest` prepends CWD to
-> `sys.path` and bare `pytest` does NOT · two ruffs on PATH, run `python -m ruff`). A number
-> written mid-session is not a measurement (wc decides).
+> ADR-0353..0391 closed — do not re-open. NEW lessons: (1) **a fixture generated by a rule cannot
+> validate that rule** — check provenance before treating any stored date as an oracle; (2) the
+> corroborating oracle may already exist in a doc nothing cross-references (Fuse had the answer for
+> months); (3) an ADR's *diagnosis* can be wrong even when its *observation* is right — ADR-0108 saw
+> a real gap and misnamed its cause; (4) a new disclosure needs its own channel when an existing one
+> carries a JUDGEMENT (`date_driven` accuses; actuals do not); (5) `| head -N` can SIGPIPE-kill a
+> build mid-way and leave a partially-regenerated artifact set. Standing traps unchanged (instrument
+> shown to FAIL first · marker matches RETURN TYPE · priced table is a snapshot · `ast` col_offset is
+> BYTES · population AND pattern are part of a sweep's claim · route-only referrers never force a
+> descent · the MPXJ pin drifts in a shallow clone **(fired)** · never MEASURE a tree a battery is
+> mutating · never MUTATE an instrument a measurement is using · monkeypatch repoint is per CALL
+> SITE · verbatim text is not verbatim behaviour (`__name__`) · `grep -c` exits 1 on zero · two
+> ruffs on PATH, use `python -m ruff` · bare `pytest` does not prepend CWD · `git fetch origin`
+> before taking an ADR number and again before committing). A number written mid-session is not a
+> measurement (`wc` decides).
 
 # (prior) handoffs — archived
 

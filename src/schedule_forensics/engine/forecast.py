@@ -5,14 +5,15 @@ The reference Power BI deck's forecasting page triangulates the project end date
 throughput, and performance agree (a divergence is itself a finding):
 
 1. **Schedule logic (CPM)** — the network's own computed finish (the date the plan
-   claims, given its logic, durations, and calendar). This is the engine's *pure-logic*
-   finish; it does NOT floor in-progress remaining work at the data date, so on an
-   out-of-sequence / progressed schedule it can read *earlier* than the source tool's
-   progress-aware finish (the standing ADR-0108 gap; audit F-02).
+   claims, given its logic, durations, and calendar). It is logic-driven but anchored to
+   the record: a task that has started is floored at its recorded ``actual_start``, which
+   is what closed the ADR-0108 / audit-F-02 understatement (ADR-0391). A completed task's
+   actual *finish* is still not anchored, so the two methods below remain worth reading.
 2. **As-scheduled (stored dates)** — the latest *stored* finish the source tool wrote
-   into the file (its progress-aware forecast). Surfaced alongside the CPM finish so a
-   disagreement between the two (e.g. TP4 v5: stored 2026-07-17 vs CPM 2026-06-26) is
-   visible to the analyst rather than hidden. ``None`` if the file carries no dates.
+   into the file (its progress-aware forecast). Surfaced alongside the CPM finish so any
+   disagreement between the two is visible to the analyst rather than hidden. The pair now
+   agrees on the progressed battery (TP4 v5: both 2026-07-17); a divergence that reappears
+   is a finding. ``None`` if the file carries no dates.
 3. **Completion-rate extrapolation** — the throughput answer: at the historical pace of
    *activities actually completed per month*, how long do the to-go activities take?
 4. **Earned-schedule IEAC(t)** — the performance answer: the standard Earned-Schedule

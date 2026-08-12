@@ -42,12 +42,23 @@ Scope of this engine (documented, not silently limited — Law 2):
   reschedule (``resume == stop``, or either absent — every fixture without progress) is
   scheduled by logic alone and is byte-identical to the pre-ADR-0309 engine. Floored
   UniqueIDs join :attr:`CPMResult.date_driven`, the same disclosure ADR-0034 uses.
-  **Not yet anchored:** a COMPLETED task's actual dates. The forward pass still packs
-  completed work from ``project_start``, so on a long progressed file its per-task
-  computed dates sit far before its stored actuals (measured on the reference schedule:
-  724 completed tasks, median 1458 calendar days early) — which is why consumers that
-  need real per-task dates read the stored ones first (``driving_slack.py``). The focus
-  and project finishes are unaffected, since those are driven by remaining work.
+* **A recorded ACTUAL START is a floor** (ADR-0391): work that has begun cannot begin
+  earlier than it did, so a started task's early start is
+  ``max(logic_es, offset(actual_start))``. This closes the ADR-0108 understatement —
+  a pure forward pass re-packs a late-started task at its logic start and brings the
+  whole successor chain, including the project finish, back with it (measured on
+  TP4 v5: 21 calendar days early; Acumen Fuse independently reports the later date).
+  Like the two rules above it is a stored-date READ, not the data-date *inference*
+  ADR-0108 twice reverted, and it needs no ``Stop``/``Resume``. Being a floor it can
+  only push work LATER, never earlier, so a file with no actuals — or whose actuals
+  agree with logic — is byte-identical to the pre-ADR-0391 engine. Floored UniqueIDs
+  are reported on :attr:`CPMResult.actual_start_driven`, deliberately SEPARATE from
+  ``date_driven`` (a recorded actual is evidence, not an unsupported date).
+  **Still not anchored:** a completed task's actual FINISH. Its start is now honored,
+  but its finish is still ``start + duration`` rather than the stored ``actual_finish``,
+  so a completed activity that ran longer or shorter than planned still computes a
+  finish that differs from the record — which is why consumers needing real per-task
+  dates continue to read the stored ones first (``driving_slack.py``).
 * **Refused** (raises :class:`CPMError` rather than emit a silently-wrong schedule —
   Law 2): ``ALAP``. Its as-late-as-possible semantics are backward-pass-driven and
   interact subtly with float; it does not appear in the parity schedules and is out of
@@ -139,6 +150,12 @@ class CPMResult:
     #: logic-unbound floor — ADR-0034), not from network logic: the schedule reproduces
     #: the source file, and these are the "dates not supported by logic" the findings cite.
     date_driven: tuple[int, ...] = ()
+    #: UniqueIDs whose early start was raised to their RECORDED ``actual_start``, because pure
+    #: logic would otherwise schedule work before it demonstrably began (ADR-0391). Deliberately
+    #: NOT merged into :attr:`date_driven`: that list drives a "dates not supported by logic"
+    #: concern, and a recorded actual is evidence of what happened, not an unsupported date.
+    #: This is the disclosure surface for "the schedule is anchored to reported progress".
+    actual_start_driven: tuple[int, ...] = ()
     #: The true wall-clock instant of the network finish when an off-calendar task's
     #: finish is not exactly representable on the project axis (e.g. an elapsed task
     #: ending on a weekend). ``None`` when every task follows the project calendar —
@@ -875,6 +892,45 @@ def _stored_date_bounds(
     return pin, floor
 
 
+def _actual_start_bounds(schedule: Schedule, tasks: list[Task]) -> dict[int, int]:
+    """Early-START floors from a task's RECORDED ``actual_start`` (ADR-0391).
+
+    The third member of the stored-date family, after :func:`_stored_date_bounds` (stored starts
+    on *unstarted* tasks) and :func:`_resume_bounds` (a recorded reschedule of *remaining* work).
+    This one honors the plainest fact a progressed file carries: **work that has begun cannot
+    begin earlier than it did.** A pure forward pass ignores actuals, so a task that started three
+    months late is re-packed at its logic early start and its whole successor chain — up to and
+    including the project finish — comes back early. That is the ADR-0108 failure mode, and it
+    understates the slip, the one direction a forensic delay tool must never be wrong in (Law 2).
+
+    A **FLOOR, not a pin**: ``es = max(logic_es, offset(actual_start))``. It can only ever push a
+    task LATER, never earlier, so it cannot manufacture a slip — a task whose logic start already
+    sits at or after its actual start is byte-identical to the pre-ADR-0391 engine, and so is
+    every schedule with no actuals at all. Out-of-sequence progress (work that began BEFORE its
+    predecessors finished) keeps the logic start: the conservative reading, reporting the finish
+    no earlier than the network supports.
+
+    This is a stored-date READ, not the inference ADR-0108 twice reverted. Those attempts
+    rescheduled every in-progress task's remaining work to the **data date**, which needs an
+    ahead/behind judgement MS Project makes from internal state and does not export — so they
+    moved finishes that were already correct. ``actual_start`` needs no judgement: it is a
+    recorded instant, present in the file, and the engine simply stops scheduling work before it.
+    Crucially it also needs no ``Stop``/``Resume``, which the synthetic battery cannot express.
+
+    Applies to **started** tasks (``actual_start`` present) regardless of completion: a completed
+    activity's start is a fact on the same footing. Offsets clamp at the project start (negative
+    offsets are unrenderable) — the clamp :func:`_stored_date_bounds` already uses.
+    """
+    floor: dict[int, int] = {}
+    for task in tasks:
+        if task.actual_start is None:
+            continue
+        floor[task.unique_id] = max(
+            datetime_to_offset(schedule.project_start, task.actual_start, schedule.calendar), 0
+        )
+    return floor
+
+
 def _resume_bounds(
     schedule: Schedule, tasks: list[Task], duration_overrides: Mapping[int, int] | None
 ) -> dict[int, int]:
@@ -982,6 +1038,7 @@ def compute_cpm(
     # stored starts honored for unstarted manual / logic-unbound tasks — ADR-0034) ----
     has_preds = frozenset(tid for tid in task_ids if preds[tid])
     stored_pin, stored_floor = _stored_date_bounds(schedule, tasks, has_preds)
+    actual_floor = _actual_start_bounds(schedule, tasks)
     resume_ef_floor = _resume_bounds(schedule, tasks, duration_overrides)
     # Tasks executing on their OWN calendar (a materially different task calendar, or an
     # elapsed duration == the 24/7 calendar): dates advance in wall-clock arithmetic on that
@@ -999,6 +1056,11 @@ def compute_cpm(
     #: the amount logic pushes past the constraint), in the task's own float axis.
     pin_violation: dict[int, int] = {}
     date_driven: list[int] = []
+    #: UIDs whose early start was raised to their RECORDED actual start (ADR-0391). Kept SEPARATE
+    #: from ``date_driven``: that list feeds a "dates not supported by logic" CONCERN telling the
+    #: analyst to tie the activity into the network, which would be a false signal about work
+    #: that has demonstrably already started.
+    actual_driven: list[int] = []
 
     def _pred_finish_wall(p: int) -> dt.datetime:
         if p in exec_cal:
@@ -1069,6 +1131,13 @@ def compute_cpm(
                 date_driven.append(tid)
             else:
                 es_w = logic_es_wall
+                # work that has begun cannot begin earlier than it did (ADR-0391) — on the
+                # task's OWN calendar, from the raw stored instant
+                if task.actual_start is not None:
+                    started_wall = _snap_to_working(max(task.actual_start, ps), cal_t, tod0)
+                    if started_wall > es_w:
+                        es_w = started_wall
+                        actual_driven.append(tid)
             ef_w = _advance_wall(es_w, dur_s, cal_t, tod0)
             # ADR-0309 resume floor, on the task's own calendar from the raw stored dates
             if task.resume is not None and task.stop is not None and task.resume > task.stop:
@@ -1104,6 +1173,11 @@ def compute_cpm(
             date_driven.append(tid)
         else:
             es = logic_es
+            # work that has begun cannot begin earlier than it did (ADR-0391)
+            started_off = actual_floor.get(tid)
+            if started_off is not None and started_off > es:
+                es = started_off
+                actual_driven.append(tid)
         early_start[tid] = es
         ef = es + dur_s
         # in-progress work MS Project itself rescheduled: its remaining duration runs from the
@@ -1280,5 +1354,6 @@ def compute_cpm(
         project_finish=network_finish,
         critical_path=critical_path,
         date_driven=tuple(sorted(date_driven)),
+        actual_start_driven=tuple(sorted(actual_driven)),
         project_finish_wall=target_wall if required_finish_offset is None else None,
     )

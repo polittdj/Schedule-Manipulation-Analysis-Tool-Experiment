@@ -83,8 +83,11 @@ def test_brief_finish_table_covers_every_version(tp4_brief: DiagnosticBrief) -> 
     story = next(s for s in tp4_brief.sections if s.heading == "The finish story")
     assert story.table is not None
     assert len(story.table.rows) == 5
-    # the engine CPM recomputes v5 from logic (stored dates diverge intraday): 06-26
-    assert story.table.rows[-1][2] == "2026-06-26"
+    # v5's finish is 2026-07-17 — Acumen Fuse's own figure for this file. It used to read
+    # 2026-06-26 here because the CPM re-packed the late-started UID 19 at its logic start,
+    # understating the slip by 21 days; ADR-0391 floors a started task at its recorded
+    # actual_start and the brief now carries the corroborated date.
+    assert story.table.rows[-1][2] == "2026-07-17"
 
 
 def test_every_brief_paragraph_is_cited(tp4_brief: DiagnosticBrief) -> None:
