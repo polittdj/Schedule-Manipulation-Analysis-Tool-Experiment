@@ -73,6 +73,35 @@ CEI_DARK_POOL = ("jacked_up_schedule_1", "jacked_up_schedule_2")
 #: the corpus does not otherwise load, so the stage adds a session key rather than shadowing one.
 ALL_COMPLETE_SOURCE = "TP1_Library_Progressed"
 
+#: The NON-DEFAULT AI configuration. ADR-0390: five of the twelve members of the `settings` cut
+#: were oracle-DARK, and — as in ADR-0389 — the reason was not one branch but a whole CLASS of
+#: session state the corpus had never rendered. Every stage above runs on the shipped defaults, so
+#: the corpus had never rendered a session with (a) a primary backend other than Ollama, (b) a
+#: cross-check second model configured, (c) a launcher manager attached to ``app.state``, or
+#: (d) any ``OLLAMA_*`` tuning environment set. That is an ordinary state, not an exotic one: it is
+#: what the operator's machine looks like the moment they open AI Settings and change anything.
+#:
+#: Every key here is a field ``update_settings`` DECLARES — checked against the signature, not
+#: inferred from prose (the ADR-0381 rule that killed six decorative variants). ``classification``
+#: stays CLASSIFIED so no cloud path is exercised: Law 1 is not something an oracle stage gets to
+#: relax. Both endpoints stay loopback, so the two constructors build real backends whose
+#: availability probe fails against a closed port — deterministic, and no egress.
+AI_CONFIG_FORM = {
+    "classification": "CLASSIFIED",
+    "backend": "openai",
+    "model": "oracle-primary-model",
+    "qa_mode": "strict",
+    "endpoint": "http://127.0.0.1:11434",
+    "openai_endpoint": "http://127.0.0.1:1234",
+    "second_backend": "ollama",
+    "second_model": "oracle-second-model",
+    "gen_timeout": "30",
+}
+
+#: The one ``OLLAMA_*`` tuning variable the stage sets, so ``_OLLAMA_ENV_VARS`` renders at all.
+#: One entry is enough to light the row — the tuple's other three render through the same code.
+AI_CONFIG_ENV = ("OLLAMA_KEEP_ALIVE", "-1")
+
 #: A REAL TP4 unique id. Never 0 — ``_parse_uid`` maps 0 to "clear", so a 0 target can never be
 #: set through the form (standing trap).
 TARGET_UID = 22
@@ -198,7 +227,27 @@ STAGE_NAMES = (
     "[resloaded]",
     "[ceidark]",
     "[allcomplete]",
+    "[aiconfig]",
 )
+
+
+class _LauncherStub:
+    """A launcher manager that REPORTS a status and does nothing else (ADR-0390).
+
+    ``_ai_runtime_note`` renders ``status`` through ``_RUNTIME_STATUS_NOTES``, and ``POST
+    /settings`` starts a daemon thread on ``ensure_running`` / ``shutdown`` whenever Ollama is
+    selected — so both methods must exist and must be side-effect-free, or the stage would race
+    its own render and the corpus would flap. ``no-binary`` is the status chosen because it is the
+    one the audit called a silent capability downgrade (F-16): the note that most needs guarding.
+    """
+
+    status = "no-binary"
+
+    def ensure_running(self) -> None:
+        return None
+
+    def shutdown(self) -> None:
+        return None
 
 
 def corpus(app: Any, stage: str) -> list[Label]:
@@ -352,6 +401,16 @@ def _enter_stage(client: Any, stage: str) -> None:
         resp = client.post("/upload", files=[("files", (src.name, data, "text/xml"))])
         if resp.status_code != 200:
             raise AssertionError(f"upload failed: {resp.status_code} {resp.text[:200]}")
+    elif stage == "[aiconfig]":
+        # LAST on purpose: this stage changes the session's AI config, attaches a manager to
+        # `app.state` and sets process environment, none of which any earlier stage may see.
+        # `render()` snapshots and restores os.environ around the whole run so the mutation cannot
+        # escape into the caller's process.
+        client.app.state.ollama = _LauncherStub()
+        os.environ[AI_CONFIG_ENV[0]] = AI_CONFIG_ENV[1]
+        r = client.post("/settings", data=AI_CONFIG_FORM, follow_redirects=False)
+        if r.status_code != 303:
+            raise AssertionError(f"/settings did not redirect: {r.status_code} {r.text[:200]}")
 
 
 def render(verbose: bool = False) -> dict[str, bytes]:
@@ -362,14 +421,19 @@ def render(verbose: bool = False) -> dict[str, bytes]:
 
     client = TestClient(create_app(SessionState()))
     raw: dict[str, bytes] = {}
-    for stage in STAGE_NAMES:
-        _enter_stage(client, stage)
-        labels = corpus(client.app, stage)
-        for lab in labels:
-            resp = client.get(lab.url)
-            raw[f"{stage} {lab.key()}"] = f"{resp.status_code}\n".encode() + resp.content
-        if verbose:
-            print(f"  {stage}: {len(labels)} labels", file=sys.stderr)
+    saved_env = dict(os.environ)  # `[aiconfig]` sets OLLAMA_* — it must not escape this call
+    try:
+        for stage in STAGE_NAMES:
+            _enter_stage(client, stage)
+            labels = corpus(client.app, stage)
+            for lab in labels:
+                resp = client.get(lab.url)
+                raw[f"{stage} {lab.key()}"] = f"{resp.status_code}\n".encode() + resp.content
+            if verbose:
+                print(f"  {stage}: {len(labels)} labels", file=sys.stderr)
+    finally:
+        os.environ.clear()
+        os.environ.update(saved_env)
     return normalize_all(raw)
 
 

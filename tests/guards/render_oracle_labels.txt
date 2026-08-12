@@ -946,3 +946,151 @@
 [allcomplete] [ssi-api] GET /api/sra/ssi
 [allcomplete] [trend-target] GET /trend
 [allcomplete] [week-resources] GET /resources
+[aiconfig] GET /
+[aiconfig] GET /analysis/TP4_DataCenter_v5
+[aiconfig] GET /api/activities/drill
+[aiconfig] GET /api/ai/briefing
+[aiconfig] GET /api/ai/models
+[aiconfig] GET /api/ai/narrative
+[aiconfig] GET /api/analysis/TP4_DataCenter_v5
+[aiconfig] GET /api/cei
+[aiconfig] GET /api/curves
+[aiconfig] GET /api/dashboard
+[aiconfig] GET /api/driving-path
+[aiconfig] GET /api/driving/TP4_DataCenter_v5
+[aiconfig] GET /api/evolution
+[aiconfig] GET /api/forecast
+[aiconfig] GET /api/group-values
+[aiconfig] GET /api/margin
+[aiconfig] GET /api/margin/dashboard
+[aiconfig] GET /api/margin/risk
+[aiconfig] GET /api/scorecards/buffer
+[aiconfig] GET /api/scurve
+[aiconfig] GET /api/sra
+[aiconfig] GET /api/sra/grid
+[aiconfig] GET /api/sra/jcl
+[aiconfig] GET /api/sra/oat
+[aiconfig] GET /api/sra/ssi
+[aiconfig] GET /api/system
+[aiconfig] GET /api/trend
+[aiconfig] GET /api/wbs/TP4_DataCenter_v5
+[aiconfig] GET /api/whoami
+[aiconfig] GET /api/workbench
+[aiconfig] GET /api/workbench/drill
+[aiconfig] GET /brief
+[aiconfig] GET /briefing
+[aiconfig] GET /card/TP4_DataCenter_v5
+[aiconfig] GET /cei
+[aiconfig] GET /compare
+[aiconfig] GET /curves
+[aiconfig] GET /download/TP4_DataCenter_v5
+[aiconfig] GET /driving-path
+[aiconfig] GET /evm
+[aiconfig] GET /evolution
+[aiconfig] GET /export/docx/activities-drill
+[aiconfig] GET /export/docx/activities/TP4_DataCenter_v5
+[aiconfig] GET /export/docx/analysis/TP4_DataCenter_v5
+[aiconfig] GET /export/docx/brief
+[aiconfig] GET /export/docx/briefing
+[aiconfig] GET /export/docx/cei
+[aiconfig] GET /export/docx/compare
+[aiconfig] GET /export/docx/curves
+[aiconfig] GET /export/docx/driving-tiers/TP4_DataCenter_v5
+[aiconfig] GET /export/docx/evm
+[aiconfig] GET /export/docx/evolution
+[aiconfig] GET /export/docx/field-forecast
+[aiconfig] GET /export/docx/float-band/TP4_DataCenter_v5
+[aiconfig] GET /export/docx/forecast
+[aiconfig] GET /export/docx/integrity
+[aiconfig] GET /export/docx/margin
+[aiconfig] GET /export/docx/mission
+[aiconfig] GET /export/docx/path/TP4_DataCenter_v5
+[aiconfig] GET /export/docx/performance
+[aiconfig] GET /export/docx/resource-drill
+[aiconfig] GET /export/docx/resources
+[aiconfig] GET /export/docx/ribbon
+[aiconfig] GET /export/docx/ribbon-drill/TP4_DataCenter_v5
+[aiconfig] GET /export/docx/risks
+[aiconfig] GET /export/docx/scorecards
+[aiconfig] GET /export/docx/scurve
+[aiconfig] GET /export/docx/sra
+[aiconfig] GET /export/docx/sra-registry
+[aiconfig] GET /export/docx/trend
+[aiconfig] GET /export/docx/volatility
+[aiconfig] GET /export/docx/wbs/TP4_DataCenter_v5
+[aiconfig] GET /export/docx/whatif
+[aiconfig] GET /export/docx/whatif-added
+[aiconfig] GET /export/docx/workbench
+[aiconfig] GET /export/docx/workbench-drill/TP4_DataCenter_v5
+[aiconfig] GET /export/xlsx/activities-drill
+[aiconfig] GET /export/xlsx/activities/TP4_DataCenter_v5
+[aiconfig] GET /export/xlsx/analysis/TP4_DataCenter_v5
+[aiconfig] GET /export/xlsx/brief
+[aiconfig] GET /export/xlsx/briefing
+[aiconfig] GET /export/xlsx/cei
+[aiconfig] GET /export/xlsx/compare
+[aiconfig] GET /export/xlsx/curves
+[aiconfig] GET /export/xlsx/driving-tiers/TP4_DataCenter_v5
+[aiconfig] GET /export/xlsx/evm
+[aiconfig] GET /export/xlsx/evolution
+[aiconfig] GET /export/xlsx/field-forecast
+[aiconfig] GET /export/xlsx/float-band/TP4_DataCenter_v5
+[aiconfig] GET /export/xlsx/forecast
+[aiconfig] GET /export/xlsx/integrity
+[aiconfig] GET /export/xlsx/margin
+[aiconfig] GET /export/xlsx/mission
+[aiconfig] GET /export/xlsx/path/TP4_DataCenter_v5
+[aiconfig] GET /export/xlsx/performance
+[aiconfig] GET /export/xlsx/resource-drill
+[aiconfig] GET /export/xlsx/resources
+[aiconfig] GET /export/xlsx/ribbon
+[aiconfig] GET /export/xlsx/ribbon-drill/TP4_DataCenter_v5
+[aiconfig] GET /export/xlsx/risk-register-template
+[aiconfig] GET /export/xlsx/risks
+[aiconfig] GET /export/xlsx/scorecards
+[aiconfig] GET /export/xlsx/scurve
+[aiconfig] GET /export/xlsx/sra
+[aiconfig] GET /export/xlsx/sra-registry
+[aiconfig] GET /export/xlsx/task-risk-template
+[aiconfig] GET /export/xlsx/trend
+[aiconfig] GET /export/xlsx/volatility
+[aiconfig] GET /export/xlsx/wbs/TP4_DataCenter_v5
+[aiconfig] GET /export/xlsx/whatif
+[aiconfig] GET /export/xlsx/whatif-added
+[aiconfig] GET /export/xlsx/workbench
+[aiconfig] GET /export/xlsx/workbench-drill/TP4_DataCenter_v5
+[aiconfig] GET /forecast
+[aiconfig] GET /groups
+[aiconfig] GET /healthz
+[aiconfig] GET /help
+[aiconfig] GET /integrity
+[aiconfig] GET /margin
+[aiconfig] GET /mission
+[aiconfig] GET /openapi.json
+[aiconfig] GET /path
+[aiconfig] GET /performance
+[aiconfig] GET /portfolio
+[aiconfig] GET /resources
+[aiconfig] GET /ribbon
+[aiconfig] GET /risks
+[aiconfig] GET /scorecards
+[aiconfig] GET /scurve
+[aiconfig] GET /settings
+[aiconfig] GET /sra
+[aiconfig] GET /sra/ssi/save
+[aiconfig] GET /standards
+[aiconfig] GET /trend
+[aiconfig] GET /volatility
+[aiconfig] GET /wbs/TP4_DataCenter_v5
+[aiconfig] GET /workbench
+[aiconfig] [buffer-committed] GET /api/scorecards/buffer
+[aiconfig] [cei-uids] GET /cei
+[aiconfig] [evo-counterfactual] GET /evolution
+[aiconfig] [evo-options] GET /evolution
+[aiconfig] [evo-tier] GET /evolution
+[aiconfig] [grouped] GET /groups
+[aiconfig] [path-export] GET /export/docx/path
+[aiconfig] [path-export] GET /export/xlsx/path
+[aiconfig] [ssi-api] GET /api/sra/ssi
+[aiconfig] [trend-target] GET /trend
+[aiconfig] [week-resources] GET /resources

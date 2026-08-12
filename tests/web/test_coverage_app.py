@@ -274,25 +274,25 @@ class _FakeProbe:
 
 def test_ai_status_note_branches(monkeypatch: object) -> None:
     from schedule_forensics.ai.backend import AIConfig
-    from schedule_forensics.web import app as appmod
+    from schedule_forensics.web import settings as setmod
     from schedule_forensics.web.app import _ai_status_note
 
     mp = monkeypatch  # type: ignore[assignment]
     # null/cloud backends -> no status line
     assert _ai_status_note(AIConfig(backend="null")) == ""
     # ollama down -> OFF notice with the reason + hint
-    mp.setattr(appmod, "_ollama_or_none", lambda c: _FakeProbe(reason="connection refused"))  # type: ignore[attr-defined]
+    mp.setattr(setmod, "_ollama_or_none", lambda c: _FakeProbe(reason="connection refused"))  # type: ignore[attr-defined]
     off = _ai_status_note(AIConfig(backend="ollama", model="llama3.1:8b"))
     assert "Local AI is OFF" in off and "connection refused" in off
     # ollama reachable but the model isn't installed -> the pull hint
-    mp.setattr(appmod, "_ollama_or_none", lambda c: _FakeProbe(models=("other:7b",)))  # type: ignore[attr-defined]
+    mp.setattr(setmod, "_ollama_or_none", lambda c: _FakeProbe(models=("other:7b",)))  # type: ignore[attr-defined]
     miss = _ai_status_note(AIConfig(backend="ollama", model="llama3.1:8b"))
     assert "isn't installed" in miss
     # ollama reachable WITH the model -> ON
-    mp.setattr(appmod, "_ollama_or_none", lambda c: _FakeProbe(models=("llama3.1:8b",)))  # type: ignore[attr-defined]
+    mp.setattr(setmod, "_ollama_or_none", lambda c: _FakeProbe(models=("llama3.1:8b",)))  # type: ignore[attr-defined]
     assert "Local AI is ON" in _ai_status_note(AIConfig(backend="ollama", model="llama3.1:8b"))
     # openai-compatible server down -> the LM-Studio hint
-    mp.setattr(appmod, "_openai_or_none", lambda c: _FakeProbe(reason="timed out"))  # type: ignore[attr-defined]
+    mp.setattr(setmod, "_openai_or_none", lambda c: _FakeProbe(reason="timed out"))  # type: ignore[attr-defined]
     out = _ai_status_note(AIConfig(backend="openai"))
     assert "Local AI is OFF" in out and "LM Studio" in out
 

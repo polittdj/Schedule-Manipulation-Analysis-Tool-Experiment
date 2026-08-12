@@ -13552,3 +13552,85 @@ reader preserved via re-export · 47 source-text files, zero repoints.
 
 **The mpxj shallow-clone trap was pre-empted**: `git fetch --unshallow` ran before the build, so
 the pin resolved to `42d92dc` rather than the clone boundary. The build still has no guard.
+
+---
+
+## 2026-08-12 (c) — phase 4 slice 25: the LAST page family, and the closure that took two hops (ADR-0390, v1.0.197)
+
+Branch `claude/polaris-settings-extraction-kvhryw`, started at `main` c03bf28 (#574 already
+merged, no restart). **ADR-0390.** The `settings` family out of `app.py` verbatim into
+`web/settings.py` (525 lines), **twelve names / 437 ast lines, ZERO forced descents**. `app.py`
+**8,482 → 8,037** wc-truth (17,197 when phase 3 began). **Outside the fenced `groups`, `app.py`
+no longer holds a page family** — phase 4's page-family work is done.
+
+**ADR-0389's finding was right and its count was short by two.** The record priced `settings` at
+7 movers / 347 ast lines / 3 descent candidates. The 7 and the 347 reproduce exactly (measured
+twice, by ast and independently by awk). The candidate list does not: `_settings_body` calls
+`_second_backend`, and `_second_backend` needs `_BACKEND_PROBE_TTL` and `_UseMarking` — both
+shared with the stayer `_active_backend` in the *identical* shape the record used to flag the
+other three. The closure was taken to a fixed point of the MOVERS and not of the BLOCKERS; the
+second hop is where a cut breaks. Cutting to the recorded price would have produced a module that
+does not import, or a `settings` → `app` cycle. Real price: **5 shared names, 12 total**.
+
+**No descent is forced**, which is what ADR-0389 asked this slice to test. An AST scan over **32**
+modules — the 31 already-extracted view modules (list read from `EXTRACTED`, never hand-typed) plus
+`state.py`, which is in `LAYER_ORDER` but not `EXTRACTED` and is the bottom layer — across four
+channels (`ImportFrom` alias, `ast.Name`, `ast.Attribute.attr`, `ast.Constant` strings for `getattr`
+dispatch) finds **zero** references to any of the twelve; positive control `_e` = **29 of 32**, and
+all three misses (`ssi.py`, `volatility.py`, `state.py`) are exactly the modules carrying no HTML —
+a control whose shortfall is explained rather than tolerated. An adversarial verifier re-derived it
+over a superset (all 91 names bound at `app.py` module level): also zero. `components.py` was rejected on its OWN charter (membership measured at 3+ families
+of shared *presentation* primitives; AI-backend construction is neither), not on layering. The
+still-fenced `groups` (8 movers, 430 ast lines) has zero overlap and zero blockers, so placing
+`settings` directly below `app` cannot force a descent later.
+
+**The oracle grew an eighth stage, 948 → 1096.** The probe was run TWICE against TWO instruments,
+so "dark" and "lit" are two measurements rather than one plus a story. Probe A (committed 7-stage
+oracle): **7/12 render-proven, 5 DARK**, control `_page` **263**, decomposing as `[empty]` 29 +
+6 × 39. The five dark members had one cause: every stage runs on the shipped default `AIConfig`, so
+the corpus had never rendered a non-default backend, a configured second model, an attached
+launcher manager, or any `OLLAMA_*` environment — a whole class of ordinary session state.
+`[aiconfig]` is that render condition: every form key is one `update_settings` declares,
+`classification` stays CLASSIFIED, both endpoints stay loopback (no egress — Law 1), the stage runs
+LAST, and `render()` now snapshots/restores `os.environ` so the mutation cannot escape. Probe B's
+control was a FORWARD PREDICTION — 29 + 7 × 39 = **302** — and landed exactly, 39 of them in the new
+stage. `_openai_or_none` then moves exactly one label, `[aiconfig] GET /settings`, and nothing else.
+`_UseMarking` and `_BACKEND_PROBE_TTL` stay dark BY CONSTRUCTION (a wrapper needing a live model; a
+cache TTL that cannot change bytes) and are reported as a named gap, unit-covered.
+
+**The ADR-0297 monkeypatch trap fired at scale — and the repoint is per CALL SITE, not per name.**
+Sweep population **518** `.py` files (517 pre-cut) over the 25 names `settings.py` BINDS: 187
+`X.setattr(mod, "name", …)` calls, **21 hits** → **14 repointed, 7 deliberately left alone**.
+`_ollama_or_none` and `_second_backend` each appear on BOTH sides (patched then driven through
+`/settings` the consumer moved; through `/api/ask` it did not), so a name-keyed repoint would have
+broken seven working tests while fixing fourteen. **The first sweep was WRONG and the battery's
+pre-mutation control caught it**: its regex was anchored on `monkeypatch.setattr`, and
+`test_coverage_app.py` binds `mp = monkeypatch`, hiding four sites — the battery's baseline went red
+before any mutation was applied. Re-swept receiver-agnostically: 17 → 21 hits, 10 → 14 repoints.
+**Three of the fourteen would have passed silently**, so the non-zero case was forced
+with counting spies: app-globals **0×** / settings-globals **1×** on all three, and the control is
+the mirror image on the same name — `_active_backend` gives **1× / 0×**.
+
+**Verbatim text is not always verbatim behaviour.** `_UseMarking` logs via
+`logging.getLogger(__name__)`; the line moves byte-for-byte but the logger name follows the module.
+Nothing observes it; rewriting it to a literal would trade a verbatim move for a hard-coded lie, so
+it moved as-is and is named in the ADR. It is the only module-identity-sensitive construct in the
+moved bytes (no `__file__` / `__module__` / `globals()` / `sys.modules` / `inspect`).
+
+Verification: **1096/1096 byte-identical** pristine vs cut, with `diff -r` shown to fail on a
+one-byte append and pass again after an md5-verified restore · reproducibility control on both
+instruments (948/948, 1096/1096) so the probe's zeros are real zeros · verbatim by construction
+(the moved text is a byte slice, re-read from disk and asserted present in `settings.py`, all 12
+definitions asserted absent from `app.py`) · **dropped imports ZERO** · determinism ×2 processes on
+both trees, 0 flapping, second pair reproducing byte-identity independently · **battery 6/6 caught
+by name** (M6 caught by BOTH repointed tests, proving the repoint reaches the moved code; **M7
+scored against the ORACLE** — unit selection rc=0 with zero named failures, oracle 8 differing
+labels, matching the probe's independent count for `_ai_backend_explainer`) · `mypy --strict` clean
+over **149** files · `ruff check .` clean whole-tree · bandit exit 0 · `node --check` clean · corpus
+re-rendered after the battery and byte-identical to the pre-battery cut render.
+
+A dedicated `web/backends.py` for the AI-backend kernel was considered and deliberately NOT created
+(a second architectural decision would make neither reviewable); `_active_backend` was deliberately
+NOT moved (permitted, but it would widen the monkeypatch trap across the seven sites that still
+work). Both are queued. The mpxj shallow-clone trap was pre-empted again — `git fetch --unshallow`
+before the build, pin `42d92dc` — and the build still has no guard.

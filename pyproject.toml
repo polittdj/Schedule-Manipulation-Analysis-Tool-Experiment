@@ -16,7 +16,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "schedule-forensics"
-version = "1.0.196"
+version = "1.0.197"
 description = "Local, NASA-themed forensic schedule-analysis tool (CUI-safe, offline)."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -262,6 +262,9 @@ select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
 "src/schedule_forensics/web/curves.py" = ["E501"]
 "src/schedule_forensics/web/ribbon.py" = ["E501"]
 "src/schedule_forensics/web/volatility.py" = ["E501"]
+# `settings.py` is the /settings page family, extracted verbatim (ADR-0390); it carries the
+# AI-settings page's HTML f-strings, so the exemption travels with them.
+"src/schedule_forensics/web/settings.py" = ["E501"]
 "src/schedule_forensics/web/workbench.py" = ["E501"]
 
 [tool.ruff.format]

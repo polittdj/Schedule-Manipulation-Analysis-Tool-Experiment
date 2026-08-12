@@ -435,6 +435,77 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-12 (c) — a closure is not closed until it stops growing (ADR-0390)
+
+Phase 4 slice 25 cut the **last page family** out of `app.py` (8,482 → 8,037): `settings`, into
+`web/settings.py`, twelve names, zero forced descents. Outside the fenced `groups`, the monolith no
+longer holds a page family. Four lessons, and the first two are corrections to work this repo was
+already proud of.
+
+- **The second hop is where a cut breaks.** ADR-0365's rule is "closure before cut", and three
+  slices have followed it. It still under-delivered here, because the closure was taken to a fixed
+  point *of the movers* and not *of the blockers*. `_settings_body` needs `_second_backend`;
+  `_second_backend` needs `_BACKEND_PROBE_TTL` and `_UseMarking`, both of which are shared with a
+  stayer in exactly the same shape as the three names the record had already flagged. The recorded
+  price of 3 was really **5**. Cutting to the record would have produced a module that does not
+  import, or a `settings` → `app` cycle. Iterate the closure until it stops growing, and say which
+  hop each member arrived on.
+- **A count copied forward decays even when the reasoning behind it was sound.** ADR-0389 was right
+  to relabel that column *candidates* rather than *descents* — and the number inside it was still
+  wrong. Relabelling a figure is not re-measuring it.
+- **The monkeypatch repoint is keyed on the CALLER, not the name.** ADR-0297 named this trap
+  fourteen slices ago; this is the slice where it fired at scale. 21 hits on bound names split
+  **14 repoint / 7 leave alone**, and `_ollama_or_none` and `_second_backend` each appear on *both*
+  sides: patched then driven through `/settings` the consumer moved, patched then driven through
+  `/api/ask` it did not. A name-keyed repoint would have broken seven working tests while fixing
+  fourteen broken ones. **Three of the fourteen would have passed silently**, so the non-zero case was forced
+  with counting spies — app-globals 0× / settings-globals 1×, and the control is the mirror image
+  on the *same name*, 1× / 0×. That symmetry is what makes a zero a measurement of the boundary
+  rather than of a broken instrument.
+- **Verbatim text is not always verbatim behaviour.** `_UseMarking` logs through
+  `logging.getLogger(__name__)`. The line moves byte-for-byte; `__name__` is not text, so the logger
+  name changed with the module. Nothing observes it, and rewriting it to a literal would trade a
+  verbatim move for a hard-coded lie — so it moved as-is and is named in the ADR. Every prior slice
+  treated byte-identity of the moved definitions as sufficient proof of behaviour preservation; it
+  is sufficient only for code that does not read its own module identity. Grep the moved bytes for
+  `__name__` / `__file__` / `__module__` / `globals()` / `sys.modules` before claiming otherwise.
+- **"What has the corpus never rendered?" is now the standing first question.** Two consecutive
+  slices found dark members whose real cause was a whole *class* of unrendered input — last slice a
+  fully-progressed as-built, this slice a **configured AI** (every stage ran on the shipped default
+  `AIConfig`, so a non-default backend, a second model, an attached launcher and any `OLLAMA_*`
+  environment were all unreached). Five dark members, one cause. The `[aiconfig]` stage lit three of
+  them; the remaining two are dark *by construction* (a wrapper needing a live model, a cache TTL
+  that cannot change bytes) and are reported as a named gap rather than smoothed over.
+- **A control whose shortfall you can explain beats a perfect one.** The positive control `_e`
+  scored 29 of 31 extracted modules — and the two misses are exactly `ssi.py` and `volatility.py`,
+  the two modules with no HTML. A bare 31/31 would have carried less information.
+- **Predict the control, then run it.** Probe B's expectation (302) was derived from probe A's
+  per-stage decomposition (29 + 7 × 39) *before* the run, on the theory that the new stage is
+  structurally an ordinary loaded stage. It landed exactly, with 39 in the new stage — two
+  instruments agreeing on a number neither was told.
+- **A sweep's PATTERN is part of its claim, exactly as its population is — and the pre-mutation
+  control is what catches it.** The first monkeypatch sweep anchored its regex on the fixture's name
+  (`monkeypatch.setattr`); `test_coverage_app.py` binds `mp = monkeypatch` first, so four sites were
+  invisible — all four feeding `_ai_status_note`, all four needing the repoint. Nothing in the sweep
+  could have revealed that. What revealed it was the mutation battery's refusal to score anything
+  until its selection is GREEN BEFOREHAND: the baseline run went red before a single mutation was
+  applied. Re-swept receiver-agnostically, 17 hits → 21 and the repoint 10 → 14. Sweep on the SHAPE
+  of the call, never on the name of the receiver, and never skip the pre-mutation control.
+- **Do not edit an instrument while it is running.** Extending `oracle_corpus.py` mid-probe changed
+  the label set under a probe that was using it. It aborted cleanly (the harness compares label
+  *sets* before diffing bodies) and the run was redone against both instruments — which is how the
+  before/after columns came to exist at all. The standing rule was "never measure a tree a battery
+  is mutating"; it needs the mirror clause, **never mutate an instrument a measurement is using**.
+- **One worktree, one actor.** Two independent measurements were pointed at the same scratchpad
+  worktree — a probe that restores `app.py` from a saved copy after every render, and a verification
+  agent applying a trial cut in the same tree. Each silently reverted the other: the agent wrote a
+  cut `app.py`, a later `wc -l` read the uncut length, and its first-pass results ("all green, zero
+  cascade") were measured against a tree it did not think it had. It caught this only because it
+  bracketed the measurement with `wc -l` guards *inside the same shell invocation* — and, had it
+  not, it would have reported the exact opposite of the truth. The probe was re-run in a dedicated
+  worktree for the same reason. **Bracket a measurement with a cheap identity check in the same
+  invocation, and never share a worktree between two things that write.**
+
 ### 2026-08-12 (b) — a rule you have written down can still be under-applied (ADR-0389)
 
 Phase 4 slice 24 cut the last four zero-descent page families out of `app.py` (9,125 → 8,482):

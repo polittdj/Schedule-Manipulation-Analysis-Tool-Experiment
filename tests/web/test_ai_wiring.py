@@ -9,6 +9,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 import schedule_forensics.web.app as app_module
+import schedule_forensics.web.settings as settings_module
 from schedule_forensics.web.app import SessionState, create_app
 
 
@@ -258,10 +259,10 @@ def test_settings_shows_the_ai_off_button_only_when_a_model_is_active(
         def generate(self, prompt: str) -> str:
             return ""
 
-    monkeypatch.setattr(app_module, "_ollama_or_none", lambda cfg: _Reachable())
+    monkeypatch.setattr(settings_module, "_ollama_or_none", lambda cfg: _Reachable())
     page = client.get("/settings").text
     assert "/settings/ai-off" in page and "Turn the AI off" in page
-    monkeypatch.setattr(app_module, "_ollama_or_none", lambda cfg: None)  # no model reachable
+    monkeypatch.setattr(settings_module, "_ollama_or_none", lambda cfg: None)  # no model reachable
     assert "/settings/ai-off" not in client.get("/settings").text
 
 
@@ -325,7 +326,7 @@ def test_settings_model_field_is_a_dropdown_of_installed_models(
         def generate(self, prompt: str) -> str:
             return ""
 
-    monkeypatch.setattr(app_module, "_ollama_or_none", lambda cfg: _Reachable())
+    monkeypatch.setattr(settings_module, "_ollama_or_none", lambda cfg: _Reachable())
     page = client.get("/settings").text
     assert "<select name=model id=primaryModel>" in page
     assert "schedule-analyst:latest" in page and "llama3.2:latest" in page
@@ -474,7 +475,7 @@ def test_settings_render_never_marks_use(monkeypatch: pytest.MonkeyPatch) -> Non
     mgr = _RecordingManager()
     state = SessionState()
     client = TestClient(create_app(state, ollama=mgr))
-    monkeypatch.setattr(app_module, "_ollama_or_none", lambda cfg: _Reachable())
+    monkeypatch.setattr(settings_module, "_ollama_or_none", lambda cfg: _Reachable())
     assert client.get("/settings").status_code == 200
     assert mgr.recorded == []  # probes and model lists never mark
 
