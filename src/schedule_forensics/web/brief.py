@@ -32,8 +32,9 @@ from schedule_forensics.web.components import _panel_head, _shell_tools
 #: route that does not exist. This note is one half of a ``#:`` block that documented BOTH
 #: chapter-12 export titles in ``app.py``; the constant's own bytes moved verbatim, and the
 #: sentence was split because "Both name a REAL endpoint" stopped being true of either file
-#: alone once ``_BRIEF_XLSX_TITLE`` left. Its twin ``_BRIEFING_XLSX_TITLE`` stays in ``app.py``
-#: until the /briefing family is cut.
+#: alone once ``_BRIEF_XLSX_TITLE`` left. Its twin ``_BRIEFING_XLSX_TITLE`` now lives in
+#: ``web/briefing.py`` (ADR-0388), so the pair is split across two modules and each half of
+#: this note travels with the constant it describes.
 _BRIEF_XLSX_TITLE = (
     "Export the diagnostic brief workbook (this document's sections are its sheets) — "
     "opens in Excel"

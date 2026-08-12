@@ -33,7 +33,9 @@ import pytest
 import schedule_forensics.web.analysis as analysis_mod
 import schedule_forensics.web.app as app_mod
 import schedule_forensics.web.brief as brief_mod
+import schedule_forensics.web.briefing as briefing_mod
 import schedule_forensics.web.card as card_mod
+import schedule_forensics.web.cei as cei_mod
 import schedule_forensics.web.chrome as chrome_mod
 import schedule_forensics.web.compare as compare_mod
 import schedule_forensics.web.components as components_mod
@@ -86,6 +88,8 @@ EXTRACTED = {
     "brief.py": brief_mod,
     "card.py": card_mod,
     "scorecards.py": scorecards_mod,
+    "briefing.py": briefing_mod,
+    "cei.py": cei_mod,
 }
 
 #: The view layer, lowest layer FIRST. A module may import only from those before it — that is
@@ -120,6 +124,8 @@ LAYER_ORDER = (
     "brief.py",
     "card.py",
     "scorecards.py",
+    "briefing.py",
+    "cei.py",
     "app.py",
 )
 
@@ -132,7 +138,9 @@ VIEW_MODULES = (
     "analysis.py",
     "app.py",
     "brief.py",
+    "briefing.py",
     "card.py",
+    "cei.py",
     "chrome.py",
     "compare.py",
     "components.py",
