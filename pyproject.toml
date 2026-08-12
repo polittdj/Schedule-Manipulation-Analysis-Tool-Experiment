@@ -16,7 +16,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "schedule-forensics"
-version = "1.0.195"
+version = "1.0.196"
 description = "Local, NASA-themed forensic schedule-analysis tool (CUI-safe, offline)."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -255,6 +255,14 @@ select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
 # with them.
 "src/schedule_forensics/web/briefing.py" = ["E501"]
 "src/schedule_forensics/web/cei.py" = ["E501"]
+# `curves.py`, `ribbon.py`, `workbench.py` and `volatility.py` are the four page families of
+# ADR-0389, extracted verbatim — the curve captions, the ribbon matrix' `<th>` rows and cell
+# tooltips, the workbench library markup and the volatility board's tiles ARE HTML string
+# literals, already over-long inside app.py's exempt region, so the exemption travels with them.
+"src/schedule_forensics/web/curves.py" = ["E501"]
+"src/schedule_forensics/web/ribbon.py" = ["E501"]
+"src/schedule_forensics/web/volatility.py" = ["E501"]
+"src/schedule_forensics/web/workbench.py" = ["E501"]
 
 [tool.ruff.format]
 # ruff >= 0.16 formats fenced ```python blocks inside Markdown. That is right for prose docs and

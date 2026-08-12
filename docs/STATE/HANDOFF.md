@@ -1,133 +1,143 @@
-# Handoff — 2026-08-12 (phase 4 slice 23: /briefing + /cei out, zero descents; ADR-0388; v1.0.195)
+# Handoff — 2026-08-12 (b) (phase 4 slice 24: the last four zero-descent families out; ADR-0389; v1.0.196)
 
-> ## STATUS (current) — **pushed, draft PR open** on `claude/polaris-phase-4-slice-23-1powiz`
-> (this container's designated branch). It started AT `main` **85b470f** — #572 had already
+> ## STATUS (current) — **pushed, draft PR open** on `claude/polaris-phase4-slice24-05cpkn`
+> (this container's designated branch). It started AT `main` **5e48f7a** — #573 had already
 > squash-merged, so no restart was needed. **Shipped code changed** — version bumped
-> **v1.0.194 → v1.0.195** BEFORE the suite; wheel + nine installers rebuilt once after the last
-> code change (SCHEMA stays 2.11.0). Highest ADR now **ADR-0388** (re-fetched before numbering
+> **v1.0.195 → v1.0.196** BEFORE the suite; wheel + nine installers rebuilt once after the last
+> code change (SCHEMA stays 2.11.0). Highest ADR now **ADR-0389** (re-fetched before numbering
 > AND before committing).
 >
-> **Slice 23: TWO page families → `web/briefing.py` (252 lines) · `web/cei.py` (304), ZERO
-> descents.** app.py **9,593 → 9,125** wc-truth (17,197 when phase 3 began). `LAYER_ORDER`
-> `… → scorecards → briefing → cei → app`; both join pyproject's E501 list, `EXTRACTED`,
-> `LAYER_ORDER`, `VIEW_MODULES` and BOTH whole-view-layer guard tuples.
+> **Slice 24: FOUR page families → `web/curves.py` (155 lines) · `web/ribbon.py` (300) ·
+> `web/workbench.py` (94) · `web/volatility.py` (217), ZERO descents.** `app.py` **9,125 →
+> 8,482** wc-truth (17,197 when phase 3 began). `LAYER_ORDER` `… → cei → curves → ribbon →
+> workbench → volatility → app`; all four join pyproject's E501 list, `EXTRACTED`, `LAYER_ORDER`,
+> `VIEW_MODULES` and BOTH whole-view-layer guard tuples.
 >
-> ## THE FINDING — "the zero-descent set is EXHAUSTED" is measured FALSE
-> The queue opened this slice asserting all eight remaining families carry descents, `briefing`
-> first at **3**. Re-walked: `briefing` carries **ZERO**, and **six of eight** families do.
-> `_ollama_or_none` / `_openai_or_none` belong to **`settings`** (reached from `_ai_status_note`
-> and `_settings_body`); `_active_backend` is reached only from the `/api/ai/briefing` **ROUTE**,
-> and a route-only referrer never forces a descent (ADR-0378, restated by ADR-0387 — applied here
-> to the family whose price it had been inflating for three ADRs). Even `settings`' real trio is
-> not the recorded one: `_active_backend` out, `_second_backend` in. **Re-priced table (movers /
-> lines / descents):** `groups` 8/430/0 *(fenced)* · **`settings` 7/347/3** · `cei` 4/262/0 ·
-> `ribbon` 9/243/0 · `briefing` 5/198/0 · `volatility` 2/192/0 · `curves` 3/131/0 ·
-> `workbench` 1/67/0.
+> **THE ZERO-DESCENT SET IS NOW ACTUALLY EMPTY.** Outside `groups` (fenced, ADR-0343),
+> **`settings` is the only page family left in `app.py`.**
 >
-> ## The walk reproduced the record before it was allowed to correct it
-> Pointed at the pre-slice-22 tree it had to reproduce ADR-0387's three shipped modules exactly —
-> names, line counts AND spans (`brief` 2/48, `card` 2/140, `scorecards` 5/151). It **failed that
-> control twice first**, both real defects: (1) `ast.walk(create_app)` yields `create_app` itself,
-> so every name inside it got one poison referrer and EVERY family priced at **zero members**;
-> (2) the `card` seed used `GET /card`, but the route is `GET /card/{name}`, so it had no seed
-> routes — zero again. Both print as a small tidy number. *(ADR-0387's closure table says `brief`
-> 1/44 — the function only; its DECISION table and the shipped module say 2/48. The shipped module
-> is the record that matters.)*
+> ## THE FINDING — `settings`' three descents are CANDIDATES, and none of them is FORCED
+> ADR-0388 corrected *which* three names `settings` carries; it did not ask whether they must
+> descend. ADR-0351's rule — "a symbol needed by an extracted module must live at or below that
+> module's layer" — permits **two** remedies: descend into `components.py`, **or move into the
+> family module**, because `app.py` is the TOP layer and reaches anything through the `X as X`
+> re-export. Only a referrer in **another extracted module** forces the first. Measured: all
+> three blockers live in `app.py` itself (`_ollama_or_none`/`_openai_or_none` ← `_active_backend`
+> at module level; `_second_backend` ← `_ask_response` nested in `create_app`), and an AST scan
+> over all 28 extracted view modules finds **ZERO** references to any of the three — positive
+> control `_e`, same scan, **26** modules. ADR-0378 already ruled this way for `_sources_line`.
+> **The walk's "descents" column counts candidates, not verdicts**, and is labelled that way now.
+> `settings` is very likely a single-module cut with zero forced descents — slice 25's
+> measurement to make, not a claim to bank.
 >
-> ## The oracle grew a sixth stage: 652 → 800
-> The probe scored **8/9** with `_stack_not_measured` **dark** — not unreachable, but the Law-2
-> panel `_work_piling_header` renders INSTEAD of a bar when `/cei` has no scored month. Measured,
-> not guessed: of every 2-combination of available fixtures, exactly three produce
-> `cei_period=None`, all from the `jacked_up_schedule_*` pair. A query-string variant could not
-> reach it (the condition is a POPULATION property), so **`[ceidark]`** was added — that pair,
-> `strip_title=True` (intact they become two one-version Projects and `/cei` serves its
-> placeholder — the ADR-0375 trap). The member then moves **exactly the two `[ceidark] /cei`
-> labels and nothing else**, so the stage is provably load-bearing (battery mutation 5).
+> ## The walk reproduced the record, then was shown able to fail — and the table HELD
+> Rebuilt from scratch, pointed at the pre-slice-23 tree, required to reproduce ADR-0388's two
+> shipped modules exactly (names, counts AND spans): `briefing` 5/198, `cei` 4/262. **CONTROL
+> PASSED.** Then shown able to FAIL two ways — the same control on the post-slice-23 tree
+> (`([], 0)`) and with ADR-0388's defect #1 re-injected (`ast.walk` over `create_app` with no
+> stop-set, also `([], 0)`). Re-priced, **ADR-0388's table reproduces EXACTLY** — the first
+> carried-forward table this phase to survive a re-walk unchanged. The four cut here are
+> **fully disjoint** (no shared mover, no cross-family reference) — measured, which is what makes
+> a four-family slice no riskier than a one-family slice.
 >
-> ## The probe aborted on its own control, again
-> `_page` moved **zero** labels. Not darkness: the injector handled `str`/`dict` and `_page`
-> returns an **`HTMLResponse`**. **A probe's marker must match the RETURN TYPE** (ADR-0386) —
-> named in the trap list and still the first thing that broke. Repaired (append to
-> `Response.body`, re-stamp `content-length`), the control moves **224/224**.
+> ## The oracle grew a SEVENTH stage: 800 → 948
+> Probe scored 14/15 with `_RIBBON_FLOAT_EXTRAS` **dark** — the audit NEW-1 Law-2 guard that
+> renders "—" instead of a fabricated Avg/Max Float when a schedule has **no incomplete
+> activities**. Measured: **every** MSPDI fixture (16) and the one XER carry at least one activity
+> under 100% complete, so **the corpus had never rendered a fully-progressed as-built at all** —
+> a gap wider than the member. **`[allcomplete]`** is a BYTE TRANSFORM of an existing fixture, not
+> a new file: every `<PercentComplete>` in `TP1_Library_Progressed` → 100, and the transform
+> **asserts its landed count against the `<Task>` count** (one task missing the element would
+> leave the branch dark, silently). The member then moves **exactly `[allcomplete] GET /ribbon`
+> and nothing else** — verified as *which label*, not as a count.
 >
 > ## Verification
-> Probe **9/9 render-proven, ZERO dark** (fourteenth consecutive). Fingerprint (scope: ALL SIX
-> stages) `[empty]` 60 `{200:41,400:17,422:2}` + five loaded stages of 148
-> `{200:125,404:4,422:19}` = **800** · **800/800 byte-identical** pristine vs cut, and the
-> `diff -r` itself SHOWN TO FAIL (one-byte perturbation → exit 1) · determinism ×2 processes on
-> BOTH trees **0 flapping** · per-definition byte-identity **9/9 IDENTICAL** (re-read from disk
-> AFTER `ruff --fix` + `format`), every def asserted ABSENT from post-cut app.py · multiset
-> **95 added / 7 removed — ZERO code lines removed** (4 import-list entries + 3 deliberately
-> rewritten comment lines) · battery **7/7 caught** · mypy strict clean over **144** files ·
-> `ruff check .` clean whole-tree · corpus re-rendered AFTER the battery, still 800/800.
+> Probe **15/15 render-proven, ZERO dark** (fifteenth consecutive); every function member moves 6
+> labels / 6 marker hits, `_RIBBON_FLOAT_EXTRAS` moves 1; control `_page` **263/263**. FOUR
+> members are **byte-difference only** (a float threshold, two attribute-name sets cannot carry a
+> string marker) and are reported as such, not counted as two agreeing instruments. Fingerprint
+> (scope: ALL SEVEN stages) `[empty]` 60 `{200:41,400:17,422:2}` + six loaded stages of 148
+> `{200:125,404:4,422:19}` = **948** · **948/948 byte-identical** pristine vs cut, `diff -r`
+> itself SHOWN TO FAIL (one-byte append → exit 1, restored → exit 0) · determinism ×2 processes
+> on BOTH trees **0 flapping**, second pair reproduces byte-identity independently ·
+> per-definition byte-identity **15/15 IDENTICAL** (re-read from disk AFTER `ruff --fix` +
+> `format`), every def asserted ABSENT from post-cut app.py · multiset **101 added / 2 removed —
+> ZERO code lines removed** (both dropped-import fragments) · battery **6/6 caught BY NAME** ·
+> mypy strict clean over **148** files · `ruff check .` clean whole-tree · corpus re-rendered
+> AFTER the battery, byte-identical to the pre-battery cut render.
 >
-> **Both exports contribute NOTHING, and two instruments say so** — the call graph finds no mover
-> referenced by `export_briefing`/`export_cei`, and the probe finds no member moving any
-> `/export/` label. Unlike `scorecards` (ADR-0387, 8 export labels), these pages and their
-> workbooks share no app-level surface.
+> **M7 — the mutation scored against the ORACLE, and its anchor had to be chosen.** The first
+> candidate (`Schedule Quality Ribbon`) appears **4×** in `ribbon.py` (a colliding anchor is not
+> span-scoped), and the obvious unique alternatives `>Missing Logic<` / `>Merge Hotspot<` are
+> asserted by **11** and **2** test files — either would have scored for the WRONG reason.
+> `>Click any metric cell<` is unique and pinned by NO test: unit selection **exit 0** (the unit
+> tests genuinely do not pin moved markup), oracle **6 differing labels** — matching the probe's
+> independent per-member count for `_ribbon_body` exactly.
 >
-> **Sweeps (population STATED: 513 .py files, build/dist/.venv/caches excluded).** Dropped-import
-> **TWO** (`BowWave`, `Citation`) — zero readers via `web.app`, control `create_app` = 177 files.
-> Monkeypatch over the names the new modules **BIND** (26 names, 197 setattr calls): **2 hits**,
-> both `audit_schedule` in `tests/ai/test_briefing.py:230-231` — **NOT the ADR-0297 trap**: the
-> targets are `ai.briefing` / `engine.recommendations`, a different module from the new
-> `web.briefing` (a real BASENAME COLLISION worth knowing), and that test asserts
-> `calls == ["audit"]`, a NON-zero assertion, so a dead spy fails loudly. Import sweep **FOUR live
-> readers** that must keep working via re-export (`_cei_body` ×2, `_briefing_table_html`,
-> `_briefing_body`) — all green. Source-text **37 files**, zero repoints, both whole-view-layer
-> guards widened (mutation 4 proves it).
+> **Sweeps (population STATED: 517 `.py` files, build/dist/.venv/caches excluded; 513 + the four
+> new modules).** Dropped-import **TWO** (`CheckStatus`, `MonthCurves` — zero readers via
+> `web.app`, control `create_app` = **184** files). Monkeypatch over the names the new modules
+> **BIND** (38 names, 196 setattr calls): **1 hit**, `test_manifest_projection_memo.py:74`
+> patching `app_mod.compute_activity_makeup` — **adjudicated NOT the ADR-0297 trap by FORCING
+> THE NON-ZERO CASE**: that test asserts `== (0,0,0)`, and a spy asserting ZERO cannot be checked
+> by running it (ADR-0386). Patching it and driving a **cold** `/api/dashboard` reaches it **3×**
+> (warm 0×) — the dashboard caller stayed in `app.py`; `ribbon.py`'s own call is in
+> `_can_we_trust_header`, not on that path. Empty-sweep control: two known-patched names that did
+> NOT move return **17** hits. Import sweep **ONE live reader** (`test_volatility.py:15`,
+> `_volatility_data`) — green. Source-text **47 files**, zero repoints; both whole-view-layer
+> guards widened (mutation M4 proves it).
 >
-> **Three battery mutations did not score on the first pose, and that was the useful part.** M1's
-> module-scope upward import is a REAL cycle → pytest died at COLLECTION (exit 2), so the guard
-> never ran; re-posed under `TYPE_CHECKING` it is caught BY NAME — and that is the likelier
-> smuggling route anyway. M6/M7 edited moved markup and **no unit test noticed** — a true
-> measurement about the unit tests, re-scored against the oracle at 2 and 5 labels, which **match
-> the probe's independent per-member counts exactly**.
->
-> ## The mpxj trap fired exactly as documented
-> This container is a `--depth 1` clone; `git log -1 -- tools/mpxj` returned **`3a925b0`** — the
-> CLONE BOUNDARY. `git fetch --unshallow` first, and the nine installers pin **`42d92dc`** as they
-> must. **The build still has no guard** — it prints the ref and trusts the operator. Still queued.
+> ## The mpxj trap was PRE-EMPTED, not paid
+> This container is a `--depth 1` clone. `git fetch --unshallow` ran BEFORE the build, so
+> `git log -1 -- tools/mpxj` returned **`42d92dc`** (not the clone boundary) and the nine
+> installers pin it correctly. **The build still has no guard** — it prints the ref and trusts the
+> operator to have unshallowed. Still queued.
 >
 > ## Next
-> **Phase 4 slice 24.** Six zero-descent families remain outside `groups`: `ribbon` (9/243),
-> `volatility` (2/192), `curves` (3/131), `workbench` (1/67) — and **`settings` (7/347) is the
-> only one carrying real descents** (`_ollama_or_none`, `_openai_or_none`, `_second_backend`),
-> so it deserves its own slice. **Re-price by referrer walk anyway; the table above is a snapshot,
-> and snapshots decay.** Then the standing queue: **`mpxj_ref()` shallow-clone hardening** ·
-> stored-SRA-fields MSPDI fixture · driving-corridor fixture · three page-lede-less pages ·
-> /groups Activities (ADR-0343) · installers vs known-good constraints · P80/P90 residual ·
-> doc-drift sweep (`docs/PARITY-REPORT.md` still calls the reference .mpps git-ignored;
-> `docs/FINAL-REPORT.md`'s blanket "Exact match") · ~150 MB RSS per loaded file · Phase 6 docs.
+> **Phase 4 slice 25 — `settings` (7 movers / 347 ast lines), the LAST page family outside the
+> fenced `groups`.** Re-price by referrer walk anyway, and **test the finding above**: measure
+> whether each of `_ollama_or_none` / `_openai_or_none` / `_second_backend` can simply move INTO
+> `settings.py` (app.py's stayers reaching them through the re-export) rather than descending into
+> `components.py`. Expect the ADR-0297 monkeypatch trap to be live here: `test_ai_wiring.py` and
+> `test_coverage_app_extra.py` patch `app_module._ollama_or_none` / `_openai_or_none` and
+> `_ai_status_note` resolves them — those tests need repointing in the same commit, and the
+> sweep must FORCE the non-zero case rather than trust a green run.
+> Then the standing queue: **`mpxj_ref()` shallow-clone hardening** · stored-SRA-fields MSPDI
+> fixture · driving-corridor fixture · three page-lede-less pages · /groups Activities (ADR-0343)
+> · installers vs known-good constraints · P80/P90 residual · doc-drift sweep
+> (`docs/PARITY-REPORT.md` still calls the reference .mpps git-ignored; `docs/FINAL-REPORT.md`'s
+> blanket "Exact match"; **`LESSONS-LEARNED` Part VIII's 2026-08-10(e) entry is still at the
+> BOTTOM of the file instead of newest-first**) · ~150 MB RSS per loaded file · Phase 6 docs.
 > **Operator:** re-convert FX-03/04 + re-run Fuse · one Acumen run on a crafted sub-day-negative-
 > float schedule · license · branch-protection contexts · proprietary reruns · OR-04 · July mpp/
 > re-export decision.
 >
 > ## Carried forward
-> ADR-0353..0388 closed — do not re-open. **The oracle is committed: import it, don't rebuild it.**
+> ADR-0353..0389 closed — do not re-open. **The oracle is committed: import it, don't rebuild it.**
 > `python tests/web/oracle_corpus.py --out <dir>` with `PYTHONPATH=<tree>/src
 > SF_ORACLE_FIXTURES=<repo>/tests/fixtures`, against a pristine worktree and the cut tree, then
 > `diff -r` on the DIRECTORIES (filenames are LABEL-addressed, so a manifest diff is the wrong
-> surface). NEW lessons: (1) a priced table is a snapshot and decays silently — re-walk, and make
-> the walk reproduce something KNOWN before believing it about something unknown; (2) a control
-> that names an expected VALUE beats one that names a direction ("zero members" and "no seed
-> routes" both print as plausible output); (3) a doc-comment that names a FUTURE has an expiry
-> date — grep the moved names to find them; (4) a mutation that does not score can be the most
-> informative one in the battery; (5) the oracle extension is only honest if the member then moves
-> exactly the labels the condition added. Standing traps unchanged (an instrument is not evidence
-> until shown to FAIL · a probe's marker must match the RETURN TYPE · `ast` col_offset is a BYTE
-> offset · a census can be exact and still not be membership · a page-only anchor understates an
-> export-feeding member · route-only referrers never force a descent · sweep by BARE NAME · a
-> sweep's POPULATION is part of its claim · a prefix that is a prefix OF ANOTHER FAMILY fuses two
-> censuses — seed on exact route lists · the MPXJ pin drifts in a shallow clone · a parallel
-> session can take your ADR number · never MEASURE a tree a battery is mutating · a normalizer
-> that fails silently is a flap factory · fingerprints carry their SCOPE · the installer lockstep
-> guard makes the rebuild a PREREQUISITE of the final suite · round-half-even 240→0 · MSPDI
-> re-derives Duration · env-defect masquerade · named-failure rule · empty sweep needs a positive
-> control · `grep -c` exits 1 on zero · B608 house nosec · pydantic 2.6 / fastapi 0.110.2 floors ·
-> five playwright-only failures pre-existing, CI-invisible · scratchpad harnesses hardcode the
-> repo root · `python -m pytest` prepends CWD to `sys.path` and bare `pytest` does NOT · two ruffs
-> on PATH, run `python -m ruff`). A number written mid-session is not a measurement (wc decides).
+> surface). NEW lessons: (1) a rule can be written down and still under-applied — a count that
+> reads as a verdict gets spent as one, so label it; (2) when a member is dark, ask what the
+> corpus has never rendered, not what the member needs — the answer here was a whole CLASS of
+> input; (3) an oracle stage can be a byte transform of an existing fixture, and it must assert
+> its own landed count; (4) choosing a mutation's ANCHOR is part of the mutation — a colliding
+> anchor is not span-scoped, and a unique anchor some test asserts scores for the wrong reason;
+> (5) a zero-asserting spy is only adjudicated by FORCING the non-zero case. Standing traps
+> unchanged (an instrument is not evidence until shown to FAIL · a probe's marker must match the
+> RETURN TYPE · a priced table is a snapshot · a control that names a VALUE beats one that names a
+> direction · `ast` col_offset is a BYTE offset · a census can be exact and still not be
+> membership · route-only referrers never force a descent · sweep by BARE NAME · a sweep's
+> POPULATION is part of its claim · a prefix that is a prefix OF ANOTHER FAMILY fuses two censuses
+> — seed on exact route lists · the MPXJ pin drifts in a shallow clone · a parallel session can
+> take your ADR number · never MEASURE a tree a battery is mutating · a normalizer that fails
+> silently is a flap factory · fingerprints carry their SCOPE · the installer lockstep guard makes
+> the rebuild a PREREQUISITE of the final suite · round-half-even 240→0 · MSPDI re-derives
+> Duration · env-defect masquerade · named-failure rule · empty sweep needs a positive control ·
+> `grep -c` exits 1 on zero · B608 house nosec · pydantic 2.6 / fastapi 0.110.2 floors · five
+> playwright-only failures pre-existing, CI-invisible · scratchpad harnesses hardcode the repo
+> root · `python -m pytest` prepends CWD to `sys.path` and bare `pytest` does NOT · two ruffs on
+> PATH, run `python -m ruff`). A number written mid-session is not a measurement (wc decides).
 
 # (prior) handoffs — archived
 

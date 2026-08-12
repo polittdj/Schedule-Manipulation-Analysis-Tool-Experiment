@@ -72,6 +72,10 @@ def test_drilldown_runtime_is_loaded_globally_not_per_page() -> None:
             "briefing.py",
             "card.py",
             "cei.py",
+            "curves.py",
+            "ribbon.py",
+            "volatility.py",
+            "workbench.py",
         )
     )
     assert app_src.count('<script src="/static/drilldown.js"></script>') == 1

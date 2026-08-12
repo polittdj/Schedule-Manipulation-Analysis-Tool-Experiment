@@ -13498,3 +13498,57 @@ went unnoticed by the unit tests, which do not pin those strings — re-scored a
 **The mpxj shallow-clone trap fired as documented.** `--depth 1` clone, `git log -1 -- tools/mpxj`
 returned `3a925b0` (the clone boundary); `git fetch --unshallow` first and the nine installers pin
 `42d92dc`. The build still has no guard — still queued.
+
+## 2026-08-12 (b) — phase 4 slice 24: the last four zero-descent families (ADR-0389, v1.0.196)
+
+Branch `claude/polaris-phase4-slice24-05cpkn`, started at `main` 5e48f7a (#573 already merged, no
+restart). **ADR-0389.** Four page families out of `app.py` verbatim — `curves.py` (155 lines),
+`ribbon.py` (300), `workbench.py` (94), `volatility.py` (217) — ZERO descents. `app.py`
+**9,125 → 8,482** wc-truth (17,197 when phase 3 began). **The zero-descent set is now empty:**
+outside the fenced `groups`, `settings` is the only page family left in the file.
+
+The referrer walk was rebuilt, made to reproduce ADR-0388's two shipped modules exactly (names,
+counts AND spans), then shown able to FAIL two ways — the same control on the post-slice-23 tree,
+and with ADR-0388's `ast.walk(create_app)` defect re-injected; both print `([], 0)`. Re-priced,
+ADR-0388's table reproduced EXACTLY — the first carried-forward table this phase to survive a
+re-walk unchanged. The four families are fully disjoint (measured: no shared mover, no
+cross-family reference).
+
+**The finding: `settings`' three "descents" are candidates, and none is forced.** ADR-0351's rule
+permits two remedies — descend into `components.py`, or move into the family module, since
+`app.py` is the top layer and reaches anything through the re-export. Only a referrer in another
+EXTRACTED module forces the first. All three blockers live in `app.py` itself, and an AST scan
+over all 28 extracted view modules finds zero references to any of them (positive control `_e`:
+26 modules). The walk's "descents" column is now labelled candidates, not verdicts.
+
+**The oracle grew a seventh stage, 800 → 948.** `_RIBBON_FLOAT_EXTRAS` was dark: it guards the
+audit NEW-1 Law-2 branch that renders "—" instead of a fabricated Avg/Max Float when a schedule
+has no incomplete activities. Every MSPDI fixture (16) and the one XER has at least one activity
+under 100% — the corpus had never rendered a fully-progressed as-built at all. `[allcomplete]` is
+a BYTE TRANSFORM of an existing fixture rather than a new file (`<PercentComplete>` → 100 on
+`TP1_Library_Progressed`), and the transform asserts its landed count against the `<Task>` count.
+The member then moves exactly `[allcomplete] GET /ribbon` and nothing else — verified as which
+label, not as a count.
+
+Verification: probe 15/15 render-proven / zero dark, control `_page` 263/263, four members
+reported byte-difference-only (no string marker possible) · 948/948 byte-identical pristine vs
+cut, with the `diff -r` shown to fail on a one-byte append · determinism ×2 processes on both
+trees, 0 flapping, second pair reproducing byte-identity independently · per-definition
+byte-identity 15/15 after `ruff --fix` + `format`, 0 leaks · multiset 101 added / 2 removed, zero
+code lines removed · battery 6/6 caught by name · mypy strict over 148 files · corpus re-rendered
+after the battery, byte-identical to the pre-battery cut render.
+
+M7 (markup edit inside a moved definition) is scored against the ORACLE, and its anchor had to be
+chosen: the first candidate appears 4× in `ribbon.py`, and the obvious unique alternatives are
+asserted by 11 and 2 test files — either would have scored for the wrong reason. `>Click any
+metric cell<` is unique and pinned by no test: unit selection exit 0, oracle 6 labels, matching
+the probe's independent count for `_ribbon_body`.
+
+Sweeps over 517 files (513 + the four new modules): dropped-import two (`CheckStatus`,
+`MonthCurves`, zero readers, control 184) · monkeypatch ONE hit on `compute_activity_makeup`,
+adjudicated NOT the ADR-0297 trap by FORCING the non-zero case — that test asserts `== (0,0,0)`,
+and a cold `/api/dashboard` reaches the patched name 3× (warm 0×), so the spy is live · one live
+reader preserved via re-export · 47 source-text files, zero repoints.
+
+**The mpxj shallow-clone trap was pre-empted**: `git fetch --unshallow` ran before the build, so
+the pin resolved to `42d92dc` rather than the clone boundary. The build still has no guard.
