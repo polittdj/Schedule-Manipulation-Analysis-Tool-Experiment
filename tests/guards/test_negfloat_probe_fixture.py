@@ -2,12 +2,28 @@
 
 `tests/fixtures/mspdi/NEGFLOAT_SubDay_Probe.xml` is not a test input — it is an **operator
 input**. It exists to be run through Deltek Acumen Fuse once, by hand, on a licensed machine, to
-settle a question no formula can answer: Fuse's `7. Negative Float` metric filters on a bare
-``Total Float < 0`` (confirmed from the operator's v8.11.0CU1 metric-definition screens — the
-Formula box is EMPTY, the metric is filter-driven, which is why the `.aft` carries no formula
-text for it). Our parity mode instead applies ``round(total_float / mpd) < 0``. The two agree
-only if Fuse's Total Float FIELD is itself whole-day-grained, and nothing in the library says
-whether it is.
+settle a question no formula can answer.
+
+Fuse's `7. Negative Float` filters on a bare ``Total Float < 0``. Two INDEPENDENT sources agree
+on that, which is why it is stated as fact here rather than as a reading:
+
+* the operator's Fuse **v8.11.0CU1** metric-definition screens — Formula box EMPTY, mode Basic,
+  Primary Formula filters ``Baseline Duration > 0`` and ``Total Float < 0``, inclusions
+  Planned + In Progress / Normal + Milestone (Summary and Level of Effort unchecked);
+* the committed library itself, ``00_REFERENCE_INTAKE/acumen_v8.11.0/NASA Metrics_Complete_*.aft``
+  — the metric named ``7. Negative Float`` (NOT the four generically-named "Negative Float"
+  metrics, which are different metrics) has an EMPTY ``<Formula>`` and a ``PrimaryFilter`` of
+  exactly ``Baseline Duration GreaterThan 0`` AND ``Total Float LessThan 0``.
+
+That empty ``<Formula>`` is the answer to a question this repo carried for weeks as "the AFT has
+NO formula for Negative Float": there is no formula because the metric is defined by FILTERS.
+
+Our parity mode instead applies ``round(total_float / mpd) < 0`` (ADR-0280). The two agree only
+if Fuse's Total Float FIELD is itself whole-day-grained, and neither source says whether it is.
+The fixture's three sub-day magnitudes are chosen so ONE run answers three questions:
+``-0.25 d`` (any whole-day treatment, round or truncate, drops it), ``-0.50 d`` (the rounding
+TIE — Python's banker's ``round()`` drops it, half-away-from-zero would keep it), and
+``-0.75 d`` (rounds to -1 and is kept; truncates to 0 and is dropped).
 
 The fixture's whole value is that it contains activities where the two rules DISAGREE. If a CPM
 change ever flattened that, the fixture would still load, still look fine, and the operator would
@@ -25,6 +41,7 @@ from pathlib import Path
 import pytest
 
 from schedule_forensics.engine.cpm import compute_cpm
+from schedule_forensics.engine.metrics.dcma14 import compute_dcma14
 from schedule_forensics.importers.mspdi import parse_mspdi
 
 FIXTURE = Path(__file__).resolve().parents[1] / "fixtures" / "mspdi" / "NEGFLOAT_SubDay_Probe.xml"
@@ -110,6 +127,30 @@ def test_no_activity_falls_out_of_the_parity_population() -> None:
     assert not thin, (
         "these probe activities have a baseline duration below one working day, so the parity "
         f"population filter would exclude them and confound the result: {thin} (mpd={mpd})"
+    )
+
+
+def test_the_shipped_metric_answers_differently_under_the_two_rules() -> None:
+    """The strongest pin: DCMA-07 itself must disagree with itself across `acumen_parity`.
+
+    The CPM-level check above proves the raw floats discriminate. This proves the discrimination
+    survives all the way through the SHIPPED metric — population filter, baseline predicate,
+    effective-float preference and all — which is the thing Fuse's number will actually be
+    compared against. A fixture that discriminated in raw float but not in `compute_dcma14`
+    would still buy the operator nothing.
+    """
+    sch = parse_mspdi(FIXTURE)
+    cpm = compute_cpm(sch)
+    pure = compute_dcma14(sch, cpm_result=cpm, acumen_parity=False)["DCMA07"]
+    parity = compute_dcma14(sch, cpm_result=cpm, acumen_parity=True)["DCMA07"]
+    assert pure.population == parity.population, (
+        "the two modes disagree on the POPULATION, not just the rule — then a differing count "
+        f"would be ambiguous between the two ({pure.population} vs {parity.population})"
+    )
+    assert pure.count > parity.count, (
+        "DCMA-07 returns the same count under both rules, so running this fixture through Fuse "
+        f"cannot tell them apart: pure={pure.count}/{pure.population}, "
+        f"parity={parity.count}/{parity.population}"
     )
 
 
