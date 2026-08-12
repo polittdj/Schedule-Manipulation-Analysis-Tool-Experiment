@@ -114,7 +114,7 @@ def test_the_metric_bibles_parse_with_their_pinned_counts() -> None:
 
 
 def test_every_intake_mpp_is_an_ms_project_ole2_document(entries: list[Any]) -> None:
-    """28 native schedules; a rotated .mpp would break the MPXJ conversion path silently.
+    """29 native schedules; a rotated .mpp would break the MPXJ conversion path silently.
 
     The 21st is ``mpp/24Hour Calendar.mpp`` — the ADR-0357 boundary oracle (main d0b703e);
     the 22nd is the root-level ``SRA Large Test File2.mpp`` — the 2026-08-06 SRA parity
@@ -124,9 +124,13 @@ def test_every_intake_mpp_is_an_ms_project_ole2_document(entries: list[Any]) -> 
     verified genuine OLE2 and readable by the vendored MPXJ. NOTE (read-only audit
     2026-08-07): the FX-03/FX-04 conversions do NOT carry their duration cuts — MS Project
     re-derived Duration from the stale stored dates on import — so those two are
-    byte-genuine .mpp files whose Fuse exports oracle the UNCHANGED schedules."""
+    byte-genuine .mpp files whose Fuse exports oracle the UNCHANGED schedules. The 29th is
+    ``ssi/SRA Large Test File2.mpp`` — the operator's 2026-08-12 upload of the SAME schedule
+    alongside a SECOND SSI run and this tool's own SRA/Sensitivity exports, so the pair can be
+    compared directly (see ``docs/PLAN/SRA-VS-SSI-LARGE-TEST-FILE2.md``). It is a second copy of
+    the root-level file, not a new schedule."""
     mpp = [e for e in entries if e.ext == ".mpp"]
-    assert len(mpp) == 28
+    assert len(mpp) == 29
     assert {e.family for e in mpp} == {"ole2-project"}
 
 

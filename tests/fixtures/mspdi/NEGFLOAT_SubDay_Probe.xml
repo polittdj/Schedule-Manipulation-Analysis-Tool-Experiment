@@ -1,0 +1,413 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!--
+  SYNTHETIC, NON-CUI ORACLE PROBE. Hand-authored MSPDI (MS Project XML).
+  Fictional content; contains no real schedule data of any kind.
+
+  PURPOSE — settle ONE open question with ONE Acumen Fuse run.
+  ADR-0280 ASSUMES Acumen Fuse compares Total Float in WHOLE DAYS, so a sub-day
+  negative float (e.g. -0.25 d) reads as 0 and is NOT counted by DCMA "7. Negative
+  Float". The NASA .aft metric library carries NO <Formula> for that metric (prose
+  only: "Activities that are incomplete and have total float less than 0 working
+  days"), so the assumption cannot be checked against a formula — only empirically.
+  This file puts sub-day AND whole-day negative float in the same schedule, with
+  controls, so a single Fuse run tells us which rows Fuse counts.
+
+  HOW TO READ IT — every activity's NAME states its intended Total Float.
+
+    UID 101  NEG-SUBDAY-025   TF = -0.25 d (-120 min)  DISCRIMINATOR
+    UID 102  NEG-SUBDAY-050   TF = -0.50 d (-240 min)  DISCRIMINATOR (rounding tie)
+    UID 103  NEG-SUBDAY-075   TF = -0.75 d (-360 min)  DISCRIMINATOR (round vs truncate)
+    UID 104  NEG-WHOLEDAY-1   TF = -1.00 d (-480 min)  CONTROL - must be counted
+    UID 105  NEG-WHOLEDAY-2   TF = -2.00 d (-960 min)  CONTROL - must be counted
+    UID 106  ZERO-FLOAT       TF =  0.00 d (   0 min)  CONTROL - must NOT be counted
+    UID 107  POSITIVE-FLOAT   TF = +8.00 d (+3840 min) CONTROL - must NOT be counted
+    UID 108  PROJECT-DRIVER   TF =  0.00 d (   0 min)  sets the project finish
+
+  If Fuse's Negative Float detail does NOT list 104 and 105, the run is broken or
+  misconfigured and proves nothing — check that first, before reading 101/102/103.
+
+  DESIGN NOTES (why it is built this way — do not "tidy" these away):
+  * NO logic links, by design. Every activity is independent, so each row's total
+    float is authored solely by its own Finish-No-Later-Than constraint and nothing
+    propagates between rows. (Cost: DCMA "1. Logic" will read 100% on this file.
+    Ignore every check except 7. Negative Float.)
+  * EVERY task carries Baseline Number 0 with Duration > 0 whole working days. The
+    .aft's "7. Negative Float" PrimaryFilter is literally
+    [Baseline Duration GreaterThan 0] AND [Total Float LessThan 0]; a task without a
+    baseline duration falls silently OUT of the measured population.
+  * All tasks are 0% complete (Planned). The .aft filter is
+    IncludePlanned=true, IncludeInProgress=true, IncludeComplete=FALSE.
+  * The working day is ONE contiguous 8-hour block, 08:00-16:00, with NO lunch break,
+    so the engine's single-block day model and MS Project's calendar agree on intraday
+    arithmetic exactly (a 08:00-12:00 / 13:00-17:00 calendar makes every afternoon
+    instant differ by 60 min between the two models - fatal for a sub-day probe).
+  * Belt and braces: every constraint instant is in the MORNING (10:00 / 12:00) and
+    every activity finish is either a morning instant or an end-of-day boundary, so
+    the intended floats survive even if MS Project substitutes a classic
+    08:00-12:00 / 13:00-17:00 calendar on import.
+-->
+<Project xmlns="http://schemas.microsoft.com/project">
+  <Name>NEGFLOAT_SubDay_Probe.xml</Name>
+  <Title>Negative-Float sub-day probe (Acumen Fuse oracle, ADR-0280)</Title>
+  <ScheduleFromStart>1</ScheduleFromStart>
+  <StartDate>2026-03-02T08:00:00</StartDate>
+  <FinishDate>2026-03-13T16:00:00</FinishDate>
+  <CalendarUID>1</CalendarUID>
+  <DefaultStartTime>08:00:00</DefaultStartTime>
+  <DefaultFinishTime>16:00:00</DefaultFinishTime>
+  <MinutesPerDay>480</MinutesPerDay>
+  <MinutesPerWeek>2400</MinutesPerWeek>
+  <DaysPerMonth>20</DaysPerMonth>
+  <HonorConstraints>1</HonorConstraints>
+  <StatusDate>2026-03-02T08:00:00</StatusDate>
+  <NewTasksAreManual>0</NewTasksAreManual>
+  <Calendars>
+    <Calendar>
+      <UID>1</UID>
+      <Name>Standard</Name>
+      <IsBaseCalendar>1</IsBaseCalendar>
+      <IsBaselineCalendar>0</IsBaselineCalendar>
+      <BaseCalendarUID>-1</BaseCalendarUID>
+      <WeekDays>
+        <WeekDay>
+          <DayType>1</DayType>
+          <DayWorking>0</DayWorking>
+        </WeekDay>
+        <WeekDay>
+          <DayType>2</DayType>
+          <DayWorking>1</DayWorking>
+          <WorkingTimes>
+            <WorkingTime>
+              <FromTime>08:00:00</FromTime>
+              <ToTime>16:00:00</ToTime>
+            </WorkingTime>
+          </WorkingTimes>
+        </WeekDay>
+        <WeekDay>
+          <DayType>3</DayType>
+          <DayWorking>1</DayWorking>
+          <WorkingTimes>
+            <WorkingTime>
+              <FromTime>08:00:00</FromTime>
+              <ToTime>16:00:00</ToTime>
+            </WorkingTime>
+          </WorkingTimes>
+        </WeekDay>
+        <WeekDay>
+          <DayType>4</DayType>
+          <DayWorking>1</DayWorking>
+          <WorkingTimes>
+            <WorkingTime>
+              <FromTime>08:00:00</FromTime>
+              <ToTime>16:00:00</ToTime>
+            </WorkingTime>
+          </WorkingTimes>
+        </WeekDay>
+        <WeekDay>
+          <DayType>5</DayType>
+          <DayWorking>1</DayWorking>
+          <WorkingTimes>
+            <WorkingTime>
+              <FromTime>08:00:00</FromTime>
+              <ToTime>16:00:00</ToTime>
+            </WorkingTime>
+          </WorkingTimes>
+        </WeekDay>
+        <WeekDay>
+          <DayType>6</DayType>
+          <DayWorking>1</DayWorking>
+          <WorkingTimes>
+            <WorkingTime>
+              <FromTime>08:00:00</FromTime>
+              <ToTime>16:00:00</ToTime>
+            </WorkingTime>
+          </WorkingTimes>
+        </WeekDay>
+        <WeekDay>
+          <DayType>7</DayType>
+          <DayWorking>0</DayWorking>
+        </WeekDay>
+      </WeekDays>
+    </Calendar>
+  </Calendars>
+  <Tasks>
+    <Task>
+      <UID>101</UID>
+      <ID>1</ID>
+      <Name>NEG-SUBDAY-025 (expect TF -0.25 d) DISCRIMINATOR</Name>
+      <Active>1</Active>
+      <Manual>0</Manual>
+      <Type>1</Type>
+      <IsNull>0</IsNull>
+      <WBS>1</WBS>
+      <OutlineNumber>1</OutlineNumber>
+      <OutlineLevel>1</OutlineLevel>
+      <Priority>500</Priority>
+      <Start>2026-03-02T08:00:00</Start>
+      <Finish>2026-03-05T12:00:00</Finish>
+      <Duration>PT28H0M0S</Duration>
+      <DurationFormat>7</DurationFormat>
+      <EffortDriven>0</EffortDriven>
+      <Estimated>0</Estimated>
+      <Milestone>0</Milestone>
+      <Summary>0</Summary>
+      <Critical>1</Critical>
+      <TotalSlack>-1200</TotalSlack>
+      <PercentComplete>0</PercentComplete>
+      <ConstraintType>7</ConstraintType>
+      <ConstraintDate>2026-03-05T10:00:00</ConstraintDate>
+      <PhysicalPercentComplete>0</PhysicalPercentComplete>
+      <EarnedValueMethod>0</EarnedValueMethod>
+      <Baseline>
+        <Number>0</Number>
+        <Start>2026-03-02T08:00:00</Start>
+        <Finish>2026-03-05T12:00:00</Finish>
+        <Duration>PT28H0M0S</Duration>
+        <DurationFormat>7</DurationFormat>
+      </Baseline>
+    </Task>
+    <Task>
+      <UID>102</UID>
+      <ID>2</ID>
+      <Name>NEG-SUBDAY-050 (expect TF -0.50 d) DISCRIMINATOR</Name>
+      <Active>1</Active>
+      <Manual>0</Manual>
+      <Type>1</Type>
+      <IsNull>0</IsNull>
+      <WBS>2</WBS>
+      <OutlineNumber>2</OutlineNumber>
+      <OutlineLevel>1</OutlineLevel>
+      <Priority>500</Priority>
+      <Start>2026-03-02T08:00:00</Start>
+      <Finish>2026-03-05T16:00:00</Finish>
+      <Duration>PT32H0M0S</Duration>
+      <DurationFormat>7</DurationFormat>
+      <EffortDriven>0</EffortDriven>
+      <Estimated>0</Estimated>
+      <Milestone>0</Milestone>
+      <Summary>0</Summary>
+      <Critical>1</Critical>
+      <TotalSlack>-2400</TotalSlack>
+      <PercentComplete>0</PercentComplete>
+      <ConstraintType>7</ConstraintType>
+      <ConstraintDate>2026-03-05T12:00:00</ConstraintDate>
+      <PhysicalPercentComplete>0</PhysicalPercentComplete>
+      <EarnedValueMethod>0</EarnedValueMethod>
+      <Baseline>
+        <Number>0</Number>
+        <Start>2026-03-02T08:00:00</Start>
+        <Finish>2026-03-05T16:00:00</Finish>
+        <Duration>PT32H0M0S</Duration>
+        <DurationFormat>7</DurationFormat>
+      </Baseline>
+    </Task>
+    <Task>
+      <UID>103</UID>
+      <ID>3</ID>
+      <Name>NEG-SUBDAY-075 (expect TF -0.75 d) DISCRIMINATOR</Name>
+      <Active>1</Active>
+      <Manual>0</Manual>
+      <Type>1</Type>
+      <IsNull>0</IsNull>
+      <WBS>3</WBS>
+      <OutlineNumber>3</OutlineNumber>
+      <OutlineLevel>1</OutlineLevel>
+      <Priority>500</Priority>
+      <Start>2026-03-02T08:00:00</Start>
+      <Finish>2026-03-05T16:00:00</Finish>
+      <Duration>PT32H0M0S</Duration>
+      <DurationFormat>7</DurationFormat>
+      <EffortDriven>0</EffortDriven>
+      <Estimated>0</Estimated>
+      <Milestone>0</Milestone>
+      <Summary>0</Summary>
+      <Critical>1</Critical>
+      <TotalSlack>-3600</TotalSlack>
+      <PercentComplete>0</PercentComplete>
+      <ConstraintType>7</ConstraintType>
+      <ConstraintDate>2026-03-05T10:00:00</ConstraintDate>
+      <PhysicalPercentComplete>0</PhysicalPercentComplete>
+      <EarnedValueMethod>0</EarnedValueMethod>
+      <Baseline>
+        <Number>0</Number>
+        <Start>2026-03-02T08:00:00</Start>
+        <Finish>2026-03-05T16:00:00</Finish>
+        <Duration>PT32H0M0S</Duration>
+        <DurationFormat>7</DurationFormat>
+      </Baseline>
+    </Task>
+    <Task>
+      <UID>104</UID>
+      <ID>4</ID>
+      <Name>NEG-WHOLEDAY-1 (expect TF -1.00 d) MUST BE COUNTED</Name>
+      <Active>1</Active>
+      <Manual>0</Manual>
+      <Type>1</Type>
+      <IsNull>0</IsNull>
+      <WBS>4</WBS>
+      <OutlineNumber>4</OutlineNumber>
+      <OutlineLevel>1</OutlineLevel>
+      <Priority>500</Priority>
+      <Start>2026-03-02T08:00:00</Start>
+      <Finish>2026-03-05T12:00:00</Finish>
+      <Duration>PT28H0M0S</Duration>
+      <DurationFormat>7</DurationFormat>
+      <EffortDriven>0</EffortDriven>
+      <Estimated>0</Estimated>
+      <Milestone>0</Milestone>
+      <Summary>0</Summary>
+      <Critical>1</Critical>
+      <TotalSlack>-4800</TotalSlack>
+      <PercentComplete>0</PercentComplete>
+      <ConstraintType>7</ConstraintType>
+      <ConstraintDate>2026-03-04T12:00:00</ConstraintDate>
+      <PhysicalPercentComplete>0</PhysicalPercentComplete>
+      <EarnedValueMethod>0</EarnedValueMethod>
+      <Baseline>
+        <Number>0</Number>
+        <Start>2026-03-02T08:00:00</Start>
+        <Finish>2026-03-05T12:00:00</Finish>
+        <Duration>PT28H0M0S</Duration>
+        <DurationFormat>7</DurationFormat>
+      </Baseline>
+    </Task>
+    <Task>
+      <UID>105</UID>
+      <ID>5</ID>
+      <Name>NEG-WHOLEDAY-2 (expect TF -2.00 d) MUST BE COUNTED</Name>
+      <Active>1</Active>
+      <Manual>0</Manual>
+      <Type>1</Type>
+      <IsNull>0</IsNull>
+      <WBS>5</WBS>
+      <OutlineNumber>5</OutlineNumber>
+      <OutlineLevel>1</OutlineLevel>
+      <Priority>500</Priority>
+      <Start>2026-03-02T08:00:00</Start>
+      <Finish>2026-03-09T12:00:00</Finish>
+      <Duration>PT44H0M0S</Duration>
+      <DurationFormat>7</DurationFormat>
+      <EffortDriven>0</EffortDriven>
+      <Estimated>0</Estimated>
+      <Milestone>0</Milestone>
+      <Summary>0</Summary>
+      <Critical>1</Critical>
+      <TotalSlack>-9600</TotalSlack>
+      <PercentComplete>0</PercentComplete>
+      <ConstraintType>7</ConstraintType>
+      <ConstraintDate>2026-03-05T12:00:00</ConstraintDate>
+      <PhysicalPercentComplete>0</PhysicalPercentComplete>
+      <EarnedValueMethod>0</EarnedValueMethod>
+      <Baseline>
+        <Number>0</Number>
+        <Start>2026-03-02T08:00:00</Start>
+        <Finish>2026-03-09T12:00:00</Finish>
+        <Duration>PT44H0M0S</Duration>
+        <DurationFormat>7</DurationFormat>
+      </Baseline>
+    </Task>
+    <Task>
+      <UID>106</UID>
+      <ID>6</ID>
+      <Name>ZERO-FLOAT (expect TF 0.00 d) MUST NOT BE COUNTED</Name>
+      <Active>1</Active>
+      <Manual>0</Manual>
+      <Type>1</Type>
+      <IsNull>0</IsNull>
+      <WBS>6</WBS>
+      <OutlineNumber>6</OutlineNumber>
+      <OutlineLevel>1</OutlineLevel>
+      <Priority>500</Priority>
+      <Start>2026-03-02T08:00:00</Start>
+      <Finish>2026-03-05T12:00:00</Finish>
+      <Duration>PT28H0M0S</Duration>
+      <DurationFormat>7</DurationFormat>
+      <EffortDriven>0</EffortDriven>
+      <Estimated>0</Estimated>
+      <Milestone>0</Milestone>
+      <Summary>0</Summary>
+      <Critical>1</Critical>
+      <TotalSlack>0</TotalSlack>
+      <PercentComplete>0</PercentComplete>
+      <ConstraintType>7</ConstraintType>
+      <ConstraintDate>2026-03-05T12:00:00</ConstraintDate>
+      <PhysicalPercentComplete>0</PhysicalPercentComplete>
+      <EarnedValueMethod>0</EarnedValueMethod>
+      <Baseline>
+        <Number>0</Number>
+        <Start>2026-03-02T08:00:00</Start>
+        <Finish>2026-03-05T12:00:00</Finish>
+        <Duration>PT28H0M0S</Duration>
+        <DurationFormat>7</DurationFormat>
+      </Baseline>
+    </Task>
+    <Task>
+      <UID>107</UID>
+      <ID>7</ID>
+      <Name>POSITIVE-FLOAT (expect TF +8.00 d) MUST NOT BE COUNTED</Name>
+      <Active>1</Active>
+      <Manual>0</Manual>
+      <Type>1</Type>
+      <IsNull>0</IsNull>
+      <WBS>7</WBS>
+      <OutlineNumber>7</OutlineNumber>
+      <OutlineLevel>1</OutlineLevel>
+      <Priority>500</Priority>
+      <Start>2026-03-02T08:00:00</Start>
+      <Finish>2026-03-03T16:00:00</Finish>
+      <Duration>PT16H0M0S</Duration>
+      <DurationFormat>7</DurationFormat>
+      <EffortDriven>0</EffortDriven>
+      <Estimated>0</Estimated>
+      <Milestone>0</Milestone>
+      <Summary>0</Summary>
+      <Critical>0</Critical>
+      <TotalSlack>38400</TotalSlack>
+      <PercentComplete>0</PercentComplete>
+      <ConstraintType>0</ConstraintType>
+      <PhysicalPercentComplete>0</PhysicalPercentComplete>
+      <EarnedValueMethod>0</EarnedValueMethod>
+      <Baseline>
+        <Number>0</Number>
+        <Start>2026-03-02T08:00:00</Start>
+        <Finish>2026-03-03T16:00:00</Finish>
+        <Duration>PT16H0M0S</Duration>
+        <DurationFormat>7</DurationFormat>
+      </Baseline>
+    </Task>
+    <Task>
+      <UID>108</UID>
+      <ID>8</ID>
+      <Name>PROJECT-DRIVER (expect TF 0.00 d) sets project finish</Name>
+      <Active>1</Active>
+      <Manual>0</Manual>
+      <Type>1</Type>
+      <IsNull>0</IsNull>
+      <WBS>8</WBS>
+      <OutlineNumber>8</OutlineNumber>
+      <OutlineLevel>1</OutlineLevel>
+      <Priority>500</Priority>
+      <Start>2026-03-02T08:00:00</Start>
+      <Finish>2026-03-13T16:00:00</Finish>
+      <Duration>PT80H0M0S</Duration>
+      <DurationFormat>7</DurationFormat>
+      <EffortDriven>0</EffortDriven>
+      <Estimated>0</Estimated>
+      <Milestone>0</Milestone>
+      <Summary>0</Summary>
+      <Critical>1</Critical>
+      <TotalSlack>0</TotalSlack>
+      <PercentComplete>0</PercentComplete>
+      <ConstraintType>0</ConstraintType>
+      <PhysicalPercentComplete>0</PhysicalPercentComplete>
+      <EarnedValueMethod>0</EarnedValueMethod>
+      <Baseline>
+        <Number>0</Number>
+        <Start>2026-03-02T08:00:00</Start>
+        <Finish>2026-03-13T16:00:00</Finish>
+        <Duration>PT80H0M0S</Duration>
+        <DurationFormat>7</DurationFormat>
+      </Baseline>
+    </Task>
+  </Tasks>
+</Project>

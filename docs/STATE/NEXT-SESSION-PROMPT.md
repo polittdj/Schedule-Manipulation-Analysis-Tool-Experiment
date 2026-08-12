@@ -12,156 +12,101 @@ steers a fresh session at work that is already done.)
 ---
 
 Resume POLARIS (Schedule-Manipulation-Analysis-Tool). Read `docs/STATE/HANDOFF.md` FIRST
-(auto-injected; it ALWAYS wins over this prompt). As of last close: **v1.0.197, highest ADR 0390,
-SCHEMA 2.11.0** — the 2026-08-12 (c) session closed phase-4 slice 25 (ADR-0390): the **`settings`
-family**, the LAST page family, out into `web/settings.py` (525 lines) — **TWELVE names / 437 ast
-lines, ZERO forced descents**. `app.py` **8,482 → 8,037** wc-truth (17,197 when phase 3 began).
+(auto-injected). As of last close: **v1.0.197, highest ADR 0390, SCHEMA 2.11.0**. Slice 25 merged
+(#575); the monolith's page-family queue is EMPTY.
 
-**OUTSIDE THE FENCED `groups`, `app.py` NO LONGER HOLDS A PAGE FAMILY.** Phase 4's page-family work
-is DONE. There is no "slice 26" of the same shape — the next monolith work is a different decision,
-described below.
+⇢ THE JOB CHANGED. Read `docs/PLAN/DEFINITION-OF-DONE-V2.md` — the operator has declared a second
+Definition of Done and made **every one of its 117 items a REQUIREMENT** ("I don't want to skip
+anything"). Order is ours, and it is banded by HOW WRONG THE TOOL IS, not by effort. Work the bands
+in order. The old "standing queue" in this file is superseded by that document.
 
-⇢ THE FINDINGS to carry
-1. **A closure is not closed until it stops growing.** The record priced `settings` at 7 movers /
-   347 ast lines / **3** descent candidates. The 7 and the 347 reproduce EXACTLY (measured twice —
-   ast, and independently by awk). The candidate count was **5**: `_settings_body` → `_second_backend`
-   → `_BACKEND_PROBE_TTL` + `_UseMarking`, both shared with the stayer `_active_backend` in the
-   IDENTICAL shape the record used to flag the other three. The closure had been taken to a fixed
-   point of the MOVERS, not the BLOCKERS. Iterate until it stops growing; say which hop each member
-   arrived on.
-2. **The ADR-0297 monkeypatch repoint is keyed on the CALLER, not the name.** 21 hits → **14
-   repointed, 7 deliberately left alone**; `_ollama_or_none` and `_second_backend` each appear on
-   BOTH sides. Three of the fourteen would have passed SILENTLY, adjudicated only by FORCING the
-   non-zero case (app-globals 0× / settings-globals 1×, with the mirror control 1× / 0× on the same
-   name).
-3. **A sweep's PATTERN is part of its claim, like its population.** The first sweep anchored on
-   `monkeypatch.setattr`; `test_coverage_app.py` binds `mp = monkeypatch`, hiding FOUR sites. Nothing
-   in the sweep could reveal that — the **mutation battery's pre-mutation GREEN control** did, going
-   red before any mutation was applied. Never skip that control.
-4. **Verbatim text is not always verbatim behaviour.** `_UseMarking` logs via
-   `logging.getLogger(__name__)`; the bytes move unchanged but the logger name follows the module.
-   Grep moved bytes for `__name__` / `__file__` / `__module__` / `globals()` / `sys.modules`.
+⇢ BAND 1 — the tool states something untrue. Do these first.
+1. **THE DATA DATE (ADR-0108 / audit F-02).** REPRODUCED 2026-08-12: TP4 v4 stored finish
+   2026-06-26, engine 2026-06-26 (agrees); TP4 **v5 stored 2026-07-17, engine 2026-06-26 — 21 days
+   early**. `cpm.py` has ZERO references to `status_date`, so in-progress remaining work is never
+   floored at the data date and a real 21-day slip reports as **0**. Two fix attempts were reverted
+   for breaking Project2/5 parity + EVM1, and it is guarded by NO test. For a forensic delay tool,
+   understating a slip is the worst direction to be wrong in. If it cannot be fixed this round, the
+   MINIMUM is a guard pinning the discrepancy plus an on-page disclosure wherever a finish or slip
+   is shown — not an ADR footnote.
+2. **SRA R-2 — the tornado is mislabelled.** MEASURED (`docs/PLAN/SRA-VS-SSI-LARGE-TEST-FILE2.md`):
+   our OAT values match SSI to one decimal and the ranking is identical, but we print the HOST
+   TASK's name for risk drivers, so UID 7443 appears twice under one name with 304.5 d and 9.9 d.
+   Our Risk-register sheet already has the right names — the information exists and is not carried.
+3. **SRA R-1 — disclose the basis** (working vs calendar days) for every SRA figure.
 
-⇢ WHAT'S DONE — do NOT re-open
-Monolith split phases 1–2 (`state.py`, `chrome.py`) + phase 3/4 slices 1–25: components · driving ·
-evolution · integrity · margin · trend · ssi · mission · sra · forecast · portfolio · analysis · evm
-· performance · resources · scurve · path · compare · risks · standards · wbs · brief + card +
-scorecards · briefing + cei · curves + ribbon + workbench + volatility · **settings (ADR-0390)**.
-The question-word censuses are RETIRED. Intake manifest CURRENT at 433 files / 99 mismatches; `.mpp`
-census pin 28. The 2026-08-07 audit's four P0s are CLOSED (ADR-0366..0369). Target-UID pair scope
-CLOSED (ADR-0370/0371). FX fixture verdicts FINAL.
+⇢ TWO PREMISES REVERSED BY MEASUREMENT — do NOT "fix" these
+* **Mean/StdDev vs SSI.** SSI's headline cells (mean 2030-03-25, stdev 226.23) are NOT reproducible
+  from SSI's OWN exported 2000-sample distribution, which recomputes to mean 2030-06-08 / stdev
+  156.68 calendar (111.9 working). Ours: 2030-06-11 / 151.4 calendar (108.2 working) — **3 days and
+  3.4% from SSI's own data**. Percentiles off SSI's own cumulative column: P10 +11 d, P50 +3 d,
+  **P80 EXACT**, P90 +4 d. That is Monte-Carlo sampling noise between two engines, not a defect.
+* **Sensitivity values.** They MATCH (304.5 / 108.7 / 35.0 / 20.4 / 14.5 / 14.1 / 13.1 / 10.8 /
+  9.9 / 9.3 / 8.8 / 8.5 / 7.5, same order, same UIDs). Only the LABELS are wrong (above).
 
-⇢ DO THIS FIRST — the queue
-The page-family queue is EMPTY. Two follow-ups slice 25 deliberately DECLINED rather than did, both
-now first in line:
-1. **`web/backends.py`** — promote the five-name AI-backend kernel (`_ollama_or_none`,
-   `_openai_or_none`, `_second_backend`, `_UseMarking`, `_BACKEND_PROBE_TTL`) out of the `settings`
-   PAGE module into its own module. Layer-legal and more cohesive; it was declined only because
-   conflating a kernel extraction with the last page-family cut would have made neither reviewable.
-   Note this MOVES the monkeypatch targets again — re-run the receiver-agnostic sweep and expect the
-   14 repointed sites to need a second look.
-2. **`_active_backend`** — route-reached only, so moving it is PERMITTED, but measured and declined:
-   it would take four more names out of `app.py`'s globals and thereby WIDEN the monkeypatch trap
-   across the seven call sites that currently still work. If it moves, those seven move with it.
-Then the standing queue: `mpxj_ref()` shallow-clone hardening (still a documented workaround, not a
-guard) · stored-SRA-fields MSPDI fixture · driving-corridor fixture · three page-lede-less pages
-(`/briefing`, `/path`, `/compare`) · `/groups` Activities (ADR-0343) · installers vs known-good
-constraints · P80/P90 recurring-exception residual · the doc-drift sweep (`docs/PARITY-REPORT.md`
-still calls the reference .mpps git-ignored; `docs/FINAL-REPORT.md`'s blanket "Exact match";
-`LESSONS-LEARNED` Part VIII's 2026-08-10(e) entry is still at the BOTTOM of the file instead of
-newest-first) · ~150 MB RSS retained per loaded 9 MB file · Phase 6 docs.
-Operator only: re-convert FX-03/FX-04 (open the authored `.xml`, VERIFY UID17=5d / UID131=1w before
-save — MS Project re-derives Duration from stored dates and silently un-edits; the finish MUST move)
-then re-run Fuse and replace the two oracles · one Acumen run on a crafted sub-day-negative-float
-schedule (closes the Negative-Float O1 gap — the AFT has NO formula) · license · branch-protection
-contexts · proprietary reruns · OR-04 · July `mpp/` re-export decision.
+⇢ THE SRA PERFORMANCE WORK — measured, with the fix already sized
+Parse 1.91 s · one CPM pass 0.08 s · SRA **84.6 ms/iter @50, 86.1 ms/iter @200 — LINEAR**, so no
+algorithmic blow-up · **~2.9 min @2000** · peak RSS 290 MB flat. At 86 ms/iter against an 80 ms
+bare CPM pass it is doing ONE FULL 2,125-task solve per iteration. Only the focus event's ancestors
+can affect it: **783 of 2,125**; **1,342 tasks (63%) are re-solved every iteration and cannot
+influence the answer** → ~2.7x from sub-network restriction alone (2.9 min → ~1.1 min).
+**R-3 BEFORE R-4: reproduce the CRASH first.** The operator hit two crashes then a very slow
+success — consistent with a ~3-min synchronous run hitting a timeout, but that path is UNVERIFIED
+and "slow" and "killed" need different fixes. Then R-6: non-blocking with progress + cancel.
+Repro: `java -cp tools/mpxj/classes:tools/mpxj/lib/* MpxjToMspdi "SRA Large Test File2.mpp" LTF2.xml`
+then `compute_sra_ssi(sch, config=SRAConfig(iterations=N, target_uid=152))`.
 
-⇢ THE ORACLE — now EIGHT stages, 1096 labels
-Import it, don't rebuild it: `python tests/web/oracle_corpus.py --out <dir>` with
-`PYTHONPATH=<tree>/src SF_ORACLE_FIXTURES=<repo>/tests/fixtures`, against a pristine worktree and the
-cut tree, then `diff -r` on the DIRECTORIES (filenames are LABEL-addressed, so a manifest diff is the
-wrong surface). Fingerprint: `[empty]` 60 `{200:41,400:17,422:2}` + **SEVEN** loaded stages of 148
-`{200:125,404:4,422:19}` = **1096**. The eighth stage is **`[aiconfig]`** (ADR-0390): a non-default
-AI configuration — `backend=openai`, `second_backend=ollama`, a launcher stub on `app.state`, and
-`OLLAMA_KEEP_ALIVE` set. It runs LAST because it mutates session config, `app.state` AND process
-environment; `render()` snapshots/restores `os.environ` around the whole run. Export fmts are `xlsx`
-and `docx`, NOT csv; `{name}` keys drop the `.xml`; target UID 22; keep the `[grouped]` labels;
-`/openapi.json` is the 60th parameterless GET. A corpus render is ~40 s — budget N+2 renders for an
-N-member probe.
+⇢ THE JCL FIXTURE GAP ANALYSIS — UNVERIFIED, verify before acting
+An operator-supplied doc (`claude_LPX-JCL-FIXTURE-CONTRACT-GAP-ANALYSIS-AND-PLAN_v1_0.md`) claims:
+the SRA field contract is exactly `SRA Risk Ranking Factors` (Number20) / `Best Case Duration`
+(Duration1) / `Worst Case Duration` (Duration2), read by `_file_stored_sra_inputs`; `_ssi_setup_dict`
+offers a versioned setup JSON that bypasses field mapping; `compute_jcl` refuses a duration-only run
+with a cost-loaded gate; `UnifiedRisk.impact_days` is a float scalar; and **ProbabilisticBranch
+(ADR-0273) + ConditionalBranch (ADR-0274) have ZERO fixture coverage**. Every one is checkable in
+this repo — check each, then plan. It also asserts `is_level_of_effort=False` is hard-coded in the
+MSPDI importer: CONFIRMED here, and see the LOE gap below.
 
-Environment note (this container had NOTHING installed): `python -m pip install -e '.[dev]'` before
-anything, and `python -m pip install build` before the wheel. It is also a `--depth 1` clone, so
-`git fetch --unshallow` BEFORE building installers or the MPXJ pin silently becomes the clone
-boundary (correct value `42d92dc`).
+⇢ VERIFIED THIS SESSION — carry forward, do not re-derive
+* `settings` cut: 12 names / 437 ast lines, regions 799-1033 + 8128-8356, ZERO forced descents;
+  `_e` control 29 of 32 modules (31 extracted + `state.py`); the three misses are the no-HTML ones.
+* **Acumen `7. Negative Float` has NO FORMULA because it is FILTER-DRIVEN** — Formula box empty,
+  mode Basic, filters `Baseline Duration > 0` AND `Total Float < 0`, Planned+InProgress /
+  Normal+Milestone, Summary and **Level of Effort** unchecked. Confirmed from BOTH the operator's
+  v8.11.0CU1 screens AND the committed `.aft`. Our filter structure matches; the OPEN question is
+  only whether Fuse's Total Float FIELD is whole-day-grained. `tests/fixtures/mspdi/
+  NEGFLOAT_SubDay_Probe.xml` (+ its guard) is built and committed for exactly one Fuse run — read
+  the Detailed Report's `Total Float` cell for `NEG-SUBDAY-025`.
+* **LOE GAP (new):** Fuse excludes Level of Effort; `dcma14.py` has ZERO `is_level_of_effort`
+  references; the XER importer DOES populate it (`TT_LOE`); MSPDI cannot represent it; the sole XER
+  fixture has zero LOE rows — so the path has never been exercised. Latent, real on P6 files.
+* RTM rows are NOT all stale: **C1 is stale, but C3 is satisfied by a DIFFERENT design** (thresholds
+  live on `/path` as `pathSec`/`pathTer`, render-verified, not "at upload"), and **A1 has a
+  permanent Java exception** (native `.mpp` conversion shells to MPXJ). Record, do not rubber-stamp.
 
-⇢ TIMING — MEASURED, not estimated
-Full LOCAL suite ~21 min (`python -u -m pytest -q` in the BACKGROUND, read the tail; ~28 with
-playwright installed). CI end-to-end is ~60 MINUTES, measured across four consecutive runs (57.5 /
-60.7 / 61.8 / 62.5). The `test (3.11)` and `test (3.13)` jobs alone take ~61 min — they run
-coverage-instrumented pytest PLUS ruff, mypy, a SECOND pytest for the parity gate, bandit and
-pip-audit; `floor` runs the same suite WITHOUT coverage in 22 min, which is why the gap is
-structural, not a hang. `check` is a gate job (`needs: [test, floor]`) and only registers after
-those finish — its absence early in a run is sequencing, NOT a failure. CI has
-`cancel-in-progress: true`, so never push while a run you need the signal from is in flight.
+⇢ TRAPS PAID FOR THIS SESSION — check BY NAME
+NEVER MUTATE AN INSTRUMENT A MEASUREMENT IS USING (editing `oracle_corpus.py` mid-probe changed the
+label set under a running probe; the probe's label-set guard caught it). ONE WORKTREE, ONE ACTOR —
+two writers in one scratchpad worktree silently reverted each other; bracket a measurement with a
+cheap identity check in the SAME shell invocation. A SWEEP'S PATTERN IS PART OF ITS CLAIM — a regex
+anchored on `monkeypatch.setattr` missed four sites because one test binds `mp = monkeypatch`; the
+mutation battery's pre-mutation GREEN control is what caught it. A CLOSURE IS NOT CLOSED UNTIL IT
+STOPS GROWING — fixed-point the BLOCKERS, not the movers. VERBATIM TEXT IS NOT VERBATIM BEHAVIOUR —
+`__name__`. THE MONKEYPATCH REPOINT IS PER CALL SITE, NOT PER NAME. A `pgrep -f` waiter can match
+its OWN command line and never exit — wait on a PID. Plus the standing set (instrument shown to
+FAIL first · marker matches RETURN TYPE · priced table is a snapshot · `ast` col_offset is BYTES ·
+population is part of a sweep's claim · `grep -c` exits 1 on zero · two ruffs on PATH, use
+`python -m ruff` · bare `pytest` does not prepend CWD · `git fetch origin` before taking an ADR
+number, and again before committing).
 
-⇢ THE TRAPS PAID FOR — check BY NAME
-A closure is not closed until it stops growing (ADR-0390) — fixed-point the BLOCKERS, not the movers.
-A sweep's PATTERN is part of its claim, and the battery's pre-mutation GREEN control is what catches
-a bad pattern (ADR-0390). The monkeypatch repoint is keyed on the CALLER, not the name, and the two
-sets SHARE names (ADR-0390). Verbatim text is not always verbatim behaviour — `__name__` (ADR-0390).
-NEVER MUTATE AN INSTRUMENT A MEASUREMENT IS USING (ADR-0390, the mirror of "never MEASURE a tree a
-battery is mutating") — editing `oracle_corpus.py` mid-probe changed the label set under a running
-probe. Ask what the corpus has NEVER rendered, not what the member needs — TWO consecutive slices
-(ADR-0389 an as-built, ADR-0390 a configured AI). PREDICT the control, then run it (ADR-0390: 29 +
-7×39 = 302, landed exactly). A control whose SHORTFALL you can explain beats a perfect one
-(ADR-0390: `_e` 29/31, the two misses being the two no-HTML modules). A rule you have written down
-is not a rule you have applied (ADR-0389). An oracle stage can be a byte transform of an existing
-fixture, and it must assert its own landed count (ADR-0389). Choosing a mutation's ANCHOR is part of
-the mutation (ADR-0389). A zero-asserting spy is only adjudicated by FORCING the non-zero case
-(ADR-0386/0389/0390). A priced table is a SNAPSHOT and decays silently (ADR-0388). An instrument is
-not evidence until it has been shown to FAIL (ADR-0387). A probe's marker must match the RETURN TYPE
-(ADR-0386). Check what a name is DERIVED from before diffing it (ADR-0387). A descent is forced by a
-MOVER in ANOTHER EXTRACTED MODULE, and a route-only referrer NEVER blocks (ADR-0378/0387/0388/0390).
-A sweep's POPULATION is part of its claim (ADR-0386) — exclude `build/dist/.venv/caches` and STATE
-the count (517 pre-cut, 518 after); `build/` is a stale copy of `src/`. A prefix that is a prefix OF
-ANOTHER FAMILY fuses two censuses (ADR-0386) — seed on EXACT route lists. A parallel session can take
-your ADR number (ADR-0386) — `git fetch origin` before you write the number AND again before you
-commit. `ast` col_offset is a BYTE offset (ADR-0384); prefer whole-line regions. Never MEASURE a tree
-a battery is mutating (ADR-0376); restore from a scratchpad `cp`, never `git checkout`; md5-verify
-the restore, and re-render the corpus AFTER the battery. A mutation is "caught" only when the failure
-summary NAMES the test. A normalizer that can fail silently is a FLAP FACTORY (ADR-0377);
-fingerprints carry their SCOPE. An anchor that collides is not span-scoped (ADR-0377): assert
-`count == 1` IN FILE before every splice. Constants carry `#:` doc-comment blocks the `ast` span does
-NOT see — extend regions by eye (whole-line regions handle this for free). A scratchpad-resident
-harness must HARDCODE the repo root. `python -m pytest` prepends CWD to `sys.path`; bare `pytest`
-does NOT (CI runs the bare form). Two ruffs live on PATH — run `python -m ruff`, and always
-`ruff check .` (THE WHOLE TREE). An environment defect can masquerade as a product defect — a
-pristine-main worktree is the cheap decisive adjudicator. `grep -c` exits 1 on zero. `round()` sends
-exact halves to EVEN (240 min → 0 wd); MSPDI import DERIVES Duration from stored dates. bandit B608
-on HTML f-strings with "from" → house `# nosec B608`. `_parse_uid` maps 0 → "clear", so UID 0 can
-never be the focus. `strip_title=True` or a multi-file pool becomes one-version Projects and every
-multi-version page serves its placeholder (ADR-0375).
-
-⇢ Measured-false / load-sensitive, do NOT re-chase
-Baseline-PRESENCE as the parity population (F5) — the AFT's filter is `Baseline Duration
-GreaterThan 0`, verbatim. The `/analysis` focus→tip family is load-sensitive. FIVE playwright-only
-failures are PRE-EXISTING and CI-invisible (blob-URL download reporting on `/trend` `/curves`
-`/scurve` `/cei`; SRA single-bin histogram caption contrast) — pristine-main adjudicated 2026-08-08.
-`pydantic>=2` is NOT a safe floor (2.6 is); `fastapi>=0.110` is an AIR-GAP VIOLATION (0.110.2 floor).
-TP4/goldens cannot render a driving corridor (ADR-0351), `/evolution`'s counterfactual (ADR-0352), or
-`/integrity`'s artifact-cluster (ADR-0358) — byte-identity is the guard there. The period-over-period
-families match UIDs across versions on the FOCUSED scope BY DESIGN (ADR-0371, parity-oracled).
-ADR-0373's three oracle-dark SRA members are route-covered in Python — the MSPDI fixture is the named
-gap, not a regression. **`_UseMarking` and `_BACKEND_PROBE_TTL` are oracle-dark BY CONSTRUCTION**
-(ADR-0390: a wrapper needing a live local model; a cache TTL that cannot change rendered bytes) —
-unit-covered, a named gap, NOT a regression and NOT worth another oracle stage.
+⇢ TIMING — MEASURED
+Full local suite ~29 min under load (~21 idle). CI ~60 min end-to-end; `check` is a gate job and its
+absence early is sequencing, not failure. `cancel-in-progress: true` — never push while you need a
+run's signal. Corpus render ~40 s (1096 labels, 8 stages incl. `[aiconfig]`).
 
 ⇢ Standing rules (binding)
 Law 1 CUI · Law 2 fidelity ("—" never 0; never weaken a test) · READ EVERYTHING, ASSUME NOTHING,
-VERIFY EVERYTHING · ADR-0240 model protocol (parity-, engine-, testimony- or CUI-relevant work stays
-on the strongest model) · full gate before every commit · handoff rotation + SESSION-LOG +
-LESSONS-LEARNED + THIS FILE in the same commit · wheel + nine installers ONCE per shipped-code change
-(bump BEFORE the suite; REBUILD if code changes after; the rebuild PRECEDES the final suite run) · a
-number written mid-session is not a measurement (`wc` decides). Use the skills (`.claude/skills/`):
+VERIFY EVERYTHING · ADR-0240 model protocol · full gate before every commit · handoff rotation +
+SESSION-LOG + LESSONS-LEARNED + THIS FILE in the same commit · wheel + nine installers ONCE per
+shipped-code change · a number written mid-session is not a measurement (`wc` decides). Skills:
 `full-gate`, `prove-able-to-fail`, `metric-parity`, `ui-change`, `cui-guard`, `render-verify`,
 `session-close`.
