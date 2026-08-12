@@ -798,3 +798,151 @@
 [ceidark] [ssi-api] GET /api/sra/ssi
 [ceidark] [trend-target] GET /trend
 [ceidark] [week-resources] GET /resources
+[allcomplete] GET /
+[allcomplete] GET /analysis/TP4_DataCenter_v5
+[allcomplete] GET /api/activities/drill
+[allcomplete] GET /api/ai/briefing
+[allcomplete] GET /api/ai/models
+[allcomplete] GET /api/ai/narrative
+[allcomplete] GET /api/analysis/TP4_DataCenter_v5
+[allcomplete] GET /api/cei
+[allcomplete] GET /api/curves
+[allcomplete] GET /api/dashboard
+[allcomplete] GET /api/driving-path
+[allcomplete] GET /api/driving/TP4_DataCenter_v5
+[allcomplete] GET /api/evolution
+[allcomplete] GET /api/forecast
+[allcomplete] GET /api/group-values
+[allcomplete] GET /api/margin
+[allcomplete] GET /api/margin/dashboard
+[allcomplete] GET /api/margin/risk
+[allcomplete] GET /api/scorecards/buffer
+[allcomplete] GET /api/scurve
+[allcomplete] GET /api/sra
+[allcomplete] GET /api/sra/grid
+[allcomplete] GET /api/sra/jcl
+[allcomplete] GET /api/sra/oat
+[allcomplete] GET /api/sra/ssi
+[allcomplete] GET /api/system
+[allcomplete] GET /api/trend
+[allcomplete] GET /api/wbs/TP4_DataCenter_v5
+[allcomplete] GET /api/whoami
+[allcomplete] GET /api/workbench
+[allcomplete] GET /api/workbench/drill
+[allcomplete] GET /brief
+[allcomplete] GET /briefing
+[allcomplete] GET /card/TP4_DataCenter_v5
+[allcomplete] GET /cei
+[allcomplete] GET /compare
+[allcomplete] GET /curves
+[allcomplete] GET /download/TP4_DataCenter_v5
+[allcomplete] GET /driving-path
+[allcomplete] GET /evm
+[allcomplete] GET /evolution
+[allcomplete] GET /export/docx/activities-drill
+[allcomplete] GET /export/docx/activities/TP4_DataCenter_v5
+[allcomplete] GET /export/docx/analysis/TP4_DataCenter_v5
+[allcomplete] GET /export/docx/brief
+[allcomplete] GET /export/docx/briefing
+[allcomplete] GET /export/docx/cei
+[allcomplete] GET /export/docx/compare
+[allcomplete] GET /export/docx/curves
+[allcomplete] GET /export/docx/driving-tiers/TP4_DataCenter_v5
+[allcomplete] GET /export/docx/evm
+[allcomplete] GET /export/docx/evolution
+[allcomplete] GET /export/docx/field-forecast
+[allcomplete] GET /export/docx/float-band/TP4_DataCenter_v5
+[allcomplete] GET /export/docx/forecast
+[allcomplete] GET /export/docx/integrity
+[allcomplete] GET /export/docx/margin
+[allcomplete] GET /export/docx/mission
+[allcomplete] GET /export/docx/path/TP4_DataCenter_v5
+[allcomplete] GET /export/docx/performance
+[allcomplete] GET /export/docx/resource-drill
+[allcomplete] GET /export/docx/resources
+[allcomplete] GET /export/docx/ribbon
+[allcomplete] GET /export/docx/ribbon-drill/TP4_DataCenter_v5
+[allcomplete] GET /export/docx/risks
+[allcomplete] GET /export/docx/scorecards
+[allcomplete] GET /export/docx/scurve
+[allcomplete] GET /export/docx/sra
+[allcomplete] GET /export/docx/sra-registry
+[allcomplete] GET /export/docx/trend
+[allcomplete] GET /export/docx/volatility
+[allcomplete] GET /export/docx/wbs/TP4_DataCenter_v5
+[allcomplete] GET /export/docx/whatif
+[allcomplete] GET /export/docx/whatif-added
+[allcomplete] GET /export/docx/workbench
+[allcomplete] GET /export/docx/workbench-drill/TP4_DataCenter_v5
+[allcomplete] GET /export/xlsx/activities-drill
+[allcomplete] GET /export/xlsx/activities/TP4_DataCenter_v5
+[allcomplete] GET /export/xlsx/analysis/TP4_DataCenter_v5
+[allcomplete] GET /export/xlsx/brief
+[allcomplete] GET /export/xlsx/briefing
+[allcomplete] GET /export/xlsx/cei
+[allcomplete] GET /export/xlsx/compare
+[allcomplete] GET /export/xlsx/curves
+[allcomplete] GET /export/xlsx/driving-tiers/TP4_DataCenter_v5
+[allcomplete] GET /export/xlsx/evm
+[allcomplete] GET /export/xlsx/evolution
+[allcomplete] GET /export/xlsx/field-forecast
+[allcomplete] GET /export/xlsx/float-band/TP4_DataCenter_v5
+[allcomplete] GET /export/xlsx/forecast
+[allcomplete] GET /export/xlsx/integrity
+[allcomplete] GET /export/xlsx/margin
+[allcomplete] GET /export/xlsx/mission
+[allcomplete] GET /export/xlsx/path/TP4_DataCenter_v5
+[allcomplete] GET /export/xlsx/performance
+[allcomplete] GET /export/xlsx/resource-drill
+[allcomplete] GET /export/xlsx/resources
+[allcomplete] GET /export/xlsx/ribbon
+[allcomplete] GET /export/xlsx/ribbon-drill/TP4_DataCenter_v5
+[allcomplete] GET /export/xlsx/risk-register-template
+[allcomplete] GET /export/xlsx/risks
+[allcomplete] GET /export/xlsx/scorecards
+[allcomplete] GET /export/xlsx/scurve
+[allcomplete] GET /export/xlsx/sra
+[allcomplete] GET /export/xlsx/sra-registry
+[allcomplete] GET /export/xlsx/task-risk-template
+[allcomplete] GET /export/xlsx/trend
+[allcomplete] GET /export/xlsx/volatility
+[allcomplete] GET /export/xlsx/wbs/TP4_DataCenter_v5
+[allcomplete] GET /export/xlsx/whatif
+[allcomplete] GET /export/xlsx/whatif-added
+[allcomplete] GET /export/xlsx/workbench
+[allcomplete] GET /export/xlsx/workbench-drill/TP4_DataCenter_v5
+[allcomplete] GET /forecast
+[allcomplete] GET /groups
+[allcomplete] GET /healthz
+[allcomplete] GET /help
+[allcomplete] GET /integrity
+[allcomplete] GET /margin
+[allcomplete] GET /mission
+[allcomplete] GET /openapi.json
+[allcomplete] GET /path
+[allcomplete] GET /performance
+[allcomplete] GET /portfolio
+[allcomplete] GET /resources
+[allcomplete] GET /ribbon
+[allcomplete] GET /risks
+[allcomplete] GET /scorecards
+[allcomplete] GET /scurve
+[allcomplete] GET /settings
+[allcomplete] GET /sra
+[allcomplete] GET /sra/ssi/save
+[allcomplete] GET /standards
+[allcomplete] GET /trend
+[allcomplete] GET /volatility
+[allcomplete] GET /wbs/TP4_DataCenter_v5
+[allcomplete] GET /workbench
+[allcomplete] [buffer-committed] GET /api/scorecards/buffer
+[allcomplete] [cei-uids] GET /cei
+[allcomplete] [evo-counterfactual] GET /evolution
+[allcomplete] [evo-options] GET /evolution
+[allcomplete] [evo-tier] GET /evolution
+[allcomplete] [grouped] GET /groups
+[allcomplete] [path-export] GET /export/docx/path
+[allcomplete] [path-export] GET /export/xlsx/path
+[allcomplete] [ssi-api] GET /api/sra/ssi
+[allcomplete] [trend-target] GET /trend
+[allcomplete] [week-resources] GET /resources

@@ -62,6 +62,17 @@ RESOURCE_GOLDENS = ("Project2", "Project5")
 #: and ``/cei`` serves its "load two versions" placeholder instead (the ADR-0375 trap).
 CEI_DARK_POOL = ("jacked_up_schedule_1", "jacked_up_schedule_2")
 
+#: The fully-progressed pool. ADR-0389: EVERY fixture in the tree — 16 MSPDI plus the one XER —
+#: has at least one activity under 100% complete, so the corpus had never rendered an as-built.
+#: ``_RIBBON_FLOAT_EXTRAS`` guards exactly that population: with no incomplete activities the
+#: Avg/Max Float means are a placeholder ``0.0``, and the ribbon must show "—" rather than a
+#: fabricated mean (audit NEW-1). No fixture could reach that branch, so the member was
+#: oracle-dark. This stage is the render condition, built the way ``strip_title`` already is —
+#: a BYTE transform of an existing fixture, not a new file: every ``<PercentComplete>`` is
+#: rewritten to 100. ``TP1_Library_Progressed`` is used because it is the one authored snapshot
+#: the corpus does not otherwise load, so the stage adds a session key rather than shadowing one.
+ALL_COMPLETE_SOURCE = "TP1_Library_Progressed"
+
 #: A REAL TP4 unique id. Never 0 — ``_parse_uid`` maps 0 to "clear", so a 0 target can never be
 #: set through the form (standing trap).
 TARGET_UID = 22
@@ -179,7 +190,15 @@ def variant_labels() -> list[Label]:
 #: The session states the corpus is rendered in. ``[empty]`` is the placeholder surface; the four
 #: loaded stages differ in POPULATION and TARGET, which are the two render conditions the split's
 #: page bodies actually branch on (ADR-0374).
-STAGE_NAMES = ("[empty]", "[loaded]", "[target]", "[cleared]", "[resloaded]", "[ceidark]")
+STAGE_NAMES = (
+    "[empty]",
+    "[loaded]",
+    "[target]",
+    "[cleared]",
+    "[resloaded]",
+    "[ceidark]",
+    "[allcomplete]",
+)
 
 
 def corpus(app: Any, stage: str) -> list[Label]:
@@ -257,6 +276,26 @@ def normalize_all(bodies: dict[str, bytes]) -> dict[str, bytes]:
 
 
 # ------------------------------------------------------------------------------- the renderer
+def _mark_all_complete(data: bytes) -> bytes:
+    """Rewrite every ``<PercentComplete>`` to 100 — the fully-progressed render condition.
+
+    Byte-level like ``strip_title``, and asserted like it: the count is what makes the transform
+    a measurement rather than a hope. ``incomplete_float_count`` counts tasks with
+    ``percent_complete < 100``, so a fixture where one ``<Task>`` lacked the element would leave
+    that task incomplete and the branch dark again — silently.
+    """
+    n_tasks = data.count(b"<Task>")
+    out, n = re.subn(
+        rb"<PercentComplete>\d+</PercentComplete>", b"<PercentComplete>100</PercentComplete>", data
+    )
+    if n != n_tasks:
+        raise AssertionError(
+            f"rewrote {n} <PercentComplete> elements for {n_tasks} <Task> elements — a task "
+            "without the element stays incomplete and the fully-progressed branch goes dark"
+        )
+    return out
+
+
 def _upload(client: Any, paths: list[Path], *, strip_title: bool) -> None:
     """Upload MSPDI snapshots. ``strip_title`` is load-bearing (ADR-0375): each TP4 file carries
     its own ``<Title>``, so untouched they group into five one-version Projects and ADR-0258's
@@ -307,6 +346,12 @@ def _enter_stage(client: Any, stage: str) -> None:
             [_FIXTURES / "mspdi" / f"{n}.xml" for n in CEI_DARK_POOL],
             strip_title=True,
         )
+    elif stage == "[allcomplete]":
+        src = _FIXTURES / "test_projects" / f"{ALL_COMPLETE_SOURCE}.xml"
+        data = _mark_all_complete(re.sub(rb"<Title>.*?</Title>", b"", src.read_bytes(), flags=re.S))
+        resp = client.post("/upload", files=[("files", (src.name, data, "text/xml"))])
+        if resp.status_code != 200:
+            raise AssertionError(f"upload failed: {resp.status_code} {resp.text[:200]}")
 
 
 def render(verbose: bool = False) -> dict[str, bytes]:

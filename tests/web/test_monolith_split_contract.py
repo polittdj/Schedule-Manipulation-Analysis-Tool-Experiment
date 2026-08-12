@@ -39,6 +39,7 @@ import schedule_forensics.web.cei as cei_mod
 import schedule_forensics.web.chrome as chrome_mod
 import schedule_forensics.web.compare as compare_mod
 import schedule_forensics.web.components as components_mod
+import schedule_forensics.web.curves as curves_mod
 import schedule_forensics.web.driving as driving_mod
 import schedule_forensics.web.evm as evm_mod
 import schedule_forensics.web.evolution as evolution_mod
@@ -50,6 +51,7 @@ import schedule_forensics.web.path as path_mod
 import schedule_forensics.web.performance as performance_mod
 import schedule_forensics.web.portfolio as portfolio_mod
 import schedule_forensics.web.resources as resources_mod
+import schedule_forensics.web.ribbon as ribbon_mod
 import schedule_forensics.web.risks as risks_mod
 import schedule_forensics.web.scorecards as scorecards_mod
 import schedule_forensics.web.scurve as scurve_mod
@@ -57,7 +59,9 @@ import schedule_forensics.web.sra as sra_mod
 import schedule_forensics.web.ssi as ssi_mod
 import schedule_forensics.web.standards as standards_mod
 import schedule_forensics.web.trend as trend_mod
+import schedule_forensics.web.volatility as volatility_mod
 import schedule_forensics.web.wbs as wbs_mod
+import schedule_forensics.web.workbench as workbench_mod
 
 WEB = Path(app_mod.__file__).parent
 
@@ -90,6 +94,10 @@ EXTRACTED = {
     "scorecards.py": scorecards_mod,
     "briefing.py": briefing_mod,
     "cei.py": cei_mod,
+    "curves.py": curves_mod,
+    "ribbon.py": ribbon_mod,
+    "workbench.py": workbench_mod,
+    "volatility.py": volatility_mod,
 }
 
 #: The view layer, lowest layer FIRST. A module may import only from those before it — that is
@@ -126,6 +134,10 @@ LAYER_ORDER = (
     "scorecards.py",
     "briefing.py",
     "cei.py",
+    "curves.py",
+    "ribbon.py",
+    "workbench.py",
+    "volatility.py",
     "app.py",
 )
 
@@ -144,6 +156,7 @@ VIEW_MODULES = (
     "chrome.py",
     "compare.py",
     "components.py",
+    "curves.py",
     "driving.py",
     "evm.py",
     "evolution.py",
@@ -155,6 +168,7 @@ VIEW_MODULES = (
     "performance.py",
     "portfolio.py",
     "resources.py",
+    "ribbon.py",
     "risks.py",
     "scorecards.py",
     "scurve.py",
@@ -162,7 +176,9 @@ VIEW_MODULES = (
     "ssi.py",
     "standards.py",
     "trend.py",
+    "volatility.py",
     "wbs.py",
+    "workbench.py",
 )
 
 

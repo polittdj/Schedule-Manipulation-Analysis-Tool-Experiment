@@ -123,7 +123,6 @@ from schedule_forensics.engine.metrics import (
     ribbon_offender_map,
 )
 from schedule_forensics.engine.metrics._common import (
-    CheckStatus,
     MetricResult,
     non_summary,
 )
@@ -135,7 +134,7 @@ from schedule_forensics.engine.metrics.field_forecast import compute_field_forec
 from schedule_forensics.engine.metrics.margin import (
     compute_margin_trend,
 )
-from schedule_forensics.engine.month_curves import MonthCurves, compute_month_curves
+from schedule_forensics.engine.month_curves import compute_month_curves
 from schedule_forensics.engine.msp_filters import (
     EVALUATOR_VERSION,
     required_prompts,
@@ -450,6 +449,18 @@ from schedule_forensics.web.components import _target_panel as _target_panel
 from schedule_forensics.web.components import _task_name_across as _task_name_across
 from schedule_forensics.web.components import _user_tip as _user_tip
 
+# ADR-0389 (phase 4, slice 24): the FOUR remaining zero-descent page families leave together —
+# ``/curves`` (chapter 05's three monthly delivery curves), ``/ribbon`` (the Acumen-Fuse-style
+# Schedule Quality Ribbon, its four ``#:``-documented threshold constants travelling with the
+# code that reads them), ``/workbench`` (the Metric Workbench body) and ``/volatility``
+# (critical-path membership churn). All four extracted verbatim, all four re-exported with the
+# same ``X as X`` idiom. That empties the zero-descent set outside ``groups`` (fenced,
+# ADR-0343); ``settings`` is the only page family left in this file, and its three shared
+# AI-backend names are why it gets its own slice.
+from schedule_forensics.web.curves import _curves_body as _curves_body
+from schedule_forensics.web.curves import _curves_data as _curves_data
+from schedule_forensics.web.curves import _curves_header as _curves_header
+
 # ADR-0351 (phase 3, slice 2): the driving-path page family — ``_driving_data``,
 # ``_driving_path_body``, ``_driving_tiers_panel`` and their private helpers — lives in
 # ``web/driving.py`` now, extracted verbatim. First per-PAGE module, and the one the shared
@@ -579,6 +590,15 @@ from schedule_forensics.web.resources import _resource_loading_json as _resource
 from schedule_forensics.web.resources import _resources_body as _resources_body
 from schedule_forensics.web.resources import _resources_explainer as _resources_explainer
 from schedule_forensics.web.resources import _who_is_overloaded_header as _who_is_overloaded_header
+from schedule_forensics.web.ribbon import _RIBBON_CLS_VERDICT as _RIBBON_CLS_VERDICT
+from schedule_forensics.web.ribbon import _RIBBON_FLOAT_EXTRAS as _RIBBON_FLOAT_EXTRAS
+from schedule_forensics.web.ribbon import _RIBBON_PCT5 as _RIBBON_PCT5
+from schedule_forensics.web.ribbon import _RIBBON_WARN_FRACTION as _RIBBON_WARN_FRACTION
+from schedule_forensics.web.ribbon import _RIBBON_ZERO_TOLERANCE as _RIBBON_ZERO_TOLERANCE
+from schedule_forensics.web.ribbon import _can_we_trust_header as _can_we_trust_header
+from schedule_forensics.web.ribbon import _ribbon_body as _ribbon_body
+from schedule_forensics.web.ribbon import _ribbon_cell_class as _ribbon_cell_class
+from schedule_forensics.web.ribbon import _ribbon_cell_title as _ribbon_cell_title
 
 # ADR-0383 (phase 4, slice 19): the /risks page family - the 5x5 risk matrix, the score ranking,
 # the finding card + its quantified read, the band classifier, the working-days formatter, the
@@ -738,6 +758,8 @@ from schedule_forensics.web.state import (
 from schedule_forensics.web.trend import _how_it_moved_header as _how_it_moved_header
 from schedule_forensics.web.trend import _trend_body as _trend_body
 from schedule_forensics.web.trend import _trend_data as _trend_data
+from schedule_forensics.web.volatility import _volatility_body as _volatility_body
+from schedule_forensics.web.volatility import _volatility_data as _volatility_data
 
 # ADR-0386 (phase 4, slice 21): the /wbs page family - the optional-number table cell, the
 # completion + SPI(t)/Earned-Schedule pivots, and the combo chart's JSON payload - lives in
@@ -745,6 +767,7 @@ from schedule_forensics.web.trend import _trend_data as _trend_data
 from schedule_forensics.web.wbs import _num as _num
 from schedule_forensics.web.wbs import _wbs_body as _wbs_body
 from schedule_forensics.web.wbs import _wbs_data as _wbs_data
+from schedule_forensics.web.workbench import _workbench_body as _workbench_body
 
 logger = logging.getLogger("schedule_forensics.web")
 
@@ -6992,143 +7015,6 @@ def _unschedulable_panel(sch: Schedule, exc: CPMError) -> str:
     )
 
 
-def _curves_header(curves: MonthCurves) -> str:
-    """Chapter 05's story header for /curves (Mission Ops rank 9): the takeaway h1 + muted lede.
-
-    The chapter kicker is injected by the spine (:func:`_chapter_kicker`), so only the headline
-    and lede are built here. Every figure is one the page already renders — the loaded version
-    count, their labels/data dates, and the shared month axis the three charts are drawn on.
-    No engine call, no new arithmetic, and no adjective the engine did not assert."""
-    versions = curves.versions
-    if not versions:
-        return ""
-    n = len(versions)
-    months = curves.month_labels
-    latest = versions[-1]
-    dd = f" (data date {latest.status_date})" if latest.status_date else ""
-    span = f"{months[0]} → {months[-1]}" if months else "—"
-    files = f"{n} version" + ("" if n == 1 else "s")
-    takeaway = (
-        f"{files} of finish and start months on one shared {len(months)}-month axis "
-        f"({span}); the newest is {latest.label}{dd}."
-    )
-    return (
-        f'<h1 class="page-takeaway" data-no-i18n>{_e(takeaway)}</h1>'
-        '<p class="page-lede">Where finishes were promised against where they actually land, '
-        "month by month. Step or play through the loaded files to watch the finish and start "
-        "curves slide along a month axis held fixed across every frame.</p>"
-    )
-
-
-def _curves_body(curves: MonthCurves, *, prov: str = "") -> str:
-    """The Finish & Slippage page (PBIX pages 6, 7, 12): three monthly-curve charts.
-
-    Finishes (actual vs baseline, latest version), DATA Date Finishes (per-version
-    actual-finish curves overlaid — the bow wave's line sibling), and Slippage (the
-    per-version start and finish curves). All client-side SVG over /api/curves.
-
-    Panel contract (Mission Ops rank 9): each chart panel carries the headline strip +
-    provenance chip + an ``.sf-take`` line, and the panel-level ``data-export`` points at the
-    EXISTING ``/export/xlsx/curves`` endpoint that serves exactly these curves. The three-glyph
-    tool strip is NOT duplicated in the head here: curves.js already builds this page's action
-    strip next to each chart (⛶ ENLARGE → the viewport overlay, ▦ DATA → that chart's data
-    table) and that strip is normalized to the contract vocabulary in place — relabel, never
-    rebuild — with ⤓ EXCEL added there so panelkit.js follows the panel's data-export."""
-    n_versions = len(curves.versions)
-    latest = curves.versions[-1].label if curves.versions else ""
-    latest_dd = curves.versions[-1].status_date if curves.versions else None
-    oldest = curves.versions[0].label if curves.versions else ""
-    months = curves.month_labels
-    n_months = len(months)
-    # a literal em dash, never the em-dash ENTITY as a value: test_presentation_fixes pins that
-    # sentinel because an entity string here would double-escape the next time it meets _e()
-    span = f"{_e(months[0])} &rarr; {_e(months[-1])}" if months else "—"
-    files = f"{n_versions} file" + ("" if n_versions == 1 else "s")
-    dd_txt = f" (data date {_e(latest_dd)})" if latest_dd else ""
-
-    def take(text: str) -> str:
-        return f"<p class=sf-take data-no-i18n>{text}</p>"
-
-    # every figure below is one the page ALREADY renders: the version labels and data dates the
-    # frame captions name, and the shared month axis the charts are drawn on. No new arithmetic.
-    finishes_take = take(
-        f"Latest version <b>{_e(latest)}</b>{dd_txt}: baselined finish months against actual "
-        f"or scheduled finish months, on the shared {n_months}-month axis ({span})."
-    )
-    datadate_take = take(
-        f"{files} on one fixed {n_months}-month axis ({span}), oldest first by data date "
-        f"&mdash; <b>{_e(oldest)}</b> through <b>{_e(latest)}</b>, one file per frame."
-    )
-    slippage_take = take(
-        f"Start and finish curves for {files} on the same {n_months}-month axis ({span}); "
-        f"the frame label names the file shown, newest being <b>{_e(latest)}</b>."
-    )
-    multi = (
-        ""
-        if n_versions >= 2
-        else "<p class=muted>Load more than one version (monthly snapshots, by data date) to "
-        "see the per-version curve overlays — with a single version the curves show that "
-        "version alone.</p>"
-    )
-    return f"""
-<div class=viz-controls><label><input type=checkbox id=curvesHideDone> hide 100% complete</label>
-<span class=muted>&mdash; show only the remaining / forecast work on every curve below.</span>
-<label style="margin-left:1em">Time scale <select id=curvesGran data-no-i18n>
-<option value=month selected>Months (year / quarter / month)</option>
-<option value=quarter>Quarters (year / quarter)</option>
-<option value=year>Years</option>
-</select></label></div>
-<div class=panel data-export="/export/xlsx/curves">{
-        _panel_head("Finishes &mdash; actual vs baseline by month", prov=prov)
-    }
-{finishes_take}
-<p class=muted>For the latest version (<b>{_e(latest)}</b>): activities counted by the month
-they were <b>baselined</b> to finish (gold) against the month they <b>actually</b> finished
-or are now scheduled to (blue). Where the blue curve sits to the right of the gold is slipped
-finish work, read month by month.</p>
-<div id=finishesChart class=chart-host></div></div>
-<div class=panel data-export="/export/xlsx/curves">{
-        _panel_head("DATA Date Finishes &mdash; actual-finish curve per version", prov=prov)
-    }
-{datadate_take}
-<p class=muted>One file per frame on a month axis held fixed across every file (ADR-0150):
-step or play through the loaded versions (oldest first by data date) and watch the finish
-curve slide right &mdash; the bow wave of slipped finishes. The frame label names the file
-you are looking at.</p>{multi}
-<div id=dataDateChart class=chart-host></div></div>
-<div class=panel data-export="/export/xlsx/curves">{
-        _panel_head("Slippage &mdash; start &amp; finish curves per version", prov=prov)
-    }
-{slippage_take}
-<p class=muted>One file per frame (fixed month axis, ADR-0150): activities counted by their
-<b>start</b> month (solid) and <b>finish</b> month (dashed). Step or play through the versions
-&mdash; the whole profile sliding right is the slippage signature. The frame label names the
-file shown.</p>
-<div id=slippageChart class=chart-host></div></div>
-<script src="/static/timeaxis.js"></script>
-<script src="/static/curves.js"></script>
-<script src="/static/panelkit.js"></script>"""
-
-
-def _curves_data(curves: MonthCurves) -> dict[str, object]:
-    """JSON for the finish/slippage curves: shared month axis + per-version count series."""
-    return {
-        "months": list(curves.month_labels),
-        "versions": [
-            {
-                "label": v.label,
-                "status_date": v.status_date,
-                "status_index": v.status_index,
-                "baseline_finishes": list(v.baseline_finishes),
-                "actual_finishes": list(v.actual_finishes),
-                "baseline_starts": list(v.baseline_starts),
-                "actual_starts": list(v.actual_starts),
-            }
-            for v in curves.versions
-        ],
-    }
-
-
 # NASA Schedule Management Handbook citations — verified against the committed reference PDF
 # (00_REFERENCE_INTAKE/references/schedule-management-handbook-20240315-update.zip); the section
 # numbers and the 50%-consumed corrective threshold are quoted from that document, not invented.
@@ -7152,339 +7038,6 @@ _FLOAT_HIST_BANDS: tuple[tuple[str, Callable[[float], bool]], ...] = (
     ("21-44", lambda v: 20 < v <= 44),
     ("> 44", lambda v: v > 44),
 )
-
-
-#: display convention (operator 2026-07-08): a thresholded measure that PASSES but sits at or
-#: above this fraction of its threshold shows as a YELLOW warning (approaching the limit).
-_RIBBON_WARN_FRACTION = 0.8
-
-#: ribbon columns whose color comes from a zero-tolerance DCMA threshold (any offender = fail)
-_RIBBON_ZERO_TOLERANCE = {"negative_float": "DCMA-07", "number_of_leads": "DCMA-02"}
-#: ribbon columns colored from the DCMA-05 5%-of-activities threshold
-_RIBBON_PCT5 = {"hard_constraints"}
-#: ribbon float columns that are a mean/max of the incomplete-activity population — a placeholder
-#: 0.0 when that population is empty, so they render "—" not a fabricated figure (audit NEW-1)
-_RIBBON_FLOAT_EXTRAS = {"avg_float_days", "max_float_days"}
-
-
-def _ribbon_cell_class(attr: str, r: object, quality: dict[str, MetricResult]) -> str:
-    """pass (green) / warning (yellow) / fail (red) for thresholded measures; '' = no threshold.
-
-    Thresholds come from the Bible-validated quality metrics where they exist; Negative Float
-    and Leads use the DCMA zero-tolerance rule; Hard Constraints uses the DCMA-05 5% rule.
-    The warning band (PASS but >= 80% of the threshold) is a display convention, not a metric.
-    """
-    q = quality.get(attr)
-    if q is not None and q.threshold is not None:
-        if q.status is CheckStatus.FAIL:
-            return "rib-fail"
-        if q.status is CheckStatus.PASS:
-            return "rib-warn" if q.value >= _RIBBON_WARN_FRACTION * q.threshold else "rib-pass"
-        return ""
-    count = getattr(r, attr, None)
-    if attr in _RIBBON_ZERO_TOLERANCE and isinstance(count, int):
-        return "rib-pass" if count == 0 else "rib-fail"
-    if attr in _RIBBON_PCT5 and isinstance(count, int) and q is not None and q.population:
-        pct = 100.0 * count / q.population
-        if pct > 5.0:
-            return "rib-fail"
-        return "rib-warn" if pct >= _RIBBON_WARN_FRACTION * 5.0 else "rib-pass"
-    return ""  # no published threshold — neutral
-
-
-#: rank 8 — the tooltip's verdict WORD for each cell tone, read off the class the cell already
-#: wears (single source: :func:`_ribbon_cell_class`; the title never re-judges a threshold).
-_RIBBON_CLS_VERDICT = {
-    "rib-pass": "PASS",
-    "rib-warn": "PASS, warning band (≥80% of the threshold)",
-    "rib-fail": "FAIL",
-}
-
-
-def _ribbon_cell_title(
-    label: str, attr: str, r: object, quality: dict[str, MetricResult], cls: str
-) -> str:
-    """The threshold tooltip for a ribbon-matrix cell — the EXISTING native ``title=``
-    mechanism these cells already carry (Mission Ops rank 8; never a second tooltip system).
-
-    Every figure is quoted verbatim from the quality :class:`MetricResult` (value / threshold /
-    direction) or the ribbon count the cell already shows; the verdict word comes from the class
-    :func:`_ribbon_cell_class` already assigned, so nothing is re-judged here. Unthresholded
-    measures say so — the same "neutral" vocabulary as the legend."""
-    click = "Click to list the activities behind this figure."
-    verdict = _RIBBON_CLS_VERDICT.get(cls, "")
-    q = quality.get(attr)
-    if q is not None and q.threshold is not None and verdict:
-        unit = "%" if q.unit == "%" else ""
-        comp = str(q.direction) if q.direction is not None else "<="
-        return (
-            f"{label}: {q.value:g}{unit} — published threshold {q.threshold:g}{unit} "
-            f"(pass when {comp} threshold) — {verdict}. {click}"
-        )
-    count = getattr(r, attr, None)
-    if attr in _RIBBON_ZERO_TOLERANCE and isinstance(count, int) and verdict:
-        return (
-            f"{label}: {count} — {_RIBBON_ZERO_TOLERANCE[attr]} zero-tolerance rule "
-            f"(pass when 0) — {verdict}. {click}"
-        )
-    if attr in _RIBBON_PCT5 and isinstance(count, int) and verdict:
-        return f"{label}: {count} — DCMA-05 5% rule — {verdict}. {click}"
-    return f"{label}: no published threshold — neutral. {click}"
-
-
-def _can_we_trust_header(sch: Schedule, analysis: _Analysis, ribbon: RibbonMetrics) -> str:
-    """Chapter 02 "Can we trust the plan?" (ADR-0198): the data-driven takeaway + a quality-KPI
-    strip + the DCMA-outcome and logic-completeness bars, for the LATEST loaded version — every
-    figure read from the ribbon/audit the page already computed (no engine math; honest counts)."""
-    checks = analysis.audit.checks
-    passes = sum(1 for c in checks if _status_class(c.status) == "pass")
-    fails = sum(1 for c in checks if _status_class(c.status) == "fail")
-    na = sum(1 for c in checks if _status_class(c.status) == "na")
-    scored = passes + fails
-    total = compute_activity_makeup(sch).total
-
-    # takeaway — the top one/two structural weaknesses, stated as real counts with correct
-    # singular/plural agreement (or "clean" when there are none)
-    def _acts(n: int) -> str:
-        return "activity" if n == 1 else "activities"
-
-    phrases: list[str] = []
-    if ribbon.missing_logic:
-        n = ribbon.missing_logic
-        phrases.append(f"{n} {_acts(n)} {'misses' if n == 1 else 'miss'} logic")
-    if ribbon.negative_float:
-        n = ribbon.negative_float
-        phrases.append(f"{n} {_acts(n)} {'carries' if n == 1 else 'carry'} negative float")
-    if ribbon.hard_constraints:
-        n = ribbon.hard_constraints
-        con = "a hard constraint" if n == 1 else "hard constraints"
-        phrases.append(f"{n} {_acts(n)} {'sits' if n == 1 else 'sit'} on {con}")
-    if phrases:
-        weak = " — " + ", and ".join(phrases[:2]) + "."
-    else:
-        weak = " — logic is complete, with no negative float or hard constraints."
-    scored_txt = (
-        f"{passes} of {scored} DCMA-14 quality checks pass"
-        if scored
-        else ("the DCMA-14 checks don't apply to this file")
-    )
-    takeaway = f"{scored_txt}{weak}"
-
-    kpi = _stat_cards(
-        [
-            ("DCMA checks passed", f"{passes} / {scored}" if scored else "—"),
-            ("Missing logic", str(ribbon.missing_logic)),
-            ("Hard constraints", str(ribbon.hard_constraints)),
-            ("Negative float", str(ribbon.negative_float)),
-            ("Logic density", f"{ribbon.logic_density:g}"),
-            ("Insufficient detail", str(ribbon.insufficient_detail)),
-        ]
-    )
-    dcma_bar = _status_stack(
-        "DCMA-14 checks",
-        "The 14 DCMA schedule-quality checks by outcome (n/a where no threshold applies).",
-        [("Pass", passes, "--ok"), ("Fail", fails, "--bad"), ("N/A", na, "--muted")],
-        f"{len(checks)} checks",
-    )
-    wired = max(total - ribbon.missing_logic, 0)
-    logic_bar = _status_stack(
-        "Logic completeness",
-        "Activities wired with a predecessor and successor vs those missing logic.",
-        [("Logic wired", wired, "--ok"), ("Missing logic", ribbon.missing_logic, "--bad")],
-        f"{total} activities",
-    )
-    # Mission Ops rank 8: the Chapter-02 beat's muted lede under the takeaway h1 (the kicker
-    # itself comes from _page's spine resolution — "Schedule Quality Ribbon" is a ch-02 title).
-    lede = (
-        '<p class="page-lede">Whether the schedule is built soundly enough to trust its '
-        "numbers &mdash; the DCMA-14 construct and the Fuse-validated ribbon measures for "
-        "every loaded version, each count computed from the schedule&rsquo;s own logic and "
-        "drillable to the activities behind it.</p>"
-    )
-    return (
-        f'<h1 class="page-takeaway" data-no-i18n>{takeaway}</h1>'
-        f"{lede}"
-        f'<div class="ws-kpi">{kpi}</div>'
-        f'<div class="ws-bars">{dcma_bar}{logic_bar}</div>'
-    )
-
-
-def _workbench_body(versions: Sequence[Schedule]) -> str:
-    """The Metric Workbench (ADR-0204): an Acumen-style page — the selectable metric library on
-    the left, the ribbon (chosen metrics x versions, oldest-first) on the right, and a
-    click-to-drill grid (filter / sort / group / add columns / Excel) below. The library is
-    server-rendered so it works before JS; ``workbench.js`` reads the checkboxes to draw the
-    ribbon and drill via ``/api/workbench`` + ``/api/workbench/drill``.
-
-    Panel contract (rank 12 toolbar sweep, ADR-0327; blocker cleared by ADR-0326): the one
-    panel wears the head strip + ⛶ ENLARGE + the whole-series provenance chip (``versions``).
-    The deliberate decisions:
-
-    * **⤓ EXCEL is NOT in the strip** — the ribbon's exports already ship as the panel's own
-      labeled links (Export ribbon Excel / Word, pinned by test_workbench_view), which is how
-      DESIGN-SYSTEM §3:78 "tables get ⤓ EXCEL only" was recorded satisfied in ADR-0326; a head
-      glyph would be a SECOND affordance for the same URL inside one panel (the round-11
-      inert-duplicate class). The drill grid ships its own export button (workbench.js) that
-      rebuilds ``&cols=<live selection>`` per render — exactly what a static ``data-export``
-      cannot follow (the round-10 defect).
-    * **no ▦ DATA** — the ribbon and drill ARE tables; a drawer would duplicate the panel's
-      own content (the home-shell precedent)."""
-    families: dict[str, list[tuple[str, str, str]]] = {}
-    for e in catalog_entries():
-        families.setdefault(e.family, []).append((e.metric_id, e.name, e.describe))
-    _n_metrics = sum(len(v) for v in families.values())
-    takeaway = _utility_takeaway(
-        f"{_n_metrics} metrics across {len(families)} families are available to compare, "
-        "version by version.",
-        "Pick metrics on the left; the ribbon plots them across every loaded version oldest-first, "
-        "and any cell drills to the activities behind it. Each metric names the formula and source "
-        "the metric dictionary pins.",
-    )
-    groups = ""
-    for fam, metrics in families.items():
-        checks = "".join(
-            f'<label class=wb-metric title="{_e(desc)}">'
-            f'<input type=checkbox class=wb-pick value="{_e(mid)}" checked> {_e(name)}</label>'
-            for mid, name, desc in metrics
-        )
-        groups += (
-            f'<div class=wb-family data-family="{_e(fam)}">'
-            f"<div class=wb-family-head><b>{_e(fam)}</b>"
-            f'<button type=button class="linkbtn wb-fam-all" data-family="{_e(fam)}">all</button>'
-            f'<button type=button class="linkbtn wb-fam-none" data-family="{_e(fam)}">none</button>'
-            f"</div>{checks}</div>"
-        )
-    return f"""{takeaway}
-<div class=panel>
-{_panel_head("Metric Workbench", tools=_shell_tools(), prov=_series_prov_chip(list(versions)))}
-<p class=muted>Pick any metrics from the <b>validated library</b> on the left; each is computed for
-every loaded schedule <b>independently</b> and laid out oldest&rarr;newest, Acumen-style. Click any
-value to list the activities behind it &mdash; then filter, sort, group by a project field, add
-columns, and export. Every figure is the same gate-locked number the rest of the tool reports
-(no re-interpretation of raw formulas).</p>
-<div class=viz-controls>
-<button type=button id=wbAll class=linkbtn>Select all</button>
-<button type=button id=wbNone class=linkbtn>Clear</button>
-<a class=btn href="/export/xlsx/workbench">Export ribbon (Excel)</a>
-<a class=btn href="/export/docx/workbench">Ribbon (Word)</a>
-</div>
-<div class=wb-layout>
-<aside class=wb-library aria-label="Metric library">{groups}</aside>
-<div class=wb-ribbon-wrap><div id=wbRibbon class=wb-ribbon aria-live=polite></div></div>
-</div>
-<div id=wbDrill class=wb-drill></div>
-</div>
-<script src="/static/workbench.js"></script>
-<script src="/static/panelkit.js"></script>"""
-
-
-def _ribbon_body(
-    rows: list[tuple[str, object, dict[str, MetricResult]]],
-    note: str,
-    drill: dict[str, dict[str, tuple[int, ...]]] | None = None,
-    *,
-    prov: str = "",
-) -> str:
-    """The Acumen-Fuse-style Schedule Quality Ribbon: one row per loaded schedule, one column
-    per ribbon metric — the metrics validated against the operator's Fuse workbook export.
-    Thresholded measures are color-coded pass/warning/fail, and every metric cell is CLICKABLE
-    (operator 2026-07-08): the click lists that file's activities behind the figure below, with
-    UID / name / duration / % complete / start / finish plus a set-once persistent Columns
-    picker (standard + custom fields) and an Excel export of exactly the selection."""
-    cols = [
-        ("Missing Logic", "missing_logic"),
-        ("Logic Density™", "logic_density"),
-        ("Critical", "critical"),
-        ("Hard Constraints", "hard_constraints"),
-        ("Negative Float", "negative_float"),
-        ("Number of Lags", "number_of_lags"),
-        ("Number of Leads", "number_of_leads"),
-        ("Merge Hotspot", "merge_hotspot"),
-        ("Insufficient Detail™", "insufficient_detail"),
-        ("Avg Float (d)", "avg_float_days"),
-        ("Max Float (d)", "max_float_days"),
-    ]
-    midcol = len(cols) // 2
-    head_row = "<th scope=col>Schedule</th>" + "".join(
-        f"<th scope=col class=metric-th>"
-        f"{_metric_help_cell(label, attr, align='right' if i >= midcol else 'left')}</th>"
-        for i, (label, attr) in enumerate(cols)
-    )
-    body = ""
-    for key, r, quality in rows:
-        cells = ""
-        # A fully-progressed schedule has an empty incomplete-activity float population, so
-        # avg/max_float_days are a placeholder 0.0 — render "—" (not a fabricated mean/max), and
-        # make the cell non-clickable since there is nothing to drill (audit NEW-1).
-        na_floats = getattr(r, "incomplete_float_count", 0) == 0
-        for label, attr in cols:
-            if attr in _RIBBON_FLOAT_EXTRAS and na_floats:
-                cells += (
-                    '<td class="rib-na" title="No incomplete activities — '
-                    'this measure is not applicable">—</td>'
-                )
-                continue
-            cls = _ribbon_cell_class(attr, r, quality)
-            # rank 8: the threshold tooltip rides the EXISTING title= these cells already carry
-            # (no second tooltip system); every figure/verdict quoted from the engine's own
-            # MetricResult and the class the cell already wears — never re-judged here.
-            title = _ribbon_cell_title(label, attr, r, quality, cls)
-            cells += (
-                f'<td class="rib-cell {cls}" data-file="{_e(key)}" data-metric="{attr}" '
-                f'tabindex=0 role=button title="{_e(title)}">'
-                f"{_e(getattr(r, attr))}</td>"
-            )
-        # rank 8: the row label wears the 3px LEFT edge (the k-edge / cite-card family) and is
-        # i18n-inert (a filename must never be translated).
-        body += f"<tr><td class=rib-row-label data-no-i18n>{_e(key)}</td>{cells}</tr>"
-    labels = {attr: label for label, attr in cols}
-    # <-escape the inline-JSON embeds like every sibling embed (audit ADR-0250): a </script> in a
-    # schedule key can't currently arise (keys are Path.name, no slash) but the escape is the
-    # explicit barrier, not an implicit Path.name side effect, and keeps the pattern uniform.
-    drill_json = json.dumps(
-        {k: {m: list(u) for m, u in v.items()} for k, v in (drill or {}).items()}
-    ).replace("<", "\\u003c")
-    labels_json = json.dumps(labels).replace("<", "\\u003c")  # uniform <-escape (static labels)
-    drill_script = (
-        f'<script id=sfRibbonDrillData type="application/json">'
-        f'{{"drill": {drill_json}, "labels": {labels_json}}}</script>'
-        "<div id=ribbonDrill class=ribbon-drill></div>"
-        '<script src="/static/ribbon_drill.js"></script>'
-    )
-    # ── rank 8: the matrix panel wears the contract — headline strip + ⤓/⛶ tools + prov chip +
-    # a one-line sf-take quoting totals the page already renders (row/column counts — never a
-    # re-derived metric). ▦ DATA is omitted (the matrix IS the data); ⤓ EXCEL rides the EXISTING
-    # /export/xlsx/ribbon endpoint via the panel's data-export (the home/portfolio precedent). ──
-    n_rows = len(rows)
-    take = (
-        f"<p class=sf-take data-no-i18n>{n_rows} schedule version{'s' if n_rows != 1 else ''} "
-        f"&times; {len(cols)} Fuse-validated measures — colored where a published threshold "
-        "exists; hover any cell for its threshold, click it to list the activities behind the "
-        "figure.</p>"
-    )
-    tools = _shell_tools(
-        export_title="Export the quality ribbon — one row per loaded file — opens in Excel"
-    )
-    head = _panel_head("Schedule Quality Ribbon", tools=tools, prov=prov)
-    return f"""{note}
-<div class=panel data-export="/export/xlsx/ribbon">{head}
-{take}
-<p class=muted>The schedule-quality ribbon metrics, one row per loaded
-schedule. <b>Missing Logic</b> = activities missing a predecessor and/or successor;
-<b>Logic Density™</b> = logic links per activity (2&times;links &divide; activities);
-<b>Critical</b> = activities the source tool flags critical (its stored Critical / Total Slack);
-<b>Lags</b> / <b>Leads</b> = activities whose predecessors carry a positive / negative offset,
-counted across all statuses (planned, in-progress, or complete &mdash; unlike the
-incomplete-only DCMA-14 checks); <b>Hard Constraints</b> / <b>Negative Float</b> are the DCMA
-counts; <b>Merge Hotspot</b> = activities with more than two predecessors. <b>Insufficient Detail™</b> = activities whose duration exceeds 10% of the
-project span (the NASA Acumen library formula, Fuse-validated). These are validated against the
-reference schedule-quality export. <i>Float Ratio™ is omitted pending its exact definition.</i>
-<span class=rib-legend><span class=rib-pass>pass</span> <span class=rib-warn>warning
-(&ge;80% of threshold)</span> <span class=rib-fail>fail</span> &mdash; colored where a
-published threshold exists; unthresholded measures stay neutral.</span>
-<b>Click any metric cell</b> to list the activities behind that figure below.</p>
-<table><tr>{head_row}</tr>{body}</table></div>{drill_script}
-<script src="/static/panelkit.js"></script>"""
 
 
 def _ssi_three_point(st: SessionState, sch: Schedule) -> dict[int, tuple[int, int, int]]:
@@ -8486,202 +8039,6 @@ def _groups_body(
     if "data-sf-" in body:
         body += '\n<script src="/static/panelkit.js"></script>'
     return body
-
-
-def _volatility_data(schedules: list[Schedule], cpms: list[CPMResult]) -> dict[str, object]:
-    """The critical-path volatility dataset (operator 2026-07-09): per-version membership of
-    the effective critical set for every activity that was EVER on the path, plus the derived
-    stability measures the ten visuals draw — per-task tenure / longest streak / on-off flips,
-    per-pair Jaccard similarity and stayed/entered/left splits, and the overall stability
-    index (mean Jaccard). Everything derives from the loaded versions' critical sets — the
-    same effective-critical basis (stored Critical flag, CPM fallback) every other page uses."""
-    from schedule_forensics.engine.path_evolution import effective_critical_set
-
-    sets = [effective_critical_set(s, c) for s, c in zip(schedules, cpms, strict=True)]
-    labels = [s.source_file or s.name for s in schedules]
-    dates = [s.status_date.date().isoformat() if s.status_date else None for s in schedules]
-    ever: list[int] = []
-    seen: set[int] = set()
-    for cs in sets:
-        for uid in sorted(cs):
-            if uid not in seen:
-                seen.add(uid)
-                ever.append(uid)
-    # latest-known name per uid (newest version wins)
-    names: dict[int, str] = {}
-    for sch in schedules:
-        for t in sch.tasks:
-            if t.unique_id in seen:
-                names[t.unique_id] = t.name
-
-    tasks: list[dict[str, Any]] = []
-    for uid in ever:
-        member = [1 if uid in cs else 0 for cs in sets]
-        streak = best = 0
-        flips = 0
-        for i, m in enumerate(member):
-            streak = streak + 1 if m else 0
-            best = max(best, streak)
-            if i and m != member[i - 1]:
-                flips += 1
-        tasks.append(
-            {
-                "uid": uid,
-                "name": names.get(uid, f"UID {uid}"),
-                "member": member,
-                "tenure": sum(member),
-                "streak": best,
-                "flips": flips,
-            }
-        )
-    # most-tenured first, then fewest flips, then uid — the leaderboard/heatmap order
-    tasks.sort(key=lambda t: (-t["tenure"], t["flips"], t["uid"]))
-
-    pairs: list[dict[str, object]] = []
-    for i in range(1, len(sets)):
-        a, b = sets[i - 1], sets[i]
-        union = a | b
-        entered_uids = sorted(b - a)  # newly on the path in version i (present in the "to" file)
-        left_uids = sorted(a - b)  # dropped off the path (present in the "from" file)
-        stayed, entered, left = len(a & b), len(entered_uids), len(left_uids)
-        pairs.append(
-            {
-                "from": labels[i - 1],
-                "to": labels[i],
-                "jaccard": round(len(a & b) / len(union), 3) if union else None,
-                "stayed": stayed,
-                "entered": entered,
-                "left": left,
-                # the activity IDs behind the entry/exit counts, so the waterfall bars can drill
-                "entered_uids": entered_uids,
-                "left_uids": left_uids,
-            }
-        )
-    jaccards = [p["jaccard"] for p in pairs if p["jaccard"] is not None]
-    return {
-        "versions": [
-            {"label": lb, "status_date": d, "critical": len(cs)}
-            for lb, d, cs in zip(labels, dates, sets, strict=True)
-        ],
-        "tasks": tasks,
-        "pairs": pairs,
-        # the newest version's label — the drill's data-file for the leaderboard/dwell bars (whose
-        # activities are "ever on the path"; those present in the latest version resolve there).
-        "latest": labels[-1] if labels else "",
-        "stability": (
-            round(sum(jaccards) / len(jaccards), 3) if jaccards else None  # type: ignore[arg-type]
-        ),
-    }
-
-
-def _volatility_body(schedules: list[Schedule], cpms: list[CPMResult]) -> str:
-    """The CP Volatility page shell: intro framed to GAO/DCMA best practice, the master
-    stepper, ten chart mounts, the scoreboard, and the embedded dataset volatility.js reads.
-
-    Panel contract (Mission Ops rank 11, ADR-0298 vocabulary): the masthead and the scoreboard
-    wear :func:`_panel_head` + a :func:`_series_prov_chip` chip + one ``.sf-take``; each of the
-    ten ``.tile.panel`` mosaic tiles wears the mission-wall tile shape ``_performance_body``
-    established — tools strip inside the existing ``.tile-head``, ``.tile-prov`` chip, one
-    ``.sf-take`` under the chart. Four deliberate omissions, each of which would otherwise ship
-    an inert or dishonest control:
-
-    * **no ▦ DATA on any tile** — these tiles carry no ``.sf-drawer`` and no ``.sr-only`` table
-      (measured: 0 of each on this route), so the glyph would reveal nothing;
-    * **no tools on the masthead** — it holds ZERO visuals and ZERO tables (it is a masthead,
-      not a panel of data), and it ALREADY owns this page's Excel control (the
-      ``⇩ Excel (scoreboard)`` anchor pointing at the very URL ⤓ would follow — ADR-0298's
-      one-convention law);
-    * **no tools on the scoreboard** — same anchor, same URL, one table;
-    * **no per-version figure in any tile take** — the master stepper (volatility.js ``cursor``)
-      re-draws the churn/composition/heatmap/ribbon visuals at a DIFFERENT version on every
-      tick, so a server-rendered per-version number would become false on the first ▶. The tile
-      takes are structural; the two figure-bearing takes (masthead, scoreboard) quote only
-      whole-series values the visuals below them already print verbatim, and the provenance is
-      :func:`_series_prov_chip` (a first→last RANGE that holds at every frame).
-
-    The ten ``<h3 class=viz-hint>`` explainers are deliberately NOT routed through
-    :func:`_panel_head`: that helper emits an ``<h2>`` and would drop the ``data-sf-hint``
-    explainer this page's tiles are built around."""
-    data = _volatility_data(schedules, cpms)
-    blob = json.dumps(data).replace("<", "\\u003c")
-    # ── The panel contract for this page. Every figure a take quotes is read off the SAME
-    # `data` dict the embedded #volData blob carries (no second engine call), so the takes and
-    # the visuals drawn from that blob can never disagree.
-    versions = cast(list[dict[str, object]], data["versions"])
-    tasks = cast(list[dict[str, Any]], data["tasks"])
-    stability = cast("float | None", data["stability"])
-    # The gauge prints `Math.round(s * 100) + "%"` (volatility.js) — half-UP. Python's round()
-    # is half-to-even, so it is spelled out here rather than borrowed; otherwise a stability of
-    # x.xx5 would let the take and the dial it describes read differently.
-    stab_txt = "—" if stability is None else f"{int(stability * 100 + 0.5)}%"
-    full_tenure = sum(1 for t in tasks if t["tenure"] == len(versions))
-    prov = _series_prov_chip(schedules)
-    head = _panel_head(
-        "Critical-Path Volatility &mdash; membership churn across versions", prov=prov
-    )
-    intro_take = (
-        f"<p class=sf-take data-no-i18n>{len(tasks)} activities were ever on the critical path "
-        f"across the {len(versions)} loaded versions; mean similarity between consecutive paths "
-        f"is {stab_txt}.</p>"
-    )
-    board_head = _panel_head("Volatility scoreboard", prov=prov)
-    board_take = (
-        f"<p class=sf-take data-no-i18n>Every one of the {len(tasks)} activities that ever "
-        f"reached the critical path is listed here; {full_tenure} held it in all "
-        f"{len(versions)} loaded versions.</p>"
-    )
-    # One ⤓ destination for all ten tiles: the workbook is the membership matrix the visuals are
-    # drawn from, NOT a per-visual series — the hover text says exactly that and no more.
-    tile_export = ' data-export="/export/xlsx/volatility"'
-    tile_prov = f"<div class=tile-prov>{prov}</div>"
-    tile_tools = (
-        '<span class="tile-actions sf-tools" data-noprint=1>'
-        "<button type=button data-sf-excel "
-        'title="Export the critical-path membership matrix these visuals are drawn from '
-        '&mdash; opens in Excel" '
-        'aria-label="Export this visual&#39;s data to Excel">⤓ EXCEL</button>'
-        "<button type=button data-sf-big aria-pressed=false "
-        'title="Enlarge / shrink this visual" '
-        'aria-label="Enlarge this visual">⛶ ENLARGE</button></span>'
-    )
-    return f"""
-<div class=panel>{head}{intro_take}
-<p class=muted>The critical path should be <b>stable</b>: GAO's Schedule Assessment Guide (Best
-Practice 6 — maintain a valid critical path) and the DCMA 14-point construct (the critical-path
-test and CPLI) both treat an erratic controlling chain as a schedule-health failure. A path that
-churns member activities version over version means the network's logic is being rewired between
-updates — either real replanning that deserves a change log, or edits that quietly move the
-controlling chain away from slipping work. The ten visuals below answer two questions from the
-loaded files: <b>which activities stayed on the critical path longest</b>, and <b>which jumped
-off and on over time</b> (every figure derives from the same effective-critical sets the other
-pages use; nothing is fabricated).</p>
-<div class=viz-controls>
-<button id=volPrev type=button>&#9664; Prev</button>
-<span id=volLabel class=muted data-no-i18n></span>
-<button id=volNext type=button>Next &#9654;</button>
-<button id=volPlay type=button>&#9654; Play</button>
-<a class=btn-link href="/export/xlsx/volatility">&#11015; Excel (scoreboard)</a>
-</div></div>
-<div class=mosaic id=volGrid>
-<section class="tile panel"{tile_export}><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: the overall stability index — the average Jaccard similarity of consecutive critical paths (100% = the same path every update).\n\nHOW TO READ: GAO/DCMA expect a largely stable controlling chain; below ~70% the network is being rewired between updates.\n\nDECIDE: whether to ask for the change log before accepting the latest update.">Stability gauge</h3>{tile_tools}</div>{tile_prov}<div class=chart-host id=volGauge></div><p class=sf-take data-no-i18n>The mean similarity between consecutive critical paths on a dial whose bands are operator-set display guidance, not a published threshold.</p></section>
-<section class="tile panel"{tile_export}><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: path similarity between each consecutive pair of versions (Jaccard %).\n\nHOW TO READ: dips are the updates where the controlling chain was rewired — cross-reference those updates with the Schedule Integrity findings.\n\nDECIDE: which update to interrogate for logic/duration edits.">Churn timeline (Jaccard %)</h3>{tile_tools}</div>{tile_prov}<div class=chart-host id=volChurn></div><p class=sf-take data-no-i18n>Path similarity for each consecutive pair of versions, so the updates where the controlling chain was rewired read as dips.</p></section>
-<section class="tile panel"{tile_export}><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: per update — how many activities stayed on, joined, and left the critical path.\n\nHOW TO READ: joined bars up, left bars down; a healthy schedule shows small bars (progress-driven turnover), not tall ones.\n\nDECIDE: which update churned the most members.">Entry / exit waterfall</h3>{tile_tools}</div>{tile_prov}<div class=chart-host id=volFlow></div><p class=sf-take data-no-i18n>Per update, how many activities joined the critical path (above the axis) against how many left it (below).</p></section>
-<section class="tile panel"{tile_export}><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: the composition of each version's path — the share carried over vs newly joined.\n\nHOW TO READ: a mostly-'stayed' area is a settled plan; a growing 'entered' share is instability.\n\nDECIDE: whether the path is converging or churning over time.">Path composition (stayed vs entered)</h3>{tile_tools}</div>{tile_prov}<div class=chart-host id=volArea></div><p class=sf-take data-no-i18n>Each version's critical-path size split into the members carried over from the prior version and those newly joined.</p></section>
-<section class="tile panel tile-wide"{tile_export}><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: the presence matrix — one row per activity ever on the critical path, one column per version; a filled cell = on the path that version. The stepper highlights the animated version.\n\nHOW TO READ: long unbroken rows are the stable backbone; gap-toothed rows are the jumpers.\n\nDECIDE: which rows deserve a 'why did this change?' interrogation.">Membership heatmap</h3>{tile_tools}</div>{tile_prov}<div class=chart-host id=volHeatmap></div><p class=sf-take data-no-i18n>Membership as a matrix &mdash; activities down the side, most-volatile first; versions across the top; a filled cell marks a version the activity was on the critical path.</p></section>
-<section class="tile panel"{tile_export}><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: the activities that spent the most versions on the critical path.\n\nHOW TO READ: these carry the schedule — the true backbone of the finish date.\n\nDECIDE: where sustained management attention belongs.">Tenure leaderboard</h3>{tile_tools}</div>{tile_prov}<div class=chart-host id=volTenure></div><p class=sf-take data-no-i18n>The activities that held the critical path the longest, ranked by how many versions they spent on it.</p></section>
-<section class="tile panel"{tile_export}><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: how long activities typically stay on the path (distribution of versions-on-path).\n\nHOW TO READ: a healthy path skews long (stable membership); a spike at 1 version means most members blink on and off.\n\nDECIDE: whether churn is a few bad actors or systemic.">Dwell histogram</h3>{tile_tools}</div>{tile_prov}<div class=chart-host id=volDwell></div><p class=sf-take data-no-i18n>How many activities spent one version on the critical path, how many spent two, and so on across the loaded versions.</p></section>
-<section class="tile panel"{tile_export}><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: the biggest jumpers — activities ranked by on/off flips.\n\nHOW TO READ: an activity that repeatedly leaves and rejoins the controlling chain usually marks logic being toggled around it.\n\nDECIDE: exactly which activities' predecessors/durations to audit across updates.">Jumper leaderboard (on/off flips)</h3>{tile_tools}</div>{tile_prov}<div class=chart-host id=volJumpers></div><p class=sf-take data-no-i18n>Activities ranked by how often they left the critical path and rejoined it; when nothing changed more than once, the panel says so in words instead of drawing a bar.</p></section>
-<section class="tile panel"{tile_export}><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: on-path intervals for the top jumpers as timeline strips (filled = on the path).\n\nHOW TO READ: aligned breaks across many strips point at ONE update that rewired the chain; scattered breaks are activity-level toggling.\n\nDECIDE: whether to investigate an update or an activity.">Jumper timelines</h3>{tile_tools}</div>{tile_prov}<div class=chart-host id=volStrips></div><p class=sf-take data-no-i18n>On-path intervals as one strip per activity &mdash; the top jumpers, or the longest-tenured members when nothing has jumped &mdash; so breaks that line up across strips point at a single update.</p></section>
-<section class="tile panel"{tile_export}><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: the animated stayed/entered/left transition between the stepper's current pair of versions, as proportional ribbons.\n\nHOW TO READ: a thick 'stayed' ribbon is continuity; thick 'entered'/'left' ribbons mark a rewired update.\n\nDECIDE: step through the pairs to find the update that moved the chain.">Transition flow (animated)</h3>{tile_tools}</div>{tile_prov}<div class=chart-host id=volRibbon></div><p class=sf-take data-no-i18n>The stepper's current pair of versions as proportional ribbons: what stayed on the critical path against what joined and what left.</p></section>
-</div>
-<div class=panel>{board_head}{board_take}
-<p class=muted>Every activity that was ever on the critical path — versions on path, longest
-unbroken streak, and on/off flips (click a column header to sort; the Excel export carries the
-full membership vector).</p>
-<div id=volTable></div></div>
-<script type="application/json" id=volData>{blob}</script>
-<script defer src="/static/volatility.js"></script>
-<script src="/static/panelkit.js"></script>"""
 
 
 def _dashboard_data(st: SessionState) -> dict[str, object]:
