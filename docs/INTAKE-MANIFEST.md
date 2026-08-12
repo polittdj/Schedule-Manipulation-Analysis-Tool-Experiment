@@ -51,11 +51,11 @@ finish. **No parity exposure**, and both hashes are pinned below so a future cha
 
 | measure | value |
 | --- | ---: |
-| tracked files | 433 |
-| total bytes | 408,264,781 |
+| tracked files | 442 |
+| total bytes | 432,842,925 |
 | extension&harr;content mismatches | 99 |
-| duplicate-content groups | 27 |
-| files in a duplicate group | 63 |
+| duplicate-content groups | 28 |
+| files in a duplicate group | 66 |
 
 ### Detected content families
 
@@ -65,12 +65,12 @@ finish. **No parity exposure**, and both hashes are pinned below so a future cha
 | `gzip` | 7 |
 | `html` | 10 |
 | `ico` | 1 |
-| `jpeg` | 48 |
+| `jpeg` | 49 |
 | `json` | 12 |
 | `mp4` | 2 |
 | `ole2-ppt` | 1 |
-| `ole2-project` | 28 |
-| `ooxml-excel` | 92 |
+| `ole2-project` | 29 |
+| `ooxml-excel` | 98 |
 | `ooxml-ppt` | 1 |
 | `ooxml-word` | 15 |
 | `pdf` | 23 |
@@ -78,7 +78,7 @@ finish. **No parity exposure**, and both hashes are pinned below so a future cha
 | `riff` | 1 |
 | `text` | 95 |
 | `xml` | 19 |
-| `zip` | 6 |
+| `zip` | 7 |
 
 ## Extension&harr;content mismatches
 
@@ -227,6 +227,7 @@ body under several names, not random corruption.
 | `e3b0c44298fc1c14…` | 7 | `00_REFERENCE_INTAKE/.gitkeep`<br>`00_REFERENCE_INTAKE/acumen_v8.11.0/.gitkeep`<br>`00_REFERENCE_INTAKE/metrics_library/.gitkeep`<br>`00_REFERENCE_INTAKE/mpp/.gitkeep`<br>`00_REFERENCE_INTAKE/pbix/.gitkeep`<br>`00_REFERENCE_INTAKE/references/.gitkeep`<br>`00_REFERENCE_INTAKE/ssi/.gitkeep` |
 | `272662cf43015e28…` | 5 | `00_REFERENCE_INTAKE/Mission Ops Redesign v2.dc (1).html`<br>`00_REFERENCE_INTAKE/Recording 2026-07-27 150631.mp4`<br>`00_REFERENCE_INTAKE/concepts_b.txt`<br>`00_REFERENCE_INTAKE/int02_advanced.txt`<br>`00_REFERENCE_INTAKE/references/Concepts, Methods & Techniques.docx` |
 | `99e14757aeecb3a4…` | 3 | `00_REFERENCE_INTAKE/01-dr-check.png`<br>`00_REFERENCE_INTAKE/02-dr-check.png`<br>`00_REFERENCE_INTAKE/guide.png` |
+| `b2f9db8d81491760…` | 3 | `00_REFERENCE_INTAKE/ssi/sra-Polaris Finish Date Confidence S-Curve Results Large Test File2.xlsx`<br>`00_REFERENCE_INTAKE/ssi/sra-Polaris Risk Drivers Tornado Results Large Test File2.xlsx`<br>`00_REFERENCE_INTAKE/ssi/sra-Polaris Sensitivity Results Large Test File2.xlsx` |
 | `0d1ab6f3b684143d…` | 2 | `00_REFERENCE_INTAKE/mpp/Project5.mpp`<br>`00_REFERENCE_INTAKE/mpp/Project5_TAMPERED.mpp` |
 | `14547256bf8c83b7…` | 2 | `00_REFERENCE_INTAKE/PerformanceAnalysisSummary_Sample Metrics_2026APR.xlsx`<br>`00_REFERENCE_INTAKE/references/PerformanceAnalysisSummary_Sample Metrics_2026APR.xlsx` |
 | `153e2e6e573e729b…` | 2 | `00_REFERENCE_INTAKE/crispness-scan.json`<br>`00_REFERENCE_INTAKE/repo-audit.json` |
@@ -586,6 +587,7 @@ body under several names, not random corruption.
 | `00_REFERENCE_INTAKE/path.js` | 12,180 | `.js` | `text` | — | `1260fbd6254fd679b42c06a40425e7f5759e2fa4f68cb70db79974bd3c3538e9` |
 | `00_REFERENCE_INTAKE/path_evolution.js` | 6,225 | `.js` | `text` | — | `cd780b1e1801e6e2a68a73409f6426ab82cdd47c7456ba18d6f1d9d003cfe59c` |
 | `00_REFERENCE_INTAKE/pbix/.gitkeep` | 0 | `(none)` | `empty` | — | `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` |
+| `00_REFERENCE_INTAKE/pbix/NSATDeploymentRevisionAlpha.pbix` | 14,534,820 | `.pbix` | `zip` | — | `27ebb3d231a66c111d56fda7940d28a240cee9208c9621563678031a3dddd1f7` |
 | `00_REFERENCE_INTAKE/performance.js` | 11,613 | `.js` | `text` | — | `ac3dce335fd39ae4bb43e50963c40942043b3a6e18a956245c058abb7c550dfa` |
 | `00_REFERENCE_INTAKE/persist.js` | 24,307 | `.js` | `text` | — | `344fb360a971aa44f38023f7128f9a4367bbfbb20a000b97bbfb8a77254b9403` |
 | `00_REFERENCE_INTAKE/pm-handbook-nasa-sp-2014-3705-2024jun.pdf` | 11,248,846 | `.pdf` | `pdf` | — | `42c68ad040389875aabc9cb92a4155337f9c58d1571feb684c0c037022fd6e61` |
@@ -684,7 +686,15 @@ body under several names, not random corruption.
 | `00_REFERENCE_INTAKE/ssi/Large Test File2 UID_152_Directional_Path_Analysis_All_Dependicies_SSI_2026-7-15.xlsx` | 68,096 | `.xlsx` | `ooxml-excel` | — | `2c2c2fd9ad570dcc34cd5139b90c97a39ce023e9136d8c41fc918b252fc0120e` |
 | `00_REFERENCE_INTAKE/ssi/Large_Test_File_UID_152_Directional_Path_Analysis_2026-7-8-8-45-50.xlsx` | 15,140 | `.xlsx` | `ooxml-excel` | — | `b67f02e49e5f94833eacd29203b41e9741c8492a50e00c4ab91b64d763d6d65e` |
 | `00_REFERENCE_INTAKE/ssi/Project5_TAMPERED_UID_67_Directional_Path_Analysis_2026-7-8-8-19-10.xlsx` | 11,423 | `.xlsx` | `ooxml-excel` | — | `834e68133874ce73d67bf7d4edf58af5d54a03bf5136b8ed577981b9415210c3` |
+| `00_REFERENCE_INTAKE/ssi/SRA Large Test File2 POLARIS Output 2.jpg` | 267,217 | `.jpg` | `jpeg` | — | `c7b4636dbd4aa8430fe131ec1b756b58f05127c7f6577429bf90591b886c83bd` |
+| `00_REFERENCE_INTAKE/ssi/SRA Large Test File2.mpp` | 9,443,328 | `.mpp` | `ole2-project` | — | `772ca901c5efccdb141b9c07c8bfd54ab8a33026a2b5a9858980fef75f46d8dd` |
 | `00_REFERENCE_INTAKE/ssi/SRA Large Test File2_SRA_Results_2026-7-29_11-57-1.xlsx` | 30,363 | `.xlsx` | `ooxml-excel` | — | `43953707629680dd1fdbb12a3efcf0f9f6f9506c1dc025c7b1c9d83cf0f5142d` |
+| `00_REFERENCE_INTAKE/ssi/SRA Large Test File2_SRA_Results_2026-8-12_11-59-20.xlsx` | 31,033 | `.xlsx` | `ooxml-excel` | — | `8dd341f28a196a2e645b87b75bdb83dc5caae76a9da228182420d0e51d88d920` |
+| `00_REFERENCE_INTAKE/ssi/Sensitivity - Large Test File2_SRA_Results_2026-8-12_11-59-20.xlsx` | 25,990 | `.xlsx` | `ooxml-excel` | — | `d2db89d97d19d975f56a2572c46e4b004cd7c8826fc1949ce7451b576faeae37` |
+| `00_REFERENCE_INTAKE/ssi/sra-Polaris Finish Date Confidence S-Curve Results Large Test File2.xlsx` | 65,864 | `.xlsx` | `ooxml-excel` | — | `b2f9db8d81491760d8dd0dc0b63f393c676dd38b9d9a52ae367724ba6cd3a956` |
+| `00_REFERENCE_INTAKE/ssi/sra-Polaris Risk Drivers Tornado Results Large Test File2.xlsx` | 65,864 | `.xlsx` | `ooxml-excel` | — | `b2f9db8d81491760d8dd0dc0b63f393c676dd38b9d9a52ae367724ba6cd3a956` |
+| `00_REFERENCE_INTAKE/ssi/sra-Polaris SRA  Results Large Test File2.xlsx` | 78,164 | `.xlsx` | `ooxml-excel` | — | `9bf0abb0b544cda6bd891c08e79080c34f2cb37914e08eedc6e35d7fe5540bae` |
+| `00_REFERENCE_INTAKE/ssi/sra-Polaris Sensitivity Results Large Test File2.xlsx` | 65,864 | `.xlsx` | `ooxml-excel` | — | `b2f9db8d81491760d8dd0dc0b63f393c676dd38b9d9a52ae367724ba6cd3a956` |
 | `00_REFERENCE_INTAKE/styles.css` | 5,760 | `.css` | `text` | — | `3bc3758cdfc2963cd53844cf55b2555b3bc6b72019dbeeb292dbce25dfaeadb4` |
 | `00_REFERENCE_INTAKE/support.js` | 63,119 | `.js` | `text` | — | `763cbdcaa2defbe9e91d992ce4918a46e9577cef70930b7410d20b1ab8fb536e` |
 | `00_REFERENCE_INTAKE/test_dashboard_perf_contract.py` | 3,013 | `.py` | `text` | — | `74e03580cc81c5719bd45a57c538df89a79c6707168c9066dfcdbe9d05611f70` |

@@ -70,11 +70,39 @@ needs_mpp = pytest.mark.skipif(
 )
 
 
+#: The SSI export these expectations are CALIBRATED against, pinned BY NAME.
+#:
+#: This used to be ``sorted(SSI_DIR.glob(...))[-1]``. That made the oracle choose its own subject:
+#: committing a SECOND SSI run of the same schedule silently re-pointed every assertion below at a
+#: different distribution while the numbers still described the first. The operator's 2026-08-12
+#: upload did exactly that — 246 distinct dates arrived where 245 were calibrated — and the parity
+#: gate reported it as a numeric regression rather than as a changed input. A parity oracle that can
+#: swap its own input is not an oracle.
+CALIBRATED_EXPORT = "SRA Large Test File2_SRA_Results_2026-7-29_11-57-1.xlsx"
+
+#: Other SSI runs of the SAME schedule that are present in the intake but are NOT what the
+#: expectations below describe. Enumerating them is the point: an export that is neither the
+#: calibrated one nor a known sibling fails LOUDLY, so the next upload cannot become the subject by
+#: accident. To promote one, calibrate its own numbers and give it its own case — do not repoint
+#: these.
+KNOWN_OTHER_EXPORTS = frozenset({"SRA Large Test File2_SRA_Results_2026-8-12_11-59-20.xlsx"})
+
+
 def _oracle_workbook() -> Path:
-    hits = sorted(SSI_DIR.glob("SRA Large Test File2_SRA_Results_*.xlsx"))
-    if not hits:
+    present = {p.name for p in SSI_DIR.glob("SRA Large Test File2_SRA_Results_*.xlsx")}
+    if not present:
         pytest.skip("SSI SRA results export not present in the reference intake")
-    return hits[-1]
+    unregistered = sorted(present - {CALIBRATED_EXPORT} - set(KNOWN_OTHER_EXPORTS))
+    assert not unregistered, (
+        f"unregistered SSI export(s) in the reference intake: {unregistered}. This oracle's "
+        f"expectations are calibrated against {CALIBRATED_EXPORT!r} ONLY. Add the new file to "
+        "KNOWN_OTHER_EXPORTS (it is then ignored here), or give it its own calibrated case — but "
+        "do NOT let it silently become the subject, which is the defect this guard exists to stop."
+    )
+    pinned = SSI_DIR / CALIBRATED_EXPORT
+    if not pinned.is_file():
+        pytest.skip(f"calibrated SSI export {CALIBRATED_EXPORT} not in the reference intake")
+    return pinned
 
 
 def _iso_minutes(text: str | None) -> int | None:
