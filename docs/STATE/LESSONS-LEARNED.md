@@ -4432,4 +4432,51 @@ feature worked, and measure that.** Requirement 2 is amended accordingly (ADR-03
   contributes no movers; the render probe independently showed its export labels do not move. When
   a probe is already running, the second confirmation is nearly free — take it.
 
+### 2026-08-12 — a priced table that had been wrong for three ADRs, and a control that named a value (ADR-0388)
+
+Phase 4 slice 23 cut `/briefing` and `/cei` out of `app.py` (9,593 → 9,125). The lessons are about
+records and controls, not about the extraction.
+
+- **A priced table is a snapshot, and snapshots decay silently.** ADR-0383's table said `briefing`
+  carried three descents; ADR-0386 and ADR-0387 carried the claim forward, and the standing queue
+  opened this session with "the zero-descent set is EXHAUSTED — all eight remaining families carry
+  descents." Re-walked, `briefing` carries **zero**, and so do five others. Two of its supposed
+  descents belong to `settings`; the third, `_active_backend`, is reached only from a **route** —
+  and "a route-only referrer never forces a descent" is ADR-0378's own rule, written down, restated
+  by ADR-0387, and still mis-applied to this family for three consecutive ADRs. **A rule you have
+  written down is not a rule you have applied.** The only thing that caught it was rebuilding the
+  measurement instead of reading the record.
+- **A control that names an expected VALUE beats one that names a direction.** The rebuilt referrer
+  walk failed its control twice before it passed, and both bugs produced *plausible* output:
+  `ast.walk(create_app)` yields `create_app` itself, so every name inside it got one poison referrer
+  and **every family priced at zero members**; and the `card` seed used `GET /card` when the route
+  is `GET /card/{name}`, so that family had no seed routes — zero again. "Zero" is exactly what a
+  small, clean, wrong answer looks like. A control asserting `expected (2, 140)` catches both; a
+  control asserting "finds something" catches neither.
+- **The ADR-0386 return-type trap fired first thing, from the trap list.** The probe's positive
+  control (`_page`, which wraps every HTML page) moved zero labels and aborted the run — the marker
+  injector handled `str` and `dict`, and `_page` returns an `HTMLResponse`. Knowing a trap by name
+  did not prevent it; the *aborting control* did. That is the argument for controls over vigilance.
+- **A mutation that does not score can be the most informative one in the battery.** Two mutations
+  edited markup inside moved definitions and no unit test noticed. That is not a harness bug — it is
+  a true measurement that the unit tests do not pin page markup, which is precisely why the render
+  oracle exists. Re-scored against the oracle they moved 2 and 5 labels — numbers that **match the
+  probe's independent per-member counts exactly**. A third mutation (a module-scope upward import)
+  killed pytest at *collection*, so the layering guard never ran: louder than a named failure, but
+  not the guard firing. Re-posed under `TYPE_CHECKING` it was caught by name — and that is also the
+  likelier way a real upward import would arrive.
+- **A doc-comment that names a FUTURE has an expiry date.** ADR-0387 split a `#:` block across two
+  modules and left one half saying the twin constant "stays in `app.py` until the /briefing family
+  is cut." This slice cut it. Two such sentences plus a stale import comment (which was wrong on
+  both of its counts) were found by grepping the moved names — not by remembering.
+- **When a member is dark for want of a render CONDITION, the condition is the missing thing** — and
+  the extension is only honest if the member then moves exactly the labels the condition added.
+  `_stack_not_measured` renders only when `/cei` has no scored month; a query-string variant could
+  never reach it because the condition is a property of the loaded population. The new `[ceidark]`
+  stage (652 → 800 labels) makes it move exactly two labels and nothing else.
+- **The shallow-clone trap fired exactly as the handoff predicted**, which is the system working:
+  `git log -1 -- tools/mpxj` returned the clone boundary, `git fetch --unshallow` fixed the pin to
+  `42d92dc`. But it is still a documented workaround rather than a guard, and a documented
+  workaround is one distracted session away from shipping wrong. It stays queued, named.
+
 <!-- Append new dated entries ABOVE this line, newest first. Keep Parts I–VII current when a lesson generalizes. -->

@@ -650,3 +650,151 @@
 [resloaded] [ssi-api] GET /api/sra/ssi
 [resloaded] [trend-target] GET /trend
 [resloaded] [week-resources] GET /resources
+[ceidark] GET /
+[ceidark] GET /analysis/TP4_DataCenter_v5
+[ceidark] GET /api/activities/drill
+[ceidark] GET /api/ai/briefing
+[ceidark] GET /api/ai/models
+[ceidark] GET /api/ai/narrative
+[ceidark] GET /api/analysis/TP4_DataCenter_v5
+[ceidark] GET /api/cei
+[ceidark] GET /api/curves
+[ceidark] GET /api/dashboard
+[ceidark] GET /api/driving-path
+[ceidark] GET /api/driving/TP4_DataCenter_v5
+[ceidark] GET /api/evolution
+[ceidark] GET /api/forecast
+[ceidark] GET /api/group-values
+[ceidark] GET /api/margin
+[ceidark] GET /api/margin/dashboard
+[ceidark] GET /api/margin/risk
+[ceidark] GET /api/scorecards/buffer
+[ceidark] GET /api/scurve
+[ceidark] GET /api/sra
+[ceidark] GET /api/sra/grid
+[ceidark] GET /api/sra/jcl
+[ceidark] GET /api/sra/oat
+[ceidark] GET /api/sra/ssi
+[ceidark] GET /api/system
+[ceidark] GET /api/trend
+[ceidark] GET /api/wbs/TP4_DataCenter_v5
+[ceidark] GET /api/whoami
+[ceidark] GET /api/workbench
+[ceidark] GET /api/workbench/drill
+[ceidark] GET /brief
+[ceidark] GET /briefing
+[ceidark] GET /card/TP4_DataCenter_v5
+[ceidark] GET /cei
+[ceidark] GET /compare
+[ceidark] GET /curves
+[ceidark] GET /download/TP4_DataCenter_v5
+[ceidark] GET /driving-path
+[ceidark] GET /evm
+[ceidark] GET /evolution
+[ceidark] GET /export/docx/activities-drill
+[ceidark] GET /export/docx/activities/TP4_DataCenter_v5
+[ceidark] GET /export/docx/analysis/TP4_DataCenter_v5
+[ceidark] GET /export/docx/brief
+[ceidark] GET /export/docx/briefing
+[ceidark] GET /export/docx/cei
+[ceidark] GET /export/docx/compare
+[ceidark] GET /export/docx/curves
+[ceidark] GET /export/docx/driving-tiers/TP4_DataCenter_v5
+[ceidark] GET /export/docx/evm
+[ceidark] GET /export/docx/evolution
+[ceidark] GET /export/docx/field-forecast
+[ceidark] GET /export/docx/float-band/TP4_DataCenter_v5
+[ceidark] GET /export/docx/forecast
+[ceidark] GET /export/docx/integrity
+[ceidark] GET /export/docx/margin
+[ceidark] GET /export/docx/mission
+[ceidark] GET /export/docx/path/TP4_DataCenter_v5
+[ceidark] GET /export/docx/performance
+[ceidark] GET /export/docx/resource-drill
+[ceidark] GET /export/docx/resources
+[ceidark] GET /export/docx/ribbon
+[ceidark] GET /export/docx/ribbon-drill/TP4_DataCenter_v5
+[ceidark] GET /export/docx/risks
+[ceidark] GET /export/docx/scorecards
+[ceidark] GET /export/docx/scurve
+[ceidark] GET /export/docx/sra
+[ceidark] GET /export/docx/sra-registry
+[ceidark] GET /export/docx/trend
+[ceidark] GET /export/docx/volatility
+[ceidark] GET /export/docx/wbs/TP4_DataCenter_v5
+[ceidark] GET /export/docx/whatif
+[ceidark] GET /export/docx/whatif-added
+[ceidark] GET /export/docx/workbench
+[ceidark] GET /export/docx/workbench-drill/TP4_DataCenter_v5
+[ceidark] GET /export/xlsx/activities-drill
+[ceidark] GET /export/xlsx/activities/TP4_DataCenter_v5
+[ceidark] GET /export/xlsx/analysis/TP4_DataCenter_v5
+[ceidark] GET /export/xlsx/brief
+[ceidark] GET /export/xlsx/briefing
+[ceidark] GET /export/xlsx/cei
+[ceidark] GET /export/xlsx/compare
+[ceidark] GET /export/xlsx/curves
+[ceidark] GET /export/xlsx/driving-tiers/TP4_DataCenter_v5
+[ceidark] GET /export/xlsx/evm
+[ceidark] GET /export/xlsx/evolution
+[ceidark] GET /export/xlsx/field-forecast
+[ceidark] GET /export/xlsx/float-band/TP4_DataCenter_v5
+[ceidark] GET /export/xlsx/forecast
+[ceidark] GET /export/xlsx/integrity
+[ceidark] GET /export/xlsx/margin
+[ceidark] GET /export/xlsx/mission
+[ceidark] GET /export/xlsx/path/TP4_DataCenter_v5
+[ceidark] GET /export/xlsx/performance
+[ceidark] GET /export/xlsx/resource-drill
+[ceidark] GET /export/xlsx/resources
+[ceidark] GET /export/xlsx/ribbon
+[ceidark] GET /export/xlsx/ribbon-drill/TP4_DataCenter_v5
+[ceidark] GET /export/xlsx/risk-register-template
+[ceidark] GET /export/xlsx/risks
+[ceidark] GET /export/xlsx/scorecards
+[ceidark] GET /export/xlsx/scurve
+[ceidark] GET /export/xlsx/sra
+[ceidark] GET /export/xlsx/sra-registry
+[ceidark] GET /export/xlsx/task-risk-template
+[ceidark] GET /export/xlsx/trend
+[ceidark] GET /export/xlsx/volatility
+[ceidark] GET /export/xlsx/wbs/TP4_DataCenter_v5
+[ceidark] GET /export/xlsx/whatif
+[ceidark] GET /export/xlsx/whatif-added
+[ceidark] GET /export/xlsx/workbench
+[ceidark] GET /export/xlsx/workbench-drill/TP4_DataCenter_v5
+[ceidark] GET /forecast
+[ceidark] GET /groups
+[ceidark] GET /healthz
+[ceidark] GET /help
+[ceidark] GET /integrity
+[ceidark] GET /margin
+[ceidark] GET /mission
+[ceidark] GET /openapi.json
+[ceidark] GET /path
+[ceidark] GET /performance
+[ceidark] GET /portfolio
+[ceidark] GET /resources
+[ceidark] GET /ribbon
+[ceidark] GET /risks
+[ceidark] GET /scorecards
+[ceidark] GET /scurve
+[ceidark] GET /settings
+[ceidark] GET /sra
+[ceidark] GET /sra/ssi/save
+[ceidark] GET /standards
+[ceidark] GET /trend
+[ceidark] GET /volatility
+[ceidark] GET /wbs/TP4_DataCenter_v5
+[ceidark] GET /workbench
+[ceidark] [buffer-committed] GET /api/scorecards/buffer
+[ceidark] [cei-uids] GET /cei
+[ceidark] [evo-counterfactual] GET /evolution
+[ceidark] [evo-options] GET /evolution
+[ceidark] [evo-tier] GET /evolution
+[ceidark] [grouped] GET /groups
+[ceidark] [path-export] GET /export/docx/path
+[ceidark] [path-export] GET /export/xlsx/path
+[ceidark] [ssi-api] GET /api/sra/ssi
+[ceidark] [trend-target] GET /trend
+[ceidark] [week-resources] GET /resources

@@ -13446,3 +13446,55 @@ CI cycle on purpose:
    end-to-end (57.5 / 60.7 / 61.8 / 62.5); the two `test` jobs are ~61 min each because they add
    coverage instrumentation, a second pytest for the parity gate, mypy, bandit and pip-audit on
    top of the suite `floor` runs without coverage in 22 min.
+
+---
+
+## 2026-08-12 — phase 4 slice 23: /briefing + /cei out, and the descents that were not there (ADR-0388, v1.0.195)
+
+Branch `claude/polaris-phase-4-slice-23-1powiz`, started at `main` **85b470f** (#572 already
+squash-merged, no restart needed). Two page families extracted verbatim — `web/briefing.py` (252
+lines, 5 movers / 198 ast lines) and `web/cei.py` (304, 4 / 262) — with **ZERO descents**. app.py
+**9,593 → 9,125** wc-truth. Version bumped v1.0.194 → v1.0.195 before the suite; wheel + nine
+installers rebuilt once; SCHEMA stays 2.11.0.
+
+**The finding: "the zero-descent set is EXHAUSTED" is measured false.** The queue asserted all
+eight remaining families carry descents, `briefing` first at three. Re-walked, `briefing` carries
+**zero** and six of eight families do. `_ollama_or_none` / `_openai_or_none` belong to `settings`;
+`_active_backend` is reached only from the `/api/ai/briefing` ROUTE, and a route-only referrer
+never forces a descent — ADR-0378's own rule, applied to the family whose price it had inflated
+across three ADRs. `settings`' real trio is `_ollama_or_none` / `_openai_or_none` /
+`_second_backend`, not the recorded one.
+
+**The walk had to reproduce the record before correcting it**, and failed its control twice first:
+`ast.walk(create_app)` yields `create_app` itself (every family priced at zero members), and the
+`card` seed used `GET /card` when the route is `GET /card/{name}` (zero again). Both wrong answers
+print as small tidy numbers.
+
+**The oracle grew a sixth stage, 652 → 800 labels.** `_stack_not_measured` was genuinely dark —
+the Law-2 "not measured" panel `_work_piling_header` renders when `/cei` has no scored month.
+Of every 2-combination of available fixtures, exactly three produce `cei_period=None`; `[ceidark]`
+loads that pair with `strip_title=True`. The member then moves exactly the two `[ceidark] /cei`
+labels and nothing else, so the stage is provably load-bearing.
+
+**The probe aborted on its own positive control**: `_page` moved zero labels because the marker
+injector handled `str`/`dict` and `_page` returns an `HTMLResponse` — the ADR-0386 return-type trap
+by name. Repaired, the control moves 224/224.
+
+Verification: probe 9/9 render-proven / zero dark · 800/800 byte-identical pristine vs cut, with
+the `diff -r` itself shown to fail on a one-byte perturbation · determinism ×2 processes both
+trees, 0 flapping · per-definition byte-identity 9/9 after `ruff --fix` + `format` · multiset
+95 added / 7 removed, zero code lines removed · battery 7/7 · mypy strict over 144 files · corpus
+re-rendered after the battery, still 800/800. Sweeps over 513 files: dropped-import two
+(`BowWave`, `Citation`, zero readers, control 177) · monkeypatch two hits on `audit_schedule`,
+adjudicated not the ADR-0297 trap (`ai.briefing` ≠ the new `web.briefing` — a real basename
+collision) · four live readers preserved via re-export · 37 source-text files, zero repoints.
+
+Three battery mutations missed on the first pose and the misses were the useful part: a
+module-scope upward import is a real cycle, so pytest died at collection and the guard never ran
+(re-posed under `TYPE_CHECKING`, caught by name); and two markup edits inside moved definitions
+went unnoticed by the unit tests, which do not pin those strings — re-scored against the oracle at
+2 and 5 labels, exactly matching the probe's independent per-member counts.
+
+**The mpxj shallow-clone trap fired as documented.** `--depth 1` clone, `git log -1 -- tools/mpxj`
+returned `3a925b0` (the clone boundary); `git fetch --unshallow` first and the nine installers pin
+`42d92dc`. The build still has no guard — still queued.

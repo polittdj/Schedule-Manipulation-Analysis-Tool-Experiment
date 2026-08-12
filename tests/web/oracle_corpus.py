@@ -53,6 +53,15 @@ TP4 = tuple(f"TP4_DataCenter_v{i}" for i in range(1, 6))
 #: pool is the render condition that lights it.
 RESOURCE_GOLDENS = ("Project2", "Project5")
 
+#: The no-scored-month pool. ADR-0388: in every pool above, ``/cei``'s latest snapshot carries a
+#: scored CEI month, so ``_cei_body`` always takes its measured branch and ``_stack_not_measured``
+#: — the Law-2 panel that says "not measured" instead of drawing a bar of zeroes — never renders.
+#: These two snapshots produce ``cei_period=None`` (no prior snapshot supplies a comparable
+#: month), which is the render condition that lights it. Titles are stripped like TP4's so the
+#: pair groups into ONE multi-version Project; left intact they become two one-version Projects
+#: and ``/cei`` serves its "load two versions" placeholder instead (the ADR-0375 trap).
+CEI_DARK_POOL = ("jacked_up_schedule_1", "jacked_up_schedule_2")
+
 #: A REAL TP4 unique id. Never 0 — ``_parse_uid`` maps 0 to "clear", so a 0 target can never be
 #: set through the form (standing trap).
 TARGET_UID = 22
@@ -170,7 +179,7 @@ def variant_labels() -> list[Label]:
 #: The session states the corpus is rendered in. ``[empty]`` is the placeholder surface; the four
 #: loaded stages differ in POPULATION and TARGET, which are the two render conditions the split's
 #: page bodies actually branch on (ADR-0374).
-STAGE_NAMES = ("[empty]", "[loaded]", "[target]", "[cleared]", "[resloaded]")
+STAGE_NAMES = ("[empty]", "[loaded]", "[target]", "[cleared]", "[resloaded]", "[ceidark]")
 
 
 def corpus(app: Any, stage: str) -> list[Label]:
@@ -291,6 +300,12 @@ def _enter_stage(client: Any, stage: str) -> None:
             client,
             [_FIXTURES / "golden" / "project2_5" / f"{n}.mspdi.xml" for n in RESOURCE_GOLDENS],
             strip_title=False,
+        )
+    elif stage == "[ceidark]":
+        _upload(
+            client,
+            [_FIXTURES / "mspdi" / f"{n}.xml" for n in CEI_DARK_POOL],
+            strip_title=True,
         )
 
 

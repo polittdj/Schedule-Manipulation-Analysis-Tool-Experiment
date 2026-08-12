@@ -92,7 +92,11 @@ node --check src/schedule_forensics/web/static/*.js    # vendored JS, no build s
 - `.mpp` → MSPDI XML (needs Java 17+): `java -cp tools/mpxj/classes:tools/mpxj/lib/* MpxjToMspdi <in.mpp> <out.xml>`
 
 `src/schedule_forensics/web/app.py` is **exempt from E501** (line-length) in `pyproject.toml` — don't
-fight long HTML f-strings there; everywhere else the limit is 100.
+fight long HTML f-strings there; everywhere else the limit is 100. **Every page module extracted
+out of it inherits that exemption** (the over-long HTML string literals travel with the code), so
+`pyproject.toml`'s `per-file-ignores` list grows by one entry per extracted module — currently
+`chrome`, `components`, and the phase-3/4 page modules through `briefing.py` / `cei.py`
+(ADR-0388). Check that list, not this sentence, for the authoritative set.
 
 ## Architecture (the big picture)
 
@@ -157,8 +161,14 @@ HTML + vendored JS charts**, with the AI layer polishing narrative on top of alr
   `test_axis_titles` / `test_dd_line_ledger` / `test_bar_drill`, the `&mdash;` sentinel guard in
   `test_presentation_fixes`) do NOT fail when their subject moves — they quietly search a file that
   no longer contains it. Repoint them in the same commit: an order-within-the-layout guard follows
-  `_LAYOUT`; a "nowhere in the view layer" guard must read **both** modules. Phase 3 (the ~11k lines
-  of `_*_body`/`_*_panel`/`_*_data` presentation helpers) is still queued.
+  `_LAYOUT`; a "nowhere in the view layer" guard must read **both** modules — and since phase 3
+  there are far more than two, so those guards enumerate the whole view layer and
+  `tests/web/test_monolith_split_contract.py` pins the list. Phases 3–4 are **in progress, one page
+  family per slice**: the `_*_body`/`_*_panel`/`_*_data` presentation helpers are moving out into
+  per-page modules (`driving`, `evolution`, …, `wbs`, `brief`, `card`, `scorecards`, `briefing`,
+  `cei` — ADR-0388), each extracted VERBATIM and re-exported from `app.py` with the `X as X` idiom
+  so old import paths keep working. `app.py` is down from 17,197 lines to **9,125**. The remaining
+  families are priced by referrer walk in the current handoff; `groups` stays fenced (ADR-0343).
   `SessionState` is the in-memory, per-process session (loaded `schedules`, `ai_config`,
   `active_filter`, `language`, caches). The per-schedule analysis chokepoint is `_Analysis`, built once
   by `_compute_analysis(sch)` (a single CPM pass reused by every view) and cached via

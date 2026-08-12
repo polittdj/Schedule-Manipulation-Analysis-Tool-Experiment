@@ -44,8 +44,6 @@ from schedule_forensics.ai import (
 )
 from schedule_forensics.ai.brief import brief_blocks, build_brief
 from schedule_forensics.ai.briefing import (
-    BriefingSection,
-    ExecutiveBriefing,
     briefing_blocks,
     build_briefing,
 )
@@ -61,11 +59,10 @@ from schedule_forensics.ai.qa import (
     manipulation_forensics_facts,
 )
 from schedule_forensics.engine import (
-    audit_schedule,
     compute_driving_slack,
     recommend,
 )
-from schedule_forensics.engine.bow_wave import BowWave, compute_bow_wave
+from schedule_forensics.engine.bow_wave import compute_bow_wave
 from schedule_forensics.engine.cache import content_hash, get_default_cache
 from schedule_forensics.engine.correlation import CorrelationSpec
 from schedule_forensics.engine.cpm import (
@@ -74,7 +71,6 @@ from schedule_forensics.engine.cpm import (
     datetime_to_offset,
     offset_to_datetime,
 )
-from schedule_forensics.engine.dcma_audit import Citation
 from schedule_forensics.engine.forecast import (
     compute_carnac_summary,
     compute_finish_forecasts,
@@ -275,12 +271,30 @@ from schedule_forensics.web.analysis import _where_we_stand_header as _where_we_
 # title only it reads (``web/brief.py``), the /card ID card and the count/percent pivot table
 # only it calls (``web/card.py``), and the /scorecards ribbons, their export table and the
 # committed-date parser behind the reserve API (``web/scorecards.py``). ``brief`` is seeded on
-# the EXACT route list, never the substring: it is a prefix of ``briefing``, whose four names
-# and three AI-backend descents stay in this file (ADR-0386).
+# the EXACT route list, never the substring: it is a prefix of ``briefing``, which left in
+# slice 23 (ADR-0388) as its own module — the two families are still seeded separately, and
+# that is exactly why.
 from schedule_forensics.web.brief import _BRIEF_XLSX_TITLE as _BRIEF_XLSX_TITLE
 from schedule_forensics.web.brief import _brief_body as _brief_body
+
+# ADR-0388 (phase 4, slice 23): the /briefing and /cei page families leave together, both
+# extracted verbatim, both re-exported with the same ``X as X`` idiom. Both carry ZERO descents
+# — and the record said ``briefing`` carried three. Re-walked, its supposed AI-backend descents
+# belong to ``settings`` (``_ollama_or_none`` / ``_openai_or_none``, reached from
+# ``_ai_status_note`` and ``_settings_body``) or are reached only from a ROUTE
+# (``_active_backend``, from ``/api/ai/briefing``), and a route-only referrer never forces a
+# descent. All three stay here.
+from schedule_forensics.web.briefing import _BRIEFING_XLSX_TITLE as _BRIEFING_XLSX_TITLE
+from schedule_forensics.web.briefing import _briefing_body as _briefing_body
+from schedule_forensics.web.briefing import _briefing_table_html as _briefing_table_html
+from schedule_forensics.web.briefing import _cite_tag as _cite_tag
+from schedule_forensics.web.briefing import _the_briefing_header as _the_briefing_header
 from schedule_forensics.web.card import _card_body as _card_body
 from schedule_forensics.web.card import _count_bar_table as _count_bar_table
+from schedule_forensics.web.cei import _cei_body as _cei_body
+from schedule_forensics.web.cei import _cei_data as _cei_data
+from schedule_forensics.web.cei import _stack_not_measured as _stack_not_measured
+from schedule_forensics.web.cei import _work_piling_header as _work_piling_header
 
 # ADR-0349 (phase 2 of the monolith split): the page chrome — ``_LAYOUT``, the always-on
 # banners, the story spine + nav, the explainers, ``_e``, and ``_page`` itself — lives in
@@ -6978,16 +6992,6 @@ def _unschedulable_panel(sch: Schedule, exc: CPMError) -> str:
     )
 
 
-#: ⤓ EXCEL hover text for the /briefing document page (ADR-0337). It names a REAL endpoint the
-#: page already offers in its export bar — ``/export/xlsx/briefing`` — so the glyph never points
-#: at a route that does not exist. Its twin ``_BRIEF_XLSX_TITLE`` left with the /brief family in
-#: ADR-0387 and carries the other half of this note; ``briefing`` follows in a later slice.
-_BRIEFING_XLSX_TITLE = (
-    "Export the executive briefing workbook (this document's sections are its sheets) — "
-    "opens in Excel"
-)
-
-
 def _curves_header(curves: MonthCurves) -> str:
     """Chapter 05's story header for /curves (Mission Ops rank 9): the takeaway h1 + muted lede.
 
@@ -7148,230 +7152,6 @@ _FLOAT_HIST_BANDS: tuple[tuple[str, Callable[[float], bool]], ...] = (
     ("21-44", lambda v: 20 < v <= 44),
     ("> 44", lambda v: v > 44),
 )
-
-
-def _stack_not_measured(title: str, desc: str, note: str) -> str:
-    """The :func:`_status_stack` shell with the bar replaced by a stated absence (ADR-0343).
-
-    A stacked bar built from figures the source never provided renders every segment at 0 and a
-    "0 of 0" foot — which reads as a *measurement of zero*, not as "not measured". Law 2 forbids
-    that: an absent figure is an em dash, never a zero. The panel keeps its place in the two-up
-    grid (so the layout does not reflow around a missing sibling) and says what is absent, exactly
-    as the KPI cards beside it already render "—" for the same fields. Same shell as
-    :func:`_status_stack` deliberately — one panel chrome, not two."""
-    return (
-        f'<div class="panel status-stack"><h2>{_e(title)}</h2>'
-        f'<p class="muted">{_e(desc)}</p>'
-        f'<p class="muted">{_e(note)}</p></div>'
-    )
-
-
-def _work_piling_header(wave: BowWave) -> str:
-    """Chapter 06 "Work piling up" (ADR-0203): the data-driven takeaway + a CEI KPI strip +
-    the latest-month plan-vs-done and finish-placement bars, from the bow-wave dataset the
-    page already computes (monthly profiles + CEI per snapshot — no new math, only sums)."""
-    snaps = wave.snapshots
-    n_ver = len(snaps)
-    latest = snaps[-1]
-    scored = [s.cei for s in snaps if s.cei is not None]
-    under = sum(1 for c in scored if c < 1.0)
-    cei = latest.cei
-    # ADR-0343 / Law 2 (ADR-0306 sweep row 1-2, settled by rendering the page). ``cei_planned``
-    # and ``cei_finished`` are ``None`` when the snapshot has no comparable prior month — the
-    # preceding version carries no data date, or the month following it falls outside the profiled
-    # window (``bow_wave.py``: both are set only inside the ``lo <= period <= hi`` block). The old
-    # ``or 0`` turned that absence into a measured zero and fed it to the month bar below, which
-    # then drew "Finished 0 / Short of plan 0 / 0 planned in the month" under the heading "Latest
-    # scored month" — on a page whose own takeaway said "No month could be CEI-scored" and whose
-    # KPI cards rendered "—" for these very two fields. One panel contradicted the strip above it.
-    planned = latest.cei_planned
-    finished = latest.cei_finished
-
-    # the latest version's finish placement on the shared month axis, split at the data date
-    si = latest.status_index
-    if si is not None:
-        landed = sum(latest.scheduled[: si + 1])
-        ahead = sum(latest.scheduled[si + 1 :])
-    else:
-        landed, ahead = sum(latest.scheduled), 0
-
-    def _fin(x: int) -> str:
-        return f"{x} finish" if x == 1 else f"{x} finishes"
-
-    # ``cei`` is ``round(done / planned)`` and is ``None`` whenever ``planned`` is absent OR zero,
-    # so the two extra conjuncts cannot change which branch a schedule takes — they state the
-    # precondition the f-string already relied on, and let the checker see it.
-    if cei is not None and latest.cei_period and planned is not None and finished is not None:
-        takeaway = (
-            f"In {latest.cei_period} the project completed {finished} of the {planned} "
-            f"finishes it had planned (CEI {cei:.2f}) — execution ran under plan in "
-            f"{under} of {len(scored)} scored month{'s' if len(scored) != 1 else ''}, "
-            f"and {_fin(ahead)} now sit ahead of the data date."
-        )
-    elif scored:
-        takeaway = (
-            f"Across {n_ver} versions execution ran under plan in {under} of {len(scored)} "
-            f"scored month{'s' if len(scored) != 1 else ''}, and {_fin(ahead)} now sit "
-            "ahead of the data date."
-        )
-    else:
-        takeaway = (
-            f"No month could be CEI-scored across the {n_ver} loaded versions — the files "
-            "carry no comparable month-over-month plan to measure execution against."
-        )
-
-    kpi = _stat_cards(
-        [
-            ("Versions compared", str(n_ver)),
-            ("Latest CEI", f"{cei:.2f}" if cei is not None else "—"),
-            ("CEI month", latest.cei_period or "—"),
-            ("Planned that month", str(planned) if planned is not None else "—"),
-            ("Finished that month", str(finished) if finished is not None else "—"),
-            ("Months under plan", f"{under} / {len(scored)}" if scored else "—"),
-        ]
-    )
-    if planned is not None and finished is not None:
-        month_bar = _status_stack(
-            "Latest scored month",
-            f"Plan vs done in {latest.cei_period or 'the latest period'} — the CEI numerator and denominator.",
-            [
-                ("Finished", finished, "--ok"),
-                ("Short of plan", max(planned - finished, 0), "--bad"),
-            ],
-            f"{planned} planned in the month",
-        )
-    else:
-        month_bar = _stack_not_measured(
-            "Monthly plan vs done",
-            "Plan vs done in the latest CEI-scored month — the CEI numerator and denominator.",
-            "No month is scored: no version carries a comparable prior month-over-month plan to "
-            "measure execution against, so the numerator and denominator are absent — not zero.",
-        )
-    pile_bar = _status_stack(
-        "Where the finishes sit",
-        f"The newest version's finish months, split at the data date — {latest.label}.",
-        [("Landed by the data date", landed, "--ok"), ("Piled ahead of it", ahead, "--warn")],
-        f"{landed + ahead} finishes across {len(wave.month_labels)} months",
-    )
-    return (
-        f'<h1 class="page-takeaway" data-no-i18n>{_e(takeaway)}</h1>'
-        '<p class="page-lede">Where unfinished work sits against each snapshot\'s data date, '
-        "and how much of each period's plan was actually executed. Step or play through the "
-        "snapshots to watch the wave move.</p>"
-        f'<div class="ws-kpi">{kpi}</div>'
-        f'<div class="ws-bars">{month_bar}{pile_bar}</div>'
-    )
-
-
-def _cei_body(
-    wave: BowWave,
-    target_uid: int | None = None,
-    track_uids: list[int] | None = None,
-    *,
-    prov: str = "",
-) -> str:
-    """The Bow Wave / CEI view: per-snapshot animated chart + the CEI summary table.
-
-    Panel contract (Mission Ops rank 10): a headline strip + ⤓ EXCEL (the EXISTING
-    ``/export/xlsx/cei`` endpoint, whose workbook is exactly these two visuals — the CEI
-    table and one monthly-finish profile per snapshot) + ⛶ ENLARGE + the series provenance
-    chip + one ``.sf-take`` per panel. No ▦ DATA on either: the chart ships no drawer table
-    (its ``.sr-only`` a11y fallback is injected by cei.js and is NOT an ``.sf-drawer``), and
-    the CEI panel's own table IS the data (the home-shell precedent in :func:`_shell_tools`).
-    Every figure a take quotes is already rendered verbatim elsewhere on this page — the
-    snapshot count as the "Versions compared" KPI, the month count in the finish-placement
-    bar's foot, and the label / period / planned / finished / CEI cells in the table below.
-    ``prov`` is keyword-with-default so the existing direct ``_cei_body(wave)`` unit call
-    keeps working."""
-    latest = wave.snapshots[-1] if wave.snapshots else None
-    if latest is None:
-        take_chart = "No snapshot could be profiled from the loaded versions."
-        take_table = take_chart
-    else:
-        take_chart = (
-            f"{len(wave.snapshots)} snapshots on one shared "
-            f"{len(wave.month_labels)}-month axis; the newest is {latest.label}."
-        )
-        if (
-            latest.cei is not None
-            and latest.cei_period
-            and latest.cei_planned is not None
-            and latest.cei_finished is not None
-        ):
-            take_table = (
-                f"{latest.label}: CEI {latest.cei:.2f} in {latest.cei_period} — "
-                f"{latest.cei_finished} of {latest.cei_planned} previously planned "
-                "finishes actually landed."
-            )
-        else:
-            take_table = (
-                f"{latest.label} carries no comparable prior month, so no CEI is scored for it."
-            )
-    head_chart = _panel_head(
-        "Bow Wave &mdash; Activity Finishes by month",
-        tools=_shell_tools(
-            export_title=(
-                "Export the bow-wave monthly finish profiles and the CEI table — opens in Excel"
-            )
-        ),
-        prov=prov,
-    )
-    head_table = _panel_head(
-        "CEI &mdash; Current Execution Index",
-        tools=_shell_tools(
-            export_title=(
-                "Export the CEI table and the bow-wave monthly finish profiles — opens in Excel"
-            )
-        ),
-        prov=prov,
-    )
-    rows = "".join(
-        f"<tr><td>{_e(s.label)}</td><td>{_e(s.cei_period or '—')}</td>"
-        f"<td>{s.cei_planned if s.cei_planned is not None else '—'}</td>"
-        f"<td>{s.cei_scheduled if s.cei_scheduled is not None else '—'}</td>"
-        f"<td>{s.cei_finished if s.cei_finished is not None else '—'}</td>"
-        f"<td><b class={'fail' if s.cei is not None and s.cei < 0.8 else 'pass'}>"
-        f"{f'{s.cei:.2f}' if s.cei is not None else '—'}</b></td></tr>"
-        for s in wave.snapshots
-    )
-    track_txt = ", ".join(str(u) for u in (track_uids or []))
-    return f"""
-<div class=panel data-export="/export/xlsx/cei">{head_chart}
-<p class=sf-take data-no-i18n>{_e(take_chart)}</p>
-<p class=muted>Gold = baselined to finish, blue = scheduled to finish, green = actually
-finished; the dashed line is the snapshot's data date. Work that keeps sliding right shows
-as a swelling wave of blue just past each data date. Step through the snapshots or press
-Auto-play to watch the wave move. Tick <b>Running totals</b> for the cumulative finish curves,
-focus a <b>Target UID</b> to mark where that activity lands (and slides) in each snapshot, and
-<b>Track UIDs</b> (up to 20, comma-separated) to watch specific activities ride the wave.</p>
-<form method=post action=/target class=viz-controls>
-<input type=hidden name=next_url value="/cei{("?uids=" + quote(track_txt)) if track_txt else ""}">
-<label>Target UID <input name=uid type=number min=1 value="{target_uid if target_uid is not None else ""}"
-placeholder="UID"></label>
-<button type=submit>Focus</button>
-{'<button class=linkbtn type=submit name=uid value="">clear focus</button>' if target_uid is not None else ""}</form>
-<form method=get action=/cei class=viz-controls>
-<label>Track UIDs <input id=ceiTrack name=uids data-no-i18n value="{_e(track_txt)}"
-placeholder="e.g. 155, 187, 411" size=28
-title="Up to 20 UniqueIDs (comma/space separated) marked on every snapshot of the animation — independent of the primary target"></label>
-<button type=submit>Track</button></form>
-<div class=viz-controls>
-<button id=prevSnap type=button>&#9664; Prev</button>
-<span id=snapLabel class=muted></span>
-<button id=nextSnap type=button>Next &#9654;</button>
-<button id=autoPlay type=button>&#9654; Auto-play</button>
-<label><input id=ceiTotals type=checkbox> Running totals (cumulative)</label>
-</div>
-<div id=ceiChart class=chart-host></div></div>
-<div class=panel data-export="/export/xlsx/cei">{head_table}
-<p class=sf-take data-no-i18n>{_e(take_table)}</p>
-<p class=muted>For each snapshot: of the activities the <i>previous</i> snapshot planned to
-finish in the following month, how many this snapshot re-scheduled for that month and how
-how many of those planned activities actually finished by the end of it. CEI = completed-on-time &divide; previously planned (1.00 = executed to plan; an unplanned finish in the month earns no credit).</p>
-<table><tr><th scope=col>Snapshot</th><th scope=col>Period</th><th scope=col>Previously planned</th><th scope=col>Re-scheduled</th>
-<th scope=col>Actually finished</th><th scope=col>CEI</th></tr>{rows}</table></div>
-<script src="/static/cei.js"></script>
-<script src="/static/panelkit.js"></script>"""
 
 
 #: display convention (operator 2026-07-08): a thresholded measure that PASSES but sits at or
@@ -7705,52 +7485,6 @@ published threshold exists; unthresholded measures stay neutral.</span>
 <b>Click any metric cell</b> to list the activities behind that figure below.</p>
 <table><tr>{head_row}</tr>{body}</table></div>{drill_script}
 <script src="/static/panelkit.js"></script>"""
-
-
-def _cei_data(wave: BowWave, target_uid: int | None = None) -> dict[str, object]:
-    # locked Y-axis (item 5): the chart's count scale is the max bar across EVERY snapshot,
-    # held through the animation so the bars stay comparable frame-to-frame (a per-snapshot
-    # max made each frame rescale, hiding the bow wave's growth).
-    max_count = max(
-        (max([0, *s.baselined, *s.scheduled, *s.finished]) for s in wave.snapshots),
-        default=0,
-    )
-    return {
-        "months": list(wave.month_labels),
-        "max_count": max_count,
-        "target_uid": target_uid,
-        "snapshots": [
-            {
-                "label": s.label,
-                "status_index": s.status_index,
-                "baselined": list(s.baselined),
-                "scheduled": list(s.scheduled),
-                "finished": list(s.finished),
-                # per-month UID lists behind each monthly bar (drill; matches the counts above)
-                "baselined_uids": [list(u) for u in s.baselined_uids],
-                "scheduled_uids": [list(u) for u in s.scheduled_uids],
-                "finished_uids": [list(u) for u in s.finished_uids],
-                "cei": s.cei,
-                "cei_period": s.cei_period,
-                "cei_planned": s.cei_planned,
-                "cei_scheduled": s.cei_scheduled,
-                "cei_finished": s.cei_finished,
-                "target_scheduled_index": s.target_scheduled_index,
-                "target_finished_index": s.target_finished_index,
-                "tracked": [
-                    {
-                        "uid": t.uid,
-                        "name": t.name,
-                        "scheduled_index": t.scheduled_index,
-                        "finished_index": t.finished_index,
-                        "pct": t.percent_complete,
-                    }
-                    for t in s.tracked
-                ],
-            }
-            for s in wave.snapshots
-        ],
-    }
 
 
 def _ssi_three_point(st: SessionState, sch: Schedule) -> dict[int, tuple[int, int, int]]:
@@ -9032,208 +8766,6 @@ def _dashboard_data(st: SessionState) -> dict[str, object]:
         st.dashboard_card_store(key, sch, card, gen)
         cards.append(card)
     return {"cards": cards}
-
-
-def _cite_tag(citations: tuple[Citation, ...]) -> str:
-    shown = "; ".join(str(c) for c in citations[:3])
-    extra = f"; +{len(citations) - 3} more" if len(citations) > 3 else ""
-    return f"{shown}{extra}"
-
-
-def _briefing_table_html(section: BriefingSection) -> str:
-    """A section's cited table: engine figures verbatim, a citation column per row."""
-    table = section.table
-    if table is None or not table.rows:
-        return ""
-    head = ""
-    if table.headers:
-        head = (
-            "<tr>"
-            + "".join(f"<th scope=col>{_e(h)}</th>" for h in table.headers)
-            + "<th scope=col>Citation</th></tr>"
-        )
-    body = "".join(
-        "<tr>"
-        + "".join(f"<td>{_e(cell)}</td>" for cell in row)
-        + f"<td class=cite>{_e(_cite_tag(cites))}</td></tr>"
-        for row, cites in zip(table.rows, table.row_citations, strict=True)
-    )
-    # .brief-scroll: a table whose column minimums exceed the card scrolls sideways inside it
-    # instead of crushing its neighbours to a character a line (operator report 2026-07-08)
-    return f"<div class=brief-scroll><table class=brief-table>{head}{body}</table></div>"
-
-
-def _the_briefing_header(
-    briefing: ExecutiveBriefing,
-    sch: Schedule,
-    cpm: CPMResult,
-    *,
-    acumen_parity: bool = False,
-) -> str:
-    """Chapter 12 "The briefing" (ADR-0210): the data-driven takeaway (the briefing's own
-    verdict + headline figures), a KPI strip from the briefing banner, and the action-items
-    and quality-snapshot bars — the executive synthesis. Every figure is one the briefing /
-    audit already computes (no new math)."""
-    banner = dict(briefing.banner)
-    spi = banner.get("SPI (duration-based)") or banner.get("SPI")
-    forecast = banner.get("Schedule-logic finish (CPM)")
-    slip = banner.get("Slip")
-    clauses = []
-    if spi:
-        clauses.append(f"SPI {spi}")
-    if forecast:
-        clauses.append(f"schedule logic landing on {forecast}")
-    if slip:
-        clauses.append(f"a {slip} slip from baseline")
-    tail = f" — {', '.join(clauses)}" if clauses else ""
-    takeaway = f"Bottom line: the schedule is {briefing.verdict}{tail}."
-
-    # KPI strip = the briefing's own banner headline figures (up to six)
-    kpi = _stat_cards([(label, value) for label, value in briefing.banner[:6]])
-
-    findings = recommend(sch, current_cpm=cpm, acumen_parity=acumen_parity)
-    high = sum(1 for f in findings if f.severity == Severity.HIGH)
-    med = sum(1 for f in findings if f.severity == Severity.MEDIUM)
-    low = sum(1 for f in findings if f.severity == Severity.LOW)
-    audit = audit_schedule(sch, cpm, acumen_parity=acumen_parity)
-    passed = sum(1 for c in audit.checks if c.status is CheckStatus.PASS)
-    failed = sum(1 for c in audit.checks if c.status is CheckStatus.FAIL)
-    na = sum(1 for c in audit.checks if c.status is CheckStatus.NOT_APPLICABLE)
-
-    actions_bar = _status_stack(
-        "Action items by severity",
-        "The findings the briefing raises, ranked by severity.",
-        [("High", high, "--bad"), ("Medium", med, "--warn"), ("Low", low, "--muted")],
-        f"{len(findings)} finding{'s' if len(findings) != 1 else ''} in the briefing",
-    )
-    quality_bar = _status_stack(
-        "Quality snapshot",
-        "The DCMA-14 integrity checks behind the verdict.",
-        [("Pass", passed, "--ok"), ("Fail", failed, "--bad"), ("N/A", na, "--muted")],
-        f"{passed + failed} of {passed + failed + na} checks scored",
-    )
-    return (
-        f'<h1 class="page-takeaway" data-no-i18n>{_e(takeaway)}</h1>'
-        f'<div class="ws-kpi">{kpi}</div>'
-        f'<div class="ws-bars">{actions_bar}{quality_bar}</div>'
-    )
-
-
-def _briefing_body(briefing: ExecutiveBriefing, *, prov: str = "") -> str:
-    """Render the leadership Executive Briefing (ADR-0121): a metadata header + a verdict banner,
-    then the numbered forensic sections (Bottom Line, Performance, Critical Path Then & Now, Health
-    Dashboard, Risks & Opportunities, Recommended Actions, How to Verify) as a single continuous
-    document. Every statement and every table row carries its file + UID + task citation (§6).
-
-    Panel contract (ADR-0337, chapter 12): the one ``.panel.brief-doc`` this renders wears the head
-    strip + ⤓ EXCEL + ⛶ and the SERIES provenance chip (a briefing is built from every solvable
-    version at once), plus a single ``.sf-take``.
-
-    ``prov`` is a PARAMETER rather than something built here, and that is load-bearing: this
-    function is also what ``/api/ai/briefing`` re-renders, and ``ai_polish.js`` replaces the whole
-    of ``#briefingBody`` with the result. A chip built from a schedule this function cannot see
-    would simply vanish on the AI swap, leaving a polished briefing wearing no provenance — so
-    both call sites pass the same chip. (The toolbar itself is safe either way: panelkit.js binds
-    ONE delegated listener on ``document``, so buttons that arrive via ``innerHTML`` still work.)
-    """
-    verdict_slug = briefing.verdict.lower().replace(" ", "-").replace("/", "")
-    meta = "".join(
-        f"<tr><th scope=row>{_e(k)}</th><td>{_e(v)}</td></tr>" for k, v in briefing.meta_rows
-    )
-    banner = "".join(
-        f"<div class=brief-stat><span class=brief-stat-label>{_e(k)}</span>"
-        f"<span class=brief-stat-value>{_e(v)}</span></div>"
-        for k, v in briefing.banner
-    )
-    # full-width header (title + meta + verdict banner), then the numbered sections tiled into a
-    # responsive card grid so the briefing fills the whole page width and each section stays cleanly
-    # boxed instead of running down one narrow column.
-    cited = sum(len(s.statements) for s in briefing.sections)
-    header = (
-        '<div class="panel brief-doc" data-export="/export/xlsx/briefing">'
-        + _panel_head(
-            _e(briefing.title),
-            tools=_shell_tools(export_title=_BRIEFING_XLSX_TITLE),
-            prov=prov,
-        )
-        # the take counts what is rendered directly below it, so the first number the reader meets
-        # is one they can verify by looking down the page
-        + f"<p class=sf-take data-no-i18n>{len(briefing.sections)} sections, {cited} cited "
-        f"statement{'s' if cited != 1 else ''} — the verdict reads "
-        f"{_e(briefing.verdict)}.</p>" + f"<p class=brief-subtitle>{_e(briefing.subtitle)}</p>"
-        f"<table class=brief-meta>{meta}</table>"
-        f'<div class="brief-banner verdict-{_e(verdict_slug)}">{banner}</div>'
-        "<p class=muted>Every statement and table row cites file + UniqueID + task name. "
-        'Hand-out copy: <a href="/export/docx/briefing">&#11015; Word</a> &middot; '
-        '<a href="/export/xlsx/briefing">&#11015; Excel</a>.</p>'
-    )
-
-    def _section_html(section: BriefingSection) -> str:
-        tag = f"h{min(section.level + 2, 6)}"
-        prose = "".join(
-            f"<p>{_e(s.text)} <span class=cite>[{_e(_cite_tag(s.citations))}]</span></p>"
-            for s in section.statements
-        )
-        return (
-            f"<{tag} class=brief-h>{_e(section.heading)}</{tag}>"
-            f"{prose}{_briefing_table_html(section)}"
-        )
-
-    # group: each top-level (level 1) section opens a new card; its sub-sections nest inside it
-    cards: list[list[str]] = []
-    card_is_wide: list[bool] = []
-    card_heading: list[str] = []
-    for section in briefing.sections:
-        if section.level <= 1 or not cards:
-            cards.append([])
-            card_is_wide.append(False)
-            card_heading.append(section.heading)
-        cards[-1].append(_section_html(section))
-        # a table with many columns needs the full page row, not a half-width card
-        if section.table is not None and len(section.table.headers) >= 5:
-            card_is_wide[-1] = True
-    # Half-page partner rows (operator 2026-07-08): pair sections that otherwise land in narrow
-    # auto-fit columns with wasted white space beside a short neighbour. Each ordered (A, B) group
-    # becomes one full-width `.brief-duo` row split 1fr/1fr, so neither section wastes page width
-    # and long tables scroll inside their half (capped in CSS) rather than towering the page.
-    duo_groups = (("Critical Path", "Schedule Health"), ("Recommended Actions", "How to Verify"))
-
-    def _group_of(heading: str) -> tuple[int, int] | None:
-        for g, (first, second) in enumerate(duo_groups):
-            if first in heading:
-                return (g, 0)
-            if second in heading:
-                return (g, 1)
-        return None
-
-    card_group = [_group_of(h) for h in card_heading]
-    # only pair a group when BOTH members are actually present (a briefing with an empty/skipped
-    # section falls back to a normal single card)
-    counts: dict[int, int] = {}
-    for cg in card_group:
-        if cg:
-            counts[cg[0]] = counts.get(cg[0], 0) + 1
-    active_groups = {g for g, c in counts.items() if c == 2}
-
-    card_html: list[str] = []
-    duo_buffers: dict[int, list[str]] = {}
-    for i, body in enumerate(cards):
-        # the opening "Bottom Line" card spans the full width as the headline
-        cls = (
-            "brief-card lead"
-            if i == 0
-            else ("brief-card wide" if card_is_wide[i] else "brief-card")
-        )
-        cg = card_group[i]
-        if cg and cg[0] in active_groups:
-            buf = duo_buffers.setdefault(cg[0], [])
-            buf.append(f'<section class="brief-card">{"".join(body)}</section>')
-            if len(buf) == 2:
-                card_html.append(f"<div class=brief-duo>{''.join(buf)}</div>")
-        else:
-            card_html.append(f'<section class="{cls}">{"".join(body)}</section>')
-    grid = f"<div class=brief-grid>{''.join(card_html)}</div>"
-    return f"{header}{grid}</div>"
 
 
 def _ai_backend_explainer() -> str:

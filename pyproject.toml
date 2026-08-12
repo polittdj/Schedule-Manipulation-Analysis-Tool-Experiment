@@ -16,7 +16,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "schedule-forensics"
-version = "1.0.194"
+version = "1.0.195"
 description = "Local, NASA-themed forensic schedule-analysis tool (CUI-safe, offline)."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -249,6 +249,12 @@ select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
 "src/schedule_forensics/web/brief.py" = ["E501"]
 "src/schedule_forensics/web/card.py" = ["E501"]
 "src/schedule_forensics/web/scorecards.py" = ["E501"]
+# `briefing.py` and `cei.py` are the two page families of ADR-0388, extracted verbatim — the
+# briefing document's section/table markup and the bow-wave page's chart + CEI table HTML
+# f-strings were already over-long inside app.py's exempt region, so the exemption travels
+# with them.
+"src/schedule_forensics/web/briefing.py" = ["E501"]
+"src/schedule_forensics/web/cei.py" = ["E501"]
 
 [tool.ruff.format]
 # ruff >= 0.16 formats fenced ```python blocks inside Markdown. That is right for prose docs and

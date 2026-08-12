@@ -86,7 +86,9 @@ def test_no_mdash_entity_sentinel_values_remain_in_app_source() -> None:
             APP_SRC.with_name("trend.py"),
             APP_SRC.with_name("wbs.py"),
             APP_SRC.with_name("brief.py"),
+            APP_SRC.with_name("briefing.py"),
             APP_SRC.with_name("card.py"),
+            APP_SRC.with_name("cei.py"),
         )
     )
     assert '"&mdash;"' not in src
