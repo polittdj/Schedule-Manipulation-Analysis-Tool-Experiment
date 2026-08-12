@@ -117,6 +117,22 @@ def _series_prov_chip(versions: Sequence[Schedule]) -> str:
     return _pair_prov_chip(versions[0], versions[-1], 1, len(versions))
 
 
+def _sources_line(schedules: Sequence[Schedule]) -> str:
+    """The provenance line every multi-file visual carries (ADR-0150): which loaded file(s)
+    the data on this page is drawn from, so the operator always knows what they are looking
+    at — one name for a single file, the full list for a mix."""
+    names = [_e(s.source_file or s.name) for s in schedules]
+    if not names:
+        return ""
+    if len(names) == 1:
+        return f"<p class=muted>Source file: <b>{names[0]}</b></p>"
+    return (
+        f"<p class=muted>Sources ({len(names)} files, oldest first): <b>"
+        + "</b>, <b>".join(names)
+        + "</b></p>"
+    )
+
+
 def _shell_tools(*, export_title: str = "", big: bool = True) -> str:
     """The three-glyph tool strip (panelkit.js wiring): ⤓ EXCEL renders ONLY when the panel
     carries a ``data-export`` URL to an EXISTING endpoint (never a dead link — rank-3 law);

@@ -42,7 +42,7 @@ from schedule_forensics.ai import (
     reattach,
     route_backend,
 )
-from schedule_forensics.ai.brief import DiagnosticBrief, brief_blocks, build_brief
+from schedule_forensics.ai.brief import brief_blocks, build_brief
 from schedule_forensics.ai.briefing import (
     BriefingSection,
     ExecutiveBriefing,
@@ -120,7 +120,6 @@ from schedule_forensics.engine.metrics import (
     RibbonMetrics,
     compute_activity_makeup,
     compute_bei,
-    compute_constraint_distribution,
     compute_dcma14,
     compute_ribbon,
     compute_schedule_quality,
@@ -168,7 +167,6 @@ from schedule_forensics.engine.saved_grouping import (
     saved_groups_union,
 )
 from schedule_forensics.engine.scorecards import (
-    Scorecard,
     compute_scorecards,
     reserve_recommendation,
 )
@@ -271,6 +269,18 @@ from schedule_forensics.web.analysis import (
     _vertical_integration_panel as _vertical_integration_panel,
 )
 from schedule_forensics.web.analysis import _where_we_stand_header as _where_we_stand_header
+
+# ADR-0387 (phase 4, slice 22): THREE page families leave together, each extracted verbatim
+# and each re-exported with the same ``X as X`` idiom — the /brief document body with the export
+# title only it reads (``web/brief.py``), the /card ID card and the count/percent pivot table
+# only it calls (``web/card.py``), and the /scorecards ribbons, their export table and the
+# committed-date parser behind the reserve API (``web/scorecards.py``). ``brief`` is seeded on
+# the EXACT route list, never the substring: it is a prefix of ``briefing``, whose four names
+# and three AI-backend descents stay in this file (ADR-0386).
+from schedule_forensics.web.brief import _BRIEF_XLSX_TITLE as _BRIEF_XLSX_TITLE
+from schedule_forensics.web.brief import _brief_body as _brief_body
+from schedule_forensics.web.card import _card_body as _card_body
+from schedule_forensics.web.card import _count_bar_table as _count_bar_table
 
 # ADR-0349 (phase 2 of the monolith split): the page chrome — ``_LAYOUT``, the always-on
 # banners, the story spine + nav, the explainers, ``_e``, and ``_page`` itself — lives in
@@ -411,6 +421,12 @@ from schedule_forensics.web.components import _prov_chip as _prov_chip
 from schedule_forensics.web.components import _schedule_risks as _schedule_risks
 from schedule_forensics.web.components import _series_prov_chip as _series_prov_chip
 from schedule_forensics.web.components import _shell_tools as _shell_tools
+
+# ADR-0387: ``_sources_line`` DESCENDED into the shared kernel in slice 22. ``_scorecards_body``
+# calls it and eight other page routes call it, so it could neither stay here (``scorecards.py``
+# would have had to import UPWARD, closing a cycle) nor move into one page's module. Same
+# resolution ADR-0351, ADR-0376 and ADR-0377 each reached for the same shape of name.
+from schedule_forensics.web.components import _sources_line as _sources_line
 from schedule_forensics.web.components import _sra_selected as _sra_selected
 from schedule_forensics.web.components import _ssi_matrix_counts as _ssi_matrix_counts
 from schedule_forensics.web.components import _stat_cards as _stat_cards
@@ -566,6 +582,17 @@ from schedule_forensics.web.risks import _risk_ranking as _risk_ranking
 from schedule_forensics.web.risks import _risks_body as _risks_body
 from schedule_forensics.web.risks import _risks_section as _risks_section
 from schedule_forensics.web.risks import _wd as _wd
+
+# ADR-0387 (phase 4, slice 22): the /scorecards page family — the status-class lookup, the
+# export table, the ribbon panel, the page body, and ``_parse_committed_date``, which lived
+# 6,500 lines away and is reached only by the reserve-sizing API. Unlike the families since
+# ADR-0378, this one's EXPORT shares the page's surface: ``export_scorecards`` calls
+# ``_scorecard_export_table``, so both export formats sit inside the family's proven surface.
+from schedule_forensics.web.scorecards import _parse_committed_date as _parse_committed_date
+from schedule_forensics.web.scorecards import _sc_status_class as _sc_status_class
+from schedule_forensics.web.scorecards import _scorecard_export_table as _scorecard_export_table
+from schedule_forensics.web.scorecards import _scorecard_panel as _scorecard_panel
+from schedule_forensics.web.scorecards import _scorecards_body as _scorecards_body
 
 # ADR-0380 (phase 3, slice 16): the /scurve page family - the per-chart filter machinery, the
 # shared status point, the AI-interpretation panel, the chapter-09 header, the animated page
@@ -1185,33 +1212,6 @@ def _clamp_float(
     """Parse ``value`` times ``scale``, clamp to ``[lo, hi]``; non-numeric keeps ``default``."""
     parsed = _to_float(value, default / scale if scale else default)
     return max(lo, min(hi, parsed * scale))
-
-
-def _sources_line(schedules: Sequence[Schedule]) -> str:
-    """The provenance line every multi-file visual carries (ADR-0150): which loaded file(s)
-    the data on this page is drawn from, so the operator always knows what they are looking
-    at — one name for a single file, the full list for a mix."""
-    names = [_e(s.source_file or s.name) for s in schedules]
-    if not names:
-        return ""
-    if len(names) == 1:
-        return f"<p class=muted>Source file: <b>{names[0]}</b></p>"
-    return (
-        f"<p class=muted>Sources ({len(names)} files, oldest first): <b>"
-        + "</b>, <b>".join(names)
-        + "</b></p>"
-    )
-
-
-def _parse_committed_date(value: str | None) -> dt.datetime | None:
-    """A committed finish date from an ``YYYY-MM-DD`` form value (midnight), or ``None``."""
-    if not value:
-        return None
-    try:
-        d = dt.date.fromisoformat(value.strip()[:10])
-    except ValueError:
-        return None
-    return dt.datetime(d.year, d.month, d.day)
 
 
 #: Content-Security-Policy that enforces the air-gap (Law 1) in EVERY browser at runtime, not
@@ -6978,15 +6978,12 @@ def _unschedulable_panel(sch: Schedule, exc: CPMError) -> str:
     )
 
 
-#: ⤓ EXCEL hover text for the chapter-12 document pages (ADR-0337). Both name a REAL endpoint the
-#: page already offers in its export bar — ``/export/xlsx/briefing`` and ``/export/xlsx/brief`` —
-#: so the glyph never points at a route that does not exist.
+#: ⤓ EXCEL hover text for the /briefing document page (ADR-0337). It names a REAL endpoint the
+#: page already offers in its export bar — ``/export/xlsx/briefing`` — so the glyph never points
+#: at a route that does not exist. Its twin ``_BRIEF_XLSX_TITLE`` left with the /brief family in
+#: ADR-0387 and carries the other half of this note; ``briefing`` follows in a later slice.
 _BRIEFING_XLSX_TITLE = (
     "Export the executive briefing workbook (this document's sections are its sheets) — "
-    "opens in Excel"
-)
-_BRIEF_XLSX_TITLE = (
-    "Export the diagnostic brief workbook (this document's sections are its sheets) — "
     "opens in Excel"
 )
 
@@ -7153,150 +7150,6 @@ _FLOAT_HIST_BANDS: tuple[tuple[str, Callable[[float], bool]], ...] = (
 )
 
 
-def _count_bar_table(headers: tuple[str, str], rows: list[tuple[str, int, float]]) -> str:
-    """A count + percent table with an inline percent bar (deck pie/pivot, as a table)."""
-    body = "".join(
-        f"<tr><td>{_e(label)}</td><td>{count}</td>"
-        f'<td class=pct-cell><span class=pct-bar style="width:{min(pct, 100):.0f}%"></span>'
-        f"<span class=pct-num>{pct:.1f}%</span></td></tr>"
-        for label, count, pct in rows
-    )
-    return (
-        f"<table class=card-table><tr><th scope=col>{_e(headers[0])}</th><th scope=col>Count</th>"
-        f"<th scope=col>{_e(headers[1])}</th></tr>{body}</table>"
-    )
-
-
-def _card_body(
-    key: str, sch: Schedule, analysis: _Analysis, *, margin_days: float | None = None
-) -> str:
-    """The deck's *Metrics* page (PBIX page 1) — the schedule's ID card.
-
-    Reproduces the landing-page aggregates: activity makeup, status split, completion
-    performance, the primary-constraint distribution, and the KPI cards — all from the
-    engine outputs already computed for this schedule (no recomputation of the CPM).
-    ``margin_days`` (OR-01, ADR-0321) is the effective schedule margin from the caller's
-    cached summary tier — rendered "—" when ``None`` (unsolvable or n/a), never 0.
-
-    Panel contract (rank 12 toolbar sweep, ADR-0327): both panels wear the head strip +
-    ⛶ ENLARGE + this file's provenance chip. **Neither carries ⤓ EXCEL** — no existing export
-    covers what they draw: the ID-card KPI set is not a sheet of any workbook (the analysis
-    workbook's summary sheet is a different item list), and the pivots panel mixes ONE covered
-    table (completion performance IS an analysis-workbook sheet) with three uncovered ones
-    (makeup / status / constraint appear in no export), so a panel-level ⤓ would hand back
-    less than the panel draws (the /forecast methodology precedent). No ▦ DATA: the pivots
-    ARE tables and the KPI cards' figures all render on the card itself."""
-    makeup = compute_activity_makeup(sch)
-    constraints = compute_constraint_distribution(sch)
-    cpm, comp = analysis.cpm, analysis.completion
-    cal = sch.calendar
-
-    # makeup pie -> count/percent table
-    total = makeup.total or 1
-    makeup_tbl = _count_bar_table(
-        ("Task makeup", "% of activities"),
-        [
-            ("Normal", makeup.normal, 100.0 * makeup.normal / total),
-            ("Milestones", makeup.milestones, 100.0 * makeup.milestones / total),
-            ("Summaries", makeup.summaries, 100.0 * makeup.summaries / (total + makeup.summaries)),
-        ],
-    )
-    status_tbl = _count_bar_table(
-        ("Activity status", "% of activities"),
-        [
-            ("Complete", makeup.complete, 100.0 * makeup.complete / total),
-            ("In progress", makeup.in_progress, 100.0 * makeup.in_progress / total),
-            ("Planned", makeup.planned, 100.0 * makeup.planned / total),
-        ],
-    )
-    # completion-performance split (deck "Completion Performance" pie)
-    split = [
-        ("Completed ahead", comp["completed_ahead"]),
-        ("Completed on schedule", comp["completed_on_schedule"]),
-        ("Completed behind", comp["completed_behind"]),
-    ]
-    perf_tbl = _count_bar_table(
-        ("Completion performance", "% of measured completions"),
-        [(label, r.count, r.value) for label, r in split],
-    )
-    constraint_tbl = _count_bar_table(
-        ("Primary constraint", "% of activities"),
-        [(r.constraint_type, r.count, r.percent) for r in constraints],
-    )
-
-    # KPI cards (reuse the engine outputs the report already computed)
-    starts = [t.start for t in non_summary(sch) if t.start is not None]
-    earliest = _mdY(min(starts)) if starts else "—"
-    latest_finish = _mdY(offset_to_datetime(sch.project_start, cpm.project_finish, cal))
-    critical = sum(
-        1
-        for t in non_summary(sch)
-        if t.percent_complete < 100.0
-        and (tm := cpm.timings.get(t.unique_id)) is not None
-        and tm.total_float <= 0
-    )
-    togo_normal = sum(
-        1 for t in non_summary(sch) if t.percent_complete < 100.0 and not t.is_milestone
-    )
-    togo_ms = sum(1 for t in non_summary(sch) if t.percent_complete < 100.0 and t.is_milestone)
-    ahead, late = comp["avg_days_ahead"], comp["avg_days_late"]
-    stale = comp["elapsed_since_last_finish"]
-    cards = _stat_cards(
-        [
-            ("Earliest start", earliest),
-            ("Computed finish", latest_finish),
-            ("Data date", _mdY(sch.status_date) if sch.status_date else "—"),
-            # OR-01 (ADR-0321): the two ID-card fields the deck page was missing. Values are
-            # escaped by _stat_cards itself — no pre-escape here.
-            ("Site / Company", sch.company if sch.company else "—"),
-            ("Effective margin", f"{margin_days:g} d" if margin_days is not None else "—"),
-            ("Activities complete", f"{100.0 * makeup.complete / total:.1f}%"),
-            ("Critical (incomplete)", str(critical)),
-            ("To-go activities", str(togo_normal)),
-            ("To-go milestones", str(togo_ms)),
-            ("Avg days ahead", f"{ahead.value:g}" if ahead.population else "—"),
-            ("Avg days late", f"{late.value:g}" if late.population else "—"),
-            ("% elapsed since last finish", f"{stale.value:g}%" if stale.population else "—"),
-        ]
-    )
-    _pct_done = 100.0 * makeup.complete / total
-    _head = (
-        f"{critical} incomplete activities sit on the critical path, with {_pct_done:.0f}% of the "
-        f"schedule complete."
-        if critical
-        else f"Nothing incomplete is critical, with {_pct_done:.0f}% of the schedule complete."
-    )
-    takeaway = _utility_takeaway(
-        _head,
-        f"{togo_normal} activities and {togo_ms} milestones still to go on "
-        f"<b>{_e(sch.name)}</b>; computed finish {latest_finish}. Every figure below is the one the "
-        f'<a href="/analysis/{quote(key, safe="")}">full report</a> computes.',
-    )
-    prov = _prov_chip(sch)
-    card_head = _panel_head(
-        f"Schedule card &mdash; {_e(sch.name)}", tools=_shell_tools(), prov=prov
-    )
-    pivots_head = _panel_head(
-        "Makeup, status &amp; performance pivots", tools=_shell_tools(), prov=prov
-    )
-    return f"""{takeaway}
-<div class=panel>{card_head}
-<p class=muted>The schedule's ID card (the reference deck's <i>Metrics</i> page): activity
-makeup, status, completion performance, the primary-constraint distribution, and the
-headline KPI cards — every figure computed from this file and verifiable on the
-<a href="/analysis/{quote(key, safe="")}">full report</a>.</p>
-{cards}</div>
-<div class="panel">{pivots_head}
-<p class=muted>Four pivots of the same activity population: task makeup, current status,
-how completed work landed against baseline, and the primary-constraint distribution &mdash;
-each as a count with its share of the population as an inline bar.</p>
-<div class=card-cols>
-<div>{makeup_tbl}</div><div>{status_tbl}</div>
-<div>{perf_tbl}</div><div>{constraint_tbl}</div>
-</div></div>
-<script src="/static/panelkit.js"></script>"""
-
-
 def _stack_not_measured(title: str, desc: str, note: str) -> str:
     """The :func:`_status_stack` shell with the bar replaced by a stated absence (ADR-0343).
 
@@ -7311,52 +7164,6 @@ def _stack_not_measured(title: str, desc: str, note: str) -> str:
         f'<p class="muted">{_e(desc)}</p>'
         f'<p class="muted">{_e(note)}</p></div>'
     )
-
-
-def _brief_body(brief: DiagnosticBrief, *, prov: str = "") -> str:
-    """The Diagnostic Brief page: cited prose + the finish table, print-friendly.
-
-    Panel contract (ADR-0337, chapter 12): every panel wears the head strip + ⤓ EXCEL + ⛶ and the
-    SERIES provenance chip, and the lead panel carries the one ``.sf-take``. The chip is the series
-    form because a ``DiagnosticBrief`` is built from every solvable version at once
-    (:func:`_solvable_versions`), so naming a single file would misdescribe what the prose is drawn
-    from — the same reasoning :func:`_series_prov_chip` was introduced for.
-
-    ⤓ EXCEL points at ``/export/xlsx/brief``, the endpoint the page's own export bar already
-    offers, so the glyph can never be a dead link (rank-3 law). ▦ DATA is deliberately absent:
-    these panels ARE prose and tables, so there is no hidden drawer for it to reveal.
-    """
-    tools = _shell_tools(export_title=_BRIEF_XLSX_TITLE)
-    export = ' data-export="/export/xlsx/brief"'
-    # The take counts what the page renders directly below it — sections, and the cited statements
-    # inside them — so the first number the reader meets is one they can verify by looking down.
-    cited = sum(len(s.paragraphs) for s in brief.sections)
-    parts = [
-        f"<div class=panel{export}>",
-        _panel_head(_e(brief.title), tools=tools, prov=prov),
-        f"<p class=sf-take data-no-i18n>{len(brief.sections)} sections, {cited} cited "
-        f"statement{'s' if cited != 1 else ''} — every one carrying its schedule, UID and "
-        "activity.</p>",
-        f"<p class=muted>Report generated on {brief.generated_on.strftime('%A, %B %d, %Y')}. "
-        "Every claim carries its citation [schedule, UID, activity] — see the final "
-        "section for how to verify.</p></div>",
-    ]
-    for section in brief.sections:
-        parts.append(f"<div class=panel{export}>")
-        parts.append(_panel_head(_e(section.heading), tools=tools, prov=prov))
-        for stmt in section.paragraphs:
-            parts.append(f"<p>{_e(stmt.rendered())}</p>")
-        if section.table is not None:
-            head = "".join(f"<th scope=col>{_e(str(h))}</th>" for h in section.table.headers)
-            rows = "".join(
-                "<tr>"
-                + "".join(f"<td>{_e('' if c is None else str(c))}</td>" for c in row)
-                + "</tr>"
-                for row in section.table.rows
-            )
-            parts.append(f"<table><tr>{head}</tr>{rows}</table>")
-        parts.append("</div>")
-    return "".join(parts)
 
 
 def _work_piling_header(wave: BowWave) -> str:
@@ -7789,156 +7596,6 @@ columns, and export. Every figure is the same gate-locked number the rest of the
 </div>
 <script src="/static/workbench.js"></script>
 <script src="/static/panelkit.js"></script>"""
-
-
-def _sc_status_class(status: str) -> str:
-    # class-name lookup (not a secret) — B105 is a false positive.
-    return {"PASS": "pass", "FAIL": "fail", "INFO": "info"}.get(status, "na")  # nosec B105
-
-
-def _scorecard_export_table(sc: Scorecard) -> Table:
-    """One assessment scorecard as an export table (Check / Result / Detail / Source)."""
-    rows: tuple[tuple[Cell, ...], ...] = tuple(
-        (c.label, c.status, c.detail, c.provenance) for c in sc.checks
-    )
-    return Table(f"{sc.name} — {sc.framework}", ("Check", "Result", "Detail", "Source"), rows)
-
-
-def _scorecard_panel(sc: Scorecard, file_key: str, *, prov: str = "", export_url: str = "") -> str:
-    """One assessment scorecard as a panel: a pass/fail/info chip ribbon over a detail table.
-
-    Pure presentation over the validated :class:`Scorecard`; every chip's figure and the source it
-    is drawn from come straight from the engine (no re-scoring here). A check that cites offending
-    activities gets the ``sf-drill`` hook so clicking "(N activities)" lists them (add columns +
-    Excel) via ``drilldown.js`` against ``file_key``.
-
-    Mission Ops rank 8: the panel wears the contract — headline strip + tools + provenance chip
-    (``prov``), with the existing score line restyled as the ``sf-take`` (same engine figures,
-    verbatim). ⤓ EXCEL renders only when ``export_url`` names an EXISTING endpoint (the
-    three-scorecard workbook, /export/xlsx/scorecards); ▦ DATA is omitted — the table IS the
-    data (the home-shell precedent)."""
-    score = f"{sc.passed}/{sc.scored} scored checks pass" if sc.scored else "no scored checks"
-    chips = "".join(
-        f'<span class="sl-chip sl-{_sc_status_class(c.status)}" '
-        f'title="{_e(c.label)}: {_e(c.detail)} — {_e(c.provenance)}">'
-        f"<span class=sl-name>{_e(c.label)}</span> <b>{_e(c.status)}</b></span>"
-        for c in sc.checks
-    )
-    rows = ""
-    for c in sc.checks:
-        if c.offender_uids:
-            payload = ",".join(str(u) for u in c.offender_uids)
-            drill = (
-                f' <button type=button class="linkbtn sf-drill" data-uids="{_e(payload)}" '
-                f'data-file="{_e(file_key)}" data-title="{_e(c.label)}">'
-                f"{len(c.offender_uids)} activities</button>"
-            )
-        else:
-            drill = ""
-        rows += (
-            f"<tr><td>{_e(c.label)}</td>"
-            f'<td><span class="sl-chip sl-{_sc_status_class(c.status)}">'
-            f"<b>{_e(c.status)}</b></span></td>"
-            f"<td>{_e(c.detail)}{drill}</td>"
-            f"<td class=muted>{_e(c.provenance)}</td></tr>"
-        )
-    export_attr = f' data-export="{_e(export_url)}"' if export_url else ""
-    tools = _shell_tools(
-        export_title=(
-            "Export the three assessment scorecards for this version — opens in Excel"
-            if export_url
-            else ""
-        )
-    )
-    return (
-        f'<div class=panel data-scorecard="{_e(sc.key)}"{export_attr}>'
-        + _panel_head(_e(sc.name), tools=tools, prov=prov)
-        + f"<p class=muted>{_e(sc.framework)}</p>"
-        + f"<p class=sf-take data-no-i18n><b>{score}</b> &middot; {sc.info} informational "
-        f"&middot; {sc.na} n/a</p>"
-        + f'<div class=stoplight-board role=list aria-label="{_e(sc.name)} ribbon">{chips}</div>'
-        + "<table class=scorecard-table><tr><th scope=col>Check</th>"
-        "<th scope=col>Result</th><th scope=col>Detail</th><th scope=col>Source</th></tr>"
-        f"{rows}</table></div>"
-    )
-
-
-def _scorecards_body(
-    versions: list[tuple[str, Schedule, _Analysis]],
-    current_key: str,
-    sch: Schedule,
-    a: _Analysis,
-) -> str:
-    """The Assessment Scorecards page (issue #331): NASA STAT + GAO-10 + SRA-readiness ribbons for
-    the chosen version, plus a reserve-sizing card fed by the on-demand SRA buffer API."""
-    stat, gao, ready = compute_scorecards(sch, a.cpm, a.audit)
-
-    def _clause(sc: Scorecard, noun: str) -> str:
-        return f"{sc.passed}/{sc.scored} {noun}" if sc.scored else f"no scored {noun}"
-
-    takeaway = (
-        f"GAO {_clause(gao, 'best practices met')} &middot; "
-        f"NASA STAT {_clause(stat, 'structural checks pass')} &middot; "
-        f"SRA-readiness {_clause(ready, 'gates green')}."
-    )
-    opts = ""
-    for key, vsch, _va in versions:
-        label = vsch.source_file or vsch.name
-        status = f" · {vsch.status_date.date().isoformat()}" if vsch.status_date is not None else ""
-        sel = " selected" if key == current_key else ""
-        opts += f'<option value="{_e(key)}"{sel}>{_e(label)}{_e(status)}</option>'
-    selector = (
-        "<form method=get action=/scorecards class=viz-controls>"
-        "<label>Assess version <select name=file data-no-i18n "
-        f"data-sf-autosubmit>{opts}</select></label>"
-        f'<a class=btn href="/export/xlsx/scorecards?file={_e(current_key)}">Export (Excel)</a>'
-        f'<a class=btn href="/export/docx/scorecards?file={_e(current_key)}">Export (Word)</a>'
-        "</form>"
-    )
-    # rank 8: the panels' shared provenance chip (the assessed version) + the ⤓ EXCEL target —
-    # the EXISTING three-scorecard workbook endpoint for THIS version (never a dead link).
-    prov = _prov_chip(sch)
-    export_url = f"/export/xlsx/scorecards?file={quote(current_key, safe='')}"
-    reserve = (
-        "<div class=panel>"
-        + _panel_head("Reserve / buffer sizing", tools=_shell_tools(), prov=prov)
-        + "<p class=muted>How much schedule reserve protects a committed <b>project finish</b> date "
-        "at a chosen confidence, read from the SRA Monte-Carlo finish distribution "
-        "(engine/sra.py). Enter the committed date and run — the simulation is off the page-load "
-        "path so it only runs when you ask.</p>"
-        f'<form id=reserveForm class=viz-controls data-file="{_e(current_key)}">'
-        "<label>Committed finish date <input type=date id=reserveDate></label>"
-        "<label>Iterations <input type=number id=reserveIters value=1000 min=100 max=5000 "
-        "step=100></label>"
-        "<button type=button id=reserveRun class=btn>Size the reserve</button>"
-        "</form>"
-        "<div id=reserveOut aria-live=polite></div></div>"
-    )
-    panels = (
-        _scorecard_panel(stat, current_key, prov=prov, export_url=export_url)
-        + _scorecard_panel(gao, current_key, prov=prov, export_url=export_url)
-        + _scorecard_panel(ready, current_key, prov=prov, export_url=export_url)
-    )
-    # rank 8: the Chapter-02 beat's muted lede under the existing takeaway h1 (the kicker
-    # comes from _page's spine resolution — "Assessment Scorecards" is a ch-02 title).
-    lede = (
-        '<p class="page-lede">Three published assessment frameworks scored on the chosen '
-        "version &mdash; NASA STAT structure checks, GAO&rsquo;s 10 scheduling best "
-        "practices, and the SRA-readiness gate &mdash; every check computed from the "
-        "schedule itself, cited to its source, and drillable to the activities behind "
-        "it.</p>"
-    )
-    return (
-        f'<h1 class="page-takeaway" data-no-i18n>{takeaway}</h1>'
-        f"{lede}"
-        f"{_sources_line([sch])}"
-        f"{selector}"
-        f"{panels}"
-        f"{reserve}"
-        "<div id=sfDrillMount></div>"  # drilldown.js loaded globally in _LAYOUT
-        '<script src="/static/scorecards.js"></script>'
-        '<script src="/static/panelkit.js"></script>'
-    )
 
 
 def _ribbon_body(

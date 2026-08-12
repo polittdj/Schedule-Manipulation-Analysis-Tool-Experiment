@@ -32,6 +32,8 @@ import pytest
 
 import schedule_forensics.web.analysis as analysis_mod
 import schedule_forensics.web.app as app_mod
+import schedule_forensics.web.brief as brief_mod
+import schedule_forensics.web.card as card_mod
 import schedule_forensics.web.chrome as chrome_mod
 import schedule_forensics.web.compare as compare_mod
 import schedule_forensics.web.components as components_mod
@@ -47,6 +49,7 @@ import schedule_forensics.web.performance as performance_mod
 import schedule_forensics.web.portfolio as portfolio_mod
 import schedule_forensics.web.resources as resources_mod
 import schedule_forensics.web.risks as risks_mod
+import schedule_forensics.web.scorecards as scorecards_mod
 import schedule_forensics.web.scurve as scurve_mod
 import schedule_forensics.web.sra as sra_mod
 import schedule_forensics.web.ssi as ssi_mod
@@ -80,6 +83,9 @@ EXTRACTED = {
     "risks.py": risks_mod,
     "standards.py": standards_mod,
     "wbs.py": wbs_mod,
+    "brief.py": brief_mod,
+    "card.py": card_mod,
+    "scorecards.py": scorecards_mod,
 }
 
 #: The view layer, lowest layer FIRST. A module may import only from those before it — that is
@@ -111,6 +117,9 @@ LAYER_ORDER = (
     "risks.py",
     "standards.py",
     "wbs.py",
+    "brief.py",
+    "card.py",
+    "scorecards.py",
     "app.py",
 )
 
@@ -122,6 +131,8 @@ WHOLE_VIEW_LAYER_GUARDS = ("test_bar_drill.py", "test_presentation_fixes.py")
 VIEW_MODULES = (
     "analysis.py",
     "app.py",
+    "brief.py",
+    "card.py",
     "chrome.py",
     "compare.py",
     "components.py",
@@ -137,6 +148,7 @@ VIEW_MODULES = (
     "portfolio.py",
     "resources.py",
     "risks.py",
+    "scorecards.py",
     "scurve.py",
     "sra.py",
     "ssi.py",

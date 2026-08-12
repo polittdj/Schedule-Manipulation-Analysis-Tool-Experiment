@@ -195,6 +195,7 @@
 [loaded] GET /volatility
 [loaded] GET /wbs/TP4_DataCenter_v5
 [loaded] GET /workbench
+[loaded] [buffer-committed] GET /api/scorecards/buffer
 [loaded] [cei-uids] GET /cei
 [loaded] [evo-counterfactual] GET /evolution
 [loaded] [evo-options] GET /evolution
@@ -342,6 +343,7 @@
 [target] GET /volatility
 [target] GET /wbs/TP4_DataCenter_v5
 [target] GET /workbench
+[target] [buffer-committed] GET /api/scorecards/buffer
 [target] [cei-uids] GET /cei
 [target] [evo-counterfactual] GET /evolution
 [target] [evo-options] GET /evolution
@@ -489,6 +491,7 @@
 [cleared] GET /volatility
 [cleared] GET /wbs/TP4_DataCenter_v5
 [cleared] GET /workbench
+[cleared] [buffer-committed] GET /api/scorecards/buffer
 [cleared] [cei-uids] GET /cei
 [cleared] [evo-counterfactual] GET /evolution
 [cleared] [evo-options] GET /evolution
@@ -636,6 +639,7 @@
 [resloaded] GET /volatility
 [resloaded] GET /wbs/TP4_DataCenter_v5
 [resloaded] GET /workbench
+[resloaded] [buffer-committed] GET /api/scorecards/buffer
 [resloaded] [cei-uids] GET /cei
 [resloaded] [evo-counterfactual] GET /evolution
 [resloaded] [evo-options] GET /evolution

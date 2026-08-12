@@ -141,6 +141,18 @@ VARIANT_LABELS: tuple[tuple[str, str], ...] = (
     ("[ssi-api] GET /api/sra/ssi", "/api/sra/ssi?iterations=64&distribution=uniform"),
     # /trend declares `target` — the uid arrives on the query string, not from the session.
     ("[trend-target] GET /trend", f"/trend?target={TARGET_UID}"),
+    # `scorecards_buffer_json` declares `committed`/`iterations`, and REQUIRES the first: without
+    # it the bare label is a 422 that never reaches the reserve arithmetic — so the parser behind
+    # it (`_parse_committed_date`) was oracle-DARK, measured by ADR-0387's probe. The date is the
+    # pool's own deterministic finish, which is what makes the render non-degenerate: committed
+    # confidence lands at 0.49 with non-zero P70/P80 reserves, rather than the 1.0/0.0 any date
+    # past the finish returns. `iterations=100` is the route's own floor — the seeded Monte-Carlo
+    # is deterministic, so this costs one cheap run per loaded stage (ADR-0374: a
+    # render-conditional member needs its condition IN the oracle).
+    (
+        "[buffer-committed] GET /api/scorecards/buffer",
+        "/api/scorecards/buffer?committed=2026-07-17&iterations=100",
+    ),
     # ADR-0381: `export_path` declares `target: int = Query(...)` REQUIRED, so the bare
     # `/export/{fmt}/path/{name}` label is a 422 that never renders the export's body.
     *(
