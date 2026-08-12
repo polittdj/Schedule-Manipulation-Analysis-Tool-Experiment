@@ -18,6 +18,7 @@ from schedule_forensics.model.task import Task
 from schedule_forensics.web import app as appmod
 from schedule_forensics.web import driving as drvmod
 from schedule_forensics.web import evolution as evomod
+from schedule_forensics.web import settings as setmod
 from schedule_forensics.web.app import SessionState, create_app
 
 # --- small fakes + builders (inlined; never imported across test packages, for CI sys.path) ------
@@ -133,15 +134,15 @@ def test_ai_status_note_probe_none_and_reachable_and_listmodels_raises(monkeypat
     from schedule_forensics.web.app import _ai_status_note
 
     # construction refused the endpoint -> probe None -> empty status line
-    monkeypatch.setattr(appmod, "_ollama_or_none", lambda c: None)
+    monkeypatch.setattr(setmod, "_ollama_or_none", lambda c: None)
     assert _ai_status_note(AIConfig(backend="ollama", model="x")) == ""
 
     # reachable openai-compatible server (is_ollama False) -> the model-pull check is skipped, ON
-    monkeypatch.setattr(appmod, "_openai_or_none", lambda c: _Probe(reason=None))
+    monkeypatch.setattr(setmod, "_openai_or_none", lambda c: _Probe(reason=None))
     assert "Local AI is ON" in _ai_status_note(AIConfig(backend="openai"))
 
     # reachable ollama whose list_models() raises -> installed=() -> still ON (never sinks the page)
-    monkeypatch.setattr(appmod, "_ollama_or_none", lambda c: _Probe(raise_list=True))
+    monkeypatch.setattr(setmod, "_ollama_or_none", lambda c: _Probe(raise_list=True))
     assert "Local AI is ON" in _ai_status_note(AIConfig(backend="ollama", model="x"))
 
 
@@ -164,7 +165,7 @@ def test_second_backend_caches_and_handles_openai_construction(monkeypatch) -> N
     def _boom(**kwargs: object) -> object:
         raise RuntimeError("refused")
 
-    monkeypatch.setattr(appmod, "OpenAICompatBackend", _boom)
+    monkeypatch.setattr(setmod, "OpenAICompatBackend", _boom)
     assert _second_backend(st2) is None
 
 
@@ -337,7 +338,7 @@ def test_settings_body_listmodels_raises(monkeypatch) -> None:
     from schedule_forensics.web.app import _settings_body
 
     fake = _FakeBackend("x", raise_list=True)
-    monkeypatch.setattr(appmod, "route_backend", lambda *a, **k: (fake, None))
+    monkeypatch.setattr(setmod, "route_backend", lambda *a, **k: (fake, None))
     out = _settings_body(SessionState())
     assert "none available" in out
 
@@ -348,7 +349,7 @@ def test_settings_body_dropdown_with_installed_model(monkeypatch) -> None:
     st = SessionState()
     st.ai_config = AIConfig(backend="ollama", model="m1")
     fake = _FakeBackend("ollama", ("m1",))
-    monkeypatch.setattr(appmod, "route_backend", lambda *a, **k: (fake, None))
+    monkeypatch.setattr(setmod, "route_backend", lambda *a, **k: (fake, None))
     out = _settings_body(st)
     assert "<select name=model id=primaryModel>" in out and "not installed" not in out
 

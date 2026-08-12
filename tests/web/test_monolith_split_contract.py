@@ -55,6 +55,7 @@ import schedule_forensics.web.ribbon as ribbon_mod
 import schedule_forensics.web.risks as risks_mod
 import schedule_forensics.web.scorecards as scorecards_mod
 import schedule_forensics.web.scurve as scurve_mod
+import schedule_forensics.web.settings as settings_mod
 import schedule_forensics.web.sra as sra_mod
 import schedule_forensics.web.ssi as ssi_mod
 import schedule_forensics.web.standards as standards_mod
@@ -98,6 +99,7 @@ EXTRACTED = {
     "ribbon.py": ribbon_mod,
     "workbench.py": workbench_mod,
     "volatility.py": volatility_mod,
+    "settings.py": settings_mod,
 }
 
 #: The view layer, lowest layer FIRST. A module may import only from those before it — that is
@@ -138,6 +140,7 @@ LAYER_ORDER = (
     "ribbon.py",
     "workbench.py",
     "volatility.py",
+    "settings.py",
     "app.py",
 )
 
@@ -172,6 +175,7 @@ VIEW_MODULES = (
     "risks.py",
     "scorecards.py",
     "scurve.py",
+    "settings.py",
     "sra.py",
     "ssi.py",
     "standards.py",

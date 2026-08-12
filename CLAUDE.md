@@ -96,8 +96,8 @@ fight long HTML f-strings there; everywhere else the limit is 100. **Every page 
 out of it inherits that exemption** (the over-long HTML string literals travel with the code), so
 `pyproject.toml`'s `per-file-ignores` list grows by one entry per extracted module — currently
 `chrome`, `components`, and the phase-3/4 page modules through `curves.py` / `ribbon.py` /
-`workbench.py` / `volatility.py` (ADR-0389). Check that list, not this sentence, for the
-authoritative set.
+`workbench.py` / `volatility.py` / `settings.py` (ADR-0390). Check that list, not this sentence, for
+the authoritative set.
 
 ## Architecture (the big picture)
 
@@ -167,14 +167,18 @@ HTML + vendored JS charts**, with the AI layer polishing narrative on top of alr
   `tests/web/test_monolith_split_contract.py` pins the list. Phases 3–4 are **in progress**: the
   `_*_body`/`_*_panel`/`_*_data` presentation helpers are moving out into per-page modules
   (`driving`, `evolution`, …, `wbs`, `brief`, `card`, `scorecards`, `briefing`, `cei`, `curves`,
-  `ribbon`, `workbench`, `volatility` — ADR-0389), each extracted VERBATIM and re-exported from
-  `app.py` with the `X as X` idiom so old import paths keep working. `app.py` is down from 17,197
-  lines to **8,482**. ADR-0389 emptied the zero-descent set: **`settings` is the only page family
-  left in `app.py`**, and `groups` stays fenced (ADR-0343). A family is priced by referrer walk —
-  and that walk's "descents" column counts **candidates, not verdicts**: a shared name is only
-  *forced* down into `components.py` by a referrer in ANOTHER EXTRACTED module, because `app.py`
-  is the top layer and reaches a moved name through the re-export (ADR-0351's rule, re-read in
-  ADR-0389).
+  `ribbon`, `workbench`, `volatility`, `settings` — ADR-0390), each extracted VERBATIM and
+  re-exported from `app.py` with the `X as X` idiom so old import paths keep working. `app.py` is
+  down from 17,197 lines to **8,037**. **The page-family queue is EMPTY**: ADR-0390 took the last
+  one (`settings`), and `groups` stays fenced (ADR-0343). A family is priced by referrer walk — and
+  that walk's "descents" column counts **candidates, not verdicts**: a shared name is only *forced*
+  down into `components.py` by a referrer in ANOTHER EXTRACTED module, because `app.py` is the top
+  layer and reaches a moved name through the re-export (ADR-0351's rule, re-read in ADR-0389).
+  Two further rules ADR-0390 paid for: price the closure to a fixed point of the **blockers**, not
+  the movers (`settings` was recorded at 3 candidates and was really 5, the second pair one hop out);
+  and when a definition moves, every `setattr(app_mod, "X", …)` in the tests must be re-aimed **per
+  CALL SITE, not per name** — the same name can be consumed by a caller that moved AND by one that
+  stayed, and three such tests pass silently when the patch goes inert.
   `SessionState` is the in-memory, per-process session (loaded `schedules`, `ai_config`,
   `active_filter`, `language`, caches). The per-schedule analysis chokepoint is `_Analysis`, built once
   by `_compute_analysis(sch)` (a single CPM pass reused by every view) and cached via
