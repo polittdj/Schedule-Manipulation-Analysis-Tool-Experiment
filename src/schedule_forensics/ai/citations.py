@@ -163,6 +163,15 @@ class CitedStatement:
 
     text: str
     citations: tuple[Citation, ...]
+    #: ADR-0392 — a POPULATION-FRAME fact that must survive fact selection unconditionally.
+    #: ``relevant_facts`` and ``model_evidence`` rank by question overlap and cut at a cap, which
+    #: is right for evidence but wrong for the frame: with 31 versions loaded, the facts saying
+    #: *how many versions there are* and *what each one's S-curve and finish were* could be ranked
+    #: out by a question that used none of their words, leaving the model to describe a 31-version
+    #: workbook from newest-version-plus-one-pair evidence — which is exactly what it did. A
+    #: pinned fact is never dropped by either selector. Nothing else reads this flag: it does not
+    #: touch the citation gate, the figure gate, or the role gate.
+    pinned: bool = False
 
     def rendered(self) -> str:
         """The sentence with a compact, verifiable citation tag appended."""

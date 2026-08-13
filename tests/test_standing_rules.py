@@ -1,5 +1,5 @@
 """Pin the two standing WORKING RULES (QC-1 / QC-2) in ``CLAUDE.md`` so they cannot be
-silently deleted, softened, or demoted (ADR-0392).
+silently deleted, softened, or demoted (ADR-0393).
 
 Why this test exists, in one sentence: **the 2026-08-13 audit's headline lesson was that a
 guard is only as strong as the test that pins its DATA** — POLARIS's entire Law-1 locality
@@ -129,7 +129,7 @@ def test_claude_md_is_the_file_we_think_it_is() -> None:
 def test_the_working_rules_section_exists() -> None:
     """The rules must live under their own heading, not be buried in another section as a
     trailing sentence — which is exactly where 'READ EVERYTHING, ASSUME NOTHING, VERIFY
-    EVERYTHING' sat before ADR-0392, and why it was routinely skipped."""
+    EVERYTHING' sat before ADR-0393, and why it was routinely skipped."""
     text = CLAUDE_MD.read_text(encoding="utf-8")
     assert _SECTION_HEADING in text, f"missing section heading: {_SECTION_HEADING!r}"
 

@@ -1,4 +1,4 @@
-# ADR-0392 — The two standing working rules: QC-1 (prove or refute before you report) and QC-2 (read everything, verify everything)
+# ADR-0393 — The two standing working rules: QC-1 (prove or refute before you report) and QC-2 (read everything, verify everything)
 
 Status: accepted (2026-08-13). Standing operator directive — binding on every session, no exceptions.
 

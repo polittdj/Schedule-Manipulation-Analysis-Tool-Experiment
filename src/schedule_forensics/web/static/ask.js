@@ -65,6 +65,13 @@
     };
   }
 
+  // ⤓ EXCEL / ⤓ WORD stay hidden until an answer exists, so the panel never offers a dead link
+  // (the rank-3 export law). The server holds the last Q&A for the session; these just fetch it.
+  function showExports(on) {
+    var box = document.getElementById("askExports");
+    if (box) box.hidden = !on;
+  }
+
   function renderFacts(out, facts) {
     var ul = el("ul");
     (facts || []).forEach(function (f) {
@@ -91,7 +98,8 @@
       .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
       .then(function (res) {
         out.textContent = "";
-        if (!res.ok) { out.textContent = res.j.error || "Could not compute."; return; }
+        if (!res.ok) { showExports(false); out.textContent = res.j.error || "Could not compute."; return; }
+        showExports(true);
         out.appendChild(el("p", { class: "ask-answer", text: res.j.answer }));
         out.appendChild(el("p", {
           class: "muted", text: "Engine result — exact, computed directly (no AI).",
@@ -119,9 +127,11 @@
         out.textContent = "";
         if (!res.ok) {
           flashError();
+          showExports(false);
           out.textContent = res.j.error || "Could not answer.";
           return;
         }
+        showExports(true);  // the server recorded this exchange; the export links are live now
         if (res.j.answer) {
           out.appendChild(el("p", { class: "ask-answer", text: res.j.answer }));
           out.appendChild(el("p", {
@@ -163,8 +173,10 @@
   }
 
   btn.addEventListener("click", ask);
+  // The question box is a TEXTAREA (ADR-0392: no length limit, so a long forensic question is
+  // readable while it is typed). Enter still sends — Shift+Enter inserts a newline instead.
   document.getElementById("askInput").addEventListener("keydown", function (e) {
-    if (e.key === "Enter") ask();
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); ask(); }
   });
   var dpBtn = document.getElementById("drivePathBtn");
   if (dpBtn) dpBtn.addEventListener("click", drivingPath);

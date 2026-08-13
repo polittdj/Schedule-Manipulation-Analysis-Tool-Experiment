@@ -52,7 +52,7 @@ detection, and serves an interactive, locally-rendered report with a cited local
 
 > The laws above govern the **product** — what must be true of what we ship. The two rules below
 > govern the **method** — how a claim is allowed to become an action. They are standing operator
-> directives (2026-08-13, ADR-0392), they bind **every** session, and they are **NOT optional**.
+> directives (2026-08-13, ADR-0393), they bind **every** session, and they are **NOT optional**.
 > **NO EXCEPTIONS.** They are pinned by `tests/test_standing_rules.py` so they cannot be quietly
 > deleted, softened, or demoted; that guard exists because this project's own audit proved that a
 > rule written only in prose is load-bearing data with nothing asserting it is still there.
@@ -129,7 +129,7 @@ starting to respond** (operator directive 2026-07-17; the original directive fil
 "Fable 5 Ultracode" = the operator's label for the full multi-agent orchestrated audit;
 "Fable 5 Max" = the maximum-effort single-focus deep dive. The companion working rule that rides
 with this protocol — READ EVERYTHING, ASSUME NOTHING, VERIFY EVERYTHING — was promoted out of this
-paragraph into a binding rule of its own by ADR-0392: see **QC-2** above, and **QC-1** for the
+paragraph into a binding rule of its own by ADR-0393: see **QC-2** above, and **QC-1** for the
 prove-or-refute gate that a delegated finding must pass before the lead reports it. This protocol's
 "no finding is reported until the lead has independently re-verified it against the actual
 code/fixtures" is QC-1 applied to multi-agent work, and QC-1 is the stricter statement of it.

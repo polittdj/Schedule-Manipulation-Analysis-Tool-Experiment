@@ -259,11 +259,22 @@ def build_workbook_fact_sheet(
     (workbook frame, cross-version trend, per-project summaries, per-project quality
     verdicts) and adds the latest consecutive pair's manipulation signals plus the
     newest version's finish forecasts. Engine-computed only — nothing is generated.
+
+    ADR-0392: the briefing's subject is the NEWEST version and its only comparison is the latest
+    PAIR, so on a 31-version workbook those statements described two files. The pinned
+    :func:`~schedule_forensics.ai.version_facts.version_series_facts` block is inserted right
+    after the frame fact to state the population and carry the per-version S-curve and finish
+    series — without it a cross-version question has no cross-version evidence to answer from.
     """
     from schedule_forensics.ai.briefing import build_briefing  # local: avoid module cycle
+    from schedule_forensics.ai.version_facts import version_series_facts
 
     briefing = build_briefing(schedules, cpms=cpms)
     facts: list[CitedStatement] = [s for section in briefing.sections for s in section.statements]
+    if facts:  # the frame fact must keep leading; the pinned population block rides behind it
+        facts[1:1] = list(version_series_facts(schedules, cpms))
+    else:
+        facts = list(version_series_facts(schedules, cpms))
     ordered = order_versions(schedules)
     by_obj = {id(s): c for s, c in zip(schedules, cpms, strict=True)}
     if len(ordered) >= 2:
@@ -538,13 +549,17 @@ def relevant_facts(
     if not facts:
         return ()
     overlap = _question_overlap(question)
-    ranked = sorted(facts[1:], key=lambda f: -overlap(f))
+    pinned = [f for f in facts[1:] if f.pinned]
+    ranked = sorted((f for f in facts[1:] if not f.pinned), key=lambda f: -overlap(f))
     matched = [f for f in ranked if overlap(f) > 0]
-    keep = [facts[0]]
+    # the frame fact and every PINNED population fact lead and are never cut (ADR-0392) — the
+    # cap then applies to the ranked evidence behind them
+    keep = [facts[0], *pinned]
+    room = max(limit - len(keep), 0)
     if matched:
-        keep += matched[: limit - 1]
+        keep += matched[:room]
     else:  # nothing matched: a bounded headline overview, never the whole sheet
-        keep += ranked[: min(limit - 1, _OVERVIEW_FACTS)]
+        keep += ranked[: min(room, _OVERVIEW_FACTS)]
     return tuple(keep)
 
 
@@ -562,8 +577,12 @@ def model_evidence(
     if not facts:
         return ()
     overlap = _question_overlap(question)
-    ranked = sorted(facts[1:], key=lambda f: -overlap(f))
-    return tuple([facts[0], *ranked])[:limit]
+    # PINNED population facts ride ahead of the ranked evidence and survive the cap (ADR-0392):
+    # a question about the S-curve trend must never be answered from an evidence slice that
+    # dropped the fact saying how many versions are loaded.
+    pinned = [f for f in facts[1:] if f.pinned]
+    ranked = sorted((f for f in facts[1:] if not f.pinned), key=lambda f: -overlap(f))
+    return tuple([facts[0], *pinned, *ranked])[: max(limit, len(pinned) + 1)]
 
 
 def _strip_gate_footers(text: str) -> str:

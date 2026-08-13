@@ -1,9 +1,19 @@
-# Handoff — 2026-08-13 (b) (QC-1 / QC-2 become binding working rules; ADR-0392; v1.0.199)
+# Handoff — 2026-08-13 (c) (QC-1 / QC-2 become binding working rules; ADR-0393; v1.0.200)
 
 > ## STATUS (current) — **pushed, draft PR open** on `claude/polaris-data-date-fix-065mz7`,
-> restarted from `main` **a19b969** after #579 squash-merged. Highest ADR now **0392**.
-> **No shipped code changed** (`src/` untouched) — version stays **v1.0.199**, no wheel/installer
-> rebuild required. SCHEMA stays 2.11.0.
+> branched from `main` **a19b969**, then **merged `origin/main` ff11a7b** when #580 landed
+> mid-session. Highest ADR now **0393**. **No shipped code changed by THIS session**
+> (`src/` untouched) — the version is **v1.0.200**, inherited from #580, and no wheel/installer
+> rebuild was required of me. SCHEMA stays 2.11.0.
+>
+> ## THE ADR-NUMBER TRAP FIRED — and it was my error, not bad luck
+> I checked `docs/adr/` for the next free number against my LOCAL tree and did **not** re-fetch
+> `origin` first. PR **#580** ("The Ask panel could not see the workbook") merged at 12:51Z and
+> took **ADR-0392** and **v1.0.200**. Caught only because a 502 on PR creation made me list the
+> repo's PRs and read #580. Mine renumbered **0392 → 0393**; the gateway ADR the last handoff
+> reserved is now **0394**. The standing rule already said *fetch before taking an ADR number,
+> and again before committing* — I did the first check against a stale local tree, which is the
+> same failure QC-2 exists to prevent. Both halves of that rule mean `git fetch origin` FIRST.
 >
 > ## What landed: two standing WORKING RULES, at the same standing as the two laws
 > `CLAUDE.md` gains **"The two non-negotiable working rules"**, placed immediately after the two
@@ -57,14 +67,14 @@
 > ## Next — unchanged from #579, still Band 1 in dependency order
 > **001a** pin `net_guard._LOOPBACK_HOSTNAMES` / `_LOCAL_HTTP_SCHEMES` contents + mutation proof
 > (land FIRST, alone) → **001b** observed banner → **001c** operator's cloud/gateway decision, then
-> its ADR (**0393** now — 0392 is taken). Read `docs/PLAN/APPROVED-GATEWAY-INTEGRATION.md` first.
+> its ADR (**0394** now). Read `docs/PLAN/APPROVED-GATEWAY-INTEGRATION.md` first.
 > Then: `actual_start_driven` consumed nowhere · ADR-0391's own-calendar floor unguarded ·
 > `mpxj_ref()` shallow-clone guard (DoD 117) · pre-commit has no image detector vs 120 tracked PNGs
 > · 22 playwright modules pin a chromium BUILD NUMBER · FINAL-REPORT overclaims · 8 stale branches.
 > **Operator:** the 001c decision · FX-03/04 re-run · sub-day-negative-float Fuse run · license.
 >
 > ## Carried forward
-> ADR-0353..0392 closed — do not re-open. NEW lesson: **a standing rule is DATA, and unpinned data
+> ADR-0353..0393 closed — do not re-open. NEW lesson: **a standing rule is DATA, and unpinned data
 > is not a guarantee** — the same shape as the unpinned `_LOOPBACK_HOSTNAMES` frozenset, so the
 > rules that govern every session are now pinned like a security constant. Second: **scope a
 > substring assertion to the region that BINDS** — a global grep for a clause passes when the word

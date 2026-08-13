@@ -13801,7 +13801,66 @@ AND the parity gate green); `mpxj_ref()` still has no shallow-clone guard and it
 modules hard-pin a chromium build number; FINAL-REPORT overclaims on parity and on "No data
 off-machine"; 8 stale remote branches 148-611 commits behind.
 
-## 2026-08-13 (b) — QC-1 / QC-2 become binding working rules (ADR-0392, v1.0.199)
+## 2026-08-13 — The Ask panel could not see the workbook (ADR-0392, v1.0.200)
+
+Branch `claude/polaris-gateway-handoff-ggy2h9` from `main` **a19b969**. An **operator-reported
+defect** session, not the planned Band-1 gateway work — Band 1 (001a/001b/001c) is untouched and
+still first in the queue.
+
+**The report.** The operator loaded **31 `.mpp` versions of one project** and asked the Ask panel to
+read the S-curve across all 31 and say whether the project is improving. The model answered that it
+could see "only two file versions, not 31" and "no cumulative-progress time series". Two more asks
+rode with it: remove the question-box character limit, and make the results exportable to Excel.
+
+**The diagnosis — the model was right about its evidence.** Measured before any change, on a
+synthetic 31-version workbook through the exact `build_workbook_fact_sheet` path `POST /api/ask`
+takes: **23 facts, exactly ONE of which named more than one version**, zero carrying a per-version
+series of any kind, zero stating the loaded-version count. The one multi-version fact was the
+briefing's "How to Verify Every Number" boilerplate, which lists the file names inside a
+verification *procedure*, not as data. Everything substantive came from `build_briefing` (subject =
+NEWEST version) and `detect_manipulation` / `compute_path_counterfactual` (explicitly the latest
+PAIR). So "two file versions, no cumulative-progress series" was an accurate description of the
+evidence. The files were loaded, parsed and solved throughout. The S-curve was never missing either:
+`engine/s_curve.py` has computed per-version curves since `/scurve` shipped — nothing routed them to
+the Q&A.
+
+**Shipped (ADR-0392).** `engine/version_series.py` (new) reduces every loaded version to one
+comparable row — its S-curve point at ITS OWN data date plus its schedule-logic finish (CPM), with
+the mechanical first→last gap movement and per-step narrowed/widened/unchanged counts.
+`ai/version_facts.py` (new) turns that into four cited facts (population / S-curve series / trend
+verdict / finish series) inserted into `build_workbook_fact_sheet` behind the frame fact.
+`CitedStatement.pinned` keeps them ahead of the ranked evidence and out of reach of the 12-shown /
+48-to-the-model caps — overlap ranking is right for evidence and wrong for the population frame, and
+a question phrased without the series facts' words would otherwise reintroduce the exact defect.
+Both `question.strip()[:500]` truncations and `maxlength=500` are gone (textarea; Enter sends,
+Shift+Enter newlines; no replacement cap, empty-question 422 unchanged). `GET /export/{fmt}/ask`
+renders the latest exchange as three sheets — Answer / Cited facts / Citations — in xlsx and docx,
+off `SessionState.last_ask`; the links stay hidden until an answer exists, the driving-path result
+records the same way, and with no live model the Answer cell states WHY it is empty.
+
+**The design point worth carrying.** `compute_version_series` **recomputes** each version's S-curve
+point rather than reading `compute_s_curve`, because the animated curve's shared month axis is
+capped at 60 months and sheds the oldest months on a long programme — a version whose data date
+lands in a shed month has `status_index is None`, so 31 monthly updates over a multi-year programme
+silently lose their early versions from any series read off that axis. The two paths are REQUIRED to
+agree wherever the animated curve is readable (`_cumulative_pct` folds pre-window finishes into its
+running count, so a month's value is independent of where the axis starts) and
+`test_matches_the_s_curve_at_every_on_axis_status_month` pins it, mutation-proved with `<=` → `<`.
+One definition of "the S-curve", two evaluation paths; the alternative is the page and the fact base
+quoting different numbers for the same curve.
+
+**The vacuity that test caught first.** Its synthetic data dates sat outside golden Project5's own
+window (2026-03 → 2028-01), so every version was off-axis and the equivalence loop iterated ZERO
+times while the test reported green. The `compared >= 2` guard is the only reason that surfaced.
+
+**Verified.** Full gate green (ruff whole tree, ruff format, mypy strict 151 files, bandit exit 0,
+node --check on every vendored JS), and `pytest -m parity` green (52 passed). New tests, counted by
+collection: `tests/engine/test_version_series.py` (14), `tests/ai/test_version_facts.py` (12),
+`tests/web/test_ask_panel.py` (13) = **39**. **Five mutations run and reverted** to prove they can
+fail: cumulative `<=`→`<`; series facts not inserted; pinning disabled in both selectors; the
+exchange not recorded; the empty population reporting 0.0 instead of unreadable. `tests/guards/render_oracle_labels.txt` regenerated —
++14 labels, exactly the two new routes across seven stages, nothing else moved.
+## 2026-08-13 (c) — QC-1 / QC-2 become binding working rules (ADR-0393, v1.0.200)
 
 Operator directive: make two obligations mandatory for all future sessions, no exceptions — (1) a
 pass/fail check must be built and run in a sandbox to try to refute a claim BEFORE any change,
@@ -13848,5 +13907,16 @@ was *capable of refuting* its claim, and a mechanical proxy for that judgement w
 rule is enforced by working discipline and pinned against silent deletion — the honest boundary of
 what automation can do here.
 
-No shipped code changed (`src/` untouched), so no version bump and no wheel/installer rebuild. The
-gateway ADR the previous handoff reserved as "0392" is now **0393**.
+No shipped code changed by this session (`src/` untouched), so no version bump and no wheel/installer
+rebuild was required of it; the version is **v1.0.200**, inherited by merging #580.
+
+**The ADR-number trap fired, and it was my error.** I checked `docs/adr/` for the next free number
+against my LOCAL tree without re-fetching `origin` first. PR #580 ("The Ask panel could not see
+the workbook") merged at 12:51Z and took **ADR-0392** and **v1.0.200**. It surfaced only because a
+502 on PR creation sent me to list the repo's PRs, where I read #580 — i.e. luck, not process.
+Mine renumbered **0392 → 0393**, `origin/main` merged in (four state-doc conflicts resolved so
+BOTH sessions' content survives: #580's handoff status archived rather than dropped, both
+SESSION-LOG entries kept chronologically, both Part VIII lessons kept newest-first, and the
+kickoff carries the Ask-panel context alongside the new rules). The gateway ADR is now **0394**.
+The standing rule already said *fetch before taking an ADR number, and again before committing* —
+the first half was done against a stale local tree, which is exactly the failure QC-2 names.

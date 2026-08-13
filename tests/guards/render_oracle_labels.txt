@@ -102,6 +102,7 @@
 [loaded] GET /export/docx/activities-drill
 [loaded] GET /export/docx/activities/TP4_DataCenter_v5
 [loaded] GET /export/docx/analysis/TP4_DataCenter_v5
+[loaded] GET /export/docx/ask
 [loaded] GET /export/docx/brief
 [loaded] GET /export/docx/briefing
 [loaded] GET /export/docx/cei
@@ -137,6 +138,7 @@
 [loaded] GET /export/xlsx/activities-drill
 [loaded] GET /export/xlsx/activities/TP4_DataCenter_v5
 [loaded] GET /export/xlsx/analysis/TP4_DataCenter_v5
+[loaded] GET /export/xlsx/ask
 [loaded] GET /export/xlsx/brief
 [loaded] GET /export/xlsx/briefing
 [loaded] GET /export/xlsx/cei
@@ -250,6 +252,7 @@
 [target] GET /export/docx/activities-drill
 [target] GET /export/docx/activities/TP4_DataCenter_v5
 [target] GET /export/docx/analysis/TP4_DataCenter_v5
+[target] GET /export/docx/ask
 [target] GET /export/docx/brief
 [target] GET /export/docx/briefing
 [target] GET /export/docx/cei
@@ -285,6 +288,7 @@
 [target] GET /export/xlsx/activities-drill
 [target] GET /export/xlsx/activities/TP4_DataCenter_v5
 [target] GET /export/xlsx/analysis/TP4_DataCenter_v5
+[target] GET /export/xlsx/ask
 [target] GET /export/xlsx/brief
 [target] GET /export/xlsx/briefing
 [target] GET /export/xlsx/cei
@@ -398,6 +402,7 @@
 [cleared] GET /export/docx/activities-drill
 [cleared] GET /export/docx/activities/TP4_DataCenter_v5
 [cleared] GET /export/docx/analysis/TP4_DataCenter_v5
+[cleared] GET /export/docx/ask
 [cleared] GET /export/docx/brief
 [cleared] GET /export/docx/briefing
 [cleared] GET /export/docx/cei
@@ -433,6 +438,7 @@
 [cleared] GET /export/xlsx/activities-drill
 [cleared] GET /export/xlsx/activities/TP4_DataCenter_v5
 [cleared] GET /export/xlsx/analysis/TP4_DataCenter_v5
+[cleared] GET /export/xlsx/ask
 [cleared] GET /export/xlsx/brief
 [cleared] GET /export/xlsx/briefing
 [cleared] GET /export/xlsx/cei
@@ -546,6 +552,7 @@
 [resloaded] GET /export/docx/activities-drill
 [resloaded] GET /export/docx/activities/TP4_DataCenter_v5
 [resloaded] GET /export/docx/analysis/TP4_DataCenter_v5
+[resloaded] GET /export/docx/ask
 [resloaded] GET /export/docx/brief
 [resloaded] GET /export/docx/briefing
 [resloaded] GET /export/docx/cei
@@ -581,6 +588,7 @@
 [resloaded] GET /export/xlsx/activities-drill
 [resloaded] GET /export/xlsx/activities/TP4_DataCenter_v5
 [resloaded] GET /export/xlsx/analysis/TP4_DataCenter_v5
+[resloaded] GET /export/xlsx/ask
 [resloaded] GET /export/xlsx/brief
 [resloaded] GET /export/xlsx/briefing
 [resloaded] GET /export/xlsx/cei
@@ -694,6 +702,7 @@
 [ceidark] GET /export/docx/activities-drill
 [ceidark] GET /export/docx/activities/TP4_DataCenter_v5
 [ceidark] GET /export/docx/analysis/TP4_DataCenter_v5
+[ceidark] GET /export/docx/ask
 [ceidark] GET /export/docx/brief
 [ceidark] GET /export/docx/briefing
 [ceidark] GET /export/docx/cei
@@ -729,6 +738,7 @@
 [ceidark] GET /export/xlsx/activities-drill
 [ceidark] GET /export/xlsx/activities/TP4_DataCenter_v5
 [ceidark] GET /export/xlsx/analysis/TP4_DataCenter_v5
+[ceidark] GET /export/xlsx/ask
 [ceidark] GET /export/xlsx/brief
 [ceidark] GET /export/xlsx/briefing
 [ceidark] GET /export/xlsx/cei
@@ -842,6 +852,7 @@
 [allcomplete] GET /export/docx/activities-drill
 [allcomplete] GET /export/docx/activities/TP4_DataCenter_v5
 [allcomplete] GET /export/docx/analysis/TP4_DataCenter_v5
+[allcomplete] GET /export/docx/ask
 [allcomplete] GET /export/docx/brief
 [allcomplete] GET /export/docx/briefing
 [allcomplete] GET /export/docx/cei
@@ -877,6 +888,7 @@
 [allcomplete] GET /export/xlsx/activities-drill
 [allcomplete] GET /export/xlsx/activities/TP4_DataCenter_v5
 [allcomplete] GET /export/xlsx/analysis/TP4_DataCenter_v5
+[allcomplete] GET /export/xlsx/ask
 [allcomplete] GET /export/xlsx/brief
 [allcomplete] GET /export/xlsx/briefing
 [allcomplete] GET /export/xlsx/cei
@@ -990,6 +1002,7 @@
 [aiconfig] GET /export/docx/activities-drill
 [aiconfig] GET /export/docx/activities/TP4_DataCenter_v5
 [aiconfig] GET /export/docx/analysis/TP4_DataCenter_v5
+[aiconfig] GET /export/docx/ask
 [aiconfig] GET /export/docx/brief
 [aiconfig] GET /export/docx/briefing
 [aiconfig] GET /export/docx/cei
@@ -1025,6 +1038,7 @@
 [aiconfig] GET /export/xlsx/activities-drill
 [aiconfig] GET /export/xlsx/activities/TP4_DataCenter_v5
 [aiconfig] GET /export/xlsx/analysis/TP4_DataCenter_v5
+[aiconfig] GET /export/xlsx/ask
 [aiconfig] GET /export/xlsx/brief
 [aiconfig] GET /export/xlsx/briefing
 [aiconfig] GET /export/xlsx/cei

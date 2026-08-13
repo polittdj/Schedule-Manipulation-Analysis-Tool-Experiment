@@ -322,7 +322,9 @@ def _ask_panel_html(state: SessionState, page_schedule: str | None = None) -> st
 data: with a local model active (Ollama) you get a full written analysis grounded in the
 engine's computed, cited facts &mdash; the matching facts are always shown alongside. With no
 local model active you get the cited facts themselves; <a href="/settings">enable Ollama in AI
-Settings</a> for interpretation.</p>
+Settings</a> for interpretation. Questions have <b>no length limit</b> &mdash; paste as much
+context as you need. Once an answer is on screen, <b>&#10515; EXCEL</b> saves the question, the
+answer and every cited fact as a workbook.</p>
 <p class=muted><b>Figure check is role-aware.</b> In <i>strict</i> and <i>annotate</i> modes a number
 the model writes is matched against the figures in the cited facts, and a digit that appears only in
 an activity <i>name</i> or <i>ID</i> (e.g. "Milestone 2099", UID&nbsp;6077) &mdash; never as an engine
@@ -338,9 +340,13 @@ figure-gated at all. Read any figure against the cited facts &mdash; the meaning
 number.</p>
 <div class=viz-controls>
 <label>About <select id=askScope>{"".join(options)}</select></label>
-<input id=askInput type=text size=60 maxlength=500
- placeholder="e.g. Why is the finish slipping? How many critical activities?">
-<button id=askBtn type=button>Ask</button></div>
+<button id=askBtn type=button>Ask</button>
+<span id=askExports class=ask-exports hidden><a class=linkbtn id=askExport href="/export/xlsx/ask" download
+ title="Export this question, the answer and every cited fact to Excel">&#10515; EXCEL</a>
+<a class=linkbtn id=askExportDocx href="/export/docx/ask" download
+ title="Export this question, the answer and every cited fact to Word">&#10515; WORD</a></span></div>
+<textarea id=askInput class=ask-input rows=3
+ placeholder="e.g. Why is the finish slipping? How many critical activities? Ask as long a question as you like &#8212; there is no length limit. Enter sends; Shift+Enter starts a new line."></textarea>
 <div class=viz-controls><span class=muted>Driving path (exact, no AI):</span>
 <label>to UID <input id=drivePathUid type=number min=1 step=1 style="width:7em"
  placeholder="UID"></label>
