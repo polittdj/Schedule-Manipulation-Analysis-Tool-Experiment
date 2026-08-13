@@ -207,16 +207,25 @@ def _rules_adr_number() -> str:
     oracle: a doc claiming "the rules are ADR-N" is judged against the ADR that defines them,
     not against a constant asserted a few lines above by the same file that is doing the
     judging. QC-1: an oracle must be independent of the thing it judges.
+
+    **The match is on the ADR's TITLE, not its body, and that distinction is load-bearing.**
+    A body scan says "the ADR that mentions QC-1" — but under QC-1 *every* ADR mentions QC-1,
+    because every ADR now carries a "Verification (QC-1)" section. ADR-0394 was the first and
+    is not the last, and a body-scanning oracle went ambiguous the moment it landed: the guard
+    broke itself the first time somebody followed the rule it guards. Deciding an ADR is the
+    one that DECIDED the rules is a claim about its subject, and an ADR's subject is its title.
+    The ambiguity assertion below stays — two ADRs whose *titles* both claim the rules is a
+    genuine corpus problem a human should look at, not a routine mention.
     """
     adr_dir = REPO_ROOT / "docs" / "adr"
     defining = [
         path
         for path in sorted(adr_dir.glob("[0-9][0-9][0-9][0-9]-*.md"))
-        if "QC-1" in path.read_text(encoding="utf-8")
+        if "QC-1" in path.read_text(encoding="utf-8").split("\n", 1)[0]
     ]
     assert len(defining) == 1, (
-        "the oracle itself is ambiguous — expected exactly one ADR defining QC-1, found "
-        f"{[p.name for p in defining]}"
+        "the oracle itself is ambiguous — expected exactly one ADR whose TITLE decides QC-1, "
+        f"found {[p.name for p in defining]}"
     )
     return defining[0].name[:4]
 

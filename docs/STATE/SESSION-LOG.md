@@ -13920,3 +13920,58 @@ SESSION-LOG entries kept chronologically, both Part VIII lessons kept newest-fir
 kickoff carries the Ask-panel context alongside the new rules). The gateway ADR is now **0394**.
 The standing rule already said *fetch before taking an ADR number, and again before committing* —
 the first half was done against a stale local tree, which is exactly the failure QC-2 names.
+
+## 2026-08-13 (d) — DoD 001a: the loopback allowlist is pinned (ADR-0394, v1.0.200)
+
+Branch `claude/polaris-kickoff-ss9eb8`, branched from `main` **9c0c918** (the branch was already at
+`origin/main`, 0 ahead / 0 behind). **Test-only: `src/` untouched**, so v1.0.200 stands and no
+wheel/installer rebuild was required. SCHEMA 2.11.0. One new file,
+`tests/guards/test_loopback_allowlist.py`, plus doc updates.
+
+**The gap.** Every locality decision funnels through two frozensets — `net_guard._LOOPBACK_HOSTNAMES`
+(`:127`) and `_LOCAL_HTTP_SCHEMES` (`:234`) — and through `is_loopback_host` /
+`is_local_http_endpoint` into `ai/ollama.py:130`, `ai/openai_compat.py:39`,
+`web/app.py:6549/6551/6590`, `launcher.py:232`, `web/app.py:8161`. Nothing pinned either set's
+contents. The existing suites pin *sampled negatives* (`8.8.8.8`, `example.com`, `evil.com`), and a
+sampled negative can never see a *named* entry added beside it. Neither could they see a narrowing:
+`ip6-localhost` was in the allowlist and in **no test at all**.
+
+**Premise re-measured, not inherited (QC-2).** The audit's "226 green, reproduced at 854" describes a
+selection this session did not run. Re-derived in a sandbox copy of `src/` with
+`proxy.fast.luna.nasa.gov` added — verified in-process that `is_loopback_host` returned `True` for it
+— the guard/AI/air-gap/startup/launcher/exhibit-CLI suites ran **336 passed, 0 failed** with the new
+module deselected. Different population, same conclusion.
+
+**What landed.** Two layers, because the battery proved neither subsumes the other: exact **data
+pins** against test-side literals never imported from the module under test (an oracle that reads the
+value it judges cannot refute anything), and **behavioural closure sweeps** over a curated
+non-loopback population — the gateway and every parent domain, remote/private/link-local IPs,
+wildcard binds, a Cyrillic-`о` homograph, decimal-packed `2130706433`, and generated confusables
+(`localhost.evil.com`, `notlocalhost`, `localhost.nasa.gov`, `www.localhost`, …) — asserting what is
+actually accepted in both directions, plus a scheme sweep pinning acceptance to exactly
+`{http, https}`.
+
+**Verification (QC-1): 9/9 caught by name.** The battery mutates a **sandbox copy**, never the
+instrument, and carries a **canary** (aborts unless a sandbox mutation actually changes the outcome,
+proving `PYTHONPATH` shadows the editable install's `.pth`) and a **control** run that must be green.
+`widen_gateway` 8 red · `widen_other` 2 · `narrow_drop_ip6` 4 · `scheme_widen_ftp` 2 ·
+`suffix_bypass` 6 · `substring_bypass` 4 · `always_true` 6 · `drop_scheme_check` 1 ·
+`drop_host_check` 2. `net_guard.py` md5 `ff76e70c…` identical before and after; battery re-run in
+full against the final file after lint fixes.
+
+**The finding that shaped the design.** `suffix_bypass`, `substring_bypass` and `always_true` leave
+**both frozensets provably untouched** — the data pins stayed GREEN on all three; only the
+behavioural sweeps caught them. A data pin guards the literal, not the guarantee.
+
+**New finding, recorded not fixed.** `web/app.py:1076`'s
+`_ALLOWED_HOSTS = frozenset({"127.0.0.1","localhost","::1","testserver"})` — the DNS-rebinding
+Host-header guard — is named by **no test file**. Measured: widened with the gateway hostname in a
+sandbox, `tests/web/test_sec_hardening.py` + `tests/test_launcher.py` = **23 passed, 0 failed**. Same
+defect class, different security property. Not fixed here because 001a was specified to land alone.
+
+**Doc corrections.** `APPROVED-GATEWAY-INTEGRATION.md` §2's `web/app.py` anchors had drifted
+(recorded against `cacd769`); re-derived. Its `net_guard.py` anchors were re-checked and still hold
+exactly. §6 step 1 marked DONE, §7 carries the `_ALLOWED_HOSTS` finding, DoD 001a struck through.
+The kickoff prompt calls the standing rules "ADR-0392"; they are **ADR-0393** — `CLAUDE.md` is right.
+
+**Next:** 001b (observed banner) → 001c (operator decision + ADR **0395**, taken after `git fetch`).

@@ -435,6 +435,37 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-13 (e) — the guard broke itself the first time somebody followed the rule it guards
+
+The attribution guard added a few hours earlier
+(`test_docs_cite_the_rules_under_the_adr_that_decided_them`) derives the correct ADR number from
+disk rather than hard-coding it — the right instinct, and the mutation battery proved it survives a
+renumber. It found the defining ADR by scanning every ADR **body** for the string `QC-1`. It was
+green on its own branch and green in CI.
+
+Then `main` merged ADR-0394, which was itself written under the new rules and therefore carries a
+`## Verification (QC-1)` section. Two ADRs now matched. The oracle's own ambiguity assertion fired
+and the guard went **red on merge** — CI never saw it, because CI ran the PR against a base where
+ADR-0394 did not yet exist.
+
+- **An oracle that searches for a rule's NAME goes ambiguous the moment the rule is obeyed.** Every
+  ADR from ADR-0394 onward mentions QC-1, because QC-1 requires them to show their verification.
+  The population the oracle discriminates over was guaranteed to grow to include every future
+  member. That is not a mutation someone has to introduce; it is Tuesday.
+- **"Deciding" is a claim about SUBJECT, and an ADR's subject is its title.** The fix scopes the
+  match to line 1. A body mention is a citation; a title is a claim of authorship. One ADR's title
+  names QC-1 and always will.
+- **The mutation battery said 8/8 and was still blind here.** Mutation 7 deliberately made the
+  oracle ambiguous and scored the resulting failure as CAUGHT — treating "the guard refuses to
+  judge" as a success. It never asked whether that state would arise *without* a mutation. A
+  battery answers "does the check fire when I break things"; it does not answer "will the check
+  still be true next week". **Ask what the corpus the oracle reads will look like after the next
+  three commits.** The replacement battery adds a must-STAY-GREEN case (a new ADR mentioning QC-1
+  in its body only) so the regression cannot come back as a passing mutation.
+- **CI green on a PR is a statement about the PR's base, not about main.** Both the conflict and
+  this failure were invisible until the merge was actually performed. When a PR sits while main
+  moves, merge main in and re-run before believing the badge.
+
 ### 2026-08-13 (d) — the PR that fixed a wrong ADR number left a wrong ADR number
 
 PR #582 existed for one reason: `NEXT-SESSION-PROMPT.md` contradicted itself about which ADR the
@@ -4799,3 +4830,58 @@ feature worked, and measure that.** Requirement 2 is amended accordingly (ADR-03
 - **What worked:** two independent instruments agreeing. The call graph said `export_wbs`
   contributes no movers; the render probe independently showed its export labels do not move. When
   a probe is already running, the second confirmation is nearly free — take it.
+
+### 2026-08-13 (d) — A data pin guards the literal, not the guarantee (ADR-0394, DoD 001a)
+
+The task was one sentence: pin `net_guard._LOOPBACK_HOSTNAMES` and `_LOCAL_HTTP_SCHEMES` so the
+Law-1 locality guarantee stops resting on a frozenset nothing asserts. The obvious implementation is
+one assert per set. The mutation battery proved that would have been a **weaker guard than it looks**,
+and that is the lesson worth keeping.
+
+- **Three of nine mutations bypassed the allowlist while leaving both frozensets pristine.** A
+  `candidate.endswith(".nasa.gov")` short-circuit inserted *above* the lookup; equality softened to
+  `any(n in candidate for n in _LOOPBACK_HOSTNAMES)` (which accepts `localhost.evil.com`); and
+  `is_loopback_host` returning `True` outright. On all three the exact-equality assertions stayed
+  **green**, because the data really was unchanged — the *code that reads it* was what moved. Only
+  the behavioural sweeps went red. **Pin the constant AND sweep the behaviour**: the first tells you
+  which literal changed, the second is the only one that survives someone routing around it. Neither
+  subsumes the other, and the battery — not judgement — is what established that.
+- **Prove the sandbox is the tree being measured, or every "CAUGHT" is unfalsifiable.** The battery
+  mutates a copy of `src/` and runs pytest with `PYTHONPATH` pointing at the copy. Whether that
+  actually shadows the editable install is not obvious: this repo's editable install is a plain
+  `.pth` path entry (so `PYTHONPATH` wins), but a setuptools `__editable___*_finder.py` registers a
+  **`sys.meta_path` finder**, which is consulted *before* `sys.path` and would silently win — the
+  battery would then have measured the real, unmutated tree and reported nine confident "CAUGHT"
+  results that were pure noise, plus a "control green" that was also meaningless. Added a **canary**
+  that aborts the whole run unless a sandbox mutation demonstrably changes the outcome. Any battery
+  that measures through an indirection needs one.
+- **Re-measure the premise, not just the fix (QC-2).** The audit reported "226 green, reproduced at
+  854" under the widening. Those are real numbers about a selection I did not run, so they are
+  testimony. Re-derived it: **336 passed, 0 failed** on my selection, with an in-process check that
+  the sandbox really did return `True` for the gateway host. Same conclusion, but now it is evidence.
+  Reporting someone else's count as my measurement is the exact habit `wc` decides.
+- **A pin must not be satisfiable by breaking the feature.** `narrow_drop_ip6` went red too. It had
+  to: `ip6-localhost` was in the allowlist and in **no test at all**, so deleting it was as invisible
+  as adding a gateway. A one-directional guard would have blessed the narrowing (Law 2 — never weaken
+  a test, and never let a guard reward a weakening).
+- **The linter found a real one.** Ruff's RUF001 flagged the Cyrillic-`о` homograph I added *as a
+  deliberate test input*. Rewrote it as a `\u043e` source escape and asserted the escape evaluates to
+  the homograph — the input keeps its teeth, the source stays unambiguous, and a future editor cannot
+  "helpfully" normalize it away. Worth generalizing: **an intentionally confusable literal belongs in
+  the source as an escape**, with a test that it still means what you think.
+- **Scope discipline paid.** Tracing locality decisions turned up a second unpinned security
+  frozenset — `web/app.py:1076`'s `_ALLOWED_HOSTS`, the DNS-rebinding guard, named by no test file
+  (measured: widened, 23 host-header tests stay green). 001a said *land alone*. Recorded it in three
+  places with its measurement rather than bundling it, so the next session inherits evidence instead
+  of a hunch.
+- **The battery's own reporter was an unproven instrument.** It counted `always_true` as **4**
+  failing tests; a direct re-count with a wide `COLUMNS` and `-rf --tb=no` showed **6**. The battery
+  ran pytest with a minimal environment, so at the default 80-column width the long assertion
+  messages wrapped and its `FAILED`-line parser mis-read them. The **verdicts** were never wrong —
+  those come from the exit code, and all nine mutations were caught in every run — but a *count* had
+  already been written into an ADR, a handoff and a session log before it was verified. Caught only
+  because a change that provably cannot alter pass/fail (an f-string in a failure message) appeared
+  to change a count, and that impossibility was chased instead of shrugged at. **An instrument that
+  summarizes a measurement is itself a measurement**: prove the summarizer, not just the subject.
+  The corollary is cheap and general — when a number moves and the edit cannot have moved it, the
+  number was never measured; go and measure it.
