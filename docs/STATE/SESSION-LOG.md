@@ -13800,3 +13800,53 @@ AND the parity gate green); `mpxj_ref()` still has no shallow-clone guard and it
 40-hex shape; the pre-commit guard has no image detector against 120 tracked PNGs; 22 playwright
 modules hard-pin a chromium build number; FINAL-REPORT overclaims on parity and on "No data
 off-machine"; 8 stale remote branches 148-611 commits behind.
+
+## 2026-08-13 (b) — QC-1 / QC-2 become binding working rules (ADR-0392, v1.0.199)
+
+Operator directive: make two obligations mandatory for all future sessions, no exceptions — (1) a
+pass/fail check must be built and run in a sandbox to try to refute a claim BEFORE any change,
+conclusion or document update is reported; (2) read everything, skip nothing, assume nothing, verify
+everything, and if an error is found apply (1) before correcting it.
+
+**Where they went and why.** `CLAUDE.md` gains a new section, **"The two non-negotiable working
+rules"**, immediately after the two product laws and at the same standing. The pre-existing
+"READ EVERYTHING, ASSUME NOTHING, VERIFY EVERYTHING" was a **trailing sentence inside the ADR-0240
+section** — placement that predicted its fate, since a rule that is a footnote inside another rule
+reads as commentary. It is **promoted, not duplicated**: that paragraph now points at QC-2 and notes
+that ADR-0240's "no finding is reported until the lead re-verifies it" is QC-1 applied to
+multi-agent work.
+
+**The laws keep their numbering, deliberately.** "Law 1"/"Law 2" appear in **110 source and test
+files**, and "the two non-negotiable laws" in five other docs; renumbering to four invalidates all of
+it for no gain. The two kinds are genuinely different — laws constrain the **artifact**, working
+rules constrain the **method**. Naming checked for collisions before use: `QC-1`/`QC-2` returned 0
+hits and match the existing `qc-checker` agent. **`falsification` was rejected on evidence** —
+`falsify`/`falsified`/`falsifying` are banned accusatory terms in `ai/citations.py`'s figure gate,
+and TP4's planted manipulation is literally a "falsified baseline".
+
+**The rules were applied to their own creation, and caught me.**
+1. `tests/test_standing_rules.py` was written FIRST against a `CLAUDE.md` that did not contain the
+   rules, and **observed to fail** — 3 substantive assertions red, 2 controls green, so the failure
+   was real rather than vacuous.
+2. Rules written → green.
+3. **The mutation battery found a defect in my own guard.** Two mutations ESCAPED: stripping
+   `sandbox` and `refute` from QC-1's binding sentence still passed, because both words survived in
+   QC-1's bullet list; and softening "MUST be observed to FAIL" still passed, because the bare token
+   `fail` matched "never failed" further down the section. The clause checks were **file-global, not
+   scoped to each rule's own section** — a census can be exact and still not be membership.
+4. Guard hardened — `_rule_section()` slices each rule from its heading to the next, and the
+   red-before-green pin moved from the token `fail` to the phrase `observed to fail`. Battery
+   re-run: **12/12 caught by name**, control green, `CLAUDE.md` md5-identical after every restore.
+
+Battery coverage: delete QC-1 · delete QC-2 · bury the section heading · comment a rule out · soften
+the mandatory language to advice · strip sandbox/refute from the binding sentence · drop
+red-before-green · drop the mutation obligation · drop the UNVERIFIED-disclosure obligation · drop
+the QC-2 → QC-1 interlock · synonym-swap the red-before-green phrase.
+
+**Deliberately NOT done:** no hook enforces QC-1 mechanically. A hook cannot judge whether a check
+was *capable of refuting* its claim, and a mechanical proxy for that judgement would be theatre. The
+rule is enforced by working discipline and pinned against silent deletion — the honest boundary of
+what automation can do here.
+
+No shipped code changed (`src/` untouched), so no version bump and no wheel/installer rebuild. The
+gateway ADR the previous handoff reserved as "0392" is now **0393**.
