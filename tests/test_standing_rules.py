@@ -166,3 +166,88 @@ def test_the_rules_are_not_commented_out() -> None:
         assert "QC-1" not in block and "QC-2" not in block, (
             "a standing rule has been commented out of CLAUDE.md"
         )
+
+
+# --------------------------------------------------------------------------------------------
+# Attribution: the rules must be cited under the ADR that actually decided them.
+#
+# A wrong ADR number is not a typo in a doc nobody reads — the kickoff prompt is the FIRST thing
+# a session is told to obey, and it sends the reader to a decision record. Pointing at the wrong
+# one hands the next session a different decision entirely. This guard exists because exactly
+# that shipped: the kickoff pinned QC-1/QC-2 to ADR-0392 (an unrelated Ask-panel defect fix)
+# while citing this very file as their guard, and it survived a PR whose whole purpose was
+# fixing a DIFFERENT wrong ADR number in the same paragraph family.
+#
+# SCOPE, stated honestly: this checks lines that name this test module — i.e. lines that are
+# already claiming to describe the rules' pinning. It does NOT attempt to parse arbitrary prose
+# attribution, so it cannot catch a wrong number in a sentence that never names the guard. It
+# is deliberately the mechanical, false-positive-free subset rather than a fuzzy one that would
+# fire on ordinary editing and get deleted.
+# --------------------------------------------------------------------------------------------
+
+#: Docs that make normative claims about the standing rules.
+_ATTRIBUTION_DOCS = (
+    "CLAUDE.md",
+    "docs/STATE/HANDOFF.md",
+    "docs/STATE/NEXT-SESSION-PROMPT.md",
+    "docs/STATE/SESSION-LOG.md",
+    "docs/STATE/LESSONS-LEARNED.md",
+)
+
+#: This module's own stem — the token a doc uses when it says "pinned by <the rules' guard>".
+_GUARD_TOKEN = Path(__file__).stem
+
+_ADR_REF = re.compile(r"ADR-(\d{4})")
+
+
+def _rules_adr_number() -> str:
+    """The ADR number that ACTUALLY decided QC-1/QC-2, read off the ADR corpus itself.
+
+    Deriving this from disk instead of hard-coding it is what makes the check an INDEPENDENT
+    oracle: a doc claiming "the rules are ADR-N" is judged against the ADR that defines them,
+    not against a constant asserted a few lines above by the same file that is doing the
+    judging. QC-1: an oracle must be independent of the thing it judges.
+    """
+    adr_dir = REPO_ROOT / "docs" / "adr"
+    defining = [
+        path
+        for path in sorted(adr_dir.glob("[0-9][0-9][0-9][0-9]-*.md"))
+        if "QC-1" in path.read_text(encoding="utf-8")
+    ]
+    assert len(defining) == 1, (
+        "the oracle itself is ambiguous — expected exactly one ADR defining QC-1, found "
+        f"{[p.name for p in defining]}"
+    )
+    return defining[0].name[:4]
+
+
+def test_docs_cite_the_rules_under_the_adr_that_decided_them() -> None:
+    """Any doc line that names the rules' guard AND cites an ADR must cite the RIGHT ADR."""
+    expected = _rules_adr_number()
+    examined = 0
+    wrong: list[str] = []
+
+    for rel in _ATTRIBUTION_DOCS:
+        path = REPO_ROOT / rel
+        assert path.is_file(), f"attribution doc is missing: {rel}"
+        for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+            if _GUARD_TOKEN not in line:
+                continue
+            cited = set(_ADR_REF.findall(line))
+            if not cited:
+                # naming the guard without citing an ADR is fine — nothing to get wrong
+                continue
+            examined += 1
+            if expected not in cited:
+                wrong.append(f"{rel}:{lineno} cites ADR-{'/ADR-'.join(sorted(cited))}")
+
+    # Positive control: without this the sweep passes vacuously the day this module is renamed
+    # or the docs stop citing it — an empty population is not a clean bill of health.
+    assert examined, (
+        f"no doc line cites {_GUARD_TOKEN!r} together with an ADR number — the sweep found "
+        "nothing to check, so its silence means nothing"
+    )
+    assert not wrong, (
+        f"docs attribute QC-1/QC-2 to the wrong ADR (they were decided by ADR-{expected}, per "
+        f"docs/adr/{expected}-*.md): {wrong}"
+    )

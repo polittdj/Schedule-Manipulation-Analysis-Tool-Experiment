@@ -435,6 +435,43 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-13 (d) — the PR that fixed a wrong ADR number left a wrong ADR number
+
+PR #582 existed for one reason: `NEXT-SESSION-PROMPT.md` contradicted itself about which ADR the
+gateway decision would be, and I fixed it (0393 → 0394). It merged. Then, re-reading the merged
+file under QC-2, line 60 of that same document said the standing working rules are **ADR-0392**.
+They are ADR-0393; 0392 is the unrelated Ask-panel defect fix. The wrong number was four
+paragraphs from the one I had just corrected, in a sentence that named `test_standing_rules.py`
+— the rules' own guard — as its evidence.
+
+- **Fixing the instance is not fixing the class.** I read the paragraph the contradiction was
+  in, corrected it, and shipped. I never asked "does this document get this number wrong
+  ANYWHERE else" — which is one `grep` and would have caught it before the PR, not after the
+  merge. When a defect is "a doc states a fact wrongly", the unit of repair is *every statement
+  of that fact*, not the sentence someone happened to point at. Scope the finding before acting
+  on it (QC-2) cuts both ways: it also means don't scope it smaller than it is.
+- **QC-2 earned its keep on the author's own just-merged work.** Nothing external flagged this.
+  It surfaced because "re-read what you shipped" was applied to a PR that had already gone green
+  and merged, i.e. at exactly the moment it feels least necessary. Inherited claims are testimony
+  — and a claim I wrote an hour ago is inherited too.
+- **A guard whose oracle is a constant proves nothing about the constant.** The regression guard
+  (`test_docs_cite_the_rules_under_the_adr_that_decided_them`) derives the correct number by
+  finding the one ADR file on disk that defines QC-1, rather than hard-coding `0393`. The
+  mutation that proves this matters is the fifth one: rename the ADR `0393-* → 0395-*` and leave
+  the docs saying 0393. A hard-coded oracle sails straight through; this one goes red naming
+  0395. The other seven mutations (wrong number in each of three docs, oracle deleted, oracle
+  made ambiguous, sweep population emptied) all fire too — 8/8, sandbox byte-identical after
+  every restore.
+- **The honest guard is the mechanical subset, not the fuzzy superset.** I wanted to check every
+  prose attribution and found the general version false-positives immediately (line 5 legitimately
+  names 0392 while *explaining* the collision). So the guard checks only lines that name the
+  rules' guard file and cite an ADR — a population it can judge without guessing — and its
+  docstring states that scope outright. A guard that fires on ordinary editing gets deleted, and
+  then it guards nothing.
+- **No ADR for this one, deliberately.** ADR-0394 is reserved for the operator's gateway
+  decision (001c), and that reservation is the very thing #582 was fixing. Burning 0394 on a
+  one-character doc correction would re-break what the PR repaired.
+
 ### 2026-08-13 (c) — a standing rule is DATA, and unpinned data is not a guarantee (ADR-0393)
 
 The operator made two working rules mandatory. Writing them taught two things, and the second one
