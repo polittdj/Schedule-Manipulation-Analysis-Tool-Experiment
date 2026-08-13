@@ -216,7 +216,7 @@ def _forecast_explainer(fc: ForecastSet, *, prov: str = "") -> str:
             "Reads the finish MS&nbsp;Project / P6 <i>stored in the file</i> rather than recomputing "
             "it. The source tool is progress-aware &mdash; where it has rescheduled an in-progress "
             "activity's remaining work it records that decision &mdash; so on a progressed schedule "
-            "this can sit LATER than the pure-logic CPM date above. That gap is the point of showing "
+            "this can sit LATER than the CPM date above. That gap is the point of showing "
             "both: CPM says what the network implies, this says what the file asserts.",
             "Method: the latest stored finish among the schedule's activities &mdash; no "
             "recalculation, so it carries whatever constraints, levelling or out-of-sequence "

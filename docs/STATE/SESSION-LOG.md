@@ -13736,3 +13736,67 @@ dropping a constraint cannot pull work earlier than the date it actually began �
 39 Project2 targets still diverge, so the ADR-0251 contract holds; the test now asserts both facts.
 **Lesson: a fixture sweep's GLOB is part of its claim** — the same failure family as "a sweep's
 population/pattern is part of its claim", and it hid the single largest effect of the change.
+
+## 2026-08-13 — full-repo audit: the approved-gateway class enters Band 1 (v1.0.199)
+
+Branch restarted from `main` cacd769 after #578 squash-merged (`git fetch --prune` + `checkout -B`).
+An **audit session**, run under ADR-0240's protocol: seven parallel dimension readers over the whole
+repo (Law-1/egress · AI banner truth · engine/parity · product-doc truth · state-docs/ADR · tests &
+guards · packaging/deps/CI), each dimension's findings re-verified by an adversarial agent instructed
+to REFUTE, then reconciled by the lead against code evidence. **57 findings — 37 CONFIRMED, 20
+OVERSTATED-and-narrowed, 0 refuted.** The verifiers narrowed a fifth of the output, which is why they
+are run.
+
+**The headline: POLARIS is running against a NASA-approved AI gateway and the repo had no record.**
+The operator pointed the tool at `https://proxy.fast.luna.nasa.gov` /
+`claude-opus-4.8-thinking-itar` on their own Windows machine; a separate assistant session patched
+`ai/backend.py`, `web/app.py`, `web/settings.py` and added a hostname allowlist entry **in that local
+install**. It works. **None of it is in this repository** — zero hits for `POLARIS_GATEWAY` /
+`luna.nasa.gov` / `opus-4.8` across `src/`, `tests/`, `tools/`, `installer/`. Written up anchor by
+anchor in the new `docs/PLAN/APPROVED-GATEWAY-INTEGRATION.md`.
+
+**The critical finding — the Law-1 guarantee is one unpinned frozenset.** Every locality check
+funnels through `net_guard.py:127` `_LOOPBACK_HOSTNAMES`. No test pins its contents. An agent
+EXECUTED the widening in memory (no repo file touched): adding the gateway hostname left **226**
+guard/AI/air-gap/startup tests green, and a second agent reproduced it at **854**. The suites pin
+only sampled negatives (`8.8.8.8`, `evil.com`, …), so a *named* allowlist entry is invisible to all
+of them. The exact change made on the operator's machine is undetectable by CI, by review, or by a
+future audit reading a green suite.
+
+**The design defect that caused it.** There is no working gateway path: `route_backend` accepts a
+`cloud_backend` no production caller supplies, `ai/cloud.py` does not exist, yet `settings.py:449`
+still offers "Cloud (UNCLASSIFIED only)". The only route that works is widening the loopback
+validator — which silently re-labels a remote host as local everywhere at once. An architecture that
+offers no legitimate path to a lawful need gets the dangerous path taken.
+
+**Why the banner lies.** `route_backend` hands the literal "Local-only — no data leaves this
+machine." to BOTH local paths with no classification check and no endpoint inspection; `banner_for`
+is config-derived and `chrome.py:175` renders that, so a DOWN gateway still shows as up.
+`route_backend`'s own Banner is dead code; `is_local` is a hardcoded constant nothing reads. Six
+user-visible claims plus four i18n translations are affected, and **two print inside exported
+exhibits** (`ai/brief.py:625`, `web/sra.py:1076`).
+
+**The scoping correction the adversarial pass forced, and it matters:** nothing in THIS repo
+falsifies those sentences. The shipped build's validators hold, so the claims are true *as shipped*;
+they are false only of a **patched install**. "The docs are false" was the overstatement; "the docs
+are unconditional where they must be conditional" is the finding.
+
+**Shipped code changed — and all of it was my own ADR-0391 defect.** Three user-visible strings still
+called the CPM finish "pure-logic", which the actual-start floor made false: `engine/forecast.py:85`
+(the /forecast basis line), `web/forecast.py:219`, `web/chrome.py:470`. Fixed. The ~15 other
+`pure-logic` hits describe **float/critical** basis, which ADR-0391 did not touch — deliberately left
+alone after reading each in context. No test asserted the three phrases and the oracle carries zero
+/forecast labels, so the blast radius was small.
+
+**No ADR was opened.** The audit's recommendation is either to delete the dead cloud option or to
+build a `GatewayBackend` — an architecture-and-accreditation decision belonging to the operator. It
+is queued as DoD **001c (`human`)**; the next session opens ADR-0392 once the operator picks. DoD item
+**001 is marked CLOSED** by ADR-0391, with its row kept because the disproved diagnosis is part of the
+record, and three new Band-1 items (001a/001b/001c) added.
+
+Also confirmed and queued: `actual_start_driven` is computed but consumed nowhere in `src/`;
+ADR-0391's own-calendar floor branch is behaviorally unguarded (deleting it leaves the engine suite
+AND the parity gate green); `mpxj_ref()` still has no shallow-clone guard and its test checks only
+40-hex shape; the pre-commit guard has no image detector against 120 tracked PNGs; 22 playwright
+modules hard-pin a chromium build number; FINAL-REPORT overclaims on parity and on "No data
+off-machine"; 8 stale remote branches 148-611 commits behind.

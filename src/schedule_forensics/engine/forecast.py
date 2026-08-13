@@ -82,7 +82,8 @@ def compute_finish_forecasts(
             "cpm",
             "Schedule logic (CPM)",
             cpm_finish,
-            f"the network's pure-logic computed finish over {len(tasks)} activities",
+            f"the network's computed finish over {len(tasks)} activities — logic-driven, with "
+            "started work floored at its recorded actual start (ADR-0391)",
         )
     ]
 
