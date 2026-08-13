@@ -1,93 +1,91 @@
-# Handoff — 2026-08-13 (c) (QC-1 / QC-2 become binding working rules; ADR-0393; v1.0.200)
+# Handoff — 2026-08-13 (d) (DoD 001a closed: the loopback allowlist is pinned; ADR-0394; v1.0.200)
 
-> ## STATUS (current) — **pushed, draft PR open** on `claude/polaris-data-date-fix-065mz7`,
-> branched from `main` **a19b969**, then **merged `origin/main` ff11a7b** when #580 landed
-> mid-session. Highest ADR now **0393**. **No shipped code changed by THIS session**
-> (`src/` untouched) — the version is **v1.0.200**, inherited from #580, and no wheel/installer
-> rebuild was required of me. SCHEMA stays 2.11.0.
+> ## STATUS (current) — **pushed, draft PR open** on `claude/polaris-kickoff-ss9eb8`,
+> branched from `main` **9c0c918** (clean restart: the branch was already at `origin/main`,
+> 0 ahead / 0 behind). Highest ADR now **0394**. **No shipped code changed** — `src/` is
+> untouched, so the version stays **v1.0.200** and **no wheel/installer rebuild was required**.
+> SCHEMA stays 2.11.0. One new file: `tests/guards/test_loopback_allowlist.py`.
 >
-> ## THE ADR-NUMBER TRAP FIRED — and it was my error, not bad luck
-> I checked `docs/adr/` for the next free number against my LOCAL tree and did **not** re-fetch
-> `origin` first. PR **#580** ("The Ask panel could not see the workbook") merged at 12:51Z and
-> took **ADR-0392** and **v1.0.200**. Caught only because a 502 on PR creation made me list the
-> repo's PRs and read #580. Mine renumbered **0392 → 0393**; the gateway ADR the last handoff
-> reserved is now **0394**. The standing rule already said *fetch before taking an ADR number,
-> and again before committing* — I did the first check against a stale local tree, which is the
-> same failure QC-2 exists to prevent. Both halves of that rule mean `git fetch origin` FIRST.
+> ## What landed: DoD 001a — the Law-1 guarantee stopped being an unasserted data literal
+> Every locality decision funnels through `net_guard._LOOPBACK_HOSTNAMES` (`:127`) and
+> `_LOCAL_HTTP_SCHEMES` (`:234`), and through `is_loopback_host` / `is_local_http_endpoint` into
+> `ai/ollama.py:130`, `ai/openai_compat.py:39`, `web/app.py:6549/6551/6590`, `launcher.py:232`
+> and `web/app.py:8161`. **Nothing pinned either set's contents.** The new guard pins them in
+> **two layers**, and the mutation battery — not taste — decided that both were required.
 >
-> ## What landed: two standing WORKING RULES, at the same standing as the two laws
-> `CLAUDE.md` gains **"The two non-negotiable working rules"**, placed immediately after the two
-> product laws. Operator directive, binding on every session, **no exceptions**:
+> * **Data pins** — both frozensets asserted *exactly* against **test-side literals never imported
+>   from the module under test** (an oracle that reads the value it judges cannot refute anything).
+> * **Behavioural closure sweeps** — over a curated non-loopback population (the gateway and every
+>   parent domain, remote/private/link-local IPs, wildcard binds, a Cyrillic-`о` homograph, the
+>   decimal-packed `2130706433`, and generated confusables like `localhost.evil.com` /
+>   `notlocalhost` / `localhost.nasa.gov`), asserting **what is actually accepted**, both directions,
+>   plus a scheme sweep pinning acceptance to exactly `{http, https}`.
 >
-> * **QC-1 — Prove or refute it before you report it.** Before any change is made, before any
->   conclusion is drawn, and before any document is updated: build an executable **pass/fail**
->   check, run it in a **sandbox**, and use it to try to **REFUTE** the claim — *before the result
->   is reported*. Sub-obligations: **red before green** (the check must be OBSERVED TO FAIL) ·
->   executable beats inspectional · sandbox, never mutate the instrument · **prove the check has
->   teeth by mutation** · when a check is genuinely impossible, mark the claim **UNVERIFIED** in the
->   deliverable rather than assert it silently · an oracle must be independent of what it judges.
-> * **QC-2 — Read everything, verify everything.** Read everything, skip nothing, assume nothing,
->   verify everything — documentation, code, comments, tests, config, instructions, prior sessions'
->   claims, and `CLAUDE.md` itself. **If an error is found, QC-1 applies before the correction.**
->   Sub-obligations: inherited claims are testimony, not evidence · know a number's provenance ·
->   a config-derived claim describes intent, not behaviour · scope a finding before acting on it.
+> ## The premise was RE-MEASURED, not inherited (QC-2)
+> The audit's "226 green, reproduced at 854" is testimony about a selection I did not run. Re-derived
+> in a sandbox copy with `proxy.fast.luna.nasa.gov` added to the allowlist — verified in-process that
+> `is_loopback_host("proxy.fast.luna.nasa.gov")` returned `True` — the guard/AI/air-gap/startup/
+> launcher/exhibit-CLI suites ran **336 passed, 0 failed** with the new module deselected. Different
+> population, same conclusion: **the pre-existing suites are blind to a named allowlist entry.**
 >
-> The old buried sentence ("READ EVERYTHING, ASSUME NOTHING, VERIFY EVERYTHING" — a trailing clause
-> inside the ADR-0240 section, which is why it was skipped) is **promoted, not duplicated**: that
-> paragraph now points at QC-2 and notes that ADR-0240's "no finding is reported until the lead
-> re-verifies it" is QC-1 applied to multi-agent work.
+> ## Verification (QC-1) — 9/9 caught BY NAME
+> Battery mutates a **sandbox copy of `src/`**, never the instrument, and carries two self-checks
+> that make a meaningless result impossible to report as a real one: a **canary** that aborts unless
+> a sandbox mutation actually changes the outcome (proving `PYTHONPATH` really shadows the editable
+> install's `.pth`), and a **control** run that must be green. Mutations: `widen_gateway` (8 tests
+> red) · `widen_other` (2) · `narrow_drop_ip6` (4) · `scheme_widen_ftp` (2) · `suffix_bypass` (6) ·
+> `substring_bypass` (4) · `always_true` (6) · `drop_scheme_check` (1) · `drop_host_check` (2).
+> `net_guard.py` md5 `ff76e70c…` **identical** before and after. Re-run in full against the final
+> file after lint fixes, so the reported result is the one that ships.
 >
-> ## The laws keep their numbering — deliberate
-> "Law 1"/"Law 2" appear in **110 source and test files** and "the two non-negotiable laws" in five
-> other docs. Renumbering to four invalidates all of it for no gain, and the two kinds differ: the
-> **laws constrain the artifact**, the **working rules constrain the method**. Naming verified
-> collision-free; *falsification* was rejected on evidence — `falsify`/`falsified` are **banned
-> accusatory terms** in `ai/citations.py`'s figure gate and TP4's planted manipulation is literally
-> a "falsified baseline".
+> **The finding that shaped the design:** `suffix_bypass`, `substring_bypass` and `always_true`
+> leave **both frozensets provably untouched** — the data pins stayed GREEN on all three, and only
+> the behavioural sweeps caught them. A data pin guards the literal; it does not guard the
+> guarantee. Neither layer subsumes the other.
 >
-> ## The rules were applied to their own creation — including the part where it caught me
-> 1. `tests/test_standing_rules.py` written **FIRST**, against a `CLAUDE.md` without the rules, and
->    **observed to fail**: 3 substantive assertions RED, 2 controls GREEN (so the failure was real,
->    not vacuous). 2. Rules written → green. 3. **Mutation battery found a defect in my own guard**:
->    two mutations ESCAPED — stripping `sandbox`/`refute` from QC-1's binding sentence passed
->    because both words survived in its bullet list, and softening "MUST be observed to FAIL" passed
->    because the bare token `fail` still matched "never failed". **The clause checks were
->    file-global, not scoped to each rule's section** — a census can be exact and still not be
->    membership. 4. Guard hardened (`_rule_section` per-rule slicing; phrase-level not token-level
->    pins) and re-run: **12/12 caught by name**, control green, `CLAUDE.md` md5-identical after
->    every restore.
+> ## NEW FINDING — the same defect, second surface, NOT fixed here
+> `web/app.py:1076` holds `_ALLOWED_HOSTS = frozenset({"127.0.0.1","localhost","::1","testserver"})`,
+> the DNS-rebinding Host-header guard. **No test file names it.** Measured: with the gateway hostname
+> added in a sandbox, `tests/web/test_sec_hardening.py` + `tests/test_launcher.py` = **23 passed, 0
+> failed**. Same class as 001a, different security property (request admission, not egress). Left
+> alone deliberately — 001a was specified to land ALONE — and it is the next cheap, high-value pin.
 >
-> ## Verification
-> Battery 12/12 (delete either rule · bury the heading · comment out · soften to advice · strip
-> sandbox/refute · drop red-before-green · drop mutation · drop UNVERIFIED · drop the QC-2→QC-1
-> interlock · synonym-swap the red-before-green phrase) · `ruff check .` clean whole-tree ·
-> `ruff format --check` clean · `mypy --strict` 149 files · bandit exit 0 · state-docs drift guard ·
-> full suite green.
+> ## Doc corrections made in passing (QC-2)
+> `APPROVED-GATEWAY-INTEGRATION.md` §2's `web/app.py` anchors had drifted (`6406/6408/6447`, `8018`
+> recorded against `cacd769`); re-derived to `6549/6551/6590` and `8161`. The `net_guard.py` anchors
+> it cites were re-checked and **still hold exactly**. §6 step 1 marked DONE; §7 carries the
+> `_ALLOWED_HOSTS` finding. Note also: the kickoff prompt says the standing rules are "ADR-0392" —
+> they are **ADR-0393** (`CLAUDE.md` is right, the kickoff was stale).
 >
-> ## Next — unchanged from #579, still Band 1 in dependency order
-> **001a** pin `net_guard._LOOPBACK_HOSTNAMES` / `_LOCAL_HTTP_SCHEMES` contents + mutation proof
-> (land FIRST, alone) → **001b** observed banner → **001c** operator's cloud/gateway decision, then
-> its ADR (**0394** now). Read `docs/PLAN/APPROVED-GATEWAY-INTEGRATION.md` first.
-> Then: `actual_start_driven` consumed nowhere · ADR-0391's own-calendar floor unguarded ·
-> `mpxj_ref()` shallow-clone guard (DoD 117) · pre-commit has no image detector vs 120 tracked PNGs
-> · 22 playwright modules pin a chromium BUILD NUMBER · FINAL-REPORT overclaims · 8 stale branches.
-> **Operator:** the 001c decision · FX-03/04 re-run · sub-day-negative-float Fuse run · license.
+> ## Next — Band 1 continues, in dependency order
+> **001b** make the sovereignty banner OBSERVED, not config-derived (`route_backend`'s Banner is
+> dead code; `chrome.py:175` renders `banner_for(state.ai_config)`, so a DOWN gateway still displays
+> as up; six user-visible claims + four i18n translations, two of which print inside EXPORTED
+> exhibits at `ai/brief.py:625` and `web/sra.py:1076`; prove it can go red by routing a non-local
+> fake) → **001c** the operator's cloud/gateway decision, then its ADR (**0395** now — take the next
+> free number after `git fetch origin`, never one a doc predicted).
+> Then: pin `_ALLOWED_HOSTS` · `actual_start_driven` consumed nowhere · ADR-0391's own-calendar floor
+> unguarded · `mpxj_ref()` shallow-clone guard (DoD 117) · pre-commit has no image detector vs 120
+> tracked PNGs · 22 playwright modules pin a chromium BUILD NUMBER · FINAL-REPORT overclaims · 8
+> stale branches. **Operator:** the 001c decision · FX-03/04 re-run · sub-day-negative-float Fuse
+> run · license.
 >
 > ## Carried forward
-> ADR-0353..0393 closed — do not re-open. NEW lesson: **a standing rule is DATA, and unpinned data
-> is not a guarantee** — the same shape as the unpinned `_LOOPBACK_HOSTNAMES` frozenset, so the
-> rules that govern every session are now pinned like a security constant. Second: **scope a
-> substring assertion to the region that BINDS** — a global grep for a clause passes when the word
-> survives anywhere in the document, which is how two weakenings slipped through my first guard.
-> Standing traps unchanged (a fixture generated by a rule cannot validate that rule · the
-> corroborating oracle may already be in a doc nothing cross-references · an ADR's observation can
-> be right and its diagnosis wrong · a new disclosure needs its own channel when the existing one
-> carries a JUDGEMENT · a sweep's glob/population/pattern are part of its claim · `| head -N` can
-> SIGPIPE-kill a build mid-way · the MPXJ pin drifts in a shallow clone (FIRED) · never MEASURE a
-> tree a battery is mutating · never MUTATE an instrument a measurement is using · `grep -c` exits 1
-> on zero · two ruffs on PATH, use `python -m ruff` · `pytest -m parity` alone exceeds 900 s · the
-> container starts with NO deps installed · `git fetch origin` before taking an ADR number and again
-> before committing). A number written mid-session is not a measurement (`wc` decides).
+> ADR-0353..0394 closed — do not re-open. NEW lesson: **a data pin guards the literal, not the
+> guarantee** — pin the CONSTANT *and* sweep the BEHAVIOUR, because a bypass added above the lookup
+> leaves the constant pristine. Second: **when a battery mutates a sandbox, prove the sandbox is the
+> tree being measured** — a canary that must go red, or every "CAUGHT" below it is unfalsifiable.
+> Standing traps unchanged (a standing rule is DATA, and unpinned data is not a guarantee · scope a
+> substring assertion to the region that BINDS · a fixture generated by a rule cannot validate that
+> rule · the corroborating oracle may already be in a doc nothing cross-references · an ADR's
+> observation can be right and its diagnosis wrong · a new disclosure needs its own channel when the
+> existing one carries a JUDGEMENT · a sweep's glob/population/pattern are part of its claim ·
+> `| head -N` can SIGPIPE-kill a build mid-way · the MPXJ pin drifts in a shallow clone (FIRED) ·
+> never MEASURE a tree a battery is mutating · never MUTATE an instrument a measurement is using ·
+> `grep -c` exits 1 on zero · two ruffs on PATH, use `python -m ruff` · `pytest -m parity` alone
+> exceeds 900 s · the container starts with NO deps installed · `git fetch origin` before taking an
+> ADR number and again before committing). A number written mid-session is not a measurement
+> (`wc` decides).
 
 # (prior) handoffs — archived
 

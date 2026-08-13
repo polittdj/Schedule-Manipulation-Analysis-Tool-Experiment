@@ -35,7 +35,10 @@ net_guard.py:237   is_local_http_endpoint()  -> scheme check + is_loopback_host
 ```
 
 Every enforcement point depends on it: `ai/ollama.py:130`, `ai/openai_compat.py:39`,
-`web/app.py:6406/6408/6447`, `launcher.py:232`, `web/app.py:8018`.
+`web/app.py:6549/6551/6590`, `launcher.py:232`, `web/app.py:8161`.
+*(Anchor correction, ADR-0394: the `web/app.py` numbers were recorded against `cacd769` as
+`6406/6408/6447` and `8018` and had drifted; re-derived above. The `net_guard.py` anchors in this
+section were re-checked and still hold exactly.)*
 
 **No test pins its contents.** An auditing agent executed the experiment in memory (no repo file
 touched): widening `_LOOPBACK_HOSTNAMES` to include `proxy.fast.luna.nasa.gov` and running the
@@ -122,10 +125,14 @@ loopback — **structurally unverifiable** by the tool. A direct, allowlisted ga
 
 Sequenced so each step is provable before the next:
 
-1. **Pin the allowlist.** Assert `_LOOPBACK_HOSTNAMES == frozenset({"localhost","ip6-localhost"})`
-   and `_LOCAL_HTTP_SCHEMES == frozenset({"http","https"})`, plus a property test that any
-   non-loopback name is rejected. Mutation-prove it fails. This closes the gap in §2 **whether or
-   not** a gateway is ever built, and it should land first and alone.
+1. ~~**Pin the allowlist.**~~ **DONE — ADR-0394**, `tests/guards/test_loopback_allowlist.py`.
+   Both frozensets are asserted exactly, against test-side literals never imported from the module
+   under test, **plus** behavioural closure sweeps over a curated non-loopback population. Both
+   layers were required on evidence: 3 of the 9 battery mutations (`suffix_bypass`,
+   `substring_bypass`, `always_true`) bypass the allowlist while leaving both frozensets provably
+   untouched, so the data pins alone stayed green on them. **9/9 mutations caught by name**, with a
+   sandbox canary, a control run, and an md5 check that the instrument was never mutated. The §2
+   premise was re-measured rather than inherited: **336 passed, 0 failed** under the widening.
 2. **Make the banner OBSERVED.** Thread `route_backend`'s Banner through to the renderer; make
    `chrome.py:97` conditional on the same derivation. Prove it can go red by routing a non-local
    fake and asserting the page changes.
@@ -147,6 +154,14 @@ The operator reported loading **real program IMS files** (`USA IPMR Format 6_Nov
 of `proxy.fast.luna.nasa.gov`, the tool's on-screen assurance at that moment stated the opposite of
 what was happening. An allowlist entry typed into code is an **organizational assertion, not
 evidence** — the tool cannot verify an ATO, and it must not imply that it has.
+
+**A second unpinned security frozenset, found while closing 001a (ADR-0394).** `web/app.py:1076`
+holds `_ALLOWED_HOSTS = frozenset({"127.0.0.1", "localhost", "::1", "testserver"})` — the
+DNS-rebinding Host-header guard. **No test file names it.** Measured: with
+`proxy.fast.luna.nasa.gov` added to it in a sandbox, `tests/web/test_sec_hardening.py` and
+`tests/test_launcher.py` ran **23 passed, 0 failed**. Same defect class as §2, a different security
+property (request admission rather than egress), still unpinned. Not fixed in ADR-0394 because 001a
+was specified to land alone; it is the next cheap, high-value pin.
 
 A related gap the audit surfaced independently: the pre-commit CUI guard has **no image detector**
 (`.githooks/pre-commit:36` blocked_re lists no image extension; the content sniff at `:40` covers
