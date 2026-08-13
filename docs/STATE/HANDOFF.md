@@ -1,120 +1,93 @@
-# Handoff — 2026-08-13 (the Ask panel could not see the workbook; ADR-0392; v1.0.200)
+# Handoff — 2026-08-13 (c) (QC-1 / QC-2 become binding working rules; ADR-0393; v1.0.200)
 
-> ## STATUS (current) — **pushed, draft PR open** on `claude/polaris-gateway-handoff-ggy2h9`,
-> branched from `main` **a19b969** (#579 squash-merged; `git fetch --prune` + `checkout -B`, per
-> the post-squash-merge rule). Highest ADR **0392**. Version **v1.0.199 → v1.0.200**; wheel + nine
-> installers rebuilt. SCHEMA stays 2.11.0.
+> ## STATUS (current) — **pushed, draft PR open** on `claude/polaris-data-date-fix-065mz7`,
+> branched from `main` **a19b969**, then **merged `origin/main` ff11a7b** when #580 landed
+> mid-session. Highest ADR now **0393**. **No shipped code changed by THIS session**
+> (`src/` untouched) — the version is **v1.0.200**, inherited from #580, and no wheel/installer
+> rebuild was required of me. SCHEMA stays 2.11.0.
 >
-> This was an **operator-reported defect session**, not the planned Band-1 gateway work. Band 1
-> (001a/001b/001c) is **untouched and still first in the queue** — see below.
+> ## THE ADR-NUMBER TRAP FIRED — and it was my error, not bad luck
+> I checked `docs/adr/` for the next free number against my LOCAL tree and did **not** re-fetch
+> `origin` first. PR **#580** ("The Ask panel could not see the workbook") merged at 12:51Z and
+> took **ADR-0392** and **v1.0.200**. Caught only because a 502 on PR creation made me list the
+> repo's PRs and read #580. Mine renumbered **0392 → 0393**; the gateway ADR the last handoff
+> reserved is now **0394**. The standing rule already said *fetch before taking an ADR number,
+> and again before committing* — I did the first check against a stale local tree, which is the
+> same failure QC-2 exists to prevent. Both halves of that rule mean `git fetch origin` FIRST.
 >
-> ## WHAT THE OPERATOR REPORTED
-> They loaded **31 `.mpp` versions of one project** and asked the Ask panel to read the S-curve
-> across all 31 and say whether the project is improving. The model answered that it could see
-> "**only two file versions, not 31**" and "**no cumulative-progress time series**". Two more asks
-> rode with it: remove the question-box character limit, and make the results exportable to Excel.
+> ## What landed: two standing WORKING RULES, at the same standing as the two laws
+> `CLAUDE.md` gains **"The two non-negotiable working rules"**, placed immediately after the two
+> product laws. Operator directive, binding on every session, **no exceptions**:
 >
-> ## THE DIAGNOSIS — the model was right about its evidence
-> Measured before any change, on a synthetic 31-version workbook through the exact
-> `build_workbook_fact_sheet` path `POST /api/ask` takes:
+> * **QC-1 — Prove or refute it before you report it.** Before any change is made, before any
+>   conclusion is drawn, and before any document is updated: build an executable **pass/fail**
+>   check, run it in a **sandbox**, and use it to try to **REFUTE** the claim — *before the result
+>   is reported*. Sub-obligations: **red before green** (the check must be OBSERVED TO FAIL) ·
+>   executable beats inspectional · sandbox, never mutate the instrument · **prove the check has
+>   teeth by mutation** · when a check is genuinely impossible, mark the claim **UNVERIFIED** in the
+>   deliverable rather than assert it silently · an oracle must be independent of what it judges.
+> * **QC-2 — Read everything, verify everything.** Read everything, skip nothing, assume nothing,
+>   verify everything — documentation, code, comments, tests, config, instructions, prior sessions'
+>   claims, and `CLAUDE.md` itself. **If an error is found, QC-1 applies before the correction.**
+>   Sub-obligations: inherited claims are testimony, not evidence · know a number's provenance ·
+>   a config-derived claim describes intent, not behaviour · scope a finding before acting on it.
 >
-> | measure | value |
-> |---|--:|
-> | versions loaded | 31 |
-> | facts produced | 23 |
-> | facts naming **more than one** version | **1** |
-> | facts carrying a per-version series of any kind | **0** |
-> | facts stating the loaded-version count | **0** |
+> The old buried sentence ("READ EVERYTHING, ASSUME NOTHING, VERIFY EVERYTHING" — a trailing clause
+> inside the ADR-0240 section, which is why it was skipped) is **promoted, not duplicated**: that
+> paragraph now points at QC-2 and notes that ADR-0240's "no finding is reported until the lead
+> re-verifies it" is QC-1 applied to multi-agent work.
 >
-> The one multi-version fact was the briefing's *"How to Verify Every Number"* boilerplate, which
-> lists the file names inside a verification **procedure**, not as data. Everything substantive came
-> from `build_briefing` (subject = NEWEST version) and `detect_manipulation` /
-> `compute_path_counterfactual` (explicitly the latest PAIR). So "two file versions, no
-> cumulative-progress series" was an **accurate description of the evidence**, not a hallucination.
-> The files were loaded, parsed and solved throughout — the panel simply never said they existed.
-> The S-curve was never missing either: `engine/s_curve.py` has computed per-version curves since
-> `/scurve` shipped. **Nothing routed them to the Q&A.**
+> ## The laws keep their numbering — deliberate
+> "Law 1"/"Law 2" appear in **110 source and test files** and "the two non-negotiable laws" in five
+> other docs. Renumbering to four invalidates all of it for no gain, and the two kinds differ: the
+> **laws constrain the artifact**, the **working rules constrain the method**. Naming verified
+> collision-free; *falsification* was rejected on evidence — `falsify`/`falsified` are **banned
+> accusatory terms** in `ai/citations.py`'s figure gate and TP4's planted manipulation is literally
+> a "falsified baseline".
 >
-> ## SHIPPED (ADR-0392)
-> * **`engine/version_series.py`** (new) — every loaded version as one comparable row: its S-curve
->   point at ITS OWN data date + its schedule-logic finish (CPM), plus the mechanical first→last gap
->   movement and per-step narrowed/widened/unchanged counts.
-> * **`ai/version_facts.py`** (new) — four cited facts (population + S-curve series + trend verdict
->   + finish series), inserted into `build_workbook_fact_sheet` right behind the frame fact.
-> * **`CitedStatement.pinned`** — `relevant_facts`/`model_evidence` rank by question overlap and cut
->   at a cap (12 shown / 48 to the model). Right for evidence, WRONG for the population frame: a
->   question phrased without the series facts' words could rank them out and reintroduce the exact
->   defect. Pinned facts ride ahead of the ranked evidence and are never cut. Nothing else reads the
->   flag — not the citation gate, not the figure gate, not the role gate.
-> * **No question length limit** — both `question.strip()[:500]` truncations and `maxlength=500` are
->   gone; the input is a textarea (Enter sends, Shift+Enter newlines). No replacement cap: a silent
->   truncation the operator cannot see is the defect class being closed. Empty-question 422 unchanged.
-> * **`GET /export/{fmt}/ask`** — three sheets (Answer / Cited facts / Citations), xlsx + docx, off
->   `SessionState.last_ask`. `⤓ EXCEL` / `⤓ WORD` hidden until an answer exists (never a dead link);
->   the driving-path result records the same way. With no live model the Answer cell **states why**
->   it is empty. Wiped by `SessionState.reset()`.
+> ## The rules were applied to their own creation — including the part where it caught me
+> 1. `tests/test_standing_rules.py` written **FIRST**, against a `CLAUDE.md` without the rules, and
+>    **observed to fail**: 3 substantive assertions RED, 2 controls GREEN (so the failure was real,
+>    not vacuous). 2. Rules written → green. 3. **Mutation battery found a defect in my own guard**:
+>    two mutations ESCAPED — stripping `sandbox`/`refute` from QC-1's binding sentence passed
+>    because both words survived in its bullet list, and softening "MUST be observed to FAIL" passed
+>    because the bare token `fail` still matched "never failed". **The clause checks were
+>    file-global, not scoped to each rule's section** — a census can be exact and still not be
+>    membership. 4. Guard hardened (`_rule_section` per-rule slicing; phrase-level not token-level
+>    pins) and re-run: **12/12 caught by name**, control green, `CLAUDE.md` md5-identical after
+>    every restore.
 >
-> ## THE ONE THING TO KNOW IF YOU TOUCH THE SERIES
-> `compute_version_series` **recomputes** each version's S-curve point instead of reading it off
-> `compute_s_curve`. That is deliberate: the animated curve shares one month axis capped at 60
-> months and sheds the oldest months on a long programme, so a version whose data date lands in a
-> shed month has `status_index is None` — with 31 monthly updates over a multi-year programme the
-> early versions silently vanish from any series read off that axis. Evaluating at each version's own
-> data-date month needs no shared axis. The two paths are **required to agree** wherever the animated
-> curve is readable (`_cumulative_pct` folds pre-window finishes into its running count, so the value
-> at a month is independent of where the axis starts), and
-> `test_matches_the_s_curve_at_every_on_axis_status_month` pins it — **mutation-proved** (`<=` → `<`
-> fails it). Two evaluation paths, ONE definition of "the S-curve"; the alternative is the page and
-> the fact base quoting different numbers for the same curve.
+> ## Verification
+> Battery 12/12 (delete either rule · bury the heading · comment out · soften to advice · strip
+> sandbox/refute · drop red-before-green · drop mutation · drop UNVERIFIED · drop the QC-2→QC-1
+> interlock · synonym-swap the red-before-green phrase) · `ruff check .` clean whole-tree ·
+> `ruff format --check` clean · `mypy --strict` 149 files · bandit exit 0 · state-docs drift guard ·
+> full suite green.
 >
-> That test also caught its own **vacuity first**: the synthetic data dates sat outside golden
-> Project5's own window (2026-03 → 2028-01), so every version was off-axis and the equivalence loop
-> iterated ZERO times. The `compared >= 2` guard is the only reason that surfaced.
->
-> ## VERIFIED, NOT ASSUMED
-> Full gate green (ruff whole tree, ruff format, mypy strict 151 files, bandit exit 0, node --check
-> all vendored JS), and `pytest -m parity` green (52 passed). New tests, counted by collection:
-> `tests/engine/test_version_series.py` (14), `tests/ai/test_version_facts.py` (12),
-> `tests/web/test_ask_panel.py` (13) = **39**. **Five mutations run and reverted** to prove they can
-> fail: cumulative `<=`→`<`; series facts not inserted; pinning disabled in both selectors; the
-> exchange not recorded; the empty population reporting 0.0 instead of unreadable.
-> `tests/guards/render_oracle_labels.txt` regenerated — +14 labels, exactly the two new routes
-> across seven stages, nothing else moved.
->
-> ## NEXT — Band 1 is still first, in dependency order
-> **001a** pin `net_guard._LOOPBACK_HOSTNAMES` contents + mutation proof (land FIRST, alone) →
-> **001b** observed (not config-derived) banner → **001c** the operator's cloud/gateway decision,
-> then ADR-0393. Read `docs/PLAN/APPROVED-GATEWAY-INTEGRATION.md` before starting: POLARIS is in use
-> against `https://proxy.fast.luna.nasa.gov` on the operator's Windows machine via a local patch that
-> exists nowhere in this repo. Then the audit's other confirmed items: `actual_start_driven` computed
-> but consumed nowhere · ADR-0391's own-calendar floor branch behaviorally unguarded · `mpxj_ref()`
-> shallow-clone guard (DoD 117, FIRED) · the pre-commit guard has no image detector (120 tracked
-> PNGs) · 22 playwright modules hard-pin a chromium BUILD NUMBER · FINAL-REPORT's parity and
-> no-egress cells overclaim · 8 stale remote branches (DoD 091).
-> **Operator:** the 001c decision · FX-03/04 re-run · the sub-day-negative-float Fuse run · license.
+> ## Next — unchanged from #579, still Band 1 in dependency order
+> **001a** pin `net_guard._LOOPBACK_HOSTNAMES` / `_LOCAL_HTTP_SCHEMES` contents + mutation proof
+> (land FIRST, alone) → **001b** observed banner → **001c** operator's cloud/gateway decision, then
+> its ADR (**0394** now). Read `docs/PLAN/APPROVED-GATEWAY-INTEGRATION.md` first.
+> Then: `actual_start_driven` consumed nowhere · ADR-0391's own-calendar floor unguarded ·
+> `mpxj_ref()` shallow-clone guard (DoD 117) · pre-commit has no image detector vs 120 tracked PNGs
+> · 22 playwright modules pin a chromium BUILD NUMBER · FINAL-REPORT overclaims · 8 stale branches.
+> **Operator:** the 001c decision · FX-03/04 re-run · sub-day-negative-float Fuse run · license.
 >
 > ## Carried forward
-> ADR-0353..0392 closed — do not re-open. NEW lessons: (1) **a model that says "I only see two
-> files" may be reporting a fact about its evidence** — read the prompt before blaming the answer;
-> (2) **a capability the TOOL has is not a capability the AI has** — the S-curve was computed per
-> version for months and no test could notice it never reached the panel, because every test asserted
-> on what was there, not on what was missing; (3) **relevance ranking will drop the frame** — any
-> overlap-ranked selector eventually ranks out the fact that defines the population, and the answer
-> is then confidently scoped to the wrong universe; (4) **silent truncation is the defect, not the
-> limit** — the 500-char question cut and the two-version evidence are the same failure. Standing
-> traps unchanged (a guard is only as strong as the test that pins its DATA · an architecture that
-> offers no legitimate path to a real need will get the dangerous path taken · a claim derived from
-> CONFIG describes intent, not behaviour · verify the SCOPE of a doc-truth finding · a fixture
-> generated by a rule cannot validate that rule · the corroborating oracle may already be in a doc
-> nothing cross-references · an ADR's observation can be right and its diagnosis wrong · a new
-> disclosure needs its own channel when the existing one carries a JUDGEMENT · a sweep's
-> glob/population/pattern are part of its claim · `| head -N` can SIGPIPE-kill a build mid-way · the
-> MPXJ pin drifts in a shallow clone · never MEASURE a tree a battery is mutating · never MUTATE an
-> instrument a measurement is using · monkeypatch repoint is per CALL SITE · `grep -c` exits 1 on
-> zero · two ruffs on PATH, use `python -m ruff` · bare `pytest` does not prepend CWD ·
-> `pytest -m parity` alone exceeds 900 s · the container starts with NO deps installed ·
-> `git fetch origin` before taking an ADR number and again before committing). A number written
-> mid-session is not a measurement (`wc` decides).
+> ADR-0353..0393 closed — do not re-open. NEW lesson: **a standing rule is DATA, and unpinned data
+> is not a guarantee** — the same shape as the unpinned `_LOOPBACK_HOSTNAMES` frozenset, so the
+> rules that govern every session are now pinned like a security constant. Second: **scope a
+> substring assertion to the region that BINDS** — a global grep for a clause passes when the word
+> survives anywhere in the document, which is how two weakenings slipped through my first guard.
+> Standing traps unchanged (a fixture generated by a rule cannot validate that rule · the
+> corroborating oracle may already be in a doc nothing cross-references · an ADR's observation can
+> be right and its diagnosis wrong · a new disclosure needs its own channel when the existing one
+> carries a JUDGEMENT · a sweep's glob/population/pattern are part of its claim · `| head -N` can
+> SIGPIPE-kill a build mid-way · the MPXJ pin drifts in a shallow clone (FIRED) · never MEASURE a
+> tree a battery is mutating · never MUTATE an instrument a measurement is using · `grep -c` exits 1
+> on zero · two ruffs on PATH, use `python -m ruff` · `pytest -m parity` alone exceeds 900 s · the
+> container starts with NO deps installed · `git fetch origin` before taking an ADR number and again
+> before committing). A number written mid-session is not a measurement (`wc` decides).
 
 # (prior) handoffs — archived
 

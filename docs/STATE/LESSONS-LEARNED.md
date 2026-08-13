@@ -435,6 +435,47 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-13 (c) — a standing rule is DATA, and unpinned data is not a guarantee (ADR-0393)
+
+The operator made two working rules mandatory. Writing them taught two things, and the second one
+cost a redo.
+
+- **A standing rule is data, and unpinned data is not a guarantee.** Yesterday's audit found that
+  POLARIS's entire Law-1 locality guarantee rested on an unpinned frozenset — widening it left
+  226-854 tests green. A rule written only in prose has exactly that shape: load-bearing content
+  with nothing asserting it is still there, still mandatory, still un-softened. The pre-existing
+  "READ EVERYTHING, ASSUME NOTHING, VERIFY EVERYTHING" had been a trailing sentence inside another
+  section for months and was routinely skipped — not because anyone decided to skip it, but because
+  nothing made skipping it detectable. So the rules governing every future session are now pinned by
+  `tests/test_standing_rules.py` the way a security constant should have been.
+- **Scope a substring assertion to the region that BINDS.** The first version of that guard checked
+  the whole file for its required clauses. A mutation battery then walked straight past two real
+  weakenings: deleting `sandbox` and `refute` from QC-1's binding sentence passed because both words
+  survived in QC-1's own bullet list, and softening "MUST be observed to FAIL" passed because the
+  bare token `fail` still matched "never failed" further down. **A global grep proves a word exists
+  somewhere; it proves nothing about the sentence that carries the obligation.** Fix: slice each
+  rule from its heading to the next and assert within that slice, and pin phrases (`observed to
+  fail`) rather than tokens (`fail`). Same family as "a census can be exact and still not be
+  membership" and "a sweep's glob is part of its claim" — three instances now, all the same root:
+  **the shape of the search is part of what the search claims.**
+- **"Check the next free number" means check the REMOTE.** I read `docs/adr/` on my local tree and
+  took 0392. PR #580 had merged 0392 an hour earlier. The standing rule says *fetch before taking an
+  ADR number, and again before committing* — I satisfied the words and missed the point, because a
+  local listing answers "what did my tree have when I cloned it", not "what exists". It surfaced by
+  accident: a 502 on PR creation sent me to list the repo's PRs. **A uniqueness check against a
+  stale copy is not a uniqueness check** — the same shape as validating a rule with a fixture that
+  rule generated. Fetch, then read.
+- **Merging a parallel session is not a conflict to win.** Four state docs conflicted. Every one had
+  a correct resolution that kept BOTH sessions' work — their handoff status went to the archive
+  rather than the bin, both session-log entries survived in chronological order, both lessons
+  entries survived newest-first, and the kickoff carries their Ask-panel guidance next to my rules.
+  Taking "ours" wholesale would have silently deleted a merged session's durable record.
+- **What worked: writing the guard before the thing it guards.** The red phase was not ceremony —
+  it distinguished "3 assertions failed because the rules are absent" from "the file is missing and
+  everything fails vacuously", which is why two of the five tests were controls that PASSED in the
+  red phase. And the battery earned its keep immediately by finding a defect in the guard itself,
+  which is the whole argument for QC-1 in one paragraph.
+
 ### 2026-08-13 (2) — the model was describing its evidence, and the evidence was two files
 
 An operator loaded 31 versions, asked the AI to read the S-curve across all of them, and was told
@@ -472,7 +513,6 @@ the tool could see "only two file versions, not 31". Four lessons, and the first
   golden project's own window, so every version was off the animated curve's axis and the comparison
   loop never executed. Only the `compared >= 2` guard inside the test caught it. A loop-based
   assertion needs a floor on its own iteration count, or "green" means "never ran".
-
 ### 2026-08-13 — a guard is only as strong as the test that pins its DATA
 
 A seven-dimension audit with adversarial verification. Four lessons, and the first one is the most
