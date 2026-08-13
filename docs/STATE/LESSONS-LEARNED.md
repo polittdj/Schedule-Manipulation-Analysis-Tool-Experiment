@@ -435,6 +435,24 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-13 (g) — an audit report is itself a disclosure surface; redact it before you commit it
+
+- The read-only audit's own report and forward-plan named the gateway hostname and the ITAR-tagged model
+  id verbatim (4 and 3 hits). Committing them would **proliferate exactly what the report's headline
+  finding (DISC-01) says to stop** — a public repo already over-discloses these. Scrubbed to placeholders
+  before landing; the strings already exist elsewhere, so nothing was lost. Lesson: **a document that
+  flags a disclosure must not repeat the disclosed literal — your own deliverable is in scope for the
+  finding.**
+- A `.git`-less `git archive` sandbox mis-reports git-dependent guards (intake-manifest, precommit-blocklist)
+  as failures because they shell out to `git ls-files`/`rev-parse`. Worse, `git init` + `git add -A` is NOT
+  enough — `.gitignore` skips the force-committed intake, so the tracked set was 1191 not 1624 and the
+  manifest guards still failed; only `git add -f 00_REFERENCE_INTAKE` reached the real set and turned all 56
+  green. Lesson: **before trusting a sandbox census, prove the sandbox's tracked set equals the real repo's.**
+- `xfail(strict=True)` is the clean way to LAND a validated-but-unfixed finding: the test asserts the fixed
+  behaviour, xfails today (documents the defect), and a future fix makes it xpass → strict turns that into a
+  failure that prompts removing the marker. Every refutation test shipped with a negative control so no green
+  is vacuous.
+
 ### 2026-08-13 (f) — the guard broke itself the first time somebody followed the rule it guards
 
 The attribution guard added a few hours earlier

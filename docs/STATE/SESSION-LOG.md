@@ -13975,3 +13975,34 @@ exactly. §6 step 1 marked DONE, §7 carries the `_ALLOWED_HOSTS` finding, DoD 0
 The kickoff prompt calls the standing rules "ADR-0392"; they are **ADR-0393** — `CLAUDE.md` is right.
 
 **Next:** 001b (observed banner) → 001c (operator decision + ADR **0395**, taken after `git fetch`).
+
+---
+
+## 2026-08-13 (e) — read-only ten-role audit, re-verified and landed as docs+tests (ADR-0395, v1.0.200)
+
+Branch `claude/schedule-manipulation-audit-xnrqfd`, draft PR #585. **No shipped code changed** (`src/`
+untouched; version stays v1.0.200; no wheel/installer rebuild). New: `tests/audit/test_audit_findings.py`
+(21 tests, 17 pass / 4 xfail-strict), `docs/STATE/AUDIT-2026-08-13.md`,
+`docs/STATE/AUDIT-2026-08-13-REMEDIATION-PLAN.md`, `docs/adr/0395-*.md`; `NEXT-SESSION-PROMPT.md` updated.
+
+**What landed.** A strictly read-only audit (checkout never mutated; `net_guard.py` md5 `ff76e70c…`
+unchanged; clean `git status` start→finish) re-verified the kickoff's open-item list against current code
+with red/green checks (QC-1) and refuted the false leads (CPM math, MSPDI XXE, circular parity oracle,
+committed secrets, unescaped XSS, Host-header rebinding, CI-ruff-red — all disproved). New verified
+findings: **DISC-01** (public repo publishes the gateway host + ITAR model id + patched-workstation ops —
+REQUIRES AUTHORIZING OFFICIAL, gates 001b/001c), **HOOK-01 widened** (pre-commit misses
+renamed/double-ext/PDF/ZIP schedules), **PO-03/04/05** (Fuse transcription unguarded vs source `.xlsx`;
+CEI/bow-wave and HMI have no independent oracle).
+
+**Verified.** Faithful-sandbox census **1429 passed / 2 skipped / 0 failed**
+(guards+ai+air-gap+sec-hardening+launcher+engine+both Fuse-parity). A `.git`-less extract mis-reports
+git-dependent guards — a sandbox artifact, green after `git add -f 00_REFERENCE_INTAKE` reaches the real
+1624-file set. The four xfails encode the live defects (GW-02, TEST-01, HOOK-01, PO-03), each
+red-now/green-when-fixed. mypy strict, ruff, ruff-format, bandit, pip-audit green.
+
+**Redaction.** The new audit docs redact the gateway/model strings to placeholders (DISC-01: do not
+proliferate — they already exist elsewhere in the repo); `NEXT-SESSION-PROMPT.md` updated with no new
+token copies.
+
+**Next:** DISC-01 (operator / authorizing official) → 001b observed banner → 001c gateway decision +
+ADR **0396** (taken after `git fetch origin`).
