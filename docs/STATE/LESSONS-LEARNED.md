@@ -435,6 +435,84 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-13 (f) — the guard broke itself the first time somebody followed the rule it guards
+
+The attribution guard added a few hours earlier
+(`test_docs_cite_the_rules_under_the_adr_that_decided_them`) derives the correct ADR number from
+disk rather than hard-coding it — the right instinct, and the mutation battery proved it survives a
+renumber. It found the defining ADR by scanning every ADR **body** for the string `QC-1`. It was
+green on its own branch and green in CI.
+
+Then `main` merged ADR-0394, which was itself written under the new rules and therefore carries a
+`## Verification (QC-1)` section. Two ADRs now matched. The oracle's own ambiguity assertion fired
+and the guard went **red on merge** — CI never saw it, because CI ran the PR against a base where
+ADR-0394 did not yet exist.
+
+- **An oracle that searches for a rule's NAME goes ambiguous the moment the rule is obeyed.** Every
+  ADR from ADR-0394 onward mentions QC-1, because QC-1 requires them to show their verification.
+  The population the oracle discriminates over was guaranteed to grow to include every future
+  member. That is not a mutation someone has to introduce; it is Tuesday.
+- **"Deciding" is a claim about SUBJECT, and an ADR's subject is its title.** The fix scopes the
+  match to line 1. A body mention is a citation; a title is a claim of authorship. One ADR's title
+  names QC-1 and always will.
+- **The mutation battery said 8/8 and was still blind here.** Mutation 7 deliberately made the
+  oracle ambiguous and scored the resulting failure as CAUGHT — treating "the guard refuses to
+  judge" as a success. It never asked whether that state would arise *without* a mutation. A
+  battery answers "does the check fire when I break things"; it does not answer "will the check
+  still be true next week". **Ask what the corpus the oracle reads will look like after the next
+  three commits.** The replacement battery adds a must-STAY-GREEN case (a new ADR mentioning QC-1
+  in its body only) so the regression cannot come back as a passing mutation.
+- **A mutation that does not land reports as a pass, and looks exactly like an escape.** My
+  second battery targeted `HANDOFF.md` line 49 by number. The merge replaced that handoff
+  wholesale, line 49 became unrelated prose, the `sed` matched nothing — and the run printed
+  GREEN. I nearly recorded a hole in the guard that did not exist. Every mutation must now prove
+  it *changed the file* (md5/diff) before its verdict is read; a no-op is reported INVALID, not
+  passed. This is the sibling of the standing trap "a sweep's glob is part of its claim": **a
+  mutation's target is part of its claim**, and hard-coded line numbers do not survive a merge.
+  The corrected battery is 12/12 with every mutation proved to land.
+- **CI green on a PR is a statement about the PR's base, not about main.** Both the conflict and
+  this failure were invisible until the merge was actually performed. When a PR sits while main
+  moves, merge main in and re-run before believing the badge.
+
+### 2026-08-13 (e) — the PR that fixed a wrong ADR number left a wrong ADR number
+
+PR #582 existed for one reason: `NEXT-SESSION-PROMPT.md` contradicted itself about which ADR the
+gateway decision would be, and I fixed it (0393 → 0394). It merged. Then, re-reading the merged
+file under QC-2, line 60 of that same document said the standing working rules are **ADR-0392**.
+They are ADR-0393; 0392 is the unrelated Ask-panel defect fix. The wrong number was four
+paragraphs from the one I had just corrected, in a sentence that named `test_standing_rules.py`
+— the rules' own guard — as its evidence.
+
+- **Fixing the instance is not fixing the class.** I read the paragraph the contradiction was
+  in, corrected it, and shipped. I never asked "does this document get this number wrong
+  ANYWHERE else" — which is one `grep` and would have caught it before the PR, not after the
+  merge. When a defect is "a doc states a fact wrongly", the unit of repair is *every statement
+  of that fact*, not the sentence someone happened to point at. Scope the finding before acting
+  on it (QC-2) cuts both ways: it also means don't scope it smaller than it is.
+- **QC-2 earned its keep on the author's own just-merged work.** Nothing external flagged this.
+  It surfaced because "re-read what you shipped" was applied to a PR that had already gone green
+  and merged, i.e. at exactly the moment it feels least necessary. Inherited claims are testimony
+  — and a claim I wrote an hour ago is inherited too.
+- **A guard whose oracle is a constant proves nothing about the constant.** The regression guard
+  (`test_docs_cite_the_rules_under_the_adr_that_decided_them`) derives the correct number by
+  finding the one ADR file on disk that defines QC-1, rather than hard-coding `0393`. The
+  mutation that proves this matters is the fifth one: rename the ADR `0393-* → 0395-*` and leave
+  the docs saying 0393. A hard-coded oracle sails straight through; this one goes red naming
+  0395. The other seven mutations (wrong number in each of three docs, oracle deleted, oracle
+  made ambiguous, sweep population emptied) all fire too — 8/8, sandbox byte-identical after
+  every restore.
+- **The honest guard is the mechanical subset, not the fuzzy superset.** I wanted to check every
+  prose attribution and found the general version false-positives immediately (line 5 legitimately
+  names 0392 while *explaining* the collision). So the guard checks only lines that name the
+  rules' guard file and cite an ADR — a population it can judge without guessing — and its
+  docstring states that scope outright. A guard that fires on ordinary editing gets deleted, and
+  then it guards nothing.
+- **My own "reserved ADR-0394" note was stale within the hour.** This entry originally said
+  0394 was being held for the gateway decision, so I would not burn it on a doc fix. While CI
+  ran, #583 merged and took 0394 for DoD 001a. The note was true when written and false when
+  read — which is the whole argument for *never* writing a predicted ADR number down. No ADR
+  for this change either way; a doc correction plus its guard is not a decision.
+
 ### 2026-08-13 (c) — a standing rule is DATA, and unpinned data is not a guarantee (ADR-0393)
 
 The operator made two working rules mandatory. Writing them taught two things, and the second one
