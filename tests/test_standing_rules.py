@@ -207,16 +207,29 @@ def _rules_adr_number() -> str:
     oracle: a doc claiming "the rules are ADR-N" is judged against the ADR that defines them,
     not against a constant asserted a few lines above by the same file that is doing the
     judging. QC-1: an oracle must be independent of the thing it judges.
+
+    MENTIONING the rules is not DECIDING them, and the first version of this oracle got that
+    wrong. It selected every ADR whose body contained "QC-1", which was unique for exactly one
+    day: ADR-0394 landed with a ``## Verification (QC-1)`` section and a passing citation, and
+    the oracle went ambiguous on a clean merge. That is not an edge case — QC-1 is a standing
+    rule every future ADR is expected to satisfy and cite, so body mentions will only multiply.
+
+    So match the ADR's own H1 title, which is where this repo's ADRs declare their SUBJECT, and
+    require BOTH rule names in it: an ADR that decides the pair says so in its heading, while
+    one that merely obeys them cites them in its body. If a future ADR does put both names in
+    its title, this fails loudly with both filenames rather than silently picking one.
     """
     adr_dir = REPO_ROOT / "docs" / "adr"
     defining = [
         path
         for path in sorted(adr_dir.glob("[0-9][0-9][0-9][0-9]-*.md"))
-        if "QC-1" in path.read_text(encoding="utf-8")
+        if all(
+            rule in path.read_text(encoding="utf-8").split("\n", 1)[0] for rule in _RULE_HEADINGS
+        )
     ]
     assert len(defining) == 1, (
-        "the oracle itself is ambiguous — expected exactly one ADR defining QC-1, found "
-        f"{[p.name for p in defining]}"
+        "the oracle itself is ambiguous — expected exactly one ADR whose TITLE declares both "
+        f"QC-1 and QC-2, found {[p.name for p in defining]}"
     )
     return defining[0].name[:4]
 
