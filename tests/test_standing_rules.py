@@ -208,16 +208,18 @@ def _rules_adr_number() -> str:
     not against a constant asserted a few lines above by the same file that is doing the
     judging. QC-1: an oracle must be independent of the thing it judges.
 
-    MENTIONING the rules is not DECIDING them, and the first version of this oracle got that
-    wrong. It selected every ADR whose body contained "QC-1", which was unique for exactly one
-    day: ADR-0394 landed with a ``## Verification (QC-1)`` section and a passing citation, and
-    the oracle went ambiguous on a clean merge. That is not an edge case — QC-1 is a standing
-    rule every future ADR is expected to satisfy and cite, so body mentions will only multiply.
+    **The match is on the ADR's TITLE, not its body, and that distinction is load-bearing.**
+    A body scan says "the ADR that mentions QC-1" — but under QC-1 *every* ADR mentions QC-1,
+    because every ADR now carries a "Verification (QC-1)" section. ADR-0394 was the first and
+    is not the last, and a body-scanning oracle went ambiguous the moment it landed: the guard
+    broke itself the first time somebody followed the rule it guards. Deciding an ADR is the
+    one that DECIDED the rules is a claim about its subject, and an ADR's subject is its title.
+    The ambiguity assertion below stays — two ADRs whose *titles* both claim the rules is a
+    genuine corpus problem a human should look at, not a routine mention.
 
-    So match the ADR's own H1 title, which is where this repo's ADRs declare their SUBJECT, and
-    require BOTH rule names in it: an ADR that decides the pair says so in its heading, while
-    one that merely obeys them cites them in its body. If a future ADR does put both names in
-    its title, this fails loudly with both filenames rather than silently picking one.
+    Requiring BOTH rule names in the title is the stricter half of that: a future ADR
+    titled "Applying QC-1 to the importer" is a passing reference, not a claim on the
+    pair, and one rule name alone would re-open the ambiguity this fix just closed.
     """
     adr_dir = REPO_ROOT / "docs" / "adr"
     defining = [

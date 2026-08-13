@@ -435,6 +435,45 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-13 (f) — the guard broke itself the first time somebody followed the rule it guards
+
+The attribution guard added a few hours earlier
+(`test_docs_cite_the_rules_under_the_adr_that_decided_them`) derives the correct ADR number from
+disk rather than hard-coding it — the right instinct, and the mutation battery proved it survives a
+renumber. It found the defining ADR by scanning every ADR **body** for the string `QC-1`. It was
+green on its own branch and green in CI.
+
+Then `main` merged ADR-0394, which was itself written under the new rules and therefore carries a
+`## Verification (QC-1)` section. Two ADRs now matched. The oracle's own ambiguity assertion fired
+and the guard went **red on merge** — CI never saw it, because CI ran the PR against a base where
+ADR-0394 did not yet exist.
+
+- **An oracle that searches for a rule's NAME goes ambiguous the moment the rule is obeyed.** Every
+  ADR from ADR-0394 onward mentions QC-1, because QC-1 requires them to show their verification.
+  The population the oracle discriminates over was guaranteed to grow to include every future
+  member. That is not a mutation someone has to introduce; it is Tuesday.
+- **"Deciding" is a claim about SUBJECT, and an ADR's subject is its title.** The fix scopes the
+  match to line 1. A body mention is a citation; a title is a claim of authorship. One ADR's title
+  names QC-1 and always will.
+- **The mutation battery said 8/8 and was still blind here.** Mutation 7 deliberately made the
+  oracle ambiguous and scored the resulting failure as CAUGHT — treating "the guard refuses to
+  judge" as a success. It never asked whether that state would arise *without* a mutation. A
+  battery answers "does the check fire when I break things"; it does not answer "will the check
+  still be true next week". **Ask what the corpus the oracle reads will look like after the next
+  three commits.** The replacement battery adds a must-STAY-GREEN case (a new ADR mentioning QC-1
+  in its body only) so the regression cannot come back as a passing mutation.
+- **A mutation that does not land reports as a pass, and looks exactly like an escape.** My
+  second battery targeted `HANDOFF.md` line 49 by number. The merge replaced that handoff
+  wholesale, line 49 became unrelated prose, the `sed` matched nothing — and the run printed
+  GREEN. I nearly recorded a hole in the guard that did not exist. Every mutation must now prove
+  it *changed the file* (md5/diff) before its verdict is read; a no-op is reported INVALID, not
+  passed. This is the sibling of the standing trap "a sweep's glob is part of its claim": **a
+  mutation's target is part of its claim**, and hard-coded line numbers do not survive a merge.
+  The corrected battery is 12/12 with every mutation proved to land.
+- **CI green on a PR is a statement about the PR's base, not about main.** Both the conflict and
+  this failure were invisible until the merge was actually performed. When a PR sits while main
+  moves, merge main in and re-run before believing the badge.
+
 ### 2026-08-13 (e) — the PR that fixed a wrong ADR number left a wrong ADR number
 
 PR #582 existed for one reason: `NEXT-SESSION-PROMPT.md` contradicted itself about which ADR the
@@ -473,28 +512,6 @@ paragraphs from the one I had just corrected, in a sentence that named `test_sta
   ran, #583 merged and took 0394 for DoD 001a. The note was true when written and false when
   read — which is the whole argument for *never* writing a predicted ADR number down. No ADR
   for this change either way; a doc correction plus its guard is not a decision.
-
-**Then the merge broke my own guard, and that was the more useful half of the day.**
-
-- **An oracle that matches "mentions X" dies the moment X becomes standard practice.** My guard
-  derived the rules' ADR by finding the ADR file containing `QC-1`. That was unique for exactly
-  one day. ADR-0394 landed carrying a `## Verification (QC-1)` section and one passing citation
-  — because obeying QC-1 and *saying so* is now what every ADR does — and my oracle went
-  ambiguous on a clean `git merge origin/main`. It would have failed CI on main while the docs
-  it judges were entirely correct. Fixed by matching the ADR's **H1 title**, where this repo's
-  ADRs declare their subject: an ADR that *decides* the pair names both rules in its heading;
-  one that merely *obeys* them cites them in its body. The false-positive control (an ADR that
-  cites both rules in its body must stay green) is now a permanent member of the battery.
-  Generalizes: **when you key an oracle on a token, ask what happens when that token succeeds
-  and spreads.** Popularity is a failure mode for uniqueness assumptions.
-- **A mutation that does not land reports as a pass, and looks exactly like an escape.** My
-  second battery targeted `HANDOFF.md` line 49 by number. The merge replaced that handoff
-  wholesale, line 49 became unrelated prose, the `sed` matched nothing — and the run printed
-  GREEN. I nearly recorded a hole in the guard that did not exist. Every mutation must now prove
-  it *changed the file* (md5/diff) before its verdict is read; a no-op is reported INVALID, not
-  passed. This is the sibling of the standing trap "a sweep's glob is part of its claim": **a
-  mutation's target is part of its claim**, and hard-coded line numbers do not survive a merge.
-  The corrected battery is 12/12 with every mutation proved to land.
 
 ### 2026-08-13 (c) — a standing rule is DATA, and unpinned data is not a guarantee (ADR-0393)
 
