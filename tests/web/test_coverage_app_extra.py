@@ -158,14 +158,18 @@ def test_second_backend_caches_and_handles_openai_construction(monkeypatch) -> N
     assert _second_backend(st) is None
     assert _second_backend(st) is None  # cache hit (no re-construction)
 
-    # openai second backend whose construction raises -> the except arm -> None (and no probe)
+    # openai second backend whose construction raises -> the except arm -> None (and no probe).
+    # DoD 001b moved the construction into ai/factory.second_or_none, so the patch follows the
+    # call site (monkeypatch repoint is per CALL SITE, not per name).
+    from schedule_forensics.ai import factory as factory_mod
+
     st2 = SessionState()
     st2.ai_config = AIConfig(second_backend="openai", second_model="m")
 
     def _boom(**kwargs: object) -> object:
         raise RuntimeError("refused")
 
-    monkeypatch.setattr(setmod, "OpenAICompatBackend", _boom)
+    monkeypatch.setattr(factory_mod, "OpenAICompatBackend", _boom)
     assert _second_backend(st2) is None
 
 

@@ -476,6 +476,59 @@ def test_the_converter_url_is_pinned_to_an_immutable_commit(family: str) -> None
     assert re.fullmatch(r"[0-9a-f]{40}", ref), f"MPXJ URL pinned to mutable ref {ref!r}"
 
 
+@pytest.mark.parametrize("family", FAMILIES)
+def test_the_converter_pin_is_a_real_touch_not_a_shallow_graft_artifact(family: str) -> None:
+    """DoD 117, fired twice. In a shallow clone, git attributes EVERY path to the graft-boundary
+    commit, so ``git log -1 -- tools/mpxj`` resolves to whatever commit the clone happened to be
+    cut at — a build in such a clone pins an arbitrary ref (v1.0.201's first build pinned the
+    boundary commit ``a100184d``; an earlier session pinned ``79865bc``). The 40-hex check above
+    cannot see this: a graft artifact IS a valid SHA.
+
+    Two legs, each executable in the clone that runs it:
+
+    * the pinned ref must not be one of THIS clone's shallow-graft boundary commits — a boundary
+      resolution is an attribution artifact, never a measured touch;
+    * where the ref's objects are locally present, its ``tools/mpxj`` tree must be byte-identical
+      to the working tree's (the manifest is generated from local bytes, so a divergent tree
+      means the installer fetches bytes its own hashes reject). Absent objects skip this leg
+      (environment-gated: a depth-1 CI clone cannot dereference a months-old pin).
+    """
+    text = _read("tier1", family)
+    m = re.search(
+        r"raw\.githubusercontent\.com/[^/\s\"]+/[^/\s\"]+/([0-9a-f]{40})/tools/mpxj", text
+    )
+    assert m, "no immutably-pinned MPXJ raw URL found"
+    ref = m.group(1)
+    git_dir = subprocess.run(
+        ["git", "rev-parse", "--git-dir"], cwd=ROOT, capture_output=True, text=True, check=True
+    ).stdout.strip()
+    shallow = Path(ROOT, git_dir, "shallow")
+    if shallow.exists():
+        boundaries = set(shallow.read_text(encoding="utf-8").split())
+        assert ref not in boundaries, (
+            f"MPXJ pin {ref} is a shallow-graft BOUNDARY commit of this clone — git attributed "
+            "the whole tree to it, so it was never measured to touch tools/mpxj. Rebuild with "
+            "SF_MPXJ_REF=<true last-touch sha> (git log on a full clone, or the GitHub commits "
+            "API filtered to path=tools/mpxj)."
+        )
+    probe = subprocess.run(
+        ["git", "cat-file", "-e", f"{ref}^{{commit}}"], cwd=ROOT, capture_output=True, text=True
+    )
+    if probe.returncode != 0:
+        pytest.skip(f"pin {ref} not dereferenceable in this clone — tree-equality leg unavailable")
+    pinned_tree = subprocess.run(
+        ["git", "rev-parse", f"{ref}:tools/mpxj"], cwd=ROOT, capture_output=True, text=True
+    )
+    head_tree = subprocess.run(
+        ["git", "rev-parse", "HEAD:tools/mpxj"], cwd=ROOT, capture_output=True, text=True
+    )
+    assert pinned_tree.returncode == 0 and head_tree.returncode == 0
+    assert pinned_tree.stdout.strip() == head_tree.stdout.strip(), (
+        f"MPXJ pin {ref} serves a DIFFERENT tools/mpxj tree than the one this installer's "
+        "manifest was hashed from — installs will fail their own integrity check."
+    )
+
+
 @pytest.mark.parametrize("tier", TIERS)
 def test_no_probe_or_optional_step_can_abort_the_windows_install(tier: str) -> None:
     """ADR-0299, found by the new windows no-checkout CI leg.

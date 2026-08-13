@@ -383,6 +383,9 @@ from schedule_forensics.web.chrome import (
     _guide as _guide,
 )
 from schedule_forensics.web.chrome import (
+    _observed_banner as _observed_banner,
+)
+from schedule_forensics.web.chrome import (
     _page as _page,
 )
 from schedule_forensics.web.chrome import (
@@ -1302,7 +1305,13 @@ def create_app(
                 "this report is computed, never typed."
             )
         else:
-            takeaway = "Load a schedule to begin &mdash; nothing you load ever leaves this machine."
+            # the assurance clause is conditioned on the OBSERVED AI locality (DoD 001b) —
+            # it may not print while any constructible or routed AI candidate is non-local.
+            takeaway = (
+                "Load a schedule to begin &mdash; nothing you load ever leaves this machine."
+                if not _observed_banner(st).cloud_active
+                else "Load a schedule to begin."
+            )
         screen_head = (
             "<div class=page-kicker data-no-i18n>PROLOGUE · LOAD</div>"
             f'<h1 class="page-takeaway" data-no-i18n>{takeaway}</h1>'
@@ -1392,14 +1401,26 @@ def create_app(
             if rows
             else ""
         )
+        # The hero's absolute locality claims are conditioned on the SAME observed derivation
+        # as the persistent banner (DoD 001b): with a non-local AI candidate constructible,
+        # "entirely on your machine" / "nothing leaves this computer" may not print.
+        if not _observed_banner(st).cloud_active:
+            hero_h2 = "Forensic schedule analysis &mdash; entirely on your machine"
+            hero_tail = "and a cited AI narrative &mdash; nothing leaves this computer."
+        else:
+            hero_h2 = "Forensic schedule analysis"
+            hero_tail = (
+                "and a cited AI narrative. Engine computations stay on this machine; the "
+                "session&rsquo;s AI is configured for a non-local endpoint."
+            )
         body = f"""
 {flash}
 {screen_head}
 <section class=hero>
-  <h2>Forensic schedule analysis &mdash; entirely on your machine</h2>
+  <h2>{hero_h2}</h2>
   <p class=muted>Open or import a Microsoft&nbsp;Project / Primavera schedule to get a DCMA-14 audit,
   schedule-quality&nbsp;&amp;&nbsp;schedule-risk metrics, driving-path and manipulation-trend analysis,
-  and a cited AI narrative &mdash; nothing leaves this computer.</p>
+  {hero_tail}</p>
 </section>
 {_role_strip(st)}
 <div class=panel>
@@ -6364,6 +6385,7 @@ def create_app(
 
     @app.get("/export/{fmt}/brief")
     def export_brief(fmt: str) -> Response:
+        st = session()
         if (bad := _bad_format(fmt)) is not None:
             return bad
         schedules, cpms, _skipped = _solvable_versions()
@@ -6373,7 +6395,11 @@ def create_app(
         pair_schedules, pair_cpms, _pskipped = _pair_versions()
         brief = build_brief(schedules, cpms, pair_schedules=pair_schedules, pair_cpms=pair_cpms)
         if fmt == "docx":
-            blocks = cast("list[Block]", brief_blocks(brief))
+            # the exported exhibit's locality sentence follows the OBSERVED banner (DoD 001b)
+            blocks = cast(
+                "list[Block]",
+                brief_blocks(brief, ai_is_local=not _observed_banner(st).cloud_active),
+            )
             return Response(
                 content=render_document(blocks),
                 media_type=_EXPORT_MEDIA["docx"][0],

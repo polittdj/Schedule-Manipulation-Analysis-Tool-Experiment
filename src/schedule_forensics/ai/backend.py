@@ -88,13 +88,12 @@ class Banner:
     text: str
 
 
-def banner_for(config: AIConfig) -> Banner:
-    """The persistent UI banner for a config's *intent* (independent of backend availability).
+def _intent_cloud_warning(config: AIConfig) -> Banner | None:
+    """The standing §0.2 *intent* warning, or ``None`` when the config does not intend cloud.
 
-    Warns whenever the project is set to UNCLASSIFIED + cloud — naming the external endpoint —
-    so the operator always sees the CUI risk of their current setting (§0.2). Actual
-    generation still fails closed via :func:`route_backend` (cloud is only ever used when a
-    real cloud backend is wired AND the project is UNCLASSIFIED).
+    UNCLASSIFIED + cloud is a setting that COULD egress the moment a cloud backend is wired,
+    so it must warn even while routing currently falls closed to a local backend — the
+    warning direction is allowed to over-fire; the local-only assurance is not.
     """
     if config.classification is Classification.UNCLASSIFIED and config.backend == "cloud":
         return Banner(
@@ -103,6 +102,59 @@ def banner_for(config: AIConfig) -> Banner:
             text=f"UNCLASSIFIED MODE — AI may send to external endpoint {config.endpoint}. "
             "Do not use with CUI.",
         )
+    return None
+
+
+def banner_for_backend(backend: AIBackend, config: AIConfig) -> Banner:
+    """The Banner OBSERVED from a backend object actually in hand (fail-closed, DoD 001b).
+
+    A backend is local only if it *itself* proves it: ``is_local`` must be literally ``True``
+    — a missing or falsy attribute is presumed NON-local, so an object that cannot prove its
+    locality can never be described by the local-only assurance. The warning names the
+    endpoint (the backend's own if it carries one, else the configured one). A CLASSIFIED
+    project with a non-local backend — a state this repo's constructors make unreachable —
+    is named for exactly what it is rather than softened to the UNCLASSIFIED wording.
+    """
+    if getattr(backend, "is_local", False) is not True:
+        endpoint = str(getattr(backend, "endpoint", "") or config.endpoint)
+        if config.classification is Classification.UNCLASSIFIED:
+            text = (
+                f"UNCLASSIFIED MODE — sending to external endpoint {endpoint}. Do not use with CUI."
+            )
+        else:
+            text = (
+                f"WARNING — non-local AI backend on a CLASSIFIED project: sending to "
+                f"external endpoint {endpoint}. Do not use with CUI."
+            )
+        return Banner(cloud_active=True, endpoint=endpoint, text=text)
+    if (intent := _intent_cloud_warning(config)) is not None:
+        return intent
+    return Banner(
+        cloud_active=False, endpoint=None, text="Local-only — no data leaves this machine."
+    )
+
+
+def banner_for(config: AIConfig) -> Banner:
+    """The persistent UI banner — OBSERVED, never config-derived alone (DoD 001b).
+
+    Constructs the backends this config would actually route schedule content through —
+    primary and cross-check second, via :func:`ai.factory.session_candidates`; construction
+    is networkless and loopback-validated — and derives the banner from what those objects
+    themselves declare (:func:`banner_for_backend`). Any candidate that cannot prove its
+    locality, or a cloud intent, yields the warning banner; the local-only assurance renders
+    only when every constructible candidate is provably local. Availability is deliberately
+    not consulted: a configured-but-unreachable non-local endpoint must keep warning (§0.2),
+    and among local backends availability only changes WHICH local backend serves — never
+    the banner's truth.
+    """
+    from schedule_forensics.ai import factory  # runtime import: factory builds on this module
+
+    for candidate in factory.session_candidates(config):
+        derived = banner_for_backend(candidate, config)
+        if derived.cloud_active:
+            return derived
+    if (intent := _intent_cloud_warning(config)) is not None:
+        return intent
     return Banner(
         cloud_active=False, endpoint=None, text="Local-only — no data leaves this machine."
     )
@@ -125,25 +177,19 @@ def route_backend(
       **with** a persistent banner naming the endpoint.
     * Anything else (cloud unavailable/ambiguous, local server down): the Null backend,
       local banner.
+    * Every returned Banner is DERIVED from the backend actually chosen
+      (:func:`banner_for_backend`, DoD 001b) — a backend that cannot prove its locality is
+      never described by the local-only assurance, whichever parameter it arrived through.
     """
-    local_banner = Banner(
-        cloud_active=False, endpoint=None, text="Local-only — no data leaves this machine."
-    )
-
     if config.backend == "cloud":
         if config.classification is Classification.UNCLASSIFIED and cloud_backend is not None:
-            return cloud_backend, Banner(
-                cloud_active=True,
-                endpoint=config.endpoint,
-                text=f"UNCLASSIFIED MODE — sending to external endpoint {config.endpoint}. "
-                "Do not use with CUI.",
-            )
+            return cloud_backend, banner_for_backend(cloud_backend, config)
         # CLASSIFIED (or no cloud backend): refuse cloud, fall closed to local.
-        return null_backend, local_banner
+        return null_backend, banner_for_backend(null_backend, config)
 
     if config.backend == "ollama" and ollama_backend is not None and ollama_backend.is_available():
-        return ollama_backend, local_banner
+        return ollama_backend, banner_for_backend(ollama_backend, config)
     if config.backend == "openai" and openai_backend is not None and openai_backend.is_available():
-        return openai_backend, local_banner
+        return openai_backend, banner_for_backend(openai_backend, config)
 
-    return null_backend, local_banner
+    return null_backend, banner_for_backend(null_backend, config)

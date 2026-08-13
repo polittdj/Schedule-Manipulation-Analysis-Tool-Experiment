@@ -50,7 +50,7 @@ from schedule_forensics.importers._common import iso_duration_to_minutes
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.reports.docx import Block, Chart, ChartText, DocTable, Heading, Paragraph
 from schedule_forensics.reports.tables import Cell, Table, TableSet
-from schedule_forensics.web.chrome import _e, _utility_takeaway
+from schedule_forensics.web.chrome import _e, _observed_banner, _utility_takeaway
 from schedule_forensics.web.components import (
     _REMAIN_DAYS_DP,
     _TS_CAPTION_MARK,
@@ -1073,8 +1073,19 @@ def _sra_report_blocks(
             "percentiles) uses a standard-library random generator that is statistically "
             "representative but NOT bit-identical to the reference tool's, so treat the P-values as "
             "close, not exact "
-            "(ADR-0005/0106). All computation is local and offline; this document carries the CUI "
-            "marking in its header and footer.",
+            # the exported exhibit's locality sentence follows the OBSERVED banner (DoD 001b):
+            # the unconditional assurance may only print while every constructible AI candidate
+            # is provably local — the SRA numbers themselves are engine-computed either way.
+            + (
+                "(ADR-0005/0106). All computation is local and offline; this document carries "
+                "the CUI marking in its header and footer."
+                if not _observed_banner(st).cloud_active
+                else "(ADR-0005/0106). All SRA computation in this document is local and "
+                "offline; NOTE — this session's AI backend is configured for a non-local "
+                "endpoint, so AI-generated prose elsewhere in the session may have transited "
+                "an external service. This document carries the CUI marking in its header and "
+                "footer."
+            ),
             italic=True,
         ),
     ]

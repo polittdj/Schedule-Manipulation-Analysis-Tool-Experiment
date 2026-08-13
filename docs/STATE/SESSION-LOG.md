@@ -13975,3 +13975,44 @@ exactly. §6 step 1 marked DONE, §7 carries the `_ALLOWED_HOSTS` finding, DoD 0
 The kickoff prompt calls the standing rules "ADR-0392"; they are **ADR-0393** — `CLAUDE.md` is right.
 
 **Next:** 001b (observed banner) → 001c (operator decision + ADR **0395**, taken after `git fetch`).
+
+---
+
+## 2026-08-13 (e) — DoD 001b: the sovereignty banner is observed (ADR-0395); DoD 117: the MPXJ pin guard, after the trap fired on this very build (ADR-0396) — v1.0.201
+
+Branch `claude/polaris-resume-ojz9q0` from `main` 5a8003f. `src/` changed → v1.0.201, wheel + nine
+installers rebuilt in lockstep.
+
+**001b (ADR-0395).** Pre-fix, measured by an executed probe (red first): `route_backend` handed the
+literal local-only Banner to an `is_local=False` fake on BOTH the ollama and openai paths; the page
+rendered `banner_for(config)` — config only — showing "Local-only" with that same fake in
+`SessionState.backend_cache`; `brief_blocks` had no locality parameter; `is_local` was a class
+constant nothing branched on. Fix, bottom-up, one derivation consulted by every claim:
+instance-derived `is_local` (validator's verdict on the actual endpoint) → `banner_for_backend`
+(missing/falsy `is_local` presumed NON-local, fail closed; §0.2 intent warning preserved) →
+`route_backend` derives its Banner from the backend actually chosen → `banner_for` constructs the
+would-be candidates via the new `ai/factory.py` (constructors moved down from settings; names
+re-bound so per-call-site monkeypatches keep working) → `chrome._observed_banner` adds the
+routed-cache veto. Consumers: persistent banner, CUI drawer (template var), home hero + empty-state
+takeaway, settings tip, and both exported exhibits (`brief_blocks(…, *, ai_is_local)` REQUIRED;
+`_sra_report_blocks` via its `st`). Local-state strings byte-identical; i18n key + 4 translations
+untouched and now pinned.
+
+**Verified:** `tests/guards/test_observed_banner.py`, 18 tests — red on the pre-fix tree (probe
+confirmed all four defects by assertion; module cannot collect there), 18/18 green on the fixed
+tree, and a 15-mutation sandbox battery (canary + control + md5-identical instruments) caught
+**15/15 by name** — re-run against the final post-format tree. One test repointed with its moved
+call site (`factory.OpenAICompatBackend`), proven live.
+
+**117 (ADR-0396).** The rebuild's first attempt pinned `a100184d` — this container's own
+shallow-graft boundary. The diagnosis reversed TWICE under measurement ("my pin is right" → "the
+committed installers are broken" → both wrong): tree hashes proved `42d92dc` / `a100184d` / `HEAD`
+carry the identical `tools/mpxj` tree, and the GitHub commits API named **`42d92dc`** the true last
+touch — the committed pin was correct all along; nothing in the wild was ever broken. `mpxj_ref()`
+now refuses a graft-boundary resolution and accepts `SF_MPXJ_REF` only after verifying
+tree-identity (three refusal paths exercised live); the new installer test went red against the
+drifted build (3/3 families), green after the corrected rebuild. v1.0.201 installers pin `42d92dc`.
+
+**Next:** 001c — the operator's cloud/gateway decision (its ADR takes the next free number after
+`git fetch origin`) · pin `_ALLOWED_HOSTS` · `actual_start_driven` · own-calendar floor guard ·
+image detector · playwright chromium pins · FINAL-REPORT · stale branches.

@@ -48,36 +48,20 @@ from schedule_forensics.ai import (
     AIBackend,
     AIConfig,
     NullBackend,
-    OllamaBackend,
-    OpenAICompatBackend,
+    factory,
     route_backend,
 )
-from schedule_forensics.web.chrome import _e
+from schedule_forensics.web.chrome import _e, _observed_banner
 from schedule_forensics.web.components import _user_tip
 from schedule_forensics.web.state import SessionState
 
-
-def _ollama_or_none(config: AIConfig) -> OllamaBackend | None:
-    if config.backend != "ollama":
-        return None
-    try:
-        return OllamaBackend(
-            endpoint=config.endpoint, model=config.model, timeout=config.gen_timeout
-        )
-    except Exception:
-        return None
-
-
-def _openai_or_none(config: AIConfig) -> OpenAICompatBackend | None:
-    if config.backend != "openai":
-        return None
-    try:
-        # construction enforces loopback (CUIEgressError on a remote host — Law 1)
-        return OpenAICompatBackend(
-            endpoint=config.openai_endpoint, model=config.model, timeout=config.gen_timeout
-        )
-    except Exception:
-        return None
+# The construction bodies moved DOWN to ``ai/factory.py`` (DoD 001b) so the observed-banner
+# derivation can build the same candidates the router uses. These module-global re-binds keep
+# the historic names: callers here and in ``app.py`` look the names up on their own module, so
+# the tests that monkeypatch ``settings._ollama_or_none`` / ``app._ollama_or_none`` still
+# intercept exactly the call sites they always did.
+_ollama_or_none = factory.ollama_or_none
+_openai_or_none = factory.openai_or_none
 
 
 class _UseMarking:
@@ -264,20 +248,9 @@ def _second_backend(state: SessionState) -> AIBackend | None:
     now = time.monotonic()
     if cached is not None and cached[0] == cfg and now - cached[1] < _BACKEND_PROBE_TTL:
         return cached[2]
-    backend: AIBackend | None = None
-    try:
-        if cfg.second_backend == "ollama":
-            backend = OllamaBackend(
-                endpoint=cfg.endpoint,
-                model=cfg.second_model or cfg.model,
-                timeout=cfg.gen_timeout,
-            )
-        else:
-            backend = OpenAICompatBackend(
-                endpoint=cfg.openai_endpoint, model=cfg.second_model, timeout=cfg.gen_timeout
-            )
-    except Exception:
-        backend = None
+    # construction (loopback-validated, networkless) lives in ai/factory (DoD 001b); this
+    # function keeps what the banner derivation must NOT consult: probe, cache, use-marking.
+    backend: AIBackend | None = factory.second_or_none(cfg)
     if backend is not None and not backend.is_available():
         backend = None
     hook = state.ai_use_hook
@@ -429,9 +402,17 @@ def _settings_body(state: SessionState, runtime_note: str = "") -> str:
         else ""
     )
 
+    # the tip's absolute assurance is conditioned on the OBSERVED derivation (DoD 001b) —
+    # _observed_banner, not the route_backend result above, so a test-patched router can't
+    # feed it, and a non-local backend in the session's routing cache still vetoes it.
+    tip_text = (
+        "The tool works fully offline with no AI. Turning on a local model only adds written narrative on top of the engine&rsquo;s already-computed, cited numbers &mdash; every AI figure is re-checked against those citations, and nothing ever leaves this machine."
+        if not _observed_banner(state).cloud_active
+        else "The tool works fully offline with no AI. Every AI figure is re-checked against the engine&rsquo;s cited numbers &mdash; but this session&rsquo;s AI is configured for a non-local endpoint, so prompts sent to the AI leave this machine."
+    )
     return f"""
 <div class=panel><h2>Local AI</h2>
-{_user_tip("The tool works fully offline with no AI. Turning on a local model only adds written narrative on top of the engine&rsquo;s already-computed, cited numbers &mdash; every AI figure is re-checked against those citations, and nothing ever leaves this machine.")}
+{_user_tip(tip_text)}
 <p>Active backend: <b>{_e(backend.name)}</b> &middot; installed models: {model_list}
 &middot; cross-check model: <b>{second_status}</b></p>
 {status_note}{runtime_note}

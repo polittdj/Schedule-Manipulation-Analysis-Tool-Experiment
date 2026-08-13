@@ -115,7 +115,6 @@ class OllamaBackend:
     """A local Ollama model server reached over loopback HTTP with the stdlib only."""
 
     name = "ollama"
-    is_local = True
 
     def __init__(
         self,
@@ -127,12 +126,18 @@ class OllamaBackend:
         pull_timeout: float = 6.0 * 3600.0,
         opener: Opener | None = None,
     ) -> None:
-        if not is_local_http_endpoint(endpoint):
+        # OBSERVED locality (DoD 001b): ``is_local`` records the validator's verdict on the
+        # ACTUAL endpoint instead of asserting a class constant. The raise keeps construction
+        # fail-closed; if that guard is ever weakened, every banner derived from this object
+        # reports the measured truth rather than a label.
+        local = is_local_http_endpoint(endpoint)
+        if not local:
             raise CUIEgressError(
                 f"OllamaBackend endpoint must be a loopback http(s) URL (e.g. "
                 f"http://127.0.0.1:11434), got {endpoint!r} — refusing to point a CUI "
                 "project at a remote or non-HTTP model server (Law 1)."
             )
+        self.is_local: bool = local
         self.endpoint = endpoint.rstrip("/")
         self.model = model
         self._timeout = timeout

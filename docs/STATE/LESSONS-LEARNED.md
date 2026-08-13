@@ -435,6 +435,34 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-13 (g) — a diagnosis reversed twice in one hour, and only the third measurement was true
+
+- Closing 001b (ADR-0395) required the wheel/installer rebuild, and the rebuild pinned MPXJ to
+  `a100184d` — different from the committed `42d92dc`. First conclusion: "my pin is fresher and
+  verified (`merge-base --is-ancestor` passed) — the committed one is stale." Second conclusion,
+  after `a100184d --stat` showed 28 files "added" under `tools/mpxj`: "worse — the shipped
+  v1.0.198–200 installers reference `poi-5.5.1.jar`, which didn't exist at their pin; installs
+  in the wild are broken." BOTH were wrong.
+- The tell: `git show 42d92dc:tools/mpxj/lib/poi-5.5.1.jar` returned the jar's bytes. The
+  "addition" was a graft artifact — `a100184d` sits in `.git/shallow`, and a shallow clone
+  attributes the ENTIRE tree to its boundary commit, in `log -- <path>` AND in `--stat`. Tree
+  hashes settled it: `42d92dc`, `a100184d`, `HEAD` all carry the identical `tools/mpxj` tree;
+  the GitHub commits API (full history, `path=` filter) names `42d92dc` the true last touch.
+  Nothing in the wild was ever broken.
+- **Lesson 1:** in a shallow clone, `git log -1 -- <path>`, `--stat`, and `merge-base` can all
+  agree on a falsehood — each was individually "verification", and each inherited the same graft
+  blindness. The independent oracle (remote API / tree hashes) is what broke the loop.
+- **Lesson 2:** a diagnosis that reverses under a new measurement is not finished reversing.
+  Write down only what the LAST measurement proved, and say which measurement that was.
+- **Lesson 3 (the fix, ADR-0396):** `mpxj_ref()` now refuses graft-boundary resolutions outright
+  and takes `SF_MPXJ_REF` only with verified tree-identity — tree-identity beats ancestry because
+  it is checkable in the very clones that lie about ancestry. Red first: the new installer test
+  failed 3/3 families against the drifted build before the corrected rebuild made it green.
+- Also today (001b proper): when one claim spans six surfaces plus two exports and four
+  translations, route every surface through ONE derivation (`_observed_banner`) — surfaces that
+  derive independently WILL disagree, and the pre-fix router/page disagreement (router said
+  local, page said cloud, both wrong in different states) proved nobody notices when they do.
+
 ### 2026-08-13 (f) — the guard broke itself the first time somebody followed the rule it guards
 
 The attribution guard added a few hours earlier

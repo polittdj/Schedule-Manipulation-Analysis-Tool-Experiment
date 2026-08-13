@@ -67,7 +67,13 @@ That is a design defect, not operator error.
 
 ## 4. Why the banner then lies
 
-**The sovereignty claim is enforced by an endpoint validator, not by observation.**
+> **Status update, ADR-0395 (2026-08-13): this section is now HISTORY, kept as the record of the
+> pre-fix mechanism.** Every finding below was re-verified and then closed: the banner chain is
+> observed end-to-end (§6 steps 2–3), and the six claim sites + both exported exhibits condition
+> on that derivation. The line-number anchors below describe `main` at `cacd769`/`5a8003f` and
+> have not been re-derived since — read them as evidence for the closed finding, not as a map.
+
+**The sovereignty claim was enforced by an endpoint validator, not by observation.**
 
 - `route_backend()` builds `local_banner` once (`ai/backend.py:129-131`) and returns it verbatim for
   **both** the `ollama` and `openai` paths (`:144-147`) with no classification check and no endpoint
@@ -133,11 +139,20 @@ Sequenced so each step is provable before the next:
    untouched, so the data pins alone stayed green on them. **9/9 mutations caught by name**, with a
    sandbox canary, a control run, and an md5 check that the instrument was never mutated. The §2
    premise was re-measured rather than inherited: **336 passed, 0 failed** under the widening.
-2. **Make the banner OBSERVED.** Thread `route_backend`'s Banner through to the renderer; make
-   `chrome.py:97` conditional on the same derivation. Prove it can go red by routing a non-local
-   fake and asserting the page changes.
-3. **Make `is_local` real.** Derive it from the validated endpoint; have `route_backend` refuse to
-   return a local banner for any backend whose `is_local` is False.
+2. ~~**Make the banner OBSERVED.**~~ **DONE — ADR-0395** (with step 3, one change). The derivation
+   went one better than "thread the Banner through": `banner_for` itself now constructs the
+   candidates (via the new `ai/factory.py`) and derives from their own `is_local`, and
+   `chrome._observed_banner` adds a veto from the session's actually-routed cached backend — so
+   the router's Banner and the page cannot disagree
+   (`test_route_banner_agrees_with_the_config_banner_for_every_local_state`). The drawer sentence,
+   the home hero/takeaway, the settings tip and BOTH exported exhibits ride the same derivation.
+   Proven red by routing a non-local fake: 18 guard tests in
+   `tests/guards/test_observed_banner.py`, 15/15 targeted mutations caught by name.
+3. ~~**Make `is_local` real.**~~ **DONE — ADR-0395.** Instance attribute recording the loopback
+   validator's verdict on the actual endpoint (class constants deleted; a missing/falsy
+   `is_local` is presumed NON-local — fail closed); `route_backend` returns
+   `banner_for_backend(chosen, config)` on every path, so a backend that cannot prove locality
+   can never carry the local banner, whichever parameter it arrived through.
 4. **Decide the cloud option's fate (ADR).** Either delete the dead `cloud` option from the settings
    form, or build a first-class `ai/gateway.py` `GatewayBackend` with `is_local = False`, its **own**
    named allowlist constant (never a widening of the loopback set), its own config field, its own
