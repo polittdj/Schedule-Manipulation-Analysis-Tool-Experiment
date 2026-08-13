@@ -754,6 +754,12 @@ from schedule_forensics.web.state import (
     _Analysis as _Analysis,
 )
 from schedule_forensics.web.state import (
+    _AskFact as _AskFact,
+)
+from schedule_forensics.web.state import (
+    _AskRecord as _AskRecord,
+)
+from schedule_forensics.web.state import (
     _compute_analysis as _compute_analysis,
 )
 from schedule_forensics.web.state import (
@@ -2128,11 +2134,49 @@ def create_app(
             )
         return "\n".join(lines)
 
+    def _record_ask(
+        st: SessionState,
+        *,
+        question: str,
+        scope: str,
+        facts: Sequence[CitedStatement],
+        mode: str = "",
+        model: str = "",
+        answer: str | None = None,
+        second_model: str | None = None,
+        second_answer: str | None = None,
+        agreement: str | None = None,
+        kind: str = "AI answer",
+    ) -> None:
+        """Hold this exchange on the session so ``/export/{fmt}/ask`` can render it (ADR-0392).
+
+        The answer arrives on a POST that streams straight into the panel, so nothing survived the
+        response for a GET export route to read. Stores exactly what the analyst was shown."""
+        st.last_ask = _AskRecord(
+            question=question,
+            scope=scope,
+            mode=mode,
+            model=model,
+            answer=answer,
+            facts=tuple(
+                _AskFact(
+                    f.text,
+                    tuple((c.source_file, c.unique_id, c.task_name) for c in f.citations),
+                )
+                for f in facts
+            ),
+            second_model=second_model or "",
+            second_answer=second_answer,
+            agreement=agreement or "",
+            kind=kind,
+        )
+
     def _ask_response(
         st: SessionState,
         facts: tuple[CitedStatement, ...],
         text: str,
         data_block: str | None = None,
+        scope: str = "",
     ) -> JSONResponse:
         """Shared Q&A response: route the backend(s), answer in the configured mode.
 
@@ -2140,9 +2184,8 @@ def create_app(
         independently and a deterministic figure-agreement note is computed — the
         engine compares, never a third model."""
         mode = st.ai_config.qa_mode
-        answer, used = answer_question(
-            _active_backend(st), facts, text, mode=mode, data_block=data_block
-        )
+        backend = _active_backend(st)
+        answer, used = answer_question(backend, facts, text, mode=mode, data_block=data_block)
         second_answer: str | None = None
         second_model: str | None = None
         agreement: str | None = None
@@ -2154,6 +2197,22 @@ def create_app(
             second_model = f"{second.name}/{getattr(second, 'model', '') or 'default'}"
             if answer and second_answer:
                 agreement = figure_agreement(answer, second_answer)
+        _record_ask(
+            st,
+            question=text,
+            scope=scope,
+            facts=used,
+            mode=mode,
+            model=(
+                f"{backend.name}/{getattr(backend, 'model', '') or 'default'}"
+                if answer is not None
+                else ""
+            ),
+            answer=answer,
+            second_model=second_model,
+            second_answer=second_answer,
+            agreement=agreement,
+        )
         return JSONResponse(
             {
                 "answer": answer,  # null => no local model active / answer failed the gate
@@ -2193,7 +2252,11 @@ def create_app(
         sch = st.schedules.get(name)
         if sch is None:
             return JSONResponse({"error": "not found"}, status_code=404)
-        text = question.strip()[:500]
+        # ADR-0392: NO length cap. The former ``[:500]`` truncated a long forensic question
+        # mid-sentence, silently — the model then answered the fragment and the analyst had no
+        # way to see that half the question never arrived. Silent truncation is the defect class
+        # this whole ADR closes; a local, loopback-only tool has no reason to cap its operator.
+        text = question.strip()
         if not text:
             return JSONResponse({"error": "ask a question"}, status_code=422)
         try:
@@ -2213,7 +2276,7 @@ def create_app(
             if st.ai_config.qa_mode == "unrestricted"
             else None
         )
-        return _ask_response(st, facts, text, data_block=block)
+        return _ask_response(st, facts, text, data_block=block, scope=name)
 
     @app.post("/api/ask")
     def ask_workbook(question: str = Form("")) -> JSONResponse:
@@ -2221,7 +2284,7 @@ def create_app(
         st = session()
         if not st.schedules:
             return JSONResponse({"error": "not found"}, status_code=404)
-        text = question.strip()[:500]
+        text = question.strip()  # ADR-0392: no length cap — see /api/ask/{name}
         if not text:
             return JSONResponse({"error": "ask a question"}, status_code=422)
         unrestricted = st.ai_config.qa_mode == "unrestricted"
@@ -2233,7 +2296,7 @@ def create_app(
             except CPMError as exc:
                 return JSONResponse({"error": str(exc)}, status_code=422)
             block = _unrestricted_data_block(st, key, sch) if unrestricted else None
-            return _ask_response(st, facts, text, data_block=block)
+            return _ask_response(st, facts, text, data_block=block, scope=key)
         schedules, cpms, _skipped = _solvable_versions()
         if not schedules:
             return JSONResponse({"error": "no analyzable versions loaded"}, status_code=422)
@@ -2282,18 +2345,32 @@ def create_app(
                 return JSONResponse({"error": "no analyzable schedule loaded"}, status_code=422)
             sch, cpm = schedules[-1], cpms[-1]
         facts = driving_path_summary(sch, cpm, uid)
+        question = f"Driving path to UID {uid}"
         if not facts:
-            return JSONResponse(
-                {
-                    "uid": uid,
-                    "answer": f"UID {uid} is not a scheduled activity in this file.",
-                    "facts": [],
-                }
+            missing = f"UID {uid} is not a scheduled activity in this file."
+            _record_ask(
+                st,
+                question=question,
+                scope=key,
+                facts=(),
+                answer=missing,
+                kind="Driving path (engine, no AI)",
             )
+            return JSONResponse({"uid": uid, "answer": missing, "facts": []})
+        answer = " ".join(f.text for f in facts)
+        # the panel's other result kind is exportable too — one output box, one export button
+        _record_ask(
+            st,
+            question=question,
+            scope=key,
+            facts=facts,
+            answer=answer,
+            kind="Driving path (engine, no AI)",
+        )
         return JSONResponse(
             {
                 "uid": uid,
-                "answer": " ".join(f.text for f in facts),
+                "answer": answer,
                 "facts": [
                     {
                         "text": f.text,
@@ -3556,6 +3633,72 @@ def create_app(
         if fmt not in _EXPORT_MEDIA:
             return JSONResponse({"error": "format must be xlsx or docx"}, status_code=404)
         return None
+
+    @app.get("/export/{fmt}/ask")
+    def export_ask(fmt: str) -> Response:
+        """The latest Ask-the-AI exchange as a workbook (ADR-0392).
+
+        Three sheets, and the split is the point: **Answer** is what the model wrote, **Cited
+        facts** is what the engine computed and handed it, and **Citations** resolves every fact
+        to file + UniqueID + activity name so a reader can verify each one in MS Project. An AI
+        answer that leaves this tool must travel with its evidence, or it is an assertion.
+        """
+        if (bad := _bad_format(fmt)) is not None:
+            return bad
+        rec = session().last_ask
+        if rec is None:
+            return JSONResponse(
+                {"error": "ask a question first — there is no answer to export"}, status_code=422
+            )
+        answer_rows: list[tuple[Cell, ...]] = [
+            ("Result type", rec.kind),
+            ("Question", rec.question),
+            ("Scope", rec.scope or "Workbook — all loaded versions"),
+            ("AI answer mode", rec.mode or "n/a (engine result, no AI)"),
+            ("Model", rec.model or "none — no live model answered"),
+            # Law 2 at the export boundary: no answer is an EMPTY cell with a stated reason,
+            # never a blank that reads as "the model said nothing of note".
+            (
+                "Answer",
+                rec.answer
+                or "— no model answer (no live model active, or the figure gate discarded it); "
+                "the cited facts sheet is the engine's own answer",
+            ),
+        ]
+        if rec.second_answer:
+            answer_rows.append(("Second model", rec.second_model or "second"))
+            answer_rows.append(("Second answer", rec.second_answer))
+        if rec.agreement:
+            answer_rows.append(("Cross-check", rec.agreement))
+        answer_rows.append(
+            (
+                "Standing disclaimer",
+                "AI can err — verify every figure against the cited facts and the source "
+                "schedule. Figures in the cited facts are engine-computed.",
+            )
+        )
+        fact_rows = tuple(
+            (
+                i,
+                f.text,
+                "; ".join(f"{name} (UID {uid})" for _file, uid, name in f.citations) or "—",
+            )
+            for i, f in enumerate(rec.facts, start=1)
+        )
+        citation_rows = tuple(
+            (i, file or "—", uid, name)
+            for i, f in enumerate(rec.facts, start=1)
+            for file, uid, name in f.citations
+        )
+        tableset = TableSet(
+            "POLARIS — Ask the AI",
+            (
+                Table("Answer", ("Field", "Value"), tuple(answer_rows)),
+                Table("Cited facts", ("#", "Engine-computed fact", "Cited activities"), fact_rows),
+                Table("Citations", ("Fact #", "File", "UniqueID", "Activity"), citation_rows),
+            ),
+        )
+        return _export_response(fmt, tableset, "ask-the-ai")
 
     @app.get("/export/{fmt}/analysis/{name}")
     def export_analysis(fmt: str, name: str) -> Response:

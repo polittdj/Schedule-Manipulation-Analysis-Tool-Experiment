@@ -103,6 +103,41 @@ class _Flash:
 
 
 @dataclass(frozen=True)
+class _AskFact:
+    """One cited fact as it was SHOWN with an answer — text plus its citations, flattened for
+    export. Flattened deliberately: the export is a record of what the analyst saw, so it must
+    not change if the engine is later re-run against a re-scoped or re-uploaded session."""
+
+    text: str
+    #: (source file, unique id, activity name). The file is ``None`` when the citation carries
+    #: none (``Citation.source_file`` is optional) — the export renders that as "—", not "None".
+    citations: tuple[tuple[str | None, int, str], ...]
+
+
+@dataclass(frozen=True)
+class _AskRecord:
+    """The session's most recent Ask-the-AI exchange, held so it can be EXPORTED (ADR-0392).
+
+    The answer is produced by a POST that streams straight back to the panel, so before this
+    there was nothing for a GET export route to render — the analyst could read a full forensic
+    answer on screen and had no way to get it into a report but the clipboard. One record, the
+    latest; asking again replaces it. In-memory only, wiped with the session like every other
+    field (``SessionState.reset``), and it holds only what was already on the operator's screen.
+    """
+
+    question: str
+    scope: str  # the loaded schedule key, or "" for the whole workbook
+    mode: str  # the AI answer mode in force (strict / annotate / interpretive / unrestricted)
+    model: str  # "backend/model" stamp, or "" when no live model answered
+    answer: str | None  # None = no live model / the gate discarded the answer
+    facts: tuple[_AskFact, ...]
+    second_model: str = ""
+    second_answer: str | None = None
+    agreement: str = ""
+    kind: str = "AI answer"  # "AI answer" or "Driving path (engine, no AI)"
+
+
+@dataclass(frozen=True)
 class _Analysis:
     """Everything a report view needs, computed once from a single CPM pass per schedule.
 
@@ -417,6 +452,9 @@ class SessionState:
     file_meta: dict[str, tuple[str | None, float | None]] = field(default_factory=dict)
     ai_config: AIConfig = field(default_factory=AIConfig)
     flash: _Flash | None = None  # transient import feedback, consumed on the next home() render
+    #: ADR-0392 — the latest Ask-the-AI exchange, so ``/export/{fmt}/ask`` can render the answer
+    #: the analyst is looking at. Replaced by each new question; wiped with the session.
+    last_ask: _AskRecord | None = None
     # per-schedule analysis cache (key -> (schedule, analysis)); identity-checked so a re-upload
     # under the same key recomputes. Bounded by the loaded-schedule count; cleared on wipe.
     analyses: _LRUCache[tuple[Schedule, _Analysis]] = field(

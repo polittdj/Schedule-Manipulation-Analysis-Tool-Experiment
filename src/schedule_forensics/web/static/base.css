@@ -112,8 +112,18 @@ border-bottom:1px solid var(--line)}th{color:var(--muted);font-weight:600}
 .banner.cloud{background:var(--bad-bg);border:1px solid var(--bad);color:var(--bad)}
 .muted{color:var(--muted)}.cite{color:var(--muted);font-size:12px}
 button,input[type=submit]{background:var(--accent);color:var(--btn-ink);border:0;border-radius:7px;
-padding:8px 14px;font-weight:600;cursor:pointer}input,select{background:var(--field-bg);color:var(--ink);
-border:1px solid var(--line);border-radius:7px;padding:7px 9px}
+padding:8px 14px;font-weight:600;cursor:pointer}input,select,textarea{background:var(--field-bg);
+color:var(--ink);border:1px solid var(--line);border-radius:7px;padding:7px 9px}
+/* Ask-the-AI question box (ADR-0392): a multi-line, resizable field with NO length limit — the
+   500-character cap silently truncated a long forensic question mid-sentence and the model then
+   answered the fragment. Inherits the token colors above; only the box metrics live here. */
+textarea.ask-input{font:inherit;line-height:1.45;min-height:4.6em;width:100%;resize:vertical;
+box-sizing:border-box}
+/* The panel's ⤓ EXCEL / ⤓ WORD pair, revealed by ask.js once an answer exists. The `:not(
+   [hidden])` guard is load-bearing: an author `display` beats the UA stylesheet's
+   `[hidden]{display:none}`, so a bare `.ask-exports{display:inline-flex}` would show the links
+   permanently — including before any answer, i.e. a dead link. */
+.ask-exports:not([hidden]){display:inline-flex;gap:12px;align-items:center}
 code{background:var(--field-bg);border:1px solid var(--line);border-radius:4px;padding:1px 5px;font-size:12px}
 .hero{margin:6px 2px 20px}.hero h2{font-size:22px;color:var(--ink);margin:0 0 8px}
 .hero p{max-width:760px;margin:0}

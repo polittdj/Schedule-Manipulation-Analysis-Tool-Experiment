@@ -435,6 +435,44 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-13 (2) — the model was describing its evidence, and the evidence was two files
+
+An operator loaded 31 versions, asked the AI to read the S-curve across all of them, and was told
+the tool could see "only two file versions, not 31". Four lessons, and the first one is the trap.
+
+- **A model that says "I only see two files" may be reporting a fact about its evidence.** The
+  instinct — mine and the operator's — was that the loader had dropped 29 files. Measurement said
+  otherwise: 31 loaded, parsed and solved, and a fact base of 23 statements in which **exactly one**
+  named more than one version (a verification-procedure sentence that happens to list file names).
+  Everything else came from `build_briefing` (newest version) and the manipulation/counterfactual
+  facts (latest pair). The model's answer was an accurate description of its prompt. Read the prompt
+  before disbelieving the answer.
+- **A capability the TOOL has is not a capability the AI has.** `engine/s_curve.py` has computed
+  per-version cumulative curves since the `/scurve` page shipped. Nothing routed them to the Q&A,
+  and no test could notice, because every test asserted on what the fact base *contained* rather
+  than on what it *lacked*. Absence has no natural assertion site — you have to go and write one.
+- **Relevance ranking will drop the frame.** `relevant_facts`/`model_evidence` rank facts by
+  overlap with the question and truncate at a cap. That is exactly right for evidence and exactly
+  wrong for the fact that defines the *population*: a question phrased without the series facts'
+  vocabulary would rank them out, and the answer would then be confidently scoped to the wrong
+  universe — the original bug, reintroduced by the selector rather than by the builder. Population
+  frames need pinning, not ranking.
+- **Silent truncation is the defect, not the limit.** Both halves of this report are the same
+  failure. The question box cut at 500 characters and said nothing; the fact base covered two
+  versions and said nothing. Where a bound is genuinely needed (the 60-version render cap added
+  here), the output must *state* that it elided — a truncation the reader can see is a rendering
+  choice, one they cannot see is a lie by omission.
+- **A "no measurement" case must not render as a zero.** A version scoped to no activities came out
+  as `0% actual vs 0% planned, gap +0.0` — which reads as *exactly on plan* for a version that was
+  never measured at all. The two unreadable causes (no data date, no activities in scope) also have
+  to be told apart in the output, or the model conflates "we have no status date" with "the filter
+  emptied this version". Law 2's "—" never 0, at the fact boundary.
+- **And the near-miss that proves the discipline pays:** the new S-curve equivalence test passed on
+  its first run while comparing **zero** version pairs — its synthetic data dates sat outside the
+  golden project's own window, so every version was off the animated curve's axis and the comparison
+  loop never executed. Only the `compared >= 2` guard inside the test caught it. A loop-based
+  assertion needs a floor on its own iteration count, or "green" means "never ran".
+
 ### 2026-08-13 — a guard is only as strong as the test that pins its DATA
 
 A seven-dimension audit with adversarial verification. Four lessons, and the first one is the most
