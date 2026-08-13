@@ -51,8 +51,8 @@ finish. **No parity exposure**, and both hashes are pinned below so a future cha
 
 | measure | value |
 | --- | ---: |
-| tracked files | 442 |
-| total bytes | 432,842,925 |
+| tracked files | 443 |
+| total bytes | 432,843,124 |
 | extension&harr;content mismatches | 99 |
 | duplicate-content groups | 28 |
 | files in a duplicate group | 66 |
@@ -66,7 +66,7 @@ finish. **No parity exposure**, and both hashes are pinned below so a future cha
 | `html` | 10 |
 | `ico` | 1 |
 | `jpeg` | 49 |
-| `json` | 12 |
+| `json` | 13 |
 | `mp4` | 2 |
 | `ole2-ppt` | 1 |
 | `ole2-project` | 29 |
@@ -587,6 +587,7 @@ body under several names, not random corruption.
 | `00_REFERENCE_INTAKE/path.js` | 12,180 | `.js` | `text` | — | `1260fbd6254fd679b42c06a40425e7f5759e2fa4f68cb70db79974bd3c3538e9` |
 | `00_REFERENCE_INTAKE/path_evolution.js` | 6,225 | `.js` | `text` | — | `cd780b1e1801e6e2a68a73409f6426ab82cdd47c7456ba18d6f1d9d003cfe59c` |
 | `00_REFERENCE_INTAKE/pbix/.gitkeep` | 0 | `(none)` | `empty` | — | `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` |
+| `00_REFERENCE_INTAKE/pbix/NSATDeploymentRevisionAlpha.pbip` | 199 | `.pbip` | `json` | — | `0aa1d73fab9b90cd0d187fbf4bb304b6ad208c3e464a903d052fa3562a7c5e3d` |
 | `00_REFERENCE_INTAKE/pbix/NSATDeploymentRevisionAlpha.pbix` | 14,534,820 | `.pbix` | `zip` | — | `27ebb3d231a66c111d56fda7940d28a240cee9208c9621563678031a3dddd1f7` |
 | `00_REFERENCE_INTAKE/performance.js` | 11,613 | `.js` | `text` | — | `ac3dce335fd39ae4bb43e50963c40942043b3a6e18a956245c058abb7c550dfa` |
 | `00_REFERENCE_INTAKE/persist.js` | 24,307 | `.js` | `text` | — | `344fb360a971aa44f38023f7128f9a4367bbfbb20a000b97bbfb8a77254b9403` |
