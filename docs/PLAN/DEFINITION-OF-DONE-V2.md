@@ -33,13 +33,24 @@ in a PR comment is unaudited and absent below.
 
 ---
 
-## BAND 1 — the tool currently states something that is not true (3)
+## BAND 1 — the tool currently states something that is not true (3; 001 closed, 3 ADDED)
 
 Highest priority regardless of effort. In a testimony context a wrong number or a false claim is a liability; an incomplete feature is not.
 
+> **Added 2026-08-13 by the full-repo audit — the approved-gateway class.** The operator now runs
+> POLARIS against a NASA-approved AI gateway on their own machine, and the repo has no record of it.
+> See **[`APPROVED-GATEWAY-INTEGRATION.md`](APPROVED-GATEWAY-INTEGRATION.md)** for the full,
+> anchor-by-anchor writeup. Three new Band-1 items, in dependency order:
+>
+> | # | Who | Size | Requirement | Why |
+> | --: | :-: | :-: | --- | --- |
+> | 001a | `agent` | `S` | Pin `net_guard._LOOPBACK_HOSTNAMES` / `_LOCAL_HTTP_SCHEMES` contents, with a mutation proof | **The entire Law-1 locality guarantee is one unpinned frozenset.** Widening it with a gateway hostname was executed in-memory during the audit: **226 guard/AI/air-gap tests passed**, and 854 across a wider selection. The exact change made on the operator's machine is invisible to CI. Land this FIRST and alone. |
+> | 001b | `agent` | `M` | Make the sovereignty banner OBSERVED, not config-derived | `route_backend`'s Banner is dead code; `chrome.py:175` renders `banner_for(state.ai_config)`. With a gateway armed the page reads "Local-only — no data leaves this machine." while data leaves. Two of these claims also print inside **exported exhibits** (`ai/brief.py:625`, `web/sra.py:1076`). |
+> | 001c | `human` | `S` | Decide the `cloud` option's fate: delete it, or build a first-class `GatewayBackend` | `ai/cloud.py` does not exist and no caller supplies `cloud_backend`, yet `settings.py:449` still offers "Cloud (UNCLASSIFIED only)". So the only route to an approved gateway is widening the loopback validator — the architecture channels a legitimate need into the most dangerous possible change. |
+
 | # | Who | Size | Requirement | Why |
 | --: | :-: | :-: | --- | --- |
-| 001 | `either` | `L` | ADR-0108: engine ignores the data date, understating real slips | this is the one open item that makes the tool report a number that is WRONG in the direction that matters (it understates a slip). In a testimony context an understated delay is the worst possible failure mode. If it cannot be fix |
+| 001 | ~~`either`~~ | `L` | ~~ADR-0108: engine ignores the data date, understating real slips~~ — **CLOSED by [ADR-0391](../adr/0391-actual-start-is-a-scheduling-floor.md), 2026-08-12.** The row is kept because its DIAGNOSIS was disproved and that is part of the record: **the mechanism was never the data date.** A recorded `ActualStart` was ignored, so late-started work was re-packed at its logic start and dragged the successor chain back. `_actual_start_bounds` now floors it. Acumen Fuse agreement 4/5 → 5/5 on TP4 plus TP1; Large_Test_File per-task disagreements 826 → 164. Two residuals are named, not hidden: a completed task's actual **finish** is still unanchored, and two Hard_File goldens drift further from MSP (accepted, measured). | closed |
 | 002 | `agent` | `S` | SRA R-1: state which basis (working vs calendar days) every SRA figure uses, on page and in export | MEASURED F-1: our numbers match SSI's own distribution to ~3%, but a reader cannot see that without re-deriving the histogram by hand. |
 | 003 | `agent` | `S` | SRA R-2: carry risk-driver names into OAT sensitivity — never print a risk under its host task's name | MEASURED F-2: the 304.5-day top bar of the tornado is labelled with an activity name; UID 7443 prints twice under one name with different values. |
 

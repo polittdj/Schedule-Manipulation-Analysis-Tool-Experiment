@@ -467,8 +467,9 @@ _EXPLAINERS: dict[str, tuple[str, str, str]] = {
         "gap with a flat actual curve will not be closed by optimism.",
     ),
     "Forecast": (
-        "Multiple engine-computed finish forecasts side by side: pure-logic CPM, the stored "
-        "as-scheduled finish, and performance-adjusted projections.",
+        "Multiple engine-computed finish forecasts side by side: schedule-logic CPM (with started "
+        "work anchored to its recorded actual start), the stored as-scheduled finish, and "
+        "performance-adjusted projections.",
         "Each method row shows its date and its basis. When methods disagree, the spread IS "
         "the uncertainty; the as-scheduled row shows what the source tool itself stored.",
         "Never brief a single date without the spread: use the range to set commitment dates "
