@@ -435,6 +435,46 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-14 (a) — the census flagged the guard itself: the fix would have been wedged by its own commit hook
+
+- Widening the CUI pre-commit hook for HOOK-01 (ADR-0399), the first draft's header comment
+  wrote the save-format signature verbatim — and the hook is an extension-less file, one of its
+  own sniff classes. The new whole-tree census test flagged `.githooks/pre-commit` as schedule
+  content: **the commit landing the fix would have been blocked by the guard it was fixing.**
+  Lesson: a guard that sniffs a class of files it itself belongs to will eventually read
+  itself — never write a detector's signature literal inside the detector's own file. This is
+  the audit's redaction lesson ("a document that flags a disclosure must not repeat the
+  disclosed literal") landing on a guard, and the census now enforces it permanently.
+- A tree census needs BOTH of its controls, not either: the planted canary proves the sweep can
+  go red, and the staged-count == copied-population proof stops `git add` silently dropping
+  gitignored-but-tracked names (the 2026-08-13 audit's `git add -A` trap). The canary alone
+  passes over a half-staged population; the count alone passes with a detector that flags
+  nothing.
+- A predicted mutation outcome is not a measured one. The ADR's M7 sentence was drafted saying
+  the unanchored mutant would flip three rows; the measurement says ONE — `guide.md`, blocked as
+  "P6 XER content" because unanchored matching hits the `ERMHDR` quoted in prose, which is
+  precisely the false positive the anchoring exists to prevent. The drafted sentence was
+  replaced with the measured one before commit. Writing the expected result into a document
+  before running the check is exactly the shape QC-1 forbids, even when the check later passes.
+- Anchoring to serialization-start is what makes covering prose-capable extensions POSSIBLE at
+  all: unanchored, the `.md` sniff blocks `docs/STATE/AUDIT-2026-06-25.md` — a tracked doc —
+  today (measured in the pre-change census, not argued). The guard's false-positive boundary is
+  as load-bearing as its detection boundary: one wrong block on legitimate work and the guard
+  gets switched off, after which it guards nothing.
+- **A mutation-green guard is not an adversarially-verified guard.** After 8/8 mutations were
+  caught by name, the adversarial fan-out still found FIVE in-scope defect classes — including
+  a pre-existing SILENT fail-open (git C-quotes `schädule.mpp`, the escaped token matches no
+  pattern and `git show` fails, so every detector was bypassed for any non-ASCII/quote/control
+  filename since the guard was born). Mutations prove the tests can see the detectors;
+  adversaries probe the space BETWEEN the detectors — name normalization, quoting layers,
+  spec-valid variants (single-quoted xmlns), and template dialects (`{{<` is prose that starts
+  with `{`). Both proofs are needed, and they are not the same proof.
+- The fail-open lived in the INPUT PLUMBING, not the detectors: `git diff --name-only` output
+  is an ENCODING of paths, not paths. Every detector downstream was correct and every test fed
+  it clean ASCII names, so nothing ever exercised the decode boundary. When a guard consumes
+  tool output, the tool's quoting/escaping layer is part of the attack surface — read raw
+  (`-z` + `read -d ''`) or prove the decode.
+
 ### 2026-08-13 (h) — a diagnosis reversed twice in one hour; then the predicted collision arrived on schedule
 
 - Closing 001b (ADR-0396 after renumbering — see below) required the wheel/installer rebuild, and the

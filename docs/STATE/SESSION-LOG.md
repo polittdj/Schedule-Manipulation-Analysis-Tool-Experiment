@@ -14058,3 +14058,79 @@ HOOK-01 widened pre-commit boundary → PO-03/04/05 parity-oracle gaps → the r
 bandit / node --check green; full suite on the settled merged tree **3832 passed, 47 skipped,
 3 xfailed** (TEST-01 · HOOK-01 · PO-03 — the audit's still-live findings) in 30:30; installer
 suite 64/64 including the two new pin/fetch guards; parity ran inside the full suite.
+
+---
+
+## 2026-08-14 (a) — HOOK-01: the CUI pre-commit guard learns disguise suffixes, anchored renames, and containers (ADR-0399)
+
+Branch `claude/polaris-kickoff-handoff-hq4c6g` from `main` eb25865 (= #586's squash; HEAD ==
+origin/main at branch time). NO shipped code changed — `.githooks/` + tests + docs only, so
+v1.0.201 stands, SCHEMA 2.11.0, no wheel/installer rebuild (ADR-0395 precedent). Queue items 1-2
+(DISC-01, 001c) are operator-gated, so this session took item 3.
+
+**The fix (ADR-0399).** Three detectors, every rule measured against the 1633 tracked files
+before adoption: (1) `blocked_re` becomes a suffix CHAIN — the closed backup set plus a closed
+DISGUISE set — so `data.mpp.png`/`sched.mpp.zip`/`export.xer.png`/`data.mpp.png.bak` block by
+name; the final chain claims ZERO tracked paths beyond the hard-anchored core (the ADR-0347 jar
+stays free). (2) `sniff_re` widens to md/png/svg/jpg/jpeg/gif/bmp/webp/pdf/zip, with the three
+signatures ANCHORED to serialization-start for the new classes — measured necessity:
+`docs/STATE/AUDIT-2026-06-25.md` carries the save signature mid-file, so the unanchored variant
+blocks a tracked doc TODAY; `.json`/`.txt`/extension-less keep the original unanchored sniff.
+(3) container magic in one embedded python3 batch: OLE2 under any sniffed name; ZIP under a
+non-archive name; `.zip` member census (blocked-extension members, `[Content_Types].xml` for
+renamed OOXML, Power BI payloads); PDF `/EmbeddedFile` + blocked-extension filespec. python3
+absent/erroring → LOUD warning + the pre-ADR-0399 floor. `.jar`/`.whl` deliberately not sniffed
+(members would wedge every MPXJ upgrade / wheel rebuild).
+
+**The guard flagged ITSELF.** The first draft quoted the save-format signature in the hook's own
+header comment; the hook is an extension-less SNIFFED file, so the new whole-tree census flagged
+`.githooks/pre-commit` — the commit landing the fix would have been wedged by its own guard. The
+comment now describes signatures without quoting them; the census enforces this permanently.
+
+**Verification (QC-1).** Red first: an independent 30-case battery instrument against the
+unfixed hook reproduced the audit exactly (15 gap ALLOW / 7 controls BLOCK / 8 FP-guards ALLOW);
+post-fix expectations went red on exactly the 15 gap rows. Green: 30/30 on the fixed hook.
+Committed: 16 block + 5 allow battery cases, staged-bytes container case, python3-absent floor
+test, whole-tree census (population-equality proof + canary that must be the ONLY flag), suffix
+sweep REPOINTED (its core derivation split on a tail the chain no longer has — vacuous-green
+trap) with a committed negative control (any-dot mutant claims the jar). The audit module's
+HOOK-01 xfail(strict) XPASSed loudly; marker removed — `tests/audit` now carries 2 live xfails
+(TEST-01, PO-03). Mutations: 8/8 caught by their named rows, zero unexpected flips, every diff
+proven non-inert; lead re-ran M2 (three container rows) and M7 (exactly `guide.md`, the
+false-positive-side teeth) by hand with identical results; instruments md5-identical before and
+after. Multi-agent fan-out per ADR-0240 (ultracode): 8 mutation agents + 3 attack agents
+(evasion / false-positive / bash robustness; 40 + 37 + 32 executed POC cases), every reported
+case lead-verified against its POC transcript.
+
+**The attack round found FIVE in-scope defect classes in the mutation-green hook — all fixed
+in this unit, red-first.** (1) C-QUOTING FAIL-OPEN, pre-existing and the session's most
+important find: `git diff --cached --name-only` C-quotes any name with a non-ASCII / quote /
+backslash / control byte (`core.quotepath` default), the escaped token matches no pattern AND
+`git show ":$token"` fails — a real OLE2 `schädule.mpp`, an XER `xér häder.txt`, an
+extension-less `café` save-JSON all committed SILENTLY, on the pre-ADR-0399 hook too. Fixed
+with `-z` + `read -r -d ''` (raw bytes end-to-end). (2) Trailing-whitespace names
+(`sched.mpp `) defeated every end-anchor — matching now runs on a stripped basename copy.
+(3) Single-quoted MSPDI xmlns (XML-spec-valid; parses to the identical root) slipped BOTH the
+bash and python double-quote-literal signatures — both now quote/whitespace-agnostic.
+(4) False positive: Hugo `{{<` / Jekyll `{%` docs quoting the save format were blocked by the
+bare leading-brace test — the brace must now open a JSON object (`{` + quoted key).
+(5) False positive: the PDF attachment regex matched a PRINTED page-text paren-string
+(`…see attached schedule.xml`) in a benign-attachment report — now bound to a `/F`/`/UF`
+filespec, which also catches legal spaces inside the parens (previously a slip). Battery
+grown to 42 cases (12 new rows observed red against the pre-fix hook), committed tests grown
+to match (two hostile-name cases skip on win32); mutations RE-RUN against the FINAL hook:
+8/8 by name with enlarged expected sets (M2 gains `plané.json`; M7 flips all three
+templated-doc FP rows). Instruments md5-verified unmutated. Evasion-confirmed DOCUMENTED
+limits recorded in the ADR: closed sniff set (`.dat`/`.html`/… renames), name-based container
+rules (member/attachment content not decompressed), MSPDI behind a leading XML comment.
+
+**Gate at close (the run that ships):** ruff check . / ruff format --check . / mypy --strict src
+(152 files) / bandit / node --check green. Full suite on the final tree: **3870 passed,
+47 skipped, 2 xfailed** (TEST-01 · PO-03 — the audit's remaining live findings) **in 20:01**;
+the skips are the documented playwright-absent set. Battery instrument 42/42 against the
+shipped hook; mutation re-run 8/8 by name against the FINAL hook; drift guards
+(`test_state_docs` + `test_standing_rules`) 12/12; HANDOFF 9,244 bytes by `wc`.
+
+**Next:** DISC-01 release determination (operator) → 001c gateway decision → PO-03/04/05 →
+`actual_start_driven` → exec_cal floor → TEST-01 → `_ALLOWED_HOSTS` sweep → FINAL-REPORT →
+stale branches.
