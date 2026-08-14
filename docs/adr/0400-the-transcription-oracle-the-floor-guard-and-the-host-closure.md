@@ -89,7 +89,7 @@ precedent for guards+docs-only units).
    closure per consumer; the Origin-scheme closure (the M3 hole); a raw-ASGI absent-Host
    request (httpx cannot send one); and the measured oddities pinned deliberately — bare
    `::1` is REFUSED (the frozenset's entry is reachable only via the bracketed HTTP form,
-   fail-closed), `[::1` exercises the `urlsplit` ValueError branch and does NOT flip under a
+   fail-closed), the unmatched-bracket host exercises the `urlsplit` ValueError branch (pinned unit-level — see the floor round below) and does NOT flip under a
    return-True mutation (the free discriminator between check-disabled and check-unwired),
    `http://testserver` passes the CSRF fallback (the shared frozenset, pinned so it cannot
    widen silently), and the IDN homograph rides as its punycode form `xn--lcalhost-nbh`
@@ -115,9 +115,10 @@ precedent for guards+docs-only units).
   patch with occurrence==1 abort, import canary asserted, control run green on the module,
   failures diffed against the control: M1 widen → **8** module flips **plus the audit data
   pin by name** (incl. the new in-module pin); M2 host-check-true → **25** (every refused
-  host except `[::1`, exactly as the ValueError-branch analysis predicts, plus the new POST
+  swept host, exactly as the ValueError-branch analysis predicts, plus the new POST
   row); M3 scheme-dropped → **4**; M4 origin-check-true → **11**; M5 middleware-unwired →
-  **26** (M2's set **plus** `[::1` and absent-Host). Zero unexpected flips. The 4
+  **25**. Zero unexpected flips. (Numbers re-measured after the floor round moved the
+  malformed-bracket row out of the HTTP sweep.) The 4
   control-run failures in the audit module are PYTHONPATH-sandbox path artifacts
   (repo-relative tests resolving REPO from the sandbox's `__file__`), identical under every
   mutant, subtracted as noise.
@@ -190,7 +191,7 @@ nothing); it is now consumed by an in-module data pin. The refuters also verifie
 odd population row reaches the middleware byte-exact (instrumented — httpx does NOT strip
 ` 127.0.0.1 `), 14 exotic host encodings all refuse, and `asyncio.run` co-runs cleanly.
 **Final battery vs the FINAL module** (fresh sandboxes, control-subtracted, canaried):
-M1→8 flips + the audit pin by name · M2→25 · M3→4 · M4→11 · M5→26 · plus A5→2, A7→2,
+M1→8 flips + the audit pin by name · M2→25 · M3→4 · M4→11 · M5→25 · plus A5→2, A7→2,
 A4→1. Zero unexpected flips.
 
 **Unit consistency (everything measured green, 4 lows fixed):** DISC-01 sweep of the full
@@ -231,3 +232,28 @@ this ADR's own placeholder section (flagged by the round; this text closes it).
 * The queue after this unit: DISC-01 determination (operator) → 001c (operator decision) →
   PO-04/05 (blocked on primary oracles) → `actual_start_driven` wiring → TEST-01 →
   FINAL-REPORT overclaims → stale branches.
+
+## The floor round (CI, post-merge-request): a population row the transport cannot carry everywhere
+
+The PR's first CI run failed exactly one job — `floor (declared minimum)` — on exactly the
+two tests carrying the malformed-IPv6 Host row `[::1`: `ValueError: Invalid IPv6 URL`.
+Measured mechanism (reproduced in a local venv at the floor pins — httpx 0.27.0, starlette
+0.37.2, fastapi 0.110.2 — and isolated to a five-line middleware): the raise is
+**server-side and pre-existing**. The liveness middleware's `finally` (and its
+`/static/` cache branch) reads `request.url.path`; floor starlette builds that URL by
+parsing the **Host header**, so the malformed bracket raises *after* the 400 refusal was
+already constructed, replacing it with an unhandled exception (newer starlette tolerates
+the same header, which is why every current-stack run was green). The row is therefore
+untransportable through the HTTP layer across the supported dependency range — the
+transport is part of a population row's claim.
+
+Fix (tests-only, keeping this unit's charter): the row moved to a UNIT-level pin of the
+exact branch it existed for — `_host_allowed("[::1") is False` — with the population note
+documenting why; red/green proven in the floor venv itself (committed module: the two CI
+failures reproduce byte-exact; fixed module: 56 passed at the floor AND on the current
+stack). The battery was re-run against the final module (numbers above). QUEUED, not fixed
+here (shipped code): the middleware could read `request.scope["path"]` — the raw ASGI
+path, no Host parsing — instead of `request.url.path`, which would 400 (with security
+headers) instead of 500 a malformed-IPv6-Host request at floor versions. Fail-closed
+either way (no route runs, nothing is served); the one-liner plus its floor-venv
+regression test belongs to a version-bumping unit.

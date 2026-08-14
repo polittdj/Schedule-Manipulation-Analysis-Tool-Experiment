@@ -41,12 +41,12 @@
 > Origins passed the CSRF fallback. New module: ADR-0394-recipe closures through the HTTP layer
 > (M5 is why), curated populations both directions, the Origin-scheme closure, raw-ASGI
 > absent-Host, and deliberate pins: bare `::1` REFUSED (bracketed-only reachability,
-> fail-closed), `[::1` = the ValueError branch (does NOT flip under return-True — the
+> fail-closed), the unmatched-bracket host = the ValueError branch, now pinned UNIT-level (does NOT flip under return-True — the
 > check-disabled vs check-unwired discriminator), `http://testserver` passes the fallback
 > (shared frozenset, pinned so it cannot widen silently), homograph rides as punycode
 > `xn--lcalhost-nbh` (raw non-ASCII cannot ride an HTTP Host header — measured, httpx refuses).
 > Lead battery vs the FINAL module, control-subtracted, canaried: M1→6+audit pin BY NAME,
-> M2→24 (all but `[::1`), M3→4, M4→10, M5→25 (incl. `[::1` + no-Host). Zero unexpected flips.
+> M2→25, M3→4, M4→11, M5→25 (final, re-measured after the floor round). Zero unexpected flips.
 >
 > ## Adversarial round (ADR-0240)
 > Four refuters vs the mutation-green first revision (~50 sandboxed attacks): ELEVEN
@@ -67,7 +67,7 @@
 > assert saw) — closed with a POST row on the non-redirecting /api/heartbeat +
 > follow_redirects=False in test_sec_hardening; empty-Origin fail-open pinned; two dead
 > oracle constants made load-bearing. Final battery vs the FINAL module: M1→8+audit pin,
-> M2→25, M3→4, M4→11, M5→26, A5→2, A7→2, A4→1 — zero unexpected flips. Consistency
+> M2→25, M3→4, M4→11, M5→25, A5→2, A7→2, A4→1 — zero unexpected flips. Consistency
 > refuter: DISC-01 sweep clean, Law-1 clean, pre-commit hook exit 0 with a blocked canary
 > proving teeth, all drift guards green.
 >
@@ -111,7 +111,12 @@
 > environment-gated playwright skip. Touched-module set together: 122 passed + the TEST-01
 > xfail. Batteries: exec_cal 4/4 red on deletion + 1/1/1/2 partial-mutant reds + isolation
 > green; PO-03 B1/B2/B3 + R1/R2/R3 named reds, instruments md5-restored; SEC-01 final
-> M1→8+audit-pin / M2→25 / M3→4 / M4→11 / M5→26 / A5→2 / A7→2 / A4→1, zero unexpected.
+> M1→8+audit-pin / M2→25 / M3→4 / M4→11 / M5→25 / A5→2 / A7→2 / A4→1, zero unexpected.
+> **Floor round (post-push CI):** the `floor (declared minimum)` job failed on the
+> malformed-IPv6 Host row — floor starlette's `request.url` parses the Host header and the
+> liveness middleware's `finally` touches it even on refused requests, raising server-side
+> (reproduced at the floor pins, mechanism isolated). The row is now a unit-level
+> ValueError-branch pin; red/green proven IN the floor venv; NEW QUEUE ITEM below.
 
 # (prior) handoffs — archived
 

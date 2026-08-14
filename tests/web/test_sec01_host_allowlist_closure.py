@@ -94,7 +94,12 @@ _REFUSED_HOSTS: tuple[str, ...] = (
     # rejecting it is the fail-closed direction (the frozenset's "::1" is reachable
     # ONLY via "[::1]"). Pinned so a "helpful" unbracketed acceptance shows up here.
     "::1",
-    "[::1",  # unmatched bracket — the urlsplit ValueError branch, a distinct code path
+    # NOTE the unmatched-bracket form "[::1" is deliberately NOT in this population: at the
+    # declared dependency FLOOR (starlette 0.37.2 — measured on CI and reproduced in a
+    # floor venv) the app's own liveness middleware raises server-side on it
+    # (request.url.path parses the Host header; `finally` runs even on refused requests),
+    # so the row is untransportable through the HTTP layer across the supported range.
+    # Its ValueError branch is pinned unit-level below instead.
     "",  # empty Host
     *_HOST_CONFUSABLES,
 )
@@ -209,6 +214,18 @@ def test_the_host_check_gates_unsafe_methods_too(client: TestClient) -> None:
     r = client.post("/api/heartbeat", headers={"host": "evil.example"})
     assert r.status_code == 400
     assert r.json() == {"error": "invalid host header"}
+
+
+def test_an_unparseable_host_header_is_refused_by_the_check_itself() -> None:
+    """The urlsplit ValueError branch of ``_host_allowed`` (unmatched IPv6 bracket),
+    pinned at the UNIT level: the HTTP-layer variant of this row is version-dependent —
+    at the declared floor, starlette's ``request.url`` raises on the malformed Host
+    inside the app before any status exists (see the population note above), so the
+    branch is exercised on the function the middleware calls, not through a transport
+    that cannot carry the input everywhere the tree must pass."""
+    from schedule_forensics.web.app import _host_allowed
+
+    assert _host_allowed("[::1") is False
 
 
 def test_the_allowlist_literal_is_exactly_the_expected_set() -> None:

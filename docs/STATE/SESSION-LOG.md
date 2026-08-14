@@ -14166,7 +14166,7 @@ on the finished unit.
   (test_sec_hardening DOES cover both consumers); the real holes: M1-blindness of samples and
   the `_origin_allowed` scheme conjunct caught by NOTHING (M3). Closure sweeps through the
   HTTP layer; lead battery vs the final module, control-subtracted, canaried: M1→6 flips +
-  audit data pin by name, M2→24, M3→4, M4→10, M5→25 (incl. the `[::1` ValueError-branch
+  audit data pin by name, and final post-floor-round numbers M2→25, M4→11, M5→25 (the ValueError-branch
   discriminator and raw-ASGI no-Host). Zero unexpected flips.
 
 **Adversarial round:** four refuters, ~50 attacks, ELEVEN in-scope findings — all fixed
@@ -14180,7 +14180,7 @@ NOTHING (GET-only sweep + follow_redirects laundering in test_sec_hardening — 
 POST ran and mutated state while the followed redirect GET showed the 400) → POST row +
 follow_redirects=False; empty-Origin fail-open pinned; dead EXPECTED_* constants made
 load-bearing; _UNSAFE_METHODS data-pinned. Final SEC-01 battery vs FINAL module: M1→8+audit
-pin, M2→25, M3→4, M4→11, M5→26, A5→2, A7→2, A4→1, zero unexpected. Consistency: DISC-01
+pin, M2→25, M3→4, M4→11, M5→25, A5→2, A7→2, A4→1, zero unexpected. Consistency: DISC-01
 clean, Law-1 clean, hook exit 0 + blocked canary, drift guards green.
 
 **Gate:** statics all green (ruff ×2 whole tree, mypy --strict 152 files, bandit exit 0,
