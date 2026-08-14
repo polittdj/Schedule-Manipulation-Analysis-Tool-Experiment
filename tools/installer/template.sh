@@ -125,6 +125,14 @@ ok "Installed {{WHEEL_NAME}}"
 #     about your own capability is a correctness defect. Whatever is printed below must
 #     agree with what `importers/mpp_mpxj.py::_mpxj_home` will find.
 MPXJ_BASE_URL="{{MPXJ_BASE_URL}}"
+# The anonymous raw URL above requires a PUBLIC repository. This one went private (DISC-01
+# remediation, 2026-08-13), so the fetch is token-aware: with SF_GITHUB_TOKEN (yours) or
+# GITHUB_TOKEN (CI's built-in) set, sf_fetch_mpxj switches to the authenticated GitHub
+# contents API at the SAME pinned commit. The SHA-256 manifest check below is identical
+# either way — the bytes are proven, not the transport.
+MPXJ_API_BASE="{{MPXJ_API_BASE}}"
+MPXJ_REF="{{MPXJ_REF}}"
+SF_GH_TOKEN="${SF_GITHUB_TOKEN:-${GITHUB_TOKEN:-}}"
 MPXJ_MANIFEST="$(cat <<'SF_MPXJ_MANIFEST_EOF'
 {{MPXJ_MANIFEST}}
 SF_MPXJ_MANIFEST_EOF
@@ -145,6 +153,20 @@ sf_sha256() {  # coreutils on Linux, shasum on macOS
 sf_fetch() {   # $1 = url, $2 = destination
   if command -v curl >/dev/null 2>&1; then curl -fsSL --retry 3 -o "$2" "$1"
   else wget -q -O "$2" "$1"; fi
+}
+
+sf_fetch_mpxj() {   # $1 = path relative to tools/mpxj, $2 = destination
+  if [ -n "$SF_GH_TOKEN" ]; then
+    if command -v curl >/dev/null 2>&1; then
+      curl -fsSL --retry 3 -H "Authorization: Bearer $SF_GH_TOKEN" \
+        -H "Accept: application/vnd.github.raw+json" -o "$2" "$MPXJ_API_BASE/$1?ref=$MPXJ_REF"
+    else
+      wget -q --header="Authorization: Bearer $SF_GH_TOKEN" \
+        --header="Accept: application/vnd.github.raw+json" -O "$2" "$MPXJ_API_BASE/$1?ref=$MPXJ_REF"
+    fi
+  else
+    sf_fetch "$MPXJ_BASE_URL/$1" "$2"
+  fi
 }
 MPXJ_SRC=""
 SF_HERE="$(cd "$(dirname "$0")" 2>/dev/null && pwd || printf '%s\n' ".")"
@@ -194,7 +216,7 @@ elif [ "${SF_MPXJ_OFFLINE:-0}" != "1" ]; then
     printf '%s\n' "$MPXJ_MANIFEST" | while read -r sha rel; do
       [ -n "$rel" ] || continue
       mkdir -p "$MPXJ_TMP/$(dirname "$rel")"
-      sf_fetch "$MPXJ_BASE_URL/$rel" "$MPXJ_TMP/$rel" || exit 1
+      sf_fetch_mpxj "$rel" "$MPXJ_TMP/$rel" || exit 1
       [ "$(sf_sha256 "$MPXJ_TMP/$rel")" = "$sha" ] || { echo "checksum mismatch: $rel" >&2; exit 1; }
     done
   ) && [ -f "$MPXJ_TMP/classes/MpxjToMspdi.class" ]; then

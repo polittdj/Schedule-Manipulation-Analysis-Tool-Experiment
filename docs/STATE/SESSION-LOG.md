@@ -14053,3 +14053,8 @@ placeholders per the audit's redaction discipline.
 
 **Next:** DISC-01 release determination (operator / authorizing official) → 001c gateway decision →
 HOOK-01 widened pre-commit boundary → PO-03/04/05 parity-oracle gaps → the remaining queue.
+
+**Gate at close (the run that ships):** ruff check . / ruff format --check . / mypy --strict src /
+bandit / node --check green; full suite on the settled merged tree **3832 passed, 47 skipped,
+3 xfailed** (TEST-01 · HOOK-01 · PO-03 — the audit's still-live findings) in 30:30; installer
+suite 64/64 including the two new pin/fetch guards; parity ran inside the full suite.

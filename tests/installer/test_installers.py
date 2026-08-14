@@ -530,6 +530,33 @@ def test_the_converter_pin_is_a_real_touch_not_a_shallow_graft_artifact(family: 
 
 
 @pytest.mark.parametrize("tier", TIERS)
+@pytest.mark.parametrize("family", FAMILIES)
+def test_the_converter_fetch_is_token_aware_for_the_private_repo(tier: str, family: str) -> None:
+    """ADR-0398. The repository went PRIVATE (DISC-01 remediation, 2026-08-13), which 404s the
+    anonymous raw.githubusercontent fetch for everyone — measured: the identical smoke legs
+    passed while public and failed hours later on an unchanged code path. Every installer must
+    therefore carry BOTH download paths: the authenticated GitHub contents API (taken whenever
+    SF_GITHUB_TOKEN or GITHUB_TOKEN is set — proven live: a bare-directory install fetched and
+    SHA-256-verified the full 28-file manifest through it) and the anonymous raw URL (kept so a
+    future public repo needs no rebuild). The SHA-256 manifest check guards both transports.
+    """
+    text = _read(tier, family)
+    assert "api.github.com/repos/" in text and "/contents/tools/mpxj" in text
+    assert "SF_GITHUB_TOKEN" in text and "GITHUB_TOKEN" in text
+    assert "application/vnd.github.raw+json" in text  # the raw media type IS the mechanism
+    assert "raw.githubusercontent.com" in text  # the anonymous path stays as the public fallback
+    # the API path must ride the SAME immutable pin as the raw path (one ref, two transports):
+    # the ref the raw URL carries is also assigned to the MPXJ_REF variable the API URL uses.
+    m = re.search(
+        r"raw\.githubusercontent\.com/[^/\s\"]+/[^/\s\"]+/([0-9a-f]{40})/tools/mpxj", text
+    )
+    assert m is not None
+    ref = m.group(1)
+    assert f'MPXJ_REF="{ref}"' in text or f'$MpxjRef = "{ref}"' in text
+    assert "?ref=$MPXJ_REF" in text or "?ref=$MpxjRef" in text
+
+
+@pytest.mark.parametrize("tier", TIERS)
 def test_no_probe_or_optional_step_can_abort_the_windows_install(tier: str) -> None:
     """ADR-0299, found by the new windows no-checkout CI leg.
 

@@ -134,16 +134,39 @@ def mpxj_ref() -> str:
     return out
 
 
-def mpxj_base_url() -> str:
-    """The raw.githubusercontent base for ``tools/mpxj``, derived from pyproject's Repository URL
-    so the installers cannot drift from the repo they ship out of, and pinned to an immutable
-    commit (see :func:`mpxj_ref`)."""
+def _repo_slug() -> tuple[str, str]:
+    """``(owner, repo)`` from pyproject's Repository URL — the repo these installers ship out of,
+    so neither download base can drift from it."""
     pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
     m = re.search(r'^Repository\s*=\s*"https://github\.com/([^/"]+)/([^/"]+)"', pyproject, re.M)
     if not m:
         raise SystemExit("pyproject [project.urls] Repository not found — cannot pin the MPXJ URL")
-    owner, repo = m.group(1), m.group(2)
-    return f"https://raw.githubusercontent.com/{owner}/{repo}/{mpxj_ref()}/tools/mpxj"
+    return m.group(1), m.group(2)
+
+
+def mpxj_base_url(ref: str) -> str:
+    """The ANONYMOUS raw.githubusercontent base for ``tools/mpxj`` at the immutable ``ref``.
+
+    Works only while the repository is public; a private repository 404s every anonymous raw
+    fetch (measured 2026-08-13, when the repo went private as the DISC-01 remediation and the
+    installer-smoke legs went red on an unchanged code path). The installers therefore also
+    carry :func:`mpxj_api_base` + the pinned ref and switch to an authenticated contents-API
+    fetch whenever a token is present — see the templates' ``sf_fetch_mpxj``.
+    """
+    owner, repo = _repo_slug()
+    return f"https://raw.githubusercontent.com/{owner}/{repo}/{ref}/tools/mpxj"
+
+
+def mpxj_api_base() -> str:
+    """The GitHub contents-API base for ``tools/mpxj`` — the AUTHENTICATED download path.
+
+    With ``Accept: application/vnd.github.raw+json`` and an ``Authorization`` header this
+    serves the file bytes for private repositories too (proven byte-identical against the
+    manifest for the 3 MB poi jar before shipping). The per-file URL is
+    ``<base>/<relpath>?ref=<pinned sha>`` — same immutable ref, same SHA-256 manifest check.
+    """
+    owner, repo = _repo_slug()
+    return f"https://api.github.com/repos/{owner}/{repo}/contents/tools/mpxj"
 
 
 def mpxj_manifest() -> str:
@@ -168,7 +191,8 @@ def build(wheel: Path) -> list[Path]:
     commented = "\n".join("# " + line for line in wrapped.splitlines())
     out_dir = ROOT / "installer"
     out_dir.mkdir(exist_ok=True)
-    manifest, base_url = mpxj_manifest(), mpxj_base_url()
+    ref = mpxj_ref()  # resolved ONCE — the raw base, the API ?ref= and the printout must agree
+    manifest, base_url, api_base = mpxj_manifest(), mpxj_base_url(ref), mpxj_api_base()
     print(f"MPXJ pinned to {base_url}")
     written: list[Path] = []
     families = (
@@ -204,6 +228,8 @@ def build(wheel: Path) -> list[Path]:
                 .replace("{{TIER_CONFIG}}", config)
                 .replace("{{WHEEL_NAME}}", wheel.name)
                 .replace("{{MPXJ_BASE_URL}}", base_url)
+                .replace("{{MPXJ_API_BASE}}", api_base)
+                .replace("{{MPXJ_REF}}", ref)
                 .replace("{{MPXJ_MANIFEST}}", manifest)
                 .replace(payload_key, payload)
             )

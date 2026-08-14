@@ -166,6 +166,15 @@ try { & $venvPy -m pip install --quiet psutil 2>$null } catch { }
 #     ON; saying "stays OFF" there was simply false, and on a testimony tool a false claim
 #     about your own capability is a correctness defect.
 $MpxjBaseUrl = "https://raw.githubusercontent.com/polittdj/schedule-manipulation-analysis-tool-experiment/42d92dc9acc98f7d87f19c82dc62be3e5d3c15ca/tools/mpxj"
+# The anonymous raw URL above requires a PUBLIC repository. This one went private (DISC-01
+# remediation, 2026-08-13), so the fetch is token-aware: with SF_GITHUB_TOKEN (yours) or
+# GITHUB_TOKEN (CI's built-in) set, the download switches to the authenticated GitHub contents
+# API at the SAME pinned commit. The SHA-256 manifest check below is identical either way —
+# the bytes are proven, not the transport.
+$MpxjApiBase = "https://api.github.com/repos/polittdj/schedule-manipulation-analysis-tool-experiment/contents/tools/mpxj"
+$MpxjRef = "42d92dc9acc98f7d87f19c82dc62be3e5d3c15ca"
+$SfGhToken = if ($env:SF_GITHUB_TOKEN) { $env:SF_GITHUB_TOKEN }
+             elseif ($env:GITHUB_TOKEN) { $env:GITHUB_TOKEN } else { "" }
 $MpxjManifest = @'
 5e48d00285e1443a23b545fe1cb68fe7fa153dedb8b9dc341368fd415f8b63b5  MpxjToMspdi.java
 1a2c05dc0d4e038a3cb99d57cec3f2fc2a33fbe9993ab4d14069a9a7016363cd  classes/MpxjToMspdi.class
@@ -281,7 +290,15 @@ if ($mpxjStaged) {
             $sha, $rel = $line -split "\s+", 2
             $target = Join-Path $tmpMpxj ($rel -replace "/", "\")
             New-Item -ItemType Directory -Force -Path (Split-Path -Parent $target) | Out-Null
-            Invoke-WebRequest -Uri "$MpxjBaseUrl/$rel" -OutFile $target -UseBasicParsing
+            if ($SfGhToken) {
+                Invoke-WebRequest -Uri "$MpxjApiBase/$($rel)?ref=$MpxjRef" -OutFile $target `
+                    -UseBasicParsing -Headers @{
+                        Authorization = "Bearer $SfGhToken"
+                        Accept        = "application/vnd.github.raw+json"
+                    }
+            } else {
+                Invoke-WebRequest -Uri "$MpxjBaseUrl/$rel" -OutFile $target -UseBasicParsing
+            }
             $got = (Get-FileHash -Algorithm SHA256 -LiteralPath $target).Hash.ToLower()
             if ($got -ne $sha.ToLower()) { throw "checksum mismatch for $rel" }
         }
