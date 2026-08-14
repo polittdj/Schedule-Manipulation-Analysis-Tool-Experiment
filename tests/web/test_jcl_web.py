@@ -10,6 +10,7 @@ import io
 import zipfile
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
 from schedule_forensics.model.relationship import Relationship, RelationshipType
@@ -198,3 +199,38 @@ def test_jcl_runs_through_the_real_mspdi_import_path() -> None:
     # and the export carries the JCL sheets for this imported, cost-loaded file
     blob = _export_blob(c)
     assert b"JCL - joint cost" in blob
+
+
+# --- the known equivalence break: probabilistic branches (JCL-BR-01) ------------------
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="JCL-BR-01 (ADR-0401): compute_jcl accepts no branch inputs, so the web layer "
+    "feeds the session's probabilistic/conditional branches to the SSI run only — with a "
+    "branch configured, the JCL finish marginal silently leaves the SSI S-curve (measured "
+    "2026-08-14: SSI percentiles moved, JCL's did not). Carrying the branches into "
+    "compute_jcl (or honestly gating the JCL panel while branches exist) flips this "
+    "loudly; remove the marker in that commit.",
+)
+def test_finish_marginal_still_matches_ssi_with_a_probabilistic_branch() -> None:
+    """The ADR-0269 'one story' guarantee, probed in the branch configuration: the same
+    web inputs must drive both engines. Today they do not — this is the recorded defect,
+    not an aspiration (xfail strict per the ADR-0395 pattern)."""
+    c = _client(costed=True)
+    c.post("/sra/factor", data={"uids": "2", "factor": "3"})
+    c.post(
+        "/sra/branch",
+        data={
+            "name": "Retest",
+            "after_uid": "2",
+            "before_uid": "4",
+            "prob": "50",
+            "low": "3",
+            "ml": "5",
+            "high": "8",
+        },
+    )
+    ssi = c.get("/api/sra/ssi?iterations=150").json()
+    jcl = c.get("/api/sra/jcl?iterations=150").json()
+    assert [p["date"] for p in jcl["finish_percentiles"]] == [p["date"] for p in ssi["percentiles"]]
