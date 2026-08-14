@@ -1,106 +1,122 @@
-# Handoff — 2026-08-14 (a) (HOOK-01 closed: the CUI guard learns disguises and containers; ADR-0399; v1.0.201 unchanged)
+# Handoff — 2026-08-14 (b) (three verification gaps closed: the Fuse transcription oracle, the own-calendar floor guard, the Host-allowlist closure; ADR-0400; v1.0.201 unchanged)
 
-> ## STATUS (current) — **pushed, draft PR #587 open** on `claude/polaris-kickoff-handoff-hq4c6g`,
-> branched from `main` **eb25865** (= #586's squash; local HEAD == origin/main at branch time).
-> Highest ADR now **0399**. **NO shipped code changed** — `.githooks/` + tests + docs only, so the
-> version stays **v1.0.201**, SCHEMA stays 2.11.0, and no wheel/installer rebuild (ADR-0395
-> precedent for a guards+docs-only unit). The audit's HOOK-01 `xfail(strict)` flipped loudly and
-> its marker is REMOVED — `tests/audit` now has 2 live xfails (TEST-01, PO-03).
+> ## STATUS (current) — ADR-0400 unit complete on `claude/polaris-kickoff-handoff-v8qu96`,
+> branched from `main` **58bf9ed** (= #587's squash; local HEAD == origin/main at branch time).
+> Highest ADR now **0400**. **NO shipped code changed** — tests + docs only, so the version
+> stays **v1.0.201**, SCHEMA stays 2.11.0, no wheel/installer rebuild (ADR-0395/0399
+> precedent). The audit's PO-03 `xfail(strict)` flipped loudly and its marker is REMOVED —
+> `tests/audit` now has **1** live xfail (TEST-01).
 >
-> ## What landed — HOOK-01 (ADR-0399): three detectors, every rule measured before adoption
-> `.githooks/pre-commit` closes the audit's widened pre-commit boundary. **(1) Extension chain:**
-> `blocked_re` accepts a chain of trailing suffixes from the CLOSED backup/copy set plus a CLOSED
-> disguise set (png/svg/jpg/jpeg/gif/bmp/webp/pdf/zip/7z/rar/tar/tgz/md/txt/json/log), so
-> `data.mpp.png`, `sched.mpp.zip`, `export.xer.png`, `data.mpp.png.bak` block by NAME with any
-> bytes; measured against all 1633 tracked files the final chain claims ZERO paths beyond the
-> hard-anchored core (the ADR-0347 jar stays unclaimed — the set stays closed, never "any dot").
-> **(2) Anchored text rules:** the sniff set widens to md/png/svg/jpg/jpeg/gif/bmp/webp/pdf/zip,
-> but for the NEW classes the three ADR-0347 signatures fire only when the staged bytes START as
-> the serialization (XER header / save-JSON brace / XML declaration + MSPDI namespace, BOM
-> tolerated) — measured necessity: `docs/STATE/AUDIT-2026-06-25.md` carries the save-format
-> signature mid-file and an unanchored `.md` sniff would have blocked a tracked doc on day one.
-> `.json`/`.txt`/extension-less keep their ORIGINAL unanchored sniff — nothing regressed.
-> **(3) Containers, by magic:** OLE2 under any sniffed name; ZIP under a non-archive name; a real
-> `.zip` blocked only when members name a blocked extension (catches every renamed OOXML via
-> `[Content_Types].xml`) or a Power BI payload; a real PDF blocked only when it EMBEDS a
-> blocked-extension attachment (`/EmbeddedFile` + filespec). Screenshots, tool SVGs, prose,
-> report PDFs, doc zips all commit freely — that boundary is what keeps the guard switched on.
-> Detectors 2b/3 run as one embedded python3 batch; python3 absent/erroring → loud warning and
-> the pre-ADR-0399 floor, never silent narrowing. Deliberately NOT sniffed: `.jar`/`.whl` (their
-> members would wedge every MPXJ upgrade and wheel rebuild).
+> ## What landed — ADR-0400: three tests-only closures, every claim measured before adoption
+> **(1) PO-03 — `tests/parity/test_fuse_transcription_oracle.py`** (parity-marked, std-lib
+> zipfile+xml.etree): re-derives every derivable value of `fuse_exports_2026-06.json` from the
+> four load-bearing vendor workbooks — label-addressed Metric History rows (EVERY occurrence
+> must agree; the `Logic Density™` two-scope trap handled via `CP Logic Density™` adjacency),
+> DCMA offender lists (UID-exact, sorted — file order is not UID order), and per-activity
+> Forensic re-derivations ×2 reports incl. v1==v2 row-identity and the exact finish serials as
+> raw stored strings. A three-agent investigation fan-out mapped all 115 value-locations first
+> (115/115 MATCH — the transcription is CLEAN); the lead re-verified with a second hand-rolled
+> parser. Battery vs the FINAL module, md5-restored: JSON value drift → 1 named red; UID-list
+> drift → 3 named red; WORKBOOK-cell drift (byte-patched zip) → 1 named red — the workbook side
+> is genuinely read. Key workbook facts: SpreadsheetGear omits `r=` coords (the SSI reader
+> pattern would see EMPTY sheets — not reused, on purpose); MH `Project Finish` is the
+> day-FLOOR serial; `HSD10` sits on two adjacent rows (match by name, never code).
+> **(2) exec_cal floor — `tests/engine/test_actual_start_floor_own_calendar.py`**: the
+> ADR-0391 own-calendar floor (`cpm.py:1134-1140`) was deletable with `tests/engine` (963
+> passed) AND the full parity gate (52 passed, 909 s) staying green — re-measured, import
+> origin proven. Root causes: zero exec_cal tasks in the whole synthetic battery; the fidelity
+> test steps over own-calendar tasks; ADR-0391's own mutation battery only ever covered the
+> project-axis half. Stakes: on Large_Test_File the floor binds on 19 own-calendar UIDs; UID
+> 5230 pulls back SIX YEARS (2023-08-08 → 2017-09-05) with `project_finish` byte-identical —
+> which is why every suite was blind. New module: hand-derived synthetic (walls, offsets,
+> float/criticality, the `actual_start_driven`/`date_driven` split) + a golden test whose
+> expectation is DERIVED from the file (`early_start_wall ==` stored `ActualStart`, five named
+> UIDs). Proven 3/3 red vs branch-deleted, 3/3 green intact, and 3/3 green vs the PROJECT-AXIS
+> floor deleted — the isolation control: it cannot be satisfied by the guarded sibling.
+> **(3) SEC-01 completion — `tests/web/test_sec01_host_allowlist_closure.py`**: QC-2 narrowed
+> the premise — `test_sec_hardening.py` DOES behaviourally test both consumers; what was
+> missing (measured in mutant sandboxes): the samples are M1-BLIND to a named widening (only
+> the data pin fires), and the `_origin_allowed` scheme conjunct (M3) was caught by NOTHING —
+> dropping it left tests/audit + tests/guards + hardening all green while `ftp://`/`file://`
+> Origins passed the CSRF fallback. New module: ADR-0394-recipe closures through the HTTP layer
+> (M5 is why), curated populations both directions, the Origin-scheme closure, raw-ASGI
+> absent-Host, and deliberate pins: bare `::1` REFUSED (bracketed-only reachability,
+> fail-closed), the unmatched-bracket host = the ValueError branch, now pinned UNIT-level (does NOT flip under return-True — the
+> check-disabled vs check-unwired discriminator), `http://testserver` passes the fallback
+> (shared frozenset, pinned so it cannot widen silently), homograph rides as punycode
+> `xn--lcalhost-nbh` (raw non-ASCII cannot ride an HTTP Host header — measured, httpx refuses).
+> Lead battery vs the FINAL module, control-subtracted, canaried: M1→6+audit pin BY NAME,
+> M2→25, M3→4, M4→11, M5→25 (final, re-measured after the floor round). Zero unexpected flips.
 >
-> ## The guard flagged ITSELF — the census caught it before the commit did
-> The first draft wrote the save-format signature verbatim in the hook's own header comment; the
-> hook is an extension-less SNIFFED file, so the whole-tree census flagged
-> `.githooks/pre-commit` — **the commit landing the fix would have been wedged by its own
-> guard.** The comment now describes signatures without quoting them and warns future editors.
-> The audit's redaction lesson ("a document that flags a disclosure must not repeat the
-> disclosed literal") landing on the guard itself.
->
-> ## Verification (QC-1)
-> **Red first:** an independent 30-case scratch-repo battery instrument against the UNFIXED hook
-> reproduced the audit exactly — 15 gap cases ALLOW, 7 controls BLOCK, 8 false-positive guards
-> ALLOW; with post-fix expectations it goes red on exactly the 15 gap rows. **Green:** 30/30 on
-> the fixed hook. **Committed:** `tests/guards/test_precommit_blocklist.py` gains 16 block + 5
-> allow cases, a staged-bytes-not-working-tree container case, a python3-absent floor test, a
-> whole-tree census (population > 900 with staged-count == population proof — the audit's
-> `git add -A` trap — plus a planted `schedule_canary.png` that must be the ONLY flag), and the
-> suffix sweep REPOINTED (its old core derivation split on a tail the chain form no longer has —
-> it would have passed VACUOUSLY; it now reads the extension alternation, with a committed
-> negative control proving the any-dot mutant claims the MPXJ jar). **Mutations: 8/8 caught by
-> their named rows, zero unexpected flips**, every diff proven non-inert, lead re-ran M2/M7 by
-> hand, instruments md5-verified. **The adversarial fan-out (ADR-0240) then found FIVE in-scope
-> defect classes** in the mutation-green hook — all lead-re-verified and fixed in the same
-> unit: (1) C-QUOTING FAIL-OPEN, pre-existing and severe — `git diff --name-only` C-quotes
-> non-ASCII/quote/control names, so `schädule.mpp` bypassed ALL detectors silently (fixed:
-> `-z` + `read -d ''`); (2) trailing-whitespace names defeated every end-anchor (fixed:
-> matching on a stripped copy); (3) single-quoted MSPDI xmlns — XML-valid, loads identically —
-> slipped BOTH signature paths (fixed: quote-agnostic); (4) FP: Hugo/Jekyll `.md` starting `{`
-> blocked when quoting the format (fixed: brace must open a JSON object); (5) FP: the PDF
-> attachment regex matched printed page text (fixed: bound to `/F`/`/UF` filespec, which also
-> catches spaces-in-parens). Battery grew to 42 cases (12 new rows red-first against the
-> pre-fix hook, then 42/42), committed tests grew to match, and the 8-mutation battery was
-> RE-RUN against the FINAL hook: 8/8 with enlarged expected sets (M7 now flips all three
-> templated-doc rows).
+> ## Adversarial round (ADR-0240)
+> Four refuters vs the mutation-green first revision (~50 sandboxed attacks): ELEVEN
+> in-scope findings, all lead-re-verified, all fixed in-unit and re-proven red by named
+> mutant — the HOOK-01 pattern repeated (batteries by name, gaps between them). Highlights:
+> **(exec_cal, HIGH)** flooring from the stored Start instead of actual_start survived
+> module + engine + parity (both populations had start==actual_start or None) — closed with
+> a disagreeing stored Start on UID 2; false-positive disclosure (>=/append-always) and
+> snap-drop closed with an equal-instant control and a Tue-Sat void-start test (m1/m2/m5→1
+> red each, m7→2). **(PO-03)** an UNSTAGED workbook deletion silently disarmed all 20
+> guards (manifest reads the git INDEX) — now a loud 20-error FAIL, skip only for a missing
+> intake dir; int(float()) truncation (34.6 passed as 34) → _int_cell integrality;
+> activities_added was the 1 of 77 leaves nothing read → tied to the pinned header;
+> row-identity claim scoped honestly to the read columns. **(SEC-01, MEDIUM)** a
+> METHOD-conditional host bypass was caught by NOTHING — the sweep was GET-only and the
+> pre-existing hardening POST test was LAUNDERED by follow_redirects=True (the mutant ran
+> the foreign-Host POST, mutated state, and the followed redirect GET produced the 400 the
+> assert saw) — closed with a POST row on the non-redirecting /api/heartbeat +
+> follow_redirects=False in test_sec_hardening; empty-Origin fail-open pinned; two dead
+> oracle constants made load-bearing. Final battery vs the FINAL module: M1→8+audit pin,
+> M2→25, M3→4, M4→11, M5→25, A5→2, A7→2, A4→1 — zero unexpected flips. Consistency
+> refuter: DISC-01 sweep clean, Law-1 clean, pre-commit hook exit 0 with a blocked canary
+> proving teeth, all drift guards green.
 >
 > ## Next — in order
 > **DISC-01 release determination** (operator / authorizing official: the strings are in git
 > HISTORY since `a19b969`; private visibility mitigates but does not decide releasability) →
-> **001c** the operator's cloud/gateway decision (`APPROVED-GATEWAY-INTEGRATION.md` §6 steps 4–6;
-> ADR-0396's chain makes honest gateway wiring mechanical) → PO-03/04/05 parity-oracle gaps
-> (PO-03 xfail: the Fuse transcription unguarded against the vendor `.xlsx`) →
-> `actual_start_driven` consumed nowhere → ADR-0391's own-calendar floor unguarded → TEST-01
-> chromium build-number pins (22 modules) → `_ALLOWED_HOSTS` behavioural sweep + mutation proof
-> (data pin exists) → FINAL-REPORT overclaims (condition on `_observed_banner`, do not weaken) →
-> 8 stale branches. **Operator:** DISC-01 · the 001c decision · FX-03/04 re-run ·
-> sub-day-negative-float Fuse run · license.
+> **001c** the operator's cloud/gateway decision (`APPROVED-GATEWAY-INTEGRATION.md` §6 steps
+> 4–6; ADR-0396's chain makes honest gateway wiring mechanical) → **PO-04/05** (CEI/bow-wave +
+> HMI: BLOCKED on a missing primary oracle — no vendor reference exists in the repo to guard
+> against; needs an operator-delivered export, not engineering) → `actual_start_driven`
+> consumed nowhere (ENG-DEAD-01; the ADR-0391-promised disclosure surface — a SHIPPED-code
+> change: version bump + wheel + nine installers when taken) → TEST-01 chromium build-number
+> pins (22 modules; the audit module's last live xfail) → FINAL-REPORT overclaims (condition on
+> `_observed_banner`, do not weaken) → 8 stale branches (DoD 091).
+> **Operator:** DISC-01 · the 001c decision · a CEI/HMI reference export (unblocks PO-04/05) ·
+> FX-03/04 re-run · sub-day-negative-float Fuse run · license.
 >
 > ## Carried forward
-> ADR-0353..0399 closed — do not re-open. NEW lessons this session: **a guard that sniffs
-> extension-less files sniffs ITSELF — never write a detector's signature literal inside the
-> detector's own file** (the census caught the wedge pre-commit); **a census needs BOTH a canary
-> that must go red AND a staged-set == population proof** — either alone can be vacuously green;
-> **anchoring to serialization-start is what lets a content guard cover prose-capable extensions
-> at all** (unanchored, it blocks a tracked doc TODAY — measured, not argued); **a predicted
-> mutation outcome is not a measured one** — the ADR's M7 sentence was corrected from prediction
-> to measurement before commit; **mutation-green is not adversarially verified** — 8/8 by name,
-> then the attack round found five in-scope defect classes, one a silent pre-existing fail-open;
-> **a guard's input plumbing is attack surface** — `git diff --name-only` emits an ENCODING of
-> paths (C-quoting), and every downstream detector was correct while `schädule.mpp` committed
-> silently. Standing traps unchanged (a data pin
-> guards the literal, not the guarantee · a standing rule is DATA · monkeypatch repoint is per
-> CALL SITE · never MEASURE a tree a battery is mutating · never MUTATE an instrument a
-> measurement is using · `grep -c` exits 1 on zero · two ruffs on PATH, use `python -m ruff` ·
-> `pytest -m parity` alone exceeds 900 s · the container starts with NO deps installed · `git
-> fetch origin` before taking an ADR number and again before committing · a number written
-> mid-session is not a measurement, `wc` decides). QC-1/QC-2 are ADR-0393, pinned by
-> `tests/test_standing_rules.py`.
+> ADR-0353..0400 closed — do not re-open. NEW lessons this session: **a transcription oracle
+> must be proven to read the SOURCE side** — mutate the workbook bytes, not just the JSON (a
+> guard comparing the JSON to itself stays green under B3); **an engine branch can be
+> load-bearing on the golden and invisible to every pin** — the exec_cal floor moved UID 5230
+> six years while `project_finish` stayed byte-identical; pin the member, not just the
+> aggregate; **a population row must be TRANSPORTABLE** — the raw-Unicode homograph Host
+> errored (httpx refuses to encode it) instead of failing; sweep the punycode form a browser
+> actually sends; **an isolation control belongs beside every red/green pair** — the new
+> exec_cal module was also run against the SIBLING branch deleted to prove it cannot be
+> satisfied by the already-guarded half. Standing traps unchanged (a data pin guards the
+> literal, not the guarantee · mutation-green is not adversarially verified · a guard's input
+> plumbing is attack surface · monkeypatch repoint is per CALL SITE · never MEASURE a tree a
+> battery is mutating · never MUTATE an instrument a measurement is using · `grep -c` exits 1
+> on zero · two ruffs on PATH, use `python -m ruff` · `pytest -m parity` alone exceeds 900 s ·
+> the container starts with NO deps installed · `git fetch origin` before taking an ADR number
+> and again before committing · a number written mid-session is not a measurement, `wc`
+> decides). QC-1/QC-2 are ADR-0393, pinned by `tests/test_standing_rules.py`.
 >
 > ## Gate at close
-> ruff check . / ruff format --check . / mypy --strict src (152 files) / bandit / node --check:
-> all green. Full suite (the run that ships, on the final tree): see the (a) entry's gate line in
-> SESSION-LOG. `tests/guards` + `tests/audit` + redaction: 136 passed, 2 xfailed (TEST-01,
-> PO-03). Battery instrument 42/42 on the shipped hook; mutations 8/8 against the FINAL hook.
+> ruff check . / ruff format --check . (1,001 files) / `python -m mypy src/` (152 files) /
+> bandit (exit 0) / node --check: all green. **Full suite ON THE FINAL TREE (post-adversarial
+> revision): 3951 passed, 47 skipped, 1 xfailed (TEST-01), exit 0, 29:28** — every skip an
+> environment-gated playwright skip. Touched-module set together: 122 passed + the TEST-01
+> xfail. Batteries: exec_cal 4/4 red on deletion + 1/1/1/2 partial-mutant reds + isolation
+> green; PO-03 B1/B2/B3 + R1/R2/R3 named reds, instruments md5-restored; SEC-01 final
+> M1→8+audit-pin / M2→25 / M3→4 / M4→11 / M5→25 / A5→2 / A7→2 / A4→1, zero unexpected.
+> **Floor round (post-push CI):** the `floor (declared minimum)` job failed on the
+> malformed-IPv6 Host row — floor starlette's `request.url` parses the Host header and the
+> liveness middleware's `finally` touches it even on refused requests, raising server-side
+> (reproduced at the floor pins, mechanism isolated). The row is now a unit-level
+> ValueError-branch pin; red/green proven IN the floor venv; NEW QUEUE ITEM below.
 
 # (prior) handoffs — archived
 

@@ -435,6 +435,36 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-14 (b) — a transcription oracle must be proven to read the SOURCE side, and a branch can move a member six years while every aggregate pin stays byte-identical
+
+- PO-03: the Fuse-transcription guard's battery needed THREE legs — JSON value, JSON UID
+  list, and a WORKBOOK-cell byte patch. The third is the one that matters: a guard that
+  compares the JSON to itself (or hardcodes what the workbook "says") stays green under it.
+  Mutate the artifact the oracle claims to read, not just the expectation.
+- The exec_cal floor was deletable with the engine suite AND the parity gate green — while
+  pulling UID 5230's early start back six years on the primary golden. `project_finish` and
+  every SSI/parity pin were byte-identical. Lesson: pin the MEMBER the branch moves, not the
+  aggregate; and run an ISOLATION control (delete the sibling branch → the new test must stay
+  green) so the guard provably aims at the unguarded half.
+- A closure population row must be TRANSPORTABLE: the raw-Unicode homograph Host header made
+  httpx raise at request-build time — the test ERRORED instead of failing, which is not a
+  verdict. Sweep the punycode form (`xn--lcalhost-nbh`) a browser actually sends.
+- The kickoff/queue said SEC-01's "behavioural half" was missing; QC-2 re-measurement showed
+  test_sec_hardening already behaviourally covers both consumers — the REAL holes were
+  narrower and different (M1 sample-blindness; the M3 scheme conjunct caught by nothing).
+  Re-derive the gap before building the fix, or you build the wrong module.
+- The adversarial round then repeated HOOK-01's lesson on OUR OWN batteries: mutation-green
+  first revisions hid eleven more findings. New named traps: a TEST CLIENT THAT FOLLOWS
+  REDIRECTS CAN LAUNDER A SECURITY ASSERTION (the foreign-Host POST executed and mutated
+  state; the followed redirect GET supplied the 400 the assert read — use
+  follow_redirects=False when the POST's own status is the claim); A SWEEP'S HTTP METHOD IS
+  PART OF ITS POPULATION (a GET-only host sweep cannot see a method-conditional bypass);
+  `int(float(...))` ON AN ORACLE CELL TRUNCATES DRIFT INTO AGREEMENT (require integrality);
+  A SKIPIF THAT TESTS THE WORKING TREE WHILE THE BACKSTOP READS THE GIT INDEX IS A SILENT
+  DISARM (fail loudly when a tracked artifact is missing); and A DECLARED-BUT-UNASSERTED
+  EXPECTED CONSTANT IS A DEAD ORACLE THAT READS LIKE A GUARD (make it load-bearing or
+  delete it).
+
 ### 2026-08-14 (a) — the census flagged the guard itself: the fix would have been wedged by its own commit hook
 
 - Widening the CUI pre-commit hook for HOOK-01 (ADR-0399), the first draft's header comment

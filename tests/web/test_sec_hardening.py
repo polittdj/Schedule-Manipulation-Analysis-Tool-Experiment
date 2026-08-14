@@ -54,9 +54,16 @@ def test_loopback_hosts_are_served(sc) -> None:  # type: ignore[no-untyped-def]
 
 def test_host_check_covers_posts_and_static(sc) -> None:  # type: ignore[no-untyped-def]
     _st, client = sc
+    # follow_redirects=False: with redirects followed, a mutant that skips the host
+    # check on POSTs still shows 400 here — from the followed redirect GET, AFTER the
+    # foreign-Host POST already ran and mutated state (measured, ADR-0400 adversarial
+    # round). The POST's own status is the assertion target.
     assert (
         client.post(
-            "/session/ram-threshold", data={"gb": "2"}, headers={"host": "evil.example.com"}
+            "/session/ram-threshold",
+            data={"gb": "2"},
+            headers={"host": "evil.example.com"},
+            follow_redirects=False,
         ).status_code
         == 400
     )

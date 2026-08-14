@@ -14134,3 +14134,58 @@ shipped hook; mutation re-run 8/8 by name against the FINAL hook; drift guards
 **Next:** DISC-01 release determination (operator) → 001c gateway decision → PO-03/04/05 →
 `actual_start_driven` → exec_cal floor → TEST-01 → `_ALLOWED_HOSTS` sweep → FINAL-REPORT →
 stale branches.
+
+---
+
+## 2026-08-14 (b) — three verification gaps closed: PO-03 oracle, exec_cal floor guard, SEC-01 closure (ADR-0400)
+
+Branch `claude/polaris-kickoff-handoff-v8qu96` from `main` 58bf9ed. **Tests + docs only — no
+shipped code; v1.0.201 / SCHEMA 2.11.0 unchanged, no wheel/installer rebuild.** Ultracode
+session: a three-agent investigation fan-out (Fuse-workbook mapping · exec_cal red scenario ·
+_ALLOWED_HOSTS behaviour/mutation design), every dossier re-verified by the lead against the
+code and re-run probes before implementation (ADR-0240), then a four-refuter adversarial round
+on the finished unit.
+
+**Landed (ADR-0400):**
+- `tests/parity/test_fuse_transcription_oracle.py` — 20 tests re-deriving every derivable
+  `fuse_exports_2026-06.json` value from the four load-bearing vendor workbooks (std-lib
+  reader; the SpreadsheetGear implicit-`r=` trap makes the SSI reader pattern see EMPTY
+  sheets — not reused). Investigation mapped 115/115 value-locations MATCH: the transcription
+  is clean. Battery vs the final module (md5-restored): JSON value → 1 named red; UID list →
+  3 named red; workbook-cell byte patch → 1 named red (the workbook side is genuinely read).
+  The audit's PO-03 xfail(strict) flipped loudly (observed XPASS-fail) and its marker is
+  removed — `tests/audit` now has 1 live xfail (TEST-01). PARITY-REPORT gains the
+  machine-guarded sentence.
+- `tests/engine/test_actual_start_floor_own_calendar.py` — the ADR-0391 own-calendar floor
+  (`cpm.py:1134-1140`) was deletable with tests/engine (963 passed) AND the full parity gate
+  (52 passed, 909 s) green; on Large_Test_File it moves UID 5230 SIX YEARS with
+  `project_finish` byte-identical. New module proven 3/3 red vs branch-deleted, 3/3 green
+  intact, 3/3 green vs the project-axis sibling deleted (isolation control). Golden
+  expectations derived from the file (`early_start_wall ==` stored `ActualStart`).
+- `tests/web/test_sec01_host_allowlist_closure.py` — QC-2 narrowed the premise
+  (test_sec_hardening DOES cover both consumers); the real holes: M1-blindness of samples and
+  the `_origin_allowed` scheme conjunct caught by NOTHING (M3). Closure sweeps through the
+  HTTP layer; lead battery vs the final module, control-subtracted, canaried: M1→6 flips +
+  audit data pin by name, and final post-floor-round numbers M2→25, M4→11, M5→25 (the ValueError-branch
+  discriminator and raw-ASGI no-Host). Zero unexpected flips.
+
+**Adversarial round:** four refuters, ~50 attacks, ELEVEN in-scope findings — all fixed
+in-unit, each re-proven red by named mutant. exec_cal: floor-source substitution (HIGH,
+survived engine+parity), false-positive disclosure, snap-drop → UID 2 disagreeing stored
+Start, UID 4 equal-instant control, Tue-Sat void-snap test. PO-03: unstaged-deletion skip
+hole (all 20 guards silently disarmed; manifest reads the INDEX) → fail-loud autouse
+fixture; int-truncation (34.6==34) → _int_cell; activities_added untied (1 of 77 leaves) →
+tied; row-identity scoped to read columns. SEC-01: method-conditional host bypass caught by
+NOTHING (GET-only sweep + follow_redirects laundering in test_sec_hardening — foreign-Host
+POST ran and mutated state while the followed redirect GET showed the 400) → POST row +
+follow_redirects=False; empty-Origin fail-open pinned; dead EXPECTED_* constants made
+load-bearing; _UNSAFE_METHODS data-pinned. Final SEC-01 battery vs FINAL module: M1→8+audit
+pin, M2→25, M3→4, M4→11, M5→25, A5→2, A7→2, A4→1, zero unexpected. Consistency: DISC-01
+clean, Law-1 clean, hook exit 0 + blocked canary, drift guards green.
+
+**Gate:** statics all green (ruff ×2 whole tree, mypy --strict 152 files, bandit exit 0,
+node --check); full suite on the final tree 3951 passed / 47 skipped (all playwright-env) /
+1 xfailed (TEST-01) in 29:28, exit 0. HANDOFF 10,401 bytes by `wc`.
+
+**Next:** DISC-01 (operator) → 001c (operator) → PO-04/05 (blocked on a primary oracle) →
+`actual_start_driven` wiring → TEST-01 → FINAL-REPORT overclaims → stale branches. ADR-0400.

@@ -276,13 +276,16 @@ def test_ref05_negative_control_scanner_detects_planted_secret() -> None:
 
 
 # --------------------------------------------------------------------------------------------
-# PO-03 (VALIDATED DEFECT, medium): the Fuse DCMA parity oracle is a TRANSCRIPTION into
-# fuse_exports_2026-06.json, but no test reads the source vendor .xlsx to guard that transcription.
-# Correct behaviour (post-fix): a parity test reads a committed Fuse *.xlsx workbook. RED today.
+# PO-03 (FIXED — the transcription-oracle guard): the Fuse DCMA parity oracle is a TRANSCRIPTION
+# into fuse_exports_2026-06.json, and until 2026-08-14 no test read the source vendor .xlsx to
+# guard it. The xfail(strict) marker this test carried flipped loudly the moment
+# tests/parity/test_fuse_transcription_oracle.py landed (a std-lib zipfile+xml reader re-derives
+# every derivable transcribed value from the four load-bearing committed workbooks: label-
+# addressed Metric History rows, DCMA offender lists, and per-activity Forensic re-derivations,
+# mutation-proved on the JSON side AND the workbook-bytes side), exactly as this module's design
+# intended: the marker is removed in the fixing commit, and the test stands as the permanent pin
+# that some parity test keeps reading a vendor Fuse workbook.
 # --------------------------------------------------------------------------------------------
-@pytest.mark.xfail(
-    strict=True, reason="PO-03: no test reads the vendor Fuse .xlsx to guard the transcription"
-)
 def test_po03_a_test_reads_the_vendor_fuse_workbook() -> None:
     if not TESTS.exists():
         pytest.skip("tests/ not present in this layout")
@@ -298,7 +301,7 @@ def test_po03_a_test_reads_the_vendor_fuse_workbook() -> None:
 
 def test_po03_negative_control_sra_sem_tests_do_read_xlsx() -> None:
     # Proof the scan can find xlsx-reading tests: the SRA/SEM oracles DO read .xlsx. If this returns
-    # nothing, the pattern is wrong and the xfail above would be vacuous.
+    # nothing, the pattern is wrong and the main PO-03 test above would be vacuous.
     hits = []
     if (TESTS / "parity").exists():
         for py in (TESTS / "parity").rglob("*.py"):
