@@ -15,6 +15,8 @@ behaviour and import paths are unchanged by the move.
 
 from __future__ import annotations
 
+import os
+
 from schedule_forensics.ai.backend import AIBackend, AIConfig
 from schedule_forensics.ai.gateway import GatewayBackend
 from schedule_forensics.ai.ollama import OllamaBackend
@@ -44,6 +46,18 @@ def openai_or_none(config: AIConfig) -> OpenAICompatBackend | None:
         return None
 
 
+def resolve_gateway_api_key(config: AIConfig) -> str:
+    """The gateway credential this config resolves to: the explicit config key, else the
+    ``SF_GATEWAY_API_KEY`` environment variable, else "" (ADR-0403).
+
+    The env fallback exists because the config is per-launch in-memory — re-pasting a long
+    key every launch is real friction, while the acknowledgment stays one deliberate click.
+    It chooses only a CREDENTIAL for the already-allowlisted destination; the destination
+    itself is never env-seeded (ADR-0402's posture, unchanged).
+    """
+    return config.gateway_api_key or os.environ.get("SF_GATEWAY_API_KEY", "")
+
+
 def gateway_or_none(config: AIConfig) -> GatewayBackend | None:
     """The approved-gateway backend, or ``None`` unless EVERY arming condition holds (ADR-0402).
 
@@ -60,6 +74,7 @@ def gateway_or_none(config: AIConfig) -> GatewayBackend | None:
             endpoint=config.gateway_endpoint,
             model=config.model,
             classification=str(config.classification),
+            api_key=resolve_gateway_api_key(config),
             timeout=config.gen_timeout,
         )
     except Exception:

@@ -14281,3 +14281,29 @@ BUILT; DoD 001c struck through; handoff rotated.
 docs follow-ups → 8 stale branches → SMAT-SANDBOX branch-name cleanup (operator UI) ·
 operator verifies the gateway option on the NASA-connected machine (the unversioned local
 patch is now obsolete — reinstall from a fresh tier installer). ADR-0402.
+
+## 2026-08-14 (e) — `claude/nasa-itar-ai-desktop-launch-scx3gz` (restarted post-#590) — the gateway learns to authenticate (ADR-0403; v1.0.203)
+
+Field report minutes after v1.0.202 deployed: the operator's screenshot from the real
+NASA machine showed the ADR-0402 UI working exactly as designed and the armed probe
+answered **HTTP 401** ("the models dont show up" — the 401 refuses the catalog GET). A
+401 is a positive transport result: the gateway ANSWERED and wants a credential the
+integration never sent — the plan doc recorded the old patch's endpoint+model env vars
+but never its auth (UNVERIFIED how it authenticated; the spec was missing a dimension
+only the field could reveal). Built Bearer support with credential-grade handling:
+`AIConfig.gateway_api_key` (repr=False, in equality so a new key busts the routed cache);
+`Authorization: Bearer <key>` on every gateway request via the new 4-arg `GatewayOpener`
+(empty key → no header); key never in txlog/page/repr/URL (masked `value=""` input,
+placeholder-only disclosure; `/api/ai/models` authenticates server-side with the session
+key); blank-means-keep POST semantics; `SF_GATEWAY_API_KEY` env fallback
+(`factory.resolve_gateway_api_key` — a credential, never a destination); the 401/403
+diagnostic now instructs (paste the AI Hub key). **Verified:** 17 red by name pre-fix →
+242 passed post; 8-mutant sandboxed battery 8/8 caught by name; instruments
+md5-identical. v1.0.203, wheel + nine installers (lockstep 64/64). ADR-0403; handoff
+rotated.
+
+**Next:** operator pastes the AI Hub key on v1.0.203 and confirms the catalog populates
+(if it still 401s WITH a key, the scheme isn't Bearer — capture the AI Hub docs and add
+the real scheme on evidence) → DISC-01 → PO-04/05 (blocked) → `actual_start_driven` →
+TEST-01 → JCL-BR-01 → FINAL-REPORT overclaims → JCL docs follow-ups → stale branches →
+SANDBOX cleanup. ADR-0403.

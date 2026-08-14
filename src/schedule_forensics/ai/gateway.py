@@ -7,7 +7,9 @@ only route the old architecture offered, widening the loopback validator
 (``docs/PLAN/APPROVED-GATEWAY-INTEGRATION.md`` §3).
 
 Same transport discipline as the local backends — stdlib ``urllib`` only, no proxy, no
-redirects, OpenAI ``/v1`` wire format, deterministic decoding — with four properties the
+redirects, OpenAI ``/v1`` wire format, deterministic decoding, plus Bearer authentication
+(ADR-0403: the real gateway answers HTTP 401 without a credential; the key rides only the
+``Authorization`` header, never the log, a page, or a repr) — with four properties the
 local backends never need:
 
 * **Endpoint allowlist, never a widening.** Construction refuses any endpoint that is not
@@ -32,17 +34,41 @@ from __future__ import annotations
 
 import contextlib
 import json
+import urllib.request
+from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any
 
 from schedule_forensics.ai import txlog
 from schedule_forensics.ai.backend import DETERMINISTIC_SEED, DETERMINISTIC_TEMPERATURE
-from schedule_forensics.ai.ollama import Opener, _urllib_opener, probe_error_text
+from schedule_forensics.ai.ollama import _NO_REDIRECT_OPENER, probe_error_text
 from schedule_forensics.net_guard import (
     CUIEgressError,
     is_approved_gateway_endpoint,
     is_local_http_endpoint,
 )
+
+#: The gateway's injectable opener: ``(url, data, timeout, headers) -> body``. It differs
+#: from the local backends' 3-arg ``Opener`` by the headers mapping (ADR-0403): the real
+#: gateway answers HTTP 401 without a credential, so every request may need to carry
+#: ``Authorization`` — a dimension a loopback Ollama never has.
+GatewayOpener = Callable[[str, "bytes | None", float, Mapping[str, str]], str]
+
+
+def _urllib_gateway_opener(
+    url: str, data: bytes | None, timeout: float, headers: Mapping[str, str]
+) -> str:
+    # nosec note: GatewayBackend.__init__ validates the endpoint against the approved-gateway
+    # allowlist (exact https match), so the URL can only ever point at an organization-approved
+    # host; the shared opener refuses redirects and never consults a system proxy, so neither
+    # the request body nor the Authorization header can be bounced to any other destination.
+    request = urllib.request.Request(url, data=data, method="POST" if data is not None else "GET")  # nosec B310
+    request.add_header("Content-Type", "application/json")
+    for name, value in headers.items():
+        request.add_header(name, value)
+    with _NO_REDIRECT_OPENER.open(request, timeout=timeout) as response:  # nosec B310
+        body: bytes = response.read()
+    return body.decode("utf-8")
 
 
 class GatewayBackend:
@@ -57,9 +83,10 @@ class GatewayBackend:
         model: str = "",
         *,
         classification: str = "CLASSIFIED",
+        api_key: str = "",
         timeout: float = 120.0,
         probe_timeout: float = 8.0,
-        opener: Opener | None = None,
+        opener: GatewayOpener | None = None,
         log_path: Path | None = None,
     ) -> None:
         # OBSERVED properties (ADR-0396 discipline): both attributes record a validator's
@@ -81,9 +108,12 @@ class GatewayBackend:
         self.endpoint = endpoint.strip().rstrip("/")
         self.model = model
         self._classification = classification
+        # the credential rides ONLY the Authorization header of gateway requests: never the
+        # transaction log, never a rendered page, never a repr (ADR-0403)
+        self._api_key = api_key
         self._timeout = timeout
         self._probe_timeout = probe_timeout
-        self._open: Opener = opener or _urllib_opener
+        self._open: GatewayOpener = opener or _urllib_gateway_opener
         self._log_path = log_path if log_path is not None else txlog.default_log_path()
 
     # ── the one transmission chokepoint: nothing leaves unrecorded ─────────────────────
@@ -108,8 +138,10 @@ class GatewayBackend:
             prompt=prompt,
         )
         data = None if payload is None else json.dumps(payload).encode("utf-8")
+        # an empty key sends NO header at all — never a malformed bare "Bearer " (ADR-0403)
+        headers = {"Authorization": f"Bearer {self._api_key}"} if self._api_key else {}
         try:
-            body = self._open(f"{self.endpoint}{path}", data, timeout)
+            body = self._open(f"{self.endpoint}{path}", data, timeout, headers)
         except Exception as exc:
             # completion records are best-effort — the sent record documented the egress
             with contextlib.suppress(Exception):
