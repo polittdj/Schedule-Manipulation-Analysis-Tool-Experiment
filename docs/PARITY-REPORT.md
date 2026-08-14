@@ -13,7 +13,10 @@ Fuse-validated (ENGINE==FUSE) against the operator-delivered export suite; see Â
 (narrower than it used to be): the delivered Fuse exports for the P2â†”P5 pair are **repo-tracked** under
 `00_REFERENCE_INTAKE/` and their transcriptions live in
 `tests/fixtures/golden/project2_5/fuse_exports_2026-06.json`, so for every row that suite carries,
-*engine == Fuse* IS re-checkable from the repo (`tests/parity/test_fuse_export_parity.py`). Rows the
+*engine == Fuse* IS re-checkable from the repo (`tests/parity/test_fuse_export_parity.py`), and since
+2026-08-14 the transcription step itself is machine-guarded: `tests/parity/test_fuse_transcription_oracle.py`
+re-reads the vendor workbooks (std-lib) and re-derives every derivable transcribed value, closing the
+audit's PO-03 (a transcription error or a silent JSON edit now fails by name). Rows the
 suite does not carry (DCMA-04/10/12/13, the composite scores) remain *engine == recorded golden*
 transcription-basis only.
 
