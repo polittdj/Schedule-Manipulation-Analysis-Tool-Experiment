@@ -15,6 +15,7 @@ from schedule_forensics.ai.backend import (
     Banner,
     Classification,
     banner_for,
+    banner_for_backend,
     route_backend,
 )
 from schedule_forensics.ai.citations import (
@@ -43,6 +44,7 @@ __all__ = [
     "UncitedStatementError",
     "assert_all_cited",
     "banner_for",
+    "banner_for_backend",
     "build_narrative",
     "preserves_figures",
     "reattach",

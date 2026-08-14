@@ -43,21 +43,18 @@ TESTS = REPO / "tests"
 
 
 # --------------------------------------------------------------------------------------------
-# GW-02 (VALIDATED DEFECT, medium): the sovereignty banner is config-INTENT-derived, not observed.
-# route_backend() computes the true Banner for the backend it actually selected, but web/chrome.py
-# _banner_html renders banner_for(config) and the routed Banner is discarded. So a config whose
-# routed backend is Null (nothing sent) can still display the cloud warning, and — the dangerous
-# direction, currently unreachable but unguarded — a future wired cloud path could show "Local-only"
-# while a remote backend handled the request. The correct behaviour: the shown banner == the banner
-# route_backend() returns for the backend actually used.
+# GW-02 (FIXED by ADR-0396 — DoD 001b): the sovereignty banner is OBSERVED. The xfail(strict)
+# marker this test carried flipped loudly the moment the fix merged (route_backend now derives
+# its Banner from the backend it actually chose via banner_for_backend, and banner_for constructs
+# the would-be candidates and derives from what they declare), exactly as this module's design
+# intended: the marker is removed in the fixing merge, and the test stands as the permanent
+# routed-banner/shown-banner agreement pin. Deeper pins live in
+# tests/guards/test_observed_banner.py (fail-closed presumption, cache veto, exports, mutations).
 # --------------------------------------------------------------------------------------------
-@pytest.mark.xfail(
-    strict=True, reason="GW-02: banner is config-derived (banner_for), not the routed banner"
-)
 def test_gw02_shown_banner_matches_routed_backend() -> None:
     # A config that ASKS for cloud while UNCLASSIFIED. No cloud backend is wired, so route_backend
-    # falls closed to Null and returns the LOCAL banner (nothing leaves). The UI helper, however,
-    # derives its banner from config intent and would show the cloud warning -> divergence.
+    # falls closed to Null — and BOTH helpers now warn on the standing cloud intent (§0.2): the
+    # routed banner and the shown banner agree.
     cfg = AIConfig(classification=Classification.UNCLASSIFIED, backend="cloud")
     _backend, routed_banner = route_backend(cfg, null_backend=NullBackend())
     shown = banner_for(cfg)  # what web/chrome.py:_banner_html actually renders

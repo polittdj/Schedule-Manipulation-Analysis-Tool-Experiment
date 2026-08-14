@@ -23,7 +23,7 @@ from urllib.parse import quote
 from fastapi.responses import HTMLResponse
 from jinja2 import Template
 
-from schedule_forensics.ai import Classification, banner_for
+from schedule_forensics.ai import Banner, Classification, banner_for, banner_for_backend
 from schedule_forensics.model.saved_view import Criterion as SavedCriterion
 from schedule_forensics.model.saved_view import Operand as SavedOperand
 from schedule_forensics.web import i18n
@@ -93,8 +93,7 @@ p.muted{margin:.3em 0}
 <p>Treat every loaded schedule and every derived metric on these pages as CUI unless the project
 is explicitly marked UNCLASSIFIED in AI Settings. Handle per 32 CFR Part 2002 and your
 organization's CUI program: store on approved systems only, share only with a lawful government
-purpose, and destroy per records schedules. This tool enforces the technical side — it binds
-127.0.0.1 only and no schedule content ever leaves this machine.</p>
+purpose, and destroy per records schedules. {{ drawer_locality }}</p>
 <h3>Export control (ITAR / EAR)</h3>
 <p>WARNING — Schedules for defense or space programs may contain technical data subject to the
 International Traffic in Arms Regulations (ITAR, 22 CFR 120&ndash;130) or the Export
@@ -169,10 +168,37 @@ def _guide(tip_id: str, text: str) -> str:
     )
 
 
-def _banner_html(state: SessionState) -> str:
-    # the persistent banner reflects the project's classification intent (config-driven);
-    # actual generation still fails closed via route_backend.
+def _observed_banner(state: SessionState) -> Banner:
+    """The session's sovereignty banner, OBSERVED from every reachable evidence (DoD 001b).
+
+    Two observations, either of which vetoes the local-only assurance:
+
+    * :func:`banner_for` constructs the backends this config would route schedule content
+      through (primary + cross-check second, ``ai.factory``) and derives from what those
+      objects themselves declare — so a non-local *configuration* warns even before any
+      generation runs, and a cloud intent warns while routing falls closed (§0.2).
+    * The session's actually-routed backend (``state.backend_cache``, the product of
+      ``_active_backend`` — however it was injected) is re-derived through
+      :func:`banner_for_backend` — so a non-local object that reached the routing cache by
+      any path at all can never sit behind a local-only banner.
+
+    The assurance renders only when BOTH observations agree everything is local.
+    """
     banner = banner_for(state.ai_config)
+    if not banner.cloud_active:
+        cached = state.backend_cache
+        if cached is not None and cached[0] == state.ai_config:
+            derived = banner_for_backend(cached[2], state.ai_config)
+            if derived.cloud_active:
+                return derived
+    return banner
+
+
+def _banner_html(state: SessionState) -> str:
+    # the persistent banner is OBSERVED (DoD 001b): see _observed_banner. Generation still
+    # fails closed via route_backend, whose returned Banner is the same derivation over the
+    # backend it actually chose.
+    banner = _observed_banner(state)
     css = "cloud" if banner.cloud_active else "local"
     return f'<div class="banner {css}">{html.escape(banner.text)}</div>'
 
@@ -1192,6 +1218,20 @@ def _page(
         if classified
         else "Unclassified • no CUI controls asserted"
     )
+    # The CUI drawer's locality sentence is conditioned on the SAME observed derivation as the
+    # persistent banner (DoD 001b): the absolute assurance may only print while every
+    # constructible AI candidate — and the actually-routed backend — is provably local. The
+    # non-local branch is unreachable with this repo's loopback-validated constructors; it
+    # exists so a wired gateway (001c) or a patched install can never render the absolute claim.
+    ai_banner = _observed_banner(state)
+    drawer_locality = (
+        "This tool enforces the technical side — it binds 127.0.0.1 only and no schedule "
+        "content ever leaves this machine."
+        if not ai_banner.cloud_active
+        else "This tool binds 127.0.0.1 for its own pages, but the session's AI is configured "
+        f"for a non-local endpoint ({_e(ai_banner.endpoint or '')}) — schedule content sent to "
+        "the AI leaves this machine. The engine's computations remain local."
+    )
     # _bust_static: version-bust every /static URL so an upgraded install can never keep
     # executing a stale browser-cached JS/CSS (the fixed-port deployment reuses the same
     # cache origin across restarts, and StaticFiles alone sends no Cache-Control).
@@ -1226,6 +1266,7 @@ def _page(
                 ).replace("<", "\\u003c"),
                 cui_class=cui_class,
                 cui_text=cui_text,
+                drawer_locality=drawer_locality,
                 # OR-06: scopes the browser's ADR-0186 page-selection memory to this
                 # launch + wipe generation (persist.js clears its layers on a change)
                 launch_token=state.launch_token,

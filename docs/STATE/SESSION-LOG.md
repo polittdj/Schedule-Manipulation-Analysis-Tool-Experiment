@@ -14006,3 +14006,55 @@ token copies.
 
 **Next:** DISC-01 (operator / authorizing official) → 001b observed banner → 001c gateway decision +
 ADR **0396** (taken after `git fetch origin`).
+
+---
+
+## 2026-08-13 (f) — DoD 001b: the sovereignty banner is observed (ADR-0396); DoD 117: the MPXJ pin guard, after the trap fired on this very build (ADR-0397); then the private-repo fetch fix (ADR-0398) — v1.0.201
+
+Branch `claude/polaris-resume-ojz9q0` from `main` 5a8003f, draft PR #586. `src/` changed → v1.0.201,
+wheel + nine installers rebuilt in lockstep. (ADR numbers as renumbered at the #585 merge: the
+banner ADR was pushed as 0395 and the parallel audit merged first with its own 0395 — the predicted
+collision — so banner=0396, MPXJ pin=0397, installer fetch=0398.)
+
+**001b (ADR-0396).** Pre-fix, measured by an executed probe (red first): `route_backend` handed the
+literal local-only Banner to an `is_local=False` fake on BOTH the ollama and openai paths; the page
+rendered `banner_for(config)` — config only — showing "Local-only" with that same fake in
+`SessionState.backend_cache`; `brief_blocks` had no locality parameter; `is_local` was a class
+constant nothing branched on. Fix, bottom-up, one derivation consulted by every claim:
+instance-derived `is_local` (validator's verdict on the actual endpoint) → `banner_for_backend`
+(missing/falsy `is_local` presumed NON-local, fail closed; §0.2 intent warning preserved) →
+`route_backend` derives its Banner from the backend actually chosen → `banner_for` constructs the
+would-be candidates via the new `ai/factory.py` (constructors moved down from settings; names
+re-bound so per-call-site monkeypatches keep working) → `chrome._observed_banner` adds the
+routed-cache veto. Consumers: persistent banner, CUI drawer (template var), home hero + empty-state
+takeaway, settings tip, and both exported exhibits (`brief_blocks(…, *, ai_is_local)` REQUIRED;
+`_sra_report_blocks` via its `st`). Local-state strings byte-identical; i18n key + 4 translations
+untouched and pinned. Verified: 18 guard tests red-on-pre-fix / green-on-fixed, 15-mutation sandbox
+battery (canary + control + md5-identical instruments) caught 15/15 by name, re-run on the final
+tree. The merge flipped `tests/audit` GW-02 from xfail-strict to a plain passing test — the audit
+module's designed "loud flip" for exactly this fix.
+
+**117 (ADR-0397).** The rebuild's first attempt pinned `a100184d` — this container's own
+shallow-graft boundary. The diagnosis reversed TWICE under measurement before tree hashes and the
+GitHub commits API settled the true last touch as `42d92dc` (the committed pin was correct all
+along; nothing in the wild was broken). `mpxj_ref()` now refuses graft-boundary resolutions and
+accepts `SF_MPXJ_REF` only with verified tree-identity; the new installer test went red 3/3
+families against the drifted build.
+
+**Private-repo fetch (ADR-0398).** Mid-session the repo went PRIVATE (DISC-01 remediation), which
+404'd the installers' anonymous raw fetch and turned PR #586's linux/windows smoke legs red — an
+external state change, measured (404 at every ref including main; visibility=private; the identical
+legs passed on #580 hours earlier while public). Fix: the installers' MPXJ fetch becomes
+token-aware — with `SF_GITHUB_TOKEN`/`GITHUB_TOKEN` set it switches to the GitHub contents API
+(`Accept: application/vnd.github.raw+json`, proven byte-identical against the manifest for the 3 MB
+poi jar), anonymous raw URL otherwise; `installer-smoke.yml` supplies CI's built-in token. The
+sensitive gateway/model literals in THIS branch's new files were replaced with fictional
+placeholders per the audit's redaction discipline.
+
+**Next:** DISC-01 release determination (operator / authorizing official) → 001c gateway decision →
+HOOK-01 widened pre-commit boundary → PO-03/04/05 parity-oracle gaps → the remaining queue.
+
+**Gate at close (the run that ships):** ruff check . / ruff format --check . / mypy --strict src /
+bandit / node --check green; full suite on the settled merged tree **3832 passed, 47 skipped,
+3 xfailed** (TEST-01 · HOOK-01 · PO-03 — the audit's still-live findings) in 30:30; installer
+suite 64/64 including the two new pin/fetch guards; parity ran inside the full suite.

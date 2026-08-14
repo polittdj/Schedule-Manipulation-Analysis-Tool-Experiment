@@ -30,6 +30,12 @@ on:
 jobs:
   windows:
     runs-on: windows-latest
+    # The repo is PRIVATE (DISC-01 remediation, 2026-08-13): the installers' anonymous
+    # raw.githubusercontent fetch 404s, so the smoke legs exercise the token-aware path the
+    # installers now carry (ADR-0398) — GITHUB_TOKEN switches the MPXJ download to the
+    # authenticated contents API, exactly as a private-repo operator's SF_GITHUB_TOKEN would.
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
     # 15 was sized for three installs; the ADR-0300 link/drive-root legs and their mutation steps
     # add six more installer runs. Measured, not guessed: they cost ~63 s of a ~3-minute job (link
     # leg 31 s, its mutation 9 s, drive root + mutation 23 s), because every one of them re-uses a
@@ -400,6 +406,10 @@ jobs:
   linux:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # Same private-repo token as the windows job (ADR-0398): the MPXJ download leg must prove
+    # the authenticated contents-API path, because the anonymous raw path 404s on a private repo.
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
       - name: Syntax-check the sh/command installers

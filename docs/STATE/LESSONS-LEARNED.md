@@ -435,6 +435,47 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-13 (h) — a diagnosis reversed twice in one hour; then the predicted collision arrived on schedule
+
+- Closing 001b (ADR-0396 after renumbering — see below) required the wheel/installer rebuild, and the
+  rebuild pinned MPXJ to `a100184d` — different from the committed `42d92dc`. First conclusion: "my pin
+  is fresher and verified (`merge-base --is-ancestor` passed) — the committed one is stale." Second,
+  after `a100184d --stat` showed 28 files "added" under `tools/mpxj`: "worse — the shipped v1.0.198–200
+  installers reference `poi-5.5.1.jar`, which didn't exist at their pin; installs in the wild are
+  broken." BOTH were wrong.
+- The tell: `git show 42d92dc:tools/mpxj/lib/poi-5.5.1.jar` returned the jar's bytes. The "addition"
+  was a graft artifact — `a100184d` sits in `.git/shallow`, and a shallow clone attributes the ENTIRE
+  tree to its boundary commit, in `log -- <path>` AND in `--stat`. Tree hashes settled it: `42d92dc`,
+  `a100184d`, `HEAD` all carry the identical `tools/mpxj` tree; the GitHub commits API (full history,
+  `path=` filter) names `42d92dc` the true last touch. Nothing in the wild was ever broken.
+- **Lesson 1:** in a shallow clone, `git log -1 -- <path>`, `--stat`, and `merge-base` can all agree on
+  a falsehood — each was individually "verification", and each inherited the same graft blindness. The
+  independent oracle (remote API / tree hashes) is what broke the loop.
+- **Lesson 2:** a diagnosis that reverses under a new measurement is not finished reversing. Write down
+  only what the LAST measurement proved, and say which measurement that was.
+- **Lesson 3 (the fix, ADR-0397 after renumbering):** `mpxj_ref()` now refuses graft-boundary
+  resolutions outright and takes `SF_MPXJ_REF` only with verified tree-identity — tree-identity beats
+  ancestry because it is checkable in the very clones that lie about ancestry. Red first: the new
+  installer test failed 3/3 families against the drifted build before the corrected rebuild made it
+  green.
+- Also (001b proper): when one claim spans six surfaces plus two exports and four translations, route
+  every surface through ONE derivation (`_observed_banner`) — surfaces that derive independently WILL
+  disagree, and the pre-fix router/page disagreement (router said local, page said cloud, both wrong in
+  different states) proved nobody notices when they do.
+- **The kickoff's warned-about ADR collision then actually happened:** this session's banner ADR and
+  the parallel read-only audit (PR #585) both took **0395**; the audit merged first and owns it. Mine
+  renumbered 0395→0396 (banner) and 0396→0397 (MPXJ pin) in the merge commit — renumbering IS conflict
+  resolution, and `git fetch origin` before committing is what caught it. Same-day letters collided
+  too ((e)/(g) on both sides): parallel sessions need MERGE-TIME reconciliation, not naming discipline.
+- **DISC-01 landed while this session was in flight and explains the day's mystery:** the repo went
+  PRIVATE mid-session (the operator's remediation for the audit's disclosure finding), which 404'd the
+  installers' anonymous MPXJ fetch and turned PR #586's smoke legs red — an external state change that
+  arrived BETWEEN my push and its CI run. The failure read like an artifact defect and was measured to
+  be neither: same bytes, same pin, different repo visibility. Lesson: **a CI failure on an unchanged
+  code path is a question about the environment first** — and a fix ("flip it public") that undoes a
+  deliberate security remediation is not a fix; the installers had to learn an authenticated path
+  instead (ADR-0398).
+
 ### 2026-08-13 (g) — an audit report is itself a disclosure surface; redact it before you commit it
 
 - The read-only audit's own report and forward-plan named the gateway hostname and the ITAR-tagged model

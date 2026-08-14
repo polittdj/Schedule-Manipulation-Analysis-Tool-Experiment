@@ -160,6 +160,15 @@ try { & $venvPy -m pip install --quiet psutil 2>$null } catch { }
 #     ON; saying "stays OFF" there was simply false, and on a testimony tool a false claim
 #     about your own capability is a correctness defect.
 $MpxjBaseUrl = "{{MPXJ_BASE_URL}}"
+# The anonymous raw URL above requires a PUBLIC repository. This one went private (DISC-01
+# remediation, 2026-08-13), so the fetch is token-aware: with SF_GITHUB_TOKEN (yours) or
+# GITHUB_TOKEN (CI's built-in) set, the download switches to the authenticated GitHub contents
+# API at the SAME pinned commit. The SHA-256 manifest check below is identical either way —
+# the bytes are proven, not the transport.
+$MpxjApiBase = "{{MPXJ_API_BASE}}"
+$MpxjRef = "{{MPXJ_REF}}"
+$SfGhToken = if ($env:SF_GITHUB_TOKEN) { $env:SF_GITHUB_TOKEN }
+             elseif ($env:GITHUB_TOKEN) { $env:GITHUB_TOKEN } else { "" }
 $MpxjManifest = @'
 {{MPXJ_MANIFEST}}
 '@
@@ -248,7 +257,15 @@ if ($mpxjStaged) {
             $sha, $rel = $line -split "\s+", 2
             $target = Join-Path $tmpMpxj ($rel -replace "/", "\")
             New-Item -ItemType Directory -Force -Path (Split-Path -Parent $target) | Out-Null
-            Invoke-WebRequest -Uri "$MpxjBaseUrl/$rel" -OutFile $target -UseBasicParsing
+            if ($SfGhToken) {
+                Invoke-WebRequest -Uri "$MpxjApiBase/$($rel)?ref=$MpxjRef" -OutFile $target `
+                    -UseBasicParsing -Headers @{
+                        Authorization = "Bearer $SfGhToken"
+                        Accept        = "application/vnd.github.raw+json"
+                    }
+            } else {
+                Invoke-WebRequest -Uri "$MpxjBaseUrl/$rel" -OutFile $target -UseBasicParsing
+            }
             $got = (Get-FileHash -Algorithm SHA256 -LiteralPath $target).Hash.ToLower()
             if ($got -ne $sha.ToLower()) { throw "checksum mismatch for $rel" }
         }

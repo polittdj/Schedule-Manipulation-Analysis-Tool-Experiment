@@ -25,7 +25,6 @@ class OpenAICompatBackend:
     """A local OpenAI-compatible model server reached over loopback HTTP, stdlib only."""
 
     name = "openai-compat"
-    is_local = True
 
     def __init__(
         self,
@@ -36,12 +35,18 @@ class OpenAICompatBackend:
         probe_timeout: float = 8.0,
         opener: Opener | None = None,
     ) -> None:
-        if not is_local_http_endpoint(endpoint):
+        # OBSERVED locality (DoD 001b): ``is_local`` records the validator's verdict on the
+        # ACTUAL endpoint instead of asserting a class constant. The raise keeps construction
+        # fail-closed; if that guard is ever weakened, every banner derived from this object
+        # reports the measured truth rather than a label.
+        local = is_local_http_endpoint(endpoint)
+        if not local:
             raise CUIEgressError(
                 f"OpenAICompatBackend endpoint must be a loopback http(s) URL (e.g. "
                 f"http://127.0.0.1:1234), got {endpoint!r} — refusing to point a CUI "
                 "project at a remote or non-HTTP model server (Law 1)."
             )
+        self.is_local: bool = local
         self.endpoint = endpoint.rstrip("/")
         self.model = model
         self._timeout = timeout

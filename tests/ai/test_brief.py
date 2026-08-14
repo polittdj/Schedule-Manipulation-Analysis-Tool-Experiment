@@ -111,7 +111,9 @@ def test_brief_works_for_a_single_version() -> None:
 
 
 def test_brief_blocks_render_as_a_word_document(tp4_brief: DiagnosticBrief) -> None:
-    blocks = brief_blocks(tp4_brief)
+    # ai_is_local is REQUIRED evidence (DoD 001b) — the exported exhibit prints a locality
+    # sentence, so the caller must state the session's observed AI posture explicitly.
+    blocks = brief_blocks(tp4_brief, ai_is_local=True)
     blob = render_document([b for b in blocks if isinstance(b, Block)])
     doc = zipfile.ZipFile(io.BytesIO(blob)).read("word/document.xml").decode()
     assert "Diagnostic Brief" in doc
