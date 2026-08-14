@@ -435,6 +435,34 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-14 (c) — the fixture that could not fail, the diagnosis that reversed again, and spent = 0.0
+
+Four lessons from the first JCL battery (ADR-0401), each paid for in-session:
+
+- **A consistency oracle needs a fixture PROVEN to populate its discriminating cells.** The
+  first quadrant-closure fixture failed INTACT: with the FICSM multipliers off, cost is a
+  monotone function of the same driver that drives lateness, so the late-but-cheap quadrant
+  was STRUCTURALLY empty — no target choice could populate it. Red-before-green caught it;
+  the fix was a semantic decoupler (multipliers on) plus measured targets, and the liveness
+  asserts stay in the test as the self-check. Corollary from the critic: those liveness
+  preconditions rode SRAConfig's DEFAULT seed — pin the seed explicitly wherever a margin or
+  population depends on the sampled shape.
+- **A survivor of a narrow suite is a hypothesis, not a finding.** L13 (`sampling`
+  passthrough) survived the JCL modules and died in `test_lhs.py` (nine tests by name).
+  Widen the suite before declaring a blind spot — the wider run converts "unguarded" into
+  "guarded elsewhere", a different fact demanding a different action.
+- **A diagnosis that reversed once is not done reversing (again).** The sandbox push 403 was
+  first read as a proxy body-size cap; slicing "confirmed" it by succeeding — but the real
+  discriminator was a ZERO-object deletion push that also 403'd: the proxy blocks ref
+  DELETIONS, and every failed push had carried `--prune`. The `| tail` exit-mask trap also
+  fired mid-session ("push exit: 0" on a failed push) — the ref comparator's RED was the
+  honest instrument, exactly as designed.
+- **`spent = 0.0` makes any float re-association exact.** The association mutant
+  (`spent + (ti + td)` → `spent + ti + td`) survived the first interior-τ closure because the
+  fixture's spend was zero and `0.0 + x` carries no ulp; the killing fixture records a 0.01
+  spend at values where the last ulp genuinely moves (attacker-measured recipe, lead-verified).
+  A bit-identity contract is only testable where the bits can differ.
+
 ### 2026-08-14 (b) — a transcription oracle must be proven to read the SOURCE side, and a branch can move a member six years while every aggregate pin stays byte-identical
 
 - PO-03: the Fuse-transcription guard's battery needed THREE legs — JSON value, JSON UID

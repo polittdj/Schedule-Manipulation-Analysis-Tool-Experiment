@@ -14189,3 +14189,64 @@ node --check); full suite on the final tree 3951 passed / 47 skipped (all playwr
 
 **Next:** DISC-01 (operator) → 001c (operator) → PO-04/05 (blocked on a primary oracle) →
 `actual_start_driven` wiring → TEST-01 → FINAL-REPORT overclaims → stale branches. ADR-0400.
+
+## 2026-08-14 (c) — the sandbox wipe and the first JCL battery (ADR-0401)
+
+- **Session:** kickoff STEP ONE verification → SMAT-SANDBOX operations → the first
+  `engine/jcl.py` mutation battery + closure module → JCL-BR-01
+- **Model/mode:** Fable 5 + Ultracode (recon workflow 4 agents, adversarial workflow 3
+  agents; every delegated finding lead-re-measured per ADR-0240)
+- **Branch:** `claude/smat-sandbox-greenfield-binedp` off `main` be9b3c1
+
+**STEP ONE:** kickoff fresh — ADR-0400 / v1.0.201 / SCHEMA 2.11.0 matched HANDOFF, disk and
+`origin/main` (be9b3c1); designated branch carried no prior work; SMAT-SANDBOX held only the
+2026-07-11 snapshot; no mutation battery had ever targeted `engine/jcl.py` (searched).
+
+**SMAT-SANDBOX:** DISC-01 gate measured `private` BEFORE any push; mirror built (46
+first-parent slice pushes + per-branch pushes after whole-pack 403s) and the ls-remote
+comparator went RED→GREEN — then the diagnosis REVERSED: a zero-object deletion push also
+403s, so the proxy blocks ref DELETIONS, not size (every failed push had carried `--prune`).
+Mid-session the operator countermanded (the mirror's force-pushes had bumped the sandbox's
+old CLOSED July PRs): **wiped** — all 12 branch names force-pointed at parentless empty
+commit `91b3395`, verified; sandbox remote + local clone removed; **backup ABANDONED**.
+Branch-NAME deletion is an operator UI action (proxy-blocked here).
+
+**JCL battery (ADR-0401):** 45 mutant specs / 44 distinct across three rounds (16 lead +
+14 workflow-designed + 3 teeth + 12 adversarial). Round 1: nine confirmed gaps closed
+(scl/ccl/quadrants, frontier k-ceil + minimality, unrounded target, iterations gate,
+ADR-0308 guard, joint coupling, cost-CDF step, confidence floor, seed echo); L13 downgraded
+— `sampling` is guarded by nine `test_lhs` tests (a narrow-suite survivor is a hypothesis).
+Adversarial round: ALL 12 attack mutants survived the first closure revision (both attackers
+independently wrote the same multi-risk edit); closed with eight tests + two fold-ins —
+multi-risk SUMMING, the `max(0,·)` opportunity floor, gate precedence, the completed
+predicate at `actual_finish`+pc<100, focus-vs-project finish, `ti+td>0` at τ=0, the float
+association at NONZERO spend (spent=0.0 re-associates exactly — the first fixture could not
+kill it), the latest-stored-finish anchor fallback, `sunk_total` keeping unbudgeted actuals,
+`cost_p80` PERCENTILE.INC, and the full 5..95 frontier grid. Critic fixes: explicit seeds
+where liveness rides the sampled shape; two discriminating-power self-checks. Final:
+`tests/engine/test_jcl_joint_statement_closure.py` (21 tests) — combined battery 44/44
+killed by name (+ L13 in `test_lhs`), intact green, scoping run clean.
+
+**JCL-BR-01 (validated live defect, strict xfail):** session branches feed `/api/sra/ssi`
+but `compute_jcl` accepts none — measured through the real routes: after one POSTed
+probabilistic branch the SSI percentiles moved (01-16/23/28/29) and the JCL percentiles did
+not (01-15/20/22/23). Landed as `test_finish_marginal_still_matches_ssi_with_a_probabilistic_branch`
+(xfail strict) in `tests/web/test_jcl_web.py`; the fix is design-gated SHIPPED code
+(ADR-0148 lockstep when taken). Conditionals share the gap.
+
+**Gate:** statics green (ruff ×2, 1,003 files · mypy src 152 files · bandit exit 0 ·
+node --check). Full suite on the final tree: **3972 passed, 47 skipped (playwright-env),
+2 xfailed (TEST-01 + JCL-BR-01), exit 0, 31:38** — 3951 prior + 21 new closure tests.
+
+**Post-close addendum (same session):** PR #589's four CI checks died in ~3 s with no
+runner assigned — the private-repo Actions minute allowance was exhausted, not a test
+failure (diagnosis posted on the PR). The operator responded by making THE REPOSITORY
+PUBLIC again (2026-08-14), restoring free CI and REVERSING the DISC-01 private-visibility
+mitigation; the forward-looking docs (HANDOFF, NEXT-SESSION-PROMPT) were updated in the
+same PR and CI re-triggered on the new head.
+
+**Next:** DISC-01 (operator; now more urgent — exposure live again) → 001c (operator) →
+PO-04/05 (blocked on a primary oracle) → `actual_start_driven` wiring → TEST-01 →
+**JCL-BR-01** → FINAL-REPORT overclaims → JCL docs follow-ups (help.py `eac` gloss omits
+the (1−τ) term) → 8 stale branches → SMAT-SANDBOX branch-name cleanup (operator UI).
+ADR-0401.
