@@ -49,8 +49,11 @@ from schedule_forensics.web.app import SessionState, create_app
 #: reads the value it judges cannot refute anything — ADR-0394).
 LOCAL_LITERAL = "Local-only — no data leaves this machine."
 
-#: The endpoint of the real-world scenario this guard exists for (APPROVED-GATEWAY-INTEGRATION).
-GATEWAY = "https://proxy.fast.luna.nasa.gov"
+#: A FICTIONAL non-local endpoint standing in for the real-world approved-gateway scenario this
+#: guard exists for (see docs/PLAN/APPROVED-GATEWAY-INTEGRATION.md). Deliberately not the real
+#: hostname: the 2026-08-13 audit's DISC-01 finding is that the real strings are over-disclosed,
+#: and a document (or test) that exists because of a disclosure must not repeat the disclosure.
+GATEWAY = "https://gateway.agency.example"
 
 
 class _NonLocalFake:

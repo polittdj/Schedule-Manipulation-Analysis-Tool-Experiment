@@ -1,7 +1,7 @@
-# ADR-0396 — A graft boundary is not a touch: the MPXJ pin refuses shallow-clone artifacts
+# ADR-0397 — A graft boundary is not a touch: the MPXJ pin refuses shallow-clone artifacts
 
-Status: accepted (2026-08-13). Closes **DoD 117** (the `mpxj_ref()` shallow-clone guard). Lands with
-ADR-0395 in v1.0.201 because the defect fired *inside* that session's mandatory installer rebuild —
+Status: accepted (2026-08-13). Closes **DoD 117** (the `mpxj_ref()` shallow-clone guard). Renumbered 0396→0397 at the #585 merge. Lands with
+ADR-0396 in v1.0.201 because the defect fired *inside* that session's mandatory installer rebuild —
 this is the fix for a wound taken while shipping 001b, not opportunistic scope.
 
 ## Context

@@ -13978,12 +13978,45 @@ The kickoff prompt calls the standing rules "ADR-0392"; they are **ADR-0393** �
 
 ---
 
-## 2026-08-13 (e) — DoD 001b: the sovereignty banner is observed (ADR-0395); DoD 117: the MPXJ pin guard, after the trap fired on this very build (ADR-0396) — v1.0.201
+## 2026-08-13 (e) — read-only ten-role audit, re-verified and landed as docs+tests (ADR-0395, v1.0.200)
 
-Branch `claude/polaris-resume-ojz9q0` from `main` 5a8003f. `src/` changed → v1.0.201, wheel + nine
-installers rebuilt in lockstep.
+Branch `claude/schedule-manipulation-audit-xnrqfd`, draft PR #585. **No shipped code changed** (`src/`
+untouched; version stays v1.0.200; no wheel/installer rebuild). New: `tests/audit/test_audit_findings.py`
+(21 tests, 17 pass / 4 xfail-strict), `docs/STATE/AUDIT-2026-08-13.md`,
+`docs/STATE/AUDIT-2026-08-13-REMEDIATION-PLAN.md`, `docs/adr/0395-*.md`; `NEXT-SESSION-PROMPT.md` updated.
 
-**001b (ADR-0395).** Pre-fix, measured by an executed probe (red first): `route_backend` handed the
+**What landed.** A strictly read-only audit (checkout never mutated; `net_guard.py` md5 `ff76e70c…`
+unchanged; clean `git status` start→finish) re-verified the kickoff's open-item list against current code
+with red/green checks (QC-1) and refuted the false leads (CPM math, MSPDI XXE, circular parity oracle,
+committed secrets, unescaped XSS, Host-header rebinding, CI-ruff-red — all disproved). New verified
+findings: **DISC-01** (public repo publishes the gateway host + ITAR model id + patched-workstation ops —
+REQUIRES AUTHORIZING OFFICIAL, gates 001b/001c), **HOOK-01 widened** (pre-commit misses
+renamed/double-ext/PDF/ZIP schedules), **PO-03/04/05** (Fuse transcription unguarded vs source `.xlsx`;
+CEI/bow-wave and HMI have no independent oracle).
+
+**Verified.** Faithful-sandbox census **1429 passed / 2 skipped / 0 failed**
+(guards+ai+air-gap+sec-hardening+launcher+engine+both Fuse-parity). A `.git`-less extract mis-reports
+git-dependent guards — a sandbox artifact, green after `git add -f 00_REFERENCE_INTAKE` reaches the real
+1624-file set. The four xfails encode the live defects (GW-02, TEST-01, HOOK-01, PO-03), each
+red-now/green-when-fixed. mypy strict, ruff, ruff-format, bandit, pip-audit green.
+
+**Redaction.** The new audit docs redact the gateway/model strings to placeholders (DISC-01: do not
+proliferate — they already exist elsewhere in the repo); `NEXT-SESSION-PROMPT.md` updated with no new
+token copies.
+
+**Next:** DISC-01 (operator / authorizing official) → 001b observed banner → 001c gateway decision +
+ADR **0396** (taken after `git fetch origin`).
+
+---
+
+## 2026-08-13 (f) — DoD 001b: the sovereignty banner is observed (ADR-0396); DoD 117: the MPXJ pin guard, after the trap fired on this very build (ADR-0397); then the private-repo fetch fix (ADR-0398) — v1.0.201
+
+Branch `claude/polaris-resume-ojz9q0` from `main` 5a8003f, draft PR #586. `src/` changed → v1.0.201,
+wheel + nine installers rebuilt in lockstep. (ADR numbers as renumbered at the #585 merge: the
+banner ADR was pushed as 0395 and the parallel audit merged first with its own 0395 — the predicted
+collision — so banner=0396, MPXJ pin=0397, installer fetch=0398.)
+
+**001b (ADR-0396).** Pre-fix, measured by an executed probe (red first): `route_backend` handed the
 literal local-only Banner to an `is_local=False` fake on BOTH the ollama and openai paths; the page
 rendered `banner_for(config)` — config only — showing "Local-only" with that same fake in
 `SessionState.backend_cache`; `brief_blocks` had no locality parameter; `is_local` was a class
@@ -13996,23 +14029,27 @@ re-bound so per-call-site monkeypatches keep working) → `chrome._observed_bann
 routed-cache veto. Consumers: persistent banner, CUI drawer (template var), home hero + empty-state
 takeaway, settings tip, and both exported exhibits (`brief_blocks(…, *, ai_is_local)` REQUIRED;
 `_sra_report_blocks` via its `st`). Local-state strings byte-identical; i18n key + 4 translations
-untouched and now pinned.
+untouched and pinned. Verified: 18 guard tests red-on-pre-fix / green-on-fixed, 15-mutation sandbox
+battery (canary + control + md5-identical instruments) caught 15/15 by name, re-run on the final
+tree. The merge flipped `tests/audit` GW-02 from xfail-strict to a plain passing test — the audit
+module's designed "loud flip" for exactly this fix.
 
-**Verified:** `tests/guards/test_observed_banner.py`, 18 tests — red on the pre-fix tree (probe
-confirmed all four defects by assertion; module cannot collect there), 18/18 green on the fixed
-tree, and a 15-mutation sandbox battery (canary + control + md5-identical instruments) caught
-**15/15 by name** — re-run against the final post-format tree. One test repointed with its moved
-call site (`factory.OpenAICompatBackend`), proven live.
+**117 (ADR-0397).** The rebuild's first attempt pinned `a100184d` — this container's own
+shallow-graft boundary. The diagnosis reversed TWICE under measurement before tree hashes and the
+GitHub commits API settled the true last touch as `42d92dc` (the committed pin was correct all
+along; nothing in the wild was broken). `mpxj_ref()` now refuses graft-boundary resolutions and
+accepts `SF_MPXJ_REF` only with verified tree-identity; the new installer test went red 3/3
+families against the drifted build.
 
-**117 (ADR-0396).** The rebuild's first attempt pinned `a100184d` — this container's own
-shallow-graft boundary. The diagnosis reversed TWICE under measurement ("my pin is right" → "the
-committed installers are broken" → both wrong): tree hashes proved `42d92dc` / `a100184d` / `HEAD`
-carry the identical `tools/mpxj` tree, and the GitHub commits API named **`42d92dc`** the true last
-touch — the committed pin was correct all along; nothing in the wild was ever broken. `mpxj_ref()`
-now refuses a graft-boundary resolution and accepts `SF_MPXJ_REF` only after verifying
-tree-identity (three refusal paths exercised live); the new installer test went red against the
-drifted build (3/3 families), green after the corrected rebuild. v1.0.201 installers pin `42d92dc`.
+**Private-repo fetch (ADR-0398).** Mid-session the repo went PRIVATE (DISC-01 remediation), which
+404'd the installers' anonymous raw fetch and turned PR #586's linux/windows smoke legs red — an
+external state change, measured (404 at every ref including main; visibility=private; the identical
+legs passed on #580 hours earlier while public). Fix: the installers' MPXJ fetch becomes
+token-aware — with `SF_GITHUB_TOKEN`/`GITHUB_TOKEN` set it switches to the GitHub contents API
+(`Accept: application/vnd.github.raw+json`, proven byte-identical against the manifest for the 3 MB
+poi jar), anonymous raw URL otherwise; `installer-smoke.yml` supplies CI's built-in token. The
+sensitive gateway/model literals in THIS branch's new files were replaced with fictional
+placeholders per the audit's redaction discipline.
 
-**Next:** 001c — the operator's cloud/gateway decision (its ADR takes the next free number after
-`git fetch origin`) · pin `_ALLOWED_HOSTS` · `actual_start_driven` · own-calendar floor guard ·
-image detector · playwright chromium pins · FINAL-REPORT · stale branches.
+**Next:** DISC-01 release determination (operator / authorizing official) → 001c gateway decision →
+HOOK-01 widened pre-commit boundary → PO-03/04/05 parity-oracle gaps → the remaining queue.

@@ -1,6 +1,6 @@
-# ADR-0395 — The sovereignty banner is observed, not config-derived: every locality claim now rides one derivation
+# ADR-0396 — The sovereignty banner is observed, not config-derived: every locality claim now rides one derivation
 
-Status: accepted (2026-08-13). Closes **DoD 001b** (`docs/PLAN/DEFINITION-OF-DONE-V2.md`;
+Status: accepted (2026-08-13). Renumbered 0395→0396 at the #585 merge (the parallel read-only audit merged its own 0395 first — the collision the kickoff predicted). Closes **DoD 001b** (`docs/PLAN/DEFINITION-OF-DONE-V2.md`;
 `APPROVED-GATEWAY-INTEGRATION.md` §6 steps 2 and 3). `src/` changed — **v1.0.201**, wheel and
 installers rebuilt. Extends ADR-0394 (001a pinned the validator's data; this makes the *claims*
 consult the validator's verdict).
@@ -13,7 +13,7 @@ probe on the pre-fix tree* (QC-1; not inherited from the audit):
 
 | # | Defect | Measured on `main` @ 5a8003f |
 | --- | --- | --- |
-| D1 | `route_backend` returned the literal local Banner for whatever object arrived through its `ollama`/`openai` parameters — no locality inspection, no read of `is_local` | a fake with `is_local=False`, `endpoint=https://proxy.fast.luna.nasa.gov` routed on **both** paths under the banner `Local-only — no data leaves this machine.` |
+| D1 | `route_backend` returned the literal local Banner for whatever object arrived through its `ollama`/`openai` parameters — no locality inspection, no read of `is_local` | a fake with `is_local=False` and a non-local gateway-shaped endpoint routed on **both** paths under the banner `Local-only — no data leaves this machine.` |
 | D2 | The rendered page banner was `banner_for(config)` — config only (`chrome.py:175`); `route_backend`'s Banner was discarded by both production callers (`web/app.py:838`, `web/settings.py:346`) — dead code, exactly as the audit said | the same fake sitting in `SessionState.backend_cache` still rendered `<div class="banner local">Local-only — …</div>` |
 | D3 | `brief_blocks` printed "Generated locally by POLARIS…" into the exported Word exhibit with **no parameter that could carry a locality verdict** | `signature = (brief)` — one positional, nothing else |
 | D4 | `is_local` was a **class constant** `True` on both HTTP backends — an assertion, not a measurement; the only read anywhere was `_UseMarking` copying it | `"is_local" in vars(OllamaBackend)` and `vars(OpenAICompatBackend)` — both true |
@@ -27,7 +27,8 @@ matters. The two exported-exhibit sites (`ai/brief.py:625`, `web/sra.py:1076`) p
 offline…" — unconditional assurances inside documents built to leave the machine.
 
 Why this matters is ADR-0394's scenario: in a patched install with the gateway armed, every one of
-these sentences renders while schedule content transits `proxy.fast.luna.nasa.gov`. As shipped the
+these sentences renders while schedule content transits the approved gateway (endpoint named in
+`APPROVED-GATEWAY-INTEGRATION.md` — not repeated here per DISC-01's redaction discipline). As shipped the
 claims are true; they were **unconditional where they should be conditional**, and no in-repo test
 could make any of them go red.
 

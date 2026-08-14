@@ -3,6 +3,68 @@
 > Older handoff sections, moved out of `docs/STATE/HANDOFF.md` so the live handoff stays
 > small enough to read in full in one pass every session (ADR-0246). Newest first, verbatim.
 
+# (prior) Handoff — 2026-08-13 (e) (read-only audit re-verified the open-item list; landed docs+tests; ADR-0395; v1.0.200)
+
+> ## STATUS (current) — **pushed, draft PR #585 open** on `claude/schedule-manipulation-audit-xnrqfd`,
+> branched from `origin/main` **5a8003f**. Highest ADR now **0395**. **No shipped code changed** — `src/`
+> is untouched, so the version stays **v1.0.200** and no wheel/installer rebuild was required. SCHEMA
+> stays 2.11.0. New files: `tests/audit/test_audit_findings.py`, `docs/STATE/AUDIT-2026-08-13.md`,
+> `docs/STATE/AUDIT-2026-08-13-REMEDIATION-PLAN.md`, `docs/adr/0395-*.md`; `NEXT-SESSION-PROMPT.md` updated.
+>
+> ## What landed: a strictly READ-ONLY ten-role audit, re-verified and turned into a regression module
+> The audit re-derived the kickoff's open-item list against current code with red/green checks (QC-1),
+> and refuted the obvious false leads (CPM math, MSPDI XXE, circular parity oracle, committed secrets,
+> unescaped XSS, Host-header rebinding, CI-ruff-red — ALL disproved; see ADR-0395's table). The checkout
+> was never mutated (`net_guard.py` md5 `ff76e70c…` identical start→finish; clean `git status`).
+> `tests/audit/test_audit_findings.py`: **21 tests, 17 pass / 4 xfail(strict)** — the xfails ENCODE the
+> live defects (GW-02 banner, TEST-01 chromium pin, HOOK-01 pre-commit boundary, PO-03 Fuse transcription),
+> each shown red-now/green-when-fixed. Drive an xfail to green as you close its finding.
+>
+> ## NEW this round (beyond the existing list; all lead-verified)
+> * **DISC-01 (REQUIRES AUTHORIZING OFFICIAL) — gates the gateway build items.** The gateway hostname +
+>   ITAR-tagged model id + a patched-workstation description are published in this PUBLIC repo and in git
+>   history since `a19b969`. A file edit does not remove them; remediation (filter-repo / private repo) is
+>   an authorizing-official decision, not an engineering commit. Until settled, 001b/001c are design-only.
+> * **HOOK-01 is WIDER than "no image detector"** (19-case scratch-repo battery): a schedule renamed
+>   `.png`/`.svg`/`.md` slips; a blocked-ext double-extension (`data.mpp.png`, `sched.mpp.zip`) double-misses
+>   BOTH detectors; a schedule-bearing PDF/ZIP is covered by neither `.gitignore` nor the hook; the guard
+>   is session-activated (silent outside an activated session).
+> * **PO-03/04/05** — the Fuse transcription is not machine-guarded vs the source `.xlsx`; CEI/bow-wave and
+>   HMI have NO independent reference oracle; SRA/SSI is tolerance-accepting (ADR-0106), not exact parity.
+>
+> ## Verification (QC-1) — census green, sandbox-artifact understood
+> Targeted authoritative census in a FAITHFUL git sandbox (1624 tracked files): **1429 passed, 2 skipped,
+> 0 failed** (guards + ai + air-gap + sec-hardening + launcher + engine + both Fuse-parity files). A
+> `.git`-less `git archive` extract makes intake-manifest/precommit guards ERROR — a sandbox artifact,
+> NOT a defect; after `git init` + `git add -f 00_REFERENCE_INTAKE` all 56 pass. mypy strict, ruff,
+> ruff-format, bandit, pip-audit green in a real checkout. Full parity (>900 s) left to CI.
+>
+> ## Redaction discipline (DISC-01 applied to our own artifacts)
+> The new audit docs REDACT the gateway/model strings to placeholders — do not proliferate them; they
+> already exist elsewhere in the repo. `NEXT-SESSION-PROMPT.md` was updated WITHOUT adding new copies
+> (token count unchanged at 2).
+>
+> ## Next — Band 1, in dependency order (unchanged except DISC-01 now gates the gateway items)
+> DISC-01 (operator / authorizing official) → **001b** observed banner (GW-02; `chrome.py:172-177` renders
+> `banner_for`, `route_backend`'s Banner discarded) → **001c** cloud/gateway decision + its ADR (0396 now —
+> take the next free number after `git fetch origin`, never one a doc predicted). Then: pin `_ALLOWED_HOSTS`
+> (SEC-01) · `actual_start_driven` unconsumed · ADR-0391 own-calendar floor · `mpxj_ref()` shallow-clone
+> guard (DoD 117) · pre-commit content detector (HOOK-01) · 22 chromium build-number pins (TEST-01) ·
+> FINAL-REPORT overclaims (DOC-01) · Fuse-transcription guard (PO-03) · 8 stale branches. Each xfail in the
+> audit module is the red starting test for its item.
+>
+> ## Carried forward
+> ADR-0353..0395 closed — do not re-open. NEW lesson: **an audit report is itself a disclosure surface —
+> redact the sensitive literals before committing it, because committing the report proliferates exactly
+> what the report flags** (DISC-01 applied to itself). Second: **a `.git`-less sandbox mis-reports
+> git-dependent guards as failures — reach the real tracked-file set (`git add -f` the gitignored intake)
+> before trusting a census.** Standing traps unchanged (a data pin guards the literal not the guarantee ·
+> prove the sandbox is the tree being measured · a standing rule is DATA, unpinned data is not a guarantee ·
+> a fixture generated by a rule cannot validate that rule · an ADR's observation can be right and its
+> diagnosis wrong · `grep -c` exits 1 on zero · two ruffs on PATH, use `python -m ruff` · `pytest -m parity`
+> alone exceeds 900 s · the container starts with NO deps installed · `git fetch origin` before taking an
+> ADR number and again before committing). A number written mid-session is not a measurement (`wc` decides).
+
 # (prior) Handoff — 2026-08-13 (d) (DoD 001a closed: the loopback allowlist is pinned; ADR-0394; v1.0.200)
 
 > ## STATUS (current) — **pushed, draft PR open** on `claude/polaris-kickoff-ss9eb8`,
