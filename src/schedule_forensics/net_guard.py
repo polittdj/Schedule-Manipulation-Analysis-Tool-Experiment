@@ -245,3 +245,39 @@ def is_local_http_endpoint(endpoint: str) -> bool:
     """
     parsed = urlparse(endpoint.strip())
     return parsed.scheme in _LOCAL_HTTP_SCHEMES and is_loopback_host(parsed.hostname or "")
+
+
+#: The approved AI gateways — the ONLY non-local destinations any part of the runtime may
+#: ever be pointed at (ADR-0402, DoD 001c). Each entry is an exact ``https`` base URL of an
+#: endpoint the operator's ORGANIZATION has approved for controlled schedule data (the
+#: NASA-approved gateway serving ITAR-authorized models). Three properties are load-bearing:
+#:
+#: * This set is **separate from** ``_LOOPBACK_HOSTNAMES`` and must never be folded into it —
+#:   a gateway is remote and is always presented as remote (warning banner, export
+#:   disclosure, transaction log). Widening the loopback set instead is the exact edit
+#:   ``tests/guards/test_loopback_allowlist.py`` exists to catch.
+#: * An entry here is an **organizational assertion recorded in code**, not evidence: the
+#:   tool cannot verify an ATO and never implies it has. Growing this set is an ADR-level
+#:   decision; ``tests/guards/test_gateway_allowlist.py`` pins the contents exactly.
+#: * ``GatewayBackend`` additionally requires the operator's per-session approval
+#:   acknowledgment before anything routes here, and every transmission is recorded
+#:   (``ai/txlog.py``) — the allowlist alone arms nothing.
+APPROVED_GATEWAY_ENDPOINTS: frozenset[str] = frozenset({"https://proxy.fast.luna.nasa.gov"})
+
+
+def is_approved_gateway_endpoint(endpoint: str) -> bool:
+    """Return ``True`` iff ``endpoint`` is EXACTLY an approved AI-gateway base URL.
+
+    Exact normalized-string match against :data:`APPROVED_GATEWAY_ENDPOINTS` — no scheme
+    downgrades, no subdomains, no added ports, no path suffixes: anything not literally on
+    the approved list is refused (fail closed). Two structural checks back the literal so
+    the taxonomy stays sound even if the data set is ever mis-edited: a gateway must be
+    ``https`` (controlled data never transits an approved gateway in cleartext) and must
+    NOT be loopback (local endpoints belong to the local backends; "local gateway" is a
+    category error the banner logic must never have to reason about).
+    """
+    normalized = endpoint.strip().rstrip("/")
+    if normalized not in APPROVED_GATEWAY_ENDPOINTS:
+        return False
+    parsed = urlparse(normalized)
+    return parsed.scheme == "https" and not is_loopback_host(parsed.hostname or "")

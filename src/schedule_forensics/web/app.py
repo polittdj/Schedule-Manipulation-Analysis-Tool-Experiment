@@ -36,6 +36,7 @@ from schedule_forensics.ai import (
     AIBackend,
     AIConfig,
     Classification,
+    GatewayBackend,
     NullBackend,
     OllamaBackend,
     OpenAICompatBackend,
@@ -203,6 +204,7 @@ from schedule_forensics.model.saved_view import SavedFilter, SavedGroup
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.net_guard import (
     assert_local_only,
+    is_approved_gateway_endpoint,
     is_local_http_endpoint,
     is_loopback_host,
 )
@@ -659,6 +661,8 @@ from schedule_forensics.web.settings import _RUNTIME_STATUS_NOTES as _RUNTIME_ST
 from schedule_forensics.web.settings import _ai_backend_explainer as _ai_backend_explainer
 from schedule_forensics.web.settings import _ai_runtime_note as _ai_runtime_note
 from schedule_forensics.web.settings import _ai_status_note as _ai_status_note
+from schedule_forensics.web.settings import _gateway_or_none as _gateway_or_none
+from schedule_forensics.web.settings import _gateway_status_note as _gateway_status_note
 from schedule_forensics.web.settings import _model_installed as _model_installed
 from schedule_forensics.web.settings import _ollama_or_none as _ollama_or_none
 from schedule_forensics.web.settings import _openai_or_none as _openai_or_none
@@ -843,6 +847,7 @@ def _active_backend(state: SessionState) -> AIBackend:
         null_backend=NullBackend(),
         ollama_backend=_ollama_or_none(state.ai_config),
         openai_backend=_openai_or_none(state.ai_config),
+        gateway_backend=_gateway_or_none(state.ai_config),
     )
     hook = state.ai_use_hook
     if hook is not None and backend.name == "ollama":
@@ -6557,6 +6562,8 @@ def create_app(
         second_backend: str = Form("none"),
         second_model: str = Form(""),
         gen_timeout: float = Form(3600.0),
+        gateway_endpoint: str = Form(""),
+        gateway_approved: str = Form(""),
     ) -> RedirectResponse:
         st = session()
         try:
@@ -6576,6 +6583,12 @@ def create_app(
             endpoint = "http://127.0.0.1:11434"
         if not is_local_http_endpoint(openai_endpoint.strip()):
             openai_endpoint = "http://127.0.0.1:1234"
+        # the approved gateway (ADR-0402): only an exact allowlisted endpoint may sit in the
+        # config — anything else clears to "" (gateway off). The constructor re-refuses too;
+        # this keeps an unapproved URL from ever LOOKING accepted on the settings page.
+        gateway_endpoint = gateway_endpoint.strip()
+        if gateway_endpoint and not is_approved_gateway_endpoint(gateway_endpoint):
+            gateway_endpoint = ""
         st.ai_config = AIConfig(
             classification=cls,
             backend=backend,
@@ -6586,6 +6599,10 @@ def create_app(
             second_backend=second_backend,
             second_model=second_model.strip(),
             gen_timeout=gen_timeout,
+            gateway_endpoint=gateway_endpoint,
+            # an absent checkbox posts nothing — only the literal checked value records the
+            # operator's approval assertion; anything else is False (fail closed)
+            gateway_approved=gateway_approved == "1",
         )
         st.backend_cache = None  # re-route immediately — a settings change must take effect now
         st.second_cache = None
@@ -6604,27 +6621,49 @@ def create_app(
 
     @app.get("/api/ai/models")
     def ai_models(kind: str = Query("ollama"), endpoint: str = Query("")) -> JSONResponse:
-        """Probe a LOCAL model server for the model ids it currently serves.
+        """Probe a model server for the model ids it currently serves.
 
         Feeds the live model dropdowns in AI Settings so the operator picks a real, valid id
         (especially for OpenAI-compatible servers, where the loaded model id must match exactly).
-        Loopback-only and fail-closed: a non-loopback endpoint returns ``reachable: false`` and
-        never reaches out (Law 1)."""
-        kind = kind if kind in ("ollama", "openai") else "ollama"
+        Fail-closed on the destination: the two local kinds refuse any non-loopback endpoint and
+        never reach out (Law 1); ``kind=gateway`` (ADR-0402) refuses anything but an EXACT
+        approved-gateway endpoint, and its probe — like every gateway request — is recorded in
+        the AI transaction log."""
+        kind = kind if kind in ("ollama", "openai", "gateway") else "ollama"
         ep = endpoint.strip()
-        default = "http://127.0.0.1:11434" if kind == "ollama" else "http://127.0.0.1:1234"
-        if ep and not is_local_http_endpoint(ep):
-            return JSONResponse(
-                {"reachable": False, "models": [], "reason": "endpoint must be a loopback URL"}
-            )
-        try:
-            be: AIBackend = (
-                OllamaBackend(endpoint=ep or default, model="", timeout=8.0)
-                if kind == "ollama"
-                else OpenAICompatBackend(endpoint=ep or default, model="", timeout=8.0)
-            )
-        except Exception as exc:  # loopback guard or bad URL — report, never raise outward
-            return JSONResponse({"reachable": False, "models": [], "reason": str(exc)})
+        if kind == "gateway":
+            if not is_approved_gateway_endpoint(ep):
+                return JSONResponse(
+                    {
+                        "reachable": False,
+                        "models": [],
+                        "reason": "endpoint must be an approved gateway "
+                        "(select it from the approved list)",
+                    }
+                )
+            try:
+                be: AIBackend = GatewayBackend(
+                    endpoint=ep,
+                    model="",
+                    classification=str(session().ai_config.classification),
+                    timeout=8.0,
+                )
+            except Exception as exc:  # allowlist guard — report, never raise outward
+                return JSONResponse({"reachable": False, "models": [], "reason": str(exc)})
+        else:
+            default = "http://127.0.0.1:11434" if kind == "ollama" else "http://127.0.0.1:1234"
+            if ep and not is_local_http_endpoint(ep):
+                return JSONResponse(
+                    {"reachable": False, "models": [], "reason": "endpoint must be a loopback URL"}
+                )
+            try:
+                be = (
+                    OllamaBackend(endpoint=ep or default, model="", timeout=8.0)
+                    if kind == "ollama"
+                    else OpenAICompatBackend(endpoint=ep or default, model="", timeout=8.0)
+                )
+            except Exception as exc:  # loopback guard or bad URL — report, never raise outward
+                return JSONResponse({"reachable": False, "models": [], "reason": str(exc)})
         reason: str | None
         try:
             reason = be.unavailable_reason()  # type: ignore[attr-defined]

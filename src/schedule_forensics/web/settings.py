@@ -50,7 +50,9 @@ from schedule_forensics.ai import (
     NullBackend,
     factory,
     route_backend,
+    txlog,
 )
+from schedule_forensics.net_guard import APPROVED_GATEWAY_ENDPOINTS
 from schedule_forensics.web.chrome import _e, _observed_banner
 from schedule_forensics.web.components import _user_tip
 from schedule_forensics.web.state import SessionState
@@ -59,9 +61,11 @@ from schedule_forensics.web.state import SessionState
 # derivation can build the same candidates the router uses. These module-global re-binds keep
 # the historic names: callers here and in ``app.py`` look the names up on their own module, so
 # the tests that monkeypatch ``settings._ollama_or_none`` / ``app._ollama_or_none`` still
-# intercept exactly the call sites they always did.
+# intercept exactly the call sites they always did. ``_gateway_or_none`` (ADR-0402) follows
+# the same convention from birth.
 _ollama_or_none = factory.ollama_or_none
 _openai_or_none = factory.openai_or_none
+_gateway_or_none = factory.gateway_or_none
 
 
 class _UseMarking:
@@ -113,12 +117,58 @@ def _model_installed(model: str, installed: tuple[str, ...]) -> bool:
     return any(n.strip().lower() == m or n.strip().lower().split(":")[0] == base for n in installed)
 
 
+def _gateway_status_note(cfg: AIConfig) -> str:
+    """The approved-gateway equivalent of :func:`_ai_status_note` (ADR-0402): why the gateway
+    is or is not serving, with the concrete next step — and, when it IS serving, an honest
+    statement that prompts leave the machine plus where the transaction record lives.
+    Every state that cannot transmit is reported as AI OFF (routing falls closed to Null)."""
+    if not cfg.gateway_endpoint:
+        return (
+            '<div class="notice err">Approved-gateway AI is OFF — no gateway endpoint is '
+            "selected. <b>Pick your organization&rsquo;s approved endpoint from the Approved "
+            "gateway endpoint list below and Save.</b></div>"
+        )
+    if not cfg.gateway_approved:
+        return (
+            '<div class="notice err">Approved-gateway AI is OFF — the approval acknowledgment '
+            "is required. <b>Check the acknowledgment box below and Save</b> to record that "
+            "your organization has approved this endpoint for this session&rsquo;s data. The "
+            "gateway never arms without it.</div>"
+        )
+    probe = _gateway_or_none(cfg)
+    if probe is None:  # construction refused the endpoint — the allowlist is the law here
+        return (
+            '<div class="notice err">Approved-gateway AI is OFF — the configured endpoint '
+            f"<code>{_e(cfg.gateway_endpoint)}</code> is not on the approved gateway list, so "
+            "the tool refuses to send anything to it (Law 1).</div>"
+        )
+    reason = probe.unavailable_reason()
+    if reason is not None:
+        return (
+            f'<div class="notice err">Approved-gateway AI is OFF — could not reach '
+            f"<code>{_e(cfg.gateway_endpoint)}</code>: {_e(reason)}. The gateway is only "
+            "reachable from networks your organization connects to it; check your network, "
+            "then reload this page. Until it answers, answers fall back to the offline "
+            "deterministic engine (nothing is sent).</div>"
+        )
+    return (
+        '<div class="notice ok">Approved-gateway AI is ON — '
+        f"<code>{_e(cfg.gateway_endpoint)}</code> is reachable and serving its approved model "
+        "catalog. <b>Prompts (schedule content) LEAVE this machine to this endpoint</b>; every "
+        "transmission is recorded in the AI transaction log at "
+        f"<code>{_e(txlog.default_log_path())}</code>.</div>"
+    )
+
+
 def _ai_status_note(cfg: AIConfig) -> str:
     """An actionable settings line when a configured LOCAL backend isn't actually serving.
 
     Turns the silent 'Active backend: null' into a concrete reason + fix (the operator could
     not see why the AI was off): server down / wrong port / model not pulled. Empty for the
-    Null backend (no server expected) and for cloud (handled by the banner)."""
+    Null backend (no server expected) and for cloud (handled by the banner); the approved
+    gateway has its own diagnostic (:func:`_gateway_status_note`, ADR-0402)."""
+    if cfg.backend == "gateway":
+        return _gateway_status_note(cfg)
     if cfg.backend not in ("ollama", "openai"):
         return ""
     probe = _ollama_or_none(cfg) if cfg.backend == "ollama" else _openai_or_none(cfg)
@@ -296,13 +346,21 @@ verbatim.</p>
 <p><b>CUI / data locality.</b> <b>Nothing can leave the machine</b> (no model, no network). Always safe.</p>
 <p><b>Pros.</b> Zero setup, fully deterministic, instant. <b>Cons.</b> No written interpretation &mdash;
 you get the facts, not prose.</p></details>
-<details class=explainer><summary><b>Cloud</b> &mdash; UNCLASSIFIED only, NOT for CUI</summary>
-<p><b>What it is.</b> Sends the prompt to a remote provider's model.</p>
-<p><b>CUI / data locality.</b> <b>Data LEAVES this machine.</b> This is <u>disqualifying for CUI</u>. It is
-only selectable after you explicitly switch <i>Classification</i> to <b>UNCLASSIFIED</b>, and a persistent
-banner then names the endpoint. Never use it with controlled schedule data.</p>
-<p><b>Pros.</b> The most capable models, no local hardware. <b>Cons.</b> Data egress &mdash; off-limits for
-CUI, and needs an internet connection.</p></details>
+<details class=explainer><summary><b>Approved AI gateway (remote)</b> &mdash; organization-approved egress, always bannered</summary>
+<p><b>What it is.</b> Sends the prompt to a <b>remote, organization-approved</b> OpenAI-compatible
+gateway &mdash; e.g. a NASA-approved endpoint serving ITAR-authorized models (Claude and others your
+organization has cleared). The endpoint must be on the tool&rsquo;s committed approved-gateway
+allowlist; anything else is refused outright.</p>
+<p><b>CUI / data locality.</b> <b>Data LEAVES this machine</b> to the named approved endpoint. Arming it
+takes three explicit steps &mdash; select the backend, select the approved endpoint, and check the
+approval acknowledgment &mdash; and while armed a persistent banner names the endpoint on every page,
+exports disclose it, and <b>every transmission is recorded in a local AI transaction log</b> (what left,
+when, to which endpoint, under which classification &mdash; as a content hash, never the content).
+The approval is <u>your organization&rsquo;s assertion, recorded by the tool</u> &mdash; the tool cannot
+verify an ATO and never claims to.</p>
+<p><b>Pros.</b> The most capable approved models with no local hardware; usable with controlled data
+<i>where your organization&rsquo;s approval covers it</i>. <b>Cons.</b> Data egress (bannered and logged),
+needs the gateway network, and answers depend on a remote service.</p></details>
 <details class=explainer><summary><b>Cross-check second model</b> &mdash; corroboration, CUI-safe</summary>
 <p><b>What it is.</b> An optional second <b>local</b> model that answers every question independently; the
 engine compares the two answers' figures deterministically (agreement is corroboration; the citations
@@ -321,6 +379,7 @@ def _settings_body(state: SessionState, runtime_note: str = "") -> str:
         null_backend=NullBackend(),
         ollama_backend=_ollama_or_none(cfg),
         openai_backend=_openai_or_none(cfg),
+        gateway_backend=_gateway_or_none(cfg),
     )
     models: tuple[str, ...] = ()
     try:
@@ -345,11 +404,13 @@ def _settings_body(state: SessionState, runtime_note: str = "") -> str:
     def sel(value: str, current: str) -> str:
         return " selected" if value == current else ""
 
-    # When a real local backend is active and reporting installed models, the Model field is a
+    # When a real backend is active and reporting served models, the Model field is a
     # dropdown of those models (one click to pick, e.g., a purpose-built model) instead of a
     # free-text box the operator must match exactly. The configured model is always kept as a
     # (selected) option — marked if it isn't installed — so a save never silently loses it.
-    real_backend = backend.name in ("ollama", "openai-compat")
+    # The approved gateway counts (ADR-0402): its catalog populates the same dropdown and the
+    # one-click AI-off switch must exist for it too.
+    real_backend = backend.name in ("ollama", "openai-compat", "gateway")
     # The Model field is ALWAYS a <select> so settings.js can repopulate it live the instant the
     # operator switches backend/endpoint — no save+reload. This is what makes OpenAI-compatible work
     # in one flow: pick the exact model id the local server serves. A blank option = the server's
@@ -390,6 +451,21 @@ def _settings_body(state: SessionState, runtime_note: str = "") -> str:
         " <span id=secondModelStatus class=muted aria-live=polite></span>"
     )
 
+    # The approved-gateway endpoint is a SELECT over the committed allowlist, never free text
+    # (ADR-0402): the UI cannot even express an unapproved destination, the POST handler
+    # re-sanitizes, and the backend constructor re-refuses — three layers, one source of truth
+    # (net_guard.APPROVED_GATEWAY_ENDPOINTS). The empty option is the safe default.
+    gateway_endpoint_opts = "".join(
+        [
+            f'<option value=""{" selected" if not cfg.gateway_endpoint else ""}>'
+            "(none selected — gateway off)</option>"
+        ]
+        + [
+            f'<option value="{_e(ep)}"{sel(ep, cfg.gateway_endpoint)}>{_e(ep)} &mdash; organization-approved AI gateway</option>'
+            for ep in sorted(APPROVED_GATEWAY_ENDPOINTS)
+        ]
+    )
+
     # A one-click "off" switch, shown only while a real local model is active (the operator asked
     # for an explicit way to turn the AI off once it is on). It routes back to the deterministic Null
     # backend AND stops the local model, freeing its RAM/CPU without quitting the tool.
@@ -427,7 +503,7 @@ def _settings_body(state: SessionState, runtime_note: str = "") -> str:
 <option value=ollama{sel("ollama", cfg.backend)}>Ollama (local)</option>
 <option value=openai{sel("openai", cfg.backend)}>OpenAI-compatible (local — LM Studio / llamafile / vLLM)</option>
 <option value=null{sel("null", cfg.backend)}>Null (offline, deterministic)</option>
-<option value=cloud{sel("cloud", cfg.backend)}>Cloud (UNCLASSIFIED only)</option>
+<option value=gateway{sel("gateway", cfg.backend)}>Approved AI gateway (remote — organization-approved, e.g. NASA ITAR-authorized models)</option>
 </select></p>
 <p>Model: {model_field}</p>
 <p>Generation timeout (seconds):
@@ -439,6 +515,15 @@ def _settings_body(state: SessionState, runtime_note: str = "") -> str:
 <p>OpenAI-compatible endpoint (loopback only):
 <input name=openai_endpoint size=28 value="{_e(cfg.openai_endpoint)}"
  title="LM Studio defaults to http://127.0.0.1:1234; llamafile to http://127.0.0.1:8080"></p>
+<p>Approved gateway endpoint (organization-approved list only — used by the Approved AI gateway backend):
+<select name=gateway_endpoint id=gatewayEndpoint
+ title="Only endpoints on the tool&rsquo;s approved-gateway allowlist (ADR-0402) can be selected; anything else is refused.">
+{gateway_endpoint_opts}
+</select></p>
+<p><label title="The gateway never arms without this acknowledgment; it is re-checked on every save and every route."><input type=checkbox name=gateway_approved value=1{" checked" if cfg.gateway_approved else ""}>
+ I confirm this gateway endpoint is approved by my organization for this session&rsquo;s data
+ classification (including ITAR/CUI where asserted). The tool records this assertion and logs every
+ transmission &mdash; it cannot verify the approval itself.</label></p>
 <p>AI answer mode:
 <select name=qa_mode>
 <option value=annotate{sel("annotate", cfg.qa_mode)}>Annotate (default) — the model may analyze and
@@ -463,9 +548,10 @@ you rely on against the citations</option>
 <input type=submit value="Save"></form>
 {ai_off_btn}
 {_ai_backend_explainer()}
-<p class=muted>The tool never sends schedule data off this machine while CLASSIFIED. Cloud is only
-reachable after you explicitly switch to UNCLASSIFIED, and a persistent banner names the endpoint.
-Either answer mode is prose-only: the cited facts shown with each answer are always engine-computed.
+<p class=muted>The tool never sends schedule data off this machine except through the Approved AI
+gateway backend &mdash; which requires the approved endpoint AND your recorded acknowledgment, shows a
+persistent banner naming the endpoint, and logs every transmission. Every other backend is local or
+offline. Either answer mode is prose-only: the cited facts shown with each answer are always engine-computed.
 With a cross-check model on, both local models answer every question independently and the engine
 compares their figures deterministically — agreement is corroboration, the citations stay the
 ground truth.</p>

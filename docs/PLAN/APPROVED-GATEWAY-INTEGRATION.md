@@ -1,10 +1,13 @@
 # Approved AI gateway — the situation, the guard gap, and what an honest integration requires
 
-> **Status: RECORDED, NOT BUILT.** Nothing in this document is implemented in this repository.
-> It exists because the operator now runs a NASA-approved AI gateway against POLARIS on their own
-> machine, and the repo had **no record of that at all**. Written 2026-08-13 against `main` at
-> `cacd769` (v1.0.198) from a reconciled seven-dimension audit; every claim below carries a
-> file:line anchor and was re-verified by an adversarial pass.
+> **Status: BUILT — §6 complete.** Steps 1–3 landed as ADR-0394/0396; steps 4–6 landed as
+> **ADR-0402 (2026-08-14, operator-directed)**: `ai/gateway.py` `GatewayBackend` + its own
+> allowlist (`net_guard.APPROVED_GATEWAY_ENDPOINTS`) + the AI transaction log (`ai/txlog.py`) +
+> the settings-form gateway option replacing the dead `cloud` one. The rest of this document is
+> the HISTORICAL record of the pre-fix situation. Originally written 2026-08-13 against `main` at
+> `cacd769` (v1.0.198) from a reconciled seven-dimension audit ("RECORDED, NOT BUILT" then);
+> every claim below carries a file:line anchor against THAT tree and was re-verified by an
+> adversarial pass.
 
 ## 1. What the operator did
 
@@ -153,14 +156,25 @@ Sequenced so each step is provable before the next:
    `is_local` is presumed NON-local — fail closed); `route_backend` returns
    `banner_for_backend(chosen, config)` on every path, so a backend that cannot prove locality
    can never carry the local banner, whichever parameter it arrived through.
-4. **Decide the cloud option's fate (ADR).** Either delete the dead `cloud` option from the settings
-   form, or build a first-class `ai/gateway.py` `GatewayBackend` with `is_local = False`, its **own**
-   named allowlist constant (never a widening of the loopback set), its own config field, its own
-   `route_backend` branch, a **mandatory** non-local banner, and a required classification gate.
-5. **Add an AI transaction log** — what left, when, to which endpoint, under which classification.
-   A CUI tool that sends anywhere needs a record; there is none today.
-6. **Then** wire the gateway, and update the six strings + four translations + the three asserting
-   test modules + the render oracle.
+4. ~~**Decide the cloud option's fate (ADR).**~~ **DONE — ADR-0402** (operator-decided 2026-08-14):
+   built `ai/gateway.py` `GatewayBackend` with measured `is_local = False`, its **own** named
+   allowlist constant (`net_guard.APPROVED_GATEWAY_ENDPOINTS` — the loopback set untouched, its
+   ADR-0394 pins unmodified), its own config fields (`gateway_endpoint`, `gateway_approved`), its
+   own `route_backend` branch, a mandatory non-local banner, and the consent gate: the recorded
+   per-session approval acknowledgment, required at the factory AND re-required at the router. The
+   dead `cloud` form option is deleted; the generic cloud refuse-path in `ai/backend.py` stays.
+5. ~~**Add an AI transaction log**~~ **DONE — ADR-0402**: `ai/txlog.py` — what left, when, to which
+   endpoint, under which classification; prompt as SHA-256 + byte count (never text); the `*.sent`
+   record written BEFORE transmission and a failed write aborts the send with the opener never
+   invoked (mutation-proved `log_after_send` / `log_failure_swallowed` / `prompt_text_logged`).
+6. ~~**Then** wire the gateway~~ **DONE — ADR-0402**: wired through `factory.session_candidates`,
+   `_active_backend`, `_settings_body`, `/api/ai/models?kind=gateway` and `settings.js`. The six
+   strings needed NO edits — ADR-0396 had already conditioned every claim site on the observed
+   derivation, and the armed gateway flips them all (proven in a real-chromium pass); the four
+   translations stay keyed on the untouched local literal; the asserting test modules gained the
+   gateway states (`tests/guards/test_gateway_allowlist.py`, `tests/ai/test_gateway.py`,
+   `tests/web/test_gateway_settings.py`) with **15/15 mutations caught by name**; the air-gap
+   scanner learned the one text-only exemption rather than being suppressed.
 
 ## 7. Standing risk to name out loud
 

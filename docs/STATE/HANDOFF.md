@@ -1,103 +1,106 @@
-# Handoff — 2026-08-14 (c) (the first JCL battery and its closure module; JCL-BR-01 strict xfail; SMAT-SANDBOX wiped empty at operator direction; ADR-0401; v1.0.201 unchanged)
+# Handoff — 2026-08-14 (d) (001c CLOSED at operator direction: the approved AI gateway is a first-class backend — allowlist, consent gate, transaction log, settings option; ADR-0402; v1.0.202, wheel + nine installers rebuilt)
 
-> ## STATUS (current) — ADR-0401 unit complete on `claude/smat-sandbox-greenfield-binedp`,
-> branched from `main` **be9b3c1** (= #588's squash; local HEAD == origin/main at branch
-> time). Highest ADR now **0401**. **NO shipped code changed** — tests + docs only: version
-> stays **v1.0.201**, SCHEMA 2.11.0, no wheel/installer rebuild (ADR-0395/0399/0400
-> precedent). `tests/audit` still has exactly ONE live xfail (TEST-01); a NEW strict xfail
-> lives in `tests/web` — **JCL-BR-01**, below.
-> **Post-close visibility flip:** PR #589's CI could not start (all four checks died in
-> ~3 s, no runner assigned — the private-repo Actions minute allowance was exhausted), so
-> the operator made THE REPOSITORY PUBLIC again on 2026-08-14 to restore free CI. That
-> REVERSES the DISC-01 private-visibility mitigation — the history exposure is live again
-> and the authorizing-official determination (queue item 1) is now more urgent.
+> ## STATUS (current) — ADR-0402 unit complete on `claude/nasa-itar-ai-desktop-launch-scx3gz`,
+> branched from `main` **71a56d3** (= #589's squash; local HEAD == origin/main at branch
+> time). Highest ADR now **0402**. **SHIPPED code changed** — version **v1.0.202**, SCHEMA
+> 2.11.0 unchanged, wheel + all nine installers rebuilt AFTER the last source edit
+> (lockstep suite 64/64; the first build was invalidated by post-build lint fixes — the
+> ADR-0148 trap, caught by ritual order this time). xfails unchanged: TEST-01 + JCL-BR-01.
 >
-> ## What landed — ADR-0401
-> **(1) The first mutation battery ever aimed at `engine/jcl.py`** (no prior battery —
-> searched). 45 mutant specs / 44 distinct, three rounds: 16 lead + 14 workflow-designed
-> (ADR-0240: three Map agents + one designer; every prediction lead-re-measured) + 3
-> written to prove the new module's own teeth + 12 adversarial designed to survive the
-> first closure revision. Sandboxed, import-origin canaried, instruments md5-restored per
-> mutant. Round 1 confirmed NINE gaps (scl/ccl redefined to both/n, quadrant-counter swap,
-> frontier k floored — every prior fixture had INTEGER confidence·n —, default target
-> rounded pre-comparison, iterations gate, ADR-0308 guard in the jcl risk loop, the joint
-> coupling itself (risk replacement after the cost loop), cost-CDF step idx/n, confidence
-> floor, seed stamp); L13 (`sampling`) was DOWNGRADED — nine `test_lhs` tests kill it (a
-> narrow-suite survivor is a hypothesis, not a finding). The adversarial round then put
-> ALL 12 attack mutants through the first closure revision GREEN — closed with eight more
-> tests + two fold-ins (multi-risk SUMMING before the ADR-0359 replacement, the max(0,·)
-> opportunity floor, gate precedence, the completed predicate at actual_finish+pc<100,
-> focus-vs-project finish, ti+td>0 at τ=0, the spent+(ti+td) float association at NONZERO
-> spend — spent=0.0 re-associates exactly, the first fixture could not kill it —, the
-> latest-stored-finish anchor fallback, sunk_total keeping unbudgeted actuals, cost_p80
-> PERCENTILE.INC, the full 5..95 frontier grid). Critic fixes: explicit seeds wherever a
-> liveness/margin precondition rides the sampled shape; k-rank-step and multiplier-swap
-> delta self-checks. **Final: `tests/engine/test_jcl_joint_statement_closure.py`, 21
-> tests — the combined battery kills 44/44 by name (+ L13 in `test_lhs`), intact green,
-> and the module ALONE does not re-kill what older tests own (scoping run).**
-> **(2) JCL-BR-01 — validated live defect, strict xfail** in `tests/web/test_jcl_web.py`
-> (`test_finish_marginal_still_matches_ssi_with_a_probabilistic_branch`): session branches
-> feed `/api/sra/ssi` but `compute_jcl` accepts NO branch/conditional inputs and
-> `/api/sra/jcl` passes none — measured through the real routes: after one POSTed
-> probabilistic branch the SSI percentiles moved (2025-01-16/23/28/29) and the JCL
-> percentiles did not (2025-01-15/20/22/23). The football chart's schedule axis silently
-> leaves the SSI S-curve exactly when branches are configured. Fix is design-gated SHIPPED
-> code (carry branches through compute_jcl + extend the equivalence pins, or honest-gate
-> the panel while branches exist) — version bump + wheel + nine installers in that unit
-> (ADR-0148); flip the xfail and remove its marker in the fixing commit.
-> **(3) SMAT-SANDBOX.** DISC-01 gate measured `private` before any push; the backup mirror
-> was built and comparator-verified GREEN (46 first-parent slice pushes after whole-pack
-> 403s — and the 403 diagnosis REVERSED: a zero-object deletion push also 403s, the proxy
-> blocks ref DELETIONS, not size). Mid-session the operator countermanded (mirror force-
-> pushes had bumped the sandbox's old CLOSED July PRs): **the repo is now WIPED EMPTY —
-> all 12 branch names force-pointed at parentless empty commit `91b3395`, verified; no
-> content or history reachable; sandbox remote and clone removed. NO backup of this
-> repository exists — the kickoff's backup objective is explicitly ABANDONED.** Deleting
-> the 12 residual branch NAMES (or the repo) is an operator GitHub-UI action.
-> Docs follow-ups recorded (no code change): help.py's JCL `eac` gloss omits the (1−τ)
-> term; the AC+(BAC−EV) gloss holds under clean EVM data only; ADR-0269's "additive risks"
-> wording predates ADR-0359 (history, not defect).
+> ## What landed — ADR-0402 (operator-directed: "I don't get the option to use the NASA
+> ## approved AI models that are itar approved. Fix this" — that message WAS the 001c decision)
+> The plan doc's §6 steps 4–6, built as designed and verified QC-1: **(1)**
+> `net_guard.APPROVED_GATEWAY_ENDPOINTS` (one entry, the NASA gateway) +
+> `is_approved_gateway_endpoint` — exact normalized match, https-only, never-loopback; the
+> loopback sets and their ADR-0394 pins are UNTOUCHED. **(2)** `ai/gateway.py`
+> `GatewayBackend` — OpenAI /v1 wire over the same stdlib no-proxy/no-redirect opener,
+> constructor raises CUIEgressError off-allowlist, `is_local`/`is_approved_gateway` are
+> instance MEASUREMENTS (ADR-0396 discipline). **(3)** `ai/txlog.py` — the AI transaction
+> log: JSONL records (`*.sent` BEFORE transmit, `*.done` after) carrying ts/endpoint/model/
+> classification + prompt SHA-256 and byte count (never text); a failed sent-write ABORTS
+> the transmission with the opener never invoked, and the same failure reads as gateway-down
+> so routing falls closed to Null end-to-end; log lives outside the clear-on-quit cache
+> (`$SF_AI_LOG_DIR` else `~/.local/state/schedule-forensics/`). **(4)** consent at every
+> layer: `AIConfig.gateway_endpoint`/`gateway_approved`; `factory.gateway_or_none` refuses
+> without selection+acknowledgment+allowlist; `route_backend`'s NEW `gateway_backend`
+> branch re-requires the acknowledgment and never falls back to the gateway; the dead
+> `cloud_backend` path is untouched (GW-01 keeps meaning). **(5)** the settings page: the
+> gateway option REPLACES the dead `Cloud (UNCLASSIFIED only)` trap; endpoint is a SELECT
+> over the allowlist (free text cannot express an unapproved destination; POST re-sanitizes;
+> constructor re-refuses); acknowledgment checkbox arms only on its literal value;
+> `_gateway_status_note` diagnostics; explainer rewritten (Data LEAVES this machine + the
+> ATO-not-verified caveat); `/api/ai/models?kind=gateway` (allowlist-checked BEFORE
+> construction); `settings.js` drives the live catalog dropdown. **(6)** the air-gap guard
+> EVOLVED, not suppressed: the approved endpoint passes as page TEXT only (test-side
+> literal — widening the product allowlist goes red in test_airgap.py until consciously
+> mirrored); src/href and any path suffix still fail.
+> **Verification:** 7-check acceptance probe 7/7 RED on the unpatched tree → 7/7 GREEN
+> after (the red probe IS the operator's complaint, executable). Mutation battery,
+> sandboxed (PYTHONPATH shadow, import-origin + observability canaries, instruments
+> md5-identical, pristine-sandbox control green): **15/15 caught by name** — and round 1
+> found a REAL battery gap: `models_probe_unrestricted` survived because the constructor
+> (defense-in-depth) also refuses and its message contained the asserted word; closed with
+> a constructor-bomb LAYER pin, re-run, caught 1-failed/15-passed. Tier-2 render-verify in
+> real chromium (isolated venv; main env stays playwright-free so the gate baseline stays
+> comparable): option renders, catalog probe FIRES on endpoint selection (fetch observed,
+> status span measured both sides), unacknowledged save shows intent banner +
+> "acknowledgment is required", full arming shows APPROVED GATEWAY banner with the local
+> assurance withdrawn, and the REAL app wrote real probe.sent/done records to the default
+> log. From this container the probe gets HTTP 403 (egress proxy) — the page honestly
+> reports could-not-reach; on the operator's NASA network this is where the ITAR catalog
+> populates (their unversioned patch already demonstrated it — plan doc §1).
+> Docs: ADR-0402; plan doc header + §6 marked BUILT; DoD 001c row closed with strikethrough.
 >
 > ## Next — in order
-> **DISC-01 release determination** (operator / authorizing official) → **001c** (operator
-> decision; ADR-0396 made the honest path mechanical) → **PO-04/05** (BLOCKED on an
-> operator-delivered CEI/HMI reference export) → `actual_start_driven` consumed nowhere
-> (ENG-DEAD-01; SHIPPED-code lockstep when taken) → TEST-01 chromium build-number pins
-> (the audit module's last live xfail) → **JCL-BR-01** (shipped-code; the strict xfail
-> flips loudly when fixed) → FINAL-REPORT overclaims (condition on `_observed_banner`) →
-> JCL docs follow-ups (help.py τ term; EAC gloss scope) → 8 stale remote branches
-> (DoD 091) → SMAT-SANDBOX branch-name cleanup (operator UI).
-> **Operator:** DISC-01 · the 001c decision · a CEI/HMI reference export · FX-03/04
-> re-run · sub-day-negative-float Fuse run · license · SANDBOX branch-name/repo cleanup.
+> **DISC-01 release determination** (operator / authorizing official; repo is PUBLIC again)
+> → **PO-04/05** (BLOCKED on an operator-delivered CEI/HMI reference export) →
+> `actual_start_driven` consumed nowhere (ENG-DEAD-01; SHIPPED-code lockstep when taken) →
+> TEST-01 chromium build-number pins (the audit module's last live xfail) → **JCL-BR-01**
+> (shipped-code; the strict xfail flips loudly when fixed) → FINAL-REPORT overclaims
+> (condition on `_observed_banner`) → JCL docs follow-ups (help.py τ term; EAC gloss
+> scope) → 8 stale remote branches (DoD 091) → SMAT-SANDBOX branch-name cleanup (operator
+> UI). **Gateway follow-ons recorded, not queued:** i18n template keys for the
+> endpoint-interpolated warnings; config persistence across launches (deliberately NOT
+> done — per-launch acknowledgment IS the consent model; revisit only on operator ask).
+> **Operator:** DISC-01 · a CEI/HMI reference export · FX-03/04 re-run ·
+> sub-day-negative-float Fuse run · license · SANDBOX branch-name/repo cleanup · verify
+> the gateway option on the real NASA-connected machine (the catalog should populate where
+> the unversioned patch's did; the local patch is now obsolete — reinstall from a fresh
+> tier installer).
 >
 > ## Carried forward
-> ADR-0353..0401 closed — do not re-open. NEW lessons this session: **a consistency oracle
-> needs a fixture PROVEN to populate its discriminating cells** — the first quadrant
-> fixture failed INTACT because late-but-cheap was STRUCTURALLY empty with multipliers
-> off; decouple, then MEASURE the populations, and pin the seed the liveness rides on;
-> **a survivor of a narrow suite is a hypothesis** — widen the suite before declaring a
-> blind spot (L13 died in `test_lhs`); **the proxy blocks ref DELETIONS, not big pushes**
-> — the 403 diagnosis reversed under a zero-object deletion probe, and `| tail` masked a
-> push exit mid-session (the ref comparator's RED was the honest instrument); **spent=0.0
-> makes any float re-association exact** — a bit-identity contract is only testable where
-> the bits can differ. Standing traps unchanged (a data pin guards the literal, not the
-> guarantee · mutation-green is not adversarially verified · adversaries probe BETWEEN the
-> mutations · a guard's input plumbing is attack surface · monkeypatch repoint is per CALL
-> SITE · never MEASURE a tree a battery is mutating · never MUTATE an instrument a
-> measurement is using · `grep -c` exits 1 on zero · two ruffs on PATH, use `python -m
-> ruff` · `pytest -m parity` alone exceeds 900 s · the container starts with NO deps
-> installed · `git fetch origin` before taking an ADR number and again before committing ·
-> a number written mid-session is not a measurement, `wc` decides). QC-1/QC-2 are
-> ADR-0393, pinned by `tests/test_standing_rules.py`.
+> ADR-0353..0402 closed — do not re-open. NEW lessons this session: **a defense-in-depth
+> twin can make a layer's mutation invisible to an outcome assertion** — the constructor's
+> refusal message contained the word the route-layer test asserted, so the route mutation
+> survived; pin the LAYER (a constructor bomb), not just the outcome; **`pkill -f`
+> self-matches on the plain string elsewhere in your own command line even when the
+> PATTERN is bracketed** — `[s]erve_for_pw` still killed the shell because `nohup python
+> …/serve_for_pw.py` sat two lines up; kill by recorded PID; **a stateful dev server
+> across browser-drive runs reproduces OR-06 in miniature** — restart clean per run;
+> **install the browser driver in an ISOLATED venv** when the suite's skip-baseline must
+> stay comparable (playwright in the main env executes ~19 CI-invisible tests, full-gate
+> skill §4). Standing traps unchanged (a data pin guards the literal, not the guarantee ·
+> mutation-green is not adversarially verified · adversaries probe BETWEEN the mutations ·
+> a guard's input plumbing is attack surface · monkeypatch repoint is per CALL SITE ·
+> never MEASURE a tree a battery is mutating · never MUTATE an instrument a measurement is
+> using · `grep -c` exits 1 on zero · two ruffs on PATH, use `python -m ruff` · `pytest -m
+> parity` alone exceeds 900 s · the container starts with NO deps installed · `git fetch
+> origin` before taking an ADR number and again before committing · a number written
+> mid-session is not a measurement, `wc` decides). QC-1/QC-2 are ADR-0393, pinned by
+> `tests/test_standing_rules.py`.
 >
 > ## Gate at close
-> Statics green: ruff check . / ruff format --check . (1,003 files) / `python -m mypy src/`
-> (152 files, no issues) / bandit exit 0 / node --check clean. **Full suite on the final
-> tree: 3972 passed, 47 skipped, 2 xfailed (TEST-01 + the new JCL-BR-01), exit 0, 31:38**
-> — every skip an environment-gated playwright skip, and 3972 = the prior close's 3951 +
-> the 21 new closure tests. Touched modules: the closure module 21 passed;
-> `test_jcl_web.py` 9 passed + 1 xfailed (by design). Drift guards green (size guard
-> enforces the ≤64 KB / one-prior-heading shape).
+> Statics green: `python -m ruff check .` (All checks passed) / `python -m ruff format
+> --check .` (1,009 files) / `python -m mypy src/` (154 files, no issues) / bandit exit 0 /
+> node --check per file, 0 fails. **Full suite on the FINAL tree: 4043 passed, 47 skipped,
+> 2 xfailed (TEST-01 + JCL-BR-01), 0 failed, exit 0, 29:14** — every skip an
+> environment-gated playwright skip; 4043 = the prior close's 3972 + the 71 new
+> gateway/allowlist/txlog/settings/air-gap tests. **Parity gate: 72 passed, 15 skipped
+> (env-gated), exit 0, 15:12.** Installer lockstep 64/64 against the final v1.0.202 wheel.
+> The FIRST full run (pre-fix tree) failed exactly one test —
+> `test_monolith_split_contract[settings.py]`, the missing `_gateway_status_note` `X as X`
+> re-export — fixed, contract module 69/69, wheel + installers rebuilt, and the whole
+> suite re-run on the final tree (the figures above are that re-run). Drift guards green.
 
 # (prior) handoffs — archived
 

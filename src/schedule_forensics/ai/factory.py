@@ -16,6 +16,7 @@ behaviour and import paths are unchanged by the move.
 from __future__ import annotations
 
 from schedule_forensics.ai.backend import AIBackend, AIConfig
+from schedule_forensics.ai.gateway import GatewayBackend
 from schedule_forensics.ai.ollama import OllamaBackend
 from schedule_forensics.ai.openai_compat import OpenAICompatBackend
 
@@ -38,6 +39,28 @@ def openai_or_none(config: AIConfig) -> OpenAICompatBackend | None:
         # construction enforces loopback (CUIEgressError on a remote host — Law 1)
         return OpenAICompatBackend(
             endpoint=config.openai_endpoint, model=config.model, timeout=config.gen_timeout
+        )
+    except Exception:
+        return None
+
+
+def gateway_or_none(config: AIConfig) -> GatewayBackend | None:
+    """The approved-gateway backend, or ``None`` unless EVERY arming condition holds (ADR-0402).
+
+    Three conditions, each fail-closed: the operator selected the gateway backend, the
+    operator recorded the approval acknowledgment (``gateway_approved`` — the allowlist
+    alone arms nothing), and the endpoint is EXACTLY on the approved list (the constructor
+    raises ``CUIEgressError`` otherwise, which maps to ``None`` here — routing then falls
+    closed to Null). Construction is networkless, like every candidate constructor.
+    """
+    if config.backend != "gateway" or not config.gateway_approved:
+        return None
+    try:
+        return GatewayBackend(
+            endpoint=config.gateway_endpoint,
+            model=config.model,
+            classification=str(config.classification),
+            timeout=config.gen_timeout,
         )
     except Exception:
         return None
@@ -72,9 +95,16 @@ def session_candidates(config: AIConfig) -> tuple[AIBackend, ...]:
     The Null backend is deliberately absent: it holds no endpoint and no transport, so it
     can neither add nor remove a warning. An empty tuple means nothing constructible can
     send anywhere — the local-only assurance is then earned by construction, not asserted.
+    The armed gateway is a candidate like any other (ADR-0402): a configured-but-unreachable
+    gateway must keep warning (§0.2 — availability is deliberately not consulted here).
     """
     return tuple(
         b
-        for b in (ollama_or_none(config), openai_or_none(config), second_or_none(config))
+        for b in (
+            ollama_or_none(config),
+            openai_or_none(config),
+            gateway_or_none(config),
+            second_or_none(config),
+        )
         if b is not None
     )

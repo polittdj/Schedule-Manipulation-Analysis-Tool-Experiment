@@ -8,6 +8,13 @@ backend; a cloud backend is permitted *only* when the operator has explicitly ma
 project UNCLASSIFIED, and even then a persistent :class:`Banner` must name the external
 endpoint. Anything ambiguous routes to the local Null backend — the tool never auto-falls
 back to cloud (Guardrail §0.2).
+
+One sanctioned exception (ADR-0402, DoD 001c): the **approved AI gateway** —
+:class:`~schedule_forensics.ai.gateway.GatewayBackend`, allowlisted in
+``net_guard.APPROVED_GATEWAY_ENDPOINTS`` — may route under either classification, but only
+when the operator explicitly selects it AND records the approval acknowledgment
+(:attr:`AIConfig.gateway_approved`), always behind a warning :class:`Banner` naming the
+endpoint, with every transmission recorded (``ai/txlog``). It is never a fallback.
 """
 
 from __future__ import annotations
@@ -50,7 +57,7 @@ class AIConfig:
     """AI settings. Defaults are the safe ones: CLASSIFIED + local Ollama."""
 
     classification: Classification = Classification.CLASSIFIED
-    backend: str = "ollama"  # "null" | "ollama" | "openai" | "cloud"
+    backend: str = "ollama"  # "null" | "ollama" | "openai" | "gateway" | "cloud" (dead, ADR-0402)
     # Default local model (operator 2026-07-13): the CUI AI comes up on Ollama with this model
     # active by default. route_backend still fails closed to Null if Ollama/the model is absent.
     model: str = "qwen2.5:7b-instruct"
@@ -77,6 +84,19 @@ class AIConfig:
     #: being cut off. Operator-adjustable DOWN; the availability *probe* stays short — this bounds
     #: only the actual generate/pull work.
     gen_timeout: float = 3600.0
+    #: The approved AI gateway (ADR-0402, DoD 001c): a REMOTE, organization-approved,
+    #: OpenAI-compatible endpoint — e.g. the NASA-approved gateway serving ITAR-authorized
+    #: models. "" = none selected. Only endpoints on
+    #: ``net_guard.APPROVED_GATEWAY_ENDPOINTS`` are ever accepted (form-sanitized AND
+    #: re-refused at backend construction); the gateway routes only with
+    #: ``gateway_approved`` also set, and it is always presented as non-local.
+    gateway_endpoint: str = ""
+    #: The operator's explicit, per-session assertion that ``gateway_endpoint`` is approved
+    #: by their organization for THIS session's data classification (including ITAR/CUI
+    #: where asserted). The tool records this assertion and enforces the allowlist; it
+    #: cannot verify an ATO and never implies it has (plan §7). While False the gateway
+    #: never routes — routing falls closed to the local Null backend.
+    gateway_approved: bool = False
 
 
 @dataclass(frozen=True)
@@ -89,12 +109,28 @@ class Banner:
 
 
 def _intent_cloud_warning(config: AIConfig) -> Banner | None:
-    """The standing §0.2 *intent* warning, or ``None`` when the config does not intend cloud.
+    """The standing §0.2 *intent* warning, or ``None`` when the config intends no egress.
 
     UNCLASSIFIED + cloud is a setting that COULD egress the moment a cloud backend is wired,
     so it must warn even while routing currently falls closed to a local backend — the
     warning direction is allowed to over-fire; the local-only assurance is not.
+
+    ``backend == "gateway"`` warns under EVERY classification (ADR-0402): unlike cloud —
+    which is flatly unreachable while CLASSIFIED, so the CLASSIFIED+cloud config is inert —
+    the approved gateway exists precisely to carry controlled data, and an operator one
+    unchecked box away from arming it must already be looking at the warning, not at a
+    local-only assurance that flips the instant they save.
     """
+    if config.backend == "gateway":
+        endpoint = config.gateway_endpoint or None
+        where = endpoint or "the approved AI gateway (no endpoint selected yet)"
+        return Banner(
+            cloud_active=True,
+            endpoint=endpoint,
+            text=f"GATEWAY MODE — AI is set to {where}. Schedule content will leave this "
+            "machine once the approved endpoint and the approval acknowledgment are both in "
+            "place; nothing is sent until then.",
+        )
     if config.classification is Classification.UNCLASSIFIED and config.backend == "cloud":
         return Banner(
             cloud_active=True,
@@ -117,7 +153,23 @@ def banner_for_backend(backend: AIBackend, config: AIConfig) -> Banner:
     """
     if getattr(backend, "is_local", False) is not True:
         endpoint = str(getattr(backend, "endpoint", "") or config.endpoint)
-        if config.classification is Classification.UNCLASSIFIED:
+        if (
+            getattr(backend, "is_approved_gateway", False) is True
+            and config.backend == "gateway"
+            and config.gateway_approved
+        ):
+            # The one sanctioned non-local state (ADR-0402): still a warning that names the
+            # endpoint — never the local assurance — but honest about the approval basis
+            # instead of the generic "Do not use with CUI" (the operator's recorded
+            # organizational approval is exactly FOR controlled data). Any backend that
+            # cannot measure is_approved_gateway, or a config missing either arming
+            # condition, falls through to the harsher generic wording (fail closed).
+            text = (
+                f"APPROVED GATEWAY — AI prompts (schedule content) are sent to {endpoint}. "
+                "Approval is operator-asserted, not verified by this tool; every "
+                "transmission is recorded in the AI transaction log."
+            )
+        elif config.classification is Classification.UNCLASSIFIED:
             text = (
                 f"UNCLASSIFIED MODE — sending to external endpoint {endpoint}. Do not use with CUI."
             )
@@ -167,14 +219,23 @@ def route_backend(
     ollama_backend: AIBackend | None = None,
     openai_backend: AIBackend | None = None,
     cloud_backend: AIBackend | None = None,
+    gateway_backend: AIBackend | None = None,
 ) -> tuple[AIBackend, Banner]:
-    """Select the backend, failing closed to local — never auto-cloud (§0.2).
+    """Select the backend, failing closed to local — never auto-cloud, never auto-gateway (§0.2).
 
-    * CLASSIFIED (default): only a **local** backend is ever returned. ``ollama`` /
-      ``openai`` (an OpenAI-compatible loopback server) is used when available;
-      otherwise the Null backend. A cloud backend is refused outright.
+    * CLASSIFIED (default): only a **local** backend is ever returned unless the operator
+      has explicitly armed the approved gateway. ``ollama`` / ``openai`` (an
+      OpenAI-compatible loopback server) is used when available; otherwise the Null
+      backend. A cloud backend is refused outright.
+    * ``backend == "gateway"`` (ADR-0402): the approved gateway is returned ONLY when the
+      operator selected it, a constructed (allowlisted) gateway backend was supplied, the
+      approval acknowledgment (``config.gateway_approved``) is recorded, and the gateway
+      answers — **with** a persistent warning banner naming the endpoint. Any missing
+      condition falls closed to the Null backend; the gateway is never a fallback for any
+      other selection.
     * UNCLASSIFIED + ``backend == "cloud"`` + a cloud backend supplied: cloud is returned
-      **with** a persistent banner naming the endpoint.
+      **with** a persistent banner naming the endpoint (dead in production — no caller
+      wires one; the settings form now offers the gateway instead).
     * Anything else (cloud unavailable/ambiguous, local server down): the Null backend,
       local banner.
     * Every returned Banner is DERIVED from the backend actually chosen
@@ -185,6 +246,18 @@ def route_backend(
         if config.classification is Classification.UNCLASSIFIED and cloud_backend is not None:
             return cloud_backend, banner_for_backend(cloud_backend, config)
         # CLASSIFIED (or no cloud backend): refuse cloud, fall closed to local.
+        return null_backend, banner_for_backend(null_backend, config)
+
+    if config.backend == "gateway":
+        if (
+            gateway_backend is not None
+            and config.gateway_approved
+            and gateway_backend.is_available()
+        ):
+            return gateway_backend, banner_for_backend(gateway_backend, config)
+        # unarmed (no acknowledgment), unconstructible (endpoint off the allowlist), or
+        # unreachable: fall closed to the local Null backend. The Banner still warns — the
+        # standing gateway intent rides banner_for_backend -> _intent_cloud_warning.
         return null_backend, banner_for_backend(null_backend, config)
 
     if config.backend == "ollama" and ollama_backend is not None and ollama_backend.is_available():

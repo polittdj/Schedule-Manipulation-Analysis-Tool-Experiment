@@ -2,28 +2,36 @@
  *
  * Two conveniences over the AI config form:
  *
- *  1) LIVE MODEL DROPDOWNS. When the operator changes the backend or its endpoint, probe that LOCAL
- *     server (GET /api/ai/models — loopback-only, fail-closed) and repopulate the Model dropdown
- *     with the ids it actually serves. This is what makes the OpenAI-compatible backend (LM Studio /
- *     llamafile / vLLM) work in one flow: you pick the exact model id the server reports instead of
- *     guessing or carrying over an Ollama name. The cross-check second model is a live dropdown too.
+ *  1) LIVE MODEL DROPDOWNS. When the operator changes the backend or its endpoint, probe that
+ *     server (GET /api/ai/models — fail-closed: loopback-only for the local kinds; the approved
+ *     gateway kind accepts only an allowlisted endpoint, ADR-0402) and repopulate the Model
+ *     dropdown with the ids it actually serves. This is what makes the OpenAI-compatible backend
+ *     (LM Studio / llamafile / vLLM) — and the approved gateway's ITAR-authorized model catalog —
+ *     work in one flow: you pick the exact model id the server reports instead of guessing.
+ *     The cross-check second model is a live dropdown too.
  *
  *  2) CROSS-CHECK AUTOFILL. Turning the cross-check on copies the primary model id into the (still
  *     blank) second-model box so a one-click cross-check works; it never clobbers a chosen value.
  *
- * Dependency-free, same-origin only (air-gap): the only fetch is to /api/ai/models on this host.
+ * Dependency-free, same-origin only (air-gap): the only fetch THIS PAGE makes is to
+ * /api/ai/models on this host — a gateway probe happens server-side, allowlisted and logged.
  */
 "use strict";
 
 (function () {
   function $(id) { return document.getElementById(id); }
 
-  function kindOf(v) { return v === "openai" ? "openai" : "ollama"; }
+  function kindOf(v) {
+    if (v === "openai") return "openai";
+    if (v === "gateway") return "gateway";
+    return "ollama";
+  }
 
   function endpointFor(kind) {
-    var el = kind === "openai"
-      ? document.querySelector("input[name=openai_endpoint]")
-      : document.querySelector("input[name=endpoint]");
+    var el;
+    if (kind === "openai") el = document.querySelector("input[name=openai_endpoint]");
+    else if (kind === "gateway") el = document.querySelector("select[name=gateway_endpoint]");
+    else el = document.querySelector("input[name=endpoint]");
     return el ? el.value : "";
   }
 
@@ -86,8 +94,12 @@
 
     function refreshPrimary() {
       var v = backendSel ? backendSel.value : "ollama";
-      if (v !== "ollama" && v !== "openai") {
-        if (primaryStatus) primaryStatus.textContent = "(no local model list for this backend)";
+      if (v !== "ollama" && v !== "openai" && v !== "gateway") {
+        if (primaryStatus) primaryStatus.textContent = "(no model list for this backend)";
+        return;
+      }
+      if (v === "gateway" && !endpointFor("gateway")) {
+        if (primaryStatus) primaryStatus.textContent = "select an approved gateway endpoint first";
         return;
       }
       probe(kindOf(v), primaryModel, primaryStatus);
@@ -126,6 +138,10 @@
     }
     if (openaiEp) {
       openaiEp.addEventListener("change", function () { refreshPrimary(); refreshSecond(); });
+    }
+    var gatewayEp = document.querySelector("select[name=gateway_endpoint]");
+    if (gatewayEp) {
+      gatewayEp.addEventListener("change", function () { refreshPrimary(); });
     }
     var refreshBtn = $("refreshModels");
     if (refreshBtn) {

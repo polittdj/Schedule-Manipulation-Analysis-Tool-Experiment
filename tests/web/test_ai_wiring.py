@@ -513,12 +513,18 @@ def test_settings_stays_quiet_without_a_manager_or_env(
 
 def test_settings_explains_each_backend_and_its_cui_posture(client: TestClient) -> None:
     """Operator: explain in detail what each model/backend does and how it handles CUI (local vs
-    leaving the machine)."""
+    leaving the machine). ADR-0402 replaced the dead generic Cloud option with the first-class
+    approved gateway: the explainer must state its egress honestly (data LEAVES the machine) AND
+    the approval's provenance (operator/organization assertion — never verified by the tool)."""
     page = client.get("/settings").text
     assert "how it handles your data (CUI)" in page
     # each option is covered, with its data-locality verdict
     assert "Ollama (local)</b>" in page and "Stays on the machine" in page
     assert "OpenAI-compatible (local)</b>" in page
     assert "Null (offline, deterministic)</b>" in page
-    assert "Cloud</b>" in page and "Data LEAVES this machine" in page
+    assert "Approved AI gateway (remote)</b>" in page and "Data LEAVES this machine" in page
+    flat = " ".join(page.split())  # the explainer wraps mid-sentence; compare space-normalized
+    assert "the tool cannot verify an ATO and never claims to" in flat
     assert "Cross-check second model</b>" in page
+    # the dead trap is gone: no selectable cloud option, no Cloud explainer section
+    assert "value=cloud" not in page and "Cloud</b>" not in page

@@ -14250,3 +14250,34 @@ PO-04/05 (blocked on a primary oracle) → `actual_start_driven` wiring → TEST
 **JCL-BR-01** → FINAL-REPORT overclaims → JCL docs follow-ups (help.py `eac` gloss omits
 the (1−τ) term) → 8 stale branches → SMAT-SANDBOX branch-name cleanup (operator UI).
 ADR-0401.
+
+## 2026-08-14 (d) — `claude/nasa-itar-ai-desktop-launch-scx3gz` — 001c closed at operator direction: the approved AI gateway becomes a first-class backend (ADR-0402; v1.0.202)
+
+The operator's message — "when I double click on the desktop icon to open the program I
+don't get the option to use the NASA approved AI models that are itar approved. Fix this"
+— WAS the 001c decision the queue had been holding. Built the plan doc's §6 steps 4–6
+exactly: `net_guard.APPROVED_GATEWAY_ENDPOINTS` + `is_approved_gateway_endpoint` (exact
+match, https-only, never-loopback; the ADR-0394 loopback pins untouched); `ai/gateway.py`
+`GatewayBackend` (stdlib opener, CUIEgressError off-allowlist, measured
+`is_local`/`is_approved_gateway`); `ai/txlog.py` (the AI transaction log — `*.sent`
+written BEFORE transmit, fail-closed: an unwritable log aborts the send with the opener
+never invoked; prompt as SHA-256+bytes, never text); consent at factory AND router
+(`AIConfig.gateway_endpoint`/`gateway_approved`); the settings form's gateway option
+replacing the dead `cloud` trap (endpoint = SELECT over the allowlist; acknowledgment
+checkbox; `_gateway_status_note`; `/api/ai/models?kind=gateway`; `settings.js`); the
+air-gap scanner's one text-only exemption (test-side literal, fetchable positions still
+fail). **Verified:** 7/7-RED acceptance probe inverted to 7/7 GREEN; sandboxed mutation
+battery **15/15 caught by name** after round 1 exposed a real gap
+(`models_probe_unrestricted` survived behind the constructor's defense-in-depth message —
+closed with a constructor-bomb layer pin); Tier-2 render-verify in real chromium
+(isolated venv): the catalog probe fires on endpoint selection, arming flips every
+assurance to the APPROVED GATEWAY banner, and the real app wrote real records to the
+default transaction log. Shipped code changed: **v1.0.202**, wheel + nine installers
+rebuilt AFTER the final source edit (lockstep 64/64). Docs: ADR-0402; plan doc marked
+BUILT; DoD 001c struck through; handoff rotated.
+
+**Next:** DISC-01 (operator; repo public) → PO-04/05 (blocked on a primary oracle) →
+`actual_start_driven` wiring → TEST-01 → **JCL-BR-01** → FINAL-REPORT overclaims → JCL
+docs follow-ups → 8 stale branches → SMAT-SANDBOX branch-name cleanup (operator UI) ·
+operator verifies the gateway option on the NASA-connected machine (the unversioned local
+patch is now obsolete — reinstall from a fresh tier installer). ADR-0402.
