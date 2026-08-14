@@ -14238,7 +14238,15 @@ not (01-15/20/22/23). Landed as `test_finish_marginal_still_matches_ssi_with_a_p
 node --check). Full suite on the final tree: **3972 passed, 47 skipped (playwright-env),
 2 xfailed (TEST-01 + JCL-BR-01), exit 0, 31:38** — 3951 prior + 21 new closure tests.
 
-**Next:** DISC-01 (operator) → 001c (operator) → PO-04/05 (blocked on a primary oracle) →
-`actual_start_driven` wiring → TEST-01 → **JCL-BR-01** → FINAL-REPORT overclaims → JCL docs
-follow-ups (help.py `eac` gloss omits the (1−τ) term) → 8 stale branches → SMAT-SANDBOX
-branch-name cleanup (operator UI). ADR-0401.
+**Post-close addendum (same session):** PR #589's four CI checks died in ~3 s with no
+runner assigned — the private-repo Actions minute allowance was exhausted, not a test
+failure (diagnosis posted on the PR). The operator responded by making THE REPOSITORY
+PUBLIC again (2026-08-14), restoring free CI and REVERSING the DISC-01 private-visibility
+mitigation; the forward-looking docs (HANDOFF, NEXT-SESSION-PROMPT) were updated in the
+same PR and CI re-triggered on the new head.
+
+**Next:** DISC-01 (operator; now more urgent — exposure live again) → 001c (operator) →
+PO-04/05 (blocked on a primary oracle) → `actual_start_driven` wiring → TEST-01 →
+**JCL-BR-01** → FINAL-REPORT overclaims → JCL docs follow-ups (help.py `eac` gloss omits
+the (1−τ) term) → 8 stale branches → SMAT-SANDBOX branch-name cleanup (operator UI).
+ADR-0401.

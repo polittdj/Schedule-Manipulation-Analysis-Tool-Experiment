@@ -6,6 +6,11 @@
 > stays **v1.0.201**, SCHEMA 2.11.0, no wheel/installer rebuild (ADR-0395/0399/0400
 > precedent). `tests/audit` still has exactly ONE live xfail (TEST-01); a NEW strict xfail
 > lives in `tests/web` — **JCL-BR-01**, below.
+> **Post-close visibility flip:** PR #589's CI could not start (all four checks died in
+> ~3 s, no runner assigned — the private-repo Actions minute allowance was exhausted), so
+> the operator made THE REPOSITORY PUBLIC again on 2026-08-14 to restore free CI. That
+> REVERSES the DISC-01 private-visibility mitigation — the history exposure is live again
+> and the authorizing-official determination (queue item 1) is now more urgent.
 >
 > ## What landed — ADR-0401
 > **(1) The first mutation battery ever aimed at `engine/jcl.py`** (no prior battery —
