@@ -26,6 +26,7 @@ from schedule_forensics.ai.citations import (
     preserves_figures,
     reattach,
 )
+from schedule_forensics.ai.gateway import GatewayBackend
 from schedule_forensics.ai.narrative import build_narrative
 from schedule_forensics.ai.null import NullBackend
 from schedule_forensics.ai.ollama import OllamaBackend
@@ -37,6 +38,7 @@ __all__ = [
     "Banner",
     "CitedStatement",
     "Classification",
+    "GatewayBackend",
     "Narrative",
     "NullBackend",
     "OllamaBackend",

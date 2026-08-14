@@ -35,6 +35,24 @@ _REMOTE_ASSET = re.compile(r"""(?:src|href)\s*=\s*["'](?!/|#|data:)[^"']*//""", 
 #: a substring test would exempt ``http://127.0.0.1.evil.com/beacon``; audit re-review 2026-07-17).
 _LOOPBACK = ("127.0.0.1", "localhost")
 
+#: The ONE remote URL that may appear on a served page as TEXT: the approved AI-gateway
+#: endpoint the settings page names (ADR-0402 — the operator must be able to SEE the exact
+#: endpoint their approval covers). Test-side literal, deliberately NOT imported from
+#: ``net_guard`` (an oracle that reads the value it judges cannot refute anything —
+#: ADR-0394): widening the product allowlist goes RED here until this tuple is consciously
+#: updated with its ADR. TEXT ONLY — the exemption is exact-match after trailing
+#: punctuation, so a path/query suffix never rides it, and the same URL in any *fetchable*
+#: position (src/href) still fails via ``_REMOTE_ASSET``
+#: (``test_the_gateway_endpoint_is_text_only_never_a_fetchable_asset`` proves both edges).
+_APPROVED_GATEWAY_TEXT = ("https://proxy.fast.luna.nasa.gov",)
+
+
+def _is_approved_gateway_text(url: str) -> bool:
+    """True iff ``url`` is EXACTLY an approved-gateway endpoint (modulo trailing prose
+    punctuation the regex can drag in) — never a prefix match, so ``<gateway>/beacon.js``
+    stays an offender."""
+    return url.rstrip("/.,;:") in _APPROVED_GATEWAY_TEXT
+
 
 def _is_loopback_url(url: str) -> bool:
     """True iff ``url``'s HOST is exactly a loopback host — not merely contains one."""
@@ -101,11 +119,16 @@ def client() -> TestClient:
 
 def _external_refs(text: str) -> list[str]:
     # W3C XML namespace URIs (e.g. createElementNS's "http://www.w3.org/2000/svg") are
-    # identifiers compared by string value — the browser never dereferences them.
+    # identifiers compared by string value — the browser never dereferences them. The
+    # approved-gateway endpoint is likewise allowed as bare TEXT only (ADR-0402): the
+    # settings page names it so the operator sees exactly what their approval covers, and
+    # CSP connect-src 'self' + the _REMOTE_ASSET scan below keep it unfetchable.
     found = [
         u
         for u in _ABSOLUTE_URL.findall(text)
-        if not _is_loopback_url(u) and not u.startswith("http://www.w3.org/")
+        if not _is_loopback_url(u)
+        and not u.startswith("http://www.w3.org/")
+        and not _is_approved_gateway_text(u)
     ]
     found += _PROTOCOL_RELATIVE.findall(text)
     found += _REMOTE_ASSET.findall(text)
@@ -200,6 +223,28 @@ def test_security_headers_enforce_the_airgap_in_the_browser(client: TestClient) 
         assert r.headers.get("X-Content-Type-Options") == "nosniff", path
         assert r.headers.get("X-Frame-Options") == "DENY", path
         assert r.headers.get("Referrer-Policy") == "no-referrer", path
+
+
+def test_the_gateway_endpoint_is_text_only_never_a_fetchable_asset() -> None:
+    """The ADR-0402 exemption's two edges, proven on the scanner itself.
+
+    The approved endpoint may pass as bare page TEXT (an option value, a banner sentence) —
+    but the SAME URL in a fetchable position (src/href), or with any path appended, must
+    still be an offender. If a refactor of ``_external_refs`` ever widened the exemption to
+    prefixes or to asset positions, this goes red."""
+    gw = _APPROVED_GATEWAY_TEXT[0]
+    # text positions: exempt (exact endpoint, with or without trailing prose punctuation)
+    assert _external_refs(f'<option value="{gw}">{gw}</option>') == []
+    assert _external_refs(f"prompts are sent to {gw}.") == []
+    # fetchable positions: still offenders — including the BARE endpoint as an asset URL,
+    # which the text exemption would otherwise cover (the _REMOTE_ASSET net catches it)
+    assert _external_refs(f'<script src="{gw}/x.js"></script>')
+    assert _external_refs(f'<link rel=stylesheet href="{gw}/x.css">')
+    assert _external_refs(f'<script src="{gw}"></script>')
+    # any path/query suffix: still an offender even as bare text (no prefix exemption)
+    assert _external_refs(f"fetch this: {gw}/beacon?x=1")
+    # and every OTHER remote URL is untouched by the exemption
+    assert _external_refs("see https://evil.example.com for details")
 
 
 def test_assets_are_local_relative(client: TestClient) -> None:

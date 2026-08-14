@@ -435,6 +435,34 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-14 (d) — a defense-in-depth twin can hide a layer's mutation, and `pkill -f` self-matches on strings the bracket trick doesn't cover
+
+- Built 001c (ADR-0402): the approved-gateway backend, at operator direction. The mutation
+  battery's round 1 exposed a real gap in my own new test: `models_probe_unrestricted`
+  (the `/api/ai/models` route's allowlist check deleted) SURVIVED, because the backend
+  constructor one layer down also refuses off-list endpoints and its error message
+  contains the very word ("approved") the outcome assertion looked for. **The lesson: an
+  outcome assertion over a defense-in-depth stack pins the STACK, not the layer — a
+  mutation of any single layer is invisible while its twin holds. Pin the layer:** a
+  constructor bomb (monkeypatched class whose `__init__` raises) proved the route refuses
+  BEFORE construction; re-run caught the mutant 1-failed/15-passed.
+- `pkill -f "[s]erve_for_pw"` still killed my own shell (exit 144): the bracket trick only
+  keeps the PATTERN from matching itself, but the plain string `serve_for_pw.py` sat in
+  the same command line two lines up (the `nohup python …/serve_for_pw.py` launch). **Kill
+  by recorded PID (`echo $! > pidfile`), never by pattern, when the launcher and the
+  killer share a command line.** Second paid instance of the render-verify skill's
+  self-match warning, in a new costume.
+- A dev server held across browser-drive runs reproduced OR-06 in miniature: run 1's Save
+  armed the session, run 2's assertions met the leftover state. Restart the server per
+  run; "always start clean" applies to instruments too.
+- Playwright went into an ISOLATED venv so the main env's suite baseline stayed comparable
+  to the prior close (playwright in the main env executes ~19 CI-invisible tests — the
+  full-gate skill's §4 table). The measured cost was zero: the container's vendored
+  chromium serves both.
+- The ADR-0148 trap fired in real time and the ritual caught it: five lint fixes landed
+  AFTER the first wheel build; the wheel + nine installers were rebuilt from the final
+  tree and the lockstep suite re-run before commit.
+
 ### 2026-08-14 (c) — the fixture that could not fail, the diagnosis that reversed again, and spent = 0.0
 
 Four lessons from the first JCL battery (ADR-0401), each paid for in-session:
