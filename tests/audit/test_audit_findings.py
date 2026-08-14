@@ -151,22 +151,21 @@ def test_test01_negative_control_globbed_module_is_clean() -> None:
 
 
 # --------------------------------------------------------------------------------------------
-# HOOK-01 (VALIDATED, low-med, documented tradeoff): the CUI pre-commit guard content-sniffs only
-# .json/.txt/extensionless files, so a schedule renamed to a non-blocked, non-sniffed extension
-# (.png/.svg/.md/…) is not detected. Proven with a scratch-repo battery in the audit; here we assert
-# the guard's own regexes as a fast static red/green so a future magic-byte detector is prompted.
-# Correct behaviour (post-fix): the sniff set covers image/doc extensions too (magic-byte check).
+# HOOK-01 (FIXED by ADR-0399): the CUI pre-commit guard now sniffs image/doc renames too. The
+# xfail(strict) marker this test carried flipped loudly the moment the fix landed (sniff_re
+# gained the image/doc extensions; the anchored serialization-start rules plus the OLE2/ZIP/PDF
+# container checks do the detecting), exactly as this module's design intended: the marker is
+# removed in the fixing commit, and the test stands as the permanent pin that the sniff set
+# keeps covering image renames. The behavioural proof lives in
+# tests/guards/test_precommit_blocklist.py (scratch-repo block/allow battery, container cases,
+# and a whole-tree census with a planted canary control).
 # --------------------------------------------------------------------------------------------
-@pytest.mark.xfail(
-    strict=True,
-    reason="HOOK-01: sniff_re covers only json/txt/extensionless; no image magic-byte detection",
-)
 def test_hook01_precommit_sniffs_image_and_doc_renames() -> None:
     hook = (REPO / ".githooks" / "pre-commit").read_text(encoding="utf-8")
     m = re.search(r"sniff_re='([^']+)'", hook)
     assert m, "sniff_re not found in pre-commit hook"
     sniff = m.group(1)
-    # Post-fix expectation: a schedule renamed .png/.svg would be content-checked. Today it is not.
+    # Post-fix pin: a schedule renamed .png/.svg is content-checked.
     assert ".png" in sniff or "png" in sniff, (
         "pre-commit does not content-detect image-renamed schedules (a .png full of MSPDI slips)"
     )

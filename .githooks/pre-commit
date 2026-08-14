@@ -4,16 +4,40 @@
 # Rejects any staged schedule / Office / Power BI / pickle artifact so that
 # Controlled Unclassified Information can never be committed, even with `git add -f`.
 #
-# TWO detectors:
-#   1. EXTENSION — a blocked extension anywhere in the trailing suffix chain, so
-#      `data.mpp.bak` and `export.xlsx.1` are caught too (the pattern used to anchor
-#      hard on `$`; audit 2026-08-03 §5).
-#   2. CONTENT — a staged .json / .txt / extension-less file whose bytes carry a
+# THREE detectors (ADR-0347 built the first two; ADR-0399 closed the audit's HOOK-01 gap
+# by widening both and adding container inspection):
+#   1. EXTENSION — a blocked extension anywhere in the trailing suffix chain. The chain
+#      accepts a CLOSED set of backup/copy suffixes (`data.mpp.bak`, `export.xlsx.1`,
+#      `sched.mpp~`, `plan.csv.gz`) AND of disguise suffixes (`data.mpp.png`,
+#      `sched.mpp.zip`, `export.xer.png` — audit 2026-08-13 HOOK-01). The set stays
+#      CLOSED on purpose: the obvious "blocked ext followed by any dot" wedges
+#      `tools/mpxj/lib/jakarta.xml.bind-api-3.0.1.jar`, whose Java package name simply
+#      contains ".xml." — measured against the tracked tree, not assumed.
+#   2. CONTENT (text) — a staged .json / .txt / extension-less file whose bytes carry a
 #      schedule signature: the tool's OWN "Save .json" format, an MSPDI root, or a
 #      P6 XER header. `.json` is deliberately NOT in .gitignore (tracked config must
 #      stay visible) and IS the tool's save format, so extension alone could never
 #      have covered it. Only these three signatures count — a guard that fired on
 #      prose would be turned off, and then it guards nothing.
+#      For prose-capable and image extensions (.md/.png/.svg/.jpg/.jpeg/.gif/.bmp/
+#      .webp/.pdf) the SAME three signatures apply only when the staged bytes START as
+#      that serialization (an XER header line, a brace opening the save-JSON, an XML
+#      declaration carrying the MSPDI namespace): a renamed schedule always starts as
+#      one, while a document QUOTING the format starts as prose and can never trip it
+#      (measured: docs/STATE/AUDIT-2026-06-25.md contains the save-format signature
+#      mid-file and must keep committing freely). NOTE this hook is itself an
+#      extension-less SNIFFED file — never write a signature literal verbatim in these
+#      comments, or the guard wedges the commit that edits it (the whole-tree census
+#      test caught exactly that on 2026-08-14).
+#   3. CONTENT (container) — magic-byte checks on every sniffed name: an OLE2 compound
+#      file (the .mpp/.xls/.doc family) under a non-Office name; a ZIP container hiding
+#      under a non-archive name; a real .zip whose member list names a blocked-extension
+#      file or a Power BI payload; a real PDF that EMBEDS a blocked-extension attachment
+#      (/EmbeddedFile + a filespec naming it). A rendered/printed report PDF and a real
+#      screenshot PNG carry none of these signals and commit freely.
+#      Containers are inspected with python3 (this is a Python-3.11 project; every build
+#      and CI environment has it). If python3 is absent or the sniffer crashes, the guard
+#      falls back to detectors 1–2 — never below its pre-ADR-0399 coverage — and says so.
 #
 # TWO exceptions:
 #   1. Synthetic, hand-authored, non-CUI content under the allow-prefixes below:
@@ -23,25 +47,42 @@
 #      a merge — the operator committed the reference exports to main via the GitHub web
 #      UI (which no local hook can see), so blocking the identical bytes here would only
 #      wedge every merge while adding zero protection. Any NEW or MODIFIED schedule
-#      artifact is still blocked, by either detector.
+#      artifact is still blocked, by any detector.
+#
+# Known limits (deliberate, ADR-0399): nested archives (a schedule zipped inside a zip
+# inside a zip), non-stdlib archive formats (.7z/.rar bodies), bare .gz bodies, and a
+# schedule PRINTED into PDF page content are not inspected — no decisive signature is
+# reachable with std-lib means, and a guess would fire on legitimate files. The chain
+# suffix clause still catches those names when a blocked extension is visible in them.
 #
 # Activate with:  git config core.hooksPath .githooks
-# (the SessionStart hook does this automatically each session).
+# (the SessionStart hook does this automatically each session; a clone that never ran it
+# has NO hook protection — the .gitignore layer and the intake manifest still apply.)
 set -euo pipefail
 
-# A blocked extension at the end of the name, or carrying a backup/copy suffix (`data.mpp.bak`,
-# `export.xlsx.1`, `sched.mpp~`, `plan.csv.gz`). The suffix set is CLOSED on purpose: the obvious
-# "blocked ext followed by any dot" wedges `tools/mpxj/lib/jakarta.xml.bind-api-3.0.1.jar`, whose
-# Java package name simply contains ".xml." — measured against the tracked tree, not assumed.
-blocked_re='\.(mpp|mpt|mpx|xer|xml|pmxml|p6xml|csv|xls|xlsx|xlsm|pbix|mspdi|pkl|pickle|aft|docx|doc)(~?$|\.(bak|backup|old|orig|copy|tmp|temp|save|sav|gz|[0-9]+)~?$)'
+# Detector 1. A blocked extension at the end of the name or anywhere in the trailing
+# suffix chain, where every following suffix comes from the CLOSED backup/copy/disguise
+# set (`data.mpp.bak`, `export.xlsx.1`, `sched.mpp~`, `plan.csv.gz`, `data.mpp.png`,
+# `sched.mpp.zip`, `data.mpp.png.bak`). See the header for why the set must stay closed.
+blocked_re='\.(mpp|mpt|mpx|xer|xml|pmxml|p6xml|csv|xls|xlsx|xlsm|pbix|mspdi|pkl|pickle|aft|docx|doc)(\.(bak|backup|old|orig|copy|tmp|temp|save|sav|gz|png|svg|jpg|jpeg|gif|bmp|webp|pdf|zip|7z|rar|tar|tgz|md|txt|json|log|[0-9]+))*~?$'
 
-# Names whose content is worth sniffing: the tool's save format, a plain-text rename, or no
-# extension at all. Deliberately NOT .md/.py/.js — docs and code legitimately quote the format.
-sniff_re='\.(json|txt)($|\.)'
+# Names whose staged content is worth sniffing (plus extension-less names, handled in the
+# loop). .json/.txt keep the unanchored text sniff they have had since ADR-0347; the rest
+# get the anchored text rules and the container checks described in the header.
+# Deliberately NOT .py/.js (code quotes the format), NOT .jar/.whl (legitimate zip-based
+# artifacts whose members — e.g. `*.xml` inside a jar — would wedge every rebuild).
+sniff_re='\.(json|txt|md|png|svg|jpg|jpeg|gif|bmp|webp|pdf|zip)($|\.)'
+
+# The subset of sniffed names that keeps the ORIGINAL unanchored text sniff: prose-free
+# formats where a schedule signature anywhere in the bytes is decisive.
+loose_re='\.(json|txt)($|\.)'
 
 # Decisive schedule signatures. Each identifies a real schedule serialization; none of them
-# occurs in prose or in configuration.
-signature_re='"tasks"[[:space:]]*:[[:space:]]*\[|xmlns="http://schemas\.microsoft\.com/project"|^ERMHDR[[:space:]|,]'
+# occurs in prose or in configuration. The MSPDI namespace is matched quote- and
+# whitespace-agnostically: a single-quoted xmlns is XML-spec-valid, loads as the identical
+# schedule, and slipped the old double-quote-literal — measured, 2026-08-14 attack battery.
+# (The container sniffer below re-states these in python regex syntax — keep the two in sync.)
+signature_re='"tasks"[[:space:]]*:[[:space:]]*\[|xmlns[[:space:]]*=[[:space:]]*.http://schemas\.microsoft\.com/project|^ERMHDR[[:space:]|,]'
 
 allow_prefixes=(
   'tests/fixtures/'                        # synthetic, hand-authored, non-CUI fixtures
@@ -81,21 +122,140 @@ carries_schedule_content() {
 
 violations=()
 reasons=()
-while IFS= read -r path; do
+sniff_candidates=()
+
+add_violation() {
+  # $1 = path, $2 = reason. Applies the inherited-blob exception before recording.
+  inherited_from_main "$1" && return 0  # upstream-identical blob riding a merge
+  violations+=("$1")
+  reasons+=("$2")
+}
+
+while IFS= read -r -d '' path; do
   [ -z "$path" ] && continue
   is_allowed_prefix "$path" && continue
   base=${path##*/}
-  reason=""
-  if printf '%s\n' "$base" | grep -qiE "$blocked_re"; then
-    reason="blocked extension"
-  elif printf '%s\n' "$base" | grep -qiE "$sniff_re" || [ "$base" = "${base%.*}" ]; then
-    carries_schedule_content "$path" && reason="schedule content under a non-schedule name"
+  # Match against a copy with trailing whitespace stripped: 'sched.mpp ' (trailing space/
+  # tab/CR) defeated every end-anchor while still being a real staged schedule — measured
+  # fail-open, 2026-08-14 attack battery. $path itself stays untouched for git lookups.
+  matchbase=$base
+  while [ "${matchbase%[[:space:]]}" != "$matchbase" ]; do
+    matchbase=${matchbase%[[:space:]]}
+  done
+  if printf '%s\n' "$matchbase" | grep -qiE "$blocked_re"; then
+    add_violation "$path" "blocked extension"
+  elif printf '%s\n' "$matchbase" | grep -qiE "$loose_re" || [ "$matchbase" = "${matchbase%.*}" ]; then
+    if carries_schedule_content "$path"; then
+      add_violation "$path" "schedule content under a non-schedule name"
+    else
+      sniff_candidates+=("$path")   # still gets the container checks below
+    fi
+  elif printf '%s\n' "$matchbase" | grep -qiE "$sniff_re"; then
+    sniff_candidates+=("$path")     # anchored text rules + container checks below
   fi
-  [ -z "$reason" ] && continue
-  inherited_from_main "$path" && continue  # upstream-identical blob riding a merge
-  violations+=("$path")
-  reasons+=("$reason")
-done < <(git diff --cached --name-only --diff-filter=AMR)  # renames scanned too (QC audit D26)
+done < <(git diff --cached --name-only -z --diff-filter=AMR)
+# ^ renames scanned too (QC audit D26). `-z` + `read -d ''` is LOAD-BEARING: without it,
+# git C-quotes any name carrying a non-ASCII/quote/backslash/control byte (core.quotepath
+# default), the escaped token matches no extension pattern AND `git show ":$token"` fails,
+# so a real 'schädule.mpp' bypassed ALL detectors — measured fail-open, 2026-08-14.
+
+# Detectors 2b + 3 — one python3 batch over every sniff candidate. The sniffer prints one
+# "<path>\t<reason>" line per violation and nothing otherwise; a per-file error goes to
+# stderr and never hides the other files. If python3 is missing entirely, detectors 1–2
+# above have already run — the guard never drops below its pre-ADR-0399 coverage.
+if [ "${#sniff_candidates[@]}" -gt 0 ]; then
+  if command -v python3 >/dev/null 2>&1; then
+    while IFS=$'\t' read -r vpath vreason; do
+      [ -n "$vpath" ] && add_violation "$vpath" "$vreason"
+    done < <(python3 - "${sniff_candidates[@]}" <<'PY'
+import io
+import re
+import subprocess
+import sys
+import zipfile
+
+# Blocked-extension alternation — keep in sync with blocked_re above.
+BLOCKED = (
+    "mpp|mpt|mpx|xer|xml|pmxml|p6xml|csv|xls|xlsx|xlsm|pbix|mspdi|pkl|pickle|aft|docx|doc"
+)
+# The three decisive text signatures — keep in sync with signature_re above
+# (POSIX ERE there, python re here).
+SAVE_SIG = re.compile(rb'"tasks"\s*:\s*\[')
+# Quote-agnostic: a single-quoted xmlns is XML-valid and loads identically (measured slip).
+MSPDI_NS = re.compile(rb"xmlns\s*=\s*['\"]http://schemas\.microsoft\.com/project['\"]")
+MEMBER_RE = re.compile(r"\.(%s)$" % BLOCKED, re.IGNORECASE)
+# Bound to a PDF FILESPEC (/F or /UF): an unbound paren-string matched printed page text
+# ("...see attached schedule.xml" in a Tj run) and false-blocked a benign-attachment
+# report PDF — measured, 2026-08-14 attack battery. Spaces inside the parens are legal.
+ATTACH_RE = re.compile(rb"/U?F\s*\(\s*[^()\\]*\.(%s)\s*\)" % BLOCKED.encode(), re.IGNORECASE)
+
+OLE_MAGIC = b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1"
+ZIP_MAGIC = b"PK\x03\x04"
+
+
+def reason_for(path):
+    blob = subprocess.run(["git", "show", ":" + path], capture_output=True).stdout
+    # rstrip: a trailing-whitespace name must classify like its clean form (fail-open fix)
+    base = path.rsplit("/", 1)[-1].lower().rstrip()
+    exts = set(base.split(".")[1:])
+
+    # Detector 3 — containers, by magic bytes, never by name alone. No sniffed name
+    # (.json/.txt/.md/images/.pdf/.zip/extension-less) is EVER legitimately an OLE2
+    # compound file — that family IS .mpp/.xls/.doc.
+    if blob[:8] == OLE_MAGIC:
+        return "OLE2 Office/Project container under a non-schedule name"
+    if blob[:4] == ZIP_MAGIC:
+        if "zip" not in exts:
+            return "ZIP container hiding under a non-archive name"
+        try:
+            names = zipfile.ZipFile(io.BytesIO(blob)).namelist()
+        except Exception:
+            # Unparseable archive: no decisive signal — stay silent rather than guess
+            # (a fabricated verdict would be worse than the drift it chases, Law 2).
+            names = []
+        hits = sorted(n for n in names if MEMBER_RE.search(n))
+        if hits:
+            return "ZIP carries blocked-extension member(s): " + ", ".join(hits[:3])
+        if any(n == "DataModel" or n.startswith("Report/Layout") for n in names):
+            return "Power BI package under an archive name"
+        return ""
+    # A real PDF is decisive only when it EMBEDS a blocked-extension attachment
+    # (/EmbeddedFile + a filespec naming it). Rendered/printed report PDFs pass.
+    if blob[:5] == b"%PDF-":
+        if b"/EmbeddedFile" in blob and ATTACH_RE.search(blob):
+            return "PDF embeds a blocked-extension attachment"
+        return ""
+    # Detector 2b — a RENAMED schedule *starts* as one of the three serializations
+    # (optionally behind a BOM / leading whitespace). A document that merely QUOTES a
+    # signature starts as prose and never reaches these checks; for .json/.txt the
+    # stricter unanchored sniff has already run in bash.
+    lead = blob.lstrip(b"\xef\xbb\xbf \t\r\n")
+    if lead[:6] == b"ERMHDR":
+        return "P6 XER content under a non-schedule name"
+    # The brace must OPEN A JSON OBJECT ('{' then a quoted key): Hugo '{{<' and Jekyll
+    # '{%' template starts are PROSE, and a templated doc quoting the save format in a
+    # fenced block was false-blocked by a bare '{' test — measured, 2026-08-14.
+    if re.match(rb'\{\s*"', lead) and SAVE_SIG.search(blob):
+        return "saved-schedule JSON under a non-schedule name"
+    if (lead[:5] == b"<?xml" or lead[:8] == b"<Project") and MSPDI_NS.search(blob):
+        return "MSPDI XML content under a non-schedule name"
+    return ""
+
+
+for path in sys.argv[1:]:
+    try:
+        why = reason_for(path)
+    except Exception as exc:  # one bad file must never hide the verdict on the others
+        print("pre-commit sniffer error on %s: %s" % (path, exc), file=sys.stderr)
+        continue
+    if why:
+        print("%s\t%s" % (path, why))
+PY
+)
+  else
+    echo "pre-commit: python3 not found — container/rename sniffing skipped (extension + text checks still ran)" >&2
+  fi
+fi
 
 if [ "${#violations[@]}" -gt 0 ]; then
   {

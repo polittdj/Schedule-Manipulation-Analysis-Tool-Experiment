@@ -9,8 +9,12 @@ again.
 
 from __future__ import annotations
 
+import io
 import re
+import shutil
 import subprocess
+import sys
+import zipfile
 from pathlib import Path
 
 import pytest
@@ -117,20 +121,34 @@ def _allow_prefixes() -> tuple[str, ...]:
     return found
 
 
+def _extension_alternation() -> str:
+    """The blocked-extension alternation, read off the hook's own ``blocked_re``.
+
+    Read the alternation itself rather than splitting on a literal tail: ADR-0399 turned the
+    single-suffix clause into a chain, so the old ``split("(~?$")`` derivation would silently
+    yield core == new and let the sweep below pass vacuously — the phase-2 trap (a source-text
+    guard that stays green when its subject changes shape).
+    """
+    match = re.match(r"\\\.\(([a-z0-9|]+)\)", _blocked_re().pattern)
+    assert match, "could not read the extension alternation from blocked_re"
+    return match.group(1)
+
+
 def test_the_suffix_clause_does_not_widen_the_net_over_the_tracked_tree() -> None:
-    """The backup-suffix clause must catch `data.mpp.bak` and NOTHING already in the repo.
+    """The suffix chain must catch `data.mpp.bak`/`data.mpp.png` and NOTHING already in the repo.
 
     The intake legitimately tracks `.docx`/`.xlsx`/`.mpp` — ADR-0152's ``inherited_from_main``
     rule is what lets those ride a merge, and this test does not second-guess it. What it pins is
-    that the 2026-08-03 widening added **no new** matches: the obvious "blocked ext followed by
-    any dot" silently claimed `tools/mpxj/lib/jakarta.xml.bind-api-3.0.1.jar`, whose Java package
-    name merely contains ".xml.", which would wedge every MPXJ upgrade with a nonsense reason.
-    Relying on the inherited-blob exception to paper over that would hide the wedge until the day
-    the file legitimately changes.
+    that the 2026-08-03 widening and the 2026-08-14 disguise-suffix chain (ADR-0399) added
+    **no new** matches: the obvious "blocked ext followed by any dot" silently claimed
+    `tools/mpxj/lib/jakarta.xml.bind-api-3.0.1.jar`, whose Java package name merely contains
+    ".xml.", which would wedge every MPXJ upgrade with a nonsense reason. Relying on the
+    inherited-blob exception to paper over that would hide the wedge until the day the file
+    legitimately changes.
     """
     new = _blocked_re()
-    # the pre-2026-08-03 core: the same extensions, anchored hard on end-of-name
-    core = re.compile(new.pattern.split("(~?$")[0] + "$", re.IGNORECASE)
+    # the original core: the same extensions, anchored hard on end-of-name
+    core = re.compile(r"\.(" + _extension_alternation() + r")$", re.IGNORECASE)
     allowed = _allow_prefixes()
     widened = [
         p
@@ -138,6 +156,25 @@ def test_the_suffix_clause_does_not_widen_the_net_over_the_tracked_tree() -> Non
         if not p.startswith(allowed) and new.search(p.rsplit("/", 1)[-1]) and not core.search(p)
     ]
     assert widened == []
+
+
+def test_the_suffix_sweep_can_detect_a_widening() -> None:
+    """Negative control: the sweep's population and method CAN go red.
+
+    The known-bad "blocked ext followed by any dot" mutant must claim the MPXJ jar over the
+    same population the sweep scans. If this stops matching, the sweep above is measuring
+    nothing (empty population, moved jar, or broken derivation) and its green is vacuous.
+    """
+    mutant = re.compile(r"\.(" + _extension_alternation() + r")(\..*)?$", re.IGNORECASE)
+    core = re.compile(r"\.(" + _extension_alternation() + r")$", re.IGNORECASE)
+    claimed = [
+        p
+        for p in _tracked()
+        if mutant.search(p.rsplit("/", 1)[-1]) and not core.search(p.rsplit("/", 1)[-1])
+    ]
+    assert any("jakarta.xml.bind-api" in p for p in claimed), (
+        "the any-dot mutant no longer claims the MPXJ jar — the widening sweep is vacuous"
+    )
 
 
 def test_the_content_detector_finds_nothing_in_the_repos_own_sources() -> None:
@@ -300,3 +337,270 @@ def test_content_detector_does_not_fail_open_on_a_large_schedule(scratch_repo: P
     assert len(big) > 250_000, "the fixture must be large enough to expose the SIGPIPE race"
     _stage(scratch_repo, "big.json", big)
     assert _hook_exit(scratch_repo) != 0, "a large saved schedule must not slip through"
+
+
+# ── HOOK-01: disguise suffixes, renamed schedules, containers (audit 2026-08-13, ADR-0399) ──
+# The audit's scratch-repo battery proved a schedule renamed .png/.svg/.md, a blocked-ext
+# double-extension (data.mpp.png), and a schedule-bearing PDF/ZIP all slipped both detectors.
+# These tests are that battery, committed. Every BLOCK case was observed to ALLOW under the
+# pre-ADR-0399 hook (red first), and every ALLOW case pins the false-positive boundary that
+# keeps the guard from firing on legitimate content — a guard that fires on real screenshots
+# or prose gets switched off, and then it guards nothing.
+
+_OLE = b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1" + b"\x00" * 504  # OLE2 CFB magic (.mpp/.xls/.doc)
+_PNG_REAL = b"\x89PNG\r\n\x1a\n" + b"\x00" * 64
+_SVG_REAL = b'<?xml version="1.0"?><svg xmlns="http://www.w3.org/2000/svg"><rect/></svg>'
+_PROSE_MD = (
+    b"# Audit notes\n\nThe save format looks like this:\n\n"
+    b'```json\n{"tasks": [{"unique_id": 1}]}\n```\n\nAlso `ERMHDR` headers and\n'
+    b'xmlns="http://schemas.microsoft.com/project" get quoted in docs.\n'
+)
+_PDF_PLAIN = b"%PDF-1.4\n1 0 obj << /Type /Catalog >> endobj\ntrailer << >>\n%%EOF\n"
+_PDF_EMBED = (
+    b"%PDF-1.4\n"
+    b"1 0 obj << /Type /Filespec /F (real.mpp) /EF << /F 2 0 R >> >> endobj\n"
+    b"2 0 obj << /Type /EmbeddedFile /Length 4 >> stream\nDATA\nendstream endobj\n"
+    b"trailer << >>\n%%EOF\n"
+)
+
+
+def _zip_bytes(members: dict[str, bytes]) -> bytes:
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as archive:
+        for name, body in members.items():
+            archive.writestr(name, body)
+    return buf.getvalue()
+
+
+@pytest.mark.parametrize(
+    ("name", "body"),
+    [
+        # blocked extension hiding behind a disguise suffix — caught by NAME, any bytes
+        ("data.mpp.png", b"junk"),
+        ("sched.mpp.zip", b"junk"),
+        ("export.xer.png", b"junk"),
+        ("data.mpp.png.bak", b"junk"),  # a two-deep chain
+        # a schedule renamed to an image/doc extension — caught by anchored CONTENT
+        ("sched.png", _SAVED_SCHEDULE),
+        ("notes.md", _MSPDI),
+        ("chart.svg", _MSPDI),
+        ("fake.pdf", _MSPDI),
+        ("plan.md", _XER),
+        # container renames — caught by MAGIC BYTES
+        ("legacy.png", _OLE),
+        ("legacy.json", _OLE),
+        ("OLDSCHED", _OLE),  # extension-less OLE2 container
+        ("archive.png", _zip_bytes({"logo.png": _PNG_REAL})),  # a ZIP is never a PNG
+        # schedule-bearing containers under their own names
+        ("data.zip", _zip_bytes({"real.mpp": b"bytes", "readme-file.rst": b"hi"})),
+        ("book_renamed.zip", _zip_bytes({"[Content_Types].xml": b"<Types/>"})),
+        ("report.pdf", _PDF_EMBED),
+    ],
+)
+def test_hook_blocks_disguised_and_container_schedules(
+    scratch_repo: Path, name: str, body: bytes
+) -> None:
+    _stage(scratch_repo, name, body)
+    assert _hook_exit(scratch_repo) != 0, f"{name} hides a schedule artifact and must be blocked"
+
+
+@pytest.mark.parametrize(
+    ("name", "body"),
+    [
+        # A guard that fired on legitimate images, diagrams, prose or reports would be
+        # turned off, and then it guards nothing (the remediation plan's stated failure mode).
+        ("screenshot.png", _PNG_REAL + b"image data"),
+        ("diagram.svg", _SVG_REAL),
+        # the measured false-positive shape: docs/STATE/AUDIT-2026-06-25.md QUOTES the save
+        # signature mid-file; the anchored serialization-start gate must keep prose committable
+        ("guide.md", _PROSE_MD),
+        ("manual.pdf", _PDF_PLAIN),
+        ("assets.zip", _zip_bytes({"logo.png": _PNG_REAL, "notes-file.rst": b"hi"})),
+    ],
+)
+def test_hook_allows_legitimate_images_docs_and_archives(
+    scratch_repo: Path, name: str, body: bytes
+) -> None:
+    _stage(scratch_repo, name, body)
+    assert _hook_exit(scratch_repo) == 0, f"{name} is legitimate content and must commit freely"
+
+
+# ── 2026-08-14 attack battery (ADR-0399): fail-open names, signature variants, FP bounds ──
+# Three adversarial agents (evasion / false-positive / bash robustness) ran POC batteries
+# against the fixed hook and found five defect classes; every case below was observed
+# red (mis-verdict) against the pre-fix hook before the fix landed.
+
+_MSPDI_SQ = b"<?xml version='1.0'?><Project xmlns='http://schemas.microsoft.com/project'/>"
+_HUGO_MD = (
+    b'{{< callout type="note" >}}\nThe save file is plain JSON:\n\n'
+    b'```json\n{ "tasks": [ {"unique_id": 1} ] }\n```\n{{< /callout >}}\n\nMore prose here.\n'
+)
+_JEKYLL_MD = b'{% raw %}\n```json\n{ "tasks": [ {"unique_id": 1} ] }\n```\n{% endraw %}\n'
+_PDF_EMBED_SPACED = (
+    b"%PDF-1.4\n"
+    b"1 0 obj << /Type /Filespec /F ( real.xer ) /EF << /F 2 0 R >> >> endobj\n"
+    b"2 0 obj << /Type /EmbeddedFile /Length 4 >> stream\nDATA\nendstream endobj\n"
+    b"trailer << >>\n%%EOF\n"
+)
+_PDF_BENIGN_ATTACH = (
+    b"%PDF-1.4\n"
+    b"1 0 obj << /Type /Filespec /F (notes.txt) /UF (notes.txt) /EF << /F 6 0 R >> >> endobj\n"
+    b"6 0 obj << /Type /EmbeddedFile /Length 4 >> stream\nDATA\nendstream endobj\n"
+    b"5 0 obj << /Length 62 >> stream\n"
+    b"BT /F1 12 Tf 72 720 Td (For raw data see attached schedule.xml) Tj ET\n"
+    b"endstream endobj\n"
+    b"trailer << >>\n%%EOF\n"
+)
+
+
+@pytest.mark.parametrize(
+    ("name", "body"),
+    [
+        # C-quoting fail-open: git C-quotes non-ASCII names unless read with -z, and the
+        # escaped token matched no detector while `git show` failed on it — a real CUI
+        # schedule under an accented name committed SILENTLY (all three detectors bypassed).
+        ("schädule.mpp", _OLE),
+        ("xér häder.txt", _XER),
+        ("café", _SAVED_SCHEDULE),
+        ("plané.json", _OLE),
+        # single-quoted xmlns is XML-spec-valid and loads as the identical schedule; the
+        # old double-quote-literal signatures (bash AND python) both missed it
+        ("s_sq_mspdi.png", _MSPDI_SQ),
+        ("SCHEDULE_SQ", _MSPDI_SQ),
+        # spaces inside the filespec parens are legal PDF syntax
+        ("spaced_filespec.pdf", _PDF_EMBED_SPACED),
+    ],
+)
+def test_hook_blocks_fail_open_names_and_signature_variants(
+    scratch_repo: Path, name: str, body: bytes
+) -> None:
+    _stage(scratch_repo, name, body)
+    assert _hook_exit(scratch_repo) != 0, f"{name} slipped a detector it must not slip"
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="NTFS cannot create these names")
+@pytest.mark.parametrize(
+    ("name", "body"),
+    [
+        ('evil"quote.mpp', _OLE),  # double-quote in the name triggered C-quoting too
+        ("sched.mpp ", _OLE),  # trailing space defeated every end-anchor
+    ],
+)
+def test_hook_blocks_hostile_filename_shapes(scratch_repo: Path, name: str, body: bytes) -> None:
+    _stage(scratch_repo, name, body)
+    assert _hook_exit(scratch_repo) != 0, f"{name!r} slipped past the name normalization"
+
+
+@pytest.mark.parametrize(
+    ("name", "body"),
+    [
+        # a templated doc STARTS with '{' ('{{<' Hugo, '{%' Jekyll) yet is prose; the brace
+        # must open a JSON OBJECT before the save signature counts
+        ("hugo_shortcode.md", _HUGO_MD),
+        ("jekyll_raw.md", _JEKYLL_MD),
+        # a benign-attachment PDF whose PRINTED page text mentions 'schedule.xml': the
+        # attachment rule must bind to the /F filespec, not any paren-string in the blob
+        ("benign_attach_mention.pdf", _PDF_BENIGN_ATTACH),
+    ],
+)
+def test_hook_allows_templated_docs_and_benign_attachments(
+    scratch_repo: Path, name: str, body: bytes
+) -> None:
+    _stage(scratch_repo, name, body)
+    assert _hook_exit(scratch_repo) == 0, f"{name} is legitimate content and must commit freely"
+
+
+def test_container_detector_reads_the_staged_bytes_not_the_working_tree(
+    scratch_repo: Path,
+) -> None:
+    """Staging an OLE2 container then scrubbing the file on disk must NOT get it through."""
+    _stage(scratch_repo, "sneaky.png", _OLE)
+    (scratch_repo / "sneaky.png").write_bytes(_PNG_REAL)  # working tree innocent, index is not
+    assert _hook_exit(scratch_repo) != 0
+
+
+def test_hook_without_python3_keeps_the_extension_and_text_floor(scratch_repo: Path) -> None:
+    """With python3 absent the guard must hold its pre-ADR-0399 floor and say what it skipped.
+
+    Detectors 1-2 (extension chain + .json/.txt/extension-less text sniff) are pure
+    bash/git/grep and must still block; the container detector is documented as requiring
+    python3, and the hook must WARN rather than silently narrow.
+    """
+    thin = scratch_repo / "thinbin"
+    thin.mkdir()
+    for tool in ("git", "grep"):
+        located = shutil.which(tool)
+        assert located, f"{tool} not on PATH"
+        (thin / tool).symlink_to(located)
+    bash = shutil.which("bash")
+    assert bash
+
+    def run_bare() -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [bash, str(_HOOK)],
+            cwd=scratch_repo,
+            env={"PATH": str(thin), "HOME": str(scratch_repo)},
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+    # floor holds: the classic text sniff still blocks the tool's own save format
+    _stage(scratch_repo, "sched.json", _SAVED_SCHEDULE)
+    assert run_bare().returncode != 0
+    _run(scratch_repo, "git", "reset")
+    # the container-only case is skipped WITH a warning — never silently
+    _stage(scratch_repo, "legacy.png", _OLE)
+    bare = run_bare()
+    assert bare.returncode == 0  # documented fallback limitation, not an endorsement
+    assert "python3 not found" in bare.stderr
+
+
+def test_the_full_detector_stack_finds_nothing_in_the_repos_own_tree(tmp_path: Path) -> None:
+    """Stage every tracked file outside the intake/allow-prefixes and run the REAL hook: zero hits.
+
+    This is the behavioural companion to the git-grep census above, run through the actual
+    hook so the anchored text rules and container checks are exercised on the repo's real
+    bytes — a guard that fires on the repo's own sources gets switched off within a day.
+
+    Two controls make the green meaningful: a planted schedule canary MUST be the one and only
+    flagged path (an empty sweep with no positive control proves nothing), and the staged-file
+    count must equal the copied population (the 2026-08-13 audit found a sandbox census whose
+    ``git add`` silently skipped gitignored-but-tracked files — a census that cannot see part
+    of its population under-reports by construction).
+
+    ``00_REFERENCE_INTAKE/`` is excluded exactly as the sibling census excludes it:
+    operator-uploaded through the GitHub web UI and covered by ``inherited_from_main``.
+    """
+    skip = ("00_REFERENCE_INTAKE/", *_allow_prefixes())
+    tracked = [p for p in _tracked() if not p.startswith(skip)]
+    assert len(tracked) > 900, f"population implausibly small: {len(tracked)}"
+
+    repo = tmp_path / "census"
+    repo.mkdir()
+    _run(repo, "git", "init", "-q", "-b", "main")
+    _run(repo, "git", "config", "user.email", "t@t")
+    _run(repo, "git", "config", "user.name", "t")
+    for rel in tracked:
+        dst = repo / rel
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        dst.write_bytes((_REPO / rel).read_bytes())
+    canary = "schedule_canary.png"
+    (repo / canary).write_bytes(_MSPDI)
+
+    listing = repo / "population.nul"
+    listing.write_text("\0".join([*tracked, canary]), encoding="utf-8")
+    _run(repo, "git", "add", "-f", "--pathspec-from-file=population.nul", "--pathspec-file-nul")
+    staged = [
+        p
+        for p in _run(repo, "git", "diff", "--cached", "--name-only").stdout.splitlines()
+        if p and p != "population.nul"
+    ]
+    assert len(staged) == len(tracked) + 1, "census population and staged set diverge"
+
+    proc = _run(repo, "bash", str(_HOOK))
+    assert proc.returncode != 0, "the planted canary was not caught — the census is vacuous"
+    flagged = [ln.strip() for ln in proc.stderr.splitlines() if ln.strip().startswith("- ")]
+    assert flagged == [f"- {canary}  (MSPDI XML content under a non-schedule name)"], (
+        f"the hook flagged the repo's own files: {flagged}"
+    )
