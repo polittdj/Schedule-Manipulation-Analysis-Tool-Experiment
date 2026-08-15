@@ -472,6 +472,17 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "count(unstarted tasks where honored stored start != pure logic early start)",
         "Stored-date CPM mandate (ADR-0034); MS Project manual-task semantics.",
     ),
+    "actual_start_driven": _doc(
+        "actual_start_driven",
+        "Scheduled From Recorded Actual Start",
+        "Started activities floored at their recorded actual start: predecessor logic "
+        "alone would schedule them earlier, and the record wins. Execution evidence the "
+        "engine honors — disclosed on its own channel (an INFO finding and the path "
+        "grid's optional column), deliberately never counted among the 'dates not "
+        "supported by logic', because the support here is the record itself.",
+        "count(started tasks whose early start = recorded actual start > pure-logic early start)",
+        "Actual-start scheduling floor (ADR-0391); disclosure wiring (ADR-0407).",
+    ),
     "logic_on_summary_tasks": _doc(
         "logic_on_summary_tasks",
         "Logic on Summary Tasks",

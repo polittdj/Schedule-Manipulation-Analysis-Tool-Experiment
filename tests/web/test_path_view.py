@@ -148,6 +148,50 @@ def test_path_rows_display_stored_dates_for_completed_work(client: TestClient) -
     assert done["percent_complete"] == 100.0  # the hide-100% toggle has data to act on
 
 
+def test_driving_api_reports_actual_start_driven_separately_from_date_driven(
+    client: TestClient,
+) -> None:
+    """ENG-DEAD-01 (ADR-0407): the grid discloses ADR-0391's floor per row, on its OWN key.
+
+    The started task records an actual start a week past its logic date, so the engine
+    floors it there (ADR-0391) and the row says so — while ``date_driven`` stays False on
+    the very same row, because a recorded actual is evidence, not an unsupported date.
+    Keying the row off the wrong tuple flips exactly these asserts."""
+    import json
+
+    payload = {
+        "name": "Floored",
+        "project_start": "2026-01-05T08:00:00",
+        "tasks": [
+            {
+                "unique_id": 1,
+                "name": "Started late",
+                "duration_minutes": 960,
+                "start": "2026-01-12T08:00:00",
+                "finish": "2026-01-13T17:00:00",
+                "actual_start": "2026-01-12T08:00:00",
+            },
+            {"unique_id": 2, "name": "To go", "duration_minutes": 480},
+        ],
+        "relationships": [{"predecessor_id": 1, "successor_id": 2}],
+    }
+    resp = client.post(
+        "/upload", files={"files": ("floored.json", json.dumps(payload), "application/json")}
+    )
+    assert resp.status_code == 200
+    data = client.get("/api/driving/floored?target=2").json()
+    rows = {r["unique_id"]: r for r in data["rows"]}
+    assert rows[1]["actual_start_driven"] is True
+    assert rows[1]["date_driven"] is False  # ADR-0391: separate channels, same row
+    assert rows[2]["actual_start_driven"] is False
+
+
+def test_path_grid_offers_the_actual_start_driven_column(client: TestClient) -> None:
+    """The optional column sits in path.js's FIELDS beside Date-driven, default off."""
+    js = client.get("/static/path.js").text
+    assert '{ key: "actual_start_driven", label: "Actual-start-driven", on: false }' in js
+
+
 def test_ask_with_null_backend_returns_cited_facts(client: TestClient) -> None:
     _upload(client, "Project5")
     res = client.post("/api/ask/Project5", data={"question": "what is the finish forecast?"})

@@ -1,62 +1,63 @@
-# Handoff — 2026-08-15 (c) (TEST-01 closed: 22 chromium build-number pins unpinned, the audit xfail flips, a canary-proved census stands guard; the operator verification ledger lands in OPERATOR-REQUESTS; ADR-0406; v1.0.205 unchanged)
+# Handoff — 2026-08-15 (e) (JCL-BR-01 closed: the branch registers carry through compute_jcl, the last strict xfail flips, the repo is xfail-FREE and the agent queue is EMPTY; ADR-0408; v1.0.207 shipped)
 
-> ## STATUS (current) — ADR-0406 unit complete on `claude/nasa-itar-ai-desktop-launch-scx3gz`.
-> Highest ADR now **0406**. **NO shipped code changed** — tests + docs only: version stays
-> **v1.0.205**, SCHEMA 2.11.0, no wheel/installer rebuild (ADR-0395/0399/0400/0401
-> precedent). `tests/audit` now has **ZERO live xfails** (TEST-01 flipped); the ONE
-> remaining strict xfail repo-wide is **JCL-BR-01** in `tests/web/test_jcl_web.py`.
+> ## STATUS (current) — ADR-0408 unit complete on `claude/nasa-itar-ai-desktop-launch-scx3gz`.
+> Highest ADR now **0408**. **SHIPPED code changed** (`engine/jcl.py`, `web/app.py`,
+> `web/sra.py`) — version **v1.0.206 → v1.0.207**, SCHEMA 2.11.0 unchanged, wheel + nine
+> installers rebuilt (lockstep 64/64). **ZERO xfail markers remain in the whole tree**
+> (grep-proven; the four remaining `xfail(` matches are prose about flipped findings).
+> **The 2026-08-13 audit's agent queue is EMPTY** — every remaining item is operator-owned
+> (see OPERATOR-REQUESTS.md).
 >
-> ## What landed — ADR-0406 (TEST-01 + OR-10's documentation ledger)
-> **(1) TEST-01 closed.** All 22 playwright modules carried the byte-identical pinned line
-> `CHROME = Path(".../chromium-1194/chrome-linux/chrome")` — a container chromium bump
-> would flip every one to a silent skip. Each now resolves the FIRST vendored chromium by
-> sorted glob (r11's discipline, propagated; `_PW_CHROMES`/fallback keeps the
-> module-level skipif semantics — no chromium still means skip, never error). The audit
-> module's own comment was reworded (its `chromium-1194/...` text SELF-MATCHED the scan it
-> documents — the scan reads every test file including itself), and the strict xfail
-> marker is removed: `test_test01_no_test_hardcodes_a_chromium_build_number` now stands as
-> the permanent whole-tree census. **Canary red-proof:** a planted
-> `tests/zz_canary_test01.py` with a pinned path turned the census RED by name; removed,
-> 21/21 green. The 22 modules still collect + playwright-skip exactly as before (measured:
-> 1 passed 5 skipped on the spot-check trio).
-> **(2) OR-10's ledger.** `docs/STATE/OPERATOR-REQUESTS.md` gained the gateway-arc section:
-> OR-07/08/09 recorded verbatim with their shipped ADR/PR/version; OR-10 IN FLIGHT; a
-> **PENDING OPERATOR VERIFICATION** table (V-1 arm-once flow · V-2 Bearer acceptance ·
-> V-3 transaction-log spot-check, each with its concrete how); the **BLOCKED ON OPERATOR**
-> list (DISC-01 · CEI/HMI export · branch/SANDBOX UI cleanup); and the **AGENT QUEUE**
-> with live status. HANDOFF + NEXT-SESSION-PROMPT carry the same queue per-unit.
+> ## What landed — ADR-0408 (JCL-BR-01: the last equivalence gap closes)
+> `compute_jcl` accepted no branch inputs, so the web layer fed the session's
+> probabilistic/conditional branches to the SSI run only — with a branch configured the
+> JCL finish marginal silently left the SSI S-curve (ADR-0401's measured defect), and the
+> SRA Excel export wrote a TWO-STORY workbook (SSI sheets branched, JCL sheets not).
+> Now: **(1)** `compute_jcl` takes `branches=`/`conditionals=` and mirrors the SSI blocks
+> statement-for-statement via the SAME imported private helpers (augment → disjoint draw
+> streams → in-loop fragnet/plan overrides, probe solve included) — same augmentation
+> ORDER (branches first; a combined-register test pins it). **(2)** Both web call sites
+> (`/api/sra/jcl` + the export's JCL sheets) pass the session registers — one workbook,
+> one story. **(3)** Fragnets are COST-INERT by the data (zero budget, never elicited):
+> no multiplier draw, no duration draw, cost CDF + provenance byte-identical to the
+> no-branch run — a branch moves the finish axis only; the JCL panel explainer now names
+> the branch registers in its shared-inputs enumeration and states the zero-budget
+> disclosure. The strict xfail flipped loudly (XPASS) and its marker is REMOVED.
+> **QC-1:** red-first (7 new tests failed by name pre-change); mutation battery **6/6
+> caught by the named test** (PYTHONPATH shadow, import-origin canary, pristine controls
+> both sides, instruments md5-identical); the planned "fragnet consumes a draw" mutant
+> was REPLACED in design (fragnet uids sort last — that mutant cannot fail) by "fragnet
+> fabricates cost", which can. Blast radius: all 8 JCL-consuming test files green
+> (37+31+138); mdash sentinel + audit module checked by name, unaffected.
 >
-> ## Next — in order
-> **Operator: the V-1/V-2/V-3 verification table in OPERATOR-REQUESTS.md** (arm-once on
-> the NASA machine; catalog populating = Bearer accepted; still-401-with-key → capture the
-> AI Hub's documented scheme) → **DISC-01** (operator / authorizing official) →
-> **PO-04/05** (BLOCKED on the CEI/HMI export) → **ENG-DEAD-01** `actual_start_driven`
-> consumed nowhere (agent; SHIPPED-code lockstep when taken — NEXT UP) → **JCL-BR-01**
-> (agent; shipped-code; carry branches through compute_jcl or honest-gate the panel; the
-> last strict xfail flips loudly) → 8 stale remote branches + SMAT-SANDBOX names
-> (operator UI; sessions cannot push ref deletions, ADR-0401).
+> ## Next — in order (ALL remaining items are operator-owned)
+> **The V-1/V-2/V-3 verification table in OPERATOR-REQUESTS.md** (arm-once on the NASA
+> machine; catalog populating = Bearer accepted; still-401-with-key → capture the AI
+> Hub's documented scheme) → **DISC-01** (authorizing official) → **PO-04/05** (BLOCKED
+> on the CEI/HMI export) → 8 stale remote branches + SMAT-SANDBOX names (operator UI;
+> sessions cannot push ref deletions, ADR-0401). Agent work: NONE queued — a new audit
+> sweep or a new operator directive opens the next arc.
 >
 > ## Carried forward
-> ADR-0353..0406 closed — do not re-open. NEW lessons this session: **a census that scans
-> every test file scans ITSELF** — the audit module's own explanatory comment was an
-> offender-in-waiting; write census docs without the matchable literal (r11's no-trailing-
-> slash convention) and canary-prove after flipping; **22 identical pinned lines are one
-> sed and one census** — the fix cost minutes once the population was enumerated exactly
-> (the audit regex, not a loose grep, defines the population). Standing traps unchanged
-> (see the archive — data pins vs guarantees · mutation-green vs adversarial · monkeypatch
-> per CALL SITE · never measure a mutating tree · never mutate a measuring instrument ·
-> two ruffs, use `python -m ruff` · parity >900 s · container starts with NO deps · fetch
-> before numbering and before committing · `wc` decides). QC-1/QC-2 are ADR-0393, pinned
-> by `tests/test_standing_rules.py`.
+> ADR-0353..0408 closed — do not re-open. NEW lessons this session: **a mutant that
+> cannot fail is not a mutant** — check the mutation's reachability before counting it
+> (fragnet uids sort last, so a wasted trailing draw shifts nothing; the battery got a
+> reachable "fabricates cost" mutant instead); **an engine that replicates another
+> engine's discipline extends by IMPORTING its helpers, never by copying them** (the
+> jcl.py import list IS the architecture; the branch fix was ~60 lines because the
+> helpers were already shared). Standing traps unchanged (see the archive — data pins vs
+> guarantees · mutation-green vs adversarial · monkeypatch per CALL SITE · never measure
+> a mutating tree · never mutate a measuring instrument · two ruffs, use `python -m
+> ruff` · parity >900 s · container starts with NO deps · fetch before numbering and
+> before committing · `wc` decides). QC-1/QC-2 are ADR-0393, pinned by
+> `tests/test_standing_rules.py`.
 >
 > ## Gate at close
-> Statics green (`python -m ruff check .` whole tree · format --check · mypy strict 155
-> files · bandit · node per-file). Full suite on the final tree: **4066 passed, 47
-> skipped (env-gated playwright — baseline preserved by the unpinned modules), 1
-> xfailed (JCL-BR-01, the sole strict xfail repo-wide; TEST-01's is GONE), 0 failed,
-> exit 0, 27:49**. Parity: **72 passed, 15 skipped, exit 0, 13:45**. tests/audit
-> standalone: 21 passed, 0 xfailed. No wheel/installer rebuild (no shipped code) —
-> the v1.0.205 artifacts stand.
+> Statics green (`python -m ruff check .` whole tree, 1018 files formatted · mypy strict
+> 155 files · bandit · node per-file). Full suite on the final tree: **4079 passed, 47
+> skipped (env-gated playwright), 0 xfailed — the repo's FIRST zero-xfail run — 0
+> failed, exit 0, 22:28**. Parity: **72 passed, 15 skipped, exit 0, 10:37**. Installer
+> lockstep 64/64 against the v1.0.207 wheel. Drift guards 17/17.
 
 # (prior) handoffs — archived
 

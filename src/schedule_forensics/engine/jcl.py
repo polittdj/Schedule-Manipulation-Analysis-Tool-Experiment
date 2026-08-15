@@ -46,10 +46,17 @@ from schedule_forensics.engine.cpm import compute_cpm, offset_to_datetime
 from schedule_forensics.engine.metrics._common import non_summary
 from schedule_forensics.engine.sra import (
     _DEFAULT_CONFIG,
+    ConditionalBranch,
+    ProbabilisticBranch,
     ScheduleRisk,
     SRAConfig,
+    _augment_with_branches,
+    _augment_with_conditionals,
+    _branch_draws,
     _build_cdf,
     _build_lhs_plan,
+    _conditional_draws,
+    _conditional_trips,
     _finish_of,
     _is_completed,
     _iteration_duration_overrides,
@@ -177,14 +184,20 @@ def compute_jcl(
     config: SRAConfig = _DEFAULT_CONFIG,
     three_point: Mapping[int, tuple[int, int, int]] | None = None,
     risks: Sequence[ScheduleRisk] = (),
+    branches: Sequence[ProbabilisticBranch] = (),
+    conditionals: Sequence[ConditionalBranch] = (),
     jcl: JCLConfig = _DEFAULT_JCL,
 ) -> JCLResult:
     """Run the joint cost-&-schedule Monte-Carlo and return the :class:`JCLResult`.
 
-    The schedule inputs (``config``, ``three_point``, ``risks``) are the SSI model's,
-    unchanged — pass the same values the ``/api/sra/ssi`` run uses and the finish marginal
-    here equals that run exactly. Raises ``ValueError`` when the schedule is not
-    cost-loaded (Law 2: no fabricated cost figures, ever).
+    The schedule inputs (``config``, ``three_point``, ``risks``, ``branches``,
+    ``conditionals``) are the SSI model's, unchanged — pass the same values the
+    ``/api/sra/ssi`` run uses and the finish marginal here equals that run exactly
+    (JCL-BR-01, ADR-0408: the branch registers included). A branch/conditional fragnet is
+    a **zero-budget** leaf — branch cost is never elicited, so it moves the finish
+    dimension only; the cost marginal, the multiplier draw stream and every provenance
+    figure are branch-invariant (test-pinned). Raises ``ValueError`` when the schedule is
+    not cost-loaded (Law 2: no fabricated cost figures, ever).
     """
     if config.iterations < 1:
         raise ValueError("SRAConfig.iterations must be >= 1")
@@ -195,6 +208,14 @@ def compute_jcl(
         )
 
     # ---- the SSI duration dimension, replicated verbatim (equivalence test-pinned) ----
+    # Branch/conditional fragnets are inserted IDENTICALLY to compute_sra_ssi — same
+    # augmentation ORDER (branches first: the fragnet uids must match), same disjoint draw
+    # streams below — so the finish marginal stays byte-identical in every configuration.
+    active_branches = [b for b in branches if b.probability > 0.0]
+    schedule, fragnet_uids = _augment_with_branches(schedule, active_branches)
+    applied_branches = [b for b in active_branches if b.id in fragnet_uids]
+    schedule, cond_plan_uids = _augment_with_conditionals(schedule, conditionals)
+    applied_conditionals = [c for c in conditionals if c.id in cond_plan_uids]
     tasks = sorted(non_summary(schedule), key=lambda t: t.unique_id)
     uids = [t.unique_id for t in tasks]
     uid_set = set(uids)
@@ -232,6 +253,16 @@ def compute_jcl(
     # the Latin Hypercube plan (ADR-0271) — built by the SAME shared helper the SSI engine uses,
     # so the duration draws (and thus the finish marginal) stay byte-identical; None for MC.
     plan = _build_lhs_plan(config, uids, three, prepared)
+
+    # branch firing + fragnet-duration draws (ADR-0273) and conditional chosen-plan
+    # uniforms (ADR-0274) — the same streams as compute_sra_ssi, disjoint from the
+    # duration/risk draws AND from the per-iteration ``rng`` the cost multipliers consume,
+    # so a branch never perturbs the duration or the cost draw sequence.
+    branch_fired, branch_uni = _branch_draws(
+        applied_branches, config.occurrence_mode, config.iterations, config.seed
+    )
+    cond_uni = _conditional_draws(applied_conditionals, config.iterations, config.seed)
+    needs_probe = any(c.metric == "finish" for c in applied_conditionals)
 
     # ---- the cost model's constant parts (ADR-0269) ----
     tau = max(0.0, min(1.0, jcl.td_share))
@@ -286,8 +317,45 @@ def compute_jcl(
         for u, impact in fired_impact.items():
             if u in overrides:
                 overrides[u] = max(0, impact)
+        # probabilistic branches (ADR-0273): a fired iteration toggles the fragnet from its
+        # 0 point-mass to a sampled rework duration — drawn from the disjoint pre-built
+        # stream, never from ``rng`` (statement-for-statement with compute_sra_ssi).
+        for bidx, branch in enumerate(applied_branches):
+            if branch_fired[bidx][i]:
+                dur = _sample_triangular(
+                    branch_uni[bidx][i], float(branch.low), float(branch.ml), float(branch.high)
+                )
+                overrides[fragnet_uids[branch.id]] = max(0, round(dur))
+            # a non-fired branch leaves its fragnet at the 0 point-mass override (no delay)
+        # conditional branches (ADR-0274): the probe solve (only when a finish-metric
+        # conditional exists) reads each monitor's PRE-contingency finish, then each
+        # condition activates exactly one plan's fragnet; the other stays at 0.
+        probe_timings = (
+            compute_cpm(schedule, duration_overrides=overrides).timings if needs_probe else None
+        )
+        for cidx, cond in enumerate(applied_conditionals):
+            if cond.metric == "finish":
+                if probe_timings is None:  # pragma: no cover - finish metric implies needs_probe
+                    raise RuntimeError("probe timings missing for a finish-metric conditional")
+                monitor_value = probe_timings[cond.monitor_uid].early_finish
+            else:  # duration: the monitor's realized sampled duration this iteration
+                monitor_value = overrides.get(cond.monitor_uid, 0)
+            trips = _conditional_trips(monitor_value, cond.threshold_minutes, cond.trip_when)
+            chosen_plan = cond.plan_b if trips else cond.plan_a
+            fa_uid, fb_uid = cond_plan_uids[cond.id]
+            chosen_uid = fb_uid if trips else fa_uid
+            dur = _sample_triangular(
+                cond_uni[cidx][i],
+                float(chosen_plan.low),
+                float(chosen_plan.ml),
+                float(chosen_plan.high),
+            )
+            overrides[chosen_uid] = max(0, round(dur))
+            # the other plan's fragnet stays at its 0 point-mass override (not executed)
         # cost draws come AFTER every duration draw (and consume the same per-iteration
         # stream only when the multipliers are on) — the duration stream is untouched.
+        # Fragnet entries carry zero budget, so they consume NO multiplier draw either:
+        # the cost draw sequence is identical with and without branches (test-pinned).
         cost = completed_total
         for e in entries:
             m = 1.0

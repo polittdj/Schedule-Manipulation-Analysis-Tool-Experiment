@@ -63,6 +63,9 @@ def test_panel_live_with_cost_offers_controls_and_script() -> None:
     assert "/static/sra_jcl.js" in page
     assert "Screening setup" in page  # defaults are honestly labeled
     assert "id=jclSummary" in page and "id=jclCharts" in page
+    # the shared-inputs enumeration includes the branch registers (JCL-BR-01, ADR-0408) and
+    # states the zero-budget fragnet honestly — the "same inputs" claim names ALL of them
+    assert "conditional branches" in page and "carries no budget" in page
 
 
 def test_sra_explainer_now_points_at_the_live_panel() -> None:
@@ -201,22 +204,14 @@ def test_jcl_runs_through_the_real_mspdi_import_path() -> None:
     assert b"JCL - joint cost" in blob
 
 
-# --- the known equivalence break: probabilistic branches (JCL-BR-01) ------------------
+# --- the closed equivalence break: probabilistic branches (JCL-BR-01, ADR-0408) -------
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="JCL-BR-01 (ADR-0401): compute_jcl accepts no branch inputs, so the web layer "
-    "feeds the session's probabilistic/conditional branches to the SSI run only — with a "
-    "branch configured, the JCL finish marginal silently leaves the SSI S-curve (measured "
-    "2026-08-14: SSI percentiles moved, JCL's did not). Carrying the branches into "
-    "compute_jcl (or honestly gating the JCL panel while branches exist) flips this "
-    "loudly; remove the marker in that commit.",
-)
 def test_finish_marginal_still_matches_ssi_with_a_probabilistic_branch() -> None:
     """The ADR-0269 'one story' guarantee, probed in the branch configuration: the same
-    web inputs must drive both engines. Today they do not — this is the recorded defect,
-    not an aspiration (xfail strict per the ADR-0395 pattern)."""
+    web inputs drive both engines. Recorded as a strict-xfail defect under ADR-0401
+    (measured 2026-08-14: SSI percentiles moved, JCL's did not); ADR-0408 carried the
+    session's branch registers into ``compute_jcl`` and the marker flipped loudly."""
     c = _client(costed=True)
     c.post("/sra/factor", data={"uids": "2", "factor": "3"})
     c.post(
@@ -234,3 +229,71 @@ def test_finish_marginal_still_matches_ssi_with_a_probabilistic_branch() -> None
     ssi = c.get("/api/sra/ssi?iterations=150").json()
     jcl = c.get("/api/sra/jcl?iterations=150").json()
     assert [p["date"] for p in jcl["finish_percentiles"]] == [p["date"] for p in ssi["percentiles"]]
+
+
+def test_finish_marginal_still_matches_ssi_with_a_conditional_branch() -> None:
+    """JCL-BR-01's other face (ADR-0408): the conditional register reaches ``compute_jcl``
+    through the same route plumbing, so contingency switching cannot fork the two engines'
+    stories either."""
+    c = _client(costed=True)
+    c.post("/sra/factor", data={"uids": "2", "factor": "3"})
+    c.post(
+        "/sra/conditional",
+        data={
+            "name": "Fallback",
+            "monitor_uid": "2",
+            "metric": "duration",
+            "trip_when": "at_or_above",
+            "threshold": "10",
+            "a_after": "2",
+            "a_before": "4",
+            "a_low": "0",
+            "a_ml": "1",
+            "a_high": "2",
+            "b_after": "3",
+            "b_before": "4",
+            "b_low": "2",
+            "b_ml": "5",
+            "b_high": "9",
+        },
+    )
+    ssi = c.get("/api/sra/ssi?iterations=150").json()
+    jcl = c.get("/api/sra/jcl?iterations=150").json()
+    assert [p["date"] for p in jcl["finish_percentiles"]] == [p["date"] for p in ssi["percentiles"]]
+
+
+def test_export_jcl_sheets_carry_the_session_branches(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The export's SSI run passes the session's branches/conditionals (app.py's export
+    route) — the JCL sheets appended to the SAME workbook must be fed the SAME register
+    (JCL-BR-01's export face: one file, one story). Pinned at the call site with a spy
+    that records the kwargs and calls the real engine through."""
+    import schedule_forensics.web.app as app_mod
+
+    c = _client(costed=True)
+    c.post("/sra/factor", data={"uids": "2", "factor": "3"})
+    c.post(
+        "/sra/branch",
+        data={
+            "name": "Retest",
+            "after_uid": "2",
+            "before_uid": "4",
+            "prob": "50",
+            "low": "3",
+            "ml": "5",
+            "high": "8",
+        },
+    )
+    seen: dict[str, object] = {}
+    real = app_mod.compute_jcl
+
+    def spy(sch: Schedule, **kw: object) -> object:
+        seen.update(kw)
+        return real(sch, **kw)
+
+    monkeypatch.setattr(app_mod, "compute_jcl", spy)
+    blob = _export_blob(c)
+    assert b"JCL - joint cost" in blob  # the sheets rendered from the spied-through run
+    branches = seen.get("branches")
+    assert branches, "the export's compute_jcl call carries no branches — two-story workbook"
+    assert [b.name for b in branches] == ["Retest"]  # type: ignore[union-attr]
+    assert "conditionals" in seen

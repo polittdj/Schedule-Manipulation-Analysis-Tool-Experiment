@@ -14369,3 +14369,57 @@ only — version stays v1.0.205. ADR-0406.
 
 **Next:** ENG-DEAD-01 (agent, next up) → JCL-BR-01 · operator: V-1/V-2/V-3 · DISC-01 ·
 CEI/HMI export · branch/SANDBOX UI cleanup. ADR-0406.
+
+## 2026-08-15 (d) — `claude/nasa-itar-ai-desktop-launch-scx3gz` — ENG-DEAD-01 closed: actual_start_driven wired (ADR-0407; v1.0.206)
+
+`CPMResult.actual_start_driven` (ADR-0391's floored-UID channel) was produced and consumed
+by no product code — the audit's ENG-DEAD-01, re-verified live before acting. Wired into
+the two surfaces its sibling `date_driven` already reaches, honoring the separation at
+both: an **INFO/OPPORTUNITY** finding (`_actual_start_floor_findings`; OPPORTUNITY is
+load-bearing — risks.py builds matrix/ranking/recovery from RISK+CONCERN only, so the
+disclosure never becomes a threat row) and the `/api/driving` per-row flag with path.js's
+optional "Actual-start-driven" column beside Date-driven. help.py documents the metric id
+(dimension → Realism by fallthrough); METRIC-DICTIONARY regenerated. Excel path export
+untouched by symmetry (`_DRIVING_COLUMNS` excludes both flags). **QC-1:** red-first (4 of
+5 new tests failed by name pre-wiring), mutation battery **7/7 caught by the named test**
+(PYTHONPATH shadow, import-origin asserted, controls green before/after, instruments
+md5-identical). Blast radius enumerated BEFORE implementing (frozen payloads
+`#drivingTiersData`/`#dpData` have their own reducers — safe; the r11 `PAGE_SCRIPTS`
+byte-freeze of path.js was the ONE predicted moved pin, re-baselined with the freeze's
+own documented idiom), then measured: 210 passed across every findings consumer.
+v1.0.206, wheel + nine installers (lockstep 64/64). ADR-0407.
+
+**Next:** JCL-BR-01 (agent — the LAST agent-queue item; flips the last strict xfail) ·
+operator: V-1/V-2/V-3 · DISC-01 · CEI/HMI export · branch/SANDBOX UI cleanup. ADR-0407.
+
+## 2026-08-15 (f) — JCL-BR-01 closes: branches carry through compute_jcl; the repo is xfail-FREE; the agent queue is EMPTY (ADR-0408, v1.0.207)
+
+The final agent-queue item. `compute_jcl` accepted no branch inputs, so the web layer fed
+the session's probabilistic/conditional branches to the SSI run only — the JCL finish
+marginal silently left the SSI S-curve with a branch configured (ADR-0401's measured
+defect), and the SRA Excel export wrote a TWO-STORY workbook (its SSI sheets branched,
+its JCL sheets not). Fixed by carry-through, the module's own architecture: jcl.py
+already imports the SSI engine's private helpers, so the branch machinery extends that
+list (`_augment_with_branches`, `_augment_with_conditionals`, `_branch_draws`,
+`_conditional_draws`, `_conditional_trips`) and mirrors the SSI blocks
+statement-for-statement — same augmentation ORDER (branches first; combined-register
+test pins it), same disjoint draw streams (they touch neither the duration nor the
+cost-multiplier draws), probe solve for finish-metric conditionals included. Both web
+call sites (`/api/sra/jcl` + the export) pass the session registers. Fragnets are
+COST-INERT by the data (zero budget — branch cost is never elicited; fabricating a burn
+rate would break Law 2's "never fabricate"): no multiplier draw, no duration draw, cost
+CDF + all five provenance figures byte-identical to the no-branch run — pinned. The JCL
+panel explainer now names the branch registers in its shared-inputs enumeration with the
+zero-budget disclosure (red-first copy pin). The strict xfail flipped loudly
+(XPASS-strict) and its marker is removed: **grep proves ZERO live xfail markers remain
+in the tree**. **QC-1:** 7 new tests red by name pre-change; mutation battery **6/6
+caught by the named test** (shadow sandbox, import-origin canary, pristine controls both
+sides, instruments md5-identical) — the planned "fragnet consumes a draw" mutant was
+replaced at design time (fragnet uids sort LAST; that mutant cannot fail) by "fragnet
+fabricates cost", which can. Blast radius: all 8 JCL-consuming test files green
+(37+31+138); mdash sentinel + audit module checked by name. v1.0.207, wheel + nine
+installers (lockstep 64/64). ADR-0408.
+
+**Next:** the agent queue is EMPTY — remaining items are operator-owned: V-1/V-2/V-3
+(gateway verification on the NASA machine) · DISC-01 · CEI/HMI export · branch/SANDBOX
+UI cleanup. A new audit sweep or operator directive opens the next arc. ADR-0408.

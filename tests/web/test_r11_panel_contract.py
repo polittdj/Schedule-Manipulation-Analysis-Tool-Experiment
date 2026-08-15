@@ -443,7 +443,11 @@ def test_the_embedded_json_payloads_are_byte_frozen(pages: dict[str, str]) -> No
 #: the seven page-owned chart scripts of the four converted routes. Round 11 touched NO JS on
 #: these pages (the only JS edit in the round is panelkit.js, which contains zero axisTitles).
 PAGE_SCRIPTS = {
-    "path.js": "f04f15d478b9f1181e28f963c8181745",
+    # DELIBERATE re-baseline (ADR-0407, ENG-DEAD-01): FIELDS gained exactly one optional
+    # column line — `{ key: "actual_start_driven", label: "Actual-start-driven", on: false }`
+    # beside Date-driven (the pin in test_path_view.py holds the literal). No axis, tick,
+    # bar or column-rendering logic is touched. f04f15d478b9f1181e28f963c8181745 → below.
+    "path.js": "47b5cf0351666a8bae7a61bce7102f99",
     "driving_path.js": "027a0d438a9337e408e7fb1997a24d44",
     # DELIBERATE re-baseline (ADR-0340): the tier table gained its B1 <caption class="ch-atd">
     # via SFGantt.tableCaption. The diff is ONE call plus its comment, inserted between the

@@ -435,6 +435,56 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-15 (e) — a mutant that cannot fail is not a mutant, and shared helpers make parity fixes small
+
+- JCL-BR-01's battery originally planned a "fragnet consumes a cost-multiplier draw"
+  mutant (drop the `ti + td > 0` guard). Working the reachability through BEFORE running
+  it showed the mutant cannot redden the pin: fragnet uids are always assigned ABOVE
+  every existing uid, so a fragnet's wasted draw comes LAST in the iteration and shifts
+  no real task's multiplier — the cost CDF stays equal and the "kill" would have been
+  vacuous. **Check a mutation's reachability the way you check a test's redness: a
+  battery counts kills, and an unkillable mutant inflates the count without proving
+  anything.** The replacement ("fragnet entries fabricate cost" — `budgeted_cost or
+  100.0`) is the actual Law-2 threat and dies by name.
+- The whole engine fix was ~60 lines because `jcl.py`'s import list IS its architecture:
+  it already imported the SSI sampler, occurrence schedule, and LHS plan builders, so
+  carrying branches meant importing five more helpers and mirroring two short blocks —
+  never copying machinery. **When one engine must replicate another's discipline, the
+  extension point is the shared-helper import list; a fix that wants to copy code is a
+  fix aimed at the wrong layer.** (The equivalence pins then compare full CDFs, so any
+  future drift between the mirrored blocks is loud.)
+- The export was the sharpest face of the defect: ONE workbook carried SSI sheets with
+  branches and JCL sheets without — two stories in a single testimony document. **When
+  two engines feed one artifact, pin their input equality at the artifact's call sites**
+  (the kwargs-spy test), not only at the API layer.
+
+### 2026-08-15 (d) — enumerate the freeze surfaces before touching a frozen file, and let the category system do the semantics
+
+- ENG-DEAD-01's blast radius was enumerated BEFORE implementing: the `/driving-path`
+  byte-frozen payloads turned out to have their own reducers (safe), the Excel export's
+  `_DRIVING_COLUMNS` excludes `date_driven` (so symmetry says leave it), and the ONE pin
+  that would move — the r11 `PAGE_SCRIPTS` md5 freeze on path.js — was known in advance,
+  so its red was a predicted re-baseline, not a surprise. **Before editing anything, ask
+  what byte-freezes, censuses, or snapshot pins cover it; a freeze found by the failing
+  gate costs a re-run, a freeze found in recon costs nothing.** The freeze constant
+  carries its own re-baseline idiom (ADR + what moved + old→new digest) — follow it,
+  never bare-swap a hash.
+- The disclosure's Category choice was semantics, not taste: `web/risks.py` builds the
+  matrix, ranking, and recovery plan from RISK+CONCERN only, so OPPORTUNITY/INFO is the
+  one slot where a finding informs without becoming a threat row or a recovery action —
+  exactly ADR-0391's "evidence, not an unsupported date", enforced by rendering
+  structure. **Read how consumers bucket an enum before picking a value; the right
+  constant can carry a design constraint for free — then pin it with a mutation** (M6:
+  category degraded to CONCERN → caught by name).
+- The blast-radius enumeration still missed one guard: a `METRIC_DICTIONARY` entry has
+  THREE censuses (help↔doc sync, emitted-ids coverage, and `test_aft_formula_audit.py`'s
+  every-documented-id-classified-against-the-Bible), and only two were enumerated — the
+  full gate caught the third (`AUDIT and help.py are out of sync`). **When adding a
+  metric id, the Bible-census Row is part of the unit** (NOT_IN_BIBLE + rationale for
+  tool-specific diagnostics, the ADR-0034/0043 idiom). A targeted battery is a designed
+  instrument with a designed blind spot; the whole-tree gate exists precisely for the
+  guard you did not know to name.
+
 ### 2026-08-15 (c) — a whole-tree census scans itself, and an exactly-enumerated population makes a 22-file fix a one-liner
 
 - Flipping TEST-01's xfail nearly failed on the audit module ITSELF: its explanatory

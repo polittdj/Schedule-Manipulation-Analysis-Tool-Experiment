@@ -124,6 +124,9 @@ def _driving_data(
     # timings pack real files' completed work at the project start (wrong bars/dates)
     basis_start, basis_finish = date_basis(sch, cpm)
     date_driven = set(cpm.date_driven)
+    # ADR-0391's OTHER disclosure channel, kept separate by design (ADR-0407): a started
+    # task floored at its recorded actual start is evidence, not an unsupported date.
+    actual_start_driven = set(cpm.actual_start_driven)
 
     def day(ordinal: int | None) -> str | None:
         if ordinal is None:
@@ -202,6 +205,7 @@ def _driving_data(
                 "complete": task.is_complete or task.actual_finish is not None,
                 "is_milestone": task.is_milestone,
                 "date_driven": uid in date_driven,
+                "actual_start_driven": uid in actual_start_driven,
                 "drag_days": drag_by_uid.get(uid),
                 "resource_names": ", ".join(task.resource_names),
                 # immediate logic successors within this trace (uid, type, lag, on_path) — the
