@@ -37,7 +37,10 @@ from schedule_forensics.model.task import Task
 from schedule_forensics.web.app import SessionState, create_app
 
 GOLDEN = Path(__file__).resolve().parents[1] / "fixtures" / "golden" / "project2_5"
-CHROME = Path("/opt/pw-browsers/chromium-1194/chrome-linux/chrome")
+# build-agnostic (TEST-01, ADR-0406): the FIRST vendored chromium, whatever build the
+# container ships — a chromium bump must never silently skip this module again
+_PW_CHROMES = sorted(Path("/opt/pw-browsers").glob("chromium*/chrome-linux/chrome"))
+CHROME = _PW_CHROMES[0] if _PW_CHROMES else Path("/opt/pw-browsers/absent/chrome")
 THEMES = ("console", "daylight", "apollo", "jarvis")
 DAY = 480
 

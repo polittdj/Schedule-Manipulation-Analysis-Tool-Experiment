@@ -1,75 +1,62 @@
-# Handoff — 2026-08-15 (b) (the final report stops overclaiming: conditional locality, tempered parity, M15 contradiction resolved, JCL EAC gloss transcribes the engine; ADR-0405; v1.0.205)
+# Handoff — 2026-08-15 (c) (TEST-01 closed: 22 chromium build-number pins unpinned, the audit xfail flips, a canary-proved census stands guard; the operator verification ledger lands in OPERATOR-REQUESTS; ADR-0406; v1.0.205 unchanged)
 
-> ## STATUS (current) — ADR-0405 unit complete on `claude/nasa-itar-ai-desktop-launch-scx3gz`
-> (restarted from `main` **8a794a0** = #592's squash after its merge). Highest ADR now
-> **0405**. **SHIPPED code changed** (`help.py` ships in the wheel) — version **v1.0.205**,
-> SCHEMA 2.11.0 unchanged, wheel + nine installers rebuilt (lockstep 64/64). xfails
-> unchanged: TEST-01 + JCL-BR-01.
+> ## STATUS (current) — ADR-0406 unit complete on `claude/nasa-itar-ai-desktop-launch-scx3gz`.
+> Highest ADR now **0406**. **NO shipped code changed** — tests + docs only: version stays
+> **v1.0.205**, SCHEMA 2.11.0, no wheel/installer rebuild (ADR-0395/0399/0400/0401
+> precedent). `tests/audit` now has **ZERO live xfails** (TEST-01 flipped); the ONE
+> remaining strict xfail repo-wide is **JCL-BR-01** in `tests/web/test_jcl_web.py`.
 >
-> ## What landed — ADR-0405 (DOC-01 + ADR-0401's two JCL docs follow-ups, one small unit)
-> **(1) `docs/FINAL-REPORT.md` stops overclaiming.** §6.G's absolute "No data off-machine"
-> became conditionally FALSE the moment ADR-0402 shipped — it now states the guarantee the
-> way `_observed_banner` states it: compute/serving/parsing local-offline unconditionally;
-> the ONE sanctioned exception is AI prompt egress through the operator-armed approved
-> gateway (allowlist-pinned, acknowledgment-gated, bannered, transaction-logged). The stale
-> "`.gitignore` blocks all schedule formats" is replaced with the pre-commit-guard truth
-> (ADR-0152/0347/0399). §6.B's evidence names the tempering ("exact or with documented,
-> gate-locked residuals" — PARITY-REPORT is the row-by-row truth); §6.F describes the
-> current backend surface (cloud option removed; gateway sole non-local path, never a
-> fallback); §7's 645-tests/32-ADRs counts are labeled as the original closeout's with a
-> pointer to the live Gate-at-close. **The M15 contradiction is resolved delivered-ward**
-> (header + §6.A row + ADR-0030 all said delivered while the DoD still said "◻ BLOCKED") —
-> and the test that PINNED the contradiction (`assert "BLOCKED" in report`,
-> test_docs.py — the ADR-0385 stale-guard class, again) is repointed to hold the
-> RESOLUTION (`"BLOCKED" not in report` + `"ADR-0030" in report`), plus a NEW guard pinning
-> the conditionality itself ("Conditional since ADR-0402" + `_observed_banner` + the
-> transaction log + "gate-locked residuals" must stay).
-> **(2) `web/help.py`'s JCL `eac` gloss transcribes the engine** (jcl.py:255-258/266/297
-> read and cited, not inherited): the (1-tau)/tau split over rem = budget x (1-%complete)
-> — the old gloss scaled the WHOLE remaining budget by the duration ratio, coinciding with
-> the engine only at the tau=1 default — and AC + (BAC - EV) now carries its clean-EVM
-> precondition (recorded actuals; EV = sum(budget x %complete); the engine's
-> budgeted-cost fallback breaks the identity otherwise). METRIC-DICTIONARY regenerated
-> (sync test green).
-> **Verification:** stash/restore red-proof — the repointed + new doc guards ran 2 FAILED
-> by name against the pre-edit report, 10/10 green after; the gloss's oracle is the engine
-> source itself (QC-2 provenance).
+> ## What landed — ADR-0406 (TEST-01 + OR-10's documentation ledger)
+> **(1) TEST-01 closed.** All 22 playwright modules carried the byte-identical pinned line
+> `CHROME = Path(".../chromium-1194/chrome-linux/chrome")` — a container chromium bump
+> would flip every one to a silent skip. Each now resolves the FIRST vendored chromium by
+> sorted glob (r11's discipline, propagated; `_PW_CHROMES`/fallback keeps the
+> module-level skipif semantics — no chromium still means skip, never error). The audit
+> module's own comment was reworded (its `chromium-1194/...` text SELF-MATCHED the scan it
+> documents — the scan reads every test file including itself), and the strict xfail
+> marker is removed: `test_test01_no_test_hardcodes_a_chromium_build_number` now stands as
+> the permanent whole-tree census. **Canary red-proof:** a planted
+> `tests/zz_canary_test01.py` with a pinned path turned the census RED by name; removed,
+> 21/21 green. The 22 modules still collect + playwright-skip exactly as before (measured:
+> 1 passed 5 skipped on the spot-check trio).
+> **(2) OR-10's ledger.** `docs/STATE/OPERATOR-REQUESTS.md` gained the gateway-arc section:
+> OR-07/08/09 recorded verbatim with their shipped ADR/PR/version; OR-10 IN FLIGHT; a
+> **PENDING OPERATOR VERIFICATION** table (V-1 arm-once flow · V-2 Bearer acceptance ·
+> V-3 transaction-log spot-check, each with its concrete how); the **BLOCKED ON OPERATOR**
+> list (DISC-01 · CEI/HMI export · branch/SANDBOX UI cleanup); and the **AGENT QUEUE**
+> with live status. HANDOFF + NEXT-SESSION-PROMPT carry the same queue per-unit.
 >
 > ## Next — in order
-> **Operator: verify v1.0.205 (or later) on the NASA machine — arm once, confirm a plain
-> double-click launch comes up armed with the catalog populated** (still 401 WITH the key
-> → capture the AI Hub's documented auth scheme; a follow-on ADR adds it on evidence) →
-> **DISC-01 release determination** (operator / authorizing official) → **PO-04/05**
-> (BLOCKED on an operator-delivered CEI/HMI reference export) → **TEST-01** chromium
-> build-number pins (22 modules; agent-doable, tests-only, NEXT UP) →
-> `actual_start_driven` consumed nowhere (ENG-DEAD-01; shipped-code lockstep) →
-> **JCL-BR-01** (shipped-code; carry branches through compute_jcl or honest-gate the
-> panel; the strict xfail flips loudly) → 8 stale remote branches (DoD 091; ref-deletion
-> pushes 403 from sessions — operator UI) → SMAT-SANDBOX branch-name cleanup (operator UI).
+> **Operator: the V-1/V-2/V-3 verification table in OPERATOR-REQUESTS.md** (arm-once on
+> the NASA machine; catalog populating = Bearer accepted; still-401-with-key → capture the
+> AI Hub's documented scheme) → **DISC-01** (operator / authorizing official) →
+> **PO-04/05** (BLOCKED on the CEI/HMI export) → **ENG-DEAD-01** `actual_start_driven`
+> consumed nowhere (agent; SHIPPED-code lockstep when taken — NEXT UP) → **JCL-BR-01**
+> (agent; shipped-code; carry branches through compute_jcl or honest-gate the panel; the
+> last strict xfail flips loudly) → 8 stale remote branches + SMAT-SANDBOX names
+> (operator UI; sessions cannot push ref deletions, ADR-0401).
 >
 > ## Carried forward
-> ADR-0353..0405 closed — do not re-open. NEW lessons this session: **a narrative doc's
-> hard count is a claim that rots — label it as of-its-date and point at the live ledger**
-> (645/32 sat as "current" for six weeks of 4,000/400 reality); **a guard can pin a
-> contradiction as easily as a truth** — test_docs.py asserted "BLOCKED" while the same
-> file's header said delivered (second paid instance of the ADR-0385 class; when a doc
-> contradicts itself, check whether a test is HOLDING the contradiction); **transcribe
-> formulas from the engine, cite the lines** (the eac gloss drifted exactly where prose
-> was written from memory instead of code). Standing traps unchanged (see the archive —
-> data pins vs guarantees · mutation-green vs adversarial · monkeypatch per CALL SITE ·
-> never measure a mutating tree · never mutate a measuring instrument · two ruffs, use
-> `python -m ruff` · parity >900 s · container starts with NO deps · fetch before
-> numbering and before committing · `wc` decides). QC-1/QC-2 are ADR-0393, pinned by
-> `tests/test_standing_rules.py`.
+> ADR-0353..0406 closed — do not re-open. NEW lessons this session: **a census that scans
+> every test file scans ITSELF** — the audit module's own explanatory comment was an
+> offender-in-waiting; write census docs without the matchable literal (r11's no-trailing-
+> slash convention) and canary-prove after flipping; **22 identical pinned lines are one
+> sed and one census** — the fix cost minutes once the population was enumerated exactly
+> (the audit regex, not a loose grep, defines the population). Standing traps unchanged
+> (see the archive — data pins vs guarantees · mutation-green vs adversarial · monkeypatch
+> per CALL SITE · never measure a mutating tree · never mutate a measuring instrument ·
+> two ruffs, use `python -m ruff` · parity >900 s · container starts with NO deps · fetch
+> before numbering and before committing · `wc` decides). QC-1/QC-2 are ADR-0393, pinned
+> by `tests/test_standing_rules.py`.
 >
 > ## Gate at close
-> Statics green: `python -m ruff check .` (All checks passed) / `python -m ruff format
-> --check .` (1,013 files) / `python -m mypy src/` (155 files, no issues) / bandit exit 0 /
-> node --check per file, 0 fails. **Full suite on the FINAL tree: 4065 passed, 47 skipped,
-> 2 xfailed (TEST-01 + JCL-BR-01), 0 failed, exit 0, 28:46** — 4065 = the (a) close's 4064
-> + the new FINAL-REPORT conditionality guard. **Parity gate: 72 passed, 15 skipped
-> (env-gated), exit 0, 13:45.** Installer lockstep 64/64 against the final v1.0.205 wheel.
-> Drift guards green.
+> Statics green (`python -m ruff check .` whole tree · format --check · mypy strict 155
+> files · bandit · node per-file). Full suite on the final tree: **4066 passed, 47
+> skipped (env-gated playwright — baseline preserved by the unpinned modules), 1
+> xfailed (JCL-BR-01, the sole strict xfail repo-wide; TEST-01's is GONE), 0 failed,
+> exit 0, 27:49**. Parity: **72 passed, 15 skipped, exit 0, 13:45**. tests/audit
+> standalone: 21 passed, 0 xfailed. No wheel/installer rebuild (no shipped code) —
+> the v1.0.205 artifacts stand.
 
 # (prior) handoffs — archived
 

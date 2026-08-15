@@ -14351,3 +14351,21 @@ after). v1.0.205 (help.py ships), wheel + nine installers (lockstep 64/64). ADR-
 **Next:** TEST-01 (agent, tests-only, next up) → ENG-DEAD-01 → JCL-BR-01 · operator:
 v1.0.205 arm-once verification · DISC-01 · CEI/HMI export · branch/SANDBOX UI cleanup.
 ADR-0405.
+
+## 2026-08-15 (c) — `claude/nasa-itar-ai-desktop-launch-scx3gz` — TEST-01 closed; the operator verification ledger (ADR-0406; v1.0.205 unchanged)
+
+All 22 playwright modules carried the identical pinned
+`CHROME = Path(".../chromium-1194/chrome-linux/chrome")` — a container chromium bump
+would silently skip the whole browser suite. Each now resolves the first vendored
+chromium by sorted glob (r11's discipline propagated; skipif semantics preserved). The
+audit module's own comment was reworded — its `chromium-1194/...` text SELF-MATCHED the
+census it documents (the scan reads every test file, including itself) — and the strict
+xfail is removed: the scan stands as the permanent whole-tree census, canary red-proved
+(planted pinned path → RED by name → removed → 21/21). tests/audit is now xfail-FREE;
+JCL-BR-01 is the one strict xfail repo-wide. OR-10's ledger landed in
+OPERATOR-REQUESTS.md: OR-07/08/09 recorded shipped, the V-1/V-2/V-3 pending-operator-
+verification table, the blocked-on-operator list, and the live agent queue. Tests + docs
+only — version stays v1.0.205. ADR-0406.
+
+**Next:** ENG-DEAD-01 (agent, next up) → JCL-BR-01 · operator: V-1/V-2/V-3 · DISC-01 ·
+CEI/HMI export · branch/SANDBOX UI cleanup. ADR-0406.

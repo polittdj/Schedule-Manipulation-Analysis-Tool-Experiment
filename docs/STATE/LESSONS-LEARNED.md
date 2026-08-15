@@ -435,6 +435,22 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-15 (c) — a whole-tree census scans itself, and an exactly-enumerated population makes a 22-file fix a one-liner
+
+- Flipping TEST-01's xfail nearly failed on the audit module ITSELF: its explanatory
+  comment contained `chromium-1194/...`, which matches the very scan it documents (the
+  census rglobs every test file, its own included). r11 had already solved this — document
+  the build number WITHOUT the trailing slash the regex needs. **When a census scans a
+  population that includes its own module, write its prose so it cannot self-match, and
+  canary-prove the flip.**
+- The fix for 22 modules was one exact string replacement + one canary, because the
+  population was enumerated with the audit's OWN regex first (23 matches minus the
+  self-match), not a loose grep (24 matches). **The scan's regex defines the population;
+  enumerate with it before designing the fix.**
+- The applier asserted its old-strings verbatim and refused to run blind — cheap
+  insurance that the tree hadn't drifted between recon (done read-only during a running
+  gate) and application (after it).
+
 ### 2026-08-15 (b) — a guard can pin a contradiction, and a hard count in prose is a claim with a half-life
 
 - `docs/FINAL-REPORT.md` said M15 was delivered in its header and "◻ BLOCKED" in its
