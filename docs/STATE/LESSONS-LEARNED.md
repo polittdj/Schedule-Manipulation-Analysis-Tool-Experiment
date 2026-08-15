@@ -435,6 +435,33 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-15 (d) — enumerate the freeze surfaces before touching a frozen file, and let the category system do the semantics
+
+- ENG-DEAD-01's blast radius was enumerated BEFORE implementing: the `/driving-path`
+  byte-frozen payloads turned out to have their own reducers (safe), the Excel export's
+  `_DRIVING_COLUMNS` excludes `date_driven` (so symmetry says leave it), and the ONE pin
+  that would move — the r11 `PAGE_SCRIPTS` md5 freeze on path.js — was known in advance,
+  so its red was a predicted re-baseline, not a surprise. **Before editing anything, ask
+  what byte-freezes, censuses, or snapshot pins cover it; a freeze found by the failing
+  gate costs a re-run, a freeze found in recon costs nothing.** The freeze constant
+  carries its own re-baseline idiom (ADR + what moved + old→new digest) — follow it,
+  never bare-swap a hash.
+- The disclosure's Category choice was semantics, not taste: `web/risks.py` builds the
+  matrix, ranking, and recovery plan from RISK+CONCERN only, so OPPORTUNITY/INFO is the
+  one slot where a finding informs without becoming a threat row or a recovery action —
+  exactly ADR-0391's "evidence, not an unsupported date", enforced by rendering
+  structure. **Read how consumers bucket an enum before picking a value; the right
+  constant can carry a design constraint for free — then pin it with a mutation** (M6:
+  category degraded to CONCERN → caught by name).
+- The blast-radius enumeration still missed one guard: a `METRIC_DICTIONARY` entry has
+  THREE censuses (help↔doc sync, emitted-ids coverage, and `test_aft_formula_audit.py`'s
+  every-documented-id-classified-against-the-Bible), and only two were enumerated — the
+  full gate caught the third (`AUDIT and help.py are out of sync`). **When adding a
+  metric id, the Bible-census Row is part of the unit** (NOT_IN_BIBLE + rationale for
+  tool-specific diagnostics, the ADR-0034/0043 idiom). A targeted battery is a designed
+  instrument with a designed blind spot; the whole-tree gate exists precisely for the
+  guard you did not know to name.
+
 ### 2026-08-15 (c) — a whole-tree census scans itself, and an exactly-enumerated population makes a 22-file fix a one-liner
 
 - Flipping TEST-01's xfail nearly failed on the audit module ITSELF: its explanatory

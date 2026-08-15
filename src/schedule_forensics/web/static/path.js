@@ -28,6 +28,7 @@
     { key: "total_float_days", label: "TF (d)", on: false },
     { key: "percent_complete", label: "%", on: true },
     { key: "date_driven", label: "Date-driven", on: false },
+    { key: "actual_start_driven", label: "Actual-start-driven", on: false },
     { key: "resource_names", label: "Resources", on: false },
     { key: "drives", label: "Drives →", on: false },
   ];

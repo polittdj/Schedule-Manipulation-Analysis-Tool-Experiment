@@ -190,6 +190,7 @@ def recommend(
         )
     )
     findings.extend(_logic_support_findings(current, cpm_cur))
+    findings.extend(_actual_start_floor_findings(current, cpm_cur))
     findings.extend(_summary_logic_findings(current))
     findings.extend(
         _compliance_findings(current, cpm_cur, precomputed_compliance=precomputed_compliance)
@@ -348,6 +349,47 @@ def _logic_support_findings(schedule: Schedule, cpm_cur: CPMResult) -> list[Find
             "logic (or confirm the manual dates are deliberate); dates that logic cannot "
             "reproduce cannot be trusted to move correctly when the plan changes.",
             citations=_cite(schedule, cpm_cur.date_driven),
+        )
+    ]
+
+
+def _actual_start_floor_findings(schedule: Schedule, cpm_cur: CPMResult) -> list[Finding]:
+    """The ADR-0391 disclosure: activities scheduled from their recorded actual start.
+
+    The CPM floors a started task at its recorded ``actual_start`` when predecessor logic
+    alone would have scheduled it earlier — the record wins (ADR-0391). That is evidence
+    of what happened, NOT a "date not supported by logic": merging it into that CONCERN
+    would smear a false manipulation signal across every progressed schedule, so it is
+    disclosed on its own metric id as INFO/OPPORTUNITY — cited provenance transparency
+    that stays out of the risk matrix, the ranking, and the recovery plan (those take
+    RISK + CONCERN only). ENG-DEAD-01 / ADR-0407 wired this; the channel existed unread.
+    """
+    if not cpm_cur.actual_start_driven:
+        return []
+    n = len(cpm_cur.actual_start_driven)
+    title = (
+        f"{n} activities are scheduled from their recorded actual starts"
+        if n != 1
+        else "1 activity is scheduled from its recorded actual start"
+    )
+    return [
+        Finding(
+            category=Category.OPPORTUNITY,
+            severity=Severity.INFO,
+            metric_id="actual_start_driven",
+            title=title,
+            detail=(
+                "The critical-path pass floored these started activities at their recorded "
+                "actual start: predecessor logic alone would have scheduled them earlier, "
+                "and the record wins. This is execution evidence the engine honors — it is "
+                "deliberately never counted among the 'dates not supported by logic', "
+                "because the support here is the record itself."
+            ),
+            course_of_action="Read these positions as recorded execution, not plan intent: "
+            "verify the actual-start record against source documentation if a position "
+            "looks wrong, and leave them out of network-logic scrutiny — re-tying logic "
+            "cannot and should not move a date that already happened.",
+            citations=_cite(schedule, cpm_cur.actual_start_driven),
         )
     ]
 

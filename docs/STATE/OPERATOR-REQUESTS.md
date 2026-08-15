@@ -238,11 +238,12 @@ carry the same queue with per-unit rotation.
 
 ### 🤖 AGENT QUEUE (no operator input needed; worked in this order)
 
-1. ~~DOC-01 FINAL-REPORT overclaims + JCL docs follow-ups~~ — `SHIPPED (ADR-0405, PR #593)`.
-2. **TEST-01** chromium build-number unpinning (22 modules; audit xfail flips) — `IN FLIGHT (this unit)`.
-3. **ENG-DEAD-01** — `actual_start_driven` computed but consumed nowhere; wire the promised disclosure.
+1. ~~DOC-01 FINAL-REPORT overclaims + JCL docs follow-ups~~ — `SHIPPED (ADR-0405, PR #593 MERGED, v1.0.205)`.
+2. ~~TEST-01 chromium build-number unpinning (22 modules; audit xfail flipped)~~ — `SHIPPED (ADR-0406, PR #593 MERGED)`.
+3. ~~ENG-DEAD-01 `actual_start_driven` disclosure wiring (INFO finding + grid column + dictionary)~~ —
+   `SHIPPED (ADR-0407, v1.0.206; its own draft PR — #593 merged before this unit pushed)`.
 4. **JCL-BR-01** — session branches feed SSI but not `compute_jcl`; carry them through (or honest-gate
-   the panel) and flip its strict xfail.
+   the panel) and flip its strict xfail — `NEXT UP (the LAST agent-queue item)`.
 
 ## How to work this queue
 

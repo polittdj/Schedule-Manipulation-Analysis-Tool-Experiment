@@ -14369,3 +14369,25 @@ only — version stays v1.0.205. ADR-0406.
 
 **Next:** ENG-DEAD-01 (agent, next up) → JCL-BR-01 · operator: V-1/V-2/V-3 · DISC-01 ·
 CEI/HMI export · branch/SANDBOX UI cleanup. ADR-0406.
+
+## 2026-08-15 (d) — `claude/nasa-itar-ai-desktop-launch-scx3gz` — ENG-DEAD-01 closed: actual_start_driven wired (ADR-0407; v1.0.206)
+
+`CPMResult.actual_start_driven` (ADR-0391's floored-UID channel) was produced and consumed
+by no product code — the audit's ENG-DEAD-01, re-verified live before acting. Wired into
+the two surfaces its sibling `date_driven` already reaches, honoring the separation at
+both: an **INFO/OPPORTUNITY** finding (`_actual_start_floor_findings`; OPPORTUNITY is
+load-bearing — risks.py builds matrix/ranking/recovery from RISK+CONCERN only, so the
+disclosure never becomes a threat row) and the `/api/driving` per-row flag with path.js's
+optional "Actual-start-driven" column beside Date-driven. help.py documents the metric id
+(dimension → Realism by fallthrough); METRIC-DICTIONARY regenerated. Excel path export
+untouched by symmetry (`_DRIVING_COLUMNS` excludes both flags). **QC-1:** red-first (4 of
+5 new tests failed by name pre-wiring), mutation battery **7/7 caught by the named test**
+(PYTHONPATH shadow, import-origin asserted, controls green before/after, instruments
+md5-identical). Blast radius enumerated BEFORE implementing (frozen payloads
+`#drivingTiersData`/`#dpData` have their own reducers — safe; the r11 `PAGE_SCRIPTS`
+byte-freeze of path.js was the ONE predicted moved pin, re-baselined with the freeze's
+own documented idiom), then measured: 210 passed across every findings consumer.
+v1.0.206, wheel + nine installers (lockstep 64/64). ADR-0407.
+
+**Next:** JCL-BR-01 (agent — the LAST agent-queue item; flips the last strict xfail) ·
+operator: V-1/V-2/V-3 · DISC-01 · CEI/HMI export · branch/SANDBOX UI cleanup. ADR-0407.

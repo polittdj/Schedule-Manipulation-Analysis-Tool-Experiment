@@ -292,6 +292,13 @@ AUDIT: tuple[Row, ...] = (
         "Tool-specific summary-logic diagnostic (ADR-0043); no Bible counterpart.",
     ),
     Row(
+        "actual_start_driven",
+        "",
+        "",
+        NOT_IN_BIBLE,
+        "Tool-specific actual-start-floor disclosure (ADR-0391/0407); no Bible counterpart.",
+    ),
+    Row(
         "forecast_to_be_started",
         "Forecast to be Started",
         "Sum(1*(BaselineStart< ProjectTimeNow))",
