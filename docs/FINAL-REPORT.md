@@ -25,7 +25,7 @@ green; the tool runs from a desktop icon, fully offline.
 | Requirement | Evidence |
 |---|---|
 | Parse ≤10 native `.mpp` at once, no conversion, all metadata | `importers/{mspdi,xer,mpp_mpxj,loader}.py`; Project2/5 → 144 activities UID 2–145; `tests/importers/*` |
-| Exact match to Acumen Fuse v8.11.0 **and** SSI; parity suite = gate | `tests/parity/test_parity_gate.py` (`pytest -m parity`, CI step); `docs/PARITY-REPORT.md` — SSI **108/108** (focus UID 145; refreshed to the current golden per ADR-0115 / AUDIT-2026-07-13), Acumen §A/§B/§C/§E all reproduced exact; residuals documented + locked |
+| Exact match to Acumen Fuse v8.11.0 **and** SSI; parity suite = gate | `tests/parity/test_parity_gate.py` (`pytest -m parity`, CI step); `docs/PARITY-REPORT.md` is the row-by-row truth — SSI **108/108** (focus UID 145; refreshed to the current golden per ADR-0115 / AUDIT-2026-07-13), Acumen §A/§B/§C/§E reproduced **exact or with documented, gate-locked residuals** (no blanket "exact": each residual is named, explained, and pinned in the parity report) |
 | Cross-version matching by UniqueID only | `engine/diff.py`, `model/schedule.py` (UID-keyed); `tests/engine/test_diff.py` |
 
 ## §6.C — CPM, driving slack & path tracing (SSI parity)
@@ -52,19 +52,21 @@ green; the tool runs from a desktop icon, fully offline.
 |---|---|
 | Ollama default local model | `ai/{ollama,backend}.py`; `AIConfig` default = local Ollama; `tests/ai/test_backends.py` |
 | Download + switch models in-app (list/pull/select) | `ai/ollama.py` + `web` `/settings` panel |
-| Sensible default; no cloud by default; fail closed | `ai/backend.py` `route_backend` — CLASSIFIED refuses cloud; cloud only on explicit UNCLASSIFIED + persistent banner |
+| Sensible default; no cloud by default; fail closed | `ai/backend.py` `route_backend` — local-only by default, fails closed to the deterministic Null backend; the generic cloud option was removed as a dead trap (ADR-0402). The **sole** non-local path is the operator-armed **approved AI gateway** (ADR-0402–0404): exact-allowlisted endpoint (`net_guard.APPROVED_GATEWAY_ENDPOINTS`), recorded approval acknowledgment, Bearer credential, persistent warning banner, and a per-transmission AI transaction log — never a fallback, never auto-selected |
 
 ## §6.G — Data locality (CUI)
 | Requirement | Evidence |
 |---|---|
-| No data off-machine; all compute local/offline | `net_guard.py` egress guard (`tests/guards/test_egress.py`, 22/22); air-gap test; loopback-only server + AI; stdlib-only AI transport; `.gitignore` blocks all schedule formats |
+| No data off-machine; all compute local/offline | **Conditional since ADR-0402, exactly as the on-page banner states it** (`_observed_banner`, ADR-0396): every computation, the server, and all schedule parsing are local/offline unconditionally (`net_guard.py` egress guard, `tests/guards/test_egress.py`; air-gap test; loopback-only server; stdlib-only AI transport) — and the **one** sanctioned exception is AI prompt egress through the operator-armed approved gateway, which is allowlist-pinned, acknowledgment-gated, bannered on every page, and recorded per-transmission in the AI transaction log (ADR-0402–0404). Repo hygiene: the pre-commit guard (extension + content-sniff + container detectors, ADR-0347/0399) blocks new or modified schedule binaries outside the committed non-CUI intake and fixture allowlists (ADR-0152); real CUI schedules exist only in the deployed tool |
 
 ## §3 — Units & formatting
 Durations in `day`/`days`; signed percents; minutes→days deterministic rounding (`model/units.py`,
 `tests/test_units.py`).
 
 ## §7 — QC/PM regime
-TDD + pytest (**645 passed, 3 skipped**); coverage gates **engine ≥85% (≈98%), overall ≥70% (≈98%)**;
+TDD + pytest (**645 passed, 3 skipped at this original closeout** — the suite has since grown past
+4,000 tests; `docs/STATE/HANDOFF.md`'s Gate-at-close section carries the live figures); coverage
+gates **engine ≥85% (≈98%), overall ≥70% (≈98%)**;
 `ruff` + `mypy --strict` + `bandit` + `pip-audit` + the **parity gate** + the **egress/air-gap guards**,
 wired into CI on `main` push + every PR (Python 3.11 + 3.13); Conventional Commits on feature branches
 with PRs (#55–#80 merged to `main`: build, two audit remediations, no-admin Java discovery, data-date
@@ -72,10 +74,10 @@ compare ordering, the multi-version trend/briefing/Gantt suite, real-world `.mpp
 the Bow Wave/CEI view, the target-UID/theme/20-file features, the calendar-true day math /
 CP_Units / AI-figure-gate close-out, MSPDI/XER project-calendar parsing, the XER cost roll-up,
 the M15 .pbix enrichment, the Path Analysis workspace + grounded ask-the-AI, and the day-granular
-driving tiers + load-liveness fixes); 32 ADRs
-(`docs/adr/`, incl. ADR-0024/0026 audit remediations, ADR-0025 multi-version analysis suite,
-ADR-0027 deferred-item close-out, ADR-0028 calendar parsing, ADR-0029 XER costs, ADR-0030 M15,
-ADR-0031 path analysis + grounded Q&A, and ADR-0032 day-granular tiering), a risk register
+driving tiers + load-liveness fixes); 32 ADRs at this closeout — the register has since grown past
+400, `docs/adr/` is the ledger — (incl. ADR-0024/0026 audit remediations, ADR-0025 multi-version
+analysis suite, ADR-0027 deferred-item close-out, ADR-0028 calendar parsing, ADR-0029 XER costs,
+ADR-0030 M15, ADR-0031 path analysis + grounded Q&A, and ADR-0032 day-granular tiering), a risk register
 (`docs/risks.md`), durable state (`docs/STATE/`), and CUI-redacted logging (`logging_redaction.py`).
 
 ## Post-build enhancements (operator-driven, merged)
@@ -107,11 +109,14 @@ ADR-0031 path analysis + grounded Q&A, and ADR-0032 day-granular tiering), a ris
   (`hide_input_in_errors`, broader log redaction), faithful `Save .json` round-trip.
 
 ## Definition of Done (§8)
-- Every §6 RTM row `Implemented + Tested + Validated` — **except §6.A `.pbix` enrichment (M15)**, ◻ BLOCKED
-  on the operator's `.pbix` deposit (the single pending input).
+- Every §6 RTM row `Implemented + Tested + Validated` — **including §6.A `.pbix` enrichment (M15)**,
+  delivered once the operator deposited `NSATDeploymentRevisionAlpha.pbix` (ADR-0030; see the §6.A row
+  and the header above — an earlier revision of this section still listed M15 as blocked, a
+  contradiction this report carried for months while its own header said otherwise).
 - Parity suite matches Acumen Fuse v8.11.0 + SSI (deltas = 0, or documented + driven to zero + gate-locked).
 - CI green; desktop launcher starts the local web UI; docs complete (this report, the user guide, the
   metric dictionary, the parity report); draft PR presented, not merged.
 
-**When the `.pbix` is deposited, M15 folds its extra metrics/visuals into the dashboard and the last RTM
-row closes.** Everything else is complete, validated, and runnable offline today.
+**M15's `.pbix` metrics/visuals are folded into the dashboard and every RTM row is closed.** The tool is
+complete, validated, and runnable offline today — with AI egress possible only through the
+operator-armed approved gateway described in §6.F/§6.G.

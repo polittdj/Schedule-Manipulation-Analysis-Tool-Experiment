@@ -29,7 +29,24 @@ def test_final_report_maps_every_requirement_group() -> None:
     report = (DOCS / "FINAL-REPORT.md").read_text()
     for section in ("§6.A", "§6.B", "§6.C", "§6.D", "§6.E", "§6.F", "§6.G"):
         assert section in report
-    assert "BLOCKED" in report and "M15" in report  # the one externally-gated item is flagged
+    # REPOINTED (ADR-0405): this asserted `"BLOCKED" in report` — pinning a Definition-of-Done
+    # row that still called M15 blocked while the report's own header said it was delivered
+    # (ADR-0030). The old assertion held the CONTRADICTION in place, exactly the stale-guard
+    # class ADR-0385 records. M15 is delivered; nothing in the report may claim otherwise.
+    assert "M15" in report and "ADR-0030" in report
+    assert "BLOCKED" not in report
+
+
+def test_final_report_states_locality_conditionally_and_names_the_gateway_record() -> None:
+    """DOC-01 (ADR-0405): the §6.G locality claim must be CONDITIONAL — stated the way the
+    on-page banner derivation states it — never the pre-ADR-0402 absolute. The condition, the
+    banner derivation, and the transaction-log record must all be named, so a future edit
+    cannot quietly restore 'No data off-machine' as an unqualified fact."""
+    report = (DOCS / "FINAL-REPORT.md").read_text()
+    assert "Conditional since ADR-0402" in report
+    assert "_observed_banner" in report and "transaction log" in report
+    # and the parity evidence stays tempered: residuals are named, never blanketed
+    assert "gate-locked residuals" in report
 
 
 def test_parity_report_states_the_headline_results() -> None:

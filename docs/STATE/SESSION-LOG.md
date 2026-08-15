@@ -14328,3 +14328,26 @@ v1.0.204, wheel + nine installers (lockstep 64/64). ADR-0404; handoff rotated.
 comes up armed with the catalog populated (still-401-with-key => capture the AI Hub's
 documented scheme) → DISC-01 → PO-04/05 → actual_start_driven → TEST-01 → JCL-BR-01 →
 FINAL-REPORT overclaims → JCL docs → stale branches → SANDBOX cleanup. ADR-0404.
+
+## 2026-08-15 (b) — `claude/nasa-itar-ai-desktop-launch-scx3gz` (restarted post-#592) — the final report stops overclaiming; the EAC gloss transcribes the engine (ADR-0405; v1.0.205)
+
+Operator asked what could proceed without them; the queue's agent-only items began with
+DOC-01 + ADR-0401's JCL docs follow-ups, taken as one unit. FINAL-REPORT.md: §6.G's
+absolute "No data off-machine" (conditionally false since ADR-0402) now states the
+guarantee the way `_observed_banner` does — local-offline unconditionally except the
+operator-armed, allowlisted, bannered, transaction-logged gateway; ".gitignore blocks all
+schedule formats" replaced with the pre-commit-guard truth; §6.B tempered ("exact or with
+documented, gate-locked residuals"); §6.F updated to the post-ADR-0402 backend surface;
+§7's stale counts labeled as-of-closeout with a live pointer; the M15 DoD contradiction
+resolved delivered-ward — and test_docs.py, which PINNED the contradiction
+(`assert "BLOCKED" in report`; the ADR-0385 stale-guard class again), repointed to hold
+the resolution plus a NEW conditionality pin ("Conditional since ADR-0402" +
+`_observed_banner` + transaction log + "gate-locked residuals"). help.py's JCL `eac`
+gloss now transcribes engine/jcl.py (lines read and cited): the (1-tau)/tau split the old
+prose omitted, and AC + (BAC - EV) with its clean-EVM precondition; METRIC-DICTIONARY
+regenerated. **Verified:** stash/restore red-proof (2 FAILED by name pre-edit, 10/10
+after). v1.0.205 (help.py ships), wheel + nine installers (lockstep 64/64). ADR-0405.
+
+**Next:** TEST-01 (agent, tests-only, next up) → ENG-DEAD-01 → JCL-BR-01 · operator:
+v1.0.205 arm-once verification · DISC-01 · CEI/HMI export · branch/SANDBOX UI cleanup.
+ADR-0405.
