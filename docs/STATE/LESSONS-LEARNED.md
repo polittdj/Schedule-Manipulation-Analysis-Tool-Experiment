@@ -435,6 +435,28 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-14 (e) — a field 401 is a positive transport result, and a spec records what its author could see
+
+- v1.0.202 reached the operator's NASA machine and the armed gateway probe came back
+  **HTTP 401** with an empty model dropdown. The temptation is to read "could not reach"
+  as network trouble; the honest reading is the opposite — DNS resolved, TLS completed,
+  the gateway ANSWERED and demanded a credential. **Classify a failure by what it proves
+  works, not by where it appears in the UI.** The diagnostic now teaches this (401/403 →
+  "paste your key", other errors → "check your network").
+- The integration was built faithfully to `APPROVED-GATEWAY-INTEGRATION.md` §1 — which
+  recorded the working patch's endpoint and model env vars and nothing about auth. The
+  patch worked, so an auth element existed (or auth was later enabled); either way the
+  recorded spec was missing a dimension only deployment could reveal. **When documenting
+  a working system, record every dimension's EXISTENCE — endpoint, model, credential,
+  scheme — even when the value itself must not be written down.**
+- A masked, never-echoed form field forces **blank-means-keep** POST semantics: the field
+  posts blank on every ordinary re-save, so blank-clears would silently de-authenticate
+  the gateway each time any unrelated setting is saved. The pairing (echo-never ↔
+  blank-keeps) is a unit; adopting one without the other is a live bug.
+- Proportionate battery: 8 mutants aimed at exactly the new credential properties, all
+  caught by name — the 0402 rig (sandbox, canaries, md5 census) re-used as-is. A second
+  unit in the same area should inherit the first unit's instrument, not rebuild it.
+
 ### 2026-08-14 (d) — a defense-in-depth twin can hide a layer's mutation, and `pkill -f` self-matches on strings the bracket trick doesn't cover
 
 - Built 001c (ADR-0402): the approved-gateway backend, at operator direction. The mutation

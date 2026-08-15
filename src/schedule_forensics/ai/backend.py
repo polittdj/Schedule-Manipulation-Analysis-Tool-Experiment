@@ -19,7 +19,7 @@ endpoint, with every transmission recorded (``ai/txlog``). It is never a fallbac
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Protocol, runtime_checkable
 
@@ -97,6 +97,13 @@ class AIConfig:
     #: cannot verify an ATO and never implies it has (plan §7). While False the gateway
     #: never routes — routing falls closed to the local Null backend.
     gateway_approved: bool = False
+    #: The gateway credential (ADR-0403 — the operator's real gateway answers HTTP 401
+    #: without one): sent as ``Authorization: Bearer <key>`` on every gateway request, and
+    #: on nothing else. ``repr=False`` keeps it out of any accidental repr/str/debug line;
+    #: it still participates in equality, so pasting a new key busts the routed-backend
+    #: cache. "" = none; ``factory.resolve_gateway_api_key`` may then fall back to the
+    #: ``SF_GATEWAY_API_KEY`` environment variable. The settings form never echoes it back.
+    gateway_api_key: str = field(default="", repr=False)
 
 
 @dataclass(frozen=True)

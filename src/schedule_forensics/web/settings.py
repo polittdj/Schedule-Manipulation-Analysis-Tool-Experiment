@@ -144,12 +144,25 @@ def _gateway_status_note(cfg: AIConfig) -> str:
         )
     reason = probe.unavailable_reason()
     if reason is not None:
+        # HTTP 401/403 mean the NETWORK path works and the gateway answered — the request
+        # lacked (or presented an unaccepted) credential. Say what to DO, not just the code
+        # (field report, ADR-0403: the operator photographed exactly this state).
+        if "401" in reason or "403" in reason:
+            hint = (
+                " The gateway answered but <b>requires authentication</b>: paste your "
+                "organization-issued key (e.g. from the NASA AI Hub) into the <b>Gateway API "
+                "key</b> field below and Save. If a saved key still gets this, the key may be "
+                "expired or not yet entitled to this gateway."
+            )
+        else:
+            hint = (
+                " The gateway is only reachable from networks your organization connects to "
+                "it; check your network, then reload this page."
+            )
         return (
             f'<div class="notice err">Approved-gateway AI is OFF — could not reach '
-            f"<code>{_e(cfg.gateway_endpoint)}</code>: {_e(reason)}. The gateway is only "
-            "reachable from networks your organization connects to it; check your network, "
-            "then reload this page. Until it answers, answers fall back to the offline "
-            "deterministic engine (nothing is sent).</div>"
+            f"<code>{_e(cfg.gateway_endpoint)}</code>: {_e(reason)}.{hint} Until it answers, "
+            "answers fall back to the offline deterministic engine (nothing is sent).</div>"
         )
     return (
         '<div class="notice ok">Approved-gateway AI is ON — '
@@ -451,6 +464,15 @@ def _settings_body(state: SessionState, runtime_note: str = "") -> str:
         " <span id=secondModelStatus class=muted aria-live=polite></span>"
     )
 
+    # The credential is NEVER echoed back into the page (ADR-0403): the input renders empty
+    # every time, and only the placeholder discloses whether a key is currently held —
+    # resolved the same way routing resolves it (config first, then SF_GATEWAY_API_KEY).
+    gateway_key_placeholder = (
+        "(a key is saved — leave blank to keep it)"
+        if factory.resolve_gateway_api_key(cfg)
+        else "(none set — paste your organization-issued key)"
+    )
+
     # The approved-gateway endpoint is a SELECT over the committed allowlist, never free text
     # (ADR-0402): the UI cannot even express an unapproved destination, the POST handler
     # re-sanitizes, and the backend constructor re-refuses — three layers, one source of truth
@@ -524,6 +546,10 @@ def _settings_body(state: SessionState, runtime_note: str = "") -> str:
  I confirm this gateway endpoint is approved by my organization for this session&rsquo;s data
  classification (including ITAR/CUI where asserted). The tool records this assertion and logs every
  transmission &mdash; it cannot verify the approval itself.</label></p>
+<p>Gateway API key (sent ONLY as the gateway&rsquo;s <code>Authorization</code> header &mdash; never logged, never shown again):
+<input name=gateway_api_key type=password size=36 value="" autocomplete=off
+ placeholder="{gateway_key_placeholder}"
+ title="Issued by your organization (e.g. via the NASA AI Hub). Held in memory for this session only; leave blank on later saves to keep the current key. Quitting the tool (or Turn the AI off) forgets it. SF_GATEWAY_API_KEY can pre-seed it per machine."></p>
 <p>AI answer mode:
 <select name=qa_mode>
 <option value=annotate{sel("annotate", cfg.qa_mode)}>Annotate (default) — the model may analyze and

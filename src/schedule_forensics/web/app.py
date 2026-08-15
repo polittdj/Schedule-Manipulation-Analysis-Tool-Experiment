@@ -50,6 +50,7 @@ from schedule_forensics.ai.briefing import (
 )
 from schedule_forensics.ai.citations import CitedStatement, Narrative, preserves_figures
 from schedule_forensics.ai.driving_facts import driving_path_facts, driving_path_summary
+from schedule_forensics.ai.factory import resolve_gateway_api_key
 from schedule_forensics.ai.narrative import clean_polish, polish_prompt
 from schedule_forensics.ai.ollama_process import OllamaLauncher
 from schedule_forensics.ai.qa import (
@@ -6564,6 +6565,7 @@ def create_app(
         gen_timeout: float = Form(3600.0),
         gateway_endpoint: str = Form(""),
         gateway_approved: str = Form(""),
+        gateway_api_key: str = Form(""),
     ) -> RedirectResponse:
         st = session()
         try:
@@ -6589,6 +6591,10 @@ def create_app(
         gateway_endpoint = gateway_endpoint.strip()
         if gateway_endpoint and not is_approved_gateway_endpoint(gateway_endpoint):
             gateway_endpoint = ""
+        # the key field is masked and never echoed back, so every ordinary re-save posts it
+        # BLANK — blank means KEEP the held key (a save of any other setting must not
+        # silently de-authenticate the gateway); a non-blank value replaces it (ADR-0403)
+        gateway_api_key = gateway_api_key.strip() or st.ai_config.gateway_api_key
         st.ai_config = AIConfig(
             classification=cls,
             backend=backend,
@@ -6603,6 +6609,7 @@ def create_app(
             # an absent checkbox posts nothing — only the literal checked value records the
             # operator's approval assertion; anything else is False (fail closed)
             gateway_approved=gateway_approved == "1",
+            gateway_api_key=gateway_api_key,
         )
         st.backend_cache = None  # re-route immediately — a settings change must take effect now
         st.second_cache = None
@@ -6642,10 +6649,13 @@ def create_app(
                     }
                 )
             try:
+                # authenticate with the SESSION's resolved key (config, else env) — the
+                # credential never travels in the probe URL (ADR-0403)
                 be: AIBackend = GatewayBackend(
                     endpoint=ep,
                     model="",
                     classification=str(session().ai_config.classification),
+                    api_key=resolve_gateway_api_key(session().ai_config),
                     timeout=8.0,
                 )
             except Exception as exc:  # allowlist guard — report, never raise outward

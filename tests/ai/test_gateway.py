@@ -37,19 +37,24 @@ ENDPOINT = "https://proxy.fast.luna.nasa.gov"
 
 
 class _Recorder:
-    """An injectable opener that records calls and serves canned OpenAI-shape responses."""
+    """An injectable gateway opener that records calls (headers included) and serves canned
+    OpenAI-shape responses."""
 
     def __init__(self, fail: bool = False) -> None:
         self.calls: list[tuple[str, bytes | None, float]] = []
+        self.headers: list[dict[str, str]] = []
         self.fail = fail
         self.log_lines_at_call: list[int] = []
         self.log_path: Path | None = None
 
-    def __call__(self, url: str, data: bytes | None, timeout: float) -> str:
+    def __call__(
+        self, url: str, data: bytes | None, timeout: float, headers: dict[str, str]
+    ) -> str:
         if self.log_path is not None:  # measure ORDER: how many records existed pre-transmit
             text = self.log_path.read_text() if self.log_path.exists() else ""
             self.log_lines_at_call.append(len([ln for ln in text.splitlines() if ln]))
         self.calls.append((url, data, timeout))
+        self.headers.append(dict(headers))
         if self.fail:
             raise OSError("connection refused")
         if url.endswith("/v1/models"):
@@ -253,6 +258,82 @@ def test_the_approved_wording_requires_measurement_and_both_arming_fields(
         banner_for_backend(be, not_chosen).text,
     ):
         assert "Local-only" not in text  # never soften all the way to the assurance
+
+
+# --- gateway authentication (ADR-0403: the field-reported HTTP 401) ----------------------
+
+
+def test_generate_sends_the_bearer_key_on_every_request(tmp_path: Path) -> None:
+    """The operator's real gateway answered HTTP 401 — it requires a credential. With a key
+    configured, EVERY gateway request (probe, catalog, generation) carries exactly
+    ``Authorization: Bearer <key>``."""
+    op = _Recorder()
+    be = _gateway(tmp_path, op, api_key="sk-nasa-hub-KEY")
+    be.is_available()
+    be.list_models()
+    be.generate("Q")
+    assert len(op.headers) == 3
+    for sent in op.headers:
+        assert sent.get("Authorization") == "Bearer sk-nasa-hub-KEY"
+
+
+def test_an_empty_key_sends_no_authorization_header(tmp_path: Path) -> None:
+    """No credential configured -> no header at all (never `Bearer ` with an empty token —
+    some gateways treat a malformed header worse than none)."""
+    op = _Recorder()
+    be = _gateway(tmp_path, op)
+    be.is_available()
+    assert op.headers and all("Authorization" not in sent for sent in op.headers)
+
+
+def test_the_key_never_reaches_the_transaction_log(tmp_path: Path) -> None:
+    op = _Recorder()
+    be = _gateway(tmp_path, op, api_key="sk-nasa-hub-KEY")
+    be.generate("prompt")
+    assert "sk-nasa-hub-KEY" not in (tmp_path / "tx.jsonl").read_text()
+
+
+def test_the_key_never_appears_in_the_config_repr() -> None:
+    """A credential must not leak through an accidental repr/str of the config (debug lines,
+    assertion messages, cache dumps)."""
+    cfg = AIConfig(gateway_api_key="sk-nasa-hub-KEY")
+    assert "sk-nasa-hub-KEY" not in repr(cfg) and "sk-nasa-hub-KEY" not in str(cfg)
+
+
+def test_configs_differing_only_in_key_are_unequal_so_caches_re_route() -> None:
+    """The routed-backend cache is keyed on config equality — pasting a NEW key must bust it,
+    or the operator keeps talking through the old credential until the TTL expires."""
+    a = AIConfig(backend="gateway", gateway_endpoint=ENDPOINT, gateway_approved=True)
+    b = AIConfig(
+        backend="gateway",
+        gateway_endpoint=ENDPOINT,
+        gateway_approved=True,
+        gateway_api_key="sk-new",
+    )
+    assert a != b
+
+
+def test_factory_resolves_the_key_config_first_then_env(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`SF_GATEWAY_API_KEY` is a convenience fallback (a key pasted per launch is real
+    friction); an explicit config key always wins. The env var chooses a CREDENTIAL for the
+    already-allowlisted destination — it can never choose the destination (ADR-0402's
+    no-endpoint-seeding posture is unchanged)."""
+    armed = AIConfig(backend="gateway", gateway_endpoint=ENDPOINT, gateway_approved=True)
+    monkeypatch.delenv("SF_GATEWAY_API_KEY", raising=False)
+    assert factory.resolve_gateway_api_key(armed) == ""
+    monkeypatch.setenv("SF_GATEWAY_API_KEY", "sk-from-env")
+    assert factory.resolve_gateway_api_key(armed) == "sk-from-env"
+    be = factory.gateway_or_none(armed)
+    assert be is not None and be._api_key == "sk-from-env"
+    keyed = AIConfig(
+        backend="gateway",
+        gateway_endpoint=ENDPOINT,
+        gateway_approved=True,
+        gateway_api_key="sk-explicit",
+    )
+    assert factory.resolve_gateway_api_key(keyed) == "sk-explicit"
 
 
 def test_second_backend_can_never_be_the_gateway() -> None:

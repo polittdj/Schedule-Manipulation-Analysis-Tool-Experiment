@@ -31,7 +31,7 @@ ENDPOINT = "https://proxy.fast.luna.nasa.gov"
 LOCAL_LITERAL = "Local-only — no data leaves this machine."
 
 
-def _up(url: str, data: bytes | None, timeout: float) -> str:
+def _up(url: str, data: bytes | None, timeout: float, headers: dict[str, str]) -> str:
     if url.endswith("/v1/models"):
         return json.dumps({"data": [{"id": "claude-opus-4.8-thinking-itar"}]})
     return json.dumps({"choices": [{"message": {"content": "ANSWER"}}]})
@@ -47,7 +47,7 @@ def client(state: SessionState) -> TestClient:
     return TestClient(create_app(state))
 
 
-def _arm(client: TestClient, ack: str = "1", endpoint: str = ENDPOINT) -> None:
+def _arm(client: TestClient, ack: str = "1", endpoint: str = ENDPOINT, key: str = "") -> None:
     data = {
         "classification": "CLASSIFIED",
         "backend": "gateway",
@@ -56,6 +56,8 @@ def _arm(client: TestClient, ack: str = "1", endpoint: str = ENDPOINT) -> None:
     }
     if ack:
         data["gateway_approved"] = ack
+    if key:
+        data["gateway_api_key"] = key
     client.post("/settings", data=data)
 
 
@@ -261,3 +263,84 @@ def test_ai_models_gateway_kind_lists_the_approved_catalog(
 def test_settings_js_wires_the_gateway_kind(client: TestClient) -> None:
     js = client.get("/static/settings.js").text
     assert 'v === "gateway"' in js and "gateway_endpoint" in js
+
+
+# --- the gateway API key (ADR-0403: the field-reported HTTP 401) --------------------------
+
+
+def test_the_key_field_is_masked_and_never_echoes_the_stored_key(
+    client: TestClient, state: SessionState
+) -> None:
+    """The key is a credential: the input is type=password, and the STORED key is never
+    rendered back into the page (an armed session's settings HTML must not carry it)."""
+    page = client.get("/settings").text
+    tags = [chunk.split(">", 1)[0] for chunk in page.split("<input")[1:]]
+    key_tags = [t for t in tags if "name=gateway_api_key" in t]
+    assert len(key_tags) == 1, "exactly one gateway key input"
+    assert "type=password" in key_tags[0] and 'value=""' in key_tags[0]
+    _arm(client, key="sk-nasa-hub-KEY")
+    assert state.ai_config.gateway_api_key == "sk-nasa-hub-KEY"
+    page = client.get("/settings").text
+    assert "sk-nasa-hub-KEY" not in page
+
+
+def test_a_blank_key_keeps_the_stored_one_and_a_new_key_replaces_it(
+    client: TestClient, state: SessionState
+) -> None:
+    """Every ordinary re-save posts the key field blank (the form never echoes it back), so
+    blank must mean KEEP — otherwise saving any other setting silently de-authenticates the
+    gateway mid-session."""
+    _arm(client, key="sk-first")
+    _arm(client)  # ordinary re-save, key field blank
+    assert state.ai_config.gateway_api_key == "sk-first"
+    _arm(client, key="sk-second")
+    assert state.ai_config.gateway_api_key == "sk-second"
+
+
+def test_ai_off_forgets_the_key(client: TestClient, state: SessionState) -> None:
+    _arm(client, key="sk-first")
+    client.post("/settings/ai-off")
+    assert state.ai_config.gateway_api_key == ""
+
+
+def test_the_models_probe_uses_the_session_key(
+    client: TestClient, state: SessionState, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """/api/ai/models?kind=gateway authenticates with the SAVED session key — the key never
+    travels in the probe URL (a credential in a GET query string is a log-leak shape)."""
+    seen: dict[str, str] = {}
+
+    class _KeyEcho:
+        def __init__(self, *a: object, api_key: str = "", **k: object) -> None:
+            seen["key"] = api_key
+
+        def unavailable_reason(self) -> None:
+            return None
+
+        def list_models(self) -> tuple[str, ...]:
+            return ("claude-opus-4.8-thinking-itar",)
+
+    monkeypatch.setattr(app_module, "GatewayBackend", _KeyEcho)
+    _arm(client, key="sk-nasa-hub-KEY")
+    body = client.get("/api/ai/models", params={"kind": "gateway", "endpoint": ENDPOINT}).json()
+    assert body["reachable"] is True and seen["key"] == "sk-nasa-hub-KEY"
+
+
+def test_the_401_state_names_the_missing_credential(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The exact state the operator photographed: armed, reachable network, HTTP 401. The
+    diagnostic must say what to DO — enter the gateway API key — not just repeat the code."""
+
+    class _Unauthorized(GatewayBackend):
+        def unavailable_reason(self) -> str:
+            return "server returned HTTP 401"
+
+    be = _Unauthorized(
+        ENDPOINT, model="m", classification="CLASSIFIED", opener=_up, log_path=tmp_path / "t.jsonl"
+    )
+    monkeypatch.setattr(settings_module, "_gateway_or_none", lambda cfg: be)
+    _arm(client)
+    page = client.get("/settings").text
+    assert "HTTP 401" in page
+    assert "Gateway API key" in page and "requires authentication" in page
