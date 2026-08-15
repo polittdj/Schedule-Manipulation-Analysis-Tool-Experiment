@@ -435,6 +435,25 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-15 (a) — read the ask's goal, not its noun; and a persistence feature makes every test a filesystem writer
+
+- The operator asked to stop entering "the NASA API KEY everytime" — the NOUN was the key,
+  but the GOAL was "it works when I click on the desktop icon." Persisting only the key
+  would have left four re-arming steps per launch and missed the goal entirely. **Scope a
+  fix to the stated goal; the named artifact is just where the pain surfaced.**
+- ADR-0402 wrote its consent posture with an explicit "revisit only on operator ask"
+  clause, naming what would flip and why. When the ask came, the flip was one clean unit
+  with no re-litigation. **Deliberately-NOT-done clauses earn their keep when they name
+  their own revisit condition.**
+- Adding persistence turned every existing `POST /settings` test into a writer against the
+  operator's real `~/.local/state` — caught before landing because the schedule cache had
+  already paid for this lesson (its autouse isolation fixture was the template). **When a
+  feature adds a default filesystem path, the conftest isolation ships in the same unit.**
+- The credential-at-rest rule generalized cleanly: protect where the OS can (DPAPI), name
+  the storage honestly where it can't (`_plain`, 0600), and on protector failure OMIT
+  rather than downgrade — the mutation battery (`protector_failure_stores_plain`) pins
+  that a broken protector can never silently write plaintext.
+
 ### 2026-08-14 (e) — a field 401 is a positive transport result, and a spec records what its author could see
 
 - v1.0.202 reached the operator's NASA machine and the armed gateway probe came back

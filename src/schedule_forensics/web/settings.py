@@ -542,14 +542,14 @@ def _settings_body(state: SessionState, runtime_note: str = "") -> str:
  title="Only endpoints on the tool&rsquo;s approved-gateway allowlist (ADR-0402) can be selected; anything else is refused.">
 {gateway_endpoint_opts}
 </select></p>
-<p><label title="The gateway never arms without this acknowledgment; it is re-checked on every save and every route."><input type=checkbox name=gateway_approved value=1{" checked" if cfg.gateway_approved else ""}>
+<p><label title="The gateway never arms without this acknowledgment; it is re-checked on every save and every route, and it stays set on this machine until you change it (ADR-0404)."><input type=checkbox name=gateway_approved value=1{" checked" if cfg.gateway_approved else ""}>
  I confirm this gateway endpoint is approved by my organization for this session&rsquo;s data
  classification (including ITAR/CUI where asserted). The tool records this assertion and logs every
  transmission &mdash; it cannot verify the approval itself.</label></p>
 <p>Gateway API key (sent ONLY as the gateway&rsquo;s <code>Authorization</code> header &mdash; never logged, never shown again):
 <input name=gateway_api_key type=password size=36 value="" autocomplete=off
  placeholder="{gateway_key_placeholder}"
- title="Issued by your organization (e.g. via the NASA AI Hub). Held in memory for this session only; leave blank on later saves to keep the current key. Quitting the tool (or Turn the AI off) forgets it. SF_GATEWAY_API_KEY can pre-seed it per machine."></p>
+ title="Issued by your organization (e.g. via the NASA AI Hub). Saved with your settings on THIS machine (Windows-encrypted for your user account) so every launch comes up ready; leave blank on later saves to keep it. Turn the AI off (or a session wipe) clears it. SF_GATEWAY_API_KEY also works as a per-machine alternative."></p>
 <p>AI answer mode:
 <select name=qa_mode>
 <option value=annotate{sel("annotate", cfg.qa_mode)}>Annotate (default) — the model may analyze and
@@ -577,7 +577,9 @@ you rely on against the citations</option>
 <p class=muted>The tool never sends schedule data off this machine except through the Approved AI
 gateway backend &mdash; which requires the approved endpoint AND your recorded acknowledgment, shows a
 persistent banner naming the endpoint, and logs every transmission. Every other backend is local or
-offline. Either answer mode is prose-only: the cited facts shown with each answer are always engine-computed.
+offline. These AI settings persist on this machine across launches (arm once &mdash; every launch comes
+up as configured; Turn the AI off or a wipe persists the off state). Either answer mode is prose-only:
+the cited facts shown with each answer are always engine-computed.
 With a cross-check model on, both local models answer every question independently and the engine
 compares their figures deterministically — agreement is corroboration, the citations stay the
 ground truth.</p>
