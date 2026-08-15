@@ -1,41 +1,46 @@
-# Handoff — 2026-08-14 (e) (the gateway learns to authenticate: field-reported HTTP 401 → Bearer key support, credential-grade handling; ADR-0403; v1.0.203, wheel + nine installers rebuilt)
+# Handoff — 2026-08-15 (a) (AI settings persist across launches: armed once, the desktop icon just works; DPAPI-wrapped key at rest; ADR-0404; v1.0.204, wheel + nine installers rebuilt)
 
-> ## STATUS (current) — ADR-0403 unit complete on `claude/nasa-itar-ai-desktop-launch-scx3gz`
-> (restarted from `main` **175a744** = #590's squash after its merge). Highest ADR now
-> **0403**. **SHIPPED code changed** — version **v1.0.203**, SCHEMA 2.11.0 unchanged, wheel
+> ## STATUS (current) — ADR-0404 unit complete on `claude/nasa-itar-ai-desktop-launch-scx3gz`
+> (restarted from `main` **8c823d8** = #591's squash after its merge). Highest ADR now
+> **0404**. **SHIPPED code changed** — version **v1.0.204**, SCHEMA 2.11.0 unchanged, wheel
 > + nine installers rebuilt (lockstep 64/64). xfails unchanged: TEST-01 + JCL-BR-01.
 >
-> ## What landed — ADR-0403 (field report, minutes after v1.0.202 deployed)
-> The operator's screenshot from the real NASA machine: the ADR-0402 UI rendering exactly
-> as designed, and the armed probe answered **HTTP 401** — DNS/TLS/network all fine, the
-> gateway demands a credential the integration never sent. The plan doc §1 recorded the old
-> unversioned patch as endpoint+model env vars ONLY; how it authenticated is UNVERIFIED —
-> the auth dimension was missing from the recorded spec and only the field could reveal it.
-> Built: **(1)** `AIConfig.gateway_api_key` (`field(repr=False)`; still in equality so a
-> new key busts the routed cache). **(2)** `GatewayBackend(api_key=…)` sends
-> `Authorization: Bearer <key>` on EVERY gateway request via a new 4-arg `GatewayOpener`
-> contract (the local 3-arg `Opener` untouched); empty key sends NO header, never a bare
-> `Bearer `. **(3)** the key never leaves the header: not in txlog, not in any page (input
-> `type=password`, `value=""` always; placeholder discloses only whether a key is held),
-> not in a repr, never in a URL (`/api/ai/models?kind=gateway` authenticates with the
-> SESSION's resolved key server-side). **(4)** blank-means-keep in POST /settings (the
-> masked field posts blank on every ordinary re-save; blank must not de-authenticate);
-> ai-off/wipe/quit forget it. **(5)** `SF_GATEWAY_API_KEY` env fallback
-> (`factory.resolve_gateway_api_key`, config-first) — a CREDENTIAL for the allowlisted
-> destination, never a destination/model/consent (ADR-0402's no-seeding posture intact).
-> **(6)** the 401/403 diagnostic now says what to DO (paste the organization-issued key —
-> e.g. NASA AI Hub — into the Gateway API key field), not just the code.
-> **Verification:** new tests RED first (17 failed by name on the pre-fix tree) → the
-> affected sweep 242 passed; 8-mutant sandboxed battery **8/8 caught by name**
-> (`header_dropped` · `header_always_sent` · `key_echoed_into_form` ·
-> `blank_clears_instead_of_keeps` · `key_written_to_txlog` · `repr_leaks_key` ·
-> `models_probe_unauthenticated` · `env_fallback_dropped`); instruments md5-identical.
+> ## What landed — ADR-0404 (operator directive: "I do not want to have to put in the NASA
+> ## API KEY everytime I open the program. I want it to work when I click on the desktop icon.")
+> ADR-0402's "per-launch acknowledgment IS the consent model" carried an explicit
+> revisit-on-operator-ask clause — exercised now, and the ask is broader than the key: five
+> re-arming steps per launch is not "it works when I click the icon". Built
+> **`ai/config_store.py`**: the WHOLE AI config (backend, endpoints, model, qa/second/
+> timeout, gateway endpoint + acknowledgment + key) persists at `$SF_SETTINGS_DIR` else
+> `~/.local/state/schedule-forensics/ai-settings.json` (beside the txlog, OUTSIDE the
+> clear-on-quit cache; no schedule content ever). Key at rest: **DPAPI-wrapped on Windows**
+> (user scope, ctypes, stdlib-only, `gateway_api_key_dpapi`); a FAILING protector omits the
+> key entirely (fail closed on the credential — never a silent plaintext downgrade); POSIX
+> stores honestly-named `gateway_api_key_plain` in a 0600 file (same protection class as
+> the still-working SF_GATEWAY_API_KEY env var, config-first). **Loading is a trust
+> boundary**: POST sanitizers re-applied — an off-allowlist gateway endpoint in a
+> hand-edited file clears to "", non-loopback local endpoints fall to defaults, enums safe,
+> timeout clamps, unprotectable key -> keyless; missing/corrupt file -> pure defaults.
+> Wiring: `create_app(state=None)` (the launcher path) loads; injected states untouched;
+> POST /settings + ai-off + wipe persist their result (OFF is a setting too — a stale file
+> can never re-arm past an explicit off). Consent stays explicit/recorded/revocable —
+> recorded DURABLY instead of re-asked; the banner still renders every armed launch; every
+> transmission still logged. conftest gained SF_SETTINGS_DIR + SF_AI_LOG_DIR isolation (no
+> test touches the operator's real state dir). Settings-page copy updated (no more
+> "quit forgets the key").
+> **Verification:** store tests written first; 6-mutant sandboxed battery **6/6 caught by
+> name** (`launch_does_not_load` · `post_does_not_persist` · `load_skips_allowlist` ·
+> `protector_failure_stores_plain` · `chmod_dropped` · `disk_overrides_injected_state`);
+> instruments md5-identical. Operator acceptance test: two independent app instances
+> sharing only the settings file — arm in the first, the second (no injected state = the
+> desktop path) comes up routed to the gateway, acknowledgment checked, key held and never
+> rendered.
 >
 > ## Next — in order
-> **Operator: paste the AI Hub key into the new Gateway API key field (or set
-> SF_GATEWAY_API_KEY) on the v1.0.203 install and confirm the catalog populates** — if it
-> STILL 401s with a key, the gateway's auth scheme is not Bearer; capture what the AI Hub
-> documents and a follow-on ADR adds that scheme on evidence → **DISC-01 release
+> **Operator: reinstall v1.0.204, arm ONCE (endpoint + acknowledgment + key + model), then
+> confirm a plain double-click launch comes up armed with the catalog populated.** If the
+> catalog still 401s WITH the key, the AI Hub's scheme is not Bearer — capture their
+> documented auth header and a follow-on ADR adds it on evidence → **DISC-01 release
 > determination** (operator / authorizing official) → **PO-04/05** (BLOCKED on an
 > operator-delivered CEI/HMI reference export) → `actual_start_driven` consumed nowhere
 > (ENG-DEAD-01) → TEST-01 chromium build-number pins → **JCL-BR-01** (strict xfail flips
@@ -44,14 +49,14 @@
 > SMAT-SANDBOX branch-name cleanup (operator UI).
 >
 > ## Carried forward
-> ADR-0353..0403 closed — do not re-open. NEW lessons this session: **a field 401 is a
-> POSITIVE transport result** (DNS+TLS+answer) — diagnose the missing dimension, not the
-> network; **an integration built faithfully to a recorded spec inherits the spec's
-> gaps** — the plan doc recorded endpoint+model and never auth; record credentials'
-> EXISTENCE (never their value) when documenting a working system; **a masked form field
-> forces blank-means-keep POST semantics** — echo-never + blank-clears would silently
-> de-authenticate on every unrelated save. Standing traps unchanged (see the (d) section
-> in the archive for the full list — data pins vs guarantees · mutation-green vs
+> ADR-0353..0404 closed — do not re-open. NEW lessons this session: **"revisit only on
+> operator ask" clauses get exercised — write them so the successor knows exactly what to
+> flip** (ADR-0402's clause named the field and the consent rationale; the flip took one
+> unit); **read the ask's GOAL, not its noun** — "the API key every time" named the key,
+> but the goal ("works when I click the icon") required the whole config to persist;
+> **a persistence feature turns every POST test into a filesystem writer** — add the
+> conftest isolation IN THE SAME UNIT or the suite pollutes the operator's real state dir.
+> Standing traps unchanged (see the archive — data pins vs guarantees · mutation-green vs
 > adversarial · monkeypatch per CALL SITE · never measure a mutating tree · never mutate a
 > measuring instrument · two ruffs, use `python -m ruff` · parity >900 s · container
 > starts with NO deps · fetch before numbering and before committing · `wc` decides).
@@ -59,12 +64,12 @@
 >
 > ## Gate at close
 > Statics green: `python -m ruff check .` (All checks passed) / `python -m ruff format
-> --check .` (1,009 files) / `python -m mypy src/` (154 files, no issues) / bandit exit 0 /
-> node --check per file, 0 fails. **Full suite on the FINAL tree: 4054 passed, 47 skipped,
-> 2 xfailed (TEST-01 + JCL-BR-01), 0 failed, exit 0, 22:34** — 4054 = the (d) close's 4043
-> + the 11 new gateway-auth tests; every skip an environment-gated playwright skip.
-> **Parity gate: 72 passed, 15 skipped (env-gated), exit 0, 10:51.** Installer lockstep
-> 64/64 against the final v1.0.203 wheel. Drift guards green (rotation shape verified).
+> --check .` (1,012 files) / `python -m mypy src/` (155 files, no issues) / bandit exit 0 /
+> node --check per file, 0 fails. **Full suite on the FINAL tree: 4064 passed, 47 skipped,
+> 2 xfailed (TEST-01 + JCL-BR-01), 0 failed, exit 0, 29:17** — 4064 = the (e) close's 4054
+> + the 10 new persistence tests; every skip an environment-gated playwright skip.
+> **Parity gate: 72 passed, 15 skipped (env-gated), exit 0, 14:40.** Installer lockstep
+> 64/64 against the final v1.0.204 wheel. Drift guards green (rotation shape verified).
 
 # (prior) handoffs — archived
 

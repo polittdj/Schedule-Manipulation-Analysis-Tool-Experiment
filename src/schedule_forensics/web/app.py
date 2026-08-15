@@ -49,6 +49,7 @@ from schedule_forensics.ai.briefing import (
     build_briefing,
 )
 from schedule_forensics.ai.citations import CitedStatement, Narrative, preserves_figures
+from schedule_forensics.ai.config_store import load_ai_config, save_ai_config
 from schedule_forensics.ai.driving_facts import driving_path_facts, driving_path_summary
 from schedule_forensics.ai.factory import resolve_gateway_api_key
 from schedule_forensics.ai.narrative import clean_polish, polish_prompt
@@ -1180,7 +1181,10 @@ def create_app(
     configure_logging()
     assert_local_only()
     app = FastAPI(title="POLARIS", docs_url=None, redoc_url=None, lifespan=_cui_lifespan)
-    app.state.session = state if state is not None else SessionState()
+    # ADR-0404: the desktop-launch path (no injected state) comes up with the PERSISTED AI
+    # settings — armed once, armed on every launch. An explicitly injected state (tests,
+    # embedders) is never touched, and loading is fail-soft + boundary-sanitized.
+    app.state.session = state if state is not None else SessionState(ai_config=load_ai_config())
     app.state.auto_shutdown = auto_shutdown
     app.state.idle_grace = idle_grace
     app.state.ollama = ollama  # lazy-started on AI enable, stopped on close (None in tests)
@@ -6613,6 +6617,10 @@ def create_app(
         )
         st.backend_cache = None  # re-route immediately — a settings change must take effect now
         st.second_cache = None
+        try:  # ADR-0404: settings survive the quit — the next launch comes up as configured
+            save_ai_config(st.ai_config)
+        except Exception:
+            logger.warning("could not persist AI settings; they will not survive this session")
         # Lazy Ollama lifecycle (ADR-0122): the desktop launcher's manager starts `ollama serve`
         # only when the operator turns the Ollama backend on — never at tool launch — and stops it
         # again the moment they switch the AI off it (to Null/OpenAI/Cloud), so the local model is
@@ -6696,6 +6704,10 @@ def create_app(
         st.ai_config = AIConfig(classification=st.ai_config.classification, backend="null")
         st.backend_cache = None  # re-route to Null immediately
         st.second_cache = None
+        try:  # ADR-0404: OFF is a setting too — the next launch must come up off and keyless
+            save_ai_config(st.ai_config)
+        except Exception:
+            logger.warning("could not persist AI settings; they will not survive this session")
         with st._lock:  # guard the polished clear like its peer caches (audit ADR-0250)
             st.polished.clear()  # drop any model-polished narratives so pages show the engine read
         manager = getattr(app.state, "ollama", None)
@@ -6835,6 +6847,10 @@ def create_app(
             # The classification is carried across deliberately — it describes the OPERATOR's
             # handling posture, not the schedules that were just discarded.
             st.ai_config = AIConfig(classification=st.ai_config.classification, backend="null")
+            try:  # ADR-0404: a wipe's AI reset persists like any other settings change
+                save_ai_config(st.ai_config)
+            except Exception:
+                logger.warning("could not persist AI settings; they will not survive this session")
         manager = getattr(app.state, "ollama", None)
         if manager is not None:
             threading.Thread(target=manager.shutdown, daemon=True).start()

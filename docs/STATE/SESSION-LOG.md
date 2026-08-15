@@ -14307,3 +14307,24 @@ rotated.
 the real scheme on evidence) → DISC-01 → PO-04/05 (blocked) → `actual_start_driven` →
 TEST-01 → JCL-BR-01 → FINAL-REPORT overclaims → JCL docs follow-ups → stale branches →
 SANDBOX cleanup. ADR-0403.
+
+## 2026-08-15 (a) — `claude/nasa-itar-ai-desktop-launch-scx3gz` (restarted post-#591) — AI settings persist across launches (ADR-0404; v1.0.204)
+
+Operator directive: "I do not want to have to put in the NASA API KEY everytime I open the
+program. I want it to work when I click on the desktop icon. Super simple." ADR-0402's
+per-launch-arming consent model carried an explicit revisit-on-operator-ask clause — this
+is the ask, and its GOAL (icon just works) required the whole config to persist, not just
+the key. Built `ai/config_store.py`: full AI config persisted beside the txlog (never the
+wiped cache dir); the key DPAPI-wrapped on Windows (ctypes, stdlib-only) with fail-closed
+omission on protector failure (never a plaintext downgrade), honest 0600 `_plain` on
+POSIX; loading is a trust boundary (POST sanitizers re-applied — an off-allowlist endpoint
+in a hand-edited file clears; corrupt file -> defaults). `create_app(state=None)` loads;
+POST/ai-off/wipe persist; conftest gained SF_SETTINGS_DIR + SF_AI_LOG_DIR isolation.
+**Verified:** 6-mutant sandboxed battery 6/6 by name; acceptance test = two app instances
+sharing only the file (arm in one, the other comes up armed, key held, never rendered).
+v1.0.204, wheel + nine installers (lockstep 64/64). ADR-0404; handoff rotated.
+
+**Next:** operator reinstalls v1.0.204, arms once, confirms a plain double-click launch
+comes up armed with the catalog populated (still-401-with-key => capture the AI Hub's
+documented scheme) → DISC-01 → PO-04/05 → actual_start_driven → TEST-01 → JCL-BR-01 →
+FINAL-REPORT overclaims → JCL docs → stale branches → SANDBOX cleanup. ADR-0404.

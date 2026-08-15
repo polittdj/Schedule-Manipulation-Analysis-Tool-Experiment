@@ -326,6 +326,70 @@ def test_the_models_probe_uses_the_session_key(
     assert body["reachable"] is True and seen["key"] == "sk-nasa-hub-KEY"
 
 
+# --- persistence across launches (ADR-0404: "it works when I click the desktop icon") ----
+
+
+def test_saving_settings_persists_and_a_fresh_launch_comes_up_armed(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """THE operator acceptance test: arm once (endpoint + acknowledgment + key + model),
+    quit, double-click the icon — the fresh process loads the persisted config and routes
+    to the gateway with no re-entry. Simulated as two independent app instances sharing
+    only the settings file, exactly what two launches share."""
+    monkeypatch.setenv("SF_SETTINGS_DIR", str(tmp_path))
+    state1 = SessionState()
+    client1 = TestClient(create_app(state1))
+    _arm(client1, key="sk-nasa-hub-KEY")
+    assert (tmp_path / "ai-settings.json").exists()
+
+    # "quit" = the first process is gone; the desktop icon starts a NEW one with NO state
+    # injected (the launcher path) — create_app must load the persisted config itself
+    client2 = TestClient(create_app())
+    st2 = client2.app.state.session  # type: ignore[attr-defined]
+    cfg = st2.ai_config
+    assert cfg.backend == "gateway" and cfg.gateway_endpoint == ENDPOINT
+    assert cfg.gateway_approved is True and cfg.gateway_api_key == "sk-nasa-hub-KEY"
+    assert cfg.model == "claude-opus-4.8-thinking-itar"
+    # and the page renders armed — the acknowledgment box is CHECKED from the stored config
+    page = client2.get("/settings").text
+    assert "APPROVED GATEWAY" in page  # the banner, from the persisted arming
+    assert "a key is saved" in page  # the placeholder discloses the held key, value absent
+    assert "sk-nasa-hub-KEY" not in page
+
+
+def test_an_injected_state_is_never_overridden_by_the_disk_config(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Tests and embedders that pass an explicit SessionState keep it untouched — only the
+    launcher path (state=None) loads from disk."""
+    monkeypatch.setenv("SF_SETTINGS_DIR", str(tmp_path))
+    config_store_path = tmp_path / "ai-settings.json"
+    from schedule_forensics.ai import config_store
+    from schedule_forensics.ai.backend import AIConfig
+
+    config_store.save_ai_config(
+        AIConfig(backend="gateway", gateway_endpoint=ENDPOINT, gateway_approved=True),
+        config_store_path,
+    )
+    st = SessionState()
+    TestClient(create_app(st))
+    assert st.ai_config == AIConfig()  # injected state untouched
+
+
+def test_ai_off_persists_the_off_state(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Turning the AI off is a setting too: the next launch must come up OFF (and keyless),
+    not re-armed from a stale file."""
+    monkeypatch.setenv("SF_SETTINGS_DIR", str(tmp_path))
+    client1 = TestClient(create_app(SessionState()))
+    _arm(client1, key="sk-nasa-hub-KEY")
+    client1.post("/settings/ai-off")
+    client2 = TestClient(create_app())
+    cfg = client2.app.state.session.ai_config  # type: ignore[attr-defined]
+    assert cfg.backend == "null" and cfg.gateway_approved is False
+    assert cfg.gateway_api_key == ""
+    assert "sk-nasa-hub-KEY" not in (tmp_path / "ai-settings.json").read_text(encoding="utf-8")
+
+
 def test_the_401_state_names_the_missing_credential(
     client: TestClient, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:

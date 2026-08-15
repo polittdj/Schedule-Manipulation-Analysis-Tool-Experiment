@@ -107,6 +107,15 @@ def _isolate_schedule_cache(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> 
 
     monkeypatch.setenv("SF_CACHE_DIR", str(tmp_path / "sf-cache"))
     cache_mod._DEFAULT_CACHE = None
+    # ADR-0404: AI settings persist across launches, so every `POST /settings` now writes a
+    # settings file and `create_app()` with no injected state reads one. Point both at a
+    # per-test dir so no test ever touches (or is polluted by) the operator's real
+    # ``~/.local/state/schedule-forensics`` — same isolation contract as the cache above.
+    monkeypatch.setenv("SF_SETTINGS_DIR", str(tmp_path / "sf-state"))
+    # And the AI transaction log's default path (ADR-0402) shares the discipline: a gateway
+    # backend a test constructs without an explicit log_path must never append to the real
+    # machine-wide audit log.
+    monkeypatch.setenv("SF_AI_LOG_DIR", str(tmp_path / "sf-state"))
 
 
 @cache
