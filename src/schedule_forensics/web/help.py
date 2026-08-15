@@ -1505,10 +1505,14 @@ _FIELD_GLOSSARY: dict[str, MetricDoc] = {
     # --- JCL joint cost-&-schedule confidence (ADR-0269) ---------------------------------
     "eac": _gloss(
         "EAC (Estimate at Completion)",
-        "The simulated total project cost at completion: money spent to date plus the "
-        "remaining budget as it burns over each iteration's sampled durations.",
-        "EAC_i = actuals + sum(remaining budget x sampled/ML remaining duration "
-        "[x cost multiplier]); deterministic EAC = AC + (BAC - EV)",
+        "The simulated total project cost at completion: completed tasks at their final "
+        "cost, plus each incomplete task's spend to date and remaining budget — of which "
+        "only the time-dependent share burns over the iteration's sampled duration.",
+        "EAC_i = sum(completed finals) + sum(spent + ((1-tau) x rem + tau x rem x sampled/ML "
+        "remaining duration) x cost multiplier), rem = budget x (1 - %complete); tau = the "
+        "time-dependent share (default 1.0). All ratios & multipliers at 1 give the "
+        "deterministic EAC, which equals AC + (BAC - EV) when actuals are recorded and "
+        "EV = sum(budget x %complete) (clean EVM data)",
         "The EAC distribution is the cost half of a JCL: its P50/P80 against the budget says "
         "whether the cost commitment is realistic, exactly as the finish percentiles do for "
         "the date.",

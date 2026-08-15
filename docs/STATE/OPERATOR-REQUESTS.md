@@ -196,6 +196,54 @@ for JS digest/line pins over `persist.js` BEFORE editing; own ADR.
 
 ---
 
+## 2026-08-14/15 — the gateway arc (chat directives, received live during builds)
+
+### OR-07 — "I don't get the option to use the NASA approved AI models that are itar approved. Fix this." · `SHIPPED (ADR-0402, PR #590, v1.0.202)`
+
+The 001c decision, made by this message. The approved AI gateway became a first-class backend:
+allowlisted endpoint select, approval acknowledgment, warning banner, AI transaction log.
+
+### OR-08 — Gateway answered HTTP 401; "the models dont show up" · `SHIPPED (ADR-0403, PR #591, v1.0.203)`
+
+Bearer authentication with credential-grade handling (masked never-echoed key field,
+blank-means-keep, `SF_GATEWAY_API_KEY` fallback, key never in log/page/repr/URL).
+
+### OR-09 — "I do not want to have to put in the NASA API KEY everytime I open the program. I want it to work when I click on the desktop icon. Super simple." · `SHIPPED (ADR-0404, PR #592, v1.0.204)`
+
+ALL AI settings persist across launches (`ai/config_store.py`; DPAPI-wrapped key on Windows;
+load-boundary sanitizers). Arm once — every desktop-icon launch comes up armed.
+
+### OR-10 — "Start that work and update whatever documentation … so that we don't get lost with what we have left to do or where we are and what we still have left to verify." · `IN FLIGHT`
+
+The agent-only queue is being worked in order (ADR-0405 shipped the FINAL-REPORT truthfulness +
+EAC-gloss unit, PR #593; TEST-01 is this unit; ENG-DEAD-01 and JCL-BR-01 follow). This section is
+the requested ledger; `HANDOFF.md` (auto-injected every session) and `NEXT-SESSION-PROMPT.md`
+carry the same queue with per-unit rotation.
+
+### ⏳ PENDING OPERATOR VERIFICATION (the "what we still have left to verify" list)
+
+| # | What to verify | How | Outcome recorded where |
+|---|---|---|---|
+| V-1 | **v1.0.205 (or later) arm-once flow on the NASA machine**: reinstall, arm once (endpoint + acknowledgment + key + model), quit, then a plain double-click launch must come up ARMED with the model catalog populated | Desktop icon → AI Settings shows "Approved-gateway AI is ON" without any re-entry | Tell the session; HANDOFF "Next" clears its first item |
+| V-2 | **The gateway accepts the Bearer key** (`Authorization: Bearer <AI-Hub key>`) | Same check as V-1 — the catalog populating IS the proof; still-401-with-key means the AI Hub uses a different scheme: capture their documented auth header (name/format, never the key value) | A follow-on ADR implements the real scheme on evidence |
+| V-3 | **The AI transaction log records real gateway use** | After a few questions: `Get-Content "$env:USERPROFILE\.local\state\schedule-forensics\ai-transactions.jsonl" -Tail 20` shows `generate.sent/done` lines | Spot-check only; no session action needed if present |
+
+### 🔒 BLOCKED ON OPERATOR (not verifiable or executable by an agent)
+
+- **DISC-01 release determination** (authorizing official): gateway hostname + ITAR model id are in
+  public git history; history-rewrite vs accept-as-is is not an engineering commit.
+- **PO-04/05 primary oracle**: an operator-delivered CEI/HMI vendor reference export.
+- **8 stale remote branches (DoD 091) + SMAT-SANDBOX branch names**: sessions cannot push ref
+  deletions (proxy 403s them, measured ADR-0401) — GitHub UI cleanup.
+
+### 🤖 AGENT QUEUE (no operator input needed; worked in this order)
+
+1. ~~DOC-01 FINAL-REPORT overclaims + JCL docs follow-ups~~ — `SHIPPED (ADR-0405, PR #593)`.
+2. **TEST-01** chromium build-number unpinning (22 modules; audit xfail flips) — `IN FLIGHT (this unit)`.
+3. **ENG-DEAD-01** — `actual_start_driven` computed but consumed nowhere; wire the promised disclosure.
+4. **JCL-BR-01** — session branches feed SSI but not `compute_jcl`; carry them through (or honest-gate
+   the panel) and flip its strict xfail.
+
 ## How to work this queue
 
 - Pick items up in a numbered round like any other tail work; record the ADR that closes each.

@@ -1,75 +1,62 @@
-# Handoff — 2026-08-15 (a) (AI settings persist across launches: armed once, the desktop icon just works; DPAPI-wrapped key at rest; ADR-0404; v1.0.204, wheel + nine installers rebuilt)
+# Handoff — 2026-08-15 (c) (TEST-01 closed: 22 chromium build-number pins unpinned, the audit xfail flips, a canary-proved census stands guard; the operator verification ledger lands in OPERATOR-REQUESTS; ADR-0406; v1.0.205 unchanged)
 
-> ## STATUS (current) — ADR-0404 unit complete on `claude/nasa-itar-ai-desktop-launch-scx3gz`
-> (restarted from `main` **8c823d8** = #591's squash after its merge). Highest ADR now
-> **0404**. **SHIPPED code changed** — version **v1.0.204**, SCHEMA 2.11.0 unchanged, wheel
-> + nine installers rebuilt (lockstep 64/64). xfails unchanged: TEST-01 + JCL-BR-01.
+> ## STATUS (current) — ADR-0406 unit complete on `claude/nasa-itar-ai-desktop-launch-scx3gz`.
+> Highest ADR now **0406**. **NO shipped code changed** — tests + docs only: version stays
+> **v1.0.205**, SCHEMA 2.11.0, no wheel/installer rebuild (ADR-0395/0399/0400/0401
+> precedent). `tests/audit` now has **ZERO live xfails** (TEST-01 flipped); the ONE
+> remaining strict xfail repo-wide is **JCL-BR-01** in `tests/web/test_jcl_web.py`.
 >
-> ## What landed — ADR-0404 (operator directive: "I do not want to have to put in the NASA
-> ## API KEY everytime I open the program. I want it to work when I click on the desktop icon.")
-> ADR-0402's "per-launch acknowledgment IS the consent model" carried an explicit
-> revisit-on-operator-ask clause — exercised now, and the ask is broader than the key: five
-> re-arming steps per launch is not "it works when I click the icon". Built
-> **`ai/config_store.py`**: the WHOLE AI config (backend, endpoints, model, qa/second/
-> timeout, gateway endpoint + acknowledgment + key) persists at `$SF_SETTINGS_DIR` else
-> `~/.local/state/schedule-forensics/ai-settings.json` (beside the txlog, OUTSIDE the
-> clear-on-quit cache; no schedule content ever). Key at rest: **DPAPI-wrapped on Windows**
-> (user scope, ctypes, stdlib-only, `gateway_api_key_dpapi`); a FAILING protector omits the
-> key entirely (fail closed on the credential — never a silent plaintext downgrade); POSIX
-> stores honestly-named `gateway_api_key_plain` in a 0600 file (same protection class as
-> the still-working SF_GATEWAY_API_KEY env var, config-first). **Loading is a trust
-> boundary**: POST sanitizers re-applied — an off-allowlist gateway endpoint in a
-> hand-edited file clears to "", non-loopback local endpoints fall to defaults, enums safe,
-> timeout clamps, unprotectable key -> keyless; missing/corrupt file -> pure defaults.
-> Wiring: `create_app(state=None)` (the launcher path) loads; injected states untouched;
-> POST /settings + ai-off + wipe persist their result (OFF is a setting too — a stale file
-> can never re-arm past an explicit off). Consent stays explicit/recorded/revocable —
-> recorded DURABLY instead of re-asked; the banner still renders every armed launch; every
-> transmission still logged. conftest gained SF_SETTINGS_DIR + SF_AI_LOG_DIR isolation (no
-> test touches the operator's real state dir). Settings-page copy updated (no more
-> "quit forgets the key").
-> **Verification:** store tests written first; 6-mutant sandboxed battery **6/6 caught by
-> name** (`launch_does_not_load` · `post_does_not_persist` · `load_skips_allowlist` ·
-> `protector_failure_stores_plain` · `chmod_dropped` · `disk_overrides_injected_state`);
-> instruments md5-identical. Operator acceptance test: two independent app instances
-> sharing only the settings file — arm in the first, the second (no injected state = the
-> desktop path) comes up routed to the gateway, acknowledgment checked, key held and never
-> rendered.
+> ## What landed — ADR-0406 (TEST-01 + OR-10's documentation ledger)
+> **(1) TEST-01 closed.** All 22 playwright modules carried the byte-identical pinned line
+> `CHROME = Path(".../chromium-1194/chrome-linux/chrome")` — a container chromium bump
+> would flip every one to a silent skip. Each now resolves the FIRST vendored chromium by
+> sorted glob (r11's discipline, propagated; `_PW_CHROMES`/fallback keeps the
+> module-level skipif semantics — no chromium still means skip, never error). The audit
+> module's own comment was reworded (its `chromium-1194/...` text SELF-MATCHED the scan it
+> documents — the scan reads every test file including itself), and the strict xfail
+> marker is removed: `test_test01_no_test_hardcodes_a_chromium_build_number` now stands as
+> the permanent whole-tree census. **Canary red-proof:** a planted
+> `tests/zz_canary_test01.py` with a pinned path turned the census RED by name; removed,
+> 21/21 green. The 22 modules still collect + playwright-skip exactly as before (measured:
+> 1 passed 5 skipped on the spot-check trio).
+> **(2) OR-10's ledger.** `docs/STATE/OPERATOR-REQUESTS.md` gained the gateway-arc section:
+> OR-07/08/09 recorded verbatim with their shipped ADR/PR/version; OR-10 IN FLIGHT; a
+> **PENDING OPERATOR VERIFICATION** table (V-1 arm-once flow · V-2 Bearer acceptance ·
+> V-3 transaction-log spot-check, each with its concrete how); the **BLOCKED ON OPERATOR**
+> list (DISC-01 · CEI/HMI export · branch/SANDBOX UI cleanup); and the **AGENT QUEUE**
+> with live status. HANDOFF + NEXT-SESSION-PROMPT carry the same queue per-unit.
 >
 > ## Next — in order
-> **Operator: reinstall v1.0.204, arm ONCE (endpoint + acknowledgment + key + model), then
-> confirm a plain double-click launch comes up armed with the catalog populated.** If the
-> catalog still 401s WITH the key, the AI Hub's scheme is not Bearer — capture their
-> documented auth header and a follow-on ADR adds it on evidence → **DISC-01 release
-> determination** (operator / authorizing official) → **PO-04/05** (BLOCKED on an
-> operator-delivered CEI/HMI reference export) → `actual_start_driven` consumed nowhere
-> (ENG-DEAD-01) → TEST-01 chromium build-number pins → **JCL-BR-01** (strict xfail flips
-> loudly when fixed) → FINAL-REPORT overclaims (condition on `_observed_banner`) → JCL
-> docs follow-ups (help.py τ term; EAC gloss scope) → 8 stale remote branches (DoD 091) →
-> SMAT-SANDBOX branch-name cleanup (operator UI).
+> **Operator: the V-1/V-2/V-3 verification table in OPERATOR-REQUESTS.md** (arm-once on
+> the NASA machine; catalog populating = Bearer accepted; still-401-with-key → capture the
+> AI Hub's documented scheme) → **DISC-01** (operator / authorizing official) →
+> **PO-04/05** (BLOCKED on the CEI/HMI export) → **ENG-DEAD-01** `actual_start_driven`
+> consumed nowhere (agent; SHIPPED-code lockstep when taken — NEXT UP) → **JCL-BR-01**
+> (agent; shipped-code; carry branches through compute_jcl or honest-gate the panel; the
+> last strict xfail flips loudly) → 8 stale remote branches + SMAT-SANDBOX names
+> (operator UI; sessions cannot push ref deletions, ADR-0401).
 >
 > ## Carried forward
-> ADR-0353..0404 closed — do not re-open. NEW lessons this session: **"revisit only on
-> operator ask" clauses get exercised — write them so the successor knows exactly what to
-> flip** (ADR-0402's clause named the field and the consent rationale; the flip took one
-> unit); **read the ask's GOAL, not its noun** — "the API key every time" named the key,
-> but the goal ("works when I click the icon") required the whole config to persist;
-> **a persistence feature turns every POST test into a filesystem writer** — add the
-> conftest isolation IN THE SAME UNIT or the suite pollutes the operator's real state dir.
-> Standing traps unchanged (see the archive — data pins vs guarantees · mutation-green vs
-> adversarial · monkeypatch per CALL SITE · never measure a mutating tree · never mutate a
-> measuring instrument · two ruffs, use `python -m ruff` · parity >900 s · container
-> starts with NO deps · fetch before numbering and before committing · `wc` decides).
-> QC-1/QC-2 are ADR-0393, pinned by `tests/test_standing_rules.py`.
+> ADR-0353..0406 closed — do not re-open. NEW lessons this session: **a census that scans
+> every test file scans ITSELF** — the audit module's own explanatory comment was an
+> offender-in-waiting; write census docs without the matchable literal (r11's no-trailing-
+> slash convention) and canary-prove after flipping; **22 identical pinned lines are one
+> sed and one census** — the fix cost minutes once the population was enumerated exactly
+> (the audit regex, not a loose grep, defines the population). Standing traps unchanged
+> (see the archive — data pins vs guarantees · mutation-green vs adversarial · monkeypatch
+> per CALL SITE · never measure a mutating tree · never mutate a measuring instrument ·
+> two ruffs, use `python -m ruff` · parity >900 s · container starts with NO deps · fetch
+> before numbering and before committing · `wc` decides). QC-1/QC-2 are ADR-0393, pinned
+> by `tests/test_standing_rules.py`.
 >
 > ## Gate at close
-> Statics green: `python -m ruff check .` (All checks passed) / `python -m ruff format
-> --check .` (1,012 files) / `python -m mypy src/` (155 files, no issues) / bandit exit 0 /
-> node --check per file, 0 fails. **Full suite on the FINAL tree: 4064 passed, 47 skipped,
-> 2 xfailed (TEST-01 + JCL-BR-01), 0 failed, exit 0, 29:17** — 4064 = the (e) close's 4054
-> + the 10 new persistence tests; every skip an environment-gated playwright skip.
-> **Parity gate: 72 passed, 15 skipped (env-gated), exit 0, 14:40.** Installer lockstep
-> 64/64 against the final v1.0.204 wheel. Drift guards green (rotation shape verified).
+> Statics green (`python -m ruff check .` whole tree · format --check · mypy strict 155
+> files · bandit · node per-file). Full suite on the final tree: **4066 passed, 47
+> skipped (env-gated playwright — baseline preserved by the unpinned modules), 1
+> xfailed (JCL-BR-01, the sole strict xfail repo-wide; TEST-01's is GONE), 0 failed,
+> exit 0, 27:49**. Parity: **72 passed, 15 skipped, exit 0, 13:45**. tests/audit
+> standalone: 21 passed, 0 xfailed. No wheel/installer rebuild (no shipped code) —
+> the v1.0.205 artifacts stand.
 
 # (prior) handoffs — archived
 

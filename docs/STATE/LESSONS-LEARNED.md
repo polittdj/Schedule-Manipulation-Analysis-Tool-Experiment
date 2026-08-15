@@ -435,6 +435,40 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-15 (c) — a whole-tree census scans itself, and an exactly-enumerated population makes a 22-file fix a one-liner
+
+- Flipping TEST-01's xfail nearly failed on the audit module ITSELF: its explanatory
+  comment contained `chromium-1194/...`, which matches the very scan it documents (the
+  census rglobs every test file, its own included). r11 had already solved this — document
+  the build number WITHOUT the trailing slash the regex needs. **When a census scans a
+  population that includes its own module, write its prose so it cannot self-match, and
+  canary-prove the flip.**
+- The fix for 22 modules was one exact string replacement + one canary, because the
+  population was enumerated with the audit's OWN regex first (23 matches minus the
+  self-match), not a loose grep (24 matches). **The scan's regex defines the population;
+  enumerate with it before designing the fix.**
+- The applier asserted its old-strings verbatim and refused to run blind — cheap
+  insurance that the tree hadn't drifted between recon (done read-only during a running
+  gate) and application (after it).
+
+### 2026-08-15 (b) — a guard can pin a contradiction, and a hard count in prose is a claim with a half-life
+
+- `docs/FINAL-REPORT.md` said M15 was delivered in its header and "◻ BLOCKED" in its
+  Definition of Done — and `test_docs.py` ASSERTED the word "BLOCKED", holding the
+  contradiction in place through months of edits. Second paid instance of the ADR-0385
+  stale-guard class. **When a document contradicts itself, check whether a test is holding
+  one side down before editing either.**
+- The report's "645 passed / 32 ADRs" sat as apparent present-tense fact while reality was
+  4,000+/400+. **A hard count in a narrative document rots silently — date it and point at
+  the live ledger (HANDOFF's Gate-at-close) instead of restating it.**
+- The JCL `eac` gloss drifted exactly where prose was written from memory: it scaled the
+  whole remaining budget by the duration ratio, true only at the τ=1 default. **Transcribe
+  formulas from the engine and cite the lines in the ADR; a gloss whose oracle is the
+  author's recollection has no oracle.**
+- §6.G's locality overclaim was harmless prose until ADR-0402 made it conditionally false
+  — a doc claim's truth can be REVOKED by later, correct code. The fix is the same
+  conditionality the UI derives, now pinned by a test so the absolute cannot quietly return.
+
 ### 2026-08-15 (a) — read the ask's goal, not its noun; and a persistence feature makes every test a filesystem writer
 
 - The operator asked to stop entering "the NASA API KEY everytime" — the NOUN was the key,

@@ -119,14 +119,14 @@ def test_sec01_allowed_hosts_pinned_to_exact_loopback_set() -> None:
 
 
 # --------------------------------------------------------------------------------------------
-# TEST-01 (VALIDATED DEFECT, medium): 22 playwright modules hard-code a chromium BUILD NUMBER
-# (/opt/pw-browsers/chromium-1194/...) and skip when it is absent, so a container chromium bump
-# silently skips the browser suite. The r11 module was fixed to GLOB the version; the fix was not
-# propagated. Correct behaviour: no test module hard-codes a pinned chromium build path.
+# TEST-01 (FIXED by ADR-0406): 22 playwright modules hard-coded a chromium BUILD NUMBER —
+# a pinned chromium-<build> segment in the vendored-browser path — and skipped when it was
+# absent, so a container chromium bump silently skipped the browser suite. Every module now
+# resolves the FIRST vendored chromium by glob (r11's discipline, propagated); the xfail
+# marker flipped loudly at the fix and is removed, leaving this scan as the permanent pin.
+# (This comment deliberately never writes the pinned segment with its trailing slash — the
+# scan below reads every test file, INCLUDING this one.)
 # --------------------------------------------------------------------------------------------
-@pytest.mark.xfail(
-    strict=True, reason="TEST-01: 22 modules still hard-code chromium-<build>; only r11 globs"
-)
 def test_test01_no_test_hardcodes_a_chromium_build_number() -> None:
     offenders = []
     if TESTS.exists():
