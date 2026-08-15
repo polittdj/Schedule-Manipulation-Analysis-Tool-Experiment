@@ -1456,7 +1456,9 @@ def _jcl_panel(st: SessionState, *, prov: str = "") -> str:
         "activity's budget rate over its <i>sampled</i> remaining duration (the "
         "NASA/Hulett integrated method, ADR-0269) — so the football chart's schedule axis "
         "is exactly the SSI S-curve. It uses the SSI panel's focus event, factors, risk "
-        "register, correlation and distribution; only the cost settings below are its own.</p>"
+        "register, correlation, distribution, and probabilistic &amp; conditional branches "
+        "(ADR-0408 — a branch's rework fragnet carries no budget, so it moves the finish "
+        "axis only, never the cost axis); only the cost settings below are its own.</p>"
     )
     if not loaded:
         return (

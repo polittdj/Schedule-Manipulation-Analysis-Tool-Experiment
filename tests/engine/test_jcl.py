@@ -22,6 +22,9 @@ from schedule_forensics.engine.correlation import CorrelationSpec
 from schedule_forensics.engine.cpm import compute_cpm
 from schedule_forensics.engine.jcl import JCLConfig, compute_jcl
 from schedule_forensics.engine.sra import (
+    BranchPlan,
+    ConditionalBranch,
+    ProbabilisticBranch,
     RiskFactorTable,
     ScheduleRisk,
     SRAConfig,
@@ -146,6 +149,112 @@ def test_finish_marginal_equals_the_ssi_run_under_a_correlation_matrix() -> None
     assert jcl.finish_cdf == ssi.cdf  # the FULL distribution, byte-identical under the matrix
     assert jcl.correlation_matrix_applied and ssi.correlation_matrix_applied
     assert not jcl.correlation_matrix_repaired  # rho=0.5 over two tasks is feasible
+
+
+# --- branches carried through — the last equivalence gap (JCL-BR-01, ADR-0408) --------
+
+
+def _rework_branch() -> ProbabilisticBranch:
+    """A rework fragnet on the driver tie 2 -> 4 — fires in half the iterations."""
+    return ProbabilisticBranch(
+        id="B1",
+        name="Retest",
+        probability=0.5,
+        after_uid=2,
+        before_uid=4,
+        low=1 * DAY,
+        ml=3 * DAY,
+        high=6 * DAY,
+    )
+
+
+def _contingency(metric: str) -> ConditionalBranch:
+    """A contingency switch monitored on the driver (uid 2, upstream of both plan ties)."""
+    return ConditionalBranch(
+        id="C1",
+        name="Fallback",
+        monitor_uid=2,
+        metric=metric,
+        threshold_minutes=10 * DAY if metric == "duration" else 11 * DAY,
+        plan_a=BranchPlan(after_uid=2, before_uid=4, low=0, ml=1 * DAY, high=2 * DAY),
+        plan_b=BranchPlan(after_uid=3, before_uid=4, low=2 * DAY, ml=5 * DAY, high=9 * DAY),
+    )
+
+
+def test_finish_marginal_equals_the_ssi_run_with_a_probabilistic_branch() -> None:
+    """JCL-BR-01 (ADR-0408): the engine-level equivalence in the branch configuration —
+    the same fragnet augmentation and the same disjoint draw streams must drive BOTH
+    engines to a byte-identical finish marginal."""
+    s = _costed_net()
+    tp, risks = _rich_inputs()
+    cfg = SRAConfig(iterations=120, target_uid=4, occurrence_mode="exact_overall")
+    branches = [_rework_branch()]
+    ssi = compute_sra_ssi(s, config=cfg, three_point=tp, risks=risks, branches=branches)
+    jcl = compute_jcl(s, config=cfg, three_point=tp, risks=risks, branches=branches)
+    assert jcl.finish_cdf == ssi.cdf  # the FULL distribution, byte-identical
+    assert (jcl.finish_p50_date, jcl.finish_p90_date) == (ssi.p50_date, ssi.p90_date)
+    assert jcl.deterministic_finish == ssi.deterministic_finish  # fragnet ML=0: anchor unmoved
+    base = compute_sra_ssi(s, config=cfg, three_point=tp, risks=risks)
+    assert ssi.cdf != base.cdf  # the branch genuinely moved the curve — the pin is not vacuous
+
+
+@pytest.mark.parametrize("metric", ["duration", "finish"])
+def test_finish_marginal_equals_the_ssi_run_with_a_conditional_branch(metric: str) -> None:
+    """The conditional shares the carried-through machinery — including the finish-metric
+    per-iteration probe solve — and the equivalence must hold for both monitored metrics."""
+    s = _costed_net()
+    tp, _ = _rich_inputs()
+    cfg = SRAConfig(iterations=120, target_uid=4)
+    conds = [_contingency(metric)]
+    ssi = compute_sra_ssi(s, config=cfg, three_point=tp, conditionals=conds)
+    jcl = compute_jcl(s, config=cfg, three_point=tp, conditionals=conds)
+    assert jcl.finish_cdf == ssi.cdf
+    assert jcl.finish_p50_date == ssi.p50_date
+    base = compute_sra_ssi(s, config=cfg, three_point=tp)
+    assert ssi.cdf != base.cdf  # a plan fragnet executes every iteration — the curve moved
+
+
+def test_finish_marginal_equals_the_ssi_run_with_branch_and_conditional_together() -> None:
+    """Branch + conditional in ONE run pins the augmentation ORDER (branches first, then
+    conditionals — the fragnet uids shift if an implementation swaps the two)."""
+    s = _costed_net()
+    tp, risks = _rich_inputs()
+    cfg = SRAConfig(iterations=100, target_uid=4, occurrence_mode="exact_overall")
+    branches = [_rework_branch()]
+    conds = [_contingency("duration")]
+    ssi = compute_sra_ssi(
+        s, config=cfg, three_point=tp, risks=risks, branches=branches, conditionals=conds
+    )
+    jcl = compute_jcl(
+        s, config=cfg, three_point=tp, risks=risks, branches=branches, conditionals=conds
+    )
+    assert jcl.finish_cdf == ssi.cdf
+    assert jcl.deterministic_finish_date == ssi.deterministic_finish_date
+
+
+def test_branch_fragnets_are_cost_inert_by_construction() -> None:
+    """A fragnet carries NO budget — branch cost is never elicited, and fabricating a burn
+    rate would violate the module's own "never fabricate". So with cost multipliers ON, a
+    branch may move the finish marginal but the cost marginal, the multiplier draw stream
+    and every provenance figure must stay byte-identical to the no-branch run. (The threat:
+    a fragnet entry consuming a multiplier draw would shift every later task's draw; a
+    point-mass fragnet also consumes no duration draw — sra.py pins that in the sampler.)"""
+    s = _costed_net(budgets={1: 100.0, 2: 1000.0, 3: 50.0, 4: 25.0})
+    tp, risks = _rich_inputs()
+    cfg = SRAConfig(iterations=100, target_uid=4, occurrence_mode="exact_overall")
+    jc = JCLConfig(cost_low=0.9, cost_ml=1.0, cost_high=1.3)
+    base = compute_jcl(s, config=cfg, three_point=tp, risks=risks, jcl=jc)
+    with_b = compute_jcl(
+        s, config=cfg, three_point=tp, risks=risks, jcl=jc, branches=[_rework_branch()]
+    )
+    assert with_b.finish_cdf != base.finish_cdf  # the finish dimension carries the branch
+    assert with_b.cost_cdf == base.cost_cdf  # the cost dimension: untouched, draw-for-draw
+    assert with_b.deterministic_eac == base.deterministic_eac
+    assert with_b.sunk_total == base.sunk_total
+    assert with_b.remaining_ti_total == base.remaining_ti_total
+    assert with_b.remaining_td_total == base.remaining_td_total
+    assert with_b.completed_count == base.completed_count
+    assert with_b.incomplete_costed_count == base.incomplete_costed_count
 
 
 def test_cost_multipliers_never_perturb_the_duration_stream() -> None:

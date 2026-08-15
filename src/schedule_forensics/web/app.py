@@ -5922,6 +5922,8 @@ def create_app(
                 config=cfg,
                 three_point=_ssi_three_point(st, sch),
                 risks=_schedule_risks(st),
+                branches=_schedule_branches(st),
+                conditionals=_schedule_conditionals(st),
                 jcl=_jcl_config_from_state(st),
             )
         except Exception as exc:
@@ -6230,7 +6232,8 @@ def create_app(
         tables = _ssi_export_tables(st, sch, result, oat)
         if cost_loaded_total(sch) > 0.0:
             # cost-loaded file: append the JCL sheets (ADR-0269) — same schedule inputs as
-            # the SSI run above, so the joint sample's finish marginal matches it exactly
+            # the SSI run above, branches/conditionals included (JCL-BR-01, ADR-0408), so
+            # the joint sample's finish marginal matches it exactly: one workbook, one story
             jr = run_maybe_offloaded(
                 heavy,
                 compute_jcl,
@@ -6238,6 +6241,8 @@ def create_app(
                 config=cfg,
                 three_point=tp,
                 risks=_schedule_risks(st),
+                branches=_schedule_branches(st),
+                conditionals=_schedule_conditionals(st),
                 jcl=_jcl_config_from_state(st),
             )
             tables = TableSet(tables.title, tables.tables + _jcl_export_tables(jr))

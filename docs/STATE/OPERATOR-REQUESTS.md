@@ -215,10 +215,10 @@ load-boundary sanitizers). Arm once — every desktop-icon launch comes up armed
 
 ### OR-10 — "Start that work and update whatever documentation … so that we don't get lost with what we have left to do or where we are and what we still have left to verify." · `IN FLIGHT`
 
-The agent-only queue is being worked in order (ADR-0405 shipped the FINAL-REPORT truthfulness +
-EAC-gloss unit, PR #593; TEST-01 is this unit; ENG-DEAD-01 and JCL-BR-01 follow). This section is
-the requested ledger; `HANDOFF.md` (auto-injected every session) and `NEXT-SESSION-PROMPT.md`
-carry the same queue with per-unit rotation.
+The agent-only queue has been worked to completion — all four units shipped (ADR-0405 →
+ADR-0408; the repo is xfail-free). This section is the requested ledger; `HANDOFF.md`
+(auto-injected every session) and `NEXT-SESSION-PROMPT.md` carry the same state with
+per-unit rotation. **Every remaining open item on this page is operator-owned.**
 
 ### ⏳ PENDING OPERATOR VERIFICATION (the "what we still have left to verify" list)
 
@@ -242,8 +242,10 @@ carry the same queue with per-unit rotation.
 2. ~~TEST-01 chromium build-number unpinning (22 modules; audit xfail flipped)~~ — `SHIPPED (ADR-0406, PR #593 MERGED)`.
 3. ~~ENG-DEAD-01 `actual_start_driven` disclosure wiring (INFO finding + grid column + dictionary)~~ —
    `SHIPPED (ADR-0407, v1.0.206; its own draft PR — #593 merged before this unit pushed)`.
-4. **JCL-BR-01** — session branches feed SSI but not `compute_jcl`; carry them through (or honest-gate
-   the panel) and flip its strict xfail — `NEXT UP (the LAST agent-queue item)`.
+4. ~~JCL-BR-01 session branches fed SSI but not `compute_jcl`~~ — `SHIPPED (ADR-0408, v1.0.207;
+   carried through with byte-identical marginals, both web call sites; the last strict xfail
+   flipped — the repo is now xfail-FREE)`. **THE QUEUE IS EMPTY** — a new audit sweep or a new
+   operator directive opens the next arc.
 
 ## How to work this queue
 
