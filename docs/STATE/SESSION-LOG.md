@@ -14423,3 +14423,47 @@ installers (lockstep 64/64). ADR-0408.
 **Next:** the agent queue is EMPTY — remaining items are operator-owned: V-1/V-2/V-3
 (gateway verification on the NASA machine) · DISC-01 · CEI/HMI export · branch/SANDBOX
 UI cleanup. A new audit sweep or operator directive opens the next arc. ADR-0408.
+
+## 2026-08-16 (a) — Ultracode deep-dive audit begins; unit 1: HOOK-02, a git-magic filename made every CUI content detector fail open (ADR-0409, v1.0.207 unchanged)
+
+Operator directive: a COMPLETE repository deep-dive audit — find every error, prove each
+finding with pass AND fail tests, sandbox-verify every solution BEFORE implementing,
+triple-verify independently, cover all pages/functions, skip nothing. Round 1 of the
+ADR-0240 Ultracode fan-out (16 agents) lost 15 to a credit exhaustion; the one survivor
+(`security_cui`) returned a self-probed critical finding, and its verifier died — so the
+script's "no verdict = refuted" rule mislabeled it. The LEAD re-verified it from scratch,
+which is the whole point of the protocol.
+
+**HOOK-02 (Law 1, critical).** `.githooks/pre-commit` read staged bytes as
+`git show ":$path"`, gluing the path into a REVISION argument — so the name's leading bytes
+parse as git magic: `!x.json` exclude-pathspec, `^x.json` negated revision, `0:`/`1:x.json`
+merge-stage syntax, `:(icase)x.json` pathspec magic. All return EMPTY output, and empty
+bytes read as "clean" to every content detector, so a real CUI schedule committed SILENTLY
+under `!plan.json` — staged by a plain `git add -A`, no exotic tooling. The extension
+detector still fired, so the hole was precisely the classes where the sniff is the ONLY
+barrier (`.json` — the tool's own Save format, deliberately not gitignored — `.txt`,
+extension-less, `.md`, images, PDFs, archives). Fixed by resolving the INDEX OID
+(`git --literal-pathspecs ls-files -s -z` → `git cat-file blob`) in BOTH detectors.
+
+Three traps paid by measurement, each of which would have shipped a wrong answer:
+(1) **the finder's proposed fix was wrong** — adding `--` closes `!`/`^` but not
+`:<stage>:`, measured in a sandbox on a COPY before implementing (variant A left 3 shapes
+open, variant B closed all 10); (2) the first implementation used `head`/`cut`/`tr` and
+WEAKENED the guard's floor — caught by the repo's own
+`test_hook_without_python3_keeps_the_extension_and_text_floor`, so the helper now parses
+with bash BUILTINS only; (3) with an outcome-only assertion **3 of 4 mutants survived,
+including a full revert of the original bug**, because the bash and python sniffers are
+defence-in-depth TWINS — the new
+`test_bash_floor_blocks_git_magic_names_without_python3` runs the cases on a git+grep-only
+PATH to pin the bash layer, and M4 was unkillable until a colon-leading name was added to
+the parametrization.
+
+**QC-1, three independent instruments:** 6 new tests red BY NAME pre-fix (module 90 → 98
+passed); an independent bash battery written before the tests (10 hostile shapes blocked,
+4 benign controls still allowed, the ADR-0152 inherited/tampered pair intact); mutation
+battery 4/4 caught by the named test with the hook restored md5-identical. No version bump
+— verified twice that `.githooks/` ships in no wheel (ADR-0399 precedent). ADR-0409.
+
+**Next:** audit round 2 (11 dimensions + route census + completeness critic) is in flight;
+the lead's independent route inventory is 137 routes (65 page / 34 api / 38 export), the
+denominator for the operator's every-page pass+fail coverage requirement. ADR-0409.

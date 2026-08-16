@@ -491,6 +491,122 @@ def test_hook_blocks_hostile_filename_shapes(scratch_repo: Path, name: str, body
     assert _hook_exit(scratch_repo) != 0, f"{name!r} slipped past the name normalization"
 
 
+def _stage_literal(repo: Path, name: str, body: bytes) -> None:
+    """Stage a name whose leading bytes ARE git magic, and prove it reached the index.
+
+    ``git add -f '!x.json'`` reads the name as an EXCLUDE pathspec and stages nothing, so a
+    test staging it that way would assert "blocked" about a file that was never in the
+    commit — a green test that cannot fail. ``--literal-pathspecs`` is how such a name
+    really lands (a plain ``git add -A .`` stages it too — the realistic operator path),
+    and the ls-files check makes the harness honest.
+    """
+    target = repo / name
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes(body)
+    _run(repo, "git", "--literal-pathspecs", "add", "-f", name)
+    staged = _run(
+        repo, "git", "--literal-pathspecs", "ls-files", "--cached", "--error-unmatch", "--", name
+    )
+    assert staged.returncode == 0, f"harness failure: {name!r} never reached the index"
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="NTFS cannot create these names")
+@pytest.mark.parametrize(
+    ("name", "sibling"),
+    [
+        # HOOK-02: ':' + path was handed to `git show` / `git rev-parse` as ONE argument, so a
+        # leading '!' or '^' made git parse the name as pathspec/revision MAGIC instead of a
+        # path. git then exits 128 with EMPTY stdout — which every content detector reads as
+        # "no schedule here" and waves through. '.json' is deliberately NOT gitignored (it is
+        # the tool's own Save format), so for that class the sniffer is the ONLY barrier.
+        ("!schedule.json", "schedule.json"),  # ':!x' — exclude-pathspec magic
+        ("!export", "export"),  # …extension-less, sniffed the same way
+        ("!notes.md", "notes.md"),
+        ("^schedule.json", "schedule.json"),  # ':^x' — negated-revision magic
+        # ':<stage>:<path>' resolves to a merge stage that does not exist → empty bytes.
+        # This class needs NO sibling, and the rev/path '--' separator does NOT close it.
+        ("0:schedule.json", None),
+        ("1:schedule.json", None),
+        # a COLON-leading name is magic on the pathspec side too, which is what makes
+        # --literal-pathspecs load-bearing rather than decorative (measured: without it the
+        # index lookup returns nothing at all, and "nothing" reads as "clean").
+        (":(icase)schedule.json", None),
+    ],
+)
+def test_hook_blocks_schedule_content_under_git_magic_names(
+    scratch_repo: Path, name: str, sibling: str | None
+) -> None:
+    if sibling is not None:  # the sibling is what makes ':!<name>' a *valid* pathspec
+        _stage(scratch_repo, sibling, b'{"note": "benign tracked config"}')
+    _stage_literal(scratch_repo, name, _SAVED_SCHEDULE)
+    assert _hook_exit(scratch_repo) != 0, f"{name!r} carries a schedule and must be blocked"
+
+
+def _run_hook_on_the_bash_floor(repo: Path) -> subprocess.CompletedProcess[str]:
+    """Run the hook on a PATH carrying only git+grep — detectors 1-2, no python3.
+
+    This is what PINS THE BASH LAYER. The bash text sniffer and the python sniffer are
+    defence-in-depth TWINS over the same files, so with python3 present an outcome-only
+    assertion stays green even when the bash sniffer is broken — measured: reverting it to
+    the HOOK-02 bug left the end-to-end test passing. Exercising the floor alone is the
+    only assertion that can see that layer die.
+    """
+    thin = repo / "thinbin_floor"
+    thin.mkdir(exist_ok=True)
+    for tool in ("git", "grep"):
+        located = shutil.which(tool)
+        assert located, f"{tool} not on PATH"
+        link = thin / tool
+        if not link.exists():
+            link.symlink_to(located)
+    bash = shutil.which("bash")
+    assert bash
+    return subprocess.run(
+        [bash, str(_HOOK)],
+        cwd=repo,
+        env={"PATH": str(thin), "HOME": str(repo)},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="NTFS cannot create these names")
+@pytest.mark.parametrize(
+    ("name", "sibling"),
+    [
+        # only the classes the BASH floor owns (.json / .txt / extension-less); .md, images,
+        # PDFs and archives are the python detector's by design (ADR-0399).
+        ("!schedule.json", "schedule.json"),
+        ("!export", "export"),
+        ("!plan.txt", "plan.txt"),
+        ("^schedule.json", "schedule.json"),
+        ("0:schedule.json", None),
+        ("1:schedule.json", None),
+        (":(icase)schedule.json", None),
+    ],
+)
+def test_bash_floor_blocks_git_magic_names_without_python3(
+    scratch_repo: Path, name: str, sibling: str | None
+) -> None:
+    if sibling is not None:
+        _stage(scratch_repo, sibling, b'{"note": "benign tracked config"}')
+    _stage_literal(scratch_repo, name, _SAVED_SCHEDULE)
+    floor = _run_hook_on_the_bash_floor(scratch_repo)
+    assert floor.returncode != 0, f"{name!r} slipped the bash floor: {floor.stderr}"
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="NTFS cannot create these names")
+def test_git_magic_names_still_commit_when_they_are_not_schedules(scratch_repo: Path) -> None:
+    """The other half of HOOK-02: closing the hole must not turn the guard into a wall.
+
+    A guard that fires on ordinary config gets switched off, and then it guards nothing.
+    """
+    _stage(scratch_repo, "settings.json", b'{"note": "benign tracked config"}')
+    _stage_literal(scratch_repo, "!settings.json", b'{"model": "local", "permissions": []}')
+    assert _hook_exit(scratch_repo) == 0, "a benign config under a magic name must commit freely"
+
+
 @pytest.mark.parametrize(
     ("name", "body"),
     [

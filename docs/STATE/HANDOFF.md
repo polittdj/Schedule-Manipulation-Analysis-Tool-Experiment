@@ -1,63 +1,68 @@
-# Handoff — 2026-08-15 (e) (JCL-BR-01 closed: the branch registers carry through compute_jcl, the last strict xfail flips, the repo is xfail-FREE and the agent queue is EMPTY; ADR-0408; v1.0.207 shipped)
+# Handoff — 2026-08-16 (a) (Ultracode deep-dive audit, unit 1: HOOK-02 — a git-magic filename made every CUI content detector fail open; closed, mutation-proved, ADR-0409; v1.0.207 unchanged)
 
-> ## STATUS (current) — ADR-0408 unit complete on `claude/nasa-itar-ai-desktop-launch-scx3gz`.
-> Highest ADR now **0408**. **SHIPPED code changed** (`engine/jcl.py`, `web/app.py`,
-> `web/sra.py`) — version **v1.0.206 → v1.0.207**, SCHEMA 2.11.0 unchanged, wheel + nine
-> installers rebuilt (lockstep 64/64). **ZERO xfail markers remain in the whole tree**
-> (grep-proven; the four remaining `xfail(` matches are prose about flipped findings).
-> **The 2026-08-13 audit's agent queue is EMPTY** — every remaining item is operator-owned
-> (see OPERATOR-REQUESTS.md).
+> ## STATUS (current) — audit IN PROGRESS on `claude/nasa-itar-ai-desktop-launch-scx3gz`.
+> Highest ADR now **0409**. **NO shipped code changed** — `.githooks/` + tests + docs only:
+> version stays **v1.0.207**, SCHEMA 2.11.0, no wheel/installer rebuild (verified twice: the
+> built wheel contains no `.githooks/` entry, and ADR-0399 set this precedent for HOOK-01).
+> The operator ordered a COMPLETE repository deep-dive audit (ADR-0240 Ultracode): find
+> everything wrong, prove each finding with pass+fail tests, sandbox-verify every solution
+> BEFORE implementing, triple-verify independently, and cover every page/route with pass and
+> fail tests. Round 1 ran 1 of 16 agents before a credit exhaustion killed the rest; round 2
+> (11 dimensions + route census + critic) is running. **This handoff will be superseded as
+> further units land — the audit is NOT finished.**
 >
-> ## What landed — ADR-0408 (JCL-BR-01: the last equivalence gap closes)
-> `compute_jcl` accepted no branch inputs, so the web layer fed the session's
-> probabilistic/conditional branches to the SSI run only — with a branch configured the
-> JCL finish marginal silently left the SSI S-curve (ADR-0401's measured defect), and the
-> SRA Excel export wrote a TWO-STORY workbook (SSI sheets branched, JCL sheets not).
-> Now: **(1)** `compute_jcl` takes `branches=`/`conditionals=` and mirrors the SSI blocks
-> statement-for-statement via the SAME imported private helpers (augment → disjoint draw
-> streams → in-loop fragnet/plan overrides, probe solve included) — same augmentation
-> ORDER (branches first; a combined-register test pins it). **(2)** Both web call sites
-> (`/api/sra/jcl` + the export's JCL sheets) pass the session registers — one workbook,
-> one story. **(3)** Fragnets are COST-INERT by the data (zero budget, never elicited):
-> no multiplier draw, no duration draw, cost CDF + provenance byte-identical to the
-> no-branch run — a branch moves the finish axis only; the JCL panel explainer now names
-> the branch registers in its shared-inputs enumeration and states the zero-budget
-> disclosure. The strict xfail flipped loudly (XPASS) and its marker is REMOVED.
-> **QC-1:** red-first (7 new tests failed by name pre-change); mutation battery **6/6
-> caught by the named test** (PYTHONPATH shadow, import-origin canary, pristine controls
-> both sides, instruments md5-identical); the planned "fragnet consumes a draw" mutant
-> was REPLACED in design (fragnet uids sort last — that mutant cannot fail) by "fragnet
-> fabricates cost", which can. Blast radius: all 8 JCL-consuming test files green
-> (37+31+138); mdash sentinel + audit module checked by name, unaffected.
+> ## What landed — ADR-0409 (HOOK-02, Law-1 critical)
+> `.githooks/pre-commit` read staged bytes as `git show ":$path"`, so the NAME's leading
+> bytes parsed as git magic: `!x.json` (exclude-pathspec), `^x.json` (negated revision),
+> `0:x.json`/`1:x.json` (merge-stage syntax), `:(icase)x.json` (pathspec magic). Each
+> returns EMPTY output, which every content detector reads as "clean" — so a real CUI
+> schedule committed SILENTLY under `!plan.json` (a plain `git add -A` stages such names).
+> The extension detector still fired, so the hole was exactly the classes where the content
+> sniff is the ONLY barrier: `.json` (the tool's own Save format, deliberately not
+> gitignored), `.txt`, extension-less, `.md`, images, PDFs, archives. Fixed by resolving the
+> INDEX OID (`git --literal-pathspecs ls-files -s -z` → `git cat-file blob`) in BOTH the bash
+> and python detectors — the name is then only ever a pathspec.
+> **THREE traps paid, all by measurement:** (1) the finder's proposed `--` fix was WRONG —
+> sandbox-measured before implementing, it leaves `:<stage>:` open; (2) the first
+> implementation used `head`/`cut`/`tr` and WEAKENED the guard — the repo's own
+> `test_hook_without_python3...` floor test caught it, so the helper now parses with bash
+> BUILTINS only; (3) with an outcome-only assertion **3 of 4 mutants SURVIVED including a
+> full revert of the bug**, because the bash and python sniffers are defence-in-depth twins
+> over the same files — `test_bash_floor_blocks_git_magic_names_without_python3` pins the
+> bash LAYER on a git+grep-only PATH, and M4 needed a colon-leading name added before it was
+> killable at all ("a mutant that cannot fail is not a mutant", ADR-0408).
+> **QC-1 triple verification:** 6 new tests red BY NAME pre-fix → module 90 → **98 passed**;
+> an INDEPENDENT bash battery written before the tests (10 hostile shapes blocked, 4 benign
+> controls still allowed, ADR-0152 inherited/tampered pair intact); mutation battery **4/4
+> caught by the named test**, hook restored md5-identical, controls green both sides.
 >
-> ## Next — in order (ALL remaining items are operator-owned)
-> **The V-1/V-2/V-3 verification table in OPERATOR-REQUESTS.md** (arm-once on the NASA
-> machine; catalog populating = Bearer accepted; still-401-with-key → capture the AI
-> Hub's documented scheme) → **DISC-01** (authorizing official) → **PO-04/05** (BLOCKED
-> on the CEI/HMI export) → 8 stale remote branches + SMAT-SANDBOX names (operator UI;
-> sessions cannot push ref deletions, ADR-0401). Agent work: NONE queued — a new audit
-> sweep or a new operator directive opens the next arc.
+> ## Next — the audit continues
+> Round-2 dimensions in flight: CPM/float · metric formulas vs the NASA `.aft` · Monte-Carlo
+> (sra/jcl/correlation) · findings/trend/manipulation · importers · web core (routes+state) ·
+> page modules A/B · static JS · **the test suite itself** (green-tests-that-cannot-fail) ·
+> docs/config/CI · AI figure-gates. Then: lead re-verification of every survivor, red-first
+> fixes in gated units, and the route×test gap-fill — the lead's independent inventory is
+> **137 routes** (65 page · 34 api · 38 export), which is the denominator for the operator's
+> "pass AND fail tests for every page" requirement.
 >
 > ## Carried forward
-> ADR-0353..0408 closed — do not re-open. NEW lessons this session: **a mutant that
-> cannot fail is not a mutant** — check the mutation's reachability before counting it
-> (fragnet uids sort last, so a wasted trailing draw shifts nothing; the battery got a
-> reachable "fabricates cost" mutant instead); **an engine that replicates another
-> engine's discipline extends by IMPORTING its helpers, never by copying them** (the
-> jcl.py import list IS the architecture; the branch fix was ~60 lines because the
-> helpers were already shared). Standing traps unchanged (see the archive — data pins vs
-> guarantees · mutation-green vs adversarial · monkeypatch per CALL SITE · never measure
-> a mutating tree · never mutate a measuring instrument · two ruffs, use `python -m
-> ruff` · parity >900 s · container starts with NO deps · fetch before numbering and
-> before committing · `wc` decides). QC-1/QC-2 are ADR-0393, pinned by
-> `tests/test_standing_rules.py`.
+> ADR-0353..0409 closed — do not re-open. NEW lesson: **a defence-in-depth twin makes an
+> outcome assertion blind to a layer dying** — when two detectors cover the same input, an
+> end-to-end test cannot prove either one works; run one layer alone (thin PATH) to pin it.
+> And **a suggested fix is a hypothesis**: the finder's `--` patch passed its own reasoning
+> and failed the sandbox. Standing traps unchanged (see the archive — data pins vs
+> guarantees · monkeypatch per CALL SITE · never measure a mutating tree · never mutate a
+> measuring instrument · two ruffs, use `python -m ruff` · parity >900 s · container starts
+> with NO deps · fetch before numbering and before committing · `wc` decides). QC-1/QC-2 are
+> ADR-0393, pinned by `tests/test_standing_rules.py`.
 >
 > ## Gate at close
-> Statics green (`python -m ruff check .` whole tree, 1018 files formatted · mypy strict
-> 155 files · bandit · node per-file). Full suite on the final tree: **4079 passed, 47
-> skipped (env-gated playwright), 0 xfailed — the repo's FIRST zero-xfail run — 0
-> failed, exit 0, 22:28**. Parity: **72 passed, 15 skipped, exit 0, 10:37**. Installer
-> lockstep 64/64 against the v1.0.207 wheel. Drift guards 17/17.
+> Statics green (`python -m ruff check .` whole tree · format --check · mypy strict 155
+> files · bandit · node per-file). Full suite: **4094 passed, 47 skipped (env-gated
+> playwright), 0 failed, exit 0, 29:50** — exactly +15 over ADR-0408's 4079, matching the
+> 15 new HOOK-02 cases. Parity: **72 passed, 15 skipped, exit 0, 8:55**. Drift guards 5/5.
+> No wheel/installer rebuild (`.githooks/` ships in no wheel — verified against the built
+> v1.0.207 artifact; ADR-0399 precedent).
 
 # (prior) handoffs — archived
 

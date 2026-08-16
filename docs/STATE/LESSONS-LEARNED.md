@@ -435,6 +435,29 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-16 (a) — a defence-in-depth twin blinds an outcome assertion, and a suggested fix is only a hypothesis
+
+- HOOK-02's mutation battery is the cleanest demonstration yet of a rule this repo keeps
+  re-learning: **when two layers detect the same input, no end-to-end assertion can prove
+  either one works.** Reverting the bash sniffer to the exact original bug left the new
+  outcome test GREEN, because the python sniffer caught the same files — 3 of 4 mutants
+  survived. The fix is to run one layer ALONE (a PATH carrying only git+grep) so the
+  layer's death is observable. Generalise: *before trusting a battery, ask which layer
+  each mutant actually exercises; a twin makes the count a lie.*
+- **A proposed fix is a hypothesis and gets the same red/green treatment as a claim.** The
+  finder's `--` separator was plausible, well-argued, and wrong: measured on a sandbox COPY
+  of the hook before any implementation, it closed the `!`/`^` shapes and left the
+  `:<stage>:<path>` shapes open. Building both candidates and running the SAME battery
+  against each is what made the choice evidence rather than taste.
+- **My own probe was wrong twice before it was right**, and both errors flattered a
+  conclusion: `| head` swallowed the exit code, and a `git add` that silently failed made a
+  never-staged file look "blocked" (and, in the other direction, made a working fix look
+  broken). The test that shipped therefore ASSERTS the file reached the index — a harness
+  that cannot tell "blocked" from "never staged" is a green test that cannot fail.
+- **A security fix can weaken security.** Reaching for `head`/`cut`/`tr` narrowed the
+  guard's no-python3 floor; the repo's existing floor test caught it within one run. When
+  hardening a component, re-read what its DEGRADED mode is contracted to do.
+
 ### 2026-08-15 (e) — a mutant that cannot fail is not a mutant, and shared helpers make parity fixes small
 
 - JCL-BR-01's battery originally planned a "fragnet consumes a cost-multiplier draw"
