@@ -34,14 +34,23 @@
 > stood down.
 >
 > ## Next — the audit is NOT finished
-> Fan-out died of credit exhaustion in rounds 1 and 2 (1/16, then 4/13). Round 3 (tests-that-
-> cannot-fail · web core+state · importers · findings/manipulation · static JS) was launched
-> 2026-08-17 — **check `/workflows` or its journal for results before assuming coverage**.
-> Dimensions still unaudited if round 3 also died: docs/config/CI · AI figure-gates · page
-> modules A/B. **22 REPORTED findings await lead verification** (CPM-01, MC-01 finder-rated
-> critical, UNVERIFIED). **MF-05 is do-not-fix-blind** — an empty-population PASS may be
-> CORRECT Acumen parity and needs the reference export as its oracle. Route x test gap-fill:
-> **137 routes**, **5 with no success test, 16 with no failure-mode test** — scoped, not built.
+> Fan-out died of credit exhaustion in rounds 1 and 2 (1/16, then 4/13); **round 3 COMPLETED
+> 5/5** (~79 min, 0 errors) — an earlier "stalled" note in this file was a premature read.
+> ~50 findings now sit in the ledger, nearly all **REPORTED = unverified hypotheses**.
+> **Resume order (also in NEXT-SESSION-PROMPT.md): 0. REC-01 — it DISPUTES ADR-0407, shipped
+> by this same session** (claims the `actual_start_driven` disclosure DOES reach a quantified
+> recovery surface); verify it first and CORRECT the ADR if it holds, do not defend it →
+> 1. **MC-01** (critical, LEAD-VERIFIED: a fired register OPPORTUNITY hits `max(0, impact)`
+> and ZEROES the activity — P50 5 wd where 20 wd is right; **do-not-fix-blind**, the parity
+> leg needs the SSI export) → 2. **JS-01** (critical: the Acumen parity checkbox may be a DEAD
+> control under CSP — render-verify in a real browser) → 3. **SRA-EXPORT-STALE-SCOPE**
+> (critical: `_sra_reuse_key` may omit the scope signature; settle it by diffing a FILTERED
+> page against its export, the one probe that caught MF-02) → 4. **TST-01** (high, already
+> mutation-proven: `_CPM_HOLDERS` omits `web.state`, so two extra network solves left the gate
+> GREEN) → 5. IMP-01 + the three MIXED-POPULATION claims → 6. the route x test gap-fill
+> (**137 routes**; **5 with no success test, 16 with no failure-mode test** — scoped, NOT
+> built) → 7. never audited at all: page modules A/B · docs/config/CI · AI figure-gates.
+> **MF-05 is also do-not-fix-blind** (an empty-population PASS may be correct Acumen parity).
 >
 > ## Carried forward
 > ADR-0353..0412 closed — do not re-open. NEW lesson: **when a safety rule produces a bad
