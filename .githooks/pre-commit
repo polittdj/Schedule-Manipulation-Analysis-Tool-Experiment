@@ -89,6 +89,28 @@ allow_prefixes=(
   'src/schedule_forensics/web/examples/'   # the shipped demo schedules the app loads
 )
 
+staged_blob() {
+  # Read the STAGED bytes of $1 by INDEX OID, never by revision syntax.
+  #
+  # `git show ":$path"` glues the path into ONE revision argument, so git parses the name's
+  # leading bytes as MAGIC: '!' is exclude-pathspec, '^' is a negated revision, and a
+  # '<digit>:' prefix selects a merge STAGE. Each makes git exit 128 (or resolve a stage that
+  # does not exist) with EMPTY stdout — and empty bytes read exactly like "nothing to see" to
+  # every detector below, so a real schedule under `!plan.json` committed silently (HOOK-02,
+  # measured 2026-08-16). The rev/path `--` separator does NOT close the stage-prefix variant;
+  # resolving the OID from the index does, because the name is then only ever a pathspec, and
+  # `--literal-pathspecs` strips magic from that side too.
+  # Parsed with bash BUILTINS only (`read`), never head/cut/tr: detectors 1-2 are the floor
+  # that must still run when python3 and the wider toolchain are absent, and that floor is
+  # pinned to git+grep by test_hook_without_python3_keeps_the_extension_and_text_floor.
+  # `-d ''` reads one NUL-terminated index record, so a newline inside a path cannot split it.
+  local mode oid rest
+  IFS=' ' read -r -d '' mode oid rest \
+    < <(git --literal-pathspecs ls-files -s -z -- "$1" 2>/dev/null)
+  [ -n "$oid" ] || return 1
+  git cat-file blob "$oid" 2>/dev/null
+}
+
 inherited_from_main() {
   # true only when the staged blob is byte-identical to origin/main's blob at this path
   local staged upstream
@@ -117,7 +139,7 @@ carries_schedule_content() {
   # `git show | grep -q` merely wins the same race more often, which is worse, not better.
   # Here `git show` is not part of the pipeline at all, so its death cannot become our verdict —
   # and grep reads to EOF or first match, so there is no truncation window either.
-  grep -qaE "$signature_re" <(git show ":$1" 2>/dev/null)
+  grep -qaE "$signature_re" <(staged_blob "$1")
 }
 
 violations=()
@@ -193,8 +215,26 @@ OLE_MAGIC = b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1"
 ZIP_MAGIC = b"PK\x03\x04"
 
 
+def _staged_blob(path):
+    """The staged bytes of ``path``, resolved by INDEX OID (HOOK-02).
+
+    The bash twin above carries the full reasoning: ``git show ":" + path`` lets a leading
+    '!' / '^' / '<digit>:' parse as git magic and hand back EMPTY output, which reads to the
+    detectors below as a clean file. Resolving the OID keeps the name a pathspec only, and
+    ``--literal-pathspecs`` disarms the magic on that side too.
+    """
+    ls = subprocess.run(
+        ["git", "--literal-pathspecs", "ls-files", "-s", "-z", "--", path], capture_output=True
+    )
+    entry = ls.stdout.split(b"\0", 1)[0]
+    parts = entry.split(b" ", 2)
+    if len(parts) < 2 or not parts[1]:
+        return b""
+    return subprocess.run(["git", "cat-file", "blob", parts[1].decode()], capture_output=True).stdout
+
+
 def reason_for(path):
-    blob = subprocess.run(["git", "show", ":" + path], capture_output=True).stdout
+    blob = _staged_blob(path)
     # rstrip: a trailing-whitespace name must classify like its clean form (fail-open fix)
     base = path.rsplit("/", 1)[-1].lower().rstrip()
     exts = set(base.split(".")[1:])

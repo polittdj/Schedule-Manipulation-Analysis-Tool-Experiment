@@ -14423,3 +14423,94 @@ installers (lockstep 64/64). ADR-0408.
 **Next:** the agent queue is EMPTY — remaining items are operator-owned: V-1/V-2/V-3
 (gateway verification on the NASA machine) · DISC-01 · CEI/HMI export · branch/SANDBOX
 UI cleanup. A new audit sweep or operator directive opens the next arc. ADR-0408.
+
+## 2026-08-16 (a) — Ultracode deep-dive audit begins; unit 1: HOOK-02, a git-magic filename made every CUI content detector fail open (ADR-0409, v1.0.207 unchanged)
+
+Operator directive: a COMPLETE repository deep-dive audit — find every error, prove each
+finding with pass AND fail tests, sandbox-verify every solution BEFORE implementing,
+triple-verify independently, cover all pages/functions, skip nothing. Round 1 of the
+ADR-0240 Ultracode fan-out (16 agents) lost 15 to a credit exhaustion; the one survivor
+(`security_cui`) returned a self-probed critical finding, and its verifier died — so the
+script's "no verdict = refuted" rule mislabeled it. The LEAD re-verified it from scratch,
+which is the whole point of the protocol.
+
+**HOOK-02 (Law 1, critical).** `.githooks/pre-commit` read staged bytes as
+`git show ":$path"`, gluing the path into a REVISION argument — so the name's leading bytes
+parse as git magic: `!x.json` exclude-pathspec, `^x.json` negated revision, `0:`/`1:x.json`
+merge-stage syntax, `:(icase)x.json` pathspec magic. All return EMPTY output, and empty
+bytes read as "clean" to every content detector, so a real CUI schedule committed SILENTLY
+under `!plan.json` — staged by a plain `git add -A`, no exotic tooling. The extension
+detector still fired, so the hole was precisely the classes where the sniff is the ONLY
+barrier (`.json` — the tool's own Save format, deliberately not gitignored — `.txt`,
+extension-less, `.md`, images, PDFs, archives). Fixed by resolving the INDEX OID
+(`git --literal-pathspecs ls-files -s -z` → `git cat-file blob`) in BOTH detectors.
+
+Three traps paid by measurement, each of which would have shipped a wrong answer:
+(1) **the finder's proposed fix was wrong** — adding `--` closes `!`/`^` but not
+`:<stage>:`, measured in a sandbox on a COPY before implementing (variant A left 3 shapes
+open, variant B closed all 10); (2) the first implementation used `head`/`cut`/`tr` and
+WEAKENED the guard's floor — caught by the repo's own
+`test_hook_without_python3_keeps_the_extension_and_text_floor`, so the helper now parses
+with bash BUILTINS only; (3) with an outcome-only assertion **3 of 4 mutants survived,
+including a full revert of the original bug**, because the bash and python sniffers are
+defence-in-depth TWINS — the new
+`test_bash_floor_blocks_git_magic_names_without_python3` runs the cases on a git+grep-only
+PATH to pin the bash layer, and M4 was unkillable until a colon-leading name was added to
+the parametrization.
+
+**QC-1, three independent instruments:** 6 new tests red BY NAME pre-fix (module 90 → 98
+passed); an independent bash battery written before the tests (10 hostile shapes blocked,
+4 benign controls still allowed, the ADR-0152 inherited/tampered pair intact); mutation
+battery 4/4 caught by the named test with the hook restored md5-identical. No version bump
+— verified twice that `.githooks/` ships in no wheel (ADR-0399 precedent). ADR-0409.
+
+**Next:** audit round 2 (11 dimensions + route census + completeness critic) is in flight;
+the lead's independent route inventory is 137 routes (65 page / 34 api / 38 export), the
+denominator for the operator's every-page pass+fail coverage requirement. ADR-0409.
+
+## 2026-08-16 (b) — audit unit 2: TCPI scored with its PASS direction inverted (ADR-0410, v1.0.208)
+
+`engine/metrics/evm.py::_index()` hardcoded `Direction.GE` for SPI, CPI **and** TCPI. TCPI
+is inverted by definition — (BAC-EV)/(BAC-AC) is the efficiency the REMAINING work must
+achieve, so >1.0 means the programme must beat its own plan. `help.py:571` already published
+"pass <= 1.0". Measured on the unfixed engine: a programme needing 1.6x efficiency reported
+PASS; a comfortable one at 0.25x reported FAIL. TCPI feeds `_DIM_AFFORDABILITY`, so the
+affordability dimension showed green precisely on programmes that could not afford to
+finish — a Law-2 defect in a figure quoted in testimony. The NASA `.aft` row pins the
+FORMULA as MATCH, so the number was always right: only the verdict was wrong, no parity
+value moves, and `help.py` needed no edit.
+
+Three existing oracles had the defect baked in (ADR-0385 stale-guard class, 3rd instance):
+`_EVM_SEEDS` ("measured, then pinned" — measured against the inversion), a fixture named
+`blown` at CPI 0.54 asserting its affordability index PASSES, and a TCPI of 0.5 asserted
+FAIL. All repointed with reasons inline.
+
+QC-1 per the operator's directive: the fix was built in a PYTHONPATH SHADOW and its blast
+radius measured there BEFORE the real tree was touched — exactly 4 failures / 430 across
+all 26 EVM-touching files, every one a bug-pinning oracle, zero genuine regressions. Red
+first by name; 432 passed after. Mutation battery 4/4 caught by the named tests, with M4
+deliberately flipping SPI so the neighbours-unchanged control is proved rather than assumed.
+Gate: 4096 passed, 47 skipped, 0 failed, exit 0 (18:27); parity 72 passed (8:47). v1.0.208, wheel + nine installers (lockstep 64/64). ADR-0410.
+
+**Next:** remaining round-2 dimensions; 22 REPORTED findings await lead verification
+(CPM-01 and MC-01 rated critical, unverified); route x test gap-fill over 137 routes
+(5 without a success test, 16 without a failure-mode test). ADR-0410.
+
+## 2026-08-17 (a) — audit unit 3: the EVM workbook exported a fabricated 0.0 where the page said NA (ADR-0411, v1.0.209)
+
+`/export/{fmt}/evm` guarded every cell on `value is not None`. `_na_index` builds a
+NOT_APPLICABLE result with **value=0.0**, so the guard never fired. Measured on golden
+Project5: the PAGE renders NA and says "that is a fact about the file, not a performance
+figure"; the WORKBOOK wrote three 0.0 cells. CPI 0.00 in a hand-out reads as catastrophic
+cost performance when the truth is "no cost data" — and the workbook is the artefact that
+leaves the tool and gets quoted. Fixed with a named `_export_cell()` gating on status.
+Red-first by name; the test pins BOTH halves (no fabricated 0.0 AND the real figures still
+travel). Mutation battery 3/3 by name in a shadow sandbox. v1.0.209, wheel + nine
+installers (lockstep 64/64). ADR-0411.
+
+**Audit status — read honestly:** the Ultracode fan-out died of credit exhaustion in BOTH
+rounds (1 of 16 agents, then 4 of 13). Dimensions never audited: findings/trend/manipulation,
+importers, web core, page modules, static JS, the test suite itself, docs/config/CI, AI
+figure-gates. 22 finder claims remain UNVERIFIED (CPM-01 and MC-01 rated critical). MF-05 is
+do-not-fix-blind pending the Acumen oracle. The route x test gap-fill (137 routes; 5 without
+a success test, 16 without a failure-mode test) is queued, not closed. ADR-0411.

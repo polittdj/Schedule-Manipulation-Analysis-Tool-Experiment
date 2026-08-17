@@ -1,63 +1,56 @@
-# Handoff — 2026-08-15 (e) (JCL-BR-01 closed: the branch registers carry through compute_jcl, the last strict xfail flips, the repo is xfail-FREE and the agent queue is EMPTY; ADR-0408; v1.0.207 shipped)
+# Handoff — 2026-08-17 (a) (deep-dive audit unit 3: MF-02 — the EVM workbook exported a fabricated 0.0 where the page said NOT APPLICABLE; ADR-0411; v1.0.209 shipped)
 
-> ## STATUS (current) — ADR-0408 unit complete on `claude/nasa-itar-ai-desktop-launch-scx3gz`.
-> Highest ADR now **0408**. **SHIPPED code changed** (`engine/jcl.py`, `web/app.py`,
-> `web/sra.py`) — version **v1.0.206 → v1.0.207**, SCHEMA 2.11.0 unchanged, wheel + nine
-> installers rebuilt (lockstep 64/64). **ZERO xfail markers remain in the whole tree**
-> (grep-proven; the four remaining `xfail(` matches are prose about flipped findings).
-> **The 2026-08-13 audit's agent queue is EMPTY** — every remaining item is operator-owned
-> (see OPERATOR-REQUESTS.md).
+> ## STATUS (current) — audit IN PROGRESS on `claude/nasa-itar-ai-desktop-launch-scx3gz`.
+> Highest ADR now **0411**. **SHIPPED code changed** (`web/app.py`) — version **v1.0.208 →
+> v1.0.209**, SCHEMA 2.11.0 unchanged, wheel + nine installers rebuilt (lockstep 64/64).
+> Units 1-2 (ADR-0409/0410) are pushed on **PR #595**. **The audit is NOT finished** — the
+> live ledger is `docs/STATE/AUDIT-2026-08-16.md`, where every row is marked
+> FIXED / LEAD-VERIFIED / REPORTED. Do not treat a REPORTED row as a defect.
 >
-> ## What landed — ADR-0408 (JCL-BR-01: the last equivalence gap closes)
-> `compute_jcl` accepted no branch inputs, so the web layer fed the session's
-> probabilistic/conditional branches to the SSI run only — with a branch configured the
-> JCL finish marginal silently left the SSI S-curve (ADR-0401's measured defect), and the
-> SRA Excel export wrote a TWO-STORY workbook (SSI sheets branched, JCL sheets not).
-> Now: **(1)** `compute_jcl` takes `branches=`/`conditionals=` and mirrors the SSI blocks
-> statement-for-statement via the SAME imported private helpers (augment → disjoint draw
-> streams → in-loop fragnet/plan overrides, probe solve included) — same augmentation
-> ORDER (branches first; a combined-register test pins it). **(2)** Both web call sites
-> (`/api/sra/jcl` + the export's JCL sheets) pass the session registers — one workbook,
-> one story. **(3)** Fragnets are COST-INERT by the data (zero budget, never elicited):
-> no multiplier draw, no duration draw, cost CDF + provenance byte-identical to the
-> no-branch run — a branch moves the finish axis only; the JCL panel explainer now names
-> the branch registers in its shared-inputs enumeration and states the zero-budget
-> disclosure. The strict xfail flipped loudly (XPASS) and its marker is REMOVED.
-> **QC-1:** red-first (7 new tests failed by name pre-change); mutation battery **6/6
-> caught by the named test** (PYTHONPATH shadow, import-origin canary, pristine controls
-> both sides, instruments md5-identical); the planned "fragnet consumes a draw" mutant
-> was REPLACED in design (fragnet uids sort last — that mutant cannot fail) by "fragnet
-> fabricates cost", which can. Blast radius: all 8 JCL-consuming test files green
-> (37+31+138); mdash sentinel + audit module checked by name, unaffected.
+> ## What landed — ADR-0411 (MF-02, Law-2 high)
+> `/export/{fmt}/evm` wrote each cell as `value if value is not None else ""`. That guard
+> NEVER fires for a NOT_APPLICABLE index: `_na_index` builds the NA result with
+> **value=0.0** (its own docstring says "never a fabricated 0") — the meaning lives in
+> `status`, and the guard read `value`. Measured on golden Project5 (no cost loading): the
+> PAGE renders NA and explains "that is a fact about the file, not a performance figure",
+> while the WORKBOOK wrote three `0.0` cells. An analyst reading the hand-out sees CPI 0.00
+> — catastrophic cost performance — where the truth is "no cost data". The workbook is the
+> artefact that LEAVES the tool and gets quoted. Fixed with a named, shared
+> `_export_cell()` helper gating on status (`web/performance.py` already had the correct
+> idiom; the helper is what stops the two drifting apart again).
+> **QC-1:** red-first by name (module 14 passed after); the test pins BOTH halves — no
+> fabricated `0.0` AND the real figures (0.47, 0.91) still travel, so a fix that blanked
+> everything would fail it; mutation battery **3/3 caught by the named test** (shadow,
+> import-origin canary, instrument md5-identical, controls green both sides).
 >
-> ## Next — in order (ALL remaining items are operator-owned)
-> **The V-1/V-2/V-3 verification table in OPERATOR-REQUESTS.md** (arm-once on the NASA
-> machine; catalog populating = Bearer accepted; still-401-with-key → capture the AI
-> Hub's documented scheme) → **DISC-01** (authorizing official) → **PO-04/05** (BLOCKED
-> on the CEI/HMI export) → 8 stale remote branches + SMAT-SANDBOX names (operator UI;
-> sessions cannot push ref deletions, ADR-0401). Agent work: NONE queued — a new audit
-> sweep or a new operator directive opens the next arc.
+> ## Next — the audit continues
+> **The Ultracode fan-out died of credit exhaustion in BOTH rounds** (round 1: 1 of 16
+> agents; round 2: 4 of 13, then stalled). Dimensions NEVER audited: findings/trend/
+> manipulation · importers · web core · page modules A/B · static JS · **the test suite
+> itself** · docs/config/CI · AI figure-gates. These need a fresh session (or a working
+> agent pool) — this handoff must not be read as "the repo was fully audited".
+> **22 REPORTED findings await lead verification**, incl. CPM-01 and MC-01 (finder-rated
+> critical, UNVERIFIED). **MF-05 is explicitly do-not-fix-blind**: an empty-population PASS
+> may be CORRECT Acumen parity behaviour and needs the reference export as its oracle.
+> Then the route x test gap-fill: **137 routes** (enumerated twice independently), of which
+> **5 lack a success test and 16 lack a failure-mode test**.
 >
 > ## Carried forward
-> ADR-0353..0408 closed — do not re-open. NEW lessons this session: **a mutant that
-> cannot fail is not a mutant** — check the mutation's reachability before counting it
-> (fragnet uids sort last, so a wasted trailing draw shifts nothing; the battery got a
-> reachable "fabricates cost" mutant instead); **an engine that replicates another
-> engine's discipline extends by IMPORTING its helpers, never by copying them** (the
-> jcl.py import list IS the architecture; the branch fix was ~60 lines because the
-> helpers were already shared). Standing traps unchanged (see the archive — data pins vs
-> guarantees · mutation-green vs adversarial · monkeypatch per CALL SITE · never measure
-> a mutating tree · never mutate a measuring instrument · two ruffs, use `python -m
-> ruff` · parity >900 s · container starts with NO deps · fetch before numbering and
-> before committing · `wc` decides). QC-1/QC-2 are ADR-0393, pinned by
-> `tests/test_standing_rules.py`.
+> ADR-0353..0411 closed — do not re-open. NEW lesson: **when two surfaces describe the same
+> figure, compare them to each other** — the page/export disagreement localised MF-02
+> instantly, and MF-01 was the same shape (published help text right, engine wrong). A
+> surface read alone only tells you what it says, never whether it is true. Standing traps
+> unchanged (see the archive — defence-in-depth twins hide layer deaths · a suggested fix
+> is a hypothesis · "measured, then pinned" fixtures inherit the bug · never measure a
+> mutating tree · never mutate a measuring instrument · two ruffs, use `python -m ruff` ·
+> parity >900 s · fetch before numbering and before committing · `wc` decides). QC-1/QC-2
+> are ADR-0393, pinned by `tests/test_standing_rules.py`.
 >
 > ## Gate at close
-> Statics green (`python -m ruff check .` whole tree, 1018 files formatted · mypy strict
-> 155 files · bandit · node per-file). Full suite on the final tree: **4079 passed, 47
-> skipped (env-gated playwright), 0 xfailed — the repo's FIRST zero-xfail run — 0
-> failed, exit 0, 22:28**. Parity: **72 passed, 15 skipped, exit 0, 10:37**. Installer
-> lockstep 64/64 against the v1.0.207 wheel. Drift guards 17/17.
+> Statics green (`python -m ruff check .` whole tree · format --check 1021 files · mypy
+> strict 155 files · bandit). Full suite: **4097 passed, 47 skipped, 0 failed, exit 0,
+> 18:30**. Parity: **72 passed, 15 skipped, exit 0, 8:43** — unchanged. Installer lockstep
+> **64/64** against the v1.0.209 wheel. Drift guards 5/5.
 
 # (prior) handoffs — archived
 

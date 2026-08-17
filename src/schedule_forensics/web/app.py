@@ -126,6 +126,7 @@ from schedule_forensics.engine.metrics import (
     ribbon_offender_map,
 )
 from schedule_forensics.engine.metrics._common import (
+    CheckStatus,
     MetricResult,
     non_summary,
 )
@@ -808,6 +809,20 @@ from schedule_forensics.web.wbs import _wbs_data as _wbs_data
 from schedule_forensics.web.workbench import _workbench_body as _workbench_body
 
 logger = logging.getLogger("schedule_forensics.web")
+
+
+def _export_cell(result: MetricResult | None) -> float | str:
+    """A metric's exported value, or blank when the metric does not apply (MF-02, ADR-0411).
+
+    NOT_APPLICABLE is carried by ``status``; ``value`` is 0.0 on such a result, so guarding a
+    workbook cell on ``value is not None`` writes a fabricated 0.00 for every index the page
+    honestly renders as NA. Law 2, and the design system's "missing shows an em dash, never a
+    fabricated figure" — a workbook leaves the tool and gets quoted.
+    """
+    if result is None or result.status is CheckStatus.NOT_APPLICABLE or result.value is None:
+        return ""
+    return result.value
+
 
 #: Locally-vendored static assets (CSS/JS) — served from /static; no CDN, no external fetch.
 _STATIC_DIR = Path(__file__).parent / "static"
@@ -2980,7 +2995,12 @@ def create_app(
                 (
                     s.source_file or s.name,
                     *(
-                        (indices[k].value if k in indices and indices[k].value is not None else "")
+                        # Gate on STATUS, not on `value is not None`: `_na_index` builds a
+                        # NOT_APPLICABLE result with value=0.0 (never None), so a value-only
+                        # guard never fires and a cost-free file exported CPI/SPI/TCPI as
+                        # 0.00 — read as catastrophic performance while the page said NA
+                        # (MF-02, ADR-0411). The workbook must not contradict the screen.
+                        _export_cell(indices.get(k))
                         for k in idx_keys
                     ),
                     sv.svt_days if sv.svt_days is not None else "",

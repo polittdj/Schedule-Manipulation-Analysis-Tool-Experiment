@@ -717,12 +717,16 @@ _EVM_SEEDS: tuple[tuple[str, Callable[[Schedule], Schedule], frozenset[str]], ..
                 "baseline_finish_compliance",
                 "cei_finish",
                 "cpi",
+                # tcpi joins CPI here under MF-01 (ADR-0410): unfinished work that has
+                # already consumed its budget must run ABOVE plan to land on cost, which is
+                # a fail. Declared PASS while the direction was inverted.
+                "tcpi",
                 "spi_t",
                 "spi_t_acumen",
             }
         ),
     ),
-    ("cost_blowout", _seed_evm_cost_blowout, frozenset({"cpi"})),
+    ("cost_blowout", _seed_evm_cost_blowout, frozenset({"cpi", "tcpi"})),
     (
         "never_started",
         _seed_evm_never_started,
@@ -798,7 +802,11 @@ def test_evm_sharp_discriminators() -> None:
     assert undone["spi"].status is CheckStatus.PASS
     blown = _evm_all(_seed_evm_cost_blowout(clean_program()))
     assert blown["cpi"].value == 0.54 and blown["spi"].value == 1.75
-    assert blown["tcpi"].status is CheckStatus.PASS and blown["tcpi"].value == 1.17
+    # A cost blowout spending ~2x per unit of work CANNOT also be affordable: TCPI 1.17
+    # says the remainder must beat the plan by 17%. This asserted PASS until MF-01
+    # (ADR-0410) — the sharpest example of the inverted direction, since the very fixture
+    # is named for being blown.
+    assert blown["tcpi"].status is CheckStatus.FAIL and blown["tcpi"].value == 1.17
 
 
 # --- schedule_quality: the Acumen summary framework -------------------------------

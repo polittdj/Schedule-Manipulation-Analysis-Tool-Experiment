@@ -282,8 +282,17 @@ def compute_evm_indices(
         out["spi"] = _index("spi", "SPI", bcwp / bcws if bcws else None, 1.0)
         out["cpi"] = _index("cpi", "CPI", bcwp / acwp if acwp else None, 1.0)
         tcpi_denom = total_budget - acwp
+        # TCPI is the efficiency the REMAINING work must achieve, so the pass bar runs the
+        # other way from SPI/CPI: <= 1.0 means the programme has room, > 1.0 means it must
+        # outperform its own plan to land on budget. Published that way in help.py; scored
+        # GE until MF-01 (ADR-0410), which reported PASS on programmes that could not
+        # afford to finish.
         out["tcpi"] = _index(
-            "tcpi", "TCPI", (total_budget - bcwp) / tcpi_denom if tcpi_denom else None, 1.0
+            "tcpi",
+            "TCPI",
+            (total_budget - bcwp) / tcpi_denom if tcpi_denom else None,
+            1.0,
+            Direction.LE,
         )
     else:
         out["spi"] = _na_index("spi", "SPI")
@@ -329,8 +338,19 @@ def _planned_value(schedule: Schedule, tasks: list[Task]) -> float:
     )
 
 
-def _index(metric_id: str, name: str, value: float | None, threshold: float) -> MetricResult:
-    """Build an EVM index result; NA when the denominator was absent."""
+def _index(
+    metric_id: str,
+    name: str,
+    value: float | None,
+    threshold: float,
+    direction: Direction = Direction.GE,
+) -> MetricResult:
+    """Build an EVM index result; NA when the denominator was absent.
+
+    ``direction`` defaults to GE because SPI and CPI really are "higher is better", but it
+    is NOT a shared property of the family: TCPI is inverted by definition (MF-01,
+    ADR-0410), so the caller states it rather than inheriting a wrong default silently.
+    """
     if value is None:
         return _na_index(metric_id, name)
     return MetricResult(
@@ -340,9 +360,9 @@ def _index(metric_id: str, name: str, value: float | None, threshold: float) -> 
         1,
         round(value, 2),
         "ratio",
-        evaluate(value, threshold, Direction.GE),
+        evaluate(value, threshold, direction),
         threshold,
-        Direction.GE,
+        direction,
     )
 
 
