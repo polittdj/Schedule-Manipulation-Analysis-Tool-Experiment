@@ -276,3 +276,77 @@ def test_the_probe_never_goes_through_a_system_proxy() -> None:
         f"the probe opener carries system proxies {[h.proxies for h in proxied]} — a loopback "
         "probe must connect directly (Law 1)"
     )
+
+
+# ── ADR-0412: an unclaimable port RELOCATES; it never locks the operator out ──────────────────
+
+
+def test_an_unclaimable_port_relocates_instead_of_refusing_to_start() -> None:
+    """Operator directive 2026-08-17: "no matter how the user closes the program there is no
+    issue."
+
+    Field report: the app was closed without using Quit, and every later launch refused with
+    "already running on port 8321". Two paths dead-ended in :class:`PortUnavailable` — a holder
+    that does not answer ``/api/whoami`` (a wedged or half-dead instance, or a stranger), and a
+    predecessor that never releases. Both told the operator to "quit it from its own window",
+    which is impossible: the desktop icon runs ``pythonw`` and there IS no window.
+
+    The launch now moves to a free port instead. ADR-0334's safety property is untouched — the
+    contested port is still never bound (that is what would route requests indeterminately
+    between two servers); we simply serve somewhere else.
+    """
+    served: list[int] = []
+    opened: list[str] = []
+
+    def claim(host: str, port: int) -> str:
+        if port == 8321:
+            raise PortUnavailable("held by something that will not answer")
+        return "free"
+
+    launcher.main(
+        port=8321,
+        serve=lambda app, host, port, **k: served.append(port),
+        browser=lambda url: opened.append(url) or True,
+        timer=_ImmediateTimer,
+        manage_ollama=False,
+        claim=claim,
+    )
+
+    assert served, "the launcher refused to serve — the operator is locked out"
+    assert served[0] != 8321, "the CONTESTED port was bound (ADR-0334 safety property broken)"
+    assert opened and opened[0].endswith(f":{served[0]}"), (
+        f"the browser must open onto the port actually served: {opened} vs {served}"
+    )
+
+
+def test_relocation_does_not_happen_when_the_preferred_port_is_claimable() -> None:
+    """The control: relocation is the exception, not the habit. A claimable preferred port is
+    used as-is, so the operator's bookmark and the documented 8321 keep working."""
+    served: list[int] = []
+    launcher.main(
+        port=8321,
+        serve=lambda app, host, port, **k: served.append(port),
+        browser=lambda url: True,
+        timer=_ImmediateTimer,
+        manage_ollama=False,
+        claim=lambda host, port: "free",
+    )
+    assert served == [8321]
+
+
+def test_resolve_port_reports_how_it_got_the_port() -> None:
+    """``resolve_port`` is the seam the launcher uses; it must report which path it took so the
+    console line can tell the operator the address moved."""
+    assert launcher.resolve_port("127.0.0.1", 8321, claim=lambda h, p: "free") == (8321, "free")
+    assert launcher.resolve_port("127.0.0.1", 8321, claim=lambda h, p: "handover") == (
+        8321,
+        "handover",
+    )
+
+    def stubborn(host: str, port: int) -> str:
+        if port == 8321:
+            raise PortUnavailable("wedged")
+        return "free"
+
+    port, how = launcher.resolve_port("127.0.0.1", 8321, claim=stubborn)
+    assert how == "relocated" and port != 8321
