@@ -1763,7 +1763,13 @@ def create_app(
             name,
             _analysis_body(
                 name,
-                sch,
+                # ANALYSIS-HEADER-MIXED-POPULATION: the panels below pair this schedule with
+                # ``analysis.cpm``, so it must BE the population that CPM was solved on, or the
+                # header counts the raw file while the grid counts the scoped one (measured: one
+                # filtered page saying "9 activities" and "8 activities in the grid"). Identity
+                # fields (name, source_file, calendar, project frame) are preserved by the
+                # reduction, and this is ``sch`` itself whenever nothing narrows.
+                analysis.scoped,
                 analysis,
                 st.target_uid,
                 erosion_field=erosion_field,
@@ -1794,14 +1800,18 @@ def create_app(
             analysis = st.analysis_for(name, sch)
         except CPMError as exc:
             return _page(st, name, _unschedulable_panel(sch, exc), ask_schedule=name)
-        focus = _target_panel(sch, analysis, st.target_uid) if st.target_uid is not None else ""
+        focus = (
+            _target_panel(analysis.scoped, analysis, st.target_uid)
+            if st.target_uid is not None
+            else ""
+        )
         # OR-01 (ADR-0321): the effective margin rides the same cached summary tier the
         # Portfolio row reads (overlay-aware, memoised) — never a second engine path.
         margin_days = st.summary_for(name, sch).effective_margin_days
         return _page(
             st,
             f"{name} — card",
-            focus + _card_body(name, sch, analysis, margin_days=margin_days),
+            focus + _card_body(name, analysis.scoped, analysis, margin_days=margin_days),
             ask_schedule=name,
             # ADR-0311: a dynamic title can never resolve through _TITLE_TO_CHAPTER, so this page
             # rendered with NO kicker at all. It is a per-file drill of chapter 01 (linked beside
@@ -1867,7 +1877,9 @@ def create_app(
             analysis = st.analysis_for(key, sch)
         except CPMError as exc:
             return JSONResponse({"error": str(exc)}, status_code=422)
-        return JSONResponse(_analysis_data(sch, analysis))
+        # the payload carries BOTH a "tasks" count and the activity list; they are two views of
+        # one population and shipped disagreeing under a filter (9 vs 8).
+        return JSONResponse(_analysis_data(analysis.scoped, analysis))
 
     @app.get("/api/driving/{name}")
     def driving_json(
@@ -1942,7 +1954,7 @@ def create_app(
         return _page(
             st,
             "Standards & Execution Indices",
-            _standards_body(st, key, sch, prior, analysis),
+            _standards_body(st, key, analysis.scoped, prior, analysis),
         )
 
     @app.get("/portfolio", response_class=HTMLResponse)
@@ -2281,14 +2293,17 @@ def create_app(
 
     def _schedule_facts(st: SessionState, name: str, sch: Schedule) -> tuple[CitedStatement, ...]:
         analysis = st.analysis_for(name, sch)
+        # the fact sheet is what the AI is allowed to cite, so it must describe the same
+        # population every page shows (mixed-population class, audit 2026-08-16).
+        pop = analysis.scoped
         return build_fact_sheet(
-            sch,
+            pop,
             analysis.cpm,
             analysis.audit,
             analysis.findings,
             analysis.float_bands,
             analysis.completion,
-            compute_finish_forecasts(sch, analysis.cpm),
+            compute_finish_forecasts(pop, analysis.cpm),
         )
 
     @app.post("/api/ask/{name}")
@@ -2888,14 +2903,20 @@ def create_app(
             except CPMError:
                 skipped.append(key)
                 continue
+            # RIBBON-MIXED-POPULATION: score the population the CPM was actually solved on.
+            # ``ordered_versions()`` is documented UNSCOPED, so pairing its schedule with
+            # ``analysis.cpm`` scored the raw file against a CPM from a different task set —
+            # the ribbon's figures did not move AT ALL under a reduce filter. Identical to
+            # ``sch`` whenever nothing narrows (``scope()`` is then the identity).
+            pop = analysis.scoped
             rows.append(
                 (
                     key,
-                    compute_ribbon(sch, analysis.cpm, analysis.audit),
-                    compute_schedule_quality(sch, analysis.cpm),
+                    compute_ribbon(pop, analysis.cpm, analysis.audit),
+                    compute_schedule_quality(pop, analysis.cpm),
                 )
             )
-            drill[key] = ribbon_offender_map(sch, analysis.cpm, analysis.audit)
+            drill[key] = ribbon_offender_map(pop, analysis.cpm, analysis.audit)
         note = _skipped_notice(skipped) if skipped else ""
         header = ""
         prov = ""
@@ -2905,9 +2926,8 @@ def create_app(
             # anchors on (Mission Ops rank 8) — presentation only, the _prov_chip vocabulary
             prov = _prov_chip(st.schedules[lkey])
             if isinstance(lribbon, RibbonMetrics):
-                header = _can_we_trust_header(
-                    st.schedules[lkey], st.analysis_for(lkey, st.schedules[lkey]), lribbon
-                )
+                latest = st.analysis_for(lkey, st.schedules[lkey])
+                header = _can_we_trust_header(latest.scoped, latest, lribbon)
         return _page(
             st,
             "Schedule Quality Ribbon",
@@ -3763,11 +3783,15 @@ def create_app(
             analysis = st.analysis_for(name, sch)
         except CPMError as exc:
             return JSONResponse({"error": str(exc)}, status_code=422)
-        quality = compute_schedule_quality(sch, analysis.cpm)
+        # ANALYSIS-EXPORT-QUALITY-UNSCOPED: a workbook leaves the tool and gets quoted, so it
+        # must state the population the screen does — not the raw file scored against a CPM
+        # solved on the scoped one (measured: 2 of 9 exported where the page showed 5 of 8).
+        pop = analysis.scoped
+        quality = compute_schedule_quality(pop, analysis.cpm)
         tableset = TableSet(
             f"POLARIS - {sch.name}",
             (
-                schedule_summary_table(sch),
+                schedule_summary_table(pop),
                 dcma_table(analysis.audit),
                 metric_results_table("Schedule quality", quality),
                 metric_results_table("Float bands", analysis.float_bands),
@@ -3877,7 +3901,7 @@ def create_app(
                 analysis = st.analysis_for(key, sch)
             except CPMError:
                 continue
-            r = compute_ribbon(sch, analysis.cpm, analysis.audit)
+            r = compute_ribbon(analysis.scoped, analysis.cpm, analysis.audit)
             # Empty incomplete-activity population → avg/max float are a placeholder 0.0; export the
             # "—" sentinel, not a fabricated mean/max, to match the grid and the Workbench (NEW-1).
             na_floats = r.incomplete_float_count == 0
@@ -3968,7 +3992,7 @@ def create_app(
             analysis = st.analysis_for(name, sch)
         except CPMError:  # an unsolvable file has no ribbon drill — 422, never 500
             return JSONResponse({"error": "schedule does not solve"}, status_code=422)
-        offenders = ribbon_offender_map(sch, analysis.cpm, analysis.audit)
+        offenders = ribbon_offender_map(analysis.scoped, analysis.cpm, analysis.audit)
         if metric not in offenders:
             return JSONResponse({"error": "unknown metric"}, status_code=422)
         uid_order = {uid: i for i, uid in enumerate(offenders[metric])}

@@ -435,6 +435,51 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-17 (e) — a row that names three surfaces may be naming three members of a class
+
+- **"Is it wrong?" and "can it be reached?" are two measurements, and reporting one as the other
+  misinforms.** IMP-01 is a real defect: an MSPDI weekday the file declares WORKING but leaves
+  without usable `<WorkingTimes>` was counted as nothing by the day census and as 480 by the
+  fallback four lines below, so a mixed calendar let a minority explicit day win outright — a 4 h
+  Monday among four default days produced 240 min/day and displayed an 80-hour task as 20 days
+  instead of 10. It is also **unreachable from the entire reference corpus**: 56 real MSPDI
+  documents carry the construct zero times, because MPXJ always writes `WorkingTimes`. Both facts
+  are load-bearing. "Latent" is not a softer word for "wrong", and "wrong" is not a licence to
+  imply "currently producing bad numbers". State both, or the reader cannot price the fix.
+- **A ledger row naming N surfaces may be naming N instances of a CLASS.** The audit filed three
+  separate MIXED-POPULATION rows. A computed AST census over the view layer found the same shape in
+  **eight** places — and the three that had been named were not the worst of them. The unnamed
+  `_schedule_facts` builds the fact sheet the **AI is allowed to cite**, so the raw/scoped mismatch
+  reached the narrative layer, not just a panel. This is the same shape as ADR-0418's "four modules
+  failed, twenty-three were orphaned": when a row states a population, ask whether anyone counted
+  it or merely listed what happened to surface.
+- **A test that re-derives what the code SHOULD do cannot fail.** My first export assertion called
+  the engine the way the route ought to have called it and compared that to itself. It passed
+  against the broken route. The repair was to assert on the **shipped workbook bytes** — the
+  artefact that actually leaves the tool. An oracle must be independent of the thing it judges, and
+  "I recomputed it correctly" is not independence, it is a second copy of the hypothesis.
+- **A red for the wrong reason is not a red.** That same repaired test then failed with
+  `StopIteration` — my parser looked for "Missing logic" where the workbook writes "Missing Logic".
+  Red-before-green was satisfied in letter and not in substance: the test had never once exercised
+  its assertion. Only the mutation battery, reverting the fix site and watching the *assertion*
+  fail, established that the check had teeth. When a new test goes red, read WHY before banking it.
+- **A differential probe needs a control that is expected to MOVE.** The scope probe reported
+  "STATIC" for several surfaces, which is precisely what a probe that never applied the filter also
+  reports. `analysis.scoped` moving 9 → 8 in the same run is what made every STATIC verdict
+  meaningful. A census of things that did not change is worthless without one thing that did.
+- **`ruff format` formats Python code blocks inside MARKDOWN — an ADR can fail the gate.** CI went
+  red 40 seconds in, on `ruff format --check`, pointing at
+  `docs/adr/0419-...md:18` — a fenced ```python block in the ADR prose whose comments I had
+  aligned by hand. Ruff reformatted the alignment away. Two lessons: the gate's reach is wider
+  than `src/` and `tests/`, and **a partial gate is not a gate** — I ran `ruff check` twice after
+  adding those files and never re-ran `ruff format --check`, because I had run the full statics
+  block *before* writing the ADRs. Re-run the WHOLE gate after the LAST file changes, not after
+  the last code change. The repo's rule already says "full gate before every commit"; I ran four
+  fifths of it.
+- **`| tail` masked an exit code again** — this repo's most-repeated operational trap, paid for the
+  second session running. A piped web-suite run buffered to **0 bytes for 20 minutes** with no way
+  to see progress or failure. Redirect to a file; never pipe a long gate.
+
 ### 2026-08-17 (d) — a count that counts the symptom, and an oracle that could not fail
 
 - **"It only fails on CI" is a conclusion drawn from a sample of one.** Two tests failed on the

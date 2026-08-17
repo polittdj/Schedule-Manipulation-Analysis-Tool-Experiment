@@ -14731,3 +14731,69 @@ this failure had to be diagnosed on a machine no debugger can reach.
 Gate on the final tree: statics green (ruff whole tree · format 1038 files · mypy strict 155 ·
 bandit exit 0 · node --check); browser census + guards + drift **215 passed**. Still tests-only —
 `src/` untouched, so v1.0.211 stands and no installer rebuild.
+
+---
+
+## 2026-08-17 (e) — IMP-01 + the three MIXED-POPULATION rows (a class of eight) — ADR-0419/0420
+
+- **Model/mode:** Opus 5, **entirely solo** (the kickoff's standing advice after two credit-exhausted fan-outs)
+- **Branch:** `claude/polaris-audit-continuation-i1cxqq` (fresh from `origin/main` @ 9cd9b02)
+- **Version:** 1.0.211 → **1.0.212** (shipped code changed → wheel + nine installers rebuilt, ADR-0148)
+
+### Two stale docs, corrected first
+The injected handoff STATUS still pointed at `claude/polaris-browser-orphan-01-3824ij`; that
+branch merged as PR #598 and is deleted. `NEXT-SESSION-PROMPT.md` was the matching pre-merge
+draft, still calling ADR-0418's runner leg unverified. Both confirmed stale by reading and
+refreshed here. A merged PR cannot carry its own correction — that is the recurring mechanism.
+
+### IMP-01 (ADR-0419) — re-derived, because the finding itself was lost
+No detail for IMP-01 survived anywhere; the one-line ledger summary was all there was. Read the
+importers instead. `mspdi.py::_parse_calendar` interprets a `DayWorking=1` weekday with no usable
+`<WorkingTimes>` **two ways, four lines apart** — `if minutes > 0` drops it from the day census,
+`dominant_day_minutes(...) or MINUTES_PER_DAY` calls that same construct 480. Uniform calendars
+hide it; a MIXED one does not, because the invisible days cannot outvote the visible one.
+Measured: Mon 4 h + Tue-Fri default → **240 min/day**, an 80-working-hour task displaying as
+**20.00 days instead of 10.00**. Zero-length spans (`08:00 → 08:00`) reach the same hole.
+
+**Reachability was measured separately from correctness** — 56 real MSPDI documents (every
+committed MSPDI-rooted file plus 25 MPXJ conversions of the reference `.mpp`s) carry the construct
+**zero** times, because MPXJ always writes `WorkingTimes`. So: genuinely wrong, genuinely latent.
+Fixed anyway. Proven a no-op by dumping the parsed calendar of all 83 documents under a patched
+and a pristine worktree and diffing — **identical** — plus `pytest -m parity` **72 passed / 0
+failed**. Mutation battery **5/5 killed by name**, every mutant confirmed landed first.
+The open question (is the implicit day 480, or the file's `<MinutesPerDay>`?) is recorded
+**UNVERIFIED** and is unchanged by the fix, which only makes the two existing readings one.
+
+### The three MIXED-POPULATION rows (ADR-0420) — one probe, then a census
+One differential probe settled all three, exactly as the kickoff predicted, with
+`analysis.scoped` as a load-bearing control proving the filter bit (9 → 8). Under an
+`Activity Type: Normal` reduce filter: one `/analysis` page rendered `stack-foot 9 activities`
+**and** `8 activities in the grid`; `/api/analysis` shipped `tasks=9` beside 8 `activities[]`;
+`/ribbon` did **not move at all** (2 / 7 both ways; honest scoped is 5 of 8); the workbook shipped
+2 of 9. Then a computed AST census found the same shape in **five more route functions** the
+ledger never named — including `_schedule_facts`, which builds the fact sheet the **AI is allowed
+to cite**. Eight sites fixed by passing `analysis.scoped`; safe because `filter_to_uids` preserves
+file identity and `scope()` is the identity unfiltered, so each change is a literal unfiltered
+no-op. Mutation **5/5 by name**; a standing computed census guard (empty-set contract, with a
+synthetic positive control) separately proven to fire against the real tree **2/2 by name**.
+
+**One of my own tests could not fail** and was caught: the export assertion first re-derived what
+the route *should* compute and passed against the broken route. Repointed at the shipped workbook
+bytes. Its first red was then a `StopIteration` from a mis-cased label — a red for the wrong
+reason — and only mutant M4 proved it now fails on the assertion.
+
+### Not done, stated plainly
+The route × test gap-fill (137 routes / 5 / 16) was **not** started — the ledger's counts still
+need re-deriving with a computed census before anyone works them. Page modules A/B, docs/config/CI
+and the AI figure-gates remain **never audited**. Importers and web-scope got the deep treatment
+this session; nothing else did.
+
+Gate on the final tree: statics green whole-tree (ruff · `ruff format --check` 1039 files · mypy
+strict 155 files · bandit exit 0 · `node --check`); parity **72 passed**; full suite in a detached
+worktree (so the doc edits could not race it) **4243 passed / 1 failed / 5 skipped in 27:52** —
+4234 + 10 new tests. The 5 skips are the pre-existing ones. **The 1 failure is a sandbox artifact
+and was diagnosed in both worlds, not assumed**: `test_embedded_wheel_is_in_lockstep_with_the_source_tree`
+(ADR-0148's freshness guard) fired because the worktree carried the patched `src` against HEAD's
+installers; the live tree, where the wheel and all nine installers were rebuilt, runs
+`tests/installer` + `tests/test_packaging.py` **68 passed**. A useful free datapoint: that guard
+demonstrably has teeth — it caught a genuinely stale embedded wheel the moment one existed.

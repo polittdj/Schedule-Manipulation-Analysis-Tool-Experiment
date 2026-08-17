@@ -685,6 +685,94 @@ def test_project_calendar_reads_a_24_hour_continuous_day() -> None:
     assert cal.holidays == ()
 
 
+def _weekday_default_times(day_type: int) -> str:
+    """A working weekday that declares NO ``<WorkingTimes>`` — MS Project's "the default times".
+
+    Distinct from ``_weekday(day_type)`` with no spans, which is a NON-working day
+    (``DayWorking=0``). No helper produced this shape before IMP-01, which is why the
+    construct was untested.
+    """
+    return f"<WeekDay><DayType>{day_type}</DayType><DayWorking>1</DayWorking></WeekDay>"
+
+
+def _calendar_doc(days: list[str], *, name: str = "Mixed") -> str:
+    body = f"""
+<CalendarUID>1</CalendarUID>
+<Calendars><Calendar><UID>1</UID><Name>{name}</Name><IsBaseCalendar>1</IsBaseCalendar>
+<BaseCalendarUID>-1</BaseCalendarUID>
+<WeekDays>{"".join(days)}</WeekDays>
+</Calendar></Calendars>{_TASK_A}"""
+    return _doc(body)
+
+
+def test_a_default_times_working_day_weighs_the_same_in_the_census_as_in_the_fallback() -> None:
+    """IMP-01: a ``DayWorking=1`` weekday with no usable ``<WorkingTimes>`` was read TWO ways.
+
+    ``_parse_calendar`` counted a day into ``day_totals`` only ``if minutes > 0``, so such a day
+    contributed nothing — yet four lines later ``dominant_day_minutes(day_totals) or
+    MINUTES_PER_DAY`` declares that exact construct to be worth the default day. The two readings
+    agree while a calendar is uniformly implicit or uniformly explicit (the controls below) and
+    diverge the moment it MIXES: the minority explicit day wins the census outright and rescales
+    every duration-in-days figure in the file.
+
+    Measured before the fix: Mon 4 h + Tue-Fri default → 240 min/day, so an 80-working-hour task
+    displayed as **20.00 days instead of 10.00**. Whatever a default-times day is worth, it cannot
+    be worth 480 when it is the only kind of day and 0 when it is not.
+    """
+    mixed_short = [
+        _weekday(1),
+        _weekday(2, ("08:00:00", "12:00:00")),
+        *[_weekday_default_times(d) for d in (3, 4, 5, 6)],
+        _weekday(7),
+    ]
+    cal = parse_mspdi_text(_calendar_doc(mixed_short)).calendar
+    assert cal.working_minutes_per_day == 480, "a 4/5 majority of default-times days must win"
+    assert cal.work_weekdays == (0, 1, 2, 3, 4)  # Mon..Fri all worked
+
+    # and the other way round: one long explicit day must not stretch the whole calendar
+    mixed_long = [
+        _weekday(1),
+        _weekday(2, ("07:00:00", "17:00:00")),
+        *[_weekday_default_times(d) for d in (3, 4, 5, 6)],
+        _weekday(7),
+    ]
+    assert parse_mspdi_text(_calendar_doc(mixed_long)).calendar.working_minutes_per_day == 480
+
+    # the majority genuinely decides — flip the ratio and the explicit length wins
+    explicit_majority = [_weekday(1)] + [
+        _weekday(d, ("07:00:00", "17:00:00")) for d in (2, 3, 4, 5)
+    ]
+    explicit_majority += [_weekday_default_times(6), _weekday(7)]
+    assert (
+        parse_mspdi_text(_calendar_doc(explicit_majority)).calendar.working_minutes_per_day == 600
+    )
+
+
+def test_a_default_times_day_does_not_change_the_uniform_calendars() -> None:
+    """IMP-01 controls — these two hold BEFORE and AFTER the fix, so a mutant that simply
+    hardcodes 480 everywhere is not what the test above is measuring."""
+    all_implicit = [_weekday(1)] + [_weekday_default_times(d) for d in (2, 3, 4, 5, 6)]
+    all_implicit += [_weekday(7)]
+    assert parse_mspdi_text(_calendar_doc(all_implicit)).calendar.working_minutes_per_day == 480
+
+    all_explicit = [_weekday(1)] + [_weekday(d, ("07:00:00", "17:00:00")) for d in (2, 3, 4, 5, 6)]
+    all_explicit += [_weekday(7)]
+    assert parse_mspdi_text(_calendar_doc(all_explicit)).calendar.working_minutes_per_day == 600
+
+
+def test_a_zero_length_working_time_reaches_the_same_census_hole() -> None:
+    """IMP-01, second route: ``08:00 → 08:00`` is a genuine zero-length span, so
+    ``working_time_span`` returns ``None`` (documented at ``_common.py``) and the day's total is 0
+    — landing on the same ``if minutes > 0`` hole as a day with no ``<WorkingTimes>`` at all.
+    A day the file SAYS is working must never weigh nothing.
+    """
+    days = [_weekday(1), _weekday(2, ("08:00:00", "12:00:00"))]
+    days += [_weekday(d, ("08:00:00", "08:00:00")) for d in (3, 4, 5, 6)] + [_weekday(7)]
+    cal = parse_mspdi_text(_calendar_doc(days)).calendar
+    assert cal.working_minutes_per_day == 480
+    assert cal.work_weekdays == (0, 1, 2, 3, 4)
+
+
 def test_real_24_hour_calendar_file_parses_to_full_days() -> None:
     """End-to-end on the operator's real ``Hard_File_updated3 24 hour calendar.mpp`` (MPXJ-converted
     to MSPDI, stored gzipped): the "24 Hours" base calendar the operator applied to four tasks (with

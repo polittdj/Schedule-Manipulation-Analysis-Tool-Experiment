@@ -460,11 +460,20 @@ def _build_calendar(target_uid: str | None, by_uid: dict[str, ET.Element]) -> Ca
                     if (span := working_time_span(_text(wt, "FromTime"), _text(wt, "ToTime")))
                 )
                 minutes = sum(end - start for start, end in segments)
-                if minutes > 0:
-                    day_totals.append(minutes)
-                    # keep the segment layout of the dominant day length (resolved below) so
-                    # the driving-slack pass can honor intraday gaps (e.g. a lunch break)
-                    segments_by_total.setdefault(minutes, tuple(sorted(segments)))
+                if minutes <= 0:
+                    # IMP-01: the file SAYS this day is working but declares no usable
+                    # WorkingTimes (none at all, or only zero-length/inverted spans) — MS
+                    # Project's "the default times". Weigh it in the census at exactly what
+                    # the fallback below already declares it to be worth. Skipping it instead
+                    # let a MINORITY explicit day win the census outright and rescale every
+                    # duration-in-days figure in the file (a 4 h Monday among four default
+                    # days yielded 240 min/day, displaying an 80 h task as 20 days, not 10).
+                    day_totals.append(MINUTES_PER_DAY)
+                    continue
+                day_totals.append(minutes)
+                # keep the segment layout of the dominant day length (resolved below) so
+                # the driving-slack pass can honor intraday gaps (e.g. a lunch break)
+                segments_by_total.setdefault(minutes, tuple(sorted(segments)))
         # modern exceptions, collected across the whole chain
         for exc in el.iter("Exception"):
             sink = working if _bool(exc, "DayWorking", default=False) else holidays
@@ -473,7 +482,11 @@ def _build_calendar(target_uid: str | None, by_uid: dict[str, ET.Element]) -> Ca
 
     if not work_weekdays:
         return None  # no usable weekday pattern anywhere
-    # a DayWorking day with no WorkingTimes means "the default times" (480) in MS Project
+    # A DayWorking day with no WorkingTimes means "the default times" (480) in MS Project —
+    # applied in the census loop above (IMP-01), which is the ONE place that rule now lives.
+    # Every working weekday therefore contributes a positive total, so ``or MINUTES_PER_DAY``
+    # is a type-narrowing floor here, not a second copy of the semantic: it is unreachable
+    # while ``work_weekdays`` is non-empty, and the guard above already returned if it is not.
     minutes_per_day = dominant_day_minutes(day_totals) or MINUTES_PER_DAY
     # only carry intraday segments when they actually gap (a lunch break); a single
     # contiguous block is the legacy default and stays as () so nothing else changes
