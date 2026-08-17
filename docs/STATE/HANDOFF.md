@@ -71,7 +71,10 @@
 > unreachable from the whole corpus, and saying only one of those would misinform. Standing traps
 > unchanged (a count may be counting the symptom · an oracle giving the same verdict in both worlds
 > is BLIND · compute a call-site list, never hand-maintain it · never measure a tree a battery is
-> mutating · monkeypatch per CALL SITE · `python -m ruff` · **`| tail` masks exit codes** — paid
+> mutating · monkeypatch per CALL SITE · `python -m ruff` · **`ruff format` also formats python
+> code blocks inside MARKDOWN, so an ADR can fail the gate — and a PARTIAL gate is not a gate**
+> (CI went red 40 s in on a hand-aligned snippet in ADR-0419; I had run the statics block BEFORE
+> writing the ADRs and only re-ran `ruff check` after) · **`| tail` masks exit codes** — paid
 > AGAIN this session, a piped web-suite run buffered to 0 bytes for 20 min · fetch before numbering
 > AND committing). QC-1/QC-2 are ADR-0393.
 >

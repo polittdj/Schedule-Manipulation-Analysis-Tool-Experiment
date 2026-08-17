@@ -71,7 +71,9 @@ part of every mutant · a self-baseline absorbs what you are measuring · a cont
 invisible to every markup test · compute a call-site list, never hand-maintain it · a suggested fix
 is a hypothesis · "measured, then pinned" fixtures inherit the bug · compare two surfaces against
 each other · never measure a tree a battery is mutating · never mutate an instrument a measurement
-is using · monkeypatch per CALL SITE · use `python -m ruff` · **`| tail` masks exit codes** — paid
+is using · monkeypatch per CALL SITE · use `python -m ruff` · **`ruff format` also formats python
+code blocks inside MARKDOWN — an ADR failed CI 40 s in; and a PARTIAL gate is not a gate, so re-run
+the WHOLE gate after the LAST file changes, not the last code change** · **`| tail` masks exit codes** — paid
 TWO sessions running; last time a piped web-suite run buffered to 0 bytes for 20 minutes. Redirect
 to a file. · fetch before numbering AND committing · `wc` decides.
 ⇢ TIMING — MEASURED. Container starts with NO deps: `python -m pip install -e ".[dev]"` and

@@ -467,6 +467,15 @@ those fixed defects in earlier "closed" fixes:
   "STATIC" for several surfaces, which is precisely what a probe that never applied the filter also
   reports. `analysis.scoped` moving 9 → 8 in the same run is what made every STATIC verdict
   meaningful. A census of things that did not change is worthless without one thing that did.
+- **`ruff format` formats Python code blocks inside MARKDOWN — an ADR can fail the gate.** CI went
+  red 40 seconds in, on `ruff format --check`, pointing at
+  `docs/adr/0419-...md:18` — a fenced ```python block in the ADR prose whose comments I had
+  aligned by hand. Ruff reformatted the alignment away. Two lessons: the gate's reach is wider
+  than `src/` and `tests/`, and **a partial gate is not a gate** — I ran `ruff check` twice after
+  adding those files and never re-ran `ruff format --check`, because I had run the full statics
+  block *before* writing the ADRs. Re-run the WHOLE gate after the LAST file changes, not after
+  the last code change. The repo's rule already says "full gate before every commit"; I ran four
+  fifths of it.
 - **`| tail` masked an exit code again** — this repo's most-repeated operational trap, paid for the
   second session running. A piped web-suite run buffered to **0 bytes for 20 minutes** with no way
   to see progress or failure. Redirect to a file; never pipe a long gate.

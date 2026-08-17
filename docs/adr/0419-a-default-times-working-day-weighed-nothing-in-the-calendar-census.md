@@ -15,11 +15,11 @@ than confirmed from testimony (QC-2: an inherited claim is testimony, not eviden
 
 ```python
 minutes = sum(end - start for start, end in segments)
-if minutes > 0:                       # <- a day with no usable WorkingTimes contributes NOTHING
+if minutes > 0:  # <- a day with no usable WorkingTimes contributes NOTHING
     day_totals.append(minutes)
 ...
 # a DayWorking day with no WorkingTimes means "the default times" (480) in MS Project
-minutes_per_day = dominant_day_minutes(day_totals) or MINUTES_PER_DAY   # <- ...but is worth 480
+minutes_per_day = dominant_day_minutes(day_totals) or MINUTES_PER_DAY  # <- ...but is worth 480
 ```
 
 Both readings cannot be right. Whatever a default-times day is worth, it cannot be worth 480 when
