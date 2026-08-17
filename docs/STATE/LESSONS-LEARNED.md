@@ -435,6 +435,25 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-16 (b) — a fixture whose NAME contradicts its assertion is a defect wearing a badge
+
+- `_EVM_SEEDS` carries the comment "the EXACT set of status flips it must cause — measured,
+  then pinned." That is an honest description of how it was built and *precisely* why it
+  could not catch MF-01: **a fixture measured from today's output pins today's output,
+  correct or not.** When the verdict is wrong the fixture stops being a test and becomes the
+  defect's bodyguard. Third instance in this repo (M15, the `BLOCKED` pin, now this).
+- The tell was in plain sight: a fixture named **`blown`** — a cost blowout at CPI 0.54,
+  spending ~2x per unit of work — asserting that its affordability index **PASSES**. *Read
+  fixture names as claims and check them against their assertions;* the contradiction is
+  cheaper to spot than the arithmetic.
+- **Shared helpers propagate an assumption silently.** `_index()` served three indices and
+  hardcoded one direction, so "higher is better" — true for two of them — was applied to the
+  third by inheritance. The fix makes the caller state the direction. When a helper encodes
+  a *semantic* property, that property belongs at the call site, not in the default.
+- The mutation battery earned its keep by including a mutant aimed at the CONTROL (flip SPI
+  to LE). A control test that is never attacked is an assumption; attacking it turned
+  "SPI/CPI are unaffected" from a hope into a measurement.
+
 ### 2026-08-16 (a) — a defence-in-depth twin blinds an outcome assertion, and a suggested fix is only a hypothesis
 
 - HOOK-02's mutation battery is the cleanest demonstration yet of a rule this repo keeps

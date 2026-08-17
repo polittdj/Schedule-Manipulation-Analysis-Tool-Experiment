@@ -17,6 +17,7 @@ import pytest
 
 from schedule_forensics.engine.metrics import (
     CheckStatus,
+    Direction,
     compute_baseline_compliance,
     compute_evm_indices,
 )
@@ -361,7 +362,82 @@ def test_evm_cost_loaded_without_status_or_actuals_is_na() -> None:
     e = compute_evm_indices(_sched(tasks))  # no status_date
     assert e["spi"].status is CheckStatus.NOT_APPLICABLE  # BCWS = 0
     assert e["cpi"].status is CheckStatus.NOT_APPLICABLE  # ACWP = 0
-    assert e["tcpi"].status is CheckStatus.FAIL  # (BAC-BCWP)/(BAC-0) = 50/100 = 0.5
+    # (BAC-BCWP)/(BAC-0) = 50/100 = 0.5 — only half the planned efficiency is still needed,
+    # which is COMFORTABLE, so it passes. This line asserted FAIL until MF-01 (ADR-0410):
+    # the old assertion pinned the inverted direction, not a measured truth.
+    assert e["tcpi"].status is CheckStatus.PASS
+
+
+def test_tcpi_passes_low_and_fails_high_as_its_published_definition_states() -> None:
+    """MF-01 (ADR-0410): TCPI is INVERTED relative to SPI/CPI, and was scored as if it were not.
+
+    TCPI = (BAC - EV) / (BAC - AC) is the cost efficiency the REMAINING work must achieve.
+    Above 1.0 the programme must outperform its own plan to land on budget — bad news; at or
+    below 1.0 it has room — good news. `help.py` publishes exactly that ("pass <= 1.0 …
+    > 1.0 requires better-than-planned performance"), while the engine evaluated every index
+    with `Direction.GE`, so a programme that could NOT afford its remaining work reported
+    PASS and a comfortable one reported FAIL — the worst direction to be wrong in for an
+    affordability figure quoted in testimony.
+    """
+    overspent = compute_evm_indices(
+        _sched(
+            [
+                Task(
+                    unique_id=1,
+                    name="overspent",
+                    duration_minutes=DAY,
+                    percent_complete=20.0,
+                    budgeted_cost=1000.0,
+                    actual_cost=500.0,
+                )
+            ]
+        )
+    )["tcpi"]
+    # 20% earned for half the budget: the rest must run at 1.6x planned efficiency.
+    assert overspent.value == 1.6
+    assert overspent.status is CheckStatus.FAIL
+    assert overspent.direction is Direction.LE
+    assert overspent.threshold == 1.0
+
+    comfortable = compute_evm_indices(
+        _sched(
+            [
+                Task(
+                    unique_id=1,
+                    name="comfortable",
+                    duration_minutes=DAY,
+                    percent_complete=80.0,
+                    budgeted_cost=1000.0,
+                    actual_cost=200.0,
+                )
+            ]
+        )
+    )["tcpi"]
+    assert comfortable.value == 0.25
+    assert comfortable.status is CheckStatus.PASS
+
+
+def test_spi_and_cpi_keep_the_higher_is_better_direction() -> None:
+    """The other half of MF-01: fixing TCPI must not flip its neighbours through the shared
+    `_index` helper — SPI and CPI really are 'higher is better' and stay GE 1.0."""
+    e = compute_evm_indices(
+        _sched(
+            [
+                Task(
+                    unique_id=1,
+                    name="t",
+                    duration_minutes=DAY,
+                    percent_complete=80.0,
+                    budgeted_cost=1000.0,
+                    actual_cost=200.0,
+                    baseline_finish=dt.datetime(2025, 1, 8, 17, 0),
+                )
+            ],
+            status_date=dt.datetime(2025, 1, 9, 17, 0),
+        )
+    )
+    assert e["cpi"].direction is Direction.GE and e["cpi"].status is CheckStatus.PASS
+    assert e["spi"].direction is Direction.GE
 
 
 def test_spi_t_acumen_rules_in_progress_zero_and_zero_span_excluded() -> None:

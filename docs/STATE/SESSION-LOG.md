@@ -14467,3 +14467,31 @@ battery 4/4 caught by the named test with the hook restored md5-identical. No ve
 **Next:** audit round 2 (11 dimensions + route census + completeness critic) is in flight;
 the lead's independent route inventory is 137 routes (65 page / 34 api / 38 export), the
 denominator for the operator's every-page pass+fail coverage requirement. ADR-0409.
+
+## 2026-08-16 (b) — audit unit 2: TCPI scored with its PASS direction inverted (ADR-0410, v1.0.208)
+
+`engine/metrics/evm.py::_index()` hardcoded `Direction.GE` for SPI, CPI **and** TCPI. TCPI
+is inverted by definition — (BAC-EV)/(BAC-AC) is the efficiency the REMAINING work must
+achieve, so >1.0 means the programme must beat its own plan. `help.py:571` already published
+"pass <= 1.0". Measured on the unfixed engine: a programme needing 1.6x efficiency reported
+PASS; a comfortable one at 0.25x reported FAIL. TCPI feeds `_DIM_AFFORDABILITY`, so the
+affordability dimension showed green precisely on programmes that could not afford to
+finish — a Law-2 defect in a figure quoted in testimony. The NASA `.aft` row pins the
+FORMULA as MATCH, so the number was always right: only the verdict was wrong, no parity
+value moves, and `help.py` needed no edit.
+
+Three existing oracles had the defect baked in (ADR-0385 stale-guard class, 3rd instance):
+`_EVM_SEEDS` ("measured, then pinned" — measured against the inversion), a fixture named
+`blown` at CPI 0.54 asserting its affordability index PASSES, and a TCPI of 0.5 asserted
+FAIL. All repointed with reasons inline.
+
+QC-1 per the operator's directive: the fix was built in a PYTHONPATH SHADOW and its blast
+radius measured there BEFORE the real tree was touched — exactly 4 failures / 430 across
+all 26 EVM-touching files, every one a bug-pinning oracle, zero genuine regressions. Red
+first by name; 432 passed after. Mutation battery 4/4 caught by the named tests, with M4
+deliberately flipping SPI so the neighbours-unchanged control is proved rather than assumed.
+Gate: 4096 passed, 47 skipped, 0 failed, exit 0 (18:27); parity 72 passed (8:47). v1.0.208, wheel + nine installers (lockstep 64/64). ADR-0410.
+
+**Next:** remaining round-2 dimensions; 22 REPORTED findings await lead verification
+(CPM-01 and MC-01 rated critical, unverified); route x test gap-fill over 137 routes
+(5 without a success test, 16 without a failure-mode test). ADR-0410.
