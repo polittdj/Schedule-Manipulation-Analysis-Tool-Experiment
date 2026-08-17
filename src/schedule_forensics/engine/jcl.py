@@ -313,10 +313,13 @@ def compute_jcl(
                     fired_impact[u] = fired_impact.get(u, 0) + add
         # ADR-0359: a fired risk's impact REPLACES the affected activity's sampled duration
         # (SSI semantics, measured — see compute_sra_ssi), keeping the JCL finish marginal
-        # identical to the SSI run's.
+        # identical to the SSI run's. MC-01 (ADR-0414): that is a POSITIVE-impact rule, so a net
+        # OPPORTUNITY (negative summed impact) subtracts from the sampled duration instead of
+        # zeroing it. Statement-for-statement with compute_sra_ssi — the marginal equivalence
+        # ADR-0269 pins is exactly what breaks if these two blocks ever drift apart.
         for u, impact in fired_impact.items():
             if u in overrides:
-                overrides[u] = max(0, impact)
+                overrides[u] = impact if impact >= 0 else max(0, overrides[u] + impact)
         # probabilistic branches (ADR-0273): a fired iteration toggles the fragnet from its
         # 0 point-mass to a sampled rework duration — drawn from the disjoint pre-built
         # stream, never from ``rng`` (statement-for-statement with compute_sra_ssi).

@@ -1201,7 +1201,7 @@ criteria, why it matters, and what it indicates; full formulas + citations are i
 <a href="/help">Metric Dictionary</a>.</p>
 <form method=post action="/dcma/scope" style="margin:0 0 8px">
 <input type=hidden name=next value="/analysis/{quote(key, safe="")}">
-<label><input type=checkbox name=parity value=1 {"checked" if dcma_acumen_parity else ""} onchange="this.form.submit()"> <b>Acumen&nbsp;Fuse&nbsp;parity&nbsp;mode</b> {"<b style='color:var(--sf-accent,#2a7)'>ON — matching Acumen Fuse</b>" if dcma_acumen_parity else "<span class=muted>OFF — pure-logic / forensic view</span>"}</label></form>
+<label><input type=checkbox name=parity value=1 {"checked" if dcma_acumen_parity else ""} data-sf-autosubmit> <b>Acumen&nbsp;Fuse&nbsp;parity&nbsp;mode</b> {"<b style='color:var(--sf-accent,#2a7)'>ON — matching Acumen Fuse</b>" if dcma_acumen_parity else "<span class=muted>OFF — pure-logic / forensic view</span>"}</label> <button type=submit class=btn-sm>Apply</button></form>
 <details class=panel style="margin:0 0 10px"><summary><b>What is Acumen parity mode?</b> — the two DCMA views, with examples &amp; when to use each</summary>
 <p class=muted>The 14 DCMA checks can be scored two ways. They agree on a clean, fully-baselined schedule; they diverge on real progressed schedules with milestones, un-baselined tasks, and imposed deadlines. Neither is "more correct" — they answer different questions.</p>
 <table>

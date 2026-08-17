@@ -14535,3 +14535,88 @@ is a console, while the shipped shortcut is console-less `pythonw` — it is a L
 refuses before invoking Python, so this fix cannot run on that path. On the shipped path the
 reported symptom was already handled by handover; what is fixed is every case where the holder
 cannot be stood down. ADR-0412.
+
+## 2026-08-17 (c) — audit units 5–9: REC-01 · MC-01 · TST-01 · JS-01 · SRA-EXPORT-STALE-SCOPE (ADR-0413..0417, v1.0.211)
+
+Resumed the 2026-08-16 deep-dive audit on `claude/polaris-audit-resume-3ubkxc`, branched clean
+from `origin/main` at ff89731 (PR #596 had merged, so main was already v1.0.210). Worked the
+ledger's own resume order, solo — no fan-out, after the pool died twice in earlier rounds.
+
+**REC-01 first, because it disputed ADR-0407 — which the previous session shipped.** It holds.
+ADR-0407 justified the `actual_start_driven` disclosure's OPPORTUNITY category by asserting it
+could never become "a threat row or a recovery action". That was verified against `web/risks.py`
+alone and is false of the tree: `ai/briefing.py` has no category gate, and `_quantify`
+quantifies every finding uniformly from its citations. Measured on v1.0.210 — briefing §5.2's
+column **"Potential recovery" = 20 wd**, §6's **"Expected effect" = 20 wd**, §6.2's *"up to about
+20 workday(s) of slip are potentially recoverable"*, and the `/risks` card at **20/25
+`rk-extreme`, "Schedule exposure: 20.0 wd"** — for a finding whose own course of action says
+re-tying logic "cannot and should not move a date that already happened". The 20 was the worst
+negative float among the cited activities, *relabelled* as recovery. Fixed with
+`Finding.is_disclosure`, declared by the producer: category cannot carry it, because
+`driving_path` is INFO/OPPORTUNITY too and IS a genuine lever. ADR-0407 now carries a correction
+header and its false sentence is struck through. Red-first 7/11; mutation 7/7 by name. ADR-0413.
+
+**MC-01 (critical).** Reproduced independently rather than trusting the ledger: `max(0, impact)`
+in both `sra.py:1701` and its `jcl.py:319` twin zeroed a fired **opportunity** — a certain −5 d
+opportunity on a 20 d driver moved P50 from 25.0 to **5.0 wd**, a 15-working-day optimistic
+error, and the JCL twin was confirmed defective by the same probe. Now branches on the sign of
+the summed impact: net risk REPLACES (ADR-0359 byte-unchanged; the `+5 d → 10.0 wd` control
+proves it), net opportunity SUBTRACTS, floored at 0. Summing first keeps ADR-0359's own sentence
+true and is the only reading continuous across the sign boundary. **The parity leg is UNVERIFIED
+and the ADR says so** — the genuine SSI exports carry only the aggregate distribution beneath an
+`Includes Risks/Opportunities? Yes` toggle, never a per-risk register, so no committed artifact
+shows a fired negative impact. (The `sra-Polaris *` workbooks in the same directory are POLARIS's
+own output and are not an oracle.) Parity gate re-run: 72 passed / 15 skipped / exit 0 —
+nothing moved. ADR-0414.
+
+**TST-01, where the finder was right about the fact and wrong about the cause.** `_CPM_HOLDERS`
+was stale: `web.state` (the PRIMARY solve, moved there by ADR-0297) was absent, and `web.app`
+was listed but no longer binds `compute_cpm`, so the loop's `getattr(...) is not None` guard
+skipped it in silence. 24 modules bind the name; the tuple named 10. Replaced with a computed
+sweep — ADR-0352's promised "standing sweep", prose until today. But the finder's mutation proof
+was mis-attributed: with the sweep repaired the injected solves ARE counted (`after_page` 2→4)
+and the test *still passed*, because the assertion compares against `after_page` — a
+self-baseline that absorbs anything added inside the page build. Two defects, not one. The build
+is now pinned as a ceiling with an actionable message. Blind proven first, sighted proven after;
+sweep guard mutation-proven 2/2, instrument restored byte-identical. ADR-0415.
+
+**JS-01 (critical), settled in a real browser.** The Acumen-Fuse parity checkbox carried
+`onchange="this.form.submit()"` in a form with no submit button, under `script-src 'self'`.
+Chromium: URL unchanged, page unchanged, **server state unchanged on reload**, console *"Refused
+to execute inline event handler…"*. The operator could not switch DCMA views at all. ADR-0268
+had already built `chrome.js` for exactly this and says so in its header — but its selector was
+`select[data-sf-autosubmit]`, so a checkbox fell through the mechanism built to catch it.
+Widened to `[data-sf-autosubmit]` **and** given a real submit button, so the toggle needs no JS.
+Re-run of the same browser probe: toggles correctly, **zero CSP violations**. A view-layer census
+(new `test_no_inline_event_handlers.py`) confirms this was the only inline handler in the tree.
+ADR-0416.
+
+**SRA-EXPORT-STALE-SCOPE.** `_sra_reuse_key` (ADR-0360) omitted the session scope while
+`_sra_selected` returns `analysis.scoped`. Observed: `scope_signature()` moving `A=1` →
+`F=(('name', [...]))A=1` left the key **identical** and `/export/xlsx/sra` served **the same
+result object** the unfiltered page produced. Added the scope signature — safe on the mechanism
+alone, since a richer cache key can only cause recomputation, never a wrong number. **One leg
+UNVERIFIED and recorded as such**: the shipped example is degenerate for SRA (every percentile on
+one date, deterministic percentile 100.0), so "a filter visibly moves the exported percentiles"
+is not reproduced; it needs a fixture whose filtered population changes the focus distribution.
+ADR-0417.
+
+v1.0.211; wheel + nine installers rebuilt. Note for the next session: `playwright` was installed
+into this container (a declared `browser` extra that CI installs in its own job), so
+browser-gated modules that skip on a bare container RUN here.
+
+**Found by accident, recorded as BROWSER-ORPHAN-01 (LEAD-VERIFIED, high).** Installing
+`playwright` to settle JS-01 switched ON four modules that had been silently skipping, and the
+full suite closed at **5 failed / 4224 passed / 5 skipped / 30:54**. All five reproduce on a
+pristine worktree of `origin/main` (ff89731) with none of this session's changes — **pre-existing,
+not regressions**. Cause: `test_ch05_panelkit`, `test_r10_cei_panelkit`, `test_axis_titles_visual`
+and `test_ribbon_scorecards_panelkit` hardcode `_PW_CHROMES = glob("/opt/pw-browsers/...")`, which
+does not exist on a GitHub runner, so they SKIP in the CI matrix — and CI's dedicated `browser`
+job runs **only** `test_r11_panel_contract.py`. Neither CI path ever executes them. ADR-0406 made
+exactly this chromium path runner-agnostic in ONE module; the CI job's own comment names the
+failure class ("a requirement enforced only by a test that never executes"). Diagnosed one
+failure, not five: the four panelkit ones assert `expected_path in download.url` while the
+download now arrives as a client-side `blob:` URL carrying the correct
+`suggested_filename='trend.xlsx'` — so the download WORKS and the assertion looks stale, but that
+is one test's diagnosis and the histogram failure is UNDIAGNOSED. Left unfixed deliberately: the
+fix needs a per-test diagnosis plus a CI job, which is its own unit of work. Queued as item 0.

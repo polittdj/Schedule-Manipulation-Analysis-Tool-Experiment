@@ -84,6 +84,17 @@ def severity_rank(value: Severity) -> int:
     return {Severity.HIGH: 4, Severity.MEDIUM: 3, Severity.LOW: 2, Severity.INFO: 1}[value]
 
 
+#: The likelihood a finding carries when no realized exposure quantifies it — the qualitative
+#: read of its severity. Hoisted out of :func:`_quantify` by REC-01 so the quantified path and
+#: the disclosure path share ONE table instead of two that can drift apart.
+_SEVERITY_LIKELIHOOD = {
+    Severity.HIGH: Likelihood.LIKELY,
+    Severity.MEDIUM: Likelihood.POSSIBLE,
+    Severity.LOW: Likelihood.UNLIKELY,
+    Severity.INFO: Likelihood.RARE,
+}
+
+
 def impact_rank(impact_days: float | None, severity: Severity) -> int:
     """The 1..5 Impact-axis band for a finding.
 
@@ -110,6 +121,15 @@ class Finding:
     The quantified-risk fields (``likelihood`` … ``driving_float_days``) are appended by the
     :func:`recommend` quantification pass from the CPM citations, so the finding can drop onto
     a 5x5 (Likelihood x Impact) risk matrix with a testimony-defensible, deterministic score.
+
+    ``is_disclosure`` opts a finding OUT of that pass. A disclosure reports *provenance* — how
+    the engine arrived at a position — so it cites activities chosen for what they record, not
+    for how much float they carry. Quantifying it would relabel those activities' float as the
+    disclosure's own exposure, which is exactly what REC-01 measured: the ADR-0407
+    ``actual_start_driven`` note reached the briefing's "Potential recovery" column as "20 wd"
+    on a schedule where the recoverable amount was zero by the note's own wording. The flag is
+    DECLARED by the producer rather than inferred, because neither category nor severity can
+    carry it — ``driving_path`` is INFO/OPPORTUNITY too and is a genuine recovery lever.
     """
 
     category: Category
@@ -119,6 +139,7 @@ class Finding:
     detail: str
     course_of_action: str
     citations: tuple[Citation, ...]
+    is_disclosure: bool = False  # provenance note: never quantified, never a recovery figure
     likelihood: Likelihood = Likelihood.POSSIBLE
     impact_days: float | None = None  # schedule exposure in working days (None = not quantified)
     float_days: float | None = None  # tightest total float among cited activities (working days)
@@ -219,6 +240,14 @@ def _quantify(
     set), and the matrix ``likelihood`` (CERTAIN when there is real exposure, else a
     severity fallback). Findings whose citations have no CPM timing keep the None defaults
     and the severity-based likelihood.
+
+    A finding marked ``is_disclosure`` is skipped (REC-01): it still receives the severity
+    fallback likelihood, so it bands like the note it is, but never an exposure. Its citations
+    are provenance, not a threat population, and every consumer downstream renders a figure
+    only when ``impact_days is not None`` — so leaving it None here is the SINGLE point that
+    keeps a disclosure out of the briefing's recovery sections and off the risk bands. Kept
+    deliberately single: a second guard downstream would be a defence-in-depth twin that hides
+    this one's death if it ever regressed.
     """
     from schedule_forensics.engine.driving_slack import (  # local: avoid import cycle
         DrivingSlackResult,
@@ -241,6 +270,9 @@ def _quantify(
 
     out: list[Finding] = []
     for finding in findings:
+        if finding.is_disclosure:  # REC-01: provenance, not exposure — no figure to attach
+            out.append(replace(finding, likelihood=_SEVERITY_LIKELIHOOD[finding.severity]))
+            continue
         cited = [c.unique_id for c in finding.citations if c.unique_id in cpm.timings]
         float_days = min(tf_days[u] for u in cited) if cited else None
         impact_days = round(max(0.0, -float_days), 1) if float_days is not None else None
@@ -249,12 +281,7 @@ def _quantify(
         if impact_days is not None and impact_days > 0:
             likelihood = Likelihood.CERTAIN
         else:
-            likelihood = {
-                Severity.HIGH: Likelihood.LIKELY,
-                Severity.MEDIUM: Likelihood.POSSIBLE,
-                Severity.LOW: Likelihood.UNLIKELY,
-                Severity.INFO: Likelihood.RARE,
-            }[finding.severity]
+            likelihood = _SEVERITY_LIKELIHOOD[finding.severity]
         out.append(
             replace(
                 finding,
@@ -360,9 +387,16 @@ def _actual_start_floor_findings(schedule: Schedule, cpm_cur: CPMResult) -> list
     alone would have scheduled it earlier — the record wins (ADR-0391). That is evidence
     of what happened, NOT a "date not supported by logic": merging it into that CONCERN
     would smear a false manipulation signal across every progressed schedule, so it is
-    disclosed on its own metric id as INFO/OPPORTUNITY — cited provenance transparency
-    that stays out of the risk matrix, the ranking, and the recovery plan (those take
-    RISK + CONCERN only). ENG-DEAD-01 / ADR-0407 wired this; the channel existed unread.
+    disclosed on its own metric id as INFO/OPPORTUNITY — cited provenance transparency.
+    ENG-DEAD-01 / ADR-0407 wired this; the channel existed unread.
+
+    ADR-0407 justified the OPPORTUNITY category by claiming it kept the finding out of every
+    threat and recovery surface. That was true of ``web/risks.py`` — the matrix, the ranking
+    and the recovery-plan panel do take RISK + CONCERN only — and FALSE of the tree: REC-01
+    measured the note reaching the briefing's "Potential recovery" column, its "Expected
+    effect" column and its recoverable total, each quoting the cited activities' negative
+    float as days an analyst could win back. ``is_disclosure`` is what actually holds the
+    separation now; the category alone never did.
     """
     if not cpm_cur.actual_start_driven:
         return []
@@ -376,6 +410,7 @@ def _actual_start_floor_findings(schedule: Schedule, cpm_cur: CPMResult) -> list
         Finding(
             category=Category.OPPORTUNITY,
             severity=Severity.INFO,
+            is_disclosure=True,  # REC-01: provenance — never a recovery figure
             metric_id="actual_start_driven",
             title=title,
             detail=(

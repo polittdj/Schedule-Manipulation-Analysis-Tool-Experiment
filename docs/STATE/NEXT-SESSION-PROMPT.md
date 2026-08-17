@@ -1,38 +1,107 @@
-# Kickoff prompt for the next session
+# Next-session kickoff prompt
 
-Paste the block below verbatim to start the next session. (This file is a pointer, not a status snapshot — `docs/STATE/HANDOFF.md` is ALWAYS the authoritative "where we are", and for THIS arc `docs/STATE/AUDIT-2026-08-16.md` is the live work queue; if any number here disagrees with them, they win. Refresh this file whenever the queue changes — a stale kickoff steers a fresh session at work that is already done.)
-
-It once went EIGHT SLICES stale and handed a session work finished five slices earlier; only the auto-injected handoff caught it. It carries no drift guard, unlike `HANDOFF.md` — which is exactly why it rots. It has been WRONG at least five times (a "guarded by NO test" claim when a guard had existed since #536; a wrong mechanism; a half-right ancestry check; a "wholly missing" behavioural half that already existed; and it mispredicted the ADR number three times). **Do not trust its diagnoses — re-derive from measurement.**
+Copy everything below the line into the new session.
 
 ---
 
-Resume POLARIS (Schedule-Manipulation-Analysis-Tool). Read `docs/STATE/HANDOFF.md` FIRST (auto-injected), then **`docs/STATE/AUDIT-2026-08-16.md` — that ledger IS the work queue.** As of last close: **v1.0.210, highest ADR 0412, SCHEMA 2.11.0.**
+Resume POLARIS (Schedule-Manipulation-Analysis-Tool). Read docs/STATE/HANDOFF.md FIRST
+(auto-injected), then docs/STATE/AUDIT-2026-08-16.md — that ledger IS the work queue. As of last
+close: v1.0.211, highest ADR 0417, SCHEMA 2.11.0.
 
-⇢ **STATE OF THE BRANCH.** ADR-0409/0410/0411 are **merged on main** (PR #595). **ADR-0412 (v1.0.210) is on PR #596, still OPEN** — `main` is at v1.0.209 until it merges. Branch `claude/nasa-itar-ai-desktop-launch-scx3gz`. `git fetch origin` before you branch, number an ADR, or commit.
+⇢ STATE OF THE BRANCH. ADR-0409/0410/0411/0412 are merged on main (PRs #595, #596).
+ADR-0413..0417 are on branch `claude/polaris-audit-resume-3ubkxc` — check whether its PR merged
+before you branch. `git fetch origin` before you branch, number an ADR, or commit.
 
-⇢ **WHAT THIS ARC IS.** Operator directive 2026-08-16: *"a complete deep dive audit of the entire repository … create tests, both pass and fail … create solutions … test those in a sandbox to verify prior to implementing any changes. Triple verify everything in independent ways … Test, pass and fail tests required for all functionality of all pages … Skip nothing. Verify everything."* **It is NOT finished.** Four defects are fixed (ADR-0409 HOOK-02 CUI guard fail-open · ADR-0410 MF-01 TCPI direction inverted · ADR-0411 MF-02 EVM export fabricated 0.0 · ADR-0412 launch dead-ends). ~50 findings are recorded; most are **REPORTED = unverified hypotheses**, and the ledger's legend says so for a measured reason — this audit produced finder output wrong in BOTH directions (a "refuted" verdict that hid a real critical bug, and a confidently-argued fix that sandbox measurement disproved).
+⇢ WHAT THIS ARC IS. Operator directive 2026-08-16: *"a complete deep dive audit of the entire
+repository … create tests, both pass and fail … create solutions … test those in a sandbox to
+verify prior to implementing any changes. Triple verify everything in independent ways … Test,
+pass and fail tests required for all functionality of all pages … Skip nothing. Verify
+everything."* It is NOT finished. **Nine defects are now fixed** (ADR-0409 HOOK-02 · ADR-0410
+MF-01 · ADR-0411 MF-02 · ADR-0412 launch dead-ends · ADR-0413 REC-01 · ADR-0414 MC-01 ·
+ADR-0415 TST-01 · ADR-0416 JS-01 · ADR-0417 SRA export scope). ~40 findings remain REPORTED =
+unverified hypotheses, and the ledger's legend says so for a measured reason — this audit has
+produced finder output wrong in BOTH directions, including twice more last session (a finder's
+mutation proof with the wrong diagnosis; an ADR whose justification was true of one module and
+false of the tree).
 
-⇢ **RESUME ORDER — start at 0, do not re-triage.**
+⇢ RESUME ORDER — start at 0, do not re-triage.
 
-0. **REC-01 — it disputes ADR-0407, which the previous session shipped.** It claims the `actual_start_driven` INFO/OPPORTUNITY disclosure DOES reach a quantified recovery surface, contradicting that ADR's "never becomes a threat row or a recovery action" (`engine/recommendations.py:364`). Verify it first. **If it holds, CORRECT ADR-0407 — do not defend it.** An audit that will not audit its own output is worthless.
-1. **MC-01 (critical, LEAD-VERIFIED, reproduction in the ledger)** — a fired register **opportunity** (negative `impact_days`, a documented first-class feature) hits `max(0, impact)` at `engine/sra.py:1701` and **zeroes the activity's duration**. Measured: a −5 d opportunity on a 20 d driver moves P50 to **5 wd instead of 20 wd** — a 15-working-day OPTIMISTIC error in an SRA percentile. **Do NOT fix blind:** ADR-0359's replacement semantics were parity-measured for POSITIVE impacts only; the correct opportunity behaviour is a PARITY question needing the SSI reference export as its oracle. If the operator supplies one, pin against it; if not, ship documented-additive semantics and mark the parity leg UNVERIFIED in the ADR. **`engine/jcl.py` mirrors the same block (ADR-0408) — the fix and its tests must cover BOTH engines.**
-2. **JS-01 (critical, REPORTED)** — the Acumen-Fuse parity-mode checkbox at `web/analysis.py:1204` is claimed to be a **dead control in any CSP-honouring browser** (an inline handler the tool's own strict CSP blocks). Use `render-verify` + a real browser, not source reading.
-3. **SRA-EXPORT-STALE-SCOPE (critical, REPORTED)** — `_sra_reuse_key` said to omit the session scope signature, so `/export/{fmt}/sra` may serve a stale PRE-filter result. Settle it the way MF-02 was settled in one probe: render a FILTERED page, then diff its figures against the export.
-4. **TST-01 (high, REPORTED but already mutation-proven by its finder)** — `_CPM_HOLDERS` in `tests/web/test_single_compute.py:36` is stale: `web.state` (the PRIMARY solve) is absent and `app_mod` no longer binds `compute_cpm`. Two extra network solves injected into `state.py`'s warm path left the test PASSING. ADR-0352 fixed this coupling elsewhere and never reached this module; its promised "standing sweep" exists only as prose — **commit the sweep as a test.**
-5. **IMP-01 (high)**, then the three MIXED-POPULATION claims (`ANALYSIS-HEADER`, `RIBBON`, `ANALYSIS-EXPORT-QUALITY-UNSCOPED`) — one scoped-vs-raw probe can settle all three.
-6. **The route × test gap-fill** — the inventory is **137 routes** (65 page · 34 api · 38 export), enumerated TWICE independently (lead from the live app object, census agent from source — exact match). **5 have no success test, 16 have no failure-mode test.** This is the operator's "pass AND fail tests for all functionality of all pages" requirement and it is scoped, NOT built.
-7. **Never audited at all:** page modules A/B · docs/config/CI · AI figure-gates.
+0. **BROWSER-ORPHAN-01** (*high*, LEAD-VERIFIED, new) — **four browser test modules never run in
+   CI**, and when they finally do, **5 tests FAIL** (proven pre-existing on `origin/main`
+   ff89731). They hardcode `/opt/pw-browsers`, absent on a GitHub runner, so they skip in the
+   matrix; CI's `browser` job runs only `test_r11_panel_contract.py`. ADR-0406 fixed this very
+   pattern in one module. Two-part fix: diagnose each failure (the four panelkit ones look like
+   a stale `download.url` assertion — the download now arrives as a client-side `blob:` with the
+   right `suggested_filename`, so it WORKS; the histogram one is UNDIAGNOSED), then repoint the
+   modules at a runner-compatible resolver AND give them a CI job. **Do not loosen an assertion
+   before diagnosing it.** To reproduce: `pip install playwright` (chromium is already at
+   `/opt/pw-browsers`), then run the full suite.
+1. **IMP-01** (*high*) — two importer interpretations said to "materially move every displayed
+   number" (a fallback path). Verify before anything else in the importer dimension.
+2. **The three MIXED-POPULATION claims** — `ANALYSIS-HEADER-MIXED-POPULATION`,
+   `RIBBON-MIXED-POPULATION`, `ANALYSIS-EXPORT-QUALITY-UNSCOPED`: counts computed on the RAW
+   schedule while the page claims the scoped one. **One scoped-vs-raw probe can settle all
+   three** — and note SRA-EXPORT-STALE-SCOPE (ADR-0417) was exactly this family, so the
+   technique is proven: change the scope, then diff two surfaces against each other.
+3. **The route × test gap-fill** — 137 routes (enumerated twice independently); **5 have no
+   success test, 16 have no failure-mode test**. Scoped, NOT built. This is the operator's
+   "pass AND fail tests for all functionality of all pages" requirement.
+4. **Never audited at all: page modules A/B · docs/config/CI · AI figure-gates.**
+5. The remaining REPORTED rows: CPM-01..04 · MF-03/04/06..10 · MC-02..08 ·
+   `ASK-UNRESTRICTED-WRONG-VERSION` · `ISDIGIT-INT-500` · IMP-02..06 · MAN-01..03 · REC-02 ·
+   JS-02..06.
 
-⇢ **DO-NOT-FIX-BLIND LIST.** MC-01 (above) and **MF-05** — an empty-population PASS in `_pct_result` may be CORRECT Acumen parity behaviour; "fixing" it without the reference export would BREAK parity. Both need an operator-supplied oracle. Guessing at parity is precisely the failure Law 2 exists to prevent.
+⇢ DO-NOT-FIX-BLIND LIST. **MF-05** — an empty-population PASS may be CORRECT Acumen parity;
+"fixing" it without the reference export would BREAK parity. Needs an operator-supplied oracle.
+Also note **MC-01's parity leg is UNVERIFIED by design** (ADR-0414): no committed SSI export
+exposes a fired negative impact, so the shipped semantic is the documented-additive one. If an
+SSI opportunity export ever arrives, `tests/engine/test_register_opportunity.py` is the module
+to re-baseline — deliberately, in daylight. Same for ADR-0417's unverified leg: proving a filter
+moves the *exported* SRA percentiles needs a fixture that is not degenerate (the shipped example
+puts every percentile on one date).
 
-⇢ **BEFORE ANYTHING:** `CLAUDE.md` carries two binding rules — **QC-1** (prove or refute it before you report it: red before green, mutation-prove the teeth, sandbox it, say UNVERIFIED rather than assert silently) and **QC-2** (read everything, assume nothing, verify everything; inherited claims incl. THIS FILE are testimony, not evidence). ADR-0393, pinned by `tests/test_standing_rules.py`. Read them in full.
+⇢ BEFORE ANYTHING: CLAUDE.md carries QC-1 (prove or refute before reporting: red before green,
+mutation-prove the teeth, sandbox it, say UNVERIFIED rather than assert silently) and QC-2 (read
+everything, assume nothing; inherited claims incl. this file are testimony, not evidence).
+ADR-0393, pinned by tests/test_standing_rules.py.
 
-⇢ **THE AGENT POOL DIES.** The Ultracode fan-out hit credit exhaustion twice (round 1: 1 of 16 agents; round 2: 4 of 13). Round 3 DID complete 5/5 in ~79 min — **check the workflow journal before assuming a round died, and before assuming it survived.** Budget for solo work; say plainly in the deliverable which dimensions got the deep treatment and which got a lighter pass.
+⇢ THE AGENT POOL DIES. Fan-out hit credit exhaustion twice (1 of 16 agents; then 4 of 13). Round
+3 DID complete 5/5 in ~79 min. Last session ran **entirely solo** and closed five defects — that
+is a viable mode. Budget for solo work; say plainly which dimensions got deep treatment.
 
-⇢ **TRAPS PAID FOR THIS ARC — check BY NAME.** A **defence-in-depth twin hides a layer's death** from an outcome assertion (3 of 4 HOOK-02 mutants SURVIVED until a test ran the bash layer ALONE on a git+grep-only PATH). **A suggested fix is a hypothesis** (the finder's `--` separator was plausible and left three bypass shapes open — sandbox-measure candidates against ONE battery before choosing). **"Measured, then pinned" fixtures inherit whatever the code did that day** — a fixture named `blown` asserted its affordability index PASSES; read fixture NAMES as claims. **Compare two surfaces against each other** — the page/export disagreement localised MF-02 in one probe, and MF-01 was the same shape (published help text right, engine wrong). **A mutant that cannot fail is not a mutant** — check reachability before counting a kill. **Separate a safety PROPERTY from the OUTCOME it was wired to** (ADR-0334's "never bind a contested port" was right; "therefore refuse to start" locked the operator out — ADR-0412 kept the property, dropped the dead end, and the old safety test still passes UNCHANGED). **Advice a user cannot follow is a bug.** Plus the standing set: never measure a tree a battery is mutating · never mutate an instrument a measurement is using · monkeypatch per CALL SITE not per name · two ruffs on PATH, use `python -m ruff` · `| tail` masks exit codes · `grep -c` exits 1 on zero · fetch before numbering AND before committing · `wc` decides.
+⇢ TRAPS PAID FOR THIS ARC — check BY NAME.
+**New last session:** *a claim verified against ONE module is a claim about that module* — say
+"in `web/risks.py`", never "ever" · *a mutant that misses its subject proves nothing* — two
+SURVIVED verdicts were battery defects, not code defects; before believing SURVIVED, confirm the
+mutation touches the file the assertion reads and moves the observable it reads · *a self-baseline
+absorbs what you are measuring* (`assert n == after_page` cannot see anything added inside
+`after_page`) · *a control the CSP kills is invisible to every markup test* — for a control the
+evidence is that clicking it CHANGES something · *a hand-maintained list of call sites is a stale
+list waiting to happen; compute it* · *measure whether it IS a class before fixing it as one*.
+**Standing:** a defence-in-depth twin hides a layer's death · a suggested fix is a hypothesis ·
+"measured, then pinned" fixtures inherit whatever the code did that day — read fixture NAMES as
+claims · compare two surfaces against each other · separate a safety PROPERTY from the OUTCOME it
+was wired to · advice a user cannot follow is a bug · never measure a tree a battery is mutating ·
+never mutate an instrument a measurement is using · monkeypatch per CALL SITE · use `python -m
+ruff` · `| tail` masks exit codes · fetch before numbering AND committing · `wc` decides.
 
-⇢ **TIMING / ENVIRONMENT — MEASURED.** Container starts with NO deps: `python -m pip install -e ".[dev]"` and `pip install build` first. Full suite ~19–30 min (4100 passed at last close); `pytest -m parity` ~9–11 min and exceeds 900 s under load — give it room or it dies to your own timeout. CI ~60 min; `cancel-in-progress: true`, so never push while you need a run's signal. After a squash-merge: `git fetch --prune origin && git remote set-head origin -a && git checkout -B <branch> origin/main` — never amend GitHub's squash commit.
+⇢ TIMING — MEASURED. Container starts with NO deps: `python -m pip install -e ".[dev]"` and
+`pip install build` first. Full suite ~19–30 min; `pytest -m parity` ~11.5 min (measured 690 s),
+exceeds 900 s under load. CI ~60 min, cancel-in-progress: true — never push while you need a
+run's signal. The installer build needs an UNSHALLOW clone (`git fetch --unshallow origin`) or it
+refuses on ADR-0397's graft-boundary guard. NOTE: last session installed `playwright` (a declared
+`browser` extra) into the container, so browser-gated test modules RUN there instead of skipping;
+a fresh container skips them again.
 
-⇢ **OPERATOR-OWNED, not agent work** (see `docs/STATE/OPERATOR-REQUESTS.md`): V-1/V-2/V-3 gateway verification on the NASA machine · DISC-01 release determination · the CEI/HMI vendor export blocking PO-04/05 · stale-branch/SANDBOX cleanup. **Note:** the operator's desktop launcher is a LOCAL "POLARIS" wrapper that is NOT in this repo — it refuses before invoking Python, so ADR-0412's relocation cannot run on that path; the shipped "Schedule Forensics" shortcut must be used.
+⇢ OPERATOR-OWNED, not agent work: V-1/V-2/V-3 gateway verification · DISC-01 · the CEI/HMI vendor
+export blocking PO-04/05 · **an SSI export showing a fired negative-impact (opportunity) register
+entry, which would settle ADR-0414's parity leg** · branch cleanup. Note: the operator's desktop
+launcher is a LOCAL "POLARIS" wrapper NOT in this repo — it refuses before invoking Python, so
+ADR-0412's relocation cannot run on that path; the shipped "Schedule Forensics" shortcut must be
+used.
 
-⇢ **Standing rules (binding):** Law 1 CUI (nothing leaves the machine; the approved gateway is the ONE sanctioned, consent-gated exception) · Law 2 fidelity ("—" never 0; never weaken a test) · ADR-0240 model protocol (Ultracode for the audit; the LEAD re-verifies every finding against code evidence before reporting it) · full gate before every commit · handoff rotation + SESSION-LOG + LESSONS-LEARNED + THIS FILE in the same commit · wheel + nine installers ONCE per shipped-code change (ADR-0148) · a number written mid-session is not a measurement (`wc` decides). Skills: `full-gate`, `prove-able-to-fail`, `metric-parity`, `render-verify`, `cui-guard`, `ui-change`, `session-close`.
+⇢ Standing rules (binding): Law 1 CUI · Law 2 fidelity ("—" never 0; never weaken a test) ·
+ADR-0240 model protocol (the LEAD re-verifies every finding before reporting) · full gate before
+every commit · handoff + SESSION-LOG + LESSONS-LEARNED + kickoff in the same commit · wheel +
+nine installers ONCE per shipped-code change (ADR-0148). Skills: full-gate, prove-able-to-fail,
+metric-parity, render-verify, cui-guard, ui-change, session-close.

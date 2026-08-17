@@ -1,8 +1,19 @@
 # ADR-0407 — ENG-DEAD-01 closes: `actual_start_driven` reaches the analyst as an INFO disclosure and a path-grid column
 
-**Status:** Accepted · **Date:** 2026-08-15 · **Closes:** ENG-DEAD-01 (audit 2026-08-13) ·
-**Ships:** v1.0.206 (wheel + nine installers rebuilt; `recommendations.py`, `help.py`,
-`driving.py`, `path.js` all ship).
+**Status:** Accepted, **partly superseded by ADR-0413** · **Date:** 2026-08-15 ·
+**Closes:** ENG-DEAD-01 (audit 2026-08-13) · **Ships:** v1.0.206 (wheel + nine installers
+rebuilt; `recommendations.py`, `help.py`, `driving.py`, `path.js` all ship).
+
+> **CORRECTION (ADR-0413, REC-01).** The Decision section below claims that
+> `Category.OPPORTUNITY` keeps this finding from "ever becoming a threat row or a recovery
+> action". That was verified against `web/risks.py` only, and is **false of the tree**:
+> `ai/briefing.py` applies no category gate, and `_quantify` quantified the finding like any
+> other. Measured on v1.0.210, the disclosure reached the briefing's "Potential recovery"
+> column (`20 wd`), its "Expected effect" column (`20 wd`), its recoverable total ("up to
+> about 20 workday(s) … potentially recoverable") and the `/risks` card at 20/25 `rk-extreme`.
+> What actually holds the separation is `Finding.is_disclosure` (ADR-0413). Everything else
+> below — the channel, its separation from `date_driven`, the grid column, the dictionary
+> entry — stands.
 
 ## Context
 
@@ -20,12 +31,15 @@ separation in both:
 
 - **An INFO/OPPORTUNITY finding** (`_actual_start_floor_findings`, registered in `recommend`
   beside `_logic_support_findings`): metric id `actual_start_driven`, cited per activity (§6),
-  title "N activities are scheduled from their recorded actual starts". **Category.OPPORTUNITY is
+  title "N activities are scheduled from their recorded actual starts". ~~**Category.OPPORTUNITY is
   load-bearing, not cosmetic**: `web/risks.py` builds the risk matrix, the risk ranking, and the
   recovery plan from RISK + CONCERN only, so an OPPORTUNITY/INFO disclosure informs without ever
-  becoming a threat row or a recovery action — the finding-level restatement of ADR-0391's "a
-  recorded actual is evidence, not an unsupported date". The `driving_path` finding is the
-  established precedent for this idiom.
+  becoming a threat row or a recovery action~~ — **this justification is WRONG; see the correction
+  note above and ADR-0413.** The intent it expressed (a recorded actual is evidence, not an
+  unsupported date — ADR-0391 restated at the finding level) is right and is now enforced by
+  `Finding.is_disclosure`. The `driving_path` precedent cited here is also **not** analogous:
+  that finding is a genuine recovery lever, which is precisely why category could never
+  discriminate the two.
 - **A per-row flag + optional grid column**: `/api/driving` rows carry `actual_start_driven`
   beside `date_driven` (`web/driving.py`), and `path.js`'s FIELDS offers "Actual-start-driven"
   (default off) beside "Date-driven". The Excel path export is untouched **by symmetry** —
