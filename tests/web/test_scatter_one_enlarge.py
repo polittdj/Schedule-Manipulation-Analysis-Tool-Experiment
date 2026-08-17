@@ -25,12 +25,12 @@ import pytest
 from fastapi.testclient import TestClient
 
 from schedule_forensics.web.app import SessionState, create_app
+from web.browser_chrome import chrome_kwargs
 
 GOLDEN = Path(__file__).resolve().parents[1] / "fixtures" / "golden" / "project2_5"
-# build-agnostic (TEST-01, ADR-0406): the FIRST vendored chromium, whatever build the
-# container ships — a chromium bump must never silently skip this module again
-_PW_CHROMES = sorted(Path("/opt/pw-browsers").glob("chromium*/chrome-linux/chrome"))
-CHROME = _PW_CHROMES[0] if _PW_CHROMES else Path("/opt/pw-browsers/absent/chrome")
+# Chromium resolution is `tests/web/browser_chrome.py`'s single decision (ADR-0406, widened
+# by ADR-0418): prefer a vendored binary, else let playwright resolve its own — the branch a
+# CI runner takes. This module used to pin `/opt/pw-browsers` and therefore SKIPPED on CI.
 
 
 def _free_port() -> int:
@@ -68,8 +68,6 @@ def test_scatter_panel_head_has_no_second_enlarge() -> None:
 @pytest.fixture(scope="module")
 def served() -> Any:
     pytest.importorskip("playwright", reason="playwright not installed (runtime stays stdlib-only)")
-    if not CHROME.exists():
-        pytest.skip(f"bundled chromium not at {CHROME}")
     import uvicorn
 
     state = SessionState()
@@ -109,7 +107,7 @@ def test_the_one_enlarge_moves_the_measured_box(
     panel_sel = ".panel:has(#scatterChart)"
     btn_sel = panel_sel + " button[data-sf-big]"
     with sync_playwright() as pw:
-        args: dict[str, Any] = {"executable_path": str(CHROME)}
+        args: dict[str, Any] = dict(chrome_kwargs())
         if show_scrollbars:
             args["ignore_default_args"] = ["--hide-scrollbars"]
         browser = pw.chromium.launch(**args)

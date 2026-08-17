@@ -26,9 +26,9 @@ from fastapi.testclient import TestClient
 
 from schedule_forensics.web import state as state_mod
 from schedule_forensics.web.app import SessionState, create_app
+from web.browser_chrome import chrome_kwargs
 
 STATIC = Path(__file__).resolve().parents[2] / "src" / "schedule_forensics" / "web" / "static"
-CHROME_DIR = Path("/opt/pw-browsers")
 
 _META = re.compile(r'<meta name=sf-launch content="([^"]+)">')
 
@@ -70,13 +70,11 @@ def test_persist_js_carries_the_launch_guard() -> None:
 
 # ---- behavioral proof in a real browser --------------------------------------------------
 
-_chrome = sorted(CHROME_DIR.glob("chromium-*/chrome-linux/chrome")) if CHROME_DIR.exists() else []
-
 
 @pytest.fixture()
 def served() -> Any:
     """The real app on a real port (persist.js needs a browser, not TestClient)."""
-    # The `_chrome` skipif below covers the BROWSER; this covers the pip PACKAGE, which is a
+    # `chrome_kwargs()` covers the BROWSER; this covers the pip PACKAGE, which is a
     # separate extra (`.[browser]`) and absent from a plain `.[dev]` env. Without it the bare
     # `from playwright.sync_api import …` in the test body ERRORED rather than skipped — measured
     # on pytest 8.0.2 as `1 failed, 3 passed, 2 errors` across this module and
@@ -103,7 +101,6 @@ def served() -> Any:
     server.should_exit = True
 
 
-@pytest.mark.skipif(not _chrome, reason=f"bundled chromium not under {CHROME_DIR}")
 def test_stale_launch_clears_page_memory_and_live_launch_keeps_it(served: Any) -> None:
     """Both halves of OR-06 in one browser session: selections stored under a PREVIOUS
     launch token are cleared on the next load (the operator's stale Target UID can never
@@ -113,7 +110,7 @@ def test_stale_launch_clears_page_memory_and_live_launch_keeps_it(served: Any) -
 
     base, _st = served
     with sync_playwright() as p:
-        browser = p.chromium.launch(executable_path=str(_chrome[-1]))
+        browser = p.chromium.launch(**chrome_kwargs())
         page = browser.new_page()
         page.goto(base + "/", wait_until="domcontentloaded")
 

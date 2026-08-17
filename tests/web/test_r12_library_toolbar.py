@@ -60,13 +60,13 @@ from schedule_forensics.model.relationship import Relationship, RelationshipType
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
 from schedule_forensics.web.app import SessionState, create_app
+from web.browser_chrome import chrome_kwargs
 
 REPO = Path(__file__).resolve().parents[2]
 GOLD = REPO / "tests" / "fixtures" / "golden" / "project2_5"
-# build-agnostic (TEST-01, ADR-0406): the FIRST vendored chromium, whatever build the
-# container ships — a chromium bump must never silently skip this module again
-_PW_CHROMES = sorted(Path("/opt/pw-browsers").glob("chromium*/chrome-linux/chrome"))
-CHROME = _PW_CHROMES[0] if _PW_CHROMES else Path("/opt/pw-browsers/absent/chrome")
+# Chromium resolution is `tests/web/browser_chrome.py`'s single decision (ADR-0406, widened
+# by ADR-0418): prefer a vendored binary, else let playwright resolve its own — the branch a
+# CI runner takes. This module used to pin `/opt/pw-browsers` and therefore SKIPPED on CI.
 
 DAY = 480
 
@@ -392,8 +392,6 @@ def _free_port() -> int:
 @pytest.fixture(scope="module")
 def served_margin() -> Any:
     pytest.importorskip("playwright", reason="playwright not installed (deliberate)")
-    if not CHROME.exists():
-        pytest.skip(f"bundled chromium not at {CHROME}")
     import uvicorn
 
     st = SessionState()
@@ -415,8 +413,6 @@ def served_margin() -> Any:
 @pytest.fixture(scope="module")
 def served_gold() -> Any:
     pytest.importorskip("playwright", reason="playwright not installed (deliberate)")
-    if not CHROME.exists():
-        pytest.skip(f"bundled chromium not at {CHROME}")
     import uvicorn
 
     app = create_app(SessionState())
@@ -467,7 +463,7 @@ def test_margin_enlarge_measurably_lifts_in_chromium(served_margin: str) -> None
     from playwright.sync_api import sync_playwright
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(executable_path=str(CHROME))
+        browser = p.chromium.launch(**chrome_kwargs())
         page = browser.new_page(viewport={"width": 1360, "height": 900})
         page.goto(served_margin + "/margin", wait_until="domcontentloaded")
         page.wait_for_selector("#marginBurndownChart", timeout=10000)
@@ -480,7 +476,7 @@ def test_card_enlarge_measurably_lifts_in_chromium(served_gold: str) -> None:
     from playwright.sync_api import sync_playwright
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(executable_path=str(CHROME))
+        browser = p.chromium.launch(**chrome_kwargs())
         page = browser.new_page(viewport={"width": 1360, "height": 900})
         page.goto(served_gold + "/card/Project5", wait_until="domcontentloaded")
         page.wait_for_selector(".card-cols", timeout=10000)

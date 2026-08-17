@@ -14620,3 +14620,114 @@ download now arrives as a client-side `blob:` URL carrying the correct
 `suggested_filename='trend.xlsx'` — so the download WORKS and the assertion looks stale, but that
 is one test's diagnosis and the histogram failure is UNDIAGNOSED. Left unfixed deliberately: the
 fix needs a per-test diagnosis plus a CI job, which is its own unit of work. Queued as item 0.
+
+## 2026-08-17 (d) — BROWSER-ORPHAN-01: 94 browser tests never ran in CI, and one oracle could not fail (ADR-0418, no version bump)
+
+Resumed the 2026-08-16 deep-dive audit on `claude/polaris-browser-orphan-01-3824ij`, branched clean
+from `origin/main` at f4eaf32. Worked the kickoff's item 0, solo. **No shipped code changed** —
+tests + `.github/workflows/ci.yml` only, so v1.0.211 stands and no wheel/installer was rebuilt.
+
+**The ledger's own count was wrong, and finding that out was the first result.** The row read "four
+browser test modules never run in CI". Four were the modules that FAILED. A computed census —
+matching `.chromium.launch(`, not the word "playwright" — finds **24** modules that drive a browser,
+of which **23** pinned `/opt/pw-browsers` and only ADR-0406's own module resolved properly. The
+population was measured, not argued: bind-mounting an empty directory over `/opt/pw-browsers` inside
+a `unshare -rm` mount namespace gives a runner-shaped filesystem, and the same set then reports
+**86 passed, 94 skipped** — against 175 passed / 5 failed with the vendored browser present. So
+**94 tests never executed in either CI path**: `playwright` lives in the `browser` extra rather than
+`dev`, so the matrix skips them, and the `browser` job named a single module by hand.
+
+**The four panelkit failures were stale, as the kickoff hypothesised.** ADR-0360 deliberately
+replaced navigation with fetch+blob (so the button can hold PREPARING through a long server-side
+re-run), so `expected_path in download.url` reports `blob:…/<uuid>` and fails on a *working* button.
+Repaired by asserting the property the docstring already claimed — "its endpoint is live" — on the
+NETWORK: the export path was really requested. Mutation-measured: aiming the fetch at an unrelated
+URL still yields a `.xlsx`-named blob download, and only the new assertion notices. The `200` leg is
+documented as **secondary, not load-bearing**, because measuring a deliberately dead (500) endpoint
+showed the failure actually surfaces as the download wait timing out — a non-ok response throws
+before any blob exists. Writing that down beats shipping an assertion that reads as load-bearing.
+
+**The histogram failure was the opposite of the hypothesis, and this is the session's real finding.**
+It scored 1.17:1 against a 3.0 floor — exactly the number its own docstring attributes to "without
+the halo", so the obvious reading is that ADR-0331's halo had been lost. It had not. Computed style
+on every caption is `paint-order: stroke`, `stroke: rgb(255,255,255)`, `3px`; rendered at true 1×
+and magnified losslessly the caption is plainly legible, each glyph carrying a white halo over the
+blue bar; and stashing the halo moves pure-white pixels in the clip from **17.6% to 1.3%**, so it is
+demonstrably painting. The defect was in the ORACLE. `_modal_color` takes the mode of the caption's
+whole box, on its own stated premise that glyph strokes are sparse relative to that box — true only
+while a caption sits on ONE surface. This caption straddles a boundary (the degenerate one-bin bar
+fills ~65% of its box), so the mode reports the dominant REGION rather than the glyphs' backdrop.
+The decisive table: whole-box mode reads **1.17:1 haloed and 1.17:1 stashed**; a 1px glyph-backdrop
+ring reads **3.06:1 haloed / 1.17:1 stashed**. The old check failed a correct render *and could not
+have detected a broken one*. A second, independent defect sat in the same test: `caps` swept the
+whole document while `shots` came only from `#ssiCharts`, joined by caption TEXT — which is not
+unique (three captions read "Finish date") — so captions were scored against other captions' pixels,
+which is why one straddling caption reported as three failures. Probe and screenshot now come from
+the same element handle, making that class unrepresentable. Population floored at 5 so the sweep
+cannot silently shrink (restoring it caught my own first repair, which had quietly dropped 5 → 2).
+
+**Both halves shipped, because the second is the one that bites.** All 23 modules now resolve
+through `tests/web/browser_chrome.py`, whose fallback returns NO `executable_path` and lets
+playwright resolve its own — the branch a runner takes and the branch the pinned modules could not.
+The `CHROME.exists()` skips are gone, so a missing browser fails loudly instead of skipping. Import
+spelling was chosen by measurement, not habit: `from web.browser_chrome import …` was verified under
+**bare** `pytest` from two working directories, because `from tests.web.…` is what killed three CI
+jobs at once previously; `tests/perf/` has no package parent and loads it by path. CI's browser job
+now **computes** its population via `tools/browser_modules.py` instead of listing modules, so a new
+browser module is covered the day it lands, and the skip-is-a-failure guard covers the whole set.
+
+**Verification.** Red-first: the CI-coverage guard was written before the workflow changed and
+failed by name, listing all 23. Mutation **7/7 by name**, each mutant confirmed to have LANDED
+before its verdict was believed — and an 8th "SURVIVED" was a battery defect (a `sed` whose `|`
+delimiter collided with the `\|` alternation, so nothing applied), which on inspection exposed a
+genuinely weak assertion of mine (`or "SKIPPED" in ci`), now replaced by one that requires the grep
+pattern AND an `exit 1`. The repaired histogram test goes red with the halo stashed and green when
+restored, `git diff` confirming the CSS returned to baseline. Behaviour preservation: the full
+browser set ran 175 passed / 5 failed before, and 200 passed / same 5 after the repoint.
+
+**Not settled here.** The runner branch is proven locally only to the handoff point —
+`chrome_kwargs()` returns `{}` and playwright takes over. That playwright then finds a browser on a
+GitHub runner is attested by CI's existing `browser` job, green through exactly that branch under a
+skip-is-a-failure guard; it is not re-proven locally, because this container's
+`PLAYWRIGHT_BROWSERS_PATH` points at the vendored root and the vendored build (1194) does not match
+the pip driver's expectation (1234). The first CI run of this branch closes that leg.
+
+### Follow-up the same session — the first CI run closed the runner leg and found two MORE orphans
+
+`browser` on a real GitHub runner: it downloaded chromium 1234 into `~/.cache/ms-playwright`,
+printed the 24-module census, and reported **203 passed, 0 skipped**. That closes ADR-0418's one
+UNVERIFIED leg POSITIVELY — `chrome_kwargs()` returned `{}`, playwright resolved its own browser,
+and modules that had never executed on CI executed. It also failed two: `test_float_tip_dismiss`
+and `test_float_tip_scroll`, both waiting on a focus-shown `.dcma-tip-float`. The un-orphaning has
+now surfaced **seven** pre-existing failures, not five.
+
+**They looked runner-specific and were not, and that correction is the lesson.** They passed here
+and failed there, so the obvious suspect was the chromium build (1194 vs 1234 — unreproducible in
+this container, since the egress proxy blocks `cdn.playwright.dev`). Instrumented and run in a
+loop, `test_float_tip_scroll` fails **8 times in 20 LOCALLY**. The earlier local passes were luck;
+"only fails on CI" was a conclusion drawn from a sample of one.
+
+Three hypotheses were measured and REFUTED before the real one was found: the headless shell
+(pointing the resolver at the vendored `headless_shell`, both tests still pass), a missing
+`tabindex` (it is unconditional on `.dcma-ov-row`), and `focus()` scrolling into the
+document-level scroll-hide (`window.scrollY` moved 0px across all four in-view × `preventScroll`
+combinations, and the tip showed in all four).
+
+**The mechanism was recorded, not reasoned.** A probe logging scroll events and tip-visibility
+transitions with timestamps caught it in the act: `TIP-SHOWN 55ms → scroll 57ms → tip-hidden 67ms`
+on a failing run, versus `scroll 70ms → TIP-SHOWN 85ms` on a passing one.
+`scroll_into_view_if_needed()` delivers its scroll event ASYNCHRONOUSLY, 57-70ms after the call
+returns, and the product hides tips on scroll BY DESIGN — the scroll test's own docstring calls
+that a FACT. So the test's setup was destroying the state it then asserted, and which side won was
+a coin flip. Nothing about the product is wrong.
+
+Fixed with `settle_scroll()` (waits for scroll quiescence, not a tuned sleep — the delay is
+machine-dependent and a constant tuned here is exactly the pin that fails on slower hardware).
+Measured **12/20 → 20/20** on the scroll test and 6/6 on the dismiss module. The assertions are
+unchanged. `wait_for_tip()` also now reports the state at timeout — did focus land, does the row
+have a box, what each tip's `display` says — proven to fire by deleting the focus listener, because
+this failure had to be diagnosed on a machine no debugger can reach.
+
+Gate on the final tree: statics green (ruff whole tree · format 1038 files · mypy strict 155 ·
+bandit exit 0 · node --check); browser census + guards + drift **215 passed**. Still tests-only —
+`src/` untouched, so v1.0.211 stands and no installer rebuild.

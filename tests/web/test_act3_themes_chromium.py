@@ -14,7 +14,8 @@ Proved here, in bundled chromium:
   the tool strip sit on one row, tools to the right), the tool strip is really on screen, and
   the provenance chip resolves to a VISIBLE colour rather than inheriting something transparent.
 
-Skips unless playwright + the bundled chromium are present (same posture as
+Skips only when the playwright PACKAGE is absent; the BROWSER is resolved by
+``tests/web/browser_chrome.py``, so a CI runner EXECUTES this module (ADR-0418) (same posture as
 `test_compare_panelkit.py` — the runtime stays stdlib-only, Law 1)."""
 
 from __future__ import annotations
@@ -27,15 +28,15 @@ from typing import Any
 
 import pytest
 
+from web.browser_chrome import chrome_kwargs
+
 ROOT = Path(__file__).resolve().parents[2]
 GOLDEN = ROOT / "tests" / "fixtures" / "golden" / "project2_5"
-# build-agnostic (TEST-01, ADR-0406): the FIRST vendored chromium, whatever build the
-# container ships — a chromium bump must never silently skip this module again
-_PW_CHROMES = sorted(Path("/opt/pw-browsers").glob("chromium*/chrome-linux/chrome"))
-CHROME = _PW_CHROMES[0] if _PW_CHROMES else Path("/opt/pw-browsers/absent/chrome")
+# Chromium resolution is `tests/web/browser_chrome.py`'s single decision (ADR-0406, widened
+# by ADR-0418): prefer a vendored binary, else let playwright resolve its own — the branch a
+# CI runner takes. This module used to pin `/opt/pw-browsers` and therefore SKIPPED on CI.
 
 pytest.importorskip("playwright", reason="playwright not installed (deliberate: see module docs)")
-pytestmark = pytest.mark.skipif(not CHROME.exists(), reason=f"bundled chromium not at {CHROME}")
 
 THEMES = ("console", "daylight", "apollo", "jarvis")
 
@@ -94,7 +95,7 @@ def test_panelkit_actually_drives_the_converted_panel(served: str, route: str, p
     from playwright.sync_api import sync_playwright
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(executable_path=str(CHROME))
+        browser = p.chromium.launch(**chrome_kwargs())
         page = browser.new_page(viewport={"width": 1360, "height": 900})
         page.goto(served + route, wait_until="domcontentloaded")
         page.wait_for_selector(f"{panel} [data-sf-big]", timeout=10000)
@@ -132,7 +133,7 @@ def test_the_head_strip_survives_all_four_themes(served: str, route: str) -> Non
     from playwright.sync_api import sync_playwright
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(executable_path=str(CHROME))
+        browser = p.chromium.launch(**chrome_kwargs())
         page = browser.new_page(viewport={"width": 1360, "height": 900})
         page.goto(served + route, wait_until="domcontentloaded")
         page.wait_for_selector(".panel-head", timeout=10000)
@@ -186,7 +187,7 @@ def test_the_excel_less_tool_strip_survives_all_four_themes(served: str) -> None
     from playwright.sync_api import sync_playwright
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(executable_path=str(CHROME))
+        browser = p.chromium.launch(**chrome_kwargs())
         page = browser.new_page(viewport={"width": 1360, "height": 900})
         page.goto(served + "/sra", wait_until="domcontentloaded")
         page.wait_for_selector(".panel-head", timeout=10000)

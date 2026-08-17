@@ -13,7 +13,8 @@ real chromium:
   ``.sf-pill`` chips keep their 20px pill radius, and the per-row ``.prov-chip`` renders at
   its 8px mono size inside the summary row.
 
-Skips unless playwright + the bundled chromium are present (same posture as
+Skips only when the playwright PACKAGE is absent; the BROWSER is resolved by
+``tests/web/browser_chrome.py``, so a CI runner EXECUTES this module (ADR-0418) (same posture as
 ``test_integrity_panelkit.py`` — the runtime stays stdlib-only, Law 1)."""
 
 from __future__ import annotations
@@ -21,18 +22,17 @@ from __future__ import annotations
 import socket
 import threading
 import time
-from pathlib import Path
 from typing import Any
 
 import pytest
 
-# build-agnostic (TEST-01, ADR-0406): the FIRST vendored chromium, whatever build the
-# container ships — a chromium bump must never silently skip this module again
-_PW_CHROMES = sorted(Path("/opt/pw-browsers").glob("chromium*/chrome-linux/chrome"))
-CHROME = _PW_CHROMES[0] if _PW_CHROMES else Path("/opt/pw-browsers/absent/chrome")
+from web.browser_chrome import chrome_kwargs
+
+# Chromium resolution is `tests/web/browser_chrome.py`'s single decision (ADR-0406, widened
+# by ADR-0418): prefer a vendored binary, else let playwright resolve its own — the branch a
+# CI runner takes. This module used to pin `/opt/pw-browsers` and therefore SKIPPED on CI.
 
 pytest.importorskip("playwright", reason="playwright not installed (deliberate: see module docs)")
-pytestmark = pytest.mark.skipif(not CHROME.exists(), reason=f"bundled chromium not at {CHROME}")
 
 _NS = 'xmlns="http://schemas.microsoft.com/project"'
 _TASK = "<Tasks><Task><UID>1</UID><Name>A</Name><Duration>PT8H0M0S</Duration></Task></Tasks>"
@@ -87,7 +87,7 @@ def test_panelkit_click_and_jarvis_probe_on_portfolio(served: str) -> None:
     from playwright.sync_api import sync_playwright
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(executable_path=str(CHROME))
+        browser = p.chromium.launch(**chrome_kwargs())
         page = browser.new_page(viewport={"width": 1360, "height": 900})
         page.goto(served + "/portfolio", wait_until="domcontentloaded")
         page.wait_for_selector(".panel[data-export] [data-sf-big]", timeout=10000)
