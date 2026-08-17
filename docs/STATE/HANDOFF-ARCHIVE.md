@@ -2,6 +2,83 @@
 
 > Older handoff sections, moved out of `docs/STATE/HANDOFF.md` so the live handoff stays
 > small enough to read in full in one pass every session (ADR-0246). Newest first, verbatim.
+
+# (prior) Handoff — 2026-08-17 (d) (BROWSER-ORPHAN-01: 94 browser tests never ran in CI, and one oracle could not fail; ADR-0418; no version bump)
+
+> ## STATUS (current) — audit CONTINUING on `claude/polaris-browser-orphan-01-3824ij`.
+> Highest ADR now **0418**. **NO shipped code changed** — this is tests + `.github/workflows/ci.yml`
+> only, so v1.0.211 stands, SCHEMA 2.11.0 unchanged, and **no wheel/installer rebuild** (ADR-0148
+> is per shipped-code change). Branch started clean from `origin/main` at f4eaf32. The live audit
+> ledger is `docs/STATE/AUDIT-2026-08-16.md`.
+>
+> ## What landed — BROWSER-ORPHAN-01, and the ledger's own count was wrong
+> **The row said "four browser modules". Four were the modules that FAILED; 23 never RAN.** A
+> computed census (match the LAUNCH call, not the word "playwright") finds 24 browser modules; 23
+> pinned `/opt/pw-browsers`, and only ADR-0406's own module resolved properly. Measured by
+> bind-mounting an empty dir over `/opt/pw-browsers` in a mount namespace — a runner-shaped
+> filesystem: **86 passed, 94 skipped**, against 175 passed / 5 failed with the vendored browser
+> present. So **94 tests never executed in either CI path** (`playwright` is in the `browser` extra,
+> not `dev`, so the matrix skips them; the `browser` job named one module by hand).
+>
+> **The four panelkit failures were stale, as hypothesised.** ADR-0360 replaced navigation with
+> fetch+blob, so `expected_path in download.url` fails on a WORKING button. Repaired by asserting on
+> the NETWORK (the export path was really requested) — stronger than the string it replaces, and
+> mutation-measured. The `200` leg is documented as **secondary, not load-bearing**: against a dead
+> (500) endpoint the failure actually surfaces as the download wait timing out.
+>
+> **The histogram failure was NOT stale, and NOT a lost halo — the hypothesis was backwards.** The
+> halo is painted (computed `paint-order: stroke`, 3px white; stashing it moves pure-white pixels
+> 17.6% → 1.3%) and the caption is legible at true 1×, verified visually. The defect was the
+> ORACLE: `_modal_color` takes the mode of the whole caption box — the dominant REGION, not the
+> glyphs' backdrop — and on a caption straddling the degenerate one-bin bar it returned **1.17:1
+> with the halo AND 1.17:1 without it**. It failed a correct render and could not have detected a
+> broken one. Replaced by a 1px glyph-backdrop ring: **3.06:1 haloed / 1.17:1 stashed**. A second
+> defect in the same test scored captions against OTHER captions' pixels (document-wide probe joined
+> to `#ssiCharts` screenshots by non-unique caption text — which is why ONE straddling caption
+> reported as THREE failures); probe and screenshot now come from the same element handle.
+>
+> **Both halves shipped**: 23 modules repointed at one resolver (`tests/web/browser_chrome.py`)
+> whose fallback is playwright's own resolution, AND CI's browser job now **computes** its
+> population (`tools/browser_modules.py`) rather than naming modules, with skip-is-a-failure over
+> the whole set. Guard mutation-proven **7/7 by name**, every mutant confirmed LANDED first.
+>
+> ## The first CI run closed the runner leg — and found two MORE orphans
+> `browser` on a real runner: **203 passed, 0 skipped**. The `{}` fallback works, so ADR-0418's one
+> UNVERIFIED leg is closed POSITIVELY. It also failed two more never-run tests, so the un-orphaning
+> surfaced **seven** pre-existing failures, not five. **They looked runner-specific and were not** —
+> instrumented and looped, `test_float_tip_scroll` fails **8 in 20 LOCALLY**; the earlier local
+> passes were luck. Three hypotheses were refuted before the real one (headless shell · missing
+> `tabindex` · `focus()` scrolling). A sequence probe caught the mechanism in the act:
+> `TIP-SHOWN 55ms → scroll 57ms → tip-hidden 67ms`. `scroll_into_view_if_needed()` delivers its
+> scroll event **asynchronously** (57-70ms measured) and the product hides tips on scroll BY
+> DESIGN, so focusing immediately races it. Fixed with `settle_scroll()` (quiescence, not a tuned
+> sleep): **12/20 → 20/20**. The assertion is unchanged and the product was never wrong.
+>
+> ## Next — the audit is STILL NOT finished
+> **IMP-01** · the three MIXED-POPULATION claims (one scoped-vs-raw probe settles all three) ·
+> **MF-05 do-not-fix-blind** (needs the Acumen export as oracle) · the remaining ~40 REPORTED rows ·
+> the route × test gap-fill (**137 routes, 5 with no success test, 16 with no failure-mode test**) ·
+> **never audited at all: page modules A/B · docs/config/CI · AI figure-gates**.
+>
+> ## Carried forward
+> ADR-0353..0418 closed — do not re-open. NEW lessons: **a count in a ledger row may be counting the
+> symptom, not the thing** (four failures ≠ four orphans; 23 modules were invisible because they
+> skipped) · **an oracle that returns the same verdict in both worlds is not stale, it is blind** —
+> before "fixing" a failing check, run it against a deliberately broken subject and confirm it
+> CHANGES · **a mutant that never landed is not a SURVIVED verdict** — one `sed` silently applied
+> nothing (delimiter collided with the pattern) and the "survival" it produced concealed a genuinely
+> weak assertion of mine · **joining two populations by a non-unique key** (caption text) scores
+> items against each other's evidence · **a screenshot's resolution is part of the measurement**
+> (the same caption read 1.17:1 at 1× and 3.07:1 at 5×). Standing traps unchanged (a claim verified
+> against one module is a claim about that module · a control the CSP kills is invisible to markup
+> tests · compute a call-site list, never hand-maintain it · `python -m ruff` · `| tail` masks exit
+> codes — it hid a `ruff format` failure this session · fetch before numbering and committing).
+> QC-1/QC-2 are ADR-0393.
+>
+> ## Gate at close
+> See SESSION-LOG for the full-suite line. Statics green whole-tree. The browser census (24 modules)
+> is the run that matters here — it had never been green before this session.
+
 # (prior) Handoff — 2026-08-17 (c) (audit units 5–9: REC-01 corrects ADR-0407 · MC-01 · TST-01 · JS-01 · SRA-EXPORT-STALE-SCOPE; ADR-0413..0417; v1.0.211 shipped)
 
 > ## STATUS (current) — audit CONTINUING on `claude/polaris-audit-resume-3ubkxc`.

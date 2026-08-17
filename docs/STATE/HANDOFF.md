@@ -1,78 +1,87 @@
-# Handoff — 2026-08-17 (d) (BROWSER-ORPHAN-01: 94 browser tests never ran in CI, and one oracle could not fail; ADR-0418; no version bump)
+# Handoff — 2026-08-17 (e) (IMP-01 + the three MIXED-POPULATION rows, which were one CLASS of eight; ADR-0419/0420, v1.0.212)
 
-> ## STATUS (current) — audit CONTINUING on `claude/polaris-browser-orphan-01-3824ij`.
-> Highest ADR now **0418**. **NO shipped code changed** — this is tests + `.github/workflows/ci.yml`
-> only, so v1.0.211 stands, SCHEMA 2.11.0 unchanged, and **no wheel/installer rebuild** (ADR-0148
-> is per shipped-code change). Branch started clean from `origin/main` at f4eaf32. The live audit
-> ledger is `docs/STATE/AUDIT-2026-08-16.md`.
+> ## STATUS (current) — audit CONTINUING on `claude/polaris-audit-continuation-i1cxqq`.
+> Highest ADR now **0420**. Shipped code DID change (`importers/mspdi.py`, `web/app.py`), so
+> **v1.0.211 → 1.0.212** and the wheel + all nine installers were rebuilt (ADR-0148). SCHEMA
+> 2.11.0 unchanged. Branch started clean from `origin/main` at 9cd9b02. The live audit ledger is
+> `docs/STATE/AUDIT-2026-08-16.md`. **Ran entirely SOLO** (the kickoff's standing advice), so say
+> plainly which dimensions got depth: importers and web-scope got deep treatment; the route × test
+> gap-fill and the never-audited dimensions got NONE this session.
 >
-> ## What landed — BROWSER-ORPHAN-01, and the ledger's own count was wrong
-> **The row said "four browser modules". Four were the modules that FAILED; 23 never RAN.** A
-> computed census (match the LAUNCH call, not the word "playwright") finds 24 browser modules; 23
-> pinned `/opt/pw-browsers`, and only ADR-0406's own module resolved properly. Measured by
-> bind-mounting an empty dir over `/opt/pw-browsers` in a mount namespace — a runner-shaped
-> filesystem: **86 passed, 94 skipped**, against 175 passed / 5 failed with the vendored browser
-> present. So **94 tests never executed in either CI path** (`playwright` is in the `browser` extra,
-> not `dev`, so the matrix skips them; the `browser` job named one module by hand).
+> ## First: two stale docs were corrected, as the kickoff instructed
+> The injected STATUS pointed at `claude/polaris-browser-orphan-01-3824ij` (merged as #598, branch
+> deleted) and `NEXT-SESSION-PROMPT.md` was the pre-merge draft. Both verified stale by reading and
+> refreshed in this commit — a merged PR cannot carry the correction, which is why this keeps
+> happening.
 >
-> **The four panelkit failures were stale, as hypothesised.** ADR-0360 replaced navigation with
-> fetch+blob, so `expected_path in download.url` fails on a WORKING button. Repaired by asserting on
-> the NETWORK (the export path was really requested) — stronger than the string it replaces, and
-> mutation-measured. The `200` leg is documented as **secondary, not load-bearing**: against a dead
-> (500) endpoint the failure actually surfaces as the download wait timing out.
+> ## IMP-01 — real mechanism, LATENT reach (ADR-0419)
+> The row's detail was lost with the round-3 pool, so it was **re-derived from source**.
+> `mspdi.py::_parse_calendar` reads a `DayWorking=1` weekday with no usable `<WorkingTimes>` **two
+> ways four lines apart**: `if minutes > 0` drops it from the census, while
+> `dominant_day_minutes(...) or MINUTES_PER_DAY` declares that exact construct worth 480. The two
+> agree on a uniform calendar and diverge the moment one MIXES — the minority explicit day wins
+> outright. Measured: Mon 4 h + Tue-Fri default → **240 min/day, an 80 h task displaying as 20.00
+> days instead of 10.00** (a 2× error on every duration-in-days figure). A second route reaches the
+> same hole (`08:00 → 08:00` is a documented zero-length span).
+> **But it is LATENT, and that was measured, not assumed**: a census of **56 real MSPDI documents**
+> (every committed MSPDI-rooted file + 25 MPXJ conversions of the reference `.mpp`s) finds **zero**
+> occurrences — MPXJ always emits `WorkingTimes`. Fixed anyway (cheap, and two readings cannot both
+> be right); **proven a no-op on the corpus** by diffing the parsed calendar of all 83 documents
+> patched vs pristine — **identical** — and `pytest -m parity` **72 passed**. Mutation **5/5 by
+> name**. The residual "is the default really 480 or the file's `MinutesPerDay`?" is **UNVERIFIED
+> and unchanged** by the fix; it needs a real MS Project file carrying the construct.
 >
-> **The histogram failure was NOT stale, and NOT a lost halo — the hypothesis was backwards.** The
-> halo is painted (computed `paint-order: stroke`, 3px white; stashing it moves pure-white pixels
-> 17.6% → 1.3%) and the caption is legible at true 1×, verified visually. The defect was the
-> ORACLE: `_modal_color` takes the mode of the whole caption box — the dominant REGION, not the
-> glyphs' backdrop — and on a caption straddling the degenerate one-bin bar it returned **1.17:1
-> with the halo AND 1.17:1 without it**. It failed a correct render and could not have detected a
-> broken one. Replaced by a 1px glyph-backdrop ring: **3.06:1 haloed / 1.17:1 stashed**. A second
-> defect in the same test scored captions against OTHER captions' pixels (document-wide probe joined
-> to `#ssiCharts` screenshots by non-unique caption text — which is why ONE straddling caption
-> reported as THREE failures); probe and screenshot now come from the same element handle.
->
-> **Both halves shipped**: 23 modules repointed at one resolver (`tests/web/browser_chrome.py`)
-> whose fallback is playwright's own resolution, AND CI's browser job now **computes** its
-> population (`tools/browser_modules.py`) rather than naming modules, with skip-is-a-failure over
-> the whole set. Guard mutation-proven **7/7 by name**, every mutant confirmed LANDED first.
->
-> ## The first CI run closed the runner leg — and found two MORE orphans
-> `browser` on a real runner: **203 passed, 0 skipped**. The `{}` fallback works, so ADR-0418's one
-> UNVERIFIED leg is closed POSITIVELY. It also failed two more never-run tests, so the un-orphaning
-> surfaced **seven** pre-existing failures, not five. **They looked runner-specific and were not** —
-> instrumented and looped, `test_float_tip_scroll` fails **8 in 20 LOCALLY**; the earlier local
-> passes were luck. Three hypotheses were refuted before the real one (headless shell · missing
-> `tabindex` · `focus()` scrolling). A sequence probe caught the mechanism in the act:
-> `TIP-SHOWN 55ms → scroll 57ms → tip-hidden 67ms`. `scroll_into_view_if_needed()` delivers its
-> scroll event **asynchronously** (57-70ms measured) and the product hides tips on scroll BY
-> DESIGN, so focusing immediately races it. Fixed with `settle_scroll()` (quiescence, not a tuned
-> sleep): **12/20 → 20/20**. The assertion is unchanged and the product was never wrong.
+> ## The three MIXED-POPULATION rows were EIGHT sites in one class (ADR-0420)
+> All three confirmed by one differential probe (flip the scope, diff two surfaces — ADR-0417's
+> technique), with `analysis.scoped` as the **control** proving the filter bit. On the shipped
+> example under an `Activity Type: Normal` reduce filter (9 → 8):
+> one filtered `/analysis` page rendered `<div class="stack-foot">9 activities</div>` **and**
+> `8 activities in the grid`; `/api/analysis` shipped `tasks=9` beside 8 `activities[]` in ONE
+> payload; **`/ribbon` did not move at all** ("Missing logic: 2 / Logic wired 7" filtered and
+> unfiltered alike) where the honest scoped figure is **5 of 8**; and the exported workbook's
+> Schedule-quality sheet shipped **2 of 9** where the page's own population gives 5 of 8.
+> **A computed AST census found five MORE route functions the ledger never named** —
+> `schedule_card` ×2, `standards_view`, `_schedule_facts` ×2 (**the fact sheet the AI is allowed to
+> cite**), `export_ribbon`, `export_ribbon_drill`. All eight fixed by passing `analysis.scoped`;
+> safe because `filter_to_uids` preserves file identity and `scope()` is the identity when nothing
+> narrows, so every change is a literal no-op unfiltered. Mutation **5/5 by name**; the standing
+> computed census guard separately proven to fire against the real tree **2/2 by name**.
 >
 > ## Next — the audit is STILL NOT finished
-> **IMP-01** · the three MIXED-POPULATION claims (one scoped-vs-raw probe settles all three) ·
-> **MF-05 do-not-fix-blind** (needs the Acumen export as oracle) · the remaining ~40 REPORTED rows ·
-> the route × test gap-fill (**137 routes, 5 with no success test, 16 with no failure-mode test**) ·
-> **never audited at all: page modules A/B · docs/config/CI · AI figure-gates**.
+> **The route × test gap-fill.** The re-derivation WAS attempted: a third independent instrument
+> **confirms 137 routes** (65 page · 34 api · 38 export) but gives **7 no-success / 66 no-failure**
+> against the ledger's 5 / 16. **Do not bank 7/66** — it only counts a literal `status_code == 4xx`
+> as a failure assertion, so a failure test asserting on an error body is invisible to it; and its
+> first version over-reported 39/73 until a method-blind resolver bug was found. **The route
+> population is settled; the coverage gap is UNVERIFIED in both directions** and needs a better
+> oracle before anyone fills it. · **never audited at all: page modules A/B
+> · docs/config/CI · AI figure-gates** · the remaining REPORTED rows: CPM-01..04 · MF-03/04/06..10 ·
+> MC-02..08 · `ASK-UNRESTRICTED-WRONG-VERSION` · `ISDIGIT-INT-500` · IMP-02..06 · MAN-01..03 ·
+> REC-02 · JS-02..06. **MF-05 stays do-not-fix-blind** (needs the Acumen export as oracle).
 >
 > ## Carried forward
-> ADR-0353..0418 closed — do not re-open. NEW lessons: **a count in a ledger row may be counting the
-> symptom, not the thing** (four failures ≠ four orphans; 23 modules were invisible because they
-> skipped) · **an oracle that returns the same verdict in both worlds is not stale, it is blind** —
-> before "fixing" a failing check, run it against a deliberately broken subject and confirm it
-> CHANGES · **a mutant that never landed is not a SURVIVED verdict** — one `sed` silently applied
-> nothing (delimiter collided with the pattern) and the "survival" it produced concealed a genuinely
-> weak assertion of mine · **joining two populations by a non-unique key** (caption text) scores
-> items against each other's evidence · **a screenshot's resolution is part of the measurement**
-> (the same caption read 1.17:1 at 1× and 3.07:1 at 5×). Standing traps unchanged (a claim verified
-> against one module is a claim about that module · a control the CSP kills is invisible to markup
-> tests · compute a call-site list, never hand-maintain it · `python -m ruff` · `| tail` masks exit
-> codes — it hid a `ruff format` failure this session · fetch before numbering and committing).
-> QC-1/QC-2 are ADR-0393.
+> ADR-0353..0420 closed — do not re-open. NEW lessons: **a ledger row naming N surfaces may be
+> naming N instances of a CLASS** — a computed census turned "three MIXED-POPULATION rows" into
+> eight sites, and the three named ones were not the worst (the AI fact sheet was) · **a test that
+> re-derives what the route SHOULD compute cannot fail** — this session's export test passed
+> against the broken route until it was repointed at the shipped workbook bytes · **a red for the
+> wrong reason is not a red** — that same test's first failure was a `StopIteration` from a
+> mis-cased label, and only the mutant proved it now fails on the assertion · **"is it reachable?"
+> is a separate measurement from "is it wrong?"** — IMP-01 is genuinely wrong and genuinely
+> unreachable from the whole corpus, and saying only one of those would misinform. Standing traps
+> unchanged (a count may be counting the symptom · an oracle giving the same verdict in both worlds
+> is BLIND · compute a call-site list, never hand-maintain it · never measure a tree a battery is
+> mutating · monkeypatch per CALL SITE · `python -m ruff` · **`| tail` masks exit codes** — paid
+> AGAIN this session, a piped web-suite run buffered to 0 bytes for 20 min · fetch before numbering
+> AND committing). QC-1/QC-2 are ADR-0393.
 >
 > ## Gate at close
-> See SESSION-LOG for the full-suite line. Statics green whole-tree. The browser census (24 modules)
-> is the run that matters here — it had never been green before this session.
+> Statics green whole-tree (ruff/format/mypy/bandit/node). Parity **72 passed**. Full suite in a
+> detached worktree: **4243 passed / 1 failed / 5 skipped (27:52)** — the 5 skips are pre-existing,
+> and the 1 failure is a **sandbox artifact**, diagnosed in both worlds rather than waved away:
+> ADR-0148's `test_embedded_wheel_is_in_lockstep_with_the_source_tree` fired because that worktree
+> held patched `src` against HEAD's installers. In the live tree (wheel + nine installers rebuilt
+> for v1.0.212) `tests/installer` + `tests/test_packaging.py` are **68 passed**.
 
 # (prior) handoffs — archived
 
