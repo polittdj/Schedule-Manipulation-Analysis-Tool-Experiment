@@ -3,7 +3,9 @@
 > ## STATUS (current) — audit IN PROGRESS on `claude/nasa-itar-ai-desktop-launch-scx3gz`.
 > Highest ADR now **0412**. **SHIPPED code changed** (`launcher.py`) — version **v1.0.209 →
 > v1.0.210**, SCHEMA 2.11.0 unchanged, wheel + nine installers rebuilt (lockstep 64/64).
-> Units 1-3 (ADR-0409/0410/0411) are **MERGED on main** (PR #595). The live audit ledger is
+> **ALL FOUR fixed units are MERGED on main** — ADR-0409/0410/0411 (PR #595) and ADR-0412
+> (PR #596, merged 2026-08-17T11:19Z); `main` is at v1.0.210 and its installers embed the
+> v1.0.210 wheel. No PR is open. The live audit ledger is
 > `docs/STATE/AUDIT-2026-08-16.md` — every row marked FIXED / LEAD-VERIFIED / REPORTED.
 >
 > ## What landed — ADR-0412 (operator field report, 2026-08-17)
