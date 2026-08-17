@@ -126,6 +126,47 @@ the same element handle makes that class unrepresentable rather than merely fixe
   both repairs in, the computed census is **210 passed, 0 failed, 0 skipped** — the first time this
   set has been green.
 
+## The first CI run closed the runner leg — and surfaced two MORE orphans
+
+The `browser` job's first run on this branch downloaded chromium 1234 into
+`~/.cache/ms-playwright`, printed the 24-module census, and reported **203 passed, 0 skipped**.
+That closes the UNVERIFIED leg above **positively**: `chrome_kwargs()` returned `{}`, playwright
+resolved its own browser, and modules that had never executed on CI executed.
+
+It also failed 2 tests — `test_float_tip_dismiss` and `test_float_tip_scroll`, both timing out
+waiting for a focus-shown `.dcma-tip-float`. So the un-orphaning surfaced **seven** pre-existing
+failures in total, not five. Same class, same cause of invisibility.
+
+**A correction to this ADR's first reading of them.** They looked runner-specific — they passed in
+this container and failed on the runner, and the obvious suspect was the chromium build (1194 vs
+1234, unreproducible here because the egress proxy blocks `cdn.playwright.dev`). That was wrong.
+Instrumented and re-run in a loop, the scroll test fails **8 times in 20 locally**. The local passes
+were luck, and "it only fails on CI" was a conclusion drawn from a sample of one.
+
+Three hypotheses were measured and **refuted** before the real one was found: the headless shell
+(pointing the resolver at the vendored `headless_shell`: both still pass), a missing `tabindex`
+(it is unconditional), and `focus()` scrolling into the document-level scroll-hide (`scrollY` moved
+0px in all four in-view × `preventScroll` combinations).
+
+**The actual mechanism, recorded rather than reasoned:** a probe logging scroll events and
+tip-visibility transitions caught it in the act —
+
+    TIP-SHOWN at 55ms → scroll at 57ms → tip-hidden at 67ms      (fails)
+    scroll at 70ms → TIP-SHOWN at 85ms                            (passes)
+
+`scroll_into_view_if_needed()` delivers its scroll event **asynchronously**, 57–70ms after the call
+returns. The product hides tips on scroll *by design* — the scroll test's own docstring calls that
+a FACT — so focusing immediately races the late scroll event, and when the focus-show wins the race
+it is promptly wiped by the loser. Nothing about the product is wrong.
+
+Fixed by settling: `settle_scroll()` waits for scroll quiescence before focusing, so the focus-show
+always lands after the scroll. Quiescence rather than a flat sleep, because the delay is
+machine-dependent and a constant tuned on this container is precisely the timing pin that fails on a
+slower runner. Measured: **12/20 → 20/20**. The assertion is unchanged; only the setup race is gone.
+`wait_for_tip()` also now reports the state at timeout (did focus land, does the row have a box,
+what each tip's `display` says), because this failure had to be diagnosed on a machine no debugger
+can reach — proven to fire by deleting the focus listener.
+
 ## Consequences
 
 The `browser` job grows from one module to 24 (~6 min of tests). That is the cost of the requirement

@@ -14691,3 +14691,43 @@ GitHub runner is attested by CI's existing `browser` job, green through exactly 
 skip-is-a-failure guard; it is not re-proven locally, because this container's
 `PLAYWRIGHT_BROWSERS_PATH` points at the vendored root and the vendored build (1194) does not match
 the pip driver's expectation (1234). The first CI run of this branch closes that leg.
+
+### Follow-up the same session — the first CI run closed the runner leg and found two MORE orphans
+
+`browser` on a real GitHub runner: it downloaded chromium 1234 into `~/.cache/ms-playwright`,
+printed the 24-module census, and reported **203 passed, 0 skipped**. That closes ADR-0418's one
+UNVERIFIED leg POSITIVELY — `chrome_kwargs()` returned `{}`, playwright resolved its own browser,
+and modules that had never executed on CI executed. It also failed two: `test_float_tip_dismiss`
+and `test_float_tip_scroll`, both waiting on a focus-shown `.dcma-tip-float`. The un-orphaning has
+now surfaced **seven** pre-existing failures, not five.
+
+**They looked runner-specific and were not, and that correction is the lesson.** They passed here
+and failed there, so the obvious suspect was the chromium build (1194 vs 1234 — unreproducible in
+this container, since the egress proxy blocks `cdn.playwright.dev`). Instrumented and run in a
+loop, `test_float_tip_scroll` fails **8 times in 20 LOCALLY**. The earlier local passes were luck;
+"only fails on CI" was a conclusion drawn from a sample of one.
+
+Three hypotheses were measured and REFUTED before the real one was found: the headless shell
+(pointing the resolver at the vendored `headless_shell`, both tests still pass), a missing
+`tabindex` (it is unconditional on `.dcma-ov-row`), and `focus()` scrolling into the
+document-level scroll-hide (`window.scrollY` moved 0px across all four in-view × `preventScroll`
+combinations, and the tip showed in all four).
+
+**The mechanism was recorded, not reasoned.** A probe logging scroll events and tip-visibility
+transitions with timestamps caught it in the act: `TIP-SHOWN 55ms → scroll 57ms → tip-hidden 67ms`
+on a failing run, versus `scroll 70ms → TIP-SHOWN 85ms` on a passing one.
+`scroll_into_view_if_needed()` delivers its scroll event ASYNCHRONOUSLY, 57-70ms after the call
+returns, and the product hides tips on scroll BY DESIGN — the scroll test's own docstring calls
+that a FACT. So the test's setup was destroying the state it then asserted, and which side won was
+a coin flip. Nothing about the product is wrong.
+
+Fixed with `settle_scroll()` (waits for scroll quiescence, not a tuned sleep — the delay is
+machine-dependent and a constant tuned here is exactly the pin that fails on slower hardware).
+Measured **12/20 → 20/20** on the scroll test and 6/6 on the dismiss module. The assertions are
+unchanged. `wait_for_tip()` also now reports the state at timeout — did focus land, does the row
+have a box, what each tip's `display` says — proven to fire by deleting the focus listener, because
+this failure had to be diagnosed on a machine no debugger can reach.
+
+Gate on the final tree: statics green (ruff whole tree · format 1038 files · mypy strict 155 ·
+bandit exit 0 · node --check); browser census + guards + drift **215 passed**. Still tests-only —
+`src/` untouched, so v1.0.211 stands and no installer rebuild.

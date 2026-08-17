@@ -37,6 +37,18 @@
 > population (`tools/browser_modules.py`) rather than naming modules, with skip-is-a-failure over
 > the whole set. Guard mutation-proven **7/7 by name**, every mutant confirmed LANDED first.
 >
+> ## The first CI run closed the runner leg — and found two MORE orphans
+> `browser` on a real runner: **203 passed, 0 skipped**. The `{}` fallback works, so ADR-0418's one
+> UNVERIFIED leg is closed POSITIVELY. It also failed two more never-run tests, so the un-orphaning
+> surfaced **seven** pre-existing failures, not five. **They looked runner-specific and were not** —
+> instrumented and looped, `test_float_tip_scroll` fails **8 in 20 LOCALLY**; the earlier local
+> passes were luck. Three hypotheses were refuted before the real one (headless shell · missing
+> `tabindex` · `focus()` scrolling). A sequence probe caught the mechanism in the act:
+> `TIP-SHOWN 55ms → scroll 57ms → tip-hidden 67ms`. `scroll_into_view_if_needed()` delivers its
+> scroll event **asynchronously** (57-70ms measured) and the product hides tips on scroll BY
+> DESIGN, so focusing immediately races it. Fixed with `settle_scroll()` (quiescence, not a tuned
+> sleep): **12/20 → 20/20**. The assertion is unchanged and the product was never wrong.
+>
 > ## Next — the audit is STILL NOT finished
 > **IMP-01** · the three MIXED-POPULATION claims (one scoped-vs-raw probe settles all three) ·
 > **MF-05 do-not-fix-blind** (needs the Acumen export as oracle) · the remaining ~40 REPORTED rows ·

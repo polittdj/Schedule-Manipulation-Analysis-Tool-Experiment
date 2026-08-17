@@ -437,6 +437,21 @@ those fixed defects in earlier "closed" fixes:
 
 ### 2026-08-17 (d) — a count that counts the symptom, and an oracle that could not fail
 
+- **"It only fails on CI" is a conclusion drawn from a sample of one.** Two tests failed on the
+  runner and passed here, so the difference looked environmental (chromium 1194 vs 1234, which this
+  container cannot even download). Instrumented and run in a LOOP, one of them failed **8 times in
+  20 locally**. Before attributing a failure to an environment, run it enough times to know its
+  rate in the environment you already have — a single green run is not evidence of determinism.
+- **A flaky test is a race until proven otherwise, and the race is usually in the SETUP.** The
+  mechanism was invisible to reasoning and obvious to a sequence probe that logged scroll events
+  and tip-visibility transitions with timestamps: `TIP-SHOWN 55ms → scroll 57ms → tip-hidden 67ms`.
+  `scroll_into_view_if_needed()` delivers its scroll event asynchronously (57-70ms measured), and
+  the product hides tips on scroll BY DESIGN — so the test's own setup was destroying the state it
+  then asserted. **Log the sequence with timestamps; do not reason about the ordering.**
+- **Wait for quiescence, not for a tuned constant.** The observed delay was 57-70ms here; a
+  `sleep(200)` would have passed locally and remained a coin-flip on slower hardware. Waiting until
+  no scroll has fired for a quiet window is self-adjusting and says what it means.
+
 - **A count in a ledger row may be counting the SYMPTOM, not the thing.** BROWSER-ORPHAN-01 was
   filed as "four browser test modules never run in CI". Four were the modules that FAILED; the
   modules that never RAN were **23**, holding 94 tests. The nineteen extra were invisible precisely

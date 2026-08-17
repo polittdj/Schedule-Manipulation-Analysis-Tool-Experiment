@@ -40,6 +40,7 @@ from typing import Any
 import pytest
 
 from web.browser_chrome import chrome_kwargs
+from web.tip_probe import settle_scroll, wait_for_tip
 
 ROOT = Path(__file__).resolve().parents[2]
 GOLDEN = ROOT / "tests" / "fixtures" / "golden" / "project2_5"
@@ -101,8 +102,13 @@ def test_focus_shown_tip_hides_on_scroll_and_stays_off_the_rail(served: str) -> 
         # exactly like a touch tap. Focus shows the tip immediately (no hover-intent delay).
         row = page.locator(".dcma-ov-row").last
         row.scroll_into_view_if_needed()
+        # the scroll above lands ASYNCHRONOUSLY (57-70ms, measured) and the product hides
+        # tips on scroll by design, so focusing before it settles races it — and the tip
+        # loses ~40% of the time. Settle first; the FOCUS-then-scroll ordering the test is
+        # actually about is asserted below, deliberately.
+        settle_scroll(page)
         row.focus()
-        page.wait_for_function(TIP_VISIBLE, timeout=4000)
+        wait_for_tip(page)
 
         # While showing: the tip must sit CLEAR of the fixed nav rail (never paint over it).
         clear_of_rail = page.evaluate(

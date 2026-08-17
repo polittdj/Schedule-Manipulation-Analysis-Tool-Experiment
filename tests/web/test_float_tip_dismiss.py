@@ -45,6 +45,7 @@ from typing import Any
 import pytest
 
 from web.browser_chrome import chrome_kwargs
+from web.tip_probe import settle_scroll, wait_for_tip
 
 ROOT = Path(__file__).resolve().parents[2]
 GOLDEN = ROOT / "tests" / "fixtures" / "golden" / "project2_5"
@@ -112,8 +113,9 @@ def _show_by_focus(page: Any, row: Any) -> None:
         ".forEach(n => n.style.display='none')"
     )
     row.scroll_into_view_if_needed()
+    settle_scroll(page)  # the scroll lands async and would hide the tip focus is about to show
     row.focus()
-    page.wait_for_function(TIP_VISIBLE, timeout=4000)
+    wait_for_tip(page)
 
 
 def test_the_dcma11_callout_can_be_dismissed_every_way_an_operator_would_try(served: str) -> None:
