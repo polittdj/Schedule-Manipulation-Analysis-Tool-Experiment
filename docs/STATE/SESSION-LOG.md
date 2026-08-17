@@ -14495,3 +14495,22 @@ Gate: 4096 passed, 47 skipped, 0 failed, exit 0 (18:27); parity 72 passed (8:47)
 **Next:** remaining round-2 dimensions; 22 REPORTED findings await lead verification
 (CPM-01 and MC-01 rated critical, unverified); route x test gap-fill over 137 routes
 (5 without a success test, 16 without a failure-mode test). ADR-0410.
+
+## 2026-08-17 (a) — audit unit 3: the EVM workbook exported a fabricated 0.0 where the page said NA (ADR-0411, v1.0.209)
+
+`/export/{fmt}/evm` guarded every cell on `value is not None`. `_na_index` builds a
+NOT_APPLICABLE result with **value=0.0**, so the guard never fired. Measured on golden
+Project5: the PAGE renders NA and says "that is a fact about the file, not a performance
+figure"; the WORKBOOK wrote three 0.0 cells. CPI 0.00 in a hand-out reads as catastrophic
+cost performance when the truth is "no cost data" — and the workbook is the artefact that
+leaves the tool and gets quoted. Fixed with a named `_export_cell()` gating on status.
+Red-first by name; the test pins BOTH halves (no fabricated 0.0 AND the real figures still
+travel). Mutation battery 3/3 by name in a shadow sandbox. v1.0.209, wheel + nine
+installers (lockstep 64/64). ADR-0411.
+
+**Audit status — read honestly:** the Ultracode fan-out died of credit exhaustion in BOTH
+rounds (1 of 16 agents, then 4 of 13). Dimensions never audited: findings/trend/manipulation,
+importers, web core, page modules, static JS, the test suite itself, docs/config/CI, AI
+figure-gates. 22 finder claims remain UNVERIFIED (CPM-01 and MC-01 rated critical). MF-05 is
+do-not-fix-blind pending the Acumen oracle. The route x test gap-fill (137 routes; 5 without
+a success test, 16 without a failure-mode test) is queued, not closed. ADR-0411.

@@ -13,7 +13,9 @@ are their own data drawer).
 
 from __future__ import annotations
 
+import io
 import re
+import zipfile
 from pathlib import Path
 
 import pytest
@@ -65,6 +67,34 @@ def test_evm_cost_indices_are_na_without_cost(client: TestClient) -> None:
     assert "not cost-loaded" in page
     # the SPI/CPI/TCPI rows show the NOT_APPLICABLE status code, not a number
     assert "NA" in page
+
+
+def test_evm_export_leaves_na_indices_blank_instead_of_writing_a_fabricated_zero(
+    client: TestClient,
+) -> None:
+    """MF-02 (ADR-0411): the workbook must say what the screen says.
+
+    `/evm` renders NA for Project5's cost indices and explains that NOT APPLICABLE "means
+    the loaded file carries no cost data - that is a fact about the file, not a performance
+    figure". The export guarded its cells on ``value is not None`` -- but ``_na_index``
+    builds the NA result with ``value=0.0`` (its own docstring says "never a fabricated
+    0"), so the guard NEVER fired and every cost index left the tool as 0.00, which an
+    analyst reads as catastrophic cost performance. The workbook is the artefact that
+    travels and gets quoted; it must not contradict the page (Law 2, and the design
+    system's "missing shows an em dash, never a fabricated figure").
+    """
+    page = client.get("/evm").text
+    assert "not cost-loaded" in page and "NA" in page  # the SCREEN is honest
+
+    book = client.get("/export/xlsx/evm")
+    assert book.status_code == 200
+    archive = zipfile.ZipFile(io.BytesIO(book.content))
+    sheet = next(n for n in archive.namelist() if "sheet1" in n)
+    values = [v.decode() for v in re.findall(rb"<v>([^<]*)</v>", archive.read(sheet))]
+
+    assert "0.0" not in values, f"the workbook fabricates a 0.0 where the page says NA: {values}"
+    # ...and the genuinely computed figures still travel (the fix must blank NA cells only)
+    assert "0.47" in values and "0.91" in values
 
 
 def test_evm_page_explains_the_metrics_and_jcl(client: TestClient) -> None:
