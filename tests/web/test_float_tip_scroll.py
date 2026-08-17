@@ -21,7 +21,8 @@ The executable facts:
   scroll-hide the tip provably survives, since blur/mouseleave never fire);
 * while showing, the tip's box sits clear of the fixed nav rail.
 
-Skips unless playwright + the bundled chromium are present (same posture as
+Skips only when the playwright PACKAGE is absent; the BROWSER is resolved by
+``tests/web/browser_chrome.py``, so a CI runner EXECUTES this module (ADR-0418) (same posture as
 ``test_axis_titles_visual.py`` — the runtime stays stdlib-only, Law 1)::
 
     pip install playwright
@@ -38,15 +39,15 @@ from typing import Any
 
 import pytest
 
+from web.browser_chrome import chrome_kwargs
+
 ROOT = Path(__file__).resolve().parents[2]
 GOLDEN = ROOT / "tests" / "fixtures" / "golden" / "project2_5"
-# build-agnostic (TEST-01, ADR-0406): the FIRST vendored chromium, whatever build the
-# container ships — a chromium bump must never silently skip this module again
-_PW_CHROMES = sorted(Path("/opt/pw-browsers").glob("chromium*/chrome-linux/chrome"))
-CHROME = _PW_CHROMES[0] if _PW_CHROMES else Path("/opt/pw-browsers/absent/chrome")
+# Chromium resolution is `tests/web/browser_chrome.py`'s single decision (ADR-0406, widened
+# by ADR-0418): prefer a vendored binary, else let playwright resolve its own — the branch a
+# CI runner takes. This module used to pin `/opt/pw-browsers` and therefore SKIPPED on CI.
 
 pytest.importorskip("playwright", reason="playwright not installed (deliberate: see module docs)")
-pytestmark = pytest.mark.skipif(not CHROME.exists(), reason=f"bundled chromium not at {CHROME}")
 
 TIP_VISIBLE = (
     "() => [...document.querySelectorAll('.dcma-tip-float')].some(n => n.style.display === 'block')"
@@ -89,7 +90,7 @@ def test_focus_shown_tip_hides_on_scroll_and_stays_off_the_rail(served: str) -> 
     from playwright.sync_api import sync_playwright
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(executable_path=str(CHROME))
+        browser = p.chromium.launch(**chrome_kwargs())
         # short viewport so the page genuinely scrolls; wide enough for the fixed rail (>=761px)
         page = browser.new_page(viewport={"width": 1280, "height": 620})
         page.goto(served + "/analysis/Project2", wait_until="domcontentloaded")

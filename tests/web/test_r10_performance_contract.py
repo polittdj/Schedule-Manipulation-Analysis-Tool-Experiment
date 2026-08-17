@@ -39,6 +39,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from schedule_forensics.web.app import SessionState, create_app
+from web.browser_chrome import chrome_kwargs
 
 ROOT = Path(__file__).resolve().parents[2]
 GOLDEN = ROOT / "tests" / "fixtures" / "golden" / "fuse_hardfile"
@@ -276,10 +277,9 @@ def test_chartframes_own_zoom_bar_is_neither_removed_nor_duplicated(page: str) -
 
 # ── the same claims, in a real browser (standing requirement 2) ─────────────────────────────
 
-# build-agnostic (TEST-01, ADR-0406): the FIRST vendored chromium, whatever build the
-# container ships — a chromium bump must never silently skip this module again
-_PW_CHROMES = sorted(Path("/opt/pw-browsers").glob("chromium*/chrome-linux/chrome"))
-CHROME = _PW_CHROMES[0] if _PW_CHROMES else Path("/opt/pw-browsers/absent/chrome")
+# Chromium resolution is `tests/web/browser_chrome.py`'s single decision (ADR-0406, widened
+# by ADR-0418): prefer a vendored binary, else let playwright resolve its own — the branch a
+# CI runner takes. This module used to pin `/opt/pw-browsers` and therefore SKIPPED on CI.
 
 
 def _free_port() -> int:
@@ -293,8 +293,6 @@ def _free_port() -> int:
 @pytest.fixture(scope="module")
 def served() -> Any:
     pytest.importorskip("playwright", reason="playwright not installed (see module docs)")
-    if not CHROME.exists():
-        pytest.skip(f"bundled chromium not at {CHROME}")
     import uvicorn
 
     app = create_app(SessionState())
@@ -326,7 +324,7 @@ def test_panelkit_click_drives_a_performance_tile(served: str, theme: str) -> No
 
     sel = ".tile.panel[data-export]"
     with sync_playwright() as pw:
-        browser = pw.chromium.launch(executable_path=str(CHROME))
+        browser = pw.chromium.launch(**chrome_kwargs())
         # never networkidle on this app: heartbeat.js (3s) / sysmon.js (2s) never settle
         page = browser.new_page(viewport={"width": 1400, "height": 950})
         page.goto(served + "/performance", wait_until="load")
@@ -406,7 +404,7 @@ def test_h2_a_real_stepper_tick_falsifies_nothing_this_round_rendered(served: st
     from playwright.sync_api import sync_playwright
 
     with sync_playwright() as pw:
-        browser = pw.chromium.launch(executable_path=str(CHROME))
+        browser = pw.chromium.launch(**chrome_kwargs())
         page = browser.new_page(viewport={"width": 1400, "height": 950})
         page.goto(served + "/performance", wait_until="load")
         page.wait_for_selector("#g1Census", timeout=25000)
@@ -456,7 +454,7 @@ def test_enlarging_a_tile_does_not_clip_its_chart_below_a_scroll_fold(served: st
     from playwright.sync_api import sync_playwright
 
     with sync_playwright() as pw:
-        browser = pw.chromium.launch(executable_path=str(CHROME))
+        browser = pw.chromium.launch(**chrome_kwargs())
         page = browser.new_page(viewport={"width": 1400, "height": 950})
         page.goto(served + "/performance", wait_until="load")
         page.wait_for_selector("#g1Census", timeout=25000)
@@ -499,7 +497,7 @@ def test_stepping_repoints_every_tile_export_at_the_file_its_chart_now_draws(
     from playwright.sync_api import sync_playwright
 
     with sync_playwright() as pw:
-        browser = pw.chromium.launch(executable_path=str(CHROME))
+        browser = pw.chromium.launch(**chrome_kwargs())
         page = browser.new_page(viewport={"width": 1400, "height": 950})
         page.goto(served + "/performance", wait_until="load")
         page.wait_for_selector("#g1Census", timeout=25000)
@@ -557,7 +555,7 @@ def test_first_paint_renders_the_quads_with_no_pageerror(served: str) -> None:
     from playwright.sync_api import sync_playwright
 
     with sync_playwright() as pw:
-        browser = pw.chromium.launch(executable_path=str(CHROME))
+        browser = pw.chromium.launch(**chrome_kwargs())
         tab = browser.new_page(viewport={"width": 1400, "height": 950})
         errors: list[str] = []
         tab.on("pageerror", lambda e: errors.append(str(e)))

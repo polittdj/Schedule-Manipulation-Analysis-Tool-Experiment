@@ -435,6 +435,102 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-17 (d) — a count that counts the symptom, and an oracle that could not fail
+
+- **A count in a ledger row may be counting the SYMPTOM, not the thing.** BROWSER-ORPHAN-01 was
+  filed as "four browser test modules never run in CI". Four were the modules that FAILED; the
+  modules that never RAN were **23**, holding 94 tests. The nineteen extra were invisible precisely
+  because they behaved correctly-looking — they skipped. A failure is loud and a skip is silent, so
+  any census built from what went red under-reports by construction. Compute the population from the
+  property you actually care about (here: "does this module launch a browser?"), never from the
+  subset that happened to complain.
+- **An oracle that returns the same verdict in both worlds is not stale — it is blind, and it is the
+  more dangerous of the two.** The histogram caption check read **1.17:1 with ADR-0331's halo
+  painted and 1.17:1 with it stashed**. It had been failing a correct render, and it could not have
+  detected a broken one. The tempting reading — "the halo regressed" — was wrong in a way that
+  inspection could never settle: the halo's computed style was present, and the caption was legible
+  to the eye at 1×. **Before repairing a failing check, run it against a deliberately broken subject
+  and confirm the verdict CHANGES.** If it does not, the bug is in the instrument.
+- **A screenshot's resolution is part of the measurement.** The same caption scored 1.17:1 at
+  `device_scale_factor=1` and 3.07:1 at 5 — because a 3px halo occupies proportionally more pixels
+  when the raster is denser. A probe run at a convenient zoom silently answers a different question
+  than the test does. Match the instrument's resolution to the one under test, or the two disagree
+  and the disagreement looks like a real defect.
+- **Joining two populations by a non-unique key scores items against each other's evidence.** The
+  same test swept captions document-wide but screenshotted only `#ssiCharts`, joining the two by
+  caption TEXT — and three captions read "Finish date". One genuinely straddling caption was
+  therefore reported as three failures. The repair was not a better key: probe and screenshot now
+  come from the same element handle, which makes the class unrepresentable rather than fixed.
+- **A mutant that never landed is not a SURVIVED verdict** (second instance; 2026-08-17 (c) had
+  two). A `sed` whose `|` delimiter collided with the `\|` alternation in its own pattern applied
+  nothing, and the resulting "survival" read as evidence the guard had teeth elsewhere. Confirming
+  the mutation had landed took one `diff` — and the investigation it forced exposed a genuinely
+  weak assertion of mine (`assert X in ci or "SKIPPED" in ci`, whose second clause is nearly
+  unfalsifiable). **Print "mutation landed: True" as part of every mutant, not as an afterthought.**
+- **Restoring a population is part of a repair.** My first fix for the caption test scoped its sweep
+  to `#ssiCharts` and quietly dropped the measured captions from 5 to 2 — a check measuring less
+  than before, wearing a passing badge. Caught only by comparing counts before and after. Any repair
+  to a sweep should state its population and floor it.
+- **`| tail` masks exit codes** — a standing trap in this repo, paid again: `ruff format --check .`
+  was piped to `/dev/null` inside an `&&` chain, so a formatting failure surfaced as a bare
+  "exited with code 1" with no diagnostic and cost a full re-run of a 6-minute browser suite.
+- **Housekeeping:** Part VIII declares "newest first" and the 2026-08-17 (c) entry had been appended
+  at the FILE's end instead; moved back into order below.
+
+### 2026-08-17 (c) — a claim verified against one module; two mutants that missed their subject
+
+- **A claim verified against ONE module is a claim about that module.** ADR-0407 justified a
+  design decision by asserting what the rest of the tree does: *"`web/risks.py` builds the risk
+  matrix, the ranking and the recovery plan from RISK + CONCERN only, so an OPPORTUNITY/INFO
+  disclosure informs without ever becoming a threat row or a recovery action."* Every word about
+  `web/risks.py` was correct. The word that cost us was **"ever"** — `ai/briefing.py` has no
+  category gate, and the disclosure landed in a column literally headed **"Potential recovery"**
+  quoting 20 wd on a finding whose recovery is zero by its own wording. QC-2 already says to
+  scope a finding before acting on it; this is the same error made while *writing*. **When an ADR
+  justifies a decision by asserting what the rest of the tree does, that assertion is a claim
+  under QC-1 and needs its own check.** A two-line grep for the other consumers of
+  `Category.OPPORTUNITY` would have found it in seconds. The generalisable rule: *the scope of
+  your evidence is the scope of your claim — say "in `web/risks.py`", not "ever".*
+- **A mutant that misses its subject proves nothing — and it happened TWICE in one session.**
+  REC-01's M7 aimed at `recommendations.py` while the test it targeted asserts on `cpm.py`;
+  MC-01's M5 deleted a zero-floor whose effect was invisible at the observable the test read
+  (measured: `compute_cpm` does NOT clamp a negative duration — it returns
+  `early_finish = -14400` — but the *successor* floors at the project start, so the focus P50 was
+  identical with and without the floor). Both first reported SURVIVED. Neither was a code defect;
+  both were **battery defects**, and in MC-01's case the test was genuinely one that could not
+  fail — this repo's signature defect, written by the very fix that names it. **Before believing
+  a SURVIVED verdict, check that the mutation and the assertion are aimed at the same thing.**
+  The cheap discipline: name the file and the observable the test reads, and confirm the mutation
+  touches that file and moves that observable.
+- **A control the CSP kills is invisible to every test that reads markup.** The Acumen-parity
+  checkbox rendered perfectly — right name, right state, right label — and did nothing, because
+  `script-src 'self'` refuses inline handlers and its form had no submit button. Any markup
+  assertion would have passed. Only executing the page in a browser could tell the difference.
+  **For a CONTROL, the evidence is that clicking it changes something, never that it appears.**
+  Corollary that shaped the fix: the repo had already built the cure (`chrome.js`, ADR-0268,
+  whose header says it exists *because* the CSP forbids inline handlers) and the author reached
+  for the inline handler anyway, because the delegation matched `select[...]` and the control was
+  a checkbox. **A mechanism that covers less than its docstring claims invites the very bug it
+  was built to prevent.**
+- **A hand-maintained list of call sites is a stale list waiting to happen.** `_CPM_HOLDERS`
+  named ten modules; 24 bind `compute_cpm`, the PRIMARY solve's module was missing (ADR-0297
+  moved it after the list was written), and a listed module that no longer binds the name was
+  skipped *in silence* by a `getattr(..., None) is not None` guard — a fail-open dressed as
+  coverage. **Where a guard needs to know "everywhere X is referenced", compute it, don't list
+  it.** And note which half of that is the nastier bug: the silent skip, because it made an
+  incomplete list look like a maintained one.
+- **A self-baseline absorbs the thing you are trying to measure.** The same test compared the
+  extra views against `after_page` — so extra solves *inside* the page build landed on both sides
+  and cancelled. Even a perfect holder sweep could not catch them. The finder reported the right
+  fact (the list is stale) with the wrong diagnosis, and the lead re-verification found it: with
+  the sweep repaired the count moved 2→4 and the test *still* passed. **When a test's expected
+  value is derived from the same run it is judging, it can only detect divergence between the two
+  halves — never a fault common to both.**
+- **Fixing a class beats fixing a site, but only after you measure whether it IS a class.** MF-02
+  was a class (many consumers of a false guard); JS-01 was not — a view-layer census proved the
+  parity checkbox was the *only* inline handler in the tree. Both answers are useful; assuming
+  either without the census is how a fix becomes either too narrow or too invasive.
+
 ### 2026-08-16 (b) — a fixture whose NAME contradicts its assertion is a defect wearing a badge
 
 - `_EVM_SEEDS` carries the comment "the EXACT set of status flips it must cause — measured,
@@ -5247,57 +5343,3 @@ and that is the lesson worth keeping.
   summarizes a measurement is itself a measurement**: prove the summarizer, not just the subject.
   The corollary is cheap and general — when a number moves and the edit cannot have moved it, the
   number was never measured; go and measure it.
-
-### 2026-08-17 (c) — a claim verified against one module; two mutants that missed their subject
-
-- **A claim verified against ONE module is a claim about that module.** ADR-0407 justified a
-  design decision by asserting what the rest of the tree does: *"`web/risks.py` builds the risk
-  matrix, the ranking and the recovery plan from RISK + CONCERN only, so an OPPORTUNITY/INFO
-  disclosure informs without ever becoming a threat row or a recovery action."* Every word about
-  `web/risks.py` was correct. The word that cost us was **"ever"** — `ai/briefing.py` has no
-  category gate, and the disclosure landed in a column literally headed **"Potential recovery"**
-  quoting 20 wd on a finding whose recovery is zero by its own wording. QC-2 already says to
-  scope a finding before acting on it; this is the same error made while *writing*. **When an ADR
-  justifies a decision by asserting what the rest of the tree does, that assertion is a claim
-  under QC-1 and needs its own check.** A two-line grep for the other consumers of
-  `Category.OPPORTUNITY` would have found it in seconds. The generalisable rule: *the scope of
-  your evidence is the scope of your claim — say "in `web/risks.py`", not "ever".*
-- **A mutant that misses its subject proves nothing — and it happened TWICE in one session.**
-  REC-01's M7 aimed at `recommendations.py` while the test it targeted asserts on `cpm.py`;
-  MC-01's M5 deleted a zero-floor whose effect was invisible at the observable the test read
-  (measured: `compute_cpm` does NOT clamp a negative duration — it returns
-  `early_finish = -14400` — but the *successor* floors at the project start, so the focus P50 was
-  identical with and without the floor). Both first reported SURVIVED. Neither was a code defect;
-  both were **battery defects**, and in MC-01's case the test was genuinely one that could not
-  fail — this repo's signature defect, written by the very fix that names it. **Before believing
-  a SURVIVED verdict, check that the mutation and the assertion are aimed at the same thing.**
-  The cheap discipline: name the file and the observable the test reads, and confirm the mutation
-  touches that file and moves that observable.
-- **A control the CSP kills is invisible to every test that reads markup.** The Acumen-parity
-  checkbox rendered perfectly — right name, right state, right label — and did nothing, because
-  `script-src 'self'` refuses inline handlers and its form had no submit button. Any markup
-  assertion would have passed. Only executing the page in a browser could tell the difference.
-  **For a CONTROL, the evidence is that clicking it changes something, never that it appears.**
-  Corollary that shaped the fix: the repo had already built the cure (`chrome.js`, ADR-0268,
-  whose header says it exists *because* the CSP forbids inline handlers) and the author reached
-  for the inline handler anyway, because the delegation matched `select[...]` and the control was
-  a checkbox. **A mechanism that covers less than its docstring claims invites the very bug it
-  was built to prevent.**
-- **A hand-maintained list of call sites is a stale list waiting to happen.** `_CPM_HOLDERS`
-  named ten modules; 24 bind `compute_cpm`, the PRIMARY solve's module was missing (ADR-0297
-  moved it after the list was written), and a listed module that no longer binds the name was
-  skipped *in silence* by a `getattr(..., None) is not None` guard — a fail-open dressed as
-  coverage. **Where a guard needs to know "everywhere X is referenced", compute it, don't list
-  it.** And note which half of that is the nastier bug: the silent skip, because it made an
-  incomplete list look like a maintained one.
-- **A self-baseline absorbs the thing you are trying to measure.** The same test compared the
-  extra views against `after_page` — so extra solves *inside* the page build landed on both sides
-  and cancelled. Even a perfect holder sweep could not catch them. The finder reported the right
-  fact (the list is stale) with the wrong diagnosis, and the lead re-verification found it: with
-  the sweep repaired the count moved 2→4 and the test *still* passed. **When a test's expected
-  value is derived from the same run it is judging, it can only detect divergence between the two
-  halves — never a fault common to both.**
-- **Fixing a class beats fixing a site, but only after you measure whether it IS a class.** MF-02
-  was a class (many consumers of a false guard); JS-01 was not — a view-layer census proved the
-  parity checkbox was the *only* inline handler in the tree. Both answers are useful; assuming
-  either without the census is how a fix becomes either too narrow or too invasive.

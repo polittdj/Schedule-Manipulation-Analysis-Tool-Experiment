@@ -28,12 +28,13 @@ from typing import Any
 import pytest
 from fastapi.testclient import TestClient
 
+from web.browser_chrome import chrome_kwargs
+
 ROOT = Path(__file__).resolve().parents[2]
 GOLDEN = ROOT / "tests" / "fixtures" / "golden" / "project2_5"
-# build-agnostic (TEST-01, ADR-0406): the FIRST vendored chromium, whatever build the
-# container ships — a chromium bump must never silently skip this module again
-_PW_CHROMES = sorted(Path("/opt/pw-browsers").glob("chromium*/chrome-linux/chrome"))
-CHROME = _PW_CHROMES[0] if _PW_CHROMES else Path("/opt/pw-browsers/absent/chrome")
+# Chromium resolution is `tests/web/browser_chrome.py`'s single decision (ADR-0406, widened
+# by ADR-0418): prefer a vendored binary, else let playwright resolve its own — the branch a
+# CI runner takes. This module used to pin `/opt/pw-browsers` and therefore SKIPPED on CI.
 
 #: the four pages that opt their timescale headers into the caption slot (app.py's
 #: _TS_CAPTION_MARK) — and one tier-scale page that deliberately does NOT (/analysis).
@@ -86,7 +87,6 @@ def test_workbench_page_still_ships_its_script_and_no_marker() -> None:
 # ── the rendered half (real chromium) ──────────────────────────────────────────────────────
 
 pytest.importorskip("playwright", reason="playwright not installed (deliberate: see module docs)")
-pytestmark = pytest.mark.skipif(not CHROME.exists(), reason=f"bundled chromium not at {CHROME}")
 
 
 def _free_port() -> int:
@@ -155,7 +155,7 @@ def test_the_slot_and_the_table_caption_render_for_real(served: str) -> None:
 
     problems: list[str] = []
     with sync_playwright() as p:
-        browser = p.chromium.launch(executable_path=str(CHROME))
+        browser = p.chromium.launch(**chrome_kwargs())
         page = browser.new_page(viewport={"width": 1600, "height": 1100})
 
         for route in CHROMIUM_URLS:

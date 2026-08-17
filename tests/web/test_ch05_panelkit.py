@@ -22,7 +22,8 @@ proves, in real chromium, on EACH of the three pages:
   the jarvis accent, the prov chip keeps its 1px border, the takeaway is visible, and no
   element this round touched extends past the viewport.
 
-Skips unless playwright + the bundled chromium are present (same posture as
+Skips only when the playwright PACKAGE is absent; the BROWSER is resolved by
+``tests/web/browser_chrome.py``, so a CI runner EXECUTES this module (ADR-0418) (same posture as
 ``test_ribbon_scorecards_panelkit.py`` — the runtime stays stdlib-only, Law 1)."""
 
 from __future__ import annotations
@@ -35,15 +36,15 @@ from typing import Any
 
 import pytest
 
+from web.browser_chrome import chrome_kwargs
+
 ROOT = Path(__file__).resolve().parents[2]
 GOLD = ROOT / "tests" / "fixtures" / "golden" / "project2_5"
-# build-agnostic (TEST-01, ADR-0406): the FIRST vendored chromium, whatever build the
-# container ships — a chromium bump must never silently skip this module again
-_PW_CHROMES = sorted(Path("/opt/pw-browsers").glob("chromium*/chrome-linux/chrome"))
-CHROME = _PW_CHROMES[0] if _PW_CHROMES else Path("/opt/pw-browsers/absent/chrome")
+# Chromium resolution is `tests/web/browser_chrome.py`'s single decision (ADR-0406, widened
+# by ADR-0418): prefer a vendored binary, else let playwright resolve its own — the branch a
+# CI runner takes. This module used to pin `/opt/pw-browsers` and therefore SKIPPED on CI.
 
 pytest.importorskip("playwright", reason="playwright not installed (deliberate: see module docs)")
-pytestmark = pytest.mark.skipif(not CHROME.exists(), reason=f"bundled chromium not at {CHROME}")
 
 #: .panel elements on each page BEFORE the rank-9 conversion, on this fixture pair. The
 #: conversion decorates existing panels only — it must never promote a new one.
@@ -129,13 +130,41 @@ def _prove_panelkit_click(page: Any, panel_sel: str) -> None:
 
 
 def _prove_excel_click(page: Any, panel_sel: str, expected_path: str) -> None:
-    """The ⤓ glyph is wired AND its endpoint is live: a real click yields a real download."""
+    """The ⤓ glyph is wired AND its endpoint is live: a real click yields a real download.
+
+    Asserted on the NETWORK, not on the download's URL. ADR-0360 deliberately stopped navigating to
+    the export: the button now ``fetch``es (so it can hold a PREPARING state through a 140 s
+    server-side model re-run instead of reading as dead) and hands the browser a same-origin
+    ``blob:`` via ``URL.createObjectURL``. ``download.url`` is therefore
+    ``blob:http://127.0.0.1:PORT/<uuid>`` and can never contain the export path — the old
+    ``expected_path in download.url`` had been asserting the pre-ADR-0360 mechanism, and failed
+    on a working button (BROWSER-ORPHAN-01).
+
+    Watching the response is stronger than the string it replaces: the old form proved only that a
+    URL had a shape, while this proves the export endpoint was really CALLED. Mutation-measured —
+    pointing the fetch at an unrelated URL still yields a ``.xlsx``-named blob download, and only
+    the ``seen`` assertion notices.
+
+    The ``200`` check is a secondary invariant, not the load-bearing one: measured against a
+    deliberately dead (500) endpoint, the failure surfaces as the download wait timing out, because
+    a non-ok response throws before any blob is made. Kept because it is free and would catch a
+    future shape where a non-200 still produced a download.
+    """
     btn = page.locator(f"{panel_sel} [data-sf-excel]").first
     assert btn.inner_text() == "⤓ EXCEL"
+    seen: list[tuple[str, int]] = []
+    page.on(
+        "response",
+        lambda r: seen.append((r.url, r.status)) if expected_path in r.url else None,
+    )
     with page.expect_download(timeout=25000) as info:
         btn.click()
     download = info.value
-    assert expected_path in download.url, download.url
+    assert seen, (
+        f"a download arrived but nothing ever requested {expected_path} — the ⤓ button is not "
+        f"wired to its export endpoint ({page.url})"
+    )
+    assert all(status == 200 for _, status in seen), f"{expected_path} did not answer 200: {seen}"
     assert download.suggested_filename.endswith(".xlsx"), download.suggested_filename
 
 
@@ -184,7 +213,7 @@ def test_panelkit_click_census_and_jarvis(served: str, route: str) -> None:
 
     sel, endpoint = PANEL[route]
     with sync_playwright() as p:
-        browser = p.chromium.launch(executable_path=CHROME)
+        browser = p.chromium.launch(**chrome_kwargs())
         page = _open(browser, served, route)
 
         # promotion census: the conversion added ZERO .panel elements
@@ -206,7 +235,7 @@ def test_curves_single_enlarge_button_carries_both_scopes(served: str) -> None:
     from playwright.sync_api import sync_playwright
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(executable_path=CHROME)
+        browser = p.chromium.launch(**chrome_kwargs())
         page = _open(browser, served, "/curves")
         panel = page.locator(".panel:has(#dataDateChart)")
         panel.locator("[data-sf-big]").first.click()
@@ -242,7 +271,7 @@ def test_steppers_and_play_all_still_animate(served: str) -> None:
     from playwright.sync_api import sync_playwright
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(executable_path=CHROME)
+        browser = p.chromium.launch(**chrome_kwargs())
 
         page = _open(browser, served, "/curves")
         panel = page.locator(".panel:has(#dataDateChart)")

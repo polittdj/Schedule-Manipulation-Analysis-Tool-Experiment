@@ -30,9 +30,11 @@ paced insertion dominate it), so elapsed time is flat before and after; the savi
 which is what bites on the operator's real 2,000-row grids and slower hardware. An absolute timing
 gate here would assert nothing and flake on CI.
 
-**Skips unless playwright + the bundled chromium are present**, exactly like
-``tests/web/test_axis_titles_visual.py`` — playwright is not a project dependency (Law 1 keeps the
-runtime stdlib-only and air-gapped). To run this deliberately::
+**Skips only when the playwright PACKAGE is absent** — it is not a project dependency (Law 1 keeps
+the runtime stdlib-only and air-gapped). The BROWSER is resolved by ``tests/web/browser_chrome.py``,
+which prefers a vendored binary and otherwise defers to playwright's own, so a CI runner executes
+this module instead of skipping it (BROWSER-ORPHAN-01; the old pinned ``/opt/pw-browsers`` check
+skipped everywhere but this container). To run this deliberately::
 
     pip install playwright
     python -m pytest tests/perf/test_observer_storm.py -q -s
@@ -40,7 +42,9 @@ runtime stdlib-only and air-gapped). To run this deliberately::
 
 from __future__ import annotations
 
+import importlib.util
 import socket
+import sys
 import threading
 import time
 from pathlib import Path
@@ -50,12 +54,20 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
 GOLDEN = ROOT / "tests" / "fixtures" / "golden" / "project2_5"
-#: The image ships chromium 1194; a bare ``launch()`` picks the pip driver's newer expectation and
-#: dies with "Executable doesn't exist". An explicit path is the whole fix (harness note, ADR-0331).
-# build-agnostic (TEST-01, ADR-0406): the FIRST vendored chromium, whatever build the
-# container ships — a chromium bump must never silently skip this module again
-_PW_CHROMES = sorted(Path("/opt/pw-browsers").glob("chromium*/chrome-linux/chrome"))
-CHROME = _PW_CHROMES[0] if _PW_CHROMES else Path("/opt/pw-browsers/absent/chrome")
+#: Chromium resolution is ``tests/web/browser_chrome.py``'s single decision (BROWSER-ORPHAN-01):
+#: prefer a vendored binary — this image ships 1194 and has no download — else let playwright
+#: resolve its own, which is the branch a CI runner takes. Loaded BY PATH, not imported: unlike
+#: ``tests/web/``, ``tests/perf/`` carries no ``__init__.py``, so pytest never puts ``tests/`` on
+#: ``sys.path`` for this module and ``from web.browser_chrome import …`` would die in collection.
+#: Same idiom as ``tests/guards/test_render_oracle_corpus.py``.
+_BC_SPEC = importlib.util.spec_from_file_location(
+    "sf_browser_chrome", Path(__file__).resolve().parents[1] / "web" / "browser_chrome.py"
+)
+assert _BC_SPEC is not None and _BC_SPEC.loader is not None
+_BC = importlib.util.module_from_spec(_BC_SPEC)
+sys.modules["sf_browser_chrome"] = _BC
+_BC_SPEC.loader.exec_module(_BC)
+chrome_kwargs = _BC.chrome_kwargs
 
 #: One insertion per animation frame — the shape an async chart/grid render actually has, and the
 #: pathological case for a non-records observer (a same-frame burst is coalesced by the browser's
@@ -74,8 +86,6 @@ PANE_SEL = "#grid, .gantt-scroll, .path-view, .sra-grid-scroll"
 #: module-level here because EVERY test in this module needs the browser — checking it before the
 #: `served` fixture also means no uvicorn server is started only to be thrown away (ADR-0346).
 pytest.importorskip("playwright", reason="playwright not installed (runtime stays stdlib-only)")
-
-pytestmark = pytest.mark.skipif(not CHROME.exists(), reason=f"bundled chromium not at {CHROME}")
 
 
 def _free_port() -> int:
@@ -148,7 +158,7 @@ def storm(served: str) -> Any:
     from playwright.sync_api import sync_playwright
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(executable_path=str(CHROME))
+        browser = p.chromium.launch(**chrome_kwargs())
         page = browser.new_page(viewport={"width": 1440, "height": 900})
         page.goto(served + "/analysis/Project5", wait_until="networkidle")
         page.wait_for_timeout(1200)

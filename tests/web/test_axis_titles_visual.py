@@ -21,9 +21,10 @@ wider glyphs are exactly the case most likely to clip. The factoring assertion i
 a recorded fact rather than deleted, because "themes only change colour" is the assumption a
 future reader is most likely to re-make.
 
-**Skips unless playwright + the bundled chromium are present.** Playwright is deliberately NOT a
-project dependency: the tool is air-gapped and stdlib-only at runtime (Law 1), and CI has no
-browser. To run this deliberately::
+**Skips only when the playwright PACKAGE is absent; the BROWSER is resolved by
+``tests/web/browser_chrome.py``, so a CI runner EXECUTES this module (ADR-0418).**
+Playwright is deliberately NOT a project dependency: the tool is air-gapped and stdlib-only at
+runtime (Law 1), and it lives in the ``browser`` extra. To run this deliberately::
 
     pip install playwright
     python -m pytest tests/web/test_axis_titles_visual.py -q -s
@@ -40,14 +41,13 @@ from typing import Any
 
 import pytest
 
+from web.browser_chrome import chrome_kwargs
+
 ROOT = Path(__file__).resolve().parents[2]
 GOLDEN = ROOT / "tests" / "fixtures" / "golden" / "project2_5"
-#: The image ships chromium 1194; a pip-installed playwright driver expects a newer build and a
-#: bare ``launch()`` dies with "Executable doesn't exist". An explicit path is the whole fix.
-# build-agnostic (TEST-01, ADR-0406): the FIRST vendored chromium, whatever build the
-# container ships — a chromium bump must never silently skip this module again
-_PW_CHROMES = sorted(Path("/opt/pw-browsers").glob("chromium*/chrome-linux/chrome"))
-CHROME = _PW_CHROMES[0] if _PW_CHROMES else Path("/opt/pw-browsers/absent/chrome")
+# Chromium resolution is `tests/web/browser_chrome.py`'s single decision (ADR-0406, widened
+# by ADR-0418): prefer a vendored binary, else let playwright resolve its own — the branch a
+# CI runner takes. This module used to pin `/opt/pw-browsers` and therefore SKIPPED on CI.
 
 THEMES = ("console", "daylight", "apollo", "jarvis")
 SCALES = ("0.9", "1", "1.25")
@@ -130,6 +130,16 @@ KNOWN_COLLISIONS: set[tuple[str, str]] = set()
 CONTRAST_FLOOR = 3.0
 TOKEN_PX = 11.0
 
+#: How far out of the glyph ink the halo is sampled. ADR-0331 paints ``stroke-width:3px`` with
+#: ``paint-order:stroke fill``, so the stroke extends ~1.5px beyond the glyph outline: ONE pixel out
+#: is inside the halo, three pixels out is past it and into whatever the caption sits on. Measured
+#: (BROWSER-ORPHAN-01) — at radius 1 the check reads 3.06:1 haloed vs 1.17:1 stashed for every
+#: tolerance from 20 to 60; at radius 3 both worlds read 1.17:1 and it discriminates nothing.
+HALO_SAMPLE_PX = 1
+#: Per-channel distance that still counts as glyph ink. The verdict is insensitive to it (20..60
+#: all discriminate at radius 1), so the middle is taken rather than a tuned edge.
+INK_TOLERANCE = 40
+
 #: ADR-0331 — the probe also reports the INK under each caption and the caption's halo.
 #: The original probe measured contrast against the resolved CSS *background* and overlap only
 #: against sibling ``<text>``, so ``<rect>``/``<polyline>`` ink was invisible to both checks — which
@@ -168,6 +178,25 @@ _PROBE = """() => {
                                     w: Math.round(b.width), h: Math.round(b.height)}; }) : []});
   });
   return out;
+}"""
+
+
+#: The per-ELEMENT form of ``_PROBE``'s ink count. ``_PROBE`` returns a document-wide list, which
+#: can only be joined back to a screenshot by some key — and caption text is not unique. This is
+#: evaluated ON the handle being screenshotted, so the pairing is structural (BROWSER-ORPHAN-01).
+_ONE_CAPTION = """(n) => {
+  const r = n.getBoundingClientRect(), cs = getComputedStyle(n);
+  const svg = n.ownerSVGElement;
+  let ink = 0;
+  if (svg) {
+    svg.querySelectorAll('rect,polyline,path,circle,line').forEach(s => {
+      const b = s.getBoundingClientRect();
+      if (!b.width && !b.height) return;
+      if (Math.min(r.right, b.right) - Math.max(r.left, b.left) > 0 &&
+          Math.min(r.bottom, b.bottom) - Math.max(r.top, b.top) > 0) ink++;
+    });
+  }
+  return {text: (n.textContent || '').trim(), fill: cs.fill || cs.color, ink};
 }"""
 
 
@@ -245,9 +274,58 @@ def _png_pixels(data: bytes) -> tuple[int, int, list[tuple[int, int, int]]]:
     return w, h, out
 
 
+def _glyph_backdrop(
+    w: int,
+    h: int,
+    px: list[tuple[int, int, int]],
+    fill: tuple[float, float, float],
+) -> tuple[float, float, float] | None:
+    """The colour immediately AROUND the glyphs — what each letter is actually read against.
+
+    ``_modal_color`` takes the mode of the whole clip, on the premise (its own docstring) that
+    "glyph strokes are sparse relative to the box they sit in, so the mode is what the eye reads
+    the text against". That premise holds only while the caption sits on ONE surface. A caption
+    STRADDLING a boundary breaks it: the mode then reports the box's dominant REGION, which is not
+    the glyphs' backdrop.
+
+    Measured on the degenerate one-bin histogram, whose bar fills the upper ~65% of the X
+    caption's box (BROWSER-ORPHAN-01). The whole-box mode returns **1.17:1 with the halo painted
+    and 1.17:1 with it stashed** — identical verdicts in the two worlds it exists to tell apart,
+    so it was failing a correct render while being unable to detect a broken one. Sampling one
+    pixel out from the ink instead reads **3.06:1 haloed / 1.17:1 stashed**.
+
+    Returns ``None`` when no glyph ink is found, which the caller must treat as a failure to
+    measure rather than a pass — a clip with no ink proves nothing.
+    """
+    tol = INK_TOLERANCE
+    ink = {
+        (x, y)
+        for y in range(h)
+        for x in range(w)
+        if max(abs(px[y * w + x][i] - fill[i]) for i in range(3)) <= tol
+    }
+    if not ink:
+        return None
+    rad = HALO_SAMPLE_PX
+    ring = {
+        (x + dx, y + dy)
+        for (x, y) in ink
+        for dy in range(-rad, rad + 1)
+        for dx in range(-rad, rad + 1)
+        if 0 <= x + dx < w and 0 <= y + dy < h and (x + dx, y + dy) not in ink
+    }
+    if not ring:
+        return None
+    return _modal_color([px[y * w + x] for (x, y) in ring])
+
+
 def _modal_color(px: list[tuple[int, int, int]]) -> tuple[float, float, float]:
     """The most common colour in a clip — the caption's REAL local backdrop. Glyph strokes are
     sparse relative to the box they sit in, so the mode is what the eye reads the text against.
+
+    NOTE (BROWSER-ORPHAN-01): that premise fails for a caption straddling a colour boundary, where
+    this returns the box's dominant REGION rather than the glyphs' backdrop. Use
+    :func:`_glyph_backdrop` when the question is "what is this text read against".
 
     Quantising groups anti-aliased near-duplicates together, but the bucket CENTRE is not the
     colour: a pure-white backdrop buckets to 252 and scores 2.99:1 against console's ``--muted``
@@ -278,7 +356,6 @@ def _free_port() -> int:
 
 
 pytest.importorskip("playwright", reason="playwright not installed (deliberate: see module docs)")
-pytestmark = pytest.mark.skipif(not CHROME.exists(), reason=f"bundled chromium not at {CHROME}")
 
 
 def _serve(app: Any) -> Any:
@@ -432,7 +509,7 @@ def test_captions_survive_every_theme_and_scale(
         return served
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(executable_path=str(CHROME))
+        browser = p.chromium.launch(**chrome_kwargs())
         page = browser.new_page(viewport={"width": 1600, "height": 1100})
         page.goto(served + "/", wait_until="domcontentloaded")
 
@@ -575,48 +652,76 @@ def test_the_degenerate_single_bin_histogram_is_still_legible(served: str) -> No
     halo must be set" has an antecedent that is true on essentially every gridded chart, so on its
     own it decays into asserting that a stylesheet rule exists — the very ADR-0304 anti-pattern
     this file exists to avoid. Here we screenshot each caption and measure what the glyphs are
-    ACTUALLY read against: the modal colour of the caption's own box. Without the halo that is the
-    bar fill (~1.17:1); with it, the canvas (~3.07:1 in console, the slimmest theme).
+    ACTUALLY read against: the modal colour of the ring ONE pixel outside the glyph ink, which is
+    inside ADR-0331's 3px halo. Without the halo that ring is the bar fill (1.17:1); with it, the
+    canvas (3.06:1 in console, the slimmest theme).
+
+    It measured the modal colour of the caption's whole BOX until BROWSER-ORPHAN-01. That is the
+    dominant REGION of the clip, which equals the glyphs' backdrop only while a caption sits on one
+    surface. On this chart the bar fills ~65% of the X caption's box, so the whole-box mode read
+    1.17:1 **whether the halo was painted or stashed** — it failed a correct render and could not
+    have detected a broken one. See :func:`_glyph_backdrop`.
     """
     from playwright.sync_api import sync_playwright
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(executable_path=str(CHROME))
+        browser = p.chromium.launch(**chrome_kwargs())
         page = browser.new_page(viewport={"width": 1600, "height": 1100})
         page.goto(served + "/sra", wait_until="domcontentloaded")
         page.click("#ssiRun", timeout=10000)
         page.wait_for_selector("#ssiCharts text.ch-at", timeout=10000, state="attached")
         page.wait_for_timeout(200)
-        caps = [c for c in page.evaluate(_PROBE) if c["ink"]]
+        # Probe and screenshot the SAME element handle, in one pass. The previous form matched the
+        # two populations by caption TEXT — and the texts are not unique (three captions read
+        # "Finish date"), while the probe swept the WHOLE document and the screenshots came only
+        # from `#ssiCharts`. So captions were scored against another caption's pixels, and one
+        # genuinely-straddling caption reported as three failures. Pairing by handle makes that
+        # class of error unrepresentable rather than merely fixed.
+        #
         # Element screenshots, not a clipped page shot: these captions sit far below the fold and
         # `clip` is viewport-relative, so a page shot of their box is "outside the resulting
         # image". Handle screenshots scroll the node into view themselves.
-        by_text = {c["text"]: c for c in caps}
-        shots: dict[str, bytes] = {}
-        for handle in page.query_selector_all("#ssiCharts text.ch-at"):
-            label = (handle.text_content() or "").strip()
-            if label in by_text:
-                handle.scroll_into_view_if_needed()
-                shots[label] = handle.screenshot()
+        # Document-wide, matching `_PROBE`'s own population: `/sra` also self-runs a CDF and a
+        # histogram OUTSIDE `#ssiCharts`, and those are degenerate too. Scoping the sweep to
+        # `#ssiCharts` would quietly drop them (5 inked captions -> 2), and a check that measures
+        # less than it used to is a weaker check wearing a passing badge.
+        measured: list[tuple[dict[str, Any], bytes]] = []
+        for handle in page.query_selector_all("text.ch-at"):
+            info = handle.evaluate(_ONE_CAPTION)
+            if not info["ink"]:
+                continue
+            handle.scroll_into_view_if_needed()
+            measured.append((info, handle.screenshot()))
         browser.close()
 
-    assert caps, "no caption had ink beneath it — the degenerate case did not render as expected"
-    assert shots, "no caption screenshots captured — the pixel check proved nothing"
+    assert measured, (
+        "no caption had ink beneath it — the degenerate case did not render as expected"
+    )
+    # A floor, not a pin: the sweep found 5 inked captions when this was written, and a silent
+    # shrink is how a pixel check turns into decoration (the ADR-0382 lesson, applied locally).
+    assert len(measured) >= 5, (
+        f"only {len(measured)} inked caption(s) measured, expected >= 5 — the degenerate charts "
+        "did not all render, or the sweep narrowed"
+    )
     problems = []
-    for c in caps:
-        shot = shots.get(c["text"])
-        if shot is None:
-            continue
-        _w, _h, px = _png_pixels(shot)
-        backdrop = _modal_color(px)
-        ratio = _contrast(_rgb(c["fill"]), backdrop)
+    for info, shot in measured:
+        w, h, px = _png_pixels(shot)
+        fill = _rgb(info["fill"])
+        backdrop = _glyph_backdrop(w, h, px, fill)
+        # None means the ink sweep found no glyph pixels: a failure to MEASURE, never a pass.
+        assert backdrop is not None, (
+            f"no glyph ink found in the clip for “{info['text']}” — the pixel check proved nothing"
+        )
+        ratio = _contrast(fill, backdrop)
+        whole = _contrast(fill, _modal_color(px))
         print(
-            f"\n  “{c['text']}” over {c['ink']} ink shape(s): "
-            f"reads against rgb{tuple(int(v) for v in backdrop)} at {ratio:.2f}:1"
+            f"\n  “{info['text']}” over {info['ink']} ink shape(s): glyphs read against "
+            f"rgb{tuple(int(v) for v in backdrop)} at {ratio:.2f}:1 "
+            f"(whole-box mode would say {whole:.2f}:1)"
         )
         if ratio < CONTRAST_FLOOR:
             problems.append(
-                f"“{c['text']}”: measured {ratio:.2f}:1 against its REAL backdrop "
-                f"rgb{tuple(int(v) for v in backdrop)} — below {CONTRAST_FLOOR}"
+                f"“{info['text']}”: measured {ratio:.2f}:1 against the colour its glyphs actually "
+                f"sit on, rgb{tuple(int(v) for v in backdrop)} — below {CONTRAST_FLOOR}"
             )
     assert not problems, "caption illegible where it actually sits:\n  " + "\n  ".join(problems)

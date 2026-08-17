@@ -15,7 +15,8 @@ What only a real browser can prove (the content half is ``test_launch_sequence.p
    themes at two viewports — with scrollbars VISIBLE (the ADR-0314 lesson: headless hides them,
    the operator's browser does not).
 
-Skips unless playwright + the bundled chromium are present (same posture as
+Skips only when the playwright PACKAGE is absent; the BROWSER is resolved by
+``tests/web/browser_chrome.py``, so a CI runner EXECUTES this module (ADR-0418) (same posture as
 ``test_float_tip_dismiss.py`` — the runtime stays stdlib-only, Law 1).
 """
 
@@ -29,15 +30,15 @@ from typing import Any
 
 import pytest
 
+from web.browser_chrome import chrome_kwargs
+
 ROOT = Path(__file__).resolve().parents[2]
 GOLDEN = ROOT / "tests" / "fixtures" / "golden" / "project2_5"
-# build-agnostic (TEST-01, ADR-0406): the FIRST vendored chromium, whatever build the
-# container ships — a chromium bump must never silently skip this module again
-_PW_CHROMES = sorted(Path("/opt/pw-browsers").glob("chromium*/chrome-linux/chrome"))
-CHROME = _PW_CHROMES[0] if _PW_CHROMES else Path("/opt/pw-browsers/absent/chrome")
+# Chromium resolution is `tests/web/browser_chrome.py`'s single decision (ADR-0406, widened
+# by ADR-0418): prefer a vendored binary, else let playwright resolve its own — the branch a
+# CI runner takes. This module used to pin `/opt/pw-browsers` and therefore SKIPPED on CI.
 
 pytest.importorskip("playwright", reason="playwright not installed (runtime stays stdlib-only)")
-pytestmark = pytest.mark.skipif(not CHROME.exists(), reason=f"bundled chromium not at {CHROME}")
 
 #: Counts real AudioContext constructions — the wrapper delegates to the native constructor, so
 #: the app still gets a working context while the test sees every creation.
@@ -112,7 +113,7 @@ def test_no_context_before_a_gesture_and_a_programmatic_change_stays_silent(serv
     from playwright.sync_api import sync_playwright
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(executable_path=str(CHROME))
+        browser = p.chromium.launch(**chrome_kwargs())
         page = browser.new_page(viewport={"width": 1280, "height": 800})
         page.add_init_script(COUNT_AC)
         page.goto(served + "/", wait_until="load")
@@ -137,7 +138,7 @@ def test_a_gesture_primes_once_hum_spans_the_held_load_and_motion_moves(served: 
     from playwright.sync_api import sync_playwright
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(executable_path=str(CHROME))
+        browser = p.chromium.launch(**chrome_kwargs())
         page = browser.new_page(viewport={"width": 1280, "height": 800})
         page.add_init_script(COUNT_AC)
         page.goto(served + "/", wait_until="load")
@@ -176,7 +177,7 @@ def test_fadeout_resolves_fast_even_when_asked_to_fade_forever(served: str) -> N
     from playwright.sync_api import sync_playwright
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(executable_path=str(CHROME))
+        browser = p.chromium.launch(**chrome_kwargs())
         page = browser.new_page(viewport={"width": 1280, "height": 800})
         page.add_init_script(COUNT_AC)
         page.goto(served + "/", wait_until="load")
@@ -206,7 +207,7 @@ def test_mute_and_volume_persist_across_navigation_and_reload(served: str) -> No
     from playwright.sync_api import sync_playwright
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(executable_path=str(CHROME))
+        browser = p.chromium.launch(**chrome_kwargs())
         page = browser.new_page(viewport={"width": 1280, "height": 800})
         page.goto(served + "/", wait_until="load")
         page.evaluate("() => localStorage.clear()")  # a clean slate for the persistence claims
@@ -252,9 +253,7 @@ def test_card_geometry_in_all_four_themes_scrollbars_visible(
     from playwright.sync_api import sync_playwright
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(
-            executable_path=str(CHROME), ignore_default_args=["--hide-scrollbars"]
-        )
+        browser = p.chromium.launch(**chrome_kwargs(), ignore_default_args=["--hide-scrollbars"])
         page = browser.new_page(viewport={"width": width, "height": height})
         page.goto(served + "/", wait_until="load")
         _hold_uploads(page)  # never released: the overlay stays up for every theme

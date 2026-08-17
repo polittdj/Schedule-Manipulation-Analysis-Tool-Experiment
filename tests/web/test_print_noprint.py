@@ -22,12 +22,12 @@ import pytest
 from fastapi.testclient import TestClient
 
 from schedule_forensics.web.app import SessionState, create_app
+from web.browser_chrome import chrome_kwargs
 
 GOLDEN = Path(__file__).resolve().parents[1] / "fixtures" / "golden" / "project2_5"
-# build-agnostic (TEST-01, ADR-0406): the FIRST vendored chromium, whatever build the
-# container ships — a chromium bump must never silently skip this module again
-_PW_CHROMES = sorted(Path("/opt/pw-browsers").glob("chromium*/chrome-linux/chrome"))
-CHROME = _PW_CHROMES[0] if _PW_CHROMES else Path("/opt/pw-browsers/absent/chrome")
+# Chromium resolution is `tests/web/browser_chrome.py`'s single decision (ADR-0406, widened
+# by ADR-0418): prefer a vendored binary, else let playwright resolve its own — the branch a
+# CI runner takes. This module used to pin `/opt/pw-browsers` and therefore SKIPPED on CI.
 
 
 def _free_port() -> int:
@@ -41,8 +41,6 @@ def _free_port() -> int:
 @pytest.fixture(scope="module")
 def served() -> Any:
     pytest.importorskip("playwright", reason="playwright not installed (runtime stays stdlib-only)")
-    if not CHROME.exists():
-        pytest.skip(f"bundled chromium not at {CHROME}")
     import uvicorn
 
     state = SessionState()
@@ -74,7 +72,7 @@ def test_marked_controls_measure_hidden_under_print_media(served: Any) -> None:
 
     base, key = served
     with sync_playwright() as pw:
-        browser = pw.chromium.launch(executable_path=str(CHROME))
+        browser = pw.chromium.launch(**chrome_kwargs())
         tab = browser.new_page(viewport={"width": 1280, "height": 900})
         # never networkidle on this app: heartbeat.js (3s) / sysmon.js (2s) never settle
         tab.goto(base + "/analysis/" + quote(key, safe=""), wait_until="load")

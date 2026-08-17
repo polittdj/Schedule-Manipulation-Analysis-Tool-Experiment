@@ -26,7 +26,8 @@ was skipped entirely. With hit-checked hovers (a row Playwright refuses to hover
 operator can trigger, so it is excluded honestly) the callout overlapped the daylight header at
 1280x520, 1280x800 AND 1440x600, while no fixed-rail view overlapped at any size.
 
-Skips unless playwright + the bundled chromium are present (same posture as
+Skips only when the playwright PACKAGE is absent; the BROWSER is resolved by
+``tests/web/browser_chrome.py``, so a CI runner EXECUTES this module (ADR-0418) (same posture as
 ``test_float_tip_scroll.py`` — the runtime stays stdlib-only, Law 1)::
 
     pip install playwright
@@ -43,15 +44,15 @@ from typing import Any
 
 import pytest
 
+from web.browser_chrome import chrome_kwargs
+
 ROOT = Path(__file__).resolve().parents[2]
 GOLDEN = ROOT / "tests" / "fixtures" / "golden" / "project2_5"
-# build-agnostic (TEST-01, ADR-0406): the FIRST vendored chromium, whatever build the
-# container ships — a chromium bump must never silently skip this module again
-_PW_CHROMES = sorted(Path("/opt/pw-browsers").glob("chromium*/chrome-linux/chrome"))
-CHROME = _PW_CHROMES[0] if _PW_CHROMES else Path("/opt/pw-browsers/absent/chrome")
+# Chromium resolution is `tests/web/browser_chrome.py`'s single decision (ADR-0406, widened
+# by ADR-0418): prefer a vendored binary, else let playwright resolve its own — the branch a
+# CI runner takes. This module used to pin `/opt/pw-browsers` and therefore SKIPPED on CI.
 
 pytest.importorskip("playwright", reason="playwright not installed (deliberate: see module docs)")
-pytestmark = pytest.mark.skipif(not CHROME.exists(), reason=f"bundled chromium not at {CHROME}")
 
 TIP_VISIBLE = (
     "() => [...document.querySelectorAll('.dcma-tip-float')].some(n => n.style.display === 'block')"
@@ -124,7 +125,7 @@ def test_the_dcma11_callout_can_be_dismissed_every_way_an_operator_would_try(ser
     from playwright.sync_api import sync_playwright
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(executable_path=str(CHROME))
+        browser = p.chromium.launch(**chrome_kwargs())
         page = browser.new_page(viewport={"width": 1280, "height": 800})
         page.goto(served + "/analysis/Project2", wait_until="domcontentloaded")
         page.wait_for_selector(".dcma-ov-row", timeout=15000)
@@ -172,7 +173,7 @@ def test_the_tips_are_born_hidden(served: str) -> None:
     from playwright.sync_api import sync_playwright
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(executable_path=str(CHROME))
+        browser = p.chromium.launch(**chrome_kwargs())
         page = browser.new_page(viewport={"width": 1280, "height": 800})
         # Record each tip's inline display AT INSERTION (microtask — before any scroll event can
         # run): the scroll-hide handler ALSO writes display:none, so inspecting after load could
@@ -217,7 +218,7 @@ def test_the_callout_never_paints_over_the_nav_in_any_theme(
 
     width, height = size
     with sync_playwright() as p:
-        browser = p.chromium.launch(executable_path=str(CHROME))
+        browser = p.chromium.launch(**chrome_kwargs())
         page = browser.new_page(viewport={"width": width, "height": height})
         page.goto(served + "/analysis/Project2", wait_until="domcontentloaded")
         page.evaluate(f"() => document.documentElement.setAttribute('data-theme','{theme}')")

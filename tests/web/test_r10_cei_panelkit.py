@@ -16,7 +16,8 @@ inert because panelkit.js is a PER-PAGE include). In real chromium, on /cei, thi
   ``#nextSnap`` advances ``#snapLabel``, and the page raises ZERO console/page errors (cei.js
   reads five ids unguarded and is shared with the /mission wall).
 
-Skips unless playwright + the bundled chromium are present (same posture as
+Skips only when the playwright PACKAGE is absent; the BROWSER is resolved by
+``tests/web/browser_chrome.py``, so a CI runner EXECUTES this module (ADR-0418) (same posture as
 ``test_ch05_panelkit.py`` — the runtime stays stdlib-only, Law 1)."""
 
 from __future__ import annotations
@@ -29,15 +30,15 @@ from typing import Any
 
 import pytest
 
+from web.browser_chrome import chrome_kwargs
+
 ROOT = Path(__file__).resolve().parents[2]
 GOLD = ROOT / "tests" / "fixtures" / "golden" / "project2_5"
-# build-agnostic (TEST-01, ADR-0406): the FIRST vendored chromium, whatever build the
-# container ships — a chromium bump must never silently skip this module again
-_PW_CHROMES = sorted(Path("/opt/pw-browsers").glob("chromium*/chrome-linux/chrome"))
-CHROME = _PW_CHROMES[0] if _PW_CHROMES else Path("/opt/pw-browsers/absent/chrome")
+# Chromium resolution is `tests/web/browser_chrome.py`'s single decision (ADR-0406, widened
+# by ADR-0418): prefer a vendored binary, else let playwright resolve its own — the branch a
+# CI runner takes. This module used to pin `/opt/pw-browsers` and therefore SKIPPED on CI.
 
 pytest.importorskip("playwright", reason="playwright not installed (deliberate: see module docs)")
-pytestmark = pytest.mark.skipif(not CHROME.exists(), reason=f"bundled chromium not at {CHROME}")
 
 #: .panel elements on /cei BEFORE the round-10 conversion, on this fixture pair (measured on
 #: origin/main). The conversion decorates existing panels only — it never promotes a new one.
@@ -97,7 +98,7 @@ def test_panelkit_click_excel_and_census(served: str) -> None:
     from playwright.sync_api import sync_playwright
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(executable_path=CHROME)
+        browser = p.chromium.launch(**chrome_kwargs())
         errors: list[str] = []
         page = _open(browser, served, errors)
 
@@ -138,12 +139,26 @@ def test_panelkit_click_excel_and_census(served: str) -> None:
         assert btn.inner_text() == "⛶ ENLARGE"
 
         # ⤓ EXCEL is wired AND its endpoint is live
+        # Asserted on the NETWORK, not the download URL. ADR-0360 made ⤓ EXCEL fetch the bytes and
+        # hand over a same-origin `blob:` (so the button can hold PREPARING through a long
+        # server-side re-run), so `download.url` is `blob:…/<uuid>` and can never contain the
+        # export path. The old string check was pinning the pre-ADR-0360 navigation and failed on a
+        # working button (BROWSER-ORPHAN-01). Watching the response proves the endpoint was really
+        # CALLED — mutation-measured: a fetch aimed elsewhere still yields a .xlsx-named blob, and
+        # only `seen` notices. The 200 check is secondary: a dead endpoint surfaces as the download
+        # wait timing out, because a non-ok response throws before any blob is made.
         xl = panel.locator("[data-sf-excel]").first
         assert xl.inner_text() == "⤓ EXCEL"
+        seen: list[tuple[str, int]] = []
+        page.on(
+            "response",
+            lambda r: seen.append((r.url, r.status)) if "/export/xlsx/cei" in r.url else None,
+        )
         with page.expect_download(timeout=25000) as info:
             xl.click()
         download = info.value
-        assert "/export/xlsx/cei" in download.url, download.url
+        assert seen, "a download arrived but nothing ever requested /export/xlsx/cei"
+        assert all(status == 200 for _, status in seen), f"/export/xlsx/cei not 200: {seen}"
         assert download.suggested_filename.endswith(".xlsx"), download.suggested_filename
 
         assert errors == [], errors  # cei.js reads five ids unguarded — a rename would throw
@@ -157,7 +172,7 @@ def test_the_animation_and_chartframe_survive(served: str) -> None:
     from playwright.sync_api import sync_playwright
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(executable_path=CHROME)
+        browser = p.chromium.launch(**chrome_kwargs())
         errors: list[str] = []
         page = _open(browser, served, errors)
 
@@ -191,7 +206,7 @@ def test_four_theme_probe_reads_computed_styles(served: str) -> None:
     from playwright.sync_api import sync_playwright
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(executable_path=CHROME)
+        browser = p.chromium.launch(**chrome_kwargs())
         page = _open(browser, served)
         for theme in ("console", "daylight", "apollo", "jarvis"):
             page.evaluate(f"() => document.documentElement.setAttribute('data-theme','{theme}')")

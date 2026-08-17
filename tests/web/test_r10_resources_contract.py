@@ -56,6 +56,7 @@ from fastapi.testclient import TestClient
 
 from schedule_forensics.ai.citations import introduces_loaded_terms
 from schedule_forensics.web.app import SessionState, create_app
+from web.browser_chrome import chrome_kwargs
 
 GOLDEN = Path(__file__).resolve().parents[1] / "fixtures" / "golden" / "project2_5"
 
@@ -414,10 +415,9 @@ def test_resources_presentation_prose_introduces_no_loaded_terms(
 
 # ── the real-browser proofs (markup alone is not evidence) ─────────────────────────────────
 
-# build-agnostic (TEST-01, ADR-0406): the FIRST vendored chromium, whatever build the
-# container ships — a chromium bump must never silently skip this module again
-_PW_CHROMES = sorted(Path("/opt/pw-browsers").glob("chromium*/chrome-linux/chrome"))
-CHROME = _PW_CHROMES[0] if _PW_CHROMES else Path("/opt/pw-browsers/absent/chrome")
+# Chromium resolution is `tests/web/browser_chrome.py`'s single decision (ADR-0406, widened
+# by ADR-0418): prefer a vendored binary, else let playwright resolve its own — the branch a
+# CI runner takes. This module used to pin `/opt/pw-browsers` and therefore SKIPPED on CI.
 
 
 def _free_port() -> int:
@@ -431,8 +431,6 @@ def _free_port() -> int:
 @pytest.fixture(scope="module")
 def served() -> Any:
     pytest.importorskip("playwright", reason="playwright not installed (runtime stays stdlib-only)")
-    if not CHROME.exists():
-        pytest.skip(f"bundled chromium not at {CHROME}")
     import uvicorn
 
     app = create_app(SessionState())
@@ -458,7 +456,7 @@ def test_histogram_paints_on_first_load_and_panelkit_drives_the_strip(served: st
     from playwright.sync_api import sync_playwright
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(executable_path=str(CHROME))
+        browser = p.chromium.launch(**chrome_kwargs())
         page = browser.new_page(viewport={"width": 1400, "height": 950})
         errors: list[str] = []
         page.on("pageerror", lambda e: errors.append(str(e)))
@@ -506,7 +504,7 @@ def test_excel_glyph_downloads_the_rendered_buckets_workbook(served: str) -> Non
     from playwright.sync_api import sync_playwright
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(executable_path=str(CHROME))
+        browser = p.chromium.launch(**chrome_kwargs())
         page = browser.new_page(viewport={"width": 1400, "height": 950})
         page.goto(served + "/resources?bucket=week", wait_until="load")
         page.wait_for_selector("[data-sf-excel]", timeout=15000)
@@ -549,7 +547,7 @@ def test_four_theme_probe_reads_computed_styles(served: str) -> None:
     }
     """
     with sync_playwright() as p:
-        browser = p.chromium.launch(executable_path=str(CHROME))
+        browser = p.chromium.launch(**chrome_kwargs())
         for theme in ("console", "daylight", "apollo", "jarvis"):
             page = browser.new_page(viewport={"width": 1400, "height": 950})
             page.goto(served + "/resources", wait_until="load")

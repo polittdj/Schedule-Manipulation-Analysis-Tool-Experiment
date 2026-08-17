@@ -129,20 +129,34 @@ jobs:
           python -m pip install -e '.[dev,browser]'
           python -m playwright install --with-deps chromium
 
-      - name: The control must move a measured box
-        run: pytest -q tests/web/test_r11_panel_contract.py -p no:cacheprovider
-
+      # BROWSER-ORPHAN-01: this step used to name ONE module by hand. A computed census found the
+      # same hardcoded-chromium pattern in 23 MORE, holding 94 tests that neither CI path ever
+      # executed — five of them failing the whole time, under a green badge. Measured by
+      # bind-mounting an empty dir over /opt/pw-browsers (a runner-shaped filesystem):
+      # `86 passed, 94 skipped`. The population is therefore COMPUTED at the moment of use, never
+      # listed here: a new browser module is covered the day it lands, with no workflow edit.
+      # `tests/guards/test_browser_resolver.py` recomputes it independently and reddens if this
+      # mechanism stops covering what it finds.
+      # ONE run, both verdicts. The previous form ran the suite twice — once for pass/fail and once
+      # for the skip check — which cost one module's worth of time when the census WAS one module,
+      # and costs ~6.5 min now that it is 24. `set -o pipefail` is LOAD-BEARING: GitHub's default
+      # shell is `bash -e {0}`, `-e` WITHOUT pipefail, so `pytest | tee` would yield TEE's exit code
+      # and a genuine FAILURE would exit 0 — the same trap the parity gate documents above.
+      #
       # A skip here is a FAILURE, not a pass. Deliberately matches ANY skip rather than a reason
       # string: the first version of this guard grepped only for "playwright not installed" and
       # went green in 59s while all three rect tests skipped for a DIFFERENT reason (a hardcoded
       # vendored-chromium path that does not exist on a runner). Enumerating skip reasons is the
       # same mistake as enumerating failure modes — assert the property you actually want, which
-      # is that nothing in this module skipped at all.
-      - name: Fail loudly if the proof silently skipped
+      # is that nothing in this run skipped at all.
+      - name: Every browser module runs, and a skip is a FAILURE (census computed, not hand-listed)
         run: |
-          pytest -q tests/web/test_r11_panel_contract.py -p no:cacheprovider -rs 2>&1 | tee out.txt
+          set -o pipefail
+          MODULES="$(python tools/browser_modules.py)"
+          echo "browser census: $MODULES"
+          pytest -q $MODULES -p no:cacheprovider -rs 2>&1 | tee out.txt
           if grep -qE "^SKIPPED|[0-9]+ skipped" out.txt; then
-            echo "::error::the measured-box tests SKIPPED — the ADR-0304/0305 proof did not run"
+            echo "::error::browser tests SKIPPED — the measured-box/ADR-0304/0305 proofs did not run"
             grep -E "^SKIPPED" out.txt || true
             exit 1
           fi

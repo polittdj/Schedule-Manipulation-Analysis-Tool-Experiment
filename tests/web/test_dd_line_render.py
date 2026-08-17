@@ -35,12 +35,13 @@ from schedule_forensics.model.relationship import Relationship, RelationshipType
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
 from schedule_forensics.web.app import SessionState, create_app
+from web.browser_chrome import chrome_kwargs
 
 GOLDEN = Path(__file__).resolve().parents[1] / "fixtures" / "golden" / "project2_5"
-# build-agnostic (TEST-01, ADR-0406): the FIRST vendored chromium, whatever build the
-# container ships — a chromium bump must never silently skip this module again
-_PW_CHROMES = sorted(Path("/opt/pw-browsers").glob("chromium*/chrome-linux/chrome"))
-CHROME = _PW_CHROMES[0] if _PW_CHROMES else Path("/opt/pw-browsers/absent/chrome")
+# Chromium resolution is `tests/web/browser_chrome.py`'s single decision (ADR-0406, widened
+# by ADR-0418): prefer a vendored binary, else let playwright resolve its own — the branch a
+# CI runner takes. This module used to pin `/opt/pw-browsers` and therefore SKIPPED on CI.
+
 THEMES = ("console", "daylight", "apollo", "jarvis")
 DAY = 480
 
@@ -93,8 +94,6 @@ def _serve(st: SessionState) -> Any:
 
 def _need_browser() -> None:
     pytest.importorskip("playwright", reason="playwright not installed (runtime stays stdlib-only)")
-    if not CHROME.exists():
-        pytest.skip(f"bundled chromium not at {CHROME}")
 
 
 @pytest.fixture(scope="module")
@@ -178,7 +177,7 @@ def test_the_parse_time_family_paints_the_marker(golden_site: str) -> None:
     from playwright.sync_api import sync_playwright
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(executable_path=str(CHROME))
+        browser = p.chromium.launch(**chrome_kwargs())
         page = browser.new_page(viewport={"width": 1500, "height": 1100})
         errors: list[str] = []
         page.on("pageerror", lambda e: errors.append(str(e)))
@@ -206,7 +205,7 @@ def test_the_marker_is_red_and_typed_from_tokens_in_every_theme(golden_site: str
     from playwright.sync_api import sync_playwright
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(executable_path=str(CHROME))
+        browser = p.chromium.launch(**chrome_kwargs())
         page = browser.new_page(viewport={"width": 1500, "height": 1100})
         page.goto(golden_site + "/mission", wait_until="load")
         page.wait_for_selector("#scurveChart .ch-dd", timeout=20000)
@@ -240,7 +239,7 @@ def test_resources_paints_the_marker_in_its_data_date_bucket(golden_site: str) -
     from playwright.sync_api import sync_playwright
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(executable_path=str(CHROME))
+        browser = p.chromium.launch(**chrome_kwargs())
         page = browser.new_page(viewport={"width": 1500, "height": 1000})
         errors: list[str] = []
         page.on("pageerror", lambda e: errors.append(str(e)))
@@ -273,7 +272,7 @@ def test_margin_erosion_carries_the_marker_and_the_burndown_does_not(margin_site
     from playwright.sync_api import sync_playwright
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(executable_path=str(CHROME))
+        browser = p.chromium.launch(**chrome_kwargs())
         page = browser.new_page(viewport={"width": 1500, "height": 1400})
         errors: list[str] = []
         page.on("pageerror", lambda e: errors.append(str(e)))
