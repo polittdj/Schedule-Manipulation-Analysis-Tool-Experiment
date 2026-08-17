@@ -2,8 +2,11 @@
  *
  * The strict CSP (script-src 'self') forbids inline event handlers, so every interactive
  * bit of server-rendered chrome is delegated here instead, marked by data attributes:
- *   select[data-sf-autosubmit]      — submit the owning form on change (the classic
- *                                     onchange="this.form.submit()" selects)
+ *   [data-sf-autosubmit]           — submit the owning form on change (the classic
+ *                                     onchange="this.form.submit()" controls). ANY element,
+ *                                     not just <select>: JS-01 shipped a parity-mode CHECKBOX
+ *                                     with an inline onchange because `select[...]` never
+ *                                     matched it, and the CSP then killed the handler outright.
  *   select[data-sf-navselect]       — navigate to the selected option's value (the
  *                                     source-banner file switcher)
  *   select[data-sf-nexturl-submit]  — stamp the CURRENT page into the form's next_url,
@@ -21,7 +24,7 @@
   document.addEventListener("change", function (e) {
     var el = e.target;
     if (!el || !el.matches) return;
-    if (el.matches("select[data-sf-autosubmit]")) {
+    if (el.matches("[data-sf-autosubmit]")) {
       if (el.form) el.form.submit();
     } else if (el.matches("select[data-sf-navselect]")) {
       if (el.value) location.href = el.value;

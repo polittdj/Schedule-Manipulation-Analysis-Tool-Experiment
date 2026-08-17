@@ -5779,12 +5779,22 @@ def create_app(
         """The full resolved-input identity of an SSI run / OAT sweep (ADR-0360 export reuse).
 
         Compared by equality, never hashed. Any input change — a factor, a Best/Worst pair, a
-        register row, the focus, the sampler, the correlation spec, the factor table, or the
-        schedule bytes themselves (``content_hashes``) — changes the tuple, so a cached result
-        can never be served across an input edit or a re-uploaded file of the same name."""
+        register row, the focus, the sampler, the correlation spec, the factor table, the
+        session SCOPE, or the schedule bytes themselves (``content_hashes``) — changes the
+        tuple, so a cached result can never be served across an input edit or a re-uploaded
+        file of the same name.
+
+        The scope signature is load-bearing and was MISSING (SRA-EXPORT-STALE-SCOPE, audit
+        2026-08-16). The SRA does not run on the raw file: ``_sra_selected`` returns
+        ``analysis.scoped``, so the active group/filter is a real input to the cached run.
+        ``content_hashes`` cannot stand in for it — that hashes the FILE, which a filter does
+        not touch. Observed pre-fix: with ``scope_signature()`` moving from ``A=1`` to
+        ``F=(('name', [...]))A=1`` the key was unchanged and ``/export/{fmt}/sra`` handed back
+        the object cached under the previous scope."""
         return (
             key,
             st.content_hashes.get(key),
+            st.scope_signature(),
             st.sra_focus_uid,
             st.sra_use_risk_register,
             st.sra_occurrence_mode,

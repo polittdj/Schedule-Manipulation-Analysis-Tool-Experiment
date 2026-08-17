@@ -6,9 +6,12 @@ ADR-0391 floors a task at its recorded ``actual_start`` and reports the floored 
 every progressed schedule. The 2026-08-13 audit verified the channel was produced but
 consumed by no product code (ENG-DEAD-01). It now feeds:
 
-* an INFO/OPPORTUNITY finding from :func:`recommend` — a cited disclosure, not a threat:
-  OPPORTUNITY keeps it out of the risk matrix, the risk ranking, and the recovery plan,
-  which take RISK + CONCERN only (``web/risks.py``);
+* an INFO/OPPORTUNITY finding from :func:`recommend` — a cited disclosure, not a threat.
+  ADR-0407 believed the OPPORTUNITY category alone kept it out of every threat and recovery
+  surface; REC-01 measured that it did not (``ai/briefing.py`` has no category gate), and
+  ADR-0413 moved that job to ``Finding.is_disclosure``. The category still keeps it out of
+  ``web/risks.py``'s matrix, ranking and recovery-plan panel, which do take RISK + CONCERN
+  only; ``tests/engine/test_disclosure_not_quantified.py`` owns the rest;
 * the ``/api/driving`` per-row flag and the path grid's optional "Actual-start-driven"
   column (``tests/web/test_path_view.py`` owns those pins);
 * the metric dictionary, like every other emitted metric id (pinned here).
@@ -58,7 +61,8 @@ def test_actual_start_floored_tasks_produce_the_info_disclosure() -> None:
     findings = recommend(s)
     f = next(f for f in findings if f.metric_id == "actual_start_driven")
     assert f.severity == Severity.INFO
-    assert f.category == Category.OPPORTUNITY  # disclosure: no matrix, no recovery plan
+    assert f.category == Category.OPPORTUNITY  # keeps it out of web/risks.py's matrix + plan
+    assert f.is_disclosure is True  # ADR-0413: what actually keeps it out of recovery figures
     assert "1 activity is scheduled from its recorded actual start" in f.title
     assert f.citations and f.citations[0].unique_id == 1  # §6: never uncited
     assert all(f2.metric_id != "logic_unsupported_dates" for f2 in findings)

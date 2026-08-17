@@ -577,6 +577,22 @@ def _dashboard(
     ]
 
 
+def _recovery_cell(f: Finding, *, none_label: str) -> str:
+    """The schedule-effect cell for one finding: working days, a qualitative label, or an em dash.
+
+    Three outcomes, and the third is the point (REC-01). A quantified finding prints its
+    exposure. An unquantified one prints ``none_label`` — "risk reduction" / "risk mitigation",
+    the honest read of an action whose benefit is not a date. A DISCLOSURE prints "—", because
+    neither is true of it: a provenance note recovers nothing and mitigates nothing, and both
+    columns it lands in are headed as recovery ("Potential recovery", "Expected effect").
+    Pre-fix it printed the cited activities' negative float instead — 20 wd of fabricated
+    recovery on a schedule whose note says the date already happened.
+    """
+    if f.is_disclosure:
+        return "—"
+    return f"{f.impact_days:g} wd" if f.impact_days is not None else none_label
+
+
 def _risks_opportunities(
     schedule: Schedule, findings: tuple[Finding, ...]
 ) -> list[BriefingSection]:
@@ -628,7 +644,7 @@ def _risks_opportunities(
             f"O-{i + 1}",
             f.title,
             ", ".join(str(c.unique_id) for c in f.citations[:6]) or "—",
-            f"{f.impact_days:g} wd" if f.impact_days is not None else "risk reduction",
+            _recovery_cell(f, none_label="risk reduction"),
         )
         for i, f in enumerate(opps[:_TABLE_CAP])
     )
@@ -671,7 +687,7 @@ def _recommended_actions(
             str(i + 1),
             f.course_of_action,
             ", ".join(str(c.unique_id) for c in f.citations[:6]) or "—",
-            f"{f.impact_days:g} wd" if f.impact_days is not None else "risk mitigation",
+            _recovery_cell(f, none_label="risk mitigation"),
         )
         for i, f in enumerate(actionable[:_TABLE_CAP])
     )

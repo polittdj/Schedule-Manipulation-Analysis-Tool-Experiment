@@ -690,15 +690,24 @@ class RiskFactorTable:
 
 @dataclass(frozen=True)
 class ScheduleRisk:
-    """An SSI risk-register entry — a discrete risk/opportunity whose schedule impact, while it
-    fires, REPLACES the affected task(s)' remaining duration (ADR-0359).
+    """An SSI risk-register entry — a discrete risk or opportunity applied while it fires.
 
-    When it fires (per :class:`SRAConfig.occurrence_mode`) each affected activity's sampled
-    duration is replaced by ``impact_days`` working days — measured against SSI's own 2026-08-06
-    Sensitivity export, whose fired-alone slips fall short of the impact by exactly the affected
-    activity's ML. In the iterations it does NOT fire the activity samples its own Best/Worst
-    like any other (SSI lists the R/O tasks as duration-sensitivity rows too). Several risks
-    firing on one activity replace with their summed impacts. ``consequence_rating`` (1..5) is
+    A fired **risk** (``impact_days >= 0``) REPLACES the affected task(s)' sampled duration with
+    ``impact_days`` working days (ADR-0359) — measured against SSI's own 2026-08-06 Sensitivity
+    export, whose fired-alone slips fall short of the impact by exactly the affected activity's
+    ML. A fired **opportunity** (``impact_days < 0``) SUBTRACTS from the sampled duration,
+    floored at 0 (ADR-0414 / MC-01): replacement is meaningless for a negative value, and the
+    pre-ADR-0414 ``max(0, impact)`` deleted the activity outright — a 15-working-day optimistic
+    error on the reproduction. Several risks firing on one activity are SUMMED first, and the
+    sign of that total picks the rule.
+
+    **The opportunity leg is UNVERIFIED against SSI** and is the documented-additive semantic,
+    not a measured parity pin: no committed SSI export exposes a fired negative impact (they
+    carry the aggregate distribution under an ``Includes Risks/Opportunities?`` toggle only).
+    The risk leg remains parity-locked. See ADR-0414 for what would settle it.
+
+    In the iterations it does NOT fire, the activity samples its own Best/Worst like any other
+    (SSI lists the R/O tasks as duration-sensitivity rows too). ``consequence_rating`` (1..5) is
     the operator's severity for the 5x5 matrix; ``None`` derives it from the ``|impact_days|``
     band."""
 
@@ -1696,9 +1705,20 @@ def compute_sra_ssi(
         # EXACTLY the ML, so fired duration == impact. Under the old `ML + impact` the whole
         # distribution ran +25-35 cal d long at P50-P90; with replacement it lands within 1-3 d.
         # Several risks firing on one activity in one iteration replace with their summed impacts.
+        #
+        # MC-01 (ADR-0414): replacement is a POSITIVE-impact rule. `impact_days` is documented
+        # "additive working days when it fires (>=0 risk, <0 opportunity)", and an opportunity is
+        # a first-class feature with its own 5x5 matrix — but `max(0, impact)` sent every negative
+        # to 0, replacing the activity with a zero-duration task instead of shortening it. Measured
+        # pre-fix: a certain -5 d opportunity on a 20 d driver moved P50 from 25 to 5 wd, a
+        # 15-working-day OPTIMISTIC error. So: branch on the sign of the SUMMED impact — a net risk
+        # REPLACES (ADR-0359, parity-locked, unchanged), a net opportunity SUBTRACTS from the
+        # sampled duration, floored at 0. Summing first keeps ADR-0359's "several risks ... replace
+        # with their summed impacts" literally true and is the only reading that stays continuous
+        # across the sign boundary (+3 with -5 gives 18, not 0).
         for u, impact in fired_impact.items():
             if u in overrides:
-                overrides[u] = max(0, impact)
+                overrides[u] = impact if impact >= 0 else max(0, overrides[u] + impact)
         for bidx, branch in enumerate(applied_branches):
             if branch_fired[bidx][i]:  # fire → the fragnet takes a sampled 3-point rework duration
                 dur = _sample_triangular(
