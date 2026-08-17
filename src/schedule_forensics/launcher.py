@@ -199,6 +199,51 @@ def claim_port(
     )
 
 
+#: How many ephemeral ports to try before giving up on relocating (ADR-0412).
+_RELOCATE_ATTEMPTS = 5
+
+
+def resolve_port(
+    host: str,
+    preferred: int,
+    *,
+    claim: Claim = claim_port,
+    find_free: Callable[[str], int] = find_free_port,
+) -> tuple[int, str]:
+    """Return ``(port, how)`` for a port we may serve on — WITHOUT ever dead-ending.
+
+    ``how`` is ``"free"`` / ``"handover"`` (the preferred port was claimed, possibly by standing
+    a predecessor down) or ``"relocated"`` (it could not be claimed, so we serve elsewhere).
+
+    Operator directive 2026-08-17, from the field: closing the app any way other than its Quit
+    button left every later launch refusing with "already running on port 8321". Two paths
+    dead-ended — a holder that will not answer ``/api/whoami`` (a wedged or half-dead instance,
+    or an unrelated program), and a predecessor that never releases. Both advised quitting it
+    "from its own window", which cannot be done: the desktop icon runs ``pythonw`` and there is
+    no window. A forensic tool that cannot be opened is worthless, so the launch relocates.
+
+    ADR-0334's safety property is PRESERVED, not traded away: the contested port is still never
+    bound. Binding it is what could route requests indeterminately between two servers; moving
+    to a different port cannot. We give up only if several *ephemeral* ports also refuse, which
+    means the machine cannot serve at all — and then failing honestly is the right answer.
+    """
+    try:
+        return preferred, claim(host, preferred)
+    except PortUnavailable as first:
+        logger.warning("port %d could not be claimed (%s) — relocating", preferred, first)
+        for _ in range(_RELOCATE_ATTEMPTS):
+            candidate = find_free(host)
+            if candidate == preferred:
+                continue
+            try:
+                claim(host, candidate)
+            except PortUnavailable:
+                continue  # lost a race for the ephemeral port; take another
+            logger.info("serving on %d instead of %d", candidate, preferred)
+            return candidate, "relocated"
+        raise
+
+
 def main(
     host: str = DEFAULT_HOST,
     port: int | None = None,
@@ -234,13 +279,15 @@ def main(
     serve_fn = serve or serve_app
     browser = browser or webbrowser.open
     chosen_port = port if port is not None else find_free_port(host)
-    url = f"http://{host}:{chosen_port}"
 
-    # ADR-0334: claim the port BEFORE arming the browser timer. Everything below this line
-    # assumes the port is ours; if it could not be claimed this raises and __main__ shows the
-    # operator why, instead of a browser silently opening onto the previous session.
+    # ADR-0334: claim the port BEFORE arming the browser timer, so a browser never opens onto a
+    # session we do not own. ADR-0412: when the preferred port cannot be claimed we RELOCATE to a
+    # free one rather than refusing to start — closing the app without its Quit button must never
+    # lock the operator out. The contested port is still never bound.
+    how = "free"
     if claim is not None:
-        claim(host, chosen_port)
+        chosen_port, how = resolve_port(host, chosen_port, claim=claim)
+    url = f"http://{host}:{chosen_port}"
 
     # ADR-0335 (Law 1, CUI at rest). The on-disk cache holds parsed schedule content and derived
     # metrics; the operator's rule is that it leaves the disk on every quit. Bind THIS launch's
@@ -253,6 +300,13 @@ def main(
     cache = get_default_cache()
     atexit.register(cache.clear)
 
+    if how == "relocated":
+        # Say it plainly: the operator's bookmark and every doc name 8321, so a silent move
+        # would look like the tool ignoring them (ADR-0412).
+        print(
+            f"POLARIS — port {port} was busy and would not release, so this session is on "
+            f"{chosen_port} instead. Nothing was lost; the address below is the live one."
+        )
     print(f"POLARIS — serving the dashboard at {url}  (close the window to stop)")
 
     manager = ollama if ollama is not None else OllamaLauncher() if manage_ollama else None

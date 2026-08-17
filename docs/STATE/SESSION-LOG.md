@@ -14514,3 +14514,24 @@ importers, web core, page modules, static JS, the test suite itself, docs/config
 figure-gates. 22 finder claims remain UNVERIFIED (CPM-01 and MC-01 rated critical). MF-05 is
 do-not-fix-blind pending the Acumen oracle. The route x test gap-fill (137 routes; 5 without
 a success test, 16 without a failure-mode test) is queued, not closed. ADR-0411.
+
+## 2026-08-17 (b) — field fix: a launch never dead-ends (ADR-0412, v1.0.210)
+
+Operator field report with a screenshot: closing the program without its Quit button left every
+later launch refusing with "already running on port 8321". `claim_port` (ADR-0334) had two dead
+ends — a holder that will not answer `/api/whoami` (wedged/half-dead instance or a stranger),
+and a predecessor that never releases — and both advised quitting the other session "from its
+own window" when the desktop icon runs `pythonw` and HAS no window. `resolve_port()` now always
+returns a servable port (free / handover / relocated); `main()` computes the URL after
+resolution so the browser follows the served port, and says so when the address moves.
+ADR-0334's safety property is preserved: the contested port is still never bound. Relocation is
+the exception (a claimable 8321 is used as-is), and when every port fails the retries exhaust
+and it re-raises — so ADR-0334's original "stops the launch" test passes unchanged. Red-first
+by name, 28 passed with no test repointed, mutation battery 4/4 by name. v1.0.210, wheel + nine
+installers (lockstep 64/64). ADR-0412.
+
+SCOPE stated honestly: the screenshot's exact wording is in NO file in this repo and its window
+is a console, while the shipped shortcut is console-less `pythonw` — it is a LOCAL wrapper that
+refuses before invoking Python, so this fix cannot run on that path. On the shipped path the
+reported symptom was already handled by handover; what is fixed is every case where the holder
+cannot be stood down. ADR-0412.
