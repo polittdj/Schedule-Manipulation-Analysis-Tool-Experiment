@@ -86,26 +86,7 @@ p.muted{margin:.3em 0}
 .cite{overflow-wrap:break-word}
 </style></head><body>
 <div class="cui-banner {{ cui_class }}" data-no-i18n>{{ cui_text }}</div>
-<details class=compliance-drawer id=complianceDrawer>
-<summary>Handling &amp; export-control notice — click to review (CUI / ITAR / EAR)</summary>
-<div class=compliance-body>
-<h3>Controlled Unclassified Information (CUI)</h3>
-<p>Treat every loaded schedule and every derived metric on these pages as CUI unless the project
-is explicitly marked UNCLASSIFIED in AI Settings. Handle per 32 CFR Part 2002 and your
-organization's CUI program: store on approved systems only, share only with a lawful government
-purpose, and destroy per records schedules. {{ drawer_locality }}</p>
-<h3>Export control (ITAR / EAR)</h3>
-<p>WARNING — Schedules for defense or space programs may contain technical data subject to the
-International Traffic in Arms Regulations (ITAR, 22 CFR 120&ndash;130) or the Export
-Administration Regulations (EAR, 15 CFR 730&ndash;774). Do not export, release, or disclose such
-data to foreign persons, in the U.S. or abroad, without proper authorization. Violations carry
-severe criminal and civil penalties.</p>
-<h3>Your responsibility</h3>
-<p>The markings above reflect the session's declared classification &mdash; not a review of your
-data. You remain responsible for confirming the actual sensitivity, markings, and distribution
-statements of every file you load and every report you export.</p>
-</div>
-</details>
+{{ drawer }}
 <header><h1 class=brand data-no-i18n
 aria-label="POLARIS — Program Oversight &amp; Logic Analysis for Risk &amp; Integrity of Schedules"
 title="POLARIS — Program Oversight &amp; Logic Analysis for Risk &amp; Integrity of Schedules">
@@ -753,7 +734,7 @@ _SPINE: tuple[tuple[str, tuple[_Chapter, ...]], ...] = (
                 "01",
                 "Where we stand",
                 "@analysis",
-                (("Card", "@card"),),
+                (),  # the Card drill now heads the LIBRARY rail (nav placement only)
                 (),
                 "Where the project stands at the data date.",
             ),
@@ -761,10 +742,7 @@ _SPINE: tuple[tuple[str, tuple[_Chapter, ...]], ...] = (
                 "02",
                 "Can we trust the plan?",
                 "/ribbon",
-                (
-                    ("Schedule Integrity", "/integrity"),
-                    ("Assessment Scorecards", "/scorecards"),
-                ),
+                (),  # Integrity → FORENSICS, Scorecards → CONTROL; both stay ch-02 by title
                 ("Schedule Quality Ribbon", "Schedule Integrity", "Assessment Scorecards"),
                 "Whether the schedule is built soundly enough to trust its numbers.",
             ),
@@ -809,7 +787,7 @@ _SPINE: tuple[tuple[str, tuple[_Chapter, ...]], ...] = (
                 "07",
                 "How we execute",
                 "/performance",
-                (("EVM", "/evm"), ("WBS", "@wbs")),
+                (),  # EVM + WBS now sit on the LIBRARY rail; both stay ch-07 pages
                 ("Performance Summary", "EVM"),
                 "How execution is actually tracking to plan.",
             ),
@@ -860,8 +838,63 @@ _SPINE: tuple[tuple[str, tuple[_Chapter, ...]], ...] = (
             ),
         ),
     ),
+    # ── Off-spine rails (ADR-0425) ─────────────────────────────────────────────────────────
+    # The prototype groups the non-story pages into FORENSICS / LIBRARY / CONTROL / SETUP rather
+    # than one mixed SETUP rail. Nav PLACEMENT only: chapter membership still comes from `titles`
+    # / `_page(..., chapter=…)`, so /integrity and /scorecards remain Chapter 02 pages and /evm,
+    # /wbs, /card remain Chapter 07/01 drills — their kickers and Continue segues are unchanged.
     (
-        "SETUP",
+        "FORENSICS",
+        (
+            _Chapter(
+                "",
+                "Schedule Integrity",
+                "/integrity",
+                (),
+                (),  # "Schedule Integrity" stays a Chapter-02 title — see integrity.py
+                "Which record edits moved dates, and how much slip those edits absorb.",
+            ),
+        ),
+    ),
+    (
+        "LIBRARY",
+        (
+            _Chapter(
+                "",
+                "Metric Workbench",
+                "/workbench",
+                (),
+                ("Metric Workbench",),
+                "Build and compare any metric against the population you choose.",
+            ),
+            _Chapter(
+                "",
+                "WBS Rollup",
+                "@wbs",
+                (),
+                (),
+                "Planned versus earned progress for every branch of the breakdown.",
+            ),
+            _Chapter(
+                "",
+                "Schedule ID Card",
+                "@card",
+                (),
+                (),
+                "What one file is: population, calendars, constraints and open ends.",
+            ),
+            _Chapter(
+                "",
+                "EVM",  # the deck's LIBRARY label for this screen, verbatim
+                "/evm",
+                (),
+                (),  # "EVM" stays a Chapter-07 title
+                "The full earned-value set, arranged for an analyst rather than a story.",
+            ),
+        ),
+    ),
+    (
+        "CONTROL",
         (
             _Chapter(
                 "",
@@ -873,20 +906,25 @@ _SPINE: tuple[tuple[str, tuple[_Chapter, ...]], ...] = (
             ),
             _Chapter(
                 "",
-                "Metric Workbench",
-                "/workbench",
-                (),
-                ("Metric Workbench",),
-                "Build and compare any metric against the population you choose.",
-            ),
-            _Chapter(
-                "",
                 "Standards & Execution",
                 "/standards",
                 (),
                 ("Standards & Execution Indices",),
                 "How the schedule scores against the governing standards.",
             ),
+            _Chapter(
+                "",
+                "Assessment Scorecards",
+                "/scorecards",
+                (),
+                (),  # "Assessment Scorecards" stays a Chapter-02 title — see scorecards.py
+                "How the schedule scores against NASA STAT, GAO-10 and SRA readiness.",
+            ),
+        ),
+    ),
+    (
+        "SETUP",
+        (
             _Chapter(
                 "",
                 "Groups & Filters",
@@ -914,6 +952,12 @@ _SPINE: tuple[tuple[str, tuple[_Chapter, ...]], ...] = (
         ),
     ),
 )
+
+# The rails that sit OFF the narrative spine: they carry no chapter number, take no part in the
+# Continue segue / progress dashes, and render with the muted `setup` treatment. Membership is
+# declared here rather than inferred from the label so adding a rail can never silently inject a
+# utility page into the story order.
+_OFF_SPINE: frozenset[str] = frozenset({"FORENSICS", "LIBRARY", "CONTROL", "SETUP"})
 
 
 def _role_strip(state: SessionState) -> str:
@@ -960,9 +1004,10 @@ def _role_strip(state: SessionState) -> str:
     )
 
 
-# Narrative order for the Continue footer + progress (Import → Mission Control → 01…12; Setup off-spine).
+# Narrative order for the Continue footer + progress (Import → Mission Control → 01…12; the
+# Forensics / Library / Control / Setup rails are off-spine).
 _STORY_ORDER: tuple[_Chapter, ...] = tuple(
-    ch for label, chapters in _SPINE for ch in chapters if label != "SETUP"
+    ch for label, chapters in _SPINE for ch in chapters if label not in _OFF_SPINE
 )
 # Numbered chapters only, for the progress dashes.
 _STORY_CHAPTERS: tuple[_Chapter, ...] = tuple(c for c in _STORY_ORDER if c.num)
@@ -1090,8 +1135,14 @@ def _render_nav(state: SessionState) -> str:
 
     sections = ""
     for sect_label, chapters in _SPINE:
-        links = "".join(_chapter_link(c) for c in chapters)
-        cls = "nav-sect setup" if sect_label == "SETUP" else "nav-sect"
+        # A per-file rail entry (@wbs / @card) has no URL until a schedule is loaded. Drop it
+        # rather than render it pointing at "/" — the same "skipped, not broken" rule the folded
+        # beats and the role Start-here cards already follow (ADR-0255).
+        shown = [c for c in chapters if _resolve_route(state, c.route)]
+        if not shown:
+            continue
+        links = "".join(_chapter_link(c) for c in shown)
+        cls = "nav-sect setup" if sect_label in _OFF_SPINE else "nav-sect"
         sections += (
             f'<div class="{cls}"><span class=nav-sect-label>{_e(sect_label)}</span>{links}</div>'
         )
@@ -1197,6 +1248,71 @@ def _story_footer(state: SessionState, title: str, chapter: _Chapter | None = No
     return f"<div class=story-foot>{progress}{cont}</div>"
 
 
+#: The compliance drawer's prose, with ONE substitution slot for the locality sentence. Lifted
+#: out of ``_LAYOUT`` by ADR-0426 so the boot screen — which renders no ``_LAYOUT`` — carries the
+#: byte-identical notice instead of a second, drift-prone copy. Design system §6 says the drawer
+#: sits under the top bar on EVERY page; two copies of a regulatory notice is how one of them
+#: quietly stops matching the other.
+_DRAWER_HTML = """<details class=compliance-drawer id=complianceDrawer>
+<summary>Handling &amp; export-control notice — click to review (CUI / ITAR / EAR)</summary>
+<div class=compliance-body>
+<h3>Controlled Unclassified Information (CUI)</h3>
+<p>Treat every loaded schedule and every derived metric on these pages as CUI unless the project
+is explicitly marked UNCLASSIFIED in AI Settings. Handle per 32 CFR Part 2002 and your
+organization's CUI program: store on approved systems only, share only with a lawful government
+purpose, and destroy per records schedules. {locality}</p>
+<h3>Export control (ITAR / EAR)</h3>
+<p>WARNING — Schedules for defense or space programs may contain technical data subject to the
+International Traffic in Arms Regulations (ITAR, 22 CFR 120&ndash;130) or the Export
+Administration Regulations (EAR, 15 CFR 730&ndash;774). Do not export, release, or disclose such
+data to foreign persons, in the U.S. or abroad, without proper authorization. Violations carry
+severe criminal and civil penalties.</p>
+<h3>Your responsibility</h3>
+<p>The markings above reflect the session's declared classification &mdash; not a review of your
+data. You remain responsible for confirming the actual sensitivity, markings, and distribution
+statements of every file you load and every report you export.</p>
+</div>
+</details>"""
+
+
+def _compliance_drawer(state: SessionState) -> str:
+    """The compliance drawer, locality sentence resolved for this session.
+
+    The locality sentence is conditioned on the SAME observed derivation as the persistent banner
+    (DoD 001b): the absolute assurance may only print while every constructible AI candidate — and
+    the actually-routed backend — is provably local. The non-local branch is unreachable with this
+    repo's loopback-validated constructors; it exists so a wired gateway (001c) or a patched
+    install can never render the absolute claim.
+    """
+    ai_banner = _observed_banner(state)
+    locality = (
+        "This tool enforces the technical side — it binds 127.0.0.1 only and no schedule "
+        "content ever leaves this machine."
+        if not ai_banner.cloud_active
+        else "This tool binds 127.0.0.1 for its own pages, but the session's AI is configured "
+        f"for a non-local endpoint ({_e(ai_banner.endpoint or '')}) — schedule content sent to "
+        "the AI leaves this machine. The engine's computations remain local."
+    )
+    return _DRAWER_HTML.format(locality=locality)
+
+
+def _cui_marking(state: SessionState) -> tuple[str, str]:
+    """The CUI banner's ``(css class, text)`` — the ONE derivation of the page marking.
+
+    Extracted from :func:`_page` by ADR-0426 so the boot screen, which does not render through
+    the story chrome, cannot drift from the marking every other page shows. Default CLASSIFIED
+    marks CUI; only the operator-asserted UNCLASSIFIED mode drops the controls marking. Kept out
+    of the i18n pass by its ``data-no-i18n`` call sites so the wording stays standard.
+    """
+    classified = state.ai_config.classification is Classification.CLASSIFIED
+    return (
+        "cui" if classified else "unclassified",
+        "Controlled Unclassified Information • CUI"
+        if classified
+        else "Unclassified • no CUI controls asserted",
+    )
+
+
 def _page(
     state: SessionState,
     title: str,
@@ -1211,27 +1327,7 @@ def _page(
     # NASA CUI page-marking (top + bottom banner on every page). Default CLASSIFIED → mark CUI;
     # only the operator-asserted UNCLASSIFIED mode drops the CUI controls marking. Kept out of the
     # i18n pass (data-no-i18n) so the control marking stays in its required standard wording.
-    classified = state.ai_config.classification is Classification.CLASSIFIED
-    cui_class = "cui" if classified else "unclassified"
-    cui_text = (
-        "Controlled Unclassified Information • CUI"
-        if classified
-        else "Unclassified • no CUI controls asserted"
-    )
-    # The CUI drawer's locality sentence is conditioned on the SAME observed derivation as the
-    # persistent banner (DoD 001b): the absolute assurance may only print while every
-    # constructible AI candidate — and the actually-routed backend — is provably local. The
-    # non-local branch is unreachable with this repo's loopback-validated constructors; it
-    # exists so a wired gateway (001c) or a patched install can never render the absolute claim.
-    ai_banner = _observed_banner(state)
-    drawer_locality = (
-        "This tool enforces the technical side — it binds 127.0.0.1 only and no schedule "
-        "content ever leaves this machine."
-        if not ai_banner.cloud_active
-        else "This tool binds 127.0.0.1 for its own pages, but the session's AI is configured "
-        f"for a non-local endpoint ({_e(ai_banner.endpoint or '')}) — schedule content sent to "
-        "the AI leaves this machine. The engine's computations remain local."
-    )
+    cui_class, cui_text = _cui_marking(state)
     # _bust_static: version-bust every /static URL so an upgraded install can never keep
     # executing a stale browser-cached JS/CSS (the fixed-port deployment reuses the same
     # cache origin across restarts, and StaticFiles alone sends no Cache-Control).
@@ -1266,7 +1362,7 @@ def _page(
                 ).replace("<", "\\u003c"),
                 cui_class=cui_class,
                 cui_text=cui_text,
-                drawer_locality=drawer_locality,
+                drawer=_compliance_drawer(state),
                 # OR-06: scopes the browser's ADR-0186 page-selection memory to this
                 # launch + wipe generation (persist.js clears its layers on a change)
                 launch_token=state.launch_token,

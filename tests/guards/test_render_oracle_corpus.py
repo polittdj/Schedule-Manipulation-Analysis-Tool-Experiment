@@ -65,7 +65,9 @@ LABELS = Path(__file__).parent / "render_oracle_labels.txt"
 #: The part of the fingerprint the ROUTE SURFACE determines, which is the part that actually
 #: survives a rebuild (ADR-0381). Carried with its scope — a fingerprint without one is
 #: decoration (ADR-0377).
-EMPTY_STAGE_FINGERPRINT = {200: 41, 400: 17, 422: 2}
+#: 41 -> 42 in ADR-0426: `/launch` is one new GET route that renders on an empty session
+#: (its telemetry tiles read the em dash rather than refusing to paint).
+EMPTY_STAGE_FINGERPRINT = {200: 42, 400: 17, 422: 2}
 
 
 def _built() -> list[str]:
@@ -97,7 +99,7 @@ def test_the_committed_label_list_matches_what_the_builder_produces() -> None:
 
 
 def test_the_empty_stage_fingerprint_is_the_one_the_route_surface_determines() -> None:
-    """`[empty]` is 60 labels `{200:41, 400:17, 422:2}` — the number every rebuild reproduced."""
+    """`[empty]` is the route surface's own histogram — the number every rebuild reproduced."""
     client = TestClient(create_app(SessionState()))
     bodies = {
         f"[empty] {lab.key()}": f"{client.get(lab.url).status_code}\n".encode()

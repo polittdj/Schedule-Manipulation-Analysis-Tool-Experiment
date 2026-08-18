@@ -21,7 +21,10 @@ def _client_loaded() -> TestClient:
 
 def test_compliance_drawer_with_itar_notice_on_every_page() -> None:
     c = _client_loaded()
-    for page in ("/", "/trend", "/settings", "/help", "/sra"):
+    # /launch is here because it is the one page that does NOT render through `_page`
+    # (ADR-0426). §6 says the drawer sits under the top bar on every page, and a page
+    # outside the shared shell is exactly where that silently stops being true.
+    for page in ("/", "/trend", "/settings", "/help", "/sra", "/launch"):
         text = c.get(page).text
         assert "complianceDrawer" in text, page
         assert "Controlled Unclassified Information (CUI)" in text, page

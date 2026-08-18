@@ -45,6 +45,7 @@ import schedule_forensics.web.evm as evm_mod
 import schedule_forensics.web.evolution as evolution_mod
 import schedule_forensics.web.forecast as forecast_mod
 import schedule_forensics.web.integrity as integrity_mod
+import schedule_forensics.web.launch as launch_mod
 import schedule_forensics.web.margin as margin_mod
 import schedule_forensics.web.mission as mission_mod
 import schedule_forensics.web.path as path_mod
@@ -73,6 +74,7 @@ EXTRACTED = {
     "driving.py": driving_mod,
     "evolution.py": evolution_mod,
     "integrity.py": integrity_mod,
+    "launch.py": launch_mod,
     "margin.py": margin_mod,
     "trend.py": trend_mod,
     "ssi.py": ssi_mod,
@@ -114,6 +116,7 @@ LAYER_ORDER = (
     "driving.py",
     "evolution.py",
     "integrity.py",
+    "launch.py",
     "margin.py",
     "trend.py",
     "ssi.py",
@@ -165,6 +168,7 @@ VIEW_MODULES = (
     "evolution.py",
     "forecast.py",
     "integrity.py",
+    "launch.py",
     "margin.py",
     "mission.py",
     "path.py",

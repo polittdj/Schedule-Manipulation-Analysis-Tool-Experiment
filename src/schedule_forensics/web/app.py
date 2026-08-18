@@ -314,10 +314,16 @@ from schedule_forensics.web.chrome import (
     _CHAPTER_BY_NUM as _CHAPTER_BY_NUM,
 )
 from schedule_forensics.web.chrome import (
+    _DRAWER_HTML as _DRAWER_HTML,
+)
+from schedule_forensics.web.chrome import (
     _EXPLAINERS as _EXPLAINERS,
 )
 from schedule_forensics.web.chrome import (
     _LAYOUT as _LAYOUT,
+)
+from schedule_forensics.web.chrome import (
+    _OFF_SPINE as _OFF_SPINE,
 )
 from schedule_forensics.web.chrome import (
     _OP_TEXT as _OP_TEXT,
@@ -356,10 +362,16 @@ from schedule_forensics.web.chrome import (
     _chapter_kicker as _chapter_kicker,
 )
 from schedule_forensics.web.chrome import (
+    _compliance_drawer as _compliance_drawer,
+)
+from schedule_forensics.web.chrome import (
     _criteria_text as _criteria_text,
 )
 from schedule_forensics.web.chrome import (
     _criterion_value_list as _criterion_value_list,
+)
+from schedule_forensics.web.chrome import (
+    _cui_marking as _cui_marking,
 )
 from schedule_forensics.web.chrome import (
     _e as _e,
@@ -549,6 +561,17 @@ from schedule_forensics.web.integrity import _ledger_was_now as _ledger_was_now
 from schedule_forensics.web.integrity import _logic_changes_panel as _logic_changes_panel
 from schedule_forensics.web.integrity import _target_effect_html as _target_effect_html
 from schedule_forensics.web.integrity import _was_now as _was_now
+from schedule_forensics.web.launch import _EMPTY_ACTION as _EMPTY_ACTION
+from schedule_forensics.web.launch import _NONE as _NONE
+from schedule_forensics.web.launch import _QUICK_ACTIONS as _QUICK_ACTIONS
+from schedule_forensics.web.launch import _boot_facts as _boot_facts
+
+# ADR-0426: the boot screen served at /launch. Its own module because it is the one route that
+# does NOT render through ``_page`` — a startup screen with a nav rail is a dashboard with a
+# picture on it. Same ``X as X`` re-export idiom as every other extracted page family.
+from schedule_forensics.web.launch import _BootFacts as _BootFacts
+from schedule_forensics.web.launch import _launch_html as _launch_html
+from schedule_forensics.web.launch import _quick_action_html as _quick_action_html
 
 # ADR-0363 (phase 3, slice 5): the /margin page family - the Executive Margin Dashboard
 # (burn-down, Fig 5-30 band, erosion trend, risk-sufficiency shell) - lives in
@@ -1327,6 +1350,19 @@ def create_app(
         shutdown_offload()  # tear down the SRA worker process, if one was started
         _trigger_shutdown(app)
         return JSONResponse({"stopping": True})
+
+    @app.get("/launch", response_class=HTMLResponse)
+    def launch_view() -> HTMLResponse:
+        """The Boot Screen (ADR-0426) — the startup lightshow the launcher opens on.
+
+        Deliberately outside the story chrome: no nav, no chapter, no Continue footer. The CUI
+        marking bars are kept (design system §6 admits no exception) and come from the SAME
+        derivation ``_page`` uses, so this page can never show a different marking than the rest
+        of the session. Reads only in-memory session facts — no CPM pass.
+        """
+        st = session()
+        cui_class, cui_text = _cui_marking(st)
+        return HTMLResponse(_launch_html(st, cui_class=cui_class, cui_text=cui_text))
 
     @app.get("/", response_class=HTMLResponse)
     def home() -> HTMLResponse:

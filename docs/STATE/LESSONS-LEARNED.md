@@ -5504,3 +5504,31 @@ and that is the lesson worth keeping.
   summarizes a measurement is itself a measurement**: prove the summarizer, not just the subject.
   The corollary is cheap and general — when a number moves and the edit cannot have moved it, the
   number was never measured; go and measure it.
+
+### 2026-08-17 (f) — the rebase that should not have been necessary
+
+- **A "pristine baseline" is only pristine relative to a ref you have re-fetched.** I triaged ten
+  test failures by running them against a `git worktree` at my branch's base commit, concluded
+  five were pre-existing, and reported them as an open problem deserving its own session. All
+  correct — and all useless, because that session had already been merged into `origin/main`
+  hours earlier and my local `main` was stale. The *method* was rigorous; the *baseline* was
+  testimony. `git fetch origin` costs two seconds and is in CLAUDE.md's workflow section for
+  precisely this failure. **Re-fetch before you branch, and re-fetch again before you report a
+  finding about what is or is not already fixed.**
+- **The cost of a stale branch is not just conflicts, it is a corrupted claim.** The merge
+  conflicts (nine generated installers, four state docs) were mechanical and cheap. The expensive
+  damage was an ADR-number collision on two ADRs, a version collision, and a confidently-stated
+  finding that was false. Conflicts announce themselves; a stale premise does not.
+- **When a rebase is ugly, rebuild on main rather than replaying commits.** Thirteen conflicts on
+  the first commit alone, almost all in generated artifacts. Branching fresh from `origin/main`
+  and re-applying the hand-authored files — while computing the intersection of "files I changed"
+  and "files they changed" first, and patching that intersection rather than copying it — turned a
+  fight into one three-way `git apply`. **Copying whole files across a diverged base silently
+  reverts the other side's work; only the intersection needs care, and it is usually tiny** (here:
+  one file, `web/app.py`).
+- **A guard written yesterday caught a regression written by someone who had not read it.** #598
+  removed a hardcoded `/opt/pw-browsers` skip from 24 browser modules and left behind a computed
+  census. My new chromium module — cut from a branch predating that fix — reintroduced the exact
+  pattern, and the census went red the moment the trees met. This is the argument for computed
+  censuses over documented conventions in one sentence: **the convention only binds people who
+  read it; the census binds everyone who merges.**

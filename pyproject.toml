@@ -16,7 +16,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "schedule-forensics"
-version = "1.0.214"
+version = "1.0.215"
 description = "Local, NASA-themed forensic schedule-analysis tool (CUI-safe, offline)."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -184,6 +184,9 @@ select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
 # `integrity.py` is the /integrity page family, extracted verbatim (ADR-0358); it carries the
 # page's HTML f-strings, so the exemption travels with them.
 "src/schedule_forensics/web/integrity.py" = ["E501"]
+# ADR-0426: the boot screen. Same reason as every other extracted page module — the over-long
+# HTML string literals travel with the code.
+"src/schedule_forensics/web/launch.py" = ["E501"]
 # `margin.py` is the /margin page family, extracted verbatim (ADR-0363); it carries the
 # page's HTML f-strings, so the exemption travels with them.
 "src/schedule_forensics/web/margin.py" = ["E501"]
