@@ -40,6 +40,7 @@ from schedule_forensics.importers._common import (
     ImporterError,
     anchored_project_start,
     clamped_percent_or_none,
+    decimal_digits,
     dominant_day_minutes,
     iso_duration_to_minutes,
     parse_datetime,
@@ -497,7 +498,7 @@ def _build_calendar(target_uid: str | None, by_uid: dict[str, ET.Element]) -> Ca
         sorted(d for d in working if d.weekday() not in work_weekdays or d in holidays)
     )
     return Calendar(
-        uid=int(target_uid) if target_uid.lstrip("-").isdigit() else 0,
+        uid=int(target_uid) if decimal_digits(target_uid.lstrip("-")) else 0,
         name=_text(cal_el, "Name") or "Standard",
         working_minutes_per_day=minutes_per_day,
         work_weekdays=tuple(sorted(work_weekdays)),

@@ -14797,3 +14797,59 @@ and was diagnosed in both worlds, not assumed**: `test_embedded_wheel_is_in_lock
 installers; the live tree, where the wheel and all nine installers were rebuilt, runs
 `tests/installer` + `tests/test_packaging.py` **68 passed**. A useful free datapoint: that guard
 demonstrably has teeth — it caught a genuinely stale embedded wheel the moment one existed.
+
+---
+
+## 2026-08-18 — the route x test census SETTLED; the AI figure-gate dimension opened (ADR-0421/0422/0423, v1.0.213)
+
+- **Branch:** `claude/polaris-audit-continuation-nxtbfs` from `origin/main` @ e8256e4.
+- **Mode:** SOLO (the kickoff's proven mode; the agent pool has died twice on credit exhaustion).
+  All fix work was done in a **detached git worktree** so no battery ever measured a tree being
+  mutated; import isolation to that worktree was asserted, not assumed.
+- **Depth, plainly:** deep on the route x test census and the AI fact-assembly path; a READ but no
+  adversarial probe of the AI figure-gate internals (strict/annotate role split, Layer-B
+  derivation); **nothing** on page modules A/B or docs/config/CI.
+
+**1. Route x test census — settled, and both prior numbers refuted (kickoff item 1).**
+A pytest plugin hooking `FastAPI.build_middleware_stack` (a CLASS method — immune to the
+import-timing defeat that a `create_app` patch would suffer) recorded **15,338 requests** across a
+full 4244-passed run: route template resolved by the app's OWN matcher, status, and the session's
+loaded-schedule count at request entry — so a 200 "Load a schedule" empty state registers as
+adverse coverage, the exact shape the status-code-literal oracle could not see. Population **137**
+confirmed a 4th time and now *explained* (136 paths with methods + 1 mount; `/settings` carries
+two, so 137 (path, method) endpoints). **no-success 5/7 -> 3 · no-adverse 16/66 -> 25**, zero 5xx
+anywhere, all 34 `api` routes adverse-covered. Reported as a **bracket**: traffic is not
+assertions, so 25 is a lower bound and 66 an upper one.
+
+**2. `ISDIGIT-INT-500` -> ADR-0423, and it was 12 routes not one.** The census pointed at the
+never-adversely-tested `POST /sra/*` surface. 25-route fuzz: 6 crashes. All-field fuzz: **12**
+across 5 sites. Fixed with `str.isdecimal()` (0/788 disagreements with `int()`; `isdigit()` 128).
+**The first fix was wrong the other way** — `isascii() and isdigit()` (650 disagreements) would
+have silently stopped resolving Arabic-Indic digits — caught by the change's own guard-the-guard,
+not by review. 12 routes raising across 255 field slots -> **0 across 290**.
+
+**3. AI figure-gates, first pass -> ADR-0421 / ADR-0422.** `AI-DRIVE-01` (new, high): `/api/ask`
+paired the raw schedule with the scoped `analysis.cpm`, so any active filter made
+`compute_driving_slack` raise `KeyError` and a bare `except` swallow it — **every engine
+driving-path fact silently vanished behind a 200**, which is exactly what `ai/driving_facts.py`
+exists to prevent. The entering hypothesis ("it answers about filtered-out activities") was
+**refuted**; the truth was quieter and worse. `ASK-UNRESTRICTED-WRONG-VERSION` promoted from
+REPORTED to fixed: the newest version's activity table was resolved by `Schedule.name`, which
+successive updates share, so the ungated mode got facts from the newest file and data from the
+oldest. A **standing computed census** (61 engine callables, `set(tasks_by_id) == set(cpm.timings)`
+at call time) now guards the class: 2 violations unfixed / 0 fixed / 0 unfiltered in both.
+
+**Mutation batteries — all landed, all red by name:** driving-path scope 4/4 · unrestricted
+version 3/3 · pairing census 3/3 (**a 4th survived first** and exposed a genuine gap in my own
+guard — it drove only the 2-file `/api/ask` branch; widened, then red) · input robustness 2/2
+including the over-narrow fix I nearly shipped.
+
+**Gate:** ruff / ruff format / mypy strict / bandit (exit 0) / node --check green whole-tree.
+Parity **72 passed**, unmoved. Baseline full suite on `origin/main` **4244 passed / 5 skipped
+(26:41)** with playwright installed. Post-change full suite in the LIVE tree (wheel + nine installers rebuilt first):
+**4262 passed / 5 skipped / 0 failed (26:28)** — 4244 + 18 new tests, same 5 pre-existing skips.
+
+**Left explicitly undone:** page modules A/B, docs/config/CI, an adversarial pass on the AI figure
+gates, and the 25-route adverse gap itself (single hostile values per field only — no combinations
+or multi-field states). `MF-05` stays do-not-fix-blind. `citations.reattach` drops `pinned`:
+reported as latent and measured unreachable, deliberately NOT fixed.

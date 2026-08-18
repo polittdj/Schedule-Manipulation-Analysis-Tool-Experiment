@@ -435,6 +435,50 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-18 — a bounded sweep looks exhaustive, and a fix can be wrong in the direction you did not test
+
+- **A sweep's population is part of its claim, and a bounded one under-reports by construction.**
+  A dynamic coverage census flagged 25 routes with no adverse-path test. Fuzzing exactly those 25
+  found **6** routes that answered 500 to a superscript in a form field. Fuzzing *every declared
+  field of every route* found **12**, across 5 code sites — because routes that DO have adverse
+  coverage carry the same bug in a field nobody fuzzed. The narrower sweep was not wrong about
+  what it looked at; it was wrong about what it implied. This is the same shape as ADR-0418's
+  "four modules" (23) and ADR-0420's "three surfaces" (eight), and it is now three-for-three:
+  **when a sweep reports N, ask what it could not see before quoting N.**
+- **A fix can be wrong in the direction the tests do not point.** The `isdigit()`-gated `int()`
+  crash was real, and the first fix — `isascii() and isdigit()` — closed every crash and passed
+  the crash sweep. It was still wrong: measured across all 788 single-character numeric code
+  points it disagrees with `int()` on **650**, so Arabic-Indic digits that used to resolve would
+  have silently stopped. A crash-only test cannot see a narrowing. `str.isdecimal()` disagrees on
+  **zero** and is the exact predicate. **What caught it was the guard-the-guard** — an assertion
+  that every probe value must be `isdigit()`-true AND make `int()` raise — which failed on `٣`
+  because `int("٣") == 3`. A control written only to stop a sweep passing vacuously is what
+  stopped a bad fix from shipping. Under Law 2 the near-miss was the worse bug: a crash announces
+  itself, a silently narrowed parser returns a wrong answer.
+- **The product is frequently its own oracle — look there before reaching for a reference export.**
+  Twice in one session the codebase already contained the correct semantic while other sites
+  ignored it. `/api/driving-path` pairs `a.scoped` with `a.cpm` and cites ADR-0263 in a comment,
+  while `/api/ask` handed the same engine call the raw schedule; `sra_grid_save`'s local `_uid`
+  helper documents *"not isdigit(), which admits values int() rejects … and would 500 the
+  endpoint"* while five other sites kept the broken pattern. An internal contradiction settles
+  intent without an external oracle, and it is cheaper to find than a vendor export.
+- **The strongest differential is two surfaces of the same product disagreeing in one session.**
+  With two files loaded and a filter on, `/api/ask` returned the engine's driving-path facts and
+  `/api/ask/{name}` returned none — same session, same question. That single observation carried
+  more evidential weight than any amount of reading, and it named the correct behaviour for free.
+- **An entering hypothesis that is refuted is a result, not a wasted probe — provided you say so.**
+  `AI-DRIVE-01` was approached expecting "the AI will cite an activity the analyst filtered away".
+  That is false: a filtered-out UID is absent from the scoped CPM either way. The real behaviour
+  was that *all* driving-path facts vanished, silently, including for in-scope activities. Had the
+  probe been written only to confirm the hypothesis it would have returned "no defect".
+- **Instrument the framework at a class method when import timing is in play.** The route census
+  hooks `FastAPI.build_middleware_stack` rather than patching `create_app` by name, so it cannot
+  be defeated by a test module that imported `create_app` earlier — the same per-call-site trap
+  that has bitten monkeypatching here repeatedly. The companion census that wraps engine callables
+  had to sweep *every loaded module holding a reference*, because `ai/driving_facts.py` binds
+  `compute_driving_slack` with an import-time `from … import`; a guard that patched only the
+  defining module would have been blind to the exact call that regressed, and a test now pins that.
+
 ### 2026-08-17 (e) — a row that names three surfaces may be naming three members of a class
 
 - **"Is it wrong?" and "can it be reached?" are two measurements, and reporting one as the other

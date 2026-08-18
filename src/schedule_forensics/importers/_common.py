@@ -34,6 +34,18 @@ from schedule_forensics.model.task import ConstraintType
 from schedule_forensics.model.units import MINUTES_PER_CALENDAR_DAY
 
 
+def decimal_digits(text: str) -> bool:
+    """``str.isdigit()`` narrowed to the digits ``int()`` actually accepts.
+
+    ``str.isdigit()`` is **True** for superscripts and circled forms that ``int()`` rejects with
+    ``ValueError``, so an ``isdigit()``-gated conversion lets the value through and then raises.
+    ``isdecimal()`` is the exact predicate: measured across all 788 single-character numeric code
+    points it disagrees with ``int()`` on zero, where ``isdigit()`` disagrees on 128 (audit
+    2026-08-16, ``ISDIGIT-INT-500``).
+    """
+    return text.isdecimal()
+
+
 class ImporterError(ValueError):
     """A source file could not be parsed into a valid :class:`Schedule`.
 

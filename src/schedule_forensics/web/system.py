@@ -223,7 +223,7 @@ def parse_vm_stat_used_bytes(vm_stat_output: str) -> int | None:
         for line in vm_stat_output.splitlines()[1:]:
             key, _, rest = line.partition(":")
             rest = rest.strip().rstrip(".")
-            if rest.isdigit():
+            if rest.isdecimal():
                 pages[key.strip().lower()] = int(rest)
         needed = ("pages active", "pages wired down")
         if not all(k in pages for k in needed):
