@@ -14853,3 +14853,105 @@ Parity **72 passed**, unmoved. Baseline full suite on `origin/main` **4244 passe
 gates, and the 25-route adverse gap itself (single hostile values per field only — no combinations
 or multi-field states). `MF-05` stays do-not-fix-blind. `citations.reattach` drops `pinned`:
 reported as latent and measured unreachable, deliberately NOT fixed.
+
+---
+
+## 2026-08-18 (b) — Ask-the-AI compared only the newest TWO of N loaded schedules (ADR-0424, v1.0.214)
+
+- **Session:** operator-reported defect, not an audit-ledger row. **Ran entirely SOLO.**
+- **Branch:** `claude/multi-schedule-comparative-analysis-vmh5ei` (from `origin/main` @ `ee576aa`)
+- **Highest ADR:** 0424. **Version:** 1.0.213 → **1.0.214** (shipped code changed; wheel + nine
+  installers rebuilt per ADR-0148). **SCHEMA 2.11.0 unchanged.**
+- **Audit ledger:** `docs/STATE/AUDIT-2026-08-16.md` **untouched** — its queue is unchanged.
+
+### The report
+> "In the schedule integrity page when there are more than two schedules loaded into the tool the
+> tool only does a comparative analysis of the last two schedules when you Ask the AI a question…
+> I want it to do a comparative analysis of each of the schedules starting at the earliest and
+> working its way forward to the latest two at a time. This doesn't just apply to the Schedule
+> Integrity page but all of the Ask the AI sections on every page."
+
+### Reproduced BEFORE any change (QC-1 red)
+4-version workbook from the Project5 golden, duration halved in update 1 and again in update 2,
+newest pair identical in content. `build_workbook_fact_sheet` → **27 facts, ZERO manipulation
+facts**; neither cut activity named anywhere; 5 of 27 facts named >1 version and 4 of those were
+ADR-0392's series facts. The only statement on the subject:
+*"No incomplete activity on the critical path had its duration shortened between v03.mpp and
+v04.mpp."* — an **affirmative negative scoped to 1 of 3 comparisons**, read as a workbook verdict.
+**Control (moved):** each early pair compared directly → 1 finding + 3 forensics facts; newest pair
+→ 0 + 1. The detector was never broken; nothing asked it about those pairs.
+
+### Scope of the defect
+Two sites, both feeding Ask-the-AI: `qa.build_workbook_fact_sheet` (`ordered[-2], ordered[-1]`,
+reached by `POST /api/ask`) and `qa.manipulation_forensics_facts` (same slice, reached by **both**
+`/api/ask` and `/api/ask/{name}`). The Ask panel is ONE shared component
+(`chrome._ask_panel_html`, rendered by `_page` on every page); `/integrity` passes no
+`ask_schedule` so its panel defaults to "Workbook — all N versions". Every page was affected.
+
+### What changed
+- **NEW `engine/pair_series.py`** — `compute_pairwise_series()`: walks oldest→newest two at a
+  time, full detector on every adjacent pair; `PairStep` rows + `SignalRecurrence`
+  (steps fired / longest UNBROKEN run / totals / span). Law 2: an uncomparable pair is named in
+  `uncomparable`, never counted as a zero-signal step.
+- **NEW `ai/pair_facts.py`** — `pairwise_comparison_facts()`: pinned `PAIRWISE COMPARISON SERIES`
+  + pinned `MANIPULATION-SIGNAL RECURRENCE` + bounded per-step detail, allocated **round-robin
+  oldest-first**, truncation stated. Activities named **in the fact `text`**.
+- `ai/qa.py` — the latest-pair block replaced; `build_workbook_fact_sheet` gained
+  `pair_schedules`/`pair_cpms`; `manipulation_forensics_facts` now states which comparison it is,
+  out of how many.
+- `web/app.py` — pair populations threaded into `/api/ask`; `/api/ask/{name}` also gets the series.
+
+### The population trap (measured, and a count could not see it)
+The first working build ran the sweep on `_solvable_versions()` — the **target-truncated**
+population. Project2→Project5, target 145 (109/108 vs 145/145 tasks): the truncated diff
+**fabricates HIGH "13 activities deleted since the prior version"** the control does not report and
+**loses** a real `MANIP_CONSTRAINT_ADDED` — with **total signals = 5 either way**. Fixed by taking
+the pair population (ADR-0371's own convention).
+
+### Verification
+- 37 new tests: `tests/engine/test_pair_series.py` (15), `tests/ai/test_pair_facts.py` (15),
+  `tests/web/test_ask_pairwise.py` (7). One existing test updated
+  (`test_coverage_ai.py` — "latest pair" wording → the stronger "step 1 of 1" contract).
+- **Twelve mutations each confirmed red BY NAME**: latest-pair-only · load-order instead of
+  data-date order · uncomparable pair counted clean · `longest_run` returning the total · dropped
+  signal label · newest-first detail allocation · every `pinned=True` removed · activities dropped
+  from the fact text · sweep routed through the target-truncated population · both silence paths
+  reverted to returning nothing · version count re-derived from steps · completeness claim left
+  standing when pairs were skipped.
+- **Two oracles caught BLIND and rebuilt**, both now carrying a control asserted to move.
+- **Render-verified** `GET /integrity` with 5 versions: panel defaults to "Workbook — all 5
+  versions"; the operator's own question returns the series, the recurrence tally, and
+  "step 1 of 4 … 'Form column piers and spread foundations' (UID 35)".
+- Figure gate: the new figures classify as **values** — a model writing "across the 6 loaded
+  versions the tool made 5 consecutive comparisons; duration shortening fired in 2 of 5 steps"
+  passes *strict* with zero unverified figures.
+- Cost: 31 pair-diffs = **1.1 s at 5,000 tasks** (36 ms/pair), 0.19 s at 1,000.
+
+### The same defect class, in this change's own first draft
+`_series_fact` derived the version count as `len(steps) + 1`. An uncomparable pair drops a step but
+not the versions, so a 4-version workbook with one unsolvable file rendered **"all 2 loaded
+version(s) were compared … this is the complete set … every update is here"** — four loaded, two
+claimed, completeness asserted falsely. `PairwiseSeries` now carries `versions`, and the
+completeness sentence retracts itself when any pair was uncomparable. **Every test was green**
+when this was found: all of them used workbooks where each pair compared, so `len(steps) + 1` was
+accidentally right in every exercised case. Found by re-reading the emitted TEXT, not the tests.
+
+### Reported, NOT fixed
+**The Ask prompt is assembled from `f.text` and never `f.rendered()`** (all three modes,
+`qa.py:910/931/942`), so a fact's citations reach neither the model nor the answer prose.
+ADR-0424 works around it inside its own facts by naming activities in the text; the general fix
+changes every Ask answer in all three modes and belongs with the figure-gate adversarial pass.
+
+### Gate at close
+- Statics green whole-tree: `ruff check .` · `ruff format --check .` · `mypy src/` (strict) ·
+  `bandit -q -r src` (exit 0) · `node --check` on every vendored JS.
+- Full suite, first run: **4298 passed / 5 skipped / 1 FAILED (26:21)** — the failure was
+  ADR-0148's `test_embedded_wheel_is_in_lockstep_with_the_source_tree`, correctly reporting that
+  `ai/pair_facts.py` and `engine/pair_series.py` had "content drifted": the wheel had been built
+  BEFORE the version-count defect was found and fixed in those two files. Wheel + nine installers
+  regenerated; `tests/installer/` + `tests/test_packaging.py` **68 passed**.
+- **Count reconciliation.** `origin/main` @ ee576aa closes at **4262 passed / 5 skipped** (the
+  prior session's POST-change number; its 4244 was that session's PRE-change baseline and is the
+  wrong figure to compare against — an inherited number is testimony). 4262 + **37** newly
+  collected tests = **4299**, and this run was 4298 passed + 1 failed = 4299. Exact, same 5
+  pre-existing skips.

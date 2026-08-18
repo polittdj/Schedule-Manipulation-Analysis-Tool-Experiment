@@ -422,8 +422,11 @@ def test_workbook_fact_sheet_single_version_skips_the_manipulation_pair() -> Non
 
 
 def test_workbook_fact_sheet_two_versions_includes_a_manipulation_signal() -> None:
-    # line 224: with two ordered versions and a removed logic link, the latest pair's
-    # manipulation signal is appended as a cited fact.
+    # With two ordered versions and a removed logic link, that pair's manipulation signal is
+    # appended as a cited fact. ADR-0424 replaced the "latest pair" block with the CONSECUTIVE-
+    # PAIR series, so the signal now carries its position in the series (here "step 1 of 1")
+    # instead of being labelled as the newest pair — a strictly stronger statement, and the one
+    # that keeps holding when a third version is loaded.
     a = Task(unique_id=1, name="A", duration_minutes=480)
     b = Task(unique_id=2, name="B", duration_minutes=480)
     linked = Schedule(
@@ -444,8 +447,9 @@ def test_workbook_fact_sheet_two_versions_includes_a_manipulation_signal() -> No
     schedules = [linked, unlinked]
     facts = build_workbook_fact_sheet(schedules, [compute_cpm(s) for s in schedules])
     text = " ".join(f.text for f in facts)
-    assert "Manipulation signal (latest pair)" in text
+    assert "Manipulation signal at step 1 of 1 (v1.xml to v2.xml)" in text
     assert "logic links removed" in text
+    assert "PAIRWISE COMPARISON SERIES: all 2 loaded version(s)" in text
 
 
 # === Ollama backend: error-text + response decoding ======================================
