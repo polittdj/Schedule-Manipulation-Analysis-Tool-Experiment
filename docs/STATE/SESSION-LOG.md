@@ -14950,8 +14950,10 @@ changes every Ask answer in all three modes and belongs with the figure-gate adv
   `ai/pair_facts.py` and `engine/pair_series.py` had "content drifted": the wheel had been built
   BEFORE the version-count defect was found and fixed in those two files. Wheel + nine installers
   regenerated; `tests/installer/` + `tests/test_packaging.py` **68 passed**.
+- Full suite, final run on the settled tree (source + regenerated wheel):
+  **4299 passed / 5 skipped / 0 failed (26:30), exit 0.**
 - **Count reconciliation.** `origin/main` @ ee576aa closes at **4262 passed / 5 skipped** (the
   prior session's POST-change number; its 4244 was that session's PRE-change baseline and is the
   wrong figure to compare against — an inherited number is testimony). 4262 + **37** newly
-  collected tests = **4299**, and this run was 4298 passed + 1 failed = 4299. Exact, same 5
-  pre-existing skips.
+  collected tests = **4299**, which is exactly the final run, and exactly the first run's
+  4298 passed + 1 failed. Same 5 pre-existing skips in both.

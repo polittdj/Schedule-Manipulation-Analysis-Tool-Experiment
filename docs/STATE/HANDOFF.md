@@ -96,7 +96,15 @@
 > numbering AND committing). QC-1/QC-2 are ADR-0393.
 >
 > ## Gate at close
-> See the SESSION-LOG entry for the measured numbers.
+> Statics green whole-tree (ruff / ruff format / mypy strict / bandit exit 0 / node --check).
+> Full suite **4299 passed / 5 skipped / 0 failed (26:30)** on the settled tree. The FIRST run was
+> 4298 passed / 1 failed, and that failure was ADR-0148's embedded-wheel lockstep guard doing its
+> job: the wheel had been built BEFORE the version-count defect was fixed in `ai/pair_facts.py` and
+> `engine/pair_series.py`, so it reported both as "content drifted". Wheel + nine installers
+> regenerated, then the clean run above. `origin/main` @ ee576aa is 4262, and 4262 + 37 newly
+> collected tests = 4299 exactly. **Sequence the close as: last source edit -> statics -> wheel +
+> installers -> full suite -> commit** (the wheel is a gate artifact and obeys the same
+> "re-run after the LAST file change" rule).
 
 # (prior) handoffs — archived
 
