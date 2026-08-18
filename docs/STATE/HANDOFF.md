@@ -1,64 +1,53 @@
-# Handoff — 2026-08-18 (c) (design handoff: four nav rails + the Boot Screen; ADR-0425/0426; v1.0.215 shipped)
+# Handoff — 2026-08-18 (a) (design handoff: Chapter 04's stability band; ADR-0427; v1.0.216 shipped)
 
-> ## STATUS (current) — the design-handoff slices, rebased onto `89cd5d8`.
-> Highest ADR now **0426**. **SHIPPED code changed** (`web/launch.py` + `static/launch.js` +
-> `static/launch.css` new; `web/chrome.py`, `web/app.py`, `launcher.py` edited) — version
-> **v1.0.214 → v1.0.215**, SCHEMA unchanged, wheel + nine installers rebuilt. This is *design*
-> work from the Claude Design bundle, not the audit line: the audit ledger
-> `docs/STATE/AUDIT-2026-08-16.md` is **untouched and still open**.
+> ## STATUS (current) — Chapter 04 now looks like the prototype.
+> Highest ADR **0427**. **SHIPPED code changed** (`web/evolution.py`, `web/app.py`,
+> `static/app.css`) — **v1.0.215 → v1.0.216**, SCHEMA unchanged, wheel + nine installers rebuilt.
+> Third slice from the Claude Design bundle. The audit ledger and its open rows are untouched.
 >
-> ## What landed — two ADRs
-> **ADR-0425 — four off-spine nav rails.** The MERLIN deck groups non-story pages into
-> `FORENSICS` / `LIBRARY` / `CONTROL` / `SETUP`; the repo shipped **one** rail (`SETUP`) with
-> `/integrity`, `/scorecards`, `/evm`, `@wbs` and `@card` reachable only as folded **beats**.
-> Schedule Integrity — the manipulation-detection surface — read as a footnote under chapter 02.
-> Nav placement only: chapter membership rides `_Chapter.titles`, never `beats`, so every kicker,
-> Continue segue and progress dash is unchanged. Off-spine membership is now **declared**
-> (`_OFF_SPINE`), not inferred from `label != "SETUP"`, and a per-file rail entry with no file
-> loaded is **skipped**, not pointed at `/`.
+> ## What landed — ADR-0427
+> `/evolution` (Chapter 04 · How stable is the path) gains the prototype's panels **① Stability
+> signal · ② Flow of the path · ③ Membership matrix · ④ Transition ribbons** above its existing
+> Gantt + what-if ledger (⑤), driven by one version cursor.
 >
-> **ADR-0426 — the Boot Screen at `/launch`.** The deck's startup lightshow: one pool of up to
-> 15,600 particles morphing between helix / wave / galaxy / nebula, four hero scenes, a staged
-> transit, a welcome panel. `launcher.py` now opens the browser there. It reuses ADR-0328's audio
-> module rather than synthesizing a second hum.
+> **Reuse, not reimplementation.** The band is drawn from `_volatility_data` and mounts
+> `volatility.js`'s OWN chart hosts — that module returns early on a missing host in all eight
+> draw functions, so mounting four of eleven is supported. A test compares the two pages' embedded
+> datasets **byte for byte**; both render the same 78% mean carry-over on the 4-version fixture.
+> `/volatility` is completely unchanged.
 >
-> **It is the only route that does not render through `_page`** — no nav, no chapter kicker, no
-> Continue segue. That is exactly where compliance chrome silently stops rendering, so
-> `_cui_marking(state)` and `_compliance_drawer(state)` were extracted and BOTH pages call them.
-> `_LAYOUT` no longer carries the CUI/ITAR/EAR prose inline; there is exactly **one** copy in the
-> tree, and the test asserts the two renders are **byte-identical**, not merely both present.
+> **Two populations, each labelled.** The band is ALL-VERSION; the panels below are PAIR-scoped
+> (ADR-0371). That is ADR-0420's hazard shape, so every band takeaway carries
+> `across all N loaded versions` and a guard fails if the phrase goes missing. Note the page
+> already carried both scopes (its h1 said "Across 4 versions" above pair panels) — this makes an
+> existing duality explicit rather than creating one. `DESIGN-SYSTEM.md` §7b now states the rule.
 >
-> **No fabricated numbers.** The deck's tiles count "225.4 M km" down and tick off "14 pre-flight
-> checks" with nothing computing either. The tiles read real session facts and render `—` when
-> nothing is loaded, never `0`. No CPM pass on the boot path.
->
-> **One sanctioned departure from theme-following:** an additive particle field has no light-mode
-> equivalent (daylight first rendered as a grey smear with unreadable ink — measured). The stage
-> carries its own `--boot-*` tokens in a stylesheet only that page loads. `DESIGN-SYSTEM.md` §7a
-> records it and says plainly it is **not a precedent**.
->
-> ## The mutation harness was itself the defect — read this before writing the next one
-> The first battery reported **6 of 10 mutants SURVIVED**. The guards were fine; the harness was
-> importing the *installed* package from the real tree (`pip install -e` wins on `sys.path`), so
-> every Python mutation landed on a file nothing under test was reading. It now probes
-> `module.__file__` and refuses to run unless the subject is inside the sandbox. 11/11 red after.
->
-> ## Not done here, deliberately — PICK THIS UP
-> **The MERLIN wordmark is NOT applied** (design gap #10). The deck's welcome copy reads "welcome
-> back to Merlin"; this screen says "Welcome back." and the title stays `— POLARIS`. Renaming the
-> product touches the ADR-0175 wordmark and every page in the tree — an operator decision.
-> The deck's Hohmann-transfer diagram is also not ported.
->
-> Remaining design gaps (`docs/DESIGN-GAP-2026-08-17.md`): **Metric Lab** (lowest effort — engine
-> ships, only the single-metric ribbon view is missing) · **Segment Forecast** as a page ·
-> **Portfolio at Scale** · **Beyond the Schedule** · **Trend Lab + Manipulation Watch** ·
-> **PDF export** · **GUIDE ME** · **SHOW UIDs**.
+> ## Three things worth reading before the next UI slice
+> - **A surviving mutant is not always a weak test.** M3 survived because the precondition sat at
+>   a call site that is unreachable (`/evolution` returns its own empty state first) — dead code
+>   with a test pointed at the wrong subject. Moving the guard INTO the function fixed both.
+> - **`chartframe.js` wraps every `.chart-host` in a zoom container.** A flex rule aimed at
+>   `.chart-host` targets an element that is no longer the flex child — three flex settings failed
+>   to move a chart off 300px before that was understood. Use a block layout, or target the wrapper.
+> - **Chart tick text is sized in CSS px and does NOT scale with the SVG.** A narrow host makes
+>   labels proportionally larger; the same chart is clean at 566px and collides at 300px.
 >
 > ## Carried forward
-> The audit is **not finished** (the never-audited areas, the remaining REPORTED rows). ADR-0353..0426 closed.
+> Design gaps still open: **Metric Lab** (lowest effort) · **Segment Forecast** as a page ·
+> **Portfolio at Scale** · **Beyond the Schedule** · **Trend Lab + Manipulation Watch** ·
+> **PDF export** · **GUIDE ME** · **SHOW UIDs** · the **MERLIN wordmark** (operator decision).
+> The audit's open rows are unchanged. ADR-0353..0427 closed.
 >
 > ## Gate at close
-> See SESSION-LOG for the run and its triage.
+> `ruff check .` · `ruff format --check` 562 files · `mypy src/` strict 158 files · `bandit` exit 0
+> · `node --check` per file. Full suite **4345 passed / 5 skipped / 0 failed / 39:20**.
+>
+> The first run had **7 failures, all MINE**: the wheel lockstep (src edited after the build), two
+> monolith-split contract rows (`_CH04_NUMERALS` un-re-exported; `evolution` importing `volatility`
+> UPWARD), and four `test_r11_panel_contract` pins that legitimately moved. The upward import is
+> the one worth noting — `_volatility_data` descended into `components.py` per ADR-0351's rule.
+> `bandit` also failed honestly once: B608 matched my HTML prose ("per **update** … operator-**set**")
+> as SQL. Reworded rather than suppressed.
 
 # (prior) handoffs — archived
 

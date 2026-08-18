@@ -175,6 +175,14 @@ rules do:
 
 Any new full-bleed or animated surface answers all four before it ships.
 
+## 7b. Two populations on one page (ADR-0420 / ADR-0427)
+A page may legitimately carry more than one population — Chapter 04 pairs an ALL-VERSION
+stability band with PAIR-scoped what-if ledgers, and both are correct. The rule is not
+"make them agree"; it is **every panel names the population it was computed from, in its
+own takeaway**. A count with no scope beside it will be read against whatever the rest of
+the page is about. When two surfaces share a dataset, assert they embed it **byte for
+byte** rather than that both "look right": one schedule must never yield two answers.
+
 ## 8. Audio (the Boot Audio Hum rule — ADR-0328)
 Sound in this tool is SYNTHESIZED WebAudio, never a shipped asset (the air-gap and the lean
 wheel/installers both stay trivially true). An `AudioContext` is created/resumed ONLY inside a
