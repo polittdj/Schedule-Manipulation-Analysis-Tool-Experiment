@@ -54,6 +54,7 @@ from schedule_forensics.ai.driving_facts import driving_path_facts, driving_path
 from schedule_forensics.ai.factory import resolve_gateway_api_key
 from schedule_forensics.ai.narrative import clean_polish, polish_prompt
 from schedule_forensics.ai.ollama_process import OllamaLauncher
+from schedule_forensics.ai.pair_facts import pairwise_comparison_facts
 from schedule_forensics.ai.qa import (
     answer_question,
     build_fact_sheet,
@@ -2354,6 +2355,10 @@ def create_app(
             # so the target must anchor the measurement, never truncate the populations.
             pair_schedules, pair_cpms, _pskipped = _pair_versions()
             if len(pair_schedules) >= 2:
+                # ADR-0424: scoping the Ask panel to ONE file does not make the other versions
+                # stop existing — a question asked here still gets the whole consecutive-pair
+                # comparison series, so "is this a pattern?" is answerable from every page.
+                facts += pairwise_comparison_facts(pair_schedules, pair_cpms)
                 facts += manipulation_forensics_facts(
                     pair_schedules, pair_cpms, target_uid=st.target_uid
                 )
@@ -2394,15 +2399,21 @@ def create_app(
         schedules, cpms, _skipped = _solvable_versions()
         if not schedules:
             return JSONResponse({"error": "no analyzable versions loaded"}, status_code=422)
+        # PAIR versions (operator 2026-08-08 / ADR-0371) are resolved FIRST: the consecutive-pair
+        # comparison series inside the fact sheet runs the manipulation DIFF detector, which must
+        # never see a target-truncated population (ADR-0424 — it invents deleted tasks out of cone
+        # membership). The S-curve/finish series still read the scoped population.
+        pair_schedules, pair_cpms, _pskipped = _pair_versions()
         # driving-path questions resolve against the newest analyzable version
-        facts = build_workbook_fact_sheet(schedules, cpms)
+        facts = build_workbook_fact_sheet(
+            schedules, cpms, pair_schedules=pair_schedules, pair_cpms=pair_cpms
+        )
         facts += driving_path_facts(schedules[-1], cpms[-1], text)
         # cross-version manipulation forensics (ADR-0150): duration cuts on the driving/
         # critical path, the reverted-changes counterfactual, the focus's baseline variance —
         # so "what was shortened to keep UID X from slipping?" is answerable with citations.
         # PAIR versions (operator 2026-08-08): the facts diff a version pair, so the target
         # must anchor the measurement, never truncate the populations being diffed.
-        pair_schedules, pair_cpms, _pskipped = _pair_versions()
         if len(pair_schedules) >= 2:
             facts += manipulation_forensics_facts(
                 pair_schedules, pair_cpms, target_uid=st.target_uid

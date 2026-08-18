@@ -435,6 +435,63 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-18 (b) — an oracle can be blind in a way only the mutation exposes, and a "complete" series can still be missing a dimension
+
+- **Two of my own tests passed under the exact mutation they existed to catch.** Both were written
+  deliberately, both looked right, both were green — and both were worthless until run against a
+  broken build. (1) The *pinning* test used a no-overlap question ("zzz qqq xyzzy") to prove the
+  comparative frame survives fact selection. It does not discriminate: the block is inserted
+  directly behind the pinned population facts, so it also leads the ranked tail and survives with
+  or without `pinned`. The fix was a question that fills the cap with genuinely-matching facts,
+  **plus a control that re-runs the selection with the pin removed and asserts the frame drops**.
+  (2) The *population-scope* test probed for the finding's own title, which the route's 12-fact
+  response cap trims out — so the fabricated signal was present in the evidence and absent from
+  what the test read. It now probes the compact label carried by the pinned facts, **plus a
+  control asserting the truncated populations really do fabricate**. Standing rule reinforced: a
+  green test proves nothing until a mutation has made it red, and "I wrote it to catch X" is not
+  evidence it catches X. **Run the mutation.**
+- **A defect can hide behind a series that looks complete.** ADR-0392 gave the AI a per-version
+  S-curve and finish series spanning all 31 loaded versions — genuinely cross-version, genuinely
+  complete. It still left manipulation at N=2, because *per-version readings* and *pairwise diffs*
+  are different shapes and only the first was covered. When a prior fix claims "spans every
+  version", ask **which dimension** it spans; a diff dimension needs the PAIRS walked, not the
+  versions read.
+- **An affirmative negative is worse than silence.** The tool did not merely omit the early
+  updates — it emitted *"No incomplete activity on the critical path had its duration shortened
+  between v03.mpp and v04.mpp"*, scoped to 1 of 3 available comparisons and phrased as a finding.
+  A reader (human or model) takes that as a verdict on the workbook. Any statement of ABSENCE must
+  carry the scope it was measured over; "we did not look here" and "we looked and found nothing"
+  are different results, and the second must never be printed for the first.
+- **A count can be identical in both worlds while the content is wrong.** Diffing the
+  target-truncated population fabricated a HIGH "13 activities deleted since the prior version"
+  and simultaneously lost a real constraint signal — **5 signals before, 5 signals after**. Any
+  oracle that had counted findings would have certified the bug. Compare the *set*, not the size.
+- **The wheel must be rebuilt after the LAST source change, not the last one you thought was
+  final.** The wheel + nine installers were regenerated, then a real defect was found in the new
+  code and fixed — and the embedded wheel silently went stale against exactly those two files.
+  ADR-0148's lockstep guard caught it (`pair_facts.py`, `pair_series.py` "content drifted"), which
+  is precisely the incident it was written for. This is the standing "re-run the WHOLE gate after
+  the LAST file change" trap wearing a different hat: **the wheel is a gate artifact, so it is
+  subject to the same rule**. Sequence the close as: last source edit → statics → wheel +
+  installers → full suite → commit. Rebuilding earlier is wasted work, and rebuilding later than
+  the suite means the suite never saw the artifact it is certifying.
+- **I wrote the defect I was fixing, into the fix.** `_series_fact` derived the version count as
+  `len(steps) + 1` — right in every case any test exercised, and wrong exactly when a pair is
+  uncomparable, where it rendered *"all 2 loaded version(s) were compared … every update is here"*
+  over a 4-version workbook. Same shape as the affirmative negative the whole ADR exists to remove.
+  Two general points. (1) **A derived count is a claim about the world and needs the same scrutiny
+  as any other**; if the number can be carried rather than inferred, carry it. (2) **The tests were
+  all green** — they were green because every fixture had every pair comparable, so the wrong
+  formula was accidentally right everywhere it was exercised. It was found by *reading the emitted
+  sentence*, which is the artifact the operator actually receives. Read the output, not only the
+  assertions about the output.
+- **`$PWD` is not a constant within one shell invocation.** A comparison probe did
+  `cd "$MUT"` for the mutated tree, then `probe "$PWD"` for the "live" tree — by then `$PWD` was
+  the worktree, so the same mutated tree was measured twice and the report said the fix did not
+  work. The earlier `assert '$MUT' in schedule_forensics.__file__` discipline was what would have
+  caught it, and it had been dropped from the helper. **Every measurement of "which tree" must
+  re-assert which tree**, not inherit it from a variable set earlier in the same call.
+
 ### 2026-08-18 — a bounded sweep looks exhaustive, and a fix can be wrong in the direction you did not test
 
 - **A sweep's population is part of its claim, and a bounded one under-reports by construction.**

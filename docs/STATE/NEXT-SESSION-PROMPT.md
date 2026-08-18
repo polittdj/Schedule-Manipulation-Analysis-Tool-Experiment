@@ -6,15 +6,25 @@
 
 Resume POLARIS (Schedule-Manipulation-Analysis-Tool). Read docs/STATE/HANDOFF.md FIRST
 (auto-injected), then docs/STATE/AUDIT-2026-08-16.md — that ledger IS the work queue. As of last
-close: v1.0.213, highest ADR 0423, SCHEMA 2.11.0. `main` was e8256e4 when this branch started;
+close: v1.0.214, highest ADR 0424, SCHEMA 2.11.0. `main` was ee576aa when that branch started;
 **git fetch origin before you branch, number an ADR, or commit** — the PR for
-`claude/polaris-audit-continuation-nxtbfs` may have merged since.
+`claude/multi-schedule-comparative-analysis-vmh5ei` may have merged since.
 
 ⇢ WHAT THIS ARC IS. Operator directive 2026-08-16: "a complete deep dive audit of the entire
 repository … create tests, both pass and fail … create solutions … test those in a sandbox to
 verify prior to implementing any changes. Triple verify everything in independent ways … Test,
 pass and fail tests required for all functionality of all pages … Skip nothing. Verify
 everything." It is NOT finished. Fifteen ADRs' worth of defects are fixed (0409..0423).
+
+⇢ THE LAST SESSION WAS AN INTERRUPT, NOT A LEDGER ROW. An operator report (Ask-the-AI compared
+only the newest TWO of N loaded schedules) was reproduced, fixed and shipped as **ADR-0424 /
+v1.0.214**. `docs/STATE/AUDIT-2026-08-16.md` is **untouched** — the queue below is exactly where
+it was. Two things ADR-0424 leaves for you: (a) a NEW reported-not-fixed finding —
+**the Ask prompt is assembled from `f.text` and NEVER `f.rendered()`** (`ai/qa.py` ~910/931/942,
+all three modes), so a fact's citations reach neither the model nor the answer prose; ADR-0424
+worked around it inside its own facts only, and the general fix belongs with item 2 below because
+it changes what the figure gate sees. (b) `engine/pair_series.py` and `ai/pair_facts.py` are NEW
+modules that have never been through an audit dimension.
 
 ⇢ RESUME ORDER — start at 1.
 

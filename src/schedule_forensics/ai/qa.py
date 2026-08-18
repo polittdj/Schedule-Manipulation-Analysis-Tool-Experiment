@@ -54,7 +54,6 @@ from schedule_forensics.engine.change_effects import compute_change_effects
 from schedule_forensics.engine.cpm import CPMResult, offset_to_datetime
 from schedule_forensics.engine.dcma_audit import Citation, ScheduleAudit
 from schedule_forensics.engine.forecast import ForecastSet, compute_finish_forecasts
-from schedule_forensics.engine.manipulation import detect_manipulation
 from schedule_forensics.engine.metrics._common import CheckStatus, MetricResult, non_summary
 from schedule_forensics.engine.metrics.derived import dcma_pass_rate, population_share
 from schedule_forensics.engine.recommendations import Finding
@@ -251,7 +250,11 @@ def _cite(schedule: Schedule, label: str, uids: tuple[int, ...]) -> tuple[Citati
 
 
 def build_workbook_fact_sheet(
-    schedules: list[Schedule], cpms: list[CPMResult]
+    schedules: list[Schedule],
+    cpms: list[CPMResult],
+    *,
+    pair_schedules: list[Schedule] | None = None,
+    pair_cpms: list[CPMResult] | None = None,
 ) -> tuple[CitedStatement, ...]:
     """Cited facts spanning EVERY loaded version — the multi-version pages' ask panel.
 
@@ -265,30 +268,59 @@ def build_workbook_fact_sheet(
     :func:`~schedule_forensics.ai.version_facts.version_series_facts` block is inserted right
     after the frame fact to state the population and carry the per-version S-curve and finish
     series — without it a cross-version question has no cross-version evidence to answer from.
+
+    ADR-0424 adds the pinned :func:`~schedule_forensics.ai.pair_facts.pairwise_comparison_facts`
+    block: the S-curve and finish series span every version, but manipulation is a DIFF signal and
+    nothing walked the diffs, so the newest-two limit survived ADR-0392 in the one dimension the
+    Schedule Integrity page exists for.
+
+    ``pair_schedules`` / ``pair_cpms`` (the ADR-0371 convention :func:`build_briefing` already
+    uses) are the PAIR-scope populations the consecutive-pair diffs run on — filter applied, the
+    session Target UID **never** applied. This is not a stylistic preference: measured on the
+    Project2 → Project5 golden with a target set, diffing the target-truncated populations invents
+    a HIGH-severity "13 activities deleted since the prior version" that the untruncated diff does
+    not report (cone membership read as file changes), and drops a real MANIP_CONSTRAINT_ADDED —
+    while the total signal COUNT is identical either way, so a count-based check cannot see it.
+    ``None`` falls back to the primary populations (correct whenever those are already unscoped).
     """
     from schedule_forensics.ai.briefing import build_briefing  # local: avoid module cycle
+    from schedule_forensics.ai.pair_facts import pairwise_comparison_facts
     from schedule_forensics.ai.version_facts import version_series_facts
 
     briefing = build_briefing(schedules, cpms=cpms)
     facts: list[CitedStatement] = [s for section in briefing.sections for s in section.statements]
-    if facts:  # the frame fact must keep leading; the pinned population block rides behind it
-        facts[1:1] = list(version_series_facts(schedules, cpms))
+    # The pinned population block (ADR-0392) and the pinned consecutive-pair block (ADR-0424)
+    # ride directly behind the frame fact: one says how many versions there are and what each
+    # one's S-curve and finish were, the other says what changed across EVERY update. Neither
+    # can be ranked out of the evidence by a question phrased in none of their words.
+    # the S-curve/finish series read each version on its own, so the SCOPED population is right
+    # for them; the consecutive-pair diffs must never see a target-truncated one (see docstring).
+    diff_schedules = pair_schedules if pair_schedules is not None else schedules
+    diff_cpms = pair_cpms if pair_cpms is not None else cpms
+    pair_facts = list(pairwise_comparison_facts(diff_schedules, diff_cpms))
+    if not pair_facts and len(schedules) >= 2:
+        # The workbook HAS versions to compare but the pair population could not supply them (a
+        # version whose whole network fails to solve is skipped from the pair list even when its
+        # target-truncated form solves). Silence here reads as "no manipulation" — say it instead.
+        pair_facts = [
+            CitedStatement(
+                f"PAIRWISE COMPARISON SERIES: {len(schedules)} version(s) are loaded, but fewer "
+                f"than two of them could be prepared for version-over-version comparison, so NO "
+                f"consecutive-pair manipulation comparison was made. This is missing analysis, "
+                f"NOT an absence of signals.",
+                tuple(
+                    Citation(s.source_file or s.name, 0, s.source_file or s.name) for s in schedules
+                ),
+                pinned=True,
+            )
+        ]
+    frame = list(version_series_facts(schedules, cpms)) + pair_facts
+    if facts:  # the frame fact must keep leading; the pinned blocks ride behind it
+        facts[1:1] = frame
     else:
-        facts = list(version_series_facts(schedules, cpms))
+        facts = frame
     ordered = order_versions(schedules)
     by_obj = {id(s): c for s, c in zip(schedules, cpms, strict=True)}
-    if len(ordered) >= 2:
-        prior, current = ordered[-2], ordered[-1]
-        for finding in detect_manipulation(
-            current, prior, current_cpm=by_obj[id(current)], prior_cpm=by_obj[id(prior)]
-        )[:6]:
-            facts.append(
-                CitedStatement(
-                    f"Manipulation signal (latest pair) [{finding.severity}]: {finding.title}. "
-                    f"{finding.course_of_action}",
-                    finding.citations,
-                )
-            )
     latest, latest_cpm = ordered[-1], by_obj[id(ordered[-1])]
     label = latest.source_file or latest.name
     by_id = latest.tasks_by_id
@@ -321,7 +353,16 @@ def manipulation_forensics_facts(
     shortenings ON the driving path to the focused UID (or on the effective critical path),
     the counterfactual finish if the path-shedding changes were reverted (duration cuts,
     removed logic, dropped constraints), and the focused activity's baseline-vs-current
-    variance. Deterministic; nothing generated."""
+    variance. Deterministic; nothing generated.
+
+    **This is the ANCHOR-PAIR deep dive and it is deliberately one pair** — the counterfactual
+    re-solves the network per detected change, which is the expensive analysis you want aimed at
+    the update under investigation, not swept across the workbook. The complete every-update
+    comparison is :func:`~schedule_forensics.ai.pair_facts.pairwise_comparison_facts` (ADR-0424).
+    Because the two ride the same fact sheet, every statement here that reports an ABSENCE names
+    which comparison it is out of how many: an unscoped "no activity had its duration shortened"
+    reads as a workbook verdict when it is a one-update measurement, and that misreading is the
+    defect ADR-0424 exists to close."""
     from schedule_forensics.engine.driving_slack import compute_driving_slack, driving_path
     from schedule_forensics.engine.path_counterfactual import compute_path_counterfactual
     from schedule_forensics.engine.path_evolution import effective_critical_set
@@ -335,6 +376,16 @@ def manipulation_forensics_facts(
     prior_cpm, cur_cpm = by_obj[id(prior)], by_obj[id(current)]
     cur_label = current.source_file or current.name
     prior_label = prior.source_file or prior.name
+    # ADR-0424: the position of THIS comparison in the consecutive-pair series, stated on every
+    # absence below. Silent on a 2-version workbook, where "the latest pair" IS the whole series.
+    steps = len(ordered) - 1
+    scope = (
+        f" This is comparison {steps} of {steps} (the newest update) in a {len(ordered)}-version "
+        "workbook; it describes THAT update only. See the PAIRWISE COMPARISON SERIES fact for "
+        "every other update."
+        if steps > 1
+        else ""
+    )
     facts: list[CitedStatement] = []
 
     # the path whose protection we are auditing: the 0-driving-slack chain to the focused
@@ -387,7 +438,7 @@ def manipulation_forensics_facts(
         facts.append(
             CitedStatement(
                 f"No incomplete activity on {path_desc} had its duration shortened between "
-                f"{prior_label} and {cur_label}.",
+                f"{prior_label} and {cur_label}.{scope}",
                 cite,
             )
         )
