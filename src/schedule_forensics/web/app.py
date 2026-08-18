@@ -896,7 +896,7 @@ def _ai_translate(texts: list[str], lang: str, backend: AIBackend) -> dict[str, 
     out: dict[str, str] = {}
     for line in raw.splitlines():
         num, sep, es = line.partition("\t")
-        if sep and num.strip().isdigit() and int(num.strip()) < len(texts) and es.strip():
+        if sep and _decimal_digits(num.strip()) and int(num.strip()) < len(texts) and es.strip():
             source = texts[int(num.strip())]
             # Law 2 (audit H1): a translation that drops, invents, or alters ANY numeric figure
             # of its source line is discarded — the caller then keeps the source text verbatim.
@@ -967,12 +967,33 @@ def _polished_narrative(
     return narrative
 
 
+def _decimal_digits(text: str) -> bool:
+    """``str.isdigit()`` corrected to the digits ``int()`` and ``float()`` actually accept.
+
+    ``str.isdigit()`` is **True** for superscripts (``"\u00b2"``) and circled forms (``"\u2460"``)
+    that ``int()`` rejects with ``ValueError``, so an ``isdigit()``-gated conversion is not a guard
+    at all: it lets the value through and then crashes. A fuzz of every route's every declared
+    field found **12 routes across 5 sites** answering 500 to a superscript typed into an ordinary
+    form field (audit 2026-08-16, ``ISDIGIT-INT-500``).
+
+    ``str.isdecimal()`` is the EXACT predicate, and that is measured rather than assumed: across
+    all 788 single-character numeric code points, ``isdecimal()`` disagrees with ``int()`` on
+    **zero**, while ``isdigit()`` disagrees on 128. Narrowing to ASCII instead would have been a
+    different bug — it rejects 650 code points ``int()`` handles fine, including the Arabic-Indic
+    digits, so a value that used to parse would silently stop parsing.
+
+    Callers keep their own sign policy — strip the sign before asking, exactly as with
+    ``isdigit()``.
+    """
+    return text.isdecimal()
+
+
 def _parse_uid(value: str | None) -> int | None:
     """A UniqueID from form/query text — blank, non-numeric, or non-positive means none."""
     if value is None:
         return None
     text = value.strip()
-    if not text.isdigit():
+    if not _decimal_digits(text):
         return None
     uid = int(text)
     return uid if uid > 0 else None
@@ -2321,8 +2342,14 @@ def create_app(
         if not text:
             return JSONResponse({"error": "ask a question"}, status_code=422)
         try:
+            analysis = st.analysis_for(name, sch)
             facts = _schedule_facts(st, name, sch)
-            facts += driving_path_facts(sch, st.analysis_for(name, sch).cpm, text)
+            # ADR-0263: the driving-path engine call must receive the population its CPM was
+            # solved FROM. Pairing the raw schedule with the scoped ``analysis.cpm`` made
+            # ``compute_driving_slack`` raise KeyError on a filtered-out task, which
+            # ``driving_path_summary`` swallows — so every engine driving-path fact vanished
+            # silently under a filter and the model was left to traverse the network itself.
+            facts += driving_path_facts(analysis.scoped, analysis.cpm, text)
             # PAIR versions (operator 2026-08-08): the manipulation facts diff a version pair,
             # so the target must anchor the measurement, never truncate the populations.
             pair_schedules, pair_cpms, _pskipped = _pair_versions()
@@ -2352,8 +2379,14 @@ def create_app(
         if len(st.schedules) == 1:
             key, sch = next(iter(st.schedules.items()))
             try:
+                analysis = st.analysis_for(key, sch)
                 facts = _schedule_facts(st, key, sch)
-                facts += driving_path_facts(sch, st.analysis_for(key, sch).cpm, text)
+                # ADR-0263: the driving-path engine call must receive the population its CPM was
+                # solved FROM. Pairing the raw schedule with the scoped ``analysis.cpm`` made
+                # ``compute_driving_slack`` raise KeyError on a filtered-out task, which
+                # ``driving_path_summary`` swallows — so every engine driving-path fact vanished
+                # silently under a filter and the model was left to traverse the network itself.
+                facts += driving_path_facts(analysis.scoped, analysis.cpm, text)
             except CPMError as exc:
                 return JSONResponse({"error": str(exc)}, status_code=422)
             block = _unrestricted_data_block(st, key, sch) if unrestricted else None
@@ -2377,10 +2410,15 @@ def create_app(
         # unrestricted mode (ADR-0361) feeds the newest version's activity table as raw data
         block = None
         if unrestricted:
-            newest = schedules[-1]
-            newest_key = next((k for k, s in st.schedules.items() if s.name == newest.name), None)
-            if newest_key is not None:
-                block = _unrestricted_data_block(st, newest_key, st.schedules[newest_key])
+            # Resolve the newest ANALYZABLE version by KEY, never by name. Successive updates of
+            # one project share a ``Schedule.name`` — that is what makes them versions of it — so
+            # a name match returned the FIRST (oldest) file while the facts above come from the
+            # newest. Unrestricted mode is deliberately ungated (ADR-0361), so nothing downstream
+            # could catch a figure the model computed off that stale table.
+            for version_key, version_sch in reversed(st.ordered_versions()):
+                block = _unrestricted_data_block(st, version_key, version_sch)
+                if block is not None:
+                    break
         return _ask_response(st, facts, text, data_block=block)
 
     @app.get("/api/driving-path")
@@ -4732,7 +4770,7 @@ def create_app(
         want: list[int] = []
         for tok in uids.split(","):
             tok = tok.strip()
-            if tok.lstrip("-").isdigit():
+            if _decimal_digits(tok.lstrip("-")):
                 want.append(int(tok))
         order = {u: i for i, u in enumerate(want)}
         extra = [c for c in (s.strip() for s in cols.split(",")) if c]
@@ -5401,7 +5439,7 @@ def create_app(
                 st.sra_import_is_error = True
                 return RedirectResponse(url="/sra", status_code=303)
             p = _clamp_float(prob, 0.0, 1.0, 0.0, scale=0.01)
-            cons = int(consequence) if consequence.strip().isdigit() else None
+            cons = int(consequence) if _decimal_digits(consequence.strip()) else None
             st.sra_risk_seq += 1
             st.sra_risks.append(
                 UnifiedRisk(
@@ -5445,8 +5483,8 @@ def create_app(
             return RedirectResponse(url="/sra", status_code=303)
         chosen = _sra_selected(st)
         sch = chosen[1] if chosen is not None else None
-        a = int(after_uid) if after_uid.strip().lstrip("-").isdigit() else None
-        b = int(before_uid) if before_uid.strip().lstrip("-").isdigit() else None
+        a = int(after_uid) if _decimal_digits(after_uid.strip().lstrip("-")) else None
+        b = int(before_uid) if _decimal_digits(before_uid.strip().lstrip("-")) else None
         label = name.strip()
         ok = (
             sch is not None
@@ -5653,7 +5691,7 @@ def create_app(
         lhs_centered: str = Form(""),
     ) -> RedirectResponse:
         st = session()
-        st.sra_focus_uid = int(focus_uid) if focus_uid.strip().isdigit() else None
+        st.sra_focus_uid = int(focus_uid) if _decimal_digits(focus_uid.strip()) else None
         st.sra_occurrence_mode = (
             "exact_overall" if occurrence_mode == "exact_overall" else "random_each"
         )
@@ -5727,7 +5765,7 @@ def create_app(
         st = session()
         f = min(5, max(0, factor))  # factor 0 is valid = no Best/Worst uncertainty
         for tok in re.split(r"[,\s]+", uids.strip()):
-            if tok.isdigit():
+            if _decimal_digits(tok):
                 st.sra_factors[int(tok)] = f
         return RedirectResponse(url="/sra", status_code=303)
 
@@ -5778,7 +5816,7 @@ def create_app(
             tbl = RiskFactorTable(rows=st.sra_factor_rows)
             want: set[int] | None = None
             if scope == "selected":
-                want = {int(t) for t in re.split(r"[,\s]+", uids.strip()) if t.isdigit()}
+                want = {int(t) for t in re.split(r"[,\s]+", uids.strip()) if _decimal_digits(t)}
             for t in non_summary(sch):
                 u = t.unique_id
                 if u not in st.sra_factors or (want is not None and u not in want):

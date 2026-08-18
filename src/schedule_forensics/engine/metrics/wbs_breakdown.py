@@ -131,7 +131,7 @@ def compute_wbs_breakdown(schedule: Schedule) -> tuple[WBSGroup, ...]:
     def sort_key(label: str) -> tuple[int, float, str]:
         if label == _NO_WBS:
             return (2, 0.0, "")
-        if label.isdigit():
+        if label.isdecimal():
             return (0, float(label), "")
         return (1, 0.0, label)
 
