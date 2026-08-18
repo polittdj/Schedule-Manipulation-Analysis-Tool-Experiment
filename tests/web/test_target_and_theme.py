@@ -246,24 +246,95 @@ def test_upload_has_no_file_count_cap(client: TestClient) -> None:
     assert f"Loaded {n}:" in page  # every file accepted
 
 
-def test_every_setup_rail_entry_carries_a_takeaway() -> None:
+def test_every_off_spine_rail_entry_carries_a_takeaway() -> None:
     """ADR-0311: the DoD requires a nav entry WITH a takeaway.
 
-    A numbered chapter surfaces its takeaway through the Continue segue. An off-spine Setup page has
-    no segue by design, so its takeaway had nowhere to go — and all six Setup entries shipped with
+    A numbered chapter surfaces its takeaway through the Continue segue. An off-spine page has no
+    segue by design, so its takeaway had nowhere to go — and all six Setup entries shipped with
     ``""``. They now carry real text, rendered as the nav link's ``title``. Pinned because a
     half-filled rail is exactly the silent-omission class this round was cleaning up: four of six
     would have looked deliberate.
+
+    ADR-0425 split that one mixed rail into FORENSICS / LIBRARY / CONTROL / SETUP, so this walks
+    EVERY off-spine rail rather than the one named "SETUP" — a hand-named rail is a stale list
+    waiting to happen, and a new rail added with blank takeaways would have passed unseen.
     """
+    from schedule_forensics.web.app import _OFF_SPINE, _SPINE
+
+    rails = [(label, chapters) for label, chapters in _SPINE if label in _OFF_SPINE]
+    assert {label for label, _ in rails} == _OFF_SPINE, "an off-spine rail is declared but absent"
+    for label, chapters in rails:
+        missing = [c.label for c in chapters if not c.takeaway.strip()]
+        assert not missing, f"{label} entries with no takeaway: {missing}"
+        # and a takeaway is a sentence, not a label echo
+        for c in chapters:
+            assert c.takeaway != c.label
+            assert c.takeaway.endswith("."), f"{c.label}: takeaway should read as a sentence"
+
+
+def test_off_spine_rails_are_navigable_and_stay_out_of_the_story(client: TestClient) -> None:
+    """ADR-0425: the prototype's FORENSICS / LIBRARY / CONTROL rails, and the invariant that
+    promoting a page to one is a NAV move only.
+
+    Three properties, each of which failed before the split:
+      1. Every off-spine rail renders with its label and its entries' links.
+      2. No off-spine entry enters ``_STORY_ORDER`` — the Continue segue and the progress dashes
+         still walk Import → Mission Control → 01…12 and nothing else.
+      3. Chapter membership is untouched: /integrity and /scorecards still resolve to Chapter 02
+         and /evm to Chapter 07 through ``_TITLE_TO_CHAPTER``, so their kickers do not move.
+    """
+    from schedule_forensics.web.app import _OFF_SPINE, _SPINE, _STORY_ORDER, _TITLE_TO_CHAPTER
+
+    page = client.get("/").text
+    for label in ("FORENSICS", "LIBRARY", "CONTROL", "SETUP"):
+        assert f">{label}</span>" in page, f"{label} rail missing from the nav"
+    for route in ("/integrity", "/workbench", "/evm", "/margin", "/standards", "/scorecards"):
+        assert f'href="{route}"' in page, f"{route} unreachable from the nav"
+
+    # Partition the rails EXHAUSTIVELY. Asserting only "no off-spine page is in the story order"
+    # is circular — both sides read `_OFF_SPINE`, so dropping a rail from it moves the page and
+    # the expectation together and the check stays green (this mutant survived until it didn't).
+    # The story rails are therefore named independently, and every _SPINE section must land in
+    # exactly one of the two sets.
+    story_rails = {
+        "LOAD",
+        "OVERVIEW",
+        "ACT I · SITUATION",
+        "ACT II · DIAGNOSIS",
+        "ACT III · OUTLOOK",
+    }
+    assert {label for label, _ in _SPINE} == story_rails | _OFF_SPINE
+    assert not (story_rails & _OFF_SPINE)
+    assert [c.label for c in _STORY_ORDER] == [
+        c.label for label, chs in _SPINE if label in story_rails for c in chs
+    ]
+    assert [c.num for c in _STORY_ORDER if c.num] == [f"{n:02d}" for n in range(0, 13)]
+
+    assert _TITLE_TO_CHAPTER["Schedule Integrity"].num == "02"
+    assert _TITLE_TO_CHAPTER["Assessment Scorecards"].num == "02"
+    assert _TITLE_TO_CHAPTER["EVM"].num == "07"
+
+
+def test_per_file_rail_entries_are_skipped_until_a_file_is_loaded(client: TestClient) -> None:
+    """ADR-0425: `@wbs` / `@card` have no URL before an import, so the LIBRARY rail must DROP
+    them rather than render them pointing at "/" — the "skipped, not broken" rule the folded beats
+    and the role Start-here cards already follow (ADR-0255). A dead link that silently lands on the
+    dropzone is the failure this guards."""
     from schedule_forensics.web.app import _SPINE
 
-    setup = next(chapters for label, chapters in _SPINE if label == "SETUP")
-    missing = [c.label for c in setup if not c.takeaway.strip()]
-    assert not missing, f"Setup entries with no takeaway: {missing}"
-    # and a takeaway is a sentence, not a label echo
-    for c in setup:
-        assert c.takeaway != c.label
-        assert c.takeaway.endswith("."), f"{c.label}: takeaway should read as a sentence"
+    empty = client.get("/").text
+    assert ">LIBRARY</span>" in empty  # the rail still renders — Workbench and EVM resolve
+    assert "WBS Rollup" not in empty
+    assert "Schedule ID Card" not in empty
+
+    _upload(client, "Project5")
+
+    loaded = client.get("/").text
+    assert "WBS Rollup" in loaded and "Schedule ID Card" in loaded
+    assert 'href="/wbs/Project5"' in loaded and 'href="/card/Project5"' in loaded
+    # and the promoted entries are the ONLY place those routes appear in the nav now
+    library = next(chs for label, chs in _SPINE if label == "LIBRARY")
+    assert {c.route for c in library} == {"/workbench", "@wbs", "@card", "/evm"}
 
 
 def test_rank12_pages_all_carry_a_takeaway_and_a_context_line() -> None:

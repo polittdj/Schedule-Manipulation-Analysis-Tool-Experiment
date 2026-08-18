@@ -66,7 +66,10 @@ def test_main_wires_serve_and_opens_browser() -> None:
     )
     assert served["host"] == "127.0.0.1" and served["port"] == 12345
     assert served["app"] is not None  # the FastAPI app was constructed and passed to serve
-    assert opened == ["http://127.0.0.1:12345"]  # browser opened at the served URL
+    # ADR-0426: the browser opens on the BOOT SCREEN, not the deck root. /launch redirects
+    # itself to "/" when the operator has persisted the skip preference, so the opt-out costs
+    # one client-side replace() rather than a server-side branch here.
+    assert opened == ["http://127.0.0.1:12345/launch"]  # browser opened at the served URL
 
 
 def test_main_can_skip_browser() -> None:

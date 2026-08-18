@@ -35,7 +35,12 @@ def client() -> TestClient:
 
 
 def test_evm_in_nav(client: TestClient) -> None:
-    assert '<a href="/evm">EVM</a>' in client.get("/").text
+    """ADR-0425 moved /evm off the folded chapter-07 beat (`<a href="/evm">EVM</a>`) and onto the
+    LIBRARY rail, so it renders as a full nav entry now. The page must still be reachable from the
+    nav and still be labelled EVM — assert those two properties, not the old markup."""
+    page = client.get("/").text
+    assert '<a class="nav-chapter" href="/evm"' in page
+    assert "<span class=ch-label>EVM</span>" in page
 
 
 def test_evm_empty_session_prompts_load() -> None:

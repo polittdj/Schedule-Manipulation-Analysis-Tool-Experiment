@@ -314,7 +314,10 @@ def test_an_unclaimable_port_relocates_instead_of_refusing_to_start() -> None:
 
     assert served, "the launcher refused to serve — the operator is locked out"
     assert served[0] != 8321, "the CONTESTED port was bound (ADR-0334 safety property broken)"
-    assert opened and opened[0].endswith(f":{served[0]}"), (
+    # ADR-0426 appended /launch, so the port is no longer the tail of the URL — assert the
+    # WHOLE origin instead of a suffix, which keeps this checking the thing it always meant
+    # (the browser lands on the port actually served) rather than the shape of the string.
+    assert opened and opened[0] == f"http://127.0.0.1:{served[0]}/launch", (
         f"the browser must open onto the port actually served: {opened} vs {served}"
     )
 

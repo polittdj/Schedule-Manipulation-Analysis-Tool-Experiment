@@ -14957,3 +14957,58 @@ changes every Ask answer in all three modes and belongs with the figure-gate adv
   wrong figure to compare against — an inherited number is testimony). 4262 + **37** newly
   collected tests = **4299**, which is exactly the final run, and exactly the first run's
   4298 passed + 1 failed. Same 5 pre-existing skips in both.
+
+---
+
+## 2026-08-18 (c) — Design handoff: four nav rails + the Boot Screen (ADR-0425/0426)
+
+Two slices from the Claude Design bundle, **rebased onto `89cd5d8`** after discovering mid-session
+that `origin/main` had moved by two commits (#598 BROWSER-ORPHAN-01, #599 IMP-01). Both ADR
+numbers I had used were already taken; renumbered **0418 → 0421** and **0419 → 0422**.
+
+**ADR-0425 — four nav rails.** The deck groups non-story pages into FORENSICS / LIBRARY / CONTROL
+/ SETUP; the repo shipped one mixed `SETUP` rail with five pages reachable only as folded beats.
+Nav placement only — chapter membership rides `titles`/`chapter=`, never `beats`. Off-spine is now
+declared in `_OFF_SPINE`. Six mutants; M4 SURVIVED against a circular guard ("no `_OFF_SPINE` page
+is in `_STORY_ORDER`" reads the same set on both sides) and the rewrite names the five story rails
+independently.
+
+**ADR-0426 — the Boot Screen at `/launch`.** The deck's particle lightshow, four morphing scenes,
+staged transit, welcome panel; the launcher opens the browser there. The only route outside
+`_page`, so `_cui_marking()` and `_compliance_drawer()` were extracted — one copy of the
+CUI/ITAR/EAR notice in the tree, asserted byte-identical across both renders. Real session facts
+on the telemetry tiles, `—` when unknown, never `0`. Dark ground in every theme, recorded in
+`DESIGN-SYSTEM.md` §7a as a bounded, measured, non-precedent departure. 31 tests (15 content, 16
+real-Chromium), 11 mutants all red.
+
+**Three errors worth the space.**
+
+1. **The mutation harness was the defect.** First battery: 6 of 10 SURVIVED. The sandbox's tests
+   imported the *installed* package from the real tree — `pip install -e` beats a bare CWD on
+   `sys.path` — so every Python mutation missed its subject, and the four that did go red were
+   the JS/launcher ones whose guards read files by path. That pattern made it look like "the
+   Python guards are weak" rather than "the harness is wrong". Fixed by probing `module.__file__`.
+   The number was never reported as a finding while the instrument was unverified.
+
+2. **I branched off a stale `main` and did not re-fetch for hours.** CLAUDE.md says `git fetch
+   origin` before branching; I did not, and paid for it with an ADR-number collision, a version
+   collision, and — worse — a *false finding*. I reported 5 browser-test failures as "pre-existing
+   BROWSER-ORPHAN-01, probably deserves its own session"; that session was already merged as #598.
+   My verification was rigorous against the wrong baseline: I diffed against my own local `main`
+   and called it pristine. **A pristine worktree is only pristine relative to a ref you have
+   re-fetched.**
+
+3. **#598's new guard caught this work's own test file.** `test_boot_screen_chromium.py` pinned
+   `/opt/pw-browsers` with a `skipif` — exactly the pattern #598 removed from 24 modules holding
+   94 never-executed tests. `tests/guards/test_browser_resolver.py` went red on the rebase; the
+   module now uses `web.browser_chrome.chrome_kwargs()`.
+
+Also: `ruff`'s SIM222 flagged an `assert ... or True` I had written inside the "the scene keeps
+moving" test — always true. Replaced with a two-sample comparison, mutation-proven (M11).
+
+**Gate.** Statics green (ruff whole tree · ruff-format 552 files · mypy strict 156 files · bandit
+exit 0 · `node --check` per file). Full suite **4279 passed / 5 skipped / 0 failed / 38:52**.
+Playwright and a vendored chromium are both present here, so #598's newly un-orphaned browser
+tests and this session's 16 all executed rather than skipping.
+
+ADR-0425, ADR-0426. **v1.0.212 → v1.0.215**, SCHEMA unchanged, wheel + nine installers rebuilt.

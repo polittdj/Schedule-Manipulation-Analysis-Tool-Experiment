@@ -57,9 +57,23 @@ nav (left rail on dark themes / top bar on daylight) → main → CUI bar (botto
   the plan? → Act II · Diagnosis: 03 What drives the date · 04 How stable is the path ·
   05 How it moved · 06 Work piling up · 07 How we execute · 08 Who is overloaded →
   Act III · Outlook: 09 Where it lands · 10 What changed · 11 What could go wrong ·
-  12 The briefing. Utilities (Groups & Filters, AI Settings, Metric Dictionary) live
-  in a **Setup** nav group off the spine. New pages must be given a place in this
-  narrative (or live under Setup, outside the story).
+  12 The briefing.
+- Off-spine rails (ADR-0425, per the v2 prototype): pages outside the story sit in one
+  of **four** named nav groups — **Forensics** (Schedule Integrity), **Library** (Metric
+  Workbench, WBS Rollup, Schedule ID Card, EVM), **Control** (Margin Dashboard,
+  Standards & Execution, Assessment Scorecards) and **Setup** (Groups & Filters, AI
+  Settings, Metric Dictionary). New pages must be given a place in the narrative, or a
+  rail — and a rail is chosen by what the page *is*, not by what is convenient: an
+  analysis surface never lands in Setup.
+- Rail membership is nav **placement only**. A page's chapter comes from its `_page`
+  title / explicit `chapter=`, never from where its link renders, so a page may sit on a
+  rail and still be a chapter drill (`/integrity` is a Chapter-02 page on the Forensics
+  rail). Off-spine membership is **declared** in `_OFF_SPINE`, never inferred from a
+  label — a rail omitted from that set silently joins the Continue segue and the progress
+  dashes.
+- A rail entry whose route cannot resolve yet (`@wbs` / `@card` with nothing loaded) is
+  **skipped, not rendered pointing at `/`** — the same rule ADR-0255 gives the role
+  Start-here cards. Never ship a nav entry for a screen that does not exist.
 
 ## 3. Panel anatomy
 Head: `h2` (12px display, uppercase) + one-line muted description ("what am I looking
@@ -135,6 +149,31 @@ marking (see the briefing .doc pattern).
 - [ ] No engine/calculation change; every displayed number traces to the engine payload;
       missing values show `—`, never a fabricated figure
 - [ ] Any sound follows the audio rule (§8): synthesized, gesture-primed, visibly controllable
+
+## 7a. The Boot Screen (`/launch`, ADR-0426) — the one page outside the shell
+The startup lightshow is the **only** route that does not render through `_page`. A boot
+screen with a nav rail is a dashboard with a picture on it, so it has no nav, no chapter
+kicker, no Continue segue — and therefore §7's chapter checklist does not apply to it. Four
+rules do:
+- **Compliance chrome is not optional off the shell.** Both CUI bars come from
+  `_cui_marking(state)` and the drawer from `_compliance_drawer(state)` — the SAME functions
+  `_page` uses, so the notice cannot drift. There is exactly one copy of the CUI/ITAR/EAR
+  prose in the tree; if you ever need a second, you need a shared function instead.
+- **Cinema does not license invented numbers.** The prototype's telemetry counts down
+  "225.4 M km" and "14 pre-flight checks" with nothing behind either. §7's rule holds here
+  too: the tiles read real session facts, and an unknown renders `—`, never `0`.
+- **The ground is dark in every theme — the one sanctioned departure from theme-following.**
+  An additive particle field adds light to a dark ground and has no light-mode equivalent
+  (daylight renders as a grey smear with unreadable ink — measured, not assumed). The stage
+  carries its own `--boot-*` surface tokens, declared in `launch.css`, which only this page
+  loads. The themes still differentiate through `--boot-accent` / `--boot-warm`. **This is
+  not a precedent for other pages**: any other screen that wants to stop following the theme
+  needs its own ADR.
+- **Reduced motion means STILL, not BLANK.** Compose one frame and never re-arm the loop; skip
+  the transit rather than making someone wait through it. A screen that renders nothing under
+  `prefers-reduced-motion` has not honored it — it has removed itself.
+
+Any new full-bleed or animated surface answers all four before it ships.
 
 ## 8. Audio (the Boot Audio Hum rule — ADR-0328)
 Sound in this tool is SYNTHESIZED WebAudio, never a shipped asset (the air-gap and the lean

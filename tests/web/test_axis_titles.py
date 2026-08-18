@@ -53,6 +53,9 @@ EXEMPT = {
     "globe.js",
     "groups.js",
     "heartbeat.js",
+    # ADR-0426: the boot screen's particle lightshow. A canvas of decorative motion, not a
+    # data visual — it plots nothing, so it has no axis to caption.
+    "launch.js",
     "hints.js",
     "home.js",
     "launch_audio.js",

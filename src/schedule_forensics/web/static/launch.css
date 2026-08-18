@@ -1,0 +1,326 @@
+/* Schedule Forensics — the Boot Screen (ADR-0426).
+ *
+ * Only this file styles /launch, and only /launch loads it — which is why the boot palette can
+ * be declared on :root here without leaking into any other page.
+ *
+ * THE ONE DELIBERATE DEPARTURE FROM "follow the theme". The lightshow is an ADDITIVE particle
+ * field: it works by adding light to a dark ground. On daylight it has no equivalent — inverting
+ * it produces a grey smear with the theme's dark ink sitting unreadable on top of it (measured,
+ * not assumed: the first daylight render of this screen was exactly that). So the boot stage
+ * carries its OWN dark surface in every theme, declared as tokens below, and the four themes
+ * differentiate it through the accent/warm pair the particles are coloured from — apollo boots
+ * amber, jarvis boots its HUD cyan. Nothing here hard-codes a colour at a call site; the rule
+ * "nothing styles itself" holds, the ground is simply the boot screen's own rather than the
+ * page's. Every other route is untouched by this file.
+ *
+ * daylight is the one theme whose --accent (a deep blue for white paper) is too dark to read as
+ * emitted light, so it alone re-points --boot-accent at the console blue.
+ */
+
+:root {
+  --boot-ground: #05080f;
+  --boot-ink: #e9f2fb;
+  --boot-muted: #93a4b8;
+  --boot-line: rgba(255, 255, 255, .14);
+  --boot-scrim: rgba(0, 0, 0, .72);
+  --boot-glass: rgba(0, 0, 0, .55);
+  /* what the particles are coloured from — read by launch.js via getComputedStyle */
+  --boot-accent: var(--accent);
+  --boot-warm: var(--warn);
+}
+html[data-theme=daylight], html[data-theme=light] {
+  --boot-accent: #4aa3ff;
+  --boot-warm: #d29922;
+}
+
+.boot-body {
+  margin: 0;
+  /* EXACTLY the viewport, never `min-height`. With min-height the stage grows past the fold on a
+     short viewport and pushes the BOTTOM marking bar off-screen — measured on apollo at
+     1180×720, where the uppercase mono type is tallest. The marking must be on the page the
+     operator can actually see, so the stage scrolls inside itself and the bars never move. */
+  height: 100vh;
+  background: var(--boot-ground);
+  color: var(--boot-ink);
+  font-family: system-ui, -apple-system, "Barlow", "Segoe UI", sans-serif;
+  overflow: hidden;
+  /* The CUI bars are chrome that must never be covered (design system §6). Making the body the
+     flex column and the stage the growing middle child means the bars are LAID OUT, not
+     overlaid — the lightshow can never paint over a marking, at any viewport. */
+  display: flex;
+  flex-direction: column;
+}
+
+/* base.css indents the banners by the width of the left nav rail on the three dark themes.
+   This page has no nav rail, so that indent would leave a bar floating off-centre with bare
+   background beside it. The override is scoped to .boot-body and exists for no other reason. */
+.boot-body > .cui-banner,
+.boot-body > .compliance-drawer { margin-left: 0 !important; flex: 0 0 auto; }
+
+/* The drawer is required chrome (§6) but it is not the point of this screen: collapsed it is one
+   hairline summary under the top bar, and opening it scrolls inside itself rather than pushing
+   the lightshow off the viewport. */
+.boot-body > .compliance-drawer { max-height: 42vh; overflow-y: auto; }
+
+#sfBoot {
+  position: relative;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+#sfBootCanvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  z-index: 0;
+}
+
+.boot-stage {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 5vh 24px 18px;
+  pointer-events: none;
+  min-height: 0;
+  /* The stage, not the document, absorbs overflow — so a short viewport scrolls the CONTENT and
+     leaves both marking bars pinned where they belong. */
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Anything the operator can actually hit re-enables pointer events; the stage itself stays
+   transparent to the mouse so the lightshow is never "in the way". */
+.boot-stage button,
+.boot-stage label,
+.boot-stage input,
+.boot-controls,
+.boot-actions,
+.boot-dots { pointer-events: auto; }
+
+/* The copy sits ON the lightshow, so it carries its own scrim. Without it the helix's white-hot
+   knots cross the headline and the h1 stops being readable — the canvas vignette alone is not
+   enough, because the scene keeps moving under fixed text. Radial, so it has no visible edge. */
+.boot-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  opacity: 1;
+  transition: opacity .55s ease;
+  max-width: 72ch;
+  padding: 18px 34px 22px;
+  border-radius: 24px;
+  background: radial-gradient(ellipse at 50% 45%, var(--boot-scrim) 0%, rgba(0,0,0,.6) 55%, rgba(0, 0, 0, 0) 100%);
+}
+.boot-hero.fading { opacity: 0; }
+
+.boot-kicker {
+  font-family: ui-monospace, "IBM Plex Mono", Consolas, monospace;
+  font-size: 11px;
+  letter-spacing: .34em;
+  color: var(--boot-accent);
+  text-transform: uppercase;
+}
+
+.boot-h1 {
+  margin: 14px 0 16px;
+  font-family: "Barlow Semi Condensed", "Barlow", system-ui, sans-serif;
+  font-weight: 600;
+  font-size: clamp(28px, 4.4vw, 48px);
+  line-height: 1.14;
+  letter-spacing: -.015em;
+  color: var(--boot-ink);
+}
+
+.boot-sub {
+  margin: 0;
+  max-width: 60ch;
+  font-size: clamp(12.5px, 1.15vw, 14.5px);
+  line-height: 1.65;
+  color: var(--boot-muted);
+  text-wrap: pretty;
+}
+
+/* ── telemetry tiles ─────────────────────────────────────────────────────────────────────────
+   Three facts about the session, not three counters. Every value here is served from the boot
+   JSON block; a value the session cannot supply renders as an em dash (design system §7). */
+.boot-tel {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  width: min(920px, 92vw);
+  margin: 26px 0 0;
+}
+.boot-tel > div {
+  border: 1px solid var(--boot-line);
+  border-radius: 8px;
+  /* Opaque enough that a bright particle passing behind a tile cannot make a DIGIT ambiguous.
+     These are the page's only real numbers; legibility beats glass. */
+  background: var(--boot-glass);
+  padding: 9px 12px;
+  text-align: left;
+  min-width: 0;
+}
+.boot-tel-k {
+  font-family: ui-monospace, "IBM Plex Mono", Consolas, monospace;
+  font-size: 9px;
+  letter-spacing: .14em;
+  color: var(--boot-muted);
+}
+.boot-tel-v {
+  font-family: ui-monospace, "IBM Plex Mono", Consolas, monospace;
+  font-size: 15px;
+  color: var(--boot-ink);
+  overflow-wrap: break-word;
+}
+
+.boot-controls {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  align-items: center;
+  margin-top: 20px;
+  flex-wrap: wrap;
+  font-family: ui-monospace, "IBM Plex Mono", Consolas, monospace;
+  font-size: 9px;
+  letter-spacing: .14em;
+  color: var(--boot-muted);
+}
+.boot-controls input[type=range] { width: 90px; accent-color: var(--boot-accent); }
+.boot-controls label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+
+.boot-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+.boot-go, .boot-alt {
+  border-radius: 999px;
+  font-size: 14px;
+  padding: 13px 26px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.boot-go {
+  background: var(--boot-accent);
+  border: 1px solid var(--boot-accent);
+  color: #04111f;
+  font-weight: 700;
+  letter-spacing: .08em;
+}
+.boot-alt {
+  background: var(--boot-glass);
+  border: 1px solid var(--boot-line);
+  color: var(--boot-muted);
+  padding: 13px 22px;
+}
+.boot-alt:hover { color: var(--boot-ink); border-color: var(--boot-accent); }
+
+.boot-dots { display: flex; gap: 7px; align-items: center; margin-top: 18px; }
+.boot-dots button {
+  width: 26px; height: 4px; border-radius: 2px; border: 0; padding: 0;
+  background: var(--boot-line); cursor: pointer;
+}
+.boot-dots button.on { background: var(--boot-accent); }
+
+.boot-never {
+  margin-top: 14px;
+  font-size: 12px;
+  color: var(--boot-muted);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+}
+
+/* ── phases ─────────────────────────────────────────────────────────────────────────────────
+   One element tree, three states, driven by a class on #sfBoot. No markup is created or
+   destroyed mid-transit, so nothing can reflow under the operator mid-animation. */
+.boot-travel, .boot-ready { display: none; }
+#sfBoot.is-travel .boot-parked { display: none; }
+#sfBoot.is-travel .boot-travel { display: block; }
+#sfBoot.is-ready .boot-parked,
+#sfBoot.is-ready .boot-hero,
+#sfBoot.is-ready .boot-travel { display: none; }
+#sfBoot.is-ready .boot-ready { display: block; }
+
+.boot-stagelabel {
+  margin-top: 26px;
+  font-family: ui-monospace, "IBM Plex Mono", Consolas, monospace;
+  font-size: 15px;
+  letter-spacing: .3em;
+  color: var(--boot-accent);
+}
+.boot-stagenote {
+  margin-top: 9px;
+  font-family: ui-monospace, "IBM Plex Mono", Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: .14em;
+  color: var(--boot-muted);
+}
+
+.boot-ready { width: min(1000px, 94vw); text-align: left; }
+.boot-ready-kick {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 8px;
+  font-family: ui-monospace, "IBM Plex Mono", Consolas, monospace;
+  font-size: 11px; letter-spacing: .12em; color: var(--ok);
+}
+.boot-ready-kick i {
+  width: 8px; height: 8px; border-radius: 999px; background: var(--ok); display: inline-block;
+}
+.boot-ready h2 {
+  margin: 0 0 6px;
+  font-family: "Barlow Semi Condensed", "Barlow", system-ui, sans-serif;
+  font-size: clamp(24px, 3.4vw, 40px); line-height: 1.05; letter-spacing: -.03em; font-weight: 700;
+  color: var(--boot-ink);
+}
+.boot-ready p.lede {
+  margin: 0 0 14px;
+  font-size: clamp(15px, 1.7vw, 22px); line-height: 1.25; color: var(--boot-accent); font-weight: 500;
+}
+.boot-quick { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; }
+.boot-quick button {
+  text-align: left;
+  background: var(--boot-glass);
+  border: 1px solid var(--boot-line);
+  border-radius: 10px;
+  padding: 14px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.boot-quick button:hover { border-color: var(--boot-accent); }
+.boot-quick .qk {
+  font-family: ui-monospace, "IBM Plex Mono", Consolas, monospace;
+  font-size: 10px; letter-spacing: .1em; color: var(--boot-accent); margin-bottom: 6px;
+}
+.boot-quick .qt { font-size: 15px; line-height: 1.35; color: var(--boot-ink); margin-bottom: 5px; }
+.boot-quick .qs { font-size: 12px; line-height: 1.45; color: var(--boot-muted); }
+
+/* Focus must stay visible on a dark cinematic backdrop — the ring token, never a colour. */
+#sfBoot button:focus-visible,
+#sfBoot input:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* The whole screen is decorative motion. Someone who has asked the platform for less of it
+   gets the composed still frame the script paints, and no CSS transition on top of it. */
+@media (prefers-reduced-motion: reduce) {
+  .boot-hero { transition: none; }
+}
+
+@media print {
+  #sfBootCanvas { display: none; }
+  #sfBoot { position: static; }
+}

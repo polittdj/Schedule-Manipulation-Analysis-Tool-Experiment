@@ -325,7 +325,13 @@ def main(
             threading.Thread(target=reconcile, daemon=True, name="sf-ollama-reconcile").start()
 
     if open_browser:
-        timer(_BROWSER_DELAY, browser, args=(url,)).start()
+        # ADR-0426: the browser opens on the BOOT SCREEN, not the dropzone. /launch is the
+        # program's front door — it redirects itself to "/" the moment it reads the operator's
+        # persisted "go straight to the deck" choice, so opting out costs one client-side
+        # replace() and never a flash of the lightshow. Everything else — bookmarks, the printed
+        # `url` below, every in-app link — still points at the deck root, so the boot screen is
+        # reachable exactly once per launch and never gets between the operator and a page.
+        timer(_BROWSER_DELAY, browser, args=(f"{url}/launch",)).start()
     try:
         serve_fn(create_app(auto_shutdown=True, ollama=manager), host=host, port=chosen_port)
     finally:

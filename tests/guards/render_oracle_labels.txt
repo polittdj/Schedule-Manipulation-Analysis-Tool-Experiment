@@ -40,6 +40,7 @@
 [empty] GET /healthz
 [empty] GET /help
 [empty] GET /integrity
+[empty] GET /launch
 [empty] GET /margin
 [empty] GET /mission
 [empty] GET /openapi.json
@@ -178,6 +179,7 @@
 [loaded] GET /healthz
 [loaded] GET /help
 [loaded] GET /integrity
+[loaded] GET /launch
 [loaded] GET /margin
 [loaded] GET /mission
 [loaded] GET /openapi.json
@@ -328,6 +330,7 @@
 [target] GET /healthz
 [target] GET /help
 [target] GET /integrity
+[target] GET /launch
 [target] GET /margin
 [target] GET /mission
 [target] GET /openapi.json
@@ -478,6 +481,7 @@
 [cleared] GET /healthz
 [cleared] GET /help
 [cleared] GET /integrity
+[cleared] GET /launch
 [cleared] GET /margin
 [cleared] GET /mission
 [cleared] GET /openapi.json
@@ -628,6 +632,7 @@
 [resloaded] GET /healthz
 [resloaded] GET /help
 [resloaded] GET /integrity
+[resloaded] GET /launch
 [resloaded] GET /margin
 [resloaded] GET /mission
 [resloaded] GET /openapi.json
@@ -778,6 +783,7 @@
 [ceidark] GET /healthz
 [ceidark] GET /help
 [ceidark] GET /integrity
+[ceidark] GET /launch
 [ceidark] GET /margin
 [ceidark] GET /mission
 [ceidark] GET /openapi.json
@@ -928,6 +934,7 @@
 [allcomplete] GET /healthz
 [allcomplete] GET /help
 [allcomplete] GET /integrity
+[allcomplete] GET /launch
 [allcomplete] GET /margin
 [allcomplete] GET /mission
 [allcomplete] GET /openapi.json
@@ -1078,6 +1085,7 @@
 [aiconfig] GET /healthz
 [aiconfig] GET /help
 [aiconfig] GET /integrity
+[aiconfig] GET /launch
 [aiconfig] GET /margin
 [aiconfig] GET /mission
 [aiconfig] GET /openapi.json
