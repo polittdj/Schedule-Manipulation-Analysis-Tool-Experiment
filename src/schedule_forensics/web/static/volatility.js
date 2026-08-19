@@ -419,8 +419,24 @@
     var W = 460, H = 240;
     var svg = frame("volRibbon", W, H, "Critical-path transition flow");
     if (!svg) return;
-    var k = Math.max(1, cursor);
-    var p = PAIRS[k - 1];
+    /* The cursor names a VERSION; this panel draws the transition INTO that version, i.e.
+       PAIRS[cursor - 1]. The first loaded version has no predecessor, so there is no such
+       transition. This used to clamp with Math.max(1, cursor), which made cursor 0 borrow
+       PAIRS[0] — the pair belonging to cursor 1. Two things followed (ADR-0428): the opening
+       click of Next changed nothing, because the baseline was already showing the second
+       position's ribbon; and the baseline printed stayed/left figures for a change that had
+       not happened. A panel may not state figures for a population it is not on. */
+    if (cursor === 0) {
+      var v0 = V[0] ? V[0].label : "";
+      var t0 = txt(svg, W / 2, H / 2 - 8, v0, { anchor: "middle", size: 12, weight: 600, fill: "var(--ink)" });
+      t0.setAttribute("data-no-i18n", "");
+      txt(svg, W / 2, H / 2 + 14, "baseline \u2014 no preceding version to transition from",
+        { anchor: "middle", size: 10, fill: "var(--muted)" });
+      txt(svg, W / 2, H / 2 + 32, "step forward to see what joined and left the path",
+        { anchor: "middle", size: 10, fill: "var(--muted)" });
+      return;
+    }
+    var p = PAIRS[cursor - 1];
     var leftTotal = p.stayed + p.left, rightTotal = p.stayed + p.entered;
     var most = Math.max(leftTotal, rightTotal, 1);
     var colW = 46, x0 = 70, x1 = W - 70 - colW, top = 40, span = H - top - 34;

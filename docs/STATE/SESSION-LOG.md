@@ -15072,3 +15072,85 @@ as a SQL `UPDATE…SET`. Reworded the prose rather than adding a `# nosec`: supp
 check to keep a word is the wrong trade.
 
 ADR-0427. **v1.0.215 → v1.0.216**, SCHEMA unchanged, wheel + nine installers rebuilt.
+
+---
+
+## 2026-08-18 (b) — Chapter 04: an independent oracle, and one interaction defect
+
+Operator reported "I don't believe the How stable is the path page is working correctly" and asked
+for pass/fail tests across the tool.
+
+**The gap that mattered.** ADR-0427's guards are structural — they compare the tool to itself.
+Added `tests/web/test_ch04_stability_oracle.py` (14 tests): schedules whose critical membership is
+pinned by `stored_is_critical`, with every expected figure derived by hand. Covers per-pair
+Jaccard, stayed/entered/left plus their UIDs, tenure, longest streak, flips, per-version counts,
+row ordering, the headline percentage, and the rendered page. FAIL-side cases: a path rebuilt every
+update must report 0%; an identical path 100%; a completed activity must leave the path; one
+version must report unknown (em dash) not 0; an empty critical set must give an undefined
+similarity rather than 0.0 or a crash.
+
+**Result: the arithmetic is correct.** Seven mutants (wrong Jaccard denominator, one-directional
+flips, streak conflated with tenure, mean→max, entered/left swapped, completed work retained,
+undefined reported as zero) — all red.
+
+**M5 survived first, and the fixture was the defect**: every pair had `entered == left`, so
+swapping the labels changed nothing. Added a lopsided pair; the mutant dies.
+
+**The real finding is behavioural.** The version cursor's first position has no preceding version
+and clamps to the FIRST transition, so cursor 1 and cursor 2 render an identical ribbon — the
+opening click of Next appears to do nothing, and at cursor 1 the panel states a transition that has
+not occurred. **Pre-existing**: `/volatility` reproduces it exactly (shared chart module), so it was
+surfaced by ADR-0427's page, not caused by it. Fix deferred pending the operator's confirmation
+that this is the symptom, because the change touches shared JS and would alter `/volatility` too.
+
+Tests only — no shipped code changed, so no version bump and no wheel rebuild.
+
+---
+
+## 2026-08-19 (a) — Chapter 04: an independent oracle, and the ribbon cursor fix (ADR-0428)
+
+Operator: *"I don't believe the How stable is the path page is working correctly. Create pass and
+fail tests to test all aspects of the tool."*
+
+**Part 1 — the oracle.** Every prior guard for the stability band is structural: panels mount,
+scope words present, both pages embed the same dataset. All of them pass if the arithmetic is
+wrong, because they compare the tool to ITSELF. `tests/web/test_ch04_stability_oracle.py` (14
+tests) pins critical membership with `stored_is_critical` and derives every expectation by hand.
+PASS cases: per-pair Jaccard, stayed/entered/left plus UIDs, tenure, longest streak, flips,
+per-version counts, row order, headline percentage, rendered page. FAIL cases: rebuilt path → 0%,
+identical path → 100%, completed activity leaves the path, single version → unknown (em dash) not
+0, empty critical set → undefined not 0.0 and not a crash. **Seven mutants all red. The arithmetic
+is correct** — nothing wrong was found in the numbers.
+
+**The swap mutant survived the first battery, and the fixture was the defect.** Every pair had
+`entered == left`, so exchanging the two labels changed nothing measurable. Added a lopsided pair
+(two join, none leave); the mutant dies. *A fixture that cannot distinguish two quantities is not
+testing either of them.*
+
+**Part 2 — ADR-0428, the real defect, in the control.** `drawRibbon` used `Math.max(1, cursor)`,
+so cursor 0 and cursor 1 both rendered `PAIRS[0]`. Measured: cursors 1 and 2 produced BYTE-IDENTICAL
+output, so the opening click of Next did nothing, and the baseline printed "33 stayed / 1 left"
+under the heading `v1 → v2` while the cursor was on v1 alone — a change that had not happened.
+The baseline now names itself and prints no figures. **Pre-existing**: `/volatility` reproduced it
+exactly (shared module), so ADR-0427 surfaced it rather than causing it. Both routes asserted.
+
+Six chromium tests (3 claims × 2 routes), **all observed red first**, with the failure printing the
+identical-output assertion verbatim. One of them was too crude and failed on the FIX's own helper
+copy ("step forward to see what joined and left the path") because it banned the bare words; the
+claim is that no FIGURE is stated, so it now matches `(?:stayed|joined|left)\s+\d+`. A test that
+fails on correct explanatory prose is a test defect — the fix is not to delete the prose.
+
+**Two gate failures, both mine, both refuting a check I had already made.** (1) I asserted
+`volatility.js` carries no md5 pin — it DOES, in `PAGE_SCRIPTS`; my grep window was 12 lines and
+stopped two entries short. Digest re-baselined with the required justification. (2) The new browser
+module pinned the vendored browser directory in a `skipif`, copied from a pattern ADR-0418 retired,
+so it would have SKIPPED on CI — the guard against this defect would never have run where it counts.
+Now uses `chrome_kwargs()`. *A sweep whose window is too small under-reports while looking
+exhaustive.*
+
+**Why the oracle could not have caught it:** the dataset was always correct — the right pairs in
+the right order — and the defect was purely which correct pair a control chose to display. No
+data-level test can see that. It took walking the control in a browser, which is exactly the step
+one is tempted to skip when every number checks out.
+
+ADR-0428. **v1.0.216 → v1.0.217**, SCHEMA unchanged, wheel + nine installers rebuilt.

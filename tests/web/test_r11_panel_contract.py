@@ -478,8 +478,14 @@ PAGE_SCRIPTS = {
     # DELIBERATE re-baseline (ADR-0329, batch 3c-i): volatility.js's four axis charts (churn /
     # flow / area / dwell) joined the shared caption helper, two hand-rolled quasi-captions
     # retired into it, and the dwell count labels + rotated version ticks now yield to the
-    # caption bands. 0d38b34ee6d2824125b498b196473a4c → the digest below.
-    "volatility.js": "67a625584f35c78f067ae27446883d2a",
+    # caption bands. 0d38b34ee6d2824125b498b196473a4c → 67a625584f35c78f067ae27446883d2a.
+    # DELIBERATE re-baseline (ADR-0428): drawRibbon stopped clamping its pair index with
+    # Math.max(1, cursor), which had made the FIRST version borrow the second's transition — the
+    # opening click of Next changed nothing and the baseline printed stayed/left figures for a
+    # change that never happened. The diff is that one index plus an early branch that names the
+    # baseline and draws no bars. No axis, tick, caption or column logic is touched; the other ten
+    # visuals in this module are byte-identical. 67a625584f35c78f067ae27446883d2a → below.
+    "volatility.js": "71f124b290e237521610ef40cda7ada7",
     # DELIBERATE re-baseline (ADR-0326, decision B1): buildTierScale gained the ONE timescale
     # caption slot (a `data-ts-caption`-fed row above the tiers; pages without the marker render
     # byte-identically). 2a4ccb612899cf141bbf30af3b64286e → 9fa3a69245deec12de6f1d71698a24b0.

@@ -5559,3 +5559,37 @@ and that is the lesson worth keeping.
   ancestors must ALL be intersected, because `<svg>` defaults to `overflow:hidden` and stops a naive
   walk at the wrong box. Two wrong instruments, two confident wrong answers, before the right one.
   **The instrument gets the same red-before-green discipline as the code.**
+
+### 2026-08-18 (b) — an independent oracle for Chapter 04, and a symmetric fixture that proved nothing
+
+- **Structural tests and correctness tests are different things, and it is easy to ship only the
+  first.** ADR-0427's eleven guards assert the panels mount, the scope words appear, and both pages
+  embed the same dataset. Every one of them passes if the arithmetic underneath is wrong, because
+  they compare the tool to ITSELF. The missing half is an oracle that can disagree: fixtures whose
+  answers are worked out on paper. Ask of any new test suite — *what wrong number would still make
+  this green?*
+- **A SYMMETRIC fixture cannot detect an ASYMMETRIC bug.** The hand-built case had `entered == left`
+  on every version pair, so the mutant that SWAPPED those two labels survived — the fixture could
+  not distinguish the two quantities it was asserting. Fixed by adding a deliberately lopsided pair
+  (two join, none leave). **When a test asserts two values, make sure the fixture gives them
+  different values**, or it is testing one thing twice.
+- **Correct arithmetic is not a working feature.** All 14 oracle checks passed — the numbers are
+  right — and the defect was in the interaction: the version cursor's first position clamps to the
+  first transition, so the opening click of Next changes nothing and the panel states a change that
+  has not happened at that point in the sequence. Numbers-correct plus behaviour-wrong is a common
+  shape, and only a browser walk of the control finds it.
+- **Attribute before fixing.** The clamp reproduces identically on `/volatility`, which shares the
+  chart module — pre-existing, not introduced by the page that surfaced it. "Found on my new page"
+  and "caused by my new page" are different claims and demand different fixes.
+- **A grep window that is too small under-reports while looking exhaustive.** I checked whether
+  `volatility.js` was byte-pinned with a 12-line context window, saw four other filenames, and
+  wrote "carries no md5 pin (checked)" into an ADR. It stopped two entries short of the answer.
+  The full gate refuted it. **When the question is "is X in this list", print the WHOLE list or
+  match X directly — never a window that happens to contain some of it.** The word "checked" in a
+  deliverable is a promise about the method, and the method has to be able to see a negative.
+- **Copying a test pattern copies its bugs, including ones already fixed.** The new browser module
+  was written from an older module's hardcoded-browser-path `skipif` — a pattern ADR-0418 had
+  retired precisely because it makes browser tests SKIP on CI. So the guard written to catch the
+  ribbon defect would never have run on the machine that gates merges. A repo-wide guard caught it.
+  **Before copying a test's scaffolding, check whether that scaffolding is what a recent ADR was
+  about.**

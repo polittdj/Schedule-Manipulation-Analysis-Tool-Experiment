@@ -1,53 +1,42 @@
-# Handoff — 2026-08-18 (a) (design handoff: Chapter 04's stability band; ADR-0427; v1.0.216 shipped)
+# Handoff — 2026-08-19 (a) (Chapter 04: an independent oracle + the ribbon cursor fix; ADR-0428; v1.0.217)
 
-> ## STATUS (current) — Chapter 04 now looks like the prototype.
-> Highest ADR **0427**. **SHIPPED code changed** (`web/evolution.py`, `web/app.py`,
-> `static/app.css`) — **v1.0.215 → v1.0.216**, SCHEMA unchanged, wheel + nine installers rebuilt.
-> Third slice from the Claude Design bundle. The audit ledger and its open rows are untouched.
+> ## STATUS (current) — the operator's "not working correctly" was real, and it was the control.
+> Highest ADR **0428**. **SHIPPED code changed** (`web/static/volatility.js`) — **v1.0.216 →
+> v1.0.217**, SCHEMA unchanged, wheel + nine installers rebuilt.
 >
-> ## What landed — ADR-0427
-> `/evolution` (Chapter 04 · How stable is the path) gains the prototype's panels **① Stability
-> signal · ② Flow of the path · ③ Membership matrix · ④ Transition ribbons** above its existing
-> Gantt + what-if ledger (⑤), driven by one version cursor.
+> ## What landed
+> **1. An independent oracle for Chapter 04** (`tests/web/test_ch04_stability_oracle.py`, 14
+> tests). Every prior guard for the stability band is STRUCTURAL — it compares the tool to itself
+> and passes whether or not the arithmetic is right. The oracle pins critical membership with
+> `stored_is_critical` and derives every expectation BY HAND: per-pair Jaccard, stayed/entered/left
+> plus UIDs, tenure, longest streak, flips, per-version counts, row order, the headline percentage,
+> the rendered page. FAIL-side cases assert known-bad schedules are REPORTED bad (rebuilt path →
+> 0%, identical path → 100%, completed activity leaves the path, one version → em dash not 0,
+> empty critical set → undefined not 0.0). Seven mutants, all red. **The arithmetic is correct.**
 >
-> **Reuse, not reimplementation.** The band is drawn from `_volatility_data` and mounts
-> `volatility.js`'s OWN chart hosts — that module returns early on a missing host in all eight
-> draw functions, so mounting four of eleven is supported. A test compares the two pages' embedded
-> datasets **byte for byte**; both render the same 78% mean carry-over on the 4-version fixture.
-> `/volatility` is completely unchanged.
+> **2. ADR-0428 — the ribbon borrowed a transition the cursor was not on.** `drawRibbon` used
+> `Math.max(1, cursor)`, so cursor 0 and cursor 1 both rendered `PAIRS[0]`: the opening click of
+> Next changed nothing, and the baseline printed "33 stayed / 1 left" for a transition into the
+> first file, which never happened. The baseline now says so and prints no figures. **Pre-existing
+> — `/volatility` behaved identically** (shared module); ADR-0427 surfaced it, did not cause it.
+> Both routes are asserted.
 >
-> **Two populations, each labelled.** The band is ALL-VERSION; the panels below are PAIR-scoped
-> (ADR-0371). That is ADR-0420's hazard shape, so every band takeaway carries
-> `across all N loaded versions` and a guard fails if the phrase goes missing. Note the page
-> already carried both scopes (its h1 said "Across 4 versions" above pair panels) — this makes an
-> existing duality explicit rather than creating one. `DESIGN-SYSTEM.md` §7b now states the rule.
->
-> ## Three things worth reading before the next UI slice
-> - **A surviving mutant is not always a weak test.** M3 survived because the precondition sat at
->   a call site that is unreachable (`/evolution` returns its own empty state first) — dead code
->   with a test pointed at the wrong subject. Moving the guard INTO the function fixed both.
-> - **`chartframe.js` wraps every `.chart-host` in a zoom container.** A flex rule aimed at
->   `.chart-host` targets an element that is no longer the flex child — three flex settings failed
->   to move a chart off 300px before that was understood. Use a block layout, or target the wrapper.
-> - **Chart tick text is sized in CSS px and does NOT scale with the SVG.** A narrow host makes
->   labels proportionally larger; the same chart is clean at 566px and collides at 300px.
+> ## Three things worth carrying forward
+> - **Structural tests and correctness tests are different.** Ask of any suite: *what wrong number
+>   would still make this green?*
+> - **A symmetric fixture cannot detect an asymmetric bug.** The entered/left swap mutant SURVIVED
+>   because every pair in the fixture had `entered == left`. Added a lopsided pair.
+> - **Correct data + wrong control is a real shape.** The dataset was always right; the defect was
+>   which correct pair a control chose to show. No data-level test can see that — only walking the
+>   control in a browser, which is easiest to skip when the numbers all check out.
 >
 > ## Carried forward
-> Design gaps still open: **Metric Lab** (lowest effort) · **Segment Forecast** as a page ·
-> **Portfolio at Scale** · **Beyond the Schedule** · **Trend Lab + Manipulation Watch** ·
-> **PDF export** · **GUIDE ME** · **SHOW UIDs** · the **MERLIN wordmark** (operator decision).
-> The audit's open rows are unchanged. ADR-0353..0427 closed.
+> Design gaps open: **Metric Lab** (lowest effort) · Segment Forecast as a page · Portfolio at
+> Scale · Beyond the Schedule · Trend Lab + Manipulation Watch · PDF export · GUIDE ME · SHOW UIDs
+> · the MERLIN wordmark (operator decision). Audit rows unchanged. ADR-0353..0428 closed.
 >
 > ## Gate at close
-> `ruff check .` · `ruff format --check` 562 files · `mypy src/` strict 158 files · `bandit` exit 0
-> · `node --check` per file. Full suite **4345 passed / 5 skipped / 0 failed / 39:20**.
->
-> The first run had **7 failures, all MINE**: the wheel lockstep (src edited after the build), two
-> monolith-split contract rows (`_CH04_NUMERALS` un-re-exported; `evolution` importing `volatility`
-> UPWARD), and four `test_r11_panel_contract` pins that legitimately moved. The upward import is
-> the one worth noting — `_volatility_data` descended into `components.py` per ADR-0351's rule.
-> `bandit` also failed honestly once: B608 matched my HTML prose ("per **update** … operator-**set**")
-> as SQL. Reworded rather than suppressed.
+> See SESSION-LOG.
 
 # (prior) handoffs — archived
 
