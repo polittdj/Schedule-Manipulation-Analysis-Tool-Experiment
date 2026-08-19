@@ -5581,3 +5581,15 @@ and that is the lesson worth keeping.
 - **Attribute before fixing.** The clamp reproduces identically on `/volatility`, which shares the
   chart module — pre-existing, not introduced by the page that surfaced it. "Found on my new page"
   and "caused by my new page" are different claims and demand different fixes.
+- **A grep window that is too small under-reports while looking exhaustive.** I checked whether
+  `volatility.js` was byte-pinned with a 12-line context window, saw four other filenames, and
+  wrote "carries no md5 pin (checked)" into an ADR. It stopped two entries short of the answer.
+  The full gate refuted it. **When the question is "is X in this list", print the WHOLE list or
+  match X directly — never a window that happens to contain some of it.** The word "checked" in a
+  deliverable is a promise about the method, and the method has to be able to see a negative.
+- **Copying a test pattern copies its bugs, including ones already fixed.** The new browser module
+  was written from an older module's hardcoded-browser-path `skipif` — a pattern ADR-0418 had
+  retired precisely because it makes browser tests SKIP on CI. So the guard written to catch the
+  ribbon defect would never have run on the machine that gates merges. A repo-wide guard caught it.
+  **Before copying a test's scaffolding, check whether that scaffolding is what a recent ADR was
+  about.**
