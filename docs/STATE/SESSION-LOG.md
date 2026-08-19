@@ -15012,3 +15012,63 @@ Playwright and a vendored chromium are both present here, so #598's newly un-orp
 tests and this session's 16 all executed rather than skipping.
 
 ADR-0425, ADR-0426. **v1.0.212 → v1.0.215**, SCHEMA unchanged, wheel + nine installers rebuilt.
+
+---
+
+## 2026-08-18 (a) — Design handoff, slice 3: Chapter 04's stability band (ADR-0427)
+
+The operator asked for **How stable is the path** to match the prototype. The audit found the repo
+already had all of that chapter's content — split across `/evolution` (the Gantt + what-if ledger)
+and `/volatility` (eleven tiles carrying every analytic behind the prototype's ①–④). The
+prototype's own nav maps the chapter to BOTH routes, so the split was not off-spec; what was
+missing is that the chapter screen said nothing about stability.
+
+**What landed.** `/evolution` gains ① Stability signal · ② Flow of the path · ③ Membership matrix ·
+④ Transition ribbons above its existing content (⑤), driven by one version cursor.
+
+**Reuse over reimplementation.** The band uses `_volatility_data` and mounts `volatility.js`'s own
+hosts — verified by reading all eight draw functions, each of which returns early on a missing
+host. A second implementation would let two pages disagree about one schedule; instead a test
+compares the embedded datasets **byte for byte**. `/volatility` is untouched.
+
+**Two populations, each labelled** (ADR-0420 applied forward): the band is ALL-VERSION, the panels
+below are PAIR-scoped (ADR-0371). Both correct, deliberately different, and every band takeaway
+says which. `DESIGN-SYSTEM.md` §7b records the rule.
+
+**Verification.** 11 tests on the 4-version `fuse_hardfile` fixture — two versions would collapse
+the two scopes and the guard would prove nothing. 8 mutants, all red, sandbox subject probed first.
+
+**M3 survived on the first run, and the lesson is new.** The precondition was at a call site that
+is unreachable — `/evolution` returns its own "load two versions" empty state before reaching it —
+so it guarded nothing while its test passed for an unrelated reason. **A surviving mutant is not
+always a weak test; sometimes it is dead code with the test pointed at the wrong subject.** Guard
+moved into the function, test now calls it directly, mutant dies.
+
+**Two layout defects, both introduced here, both caught by rendering.** The membership heatmap
+overflowed its tile into the ribbon panel (60 activities, 690px SVG in a 340px host) — now scrolls
+in place, scoped so `/volatility` keeps full height. And the churn chart's ticks collided on apollo
+at a 300px host: **chart tick text is sized in CSS px and does not scale with the SVG**, so a
+narrow host magnifies labels. Three flex settings failed to widen it because **`chartframe.js`
+wraps every `.chart-host` in a zoom container** — the flex rule was aimed at an element that is no
+longer the flex child. Block layout fixed it: 313–730px, zero overlaps in all four themes at two
+viewports.
+
+**The measuring instrument was wrong twice before it was right**, and both wrong versions produced
+confident numbers. `getBoundingClientRect()` reports geometry for text scrolled out of view, so a
+clipped-and-fixed heatmap still read as colliding; and a naive clip walk stops at the `<svg>`,
+which defaults to `overflow:hidden`. The correct detector intersects each rect with EVERY clipping
+ancestor.
+
+**Gate.** Statics green. Full suite **4345 passed / 5 skipped / 0 failed / 39:20**. First run: 7
+failures, all mine — wheel lockstep (src edited after the build), `_CH04_NUMERALS` un-re-exported,
+`evolution` importing `volatility` UPWARD (fixed by descending `_volatility_data` into
+`components.py`, ADR-0351's rule), and four `r11_panel_contract` pins that legitimately moved
+(panel census 9 → 14, vocabulary +4, distinct-⤓ 2 → 3 hits/same two workbooks, and a new frozen
+payload). That last pin confirmed a prediction: `/evolution`'s `volData` is **byte-identical** to
+`/volatility`'s on a 5-version corpus independent of this ADR's 4-version fixture.
+
+`bandit` failed once for real — B608 read "per **update** … operator-**set**" in an HTML f-string
+as a SQL `UPDATE…SET`. Reworded the prose rather than adding a `# nosec`: suppressing a security
+check to keep a word is the wrong trade.
+
+ADR-0427. **v1.0.215 → v1.0.216**, SCHEMA unchanged, wheel + nine installers rebuilt.

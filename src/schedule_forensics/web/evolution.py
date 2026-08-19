@@ -18,6 +18,7 @@ from __future__ import annotations
 import datetime as dt
 import json
 import logging
+from typing import Any, cast
 from urllib.parse import urlencode
 
 from schedule_forensics.engine import compute_driving_slack
@@ -50,6 +51,7 @@ from schedule_forensics.web.components import (
     _stat_cards,
     _status_stack,
     _user_tip,
+    _volatility_data,
 )
 from schedule_forensics.web.state import _iso_date
 
@@ -192,6 +194,128 @@ def _optioned_versions(
         "the options are active.</div>"
     )
     return out_s, out_c, banner
+
+
+#: The deck's Chapter-04 panel numerals. The prototype numbers its five panels ①..⑤ and the
+#: numbering is load-bearing prose, not decoration: the copy on ⑤ says "the four panels above are
+#: the ones that animate as you scrub versions", which is only true if the reader can tell which
+#: four. Kept as one tuple so a renumber cannot desynchronise the headings from that sentence.
+_CH04_NUMERALS: tuple[str, str, str, str, str] = ("\u2460", "\u2461", "\u2462", "\u2463", "\u2464")
+
+
+def _stability_panels(schedules: list[Schedule], cpms: list[CPMResult]) -> str:
+    """The prototype's Chapter-04 panels 1-4 - the cross-version stability band (ADR-0427).
+
+    **These four panels are ALL-VERSION; everything below them on this page is PAIR-scoped**
+    (ADR-0371). That is the exact shape ADR-0420 names as a hazard — one page stating two
+    populations — so each panel says which population it is drawn from IN ITS OWN takeaway, and
+    ``tests/web/test_evolution_stability_band.py`` fails if a scope word goes missing. The two
+    scopes are both correct and deliberately different: "how stable is the path" is a question
+    about the whole loaded history, while the what-if ledger below can only mean one pair.
+
+    Nothing is recomputed. The dataset is ``_volatility_data`` — the same effective-critical sets
+    ``/volatility`` draws — and the four visuals are ``volatility.js``'s OWN mounts. That module
+    renders exactly the hosts a page provides (every draw function returns early on a missing
+    host), so mounting four of its eleven is a supported use, not a fork. One implementation of
+    each chart, per the design system's one-mechanism-per-job rule.
+    """
+    # Fewer than two versions has no consecutive pair, so there is no carry-over to state. The
+    # band is ABSENT rather than zero — zero would be a fabricated figure (design system §7).
+    # This lives HERE, not at the call site: mutation M3 proved a route-level check was never
+    # reached (the page's own empty state fires first), i.e. it guarded nothing observable.
+    if len(schedules) < 2:
+        return ""
+
+    data = _volatility_data(schedules, cpms)
+    versions = cast(list[dict[str, Any]], data["versions"])
+    pairs = cast(list[dict[str, Any]], data["pairs"])
+    tasks = cast(list[dict[str, Any]], data["tasks"])
+    stability = data["stability"]
+    n_ver = len(versions)
+
+    # The one number the prototype puts in 32px type. `stability` is the mean Jaccard similarity
+    # of consecutive critical paths — the deck calls it "mean carry-over". A single loaded pair
+    # still yields one similarity, so the only unmeasurable case is "no pair at all", which
+    # renders the em dash rather than a 0 (design system §7 — never a fabricated figure).
+    if stability is None:
+        carry_txt, band, band_cls = "—", "NOT MEASURABLE", "warn"
+    else:
+        pct = round(cast(float, stability) * 100)
+        carry_txt = f"{pct}%"
+        # Bands are the operator's display guidance, NOT a published threshold — the prototype
+        # says so on the chart face and so does the caveat line below. GAO BP-6 and the DCMA CP
+        # test call an erratic controlling chain a health failure without publishing a number.
+        band, band_cls = (
+            ("STABLE", "ok")
+            if pct >= 70
+            else ("WATCH", "warn")
+            if pct >= 40
+            else ("ERRATIC", "bad")
+        )
+
+    jumpers = sum(1 for t in tasks if int(t["flips"]) >= 2)
+    latest_new = pairs[-1]["entered"] if pairs else 0
+
+    prov = _series_prov_chip(schedules)
+    tile_export = ' data-export="/export/xlsx/volatility"'
+    tile_prov = f"<div class=tile-prov>{prov}</div>"
+    tools = (
+        '<span class="tile-actions sf-tools" data-noprint=1>'
+        "<button type=button data-sf-excel "
+        'title="Export the critical-path membership matrix these visuals are drawn from '
+        '&mdash; opens in Excel" '
+        'aria-label="Export this visual&#39;s data to Excel">⤓ EXCEL</button>'
+        "<button type=button data-sf-big aria-pressed=false "
+        'title="Enlarge / shrink this visual" '
+        'aria-label="Enlarge this visual">⛶ ENLARGE</button></span>'
+    )
+    n1, n2, n3, n4, _n5 = _CH04_NUMERALS
+    scope = f"across all {n_ver} loaded versions"
+    blob = json.dumps(data).replace("<", "\\u003c")
+
+    return f"""
+<div class=panel>
+<div class=viz-controls>
+<button id=volPrev type=button>&#9664; Prev</button>
+<span id=volLabel class=muted data-no-i18n></span>
+<button id=volNext type=button>Next &#9654;</button>
+<button id=volPlay type=button>&#9654; Play</button>
+</div>
+<p class=muted>One cursor drives the four panels below &mdash; step or play the {n_ver} loaded
+versions and watch critical-path membership change. They read the <b>whole loaded history</b>;
+the path Gantt and the what-if ledger further down read <b>one version pair</b>, which is why
+their numbers differ and each says which it means.</p>
+</div>
+<div class=mosaic id=evoStabGrid>
+<section class="tile panel"{tile_export}><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: the mean carry-over between consecutive critical paths (100% = the same path every update), with the per-pair timeline beside it.\n\nHOW TO READ: dips are the updates where the controlling chain was rewired.\n\nDECIDE: which update to interrogate for logic or duration edits.">{n1} Stability signal</h3>{tools}</div>{tile_prov}
+<div class=stab-signal><div class=stab-figure><div class="stab-num {band_cls}" data-no-i18n>{carry_txt}</div>
+<div class=stab-cap data-no-i18n>MEAN CARRY-OVER</div>
+<div class="stab-band {band_cls}" data-no-i18n>{band}</div></div>
+<div class=chart-host id=volChurn></div></div>
+<p class=sf-take data-no-i18n>Mean carry-over between consecutive critical paths {scope} is
+{carry_txt}, and the timeline gives each pair its own similarity.</p>
+<p class=muted>The band is operator-chosen <b>display guidance, not a published threshold</b> &mdash;
+GAO Best Practice 6 and the DCMA critical-path test treat an erratic controlling chain as a
+health failure without publishing a number.</p></section>
+
+<section class="tile panel"{tile_export}><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: per update — how many activities joined the critical path and how many left it.\n\nHOW TO READ: joined above the axis, left below; small bars are progress-driven turnover, tall ones are a rewired chain.\n\nDECIDE: which update churned the most members.">{n2} Flow of the path</h3>{tools}</div>{tile_prov}<div class=chart-host id=volFlow></div>
+<p class=sf-take data-no-i18n>Joined above the axis and left below, per update {scope}; the newest
+update brought {latest_new} activit{"y" if latest_new == 1 else "ies"} onto the path.</p></section>
+
+<section class="tile panel tile-wide"{tile_export}><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: the presence matrix — one row per activity ever on the critical path, one column per version; a filled cell means it was on the path that version.\n\nHOW TO READ: long unbroken rows are the stable backbone; gap-toothed rows are the jumpers.\n\nDECIDE: which rows deserve a 'why did this change?' interrogation.">{n3} Membership matrix</h3>{tools}</div>{tile_prov}<div class=chart-host id=volHeatmap></div>
+<p class=sf-take data-no-i18n>{len(tasks)} activities reached the critical path at some point
+{scope}, and {jumpers} of them flipped on and off it more than once.</p>
+<p class=muted>Activities down the side, most-volatile first; versions across the top. The full
+scoreboard &mdash; tenure, longest streak, flips, current status &mdash; is on
+<a href="/volatility">CP Volatility</a>, and the &#11015; EXCEL button carries it.</p></section>
+
+<section class="tile panel"{tile_export}><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: the cursor's current pair of versions as proportional ribbons — what stayed on the path against what joined and what left.\n\nHOW TO READ: a thick 'stayed' ribbon is continuity; thick 'entered'/'left' ribbons mark a rewired update.\n\nDECIDE: step the pairs to find the update that moved the chain.">{n4} Transition ribbons</h3>{tools}</div>{tile_prov}<div class=chart-host id=volRibbon></div>
+<p class=sf-take data-no-i18n>The cursor's current version pair as proportional ribbons &mdash; a
+thin carried band means the path is being rebuilt each update rather than held.</p></section>
+</div>
+<script type="application/json" id=volData>{blob}</script>
+<script defer src="/static/volatility.js"></script>
+"""
 
 
 def _evolution_body(

@@ -211,9 +211,11 @@ def test_every_data_export_on_the_four_routes_is_a_real_workbook(
             assert resp.content[:4] == b"PK\x03\x04", (route, url, resp.content[:8])
             assert "spreadsheetml" in resp.headers.get("content-type", ""), (route, url)
             seen += 1
-    # the round ships exactly two DISTINCT destinations: the driving-tiers workbook on the tiers
-    # panel and the volatility membership matrix shared by the ten mosaic tiles.
-    assert seen == 2, seen
+    # the round shipped two DISTINCT destinations: the driving-tiers workbook on the tiers panel
+    # and the volatility membership matrix shared by /volatility's mosaic tiles. ADR-0427 adds a
+    # third HIT (not a third workbook): /evolution's band tiles point at that SAME membership
+    # matrix, which is the point — one dataset, two pages.
+    assert seen == 3, seen
 
 
 def test_the_tiers_export_carries_the_trace_basis_the_panel_was_solved_with(
@@ -273,7 +275,10 @@ def test_the_corridor_and_the_path_header_ship_no_tool_strip(pages: dict[str, st
 #: ``.panel`` per route BEFORE and AFTER the round — measured on both trees (patched, then
 #: ``git stash`` to pristine, then re-run) and cross-checked against
 #: ``document.querySelectorAll('.panel').length`` in real chromium at 1440x900.
-PANEL_CENSUS = {PATH: 5, DP: 13, EVO: 9, VOL: 14}
+#: EVO 9 -> 14 in ADR-0427: the Chapter-04 stability band adds four mosaic tiles plus the panel
+#: carrying the shared version cursor. Deliberate — a moved count still means a new box, and this
+#: is the commit that minted them.
+PANEL_CENSUS = {PATH: 5, DP: 13, EVO: 14, VOL: 14}
 
 #: the contract vocabulary each route NEWLY carries — heads / tool strips / ⛶ / takes / chips.
 #: All five were ZERO on all four routes before this round (verified by ``curl | grep -c``).
@@ -281,7 +286,9 @@ CONTRACT_CENSUS = {
     #        heads, tools, ⛶,  takes, chips
     PATH: (1, 1, 1, 1, 0),
     DP: (5, 3, 3, 5, 5),
-    EVO: (4, 2, 2, 4, 4),
+    # EVO +4 tool strips / ⛶ / takes / chips in ADR-0427 — one set per band tile (heads unchanged:
+    # the band uses tile-heads, not panel-heads).
+    EVO: (4, 6, 6, 8, 8),
     VOL: (2, 10, 10, 12, 12),
 }
 
@@ -404,7 +411,14 @@ JSON_BLOBS = {
     # UID 19 enter the what-if with ``why_entered: slack_consumed`` and adds the corresponding
     # volatility rows; both payloads grow. The /driving-path pair below is UNCHANGED, which is the
     # control: only the payloads fed by the progressed TP4 series moved.
-    EVO: {"whatifAddedData": ("677aeba6ee1a7d66901167d9f5d0382d", 796)},
+    # ADR-0427: /evolution's Chapter-04 band embeds `volData` too. Its pin is IDENTICAL to VOL's
+    # below, and that is the assertion, not a coincidence — both pages serialize the same
+    # `_volatility_data` over the same versions. If these two ever diverge, one page is lying
+    # about the schedule; `test_evolution_stability_band.py` asserts the same equality directly.
+    EVO: {
+        "whatifAddedData": ("677aeba6ee1a7d66901167d9f5d0382d", 796),
+        "volData": ("56d0047fe531f7e0232bfce8b3a50f30", 2280),
+    },
     VOL: {"volData": ("56d0047fe531f7e0232bfce8b3a50f30", 2280)},
     PATH: {},
 }

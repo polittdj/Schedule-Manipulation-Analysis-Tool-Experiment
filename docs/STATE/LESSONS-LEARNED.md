@@ -5532,3 +5532,30 @@ and that is the lesson worth keeping.
   pattern, and the census went red the moment the trees met. This is the argument for computed
   censuses over documented conventions in one sentence: **the convention only binds people who
   read it; the census binds everyone who merges.**
+
+### 2026-08-18 (a) — Chapter 04's stability band (ADR-0427)
+
+- **A surviving mutant is not always a weak test — sometimes it is dead code.** M3 targeted a
+  precondition written at a call site that can never be reached, because the route returns its own
+  empty state first. The test passed for a reason unrelated to the thing it named, and the mutation
+  is what exposed that the guard guarded nothing. **When a mutant survives, ask whether the SUBJECT
+  is reachable before assuming the ASSERTION is weak.** Moving the check into the function made both
+  the guard and its test real.
+- **Check whether the content already exists somewhere else before building it.** The instinct on
+  "make this page match the design" was to build four new panels. The repo already had all four,
+  on the sibling route, fully implemented — and the shared JS module was already mount-driven, so
+  the work collapsed from "write four charts" to "mount four hosts and label the scope". A coverage
+  read of the NEIGHBOURING page, not just the target page, is what found it.
+- **`chartframe.js` wraps every `.chart-host`.** A CSS rule aimed at `.chart-host` inside a flex
+  container is aimed at something that is no longer the flex child, and it silently does nothing —
+  three flex settings failed to move a chart off 300px, each looking like a plausible fix. When a
+  layout rule provably applies (computed style confirms it) and the geometry still refuses to move,
+  **the element you are styling is not the element being laid out.**
+- **SVG chart text sized in CSS px does not scale with the SVG.** Shrink the host and the labels get
+  proportionally BIGGER, so a chart that is clean at 566px collides at 300px. Reusing a chart in a
+  narrower slot is therefore a legibility change, not just a layout one — measure it there.
+- **An overlap detector that ignores clipping lies confidently.** `getBoundingClientRect()` returns
+  geometry for text scrolled out of view, so a fixed panel still reported collisions; and clipping
+  ancestors must ALL be intersected, because `<svg>` defaults to `overflow:hidden` and stops a naive
+  walk at the wrong box. Two wrong instruments, two confident wrong answers, before the right one.
+  **The instrument gets the same red-before-green discipline as the code.**

@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import datetime as dt
 from collections.abc import Sequence
+from typing import Any
 from urllib.parse import quote
 
 from schedule_forensics.engine.cpm import CPMError, CPMResult, offset_to_datetime
@@ -615,3 +616,93 @@ def _metric_scorecard_table(results: dict[str, MetricResult]) -> str:
         "<table class=card-table><tr><th scope=col>Check</th><th scope=col>Value</th>"
         f"<th scope=col>Status</th></tr>{''.join(rows)}</table>"
     )
+
+
+def _volatility_data(schedules: list[Schedule], cpms: list[CPMResult]) -> dict[str, object]:
+    """The critical-path volatility dataset (moved here by ADR-0427 — TWO pages draw it:
+    ``/volatility``'s eleven tiles and ``/evolution``'s Chapter-04 stability band. One
+    derivation, so the two pages can never disagree about one schedule.)
+
+    Original note: (operator 2026-07-09): per-version membership of
+    the effective critical set for every activity that was EVER on the path, plus the derived
+    stability measures the ten visuals draw — per-task tenure / longest streak / on-off flips,
+    per-pair Jaccard similarity and stayed/entered/left splits, and the overall stability
+    index (mean Jaccard). Everything derives from the loaded versions' critical sets — the
+    same effective-critical basis (stored Critical flag, CPM fallback) every other page uses."""
+    from schedule_forensics.engine.path_evolution import effective_critical_set
+
+    sets = [effective_critical_set(s, c) for s, c in zip(schedules, cpms, strict=True)]
+    labels = [s.source_file or s.name for s in schedules]
+    dates = [s.status_date.date().isoformat() if s.status_date else None for s in schedules]
+    ever: list[int] = []
+    seen: set[int] = set()
+    for cs in sets:
+        for uid in sorted(cs):
+            if uid not in seen:
+                seen.add(uid)
+                ever.append(uid)
+    # latest-known name per uid (newest version wins)
+    names: dict[int, str] = {}
+    for sch in schedules:
+        for t in sch.tasks:
+            if t.unique_id in seen:
+                names[t.unique_id] = t.name
+
+    tasks: list[dict[str, Any]] = []
+    for uid in ever:
+        member = [1 if uid in cs else 0 for cs in sets]
+        streak = best = 0
+        flips = 0
+        for i, m in enumerate(member):
+            streak = streak + 1 if m else 0
+            best = max(best, streak)
+            if i and m != member[i - 1]:
+                flips += 1
+        tasks.append(
+            {
+                "uid": uid,
+                "name": names.get(uid, f"UID {uid}"),
+                "member": member,
+                "tenure": sum(member),
+                "streak": best,
+                "flips": flips,
+            }
+        )
+    # most-tenured first, then fewest flips, then uid — the leaderboard/heatmap order
+    tasks.sort(key=lambda t: (-t["tenure"], t["flips"], t["uid"]))
+
+    pairs: list[dict[str, object]] = []
+    for i in range(1, len(sets)):
+        a, b = sets[i - 1], sets[i]
+        union = a | b
+        entered_uids = sorted(b - a)  # newly on the path in version i (present in the "to" file)
+        left_uids = sorted(a - b)  # dropped off the path (present in the "from" file)
+        stayed, entered, left = len(a & b), len(entered_uids), len(left_uids)
+        pairs.append(
+            {
+                "from": labels[i - 1],
+                "to": labels[i],
+                "jaccard": round(len(a & b) / len(union), 3) if union else None,
+                "stayed": stayed,
+                "entered": entered,
+                "left": left,
+                # the activity IDs behind the entry/exit counts, so the waterfall bars can drill
+                "entered_uids": entered_uids,
+                "left_uids": left_uids,
+            }
+        )
+    jaccards = [p["jaccard"] for p in pairs if p["jaccard"] is not None]
+    return {
+        "versions": [
+            {"label": lb, "status_date": d, "critical": len(cs)}
+            for lb, d, cs in zip(labels, dates, sets, strict=True)
+        ],
+        "tasks": tasks,
+        "pairs": pairs,
+        # the newest version's label — the drill's data-file for the leaderboard/dwell bars (whose
+        # activities are "ever on the path"; those present in the latest version resolve there).
+        "latest": labels[-1] if labels else "",
+        "stability": (
+            round(sum(jaccards) / len(jaccards), 3) if jaccards else None  # type: ignore[arg-type]
+        ),
+    }

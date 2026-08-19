@@ -469,6 +469,7 @@ from schedule_forensics.web.components import _status_stack as _status_stack
 from schedule_forensics.web.components import _target_panel as _target_panel
 from schedule_forensics.web.components import _task_name_across as _task_name_across
 from schedule_forensics.web.components import _user_tip as _user_tip
+from schedule_forensics.web.components import _volatility_data as _volatility_data
 
 # ADR-0389 (phase 4, slice 24): the FOUR remaining zero-descent page families leave together —
 # ``/curves`` (chapter 05's three monthly delivery curves), ``/ribbon`` (the Acumen-Fuse-style
@@ -503,6 +504,7 @@ from schedule_forensics.web.evm import _evm_explainer as _evm_explainer
 from schedule_forensics.web.evm import _evm_idx_str as _evm_idx_str
 from schedule_forensics.web.evm import _how_we_execute_evm_header as _how_we_execute_evm_header
 from schedule_forensics.web.evm import _threshold_legend as _threshold_legend
+from schedule_forensics.web.evolution import _CH04_NUMERALS as _CH04_NUMERALS
 
 # ADR-0350 (phase 3 of the monolith split): the SHARED presentation kernel — the panel-contract
 # strip (``_panel_head``/``_shell_tools``/the provenance chips), the stat cards, the metric help
@@ -528,6 +530,7 @@ from schedule_forensics.web.evolution import _keep_hidden as _keep_hidden
 from schedule_forensics.web.evolution import _optioned_versions as _optioned_versions
 from schedule_forensics.web.evolution import _project_finish_uid as _project_finish_uid
 from schedule_forensics.web.evolution import _render_counterfactual as _render_counterfactual
+from schedule_forensics.web.evolution import _stability_panels as _stability_panels
 from schedule_forensics.web.evolution import _trace_option_names as _trace_option_names
 from schedule_forensics.web.evolution import _trace_options_form as _trace_options_form
 from schedule_forensics.web.evolution import _whatif_added_rows as _whatif_added_rows
@@ -822,7 +825,6 @@ from schedule_forensics.web.trend import _how_it_moved_header as _how_it_moved_h
 from schedule_forensics.web.trend import _trend_body as _trend_body
 from schedule_forensics.web.trend import _trend_data as _trend_data
 from schedule_forensics.web.volatility import _volatility_body as _volatility_body
-from schedule_forensics.web.volatility import _volatility_data as _volatility_data
 
 # ADR-0386 (phase 4, slice 21): the /wbs page family - the optional-number table cell, the
 # completion + SPI(t)/Earned-Schedule pivots, and the combo chart's JSON payload - lives in
@@ -3382,6 +3384,9 @@ def create_app(
             ignore_constraints=bool(ignore_constraints),
             ignore_leveling=bool(ignore_leveling),
         )
+        # ALL solvable versions for the stability band -- a separate population from the PAIR
+        # above, deliberately (ADR-0371 pairs; ADR-0427's band spans the history).
+        all_schedules, all_cpms, _all_skipped = _solvable_versions()
         header = _how_stable_header(compute_path_evolution(schedules, cpms, target_uid=uid))
         return _page(
             st,
@@ -3393,6 +3398,11 @@ def create_app(
             + opt_banner
             + opt_form
             + _sources_line(schedules)
+            # ADR-0427: the prototype's Chapter-04 stability band (panels 1-4) sits ABOVE the
+            # pair-scoped panels. It is drawn from ALL solvable versions, not the pair, because
+            # "how stable is the path" is a question about the whole loaded history -- and every
+            # one of its takeaways says so, per ADR-0420's mixed-population rule.
+            + (_stability_panels(all_schedules, all_cpms) if len(all_schedules) >= 2 else "")
             + _evolution_body(
                 schedules,
                 cpms,
