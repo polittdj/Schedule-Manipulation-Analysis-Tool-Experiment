@@ -15072,3 +15072,35 @@ as a SQL `UPDATE…SET`. Reworded the prose rather than adding a `# nosec`: supp
 check to keep a word is the wrong trade.
 
 ADR-0427. **v1.0.215 → v1.0.216**, SCHEMA unchanged, wheel + nine installers rebuilt.
+
+---
+
+## 2026-08-18 (b) — Chapter 04: an independent oracle, and one interaction defect
+
+Operator reported "I don't believe the How stable is the path page is working correctly" and asked
+for pass/fail tests across the tool.
+
+**The gap that mattered.** ADR-0427's guards are structural — they compare the tool to itself.
+Added `tests/web/test_ch04_stability_oracle.py` (14 tests): schedules whose critical membership is
+pinned by `stored_is_critical`, with every expected figure derived by hand. Covers per-pair
+Jaccard, stayed/entered/left plus their UIDs, tenure, longest streak, flips, per-version counts,
+row ordering, the headline percentage, and the rendered page. FAIL-side cases: a path rebuilt every
+update must report 0%; an identical path 100%; a completed activity must leave the path; one
+version must report unknown (em dash) not 0; an empty critical set must give an undefined
+similarity rather than 0.0 or a crash.
+
+**Result: the arithmetic is correct.** Seven mutants (wrong Jaccard denominator, one-directional
+flips, streak conflated with tenure, mean→max, entered/left swapped, completed work retained,
+undefined reported as zero) — all red.
+
+**M5 survived first, and the fixture was the defect**: every pair had `entered == left`, so
+swapping the labels changed nothing. Added a lopsided pair; the mutant dies.
+
+**The real finding is behavioural.** The version cursor's first position has no preceding version
+and clamps to the FIRST transition, so cursor 1 and cursor 2 render an identical ribbon — the
+opening click of Next appears to do nothing, and at cursor 1 the panel states a transition that has
+not occurred. **Pre-existing**: `/volatility` reproduces it exactly (shared chart module), so it was
+surfaced by ADR-0427's page, not caused by it. Fix deferred pending the operator's confirmation
+that this is the symptom, because the change touches shared JS and would alter `/volatility` too.
+
+Tests only — no shipped code changed, so no version bump and no wheel rebuild.
