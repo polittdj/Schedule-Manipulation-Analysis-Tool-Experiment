@@ -435,7 +435,31 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
-### 2026-08-20 — two metrics can share a name, and the audit table knew before the operator did
+### 2026-08-20 (b) — a self-contained installer is a snapshot, and a green install can be 70 versions stale
+
+- **The operator re-ran the installer they already had and got v1.0.148 instead of v1.0.218.** The
+  run was green end to end — tier fit, Python found, venv re-used, converter kept, Java found, model
+  ready, "DONE" — because nothing *was* wrong: an installer embeds its wheel, so it installs exactly
+  the version it was built from and never consults the repo. **A file name is not a version.**
+  Re-downloading over the stale file and re-running was the whole fix.
+- **A one-file installer trades update-awareness for offline install, and the trade is invisible at
+  the point of use.** The design is right for an air-gapped CUI tool; the missing piece is the tell.
+  The banner prints the tier and not the embedded version, so the one number that would have caught
+  this appears only *after* the operator has committed to the run, and `README-DISTRIBUTABLE.md` has
+  no "updating an install you already have" section. A repo test already proves the built installers
+  embed the CURRENT version — **nothing proves the operator is running a current installer.** Those
+  are different claims, and only the first one had a guard.
+- **"It ran successfully" and "it did what you wanted" are different claims** — this repo's
+  green-test-that-cannot-fail defect, relocated into deployment. The diagnostic question is the same
+  one QC-1 asks: *what would a WRONG outcome have looked like here?* Answer: identical, except one
+  version string 25 lines up the log. When the failure mode is indistinguishable from success at the
+  point of use, the tell has to be moved to where the decision is made.
+- **Verify the deployed artifact, not the deployment command.** `pip show schedule-forensics` run
+  against the venv's *own* python settled it in one line, both times — before the fix and after.
+  Generalizes: after any install, read the version back out of the thing you installed into, and
+  never accept the installer's own exit status as evidence of what it installed.
+
+### 2026-08-20 (a) — two metrics can share a name, and the audit table knew before the operator did
 
 - **"Same name" is not "same metric" — the Bible itself disagrees with itself by name.** The NASA
   library carries a ribbon "Hard Constraints" (must/mandatory only, no status filter) AND a DCMA
