@@ -482,7 +482,24 @@ def _build_calendar(target_uid: str | None, by_uid: dict[str, ET.Element]) -> Ca
             sink.update(_exception_range(exc.find("TimePeriod"), occurrences=occ))
 
     if not work_weekdays:
-        return None  # no usable weekday pattern anywhere
+        if pattern_found:
+            return None  # a DECLARED week with no working day — genuinely unusable
+        # No weekday pattern anywhere in the chain. MS Project semantics: a base calendar
+        # without WeekDay 1-7 rows works the DEFAULT week (Mon-Fri at the default times) — the
+        # file simply omits the implicit pattern and carries only its exceptions. Treating
+        # "no pattern" as "unreadable" discarded the exceptions with it: the operator's
+        # Starlight workbook stored its project calendar exactly this way, and all 112
+        # holidays vanished while the engine reran on a naked Mon-Fri default (ADR-0430).
+        logger.info(
+            "calendar %r (%s) declares no weekday pattern; using the default Mon-Fri week and "
+            "keeping its %d holiday / %d working exception day(s)",
+            _text(cal_el, "Name") or "?",
+            target_uid,
+            len(holidays),
+            len(working),
+        )
+        work_weekdays = set(range(5))
+        day_totals.append(MINUTES_PER_DAY)
     # A DayWorking day with no WorkingTimes means "the default times" (480) in MS Project —
     # applied in the census loop above (IMP-01), which is the ONE place that rule now lives.
     # Every working weekday therefore contributes a positive total, so ``or MINUTES_PER_DAY``

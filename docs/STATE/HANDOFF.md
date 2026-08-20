@@ -1,42 +1,68 @@
-# Handoff — 2026-08-19 (a) (Chapter 04: an independent oracle + the ribbon cursor fix; ADR-0428; v1.0.217)
+# Handoff — 2026-08-20 (the Starlight parity sweep: two same-named metrics, a pattern-less calendar, stored-slack Negative Float; ADR-0429/0430, v1.0.218)
 
-> ## STATUS (current) — the operator's "not working correctly" was real, and it was the control.
-> Highest ADR **0428**. **SHIPPED code changed** (`web/static/volatility.js`) — **v1.0.216 →
-> v1.0.217**, SCHEMA unchanged, wheel + nine installers rebuilt.
+> ## STATUS (current) — operator parity report ("fix all mismatches") CLOSED to 52/54 cells on `claude/multi-schedule-comparative-analysis-vmh5ei`.
+> Highest ADR now **0430**. Shipped code changed (`model/task.py`, `importers/mspdi.py`,
+> `engine/metrics/schedule_quality.py`, `engine/metrics/ribbon.py`, `web/ribbon.py`,
+> `web/help.py`), so **v1.0.217 -> 1.0.218** and the wheel + nine installers were rebuilt
+> (ADR-0148). Branch restarted from `origin/main` @ 98419a2. **Ran entirely SOLO**, with the
+> operator's six real Starlight `.mpp`s uploaded mid-session (non-CUI, marked fictional;
+> scratchpad only, never committed). The audit ledger is untouched.
 >
-> ## What landed
-> **1. An independent oracle for Chapter 04** (`tests/web/test_ch04_stability_oracle.py`, 14
-> tests). Every prior guard for the stability band is STRUCTURAL — it compares the tool to itself
-> and passes whether or not the arithmetic is right. The oracle pins critical membership with
-> `stored_is_critical` and derives every expectation BY HAND: per-pair Jaccard, stayed/entered/left
-> plus UIDs, tenure, longest streak, flips, per-version counts, row order, the headline percentage,
-> the rendered page. FAIL-side cases assert known-bad schedules are REPORTED bad (rebuilt path →
-> 0%, identical path → 100%, completed activity leaves the path, one version → em dash not 0,
-> empty critical set → undefined not 0.0). Seven mutants, all red. **The arithmetic is correct.**
+> ## 1. What the report was, and what it became
+> Fuse said Hard Constraints 4; the ribbon said 1. Root cause (ADR-0429): the NASA library
+> carries TWO same-named metrics — ribbon "Hard Constraints" (must/mandatory only, all statuses)
+> vs DCMA "5. Hard Constraint" (adds the SNLT/FNLT caps) — and the ribbon displayed the DCMA05
+> count, parity-scoped to baselined incomplete. Fixed: `has_mandatory_constraint` ({MSO, MFO}),
+> ribbon sources `schedule_quality`, DCMA05 untouched, formula-audit rows drift->match.
+> ADR-0110's audit table had ALREADY filed the drift as "latent: no parity impact unless a
+> schedule carries SNLT/FNLT" — Starlight is that schedule.
+> The operator then widened to ALL mismatches -> ADR-0430:
+> **(a) the pattern-less calendar** — Starlight's project calendar has NO DayType 1-7 rows, only
+> 112 DayType-0 holiday exceptions; MS Project reads that as "default week + exceptions", the
+> importer read it as "unreadable" and silently DISCARDED all 112 holidays. Now: no-pattern
+> synthesizes the default week and KEEPS the exceptions; a DECLARED all-non-working week still
+> falls back (pinned by IDENTITY — name/uid — because the weekday tuple cannot tell the two
+> apart; the pre-existing guard was blind exactly there).
+> **(b) ribbon Negative Float = STORED Total Slack < 0** over incomplete — reproduces Fuse 6/6
+> (62/45/44/37/34/0). The old DCMA07 sourcing missed BOTH ways at once: recompute fallback added
+> phantoms on stored-less tasks (+15 on V05), the parity baselined filter dropped real stored
+> negatives (-10). Stored-less-everywhere files keep the recomputed count (never a fabricated
+> clean bill). DCMA07 itself untouched (Acumen DCMA-report parity, ADR-0280) — the DCMA card and
+> ribbon now legitimately differ, mirroring Acumen's own two products.
+> **Post-fix: 52 of 54 ribbon cells match Fuse exactly** across the six versions.
 >
-> **2. ADR-0428 — the ribbon borrowed a transition the cursor was not on.** `drawRibbon` used
-> `Math.max(1, cursor)`, so cursor 0 and cursor 1 both rendered `PAIRS[0]`: the opening click of
-> Next changed nothing, and the baseline printed "33 stayed / 1 left" for a transition into the
-> first file, which never happened. The baseline now says so and prints no figures. **Pre-existing
-> — `/volatility` behaved identically** (shared module); ADR-0427 surfaced it, did not cause it.
-> Both routes are asserted.
+> ## 2. The BLOCKED leg — Insufficient Detail on V05/V06 (and TP2)
+> Fuse 5x6; tool 0/4 on V05/V06, exact on V07-V10. SIX hypotheses each refuted by measurement
+> against committed pins (calendar-day scaling · week/7 minutes · max-baseline-finish span ·
+> Schedule.baseline_finish span · fixed-480 conversion · the .mpp's stored ProjectFinish, read
+> from the binaries with MPXJ — identical to exported). Any CONSTANT span in [1000, 1890]d fits
+> Starlight; nothing in the bytes lands there without breaking a pin. STOPPED per the
+> metric-parity skill (oracle vs bytes contradiction). **UNBLOCK = one operator artifact: click
+> the V05 "Insufficient Detail 5" cell in Fuse (or export the ribbon to Excel) so the five
+> counted activities are NAMED.** TP2's 6-vs-7 is the same blocked question (pre-existing,
+> never pinned).
 >
-> ## Three things worth carrying forward
-> - **Structural tests and correctness tests are different.** Ask of any suite: *what wrong number
->   would still make this green?*
-> - **A symmetric fixture cannot detect an asymmetric bug.** The entered/left swap mutant SURVIVED
->   because every pair in the fixture had `entered == left`. Added a lopsided pair.
-> - **Correct data + wrong control is a real shape.** The dataset was always right; the defect was
->   which correct pair a control chose to show. No data-level test can see that — only walking the
->   control in a browser, which is easiest to skip when the numbers all check out.
+> ## 3. Traps paid for THIS session — check by name
+> A tree-wide renumber sed rewrote UPSTREAM files' legitimate ADR-0425 citations (#602 took the
+> number mid-session); caught by reading git status; renumber by EXPLICIT FILE LIST only ·
+> fetch-before-numbering ran THREE times and was right to (0425 taken -> 0428 taken -> 0429;
+> version .215/.216/.217 all shipped under the session) · a case-typo cannot prove a pin whose
+> _norm lowercases — drop a TERM · THREE blind oracles found in one arc: the Fuse calibration
+> fixtures where definitions coincide, the pinning test's no-overlap question (ADR-0424), and
+> the all-non-working-week guard distinguishable only by IDENTITY · the product knew its own
+> defect (ADR-0110's latent drift row) · sandbox rule inverse: a battery measuring the tree was
+> KILLED before editing (its verdict was superseded anyway).
 >
-> ## Carried forward
-> Design gaps open: **Metric Lab** (lowest effort) · Segment Forecast as a page · Portfolio at
-> Scale · Beyond the Schedule · Trend Lab + Manipulation Watch · PDF export · GUIDE ME · SHOW UIDs
-> · the MERLIN wordmark (operator decision). Audit rows unchanged. ADR-0353..0428 closed.
+> ## Next
+> The audit ledger stands (page modules A/B, docs/config/CI, AI figure-gate adversarial pass,
+> 25-route adverse gap). NEW from this sweep: the blocked Insufficient-Detail leg (operator
+> artifact above) · TP2's 6-vs-7 (same oracle) · consider pinning the ribbon nf/id columns in
+> test_ribbon._FUSE once settled.
 >
 > ## Gate at close
-> See SESSION-LOG.
+> Statics green whole-tree. Engine+importer 1372 passed mid-close; full-suite + wheel/installer
+> numbers in the SESSION-LOG entry (close sequence: last source edit -> statics -> wheel +
+> installers -> full suite -> commit).
 
 # (prior) handoffs — archived
 

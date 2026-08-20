@@ -495,10 +495,11 @@
     "Hard_File_updated": 0
    },
    "engine": {
-    "Hard_File": 34,
-    "Hard_File_updated": 33
+    "Hard_File": 0,
+    "Hard_File_updated": 0
    },
-   "cause": "Every engine offender carries the source tool's STORED Critical flag (stored_is_critical=True) but no stored TotalSlack: MPXJ's MSPDI conversion omits <TotalSlack> for these tasks (34/142 in Hard_File; UID 147 'Product Review COMPLETE' is a source-Critical milestone). The engine's effective_total_float (ADR-0010/0080) then falls back to the recomputed pure-logic CPM float, which reads negative on these constrained/leveled tasks where MS Project's stored slack (which Fuse reads) is 0. This is the documented stored-vs-recomputed CPM divergence, NOT a curve-fittable data typo: forcing a clamp to 0 would hide a genuine CPM-vs-MSProject difference. Recorded on the needs list for a deeper CPM-parity investigation (why the recompute diverges on these tasks — constraints/leveling/data-date)."
+   "closed_by": "ADR-0430",
+   "cause": "CLOSED (ADR-0430). The ribbon Negative Float metric is now arithmetic on the source tool's STORED Total Slack (an activity without stored slack is absent, never recomputed), which is Fuse's own reading — verified 6/6 on the operator's Starlight workbook (62/45/44/37/34/0). The former engine values 34/33 were EXACTLY the stored-less incomplete tasks (Hard_File: 110 incomplete, 76 with stored slack, 34 without — every one stored-Critical with no <TotalSlack> in the MPXJ conversion): the per-task recompute fallback counted precisely the phantom set this metric no longer recomputes. The recomputed pure-logic CPM float itself is unchanged and still surfaces where it is the declared instrument (DCMA-07, float bands, driving slack). Historical record of the pre-close divergence: Every engine offender carries the source tool's STORED Critical flag (stored_is_critical=True) but no stored TotalSlack: MPXJ's MSPDI conversion omits <TotalSlack> for these tasks (34/142 in Hard_File; UID 147 'Product Review COMPLETE' is a source-Critical milestone). The engine's effective_total_float (ADR-0010/0080) then falls back to the recomputed pure-logic CPM float, which reads negative on "
   },
   "missing_logic_updated": {
    "fuse": 8,

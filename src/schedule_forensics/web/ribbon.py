@@ -53,7 +53,9 @@ def _ribbon_cell_class(attr: str, r: object, quality: dict[str, MetricResult]) -
     """pass (green) / warning (yellow) / fail (red) for thresholded measures; '' = no threshold.
 
     Thresholds come from the Bible-validated quality metrics where they exist; Negative Float
-    and Leads use the DCMA zero-tolerance rule; Hard Constraints uses the DCMA-05 5% rule.
+    and Leads use the DCMA zero-tolerance rule; Hard Constraints COLORS by the 5%-of-activities
+    bar (the published DCMA-05 threshold) while its VALUE is the Fuse mandatory-only count
+    (ADR-0429) — the bar is a display convention on the same 0-5% scale Fuse shades green.
     The warning band (PASS but >= 80% of the threshold) is a display convention, not a metric.
     """
     q = quality.get(attr)
@@ -288,8 +290,13 @@ schedule. <b>Missing Logic</b> = activities missing a predecessor and/or success
 <b>Critical</b> = activities the source tool flags critical (its stored Critical / Total Slack);
 <b>Lags</b> / <b>Leads</b> = activities whose predecessors carry a positive / negative offset,
 counted across all statuses (planned, in-progress, or complete &mdash; unlike the
-incomplete-only DCMA-14 checks); <b>Hard Constraints</b> / <b>Negative Float</b> are the DCMA
-counts; <b>Merge Hotspot</b> = activities with more than two predecessors. <b>Insufficient Detail™</b> = activities whose duration exceeds 10% of the
+incomplete-only DCMA-14 checks); <b>Hard Constraints</b> = activities pinned by a
+<i>must / mandatory</i> date (Must&nbsp;Start/Finish&nbsp;On, Mandatory&nbsp;Start/Finish),
+counted across all statuses per the NASA Acumen library's ribbon formula &mdash; the
+no-later-than caps (SNLT/FNLT) belong to DCMA-05, a different metric of the same name;
+<b>Negative Float</b> = incomplete activities whose <i>stored</i> Total Slack (the source
+tool's own value) is negative &mdash; Fuse's arithmetic; the DCMA-07 card scopes and rounds
+differently by design; <b>Merge Hotspot</b> = activities with more than two predecessors. <b>Insufficient Detail™</b> = activities whose duration exceeds 10% of the
 project span (the NASA Acumen library formula, Fuse-validated). These are validated against the
 reference schedule-quality export. <i>Float Ratio™ is omitted pending its exact definition.</i>
 <span class=rib-legend><span class=rib-pass>pass</span> <span class=rib-warn>warning

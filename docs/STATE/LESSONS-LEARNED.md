@@ -435,6 +435,46 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-20 — two metrics can share a name, and the audit table knew before the operator did
+
+- **"Same name" is not "same metric" — the Bible itself disagrees with itself by name.** The NASA
+  library carries a ribbon "Hard Constraints" (must/mandatory only, no status filter) AND a DCMA
+  "5. Hard Constraint" (adds the SNLT/FNLT caps). The ribbon page displayed the DCMA figure under
+  the ribbon label; under the session-default Acumen-parity population that figure was 1 where
+  Fuse showed 4. When a reference tool's number disagrees, FIRST ask which of the reference
+  library's same-named metrics the surface claims — before debugging the arithmetic of the wrong
+  one. (ADR-0429; the skill already warned: the SPI(t) audit found this exact class.)
+- **A latent drift row is a loaded gun, and the audit table had already filed it.** ADR-0110
+  classified this drift verbatim — "Latent: no parity impact unless a schedule carries
+  SNLT/FNLT" — and every reference fixture happened to carry none that discriminate (TP3's two
+  hard constraints are mandatory AND incomplete AND baselined: identical under all four candidate
+  definitions). A calibration whose fixtures cannot separate two definitions certifies both; the
+  operator's Starlight workbook was the first input where they part. Pair every "latent" drift
+  row with a fixture that would TRIP it, at filing time.
+- **A tree-wide renumber sed is a weapon.** `grep -rl ADR-0425 | sed s/0425/0428/` renumbered
+  UPSTREAM files' legitimate citations — #602 had claimed ADR-0425 while this session ran.
+  Caught only by reading `git status` afterwards and seeing files I never edited. Renumber MY
+  files by explicit list, never by tree sweep; and fetch-before-numbering may need to run MORE
+  THAN ONCE in a long session (0425 taken, then 0428 taken too; landed 0429).
+- **A refutation log is a deliverable.** Six hypotheses for the Insufficient-Detail residual —
+  each cheap to state, each REFUTED by one measured table against the committed pins — ended in
+  an honest STOP: the oracle and the bytes contradict, and the missing artifact is the reference
+  tool's own offender list for ONE cell. Enumerate-and-refute beats fitting an unfalsifiable
+  rule; and "any constant in [1000, 1890] fits" is the smell that says the next hypothesis would
+  be curve-fitting, not root-causing.
+- **When two sources encode the same facts, the count can only prove they agree with each
+  other.** Starlight's calendar carried its 112 holidays TWICE (old-style DayType-0 rows AND
+  modern Exceptions) — and the importer dropped BOTH through one gate: the missing weekly
+  pattern. Redundant encodings do not protect against a shared gatekeeper.
+- **"Fallback to default" can be the bug even when the default is right.** The synthesized
+  Mon-Fri/480 week was CORRECT for Starlight — what was wrong was throwing away the exceptions
+  riding the discarded calendar. When degrading, degrade the unreadable PART, not the whole
+  object.
+- **A case typo cannot prove a pin whose normalizer lowercases.** The Bible-pin mutation
+  "StartOnOrBEFORE" passed — legitimately, `_norm` case-folds — and only dropping a whole TERM
+  went red. Match the mutation to the comparator's normalization, or the "proof" proves the
+  normalizer, not the pin.
+
 ### 2026-08-18 (b) — an oracle can be blind in a way only the mutation exposes, and a "complete" series can still be missing a dimension
 
 - **Two of my own tests passed under the exact mutation they existed to catch.** Both were written

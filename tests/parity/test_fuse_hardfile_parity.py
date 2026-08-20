@@ -139,25 +139,40 @@ def test_fuse_hardfile_missing_logic_superset_divergence_is_exact() -> None:
 
 
 def test_fuse_hardfile_divergences_are_exact_not_papered_over() -> None:
-    """The three documented divergences hold at their recorded engine values (Law 2: assert the
+    """The documented divergences hold at their recorded engine values (Law 2: assert the
     difference exactly, never force a match). If any of these changes, the golden note and the
-    needs list must be revisited in the same commit."""
+    needs list must be revisited in the same commit.
+
+    Divergence 1 (negative float, engine 34/33 vs Fuse 0/0) was CLOSED by ADR-0430: the ribbon
+    metric is now arithmetic on STORED Total Slack, so the 34 stored-less tasks the recompute
+    fallback used to count as phantoms are absent — which is Fuse's own reading. The pin below
+    asserts the CLOSED state *and* that the fixture still carries the 34-task phantom population,
+    so reintroducing the per-task recompute fallback goes red here by name."""
     case = _case()
     div = case["_documented_divergences"]
     quality_base = compute_schedule_quality(_schedule("Hard_File"))
     quality_upd = compute_schedule_quality(_schedule("Hard_File_updated"))
 
-    # 1. Negative float: engine 34/33 vs Fuse 0/0 (stored-critical, no stored TotalSlack)
+    # 1. Negative float: CLOSED — engine now equals Fuse (0/0) because the stored-slack metric
+    # never recomputes. The recorded engine values pin the closed state exactly.
+    assert div["negative_float"]["closed_by"] == "ADR-0430"
     assert quality_base["negative_float"].count == div["negative_float"]["engine"]["Hard_File"]
     assert (
         quality_upd["negative_float"].count == div["negative_float"]["engine"]["Hard_File_updated"]
     )
-    # every negative-float offender carries the source's stored Critical flag (the root cause)
-    by_uid = {t.unique_id: t for t in _schedule("Hard_File").tasks}
-    assert all(
-        by_uid[u].stored_is_critical and by_uid[u].stored_total_float_minutes is None
-        for u in quality_base["negative_float"].offender_uids
-    )
+    assert quality_base["negative_float"].count == div["negative_float"]["fuse"]["Hard_File"]
+    # the TEETH: the fixture still carries exactly the 34 stored-Critical/stored-less incomplete
+    # tasks whose recomputed float reads negative — the phantom set a fallback would re-count
+    base_sched = _schedule("Hard_File")
+    phantom = [
+        t
+        for t in base_sched.tasks
+        if not t.is_summary
+        and t.percent_complete < 100.0
+        and t.stored_total_float_minutes is None
+        and t.stored_is_critical
+    ]
+    assert len(phantom) == 34, len(phantom)
 
     # 2. Missing logic on the updated snapshot: engine 10 vs Fuse 8 (Fuse definition nuance)
     assert quality_upd["missing_logic"].count == div["missing_logic_updated"]["engine"]

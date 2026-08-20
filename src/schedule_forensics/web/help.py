@@ -377,15 +377,22 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
     "hard_constraints": _doc(
         "hard_constraints",
         "Hard Constraints",
-        "Activities with a hard/mandatory constraint.",
-        "count(hard constraint) / activities",
+        "Activities pinned by a must/mandatory date constraint (Must Start On, Must Finish On, "
+        "and P6's Mandatory Start/Finish), counted across ALL statuses. The no-later-than caps "
+        "(SNLT/FNLT) are NOT counted here — the NASA library files those under DCMA-05 "
+        "('5. Hard Constraint'), a different metric of the same name (ADR-0429).",
+        'SUM(((ActivityConstraint="MandatoryStart")+("MandatoryFinish")+("MustStartOn")'
+        '+("MustFinishOn")+("StartAndFinish")>0)*1)',
         _SQ,
     ),
     "negative_float": _doc(
         "negative_float",
         "Negative Float",
-        "Incomplete activities with total float < 0.",
-        "count(total_float < 0) / incomplete",
+        "Incomplete activities whose STORED Total Slack (the source tool's own, progress-aware "
+        "value) is negative. An activity the source wrote no slack for is absent from the count, "
+        "never recomputed; a schedule carrying no stored slack at all falls back to the "
+        "recomputed CPM float so the signal survives on pure-logic files (ADR-0430).",
+        "count(stored TotalSlack < 0) / incomplete",
         _SQ,
     ),
     "insufficient_detail": _doc(
