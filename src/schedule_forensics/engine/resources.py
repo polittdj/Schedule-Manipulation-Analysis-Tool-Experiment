@@ -86,6 +86,10 @@ class ResourceLoad:
     peak_period: str | None
     over_allocated_periods: tuple[str, ...]
     series: tuple[ResourcePeriod, ...]
+    #: whether the FILE stated ``max_units`` (operator 2026-08-20). The math substitutes the
+    #: documented 1.0 default for a missing value; the view needs to render "—" for the
+    #: assumption instead of a fabricated figure (Law 2), so the distinction rides along.
+    max_units_declared: bool = True
 
 
 @dataclass(frozen=True)
@@ -179,7 +183,12 @@ def compute_resource_loading(
     )
 
     resources: list[ResourceLoad] = []
-    for rid, tasks in tasks_seen.items():
+    # the roster is the UNION of assigned ids and the file's own resource table (operator
+    # 2026-08-20): a declared resource nothing books is still a row — honest zeros, so "see
+    # all resources" holds — while an assignment against an undeclared id keeps its
+    # "Resource {id}" fallback row exactly as before.
+    for rid in sorted(set(tasks_seen) | set(by_id)):
+        tasks = tasks_seen.get(rid, set())
         res = by_id.get(rid)
         name = res.name if res is not None else f"Resource {rid}"
         rtype = str(res.type) if res is not None else "WORK"
@@ -191,6 +200,7 @@ def compute_resource_loading(
         # unit-day of capacity. Paired with the :meth:`ResourcePeriod.over_allocated` fix above —
         # alone, preserving the 0 would have SUPPRESSED the over-allocation instead of sharpening
         # it, because the old guard skipped zero-capacity buckets.
+        declared = res is not None and res.max_units is not None
         max_units = res.max_units if res is not None and res.max_units is not None else 1.0
         months = load.get(rid, {})
         res_contrib = contrib.get(rid, {})
@@ -215,6 +225,7 @@ def compute_resource_loading(
                 peak_period=peak.period if peak else None,
                 over_allocated_periods=over,
                 series=tuple(series),
+                max_units_declared=declared,
             )
         )
 

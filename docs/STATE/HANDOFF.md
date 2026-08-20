@@ -1,68 +1,87 @@
-# Handoff — 2026-08-20 (the Starlight parity sweep: two same-named metrics, a pattern-less calendar, stored-slack Negative Float; ADR-0429/0430, v1.0.218)
+# Handoff — 2026-08-20 (c) (four operator asks + the stale-installer root: multi-.xer grouping, /path whole-schedule, Resources on P6, /compare picker; ADR-0431..0435, v1.0.219)
 
-> ## STATUS (current) — operator parity report ("fix all mismatches") CLOSED to 52/54 cells on `claude/multi-schedule-comparative-analysis-vmh5ei`.
-> Highest ADR now **0430**. Shipped code changed (`model/task.py`, `importers/mspdi.py`,
-> `engine/metrics/schedule_quality.py`, `engine/metrics/ribbon.py`, `web/ribbon.py`,
-> `web/help.py`), so **v1.0.217 -> 1.0.218** and the wheel + nine installers were rebuilt
-> (ADR-0148). Branch restarted from `origin/main` @ 98419a2. **Ran entirely SOLO**, with the
-> operator's six real Starlight `.mpp`s uploaded mid-session (non-CUI, marked fictional;
-> scratchpad only, never committed). The audit ledger is untouched.
+> ## STATUS (current) — the operator's four live asks (2026-08-20) are CLOSED, plus queue item 1.
+> Highest ADR now **0435**. Shipped code changed (`importers/xer.py`, `engine/resources.py`,
+> `web/state.py`, `web/app.py`, `web/mission.py`, `web/portfolio.py`, `web/path.py`,
+> `web/driving.py`, `web/compare.py`, `web/resources.py`, `web/i18n.py`, `static/path.js`,
+> `static/resources.js`, `static/app.css`), so **v1.0.218 -> 1.0.219** and the wheel + nine
+> installers were rebuilt AFTER the last src edit (lockstep test green). Branch
+> `claude/polaris-installer-version-h3qy0v` from `origin/main` @ 9dda7ea. Ran SOLO after four
+> read-only recon agents; every finding lead-verified against the code and by executable check.
+> **PR #606 (docs-only close of the parity sweep) MERGED mid-session** (main -> bb0a659); its
+> docs/STATE rotation was merge-resolved INTO this branch (its "(b)" section archived, its
+> SESSION-LOG/LESSONS entries kept; this kickoff supersedes its). Mid-session the operator also
+> pulled main and re-ran install-tier2.ps1 — they now run v1.0.218 (up from v1.0.148); v1.0.219
+> reaches them when THIS PR merges and they repeat the pull + install.
 >
-> ## 1. What the report was, and what it became
-> Fuse said Hard Constraints 4; the ribbon said 1. Root cause (ADR-0429): the NASA library
-> carries TWO same-named metrics — ribbon "Hard Constraints" (must/mandatory only, all statuses)
-> vs DCMA "5. Hard Constraint" (adds the SNLT/FNLT caps) — and the ribbon displayed the DCMA05
-> count, parity-scoped to baselined incomplete. Fixed: `has_mandatory_constraint` ({MSO, MFO}),
-> ribbon sources `schedule_quality`, DCMA05 untouched, formula-audit rows drift->match.
-> ADR-0110's audit table had ALREADY filed the drift as "latent: no parity impact unless a
-> schedule carries SNLT/FNLT" — Starlight is that schedule.
-> The operator then widened to ALL mismatches -> ADR-0430:
-> **(a) the pattern-less calendar** — Starlight's project calendar has NO DayType 1-7 rows, only
-> 112 DayType-0 holiday exceptions; MS Project reads that as "default week + exceptions", the
-> importer read it as "unreadable" and silently DISCARDED all 112 holidays. Now: no-pattern
-> synthesizes the default week and KEEPS the exceptions; a DECLARED all-non-working week still
-> falls back (pinned by IDENTITY — name/uid — because the weekday tuple cannot tell the two
-> apart; the pre-existing guard was blind exactly there).
-> **(b) ribbon Negative Float = STORED Total Slack < 0** over incomplete — reproduces Fuse 6/6
-> (62/45/44/37/34/0). The old DCMA07 sourcing missed BOTH ways at once: recompute fallback added
-> phantoms on stored-less tasks (+15 on V05), the parity baselined filter dropped real stored
-> negatives (-10). Stored-less-everywhere files keep the recomputed count (never a fabricated
-> clean bill). DCMA07 itself untouched (Acumen DCMA-report parity, ADR-0280) — the DCMA card and
-> ribbon now legitimately differ, mirroring Acumen's own two products.
-> **Post-fix: 52 of 54 ribbon cells match Fuse exactly** across the six versions.
+> ## 1. Multi-.xer Mission Control (ADR-0431) — root cause PROVEN then fixed
+> Loose files group by `_norm_title(project_title)`; XER filled that from `proj_short_name` —
+> P6's per-EPS-unique Project ID, renamed by every per-update copy — so N same-project `.xer`
+> updates shattered into N one-version populations and every `<2` gate fired ("1 / 1"). MSPDI
+> grouped because `<Title>` survives copies. Fixed three ways: XER `project_title` = root
+> PROJWBS `wbs_name` (the P6 project NAME; short-name fallback; `Schedule.name` byte-stable);
+> operator combine override (`POST /project/combine` + Portfolio panel — re-labels populations
+> with one shared ingestion folder, the folder-beats-title lever); Mission Control's degrade
+> note now counts the other-project files and names the two remedies. Cross-format grouping
+> (.mpp Title == .xer project name) works and is pinned. UNVERIFIED against the operator's own
+> JUICE files (not in the repo) — if their project NAMES also differ per update, combine is the
+> remedy; ask them to re-load on this build.
 >
-> ## 2. The BLOCKED leg — Insufficient Detail on V05/V06 (and TP2)
-> Fuse 5x6; tool 0/4 on V05/V06, exact on V07-V10. SIX hypotheses each refuted by measurement
-> against committed pins (calendar-day scaling · week/7 minutes · max-baseline-finish span ·
-> Schedule.baseline_finish span · fixed-480 conversion · the .mpp's stored ProjectFinish, read
-> from the binaries with MPXJ — identical to exported). Any CONSTANT span in [1000, 1890]d fits
-> Starlight; nothing in the bytes lands there without breaking a pin. STOPPED per the
-> metric-parity skill (oracle vs bytes contradiction). **UNBLOCK = one operator artifact: click
-> the V05 "Insufficient Detail 5" cell in Fuse (or export the ribbon to Excel) so the five
-> counted activities are NAMED.** TP2's 6-vs-7 is the same blocked question (pre-existing,
-> never pinned).
+> ## 2. /path (ADR-0432) — whole schedule by default; the "broken timescale" was v1.0.148
+> `target<=0` returns `_whole_schedule_data` (file order, tier/slack honestly "—"); UID cell
+> click (or Enter) retargets; `Dur (d)` default-on (Columns 7->8); the data date SEATS ~96px
+> right of the frozen columns via a LIVE-geometry delta deferred past layout/font settling (the
+> model-number version landed 280px off — columns re-measure after first paint). The
+> screenshot's timescale defect DOES NOT REPRODUCE on this tree — the operator runs a v1.0.148
+> install (that's ADR-0435's whole story) — and is now property-guarded in real chromium:
+> header/track DD lines coincide and the top-tier bands COVER the rightmost bar
+> (test_path_whole_schedule_browser.py). path.js digest re-baselined (r11).
 >
-> ## 3. Traps paid for THIS session — check by name
-> A tree-wide renumber sed rewrote UPSTREAM files' legitimate ADR-0425 citations (#602 took the
-> number mid-session); caught by reading git status; renumber by EXPLICIT FILE LIST only ·
-> fetch-before-numbering ran THREE times and was right to (0425 taken -> 0428 taken -> 0429;
-> version .215/.216/.217 all shipped under the session) · a case-typo cannot prove a pin whose
-> _norm lowercases — drop a TERM · THREE blind oracles found in one arc: the Fuse calibration
-> fixtures where definitions coincide, the pinning test's no-overlap question (ADR-0424), and
-> the all-non-working-week guard distinguishable only by IDENTITY · the product knew its own
-> defect (ADR-0110's latent drift row) · sandbox rule inverse: a battery measuring the tree was
-> KILLED before editing (its verdict was superseded anyway).
+> ## 3. Resources on P6 (ADR-0433) — the page was DEAD for every .xer
+> XER built no `Task.resource_assignments` and read no max units -> empty state always. Now:
+> RSRCRATE rate in effect at the data date (or the RSRC row's own column) -> `max_units`
+> (ratio, 1.0=100%); real Assignments (at-completion hours; MATERIAL quantities are NOT hours —
+> zero work minutes by design); roster = union of declared + assigned (zero rows visible);
+> `max_units_declared` so the roster prints "—" for the engine's assumed 1.0 (Law 2); a 4th
+> shelled panel "Utilization by resource" (peak load / OWN capacity, worst first, plain rows —
+> deliberately not a .chart-host). Hand-verified in chromium: 80h vs 0.5x20wd -> 100%; 160h vs
+> 2.0x20wd -> 50%. r10 contract re-baselined 3->4; the 11-line axis-caption block digest is
+> UNCHANGED. The differing-max-units engine test passed FIRST RUN — the formula was always
+> right; the gap was data + roster (that twin is the proof).
+>
+> ## 4. /compare picker (ADR-0434) + installer banner (ADR-0435)
+> `a`/`b` on /compare AND its export through ONE resolver (/integrity's guard verbatim —
+> chronology can never reverse; a=1&b=0 renders byte-identical to a=0&b=1). Bare URL keeps its
+> exact byte shape (ADR-0320 emit-only-non-default), picker only at n>2 (pinned ⛶ counts hold),
+> oracle variant `[picked-pair] GET /compare` added + labels regenerated. Installer banners now
+> print the EMBEDDED version + the "installs exactly vX.Y.Z" honesty line (rendered-banner test
+> derived from each file's own wheel name, red-before-green against the committed installers);
+> README-DISTRIBUTABLE gained "Updating an install you already have".
+>
+> ## Traps paid for THIS session — check by name
+> A screenshot is testimony about a VERSION, not the tree — check what build the reporter runs
+> before chasing a render bug (the v1.0.148 realization redirected half a task) · seat scroll
+> from LIVE geometry after double-rAF + fonts.ready, never from model numbers (280px drift) ·
+> `target=0` collided with a real UID-0 contract test — a sentinel needs the existing pins
+> swept, and the fix is to move the pin to a nonzero member of the same class · a new panel on
+> a contract-pinned page is a DELIBERATE re-baseline (r10 3->4, r11 path.js digest), never a
+> test weakening; keep the load-bearing block digests unchanged and say so in the pin comment ·
+> the util chart must NOT wear .chart-host or chartframe bolts a zoom bar onto a div list ·
+> FastAPI Form: ruff B008 rejects `Form([])` and `Form(default_factory=...)`; `Form(())` with a
+> tuple annotation passes.
 >
 > ## Next
-> The audit ledger stands (page modules A/B, docs/config/CI, AI figure-gate adversarial pass,
-> 25-route adverse gap). NEW from this sweep: the blocked Insufficient-Detail leg (operator
-> artifact above) · TP2's 6-vs-7 (same oracle) · consider pinning the ribbon nf/id columns in
-> test_ribbon._FUSE once settled.
+> The audit ledger stands untouched (page modules A/B, docs/config/CI, AI figure-gate
+> adversarial pass, 25-route adverse gap). NEW: operator re-loads their JUICE .xer set on
+> v1.0.219 (grouping should light the wall; else Combine in Portfolio) · sibling degrade notes
+> (/trend /cei /evolution /volatility /integrity) could gain ADR-0431's other-projects tail ·
+> Insufficient-Detail V05/V06 + TP2 stay BLOCKED on the operator's Fuse artifact (do NOT
+> re-chase — six hypotheses measured and refuted, ADR-0430).
 >
 > ## Gate at close
-> Statics green whole-tree. Engine+importer 1372 passed mid-close; full-suite + wheel/installer
-> numbers in the SESSION-LOG entry (close sequence: last source edit -> statics -> wheel +
-> installers -> full suite -> commit).
+> Statics green whole-tree (ruff / format / mypy strict / bandit). Full suite + parity run at
+> close — numbers in the SESSION-LOG entry. Wheel v1.0.219 + nine installers rebuilt once,
+> after the last src edit; installer suite 68/68.
 
 # (prior) handoffs — archived
 

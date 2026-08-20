@@ -366,9 +366,19 @@ def test_dcma_table_defines_each_check_inline(client: TestClient) -> None:
 def test_driving_summary_target_returns_note_not_500(client: TestClient) -> None:
     # Project5 UID 0 is the project-summary row: not in the logic network. Tracing it
     # raised KeyError -> 500 (and the session-wide target auto-trace made that constant).
+    # Since operator 2026-08-20, target=0 is the WHOLE-SCHEDULE sentinel (the MSPDI
+    # project-summary UID is 0 in every file and was never traceable) — so 0 answers with
+    # the complete schedule, and the summary-note contract holds on a NONZERO rollup.
     r = client.get("/api/driving/Project5?target=0")
     assert r.status_code == 200
-    data = r.json()
+    assert r.json().get("whole_schedule") is True
+    from schedule_forensics.importers import load_schedule
+
+    sch = load_schedule(GOLDEN / "project2_5" / "Project5.mspdi.xml")
+    summary_uid = next(t.unique_id for t in sch.tasks if t.is_summary and t.unique_id != 0)
+    r2 = client.get(f"/api/driving/Project5?target={summary_uid}")
+    assert r2.status_code == 200
+    data = r2.json()
     assert data["rows"] == [] and "summary" in data["note"]
 
 

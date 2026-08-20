@@ -347,7 +347,7 @@ _ROLES: tuple[_Role, ...] = (
             ("Trend", "/trend", "Every metric across every loaded version."),
             ("Critical-Path Evolution", "/evolution", "Whether the path holds or thrashes."),
             ("Bow Wave / CEI", "/cei", "Work pushed ahead of the data date."),
-            ("Compare", "/compare", "What changed between the two most recent versions."),
+            ("Compare", "/compare", "What changed between any two versions you pick."),
         ),
     ),
     _Role(
@@ -1191,6 +1191,37 @@ class SessionState:
                 )
                 if not present:
                     self.set_target(None)
+            return True
+
+    def combine_projects(self, pids: Sequence[str], title: str) -> bool:
+        """Combine two or more loaded populations into ONE Project (operator 2026-08-20).
+
+        Automatic grouping — folder, else document Title / P6 project name — deliberately
+        refuses to merge files whose internal names differ (a guess could mix real projects).
+        But the per-update P6 workflow copies the project every period, and a scheduler who
+        also renames the project NAME leaves N one-version populations no importer can
+        reunite: every cross-version view then degrades. This is the operator's explicit
+        override: the named populations' files are re-labeled with one shared ingestion
+        FOLDER — the strongest grouping signal ``engine.projects`` knows (a folder is exactly
+        one Project by the operator's own rule) — so the regular pipeline (data-date version
+        ordering, tiebreak notices, duplicate review) applies to the combined set unchanged,
+        and the combined Project becomes ACTIVE. Population-only, like
+        :meth:`set_active_project`: the per-key analysis/summary caches stay valid, nothing
+        is invalidated. Fail-soft: a blank title, or fewer than two pids that resolve to
+        CURRENT populations, is a no-op returning ``False``."""
+        cleaned = title.strip()
+        if not cleaned:
+            return False
+        with self._lock:
+            pops = {p[0]: p[2] for p in self.populations()}
+            chosen = [pid for pid in pids if pid in pops]
+            if len(chosen) < 2:
+                return False
+            for pid in chosen:
+                for key in pops[pid]:
+                    mtime = self.file_meta.get(key, (None, None))[1]
+                    self.file_meta[key] = (cleaned, mtime)
+            self.active_project = f"folder:{cleaned}"
             return True
 
     def set_excluded(self, key: str, excluded: bool) -> bool:

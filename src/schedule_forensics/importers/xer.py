@@ -59,6 +59,7 @@ from schedule_forensics.importers._common import (
     working_span_minutes,
 )
 from schedule_forensics.model import (
+    Assignment,
     Calendar,
     ConstraintType,
     Relationship,
@@ -164,11 +165,18 @@ def parse_xer_text(text: str, *, source_file: str | None = None) -> Schedule:
         logger.warning("%s", anchor_note)
 
     wbs_short, wbs_parent = _wbs_index(tables.get("PROJWBS", []))
-    resources = _parse_resources(tables.get("RSRC", []))
+    # the data date anchors which RSRCRATE availability row is "in effect" (fallback: the
+    # project start) — hoisted here so resources and the Schedule share one parse.
+    status_date = parse_datetime(_g(project, "last_recalc_date"))
+    resources = _parse_resources(
+        tables.get("RSRC", []), tables.get("RSRCRATE", []), status_date or project_start
+    )
     resource_name_by_id = {r.unique_id: r.name for r in resources}
     uids_by_task, names_by_task = _parse_assignments(
         tables.get("TASKRSRC", []), resource_name_by_id
     )
+    work_resource_ids = {r.unique_id for r in resources if r.type is ResourceType.WORK}
+    assignments_by_task = _parse_assignment_objects(tables.get("TASKRSRC", []), work_resource_ids)
     units_pct_by_task = _units_percent_by_task(tables.get("TASKRSRC", []))
     costs_by_task = _costs_by_task(tables.get("TASKRSRC", []), tables.get("PROJCOST", []))
 
@@ -183,6 +191,7 @@ def parse_xer_text(text: str, *, source_file: str | None = None) -> Schedule:
             units_pct_by_task,
             costs_by_task,
             uid_map,
+            assignments_by_task,
         )
         for row in task_rows
     ]
@@ -196,19 +205,26 @@ def parse_xer_text(text: str, *, source_file: str | None = None) -> Schedule:
         tables.get("TASKPRED", []), all_task_ids, in_scope_ids, uid_map
     )
 
-    # XER has no exact document Title; the project short-name is the best available real project
-    # identity for grouping (None when absent), kept distinct from ``name``'s filename fallback.
+    # XER has no exact document Title; the closest real analogue is the P6 project NAME — the
+    # selected project's root ``PROJWBS`` row's ``wbs_name`` — which survives the per-update
+    # copy workflow. ``proj_short_name`` is P6's Project ID: unique per EPS, so every monthly
+    # copy carries a NEW one, and grouping loose versions by it shattered one real project into
+    # N one-version populations (every cross-version view then read "needs two versions of the
+    # active project" — operator 2026-08-20). The short name stays the fallback identity when
+    # the export carries no usable root, and ``name`` keeps its historical short-name-first
+    # derivation so display strings are unchanged either way.
     # XER/P6 also carries no company-equivalent header field (no MPP-style Company), so
     # ``Schedule.company`` stays None for XER imports — documented, never guessed (ADR-0260).
-    project_title = _g(project, "proj_short_name")
+    short_name = _g(project, "proj_short_name")
+    project_title = _root_project_name(tables.get("PROJWBS", []), proj_id) or short_name
     try:
         return Schedule(
-            name=project_title or proj_id or (source_file or "Untitled"),
+            name=short_name or proj_id or (source_file or "Untitled"),
             project_title=project_title,
             source_file=source_file,
             project_start=project_start,
             project_finish=parse_datetime(_g(project, "plan_end_date")),
-            status_date=parse_datetime(_g(project, "last_recalc_date")),
+            status_date=status_date,
             baseline_finish=None,  # P6 baseline lives in a separate project (deferred)
             calendar=project_calendar,
             tasks=tuple(tasks),
@@ -320,6 +336,27 @@ def _select_project(projects: list[Row], task_rows: list[Row]) -> Row:
     return max(projects, key=lambda p: counts.get(_g(p, "proj_id"), 0))
 
 
+def _root_project_name(wbs_rows: list[Row], proj_id: str | None) -> str | None:
+    """The P6 project NAME: the selected project's root ``PROJWBS`` row's ``wbs_name``.
+
+    The root is the row flagged ``proj_node_flag=Y``; when the flag column is absent (older
+    or hand-cut exports), it is a row whose ``parent_wbs_id`` is blank or points outside the
+    project's own rows (a real export's root parents into the EPS node, which ``PROJWBS``
+    does not carry). Rows are pre-filtered to the selected ``proj_id`` when given
+    (multi-project exports must not read another project's name). ``None`` when no root row
+    carries a usable name — the caller falls back to ``proj_short_name``.
+    """
+    rows = [r for r in wbs_rows if proj_id is None or _g(r, "proj_id") == proj_id]
+    ids = {wid for r in rows if (wid := _g(r, "wbs_id")) is not None}
+    flagged = [r for r in rows if (_g(r, "proj_node_flag") or "").upper() == "Y"]
+    rootish = [r for r in rows if (parent := _g(r, "parent_wbs_id")) is None or parent not in ids]
+    for row in (*flagged, *rootish):
+        name = _g(row, "wbs_name")
+        if name is not None:
+            return name
+    return None
+
+
 # --- WBS --------------------------------------------------------------------------
 
 
@@ -405,6 +442,7 @@ def _parse_task(
     units_pct_by_task: dict[int, float],
     costs_by_task: dict[int, _TaskCosts],
     uid_map: dict[int, int] | None,
+    assignments_by_task: dict[int, list[Assignment]] | None = None,
 ) -> Task:
     task_id = _req_int(row, "task_id")
     costs = costs_by_task.get(task_id, _NO_COSTS)
@@ -466,6 +504,9 @@ def _parse_task(
             budgeted_cost=costs.budget if costs.budget is not None else 0.0,
             resource_names=names_by_task.get(task_id, ()),
             resource_ids=uids_by_task.get(task_id, ()),
+            # real Assignment objects (operator 2026-08-20) — quantities as work minutes for
+            # hour-booking resources, so the Resources page loads P6 files at last
+            resource_assignments=tuple((assignments_by_task or {}).get(task_id, ())),
             # the human P6 handle rides along for citations/grouping/traceability
             custom_fields=(("Activity ID", task_code),) if task_code is not None else (),
         )
@@ -715,26 +756,108 @@ def _parse_clndr_data(data: str) -> tuple[set[int], list[int], set[dt.date], set
 # --- resources & assignments ------------------------------------------------------
 
 
-def _parse_resources(rsrc_rows: list[Row]) -> list[Resource]:
-    """``RSRC`` → :class:`Resource` list (rows without an id or name are skipped)."""
+def _max_units_by_resource(rate_rows: list[Row], as_of: dt.datetime | None) -> dict[int, float]:
+    """``RSRCRATE`` → each resource's Max Units/Time ratio IN EFFECT at ``as_of``.
+
+    P6 stores availability as time-varying rate rows (``max_qty_per_hr``, a units ratio where
+    1.0 = 100%). The row that governs is the latest whose ``start_date`` is absent or not
+    after ``as_of`` (the data date, else the project start); a file whose every row starts in
+    the future keeps the EARLIEST row rather than inventing a value from nothing. Rows with
+    no parseable id or ratio contribute nothing (operator 2026-08-20)."""
+    per_res: dict[int, list[tuple[dt.datetime | None, float]]] = {}
+    for row in rate_rows:
+        rsrc_id = _opt_int(row, "rsrc_id")
+        ratio = parse_float(_g(row, "max_qty_per_hr"))
+        if rsrc_id is None or ratio is None:
+            continue
+        per_res.setdefault(rsrc_id, []).append((parse_datetime(_g(row, "start_date")), ratio))
+    out: dict[int, float] = {}
+    for rsrc_id, rows in per_res.items():
+        dated = sorted(rows, key=lambda r: (r[0] is not None, r[0] or dt.datetime.min))
+        effective = [r for r in dated if r[0] is None or as_of is None or r[0] <= as_of]
+        out[rsrc_id] = (effective[-1] if effective else dated[0])[1]
+    return out
+
+
+def _parse_resources(
+    rsrc_rows: list[Row],
+    rate_rows: list[Row] | None = None,
+    as_of: dt.datetime | None = None,
+) -> list[Resource]:
+    """``RSRC`` → :class:`Resource` list (rows without an id or name are skipped).
+
+    Max units (operator 2026-08-20): the resource's own ``max_qty_per_hr`` column when the
+    export carries it, else the ``RSRCRATE`` rate in effect at the data date — both are the
+    P6 Max Units/Time ratio (1.0 = 100%), the exact analogue of MSPDI ``<MaxUnits>``. A file
+    that states neither leaves ``max_units`` ``None`` (the engine's documented 1.0 default
+    applies downstream) — never a fabricated 0."""
+    rated = _max_units_by_resource(rate_rows or [], as_of)
     resources: list[Resource] = []
     for row in rsrc_rows:
         rsrc_id = _opt_int(row, "rsrc_id")
         name = _g(row, "rsrc_name") or _g(row, "rsrc_short_name")
         if rsrc_id is None or name is None:
             continue
+        own = parse_float(_g(row, "max_qty_per_hr"))
+        max_units = own if own is not None else rated.get(rsrc_id)
         try:
             resources.append(
                 Resource(
                     unique_id=rsrc_id,
                     name=name,
                     type=_RESOURCE_BY_XER.get(_g(row, "rsrc_type") or "", ResourceType.WORK),
+                    max_units=max_units if max_units is None or max_units >= 0 else None,
                     standard_rate=parse_float(_g(row, "cost_per_qty")),
                 )
             )
         except pydantic.ValidationError as exc:
             raise ImporterError(f"resource rsrc_id {rsrc_id} is invalid: {exc}") from exc
     return resources
+
+
+def _parse_assignment_objects(
+    taskrsrc_rows: list[Row], work_resource_ids: set[int]
+) -> dict[int, list[Assignment]]:
+    """``TASKRSRC`` → per-task :class:`Assignment` objects (operator 2026-08-20).
+
+    Work minutes are the assignment's at-completion HOURS — actual (regular + overtime) plus
+    remaining when any is present, else the budgeted ``target_qty`` — and only for resources
+    whose type books hours (labor/equipment, ``work_resource_ids``): a material's quantities
+    are in MATERIAL units (tons, m³), and reading them as hours would fabricate load, so a
+    material/cost assignment is recorded with zero work minutes (the roster still counts the
+    linkage). ``units`` is P6's assignment Units/Time ratio (``target_qty_per_hr``, 1.0 =
+    100%). Negative quantities (credits/adjustments) clamp to the model's ``ge=0`` floor."""
+    out: dict[int, list[Assignment]] = {}
+    for row in taskrsrc_rows:
+        task_id = _opt_int(row, "task_id")
+        rsrc_id = _opt_int(row, "rsrc_id")
+        if task_id is None or rsrc_id is None:
+            continue
+        act = parse_float(_g(row, "act_reg_qty"))
+        overtime = parse_float(_g(row, "act_ot_qty"))
+        remain = parse_float(_g(row, "remain_qty"))
+        target = parse_float(_g(row, "target_qty"))
+        if act is not None or overtime is not None or remain is not None:
+            hours: float | None = (act or 0.0) + (overtime or 0.0) + (remain or 0.0)
+        else:
+            hours = target
+        if rsrc_id not in work_resource_ids:
+            hours = None  # material/cost quantities are not hours — never fabricate load
+        units = parse_float(_g(row, "target_qty_per_hr"))
+        remaining_minutes = (
+            max(0, round(remain * 60))
+            if remain is not None and rsrc_id in work_resource_ids
+            else None
+        )
+        out.setdefault(task_id, []).append(
+            Assignment(
+                resource_id=rsrc_id,
+                work_minutes=max(0, round(hours * 60)) if hours is not None else 0,
+                units=units if units is not None and units >= 0 else 1.0,
+                remaining_work_minutes=remaining_minutes,
+            )
+        )
+    return out
 
 
 class _TaskCosts(NamedTuple):

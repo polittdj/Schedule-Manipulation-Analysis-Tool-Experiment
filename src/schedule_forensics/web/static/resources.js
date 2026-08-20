@@ -291,10 +291,70 @@
     if (window.SFChartFrame && window.SFChartFrame.scan) window.SFChartFrame.scan();
   }
 
+  // ── Utilization by resource (operator 2026-08-20): EVERY resource on one chart ──────────
+  // Peak booked load as a share of each resource's OWN capacity (its max units) in its busiest
+  // bucket, worst first. Booked work against zero capacity is the most extreme over-allocation
+  // there is and reads "over (no capacity)" — never divided, never hidden.
+  function drawUtil() {
+    var box = document.getElementById("resUtilChart");
+    if (!box) return;
+    box.innerHTML = "";
+    var rows = (payload.resources || []).map(function (r) {
+      var pct = 0, overNoCap = false;
+      (r.series || []).forEach(function (p) {
+        if (p.cap > 0) pct = Math.max(pct, (100 * p.load) / p.cap);
+        else if (p.load > 0) overNoCap = true;
+      });
+      return { name: r.name, max_units: r.max_units, pct: pct, overNoCap: overNoCap,
+        idle: !(r.series || []).length };
+    });
+    rows.sort(function (a, b) {
+      if (a.overNoCap !== b.overNoCap) return a.overNoCap ? -1 : 1;
+      if (b.pct !== a.pct) return b.pct - a.pct;
+      return a.name < b.name ? -1 : 1;
+    });
+    var maxPct = 0;
+    rows.forEach(function (r) { maxPct = Math.max(maxPct, r.pct); });
+    var scaleMax = Math.max(120, Math.min(300, Math.ceil(maxPct / 10) * 10));
+    var capLeft = (100 / scaleMax) * 100;
+    rows.forEach(function (r) {
+      var row = document.createElement("div");
+      row.className = "util-row";
+      var name = document.createElement("span");
+      name.className = "util-name";
+      name.textContent = r.name;
+      name.title = r.name + " — max units " + (r.max_units == null ? "(assumed 1)" : r.max_units);
+      var track = document.createElement("div");
+      track.className = "util-track";
+      var cap = document.createElement("div");
+      cap.className = "util-cap";
+      cap.style.left = capLeft + "%";
+      cap.title = "100% of this resource's capacity";
+      track.appendChild(cap);
+      var fillPct = r.overNoCap ? 100 : Math.min(r.pct, scaleMax) / scaleMax * 100;
+      if (fillPct > 0) {
+        var fill = document.createElement("div");
+        fill.className = "util-fill" + ((r.pct > 100 || r.overNoCap) ? " util-over" : "");
+        fill.style.width = fillPct + "%";
+        track.appendChild(fill);
+      }
+      var val = document.createElement("span");
+      val.className = "util-val" + ((r.pct > 100 || r.overNoCap) ? " res-over" : "");
+      val.textContent = r.overNoCap ? "over (no capacity)"
+        : r.idle ? "no booked work"
+          : Math.round(r.pct) + "% of capacity";
+      row.appendChild(name);
+      row.appendChild(track);
+      row.appendChild(val);
+      box.appendChild(row);
+    });
+  }
+
   function selected() { return byId[pick.value] || (payload.resources || [])[0]; }
   pick.addEventListener("change", function () {
     if (drill) drill.innerHTML = "";
     draw(selected());
   });
   draw(selected());
+  drawUtil();
 })();

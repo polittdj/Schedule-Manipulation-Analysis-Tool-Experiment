@@ -244,9 +244,10 @@ def test_dangling_relationship_is_dropped() -> None:
     assert sched.relationships == ()
 
 
-def test_project_title_is_the_project_short_name() -> None:
-    """v4 grouped ingestion: XER has no exact document Title, so ``project_title`` is the best-
-    available real project identity — ``proj_short_name`` (None when absent)."""
+def test_project_title_falls_back_to_the_short_name_without_a_projwbs_root() -> None:
+    """v4 grouped ingestion, operator 2026-08-20: ``project_title`` is the P6 project NAME
+    (the root PROJWBS ``wbs_name``); an export carrying no usable root falls back to
+    ``proj_short_name`` (None when absent) — never a fabricated title."""
     text = _xer(
         [
             _MIN_PROJECT,
@@ -260,6 +261,80 @@ def test_project_title_is_the_project_short_name() -> None:
     sched = parse_xer_text(text)
     assert sched.project_title == "P1"
     assert sched.name == "P1"
+
+
+def test_project_title_prefers_the_p6_project_name_from_the_projwbs_root() -> None:
+    """Operator 2026-08-20: ``proj_short_name`` is P6's Project ID — unique per EPS, so every
+    per-update copy carries a NEW one, which shattered one project's monthly .xer updates
+    into N one-version populations. The stable identity is the P6 project NAME: the root
+    ``PROJWBS`` row's ``wbs_name`` (``proj_node_flag=Y``, or the row whose parent is absent /
+    outside the project's own rows). ``Schedule.name`` keeps the short name — display strings
+    are unchanged."""
+    text = _xer(
+        [
+            _MIN_PROJECT,
+            (
+                "PROJWBS",
+                [
+                    "wbs_id",
+                    "proj_id",
+                    "parent_wbs_id",
+                    "proj_node_flag",
+                    "wbs_short_name",
+                    "wbs_name",
+                ],
+                [
+                    # the root parents into the EPS node (id absent from this file) — real
+                    # exports look like this; the child row must never win
+                    ["5000", "1", "900", "Y", "P1", "Juice UVS IMS"],
+                    ["5001", "1", "5000", "", "DES", "Design"],
+                ],
+            ),
+            (
+                "TASK",
+                ["task_id", "proj_id", "task_name", "task_type", "target_drtn_hr_cnt"],
+                [["10", "1", "A", "TT_Task", "8"]],
+            ),
+        ]
+    )
+    sched = parse_xer_text(text)
+    assert sched.project_title == "Juice UVS IMS"
+    assert sched.name == "P1"  # display identity unchanged — short-name-first
+
+
+def test_projwbs_root_of_another_project_never_names_this_one() -> None:
+    """Multi-project exports: the root lookup is scoped to the SELECTED project's rows, so a
+    bundled sibling project's name can never leak into this schedule's identity."""
+    text = _xer(
+        [
+            (
+                "PROJECT",
+                ["proj_id", "proj_short_name", "plan_start_date"],
+                [["1", "P1", "2025-01-06 08:00"], ["2", "OTHER", "2025-01-06 08:00"]],
+            ),
+            (
+                "PROJWBS",
+                [
+                    "wbs_id",
+                    "proj_id",
+                    "parent_wbs_id",
+                    "proj_node_flag",
+                    "wbs_short_name",
+                    "wbs_name",
+                ],
+                [["7000", "2", "", "Y", "OT", "Wrong Project Name"]],
+            ),
+            (
+                "TASK",
+                ["task_id", "proj_id", "task_name", "task_type", "target_drtn_hr_cnt"],
+                [["10", "1", "A", "TT_Task", "8"], ["11", "1", "B", "TT_Task", "8"]],
+            ),
+        ]
+    )
+    sched = parse_xer_text(text)
+    # project 1 owns the tasks and carries no root of its own -> short-name fallback,
+    # never project 2's name
+    assert sched.project_title == "P1"
 
 
 def test_duplicate_task_id_raises() -> None:
@@ -1459,3 +1534,139 @@ def test_a_missing_calendar_table_is_logged_not_silently_defaulted(
     with caplog.at_level("WARNING", logger="schedule_forensics.importers.xer"):
         parse_xer_text(_XER_NO_TABLE)
     assert "no CALENDAR table" in caplog.text
+
+
+# ── resource max units + real Assignment objects (operator 2026-08-20) ───────────────────────
+# The importer read resource names/types but neither max units (RSRC.max_qty_per_hr / the
+# RSRCRATE table) nor per-assignment quantities into Task.resource_assignments — every P6 file
+# therefore rendered the Resources page's empty state while carrying both.
+
+
+def test_rsrcrate_max_units_and_assignment_objects() -> None:
+    text = _xer(
+        [
+            _MIN_PROJECT,
+            (
+                "RSRC",
+                ["rsrc_id", "rsrc_name", "rsrc_type"],
+                [["100", "Iron Crew", "RT_Labor"]],
+            ),
+            (
+                "RSRCRATE",
+                ["rsrc_rate_id", "rsrc_id", "max_qty_per_hr", "start_date"],
+                [["1", "100", "2", ""]],
+            ),
+            (
+                "TASK",
+                ["task_id", "proj_id", "task_code", "task_name", "task_type", "target_drtn_hr_cnt"],
+                [["10", "1", "A1", "A", "TT_Task", "80"]],
+            ),
+            (
+                "TASKRSRC",
+                [
+                    "taskrsrc_id",
+                    "task_id",
+                    "rsrc_id",
+                    "act_reg_qty",
+                    "remain_qty",
+                    "target_qty_per_hr",
+                ],
+                [["7", "10", "100", "40", "40", "0.5"]],
+            ),
+        ]
+    )
+    sched = parse_xer_text(text)
+    assert sched.resource_by_id(100).max_units == 2.0
+    (task,) = sched.tasks
+    (assignment,) = task.resource_assignments
+    assert assignment.resource_id == 100
+    assert assignment.work_minutes == (40 + 40) * 60  # actual + remaining hours
+    assert assignment.remaining_work_minutes == 40 * 60
+    assert assignment.units == 0.5
+
+
+def test_rsrc_row_max_qty_per_hr_wins_without_rsrcrate() -> None:
+    text = _xer(
+        [
+            _MIN_PROJECT,
+            (
+                "RSRC",
+                ["rsrc_id", "rsrc_name", "rsrc_type", "max_qty_per_hr"],
+                [["100", "Crew", "RT_Labor", "1.5"]],
+            ),
+            (
+                "TASK",
+                ["task_id", "proj_id", "task_code", "task_name", "task_type", "target_drtn_hr_cnt"],
+                [["10", "1", "A1", "A", "TT_Task", "8"]],
+            ),
+        ]
+    )
+    assert parse_xer_text(text).resource_by_id(100).max_units == 1.5
+
+
+def test_missing_rate_leaves_max_units_none_never_zero() -> None:
+    text = _xer(
+        [
+            _MIN_PROJECT,
+            ("RSRC", ["rsrc_id", "rsrc_name", "rsrc_type"], [["100", "Crew", "RT_Labor"]]),
+            (
+                "TASK",
+                ["task_id", "proj_id", "task_code", "task_name", "task_type", "target_drtn_hr_cnt"],
+                [["10", "1", "A1", "A", "TT_Task", "8"]],
+            ),
+        ]
+    )
+    assert parse_xer_text(text).resource_by_id(100).max_units is None
+
+
+def test_rsrcrate_picks_the_rate_in_effect_at_the_data_date() -> None:
+    text = _xer(
+        [
+            (
+                "PROJECT",
+                ["proj_id", "proj_short_name", "plan_start_date", "last_recalc_date"],
+                [["1", "P1", "2025-01-06 08:00", "2025-01-15 17:00"]],
+            ),
+            ("RSRC", ["rsrc_id", "rsrc_name", "rsrc_type"], [["100", "Crew", "RT_Labor"]]),
+            (
+                "RSRCRATE",
+                ["rsrc_rate_id", "rsrc_id", "max_qty_per_hr", "start_date"],
+                [
+                    ["1", "100", "1", "2025-01-01 08:00"],
+                    ["2", "100", "3", "2025-02-01 08:00"],  # future rate — not yet in effect
+                ],
+            ),
+            (
+                "TASK",
+                ["task_id", "proj_id", "task_code", "task_name", "task_type", "target_drtn_hr_cnt"],
+                [["10", "1", "A1", "A", "TT_Task", "8"]],
+            ),
+        ]
+    )
+    assert parse_xer_text(text).resource_by_id(100).max_units == 1.0
+
+
+def test_material_quantities_never_become_work_hours() -> None:
+    """A material's TASKRSRC quantity is in MATERIAL units (tons, m3), not hours — reading it
+    as work would fabricate load. The assignment exists (the roster counts the linkage) with
+    zero work minutes."""
+    text = _xer(
+        [
+            _MIN_PROJECT,
+            ("RSRC", ["rsrc_id", "rsrc_name", "rsrc_type"], [["101", "Concrete", "RT_Mat"]]),
+            (
+                "TASK",
+                ["task_id", "proj_id", "task_code", "task_name", "task_type", "target_drtn_hr_cnt"],
+                [["10", "1", "A1", "A", "TT_Task", "8"]],
+            ),
+            (
+                "TASKRSRC",
+                ["taskrsrc_id", "task_id", "rsrc_id", "target_qty", "remain_qty"],
+                [["7", "10", "101", "500", "500"]],
+            ),
+        ]
+    )
+    (task,) = parse_xer_text(text).tasks
+    (assignment,) = task.resource_assignments
+    assert assignment.resource_id == 101
+    assert assignment.work_minutes == 0

@@ -180,6 +180,10 @@ VARIANT_LABELS: tuple[tuple[str, str], ...] = (
     ("[evo-tier] GET /evolution", "/evolution?tier=on"),
     ("[evo-options] GET /evolution", "/evolution?ignore_constraints=1&ignore_leveling=1"),
     ("[evo-counterfactual] GET /evolution", "/evolution?cf_a=1&cf_b=2"),
+    # /compare declares `a`/`b` (operator 2026-08-20) — the any-two-version picker; the bare
+    # label always renders the default two-most-recent pair, so the picked-pair branch (the
+    # resolver, the non-default export target, the ordinals) is unreachable without this.
+    ("[picked-pair] GET /compare", "/compare?a=0&b=1"),
     # The session-wide group/filter (ADR-0104); /groups reads the raw query off the Request.
     ("[grouped] GET /groups", "/groups?field=Status&breakdown=1"),
     # /resources declares `bucket` (default "month") — the histogram's time base.

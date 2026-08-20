@@ -71,7 +71,8 @@ function Ok([string]$msg)   { Write-Host "    [ok] $msg" -ForegroundColor Green 
 function Warn2([string]$msg){ Write-Host "    [!!] $msg" -ForegroundColor Yellow }
 
 Write-Host ""
-Write-Host "Schedule Forensics installer — $TierLabel" -ForegroundColor White
+Write-Host "Schedule Forensics installer — v{{WHEEL_VERSION}} — $TierLabel" -ForegroundColor White
+Write-Host "This file embeds and installs exactly v{{WHEEL_VERSION}}. For a newer release, re-download the latest installer — an old file reinstalls its old version." -ForegroundColor DarkGray
 Write-Host "Install location: $InstallRoot"
 
 # --- 1. machine fit (warn-only) ------------------------------------------------------

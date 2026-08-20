@@ -15247,3 +15247,45 @@ negative-float divergence was exactly the 34 stored-less recompute phantoms ADR-
 (110 incomplete, 76 stored, 34 without — the engine now equals Fuse 0/0). Pin re-baselined
 through its own path with teeth (fallback-reintroduction mutation red by name); parity marker
 suite re-run green after the re-baseline. The five skips are the pre-existing ones.
+
+## 2026-08-20 (c) — four operator asks + the stale-installer root (ADR-0431..0435, v1.0.219)
+
+Branch `claude/polaris-installer-version-h3qy0v` (from origin/main @ 9dda7ea). Operator message
+carried FOUR live asks that superseded the queued audit rows; queue item 1 (installer version
+visibility) folded in after it turned out to explain the timescale screenshot.
+
+**ADR-0431 — multi-.xer Mission Control.** Root cause proven RED-first with synthetic
+same-project updates (`title:juice-m02` / `title:juice-m03` shattering): grouping keyed on
+`proj_short_name`, P6's per-copy Project ID. Fix: XER `project_title` = root PROJWBS `wbs_name`
+(short-name fallback, `Schedule.name` byte-stable), `POST /project/combine` + Portfolio panel
+(folder-beats-title lever), Mission Control degrade note names the other-project files.
+Cross-format (.mpp Title == .xer name) grouping pinned.
+
+**ADR-0432 — /path.** `target<=0` → `_whole_schedule_data` (file order, tier/slack "—"), UID
+cell retargets, Dur default-on, data-date SEATS ~96px via live-geometry delta (model-number
+version measured 280px off). Timescale screenshot NOT reproducible on this tree — operator runs
+v1.0.148 — and the header-covers-bars property is chromium-guarded
+(test_path_whole_schedule_browser). path.js r11 digest re-baselined.
+
+**ADR-0433 — Resources.** XER now parses max units (RSRCRATE in effect at the DD / RSRC column)
+and builds real Assignments (material quantities are NOT hours); roster = declared ∪ assigned;
+`max_units_declared` prints "—" for the assumed 1.0; 4th panel "Utilization by resource"
+(hand-verified 100% / 50% in chromium). r10 contract re-baselined 3→4, axis-caption block digest
+unchanged. The differing-max-units engine test passed first run — formula was right, data was
+missing.
+
+**ADR-0434 — /compare a/b picker** through ONE resolver on page + export (chronology can never
+reverse; bare URL byte-stable; oracle variant `[picked-pair] GET /compare`, labels regenerated).
+
+**ADR-0435 — installer banner** prints the EMBEDDED version + honesty line; rendered-banner test
+derives the expectation from each file's own wheel name (red against committed installers
+first); README-DISTRIBUTABLE gained "Updating an install you already have".
+
+Verification: every fix red-before-green (5 failed→6 passed grouping; 5→6 path API; 4→4 web
+resources; 6 importer/engine; 4→6 compare; 5→68 installer suite); three chromium proofs (path
+seat + header-covers-bars; utilization figures hand-checked; r10 theme/⛶ probes). v1.0.219 wheel
++ nine installers rebuilt AFTER the last src edit. Full-gate numbers at the end of this entry
+after the close run. PR #606 merged mid-session; its docs/STATE
+rotation was merge-resolved into this branch (kickoff superseded, its entries kept). The
+operator pulled main mid-session and re-ran install-tier2.ps1: now on v1.0.218 (from
+v1.0.148); v1.0.219 arrives when this PR merges.

@@ -364,6 +364,16 @@ h2.viz-hint:hover, h3.viz-hint:hover { text-decoration-color: var(--accent); }
 .res-svg .res-yl { text-anchor: end; }
 .res-svg .res-xl { text-anchor: middle; }
 #resChart { max-width: 100%; }
+/* Utilization by resource (operator 2026-08-20): every resource's peak load vs its OWN
+   capacity, one row each — the amber line is 100% of capacity, red fills are over it. */
+.util-row { display: flex; align-items: center; gap: 8px; margin: 3px 0; font-size: 12px; }
+.util-name { flex: 0 0 14em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); }
+.util-track { position: relative; flex: 1; height: 12px; background: var(--field-bg); border: 1px solid var(--line); border-radius: 3px; }
+.util-fill { position: absolute; top: 0; bottom: 0; left: 0; background: var(--accent); border-radius: 2px; }
+.util-fill.util-over { background: var(--bad); }
+.util-cap { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--warn); z-index: 1; }
+.util-val { flex: 0 0 11em; color: var(--muted); }
+.util-val.res-over { color: var(--bad); }
 
 /* Collapsible "which model / pros & cons" explainers (e.g. on /sra). */
 .explainer { margin: 6px 0; border: 1px solid var(--line); border-radius: 6px; background: var(--field-bg); }
@@ -633,6 +643,9 @@ th.metric-th { position: relative; }
 .path-explainer summary { cursor: pointer; color: var(--accent); font-size: 13px; font-weight: 600; }
 .path-explainer p { margin: 6px 0 0; max-width: 60em; }
 .pv-drives { white-space: normal; font-size: 12px; color: var(--muted); min-width: 9em; }
+/* the UID retarget affordance (operator 2026-08-20): reads as a link, traces on click */
+.pv-uid { color: var(--accent); cursor: pointer; text-decoration: underline dotted; }
+.pv-uid:hover, .pv-uid:focus { text-decoration: underline; }
 
 /* Mission Control — the tiled visual wall (mission.js). Small-scale charts in a responsive grid;
    expand via chartframe's ⤢, reveal underlying numbers with the per-tile Data toggle. */

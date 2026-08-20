@@ -494,6 +494,7 @@ from schedule_forensics.web.driving import _driving_path_gantt as _driving_path_
 from schedule_forensics.web.driving import _driving_tier_trend as _driving_tier_trend
 from schedule_forensics.web.driving import _driving_tiers_panel as _driving_tiers_panel
 from schedule_forensics.web.driving import _task_iso_dates as _task_iso_dates
+from schedule_forensics.web.driving import _whole_schedule_data as _whole_schedule_data
 
 # ADR-0377 (phase 3, slice 13): the /evm page family — the chapter-07 "How we execute"
 # header, the EVM page body, the index/days formatters, the explainer and the threshold
@@ -1476,7 +1477,7 @@ def create_app(
                     ' &middot; <a class=btn-link href="/cei">Bow Wave / CEI &rarr;</a>'
                     ' &middot; <a class=btn-link href="/curves">Finish &amp; slippage curves &rarr;</a>'
                     ' &middot; <a class=btn-link href="/evolution">Critical-path evolution &rarr;</a>'
-                    ' &middot; <a class=btn-link href="/compare">Compare the two most recent &rarr;</a>'
+                    ' &middot; <a class=btn-link href="/compare">Compare two versions &rarr;</a>'
                     if len(st.schedules) >= 2
                     else ""
                 )
@@ -1944,7 +1945,9 @@ def create_app(
     @app.get("/api/driving/{name}")
     def driving_json(
         name: str,
-        target: int = Query(...),
+        # target 0 / absent = the COMPLETE schedule (operator 2026-08-20): /path opens on the
+        # whole plan and a UID click retargets; a positive target traces exactly as before.
+        target: int = Query(0),
         secondary: int = Query(10),
         tertiary: int = Query(20),
         direction: str = Query("predecessors"),
@@ -1968,18 +1971,24 @@ def create_app(
         # no second lock window a concurrent scope change could slip between).
         cpm = a.cpm
         scoped = a.scoped
-        payload = _driving_data(
-            scoped,
-            cpm,
-            target,
-            secondary,
-            tertiary,
-            direction=direction,
-            range_mode=range_mode,
-            range_days=range_days,
-            ignore_constraints=bool(ignore_constraints),
-            ignore_leveling=bool(ignore_leveling),
-            with_drag=bool(drag),
+        # target <= 0 → the whole-schedule default view; the trace builder stays untouched
+        # (its payload is byte-pinned under the SSI option flags, ADR-0251).
+        payload = (
+            _whole_schedule_data(scoped, cpm)
+            if target <= 0
+            else _driving_data(
+                scoped,
+                cpm,
+                target,
+                secondary,
+                tertiary,
+                direction=direction,
+                range_mode=range_mode,
+                range_days=range_days,
+                ignore_constraints=bool(ignore_constraints),
+                ignore_leveling=bool(ignore_leveling),
+                with_drag=bool(drag),
+            )
         )
         # HIGHLIGHT mode (feature #10): the session filter's match set for THIS file, so the grid
         # marks matching rows/bars instead of dropping non-matches (None when not highlighting).
@@ -2049,6 +2058,11 @@ def create_app(
         n_loaded = len(ordered)
         schedules, cpms, _skipped = _solvable_versions()
         n_solvable = len(schedules) if n_loaded >= 2 else 0
+        # operator 2026-08-20: files that grouped into OTHER Projects (per-update .xer exports
+        # with per-copy names) are invisible to this wall — count them so the degrade note can
+        # say where they went instead of "load another update" while updates sit loaded.
+        active_pop = st.active_population()
+        other_files = len(st.schedules) - len(active_pop[2]) if active_pop is not None else 0
         # PAIR versions for the briefing's critical-path section 3.1 (ADR-0371): entered/left
         # diffs the version pair, so the target never truncates it.
         pair_schedules, pair_cpms, _pskipped = _pair_versions()
@@ -2068,11 +2082,32 @@ def create_app(
                 n_solvable=n_solvable,
                 latest=ordered[-1] if ordered else None,
                 briefing=briefing,
+                other_files=other_files,
             ),
         )
 
+    def _resolve_pair_indices(n: int, a: int, b: int) -> tuple[int, int]:
+        """Resolve the operator's A/B pick over ``n`` data-date-ordered versions (operator
+        2026-08-20 — "select any two schedules", the /integrity precedent verbatim).
+
+        Defaults to the two most recent. Ordered prior → current chronologically regardless
+        of pick order, and the two can never collapse to one file. The baseline guard also
+        catches an OUT-OF-RANGE index (e.g. ``b==0`` makes ``cur-1 == -1``): a negative base
+        would wrap to ``schedules[-1]``, the NEWEST file, and silently render a
+        chronologically REVERSED diff (a Law-2 fidelity bug), so an in-range neighbour is
+        re-picked whenever base is out of range or equal to cur."""
+        cur = b if 0 <= b < n else n - 1
+        base = a if 0 <= a < n else cur - 1
+        if base == cur or not (0 <= base < n):
+            base = cur - 1 if cur > 0 else cur + 1
+        return (base, cur) if base < cur else (cur, base)
+
     @app.get("/compare", response_class=HTMLResponse)
-    def compare() -> HTMLResponse:
+    def compare(a: int = Query(-1), b: int = Query(-1)) -> HTMLResponse:
+        """What changed between TWO versions — any two (operator 2026-08-20): ``a``/``b`` are
+        baseline / comparison indices into the data-date-ordered analyzable list, defaulting
+        to the two most recent (yesterday's behavior, byte-compatible: the bare URL emits the
+        bare export target)."""
         st = session()
         if len(st.schedules) < 2:
             return _page(
@@ -2092,24 +2127,51 @@ def create_app(
                 _skipped_notice(skipped)
                 + "<div class=panel>Load at least two analyzable versions to compare.</div>",
             )
-        prior, current = schedules[-2], schedules[-1]
+        n = len(schedules)
+        prior_idx, cur_idx = _resolve_pair_indices(n, a, b)
+        prior, current = schedules[prior_idx], schedules[cur_idx]
+        default_pair = (prior_idx, cur_idx) == (n - 2, n - 1)
+        # the ADR-0320 emit-only-non-default rule: a bare /compare keeps its exact byte shape
+        # (export target, chip ordinals) so every existing pin and remembered URL still holds.
+        export_qs = "" if default_pair else f"?a={prior_idx}&amp;b={cur_idx}"
+        picker = ""
+        if n > 2:
+            labels = [sch.source_file or sch.name for sch in schedules]
+            opts_a = "".join(
+                f'<option value="{i}"{" selected" if i == prior_idx else ""}>{_e(lb)}</option>'
+                for i, lb in enumerate(labels)
+            )
+            opts_b = "".join(
+                f'<option value="{i}"{" selected" if i == cur_idx else ""}>{_e(lb)}</option>'
+                for i, lb in enumerate(labels)
+            )
+            picker = (
+                "<form method=get action=/compare class=viz-controls>"
+                f"<label>Baseline (A) <select name=a>{opts_a}</select></label>"
+                f"<label>Comparison (B) <select name=b>{opts_b}</select></label>"
+                "<button type=submit>Apply</button>"
+                "<span class=muted>Pick any two versions — the whole page compares that "
+                "pair (chronological order is kept automatically).</span></form>"
+            )
         body = (
-            _what_changed_header(prior, current, cpms[-2], cpms[-1])
-            + _export_bar("compare")
+            _what_changed_header(prior, current, cpms[prior_idx], cpms[cur_idx])
+            + picker
+            + _export_bar("compare" + export_qs.replace("&amp;", "&"))
             + _skipped_notice(skipped)
             + _sources_line([prior, current])
             + _compare_body(
                 prior,
                 current,
-                cpms[-2],
-                cpms[-1],
+                cpms[prior_idx],
+                cpms[cur_idx],
                 # the pair chip's v-ordinals: position in the data-date-ordered solvable list
-                vfrom=len(schedules) - 1,
-                vto=len(schedules),
+                vfrom=prior_idx + 1,
+                vto=cur_idx + 1,
+                export_qs=export_qs,
             )
         )
         if st.target_uid is not None:
-            body += _focus_panel([prior, current], [cpms[-2], cpms[-1]], st.target_uid)
+            body += _focus_panel([prior, current], [cpms[prior_idx], cpms[cur_idx]], st.target_uid)
         # the panel-contract toolbar behavior (⛶ / ⤓) — a PER-PAGE include (rank-5 law:
         # markup alone is not evidence; the script must actually load on /compare)
         body += '\n<script src="/static/panelkit.js"></script>'
@@ -5246,15 +5308,21 @@ def create_app(
         )
 
     @app.get("/export/{fmt}/compare")
-    def export_compare(fmt: str) -> Response:
+    def export_compare(fmt: str, a: int = Query(-1), b: int = Query(-1)) -> Response:
         # PAIR versions (ADR-0371): the signals diff the version pair — same basis as /compare.
+        # a/b (operator 2026-08-20): the SAME resolver as the page, so the workbook can never
+        # describe a different pair than the one on screen.
         if (bad := _bad_format(fmt)) is not None:
             return bad
         schedules, cpms, _skipped = _pair_versions()
         if len(schedules) < 2:
             return JSONResponse({"error": "need at least two analyzable versions"}, status_code=400)
+        prior_idx, cur_idx = _resolve_pair_indices(len(schedules), a, b)
         manip = detect_manipulation(
-            schedules[-1], schedules[-2], current_cpm=cpms[-1], prior_cpm=cpms[-2]
+            schedules[cur_idx],
+            schedules[prior_idx],
+            current_cpm=cpms[cur_idx],
+            prior_cpm=cpms[prior_idx],
         )
         tableset = TableSet(
             "Compare - manipulation signals",
@@ -6938,6 +7006,22 @@ def create_app(
         every analysis population, or RESTORE it. Reversible — the file stays loaded and listed
         (badged); nothing is deleted or merged silently. Unknown keys are ignored (fail-soft)."""
         session().set_excluded(key, excluded == "1")
+        return RedirectResponse(url="/portfolio", status_code=303)
+
+    @app.post("/project/combine")
+    def combine_projects_route(
+        pids: tuple[str, ...] = Form(()), title: str = Form("")
+    ) -> RedirectResponse:
+        """Portfolio's explicit "these files are ONE project" override (operator 2026-08-20).
+
+        Automatic grouping never merges differing titles on its own — per-update P6 exports
+        carry per-copy Project IDs, and a renamed project name shatters one real project into
+        N one-version populations, disabling every cross-version view. This route is the
+        operator saying they belong together: the selected populations are re-labeled with one
+        shared ingestion folder (``SessionState.combine_projects``), the combined Project
+        becomes active, and the wall's version series light up. Fail-soft on unknown or
+        too-few pids and on a blank name, like every project action."""
+        session().combine_projects(pids, title)
         return RedirectResponse(url="/portfolio", status_code=303)
 
     @app.post("/role")
