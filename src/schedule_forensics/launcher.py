@@ -304,10 +304,10 @@ def main(
         # Say it plainly: the operator's bookmark and every doc name 8321, so a silent move
         # would look like the tool ignoring them (ADR-0412).
         print(
-            f"POLARIS — port {port} was busy and would not release, so this session is on "
+            f"POLARIS² — port {port} was busy and would not release, so this session is on "
             f"{chosen_port} instead. Nothing was lost; the address below is the live one."
         )
-    print(f"POLARIS — serving the dashboard at {url}  (close the window to stop)")
+    print(f"POLARIS² — serving the dashboard at {url}  (close the window to stop)")
 
     manager = ollama if ollama is not None else OllamaLauncher() if manage_ollama else None
     if manager is not None:
@@ -342,7 +342,7 @@ def main(
         cache.clear()
         if manager is not None:
             manager.shutdown()
-    print("POLARIS — dashboard stopped.")
+    print("POLARIS² — dashboard stopped.")
 
 
 if __name__ == "__main__":  # pragma: no cover - manual entrypoint

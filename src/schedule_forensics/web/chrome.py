@@ -49,7 +49,7 @@ _LAYOUT = Template(
     """<!doctype html><html lang="{{ lang }}"><head><meta charset=utf-8>
 <meta name=viewport content="width=device-width,initial-scale=1">
 <meta name=sf-launch content="{{ launch_token }}">
-<title>{{ title }} — POLARIS</title>
+<title>{{ title }} — POLARIS²</title>
 <link rel=icon href="/static/favicon.ico">
 <script id=sfI18nBoot type="application/json">{{ i18n_boot_json }}</script>
 <script src="/static/theme.js"></script>
@@ -88,12 +88,13 @@ p.muted{margin:.3em 0}
 <div class="cui-banner {{ cui_class }}" data-no-i18n>{{ cui_text }}</div>
 {{ drawer }}
 <header><h1 class=brand data-no-i18n
-aria-label="POLARIS — Program Oversight &amp; Logic Analysis for Risk &amp; Integrity of Schedules"
-title="POLARIS — Program Oversight &amp; Logic Analysis for Risk &amp; Integrity of Schedules">
-<!-- POLARIS wordmark (ADR-0175): hand-set NASA-worm-style letterforms drawn as SVG strokes —
+aria-label="POLARIS² — Program Oversight &amp; Logic Analysis for Risk &amp; Integrity of Schedules"
+title="POLARIS² — Program Oversight &amp; Logic Analysis for Risk &amp; Integrity of Schedules">
+<!-- POLARIS² wordmark (ADR-0175; the superscript ² glyph is ADR-0436, operator rename):
+     hand-set NASA-worm-style letterforms drawn as SVG strokes —
      no webfont, fully inline, so the air-gap CSP stays intact and it renders identically
      on every machine. Uniform stroke, rounded joins, crossbar-less A, trailing north star. -->
-<svg class=brand-mark viewBox="0 0 344 72" aria-hidden=true focusable=false>
+<svg class=brand-mark viewBox="0 0 382 72" aria-hidden=true focusable=false>
 <g class=brand-strokes fill=none stroke-width=13 stroke-linecap=round stroke-linejoin=round>
 <path d="M6 62 V10 H20 A13 13 0 0 1 20 36 H6"/>
 <rect x="54" y="10" width="28" height="52" rx="14"/>
@@ -103,7 +104,10 @@ title="POLARIS — Program Oversight &amp; Logic Analysis for Risk &amp; Integri
 <path d="M248 10 V62"/>
 <path d="M299 12 H285 A12 12 0 0 0 285 36 H287 A12 12 0 0 1 287 60 H273"/>
 </g>
-<path class=brand-star d="M328 6 Q329.5 16.5 340 18 Q329.5 19.5 328 30 Q326.5 19.5 316 18 Q326.5 16.5 328 6 Z"/>
+<g class=brand-strokes fill=none stroke-width=8 stroke-linecap=round stroke-linejoin=round>
+<path class=brand-sup2 d="M312 19 A12 11 0 0 1 336 19 Q336 26 312 36 H336"/>
+</g>
+<path class=brand-star d="M366 6 Q367.5 16.5 378 18 Q367.5 19.5 366 30 Q364.5 19.5 354 18 Q364.5 16.5 366 6 Z"/>
 </svg>
 <span class=brand-sub>Program Oversight &amp; Logic Analysis for Risk &amp; Integrity of Schedules</span>
 </h1>

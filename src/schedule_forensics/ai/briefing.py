@@ -795,7 +795,7 @@ def _empty_briefing(ordered: list[Schedule], report_day: dt.date) -> ExecutiveBr
         "filter or selection matched nothing, so there is nothing to brief."
     )
     return ExecutiveBriefing(
-        title="POLARIS — Executive Briefing",
+        title="POLARIS² — Executive Briefing",
         subtitle="Forensic Schedule Health Review",
         generated_on=report_day,
         verdict="N/A",
@@ -943,7 +943,7 @@ def build_briefing(
             )
         )
     return ExecutiveBriefing(
-        title="POLARIS — Executive Briefing",
+        title="POLARIS² — Executive Briefing",
         subtitle="Forensic Schedule Health Review & Corrective-Action Outlook",
         generated_on=report_day,
         verdict=verdict,

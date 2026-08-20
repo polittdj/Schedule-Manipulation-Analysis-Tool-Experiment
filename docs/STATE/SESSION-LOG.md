@@ -15331,3 +15331,35 @@ after the close run. PR #606 merged mid-session; its docs/STATE
 rotation was merge-resolved into this branch (kickoff superseded, its entries kept). The
 operator pulled main mid-session and re-ran install-tier2.ps1: now on v1.0.218 (from
 v1.0.148); v1.0.219 arrives when this PR merges.
+
+**Close-out follow-up (same day):** the relaunched clean gate finished after the push: **full suite 4408 passed / 0 failed / 5 skipped (exit 0) in 27:43** on the #607 tree — the two census reds named earlier were the only failures and their fixes were on the PR before merge. CI went 7/7 green; the operator merged #607 at 21:39Z and verified v1.0.219 end-to-end on their PC (their transcript shows the ADR-0435 banner naming the version).
+
+## 2026-08-20 (d) — the program is named POLARIS² (ADR-0436, v1.0.220)
+
+Operator (verbatim intent): "Change the name of the program to be Polaris (squared) - like to
+the exponent or power of 2." Landed as ADR-0436 on a fresh branch from the #607 squash.
+
+- **Form:** U+00B2 everywhere a name is DISPLAYED — chosen over markup because the name must
+  survive window titles, terminal banners, docx/xlsx headings, README text and .lnk names.
+- **Wordmark:** a hand-set worm-style ² stroke glyph (`brand-sup2`, width 8) between the S and
+  the north star; viewBox 344→382; `.brand-mark` aspect-ratio follows. Screenshot-verified in
+  chromium (device-scale 3) before landing — the glyph is hand-guessed geometry no unit test
+  can judge.
+- **Surfaces:** page/boot titles · FastAPI title · launcher console lines (² exists in
+  cp437/cp1252) · export titles and provenance lines · installer banners
+  ("Polaris² (Schedule Forensics) installer — vX.Y.Z — Tier …"), step lines, first-run
+  READMEs, uninstaller strings · Windows/Linux/macOS shortcut names WITH legacy-name cleanup
+  (old .lnk, old Start-Menu folder, old Desktop .commands removed on upgrade; uninstallers
+  remove both generations) · README-DISTRIBUTABLE · wheel description.
+- **Boundary (deliberate):** schedule_forensics package/CLI/venv/install dir and in-folder
+  script filenames unchanged; ASCII-encoded .cmd internals keep the old wording (`-Encoding
+  ASCII` cannot carry ²); repo docs keep the POLARIS/SMAT codename.
+- **Red-before-green:** four existing brand pins retargeted (title, viewBox 382, two briefing
+  titles, trend-views heading) + tests/web/test_polaris_squared_brand.py — 9 failures observed
+  on the pre-rename tree, all green after. The rendered-banner locator in
+  tests/installer/test_installers.py repointed at the new banner (it finds the line BY NAME).
+- **Traps:** `python -m build --wheel` (no --outdir) writes dist/ while the generator embeds
+  from dist/wheel/ — the lockstep guard caught the stale embed for the SECOND time today; the
+  ritual is the exact two-step in the test's own error message.
+- **Ship:** v1.0.219 → **1.0.220**; wheel + nine installers rebuilt after the last src edit;
+  installer suite 74/74. Gate at close (renamed tree): full suite **4413 passed / 0 failed / 5 skipped (exit 0) in 27:12**; parity **72/72 (exit 0) in 9:14**.

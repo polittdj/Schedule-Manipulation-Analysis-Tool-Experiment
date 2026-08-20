@@ -1,4 +1,4 @@
-# Schedule Forensics — installer downloads
+# Polaris² (Schedule Forensics) — installer downloads
 
 Give the recipient **one** file matching their machine and OS, plus this README:
 
@@ -17,7 +17,7 @@ internet needed for the tool itself) → the MPXJ converter that native `.mpp` i
 from a repo checkout if you have one beside the file, otherwise downloaded, ~17 MB, and SHA-256
 verified against a manifest baked into the installer) → optional Java 17 (also native `.mpp` only)
 → optional Ollama + the tier's AI model. It finishes by creating the Desktop and Start-Menu
-shortcut — a single **Schedule Forensics** icon on Windows (the app stops itself on Quit),
+shortcut — a single **Polaris²** icon on Windows (the app stops itself on Quit),
 **Start**/**Stop** launchers on Linux and macOS — an uninstaller, and a first-run README.
 Nothing optional can abort the install: a failed Java, converter, or model download is
 reported plainly and the rest still completes.
@@ -46,13 +46,13 @@ update:
    converter, the model) and replaces only the tool in its private environment; your settings
    and shortcuts are kept, and a converter from an earlier install is never touched.
 3. **Check what you are running:** the installer's first banner line prints the version it
-   embeds (`Schedule Forensics installer — vX.Y.Z — Tier …`), and the same version is visible
+   embeds (`Polaris² (Schedule Forensics) installer — vX.Y.Z — Tier …`), and the same version is visible
    after install in the tool itself.
 
 If the banner does not print a version at all, the file predates v1.0.219 — it is old; download
 a fresh one.
 
-**Uninstall:** Start Menu → Schedule Forensics → *Uninstall Schedule Forensics* (removes the app
+**Uninstall:** Start Menu → Polaris² → *Uninstall Polaris²* (removes the app
 and shortcuts; leaves Python/Java/Ollama, with the `ollama rm` command noted for the model).
 
 *Verified: the Linux installer's full lifecycle (install → serve → stop → uninstall) is

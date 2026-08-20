@@ -163,7 +163,7 @@ def _launch_html(state: SessionState, *, cui_class: str, cui_text: str) -> str:
 
     return f"""<!doctype html><html lang=en><head><meta charset=utf-8>
 <meta name=viewport content="width=device-width,initial-scale=1">
-<title>Launch Sequence — POLARIS</title>
+<title>Launch Sequence — POLARIS²</title>
 <link rel=icon href="/static/favicon.ico">
 <script id=sfBootData type="application/json">{boot_json}</script>
 <script src="/static/theme.js"></script>
