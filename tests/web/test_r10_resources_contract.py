@@ -2,7 +2,8 @@
 
 What this pins:
 
-* the **panel-head strips** — four since operator 2026-08-20 (``.panel-head`` + h2 + a ``.prov-chip``)
+* the **panel-head strips** — four since operator 2026-08-20 (``.panel-head`` + h2 + a
+  ``.prov-chip``)
   and exactly one ``.sf-take`` per converted panel, with every figure a take quotes proven to
   be a value the page ALREADY renders verbatim (asserted by finding the same token in the KPI
   cards / the roster's own row-1 cells / the ``<option>`` list, outside the take itself);
