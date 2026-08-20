@@ -1,68 +1,59 @@
-# Handoff — 2026-08-20 (the Starlight parity sweep: two same-named metrics, a pattern-less calendar, stored-slack Negative Float; ADR-0429/0430, v1.0.218)
+# Handoff — 2026-08-20 (b) (ADR-0429 + ADR-0430 MERGED; v1.0.218 verified on the operator's PC; the stale-installer trap)
 
-> ## STATUS (current) — operator parity report ("fix all mismatches") CLOSED to 52/54 cells on `claude/multi-schedule-comparative-analysis-vmh5ei`.
-> Highest ADR now **0430**. Shipped code changed (`model/task.py`, `importers/mspdi.py`,
-> `engine/metrics/schedule_quality.py`, `engine/metrics/ribbon.py`, `web/ribbon.py`,
-> `web/help.py`), so **v1.0.217 -> 1.0.218** and the wheel + nine installers were rebuilt
-> (ADR-0148). Branch restarted from `origin/main` @ 98419a2. **Ran entirely SOLO**, with the
-> operator's six real Starlight `.mpp`s uploaded mid-session (non-CUI, marked fictional;
-> scratchpad only, never committed). The audit ledger is untouched.
+> ## STATUS (current) — nothing in flight. `origin/main` == local HEAD == `9dda7ea` (the PR #605 squash).
+> Highest ADR **0430**; `pyproject` version **1.0.218**. The Starlight parity sweep — **ADR-0429**
+> (two same-named metrics) and **ADR-0430** (the pattern-less calendar + stored-slack Negative Float)
+> — is **merged**; `claude/multi-schedule-comparative-analysis-vmh5ei` was restarted from
+> `origin/main`, its remote head auto-deleted, working tree clean. Its pre-merge section is archived
+> VERBATIM — that section's STATUS still read "on `<branch>`", which is exactly the stale-kickoff
+> shape this rotation exists to prevent. This close is **docs-only**: no `src/` change, so no
+> bump, no wheel, no installer rebuild.
 >
-> ## 1. What the report was, and what it became
-> Fuse said Hard Constraints 4; the ribbon said 1. Root cause (ADR-0429): the NASA library
-> carries TWO same-named metrics — ribbon "Hard Constraints" (must/mandatory only, all statuses)
-> vs DCMA "5. Hard Constraint" (adds the SNLT/FNLT caps) — and the ribbon displayed the DCMA05
-> count, parity-scoped to baselined incomplete. Fixed: `has_mandatory_constraint` ({MSO, MFO}),
-> ribbon sources `schedule_quality`, DCMA05 untouched, formula-audit rows drift->match.
-> ADR-0110's audit table had ALREADY filed the drift as "latent: no parity impact unless a
-> schedule carries SNLT/FNLT" — Starlight is that schedule.
-> The operator then widened to ALL mismatches -> ADR-0430:
-> **(a) the pattern-less calendar** — Starlight's project calendar has NO DayType 1-7 rows, only
-> 112 DayType-0 holiday exceptions; MS Project reads that as "default week + exceptions", the
-> importer read it as "unreadable" and silently DISCARDED all 112 holidays. Now: no-pattern
-> synthesizes the default week and KEEPS the exceptions; a DECLARED all-non-working week still
-> falls back (pinned by IDENTITY — name/uid — because the weekday tuple cannot tell the two
-> apart; the pre-existing guard was blind exactly there).
-> **(b) ribbon Negative Float = STORED Total Slack < 0** over incomplete — reproduces Fuse 6/6
-> (62/45/44/37/34/0). The old DCMA07 sourcing missed BOTH ways at once: recompute fallback added
-> phantoms on stored-less tasks (+15 on V05), the parity baselined filter dropped real stored
-> negatives (-10). Stored-less-everywhere files keep the recomputed count (never a fabricated
-> clean bill). DCMA07 itself untouched (Acumen DCMA-report parity, ADR-0280) — the DCMA card and
-> ribbon now legitimately differ, mirroring Acumen's own two products.
-> **Post-fix: 52 of 54 ribbon cells match Fuse exactly** across the six versions.
+> ## 1. The tail — v1.0.218 reached the operator's machine, but only on the second attempt
+> The operator re-ran the `install-tier2.ps1` already in their Downloads and got **1.0.148** — ~70
+> versions stale — from a run that looked entirely successful (tier checks ok, venv reused, Java
+> found, model ready, DONE). Root cause, read off their transcript: **each installer is a
+> self-contained snapshot with the wheel base64-embedded inside it.** It installs exactly the version
+> it was built from and never consults the repo; the stale file sat under the current name. Fix:
+> re-download over it, then re-run —
+> `Invoke-WebRequest ".../main/installer/install-tier2.ps1" -OutFile .\install-tier2.ps1`. The repo is
+> **public again** (verified via the API this session), so the anonymous raw fetch works; ADR-0398's
+> token-aware path was written when it was private. Operator-verified after the second run:
+> `Installed schedule_forensics-1.0.218-py3-none-any.whl`, and `pip show` against the venv's own
+> python → `Version: 1.0.218`.
+> **Measured this session, not inferred:** the banner is
+> `Write-Host "Schedule Forensics installer — $TierLabel"` — **no version**, so the one number that
+> would have caught this appears only after the tier/Python/venv steps; and
+> `installer/README-DISTRIBUTABLE.md` covers tiers, offline mode and the converter but has **no
+> "updating an install you already have" section**. A repo test already enforces that the three tiers
+> embed the *current* version — nothing tells the operator whether the installer they are *running*
+> is current. **Deliberately NOT fixed here**: it regenerates all nine installers, and the session was
+> being closed at the operator's request. Queued as §3(a).
 >
-> ## 2. The BLOCKED leg — Insufficient Detail on V05/V06 (and TP2)
-> Fuse 5x6; tool 0/4 on V05/V06, exact on V07-V10. SIX hypotheses each refuted by measurement
-> against committed pins (calendar-day scaling · week/7 minutes · max-baseline-finish span ·
-> Schedule.baseline_finish span · fixed-480 conversion · the .mpp's stored ProjectFinish, read
-> from the binaries with MPXJ — identical to exported). Any CONSTANT span in [1000, 1890]d fits
-> Starlight; nothing in the bytes lands there without breaking a pin. STOPPED per the
-> metric-parity skill (oracle vs bytes contradiction). **UNBLOCK = one operator artifact: click
-> the V05 "Insufficient Detail 5" cell in Fuse (or export the ribbon to Excel) so the five
-> counted activities are NAMED.** TP2's 6-vs-7 is the same blocked question (pre-existing,
-> never pinned).
+> ## 2. Still blocked, still one artifact away — Insufficient Detail (V05/V06, and TP2's 6-vs-7)
+> Fuse 5×6; the tool reads 0/4 on V05/V06 and is exact on V07–V10 — the last 2 of 54 ribbon cells.
+> Six hypotheses were each refuted by measurement against committed pins (see the archived section
+> for the list; do **not** re-chase the span hypotheses). **UNBLOCK = one operator artifact:** click
+> the V05 "Insufficient Detail — 5" cell in the Fuse Starlight workbook (or export the ribbon to
+> Excel) so the five counted activities are **NAMED**, then re-upload. The same artifact settles
+> TP2's 6-vs-7.
 >
-> ## 3. Traps paid for THIS session — check by name
-> A tree-wide renumber sed rewrote UPSTREAM files' legitimate ADR-0425 citations (#602 took the
-> number mid-session); caught by reading git status; renumber by EXPLICIT FILE LIST only ·
-> fetch-before-numbering ran THREE times and was right to (0425 taken -> 0428 taken -> 0429;
-> version .215/.216/.217 all shipped under the session) · a case-typo cannot prove a pin whose
-> _norm lowercases — drop a TERM · THREE blind oracles found in one arc: the Fuse calibration
-> fixtures where definitions coincide, the pinning test's no-overlap question (ADR-0424), and
-> the all-non-working-week guard distinguishable only by IDENTITY · the product knew its own
-> defect (ADR-0110's latent drift row) · sandbox rule inverse: a battery measuring the tree was
-> KILLED before editing (its verdict was superseded anyway).
->
-> ## Next
-> The audit ledger stands (page modules A/B, docs/config/CI, AI figure-gate adversarial pass,
-> 25-route adverse gap). NEW from this sweep: the blocked Insufficient-Detail leg (operator
-> artifact above) · TP2's 6-vs-7 (same oracle) · consider pinning the ribbon nf/id columns in
-> test_ribbon._FUSE once settled.
+> ## 3. Next
+> (a) **installer version visibility** — print the embedded version in the banner + an "updating an
+> existing install" section in `README-DISTRIBUTABLE.md` (§1; nine-installer regeneration, no `src/`
+> change if the templates alone move — check before assuming a wheel is owed) ·
+> (b) the blocked Insufficient-Detail leg (§2, operator-gated) · (c) consider pinning the ribbon
+> nf/id columns in `test_ribbon._FUSE` once (b) settles · (d) the audit ledger stands and is the
+> standing queue: page modules A/B and docs/config/CI (never audited), the AI figure-gate adversarial
+> pass, the 25-route adverse gap · (e) reported-not-fixed: the Ask prompt uses `f.text`, never
+> `f.rendered()` (belongs with (d)'s figure-gate pass).
 >
 > ## Gate at close
-> Statics green whole-tree. Engine+importer 1372 passed mid-close; full-suite + wheel/installer
-> numbers in the SESSION-LOG entry (close sequence: last source edit -> statics -> wheel +
-> installers -> full suite -> commit).
+> Docs-only, so the gate was scoped to what this commit can move and that scope is stated rather than
+> implied: `ruff check .` · `ruff format --check .` (it formats python inside MARKDOWN too, so it is
+> not a no-op here) · `tests/test_state_docs.py` · `tests/test_standing_rules.py` · `tests/guards/`
+> (the whole-tree census reads these very files). The full suite's last measured run is in the
+> preceding SESSION-LOG entry; CI re-runs it on the PR.
 
 # (prior) handoffs — archived
 

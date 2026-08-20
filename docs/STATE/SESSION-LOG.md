@@ -15247,3 +15247,45 @@ negative-float divergence was exactly the 34 stored-less recompute phantoms ADR-
 (110 incomplete, 76 stored, 34 without — the engine now equals Fuse 0/0). Pin re-baselined
 through its own path with teeth (fallback-reintroduction mutation red by name); parity marker
 suite re-run green after the re-baseline. The five skips are the pre-existing ones.
+
+## 2026-08-20 (b) — ADR-0429/ADR-0430 merged; the operator's install was 70 versions stale (docs-only close)
+
+Branch `claude/multi-schedule-comparative-analysis-vmh5ei`, restarted from `origin/main` after the
+squash-merge of PR #605 (`9dda7ea`). **No `src/` change** — v1.0.218 stands, no wheel or installer
+rebuild owed (ADR-0148 checked, not assumed: `git status src/` clean). Highest ADR remains
+**ADR-0430**; no new ADR, because the tail made a *diagnosis*, not a decision — the fix it implies
+is queued for the session that makes it.
+
+### What the tail was
+PR #605 merged at 17:20Z (operator marked it ready, then merged; the Codex-bot comment on the PR was
+a **usage-limit notice**, not a review — no automated review ran on #605). The session then turned
+to getting v1.0.218 onto the operator's PC, and that is where the finding is.
+
+### The finding — a green install that shipped a 70-version-old build
+The operator re-ran the `install-tier2.ps1` already sitting in Downloads. Every line of the run was
+green — tier fit, Python found, venv re-used, MPXJ kept, Java 17 found, `llama3.1:8b` ready, DONE —
+and it installed **1.0.148**. Root cause off their own transcript: an installer is a **self-contained
+snapshot with the wheel base64-embedded inside it**, so it installs the version it was BUILT from and
+never consults the repo; the stale file carried the current *name*. Re-downloading over it
+(`Invoke-WebRequest .../main/installer/install-tier2.ps1 -OutFile .\install-tier2.ps1`) and re-running
+installed `schedule_forensics-1.0.218-py3-none-any.whl`; `pip show` against the venv's own python
+confirmed `Version: 1.0.218`. The repo is **public** again (checked via the API), so the anonymous
+raw fetch works — ADR-0398's token-aware path was written when it was private.
+
+### Measured, reported, NOT fixed (queued)
+The installer banner is `Write-Host "Schedule Forensics installer — $TierLabel"` — it prints the tier
+and **not the embedded version**, so the number that would have caught this only appears after the
+tier/Python/venv steps; and `installer/README-DISTRIBUTABLE.md` documents tiers, offline mode and the
+converter but has **no "updating an install you already have" section**. Both verified by reading the
+files this session. A repo test already enforces that the three tiers embed the *current* version —
+the gap is that nothing tells the operator whether the installer they are *running* is current. Left
+alone deliberately: it regenerates all nine installers and the operator asked to close the session.
+
+### Gate at close
+Docs-only, and the scope is stated rather than implied: `ruff check .` · `ruff format --check .`
+(which also formats python inside markdown, so it is not a no-op on this commit) ·
+`tests/test_state_docs.py` · `tests/test_standing_rules.py` · `tests/guards/` (the whole-tree census
+reads these very files). The full suite's last measured run is in the "2026-08-20 — the ribbon's Hard
+Constraints was a different metric of the same name" entry above; CI
+re-runs it on the PR. Housekeeping: no scheduled check-in triggers remain armed (`list_triggers`
+empty), and the PR subscription ended with the merge.
