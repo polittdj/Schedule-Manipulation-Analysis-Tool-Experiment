@@ -47,6 +47,116 @@ from schedule_forensics.web.components import (
 from schedule_forensics.web.state import _iso_date
 
 
+def _whole_schedule_data(sch: Schedule, cpm: CPMResult) -> dict[str, object]:
+    """The COMPLETE schedule as driving-grid rows — /path's no-target default (operator
+    2026-08-20).
+
+    Every activity in FILE order (the order the source plan lists them, matching the MS
+    Project table read) with the operator's named columns — UID, duration, % complete, start,
+    finish — so the page opens on the whole plan and a UID click (or Trace) computes the
+    driving paths to that activity. The row shape is the trace's own, so the client grid,
+    columns, filters and Gantt render identically; the path-specific fields are honestly
+    absent — ``tier`` empty, ``driving_slack_days``/``drag_days`` ``None`` (rendered "—"),
+    never a fabricated 0 (Law 2). ``drives`` still lists each activity's logic successors
+    (``on_path`` False — there is no path yet). The trace builder ``_driving_data`` is
+    deliberately untouched: its payload is byte-pinned under the SSI option flags (ADR-0251).
+    """
+    _cal_name_by_uid = {c.uid: c.name for c in sch.calendars}
+    _proj_cal_name = sch.calendar.name
+    cal = sch.calendar
+    per_day = cal.working_minutes_per_day
+    basis_start, basis_finish = date_basis(sch, cpm)
+    date_driven = set(cpm.date_driven)
+    actual_start_driven = set(cpm.actual_start_driven)
+
+    def day(ordinal: int | None) -> str | None:
+        if ordinal is None:
+            return None
+        return offset_to_datetime(sch.project_start, max(ordinal, 0), cal).date().isoformat()
+
+    def day_start(ordinal: int | None, finish_ordinal: int | None) -> str | None:
+        if ordinal is None:
+            return None
+        return (
+            span_start_datetime(sch.project_start, max(ordinal, 0), finish_ordinal or 0, cal)
+            .date()
+            .isoformat()
+        )
+
+    activities = [t for t in sch.tasks if not t.is_summary]
+    shown = {t.unique_id for t in activities}
+    drives: dict[int, list[dict[str, object]]] = {uid: [] for uid in shown}
+    for rel in sch.relationships:
+        if rel.predecessor_id in shown and rel.successor_id in shown:
+            drives[rel.predecessor_id].append(
+                {
+                    "uid": rel.successor_id,
+                    "type": rel.type.value,
+                    "lag_days": round(rel.lag_minutes / per_day, 1) if per_day else 0.0,
+                    "on_path": False,
+                }
+            )
+
+    rows: list[dict[str, object]] = []
+    for task in activities:
+        uid = task.unique_id
+        timing = cpm.timings.get(uid)
+        start_ord = basis_start.get(uid, timing.early_start if timing else None)
+        finish_ord = basis_finish.get(uid, timing.early_finish if timing else None)
+        if task.start is not None and task.finish is not None:
+            start_iso: str | None = task.start.date().isoformat()
+            finish_iso: str | None = task.finish.date().isoformat()
+        else:
+            start_iso, finish_iso = day_start(start_ord, finish_ord), day(finish_ord)
+        rows.append(
+            {
+                "unique_id": uid,
+                "name": task.name,
+                "wbs": task.wbs or "",
+                "tier": "",
+                "driving_slack_days": None,
+                "on_driving_path": False,
+                "calendar": (
+                    _cal_name_by_uid.get(task.calendar_uid, _proj_cal_name)
+                    if task.calendar_uid is not None
+                    else _proj_cal_name
+                ),
+                "start_ord": start_ord,
+                "finish_ord": finish_ord,
+                "start": start_iso,
+                "finish": finish_iso,
+                "baseline_finish": _iso_date(task.baseline_finish),
+                "duration_days": round(
+                    task.duration_minutes / (1440 if task.duration_is_elapsed else per_day), 1
+                )
+                if per_day
+                else 0.0,
+                "total_float_days": (
+                    float(round(timing.total_float / per_day, 1)) if timing else None
+                ),
+                "percent_complete": task.percent_complete,
+                "complete": task.is_complete or task.actual_finish is not None,
+                "is_milestone": task.is_milestone,
+                "date_driven": uid in date_driven,
+                "actual_start_driven": uid in actual_start_driven,
+                "drag_days": None,
+                "resource_names": ", ".join(task.resource_names),
+                "drives": drives[uid],
+                "custom": dict(task.custom_field_map),
+            }
+        )
+    return {
+        "target_uid": None,
+        "target_name": None,
+        "whole_schedule": True,
+        "data_date": sch.status_date.date().isoformat() if sch.status_date else None,
+        "coverage": "",
+        "custom_field_labels": list(sch.custom_field_labels),
+        "rows": rows,
+        "parallel_paths": [],
+    }
+
+
 def _driving_data(
     sch: Schedule,
     cpm: CPMResult,

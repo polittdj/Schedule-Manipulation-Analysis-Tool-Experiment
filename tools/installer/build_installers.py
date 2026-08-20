@@ -189,6 +189,10 @@ def build(wheel: Path) -> list[Path]:
     b64 = base64.b64encode(wheel.read_bytes()).decode("ascii")
     wrapped = "\n".join(textwrap.wrap(b64, 120))
     commented = "\n".join("# " + line for line in wrapped.splitlines())
+    # the embedded wheel's own version, printed by every banner (operator 2026-08-20, queue
+    # item 1): an installer never consults the repo, so a stale file silently reinstalled
+    # v1.0.148 from a green run — the RENDERED banner must say which version this file installs.
+    version = wheel.name.split("-")[1]
     out_dir = ROOT / "installer"
     out_dir.mkdir(exist_ok=True)
     ref = mpxj_ref()  # resolved ONCE — the raw base, the API ?ref= and the printout must agree
@@ -227,6 +231,7 @@ def build(wheel: Path) -> list[Path]:
                 .replace("{{TIER_SUFFIX}}", suffix)
                 .replace("{{TIER_CONFIG}}", config)
                 .replace("{{WHEEL_NAME}}", wheel.name)
+                .replace("{{WHEEL_VERSION}}", version)
                 .replace("{{MPXJ_BASE_URL}}", base_url)
                 .replace("{{MPXJ_API_BASE}}", api_base)
                 .replace("{{MPXJ_REF}}", ref)

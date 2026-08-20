@@ -435,6 +435,38 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-20 (c) — a screenshot is testimony about a version, and an identity can be a per-copy value
+
+- The operator's "broken timescale" screenshot would not reproduce: the resume notes recorded
+  their install as **v1.0.148** — seventy releases old — because a re-run installer reinstalls
+  the wheel it embeds. Half a debugging task dissolved into ADR-0435 (banner prints the embedded
+  version). **Lesson: before chasing a render bug from a report, establish WHICH BUILD produced
+  the evidence** — a screenshot is testimony about a version, not about the tree. The defect was
+  still made unrepresentable going forward (a chromium property test: header bands must cover
+  the rightmost bar).
+- Multi-.xer Mission Control: grouping keyed on `proj_short_name` — P6's Project ID, which the
+  per-update copy workflow RENAMES every period (the same workflow ADR-0185 documented for
+  `task_id`). **Lesson: an "identity" field must be checked against the workflow that produces
+  the files — a value that is unique per EPS is by construction NOT stable across per-update
+  copies.** The stable analogue of the MSPDI Title was the root PROJWBS project name all along.
+- The /path data-date seat computed from model numbers landed 280 px off — the frozen columns
+  re-measure after first paint (and again when fonts settle). **Lesson: seat a scroll from LIVE
+  geometry (getBoundingClientRect delta) after a double animation frame + fonts.ready, never
+  from layout numbers captured mid-paint.**
+- `target=0` as a whole-schedule sentinel collided with a pinned contract: Project5's
+  project-summary row IS UID 0, and a guard traced it expecting the summary note. **Lesson: a
+  new sentinel needs the existing pins swept for real members of the sentinel's value space; the
+  fix is to move the pin to a nonzero member of the same class, not to weaken it.**
+- Two contract-pinned pages grew (r10: 3→4 panels; r11: path.js digest). Every count moved in a
+  DELIBERATE re-baseline naming the operator ask, with the load-bearing sub-digests (the 11-line
+  axis-caption block) proven unchanged. **Lesson: a pinned contract is not a prohibition on
+  growth — it is a demand that growth be named**; and a new div-list chart must NOT wear
+  `.chart-host` unless it wants chartframe's zoom bar.
+- The differing-max-units engine test passed on FIRST RUN — the capacity formula was always
+  right; every fixture just carried a uniform 1.0, so nothing could fail. **Lesson: a first-run
+  green on a new test is either a true-positive twin or a vacuous pass — decide which by
+  checking what the fixture SET can express, not what the assertion says.**
+
 ### 2026-08-20 (b) — a self-contained installer is a snapshot, and a green install can be 70 versions stale
 
 - **The operator re-ran the installer they already had and got v1.0.148 instead of v1.0.218.** The

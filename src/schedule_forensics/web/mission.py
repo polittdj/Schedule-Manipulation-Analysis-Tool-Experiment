@@ -30,6 +30,7 @@ def _mission_body(
     n_solvable: int,
     latest: Schedule | None = None,
     briefing: ExecutiveBriefing | None = None,
+    other_files: int = 0,
 ) -> str:
     """Mission Control — every visual on one wall at small scale: expand any tile (⛶), reveal its
     underlying data table (▦ DATA), export it (⤓ EXCEL), and Play-all to step every animated chart
@@ -56,8 +57,29 @@ def _mission_body(
         "Needs at least two analyzable versions of the active project &mdash; "
         "load another schedule update to activate this visual."
     )
-    cei_note = need2_loaded if n_loaded < 2 else ""
-    solvable_note = need2_solvable if n_solvable < 2 else ""
+    # operator 2026-08-20: when OTHER loaded files formed separate Projects (per-update P6
+    # exports carry per-copy Project IDs; a renamed project name shatters the version series),
+    # "load another schedule update" alone reads as a silent mystery — updates ARE loaded. Name
+    # where they went and the two remedies (combine in Portfolio, or switch the active Project).
+    # A separate <span> so the base sentence stays one exact-match text node for the i18n
+    # catalog; filenames/counts are session data, so the tail is data-no-i18n.
+    others_tail = ""
+    if other_files == 1:
+        others_tail = (
+            " <span data-no-i18n>1 other loaded file is grouped into a different Project and "
+            "stays off this wall &mdash; if it is an update of the same project, combine the "
+            'Projects in <a href="/portfolio">Portfolio</a>, or switch the active Project in '
+            "the banner.</span>"
+        )
+    elif other_files > 1:
+        others_tail = (
+            f" <span data-no-i18n>{other_files} other loaded files are grouped into a "
+            "different Project (or Projects) and stay off this wall &mdash; if they are "
+            'updates of the same project, combine the Projects in <a href="/portfolio">'
+            "Portfolio</a>, or switch the active Project in the banner.</span>"
+        )
+    cei_note = (need2_loaded + others_tail) if n_loaded < 2 else ""
+    solvable_note = (need2_solvable + others_tail) if n_solvable < 2 else ""
 
     # ── provenance (SOURCE: file · DD date) — same chip format as the home shell ──────────────
     latest_file = (latest.source_file or latest.name) if latest is not None else ""

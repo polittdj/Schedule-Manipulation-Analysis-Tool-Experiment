@@ -47,7 +47,8 @@ ok()   { printf '    \033[32m[ok]\033[0m %s\n' "$1"; }
 warn() { printf '    \033[33m[!!]\033[0m %s\n' "$1"; }
 
 echo ""
-echo "Schedule Forensics installer — ${TIER_LABEL}"
+echo "Schedule Forensics installer — v{{WHEEL_VERSION}} — ${TIER_LABEL}"
+echo "This file embeds and installs exactly v{{WHEEL_VERSION}}. For a newer release, re-download the latest installer — an old file reinstalls its old version."
 echo "Install location: $INSTALL_ROOT"
 
 # --- 1. machine fit (warn-only) ------------------------------------------------------

@@ -721,3 +721,34 @@ def test_every_windows_mutation_still_bites_the_real_installers() -> None:
             )
     assert any("Resolve-SfPath" in n for n in needles), "self-copy skip no longer mutation-proved"
     assert any("mpxjCandidates" in n for n in needles), "empty-base guard no longer mutation-proved"
+
+
+@pytest.mark.parametrize("family", FAMILIES)
+def test_rendered_banner_carries_the_embedded_wheels_version(family: str) -> None:
+    """Operator 2026-08-20 (the standing queue's item 1): the operator re-ran an installer
+    already sitting in Downloads and unknowingly installed v1.0.148 from a fully green run —
+    an installer EMBEDS its wheel and never consults the repo, and the banner printed only
+    the tier. The RENDERED banner (each generated installer file, never the template) must
+    carry the embedded wheel's own version, derived here from the SAME file's wheel name —
+    an expectation the file itself supplies, not a transcribed number."""
+    for tier in TIERS:
+        text = _read(tier, family)
+        m = re.search(r"schedule_forensics-([0-9][0-9A-Za-z.!+]*)-py3-none-any\.whl", text)
+        assert m, f"{tier}.{family}: embedded wheel name not found"
+        version = m.group(1)
+        banner = next((ln for ln in text.splitlines() if "Schedule Forensics installer" in ln), "")
+        assert banner, f"{tier}.{family}: banner line missing"
+        assert f"v{version}" in banner, (
+            f"{tier}.{family}: banner {banner!r} does not name the embedded version {version}"
+        )
+        # the honesty line: this file installs exactly its embedded version, nothing newer
+        assert f"installs exactly v{version}" in text, f"{tier}.{family}"
+
+
+def test_distributable_readme_explains_updating_an_existing_install() -> None:
+    """The second measured gap behind the stale-install report: README-DISTRIBUTABLE.md had no
+    'updating an install you already have' section, so nothing told the operator that an old
+    installer file reinstalls its old embedded version."""
+    text = (ROOT / "installer" / "README-DISTRIBUTABLE.md").read_text(encoding="utf-8")
+    assert "## Updating an install you already have" in text
+    assert "embeds" in text and "re-download" in text.lower()

@@ -2,7 +2,8 @@
 
 What this pins:
 
-* the **three panel-head strips** (``.panel-head`` + the UNCHANGED h2 text + a ``.prov-chip``)
+* the **panel-head strips** — four since operator 2026-08-20 (``.panel-head`` + h2 + a
+  ``.prov-chip``)
   and exactly one ``.sf-take`` per converted panel, with every figure a take quotes proven to
   be a value the page ALREADY renders verbatim (asserted by finding the same token in the KPI
   cards / the roster's own row-1 cells / the ``<option>`` list, outside the take itself);
@@ -125,20 +126,27 @@ def _takes(page: str) -> list[str]:
 # ── the conversion itself ──────────────────────────────────────────────────────────────────
 
 
-def test_the_three_content_panels_wear_head_tools_prov_and_take(client: TestClient) -> None:
+def test_the_four_content_panels_wear_head_tools_prov_and_take(client: TestClient) -> None:
+    # DELIBERATE re-baseline (operator 2026-08-20): the page gained a FOURTH shelled panel —
+    # "Utilization by resource", the whole-roster peak-load view — so every 3-count moves to 4.
     page = client.get("/resources").text
-    # the three headings keep their EXACT text (content assertions elsewhere depend on it)
-    for title in ("Resource loading &amp; over-allocation", "Loading histogram", "Resource roster"):
+    # the four headings keep their EXACT text (content assertions elsewhere depend on it)
+    for title in (
+        "Resource loading &amp; over-allocation",
+        "Loading histogram",
+        "Resource roster",
+        "Utilization by resource",
+    ):
         assert f"<h2>{title}" in page, title
-    assert page.count("<div class=panel-head>") == 3
-    assert page.count("<div class=sf-tools data-noprint=1>") == 3
-    assert page.count("<span class=prov-chip data-no-i18n>") == 3
-    assert len(_takes(page)) == 3
+    assert page.count("<div class=panel-head>") == 4
+    assert page.count("<div class=sf-tools data-noprint=1>") == 4
+    assert page.count("<span class=prov-chip data-no-i18n>") == 4
+    assert len(_takes(page)) == 4
     # the chip names the file the panels are drawn from, and its data date
     assert "SOURCE: Project5.mspdi.xml · DD " in page
     # each converted panel carries head + take + prov, in that order, inside the SAME panel
     converted = [p for p in _panels(page) if "panel-head" in p]
-    assert len(converted) == 3
+    assert len(converted) == 4
     for p in converted:
         assert p.index("panel-head") < p.index("sf-take")
         assert "prov-chip" in p and "sf-tools" in p
@@ -148,14 +156,16 @@ def test_the_glyph_strip_is_exactly_the_real_ones(client: TestClient) -> None:
     """▦ DATA is deliberately absent: no panel ships an ``.sf-drawer``, so the glyph would be
     inert (panelkit.js returns silently). The roster table and the KPI grid ARE the data."""
     page = client.get("/resources").text
-    assert page.count(EXCEL_LABEL) == 3
-    assert page.count(ENLARGE_LABEL) == 3
+    assert page.count(EXCEL_LABEL) == 4
+    assert page.count(ENLARGE_LABEL) == 4
     assert DATA_LABEL not in page
     assert "data-sf-data" not in page
     assert "sf-drawer" not in page
     # ⛶ is panel-scoped, and that is coherent: at most ONE chart lives in a converted panel
+    # (the utilization panel renders plain rows — deliberately NOT a .chart-host, so
+    # chartframe never bolts a zoom bar onto a div list)
     assert page.count("class=chart-host") == 1
-    assert page.count("data-sf-big") == 3
+    assert page.count("data-sf-big") == 4
 
 
 @pytest.mark.parametrize("bucket", BUCKETS)
@@ -166,7 +176,7 @@ def test_excel_carries_the_rendered_bucket_and_is_a_live_endpoint(
     month workbook would be a presentation lie about engine numbers."""
     page = client.get(f"/resources?bucket={bucket}").text
     urls = re.findall(r'<div class=panel data-export="([^"]+)"', page)
-    assert urls == [f"/export/xlsx/resources?bucket={bucket}"] * 3, urls
+    assert urls == [f"/export/xlsx/resources?bucket={bucket}"] * 4, urls
     live = client.get(urls[0])
     assert live.status_code == 200
     assert live.content[:2] == b"PK", "not a real .xlsx"
@@ -197,10 +207,11 @@ def test_promotion_census_no_new_panel_joins_the_theme_fight(client: TestClient)
     ``html[data-theme=jarvis] .panel`` rules (incl. the two 16px corner brackets). This
     conversion decorates panels that were ALREADY .panel — the count must not move."""
     page = client.get("/resources").text
-    # 2 status-stack + 3 content + explainer + Ask the AI (measured identical in chromium)
-    assert len(_PANEL_OPEN.findall(page)) == 7
-    # the contract classes appear ONLY inside already-existing panels
-    assert page.count("panel-head") == 3
+    # 2 status-stack + 4 content + explainer + Ask the AI (measured identical in chromium;
+    # the 4th content panel is the 2026-08-20 utilization view)
+    assert len(_PANEL_OPEN.findall(page)) == 8
+    # the contract classes appear ONLY inside panels
+    assert page.count("panel-head") == 4
 
 
 # ── Law 2: every quoted figure is already on the page ──────────────────────────────────────
@@ -213,7 +224,7 @@ def test_takes_quote_only_figures_the_page_already_renders(client: TestClient, b
     roster ROW 1 for the per-resource figures."""
     page = client.get(f"/resources?bucket={bucket}").text
     takes = _takes(page)
-    assert len(takes) == 3
+    assert len(takes) == 4
     rest = page
     for t in takes:
         rest = rest.replace(t, "")
@@ -230,7 +241,7 @@ def test_takes_quote_the_roster_row_the_chart_actually_opens_on(client: TestClie
     blob = page.split("id=resData>", 1)[1].split("</script>", 1)[0].replace("<\\/", "</")
     first = json.loads(blob)["resources"][0]
     name = html.escape(first["name"])
-    hist, roster = _takes(page)[1], _takes(page)[2]
+    hist, roster = _takes(page)[1], _takes(page)[2]  # util is [3] (rendered last)
     assert f"opens on {name} " in hist, hist
     assert f"largest first: {name} at " in roster, roster
     # the work-days figure is the roster row-1 cell, formatted identically
@@ -277,9 +288,14 @@ def test_takes_read_as_prose_when_nothing_is_over_allocated(
     monkeypatch.setattr(res_mod, "compute_resource_loading", lambda *a, **k: clean)
     page = client.get("/resources").text
     takes = _takes(page)
-    assert len(takes) == 3
+    assert len(takes) == 4
     for t in takes:
-        assert "none is over-allocated in any month" in t or "opens on Crew A" in t
+        assert (
+            "none is over-allocated in any month" in t
+            or "opens on Crew A" in t
+            # the 2026-08-20 utilization panel's take is figure-free prose by design
+            or "peak utilization against its OWN max units" in t
+        )
     assert "0 of them are over-allocated" not in page
     # Law 2 still holds on this branch: every quoted figure is rendered elsewhere too
     rest = page
@@ -380,7 +396,10 @@ def test_axis_caption_call_site_is_untouched() -> None:
     ``6cd4b080306f47e19d71d1e8f18d8838`` it did before the change."""
     js = Path(__file__).resolve().parents[2] / "src/schedule_forensics/web/static/resources.js"
     raw = js.read_bytes()
-    assert hashlib.md5(raw).hexdigest() == "091f3c4bd64010f84096919aa2ae08d8"  # ADR-0342
+    # operator 2026-08-20: drawUtil() (the whole-roster utilization panel) is appended
+    # BELOW the pinned call-site block — same shape as the ADR-0319/0342 refreshes: the
+    # whole-file digest moves deliberately, the 11-line call-site block digest must not.
+    assert hashlib.md5(raw).hexdigest() == "e82a355573220b73587d4448fb281401"
     block = raw.decode().splitlines()[235:246]
     assert hashlib.md5("\n".join(block).encode()).hexdigest() == "6cd4b080306f47e19d71d1e8f18d8838"
     assert 'xLabel: "Period (" + UNIT + " commencing)",' in "\n".join(block)
@@ -513,7 +532,7 @@ def test_excel_glyph_downloads_the_rendered_buckets_workbook(served: str) -> Non
                 "()=>[...document.querySelectorAll('.panel[data-export]')]"
                 ".map(x=>x.getAttribute('data-export'))"
             )
-            == ["/export/xlsx/resources?bucket=week"] * 3
+            == ["/export/xlsx/resources?bucket=week"] * 4
         )
         with page.expect_download(timeout=20000) as dl:
             page.locator("[data-sf-excel]").nth(2).click()
@@ -559,7 +578,7 @@ def test_four_theme_probe_reads_computed_styles(served: str) -> None:
                 assert el is not None, f"{theme}: .{name} missing"
                 assert el["vis"] == "visible", f"{theme}/{name}: {el}"
                 assert el["w"] > 0 and el["h"] > 0, f"{theme}/{name}: {el}"
-            assert r["nTake"] == 3 and r["nChip"] == 3, (theme, r)
+            assert r["nTake"] == 4 and r["nChip"] == 4, (theme, r)
             # the prov chip is the one class NO theme sheet touches — 8px mono, 9px pill
             assert r["chip"]["fs"] == "8px" and r["chip"]["radius"] == "9px", (theme, r["chip"])
             # each glyph+label stays on ONE line (no /performance-style two-line wrap here)

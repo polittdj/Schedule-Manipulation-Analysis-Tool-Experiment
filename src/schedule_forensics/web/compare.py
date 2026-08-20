@@ -137,6 +137,7 @@ def _compare_body(
     *,
     vfrom: int = 1,
     vto: int = 2,
+    export_qs: str = "",
 ) -> str:
     """Chapter-10 body (Mission Ops rank 5, ADR-0298): the two legacy tables wearing the panel
     contract. Presentation only — every figure is the same engine output the flat panels already
@@ -212,7 +213,7 @@ def _compare_body(
 <p class=sf-take data-no-i18n>{impact_take}</p>
 <p class=muted>Versions are ordered by data date (oldest first); the trend reads prior &rarr; current.</p>
 <table><tr><th scope=col>Version</th><th scope=col>Project finish</th><th scope=col class=metric-th>{_metric_help_cell("Completed", "completed")}</th><th scope=col class=metric-th>{_metric_help_cell("In progress", "in_progress")}</th><th scope=col class=metric-th>{_metric_help_cell("Critical", "critical")}</th></tr>{trend_rows}</table></div>
-<div class="panel verdict-band vb-stack {band_cls}" data-export="/export/xlsx/compare">{sig_head}
+<div class="panel verdict-band vb-stack {band_cls}" data-export="/export/xlsx/compare{export_qs}">{sig_head}
 <p class=sf-take data-no-i18n>{sig_take}</p>
 <table><tr><th scope=col>Severity</th><th scope=col>Signal</th><th scope=col>Course of action</th></tr>
 {manip_rows or "<tr><td colspan=3 class=muted>No manipulation signals detected (honest progress).</td></tr>"}</table></div>"""

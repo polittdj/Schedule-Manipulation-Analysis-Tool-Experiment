@@ -755,11 +755,11 @@ _TERMS: dict[str, dict[str, str]] = {
         "de": "Arbeit, die vor das Datenstichdatum geschoben wird.",
         "pt": "Trabalho empurrado além da data de dados.",
     },
-    "What changed between the two most recent versions.": {
-        "es": "Qué cambió entre las dos versiones más recientes.",
-        "fr": "Ce qui a changé entre les deux versions les plus récentes.",
-        "de": "Was sich zwischen den zwei neuesten Versionen änderte.",
-        "pt": "O que mudou entre as duas versões mais recentes.",
+    "What changed between any two versions you pick.": {
+        "es": "Qué cambió entre dos versiones cualesquiera que elija.",
+        "fr": "Ce qui a changé entre deux versions de votre choix.",
+        "de": "Was sich zwischen zwei beliebigen gewählten Versionen änderte.",
+        "pt": "O que mudou entre duas versões quaisquer que você escolher.",
     },
     "SEM/SSI families, Fuse-validated.": {
         "es": "Familias SEM/SSI, validadas con Fuse.",

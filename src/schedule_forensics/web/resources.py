@@ -254,7 +254,10 @@ def _resources_body(st: SessionState, granularity: str = "month") -> str:
     )
     rows = "".join(
         f"<tr><td>{_e(r.name)}</td><td>{_e(r.type.title())}</td>"
-        f"<td class=num>{r.max_units:g}</td><td class=num>{round(r.total_work_minutes / mpd, 1):g}</td>"
+        # a max units the FILE stated renders as its own figure; the engine's assumed 1.0
+        # default renders as an em dash — "missing shows —, never a fabricated figure"
+        f"<td class=num>{f'{r.max_units:g}' if r.max_units_declared else '—'}</td>"
+        f"<td class=num>{round(r.total_work_minutes / mpd, 1):g}</td>"
         f"<td class=num>{r.task_count}</td><td>{_e(r.peak_period or '')}</td>"
         f"<td class={'res-over' if r.over_allocated_periods else 'num'}>"
         f"{len(r.over_allocated_periods) or ''}</td></tr>"
@@ -307,6 +310,7 @@ def _resources_body(st: SessionState, granularity: str = "month") -> str:
         prov=prov,
     )
     hist_head = _panel_head("Loading histogram", tools=tools, prov=prov)
+    util_head = _panel_head("Utilization by resource", tools=tools, prov=prov)
     roster_head = _panel_head("Resource roster", tools=tools, prov=prov)
     # every figure below is ALREADY rendered verbatim on this page, read from the same variable
     # the visible markup reads: the four {cards} values, and roster ROW 1 (rl.resources[0]) —
@@ -331,8 +335,14 @@ def _resources_body(st: SessionState, granularity: str = "month") -> str:
         f"that resource's over-allocated {unit}s."
     )
     roster_take = (
-        f"{len(rl.resources)} resources carry work, largest first: {_e(first.name)} at "
-        f"{first_days} work-days across {first.task_count} activities; {over_clause}."
+        f"All {len(rl.resources)} of the schedule's resources are listed — assigned or not — "
+        f"largest first: {_e(first.name)} at {first_days} work-days across "
+        f"{first.task_count} activities; {over_clause}."
+    )
+
+    util_take = (
+        "Every resource's peak utilization against its OWN max units, on one chart, worst "
+        "first — the whole roster at a glance instead of one resource at a time."
     )
 
     def take(text: str) -> str:
@@ -355,8 +365,17 @@ def _resources_body(st: SessionState, granularity: str = "month") -> str:
 <script defer src="/static/resources.js"></script></div>
 <div class=panel data-export="{export_url}">{roster_head}
 {take(roster_take)}
-<p class=muted>Every resource that carries work, sorted by total work. Over-allocated {unit}s are the
-count of {unit}s booked beyond capacity.</p>
+<p class=muted>Every resource in the schedule — assigned or not — sorted by total work; unassigned
+resources show zero work. Max units is the file's own figure (&mdash; when the file does not state
+one; capacity then assumes 1 full unit, see the explainer). Over-allocated {unit}s are the count of
+{unit}s booked beyond capacity.</p>
 {roster}</div>
+<div class=panel data-export="{export_url}">{util_head}
+{take(util_take)}
+<p class=muted>Peak booked load as a share of each resource's OWN capacity (its max units) in its
+busiest {unit} — every resource on one chart, worst first. The amber line is 100% of capacity;
+bars past it are over-allocated. A resource with booked work but zero capacity reads "over (no
+capacity)".</p>
+<div id=resUtilChart></div></div>
 {_resources_explainer()}
 <script src="/static/panelkit.js"></script>"""

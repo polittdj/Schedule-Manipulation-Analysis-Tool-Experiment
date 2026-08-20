@@ -33,6 +33,25 @@ Java, the MPXJ converter, Ollama and the AI model). On an air-gapped machine set
 `SF_MPXJ_OFFLINE=1` to suppress the converter download, or put a copy of `tools/mpxj` beside the
 installer (or point `SF_MPXJ_HOME` at one) and it is used instead of the network.
 
+## Updating an install you already have
+
+**An installer file embeds one exact version of the tool and never consults the repository** —
+re-running a file that has been sitting in your Downloads reinstalls the version it was built
+with, no matter what has shipped since (this is by design: the install works offline). To
+update:
+
+1. **Re-download the latest installer** for your tier and OS from the current release — do not
+   re-run an old file.
+2. Run it exactly like a first install. It reuses everything already present (Python, Java, the
+   converter, the model) and replaces only the tool in its private environment; your settings
+   and shortcuts are kept, and a converter from an earlier install is never touched.
+3. **Check what you are running:** the installer's first banner line prints the version it
+   embeds (`Schedule Forensics installer — vX.Y.Z — Tier …`), and the same version is visible
+   after install in the tool itself.
+
+If the banner does not print a version at all, the file predates v1.0.219 — it is old; download
+a fresh one.
+
 **Uninstall:** Start Menu → Schedule Forensics → *Uninstall Schedule Forensics* (removes the app
 and shortcuts; leaves Python/Java/Ollama, with the `ollama rm` command noted for the model).
 

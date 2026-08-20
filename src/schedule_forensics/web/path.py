@@ -173,8 +173,9 @@ def _path_body(keys: list[str], target_uid: int | None) -> str:
     else:
         avail = "1 loaded version is" if len(keys) == 1 else f"{len(keys)} loaded versions are"
         take = (
-            "<p class=sf-take data-no-i18n>No session target is set &mdash; enter a target "
-            f"UniqueID above and press Trace; {avail} available to trace.</p>"
+            "<p class=sf-take data-no-i18n>No session target is set &mdash; the complete "
+            "schedule is shown; click any row's UID (or enter a Target UID and press Trace) "
+            f"to compute its driving paths; {avail} available to trace.</p>"
         )
     return f"""
 <div class=panel>{head}{take}

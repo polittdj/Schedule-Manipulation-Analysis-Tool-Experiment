@@ -78,7 +78,8 @@ def _portfolio_body(st: SessionState) -> str:
     projs = st.projects()
     active = st.active_population()
     with st._lock:
-        n_pops = len(st.populations())
+        pops = st.populations()
+    n_pops = len(pops)
     pending = sum(1 for p in projs if p.pending_review)
     excluded_total = sum(1 for p in projs for v in p.versions if v.excluded)
     # Session bookkeeping the page already renders, gathered once for the pf header/KPI tiles
@@ -258,8 +259,47 @@ def _portfolio_body(st: SessionState) -> str:
         + intro
         + "".join(rows)
         + "</table></div>"
+        + _portfolio_combine_panel(pops, active)
         + _portfolio_memory_panel(st)
         + '\n<script src="/static/panelkit.js"></script>'
+    )
+
+
+def _portfolio_combine_panel(
+    pops: list[tuple[str, str, tuple[str, ...]]],
+    active: tuple[str, str, tuple[str, ...]] | None,
+) -> str:
+    """The operator's "these files are ONE project" override (operator 2026-08-20).
+
+    Automatic grouping keys on each file's document Title (.mpp/MSPDI) or P6 project name
+    (.xer) and deliberately never merges differing names on its own — but the per-update P6
+    copy workflow (and any per-period rename) leaves one real project shattered into
+    one-version Projects, so every cross-version view degrades. This panel lets the operator
+    say so explicitly: tick the Projects that are updates of one project, name the combined
+    Project, and every selected population is re-labeled with that one shared ingestion folder
+    (``POST /project/combine`` → ``SessionState.combine_projects``). Rendered only when there
+    is something to combine (two or more populations)."""
+    if len(pops) < 2:
+        return ""
+    boxes = "".join(
+        f'<label class=combine-row><input type=checkbox name=pids value="{_e(pid)}"> '
+        f"{_e(title)} <span class=muted>({len(keys)} "
+        f"file{'' if len(keys) == 1 else 's'})</span></label>"
+        for pid, title, keys in pops
+    )
+    default_name = active[1] if active is not None else pops[0][1]
+    return (
+        f"<div class=panel>{_panel_head('Combine Projects', tools=_shell_tools())}"
+        "<p class=muted>Files group into Projects by their document Title (.mpp) or P6 "
+        "project name (.xer). Per-update exports that carry per-period names land as "
+        "separate one-version Projects, which keeps every cross-version visual dark. If "
+        "the Projects below are really status updates of ONE project, tick them, name the "
+        "combined Project, and Combine &mdash; versions order by data date as usual.</p>"
+        "<form method=post action=/project/combine class=inline-form>"
+        f"{boxes}"
+        "<label>Combined name <input type=text name=title "
+        f'value="{_e(default_name)}" style="width:16em"></label> '
+        "<button type=submit>Combine</button></form></div>"
     )
 
 

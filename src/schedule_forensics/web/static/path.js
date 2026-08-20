@@ -21,10 +21,12 @@
     { key: "tier", label: "Tier", on: true },
     { key: "driving_slack_days", label: "Slack (d)", on: true },
     { key: "drag_days", label: "Drag (d)", on: false },
+    // Dur is ON by default (operator 2026-08-20: the default grid carries UID, duration,
+    // % complete, start and finish), seated before Start to read like the MS Project table.
+    { key: "duration_days", label: "Dur (d)", on: true },
     { key: "start", label: "Start", on: true },
     { key: "finish", label: "Finish", on: true },
     { key: "baseline_finish", label: "Baseline finish", on: false },
-    { key: "duration_days", label: "Dur (d)", on: false },
     { key: "total_float_days", label: "TF (d)", on: false },
     { key: "percent_complete", label: "%", on: true },
     { key: "date_driven", label: "Date-driven", on: false },
@@ -167,6 +169,45 @@
     reflow();
   }
 
+  // Seat the gold data-date line ~1 inch right of the frozen data columns (operator
+  // 2026-08-20; ONE_INCH ≈ 96 CSS px, the same seat /analysis uses). Runs once per payload
+  // (seatPending), after the load's paint SETTLES — column widths keep moving through the
+  // first layout/font passes, so the seat is a LIVE-geometry delta (where the line is now vs
+  // where it should sit), deferred a double animation frame and re-checked once when the
+  // fonts finish loading. Only a pane that actually overflows moves (Math.max clamps to 0).
+  var seatPending = false;
+  var seatEpoch = 0; // bumps per payload so a stale deferred seat never fires late
+  var ONE_INCH_PX = 96;
+  function seatDataDate() {
+    if (!data || !data.data_date) return;
+    var now = view.querySelector(".path-track .pv-now");
+    if (!now) return;
+    var frozen = 0;
+    var ths = view.querySelectorAll("thead tr:first-child th");
+    for (var i = 0; i < ths.length - 1; i++) frozen += ths[i].offsetWidth;
+    var delta = (now.getBoundingClientRect().left - view.getBoundingClientRect().left) -
+      (frozen + ONE_INCH_PX);
+    view.scrollLeft = Math.max(0, view.scrollLeft + delta);
+  }
+  function maybeSeat() {
+    if (!seatPending || refitting) return;
+    seatPending = false;
+    seatEpoch += 1;
+    var epoch = seatEpoch;
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        if (epoch !== seatEpoch) return;
+        seatDataDate();
+        // fonts settling after first paint re-widen the columns; correct once more
+        if (document.fonts && document.fonts.status !== "loaded") {
+          document.fonts.ready.then(function () {
+            if (epoch === seatEpoch) seatDataDate();
+          });
+        }
+      });
+    });
+  }
+
   // Once the data columns are laid out, refit the fill width to their REAL measured width so the
   // timeline uses the exact remaining page space (operator: "utilize the entire page space"). Runs
   // at most once per render via the refitting guard.
@@ -204,6 +245,12 @@
   // mirrors whichever custom fields are toggled on in the grid, via the &cols= query param.
   function updateExportLinks() {
     if (!data) return;
+    if (data.whole_schedule) {
+      // the path export routes REQUIRE a target — a whole-schedule export link would 422.
+      // Hide the bar honestly; it returns the moment a trace exists.
+      $("pathExport").style.display = "none";
+      return;
+    }
     var onCustom = FIELDS.filter(function (f) { return f.custom && f.on; })
       .map(function (f) { return f.label; });
     var q = "/" + encodeURIComponent($("pathSchedule").value) +
@@ -243,6 +290,15 @@
   }
 
   function paintStatus(rows) {
+    // the whole-schedule default (operator 2026-08-20): no target yet — say so, with the live
+    // filtered count, and point at the UID click that starts a trace
+    if (data && data.whole_schedule) {
+      $("pathStatus").textContent = rows.length + " of " + data.rows.length +
+        " activities — complete schedule (no target selected)" +
+        (data.data_date ? " — data date " + data.data_date : "") +
+        " — click a row's UID to trace the driving paths to it.";
+      return;
+    }
     $("pathStatus").textContent = data && data.note
       ? data.note
       : rows.length + " of " + (data ? data.rows.length : 0) + " path activities to UID " +
@@ -306,6 +362,7 @@
     if (window.SFColResize) SFColResize.attach(table, "path"); // MS-Project drag-to-resize columns
     paintRows();
     refitToColumns(assumed);
+    maybeSeat(); // one-shot data-date seat, after the load's final paint
   }
 
   // Rebuild only the timeline scale + bars (no header teardown, no SFChecklist.close) so selecting a
@@ -321,6 +378,7 @@
     lastScaleTh.appendChild(SFGantt.buildTierScale(axis, "path-scale", data.data_date));
     paintRows();
     refitToColumns(assumed);
+    maybeSeat(); // one-shot data-date seat, after the load's final paint
   }
 
   // MS-Project-style logic-link connectors (operator 2026-07-08): an SVG overlay per
@@ -439,6 +497,19 @@
         if (window.SFTaskInfo) SFTaskInfo.openFrom($("pathSchedule").value, r.unique_id);
       });
       on.forEach(function (f) {
+        if (f.key === "unique_id") {
+          // the UID cell is the retarget affordance (operator 2026-08-20): clicking it sets
+          // the Target UID and re-traces the driving paths to THIS activity. A real element +
+          // delegated listener (CSP: no inline handlers); Enter works via the keydown hook.
+          var tdU = el("td");
+          tdU.appendChild(el("span", {
+            class: "pv-uid", role: "link", tabindex: "0",
+            title: "Trace the driving paths to UID " + r.unique_id,
+            text: fmt(r.unique_id),
+          }));
+          tr.appendChild(tdU);
+          return;
+        }
         if (f.key === "drives") {
           var links = (r.drives || []).map(function (lk) {
             var lag = lk.lag_days
@@ -462,13 +533,16 @@
       if (data.data_date) {
         track.appendChild(el("div", { class: "pv-now", style: "left:" + x(Date.parse(data.data_date)) + "px" }));
       }
+      // whole-schedule rows carry no tier/slack — the tooltip must not read "slack null d"
+      var slackTip = r.driving_slack_days === null || r.driving_slack_days === undefined
+        ? "" : " — slack " + r.driving_slack_days + "d";
       if (r.start && r.finish) {
         if (r.is_milestone) {
           track.appendChild(el("div", {
             class: "g-ms tier-" + r.tier + (selected ? " pv-bar-selected" : "") +
               (matched ? " pv-bar-match" : ""),
             style: "left:" + x(Date.parse(r.finish)) + "px",
-            title: r.name + " (milestone) — slack " + r.driving_slack_days + "d",
+            title: r.name + " (milestone)" + slackTip,
           }));
           // MS-Project "dates on bars": a milestone shows its finish beside the diamond
           if (barDates && r.finish) barLabel(track, x(Date.parse(r.finish)) + 7, "f", r.finish);
@@ -479,7 +553,7 @@
             class: "gantt-bar tier-" + r.tier + (r.complete ? " done" : "") +
               (selected ? " pv-bar-selected" : "") + (matched ? " pv-bar-match" : ""),
             style: "left:" + left + "px;width:" + w + "px",
-            title: r.name + " — " + r.tier + ", slack " + r.driving_slack_days + "d, " +
+            title: r.name + (r.tier ? " — " + r.tier : "") + slackTip + " — " +
               (SFGantt.fmtMDY(r.start) || r.start) + " → " + (SFGantt.fmtMDY(r.finish) || r.finish) +
               ", " + r.percent_complete + "%",
           });
@@ -569,35 +643,54 @@
   }
 
   // --- data loading -----------------------------------------------------------------
+  // Shared /api/driving success path: store the payload, sync the column/group machinery,
+  // and render under the mode's axis posture. A trace fits the selected tier to the page
+  // (the SSI workflow); the whole-schedule default opens at the zoom-slider px so the data
+  // date can be SEATED ~1 inch right of the frozen columns (operator 2026-08-20) instead of
+  // compressing years of history into the pane.
+  function applyPayload(j, posture) {
+    data = j;
+    // session HIGHLIGHT mode: mark the filter's matches on this grid (null = not highlighting)
+    matchSet = null;
+    if (data.highlight_uids && data.highlight_uids.length !== undefined) {
+      matchSet = {};
+      for (var mi = 0; mi < data.highlight_uids.length; mi++) matchSet[String(data.highlight_uids[mi])] = 1;
+    }
+    syncCustomColumns();
+    populateGroupBy();
+    renderToggles();
+    updateExportLinks();
+    scopeAll = posture === "whole"; // the default view spans every activity by definition
+    fitFill = posture !== "whole"; // a fresh trace auto-scales; the whole view opens zoomed
+    seatPending = true; // seat the data date after the (re)paint settles
+    render();
+  }
+  function fetchDriving(url, failText) {
+    fetch(url)
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        if (!res.ok) { $("pathStatus").textContent = res.j.error || failText; data = null; view.textContent = ""; return; }
+        applyPayload(res.j, res.j.whole_schedule ? "whole" : "trace");
+      })
+      .catch(function () { $("pathStatus").textContent = failText; });
+  }
   function trace() {
     var sched = $("pathSchedule").value;
     var target = $("pathTarget").value;
-    if (!target) { $("pathStatus").textContent = "Enter a target UniqueID, then Trace."; return; }
+    // no target = the complete schedule (operator 2026-08-20) — the page's default view
+    if (!target) { wholeSchedule(); return; }
     var url = "/api/driving/" + encodeURIComponent(sched) +
       "?target=" + encodeURIComponent(target) +
       "&secondary=" + encodeURIComponent($("pathSec").value || "10") +
       "&tertiary=" + encodeURIComponent($("pathTer").value || "20") + optionParams();
     $("pathStatus").textContent = "Tracing…";
-    fetch(url)
-      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
-      .then(function (res) {
-        if (!res.ok) { $("pathStatus").textContent = res.j.error || "Trace failed."; data = null; view.textContent = ""; return; }
-        data = res.j;
-        // session HIGHLIGHT mode: mark the filter's matches on this grid (null = not highlighting)
-        matchSet = null;
-        if (data.highlight_uids && data.highlight_uids.length !== undefined) {
-          matchSet = {};
-          for (var mi = 0; mi < data.highlight_uids.length; mi++) matchSet[String(data.highlight_uids[mi])] = 1;
-        }
-        syncCustomColumns();
-        populateGroupBy();
-        renderToggles();
-        updateExportLinks();
-        scopeAll = false; // a fresh trace fits the selected tier, not the whole project
-        fitFill = true; // and auto-scales to the page until the zoom slider is nudged
-        render();
-      })
-      .catch(function () { $("pathStatus").textContent = "Trace failed."; });
+    fetchDriving(url, "Trace failed.");
+  }
+  function wholeSchedule() {
+    var sched = $("pathSchedule").value;
+    if (!sched) return;
+    $("pathStatus").textContent = "Loading the complete schedule…";
+    fetchDriving("/api/driving/" + encodeURIComponent(sched), "Load failed.");
   }
 
   renderToggles();
@@ -633,11 +726,35 @@
   // stopPropagation, so tuning a column filter never clears the selection.
   document.addEventListener("click", function (e) {
     var inGrid = view.contains(e.target);
+    // UID click = retarget (operator 2026-08-20): set the Target UID and re-trace the
+    // driving paths to that activity. Runs before the highlight logic; the row highlight
+    // still applies (the traced view always contains its own target).
+    var uidEl = inGrid && e.target.closest ? e.target.closest(".pv-uid") : null;
+    if (uidEl) {
+      var uidRow = uidEl.closest("tr[data-uid]");
+      if (uidRow) {
+        $("pathTarget").value = uidRow.getAttribute("data-uid");
+        selectedUid = uidRow.getAttribute("data-uid");
+        trace();
+        return;
+      }
+    }
     var row = inGrid && e.target.closest ? e.target.closest("tr[data-uid]") : null;
     var uid = row ? row.getAttribute("data-uid") : null;
     if (uid === selectedUid) return; // same task, or an off-click with nothing selected — no-op
     selectedUid = uid;
     reskinSelection();
+  });
+  // keyboard parity for the UID retarget affordance (role=link, tabindex=0)
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "Enter") return;
+    var uidEl = view.contains(e.target) && e.target.closest ? e.target.closest(".pv-uid") : null;
+    var uidRow = uidEl ? uidEl.closest("tr[data-uid]") : null;
+    if (!uidRow) return;
+    e.preventDefault();
+    $("pathTarget").value = uidRow.getAttribute("data-uid");
+    selectedUid = uidRow.getAttribute("data-uid");
+    trace();
   });
   $("pathRun").addEventListener("click", trace);
   $("pathDrag").addEventListener("click", function () {
@@ -702,7 +819,16 @@
     for (var k = 0; k < FIELDS.length; k++) if (FIELDS[k].on) FIELDS[k] = order[vi++];
     render();
   });
-  // a remembered Target UID restored by persist.js (ADR-0186) arrives AFTER this boot ran
-  window.addEventListener("sf-restored", function () { if (!data && $("pathTarget").value) trace(); });
-  if ($("pathTarget").value) trace(); // a session-wide target traces immediately
+  // switching the version re-loads the same view mode for the newly-picked file
+  $("pathSchedule").addEventListener("change", function () {
+    if ($("pathTarget").value) trace(); else wholeSchedule();
+  });
+  // a remembered Target UID restored by persist.js (ADR-0186) arrives AFTER this boot ran —
+  // it may re-trace OVER the whole-schedule default, but never clobber an explicit trace
+  window.addEventListener("sf-restored", function () {
+    if ($("pathTarget").value && (!data || data.whole_schedule)) trace();
+  });
+  // a session-wide target traces immediately; otherwise the COMPLETE schedule is the
+  // default view (operator 2026-08-20) — a UID click or Trace starts the path analysis
+  if ($("pathTarget").value) trace(); else wholeSchedule();
 })();
