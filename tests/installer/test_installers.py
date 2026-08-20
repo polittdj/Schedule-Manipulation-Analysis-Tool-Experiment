@@ -736,7 +736,10 @@ def test_rendered_banner_carries_the_embedded_wheels_version(family: str) -> Non
         m = re.search(r"schedule_forensics-([0-9][0-9A-Za-z.!+]*)-py3-none-any\.whl", text)
         assert m, f"{tier}.{family}: embedded wheel name not found"
         version = m.group(1)
-        banner = next((ln for ln in text.splitlines() if "Schedule Forensics installer" in ln), "")
+        banner = next(
+            (ln for ln in text.splitlines() if "Polaris² (Schedule Forensics) installer" in ln),
+            "",
+        )
         assert banner, f"{tier}.{family}: banner line missing"
         assert f"v{version}" in banner, (
             f"{tier}.{family}: banner {banner!r} does not name the embedded version {version}"

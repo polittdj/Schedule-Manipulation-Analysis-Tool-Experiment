@@ -1244,7 +1244,7 @@ def create_app(
     # reached the runtime — the app refuses to build rather than serve with a leak path.
     configure_logging()
     assert_local_only()
-    app = FastAPI(title="POLARIS", docs_url=None, redoc_url=None, lifespan=_cui_lifespan)
+    app = FastAPI(title="POLARIS²", docs_url=None, redoc_url=None, lifespan=_cui_lifespan)
     # ADR-0404: the desktop-launch path (no injected state) comes up with the PERSISTED AI
     # settings — armed once, armed on every launch. An explicitly injected state (tests,
     # embedders) is never touched, and loading is fail-soft + boundary-sanitized.
@@ -3920,7 +3920,7 @@ def create_app(
             for file, uid, name in f.citations
         )
         tableset = TableSet(
-            "POLARIS — Ask the AI",
+            "POLARIS² — Ask the AI",
             (
                 Table("Answer", ("Field", "Value"), tuple(answer_rows)),
                 Table("Cited facts", ("#", "Engine-computed fact", "Cited activities"), fact_rows),
@@ -3947,7 +3947,7 @@ def create_app(
         pop = analysis.scoped
         quality = compute_schedule_quality(pop, analysis.cpm)
         tableset = TableSet(
-            f"POLARIS - {sch.name}",
+            f"POLARIS² - {sch.name}",
             (
                 schedule_summary_table(pop),
                 dcma_table(analysis.audit),

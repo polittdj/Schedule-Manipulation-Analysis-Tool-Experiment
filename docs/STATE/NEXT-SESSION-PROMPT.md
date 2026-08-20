@@ -6,12 +6,16 @@
 
 Resume POLARIS (Schedule-Manipulation-Analysis-Tool). Read docs/STATE/HANDOFF.md FIRST
 (auto-injected), then docs/STATE/AUDIT-2026-08-16.md — that ledger IS the standing work queue.
-As of last close: v1.0.219, highest ADR 0435, SCHEMA 2.11.0, `main` was 9dda7ea when the branch
-started. **git fetch origin before you branch, number an ADR, or commit — and RE-fetch before
+As of last close: v1.0.220, highest ADR 0436, SCHEMA 2.11.0; PR #607 (ADR-0431..0435,
+v1.0.219) MERGED @ a91fbfba and was verified end-to-end on the operator's PC; the POLARIS²
+rename (ADR-0436, v1.0.220) shipped on top from the restarted branch. **git fetch origin before you branch, number an ADR, or commit — and RE-fetch before
 writing the docs** (this arc has had ADR numbers taken mid-session by concurrent merges three
 times).
 
-⇢ WHAT'S DONE — do not re-open. The 2026-08-20 operator asks are CLOSED as ADR-0431..0435 /
+⇢ WHAT'S DONE — do not re-open. The program is named **POLARIS²** (ADR-0436, v1.0.220):
+displayed name only (U+00B2 everywhere, hand-set wordmark glyph, installer banners/shortcuts
+with legacy cleanup); package/CLI/paths deliberately unchanged. Before that, the 2026-08-20
+operator asks CLOSED as ADR-0431..0435 /
 v1.0.219 (PR from `claude/polaris-installer-version-h3qy0v`): multi-.xer version grouping (XER
 project_title = root PROJWBS name; POST /project/combine; Mission Control names other-project
 files) · /path whole-schedule default + UID-click retarget + Dur column + the ~1in data-date

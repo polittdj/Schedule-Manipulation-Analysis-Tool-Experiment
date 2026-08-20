@@ -435,6 +435,23 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-20 (d) — a brand is a character set, and a rename includes the finders
+
+Renaming the product to POLARIS² surfaced three lessons in one hour. (1) A brand that must
+survive terminal banners, docx headings and .lnk filenames is a CHARACTER decision, not a
+markup one — U+00B2 renders in every medium the program writes; `<sup>` renders in exactly
+one. The corollary constraint runs the other way: an ASCII-encoded artifact (the Windows
+`.cmd` fallbacks) CANNOT carry the brand, and the honest move is a documented exception, not
+a mojibake'd icon. (2) A rename is not done until the FINDERS are renamed: the installer
+banner test locates its line by the substring "Schedule Forensics installer" — rename the
+banner and the guard reports "banner missing", which looks like a regression but is the
+locator lying. Sweep tests for the OLD name before calling a rename complete. (3) The
+dist/ vs dist/wheel trap fired a second time in one day — a build ritual that exists only in
+a test's error message will be violated by muscle memory ("python -m build --wheel" is the
+reflex); the lockstep guard is what turns that reflex into a caught mistake instead of a
+shipped stale wheel. Also: hand-set glyph geometry (the worm-style ²) is a RENDER claim —
+the screenshot took 90 seconds and would have caught any malformed arc no assertion could.
+
 ### 2026-08-20 (c) — a screenshot is testimony about a version, and an identity can be a per-copy value
 
 - The operator's "broken timescale" screenshot would not reproduce: the resume notes recorded

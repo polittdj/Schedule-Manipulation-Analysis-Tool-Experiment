@@ -34,11 +34,12 @@ def test_polaris_masthead_wordmark(client: TestClient) -> None:
     masthead (no webfont, fully inline so the air-gap CSP holds), the backronym tagline, and the
     retitled page <title>. The brand block is data-no-i18n and carries the full name for a11y."""
     body = client.get("/").text
-    assert "<title>Dashboard — POLARIS</title>" in body
+    assert "<title>Dashboard — POLARIS²</title>" in body
     assert "class=brand data-no-i18n" in body
     assert "brand-mark" in body and "brand-strokes" in body and "brand-star" in body
     # the letterforms are inline SVG paths — no font file, no external asset
-    assert 'viewBox="0 0 344 72"' in body
+    # (viewBox widened 344 → 382 for the superscript ² glyph + shifted star, ADR-0436)
+    assert 'viewBox="0 0 382 72"' in body
     assert "Program Oversight &amp; Logic Analysis for Risk &amp; Integrity of Schedules" in body
     # the a11y name rides the h1 itself
     assert 'aria-label="POLARIS' in body
