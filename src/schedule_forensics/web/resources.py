@@ -256,7 +256,7 @@ def _resources_body(st: SessionState, granularity: str = "month") -> str:
         f"<tr><td>{_e(r.name)}</td><td>{_e(r.type.title())}</td>"
         # a max units the FILE stated renders as its own figure; the engine's assumed 1.0
         # default renders as an em dash — "missing shows —, never a fabricated figure"
-        f"<td class=num>{f'{r.max_units:g}' if r.max_units_declared else '&mdash;'}</td>"
+        f"<td class=num>{f'{r.max_units:g}' if r.max_units_declared else '—'}</td>"
         f"<td class=num>{round(r.total_work_minutes / mpd, 1):g}</td>"
         f"<td class=num>{r.task_count}</td><td>{_e(r.peak_period or '')}</td>"
         f"<td class={'res-over' if r.over_allocated_periods else 'num'}>"

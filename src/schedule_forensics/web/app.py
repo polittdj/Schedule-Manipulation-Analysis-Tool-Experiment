@@ -616,6 +616,7 @@ from schedule_forensics.web.performance import _performance_data as _performance
 # ledger, the resident-memory panel and the version-history rows - lives in
 # ``web/portfolio.py`` now, extracted verbatim. Same ``X as X`` re-export idiom.
 from schedule_forensics.web.portfolio import _portfolio_body as _portfolio_body
+from schedule_forensics.web.portfolio import _portfolio_combine_panel as _portfolio_combine_panel
 from schedule_forensics.web.portfolio import _portfolio_memory_panel as _portfolio_memory_panel
 from schedule_forensics.web.portfolio import _portfolio_version_li as _portfolio_version_li
 
