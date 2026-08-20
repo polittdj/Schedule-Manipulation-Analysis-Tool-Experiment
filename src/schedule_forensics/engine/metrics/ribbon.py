@@ -13,8 +13,21 @@ docs/FUSE-VALIDATION.md):
   half-up to 2 dp to match Fuse (e.g. 2.625 -> 2.63).
 * **Critical** — INCOMPLETE non-summary activities on the critical path.
 * **Merge Hotspot** — activities with **more than two** predecessors (a merge point).
-* **Hard Constraints / Negative Float / Number of Lags / Number of Leads** — the DCMA-05 / -07
-  / -03 / -02 counts (these already match Fuse exactly).
+* **Hard Constraints** — activities whose constraint is a MUST/MANDATORY date, ALL statuses, per
+  the NASA library's ribbon formula ``SUM(((ActivityConstraint="MandatoryStart")+
+  ("MandatoryFinish")+("MustStartOn")+("MustFinishOn")+("StartAndFinish")>0)*1)`` — {MSO, MFO} in
+  this model. Sourced from :mod:`schedule_quality` (single formula). NOT the DCMA-05 count: that
+  is the library's "5. Hard Constraint", a different metric of the same name that adds the
+  SNLT/FNLT caps and (under Acumen-parity mode) scopes to baselined incomplete work — reusing it
+  here showed 1 where Fuse showed 4 (ADR-0429).
+* **Negative Float** — incomplete activities whose STORED Total Slack is negative, per Fuse's
+  own arithmetic on the source tool's slack (a task the source wrote no slack for is absent,
+  never recomputed; a wholly stored-less file falls back to the recomputed CPM count). Sourced
+  from :mod:`schedule_quality` (single formula). NOT the DCMA-07 count: its Acumen-parity
+  population (baselined incomplete, whole-day rounding) and its per-task recompute fallback
+  both diverge from Fuse — measured on the operator's Starlight workbook (ADR-0430).
+* **Number of Lags / Number of Leads** — the DCMA-03 / -02 counts (these match Fuse exactly on
+  the reference exports).
 * **Avg / Max Float** — mean and maximum total float (working days) over incomplete activities
   (tool-computed; shown for context).
 
@@ -150,8 +163,8 @@ def ribbon_offender_map(
         "missing_logic": missing,
         "logic_density": missing,
         "critical": critical,
-        "hard_constraints": _audit_uids(audit, "DCMA05"),
-        "negative_float": _audit_uids(audit, "DCMA07"),
+        "hard_constraints": quality["hard_constraints"].offender_uids,
+        "negative_float": quality["negative_float"].offender_uids,
         "number_of_lags": tuple(sorted(lag_successors)),
         "number_of_leads": tuple(sorted(lead_successors)),
         "merge_hotspot": merge,
@@ -225,8 +238,8 @@ def compute_ribbon(schedule: Schedule, cpm: CPMResult, audit: ScheduleAudit) -> 
         missing_logic=missing_logic,
         logic_density=logic_density,
         critical=critical,
-        hard_constraints=_audit_count(audit, "DCMA05"),
-        negative_float=_audit_count(audit, "DCMA07"),
+        hard_constraints=quality["hard_constraints"].count,
+        negative_float=quality["negative_float"].count,
         number_of_lags=len(lag_successors),
         number_of_leads=len(lead_successors),
         merge_hotspot=merge_hotspot,

@@ -6,9 +6,23 @@
 
 Resume POLARIS (Schedule-Manipulation-Analysis-Tool). Read docs/STATE/HANDOFF.md FIRST
 (auto-injected), then docs/STATE/AUDIT-2026-08-16.md — that ledger IS the work queue. As of last
-close: v1.0.214, highest ADR 0424, SCHEMA 2.11.0. `main` was ee576aa when that branch started;
-**git fetch origin before you branch, number an ADR, or commit** — the PR for
-`claude/multi-schedule-comparative-analysis-vmh5ei` may have merged since.
+close: v1.0.218, highest ADR 0429, SCHEMA 2.11.0. `main` was 98419a2 when that branch started;
+**git fetch origin before you branch, number an ADR, or commit — and RE-fetch before writing the
+docs**: this session had its ADR number taken TWICE by concurrent merges (0425 by #602, 0428 by
+#604) and landed on 0429. The PR for `claude/multi-schedule-comparative-analysis-vmh5ei` may have
+merged since.
+
+⇢ THE LAST SESSION WAS AN OPERATOR PARITY REPORT, NOT A LEDGER ROW. The ribbon's "Hard
+Constraints" showed the DCMA-05 figure (parity-scoped to baselined incomplete) under a label that
+means the Fuse ribbon metric (must/mandatory only, all statuses) — the NASA library carries BOTH
+under near-identical names. Fixed as **ADR-0429 + ADR-0430 / v1.0.218** — the operator widened to "fix all
+mismatches", and the sweep closed 52 of 54 ribbon cells: the pattern-less-calendar importer
+defect (112 holidays silently discarded) and ribbon Negative Float (= STORED Total Slack < 0,
+Fuse-exact 6/6) are FIXED; the DCMA card and ribbon legitimately differ, matching Acumen's own
+two products. **BLOCKED, operator-owned:** Insufficient Detail V05/V06 (tool 0/4 vs Fuse 5) and
+TP2's 6-vs-7 — six hypotheses measured and refuted; unblock by clicking the V05 "Insufficient
+Detail 5" cell in the Fuse Starlight workbook (or exporting the ribbon to Excel) so the five
+counted activities are NAMED, then re-upload the files.
 
 ⇢ WHAT THIS ARC IS. Operator directive 2026-08-16: "a complete deep dive audit of the entire
 repository … create tests, both pass and fail … create solutions … test those in a sandbox to

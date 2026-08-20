@@ -39,6 +39,18 @@ _HARD_CONSTRAINTS: frozenset[ConstraintType] = frozenset(
     {ConstraintType.MSO, ConstraintType.MFO, ConstraintType.SNLT, ConstraintType.FNLT}
 )
 
+#: The constraint types the Fuse Ribbon "Hard Constraints" metric counts (NASA Acumen library):
+#: MandatoryStart / MandatoryFinish / MustStartOn / MustFinishOn / StartAndFinish — the
+#: must/mandatory dates ONLY. The library files StartOnOrBefore (SNLT) / FinishOnOrBefore (FNLT)
+#: under "Soft Constraints"; its DCMA metric ("5. Hard Constraint") is a DIFFERENT metric of the
+#: same name that adds them — that one is ``_HARD_CONSTRAINTS`` above. Every P6 name in the
+#: ribbon formula reaches this model as MSO or MFO (XER: CS_MSO/CS_MANDSTART → MSO,
+#: CS_MEO/CS_MANDFIN → MFO; StartAndFinish has no MSP/XER mapping), so {MSO, MFO} IS the
+#: formula's projection here (ADR-0429).
+_MANDATORY_CONSTRAINTS: frozenset[ConstraintType] = frozenset(
+    {ConstraintType.MSO, ConstraintType.MFO}
+)
+
 
 class Task(StrictFrozenModel):
     """A single schedule activity. ``unique_id`` is the only cross-version key."""
@@ -187,3 +199,11 @@ class Task(StrictFrozenModel):
     def has_hard_constraint(self) -> bool:
         """True for the hard/mandatory constraint types the DCMA check counts."""
         return self.constraint_type in _HARD_CONSTRAINTS
+
+    @property
+    def has_mandatory_constraint(self) -> bool:
+        """True for the must/mandatory dates ONLY — the Fuse Ribbon "Hard Constraints" set.
+
+        Strictly narrower than :attr:`has_hard_constraint` (the DCMA set): SNLT/FNLT caps are
+        DCMA-hard but Fuse-soft (ADR-0429)."""
+        return self.constraint_type in _MANDATORY_CONSTRAINTS

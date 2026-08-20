@@ -15154,3 +15154,96 @@ data-level test can see that. It took walking the control in a browser, which is
 one is tempted to skip when every number checks out.
 
 ADR-0428. **v1.0.216 → v1.0.217**, SCHEMA unchanged, wheel + nine installers rebuilt.
+
+---
+
+## 2026-08-20 — the ribbon's Hard Constraints was a different metric of the same name (ADR-0429, v1.0.218)
+
+- **Session:** operator-reported Fuse parity defect, with the REAL files supplied mid-session
+  (six Starlight `.mpp` uploads — non-CUI, marked fictional; converted via vendored MPXJ into the
+  session scratchpad only). **Ran entirely SOLO.**
+- **Branch:** `claude/multi-schedule-comparative-analysis-vmh5ei` restarted from `origin/main`
+  @ 98419a2 (its ADR-0424 PR had merged; #602..#604 merged UNDER the session).
+- **Highest ADR:** 0429. **Version:** 1.0.217 → **1.0.218** (shipped code changed; wheel + nine
+  installers rebuilt per ADR-0148).
+
+### The report → the measurement
+POLARIS ribbon "Hard Constraints" = 1 on every Starlight version; Fuse Ribbon Analyzer = 4.
+Census of the real files: 14 constraint-typed activities per version — 3 MSO (complete reviews),
+1 MFO (incomplete), 4 SNLT, 5–6 FNLT. Candidates: {4-type all-status}=13–14 ·
+DCMA05-default=13–14 · DCMA05-parity=1 (**what the page showed** — the ribbon sourced
+`_audit_count(audit,"DCMA05")` and `dcma_acumen_parity` defaults True) · **{MSO,MFO}
+all-status=4 = Fuse, to the digit, every version**.
+
+### The Bible names both metrics
+Ribbon **"Hard Constraints"** = Mandatory/Must dates only, no filter (SNLT/FNLT are filed under
+"Soft Constraints"); DCMA **"5. Hard Constraint"** = same + SNLT/FNLT = the tool's DCMA05 set.
+ADR-0110's formula audit had ALREADY classified the drift — *"Latent: no parity impact unless a
+schedule carries SNLT/FNLT."* Starlight is that schedule. The original calibration was blind:
+on every in-repo fixture the definitions coincide (TP3 = 1 MSO + 1 MFO incomplete baselined;
+others 0).
+
+### What changed
+`Task.has_mandatory_constraint` ({MSO,MFO}); `schedule_quality.hard_constraints` → mandatory set,
+all statuses; ribbon cell + offenders source from schedule_quality (single-formula pattern);
+DCMA05 **unchanged** (correct DCMA; the DCMA card's 1 vs the ribbon's 4 now mirrors Acumen's own
+two products); formula-audit rows drift→match with DCMA05 re-pinned against "5. Hard Constraint";
+`web/ribbon.py` legend + `web/help.py` + regenerated METRIC-DICTIONARY.md.
+
+### Verification
+Red-first discriminating fixture (2 complete MSO + 1 complete SNLT + 1 incomplete-baselined FNLT:
+mandatory=2 · dcma-default=4 · dcma-parity=1), observed red at 4≠2. **Five mutations red by
+name**: set widened · ribbon re-sourced from DCMA05 · completion filter added · offender source
+skewed alone · Bible pin dropped-term (against BOTH .aft snapshots; a case typo proved nothing —
+`_norm` lowercases). Render-verified `/ribbon` with all six real files under the session-default
+parity mode: **rendered 4/4/4/4/4/4**, offenders = UIDs 25/26/27/679 — the exact Fuse set.
+Fuse reference pins (incl. TP3=2) unchanged. Engine suite 1034 passed; statics green whole-tree.
+
+### Adjacent findings — measured, reported, NOT fixed
+Negative Float tool 67/42/40/32/29/0 vs Fuse 62/45/44/37/34/0 (MIXED signs → float values differ,
+not population; suspect: every Starlight import logs "project CalendarUID '1' does not resolve to
+a readable calendar" and falls back to the standard calendar). Insufficient Detail 0/4/5,5,5,5 vs
+Fuse 5×6 (V05/V06 low; span-endpoint suspect). Each needs its own red-first session.
+
+### Traps paid for
+A tree-wide renumber sed rewrote UPSTREAM files' legitimate ADR-0425 citations (#602 had taken
+the number mid-session) — caught by reading `git status`, reverted, re-done scoped to my seven
+files · fetch-before-numbering had to run TWICE (0425 taken, then 0428 taken by #604; landed on
+0429, v1.0.218 after upstream shipped .215/.216/.217 under the session) · a case-typo cannot
+prove a lowercasing pin — drop a TERM.
+
+### The sweep widened (operator: "fix all mismatches") — ADR-0430
+**Fix A — the pattern-less calendar (importer).** Starlight's project calendar carries NO
+DayType 1-7 rows — 112 DayType-0 holiday exceptions only. MS Project semantics: default week +
+exceptions; the importer said "unreadable" and silently DISCARDED all 112 holidays on every
+version. Now: no-declared-pattern synthesizes the default Mon-Fri week and KEEPS the exceptions;
+a DECLARED all-non-working week still takes the fallback, pinned by IDENTITY (name/uid) because
+the weekday tuple cannot distinguish the two — the pre-existing guard was blind exactly there
+(mutation M-cal-2 passed until the identity assertion was added; third blind oracle of the arc).
+Fixture sweep: zero committed MSPDI docs carry the construct, so no pin can move.
+**Fix B — ribbon Negative Float = STORED Total Slack < 0** over incomplete, reproducing Fuse
+6/6 (62/45/44/37/34/0). The DCMA07 sourcing missed BOTH directions at once: per-task recompute
+fallback added phantoms on stored-less tasks (+15 on V05), the Acumen-parity baselined filter
+dropped real stored negatives (-10). Stored-less-everywhere schedules keep the recomputed count
+(never a fabricated clean bill). DCMA07 itself untouched (ADR-0280 DCMA-report parity); ribbon
+sources schedule_quality (single-formula pattern). **Post-fix: 52/54 ribbon cells match Fuse.**
+**Blocked leg — Insufficient Detail V05/V06 (and TP2's 6-vs-7).** SIX hypotheses each refuted by
+measurement against committed pins (calendar-day scaling · week/7 · max-baseline-finish span ·
+Schedule.baseline_finish span · fixed-480 · the .mpp's stored ProjectFinish read from the
+binaries via a compiled MPXJ probe — identical to exported). Any constant span in [1000,1890]d
+fits Starlight; nothing in the bytes lands there without breaking a pin. STOPPED per the
+metric-parity skill. UNBLOCK = the operator clicks the V05 "Insufficient Detail 5" cell in Fuse
+(or exports the ribbon workbook) so the five counted activities are NAMED.
+Verification: red-first both fixes; SIX mutations red by name (incl. the strengthened identity
+oracle); engine+importer 1372 passed; statics green; help.py + METRIC-DICTIONARY regenerated;
+web/ribbon legend updated for both columns.
+
+### Gate at close
+Statics green whole-tree (ruff / format / mypy strict / bandit 0 / node --check). Wheel
+1.0.218 + nine installers rebuilt AFTER the last source change. Full suite on the settled tree:
+**4369 passed / 5 skipped / 1 failed (31:36)** — the one red was the Fuse hard-file
+documented-divergence pin, and it was the FIX WORKING: Hard_File's "engine 34/33 vs Fuse 0/0"
+negative-float divergence was exactly the 34 stored-less recompute phantoms ADR-0430 removes
+(110 incomplete, 76 stored, 34 without — the engine now equals Fuse 0/0). Pin re-baselined
+through its own path with teeth (fallback-reintroduction mutation red by name); parity marker
+suite re-run green after the re-baseline. The five skips are the pre-existing ones.

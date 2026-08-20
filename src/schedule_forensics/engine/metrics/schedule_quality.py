@@ -104,7 +104,12 @@ def compute_schedule_quality(
         offender_uids=crit,
     )
 
-    hard = tuple(t.unique_id for t in tasks if t.has_hard_constraint)
+    # The Fuse Ribbon "Hard Constraints" metric (NASA library, verbatim): must/mandatory
+    # constraint types only, over ALL statuses — no completion or baseline filter. NOT the DCMA
+    # 4-type set: the library's "5. Hard Constraint" (DCMA-05) additionally counts the
+    # StartOnOrBefore/FinishOnOrBefore caps, and sourcing this figure from DCMA05 made the ribbon
+    # show 1 where Fuse showed 4 on a workbook whose mandatory reviews were complete (ADR-0429).
+    hard = tuple(t.unique_id for t in tasks if t.has_mandatory_constraint)
     out["hard_constraints"] = MetricResult(
         "hard_constraints",
         "Hard Constraints",
@@ -116,9 +121,22 @@ def compute_schedule_quality(
         offender_uids=hard,
     )
 
-    neg = tuple(
-        t.unique_id for t in incomplete if effective_total_float(t, tf.get(t.unique_id, 0)) < 0
-    )
+    # Fuse's ribbon "Negative Float" is arithmetic on the source tool's STORED Total Slack: an
+    # incomplete activity counts iff its stored slack is negative; a task the source wrote no
+    # slack for is ABSENT, never recomputed (ADR-0430 — on the operator's Starlight workbook
+    # this reproduces Fuse 6/6 where the effective/recompute mix missed in both directions).
+    # A file whose incomplete work carries no stored slack ANYWHERE keeps the recomputed-CPM
+    # count — the signal must not become a fabricated clean bill on the tool's own formats.
+    if any(t.stored_total_float_minutes is not None for t in incomplete):
+        neg = tuple(
+            t.unique_id
+            for t in incomplete
+            if t.stored_total_float_minutes is not None and t.stored_total_float_minutes < 0
+        )
+    else:
+        neg = tuple(
+            t.unique_id for t in incomplete if effective_total_float(t, tf.get(t.unique_id, 0)) < 0
+        )
     out["negative_float"] = MetricResult(
         "negative_float",
         "Negative Float",

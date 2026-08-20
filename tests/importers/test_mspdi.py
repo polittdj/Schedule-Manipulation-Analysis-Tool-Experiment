@@ -927,7 +927,15 @@ def test_old_style_daytype_zero_exception_and_all_nonworking_week() -> None:
 <CalendarUID>6</CalendarUID>
 <Calendars><Calendar><UID>6</UID><Name>Dead</Name>
 <WeekDays>{_weekday(1)}{_weekday(2)}</WeekDays></Calendar></Calendars>{_TASK_A}"""
-    assert parse_mspdi_text(_doc(dead)).calendar.work_weekdays == (0, 1, 2, 3, 4)
+    dead_cal = parse_mspdi_text(_doc(dead)).calendar
+    assert dead_cal.work_weekdays == (0, 1, 2, 3, 4)
+    # the DISCRIMINATING half (ADR-0430): a DECLARED week whose every day is non-working is
+    # unusable and must take the caller's fallback default ("Standard", uid 0) — it must NOT be
+    # silently rebuilt as a working default week under the calendar's own identity, which is
+    # reserved for the pattern-LESS case (no WeekDay 1-7 rows at all). Weekday tuple alone
+    # cannot tell the two apart; the identity can.
+    assert dead_cal.name == "Standard", dead_cal.name
+    assert dead_cal.uid == 0
 
 
 def test_recurring_exception_is_skipped_not_expanded_into_weeks_of_holidays() -> None:
@@ -1142,3 +1150,51 @@ def test_declared_minutes_per_day_read_and_negatives_sanitized() -> None:
     assert sch.calendar.declared_minutes_per_day == 480
     assert sch.calendar.minutes_per_week is None  # -2400 sanitized, not stored
     assert sch.calendar.days_per_month is None  # -20 sanitized, not stored
+
+
+def test_pattern_less_base_calendar_works_the_default_week_and_keeps_its_holidays() -> None:
+    """ADR-0430 (Starlight): a base calendar may declare NO WeekDay 1-7 pattern at all — only
+    exception rows. MS Project reads that as "the default working week, plus these exceptions";
+    the importer instead declared the calendar unreadable and silently DISCARDED its holidays
+    (Starlight: 112 of them), rerunning the whole engine on a naked Mon-Fri default.
+
+    The fixture mirrors the real file's shape: old-style DayType-0 WeekDay exceptions AND the
+    same dates as modern <Exception> rows, plus one worked-weekend exception. The name must
+    survive too — the old fallback path produced "Standard", so the name discriminates."""
+    body = (
+        """
+<CalendarUID>9</CalendarUID>
+<Calendars><Calendar><UID>9</UID><Name>MissionCal</Name><IsBaseCalendar>1</IsBaseCalendar>
+<BaseCalendarUID>-1</BaseCalendarUID>
+<WeekDays>
+<WeekDay><DayType>0</DayType><DayWorking>0</DayWorking>
+<TimePeriod><FromDate>2027-01-01T00:00:00</FromDate>
+<ToDate>2027-01-01T23:59:59</ToDate></TimePeriod></WeekDay>
+<WeekDay><DayType>0</DayType><DayWorking>0</DayWorking>
+<TimePeriod><FromDate>2027-07-05T00:00:00</FromDate>
+<ToDate>2027-07-05T23:59:59</ToDate></TimePeriod></WeekDay>
+</WeekDays>
+<Exceptions>
+<Exception><TimePeriod><FromDate>2027-01-01T00:00:00</FromDate>
+<ToDate>2027-01-01T23:59:59</ToDate></TimePeriod><DayWorking>0</DayWorking></Exception>
+<Exception><TimePeriod><FromDate>2027-11-25T00:00:00</FromDate>
+<ToDate>2027-11-26T23:59:59</ToDate></TimePeriod><DayWorking>0</DayWorking></Exception>
+<Exception><TimePeriod><FromDate>2027-06-05T00:00:00</FromDate>
+<ToDate>2027-06-05T23:59:59</ToDate></TimePeriod><DayWorking>1</DayWorking></Exception>
+</Exceptions>
+</Calendar></Calendars>"""
+        + _TASK_A
+    )
+    cal = parse_mspdi_text(_doc(body)).calendar
+    assert cal.name == "MissionCal", cal.name  # resolved, NOT the discarded-calendar fallback
+    assert cal.work_weekdays == (0, 1, 2, 3, 4)  # the implicit default week
+    assert cal.working_minutes_per_day == 480
+    # the holidays SURVIVE: 2027-01-01 (Fri), 2027-07-05 (Mon), 2027-11-25/26 (Thu/Fri)
+    assert cal.holidays == (
+        dt.date(2027, 1, 1),
+        dt.date(2027, 7, 5),
+        dt.date(2027, 11, 25),
+        dt.date(2027, 11, 26),
+    )
+    # the worked Saturday survives as an extra working day
+    assert dt.date(2027, 6, 5) in cal.working_days

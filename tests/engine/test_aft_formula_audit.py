@@ -104,16 +104,17 @@ AUDIT: tuple[Row, ...] = (
     ),
     Row(
         "DCMA05",
-        "Hard Constraints",
+        "5. Hard Constraint",
         'SUM(((ActivityConstraint="MandatoryStart")+(ActivityConstraint="MandatoryFinish")'
-        '+(ActivityConstraint="MustStartOn")+(ActivityConstraint="MustFinishOn")'
-        '+(ActivityConstraint="StartAndFinish")>0)*1)',
-        DRIFT,
-        "ADR-0110: the engine counts {MSO, MFO, SNLT, FNLT} as hard; NASA's headline "
-        "'Hard Constraints' counts must/mandatory/StartAndFinish only (NOT SNLT/FNLT). NASA's "
-        "'B.03.12 FC IMS with hard constraints' variant DOES include StartOnOrBefore/"
-        "FinishOnOrBefore — i.e. the tool follows the DCMA/FC-IMS convention. Latent: no parity "
-        "impact unless a schedule carries SNLT/FNLT.",
+        '+(ActivityConstraint="MustStartOn") +(ActivityConstraint="MustFinishOn")'
+        '+(ActivityConstraint="StartOnOrBefore")+(ActivityConstraint="FinishOnOrBefore")'
+        '+(ActivityConstraint="StartAndFinish")>0) * 1)',
+        MATCH,
+        "ADR-0429 reclassified from DRIFT: the engine's {MSO, MFO, SNLT, FNLT} is exactly the "
+        "Bible's DCMA metric '5. Hard Constraint' (must/mandatory + the no-later-than caps), "
+        "NOT the headline ribbon 'Hard Constraints' (which excludes SNLT/FNLT — see the "
+        "hard_constraints row). Population: all non-summary by default; Acumen-parity mode "
+        "scopes to baselined incomplete per Acumen's own DCMA report (ADR-0280).",
     ),
     Row(
         "DCMA06",
@@ -201,11 +202,22 @@ AUDIT: tuple[Row, ...] = (
         'SUM(((ActivityConstraint="MandatoryStart")+(ActivityConstraint="MandatoryFinish")'
         '+(ActivityConstraint="MustStartOn")+(ActivityConstraint="MustFinishOn")'
         '+(ActivityConstraint="StartAndFinish")>0)*1)',
-        DRIFT,
-        "ADR-0110: same engine constraint set as DCMA05 ({MSO,MFO,SNLT,FNLT}); NASA's headline "
-        "metric excludes SNLT/FNLT. See the DCMA05 row.",
+        MATCH,
+        "ADR-0429 closed ADR-0110's drift: the ribbon metric now counts the must/mandatory set "
+        "only ({MSO, MFO} — every P6 name in the formula reaches the model as MSO/MFO), all "
+        "statuses, exactly this formula. The drift went LIVE on the operator's Starlight "
+        "workbook (Fuse 4 vs tool 1) before the fix; SNLT/FNLT now count only in DCMA05.",
     ),
-    Row("negative_float", "", "", NOT_IN_BIBLE, "Bible 'Negative Float' is display-only."),
+    Row(
+        "negative_float",
+        "",
+        "",
+        NOT_IN_BIBLE,
+        "Bible 'Negative Float' is display-only (no formula). Tool (ADR-0430): incomplete "
+        "activities with STORED Total Slack < 0 — Fuse's own arithmetic, reproduced 6/6 on the "
+        "operator's Starlight workbook; recomputed-CPM fallback only when the whole file "
+        "carries no stored slack.",
+    ),
     Row(
         "insufficient_detail",
         "Insufficient Detail™",
