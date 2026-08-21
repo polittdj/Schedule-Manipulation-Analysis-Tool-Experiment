@@ -1,6 +1,9 @@
 # Handoff — 2026-08-20 (d) (the program is named POLARIS²; #607 merged and verified on the operator's PC; ADR-0436, v1.0.220)
 
 > ## STATUS (current) — PR #607 (ADR-0431..0435, v1.0.219) MERGED @ a91fbfba and VERIFIED end-to-end on the operator's machine; the Polaris² rename shipped on top as ADR-0436 / v1.0.220.
+> **CLOSE-OUT: PR #608 (the rename) MERGED @ e3b2f133 at 23:51Z, CI 7/7 green** (floor 23:12,
+> both test jobs ~23:5x); the operator ended the session; the branch was reset onto the new
+> main and this close-out went out as a docs-only draft PR. Nothing else is in flight.
 > Highest ADR now **0436**. The operator merged #607 at 21:39Z, pulled main, re-ran
 > install-tier2.ps1, and their transcript shows the WHOLE ADR-0435 loop closing: the stale
 > re-run printed no version and installed 1.0.218; the fresh file printed
