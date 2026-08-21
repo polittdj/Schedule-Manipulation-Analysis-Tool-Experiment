@@ -15368,3 +15368,51 @@ the exponent or power of 2." Landed as ADR-0436 on a fresh branch from the #607 
 3.13 just before the merge). All eight session tasks closed; triggers cleaned; branch reset
 onto the new main; kickoff refreshed to the post-#608 state; session ended at the operator's
 request with this docs-only close PR.
+
+## 2026-08-21 — two operator asks: multi-folder drop → one Project per folder; /driving-path opens on the complete schedule of ANY loaded file (ADR-0437/0438, v1.0.221)
+
+Branch `claude/polaris-resume-audit-40up77`, begun from the #608 squash (e3b2f133); #609
+(docs-only close) MERGED mid-session @ d3044bb1, so the branch was restarted onto that squash
+and the state-doc rotation re-done on top of #609's final text before the close commit.
+
+- **ADR-0437 — several folders at once, each its own Project.** Probe FIRST (QC-1): one POST
+  spanning two `file_meta` top folders already landed as two folder Projects on the unmodified
+  tree — server needed pinning, not fixing (mutation: one-folder rels → red on the population
+  assert). The real gaps were client-side: Chromium's directory-picker dialog cannot
+  multi-select (`webkitdirectory` overrides `multiple`, WICG entries-api #24), and a DROPPED
+  folder never loaded at all — the bare directory File failed its read and was misreported as
+  OneDrive online-only. `home.js` now captures entries synchronously in the drop handler and
+  walks directories (readEntries drained to the empty batch; ≤100/call contract pinned by a
+  one-per-call fake reader) into `preread()`-shaped File-likes carrying
+  `rel = "Folder/sub/file.ext"`; loose files keep `rel ''`; no-entries falls back to
+  `dataTransfer.files` byte-for-byte; `preread()` itself untouched (ADR-0289 harness window
+  byte-stable). END-TO-END chromium proof (`test_multi_folder_drop_browser.py`): real home.js,
+  patched `webkitGetAsEntry` fakes, real `fetch('/upload')`, asserted on the live
+  SessionState — observed RED pre-feature (loaded keys `['loose']`), recursion mutant RED by
+  name, green after. Dashboard copy states the contract.
+- **ADR-0438 — /driving-path opens on the complete schedule of ANY loaded file.** The
+  no-target state embeds the SAME workspace /path renders (`_path_body` + path.js — “same
+  columns by default” true by construction, ONE `FIELDS` table serves both pages; the browser
+  test asserts /driving-path's header row EQUALS /path's, never retyping the list). Schedule
+  select spans every loaded session key, preselecting the chosen file else the active
+  project's latest. The trace form's File picker spans every loaded schedule (optgrouped by
+  Project; option value = session KEY; `?file=` accepts key OR legacy label via
+  `_find_schedule` — back-compat pinned). Cross-project trace resolves per-key
+  (`cpm_scoped_for`); the tiers export carries that key. Workspace renders ONLY with no
+  target (panelkit single-include pinned both ways; the r11 absence census re-scoped to the
+  `?target=absent` branch). Six source pins observed RED first; the workspace-suppressed
+  mutant timed out the browser test RED; the always-render mutant went RED on the absence
+  invariant. Four-theme measured render green (grid box, rows/bars, 2 optgroups × 4 themes).
+  DELIBERATE re-baseline: r11 /driving-path form freeze `bee3c73c…/1905 → ccd40241…/1925`.
+- **Traps paid:** `git checkout <file>` as a mutation revert DESTROYED uncommitted app.py work
+  (re-applied; the .bak-copy shape is now the promoted rule) · this remote clone is SHALLOW —
+  the installer build refuses at the mpxj graft boundary until `git fetch --unshallow` · a new
+  always-on panel flips an absence census.
+- **Ship:** v1.0.220 → **1.0.221**; wheel + nine installers rebuilt after the last src edit;
+  installer suite **68 passed**. Gate: statics green whole-tree (ruff · format 574 files ·
+  mypy 158 · bandit exit 0 · node --check per file); full suite **4424 passed / 5 skipped
+  (known env) in 41:23** — the single red was `test_session_log_references_latest_adr`
+  demanding THIS entry (appended after the run, then re-run green); parity numbers appended
+  below when the run finished.
+  Parity (run after the suite, alone): **72 passed / 4358 deselected, exit 0, in 15:42** —
+  no parity value moved, as expected for a presentation + ingestion-client change.

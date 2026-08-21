@@ -185,15 +185,18 @@ def test_panelkit_is_included_exactly_once_on_every_converted_route(
 
 
 def test_panelkit_is_absent_where_no_control_is_rendered(client: TestClient) -> None:
-    """/driving-path has two branches that build NO tier panel: no target at all, and a target no
-    loaded version carries. Shipping the driver for controls that do not exist is a dead promise
-    (and the conditional is on the RENDERED html, not on ``target is not None`` — this is the
-    assertion that keeps it that way)."""
-    for route in ("/driving-path", "/driving-path?target=999999"):
-        page = client.get(route).text
-        assert "/static/panelkit.js" not in page, route
-        for token in ("panel-head", "sf-take", "sf-tools", "data-sf-big", "prov-chip"):
-            assert token not in page, (route, token)
+    """/driving-path?target=<absent from every version> builds NO tier panel — and, because a
+    trace was explicitly asked for, no whole-schedule workspace either — so shipping the driver
+    for controls that do not exist is a dead promise (and the conditional is on the RENDERED
+    html, not on ``target is not None`` — this is the assertion that keeps it that way).
+
+    The NO-TARGET state left this census on 2026-08-21: it now embeds the whole-schedule
+    workspace — a real panel with real ⛶ controls, so its panelkit include is a live promise —
+    pinned the other way by ``test_driving_path_whole_schedule.py`` (exactly one include)."""
+    page = client.get("/driving-path?target=999999").text
+    assert "/static/panelkit.js" not in page
+    for token in ("panel-head", "sf-take", "sf-tools", "data-sf-big", "prov-chip"):
+        assert token not in page, token
 
 
 # ── (c) every ⤓ destination is live ───────────────────────────────────────────────────────────
@@ -385,7 +388,14 @@ GLOBAL_FORMS = [
 #: re-solve. /path and /volatility own no form of their own.
 PAGE_FORMS = {
     PATH: [],
-    DP: [("/driving-path", "bee3c73c2d22828fe6be36f703313ad6", 1905)],
+    # DELIBERATE re-baseline (operator 2026-08-21, any-loaded-schedule picker): the File
+    # select's option VALUES became session keys (unique across projects; ?file= still accepts
+    # the legacy label via _find_schedule) and its title says any loaded schedule qualifies.
+    # This fixture's single-project session renders flat options — the <optgroup> grouping and
+    # the whole-schedule workspace live in the NO-target state, outside this traced render —
+    # so the diff here is exactly the option values + the select title.
+    # bee3c73c2d22828fe6be36f703313ad6 / 1905 → below.
+    DP: [("/driving-path", "ccd402416598ee4666521f5de64a9227", 1925)],
     EVO: [
         ("/evolution", "12bf0d795832e2c344d1ee0a147b6295", 802),
         ("/evolution", "848cd08e4bab7156a0aa5af217475162", 743),

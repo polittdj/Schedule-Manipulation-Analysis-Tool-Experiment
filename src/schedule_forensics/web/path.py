@@ -124,7 +124,7 @@ def _what_drives_header(sch: Schedule, analysis: _Analysis) -> str:
     )
 
 
-def _path_body(keys: list[str], target_uid: int | None) -> str:
+def _path_body(keys: list[str], target_uid: int | None, *, selected: str | None = None) -> str:
     """The SSI-style path-analysis workspace: controls, data grid left, scalable Gantt right.
 
     All interaction is client-side (`static/path.js`) over `/api/driving` — field
@@ -134,7 +134,9 @@ def _path_body(keys: list[str], target_uid: int | None) -> str:
     # date" header above is anchored on (ADR-0199). Without this the browser defaults to the first
     # <option> (the OLDEST version), so the header described one file while the grid traced another
     # — the operator's "critical path is mixing up information from the various files" report.
-    latest = keys[-1] if keys else None
+    # ``selected`` (operator 2026-08-21): /driving-path embeds this same workspace over EVERY
+    # loaded schedule and preselects its own chosen file; None keeps the latest-first default.
+    latest = selected if selected in keys else (keys[-1] if keys else None)
     options = "".join(
         f'<option value="{_e(k)}"{" selected" if k == latest else ""}>{_e(k)}</option>'
         for k in keys
