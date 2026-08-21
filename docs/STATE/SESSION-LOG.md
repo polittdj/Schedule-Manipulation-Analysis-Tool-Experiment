@@ -15363,3 +15363,8 @@ the exponent or power of 2." Landed as ADR-0436 on a fresh branch from the #607 
   ritual is the exact two-step in the test's own error message.
 - **Ship:** v1.0.219 → **1.0.220**; wheel + nine installers rebuilt after the last src edit;
   installer suite 74/74. Gate at close (renamed tree): full suite **4413 passed / 0 failed / 5 skipped (exit 0) in 27:12**; parity **72/72 (exit 0) in 9:14**.
+
+**Close-out:** PR #608 merged @ e3b2f133 (23:51Z, CI 7/7 — floor green at 23:12, test 3.11 +
+3.13 just before the merge). All eight session tasks closed; triggers cleaned; branch reset
+onto the new main; kickoff refreshed to the post-#608 state; session ended at the operator's
+request with this docs-only close PR.
