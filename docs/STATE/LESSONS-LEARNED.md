@@ -435,6 +435,31 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-21 — the platform sets the gesture, and a mutation revert must never ride git checkout
+
+Two operator asks (multi-folder → one Project per folder, ADR-0437; /driving-path complete
+schedule of any loaded file, ADR-0438) and four lessons:
+
+- **Diagnose which LAYER owns the gap before building.** "Select multiple folders at once" read
+  as a server feature and was really three facts: the server already grouped per-file top
+  folder (a probe proved it in minutes, mutation-proved in one more), the folder-picker DIALOG
+  can never multi-select (webkitdirectory overrides multiple — a platform limit no code of ours
+  moves), and the drop path — the one gesture that CAN carry several folders — didn't traverse
+  directories at all. The fix was one JS traversal plus copy; the server shipped unchanged.
+- **A dropped folder failing as "online-only in OneDrive" was a misdiagnosis by reuse**: the
+  bare directory File's read rejection took the unreadable-FILE reporting path. When an error
+  message is shared by two causes, the rarer cause wears the wrong hint silently.
+- **Never revert a mutation with `git checkout <file>` while that file carries uncommitted
+  feature work** — it restores HEAD and vaporizes the work (app.py, re-applied from context).
+  The home.js mutation minutes earlier used a scratch `.bak` copy — the correct shape was
+  already in hand and got skipped ONCE, which is all it takes. Promoted rule: mutations
+  mutate a copy-backed file, restores come from the copy, and git never touches it.
+- **Reuse the sibling page's component instead of a twin**: "same columns by default as /path"
+  is true BY CONSTRUCTION only because one FIELDS table in one path.js serves both pages —
+  and the browser test still asserts header equality RENDERED, /path as the oracle, so the
+  claim survives future drift in either page. A hand-copied column list would have been a
+  second source of truth born stale.
+
 ### 2026-08-20 (d) — a brand is a character set, and a rename includes the finders
 
 Renaming the product to POLARIS² surfaced three lessons in one hour. (1) A brand that must

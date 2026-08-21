@@ -135,6 +135,86 @@
       'close Microsoft Project, then try again.';
   }
 
+  // ---- dropped-FOLDER traversal (operator 2026-08-21: several folders at once, each its own
+  // Project). A dropped folder arrives as a directory DataTransferItem; dataTransfer.files
+  // cannot descend into it — the bare directory File fails its byte read, so before this the
+  // folder's schedules never loaded and the operator was told the folder was "online-only in
+  // OneDrive". Chromium's directory-picker DIALOG cannot multi-select (webkitdirectory
+  // overrides multiple — WICG entries-api #24), so the drop is THE way to select several
+  // folders at one time. Each dropped folder's files carry rel = "Folder/sub/file.ext" — the
+  // same per-file companion path a folder PICK sends — and the server already groups per top
+  // folder, so N dropped folders land as N Projects with no server change.
+  //
+  // dropEntries must run SYNCHRONOUSLY inside the drop handler (the items list goes inert once
+  // the handler yields); the async walk runs after, over the captured entries. Returns null
+  // when no item exposes a real entry (a synthetic DataTransfer, an old engine) so the caller
+  // falls back to dataTransfer.files — the historical path, byte-for-byte.
+  function dropEntries(dt) {
+    var items = dt && dt.items;
+    if (!items || !items.length) return null;
+    var roots = [];
+    for (var i = 0; i < items.length; i++) {
+      var entry = null;
+      try { entry = items[i].webkitGetAsEntry && items[i].webkitGetAsEntry(); }
+      catch (e) { entry = null; }
+      if (entry) roots.push(entry);
+    }
+    return roots.length ? roots : null;
+  }
+
+  // Walk the captured entries into preread()-shaped File-likes: name/type/lastModified/
+  // webkitRelativePath/arrayBuffer — files under a dropped folder carry rel rooted at that
+  // folder's own name; a loose dropped file keeps rel '' (loose semantics unchanged). Chrome's
+  // readEntries hands back at most 100 entries per call, so each directory drains until an
+  // empty batch. An entry whose File cannot be materialized becomes a File-like whose read
+  // rejects, so preread() reports it by its rel path like any other unreadable file.
+  function walkEntries(roots) {
+    return new Promise(function (resolve) {
+      var out = [], pending = 0, seeded = false;
+      function settle() { if (seeded && pending === 0) resolve(out); }
+      function fileLike(f, rel) {
+        return { name: f.name, type: f.type, lastModified: f.lastModified,
+          webkitRelativePath: rel,
+          arrayBuffer: function () { return f.arrayBuffer(); } };
+      }
+      function addFile(entry, rel) {
+        pending += 1;
+        entry.file(function (f) { out.push(fileLike(f, rel)); pending -= 1; settle(); },
+          function (err) {
+            out.push({ name: entry.name, type: '', lastModified: null,
+              webkitRelativePath: rel,
+              arrayBuffer: function () {
+                var e = err || new Error('NotReadableError');
+                if (!e.name) e.name = 'NotReadableError';
+                return Promise.reject(e);
+              } });
+            pending -= 1; settle();
+          });
+      }
+      function addDir(entry, prefix) {
+        pending += 1;
+        var reader = entry.createReader();
+        (function drain() {
+          reader.readEntries(function (batch) {
+            if (!batch.length) { pending -= 1; settle(); return; }
+            for (var i = 0; i < batch.length; i++) {
+              var e = batch[i];
+              if (e.isDirectory) addDir(e, prefix + e.name + '/');
+              else addFile(e, prefix + e.name);
+            }
+            drain(); // Chrome batches readEntries (100 max) — drain until the empty batch
+          }, function () { pending -= 1; settle(); });
+        })();
+      }
+      for (var i = 0; i < roots.length; i++) {
+        if (roots[i].isDirectory) addDir(roots[i], roots[i].name + '/');
+        else addFile(roots[i], '');
+      }
+      seeded = true;
+      settle();
+    });
+  }
+
   async function upload(source) {
     var picked = (source && source.files) ? Array.prototype.slice.call(source.files) : [];
     if (!picked.length) return;
@@ -194,6 +274,13 @@
     ev.preventDefault();
     hum('prime'); // a drop is a genuine gesture — the context may be born here
     dz.classList.remove('over');
+    // entries captured synchronously (the list goes inert after the handler yields); folders
+    // traverse into rel-pathed File-likes so each dropped folder becomes its own Project
+    var roots = dropEntries(ev.dataTransfer);
+    if (roots) {
+      walkEntries(roots).then(function (files) { upload({ files: files }); });
+      return;
+    }
     upload({ files: ev.dataTransfer && ev.dataTransfer.files });
   }, false);
   ['dragover', 'dragenter'].forEach(function (e) {

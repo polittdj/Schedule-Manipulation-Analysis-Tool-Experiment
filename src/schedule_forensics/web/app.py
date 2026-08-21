@@ -1519,8 +1519,10 @@ def create_app(
       <button type=button class=linkbtn id=pickFolderBtn>choose a folder&hellip;</button></p>
     <p class=muted>Microsoft Project <code>.mpp</code> / <code>.mpt</code>, MS Project XML
       <code>.xml</code>, Primavera <code>.xer</code>, or the tool's own <code>.json</code>.
-      Load any number of files, or a whole folder (nested sub-folders and all) &mdash; a folder is
-      one Project and every schedule inside it is a version.</p>
+      Load any number of files, or whole folders (nested sub-folders and all) &mdash;
+      each folder is its own Project and every schedule inside it is a version. To load several
+      Projects at once, drop several folders at once; the picker dialog selects one folder per
+      pick.</p>
     <div class=dz-actions>
       <form id=exampleForm action="/example" method=post><button type=submit class=btn>Load example</button></form>
       <span class=muted>or import your own above</span>
@@ -3569,39 +3571,53 @@ def create_app(
                 "activities.</div>",
             )
         # per-file scope (operator 2026-07-08): the driving path can differ between files, so
-        # the operator picks WHICH loaded version to trace; default stays every version.
-        # Options are the FILENAMES (source_file), not the internal project name — every
-        # version of the same project carries the same name, so the picker read as N identical
-        # entries (operator 2026-07-09: "They all say the same thing").
-        file_options = [s.source_file or s.name for s in schedules]
-        if file and file in file_options:
-            pair = next(
-                (s, c)
-                for s, c in zip(schedules, cpms, strict=True)
-                if (s.source_file or s.name) == file
-            )
-            schedules, cpms = [pair[0]], [pair[1]]
-        else:
-            file = ""
+        # the operator picks WHICH loaded version to trace; default stays every version of the
+        # ACTIVE project. Options are the FILENAMES (source_file), not the internal project
+        # name — every version of the same project carries the same name, so the picker read as
+        # N identical entries (operator 2026-07-09: "They all say the same thing"). Widened to
+        # EVERY loaded schedule across projects (operator 2026-08-21): the option value is the
+        # session KEY (unique where labels can collide across folders), the display stays the
+        # filename, and ?file= accepts key OR legacy label via _find_schedule.
+        file_options = [
+            (v.key, s.source_file or s.name, p.title)
+            for p in st.projects()
+            for v in p.versions
+            if (s := st.schedules.get(v.key)) is not None  # one atomic read per key (D18)
+        ]
+        file_key = ""
+        if file:
+            fkey, fsch = _find_schedule(st, file)
+            if fkey is not None and fsch is not None:
+                try:
+                    scoped_sel, cpm_sel = st.cpm_scoped_for(fkey, fsch)
+                    schedules, cpms, skipped = [scoped_sel], [cpm_sel], []
+                    file_key = fkey
+                except CPMError:
+                    # the chosen file cannot solve — name it and fall back to the population
+                    skipped = [*skipped, fkey]
         src = _parse_uid(source)
         tgt = _parse_uid(target)
         # the session KEY of the last displayed version — the Excel trace export route looks
         # schedules up by session key, NOT by internal project name (which the old link used
-        # and which 404'd whenever the filename-derived key differed from the project name)
-        last_label = schedules[-1].source_file or schedules[-1].name
-        export_key = next(
-            (k for k, s in st.ordered_versions() if (s.source_file or s.name) == last_label),
-            None,
-        )
+        # and which 404'd whenever the filename-derived key differed from the project name).
+        # A chosen file IS its own key, cross-project included; the population fallback stays
+        # the active project's latest.
+        export_key: str | None
+        if file_key:
+            export_key = file_key
+        else:
+            last_label = schedules[-1].source_file or schedules[-1].name
+            export_key = next(
+                (k for k, s in st.ordered_versions() if (s.source_file or s.name) == last_label),
+                None,
+            )
         schedules, cpms, opt_banner = _optioned_versions(
             schedules,
             cpms,
             ignore_constraints=bool(ignore_constraints),
             ignore_leveling=bool(ignore_leveling),
         )
-        return _page(
-            st,
-            "Driving Path",
+        body = (
             _TS_CAPTION_MARK
             + _skipped_notice(skipped)
             + opt_banner
@@ -3613,10 +3629,22 @@ def create_app(
                 ignore_constraints=bool(ignore_constraints),
                 ignore_leveling=bool(ignore_leveling),
                 file_options=file_options,
-                selected_file=file,
+                selected_file=file_key,
                 export_key=export_key,
-            ),
+                whole_schedule_below=tgt is None,
+            )
         )
+        if tgt is None:
+            # the operator's default view (2026-08-21): the COMPLETE schedule of the chosen
+            # file (else the active project's latest) — the SAME workspace /path renders, same
+            # default columns, its Schedule select offering every loaded key so any Project's
+            # schedule is one pick away. Only in the no-target state: a traced page belongs to
+            # the tiers/corridor views (and to their single panelkit include).
+            all_keys = [k for k, _ in st.all_versions()]
+            ordered_keys = [k for k, _ in st.ordered_versions()]
+            active_latest = ordered_keys[-1] if ordered_keys else None
+            body += _path_body(all_keys, None, selected=file_key or active_latest)
+        return _page(st, "Driving Path", body)
 
     @app.get("/groups", response_class=HTMLResponse)
     def groups_view(request: Request) -> HTMLResponse:

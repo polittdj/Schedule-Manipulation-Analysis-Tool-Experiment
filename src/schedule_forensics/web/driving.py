@@ -752,28 +752,55 @@ def _driving_path_body(
     *,
     ignore_constraints: bool = False,
     ignore_leveling: bool = False,
-    file_options: list[str] | None = None,
+    file_options: list[tuple[str, str, str]] | None = None,
     selected_file: str = "",
     export_key: str | None = None,
+    whole_schedule_below: bool = False,
 ) -> str:
     """Server-rendered Driving Path view: the controlling logic corridor between two chosen
     UniqueIDs, and how it changes across every loaded version (oldest first by data date) — or
     within ONE chosen file (operator 2026-07-08: the path can differ between files, so the File
-    selector scopes the whole page, tiers and Gantt included, to that version).
+    selector scopes the whole page, tiers and Gantt included, to that version; widened to EVERY
+    loaded schedule across projects, operator 2026-08-21).
     The counterfactual trace options (ignore constraints / leveling — a genuine
     ``_optioned_versions`` re-solve, ADR-0251) persist through the form; the page
-    is directional by construction (A→B), so Path Direction lives on Path Analysis."""
+    is directional by construction (A→B), so Path Direction lives on Path Analysis.
+    ``file_options`` are ``(session key, filename label, Project title)`` triples in Project
+    order; the option VALUE is the key — unique across projects, unlike the label — and the
+    route's ``_find_schedule`` resolution keeps legacy ``?file=<label>`` URLs working.
+    ``whole_schedule_below`` marks the no-trace state whose hint points at the complete-schedule
+    workspace the route appends under this body."""
     ic = " checked" if ignore_constraints else ""
     il = " checked" if ignore_leveling else ""
     file_select = ""
     if file_options and len(file_options) > 1:
-        opts = '<option value="">All files (chronological)</option>' + "".join(
-            f'<option value="{_e(n)}"{" selected" if n == selected_file else ""}>{_e(n)}</option>'
-            for n in file_options
-        )
+        # group contiguous same-Project runs (the route emits Project order) into <optgroup>s
+        # when more than one Project is loaded, so same-named files stay tellable apart
+        groups: list[tuple[str, list[tuple[str, str]]]] = []
+        for key, label, project in file_options:
+            if not groups or groups[-1][0] != project:
+                groups.append((project, []))
+            groups[-1][1].append((key, label))
+
+        def _opts(pairs: list[tuple[str, str]]) -> str:
+            return "".join(
+                f'<option value="{_e(k)}"{" selected" if k == selected_file else ""}>'
+                f"{_e(lb)}</option>"
+                for k, lb in pairs
+            )
+
+        opts = '<option value="">All files (chronological)</option>'
+        if len(groups) > 1:
+            opts += "".join(
+                f'<optgroup label="{_e(project)}">{_opts(pairs)}</optgroup>'
+                for project, pairs in groups
+            )
+        else:
+            opts += _opts(groups[0][1])
         file_select = (
             f"<label>File <select name=file data-no-i18n "
-            f'title="Trace the driving path in one chosen file — it can differ between files">'
+            f'title="Trace the driving path in one chosen file — any loaded schedule, any '
+            f'Project; the path can differ between files">'
             f"{opts}</select></label> "
         )
     export_link = ""
@@ -832,14 +859,25 @@ version to see the corridor shift.</p></div>"""
         tiers_html += '\n<script src="/static/panelkit.js"></script>'
 
     if source is None or target is None:
-        hint = (
-            "Enter a source and a target UniqueID above to trace the driving path between them"
-            + (
-                " &mdash; or enter just a target to see its driving tiers above."
-                if target is None
-                else "."
+        if whole_schedule_below and target is None:
+            # the route appends the whole-schedule workspace under this body (operator
+            # 2026-08-21) — the hint owns pointing at it, so the page never reads as idle
+            hint = (
+                "Enter a source and a target UniqueID above to trace the driving path between "
+                "them &mdash; or enter just a target for its driving tiers. The complete "
+                "schedule of the selected file is shown below; click a row's UID there to "
+                "trace the driving paths to that activity."
             )
-        )
+        else:
+            hint = (
+                "Enter a source and a target UniqueID above to trace the driving path between "
+                "them"
+                + (
+                    " &mdash; or enter just a target to see its driving tiers above."
+                    if target is None
+                    else "."
+                )
+            )
         return form + tiers_html + f"<div class=panel><p class=muted>{hint}</p></div>"
 
     a_name = _task_name_across(schedules, source)
