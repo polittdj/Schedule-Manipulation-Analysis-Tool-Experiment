@@ -1,60 +1,66 @@
-# Handoff — 2026-08-21 (two operator asks: multi-folder drop → one Project per folder; /driving-path opens on the complete schedule of ANY loaded file; ADR-0437/0438, v1.0.221)
+# Handoff — 2026-08-25 (page modules audited for the first time: operator content is DATA, not markup; ADR-0439, v1.0.221)
 
-> ## STATUS (current) — both 2026-08-21 operator asks are CLOSED on branch `claude/polaris-resume-audit-40up77` (draft PR pending merge), based on d3044bb1 (the #609 squash).
-> Highest ADR now **0438**; version **1.0.221** (shipped code changed: `web/app.py`,
-> `web/driving.py`, `web/path.py`, `static/home.js`); wheel + all nine installers rebuilt,
-> installer suite 68/68 (lockstep green). Docs-only close PR **#609 MERGED @ d3044bb1**
-> mid-session (main moved under this branch at close): the branch was restarted onto that
-> squash and this rotation re-done on top of #609's final docs — its updated 2026-08-20 (d)
-> section is what the archive now holds, verbatim. No conflict is left for the merger.
+> ## STATUS (current) — audit resume item 1 is PARTLY CLOSED on branch `claude/polaris-resume-audit-ndwcc5` (draft PR pending), based on dfa09ac (the #610 squash).
+> Highest ADR now **0439**; version stays **1.0.221** — **`src/` is untouched** (tests + one
+> pyproject comment block + state docs only), so **no wheel/installer rebuild is owed** (ADR-0148)
+> and there is no version bump. The 2026-08-21 feature PR **#610 MERGED @ dfa09ac** before this
+> branch was cut, so nothing was in flight.
 >
-> ## Ask 1 — several folders at once, EACH its own Project (ADR-0437)
-> The server already grouped per-file top folder (probed green, mutation-proved, now pinned);
-> the gaps were client-side: Chromium's folder-picker DIALOG cannot multi-select
-> (webkitdirectory overrides multiple — WICG entries-api #24), and a DROPPED folder never
-> loaded at all (the bare directory File failed its read and was misreported as OneDrive
-> online-only). home.js now captures entries SYNCHRONOUSLY in the drop handler and walks
-> directories (readEntries drained until the empty batch — Chrome hands ≤100/call) into
-> preread()-shaped File-likes carrying rel = "Folder/sub/file.ext", so N dropped folders land
-> as N Projects through the unchanged server pipeline; loose files keep rel ''. preread() is
-> byte-untouched (the ADR-0289 harness extraction window holds). Proven END TO END in chromium:
-> real home.js, patched webkitGetAsEntry fakes, real fetch('/upload'), asserted on the live
-> SessionState — observed RED pre-feature (only the loose file loaded), recursion-mutant RED by
-> name. Dashboard copy states the contract (drop several folders; the dialog picks one).
+> ## What closed — PAGE MODULES, the dimension that had never been audited at all
+> Question: what happens to an operator's activity name — legally `Pour slab <2m> & cure` — on the
+> way to a served page and to an exported workbook? **Verdict: CLEAN, and measured.** 81 scored
+> server responses · 33 rendered pages in real Chromium · 44 export archives — zero leaks. The
+> vendored JS builds its DOM with `createElement` + `textContent` (structurally immune); the NINE
+> non-clearing `innerHTML` sinks are static literals, already-escaped text (`home.js`'s `skipHint`),
+> host telemetry, or server-built HTML. Two standing censuses now hold it —
+> `tests/web/test_operator_content_escaping.py` and `tests/web/test_operator_content_dom_browser.py`
+> (auto-discovered by `tools/browser_modules.py`, so CI carries it with no workflow edit).
 >
-> ## Ask 2 — /driving-path shows the complete schedule of ANY loaded file (ADR-0438)
-> No-target state now EMBEDS the same workspace /path renders (`_path_body` + path.js — same
-> columns BY CONSTRUCTION, one FIELDS table serves both; browser test asserts /driving-path's
-> header row EQUALS /path's, never retyped). Its Schedule select spans every loaded key,
-> preselecting the chosen file else the active project's latest. The trace form's File picker
-> spans every loaded schedule too — optgrouped by Project, option value = session KEY (labels
-> collide across folders), ?file= accepts key OR legacy label via _find_schedule (pinned).
-> Cross-project trace resolves via cpm_scoped_for(key,…) and the tiers export carries that key.
-> Workspace renders ONLY when no target is traced (panelkit single-include pinned both ways;
-> the r11 absence census now names the ?target=absent branch). DELIBERATE re-baseline:
-> r11 /driving-path form freeze bee3c73c…/1905 → ccd40241…/1925 (option values + select title).
-> Four-theme measured render green (grid box, rows/bars, optgroups in all four).
+> **Believe the clean verdict only because both instruments were proven able to dirty it.** Both
+> first drafts said "clean" and both were WRONG to: the page census hand-wrote its route list, so
+> `/analysis` and `/wbs` (really `/{name}` routes) 404'd and **scored as escaped**, and every
+> parameterized route was skipped; the browser oracle's positive control injected into a `<td>`'s
+> own `innerHTML`, which cannot produce a row break at all. Mutation battery, all on the REAL
+> product, all red by name: `_e()` removed on the `analysis.py` activity row → `/analysis/{name}` ·
+> `path.js` `el()` `textContent`→`innerHTML` → `/path` + `/driving-path` (`img=5, onerror=5`) ·
+> `_esc()` neutered in both report writers → 6 unparseable archives · `_export_cell`'s status gate
+> removed → `0.0/0.0/0.0` back in the EVM sheet.
+>
+> ## The ledger itself was carrying a week-old lie
+> **MF-02 shipped as ADR-0411 and the row still read "Not yet implemented"** — and the kickoff
+> repeated it in the standing queue. Re-verified against the shipped workbook BYTES (cost-free file:
+> engine still `status=NA value=0.0`, cells read `''`), and corrected. An ADR-vs-queue census over
+> all 35 open row IDs found MF-02 was the **only** stale entry, so the rest of the queue is honest
+> — a LOWER bound, since an ADR can close a row without naming its ID.
+>
+> ## Measured and deliberately NOT changed (do not "fix" these blind)
+> **6 dead E501 per-file-ignores** (`scurve`, `standards`, `brief`, `briefing`, `curves`,
+> `workbench` — two independent oracles agree): the stated policy attaches the exemption to what a
+> module IS, not what it currently contains, so removing them fights the intent and breaks the next
+> HTML edit · **`evolution.py`'s completed-on-path table renders `0%` for an absent activity** where
+> the cell beside it renders `—`, in a table whose heading asserts they completed — **measured
+> unreachable**, latent, reported not repaired (the `citations.reattach`/`pinned` shape).
 >
 > ## Traps paid for THIS session — check by name
-> Reverting a mutation with `git checkout <file>` on a file carrying UNCOMMITTED feature work
-> destroys the work (app.py re-applied from context; the home.js mutation used a scratch .bak —
-> use that shape ALWAYS) · this remote clone is SHALLOW: the installer build refuses at the
-> graft boundary (mpxj_ref) — `git fetch --unshallow` first · a new no-trace panel on
-> /driving-path flips the r11 "panelkit absent" census: that census is now the ?target=absent
-> branch only.
+> **A hand-written route list turns 404s into "clean".** Any census over pages MUST enumerate from
+> the app object and MUST refuse to score a non-success response · **a positive control can be wrong
+> about WHERE the defect lands**: `</td></tr>` assigned to a `<td>`'s own `innerHTML` is discarded
+> by the parser, so the symptom only exists when a whole table STRING goes into a container ·
+> **a population floor placed before the substantive assertion reports the wrong cause** — the
+> export census counted only well-formed archives, so a corruption shrank the population and it
+> cried "enumerator broken"; a red for the wrong reason is not a red.
 >
 > ## Next
-> The audit ledger stands (page modules A/B, docs/config/CI never audited; AI figure-gate
-> adversarial pass; 25-route adverse gap). Operator follow-through: has the JUICE UVS .xer set
-> been re-loaded on v1.0.220+? (wall should light; per-update NAME renames → Portfolio →
-> Combine). Sibling degrade notes (/trend /cei /evolution /volatility /integrity) could take
-> ADR-0431's other-projects tail. Insufficient-Detail V05/V06 + TP2 stay BLOCKED,
-> operator-owned — do NOT re-chase.
+> **docs/config/CI is still the open dimension** — it got only a partial pass here (CLAUDE.md's gate
+> verified against `ci.yml` and `[tool.mypy]`; two stale pyproject comments fixed). The hooks, the
+> installer workflow, `constraints/` and the docs guards are untouched. Then: the AI figure-gate
+> adversarial pass · the 25-route adverse gap (19 are `POST /sra/*`; report as 25 <= gap <= 66) ·
+> the remaining REPORTED rows (MF-02 now removed from that list). Operator follow-through unchanged:
+> has the JUICE UVS .xer set been re-loaded on v1.0.220+? Insufficient-Detail V05/V06 + TP2 stay
+> BLOCKED and operator-owned — do NOT re-chase.
 >
 > ## Gate at close
-> Statics green whole-tree (ruff · format · mypy 158 files · bandit · node --check per file);
-> installer suite 68/68 with the v1.0.221 wheel in all nine; full suite + parity numbers in the
-> SESSION-LOG 2026-08-21 entry (recorded AFTER the runs finished, per QC-1).
+> See the SESSION-LOG 2026-08-25 entry for the numbers, recorded AFTER the runs finished (QC-1).
 
 # (prior) handoffs — archived
 

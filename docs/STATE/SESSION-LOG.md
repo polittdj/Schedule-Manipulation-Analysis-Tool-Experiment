@@ -15416,3 +15416,103 @@ and the state-doc rotation re-done on top of #609's final text before the close 
   below when the run finished.
   Parity (run after the suite, alone): **72 passed / 4358 deselected, exit 0, in 15:42** —
   no parity value moved, as expected for a presentation + ingestion-client change.
+
+---
+
+## 2026-08-25 — page modules audited for the first time: operator content is DATA, not markup (ADR-0439, v1.0.221)
+
+- **Branch:** `claude/polaris-resume-audit-ndwcc5` from `origin/main` @ dfa09ac (the #610 squash;
+  the 2026-08-21 feature PR had already merged, so nothing was in flight).
+- **Mode:** SOLO lead, per ADR-0240's "the lead re-verifies every finding against the actual
+  code/fixtures". Every claim below was measured with an executable probe before it was written.
+- **Depth, plainly:** DEEP on **page modules** (resume item 1's first half) — three defect classes
+  censused end to end. PARTIAL on **docs/config/CI** — the documented gate was verified against the
+  workflow and the mypy config, two stale config comments were fixed, and nothing else in that
+  dimension was touched. Items 2-5 of the resume order untouched.
+
+**1. The dimension's question, asked for the first time.** Every activity/resource/project name
+POLARIS² prints comes out of an operator's file, and a real MS Project activity may legally be
+called `Pour slab <2m> & cure`. Nothing had ever measured what happens to such a name.
+**Verdict: CLEAN.** 81 scored server responses · 33 rendered pages in real Chromium · 44 export
+archives under an XML-hostile name — zero leaks. The vendored JS builds its DOM with
+`createElement` + `textContent`; the NINE non-clearing `innerHTML` sinks in the tree are static
+literals, already-escaped text (`home.js`'s `skipHint` runs filenames through `esc()`), host
+telemetry, or server-built HTML. Held from now on by `tests/web/test_operator_content_escaping.py` and
+`tests/web/test_operator_content_dom_browser.py` (the latter auto-discovered by
+`tools/browser_modules.py`, so CI carries it with no workflow edit).
+
+**2. Both instruments were BLIND on their first run, and both said "clean".** This is the session's
+main lesson and the reason the verdict is trustworthy at all. The page census hand-wrote its route
+list: `/analysis` and `/wbs` are `/{name}` routes, so two of its 28 pages returned **404 and scored
+as escaped**, and every parameterized route — where names render densest — was skipped outright.
+The browser oracle's positive control assigned the row-break marker to a `<td>`'s own `innerHTML`,
+which **cannot** corrupt a table (the parser discards stray `</td></tr>` in that context); the
+symptom only exists when a renderer builds a whole table STRING into a container. Fixed by
+enumerating from the app object, filling `{name}` from real session keys, and **refusing to score
+any non-success response**.
+
+**Mutation battery — all on the REAL product, all red by name:** `_e(task.name)` → `task.name` in
+`analysis.py` → page census names `/analysis/{name}` (the site the first draft could not see) ·
+`path.js` `el()` `textContent` → `innerHTML` → browser census names `/path` + `/driving-path` with
+`img=5, onerror=5` · `_esc()` neutered in BOTH report writers → 6 archives unparseable ·
+`_export_cell`'s status gate removed → `0.0/0.0/0.0` back in the EVM sheet.
+
+**3. A guard of mine failed for the WRONG REASON and was repaired.** The export census first
+counted only *well-formed* archives as its population, so a corruption shrank the population and
+the floor assertion fired first — reporting "the enumerator is broken" for a tree whose real defect
+was an unescaped writer. `scored` now counts every archive opened and the substantive assertion runs
+before the floor. Re-mutated afterwards to confirm the message now names the true cause (9 exports
+listed by URL).
+
+**4. The ledger was carrying a week-old lie.** **MF-02 shipped as ADR-0411** and its row still read
+*"Not yet implemented"*; the kickoff repeated it in the standing queue. Re-verified against the
+shipped workbook BYTES rather than the source — on a cost-free file the engine still reports
+`spi/cpi/tcpi status=NA value=0.0` (precondition unchanged and correct) and the cells read `''`;
+restoring the old guard puts `0.0` back, so the probe is not blind. An ADR-vs-queue census over all
+35 open row IDs found MF-02 was the **only** stale entry — reported as a LOWER bound, since an ADR
+can close a row without naming its ID. The `value is not None` class MF-02 asked about is also
+closed: `MetricResult.value` is declared `float`, so the guard is dead by construction and
+mechanically detectable — an AST census returns 3 sites in `src/`, all correct.
+
+**5. Measured, and deliberately NOT changed.** **6 dead E501 per-file-ignores** (`scurve`,
+`standards`, `brief`, `briefing`, `curves`, `workbench` — two independent oracles agree: ruff with
+the codes selected, and a raw max-line-length scan). Not removed: the stated policy attaches the
+exemption to what a module IS — an extracted page module whose HTML f-strings will grow again — not
+to what it currently contains, so removing them fights the documented intent and makes the next HTML
+edit fail CI. · **`evolution.py`'s completed-on-path table renders `0%` for an absent activity**
+where the cell beside it renders `—`, in a table whose heading asserts those activities *completed*.
+**Measured unreachable** (`completed_on_path` is filtered with `sch.tasks_by_id.get(uid) is not
+None` against the same `schedules[i]` the view indexes, and the single caller computes `ev` from
+that same list one line above). Latent and contradictory, like `citations.reattach` dropping
+`pinned` — reported, not repaired.
+
+**6. docs/config/CI, partial.** CLAUDE.md's documented gate matches `.github/workflows/ci.yml`
+(ruff · ruff format · mypy · pytest with the 70/85 coverage gates · bandit · pip-audit · 3.11+3.13)
+and bare `mypy` is `mypy src/` strict via `files = ["src"]`, so the doc and the behaviour agree.
+Two pyproject comments had drifted from the files they describe — `components.py`'s claimed "Only
+ONE line actually needs the exemption" (measured 10) and `ssi.py`'s claimed "nine over-long
+COMMENT/docstring lines" (measured 10, one of which is CODE, the `sra_correlation` clamp). Both
+corrected and each now carries its measurement date instead of a bare count.
+
+**Scope of change:** `src/` is **untouched** — two new test modules, one pyproject comment block,
+and state docs. No version bump and **no wheel/installer rebuild owed** (ADR-0148).
+
+**Post-suite hardening of the guard itself (same session, after the 4431-green run).** Attacking
+my own instrument found two more holes and one wrong number, all fixed and re-proven:
+the export census built **xlsx URLs only**, so `reports/docx.py` — which owns a separate `_esc` —
+was **unguarded**, and its teeth test passed regardless off the xlsx corruption; both formats are
+now enumerated, the teeth test requires the corrupt set to name **both** an `/xlsx/` and a `/docx/`
+URL, and a **docx-only** mutation was then observed RED naming 10 docx exports · the page census
+counted JSON API responses toward its floor, so a tree whose every HTML page had stopped rendering
+could have satisfied it (HTML-only now) · and the reported `innerHTML` sink count of **seven was
+wrong — it is nine**: the sweep filtered out `innerHTML =` lines whose value continues on the NEXT
+line, exactly where the substantial assignments are. The two hidden sites (`heartbeat.js`'s
+hardcoded shutdown message, `sysmon.js`'s hardcoded chip labels) carry no operator content, so the
+CLEAN verdict is unchanged — but the number was wrong in three documents and is corrected.
+The full-suite figure below was taken BEFORE this widening; the affected module was re-run and
+re-mutation-proved after it, and nothing else in the tree imports it.
+
+**Gate at close:** statics green whole-tree (ruff · `ruff format --check` 1088 files · mypy strict
+158 files · bandit exit 0 · `node --check` per file); full suite **4431 passed / 5 skipped / 0
+failed in 32:07** (the 5 skips are the pre-existing ones: 2 loopback-allowlist URL round-trips, 3
+axis-title SVG cases). `src/` untouched, so no wheel/installer rebuild and no version bump.

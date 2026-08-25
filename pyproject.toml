@@ -164,10 +164,11 @@ select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
 "src/schedule_forensics/web/app.py" = ["E501"]
 "src/schedule_forensics/web/chrome.py" = ["E501"]
 # `components.py` is the shared presentation kernel, extracted verbatim from app.py (ADR-0350).
-# Only ONE line actually needs the exemption — a `_metric_help_cell` docstring line that was
-# already over-long inside app.py's exempt region. Re-wrapping it to earn a clean E501 would
-# break the byte-for-byte property the whole extraction rests on, and verbatim outranks a rule
-# that exists for code. The exemption travels with the code, exactly as it did for chrome.py.
+# At extraction ONE line needed the exemption — a `_metric_help_cell` docstring line already
+# over-long inside app.py's exempt region; the module has since grown to 10 (measured 2026-08-25,
+# ADR-0439 — do not restate a count here without re-measuring). Re-wrapping them to earn a clean
+# E501 would break the byte-for-byte property the whole extraction rests on, and verbatim outranks
+# a rule that exists for code. The exemption travels with the code, as it did for chrome.py.
 "src/schedule_forensics/web/components.py" = ["E501"]
 # `driving.py` is the /driving-path page family, extracted verbatim (ADR-0351). It carries the
 # page's HTML f-strings, so the exemption travels with them exactly as it did for chrome.py.
@@ -194,9 +195,10 @@ select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
 # page's HTML f-strings, so the exemption travels with them.
 "src/schedule_forensics/web/trend.py" = ["E501"]
 # `ssi.py` is the SSI run machinery, extracted verbatim (ADR-0365). No HTML here — nine
-# over-long COMMENT/docstring lines ride the verbatim rule: re-wrapping them to earn a clean
-# E501 would break the byte-for-byte property the extraction rests on (the components.py
-# precedent, one module later).
+# over-long COMMENT/docstring lines rode the verbatim rule at extraction; there are now 10, and
+# one of them (the `sra_correlation` clamp) is CODE, not a comment (measured 2026-08-25,
+# ADR-0439). Re-wrapping them to earn a clean E501 would break the byte-for-byte property the
+# extraction rests on (the components.py precedent, one module later).
 "src/schedule_forensics/web/ssi.py" = ["E501"]
 # `mission.py` is the Mission Control wall body, extracted verbatim (ADR-0372); it carries the
 # tiles' HTML f-strings and hover-hint one-liners, so the exemption travels with them.
