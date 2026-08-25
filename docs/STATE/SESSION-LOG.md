@@ -15416,3 +15416,36 @@ and the state-doc rotation re-done on top of #609's final text before the close 
   below when the run finished.
   Parity (run after the suite, alone): **72 passed / 4358 deselected, exit 0, in 15:42** —
   no parity value moved, as expected for a presentation + ingestion-client change.
+
+## 2026-08-21 (b) — #610 merged and installed; the multi-folder gesture settled by measurement (docs-only, ADR-0438 stands)
+
+Close-out of the 2026-08-21 arc. No source changed — no version bump, no installer rebuild.
+
+- **PR #610 MERGED @ `dfa09acd`** (all seven checks green on head `3d699e5`: check · browser ·
+  test 3.11 · test 3.13 · linux · windows · floor). The operator then re-downloaded
+  `install-tier2.ps1` from `main` and installed it; their transcript shows the banner
+  `Polaris² (Schedule Forensics) installer — v1.0.221 — Tier 2`, venv re-used, MPXJ converter
+  kept, llama3.1:8b pulled — so ADR-0435's version-visibility loop closed again on this release.
+- **The operator then reported they still could not load multiple folders at once.** Rather
+  than trust the shipped browser test (which patches `webkitGetAsEntry` and therefore proves
+  the traversal, not the platform integration), the claim was re-tested against REAL objects:
+  * **Real folder drop** — CDP `Input.dispatchDragEvent` with actual directory paths, so Chrome
+    mints genuine `FileSystemDirectoryEntry` objects. Result:
+    `[('Apollo', folder, 2), ('Artemis', folder, 1), ('Loosey', title, 1)]` — two folders → two
+    Projects, the nested `2024/a2.xml` included, the loose file still loose. The shipped
+    feature is sound.
+  * **Ctrl/shift multi-select of FILES** — `set_input_files` with four paths on the real
+    `#fileInput` (exactly what a ctrl-click selection delivers) → `LOADED: 4`,
+    `[('JUICE UVS', title, 3), ('Other Program', title, 1)]`. Already works, and is very likely
+    the answer for the operator's `.xer` JUICE workflow.
+  * **The folder DIALOG genuinely cannot multi-select** — `webkitdirectory` overrides
+    `multiple`; Chromium's file-chooser modes are exclusive (WICG entries-api #24). Reported to
+    the operator as a platform fact, not a defect, and added to the do-not-re-chase list.
+- **Two candidate builds were offered and deliberately NOT built**: clearer button labels, and
+  a parent-folder pick that asks "one Project, or one per sub-folder?". The operator has not
+  chosen; guessing would risk ADR-0258's no-guessing rule (year sub-folders are legitimately
+  one Project with versions). Carried into the kickoff as the OPEN OPERATOR ASK.
+- **Docs rotated in one commit** (the standing rule): HANDOFF STATUS corrected from "pending
+  merge / based on d3044bb1" to the merged-and-installed state plus the open ask; this
+  SESSION-LOG entry; the LESSONS-LEARNED Part VIII entry on fake-vs-real browser oracles; and
+  NEXT-SESSION-PROMPT refreshed to `main = dfa09acd`, nothing in flight.

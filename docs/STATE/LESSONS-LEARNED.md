@@ -435,6 +435,31 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-21 (b) — a test that fakes the browser object proves your code, not the integration
+
+The operator installed v1.0.221 and reported the multi-folder load still did not work. The
+shipped browser test was green — and it was green about the wrong thing.
+
+- **The oracle was faked at exactly the seam that mattered.** `test_multi_folder_drop_browser`
+  patches `DataTransferItem.prototype.webkitGetAsEntry` to hand back invented entry trees. That
+  is a real proof of OUR traversal (recursion, batched `readEntries` drain, rel-path shaping)
+  and NO proof at all that the browser hands us those objects on a real drag. A green test can
+  be honest about its half and still leave the operator's half untested.
+- **The stronger oracle existed and cost ten minutes**: CDP `Input.dispatchDragEvent` with real
+  directory paths makes Chrome mint genuine `FileSystemDirectoryEntry` objects, so the whole
+  chain — native entries → our walk → `fetch('/upload')` → grouping — runs for real. It
+  vindicated the feature (`[('Apollo', folder, 2), ('Artemis', folder, 1), ('Loosey', title, 1)]`),
+  which is the point: the fake-based test was not lying, but only the real one could establish that.
+- **The actual defect was in the ANSWER, not the code.** The operator was using the folder
+  PICKER, which no browser will let multi-select, while ctrl/shift on "choose files…" has
+  worked all along. Time went into re-proving the drop when the first question should have been
+  *which gesture are you using* — the cheap discriminator, asked before the expensive probe.
+- **Lesson, generalised:** when a feature depends on an object only the platform can mint, name
+  the faked seam in the test's own docstring and record what would prove the other half. Then,
+  the first time a user says "it still doesn't work," you already know which half is unproven —
+  and you ask which gesture they used before you re-litigate the code.
+
+
 ### 2026-08-21 — the platform sets the gesture, and a mutation revert must never ride git checkout
 
 Two operator asks (multi-folder → one Project per folder, ADR-0437; /driving-path complete
