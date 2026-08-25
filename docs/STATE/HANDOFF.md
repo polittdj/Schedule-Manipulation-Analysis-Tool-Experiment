@@ -1,12 +1,27 @@
 # Handoff — 2026-08-21 (two operator asks: multi-folder drop → one Project per folder; /driving-path opens on the complete schedule of ANY loaded file; ADR-0437/0438, v1.0.221)
 
-> ## STATUS (current) — both 2026-08-21 operator asks are CLOSED on branch `claude/polaris-resume-audit-40up77` (draft PR pending merge), based on d3044bb1 (the #609 squash).
-> Highest ADR now **0438**; version **1.0.221** (shipped code changed: `web/app.py`,
+> ## STATUS (current) — PR #610 (ADR-0437/0438, v1.0.221) MERGED @ `dfa09acd` and INSTALLED on the operator's PC. Nothing in flight.
+> Highest ADR **0438**; version **1.0.221** (shipped code changed: `web/app.py`,
 > `web/driving.py`, `web/path.py`, `static/home.js`); wheel + all nine installers rebuilt,
-> installer suite 68/68 (lockstep green). Docs-only close PR **#609 MERGED @ d3044bb1**
-> mid-session (main moved under this branch at close): the branch was restarted onto that
-> squash and this rotation re-done on top of #609's final docs — its updated 2026-08-20 (d)
-> section is what the archive now holds, verbatim. No conflict is left for the merger.
+> installer suite 68/68 (lockstep green); all **seven** CI checks green on head `3d699e5`
+> before the merge. The operator re-downloaded install-tier2.ps1 and installed it — their
+> transcript shows the banner `Polaris² (Schedule Forensics) installer — v1.0.221 — Tier 2`,
+> venv re-used, MPXJ kept, llama3.1:8b pulled. Docs-only close PR **#609 MERGED @ d3044bb1**
+> mid-session; this branch was restarted onto that squash, so the archive holds #609's final
+> 2026-08-20 (d) section verbatim.
+>
+> ## OPEN OPERATOR ASK (post-merge, UNRESOLVED — start here)
+> The operator reports they still cannot load multiple folders at once and want **ctrl/shift
+> multi-select**. Three facts MEASURED 2026-08-21 (do not re-derive): (1) the folder-picker
+> DIALOG can never multi-select — Chromium's "pick folder" and "multi-select" are exclusive
+> modes, `webkitdirectory` overrides `multiple` (WICG entries-api #24); (2) **dropping N
+> folders WORKS**, proven with REAL Chrome entries via CDP `Input.dispatchDragEvent` on actual
+> directory paths → `[('Apollo', folder, 2), ('Artemis', folder, 1), ('Loosey', title, 1)]`;
+> (3) **ctrl/shift on FILES already works today** via "choose files…" (`#fileInput` carries
+> `multiple`) → four ctrl-selected files gave `[('JUICE UVS', title, 3), ('Other Program',
+> title, 1)]` — likely the whole answer for the .xer JUICE workflow. Two candidate builds
+> offered, operator has NOT chosen: clearer labels, or parent-folder pick → one Project per
+> sub-folder (which must ASK, never guess — year sub-folders are legitimately one Project).
 >
 > ## Ask 1 — several folders at once, EACH its own Project (ADR-0437)
 > The server already grouped per-file top folder (probed green, mutation-proved, now pinned);
