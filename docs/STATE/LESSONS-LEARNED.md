@@ -435,6 +435,62 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-25 — a sweep that writes its own population will always find it clean
+
+**The single lesson.** I built two censuses to answer a question nobody had asked of this codebase
+— does an operator's activity name reach a page or an export as MARKUP? Both returned **CLEAN on
+the first run**, and **both were blind**. Neither clean was evidence of anything until I broke the
+product and watched them fail.
+
+* The page census **hand-wrote its route list**. `/analysis` and `/wbs` are `/{name}` routes, so
+  two of its twenty-eight pages returned **404 — and a 404 contains none of the injected markup,
+  so it scored as "escaped"**. Worse, hand-writing the list meant every *parameterized* route was
+  skipped, and those are precisely the per-schedule pages where activity names render densest. The
+  instrument was blind exactly where the risk was highest, and its output looked exhaustive.
+* The browser oracle's **positive control was wrong about where the defect lands**. I assigned
+  `</td></tr><tr><td>SFROWBREAK` to a `<td>`'s own `innerHTML` and expected a corrupted table. The
+  HTML parser **discards stray `</td></tr>` in that context** — the marker stayed inside the
+  original cell and the symptom could never fire. The corruption is only reachable when a renderer
+  builds a whole table STRING and assigns it to a container. Had the teeth test not existed, that
+  third symptom would have been permanent dead weight inside a guard whose entire purpose is to
+  fire.
+
+**Generalises to a rule.** *A sweep that defines its own population will always conclude the
+population is fine.* Enumerate from the live artifact (the app object, the archive, the AST), never
+from a list a human typed — and **refuse to score a non-success response**, because "the page
+carried no injected content" and "the page was an error" are indistinguishable to a substring test.
+This is the same failure as BROWSER-ORPHAN-01 (twenty-three modules that never RAN behind four that
+FAILED) wearing different clothes: the count was of what the instrument could see, not of what
+existed.
+
+**A second, sharper one: a red for the wrong reason is not a red — and a floor can cause it.** I put
+a population floor in the export census *before* the substantive assertion, and counted only
+well-formed archives as the population. So when I mutated the XML writer, the corruption shrank the
+population and the FLOOR fired first: the test reported *"the enumerator is broken"* for a tree
+whose actual defect was an unescaped writer. A guard that fails with the wrong diagnosis costs a
+future session the hour it takes to disbelieve the message. Substantive assertion first; floor
+second; and never let a defect shrink the population you are floor-checking.
+
+**And the ledger lesson, which is really a QC-2 lesson.** **MF-02 had shipped as ADR-0411 and the
+audit ledger still filed it under "awaiting fix — Not yet implemented"** — and the kickoff dutifully
+copied it into the standing queue, where it would have sent this session at work finished a week
+earlier. That is the *third* time this project has been misdirected by its own testimony. I settled
+it by measuring the shipped workbook BYTES rather than reading `_export_cell`, then swept every one
+of the 35 open row IDs against all 440 ADR files; MF-02 was the only stale entry. Two things worth
+carrying: **a work queue is data, and data goes stale unless something asserts it** — the same
+argument that produced `tests/test_standing_rules.py`; and when you report such a sweep, **say which
+direction it bounds**, because an ADR can close a row without ever naming its ID, so "one stale row"
+is a floor, not a total.
+
+**What I did NOT do, on purpose.** Six E501 per-file-ignores are provably dead (two independent
+oracles agree). I left them. The stated policy attaches that exemption to what a module *is* — an
+extracted page module whose HTML f-strings will grow back — not to what it currently contains, so
+"cleaning them up" would fight the documented intent and fail the next HTML edit. Likewise
+`evolution.py` renders `0%` for an absent activity beside a cell that correctly renders `—`, in a
+table whose heading asserts those activities completed: contradictory, but **measured unreachable**,
+so it is reported and not repaired. A finding you can prove is not automatically a change you should
+make; scope the finding before acting on it.
+
 ### 2026-08-21 (b) — a test that fakes the browser object proves your code, not the integration
 
 The operator installed v1.0.221 and reported the multi-folder load still did not work. The

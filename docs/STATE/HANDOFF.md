@@ -1,75 +1,80 @@
-# Handoff — 2026-08-21 (two operator asks: multi-folder drop → one Project per folder; /driving-path opens on the complete schedule of ANY loaded file; ADR-0437/0438, v1.0.221)
+# Handoff — 2026-08-25 (page modules audited for the first time: operator content is DATA, not markup; ADR-0439, v1.0.221)
 
-> ## STATUS (current) — PR #610 (ADR-0437/0438, v1.0.221) MERGED @ `dfa09acd` and INSTALLED on the operator's PC. Nothing in flight.
-> Highest ADR **0438**; version **1.0.221** (shipped code changed: `web/app.py`,
-> `web/driving.py`, `web/path.py`, `static/home.js`); wheel + all nine installers rebuilt,
-> installer suite 68/68 (lockstep green); all **seven** CI checks green on head `3d699e5`
-> before the merge. The operator re-downloaded install-tier2.ps1 and installed it — their
-> transcript shows the banner `Polaris² (Schedule Forensics) installer — v1.0.221 — Tier 2`,
-> venv re-used, MPXJ kept, llama3.1:8b pulled. Docs-only close PR **#609 MERGED @ d3044bb1**
-> mid-session; this branch was restarted onto that squash, so the archive holds #609's final
-> 2026-08-20 (d) section verbatim.
+> ## STATUS (current) — audit resume item 1 is PARTLY CLOSED on branch `claude/polaris-resume-audit-ndwcc5` (draft PR #612), merged up to ddca5d5 (the #611 squash).
+> Highest ADR now **0439**; version stays **1.0.221** — **`src/` is untouched** (tests + one
+> pyproject comment block + state docs only), so **no wheel/installer rebuild is owed** (ADR-0148)
+> and there is no version bump. **main moved under this branch again**: docs-only **#611 MERGED @
+> ddca5d5** while CI was running, conflicting all four state docs; the branch was merge-resolved
+> (never rebased) and the rotation re-done on #611's final docs, so the archive holds ITS
+> 2026-08-21 section verbatim — including the open operator ask below.
 >
-> ## OPEN OPERATOR ASK (post-merge, UNRESOLVED — start here)
-> The operator reports they still cannot load multiple folders at once and want **ctrl/shift
-> multi-select**. Three facts MEASURED 2026-08-21 (do not re-derive): (1) the folder-picker
-> DIALOG can never multi-select — Chromium's "pick folder" and "multi-select" are exclusive
-> modes, `webkitdirectory` overrides `multiple` (WICG entries-api #24); (2) **dropping N
-> folders WORKS**, proven with REAL Chrome entries via CDP `Input.dispatchDragEvent` on actual
-> directory paths → `[('Apollo', folder, 2), ('Artemis', folder, 1), ('Loosey', title, 1)]`;
-> (3) **ctrl/shift on FILES already works today** via "choose files…" (`#fileInput` carries
-> `multiple`) → four ctrl-selected files gave `[('JUICE UVS', title, 3), ('Other Program',
-> title, 1)]` — likely the whole answer for the .xer JUICE workflow. Two candidate builds
-> offered, operator has NOT chosen: clearer labels, or parent-folder pick → one Project per
-> sub-folder (which must ASK, never guess — year sub-folders are legitimately one Project).
+> ## CARRIED FORWARD, STILL UNRESOLVED — the operator's multi-folder ask (from #611)
+> **This is the live operator item; the audit work below does not displace it.** The operator wants
+> **ctrl/shift multi-select** for loading several folders. Three facts were MEASURED 2026-08-21 —
+> do NOT re-derive them: (1) the folder-picker DIALOG can never multi-select (`webkitdirectory`
+> overrides `multiple`, WICG entries-api #24); (2) **dropping N folders WORKS**, proven with real
+> Chrome entries via CDP `Input.dispatchDragEvent`; (3) **ctrl/shift on FILES already works today**
+> via "choose files…" — likely the whole answer for the .xer JUICE workflow. Two candidate builds
+> were offered and **the operator has NOT chosen**: clearer labels, or parent-folder pick → one
+> Project per sub-folder (which must ASK, never guess). Ask before building.
 >
-> ## Ask 1 — several folders at once, EACH its own Project (ADR-0437)
-> The server already grouped per-file top folder (probed green, mutation-proved, now pinned);
-> the gaps were client-side: Chromium's folder-picker DIALOG cannot multi-select
-> (webkitdirectory overrides multiple — WICG entries-api #24), and a DROPPED folder never
-> loaded at all (the bare directory File failed its read and was misreported as OneDrive
-> online-only). home.js now captures entries SYNCHRONOUSLY in the drop handler and walks
-> directories (readEntries drained until the empty batch — Chrome hands ≤100/call) into
-> preread()-shaped File-likes carrying rel = "Folder/sub/file.ext", so N dropped folders land
-> as N Projects through the unchanged server pipeline; loose files keep rel ''. preread() is
-> byte-untouched (the ADR-0289 harness extraction window holds). Proven END TO END in chromium:
-> real home.js, patched webkitGetAsEntry fakes, real fetch('/upload'), asserted on the live
-> SessionState — observed RED pre-feature (only the loose file loaded), recursion-mutant RED by
-> name. Dashboard copy states the contract (drop several folders; the dialog picks one).
+> ## What closed — PAGE MODULES, the dimension that had never been audited at all
+> Question: what happens to an operator's activity name — legally `Pour slab <2m> & cure` — on the
+> way to a served page and to an exported workbook? **Verdict: CLEAN, and measured.** 81 scored
+> server responses · 33 rendered pages in real Chromium · 44 export archives — zero leaks. The
+> vendored JS builds its DOM with `createElement` + `textContent` (structurally immune); the NINE
+> non-clearing `innerHTML` sinks are static literals, already-escaped text (`home.js`'s `skipHint`),
+> host telemetry, or server-built HTML. Two standing censuses now hold it —
+> `tests/web/test_operator_content_escaping.py` and `tests/web/test_operator_content_dom_browser.py`
+> (auto-discovered by `tools/browser_modules.py`; **CI's `browser` job ran it green in 9m**).
 >
-> ## Ask 2 — /driving-path shows the complete schedule of ANY loaded file (ADR-0438)
-> No-target state now EMBEDS the same workspace /path renders (`_path_body` + path.js — same
-> columns BY CONSTRUCTION, one FIELDS table serves both; browser test asserts /driving-path's
-> header row EQUALS /path's, never retyped). Its Schedule select spans every loaded key,
-> preselecting the chosen file else the active project's latest. The trace form's File picker
-> spans every loaded schedule too — optgrouped by Project, option value = session KEY (labels
-> collide across folders), ?file= accepts key OR legacy label via _find_schedule (pinned).
-> Cross-project trace resolves via cpm_scoped_for(key,…) and the tiers export carries that key.
-> Workspace renders ONLY when no target is traced (panelkit single-include pinned both ways;
-> the r11 absence census now names the ?target=absent branch). DELIBERATE re-baseline:
-> r11 /driving-path form freeze bee3c73c…/1905 → ccd40241…/1925 (option values + select title).
-> Four-theme measured render green (grid box, rows/bars, optgroups in all four).
+> **Believe the clean verdict only because both instruments were proven able to dirty it.** Both
+> first drafts said "clean" and both were WRONG to: the page census hand-wrote its route list, so
+> `/analysis` and `/wbs` (really `/{name}` routes) 404'd and **scored as escaped**, and every
+> parameterized route was skipped; the browser oracle's positive control injected into a `<td>`'s
+> own `innerHTML`, which cannot produce a row break at all. Mutation battery, all on the REAL
+> product, all red by name: `_e()` removed on the `analysis.py` activity row → `/analysis/{name}` ·
+> `path.js` `el()` `textContent`→`innerHTML` → `/path` + `/driving-path` (`img=5, onerror=5`) ·
+> `_esc()` neutered in both report writers → 6 unparseable archives · docx.py ONLY → 10 docx
+> exports · `_export_cell`'s status gate removed → `0.0/0.0/0.0` back in the EVM sheet.
+>
+> ## The ledger itself was carrying a week-old lie
+> **MF-02 shipped as ADR-0411 and the row still read "Not yet implemented"** — and the kickoff
+> repeated it in the standing queue. Re-verified against the shipped workbook BYTES (cost-free file:
+> engine still `status=NA value=0.0`, cells read `''`), and corrected. An ADR-vs-queue census over
+> all 35 open row IDs found MF-02 was the **only** stale entry, so the rest of the queue is honest
+> — a LOWER bound, since an ADR can close a row without naming its ID.
+>
+> ## Measured and deliberately NOT changed (do not "fix" these blind)
+> **6 dead E501 per-file-ignores** (`scurve`, `standards`, `brief`, `briefing`, `curves`,
+> `workbench` — two independent oracles agree): the stated policy attaches the exemption to what a
+> module IS, not what it currently contains, so removing them fights the intent and breaks the next
+> HTML edit · **`evolution.py`'s completed-on-path table renders `0%` for an absent activity** where
+> the cell beside it renders `—`, in a table whose heading asserts they completed — **measured
+> unreachable**, latent, reported not repaired (the `citations.reattach`/`pinned` shape).
 >
 > ## Traps paid for THIS session — check by name
-> Reverting a mutation with `git checkout <file>` on a file carrying UNCOMMITTED feature work
-> destroys the work (app.py re-applied from context; the home.js mutation used a scratch .bak —
-> use that shape ALWAYS) · this remote clone is SHALLOW: the installer build refuses at the
-> graft boundary (mpxj_ref) — `git fetch --unshallow` first · a new no-trace panel on
-> /driving-path flips the r11 "panelkit absent" census: that census is now the ?target=absent
-> branch only.
+> **A hand-written route list turns 404s into "clean".** Any census over pages MUST enumerate from
+> the app object and MUST refuse to score a non-success response · **a positive control can be wrong
+> about WHERE the defect lands**: `</td></tr>` assigned to a `<td>`'s own `innerHTML` is discarded
+> by the parser, so the symptom only exists when a whole table STRING goes into a container ·
+> **a population floor placed before the substantive assertion reports the wrong cause** — the
+> export census counted only well-formed archives, so a corruption shrank the population and it
+> cried "enumerator broken"; a red for the wrong reason is not a red · **a half-covered guard reads
+> exactly like a whole one**: the export census built xlsx URLs only, leaving `docx.py`'s separate
+> `_esc` unguarded while its teeth test passed anyway.
 >
 > ## Next
-> The audit ledger stands (page modules A/B, docs/config/CI never audited; AI figure-gate
-> adversarial pass; 25-route adverse gap). Operator follow-through: has the JUICE UVS .xer set
-> been re-loaded on v1.0.220+? (wall should light; per-update NAME renames → Portfolio →
-> Combine). Sibling degrade notes (/trend /cei /evolution /volatility /integrity) could take
-> ADR-0431's other-projects tail. Insufficient-Detail V05/V06 + TP2 stay BLOCKED,
+> **The operator's multi-folder ask above comes first** (it needs a CHOICE, not a build). Then
+> **docs/config/CI**, still the open audit dimension — it got only a partial pass here (CLAUDE.md's
+> gate verified against `ci.yml` and `[tool.mypy]`; two stale pyproject comments fixed); the hooks,
+> the installer workflow, `constraints/` and the docs guards are untouched. Then: the AI figure-gate
+> adversarial pass · the 25-route adverse gap (report as 25 <= gap <= 66) · the remaining REPORTED
+> rows (MF-02 now removed from that list). Insufficient-Detail V05/V06 + TP2 stay BLOCKED and
 > operator-owned — do NOT re-chase.
 >
 > ## Gate at close
-> Statics green whole-tree (ruff · format · mypy 158 files · bandit · node --check per file);
-> installer suite 68/68 with the v1.0.221 wheel in all nine; full suite + parity numbers in the
-> SESSION-LOG 2026-08-21 entry (recorded AFTER the runs finished, per QC-1).
+> See the SESSION-LOG 2026-08-25 entry for the numbers, recorded AFTER the runs finished (QC-1).
 
 # (prior) handoffs — archived
 
