@@ -1,12 +1,21 @@
-# Handoff — 2026-08-25 (page modules audited for the first time: operator content is DATA, not markup; ADR-0439, v1.0.221)
+# Handoff — 2026-08-25/26 (page modules audited for the first time: operator content is DATA, not markup; ADR-0439, v1.0.221 — MERGED @ 30f90f1)
 
-> ## STATUS (current) — audit resume item 1 is PARTLY CLOSED on branch `claude/polaris-resume-audit-ndwcc5` (draft PR #612), merged up to ddca5d5 (the #611 squash).
-> Highest ADR now **0439**; version stays **1.0.221** — **`src/` is untouched** (tests + one
-> pyproject comment block + state docs only), so **no wheel/installer rebuild is owed** (ADR-0148)
-> and there is no version bump. **main moved under this branch again**: docs-only **#611 MERGED @
-> ddca5d5** while CI was running, conflicting all four state docs; the branch was merge-resolved
-> (never rebased) and the rotation re-done on #611's final docs, so the archive holds ITS
-> 2026-08-21 section verbatim — including the open operator ask below.
+> ## STATUS (current) — **PR #612 MERGED @ `30f90f1` (2026-08-26 15:27 UTC). NOTHING IS IN FLIGHT.**
+> Audit resume item 1's page-modules half is CLOSED and on `main`. Highest ADR **0439**; version
+> stays **1.0.221** — **`src/` was untouched** (tests + one pyproject comment block + state docs
+> only), so **no wheel/installer rebuild is owed** (ADR-0148) and there was no version bump.
+> All five checks were green on head `ebdcc4f` before the merge (check · browser 9m · floor 33m ·
+> test 3.11 56m · test 3.13 70m — the `test` pair is the slow one, carrying coverage + parity +
+> pip-audit on top of the suite, so budget ~75 min for a full CI verdict). Verified after the
+> merge: `docs/adr/0439-*.md` and **both** new guard modules are present on `main`, and the
+> escaping census re-ran **4 passed** against merged `main`.
+>
+> **main moved under this branch TWICE in one arc** — docs-only **#609** and then **#611 @
+> ddca5d5** while CI was running, the latter conflicting all four state docs. Both times the
+> branch was **merge-resolved (never rebased)** and the rotation **re-done on the NEW main's
+> docs** rather than replayed over stale copies — which is what preserved #611's open operator
+> ask below. Expect this again: docs-only session closes land often and always touch these four
+> files.
 >
 > ## CARRIED FORWARD, STILL UNRESOLVED — the operator's multi-folder ask (from #611)
 > **This is the live operator item; the audit work below does not displace it.** The operator wants
