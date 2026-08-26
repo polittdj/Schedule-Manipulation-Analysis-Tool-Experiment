@@ -435,6 +435,35 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-26 — a green PR is not a finished one, and the babysitting interval should decay
+
+**#612 sat green, mergeable and unreviewed for ~19 hours** before the operator marked it ready and
+merged it. I checked in seven times. The first two check-ins were worth it — they caught CI still
+running and confirmed the conclusions. The last five returned *identical* state and taught nothing.
+
+- **Lesson: match the poll interval to what can actually change, and let it decay.** Once a PR is
+  green, mergeable and waiting on a human, webhooks already cover every real event (review, push,
+  merge). The only thing polling backstops is `main` moving under the branch — a transition
+  webhooks do not reliably deliver. That justifies *a* check-in, not an hourly one. I widened
+  25m → 60m → 90m → 3h → 4h → 6h; the right shape from the start would have been ~1h while CI runs,
+  then straight to multi-hour once green. A check-in that reports "no change" seven times is not
+  diligence, it is noise with a cost.
+- **The backstop earned its keep, though, and twice.** `main` moved under this branch on #609 and
+  again on #611 — both docs-only session closes, both conflicting all four state docs. In this
+  repo that is not an edge case, it is the norm: session closes land often and always touch
+  HANDOFF / SESSION-LOG / LESSONS-LEARNED / NEXT-SESSION-PROMPT.
+- **The rule that came out of resolving it twice: re-do the rotation on the NEW main's docs; never
+  replay yours over a stale base.** #611 had updated the 2026-08-21 handoff *in place* and added an
+  **OPEN OPERATOR ASK** block my branch could not know about. My branch had rotated that whole
+  section into the archive. A naive "keep mine" would have silently deleted a live, unanswered
+  operator item — the worst kind of loss, because nothing would have failed. Take the incoming
+  version as the base, re-apply your change on top, and verify the thing you might have dropped is
+  still there by name.
+- **Post-squash hygiene is not optional here.** GitHub auto-deletes the merged head branch, so the
+  local tracking ref goes stale and the stop hook mis-reports GitHub's own squash commit as an
+  unverified unpushed commit. `fetch --prune` + `remote set-head` + `checkout -B <branch>
+  origin/main` + `branch --unset-upstream`, every time.
+
 ### 2026-08-25 — a sweep that writes its own population will always find it clean
 
 **The single lesson.** I built two censuses to answer a question nobody had asked of this codebase

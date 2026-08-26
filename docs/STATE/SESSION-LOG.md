@@ -15549,3 +15549,42 @@ re-mutation-proved after it, and nothing else in the tree imports it.
 158 files · bandit exit 0 · `node --check` per file); full suite **4431 passed / 5 skipped / 0
 failed in 32:07** (the 5 skips are the pre-existing ones: 2 loopback-allowlist URL round-trips, 3
 axis-title SVG cases). `src/` untouched, so no wheel/installer rebuild and no version bump.
+
+---
+
+## 2026-08-26 — #612 merged; the page-modules half of resume item 1 is on main (docs-only close, ADR-0439 stands)
+
+Close-out of the 2026-08-25 arc. **No source changed** — no version bump, no installer rebuild.
+
+- **PR #612 MERGED @ `30f90f1`** (marked ready for review and merged by the operator at 15:27 UTC).
+  All five checks were green on head `ebdcc4f`: `check` · `browser (measured-box proof)` 9m ·
+  `floor (declared minimum)` 33m · `test (3.11)` 56m · `test (3.13)` 70m. **Verified after the
+  merge rather than assumed**: `docs/adr/0439-*.md` and BOTH guard modules are present on `main`,
+  and `tests/web/test_operator_content_escaping.py` re-ran **4 passed** against merged `main`.
+- **Two CI timing facts worth carrying.** The `test` pair is the slow one — it adds coverage
+  instrumentation, the parity gate and pip-audit on top of a suite that runs in ~32 min locally,
+  so 56-70 min is normal and the ~75 min budget is real, not padding. The `browser` job ran the
+  NEW DOM census green in 9m on a real GitHub runner **twice**, which was the leg most likely to
+  behave differently there (it resolves Chromium through `browser_chrome.chrome_kwargs()`'s
+  fallback rather than this container's vendored `/opt/pw-browsers`).
+- **main moved under the branch a SECOND time in one arc.** Docs-only **#611 @ `ddca5d5`** merged
+  while #612's CI was running and conflicted all four state docs. Resolved by merging `origin/main`
+  in (never rebasing) and **re-doing the rotation on #611's final docs** — the archive holds ITS
+  2026-08-21 section verbatim, including the **open operator ask**, which a naive "keep mine" would
+  have silently deleted. #609 had done the same thing one session earlier.
+- **Post-squash hygiene applied** (CLAUDE.md's rule): GitHub auto-deleted the merged head branch,
+  so `git fetch --prune origin && git remote set-head origin -a && git checkout -B <branch>
+  origin/main`, plus `git branch --unset-upstream` to clear the now-gone tracking ref. Without this
+  the stop hook compares against a stale ref and mis-reports GitHub's own squash commit as an
+  unverified unpushed commit.
+
+**Still open and unchanged:** the operator's multi-folder ask (needs a CHOICE between two candidate
+builds, not a build — the three governing facts were measured 2026-08-21 and must not be
+re-derived), then **docs/config/CI**, now the LAST never-audited dimension.
+
+**Gate at close (docs-only tree, run AFTER the merge was verified — QC-1):** statics green
+whole-tree (ruff · `ruff format --check` 1088 files · mypy strict 158 files · bandit exit 0 ·
+`node --check` per file); drift guards `test_state_docs` + `test_standing_rules` +
+`test_parity_report_sync` **16 passed**; full suite **4431 passed / 5 skipped / 0 failed in
+31:13** on merged `main` + these doc edits — identical to the pre-merge run, same 5 pre-existing
+skips (2 loopback-allowlist URL round-trips, 3 axis-title SVG cases).

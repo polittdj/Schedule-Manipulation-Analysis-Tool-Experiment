@@ -6,16 +6,16 @@
 
 Resume POLARIS² (Schedule-Manipulation-Analysis-Tool). Read docs/STATE/HANDOFF.md FIRST
 (auto-injected), then docs/STATE/AUDIT-2026-08-16.md — that ledger IS the standing work queue.
-As of last close: **v1.0.221 · highest ADR 0439 · SCHEMA 2.11.0 · main = ddca5d5** (the #611
-squash). **IN FLIGHT: draft PR #612** from `claude/polaris-resume-audit-ndwcc5` (ADR-0439, the
-page-modules audit — tests + docs only, no version bump, `src/` untouched) — check whether it
-merged before you branch. The operator has INSTALLED v1.0.221 on their PC (installer banner
-confirmed the version). **git fetch origin
+As of last close: **v1.0.221 · highest ADR 0439 · SCHEMA 2.11.0 · main = 30f90f1** (the #612
+squash). **NOTHING IS IN FLIGHT** — #612 merged 2026-08-26 15:27 UTC and was verified on `main`
+afterwards (ADR-0439 + both guard modules present; the escaping census re-ran 4 passed against
+merged `main`). The operator has INSTALLED v1.0.221 on their PC (installer banner confirmed the
+version). **git fetch origin
 before you branch, number an ADR, or commit — and RE-fetch before writing the docs** (main
 moved UNDER the working branch twice in this arc).
 
-⇢ WHAT'S DONE — do not re-open. **2026-08-25 (ADR-0439, no version bump): PAGE MODULES got
-their first-ever audit** — operator file content is DATA, not markup. Verdict **CLEAN and
+⇢ WHAT'S DONE — do not re-open. **2026-08-25/26 (ADR-0439, MERGED @ 30f90f1, no version bump):
+PAGE MODULES got their first-ever audit** — operator file content is DATA, not markup. Verdict **CLEAN and
 MEASURED**: 81 scored server responses · 33 rendered pages in real Chromium · 44 export archives
 under an XML-hostile name, zero leaks; the vendored JS is structurally immune (createElement +
 textContent) and the NINE non-clearing innerHTML sinks are literals, esc()'d text, host
@@ -145,8 +145,10 @@ AND committing · wc decides.
 different containers: 4431 passed / 5 skips in 32:07 on 2026-08-25; 4424 / 5 in ~41 min before
 that — treat the spread as container variance, not drift); `pytest -m parity` ~9-15 min; browser
 census `pytest $(python tools/browser_modules.py)` ~7-9 min (the new DOM census adds ~1 min).
-CI budget ~75 min for a full seven-check verdict; `cancel-in-progress: true` — never push while
-you need a run's signal. Installer build needs an UNSHALLOW clone; `python -m build --wheel
+CI budget ~75 min for a full verdict, MEASURED on #612: `check` seconds · `browser` **9m** ·
+`floor` **33m** · `test (3.11)` **56m** · `test (3.13)` **70m** — the `test` pair is the slow one
+because it adds coverage instrumentation + parity + pip-audit on top of the suite, so 56-70 min is
+normal, not a hang. `cancel-in-progress: true` — never push while you need a run's signal. Installer build needs an UNSHALLOW clone; `python -m build --wheel
 --outdir dist/wheel && python tools/installer/build_installers.py dist/wheel/*.whl` ~2 min,
 rewrites all nine.
 
