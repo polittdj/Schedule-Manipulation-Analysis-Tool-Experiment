@@ -6,11 +6,22 @@
 
 Resume POLARIS² (Schedule-Manipulation-Analysis-Tool). Read docs/STATE/HANDOFF.md FIRST
 (auto-injected), then docs/STATE/AUDIT-2026-08-16.md — that ledger IS the standing work queue.
-As of last close: **v1.0.221 · highest ADR 0439 · SCHEMA 2.11.0 · main = 30f90f1** (the #612
-squash). **NOTHING IS IN FLIGHT** — #612 merged 2026-08-26 15:27 UTC and was verified on `main`
-afterwards (ADR-0439 + both guard modules present; the escaping census re-ran 4 passed against
-merged `main`). The operator has INSTALLED v1.0.221 on their PC (installer banner confirmed the
-version). **git fetch origin
+As of last close: **v1.0.221 · highest ADR 0439 · SCHEMA 2.11.0 · main = 05abadc** (the #613
+squash) plus one docs-only close PR in flight recording the 2026-08-27 campaign planning. **THE
+FULL-TOOL AUDIT CAMPAIGN IS PLANNED AND OPERATOR-APPROVED — the operator pastes the approved plan
+as this session's prompt; it GOVERNS, and the HANDOFF carries its essentials as backup.** Operator
+answers already given (do NOT re-ask): SOLO lead · fix-as-verified · folder ask = BOTH builds ·
+live defect on their installed v1.0.221: /path //driving-path //evolution, "controls do nothing" +
+"renders wrong". Campaign order: WP0 live-defect matrix + timescale load-clamp fix (prime suspect,
+code-verified: `timescale.js:60-77` merges localStorage unvalidated; clamp only on dialog edits
+`:586`; `persist.js` exempts it from every reset; seed test state via `context.add_init_script` —
+parse-time read makes later seeding vacuous) → WP1 control-effect census → WP2 stateful flows +
+theme/language → WP3 SRA grid edit/paste/save → WP4 committed `tools/route_coverage.py` (opt-in
+`SF_ROUTE_COVERAGE=1`; route population is now 139, not 137) + CI-outage investigation → WP5
+folder builds → WP6 ledger rows → WP7 thin dims → WP8 report `docs/STATE/AUDIT-2026-08-27.md` +
+repair roadmap. 27 interactive behaviors have NO browser test driving them; the r11 pins freeze
+control BYTES, not effects. The operator has INSTALLED v1.0.221 on their PC (installer banner
+confirmed the version). **git fetch origin
 before you branch, number an ADR, or commit — and RE-fetch before writing the docs** (main
 moved UNDER the working branch twice in this arc).
 
@@ -37,7 +48,9 @@ cross-project trace + tiers export resolve by key; r11 DP form freeze deliberate
 `ccd40241…/1925`. Before that: POLARIS² rename (ADR-0436, v1.0.220) and the 2026-08-20 four
 asks (ADR-0431..0435, v1.0.219) — all merged and operator-verified.
 
-⇢ **OPEN OPERATOR ASK — START HERE.** After installing v1.0.221 the operator reported they
+⇢ **OPERATOR ASK RESOLVED 2026-08-27: BOTH builds chosen — campaign WP5** (clearer labels AND
+parent-folder → one-Project-per-sub-folder with an explicit confirm step, never guessed). The
+measured facts below still govern that build. Original context: the operator reported they
 *still* cannot load multiple folders at once, and want **ctrl-click / shift-click multi-select**.
 Three facts were established BY MEASUREMENT on 2026-08-21 — do NOT re-derive them:
 1. **The folder-picker DIALOG can never multi-select.** Chromium treats "pick folder" and
@@ -62,7 +75,8 @@ on v1.0.221? The Mission Control wall should light; if the per-update exports re
 NAME too, Portfolio → Combine Projects is the remedy. Check any render report against the BUILD
 it came from (the v1.0.148 lesson, ADR-0435).
 
-⇢ RESUME ORDER once the open ask is settled — start at 1.
+⇢ RESUME ORDER — superseded by the campaign work packages above (the old queue folds in:
+item 1 → WP7 · item 2 → WP6 · item 3 → WP4 · items 4-5 → WP6/WP7). Kept for reference:
 
 1. **DOCS/CONFIG/CI — the LAST never-audited dimension.** 2026-08-25 gave it only a PARTIAL
    pass: CLAUDE.md's documented gate was verified against `.github/workflows/ci.yml` and

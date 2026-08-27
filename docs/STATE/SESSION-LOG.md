@@ -15588,3 +15588,55 @@ whole-tree (ruff · `ruff format --check` 1088 files · mypy strict 158 files ·
 `test_parity_report_sync` **16 passed**; full suite **4431 passed / 5 skipped / 0 failed in
 31:13** on merged `main` + these doc edits — identical to the pre-merge run, same 5 pre-existing
 skips (2 loopback-allowlist URL round-trips, 3 axis-title SVG cases).
+
+---
+
+## 2026-08-27 — the full-tool audit campaign PLANNED and operator-approved; live UI defect reported; prime suspect code-verified (planning-only, docs-only close)
+
+The operator re-issued the 2026-08-16 deep-dive directive with new explicit emphasis: INTERACTIVE
+UI functionality (zoom, timescale changes, everything clickable), PASS and FAIL tests for all of
+it, a report, and a plan forward to repair the tool. Model switched to Fable 5 per ADR-0240; the
+operator chose **SOLO lead** over Ultracode (the pool has died twice on credits), **fix-as-verified**,
+and — closing #611's standing ask — **BOTH folder builds** (labels + parent-folder →
+one-Project-per-sub-folder with an explicit confirm step). They report a **live defect on their
+installed v1.0.221**: `/path`, `/driving-path`, `/evolution` — "controls do nothing" + "renders
+wrong". No product code changed this session; the deliverable was the campaign plan (operator
+holds it; its essentials are in the HANDOFF as backup), grounded in measured exploration:
+
+- **Prime suspect found and code-verified** (my own read, not testimony): `timescale.js:60-77`
+  merges `localStorage["sf.timescale.v1"]` into CFG with NO validation; `sizeFactor()` at `:731`
+  divides `Number(CFG.size)||100` straight through; the 25–1000 clamp lives ONLY on dialog edits
+  (`:586`); all five consumers guard only non-positive values; and `persist.js:25,64` deliberately
+  exempts the Timescale config from Reset-view and launch wipes. A persisted truthy `size` outside
+  range (1 → 0.01×; 100000 → 1000×) reproduces BOTH reported symptoms on exactly the Gantt pages —
+  and is invisible to a fresh-profile probe, which is what this session's clean Chromium render of
+  all three pages (zero console/page errors, zero failed requests, 2-version golden data) showed.
+  The unclamped load path is a defect in its own right; the fix (clamp/validate on load) also
+  self-heals any corrupt persisted state on the operator's machine. Campaign WP0.
+- **The operator's named features have ZERO behavioral coverage.** A UI census (61 JS modules → 30
+  browser test modules) found 27 interactive behaviors no browser test drives — zoom on all five
+  zoom surfaces, the whole Timescale dialog, `#dpZoomIn/Out` (in NO test even as a string),
+  `#dpPlay`/`#evoPlay` autoplay, SRA paste-from-Excel, `#askBtn`, and the real `#themeSelect`
+  (every four-theme test bypasses it with `setAttribute`). The r11 pins freeze control BYTES —
+  every gap sits under a passing form-freeze pin. Campaign WP1–WP3 close this with five new
+  browser modules (auto-discovered by `tools/browser_modules.py`), budgeted under a 25m ceiling.
+- **The 2026-08-18 coverage instrument was NEVER COMMITTED** (`git log -S build_middleware_stack
+  -- '*.py'` is empty — it lived in a session scratchpad), and the 25-route adverse gap exists
+  only as a count. The route population moved **137 → 139** (+`GET /launch` covered;
+  +`POST /project/combine`, one test module). WP4 rebuilds it as committed
+  (`tools/route_coverage.py`, opt-in `SF_ROUTE_COVERAGE=1`) and enumerates the gap BY NAME.
+- **Two ledger corrections:** `engine/pair_series.py` + `ai/pair_facts.py` HAVE dedicated tests
+  (10 + 15) — the queue's "never audited" means never proven-able-to-fail, so price them as
+  verification passes, not first tests. `importers/loader.py:1` docstring says "up to 20
+  schedules"; `MAX_FILES = 100` (stale doc; WP7).
+
+**Depth, plainly:** planning + measurement only. Three read-only exploration passes (UI surface,
+ledger/instruments, functional surface with per-module test-coverage pricing), one design pass,
+one live Chromium probe, and my own spot-check of the timescale claims. Nothing in `src/` or
+`tests/` changed; no ADR (the decisions ship with WP0's first commit).
+
+**Gate at close (docs-only):** statics green whole-tree (ruff · `ruff format --check` 1088
+files · mypy strict 158 files · bandit exit 0 · `node --check` per file); drift guards 12 passed;
+full suite **4431 passed / 5 skipped / 0 failed in 44:05** — same 5 pre-existing skips, identical
+counts to the two prior runs on this src tree (32:07 and 31:13; the spread is container variance,
+not drift).
