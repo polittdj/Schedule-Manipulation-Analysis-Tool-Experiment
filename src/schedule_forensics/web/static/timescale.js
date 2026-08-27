@@ -58,23 +58,8 @@ window.SFTimescale = (function () {
     };
   }
   var CFG = defaults();
-  try {
-    var raw = window.localStorage ? localStorage.getItem(STORE_KEY) : null;
-    if (raw) {
-      var saved = JSON.parse(raw);
-      ["show", "size", "separator", "fyStartMonth"].forEach(function (k) {
-        if (saved[k] != null) CFG[k] = saved[k];
-      });
-      ["top", "middle", "bottom"].forEach(function (t) {
-        if (saved[t]) Object.keys(CFG[t]).forEach(function (k) {
-          if (saved[t][k] != null) CFG[t][k] = saved[t][k];
-        });
-      });
-      if (saved.nonworking) Object.keys(CFG.nonworking).forEach(function (k) {
-        if (saved.nonworking[k] != null) CFG.nonworking[k] = saved.nonworking[k];
-      });
-    }
-  } catch (e) { CFG = defaults(); }
+  // CFG is re-hydrated from localStorage by loadPersisted() BELOW the UNITS/LABELS tables — the
+  // sanitizer needs both to validate enum members, and nothing reads CFG before they exist.
 
   function save() {
     try { if (window.localStorage) localStorage.setItem(STORE_KEY, JSON.stringify(CFG)); }
@@ -283,10 +268,76 @@ window.SFTimescale = (function () {
     ],
   };
   function labelDef(units, id) {
-    var defs = LABELS[units] || [];
+    var defs = LABELS[units] || LABELS.months;
     for (var i = 0; i < defs.length; i++) if (defs[i].id === id) return defs[i];
     return defs[0];
   }
+
+  // ---------------------------------------------------------------- persisted-config sanitizer
+  // localStorage is writable by anything in the origin, outlives the dialog that wrote it, and
+  // is EXEMPT from Reset-view and the launch wipe on purpose (persist.js: preferences survive).
+  // The dialog clamps Size to 25-1000 only on EDITS, so before ADR-0440 a persisted
+  // out-of-range/garbage value loaded verbatim: sizeFactor() multiplied every Gantt by 0.01x /
+  // 1000x with zero console errors ("controls do nothing" + "renders wrong", the v1.0.221
+  // operator report), and an unknown tier unit crashed every tier build. The load path now
+  // re-validates each field the way the dialog's own inputs would have: RANGES coerce-then-clamp
+  // (a wild number keeps its direction, landing on the nearest legal bound), ENUMS must be
+  // members (garbage means nothing, so the field keeps its default). Healing is in-memory —
+  // idempotent per load; the stored value heals on the next OK.
+  function clampNum(v, lo, hi, dflt, wholeNum) {
+    if (typeof v === "string" && v.trim() === "") return dflt; // Number("") is 0, not garbage
+    var n = Number(v);
+    if (!isFinite(n)) return dflt;
+    if (wholeNum) n = Math.floor(n);
+    return Math.min(hi, Math.max(lo, n));
+  }
+  function member(v, list, dflt) {
+    return list.indexOf(v) >= 0 ? v : dflt;
+  }
+  function sanitizeTier(saved, dflt) {
+    if (!saved || typeof saved !== "object") return dflt;
+    var units = UNITS[saved.units] ? saved.units : dflt.units;
+    var ids = LABELS[units].map(function (d) { return d.id; });
+    return {
+      units: units,
+      label: member(saved.label, ids, ids[0]),
+      count: clampNum(saved.count, 1, 999, dflt.count, true),
+      align: member(saved.align, ["left", "center", "right"], dflt.align),
+      fiscal: saved.fiscal == null ? dflt.fiscal : !!saved.fiscal,
+      ticks: saved.ticks == null ? dflt.ticks : !!saved.ticks,
+    };
+  }
+  function sanitizeNonwork(saved, dflt) {
+    if (!saved || typeof saved !== "object") return dflt;
+    return {
+      draw: member(saved.draw, ["behind", "front", "none"], dflt.draw),
+      // only the dialog's own #rrggbb(aa) shape may reach the CSS gradient/background strings
+      color: typeof saved.color === "string" && /^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/.test(saved.color)
+        ? saved.color : dflt.color,
+      pattern: member(saved.pattern, ["solid", "striped", "outlined"], dflt.pattern),
+      calendar: typeof saved.calendar === "string" ? saved.calendar : dflt.calendar,
+    };
+  }
+  function loadPersisted() {
+    try {
+      var raw = window.localStorage ? localStorage.getItem(STORE_KEY) : null;
+      if (!raw) return;
+      var saved = JSON.parse(raw);
+      if (!saved || typeof saved !== "object") return;
+      CFG.show = member(Number(saved.show), [1, 2, 3], CFG.show);
+      CFG.size = clampNum(saved.size, 25, 1000, CFG.size);
+      if (saved.separator != null) CFG.separator = !!saved.separator;
+      // a month INDEX outside 0-11 is not "too much month" — it identifies nothing, so it
+      // rejects to the default rather than clamping to an arbitrary December
+      var fy = Number(saved.fyStartMonth);
+      if (isFinite(fy) && fy === Math.floor(fy) && fy >= 0 && fy <= 11) CFG.fyStartMonth = fy;
+      CFG.top = sanitizeTier(saved.top, CFG.top);
+      CFG.middle = sanitizeTier(saved.middle, CFG.middle);
+      CFG.bottom = sanitizeTier(saved.bottom, CFG.bottom);
+      CFG.nonworking = sanitizeNonwork(saved.nonworking, CFG.nonworking);
+    } catch (e) { CFG = defaults(); }
+  }
+  loadPersisted();
 
   // ---------------------------------------------------------------- band generation
   // The bands of one tier across an axis: [{left, width, label, align, warn?}]. A tier whose

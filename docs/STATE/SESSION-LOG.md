@@ -15588,3 +15588,56 @@ whole-tree (ruff · `ruff format --check` 1088 files · mypy strict 158 files ·
 `test_parity_report_sync` **16 passed**; full suite **4431 passed / 5 skipped / 0 failed in
 31:13** on merged `main` + these doc edits — identical to the pre-merge run, same 5 pre-existing
 skips (2 loopback-allowlist URL round-trips, 3 axis-title SVG cases).
+## 2026-08-27 — POLARIS² campaign WP0: the operator's live defect root-caused and fixed (ADR-0440, v1.0.222)
+
+Branch `claude/polaris2-full-tool-audit-948whg` (from `origin/main` @ `05abadc`). Campaign kickoff:
+SOLO lead · fix-as-verified · BOTH folder-ask builds (the #611 ask is thereby ANSWERED and queued
+as WP5). Opened the campaign ledger **docs/STATE/AUDIT-2026-08-27.md**.
+
+**WP0 — live-defect chase.** Operator report on installed v1.0.221: /path, /driving-path,
+/evolution — "controls do nothing" + "renders wrong". Built a 13-cell × 3-page Playwright
+reproduction matrix (state seeded via `context.add_init_script`; TP4 five-version corpus,
+target 26; oracles: pageerror count · sane geometry · Tier-2 measured control effect; the A0
+baseline row calibrated the oracles before any hostile cell was trusted). **Verdict:
+CONFIRMED-PLAUSIBLE-ROOT-CAUSE** — a persisted out-of-range/garbage `sf.timescale.v1` reproduces
+BOTH symptoms on exactly those three pages with zero console errors (A1 size=1 → 0.01×: tracks at
+the 120px floor, bars at the 2px floor, zoom near-inert; A2 size=100000 → 1000×: tracks
+476k–1,056k px; A4 "600000" string → 6000×), across daylight/jarvis themes and a 1024×700
+viewport; B2 (hostile tier `units`) crashed the render outright (`Cannot read properties of
+undefined (reading 'fn')`) and /evolution swallowed it into a misleading "Failed to load" box.
+B1/B3/C1/C2/D1–D3 probed and did not reproduce. Whether the operator's machine holds the state:
+UNVERIFIABLE until their reply (three-line ask in the ledger).
+
+**Fix (ADR-0440):** `timescale.js` load-path sanitizer — ranges coerce-then-clamp (size →
+[25,1000], count → [1,999]), enums must be members (show, fyStartMonth, units/label/align,
+draw/pattern, color pinned to `#rrggbb(aa)`), healing in-memory — plus the `labelDef`
+months-fallback belt (the same one `tierBands` already had for `UNITS`). Load moved below the
+UNITS/LABELS tables it validates against.
+
+**M2 — `tests/web/test_timescale_dialog_browser.py`** (16 tests, ~37s, auto-joins the browser CI
+job): the Timescale dialog's first behavioral coverage (open/tabs/preview, OK measured on the
+page behind, Cancel, Reset, Escape, persistence + cross-page) + 8 load-path hardening pins
+including the A1/A2 matrix cells as FAIL-side tests. QC-1: all 8 observed RED pre-fix by name
+(`assert 1 == 25` · `100000 == 1000` · `'600000' == 1000` · `'bogus' == 'years'` · `0 == 3` ·
+"bars still at the floor: 2" · track 670000) → 16/16 green post-fix → mutation battery red by
+name (size clamp removed → 6 red · tier sanitize bypassed → units-assert red while the belt still
+held · belt ALSO reverted → the EXACT original pageerror through the committed test · show/fy
+passthrough → red). End-to-end: matrix re-run on the fixed tree heals A2/A4/B2 on all three
+pages; A1/A3 heal to size 25 whose geometry equals the dialog's own legal 25% (measured).
+
+**Shipped:** version 1.0.222; wheel + nine installers rebuilt in lockstep.
+
+**Gate at close (numbers re-read from the run outputs, not memory):** statics green whole-tree
+with the CI-version ruff **0.16.1 run by absolute path** (`/usr/local/bin/ruff` — a stale 0.15.8
+in `/root/.local/bin` shadows PATH in this container, the full-gate skill's own measured trap;
+one E501 in the new test module fixed) · `ruff format --check` 1091 files · mypy strict 158
+files · bandit exit 0 · `node --check` per file clean · installer suite **68/68** (lockstep
+green on the 1.0.222 wheel). Full suite **4446 passed / 1 failed / 5 skipped in 43:03** (this
+container runs ~1.4× the 31-min local benchmark; same 5 pre-existing env-gated skips). The one
+red: `test_standing_rules`' positive control — the "ADR-0393, pinned by
+`tests/test_standing_rules.py`" citation line lived ONLY in the handoff section the rotation had
+just archived, so the sweep's population went to zero. Fixed by restoring the citation line to
+the new HANDOFF section + kickoff prompt; the full blast radius (every module reading
+HANDOFF/NEXT-SESSION-PROMPT: the two Acumen-reference modules, precommit_blocklist,
+standing_rules, state_docs) re-ran **119 passed**. Parity belt `-m parity`: **72 passed in
+15:08**. M2 module: **16 passed in ~37s**.
