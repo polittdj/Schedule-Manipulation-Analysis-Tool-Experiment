@@ -15641,3 +15641,14 @@ the new HANDOFF section + kickoff prompt; the full blast radius (every module re
 HANDOFF/NEXT-SESSION-PROMPT: the two Acumen-reference modules, precommit_blocklist,
 standing_rules, state_docs) re-ran **119 passed**. Parity belt `-m parity`: **72 passed in
 15:08**. M2 module: **16 passed in ~37s**.
+**Addendum (same session, second commit) — WP1 opened at the kickoff's reduced scope.**
+`tests/web/test_ui_control_effect_census.py`: the zoom/fit/pan control-effect census on the
+three Gantt pages — 12 tests ~37s, population computed from the served DOM (10 controls, all
+driven, clamp edges measured), census two-sided and mutation-proven by name (orphaned `evoPanL`
+and phantom `dpBogus` both red). One first-run red fixed honestly: the evolution floor-recovery
+drive needed 9 zoom-ins, not 6, to clear the 120px track floor on this corpus' short axis span.
+Verification scope for THIS commit (stated exactly): whole-tree ruff check + format (0.16.1 by
+absolute path), the two new browser modules green together, the doc-reading blast radius + drift
+guards green; the authoritative full-suite verdict for the PR head is CI's `test` matrix on
+#615 (the local 43-min suite ran green on the WP0 commit; this commit adds one self-contained
+test module + docs). No `src/` change — no version bump or installer rebuild owed (ADR-0148).
