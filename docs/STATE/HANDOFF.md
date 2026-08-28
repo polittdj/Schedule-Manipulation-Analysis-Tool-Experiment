@@ -1,125 +1,76 @@
-# Handoff — 2026-08-27 (the full-tool audit campaign is PLANNED and operator-approved; live UI defect reported on /path //driving-path //evolution; ADR-0439 still highest, v1.0.221)
+# Handoff — 2026-08-27 (POLARIS² audit campaign opened; WP0 live-defect chase CONFIRMED + FIXED: the Timescale config loaded unvalidated; ADR-0440, v1.0.222)
 
-> ## STATUS (current) — **AUDIT CAMPAIGN PLANNED (2026-08-27), operator-approved; the pasted campaign plan governs the next session. Docs-only close #613 MERGED @ `05abadc`; nothing else in flight.**
-> The operator re-issued the 2026-08-16 deep-dive directive with new emphasis on INTERACTIVE UI
-> (zoom, timescale), pass+fail tests for everything, a report, and a repair plan — and answered
-> the campaign questions: **SOLO lead · fix-as-verified · folder ask = BOTH builds** (labels AND
-> parent-folder → one-Project-per-sub-folder with an explicit confirm step). They also report a
-> **LIVE DEFECT on their installed v1.0.221**: `/path`, `/driving-path`, `/evolution` — "controls
-> do nothing" + "renders wrong".
+> ## STATUS (current) — **WP0 of the POLARIS² campaign is COMPLETE on branch `claude/polaris2-full-tool-audit-948whg` (draft PR open — VERIFY a pull_request CI run appears after each push; dispatch manually only if none does, see the WP4 ledger note).**
+> Highest ADR **0440**; version **1.0.222** (shipped code changed: `static/timescale.js`);
+> wheel + all nine installers rebuilt in lockstep. The campaign ledger is
+> **docs/STATE/AUDIT-2026-08-27.md** — appended per-WP, never batch-written; every row cites its
+> executable proof. Gate numbers at close: see the SESSION-LOG 2026-08-27 entry (recorded AFTER
+> the runs finished, QC-1). The campaign runs under QC-1/QC-2 —
+> ADR-0393, pinned by `tests/test_standing_rules.py`.
 >
-> ## Campaign facts already MEASURED (do not re-derive)
-> **Prime suspect, code-verified:** `timescale.js` merges `localStorage["sf.timescale.v1"]` with
-> **no validation** (`timescale.js:60-77`); `sizeFactor()=(Number(CFG.size)||100)/100` (`:731`);
-> the 25–1000 clamp exists ONLY on dialog edits (`:586`); consumers guard only non-positive; and
-> `persist.js` **deliberately exempts** the Timescale config from Reset-view AND launch wipes
-> (`persist.js:25,64`) — so a persisted truthy size outside range (1 → 0.01×, 100000 → 1000×)
-> reproduces BOTH symptoms on exactly the Gantt pages, invisibly to a fresh-profile probe. The
-> unclamped load path is a defect in its own right. Also measured: the three pages throw **zero
-> console/page errors** on a fresh profile (2-version golden data) · **zoom and the Timescale
-> dialog have ZERO behavioral coverage** — 27 interactive behaviors have no browser test driving
-> them (`#dpZoomIn/Out`, `#dpPlay`, `#evoPlay`, SRA paste-from-Excel, `#askBtn`, real
-> `#themeSelect` click: driven by NOTHING; the r11 pins freeze control BYTES, not effects) · the
-> dynamic route-coverage instrument was **never committed** and the 25-route adverse list exists
-> only as a count · route population moved **137 → 139** (+`GET /launch` covered,
-> +`POST /project/combine` one module) · `pair_series`/`pair_facts` HAVE tests (10+15) — "never
-> audited" means never proven-able-to-fail · `loader.py:1` docstring says 20, `MAX_FILES=100`.
+> ## The operator's multi-folder ask is ANSWERED — a decision, no longer a question
+> The 2026-08-27 kickoff carries the operator's choices for the whole campaign: **SOLO lead** ·
+> **fix-as-verified** · **BOTH folder-ask builds** (clearer labels AND the parent-folder →
+> one-Project-per-sub-folder confirm flow). The #611 carried-forward item is therefore CLOSED as
+> a question and queued as **WP5** (client-side in `home.js`, extends
+> `test_multi_folder_drop_browser.py`'s fake-entry machinery; the three measured folder-gesture
+> facts from 2026-08-21 still govern — do NOT re-derive them).
 >
-> ## Campaign work packages (the plan the operator holds; WP0 first)
-> WP0 live-defect matrix (state seeded via `add_init_script` — localStorage is read at parse
-> time) + timescale load-path clamp (red-first) + `tests/web/test_timescale_dialog_browser.py` +
-> open `docs/STATE/AUDIT-2026-08-27.md` → WP1 control-effect census → WP2 stateful flows +
-> theme/language modules → WP3 SRA grid edit/paste/save → WP4 committed
-> `tools/route_coverage.py` (opt-in `SF_ROUTE_COVERAGE=1`) + CI-outage investigation → WP5 folder
-> builds A+B → WP6 ledger rows (CPM-01/02, MC-02/03, MAN-01, REC-02 first) → WP7 thin dims
-> (`ai/txlog.py` Law-1 first; `model/_base.py` `hide_input_in_errors` CUI pin) → WP8 report +
-> repair roadmap. Every package ends commit-able; browser-job ceiling 25m (today ~9m).
+> ## What closed — WP0: the live defect the operator reported on v1.0.221 is root-caused and dead
+> Report: /path, /driving-path, /evolution — "controls do nothing" + "renders wrong".
+> **CONFIRMED-PLAUSIBLE-ROOT-CAUSE, mechanism CONFIRMED-FIXED (ADR-0440):** timescale.js merged
+> `localStorage["sf.timescale.v1"]` unvalidated (the 25–1000 Size clamp existed only on dialog
+> EDITS), every consumer guards only non-positive factors, and persist.js exempts the key from
+> every wipe BY DESIGN — so a persisted `size: 1` / `100000` / `"600000"` zoomed all three Gantt
+> pages 0.01×–6000× with ZERO console errors, invisible to a fresh-profile probe, surviving
+> Reset-view. A 13-cell × 3-page Playwright matrix (A0 baseline calibrated the oracles first)
+> reproduced BOTH symptoms on exactly those pages; a second defect fell out: a garbage tier
+> `units` CRASHED the render (`labelDef` lacked the fallback `UNITS` has) and /evolution
+> swallowed that crash into a misleading "Failed to load the path-evolution data." box.
+> **Fix:** load-path sanitizer (ranges coerce-then-clamp, enums must be members, color pinned to
+> `#rrggbb(aa)`) + the labelDef months-fallback belt; healing is in-memory, the dialog opens
+> showing the healed value. **Whether the operator's machine holds that state stays UNVERIFIABLE
+> until their reply** — the three-line ask (screenshot · console ·
+> `localStorage.getItem("sf.timescale.v1")`) is in the ledger's Phase-0 section.
 >
-> ## PRIOR STATUS (2026-08-25/26, kept for context) — PR #612 MERGED @ `30f90f1`.
-> Audit resume item 1's page-modules half is CLOSED and on `main`. Highest ADR **0439**; version
-> stays **1.0.221** — **`src/` was untouched** (tests + one pyproject comment block + state docs
-> only), so **no wheel/installer rebuild is owed** (ADR-0148) and there was no version bump.
-> All five checks were green on head `ebdcc4f` before the merge (check · browser 9m · floor 33m ·
-> test 3.11 56m · test 3.13 70m — the `test` pair is the slow one, carrying coverage + parity +
-> pip-audit on top of the suite, so budget ~75 min for a full CI verdict). Verified after the
-> merge: `docs/adr/0439-*.md` and **both** new guard modules are present on `main`, and the
-> escaping census re-ran **4 passed** against merged `main`.
->
-> **main moved under this branch TWICE in one arc** — docs-only **#609** and then **#611 @
-> ddca5d5** while CI was running, the latter conflicting all four state docs. Both times the
-> branch was **merge-resolved (never rebased)** and the rotation **re-done on the NEW main's
-> docs** rather than replayed over stale copies — which is what preserved #611's open operator
-> ask below. Expect this again: docs-only session closes land often and always touch these four
-> files.
->
-> ## RESOLVED 2026-08-27 — the operator's multi-folder ask (from #611): **BOTH builds chosen**
-> Clearer labels AND parent-folder → one-Project-per-sub-folder **with an explicit confirm step**
-> (never guessed). Scheduled as campaign WP5. The measured facts below still govern the build.
-> The operator wants
-> **ctrl/shift multi-select** for loading several folders. Three facts were MEASURED 2026-08-21 —
-> do NOT re-derive them: (1) the folder-picker DIALOG can never multi-select (`webkitdirectory`
-> overrides `multiple`, WICG entries-api #24); (2) **dropping N folders WORKS**, proven with real
-> Chrome entries via CDP `Input.dispatchDragEvent`; (3) **ctrl/shift on FILES already works today**
-> via "choose files…" — likely the whole answer for the .xer JUICE workflow. Two candidate builds
-> were offered and **the operator has NOT chosen**: clearer labels, or parent-folder pick → one
-> Project per sub-folder (which must ASK, never guess). Ask before building.
->
-> ## What closed — PAGE MODULES, the dimension that had never been audited at all
-> Question: what happens to an operator's activity name — legally `Pour slab <2m> & cure` — on the
-> way to a served page and to an exported workbook? **Verdict: CLEAN, and measured.** 81 scored
-> server responses · 33 rendered pages in real Chromium · 44 export archives — zero leaks. The
-> vendored JS builds its DOM with `createElement` + `textContent` (structurally immune); the NINE
-> non-clearing `innerHTML` sinks are static literals, already-escaped text (`home.js`'s `skipHint`),
-> host telemetry, or server-built HTML. Two standing censuses now hold it —
-> `tests/web/test_operator_content_escaping.py` and `tests/web/test_operator_content_dom_browser.py`
-> (auto-discovered by `tools/browser_modules.py`; **CI's `browser` job ran it green in 9m**).
->
-> **Believe the clean verdict only because both instruments were proven able to dirty it.** Both
-> first drafts said "clean" and both were WRONG to: the page census hand-wrote its route list, so
-> `/analysis` and `/wbs` (really `/{name}` routes) 404'd and **scored as escaped**, and every
-> parameterized route was skipped; the browser oracle's positive control injected into a `<td>`'s
-> own `innerHTML`, which cannot produce a row break at all. Mutation battery, all on the REAL
-> product, all red by name: `_e()` removed on the `analysis.py` activity row → `/analysis/{name}` ·
-> `path.js` `el()` `textContent`→`innerHTML` → `/path` + `/driving-path` (`img=5, onerror=5`) ·
-> `_esc()` neutered in both report writers → 6 unparseable archives · docx.py ONLY → 10 docx
-> exports · `_export_cell`'s status gate removed → `0.0/0.0/0.0` back in the EVM sheet.
->
-> ## The ledger itself was carrying a week-old lie
-> **MF-02 shipped as ADR-0411 and the row still read "Not yet implemented"** — and the kickoff
-> repeated it in the standing queue. Re-verified against the shipped workbook BYTES (cost-free file:
-> engine still `status=NA value=0.0`, cells read `''`), and corrected. An ADR-vs-queue census over
-> all 35 open row IDs found MF-02 was the **only** stale entry, so the rest of the queue is honest
-> — a LOWER bound, since an ADR can close a row without naming its ID.
+> ## New instrument — M2, the Timescale dialog's first behavioral coverage
+> `tests/web/test_timescale_dialog_browser.py` (16 tests, ~37s, auto-joins CI's browser job via
+> `tools/browser_modules.py`): open/tabs/preview · OK-commits-MEASURED-on-the-page-behind ·
+> Cancel-discards · Reset-restores · Escape · persistence + cross-page · corrupt-JSON fallback ·
+> the 8 load-path hardening pins including the A1/A2 matrix cells as FAIL-side tests. QC-1 chain:
+> all 8 observed RED on the pre-fix tree by name → 16/16 green → mutation battery red by name
+> (size clamp · tier sanitize · the labelDef belt separately — the belt mutation reproduced the
+> EXACT original pageerror text through the committed test · show/fy). Seed vacuity excluded by
+> the pre-fix reds themselves.
 >
 > ## Measured and deliberately NOT changed (do not "fix" these blind)
-> **6 dead E501 per-file-ignores** (`scurve`, `standards`, `brief`, `briefing`, `curves`,
-> `workbench` — two independent oracles agree): the stated policy attaches the exemption to what a
-> module IS, not what it currently contains, so removing them fights the intent and breaks the next
-> HTML edit · **`evolution.py`'s completed-on-path table renders `0%` for an absent activity** where
-> the cell beside it renders `—`, in a table whose heading asserts they completed — **measured
-> unreachable**, latent, reported not repaired (the `citations.reattach`/`pinned` shape).
+> **Legal 25% renders a 120px-floor /path track** — the dialog's own smallest choice, identical
+> geometry measured when chosen IN-dialog; a UI-map observation for WP1, not a defect ·
+> **`path_evolution.js:515`'s catch misattributes a render crash as a load failure** — with B2
+> fixed it is measured-unreachable; reported in the ledger, unrepaired · **/driving-path on TP4
+> opens on v5's legitimately empty corridor** with no "step back" hint — UI-map candidate.
 >
 > ## Traps paid for THIS session — check by name
-> **A hand-written route list turns 404s into "clean".** Any census over pages MUST enumerate from
-> the app object and MUST refuse to score a non-success response · **a positive control can be wrong
-> about WHERE the defect lands**: `</td></tr>` assigned to a `<td>`'s own `innerHTML` is discarded
-> by the parser, so the symptom only exists when a whole table STRING goes into a container ·
-> **a population floor placed before the substantive assertion reports the wrong cause** — the
-> export census counted only well-formed archives, so a corruption shrank the population and it
-> cried "enumerator broken"; a red for the wrong reason is not a red · **a half-covered guard reads
-> exactly like a whole one**: the export census built xlsx URLs only, leaving `docx.py`'s separate
-> `_esc` unguarded while its teeth test passed anyway.
+> **/driving-path opens on the NEWEST version, and TP4 v5's corridor for 11→26 is EMPTY** — the
+> matrix's first run flagged its own baseline until the probe learned to step back one version; a
+> red for the wrong reason is not a red · **the B2 crash lives in the tier REBUILD, not reliably
+> in first paint** — the hostile-tier test had to force a zoom reflow before asserting
+> `errors == []`, or the crash-channel assert passes vacuously · **localStorage is read at script
+> PARSE time** — only `context.add_init_script` seeds early enough; post-load seeding is vacuous
+> · **`Number("") === 0`** — an empty-string size would clamp to 25 instead of defaulting without
+> the explicit empty-string guard.
 >
-> ## Next
-> **Execute the campaign, WP0 first** (the operator holds and will paste the approved plan; this
-> handoff carries its essentials as backup). The old queue folds into it: docs/config/CI → WP7 ·
-> AI figure-gate adversarial pass + 25-route adverse gap → WP4/WP6 · remaining REPORTED rows →
-> WP6. Insufficient-Detail V05/V06 + TP2 stay BLOCKED and operator-owned — do NOT re-chase.
-> **Event-triggered CI is still NOT firing** (push/PR runs not created; `workflow_dispatch`
-> works — dispatch manually per push; investigation is in WP4).
->
-> ## Gate at close
-> See the SESSION-LOG 2026-08-25 entry for the numbers, recorded AFTER the runs finished (QC-1).
+> ## Next — the campaign queue (full plan in the kickoff + ledger skeleton)
+> **WP1** M1 control-effect census (population harvested from the served DOM; unknown
+> zoom/fit/pan/stepper control with no driver spec = RED; the 27-row UI map) → **WP2** M3
+> stateful flows + M5 theme/language → **WP3** M4 SRA grid/paste/save → **WP4** committed
+> route-coverage instrument + the CI event-trigger outage (dispatch manually per push until
+> root-caused) → **WP5** BOTH folder-ask builds → **WP6** ledger verify-or-refute (highs first:
+> CPM-01 · CPM-02 · MC-02 · MC-03 · MAN-01 · REC-02) → **WP7** thin dimensions (`ai/txlog.py`
+> first, Law 1) → **WP8** consolidated report + repair roadmap. Do-not-fix-blind rows unchanged
+> (MF-05, MC-01 parity leg, ADR-0417/0419 fixtures, `citations.reattach` pin, 6 dead E501s,
+> evolution 0% cell). Insufficient-Detail V05/V06 + TP2 stay BLOCKED and operator-owned — do NOT
+> re-chase.
 
 # (prior) handoffs — archived
 

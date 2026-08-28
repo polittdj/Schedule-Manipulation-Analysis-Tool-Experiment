@@ -435,6 +435,30 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-27 — a clamp that lives only on the EDIT path guards nothing the storage can say
+
+- The operator's "controls do nothing / renders wrong" on three Gantt pages was a persisted
+  `sf.timescale.v1` whose `size` never passed the dialog's 25–1000 clamp — because the clamp ran
+  only in the number input's `input` listener. The LOAD path merged storage with a null-check.
+  **Lesson: an invariant enforced at one entrance is not an invariant. Every boundary the value
+  can cross (dialog edit, storage load, future import) needs the same validator, or the weakest
+  one defines the real contract.**
+- The defect was invisible to every fresh-profile probe (zero console errors, state-borne) and
+  survived Reset-view BY DESIGN (persist.js exempts preferences). A reproduction matrix that
+  SEEDS hostile state via `context.add_init_script` found it in one pass — post-load seeding is
+  vacuous because the config is read at script parse time.
+- The matrix's first run flagged its own /driving-path BASELINE: the page opens on the newest
+  version and TP4 v5's corridor for 11→26 is legitimately empty. A red for the wrong reason is
+  not a red — the probe learned to step back one version before measuring.
+- The B2 crash (`labelDef` indexing `LABELS[bogus]` → `[]` → `defs[0].fn`) fires on the tier
+  REBUILD, not reliably inside the first-paint error-collection window: the committed test had to
+  FORCE a zoom reflow before asserting `errors == []`, or its crash channel passed vacuously —
+  found only because the belt-revert mutation failed to go red on the expected assert.
+- Two lookup tables driven by the same key had different fallbacks (`UNITS[x] || UNITS.months`
+  vs `LABELS[x] || []`). The pair is now consistent. **Grep for the sibling table when hardening
+  one.**
+
+
 ### 2026-08-27 — a byte-frozen control can be dead, and state that survives every reset is invisible to a fresh profile
 
 Planning the operator's full-tool audit surfaced two lessons before a line of campaign code was
@@ -464,6 +488,7 @@ written, both from measurement rather than misfortune.
   unrecoverable — the same "the hard-to-reach parts of an oracle are the parts most likely to be
   lost" failure ADR-0381 named. An instrument that produced a number the project still quotes
   MUST be committed with the number.
+
 
 ### 2026-08-26 — a green PR is not a finished one, and the babysitting interval should decay
 
