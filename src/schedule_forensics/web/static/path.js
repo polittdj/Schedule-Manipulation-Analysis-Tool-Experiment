@@ -42,6 +42,7 @@
   // axis to every traced activity; nudging the zoom slider switches to a fixed px (wide → scroll).
   var scopeAll = false; // true = span every path activity, not just the selected tier
   var fitFill = true; // true = auto-scale px so the span fills the page width; the zoom slider clears it
+  var pendingWholeFit = false; // ADR-0441: a fresh whole-schedule payload opens FITTED when huge
   var lastAxis = null, lastGrid = null, lastOn = null; // header built once; body repaints on filter
   var lastTable = null, lastScaleTh = null; // refs so a tier/zoom reflow rebuilds only the timeline
   var lastFrozenWidth = 0, refitting = false; // measured data-column width → the timeline fills the rest
@@ -153,6 +154,17 @@
     t1 += (Math.max(4, Math.round(span * 0.04)) + extraRightDays) * DAY_MS;
     var spanDays = Math.max(1, (t1 - t0) / DAY_MS);
     var slider = Number($("pathZoom").value);
+    // ADR-0441: "opens zoomed" (with the data date seated an inch in, ADR-0438) is right for a
+    // season-scale schedule and useless for a decade-scale one — at the default 8 px/day a
+    // 4,500-day span is a ~36,000px track (~38 pages) whose visible slice is almost always
+    // empty. A whole-schedule view whose zoomed track would exceed SIXTEEN pages opens fitted
+    // instead; anything shorter keeps the zoomed-and-seated opening (a ~2.5-year schedule is
+    // ~7.5 pages — measured operator-approved territory, ADR-0438), and the slider and Fit
+    // rezoom freely either way.
+    if (pendingWholeFit) {
+      pendingWholeFit = false;
+      if (spanDays * (slider > 0 ? slider : 8) > 16 * availWidth()) fitFill = true;
+    }
     // the Timescale dialog's Size % scales the timeline in BOTH modes: fitFill establishes the
     // page-fill baseline, then Size multiplies it (so Size works even when fitted to the page).
     var size = window.SFTimescale ? window.SFTimescale.sizeFactor() : 1;
@@ -376,6 +388,13 @@
     lastGrid = SFGantt.gridLines(axis);
     lastScaleTh.textContent = "";
     lastScaleTh.appendChild(SFGantt.buildTierScale(axis, "path-scale", data.data_date));
+    // ADR-0441: SFColResize pinned this th's inline width at ATTACH time (render only). Under
+    // table-layout:fixed a reflow'd scale otherwise floats inside the stale column — after Fit
+    // the operator's 12-year view kept a 40,104px column around a 969px track, with the pane
+    // still scrolled into the dead space. The column must follow the axis on every reflow.
+    lastScaleTh.style.width = axis.width + "px";
+    lastScaleTh.style.minWidth = axis.width + "px";
+    lastScaleTh.style.maxWidth = axis.width + "px";
     paintRows();
     refitToColumns(assumed);
     maybeSeat(); // one-shot data-date seat, after the load's final paint
@@ -662,6 +681,7 @@
     updateExportLinks();
     scopeAll = posture === "whole"; // the default view spans every activity by definition
     fitFill = posture !== "whole"; // a fresh trace auto-scales; the whole view opens zoomed
+    pendingWholeFit = posture === "whole"; // …unless the span dwarfs the page (ADR-0441)
     seatPending = true; // seat the data date after the (re)paint settles
     render();
   }
@@ -785,7 +805,18 @@
     clearTimeout(pathFilterTimer);
     pathFilterTimer = setTimeout(paintRows, 140);
   });
-  $("pathZoom").addEventListener("input", function () { fitFill = false; reflow(); });
+  // ADR-0441: a slider drag fires dozens of input events and each rebuild is O(rows × gridlines)
+  // — measured 4-6 s per rebuild at an operator-scale 2,280 rows, which reads as a dead page.
+  // The burst coalesces into one trailing rebuild.
+  // ADR-0441: a slider drag fires dozens of input events and each rebuild is O(rows × gridlines)
+  // — measured 4-6 s per rebuild at an operator-scale 2,280 rows, which reads as a dead page.
+  // The burst coalesces into one trailing rebuild.
+  var pathZoomTimer;
+  $("pathZoom").addEventListener("input", function () {
+    fitFill = false;
+    clearTimeout(pathZoomTimer);
+    pathZoomTimer = setTimeout(reflow, 120);
+  });
   // the Timescale dialog's OK repaints the timeline with the new tiers/size/shading
   window.addEventListener("sf-timescale", function () { if (data) reflow(); });
   var pathFit = $("pathFit");

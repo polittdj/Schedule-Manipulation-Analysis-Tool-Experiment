@@ -15704,3 +15704,37 @@ absolute path), the two new browser modules green together, the doc-reading blas
 guards green; the authoritative full-suite verdict for the PR head is CI's `test` matrix on
 #615 (the local 43-min suite ran green on the WP0 commit; this commit adds one self-contained
 test module + docs). No `src/` change — no version bump or installer rebuild owed (ADR-0148).
+## 2026-08-28 — WP0 addendum: the operator's evidence flipped the chase to SCALE; three rendering defects fixed (ADR-0441, v1.0.223)
+
+Branch `claude/polaris2-full-tool-audit-948whg` restarted from `origin/main` @ `2fbde95e` (PR #615
+squash-merged by the operator 19:19 UTC; post-squash hygiene applied). The operator then answered
+the ADR-0440 three-line ask: **clean default `sf.timescale.v1`, `sf-ui:/path` null, console
+clean** → the A-row is REFUTED for their machine (the sanitizer stands as hardening). Their
+screenshots (12.3-year, 2,301-activity IPMR) re-aimed the chase at span/scale.
+
+**Reproduced pre-fix on a synthetic 2,280-task look-alike:** after Fit, 1,918 bars painted in a
+969px track inside a **40,104px column** (SFColResize sizes the `.g-head` th only at ATTACH;
+`reflow()` never re-pins it), pane scrolled 24,206px into dead space (track rect left −24,205px)
+· fitted months tier **165 bands / 0 labeled / 5.9px** (the operator's picket fence; no unit
+promotion) · no-target /path opened a ~38-page track with ~0 marks visible · slider input froze
+**5,692 ms per event** · DOM 427,795 nodes.
+
+**Fixed (ADR-0441):** reflow re-pins the timeline th to the axis · density adaptation in
+timescale.js (`MIN_BAND_PX=14`, render-only promotion months→quarters→…, adjacent-equal tiers
+drop; gridlines follow) · whole-schedule opens FITTED above 16 pages (3× first try broke the
+ADR-0438 seat contract on a 7.5-page schedule — caught by `test_path_whole_schedule_browser`,
+re-anchored) · 120 ms slider debounce. Post-fix at 2,280 rows: opens fitted 969px, slider
+handler 0 ms, Fit 1,417 ms one-shot (S5 CONFIRMED-DEFERRED, priced M: windowed paintRows), DOM
+176,829.
+
+**Instruments:** `tests/web/test_long_span_gantt_browser.py` (4 RED pre-fix by name: th 26,200px
+vs scale 489px · 26,200px opening track · 108 bands/0 labeled/4.5px · 6 events = 6 rebuilds; +
+months-return PASS pin) · fixture `TP5_LongSpan_Synthetic.xml` (provenance-pinned). Five-mutation
+battery red by name (A th-pin, B promotion off, C flag off — re-proven after the threshold
+change, D debounce off, E over-promotion → the PASS pin fired). Regression sweep over the
+affected neighbourhood: 106 passed + the seat module green after the 16× re-anchor.
+
+**Shipped:** v1.0.223; wheel + nine installers rebuilt in lockstep. Ledger Phase-0 addendum rows
+S1–S5.
+
+**Gate at close (recorded AFTER the runs finished, QC-1):** statics green whole-tree (ruff 0.16.1 by absolute path · `ruff format --check` 1,094 files · mypy strict 158 files · bandit exit 0 · `node --check` per file); full suite **4,465 passed / 5 known env-gated skips / 1 failed in 29:29** — the one red was `test_the_seven_page_owned_scripts_are_byte_frozen` on path.js, the DELIBERATE ADR-0441 edit, re-baselined same-commit with the old→new hash derivation in the pin comment (the kickoff's rule), r11 module re-run **25 passed** after; parity `-m parity` **72 passed in 9:00**; installer suite **68 passed** (lockstep, v1.0.223 wheel); drift guards 12 passed.
