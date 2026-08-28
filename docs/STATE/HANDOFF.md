@@ -1,6 +1,41 @@
-# Handoff — 2026-08-25/26 (page modules audited for the first time: operator content is DATA, not markup; ADR-0439, v1.0.221 — MERGED @ 30f90f1)
+# Handoff — 2026-08-27 (the full-tool audit campaign is PLANNED and operator-approved; live UI defect reported on /path //driving-path //evolution; ADR-0439 still highest, v1.0.221)
 
-> ## STATUS (current) — **PR #612 MERGED @ `30f90f1` (2026-08-26 15:27 UTC). NOTHING IS IN FLIGHT.**
+> ## STATUS (current) — **AUDIT CAMPAIGN PLANNED (2026-08-27), operator-approved; the pasted campaign plan governs the next session. Docs-only close #613 MERGED @ `05abadc`; nothing else in flight.**
+> The operator re-issued the 2026-08-16 deep-dive directive with new emphasis on INTERACTIVE UI
+> (zoom, timescale), pass+fail tests for everything, a report, and a repair plan — and answered
+> the campaign questions: **SOLO lead · fix-as-verified · folder ask = BOTH builds** (labels AND
+> parent-folder → one-Project-per-sub-folder with an explicit confirm step). They also report a
+> **LIVE DEFECT on their installed v1.0.221**: `/path`, `/driving-path`, `/evolution` — "controls
+> do nothing" + "renders wrong".
+>
+> ## Campaign facts already MEASURED (do not re-derive)
+> **Prime suspect, code-verified:** `timescale.js` merges `localStorage["sf.timescale.v1"]` with
+> **no validation** (`timescale.js:60-77`); `sizeFactor()=(Number(CFG.size)||100)/100` (`:731`);
+> the 25–1000 clamp exists ONLY on dialog edits (`:586`); consumers guard only non-positive; and
+> `persist.js` **deliberately exempts** the Timescale config from Reset-view AND launch wipes
+> (`persist.js:25,64`) — so a persisted truthy size outside range (1 → 0.01×, 100000 → 1000×)
+> reproduces BOTH symptoms on exactly the Gantt pages, invisibly to a fresh-profile probe. The
+> unclamped load path is a defect in its own right. Also measured: the three pages throw **zero
+> console/page errors** on a fresh profile (2-version golden data) · **zoom and the Timescale
+> dialog have ZERO behavioral coverage** — 27 interactive behaviors have no browser test driving
+> them (`#dpZoomIn/Out`, `#dpPlay`, `#evoPlay`, SRA paste-from-Excel, `#askBtn`, real
+> `#themeSelect` click: driven by NOTHING; the r11 pins freeze control BYTES, not effects) · the
+> dynamic route-coverage instrument was **never committed** and the 25-route adverse list exists
+> only as a count · route population moved **137 → 139** (+`GET /launch` covered,
+> +`POST /project/combine` one module) · `pair_series`/`pair_facts` HAVE tests (10+15) — "never
+> audited" means never proven-able-to-fail · `loader.py:1` docstring says 20, `MAX_FILES=100`.
+>
+> ## Campaign work packages (the plan the operator holds; WP0 first)
+> WP0 live-defect matrix (state seeded via `add_init_script` — localStorage is read at parse
+> time) + timescale load-path clamp (red-first) + `tests/web/test_timescale_dialog_browser.py` +
+> open `docs/STATE/AUDIT-2026-08-27.md` → WP1 control-effect census → WP2 stateful flows +
+> theme/language modules → WP3 SRA grid edit/paste/save → WP4 committed
+> `tools/route_coverage.py` (opt-in `SF_ROUTE_COVERAGE=1`) + CI-outage investigation → WP5 folder
+> builds A+B → WP6 ledger rows (CPM-01/02, MC-02/03, MAN-01, REC-02 first) → WP7 thin dims
+> (`ai/txlog.py` Law-1 first; `model/_base.py` `hide_input_in_errors` CUI pin) → WP8 report +
+> repair roadmap. Every package ends commit-able; browser-job ceiling 25m (today ~9m).
+>
+> ## PRIOR STATUS (2026-08-25/26, kept for context) — PR #612 MERGED @ `30f90f1`.
 > Audit resume item 1's page-modules half is CLOSED and on `main`. Highest ADR **0439**; version
 > stays **1.0.221** — **`src/` was untouched** (tests + one pyproject comment block + state docs
 > only), so **no wheel/installer rebuild is owed** (ADR-0148) and there was no version bump.
@@ -17,8 +52,10 @@
 > ask below. Expect this again: docs-only session closes land often and always touch these four
 > files.
 >
-> ## CARRIED FORWARD, STILL UNRESOLVED — the operator's multi-folder ask (from #611)
-> **This is the live operator item; the audit work below does not displace it.** The operator wants
+> ## RESOLVED 2026-08-27 — the operator's multi-folder ask (from #611): **BOTH builds chosen**
+> Clearer labels AND parent-folder → one-Project-per-sub-folder **with an explicit confirm step**
+> (never guessed). Scheduled as campaign WP5. The measured facts below still govern the build.
+> The operator wants
 > **ctrl/shift multi-select** for loading several folders. Three facts were MEASURED 2026-08-21 —
 > do NOT re-derive them: (1) the folder-picker DIALOG can never multi-select (`webkitdirectory`
 > overrides `multiple`, WICG entries-api #24); (2) **dropping N folders WORKS**, proven with real
@@ -74,13 +111,12 @@
 > `_esc` unguarded while its teeth test passed anyway.
 >
 > ## Next
-> **The operator's multi-folder ask above comes first** (it needs a CHOICE, not a build). Then
-> **docs/config/CI**, still the open audit dimension — it got only a partial pass here (CLAUDE.md's
-> gate verified against `ci.yml` and `[tool.mypy]`; two stale pyproject comments fixed); the hooks,
-> the installer workflow, `constraints/` and the docs guards are untouched. Then: the AI figure-gate
-> adversarial pass · the 25-route adverse gap (report as 25 <= gap <= 66) · the remaining REPORTED
-> rows (MF-02 now removed from that list). Insufficient-Detail V05/V06 + TP2 stay BLOCKED and
-> operator-owned — do NOT re-chase.
+> **Execute the campaign, WP0 first** (the operator holds and will paste the approved plan; this
+> handoff carries its essentials as backup). The old queue folds into it: docs/config/CI → WP7 ·
+> AI figure-gate adversarial pass + 25-route adverse gap → WP4/WP6 · remaining REPORTED rows →
+> WP6. Insufficient-Detail V05/V06 + TP2 stay BLOCKED and operator-owned — do NOT re-chase.
+> **Event-triggered CI is still NOT firing** (push/PR runs not created; `workflow_dispatch`
+> works — dispatch manually per push; investigation is in WP4).
 >
 > ## Gate at close
 > See the SESSION-LOG 2026-08-25 entry for the numbers, recorded AFTER the runs finished (QC-1).

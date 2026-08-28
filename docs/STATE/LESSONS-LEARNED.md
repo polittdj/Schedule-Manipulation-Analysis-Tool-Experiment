@@ -435,6 +435,36 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-27 — a byte-frozen control can be dead, and state that survives every reset is invisible to a fresh profile
+
+Planning the operator's full-tool audit surfaced two lessons before a line of campaign code was
+written, both from measurement rather than misfortune.
+
+- **A byte-freeze pin proves the control EXISTS; it proves nothing about what it DOES.** The
+  operator named zoom and timescale as broken. The census found the r11 contract freezes those
+  controls' form bytes (md5 + length) and their script bytes — and that **zero** browser tests
+  drive them: `#dpZoomIn`/`#dpZoomOut` appear in no test even as strings, `#dpPlay`/`#evoPlay`
+  autoplay is driven by nothing, every four-theme test sets `data-theme` with `setAttribute`
+  instead of clicking the real `#themeSelect`, and the SRA paste-from-Excel handler has never been
+  executed. Twenty-seven interactive behaviors sit under passing pins. JS-01 (ADR-0416) already
+  taught that a client contract can rot while server tests stay green; the general form is: **the
+  suite's unit of proof must be the EFFECT of a real gesture (a measured box/DOM change), not the
+  presence or bytes of the control.** That is what the campaign's control-effect census exists to
+  make standing.
+- **Persisted state that deliberately survives every reset is exactly the state a clean probe
+  cannot see.** The three broken pages rendered error-free in a fresh Chromium profile — because
+  the prime suspect, `localStorage["sf.timescale.v1"]`, is merged unvalidated at script parse
+  time, is exempted BY DESIGN from Reset-view and launch wipes, and its 25–1000 clamp exists only
+  on dialog edits. A persisted `size: 1` or `size: 100000` reproduces both reported symptoms on
+  every Gantt page. Two rules from this: when a user reports "broken on my machine" and the fresh
+  probe is clean, **enumerate the state that persists across their resets first**; and any test
+  seeding such state must use `context.add_init_script` — seeding after `goto` is too late (the
+  module reads localStorage at parse time) and passes vacuously.
+- Also banked: the 2026-08-18 coverage instrument existed only in a session scratchpad and is
+  unrecoverable — the same "the hard-to-reach parts of an oracle are the parts most likely to be
+  lost" failure ADR-0381 named. An instrument that produced a number the project still quotes
+  MUST be committed with the number.
+
 ### 2026-08-26 — a green PR is not a finished one, and the babysitting interval should decay
 
 **#612 sat green, mergeable and unreviewed for ~19 hours** before the operator marked it ready and
