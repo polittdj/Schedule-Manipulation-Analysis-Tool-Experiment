@@ -435,6 +435,33 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-31 — A census driver's first real click found two features that never worked; free text can never be a control signature
+
+- WP1's new drivers clicked controls the byte-pins had frozen for months — and two families
+  were dead on arrival: the column-resize grips laid out 7×0px (Chromium ignores
+  top/bottom/%-height on abs-pos children of table cells — sticky OR relative), and the
+  sticky proxy scrollbar tracked content only when the async table fetch happened to beat the
+  DOMContentLoaded auto-attach. Both sat under green suites because the pins froze BYTES and
+  the docstrings CLAIMED "Chromium-verified" with no committed browser half. The lesson: a
+  feature is not verified until a synthetic pointer has moved the measured world; a passing
+  byte-pin over a dead feature is worse than no test — it certifies the corpse.
+- The first census harvest matched project cards on "/" because a schedule NAME contained
+  "Fit-Out", help prose matched via "dis-play" and "s-pan", and `tooltips.js` had moved every
+  `title=` into `data-sf-title` at load. A control-family recognizer must run on structural
+  vocabulary only (id + className), with `pan(?!d)` to keep "expand" out — free text is
+  operator data, and matching it makes the census's population depend on the schedule loaded.
+- Two timing races only differed by 100–500 ms of wait: the sticky driver failed at
+  1200/600 ms and passed at 1500/700 ms. The fix was not a longer wait — it was finding the
+  race (attach-time `firstElementChild` observation) and removing it. A test that needs a
+  lucky wait is measuring the race, not the feature.
+- `tbody.innerHTML = ""` collapses the pane's content height and the browser clamps scrollTop
+  to 0 BEFORE the repaint reads it — so the S5 window could never leave the top, and every
+  pre-fix repaint had silently been losing the operator's scroll position. Capture the scroll
+  state before a destructive DOM clear, compute from the capture, restore after.
+- A mutation battery piped through `head` gets SIGPIPE-killed mid-mutation: the second run
+  died right after P1's mutation and left `if (1) return;` in app.js — caught only because
+  `git status` was checked afterward. Never pipe a battery's output; always diff the tree
+  after a restore chain.
 ### 2026-08-28 — the reporter's machine is a dimension of the matrix, and "everything painted" can still be "nothing visible"
 
 - The ADR-0440 chase reproduced BOTH reported symptoms perfectly — via a mechanism the

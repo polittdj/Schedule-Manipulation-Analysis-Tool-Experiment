@@ -15738,3 +15738,79 @@ affected neighbourhood: 106 passed + the seat module green after the 16× re-anc
 S1–S5.
 
 **Gate at close (recorded AFTER the runs finished, QC-1):** statics green whole-tree (ruff 0.16.1 by absolute path · `ruff format --check` 1,094 files · mypy strict 158 files · bandit exit 0 · `node --check` per file); full suite **4,465 passed / 5 known env-gated skips / 1 failed in 29:29** — the one red was `test_the_seven_page_owned_scripts_are_byte_frozen` on path.js, the DELIBERATE ADR-0441 edit, re-baselined same-commit with the old→new hash derivation in the pin comment (the kickoff's rule), r11 module re-run **25 passed** after; parity `-m parity` **72 passed in 9:00**; installer suite **68 passed** (lockstep, v1.0.223 wheel); drift guards 12 passed.
+
+## 2026-08-31 — POLARIS² WP1 COMPLETE: the sitewide control census + three defects it caught, fixed (ADR-0442, v1.0.224)
+
+Branch `claude/polaris2-audit-wp1-gkhubc` (from `origin/main` @ `d56ad3f9`). WP1 = full M1
+census + the S5 windowed-paintRows deferral.
+
+**The census went sitewide and computed** (`tests/web/test_ui_control_effect_census.py`, 57
+tests ~2:30): 34 page states — 33 HTML GET routes enumerated from the app's route table (the
+ADR-0439 method) + the `/driving-path?trace` state — × in-family controls exactly (65 id'd +
+358 id-less: 220 chartframe `cf-btn:aria-label` identities on 55 bars, 138 `sf-frame` stepper
+buttons) × 8 structural floor families (76 chart hosts · 55 cf-bars · 109+33 legend · 49 grips
+· 7 sticky proxies · 267 sf-drill · 180 enlarge) + zero pageerrors on every page. The family
+recognizer runs on id+className ONLY — measured false-positives ruled out free text ("Fit-Out"
+in a schedule name; "dis-play"/"s-pan" in prose; `tooltips.js` moves `title=` to
+`data-sf-title` at load; `pan(?!d)` excludes "expand"). Every id maps to a driver test (a
+meta-guard reddens a typo'd name) or an explicit `WP2:M3`/`WP2:M5` deferral (47 steppers).
+New drivers with measured oracles: /analysis `#zoomIn/#zoomOut/#fitBtn` · /sra
+`#ssiGridZoom/#ssiGridFit` · Timescale Size% ~2.0× on all five consumer pages (seeded
+`add_init_script`) · chartframe zoom/Reset (125%→100%) + full-screen enter/leave · legend
+toggle + show-all round trips · column drag-resize (real mouse) · sticky-scrollbar mirror AND
+drive · bar-click drill open/populate/Escape · enlarge-then-print (overlay → `static` under
+print media; `[data-noprint]`/`.cf-bar` hidden).
+
+**Three defects the drivers caught on their first run — all CONFIRMED-FIXED red-first:**
+- **UI-01** column drag-resize grips laid out **7×0px** (Chromium ignores top/bottom/%-height
+  on abs-pos children of table cells) at the cell's static position — unhittable since the
+  feature shipped, under passing byte-pins. Fix: `SFColResize.sizeGrip` measured geometry
+  (explicit px height + measured offset correction), re-run per attach and after each drag.
+- **UI-02** `stickyScrollbar` observed only the pane + the attach-time firstElementChild; the
+  async-fetched table was usually absent at DOMContentLoaded, so the proxy tracked zooms only
+  by race (measured: inner 1118px vs pane 8747px = dead slider; a 1500/700ms probe passed
+  while the 1200/600ms driver failed deterministically). Fix: a childList observer adopts the
+  table whenever it (re)appears.
+- **S5** one-shot `paintRows` at 2,280 generated rows: **1,623 ms median → 49 ms** (sorted x5
+  pre 687/1230/1623/2114/2332, post 31/45/49/50/73), first paint 7.8s → 0.5s, DOM 104,728 →
+  19,066 nodes. Stage decomposition by in-page no-op located the cost first (freezeColumns
+  ~873 · gridlines ~637 · nonwork ~536 · residual ~402 ms). Windowed slice ±40 rows at ≥400
+  rows, flat output only; spacers re-trued to the measured pitch; scrollTop captured before
+  the tbody clear (the clear clamps it to 0 — pre-fix repaints silently lost the position
+  too) and restored after; full-paint escapes pinned for groups / Show-links / Find /
+  beforeprint. Threshold 400 anchored between TP5's 121 (3.3× below) and the operator's 2,301
+  (5.8× above); all 18 pre-existing browser tests green (the neighbour-suite veto).
+
+**Proof chains:** S5 module observed RED pre-fix by name (3 fails + 2 PASS-side pins) → 5/5
+green → 5-mutation battery red by name (threshold 400→100 fired the small-grid pin ·
+find-escape · links-guard · scroll-capture · scroll-re-aim). Census: 17-mutation battery red
+by name (7 census halves: deleted id / phantom / anon count / floor / deleted page / bogus
+page / typo'd driver · 10 driver falsifications: stepZoom, fitToWidth, sra listener,
+fitToProject, sizeFactor→1, cf setZoom, fs handler, legend apply, drill open, print is-big
+rule). Pre-fix reds recorded for UI-01 (grip never visible) and UI-02 (proxy pinned at 0).
+
+**New instruments:** the census (57) · `tests/web/scale_schedule.py` (deterministic row-scale
+MSPDI generator — the ROW-COUNT axis; TP5 remains the SPAN axis) ·
+`tests/web/test_path_row_windowing_browser.py` (5 tests, 900/300 generated rows). Both new
+browser modules auto-discovered by `tools/browser_modules.py` (verified in its output).
+
+**Re-baselines (same commit, derivations in the pin comments):** `path.js`
+975d978d… → 3ad07eef… (ADR-0442 S5) · `gantt.js` 5132b5bc… → fdc01147… (ADR-0442 UI-02), both
+in `test_r11_panel_contract.py::PAGE_SCRIPTS`; module re-run 25 passed.
+
+**Deliberately NOT fixed (ledger WP1 section):** /mission 30 hosts vs 9 cf-bars (the 21 async
+tiles are never framed — WP2:M5 design question, floor-pinned) · the Name column's 200px CSS
+floor and Chromium's ~53px min-content floor both out-floor the JS 28px clamp (documented in
+the driver) · the stale "Chromium-verified" docstring claims in
+`test_gantt_sticky_scrollbar.py`/`test_bar_drill.py` are now made true by the census.
+
+**Shipped:** v1.0.224; wheel + nine installers rebuilt in lockstep (the shallow clone's mpxj
+graft-boundary artifact cleared by `git fetch --deepen=300`; true last touch 42d92dc9).
+
+**Gate at close (recorded AFTER the runs finished, QC-1):** statics green whole-tree (ruff
+0.16.1 by absolute path — the 0.15.8 PATH shadow is still live in this container · `ruff
+format --check` 1,096 files · mypy strict 158 files · bandit exit 0 · `node --check` per
+file); full suite **4,516 passed / 5 known env-gated skips / 0 failed in 30:38** (was 4,465 —
+the census grew 12 → 57 and the windowing module added 5); parity `-m parity` **72 passed in
+8:33**; drift guards 12 passed; census mutation battery 17/17 red by name + windowing battery
+5/5 + the recorded pre-fix reds (S5 ×3, UI-01 grip timeout, UI-02 proxy pinned at 0).
