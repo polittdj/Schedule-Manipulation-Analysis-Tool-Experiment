@@ -384,11 +384,45 @@
     if (opts.y2Label) caption(svg, geom.R - 4, geom.T + 9, opts.y2Label, "end");
   }
 
+  // Charts that arrive AFTER the one-shot scan. scan() ran once at DOMContentLoaded, so a
+  // .chart-host whose contents are fetched later never got a toolbar: on the Mission wall that
+  // was 21 of 30 tiles, framed or not purely by whether their fetch beat the boot (audit M5-01).
+  // It is the same attach-vs-fetch race WP1 fixed for the sticky scrollbar (UI-02), and the same
+  // cure — adopt new hosts as they appear instead of trusting one moment in the page's life.
+  // frame() is idempotent (__cfFramed), so the extra pass its OWN insertions trigger finds
+  // nothing to do and the observer settles after one no-op scan rather than looping.
+  var rescanQueued = false;
+  function queueScan() {
+    if (rescanQueued) return;
+    rescanQueued = true;
+    var run = function () { rescanQueued = false; scan(); };
+    if (window.requestAnimationFrame) window.requestAnimationFrame(run);
+    else window.setTimeout(run, 16);
+  }
+  function watchForLateCharts() {
+    if (!window.MutationObserver || !document.body) return;
+    new MutationObserver(function (records) {
+      for (var i = 0; i < records.length; i++) {
+        var added = records[i].addedNodes;
+        for (var j = 0; j < added.length; j++) {
+          var n = added[j];
+          if (!n || n.nodeType !== 1) continue;
+          if ((n.classList && n.classList.contains("chart-host")) ||
+              (n.querySelector && n.querySelector(".chart-host"))) {
+            queueScan();
+            return;
+          }
+        }
+      }
+    }).observe(document.body, { childList: true, subtree: true });
+  }
+
   window.SFChartFrame = { frame: frame, scan: scan, axisTitles: axisTitles };
 
+  function boot() { scan(); watchForLateCharts(); }
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", scan);
+    document.addEventListener("DOMContentLoaded", boot);
   } else {
-    scan();
+    boot();
   }
 })();

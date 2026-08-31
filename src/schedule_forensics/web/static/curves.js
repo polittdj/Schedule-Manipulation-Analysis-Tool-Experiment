@@ -246,6 +246,11 @@
       play.textContent = "⏸ Pause all";
     });
     stepBtn.addEventListener("click", stepAll);
+    // Register with the ADR-0275 coordinator so a manual click on any per-chart control halts
+    // this master. /curves never did (audit M3-02) — its Play-all outlived every chart's own
+    // Stop. Same order-independent idiom as trend.js and mission.js.
+    (window.SFPlayAll = window.SFPlayAll ||
+      { _pending: [], register: function (f) { this._pending.push(f); } }).register(stop);
   }
 
   // E: a clickable, keyboard-operable show/hide legend for the overlaid line families. Each entry

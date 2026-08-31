@@ -339,8 +339,12 @@
       play.textContent = "⏸ Pause all";
     });
     stepBtn.addEventListener("click", stepAll);
-    // register this page master so a manual click on any per-chart control halts it (ADR-0275).
-    if (window.SFPlayAll) window.SFPlayAll.register(stop);
+    // Register this page master so a manual click on any per-chart control halts it (ADR-0275).
+    // This ran after a fetch resolved, so the old `if (window.SFPlayAll)` guard happened to be
+    // true — /trend was the only page where the coordinator worked, and only by that accident.
+    // The order-independent idiom removes the accident.
+    (window.SFPlayAll = window.SFPlayAll ||
+      { _pending: [], register: function (f) { this._pending.push(f); } }).register(stop);
     panel.parentNode.insertBefore(bar, panel);
   }
 

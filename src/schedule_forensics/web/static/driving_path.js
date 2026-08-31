@@ -232,6 +232,13 @@
   $("dpNext").addEventListener("click", function () { stopPlay(); step(1); });
   $("dpPlay").addEventListener("click", function () {
     if (timer) { stopPlay(); return; }
+    // A2: honor prefers-reduced-motion — advance one version, don't run a timer. Every other
+    // animated module (cei, scurve, drift, volatility, performance, path_evolution, trend,
+    // curves, mission) has carried this branch; the corridor was the ONE animated surface that
+    // ignored the setting and auto-flipped five versions regardless (audit M3-03).
+    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      step(1); return;
+    }
     idx = 0; render(); $("dpPlay").innerHTML = "&#9208; Pause";
     timer = setInterval(function () {
       if (idx >= versions.length - 1) { stopPlay(); return; }
