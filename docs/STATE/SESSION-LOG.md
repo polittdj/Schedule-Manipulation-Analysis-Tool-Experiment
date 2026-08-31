@@ -15855,6 +15855,12 @@ the census grew 12 → 57 and the windowing module added 5); parity `-m parity` 
 - Red-first observed: M3 **5 failed / 54 passed**; M5 **3 failed / 5 passed**.
 - Green: M3 **59/59**, M5 **8/8**, redirect guard **10/10**, census **57/57**.
 - **Mutation battery: 19 mutations, every one RED BY NAME.**
+- **Definitive full suite on the SHIPPED tree: 4598 passed, 5 skipped, 0 failed (41:58).** Run to
+  completion on the frozen tree and verified to describe it: `git status` empty and
+  `git diff HEAD` empty at the moment the run finished, with the working tree, `HEAD` and the
+  pushed ref all at `e355cd58`. This is the gate number for what shipped — the earlier figures in
+  this entry describe trees that were superseded, and quoting one of those as current is the
+  mistake that let a regression onto the branch.
 - **The first push was RED on CI, and every failure was this change's.** Full local suite on the
   as-pushed tree: **16 failed / 4578 passed**. Causes: (a) a regression I introduced by re-applying
   only HALF of `chartframe.js` after the `git checkout --` restore, so `mission.js`'s stub survived

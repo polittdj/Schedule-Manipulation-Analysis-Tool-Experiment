@@ -38,6 +38,10 @@
 > list, so a new animated module is RED by default, plus a guard that fails on a stale exemption.
 >
 > ## Proof
+> **Definitive full suite on the SHIPPED tree (`e355cd58`): 4598 passed, 5 skipped, 0 failed**
+> (41:58) — run to completion on the frozen tree, with `git status` and `git diff HEAD` both empty
+> and the working tree, `HEAD` and the pushed ref all at that sha, so the number describes what
+> shipped rather than a tree that has moved on.
 > Red-first observed: M3 **5 failed / 54 passed**, M5 **3 failed / 5 passed**. **19-mutation
 > battery, every one RED BY NAME** — including the chart oracle proved independently of the label
 > oracle, and the coordinator's `isTrusted` check (whose removal would make Play-all halt on its
