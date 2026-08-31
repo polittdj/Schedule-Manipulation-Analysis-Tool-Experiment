@@ -340,11 +340,33 @@ window.SFGantt = (function () {
     bar.addEventListener("scroll", fromBar, { passive: true });
     window.addEventListener("scroll", place, { passive: true });
     window.addEventListener("resize", function () { measure(); place(); }, { passive: true });
-    // re-measure when the pane's content changes size (zoom, filter, repaint)
+    // Re-measure when the pane's content changes size (zoom, filter, repaint). The pane's own
+    // box rarely resizes (it sits at its max-height), so the CONTENT — the Gantt table — is
+    // what must be observed. But the auto-init attaches at DOMContentLoaded, and every page
+    // script builds its table from an async fetch: at attach time the pane is usually EMPTY,
+    // so observing only the attach-time firstElementChild made the proxy race-dependent —
+    // whichever pane's fetch happened to land before boot() tracked zooms, every other pane's
+    // proxy went stale on its first zoom and read as a dead slider (measured on /path, WP1
+    // 2026-08-31: inner width pinned at the fitted 1118px while the zoomed pane scrolled
+    // 8747px). A childList observer adopts the table whenever it (re)appears.
     if (window.ResizeObserver) {
       var ro = new ResizeObserver(function () { measure(); place(); });
       ro.observe(pane);
-      if (pane.firstElementChild) ro.observe(pane.firstElementChild);
+      var observedChild = null;
+      function adoptChild() {
+        var child = pane.firstElementChild;
+        if (child && child !== observedChild) {
+          if (observedChild) ro.unobserve(observedChild);
+          observedChild = child;
+          ro.observe(child);
+        }
+        measure();
+        place();
+      }
+      adoptChild();
+      if (window.MutationObserver) {
+        new MutationObserver(adoptChild).observe(pane, { childList: true });
+      }
     }
     measure();
     place();

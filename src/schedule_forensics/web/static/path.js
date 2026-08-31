@@ -445,12 +445,40 @@
     });
   }
 
+  // ── Windowed row painting (S5, ADR-0442) ─────────────────────────────────────────────
+  // One-shot paintRows at the operator's row scale (2,280 rows) measured 1,417 ms post-ADR-0441
+  // — every row pays its own gridline divs, non-working shading and freeze styles. A flat grid
+  // at or above WINDOW_MIN_ROWS materializes only the viewport slice ± WINDOW_OVERSCAN rows,
+  // with spacer rows keeping the scrollbar honest; a vertical scroll re-aims the window. The
+  // whole-schedule DEFAULT view is exactly the flat shape, so the pathological case gets the
+  // fix while every other posture keeps the full paint: grouped/summaries/parallel output,
+  // "Show links" (the connector overlay joins arbitrary row pairs), Find (marks every match),
+  // and print (the A5 contract prints scroll panes in full) all force a complete tbody.
+  // WINDOW_MIN_ROWS anchors between the largest committed full-paint suite (TP5, 121 rows —
+  // 3.3x headroom below) and the operator scale (2,301 — 5.8x above), per the ADR-0441
+  // threshold rule: the neighbour suites' green is the boundary-setter.
+  var WINDOW_MIN_ROWS = 400;
+  var WINDOW_OVERSCAN = 40; // rows materialized beyond each viewport edge
+  var winState = null; // {start, end, total} while a windowed paint is on screen, else null
+  var winRowH = 18; // measured row pitch (Name wrapping makes rows uneven; refined per paint)
+  var windowFullOnce = false; // Find / beforeprint force the NEXT paint to be full
+  function vSpacer(cols, h) {
+    var td = el("td", { style: "height:" + Math.max(0, Math.round(h)) + "px;padding:0;border:0" });
+    td.colSpan = cols;
+    return el("tr", { class: "pv-vspacer", "aria-hidden": "true" }, [td]);
+  }
+
   function paintRows() {
     var tbody = $("pathBody");
     if (!tbody || !lastAxis) return;
     var axis = lastAxis, gridLns = lastGrid, on = lastOn, x = axis.x, width = axis.width;
     var rows = visibleRows();
     paintStatus(rows);
+    // Capture the pane's vertical position BEFORE the clear: emptying the tbody collapses the
+    // content height and the browser clamps scrollTop to 0, so a slice computed after the
+    // clear would always window the top rows — and the user's position died with every
+    // repaint. Restored after painting (S5, ADR-0442).
+    var keepScrollTop = view.scrollTop;
     tbody.innerHTML = "";
     // SSI Output modes (operator 2026-07-08): Waterfall = flat chronological (default);
     // With Summaries = grouped under top-level WBS headers; Separate parallel paths = the
@@ -592,6 +620,10 @@
       tr.appendChild(cell);
       tbody.appendChild(tr);
     };
+    var wantWindow = !groups && !windowFullOnce && rows.length >= WINDOW_MIN_ROWS &&
+      !($("pathShowLinks") && $("pathShowLinks").checked);
+    windowFullOnce = false;
+    winState = null;
     if (groups) {
       groups.forEach(function (g) {
         var bh = el("tr", { class: "path-branch-head" });
@@ -601,6 +633,44 @@
         tbody.appendChild(bh);
         g[1].forEach(paintOne);
       });
+    } else if (wantWindow) {
+      var rowH = winRowH > 0 ? winRowH : 18;
+      var headH = tbody.offsetTop || 0; // the sticky thead's height in content coordinates
+      var visTop = Math.max(0, keepScrollTop - headH);
+      var wStart = Math.max(0, Math.floor(visTop / rowH) - WINDOW_OVERSCAN);
+      var wCount = Math.ceil((view.clientHeight || 600) / rowH) + 2 * WINDOW_OVERSCAN;
+      var wEnd = Math.min(rows.length, wStart + wCount);
+      if (wStart > 0) tbody.appendChild(vSpacer(on.length + 1, wStart * rowH));
+      for (var wi = wStart; wi < wEnd; wi++) paintOne(rows[wi]);
+      if (wEnd < rows.length) tbody.appendChild(vSpacer(on.length + 1, (rows.length - wEnd) * rowH));
+      winState = { start: wStart, end: wEnd, total: rows.length };
+      // Refine the pitch estimate from what actually painted, then re-true the SPACERS to it
+      // immediately: spacers sized from a stale estimate misreport the grid's extent, so a
+      // jump-to-bottom undershoots the tail. Adjusting the top spacer shifts the content under
+      // the viewport, so the pane position is compensated by the same delta.
+      var winTrs = tbody.querySelectorAll("tr[data-uid]");
+      if (winTrs.length > 1) {
+        var wLast = winTrs[winTrs.length - 1];
+        var wSpan = wLast.offsetTop + wLast.offsetHeight - winTrs[0].offsetTop;
+        if (wSpan > 0) {
+          winRowH = wSpan / winTrs.length;
+          var sps = tbody.querySelectorAll("tr.pv-vspacer td");
+          if (wStart > 0 && sps.length) {
+            var oldTopH = parseFloat(sps[0].style.height) || 0;
+            var newTopH = Math.round(wStart * winRowH);
+            if (Math.abs(newTopH - oldTopH) > 2) {
+              sps[0].style.height = newTopH + "px";
+              keepScrollTop += newTopH - oldTopH;
+            }
+          }
+          if (wEnd < rows.length && sps.length) {
+            var spBot = sps[sps.length - 1];
+            if (wStart === 0 || sps.length > 1) {
+              spBot.style.height = Math.round((rows.length - wEnd) * winRowH) + "px";
+            }
+          }
+        }
+      }
     } else {
       rows.forEach(paintOne);
     }
@@ -615,6 +685,8 @@
     if (window.SFGantt && SFGantt.freezeColumns && lastTable) {
       lastFrozenWidth = SFGantt.freezeColumns(lastTable) || lastFrozenWidth;
     }
+    // put the pane back where the user had it (the clear clamped it — see keepScrollTop above)
+    if (view.scrollTop !== keepScrollTop) view.scrollTop = keepScrollTop;
   }
 
   // --- Group by ANY field (operator 2026-07-08, e.g. a custom CA-WBS code) -----------
@@ -826,8 +898,45 @@
   SFGantt.attachEdgeExtend(view, function () { extraRightDays += 60; if (data) reflow(); });
   // MS-Project "dates on bars" (parity with the Activities Gantt — ADR-0186)
   if ($("pathBarDates")) $("pathBarDates").addEventListener("change", function () { if (data) paintRows(); });
-  // MS-Project Find: jump the traced grid to a UniqueID, scroll it into view and flash it
-  function findUid(q) { SFGantt.findTask(view, q, $("pathFindStatus")); }
+  // Vertical scroll re-aims the painted window (S5, ADR-0442): when the visible slice nears
+  // either edge of what is materialized, repaint around the new position. rAF-throttled; inert
+  // whenever the last paint was full (winState null). Horizontal scrolls change nothing here.
+  var winScrollQueued = false;
+  view.addEventListener("scroll", function () {
+    if (!winState || winScrollQueued) return;
+    winScrollQueued = true;
+    requestAnimationFrame(function () {
+      winScrollQueued = false;
+      if (!winState) return;
+      var tbody = $("pathBody");
+      var rowH = winRowH > 0 ? winRowH : 18;
+      var headH = tbody ? tbody.offsetTop : 0;
+      var visStart = Math.floor(Math.max(0, view.scrollTop - headH) / rowH);
+      var visEnd = visStart + Math.ceil((view.clientHeight || 600) / rowH);
+      var margin = WINDOW_OVERSCAN / 2;
+      if ((visStart - winState.start < margin && winState.start > 0) ||
+          (winState.end - visEnd < margin && winState.end < winState.total)) {
+        paintRows();
+      }
+    });
+  }, { passive: true });
+  // Print materializes every row first: the A5 print contract prints the scroll panes in full
+  // (base.css forces .path-view overflow visible), so a windowed tbody would print spacers.
+  window.addEventListener("beforeprint", function () {
+    if (winState) { windowFullOnce = true; paintRows(); }
+  });
+  window.addEventListener("afterprint", function () { if (data) paintRows(); });
+  // MS-Project Find: jump the traced grid to a UniqueID, scroll it into view and flash it.
+  // A windowed grid materializes only the viewport slice, and findTask searches the DOM —
+  // so a non-empty Find forces one full paint first (marks then survive scrolling; the next
+  // zoom/filter repaint re-windows, which is when pre-fix marks were lost too).
+  function findUid(q) {
+    if (winState && String(q == null ? "" : q).trim()) {
+      windowFullOnce = true;
+      paintRows();
+    }
+    SFGantt.findTask(view, q, $("pathFindStatus"));
+  }
   var pathFind = $("pathFind");
   if (pathFind) {
     var goFind = function () { findUid(pathFind.value); };

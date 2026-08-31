@@ -467,16 +467,18 @@ def test_the_embedded_json_payloads_are_byte_frozen(pages: dict[str, str]) -> No
 #: the seven page-owned chart scripts of the four converted routes. Round 11 touched NO JS on
 #: these pages (the only JS edit in the round is panelkit.js, which contains zero axisTitles).
 PAGE_SCRIPTS = {
-    # DELIBERATE re-baseline (ADR-0441, long-span scale): reflow() re-pins the .g-head th to
-    # the axis (the stale-column fix — after Fit the operator's 12-year view kept a 40,104px
-    # column around a 969px track), the whole-schedule posture opens FITTED above 16 pages
-    # (ADR-0438's zoomed+seat preserved below, proven by test_path_whole_schedule_browser),
-    # and the zoom slider is debounced 120ms. No axis caption, tick or column logic touched;
-    # behavior proven RENDERED by tests/web/test_long_span_gantt_browser.py.
-    # 3a8f3fac6721885f9f8ed06f2ec8511d → below.
-    # (Prior re-baselines: operator 2026-08-20 whole-schedule default,
-    # 47b5cf0351666a8bae7a61bce7102f99 → 3a8f3fac…; ADR-0407, ENG-DEAD-01.)
-    "path.js": "975d978de64ef8388dcc264eb52d7abc",
+    # DELIBERATE re-baseline (ADR-0442, S5 row windowing): paintRows materializes the viewport
+    # slice ± overscan with spacer rows on flat grids of >= 400 rows (2,280-row one-shot Fit
+    # rebuild 1,623 ms -> 49 ms measured), captures/restores the pane's scrollTop across the
+    # tbody clear, and full-paints for groups / Show-links / Find / beforeprint. No axis
+    # caption, tick or column logic touched; behavior proven RENDERED by
+    # tests/web/test_path_row_windowing_browser.py (3 pre-fix reds by name + 2 PASS-side pins)
+    # and the 18 pre-existing browser tests stayed green.
+    # 975d978de64ef8388dcc264eb52d7abc → below.
+    # (Prior re-baselines: ADR-0441 long-span scale, 3a8f3fac6721885f9f8ed06f2ec8511d → 975d…;
+    # operator 2026-08-20 whole-schedule default, 47b5cf0351666a8bae7a61bce7102f99 → 3a8f3fac…;
+    # ADR-0407, ENG-DEAD-01.)
+    "path.js": "3ad07eefc258cf3131c23b9b87e97cb5",
     "driving_path.js": "027a0d438a9337e408e7fb1997a24d44",
     # DELIBERATE re-baseline (ADR-0340): the tier table gained its B1 <caption class="ch-atd">
     # via SFGantt.tableCaption. The diff is ONE call plus its comment, inserted between the
@@ -528,8 +530,18 @@ PAGE_SCRIPTS = {
     # / paintGrid / gridLines / timeTiers still cannot have moved a caption, axis or tick. The
     # 28-call-site census below is the independent check, and it passes unchanged. Same head-loaded
     # home and the same load-order reason as tableCaption above.
-    # ced1b1939ecdb061ffe523c70562e0b7 → below.
-    "gantt.js": "5132b5bc50d3df762e1d1833a68892ae",
+    # ced1b1939ecdb061ffe523c70562e0b7 → 5132b5bc50d3df762e1d1833a68892ae.
+    # DELIBERATE re-baseline (ADR-0442, UI-02): stickyScrollbar's ResizeObserver observed only
+    # the pane and the ATTACH-TIME firstElementChild — but the auto-init runs at
+    # DOMContentLoaded and every Gantt table arrives by async fetch, so the proxy tracked the
+    # timeline only when the fetch happened to beat the boot (measured: inner width pinned at
+    # the fitted 1118px while the zoomed pane scrolled 8747px — a dead slider). The diff is a
+    # childList observer that adopts the table whenever it (re)appears, inside the existing
+    # ResizeObserver block; buildTierScale / paintGrid / gridLines / timeTiers untouched, the
+    # 28-call-site census below passes unchanged, and the effect is proven RENDERED by the
+    # census driver (test_sticky_scrollbar_mirrors_and_drives_the_pane — observed RED pre-fix).
+    # 5132b5bc50d3df762e1d1833a68892ae → below.
+    "gantt.js": "fdc01147ac3df9006cc2ae88b177b193",
 }
 
 #: all 28 ``SFChartFrame.axisTitles(`` call sites, frozen with their ARGUMENT OBJECT — the caption

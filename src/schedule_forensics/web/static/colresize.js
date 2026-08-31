@@ -51,9 +51,32 @@ window.SFColResize = (function () {
       if (w > 0) { th.style.width = w + "px"; th.style.minWidth = w + "px"; th.style.maxWidth = w + "px"; }
     });
 
+    // Chromium does not honor top/right/bottom (or % height) on an absolutely-positioned child
+    // of a table cell — sticky OR relative. Measured on every frozen Gantt header (WP1,
+    // 2026-08-31): the grip laid out 7px x 0px at the cell's static content position, so no
+    // pointer could ever hit it and drag-to-resize was dead on arrival. Explicit measured
+    // geometry works (a px height sticks), so size the grip from the cell box and correct the
+    // residual static-position offset by measurement. Re-run for existing grips on every
+    // attach — the header re-lays-out as fonts settle and columns resize.
+    function sizeGrip(handle, th) {
+      var thH = th.offsetHeight;
+      if (!(thH > 0)) return;
+      handle.style.height = thH + "px";
+      var r = handle.getBoundingClientRect();
+      var tr = th.getBoundingClientRect();
+      var dy = r.top - tr.top;
+      var dx = r.left - (tr.right - r.width);
+      if (dy) handle.style.top = ((parseFloat(handle.style.top) || 0) - dy) + "px";
+      if (dx) handle.style.left = ((parseFloat(handle.style.left) || 0) - dx) + "px";
+    }
+
     ths.forEach(function (th, i) {
       if (th.classList.contains("g-head")) return; // the timeline column keeps its scalable width
-      if (th.querySelector(".col-rsz")) return;
+      var existing = th.querySelector(".col-rsz");
+      if (existing) {
+        sizeGrip(existing, th);
+        return;
+      }
       th.style.position = "relative";
       var handle = document.createElement("div");
       handle.className = "col-rsz";
@@ -76,11 +99,13 @@ window.SFColResize = (function () {
           try { handle.releasePointerCapture(e.pointerId); } catch (err) { /* ignore */ }
           // a resize shifts every later column's left edge — re-pin the frozen columns to match
           if (window.SFGantt && window.SFGantt.freezeColumns) window.SFGantt.freezeColumns(table);
+          sizeGrip(handle, th); // …and re-seat the grip on the column's new right edge
         }
         handle.addEventListener("pointermove", move);
         handle.addEventListener("pointerup", up);
       });
       th.appendChild(handle);
+      sizeGrip(handle, th);
     });
   }
 
