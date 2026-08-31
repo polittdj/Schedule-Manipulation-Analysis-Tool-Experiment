@@ -435,6 +435,38 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-31 (WP2, addendum) — the botched restore had a SECOND victim, and CI found it, not me
+
+- **Re-applying a fix is a change; it needs the suite re-run, not the memory of a green.** The
+  `git checkout --` restore below wiped three files. I re-applied them — and put back only HALF of
+  `chartframe.js`, because I wrote the re-apply from the second of two patches to that file. The
+  half that went missing was the one that made the coordinator's assignment unconditional, so the
+  caller's `stopAll`-less stub survived and `/mission` threw twenty page errors on every trusted
+  click: **strictly worse than the code before the PR.** I then reported "M3 59/59 green" from a
+  run that had happened BEFORE the revert. The rule is not "restore carefully"; it is **after any
+  re-apply, re-run the suite that proved the thing, and quote THAT run.** A green you are quoting
+  from memory is testimony, not evidence — QC-2's own rule, applied to my own prior claim.
+- **A pre-flight grep for byte pins must search for the PIN SHAPE, not for your filenames.** I
+  swept for pin-looking lines that also mentioned the files I was touching and concluded there were
+  none. Four pins then fired. They hash whole files and enumerate call sites by `(file, line)`, so
+  they never name a file on the same line as the hash — a sweep whose pattern cannot see its
+  subject reports "clean" by construction. That is the identical defect this same session fixed in
+  the A2 reduced-motion population; finding it twice in one session, on both sides of the
+  test/product line, is the argument for computing populations rather than typing them.
+- **Rebuild the wheel and installers as the LAST step, after the final source edit.** A late
+  whitespace alignment in two JS files landed after the build, and the lockstep guard caught the
+  embedded wheel drifting from the tree. "The code looks done" is not the trigger; "no file will
+  change again" is.
+- **A guard can outlive the thing it guards, and the fix is to re-express it, not delete it.**
+  `test_the_autoplay_stepper_pin_is_untouched` froze the literal five-name list this session
+  replaced with a computed sweep. Deleting it would have dropped a real requirement (the launch hum
+  must never be gated on a motion preference); keeping the text pin was impossible. Re-expressing it
+  against the computed population is strictly stronger — it checks set membership instead of a
+  spelling. **When a pin's mechanism dies, port its PROPERTY forward.**
+- **CI's value is the environment you do not have.** The browser job runs a newer Chromium and the
+  floor job installs the declared minimums; between them they caught a regression, four stale pins,
+  a stale wheel and a false dependency floor that a single local tree could not have shown me.
+
 ### 2026-08-31 (WP2) — `git checkout --` is not a mutation restore; and a wrong oracle is indistinguishable from a defect
 
 - **`git checkout --` reverts to HEAD, not to the tree under test.** A mutation battery used it to

@@ -38,11 +38,25 @@
 > list, so a new animated module is RED by default, plus a guard that fails on a stale exemption.
 >
 > ## Proof
-> Red-first observed: M3 **5 failed / 54 passed**, M5 **3 failed / 5 passed**. Green: M3 59/59,
-> M5 8/8, census 57/57 with `/mission` re-pinned 30/30. **15-mutation battery, every one RED BY
-> NAME** — including the chart oracle proved independently of the label oracle, and the
-> coordinator's `isTrusted` check (whose removal would make Play-all halt on its own first beat).
-> A new route-level open-redirect pin rides with M5-02 (6 hostile payloads, 4 honoured paths).
+> Red-first observed: M3 **5 failed / 54 passed**, M5 **3 failed / 5 passed**. **19-mutation
+> battery, every one RED BY NAME** — including the chart oracle proved independently of the label
+> oracle, and the coordinator's `isTrusted` check (whose removal would make Play-all halt on its
+> own first beat). A route-level open-redirect pin rides with M5-02 (6 hostile payloads, 4 honoured
+> paths, plus backslash payloads measured — Starlette percent-encodes them).
+>
+> ## The FIRST push was RED on CI, and every failure was this change's
+> Honest record, because the fix chain is the lesson (ADR-0443 has the table). Local full suite on
+> the as-pushed tree: **16 failed / 4578 passed**. (a) I re-applied only HALF of `chartframe.js`
+> after the `git checkout --` restore, so the coordinator's assignment stayed conditional,
+> `mission.js`'s stub survived and `/mission` threw 20 `stopAll is not a function` page errors —
+> **worse than before the PR**, and the "59/59 green" I had quoted described a tree that no longer
+> existed. (b) Four byte-freeze pins fired that my pre-flight grep could not see (it searched for
+> my filenames; the pins hash whole files and index call sites by line) — all re-baselined
+> deliberately, with every axis CAPTION md5 verified identical first. (c)
+> `test_the_autoplay_stepper_pin_is_untouched` froze the literal this ADR replaced — re-expressed
+> against the computed population (stronger: set membership, not a spelling). (d) The embedded
+> wheel went stale after a late whitespace edit. (e) `playwright>=1.44` was a FALSE floor —
+> `page.clock` does not exist below 1.45 (measured: the 1.44.0 wheel contains "clock" zero times).
 >
 > ## Traps paid for THIS session — check by name
 > **`git checkout --` is NOT a mutation restore** — it reverts to HEAD and silently deleted three
@@ -55,7 +69,9 @@
 > **a probe's own wait can invent a finding** — reading `page.url` after `wait_for_load_state`
 > before the navigation began mis-reported the language landing; `expect_navigation` measured it ·
 > **the server session outlives a browser context** (a language set in one step translated a later
-> step's page).
+> step's page) · **re-applying a fix needs the suite RE-RUN — a green quoted from memory is
+> testimony, not evidence** · **a byte-pin pre-flight grep must search the PIN SHAPE, not your
+> filenames** · **rebuild the wheel + installers as the LAST step, after the final source edit**.
 >
 > ## Operator-facing state
 > After this PR merges the operator re-downloads once (banner must say **v1.0.225**): the Mission

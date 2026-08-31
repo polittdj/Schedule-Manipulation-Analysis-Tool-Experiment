@@ -113,8 +113,20 @@
   // click on a per-chart animation control stops every master first — touching a chart by hand
   // takes manual control and the auto-play-all halts, so Stop (and Prev/Next) behave as expected.
   // The master's OWN stepping uses element.click() (isTrusted === false), so it never stops itself.
-  var playMasters = [];
-  window.SFPlayAll = window.SFPlayAll || {
+  // REGISTRATION IS ORDER-INDEPENDENT, and it has to be: the layout emits this file AFTER
+  // <main>, so a page script that registers its master at eval time (mission.js) runs BEFORE
+  // this object exists. Its `if (window.SFPlayAll)` guard then skipped the registration in
+  // silence and the wall's Play-all could not be halted by any chart control — ADR-0275's own
+  // symptom, alive on /mission for as long as the guard has been there (audit M3-01). Early
+  // callers now queue their stop() on a stub and this adopts the queue.
+  //
+  // The assignment is UNCONDITIONAL, and that is load-bearing: with `= window.SFPlayAll || {…}`
+  // the caller's stub (which has no stopAll) survives, and every trusted click on an animation
+  // control then throws `window.SFPlayAll.stopAll is not a function`. `_pending` is also the
+  // live list, so re-evaluating this file keeps every master already registered.
+  var playMasters = (window.SFPlayAll && window.SFPlayAll._pending) || [];
+  window.SFPlayAll = {
+    _pending: playMasters,
     register: function (stopFn) {
       if (typeof stopFn === "function" && playMasters.indexOf(stopFn) === -1) {
         playMasters.push(stopFn);

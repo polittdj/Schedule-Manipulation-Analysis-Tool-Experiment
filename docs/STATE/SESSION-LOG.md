@@ -15854,7 +15854,16 @@ the census grew 12 → 57 and the windowing module added 5); parity `-m parity` 
 - `node --check` — all vendored JS parses.
 - Red-first observed: M3 **5 failed / 54 passed**; M5 **3 failed / 5 passed**.
 - Green: M3 **59/59**, M5 **8/8**, redirect guard **10/10**, census **57/57**.
-- **Mutation battery: 15 mutations, every one RED BY NAME.**
+- **Mutation battery: 19 mutations, every one RED BY NAME.**
+- **The first push was RED on CI, and every failure was this change's.** Full local suite on the
+  as-pushed tree: **16 failed / 4578 passed**. Causes: (a) a regression I introduced by re-applying
+  only HALF of `chartframe.js` after the `git checkout --` restore, so `mission.js`'s stub survived
+  and `/mission` threw 20 `stopAll is not a function` page errors — the local "59/59" I had quoted
+  described a tree that no longer existed; (b) four byte-freeze pins my pre-flight grep could not
+  see (it searched for my filenames; the pins hash whole files and index call sites by line);
+  (c) `test_the_autoplay_stepper_pin_is_untouched`, which froze the literal this ADR replaced;
+  (d) a stale embedded wheel after a late whitespace edit; (e) a false `playwright>=1.44` floor
+  (`page.clock` does not exist below 1.45 — measured from both wheels). All fixed; see ADR-0443.
 
 ### Defects found and fixed (all red-first, see ADR-0443 for the measurements)
 

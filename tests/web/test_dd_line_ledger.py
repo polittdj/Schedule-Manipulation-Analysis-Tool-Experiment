@@ -67,7 +67,7 @@ STATIC = ROOT / "src" / "schedule_forensics" / "web" / "static"
 #: Charts whose X axis is a real calendar/period axis — the DD line's population.
 TIME_AXIS = {
     ("cei.js", 226),
-    ("curves.js", 381),
+    ("curves.js", 386),
     ("drift.js", 136),
     ("margin_dashboard.js", 323),
     ("resources.js", 243),
@@ -90,11 +90,11 @@ NOT_TIME_AXIS = {
 VERSION_AXIS = {
     ("margin.js", 224),
     ("margin_dashboard.js", 240),
-    ("trend.js", 479),
-    ("trend.js", 583),
-    ("trend.js", 708),
-    ("trend.js", 826),
-    ("trend.js", 916),
+    ("trend.js", 483),
+    ("trend.js", 587),
+    ("trend.js", 712),
+    ("trend.js", 830),
+    ("trend.js", 920),
     ("volatility.js", 167),
     ("volatility.js", 208),
     ("volatility.js", 251),

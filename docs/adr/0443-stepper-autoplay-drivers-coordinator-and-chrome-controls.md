@@ -95,6 +95,56 @@ by default; a second guard fails if an exemption goes stale.
   asserts six hostile payloads all land on `/` and four genuine local paths are honoured. It is a
   route-level test on purpose: no browser, so it runs in the normal suite.
 
+## What CI caught that this session's own green run did not (recorded, not tidied away)
+
+The first push of this work was RED on two CI jobs. Every failure was this change's, and the
+chain is worth keeping because two of the three links are process, not code.
+
+**1. A regression introduced by the botched mutation restore (the serious one).** The
+`git checkout --` incident above reverted three files to HEAD. Re-applying them, only HALF of
+`chartframe.js` went back: the `watchForLateCharts` observer returned, the `_pending` adoption did
+not. That left `window.SFPlayAll = window.SFPlayAll || {…}` — so `mission.js`'s stub (which has no
+`stopAll`) SURVIVED, and every trusted click on an animation control threw
+`window.SFPlayAll.stopAll is not a function`. **Twenty page errors on `/mission`, and strictly
+worse than the code before this PR.** The compounding error was mine and is the real lesson: I
+re-applied a fix and did not re-run the suite that proved it, so the local "59/59 green" I reported
+described a tree that no longer existed. The assignment is now unconditional and commented as
+load-bearing, and the mutation battery covers exactly this reversion (`P1`, red by name on both the
+coordinator test and the zero-pageerror assertion).
+
+**2. Four byte-freeze pins tripped, and my pre-flight grep for them was too narrow.** I searched
+for pin-shaped lines that also NAMED my files and concluded there were none. The pins that fired
+hash whole files and enumerate call sites by line number, so they never mention a filename on the
+same line — a sweep whose pattern cannot see its subject reports "clean" by construction, which is
+the same defect this ADR fixes in the A2 population. Re-baselined deliberately, each with its
+reason recorded in place:
+
+| pin | why it moved |
+| --- | --- |
+| `PAGE_SCRIPTS["driving_path.js"]` | the M3-03 reduced-motion branch |
+| `GLOBAL_FORMS` `/language` (391 → 438 bytes) | the M5-02 hidden `next_url` + `data-sf-nexturl-submit` |
+| `AXIS_CALL_SITES` line numbers | pure shifts from edits ABOVE six call sites — **every caption md5 verified IDENTICAL first**, which is the benign case the pin itself documents |
+| `test_dd_line_ledger`'s `(file, line)` call sites | the same six shifts |
+
+**3. `test_the_autoplay_stepper_pin_is_untouched` pinned the very literal this ADR replaced.** It
+froze the five-name `_AUTOPLAY_JS` tuple and asserted `launch_audio.js` appeared NOWHERE in
+`test_accessibility.py` — but the hum is now a NAMED EXEMPTION in the computed sweep, so the text
+pin could not survive. It was re-expressed against the property it was always protecting (the
+launch hum must never be counted an animated module), which is **stronger** than the text pin: it
+checks membership of the real computed population rather than a spelling. Mutation-proved both ways.
+
+**4. The embedded wheel went stale.** A late whitespace alignment in `curves.js`/`trend.js` landed
+AFTER the wheel and installers were built, so `test_embedded_wheel_is_in_lockstep_with_the_source_tree`
+failed on content drift. Rebuild the wheel and the nine installers as the LAST step, after the final
+source edit — not when the code "looks done".
+
+**5. The declared playwright floor was false, and this work made it so.** `pyproject.toml` declared
+`playwright>=1.44`, but M3 drives `page.clock`, which does not exist below 1.45 — measured, not
+recalled: the 1.44.0 wheel's `playwright/sync_api/_generated.py` contains the string `clock`
+**zero** times, while 1.45.0 defines both `Page.clock` and `clock.run_for`. Raised to `>=1.45` with
+that measurement recorded in the comment. This is the same shape as ADR-0346's `fastapi>=0.110.2`
+Law-1 floor: a declared bottom nothing ever installed, and quietly false.
+
 ## Consequences
 
 - Every `WP2:M3` deferral in the census is discharged; its driver values are now module-qualified

@@ -91,7 +91,16 @@ monitor = ["psutil>=5.9,<8"]
 # shipped tool stays std-lib-only for I/O (Law 1) and the egress guard covers `dependencies`, not
 # this. Without it `tests/web/test_r11_panel_contract.py`'s rect assertions `importorskip`-SKIP,
 # which is how a re-inerted ⛶ measured green for a whole round.
-browser = ["playwright>=1.44,<2"]
+# >=1.45 IS A MEASURED FLOOR, raised by ADR-0443. WP2's stepper/autoplay drivers advance
+# Playwright's FAKE CLOCK (`page.clock.install()` / `clock.run_for()`) rather than sleeping
+# through 1100-1800 ms autoplay timers, and that API does not exist below 1.45: the 1.44.0
+# wheel's `playwright/sync_api/_generated.py` contains the string "clock" ZERO times
+# (measured by downloading and reading both wheels — 1.45.0 defines Page.clock and
+# clock.run_for, 1.44.0 defines neither). The old `>=1.44` therefore declared support for a
+# version on which tests/web/test_ui_stepper_autoplay_browser.py cannot even collect a
+# result — the same defect shape as the fastapi>=0.110.2 Law-1 floor above: a declared
+# bottom that nothing ever installed and that was quietly false.
+browser = ["playwright>=1.45,<2"]
 
 # Quality/PM toolchain required by §7 (QC/PM regime).
 #

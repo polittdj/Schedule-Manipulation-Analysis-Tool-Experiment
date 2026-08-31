@@ -57,7 +57,7 @@ shift = CONFIRMED-DEFERRED, never a silent re-pin) → **WP7** (thin dims, `ai/t
 Law 1) → **WP8** (consolidated report + roadmap by testimony risk). Each WP ends commit-able:
 red-first → mutation proofs → full gate → ADR → state docs → draft PR.
 
-⇢ Traps paid for, by name: **`git checkout --` is NOT a mutation restore** — it reverts to HEAD and
+⇢ Traps paid for, by name: **re-applying a fix needs the suite RE-RUN** — WP2's first push was RED because a re-apply restored only HALF of chartframe.js and the "59/59 green" being quoted described a tree that no longer existed; a green from memory is testimony, not evidence · **a byte-pin pre-flight grep must search the PIN SHAPE, not your filenames** (four pins fired that hash whole files / index call sites by line, so they never name a file on the hash's line — re-baseline deliberately and verify the CAPTION hashes are identical first) · **rebuild the wheel + nine installers as the LAST step**, after the final source edit (a late whitespace change drifted the embedded wheel) · **a declared dependency floor can be made false by your own change** (`playwright>=1.44` vs `page.clock`, which needs 1.45 — measured from both wheels; the ADR-0346 fastapi shape) · **`git checkout --` is NOT a mutation restore** — it reverts to HEAD and
 silently deleted three of WP2's own fixes mid-battery, then let one mutation "pass" while measuring
 unfixed code; restore from a `cp` of the WORKING TREE and diff the tree after every chain · **a
 wrong oracle looks exactly like a defect** — an SVG-only chart digest reported three false "chart
