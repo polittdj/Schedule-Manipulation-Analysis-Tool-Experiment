@@ -1,6 +1,7 @@
 # Handoff — 2026-08-31 (WP2 COMPLETE: the steppers are DRIVEN on a fake clock and the Play-all coordinator was dead on two of its three pages; the wall frames all 30 tiles; language stops throwing you to the dashboard; ADR-0443, v1.0.225)
 
-> ## STATUS (current) — **WP2 COMPLETE on branch `claude/polaris2-audit-resume-3xg50n` (from main @ `286046d5`, the WP1 merge). The campaign runs under QC-1/QC-2 — ADR-0393, pinned by `tests/test_standing_rules.py`.**
+> ## STATUS (current) — **WP2 is MERGED: PR #618 squash-landed on `main` @ `0e07d213` (2026-08-31 22:16Z), all seven CI checks green. The campaign runs under QC-1/QC-2 — ADR-0393, pinned by `tests/test_standing_rules.py`.**
+> Next work package is **WP3 (M4 — the SRA grid)**; branch FRESH from `origin/main`, never stacked on the consumed WP2 branch.
 > Highest ADR **0443**; version **1.0.225** (shipped code: `static/chartframe.js`, `static/mission.js`,
 > `static/curves.js`, `static/trend.js`, `static/driving_path.js`, `web/chrome.py`, `web/app.py`);
 > wheel + nine installers rebuilt in lockstep. Ledger: **docs/STATE/AUDIT-2026-08-27.md** WP2

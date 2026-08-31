@@ -15887,3 +15887,26 @@ session's own fixes mid-battery · a wrong oracle looks exactly like a defect (a
 against HTML-table Gantts) · measuring `document.body` to test a page zoom reports a working
 control as dead · a probe's own wait can invent a finding and then retract it · the server session
 outlives a browser context.
+
+---
+
+## 2026-08-31 (close) — WP2 merged; session-close housekeeping (docs-only)
+
+- **PR #618 squash-merged to `main` @ `0e07d213`** at 22:16Z by the operator, after all seven CI
+  checks went green on `c8a0c620` (test 3.11, test 3.13 — both coverage gates, floor, browser,
+  installer-smoke linux + windows, and the aggregate `check`).
+- Post-merge hygiene per the CLAUDE.md workflow: `git fetch --prune origin` (GitHub deleted the
+  head branch), `git remote set-head origin -a`, branch restarted from the new `main`, and the
+  now-dangling upstream cleared with `git branch --unset-upstream` — so the stop hook cannot
+  mis-report GitHub's own squash commit as an unpushed local commit.
+- HANDOFF and the kickoff prompt refreshed from "WP2 complete on a branch" to "WP2 MERGED @
+  `0e07d213`"; the kickoff no longer tells the next session to check whether the PR landed.
+- **Operator action outstanding:** re-download the installer once — the banner must read
+  **v1.0.225**.
+- One session-mechanics trap recorded in the kickoff: a background waiter looping on
+  `pgrep -f "pytest …"` matches its OWN `bash -c` command line and therefore never exits. Four
+  spun for hours after the suite finished; killed during close-out. Match a pidfile or an
+  end-of-run sentinel in the output file instead.
+
+**Next:** WP3 (M4 — the SRA grid edit / paste-from-Excel / save round-trip), the last queued row
+of the WP1 UI map. Branch fresh from `origin/main`.
