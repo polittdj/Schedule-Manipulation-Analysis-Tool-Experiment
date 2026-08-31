@@ -7062,12 +7062,21 @@ def create_app(
         return RedirectResponse(url="/", status_code=303)
 
     @app.post("/language")
-    def set_language(request: Request, lang: str = Form("en")) -> RedirectResponse:
-        """Set the UI/AI display language (ADR-0099); returns to the page the user was on."""
+    def set_language(
+        request: Request, lang: str = Form("en"), next_url: str = Form("")
+    ) -> RedirectResponse:
+        """Set the UI/AI display language (ADR-0099); returns to the page the user was on.
+
+        The destination comes from an explicit ``next_url`` the form stamps with the current
+        page, because the Referer this used to rely on is never sent: the app's own
+        ``Referrer-Policy: no-referrer`` strips it, so every language change bounced the operator
+        to the dashboard (audit M5-02, measured absent from four pages). Referer stays as a
+        fallback for a form posted without the field. Both are validated to a local path — a
+        host-bearing or protocol-relative value can never leave the machine.
+        """
         session().language = i18n.normalize(lang)
-        # return to the referring page, reduced to a local path (host stripped, no open redirect)
-        path = urlparse(request.headers.get("referer") or "/").path or "/"
-        dest = path if path.startswith("/") and not path.startswith("//") else "/"
+        candidate = next_url or urlparse(request.headers.get("referer") or "/").path or "/"
+        dest = candidate if candidate.startswith("/") and not candidate.startswith("//") else "/"
         return RedirectResponse(url=dest, status_code=303)
 
     @app.post("/api/translate")

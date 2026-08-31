@@ -134,18 +134,36 @@ def test_home_primes_only_in_gesture_handlers_and_fades_before_navigating(
     assert "hum('start')" in js  # the hum starts when the overlay shows
 
 
-def test_the_autoplay_stepper_pin_is_untouched() -> None:
-    """The plan's explicit freeze: ``_AUTOPLAY_JS`` (the five reduced-motion-gated stepper
-    charts) gains no member from this round — the hum is audio, not a motion stepper. Pinned
-    by TEXT, not by import: ``from tests.web...`` resolves locally but not on CI (the ``tests``
-    package is not importable there — ModuleNotFoundError, the round's one CI failure), and the
-    text pin is stronger anyway: launch_audio.js may not appear ANYWHERE in the module."""
-    src = (Path(__file__).parent / "test_accessibility.py").read_text(encoding="utf-8")
-    pin = (
-        '_AUTOPLAY_JS = ("cei.js", "drift.js", "path_evolution.js", "scurve.js", "trend_drill.js")'
+def test_the_launch_hum_is_never_treated_as_a_motion_stepper() -> None:
+    """The plan's freeze, carried onto the mechanism that replaced it: the launch hum is AUDIO,
+    and must never be counted among the reduced-motion-gated animated modules.
+
+    This pinned the literal ``_AUTOPLAY_JS = ("cei.js", …)`` tuple in ``test_accessibility.py``
+    and asserted ``launch_audio.js`` appeared NOWHERE in that module. ADR-0443 replaced that
+    hand-written five-name list with a population COMPUTED from the shipped JS, because the
+    list was failing open — twelve modules are animated, and the one outside it
+    (``driving_path.js``) was the one ignoring prefers-reduced-motion (audit M3-03).
+
+    The text pin cannot survive that and should not: ``launch_audio.js`` now legitimately
+    appears in ``test_accessibility.py`` as a NAMED EXEMPTION ("schedules the launch tones —
+    audio, not motion"). So the pin is re-expressed against the property it was always
+    protecting, and asserting set-membership is STRICTLY STRONGER than asserting a string is
+    absent: the hum is checked against the real computed population, not against a spelling.
+    """
+    import importlib
+
+    accessibility = importlib.import_module("web.test_accessibility")
+    animated = accessibility._animated_modules()
+    assert "launch_audio.js" not in animated, (
+        "launch_audio.js is being counted as an animated module — the launch hum is audio, and "
+        "gating it on prefers-reduced-motion would silence a sound for a motion preference"
     )
-    assert pin in src, "the pinned _AUTOPLAY_JS literal changed"
-    assert "launch_audio.js" not in src
+    assert "launch_audio.js" in accessibility._TIMER_BUT_NOT_ANIMATION, (
+        "launch_audio.js must stay an EXPLICIT, reasoned exemption from the animation sweep — "
+        "dropping it would let a future sweep pick the hum up by accident"
+    )
+    # and the sweep it is exempt from must still be finding the real animated population
+    assert len(animated) >= 12, f"the animation sweep collapsed to {animated}"
 
 
 def test_design_system_records_the_audio_rule() -> None:

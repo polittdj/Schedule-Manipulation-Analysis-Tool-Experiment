@@ -1184,8 +1184,13 @@ def _render_nav(state: SessionState) -> str:
         "</select></label>"
         '<form action="/language" method=post class="navform langform" '
         'title="Display language for the UI and AI results">'
+        # The app sends Referrer-Policy: no-referrer, so /language never saw a Referer and always
+        # bounced the operator to the dashboard (audit M5-02). Ride the CURRENT page in an
+        # explicit next_url — validated server-side, exactly as the banner Project switcher and
+        # /target already do.
+        '<input type=hidden name=next_url value="/">'
         "<label>Language: <select name=lang data-no-i18n "
-        f"data-sf-autosubmit>{lang_options}</select></label>"
+        f"data-sf-nexturl-submit>{lang_options}</select></label>"
         "</form>"
         "</div>"
     )

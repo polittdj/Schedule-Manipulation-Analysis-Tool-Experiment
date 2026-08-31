@@ -27,9 +27,12 @@ into "clean"):
 
 Every censused control id maps to the driver test that measures its EFFECT (bar/track/scroll
 geometry — a control that flips state without moving the measured world is exactly the WP0
-defect class), or to an explicit deferral marker naming the campaign package that drives it
-(``WP2:M3`` steppers/autoplay clock-stepped, ``WP2:M5`` the mission wall's own tile system).
-``test_every_declared_driver_exists`` makes a typo'd driver name RED.
+defect class). WP1 landed with ``WP2:M3``/``WP2:M5`` deferral markers standing in for the
+steppers, the autoplay controls and the mission wall; **WP2 discharged every one of them**
+(ADR-0443), so there are no deferral markers left — each id now names a real driver, and the
+ones in ``test_ui_stepper_autoplay_browser.py`` are spelled ``<module>.py::<test>``.
+``test_every_declared_driver_exists`` resolves BOTH spellings (importing the sibling module for
+the qualified ones) so a typo'd or renamed driver anywhere is RED.
 
 Harness: the r11 ``served()`` idiom + one chromium for the module (fresh context per test).
 The census walk reuses ONE context; pages with async tiles are polled until two consecutive
@@ -77,9 +80,18 @@ FLOOR_KEYS = (
     "[data-sf-big], .tile-expand",
 )
 
-#: Deferral markers (allowed as driver values): the campaign package that owns the driver.
-WP2_M3 = "WP2:M3 stepper/autoplay clock-stepped driver (queued)"
-WP2_M5 = "WP2:M5 mission-wall pass (tile system owns these)"
+#: Drivers that live in ANOTHER module resolve as ``<module>.py::<test>`` (the meta-guard
+#: imports the module and checks the name — see ``test_every_declared_driver_exists``).
+#: WP2's M3 discharged every stepper/autoplay deferral this census used to carry: the drivers
+#: are in ``test_ui_stepper_autoplay_browser.py`` and they run on a DRIVEN CLOCK.
+_M3 = "test_ui_stepper_autoplay_browser.py::"
+M3_STEP = _M3 + "test_stepper_next_and_prev_move_both_the_label_and_the_chart"
+M3_PLAY = _M3 + "test_autoplay_advances_on_the_clock_and_pause_freezes_it"
+M3_TRIO = _M3 + "test_every_sf_frame_trio_steps_only_its_own_chart"
+M3_TRIO_PLAY = _M3 + "test_sf_frame_play_runs_on_the_clock_and_its_stop_halts_it"
+M3_MASTER_PLAY = _M3 + "test_master_play_all_beats_on_the_clock_and_pauses"
+M3_MASTER_STEP = _M3 + "test_master_step_all_advances_every_framed_chart_in_lockstep"
+M3_WALL = _M3 + "test_mission_wall_embedded_steppers_each_drive_their_own_tile"
 #: Cross-reference markers: the control is the /path workspace served under another route, or
 #: a stepper this module already exercises as driver infrastructure.
 SAME_AS_PATH = "= /path workspace (same path.js machinery; driven by the /path drivers)"
@@ -123,37 +135,39 @@ CENSUS: dict[str, dict[str, Any]] = {
     "/portfolio": {"ids": {}, "anon": {}, "floors": (0, 0, 0, 0, 0, 0, 0, 2)},
     "/mission": {
         "ids": {
-            "autoPlay": WP2_M3,
-            "driftPlay": WP2_M3,
-            "evoPlay": WP2_M3,
-            "missionPlay": WP2_M3,
-            "missionStep": WP2_M3,
-            "nextDrift": WP2_M3,
-            "nextEvo": WP2_M3,
-            "nextScurve": WP2_M3,
-            "nextSnap": WP2_M3,
-            "prevDrift": WP2_M3,
-            "prevEvo": WP2_M3,
-            "prevScurve": WP2_M3,
-            "prevSnap": WP2_M3,
-            "qualNext": WP2_M3,
-            "qualPlay": WP2_M3,
-            "qualPrev": WP2_M3,
-            "scurvePlay": WP2_M3,
+            "autoPlay": M3_WALL,
+            "driftPlay": M3_WALL,
+            "evoPlay": M3_WALL,
+            "missionPlay": M3_MASTER_PLAY,
+            "missionStep": M3_MASTER_STEP,
+            "nextDrift": M3_WALL,
+            "nextEvo": M3_WALL,
+            "nextScurve": M3_WALL,
+            "nextSnap": M3_WALL,
+            "prevDrift": M3_WALL,
+            "prevEvo": M3_WALL,
+            "prevScurve": M3_WALL,
+            "prevSnap": M3_WALL,
+            "qualNext": M3_WALL,
+            "qualPlay": M3_WALL,
+            "qualPrev": M3_WALL,
+            "scurvePlay": M3_WALL,
         },
         "anon": {
-            ".sf-frame-next": (23, WP2_M3),
-            ".sf-frame-play": (23, WP2_M3),
-            ".sf-frame-prev": (23, WP2_M3),
-            "cf-btn:Full screen": (9, CF_FS_DRIVER),
-            "cf-btn:Reset zoom": (9, CF_DRIVER),
-            "cf-btn:Zoom in": (9, CF_DRIVER),
-            "cf-btn:Zoom out": (9, CF_DRIVER),
+            ".sf-frame-next": (23, M3_TRIO),
+            ".sf-frame-play": (23, M3_TRIO_PLAY),
+            ".sf-frame-prev": (23, M3_TRIO),
+            "cf-btn:Full screen": (30, CF_FS_DRIVER),
+            "cf-btn:Reset zoom": (30, CF_DRIVER),
+            "cf-btn:Zoom in": (30, CF_DRIVER),
+            "cf-btn:Zoom out": (30, CF_DRIVER),
         },
-        # 30 chart hosts but only 9 chartframe bars: the 21 async-fetched tiles are never
-        # framed (no zoom/fullscreen toolbar) — an OBSERVED gap logged in the WP1 UI map,
-        # deliberately not "fixed" blind (the wall has its own tile-expand system).
-        "floors": (30, 9, 30, 11, 7, 1, 76, 30),
+        # 30 chart hosts, 30 chartframe bars. WP1 recorded this row as 30-vs-9 and logged the
+        # gap as an open design question; WP2 settled it by measurement rather than taste — a
+        # manual SFChartFrame.scan() on the settled wall took the count 9 -> 30, so the 21
+        # unframed tiles were an attach-vs-fetch race (the UI-02 shape), not a design choice.
+        # chartframe.js now adopts late-arriving hosts (ADR-0443, M5-01).
+        "floors": (30, 30, 30, 11, 7, 1, 76, 30),
     },
     "/compare": {"ids": {}, "anon": {}, "floors": (0, 0, 0, 0, 0, 0, 0, 3)},
     PATH: {
@@ -166,16 +180,16 @@ CENSUS: dict[str, dict[str, Any]] = {
     },
     "/trend": {
         "ids": {
-            "qualNext": WP2_M3,
-            "qualPlay": WP2_M3,
-            "qualPrev": WP2_M3,
-            "sfPlayAll": WP2_M3,
-            "sfStepAll": WP2_M3,
+            "qualNext": M3_STEP,
+            "qualPlay": M3_PLAY,
+            "qualPrev": M3_STEP,
+            "sfPlayAll": M3_MASTER_PLAY,
+            "sfStepAll": M3_MASTER_STEP,
         },
         "anon": {
-            ".sf-frame-next": (21, WP2_M3),
-            ".sf-frame-play": (21, WP2_M3),
-            ".sf-frame-prev": (21, WP2_M3),
+            ".sf-frame-next": (21, M3_TRIO),
+            ".sf-frame-play": (21, M3_TRIO_PLAY),
+            ".sf-frame-prev": (21, M3_TRIO),
             "cf-btn:Full screen": (2, CF_FS_DRIVER),
             "cf-btn:Reset zoom": (2, CF_DRIVER),
             "cf-btn:Zoom in": (2, CF_DRIVER),
@@ -196,7 +210,7 @@ CENSUS: dict[str, dict[str, Any]] = {
     "/evm": {"ids": {}, "anon": {}, "floors": (0, 0, 0, 0, 0, 0, 0, 5)},
     "/resources": {"ids": {}, "anon": {}, "floors": (0, 0, 0, 0, 0, 0, 0, 0)},
     "/cei": {
-        "ids": {"autoPlay": WP2_M3, "nextSnap": WP2_M3, "prevSnap": WP2_M3},
+        "ids": {"autoPlay": M3_PLAY, "nextSnap": M3_STEP, "prevSnap": M3_STEP},
         "anon": {
             "cf-btn:Full screen": (1, CF_FS_DRIVER),
             "cf-btn:Reset zoom": (1, CF_DRIVER),
@@ -206,7 +220,7 @@ CENSUS: dict[str, dict[str, Any]] = {
         "floors": (1, 1, 3, 1, 0, 0, 13, 2),
     },
     "/scurve": {
-        "ids": {"nextScurve": WP2_M3, "prevScurve": WP2_M3, "scurvePlay": WP2_M3},
+        "ids": {"nextScurve": M3_STEP, "prevScurve": M3_STEP, "scurvePlay": M3_PLAY},
         "anon": {
             "cf-btn:Full screen": (1, CF_FS_DRIVER),
             "cf-btn:Reset zoom": (1, CF_DRIVER),
@@ -217,7 +231,7 @@ CENSUS: dict[str, dict[str, Any]] = {
     },
     "/ribbon": {"ids": {}, "anon": {}, "floors": (0, 0, 0, 0, 0, 0, 0, 1)},
     "/volatility": {
-        "ids": {"volNext": WP2_M3, "volPlay": WP2_M3, "volPrev": WP2_M3},
+        "ids": {"volNext": M3_STEP, "volPlay": M3_PLAY, "volPrev": M3_STEP},
         "anon": {
             "cf-btn:Full screen": (10, CF_FS_DRIVER),
             "cf-btn:Reset zoom": (10, CF_DRIVER),
@@ -227,7 +241,7 @@ CENSUS: dict[str, dict[str, Any]] = {
         "floors": (10, 10, 0, 0, 0, 0, 18, 10),
     },
     "/performance": {
-        "ids": {"perfNext": WP2_M3, "perfPlay": WP2_M3, "perfPrev": WP2_M3},
+        "ids": {"perfNext": M3_STEP, "perfPlay": M3_PLAY, "perfPrev": M3_STEP},
         "anon": {
             "cf-btn:Full screen": (14, CF_FS_DRIVER),
             "cf-btn:Reset zoom": (14, CF_DRIVER),
@@ -240,15 +254,15 @@ CENSUS: dict[str, dict[str, Any]] = {
         "ids": {
             "evoPanL": "test_evo_pan_moves_the_viewport_and_returns",
             "evoPanR": "test_evo_pan_moves_the_viewport_and_returns",
-            "evoPlay": WP2_M3,
+            "evoPlay": M3_PLAY,
             "evoZoomIn": "test_evo_zoom_in_grows_bars_and_clamps_at_max",
             "evoZoomOut": "test_evo_zoom_out_reaches_the_floor_and_recovers",
             "evoZoomReset": "test_evo_reset_restores_the_fitted_axis",
-            "nextEvo": WP2_M3,
-            "prevEvo": WP2_M3,
-            "volNext": WP2_M3,
-            "volPlay": WP2_M3,
-            "volPrev": WP2_M3,
+            "nextEvo": M3_STEP,
+            "prevEvo": M3_STEP,
+            "volNext": M3_STEP,
+            "volPlay": M3_PLAY,
+            "volPrev": M3_STEP,
         },
         "anon": {
             "cf-btn:Full screen": (4, CF_FS_DRIVER),
@@ -266,7 +280,7 @@ CENSUS: dict[str, dict[str, Any]] = {
     },
     "/groups": {"ids": {}, "anon": {}, "floors": (0, 0, 0, 0, 0, 0, 0, 1)},
     "/forecast": {
-        "ids": {"driftPlay": WP2_M3, "nextDrift": WP2_M3, "prevDrift": WP2_M3},
+        "ids": {"driftPlay": M3_PLAY, "nextDrift": M3_STEP, "prevDrift": M3_STEP},
         "anon": {
             "cf-btn:Full screen": (1, CF_FS_DRIVER),
             "cf-btn:Reset zoom": (1, CF_DRIVER),
@@ -276,11 +290,11 @@ CENSUS: dict[str, dict[str, Any]] = {
         "floors": (1, 1, 0, 0, 0, 0, 0, 5),
     },
     "/curves": {
-        "ids": {"sfPlayAll": WP2_M3, "sfStepAll": WP2_M3},
+        "ids": {"sfPlayAll": M3_MASTER_PLAY, "sfStepAll": M3_MASTER_STEP},
         "anon": {
-            ".sf-frame-next": (2, WP2_M3),
-            ".sf-frame-play": (2, WP2_M3),
-            ".sf-frame-prev": (2, WP2_M3),
+            ".sf-frame-next": (2, M3_TRIO),
+            ".sf-frame-play": (2, M3_TRIO_PLAY),
+            ".sf-frame-prev": (2, M3_TRIO),
             "cf-btn:Full screen": (3, CF_FS_DRIVER),
             "cf-btn:Reset zoom": (3, CF_DRIVER),
             "cf-btn:Zoom in": (3, CF_DRIVER),
@@ -311,8 +325,8 @@ CENSUS: dict[str, dict[str, Any]] = {
     DP: {
         "ids": {
             "dpFit": "test_dp_view_entire_project_fits_the_corridor",
-            "dpNext": WP2_M3,
-            "dpPlay": WP2_M3,
+            "dpNext": M3_STEP,
+            "dpPlay": M3_PLAY,
             "dpPrev": DP_STEP_BACK,
             "dpZoomIn": "test_dp_zoom_in_grows_bars_and_clamps_at_max",
             "dpZoomOut": "test_dp_zoom_out_shrinks_bars_and_clamps_at_min",
@@ -473,13 +487,34 @@ def test_census_pages_match_the_served_route_table() -> None:
 
 def test_every_declared_driver_exists() -> None:
     """A census row naming a driver test that does not exist is a lie the census would never
-    catch on its own — resolve every ``test_*`` driver value against this module."""
+    catch on its own — resolve every ``test_*`` driver value to a real function.
+
+    Two spellings, and BOTH are resolved: a bare ``test_x`` names a driver in this module, while
+    ``<module>.py::test_x`` names one in a sibling module (WP2's M3 drivers live in
+    ``test_ui_stepper_autoplay_browser.py``). A cross-module name that is never imported is the
+    easy way for this guard to go quietly blind, so the module is imported and the attribute
+    looked up — a renamed or misspelled driver anywhere is RED.
+    """
+    import importlib
+
     missing = []
     for route, spec in CENSUS.items():
         drivers = list(spec["ids"].values()) + [d for _, d in spec["anon"].values()]
         for d in drivers:
-            if d.startswith("test_") and d not in globals():
-                missing.append((route, d))
+            if not d.startswith("test_"):
+                continue  # a prose cross-reference, not a driver name
+            if "::" in d:
+                mod_name, _, func = d.partition("::")
+                assert mod_name.endswith(".py"), f"{route}: malformed driver ref {d!r}"
+                try:
+                    mod = importlib.import_module(f"web.{mod_name[:-3]}")
+                except ImportError:  # pragma: no cover - a deleted driver module is the failure
+                    missing.append((route, d, "module not importable"))
+                    continue
+                if not callable(getattr(mod, func, None)):
+                    missing.append((route, d, "no such test in that module"))
+            elif d not in globals():
+                missing.append((route, d, "no such test in this module"))
     assert not missing, f"census rows name non-existent driver test(s): {missing}"
 
 

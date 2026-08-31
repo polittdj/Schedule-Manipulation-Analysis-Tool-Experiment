@@ -435,6 +435,77 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-31 (WP2, addendum) — the botched restore had a SECOND victim, and CI found it, not me
+
+- **Re-applying a fix is a change; it needs the suite re-run, not the memory of a green.** The
+  `git checkout --` restore below wiped three files. I re-applied them — and put back only HALF of
+  `chartframe.js`, because I wrote the re-apply from the second of two patches to that file. The
+  half that went missing was the one that made the coordinator's assignment unconditional, so the
+  caller's `stopAll`-less stub survived and `/mission` threw twenty page errors on every trusted
+  click: **strictly worse than the code before the PR.** I then reported "M3 59/59 green" from a
+  run that had happened BEFORE the revert. The rule is not "restore carefully"; it is **after any
+  re-apply, re-run the suite that proved the thing, and quote THAT run.** A green you are quoting
+  from memory is testimony, not evidence — QC-2's own rule, applied to my own prior claim.
+- **A pre-flight grep for byte pins must search for the PIN SHAPE, not for your filenames.** I
+  swept for pin-looking lines that also mentioned the files I was touching and concluded there were
+  none. Four pins then fired. They hash whole files and enumerate call sites by `(file, line)`, so
+  they never name a file on the same line as the hash — a sweep whose pattern cannot see its
+  subject reports "clean" by construction. That is the identical defect this same session fixed in
+  the A2 reduced-motion population; finding it twice in one session, on both sides of the
+  test/product line, is the argument for computing populations rather than typing them.
+- **Rebuild the wheel and installers as the LAST step, after the final source edit.** A late
+  whitespace alignment in two JS files landed after the build, and the lockstep guard caught the
+  embedded wheel drifting from the tree. "The code looks done" is not the trigger; "no file will
+  change again" is.
+- **A guard can outlive the thing it guards, and the fix is to re-express it, not delete it.**
+  `test_the_autoplay_stepper_pin_is_untouched` froze the literal five-name list this session
+  replaced with a computed sweep. Deleting it would have dropped a real requirement (the launch hum
+  must never be gated on a motion preference); keeping the text pin was impossible. Re-expressing it
+  against the computed population is strictly stronger — it checks set membership instead of a
+  spelling. **When a pin's mechanism dies, port its PROPERTY forward.**
+- **CI's value is the environment you do not have.** The browser job runs a newer Chromium and the
+  floor job installs the declared minimums; between them they caught a regression, four stale pins,
+  a stale wheel and a false dependency floor that a single local tree could not have shown me.
+
+### 2026-08-31 (WP2) — `git checkout --` is not a mutation restore; and a wrong oracle is indistinguishable from a defect
+
+- **`git checkout --` reverts to HEAD, not to the tree under test.** A mutation battery used it to
+  back out three mutations, and because all three files carried THIS session's fixes, the "restore"
+  silently deleted them. Worse, the next mutation in the same chain then asserted its anchor
+  against reverted code, failed to apply, and reported RED while measuring an unfixed tree — a
+  mutation that "passed" having proved nothing. WP1 already wrote *diff the tree after every
+  restore chain*; that diff is what caught this. The missing half: **restore from a `cp` of the
+  WORKING TREE, and never use `git checkout --` on a file the change itself touches.**
+- **A wrong oracle looks exactly like a defect.** The first stepper sweep reported "the chart did
+  not move" for three families. All three were the instrument: the digest walked SVG only, and
+  `/evolution` and `/driving-path` paint HTML-table Gantts while `/trend`'s quality drill paints
+  into `#qualBars`, not the `#qualChart` the probe had assumed existed. Had those been written up,
+  three healthy controls would have been "fixed". The cure is a pinned oracle:
+  `test_chart_digest_is_stable_and_sensitive` proves the digest both HOLDS STILL across a no-op
+  and MOVES on a real step, per family, before any assertion built on it is believed.
+- **Measuring the wrong element calls a working control dead.** `#uiScale` looked inert because the
+  probe measured `document.body`, which is full-bleed at every zoom. Measured on a heading's own
+  box it scales correctly (212 → 265 → 371 → 191 px). Second near-miss of the session, same shape.
+- **A probe's own wait can invent a finding and then retract it.** Reading `page.url` after
+  `wait_for_load_state` — before the form's navigation had even begun — reported the language
+  selector landing on the page it started from, contradicting an earlier run. `expect_navigation`
+  settled it. When two of your own runs disagree, the instrument is the suspect first.
+- **A guard with a hand-written population fails OPEN, and that is how a defect survives.** The A2
+  reduced-motion pin checked five module names typed out by hand; twelve modules are animated, and
+  the one outside the list (`driving_path.js`) was the one ignoring the setting. The guard passed
+  for years while being false. Computed population + a documented EXCLUSION list makes a new
+  animated module RED by default — the same correction ADR-0439 forced on a hand-written route
+  list, now made twice, which is the argument for making it the default shape of every guard.
+- **A defensive `if` around a load-order dependency hides the failure it was meant to survive.**
+  `if (window.SFPlayAll) window.SFPlayAll.register(stop)` reads as prudent and silently skipped the
+  registration on every page whose script ran before `chartframe.js` — which the layout guarantees,
+  since it emits `chartframe.js` after `<main>`. The one page where it worked did so only because
+  it registered from inside a `fetch` callback. **A guard that can be falsy for a structural reason
+  needs an else-branch, not a shrug.**
+- **The server session outlives a browser context.** Setting the UI language in one probe step
+  translated a later step's page and briefly looked like a translation bug; drivers that mutate
+  session state must restore it in a `finally`.
+
 ### 2026-08-31 — A census driver's first real click found two features that never worked; free text can never be a control signature
 
 - WP1's new drivers clicked controls the byte-pins had frozen for months — and two families

@@ -113,8 +113,20 @@
   // click on a per-chart animation control stops every master first — touching a chart by hand
   // takes manual control and the auto-play-all halts, so Stop (and Prev/Next) behave as expected.
   // The master's OWN stepping uses element.click() (isTrusted === false), so it never stops itself.
-  var playMasters = [];
-  window.SFPlayAll = window.SFPlayAll || {
+  // REGISTRATION IS ORDER-INDEPENDENT, and it has to be: the layout emits this file AFTER
+  // <main>, so a page script that registers its master at eval time (mission.js) runs BEFORE
+  // this object exists. Its `if (window.SFPlayAll)` guard then skipped the registration in
+  // silence and the wall's Play-all could not be halted by any chart control — ADR-0275's own
+  // symptom, alive on /mission for as long as the guard has been there (audit M3-01). Early
+  // callers now queue their stop() on a stub and this adopts the queue.
+  //
+  // The assignment is UNCONDITIONAL, and that is load-bearing: with `= window.SFPlayAll || {…}`
+  // the caller's stub (which has no stopAll) survives, and every trusted click on an animation
+  // control then throws `window.SFPlayAll.stopAll is not a function`. `_pending` is also the
+  // live list, so re-evaluating this file keeps every master already registered.
+  var playMasters = (window.SFPlayAll && window.SFPlayAll._pending) || [];
+  window.SFPlayAll = {
+    _pending: playMasters,
     register: function (stopFn) {
       if (typeof stopFn === "function" && playMasters.indexOf(stopFn) === -1) {
         playMasters.push(stopFn);
@@ -384,11 +396,45 @@
     if (opts.y2Label) caption(svg, geom.R - 4, geom.T + 9, opts.y2Label, "end");
   }
 
+  // Charts that arrive AFTER the one-shot scan. scan() ran once at DOMContentLoaded, so a
+  // .chart-host whose contents are fetched later never got a toolbar: on the Mission wall that
+  // was 21 of 30 tiles, framed or not purely by whether their fetch beat the boot (audit M5-01).
+  // It is the same attach-vs-fetch race WP1 fixed for the sticky scrollbar (UI-02), and the same
+  // cure — adopt new hosts as they appear instead of trusting one moment in the page's life.
+  // frame() is idempotent (__cfFramed), so the extra pass its OWN insertions trigger finds
+  // nothing to do and the observer settles after one no-op scan rather than looping.
+  var rescanQueued = false;
+  function queueScan() {
+    if (rescanQueued) return;
+    rescanQueued = true;
+    var run = function () { rescanQueued = false; scan(); };
+    if (window.requestAnimationFrame) window.requestAnimationFrame(run);
+    else window.setTimeout(run, 16);
+  }
+  function watchForLateCharts() {
+    if (!window.MutationObserver || !document.body) return;
+    new MutationObserver(function (records) {
+      for (var i = 0; i < records.length; i++) {
+        var added = records[i].addedNodes;
+        for (var j = 0; j < added.length; j++) {
+          var n = added[j];
+          if (!n || n.nodeType !== 1) continue;
+          if ((n.classList && n.classList.contains("chart-host")) ||
+              (n.querySelector && n.querySelector(".chart-host"))) {
+            queueScan();
+            return;
+          }
+        }
+      }
+    }).observe(document.body, { childList: true, subtree: true });
+  }
+
   window.SFChartFrame = { frame: frame, scan: scan, axisTitles: axisTitles };
 
+  function boot() { scan(); watchForLateCharts(); }
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", scan);
+    document.addEventListener("DOMContentLoaded", boot);
   } else {
-    scan();
+    boot();
   }
 })();

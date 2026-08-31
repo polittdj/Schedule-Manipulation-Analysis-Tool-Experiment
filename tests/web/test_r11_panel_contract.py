@@ -379,7 +379,12 @@ GLOBAL_FORMS = [
     ("/session/wipe", "b6865b61ecf8d256992f66a1e5a8fa4f", 162),
     ("/target", "03f588005cb81489f95f0bf540f88414", 638),
     ("/target", "6f7248497e541120c16c6da3b098b605", 599),
-    ("/language", "c3b117dc6b8fdabc36bd6043ac60d085", 391),
+    # DELIBERATE re-baseline (ADR-0443, M5-02): the language form gained a hidden next_url
+    # and moved from data-sf-autosubmit to data-sf-nexturl-submit, so choosing a language
+    # returns the operator to the page they were reading instead of the dashboard (the
+    # Referer it relied on is stripped by the app's own Referrer-Policy: no-referrer).
+    # c3b117dc6b8fdabc36bd6043ac60d085 / 391 → below.
+    ("/language", "7af4acf0470f2fc9d0b05b224f1cc4b8", 438),
     ("/target", "3e9a44eae1ed506b4a430e8421100d96", 213),
 ]
 
@@ -479,7 +484,13 @@ PAGE_SCRIPTS = {
     # operator 2026-08-20 whole-schedule default, 47b5cf0351666a8bae7a61bce7102f99 → 3a8f3fac…;
     # ADR-0407, ENG-DEAD-01.)
     "path.js": "3ad07eefc258cf3131c23b9b87e97cb5",
-    "driving_path.js": "027a0d438a9337e408e7fb1997a24d44",
+    # DELIBERATE re-baseline (ADR-0443, M3-03): dpPlay gained the prefers-reduced-motion
+    # branch its nine sibling animated modules already carried — under the setting it now
+    # advances ONE version instead of starting a 1100 ms timer. No axis caption, tick,
+    # column or geometry logic touched; the behaviour is driven by
+    # test_ui_stepper_autoplay_browser.py (observed RED pre-fix by name).
+    # 027a0d438a9337e408e7fb1997a24d44 → below.
+    "driving_path.js": "99055bda2fa67894949fd62fa3ad7dbf",
     # DELIBERATE re-baseline (ADR-0340): the tier table gained its B1 <caption class="ch-atd">
     # via SFGantt.tableCaption. The diff is ONE call plus its comment, inserted between the
     # `el("table", …)` and the `<thead>` build; no axis, tick, bar or column logic is touched.
@@ -557,7 +568,7 @@ AXIS_CALL_SITES = [
     # (verified by re-deriving and matching on digest, not by retyping): curves 385 -> 381,
     # drift 133 -> 136, margin_dashboard 309 -> 323. A line refresh with intact caption bytes is
     # the ADR-0317 precedent already recorded further down this list.
-    ("curves.js", 381, "be3566a1f0c0feb3319053688753b574"),
+    ("curves.js", 386, "be3566a1f0c0feb3319053688753b574"),
     ("drift.js", 136, "d7cd43e8092e02ef82449a52592578d6"),
     ("histogram.js", 243, "5dccee80ef65513a4e5775abc5604271"),
     ("margin.js", 224, "0bead85c7a9f61cbc9175a125bafe2c0"),
@@ -590,11 +601,11 @@ AXIS_CALL_SITES = [
     ("sra_jcl.js", 189, "798a2b7383480f0a6ec01af37e853c15"),
     ("sra_ssi.js", 240, "8f3c2211e1edca2deddab9a50da9b8fa"),
     ("sra_ssi.js", 273, "06b60f6f8f812bde4b6d0e5d278828e7"),
-    ("trend.js", 479, "8bf757af762c9343299f4770bf086f1a"),
-    ("trend.js", 583, "82a858e0da47d00e87cb6feffc9dac7d"),
-    ("trend.js", 708, "7cff421ad9b3b74b5f8907093822f67f"),
-    ("trend.js", 826, "389cb5d55cdb709d1a8e5b86950de32a"),
-    ("trend.js", 916, "d85c285c5166c824a0a44425e134b581"),
+    ("trend.js", 483, "8bf757af762c9343299f4770bf086f1a"),
+    ("trend.js", 587, "82a858e0da47d00e87cb6feffc9dac7d"),
+    ("trend.js", 712, "7cff421ad9b3b74b5f8907093822f67f"),
+    ("trend.js", 830, "389cb5d55cdb709d1a8e5b86950de32a"),
+    ("trend.js", 920, "d85c285c5166c824a0a44425e134b581"),
     ("trend_drill.js", 110, "a1c40e6c60bfb1261bb35bf2ef062930"),
     # volatility.js's four axis charts (churn / flow / area / dwell) — the other half of the
     # ADR-0329 additions; the gauge, heatmap, leaderboards, strips and ribbon are recorded

@@ -15814,3 +15814,76 @@ file); full suite **4,516 passed / 5 known env-gated skips / 0 failed in 30:38**
 the census grew 12 → 57 and the windowing module added 5); parity `-m parity` **72 passed in
 8:33**; drift guards 12 passed; census mutation battery 17/17 red by name + windowing battery
 5/5 + the recorded pre-fix reds (S5 ×3, UI-01 grip timeout, UI-02 proxy pinned at 0).
+
+---
+
+## 2026-08-31 — POLARIS² WP2 COMPLETE: the steppers/autoplay driven on a fake clock; five dead-or-misrouted controls fixed (ADR-0443, v1.0.225)
+
+- **Session:** WP2 of the 2026-08-27 full-tool audit campaign (SOLO lead, fix-as-verified).
+- **Branch:** `claude/polaris2-audit-resume-3xg50n` (from `main` @ `286046d5`, the WP1 merge).
+- **Scope:** M3 (the 47 id'd steppers/autoplay controls + the 138 `sf-frame` trio buttons the WP1
+  census deferred) and M5 (the real `#themeSelect`, language, Task Information, and the
+  `/mission` 30-hosts-vs-9-cf-bars design question).
+
+### What changed
+
+- **`tests/web/test_ui_stepper_autoplay_browser.py`** (new, 59 tests, ~1:52) — every id'd stepper
+  family, the id-less `sf-frame` trio, the three page masters, and the ADR-0275 coordinator.
+  Driven on Playwright's **fake clock** (autoplay is 1100–1800 ms; a wall-time wait would be a
+  race, not a measurement) and pinned not to perturb the artifact.
+- **`tests/web/test_ui_chrome_controls_browser.py`** (new, 8 tests, ~30s) — the REAL `#themeSelect`
+  across four views, `#themeToggle`, `#uiScale`, the language selector, Task Information, and the
+  wall's chart toolbars. Twenty existing modules bypass the theme select with `setAttribute`.
+- **`tests/web/test_ui_language_redirect_guard.py`** (new, 10 tests) — the open-redirect pin that
+  rides with M5-02's `next_url`. Route-level, no browser, so it runs in the normal suite.
+- **Fixes:** `chartframe.js` (order-independent coordinator registration + a childList observer
+  for late-arriving `.chart-host`s), `mission.js` and `curves.js` and `trend.js` (the same
+  registration idiom), `driving_path.js` (honours `prefers-reduced-motion`), `chrome.py` +
+  `app.py` (the language form rides a validated `next_url`).
+- **`test_accessibility.py`** — the A2 reduced-motion population is now COMPUTED from the shipped
+  JS with a documented exclusion list, replacing a hand-written five-name inclusion list that was
+  failing open (twelve modules are animated).
+- **Census** — every `WP2:M3` marker discharged to a module-qualified driver name; the meta-guard
+  imports the sibling module to resolve them; `/mission` re-pinned from 30/9 to 30/30.
+
+### Gate (recorded AFTER the runs — QC-1)
+
+- `ruff check .` — All checks passed. `ruff format --check .` — 584 files already formatted.
+- `python -m mypy src/` — Success: no issues found in 158 source files.
+- `bandit -q -r src` — exit 0 (nosec warnings only).
+- `node --check` — all vendored JS parses.
+- Red-first observed: M3 **5 failed / 54 passed**; M5 **3 failed / 5 passed**.
+- Green: M3 **59/59**, M5 **8/8**, redirect guard **10/10**, census **57/57**.
+- **Mutation battery: 19 mutations, every one RED BY NAME.**
+- **Definitive full suite on the SHIPPED tree: 4598 passed, 5 skipped, 0 failed (41:58).** Run to
+  completion on the frozen tree and verified to describe it: `git status` empty and
+  `git diff HEAD` empty at the moment the run finished, with the working tree, `HEAD` and the
+  pushed ref all at `e355cd58`. This is the gate number for what shipped — the earlier figures in
+  this entry describe trees that were superseded, and quoting one of those as current is the
+  mistake that let a regression onto the branch.
+- **The first push was RED on CI, and every failure was this change's.** Full local suite on the
+  as-pushed tree: **16 failed / 4578 passed**. Causes: (a) a regression I introduced by re-applying
+  only HALF of `chartframe.js` after the `git checkout --` restore, so `mission.js`'s stub survived
+  and `/mission` threw 20 `stopAll is not a function` page errors — the local "59/59" I had quoted
+  described a tree that no longer existed; (b) four byte-freeze pins my pre-flight grep could not
+  see (it searched for my filenames; the pins hash whole files and index call sites by line);
+  (c) `test_the_autoplay_stepper_pin_is_untouched`, which froze the literal this ADR replaced;
+  (d) a stale embedded wheel after a late whitespace edit; (e) a false `playwright>=1.44` floor
+  (`page.clock` does not exist below 1.45 — measured from both wheels). All fixed; see ADR-0443.
+
+### Defects found and fixed (all red-first, see ADR-0443 for the measurements)
+
+M3-01 `/mission`'s wall master was never registered with the ADR-0275 coordinator (the layout
+emits `chartframe.js` after `<main>`; the `if (window.SFPlayAll)` guard skipped it in silence) ·
+M3-02 `/curves` never called `register()` at all · M3-03 `driving_path.js` was the only animated
+module of twelve ignoring `prefers-reduced-motion` · M5-01 the Mission wall framed 9 of 30 tiles
+(an attach-vs-fetch race, settled by measurement — a manual re-scan took it to 30) · M5-02 the
+Language selector always returned the operator to `/`.
+
+### Lessons (appended to LESSONS-LEARNED Part VIII the day they were learned)
+
+`git checkout --` is not a mutation restore — it reverts to HEAD and deleted three of this
+session's own fixes mid-battery · a wrong oracle looks exactly like a defect (an SVG-only digest
+against HTML-table Gantts) · measuring `document.body` to test a page zoom reports a working
+control as dead · a probe's own wait can invent a finding and then retract it · the server session
+outlives a browser context.

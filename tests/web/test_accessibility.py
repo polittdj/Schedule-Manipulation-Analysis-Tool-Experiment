@@ -6,13 +6,47 @@ test client). Pure presentation — no engine numbers change."""
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 from fastapi.testclient import TestClient
 
 from schedule_forensics.web.app import SessionState, create_app
 
-#: the five auto-play stepper charts that must honor prefers-reduced-motion (A2)
-_AUTOPLAY_JS = ("cei.js", "drift.js", "path_evolution.js", "scurve.js", "trend_drill.js")
+#: Modules that drive a timer but animate NOTHING, each with the reason it is exempt.
+#:
+#: This is an EXCLUSION list, and the direction is the entire point. It replaced a hand-written
+#: INCLUSION list of five module names, which named ``cei``/``drift``/``path_evolution``/
+#: ``scurve``/``trend_drill`` while the app shipped twelve animated modules — so the A2 claim
+#: "every auto-play stepper gates its timer on the same preference" was true only of the five
+#: someone had remembered to type. ``driving_path.js`` sat outside that list and ignored
+#: prefers-reduced-motion entirely: its Play auto-flipped the corridor through every version on a
+#: 1100 ms timer (audit M3-03, caught by the WP2 browser driver, not by this pin). A hand-derived
+#: population under-reports by construction — the same lesson ADR-0439 paid for with a route list.
+#:
+#: Computed from the shipped JS instead, so a NEW animated module is RED by default and can only
+#: be excused by adding it here WITH a reason. ``test_the_animation_population_is_computed``
+#: keeps both halves honest.
+_TIMER_BUT_NOT_ANIMATION = {
+    "ask.js": "polls the local AI job for its answer",
+    "heartbeat.js": "polls the local server's liveness for the header dot",
+    "launch_audio.js": "schedules the launch tones — audio, not motion",
+    "sra.js": "polls the Monte-Carlo run for progress",
+    "sysmon.js": "polls local CPU/memory for the HUD readout",
+}
+
+#: Animators that self-schedule with a chained ``setTimeout`` instead of ``setInterval``, so the
+#: computed sweep below cannot see them. ``performance.js`` is chained deliberately (a setInterval
+#: queued 13-chart redraws faster than the webview could paint them and crashed the tool).
+_CHAINED_ANIMATORS = ("performance.js",)
+
+STATIC = Path(__file__).resolve().parents[2] / "src" / "schedule_forensics" / "web" / "static"
+
+
+def _animated_modules() -> list[str]:
+    """Every shipped module that runs an animation timer — computed, never typed out."""
+    found = {f.name for f in STATIC.glob("*.js") if "setInterval(" in f.read_text(encoding="utf-8")}
+    return sorted((found - set(_TIMER_BUT_NOT_ANIMATION)) | set(_CHAINED_ANIMATORS))
 
 
 @pytest.fixture
@@ -29,12 +63,44 @@ def test_visible_keyboard_focus_ring(client: TestClient) -> None:
 
 def test_reduced_motion_is_honored(client: TestClient) -> None:
     """A2 (WCAG 2.3.3): a prefers-reduced-motion media block neutralizes transitions/animations,
-    and every auto-play stepper gates its timer on the same preference."""
+    and EVERY animated module — computed from the shipped JS — gates its timer on the same
+    preference."""
     css = client.get("/static/base.css").text
     assert "@media (prefers-reduced-motion: reduce)" in css
-    for name in _AUTOPLAY_JS:
-        js = client.get(f"/static/{name}").text
-        assert "prefers-reduced-motion" in js, name
+    animated = _animated_modules()
+    assert len(animated) >= 12, f"the animation sweep found only {animated} — it has gone blind"
+    ungated = [
+        name
+        for name in animated
+        if "prefers-reduced-motion" not in client.get(f"/static/{name}").text
+    ]
+    assert not ungated, (
+        f"animated module(s) start a timer without honouring prefers-reduced-motion: {ungated}"
+    )
+
+
+def test_the_animation_population_is_computed_and_its_exemptions_are_live() -> None:
+    """The two hand-maintained halves of the sweep must stay true, or the sweep quietly narrows.
+
+    A stale exemption (a module that no longer exists, or that has since become an animator) and
+    a chained animator that no longer chains are both ways for the population above to shrink
+    without anyone noticing — which is precisely how the old five-name list went stale.
+    """
+    on_disk = {f.name for f in STATIC.glob("*.js")}
+    missing = sorted(set(_TIMER_BUT_NOT_ANIMATION) - on_disk)
+    assert not missing, f"exempted module(s) no longer shipped: {missing}"
+    for name in _TIMER_BUT_NOT_ANIMATION:
+        assert "setInterval(" in (STATIC / name).read_text(encoding="utf-8"), (
+            f"{name} is exempted from the animation sweep but no longer runs a timer at all — "
+            f"drop the exemption rather than carrying a dead one"
+        )
+    for name in _CHAINED_ANIMATORS:
+        text = (STATIC / name).read_text(encoding="utf-8")
+        assert "setTimeout(" in text, f"{name} is listed as a chained animator but chains nothing"
+        assert "setInterval(" not in text, (
+            f"{name} now uses setInterval and is found by the sweep itself — remove it from "
+            f"_CHAINED_ANIMATORS so it is not counted twice"
+        )
 
 
 def test_theme_tokens_border_and_grid_line_are_defined(client: TestClient) -> None:
