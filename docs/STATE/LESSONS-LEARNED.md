@@ -435,6 +435,31 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-08-28 — the reporter's machine is a dimension of the matrix, and "everything painted" can still be "nothing visible"
+
+- The ADR-0440 chase reproduced BOTH reported symptoms perfectly — via a mechanism the
+  operator's machine turned out not to have (their storage was byte-clean). The 13-cell matrix
+  varied STATE, THEME and VIEWPORT but never SPAN or ROW COUNT; the operator's 12.3-year,
+  2,301-activity IPMR sat outside every cell. **Lesson: a reproduction matrix must include the
+  reporter's data SHAPE, not just hostile state — ask for the scale numbers (span, rows) in the
+  first evidence request.**
+- After Fit, every bar existed and was correctly painted in a 969px track — inside a 40,104px
+  column with the pane scrolled 24,206px into the dead zone. `bars_total` said healthy;
+  `getBoundingClientRect().left` said −24,205. **Measure position, not just presence.** A probe
+  counting "visible marks" must also scroll its grid into view first, or page layout (a KPI
+  block filling the first viewport) reads as a defect.
+- The stale column came from a fix: SFColResize's attach-time g-head sizing was ITSELF the cure
+  for a prior dead-scroll bug — correct on every `render()`, silently absent on every
+  `reflow()`. **When a subsystem has two rebuild paths of different depths, a fix applied to
+  one is a bug scheduled for the other.**
+- The first whole-fit threshold (3 pages) regressed a measured, operator-approved behavior
+  (ADR-0438's zoomed+seat opening, ~7.5 pages) and the neighbour suite caught it in minutes.
+  **Anchor a new threshold on the pathological case with ~2× headroom from any measured-good
+  case, and treat the neighbour module's red as the boundary-setter, not an obstacle.**
+- A mutation-restore script asserted on text the mutation had never removed and silently
+  aborted the restore; the next run then re-measured the OLD mutation. **A restore must assert
+  exactly what the mutation changed — and re-run the green side after every restore.**
+
 ### 2026-08-27 — a clamp that lives only on the EDIT path guards nothing the storage can say
 
 - The operator's "controls do nothing / renders wrong" on three Gantt pages was a persisted

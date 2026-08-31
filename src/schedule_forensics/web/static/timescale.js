@@ -383,11 +383,50 @@ window.SFTimescale = (function () {
     return [CFG.top, CFG.middle, CFG.bottom];
   }
 
+  // ---------------------------------------------------------------- density adaptation (ADR-0441)
+  // MS Project promotes UNITS when zoomed far out: a 12-year project fitted to one page shows
+  // Years/Quarters, never a picket fence of 5px month boxes. tierBands only shrinks LABELS
+  // (full -> narrow -> empty), so without this a long span renders rows of unlabeled slivers
+  // (measured on the operator's schedule: 165 month bands, 0 labeled, 5.9px average). A tier
+  // whose bands would average under MIN_BAND_PX is promoted up the ladder FOR RENDERING ONLY —
+  // CFG keeps the operator's configured units, and zooming back in restores them. A tier that
+  // promotes into its neighbour's unit is dropped (Years/Quarters/Months becomes Years/Quarters,
+  // exactly MS Project's zoomed-out stack).
+  var MIN_BAND_PX = 14;
+  var PROMOTE = { hours: "days", days: "weeks", weeks: "months", thirds: "months",
+    months: "quarters", quarters: "halfyears", halfyears: "years" };
+  function effectiveTier(axis, tier) {
+    var units = UNITS[tier.units] ? tier.units : "months";
+    var count = Math.max(1, Math.min(999, Math.floor(tier.count) || 1));
+    var label = tier.label;
+    var promoted = false;
+    while (PROMOTE[units]) {
+      var expected = (axis.t1 - axis.t0) / (UNITS[units].approxMs * count);
+      if (expected <= 0 || axis.width / expected >= MIN_BAND_PX) break;
+      units = PROMOTE[units];
+      count = 1;
+      promoted = true;
+    }
+    if (promoted) label = LABELS[units][0].id;
+    return { units: units, label: label, count: count, align: tier.align,
+      fiscal: tier.fiscal, ticks: tier.ticks };
+  }
+  function effectiveStack(axis) {
+    var out = [];
+    visibleTiers().forEach(function (t) {
+      var eff = effectiveTier(axis, t);
+      var prev = out[out.length - 1];
+      if (prev && prev.units === eff.units && prev.count === eff.count) return;
+      out.push(eff);
+    });
+    return out;
+  }
+
   // The full tier stack for gantt.js: [{bands, ticks}] + the separator flag.
   function tiers(axis) {
     return {
       separator: !!CFG.separator,
-      rows: visibleTiers().map(function (t) {
+      rows: effectiveStack(axis).map(function (t) {
         return { bands: tierBands(axis, t, CFG.fyStartMonth), ticks: !!t.ticks };
       }),
     };
@@ -396,7 +435,7 @@ window.SFTimescale = (function () {
   // Gridline boundaries for gantt.js: light lines on the BOTTOM visible tier's band starts,
   // heavier on the middle tier's, heaviest on the top tier's (matching the header).
   function gridBoundaries(axis) {
-    var vis = visibleTiers();
+    var vis = effectiveStack(axis); // gridlines follow the same promoted stack as the header
     var classes = vis.length === 1 ? ["g-grid g-grid-yr"]
       : vis.length === 2 ? ["g-grid g-grid-yr", "g-grid"]
         : ["g-grid g-grid-yr", "g-grid g-grid-qtr", "g-grid"];
