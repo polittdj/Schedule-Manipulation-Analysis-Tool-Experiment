@@ -9,9 +9,9 @@ docs/STATE/HANDOFF.md FIRST (auto-injected), then **docs/STATE/AUDIT-2026-08-27.
 campaign's live ledger (appended per-WP, never batch-written)**; the 2026-08-16 ledger stays the
 historical row source for WP6. As of last close: **v1.0.225 · highest ADR 0443 · WP0, its
 addendum, WP1 AND WP2 complete** (WP0/PR #615 @ `2fbde95e`, addendum PR #616 @ `d56ad3f9`, WP1/PR
-#617 @ `286046d5`; WP2 on branch `claude/polaris2-audit-resume-3xg50n` — check whether its draft
-PR has merged before branching; verify a pull_request CI run appears per push, dispatch manually
-only if none does; WP4 root-causes the 08-26 `startup_failure`). Campaign decisions (operator,
+#617 @ `286046d5`, WP2/PR #618 @ `0e07d213` — ALL MERGED, so branch fresh from `origin/main` and
+do not look for an open PR; verify a pull_request CI run appears per push, dispatch manually only
+if none does; WP4 root-causes the 08-26 `startup_failure`). Campaign decisions (operator,
 2026-08-27, standing): **SOLO lead · fix-as-verified · BOTH folder-ask builds**. QC-1/QC-2 bind
 every session — ADR-0393, pinned by `tests/test_standing_rules.py`. **git fetch origin before you
 branch, number an ADR, or commit — and RE-fetch before writing the docs.**
@@ -57,7 +57,7 @@ shift = CONFIRMED-DEFERRED, never a silent re-pin) → **WP7** (thin dims, `ai/t
 Law 1) → **WP8** (consolidated report + roadmap by testimony risk). Each WP ends commit-able:
 red-first → mutation proofs → full gate → ADR → state docs → draft PR.
 
-⇢ Traps paid for, by name: **re-applying a fix needs the suite RE-RUN** — WP2's first push was RED because a re-apply restored only HALF of chartframe.js and the "59/59 green" being quoted described a tree that no longer existed; a green from memory is testimony, not evidence · **a byte-pin pre-flight grep must search the PIN SHAPE, not your filenames** (four pins fired that hash whole files / index call sites by line, so they never name a file on the hash's line — re-baseline deliberately and verify the CAPTION hashes are identical first) · **rebuild the wheel + nine installers as the LAST step**, after the final source edit (a late whitespace change drifted the embedded wheel) · **a declared dependency floor can be made false by your own change** (`playwright>=1.44` vs `page.clock`, which needs 1.45 — measured from both wheels; the ADR-0346 fastapi shape) · **`git checkout --` is NOT a mutation restore** — it reverts to HEAD and
+⇢ Traps paid for, by name: **a background waiter that greps for its own command line never exits** — `until ! pgrep -f "pytest …"; do sleep; done` matches the waiter's OWN `bash -c` line, so four of them span for hours after the suite ended; match on a pidfile or a sentinel in the output file instead · **re-applying a fix needs the suite RE-RUN** — WP2's first push was RED because a re-apply restored only HALF of chartframe.js and the "59/59 green" being quoted described a tree that no longer existed; a green from memory is testimony, not evidence · **a byte-pin pre-flight grep must search the PIN SHAPE, not your filenames** (four pins fired that hash whole files / index call sites by line, so they never name a file on the hash's line — re-baseline deliberately and verify the CAPTION hashes are identical first) · **rebuild the wheel + nine installers as the LAST step**, after the final source edit (a late whitespace change drifted the embedded wheel) · **a declared dependency floor can be made false by your own change** (`playwright>=1.44` vs `page.clock`, which needs 1.45 — measured from both wheels; the ADR-0346 fastapi shape) · **`git checkout --` is NOT a mutation restore** — it reverts to HEAD and
 silently deleted three of WP2's own fixes mid-battery, then let one mutation "pass" while measuring
 unfixed code; restore from a `cp` of the WORKING TREE and diff the tree after every chain · **a
 wrong oracle looks exactly like a defect** — an SVG-only chart digest reported three false "chart
