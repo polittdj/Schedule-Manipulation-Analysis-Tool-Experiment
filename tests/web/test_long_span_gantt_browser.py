@@ -247,3 +247,65 @@ def test_zoom_slider_input_burst_is_debounced(browser: Any, served: str) -> None
     )
     assert rebuilds <= 2, f"6 slider events caused {rebuilds} grid rebuilds"
     page.context.close()
+
+
+# ── the timescale header must stay INSIDE its own box, and its bands must not overlap ─────────
+
+_BAND_BOX = """() => {
+  const scale = document.querySelector('.path-scale');
+  if (!scale) return {err: 'no .path-scale'};
+  const axisW = parseFloat(scale.style.width) || scale.clientWidth;
+  const rows = [...scale.querySelectorAll('.g-tier')].map(t => {
+    const bs = [...t.querySelectorAll('.g-band')].map(b => ({
+      label: (b.textContent || '').trim(),
+      left: parseFloat(b.style.left) || 0,
+      width: parseFloat(b.style.width) || 0,
+    }));
+    let overflow = 0, overlap = 0;
+    bs.forEach((b, i) => {
+      overflow = Math.max(overflow, (b.left + b.width) - axisW);
+      if (i) overlap = Math.max(overlap, (bs[i-1].left + bs[i-1].width) - b.left);
+    });
+    return {cls: t.className, n: bs.length, overflow: Math.round(overflow),
+            overlap: Math.round(overlap), first: bs[0] || null, last: bs[bs.length-1] || null};
+  });
+  return {axisW: Math.round(axisW), scrollW: scale.scrollWidth, clientW: scale.clientWidth, rows};
+}"""
+
+
+def test_tier_bands_stay_inside_the_axis_and_never_overlap(browser: Any, served: str) -> None:
+    """A partial unit at either END of the span must be TRUNCATED, not drawn a full unit wide.
+
+    ``tierBands`` clamped only the band's ``left`` (``Math.max(0, left)``) while computing its
+    width from the UNCLAMPED edges and never clamping ``right`` to ``axis.width``. On the
+    operator's 12.3-year IPMR that draws the first year band a full year wide from x=0 — so
+    2017 (0..81px) OVERLAPPED 2018 (starting at 47px) by 34px and its label sat over the join —
+    and the last band ran 57px PAST the header's own right edge (scrollWidth 1026 vs clientWidth
+    969), bleeding over the column beside it. Measured on both the fitted and zoomed views: the
+    span almost never starts and ends on a clean year boundary, so at least one end is wrong
+    essentially always.
+    """
+    page = _open(browser, served)
+    try:
+        for view, act in (("fitted", _fit), ("as-opened", lambda p: None)):
+            act(page)
+            page.wait_for_timeout(400)
+            box = page.evaluate(_BAND_BOX)
+            assert not box.get("err"), box
+            assert box["rows"], f"{view}: no tier rows rendered"
+            for row in box["rows"]:
+                assert row["overflow"] <= 1, (
+                    f"{view}: {row['cls']} runs {row['overflow']}px past the axis "
+                    f"({row['axisW'] if 'axisW' in row else box['axisW']}px) — last band "
+                    f"{row['last']}; the header bleeds over the next column"
+                )
+                assert row["overlap"] <= 1, (
+                    f"{view}: {row['cls']} has bands overlapping by {row['overlap']}px — "
+                    f"first band {row['first']}; two labels are drawn over each other"
+                )
+            assert box["scrollW"] <= box["clientW"] + 1, (
+                f"{view}: the header overflows its own box "
+                f"(scrollWidth {box['scrollW']} > clientWidth {box['clientW']})"
+            )
+    finally:
+        page.close()

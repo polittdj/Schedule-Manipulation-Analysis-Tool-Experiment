@@ -7,8 +7,8 @@
 Resume the POLARIS² full-tool audit campaign (Schedule-Manipulation-Analysis-Tool). Read
 docs/STATE/HANDOFF.md FIRST (auto-injected), then **docs/STATE/AUDIT-2026-08-27.md — the
 campaign's live ledger (appended per-WP, never batch-written)**; the 2026-08-16 ledger stays the
-historical row source for WP6. As of last close: **v1.0.225 · highest ADR 0443 · WP0, its
-addendum, WP1 AND WP2 complete** (WP0/PR #615 @ `2fbde95e`, addendum PR #616 @ `d56ad3f9`, WP1/PR
+historical row source for WP6. As of last close: **v1.0.226 · highest ADR 0444 · WP0, its
+addendum, WP1 AND WP2 complete, plus an operator-reported header fix (ADR-0444) on top** (WP0/PR #615 @ `2fbde95e`, addendum PR #616 @ `d56ad3f9`, WP1/PR
 #617 @ `286046d5`, WP2/PR #618 @ `0e07d213` — ALL MERGED, so branch fresh from `origin/main` and
 do not look for an open PR; verify a pull_request CI run appears per push, dispatch manually only
 if none does; WP4 root-causes the 08-26 `startup_failure`). Campaign decisions (operator,
@@ -45,6 +45,20 @@ five-name population while twelve modules are animated, is now COMPUTED and fail
 `WP2:M3` census marker is discharged; driver values are module-qualified and the meta-guard
 imports the sibling module to resolve them. After the WP2 PR merges the operator re-downloads the
 installer once (banner must say **v1.0.225**).
+
+⇢ OPEN QUESTION owed to the operator (ADR-0444) — ASK BEFORE RE-CHASING. They reported "the time
+line headers are still screwed up" with a screenshot of /path on their 2,301-activity / 12.3-year
+IPMR, two files open. A REAL defect was found and fixed there (tierBands clamped `left` but took the
+width from the UNCLAMPED left and never clamped `right` — the 2017 band overlapped 2018 by 34px and
+the last band ran 57px past the header). **But their exact symptom — a THREE-row header with
+cascading year labels — was NOT reproduced**: every repro at their row count, span, file count and
+six viewport widths (1100→2560) produced a sound TWO-row header with zero pageerrors, because
+`effectiveStack` promotes Months→Quarters at that span and dedupes. ADR-0444 is therefore UNVERIFIED
+as their fix. Get these three from the machine showing the fault, both files open, BEFORE probing
+further: (1) the version banner — are they on >=1.0.225, or a build predating ADR-0441's header work?
+(2) `localStorage.getItem("sf.timescale.v1")` — the persisted tier config that decides the row count.
+(3) a dump of `.g-scale-tiered .g-tier` (class + computed `top`) and the first few `.g-band`
+label/left pairs — the one thing a screenshot cannot give.
 
 ⇢ NEXT — **WP3: M4 the SRA grid** — edit / paste-from-Excel / save round-trip (UI-map row 27, the
 last queued row). Then **WP4** (committed route-coverage instrument, `SF_ROUTE_COVERAGE=1`, floor

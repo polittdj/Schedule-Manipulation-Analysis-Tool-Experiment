@@ -1,99 +1,52 @@
-# Handoff — 2026-08-31 (WP2 COMPLETE: the steppers are DRIVEN on a fake clock and the Play-all coordinator was dead on two of its three pages; the wall frames all 30 tiles; language stops throwing you to the dashboard; ADR-0443, v1.0.225)
+# Handoff — 2026-09-01 (operator-reported header defect: the timescale's EDGE bands were unclamped — they overlapped at the left and bled past the right; ADR-0444, v1.0.226)
 
-> ## STATUS (current) — **WP2 is MERGED: PR #618 squash-landed on `main` @ `0e07d213` (2026-08-31 22:16Z), all seven CI checks green. The campaign runs under QC-1/QC-2 — ADR-0393, pinned by `tests/test_standing_rules.py`.**
-> Next work package is **WP3 (M4 — the SRA grid)**; branch FRESH from `origin/main`, never stacked on the consumed WP2 branch.
-> Highest ADR **0443**; version **1.0.225** (shipped code: `static/chartframe.js`, `static/mission.js`,
-> `static/curves.js`, `static/trend.js`, `static/driving_path.js`, `web/chrome.py`, `web/app.py`);
-> wheel + nine installers rebuilt in lockstep. Ledger: **docs/STATE/AUDIT-2026-08-27.md** WP2
-> section. Gate numbers: SESSION-LOG 2026-08-31 (WP2) entry, recorded AFTER the runs (QC-1).
+> ## STATUS (current) — **On branch `claude/polaris2-audit-resume-3xg50n` (from `main` @ `489cf976`). WP0/WP1/WP2 are all MERGED; this is an operator-reported defect fix on top. QC-1/QC-2 bind every session — ADR-0393, pinned by `tests/test_standing_rules.py`.**
+> Highest ADR **0444**; version **1.0.226** (shipped code: `static/timescale.js`); wheel + nine
+> installers rebuilt in lockstep. Campaign queue is unchanged — **WP3 (M4, the SRA grid)** is next.
 >
-> ## M3 + M5 are driven, and the first runs found FIVE defects
-> Two new modules, both clock-driven (never a wall-time sleep — autoplay is 1100–1800 ms):
-> `tests/web/test_ui_stepper_autoplay_browser.py` (59 tests, ~1:52) drives all 47 id'd steppers/
-> autoplay controls, the 138 `sf-frame` trio buttons, the three page masters and the ADR-0275
-> coordinator; `tests/web/test_ui_chrome_controls_browser.py` (8 tests, ~30s) drives the REAL
-> `#themeSelect` across four views, `#themeToggle`, `#uiScale`, language and Task Information.
-> **Two oracles per control** — the label AND a DOM-shape-agnostic chart digest — because a
-> control that flips its caption while the visual stands still is the WP0 defect class. Every
-> `WP2:M3` census deferral is discharged; driver values are now module-qualified and the census
-> meta-guard imports the sibling module to resolve them.
+> ## What the operator reported, and what was actually found
+> The operator sent a screenshot of `/path` on their 2,301-activity / 12.3-year IPMR with two files
+> open: "the time line headers are still screwed up". Probing that page found a real defect in the
+> header's band geometry — **`tierBands` clamped one edge and measured the width from the other**:
+> `left` was clamped with `Math.max(0, left)` while `w = right - left` used the UNCLAMPED left, and
+> `right` was never clamped to `axis.width`. A span almost never starts or ends on a unit boundary,
+> so the first and last bands are PARTIAL units drawn a FULL unit wide.
 >
-> ## Five defects, all CONFIRMED-FIXED red-first (ADR-0443)
-> **M3-01** `/mission`'s wall master was NEVER registered with the ADR-0275 coordinator — the
-> layout emits `chartframe.js` after `<main>` (measured DOM indices: `mission.js` 20,
-> `chartframe.js` 24), so `if (window.SFPlayAll)` was always false and skipped it silently; a
-> chart's own Stop could not halt the wall, the exact symptom ADR-0275 was written to kill.
-> **M3-02** `/curves` never called `register()` at all; `/trend` worked only by the accident of
-> registering after a `fetch`. Registration is now order-independent (stub queue + `_pending`
-> adoption). **M3-03** `driving_path.js` was the ONLY animated module of twelve ignoring
-> `prefers-reduced-motion`. **M5-01** the wall framed 9 of 30 tiles — settled by measurement
-> (a manual `SFChartFrame.scan()` took it 9 → 30, so it is the UI-02 attach-vs-fetch race, not a
-> design choice; the 9 existing toolbars were confirmed to actually zoom first). **M5-02** the
-> Language selector always dumped the operator on `/` — `/language` trusted a `Referer` the app's
-> own `Referrer-Policy: no-referrer` strips; moved onto the `data-sf-nexturl-submit` + validated
-> `next_url` idiom the Project switcher already used.
->
-> ## The A2 pin was failing open
-> M3-03 survived because `test_accessibility.py` checked a hand-written list of FIVE modules while
-> twelve are animated. The sweep is now COMPUTED from the shipped JS with a documented exclusion
-> list, so a new animated module is RED by default, plus a guard that fails on a stale exemption.
+> Measured at their scale (1920x1080, two files): the `2017` band rendered 0..81px while `2018`
+> starts at 47px — a **34px overlap, two year labels drawn over each other** — and the last band ran
+> to **1026px against a 969px axis**, 57px past the header's own right edge (`scrollWidth` 1026 vs
+> `clientWidth` 969), bleeding over the column beside it. Overflow scales with width: 11px @ 240px
+> axis, 33px @ 488, 57px @ 969, 95px @ 1609. **Not long-span-only** — any span whose ends are off a
+> unit boundary hits it. Fixed by clamping BOTH edges and taking the width from the clamped edges;
+> band rights now tile exactly (`47, 129, … 945, 969`) and the 24px edge sliver correctly narrows
+> its label to `'29`.
 >
 > ## Proof
-> **Definitive full suite on the SHIPPED tree (`e355cd58`): 4598 passed, 5 skipped, 0 failed**
-> (41:58) — run to completion on the frozen tree, with `git status` and `git diff HEAD` both empty
-> and the working tree, `HEAD` and the pushed ref all at that sha, so the number describes what
-> shipped rather than a tree that has moved on.
-> Red-first observed: M3 **5 failed / 54 passed**, M5 **3 failed / 5 passed**. **19-mutation
-> battery, every one RED BY NAME** — including the chart oracle proved independently of the label
-> oracle, and the coordinator's `isTrusted` check (whose removal would make Play-all halt on its
-> own first beat). A route-level open-redirect pin rides with M5-02 (6 hostile payloads, 4 honoured
-> paths, plus backslash payloads measured — Starlette percent-encodes them).
+> Red-first BY NAME (`fitted: g-tier g-tier-yr runs 33px past the axis (488px)`); green after; **each
+> clamp mutation-proved INDEPENDENTLY** (right clamp reverted → "runs 33px past"; left clamp feeding
+> the width reverted → "bands overlapping by 23px") so the test has two sets of teeth. Neighbour
+> veto: 47 browser tests green across long-span / timescale-dialog / row-windowing / gantt-consistency
+> / dd-line-render. The byte-pin modules that glob `static/*.js` were swept BY PIN SHAPE, not by
+> filename (the ADR-0443 lesson) — none tripped; only the installer-lockstep guard fired, as expected
+> for a shipped-JS change, and the wheel + nine installers were rebuilt LAST.
 >
-> ## The FIRST push was RED on CI, and every failure was this change's
-> Honest record, because the fix chain is the lesson (ADR-0443 has the table). Local full suite on
-> the as-pushed tree: **16 failed / 4578 passed**. (a) I re-applied only HALF of `chartframe.js`
-> after the `git checkout --` restore, so the coordinator's assignment stayed conditional,
-> `mission.js`'s stub survived and `/mission` threw 20 `stopAll is not a function` page errors —
-> **worse than before the PR**, and the "59/59 green" I had quoted described a tree that no longer
-> existed. (b) Four byte-freeze pins fired that my pre-flight grep could not see (it searched for
-> my filenames; the pins hash whole files and index call sites by line) — all re-baselined
-> deliberately, with every axis CAPTION md5 verified identical first. (c)
-> `test_the_autoplay_stepper_pin_is_untouched` froze the literal this ADR replaced — re-expressed
-> against the computed population (stronger: set membership, not a spelling). (d) The embedded
-> wheel went stale after a late whitespace edit. (e) `playwright>=1.44` was a FALSE floor —
-> `page.clock` does not exist below 1.45 (measured: the 1.44.0 wheel contains "clock" zero times).
+> ## OPEN — the operator's symptom is NOT reproduced, and this is UNVERIFIED as their fix
+> Their screenshot shows a **three-row** header whose year labels appear to cascade diagonally. Every
+> reproduction here — 2,301 activities, 12.3-year span, two files, widths swept 1100→2560 — produced a
+> structurally sound **two-row** header with zero page errors, because `effectiveStack` promotes
+> Months→Quarters at that span and dedupes. So ADR-0444 fixes a real defect IN the component they
+> reported, but whether it is the whole of what they see is **UNVERIFIED**.
+> **Ask them for exactly these three, from the machine showing the fault, both files open:**
+> 1. the version banner — are they actually on >=1.0.225, or a build predating the ADR-0441 header work?
+> 2. `localStorage.getItem("sf.timescale.v1")` — the persisted tier config that decides the row count.
+> 3. a dump of `.g-scale-tiered .g-tier` (class, computed `top`) plus the first few `.g-band`
+>    label/left pairs — the one thing a screenshot cannot give.
 >
-> ## Traps paid for THIS session — check by name
-> **`git checkout --` is NOT a mutation restore** — it reverts to HEAD and silently deleted three
-> of this session's own fixes mid-battery, then let one mutation "pass" while measuring unfixed
-> code; restore from a `cp` of the WORKING TREE and diff the tree after every chain ·
-> **a wrong oracle looks exactly like a defect** — an SVG-only digest reported three false "chart
-> did not move" rows because `/evolution`, `/driving-path` and `/trend`'s drill paint HTML tables ·
-> **measuring `document.body` to test a page zoom calls a working control dead** (body is
-> full-bleed at every zoom; `#uiScale` was nearly written up — the heading's box scales 212 → 371) ·
-> **a probe's own wait can invent a finding** — reading `page.url` after `wait_for_load_state`
-> before the navigation began mis-reported the language landing; `expect_navigation` measured it ·
-> **the server session outlives a browser context** (a language set in one step translated a later
-> step's page) · **re-applying a fix needs the suite RE-RUN — a green quoted from memory is
-> testimony, not evidence** · **a byte-pin pre-flight grep must search the PIN SHAPE, not your
-> filenames** · **rebuild the wheel + installers as the LAST step, after the final source edit**.
->
-> ## Operator-facing state
-> After this PR merges the operator re-downloads once (banner must say **v1.0.225**): the Mission
-> wall's Play-all now stops when they touch any chart, all 30 wall tiles carry a working zoom
-> toolbar instead of 9, the corridor no longer auto-animates under reduced motion, and choosing a
-> language keeps them on the page they were reading.
->
-> ## Next — campaign queue
-> **WP3** (M4 SRA grid edit / paste-from-Excel / save round-trip) → **WP4** (route-coverage
-> instrument, `SF_ROUTE_COVERAGE=1`, floor ≥139, + the 08-26 `startup_failure` root-cause; VERIFY
-> a `pull_request` run appears per push meanwhile) → **WP5** (BOTH folder builds — the three
-> 2026-08-21 folder-gesture facts govern, do NOT re-derive) → **WP6** (ledger highs: CPM-01
-> `cpm.py:1316` · CPM-02 `driving_slack.py:314` · MC-02 · MC-03 `jcl.py:284` · MAN-01 · REC-02;
-> parity-sensitive rows through the metric-parity skill; any golden shift = CONFIRMED-DEFERRED,
-> never a silent re-pin) → **WP7** (thin dims, `ai/txlog.py` first — Law 1) → **WP8**
-> (consolidated report + roadmap by testimony risk). Do-not-fix-blind rows unchanged (ledger +
-> AUDIT do-not-fix list); the `/mission` 30-vs-9 row is now CLOSED, not deferred.
+> ## Next — campaign queue (unchanged)
+> **WP3** (M4 SRA grid edit / paste-from-Excel / save round-trip) → **WP4** (route-coverage instrument
+> + the 08-26 `startup_failure` root-cause) → **WP5** (BOTH folder builds) → **WP6** (ledger highs:
+> CPM-01 · CPM-02 · MC-02 · MC-03 · MAN-01 · REC-02) → **WP7** (thin dims, `ai/txlog.py` first) →
+> **WP8** (consolidated report + roadmap by testimony risk).
 
 # (prior) handoffs — archived
 

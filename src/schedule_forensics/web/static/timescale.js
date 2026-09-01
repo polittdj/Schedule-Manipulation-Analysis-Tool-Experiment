@@ -365,11 +365,22 @@ window.SFTimescale = (function () {
       var left = axis.x(cur.getTime());
       var right = axis.x(next.getTime());
       if (right > 0 && left < axis.width) {
-        var w = Math.max(1, right - left);
+        // CLAMP BOTH EDGES, and take the width FROM THE CLAMPED EDGES. A span almost never
+        // starts and ends on a clean unit boundary, so the first and last bands are partial
+        // units; clamping `left` alone (the pre-fix `Math.max(0, left)`) while measuring
+        // `right - left` off the UNCLAMPED left drew them a FULL unit wide. Measured on the
+        // operator's 12.3-year IPMR: the 2017 band rendered 0..81px and OVERLAPPED 2018
+        // (starting at 47px) by 34px, and the last band ran 57px past the header's own right
+        // edge (scrollWidth 1026 vs clientWidth 969), bleeding over the column beside it.
+        // The label decisions below now see the TRUE visible width, so an edge sliver narrows
+        // or drops its label instead of claiming a full unit's worth of room.
+        var l = Math.max(0, left);
+        var r = Math.min(axis.width, right);
+        var w = Math.max(1, r - l);
         var label = def.fn(cur, ctx);
         if (def.narrow && def.minPx && w < def.minPx) label = def.narrow(cur, ctx);
         if (w < 9) label = "";
-        out.push({ left: Math.max(0, left), width: w, label: label, align: tier.align || "center" });
+        out.push({ left: l, width: w, label: label, align: tier.align || "center" });
       }
       cur.setTime(next.getTime());
     }

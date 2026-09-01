@@ -15910,3 +15910,33 @@ outlives a browser context.
 
 **Next:** WP3 (M4 — the SRA grid edit / paste-from-Excel / save round-trip), the last queued row
 of the WP1 UI map. Branch fresh from `origin/main`.
+
+---
+
+## 2026-09-01 — operator-reported timescale header defect: the edge bands were unclamped (ADR-0444, v1.0.226)
+
+- **Trigger:** the operator sent a screenshot of `/path` on their 2,301-activity / 12.3-year IPMR
+  with two files open — "the time line headers are still screwed up ... find the root cause and fix it".
+- **Found (real, measured):** `tierBands` in `static/timescale.js` clamped the band's `left` with
+  `Math.max(0, left)` but computed `w = right - left` from the UNCLAMPED left, and never clamped
+  `right` to `axis.width`. Partial units at both ends were drawn a full unit wide — the `2017` band
+  rendered 0..81px while `2018` starts at 47px (**34px overlap, two labels over each other**), and
+  the last band ran to 1026px against a 969px axis (**57px past the header**, `scrollWidth` 1026 vs
+  `clientWidth` 969). Overflow scales with width: 11 / 33 / 57 / 95px at 240 / 488 / 969 / 1609px axes.
+- **Fixed:** clamp both edges, take the width from the clamped edges. Band rights now tile exactly
+  and the edge sliver narrows its label correctly (`'29` on a 24px band).
+- **NOT reproduced:** the operator's actual screenshot shows a three-row header with cascading year
+  labels; every repro here yields a sound two-row header (Months promote to Quarters and dedupe at
+  that span). ADR-0444 is therefore **UNVERIFIED as their fix** — the three settling observations are
+  named in HANDOFF and in the ADR.
+
+### Gate (recorded AFTER the runs — QC-1)
+
+- Red-first observed by name: `fitted: g-tier g-tier-yr runs 33px past the axis (488px)`.
+- Green after; **2-mutation battery, each clamp proved independently red by name.**
+- Neighbour veto: **47 browser tests** green (long-span, timescale-dialog, row-windowing,
+  gantt-consistency, dd-line-render).
+- Byte-pin sweep done **by PIN SHAPE, not filename** (the ADR-0443 lesson): the five modules that
+  glob `static/*.js` all green; only `test_embedded_wheel_is_in_lockstep_with_the_source_tree` fired,
+  as expected for a shipped-JS change — wheel + nine installers rebuilt LAST, after the final edit.
+- `ruff check` / `ruff format --check` / `mypy --strict` / `bandit` (exit 0) / `node --check` clean.
