@@ -22,6 +22,9 @@
 > its label to `'29`.
 >
 > ## Proof
+> **Definitive full suite on the SHIPPED tree (`f0a5a2a1`): 4599 passed, 5 skipped, 0
+> failed** (48:26) — `git status` and `git diff HEAD` empty at completion, working tree = `HEAD` =
+> pushed ref, so the number describes what shipped.
 > Red-first BY NAME (`fitted: g-tier g-tier-yr runs 33px past the axis (488px)`); green after; **each
 > clamp mutation-proved INDEPENDENTLY** (right clamp reverted → "runs 33px past"; left clamp feeding
 > the width reverted → "bands overlapping by 23px") so the test has two sets of teeth. Neighbour

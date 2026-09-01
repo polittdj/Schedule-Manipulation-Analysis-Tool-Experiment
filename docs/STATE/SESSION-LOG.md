@@ -15940,3 +15940,7 @@ of the WP1 UI map. Branch fresh from `origin/main`.
   glob `static/*.js` all green; only `test_embedded_wheel_is_in_lockstep_with_the_source_tree` fired,
   as expected for a shipped-JS change — wheel + nine installers rebuilt LAST, after the final edit.
 - `ruff check` / `ruff format --check` / `mypy --strict` / `bandit` (exit 0) / `node --check` clean.
+- **Definitive full suite on the SHIPPED tree (`f0a5a2a1`): 4599 passed, 5 skipped, 0 failed**
+  (48:26). Verified to describe that tree, not a superseded one: `git status` and `git diff HEAD`
+  both empty at the moment the run finished, with the working tree, `HEAD` and the pushed ref all
+  at `f0a5a2a1`. (4,598 → 4,599 is exactly the one test this change adds.)
