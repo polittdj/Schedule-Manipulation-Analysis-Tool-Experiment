@@ -15944,3 +15944,39 @@ of the WP1 UI map. Branch fresh from `origin/main`.
   (48:26). Verified to describe that tree, not a superseded one: `git status` and `git diff HEAD`
   both empty at the moment the run finished, with the working tree, `HEAD` and the pushed ref all
   at `f0a5a2a1`. (4,598 → 4,599 is exactly the one test this change adds.)
+
+---
+
+## 2026-09-01 (b) — the operator's diagonal header ROOT-CAUSED: a sitewide tooltip anchor rule had re-positioned every Gantt element since July (ADR-0445, v1.0.227)
+
+- **Branch:** `claude/polaris2-audit-resume-3xg50n` (from `main` @ `c3e4cea0`, the ADR-0444 merge).
+- **Trigger:** operator, with a second screenshot: "The fix did not fix the problem."
+- **Root cause (measured, engine-confirmed):** `hud.css` `[data-sf-hint]{position:relative}` out-cascaded
+  `.g-band` / `.gantt-bar` / `.g-ms` `{position:absolute}` on every element that carries a tooltip
+  (`tooltips.js` promotes `title=` → `data-sf-hint`). 60/62 bands, 73/73 bars, 11/11 milestones
+  measured `position:relative`; the two exceptions had empty labels. Relative bands are block flow,
+  one per line, shifted by inline `left` — the operator's staircase. Present since `47899b23`
+  (2026-07-11), all four themes, one file or two.
+- **Fix:** `:where([data-sf-hint]){position:relative}` — zero specificity; any explicit position wins,
+  static hosts keep the anchor. One line in `hud.css`.
+- **Tests:** two rendered-geometry tests in `test_long_span_gantt_browser.py` — bands paint on one row
+  per tier + computed `absolute` on band/bar/ms; static hint hosts stay `relative`. Overflow bound
+  is "< one tier row (18px)" because `.pv-now` overhangs 2px by design.
+- **Proof:** red-first by name; mutation both ways (selector restored → staircase; rule deleted →
+  `206 of 215 tooltip hosts are position:static`); 4 themes reproduced pre-fix; tooltip/HUD/panel
+  neighbours 147 passed; installer lockstep + bounds 75 passed.
+- **The finding under the finding:** every prior header oracle (ADR-0441 widths, ADR-0444 inline
+  styles, WP1 zoom drivers) was structurally blind to positioning mode. ADR-0444 stays — a real
+  defect, honestly marked UNVERIFIED — but its test passed on a diagonal header. Standing rule added.
+- **Second layer, same defect:** the fix turned `test_column_drag_resize_widens_the_column_and_clamps`
+  red (deterministic: fixed tree ×2 red, reverted tree green). `.col-rsz` carries a `title=` → same
+  hijack. ADR-0442's `sizeGrip` (its UI-01 fix) had patched the RELATIVE symptom with an inline
+  `left`; on a genuinely absolute grip that pinned it to the left edge (`[1,0,7,59]`). CSS alone
+  measured `[47,0,7,58]`, so `sizeGrip` is deleted and ADR-0442's Chromium-quirk diagnosis is
+  corrected in the ADR and the CSS comment. Driver gains absolute/right-edge/full-height/reachable
+  assertions (mutation red by name: `right: 47`). Observed, logged, not fixed: the sticky controls
+  bar (z6) overlays the sticky header (z3/4) at the top scroll position.
+- **Edit trap paid for:** `colresize.js` has TWO `ths.forEach` blocks; a slice anchored on the
+  first silently produced a no-op edit twice. Delete a function by brace-matching from its own
+  declaration line, and verify by grep COUNT, never by "the script ran".
+- **Gate at close (recorded AFTER the run finished, QC-1):** full suite on the frozen 1.0.227 tree **4601 passed / 5 skipped / 0 failed in 48:59** (the two new header tests and the strengthened drag driver included); neighbour suites **124 passed**; installer lockstep **68 passed**; statics clean whole-tree.

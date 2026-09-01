@@ -829,9 +829,11 @@ tr.sra-risk td { box-shadow: inset 3px 0 0 var(--warn); }
    column header; the table switches to fixed layout so dragging one column reflows only its own data
    (names wrap, the short fixed columns clip with an ellipsis). The scalable timeline column is left
    untouched. */
-/* top+bottom anchoring, NOT height:100% — a percentage height on an absolutely-positioned
-   child of a table cell resolves to 0 in Chromium (measured 7x0px on every frozen Gantt
-   header, WP1 2026-08-31): the grip existed but no pointer could ever hit it. */
+/* The column drag-resize grip: a 7px strip on the cell's right edge, the cell's full height,
+   above the header text (z-index). Positioned by CSS alone — the cell is made position:relative
+   on attach. ADR-0445: this rule was being overridden to position:relative by the tooltip anchor
+   (the grip carries a title=), which is why it once measured 7x0px and was blamed on Chromium;
+   the anchor is now zero-specificity and nothing in JS touches the grip's geometry. */
 .col-rsz { position: absolute; top: 0; right: 0; bottom: 0; width: 7px; cursor: col-resize;
   user-select: none; touch-action: none; z-index: 3; }
 .col-rsz:hover { background: var(--accent); opacity: .55; }

@@ -22,7 +22,16 @@
    Hiding is immediate (no delay on the base rule). tooltips.js guarantees a trigger never also
    carries a native title=, so a hover can never paint two boxes. */
 :root{--sf-tip-delay:1.5s}
-[data-sf-hint]{position:relative}
+/* :where() ON PURPOSE — ZERO specificity. The bubble below needs a positioned host, and
+   `position:relative` is the harmless way to give a STATIC host one. But tooltips.js promotes
+   every non-empty title= to data-sf-hint, so this selector also matched the Gantt's absolutely
+   positioned .g-band / .gantt-bar / .g-ms — and at equal specificity, later in the cascade, it
+   WON: every header band and bar silently became position:relative. Bands fell into block flow
+   one per line, each shifted by its inline left — the operator's diagonal staircase of years,
+   clipped after the third row (ADR-0445). An already-positioned element is a fine bubble host
+   as it is; wrapping the selector in :where() lets ANY explicit position rule beat this one
+   while static hosts still get the anchor. Never raise this back to [data-sf-hint]. */
+:where([data-sf-hint]){position:relative}
 [data-sf-hint]::after{
   content:attr(data-sf-hint);position:absolute;left:0;top:calc(100% + 7px);z-index:60;
   width:max-content;max-width:340px;padding:8px 11px;border-radius:8px;font-size:12px;

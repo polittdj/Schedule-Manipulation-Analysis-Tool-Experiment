@@ -994,10 +994,14 @@ def test_column_drag_resize_widens_the_column_and_clamps(browser: Any, served: s
     others hold), and a hard leftward drag clamps at the 28px minimum."""
     page, errors = _open(browser, served, PATH)
     page.wait_for_selector(".path-grid .col-rsz", timeout=30000)
-    # raw mouse drags need in-viewport coordinates — scroll the grid up first (the WP0 trap:
-    # the KPI block fills the first viewport and the grid header sits below the fold)
-    page.evaluate("() => document.querySelector('.path-grid').scrollIntoView()")
-    page.evaluate("() => window.scrollBy(0, -40)")
+    # raw mouse drags need in-viewport coordinates — and the header must sit CLEAR of the
+    # page's sticky controls bar (#pathControls, z-index 6) which overlays the sticky thead
+    # (z 3/4) once the grid is scrolled to the top. Scrolling the grid to the viewport's centre
+    # keeps the header row below the bar. The WP1 version scrolled by -40px, which happened to
+    # leave the then-MIS-SEATED grip (left edge, offset 14px down — ADR-0445) poking out beneath
+    # the bar; the correctly seated grip sits higher and was covered. Fourth appearance of the
+    # WP0 hit-test trap: prove the pointer reaches the element, don't assume it.
+    page.evaluate("() => document.querySelector('.path-grid').scrollIntoView({block: 'center'})")
     page.wait_for_timeout(400)
     # column 1 (UID): the Name column carries its own CSS min-width:200px which out-floors the
     # JS 28px clamp — the clamp is only measurable on a column with no CSS floor of its own
@@ -1006,6 +1010,22 @@ def test_column_drag_resize_widens_the_column_and_clamps(browser: Any, served: s
         "() => document.querySelector('.path-grid thead th:nth-child(1)')"
         ".getBoundingClientRect().width"
     )
+    # ADR-0445: the grip must be a full-height strip flush with the cell's RIGHT edge, and the
+    # pointer must actually reach it. WP1 asserted only that a drag widened the column — true
+    # even with the grip mis-seated on the left edge, which it was for seven weeks.
+    seat = page.evaluate(
+        "() => { const th = document.querySelector('.path-grid thead th:nth-child(1)');"
+        " const g = th.querySelector('.col-rsz'); const t = th.getBoundingClientRect(),"
+        " r = g.getBoundingClientRect();"
+        " const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);"
+        " return {pos: getComputedStyle(g).position, right: Math.round(t.right - r.right),"
+        " top: Math.round(r.top - t.top), h: Math.round(r.height), thH: Math.round(t.height),"
+        " reachable: hit === g}; }"
+    )
+    assert seat["pos"] == "absolute", f"grip is not absolutely positioned: {seat}"
+    assert seat["right"] <= 1, f"grip is not flush with the cell's right edge: {seat}"
+    assert seat["top"] <= 1 and seat["h"] >= seat["thH"] - 2, f"grip is not full-height: {seat}"
+    assert seat["reachable"], f"the pointer cannot reach the grip (something covers it): {seat}"
     before = page.evaluate(th_w)
     box = handle.bounding_box()
     assert box is not None
