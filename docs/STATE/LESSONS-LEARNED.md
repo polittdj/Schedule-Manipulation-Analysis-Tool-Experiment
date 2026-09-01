@@ -435,6 +435,30 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-01 — clamping one edge and measuring from the other; and a repro that fails is still worth reporting
+
+- **If you clamp one edge of a box, the width must come from the CLAMPED edges.** `tierBands` did
+  `left: Math.max(0, left)` and `width: right - left` — the clamp moved the box's origin but not its
+  size, so every partial unit at a span's edge was drawn a full unit wide. It overlapped its
+  neighbour at the left and bled past the container at the right, and it had been doing so on every
+  long span at every width. The shape generalises: **a clamped position with an unclamped extent is
+  always a lie about geometry**; clamp the pair, then derive.
+- **The label decision wanted the clamped width too.** Passing the true visible width into the
+  narrow/drop thresholds was not extra polish — a 24px edge sliver was claiming a full year's label
+  space. When a value is corrected, check what downstream reads it.
+- **A failed reproduction is a result, and it gets reported as one.** The operator's screenshot
+  showed a three-row cascading header; every reproduction at their row count, span, file count and
+  six viewport widths produced a sound two-row header. The honest output is a fix for the defect that
+  WAS found plus an explicit UNVERIFIED marker and the three observations that would settle their
+  case — not a confident claim that their symptom is cured. Reporting "fixed" here would have been
+  the do-not-fix-blind trap wearing a success label.
+- **Sweeping for byte pins by PIN SHAPE worked.** Last session four pins fired because the pre-flight
+  grep searched for the touched filenames; those pins hash whole files and index call sites by
+  `(file, line)`, so they never mention a filename on the hash's line. Searching for the shape
+  (`md5|sha` near `static`/`.js`, and `STATIC.glob("*.js")`) found all five candidate modules up
+  front, and running them cost 33 seconds and zero surprises.
+
+
 ### 2026-08-31 (WP2, addendum) — the botched restore had a SECOND victim, and CI found it, not me
 
 - **Re-applying a fix is a change; it needs the suite re-run, not the memory of a green.** The
