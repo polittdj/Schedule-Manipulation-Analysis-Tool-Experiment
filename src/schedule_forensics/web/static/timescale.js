@@ -220,9 +220,9 @@ window.SFTimescale = (function () {
         fn: function (d) { return MONTHS_S[d.getUTCMonth()] + " '" + yy(d.getUTCFullYear()); },
         narrow: function (d) { return MONTHS_S[d.getUTCMonth()]; }, minPx: 42 },
       { id: "m_letter", name: "J, F, M, ...",
-        fn: function (d) { return MONTHS_S[d.getUTCMonth()][0]; } },
+        fn: function (d) { return MONTHS_S[d.getUTCMonth()][0]; }, fitPx: 8 },
       { id: "m_num", name: "1, 2, ... 12",
-        fn: function (d) { return String(d.getUTCMonth() + 1); } },
+        fn: function (d) { return String(d.getUTCMonth() + 1); }, fitPx: 11 },
     ],
     thirds: [
       { id: "t_bme", name: "B, M, E (beginning / middle / end)",
@@ -424,7 +424,7 @@ window.SFTimescale = (function () {
   // demoted into the unit of the tier below it is pushed one rung above that tier instead of
   // duplicating it, so Y/Q/M at 30 px/day becomes Months/Weeks/Days, not Days/Days/Days).
   var COARSER = { hours: "days", days: "weeks", weeks: "months", thirds: "months",
-    months: "quarters", quarters: "years", halfyears: "years" };
+    months: "quarters", quarters: "halfyears", halfyears: "years" };
   var RANK = { hours: 0, days: 1, weeks: 2, thirds: 2.5, months: 3, quarters: 4, halfyears: 5,
     years: 6 };
   function expectedBands(axis, units, count) {
@@ -439,8 +439,16 @@ window.SFTimescale = (function () {
     var count = Math.max(1, Math.min(999, Math.floor(tier.count) || 1));
     var label = tier.label;
     var promoted = false, demoted = false;
+    // The promotion floor follows the CONFIGURED label (operator 2026-09-02 b): a one-glyph
+    // label — "J F M", "1..12", "M T W" — legibly fits ~8-11 px (its `fitPx`), so a tier the
+    // operator deliberately labelled that way keeps its unit down to that width instead of the
+    // generic 14-px floor. Once a tier has promoted its label is the unit's default again, and
+    // the generic floor applies to every further rung.
+    var configuredDef = labelDef(units, label);
+    var floor = configuredDef.fitPx || MIN_BAND_PX;
     while (PROMOTE[units]) {
-      if (bandPx(axis, units, count) >= MIN_BAND_PX) break;
+      if (bandPx(axis, units, count) >= floor) break;
+      floor = MIN_BAND_PX;
       units = PROMOTE[units];
       count = 1;
       promoted = true;
@@ -460,23 +468,31 @@ window.SFTimescale = (function () {
   }
   function effectiveStack(axis) {
     // resolved BOTTOM-UP: the finest tier sets the density, each tier above must be strictly
-    // coarser. A tier that PROMOTED into its neighbour is dropped (MS Project's zoomed-out
-    // two-tier stack, ADR-0441); a tier that DEMOTED into (or below) the one under it is pushed
-    // one rung coarser than that tier instead, so the row count survives zooming in.
+    // coarser. A tier that PROMOTED or DEMOTED into (or below) the one under it is pushed one
+    // rung COARSER than that tier, so the CONFIGURED row count survives zooming either way —
+    // Years / Quarters / Months fitted to a 12-year page becomes Years / Half Years / Quarters,
+    // never a two-row header (operator 2026-09-02 b: "I should be seeing three tiers"; this
+    // supersedes ADR-0441's drop-the-duplicate rule). A row is dropped only when no coarser unit
+    // exists above the tier below it (two tiers both at Years), or when it was CONFIGURED finer
+    // than the tier below it (an incoherent configuration, not a zoom effect).
     var vis = visibleTiers();
     var rows = [];
     for (var i = vis.length - 1; i >= 0; i--) {
       var eff = effectiveTier(axis, vis[i]);
       var below = rows[0];
       if (below && RANK[eff.units] <= RANK[below.units]) {
-        if (eff.demoted && COARSER[below.units]) {
+        // a ZOOM effect on either side of the collision (this tier moved, or the tier below was
+        // promoted/pushed up into this one's unit) is resolved by pushing this tier coarser
+        var zoomCollision = eff.demoted || eff.promoted || below.promoted || below.pushed;
+        if (zoomCollision && COARSER[below.units]) {
           eff.units = COARSER[below.units];
           eff.count = 1;
           eff.label = LABELS[eff.units][0].id;
+          eff.pushed = true;
         } else if (eff.units === below.units && eff.count === below.count) {
-          continue; // promoted (or configured) into the same unit — one row says it once
+          continue; // no coarser unit left (or configured into the same unit) — one row says it once
         } else if (RANK[eff.units] < RANK[below.units]) {
-          continue; // finer than the tier below it — an incoherent stack, drop the row
+          continue; // CONFIGURED finer than the tier below it — an incoherent stack, drop the row
         }
       }
       rows.unshift(eff);

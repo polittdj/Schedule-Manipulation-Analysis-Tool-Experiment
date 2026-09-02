@@ -435,6 +435,16 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-02 (c) — "MS Project's two-tier stack" was our rule, not theirs; a feature that exists but cannot engage is a defect
+
+- ADR-0441 dropped a colliding tier and called it MS Project's zoomed-out look. The operator, who lives in
+  MS Project, expected the CONFIGURED row count. When a rule cites the reference tool, verify the reference
+  tool's behaviour with the person who uses it — the citation was ours.
+- The J/F/M and 1..12 month labels were in the menu the whole time; the promotion floor made them
+  unreachable at the density where they matter. "The option exists" is not "the option works".
+- A push-up ladder needs every rung: `COARSER` skipped Half Years, so pushing Quarters landed on Years and
+  collided again. Trace the ladder end to end with the operator's exact configuration before trusting it.
+
 ### 2026-09-02 (b) — measure the operator's screenshot against the CURRENT build before chasing it; a per-row `<div>` is a multiplier
 
 - **The screenshot was real and the build was old.** The blank timeline header matched, pixel for pixel, the
