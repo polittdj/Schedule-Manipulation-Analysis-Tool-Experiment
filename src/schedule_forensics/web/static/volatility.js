@@ -521,10 +521,37 @@
   }
 
   // ── master stepper: one cursor animates churn/flow/area/heatmap/strips/ribbon ──────
+  // The design's cursor-cumulative KPI: the mean carry-over of the pairs UP TO the cursor, so the
+  // figure animates with the story (v1 -> the first pair, the last version -> the page's
+  // stability figure, which is what the server printed into the block at load).
+  function renderKpi() {
+    var box = document.getElementById("volKpi");
+    if (!box) return;
+    var upto = PAIRS.slice(0, Math.max(0, cursor));
+    var val = box.querySelector(".vol-kpi-value"), band = box.querySelector(".vol-band");
+    var lab = box.querySelector(".vol-kpi-label"); // says WHICH mean: through the cursor's version
+    if (lab) lab.textContent = "MEAN CARRY-OVER · " + (cursor >= N - 1 ? "ALL VERSIONS" : "THROUGH v" + cursor);
+    if (!upto.length) {
+      if (val) val.textContent = "—";
+      if (band) { band.textContent = "AWAITING 2+ VERSIONS"; band.className = "vol-band vol-band-na"; }
+      return;
+    }
+    var mean = upto.reduce(function (a, p) { return a + p.jaccard; }, 0) / upto.length;
+    if (val) val.textContent = Math.round(mean * 100) + "%";
+    if (band) {
+      var cls = mean >= 0.7 ? "vol-band-ok" : mean >= 0.5 ? "vol-band-warn" : "vol-band-bad";
+      band.textContent = mean >= 0.7 ? "STABLE BAND ≥70%" : mean >= 0.5 ? "WATCH BAND 50–70%" : "CHURN BAND <50%";
+      band.className = "vol-band " + cls;
+    }
+  }
   function renderAnimated() {
     var lbl = document.getElementById("volLabel");
     if (lbl) lbl.textContent = (cursor + 1) + " / " + N + " — " + V[cursor].label +
       (V[cursor].status_date ? " (data date " + V[cursor].status_date + ")" : "");
+    document.querySelectorAll(".vol-chip").forEach(function (ch) {
+      ch.classList.toggle("on", Number(ch.getAttribute("data-idx")) === cursor);
+    });
+    renderKpi();
     drawChurn(); drawFlow(); drawArea(); drawHeatmap(); drawStrips(); drawRibbon();
   }
   function stepTo(i) {
@@ -551,6 +578,9 @@
   if (prev) prev.addEventListener("click", function () { stopPlay(); stepTo(cursor - 1); });
   if (next) next.addEventListener("click", function () { stopPlay(); stepTo(cursor + 1); });
   if (play) play.addEventListener("click", togglePlay);
+  document.querySelectorAll(".vol-chip").forEach(function (ch) { // the design's version chips
+    ch.addEventListener("click", function () { stopPlay(); stepTo(Number(ch.getAttribute("data-idx")) || 0); });
+  });
 
   drawGauge(); drawTenure(); drawDwell(); drawJumpers(); drawTable();
   renderAnimated();

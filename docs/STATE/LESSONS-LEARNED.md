@@ -435,6 +435,26 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-02 (b) — measure the operator's screenshot against the CURRENT build before chasing it; a per-row `<div>` is a multiplier
+
+- **The screenshot was real and the build was old.** The blank timeline header matched, pixel for pixel, the
+  pre-v1.0.227 hijack (bands stacked below the clip, only the DD line surviving) and its thead colour predated
+  v1.0.197. Rendering the current tree at the operator's scale FIRST turned a re-chase into a version question
+  — and left the genuine half of the report (no demotion on zoom-in) standing on its own measurement.
+- **DOM nodes scale with rows × zoom when anything is painted per row.** 743 gridline divs and 80 holiday
+  divs per row made 1.8 M nodes; the server answered in 400 ms. Paint shared geometry ONCE (a data-URI
+  background through a generated class) and window the rows; profile scrolling before touching JS — when the
+  profile is all "(program)", the cost is layout/sticky, not script.
+- **My own fix regressed twice, and only the operator-scale fixture saw it:** a colour probe that forces
+  layout (~100 ms a call on 2,000 rows) and a `ReferenceError` in a branch the 121-row fixture never reaches
+  (no holidays). Keep one operator-scale probe in the loop for every performance change; the committed
+  suites are floor-setters, not ceilings.
+- **A `.dc.html` design is a template + component script.** Its `support.js` boots from unpkg (blocked);
+  eyeballing 1 MB of markup is not reading it. Executing the template under a stub logic class reproduced the
+  artboard, and a deliberate `delete vals.vo.heat` mutation proved the expander could fail.
+- **QC-2 found what nobody asked for:** the WBS pivot, its JSON and its export read the raw schedule while
+  every banner promised a scoped population. Reading the route to wire a field role is how it surfaced.
+
 ### 2026-09-02 — a merged PR is a finished object: restart the branch, cancel the watch, refresh the docs before starting the next thing
 
 - **What happened:** PR #621 (ADR-0445 + ADR-0446) merged while the session was idle. The wake

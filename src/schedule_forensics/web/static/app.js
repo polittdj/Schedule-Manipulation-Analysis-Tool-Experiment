@@ -594,7 +594,7 @@
   function timelineCell(act, axis, grid) {
     const cell = el("td", { class: "g-cell" });
     const track = el("div", { class: "g-track", style: "width:" + axis.width + "px" });
-    (grid || []).forEach((g) => track.appendChild(el("div", { class: g.cls, style: "left:" + g.left + "px" })));
+    SFGantt.paintGrid(track, grid); // ONE shared background per gridline set — never a div per line per row
     if (statusDate) {
       const sd = Date.parse(statusDate);
       if (!isNaN(sd)) track.appendChild(el("div", { class: "g-status", style: "left:" + axis.x(sd) + "px" }));
@@ -666,6 +666,57 @@
     return act.is_summary || rowMatches(act, fields);
   }
 
+  // ---- row WINDOWING (operator 2026-09-02, perf) — ADR-0442's /path paintRows, ported ----
+  // After the shared-background painters the operator-scale grid (2,125 rows) still scrolled at
+  // ~117 ms/frame and rebuilt in ~1.7 s, all of it NATIVE work (layout + 12,750 sticky frozen
+  // cells + a 34,000-px table). At or above WINDOW_MIN_ROWS only the viewport slice ± overscan
+  // is materialized between two spacer rows that keep the scrollbar honest; a vertical scroll
+  // re-aims the window. Find and print force a full paint (they address arbitrary rows). Links
+  // stay on: endpoints outside the window are placed by INDEX math on the same axis (see
+  // drawLinks), so long connectors still cross the viewport. WINDOW_MIN_ROWS sits above the
+  // largest full-paint suite (TP5, 121 rows) and below the operator scale (2,000+).
+  const WINDOW_MIN_ROWS = 400;
+  const WINDOW_OVERSCAN = 40;
+  let winState = null; // {start, end, total, rows} while a windowed paint is on screen
+  let winRowH = 18; // measured row pitch, refined per connected paint
+  let windowFullOnce = false; // Find / beforeprint force the NEXT paint to be full
+  let lastBody = null; // the last renderBody arguments — a scroll re-aim repaints the same body
+  let winScrollQueued = false;
+  function vSpacer(cols, h) {
+    const td = el("td", { style: "height:" + Math.max(0, Math.round(h)) + "px;padding:0;border:0" });
+    td.colSpan = cols;
+    const tr = el("tr", { class: "g-vspacer", "aria-hidden": "true" });
+    tr.appendChild(td);
+    return tr;
+  }
+  function attachWindowScroll(pane) {
+    if (!pane || pane._sfWinScroll) return;
+    pane._sfWinScroll = true;
+    pane.addEventListener("scroll", () => {
+      if (!winState || winScrollQueued) return;
+      winScrollQueued = true;
+      window.requestAnimationFrame(() => {
+        winScrollQueued = false;
+        if (!winState || !lastBody) return;
+        const rowH = winRowH > 0 ? winRowH : 18;
+        const headH = lastBody.tbody.offsetTop || 0;
+        const visStart = Math.floor(Math.max(0, pane.scrollTop - headH) / rowH);
+        const visEnd = visStart + Math.ceil((pane.clientHeight || 600) / rowH);
+        const margin = WINDOW_OVERSCAN / 2;
+        if ((visStart - winState.start < margin && winState.start > 0) ||
+            (winState.end - visEnd < margin && winState.end < winState.total)) {
+          renderBody(lastBody.tbody, lastBody.fields, lastBody.axis, lastBody.grid);
+        }
+      });
+    }, { passive: true });
+  }
+  window.addEventListener("beforeprint", () => {
+    if (winState && lastBody) { windowFullOnce = true; renderBody(lastBody.tbody, lastBody.fields, lastBody.axis, lastBody.grid); }
+  });
+  window.addEventListener("afterprint", () => {
+    if (lastBody) renderBody(lastBody.tbody, lastBody.fields, lastBody.axis, lastBody.grid);
+  });
+
   function renderBody(tbody, fields, axis, grid) {
     let rows = activities
       .filter((act) => rowVisible(act, fields))
@@ -676,8 +727,13 @@
       });
     // flat file + default order -> derive the MS-Project hierarchy view from the WBS codes
     if (derivedMode() && sortKey === "order") rows = withWbsRollups(rows);
+    lastBody = { tbody, fields, axis, grid };
+    const pane = document.getElementById("grid");
+    attachWindowScroll(pane);
+    // capture BEFORE the clear: emptying the tbody clamps the pane's scrollTop to 0
+    let keepTop = pane ? pane.scrollTop : 0;
     tbody.innerHTML = "";
-    rows.forEach((act) => {
+    const paintOne = (act) => {
       const tr = el("tr");
       if (act.__wbsRollup) {
         tr.className = "sum wbs-rollup";
@@ -700,7 +756,46 @@
       if (axis) tr.appendChild(timelineCell(act, axis, grid));
       if (!act.__wbsRollup) tr.addEventListener("click", () => drill(act));
       tbody.appendChild(tr);
-    });
+    };
+    const cols = fields.length + (axis ? 1 : 0);
+    const wantWindow = !windowFullOnce && rows.length >= WINDOW_MIN_ROWS;
+    windowFullOnce = false;
+    winState = null;
+    if (wantWindow) {
+      const rowH = winRowH > 0 ? winRowH : 18;
+      const headH = tbody.offsetTop || 0; // the sticky thead's height in content coordinates
+      const visTop = Math.max(0, keepTop - headH);
+      const wStart = Math.max(0, Math.floor(visTop / rowH) - WINDOW_OVERSCAN);
+      const wCount = Math.ceil(((pane && pane.clientHeight) || 600) / rowH) + 2 * WINDOW_OVERSCAN;
+      let wEnd = Math.min(rows.length, wStart + wCount);
+      if (rows.length - wEnd <= WINDOW_OVERSCAN / 2) wEnd = rows.length; // paint a short tail outright
+      if (wStart > 0) tbody.appendChild(vSpacer(cols, wStart * rowH));
+      for (let wi = wStart; wi < wEnd; wi++) paintOne(rows[wi]);
+      if (wEnd < rows.length) tbody.appendChild(vSpacer(cols, (rows.length - wEnd) * rowH));
+      winState = { start: wStart, end: wEnd, total: rows.length, rows };
+      // refine the pitch from what actually painted (a connected paint only), then re-true the
+      // spacers so a jump-to-bottom lands on the tail; a top-spacer change shifts the content
+      // under the viewport, so the pane position is compensated by the same delta
+      const trs = tbody.querySelectorAll("tr:not(.g-vspacer)"); // every painted row, rollups too
+      if (tbody.isConnected && trs.length > 1) {
+        const last = trs[trs.length - 1];
+        const span = last.offsetTop + last.offsetHeight - trs[0].offsetTop;
+        if (span > 0) {
+          winRowH = span / trs.length;
+          const sps = tbody.querySelectorAll("tr.g-vspacer td");
+          if (wStart > 0 && sps.length) {
+            const oldH = parseFloat(sps[0].style.height) || 0;
+            const newH = Math.round(wStart * winRowH);
+            if (Math.abs(newH - oldH) > 2) { sps[0].style.height = newH + "px"; keepTop += newH - oldH; }
+          }
+          if (wEnd < rows.length && sps.length && (wStart === 0 || sps.length > 1)) {
+            sps[sps.length - 1].style.height = Math.round((rows.length - wEnd) * winRowH) + "px";
+          }
+        }
+      }
+    } else {
+      rows.forEach(paintOne);
+    }
     if (!rows.length) {
       const tr = el("tr");
       tr.appendChild(el("td", { class: "muted", text: "No activities match the filters." }));
@@ -713,6 +808,8 @@
     if (tbl && tbl.isConnected && window.SFGantt && SFGantt.freezeColumns) {
       lastFrozenWidth = SFGantt.freezeColumns(tbl) || lastFrozenWidth;
     }
+    // put the pane back where the user had it (the clear clamped it — see keepTop above)
+    if (pane && tbody.isConnected && pane.scrollTop !== keepTop) pane.scrollTop = keepTop;
     // dependency link lines (operator 2026-07-10): drawn once the rows have laid out
     window.requestAnimationFrame(function () { drawLinks(tbody.parentNode); });
   }
@@ -747,6 +844,30 @@
         x1: r.left - base.left, x2: r.right - base.left, y: r.top - base.top + r.height / 2,
       };
     });
+    // windowed grid: rows outside the materialized slice are anchored by INDEX MATH on the
+    // same axis (x from the bar's dates, y from the spacer + row pitch), so a long connector
+    // into or out of the viewport is still drawn instead of vanishing with its far row
+    if (winState && lastAxis) {
+      const track = table.querySelector("tbody .g-track");
+      const sps = table.querySelectorAll("tbody tr.g-vspacer");
+      if (track && sps.length) {
+        const trackLeft = track.getBoundingClientRect().left - base.left;
+        const rowH = winRowH > 0 ? winRowH : 18;
+        const topSp = winState.start > 0 ? sps[0].getBoundingClientRect() : null;
+        const botSp = winState.end < winState.total ? sps[sps.length - 1].getBoundingClientRect() : null;
+        winState.rows.forEach(function (act, i) {
+          if (act.__wbsRollup || anchors[act.unique_id] !== undefined) return;
+          let y = null;
+          if (i < winState.start && topSp) y = topSp.top - base.top + (i + 0.5) * rowH;
+          else if (i >= winState.end && botSp) y = botSp.top - base.top + (i - winState.end + 0.5) * rowH;
+          if (y === null) return;
+          const s0 = act.start ? Date.parse(act.start) : NaN, f0 = act.finish ? Date.parse(act.finish) : NaN;
+          if (isNaN(s0) && isNaN(f0)) return;
+          const xs = trackLeft + lastAxis.x(isNaN(s0) ? f0 : s0), xf = trackLeft + lastAxis.x(isNaN(f0) ? s0 : f0);
+          anchors[act.unique_id] = { x1: Math.min(xs, xf), x2: Math.max(xs, xf), y: y };
+        });
+      }
+    }
     const frag = document.createDocumentFragment();
     activities.forEach(function (act) {
       const to = anchors[act.unique_id];
@@ -900,7 +1021,7 @@
   function traceTimelineCell(r, axis, gridLns, driving) {
     const cell = el("td", { class: "g-cell" });
     const track = el("div", { class: "g-track", style: "width:" + axis.width + "px" });
-    gridLns.forEach((g) => track.appendChild(el("div", { class: g.cls, style: "left:" + g.left + "px" })));
+    SFGantt.paintGrid(track, gridLns); // shared background (see gantt.js paintGrid)
     if (driving.data_date) {
       const dd = Date.parse(driving.data_date);
       if (!isNaN(dd)) track.appendChild(el("div", { class: "g-status", style: "left:" + axis.x(dd) + "px" }));
@@ -1052,6 +1173,9 @@
 
   // MS-Project "find" — UID or name substring; shared marker (SFGantt.findTask).
   function findUid(q) {
+    // a windowed grid materializes only the viewport slice and findTask searches the DOM — paint
+    // every row first so a match anywhere in the plan is found, scrolled to and flashed
+    if (winState && lastBody) { windowFullOnce = true; renderBody(lastBody.tbody, lastBody.fields, lastBody.axis, lastBody.grid); }
     SFGantt.findTask(document.getElementById("grid"), q, document.getElementById("gridFindStatus"));
   }
 

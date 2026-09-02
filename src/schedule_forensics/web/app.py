@@ -88,6 +88,8 @@ from schedule_forensics.engine.grouping import (
     field_value,
     filter_schedule,
     group_values,
+    resolve_roles,
+    role_labels,
 )
 from schedule_forensics.engine.jcl import (
     JCLConfig,
@@ -829,6 +831,8 @@ from schedule_forensics.web.state import (
 from schedule_forensics.web.trend import _how_it_moved_header as _how_it_moved_header
 from schedule_forensics.web.trend import _trend_body as _trend_body
 from schedule_forensics.web.trend import _trend_data as _trend_data
+from schedule_forensics.web.volatility import _stability_band as _stability_band
+from schedule_forensics.web.volatility import _vol_panel_open as _vol_panel_open
 from schedule_forensics.web.volatility import _volatility_body as _volatility_body
 
 # ADR-0386 (phase 4, slice 21): the /wbs page family - the optional-number table cell, the
@@ -1839,7 +1843,7 @@ def create_app(
                 analysis.scoped,
                 analysis,
                 st.target_uid,
-                erosion_field=erosion_field,
+                erosion_field=erosion_field or st.field_roles.get("wbs"),
                 margin_confirmed=st.margin_overlay.get(name),
                 dcma_acumen_parity=st.dcma_acumen_parity,
                 versions=st.ordered_versions(),
@@ -1900,14 +1904,18 @@ def create_app(
                 f"<div class=panel>No schedule named {_e(name)}.</div>",
                 status_code=404,
             )
-        groups = compute_wbs_breakdown(sch)
+        groups = compute_wbs_breakdown(st.scope(sch), wbs_field=st.field_roles.get("wbs"))
         focus = ""
         if st.target_uid is not None:
             try:
                 focus = _target_panel(sch, st.analysis_for(name, sch), st.target_uid)
             except CPMError:
                 focus = ""  # unschedulable: skip the focus panel, still show the WBS pivot
-        body = focus + _wbs_body(name, groups, prov=_prov_chip(sch))
+        body = (
+            focus
+            + _field_roles_panel(st, [sch], next_url=f"/wbs/{quote(name, safe='')}", compact=True)
+            + _wbs_body(name, groups, prov=_prov_chip(sch))
+        )
         # the include rides ONLY a render that carries a contract control (the r11 law), so
         # the gate reads the ASSEMBLED body, not one builder's branch: the no-groups branch
         # and the absent-UID focus notice are bare, while a POPULATED focus panel carries ⛶
@@ -1932,7 +1940,8 @@ def create_app(
         sch = st.schedules.get(name)
         if sch is None:
             return JSONResponse({"error": "not found"}, status_code=404)
-        return JSONResponse(_wbs_data(compute_wbs_breakdown(sch)))
+        groups = compute_wbs_breakdown(st.scope(sch), wbs_field=st.field_roles.get("wbs"))
+        return JSONResponse(_wbs_data(groups))
 
     @app.get("/api/analysis/{name}")
     def analysis_json(name: str) -> JSONResponse:
@@ -3716,6 +3725,7 @@ def create_app(
             st,
             "Groups & Filters",
             _saved_views_panel(st, schedules)
+            + _field_roles_panel(st, schedules, next_url="/groups")
             + prompt_form
             + _groups_body(versions, version_key, sch, criteria, breakdown, applied, st),
         )
@@ -3732,6 +3742,7 @@ def create_app(
         schedules = [s for _, s in st.ordered_versions()]
         if not schedules or not field:
             return JSONResponse({"values": []})
+        field = resolve_roles([(field, "")], st.field_roles)[0][0]  # a role name -> its column
         values = distinct_values(schedules, field)
         return JSONResponse({"values": values[:500]})  # cap for a sane datalist
 
@@ -5445,7 +5456,7 @@ def create_app(
         sch = st.schedules.get(name)
         if sch is None:
             return JSONResponse({"error": "not found"}, status_code=404)
-        groups = compute_wbs_breakdown(sch)
+        groups = compute_wbs_breakdown(st.scope(sch), wbs_field=st.field_roles.get("wbs"))
         return _export_response(
             fmt,
             TableSet(f"WBS breakdown - {sch.name}", wbs_breakdown_tables(groups)),
@@ -7213,6 +7224,30 @@ def create_app(
         wanted = [str(t) for t in texts][:400]
         return JSONResponse({"translations": _translate_batch(wanted, lang, st)})
 
+    @app.post("/fields/roles")
+    def set_field_roles(
+        wbs: str = Form(""),
+        cost_account: str = Form(""),
+        work_package: str = Form(""),
+        next_url: str = Form("/groups"),
+    ) -> RedirectResponse:
+        """Map the WBS / Cost Account / Work Package ROLES to loaded fields (operator 2026-09-02).
+        A value that no loaded file carries is dropped (never guessed); blank clears the role.
+        Redirects to ``next_url`` when it is a local path, else to /groups."""
+        st = session()
+        offered = set(available_fields_union([s for _k, s in st.ordered_versions()]))
+        wanted = {
+            "wbs": wbs.strip(),
+            "cost_account": cost_account.strip(),
+            "work_package": work_package.strip(),
+        }
+        roles = {
+            k: v for k, v in wanted.items() if v in offered and not (k == "wbs" and v == "WBS")
+        }
+        st.set_field_roles(roles)
+        local = next_url.startswith("/") and not next_url.startswith("//")
+        return RedirectResponse(url=next_url if local else "/groups", status_code=303)
+
     @app.post("/session/wipe")
     def wipe() -> RedirectResponse:
         st = session()
@@ -8007,6 +8042,60 @@ def _jcl_export_tables(result: JCLResult) -> tuple[Table, ...]:
     return (headline, frontier, sample)
 
 
+_ROLE_FORM: tuple[tuple[str, str, str], ...] = (
+    ("wbs", "WBS field", "the field the WBS pivots and float-erosion groups roll up by"),
+    ("cost_account", "Cost Account field", "offered as the Cost Account filter field"),
+    ("work_package", "Work Package field", "offered as the Work Package filter field"),
+)
+
+
+def _field_roles_panel(
+    st: SessionState, schedules: Sequence[Schedule], *, next_url: str, compact: bool = False
+) -> str:
+    """The field-ROLE picker (operator 2026-09-02): which loaded field IS the WBS, the Cost
+    Account and the Work Package. Options are every standard + custom field across the loaded
+    files; blank = the default (the stored WBS column / role not offered). Posts to
+    ``/fields/roles`` and returns to ``next_url``. ``compact`` = the WBS role alone (the /wbs page)."""
+    if not schedules:
+        return ""
+    fields = sorted(available_fields_union(schedules), key=str.casefold)
+    rows = []
+    for role, label, hint in _ROLE_FORM:
+        if compact and role != "wbs":
+            continue
+        cur = st.field_roles.get(role, "")
+        blank = "(stored WBS column)" if role == "wbs" else "(not mapped)"
+        opts = [f'<option value="">{blank}</option>']
+        for f in fields:
+            if role == "wbs" and f == "WBS":
+                continue  # the blank option IS the stored column
+            opts.append(
+                f'<option value="{_e(f)}"{" selected" if f == cur else ""}>{_e(f)}</option>'
+            )
+        rows.append(
+            f'<label title="{_e(hint)}">{label}: <select name={role} data-no-i18n>'
+            + "".join(opts)
+            + "</select></label>"
+        )
+    intro = (
+        "<p class=muted>The WBS pivot groups by the stored WBS column unless you pick the field "
+        "your project really uses (a custom field or outline code).</p>"
+        if compact
+        else "<p class=muted>Not every project keeps its breakdown in the standard WBS column, and "
+        "the Cost Account / Work Package live wherever the planner put them. Map each role to the "
+        "field that carries it; the WBS pivots follow the WBS role, and mapped roles appear as "
+        "filter fields below.</p>"
+    )
+    return (
+        "<div class=panel><h2>Field roles</h2>"
+        + intro
+        + '<form action="/fields/roles" method=post class=viz-controls>'
+        + " ".join(rows)
+        + f' <input type=hidden name=next_url value="{_e(next_url)}">'
+        + " <button type=submit>Apply</button></form></div>"
+    )
+
+
 def _groups_field_options(fields: Sequence[str], selected: str) -> str:
     """``<option>`` list of the given selectable fields with one pre-selected."""
     opts = ['<option value="">(field…)</option>']
@@ -8022,10 +8111,14 @@ def _groups_form(
     sch: Schedule,
     criteria: list[Criterion],
     breakdown: str,
+    roles: dict[str, str] | None = None,
 ) -> str:
     """The scope controls: filter rows (applied session-wide to every file), a preview-version
     picker, and a breakdown field. Field options are the union across all loaded files."""
-    fields = sorted(available_fields_union([s for _, s in versions]), key=str.casefold)  # A-Z menu
+    fields = sorted(  # A-Z menu; a mapped role rides along by NAME (resolved at match time)
+        [*available_fields_union([s for _, s in versions]), *role_labels(roles or {})],
+        key=str.casefold,
+    )
     vsel = ""
     if len(versions) > 1:
         vopts = "".join(
@@ -8300,7 +8393,9 @@ def _groups_body(
     the operator different figures than the panel shows (the round-10 live-state defect class).
     The filter-builder form and the status-notice Active-scope branches are not data visuals —
     no toolbar. No ▦ DATA: each panel's table IS its data (the home-shell precedent)."""
-    form = _groups_form(versions, version_key, sch, criteria, breakdown)
+    form = _groups_form(
+        versions, version_key, sch, criteria, breakdown, st.field_roles if st else None
+    )
     sub = filter_schedule(sch, criteria) if criteria else sch
     series_prov = _series_prov_chip([s for _k, s in versions])
 

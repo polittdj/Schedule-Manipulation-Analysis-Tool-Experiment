@@ -1242,3 +1242,43 @@ tr.row-found td.sf-frozen-col { background: #fff3b0; }
 .op-pptx{margin-right:1em}
 .op-table td,.op-table th{white-space:nowrap}
 @media print{.op-svg{border:0}}
+
+/* /volatility — the Claude Design "How stable is the path" layout (operator 2026-09-02). Tokens only;
+   the ten visuals keep their .tile shells inside the five numbered panels. */
+.vol-masthead .vol-headline { margin: 6px 0 4px; font-size: 22px; line-height: 1.15; color: var(--ink); }
+.vol-cursor { gap: 8px; }
+.vol-cursor .vol-play { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 700; }
+.vol-chips { display: inline-flex; gap: 4px; flex-wrap: wrap; }
+.vol-chip { background: transparent; color: var(--muted); border: 1px solid var(--line); border-radius: 4px;
+  padding: 2px 8px; font: 600 9px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; cursor: pointer; }
+.vol-chip.on, .vol-chip:hover { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+.vol-pill { border: 1px solid var(--line); border-radius: 9px; padding: 3px 9px; font-size: 9px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: .04em; }
+.vol-layout { display: grid; gap: 10px; margin-top: 10px; }
+.vol-row { display: grid; gap: 10px; }
+.vol-row-1 { grid-template-columns: 1.05fr .95fr; }
+.vol-row-2 { grid-template-columns: 1.25fr .75fr; }
+@media (max-width: 1100px) { .vol-row-1, .vol-row-2 { grid-template-columns: 1fr; } }
+.vol-block { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; min-width: 0; }
+.vol-block-head h2 { margin: 0; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink); }
+.vol-caption { margin: 4px 0 8px; font-size: 10px; color: var(--muted); }
+.vol-block .mosaic.vol-tiles { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+/* an ENLARGED tile must still GROW in the flow (r11 contract): its panel takes the whole row first */
+.vol-row .vol-block:has(.tile.is-big), .vol-row .vol-block:has(.tile.tile-expanded) { grid-column: 1 / -1; }
+.vol-signal:has(.tile.is-big), .vol-signal:has(.tile.tile-expanded) { grid-template-columns: 1fr; } /* the KPI stacks above an enlarged tile */
+.vol-block .mosaic.vol-tiles .tile .chart-host { height: 240px; }
+.vol-block .mosaic.vol-matrix .tile.tile-wide .chart-host { height: 360px; }
+.vol-block .mosaic .tile.is-big .chart-host, .vol-block .mosaic .tile.tile-expanded .chart-host { height: 74vh; }
+.vol-signal { display: grid; grid-template-columns: 128px 1fr; gap: 12px; align-items: start; }
+@media (max-width: 700px) { .vol-signal { grid-template-columns: 1fr; } }
+.vol-kpi { text-align: center; padding-top: 18px; }
+.vol-kpi-value { font-size: 32px; font-weight: 700; line-height: 1; color: var(--ink); }
+.vol-kpi-label { margin-top: 4px; font-size: 8.5px; letter-spacing: .06em; color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.vol-band { display: inline-block; margin-top: 6px; border: 1px solid currentColor; border-radius: 9px; padding: 2px 8px;
+  font: 700 8.5px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; opacity: .9; }
+.vol-band-ok { color: var(--ok); } .vol-band-warn { color: var(--warn); } .vol-band-bad { color: var(--bad); }
+.vol-band-na { color: var(--muted); }
+.vol-data-toggle { cursor: pointer; font-size: 11px; letter-spacing: .08em; color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.vol-data-toggle .btn-link { margin-left: 10px; }

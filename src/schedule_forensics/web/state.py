@@ -43,6 +43,7 @@ from schedule_forensics.engine.dcma_audit import ScheduleAudit
 from schedule_forensics.engine.grouping import (
     Criterion,
     filter_to_uids,
+    resolve_roles,
     select,
     with_ancestors,
 )
@@ -542,6 +543,11 @@ class SessionState:
     # optional session-wide target activity: every view that can focus on a UniqueID
     # (report trace, trend focus, compare movement) defaults to this when set.
     target_uid: int | None = None
+    #: Field ROLES (operator 2026-09-02): ``{"wbs" / "cost_account" / "work_package": label}``.
+    #: The WBS pivots group by the ``wbs`` role's field instead of the stored WBS column; the
+    #: Cost Account / Work Package roles are offered as filter fields and resolve to their mapped
+    #: columns (``grouping.resolve_roles``). Project-specific — reset by a wipe like the filters.
+    field_roles: dict[str, str] = field(default_factory=dict)
     # DCMA Acumen parity mode (ADR-0280): when True, the DCMA-14 checks use Acumen Fuse's exact
     # definitions from the NASA metric library — baselined population (Baseline Duration >= 1 day;
     # milestones are not class-excluded but the duration predicate still drops the ordinary
@@ -783,7 +789,7 @@ class SessionState:
             )
             matched = frozenset(_select_saved(sch, self.active_saved_filter, prompts))
         elif self.active_filter:
-            matched = frozenset(select(sch, self.active_filter))
+            matched = frozenset(select(sch, resolve_roles(self.active_filter, self.field_roles)))
         else:
             matched = None
         self._matched[id(sch)] = (sch, matched)
@@ -895,6 +901,8 @@ class SessionState:
                     parts.append("P=" + repr(prompts))
             elif self.active_filter:
                 parts.append("F=" + repr(self.active_filter))
+                if self.field_roles:  # a role-named criterion resolves through the mapping
+                    parts.append("R=" + repr(sorted(self.field_roles.items())))
         if include_target and self.target_uid is not None:
             parts.append(f"T={self.target_uid}")
         # DCMA Acumen parity mode (ADR-0280): contributes only when ENABLED, so the default epoch's
@@ -994,6 +1002,14 @@ class SessionState:
         caches (a regroup stays cheap)."""
         with self._lock:
             self.active_saved_group = group
+
+    def set_field_roles(self, roles: dict[str, str]) -> None:
+        """Replace the field-role mapping (blank values drop the role) and invalidate the scope
+        memos — a role-named filter criterion resolves through this mapping, so the population
+        can change with it (the scope signature carries the mapping for the same reason)."""
+        with self._lock:
+            self.field_roles = {k: v for k, v in roles.items() if v}
+            self._invalidate_scope()
 
     def set_target(self, uid: int | None) -> None:
         """Set (or clear) the session-wide Analysis Target and invalidate the scope/analysis caches

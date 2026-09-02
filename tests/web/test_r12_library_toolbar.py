@@ -348,9 +348,9 @@ PANEL_CENSUS = {
     "/margin": 7,
     "/workbench": 2,
     "/standards": 5,
-    "/groups": 5,
+    "/groups": 6,  # +1 (ADR-0450): the Field-roles panel joined /groups
     "/card/Project5": 3,
-    "/wbs/Project5": 3,
+    "/wbs/Project5": 4,  # +1 (ADR-0450): the compact WBS-field picker
 }
 
 

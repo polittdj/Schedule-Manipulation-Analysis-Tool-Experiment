@@ -16,7 +16,7 @@ multi-valued, so a criterion matches when the task *carries* that resource.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
@@ -157,6 +157,33 @@ STANDARD_FIELDS: dict[str, Callable[[Schedule, Task], str | None]] = {
     # --- text -----------------------------------------------------------------------------
     "Notes": lambda s, t: t.notes,
 }
+
+
+#: Field ROLES (operator 2026-09-02): the breakdown a project actually uses is not always the
+#: file's WBS column — a custom field or outline code often carries the real WBS, and the Cost
+#: Account / Work Package live in whatever field the planner chose. A role maps one of these
+#: names to ANY available field (standard or custom). ``ROLE_LABELS`` are the names the filter UI
+#: offers; ``"wbs"`` has no filter label because the stored ``WBS`` field is always offered and
+#: the role only redirects the WBS PIVOTS.
+ROLE_LABELS: dict[str, str] = {"cost_account": "Cost Account", "work_package": "Work Package"}
+_LABEL_TO_ROLE: dict[str, str] = {v: k for k, v in ROLE_LABELS.items()}
+
+
+def role_labels(roles: Mapping[str, str]) -> tuple[str, ...]:
+    """The role names to OFFER as filter fields — only the ones the operator has mapped."""
+    return tuple(label for role, label in ROLE_LABELS.items() if roles.get(role))
+
+
+def resolve_roles(criteria: Sequence[Criterion], roles: Mapping[str, str]) -> list[Criterion]:
+    """``criteria`` with every mapped role NAME replaced by its mapped field. An unmapped role
+    name stays as written (it then matches nothing — a field that does not exist), so a
+    stale filter can never silently fall back to the WBS column. Real field names pass through."""
+    out: list[Criterion] = []
+    for field, value in criteria:
+        role = _LABEL_TO_ROLE.get(field)
+        mapped = roles.get(role) if role else None
+        out.append((mapped if mapped else field, value))
+    return out
 
 
 def available_fields(schedule: Schedule) -> tuple[str, ...]:

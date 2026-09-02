@@ -171,15 +171,33 @@ def compute_bow_wave(
     if statuses:
         lo = min(max(lo, min(statuses) - _MONTHS_BEFORE_FIRST_STATUS), min(statuses))
         hi = max(min(hi, max(statuses) + _MONTHS_AFTER_LAST_STATUS), max(statuses) + 1)
+    # Operator 2026-09-02 ("Work piling up" must always show the Target UID): the focused
+    # target's and every tracked activity's finish months are PINNED into the window. Before
+    # this, a target finishing past the +12-month look-ahead (theirs: UID 152, 21 months out)
+    # fell off-axis silently — ``target_scheduled_index`` was None and the chart drew no mark.
+    # The pin widens the window BEFORE the cap; the cap then sheds the oldest months first and
+    # never the right edge that carries the pinned finish (nor the newest status / CEI period).
+    pinned: set[int] = set()
+    for k in range(len(schedules)):
+        for uid in (*(() if target_uid is None else (target_uid,)), *track_uids):
+            for ym in (sched_ym_by_uid[k].get(uid), fin_ym_by_uid[k].get(uid)):
+                if ym is not None:
+                    pinned.add(ym)
+    if pinned:
+        lo, hi = min(lo, min(pinned)), max(hi, max(pinned))
+    right_floor = max(statuses) + 1 if statuses else hi  # the right edge that is never shed
+    if pinned:
+        right_floor = max(right_floor, max(pinned))
     over = hi - lo + 1 - _MAX_MONTHS
     if over > 0:
         # Over the cap: shed the oldest history first, then surplus look-ahead, then the
         # oldest status months — never the newest status month or its CEI period (the
-        # animation's "now"). Shed status months degrade gracefully (status_index/CEI None).
+        # animation's "now"), and never a pinned target/tracked finish. Shed status months
+        # degrade gracefully (status_index/CEI None).
         lo = min(lo + over, min(statuses)) if statuses else lo + over
         over = hi - lo + 1 - _MAX_MONTHS
         if over > 0:
-            hi = max(hi - over, max(statuses) + 1)
+            hi = max(hi - over, right_floor)
             lo = max(lo, hi - _MAX_MONTHS + 1)
     n = hi - lo + 1
 
