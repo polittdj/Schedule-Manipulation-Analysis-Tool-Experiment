@@ -8,9 +8,11 @@ Resume the POLARIS² full-tool audit campaign (Schedule-Manipulation-Analysis-To
 docs/STATE/HANDOFF.md FIRST (auto-injected), then **docs/STATE/AUDIT-2026-08-27.md — the
 campaign's live ledger (appended per-WP, never batch-written)**; the 2026-08-16 ledger stays the
 historical row source for WP6. As of last close: **v1.0.228 · highest ADR 0446 · WP0, its
-addendum, WP1 AND WP2 complete, plus an operator-reported header fix (ADR-0444) on top** (WP0/PR #615 @ `2fbde95e`, addendum PR #616 @ `d56ad3f9`, WP1/PR
-#617 @ `286046d5`, WP2/PR #618 @ `0e07d213` — ALL MERGED, so branch fresh from `origin/main` and
-do not look for an open PR; verify a pull_request CI run appears per push, dispatch manually only
+addendum, WP1 AND WP2 complete, plus the operator's header defect ROOT-CAUSED (ADR-0444 → ADR-0445)
+and the One-Pager (ADR-0446) on top** (WP0/PR #615 @ `2fbde95e`, addendum PR #616 @ `d56ad3f9`,
+WP1/PR #617 @ `286046d5`, WP2/PR #618 @ `0e07d213`, ADR-0444/PR #620 @ `c3e4cea0`, ADR-0445 +
+ADR-0446/PR #621 @ `74e98d99` — ALL MERGED, so branch fresh from `origin/main` and do not look for
+an open PR; verify a pull_request CI run appears per push, dispatch manually only
 if none does; WP4 root-causes the 08-26 `startup_failure`). Campaign decisions (operator,
 2026-08-27, standing): **SOLO lead · fix-as-verified · BOTH folder-ask builds**. QC-1/QC-2 bind
 every session — ADR-0393, pinned by `tests/test_standing_rules.py`. **git fetch origin before you
@@ -43,22 +45,26 @@ Language selector always dumped the operator on `/` (`/language` trusted a `Refe
 `Referrer-Policy: no-referrer` strips). The A2 reduced-motion pin, which had a hand-written
 five-name population while twelve modules are animated, is now COMPUTED and fails closed. Every
 `WP2:M3` census marker is discharged; driver values are module-qualified and the meta-guard
-imports the sibling module to resolve them. After the WP2 PR merges the operator re-downloads the
-installer once (banner must say **v1.0.225**).
+imports the sibling module to resolve them. The installer is re-downloaded from `main` once (banner must say **v1.0.228**).
+**2026-09-01 (ADR-0444, v1.0.226, MERGED #620):** the timescale's EDGE bands clamped (a real defect —
+NOT the operator's symptom). **2026-09-01 (ADR-0445, v1.0.227, MERGED #621): the operator's diagonal
+header ROOT-CAUSED** — `hud.css`'s `[data-sf-hint]{position:relative}` out-cascaded every Gantt
+band/bar/milestone's `position:absolute` since July; fixed with `:where()`, mutation-proved both ways;
+ADR-0442's UI-01 `sizeGrip` was the same hijack misdiagnosed and is DELETED (grip CSS-seated, driver
+proves absolute/right-edge/full-height/reachable). **2026-09-01 (ADR-0446, v1.0.228, MERGED #621): the
+One-Pager** — `/onepager` (LIBRARY rail) turns a three-column Excel list into one 16:9 swimlane slide
+(SVG preview) and exports the SAME slide as native PowerPoint shapes (`/export/pptx/onepager`) plus the
+parsed list (`/export/{fmt}/onepager`) and a template; one layout, two painters; every parser decision
+on the page by row; 43 + 13 + 4 tests.
 
-⇢ OPEN QUESTION owed to the operator (ADR-0444) — ASK BEFORE RE-CHASING. They reported "the time
-line headers are still screwed up" with a screenshot of /path on their 2,301-activity / 12.3-year
-IPMR, two files open. A REAL defect was found and fixed there (tierBands clamped `left` but took the
-width from the UNCLAMPED left and never clamped `right` — the 2017 band overlapped 2018 by 34px and
-the last band ran 57px past the header). **But their exact symptom — a THREE-row header with
-cascading year labels — was NOT reproduced**: every repro at their row count, span, file count and
-six viewport widths (1100→2560) produced a sound TWO-row header with zero pageerrors, because
-`effectiveStack` promotes Months→Quarters at that span and dedupes. ADR-0444 is therefore UNVERIFIED
-as their fix. Get these three from the machine showing the fault, both files open, BEFORE probing
-further: (1) the version banner — are they on >=1.0.225, or a build predating ADR-0441's header work?
-(2) `localStorage.getItem("sf.timescale.v1")` — the persisted tier config that decides the row count.
-(3) a dump of `.g-scale-tiered .g-tier` (class + computed `top`) and the first few `.g-band`
-label/left pairs — the one thing a screenshot cannot give.
+⇢ CLOSED — the operator's header symptom (ADR-0444's open question) is ANSWERED by ADR-0445: the
+three-row cascading header was the tooltip-anchor hijack, reproduced in all four themes with one file
+or two and fixed at v1.0.227. Do NOT re-run ADR-0444's three diagnostics; if the operator reports a
+header fault on ≥ v1.0.227 it is a NEW defect — measure rendered `y` and computed `position` first.
+⇢ ONE QUESTION owed to the operator — ASK FIRST, do not build on the answer you assume: **did the
+One-Pager's exported `.pptx` open cleanly in PowerPoint?** (Verified in python-pptx and LibreOffice
+Impress in the build session; PowerPoint itself was never run.) If it did not, get the exact error
+text and the PowerPoint version before touching `reports/pptx.py`.
 
 ⇢ NEXT — **WP3: M4 the SRA grid** — edit / paste-from-Excel / save round-trip (UI-map row 27, the
 last queued row). Then **WP4** (committed route-coverage instrument, `SF_ROUTE_COVERAGE=1`, floor
@@ -106,4 +112,7 @@ it scales 212 → 371 px) · the Name-column 200px + Chromium ~53px resize floor
 behavior) · MF-05 · MC-01 parity leg · ADR-0417/0419 fixtures · the citations.reattach pin · the 6
 dead E501 per-file-ignores · the evolution 0% cell · Insufficient-Detail V05/V06 + TP2 (BLOCKED,
 operator-owned). **CLOSED, no longer a deferral:** the /mission 30-hosts-vs-9-cf-bars design
-question — settled by measurement in WP2 and re-pinned 30/30.
+question — settled by measurement in WP2 and re-pinned 30/30. **CLOSED (ADR-0445):** the diagonal timeline header — re-chase only on a
+report from ≥ v1.0.227, which would be a NEW defect. **OBSERVED, not fixed blind:** the sticky controls
+bar over the sticky header at the top scroll position; the docx/xlsx writers stamping CUI regardless of
+mode (the One-Pager slide follows `_cui_marking`).
