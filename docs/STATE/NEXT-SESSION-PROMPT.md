@@ -7,12 +7,11 @@
 Resume the POLARIS² full-tool audit campaign (Schedule-Manipulation-Analysis-Tool). Read
 docs/STATE/HANDOFF.md FIRST (auto-injected), then **docs/STATE/AUDIT-2026-08-27.md — the
 campaign's live ledger (appended per-WP, never batch-written)**; the 2026-08-16 ledger stays the
-historical row source for WP6. As of last close: **v1.0.229 · highest ADR 0451 · WP0, its
+historical row source for WP6. As of last close: **v1.0.230 · highest ADR 0452 (the follow-up: configured tier count survives View entire project, one-glyph month labels lower the promotion floor) · WP0, its
 addendum, WP1 AND WP2 complete, the header root cause (ADR-0445) and the One-Pager (ADR-0446) MERGED, and the
 OPERATOR BATCH of 2026-09-02 (ADR-0447..0451) on a draft PR from branch `claude/polaris-audit-campaign-shuau7`**
 (WP0/PR #615, addendum #616, WP1 #617, WP2 #618, ADR-0444 #620, ADR-0445+0446 #621, docs #622 — ALL MERGED;
-the operator-batch PR is the one to check first: if MERGED, branch fresh from `origin/main`; if still open,
-drive it to green before WP3). Campaign decisions (operator,
+the operator batch #623 MERGED at `cc21cb52`; the ADR-0452 follow-up PR is the one to check first: if MERGED, branch fresh from `origin/main`; if still open, drive it to green before WP3). Campaign decisions (operator,
 2026-08-27, standing): **SOLO lead · fix-as-verified · BOTH folder-ask builds**. QC-1/QC-2 bind
 every session — ADR-0393, pinned by `tests/test_standing_rules.py`. **git fetch origin before you
 branch, number an ADR, or commit — and RE-fetch before writing the docs.**

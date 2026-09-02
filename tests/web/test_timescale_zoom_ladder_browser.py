@@ -183,3 +183,89 @@ def test_analysis_zoom_ladder_is_monotone(browser: Any, served: str) -> None:
         f"zooming in coarsened the finest tier: {finest_counts}"
     )
     page.context.close()
+
+
+# ── operator 2026-09-02 (b): three configured tiers stay three; single-glyph month labels ────────
+
+_PATH_TIERS = """() => [...document.querySelectorAll('.path-scale .g-tier')].map(t => {
+  const bs = [...t.querySelectorAll('.g-band')];
+  return {bands: bs.length, labeled: bs.filter(b => b.textContent.trim()).length,
+          labels: bs.slice(0, 4).map(b => b.textContent)};
+})"""
+
+
+def test_path_whole_project_keeps_the_three_configured_tiers(browser: Any, served: str) -> None:
+    """Operator screenshot (v1.0.229, /path, View entire project, 12.3 years, Three tiers
+    configured):
+    TWO rows rendered — Months promoted into Quarters and ADR-0441's rule DROPPED the duplicate.
+    MS Project keeps the configured row count; the colliding tier must be pushed COARSER
+    (Years / Half Years / Quarters), never dropped while a coarser unit exists. RED pre-fix (2
+    rows)."""
+    # the operator's width: 1600 px gives the fitted 12.3-year track room for 14-px quarters. At a
+    # narrower track (quarters < 14 px) the ladder tops out at Years and two rows is the honest
+    # answer — there is nothing coarser than a year to push the middle tier to.
+    page = browser.new_context(viewport={"width": 1600, "height": 1000}).new_page()
+    page.goto(served + "/path", wait_until="load")
+    page.wait_for_selector(".path-track", timeout=30000)
+    page.click("#pathFit")
+    page.wait_for_timeout(800)
+    tiers = page.evaluate(_PATH_TIERS)
+    assert len(tiers) == 3, f"three tiers configured, {len(tiers)} rendered: {tiers}"
+    for i in range(2):
+        msg = f"tier {i} not coarser than {i + 1}: {tiers}"
+        assert tiers[i]["bands"] < tiers[i + 1]["bands"], msg
+    for t in tiers:
+        assert t["labeled"] > 0, f"an unlabeled tier survived: {tiers}"
+    page.context.close()
+
+
+_SYNTH = """(pxPerMonth) => {
+  const t0 = Date.UTC(2026, 0, 1), t1 = Date.UTC(2028, 0, 1);      // 24 months
+  const width = Math.round(24 * pxPerMonth);
+  const axis = {t0, t1, width, x: (ms) => Math.round(((ms - t0) / (t1 - t0)) * width)};
+  return SFTimescale.tiers(axis).rows.map(r => ({bands: r.bands.length, labels:
+  r.bands.slice(0, 3).map(b => b.label)}));
+}"""
+
+
+def _with_bottom_label(browser: Any, served: str, label: str | None) -> Any:
+    ctx = browser.new_context(viewport={"width": 1440, "height": 900})
+    if label:
+        cfg = {
+            "bottom": {
+                "units": "months",
+                "label": label,
+                "count": 1,
+                "align": "center",
+                "fiscal": False,
+                "ticks": True,
+            }
+        }
+        blob = json.dumps(json.dumps(cfg))
+        ctx.add_init_script(f"localStorage.setItem('sf.timescale.v1', {blob});")
+    page = ctx.new_page()
+    page.goto(served + "/path", wait_until="load")
+    page.wait_for_selector(".path-track", timeout=30000)
+    return page
+
+
+def test_single_glyph_month_labels_lower_the_promotion_floor(browser: Any, served: str) -> None:
+    """The operator asked for J/F/M and 1..12 month labels "to save space". They existed in the
+    Label menu — but the promotion floor (14 px) ignored the label, so a 10-px month was promoted
+    to Quarters whatever the operator chose. A one-glyph label legibly fits ~8 px: with it, 10-px
+    months STAY months and read J F M; with the default Jan/Feb label they still promote. RED
+    pre-fix (m_letter bottom promoted: 8 quarter bands, not 24 months)."""
+    page = _with_bottom_label(browser, served, None)
+    default_rows = page.evaluate(_SYNTH, 10)
+    page.context.close()
+    msg = f"default label at 10 px/month should promote to quarters: {default_rows}"
+    assert default_rows[-1]["bands"] == 8, msg
+    page = _with_bottom_label(browser, served, "m_letter")
+    letter_rows = page.evaluate(_SYNTH, 10)
+    page.context.close()
+    assert letter_rows[-1]["bands"] == 24, f"J/F/M at 10 px/month must keep months: {letter_rows}"
+    assert letter_rows[-1]["labels"] == ["J", "F", "M"], letter_rows
+    page = _with_bottom_label(browser, served, "m_num")
+    num_rows = page.evaluate(_SYNTH, 12)
+    page.context.close()
+    assert num_rows[-1]["bands"] == 24 and num_rows[-1]["labels"] == ["1", "2", "3"], num_rows

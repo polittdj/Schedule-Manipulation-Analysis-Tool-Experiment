@@ -16057,3 +16057,17 @@ of the WP1 UI map. Branch fresh from `origin/main`.
 - **Housekeeping:** `origin/main` (#622 docs merge) merged in before the docs were written; HANDOFF rotated;
   ledger "Operator batch" section appended; byte pins re-baselined last (`gantt.js`, `volatility.js`).
 - **Gate (recorded AFTER the runs, QC-1):** ruff / ruff format / mypy --strict (161 files) / bandit / node --check clean. Full suite on the pre-final tree: **4673 passed / 5 failed / 5 skipped in 54:24**; the five were all this session's blast radius — the enlarged /volatility tile could not grow inside its narrower design panel (r11: `427 > 427`, then `948 > 1000`) → the panel and the KPI column yield to an enlarged tile; the /groups (5→6) and /wbs (3→4) panel census gained the Field-roles pickers (r12 pins bumped with the ADR named); the shared-rule class names were a COUNTER, so two identical evolution frames had different DOM shapes and the stepper digest failed twice → content-hashed class names; the /sra caption failure (`console@1.25: no captions rendered`) went green on the same fix. Re-runs: r11 + axis-visual + steppers 86/86 (the last r11 test 1/1 after the KPI-column fix), r12 17/17, installer lockstep 68/68 after the final wheel + installer rebuild, drift guards 17/17.
+
+## 2026-09-02 (c) — operator follow-up on v1.0.229: three configured tiers, one-glyph month labels (ADR-0452, v1.0.230)
+
+- **Report:** /path at View entire project rendered two tiers with three configured (screenshot). Measured
+  on the tree: months promote to Quarters at ~5 px, collide with the configured Quarters middle tier, and
+  ADR-0441's rule dropped the duplicate. The requested J/F/M and 1..12 month labels already existed but the
+  14-px promotion floor ignored them.
+- **Fix:** a promote-collision now pushes the upper tier one rung coarser (Years / Half Years / Quarters);
+  `COARSER` routes quarters→halfyears so the push has somewhere to go; the configured label's `fitPx`
+  (m_letter 8, m_num 11) is the first-rung promotion floor. Two RED-first tests (2 rows observed; 8
+  quarter bands where 24 months were asked). At 1440 px the fitted /path track cannot hold 14-px
+  quarters and two rows is the honest answer — stated in the test.
+- **Gate:** ladder + long-span + dialog 30/30; the JS-only change ships in the wheel — wheel + nine
+  installers rebuilt; lockstep + drift guards recorded below after the run.
