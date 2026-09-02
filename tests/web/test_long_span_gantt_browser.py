@@ -309,3 +309,117 @@ def test_tier_bands_stay_inside_the_axis_and_never_overlap(browser: Any, served:
             )
     finally:
         page.close()
+
+
+# ── positioning MODE, not just geometry: the Gantt's positioned elements must stay absolute ────
+#
+# Every .g-band / .gantt-bar / .g-ms is created WITH a title= (its hover text). tooltips.js
+# promotes a non-empty title to data-sf-hint at load, and hud.css anchors the hint bubble with
+# `[data-sf-hint]{position:relative}` — which, at equal specificity and later in the cascade,
+# OVERRODE `.g-band{position:absolute}`. The bands fell into block flow, one per line, each shifted
+# by its inline `left`: a diagonal staircase of years, everything past the third row clipped.
+# Bars and diamonds were flipped too, surviving only because a track holds one child. The inline
+# left/width the earlier tests read were all correct — position mode is invisible to them. Only
+# the RENDERED rect sees it.
+
+_RENDERED_MODE = """() => {
+  const scale = document.querySelector('.path-scale');
+  const sr = scale.getBoundingClientRect();
+  const tiers = [...scale.querySelectorAll('.g-tier')].map(t => {
+    const bs = [...t.querySelectorAll('.g-band')];
+    const tops = [...new Set(bs.map(b => Math.round(b.getBoundingClientRect().top - sr.top)))];
+    return {cls: t.className.replace('g-tier ', ''), n: bs.length, distinctTops: tops.length,
+            tops: tops.slice(0, 5)};
+  });
+  const mode = sel => {
+    const els = [...document.querySelectorAll(sel)];
+    const bad = els.filter(e => getComputedStyle(e).position !== 'absolute');
+    return {n: els.length, notAbsolute: bad.length,
+            hinted: els.filter(e => e.hasAttribute('data-sf-hint')).length};
+  };
+  return {tiers, scrollH: scale.scrollHeight, clientH: scale.clientHeight,
+          band: mode('.path-scale .g-band'), bar: mode('.gantt-bar'), ms: mode('.g-ms')};
+}"""
+
+
+def test_header_bands_bars_and_milestones_stay_absolutely_positioned(
+    browser: Any, served: str
+) -> None:
+    """The one assertion that could have caught the operator's staircase: rendered y, per tier.
+
+    Three faces of the same defect, each asserted on the RENDERED tree:
+      * every band in a tier paints on ONE row (a second distinct top is the staircase);
+      * the header does not overflow its own height (the clipped rows below the third);
+      * the computed position of every band, bar and milestone is `absolute` — including the
+        ones that carry a tooltip, which is exactly the population the anchor rule hijacked.
+    """
+    page = _open(browser, served)
+    try:
+        page.wait_for_timeout(500)
+        m = page.evaluate(_RENDERED_MODE)
+        for t in m["tiers"]:
+            assert t["distinctTops"] == 1, (
+                f"{t['cls']}: its {t['n']} bands paint on {t['distinctTops']} different rows "
+                f"(tops {t['tops']}…) — the bands have fallen into block flow and cascade "
+                f"diagonally instead of tiling one row"
+            )
+        # The gold data-date line (.pv-now) deliberately overhangs the header by 2px top and
+        # bottom to join the track gridlines, so exact equality is the wrong bound. A stacked
+        # row is a whole tier row — 18px — and the staircase measured ~180; anything under one
+        # row of overflow is hairline, anything at or over it is a row that fell into flow.
+        assert m["scrollH"] - m["clientH"] < 18, (
+            f"the header overflows its own box vertically by {m['scrollH'] - m['clientH']}px "
+            f"(scrollHeight {m['scrollH']} vs clientHeight {m['clientH']}): at least one row "
+            f"is stacking below the visible header"
+        )
+        for name in ("band", "bar", "ms"):
+            r = m[name]
+            assert r["n"] > 0, f"no {name} elements rendered"
+            assert r["notAbsolute"] == 0, (
+                f"{r['notAbsolute']} of {r['n']} {name} elements are not position:absolute "
+                f"({r['hinted']} carry data-sf-hint) — the tooltip anchor rule is overriding "
+                f"the Gantt's own positioning"
+            )
+    finally:
+        page.close()
+
+
+def test_the_hint_anchor_still_positions_static_hosts_after_the_downgrade(
+    browser: Any, served: str
+) -> None:
+    """The other half of the :where() change: static hosts must still get their bubble anchor.
+
+    `[data-sf-hint]{position:relative}` existed to give a STATIC element (a heading, a button,
+    a hint-dot) a positioned box for its `::after` callout. Dropping the selector to zero
+    specificity must not lose that — otherwise the fix trades a broken header for broken
+    tooltips sitewide, and `test_tooltips.py` (byte pins on the CSS text) would never notice.
+    The contract is asserted on COMPUTED position, which is what anchors the bubble, so it needs
+    no hover and no 1.5s transition-delay wait.
+    """
+    page = _open(browser, served)
+    try:
+        page.wait_for_timeout(500)
+        r = page.evaluate("""() => {
+          const hosts = [...document.querySelectorAll('[data-sf-hint]')]
+            .filter(e => !e.closest('.path-scale, .path-track, .g-track'));
+          const byPos = {};
+          hosts.forEach(e => {
+            const p = getComputedStyle(e).position; byPos[p] = (byPos[p] || 0) + 1;
+          });
+          const staticLeft = hosts.filter(e => getComputedStyle(e).position === 'static');
+          return {hosts: hosts.length, byPos,
+                  staticSample: staticLeft.slice(0,3).map(e => e.tagName + '.' + e.className)};
+        }""")
+        assert r["hosts"] > 0, "no non-Gantt hint hosts on the page to check the anchor against"
+        assert not r["staticSample"], (
+            f"{r['byPos'].get('static', 0)} of {r['hosts']} tooltip hosts are "
+            f"position:static — the bubble has no anchor and will position against the page "
+            f"instead of its host: "
+            f"{r['staticSample']}"
+        )
+        assert r["byPos"].get("relative", 0) > 0, (
+            f"no hint host is position:relative ({r['byPos']}) — the zero-specificity "
+            f"anchor rule is not applying at all"
+        )
+    finally:
+        page.close()

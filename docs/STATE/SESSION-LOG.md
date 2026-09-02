@@ -15944,3 +15944,75 @@ of the WP1 UI map. Branch fresh from `origin/main`.
   (48:26). Verified to describe that tree, not a superseded one: `git status` and `git diff HEAD`
   both empty at the moment the run finished, with the working tree, `HEAD` and the pushed ref all
   at `f0a5a2a1`. (4,598 → 4,599 is exactly the one test this change adds.)
+
+---
+
+## 2026-09-01 (b) — the operator's diagonal header ROOT-CAUSED: a sitewide tooltip anchor rule had re-positioned every Gantt element since July (ADR-0445, v1.0.227)
+
+- **Branch:** `claude/polaris2-audit-resume-3xg50n` (from `main` @ `c3e4cea0`, the ADR-0444 merge).
+- **Trigger:** operator, with a second screenshot: "The fix did not fix the problem."
+- **Root cause (measured, engine-confirmed):** `hud.css` `[data-sf-hint]{position:relative}` out-cascaded
+  `.g-band` / `.gantt-bar` / `.g-ms` `{position:absolute}` on every element that carries a tooltip
+  (`tooltips.js` promotes `title=` → `data-sf-hint`). 60/62 bands, 73/73 bars, 11/11 milestones
+  measured `position:relative`; the two exceptions had empty labels. Relative bands are block flow,
+  one per line, shifted by inline `left` — the operator's staircase. Present since `47899b23`
+  (2026-07-11), all four themes, one file or two.
+- **Fix:** `:where([data-sf-hint]){position:relative}` — zero specificity; any explicit position wins,
+  static hosts keep the anchor. One line in `hud.css`.
+- **Tests:** two rendered-geometry tests in `test_long_span_gantt_browser.py` — bands paint on one row
+  per tier + computed `absolute` on band/bar/ms; static hint hosts stay `relative`. Overflow bound
+  is "< one tier row (18px)" because `.pv-now` overhangs 2px by design.
+- **Proof:** red-first by name; mutation both ways (selector restored → staircase; rule deleted →
+  `206 of 215 tooltip hosts are position:static`); 4 themes reproduced pre-fix; tooltip/HUD/panel
+  neighbours 147 passed; installer lockstep + bounds 75 passed.
+- **The finding under the finding:** every prior header oracle (ADR-0441 widths, ADR-0444 inline
+  styles, WP1 zoom drivers) was structurally blind to positioning mode. ADR-0444 stays — a real
+  defect, honestly marked UNVERIFIED — but its test passed on a diagonal header. Standing rule added.
+- **Second layer, same defect:** the fix turned `test_column_drag_resize_widens_the_column_and_clamps`
+  red (deterministic: fixed tree ×2 red, reverted tree green). `.col-rsz` carries a `title=` → same
+  hijack. ADR-0442's `sizeGrip` (its UI-01 fix) had patched the RELATIVE symptom with an inline
+  `left`; on a genuinely absolute grip that pinned it to the left edge (`[1,0,7,59]`). CSS alone
+  measured `[47,0,7,58]`, so `sizeGrip` is deleted and ADR-0442's Chromium-quirk diagnosis is
+  corrected in the ADR and the CSS comment. Driver gains absolute/right-edge/full-height/reachable
+  assertions (mutation red by name: `right: 47`). Observed, logged, not fixed: the sticky controls
+  bar (z6) overlays the sticky header (z3/4) at the top scroll position.
+- **Edit trap paid for:** `colresize.js` has TWO `ths.forEach` blocks; a slice anchored on the
+  first silently produced a no-op edit twice. Delete a function by brace-matching from its own
+  declaration line, and verify by grep COUNT, never by "the script ran".
+- **Gate at close (recorded AFTER the run finished, QC-1):** full suite on the frozen 1.0.227 tree **4601 passed / 5 skipped / 0 failed in 48:59** (the two new header tests and the strengthened drag driver included); neighbour suites **124 passed**; installer lockstep **68 passed**; statics clean whole-tree.
+
+## 2026-09-01 (c) — the One-Pager (ADR-0446, v1.0.228) — operator feature request mid-session
+
+- **Request:** a page that takes a three-column Excel list (swimlane · task/milestone · date) by
+  drag-and-drop or picker, draws a professional swimlane one-pager (distinct lane colours, every
+  bar/milestone labelled with name + finish date, red today line, dotted month lines, months-and-years
+  header only, legend at the bottom) and exports it as PowerPoint. Example workbook supplied (NOT
+  committed; read cell by cell first — 88 rows, six hand-typed date spellings, two serials in General
+  cells, one typo `10/122/2026`, one swimlane spelled two ways).
+- **Built:** `reports/onepager.py` (intake grammar + layout in slide points), `reports/pptx.py`
+  (std-lib .pptx writer, native shapes, deterministic), `web/onepager.py` + `static/onepager.js`
+  (page, painter, intake), `--lane-1..10` tokens ×4 themes, routes, state, LIBRARY-rail entry, i18n.
+  ONE layout, TWO painters; every parser decision on the page by row; density floors that announce
+  themselves; template download; strict-CSP JSON block. Full write-up: ADR-0446.
+- **Method:** the whole feature was built and tested in the scratchpad while the ADR-0445 full
+  suite ran on the frozen tree (never mutate the instrument), then applied by an anchored patch script.
+  Oracles: python-pptx read-back and LibreOffice Impress render (installed for the purpose — the
+  first "could not be loaded" was bisected to the environment with a python-pptx reference deck, not
+  my XML) plus the in-CI `xml.etree` EMU read-back with a one-EMU teeth test. In-chrome screenshots in
+  daylight and console with the operator's file, viewed. PowerPoint itself NOT run — UNVERIFIED there.
+- **Sweeps joined:** census row `/onepager`; oracle labels regenerated + fingerprint `{200: 43, 400: 17,
+  422: 3}`; DD ledger `("onepager.js", 83)`; axis-titles; VIEW_MODULES + bar_drill + presentation_fixes
+  guards; E501 exemption for the view module; DESIGN-SYSTEM §2 rail list.
+- **Traps paid for:** `TestClient` follows 303 (assert with `follow_redirects=False`); `panelkit.js`
+  is per-page; `TIME_RE` is singular; a typed fixture serial (47209 ≠ 3/28/28); a blanket rename that
+  hit `read_xlsx`; an f-string cannot carry a backslash expression (scratch preview script).
+- **Gate at close (recorded AFTER the runs finished, QC-1):** statics clean whole-tree (ruff ·
+  format · mypy strict 161 files · bandit · `node --check`); new modules 43 + 13 + 4 passed; the
+  sweeps above green; wheel + nine installers rebuilt at 1.0.228 LAST; installer lockstep **68 passed** (after the rebuild);
+  full suite on the frozen tree **4658 passed / 5 skipped / 1 failed in 47:31** — the one red was `tests/installer/test_installers.py::test_embedded_wheel_is_in_lockstep_with_the_source_tree`: the wheel embedded in the installers predated the final route rename (`/export/pptx/onepager`, `/export/{fmt}/onepager-template`) and the caption-call reshape; the wheel + nine installers were rebuilt AFTER that run and the installer suite re-run — the source tree the 4658 measured is unchanged by the rebuild.
+- **CI red on the ADR-0446 head (`8bc20ab1`), fixed same session:** `test_onepager_browser.py` imported
+  `from tests.web.browser_chrome` — collects under `python -m pytest` (CWD on `sys.path`), dies under CI's
+  plain `pytest` (`No module named 'tests'`), so every matrix job stopped at collection. Import corrected to
+  `from web.browser_chrome`; collection verified the CI way (`pytest --collect-only -q`). Test-only change —
+  the wheel/installers are untouched and the recorded full-suite number stands.
+

@@ -89,6 +89,7 @@ from schedule_forensics.engine.trend import (
 from schedule_forensics.model.saved_view import SavedFilter, SavedGroup
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
+from schedule_forensics.reports.onepager import OnePagerDoc
 
 
 @dataclass(frozen=True)
@@ -708,6 +709,16 @@ class SessionState:
     #: was indistinguishable from a confirmation at a glance. Set alongside the message at each
     #: site; cleared with it on render.
     sra_import_is_error: bool = False
+    # ── /onepager (ADR-0446): the parsed three-column list, its slide title, and the one-shot
+    # import message — session-wide like everything else here, cleared by "Clear the list" ──
+    onepager: OnePagerDoc | None = None
+    onepager_title: str = ""
+    onepager_msg: str | None = None
+    #: Whether :attr:`onepager_msg` reports a FAILURE (the ADR-0313 rule: a failure never renders
+    #: in the success style).
+    onepager_is_error: bool = False
+    #: Test seam: the "today" the one-pager draws. ``None`` is the real clock.
+    onepager_today: dt.date | None = None
     # JCL joint cost-&-schedule confidence settings (ADR-0269). Blank targets (None) mean
     # "use the run's deterministic finish / EAC"; td_share is the time-dependent cost share
     # τ; the 1/1/1 multipliers mean cost-estimating uncertainty is OFF (duration-driven

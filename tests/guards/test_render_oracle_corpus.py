@@ -67,7 +67,10 @@ LABELS = Path(__file__).parent / "render_oracle_labels.txt"
 #: decoration (ADR-0377).
 #: 41 -> 42 in ADR-0426: `/launch` is one new GET route that renders on an empty session
 #: (its telemetry tiles read the em dash rather than refusing to paint).
-EMPTY_STAGE_FINGERPRINT = {200: 42, 400: 17, 422: 2}
+#: 42 -> 43 and 2 -> 3 in ADR-0446: `/onepager` renders on an empty session; `/export/pptx/onepager`
+#: refuses (422) with no list loaded rather than exporting a blank slide (its Excel/Word siblings
+#: take the `{fmt}` path the corpus already fills).
+EMPTY_STAGE_FINGERPRINT = {200: 43, 400: 17, 422: 3}
 
 
 def _built() -> list[str]:

@@ -16,7 +16,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "schedule-forensics"
-version = "1.0.226"
+version = "1.0.228"
 description = "Polaris² — local, NASA-themed forensic schedule-analysis tool (CUI-safe, offline)."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -172,6 +172,9 @@ select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
 # has no HTML in it, still earns none.
 "src/schedule_forensics/web/app.py" = ["E501"]
 "src/schedule_forensics/web/chrome.py" = ["E501"]
+# `onepager.py` is a page module born outside the monolith (ADR-0446) and carries its page's
+# HTML like every other view module, so it takes the same exemption.
+"src/schedule_forensics/web/onepager.py" = ["E501"]
 # `components.py` is the shared presentation kernel, extracted verbatim from app.py (ADR-0350).
 # At extraction ONE line needed the exemption — a `_metric_help_cell` docstring line already
 # over-long inside app.py's exempt region; the module has since grown to 10 (measured 2026-08-25,

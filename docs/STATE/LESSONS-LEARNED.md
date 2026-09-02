@@ -435,6 +435,81 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-01 (b) — a width-based oracle cannot see a positioning defect; a global `[attr]` rule can hijack anything positioned
+
+- **The operator was right and two rounds of measurement were wrong.** ADR-0444 measured the
+  header carefully — inline `left`/`width`, band overlap, overflow past the axis — and every
+  number was correct on a header that was rendering as a diagonal staircase. Positioning mode
+  (`absolute` vs `relative`) changes an element's `y` and ONLY its `y`; its inline styles and its
+  rendered width are byte-identical either way. Seven weeks of green header tests, three ADRs of
+  header work, and a sitewide census had never once read a band's rendered `top` or its computed
+  `position`. **A positioning claim is proved by `getBoundingClientRect().top` per element and
+  `getComputedStyle(el).position` — never by inline styles, never by widths.**
+- **When a screenshot and the measurements disagree, the oracle is the suspect.** The screenshot's
+  `x` positions matched a correct render exactly; only `y` was wrong. That should have pointed at
+  positioning mode immediately. Instead the first round spent its effort on span, row count,
+  width sweeps and cache headers — every axis EXCEPT the one the image was showing.
+- **Ask the engine which rule won.** `CSS.getMatchedStylesForNode` over CDP returned the cascade
+  in one call and named `[data-sf-hint]{position:relative}` as the winner over
+  `.g-band{position:absolute}`. Reading five stylesheets by eye had found nothing, because the
+  overriding rule lives in a different file (`hud.css`) and matches by an attribute that JS adds
+  at load. The cascade is a runtime fact; read it at runtime.
+- **A global "make it positioned" rule must be zero-specificity.** `[attr]{position:relative}` is
+  the standard idiom for anchoring a `::after` bubble, and it silently converts EVERY positioned
+  element that ever gains the attribute. `:where([attr]){position:relative}` gives static hosts
+  the anchor and loses to any explicit position rule. Any future global rule that sets `position`
+  gets the same treatment.
+- **The two survivors were the diagnosis.** Sixty of sixty-two bands were relative; the two that
+  stayed absolute had EMPTY labels — no `title`, nothing for `tooltips.js` to promote, no
+  attribute for the rule to match. A partial failure with a clean discriminator between the
+  broken and unbroken members is the cascade telling you the selector. Look for it before
+  theorising.
+- **A recorded trap was recorded for the wrong reason.** The kickoff has carried "tooltips.js
+  moves title= at load" since WP1 — as a census-signature hazard (attribute TEXT moves). Its
+  real cost was that promotion changes the cascade. A trap written from the symptom that was
+  noticed, not the mechanism, protects against exactly one recurrence.
+- **A workaround written against a hijacked state becomes the bug once the hijack is fixed.**
+  ADR-0442's `sizeGrip` measured a 7×0px grip, called it a Chromium table-cell quirk, and stamped
+  inline geometry computed for a `relative` box. It was a correct patch for the wrong diagnosis,
+  and it turned the real fix red. When a fix "works" by writing measured coordinates over CSS
+  that already says where the element goes, ask why the CSS is being ignored before patching.
+- **"It widened the column" is not "the grip is where it should be".** The WP1 driver passed for
+  seven weeks with the grip on the wrong edge, because it asserted the EFFECT of a drag and never
+  the grip's position or reachability. Assert the thing itself: computed position, edge, height,
+  and `elementFromPoint` returning the element.
+- **A file with two identical anchors turns a slice-edit into a silent no-op.** Two blind edits of
+  `colresize.js` "succeeded" without changing the function, because the end-anchor matched an
+  earlier `ths.forEach`. Delete by brace-matching from the declaration; verify by grep count.
+- **Read the operator's file cell by cell before writing the parser.** The One-Pager's date grammar
+  (ADR-0446) came from the example workbook, not from the request: six hand-typed range spellings,
+  two Excel serials typed into General cells, a typo, a swimlane spelled two ways. A parser designed
+  from the request alone would have been wrong on a third of the rows and silent about it.
+- **One layout, two painters.** When the same picture must appear in two media (an SVG preview and
+  a PowerPoint export), compute the geometry ONCE in a neutral unit and let each painter only paint.
+  The preview is then honest by construction, the layout is testable without a browser, and a
+  drawing defect has one fix.
+- **Bisect the environment before the artifact.** LibreOffice refused the hand-built .pptx; a
+  python-pptx reference deck failed identically, so the fault was the missing Impress module, not the
+  XML. One control render saved a day of XML archaeology.
+- **A density rule must say what it did.** A slide that shrinks labels, or cannot fit at all, states
+  it in the layout's notes and on the page. The silent alternative is the intake defect at the other
+  end: a swimlane clipped off the bottom.
+- **A fixture constant must be computed, not typed.** `47209` was meant to be 2028-03-28; it is
+  2029-04-01, and it moved the window and a "today at the right edge" case. Derive serials from
+  `date - epoch`; never trust an Excel serial you typed.
+- **`python -m pytest` and `pytest` do not see the same `sys.path`.** The `-m` form puts the working
+  directory on the path, so `from tests.web.x import …` collects locally and dies on CI, which runs
+  plain `pytest`. Verify collection the way CI runs it (`pytest --collect-only -q`), and import test
+  helpers as `from web.<module>` (the `tests/conftest.py` path), never as `tests.…`. One misread sed
+  result cost a red matrix on PR #621.
+- **`TestClient` follows a 303.** Asserting a redirect needs `follow_redirects=False`; otherwise the
+  200 of the landing page masquerades as the POST's answer.
+- **Fix-then-verify the other half.** Dropping the anchor's specificity could have killed every
+  tooltip on the site, and `test_tooltips.py` — byte pins on the CSS text — would have stayed
+  green. The second test (`206 of 215 hosts static` on mutation) exists so the fix cannot trade
+  one dead feature for another. Every fix that weakens a rule needs a test on what the rule was
+  FOR.
+
 ### 2026-09-01 — clamping one edge and measuring from the other; and a repro that fails is still worth reporting
 
 - **If you clamp one edge of a box, the width must come from the CLAMPED edges.** `tierBands` did

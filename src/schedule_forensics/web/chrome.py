@@ -873,6 +873,14 @@ _SPINE: tuple[tuple[str, tuple[_Chapter, ...]], ...] = (
             ),
             _Chapter(
                 "",
+                "One-Pager Timeline",
+                "/onepager",
+                (),
+                ("One-Pager Timeline",),
+                "Turn a three-column Excel list into a swimlane one-pager and a PowerPoint slide.",
+            ),
+            _Chapter(
+                "",
                 "WBS Rollup",
                 "@wbs",
                 (),

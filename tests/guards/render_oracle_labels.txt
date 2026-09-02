@@ -33,6 +33,7 @@
 [empty] GET /driving-path
 [empty] GET /evm
 [empty] GET /evolution
+[empty] GET /export/pptx/onepager
 [empty] GET /export/xlsx/risk-register-template
 [empty] GET /export/xlsx/task-risk-template
 [empty] GET /forecast
@@ -43,6 +44,7 @@
 [empty] GET /launch
 [empty] GET /margin
 [empty] GET /mission
+[empty] GET /onepager
 [empty] GET /openapi.json
 [empty] GET /path
 [empty] GET /performance
@@ -118,6 +120,8 @@
 [loaded] GET /export/docx/integrity
 [loaded] GET /export/docx/margin
 [loaded] GET /export/docx/mission
+[loaded] GET /export/docx/onepager
+[loaded] GET /export/docx/onepager-template
 [loaded] GET /export/docx/path/TP4_DataCenter_v5
 [loaded] GET /export/docx/performance
 [loaded] GET /export/docx/resource-drill
@@ -136,6 +140,7 @@
 [loaded] GET /export/docx/whatif-added
 [loaded] GET /export/docx/workbench
 [loaded] GET /export/docx/workbench-drill/TP4_DataCenter_v5
+[loaded] GET /export/pptx/onepager
 [loaded] GET /export/xlsx/activities-drill
 [loaded] GET /export/xlsx/activities/TP4_DataCenter_v5
 [loaded] GET /export/xlsx/analysis/TP4_DataCenter_v5
@@ -154,6 +159,8 @@
 [loaded] GET /export/xlsx/integrity
 [loaded] GET /export/xlsx/margin
 [loaded] GET /export/xlsx/mission
+[loaded] GET /export/xlsx/onepager
+[loaded] GET /export/xlsx/onepager-template
 [loaded] GET /export/xlsx/path/TP4_DataCenter_v5
 [loaded] GET /export/xlsx/performance
 [loaded] GET /export/xlsx/resource-drill
@@ -182,6 +189,7 @@
 [loaded] GET /launch
 [loaded] GET /margin
 [loaded] GET /mission
+[loaded] GET /onepager
 [loaded] GET /openapi.json
 [loaded] GET /path
 [loaded] GET /performance
@@ -270,6 +278,8 @@
 [target] GET /export/docx/integrity
 [target] GET /export/docx/margin
 [target] GET /export/docx/mission
+[target] GET /export/docx/onepager
+[target] GET /export/docx/onepager-template
 [target] GET /export/docx/path/TP4_DataCenter_v5
 [target] GET /export/docx/performance
 [target] GET /export/docx/resource-drill
@@ -288,6 +298,7 @@
 [target] GET /export/docx/whatif-added
 [target] GET /export/docx/workbench
 [target] GET /export/docx/workbench-drill/TP4_DataCenter_v5
+[target] GET /export/pptx/onepager
 [target] GET /export/xlsx/activities-drill
 [target] GET /export/xlsx/activities/TP4_DataCenter_v5
 [target] GET /export/xlsx/analysis/TP4_DataCenter_v5
@@ -306,6 +317,8 @@
 [target] GET /export/xlsx/integrity
 [target] GET /export/xlsx/margin
 [target] GET /export/xlsx/mission
+[target] GET /export/xlsx/onepager
+[target] GET /export/xlsx/onepager-template
 [target] GET /export/xlsx/path/TP4_DataCenter_v5
 [target] GET /export/xlsx/performance
 [target] GET /export/xlsx/resource-drill
@@ -334,6 +347,7 @@
 [target] GET /launch
 [target] GET /margin
 [target] GET /mission
+[target] GET /onepager
 [target] GET /openapi.json
 [target] GET /path
 [target] GET /performance
@@ -422,6 +436,8 @@
 [cleared] GET /export/docx/integrity
 [cleared] GET /export/docx/margin
 [cleared] GET /export/docx/mission
+[cleared] GET /export/docx/onepager
+[cleared] GET /export/docx/onepager-template
 [cleared] GET /export/docx/path/TP4_DataCenter_v5
 [cleared] GET /export/docx/performance
 [cleared] GET /export/docx/resource-drill
@@ -440,6 +456,7 @@
 [cleared] GET /export/docx/whatif-added
 [cleared] GET /export/docx/workbench
 [cleared] GET /export/docx/workbench-drill/TP4_DataCenter_v5
+[cleared] GET /export/pptx/onepager
 [cleared] GET /export/xlsx/activities-drill
 [cleared] GET /export/xlsx/activities/TP4_DataCenter_v5
 [cleared] GET /export/xlsx/analysis/TP4_DataCenter_v5
@@ -458,6 +475,8 @@
 [cleared] GET /export/xlsx/integrity
 [cleared] GET /export/xlsx/margin
 [cleared] GET /export/xlsx/mission
+[cleared] GET /export/xlsx/onepager
+[cleared] GET /export/xlsx/onepager-template
 [cleared] GET /export/xlsx/path/TP4_DataCenter_v5
 [cleared] GET /export/xlsx/performance
 [cleared] GET /export/xlsx/resource-drill
@@ -486,6 +505,7 @@
 [cleared] GET /launch
 [cleared] GET /margin
 [cleared] GET /mission
+[cleared] GET /onepager
 [cleared] GET /openapi.json
 [cleared] GET /path
 [cleared] GET /performance
@@ -574,6 +594,8 @@
 [resloaded] GET /export/docx/integrity
 [resloaded] GET /export/docx/margin
 [resloaded] GET /export/docx/mission
+[resloaded] GET /export/docx/onepager
+[resloaded] GET /export/docx/onepager-template
 [resloaded] GET /export/docx/path/TP4_DataCenter_v5
 [resloaded] GET /export/docx/performance
 [resloaded] GET /export/docx/resource-drill
@@ -592,6 +614,7 @@
 [resloaded] GET /export/docx/whatif-added
 [resloaded] GET /export/docx/workbench
 [resloaded] GET /export/docx/workbench-drill/TP4_DataCenter_v5
+[resloaded] GET /export/pptx/onepager
 [resloaded] GET /export/xlsx/activities-drill
 [resloaded] GET /export/xlsx/activities/TP4_DataCenter_v5
 [resloaded] GET /export/xlsx/analysis/TP4_DataCenter_v5
@@ -610,6 +633,8 @@
 [resloaded] GET /export/xlsx/integrity
 [resloaded] GET /export/xlsx/margin
 [resloaded] GET /export/xlsx/mission
+[resloaded] GET /export/xlsx/onepager
+[resloaded] GET /export/xlsx/onepager-template
 [resloaded] GET /export/xlsx/path/TP4_DataCenter_v5
 [resloaded] GET /export/xlsx/performance
 [resloaded] GET /export/xlsx/resource-drill
@@ -638,6 +663,7 @@
 [resloaded] GET /launch
 [resloaded] GET /margin
 [resloaded] GET /mission
+[resloaded] GET /onepager
 [resloaded] GET /openapi.json
 [resloaded] GET /path
 [resloaded] GET /performance
@@ -726,6 +752,8 @@
 [ceidark] GET /export/docx/integrity
 [ceidark] GET /export/docx/margin
 [ceidark] GET /export/docx/mission
+[ceidark] GET /export/docx/onepager
+[ceidark] GET /export/docx/onepager-template
 [ceidark] GET /export/docx/path/TP4_DataCenter_v5
 [ceidark] GET /export/docx/performance
 [ceidark] GET /export/docx/resource-drill
@@ -744,6 +772,7 @@
 [ceidark] GET /export/docx/whatif-added
 [ceidark] GET /export/docx/workbench
 [ceidark] GET /export/docx/workbench-drill/TP4_DataCenter_v5
+[ceidark] GET /export/pptx/onepager
 [ceidark] GET /export/xlsx/activities-drill
 [ceidark] GET /export/xlsx/activities/TP4_DataCenter_v5
 [ceidark] GET /export/xlsx/analysis/TP4_DataCenter_v5
@@ -762,6 +791,8 @@
 [ceidark] GET /export/xlsx/integrity
 [ceidark] GET /export/xlsx/margin
 [ceidark] GET /export/xlsx/mission
+[ceidark] GET /export/xlsx/onepager
+[ceidark] GET /export/xlsx/onepager-template
 [ceidark] GET /export/xlsx/path/TP4_DataCenter_v5
 [ceidark] GET /export/xlsx/performance
 [ceidark] GET /export/xlsx/resource-drill
@@ -790,6 +821,7 @@
 [ceidark] GET /launch
 [ceidark] GET /margin
 [ceidark] GET /mission
+[ceidark] GET /onepager
 [ceidark] GET /openapi.json
 [ceidark] GET /path
 [ceidark] GET /performance
@@ -878,6 +910,8 @@
 [allcomplete] GET /export/docx/integrity
 [allcomplete] GET /export/docx/margin
 [allcomplete] GET /export/docx/mission
+[allcomplete] GET /export/docx/onepager
+[allcomplete] GET /export/docx/onepager-template
 [allcomplete] GET /export/docx/path/TP4_DataCenter_v5
 [allcomplete] GET /export/docx/performance
 [allcomplete] GET /export/docx/resource-drill
@@ -896,6 +930,7 @@
 [allcomplete] GET /export/docx/whatif-added
 [allcomplete] GET /export/docx/workbench
 [allcomplete] GET /export/docx/workbench-drill/TP4_DataCenter_v5
+[allcomplete] GET /export/pptx/onepager
 [allcomplete] GET /export/xlsx/activities-drill
 [allcomplete] GET /export/xlsx/activities/TP4_DataCenter_v5
 [allcomplete] GET /export/xlsx/analysis/TP4_DataCenter_v5
@@ -914,6 +949,8 @@
 [allcomplete] GET /export/xlsx/integrity
 [allcomplete] GET /export/xlsx/margin
 [allcomplete] GET /export/xlsx/mission
+[allcomplete] GET /export/xlsx/onepager
+[allcomplete] GET /export/xlsx/onepager-template
 [allcomplete] GET /export/xlsx/path/TP4_DataCenter_v5
 [allcomplete] GET /export/xlsx/performance
 [allcomplete] GET /export/xlsx/resource-drill
@@ -942,6 +979,7 @@
 [allcomplete] GET /launch
 [allcomplete] GET /margin
 [allcomplete] GET /mission
+[allcomplete] GET /onepager
 [allcomplete] GET /openapi.json
 [allcomplete] GET /path
 [allcomplete] GET /performance
@@ -1030,6 +1068,8 @@
 [aiconfig] GET /export/docx/integrity
 [aiconfig] GET /export/docx/margin
 [aiconfig] GET /export/docx/mission
+[aiconfig] GET /export/docx/onepager
+[aiconfig] GET /export/docx/onepager-template
 [aiconfig] GET /export/docx/path/TP4_DataCenter_v5
 [aiconfig] GET /export/docx/performance
 [aiconfig] GET /export/docx/resource-drill
@@ -1048,6 +1088,7 @@
 [aiconfig] GET /export/docx/whatif-added
 [aiconfig] GET /export/docx/workbench
 [aiconfig] GET /export/docx/workbench-drill/TP4_DataCenter_v5
+[aiconfig] GET /export/pptx/onepager
 [aiconfig] GET /export/xlsx/activities-drill
 [aiconfig] GET /export/xlsx/activities/TP4_DataCenter_v5
 [aiconfig] GET /export/xlsx/analysis/TP4_DataCenter_v5
@@ -1066,6 +1107,8 @@
 [aiconfig] GET /export/xlsx/integrity
 [aiconfig] GET /export/xlsx/margin
 [aiconfig] GET /export/xlsx/mission
+[aiconfig] GET /export/xlsx/onepager
+[aiconfig] GET /export/xlsx/onepager-template
 [aiconfig] GET /export/xlsx/path/TP4_DataCenter_v5
 [aiconfig] GET /export/xlsx/performance
 [aiconfig] GET /export/xlsx/resource-drill
@@ -1094,6 +1137,7 @@
 [aiconfig] GET /launch
 [aiconfig] GET /margin
 [aiconfig] GET /mission
+[aiconfig] GET /onepager
 [aiconfig] GET /openapi.json
 [aiconfig] GET /path
 [aiconfig] GET /performance

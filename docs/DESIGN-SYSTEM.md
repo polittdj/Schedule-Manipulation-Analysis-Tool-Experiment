@@ -60,7 +60,7 @@ nav (left rail on dark themes / top bar on daylight) → main → CUI bar (botto
   12 The briefing.
 - Off-spine rails (ADR-0425, per the v2 prototype): pages outside the story sit in one
   of **four** named nav groups — **Forensics** (Schedule Integrity), **Library** (Metric
-  Workbench, WBS Rollup, Schedule ID Card, EVM), **Control** (Margin Dashboard,
+  Workbench, One-Pager Timeline, WBS Rollup, Schedule ID Card, EVM), **Control** (Margin Dashboard,
   Standards & Execution, Assessment Scorecards) and **Setup** (Groups & Filters, AI
   Settings, Metric Dictionary). New pages must be given a place in the narrative, or a
   rail — and a rail is chosen by what the page *is*, not by what is convenient: an
