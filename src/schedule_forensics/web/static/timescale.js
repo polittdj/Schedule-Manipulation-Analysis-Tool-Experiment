@@ -220,7 +220,7 @@ window.SFTimescale = (function () {
         fn: function (d) { return MONTHS_S[d.getUTCMonth()] + " '" + yy(d.getUTCFullYear()); },
         narrow: function (d) { return MONTHS_S[d.getUTCMonth()]; }, minPx: 42 },
       { id: "m_letter", name: "J, F, M, ...",
-        fn: function (d) { return MONTHS_S[d.getUTCMonth()][0]; }, fitPx: 8 },
+        fn: function (d) { return MONTHS_S[d.getUTCMonth()][0]; }, fitPx: 7 },
       { id: "m_num", name: "1, 2, ... 12",
         fn: function (d) { return String(d.getUTCMonth() + 1); }, fitPx: 11 },
     ],
@@ -383,8 +383,9 @@ window.SFTimescale = (function () {
         var w = Math.max(1, r - l);
         var label = def.fn(cur, ctx);
         if (def.narrow && def.minPx && w < def.minPx) label = def.narrow(cur, ctx);
-        if (w < 9) label = "";
-        out.push({ left: l, width: w, label: label, align: tier.align || "center" });
+        // a one-glyph label (fitPx) stays legible narrower than a word — blank only under ITS floor
+        if (w < (def.fitPx ? def.fitPx - 1 : 9)) label = "";
+        out.push({ left: l, width: w, label: label, align: tier.align || "center", glyph: !!def.fitPx });
       }
       cur.setTime(next.getTime());
     }
@@ -479,6 +480,7 @@ window.SFTimescale = (function () {
     var rows = [];
     for (var i = vis.length - 1; i >= 0; i--) {
       var eff = effectiveTier(axis, vis[i]);
+      eff.src = i; // which configured tier (Top/Middle/Bottom index) this row renders
       var below = rows[0];
       if (below && RANK[eff.units] <= RANK[below.units]) {
         // a ZOOM effect on either side of the collision (this tier moved, or the tier below was
@@ -682,7 +684,37 @@ window.SFTimescale = (function () {
       cell.appendChild(track);
       decorateCell(cell, axis);
       box.appendChild(cell);
+      box.appendChild(effectiveNote(axis));
     } finally { CFG = real; }
+  }
+
+  // What the page will ACTUALLY render at this zoom, tier by tier, and why — so a Reset or an
+  // edit whose bands look identical is still visibly explained (operator 2026-09-02 c: "Reset
+  // does not work" — it did; the default and their configuration promoted to the same rows).
+  function effectiveNote(axis) {
+    var names = CFG.show === 3 ? ["Top", "Middle", "Bottom"] : CFG.show === 2 ? ["Middle", "Bottom"] : ["Middle"];
+    var configured = visibleTiers();
+    var rows = effectiveStack(axis);
+    var parts = configured.map(function (t, i) {
+      var cfgUnits = UNITS[t.units] ? t.units : "months";
+      var cnt = Math.max(1, Math.floor(t.count) || 1);
+      var row = null;
+      rows.forEach(function (r) { if (r.src === i) row = r; });
+      var txt = names[i] + ": ";
+      if (!row) return txt + UNITS[cfgUnits].name + " dropped — nothing coarser than Years at this zoom";
+      txt += UNITS[row.units].name;
+      if (row.units !== cfgUnits || row.count !== cnt) {
+        var px = Math.round(bandPx(axis, cfgUnits, cnt) * 10) / 10;
+        var need = labelDef(cfgUnits, t.label).fitPx || MIN_BAND_PX;
+        var how = row.demoted ? "demoted (bands wider than " + MAX_BAND_PX + " px)"
+          : row.pushed ? "pushed coarser (the tier below promoted into it)"
+            : "promoted (" + UNITS[cfgUnits].name.toLowerCase() + " are " + px + " px here; this label needs " +
+              need + " px — zoom in, raise Size, or pick a shorter label)";
+        txt += " — " + UNITS[cfgUnits].name + " " + how;
+      }
+      return txt;
+    });
+    return el("div", { class: "ts-effective muted", text: "At this zoom → " + parts.join(" · ") });
   }
 
   function field(labelText, input, title) {

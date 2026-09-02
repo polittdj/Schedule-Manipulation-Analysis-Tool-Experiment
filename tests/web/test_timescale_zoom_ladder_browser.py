@@ -269,3 +269,50 @@ def test_single_glyph_month_labels_lower_the_promotion_floor(browser: Any, serve
     num_rows = page.evaluate(_SYNTH, 12)
     page.context.close()
     assert num_rows[-1]["bands"] == 24 and num_rows[-1]["labels"] == ["1", "2", "3"], num_rows
+
+
+# ── operator 2026-09-02 (c): a one-glyph month survives 7 px; the dialog SAYS what promoted ──
+
+
+def test_one_glyph_months_survive_seven_pixels(browser: Any, served: str) -> None:
+    """Operator (v1.0.230, 12.3-year IMS fitted to a 1,090-px track = 7.4 px/month, Bottom =
+    Months / "J, F, M"): the header still showed Quarters. Two thresholds fought the explicit
+    configuration — the 8-px `fitPx` floor promoted the tier, and the painter blanked any label
+    under 9 px. A single glyph legibly fits 7 px; both thresholds follow the label now. RED
+    pre-fix (24 months → 8 quarters at 7.4 px)."""
+    page = _with_bottom_label(browser, served, "m_letter")
+    rows = page.evaluate(_SYNTH, 7.4)
+    page.context.close()
+    assert rows[-1]["bands"] == 24, f"J/F/M at 7.4 px/month must keep months: {rows}"
+    assert rows[-1]["labels"] == ["J", "F", "M"], f"the glyphs must not be blanked: {rows}"
+
+
+def test_dialog_preview_names_the_effective_units_and_reset_shows_in_it(
+    browser: Any, served: str
+) -> None:
+    """Operator: "Reset to default does not work." It did — but at whole-project zoom the default
+    and the operator's configuration promote to the SAME three rows, so the preview never
+    changed and nothing said why. The preview now carries a line naming each tier's EFFECTIVE
+    unit and the promotion that produced it, so a Reset (or any edit) is visibly explained even
+    when the bands look the same. RED pre-fix (no `.ts-effective` line in the dialog)."""
+    page = _with_bottom_label(browser, served, "m_letter")
+    page.click("#pathFit")
+    page.wait_for_timeout(600)
+    page.click("#timescaleBtn")
+    page.wait_for_timeout(300)
+    note = page.text_content(".ts-effective")
+    assert note and "Bottom" in note, f"no effective-units line in the dialog: {note!r}"
+    page.click(".ts-tab[data-tab=bottom]")
+    page.wait_for_timeout(200)
+    page.click("text=Reset to default")
+    page.wait_for_timeout(300)
+    labels = page.evaluate(
+        "() => [...document.querySelectorAll('.ts-pane select')]"
+        ".map(s => s.options[s.selectedIndex].text)"
+    )
+    assert labels[1] == "Jan, Feb, ...", f"Reset did not restore the default label: {labels}"
+    note2 = page.text_content(".ts-effective")
+    assert note2 and "Months" in note2 and "promoted" in note2.lower(), (
+        f"the line must explain the promotion the operator is looking at: {note2!r}"
+    )
+    page.context.close()

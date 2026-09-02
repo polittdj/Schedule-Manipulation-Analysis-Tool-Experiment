@@ -435,6 +435,18 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-02 (d) — a control whose effect is invisible reads as broken; two thresholds set for words fought a one-glyph choice
+
+- **"Reset does not work" was true from the chair and false in the code.** The button reset the draft
+  and OK persisted it, but at that zoom the default and the custom configuration promoted to identical
+  rows, so the preview never moved. Any adaptive behaviour that can make two configurations look the same
+  needs a line of text that says what it did and why. The fix was the sentence, not the button.
+- **A threshold chosen for one label shape silently governs the others.** The 9-px "blank the label"
+  rule and the 8-px promotion floor were both tuned for "Jan"; a single glyph is legible at 7 px. When a
+  rule keys on width, key it on the width the chosen label actually needs.
+- **Measure at the operator's number, not the fixture's.** TP5 fits at 6.5 px/month, the operator's IMS
+  at 7.4; the Size % knob (114 %) reproduced their density exactly without a new fixture.
+
 ### 2026-09-02 (c) — "MS Project's two-tier stack" was our rule, not theirs; a feature that exists but cannot engage is a defect
 
 - ADR-0441 dropped a colliding tier and called it MS Project's zoomed-out look. The operator, who lives in

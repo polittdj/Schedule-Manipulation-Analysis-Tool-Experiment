@@ -16071,3 +16071,19 @@ of the WP1 UI map. Branch fresh from `origin/main`.
   quarters and two rows is the honest answer — stated in the test.
 - **Gate:** ladder + long-span + dialog 30/30; the JS-only change ships in the wheel — wheel + nine
   installers rebuilt; lockstep + drift guards recorded below after the run.
+
+## 2026-09-02 (d) — ADR-0453: the one-glyph month floor (7 px) and the dialog's effective-units line (v1.0.231)
+
+- **Reports (on 1.0.230):** Bottom = Months / "J, F, M" still rendered Quarters at View entire project;
+  "Reset to default does not work." Both reproduced in Playwright before a change: the fitted 12.3-year
+  track gives 7.4 px/month; ADR-0452's `fitPx` 8 promoted the tier and, independently, the painter
+  blanked every label under 9 px. Reset DID work (select → "Jan, Feb", OK persisted `m_short`) — but the
+  default and the custom config promote to the same rows, so the preview never visibly changed.
+- **Fix:** `fitPx` 7 + label-aware blanking + `g-band-glyph` (9-px font); `effectiveNote` under the
+  preview: "At this zoom → Top: Years · Middle: Half Years — Quarters pushed coarser … · Bottom: Quarters —
+  Months promoted (months are 6.5 px here; this label needs 7 px — zoom in, raise Size, or pick a
+  shorter label)". `effectiveStack` rows carry `src` so a dropped row is named.
+- **Verification:** two RED-first tests (24 months at 7.4 px, was 8 quarters; `.ts-effective` present
+  and updated by Reset); ladder + dialog + long-span 32/32; r11 25/25 after re-pinning `gantt.js`;
+  lockstep 68/68; drift guards. Rendered at 1920 px with Size 114 % (= 7.4 px/month): 108 months all
+  labelled, glyph font 9 px, widest glyph 7.5 px in a 9-px band, 1 of 114 overflowing by under half a pixel.

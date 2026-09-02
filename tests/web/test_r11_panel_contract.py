@@ -552,7 +552,7 @@ PAGE_SCRIPTS = {
     # 28-call-site census below passes unchanged, and the effect is proven RENDERED by the
     # census driver (test_sticky_scrollbar_mirrors_and_drives_the_pane — observed RED pre-fix).
     # 5132b5bc50d3df762e1d1833a68892ae → below.
-    "gantt.js": "3be0a16004729520c41c3dcd1eaa7fd0",
+    "gantt.js": "61864e2e9ac783985a49af42a9c3e24d",
 }
 
 #: all 29 ``SFChartFrame.axisTitles(`` call sites, frozen with their ARGUMENT OBJECT — the caption
