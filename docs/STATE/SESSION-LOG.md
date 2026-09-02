@@ -16010,4 +16010,9 @@ of the WP1 UI map. Branch fresh from `origin/main`.
   format · mypy strict 161 files · bandit · `node --check`); new modules 43 + 13 + 4 passed; the
   sweeps above green; wheel + nine installers rebuilt at 1.0.228 LAST; installer lockstep **68 passed** (after the rebuild);
   full suite on the frozen tree **4658 passed / 5 skipped / 1 failed in 47:31** — the one red was `tests/installer/test_installers.py::test_embedded_wheel_is_in_lockstep_with_the_source_tree`: the wheel embedded in the installers predated the final route rename (`/export/pptx/onepager`, `/export/{fmt}/onepager-template`) and the caption-call reshape; the wheel + nine installers were rebuilt AFTER that run and the installer suite re-run — the source tree the 4658 measured is unchanged by the rebuild.
+- **CI red on the ADR-0446 head (`8bc20ab1`), fixed same session:** `test_onepager_browser.py` imported
+  `from tests.web.browser_chrome` — collects under `python -m pytest` (CWD on `sys.path`), dies under CI's
+  plain `pytest` (`No module named 'tests'`), so every matrix job stopped at collection. Import corrected to
+  `from web.browser_chrome`; collection verified the CI way (`pytest --collect-only -q`). Test-only change —
+  the wheel/installers are untouched and the recorded full-suite number stands.
 

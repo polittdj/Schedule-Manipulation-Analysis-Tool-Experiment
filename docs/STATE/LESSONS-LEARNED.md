@@ -497,6 +497,11 @@ those fixed defects in earlier "closed" fixes:
 - **A fixture constant must be computed, not typed.** `47209` was meant to be 2028-03-28; it is
   2029-04-01, and it moved the window and a "today at the right edge" case. Derive serials from
   `date - epoch`; never trust an Excel serial you typed.
+- **`python -m pytest` and `pytest` do not see the same `sys.path`.** The `-m` form puts the working
+  directory on the path, so `from tests.web.x import …` collects locally and dies on CI, which runs
+  plain `pytest`. Verify collection the way CI runs it (`pytest --collect-only -q`), and import test
+  helpers as `from web.<module>` (the `tests/conftest.py` path), never as `tests.…`. One misread sed
+  result cost a red matrix on PR #621.
 - **`TestClient` follows a 303.** Asserting a redirect needs `follow_redirects=False`; otherwise the
   200 of the landing page masquerades as the POST's answer.
 - **Fix-then-verify the other half.** Dropping the anchor's specificity could have killed every

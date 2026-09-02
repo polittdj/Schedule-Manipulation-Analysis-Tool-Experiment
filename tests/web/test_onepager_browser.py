@@ -15,9 +15,9 @@ from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
-from tests.web.browser_chrome import chrome_kwargs
 
 from schedule_forensics.web.app import SessionState, create_app
+from web.browser_chrome import chrome_kwargs
 from web.onepager_twin import TWIN_ROWS, twin_xlsx
 
 TODAY = dt.date(2026, 9, 1)
