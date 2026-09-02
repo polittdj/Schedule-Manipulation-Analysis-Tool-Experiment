@@ -16016,3 +16016,17 @@ of the WP1 UI map. Branch fresh from `origin/main`.
   `from web.browser_chrome`; collection verified the CI way (`pytest --collect-only -q`). Test-only change —
   the wheel/installers are untouched and the recorded full-suite number stands.
 
+## 2026-09-02 — session close: PR #621 MERGED (ADR-0445 v1.0.227 + ADR-0446 v1.0.228 on `main` @ `74e98d99`); docs-only
+
+- **Merge:** the operator marked #621 ready and squash-merged it at 12:31Z (`74e98d99`), all seven
+  CI checks green on the head `de56a557`. The wake handled it by the standing rule — `git fetch
+  --prune`, `remote set-head`, `checkout -B` from `origin/main` — deleted the PR's check-in Routine
+  (the subscription ended with the merge) and reported; nothing new was started unprompted.
+- **Housekeeping (this entry's commit):** HANDOFF rotated (the 2026-09-01 section moved to the
+  archive verbatim; a 2026-09-02 section states the merge as fact and the post-merge branch state);
+  LESSONS Part VIII dated entry; kickoff refreshed — the ADR-0444 "OPEN QUESTION" block is CLOSED
+  (ADR-0445 root-caused the header), #620/#621 join the merged list, the installer note says
+  v1.0.228 from `main`, and the One-Pager's PowerPoint open is the one question to ASK; WP3 is NEXT.
+- **Verification:** drift guards 17 passed; ruff clean; no product code changed, no rebuild — the
+  recorded gate on the merged head stands (4658 / 5 / 1-then-fixed in 47:31; CI green).
+

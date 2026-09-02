@@ -435,6 +435,25 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-02 — a merged PR is a finished object: restart the branch, cancel the watch, refresh the docs before starting the next thing
+
+- **What happened:** PR #621 (ADR-0445 + ADR-0446) merged while the session was idle. The wake
+  restarted the branch from `origin/main` by the standing squash-merge rule, deleted the check-in
+  Routine, and reported — and did NOT start WP3 or a housekeeping PR unprompted. The operator then
+  asked for the housekeeping and the kickoff, which is this close.
+- **The CI red that cost a cycle:** one import, `from tests.web.browser_chrome`, collects under
+  `python -m pytest` (the working directory lands on `sys.path`) and dies under CI's plain `pytest`.
+  Promoted to a rule: before pushing a new test module, collect it the way CI does —
+  `python -P -m pytest --collect-only -q` (`-P` drops the working directory) — and import helpers as
+  `from web.<module>`, the `tests/conftest.py` path, never `from tests.…`.
+- **An oracle you cannot run in CI is a claim you must label.** python-pptx and LibreOffice Impress
+  were the right renderers for a `.pptx` no test could otherwise open, but they ran only in the build
+  session; the ADR says UNVERIFIED in PowerPoint and the kickoff asks the operator. The honest label
+  is the deliverable's last line, not a footnote.
+- **A wake that finds nothing changed says nothing.** Five check-ins re-armed silently over ten
+  hours; the sixth found the merge. Silence on "unchanged" is what makes the one real message
+  visible.
+
 ### 2026-09-01 (b) — a width-based oracle cannot see a positioning defect; a global `[attr]` rule can hijack anything positioned
 
 - **The operator was right and two rounds of measurement were wrong.** ADR-0444 measured the
