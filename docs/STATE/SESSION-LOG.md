@@ -15980,3 +15980,34 @@ of the WP1 UI map. Branch fresh from `origin/main`.
   first silently produced a no-op edit twice. Delete a function by brace-matching from its own
   declaration line, and verify by grep COUNT, never by "the script ran".
 - **Gate at close (recorded AFTER the run finished, QC-1):** full suite on the frozen 1.0.227 tree **4601 passed / 5 skipped / 0 failed in 48:59** (the two new header tests and the strengthened drag driver included); neighbour suites **124 passed**; installer lockstep **68 passed**; statics clean whole-tree.
+
+## 2026-09-01 (c) — the One-Pager (ADR-0446, v1.0.228) — operator feature request mid-session
+
+- **Request:** a page that takes a three-column Excel list (swimlane · task/milestone · date) by
+  drag-and-drop or picker, draws a professional swimlane one-pager (distinct lane colours, every
+  bar/milestone labelled with name + finish date, red today line, dotted month lines, months-and-years
+  header only, legend at the bottom) and exports it as PowerPoint. Example workbook supplied (NOT
+  committed; read cell by cell first — 88 rows, six hand-typed date spellings, two serials in General
+  cells, one typo `10/122/2026`, one swimlane spelled two ways).
+- **Built:** `reports/onepager.py` (intake grammar + layout in slide points), `reports/pptx.py`
+  (std-lib .pptx writer, native shapes, deterministic), `web/onepager.py` + `static/onepager.js`
+  (page, painter, intake), `--lane-1..10` tokens ×4 themes, routes, state, LIBRARY-rail entry, i18n.
+  ONE layout, TWO painters; every parser decision on the page by row; density floors that announce
+  themselves; template download; strict-CSP JSON block. Full write-up: ADR-0446.
+- **Method:** the whole feature was built and tested in the scratchpad while the ADR-0445 full
+  suite ran on the frozen tree (never mutate the instrument), then applied by an anchored patch script.
+  Oracles: python-pptx read-back and LibreOffice Impress render (installed for the purpose — the
+  first "could not be loaded" was bisected to the environment with a python-pptx reference deck, not
+  my XML) plus the in-CI `xml.etree` EMU read-back with a one-EMU teeth test. In-chrome screenshots in
+  daylight and console with the operator's file, viewed. PowerPoint itself NOT run — UNVERIFIED there.
+- **Sweeps joined:** census row `/onepager`; oracle labels regenerated + fingerprint `{200: 43, 400: 17,
+  422: 3}`; DD ledger `("onepager.js", 83)`; axis-titles; VIEW_MODULES + bar_drill + presentation_fixes
+  guards; E501 exemption for the view module; DESIGN-SYSTEM §2 rail list.
+- **Traps paid for:** `TestClient` follows 303 (assert with `follow_redirects=False`); `panelkit.js`
+  is per-page; `TIME_RE` is singular; a typed fixture serial (47209 ≠ 3/28/28); a blanket rename that
+  hit `read_xlsx`; an f-string cannot carry a backslash expression (scratch preview script).
+- **Gate at close (recorded AFTER the runs finished, QC-1):** statics clean whole-tree (ruff ·
+  format · mypy strict 161 files · bandit · `node --check`); new modules 43 + 13 + 4 passed; the
+  sweeps above green; wheel + nine installers rebuilt at 1.0.228 LAST; installer lockstep **68 passed** (after the rebuild);
+  full suite on the frozen tree **4658 passed / 5 skipped / 1 failed in 47:31** — the one red was `tests/installer/test_installers.py::test_embedded_wheel_is_in_lockstep_with_the_source_tree`: the wheel embedded in the installers predated the final route rename (`/export/pptx/onepager`, `/export/{fmt}/onepager-template`) and the caption-call reshape; the wheel + nine installers were rebuilt AFTER that run and the installer suite re-run — the source tree the 4658 measured is unchanged by the rebuild.
+

@@ -321,6 +321,9 @@ CENSUS: dict[str, dict[str, Any]] = {
     },
     "/briefing": {"ids": {}, "anon": {}, "floors": (0, 0, 0, 0, 0, 0, 0, 1)},
     "/settings": {"ids": {}, "anon": {}, "floors": (0, 0, 0, 0, 0, 0, 0, 0)},
+    # /onepager (ADR-0446) renders its empty state on the census load (no list uploaded):
+    # the drop zone only — no chart host, no ⛶, nothing in the zoom/fit/play family.
+    "/onepager": {"ids": {}, "anon": {}, "floors": (0, 0, 0, 0, 0, 0, 0, 0)},
     "/help": {"ids": {}, "anon": {}, "floors": (0, 0, 0, 0, 0, 0, 0, 0)},
     DP: {
         "ids": {

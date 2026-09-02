@@ -1,7 +1,33 @@
 # Handoff — 2026-09-01 (the operator's diagonal timeline header, ROOT-CAUSED: hud.css's tooltip anchor `[data-sf-hint]{position:relative}` was overriding every Gantt band, bar and milestone's `position:absolute` — since July; ADR-0445, v1.0.227)
 
+
+> ## ADR-0446 — the One-Pager (operator feature request, same session, v1.0.228)
+> **What:** `/onepager` (LIBRARY rail) takes a three-column Excel list — swimlane · task or milestone ·
+> date — by drag-and-drop or picker, lays it out as ONE 16:9 slide (tinted swimlane bands, bars for
+> activities, diamonds for milestones, every one labelled "name (M/D/YY)", dotted month lines under a
+> month/year header, the red today line = the tool's DD marker, legend at the bottom) and exports the
+> SAME slide as native, editable PowerPoint shapes (`/export/pptx/onepager`) plus the parsed list to
+> Excel/Word. **One layout, two painters:** `reports/onepager.py` computes everything in slide points
+> (960×540, 1 pt = 12,700 EMU); `static/onepager.js` paints an SVG viewBox, `reports/pptx.py` paints
+> native shapes — no painter computes geometry. Every parser decision is on the page by row number
+> (skipped rows, merged spellings, inherited swimlanes, swapped dates); density steps label floors down
+> and SAYS so; a list that cannot fit is told to split. Template download in the intake's shape.
+> **Verified:** 43 reports tests (parser variants from the operator's real file, layout fit/overlap
+> re-derived from geometry, .pptx EMU read-back with a teeth test) · 13 page tests · 4 Playwright tests
+> (picker, drag-and-drop, four themes, download) · python-pptx + LibreOffice Impress renders viewed
+> (scratch oracles) · in-chrome screenshots both themes. **UNVERIFIED in PowerPoint itself** — the
+> operator's first open settles it. **Gate:** full suite on the final tree 4658 passed / 5 skipped / 1 failed
+> (the installer lockstep — the embedded wheel predated the last route rename; rebuilt after, lockstep 68 passed) in
+> 47:31. Sweeps joined: census row, oracle labels + fingerprint
+> `{200: 43, 400: 17, 422: 3}`, DD ledger `("onepager.js", 83)`, VIEW_MODULES + both whole-view guards,
+> i18n ×7 terms, E501 exemption for the view module. Observed, not changed: docx/xlsx writers always
+> stamp CUI regardless of mode; the slide follows `_cui_marking` instead.
+> **Traps paid for:** `TestClient` FOLLOWS a 303 by default (pass `follow_redirects=False` to assert
+> it) · `panelkit.js` is a PER-PAGE include, not layout chrome · the DD ledger's `TIME_RE` wants the
+> singular `\bmonth\b` · a fixture serial must be COMPUTED (`47209` is 2029-04-01, not 3/28/28) ·
+> `tests/` is not a package — helpers import as `from web.<module>` via `tests/conftest.py`.
 > ## STATUS (current) — **On branch `claude/polaris2-audit-resume-3xg50n` (from `main` @ `c3e4cea0`, the ADR-0444 merge). WP0/WP1/WP2 MERGED; this is the SECOND operator-defect fix on top, and it is the one that actually answers their report. QC-1/QC-2 bind every session — ADR-0393, pinned by `tests/test_standing_rules.py`.**
-> Highest ADR **0445**; version **1.0.227** (shipped: `static/hud.css` one line · `static/colresize.js`
+> Highest ADR **0446**; version **1.0.228** (ADR-0446 the One-Pager, this session's second commit on PR #621; ADR-0445 shipped at 1.0.227 in the first — (shipped: `static/hud.css` one line · `static/colresize.js`
 > `sizeGrip` DELETED · `static/app.css` one comment); full suite on the frozen tree **4601 passed / 5 skipped / 0 failed in 48:59**; wheel + nine
 > installers rebuilt in lockstep. Campaign queue unchanged — **WP3 (M4, the SRA grid)** is next.
 >

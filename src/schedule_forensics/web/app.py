@@ -217,6 +217,8 @@ from schedule_forensics.reports.docx import (
     render_document,
     render_docx,
 )
+from schedule_forensics.reports.onepager import onepager_tableset, parse_workbook
+from schedule_forensics.reports.pptx import render_onepager_pptx
 from schedule_forensics.reports.tables import (
     Cell,
     Table,
@@ -600,6 +602,7 @@ from schedule_forensics.web.offload import (
     run_maybe_offloaded,
     shutdown_offload,
 )
+from schedule_forensics.web.onepager import _onepager_body, onepager_layout, onepager_template
 from schedule_forensics.web.path import _path_body as _path_body
 from schedule_forensics.web.path import _what_drives_header as _what_drives_header
 
@@ -3890,6 +3893,119 @@ def create_app(
         if fmt not in _EXPORT_MEDIA:
             return JSONResponse({"error": "format must be xlsx or docx"}, status_code=404)
         return None
+
+    # ── /onepager: a three-column Excel list as a swimlane one-pager + a PowerPoint slide
+    # (ADR-0446). The page module lays the slide out; these routes only move bytes and state. ──
+    _PPTX_MEDIA = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+
+    def _onepager_today(st: SessionState) -> dt.date:
+        return st.onepager_today or dt.date.today()
+
+    def _onepager_source_name(name: str | None) -> str:
+        """The workbook's own name for the page and the exports: the path stripped, control
+        characters removed (the ADR-0263 rule), length-capped. Escaped at every render site."""
+        base = (name or "list.xlsx").replace("\\", "/").rsplit("/", 1)[-1]
+        clean = "".join(ch for ch in base if ch.isprintable() and ch not in "\x1f")
+        return clean.strip()[:120] or "list.xlsx"
+
+    @app.get("/onepager", response_class=HTMLResponse)
+    def onepager() -> HTMLResponse:
+        st = session()
+        return _page(st, "One-Pager Timeline", _onepager_body(st, _onepager_today(st)))
+
+    @app.post("/onepager/upload")
+    def onepager_upload(file: UploadFile) -> RedirectResponse:
+        """Parse the list and redirect to the page with a one-shot summary. A bad workbook, an
+        over-cap upload or a list with no usable rows is reported by name, never silently."""
+        st = session()
+        data = file.file.read(_MAX_UPLOAD_BYTES + 1)
+        if len(data) > _MAX_UPLOAD_BYTES:
+            st.onepager_msg = (
+                f"List not loaded — file exceeds the {_MAX_UPLOAD_BYTES // (1024 * 1024)} MB cap."
+            )
+            st.onepager_is_error = True
+            return RedirectResponse(url="/onepager", status_code=303)
+        try:
+            sheets = read_xlsx(data)
+        except XlsxError as exc:
+            st.onepager_msg = f"Could not read that file: {exc}"
+            st.onepager_is_error = True
+            return RedirectResponse(url="/onepager", status_code=303)
+        doc = parse_workbook(sheets, _onepager_source_name(file.filename))
+        st.onepager = doc
+        st.onepager_title = ""
+        if not doc.items:
+            st.onepager_msg = (
+                f"No usable rows in {doc.source} — {len(doc.problems)} row(s) skipped; "
+                "see the list below."
+            )
+            st.onepager_is_error = True
+        else:
+            skipped = f"; {len(doc.problems)} row(s) skipped" if doc.problems else ""
+            st.onepager_msg = f"Loaded {len(doc.items)} item(s) from {doc.source}{skipped}."
+            st.onepager_is_error = bool(doc.problems)
+        return RedirectResponse(url="/onepager", status_code=303)
+
+    @app.post("/onepager/title")
+    def onepager_set_title(title: str = Form("")) -> RedirectResponse:
+        session().onepager_title = title.strip()[:120]
+        return RedirectResponse(url="/onepager", status_code=303)
+
+    @app.post("/onepager/clear")
+    def onepager_clear() -> RedirectResponse:
+        st = session()
+        st.onepager = None
+        st.onepager_title = ""
+        st.onepager_msg = "List cleared."
+        st.onepager_is_error = False
+        return RedirectResponse(url="/onepager", status_code=303)
+
+    @app.get("/export/{fmt}/onepager-template")
+    def export_onepager_template(fmt: str) -> Response:
+        """A fill-in workbook in the intake's shape (swimlane · task · date)."""
+        if (bad := _bad_format(fmt)) is not None:
+            return bad
+        return _export_response(fmt, onepager_template(), "one-pager-template")
+
+    @app.get("/export/pptx/onepager")
+    def export_onepager_pptx() -> Response:
+        """The slide the page previews, as native PowerPoint shapes — refused, not blank, with
+        nothing loaded."""
+        st = session()
+        today = _onepager_today(st)
+        lay = onepager_layout(st, today)
+        doc = st.onepager
+        if lay is None or doc is None:
+            return JSONResponse(
+                {"error": "load a one-pager list first — there is no slide to export"},
+                status_code=422,
+            )
+        _cls, marking = _cui_marking(st)
+        source = (
+            f"Source: {doc.source} · {len(doc.items)} items · generated {today.isoformat()} "
+            "by POLARIS²"
+        )
+        safe = (
+            "".join(ch if ch.isalnum() or ch in "._-" else "_" for ch in lay.title) or "one-pager"
+        )
+        return Response(
+            content=render_onepager_pptx(lay, marking=marking, source=source),
+            media_type=_PPTX_MEDIA,
+            headers={"Content-Disposition": f'attachment; filename="{safe}.pptx"'},
+        )
+
+    @app.get("/export/{fmt}/onepager")
+    def export_onepager(fmt: str) -> Response:
+        """The parsed list — swimlane, item, type, dates, sheet row — plus every skipped row."""
+        if (bad := _bad_format(fmt)) is not None:
+            return bad
+        doc = session().onepager
+        if doc is None:
+            return JSONResponse(
+                {"error": "load a one-pager list first — there is nothing to export"},
+                status_code=422,
+            )
+        return _export_response(fmt, onepager_tableset(doc), "one-pager-list")
 
     @app.get("/export/{fmt}/ask")
     def export_ask(fmt: str) -> Response:

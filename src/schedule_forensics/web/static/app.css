@@ -1214,3 +1214,31 @@ tr.row-found td.sf-frozen-col { background: #fff3b0; }
    own box here, per the design system's rule for content taller than its card. Scoped to the
    band so /volatility keeps rendering the full matrix at full height. */
 #evoStabGrid #volHeatmap{max-height:440px;overflow:auto}
+
+/* ── /onepager: the One-Pager slide preview (ADR-0446). The SVG lives in the slide's own 960x540
+   point space (a viewBox), so every size below is in slide points and scales with the panel.
+   Colours come only from theme tokens; the ten --lane-N hues are per-theme (sf-themes.css). ── */
+.op-host{width:100%;max-width:1400px;margin:0 auto}
+.op-svg{width:100%;height:auto;display:block;font-family:Calibri,'Segoe UI',Arial,sans-serif;border:1px solid var(--border);border-radius:6px}
+.op-bg{fill:var(--panel)}
+.op-title{font-size:16px;font-weight:700;fill:var(--ink)}
+.op-sub{font-size:7.5px;fill:var(--muted)}
+.op-year{fill:var(--ink)} .op-year-0{fill-opacity:.03} .op-year-1{fill-opacity:.07}
+.op-year-line{stroke:var(--line);stroke-width:.6}
+.op-year-label{font-size:8px;font-weight:700;fill:var(--ink)}
+.op-month-line{stroke:var(--grid-dot);stroke-width:.4;stroke-dasharray:1 1.5}
+.op-month-label{fill:var(--muted)}
+.op-header-line{stroke:var(--line);stroke-width:.7}
+.op-lane-band{fill-opacity:.07} .op-lane-name-bg{fill-opacity:.16}
+.op-lane-name{font-weight:700;fill:var(--ink)}
+.op-bar,.op-diamond{stroke:var(--panel);stroke-width:.5}
+.op-item:hover .op-bar,.op-item:hover .op-diamond{stroke:var(--ink);stroke-width:.8}
+.op-label{fill:var(--ink)} .op-label-in{fill:var(--panel);font-weight:600}
+.op-today{font-size:6px;font-weight:700;fill:var(--bad)}
+.op-legend-bar,.op-legend-ms{fill:var(--muted)} .op-legend-today{stroke:var(--bad);stroke-width:1.2}
+.op-legend-text{fill:var(--ink)}
+.op-notes{margin:.3em 0 0 1.2em;padding:0} .op-notes li{margin:.15em 0}
+.op-title-form,.op-clear-form{display:inline-flex;gap:.4em;align-items:center;margin-right:1em}
+.op-pptx{margin-right:1em}
+.op-table td,.op-table th{white-space:nowrap}
+@media print{.op-svg{border:0}}

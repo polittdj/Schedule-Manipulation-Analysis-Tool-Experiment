@@ -480,6 +480,25 @@ those fixed defects in earlier "closed" fixes:
 - **A file with two identical anchors turns a slice-edit into a silent no-op.** Two blind edits of
   `colresize.js` "succeeded" without changing the function, because the end-anchor matched an
   earlier `ths.forEach`. Delete by brace-matching from the declaration; verify by grep count.
+- **Read the operator's file cell by cell before writing the parser.** The One-Pager's date grammar
+  (ADR-0446) came from the example workbook, not from the request: six hand-typed range spellings,
+  two Excel serials typed into General cells, a typo, a swimlane spelled two ways. A parser designed
+  from the request alone would have been wrong on a third of the rows and silent about it.
+- **One layout, two painters.** When the same picture must appear in two media (an SVG preview and
+  a PowerPoint export), compute the geometry ONCE in a neutral unit and let each painter only paint.
+  The preview is then honest by construction, the layout is testable without a browser, and a
+  drawing defect has one fix.
+- **Bisect the environment before the artifact.** LibreOffice refused the hand-built .pptx; a
+  python-pptx reference deck failed identically, so the fault was the missing Impress module, not the
+  XML. One control render saved a day of XML archaeology.
+- **A density rule must say what it did.** A slide that shrinks labels, or cannot fit at all, states
+  it in the layout's notes and on the page. The silent alternative is the intake defect at the other
+  end: a swimlane clipped off the bottom.
+- **A fixture constant must be computed, not typed.** `47209` was meant to be 2028-03-28; it is
+  2029-04-01, and it moved the window and a "today at the right edge" case. Derive serials from
+  `date - epoch`; never trust an Excel serial you typed.
+- **`TestClient` follows a 303.** Asserting a redirect needs `follow_redirects=False`; otherwise the
+  200 of the landing page masquerades as the POST's answer.
 - **Fix-then-verify the other half.** Dropping the anchor's specificity could have killed every
   tooltip on the site, and `test_tooltips.py` — byte pins on the CSS text — would have stayed
   green. The second test (`206 of 215 hosts static` on mutation) exists so the fix cannot trade

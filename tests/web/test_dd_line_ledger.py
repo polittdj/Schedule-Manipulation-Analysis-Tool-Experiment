@@ -70,6 +70,7 @@ TIME_AXIS = {
     ("curves.js", 386),
     ("drift.js", 136),
     ("margin_dashboard.js", 323),
+    ("onepager.js", 83),
     ("resources.js", 243),
     ("scurve.js", 168),
 }

@@ -171,6 +171,7 @@ VIEW_MODULES = (
     "launch.py",
     "margin.py",
     "mission.py",
+    "onepager.py",
     "path.py",
     "performance.py",
     "portfolio.py",

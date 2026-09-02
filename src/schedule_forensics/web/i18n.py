@@ -221,6 +221,48 @@ _TERMS: dict[str, dict[str, str]] = {
         "de": "KI-Einstellungen",
         "pt": "Definições de IA",
     },
+    "One-Pager Timeline": {
+        "es": "Cronograma de una página",
+        "fr": "Chronologie une page",
+        "de": "Ein-Seiten-Zeitplan",
+        "pt": "Cronograma de uma página",
+    },
+    "One-Pager timeline": {
+        "es": "Cronograma de una página",
+        "fr": "Chronologie une page",
+        "de": "Ein-Seiten-Zeitplan",
+        "pt": "Cronograma de uma página",
+    },
+    "Slide title": {
+        "es": "Título de la diapositiva",
+        "fr": "Titre de la diapositive",
+        "de": "Folientitel",
+        "pt": "Título do slide",
+    },
+    "Clear the list": {
+        "es": "Borrar la lista",
+        "fr": "Effacer la liste",
+        "de": "Liste löschen",
+        "pt": "Limpar a lista",
+    },
+    "Rows skipped": {
+        "es": "Filas omitidas",
+        "fr": "Lignes ignorées",
+        "de": "Übersprungene Zeilen",
+        "pt": "Linhas ignoradas",
+    },
+    "Read with an assumption": {
+        "es": "Leído con una suposición",
+        "fr": "Lu avec une hypothèse",
+        "de": "Mit einer Annahme gelesen",
+        "pt": "Lido com uma suposição",
+    },
+    "Download the template": {
+        "es": "Descargar la plantilla",
+        "fr": "Télécharger le modèle",
+        "de": "Vorlage herunterladen",
+        "pt": "Baixar o modelo",
+    },
     "Metric Dictionary": {
         "es": "Diccionario de métricas",
         "fr": "Dictionnaire des métriques",
