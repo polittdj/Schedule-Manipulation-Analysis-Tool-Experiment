@@ -16030,3 +16030,30 @@ of the WP1 UI map. Branch fresh from `origin/main`.
 - **Verification:** drift guards 17 passed; ruff clean; no product code changed, no rebuild — the
   recorded gate on the merged head stands (4658 / 5 / 1-then-fixed in 47:31; CI green).
 
+
+## 2026-09-02 (b) — the operator's six-item batch, measured then fixed (ADR-0447..0451, v1.0.229)
+
+- **Method:** every report was reproduced (or refuted) by measurement before a line changed — Playwright
+  renders at 1600 px with the 2,125-row / 12.3-year reference IMS converted from `SRA Large Test File2.mpp`
+  (non-CUI intake), CDP CPU profiles for the rebuild AND for scrolling, a route-timing sweep with two versions
+  loaded, a node census per row. Every fix landed red-first with the failing run observed by name; the
+  six new test files (18 tests) carry the observed pre-fix values in their docstrings.
+- **1 · header:** current build is sound (3 labeled absolute tiers @8 px/day; 2 at Fit). The operator's blank
+  header is the pre-v1.0.227 hijack signature — UNVERIFIED which version they ran; asked. The real gap was
+  demotion on zoom-in (907-px months @30 px/day) → ADR-0447: DEMOTE ladder + bottom-up coherent stack +
+  `MAX_BANDS` 8000 (guarded: a demotion never produces the "too fine" notice).
+- **2 · bow wave:** target finish +21 months fell off a +12-month look-ahead → ADR-0448 pins target/tracked
+  months before the cap.
+- **3 · One-Pager:** verified in source, in the `origin/main` installers' embedded wheel (decoded: 236 entries,
+  `web/onepager.py`, `/onepager` ×6, rail link) and rendered; the rail link needs a rail scroll (y=938 in a
+  620-px scroller). Not a build gap.
+- **4 · performance:** ADR-0449 — 1,801,557 → 26,926 DOM nodes; 41.6 s → 4.7 s; long tasks 36.9 s → 0.8 s;
+  scroll p50 200 → 33 ms. Two of my own regressions caught by the operator-scale probe and fixed in-session:
+  a per-call colour probe (1,158 ms) and an undefined `nw` in the holiday layer (the 121-row fixture has no
+  holidays; the large one does).
+- **5 · field roles:** ADR-0450, plus the unscoped WBS pivot found by QC-2 and fixed.
+- **6 · /volatility:** ADR-0451 — artboard recovered by executing the canvas template (subagent, proxy blocks
+  unpkg); five panels, chips, cursor-cumulative KPI; ten tiles verbatim; census 66/66.
+- **Housekeeping:** `origin/main` (#622 docs merge) merged in before the docs were written; HANDOFF rotated;
+  ledger "Operator batch" section appended; byte pins re-baselined last (`gantt.js`, `volatility.js`).
+- **Gate (recorded AFTER the runs, QC-1):** ruff / ruff format / mypy --strict (161 files) / bandit / node --check clean. Full suite on the pre-final tree: **4673 passed / 5 failed / 5 skipped in 54:24**; the five were all this session's blast radius — the enlarged /volatility tile could not grow inside its narrower design panel (r11: `427 > 427`, then `948 > 1000`) → the panel and the KPI column yield to an enlarged tile; the /groups (5→6) and /wbs (3→4) panel census gained the Field-roles pickers (r12 pins bumped with the ADR named); the shared-rule class names were a COUNTER, so two identical evolution frames had different DOM shapes and the stepper digest failed twice → content-hashed class names; the /sra caption failure (`console@1.25: no captions rendered`) went green on the same fix. Re-runs: r11 + axis-visual + steppers 86/86 (the last r11 test 1/1 after the KPI-column fix), r12 17/17, installer lockstep 68/68 after the final wheel + installer rebuild, drift guards 17/17.

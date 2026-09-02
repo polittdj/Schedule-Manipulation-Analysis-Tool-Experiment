@@ -245,12 +245,90 @@ window.SFGantt = (function () {
     if (window.SFTimescale) window.SFTimescale.decorateCell(cell, axis, cellCal);
   }
 
-  // Append month/quarter/year gridline divs into a track element (small convenience used by the
-  // HTML Gantts so each track carries the same vertical rules as the header).
+  // ---- shared-rule stylesheet: ONE generated CSS rule per distinct image, applied by class ----
+  // A per-row background would otherwise repeat a (possibly 300 KB) data-URI in 2,000 inline
+  // style attributes; a rule holds it once. The sheet is bounded — a rebuild that mints new rules
+  // evicts the oldest once the sheet passes RULE_CAP (old classes then paint nothing, and every
+  // live track was re-classed by the same rebuild that minted the replacement).
+  var RULE_CAP = 24;
+  var ruleIndex = {}; // cssBody-hash -> class name, for the rules currently in the sheet
+  function hashStr(str) { // FNV-1a, 32-bit — a stable class name per rule BODY
+    var h = 0x811c9dc5;
+    for (var i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = (h * 0x01000193) >>> 0; }
+    return h.toString(36);
+  }
+  function sharedRule(cssBody) {
+    var sheet = document.getElementById("sfGanttShared");
+    if (!sheet) {
+      sheet = el("style", { id: "sfGanttShared" });
+      document.head.appendChild(sheet);
+    }
+    // the class is a function of the CONTENT, never a counter: a repaint of the same geometry
+    // (an animation frame revisited, a filter change) reuses the same class and the same rule,
+    // so the DOM shape of two identical frames is identical (the stepper digests depend on it)
+    var cls = "sf-gsh-" + hashStr(cssBody);
+    if (ruleIndex[cls]) return cls;
+    var node = document.createTextNode("." + cls + "{" + cssBody + "}\n");
+    node._sfCls = cls;
+    sheet.appendChild(node);
+    ruleIndex[cls] = true;
+    while (sheet.childNodes.length > RULE_CAP) {
+      var first = sheet.firstChild;
+      if (first._sfCls) delete ruleIndex[first._sfCls];
+      sheet.removeChild(first);
+    }
+    return cls;
+  }
+  // A token's RESOLVED colour (an SVG data URI cannot read CSS custom properties). Cached for
+  // the page's life: every probe forces a synchronous style+layout flush, which on a 2,125-row
+  // grid measured ~100 ms EACH (CPU profile 2026-09-02: 1,158 ms of a 3.4 s rebuild) — the
+  // --gantt-* tokens are theme-independent by design, so one resolution per key is exact.
+  var colorCache = {};
+  function cssColorOf(cls, inlineBg) {
+    var key = (cls || "") + "|" + (inlineBg || "");
+    if (colorCache[key]) return colorCache[key];
+    var probe = el("div", { class: cls || "", style: "position:absolute;left:-9999px;top:-9999px;width:1px;height:1px" });
+    if (inlineBg) probe.style.background = inlineBg;
+    document.body.appendChild(probe);
+    var c = getComputedStyle(probe).backgroundColor;
+    probe.remove();
+    colorCache[key] = c;
+    return c;
+  }
+  function svgUrl(width, rects) {
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + width + '" height="1" viewBox="0 0 ' +
+      width + ' 1" preserveAspectRatio="none">' + rects.join("") + "</svg>";
+    return 'url("data:image/svg+xml;utf8,' + encodeURIComponent(svg) + '")';
+  }
+
+  // Month/quarter/year (or whatever the timescale's tiers are) gridlines down a track — painted
+  // as ONE shared background image, never as one <div> per line per row.
+  //
+  // Operator 2026-09-02 ("running like shit … terrible lag scrolling"): measured on their-scale
+  // IMS (2,125 rows, 12.3 years) the per-row divs were 743 nodes/row → 1,578,875 of the page's
+  // 1,801,557 DOM nodes, a 26 s synchronous rebuild per zoom step and 5 fps scrolling. The header
+  // tiers decide the line density (a Weeks tier = 640 lines), so the count scaled with BOTH rows
+  // and zoom. Now: one SVG (a 1-px rect per line, stretched to the row height) per `lines` array,
+  // cached ON the array — every caller passes the same array to every row of one render — and
+  // applied through a generated class so the data URI exists once per render, not per row. The
+  // colours are read from the .g-grid theme rules at paint time (tokens stay the single source).
+  var gridColors = null;
   function paintGrid(track, lines) {
-    (lines || []).forEach(function (g) {
-      track.appendChild(el("div", { class: g.cls, style: "left:" + g.left + "px" }));
-    });
+    if (!lines || !lines.length) return;
+    if (!lines.__sfGridClass) {
+      if (!gridColors) {
+        gridColors = { "g-grid": cssColorOf("g-grid"), "g-grid g-grid-qtr": cssColorOf("g-grid g-grid-qtr"),
+          "g-grid g-grid-yr": cssColorOf("g-grid g-grid-yr") };
+      }
+      var w = 1;
+      var rects = lines.map(function (g) {
+        if (g.left + 2 > w) w = Math.ceil(g.left + 2);
+        return '<rect x="' + g.left + '" y="0" width="1" height="1" fill="' + (gridColors[g.cls] || gridColors["g-grid"]) + '"/>';
+      });
+      lines.__sfGridClass = sharedRule("background-image:" + svgUrl(w, rects) +
+        ";background-repeat:no-repeat;background-size:" + w + "px 100%;background-position:0 0");
+    }
+    track.classList.add(lines.__sfGridClass);
   }
 
   // MS-Project frozen columns: pin every data column (all but the final, scalable timeline column)
@@ -349,8 +427,20 @@ window.SFGantt = (function () {
     // proxy went stale on its first zoom and read as a dead slider (measured on /path, WP1
     // 2026-08-31: inner width pinned at the fitted 1118px while the zoomed pane scrolled
     // 8747px). A childList observer adopts the table whenever it (re)appears.
+    // Observer callbacks COALESCE into one measure+place per animation frame: each measure()
+    // reads scrollWidth (a forced layout — ~100 ms on a 2,125-row grid) and a rebuild fires the
+    // childList observer and the ResizeObserver several times in one task (CPU profile
+    // 2026-09-02: 506 ms of `measure` self-time per zoom step). One flush per frame is exact —
+    // the proxy only needs the post-rebuild geometry.
+    var refreshQueued = false;
+    function refreshSoon() {
+      if (refreshQueued) return;
+      refreshQueued = true;
+      var run = function () { refreshQueued = false; measure(); place(); };
+      if (window.requestAnimationFrame) window.requestAnimationFrame(run); else setTimeout(run, 0);
+    }
     if (window.ResizeObserver) {
-      var ro = new ResizeObserver(function () { measure(); place(); });
+      var ro = new ResizeObserver(refreshSoon);
       ro.observe(pane);
       var observedChild = null;
       function adoptChild() {
@@ -360,8 +450,7 @@ window.SFGantt = (function () {
           observedChild = child;
           ro.observe(child);
         }
-        measure();
-        place();
+        refreshSoon();
       }
       adoptChild();
       if (window.MutationObserver) {
@@ -594,6 +683,7 @@ window.SFGantt = (function () {
     tableCaption: tableCaption, dataDateLine: dataDateLine,
     timeTiers: timeTiers, buildTierScale: buildTierScale,
     gridLines: gridLines, paintGrid: paintGrid, paintNonwork: paintNonwork,
+    sharedRule: sharedRule, cssColorOf: cssColorOf, svgUrl: svgUrl,
     freezeColumns: freezeColumns,
     stickyScrollbar: stickyScrollbar, attachStickyScrollbars: attachStickyScrollbars,
     attachEdgeExtend: attachEdgeExtend,

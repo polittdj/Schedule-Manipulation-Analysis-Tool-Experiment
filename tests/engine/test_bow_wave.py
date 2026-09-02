@@ -389,3 +389,45 @@ def test_tracked_uids_ride_the_wave_with_positions_and_absence() -> None:
     for absent in (by1[2], by0[99], by1[99]):
         assert absent.scheduled_index is None and absent.finished_index is None
         assert absent.percent_complete is None
+
+
+def test_axis_always_reaches_the_target_and_tracked_finish_months() -> None:
+    """Operator 2026-09-02 ("Work piling up" must always show the Target UID): a focused target
+    whose scheduled finish lies BEYOND the ±18/12-month status window used to be silently
+    off-axis — ``target_scheduled_index`` came back ``None`` and the chart drew no mark at all
+    (their UID 152 finished 21 months past the data date). The axis must EXTEND to the
+    target's and every tracked activity's finish month; the cap still sheds the OLDEST months
+    first, never the target."""
+    dec = _snap(
+        "Dec",
+        "2025-12-05T17:00",
+        [
+            _t(1, finish="2026-01-20T17:00"),
+            _t(152, finish="2027-10-04T17:00"),
+            _t(7, finish="2028-03-15T17:00"),
+        ],
+    )
+    jan = _snap(
+        "Jan",
+        "2026-01-16T17:00",
+        [
+            _t(1, finish="2026-01-20T17:00"),
+            _t(152, finish="2027-10-04T17:00"),
+            _t(7, finish="2028-03-15T17:00"),
+        ],
+    )
+    # without a target the look-ahead is still the 12-month window (unchanged behaviour)
+    plain = compute_bow_wave([dec, jan])
+    assert plain.month_labels[-1] == "Jan-27"
+    # with the target the axis reaches its finish month and the index points at it
+    wave = compute_bow_wave([dec, jan], target_uid=152)
+    assert "Oct-27" in wave.month_labels
+    tgt = wave.month_labels.index("Oct-27")
+    assert wave.snapshots[0].target_scheduled_index == tgt
+    assert wave.snapshots[1].target_scheduled_index == tgt
+    assert wave.snapshots[1].status_index is not None  # the newest data date is still on-axis
+    # tracked UIDs extend it further still
+    tracked = compute_bow_wave([dec, jan], target_uid=152, track_uids=[7])
+    assert tracked.month_labels[-1] == "Mar-28"
+    assert tracked.snapshots[1].tracked[0].scheduled_index == len(tracked.month_labels) - 1
+    assert len(tracked.month_labels) <= 48

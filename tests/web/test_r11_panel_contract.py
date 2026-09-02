@@ -513,7 +513,7 @@ PAGE_SCRIPTS = {
     # change that never happened. The diff is that one index plus an early branch that names the
     # baseline and draws no bars. No axis, tick, caption or column logic is touched; the other ten
     # visuals in this module are byte-identical. 67a625584f35c78f067ae27446883d2a → below.
-    "volatility.js": "71f124b290e237521610ef40cda7ada7",
+    "volatility.js": "bca57830bcc5cc59f6c3c4bc3e0ec2b1",
     # DELIBERATE re-baseline (ADR-0326, decision B1): buildTierScale gained the ONE timescale
     # caption slot (a `data-ts-caption`-fed row above the tiers; pages without the marker render
     # byte-identically). 2a4ccb612899cf141bbf30af3b64286e → 9fa3a69245deec12de6f1d71698a24b0.
@@ -552,7 +552,7 @@ PAGE_SCRIPTS = {
     # 28-call-site census below passes unchanged, and the effect is proven RENDERED by the
     # census driver (test_sticky_scrollbar_mirrors_and_drives_the_pane — observed RED pre-fix).
     # 5132b5bc50d3df762e1d1833a68892ae → below.
-    "gantt.js": "fdc01147ac3df9006cc2ae88b177b193",
+    "gantt.js": "3be0a16004729520c41c3dcd1eaa7fd0",
 }
 
 #: all 29 ``SFChartFrame.axisTitles(`` call sites, frozen with their ARGUMENT OBJECT — the caption

@@ -25,7 +25,11 @@ window.SFTimescale = (function () {
     "July", "August", "September", "October", "November", "December"];
   var DOW_S = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   var DOW_1 = ["S", "M", "T", "W", "T", "F", "S"];
-  var MAX_BANDS = 4000; // per tier — beyond this the tier shows a "too fine" notice instead
+  // per tier — beyond this the tier shows a "too fine" notice instead. 8000 lets Days render on
+  // a ~21-year span when zoomed in (MS Project shows days on any project once zoomed there; the
+  // operator's 12.3-year IPMR is 4,500 days). The header is built ONCE per rebuild — never per
+  // row — so this is one tier's worth of divs, not a per-row multiplier.
+  var MAX_BANDS = 8000;
 
   function el(tag, attrs) {
     var node = document.createElement(tag);
@@ -406,31 +410,78 @@ window.SFTimescale = (function () {
   var MIN_BAND_PX = 14;
   var PROMOTE = { hours: "days", days: "weeks", weeks: "months", thirds: "months",
     months: "quarters", quarters: "halfyears", halfyears: "years" };
+  // ---- and the other direction (operator 2026-09-02: "act accordingly when the user zooms").
+  // MS Project DEMOTES units when zoomed IN — at ~30 px/day it shows Months/Weeks/Days, never a
+  // 900px-wide "June". A tier whose bands would average over MAX_BAND_PX steps DOWN the ladder
+  // while the finer unit still renders legibly (>= MIN_BAND_PX). Like promotion this is FOR
+  // RENDERING ONLY — CFG keeps the operator's configured units and zooming back out restores
+  // them. Half-years and thirds are not on the demote ladder's targets (MS Project's zoom
+  // presets never introduce them); a configured one steps to quarters / weeks respectively.
+  var MAX_BAND_PX = 180;
+  var DEMOTE = { years: "quarters", halfyears: "quarters", quarters: "months", months: "weeks",
+    thirds: "weeks", weeks: "days", days: "hours" };
+  // One step COARSER on the standard ladder — used to keep a demoted stack coherent (a tier that
+  // demoted into the unit of the tier below it is pushed one rung above that tier instead of
+  // duplicating it, so Y/Q/M at 30 px/day becomes Months/Weeks/Days, not Days/Days/Days).
+  var COARSER = { hours: "days", days: "weeks", weeks: "months", thirds: "months",
+    months: "quarters", quarters: "years", halfyears: "years" };
+  var RANK = { hours: 0, days: 1, weeks: 2, thirds: 2.5, months: 3, quarters: 4, halfyears: 5,
+    years: 6 };
+  function expectedBands(axis, units, count) {
+    return (axis.t1 - axis.t0) / (UNITS[units].approxMs * count);
+  }
+  function bandPx(axis, units, count) {
+    var expected = expectedBands(axis, units, count);
+    return expected > 0 ? axis.width / expected : Infinity;
+  }
   function effectiveTier(axis, tier) {
     var units = UNITS[tier.units] ? tier.units : "months";
     var count = Math.max(1, Math.min(999, Math.floor(tier.count) || 1));
     var label = tier.label;
-    var promoted = false;
+    var promoted = false, demoted = false;
     while (PROMOTE[units]) {
-      var expected = (axis.t1 - axis.t0) / (UNITS[units].approxMs * count);
-      if (expected <= 0 || axis.width / expected >= MIN_BAND_PX) break;
+      if (bandPx(axis, units, count) >= MIN_BAND_PX) break;
       units = PROMOTE[units];
       count = 1;
       promoted = true;
     }
-    if (promoted) label = LABELS[units][0].id;
+    // demote only an unpromoted tier at its configured count: bands wider than MAX_BAND_PX step
+    // down while the finer unit's bands would still clear MIN_BAND_PX (never a sub-legible day)
+    while (!promoted && DEMOTE[units] && bandPx(axis, units, count) > MAX_BAND_PX
+        && bandPx(axis, DEMOTE[units], 1) >= MIN_BAND_PX
+        && expectedBands(axis, DEMOTE[units], 1) <= MAX_BANDS) { // never demote INTO the notice
+      units = DEMOTE[units];
+      count = 1;
+      demoted = true;
+    }
+    if (promoted || demoted) label = LABELS[units][0].id;
     return { units: units, label: label, count: count, align: tier.align,
-      fiscal: tier.fiscal, ticks: tier.ticks };
+      fiscal: tier.fiscal, ticks: tier.ticks, demoted: demoted, promoted: promoted };
   }
   function effectiveStack(axis) {
-    var out = [];
-    visibleTiers().forEach(function (t) {
-      var eff = effectiveTier(axis, t);
-      var prev = out[out.length - 1];
-      if (prev && prev.units === eff.units && prev.count === eff.count) return;
-      out.push(eff);
-    });
-    return out;
+    // resolved BOTTOM-UP: the finest tier sets the density, each tier above must be strictly
+    // coarser. A tier that PROMOTED into its neighbour is dropped (MS Project's zoomed-out
+    // two-tier stack, ADR-0441); a tier that DEMOTED into (or below) the one under it is pushed
+    // one rung coarser than that tier instead, so the row count survives zooming in.
+    var vis = visibleTiers();
+    var rows = [];
+    for (var i = vis.length - 1; i >= 0; i--) {
+      var eff = effectiveTier(axis, vis[i]);
+      var below = rows[0];
+      if (below && RANK[eff.units] <= RANK[below.units]) {
+        if (eff.demoted && COARSER[below.units]) {
+          eff.units = COARSER[below.units];
+          eff.count = 1;
+          eff.label = LABELS[eff.units][0].id;
+        } else if (eff.units === below.units && eff.count === below.count) {
+          continue; // promoted (or configured) into the same unit — one row says it once
+        } else if (RANK[eff.units] < RANK[below.units]) {
+          continue; // finer than the tier below it — an incoherent stack, drop the row
+        }
+      }
+      rows.unshift(eff);
+    }
+    return rows;
   }
 
   // The full tier stack for gantt.js: [{bands, ticks}] + the separator flag.
@@ -524,22 +575,49 @@ window.SFTimescale = (function () {
   // the color bars ... between every line"). A full-height layer is appended to the cell:
   // "behind" sits under the bars (z-index 0), "in front" over them (pointer-transparent). The
   // cell must be position:relative (CSS .g-cell/.path-timeline) for the absolute layer to fill it.
+  var holiRules = {}, holiKeys = [];
   function decorateCell(cell, axis, cellCal) {
     if (!cell) return;
     var s = nonworkStyle(axis, cellCal);
     if (!s) return;
     var layer = el("div", { class: s.front ? "g-nonwork-front" : "g-nonwork-behind" });
-    if (s.image !== "none") {
-      layer.style.backgroundImage = s.image;
-      layer.style.backgroundPosition = s.posX + "px 0";
+    // Holidays as ONE shared background layer per (axis, calendar) — never a <div> per holiday
+    // per row (operator 2026-09-02: 80 holiday divs × 2,125 rows = 170,927 nodes on their IMS).
+    // The weekend gradient stays a per-layer inline background (it is a short repeating pattern);
+    // the holiday SVG rides in front of it as the first background layer, through a generated
+    // class shared by every row that shades the same calendar on the same axis.
+    var holiClass = "";
+    if (s.holidays.length && window.SFGantt && SFGantt.sharedRule) {
+      // keyed by CONTENT (calendar + axis span/width + draw colour), not by the axis object —
+      // every rebuild mints a new axis, and a per-object memo re-minted the rule (and forced a
+      // colour-probe layout flush) on every zoom step
+      var key = (CFG.nonworking.calendar || cellCal || "") + "|" + axis.t0 + "|" + axis.t1 + "|" +
+        axis.width + "|" + s.color;
+      if (!holiRules[key]) {
+        var fill = SFGantt.cssColorOf("", s.color);
+        var w = 1;
+        var rects = s.holidays.map(function (h) {
+          if (h.left + h.width + 1 > w) w = Math.ceil(h.left + h.width + 1);
+          return '<rect x="' + h.left + '" y="0" width="' + h.width + '" height="1" fill="' + fill + '"/>';
+        });
+        holiKeys.push(key);
+        if (holiKeys.length > 16) delete holiRules[holiKeys.shift()]; // bounded like the sheet
+        holiRules[key] = SFGantt.sharedRule("--sf-holi:" + SFGantt.svgUrl(w, rects) + ";--sf-holi-w:" + w + "px");
+      }
+      holiClass = holiRules[key];
+      layer.classList.add(holiClass, "g-nonwork-holidays");
     }
-    s.holidays.forEach(function (h) {
-      var d = el("div", { class: "g-nonwork-holiday" });
-      d.style.left = h.left + "px";
-      d.style.width = h.width + "px";
-      d.style.background = s.color;
-      layer.appendChild(d);
-    });
+    if (s.image !== "none") {
+      // two layers when holidays exist: [holiday svg, weekend gradient]; else the gradient alone
+      layer.style.backgroundImage = holiClass ? "var(--sf-holi)," + s.image : s.image;
+      layer.style.backgroundPosition = holiClass ? "0 0," + s.posX + "px 0" : s.posX + "px 0";
+      layer.style.backgroundRepeat = holiClass ? "no-repeat,repeat" : "repeat";
+      layer.style.backgroundSize = holiClass ? "var(--sf-holi-w) 100%,auto" : "auto";
+    } else if (holiClass) {
+      layer.style.backgroundImage = "var(--sf-holi)";
+      layer.style.backgroundRepeat = "no-repeat";
+      layer.style.backgroundSize = "var(--sf-holi-w) 100%";
+    }
     cell.appendChild(layer);
   }
 

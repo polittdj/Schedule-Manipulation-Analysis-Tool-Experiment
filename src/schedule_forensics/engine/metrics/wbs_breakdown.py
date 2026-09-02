@@ -21,6 +21,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from schedule_forensics.engine.grouping import field_value
 from schedule_forensics.engine.metrics._common import non_summary, percent
 from schedule_forensics.engine.metrics.evm import earned_schedule
 from schedule_forensics.model.schedule import Schedule
@@ -117,16 +118,24 @@ def _group(schedule: Schedule, wbs: str, tasks: list[Task]) -> WBSGroup:
     )
 
 
-def compute_wbs_breakdown(schedule: Schedule) -> tuple[WBSGroup, ...]:
+def compute_wbs_breakdown(schedule: Schedule, wbs_field: str | None = None) -> tuple[WBSGroup, ...]:
     """Per-top-level-WBS completion + Earned-Schedule groups, ordered by WBS code.
 
     Groups are sorted numerically when every label is an integer segment (the common
     case — ``"1"`` before ``"2"`` before ``"10"``), else lexicographically; ``"(none)"``
     always sorts last.
+
+    ``wbs_field`` (operator 2026-09-02, the WBS field ROLE): group by ANY available field —
+    a custom field / outline code carrying the project's real breakdown — instead of the
+    stored WBS column. ``None`` or ``"WBS"`` is the stored column (byte-identical to before);
+    a field the schedule does not carry groups every activity under ``"(none)"`` — never a
+    fabricated code. The same ADR-0150 shape ``float_erosion`` already uses.
     """
+    use_custom = wbs_field is not None and wbs_field != "WBS"
     groups: dict[str, list[Task]] = {}
     for t in non_summary(schedule):
-        groups.setdefault(_top_level(t.wbs), []).append(t)
+        raw = field_value(schedule, t, wbs_field) if use_custom and wbs_field else t.wbs
+        groups.setdefault(_top_level(raw), []).append(t)
 
     def sort_key(label: str) -> tuple[int, float, str]:
         if label == _NO_WBS:

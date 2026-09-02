@@ -7,13 +7,12 @@
 Resume the POLARIS² full-tool audit campaign (Schedule-Manipulation-Analysis-Tool). Read
 docs/STATE/HANDOFF.md FIRST (auto-injected), then **docs/STATE/AUDIT-2026-08-27.md — the
 campaign's live ledger (appended per-WP, never batch-written)**; the 2026-08-16 ledger stays the
-historical row source for WP6. As of last close: **v1.0.228 · highest ADR 0446 · WP0, its
-addendum, WP1 AND WP2 complete, plus the operator's header defect ROOT-CAUSED (ADR-0444 → ADR-0445)
-and the One-Pager (ADR-0446) on top** (WP0/PR #615 @ `2fbde95e`, addendum PR #616 @ `d56ad3f9`,
-WP1/PR #617 @ `286046d5`, WP2/PR #618 @ `0e07d213`, ADR-0444/PR #620 @ `c3e4cea0`, ADR-0445 +
-ADR-0446/PR #621 @ `74e98d99` — ALL MERGED, so branch fresh from `origin/main` and do not look for
-an open PR; verify a pull_request CI run appears per push, dispatch manually only
-if none does; WP4 root-causes the 08-26 `startup_failure`). Campaign decisions (operator,
+historical row source for WP6. As of last close: **v1.0.229 · highest ADR 0451 · WP0, its
+addendum, WP1 AND WP2 complete, the header root cause (ADR-0445) and the One-Pager (ADR-0446) MERGED, and the
+OPERATOR BATCH of 2026-09-02 (ADR-0447..0451) on a draft PR from branch `claude/polaris-audit-campaign-shuau7`**
+(WP0/PR #615, addendum #616, WP1 #617, WP2 #618, ADR-0444 #620, ADR-0445+0446 #621, docs #622 — ALL MERGED;
+the operator-batch PR is the one to check first: if MERGED, branch fresh from `origin/main`; if still open,
+drive it to green before WP3). Campaign decisions (operator,
 2026-08-27, standing): **SOLO lead · fix-as-verified · BOTH folder-ask builds**. QC-1/QC-2 bind
 every session — ADR-0393, pinned by `tests/test_standing_rules.py`. **git fetch origin before you
 branch, number an ADR, or commit — and RE-fetch before writing the docs.**
@@ -56,6 +55,22 @@ One-Pager** — `/onepager` (LIBRARY rail) turns a three-column Excel list into 
 (SVG preview) and exports the SAME slide as native PowerPoint shapes (`/export/pptx/onepager`) plus the
 parsed list (`/export/{fmt}/onepager`) and a template; one layout, two painters; every parser decision
 on the page by row; 43 + 13 + 4 tests.
+
+
+⇢ **2026-09-02 (b) — the operator batch (ADR-0447..0451, v1.0.229).** Six reports, each MEASURED before
+believed (ledger section "Operator batch"): (1) the blank-header screenshot matches the PRE-v1.0.227 hijack —
+the current tree renders 3 labeled absolute tiers; the real gap was no demotion on zoom-in → the DEMOTE
+ladder (`timescale.js`, Months/Weeks/Days at 30 px/day, `MAX_BANDS` 8000); (2) the bow-wave axis pins the
+target/tracked months (UID 152 at +21 months was off-axis); (3) the One-Pager IS in source/wheel/installers/rail
+— its rail link sits below the rail scroller's fold; (4) PERF: /analysis had 1,801,557 DOM nodes (743 gridline
++ 80 holiday divs PER ROW) → shared-background painters + row windowing → 26,926 nodes, 41.6 s → 4.7 s,
+scroll 200 → 33 ms/frame; (5) field ROLES (WBS / Cost Account / Work Package → any loaded field; `POST
+/fields/roles`; pickers on /groups and /wbs) and the WBS pivot now follows the session scope (it read the RAW
+file); (6) /volatility in the Claude Design layout (five numbered panels, version chips, cursor-cumulative KPI;
+ten tiles verbatim; census 66/66).
+⇢ ASK FIRST (three operator questions): which VERSION banner produced the blank-header screenshot · did the
+One-Pager `.pptx` open in PowerPoint · on v1.0.229 with two files, does /analysis scroll smoothly and band its
+header on one row per tier. Do NOT re-chase the header without the banner.
 
 ⇢ CLOSED — the operator's header symptom (ADR-0444's open question) is ANSWERED by ADR-0445: the
 three-row cascading header was the tooltip-anchor hijack, reproduced in all four themes with one file
