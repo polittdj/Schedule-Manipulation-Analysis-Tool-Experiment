@@ -6401,7 +6401,20 @@ def create_app(
         """Batched inline-edit save from the SSI grid: one JSON array of per-task deltas
         ``[{uid, factor?, bc_days?, wc_days?, focus?}]`` (the fields_json/gantt JSON-in-page
         precedent). A factor delta auto-fills Best/Worst from the factor table; an explicit
-        bc_days/wc_days delta is a manual override that wins (mirrors ``_ssi_three_point``)."""
+        bc_days/wc_days delta is a manual override that wins (mirrors ``_ssi_three_point``).
+
+        ADR-0454 (the grid driven for the first time, WP3): **what the operator sees before Save is
+        what is saved, and nothing they typed is altered or dropped in silence.**
+
+        * A blank (``""``) CLEARS the cell it came from — the factor, or one side of the range. A
+          cleared side drops the stored pair and re-derives it from the factor when one exists (the
+          run would use that derivation anyway — ``_ssi_three_point``), so the grid then shows
+          what the run uses. Before this the route skipped a blank and the old value came back.
+        * Every value it cannot apply as typed is returned by name: ``rejected`` (not a number, a
+          range on completed work — ADR-0308) and ``clamped`` (a factor outside 0..5, a negative
+          duration), each with the uid, field, the text as sent and what happened. ADR-0313's rule
+          for this page, now on the grid: an operator-visible refusal, never a silent one.
+        """
         st = session()
         chosen = _sra_selected(st)
         if chosen is None:
@@ -6415,6 +6428,12 @@ def create_app(
         except (ValueError, TypeError):
             return JSONResponse({"error": "bad deltas payload"}, status_code=422)
         saved = 0
+        rejected: list[dict[str, object]] = []
+        clamped: list[dict[str, object]] = []
+
+        def _blank(value: object) -> bool:
+            return isinstance(value, str) and value.strip() == ""
+
         for d in items if isinstance(items, list) else []:
             if not isinstance(d, dict):
                 continue
@@ -6438,34 +6457,83 @@ def create_app(
             done_task = _is_completed(task)
             if done_task:
                 st.sra_bcwc.pop(uid, None)
-            if d.get("factor") not in (None, ""):
-                try:
-                    # factor 0 is VALID (no Best/Worst uncertainty -> use remaining); only 1..5 carry
-                    # a Best/Worst spread, so clamp to 0..5, not 1..5
-                    f = min(5, max(0, int(d["factor"])))
-                except (TypeError, ValueError):
-                    f = None
-                if f is not None:
-                    st.sra_factors[uid] = f
+            raw_factor = d.get("factor")
+            if _blank(raw_factor):
+                # a blanked Factor cell clears the ranking; a stored range is the operator's own
+                # (or was derived from the ranking they just removed) and stays until IT is blanked
+                if st.sra_factors.pop(uid, None) is not None:
+                    changed = True
+            elif raw_factor is not None:
+                f = _grid_factor(raw_factor)
+                if f is None:
+                    reason = (
+                        "not a whole number (Factor is 0-5)"
+                        if _grid_number(raw_factor) is not None
+                        else "not a number"
+                    )
+                    rejected.append(
+                        {"uid": uid, "field": "factor", "value": str(raw_factor), "reason": reason}
+                    )
+                else:
+                    # factor 0 is VALID (no Best/Worst uncertainty -> use remaining); only 1..5
+                    # carry a Best/Worst spread, so clamp to 0..5, not 1..5 — and SAY so
+                    fc = min(5, max(0, f))
+                    if fc != f:
+                        clamped.append(
+                            {"uid": uid, "field": "factor", "value": str(raw_factor), "applied": fc}
+                        )
+                    st.sra_factors[uid] = fc
                     if not done_task:
-                        bc, _ml, wc = factor_to_bc_wc(rem, f, tbl)
+                        bc, _ml, wc = factor_to_bc_wc(rem, fc, tbl)
                         st.sra_bcwc[uid] = (bc, wc)
                     changed = True
-            bc_min, wc_min = st.sra_bcwc.get(uid, (rem, rem))
-            manual = False
+            cleared_side = False
+            sides: dict[int, int] = {}
             for key, slot in (("bc_days", 0), ("wc_days", 1)):
-                if d.get(key) not in (None, ""):
-                    try:
-                        minutes = max(0, round(float(d[key]) * mpd))
-                    except (TypeError, ValueError):
-                        continue
-                    bc_min, wc_min = (minutes, wc_min) if slot == 0 else (bc_min, minutes)
-                    manual = True
-            if manual and not done_task:  # a completed row never takes a range (ADR-0308)
-                st.sra_bcwc[uid] = (int(bc_min), int(wc_min))
-                changed = True
+                raw = d.get(key)
+                if raw is None:
+                    continue
+                if _blank(raw):
+                    cleared_side = True
+                    continue
+                if done_task:
+                    rejected.append(
+                        {
+                            "uid": uid,
+                            "field": key,
+                            "value": str(raw),
+                            "reason": "a completed activity carries no Best/Worst range",
+                        }
+                    )
+                    continue
+                days = _grid_number(raw)
+                if days is None:
+                    rejected.append(
+                        {"uid": uid, "field": key, "value": str(raw), "reason": "not a number"}
+                    )
+                    continue
+                minutes = round(days * mpd)
+                if minutes < 0:
+                    clamped.append({"uid": uid, "field": key, "value": str(raw), "applied": 0})
+                    minutes = 0
+                sides[slot] = minutes
+            if not done_task and (cleared_side or sides):
+                if cleared_side:
+                    # the pair is one object: a blanked side drops it, and the ranking (if any)
+                    # re-derives it — the grid then shows exactly what the run will use
+                    st.sra_bcwc.pop(uid, None)
+                    if uid in st.sra_factors:
+                        bc, _ml, wc = factor_to_bc_wc(rem, st.sra_factors[uid], tbl)
+                        st.sra_bcwc[uid] = (bc, wc)
+                    changed = True
+                if sides:
+                    bc_min, wc_min = st.sra_bcwc.get(uid, (rem, rem))
+                    bc_min = sides.get(0, bc_min)
+                    wc_min = sides.get(1, wc_min)
+                    st.sra_bcwc[uid] = (int(bc_min), int(wc_min))
+                    changed = True
             saved += int(changed)
-        return JSONResponse({"ok": True, "saved": saved})
+        return JSONResponse({"ok": True, "saved": saved, "rejected": rejected, "clamped": clamped})
 
     @app.get("/sra/ssi/save")
     def sra_ssi_save() -> Response:
@@ -7485,6 +7553,33 @@ _FLOAT_HIST_BANDS: tuple[tuple[str, Callable[[float], bool]], ...] = (
     ("21-44", lambda v: 20 < v <= 44),
     ("> 44", lambda v: v > 44),
 )
+
+
+def _grid_number(value: object) -> float | None:
+    """A grid cell's value as a finite float, or ``None`` when it is not a number at all — the
+    text an operator typed or pasted, taken literally (no locale guessing: ``12,5`` is refused and
+    REPORTED, never read as 12.5 or 125)."""
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        out = float(value)
+    elif isinstance(value, str):
+        try:
+            out = float(value.strip())
+        except ValueError:
+            return None
+    else:
+        return None
+    return out if math.isfinite(out) else None
+
+
+def _grid_factor(value: object) -> int | None:
+    """A Risk Ranking Factor as typed: a whole number (``"3"``, ``3``, ``3.0``) or ``None``. The
+    0..5 clamp is the caller's, so it can be reported."""
+    num = _grid_number(value)
+    if num is None or not num.is_integer():
+        return None
+    return int(num)
 
 
 def _ssi_three_point(st: SessionState, sch: Schedule) -> dict[int, tuple[int, int, int]]:

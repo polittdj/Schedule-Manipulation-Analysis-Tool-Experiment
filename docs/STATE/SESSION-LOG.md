@@ -16087,3 +16087,24 @@ of the WP1 UI map. Branch fresh from `origin/main`.
   and updated by Reset); ladder + dialog + long-span 32/32; r11 25/25 after re-pinning `gantt.js`;
   lockstep 68/68; drift guards. Rendered at 1920 px with Size 114 % (= 7.4 px/month): 108 months all
   labelled, glyph font 9 px, widest glyph 7.5 px in a 9-px band, 1 of 114 overflowing by under half a pixel.
+
+## 2026-09-03 — WP3 · M4: the SRA grid driven for the first time (ADR-0454, v1.0.232)
+
+- **Branch:** `claude/new-session-mc0a58` from `origin/main` @ `6fdc1ddf` (#625). The committed kickoff's
+  stale header (v1.0.230 / ADR 0452) refreshed in the same commit.
+- **Measured before believed:** three scratch probes drove /sra in Chromium (real clipboard via
+  `navigator.clipboard.writeText` + Ctrl+V — Shift+Insert works too; a synthetic `ClipboardEvent` also
+  reaches the handler; `beforeunload` dialogs surface in Playwright on `goto` AND on a form submit;
+  `e` in a number input = `badInput` with value `""`). Six defects observed by name on v1.0.231, all
+  in the "silent" class: unsaved edits wiped by Refresh / the post-run reload / any page form; a blank
+  ignored and the old value returned with "Saved 0"; pasted junk and an out-of-range 7 dropped or clamped
+  without a word; the save confirmation overwritten before it could be read; a badInput keystroke queued.
+- **Shipped:** `sra_grid.js` (pending survives `load()`, `beforeunload`, save summary read back, badInput
+  refused at the cell, paste reports what fell outside), `POST /sra/grid` (a blank clears — factor only,
+  or the range side with re-derivation from the ranking; `rejected` + `clamped` by uid/field/value/reason;
+  `_grid_number` / `_grid_factor`). `tests/web/test_sra_grid_edit_browser.py` (17 drivers) +4 route pins.
+- **Verification (QC-1):** pre-fix run 7 red / 9 green (one red was the envelope oracle reading `title=`
+  after tooltips.js moved it — fixed in the oracle); route pins 4 red / 20 green against the original
+  route; mutation original-JS + fixed-route → exactly the six JS-side drivers red, blank-clear green.
+  Digest oracle pinned stable across reload and across two servers, sensitive to a typed value.
+- **Gate:** recorded below after the runs.
