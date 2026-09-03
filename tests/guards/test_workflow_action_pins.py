@@ -72,3 +72,41 @@ def test_every_pin_records_the_release_it_pins(wf: Path) -> None:
         "each pin needs a trailing `# vX.Y.Z` naming the release it pins:\n  "
         + "\n  ".join(undocumented)
     )
+
+
+# ── every workflow can be dispatched by hand (WP4, ADR-0455) ───────────────────────────────
+# On 2026-08-26 a GitHub-side anomaly gave one push run `startup_failure` and delayed the next
+# push's run by 21 minutes; the session on duty fell back to `workflow_dispatch` for ci.yml — and
+# could not for installer-smoke.yml, which had no manual trigger. A workflow that can only be
+# reached by an event it does not control cannot be re-proven on demand.
+
+_ON_BLOCK = re.compile(r"^on:\n((?:[ \t]+.*\n|\n)+)", re.MULTILINE)
+
+
+def _dispatchable(wf: Path) -> bool:
+    match = _ON_BLOCK.search(wf.read_text(encoding="utf-8"))
+    return bool(match) and re.search(r"^\s+workflow_dispatch:", match.group(1), re.M) is not None
+
+
+@pytest.mark.parametrize("wf", WORKFLOWS, ids=lambda p: p.name)
+def test_every_workflow_offers_a_manual_trigger(wf: Path) -> None:
+    assert _dispatchable(wf), f"{wf.name}: add `workflow_dispatch:` under `on:`"
+
+
+def test_the_dispatch_check_can_fail(tmp_path: Path) -> None:
+    """Guard the guard: an `on:` block without the trigger — and a trigger hiding OUTSIDE the
+    `on:` block — must both be refused."""
+    absent = tmp_path / "absent.yml"
+    absent.write_text("name: x\non:\n  push:\n    branches: [main]\n\njobs: {}\n", encoding="utf-8")
+    assert not _dispatchable(absent)
+    elsewhere = tmp_path / "elsewhere.yml"
+    elsewhere.write_text(
+        "name: x\non:\n  push:\n\njobs:\n  a:\n    steps:\n      - run: echo workflow_dispatch:\n",
+        encoding="utf-8",
+    )
+    assert not _dispatchable(elsewhere)
+    present = tmp_path / "present.yml"
+    present.write_text(
+        "name: x\non:\n  push:\n  workflow_dispatch:\n\njobs: {}\n", encoding="utf-8"
+    )
+    assert _dispatchable(present)

@@ -9,6 +9,8 @@ shared for the whole session. Use the ``golden`` callable for parametrized cases
 from __future__ import annotations
 
 import logging
+import os
+import sys
 from collections.abc import Callable, Iterator
 from functools import cache
 from pathlib import Path
@@ -137,3 +139,65 @@ def golden_project2() -> Schedule:
 @pytest.fixture(scope="session")
 def golden_project5() -> Schedule:
     return _load_golden("Project5")
+
+
+# ── route-coverage instrument (WP4, ADR-0455) — opt-in, passive, off by default ──────────────
+#
+# ``SF_ROUTE_COVERAGE=1`` installs ``tools/route_coverage.py``'s recorder before the first test
+# and writes the report when the session ends (``route_coverage.json`` in the CWD, or the value of
+# the variable when it names a ``.json`` path). Nothing is patched when the variable is absent, so
+# the plain gate runs the unwrapped app. ``tools/`` is not on ``sys.path`` (only ``tests/`` is,
+# through this conftest), hence the import by file path.
+_ROUTE_COVERAGE_RECORDER: object | None = None
+
+
+def _route_coverage_target() -> Path | None:
+    value = os.environ.get("SF_ROUTE_COVERAGE", "").strip()
+    if not value:
+        return None
+    if value.lower().endswith(".json"):
+        return Path(value).expanduser()
+    return Path.cwd() / "route_coverage.json"
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    global _ROUTE_COVERAGE_RECORDER
+    if _route_coverage_target() is None:
+        return
+    import importlib.util
+
+    tool = Path(__file__).resolve().parents[1] / "tools" / "route_coverage.py"
+    spec = importlib.util.spec_from_file_location("route_coverage", tool)
+    assert spec is not None and spec.loader is not None, tool
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module  # dataclasses resolve annotations via sys.modules
+    spec.loader.exec_module(module)
+    recorder = module.Recorder()
+    recorder.install()
+    _ROUTE_COVERAGE_RECORDER = recorder
+
+
+def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
+    recorder = _ROUTE_COVERAGE_RECORDER
+    target = _route_coverage_target()
+    if recorder is None or target is None:
+        return
+    import json
+
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(json.dumps(recorder.report(), indent=1), encoding="utf-8")  # type: ignore[attr-defined]
+
+
+def pytest_terminal_summary(terminalreporter: pytest.TerminalReporter) -> None:
+    recorder = _ROUTE_COVERAGE_RECORDER
+    target = _route_coverage_target()
+    if recorder is None or target is None:
+        return
+    report = recorder.report()  # type: ignore[attr-defined]
+    reached = len(report["observed"])
+    terminalreporter.write_sep(
+        "-",
+        f"route coverage: {reached} endpoints reached across "
+        f"{sum(h['n'] for h in report['observed'].values())} requests; "
+        f"population {len(report['population'])}; report → {target}",
+    )

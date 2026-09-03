@@ -1285,3 +1285,28 @@ tr.row-found td.sf-frozen-col { background: #fff3b0; }
 .vol-data-toggle { cursor: pointer; font-size: 11px; letter-spacing: .08em; color: var(--muted);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 .vol-data-toggle .btn-link { margin-left: 10px; }
+
+/* ── Claude Design page layout — the page-neutral `.cd-*` family (ADR-0456; /cei first; the
+   `.vol-*` classes on /volatility predate it). Tokens only: a block is a panel-shaped surface
+   that is deliberately NOT `.panel` (the promotion census keeps every page's .panel count, and a
+   block never joins jarvis's broad `.panel` rule), a cursor is the stepper strip with the primary
+   play button and one chip per version, a grid is the prototype's two-column row. ── */
+.cd-cursor { gap: 8px; }
+.cd-cursor .cd-play { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 700; }
+.cd-chips { display: inline-flex; gap: 4px; flex-wrap: wrap; }
+.cd-chip { background: transparent; color: var(--muted); border: 1px solid var(--line); border-radius: 4px;
+  padding: 3px 8px; font-size: 9.5px; font-weight: 700; letter-spacing: .04em; cursor: pointer; }
+.cd-chip.on, .cd-chip:hover { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+.cd-pill { border: 1px solid var(--line); border-radius: 9px; padding: 3px 9px; font-size: 9px; letter-spacing: .06em; }
+.cd-options { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.cd-options .viz-controls { margin: 4px 0; }
+.cd-grid { display: grid; gap: 10px; margin-top: 10px; }
+.cd-grid-2 { grid-template-columns: 1.1fr .9fr; }
+@media (max-width: 1100px) { .cd-grid-2 { grid-template-columns: 1fr; } }
+.cd-grid > .panel { margin: 0; min-width: 0; }
+.cd-block { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; min-width: 0; }
+.cd-block h2 { margin: 0 0 8px; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink); }
+.cd-read { display: flex; flex-direction: column; gap: 10px; font-size: 11px; line-height: 1.6; color: var(--ink); }
+.cd-beat b { color: var(--accent); }
+.cd-beat-warn b { color: var(--warn); }
+.cd-beat-bad b { color: var(--bad); }

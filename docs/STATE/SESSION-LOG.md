@@ -16143,3 +16143,55 @@ of the WP1 UI map. Branch fresh from `origin/main`.
   paths the hook refuses; the manifest guard is the only thing that saw it, one PR late. CI-side blocklist run
   queued as a WP4 candidate.
 - No product code changes; docs + the regenerated manifest only. Drift guards recorded below after the run.
+
+## 2026-09-03 (c) — WP4 COMPLETE + /cei on the Claude Design layout (ADR-0455 / ADR-0456, v1.0.233)
+
+Branch `claude/polaris-audit-wp4-huxuz3` from `origin/main` @ `10a8c62` (the #627 docs merge). SOLO lead ·
+fix-as-verified. The build container had no `fastapi`/`pytest` in any interpreter (`pip install -e
+'.[dev,browser]'` first; `/usr/local/bin/ruff` 0.16.6 is the CI-shaped binary, `/root/.local/bin/ruff` still
+shadows it on PATH).
+
+- **WP4 CI-01 / CI-02 (ADR-0455):** the 2026-08-26T15:31:22Z `startup_failure` (run #1656, the #612 merge) is a
+  GitHub-side anomaly — created 247 s after the push, dead in 4 s, 0 billable ms, four jobs never left `queued`,
+  `ci.yml` byte-identical to the green runs on both sides (last change 08-17), and the NEXT push's run took
+  1,281 s to appear (05abadc5 16:20:55Z → 16:42:16Z), cancelling the 16:22 manual dispatch. Event-to-run latency
+  tabulated for every `main` commit since 08-13: 2–4 s for 48 of 50. The standing "triggers are not firing"
+  claim is REFUTED. Incident attribution UNVERIFIABLE (githubstatus.com egress-blocked). Trap recorded: `main`'s
+  run for `b631b41f` (#626) is `failure` — the manifest guard the web uploads broke — while the PR head was green.
+- **WP4 RC-01 (ADR-0455):** `tools/route_coverage.py` committed — inventory (148 endpoints today: 71 page · 34
+  api · 42 export · 1 static; floor 139), a passive recorder on `FastAPI.build_middleware_stack` (templates by the
+  app's own router, resolved BEFORE dispatch; three buckets: full · partial · unmatched), `analyse` + CLI; the
+  opt-in `SF_ROUTE_COVERAGE` plugin in `tests/conftest.py`; `tests/guards/test_route_coverage_instrument.py`
+  11/11. Mutation: matcher → UNMATCHED → 3 red by name (template, partial, passivity), 8 green.
+- **WP4 HOOK-03 (ADR-0455):** `tools/ci_cui_guard.sh` + the `cui-guard` job (in `check`'s `needs`): the real
+  hook over `base..HEAD` via `git reset --soft`, `origin/main` aimed at the base; PR = gate, push to main =
+  warning under `00_REFERENCE_INTAKE/` / error elsewhere; `--self-test` stages a probe `.mpp` and requires
+  refusal (refused, exit 1, on the real tree). `tests/guards/test_ci_cui_guard.py` 8/8 incl. the dead-hook
+  mutation. **WF-01:** `installer-smoke.yml` gained `workflow_dispatch`; `test_workflow_action_pins.py` +2;
+  mutation (trigger deleted) → exactly `[installer-smoke.yml]` red.
+- **Design migration page 2 (ADR-0456):** /cei wears the v2 artboard "06 Work piling up" — the artboard EXECUTED
+  locally (npm-packed React 18.3.1 / react-dom / @babel/standalone 7.29.0; `support.js` patched to local paths;
+  `sfops-boot.skipNext` + `sfredux-guided` + `sfredux-screen=bw` seeded) and rendered in four themes first.
+  `web/cei.py` (`_cei_body`: cursor strip · options row · two-column row · reading block from
+  `chrome._EXPLAINERS`), `static/app.css` (`.cd-*`), `static/cei.js` (`goTo`/`syncChips`, all below the
+  axisTitles call at line 226 — the DD-ledger and r11 axis pins untouched), `docs/DESIGN-SYSTEM.md` §9.
+  Red-first: `tests/web/test_cei_design_layout.py` (4) + the chip driver in `test_r10_cei_panelkit.py` observed
+  **5 red / 3 green** on the pristine page; green after: 160 across the thirteen TestClient modules that pin
+  /cei. Render diff (1440 px, four themes): DOM census moved on exactly `chips 0→2` / `chipOn []→["0"]`; `.panel`
+  5, forms 6, bars 38, nothing wider than the viewport, zero page errors; all four renders viewed.
+- **RC-02, from the instrumented full run:** population 148 (floor 139 holds) · never reached **0** · never a
+  2xx/3xx **3** (`GET /export/{fmt}/resource-drill`, `GET /export/{fmt}/ribbon-drill/{name}`, `POST
+  /sra/factor-table` — the 2026-08-18 census's own three) · never adversely **21** (6 exports + 15 POSTs; the
+  census said 25) · 3 partial matches · 1 unmatched key. The full list is the ledger's RC-02 table.
+- **Gate (recorded AFTER the runs, QC-1):** `/usr/local/bin/ruff` 0.16.6 `check .` + `format --check .` (1,132
+  files) clean · mypy --strict 161 files clean · bandit exit 0 · `node --check` per file clean · browser battery
+  (r10 panelkit + chip driver, fake-clock steppers, sitewide census, caption sweep, DD-line render) **127 passed
+  in 6:43** · full suite **4,730 passed / 5 skipped (the same five environment skips) / 0 failed in 41:32**, exit
+  0, run with `SF_ROUTE_COVERAGE` set (the recorder is passive — proven by the byte-identical-response guard) ·
+  parity gate recorded below · wheel + nine installers rebuilt at v1.0.233 (MPXJ pin `42d92dc9` unchanged from
+  `main`'s), lockstep **72 passed**.
+- **Mutations (each restored from a scratch copy, tree diffed after):** matcher → UNMATCHED: 3 red by name / 8
+  green · installer-smoke `workflow_dispatch:` deleted: exactly `[installer-smoke.yml]` red / 7 green · dead hook
+  (`exit 0`): the self-test reddens (a test of its own) · `goTo()` neutered: exactly the chip driver red / 3 green.
+- **Parity gate (`python -m pytest -m parity`, run separately after the suite): 72 passed / 0 skipped in 11:26**, exit 0 — Law 2 unmoved.
+- **PR:** draft **#628** from `claude/polaris-audit-wp4-huxuz3` (head `98a3b38c` + this docs line); subscribed for CI/review events; a check-in Routine armed ~65 min out.

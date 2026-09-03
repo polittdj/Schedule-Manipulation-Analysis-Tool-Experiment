@@ -250,3 +250,30 @@ def test_four_theme_probe_reads_computed_styles(served: str) -> None:
             if theme == "apollo":
                 assert "Plex Mono" in probe["take_family"], probe  # geometry differs, by design
         browser.close()
+
+
+def test_version_chips_drive_the_same_render_as_the_stepper(served: str) -> None:
+    """ADR-0456: a chip click lands the chart on ITS snapshot — the label the stepper rewrites
+    moves, the chip takes the active state — and the stepper moves the active chip back."""
+    from playwright.sync_api import sync_playwright
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch(**chrome_kwargs())
+        errors: list[str] = []
+        page = _open(browser, served, errors)
+        label = page.locator("#snapLabel")
+        chips = page.locator(".cd-chip[data-idx]")
+        assert chips.count() == 2
+        assert label.inner_text().startswith("1 / 2")
+        assert page.evaluate("() => document.querySelector('.cd-chip.on').dataset.idx") == "0"
+        chips.nth(1).click()
+        page.wait_for_timeout(200)
+        assert label.inner_text().startswith("2 / 2"), label.inner_text()
+        assert page.evaluate("() => document.querySelector('.cd-chip.on').dataset.idx") == "1"
+        assert page.evaluate("() => document.querySelectorAll('.cd-chip.on').length") == 1
+        page.locator("#prevSnap").click()
+        page.wait_for_timeout(200)
+        assert label.inner_text().startswith("1 / 2")
+        assert page.evaluate("() => document.querySelector('.cd-chip.on').dataset.idx") == "0"
+        assert errors == [], errors
+        browser.close()

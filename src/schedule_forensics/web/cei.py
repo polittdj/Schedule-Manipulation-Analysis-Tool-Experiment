@@ -25,7 +25,7 @@ from __future__ import annotations
 from urllib.parse import quote
 
 from schedule_forensics.engine.bow_wave import BowWave
-from schedule_forensics.web.chrome import _e
+from schedule_forensics.web.chrome import _EXPLAINERS, _e
 from schedule_forensics.web.components import (
     _panel_head,
     _shell_tools,
@@ -219,15 +219,47 @@ def _cei_body(
         for s in wave.snapshots
     )
     track_txt = ", ".join(str(u) for u in (track_uids or []))
+    # ── Claude Design layout (ADR-0456, "06 Work piling up"; ADR-0451's method, functionality
+    # unchanged): the chart panel wears the prototype's cursor strip — Auto-play as the primary
+    # button, Prev / Next, ONE chip per snapshot, the frame pill — then the options row (the two
+    # ADR-0268 forms, byte-for-byte), then the chart; below it the prototype's 1.1fr / .9fr row:
+    # the CEI panel (verbatim) beside a "How to read this" block whose three beats are this
+    # page's own explainer (chrome._EXPLAINERS — the collapsed "What am I looking at?" text, so no
+    # new prose enters the loaded-terms audit surface). The chips are served here (cei.js also
+    # runs the /mission wall, which serves none) and drive the SAME render() the stepper drives;
+    # the chart opens on the first snapshot exactly as before, so the first chip opens `on`. Not
+    # ported from the mock, on purpose: the WK/QTR/YR grain chips (the engine profiles months —
+    # regrouping is a new visual, a week split would be a fabricated one), the CEI line chart (the
+    # table IS the panel's data; a new visual needs its own ledger rows) and ▦ DATA (this page's
+    # contract says neither panel ships a drawer). The `.cd-*` classes are the page-neutral
+    # family for this layout (`docs/DESIGN-SYSTEM.md` §9); `vol-*` on /volatility predates it.
+    explain = _EXPLAINERS.get("Bow Wave / CEI", ("", "", ""))
+    beats = "".join(
+        f'<div class="cd-beat {cls}"><b>{lead}</b> {_e(text)}</div>'
+        for cls, lead, text in (
+            ("cd-beat-accent", "The wave.", explain[0]),
+            ("cd-beat-warn", "The index.", explain[1]),
+            ("cd-beat-bad", "Why it matters.", explain[2]),
+        )
+    )
+    chips = "".join(
+        f'<button type=button class="cd-chip{" on" if i == 0 else ""}" data-idx="{i}" '
+        f"aria-pressed={'true' if i == 0 else 'false'} data-no-i18n "
+        f'title="{_e(s.label)}">v{i + 1}</button>'
+        for i, s in enumerate(wave.snapshots)
+    )
     return f"""
 <div class=panel data-export="/export/xlsx/cei">{head_chart}
 <p class=sf-take data-no-i18n>{_e(take_chart)}</p>
-<p class=muted>Gold = baselined to finish, blue = scheduled to finish, green = actually
-finished; the dashed line is the snapshot's data date. Work that keeps sliding right shows
-as a swelling wave of blue just past each data date. Step through the snapshots or press
-Auto-play to watch the wave move. Tick <b>Running totals</b> for the cumulative finish curves,
-focus a <b>Target UID</b> to mark where that activity lands (and slides) in each snapshot, and
-<b>Track UIDs</b> (up to 20, comma-separated) to watch specific activities ride the wave.</p>
+<div class="viz-controls cd-cursor">
+<button id=autoPlay type=button class=cd-play>&#9654; Auto-play</button>
+<button id=prevSnap type=button>&#9664; Prev</button>
+<button id=nextSnap type=button>Next &#9654;</button>
+<span class=cd-chips>{chips}</span>
+<span id=snapLabel class="muted cd-pill" data-no-i18n></span>
+<label><input id=ceiTotals type=checkbox> Running totals (cumulative)</label>
+</div>
+<div class=cd-options>
 <form method=post action=/target class=viz-controls>
 <input type=hidden name=next_url value="/cei{("?uids=" + quote(track_txt)) if track_txt else ""}">
 <label>Target UID <input name=uid type=number min=1 value="{target_uid if target_uid is not None else ""}"
@@ -239,14 +271,16 @@ placeholder="UID"></label>
 placeholder="e.g. 155, 187, 411" size=28
 title="Up to 20 UniqueIDs (comma/space separated) marked on every snapshot of the animation — independent of the primary target"></label>
 <button type=submit>Track</button></form>
-<div class=viz-controls>
-<button id=prevSnap type=button>&#9664; Prev</button>
-<span id=snapLabel class=muted></span>
-<button id=nextSnap type=button>Next &#9654;</button>
-<button id=autoPlay type=button>&#9654; Auto-play</button>
-<label><input id=ceiTotals type=checkbox> Running totals (cumulative)</label>
 </div>
-<div id=ceiChart class=chart-host></div></div>
+<div id=ceiChart class=chart-host></div>
+<p class=muted>Gold = baselined to finish, blue = scheduled to finish, green = actually
+finished; the dashed line is the snapshot's data date. Work that keeps sliding right shows
+as a swelling wave of blue just past each data date. Step through the snapshots or press
+Auto-play to watch the wave move. Tick <b>Running totals</b> for the cumulative finish curves,
+focus a <b>Target UID</b> to mark where that activity lands (and slides) in each snapshot, and
+<b>Track UIDs</b> (up to 20, comma-separated) to watch specific activities ride the wave.</p>
+</div>
+<div class="cd-grid cd-grid-2">
 <div class=panel data-export="/export/xlsx/cei">{head_table}
 <p class=sf-take data-no-i18n>{_e(take_table)}</p>
 <p class=muted>For each snapshot: of the activities the <i>previous</i> snapshot planned to
@@ -254,6 +288,8 @@ finish in the following month, how many this snapshot re-scheduled for that mont
 how many of those planned activities actually finished by the end of it. CEI = completed-on-time &divide; previously planned (1.00 = executed to plan; an unplanned finish in the month earns no credit).</p>
 <table><tr><th scope=col>Snapshot</th><th scope=col>Period</th><th scope=col>Previously planned</th><th scope=col>Re-scheduled</th>
 <th scope=col>Actually finished</th><th scope=col>CEI</th></tr>{rows}</table></div>
+<section class="cd-block cd-read"><h2>How to read this</h2>{beats}</section>
+</div>
 <script src="/static/cei.js"></script>
 <script src="/static/panelkit.js"></script>"""
 
