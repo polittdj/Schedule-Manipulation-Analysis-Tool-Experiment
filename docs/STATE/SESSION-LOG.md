@@ -16206,3 +16206,9 @@ shadows it on PATH).
 - **Hygiene:** `git fetch --prune` (GitHub deleted the merged head), the branch restarted from `origin/main`; the
   22:49Z check-in Routine deleted. No product code in this entry — docs only; drift guards recorded below.
 - **Drift guards (recorded AFTER the run):** `tests/test_state_docs.py` + `tests/test_standing_rules.py` **12 passed**; HANDOFF 4,101 bytes, one `# (prior)` heading.
+- **Operator answers (2026-09-03 evening):** the One-Pager `.pptx` opened in PowerPoint (ADR-0446's question CLOSED); the
+  blank-header banner and the 08-26 incident are unknown to the operator (UNKNOWABLE, no chase); /analysis scrolls better
+  with residual lag (OPEN, ADR-0449 residue). **NEW batch, not yet reproduced:** T-01 the Timescale "two tiers" setting
+  does not take effect; I-01 /integrity no longer picks up findings it once did (highest severity). Recorded in the ledger
+  with the instruments and the hypotheses to refute; queued BEFORE WP5. This session is at ~78% of its context wall —
+  handed to a fresh session rather than half-measured here.
