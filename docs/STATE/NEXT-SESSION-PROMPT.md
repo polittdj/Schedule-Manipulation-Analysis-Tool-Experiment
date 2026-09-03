@@ -13,8 +13,9 @@ instrument COMMITTED (`tools/route_coverage.py`, `SF_ROUTE_COVERAGE=1`, populati
 BY NAME in the ledger), Law 1's blocklist running in CI (`cui-guard`), `installer-smoke.yml` dispatchable; ADR-0456:
 /cei on the Claude Design layout) · WP0, its addendum, WP1, WP2, WP3 AND WP4 complete; the header root cause
 (ADR-0445), the One-Pager (ADR-0446), the OPERATOR BATCH (ADR-0447..0453) and WP3 (ADR-0454, #626) ALL MERGED;
-WP4 + /cei ride the draft PR opened at close from `claude/polaris-audit-wp4-huxuz3` — CHECK whether it merged
-before branching (if merged: branch fresh from `origin/main` for WP5 and open a NEW draft PR; if open: resume it).**
+WP4 + /cei MERGED as #628 → `main` @ `0f098cce` (2026-09-03 22:54Z) — branch fresh from `origin/main` for WP5 and
+open a NEW draft PR; read `main`'s run #1706 for that merge commit FIRST (in progress at close — a red there is
+yours to root-cause before building on it).**
 Campaign decisions (operator, 2026-08-27, standing): **SOLO lead · fix-as-verified · BOTH folder-ask builds**.
 QC-1/QC-2 bind every session — ADR-0393, pinned by `tests/test_standing_rules.py`. **git fetch origin before you
 branch, number an ADR, or commit — and RE-fetch before writing the docs.** **STANDING OPERATOR ASK (2026-09-03):

@@ -16195,3 +16195,14 @@ shadows it on PATH).
   (`exit 0`): the self-test reddens (a test of its own) · `goTo()` neutered: exactly the chip driver red / 3 green.
 - **Parity gate (`python -m pytest -m parity`, run separately after the suite): 72 passed / 0 skipped in 11:26**, exit 0 — Law 2 unmoved.
 - **PR:** draft **#628** from `claude/polaris-audit-wp4-huxuz3` (head `98a3b38c` + this docs line); subscribed for CI/review events; a check-in Routine armed ~65 min out.
+
+## 2026-09-03 (d) — PR #628 MERGED; branch restarted; main's merge-commit run in progress (docs-only)
+
+- **Merge:** #628 (WP4 · ADR-0455 + /cei · ADR-0456, v1.0.233) marked ready and squash-merged by the operator at
+  22:54:03Z → `main` @ `0f098cce`. On its head `cc8f5927`: `cui-guard` (13 s), `test (3.11)` (53 min), `browser`,
+  `floor`, `linux`, `windows` green; `test (3.13)` still running at the merge. `main`'s own run for the merge
+  commit is #1706 (created 22:54:06Z — 3 s after the push, the trigger latency this WP measured), in progress at
+  close; #1703 (the #627 merge) concluded `success` at 21:03Z, so `main` was green going in.
+- **Hygiene:** `git fetch --prune` (GitHub deleted the merged head), the branch restarted from `origin/main`; the
+  22:49Z check-in Routine deleted. No product code in this entry — docs only; drift guards recorded below.
+- **Drift guards (recorded AFTER the run):** `tests/test_state_docs.py` + `tests/test_standing_rules.py` **12 passed**; HANDOFF 4,101 bytes, one `# (prior)` heading.
