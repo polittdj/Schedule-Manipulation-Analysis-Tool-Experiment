@@ -16194,3 +16194,4 @@ shadows it on PATH).
   green · installer-smoke `workflow_dispatch:` deleted: exactly `[installer-smoke.yml]` red / 7 green · dead hook
   (`exit 0`): the self-test reddens (a test of its own) · `goTo()` neutered: exactly the chip driver red / 3 green.
 - **Parity gate (`python -m pytest -m parity`, run separately after the suite): 72 passed / 0 skipped in 11:26**, exit 0 — Law 2 unmoved.
+- **PR:** draft **#628** from `claude/polaris-audit-wp4-huxuz3` (head `98a3b38c` + this docs line); subscribed for CI/review events; a check-in Routine armed ~65 min out.
