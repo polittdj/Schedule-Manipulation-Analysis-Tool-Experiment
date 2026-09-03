@@ -1,0 +1,1768 @@
+Advanced Project Schedule Risk Analysis	Advanced Project Schedule Risk Analysis
+Presented by
+David T. Hulett, Ph.D.
+Hulett & Associates, LLC
+Project Management Consultants
+Los Angeles, CA USA
+info@projectrisk.com
+www.projectrisk.com
+(310) 476-7699
+© 2002 Hulett & Associates, LLC.
+
+-- 1 of 74 --
+
+© 2002 Hulett & Associates, LLC 2
+Agenda	Agenda
+ 	Introduction
+ 	Activity distributions and data entry
+ 	Risk along a schedule path
+ 	Risk of parallel paths -- the “Merge Bias”
+ 	Effect of limited resources
+ 	Effect of constraints
+
+-- 2 of 74 --
+
+© 2002 Hulett & Associates, LLC 3
+Agenda 	(continued)	Agenda 	(continued)
+ 	Sensitivity Analysis
+ 	“Risk Critical Path”
+ 	Risk in statused schedules
+ 	Probabilistic branching
+ 	Conditional branching
+ 	Correlation
+
+-- 3 of 74 --
+
+© 2002 Hulett & Associates, LLC 4
+Pitfalls in Relying on CPM	Pitfalls in Relying on CPM
+ 	CPM network scheduling is deterministic
+ 	Single-point activity durations
+ 	OK only if everything goes 	according to plan
+ 	CPM durations are really probabilistic assessments
+There are no “facts” about the future
+
+-- 4 of 74 --
+
+© 2002 Hulett & Associates, LLC 5
+Objectives of a Schedule Risk Analysis	Objectives of a Schedule Risk Analysis
+ 	Improve the accuracy of the schedule dates
+ 	Validate the CPM or contract dates
+ 	Establish a schedule contingency
+ 	Identify the risk-driving events
+ 	Communicate about and understand the project
+ 	Continuously monitor changing schedule risk
+
+-- 5 of 74 --
+
+© 2002 Hulett & Associates, LLC 6
+Three Basic Components of
+Schedule Risk Analysis
+Three Basic Components of
+Schedule Risk Analysis
+ 	Risk of the activity duration
+Design Unit 1
+30d
+
+-- 6 of 74 --
+
+© 2002 Hulett & Associates, LLC 7
+Three Basic Components 	(continued)	Three Basic Components 	(continued)
+ 	Risk of duration along a Path
+Start Design Unit 1 	Build Unit 1 Finish
+
+-- 7 of 74 --
+
+© 2002 Hulett & Associates, LLC 8
+Three Basic Components 	(continued)	Three Basic Components 	(continued)
+ 	Risk at a point where parallel paths merge
+Start
+Build Unit 1
+Build Unit 2
+Design Unit 1
+Design Unit 2
+Finish
+
+-- 8 of 74 --
+
+© 2002 Hulett & Associates, LLC 9
+Risk of an Individual Activity	Risk of an Individual Activity
+ 	Simple activity duration estimates are risky
+ 	Activity duration risk is similar to cost element risk
+Design Unit 1
+30d
+
+-- 9 of 74 --
+
+© 2002 Hulett & Associates, LLC 10
+4 Common Probability Distributions	4 Common Probability Distributions
+Completion Date
+Cumulative Probability
+7/24/02	7/1/02 	8/16/02
+0.1
+0.2
+0.3
+0.4
+0.5
+0.6
+0.7
+0.8
+0.9
+0.01
+0.02
+0.03
+0.04
+0.05
+0.06
+Completion Date
+Cumulative Probability
+7/19/02	7/1/02 	8/16/02
+0.1
+0.2
+0.3
+0.4
+0.5
+0.6
+0.7
+0.8
+0.9
+0.02
+0.04
+0.06
+0.08
+0.10
+Uniform 	Triangular
+
+-- 10 of 74 --
+
+© 2002 Hulett & Associates, LLC 11
+4 Common Probability Distributions
+(continued)
+4 Common Probability Distributions
+(continued)
+Completion Date
+Cumulative Probability
+7/24/02	7/1/02 	8/16/02
+0.1
+0.2
+0.3
+0.4
+0.5
+0.6
+0.7
+0.8
+0.9
+0.02
+0.04
+0.06
+0.08
+0.10
+0.12
+Completion Date
+Cumulative Probability
+7/16/02	7/1/02 	8/7/02
+0.1
+0.2
+0.3
+0.4
+0.5
+0.6
+0.7
+0.8
+0.9
+0.02
+0.04
+0.06
+0.08
+0.10
+0.12
+0.14
+Normal 	BETA
+
+-- 11 of 74 --
+
+© 2002 Hulett & Associates, LLC 12
+Data Collection	Data Collection
+ 	Assemble subject matter experts including people on
+the project
+ 	Ask them to review the highest-risk items
+– 	Pareto analysis – top 30% + of the elements contains
+most of the risk
+ 	Experts review elements
+– 	What areas are risky? What causes the risk?
+– 	What are the optimistic (low), most likely and pessimistic
+(high) durations for those elements?
+– 	Baseline schedule may not be the “most likely” duration
+
+-- 12 of 74 --
+
+© 2002 Hulett & Associates, LLC 13
+Data Collection 	(continued)	Data Collection 	(continued)
+ 	Judgmental estimates. Do not have historical data
+ 	Motivational biases
+– 	Want to make the project look good – project manager
+– 	Do not want to be seen as unable to do the job
+ 	Cognitive biases
+– 	Anchoring and Adjusting – underestimate risk
+– 	Availability – focus on what is dramatic or current
+– 	Representative – what does the information represent
+– 	Unthinkable consequences
+
+-- 13 of 74 --
+
+© 2002 Hulett & Associates, LLC 14
+Data Collection 	(continued)	Data Collection 	(continued)
+ 	Conduct the “Risk Interview” with facilitator
+ 	Challenge the teams’ ranges
+ 	Identify the places where failure might occur – tests fail
+– 	Likelihood of failure
+– 	Time to diagnose, plan and execute response, retest
+ 	Document the issues and findings
+
+-- 14 of 74 --
+
+© 2002 Hulett & Associates, LLC 15
+Data Entry & Data Editing	Data Entry & Data Editing
+ 	Data can be entered by task
+ 	Data can be entered as common % ranges
+ 	Entering or editing in Excel and copying over is easy
+ 	Select activities manually or by a code in some field, to
+indicate similarities among activities
+– 	E.g. all test activities get –25% and +100%
+– 	E.g. all fabrication activities get –30% and +40%
+– 	This is called “risk banding”
+
+-- 15 of 74 --
+
+© 2002 Hulett & Associates, LLC 16
+Risk Along a Contiguous Schedule Path	Risk Along a Contiguous Schedule Path
+ 	Path risk is the combination of the risks of its activities
+ 	This is also like cost risk, adding risks of individual cost
+elements to get the risk of the total
+Start
+Design
+Unit
+Build
+Unit Finish
+Test
+Unit
+
+-- 16 of 74 --
+
+© 2002 Hulett & Associates, LLC 17
+Really Simple Schedule	Really Simple Schedule
+ 	This schedule finishes on September 3
+– 	7-day weeks, like a model changeover, refinery turnaround
+ 	If we can get into trouble with this simple schedule, we can get
+into trouble with real project schedules
+ID Task Name 	Duration 	Start
+1 Project 	95 d 	6/1/02
+2 	Start 	0 d 	6/1/02
+3 	Design Unit 	30 d 	6/1/02
+4 	Build Unit 	40 d 	7/1/02
+5 	Test Unit 	25 d 	8/10/02
+6 	Finish 	0 d 	9/3/02
+6/1
+6/1 	6/30
+7/1 	8/9
+8/10 	9/3
+9/3
+May 	June 	July 	August September	October
+
+-- 17 of 74 --
+
+© 2002 Hulett & Associates, LLC 18
+Add Duration Risk to the Schedule using
+Triangular Distributions
+Add Duration Risk to the Schedule using
+Triangular Distributions
+ID 	Task Name 	Rept ID 	Min Rdur 	ML Rdur 	Max Rdur 	Curve
+1 	Project 	2 	0 d 	0 d 	0 d 	0
+2 	Start 	0 	0 d 	0 d 	0 d 	0
+3 	Design Unit 	0 	20 d 	30 d 	45 d 	2
+4 	Build Unit 	0 	35 d 	40 d 	50 d 	2
+5 	Test Unit 	0 	20 d 	25 d 	50 d 	2
+6 	Finish 	0 	0 d 	0 d 	0 d 	0
+We are using Risk+ from C/S Solutions. Other packages are @RISK from
+Palisade and Monte Carlo from Primavera. PERTMASTER Professional and
+Open Plan Professional have simulation capabilities built-in.
+
+-- 18 of 74 --
+
+© 2002 Hulett & Associates, LLC 19
+What is a Simulation?	What is a Simulation?
+ 	How do you find total project results?
+– 	Cannot add distributions
+– 	Must combine distributions
+ 	Combining distributions using simulation
+– 	Almost all possible combinations of durations
+– 	“Perform” the project many times
+
+-- 19 of 74 --
+
+© 2002 Hulett & Associates, LLC 20
+Combine Distributions by Simulation	Combine Distributions by Simulation
+ 	Monte Carlo simulation
+– 	Very General
+– 	50-year old method
+ 	Computer “performs” project many times
+– 	Exercise is a “simulation”
+– 	Each calculation is an “iteration”
+ 	Brute force solution
+– 	All combinations of possible costs or durations
+
+-- 20 of 74 --
+
+© 2002 Hulett & Associates, LLC 21
+Number of Iterations	Number of Iterations
+ 	How many iterations should we do?
+– 	Accuracy demanded
+– 	2,500 is sufficient
+– 	Final reports, ==> 10,000 iterations
+ 	Latin Hypercube
+– 	Stratified sampling for more accuracy
+
+-- 21 of 74 --
+
+© 2002 Hulett & Associates, LLC 22
+Common Sense Results can be Wrong!	Common Sense Results can be Wrong!
+“Well, if we just use the right “most likely” durations
+in our schedules we will get the most likely
+completion date. Right?”
+Wrong!
+
+-- 22 of 74 --
+
+© 2002 Hulett & Associates, LLC 23
+Monte Carlo Simulation Results
+for Really Simple Schedule
+Monte Carlo Simulation Results
+for Really Simple Schedule
+Date: 10/25/2001 3:42:21 PM
+Samples: 5000
+Unique ID: 2
+Name: Project
+Completion Std Deviation: 8.98 d
+Confidence Interval: 0.25 d
+Each bar represents 3 d
+Completion Date
+Frequency
+Cumulative Probability
+9/13/02	8/20/02 	10/15/02
+0.1
+0.2
+0.3
+0.4
+0.5
+0.6
+0.7
+0.8
+0.9
+0.02
+0.04
+0.06
+0.08
+0.10
+0.12
+Completion Probability Table
+Prob 	Prob	Date 	Date
+0.05 	8/31/02
+0.10 	9/2/02
+0.15 	9/4/02
+0.20 	9/5/02
+0.25 	9/7/02
+0.30 	9/8/02
+0.35 	9/10/02
+0.40 	9/11/02
+0.45 	9/12/02
+0.50 	9/13/02
+0.55 	9/14/02
+0.60 	9/15/02
+0.65 	9/17/02
+0.70 	9/18/02
+0.75 	9/20/02
+0.80 	9/21/02
+0.85 	9/23/02
+0.90 	9/26/02
+0.95 	9/29/02
+1.00 	10/15/02
+Nominal 9/3 Finish Date
+CPM date is not even the most likely – That’s about 9/10
+CPM date 9/3 is <15% Likely to be met
+80% Target is
+9/21
+
+-- 23 of 74 --
+
+© 2002 Hulett & Associates, LLC 24
+Risk at Merge Points:
+The “Merge Bias”
+Risk at Merge Points:
+The “Merge Bias”
+ 	Many parallel paths merge in a real schedule
+ 	Finish driven by the latest converging path
+ 	Merge Bias has been understood for 40 years
+Build Unit 1
+Build Unit 2
+Design Unit 1
+Design Unit 2
+FinishStart
+
+-- 24 of 74 --
+
+© 2002 Hulett & Associates, LLC 25
+Much Schedule Overrun Risk
+Occurs at Merge Points
+Much Schedule Overrun Risk
+Occurs at Merge Points
+ 	Complex schedules have activities in parallel
+ 	Merge points are important events
+– 	Completion of the project
+– 	Major design review
+– 	Beginning integration and test
+ 	Delay on any path may potentially delay the project
+ 	This extra risk is called the “Merge Bias”
+
+-- 25 of 74 --
+
+© 2002 Hulett & Associates, LLC 26
+Example of Merge Bias	Example of Merge Bias
+ 	Example of the Merge Bias
+– 	Make three project paths that are exactly the same
+– 	Same durations
+– 	Same risks
+– 	Start on the same day
+ 	CPM says this project, too, finishes on June 17
+ 	Is this reasonable? Is this project just as risky as the
+one-path project? More risky? Somehow less risky?
+
+-- 26 of 74 --
+
+© 2002 Hulett & Associates, LLC 27
+This Schedule has
+Three Equal Parallel Paths
+This Schedule has
+Three Equal Parallel Paths
+ID 	Task Name 	Rept ID Min Rdur 	ML Rdur 	Max Rdur 	Curve
+1 Project 	2 	0 d 	0 d 	0 d 	0
+2 	Start 	0 	0 d 	0 d 	0 d 	0
+3 	Unit 1 	1 	0 d 	0 d 	0 d 	0
+4 	Design Unit 1 0 	20 d 	30 d 	45 d 	2
+5 	Build Unit 1 	0 	35 d 	40 d 	50 d 	2
+6 	Test Unit 1 	0 	20 d 	25 d 	50 d 	2
+7 	Unit 2 	1 	0 d 	0 d 	0 d 	0
+11 	Unit 3 	1 	0 d 	0 d 	0 d 	0
+15 	Finish 	0 	0 d 	0 d 	0 d 	0
+6/1
+6/1 	6/30
+7/1 	8/9
+8/10 	9/3
+9/3
+May 	June 	July 	August September
+Two paths are collapsed
+Each path has exactly the same structure
+
+-- 27 of 74 --
+
+© 2002 Hulett & Associates, LLC 28
+Evidence of the Merge Bias	Evidence of the Merge Bias
+Three Path Schedule 	One Path Schedule
+
+-- 28 of 74 --
+
+© 2002 Hulett & Associates, LLC 29
+Evidence of Merge Bias 	(continued)	Evidence of Merge Bias 	(continued)
+Three Path Schedule 	One Path Schedule
+
+-- 29 of 74 --
+
+© 2002 Hulett & Associates, LLC 30
+What’s Happening Here?
+Likelihood of Two Events at Once
+What’s Happening Here?
+Likelihood of Two Events at Once
+ 	Success is only in the green area
+ 	Other scenarios represent failure
+Path A 	Path B 	Path A 	Path B 	Joint Probability
+Complete 	Complete 	10% 	10% 	1%
+Complete 	Not Complete 	10% 	90% 	9%
+Not Complete 	Complete 	90% 	10% 	9%
+Not Complete 	Not Complete 	90% 	90% 	81%
+100%	Total Likelihood
+Likelihood of Two Occurances Occuring Together
+
+-- 30 of 74 --
+
+© 2002 Hulett & Associates, LLC 31
+Resource Problems	Resource Problems
+ 	With real projects resources may be scarce
+ 	Unless resources are added, some activities must be
+delayed or stretched out
+ 	Critical Path Method (CPM) scheduling allows resource
+leveling and delays the project
+Each iteration is a CPM solution
+Each iteration must be resource-leveled
+
+-- 31 of 74 --
+
+© 2002 Hulett & Associates, LLC 32
+What Happens if Resources are Limited?	What Happens if Resources are Limited?
+ 	Limited Test Equipment means delaying Units 2 & 3
+ 	Resource leveling delays completion from 9/3 to 10/23
+ID Task Name 	Duration 	Start 	Finish
+1 Project 	145 d 	6/1/02 	10/23/02
+2 	Start 	0 d 	6/1/02 	6/1/02
+3 	Unit 1 	95 d 	6/1/02 	9/3/02
+4 	Design Unit 1 	30 d 	6/1/02 	6/30/02
+5 	Build Unit 1 	40 d 	7/1/02 	8/9/02
+6 	Test Unit 1 	25 d 	8/10/02 	9/3/02
+7 	Unit 2 	120 d 	6/1/02 	9/28/02
+8 	Design Unit 2 	30 d 	6/1/02 	6/30/02
+9 	Build Unit 2 	40 d 	7/1/02 	8/9/02
+10 	Test Unit 2 	25 d 	9/4/02 	9/28/02
+11 	Unit 3 	145 d 	6/1/02 	10/23/02
+12 	Design Unit 3 	30 d 	6/1/02 	6/30/02
+13 	Build Unit 3 	40 d 	7/1/02 	8/9/02
+14 	Test Unit 3 	25 d 	9/29/02 	10/23/02
+15 	Finish 	0 d 	10/23/02 	10/23/02
+6/1
+Test Equipment
+Test Equipment
+Test Equipment
+10/23
+May 	June 	July 	August 	SeptemberOctober November December
+
+-- 32 of 74 --
+
+© 2002 Hulett & Associates, LLC 33
+Leveling Resources and Schedule Risk	Leveling Resources and Schedule Risk
+Resource Leveled
+Simulation
+Simulation Not
+Resource Leveled
+
+-- 33 of 74 --
+
+© 2002 Hulett & Associates, LLC 34
+Imposing Constraint Dates
+on the Project Finish Date
+Imposing Constraint Dates
+on the Project Finish Date
+ 	Constraints are placed on the important delivery dates
+ 	This can help CPM scheduling
+– 	Negative float develop feasible schedules
+ 	Constraints are also used to make the project show
+success
+ 	Constraints left in the schedule frustrate risk analysis of
+the very items you care about
+
+-- 34 of 74 --
+
+© 2002 Hulett & Associates, LLC 35
+Imposing Constraint Dates
+on the Project Finish Date 	(continued)
+Imposing Constraint Dates
+on the Project Finish Date 	(continued)
+ 	We leave the Must Finish On 9/3/02 constraint on the
+finish milestone
+
+-- 35 of 74 --
+
+© 2002 Hulett & Associates, LLC 36
+Effect of a Not Later Than Or Must Finish
+On Constraint on the Simulation
+Effect of a Not Later Than Or Must Finish
+On Constraint on the Simulation
+ 	Project gives you a message about the constraint
+This tells you that you have a constraint that is binding
+ 	You can complete if you manually click the message
+ 	If you turn off messages you will never know whether you have
+constraints that bind
+Do Not Turn Off the Scheduling Messages
+
+-- 36 of 74 --
+
+© 2002 Hulett & Associates, LLC 37
+Effect of a Must Finish On Constraint	Effect of a Must Finish On Constraint
+ 	If the results are captured at the milestone, the results
+are very uninteresting and uninformative
+Date: 2/14/2002 10:41:45 AM
+Samples: 3000
+Unique ID: 7
+Name: Finish
+Completion Std Deviation: 0 d
+Confidence Interval: 0 d
+Each bar represents 1 d
+Completion Date
+Frequency
+Cumulative Probability
+9/3
+9/3	9/3
+0.1
+0.2
+0.3
+0.4
+0.5
+0.6
+0.7
+0.8
+0.9
+0.1
+0.2
+0.3
+0.4
+0.5
+0.6
+0.7
+0.8
+0.9
+Completion Probability Table
+Prob 	Prob	Date 	Date
+0.05 9/3
+0.10 9/3
+0.15 9/3
+0.20 9/3
+0.25 9/3
+0.30 9/3
+0.35 9/3
+0.40 9/3
+0.45 9/3
+0.50 9/3
+0.55 9/3
+0.60 9/3
+0.65 9/3
+0.70 9/3
+0.75 9/3
+0.80 9/3
+0.85 9/3
+0.90 9/3
+0.95 9/3
+1.00 9/3
+
+-- 37 of 74 --
+
+© 2002 Hulett & Associates, LLC 38
+Effect of “Must Finish On” Constraint	Effect of “Must Finish On” Constraint
+Date: 10/26/2001 4:02:30 PM
+Samples: 3000
+Unique ID: 2
+Name: Project
+Completion Std Deviation: 8.08 d
+Confidence Interval: 0.29 d
+Each bar represents 3 d
+Completion Date
+Frequency
+Cumulative Probability
+9/14/02	9/3/02 	10/14/02
+0.1
+0.2
+0.3
+0.4
+0.5
+0.6
+0.7
+0.8
+0.9
+0.03
+0.05
+0.08
+0.10
+0.13
+0.15
+0.17
+0.20
+0.22
+Completion Probability Table
+Prob 	Prob	Date 	Date
+0.05 9/3/02
+0.10 9/3/02
+0.15 9/4/02
+0.20 9/6/02
+0.25 9/7/02
+0.30 9/8/02
+0.35 9/10/02
+0.40 9/11/02
+0.45 9/12/02
+0.50 9/13/02
+0.55 9/14/02
+0.60 9/15/02
+0.65 9/17/02
+0.70 9/18/02
+0.75 9/20/02
+0.80 9/21/02
+0.85 9/23/02
+0.90 9/25/02
+0.95 9/29/02
+1.00 10/14/02
+Cannot go Earlier since the Milestone does not Move
+ 	If the results are gathered at the summary task, the results
+show only the “threat” side of the distribution
+
+-- 38 of 74 --
+
+© 2002 Hulett & Associates, LLC 39
+“Must Finish ON” will have Different Results
+if you use Summary Bar or Milestone
+“Must Finish ON” will have Different Results
+if you use Summary Bar or Milestone
+ID Task Name 	Duration 	Start 	Finish
+1 Project 	110 d 	6/1/02 	9/18/02
+2 	Start 	0 d 	6/1/02 	6/1/02
+3 	Design Unit 	30 d 	6/1/02 	6/30/02
+4 	Build Unit 	40 d 	7/1/02 	8/9/02
+5 	Test Unit 	40 d 	8/10/02 9/18/02
+6 	Finish 	0 d 	9/3/02 	9/3/02
+6/1
+6/1 	6/30
+7/1 	8/9
+8/10 	9/18
+9/3
+May 	June 	July 	August September	October
+Even if finish milestone might not be later, Test Unit can be, in
+Project. We’re using the Project summary bar for our results
+ 	What’s happening here? MS Project allows the
+predecessor activities extend PAST the FIXED milestone
+
+-- 39 of 74 --
+
+© 2002 Hulett & Associates, LLC 40
+Effect of “Finish Not Later Than” Constraint	Effect of “Finish Not Later Than” Constraint
+Date: 10/26/20014:01:13PM
+Samples: 3000
+Unique ID: 2
+Name: Project
+Completion Std Deviation: 8.81d
+ConfidenceInterval: 0.31 d
+Each bar represents 3d
+Completion Date
+Frequency
+Cumulative Probability
+9/14/02	8/22/02 	10/15/02
+0.1
+0.2
+0.3
+0.4
+0.5
+0.6
+0.7
+0.8
+0.9
+0.02
+0.04
+0.06
+0.08
+0.10
+0.12
+CompletionProbability Table
+Prob 	Prob	Date 	Date
+0.05 8/31/02
+0.10 9/3/02
+0.15 9/4/02
+0.20 9/6/02
+0.25 9/7/02
+0.30 9/8/02
+0.35 9/9/02
+0.40 9/11/02
+0.45 9/12/02
+0.50 9/13/02
+0.55 9/14/02
+0.60 9/15/02
+0.65 9/17/02
+0.70 9/18/02
+0.75 9/20/02
+0.80 9/21/02
+0.85 9/23/02
+0.90 9/25/02
+0.95 9/29/02
+1.00 10/15/02
+Collecting data at the Summary
+Bar – Correct because MS Project
+allows activities to exceed the date
+Date: 2/14/2002 10:53:00 AM
+Samples: 3000
+Unique ID: 7
+Name: Finish
+Completion Std Deviation: 1.28 d
+Confidence Interval: 0.04 d
+Each bar represents 1 d
+Completion Date
+Frequency
+Cumulative Probability
+9/2
+8/22 	9/3
+0.1
+0.2
+0.3
+0.4
+0.5
+0.6
+0.7
+0.8
+0.9
+0.1
+0.2
+0.3
+0.4
+0.5
+0.6
+0.7
+0.8
+0.9
+Completion Probability Table
+Prob 	Prob	Date 	Date
+0.05 8/31
+0.10 9/2
+0.15 9/2
+0.20 9/2
+0.25 9/2
+0.30 9/2
+0.35 9/2
+0.40 9/2
+0.45 9/2
+0.50 9/2
+0.55 9/2
+0.60 9/2
+0.65 9/2
+0.70 9/2
+0.75 9/2
+0.80 9/2
+0.85 9/2
+0.90 9/2
+0.95 9/2
+1.00 9/2
+Collecting data at the Finish
+Milestone – Incorrect because
+Constraint holds
+
+-- 40 of 74 --
+
+© 2002 Hulett & Associates, LLC 41
+What are the Highest Risk Activities?	What are the Highest Risk Activities?
+ 	We do not know in advance which path will delay the
+project
+ 	Monte Carlo simulation tells us which is most likely
+– 	Activities on critical path in most iterations
+ 	Path delaying the project may not be the critical path
+identified by CPM
+ 	This is “Schedule Critical” not Technically Critical
+– 	Combination of risk and low float (slack)
+
+-- 41 of 74 --
+
+© 2002 Hulett & Associates, LLC 42
+What are the Highest-Risk Activities?	What are the Highest-Risk Activities?
+“Critical” Unit 2 is Identified for Risk Mitigation
+ID Task Name 	Duration 	Start 	Finish
+1 Project 	95 d 	6/1/02 	9/3/02
+2 	Start 	0 d 	6/1/02 	6/1/02
+3 	Unit 1 	93 d 	6/1/02 	9/1/02
+4 	Design Unit 1 	28 d 	6/1/02 	6/28/02
+5 	Build Unit 1 	40 d 	6/29/02 	8/7/02
+6 	Test Unit 1 	25 d 	8/8/02 	9/1/02
+7 	Unit 2 	95 d 	6/1/02 	9/3/02
+8 	Design Unit 2 	30 d 	6/1/02 	6/30/02
+9 	Build Unit 2 	40 d 	7/1/02 	8/9/02
+10 	Test Unit 2 	25 d 	8/10/02 	9/3/02
+11 	Unit 3 	92 d 	6/1/02 	8/31/02
+12 	Design Unit 3 	30 d 	6/1/02 	6/30/02
+13 	Build Unit 3 	37 d 	7/1/02 	8/6/02
+14 	Test Unit 3 	25 d 	8/7/02 	8/31/02
+15 	Finish 	0 d 	9/3/02 	9/3/02
+6/1
+6/28
+8/7
+9/1
+6/30
+8/9
+9/3
+6/30
+8/6
+8/31
+9/3
+May 	June 	July 	August 	SeptemberOctober
+Units 1 & 3 are Shorter and Not Risk Mitigated
+
+-- 42 of 74 --
+
+© 2002 Hulett & Associates, LLC 43
+What are the
+Highest-Risk Activities? 	(continued)
+What are the
+Highest-Risk Activities? 	(continued)
+Unit 2 is
+Closely
+Managed
+but Units
+1 & 3 still
+Have
+Risk
+ID 	Task Name 	Rept ID 	Min Rdur 	ML Rdur 	Max Rdur 	Curve
+1 Project 	2 	0 d 	0 d 	0 d 	0
+2 	Start 	0 	0 d 	0 d 	0 d 	0
+3 	Unit 1 	1 	0 d 	0 d 	0 d 	0
+4 	Design Unit 1 	0 	18 d 	28 d 	43 d 	2
+5 	Build Unit 1 	0 	35 d 	40 d 	50 d 	2
+6 	Test Unit 1 	0 	20 d 	25 d 	50 d 	2
+7 	Unit 2 	1 	0 d 	0 d 	0 d 	0
+8 	Design Unit 2 	0 	26 d 	30 d 	38 d 	2
+9 	Build Unit 2 	0 	36 d 	40 d 	45 d 	2
+10 	Test Unit 2 	0 	22 d 	25 d 	35 d 	2
+11 	Unit 3 	1 	0 d 	0 d 	0 d 	0
+12 	Design Unit 3 	0 	20 d 	30 d 	45 d 	2
+13 	Build Unit 3 	0 	32 d 	37 d 	47 d 	2
+14 	Test Unit 3 	0 	20 d 	25 d 	50 d 	2
+
+-- 43 of 74 --
+
+© 2002 Hulett & Associates, LLC 44
+Use Sensitivity Analysis First	Use Sensitivity Analysis First
+ID 	Task Name 	Early FinishLate Finish Range
+6 	Test Unit 1 	9/3/02 	9/26/02 23 d
+14 	Test Unit 3 	9/3/02 	9/25/02 22 d
+4 	Design Unit 1 	9/3/02 	9/16/02 13 d
+10 	Test Unit 2 	9/1/02 	9/13/02 12 d
+12 	Design Unit 3 	9/3/02 	9/15/02 12 d
+8 	Design Unit 2 	9/1/02 	9/11/02 10 d
+5 	Build Unit 1 	9/3/02 	9/11/02 	8 d
+9 	Build Unit 2 	9/1/02 	9/8/02 	7 d
+13 	Build Unit 3 	9/3/02 	9/10/02 	7 d
+S M T W T F S S M T W T F S S M T W T F S S M T W T F S S M T
+Sep 1, '02 	Sep 8, '02 	Sep 15, '02 	Sep 22, '02 	Sep 29, '02
+Opportunities only in the
+CPM critical path for Unit 2
+Even if Units 1 & 3 are shorter, Unit 2
+keeps schedule from shortening
+
+-- 44 of 74 --
+
+© 2002 Hulett & Associates, LLC 45
+Risk Criticality of Activities	Risk Criticality of Activities
+ 	Risk Criticality is the likelihood that an activity will be on
+the path that delays the project
+– 	Activity may not be technically risky
+– 	Activity may not be risky, but path is
+ 	Percentage of iterations on the critical path
+
+-- 45 of 74 --
+
+© 2002 Hulett & Associates, LLC 46
+Risk Critical GANTT Chart	Risk Critical GANTT Chart
+ID 	Task Name 	Total Slack Critical % Critical Risk Critical
+1 Project 	0 d 	Yes 	100 	Yes
+2 	Start 	0 d 	Yes 	100 	No
+3 	Unit 1 	2 d 	No 	44 	Yes
+4 	Design Unit 12 d 	No 	44 	Yes
+5 	Build Unit 1 2 d 	No 	44 	Yes
+6 	Test Unit 1 2 d 	No 	44 	Yes
+7 	Unit 2 	0 d 	Yes 	18 	Yes
+8 	Design Unit 20 d 	Yes 	18 	No
+9 	Build Unit 2 0 d 	Yes 	18 	No
+10 	Test Unit 2 0 d 	Yes 	18 	No
+11 	Unit 3 	3 d 	No 	39 	Yes
+12 	Design Unit 33 d 	No 	39 	Yes
+13 	Build Unit 3 3 d 	No 	39 	Yes
+14 	Test Unit 3 3 d 	No 	39 	Yes
+15 	Finish 	0 d 	Yes 	100 	No
+100
+6/1
+44
+44
+44
+44
+18
+18 	6/30
+18 	8/9
+18 	9/3
+39
+39
+39
+39
+9/3
+May 	June 	July 	August September
+The “Critical Path” has been managed and is only 18% likely to
+delay the project. Now turn attention to Units 1 & 3
+
+-- 46 of 74 --
+
+© 2002 Hulett & Associates, LLC 47
+Handling Statused Activities	Handling Statused Activities
+ 	Risk range on remaining duration – Actuals are not risky
+ 	Hence the “Min Rdur,” ML Rdur,” “Max Rdur”
+ 	What happens when an activity has actual progress?
+– 	Design Unit has 70% complete, 9 days to go
+– 	On track to finish on 9/3
+ID Task Name 	Duration 	Start 	Finish
+1 Project 	95 d 	6/1/02 	9/3/02
+2 	Start 	0 d 	6/1/02 	6/1/02
+3 	Design Unit 	30 d 	6/1/02 	6/30/02
+4 	Build Unit 	40 d 	7/1/02 	8/9/02
+5 	Test Unit 	25 d 	8/10/02 	9/3/02
+6 	Finish 	0 d 	9/3/02 	9/3/02
+6/1
+6/1 	6/30
+7/1 	8/9
+8/10 	9/3
+9/3
+May 	June 	July 	August September	October
+
+-- 47 of 74 --
+
+© 2002 Hulett & Associates, LLC 48
+Adjusting the Durations for
+15 days of Actual Progress
+Adjusting the Durations for
+15 days of Actual Progress
+ID 	Task Name 	Rept ID 	Min Rdur 	ML Rdur 	Max Rdur 	Curve
+1 	Project 	2 	0 d 	0 d 	0 d 	0
+2 	Start 	0 	0 d 	0 d 	0 d 	0
+3 	Design Unit 	0 	20 d 	30 d 	45 d 	2
+4 	Build Unit 	0 	35 d 	40 d 	50 d 	2
+5 	Test Unit 	0 	20 d 	25 d 	50 d 	2
+6 	Finish 	0 	0 d 	0 d 	0 d 	0
+ID 	Task Name 	Rept ID 	Min Rdur 	ML Rdur 	Max Rdur 	Curve
+1 	Project 	2 	0 d 	0 d 	0 d 	0
+2 	Start 	0 	0 d 	0 d 	0 d 	0
+3 	Design Unit 	0 	5 d 	9 d 	15 d 	2
+4 	Build Unit 	0 	35 d 	40 d 	50 d 	2
+5 	Test Unit 	0 	20 d 	25 d 	50 d 	2
+6 	Finish 	0 	0 d 	0 d 	0 d 	0
+With only 9 days to go on Design, risk ranges
+adjusted to remaining duration. YES!
+Leave original risk ranges even though Design has progress? NO!
+
+-- 48 of 74 --
+
+© 2002 Hulett & Associates, LLC 49
+Handling Statused Activities 	(continued)	Handling Statused Activities 	(continued)
+Date: 10/26/2001 4:37:46 PM
+Samples: 3000
+Unique ID: 2
+Name: Project
+Completion Std Deviation: 9.03 d
+Confidence Interval: 0.32 d
+Each bar represents 3 d
+Completion Date
+Frequency
+Cumulative Probability
+10/5/02	9/12/02 	11/4/02
+0.1
+0.2
+0.3
+0.4
+0.5
+0.6
+0.7
+0.8
+0.9
+0.02
+0.04
+0.06
+0.08
+0.10
+0.12
+Completion Probability Table
+Prob 	Prob	Date 	Date
+0.05 	9/21/02
+0.10 	9/23/02
+0.15 	9/25/02
+0.20 	9/26/02
+0.25 	9/28/02
+0.30 	9/29/02
+0.35 	9/30/02
+0.40 	10/2/02
+0.45 	10/3/02
+0.50 	10/4/02
+0.55 	10/5/02
+0.60 	10/6/02
+0.65 	10/8/02
+0.70 	10/9/02
+0.75 	10/10/02
+0.80 	10/12/02
+0.85 	10/14/02
+0.90 	10/17/02
+0.95 	10/20/02
+1.00 	11/4/02
+If you do not change the risk ranges, expected completion is 10/5
+
+-- 49 of 74 --
+
+© 2002 Hulett & Associates, LLC 50
+Handling Statused Activities 	(continued)	Handling Statused Activities 	(continued)
+Date: 10/26/2001 4:46:38 PM
+Samples: 3000
+Unique ID: 2
+Name: Project
+Completion Std Deviation: 7.57 d
+Confidence Interval: 0.27 d
+Each bar represents 3 d
+Completion Date
+Frequency
+Cumulative Probability
+9/12/02	8/25/02 	10/6/02
+0.1
+0.2
+0.3
+0.4
+0.5
+0.6
+0.7
+0.8
+0.9
+0.02
+0.04
+0.06
+0.08
+0.10
+0.12
+0.14
+0.16 Completion Probability Table
+Prob 	Prob	Date 	Date
+0.05 	9/1/02
+0.10 	9/3/02
+0.15 	9/5/02
+0.20 	9/6/02
+0.25 	9/7/02
+0.30 	9/8/02
+0.35 	9/9/02
+0.40 	9/10/02
+0.45 	9/11/02
+0.50 	9/12/02
+0.55 	9/13/02
+0.60 	9/14/02
+0.65 	9/15/02
+0.70 	9/16/02
+0.75 	9/18/02
+0.80 	9/19/02
+0.85 	9/21/02
+0.90 	9/23/02
+0.95 	9/26/02
+1.00 	10/6/02
+After changing the risk ranges to reflect progress,
+expected completion is 9/12
+
+-- 50 of 74 --
+
+© 2002 Hulett & Associates, LLC 51
+Probabilistic Branching	Probabilistic Branching
+ 	Many projects have points where there is a possibility of
+failure, a discontinuous event
+ 	Have to model the likelihood of the failure and its
+consequence for the schedule
+ 	Called “Probabilistic Branching”
+Probabilistic branching is an advanced feature
+found in Risk+, @RISK, PERTMASTER and
+Monte Carlo
+
+-- 51 of 74 --
+
+© 2002 Hulett & Associates, LLC 52
+Model the Probabilistic Branch	Model the Probabilistic Branch
+ 	Typically we do not include failure in schedule
+– 	Add FIXIT and Retest
+– 	Preserve the 9/3 finish date (with 0 duration)
+ 	Enter ranges for the new activities
+ID 	Task NameDuration	Rept ID Min Rdur ML Rdur Max Rdur Curve
+1 Project 	95 d 2 	0 d 	0 d 	0 d 	0
+2 	Start 	0 d 0 	0 d 	0 d 	0 d 	0
+3 	Design Unit	30 d 0 	5 d 	9 d 	15 d 	2
+4 	Build Unit 40 d 0 	35 d 	40 d 	50 d 	2
+5 	Test Unit 25 d 0 	20 d 	25 d 	50 d 	2
+6 	FIXIT 	0 d 0 	15 d 	30 d 	60 d 	0
+7 	Retest 	0 d 0 	20 d 	25 d 	35 d 	0
+8 	Finish 	0 d 0 	0 d 	0 d 	0 d 	0
+6/1
+6/1 	6/30
+7/1 	8/9
+8/10 	9/3
+9/3
+9/3
+9/3
+May June July AugustSeptember	October
+
+-- 52 of 74 --
+
+© 2002 Hulett & Associates, LLC 53
+Logic of Probabilistic Branch	Logic of Probabilistic Branch
+Test Unit
+Start: 8/10/02	ID: 5
+Finish: 9/3/02	Dur: 25 d
+Res:
+FIXIT
+Milestone Date: Tue 9/3/02
+ID: 6
+Retest
+Milestone Date: Tue 9/3/02
+ID: 7
+Finish
+Milestone Date: Tue 9/3/02
+ID: 8
+Succeed
+70%
+Branch
+Fail 30% Branch
+New Activities
+
+-- 53 of 74 --
+
+© 2002 Hulett & Associates, LLC 54
+Branching in the Risk Entry Table	Branching in the Risk Entry Table
+ID 	Task Name 	Rept ID 	Min Rdur 	ML Rdur 	Max Rdur 	Curve 	Branch Def 	Branch ID
+1 	Project 	2 	0 d 	0 d 	0 d 	0
+2 	Start 	0 	0 d 	0 d 	0 d 	0
+3 	Design Unit 	0 	5 d 	9 d 	15 d 	2
+4 	Build Unit 	0 	35 d 	40 d 	50 d 	2
+5 	Test Unit 	0 	20 d 	25 d 	50 d 	2 	6:30,8:70
+6 	FIXIT 	0 	15 d 	30 d 	60 d 	2 	6
+7 	Retest 	0 	20 d 	25 d 	35 d 	2 	6
+8 	Finish 	0 	0 d 	0 d 	0 d 	0
+
+-- 54 of 74 --
+
+© 2002 Hulett & Associates, LLC 55
+Typical Bi-Modal Result Distribution	Typical Bi-Modal Result Distribution
+Date: 10/27/2001 8:45:14 AM
+Samples: 3000
+Unique ID: 1
+Name: Project
+Completion Std Deviation: 30.03 d
+Confidence Interval: 1.08 d
+Each bar represents 10 d
+Completion Date
+Frequency
+Cumulative Probability
+9/11/02	8/4/02 	12/2/02
+0.1
+0.2
+0.3
+0.4
+0.5
+0.6
+0.7
+0.8
+0.9
+0.05
+0.10
+0.15
+0.20
+0.25
+0.30
+Completion Probability Table
+Prob 	Prob	Date 	Date
+0.05 	8/12/02
+0.10 	8/14/02
+0.15 	8/16/02
+0.20 	8/18/02
+0.25 	8/19/02
+0.30 	8/21/02
+0.35 	8/22/02
+0.40 	8/24/02
+0.45 	8/25/02
+0.50 	8/27/02
+0.55 	8/29/02
+0.60 	9/1/02
+0.65 	9/4/02
+0.70 	10/3/02
+0.75 	10/13/02
+0.80 	10/18/02
+0.85 	10/23/02
+0.90 	10/29/02
+0.95 	11/5/02
+1.00 	12/2/02
+Success
+Failure
+
+-- 55 of 74 --
+
+© 2002 Hulett & Associates, LLC 56
+Conditional Branching	Conditional Branching
+ 	Contingency Planning Problem
+ 	Propulsion System Alternative A is preferred by customer
+– 	Alternative A is new and risky
+ 	Alternative B is the back up, contingency plan
+– 	Acceptable, not preferred
+ 	We care about the schedule, too
+ 	How long do we stick with Alternative A and under what
+condition do we go to Alternative B?
+Conditional branching is an advanced feature
+found in @RISK, Monte Carlo and Risk+
+
+-- 56 of 74 --
+
+© 2002 Hulett & Associates, LLC 57
+Schedule with Alternatives A & B	Schedule with Alternatives A & B
+ID Task Name 	Duration 	Start 	Finish
+1 Project 	300 d 	6/1/02 	3/27/03
+2 	Start 	0 d 	6/1/02 	6/1/02
+3 Preferred Alt A 	300 d 	6/1/02 	3/27/03
+4 	Design Alt. A 	100 d 	6/1/02 	9/8/02
+5 	Build and Test Alt. A 200 d 	9/9/02 	3/27/03
+6 Backup Alt. B 	298 d 	6/1/02 	3/25/03
+7 	Design Alt. B 	85 d 	6/1/02 	8/24/02
+8 	Build and Test Alt. B 185 d 	9/22/02 3/25/03
+9 	Finish 	0 d 	3/27/03 3/27/03
+6/1
+9/8
+3/27
+8/24
+3/25
+3/27
+2nd Quarter3rd Quarter 4th Quarter 1st Quarter 2nd Quarter3rd Quarter
+Build and Test Alt. B SNET 9/22, the day
+after the decision about Alt. A
+
+-- 57 of 74 --
+
+© 2002 Hulett & Associates, LLC 58
+Risk Information for Alternatives A and B	Risk Information for Alternatives A and B
+ID 	Task Name 	Rept ID 	Min Rdur 	ML Rdur 	Max Rdur 	Curve
+1 Project 	2 	0 d 	0 d 	0 d 	0
+2 Start 	0 	0 d 	0 d 	0 d 	0
+3 Preferred Alt A 	0 	0 d 	0 d 	0 d 	0
+4 Design Alt. A 	0 	85 d 	100 d 	200 d 	2
+5 Build and Test Alt. A0 	180 d 	200 d 	275 d 	2
+6 Backup Alt. B 	0 	0 d 	0 d 	0 d 	0
+7 Design Alt. B 	0 	75 d 	85 d 	200 d 	2
+8 Build and Test Alt. B0 	175 d 	185 d 	210 d 	2
+9 Finish 	0 	0 d 	0 d 	0 d 	0
+Alternative B is Less Desirable but
+Less Risky
+Alternative A has Wider Ranges,
+Longer Design Time
+
+-- 58 of 74 --
+
+© 2002 Hulett & Associates, LLC 59
+What Happens if there is No Backup Alt. B?	What Happens if there is No Backup Alt. B?
+ID Task Name 	Duration 	Start 	Finish
+1 Project 	300 d 6/1/02 	3/27/03
+2 Start 	0 d 	6/1/02 	6/1/02
+3 Preferred Alt A 	300 d 6/1/02 	3/27/03
+4 Design Alt. A 	100 d 	6/1/02 	9/8/02
+5 Build and Test Alt. A	200 d 	9/9/02 	3/27/03
+6 Backup Alt. B 	298 d 6/1/02 	3/25/03
+7 Design Alt. B 	85 d 	6/1/02 	8/24/02
+8 Build and Test Alt. B0 d 	9/22/02 9/22/02
+9 Finish 	0 d 	3/27/03 3/27/03
+6/1
+9/8
+3/27
+8/24
+9/22
+3/27
+2nd Quarter3rd Quarter4th Quarter1st Quarter2nd Quarter3rd Quarter
+Zero out Build and Test Alt. B so
+Alt. A is the only one
+
+-- 59 of 74 --
+
+© 2002 Hulett & Associates, LLC 60
+If Must Go with Alt. A, (if there is No Alt. B),
+80% Date is 6/10/03
+If Must Go with Alt. A, (if there is No Alt. B),
+80% Date is 6/10/03
+Date: 11/20/2001 9:28:10 PM
+Samples: 3000
+Unique ID: 2
+Name: Project
+Completion Std Deviation: 32.04 d
+Confidence Interval: 1.15 d
+Each bar represents 10 d
+Completion Date
+Frequency
+Cumulative Probability
+5/13/03	2/27/03 	8/30/03
+0.1
+0.2
+0.3
+0.4
+0.5
+0.6
+0.7
+0.8
+0.9
+0.02
+0.04
+0.06
+0.08
+0.10
+Completion Probability Table
+Prob 	Prob	Date 	Date
+0.05 	3/25/03
+0.10 	4/3/03
+0.15 	4/9/03
+0.20 	4/14/03
+0.25 	4/19/03
+0.30 	4/23/03
+0.35 	4/28/03
+0.40 	5/2/03
+0.45 	5/6/03
+0.50 	5/11/03
+0.55 	5/16/03
+0.60 	5/19/03
+0.65 	5/25/03
+0.70 	5/29/03
+0.75 	6/4/03
+0.80 	6/10/03
+0.85 	6/17/03
+0.90 	6/26/03
+0.95 	7/10/03
+1.00 	8/30/03
+
+-- 60 of 74 --
+
+© 2002 Hulett & Associates, LLC 61
+If No Alternative B,
+Alternative A is 100% Likely
+If No Alternative B,
+Alternative A is 100% Likely
+ID 	Task Name 	Total Slack Critical % Critical
+1 Project 	0 d 	Yes 	100
+2 	Start 	0 d 	Yes 	100
+3 	Preferred Alt A 	0 d 	Yes 	100
+4 	Design Alt. A 	0 d 	Yes 	100
+5 	Build and Test Alt. A 	0 d 	Yes 	100
+6 	Backup Alt. B 	215 d 	No 	0
+7 	Design Alt. B 	215 d 	No 	0
+8 	Build and Test Alt. B 	215 d 	No 	0
+9 	Finish 	0 d 	Yes 	100
+100
+6/1
+100
+100
+100
+0
+8/24
+3/27
+2nd Quarter3rd Quarter4th Quarter1st Quarter2nd Quarter3rd Quarter
+
+-- 61 of 74 --
+
+© 2002 Hulett & Associates, LLC 62
+Choosing Alt. B if Alt. A Design is Later than
+9/21 – 80% Date is Now 5/3/03
+Choosing Alt. B if Alt. A Design is Later than
+9/21 – 80% Date is Now 5/3/03
+Date: 11/20/2001 9:35:44 PM
+Samples: 3000
+Unique ID: 2
+Name: Project
+Completion Std Deviation: 26.91 d
+Confidence Interval: 0.96 d
+Each bar represents 10 d
+Completion Date
+Frequency
+Cumulative Probability
+4/9/03	2/9/03 	7/4/03
+0.1
+0.2
+0.3
+0.4
+0.5
+0.6
+0.7
+0.8
+0.9
+0.02
+0.04
+0.06
+0.08
+0.10
+0.12
+0.14
+Completion Probability Table
+Prob 	Prob	Date 	Date
+0.05 	2/27/03
+0.10 	3/6/03
+0.15 	3/12/03
+0.20 	3/16/03
+0.25 	3/20/03
+0.30 	3/24/03
+0.35 	3/27/03
+0.40 	3/31/03
+0.45 	4/3/03
+0.50 	4/7/03
+0.55 	4/11/03
+0.60 	4/14/03
+0.65 	4/18/03
+0.70 	4/23/03
+0.75 	4/28/03
+0.80 	5/3/03
+0.85 	5/10/03
+0.90 	5/17/03
+0.95 	5/28/03
+1.00 	7/4/03
+
+-- 62 of 74 --
+
+© 2002 Hulett & Associates, LLC 63
+Switch to Alt. B if Design on Alt. A is Later
+than 9/21 – Which Technology is Used?
+Switch to Alt. B if Design on Alt. A is Later
+than 9/21 – Which Technology is Used?
+Plan A is Chosen only 33% of the Time
+Plan B is Chosen 67% of the Time
+ID 	Task Name 	Total SlackCritical % Critical
+1 Project 	0 d 	Yes 	100
+2 	Start 	0 d 	Yes 	100
+3 	Preferred Alt A 	0 d 	Yes 	33
+4 	Design Alt. A 	0 d 	Yes 	33
+5 	Build and Test Alt. A 0 d 	Yes 	33
+6 	Backup Alt. B 	30 d 	No 	67
+7 	Design Alt. B 	30 d 	No 	67
+8 	Build and Test Alt. B 30 d 	No 	67
+9 	Finish 	0 d 	Yes 	100
+100
+6/1
+33
+33
+33
+67
+67
+67
+3/27
+2nd Quarter	3rd Quarter	4th Quarter	1st Quarter	2nd Quarter	3rd Quarter
+
+-- 63 of 74 --
+
+© 2002 Hulett & Associates, LLC 64
+Summary of Conditional Branch Exercise	Summary of Conditional Branch Exercise
+Scenario Technology A Only,
+No Plan B
+Decide Plan B at
+9/21/02
+Mean Date 	5/13 	4/9
+Probability 80% 	6/10 	5/3
+Probability Using Tech A 	100% 	33%
+Results of Scenario
+
+-- 64 of 74 --
+
+© 2002 Hulett & Associates, LLC 65
+Causes of Correlation	Causes of Correlation
+ 	Correlation between activity durations
+– 	When two activities’ durations “move together”
+– 	They are driven by a common risk driver
+State-of-
+the- Art
+Technology
+Software
+Designing
+Software
+Coding
+
+-- 65 of 74 --
+
+© 2002 Hulett & Associates, LLC 66
+For Ease of Data Entry,
+Use Quick Setup
+For Ease of Data Entry,
+Use Quick Setup
+ 	For expediency, use risk banding
+– 	Low = -25%
+– 	High = +50%
+– 	Distribution = triangular
+ID 	Task Name 	Rept IDMin Rdur ML Rdur Max Rdur Curve
+1 Project 	2 	0 d 	0 d 	0 d 	0
+2 	Start 	0 	0 d 	0 d 	0 d 	2
+3 	Design 	0 	56.25 d 75 d 	112.5 d 2
+4 	Code Software 0 	150 d 	200 d 300 d 	2
+5 	Unit Test Software	0 	37.5 d 50 d 	75 d 	2
+6 	Finish 	0 	0 d 	0 d 	0 d 	2
+6/1
+4/21
+2nd Quarter	3rd Quarter	4th Quarter	1st Quarter	2nd Quarter
+Correlation is an advanced
+feature found in @RISK,
+PERTMASTER and Risk+.
+Monte Carlo has
+rudimentary correlation
+
+-- 66 of 74 --
+
+© 2002 Hulett & Associates, LLC 67
+Simulation With No Correlation	Simulation With No Correlation
+Date: 11/12/2001 9:15:12 P M
+S am ples : 3000
+Unique ID: 1
+Nam e: P roject
+Com pletion S td Deviation: 34.11 d
+Confidence Interval: 1.22 d
+E ac h bar repres ents 15 d
+Completion Date
+Frequency
+Cumulative Probability
+5/19/03	2/8/03 	8/29/03
+0.1
+0.2
+0.3
+0.4
+0.5
+0.6
+0.7
+0.8
+0.9
+0.02
+0.04
+0.06
+0.08
+0.10
+0.12
+0.14
+0.16 Com pletion P robability Table
+P rob 	P rob	Date 	Date
+0.05 	3/28/03
+0.10 	4/7/03
+0.15 	4/13/03
+0.20 	4/18/03
+0.25 	4/23/03
+0.30 	4/29/03
+0.35 	5/3/03
+0.40 	5/7/03
+0.45 	5/11/03
+0.50 	5/15/03
+0.55 	5/20/03
+0.60 	5/25/03
+0.65 	5/30/03
+0.70 	6/5/03
+0.75 	6/11/03
+0.80 	6/18/03
+0.85 	6/26/03
+0.90 	7/4/03
+0.95 	7/18/03
+1.00 	8/29/03
+No Correlations
+Sigma 34.1 days
+Range 2/8 – 8/29/03
+
+-- 67 of 74 --
+
+© 2002 Hulett & Associates, LLC 68
+Results of Correlated Durations	Results of Correlated Durations
+Date: 11/12/2001 9:11:06 PM
+Samples: 3000
+Unique ID: 1
+Name: Project
+Completion Std Deviation: 49.24 d
+Confidence Interval: 1.76 d
+Each bar represents 15 d
+Completion Date
+Frequency
+Cumulative Probability
+5/18/03	2/1/03 	9/28/03
+0.1
+0.2
+0.3
+0.4
+0.5
+0.6
+0.7
+0.8
+0.9
+0.02
+0.04
+0.06
+0.08
+0.10
+Completion Probability Table
+Prob 	Prob	Date 	Date
+0.05 3/4/03
+0.10 3/15/03
+0.15 3/25/03
+0.20 4/3/03
+0.25 4/11/03
+0.30 4/18/03
+0.35 4/24/03
+0.40 4/30/03
+0.45 5/7/03
+0.50 5/13/03
+0.55 5/20/03
+0.60 5/27/03
+0.65 6/4/03
+0.70 6/13/03
+0.75 6/22/03
+0.80 7/2/03
+0.85 7/12/03
+0.90 7/26/03
+0.95 8/12/03
+1.00 9/28/03
+Correlations = .9
+Sigma 49.2 d, Larger than 34.1 d
+Range 2/1 – 9/28, Wider than 2/8 – 8/28
+
+-- 68 of 74 --
+
+© 2002 Hulett & Associates, LLC 69
+Correlation Methods	Correlation Methods
+ 	Most software uses Spearman rank order correlation
+– 	@RISK for Project, PERTMASTER, Excel and Crystal Ball for
+Excel
+– 	No known relationship to Pearson correlation
+ 	Risk+ has just adopted correlation and uses Pearson’s approach
+– 	This is what we think of when we specify correlation
+– 	Uses a Lurie-Goldberg iteration for non-normal distributions
+ 	Monte Carlo just uses perfect positive correlation
+
+-- 69 of 74 --
+
+© 2002 Hulett & Associates, LLC 70
+This Correlation Matrix is Not Feasible	This Correlation Matrix is Not Feasible
+ 	Correlation Matrix may be infeasible
+ 	Eigenvalue (determinant) test used to test feasibility
+Test	Code	Design
+.9	.9	1.0	Design
+.2	1.0	.9	Code
+1.0	.2	.9	Test
+
+-- 70 of 74 --
+
+© 2002 Hulett & Associates, LLC 71
+Software Performs Test	Software Performs Test
+ 	Alerts the user
+– 	The matrix is inconsistent with the natural world
+– 	These coefficients could not coexist
+ 	The program then offers to adjust the matrix so that it
+just barely passes the test
+– 	The user can see where the problems are
+– 	Risk+ allows the user to indicate the relative confidence
+of the coefficients, and adjusts mainly the less confident
+ones
+
+-- 71 of 74 --
+
+© 2002 Hulett & Associates, LLC 72
+Schedule Risk Analysis Summary	Schedule Risk Analysis Summary
+ 	Introduction
+ 	Activity distributions and data entry
+ 	Risk along a schedule path
+ 	Risk of parallel paths -- the “Merge Bias”
+ 	Effect of limited resources
+ 	Effect of constraints
+
+-- 72 of 74 --
+
+© 2002 Hulett & Associates, LLC 73
+Schedule Risk Analysis Summary
+(continued)
+Schedule Risk Analysis Summary
+(continued)
+ 	Sensitivity Analysis
+ 	“Risk Critical Path”
+ 	Risk in statused schedules
+ 	Probabilistic branching
+ 	Conditional branching
+ 	Correlations
+
+-- 73 of 74 --
+
+Advanced Project Schedule Risk Analysis	Advanced Project Schedule Risk Analysis
+Presented by
+David T. Hulett, Ph.D.
+Hulett & Associates, LLC
+Project Management Consultants
+Los Angeles, CA
+info@projectrisk.com
+www.projectrisk.com
+(310) 476-7699
+© 2002 Hulett & Associates, LLC.
+
+-- 74 of 74 --
+
