@@ -1,0 +1,1113 @@
+/* Schedule Forensics — interactive visuals (M14). Vendored locally; no CDN, no external fetch. */
+#viz { margin-top: 6px; }
+.viz-controls { margin: 9px 0; color: var(--muted); display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.viz-controls input[type=number] { width: 74px; }
+/* Scale zoom: a −/+ button pair (replaces the range slider). Inherits the themed default button
+   (var(--accent)/var(--btn-ink)); just made compact and square so it reads as a stepper. */
+.zoom-controls { display: inline-flex; align-items: center; gap: 4px; }
+.zoom-controls .zoom-btn { min-width: 28px; padding: 2px 9px; font-size: 15px; font-weight: 700; line-height: 1.15; }
+.charts { display: flex; gap: 24px; flex-wrap: wrap; }
+.chart { flex: 1 1 320px; min-width: 280px; }
+.chart h3, #gantt h3 { font-size: 13px; color: var(--muted); margin: 6px 0; font-weight: 600; }
+.bar-row { display: grid; grid-template-columns: 150px 1fr 48px; align-items: center; gap: 8px; margin: 3px 0; font-size: 13px; }
+.bar-track { background: var(--field-bg); border-radius: 4px; height: 16px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 4px; }
+.bar-fill.ok { background: var(--ok); }
+.bar-fill.bad { background: var(--bad); }
+.bar-fill.warn { background: var(--warn); }
+.bar-fill.accent { background: var(--accent); }
+.field-toggles { display: flex; gap: 12px; flex-wrap: wrap; margin: 8px 0; font-size: 13px; color: var(--muted); }
+.field-toggles label { cursor: pointer; }
+#grid { overflow-x: auto; overflow-y: auto; max-height: 80vh; }
+#grid table { min-width: 100%; }
+#grid th { cursor: pointer; user-select: none; }
+#grid th.sorted::after { content: " \25B4"; }
+#grid th.sorted.desc::after { content: " \25BE"; }
+#grid tr.crit td:first-child { border-left: 3px solid var(--bad); }
+#grid tbody tr { cursor: pointer; }
+#grid tbody tr:hover { background: var(--hover); }
+.drill { margin-top: 12px; padding: 12px 14px; background: var(--field-bg); border: 1px solid var(--line); border-radius: 8px; display: none; }
+.drill.show { display: block; }
+.drill h3 { margin: 0 0 8px; color: var(--accent); font-size: 14px; }
+.drill dl { display: grid; grid-template-columns: 180px 1fr; gap: 2px 12px; font-size: 13px; margin: 0; }
+.drill dt { color: var(--muted); }
+/* MS-Project-style Gantt: data columns left, SCALABLE timeline column right (px/day + scroll).
+   The timeline track/scale carry an explicit px width set inline by app.js, so the whole grid
+   scrolls horizontally (#grid overflow above) at the chosen zoom instead of squeezing the span. */
+/* the timeline header + body cells share ZERO horizontal padding so the month ticks line up
+   exactly over the bars (both hold a px-wide div positioned by the same axis.x mapping) */
+.gantt-grid th.g-head { position: relative; cursor: default; padding: 4px 0; }
+/* MS-Project: lock the column headers + the timescale so they stay visible as the grid scrolls.
+   The whole <thead> (column titles + any per-column filter row) sticks to the top of its own
+   scroll pane (#grid / .path-view / .sra-grid-host, each capped with max-height). An opaque
+   background keeps body rows from showing through, and a bottom border seats it like MS Project. */
+.gantt-grid thead { position: sticky; top: 0; z-index: 3; }
+.gantt-grid thead th, .gantt-grid thead td { background: var(--gantt-canvas); }
+.gantt-grid thead tr:last-child th, .gantt-grid thead tr:last-child td {
+  border-bottom: 1px solid var(--gantt-grid-qtr);
+}
+/* MS-Project frozen data columns: SFGantt.freezeColumns() pins every column except the scalable
+   timeline to the left edge (position:sticky + a per-column left offset set inline) so the data
+   stays visible while the wide timeline scrolls left↔right. An opaque canvas background stops the
+   scrolling bars from showing through, a heavier right border marks the freeze line, and the header
+   corner sits above both the body cells and the timeline track. */
+.gantt-grid .sf-frozen-col { background: var(--gantt-canvas); z-index: 2; }
+.gantt-grid thead .sf-frozen-col { z-index: 4; }
+.gantt-grid .sf-frozen-last { border-right: 2px solid var(--gantt-grid-qtr); }
+#grid tbody tr:hover .sf-frozen-col { background: var(--hover); }
+.g-scale { position: relative; height: 18px; }
+.gantt-grid td.name-cell { white-space: normal; word-break: break-word; min-width: 280px; max-width: 460px; }
+.g-tick { position: absolute; bottom: 2px; transform: translateX(-50%); font-size: 10px; color: var(--muted); font-weight: 400; white-space: nowrap; }
+/* The cell is the continuous chart surface (canvas background + position:relative so the
+   non-working-time layer fills the full row with no white gap between rows); the inner track is
+   transparent and just hosts the bars/gridlines. */
+.g-cell { padding: 4px 0; position: relative; background: var(--gantt-canvas); }
+.g-track { position: relative; height: 16px; background: transparent; border-radius: 3px; overflow: hidden; }
+.g-bar { position: absolute; top: 3px; height: 10px; border-radius: 3px; background: var(--accent); }
+.g-bar.g-crit { background: var(--bad); }
+.g-bar.g-sum { top: 6px; height: 4px; background: var(--gantt-sum); border-radius: 1px; }
+/* MS-Project summary bar: a thin dark bar with downward end-caps (the WBS "bracket" look) */
+.g-bar.g-sum::before, .g-bar.g-sum::after {
+  content: ""; position: absolute; top: 0; border-style: solid; border-width: 5px 3px 0;
+  border-color: var(--gantt-sum) transparent transparent;
+}
+.g-bar.g-sum::before { left: 0; } .g-bar.g-sum::after { right: 0; }
+.g-done { height: 100%; background: var(--gantt-done); border-radius: 3px 0 0 3px; }
+/* Risk-critical Gantt tint (ADR-0272): when the SSI grid's "tint by criticality" toggle is on,
+   each bar is recolored by its Criticality Index — the fraction of the last SRA run's iterations
+   the activity was critical — using the sanctioned, theme-INDEPENDENT risk-heat palette (the same
+   fixed hexes as base.css .rk-*; the risk-heat exception to the token rule, semantics fixed in
+   light and dark). Cool green = never critical (low schedule risk) → hot red = near-always
+   critical (risk-critical). Overrides the planned/g-crit background; the g-done overlay stays. */
+.g-bar.g-ci-0 { background: #2e7d32; }  /* CI = 0 — never on the critical path */
+.g-bar.g-ci-1 { background: #9e9d24; }  /* CI < 20% */
+.g-bar.g-ci-2 { background: #f9a825; }  /* CI 20–50% */
+.g-bar.g-ci-3 { background: #ef6c00; }  /* CI 50–80% */
+.g-bar.g-ci-4 { background: #c62828; }  /* CI ≥ 80% — near-always critical */
+/* the tint legend under the grid controls: small swatches (reuse the .rk-* palette) + provenance */
+.ci-legend { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.ci-sw { display: inline-block; width: 11px; height: 11px; border-radius: 2px; vertical-align: middle; }
+.g-ms { position: absolute; top: 4px; width: 9px; height: 9px; background: var(--gantt-ms); transform: translateX(-50%) rotate(45deg); }
+.g-status { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--warn); opacity: .85; }
+/* MS-Project "dates on bars": compact MM/DD/YYYY start/finish text at the ends of each bar /
+   milestone. app.js sets an explicit left+width CLAMPED inside the track, so a label at either
+   edge is no longer clipped by the track's overflow:hidden; the alignment hugs the bar end. */
+.g-barlabel { position: absolute; top: 1px; font-size: 9px; line-height: 14px; color: var(--muted); white-space: nowrap; overflow: hidden; pointer-events: none; }
+.g-barlabel-s { text-align: right; }
+.g-barlabel-f { text-align: left; }
+/* Find-a-UID lands the row here and keeps it highlighted until the next search */
+#grid tr.row-found td { background: #fff3b0; }
+#grid tr.sum td { color: var(--sum-ink); font-weight: 600; }
+#grid .filter-row td { padding: 2px 4px; }
+#grid .filter-row input { width: 100%; min-width: 56px; font-size: 12px; padding: 3px 6px; }
+.gantt-bar.done { opacity: .45; }
+#gantt .g-ms { position: absolute; top: 2px; width: 9px; height: 9px; transform: translateX(-50%) rotate(45deg); }
+#gantt .g-ms.tier-DRIVING { background: var(--bad); } #gantt .g-ms.tier-SECONDARY { background: var(--warn); }
+#gantt .g-ms.tier-TERTIARY { background: var(--accent); } #gantt .g-ms.tier-BEYOND { background: var(--beyond); }
+/* Driving-path trace (#gantt): the SAME table-based gantt-grid as every other grid, wrapped in
+   a capped scroll pane so its sticky thead + frozen data columns behave exactly like #grid /
+   .path-view. Completed rows read muted with the name struck through (the old flex-row look). */
+.gantt-scroll { overflow-x: auto; overflow-y: auto; max-height: 80vh; margin-top: 4px; }
+/* Always-visible bottom scrollbar (operator 2026-07-09): a proxy horizontal scrollbar pinned
+   to the viewport bottom, driven by SFGantt.stickyScrollbar, so the timeline is scrollable
+   without scrolling the tall pane to its own bottom edge. The inner spacer is sized to the
+   pane's scrollWidth in JS; only its scrollbar shows. */
+.sf-sticky-xscroll { position: fixed; bottom: 0; z-index: 40; overflow-x: auto; overflow-y: hidden;
+  height: 15px; background: color-mix(in srgb, var(--panel) 88%, transparent);
+  border-top: 1px solid var(--line); display: none; }
+.sf-sticky-xscroll-inner { height: 1px; }
+.trace-grid tr.done td { color: var(--muted); }
+.trace-grid tr.done td.name-cell { text-decoration: line-through; }
+.gantt-bar { position: absolute; height: 100%; border-radius: 3px; }
+/* trace bars sit inside the shared 13px .g-track — trim them like the activity-grid bars */
+.trace-grid .gantt-bar { top: 2px; height: 9px; }
+/* tier colors apply to the BARS only — the legend text uses the color rules below
+   (an unscoped background made the legend labels same-color-on-same-color: invisible) */
+.gantt-bar.tier-DRIVING { background: var(--bad); }
+.gantt-bar.tier-SECONDARY { background: var(--warn); }
+.gantt-bar.tier-TERTIARY { background: var(--accent); }
+.gantt-bar.tier-BEYOND { background: var(--beyond); }
+/* A8 (WCAG 1.4.1): non-color cue — the critical (/analysis grid) and driving-path bars also
+   carry a diagonal hatch, so criticality is distinguishable without relying on hue alone
+   (colour-vision-deficiency safe). The palette is unchanged; only a pattern is layered on top. */
+.g-bar.g-crit, .gantt-bar.tier-DRIVING {
+  background-image: repeating-linear-gradient(45deg, transparent 0 3px, rgba(0, 0, 0, .32) 3px 6px);
+}
+.legend { display: flex; gap: 14px; font-size: 12px; color: var(--muted); margin: 8px 0; flex-wrap: wrap; }
+.legend span::before { content: "\25A0 "; }
+.legend .tier-DRIVING { color: var(--bad); } .legend .tier-SECONDARY { color: var(--warn); }
+.legend .tier-TERTIARY { color: var(--accent); } .legend .tier-BEYOND { color: var(--beyond-ink); }
+
+/* SSI-style path-analysis workspace: data grid left, scalable timeline right */
+.path-view { overflow-x: auto; overflow-y: auto; max-height: 80vh; margin-top: 10px; }
+.path-grid td, .path-grid th { white-space: nowrap; }
+/* the MS-Project per-column filter row under the path headers */
+.path-grid .filter-row td { padding: 1px 3px; }
+.path-grid .filter-row .sf-filter-btn { padding: 1px 6px; font-size: 11px; }
+.path-grid td.pv-name { white-space: normal; word-break: break-word; min-width: 200px; max-width: 360px; }
+/* the path-timeline CELL carries the canvas + non-working layer (continuous down the column);
+   the inner path-track is transparent over it (see .g-nonwork-* above) */
+.path-timeline, .path-timeline-head { padding: 2px 0 !important; position: relative; background: var(--gantt-canvas); }
+.path-track { position: relative; height: 16px; background: transparent; }
+.path-scale { position: relative; height: 18px; background: var(--gantt-canvas); }
+.path-scale { height: 18px; }
+.pv-tick { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--gantt-grid); }
+.pv-tick-label { position: absolute; top: 1px; font-size: 9px; color: var(--muted); font-weight: 400; }
+.pv-now { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--warn); z-index: 2; }
+.path-grid tr.done td { color: var(--muted); }
+
+/* Microsoft-Project-style 3-tier timeline header (Year / Quarter / Month) + vertical gridlines
+   down each Gantt track aligned to the bands. The Name column indents by outline level (set
+   inline per row, any depth). Operator request: mirror MS Project's Gantt presentation. */
+.g-scale-tiered { height: 54px; }
+.g-tier { position: absolute; left: 0; right: 0; height: 18px; }
+.g-tier-yr { top: 0; } .g-tier-qtr { top: 18px; } .g-tier-mo { top: 36px; }
+.g-band {
+  position: absolute; top: 0; height: 18px; line-height: 17px; overflow: hidden;
+  box-sizing: border-box; text-align: center; white-space: nowrap; font-size: 10px;
+  background: var(--gantt-band); color: var(--gantt-band-ink);
+  border-left: 1px solid var(--gantt-grid-qtr); border-bottom: 1px solid var(--gantt-grid-qtr);
+}
+.g-tier-yr .g-band { font-weight: 600; color: var(--gantt-band-ink); font-size: 11px; }
+.g-tier-qtr .g-band { color: var(--gantt-band-ink); }
+.g-grid { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--gantt-grid); }
+.g-grid-qtr { background: var(--gantt-grid-qtr); }
+.g-grid-yr { background: var(--gantt-grid-yr); }
+
+/* Timescale dialog (MS-Project Timescale popup, operator 2026-07-08): the header height follows
+   the configured tier count, tick lines / the scale separator are per-tier toggles, and the
+   non-working-time tab shades tracks behind or in front of the bars. */
+.g-scale-rows-1 { height: 18px; }
+.g-scale-rows-2 { height: 36px; }
+.g-scale-rows-3 { height: 54px; }
+.g-tier-noticks .g-band { border-left: none; }
+.g-scale-nosep .g-band { border-bottom: none; }
+.g-band-warn { font-style: italic; color: var(--warn); text-align: center; }
+/* Non-working-time shading layers fill the whole CELL (inset:0) so the weekend/holiday bands are
+   continuous down the column — no white break between rows. "Behind" sits under the bars (z0),
+   "in front" over them (z5, pointer-transparent). */
+.g-nonwork-behind, .g-nonwork-front {
+  position: absolute; inset: 0; pointer-events: none; background-repeat: repeat-x;
+}
+.g-nonwork-behind { z-index: 0; }
+.g-nonwork-front { z-index: 5; }
+.g-cell > .g-track, .path-timeline > .path-track { position: relative; z-index: 1; }
+.g-nonwork-holiday { position: absolute; top: 0; bottom: 0; pointer-events: none; }
+.ts-overlay {
+  position: fixed; inset: 0; z-index: 300; background: rgba(10, 14, 24, .45);
+  display: flex; align-items: center; justify-content: center;
+}
+.ts-dialog {
+  width: min(620px, 94vw); max-height: 90vh; overflow: auto;
+  background: var(--panel); color: var(--ink); border: 1px solid var(--line);
+  border-radius: 8px; box-shadow: 0 18px 60px rgba(0, 0, 0, .45); padding: 0 0 12px;
+}
+.ts-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px; border-bottom: 1px solid var(--line); font-size: 14px;
+}
+.ts-x { background: none; border: none; color: var(--muted); font-size: 18px; cursor: pointer; }
+.ts-tabs { display: flex; gap: 2px; padding: 8px 14px 0; border-bottom: 1px solid var(--line); }
+.ts-tab {
+  border: 1px solid var(--line); border-bottom: none; border-radius: 6px 6px 0 0;
+  background: var(--field-bg); color: var(--ink); padding: 5px 12px; cursor: pointer; font-size: 12px;
+}
+.ts-tab-on { background: var(--panel); font-weight: 600; border-color: var(--accent); }
+.ts-pane { padding: 10px 14px 0; }
+.ts-group {
+  border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px 10px; margin: 8px 14px;
+}
+.ts-pane .ts-group { margin: 8px 0; }
+.ts-group h4 { margin: 0 0 8px; font-size: 12px; color: var(--muted); }
+.ts-row { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; margin: 6px 0; }
+.ts-field { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; }
+.ts-field-name { color: var(--muted); }
+.ts-field select, .ts-field input[type=number] {
+  background: var(--field-bg); color: var(--ink); border: 1px solid var(--line);
+  border-radius: 4px; padding: 3px 6px; font-size: 12px; max-width: 240px;
+}
+.ts-field input[type=number] { width: 64px; }
+.ts-check { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; cursor: pointer; }
+.ts-draw { flex-direction: column; align-items: flex-start; gap: 4px; }
+.ts-unit { color: var(--muted); font-size: 12px; margin-left: -12px; }
+.ts-disabled { opacity: .55; }
+.ts-note { font-size: 11px; }
+.ts-preview-box {
+  position: relative; overflow: hidden; border: 1px solid var(--line); border-radius: 4px;
+  background: var(--gantt-canvas, #fff);
+}
+.ts-preview-scale { position: relative; display: block; }
+.ts-preview-cell { position: relative; background: var(--gantt-canvas, #fff); }
+.ts-preview-track { height: 22px; border-radius: 0; margin-top: 2px; background: transparent; }
+.ts-foot {
+  display: flex; gap: 8px; align-items: center; padding: 10px 14px 0; border-top: 1px solid var(--line);
+  margin-top: 10px;
+}
+.ts-spacer { flex: 1; }
+.ts-foot button {
+  background: var(--field-bg); color: var(--ink); border: 1px solid var(--line);
+  border-radius: 5px; padding: 5px 16px; cursor: pointer; font-size: 12px;
+}
+.ts-ok { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* Total-float histogram click-drill (operator 2026-07-08): chart on the left HALF, the
+   selected band's activities on the right with a columns dropdown + Excel export. */
+.hist-split { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+/* chartframe.js wraps the chart host in .cf-frame, so size whichever child is the flex item */
+.hist-split > .hist-left, .hist-split > .cf-frame, .hist-split > .hist-right {
+  flex: 1 1 46%; min-width: 320px; max-width: 52%;
+}
+.hist-left { min-width: 0; }
+.hist-right h3 { margin: 2px 0 6px; }
+.hist-drill-bar { display: flex; gap: 12px; align-items: center; margin: 4px 0 8px; }
+.hist-drill-scroll { max-height: 340px; overflow: auto; border: 1px solid var(--line); border-radius: 4px; }
+.hist-drill-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.hist-drill-table th {
+  position: sticky; top: 0; background: var(--panel); text-align: left;
+  border-bottom: 1px solid var(--line); padding: 4px 8px;
+}
+.hist-drill-table td { padding: 3px 8px; border-bottom: 1px solid var(--line); }
+
+/* On-page threshold-derivation legend (operator 2026-07-08 / ADR-0161): a neutral collapsible
+   note that explains why measures read PASS/FAIL vs N/A and how the on-time bar was derived. */
+.threshold-legend { margin: 4px 0 10px; font-size: 12px; }
+.threshold-legend > summary { cursor: help; color: var(--accent); font-weight: 600; }
+.threshold-legend-body { padding: 6px 4px 2px; color: var(--ink); line-height: 1.5; max-width: 1000px; }
+.threshold-legend-body p { margin: 0 0 6px; }
+
+/* Universal visual explainers (operator 2026-07-08): every chart/panel NAME carries a hover
+   callout (WHAT / EXAMPLE / HOW TO READ / PM USE) via the shared data-sf-hint mechanism. */
+h2.viz-hint, h3.viz-hint {
+  cursor: help;
+  text-decoration: underline dotted var(--muted);
+  text-underline-offset: 3px;
+}
+h2.viz-hint:hover, h3.viz-hint:hover { text-decoration-color: var(--accent); }
+.viz-hint[data-sf-hint]:hover::after, .viz-hint[data-sf-hint]:focus-visible::after {
+  white-space: pre-line;
+  max-width: 480px;
+}
+
+/* The Gantt charts ALWAYS render in light mode (the MS-Project look) regardless of the page theme:
+   the operator found the dark grid behind the white bars jarring. Scoping the light-theme custom
+   properties onto each Gantt surface flips every descendant's text/border/hover/field colour to the
+   light palette through the cascade, and a white grid background (matching the bar canvas) makes the
+   whole chart one continuous light surface. Only the Gantt charts change; the rest of the UI keeps
+   its theme. Summary-task names are forced dark + bold. */
+.gantt-grid, .path-view, .gantt-scroll, .sra-grid-host, .evo-gantt {
+  --bg: #f2f5f9; --panel: #ffffff; --ink: #1a2330; --muted: #5a6878; --accent: #0b6bcb;
+  --ok: #17803a; --warn: #996b00; --bad: #cf222e; --line: #d6dde7;
+  --field-bg: #eef1f6; --hover: #eef2f7; --focus: #8a3fc4;
+  --sum-ink: #1a2330; --beyond: #b9c4d0; --beyond-ink: #7d8b9b; --done-overlay: rgba(0, 0, 0, .25);
+  background: var(--gantt-canvas);
+  color: var(--ink);
+}
+.gantt-scroll, .path-view { border-radius: 4px; }
+/* the Critical-Path Evolution is an SVG Gantt — give its plot the same white MS-Project canvas */
+.evo-gantt { border: 1px solid var(--line); border-radius: 4px; padding: 2px; }
+.evo-gantt svg { background: var(--gantt-canvas); display: block; }
+/* summary rows: dark + bold on every Gantt grid (the activity grid, the SSI grid, the trace) */
+.gantt-grid tr.sum td, #grid tr.sum td { color: var(--sum-ink); font-weight: 700; }
+
+/* OPERATOR density pass: pack ~3x more tasks per page on the Gantt/activity grids — small font,
+   tight rows, BOLD summary rows, and gridlines between every row AND column (the font/spacing the
+   operator liked on the driving-path trace, applied everywhere). Scoped to the schedule grids only;
+   the report tables (DCMA audit, scorecards) keep their normal size. */
+.gantt-grid { font-size: 11px; }
+.gantt-grid th, .gantt-grid td { padding: 1px 6px; line-height: 1.2; border-right: 1px solid var(--line); }
+.gantt-grid tr.sum td { font-weight: 700; }            /* summary rows bold */
+.gantt-grid td.name-cell { min-width: 280px; max-width: 460px; }  /* operator 2026-07-08: screenshot width by default */
+.g-cell { padding: 1px 0; }
+.g-track { height: 13px; }
+.g-bar { top: 2px; height: 9px; }
+.g-bar.g-sum { top: 5px; height: 4px; }
+.g-ms { top: 3px; }
+#grid .filter-row td { padding: 1px 3px; }
+#grid .filter-row input { font-size: 11px; padding: 1px 4px; }
+/* driving-path trace: the numeric Dur/Start/Finish/Driv-slack cells read tabular (the trace
+   now shares the .gantt-grid table density/gridlines with every other grid) */
+.trace-grid td { font-variant-numeric: tabular-nums; }
+.path-grid { font-size: 11px; }
+.path-grid th, .path-grid td { padding: 1px 6px; border-right: 1px solid var(--line); }
+.path-grid tr.sum td, .path-grid tr.summary td { font-weight: 700; }
+.field-toggle { margin-right: 6px; font-size: 12px; }
+/* custom-field columns (ADR-0093) read distinct from the built-in column toggles */
+.field-toggle.field-custom { color: var(--accent, #6ea8fe); }
+.ask-answer { white-space: pre-wrap; }
+/* "User Tip" call-outs (_user_tip) — a consistent, low-key hint shown throughout the tool. */
+.user-tip { margin: 8px 0; padding: 7px 10px; background: var(--field-bg); border-left: 3px solid var(--accent); border-radius: 4px; font-size: 12px; line-height: 1.4; color: var(--ink); }
+.ut-badge { display: inline-block; font-weight: 700; font-size: 10px; text-transform: uppercase; letter-spacing: .04em; color: var(--accent); margin-right: 6px; }
+
+/* Resources page: loading histogram + over-allocation flags. */
+.res-over { color: var(--bad); font-weight: 700; }
+.res-svg { background: var(--gantt-canvas); border: 1px solid var(--line); border-radius: 4px; }
+.res-svg .res-ax { stroke: #5a6878; stroke-width: 1; }
+.res-svg .res-grid { stroke: #e3e8ee; stroke-width: 1; }
+.res-svg .res-bar { fill: #3d8ec4; }
+.res-svg .res-bar-over { fill: #cf222e; }
+.res-svg .res-cap { stroke: #996b00; stroke-width: 1.4; stroke-dasharray: 3 2; }
+.res-svg .res-yl, .res-svg .res-xl { font-size: 9px; fill: #5a6878; }
+.res-svg .res-yl { text-anchor: end; }
+.res-svg .res-xl { text-anchor: middle; }
+#resChart { max-width: 100%; }
+
+/* Collapsible "which model / pros & cons" explainers (e.g. on /sra). */
+.explainer { margin: 6px 0; border: 1px solid var(--line); border-radius: 6px; background: var(--field-bg); }
+.explainer > summary { cursor: pointer; padding: 8px 10px; font-weight: 600; }
+.explainer > summary:hover { background: var(--hover); }
+.explainer[open] > summary { border-bottom: 1px solid var(--line); }
+.explainer > p { margin: 6px 10px; font-size: 12px; line-height: 1.45; max-width: 70em; }
+
+/* AI "working" status (ask.js): a pulsing mark + live elapsed-seconds so a slow local model never
+   looks frozen; the header globe is the matching page-wide light. Pulse honours reduced-motion. */
+.ai-working { font-weight: 600; margin: 2px 0; }
+.ai-dot { color: var(--accent); display: inline-block; animation: ai-pulse 1.1s ease-in-out infinite; }
+@keyframes ai-pulse { 0%,100% { opacity: .3; transform: scale(.9); } 50% { opacity: 1; transform: scale(1.15); } }
+.ai-hint { margin: 4px 0 0; max-width: 46em; }
+.ai-took { font-size: 11px; }
+#askOut ul { font-size: 13px; }
+
+/* M18: per-view export links (local downloads only) */
+.export-bar { margin: 0.4rem 0; display: flex; gap: 0.6rem; justify-content: flex-end; }
+.export-bar a { font-size: 0.85rem; padding: 0.15rem 0.6rem; border: 1px solid var(--border, #345);
+  border-radius: 4px; text-decoration: none; }
+
+/* M18: Executive Briefing readability reformat — side-by-side project cards */
+.brief-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 18px; margin: 0 0 18px; }
+.brief-cards .panel { margin: 0; }
+.brief-lede p { font-size: 15px; }
+
+/* Executive Briefing — leadership forensic-summary document (ADR-0121): metadata header, a
+   verdict banner (status-tinted), then numbered sections rendered as one continuous document. */
+.brief-doc { max-width: none; }  /* fill the whole page width (sections tile into the grid below) */
+/* numbered sections tiled across the full width; each top-level section is its own card, the
+   opening Bottom Line card spans all columns as the headline. Collapses to one column when narrow. */
+.brief-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(460px, 1fr));
+  gap: 16px; align-items: start; margin-top: 6px; }
+.brief-card { border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px 14px;
+  background: var(--field-bg); }
+.brief-card.lead { grid-column: 1 / -1; }
+.brief-card > .brief-h:first-child { margin-top: 0; }
+.brief-subtitle { margin: -2px 0 12px; color: var(--muted); font-size: 14px; }
+.brief-meta { border-collapse: collapse; margin: 0 0 14px; font-size: 13px; }
+.brief-meta th { text-align: left; color: var(--muted); font-weight: 600; padding: 2px 14px 2px 0; white-space: nowrap; }
+.brief-meta td { padding: 2px 0; }
+.brief-banner { display: flex; flex-wrap: wrap; gap: 10px 26px; align-items: stretch; padding: 12px 14px;
+  border-radius: 8px; margin: 0 0 16px; border: 1px solid var(--line); border-left-width: 5px; background: var(--field-bg); }
+.brief-banner.verdict-on-track { border-left-color: var(--ok); }
+.brief-banner.verdict-watch { border-left-color: var(--warn); }
+.brief-banner.verdict-at-risk { border-left-color: var(--bad); }
+.brief-stat { display: flex; flex-direction: column; gap: 2px; }
+.brief-stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+.brief-stat-value { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.brief-h { margin: 18px 0 6px; }
+h3.brief-h { font-size: 16px; } h4.brief-h { font-size: 14px; color: var(--ink); } h5.brief-h { font-size: 13px; color: var(--muted); }
+.brief-doc p { line-height: 1.5; }
+.brief-table { border-collapse: collapse; margin: 6px 0 4px; font-size: 12px; width: 100%; }
+.brief-table th, .brief-table td { border: 1px solid var(--line); padding: 4px 8px; text-align: left; vertical-align: top; }
+.brief-table th { background: var(--field-bg); color: var(--muted); font-weight: 600; }
+/* Readability guards, both halves (operator screenshots 2026-07-07 + 2026-07-08): the citation
+   column WRAPS inside a bounded block (nowrap let one long "Task name (UID n, file.mpp)" force
+   the table wide, and auto-layout then crushed every other column to one-character verticals);
+   per-cell min-widths stop any column collapsing below readability; overflow-wrap here is
+   intrinsic-size-safe (NOT word-break:break-word, which re-crushes — pinned by tests). When a
+   table's minimums genuinely exceed the card, .brief-scroll scrolls it instead of squeezing. */
+.brief-table td { overflow-wrap: break-word; min-width: 3.5em; }
+.brief-table td.cite { color: var(--muted); font-size: 11px; min-width: 200px; max-width: 360px; overflow-wrap: anywhere; }
+/* Sideways scroll if columns exceed the card, AND a height cap so a very long table (e.g. a
+   100+-row "No Longer Critical" list in section 3) scrolls inside a bounded box instead of
+   stretching the page tall — that towering is what left wasted width beside its short partner. */
+.brief-scroll { overflow-x: auto; max-height: 56vh; overflow-y: auto; }
+.brief-card.wide { grid-column: 1 / -1; }  /* sections with wide tables take the full row */
+/* Half-page partner rows (operator 2026-07-08): sections 3+4 (Critical Path / Health Dashboard)
+   and 6+7 (Recommended Actions / How to Verify) each share one full-width row split 1fr/1fr, so
+   the citation column wraps and reads without sideways scrolling and no page width is wasted
+   beside a short neighbour. Stacks to one column when the viewport can't fit two readable halves. */
+.brief-duo { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 18px;
+  align-items: start; }
+.brief-duo .brief-table td.cite { min-width: 140px; }
+@media (max-width: 1100px) { .brief-duo { grid-template-columns: 1fr; } }
+.ask-second { border-left: 3px solid var(--line); padding-left: 10px; }
+.ask-agreement { font-size: 13px; color: var(--ok); }
+.ask-agreement.differ { color: var(--warn); font-weight: 600; }
+
+/* M18: Schedule Card (PBIX page 1) — KPI stat cards, count/percent tables, 2-col layout */
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 10px; }
+.stat-card { background: var(--field-bg); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
+.stat-value { font-size: 20px; font-weight: 700; color: var(--ink); }
+.stat-label { font-size: 12px; color: var(--muted); margin-top: 3px; }
+.card-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 18px; }
+.card-table { width: 100%; }
+.pct-cell { position: relative; min-width: 140px; }
+.pct-bar { display: inline-block; height: 10px; background: var(--accent); border-radius: 3px; vertical-align: middle; opacity: .55; }
+.pct-num { margin-left: 8px; font-size: 12px; color: var(--muted); }
+
+/* M18: PBIX p4+p5 cross-version section headings inside the trend-charts panel */
+h3.trend-section {
+  width: 100%; margin: 18px 0 4px; font-size: 12px; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--muted); border-bottom: 1px solid var(--line);
+  padding-bottom: 4px;
+}
+
+/* M18: PBIX p8+p9 WBS-pivot tables — compact, numeric-dense */
+table.wbs-table { font-size: 12px; }
+table.wbs-table th, table.wbs-table td { padding: 4px 8px; text-align: right; white-space: nowrap; }
+table.wbs-table th:first-child, table.wbs-table td:first-child { text-align: left; }
+
+/* M18 item 7: Critical-Path Evolution stepper */
+.ev-callout { display: flex; gap: 18px; flex-wrap: wrap; align-items: baseline; margin: 6px 0 12px; }
+.ev-finish { font-weight: 700; font-size: 15px; }
+.ev-signals { color: var(--muted); font-size: 13px; }
+.ev-signals.ev-flag { color: var(--bad); font-weight: 600; }
+.ev-focus-on { color: var(--accent); font-weight: 600; margin: 4px 0; }
+.ev-list { list-style: none; padding: 0; margin: 4px 0 12px; display: flex; flex-wrap: wrap; gap: 6px; }
+.ev-item { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border-radius: 6px;
+  font-size: 12px; border: 1px solid var(--line); background: var(--field-bg); }
+.ev-item.ev-entered { border-color: var(--ok); }
+.ev-item.ev-left { opacity: .6; text-decoration: line-through; border-style: dashed; }
+.ev-uid { color: var(--muted); font-variant-numeric: tabular-nums; }
+.ev-badge { background: var(--warn); color: #000; border-radius: 3px; padding: 0 4px; font-size: 10px; }
+b.ev-entered { color: var(--ok); } b.ev-stayed { color: var(--muted); } b.ev-left { color: var(--bad); }
+/* Driving Path: the corridor rendered as a chain of UID-name chips */
+.dp-chip { display: inline-block; padding: 3px 8px; border-radius: 6px; font-size: 12px;
+  border: 1px solid var(--line); background: var(--field-bg); }
+.dp-chip.ev-entered { border-color: var(--ok); }
+.dp-arrow { color: var(--muted); }
+.dp-note { color: var(--warn); font-weight: 600; }
+/* corridor animation (ADR-0096): activities that entered the corridor are outlined */
+.gantt-bar.dp-entered, .g-ms.dp-entered { outline: 2px solid var(--ok); outline-offset: 1px; }
+/* Groups & Filters: stacked filter rows + breakdown picker */
+.group-form fieldset { border: 1px solid var(--line); border-radius: 6px; margin: .5em 0; padding: .5em .7em; }
+.group-form legend { color: var(--muted); padding: 0 .4em; }
+.group-row { display: flex; align-items: center; gap: 6px; margin: 4px 0; }
+.group-row input { flex: 1; min-width: 12ch; }
+/* Dashboard health cards: per-schedule KPI + status-mix bar + DCMA ribbon, link to report */
+.dash-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(440px, 1fr)); gap: 16px; margin-top: 10px; }
+.dash-card { display: block; background: var(--field-bg); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; color: var(--ink); text-decoration: none; transition: border-color .15s; }
+.dash-card:hover { border-color: var(--accent); }
+.dash-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.dash-name { font-size: 16px; font-weight: 700; color: var(--accent); }
+.dash-open { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.dash-src { font-size: 12px; margin: 2px 0 8px; }
+.dash-card .stat-grid { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); margin: 8px 0 6px; }
+.dash-card .stat-value { font-size: 16px; }
+.dash-bar { display: flex; height: 16px; border-radius: 4px; overflow: hidden; background: var(--bg); }
+.dash-seg { height: 100%; }
+.dcma-ribbon { display: flex; flex-wrap: wrap; gap: 5px; margin: 4px 0 2px; }
+.dcma-chip { font-size: 11px; padding: 2px 7px; border-radius: 10px; border: 1px solid var(--line); white-space: nowrap; }
+.dcma-chip.dcma-pass { background: var(--ok-bg); border-color: var(--ok); color: var(--ok); }
+.dcma-chip.dcma-fail { background: var(--bad-bg); border-color: var(--bad); color: var(--bad); }
+.dcma-chip.dcma-na { color: var(--muted); }
+
+/* DCMA-14 audit table: count + % columns and a hover/focus tooltip per check (operator
+   request — show the count and percentage like Acumen, with an on-hover explanation). */
+td.num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.dcma-cell { position: relative; }
+.dcma-metric { border-bottom: 1px dotted var(--muted); cursor: help; }
+.dcma-metric:focus-visible { outline: 2px solid var(--focus, var(--accent)); outline-offset: 2px; }
+.dcma-info { font-size: 11px; color: var(--muted); }
+/* Revealed only after the pointer rests on the trigger for --sf-tip-delay (ADR-0286). This uses
+   opacity/visibility rather than display because `display` cannot be transitioned — the delay is
+   what makes the reveal cancellable when the cursor moves away early. Absolutely positioned, so
+   keeping it in the box tree costs no layout. */
+.dcma-tip {
+  display: block; opacity: 0; visibility: hidden; pointer-events: none;
+  position: absolute; left: 0; top: 100%; z-index: 40;
+  width: 24em; max-width: 80vw; margin-top: 4px; padding: 9px 11px;
+  background: var(--panel); color: var(--ink);
+  border: 1px solid var(--line); border-radius: 7px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .22);
+  font-size: 12px; font-weight: 400; line-height: 1.4; text-align: left; white-space: normal;
+  transition: opacity .1s linear, visibility 0s linear .1s;
+}
+.dcma-metric:hover + .dcma-tip, .dcma-metric:focus + .dcma-tip {
+  opacity: 1; visibility: visible;
+  transition: opacity .12s linear var(--sf-tip-delay), visibility 0s linear var(--sf-tip-delay);
+}
+/* metric column headers in the other report tables reuse the same hover/focus call-out — the cell
+   just needs to be a positioning context for the absolutely-placed tip. */
+th.metric-th { position: relative; }
+.metric-th .mhelp { font-weight: 600; }
+/* right-anchor the pop-out for a wide table's right-hand columns so it doesn't run off-screen */
+.mtip-right { left: auto; right: 0; }
+/* The analysis overview tooltip is parented to <body> and positioned by app.js (left/top inline),
+   so position:fixed lets it escape the chart frame's overflow — it no longer gets clipped behind
+   the Gantt. z-index clears the maximize frame (9999); pointer-events:none avoids hover flicker. */
+/* The floating variant is shown/hidden by app.js toggling `display` (it must be laid out to be
+   measured before placement), and app.js owns its --sf-tip-delay wait, so it opts out of the
+   opacity/visibility gating above and is fully visible whenever JS displays it. */
+.dcma-tip-float {
+  position: fixed; left: 0; top: 0; z-index: 10000; margin: 0; pointer-events: none;
+  opacity: 1; visibility: visible; transition: none;
+}
+.dcma-tip p { margin: 5px 0 0; }
+.dcma-tip code { font-size: 11px; background: var(--field-bg); padding: 0 3px; border-radius: 3px; }
+@media print { .dcma-tip { display: none !important; } .dcma-info { display: none; } }
+
+/* DCMA-14 overview (analysis #charts): a green/amber/red stoplight + the measured value per
+   check, with the same hover/focus tooltip as the audit table — replaces the old red bar. */
+.dcma-overview h3 { margin-bottom: 4px; }
+.dcma-ov-row {
+  position: relative; display: flex; align-items: center; gap: 8px;
+  padding: 3px 5px; border-radius: 5px; cursor: help; outline: none;
+}
+.dcma-ov-row:hover, .dcma-ov-row:focus-within { background: var(--field-bg); }
+.dcma-ov-row:focus-visible { outline: 2px solid var(--focus, var(--accent)); outline-offset: 1px; }
+.sl-dot {
+  flex: 0 0 auto; width: 11px; height: 11px; border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, .28) inset;
+}
+.sl-dot.sl-ok { background: var(--ok); }
+.sl-dot.sl-warn { background: var(--warn); }
+.sl-dot.sl-bad { background: var(--bad); }
+.dcma-ov-name { flex: 1 1 auto; font-size: 13px; }
+.dcma-ov-measure {
+  flex: 0 0 auto; font-variant-numeric: tabular-nums; color: var(--muted); white-space: nowrap;
+}
+.dcma-ov-row .dcma-info { flex: 0 0 auto; }
+/* the overview tooltip now lives on <body> and is toggled by app.js (see .dcma-tip-float above) */
+
+/* Chart legibility (operator request): every chart carries a one-line description + a
+   color-key legend; swatches reuse theme colors and recolor live with the theme. */
+.chart-desc { font-size: 12px; color: var(--muted); margin: 2px 0 4px; line-height: 1.35; }
+.dcma-def { font-size: 12px; line-height: 1.35; max-width: 30em; }
+.chart-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 6px 0 2px; font-size: 11px; color: var(--muted); }
+.chart-legend-item { display: inline-flex; align-items: center; gap: 5px; }
+.chart-swatch { display: inline-block; width: 12px; height: 10px; border-radius: 2px; flex: 0 0 auto; }
+.chart-swatch.dashed { background: none !important; border-top: 2px dashed var(--muted); height: 0; width: 14px; }
+/* interactive legend (ADR-0276): a togglable entry looks clickable; an OFF series dims + strikes. */
+.chart-legend-item[data-series-toggle] { cursor: pointer; user-select: none; border-radius: 3px; padding: 0 2px; }
+.chart-legend-item[data-series-toggle]:hover { color: var(--ink); }
+.chart-legend-item[data-series-toggle]:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.chart-legend-item.legend-off { opacity: 0.45; text-decoration: line-through; }
+.chart-legend-item.legend-off .chart-swatch { filter: grayscale(1); }
+.chart-legend-all { font-size: 11px; padding: 0 4px; }
+
+/* Chart frame (operator request): full-screen + zoom toolbar on every chart (chartframe.js).
+   The bar overlays the top-right corner of each .chart-host and fades in on hover/focus. */
+/* The toolbar is an IN-FLOW row (a DOM sibling above the chart), pushed to the right, so it can
+   NEVER rest over the plotted data — in any theme, at any font size, with no magic padding to tune
+   (operator 2026-07-13). The chart re-renders its innards inside .cf-scroll, never touching .cf-bar,
+   so zoom/frame state still survives a redraw. */
+.cf-frame { position: relative; }
+.cf-bar { display: flex; align-items: center; gap: 4px; width: max-content; max-width: 100%;
+  margin: 0 6px 4px auto; z-index: 4; opacity: 0.85; transition: opacity .15s; }
+.cf-frame:hover .cf-bar, .cf-frame:focus-within .cf-bar { opacity: 1; }
+.cf-btn { font: inherit; font-size: 12px; line-height: 1; padding: 3px 7px; cursor: pointer;
+  background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 5px; font-weight: 600; }
+.cf-btn:hover { border-color: var(--accent); color: var(--accent); }
+.cf-zoom { font-size: 11px; color: var(--muted); min-width: 36px; text-align: center; }
+.cf-scroll { overflow: auto; max-width: 100%; }
+.cf-frame:fullscreen { background: var(--bg); padding: 30px 18px 18px; overflow: auto; }
+.cf-frame:fullscreen .cf-scroll, .cf-frame.cf-max .cf-scroll { height: 100%; }
+.cf-frame.cf-max { position: fixed; inset: 0; z-index: 9999; background: var(--bg);
+  padding: 34px 20px 20px; overflow: auto; }
+/* Expanded charts CONTAIN-FIT the viewport (operator 2026-07-10, ADR-0187): chartframe.js
+   sizes the SVG to the largest width that fits BOTH dimensions, so the chart genuinely uses
+   the page space without overflowing it; any leftover width is centered. */
+.cf-frame:fullscreen .cf-scroll svg, .cf-frame.cf-max .cf-scroll svg {
+  display: block; margin-left: auto; margin-right: auto; }
+/* Shared hover call-out (chartframe.js) — styled, instant tooltip following the cursor on any
+   chart point that carries a <title> child or a data-callout attribute. */
+.cf-tip { position: fixed; z-index: 10000; pointer-events: none; max-width: 300px;
+  background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 6px;
+  padding: 6px 9px; font-size: 12px; line-height: 1.4; white-space: pre-line;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.45); }
+
+/* Path-analysis: the target-relative-scoping explainer + the "Drives →" link-detail column. */
+.path-explainer { margin: 2px 0 12px; }
+.path-explainer summary { cursor: pointer; color: var(--accent); font-size: 13px; font-weight: 600; }
+.path-explainer p { margin: 6px 0 0; max-width: 60em; }
+.pv-drives { white-space: normal; font-size: 12px; color: var(--muted); min-width: 9em; }
+
+/* Mission Control — the tiled visual wall (mission.js). Small-scale charts in a responsive grid;
+   expand via chartframe's ⤢, reveal underlying numbers with the per-tile Data toggle. */
+.mosaic { display: grid; grid-template-columns: repeat(auto-fill, minmax(440px, 1fr)); gap: 16px; }
+.tile { margin: 0; }
+.tile-wide { grid-column: 1 / -1; }
+/* uniform tile size: every chart sits in a fixed-height host so the wall is even (taller content
+   scrolls in place); wide tiles (Gantts / trends) get a taller host. The per-tile Enlarge button
+   grows a tile to the full wall width + a tall host, and shrinks it back. */
+.mosaic .tile .chart-host { height: 340px; overflow: auto; }
+/* ADR-0262: a degraded tile's note pad — the chart-host look (dot grid, same height)
+   without the chart-host CLASS, so chartframe.js never adds a dead zoom toolbar */
+.mosaic .tile .chart-note { height: 340px; overflow: auto; padding: 14px 12px; }
+.mosaic .tile.tile-wide .chart-host { height: 460px; }
+.mosaic .tile.tile-expanded { grid-column: 1 / -1; }
+.mosaic .tile.tile-expanded .chart-host { height: 74vh; }
+/* When a Mission-wall tile chart is enlarged via chartframe (⤢ full screen / maximize),
+   RELEASE the fixed tile-host height: chartframe contain-fits the SVG to the viewport, but the
+   340/460/74vh host height above would otherwise keep clamping it, clipping the fitted chart to a
+   tall top strip (the data-date spike shows, the low-value months fall below the fold — the "tiny
+   sliver" bug). The higher specificity (…tile .cf-frame[.cf-max|:fullscreen] .chart-host) beats
+   the clamps above; the cf-scroll still pans if the user zooms in past the fit. */
+.mosaic .tile .cf-frame:fullscreen .chart-host,
+.mosaic .tile .cf-frame.cf-max .chart-host { height: auto; max-height: none; overflow: visible; }
+/* the overview line charts "progress" in lockstep with the steppers: Play-all toggles .sf-draw on
+   their host, re-drawing each solid line left-to-right (pathLength=1 normalizes any line length) */
+.mosaic .chart-host.sf-draw .sf-curve-line { stroke-dasharray: 1; animation: sf-draw 1.3s ease-out forwards; }
+@keyframes sf-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .mosaic .chart-host.sf-draw .sf-curve-line { animation: none; stroke-dasharray: none; }
+}
+.tile-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 6px; }
+.tile-head h3 { margin: 0; font-size: 14px; color: var(--accent); }
+.tile-actions { display: flex; gap: 10px; align-items: center; }
+.tile-data, .tile-expand { background: none; border: 1px solid var(--line); color: var(--muted);
+  border-radius: 6px; padding: 2px 8px; font-size: 12px; font-weight: 600; cursor: pointer; }
+.tile-data:hover, .tile-expand:hover { color: var(--ink); border-color: var(--accent); }
+.mini-steps { display: flex; gap: 4px; margin: 0 0 6px; }
+.mini-steps button { background: var(--field-bg); color: var(--ink); border: 1px solid var(--line);
+  border-radius: 6px; padding: 1px 9px; font-size: 12px; font-weight: 600; cursor: pointer; }
+/* the per-tile Data toggle un-hides this chart's .sr-only data table in place */
+.tile.show-data .sr-only { position: static !important; width: auto !important; height: auto !important;
+  clip: auto !important; white-space: normal !important; margin: 8px 0 0 !important; overflow: auto !important;
+  max-height: 260px; border: 1px solid var(--line); border-radius: 6px; display: block; }
+.tile.show-data .sr-only caption { text-align: left; font-size: 12px; color: var(--muted); padding: 4px 6px; }
+.tile.show-data .sr-only th, .tile.show-data .sr-only td { padding: 3px 6px; font-size: 11px; }
+@media (max-width:760px){ .mosaic { grid-template-columns: 1fr; } }
+
+/* Risks, Issues & Opportunities page — cited finding cards + the prioritized recovery plan. */
+.finding { border: 1px solid var(--line); border-left: 4px solid var(--muted); border-radius: 8px;
+  padding: 10px 14px; margin: 0 0 10px; background: var(--field-bg); }
+.finding.sev-HIGH { border-left-color: var(--bad); }
+.finding.sev-MEDIUM { border-left-color: var(--warn); }
+.finding.sev-LOW, .finding.sev-INFO { border-left-color: var(--muted); }
+.finding-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 0 4px; }
+.sev-badge { font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 10px;
+  border: 1px solid currentColor; }
+.finding p { margin: 4px 0; }
+.finding-action { color: var(--ink); }
+.recovery-list li, .story li { margin: 5px 0; }
+
+/* S-Curve per-chart filter (scurve.js): up to 5 (field, value) rows + a clear button. */
+#scurveFilter { display: inline-flex; flex-wrap: wrap; gap: 6px 10px; }
+.scf-row { display: inline-flex; gap: 4px; }
+#scurveFilter select { font-size: 12px; padding: 4px 6px; }
+.scf-clear { font-size: 12px; padding: 4px 10px; }
+
+/* M18 item 7 follow-up: critical-path evolution Gantt + reason chips */
+.evo-gantt { margin: 4px 0 14px; overflow-x: auto; }
+.legend .ev-entered { color: var(--ok); } .legend .ev-stayed { color: var(--muted); } .legend .ev-left { color: var(--bad); }
+
+/* M18 item 8: Forecast methodology explainer (one card per method) + spread ruler */
+.forecast-method { background: var(--field-bg); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
+.forecast-method h3 { margin: 0 0 2px; color: var(--accent); font-size: 14px; }
+.forecast-method .method-tag { margin: 0 0 8px; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.forecast-method p { margin: 0 0 8px; font-size: 13px; }
+.forecast-method .method-finish { margin: 6px 0 0; font-size: 13px; }
+#forecastRuler { margin-top: 4px; overflow-x: auto; }
+
+/* M18 item 8: Trend quality drill-down + animation */
+.qual-drill-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(220px, 1fr); gap: 18px; align-items: start; }
+@media (max-width: 900px) { .qual-drill-grid { grid-template-columns: 1fr; } }
+.qual-bars { min-width: 0; }
+.qual-offenders { background: var(--field-bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+.qual-offenders h3 { margin: 0 0 6px; color: var(--accent); font-size: 14px; }
+.qual-offenders .qual-meta { margin: 0 0 8px; font-size: 12px; }
+.qual-offender-list { list-style: none; margin: 0; padding: 0; max-height: 280px; overflow-y: auto; font-size: 12px; }
+.qual-offender-list li { padding: 2px 0; border-bottom: 1px solid var(--line); }
+.qual-bar { cursor: pointer; }
+.qual-mlabel { cursor: pointer; }
+
+/* MS-Project-style checklist filter dropdowns (checklist.js): a button + a fixed-position
+   popup with a search box, Select-all / Clear, and a checklist of the column's distinct
+   values. Replaces the old per-column substring inputs (grid) and tier <select>s. */
+.sf-filter, .tier-filter { position: relative; display: inline-block; }
+.sf-filter-btn { font: inherit; font-size: 12px; line-height: 1; padding: 3px 7px; cursor: pointer;
+  background: var(--field-bg); color: var(--ink); border: 1px solid var(--line); border-radius: 5px;
+  white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.sf-filter-btn:hover { border-color: var(--accent); }
+.sf-filter-btn.on { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.sf-filter-pop { position: fixed; z-index: 9999; min-width: 200px; max-width: 320px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .35); }
+.sf-filter-search { width: 100%; box-sizing: border-box; font-size: 12px; padding: 4px 6px; margin-bottom: 6px; }
+.sf-filter-head { display: flex; gap: 12px; margin-bottom: 4px; }
+.sf-link { background: none; border: none; padding: 0; cursor: pointer; color: var(--accent); font: inherit; font-size: 12px; }
+.sf-link:hover { text-decoration: underline; }
+.sf-filter-list { max-height: 240px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
+.sf-filter-item { display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer; white-space: nowrap; padding: 1px 2px; }
+.sf-filter-item:hover { background: var(--hover); }
+
+/* E (operator): Finish & Slippage charts get a clickable, keyboard-operable show/hide legend so the
+   overlaid per-version line families can be decluttered (toggle one line, or Show all / Hide all). */
+.curve-legend { display: flex; flex-wrap: wrap; gap: 6px 8px; margin: 8px 0 2px; align-items: center; }
+.curve-legend-item { display: inline-flex; align-items: center; gap: 7px; font-size: 11px; padding: 3px 9px;
+  border: 1px solid var(--line); border-radius: 14px; background: var(--field-bg); color: var(--ink); cursor: pointer; }
+.curve-legend-item:hover { border-color: var(--accent); }
+.curve-legend-item.off { opacity: .5; text-decoration: line-through; }
+.curve-swatch { display: inline-block; width: 16px; height: 0; border-top-width: 3px; flex: 0 0 auto; }
+.curve-legend-ctrl { display: inline-flex; gap: 10px; margin-left: 6px; }
+
+/* SSI editable schedule grid (ADR-0123): the schedule as an inline-editable spreadsheet/Gantt.
+   It reuses .gantt-grid density/gridlines; the host scrolls both ways for a full ~1700-row plan. */
+.sra-grid-host { overflow: auto; max-height: 72vh; margin-top: 6px; }
+.sra-grid input.sra-inp { font-size: 11px; padding: 0 2px; }
+.sra-grid td.sra-focus-cell { text-align: center; }
+tr.sra-risk td { box-shadow: inset 3px 0 0 var(--warn); }
+.g-envelope { position: absolute; top: 1px; height: 11px; border-radius: 3px;
+  background: var(--warn); opacity: .25; }
+
+/* NASA 5x5 assessment matrices (SSI SRA) — framed like the operator's reference image: a title
+   band, Likelihood rows (5 Near Certainty top .. 1 Remote) x Consequence/Benefit columns (1..5),
+   the fixed NASA priority ranks 1..25, tri-band zones (Risk green/yellow/red; Opportunity light/
+   medium/dark blue), axis labels, a legend, and a count badge where the user's risks land. The
+   cell colours are fixed (theme-independent) so the matrix reads identically in dark or light. */
+.nasa-matrix { display: inline-block; margin: 10px 18px 10px 0; vertical-align: top; }
+.nm-title { font-weight: 700; font-size: 13px; text-align: center; margin-bottom: 4px; color: var(--ink); }
+.nm-body { display: flex; align-items: stretch; }
+.nm-yaxis { writing-mode: vertical-rl; transform: rotate(180deg); text-align: center;
+  font-size: 11px; font-weight: 600; color: var(--muted); padding: 0 2px; }
+.nm-grid { border-collapse: separate; border-spacing: 2px; }
+.nm-grid th { background: transparent; color: var(--ink); font-weight: 600; }
+.nm-corner { width: 18px; }
+.nm-chead { font-size: 10px; text-align: center; padding: 1px 2px; vertical-align: bottom; }
+.nm-cnum { font-size: 12px; font-weight: 700; }
+.nm-clab { font-size: 9px; color: var(--muted); max-width: 64px; }
+.nm-rhead { text-align: right; padding-right: 4px; white-space: nowrap; }
+.nm-rnum { font-size: 12px; font-weight: 700; margin-right: 3px; }
+.nm-rlab { font-size: 9px; color: var(--muted); }
+.nm-cell { position: relative; width: 60px; height: 40px; text-align: center; vertical-align: middle;
+  border-radius: 4px; color: #10202e; }
+.nm-rank { font-size: 16px; font-weight: 800; }
+.nm-cell.nm-hit { box-shadow: inset 0 0 0 3px rgba(255, 255, 255, .9), 0 0 0 1px rgba(0, 0, 0, .35); }
+.nm-cell.nm-detail { cursor: help; }  /* hover a populated cell to dive into the risks/opportunities */
+.nm-badge { position: absolute; top: 1px; right: 2px; min-width: 15px; height: 15px; line-height: 15px;
+  border-radius: 8px; background: #10202e; color: #fff; font-size: 10px; font-weight: 700; padding: 0 3px; }
+/* Risk zones (green / yellow / red) */
+.nm-r-g { background: #43a047; }
+.nm-r-y { background: #ffd400; }
+.nm-r-r { background: #e53935; color: #fff; }
+/* Opportunity zones (light / medium / dark blue) */
+.nm-o-g { background: #a8d3ea; }
+.nm-o-y { background: #3d8ec4; color: #fff; }
+.nm-o-r { background: #15527d; color: #fff; }
+.nm-xaxis { text-align: center; font-size: 11px; font-weight: 600; color: var(--muted); margin-top: 3px;
+  padding-left: 22px; }
+.nm-legend { display: flex; gap: 12px; justify-content: center; margin-top: 5px; padding-left: 22px; }
+.nm-leg-item { font-size: 10px; color: var(--ink); display: inline-flex; align-items: center; }
+.nm-swatch { display: inline-block; width: 12px; height: 12px; border-radius: 2px; margin-right: 3px;
+  vertical-align: middle; }
+
+/* MS-Project-style draggable column resizing (window.SFColResize). A thin grab handle on each data
+   column header; the table switches to fixed layout so dragging one column reflows only its own data
+   (names wrap, the short fixed columns clip with an ellipsis). The scalable timeline column is left
+   untouched. */
+.col-rsz { position: absolute; top: 0; right: 0; width: 7px; height: 100%; cursor: col-resize;
+  user-select: none; touch-action: none; z-index: 3; }
+.col-rsz:hover { background: var(--accent); opacity: .55; }
+.col-resizable { width: auto; }
+.col-resizable td, .col-resizable th { overflow: hidden; text-overflow: ellipsis; }
+.col-resizable td.name-cell, .col-resizable th { white-space: normal; word-break: break-word; }
+.col-resizable td:not(.name-cell):not(.g-cell) { white-space: nowrap; }
+.col-resizable td.g-cell { overflow: visible; }
+
+/* Compact SSI vector charts (S-curve + finish-date distribution) — the operator wanted small graphs
+   with small text and many data points. Fixed small size, theme-independent ink so they read on the
+   panel in either theme. */
+.ssi-charts, .ssi-matrices { display: flex; flex-wrap: wrap; gap: 16px; margin: 8px 0;
+  align-items: flex-start; }
+/* Fixed compact width so the framed chart stays small at 100%; zoom (chartframe) scales the SVG past
+   the host and the cf-scroll pans the magnified copy. */
+.ssi-chart { display: block; width: 380px; max-width: 100%; }
+.ssi-chart-t { font-size: 10px; font-weight: 700; color: var(--ink); margin-bottom: 2px; }
+.ssi-svg { background: #fff; border: 1px solid var(--line); border-radius: 4px; }
+.ssi-svg .ch-ax { stroke: #5a6878; stroke-width: 1; }
+.ssi-svg .ch-grid { stroke: #e3e8ee; stroke-width: 1; }
+.ssi-svg .ch-line { fill: none; stroke: #0b6bcb; stroke-width: 1.4; }
+.ssi-svg .ch-bar { fill: #3d8ec4; }
+.ssi-svg .ch-det { stroke: #d29922; stroke-width: 1; stroke-dasharray: 3 2; }
+.ssi-svg .ch-dot { fill: #e8352e; }
+/* invisible hover hotspots on each S-curve point — carry a <title> so chartframe calls out the value */
+.ssi-svg .ch-hot { fill: #fff; opacity: 0; cursor: crosshair; }
+.ssi-svg .ch-yl, .ssi-svg .ch-xl { font-size: 8px; fill: #5a6878; }
+.ssi-svg .ch-yl { text-anchor: end; }
+/* JCL football scatter (ADR-0269): the joint (finish, cost) cloud, target crosshair, and the
+   iso-confidence frontier. A point that meets BOTH targets is blue; a miss on either is red. */
+.ssi-svg .ch-pt { fill: #3d8ec4; opacity: 0.5; }
+.ssi-svg .ch-pt.miss { fill: #e8352e; opacity: 0.35; }
+.ssi-svg .ch-tgt { stroke: #e8352e; stroke-width: 1; stroke-dasharray: 4 3; }
+.ssi-svg .ch-frontier { fill: none; stroke: #2da44e; stroke-width: 1.6; }
+.ssi-svg .ch-ql { font-size: 8px; font-weight: 700; fill: #5a6878; }
+/* the FICSM SCL/CCL/JCL strip bars */
+.ssi-svg .ch-lvl { fill: #3d8ec4; }
+.ssi-svg .ch-lvl.jcl { fill: #2da44e; }
+.ssi-svg .ch-lvl-bg { fill: #e3e8ee; }
+
+/* Operator: "make those graphs way smaller and the text way smaller" — the SRA charts (S-curve,
+   finish-date distribution, duration-sensitivity tornado) are width:100% SVGs, so capping the host
+   width shrinks the whole chart, and because their labels are in viewBox units the text scales down
+   with it. Applies to the legacy SRA panel charts and the SSI risk chart; the finer histogram bins
+   (engine _HISTOGRAM_BINS) add the requested data granularity. Operator wants these as LARGE as the
+   panel allows, so they fill the full panel width (the chartframe zoom can shrink them if needed). */
+#sraCdf, #sraHist, #sraSens, #sraRisk { width: 100%; max-width: 100%; margin: 0; }
+.chart h3, #gantt h3 { font-size: 11px; }
+.bar-row { font-size: 11px; }
+
+/* ── Trends-animation package (append-only): Mission-Control-style controls on the dedicated
+   chart pages. Per-chart ⛶ Enlarge / ▦ Data reuse the wall's tile-expand / tile-data button
+   styling; multi-file charts add a ‹ Prev / ▶ Play / Next › stepper with a "file X of N —
+   name (data date …)" provenance label, and #sfPlayAll / #sfStepAll drive every stepper in
+   lockstep (the mission.js pattern). ── */
+.sf-chart-controls { margin: 6px 0; row-gap: 4px; }
+.sf-chart-controls .sf-frame-prev, .sf-chart-controls .sf-frame-next,
+.sf-chart-controls .sf-frame-play {
+  background: var(--field-bg); color: var(--ink); border: 1px solid var(--line);
+  border-radius: 6px; padding: 1px 9px; font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.sf-frame-label { font-size: 12px; color: var(--muted); }
+.sf-master-controls { position: sticky; top: 0; z-index: 5; }
+/* a chart on the Trend page's flex wall enlarges to the full row… */
+.charts .chart.tile-expanded { flex-basis: 100%; max-width: none; }
+/* …and a standalone panel chart (curves / margin / scatter shells) lifts into a
+   near-full-viewport overlay so it can actually get bigger than its panel */
+.sf-tilebox.tile-expanded {
+  position: fixed; inset: 4vh 3vw; z-index: 220; background: var(--panel);
+  border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px; overflow: auto;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, .45);
+}
+/* the per-chart ▦ Data toggle un-hides that chart's .sr-only data table in place —
+   the same reveal the wall's tiles use, for hosts that are not .tile */
+.show-data .sr-only { position: static !important; width: auto !important; height: auto !important;
+  clip: auto !important; white-space: normal !important; margin: 8px 0 0 !important; overflow: auto !important;
+  max-height: 260px; border: 1px solid var(--line); border-radius: 6px; display: block; }
+.show-data .sr-only caption { text-align: left; font-size: 12px; color: var(--muted); padding: 4px 6px; }
+.show-data .sr-only th, .show-data .sr-only td { padding: 3px 6px; font-size: 11px; }
+/* the current animation frame's dashed guide on a locked version axis */
+.sf-frame-guide { opacity: .8; }
+
+/* Schedule Quality Ribbon pass/warning/fail coloring (operator 2026-07-08): thresholded
+   measures only — green pass, yellow approaching (>=80% of threshold), red fail */
+td.rib-pass { background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok); font-weight: 600; }
+td.rib-warn { background: color-mix(in srgb, var(--warn) 20%, transparent); color: var(--warn); font-weight: 600; }
+td.rib-fail { background: color-mix(in srgb, var(--bad) 18%, transparent); color: var(--bad); font-weight: 700; }
+.rib-legend span { padding: 1px 7px; border-radius: 4px; margin-left: 6px; font-size: 11px; }
+.rib-legend .rib-pass { background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok); }
+.rib-legend .rib-warn { background: color-mix(in srgb, var(--warn) 20%, transparent); color: var(--warn); }
+.rib-legend .rib-fail { background: color-mix(in srgb, var(--bad) 18%, transparent); color: var(--bad); }
+/* Ribbon click-drill (operator 2026-07-08): every metric cell is clickable; the selected cell
+   is outlined and the activities behind its figure list below the ribbon. */
+td.rib-cell { cursor: pointer; }
+td.rib-cell:hover { text-decoration: underline dotted; }
+td.rib-cell:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+td.rib-cell.rib-selected { outline: 2px solid var(--focus); outline-offset: -2px; }
+/* not-applicable float cell (empty incomplete-activity population): the "—" sentinel, muted and
+   non-interactive — nothing to drill, and never a fabricated 0 (audit NEW-1). */
+td.rib-na { color: var(--muted); cursor: default; }
+.ribbon-drill { margin-top: 14px; }
+.ribbon-drill h3 { margin: 8px 0 4px; }
+/* Integrity finding citation drill (operator 2026-07-08): the "(+N more — view all)" link opens
+   the full cited-activity chart below the findings table. */
+a.cite-more { color: var(--accent); cursor: pointer; white-space: nowrap; }
+.findings-drill { margin: 6px 0 4px; }
+.findings-drill h3 { margin: 8px 0 4px; }
+/* What-if reverted-changes interactive table shares the drill look. */
+#whatifTable { margin-top: 8px; }
+/* Driving-Path: bold banner naming the traced file (operator #72). */
+.dp-file-banner {
+  margin: 2px 0 6px;
+  font-size: 1.05em;
+  border-left: 3px solid var(--accent);
+  padding-left: 8px;
+}
+.dp-file-banner b { color: var(--accent); }
+#drivingTiers { margin-top: 8px; }
+
+/* SSI Directional Path Tool options panel (operator 2026-07-08) */
+details.path-options { border: 1px solid var(--line); border-radius: 8px; margin: 0 0 10px; background: var(--field-bg); font-size: 12px; }
+details.path-options > summary { cursor: pointer; padding: 5px 12px; color: var(--muted); font-weight: 600; }
+details.path-options .viz-controls { padding: 4px 12px 9px; }
+.opt-group { display: inline-flex; align-items: center; gap: 9px; padding: 2px 10px; border-right: 1px solid var(--line); }
+.opt-group:last-child { border-right: 0; }
+.opt-group b { color: var(--muted); font-weight: 600; margin-right: 2px; }
+.pv-drag { color: var(--accent); font-weight: 700; }
+.path-branch-head td { background: var(--field-bg); color: var(--accent); font-weight: 700; letter-spacing: .04em; }
+/* SRA editable grid group-by headers — same look as the Path Gantt group headers (operator #80). */
+.sra-branch-head td { background: var(--field-bg); color: var(--accent); font-weight: 700; letter-spacing: .04em; }
+
+/* Schedule Integrity page (operator 2026-07-08): unmissable analyzed-file banner + tables */
+.integrity-file { font-size: 26px; font-weight: 800; letter-spacing: .06em; color: var(--accent);
+  text-transform: uppercase; margin: 2px 0 8px; }
+.integrity-table td { vertical-align: top; }
+.integrity-table td.cite { max-width: 340px; overflow-wrap: anywhere; }
+.counterfactual { border-left: 3px solid var(--bad); background: color-mix(in srgb, var(--bad) 7%, var(--panel));
+  border-radius: 0 8px 8px 0; padding: 8px 12px; margin-top: 10px; }
+.counterfactual h4 { margin: 0 0 5px; color: var(--bad); }
+/* Per-change counterfactual effects (ADR-0162): each detected change's isolated working-day
+   effect on the chosen target / last critical task. */
+.change-effects { border-left: 3px solid var(--accent); background: color-mix(in srgb, var(--accent) 6%, var(--panel));
+  border-radius: 0 8px 8px 0; padding: 8px 12px; margin-top: 10px; }
+.change-effects h4 { margin: 0 0 5px; color: var(--accent); }
+.change-effects table { margin-top: 6px; }
+.change-effects td.cite { overflow-wrap: break-word; }
+/* Reschedule-artifact cluster (operator 2026-07-09): MS Project's "reschedule uncompleted work"
+   stamps SNET-at-data-date constraints on every pushed incomplete task — real file changes, but
+   a statusing side effect, so they collapse under one explanatory row instead of flooding the
+   change table and reading as deliberate manual constraint edits. */
+.artifact-cluster { border: 1px dashed var(--line); border-radius: 8px; margin-top: 8px;
+  background: var(--field-bg); }
+.artifact-cluster > summary { cursor: pointer; padding: 6px 10px; color: var(--muted);
+  font-weight: 600; font-size: 12.5px; }
+.artifact-cluster > summary:hover { background: var(--hover); }
+.artifact-cluster > p, .artifact-cluster > table { margin: 4px 10px 10px; }
+
+/* operator 2026-07-08: no text under the chart toolbar — reserve the toolbar strip on the
+   first (label) line of every chart host, and make the bar opaque for any straggler */
+.cf-frame .chart-host > .muted:first-child, .cf-frame > .muted:first-child { padding-right: 210px; }
+.cf-bar { background: var(--panel); border: 1px solid var(--line); border-radius: 7px; padding: 2px 5px; }
+
+/* active-page highlight in the header ribbon (operator 2026-07-08): high-contrast yellow pill
+   with a black outline — the previous accent-blue-on-blue was unreadable on the blue header. */
+header nav a.nav-active {
+  color: #111 !important;
+  background: #ffd400;
+  border: 1.5px solid #111;
+  border-radius: 5px;
+  padding: 1px 7px;
+  font-weight: 700;
+  text-decoration: none;
+}
+header nav a.nav-active:hover { background: #ffe24d; color: #111 !important; }
+.mission-section { margin: 16px 2px 8px; font-size: 14px; text-transform: uppercase;
+  letter-spacing: .1em; color: var(--muted); border-bottom: 1px solid var(--line);
+  padding-bottom: 4px; }
+
+/* GANTT STANDARDIZATION (operator 2026-07-08): every schedule grid on every page shares the
+   same type + rhythm — 11px font, 1px/6px cell padding, bold summaries, per-column gridlines,
+   280-460px Name columns, the same filter dropdowns. .gantt-grid carries it; the remaining
+   grids (evolution / SRA / corridor) are aliased here so no page drifts. */
+.evo-gantt table, .sra-grid-host table, .dp-gantt table { font-size: 11px; }
+.evo-gantt th, .evo-gantt td, .sra-grid-host th, .sra-grid-host td,
+.dp-gantt th, .dp-gantt td { padding: 1px 6px; line-height: 1.2; border-right: 1px solid var(--line); }
+.evo-gantt td.name-cell, .sra-grid-host td.name-cell, .dp-gantt td.name-cell,
+.evo-gantt .pv-name, .sra-grid-host .pv-name, .dp-gantt .pv-name {
+  min-width: 280px; max-width: 460px; white-space: normal; word-break: break-word; }
+.pv-link { z-index: 2; }
+
+/* POLARIS masthead wordmark (ADR-0175) — NASA-worm-style SVG strokes in the worm's iconic red,
+   with a restrained glow that reads on the light, dark, and HUD headers alike. The backronym
+   tagline is tracked out beneath it, mission-patch style; it yields on narrow viewports. */
+.brand { display: flex; flex-direction: column; gap: 3px; margin: 0; }
+/* aspect-ratio + align-self keep the svg at its natural width: a column-flex child otherwise
+   STRETCHES to the h1 width and preserveAspectRatio centers the drawing inside it (an indent). */
+.brand-mark { height: 30px; width: auto; aspect-ratio: 344 / 72; align-self: flex-start;
+  display: block; overflow: visible; filter: drop-shadow(0 0 5px rgba(232, 67, 46, .35)); }
+.brand-strokes { stroke: #e8432e; }
+.brand-star { fill: #e8432e; }
+.brand-sub { font-size: 8px; font-weight: 600; letter-spacing: .24em; text-transform: uppercase;
+  color: var(--muted); white-space: nowrap; }
+@media (max-width: 1200px) { .brand-sub { display: none; } }
+
+/* Performance Summary (ADR-0182): DRM stat chips under the histogram tile. */
+.stat-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.stat-chip { background: var(--panel-2, rgba(127,127,127,0.12)); border: 1px solid var(--muted);
+  border-radius: 12px; padding: 2px 10px; font-size: 0.85em; color: var(--fg); }
+
+/* ---- Gantt gridlines (operator 2026-07-10, ADR-0183): visible row + column lines on the
+   data grid, and a light dotted continuation of each row line across the timeline. ---- */
+.gantt-grid td, .gantt-grid th { border-right: 1px solid var(--line); }
+.gantt-grid tbody td { border-bottom: 1px solid var(--line); }
+.gantt-grid tbody td.g-cell { border-bottom: 1px dotted rgba(128, 128, 128, 0.45); border-right: none; }
+
+/* ---- column mover grip + menu (SFGantt.attachColumnMovers) ---- */
+.gantt-grid th .sf-colgrip { display: none; margin-left: 6px; cursor: pointer; color: var(--muted);
+  font-size: 11px; user-select: none; }
+.gantt-grid th:hover .sf-colgrip { display: inline; }
+.sf-colmove-menu { position: absolute; z-index: 220; background: var(--panel, var(--field-bg));
+  border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 4px 14px rgba(0,0,0,.35);
+  display: flex; flex-direction: column; }
+.sf-colmove-menu button { background: none; border: none; color: var(--fg); padding: 6px 12px;
+  text-align: left; cursor: pointer; font-size: 12px; }
+.sf-colmove-menu button:hover { background: var(--field-bg); color: var(--accent); }
+/* left-button column DRAG (operator item 4): grab a header and drag it to reorder. The drop
+   target shows a keel-accent insert bar; the dragged column dims. Sort-on-click still works. */
+.gantt-grid th.sf-col-dragging { opacity: .45; cursor: grabbing; }
+.gantt-grid th.sf-col-drop { box-shadow: inset 3px 0 0 var(--accent); }
+/* freeze the Gantt/grid toolbar so it stays visible while the grid body scrolls (operator item 4):
+   the grid panes already scroll internally (max-height:80vh) with a sticky header row and the
+   fixed bottom scrollbar; sticky keeps the toolbar in view when the whole PAGE scrolls too. */
+.sf-freeze-bar { position: sticky; top: 0; z-index: 6; background: var(--bg); }
+
+/* ---- dependency link lines over the Gantt timeline ---- */
+svg.g-links { position: absolute; top: 0; left: 0; pointer-events: none; z-index: 1; }
+.g-link { fill: none; stroke: var(--gantt-link, #7a8699); stroke-width: 1.1; opacity: .85; }
+.g-link-arrow { fill: var(--gantt-link, #7a8699); opacity: .95; }
+
+/* ---- Task Information dialog (MS Project-style, ADR-0183) ---- */
+.ti-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.45); z-index: 220;
+  display: flex; align-items: center; justify-content: center; }
+.ti-dialog { background: var(--bg, #fff); color: var(--fg); border: 1px solid var(--line);
+  border-radius: 10px; width: min(760px, 94vw); max-height: 86vh; display: flex;
+  flex-direction: column; box-shadow: 0 10px 40px rgba(0,0,0,.5); }
+.ti-head { display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px; border-bottom: 1px solid var(--line); }
+.ti-head h3 { margin: 0; font-size: 14px; color: var(--accent); }
+.ti-close { background: none; border: none; color: var(--muted); font-size: 16px; cursor: pointer; }
+.ti-close:hover { color: var(--bad); }
+.ti-tabs { display: flex; flex-wrap: wrap; gap: 2px; padding: 6px 10px 0; border-bottom: 1px solid var(--line); }
+.ti-tabs button { background: none; border: 1px solid var(--line); border-bottom: none;
+  border-radius: 6px 6px 0 0; color: var(--muted); padding: 5px 10px; cursor: pointer; font-size: 12px; }
+.ti-tabs button.on { color: var(--accent); background: var(--field-bg); font-weight: 600; }
+.ti-body { padding: 12px 16px; overflow: auto; }
+.ti-body dl { display: grid; grid-template-columns: 200px 1fr; gap: 3px 14px; font-size: 13px; margin: 0; }
+.ti-body dt { color: var(--muted); }
+.ti-table { border-collapse: collapse; font-size: 13px; width: 100%; }
+.ti-table th, .ti-table td { border: 1px solid var(--line); padding: 4px 8px; text-align: left; }
+.ti-table th { color: var(--muted); background: var(--field-bg); }
+.ti-notes { white-space: pre-wrap; font-size: 13px; }
+.ti-cite { padding: 8px 14px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); }
+
+/* always-on data-provenance banner (operator 2026-07-10, ADR-0183) */
+.src-banner { margin: 8px 0 10px; padding: 6px 12px; border: 1px solid var(--line);
+  border-left: 3px solid var(--accent); border-radius: 6px; background: var(--field-bg);
+  font-size: 12px; color: var(--muted); }
+.src-banner b { color: var(--fg); }
+
+/* ---- per-page memory + universal Reset view (ADR-0186) ---- */
+/* the header-nav Reset view button (ADR-0188): rides in the FROZEN title bar so it is
+   always visible; the .sf-reset-float fallback covers markup predating the header button */
+header nav .sf-reset-view { background: none; border: 0; font: inherit; cursor: pointer;
+  color: var(--header-muted, rgba(255, 255, 255, 0.82)); margin-right: 14px; padding: 0; }
+header nav .sf-reset-view:hover { color: var(--header-ink, #fff); }
+.sf-reset-float { position: fixed; right: 14px; top: 45%; z-index: 95;
+  padding: 4px 13px; font-size: 12px; color: var(--muted); background: var(--panel);
+  border: 1px solid var(--line); border-radius: 14px; cursor: pointer;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.25); }
+.sf-reset-float:hover { color: var(--fg); border-color: var(--accent); }
+/* the Find-UID flash works on EVERY Gantt table, not just the Activities grid */
+tr.row-found td { background: #fff3b0; }
+tr.row-found td.sf-frozen-col { background: #fff3b0; }
+
+/* ---- expanded-chart title + fill-the-page policy (ADR-0187) ---- */
+.cf-title { display: none; font-weight: 600; font-size: 15px; padding: 6px 210px 2px 12px;
+  color: var(--fg); }
+.cf-frame:fullscreen .cf-title, .cf-frame.cf-max .cf-title { display: block; }
+
+/* ---- CP Evolution as the standard table Gantt (ADR-0187) ---- */
+.evo-grid .g-bar.ev-b-entered { background: var(--ok); }
+.evo-grid .g-bar.ev-b-stayed { background: var(--accent); }
+.evo-grid .g-bar.ev-b-left { background: var(--bad); opacity: 0.5; border: 1px dashed var(--bad); }
+.evo-grid .g-bar.ev-t-driving { background: var(--bad); }
+.evo-grid .g-bar.ev-t-secondary { background: var(--warn); }
+.evo-grid .g-bar.ev-t-tertiary { background: var(--accent); }
+.evo-grid tr.ev-focus td { background: var(--hover); }
+.evo-grid tr.ev-focus td:first-child { border-left: 3px solid var(--accent); }
+/* Click-to-highlight a task on the Path Analysis grid (operator): the whole row of fields shades and
+   its Gantt bar/milestone outlines; clicking off clears it. Tokens-only, all 4 themes. The frozen
+   (sticky) data columns need the explicit override or their opaque background hides the row shade. */
+.path-grid tr.pv-selected td { background: color-mix(in srgb, var(--accent) 16%, transparent); }
+.path-grid tr.pv-selected td.sf-frozen-col { background: color-mix(in srgb, var(--accent) 16%, transparent); }
+.path-grid tr.pv-selected td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+.gantt-bar.pv-bar-selected, .g-ms.pv-bar-selected { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* Session HIGHLIGHT mode (feature #10): the filter's MATCHES are marked (never dropped). Distinct
+   class + token from the transient click selection above so the two compose on one row (a task can
+   be selected AND a match). Tokens-only (--ok), all 4 themes. */
+.path-grid tr.pv-match td { background: color-mix(in srgb, var(--ok) 14%, transparent); }
+.path-grid tr.pv-match td.sf-frozen-col { background: color-mix(in srgb, var(--ok) 14%, transparent); }
+.path-grid tr.pv-match td:first-child { box-shadow: inset 3px 0 0 var(--ok); }
+.gantt-bar.pv-bar-match, .g-ms.pv-bar-match { outline: 2px dashed var(--ok); outline-offset: 1px; }
+.evo-grid tr.ev-row-left td { color: var(--muted); }
+.evo-grid tbody tr { cursor: pointer; }
+.evo-durbadge { position: absolute; top: 1px; font-size: 11px; color: var(--warn); pointer-events: none; }
+.evo-why { font-size: 11px; white-space: nowrap; }
