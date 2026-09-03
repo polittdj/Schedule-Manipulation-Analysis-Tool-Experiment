@@ -230,6 +230,17 @@ Keep this bundle in sync with v2 if the prototype changes materially.
 - **Any UID as global target**: `targetInfo(uid)` resolves curated milestones OR any activity OR project finish; header `targetGroups()` lists Key milestones + every activity UID as optgroups. `targetOf`/`setTarget` generalised.
 - **Ch 03 driving path MS-Project-style + interactive** (`buildDrivers`; state `drvVer`/`drvSec`/`drvTer`/`drvPlay`, `toggleDrvPlay`): user-set **secondary/tertiary total-float thresholds** (sliders) reclassify Driving (TF≤0)/Secondary(≤sec)/Tertiary(≤ter); **version cursor + Play** replays v0–v5; each row has a 6-cell **tier strip**; a per-version-float `model` drives the **On/off the driving path** panel naming what **JOINED / LEFT / RETURNED** and why; month-header Gantt matching Ch 01, tier bars, connectors, Explore/Excel.
 
+**POLARIS² era (2026-08-14 — latest): route-complete verification + Forensics/Compare promotion.**
+Deliverable renamed **POLARIS²**; `/integrity` is now a dedicated **Forensics · Schedule Integrity**
+screen (7 detectors, masking quotient, any-pair evidence ledger); **Ch 10 promoted** to a full
+any-pair compare page on the same pair engine (verdict, NFI attribution bar, what-moved census,
+biggest movers, per-class scan, field-level ledger); integrity reported-slip math fixed (reads
+per-update `b.d`). **All 32 repo HTML routes verified mapped** (ADR sweep 0285→0402 at HEAD
+`71a56d32`: no new routes); every screen wears a **⇄ ROUTE chip** in the header naming the repo
+page it restyles (`ROUTEMAP` in the logic class). Route maps refreshed in `github.md`,
+`docs/coverage-verification.md`, bundle `CLAUDE.md` §8 (added `/card`, `/wbs`) + `README.md`;
+bundle prototype copy re-synced.
+
 **Repo re-audit + four new screens (2026-07-24 — latest):** the repo moved a long way
 past the first design pass (now v1.0.91, highest ADR 0282, tree `df68be7b`). Audited it and
 added the pages that did not exist when this project started — each grounded in its ADR, all
@@ -286,6 +297,17 @@ outstanding.** Decisions on record:
 real engine data with the full chart contract): cost-loaded JCL (FICSM per JA CSRUH), probabilistic weather
 calendars, series-vs-parallel risk mapping, realistic (non-early-start) simulation,
 probabilistic branching.
+
+**Sync 2026-09-02 (latest): repo main @ v1.0.230 / ADR-0452.** Product is now **POLARIS²** (ADR-0436; POLARIS² retired everywhere in the deck). New Library screen **One-Pager Timeline** (`op`, route `/onepager`, ADR-0446): `opDemoRows/opParseDate/opParseSpan/opParseRows/opReadXlsx/opParseCsv/opIngest/opLayout/buildOnePager/opPptx`; state `opDoc` ('demo' | parsed doc | null), `opTitle`, `opMsg`; lane tokens `LANES_LIGHT/LANES_DARK` appended per theme in renderVals. Also: Ch 03 `drvView` whole/path + `drvFile` picker + row `retarget`; Ch 08 `util` panel; Portfolio `buildCombine()` (`pfc`); Groups `fieldRoles` roles + role-named filter options (`gFilters[i].role`); WBS `wbsRole` picker; AI Settings gateway (`seAck/seKeyHeld/seKeyDraft`); Ask facts pairwise series; boot tiles = session facts; Timescale `tsLabel` + adapt note; TVAC constraint is an **MSO** (was SNET — soft under both engine definitions, ADR-0429). Details: `github.md` Last sync + `docs/coverage-verification.md`.
+
+**2026-09-03 — verifier fixes (built + verified clean):** Portfolio Trend Lab stray `</div>`
+removed (it leaked panels onto every screen). Boot/launch screen (`S.launch`: idle → travel →
+done; `parked`/`traveling`/`showLaunch` renderVals) side cards (◄ EFFICIENCY OF PROOF · ABOARD ►)
+now anchor `bottom:12px` inside the stage (was `top:38%/58%`, overlapping the BEGIN / Skip CTA
+row); stage has `container-type:inline-size` and `@container (max-width:1100px){.astro-side-card
+{display:none}}` (helmet) hides them on narrow stages. Bundle prototype copy re-synced.
+`ASTROLABE.dc.html` / `ASTROLABE Command Deck.dc.html` at root = the earlier ASTROLABE
+exploration (see `github.md`), kept, not the deliverable.
 
 ## How to resume
 
