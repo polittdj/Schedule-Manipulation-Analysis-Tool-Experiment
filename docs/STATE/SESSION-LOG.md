@@ -16107,4 +16107,7 @@ of the WP1 UI map. Branch fresh from `origin/main`.
   after tooltips.js moved it — fixed in the oracle); route pins 4 red / 20 green against the original
   route; mutation original-JS + fixed-route → exactly the six JS-side drivers red, blank-clear green.
   Digest oracle pinned stable across reload and across two servers, sensitive to a typed value.
-- **Gate:** recorded below after the runs.
+- **Gate (recorded AFTER the runs, QC-1):** `/usr/local/bin/ruff` 0.16.5 check + format --check clean (the
+  shadowing `/root/.local/bin/ruff` 0.15.8 named as a trap) · mypy --strict 161 files clean · bandit exit 0 ·
+  node --check per file clean · full suite **4703 passed / 5 skipped in 43:33**, exit 0 · parity **72 passed in
+  13:04**, exit 0 · installer lockstep inside the suite after the final wheel + installer rebuild.
