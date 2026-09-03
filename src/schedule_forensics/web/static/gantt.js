@@ -191,7 +191,8 @@ window.SFGantt = (function () {
         tierEl.style.top = (capOff + i * 18) + "px";
         row.bands.forEach(function (b) {
           tierEl.appendChild(el("div", {
-            class: "g-band" + (b.warn ? " g-band-warn" : ""), title: b.label, text: b.label,
+            class: "g-band" + (b.warn ? " g-band-warn" : "") + (b.glyph ? " g-band-glyph" : ""),
+            title: b.label, text: b.label,
             style: "left:" + b.left + "px;width:" + b.width + "px;text-align:" + (b.align || "center"),
           }));
         });
