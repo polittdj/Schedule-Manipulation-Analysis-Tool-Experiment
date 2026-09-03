@@ -1,0 +1,59 @@
+/* AISMAT Command Deck — Form control styles. Namespaced aismat-*; tokens only. */
+
+/* ---- Field wrapper ---- */
+.aismat-field{display:flex;flex-direction:column;gap:6px}
+.aismat-label{font-family:var(--font-sans);font-size:var(--fs-xs);font-weight:var(--fw-semibold);color:var(--text-secondary)}
+.aismat-label__req{color:var(--status-fail);margin-left:3px}
+.aismat-hint{font-family:var(--font-sans);font-size:var(--fs-xs);color:var(--text-muted);line-height:var(--lh-snug)}
+.aismat-hint--error{color:var(--status-fail)}
+
+/* ---- Text input ---- */
+.aismat-inputwrap{position:relative;display:flex;align-items:center;width:100%}
+.aismat-inputwrap__icon{position:absolute;left:11px;color:var(--text-muted);pointer-events:none;display:inline-flex}
+.aismat-input{width:100%;height:38px;padding:0 12px;background:var(--surface-sunken);border:var(--border-width) solid var(--border);border-radius:var(--radius-control);color:var(--text-primary);font-family:var(--font-sans);font-size:var(--fs-base);transition:border-color var(--dur-fast) var(--ease-standard),box-shadow var(--dur-fast) var(--ease-standard)}
+.aismat-input::placeholder{color:var(--text-faint)}
+.aismat-input:hover:not(:disabled):not(:focus){border-color:var(--border-strong)}
+.aismat-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-muted)}
+.aismat-input:disabled{opacity:.5;cursor:not-allowed}
+.aismat-input--haspre{padding-left:34px}
+.aismat-input--mono{font-family:var(--font-mono);font-variant-numeric:var(--num-feature)}
+.aismat-input--sm{height:30px;font-size:var(--fs-sm)}
+.aismat-input--invalid{border-color:var(--status-fail-border)}
+.aismat-input--invalid:focus{border-color:var(--status-fail);box-shadow:0 0 0 3px var(--status-fail-bg)}
+
+/* ---- Select ---- */
+.aismat-selectwrap{position:relative;display:inline-flex;width:100%}
+.aismat-selectwrap__chev{position:absolute;right:10px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--text-muted);display:inline-flex}
+.aismat-select{width:100%;height:38px;padding:0 34px 0 12px;background:var(--surface-sunken);border:var(--border-width) solid var(--border);border-radius:var(--radius-control);color:var(--text-primary);font-family:var(--font-sans);font-size:var(--fs-base);appearance:none;-webkit-appearance:none;cursor:pointer;transition:border-color var(--dur-fast) var(--ease-standard),box-shadow var(--dur-fast) var(--ease-standard)}
+.aismat-select:hover:not(:disabled):not(:focus){border-color:var(--border-strong)}
+.aismat-select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-muted)}
+.aismat-select:disabled{opacity:.5;cursor:not-allowed}
+.aismat-select--sm{height:30px;font-size:var(--fs-sm)}
+
+/* ---- Checkbox ---- */
+.aismat-check{display:inline-flex;align-items:center;gap:9px;cursor:pointer;font-family:var(--font-sans);font-size:var(--fs-base);color:var(--text-primary);user-select:none}
+.aismat-check__input{position:absolute;opacity:0;width:1px;height:1px}
+.aismat-check__box{width:18px;height:18px;border-radius:var(--radius-xs);border:1.5px solid var(--border-strong);background:var(--surface-sunken);display:inline-flex;align-items:center;justify-content:center;color:transparent;flex:none;transition:background var(--dur-fast) var(--ease-standard),border-color var(--dur-fast) var(--ease-standard)}
+.aismat-check__input:checked+.aismat-check__box{background:var(--accent);border-color:var(--accent);color:var(--accent-contrast)}
+.aismat-check__input:focus-visible+.aismat-check__box{box-shadow:var(--ring)}
+.aismat-check--disabled{opacity:.5;cursor:not-allowed}
+
+/* ---- Radio ---- */
+.aismat-radio{display:inline-flex;align-items:center;gap:9px;cursor:pointer;font-family:var(--font-sans);font-size:var(--fs-base);color:var(--text-primary);user-select:none}
+.aismat-radio__input{position:absolute;opacity:0;width:1px;height:1px}
+.aismat-radio__box{width:18px;height:18px;border-radius:var(--radius-pill);border:1.5px solid var(--border-strong);background:var(--surface-sunken);display:inline-flex;align-items:center;justify-content:center;flex:none;transition:border-color var(--dur-fast) var(--ease-standard)}
+.aismat-radio__box::after{content:"";width:8px;height:8px;border-radius:var(--radius-pill);background:var(--accent);transform:scale(0);transition:transform var(--dur-fast) var(--ease-out)}
+.aismat-radio__input:checked+.aismat-radio__box{border-color:var(--accent)}
+.aismat-radio__input:checked+.aismat-radio__box::after{transform:scale(1)}
+.aismat-radio__input:focus-visible+.aismat-radio__box{box-shadow:var(--ring)}
+.aismat-radio--disabled{opacity:.5;cursor:not-allowed}
+
+/* ---- Switch ---- */
+.aismat-switch{display:inline-flex;align-items:center;gap:10px;cursor:pointer;font-family:var(--font-sans);font-size:var(--fs-base);color:var(--text-primary);user-select:none}
+.aismat-switch__input{position:absolute;opacity:0;width:1px;height:1px}
+.aismat-switch__track{width:38px;height:22px;border-radius:var(--radius-pill);background:var(--surface-hover);border:1px solid var(--border-strong);position:relative;flex:none;transition:background var(--dur-base) var(--ease-standard),border-color var(--dur-base) var(--ease-standard)}
+.aismat-switch__thumb{position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:var(--radius-pill);background:var(--text-muted);transition:transform var(--dur-base) var(--ease-out),background var(--dur-base) var(--ease-standard)}
+.aismat-switch__input:checked+.aismat-switch__track{background:var(--accent-muted);border-color:var(--accent)}
+.aismat-switch__input:checked+.aismat-switch__track .aismat-switch__thumb{transform:translateX(16px);background:var(--accent)}
+.aismat-switch__input:focus-visible+.aismat-switch__track{box-shadow:var(--ring)}
+.aismat-switch--disabled{opacity:.5;cursor:not-allowed}

@@ -1,0 +1,48 @@
+/* AISMAT Command Deck — Feedback component styles. Namespaced aismat-*; tokens only. */
+
+/* ---- Tooltip (hover-to-explain) ---- */
+.aismat-tt{position:relative;display:inline-flex}
+.aismat-tt__pop{position:absolute;z-index:60;min-width:170px;max-width:290px;background:var(--surface-raised);border:var(--border-width) solid var(--border-strong);border-radius:var(--radius-md);box-shadow:var(--shadow-lg);padding:10px 12px;font-family:var(--font-sans);font-size:var(--fs-xs);line-height:var(--lh-normal);color:var(--text-secondary);opacity:0;pointer-events:none;transition:opacity var(--dur-fast) var(--ease-out),transform var(--dur-fast) var(--ease-out)}
+.aismat-tt__pop--top{bottom:calc(100% + 8px);left:50%;transform:translate(-50%,4px)}
+.aismat-tt__pop--bottom{top:calc(100% + 8px);left:50%;transform:translate(-50%,-4px)}
+.aismat-tt__pop--right{left:calc(100% + 8px);top:50%;transform:translate(-4px,-50%)}
+.aismat-tt__pop--left{right:calc(100% + 8px);top:50%;transform:translate(4px,-50%)}
+.aismat-tt__pop--open{opacity:1;pointer-events:auto}
+.aismat-tt__pop--top.aismat-tt__pop--open,.aismat-tt__pop--bottom.aismat-tt__pop--open{transform:translate(-50%,0)}
+.aismat-tt__pop--left.aismat-tt__pop--open,.aismat-tt__pop--right.aismat-tt__pop--open{transform:translate(0,-50%)}
+/* teaching structure: what → how → worked example */
+.aismat-explain__what{display:block;color:var(--text-primary);font-weight:var(--fw-semibold)}
+.aismat-explain__how{display:block;color:var(--text-muted);margin-top:5px}
+.aismat-explain__eg{display:block;color:var(--text-secondary);margin-top:7px;padding-top:7px;border-top:var(--border-width) solid var(--border-subtle)}
+
+/* ---- Dialog ---- */
+.aismat-dialog__scrim{position:fixed;inset:0;background:var(--scrim);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);display:flex;align-items:center;justify-content:center;z-index:100;padding:24px;animation:aismat-fade-up var(--dur-base) var(--ease-out)}
+.aismat-dialog{background:var(--bg-panel);border:var(--border-width) solid var(--border);border-radius:var(--radius-card);box-shadow:var(--shadow-xl);width:100%;max-width:480px;max-height:88vh;display:flex;flex-direction:column;overflow:hidden}
+.aismat-dialog__head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:18px 20px 12px}
+.aismat-dialog__title{font-family:var(--font-display);font-size:var(--fs-xl);font-weight:var(--fw-semibold);color:var(--text-primary);letter-spacing:var(--ls-tight);line-height:var(--lh-snug)}
+.aismat-dialog__sub{font-size:var(--fs-sm);color:var(--text-muted);margin-top:3px}
+.aismat-dialog__body{padding:2px 20px 8px;overflow:auto;color:var(--text-secondary);font-size:var(--fs-base);line-height:var(--lh-normal)}
+.aismat-dialog__foot{display:flex;justify-content:flex-end;gap:10px;padding:14px 20px 18px}
+
+/* ---- Toast ---- */
+.aismat-toast{display:flex;gap:11px;align-items:flex-start;width:340px;background:var(--surface-raised);border:var(--border-width) solid var(--border);border-radius:var(--radius-md);box-shadow:var(--shadow-md);padding:12px 13px}
+.aismat-toast__icon{width:28px;height:28px;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;flex:none}
+.aismat-toast--pass .aismat-toast__icon{background:var(--status-pass-bg);color:var(--status-pass)}
+.aismat-toast--warn .aismat-toast__icon{background:var(--status-warn-bg);color:var(--status-warn)}
+.aismat-toast--fail .aismat-toast__icon{background:var(--status-fail-bg);color:var(--status-fail)}
+.aismat-toast--info .aismat-toast__icon{background:var(--status-info-bg);color:var(--status-info)}
+.aismat-toast__body{flex:1;min-width:0}
+.aismat-toast__title{font-weight:var(--fw-semibold);font-size:var(--fs-sm);color:var(--text-primary)}
+.aismat-toast__msg{font-size:var(--fs-xs);color:var(--text-muted);margin-top:2px;line-height:var(--lh-snug)}
+
+/* ---- CaveatBanner (SUSPECTED / caveat surfacing — visible, never buried) ---- */
+.aismat-caveat{display:flex;gap:11px;align-items:flex-start;border-radius:var(--radius-md);border:var(--border-width) solid;padding:11px 13px;font-family:var(--font-sans)}
+.aismat-caveat--warn{background:var(--status-warn-bg);border-color:var(--status-warn-border)}
+.aismat-caveat--fail{background:var(--status-fail-bg);border-color:var(--status-fail-border)}
+.aismat-caveat--info{background:var(--status-info-bg);border-color:var(--status-info-border)}
+.aismat-caveat__icon{flex:none;margin-top:1px}
+.aismat-caveat--warn .aismat-caveat__icon{color:var(--status-warn)}
+.aismat-caveat--fail .aismat-caveat__icon{color:var(--status-fail)}
+.aismat-caveat--info .aismat-caveat__icon{color:var(--status-info)}
+.aismat-caveat__title{font-size:var(--fs-sm);font-weight:var(--fw-semibold);color:var(--text-primary);letter-spacing:var(--ls-wide)}
+.aismat-caveat__text{font-size:var(--fs-xs);color:var(--text-secondary);margin-top:3px;line-height:var(--lh-normal)}

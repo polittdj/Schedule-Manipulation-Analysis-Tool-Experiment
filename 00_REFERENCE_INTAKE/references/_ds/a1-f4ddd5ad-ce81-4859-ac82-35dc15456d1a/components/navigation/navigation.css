@@ -1,0 +1,26 @@
+/* AISMAT Command Deck — Navigation & chrome styles. Namespaced aismat-*; tokens only. */
+
+/* ---- Tabs (underline) ---- */
+.aismat-tabs{display:flex;gap:2px;border-bottom:var(--border-width) solid var(--border-subtle)}
+.aismat-tab{display:inline-flex;align-items:center;gap:7px;padding:10px 14px;font-family:var(--font-sans);font-size:var(--fs-sm);font-weight:var(--fw-medium);color:var(--text-muted);background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;margin-bottom:-1px;white-space:nowrap;transition:color var(--dur-fast) var(--ease-standard),border-color var(--dur-fast) var(--ease-standard)}
+.aismat-tab:hover{color:var(--text-secondary)}
+.aismat-tab:focus-visible{outline:none;box-shadow:var(--ring);border-radius:var(--radius-xs)}
+.aismat-tab--active{color:var(--text-primary);border-bottom-color:var(--accent)}
+.aismat-tab__badge{font-family:var(--font-mono);font-size:var(--fs-2xs);color:var(--text-faint)}
+
+/* ---- RoleStrip (visible role switcher) ---- */
+.aismat-rolestrip{display:inline-flex;align-items:center;gap:4px;background:var(--bg-panel);border:var(--border-width) solid var(--border);border-radius:var(--radius-pill);padding:4px;max-width:100%;overflow-x:auto;scrollbar-width:none}
+.aismat-rolestrip::-webkit-scrollbar{display:none}
+.aismat-rolestrip__label{font-family:var(--font-sans);font-size:10px;text-transform:uppercase;letter-spacing:var(--ls-label);color:var(--text-faint);font-weight:var(--fw-semibold);padding:0 8px 0 10px;flex:none}
+.aismat-role{display:inline-flex;align-items:center;gap:7px;padding:6px 13px;border-radius:var(--radius-pill);font-family:var(--font-sans);font-size:var(--fs-sm);font-weight:var(--fw-medium);color:var(--text-muted);background:none;border:none;cursor:pointer;white-space:nowrap;flex:none;transition:color var(--dur-fast) var(--ease-standard),background var(--dur-fast) var(--ease-standard)}
+.aismat-role:hover{color:var(--text-primary);background:var(--surface-hover)}
+.aismat-role:focus-visible{outline:none;box-shadow:var(--ring)}
+.aismat-role--active{color:var(--accent-contrast);background:var(--accent)}
+.aismat-role--active:hover{color:var(--accent-contrast);background:var(--accent-hover)}
+
+/* ---- AirGapIndicator (persistent sovereignty chip) ---- */
+.aismat-airgap{display:inline-flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:var(--fs-xs);font-weight:var(--fw-medium);padding:5px 11px;border-radius:var(--radius-chip);border:var(--border-width) solid;letter-spacing:var(--ls-wide);white-space:nowrap}
+.aismat-airgap__dot{width:7px;height:7px;border-radius:var(--radius-pill);background:currentColor;flex:none;animation:aismat-blink 2.4s step-end infinite}
+.aismat-airgap--pass{background:var(--status-pass-bg);border-color:var(--status-pass-border);color:var(--status-pass)}
+.aismat-airgap--warn{background:var(--status-warn-bg);border-color:var(--status-warn-border);color:var(--status-warn)}
+.aismat-airgap--fail{background:var(--status-fail-bg);border-color:var(--status-fail-border);color:var(--status-fail)}

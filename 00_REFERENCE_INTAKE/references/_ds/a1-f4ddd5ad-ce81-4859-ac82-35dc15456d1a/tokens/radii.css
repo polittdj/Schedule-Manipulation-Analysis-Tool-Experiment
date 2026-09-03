@@ -1,0 +1,24 @@
+/* AISMAT Command Deck — Radii & Borders
+   Instrument-panel geometry: small, precise radii. Sharp reads as measured
+   and engineering-grade; nothing here is soft or playful. */
+:root {
+  --radius-0: 0px;
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+  --radius-2xl: 20px;
+  --radius-full: 999px;
+
+  --border-width: 1px;
+  --border-width-2: 2px;
+  --border-width-focus: 2px;
+
+  /* Semantic roles */
+  --radius-control: 6px;   /* buttons, inputs, selects */
+  --radius-chip: 4px;      /* status chips, tags, badges */
+  --radius-card: 10px;     /* panels, cards, instruments */
+  --radius-pill: 999px;    /* toggles, avatars, dots */
+  --radius-inset: 4px;     /* nested wells, code, readouts */
+}

@@ -1,0 +1,380 @@
+# CLAUDE.md — Schedule Forensics UI: rewrite brief + durable build style
+
+You are working in the **Schedule Forensics** repo
+(`Schedule-Manipulation-Analysis-Tool-Experiment`): a FastAPI + Jinja2 app
+(`src/schedule_forensics/web/app.py`) with dependency-free vanilla-JS charts in
+`web/static/`. This file is your standing contract. **Read it in full before editing,
+and follow it for the initial rewrite AND for every change or feature the user adds
+later.** When the user asks for something that conflicts with a rule here, stop and
+flag it rather than silently breaking the rule.
+
+---
+
+## 0. Source of truth
+
+The intended UI is the interactive prototype in this folder:
+
+- **`ASTROLABE.dc.html`** + `support.js` — **the current pixel/behaviour truth.** The product is
+  named **ASTROLABE** in this design; see §9 for everything it adds over the earlier prototype.
+- **`Mission Ops Redesign v2.dc.html`** — the previous version, kept for reference only. Where the
+  two disagree, ASTROLABE wins.
+
+On the older prototype (still accurate for the twelve chapters' content):
+
+- **`Mission Ops Redesign v2.dc.html`** + `support.js` — open in a browser; this was the
+  pixel/behavior truth before ASTROLABE. It is a **design reference**, not production code to paste. It
+  happens to be authored as a single "Design Component"; **you are recreating it in the
+  repo's real environment** (Jinja2 shells + CSS custom properties + per-page vanilla JS),
+  not copying the HTML.
+- **`README.md`** — screen-by-screen spec, page mapping (prototype chapter → repo page),
+  global chrome, exact copy, design tokens.
+- **`DESIGN-GUIDE.md`** — the design rulebook. Copy it to `docs/DESIGN-SYSTEM.md` in the
+  repo and keep it current as the system evolves.
+- **`sf-themes.css`** — drop-in theme tokens (all four themes), keyed to the repo's
+  existing CSS variable names. This is the styling source of truth.
+
+When this file and the prototype disagree, the prototype wins for *look*; this file wins
+for *rules*.
+
+**Repo baseline this bundle was synced against:** `main` @ tree `17431a6d8430`, app version
+**1.0.91**, highest ADR **0284** (see `github.md` at the prototype project root for the
+sync receipt). The route inventory in §8 is the authoritative "what exists to restyle"
+list — it supersedes any earlier page list. Several surfaces that were "new panels to
+build" in earlier revisions of this brief **now exist in the repo** and must be
+**restyled, not rebuilt**: `/workbench`, `/margin`, `/standards`, `/scorecards`,
+`/portfolio`, the role strip on `/`, and the JCL panel on `/sra`.
+
+---
+
+## 1. TASK 1 — Rewrite the current UI to match the prototype
+
+Do it in this order (each step is shippable on its own):
+
+1. **Tokens** — add `sf-themes.css` + the theme-select control (snippet in `README.md`).
+   The app is already variable-driven, so this re-themes everything with zero template
+   changes. Migrate legacy `light` → `daylight`; default → `console`.
+2. **Global chrome** — retitle the header (drop the "NASA" wordmark; keep the insignia as
+   the AI status light), add the **global Analysis-Target selector** (§4), the story nav
+   (left rail on dark themes, top bar on daylight), Continue footers, story progress.
+3. **Page shells, one per PR** — restyle each page to its chapter spec in `README.md`,
+   wiring the panel toolbar contract (§3) to the existing export endpoints and chart
+   frame. Follow the page-mapping table; the 12 chapters map onto existing routes.
+4. **New analytics panels** — the prototype adds panels the current app lacks (Risk Driver
+   Method tornado, cruciality lens, pre/post-mitigation overlay, critical-path drag, float
+   erosion, compression index, merge hotspots, probabilistic-Gantt whiskers, the SSI
+   editable grid with column-paste). Build each on data the engine **already** produces.
+
+Do **not** attempt a big-bang rewrite. Ship tokens → chrome → one page at a time.
+
+---
+
+## 2. NON-NEGOTIABLES (never violate)
+
+1. **Never change how anything is calculated.** Do not touch `engine/`, `importers/`,
+   `ai/` logic, or any metric formula. This is a presentation-layer program. Every number
+   on screen is read from the engine payload; the UI computes no schedule math of its own.
+2. **Never remove functionality.** Every existing capability stays: Excel/CSV export,
+   per-visual enlarge/shrink, data-table toggles, Gantt column picker / zoom / filters /
+   format / column-resize, play/step animations, print, UI text scale, per-page selection
+   memory + Reset view, CUI marking bars + compliance drawer. If a redesign would drop a
+   control, keep the control.
+3. **No "NASA" wordmark** anywhere. Keep the neutral command-banner identity.
+4. **Air-gap posture in production.** No CDN, no frameworks, no remote fonts, no network
+   egress. Vendor fonts locally with `@font-face` (the prototype uses Google-hosted fonts
+   for preview convenience only). All charts are DOM/SVG drawn by vanilla JS.
+5. **Local-only AI.** The analyst model runs on loopback; schedule data never leaves the
+   machine; closing the last window stops the server. Keep the "Ask the analyst" feature
+   and its data-sovereignty messaging.
+6. **Honesty rules.** Never fabricate a missing value — show `—`. Every claim/finding
+   carries a citation (`⌖ file · UID`). Monte-Carlo runs are seeded/reproducible. When the
+   SRA runs on auto-default uncertainty, show the "screening placeholder, not
+   SME-validated" warning; when analyst-supplied, show the confirming note.
+
+---
+
+## 3. THE CHART CONTRACT (apply to EVERY visual — existing and new)
+
+Any data visual you build or touch must have all of:
+
+- **(a) Axes** — X and Y with tick labels **and** values, plus an axis title where the
+  unit isn't obvious (`FINISHES ↑`, `CUM % ↑`, `TOTAL FLOAT (d) ↑`).
+- **(b) Legend** — every series/band/marker labeled.
+- **(c) Hover callout** — each element (bar, point, cell, segment) exposes its underlying
+  datum on hover (native `title` in the prototype; use the repo's chart-frame tooltip).
+- **(d) Provenance** — a chip reading `SOURCE: KESTREL3_vN.xer · DD YYYY-MM-DD`. A
+  single-version visual gets a file/version picker; a multi-version visual labels each
+  series/point by version. A target-dependent visual shows a `measured to <target>` chip.
+- **(e) Toolbar** — `▦ DATA` (reveal the underlying table), `⤓ EXCEL` (existing export
+  endpoint), `⛶ ENLARGE` (span full width, ~1.8× height, label flips to SHRINK).
+- **(f) Granularity** — time-binned visuals get grain chips (DAY / WEEK / MONTH / QTR / YR
+  as the data supports); persist the choice.
+- **(g) Takeaway** — a plain-language headline stating what the chart shows, and a one-line
+  "how to read this" where useful.
+
+**Everything is exportable to Excel** — every panel, table, grid, and matrix, matching the
+rest of the app.
+
+---
+
+## 4. Global Analysis Target
+
+One project-wide **Analysis Target** (an endpoint UID; default = Launch Readiness Review,
+options include the other milestones + "Project finish") drives **every** calculation and
+analysis: the driving-path endpoint, the SRA/SSI focus event, the forecast endpoint, and
+the briefing verdict. It lives in the header, is visible on every screen, persists, and is
+two-way with any in-panel target picker. Any new analysis that has an endpoint must read
+this global target and show a `measured to …` chip — never introduce a second, independent
+target control.
+
+---
+
+## 5. Structure & shared components
+
+- **Story spine** — three acts (I Situation · II Diagnosis · III Outlook) over 12 chapters,
+  each with a takeaway headline and a "Continue → Chapter NN" footer. Utilities
+  (groups/filters, AI settings, metric dictionary) live in a **Setup** nav group off the
+  spine, not as story chapters.
+- **Shared dialogs** (build once, reuse everywhere): **Task Information** (7 tabs: General,
+  Predecessors, Successors, Resources, Advanced, Notes, Custom Fields) opens from any Gantt
+  / matrix / grid row; **Timescale** (stacked Year/Quarter/Month/Week/Day tiers + size);
+  **Ask the analyst** drawer (grounded, cited, per-screen context). Any new tabular/Gantt
+  surface wires row click → Task Information.
+- **Four themes** — `console` (default, dark mission-control), `daylight`, `apollo` (CRT),
+  `jarvis` (HUD). Everything must render correctly in all four; only use `sf-themes.css`
+  variables for color/type/radius — never hard-code a hex that should be a token.
+
+---
+
+## 6. How to ADD a feature later (the ongoing style)
+
+When the user asks for a new chart, metric, or screen:
+
+1. **Place it in the story** — which act/chapter does it belong to? Add it as a panel/beat
+   there, or a Setup screen if it's a utility. Don't create orphan pages.
+2. **Data from the engine only** — if the number doesn't exist in the engine payload yet,
+   add it in `engine/` (with the user's OK) and expose it; never fake it in the view.
+3. **Honor the chart contract (§3) in full** — axes, legend, hover, provenance chip,
+   toolbar, Excel export, granularity if time-binned, takeaway headline.
+4. **Read the global target (§4)** if it has an endpoint; add a `measured to …` chip.
+5. **Theme it with tokens (§5)**; verify in all four themes.
+6. **Persist any view state** the way the rest of the app does (per-page selection memory);
+   keep it keyboard-reachable with a visible focus ring; keep CUI bars in print/export.
+7. **Update `docs/DESIGN-SYSTEM.md`** with the new pattern so the system stays coherent.
+
+New industry-standard analytics are welcome (the prototype already added the Risk Driver
+Method, cruciality, pre/post-mitigation, drag, float erosion, compression index, merge
+hotspots, probabilistic Gantt). **Note the repo has since built several of the items this
+brief once listed as "future candidates" — cost-loaded JCL/FICSM (ADR-0269), the
+correlation matrix with eigenvalue feasibility (0270), Latin-Hypercube sampling (0271),
+probabilistic + conditional branching (0273/0274).** Those are restyle work now, not new
+features. Probabilistic weather calendars, series-vs-parallel risk mapping, and realistic
+(non-early-start) simulation remain genuinely open — build them the same way, on real
+engine data, when asked.
+
+---
+
+## 7. Definition of Done (check before every PR)
+
+- [ ] No engine/calculation change; every displayed number traces to the engine payload.
+- [ ] No lost functionality vs the page you replaced.
+- [ ] Renders correctly in console / daylight / apollo / jarvis.
+- [ ] Every visual satisfies the chart contract (§3) and is Excel-exportable.
+- [ ] Endpoint-dependent visuals read the global target and show a provenance/target chip.
+- [ ] Air-gap clean: no CDN/framework/remote-font/network calls added.
+- [ ] Missing values show `—`; findings cite file + UID; SRA runs seeded + correctly
+      captioned (auto-default vs analyst-supplied).
+- [ ] Keyboard-reachable, visible focus, CUI bars survive print/export.
+- [ ] `docs/DESIGN-SYSTEM.md` updated if a new pattern was introduced.
+
+
+---
+
+## 8. Repo route inventory → prototype screen (re-verified `main` @ HEAD `71a56d32`, ADR ≤ 0401; ADR sweep →0402 confirms no new HTML routes — **32 total, all mapped**; each deck screen names its route on the header ⇄ ROUTE chip)
+
+Every user-facing route in the app today, and the prototype screen that defines how it
+should look. **A route missing from this table means the prototype does not specify it —
+ask before redesigning it.**
+
+| Route | What it is | Prototype screen | Key repo assets | ADR |
+|---|---|---|---|---|
+| `/` | Landing: role strip + dropzone + ingest manifest | **00 Import** (incl. the *Start here* role strip) | `home.js`, `dashboard.js` | 0225, 0255, 0267 |
+| `/portfolio` | Portfolio Manager — one row per Project | **Program Portfolio** (+ *Portfolio at Scale* for 100+) | project rollup, `engine/projects.py` | 0225, 0226, 0260 |
+| `/mission` | Mission Control wall | **Mission Control** | `mission.js` (play-all master) | 0196, 0262, 0275 |
+| `/analysis/<key>` | Per-version analysis report | **01 Where we stand** (+ *Schedule ID card* panel) | `gantt.js`, `histogram.js`, `drilldown.js` | 0197, 0220, 0243 |
+| `/card/<key>` | Schedule ID card, one version at a glance | **Library · Schedule ID Card** (version chips) | `schedule_card` view | 0038 |
+| `/wbs/<key>` | WBS roll-up — completion + SPI(t) per branch | **Library · WBS Rollup** | `wbs.js` | 0041, 0188 |
+| `/ribbon` | Fixed quality ribbon (11 metrics) | **02 Can we trust the plan** | `ribbon_drill.js` | 0198, 0223 |
+| `/integrity` | Manipulation forensics — any-pair detectors + cited evidence ledger | **Forensics · Schedule Integrity** (dedicated screen; 7 detectors, masking quotient, ledger; cross-linked from 02 + 10) | integrity family, `taskinfo.js` | 0156, 0164, 0166, 0358, 0369–0371 |
+| `/path` · `/driving-path` | Path Analysis, tiered driving path | **03 What drives the date** | `path.js`, `driving_path.js`, `driving_tiers.js` | 0199, 0227, 0229 |
+| `/evolution` · `/volatility` | CP evolution + 10 volatility visuals | **04 How stable is the path** (Flight Recorder) | `path_evolution.js`, `volatility` | 0200, 0212 |
+| `/trend` | Trend across every version | **05 How it moved** | `trend`, `drift.js`, `curves.js` | 0202 |
+| `/cei` | Bow wave + Current Execution Index | **06 Work piling up** | `cei.js` | 0203, 0262 |
+| `/performance` | Performance Analysis Summary | **07 How we execute** (Command Deck) | `performance.js` | 0205 |
+| `/resources` | Resource histogram + roster | **08 Who is overloaded** | `resources.js`, `histogram.js` | 0206 |
+| `/evm` | Earned value | **07** EVM beat / *Library · EVM* | `evm` tables | 0013 |
+| `/forecast` · `/scurve` · `/curves` | Three-method forecast, S-curves | **09 Where it lands** | `scurve.js`, `curves.js` | 0207, 0037 |
+| `/compare` | Version compare + manipulation signals | **10 What changed** — full any-pair compare page (verdict chip, net-finish-impact attribution, what-moved census, biggest movers, per-class scan, field-level ledger) | compare diff | 0208, 0016, 0162, 0181, 0366 |
+| `/sra` | Schedule Risk Analysis workspace **+ JCL panel** | **11 What could go wrong** | `sra*.js`, `engine/jcl.py` | 0209, 0269–0274 |
+| `/risks` | Risks & opportunities register | **11** register beat | risk tables | 0123 |
+| `/brief` · `/briefing` | Executive briefing | **12 The briefing** | `ai/briefing.py` | 0210, 0201 |
+| `/workbench` | **Metric Workbench** — selectable library × versions | **Library · Metric Workbench** (matrix) + *Metric Lab* (single-metric focus) | `workbench.js`, `engine/metric_catalog.py` | 0204, 0219, 0223 |
+| `/margin` | **Margin Dashboard** — burn-down + erosion | **Control · Margin Dashboard** | `margin_dashboard.js`, `margin.js`, `engine/margin_dashboard.py`, `engine/margin_guideline.py` | 0222, 0230, 0253, 0254, 0266 |
+| `/standards` | **Standards & Execution Indices** | **Control · Standards & Indices** | `help.py` MetricDocs, `engine/metrics/sem.py` | 0237, 0238, 0277–0280 |
+| `/scorecards` | **Assessment Scorecards** + reserve sizing | **Control · Assessment Scorecards** | `scorecards.js`, `engine/scorecards.py` | 0213 |
+| `/groups` | Groups, filters, saved views | **Setup · Groups & Filters** (10-rule filter + group-by) | `groups.js`, MSP filter evaluator | 0231–0236 |
+| `/settings` | AI settings | **Setup · AI Settings** | settings form | 0017, 0036 |
+| `/help` | Metric dictionary | **Setup · Metric Dictionary** | `help.py` | 0021 |
+
+### 8.1 Cross-cutting repo behaviours the redesign must preserve
+
+These are engine/UX contracts added after the first design pass. Restyle them; do not
+regress them.
+
+- **Play-all coordinator** (0275) — `window.SFPlayAll` in `chartframe.js`. A **trusted**
+  click on any per-chart play/prev/next stops the page master; the master's own
+  programmatic `.click()` (`isTrusted === false`) must never trip it. Keep the capture-phase
+  listener and register any new master.
+- **Interactive legend toggles** (0276) — legend entries show/hide series; keep them
+  keyboard-reachable and keep the hidden state out of exports' totals.
+- **Acumen parity mode** (0280) + **DCMA milestone scope** (0277/0278) + **CPLI on stored
+  float** (0279) — a mode switch changes metric *scope*, not presentation. Surface which
+  mode produced the numbers on the provenance chip; never let a theme or layout change
+  alter a scope.
+- **Active-project scoping** (0258) — no cross-project mixing. A target/UID control must
+  only list the active project's activities.
+- **Hash dedup + same-date review** (0259) — duplicate loads are first-loaded-wins with a
+  visible notice; same-date versions get a review prompt rather than silent exclusion.
+- **Ignore toggles + copy truth** (0251) — when the operator excludes something, every
+  dependent number and every sentence of copy must say so.
+- **Base-CPM single-calendar disclosure** (0252) and **per-task calendar shading on the
+  Gantt** (0243) — keep both disclosures visible.
+- **Roles** (0255/0267) — role emphasis in the nav (`role-hl`), Start-here cards, and the
+  post-ingest landing. **An ingest with errors always lands on the manifest** — disclosure
+  outranks the role landing.
+- **Scale** (0226, 0261, 0281) — dashboard cards read a projected core tier, not full
+  analyses; single-flight locks; epoch-keyed caches. The redesign must not add a
+  per-card full-analysis dependency, and any new list must virtualize (the prototype's
+  *Portfolio at Scale* screen shows the intended pattern at 2,000 projects / 600 files).
+- **Parity DCMA-09 population** (0283) — in parity mode the invalid-dates check is scoped to the
+  baselined population (182 → 173 on the reference file). Default mode is byte-identical. The
+  provenance chip must say which scope produced the number; the status bar shows the count.
+- **Target + banner scope** (0284) — the Analysis-Target dropdown and the endpoint banner list and
+  count the **active project only**. Never widen either back to `state.schedules.values()`, and
+  never show a foreign project's label for a shared UniqueID.
+
+---
+
+## 9. ASTROLABE — what the current prototype adds
+
+The product is named **ASTROLABE** ("schedule intelligence deck"). Everything in §1–§8 still
+applies; this section is additive. Nothing here removes an existing capability.
+
+### 9.1 Launch sequence (new front-of-app shell)
+
+A full-screen Earth → Mars launch screen opens the program. It is built for photographic weight, not
+diagram clarity: `feTurbulence` surface and cloud layers clipped to each sphere (Earth's clouds drift
+on a 120s loop, Mars's albedo on 180s), day/night terminator gradients, atmospheric limb glow, a
+specular highlight, polar ice cap, dust haze, an off-frame sun with lens streaks, a filtered Milky
+Way band, faint capture scanlines, and a parallax starfield on canvas that becomes warp streaks in
+transit. The spacecraft is a modelled bus — solar arrays with cell lines, high-gain dish, engine bell
+with a flickering plume, blinking nav lights — flying a dashed Hohmann arc with AU tick labels in 7s.
+Live telemetry (distance, activities parsed, pre-flight checks) counts through a five-stage sequence.
+On arrival it speaks: *"Hello and welcome back to Astrolabe. How may I serve you today?"* and offers
+four quick actions (ingest · start the story · what changed · verdict only).
+
+- **Voices — four options, operator-selectable and remembered:** Australian female (default),
+  Australian male, Latin-American female, Latin-American male. The Latin-American options are a
+  Spanish-locale system voice reading the English greeting — that is what produces the accent.
+- **The four options must never resolve to the same system voice.** `assignVoices()` allocates one
+  distinct installed voice per option (locale score → gendered-name score → local-service bonus,
+  each voice claimed once), and each option additionally carries its own prosody so the four are
+  audibly different even on a machine with only two voices installed:
+  `au-f` pitch 1.34 / rate 0.97 · `au-m` 0.62 / 0.90 · `es-f` 1.12 / 0.84 · `es-m` 0.74 / 0.79.
+  When no Spanish-locale voice exists, the product name is respelled to its Spanish vowels
+  ("Ahstrolahbe") so the accent is suggested rather than silently dropped — and the UI says so.
+- Voice selection scores installed system voices by locale, then by gendered name lists, and
+  **discloses the actual voice used** (name, locale, pitch and rate are printed under the picker);
+  if no `en-AU` voice exists on the machine it says so rather than pretending. Mute and "go
+  straight to the deck next time" persist.
+- In the repo build this is a Jinja2 shell + one vanilla-JS module using the platform speech
+  synthesiser. **No network voice service** — it must work air-gapped, and if the platform exposes
+  no voices the greeting renders as text with a note.
+
+### 9.2 Crispness rules (the "nothing fussy" mandate)
+
+- Charts render as SVG in a fixed viewBox (900 units wide full-span, 540 half-span) with
+  `shape-rendering: crispEdges` on grid and axis lines, integer coordinates, and 11–12 unit type.
+  Do not shrink axis type below 11 units, and never scale a chart below ~0.7.
+- Hairline 1px borders separate everything; no glow except focus rings and live indicators; no
+  drop shadows on flat content; radii 4/6/10 only.
+- All numerals mono + `tabular-nums`. Uppercase labels carry `--ls-label` tracking.
+
+### 9.3 Chart contract — additions (mandatory)
+
+Every visual, in addition to §3: **X and Y axis titles rendered on the chart** (`X … →`, `Y … ↑`),
+tick **values** on both axes, a repeated `X … · Y …` chip in the panel meta row, a plain-language
+`how to read this` line under the visual, and a three-beat teaching explanation (what / how /
+what you do with it) behind the `?` toolbar button. Radial or non-Cartesian instruments (Orbit Map,
+Reactor rings) must label their radial scale explicitly.
+
+### 9.4 FOCUS / FULL density
+
+A header switch. **FOCUS** shows one instrument per screen full-width with the chapter's other
+instruments one click away in a picker strip; **FULL** shows every instrument on the screen at once
+(the old behaviour). Persist the choice. FOCUS is the default for first-time operators, and the
+"teach me" quick action forces it.
+
+### 9.5 The teaching ladder
+
+Each of the twelve chapters carries: a lesson card ("before you read the instruments" — three
+plain-English teaching points), an accumulating "what you know so far" list, a "you now know"
+sentence in the Continue footer, and a nav progress counter (`n of 12 lessons learned`). Assume
+chapter 01 readers know nothing about schedules; by chapter 12 they can brief the programme. Store
+lesson progress locally.
+
+### 9.6 Three new views (build after the twelve chapters are restyled)
+
+- **Reactor HUD** (`/mission` + `/brief` data) — Iron-Man-style heads-up view: three concentric
+  ring gauges (DCMA-14 pass rate · margin remaining · driving-path stability) around a centre
+  P(target met), eight readout pods, an SPI-per-update bar strip with its axes stated, corner
+  brackets, no tables. This is the "one screen, one verdict" answer to information overload.
+- **Orbit Map** (`/portfolio`) — programmes as bodies on rings; **radius = margin remaining in
+  workdays** (rings at 30/60/90/120, labelled), colour = review cadence, active project emphasised.
+  Click a body to open it. It is the executive entry point.
+- **Automation Bay** — the ten automations below, each with an arm/disarm switch, trigger, last
+  run, ADR citation, plus a run-now pipeline and a run log.
+
+### 9.7 Automation (all of it presentation-layer orchestration of existing engine calls)
+
+Parse-and-validate on drop (0259) · DCMA-14 on every new version in both scopes (0280/0283) ·
+margin watchdog at 50% consumed (0230) · float-erosion watch (0212) · driving-path churn watch
+(0200/0227) · nightly Acumen-parity reconciliation (0280/0283) · weekly seeded SRA reseed (0271) ·
+briefing draft per version (0210) · target-scope validation after every switch (0284) · CUI-marked
+export pack rebuild (0021). **Rules may only run analyses the engine already performs**, must write
+every result to the run log with its citation, and must never alter a calculation. Arm state
+persists; a disarmed rule leaves the manual path untouched.
+
+### 9.8 Merged from the earlier prototype (LIBRARY group)
+
+Every page that existed in `Mission Ops Redesign v2` is present, so the two prototypes need not be
+read side by side. Seven of them are additional to the twelve chapters and the control screens:
+
+| Screen | What it is | Repo route |
+|---|---|---|
+| **Metric Lab** | one metric across every version with its own expected band and the update it left it | `/workbench` single-metric mode |
+| **Segment Forecast** | P10–P90 completion per WBS segment — whose date is slipping | `/forecast` segment mode |
+| **WBS Rollup** | planned vs earned percent per branch, plus variance by control account | `/analysis/<key>` rollup |
+| **Schedule ID Card** | what the file *is*: population, calendars, constraints, open ends, hash | `/analysis/<key>` |
+| **Earned value** | the full EVM set arranged for an analyst rather than a story | `/evm` |
+| **Portfolio at Scale** | 600 of 2,000 programmes as a scatter — proves the scale contract | `/portfolio` scale mode |
+| **Beyond the Schedule** | analyst-entered exposure outside the file (supply, funding, staffing, range, weather), flagged SUSPECTED and kept apart from engine output | — register |
+
+The operator is expected to prune this set; keep the nav groups intact until they do.
+
+
+## Addendum — sync 2026-09-02 (repo main @ v1.0.230, ADR ≤ 0452)
+
+- Route inventory is now **34** HTML routes: `/launch` (boot screen, ADR-0426) and `/onepager` (ADR-0446) added; both have deck screens (boot sequence; Library · One-Pager Timeline).
+- The deck adopts the repo's product name **POLARIS²** (ADR-0436). Any remaining "MERLIN" in older bundle text is superseded.
+- Deck screens now also carry: Combine Projects (ADR-0431), whole-schedule default + UID retarget + cross-Project picker on the driving path (ADR-0432/0438), Utilization by resource (ADR-0433), multi-folder drop copy (ADR-0437), Field roles WBS / Cost Account / Work Package (ADR-0450), approved-gateway AI settings with persisted key (ADR-0402/0403/0404), pairwise comparison series in Ask (ADR-0424), adaptive timescale tiers (ADR-0441/0447/0452). These are restyles of shipped behaviour — presentation only, no engine change.
+- The TVAC constraint in the demo story is an **MSO** (hard under the ribbon's MSO/MFO metric and under DCMA-05); the previous SNET was soft under both definitions (ADR-0429).
