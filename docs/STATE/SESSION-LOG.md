@@ -16131,4 +16131,15 @@ of the WP1 UI map. Branch fresh from `origin/main`.
 - **Also landed on `main` before the merge (operator, `04864b70` "Add files via upload"):** the
   design-canvas intake under `00_REFERENCE_INTAKE/` refreshed (four `.dc.html` canvases, a README, a 22-line
   intake HANDOFF) — reference material, not product code; read before any design-related WP.
-- No product code changes; docs only. Drift guards recorded below after the run.
+- **#627's `floor` job went RED on the intake-manifest guard** — the base's failure, not the PR's: the six
+  operator web-UI commits above (not one — `git log 6fdc1ddf..origin/main` shows seven commits, six theirs)
+  added 255 intake files and the committed `docs/INTAKE-MANIFEST.md` no longer matched the tree; `main`'s own
+  runs for those pushes were CANCELLED by the next push, so the post-merge `main` run is the first to show it.
+  Reproduced locally (4 failed / 6 passed), the repo's own fix ported (`python tools/intake_manifest.py`;
+  443 → 698 files, 99 → 143 mismatches, 28 → 212 duplicate groups; 44 new benign mismatches — JPEG-as-png
+  screenshots, one HTML-as-txt; four old rotation mislabels repaired), guards 10/10 + `tests/guards` 353/353
+  after. CLAUDE.md's stale 433/99 prose updated. **Law-1 observation recorded:** a GitHub web upload bypasses
+  the pre-commit guard — four `.docx` and a copy of the shipped demo `house_build.json` (Save format) landed at
+  paths the hook refuses; the manifest guard is the only thing that saw it, one PR late. CI-side blocklist run
+  queued as a WP4 candidate.
+- No product code changes; docs + the regenerated manifest only. Drift guards recorded below after the run.

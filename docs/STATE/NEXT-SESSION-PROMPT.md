@@ -95,6 +95,12 @@ The UI map has NO queued rows left. **MERGED #626** (all seven checks green; the
 attempt failed one `/forecast` caption cell on a page the diff never touched and passed on the single
 re-run — `rerun_failed_jobs` is refused while sibling jobs still run; wait for the run to complete).
 
+⇢ **2026-09-03 (docs, #627):** the operator's SIX web-UI intake uploads (255 files) broke `main`'s intake-manifest
+guard; the regenerated manifest rides #627. **A web upload bypasses the pre-commit CUI guard** (four `.docx` +
+a Save-format `house_build.json` copy landed under `00_REFERENCE_INTAKE/src/`) — a CI-side blocklist run over
+the push diff is a WP4 candidate alongside the route-coverage instrument. `main`'s runs for those pushes were
+CANCELLED by the next push: never assume a `main` commit was measured green — check its run's conclusion.
+
 ⇢ NEXT — **WP4** (committed route-coverage instrument, `SF_ROUTE_COVERAGE=1`, floor
 ≥139, + the 08-26 CI `startup_failure` root-cause — the outage claim is PARTIALLY REFUTED, event
 triggers do fire; note `installer-smoke.yml` has NO workflow_dispatch, a fix candidate) → **WP5**
