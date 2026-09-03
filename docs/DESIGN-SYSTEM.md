@@ -194,3 +194,30 @@ persisted in localStorage under the `sf-*` house pattern. Every gain change is a
 gain clicks). Generative patterns beat loops: a shuffled-bag pattern has no loop point and so no
 seam to mix. The one shipped sound is the Launch Sequence's Boot Audio Hum
 (`static/launch_audio.js`); anything louder, longer, or on more pages is a new operator decision.
+
+## 9. The Claude Design page layout — the `.cd-*` family (ADR-0451 · ADR-0456)
+The operator's second design pass (`00_REFERENCE_INTAKE/Mission Ops Redesign v2.dc.html`, the
+artboard per chapter) is being adopted **one page per session**, the ADR-0451 way: the artboard is
+recovered by EXECUTING the canvas (its runtime needs React/Babel — `npm pack` them, patch
+`support.js` to local paths, set `sfops-boot.skipNext` and `sfredux-guided` so neither the boot nor
+the teaching card covers the screen, then screenshot `section[data-screen-label="NN …"]` in all
+four themes) and the page is re-arranged into that layout with **every id, form byte, panel,
+toolbar glyph and figure it carried before** ("don't modify any of the functionality"). Rules:
+- **Blocks are not panels.** A design surface that is new to a page is a `.cd-block` (or the
+  page-prefixed `.vol-block` that preceded it), never `.panel`: the promotion census pins each
+  page's `.panel` count, and a block must not join jarvis's broad `html[data-theme=jarvis] .panel`
+  rule. Existing panels keep their `.panel` shell verbatim inside the new grid.
+- **One cursor.** The version chips (`.cd-chip[data-idx]`, served by the page, one per version)
+  call the SAME step/render the page's stepper already drives; the active chip follows the index
+  wherever it was moved from. The primary button is the page's own play control, restyled.
+- **Chips carry no `id` and no family word** — the control census recognises families by
+  id+className (`zoom|fit|pan|entire|play|prev|next|step|cf-btn`), so a chip named `cd-chip` is
+  never mistaken for an undriven stepper, and the chips' effect is proven by a browser driver.
+- **Not everything in a mock ships.** A mock figure (`61 %`, `8 of 12`) is never ported; a mock
+  control with no engine data behind it (a WK grain over monthly profiles) is not built; a mock
+  glyph the page's contract forbids (▦ DATA on /cei) stays absent. Each omission is named in the
+  page's ADR.
+- **Prose beats reuse the page's own words** (`chrome._EXPLAINERS`) rather than adding new prose
+  to the loaded-terms audit surface; a "How to read this" block is that explainer in the open.
+- Verify in all four themes by render (`render-verify`), and diff the DOM census (panels · forms ·
+  chart bars · zero page errors · nothing wider than the viewport) against the pristine page.

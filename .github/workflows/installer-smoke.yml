@@ -26,6 +26,10 @@ on:
     paths:
       - "installer/**"
       - "tools/installer/**"
+  # WP4 (ADR-0455): a manual trigger, so the Windows and Linux legs can be dispatched by hand
+  # when the event-driven runs are in doubt (2026-08-26's GitHub-side anomaly) or when an
+  # installer change needs re-proving without a fresh push. ci.yml has carried one since M1.
+  workflow_dispatch:
 
 jobs:
   windows:

@@ -246,6 +246,26 @@
   function step(delta) {
     index = (index + delta + data.snapshots.length) % data.snapshots.length;
     render();
+    syncChips();
+  }
+
+  // Claude Design layout (ADR-0456): one chip per snapshot beside the stepper, served by /cei
+  // (the /mission wall serves none — an empty list is a no-op). A chip jumps straight to its
+  // snapshot through the SAME render() the stepper drives, and the active chip follows the index
+  // wherever it was moved from (Prev / Next / Auto-play / a chip).
+  var chips = document.querySelectorAll(".cd-chip[data-idx]");
+  function syncChips() {
+    for (var c = 0; c < chips.length; c++) {
+      var on = Number(chips[c].getAttribute("data-idx")) === index;
+      chips[c].classList.toggle("on", on);
+      chips[c].setAttribute("aria-pressed", on ? "true" : "false");
+    }
+  }
+  function goTo(i) {
+    stopAuto();
+    index = ((i % data.snapshots.length) + data.snapshots.length) % data.snapshots.length;
+    render();
+    syncChips();
   }
 
   function stopAuto() {
@@ -282,6 +302,10 @@
         });
       });
       render();
+      syncChips();
+      for (var c = 0; c < chips.length; c++) {
+        chips[c].addEventListener("click", function () { goTo(Number(this.getAttribute("data-idx"))); });
+      }
       document.getElementById("prevSnap").addEventListener("click", function () { stopAuto(); step(-1); });
       document.getElementById("nextSnap").addEventListener("click", function () { stopAuto(); step(1); });
       document.getElementById("autoPlay").addEventListener("click", toggleAuto);

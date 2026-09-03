@@ -435,6 +435,34 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+
+### 2026-09-03 (c) — A run's conclusion is the measurement; a latency table beats a remembered outage; a substring count is not a census
+
+- **The "CI triggers are not firing" claim lived through nine days of handoffs on memory.** Tabulating
+  event-to-run latency for every `main` commit (2–4 s for 48 of 50; 247 s and 21 min on one afternoon)
+  refuted it in one command. **Put the number in a table before carrying a status forward** — and read
+  the merge commit's own run: `main` was red on the #626 merge while the PR head was green, because the
+  six web uploads had cancelled their own runs and the manifest break surfaced only on the merge.
+- **Say UNVERIFIABLE where you cannot look.** The evidence attributes the 08-26 hour to GitHub (0 billable
+  ms, byte-identical workflow on both sides, the next run 21 minutes late); the status page is
+  egress-blocked, so the incident is the operator's to confirm, not mine to name.
+- **`spec_from_file_location` + `dataclass` + `from __future__ import annotations` needs
+  `sys.modules[spec.name] = module` BEFORE `exec_module`** — `dataclasses` resolves annotations through
+  `sys.modules[cls.__module__]` and dies on `NoneType.__dict__`. The conftest plugin carried the same
+  latent bug; the guard test found it at collection.
+- **Resolve a route template BEFORE dispatch.** A `Mount` rewrites the scope it handles; matching the same
+  dict afterwards lost the `/static` hit. The ASGI wrapper resolves on a copy, then forwards untouched.
+- **A substring count is not a census** — `page.count("<div class=panel")` counted `panel-head` and the
+  first draft of this session's own test said 7 where the parser says 5. The `ui-change` skill names this
+  trap; I met it anyway. Parser census, always.
+- **Executing the design canvas needs three seeds** (`sfredux-screen`, `sfops-boot.skipNext`,
+  `sfredux-guided`): the first shot was the boot lightshow, the second the teaching card, and the section's
+  bounding box was identical under both — **look at the picture before believing the geometry.**
+- **Every CDN is egress-blocked; the npm registry is not.** `npm pack` is how a CDN-booted prototype runs
+  in this container.
+- **`git reset --soft <base>` turns "what this push/PR changed" into exactly what the hook scans** — and
+  the inherited-blob ref must be aimed at the base, or a push to `main` exempts its own blobs.
+
 ### 2026-09-03 — a grep of the served JS is not a driven control; "silent" is the defect class, not a symptom
 
 - **The paste feature was pinned by `'"paste"' in js` for eleven months.** The first time a real clipboard

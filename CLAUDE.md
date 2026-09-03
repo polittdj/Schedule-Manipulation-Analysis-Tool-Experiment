@@ -56,7 +56,10 @@ detection, and serves an interactive, locally-rendered report with a cited local
    **A GitHub web upload bypasses the pre-commit guard entirely** — that upload landed four
    `.docx` and a copy of the shipped demo `house_build.json` (the tool's own Save format) under
    `00_REFERENCE_INTAKE/src/`, a path the hook would have refused; only the manifest guard saw it,
-   and only on the next PR. A CI-side run of the same blocklist is a WP4 candidate.
+   and only on the next PR. **ADR-0455 closed that gap in CI:** `tools/ci_cui_guard.sh` runs THE hook over
+   every push/PR diff as the `cui-guard` job (in `check`'s `needs`) — a PR fails on any violation, a push
+   to `main` warns for `00_REFERENCE_INTAKE/` (the sanctioned intake channel) and fails elsewhere, and the
+   job's last step stages a probe `.mpp` and requires the hook to refuse it.
    Runtime I/O is **std-lib only** (no `requests`/`httpx`/etc.); a net-egress guard fails the build if a
    forbidden HTTP client enters the runtime, and an air-gap test fails if a served page references a
    remote asset.

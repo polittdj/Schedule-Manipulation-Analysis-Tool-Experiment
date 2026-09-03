@@ -261,6 +261,48 @@ jobs:
             exit 1
           fi
 
+  # Law 1, run where every change passes (WP4, ADR-0455). `.githooks/pre-commit` guards only a
+  # clone that activated `core.hooksPath`, and a GitHub web-UI upload never runs it at all: on
+  # 2026-09-03 six web uploads landed four `.docx` and a copy of the tool's own Save-format `.json`
+  # under 00_REFERENCE_INTAKE/src/ at paths the hook would have refused, and the only instrument
+  # that noticed was the intake-manifest guard — one PR later. This job runs THE SAME HOOK (one
+  # blocklist in the tree, never a copy) over exactly what this push or PR adds or changes:
+  # `git reset --soft <base>` stages the base..HEAD diff, and the hook's inherited-blob exception
+  # is aimed at the base so a push to main cannot exempt its own blobs (tools/ci_cui_guard.sh).
+  #
+  # Policy: on a pull_request every violation FAILS the job (the gate a build session cannot
+  # bypass); on a push to main a violation under 00_REFERENCE_INTAKE/ — the operator's sanctioned
+  # web-upload intake channel (ADR-0152) — is a WARNING with a job summary (disclosure: the commit
+  # is already on main and a permanently red main for sanctioned intake would only teach everyone
+  # to ignore red), while a schedule file ANYWHERE ELSE is an error on both events.
+  #
+  # The last step stages a probe `.mpp` and REQUIRES the hook to refuse it: a guard that cannot
+  # fail proves nothing (ADR-0300's rule, and this job's own mutation leg).
+  cui-guard:
+    name: cui-guard (Law 1 blocklist over this push/PR's diff)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5.1.0
+
+      - name: Fetch the base this push/PR is measured against
+        run: |
+          set -euo pipefail
+          BASE='${{ github.event.pull_request.base.sha || github.event.before }}'
+          # a brand-new branch push has no `before`; a dispatch has neither — measure against main
+          if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ] \
+             || ! git fetch --no-tags --depth=1 origin "$BASE"; then
+            git fetch --no-tags --depth=1 origin main
+            BASE="$(git rev-parse FETCH_HEAD)"
+          fi
+          echo "BASE=$BASE" >> "$GITHUB_ENV"
+          echo "base: $BASE  event: ${{ github.event_name }}"
+
+      - name: The blocklist, over the diff (PR = gate · push to main = intake disclosure)
+        run: bash tools/ci_cui_guard.sh "$BASE" "${{ github.event_name }}"
+
+      - name: MUTATION — the guard must be able to fail (a staged .mpp must be refused)
+        run: bash tools/ci_cui_guard.sh --self-test
+
   # Stable aggregate status (named "check") so branch protection has a single
   # context to require regardless of the matrix dimensions.
   #
@@ -268,9 +310,11 @@ jobs:
   # it runs no browser, is fully deterministic, and a red floor means the support range declared in
   # pyproject.toml is false — which must block a merge without waiting on a branch-protection
   # settings change (external audit #8, which is otherwise operator-only).
+  # `cui-guard` joins for the same reason (ADR-0455): deterministic, ~20 s, and a red one on a PR
+  # means a schedule/Office artifact is about to enter the tree — Law 1 must block the merge.
   check:
     name: check
-    needs: [test, floor]
+    needs: [test, floor, cui-guard]
     runs-on: ubuntu-latest
     steps:
       - run: echo "all matrix jobs passed"
