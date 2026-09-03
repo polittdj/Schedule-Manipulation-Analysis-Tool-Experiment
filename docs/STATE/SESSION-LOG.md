@@ -16212,3 +16212,7 @@ shadows it on PATH).
   does not take effect; I-01 /integrity no longer picks up findings it once did (highest severity). Recorded in the ledger
   with the instruments and the hypotheses to refute; queued BEFORE WP5. This session is at ~78% of its context wall —
   handed to a fresh session rather than half-measured here.
+- **#629's browser job failed one caption-sweep cell (`console@0.9 /curves`) on a docs-only diff** while `main`'s
+  run #1706 ran the identical code green four minutes earlier; the second occurrence of this exact test/cell in two
+  PRs (#626: `/forecast`). Ruled not the PR's, commented once, recorded as ledger row CI-03 (a real intermittent race
+  queued for its own root-cause PR); this commit is the second browser sample, the single re-run is the fallback.
