@@ -455,6 +455,11 @@ those fixed defects in earlier "closed" fixes:
 - **`title=` is not where a tooltip lives at runtime.** `tooltips.js` moves it to `data-sf-hint` at load;
   the kickoff listed this trap and the oracle still read `title`. Read the traps list as a checklist for
   every NEW oracle, not as history.
+- **A one-cell CI red is ruled in or out by evidence order, not by re-running first.** The browser job failed
+  `console@0.9 /forecast` — a page the diff never touched. Surface untouched → base green the same morning
+  with the IDENTICAL browser build → endpoint 10 ms locally → local module green: only then the single
+  re-run, which passed. And `rerun_failed_jobs` is refused while sibling jobs still run — arm a reminder for
+  the run's completion instead of hammering the API.
 
 ### 2026-09-02 (d) — a control whose effect is invisible reads as broken; two thresholds set for words fought a one-glyph choice
 
