@@ -16111,3 +16111,4 @@ of the WP1 UI map. Branch fresh from `origin/main`.
   shadowing `/root/.local/bin/ruff` 0.15.8 named as a trap) · mypy --strict 161 files clean · bandit exit 0 ·
   node --check per file clean · full suite **4703 passed / 5 skipped in 43:33**, exit 0 · parity **72 passed in
   13:04**, exit 0 · installer lockstep inside the suite after the final wheel + installer rebuild.
+- **PR:** draft #626 from `claude/new-session-mc0a58` (head `2a14a1d0` + the gate-line docs commit); subscribed for CI/review events.
