@@ -51,11 +51,11 @@ finish. **No parity exposure**, and both hashes are pinned below so a future cha
 
 | measure | value |
 | --- | ---: |
-| tracked files | 443 |
-| total bytes | 432,843,124 |
-| extension&harr;content mismatches | 99 |
-| duplicate-content groups | 28 |
-| files in a duplicate group | 66 |
+| tracked files | 698 |
+| total bytes | 478,550,396 |
+| extension&harr;content mismatches | 143 |
+| duplicate-content groups | 212 |
+| files in a duplicate group | 450 |
 
 ### Detected content families
 
@@ -63,26 +63,25 @@ finish. **No parity exposure**, and both hashes are pinned below so a future cha
 | --- | ---: |
 | `empty` | 7 |
 | `gzip` | 7 |
-| `html` | 10 |
-| `ico` | 1 |
-| `jpeg` | 49 |
-| `json` | 13 |
-| `mp4` | 2 |
+| `html` | 18 |
+| `ico` | 2 |
+| `jpeg` | 96 |
+| `json` | 19 |
+| `mp4` | 3 |
 | `ole2-ppt` | 1 |
 | `ole2-project` | 29 |
 | `ooxml-excel` | 98 |
 | `ooxml-ppt` | 1 |
-| `ooxml-word` | 15 |
-| `pdf` | 23 |
-| `png` | 65 |
-| `riff` | 1 |
-| `text` | 95 |
+| `ooxml-word` | 19 |
+| `pdf` | 26 |
+| `png` | 144 |
+| `text` | 202 |
 | `xml` | 19 |
 | `zip` | 7 |
 
 ## Extension&harr;content mismatches
 
-99 tracked files declare an extension their bytes contradict.
+143 tracked files declare an extension their bytes contradict.
 
 | declared | actual family | files |
 | --- | --- | ---: |
@@ -91,27 +90,24 @@ finish. **No parity exposure**, and both hashes are pinned below so a future cha
 | `.docx` | `json` | 1 |
 | `.docx` | `pdf` | 1 |
 | `.docx` | `text` | 1 |
-| `.html` | `mp4` | 1 |
 | `.html` | `ooxml-word` | 1 |
-| `.html` | `png` | 1 |
 | `.html` | `text` | 1 |
 | `.ico` | `text` | 1 |
 | `.js` | `ico` | 1 |
 | `.js` | `jpeg` | 2 |
 | `.js` | `json` | 1 |
 | `.json` | `text` | 3 |
-| `.md` | `png` | 4 |
-| `.md` | `riff` | 1 |
+| `.md` | `png` | 3 |
 | `.mp4` | `ooxml-word` | 1 |
 | `.mp4` | `png` | 1 |
 | `.pdf` | `text` | 1 |
 | `.png` | `html` | 5 |
-| `.png` | `jpeg` | 44 |
+| `.png` | `jpeg` | 91 |
 | `.png` | `json` | 2 |
 | `.png` | `mp4` | 1 |
 | `.png` | `pdf` | 1 |
 | `.png` | `text` | 10 |
-| `.txt` | `html` | 1 |
+| `.txt` | `html` | 2 |
 | `.txt` | `ooxml-word` | 2 |
 | `.xls` | `ooxml-excel` | 7 |
 
@@ -159,14 +155,11 @@ finish. **No parity exposure**, and both hashes are pinned below so a future cha
 | `00_REFERENCE_INTAKE/04-screen-b.png` | 506,359 | `html` | `798289c1ec91e746cd6fc45725af971e0a03da290e2fc6937f0c78fd782637af` |
 | `00_REFERENCE_INTAKE/04-screen.png` | 24,987 | `text` | `fd621638fcc97b3819eec0b415c211f2edc8455a553707edbc2fb5aba03b8a82` |
 | `00_REFERENCE_INTAKE/05-screen.png` | 5,727 | `text` | `47c1fd5c534e9a313bb48915fbdf1a8fc2a1d140d53b0fcb2b86b81b2ee25ae2` |
-| `00_REFERENCE_INTAKE/ASTROLABE Command Deck.dc.html` | 310,267 | `png` | `898dae2a9d66d9f2f225a7180b59a09022593ad38f8cfffe4d61ec4379109dd9` |
-| `00_REFERENCE_INTAKE/ASTROLABE.dc.html` | 11,579,637 | `mp4` | `76a2ed782f76e978ef71b9e9f4fb6fb691c89f6d6bc6e4cdca015ec2e80ba46d` |
 | `00_REFERENCE_INTAKE/CLAUDE-CODE-HANDOFF.md` | 622,463 | `png` | `e872aa3eaa02bc8ee62f1d4c51badb92fb69570608e44ee17547df23a0bbe888` |
 | `00_REFERENCE_INTAKE/Concepts, Methods & Techniques-272662cf.docx` | 20,339 | `text` | `9d8b8ad6248b7bc553ac2a15b319ddd5bea193e7fe826cee8a41518254d3d57c` |
 | `00_REFERENCE_INTAKE/DESIGN-GUIDE.md` | 752,246 | `png` | `1d4990ed7da7d4f0fcfba5700a8aed1382813b7660d8fc72530efc8bc0d71a56` |
 | `00_REFERENCE_INTAKE/Mission Ops Redesign v2.dc (1).html` | 44,316 | `ooxml-word` | `272662cf43015e28d4db365c9425b3daebc9acc7ac9a4a8533fe67035795d34c` |
 | `00_REFERENCE_INTAKE/README (2).md` | 21,413 | `png` | `48a7698844feb0326af085b1d8b6f03bfde5dd66bb98485f705754b9203c760a` |
-| `00_REFERENCE_INTAKE/README.md` | 605,604 | `png` | `2bcb921f2a24bb7446ad7e0b4ae7b790c54aab5bdf2cb83b2a4bdc5ca0806a5e` |
 | `00_REFERENCE_INTAKE/Recording 2026-07-27 150631.mp4` | 44,316 | `ooxml-word` | `272662cf43015e28d4db365c9425b3daebc9acc7ac9a4a8533fe67035795d34c` |
 | `00_REFERENCE_INTAKE/_ds_manifest.json` | 5,336 | `text` | `4a0a2b673c7eefbbd2f430619f8c09c5f89731d166459b8380a7cc6698f5dbd4` |
 | `00_REFERENCE_INTAKE/a11y.js` | 3,050 | `json` | `d8bbddfd14511eb93d46173525937e8d446233b7618ac1e9c0fc1204b950dfba` |
@@ -194,7 +187,6 @@ finish. **No parity exposure**, and both hashes are pinned below so a future cha
 | `00_REFERENCE_INTAKE/draw-b3e46260-3387-4693-85dc-8f3ed9a032db.png` | 3,923,990 | `mp4` | `317861011db5d27a30de622f5ad85e0c3295d729e54063c01fb04bc5c77d67ef` |
 | `00_REFERENCE_INTAKE/favicon.ico` | 4,979 | `text` | `7ecee81505889d361196ecaa275d03c60c7589627fc818166e9186582532dcfa` |
 | `00_REFERENCE_INTAKE/forms.css` | 26,274 | `json` | `ddc3f8d3eccb909544ce010ac05d3ab5a830563fdcdfe77d0e660e5e9dc83077` |
-| `00_REFERENCE_INTAKE/github.md` | 20,208 | `riff` | `e766224e24d38bb1f743c85f77e3055ece163a1f17c4cdfafeff5999f0a17b4b` |
 | `00_REFERENCE_INTAKE/guide.png` | 48,794 | `jpeg` | `99e14757aeecb3a48eac4b8b1b9e3e132c067ab149212405fc419aba01c9983f` |
 | `00_REFERENCE_INTAKE/heartbeat.js` | 8,800 | `ico` | `b807bc3201fd6e28a90f32a97922798b35a10e029903af8db73110b47d3c61ef` |
 | `00_REFERENCE_INTAKE/instruments.css` | 48,479 | `json` | `4ff9aa9ff95871f308d803768a261b18e8baf32ab85b1c24e90d955c81b69b18` |
@@ -208,11 +200,59 @@ finish. **No parity exposure**, and both hashes are pinned below so a future cha
 | `00_REFERENCE_INTAKE/mock-api.js` | 35,937 | `jpeg` | `5d0b19a9da8261c5ed2bfca0881557a0028cbac6a333f9d6c4f949e776b065b2` |
 | `00_REFERENCE_INTAKE/overlap.png` | 57,642 | `jpeg` | `42876758eb2395bdb60332591f644989bde9e42a469657bbefb2b67f64ac3a1e` |
 | `00_REFERENCE_INTAKE/probe-analysis.html` | 38,325 | `text` | `808fc682b1f8d87af901197b457d19823fe9737d80908dd14a6729dbe4bcd843` |
+| `00_REFERENCE_INTAKE/recreation/_analysis_copy.txt` | 51,938 | `html` | `523f22b889f5660606a5dab12b596d734dfdba92b5303b7a6afeeeee30b2cb2c` |
+| `00_REFERENCE_INTAKE/recreation/compare/01-dashboard-mid.png` | 24,167 | `jpeg` | `32a4f50b19adb690afd660f766c623c538f66f43e6b83749f926f2b6eb3c8c83` |
+| `00_REFERENCE_INTAKE/recreation/compare/02-dashboard-mid.png` | 35,937 | `jpeg` | `5d0b19a9da8261c5ed2bfca0881557a0028cbac6a333f9d6c4f949e776b065b2` |
 | `00_REFERENCE_INTAKE/reel-f0.png` | 11,398 | `json` | `2c4bb563b1150ab6d81e2ac297fe0d5ee3a8394f48acf593814036b3877385e6` |
 | `00_REFERENCE_INTAKE/reel-f1.png` | 27,691 | `text` | `f39ca79076ee5488396bdfedc18a0c2f4ba899f4acde7fb237da7449df21b964` |
 | `00_REFERENCE_INTAKE/reel-f2.png` | 41,751 | `json` | `f02d1645cdb20a89ac28057061e08ae5ae80220a323b34bf176cb78a6bad0f66` |
 | `00_REFERENCE_INTAKE/reel_shot-1785179231876.mp4` | 267,519 | `png` | `9ed1e74ed206966b95fbad52807e12b4bc476fcb7b092d0f87ccc0723285efd6` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots-v2/01-screen-b.png` | 47,995 | `jpeg` | `76160482e6c0ed437280afdfdf806cb963aaaeb37df659b77ec299fbd1befce4` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots-v2/01-screen.png` | 49,072 | `jpeg` | `6a0949a308873f7fb1b56c3e378402babb0fa3a646ef625a84a5b53cc5554180` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots-v2/02-screen-b.png` | 47,526 | `jpeg` | `5acaa7a1c00d12e64926dc444096858526e1292b84b32fc7d168f11ef86ad882` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots-v2/02-screen.png` | 54,091 | `jpeg` | `2ed119bb939b74eab2a309ccd22019e7004f2aa9f4626616b39afcbbba035d50` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots-v2/03-screen-b.png` | 50,743 | `jpeg` | `14662bc2d1e5fc4298d1809f759ab6e8a1269a56148d6ed8a471ab67dbab6ece` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots-v2/03-screen.png` | 53,020 | `jpeg` | `0a054941cbf145e389355114018a913494f133a0b60689922ec04903da3fbfae` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots-v2/04-screen-b.png` | 49,098 | `jpeg` | `b63ba353ea04c2554e4283bc14c5e24f80f63513b889efdcfd1ddb0f7384da69` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots-v2/04-screen.png` | 53,987 | `jpeg` | `69ef9a550e1d9562faf000efa9a53655af50fcbcb0af22ad8b77447497619875` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots-v2/05-screen.png` | 55,308 | `jpeg` | `d6d29dc6af083b6c5855b1af2efb0f82d985bb0eae88aaa419efd4feba66042b` |
 | `00_REFERENCE_INTAKE/repo-audit.json` | 34,965 | `text` | `153e2e6e573e729b4e3e328cd5e6babff6f6b4422904273b23575d8d4ad6636b` |
+| `00_REFERENCE_INTAKE/screenshots/01-ctl-tiles.png` | 48,794 | `jpeg` | `99e14757aeecb3a48eac4b8b1b9e3e132c067ab149212405fc419aba01c9983f` |
+| `00_REFERENCE_INTAKE/screenshots/01-dr-check.png` | 47,172 | `jpeg` | `f4c8f15bbe002c7d1df7a2a091a9d827b66651fba89cf8815ca6f45fb1d5f099` |
+| `00_REFERENCE_INTAKE/screenshots/01-dr-fields.png` | 47,170 | `jpeg` | `b6a8f43c936d64849ad213b1c4137104c7343e44e33692fa45024bb26a298cdb` |
+| `00_REFERENCE_INTAKE/screenshots/01-drift-check.png` | 32,986 | `jpeg` | `c73630bc9a68bacdbbe02dad2291329e84f7d721290794805e74f7e54e19ba42` |
+| `00_REFERENCE_INTAKE/screenshots/01-drift.png` | 51,019 | `jpeg` | `3157b3085788e56901466985181af555488093d5461fce0ef644e2937d16b3f2` |
+| `00_REFERENCE_INTAKE/screenshots/01-drivers.png` | 54,047 | `jpeg` | `713e4ae34ba599c4efe0c40e1b8e374db25862aa487d5d73eb5fae31d1b8ba13` |
+| `00_REFERENCE_INTAKE/screenshots/01-explorer.png` | 42,552 | `jpeg` | `242946670d9c9ed67bed4ccf79b147b260f5694becb78f63033c30d0f26405f1` |
+| `00_REFERENCE_INTAKE/screenshots/01-filters.png` | 48,733 | `jpeg` | `4ec00f974a8f9990f3250cd573d24f83151aa6fecd5b22013701e6574900169f` |
+| `00_REFERENCE_INTAKE/screenshots/02-ctl-tiles.png` | 48,794 | `jpeg` | `99e14757aeecb3a48eac4b8b1b9e3e132c067ab149212405fc419aba01c9983f` |
+| `00_REFERENCE_INTAKE/screenshots/02-dr-check.png` | 47,156 | `jpeg` | `25baa154295c9dbce2bd5523843c8137d197bd6f81ad4829eef7a8c8a145388d` |
+| `00_REFERENCE_INTAKE/screenshots/02-dr-fields.png` | 47,166 | `jpeg` | `a7c81fde7c08ea8244a05433e77401e961e6c6d2030354d10effe7ec81e35ce8` |
+| `00_REFERENCE_INTAKE/screenshots/02-drift-check.png` | 32,950 | `jpeg` | `06e7dc16c584be232446f4accd90c5e1acd0b6b718f2d3da91fd8be6be79d8f3` |
+| `00_REFERENCE_INTAKE/screenshots/02-drift.png` | 51,021 | `jpeg` | `4815b89b9aa83f8ea94f91c3d2b4c2ae509b0c0c766a80e98ba41ee24efa162c` |
+| `00_REFERENCE_INTAKE/screenshots/02-drivers.png` | 51,645 | `jpeg` | `980d5cb5ac150dddd0e171b8cbf7b6de8bf326841924a096e0033513ffa1251e` |
+| `00_REFERENCE_INTAKE/screenshots/02-explorer.png` | 42,702 | `jpeg` | `a8b130efb7e4b284870466f92da8c1ac21cc0211047c88be901ee118547f8dd0` |
+| `00_REFERENCE_INTAKE/screenshots/02-filters.png` | 48,543 | `jpeg` | `4779c8f532a83319386f231b711ad50aa1601f436e4846c60c09da792cba80f7` |
+| `00_REFERENCE_INTAKE/screenshots/03-dr-fields.png` | 50,951 | `jpeg` | `7837628c2bdddf510279e64316430d0bdb4428fc946cfe649739f4dac263bd25` |
+| `00_REFERENCE_INTAKE/screenshots/03-drift-check.png` | 33,214 | `jpeg` | `f64e9699a17d19f36bf81a3c57db79ef9596653ac518aff3e62aada196610495` |
+| `00_REFERENCE_INTAKE/screenshots/03-drift.png` | 51,033 | `jpeg` | `3e2470f1a3cf0ee6d7f11f18a22b125f36c1303b95fe4c767e4a9ebe09c81b2c` |
+| `00_REFERENCE_INTAKE/screenshots/03-explorer.png` | 33,161 | `jpeg` | `4377f391c539c36273ac7be193f966a2b09483320e4012b2f80a22e5c40ebe8f` |
+| `00_REFERENCE_INTAKE/screenshots/04-drift.png` | 51,013 | `jpeg` | `0b0363d5f20f7e69e09d0289b19fe43fd3ee042ed9ebe1a134bc72f2a523cdd0` |
+| `00_REFERENCE_INTAKE/screenshots/beyond.png` | 60,404 | `jpeg` | `3fc019608399c9606e8e97db1bd5b77439544e5f06de7e1afc30fb7f8ec861ea` |
+| `00_REFERENCE_INTAKE/screenshots/briefing.png` | 51,503 | `jpeg` | `7b43c4bafc880113f43c6c54feaba7f5bd63b719d35987b8809e6ed42110c142` |
+| `00_REFERENCE_INTAKE/screenshots/ch01-drill.png` | 36,001 | `jpeg` | `830da29c97132c7c9627679157d578f5b7ab98dc2f348fe7442bca74357a5b8a` |
+| `00_REFERENCE_INTAKE/screenshots/ctl-check.png` | 47,629 | `jpeg` | `6ea84c5e570d38cfb1fece3383548d1093ba35e5128186dd48bd622669794b48` |
+| `00_REFERENCE_INTAKE/screenshots/ctl-tiles.png` | 47,629 | `jpeg` | `6ea84c5e570d38cfb1fece3383548d1093ba35e5128186dd48bd622669794b48` |
+| `00_REFERENCE_INTAKE/screenshots/ctl-tiles2.png` | 48,794 | `jpeg` | `99e14757aeecb3a48eac4b8b1b9e3e132c067ab149212405fc419aba01c9983f` |
+| `00_REFERENCE_INTAKE/screenshots/guide.png` | 46,484 | `jpeg` | `d3e1f5f33aadc162fadf8e88e25c339bda8a6a66b14c09be2b8576618cf232e9` |
+| `00_REFERENCE_INTAKE/screenshots/it-outline.png` | 52,223 | `jpeg` | `527562c908a091b9a4599694cf40ef0d941460cc675efd1888304c7a00fa2d56` |
+| `00_REFERENCE_INTAKE/screenshots/it-outline2.png` | 52,248 | `jpeg` | `ad575c08826c8a53a799a13bdca475f5ba70f5947e1f306154fb5e8090f1ac47` |
+| `00_REFERENCE_INTAKE/screenshots/metric-lab-2.png` | 57,728 | `jpeg` | `c3015fd6e03b3510cedcd906541c69ef6db16f62cd85e9e578a98ef203794b24` |
+| `00_REFERENCE_INTAKE/screenshots/metric-lab-3.png` | 57,623 | `jpeg` | `b386f4ec014d87e50b04227f2c3266ef29cb6be5abe758cb31eb995337616a68` |
+| `00_REFERENCE_INTAKE/screenshots/metric-lab.png` | 57,642 | `jpeg` | `42876758eb2395bdb60332591f644989bde9e42a469657bbefb2b67f64ac3a1e` |
+| `00_REFERENCE_INTAKE/screenshots/overlap.png` | 48,868 | `jpeg` | `27190b4563646bdca5533a1355a21fc4ad272fec3031fd4c9d93369cbd225c1f` |
+| `00_REFERENCE_INTAKE/screenshots/seg-forecast-2.png` | 61,546 | `jpeg` | `28c045d356b084a2511fc76836f8565534e5a6a4e5530cb4f6b421db2769a566` |
+| `00_REFERENCE_INTAKE/screenshots/seg-forecast.png` | 61,405 | `jpeg` | `efb8e8d2f97decf9c24c9137c3656918656eab57b11e3d6d71ba76bf9733ecbb` |
 | `00_REFERENCE_INTAKE/seg-forecast-2.png` | 48,868 | `jpeg` | `27190b4563646bdca5533a1355a21fc4ad272fec3031fd4c9d93369cbd225c1f` |
 | `00_REFERENCE_INTAKE/seg-forecast.png` | 61,546 | `jpeg` | `28c045d356b084a2511fc76836f8565534e5a6a4e5530cb4f6b421db2769a566` |
 | `00_REFERENCE_INTAKE/sf-themes.css` | 438,326 | `png` | `01937250b32df6b787ec66a667e07dae3ce750db777e60c194532b28a1716ec9` |
@@ -224,33 +264,217 @@ body under several names, not random corruption.
 
 | sha256 | files | paths |
 | --- | ---: | --- |
+| `272662cf43015e28…` | 9 | `00_REFERENCE_INTAKE/Mission Ops Redesign v2.dc (1).html`<br>`00_REFERENCE_INTAKE/Recording 2026-07-27 150631.mp4`<br>`00_REFERENCE_INTAKE/concepts_b.txt`<br>`00_REFERENCE_INTAKE/int02_advanced.txt`<br>`00_REFERENCE_INTAKE/references/Concepts, Methods & Techniques.docx`<br>`00_REFERENCE_INTAKE/refs/concepts_a.docx`<br>`00_REFERENCE_INTAKE/refs/concepts_b.docx`<br>`00_REFERENCE_INTAKE/uploads/Concepts, Methods & Techniques-272662cf.docx`<br>`00_REFERENCE_INTAKE/uploads/Concepts, Methods & Techniques.docx` |
 | `e3b0c44298fc1c14…` | 7 | `00_REFERENCE_INTAKE/.gitkeep`<br>`00_REFERENCE_INTAKE/acumen_v8.11.0/.gitkeep`<br>`00_REFERENCE_INTAKE/metrics_library/.gitkeep`<br>`00_REFERENCE_INTAKE/mpp/.gitkeep`<br>`00_REFERENCE_INTAKE/pbix/.gitkeep`<br>`00_REFERENCE_INTAKE/references/.gitkeep`<br>`00_REFERENCE_INTAKE/ssi/.gitkeep` |
-| `272662cf43015e28…` | 5 | `00_REFERENCE_INTAKE/Mission Ops Redesign v2.dc (1).html`<br>`00_REFERENCE_INTAKE/Recording 2026-07-27 150631.mp4`<br>`00_REFERENCE_INTAKE/concepts_b.txt`<br>`00_REFERENCE_INTAKE/int02_advanced.txt`<br>`00_REFERENCE_INTAKE/references/Concepts, Methods & Techniques.docx` |
-| `99e14757aeecb3a4…` | 3 | `00_REFERENCE_INTAKE/01-dr-check.png`<br>`00_REFERENCE_INTAKE/02-dr-check.png`<br>`00_REFERENCE_INTAKE/guide.png` |
+| `99e14757aeecb3a4…` | 6 | `00_REFERENCE_INTAKE/01-dr-check.png`<br>`00_REFERENCE_INTAKE/02-dr-check.png`<br>`00_REFERENCE_INTAKE/guide.png`<br>`00_REFERENCE_INTAKE/screenshots/01-ctl-tiles.png`<br>`00_REFERENCE_INTAKE/screenshots/02-ctl-tiles.png`<br>`00_REFERENCE_INTAKE/screenshots/ctl-tiles2.png` |
+| `153e2e6e573e729b…` | 4 | `00_REFERENCE_INTAKE/crispness-scan.json`<br>`00_REFERENCE_INTAKE/refs/concepts_a.txt`<br>`00_REFERENCE_INTAKE/refs/concepts_b.txt`<br>`00_REFERENCE_INTAKE/repo-audit.json` |
+| `6ea84c5e570d38cf…` | 4 | `00_REFERENCE_INTAKE/ctl-tiles.png`<br>`00_REFERENCE_INTAKE/ctl-tiles2.png`<br>`00_REFERENCE_INTAKE/screenshots/ctl-check.png`<br>`00_REFERENCE_INTAKE/screenshots/ctl-tiles.png` |
+| `859faf30473a3c06…` | 4 | `00_REFERENCE_INTAKE/INT-02-Advanced-Schedule-Analysis.pdf`<br>`00_REFERENCE_INTAKE/concepts_a.docx`<br>`00_REFERENCE_INTAKE/refs/advanced_sra.pdf`<br>`00_REFERENCE_INTAKE/uploads/Advanced Project Schedule Risk Analysis.pdf` |
+| `1eafe822ff106f7f…` | 3 | `00_REFERENCE_INTAKE/draw-54db3784-3574-41e9-be5b-7d9249f2254c.png`<br>`00_REFERENCE_INTAKE/references/INT-02-Advanced-Schedule-Analysis.pdf`<br>`00_REFERENCE_INTAKE/uploads/INT-02-Advanced-Schedule-Analysis.pdf` |
+| `3c11a2f155a27b9e…` | 3 | `00_REFERENCE_INTAKE/01-console.png`<br>`00_REFERENCE_INTAKE/Mission Ops Redesign.dc.html`<br>`00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/Mission Ops Redesign.dc.html` |
+| `47c1fd5c534e9a31…` | 3 | `00_REFERENCE_INTAKE/05-screen.png`<br>`00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/DESIGN-GUIDE.md`<br>`00_REFERENCE_INTAKE/references/handoff/DESIGN-GUIDE.md` |
 | `b2f9db8d81491760…` | 3 | `00_REFERENCE_INTAKE/ssi/sra-Polaris Finish Date Confidence S-Curve Results Large Test File2.xlsx`<br>`00_REFERENCE_INTAKE/ssi/sra-Polaris Risk Drivers Tornado Results Large Test File2.xlsx`<br>`00_REFERENCE_INTAKE/ssi/sra-Polaris Sensitivity Results Large Test File2.xlsx` |
+| `01937250b32df6b7…` | 2 | `00_REFERENCE_INTAKE/scratch/reel-f4.png`<br>`00_REFERENCE_INTAKE/sf-themes.css` |
+| `067475edccbdda31…` | 2 | `00_REFERENCE_INTAKE/references/_ds/a1-f4ddd5ad-ce81-4859-ac82-35dc15456d1a/components/instruments/instruments-charts.css`<br>`00_REFERENCE_INTAKE/spacing.css` |
+| `06e7dc16c584be23…` | 2 | `00_REFERENCE_INTAKE/02-drift.png`<br>`00_REFERENCE_INTAKE/screenshots/02-drift-check.png` |
+| `0a054941cbf145e3…` | 2 | `00_REFERENCE_INTAKE/03-daylight.png`<br>`00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots-v2/03-screen.png` |
+| `0aefd731be4283d8…` | 2 | `00_REFERENCE_INTAKE/gantt.js`<br>`00_REFERENCE_INTAKE/src/schedule_forensics/web/static/drilldown.js` |
+| `0b0363d5f20f7e69…` | 2 | `00_REFERENCE_INTAKE/beyond.png`<br>`00_REFERENCE_INTAKE/screenshots/04-drift.png` |
+| `0b1e2e2afe3a49df…` | 2 | `00_REFERENCE_INTAKE/app.js`<br>`00_REFERENCE_INTAKE/src/schedule_forensics/web/offload.py` |
+| `0b888cb49b568199…` | 2 | `00_REFERENCE_INTAKE/margin_dashboard.js`<br>`00_REFERENCE_INTAKE/src/schedule_forensics/web/static/histogram.js` |
 | `0d1ab6f3b684143d…` | 2 | `00_REFERENCE_INTAKE/mpp/Project5.mpp`<br>`00_REFERENCE_INTAKE/mpp/Project5_TAMPERED.mpp` |
+| `0eaa90b0faf5e0f9…` | 2 | `00_REFERENCE_INTAKE/CLAUDE.md`<br>`00_REFERENCE_INTAKE/references/_ds/a1-f4ddd5ad-ce81-4859-ac82-35dc15456d1a/readme.md` |
+| `1031203c12399926…` | 2 | `00_REFERENCE_INTAKE/groups.js`<br>`00_REFERENCE_INTAKE/src/schedule_forensics/web/static/driving_tiers.js` |
+| `1260fbd6254fd679…` | 2 | `00_REFERENCE_INTAKE/path.js`<br>`00_REFERENCE_INTAKE/src/schedule_forensics/web/static/hud.css` |
+| `12e6f04148237f31…` | 2 | `00_REFERENCE_INTAKE/chartframe.js`<br>`00_REFERENCE_INTAKE/src/schedule_forensics/web/static/app.css` |
+| `135082baf7b000bd…` | 2 | `00_REFERENCE_INTAKE/05-apollo.png`<br>`00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/01-console.png` |
+| `13be4b18c26db168…` | 2 | `00_REFERENCE_INTAKE/legend_toggle.js`<br>`00_REFERENCE_INTAKE/src/schedule_forensics/web/static/heartbeat.js` |
 | `14547256bf8c83b7…` | 2 | `00_REFERENCE_INTAKE/PerformanceAnalysisSummary_Sample Metrics_2026APR.xlsx`<br>`00_REFERENCE_INTAKE/references/PerformanceAnalysisSummary_Sample Metrics_2026APR.xlsx` |
-| `153e2e6e573e729b…` | 2 | `00_REFERENCE_INTAKE/crispness-scan.json`<br>`00_REFERENCE_INTAKE/repo-audit.json` |
-| `1eafe822ff106f7f…` | 2 | `00_REFERENCE_INTAKE/draw-54db3784-3574-41e9-be5b-7d9249f2254c.png`<br>`00_REFERENCE_INTAKE/references/INT-02-Advanced-Schedule-Analysis.pdf` |
+| `14662bc2d1e5fc42…` | 2 | `00_REFERENCE_INTAKE/03-console.png`<br>`00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots-v2/03-screen-b.png` |
+| `1517f2c45eda4423…` | 2 | `00_REFERENCE_INTAKE/pasted-1785180481415-0.png`<br>`00_REFERENCE_INTAKE/uploads/pasted-1783972927581-0.png` |
+| `17faff223c497a07…` | 2 | `00_REFERENCE_INTAKE/10-daylight.png`<br>`00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/06-daylight.png` |
+| `18fdf0601d4714e9…` | 2 | `00_REFERENCE_INTAKE/pasted-1783956881199-0.png`<br>`00_REFERENCE_INTAKE/uploads/pasted-1783880438707-0.png` |
+| `1aff079298a3562b…` | 2 | `00_REFERENCE_INTAKE/driving_tiers.js`<br>`00_REFERENCE_INTAKE/src/schedule_forensics/web/static/curves.js` |
+| `1d4990ed7da7d4f0…` | 2 | `00_REFERENCE_INTAKE/DESIGN-GUIDE.md`<br>`00_REFERENCE_INTAKE/scratch/reel-f2.png` |
+| `1ddb6e2af36aee36…` | 2 | `00_REFERENCE_INTAKE/RENAME-PLAN.md`<br>`00_REFERENCE_INTAKE/references/docs/GUIDED-MODE.md` |
+| `20c67b27194a3521…` | 2 | `00_REFERENCE_INTAKE/pasted-1783880438707-0.png`<br>`00_REFERENCE_INTAKE/uploads/pasted-1783820146085-0.png` |
+| `22a5207e7f8dca03…` | 2 | `00_REFERENCE_INTAKE/advanced_sra.pdf`<br>`00_REFERENCE_INTAKE/recreation/mock-api.js` |
+| `2378b25377c9dd6e…` | 2 | `00_REFERENCE_INTAKE/02-screen.png`<br>`00_REFERENCE_INTAKE/references/_ds/a1-f4ddd5ad-ce81-4859-ac82-35dc15456d1a/tokens/themes.css` |
+| `242946670d9c9ed6…` | 2 | `00_REFERENCE_INTAKE/01-filters.png`<br>`00_REFERENCE_INTAKE/screenshots/01-explorer.png` |
+| `25baa154295c9dbc…` | 2 | `00_REFERENCE_INTAKE/02-dr-fields.png`<br>`00_REFERENCE_INTAKE/screenshots/02-dr-check.png` |
+| `27190b4563646bdc…` | 2 | `00_REFERENCE_INTAKE/screenshots/overlap.png`<br>`00_REFERENCE_INTAKE/seg-forecast-2.png` |
+| `27e960300c76aee8…` | 2 | `00_REFERENCE_INTAKE/hints.js`<br>`00_REFERENCE_INTAKE/src/schedule_forensics/web/static/findings_drill.js` |
+| `283366b95381b38d…` | 2 | `00_REFERENCE_INTAKE/sra_grid.js`<br>`00_REFERENCE_INTAKE/src/schedule_forensics/web/static/scatter.js` |
+| `28c045d356b084a2…` | 2 | `00_REFERENCE_INTAKE/screenshots/seg-forecast-2.png`<br>`00_REFERENCE_INTAKE/seg-forecast.png` |
+| `29c383492c50a993…` | 2 | `00_REFERENCE_INTAKE/README (1).md`<br>`00_REFERENCE_INTAKE/references/_ds/a1-f4ddd5ad-ce81-4859-ac82-35dc15456d1a/tokens/elevation.css` |
+| `29e9ccdfec20877c…` | 2 | `00_REFERENCE_INTAKE/06-daylight.png`<br>`00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/02-jarvis.png` |
+| `2ac018b2521fba4e…` | 2 | `00_REFERENCE_INTAKE/reel-f4.png`<br>`00_REFERENCE_INTAKE/scratch/reel-f0.png` |
+| `2b49c790d0c7e689…` | 2 | `00_REFERENCE_INTAKE/01-screen.png`<br>`00_REFERENCE_INTAKE/references/_ds/a1-f4ddd5ad-ce81-4859-ac82-35dc15456d1a/tokens/radii.css` |
+| `2c4bb563b1150ab6…` | 2 | `00_REFERENCE_INTAKE/reel-f0.png`<br>`00_REFERENCE_INTAKE/refs/crispness-scan.json` |
 | `2cbe6825e36abcbd…` | 2 | `00_REFERENCE_INTAKE/references/HARDENED_AUDIT_V9_BUNDLE/HARDENED_CORPUS_CROSS_REFERENCE.xlsx`<br>`00_REFERENCE_INTAKE/references/HARDENED_CORPUS_CROSS_REFERENCE.xlsx` |
+| `2d9699f3fe899cef…` | 2 | `00_REFERENCE_INTAKE/07-apollo.png`<br>`00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/03-console.png` |
+| `2ed119bb939b74ea…` | 2 | `00_REFERENCE_INTAKE/03-apollo.png`<br>`00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots-v2/02-screen.png` |
 | `2fcdad6143ab5ddf…` | 2 | `00_REFERENCE_INTAKE/Project2.mpp`<br>`00_REFERENCE_INTAKE/mpp/Project2.mpp` |
+| `3070967856e69b15…` | 2 | `00_REFERENCE_INTAKE/08-jarvis.png`<br>`00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/05-apollo.png` |
 | `31360e10aa89bd28…` | 2 | `00_REFERENCE_INTAKE/SP-20240014019.pdf`<br>`00_REFERENCE_INTAKE/references/SP-20240014019.pdf` |
-| `3c11a2f155a27b9e…` | 2 | `00_REFERENCE_INTAKE/01-console.png`<br>`00_REFERENCE_INTAKE/Mission Ops Redesign.dc.html` |
+| `3157b3085788e569…` | 2 | `00_REFERENCE_INTAKE/01-drivers.png`<br>`00_REFERENCE_INTAKE/screenshots/01-drift.png` |
+| `317861011db5d27a…` | 2 | `00_REFERENCE_INTAKE/draw-b3e46260-3387-4693-85dc-8f3ed9a032db.png`<br>`00_REFERENCE_INTAKE/uploads/Recording 2026-07-27 150631.mp4` |
+| `3251af8867579035…` | 2 | `00_REFERENCE_INTAKE/scorecards.js`<br>`00_REFERENCE_INTAKE/src/schedule_forensics/web/static/performance.js` |
+| `32a4f50b19adb690…` | 2 | `00_REFERENCE_INTAKE/mock-analysis.js`<br>`00_REFERENCE_INTAKE/recreation/compare/01-dashboard-mid.png` |
+| `344fb360a971aa44…` | 2 | `00_REFERENCE_INTAKE/persist.js`<br>`00_REFERENCE_INTAKE/src/schedule_forensics/web/static/margin_dashboard.js` |
+| `345554533f3556f6…` | 2 | `00_REFERENCE_INTAKE/base.css`<br>`00_REFERENCE_INTAKE/src/schedule_forensics/web/static/a11y.js` |
+| `3604b59d35dde646…` | 2 | `00_REFERENCE_INTAKE/11-console.png`<br>`00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/06-jarvis.png` |
+| `38e083922e3d2a8e…` | 2 | `00_REFERENCE_INTAKE/pasted-1783820146085-0.png`<br>`00_REFERENCE_INTAKE/uploads/draw-b3e46260-3387-4693-85dc-8f3ed9a032db.png` |
+| `3a11ad3375a93454…` | 2 | `00_REFERENCE_INTAKE/pasted-1783972694997-0.png`<br>`00_REFERENCE_INTAKE/uploads/pasted-1783950199911-0.png` |
+| `3bc3758cdfc2963c…` | 2 | `00_REFERENCE_INTAKE/references/_ds/a1-f4ddd5ad-ce81-4859-ac82-35dc15456d1a/components/core/core.css`<br>`00_REFERENCE_INTAKE/styles.css` |
+| `3c7a98d0da0fe980…` | 2 | `00_REFERENCE_INTAKE/checklist.js`<br>`00_REFERENCE_INTAKE/src/schedule_forensics/web/static/app.js` |
+| `3c7ef5a07e43171b…` | 2 | `00_REFERENCE_INTAKE/drilldown.js`<br>`00_REFERENCE_INTAKE/src/schedule_forensics/web/static/checklist.js` |
+| `3e1c47066a745a04…` | 2 | `00_REFERENCE_INTAKE/08-daylight.png`<br>`00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/04-jarvis.png` |
+| `3e2470f1a3cf0ee6…` | 2 | `00_REFERENCE_INTAKE/03-explorer.png`<br>`00_REFERENCE_INTAKE/screenshots/03-drift.png` |
+| `3fc019608399c960…` | 2 | `00_REFERENCE_INTAKE/briefing.png`<br>`00_REFERENCE_INTAKE/screenshots/beyond.png` |
+| `40ada5e7deea8899…` | 2 | `00_REFERENCE_INTAKE/04-jarvis.png`<br>`00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/01-apollo.png` |
+| `42876758eb2395bd…` | 2 | `00_REFERENCE_INTAKE/overlap.png`<br>`00_REFERENCE_INTAKE/screenshots/metric-lab.png` |
 | `42c68ad040389875…` | 2 | `00_REFERENCE_INTAKE/pm-handbook-nasa-sp-2014-3705-2024jun.pdf`<br>`00_REFERENCE_INTAKE/references/pm-handbook-nasa-sp-2014-3705-2024jun.pdf` |
+| `4377f391c539c362…` | 2 | `00_REFERENCE_INTAKE/04-drift.png`<br>`00_REFERENCE_INTAKE/screenshots/03-explorer.png` |
+| `45cad3630e2a2219…` | 2 | `00_REFERENCE_INTAKE/05-jarvis.png`<br>`00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/02-apollo.png` |
+| `4779c8f532a83319…` | 2 | `00_REFERENCE_INTAKE/03-dr-fields.png`<br>`00_REFERENCE_INTAKE/screenshots/02-filters.png` |
+| `4815b89b9aa83f8e…` | 2 | `00_REFERENCE_INTAKE/02-drivers.png`<br>`00_REFERENCE_INTAKE/screenshots/02-drift.png` |
+| `48a7698844feb032…` | 2 | `00_REFERENCE_INTAKE/README (2).md`<br>`00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/11-daylight.png` |
 | `48f7294a3c6d279d…` | 2 | `00_REFERENCE_INTAKE/references/schedule-management-handbook-20240315-update.zip`<br>`00_REFERENCE_INTAKE/schedule-management-handbook-20240315-update.zip` |
+| `4933a691aae58729…` | 2 | `00_REFERENCE_INTAKE/01-screen-b.png`<br>`00_REFERENCE_INTAKE/references/_ds/a1-f4ddd5ad-ce81-4859-ac82-35dc15456d1a/tokens/motion.css` |
+| `49949c8acfd36d96…` | 2 | `00_REFERENCE_INTAKE/instruments-charts.css`<br>`00_REFERENCE_INTAKE/references/_ds/a1-f4ddd5ad-ce81-4859-ac82-35dc15456d1a/_ds_bundle.js` |
+| `4a0f9dffc1115687…` | 2 | `00_REFERENCE_INTAKE/integration-notes.md`<br>`00_REFERENCE_INTAKE/references/_ds/a1-f4ddd5ad-ce81-4859-ac82-35dc15456d1a/tokens/fonts.css` |
 | `4cd6b6d0afd1c0f2…` | 2 | `00_REFERENCE_INTAKE/SP-20240014326.pdf`<br>`00_REFERENCE_INTAKE/references/SP-20240014326.pdf` |
+| `4dc8266a00970213…` | 2 | `00_REFERENCE_INTAKE/margin.js`<br>`00_REFERENCE_INTAKE/src/schedule_forensics/web/static/hints.js` |
+| `4ec00f974a8f9990…` | 2 | `00_REFERENCE_INTAKE/02-ctl-tiles.png`<br>`00_REFERENCE_INTAKE/screenshots/01-filters.png` |
+| `4fc1b4dac5a4b75f…` | 2 | `00_REFERENCE_INTAKE/sra_risk.js`<br>`00_REFERENCE_INTAKE/src/schedule_forensics/web/static/scurve.js` |
+| `4ff9aa9ff95871f3…` | 2 | `00_REFERENCE_INTAKE/instruments.css`<br>`00_REFERENCE_INTAKE/references/_ds/a1-f4ddd5ad-ce81-4859-ac82-35dc15456d1a/_ds_manifest.json` |
+| `52199dd23f32ada7…` | 2 | `00_REFERENCE_INTAKE/globe.js`<br>`00_REFERENCE_INTAKE/src/schedule_forensics/web/static/driving_path.js` |
+| `523f22b889f56606…` | 2 | `00_REFERENCE_INTAKE/01-dashboard-mid.png`<br>`00_REFERENCE_INTAKE/recreation/_analysis_copy.txt` |
+| `527562c908a091b9…` | 2 | `00_REFERENCE_INTAKE/it-outline2.png`<br>`00_REFERENCE_INTAKE/screenshots/it-outline.png` |
+| `548dfc6482286974…` | 2 | `00_REFERENCE_INTAKE/motion.css`<br>`00_REFERENCE_INTAKE/references/_ds/a1-f4ddd5ad-ce81-4859-ac82-35dc15456d1a/components/forms/forms.css` |
+| `55d8c53917ada805…` | 2 | `00_REFERENCE_INTAKE/elevation.css`<br>`00_REFERENCE_INTAKE/references/_ds/a1-f4ddd5ad-ce81-4859-ac82-35dc15456d1a/components/feedback/feedback.css` |
 | `579486fb3c1a398d…` | 2 | `00_REFERENCE_INTAKE/references/HARDENED_AUDIT_AND_ORACLE_TEST_PROTOCOL.docx`<br>`00_REFERENCE_INTAKE/references/HARDENED_AUDIT_V9_BUNDLE/HARDENED_AUDIT_AND_ORACLE_TEST_PROTOCOL.docx` |
+| `59f6dab9118b53a0…` | 2 | `00_REFERENCE_INTAKE/curves.js`<br>`00_REFERENCE_INTAKE/src/schedule_forensics/web/static/base.css` |
+| `5a1b884608cf0899…` | 2 | `00_REFERENCE_INTAKE/settings.js`<br>`00_REFERENCE_INTAKE/src/schedule_forensics/web/static/resources.js` |
+| `5acaa7a1c00d12e6…` | 2 | `00_REFERENCE_INTAKE/02-jarvis.png`<br>`00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots-v2/02-screen-b.png` |
+| `5c03494d2d95ea6a…` | 2 | `00_REFERENCE_INTAKE/pasted-1784934458029-0.png`<br>`00_REFERENCE_INTAKE/uploads/pasted-1783956881199-0.png` |
+| `5d0b19a9da8261c5…` | 2 | `00_REFERENCE_INTAKE/mock-api.js`<br>`00_REFERENCE_INTAKE/recreation/compare/02-dashboard-mid.png` |
+| `5f584eddf6553b63…` | 2 | `00_REFERENCE_INTAKE/18-daylight.png`<br>`00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/11-console.png` |
+| `6101ed06c777b4ee…` | 2 | `00_REFERENCE_INTAKE/09-apollo.png`<br>`00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/05-console.png` |
+| `624cea97a6561cbe…` | 2 | `00_REFERENCE_INTAKE/mission.js`<br>`00_REFERENCE_INTAKE/src/schedule_forensics/web/static/home.js` |
+| `65228608109b7db2…` | 2 | `00_REFERENCE_INTAKE/01-jarvis.png`<br>`00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/integration-notes.md` |
+| `67619e91a2428018…` | 2 | `00_REFERENCE_INTAKE/scatter.js`<br>`00_REFERENCE_INTAKE/src/schedule_forensics/web/static/path_evolution.js` |
 | `67f7a9e411ae2878…` | 2 | `00_REFERENCE_INTAKE/references/HARDENED_AUDIT_AND_ORACLE_TEST_PROTOCOL.md`<br>`00_REFERENCE_INTAKE/references/HARDENED_AUDIT_V9_BUNDLE/HARDENED_AUDIT_AND_ORACLE_TEST_PROTOCOL.md` |
-| `6ea84c5e570d38cf…` | 2 | `00_REFERENCE_INTAKE/ctl-tiles.png`<br>`00_REFERENCE_INTAKE/ctl-tiles2.png` |
+| `69e319a33a4caa1d…` | 2 | `00_REFERENCE_INTAKE/07-console.png`<br>`00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/03-daylight.png` |
+| `69ef9a550e1d9562…` | 2 | `00_REFERENCE_INTAKE/04-apollo.png`<br>`00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots-v2/04-screen.png` |
+| `6a0949a308873f7f…` | 2 | `00_REFERENCE_INTAKE/02-daylight.png`<br>`00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots-v2/01-screen.png` |
+| `6d489da3af1c4339…` | 2 | `00_REFERENCE_INTAKE/12-daylight.png`<br>`00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/07-daylight.png` |
+| `6d5befe849cd8372…` | 2 | `00_REFERENCE_INTAKE/advanced_sra.txt`<br>`00_REFERENCE_INTAKE/recreation/probe-analysis.html` |
 | `6f7da7e5e099d249…` | 2 | `00_REFERENCE_INTAKE/evmimplementationhandbook-1-1.pdf`<br>`00_REFERENCE_INTAKE/references/evmimplementationhandbook-1-1.pdf` |
-| `738120417fa5939d…` | 2 | `00_REFERENCE_INTAKE/01-apollo.png`<br>`00_REFERENCE_INTAKE/Mission Ops Redesign v2.dc.html` |
+| `713e4ae34ba599c4…` | 2 | `00_REFERENCE_INTAKE/01-explorer.png`<br>`00_REFERENCE_INTAKE/screenshots/01-drivers.png` |
 | `73c0a47635465b31…` | 2 | `00_REFERENCE_INTAKE/references/srb-handbook-official-rev-c-202301243-final-v2.pdf`<br>`00_REFERENCE_INTAKE/srb-handbook-official-rev-c-202301243-final-v2.pdf` |
+| `74e03580cc81c571…` | 2 | `00_REFERENCE_INTAKE/test_dashboard_perf_contract.py`<br>`00_REFERENCE_INTAKE/tests/test_packaging.py` |
+| `74f1877adce521ef…` | 2 | `00_REFERENCE_INTAKE/pasted-1783878632522-0.png`<br>`00_REFERENCE_INTAKE/uploads/pasted-1783819903744-0.png` |
+| `76160482e6c0ed43…` | 2 | `00_REFERENCE_INTAKE/02-console.png`<br>`00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots-v2/01-screen-b.png` |
+| `763cbdcaa2defbe9…` | 2 | `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/support.js`<br>`00_REFERENCE_INTAKE/support.js` |
+| `7837628c2bdddf51…` | 2 | `00_REFERENCE_INTAKE/03-drift-check.png`<br>`00_REFERENCE_INTAKE/screenshots/03-dr-fields.png` |
+| `798289c1ec91e746…` | 2 | `00_REFERENCE_INTAKE/04-screen-b.png`<br>`00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/ASTROLABE.dc.html` |
+| `7b43c4bafc880113…` | 2 | `00_REFERENCE_INTAKE/ch01-drill.png`<br>`00_REFERENCE_INTAKE/screenshots/briefing.png` |
+| `7ce798dd0118e6ce…` | 2 | `00_REFERENCE_INTAKE/07-jarvis.png`<br>`00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/04-apollo.png` |
+| `7dbb906a85fe8f99…` | 2 | `00_REFERENCE_INTAKE/pasted-1783951970617-0.png`<br>`00_REFERENCE_INTAKE/uploads/pasted-1783878632522-0.png` |
+| `7e73cef7016a2e39…` | 2 | `00_REFERENCE_INTAKE/11-daylight.png`<br>`00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/07-apollo.png` |
+| `7e8e65e086360def…` | 2 | `00_REFERENCE_INTAKE/resources.js`<br>`00_REFERENCE_INTAKE/src/schedule_forensics/web/static/mission.js` |
+| `7ecee81505889d36…` | 2 | `00_REFERENCE_INTAKE/favicon.ico`<br>`00_REFERENCE_INTAKE/src/schedule_forensics/web/static/dashboard.js` |
+| `7fcda4a8c3d8ceec…` | 2 | `00_REFERENCE_INTAKE/histogram.js`<br>`00_REFERENCE_INTAKE/src/schedule_forensics/web/static/gantt.js` |
+| `808fc682b1f8d87a…` | 2 | `00_REFERENCE_INTAKE/probe-analysis.html`<br>`00_REFERENCE_INTAKE/recreation/mock-analysis.js` |
+| `8105adfce1addfcc…` | 2 | `00_REFERENCE_INTAKE/17-daylight.png`<br>`00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/10-console.png` |
+| `8204da7b2e1e1d13…` | 2 | `00_REFERENCE_INTAKE/17-console.png`<br>`00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/09-jarvis.png` |
+| `825df51f1a377f7a…` | 2 | `00_REFERENCE_INTAKE/app.css`<br>`00_REFERENCE_INTAKE/src/schedule_forensics/web/i18n.py` |
+| `830da29c97132c7c…` | 2 | `00_REFERENCE_INTAKE/ctl-check.png`<br>`00_REFERENCE_INTAKE/screenshots/ch01-drill.png` |
 | `834e68133874ce73…` | 2 | `00_REFERENCE_INTAKE/Project5_TAMPERED_UID_67_Directional_Path_Analysis_2026-7-8-8-19-10.xlsx`<br>`00_REFERENCE_INTAKE/ssi/Project5_TAMPERED_UID_67_Directional_Path_Analysis_2026-7-8-8-19-10.xlsx` |
-| `859faf30473a3c06…` | 2 | `00_REFERENCE_INTAKE/INT-02-Advanced-Schedule-Analysis.pdf`<br>`00_REFERENCE_INTAKE/concepts_a.docx` |
+| `83d7ab50a5a365f5…` | 2 | `00_REFERENCE_INTAKE/16-daylight.png`<br>`00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/09-daylight.png` |
+| `853c8213f5650856…` | 2 | `00_REFERENCE_INTAKE/pasted-1783728087122-0.png`<br>`00_REFERENCE_INTAKE/uploads/draw-54db3784-3574-41e9-be5b-7d9249f2254c.png` |
+| `86e10e216d515d9c…` | 2 | `00_REFERENCE_INTAKE/15-daylight.png`<br>`00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/09-apollo.png` |
+| `8bcbd61b152ea8e3…` | 2 | `00_REFERENCE_INTAKE/drift.js`<br>`00_REFERENCE_INTAKE/src/schedule_forensics/web/static/chartframe.js` |
+| `8d65d0d8bc6458ba…` | 2 | `00_REFERENCE_INTAKE/ribbon_drill.js`<br>`00_REFERENCE_INTAKE/src/schedule_forensics/web/static/path.js` |
 | `90f63f49ed287c05…` | 2 | `00_REFERENCE_INTAKE/nasa-wbs-handbook.pdf`<br>`00_REFERENCE_INTAKE/references/nasa-wbs-handbook.pdf` |
+| `919c7667f2cb217d…` | 2 | `00_REFERENCE_INTAKE/02-screen-b.png`<br>`00_REFERENCE_INTAKE/references/_ds/a1-f4ddd5ad-ce81-4859-ac82-35dc15456d1a/tokens/spacing.css` |
+| `92af2bb133f6b1b5…` | 2 | `00_REFERENCE_INTAKE/download`<br>`00_REFERENCE_INTAKE/uploads/pasted-1785180498354-0.png` |
+| `943bb8e0025af59e…` | 2 | `00_REFERENCE_INTAKE/Mission Ops Redesign v2.dc.html`<br>`00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/Mission Ops Redesign v2.dc.html` |
+| `980d5cb5ac150ddd…` | 2 | `00_REFERENCE_INTAKE/02-explorer.png`<br>`00_REFERENCE_INTAKE/screenshots/02-drivers.png` |
+| `98414cd9834f6f54…` | 2 | `00_REFERENCE_INTAKE/concepts_b.docx`<br>`00_REFERENCE_INTAKE/refs/axis-census.json` |
+| `99f64243c0d906f3…` | 2 | `00_REFERENCE_INTAKE/14-daylight.png`<br>`00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/08-daylight.png` |
+| `9d8b8ad6248b7bc5…` | 2 | `00_REFERENCE_INTAKE/Concepts, Methods & Techniques-272662cf.docx`<br>`00_REFERENCE_INTAKE/tests/web/test_dashboard_perf_contract.py` |
+| `9ed1e74ed206966b…` | 2 | `00_REFERENCE_INTAKE/reel_shot-1785179231876.mp4`<br>`00_REFERENCE_INTAKE/uploads/pasted-1785180481415-0.png` |
+| `9edeb4793d834016…` | 2 | `00_REFERENCE_INTAKE/draw-81bf283a-dbd7-4066-8596-672a9d3322a1.png`<br>`00_REFERENCE_INTAKE/uploads/Mission Ops Redesign v2.dc.html` |
+| `9ef7ed27f77a5fe7…` | 2 | `00_REFERENCE_INTAKE/sra.js`<br>`00_REFERENCE_INTAKE/src/schedule_forensics/web/static/ribbon_drill.js` |
+| `a19b7e5c126b9810…` | 2 | `00_REFERENCE_INTAKE/14-console.png`<br>`00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/08-console.png` |
+| `a1ac9589f9c3ecb2…` | 2 | `00_REFERENCE_INTAKE/pasted-1783819903744-0.png`<br>`00_REFERENCE_INTAKE/uploads/draw-81bf283a-dbd7-4066-8596-672a9d3322a1.png` |
+| `a1fb171501a68136…` | 2 | `00_REFERENCE_INTAKE/pasted-1783822403853-0.png`<br>`00_REFERENCE_INTAKE/uploads/pasted-1783728087122-0.png` |
+| `a22c44fffb89567a…` | 2 | `00_REFERENCE_INTAKE/13-console.png`<br>`00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/07-jarvis.png` |
+| `a2b4ceacbef9fb2c…` | 2 | `00_REFERENCE_INTAKE/pasted-1783972927581-0.png`<br>`00_REFERENCE_INTAKE/uploads/pasted-1783951970617-0.png` |
+| `a32b3ac434146311…` | 2 | `00_REFERENCE_INTAKE/10-console.png`<br>`00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/06-console.png` |
+| `a6053a49970d52f8…` | 2 | `00_REFERENCE_INTAKE/09-console.png`<br>`00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/05-daylight.png` |
+| `a61d09529cbb912f…` | 2 | `00_REFERENCE_INTAKE/09-daylight.png`<br>`00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/05-jarvis.png` |
+| `a665eff7d7f5c12e…` | 2 | `00_REFERENCE_INTAKE/colresize.js`<br>`00_REFERENCE_INTAKE/src/schedule_forensics/web/static/ask.js` |
+| `a7c81fde7c08ea82…` | 2 | `00_REFERENCE_INTAKE/02-drift-check.png`<br>`00_REFERENCE_INTAKE/screenshots/02-dr-fields.png` |
+| `a8b130efb7e4b284…` | 2 | `00_REFERENCE_INTAKE/02-filters.png`<br>`00_REFERENCE_INTAKE/screenshots/02-explorer.png` |
+| `ac3dce335fd39ae4…` | 2 | `00_REFERENCE_INTAKE/performance.js`<br>`00_REFERENCE_INTAKE/src/schedule_forensics/web/static/margin.js` |
+| `ad575c08826c8a53…` | 2 | `00_REFERENCE_INTAKE/metric-lab-2.png`<br>`00_REFERENCE_INTAKE/screenshots/it-outline2.png` |
+| `b24e7f1282477243…` | 2 | `00_REFERENCE_INTAKE/13-daylight.png`<br>`00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/08-apollo.png` |
+| `b386f4ec014d87e5…` | 2 | `00_REFERENCE_INTAKE/metric-lab.png`<br>`00_REFERENCE_INTAKE/screenshots/metric-lab-3.png` |
+| `b3a6d6c77c11a8d4…` | 2 | `00_REFERENCE_INTAKE/16-console.png`<br>`00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/09-console.png` |
+| `b41e8057bb9b4a38…` | 2 | `00_REFERENCE_INTAKE/09-jarvis.png`<br>`00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/06-apollo.png` |
+| `b5413b58c24bddd5…` | 2 | `00_REFERENCE_INTAKE/pasted-1785180513147-0.png`<br>`00_REFERENCE_INTAKE/uploads/pasted-1784934765307-0.png` |
+| `b63ba353ea04c255…` | 2 | `00_REFERENCE_INTAKE/03-jarvis.png`<br>`00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots-v2/04-screen-b.png` |
 | `b67f02e49e5f9483…` | 2 | `00_REFERENCE_INTAKE/Large_Test_File_UID_152_Directional_Path_Analysis_2026-7-8-8-45-50.xlsx`<br>`00_REFERENCE_INTAKE/ssi/Large_Test_File_UID_152_Directional_Path_Analysis_2026-7-8-8-45-50.xlsx` |
+| `b6a8f43c936d6484…` | 2 | `00_REFERENCE_INTAKE/01-drift-check.png`<br>`00_REFERENCE_INTAKE/screenshots/01-dr-fields.png` |
+| `b6f06061546996c0…` | 2 | `00_REFERENCE_INTAKE/CRISPNESS-PATCH.md`<br>`00_REFERENCE_INTAKE/references/docs/AXIS-TITLES-PATCH.md` |
+| `b807bc3201fd6e28…` | 2 | `00_REFERENCE_INTAKE/heartbeat.js`<br>`00_REFERENCE_INTAKE/src/schedule_forensics/web/static/favicon.ico` |
 | `b9105a99df970143…` | 2 | `00_REFERENCE_INTAKE/references/sopi_6.0_final.pdf`<br>`00_REFERENCE_INTAKE/sopi_6.0_final.pdf` |
+| `bc4b7871a03e1767…` | 2 | `00_REFERENCE_INTAKE/pasted-1784934765307-0.png`<br>`00_REFERENCE_INTAKE/uploads/pasted-1783972694997-0.png` |
+| `bd0d725fce7f48fd…` | 2 | `00_REFERENCE_INTAKE/GUIDED-MODE.md`<br>`00_REFERENCE_INTAKE/references/docs/CRISPNESS-PATCH.md` |
+| `bf2fba156d553206…` | 2 | `00_REFERENCE_INTAKE/concepts_a.txt`<br>`00_REFERENCE_INTAKE/refs/advanced_sra.txt` |
+| `c18b5986a3d0c2a8…` | 2 | `00_REFERENCE_INTAKE/03-screen-b.png`<br>`00_REFERENCE_INTAKE/references/_ds/a1-f4ddd5ad-ce81-4859-ac82-35dc15456d1a/tokens/typography.css` |
+| `c3015fd6e03b3510…` | 2 | `00_REFERENCE_INTAKE/metric-lab-3.png`<br>`00_REFERENCE_INTAKE/screenshots/metric-lab-2.png` |
+| `c3204703ddfdcd2d…` | 2 | `00_REFERENCE_INTAKE/home.js`<br>`00_REFERENCE_INTAKE/src/schedule_forensics/web/static/globe.js` |
+| `c520be13f42ca8bf…` | 2 | `00_REFERENCE_INTAKE/08-console.png`<br>`00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/04-daylight.png` |
+| `c73630bc9a68bacd…` | 2 | `00_REFERENCE_INTAKE/01-drift.png`<br>`00_REFERENCE_INTAKE/screenshots/01-drift-check.png` |
+| `c74765bcd0ae52fa…` | 2 | `00_REFERENCE_INTAKE/07-daylight.png`<br>`00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/03-jarvis.png` |
+| `c7662d6b698ad91e…` | 2 | `00_REFERENCE_INTAKE/12-console.png`<br>`00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/07-console.png` |
+| `cabe3f4dd7abac34…` | 2 | `00_REFERENCE_INTAKE/06-apollo.png`<br>`00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/02-console.png` |
+| `cd11e32f0e868cfd…` | 2 | `00_REFERENCE_INTAKE/05-console.png`<br>`00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/01-daylight.png` |
+| `cd780b1e1801e6e2…` | 2 | `00_REFERENCE_INTAKE/path_evolution.js`<br>`00_REFERENCE_INTAKE/src/schedule_forensics/web/static/legend_toggle.js` |
+| `cdaa4606eb51c5f7…` | 2 | `00_REFERENCE_INTAKE/findings_drill.js`<br>`00_REFERENCE_INTAKE/src/schedule_forensics/web/static/drift.js` |
+| `cfdacffd8dbc76d0…` | 2 | `00_REFERENCE_INTAKE/08-apollo.png`<br>`00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/04-console.png` |
+| `d18b1287899f2bda…` | 2 | `00_REFERENCE_INTAKE/scurve.js`<br>`00_REFERENCE_INTAKE/src/schedule_forensics/web/static/persist.js` |
 | `d36d9776cb1b2b45…` | 2 | `00_REFERENCE_INTAKE/ppc-handbook-1-5-17.pdf`<br>`00_REFERENCE_INTAKE/references/ppc-handbook-1-5-17.pdf` |
+| `d3e1f5f33aadc162…` | 2 | `00_REFERENCE_INTAKE/it-outline.png`<br>`00_REFERENCE_INTAKE/screenshots/guide.png` |
+| `d6a2d1a761bc8e7c…` | 2 | `00_REFERENCE_INTAKE/pasted-1783950199911-0.png`<br>`00_REFERENCE_INTAKE/uploads/pasted-1783822403853-0.png` |
+| `d6d29dc6af083b6c…` | 2 | `00_REFERENCE_INTAKE/04-console.png`<br>`00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots-v2/05-screen.png` |
+| `d8bbddfd14511eb9…` | 2 | `00_REFERENCE_INTAKE/a11y.js`<br>`00_REFERENCE_INTAKE/src/schedule_forensics/web/examples/house_build.json` |
+| `db7552adc2ffe128…` | 2 | `00_REFERENCE_INTAKE/driving_path.js`<br>`00_REFERENCE_INTAKE/src/schedule_forensics/web/static/colresize.js` |
+| `dcf5c80846c1971b…` | 2 | `00_REFERENCE_INTAKE/18-console.png`<br>`00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/10-daylight.png` |
+| `ddc3f8d3eccb9095…` | 2 | `00_REFERENCE_INTAKE/forms.css`<br>`00_REFERENCE_INTAKE/references/_ds/a1-f4ddd5ad-ce81-4859-ac82-35dc15456d1a/_adherence.oxlintrc.json` |
+| `df6b01edfe98e6fe…` | 2 | `00_REFERENCE_INTAKE/i18n.py`<br>`00_REFERENCE_INTAKE/src/schedule_forensics/web/app.py` |
+| `e13db835d827b434…` | 2 | `00_REFERENCE_INTAKE/06-console.png`<br>`00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/02-daylight.png` |
+| `e1a3a91b070501a8…` | 2 | `00_REFERENCE_INTAKE/dashboard.js`<br>`00_REFERENCE_INTAKE/src/schedule_forensics/web/static/cei.js` |
+| `e36899b95a17f37e…` | 2 | `00_REFERENCE_INTAKE/references/_ds/a1-f4ddd5ad-ce81-4859-ac82-35dc15456d1a/components/instruments/instruments.css`<br>`00_REFERENCE_INTAKE/themes.css` |
+| `e872aa3eaa02bc8e…` | 2 | `00_REFERENCE_INTAKE/CLAUDE-CODE-HANDOFF.md`<br>`00_REFERENCE_INTAKE/scratch/reel-f1.png` |
+| `ea7084fb9adf18c1…` | 2 | `00_REFERENCE_INTAKE/hud.css`<br>`00_REFERENCE_INTAKE/src/schedule_forensics/web/static/groups.js` |
+| `ebe1f3abbfcc897c…` | 2 | `00_REFERENCE_INTAKE/cei.js`<br>`00_REFERENCE_INTAKE/src/schedule_forensics/web/static/ai_polish.js` |
+| `ef3b55d8e3dd0a62…` | 2 | `00_REFERENCE_INTAKE/15-console.png`<br>`00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/08-jarvis.png` |
+| `f02d1645cdb20a89…` | 2 | `00_REFERENCE_INTAKE/reel-f2.png`<br>`00_REFERENCE_INTAKE/refs/repo-audit.json` |
+| `f16082c465eae91f…` | 2 | `00_REFERENCE_INTAKE/ai_polish.js`<br>`00_REFERENCE_INTAKE/src/schedule_forensics/web/help.py` |
+| `f18196ea0355a155…` | 2 | `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/sf-themes.css`<br>`00_REFERENCE_INTAKE/references/handoff/sf-themes.css` |
+| `f1dd69fea9ca70d8…` | 2 | `00_REFERENCE_INTAKE/06-jarvis.png`<br>`00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/03-apollo.png` |
+| `f371133a33d873ca…` | 2 | `00_REFERENCE_INTAKE/pasted-1785180498354-0.png`<br>`00_REFERENCE_INTAKE/uploads/pasted-1784934458029-0.png` |
+| `f39ca79076ee5488…` | 2 | `00_REFERENCE_INTAKE/reel-f1.png`<br>`00_REFERENCE_INTAKE/refs/int02_advanced.txt` |
+| `f4c8f15bbe002c7d…` | 2 | `00_REFERENCE_INTAKE/01-dr-fields.png`<br>`00_REFERENCE_INTAKE/screenshots/01-dr-check.png` |
+| `f64e9699a17d19f3…` | 2 | `00_REFERENCE_INTAKE/03-drift.png`<br>`00_REFERENCE_INTAKE/screenshots/03-drift-check.png` |
+| `f769a7502b78ed01…` | 2 | `00_REFERENCE_INTAKE/05-daylight.png`<br>`00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/01-jarvis.png` |
+| `f9c5d6d6a1452659…` | 2 | `00_REFERENCE_INTAKE/sra_jcl.js`<br>`00_REFERENCE_INTAKE/src/schedule_forensics/web/static/scorecards.js` |
 | `fd1b310f4b4e3f45…` | 2 | `00_REFERENCE_INTAKE/nasa-ibr-handbook-5-1.pdf`<br>`00_REFERENCE_INTAKE/references/nasa-ibr-handbook-5-1.pdf` |
 
 ## Full inventory
@@ -340,8 +564,8 @@ body under several names, not random corruption.
 | `00_REFERENCE_INTAKE/17-daylight.png` | 29,215 | `.png` | `png` | — | `8105adfce1addfccb267812c4038ed6df9d349435191512208d1c10bbb8ed9a1` |
 | `00_REFERENCE_INTAKE/18-console.png` | 25,231 | `.png` | `png` | — | `dcf5c80846c1971b5a732459727b00cf991b4d3d16a8f148f146d07b6a46cc08` |
 | `00_REFERENCE_INTAKE/18-daylight.png` | 26,364 | `.png` | `png` | — | `5f584eddf6553b63c46567ee9503ab26855aa2932de4937ca80e5f2cdf2e9ce4` |
-| `00_REFERENCE_INTAKE/ASTROLABE Command Deck.dc.html` | 310,267 | `.html` | `png` | **yes** | `898dae2a9d66d9f2f225a7180b59a09022593ad38f8cfffe4d61ec4379109dd9` |
-| `00_REFERENCE_INTAKE/ASTROLABE.dc.html` | 11,579,637 | `.html` | `mp4` | **yes** | `76a2ed782f76e978ef71b9e9f4fb6fb691c89f6d6bc6e4cdca015ec2e80ba46d` |
+| `00_REFERENCE_INTAKE/ASTROLABE Command Deck.dc.html` | 1,067,837 | `.html` | `html` | — | `0e29f158349033a44205e3863b75fde292b3da6e7bde8da2c50761cccd305d2e` |
+| `00_REFERENCE_INTAKE/ASTROLABE.dc.html` | 529,732 | `.html` | `html` | — | `bcb4b789365b056355b1cb26592f4eb54d9b2184510bb0d09f2218a8aed90e9a` |
 | `00_REFERENCE_INTAKE/AXIS-TITLES-PATCH.md` | 15,505 | `.md` | `text` | — | `2f28495273f129d15bee600432b3c594dc878b7c0f9b7152e7d8a1b9ce451c21` |
 | `00_REFERENCE_INTAKE/Ai Result Comparision.docx` | 22,047 | `.docx` | `ooxml-word` | — | `cf973ce581fabbaf73e4b3a7fb790797fc9b5884886b23c4646f7f2e98483e28` |
 | `00_REFERENCE_INTAKE/AlltheProjects - Detailed Metric Report.xlsx` | 7,113,127 | `.xlsx` | `ooxml-excel` | — | `8be962a01268e917714615b3bf1cc5e1a97bbea3da0317b8a450f7e0b1a36496` |
@@ -360,14 +584,14 @@ body under several names, not random corruption.
 | `00_REFERENCE_INTAKE/FILE-NAMES.md` | 3,724 | `.md` | `text` | — | `74f9c749991b1ee0d8bf768f8db84dc86058e72e6c0fa84f2e592399e7cdf5f2` |
 | `00_REFERENCE_INTAKE/FX.afw` | 9,698,680 | `.afw` | `gzip` | — | `557bbd61d11656b8702a0a5b33cee8f5cbb7cc592baf7754972e2aae52b1a454` |
 | `00_REFERENCE_INTAKE/GUIDED-MODE.md` | 19,863 | `.md` | `text` | — | `bd0d725fce7f48fd20b9c7428b414b9fa394ce99a586c4fa54b12fd161a9c222` |
-| `00_REFERENCE_INTAKE/HANDOFF.md` | 24,107 | `.md` | `text` | — | `f0c4a7096f2413feb247ce2bb1d049a546f6db36ce308f0dfa1130dc4347b6b1` |
+| `00_REFERENCE_INTAKE/HANDOFF.md` | 26,722 | `.md` | `text` | — | `9604ba287430784311fc0b9ac0dd2e1b65110d88144f94d44228f222a1b6f5e7` |
 | `00_REFERENCE_INTAKE/Hard_File Forensic Analysis Report.xlsx` | 60,214 | `.xlsx` | `ooxml-excel` | — | `808ece07db72c4a6c7aff20c57d8dbbf83b2ce074461ab046c3d23835534489c` |
 | `00_REFERENCE_INTAKE/INDEX.md` | 15,492 | `.md` | `text` | — | `61efe2cf52830f0b60b6e12e68c2bc9ba4ae4a81b5336801912a66b24b3425fd` |
 | `00_REFERENCE_INTAKE/INT-02-Advanced-Schedule-Analysis.pdf` | 11,625,699 | `.pdf` | `pdf` | — | `859faf30473a3c062383c3b174fef9bc7b867b442b991ae75ff166a29485d855` |
 | `00_REFERENCE_INTAKE/Large Test File (OverAl Fixed) UID_152_Directional_Path_Analysis_2026-6-24-13-17-48.xlsx` | 68,996 | `.xlsx` | `ooxml-excel` | — | `af12498ded27dba297863d8964d7bd21a78a17b80682a5f38aeb5eef803de54c` |
 | `00_REFERENCE_INTAKE/Large_Test_File_UID_152_Directional_Path_Analysis_2026-7-8-8-45-50.xlsx` | 15,140 | `.xlsx` | `ooxml-excel` | — | `b67f02e49e5f94833eacd29203b41e9741c8492a50e00c4ab91b64d763d6d65e` |
 | `00_REFERENCE_INTAKE/Mission Ops Redesign v2.dc (1).html` | 44,316 | `.html` | `ooxml-word` | **yes** | `272662cf43015e28d4db365c9425b3daebc9acc7ac9a4a8533fe67035795d34c` |
-| `00_REFERENCE_INTAKE/Mission Ops Redesign v2.dc.html` | 1,068,787 | `.html` | `html` | — | `738120417fa5939dde29d4afc9d6c7b781d6c04dc5326023e72d017d7e3b8083` |
+| `00_REFERENCE_INTAKE/Mission Ops Redesign v2.dc.html` | 1,322,941 | `.html` | `html` | — | `943bb8e0025af59e90f85aa366388991360080f995365d1d889bc4f45815b8a2` |
 | `00_REFERENCE_INTAKE/Mission Ops Redesign.dc.html` | 159,063 | `.html` | `html` | — | `3c11a2f155a27b9e2af088e8bf6c1fd4a04ad7ec532d842f01603bb13b7f8c58` |
 | `00_REFERENCE_INTAKE/NASA Metrics_Complete_20260423.aft` | 10,125,812 | `.aft` | `xml` | — | `7ab1c4aea22f4a1b3b83bd299c2c3f282efbf1db8d4407e9afecc69b6e945e14` |
 | `00_REFERENCE_INTAKE/P-P5 - Quick Add Metrics .xlsx` | 25,916 | `.xlsx` | `ooxml-excel` | — | `e2c881f4890338c1817f01fe18d912c63c3b90aa80f1f0d3c3fa0361891b0ed7` |
@@ -376,7 +600,7 @@ body under several names, not random corruption.
 | `00_REFERENCE_INTAKE/P2-P5 - Metric History Report.xlsx` | 20,217 | `.xlsx` | `ooxml-excel` | — | `a67a98878323401b99059e67ede3dafa95fb6d6c67b368986bcd5d1bd544b46b` |
 | `00_REFERENCE_INTAKE/P2-P5 - Quick Add Metrics.xlsx` | 172,439 | `.xlsx` | `ooxml-excel` | — | `4c4609d8dc64e717550653aef10dccf58fdaab76a4b0e875de4367543340e893` |
 | `00_REFERENCE_INTAKE/PerformanceAnalysisSummary_Sample Metrics_2026APR.xlsx` | 848,020 | `.xlsx` | `ooxml-excel` | — | `14547256bf8c83b785a9f587c8c8436a311079fb89b44bf87088aa4ccab8fb3d` |
-| `00_REFERENCE_INTAKE/PortfolioMap.dc.html` | 9,429 | `.html` | `html` | — | `7788a7f6fa792bb88ae256503627f9352c77197490b34b82a300abfe35a10cc0` |
+| `00_REFERENCE_INTAKE/PortfolioMap.dc.html` | 3,831 | `.html` | `html` | — | `e154cf38c4c5e77d5306c94cec3d390898bd4a3f2624e4b66e21ee389b4aa9e9` |
 | `00_REFERENCE_INTAKE/Project2 vs Project5_TAMPERED Forensic Analysis Report.xlsx` | 82,315 | `.xlsx` | `ooxml-excel` | — | `c0aebbc7d2868821d09471a10d7c84a566f6826acf43324f4552303f90bba19c` |
 | `00_REFERENCE_INTAKE/Project2.mpp` | 691,712 | `.mpp` | `ole2-project` | — | `2fcdad6143ab5ddfac592cf6bda3798c7733a78e8332e3c73357e6145cdf1cfd` |
 | `00_REFERENCE_INTAKE/Project2v5 Forensic Analysis Report.xlsx` | 81,318 | `.xlsx` | `ooxml-excel` | — | `c9646ab58c78b304f4132fcbe0a0ab958273d7be067aaf3cbd5503a6ddcc7e70` |
@@ -384,7 +608,7 @@ body under several names, not random corruption.
 | `00_REFERENCE_INTAKE/Project5_TAMPERED_UID_67_Directional_Path_Analysis_2026-7-8-8-19-10.xlsx` | 11,423 | `.xlsx` | `ooxml-excel` | — | `834e68133874ce73d67bf7d4edf58af5d54a03bf5136b8ed577981b9415210c3` |
 | `00_REFERENCE_INTAKE/README (1).md` | 1,319 | `.md` | `text` | — | `29c383492c50a99399abfefa66cc8dc120a94c99b3a3ad9775e650ec6107ebc0` |
 | `00_REFERENCE_INTAKE/README (2).md` | 21,413 | `.md` | `png` | **yes** | `48a7698844feb0326af085b1d8b6f03bfde5dd66bb98485f705754b9203c760a` |
-| `00_REFERENCE_INTAKE/README.md` | 605,604 | `.md` | `png` | **yes** | `2bcb921f2a24bb7446ad7e0b4ae7b790c54aab5bdf2cb83b2a4bdc5ca0806a5e` |
+| `00_REFERENCE_INTAKE/README.md` | 1,709 | `.md` | `text` | — | `97c907be5b1591eecd8818ed7fbc0396ba58e54e00a59de92a7346911eb0f37d` |
 | `00_REFERENCE_INTAKE/RENAME-PLAN.md` | 14,621 | `.md` | `text` | — | `1ddb6e2af36aee3667c2cad2d1fdcf9e6c0fcc4444a70e7a0c7a7e1b08c98d71` |
 | `00_REFERENCE_INTAKE/Recording 2026-07-27 150631.mp4` | 44,316 | `.mp4` | `ooxml-word` | **yes** | `272662cf43015e28d4db365c9425b3daebc9acc7ac9a4a8533fe67035795d34c` |
 | `00_REFERENCE_INTAKE/Redesign Explorations.dc.html` | 39,945 | `.html` | `html` | — | `9e3f71004e2e9214d322c712cf1549e7f379ede74f094d563a7b06e61beb8866` |
@@ -501,7 +725,7 @@ body under several names, not random corruption.
 | `00_REFERENCE_INTAKE/findings_drill.js` | 9,639 | `.js` | `text` | — | `cdaa4606eb51c5f7b87d580f0db17cbd9134a4a69dca8795f7363b29415a000e` |
 | `00_REFERENCE_INTAKE/forms.css` | 26,274 | `.css` | `json` | **yes** | `ddc3f8d3eccb909544ce010ac05d3ab5a830563fdcdfe77d0e660e5e9dc83077` |
 | `00_REFERENCE_INTAKE/gantt.js` | 9,501 | `.js` | `text` | — | `0aefd731be4283d85d57f55e3bc622e216a5780871b551b675685efdc4a528af` |
-| `00_REFERENCE_INTAKE/github.md` | 20,208 | `.md` | `riff` | **yes** | `e766224e24d38bb1f743c85f77e3055ece163a1f17c4cdfafeff5999f0a17b4b` |
+| `00_REFERENCE_INTAKE/github.md` | 16,953 | `.md` | `text` | — | `b439a5a6b51943716a0151826bade4902db3c5b8deb62d8f853ea357e5a2008c` |
 | `00_REFERENCE_INTAKE/globe.js` | 12,286 | `.js` | `text` | — | `52199dd23f32ada71d939d1cdfecf4419aec3b14c0d62e4406a14a1f214ecaa9` |
 | `00_REFERENCE_INTAKE/groups.js` | 8,982 | `.js` | `text` | — | `1031203c12399926ab3518d36e295573e88c0e902dea7f3978be19be4c91d6c0` |
 | `00_REFERENCE_INTAKE/guide.png` | 48,794 | `.png` | `jpeg` | **yes** | `99e14757aeecb3a48eac4b8b1b9e3e132c067ab149212405fc419aba01c9983f` |
@@ -568,6 +792,7 @@ body under several names, not random corruption.
 | `00_REFERENCE_INTAKE/nasa-ibr-handbook-5-1.pdf` | 2,694,054 | `.pdf` | `pdf` | — | `fd1b310f4b4e3f45a982b627eac0faf06d240cbd063520c29406c794a039e7a9` |
 | `00_REFERENCE_INTAKE/nasa-wbs-handbook.pdf` | 4,388,576 | `.pdf` | `pdf` | — | `90f63f49ed287c059c5fce37788ff11cda2dd005d0c806b3a5040b0b49126db7` |
 | `00_REFERENCE_INTAKE/overlap.png` | 57,642 | `.png` | `jpeg` | **yes** | `42876758eb2395bdb60332591f644989bde9e42a469657bbefb2b67f64ac3a1e` |
+| `00_REFERENCE_INTAKE/packaging/README.md` | 4,029 | `.md` | `text` | — | `4dc7de29cb19c09509a1052e257090746430b0a8df925aa4387c1c338090cb70` |
 | `00_REFERENCE_INTAKE/pasted-1783728087122-0.png` | 74,034 | `.png` | `png` | — | `853c8213f56508567b7661c86733b03e05376364f73c47f1f616b52136e7e702` |
 | `00_REFERENCE_INTAKE/pasted-1783819903744-0.png` | 98,518 | `.png` | `png` | — | `a1ac9589f9c3ecb2762d3568ef9cd39a97a996237a5b5bca2b821668ca93a768` |
 | `00_REFERENCE_INTAKE/pasted-1783820146085-0.png` | 95,738 | `.png` | `png` | — | `38e083922e3d2a8e93944f68ef260e00990f264358b6c78c47576d0a556b5e54` |
@@ -594,6 +819,12 @@ body under several names, not random corruption.
 | `00_REFERENCE_INTAKE/pm-handbook-nasa-sp-2014-3705-2024jun.pdf` | 11,248,846 | `.pdf` | `pdf` | — | `42c68ad040389875aabc9cb92a4155337f9c58d1571feb684c0c037022fd6e61` |
 | `00_REFERENCE_INTAKE/ppc-handbook-1-5-17.pdf` | 4,581,125 | `.pdf` | `pdf` | — | `d36d9776cb1b2b4520b4dac449ad425d3ec3ebe7ffaa36054e5cf1d5dc7f3438` |
 | `00_REFERENCE_INTAKE/probe-analysis.html` | 38,325 | `.html` | `text` | **yes** | `808fc682b1f8d87af901197b457d19823fe9737d80908dd14a6729dbe4bcd843` |
+| `00_REFERENCE_INTAKE/recreation/_analysis_copy.txt` | 51,938 | `.txt` | `html` | **yes** | `523f22b889f5660606a5dab12b596d734dfdba92b5303b7a6afeeeee30b2cb2c` |
+| `00_REFERENCE_INTAKE/recreation/compare/01-dashboard-mid.png` | 24,167 | `.png` | `jpeg` | **yes** | `32a4f50b19adb690afd660f766c623c538f66f43e6b83749f926f2b6eb3c8c83` |
+| `00_REFERENCE_INTAKE/recreation/compare/02-dashboard-mid.png` | 35,937 | `.png` | `jpeg` | **yes** | `5d0b19a9da8261c5ed2bfca0881557a0028cbac6a333f9d6c4f949e776b065b2` |
+| `00_REFERENCE_INTAKE/recreation/mock-analysis.js` | 38,325 | `.js` | `text` | — | `808fc682b1f8d87af901197b457d19823fe9737d80908dd14a6729dbe4bcd843` |
+| `00_REFERENCE_INTAKE/recreation/mock-api.js` | 8,999 | `.js` | `text` | — | `22a5207e7f8dca0304c6303d9173623f83f8e879a1ba44cd6ac2cb7dca43b82d` |
+| `00_REFERENCE_INTAKE/recreation/probe-analysis.html` | 54,180 | `.html` | `html` | — | `6d5befe849cd83720f30e850f4dcb68e12305568d1cda86f3e76d4d587bc4190` |
 | `00_REFERENCE_INTAKE/reel-f0.png` | 11,398 | `.png` | `json` | **yes** | `2c4bb563b1150ab6d81e2ac297fe0d5ee3a8394f48acf593814036b3877385e6` |
 | `00_REFERENCE_INTAKE/reel-f1.png` | 27,691 | `.png` | `text` | **yes** | `f39ca79076ee5488396bdfedc18a0c2f4ba899f4acde7fb237da7449df21b964` |
 | `00_REFERENCE_INTAKE/reel-f2.png` | 41,751 | `.png` | `json` | **yes** | `f02d1645cdb20a89ac28057061e08ae5ae80220a323b34bf176cb78a6bad0f66` |
@@ -639,7 +870,107 @@ body under several names, not random corruption.
 | `00_REFERENCE_INTAKE/references/TP4_DataCenter_v3.xml` | 22,966 | `.xml` | `xml` | — | `55102caa93dd9c66738f795e9d0dada4514fa5ef1e5c0bdd46636b1362f2fbe9` |
 | `00_REFERENCE_INTAKE/references/TP4_DataCenter_v4.xml` | 23,296 | `.xml` | `xml` | — | `14b380d03d0348ada9ca4a674658dae4ca3a625b2473047fd203d970f5af5d89` |
 | `00_REFERENCE_INTAKE/references/TP4_DataCenter_v5.xml` | 23,404 | `.xml` | `xml` | — | `8625f98841cc37f6eef57c50633bfd98d2fdafe62de653d3898d897eaaf011da` |
+| `00_REFERENCE_INTAKE/references/_ds/a1-f4ddd5ad-ce81-4859-ac82-35dc15456d1a/_adherence.oxlintrc.json` | 26,274 | `.json` | `json` | — | `ddc3f8d3eccb909544ce010ac05d3ab5a830563fdcdfe77d0e660e5e9dc83077` |
+| `00_REFERENCE_INTAKE/references/_ds/a1-f4ddd5ad-ce81-4859-ac82-35dc15456d1a/_ds_bundle.js` | 206,281 | `.js` | `text` | — | `49949c8acfd36d96460abd91e1c24df2587afc8085437446e32903f0fafe025e` |
+| `00_REFERENCE_INTAKE/references/_ds/a1-f4ddd5ad-ce81-4859-ac82-35dc15456d1a/_ds_manifest.json` | 48,479 | `.json` | `json` | — | `4ff9aa9ff95871f308d803768a261b18e8baf32ab85b1c24e90d955c81b69b18` |
+| `00_REFERENCE_INTAKE/references/_ds/a1-f4ddd5ad-ce81-4859-ac82-35dc15456d1a/components/core/core.css` | 5,760 | `.css` | `text` | — | `3bc3758cdfc2963cd53844cf55b2555b3bc6b72019dbeeb292dbce25dfaeadb4` |
+| `00_REFERENCE_INTAKE/references/_ds/a1-f4ddd5ad-ce81-4859-ac82-35dc15456d1a/components/feedback/feedback.css` | 4,907 | `.css` | `text` | — | `55d8c53917ada8057e4408fcb995a2bab8022d0e55f35c58a6bca79797d10ec1` |
+| `00_REFERENCE_INTAKE/references/_ds/a1-f4ddd5ad-ce81-4859-ac82-35dc15456d1a/components/forms/forms.css` | 5,795 | `.css` | `text` | — | `548dfc648228697465f0d62403bb901041a94cbc6b80e58b361a7a82784f8455` |
+| `00_REFERENCE_INTAKE/references/_ds/a1-f4ddd5ad-ce81-4859-ac82-35dc15456d1a/components/instruments/instruments-charts.css` | 3,951 | `.css` | `text` | — | `067475edccbdda31872d12648af41d101097a04a45f5e4924e581cb1d203dc6a` |
+| `00_REFERENCE_INTAKE/references/_ds/a1-f4ddd5ad-ce81-4859-ac82-35dc15456d1a/components/instruments/instruments.css` | 7,659 | `.css` | `text` | — | `e36899b95a17f37e8af010c4e8b1f4225a412727bcbf2f7ebf2e250197161d6e` |
+| `00_REFERENCE_INTAKE/references/_ds/a1-f4ddd5ad-ce81-4859-ac82-35dc15456d1a/components/navigation/navigation.css` | 3,043 | `.css` | `text` | — | `12cad406e29157183fb9208bc7e48883ea65baac8d73d919cfd292c20a7cf44b` |
+| `00_REFERENCE_INTAKE/references/_ds/a1-f4ddd5ad-ce81-4859-ac82-35dc15456d1a/readme.md` | 19,402 | `.md` | `text` | — | `0eaa90b0faf5e0f925fdd087761c6329c869a5a6bba4372a11efd7c68712c75a` |
+| `00_REFERENCE_INTAKE/references/_ds/a1-f4ddd5ad-ce81-4859-ac82-35dc15456d1a/styles.css` | 1,090 | `.css` | `text` | — | `40ea9f277c211143c10d16431b07d4152f896c22e1bbe4b46836dd9a4eb0dfe9` |
+| `00_REFERENCE_INTAKE/references/_ds/a1-f4ddd5ad-ce81-4859-ac82-35dc15456d1a/tokens/colors.css` | 4,531 | `.css` | `text` | — | `ea8d25bf6716bfa2bf33cd63f40681b445f5fe275262e4ff75544ed721540d12` |
+| `00_REFERENCE_INTAKE/references/_ds/a1-f4ddd5ad-ce81-4859-ac82-35dc15456d1a/tokens/elevation.css` | 1,319 | `.css` | `text` | — | `29c383492c50a99399abfefa66cc8dc120a94c99b3a3ad9775e650ec6107ebc0` |
+| `00_REFERENCE_INTAKE/references/_ds/a1-f4ddd5ad-ce81-4859-ac82-35dc15456d1a/tokens/fonts.css` | 488 | `.css` | `text` | — | `4a0f9dffc11156871d784de62258a43a14529dbee7481d1d55ae35cad2f2b468` |
+| `00_REFERENCE_INTAKE/references/_ds/a1-f4ddd5ad-ce81-4859-ac82-35dc15456d1a/tokens/motion.css` | 2,155 | `.css` | `text` | — | `4933a691aae58729a2c5d0b13353119ef49ac6509c3558cc5ed53c19d0ea1334` |
+| `00_REFERENCE_INTAKE/references/_ds/a1-f4ddd5ad-ce81-4859-ac82-35dc15456d1a/tokens/radii.css` | 756 | `.css` | `text` | — | `2b49c790d0c7e6895b8af12dc72abf77306f7a60e011aec407d6a02a44a6272b` |
+| `00_REFERENCE_INTAKE/references/_ds/a1-f4ddd5ad-ce81-4859-ac82-35dc15456d1a/tokens/spacing.css` | 837 | `.css` | `text` | — | `919c7667f2cb217dbbfbc6e358234d8e8fd1c48327d09f248fb008f51da7425f` |
+| `00_REFERENCE_INTAKE/references/_ds/a1-f4ddd5ad-ce81-4859-ac82-35dc15456d1a/tokens/themes.css` | 6,409 | `.css` | `text` | — | `2378b25377c9dd6ee2d7907c4c2a65c97ad9732a4a3c518db1c67a1081981f73` |
+| `00_REFERENCE_INTAKE/references/_ds/a1-f4ddd5ad-ce81-4859-ac82-35dc15456d1a/tokens/typography.css` | 2,044 | `.css` | `text` | — | `c18b5986a3d0c2a8ff30cc4f3cb38a55bc8a527f5380cf5cdebe97c303ea872a` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/ASTROLABE.dc.html` | 506,359 | `.html` | `html` | — | `798289c1ec91e746cd6fc45725af971e0a03da290e2fc6937f0c78fd782637af` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/CLAUDE.md` | 26,829 | `.md` | `text` | — | `e0800e9a69d33371cecead50a59097a243c2452c8661c24c7e4644e631b97db3` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/DESIGN-GUIDE.md` | 5,727 | `.md` | `text` | — | `47c1fd5c534e9a313bb48915fbdf1a8fc2a1d140d53b0fcb2b86b81b2ee25ae2` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/Mission Ops Redesign v2.dc.html` | 1,322,941 | `.html` | `html` | — | `943bb8e0025af59e90f85aa366388991360080f995365d1d889bc4f45815b8a2` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/Mission Ops Redesign.dc.html` | 159,063 | `.html` | `html` | — | `3c11a2f155a27b9e2af088e8bf6c1fd4a04ad7ec532d842f01603bb13b7f8c58` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/README.md` | 33,493 | `.md` | `text` | — | `b9ad6fa5931ab697969ab53d510f7e7810391cec04a7fd438c6b5e52562294e4` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/integration-notes.md` | 3,182 | `.md` | `text` | — | `65228608109b7db28abe73407b64c5df83cb84e82a6f71a80ccb7be69444da6b` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots-v2/01-screen-b.png` | 47,995 | `.png` | `jpeg` | **yes** | `76160482e6c0ed437280afdfdf806cb963aaaeb37df659b77ec299fbd1befce4` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots-v2/01-screen.png` | 49,072 | `.png` | `jpeg` | **yes** | `6a0949a308873f7fb1b56c3e378402babb0fa3a646ef625a84a5b53cc5554180` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots-v2/02-screen-b.png` | 47,526 | `.png` | `jpeg` | **yes** | `5acaa7a1c00d12e64926dc444096858526e1292b84b32fc7d168f11ef86ad882` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots-v2/02-screen.png` | 54,091 | `.png` | `jpeg` | **yes** | `2ed119bb939b74eab2a309ccd22019e7004f2aa9f4626616b39afcbbba035d50` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots-v2/03-screen-b.png` | 50,743 | `.png` | `jpeg` | **yes** | `14662bc2d1e5fc4298d1809f759ab6e8a1269a56148d6ed8a471ab67dbab6ece` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots-v2/03-screen.png` | 53,020 | `.png` | `jpeg` | **yes** | `0a054941cbf145e389355114018a913494f133a0b60689922ec04903da3fbfae` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots-v2/04-screen-b.png` | 49,098 | `.png` | `jpeg` | **yes** | `b63ba353ea04c2554e4283bc14c5e24f80f63513b889efdcfd1ddb0f7384da69` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots-v2/04-screen.png` | 53,987 | `.png` | `jpeg` | **yes** | `69ef9a550e1d9562faf000efa9a53655af50fcbcb0af22ad8b77447497619875` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots-v2/05-screen.png` | 55,308 | `.png` | `jpeg` | **yes** | `d6d29dc6af083b6c5855b1af2efb0f82d985bb0eae88aaa419efd4feba66042b` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/01-apollo.png` | 28,786 | `.png` | `png` | — | `40ada5e7deea8899a4ef66ddbd48c369fb37348e815274bd2fe02b326fb78555` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/01-console.png` | 29,623 | `.png` | `png` | — | `135082baf7b000bdcdc90fa743529cdc03666967ce26666976edb7d5e63d9194` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/01-daylight.png` | 24,847 | `.png` | `png` | — | `cd11e32f0e868cfd587a12d8a01b7af80f718e4e9dc113e517004208e66c958f` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/01-jarvis.png` | 39,056 | `.png` | `png` | — | `f769a7502b78ed01d93e818f01533dbfbebefee91dcd39a44481f679e74cb02a` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/02-apollo.png` | 30,588 | `.png` | `png` | — | `45cad3630e2a22196854bc333cd4251371e15fcfef544f813471b3c6fbd8da95` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/02-console.png` | 29,702 | `.png` | `png` | — | `cabe3f4dd7abac3423002df7de7d3fb1d7ba2e48957470bacc8ba8401e15c0af` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/02-daylight.png` | 24,804 | `.png` | `png` | — | `e13db835d827b434e61e1a2237b4142e7a75dccbf96ed3c5027d3f62086064dd` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/02-jarvis.png` | 42,657 | `.png` | `png` | — | `29e9ccdfec20877c2865954a31b189f78a280df71cc48185e372e688f48e2327` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/03-apollo.png` | 31,914 | `.png` | `png` | — | `f1dd69fea9ca70d89e84db6e6b0ee4d7f4eb0a631e33f10103bc4605336c324c` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/03-console.png` | 30,676 | `.png` | `png` | — | `2d9699f3fe899ceffe490845b1c23d172b40a405dccff5f79966f5bb471b37e0` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/03-daylight.png` | 27,799 | `.png` | `png` | — | `69e319a33a4caa1d7570e8d7d9f665ad1491e7f97f4b2916fe1a62423bb4b571` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/03-jarvis.png` | 46,802 | `.png` | `png` | — | `c74765bcd0ae52fa0cb147e9061b86d89e40022e9e4330e45ba591b64a3ef2db` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/04-apollo.png` | 31,298 | `.png` | `png` | — | `7ce798dd0118e6cee32b120476b4dafc2d50e00eaf989d5f6eb7b5a8525cbd76` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/04-console.png` | 30,971 | `.png` | `png` | — | `cfdacffd8dbc76d0b4a05b9ae49c64e2f76ebd19099f3c17ec9c082b0d61a316` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/04-daylight.png` | 27,796 | `.png` | `png` | — | `c520be13f42ca8bfe63775f21e00195d45cc75658fa263bf9d84057503b080af` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/04-jarvis.png` | 43,207 | `.png` | `png` | — | `3e1c47066a745a04ea6a761f0f171d4409169de359e2141370331cdc45847079` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/05-apollo.png` | 29,577 | `.png` | `png` | — | `3070967856e69b150505f9deb10f21e3d9a2397b40716476be18931f29826a8a` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/05-console.png` | 32,247 | `.png` | `png` | — | `6101ed06c777b4ee6c629a7d002829d887170f062efc1e7dec151a81797be43a` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/05-daylight.png` | 28,039 | `.png` | `png` | — | `a6053a49970d52f8c13b4b095bbfa5e702f8e637a1a18ac5b1afb7f783e9b708` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/05-jarvis.png` | 39,989 | `.png` | `png` | — | `a61d09529cbb912f568509e1af44a8f6f525cf68c9c375edf5eec023de138d66` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/06-apollo.png` | 26,257 | `.png` | `png` | — | `b41e8057bb9b4a383dca77ff4d2bae25fa19b053ca75e369a3630b0abc549ca3` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/06-console.png` | 32,289 | `.png` | `png` | — | `a32b3ac434146311ec45fb162c82411a99f70161ec6b3c92bec8940d6a9d0442` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/06-daylight.png` | 28,081 | `.png` | `png` | — | `17faff223c497a07dfc0ab76dd9c3c758317e26a80076181014f851bc00ed124` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/06-jarvis.png` | 37,084 | `.png` | `png` | — | `3604b59d35dde6464d85f8a8e1b7a0b8f2840d9ca640ed3d5e9f0cb885b6b860` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/07-apollo.png` | 26,276 | `.png` | `png` | — | `7e73cef7016a2e395a398dc9f467f3c69b3933a6410f76c695d8a0426e7c5850` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/07-console.png` | 31,361 | `.png` | `png` | — | `c7662d6b698ad91ea3e3172a7de67cd82559a191eeb181088f323687a4ac0956` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/07-daylight.png` | 25,882 | `.png` | `png` | — | `6d489da3af1c433984ce58dbcf36fd9e3d94c9f76650cddfe35659bff6c93a9f` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/07-jarvis.png` | 35,233 | `.png` | `png` | — | `a22c44fffb89567a79ec0899f9b669b0f6045cbefc16f37062ab5d5a1e6aad17` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/08-apollo.png` | 32,371 | `.png` | `png` | — | `b24e7f12824772439053df5f71934d98c51a1e3d5d1d8d0eace6e545cfd64ca6` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/08-console.png` | 31,358 | `.png` | `png` | — | `a19b7e5c126b98105c90ca267b9488cceacbf9489c4d672aadce338cfab5953b` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/08-daylight.png` | 25,907 | `.png` | `png` | — | `99f64243c0d906f3b56fc496cc7e6f8c2c605a35ac4b93d069c3c0247e240175` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/08-jarvis.png` | 42,314 | `.png` | `png` | — | `ef3b55d8e3dd0a625d37b0cc229d0d73e21bf74d3ae40e7710fda4866cf9a9c4` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/09-apollo.png` | 27,371 | `.png` | `png` | — | `86e10e216d515d9c5109e9c0da3f792e34c63b34e208920ad3ee4fd4a36ec21a` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/09-console.png` | 29,242 | `.png` | `png` | — | `b3a6d6c77c11a8d406c0e269c1ff6dc71765d6d83810a52aebde27e431058ef5` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/09-daylight.png` | 25,208 | `.png` | `png` | — | `83d7ab50a5a365f595552619e2fb205ea089ced309f80559c3db594e63145f4c` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/09-jarvis.png` | 38,782 | `.png` | `png` | — | `8204da7b2e1e1d13ad883f4f7001918dd43ba95844df7834977caf002d0b5f32` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/10-console.png` | 29,215 | `.png` | `png` | — | `8105adfce1addfccb267812c4038ed6df9d349435191512208d1c10bbb8ed9a1` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/10-daylight.png` | 25,231 | `.png` | `png` | — | `dcf5c80846c1971b5a732459727b00cf991b4d3d16a8f148f146d07b6a46cc08` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/11-console.png` | 26,364 | `.png` | `png` | — | `5f584eddf6553b63c46567ee9503ab26855aa2932de4937ca80e5f2cdf2e9ce4` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/11-daylight.png` | 21,413 | `.png` | `png` | — | `48a7698844feb0326af085b1d8b6f03bfde5dd66bb98485f705754b9203c760a` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/12-console.png` | 26,279 | `.png` | `png` | — | `453b97d56f71ea99d4b2b7c5fc2980dd0400a1d3fb65bd86b89afbf812cc5ad2` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/12-daylight.png` | 21,464 | `.png` | `png` | — | `ff2eadde37745d8fab1a61ab74c4ffd48acb554eb56a41391b2aac1c2bbe14a0` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/13-console.png` | 26,655 | `.png` | `png` | — | `55bece5be1da23b07cbb8c59b125bd0489de4c05ba346b0ed6e240e95e9994da` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/13-daylight.png` | 21,601 | `.png` | `png` | — | `845ad576dc0370f4a7b8776099c8b43ed58657a11c1b449c0dc4404c4297faf0` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/14-console.png` | 26,148 | `.png` | `png` | — | `45af60c09601372ea3defd2fbe0e404d8bff7452b992d9202777b55fe4ae6e9c` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/14-daylight.png` | 21,652 | `.png` | `png` | — | `8aa6631d9ff8f841a3a0f619de30cf29ae35fc7a93c7ab7de69110d29a3ae3ef` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/15-console.png` | 33,381 | `.png` | `png` | — | `f609871aa0d50016c7c431c3452e43b57e11883c92221daf2b0026334571daff` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/15-daylight.png` | 28,261 | `.png` | `png` | — | `6a221ae88290315487d9899902d806af89f86be70f10e6f87b8d57d9820bc0ce` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/16-console.png` | 33,490 | `.png` | `png` | — | `0befcec6461f5636320b5ac271df079f814ad0e2c2f3247e80c4bdc8103e819c` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/16-daylight.png` | 28,225 | `.png` | `png` | — | `ad188d0c8e9a2f0a42531daa3abcf0f517926a7f799c0b226c402a5f5a733dc8` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/17-console.png` | 29,906 | `.png` | `png` | — | `869419c949346d0261ce62a603d939480cc1ba268797086d515fcca448092f31` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/17-daylight.png` | 26,398 | `.png` | `png` | — | `0622133a28df44834b1852567fd7d266ac19179c25b3361781bf7864515db678` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/18-console.png` | 29,775 | `.png` | `png` | — | `8be00fa490e7325d07045fd71401a8709640d1243bdc15f036c044170d2e1135` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/18-daylight.png` | 26,418 | `.png` | `png` | — | `797cb6ac012d2f293ebab2346148a50631a9fb18a46efa28b0b1e90a783ca53d` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/screenshots/README.md` | 1,213 | `.md` | `text` | — | `ecc5874315a06040c3a5ef01365740f427ed68e361849ea30b82c99ccc61d8ac` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/sf-themes.css` | 4,303 | `.css` | `text` | — | `f18196ea0355a15513cd3cffb61cc07a5ab236be2ecc0b03fa7df60512614947` |
+| `00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/support.js` | 63,119 | `.js` | `text` | — | `763cbdcaa2defbe9e91d992ce4918a46e9577cef70930b7410d20b1ab8fb536e` |
+| `00_REFERENCE_INTAKE/references/docs/AXIS-TITLES-PATCH.md` | 15,284 | `.md` | `text` | — | `b6f06061546996c098a31b2218d45c135510fd34013ba1ad1ba1bbf8293ebf0c` |
+| `00_REFERENCE_INTAKE/references/docs/CRISPNESS-PATCH.md` | 19,863 | `.md` | `text` | — | `bd0d725fce7f48fd20b9c7428b414b9fa394ce99a586c4fa54b12fd161a9c222` |
+| `00_REFERENCE_INTAKE/references/docs/GUIDED-MODE.md` | 14,621 | `.md` | `text` | — | `1ddb6e2af36aee3667c2cad2d1fdcf9e6c0fcc4444a70e7a0c7a7e1b08c98d71` |
+| `00_REFERENCE_INTAKE/references/docs/coverage-verification.md` | 7,852 | `.md` | `text` | — | `e87cf352b84852c5ba0336820592562d2f9755c7fc1fa128c866b9e85997cbbe` |
 | `00_REFERENCE_INTAKE/references/evmimplementationhandbook-1-1.pdf` | 3,215,471 | `.pdf` | `pdf` | — | `6f7da7e5e099d2497a1569156bfb2005884ca2f0dc9e80fefec6c3f64b37ff22` |
+| `00_REFERENCE_INTAKE/references/handoff/CLAUDE-CODE-HANDOFF.md` | 4,739 | `.md` | `text` | — | `324788680faf39bac5be629c5b50bcd3c07055f769bd835c7bb61a4dafb763fc` |
+| `00_REFERENCE_INTAKE/references/handoff/DESIGN-GUIDE.md` | 5,727 | `.md` | `text` | — | `47c1fd5c534e9a313bb48915fbdf1a8fc2a1d140d53b0fcb2b86b81b2ee25ae2` |
+| `00_REFERENCE_INTAKE/references/handoff/README.md` | 2,818 | `.md` | `text` | — | `6b164429d884c84f0a62bae2e76378939139cf53822f40b5e4c375e10baad9b1` |
+| `00_REFERENCE_INTAKE/references/handoff/sf-themes.css` | 4,303 | `.css` | `text` | — | `f18196ea0355a15513cd3cffb61cc07a5ab236be2ecc0b03fa7df60512614947` |
 | `00_REFERENCE_INTAKE/references/nasa-ibr-handbook-5-1.pdf` | 2,694,054 | `.pdf` | `pdf` | — | `fd1b310f4b4e3f45a982b627eac0faf06d240cbd063520c29406c794a039e7a9` |
 | `00_REFERENCE_INTAKE/references/nasa-wbs-handbook.pdf` | 4,388,576 | `.pdf` | `pdf` | — | `90f63f49ed287c059c5fce37788ff11cda2dd005d0c806b3a5040b0b49126db7` |
 | `00_REFERENCE_INTAKE/references/pm-handbook-nasa-sp-2014-3705-2024jun.pdf` | 11,248,846 | `.pdf` | `pdf` | — | `42c68ad040389875aabc9cb92a4155337f9c58d1571feb684c0c037022fd6e61` |
@@ -651,6 +982,16 @@ body under several names, not random corruption.
 | `00_REFERENCE_INTAKE/references/sopi_6.0_final.pdf` | 1,421,384 | `.pdf` | `pdf` | — | `b9105a99df970143456239f94bf88ab81e8f1255675baf2417be681b2ba57f9a` |
 | `00_REFERENCE_INTAKE/references/sra-ssi-setup.json` | 46,285 | `.json` | `json` | — | `0a7701cbe02a3411e60d631c2a2ce2567f2e6fa44db90798de469df8bb56dcd6` |
 | `00_REFERENCE_INTAKE/references/srb-handbook-official-rev-c-202301243-final-v2.pdf` | 1,193,319 | `.pdf` | `pdf` | — | `73c0a47635465b31be964a532be1ae150be982e9f5263fa188061d1fc046608f` |
+| `00_REFERENCE_INTAKE/refs/advanced_sra.pdf` | 11,625,699 | `.pdf` | `pdf` | — | `859faf30473a3c062383c3b174fef9bc7b867b442b991ae75ff166a29485d855` |
+| `00_REFERENCE_INTAKE/refs/advanced_sra.txt` | 39,005 | `.txt` | `text` | — | `bf2fba156d553206bb984e7a6fc8d76034430290f64429ffb6be7a84d26ba8ae` |
+| `00_REFERENCE_INTAKE/refs/axis-census.json` | 4,863 | `.json` | `json` | — | `98414cd9834f6f5499465227150e6ef437fe0e37ce6416a46e3b70c79148a505` |
+| `00_REFERENCE_INTAKE/refs/concepts_a.docx` | 44,316 | `.docx` | `ooxml-word` | — | `272662cf43015e28d4db365c9425b3daebc9acc7ac9a4a8533fe67035795d34c` |
+| `00_REFERENCE_INTAKE/refs/concepts_a.txt` | 34,965 | `.txt` | `text` | — | `153e2e6e573e729b4e3e328cd5e6babff6f6b4422904273b23575d8d4ad6636b` |
+| `00_REFERENCE_INTAKE/refs/concepts_b.docx` | 44,316 | `.docx` | `ooxml-word` | — | `272662cf43015e28d4db365c9425b3daebc9acc7ac9a4a8533fe67035795d34c` |
+| `00_REFERENCE_INTAKE/refs/concepts_b.txt` | 34,965 | `.txt` | `text` | — | `153e2e6e573e729b4e3e328cd5e6babff6f6b4422904273b23575d8d4ad6636b` |
+| `00_REFERENCE_INTAKE/refs/crispness-scan.json` | 11,398 | `.json` | `json` | — | `2c4bb563b1150ab6d81e2ac297fe0d5ee3a8394f48acf593814036b3877385e6` |
+| `00_REFERENCE_INTAKE/refs/int02_advanced.txt` | 27,691 | `.txt` | `text` | — | `f39ca79076ee5488396bdfedc18a0c2f4ba899f4acde7fb237da7449df21b964` |
+| `00_REFERENCE_INTAKE/refs/repo-audit.json` | 41,751 | `.json` | `json` | — | `f02d1645cdb20a89ac28057061e08ae5ae80220a323b34bf176cb78a6bad0f66` |
 | `00_REFERENCE_INTAKE/repo-audit.json` | 34,965 | `.json` | `text` | **yes** | `153e2e6e573e729b4e3e328cd5e6babff6f6b4422904273b23575d8d4ad6636b` |
 | `00_REFERENCE_INTAKE/repo-audit.md` | 10,821 | `.md` | `text` | — | `8b614f2ccb4f6e98732d4a05d4e66e23c5ca576abaefa2ecd969ca49606f4330` |
 | `00_REFERENCE_INTAKE/resources.js` | 3,966 | `.js` | `text` | — | `7e8e65e086360def7cacb50adf76b189d875ee252631bf9d6396b319976972b3` |
@@ -659,6 +1000,47 @@ body under several names, not random corruption.
 | `00_REFERENCE_INTAKE/schedule-forensics-read-only-audit-evidence.zip` | 388,243 | `.zip` | `zip` | — | `440ef4535ebe7188f38aa60258dbe1d9d362c726e48732779af607a5f9b1edea` |
 | `00_REFERENCE_INTAKE/schedule-management-handbook-20240315-update.zip` | 24,454,850 | `.zip` | `zip` | — | `48f7294a3c6d279d444a6639edaed49293cc4d70838cac96daf4f94184129696` |
 | `00_REFERENCE_INTAKE/scorecards.js` | 28,660 | `.js` | `text` | — | `3251af8867579035501390066fd60a17189acbe6629529af471c942f2f1e7581` |
+| `00_REFERENCE_INTAKE/scratch/reel-f0.png` | 576,282 | `.png` | `png` | — | `2ac018b2521fba4e0d016f1d23c31d3a6dba36cd95b8c316fd2a0d9df3460f62` |
+| `00_REFERENCE_INTAKE/scratch/reel-f1.png` | 622,463 | `.png` | `png` | — | `e872aa3eaa02bc8ee62f1d4c51badb92fb69570608e44ee17547df23a0bbe888` |
+| `00_REFERENCE_INTAKE/scratch/reel-f2.png` | 752,246 | `.png` | `png` | — | `1d4990ed7da7d4f0fcfba5700a8aed1382813b7660d8fc72530efc8bc0d71a56` |
+| `00_REFERENCE_INTAKE/scratch/reel-f3.png` | 605,604 | `.png` | `png` | — | `2bcb921f2a24bb7446ad7e0b4ae7b790c54aab5bdf2cb83b2a4bdc5ca0806a5e` |
+| `00_REFERENCE_INTAKE/scratch/reel-f4.png` | 438,326 | `.png` | `png` | — | `01937250b32df6b787ec66a667e07dae3ce750db777e60c194532b28a1716ec9` |
+| `00_REFERENCE_INTAKE/screenshots/01-ctl-tiles.png` | 48,794 | `.png` | `jpeg` | **yes** | `99e14757aeecb3a48eac4b8b1b9e3e132c067ab149212405fc419aba01c9983f` |
+| `00_REFERENCE_INTAKE/screenshots/01-dr-check.png` | 47,172 | `.png` | `jpeg` | **yes** | `f4c8f15bbe002c7d1df7a2a091a9d827b66651fba89cf8815ca6f45fb1d5f099` |
+| `00_REFERENCE_INTAKE/screenshots/01-dr-fields.png` | 47,170 | `.png` | `jpeg` | **yes** | `b6a8f43c936d64849ad213b1c4137104c7343e44e33692fa45024bb26a298cdb` |
+| `00_REFERENCE_INTAKE/screenshots/01-drift-check.png` | 32,986 | `.png` | `jpeg` | **yes** | `c73630bc9a68bacdbbe02dad2291329e84f7d721290794805e74f7e54e19ba42` |
+| `00_REFERENCE_INTAKE/screenshots/01-drift.png` | 51,019 | `.png` | `jpeg` | **yes** | `3157b3085788e56901466985181af555488093d5461fce0ef644e2937d16b3f2` |
+| `00_REFERENCE_INTAKE/screenshots/01-drivers.png` | 54,047 | `.png` | `jpeg` | **yes** | `713e4ae34ba599c4efe0c40e1b8e374db25862aa487d5d73eb5fae31d1b8ba13` |
+| `00_REFERENCE_INTAKE/screenshots/01-explorer.png` | 42,552 | `.png` | `jpeg` | **yes** | `242946670d9c9ed67bed4ccf79b147b260f5694becb78f63033c30d0f26405f1` |
+| `00_REFERENCE_INTAKE/screenshots/01-filters.png` | 48,733 | `.png` | `jpeg` | **yes** | `4ec00f974a8f9990f3250cd573d24f83151aa6fecd5b22013701e6574900169f` |
+| `00_REFERENCE_INTAKE/screenshots/02-ctl-tiles.png` | 48,794 | `.png` | `jpeg` | **yes** | `99e14757aeecb3a48eac4b8b1b9e3e132c067ab149212405fc419aba01c9983f` |
+| `00_REFERENCE_INTAKE/screenshots/02-dr-check.png` | 47,156 | `.png` | `jpeg` | **yes** | `25baa154295c9dbce2bd5523843c8137d197bd6f81ad4829eef7a8c8a145388d` |
+| `00_REFERENCE_INTAKE/screenshots/02-dr-fields.png` | 47,166 | `.png` | `jpeg` | **yes** | `a7c81fde7c08ea8244a05433e77401e961e6c6d2030354d10effe7ec81e35ce8` |
+| `00_REFERENCE_INTAKE/screenshots/02-drift-check.png` | 32,950 | `.png` | `jpeg` | **yes** | `06e7dc16c584be232446f4accd90c5e1acd0b6b718f2d3da91fd8be6be79d8f3` |
+| `00_REFERENCE_INTAKE/screenshots/02-drift.png` | 51,021 | `.png` | `jpeg` | **yes** | `4815b89b9aa83f8ea94f91c3d2b4c2ae509b0c0c766a80e98ba41ee24efa162c` |
+| `00_REFERENCE_INTAKE/screenshots/02-drivers.png` | 51,645 | `.png` | `jpeg` | **yes** | `980d5cb5ac150dddd0e171b8cbf7b6de8bf326841924a096e0033513ffa1251e` |
+| `00_REFERENCE_INTAKE/screenshots/02-explorer.png` | 42,702 | `.png` | `jpeg` | **yes** | `a8b130efb7e4b284870466f92da8c1ac21cc0211047c88be901ee118547f8dd0` |
+| `00_REFERENCE_INTAKE/screenshots/02-filters.png` | 48,543 | `.png` | `jpeg` | **yes** | `4779c8f532a83319386f231b711ad50aa1601f436e4846c60c09da792cba80f7` |
+| `00_REFERENCE_INTAKE/screenshots/03-dr-fields.png` | 50,951 | `.png` | `jpeg` | **yes** | `7837628c2bdddf510279e64316430d0bdb4428fc946cfe649739f4dac263bd25` |
+| `00_REFERENCE_INTAKE/screenshots/03-drift-check.png` | 33,214 | `.png` | `jpeg` | **yes** | `f64e9699a17d19f36bf81a3c57db79ef9596653ac518aff3e62aada196610495` |
+| `00_REFERENCE_INTAKE/screenshots/03-drift.png` | 51,033 | `.png` | `jpeg` | **yes** | `3e2470f1a3cf0ee6d7f11f18a22b125f36c1303b95fe4c767e4a9ebe09c81b2c` |
+| `00_REFERENCE_INTAKE/screenshots/03-explorer.png` | 33,161 | `.png` | `jpeg` | **yes** | `4377f391c539c36273ac7be193f966a2b09483320e4012b2f80a22e5c40ebe8f` |
+| `00_REFERENCE_INTAKE/screenshots/04-drift.png` | 51,013 | `.png` | `jpeg` | **yes** | `0b0363d5f20f7e69e09d0289b19fe43fd3ee042ed9ebe1a134bc72f2a523cdd0` |
+| `00_REFERENCE_INTAKE/screenshots/beyond.png` | 60,404 | `.png` | `jpeg` | **yes** | `3fc019608399c9606e8e97db1bd5b77439544e5f06de7e1afc30fb7f8ec861ea` |
+| `00_REFERENCE_INTAKE/screenshots/briefing.png` | 51,503 | `.png` | `jpeg` | **yes** | `7b43c4bafc880113f43c6c54feaba7f5bd63b719d35987b8809e6ed42110c142` |
+| `00_REFERENCE_INTAKE/screenshots/ch01-drill.png` | 36,001 | `.png` | `jpeg` | **yes** | `830da29c97132c7c9627679157d578f5b7ab98dc2f348fe7442bca74357a5b8a` |
+| `00_REFERENCE_INTAKE/screenshots/ctl-check.png` | 47,629 | `.png` | `jpeg` | **yes** | `6ea84c5e570d38cfb1fece3383548d1093ba35e5128186dd48bd622669794b48` |
+| `00_REFERENCE_INTAKE/screenshots/ctl-tiles.png` | 47,629 | `.png` | `jpeg` | **yes** | `6ea84c5e570d38cfb1fece3383548d1093ba35e5128186dd48bd622669794b48` |
+| `00_REFERENCE_INTAKE/screenshots/ctl-tiles2.png` | 48,794 | `.png` | `jpeg` | **yes** | `99e14757aeecb3a48eac4b8b1b9e3e132c067ab149212405fc419aba01c9983f` |
+| `00_REFERENCE_INTAKE/screenshots/guide.png` | 46,484 | `.png` | `jpeg` | **yes** | `d3e1f5f33aadc162fadf8e88e25c339bda8a6a66b14c09be2b8576618cf232e9` |
+| `00_REFERENCE_INTAKE/screenshots/it-outline.png` | 52,223 | `.png` | `jpeg` | **yes** | `527562c908a091b9a4599694cf40ef0d941460cc675efd1888304c7a00fa2d56` |
+| `00_REFERENCE_INTAKE/screenshots/it-outline2.png` | 52,248 | `.png` | `jpeg` | **yes** | `ad575c08826c8a53a799a13bdca475f5ba70f5947e1f306154fb5e8090f1ac47` |
+| `00_REFERENCE_INTAKE/screenshots/metric-lab-2.png` | 57,728 | `.png` | `jpeg` | **yes** | `c3015fd6e03b3510cedcd906541c69ef6db16f62cd85e9e578a98ef203794b24` |
+| `00_REFERENCE_INTAKE/screenshots/metric-lab-3.png` | 57,623 | `.png` | `jpeg` | **yes** | `b386f4ec014d87e50b04227f2c3266ef29cb6be5abe758cb31eb995337616a68` |
+| `00_REFERENCE_INTAKE/screenshots/metric-lab.png` | 57,642 | `.png` | `jpeg` | **yes** | `42876758eb2395bdb60332591f644989bde9e42a469657bbefb2b67f64ac3a1e` |
+| `00_REFERENCE_INTAKE/screenshots/overlap.png` | 48,868 | `.png` | `jpeg` | **yes** | `27190b4563646bdca5533a1355a21fc4ad272fec3031fd4c9d93369cbd225c1f` |
+| `00_REFERENCE_INTAKE/screenshots/seg-forecast-2.png` | 61,546 | `.png` | `jpeg` | **yes** | `28c045d356b084a2511fc76836f8565534e5a6a4e5530cb4f6b421db2769a566` |
+| `00_REFERENCE_INTAKE/screenshots/seg-forecast.png` | 61,405 | `.png` | `jpeg` | **yes** | `efb8e8d2f97decf9c24c9137c3656918656eab57b11e3d6d71ba76bf9733ecbb` |
 | `00_REFERENCE_INTAKE/scurve.js` | 10,142 | `.js` | `text` | — | `d18b1287899f2bda84b61d86eb2fd2fdbd68c4dede4648206ad3be6bfe693f4d` |
 | `00_REFERENCE_INTAKE/seg-forecast-2.png` | 48,868 | `.png` | `jpeg` | **yes** | `27190b4563646bdca5533a1355a21fc4ad272fec3031fd4c9d93369cbd225c1f` |
 | `00_REFERENCE_INTAKE/seg-forecast.png` | 61,546 | `.png` | `jpeg` | **yes** | `28c045d356b084a2511fc76836f8565534e5a6a4e5530cb4f6b421db2769a566` |
@@ -675,6 +1057,72 @@ body under several names, not random corruption.
 | `00_REFERENCE_INTAKE/sra_jcl.js` | 4,001 | `.js` | `text` | — | `f9c5d6d6a14526591de1bb36e2683f0cbc24e75315d6c734e62b5743f73530cb` |
 | `00_REFERENCE_INTAKE/sra_risk.js` | 15,723 | `.js` | `text` | — | `4fc1b4dac5a4b75f56dfddd8ba263bfec6ec655748f9bc990d98c0f4227cfff8` |
 | `00_REFERENCE_INTAKE/srb-handbook-official-rev-c-202301243-final-v2.pdf` | 1,193,319 | `.pdf` | `pdf` | — | `73c0a47635465b31be964a532be1ae150be982e9f5263fa188061d1fc046608f` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/app.py` | 972,120 | `.py` | `text` | — | `df6b01edfe98e6fe463f1d4f997f6d546b26aefa7d3e3f54bd7d6e5edc338433` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/examples/house_build.json` | 3,050 | `.json` | `json` | — | `d8bbddfd14511eb93d46173525937e8d446233b7618ac1e9c0fc1204b950dfba` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/help.py` | 75,012 | `.py` | `text` | — | `f16082c465eae91f185b83f807de6c858049c9f69cd6852aa4f4f69d469f9ce4` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/i18n.py` | 31,659 | `.py` | `text` | — | `825df51f1a377f7ad3b51cb66ae697219549d42c7ee86ba98d7922a110f54b94` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/offload.py` | 5,287 | `.py` | `text` | — | `0b1e2e2afe3a49df8a795c80ecced54b1c58432e7f5d4e4abf5a3a54782b3a5a` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/static/a11y.js` | 2,257 | `.js` | `text` | — | `345554533f3556f6d9b691b10814e848c6acccbdfe14ab6433839ac2374c9fa7` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/static/ai_polish.js` | 1,818 | `.js` | `text` | — | `ebe1f3abbfcc897ccb9aa7c1657c7439c5997d928b71c4cc6bd47d99355cbc4e` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/static/app.css` | 77,290 | `.css` | `text` | — | `12e6f04148237f31f5129f2103d34eaf0ab4907d2d12a6421c2690fb45e95e99` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/static/app.js` | 50,872 | `.js` | `text` | — | `3c7a98d0da0fe980beb6ac09066ea46ad93ad7f4356c8a3a8e3b4b8d357192a5` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/static/ask.js` | 7,404 | `.js` | `text` | — | `a665eff7d7f5c12e1593574df95100d608b6a0f7bd6aa6d32b0695f0d1bafe17` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/static/base.css` | 36,197 | `.css` | `text` | — | `59f6dab9118b53a030c2681c09cb3d39de755d5bf0d6da5a9f1af034976650a3` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/static/cei.js` | 13,882 | `.js` | `text` | — | `e1a3a91b070501a81344a41075e56dbe18ef3329bdcc456134f53cb034bc0e12` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/static/chartframe.js` | 15,616 | `.js` | `text` | — | `8bcbd61b152ea8e326cdd88ca3245649a4dd5855acb76c96f08031c237756975` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/static/checklist.js` | 6,035 | `.js` | `text` | — | `3c7ef5a07e43171b6fb9d1d221b40b7ed30f079c008f9dc07c464b1a40da93ca` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/static/colresize.js` | 3,297 | `.js` | `text` | — | `db7552adc2ffe128c7e845ef4a36e56232cf3deada61c907488d802e7fa91d0c` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/static/curves.js` | 21,428 | `.js` | `text` | — | `1aff079298a3562b21f23ed733a02a6d22bfe3c4a70fa6639fdcd085e4170f77` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/static/dashboard.js` | 4,979 | `.js` | `text` | — | `7ecee81505889d361196ecaa275d03c60c7589627fc818166e9186582532dcfa` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/static/drift.js` | 9,639 | `.js` | `text` | — | `cdaa4606eb51c5f7b87d580f0db17cbd9134a4a69dca8795f7363b29415a000e` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/static/drilldown.js` | 9,501 | `.js` | `text` | — | `0aefd731be4283d85d57f55e3bc622e216a5780871b551b675685efdc4a528af` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/static/driving_path.js` | 12,286 | `.js` | `text` | — | `52199dd23f32ada71d939d1cdfecf4419aec3b14c0d62e4406a14a1f214ecaa9` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/static/driving_tiers.js` | 8,982 | `.js` | `text` | — | `1031203c12399926ab3518d36e295573e88c0e902dea7f3978be19be4c91d6c0` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/static/favicon.ico` | 8,800 | `.ico` | `ico` | — | `b807bc3201fd6e28a90f32a97922798b35a10e029903af8db73110b47d3c61ef` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/static/findings_drill.js` | 7,943 | `.js` | `text` | — | `27e960300c76aee8c7837730a08cc84e2e28007f402bf9ebb1b1b107a366ff20` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/static/gantt.js` | 24,100 | `.js` | `text` | — | `7fcda4a8c3d8ceecb694f5b9330b97590675d5dc2dfa32861213e585775f0516` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/static/globe.js` | 12,557 | `.js` | `text` | — | `c3204703ddfdcd2d109e5f9ed19e74d1bf86b43a13731998d44beaa062095a99` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/static/groups.js` | 3,474 | `.js` | `text` | — | `ea7084fb9adf18c1cfdba1c2e7f0495b293694cc7e23061e1706a980815faa3f` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/static/heartbeat.js` | 795 | `.js` | `text` | — | `13be4b18c26db168c105dcca3f1736c096c32ccfcc653234e0f27e9a7c70ae08` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/static/hints.js` | 2,812 | `.js` | `text` | — | `4dc8266a0097021364086e3e5a3681ac96a25487950f3cd73041e3c5d143a30b` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/static/histogram.js` | 11,481 | `.js` | `text` | — | `0b888cb49b5681997120a4a03edbc87cb5d39a9ea2f4d9548b261e5b0730aa01` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/static/home.js` | 4,121 | `.js` | `text` | — | `624cea97a6561cbee29bf6b74f55e5c505b20d8ea199899d9ab286489efe8c74` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/static/hud.css` | 12,180 | `.css` | `text` | — | `1260fbd6254fd679b42c06a40425e7f5759e2fa4f68cb70db79974bd3c3538e9` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/static/legend_toggle.js` | 6,225 | `.js` | `text` | — | `cd780b1e1801e6e2a68a73409f6426ab82cdd47c7456ba18d6f1d9d003cfe59c` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/static/margin.js` | 11,613 | `.js` | `text` | — | `ac3dce335fd39ae4bb43e50963c40942043b3a6e18a956245c058abb7c550dfa` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/static/margin_dashboard.js` | 24,307 | `.js` | `text` | — | `344fb360a971aa44f38023f7128f9a4367bbfbb20a000b97bbfb8a77254b9403` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/static/mission.js` | 3,966 | `.js` | `text` | — | `7e8e65e086360def7cacb50adf76b189d875ee252631bf9d6396b319976972b3` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/static/path.js` | 35,729 | `.js` | `text` | — | `8d65d0d8bc6458ba1a8f1c2db7cfde31414770411971984dd56ff44f2757865c` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/static/path_evolution.js` | 23,538 | `.js` | `text` | — | `67619e91a2428018a151392a338a36eded1d9cb8e149d6136d1a237f64d59692` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/static/performance.js` | 28,660 | `.js` | `text` | — | `3251af8867579035501390066fd60a17189acbe6629529af471c942f2f1e7581` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/static/persist.js` | 10,142 | `.js` | `text` | — | `d18b1287899f2bda84b61d86eb2fd2fdbd68c4dede4648206ad3be6bfe693f4d` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/static/resources.js` | 10,888 | `.js` | `text` | — | `5a1b884608cf0899c17aceb7d365003c108b1a862575f035e524185a0e3237c6` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/static/ribbon_drill.js` | 8,848 | `.js` | `text` | — | `9ef7ed27f77a5fe7d3402be4210872f33261143ee7da13f35f414fbddcc909e3` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/static/scatter.js` | 7,533 | `.js` | `text` | — | `283366b95381b38de7eaff831c27eeba059293843d3b7bd88a38b5ad22d7608e` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/static/scorecards.js` | 4,001 | `.js` | `text` | — | `f9c5d6d6a14526591de1bb36e2683f0cbc24e75315d6c734e62b5743f73530cb` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/static/scurve.js` | 15,723 | `.js` | `text` | — | `4fc1b4dac5a4b75f56dfddd8ba263bfec6ec655748f9bc990d98c0f4227cfff8` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/static/settings.js` | 5,503 | `.js` | `text` | — | `79673e40024c68964de4e905e855759deace44a8c694fa4a05e0a6838ca2bf26` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/static/sra.js` | 21,754 | `.js` | `text` | — | `7af4cbcc73916a2ab481bfd47dbbc2d12b75f804906c777d1c3f5cf61318f832` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/static/sra_grid.js` | 24,628 | `.js` | `text` | — | `f007cfa4a778c622391431a1d516c17c589c178aee49e5e962ad2b3754f7caac` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/static/sra_jcl.js` | 14,805 | `.js` | `text` | — | `f7bef5e635cbffe696d2b131ec9940b78b25a5982783830098d2d93ae65447f4` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/static/sra_risk.js` | 3,175 | `.js` | `text` | — | `75359ba120ed6ddadcb4c5cdb3d27679570fb1b3481262b22137445b42f1d29c` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/static/sra_ssi.js` | 21,385 | `.js` | `text` | — | `69ece1871ecc7407da3f06c4e6e24181318e8c6064574a0e8775d3933b803230` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/static/sysmon.js` | 6,394 | `.js` | `text` | — | `c3bb4a21dc3d8dbec1eb502f3fc38ac337046ffe0de0434762fff77a2b2b78e5` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/static/target.js` | 1,019 | `.js` | `text` | — | `8b3825f2be5c354392f5be59ddaf06ec100dc09829b2346ac371957b6826c4f8` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/static/taskinfo.js` | 11,329 | `.js` | `text` | — | `c6bac6961229b585bd9bd0ac6043755b8ae027987ca1bf2dc284f1227a48234f` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/static/theme.js` | 4,457 | `.js` | `text` | — | `c50f7667c08d2ee395a7ce61e426617f478c117d3ed0dce3f2e7036b3dfc8cff` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/static/timeaxis.js` | 4,623 | `.js` | `text` | — | `45f9a6b2e06ff2bf77b2f93f9ef3f71844a296103e4e70203e5ed1cea059a797` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/static/timescale.js` | 34,457 | `.js` | `text` | — | `fa2f55989ef03f7f91a0dbe4c13cd5333673f35175f5b781c795758aa7451022` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/static/tooltips.js` | 4,237 | `.js` | `text` | — | `661fcc2f37bcb3d21545e5cd7981f2b897fe5e7755f359ab799e1eab8a19868b` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/static/translate.js` | 7,176 | `.js` | `text` | — | `7be3afcef5b73db81d31df476c84b571db2bbe1fcac822e31f637b307c08840d` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/static/trend.js` | 54,306 | `.js` | `text` | — | `f87dae7129c7102b863c6ba65e11fcf8b52a82f250efcbb30eb4be9b0c4f2bd7` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/static/trend_drill.js` | 9,905 | `.js` | `text` | — | `bfc31eeb674227a053d461f007218e49370cf8884af9ef3eee86eb03bc32c5c9` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/static/vizhints.js` | 50,942 | `.js` | `text` | — | `19402a7eb525bc364931c34c10a419d5003602b5b0f9a68fa329ee9e79bf1286` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/static/volatility.js` | 24,467 | `.js` | `text` | — | `97e6a11c44ea55c922f34fed8f64fe3053bfb87daa93a33ecd87d1ff8528de78` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/static/wbs.js` | 6,643 | `.js` | `text` | — | `28f1d8765b41dce40ae25155305f532425db23e8a29c6938fdad5a89440149d2` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/static/whatif.js` | 7,058 | `.js` | `text` | — | `911ef79e1617dfdbccfb68a2f32e94a0b7159c02ba7e0a7ed6c929ed75f649f2` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/static/workbench.js` | 12,712 | `.js` | `text` | — | `79aad31875efade9534f4cb8fddce31288a519a8e27b550a48a48640f6081f7e` |
+| `00_REFERENCE_INTAKE/src/schedule_forensics/web/system.py` | 19,618 | `.py` | `text` | — | `6c8854ebefc1f03d8a0642959b00a274f7829c28f7d7dc23663bf36d86afe784` |
 | `00_REFERENCE_INTAKE/ssi/.gitkeep` | 0 | `(none)` | `empty` | — | `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` |
 | `00_REFERENCE_INTAKE/ssi/Hard File updated3_UID_155_Directional_Path_Analysis_2026-7-15.xlsx` | 16,791 | `.xlsx` | `ooxml-excel` | — | `4bfe2ce3a66085101e544af7b12f39fa0850dd84b406e69c0ece9062688d6a17` |
 | `00_REFERENCE_INTAKE/ssi/Hard_File_Path_Trace_UID_155_Directional_Path_Analysis_2026-7-8-13-30-7.xlsx` | 16,021 | `.xlsx` | `ooxml-excel` | — | `a585df8219192ee059151f93eb2f4e953ab8fda80ed9955e84e1c49eb86bcc38` |
@@ -699,4 +1147,35 @@ body under several names, not random corruption.
 | `00_REFERENCE_INTAKE/styles.css` | 5,760 | `.css` | `text` | — | `3bc3758cdfc2963cd53844cf55b2555b3bc6b72019dbeeb292dbce25dfaeadb4` |
 | `00_REFERENCE_INTAKE/support.js` | 63,119 | `.js` | `text` | — | `763cbdcaa2defbe9e91d992ce4918a46e9577cef70930b7410d20b1ab8fb536e` |
 | `00_REFERENCE_INTAKE/test_dashboard_perf_contract.py` | 3,013 | `.py` | `text` | — | `74e03580cc81c5719bd45a57c538df89a79c6707168c9066dfcdbe9d05611f70` |
+| `00_REFERENCE_INTAKE/tests/test_packaging.py` | 3,013 | `.py` | `text` | — | `74e03580cc81c5719bd45a57c538df89a79c6707168c9066dfcdbe9d05611f70` |
+| `00_REFERENCE_INTAKE/tests/web/test_dashboard_perf_contract.py` | 20,339 | `.py` | `text` | — | `9d8b8ad6248b7bc553ac2a15b319ddd5bea193e7fe826cee8a41518254d3d57c` |
 | `00_REFERENCE_INTAKE/themes.css` | 7,659 | `.css` | `text` | — | `e36899b95a17f37e8af010c4e8b1f4225a412727bcbf2f7ebf2e250197161d6e` |
+| `00_REFERENCE_INTAKE/uploads/Advanced Project Schedule Risk Analysis.pdf` | 11,625,699 | `.pdf` | `pdf` | — | `859faf30473a3c062383c3b174fef9bc7b867b442b991ae75ff166a29485d855` |
+| `00_REFERENCE_INTAKE/uploads/Concepts, Methods & Techniques-272662cf.docx` | 44,316 | `.docx` | `ooxml-word` | — | `272662cf43015e28d4db365c9425b3daebc9acc7ac9a4a8533fe67035795d34c` |
+| `00_REFERENCE_INTAKE/uploads/Concepts, Methods & Techniques.docx` | 44,316 | `.docx` | `ooxml-word` | — | `272662cf43015e28d4db365c9425b3daebc9acc7ac9a4a8533fe67035795d34c` |
+| `00_REFERENCE_INTAKE/uploads/INT-02-Advanced-Schedule-Analysis.pdf` | 806,741 | `.pdf` | `pdf` | — | `1eafe822ff106f7fe6d11f7edb8cea2ebfc8f4ddb049d5488202e1375d9807f5` |
+| `00_REFERENCE_INTAKE/uploads/Mission Ops Redesign v2.dc.html` | 1,065,588 | `.html` | `html` | — | `9edeb4793d834016cb6c90b159dfda8d75f030828c86ace36b62be1010b01ca0` |
+| `00_REFERENCE_INTAKE/uploads/Recording 2026-07-27 150631.mp4` | 3,923,990 | `.mp4` | `mp4` | — | `317861011db5d27a30de622f5ad85e0c3295d729e54063c01fb04bc5c77d67ef` |
+| `00_REFERENCE_INTAKE/uploads/draw-3a6d5a16-c4d8-45c2-9c36-014ccb3fecfa.png` | 238,857 | `.png` | `png` | — | `e8a5497c20d9ee50593827208b8274c92d55f53d2fe39d7788a0a93acc026c7a` |
+| `00_REFERENCE_INTAKE/uploads/draw-4d9679ff-a22c-4260-ab61-4b70b814fef6.png` | 113,463 | `.png` | `png` | — | `d67f275122139f705d33caf7a6a05e3ed4fcf0bf041c81b5ae5c984206abcd5f` |
+| `00_REFERENCE_INTAKE/uploads/draw-54db3784-3574-41e9-be5b-7d9249f2254c.png` | 74,034 | `.png` | `png` | — | `853c8213f56508567b7661c86733b03e05376364f73c47f1f616b52136e7e702` |
+| `00_REFERENCE_INTAKE/uploads/draw-6689fe3f-c2a4-4eb2-8d31-1246354cca82.png` | 60,277 | `.png` | `png` | — | `89a101e9192991b7b9489e018b74b22026316115da7e4de2c0f1832fd108e545` |
+| `00_REFERENCE_INTAKE/uploads/draw-81bf283a-dbd7-4066-8596-672a9d3322a1.png` | 98,518 | `.png` | `png` | — | `a1ac9589f9c3ecb2762d3568ef9cd39a97a996237a5b5bca2b821668ca93a768` |
+| `00_REFERENCE_INTAKE/uploads/draw-b3e46260-3387-4693-85dc-8f3ed9a032db.png` | 95,738 | `.png` | `png` | — | `38e083922e3d2a8e93944f68ef260e00990f264358b6c78c47576d0a556b5e54` |
+| `00_REFERENCE_INTAKE/uploads/pasted-1783728087122-0.png` | 99,274 | `.png` | `png` | — | `a1fb171501a6813613e566f2a2ee7259c7cd75df6454992b50a1c969574d30de` |
+| `00_REFERENCE_INTAKE/uploads/pasted-1783819903744-0.png` | 297,110 | `.png` | `png` | — | `74f1877adce521ef41f750370316198ac35dfb98d8f3ff0496ff679965393d47` |
+| `00_REFERENCE_INTAKE/uploads/pasted-1783820146085-0.png` | 144,580 | `.png` | `png` | — | `20c67b27194a3521af2f932f829ebbc66d7c9a25121e2541fc55e1ad1eace77f` |
+| `00_REFERENCE_INTAKE/uploads/pasted-1783822403853-0.png` | 133,352 | `.png` | `png` | — | `d6a2d1a761bc8e7c492059154cf2fad1571b3c18a083a7d6dfe58807cc3aefac` |
+| `00_REFERENCE_INTAKE/uploads/pasted-1783878632522-0.png` | 49,571 | `.png` | `png` | — | `7dbb906a85fe8f99b96c428709ff091f9610c2aeda11ad6f56d19b9a81ccb5da` |
+| `00_REFERENCE_INTAKE/uploads/pasted-1783880438707-0.png` | 451,208 | `.png` | `png` | — | `18fdf0601d4714e90b3be59fe80add2f79276feead0990003243ae67615e6a36` |
+| `00_REFERENCE_INTAKE/uploads/pasted-1783950199911-0.png` | 15,222 | `.png` | `png` | — | `3a11ad3375a93454b9913428ed6a1da21ceddb1aa25c129acec768ba0588724d` |
+| `00_REFERENCE_INTAKE/uploads/pasted-1783951970617-0.png` | 14,426 | `.png` | `png` | — | `a2b4ceacbef9fb2cdbe762961d9642044437936d78c8610b8c0f656788f4be63` |
+| `00_REFERENCE_INTAKE/uploads/pasted-1783956881199-0.png` | 297,261 | `.png` | `png` | — | `5c03494d2d95ea6a4893f824c7d285845bf92bd6f7f48b44a328006715364760` |
+| `00_REFERENCE_INTAKE/uploads/pasted-1783972694997-0.png` | 294,417 | `.png` | `png` | — | `bc4b7871a03e17676a09dc56e1eb5088e2ee58f6281ad8f72473ee433e6b5a7f` |
+| `00_REFERENCE_INTAKE/uploads/pasted-1783972927581-0.png` | 106,757 | `.png` | `png` | — | `1517f2c45eda4423f9564ce18209f261e554c07a3516ad03cb9f2afc551f74aa` |
+| `00_REFERENCE_INTAKE/uploads/pasted-1784934458029-0.png` | 248,488 | `.png` | `png` | — | `f371133a33d873ca19719520d74262d45f76a2e8e9d8e880becbc0cbde9cdc0a` |
+| `00_REFERENCE_INTAKE/uploads/pasted-1784934765307-0.png` | 79,226 | `.png` | `png` | — | `b5413b58c24bddd576027f01d581e52a80933a65b45b2158ae55a040400f9ff1` |
+| `00_REFERENCE_INTAKE/uploads/pasted-1785180481415-0.png` | 267,519 | `.png` | `png` | — | `9ed1e74ed206966b95fbad52807e12b4bc476fcb7b092d0f87ccc0723285efd6` |
+| `00_REFERENCE_INTAKE/uploads/pasted-1785180498354-0.png` | 242,002 | `.png` | `png` | — | `92af2bb133f6b1b5da6f995a4aa0f2b3888fb0f890372c50880f1f5bc189a16e` |
+| `00_REFERENCE_INTAKE/uploads/pasted-1785180513147-0.png` | 310,267 | `.png` | `png` | — | `898dae2a9d66d9f2f225a7180b59a09022593ad38f8cfffe4d61ec4379109dd9` |
+| `00_REFERENCE_INTAKE/uploads/reel_shot-1785179231876.mp4` | 11,579,637 | `.mp4` | `mp4` | — | `76a2ed782f76e978ef71b9e9f4fb6fb691c89f6d6bc6e4cdca015ec2e80ba46d` |

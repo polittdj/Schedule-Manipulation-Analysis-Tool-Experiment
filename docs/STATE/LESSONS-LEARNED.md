@@ -455,6 +455,17 @@ those fixed defects in earlier "closed" fixes:
 - **`title=` is not where a tooltip lives at runtime.** `tooltips.js` moves it to `data-sf-hint` at load;
   the kickoff listed this trap and the oracle still read `title`. Read the traps list as a checklist for
   every NEW oracle, not as history.
+- **A one-cell CI red is ruled in or out by evidence order, not by re-running first.** The browser job failed
+  `console@0.9 /forecast` — a page the diff never touched. Surface untouched → base green the same morning
+  with the IDENTICAL browser build → endpoint 10 ms locally → local module green: only then the single
+  re-run, which passed. And `rerun_failed_jobs` is refused while sibling jobs still run — arm a reminder for
+  the run's completion instead of hammering the API.
+- **The pre-commit guard guards commits, not the repository.** Six GitHub web-UI uploads put 255 files on
+  `main` in twenty minutes — four `.docx` and a Save-format `.json` among them — and no hook ran. The only
+  instrument that noticed was the intake manifest guard, and it noticed on the NEXT PR, painting a docs-only
+  change red for the base's drift. A guard that lives in one door does not cover the building; the blocklist
+  needs a CI-side run over the push diff (WP4). And `main`'s own runs for those pushes were CANCELLED by the
+  next push, so "main is green" was never actually measured for them.
 
 ### 2026-09-02 (d) — a control whose effect is invisible reads as broken; two thresholds set for words fought a one-glyph choice
 

@@ -9,9 +9,9 @@ docs/STATE/HANDOFF.md FIRST (auto-injected), then **docs/STATE/AUDIT-2026-08-27.
 campaign's live ledger (appended per-WP, never batch-written)**; the 2026-08-16 ledger stays the
 historical row source for WP6. As of last close: **v1.0.232 · highest ADR 0454 (WP3 · M4: the SRA grid driven for the first time — six silent defects fixed) · WP0, its
 addendum, WP1, WP2 AND WP3 complete; the header root cause (ADR-0445), the One-Pager (ADR-0446) and the
-OPERATOR BATCH of 2026-09-02 + its two follow-ups (ADR-0447..0453, #623/#624/#625) ALL MERGED; WP3 (ADR-0454) on a draft PR from branch `claude/new-session-mc0a58`**
-(WP0/PR #615, addendum #616, WP1 #617, WP2 #618, ADR-0444 #620, ADR-0445+0446 #621, docs #622, batch #623, #624, #625 — ALL MERGED;
-the WP3 PR is the one to check first: if MERGED, branch fresh from `origin/main`; if still open, drive it to green before WP4). Campaign decisions (operator,
+OPERATOR BATCH of 2026-09-02 + its two follow-ups (ADR-0447..0453, #623/#624/#625) and WP3 (ADR-0454, **#626 MERGED at `b631b41f`**) ALL MERGED — NO open PR**
+(WP0/PR #615, addendum #616, WP1 #617, WP2 #618, ADR-0444 #620, ADR-0445+0446 #621, docs #622, batch #623, #624, #625, WP3 #626 — ALL MERGED;
+branch fresh from `origin/main` for WP4 and open a NEW draft PR). Campaign decisions (operator,
 2026-08-27, standing): **SOLO lead · fix-as-verified · BOTH folder-ask builds**. QC-1/QC-2 bind
 every session — ADR-0393, pinned by `tests/test_standing_rules.py`. **git fetch origin before you
 branch, number an ADR, or commit — and RE-fetch before writing the docs.**
@@ -91,7 +91,15 @@ pasted junk vanished / a 7 clamped silently (`POST /sra/grid` returns `rejected`
 uid/field/value/reason; the grid reads them back — ADR-0313's rule on the grid) · **M4-04** the save
 confirmation was overwritten by the reload · **M4-05** `badInput` (`e`) queued as `""` — refused at the
 cell. Mutation: original-JS + fixed-route → exactly the six JS-side drivers red, blank-clear green.
-The UI map has NO queued rows left.
+The UI map has NO queued rows left. **MERGED #626** (all seven checks green; the browser job's first
+attempt failed one `/forecast` caption cell on a page the diff never touched and passed on the single
+re-run — `rerun_failed_jobs` is refused while sibling jobs still run; wait for the run to complete).
+
+⇢ **2026-09-03 (docs, #627):** the operator's SIX web-UI intake uploads (255 files) broke `main`'s intake-manifest
+guard; the regenerated manifest rides #627. **A web upload bypasses the pre-commit CUI guard** (four `.docx` +
+a Save-format `house_build.json` copy landed under `00_REFERENCE_INTAKE/src/`) — a CI-side blocklist run over
+the push diff is a WP4 candidate alongside the route-coverage instrument. `main`'s runs for those pushes were
+CANCELLED by the next push: never assume a `main` commit was measured green — check its run's conclusion.
 
 ⇢ NEXT — **WP4** (committed route-coverage instrument, `SF_ROUTE_COVERAGE=1`, floor
 ≥139, + the 08-26 CI `startup_failure` root-cause — the outage claim is PARTIALLY REFUTED, event

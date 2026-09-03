@@ -16112,3 +16112,34 @@ of the WP1 UI map. Branch fresh from `origin/main`.
   node --check per file clean · full suite **4703 passed / 5 skipped in 43:33**, exit 0 · parity **72 passed in
   13:04**, exit 0 · installer lockstep inside the suite after the final wheel + installer rebuild.
 - **PR:** draft #626 from `claude/new-session-mc0a58` (head `2a14a1d0` + the gate-line docs commit); subscribed for CI/review events.
+
+## 2026-09-03 (b) — PR #626 MERGED; branch restarted; the one-cell browser flake recorded (docs-only)
+
+- **Merge:** #626 squash-merged to `main` @ `b631b41f` at 17:58Z by the operator (marked ready, then merged);
+  all seven checks green on head `c33bf9fc` — `test (3.11)`, `test (3.13)`, `floor`, `browser`, `check`,
+  installer-smoke `linux` + `windows`. Branch `claude/new-session-mc0a58` restarted from that `origin/main`
+  (`git fetch --prune` + `checkout -B`), the three PR check-in Routines deleted, NO open PR.
+- **CI flake, by the rules:** the browser job's first attempt failed `test_axis_titles_visual.py::
+  test_captions_survive_every_theme_and_scale` on ONE of 120 cells (`console@0.9 /forecast: no captions
+  rendered`); 420/421 passed including all 17 new grid drivers. Ruled not the PR's before touching anything:
+  the diff never reaches `/forecast` / `drift.js` / the caption machinery; the same module passed 404/404 on
+  `main` that morning with the IDENTICAL Chrome for Testing 151 / chromium v1234 build; `/api/forecast` is
+  10 ms locally; the module passed in the local full suite. One standing-down comment on the PR, then the
+  single permitted `rerun_failed_jobs` — refused with "This workflow is already running" until the sibling
+  jobs finished — and the re-run PASSED. Not chased further; a recurrence on `main` would make it a real race
+  in that test's suppressed 5-s per-page caption wait.
+- **Also landed on `main` before the merge (operator, `04864b70` "Add files via upload"):** the
+  design-canvas intake under `00_REFERENCE_INTAKE/` refreshed (four `.dc.html` canvases, a README, a 22-line
+  intake HANDOFF) — reference material, not product code; read before any design-related WP.
+- **#627's `floor` job went RED on the intake-manifest guard** — the base's failure, not the PR's: the six
+  operator web-UI commits above (not one — `git log 6fdc1ddf..origin/main` shows seven commits, six theirs)
+  added 255 intake files and the committed `docs/INTAKE-MANIFEST.md` no longer matched the tree; `main`'s own
+  runs for those pushes were CANCELLED by the next push, so the post-merge `main` run is the first to show it.
+  Reproduced locally (4 failed / 6 passed), the repo's own fix ported (`python tools/intake_manifest.py`;
+  443 → 698 files, 99 → 143 mismatches, 28 → 212 duplicate groups; 44 new benign mismatches — JPEG-as-png
+  screenshots, one HTML-as-txt; four old rotation mislabels repaired), guards 10/10 + `tests/guards` 353/353
+  after. CLAUDE.md's stale 433/99 prose updated. **Law-1 observation recorded:** a GitHub web upload bypasses
+  the pre-commit guard — four `.docx` and a copy of the shipped demo `house_build.json` (Save format) landed at
+  paths the hook refuses; the manifest guard is the only thing that saw it, one PR late. CI-side blocklist run
+  queued as a WP4 candidate.
+- No product code changes; docs + the regenerated manifest only. Drift guards recorded below after the run.
