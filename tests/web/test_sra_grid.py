@@ -15,6 +15,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
+from schedule_forensics.engine.sra import RiskFactorTable, factor_to_bc_wc
 from schedule_forensics.web.app import SessionState, create_app
 
 GOLDEN = (
@@ -385,3 +386,111 @@ def test_sra_grid_js_is_air_gapped(client: TestClient) -> None:
     urls = [u for u in re.findall(r"https?://[^\s\"')]+", js) if "www.w3.org" not in u]
     assert not urls, f"external URL in sra_grid.js: {urls}"
     assert not re.findall(r"""["'(]//[^\s"'<>)]+""", js)
+
+
+# --- ADR-0454 (WP3): what the operator sees before Save is what is saved, and nothing is dropped
+# in silence. Each observed RED on the pre-ADR-0454 route (the blank was skipped; the reply carried
+# no `rejected` / `clamped`). ------------------------------------------------------------------
+
+
+def test_grid_save_reports_rejected_and_clamped_values(client: TestClient) -> None:
+    """An Excel header word, a comma decimal, a 3.5 and an out-of-range 7 are each answered by
+    name — uid, field, the text as sent, and what happened — instead of vanishing."""
+    a, b, c, d = _editable_uids(client, 4)
+    r = client.post(
+        "/sra/grid",
+        data={
+            "deltas": json.dumps(
+                [
+                    {"uid": a, "factor": "Factor"},
+                    {"uid": b, "bc_days": "12,5"},
+                    {"uid": c, "factor": "3.5"},
+                    {"uid": d, "factor": "7", "wc_days": "-2"},
+                ]
+            )
+        },
+    )
+    assert r.status_code == 200
+    j = r.json()
+    assert j["saved"] == 1  # only d changed (clamped twice), the other three applied nothing
+    assert {(x["uid"], x["field"], x["value"]) for x in j["rejected"]} == {
+        (a, "factor", "Factor"),
+        (b, "bc_days", "12,5"),
+        (c, "factor", "3.5"),
+    }
+    reasons = {x["uid"]: x["reason"] for x in j["rejected"]}
+    assert "not a number" in reasons[a] and "not a number" in reasons[b]
+    assert "whole number" in reasons[c]
+    assert j["clamped"] == [
+        {"uid": d, "field": "factor", "value": "7", "applied": 5},
+        {"uid": d, "field": "wc_days", "value": "-2", "applied": 0},
+    ]
+    rows = {x["unique_id"]: x for x in client.get("/api/sra/grid").json()["rows"]}
+    assert rows[a]["factor"] is None and rows[b]["bc_days"] is None and rows[c]["factor"] is None
+    assert rows[d]["factor"] == 5 and rows[d]["wc_days"] == 0.0
+
+
+def test_grid_save_reports_a_range_refused_on_completed_work(client: TestClient) -> None:
+    """ADR-0308 refuses the range; ADR-0454 makes the refusal visible. uid 5 is 100% complete."""
+    j = client.post(
+        "/sra/grid", data={"deltas": json.dumps([{"uid": 5, "factor": 4, "bc_days": 1.0}])}
+    ).json()
+    assert j["saved"] == 1  # the ranking IS recorded
+    assert j["rejected"] == [
+        {
+            "uid": 5,
+            "field": "bc_days",
+            "value": "1.0",
+            "reason": "a completed activity carries no Best/Worst range",
+        }
+    ]
+    row = next(x for x in client.get("/api/sra/grid").json()["rows"] if x["unique_id"] == 5)
+    assert row["factor"] == 4 and row["bc_days"] is None
+
+
+def test_grid_save_blank_clears_the_factor_and_leaves_the_range(client: TestClient) -> None:
+    uid = _editable_uids(client, 1)[0]
+    client.post("/sra/grid", data={"deltas": json.dumps([{"uid": uid, "factor": 4}])})
+    before = next(x for x in client.get("/api/sra/grid").json()["rows"] if x["unique_id"] == uid)
+    assert before["factor"] == 4 and before["bc_days"] is not None
+    j = client.post("/sra/grid", data={"deltas": json.dumps([{"uid": uid, "factor": ""}])}).json()
+    assert j["saved"] == 1 and j["rejected"] == [] and j["clamped"] == []
+    after = next(x for x in client.get("/api/sra/grid").json()["rows"] if x["unique_id"] == uid)
+    assert after["factor"] is None
+    # only the blanked cell cleared: the range (the operator's, or derived from the ranking they
+    # just removed) stays until IT is blanked
+    assert (after["bc_days"], after["wc_days"]) == (before["bc_days"], before["wc_days"])
+    # a second blank on an already-clear cell changes nothing and says so
+    again = client.post("/sra/grid", data={"deltas": json.dumps([{"uid": uid, "factor": ""}])})
+    assert again.json()["saved"] == 0
+
+
+def test_grid_save_blank_range_side_rederives_from_the_factor(client: TestClient) -> None:
+    """A blanked side drops the stored pair; a ranking re-derives it (what the run would use), and
+    the other side typed in the same save is applied over the derivation. With no ranking, blanking
+    both sides removes the range outright."""
+    a, b = _editable_uids(client, 2)
+    client.post(
+        "/sra/grid",
+        data={"deltas": json.dumps([{"uid": a, "factor": 4, "bc_days": 1.0, "wc_days": 50.0}])},
+    )
+    row = next(x for x in client.get("/api/sra/grid").json()["rows"] if x["unique_id"] == a)
+    assert (row["bc_days"], row["wc_days"]) == (1.0, 50.0)  # manual beat the derivation
+    derived = factor_to_bc_wc(round(row["remaining_days"] * 480), 4, RiskFactorTable())
+    client.post(
+        "/sra/grid", data={"deltas": json.dumps([{"uid": a, "bc_days": "", "wc_days": "9"}])}
+    )
+    row = next(x for x in client.get("/api/sra/grid").json()["rows"] if x["unique_id"] == a)
+    assert row["bc_days"] == round(derived[0] / 480, 1)  # re-derived from factor 4
+    assert row["wc_days"] == 9.0  # the typed side wins over the derivation
+    # no ranking on b: a manual pair, then both sides blanked → no range at all
+    client.post(
+        "/sra/grid", data={"deltas": json.dumps([{"uid": b, "bc_days": 2.0, "wc_days": 3.0}])}
+    )
+    j = client.post(
+        "/sra/grid", data={"deltas": json.dumps([{"uid": b, "bc_days": "", "wc_days": ""}])}
+    ).json()
+    assert j["saved"] == 1
+    row = next(x for x in client.get("/api/sra/grid").json()["rows"] if x["unique_id"] == b)
+    assert row["bc_days"] is None and row["wc_days"] is None
+    assert str(b) not in json.loads(client.get("/sra/ssi/save").content)["bcwc_minutes"]

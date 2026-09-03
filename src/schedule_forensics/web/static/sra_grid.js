@@ -3,6 +3,13 @@
  * Best/Worst Case days are edited inline; a focus radio picks the analysis event. Edits queue in a
  * per-UID pending map and are batch-saved to /sra/grid on "Save grid" — no full re-render per cell.
  * The Microsoft-Project Year/Quarter/Month timeline + gridlines come from window.SFGantt (gantt.js).
+ *
+ * ADR-0454 (WP3, the grid driven for the first time): the pending map SURVIVES a reload (Refresh
+ * grid, the post-run tint refresh) and guards page unload, so an unsaved edit is only ever
+ * discarded by the operator; a blanked cell CLEARS its value on save; the save reply's rejected /
+ * clamped values are read back into the status line (nothing the operator typed or pasted is
+ * altered or dropped in silence — ADR-0313's rule for this page); and a non-number the browser
+ * cannot even display (validity.badInput) is refused at the cell instead of queued as a blank.
  */
 "use strict";
 
@@ -71,6 +78,35 @@
     pending[uid][key] = value;
     var n = Object.keys(pending).length;
     statusEl.textContent = n + " task(s) with unsaved edits.";
+  }
+  function pendingCount() { return Object.keys(pending).length; }
+  // the status line after a (re)load: the row count, then the unsaved-edit count that survived
+  // the reload, then whatever the caller wants remembered across it (a save summary)
+  function loadedStatus(note) {
+    var parts = [rows.length + " tasks"];
+    var n = pendingCount();
+    if (n) parts.push(n + " unsaved edit(s)");
+    if (note) parts.push(note);
+    return parts.join(" \u00b7 ") + ".";
+  }
+  var FIELD_LABEL = { factor: "Factor", bc_days: "Best Case d", wc_days: "Worst Case d" };
+  function fieldLabel(key) { return FIELD_LABEL[key] || key; }
+  // ADR-0454: the save reply names every value it could not apply as typed. Read it back in the
+  // operator's terms — UID, column, the exact text they entered, the reason — never swallow it.
+  function saveSummary(j) {
+    var parts = ["Saved " + j.saved + " change(s)"];
+    var rej = j.rejected || [], cl = j.clamped || [];
+    if (rej.length) {
+      parts.push(rej.length + " value(s) rejected: " + rej.map(function (r) {
+        return "UID " + r.uid + " " + fieldLabel(r.field) + " \"" + r.value + "\" \u2014 " + r.reason;
+      }).join("; "));
+    }
+    if (cl.length) {
+      parts.push(cl.length + " clamped: " + cl.map(function (c) {
+        return "UID " + c.uid + " " + fieldLabel(c.field) + " " + c.value + " \u2192 " + c.applied;
+      }).join("; "));
+    }
+    return parts.join(" \u00b7 ");
   }
 
   function inputCell(r, key, attrs) {
@@ -379,7 +415,11 @@
     paintBody(tbody, axis, grid);
   }
 
-  function load() {
+  // A (re)load fetches fresh rows and repaints; the pending map is NOT reset (ADR-0454, M4-01) —
+  // inputCell re-applies every unsaved edit over the fresh rows, exactly as a filter repaint does,
+  // so Refresh grid and the post-run tint refresh never destroy what the operator typed. Only a
+  // save clears the map. ``note`` is carried into the status line (the save summary).
+  function load(note) {
     statusEl.textContent = "Loading grid...";
     fetch("/api/sra/grid")
       .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
@@ -389,11 +429,10 @@
         dataDate = res.j.data_date || null;
         critAvailable = !!res.j.criticality_available;
         critIters = res.j.criticality_iters || 0;
-        pending = {};
         populateGroupCustom();
         render();
         renderLegend();
-        statusEl.textContent = rows.length + " tasks.";
+        statusEl.textContent = loadedStatus(typeof note === "string" ? note : "");
       })
       .catch(function () { statusEl.textContent = "Could not load the grid."; });
   }
@@ -410,8 +449,10 @@
       .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
       .then(function (res) {
         if (!res.ok) { statusEl.textContent = res.j.error || "Save failed."; return; }
-        statusEl.textContent = "Saved " + res.j.saved + " change(s).";
-        load();
+        // every delta was answered — applied, rejected (named) or clamped (named) — so the map
+        // is spent; the reload carries the summary so it is still readable after the repaint
+        pending = {};
+        load(saveSummary(res.j));
       })
       .catch(function () { statusEl.textContent = "Save failed."; });
   }
@@ -422,8 +463,24 @@
     if (!t || !t.classList) return;
     var uid = parseInt(t.getAttribute("data-uid"), 10);
     if (isNaN(uid)) return;
-    if (t.classList.contains("sra-focus")) mark(uid, "focus", true);
-    else if (t.classList.contains("sra-inp")) mark(uid, t.getAttribute("data-key"), t.value);
+    if (t.classList.contains("sra-focus")) { mark(uid, "focus", true); return; }
+    if (!t.classList.contains("sra-inp")) return;
+    var key = t.getAttribute("data-key");
+    // ADR-0454 (M4-05): a number input holding text it cannot parse reports value "" — queuing
+    // that would CLEAR the cell on save (a blank clears). Refuse at the cell and say so.
+    if (t.validity && t.validity.badInput) {
+      if (pending[uid]) delete pending[uid][key];
+      statusEl.textContent = "UID " + uid + " " + fieldLabel(key) + ": the typed text is not a number \u2014 not queued; fix or clear the cell.";
+      return;
+    }
+    mark(uid, key, t.value);
+  });
+  // ADR-0454 (M4-06): every SSI form on this page POSTs and redirects; an unsaved edit must not
+  // ride out silently on a navigation the operator did not connect to the grid.
+  window.addEventListener("beforeunload", function (e) {
+    if (!pendingCount()) return;
+    e.preventDefault();
+    e.returnValue = "";
   });
 
   // Excel / MS-Project column paste: copy a whole column (or a Factor/BC/WC block) and paste it onto
@@ -448,20 +505,21 @@
     });
     var startRow = byKey[COLS[startCol]].indexOf(t);
     if (startRow < 0) startRow = 0;
-    var filled = 0;
+    var filled = 0, dropped = 0;
     lines.forEach(function (line, r) {
       line.split("\t").forEach(function (val, c) {
         var key = COLS[startCol + c];
-        if (!key) return;
+        if (!key) { dropped++; return; } // a column past Worst Case has nowhere to land
         var inp = byKey[key][startRow + r];
-        if (!inp) return;
+        if (!inp) { dropped++; return; } // a row past the last editable one
         var v = String(val).trim();
         inp.value = v;
         mark(parseInt(inp.getAttribute("data-uid"), 10), key, v);
         filled++;
       });
     });
-    statusEl.textContent = "Pasted " + filled + " value(s) down the column — press Save grid to apply.";
+    statusEl.textContent = "Pasted " + filled + " value(s) down the column — press Save grid to apply." +
+      (dropped ? " (" + dropped + " value(s) fell outside the editable cells and were not pasted.)" : "");
   });
 
   var saveBtn = document.getElementById("ssiGridSave");

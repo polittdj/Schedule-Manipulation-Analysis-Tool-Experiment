@@ -435,6 +435,27 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-03 — a grep of the served JS is not a driven control; "silent" is the defect class, not a symptom
+
+- **The paste feature was pinned by `'"paste"' in js` for eleven months.** The first time a real clipboard
+  hit the cell, three of four pasted tokens vanished on save without a word. A byte pin certifies the
+  handler exists; only a driver with an oracle on what the OPERATOR reads (the status line) can say what
+  it did with the value. WP1/WP2's lesson, met a third time on the last queued row.
+- **Six defects, one class.** Every finding was the tool proceeding quietly: wiping unsaved edits on a
+  reload, ignoring a blank and restoring the old value, dropping or clamping a pasted value, overwriting
+  the confirmation, queuing a keystroke the browser itself could not parse. ADR-0313 named the class for
+  the risk form and the setup upload; the grid had the same disease behind a passing suite. When one
+  surface on a page has been fixed for silence, drive its siblings for the same thing.
+- **A fix can turn a harmless quirk into a defect.** `badInput` queued as `""` was inert while the route
+  ignored blanks; the moment a blank CLEARS, that same keystroke becomes a silent delete. Before changing
+  what a value MEANS, enumerate every producer of that value — the browser is one of them.
+- **Two halves, two mutations.** Reverting only the JS with the fixed route left the route-side driver
+  green and turned exactly the six JS-side drivers red — the proof that each half carries its own tests.
+  A single "revert everything" battery would have said "17 red" and proven nothing about the split.
+- **`title=` is not where a tooltip lives at runtime.** `tooltips.js` moves it to `data-sf-hint` at load;
+  the kickoff listed this trap and the oracle still read `title`. Read the traps list as a checklist for
+  every NEW oracle, not as history.
+
 ### 2026-09-02 (d) — a control whose effect is invisible reads as broken; two thresholds set for words fought a one-glyph choice
 
 - **"Reset does not work" was true from the chair and false in the code.** The button reset the draft
