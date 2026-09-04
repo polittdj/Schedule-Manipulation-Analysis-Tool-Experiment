@@ -16370,3 +16370,35 @@ shadows it on PATH).
   #631's merged head an hour later with the identical Chrome build. Queue it beside CI-03 for the caption/header-sweep
   root-cause PR. **#632 itself is SUPERSEDED**: `main` already records #630's merge (via #631's state docs) and #633
   records #631's; merging #632 would conflict with or regress HANDOFF/kickoff — recommended to the operator: close it.
+
+## 2026-09-04 (c) — PR #633 MERGED; `main`'s run #1717 read: CI-03's THIRD strike on a tree identical to the green PR head; branch restarted (docs-only)
+
+- **The operator's "The PR failed":** what was red was `main`'s OWN run **#1717** for the #631 squash-merge commit
+  `d9bac11a` (the actor gets GitHub's "Run failed" mail) — not #633 (all six checks green on `528cb1a3`, `clean`) and
+  not a code defect. Five jobs green (`floor`, `test (3.11)`, `test (3.13)`, `cui-guard`, `check`); the `browser` job
+  failed ONE test of 437: `tests/web/test_axis_titles_visual.py::test_captions_survive_every_theme_and_scale` →
+  `console@0.9 /cei: no captions rendered` (1 failed / 436 passed in 14:33). **Refutation of "the merge broke main":**
+  `git rev-parse d9bac11a^{tree}` == `git rev-parse 46a96ec6^{tree}` == `9ab52a4af30c5b017cbf4f09c5afaa60a9dd5b26` —
+  the squash commit carries byte-for-byte the tree that passed the same job on #631's head 46 min earlier. Ledger
+  row **CI-03 → THIRD occurrence** (/forecast #626 · /curves #629 · /cei `main` #1717), three pages no diff touched.
+- **The one permitted re-run, spent into a cancellation:** `rerun_failed_jobs` on run #1717 at 07:07:04Z (attempt 2);
+  the operator marked #633 ready and squash-merged it at 07:07:26Z → `main` @ `47a5d758`, whose push created run
+  **#1721** at 07:07:29Z and the workflow's concurrency group cancelled attempt 2 at 07:07:44Z during `Install` —
+  no evidence either way. Not re-run again: #1721 runs the IDENTICAL product code (the #633 diff is three state
+  docs) under the same sweep, so it IS the re-run. **#1721's `browser` job concluded `success` (07:08:36Z → 07:24:35Z) — the CI-03 cell green on the same bytes; intermittent CONFIRMED.**
+- **Merge:** #633 (this branch's docs-only record of #631's merge) marked ready and squash-merged by the operator at
+  07:07:26Z → `main` @ `47a5d758`; `origin/main^{tree}` == `528cb1a3^{tree}` (`02de2865…`). GitHub deleted the head
+  branch; `git fetch --prune` + `git checkout -B claude/continue-yznv26 origin/main` (never an amend of the squash).
+  The Codex reviewer bot posted a usage-limit notice on #633 — no review content, no action.
+- **#632 (the OTHER session's docs-only record):** still open at this record, `browser` red on the CI-04 header race,
+  branched from `19e74147` (before #631) — superseded by `main`'s own state docs; recommended again: close unmerged.
+- **Recommendation carried into the kickoff (operator to confirm — the order is theirs):** CI-03's root-cause PR FIRST
+  in the next session, before WP6 — three strikes in 48 h including `main`'s own run erode "read `main`'s run before
+  trusting `main`"; test-instrument only; red-first under an induced race, never a wider timeout.
+- **Context:** this session resumed at 14% after compaction; docs only here; drift guards recorded below.
+- **Draft PR for this record:** **#634** (`claude/continue-yznv26` @ `7e174386` on `origin/main` `47a5d758`; on its
+  head `cui-guard` green at 07:14:56Z, the other four jobs running at this follow-up).
+- **Follow-up (07:30Z):** `main`'s run #1721 `browser` job concluded `success` at 07:24:35Z on product code
+  identical to #1717's — CI-03 CONFIRMED intermittent. #1717 stays `failure` (attempt 1) / `cancelled` (attempt 2)
+  in history by design (never an empty commit to kick CI); this follow-up commit carries the verdict into
+  HANDOFF, the kickoff and the ledger row. #632 still open at this follow-up — close it unmerged.

@@ -6310,3 +6310,11 @@ and that is the lesson worth keeping.
   stepper publishes the frame it shows as `data-frame`. Nothing renders any other way than the
   buttons render it, the ADR-0275 coordinator contract holds, and the census sees no new control —
   the cheapest way to add a design gesture without adding functionality.
+- **Compare TREE hashes before blaming a squash merge, and never spend a `main` re-run while a push is
+  imminent.** `main`'s run for the #631 squash went red on one caption-sweep cell while
+  `d9bac11a^{tree}` == `46a96ec6^{tree}` — the same bytes had passed the same job 46 minutes earlier
+  on the PR head. That equality is the refutation; a red X on a merge commit is a claim about the
+  RUNNER until the trees differ. The failed job's single re-run was then cancelled by the concurrency
+  group 40 s in, because the next docs-only squash landed on `main` — when the product code is
+  unchanged, the NEXT push's run is the re-run; read it instead of spending the one permitted re-run
+  into a cancellation. (CI-03's third strike; its root cause is still a hypothesis in the ledger.)
