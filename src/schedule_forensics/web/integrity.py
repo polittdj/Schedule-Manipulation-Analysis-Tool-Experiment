@@ -175,12 +175,53 @@ finish if that one change were reversed.</p>
 <div class=logic-diagram>{rows}</div>{skip_note}</div>"""
 
 
+def _integrity_population_note(
+    active: tuple[str, str, tuple[str, ...]],
+    pops: list[tuple[str, str, tuple[str, ...]]],
+    total_loaded: int,
+) -> str:
+    """The Project-population disclosure for /integrity when more than one Project is loaded
+    (I-01, ADR-0457): which Project this page pairs inside, how many of the loaded files it
+    holds, the other Projects by name with their version counts, and the switch form that
+    returns HERE (the app sends ``Referrer-Policy: no-referrer``; ``next_url`` is explicit and
+    validated server-side by ``/project/select``). A page that pairs "the loaded files" must
+    never imply it saw all of them."""
+    pid, title, keys = active
+    others = [(p, t, k) for p, t, k in pops if p != pid]
+    other_txt = " &middot; ".join(
+        f"<b>{_e(t)}</b> ({len(k)} version{'s' if len(k) != 1 else ''})" for _p, t, k in others
+    )
+    opts = "".join(
+        f'<option value="{_e(p)}"{" selected" if p == pid else ""}>{_e(t)} ({len(k)})</option>'
+        for p, t, k in pops
+    )
+    return (
+        '<div class="notice src-banner integrity-population" data-no-i18n>&#128193; Project '
+        f"<b>{_e(title)}</b> holds {len(keys)} of the {total_loaded} loaded files &mdash; "
+        "this page compares versions inside ONE Project (ADR-0258). Other Projects loaded: "
+        f"{other_txt}. Switch: "
+        '<form method=post action="/project/select" style="display:inline">'
+        '<input type=hidden name=next_url value="/integrity">'
+        f"<select name=pid data-sf-nexturl-submit>{opts}</select>"
+        "<button type=submit class=btn-link>Go</button></form></div>"
+    )
+
+
+def _scope_phrase(scope: tuple[int, int, int, int], p_label: str, c_label: str) -> str:
+    a, a_all, b, b_all = scope
+    return (
+        f"{a} of {a_all} activities in {p_label} and {b} of {b_all} in {c_label} are in scope "
+        "of the active filter"
+    )
+
+
 def _integrity_header(
     prior: Schedule,
     current: Schedule,
     prior_cpm: CPMResult,
     current_cpm: CPMResult,
     findings: tuple[Finding, ...],
+    scope: tuple[int, int, int, int] | None = None,
 ) -> str:
     """The Chapter-02 beat header for /integrity (Mission Ops rank 6, ADR-0298), modeled on the
     other chapter-header builders: a complete-sentence takeaway h1 + muted lede (the kicker
@@ -208,7 +249,15 @@ def _integrity_header(
         fin = f"; the computed finish pulled in {n} day{'s' if n != 1 else ''} between them"
     else:
         fin = "; the computed finish is unchanged between them"
-    if findings:
+    # a REDUCE filter that leaves either side EMPTY is not "no findings" — no detector ran on
+    # an empty population; the takeaway says what the filter left (ADR-0457)
+    scope_empty = scope is not None and (scope[0] == 0 or scope[2] == 0)
+    if scope_empty:
+        takeaway = (
+            f"The active filter leaves nothing to compare between {p_label} and {c_label} — "
+            f"{_scope_phrase(scope, p_label, c_label)}; clear or change the filter."  # type: ignore[arg-type]
+        )
+    elif findings:
         severities = {str(f.severity) for f in findings}
         worst = next(
             (s for s in ("HIGH", "MEDIUM", "LOW", "INFO") if s in severities),
@@ -221,6 +270,8 @@ def _integrity_header(
         )
     else:
         takeaway = f"No manipulation-pattern findings between {p_label} and {c_label}{fin}."
+    if scope is not None and not scope_empty:
+        takeaway += f" Reduce filter active: {_scope_phrase(scope, p_label, c_label)}."
     return (
         f'<h1 class="page-takeaway" data-no-i18n>{_e(takeaway)}</h1>'
         '<p class="page-lede">Version-over-version change forensics for one chosen pair '
@@ -238,9 +289,12 @@ def _integrity_body(
     *,
     baseline_idx: int,
     comparison_idx: int,
+    raw_sizes: dict[int, int] | None = None,
 ) -> str:
     """Schedule Integrity & Change Forensics: cited manipulation findings for ONE chosen version
-    pair + the counterfactual finish.
+    pair + the counterfactual finish. ``raw_sizes`` (index → UNFILTERED activity count) is
+    passed only while a reduce filter is active: the header then states the in-scope counts
+    and an empty side is reported as "nothing to compare", never as "no findings" (ADR-0457).
 
     The operator picks exactly TWO files to compare (baseline A vs comparison B) — previously the
     page diffed EVERY consecutive pair, which on many large files ran a counterfactual CPM sweep
@@ -270,7 +324,18 @@ def _integrity_body(
     except (CPMError, ValueError, KeyError) as exc:  # never 500 the page on one bad pair
         logging.getLogger("schedule_forensics").warning("integrity findings failed: %s", exc)
         findings = ()
-    header = _integrity_header(prior_sch, cur_sch, cpms[prior_idx], cpms[cur_idx], findings)
+    scope: tuple[int, int, int, int] | None = None
+    if raw_sizes is not None:
+        scope = (
+            len(prior_sch.tasks),
+            raw_sizes.get(prior_idx, len(prior_sch.tasks)),
+            len(cur_sch.tasks),
+            raw_sizes.get(cur_idx, len(cur_sch.tasks)),
+        )
+    scope_empty = scope is not None and (scope[0] == 0 or scope[2] == 0)
+    header = _integrity_header(
+        prior_sch, cur_sch, cpms[prior_idx], cpms[cur_idx], findings, scope=scope
+    )
     # the 'A vs B' pair provenance chip (v1→v2 · SOURCE: a → b · DD d1 → d2), reused on every
     # shelled panel of this page — the same _pair_prov_chip vocabulary as /compare (rank 5)
     pair_prov = _pair_prov_chip(prior_sch, cur_sch, prior_idx + 1, cur_idx + 1)
@@ -628,9 +693,11 @@ changed (UIDs {_e(reverted)}). Reverting exactly those changes and re-running CP
 finish would have been <b>{_e(cf.counterfactual_finish)}</b> instead of the reported
 <b>{_e(cf.actual_finish)}</b>{delta_txt}.</p>{tgt}</div>"""
         empty = (
-            "<p class=muted>No manipulation-pattern findings between these two versions.</p>"
-            if not rows
-            else ""
+            ""
+            if rows
+            else "<p class=muted>Nothing was compared under the active filter.</p>"
+            if scope_empty
+            else "<p class=muted>No manipulation-pattern findings between these two versions.</p>"
         )
         # Findings panel wearing the verdict-band wash (rank 6, the /compare rank-5 precedent):
         # the tone comes from the ENGINE's own worst severity (HIGH → --bad, any → --warn,
@@ -653,6 +720,12 @@ finish would have been <b>{_e(cf.counterfactual_finish)}</b> instead of the repo
                 f"{n_f} manipulation-pattern finding{'s' if n_f != 1 else ''} between these two "
                 f"versions &mdash; highest severity {worst}; each finding, its course of action "
                 "and its citations are the engine's own output, listed below."
+            )
+        elif scope_empty:
+            find_take = (
+                "The active filter leaves nothing to compare &mdash; "
+                f"{_e(_scope_phrase(scope, labels[i], labels[cur_i]))}. "  # type: ignore[arg-type]
+                "No detector ran on an empty population; clear or change the filter."
             )
         else:
             find_take = "No manipulation-pattern findings between these two versions."

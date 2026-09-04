@@ -16217,6 +16217,62 @@ shadows it on PATH).
   PRs (#626: `/forecast`). Ruled not the PR's, commented once, recorded as ledger row CI-03 (a real intermittent race
   queued for its own root-cause PR); this commit is the second browser sample, the single re-run is the fallback.
 
+## 2026-09-03 (e) — the operator's evening batch MEASURED: I-01 root-caused to session population, T-01 measured working, /analysis scroll re-aim incremental (ADR-0457 + ADR-0458, v1.0.234)
+
+- **Branch:** `claude/polaris-batch-0903e-integrity-timescale` from `origin/main` @ `0f098cce` (the #628 merge), with the
+  docs-only #629 branch (`6a93b6cb`) merged IN so the ledger/kickoff build on its "Operator answers + new batch" section.
+  `main`'s run #1706 for the merge commit was still `in_progress` an hour after the merge (the 3.13 job runs ~53 min).
+  The container had no package installed; `pip install -e '.[dev,browser]'`, `/usr/local/bin/ruff` 0.16.6.
+- **I-01 (ADR-0457):** differential of the SAME inputs — the golden trio (three pairs), Project2→5, all ten TP4 pairs
+  — through `/integrity?a=&b=` (page rows by name) AND `detect_manipulation` directly, on `git worktree` checkouts at
+  v1.0.221 (`dfa09ac`) and v1.0.229 (`cc21cb5`) and this tree: rows IDENTICAL by name on every pair (4/7/9 · 5 ·
+  0·0·1·1·0·2·2·2·2·0). `manipulation.py`, `change_effects.py`, `cpm.py`, importers, model byte-identical since
+  v1.0.221; chromium: zero page errors, picker/drill/diagram/export work. Session-state legs on this tree: target set →
+  same 9; two folders (2+1) → "Load at least two versions"; three loose files with two Titles → same; `WBS=1` reduce
+  filter → 1 finding; a reduce filter on the UNMAPPED role name `Cost Account` → "No manipulation-pattern findings" over
+  an EMPTY population. Fixed: `_integrity_population_note` (Project · holds k of N · other Projects · switch form with
+  `next_url=/integrity`), `raw_sizes` → `_integrity_header(scope=…)` (in-scope counts; an empty side = "nothing to
+  compare"), the empty state names the Project instead of "load two versions". `tests/web/test_integrity_population_disclosure.py`
+  (6): four observed RED on a pristine worktree, two guards green both sides; the six /integrity modules 40 passed.
+  `_scope_phrase` re-exported from `web.app` (the monolith-split contract caught it).
+- **T-01 (ADR-0457):** the dialog driven to Show = Two tiers + OK on /analysis (TP4 v1..v5, TP5), /path, /driving-path,
+  /evolution, /sra; measured by computed `position` and rendered `y`: exactly two absolute rows at 0/18 (18/36 under a
+  caption), scale 36 px, `config().show === 2`, `{"show":2}` in localStorage, across 3× zoom-in, 6× zoom-out, Fit and a
+  reload; 1 and 3 again. NOT reproduced. Static assets are `Cache-Control: no-cache` + ETag (a stale `timescale.js`
+  refuted). Two pins appended to `test_timescale_dialog_browser.py` (`test_t01_*`), green; mutation (`visibleTiers`
+  returning three tiers for show=2, scratch copy) → **2/2 red by name**.
+- **(c) (ADR-0458):** quiet-box frame times at 2,280 rows × two files (`scale_schedule.py`, 1600 × 1000): BEFORE wheel
+  300-px p50 33 / p95 183 / max 417 ms, 1,200-px 17/100, −600-px 33/100, 100-px 17/100, programmatic 400-px steps
+  100/183; AFTER 17/83/183, 17/100, 33/83, 17/67, 83/150. CPU profile before: `(program)` 43 %, `renderBody` 15 %;
+  subtraction in the live page: links ON p50 67–83 → OFF 17 ms; no sticky cells → p95 33–50. Shipped: `reaimWindow`
+  (incremental window), `freezeLike` (survivor-copied sticky offsets, no header read), `trueSpacers` + `measuredPitch`
+  (the initial 18-px estimate vs 16.18 rendered), `drawLinks` reusing one `svg.g-links` and drawing only window-visible
+  links. A first draft changed `gantt.js` (`freezeColumns(table, onlyRows)`) and re-baselined its byte pin; reverted —
+  the pin is UNCHANGED. Pins: identity (`same` node after a re-aim; RED on pristine), overlay (one reused node, paths <
+  0.6 × population; RED on pristine at 570/605), contiguity (ordered slice from the page's JSON, spacer sum vs the
+  RENDERED pitch). Mutations on scratch copies of the final `app.js`: A re-aim → full repaint: identity red · B
+  `freezeLike` removed: identity red (its frozen-column check) · C every link drawn: overlay red · D overlay re-created
+  per draw: overlay red — after the pin's check was made READ-ONLY (its first draft re-stamped the node and stayed green
+  on D) · E `trueSpacers` removed: contiguity red. Each 1 red / 5 green.
+- **Measurement traps met:** the first lag probe's pointer sat below the viewport (16.7 ms with `scrollTop` 0); frame
+  times taken while a battery ran the same tree read p95 250; `pkill -f` killed its own shell (exit 144).
+- **Docs:** ADR-0457, ADR-0458; ledger rows I-01 · T-01 · (c) rewritten with the outcomes; HANDOFF rotated (the (d)
+  section to the archive); LESSONS Part VIII 2026-09-03 (e); kickoff refreshed (batch DONE — WP5 next).
+- **Version:** 1.0.234 (`pip install -e .` re-run so `__version__` follows pyproject).
+- **Gate (recorded AFTER the runs, QC-1, on the final tree):** `/usr/local/bin/ruff` 0.16.6 `check .` + `format --check .`
+  (1,135 files) clean (the whole-tree check caught an unsorted import block in `app.py` on the first pass — the suite
+  was STOPPED, the fix applied, the gate restarted from scratch) · mypy --strict 161 files clean · bandit exit 0 ·
+  `node --check` every static file clean · Gantt/timescale/windowing browser modules **107 passed / 3 skipped** ·
+  full suite **4,737 passed / 5 skipped (the same five environment skips) / 4 failed in 52:24** — the four are the
+  installer lockstep pins (`test_embedded_wheel_*`), red by design BEFORE the wheel rebuild that is the last step ·
+  parity gate `-m parity` **72 passed in 15:45**, exit 0 — Law 2 unmoved · then wheel + nine installers rebuilt at
+  v1.0.234 (MPXJ pin `42d92dc9` unchanged; the clone deepened 300 so the pin is a real touch, not the graft boundary) ·
+  `tests/installer/test_installers.py` **68 passed** · drift guards 12 passed.
+- **PR:** draft **#630** from `claude/polaris-batch-0903e-integrity-timescale` (head `7f03863` + the merge of `origin/main`
+  @ `f2be8a0` — #629's squash landed while this session ran; the five state-doc conflicts resolved with this branch's
+  versions, byte-identical to #629's content plus this session's additions, `git diff 6a93b6c f2be8a0 -- docs` empty);
+  subscribed for CI/review events; a check-in Routine armed ~70 min out. The GitHub MCP integration returned 403 on PR
+  creation; the PR was opened through the proxied REST API.
 ## 2026-09-04 — WP5 shipped (ADR-0459) + /trend on the Claude Design layout, `vol-*` aliased onto `cd-*` (ADR-0460), v1.0.235
 
 - **Branch:** `claude/continue-yznv26` from `origin/main` @ `f2be8a0f` (the #629 docs merge). `main`'s run #1706
