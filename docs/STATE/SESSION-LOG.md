@@ -16531,3 +16531,9 @@ shadows it on PATH).
   / `test (3.13)` still running — this line's own push restarts the run (the concurrency group), so the
   next reader takes the verdict from the final head's run, never from this line.
 - **Follow-up (19:4xZ):** the operator's feature request — a two-sheet One-Pager COMPARE view that draws and labels every slip — is specified in `docs/STATE/NEXT-SESSION-PROMPT.md` (an /onepager-compare route; matched on the (swimlane, item) pair because the ADR-0446 intake carries no unique id; deltas in CALENDAR days because the sheet carries no calendar; the operator asks named) and takes the next session's design-page slot; one sentence in `HANDOFF.md`'s queue so the two cannot disagree. Docs-only; committed locally and pushed by the 20:22Z check-in AFTER the running checks complete, so the head's run is not cancelled at minute 25.
+- **Follow-up (20:2xZ):** on #637's head `77aa0197` all EIGHT checks **success** — `check` 20:22:25Z ·
+  `test (3.11)` 20:20:29Z · `test (3.13)` 20:22:19Z · `floor` 19:45:45Z · `browser` 19:27:30Z · `cui-guard`
+  19:10:44Z · `linux` 19:10:53Z · `windows` 19:14:35Z (the installer pair ran because the installers were
+  rebuilt). `main`'s run **#1732** for the base `3c3c398` (#636) concluded **success** at 18:32:32Z. This
+  line's push carries the queued /onepager-compare request (`9d55dfca`) and restarts the run; the next
+  reader takes the verdict from the new head, and the operator marks ready and squash-merges when satisfied.
