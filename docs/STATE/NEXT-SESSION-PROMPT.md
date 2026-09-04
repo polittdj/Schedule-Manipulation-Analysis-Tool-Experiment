@@ -16,11 +16,13 @@ premise pins re-derived, the sweep's zero-caption line carries its diagnosis) an
 counterfactual report FIXED (ADR-0462: /integrity printed a calendar-date subtraction as "working
 day(s)"; both deltas are now the CPM's working-minute move over the calendar's day, the project-finish
 ACTIVITY is named, the target line carries its own move, and one line says the two finishes are
-different activities).** This session's draft PR **#635** is open from `claude/polaris-audit-resume-xqte7c`
-(branched from `origin/main` @ `66364af7`, the #634 docs merge; `main`'s run **#1724** for `66364af7`
-concluded `success` at 13:29Z). Read #635's own checks on its CURRENT head FIRST (every docs push
-restarts its run — the concurrency group cancels the previous one); #1721 for the #633 merge
-concluded `success` in full; #632 was closed unmerged. Campaign decisions (operator, 2026-08-27,
+different activities).** **PR #635 MERGED** by the operator at 14:57:15Z → `main` @ `c89e9c3b` (all eight checks green on
+its final head `649ed1a5`; `c89e9c3b^{tree}` == `649ed1a5^{tree}`). Read `main`'s run **#1728** for
+`c89e9c3b` FIRST (`in_progress` at this record — a red cell there on a tree identical to the green PR
+head is a runner claim, not a merge claim: compare the trees before believing it); #1724 for the #634
+merge concluded `success`. The docs-only record of the merge rides a new draft PR from
+`claude/polaris-audit-resume-xqte7c` restarted on `c89e9c3b` (number in the SESSION-LOG) — merge or
+close it, then branch FRESH. Campaign decisions (operator, 2026-08-27,
 standing): SOLO lead · fix-as-verified · BOTH folder-ask builds. QC-1/QC-2 bind every session —
 ADR-0393, pinned by `tests/test_standing_rules.py`. git fetch origin before you branch, number an
 ADR, or commit — and RE-fetch before writing the docs. STANDING OPERATOR ASK (2026-09-03): migrate at
@@ -71,7 +73,7 @@ chips move every chart and the drill together? (c) #630's stand: I-01 (which fin
 folders or Titles) · T-01 (page, zoom, screenshot) · (c) is the residual /analysis lag gone. UNKNOWABLE
 and closed: the blank-header banner, the 08-26 incident.
 
-⇢ NEXT — branch FRESH from `origin/main` once this PR merges (`git fetch --prune origin && git
+⇢ NEXT — branch FRESH from `origin/main` @ `c89e9c3b` or later (`git fetch --prune origin && git
 checkout -B <branch> origin/main`); open a NEW draft PR. **WP6** (ledger highs: CPM-01 `cpm.py:1316`
 · CPM-02 `driving_slack.py:314` · MC-02 · MC-03 `jcl.py:284` · MAN-01 · REC-02; parity-sensitive rows
 through the metric-parity skill; any golden shift = CONFIRMED-DEFERRED, never a silent re-pin; RC-02's

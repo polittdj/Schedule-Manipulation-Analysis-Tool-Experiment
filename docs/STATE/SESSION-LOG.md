@@ -16458,3 +16458,25 @@ shadows it on PATH).
   `cui-guard` success; the three test jobs were cancelled by the concurrency group when the docs-only
   follow-up `6e5c4205` was pushed, and again by this line's push — the PR's verdict is read on its FINAL
   head at the next check-in (armed for 14:12Z), never assumed from a cancelled run.
+
+## 2026-09-04 (e) — PR #635 MERGED; branch restarted on `main` @ `c89e9c3b`; `main`'s run #1728 in progress (docs-only)
+
+- **Merge:** the operator marked #635 ready and squash-merged it at 14:57:15Z → `main` @ `c89e9c3b`. On its
+  final head `649ed1a5` all EIGHT checks were green (`check` 14:55:53Z · `test (3.11)` 14:55:47Z · `test (3.13)`
+  14:50:09Z · `floor` 14:11:22Z · `browser` 13:59:05Z · `cui-guard` · `linux` · `windows`). Refutation on file:
+  `git rev-parse c89e9c3b^{tree}` == `git rev-parse 649ed1a5^{tree}` == `7a6e698d8152de790b61fe88cf47dc45a1c9abea`.
+- **`main`'s own run for the squash:** **#1728**, created 14:57:17Z (4 s after the merge), `in_progress` at this
+  record — read its conclusion before trusting `main`; a red cell on this tree would be the RUNNER's claim (the
+  CI-03 cell is fixed here, and its diagnosis line now names any mechanism).
+- **Branch:** `git fetch --prune` + `git checkout -B claude/polaris-audit-resume-xqte7c origin/main` (never an
+  amend of the squash); the PR subscription for #635 removed; the 15:17Z check-in deleted once the head was green.
+- **Context:** this record was written at ~72% of the assumed 800k wall (WARN band); WP6 and the owed /forecast
+  design page start in a FRESH session from `docs/STATE/NEXT-SESSION-PROMPT.md`.
+- **Draft PR for this record:** **#636** (`claude/polaris-audit-resume-xqte7c` @ `9b37159d` on `origin/main`
+  `c89e9c3b`); subscribed; a 16:15Z check-in reads `main`'s run #1728 and #636's checks.
+- **Follow-up (16:12Z):** `main`'s run **#1728** for the squash commit `c89e9c3b` concluded **`success`** at
+  16:07:29Z — `main` is green on the merged tree, no CI-03 cell struck under the fixed layout. #636's checks on
+  `772e4006`: `check` · `test (3.11)` · `test (3.13)` · `floor` · `browser` · `cui-guard` all **success** (the
+  installer-smoke pair is path-filtered off a docs-only diff — four-plus-two is the full set here). This line's
+  own push restarts #636's run; the next session reads the head's checks, never this line, before trusting it.
+  Standing down: the check-in is deleted; the branch is clean at this commit.
