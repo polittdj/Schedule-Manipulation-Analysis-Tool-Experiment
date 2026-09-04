@@ -12,9 +12,9 @@ historical row source for WP6. As of last close: **v1.0.234 · highest ADR 0458 
 now names its Project population and its filter scope; T-01 measured WORKING on five pages, NOT reproduced, pinned;
 ADR-0458: the /analysis scroll re-aim is incremental and the link overlay is one reused node — wheel p50 33 → 17 ms,
 p95 183 → 83 at 2,280 rows × two files; residue = the sticky frozen cells, named) · WP0–WP4 + both operator batches
-ALL MERGED through #628 (`main` @ `0f098cce`); this session's draft PR is open from
-`claude/polaris-batch-0903e-integrity-timescale` (the docs-only #629 merged IN) — once it merges, branch fresh from
-`origin/main` for WP5 and open a NEW draft PR; read `main`'s run for the merge commit FIRST.**
+ALL MERGED through #628 (`main` @ `0f098cce`); the batch MERGED as #630 → `main` @ `19e7414`
+(2026-09-04 02:18Z, every check green on the head). Branch fresh from `origin/main` for WP5 and open a NEW draft PR; read
+`main`'s run for `19e7414` FIRST (GitHub recorded NO run for the #629 docs-only squash `f2be8a0` — observed, unverified).**
 Campaign decisions (operator, 2026-08-27, standing): **SOLO lead · fix-as-verified · BOTH folder-ask builds**.
 QC-1/QC-2 bind every session — ADR-0393, pinned by `tests/test_standing_rules.py`. **git fetch origin before you
 branch, number an ADR, or commit — and RE-fetch before writing the docs.** **STANDING OPERATOR ASK (2026-09-03):

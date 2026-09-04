@@ -16273,3 +16273,14 @@ shadows it on PATH).
   versions, byte-identical to #629's content plus this session's additions, `git diff 6a93b6c f2be8a0 -- docs` empty);
   subscribed for CI/review events; a check-in Routine armed ~70 min out. The GitHub MCP integration returned 403 on PR
   creation; the PR was opened through the proxied REST API.
+
+## 2026-09-04 — PR #630 MERGED; branch restarted (docs-only)
+
+- **Merge:** #630 (the evening batch — ADR-0457 + ADR-0458, v1.0.234) marked ready and squash-merged by the operator at
+  02:18:07Z → `main` @ `19e7414`. Every check on its head `c07114e` concluded `success`: `cui-guard`, `check`, `floor`,
+  `browser`, `test (3.11)`, `test (3.13)`, and installer-smoke's `linux` / `windows` (installer/** changed). `main`'s
+  run #1706 for the #628 merge concluded `success`. GitHub lists NO workflow run for `f2be8a0` (the #629 docs-only
+  squash) — observed, cause unverified; recorded as a CI-02-class data point, not chased.
+- **Hygiene:** `git fetch --prune`; this docs-only branch `claude/record-630-merge-0904` from `origin/main`; both
+  check-in Routines cleared (the 02:02Z one fired and read all-green; the 06:04Z one deleted after the merge).
+- **Drift guards (recorded AFTER the run):** `tests/test_state_docs.py` + `tests/test_standing_rules.py` 12 passed. No product code in this entry.
