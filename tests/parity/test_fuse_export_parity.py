@@ -167,15 +167,18 @@ def test_change_metrics_engine_equals_fuse_uid_exact() -> None:
     assert ch["in_progress"].count == f["in_progress"] == 2
 
 
-def test_no_longer_critical_count_matches_fuse_and_the_one_membership_swap_is_exact() -> None:
-    """34 == 34, and the single member difference is precisely the 96↔99 basis swap.
+def test_no_longer_critical_membership_is_uid_exact_with_fuse() -> None:
+    """34 == 34 AND the membership is UID-exact — the 96↔99 swap is gone (re-baselined
+    2026-09-04, MAN-01 / ADR-0463).
 
-    Fuse reads MS Project's stored progress-aware Critical flag; the engine recomputes
-    pure-logic CPM float (ADR-0010). In Project2 the two bases disagree on exactly one pair:
-    stored flags UID 96 critical (CPM float 5d), CPM flags UID 99 critical (stored slack 10d).
-    Both count 41 critical in Project2, so the transition count matches while the membership
-    differs by that one swap. Assert it exactly so any drift (a second swapped UID, or the
-    counts separating) fails loudly."""
+    Fuse reads MS Project's stored progress-aware Critical flag. Until ADR-0463 the change
+    metrics recomputed pure-logic CPM float (ADR-0010) and the two bases disagreed on exactly
+    one pair in Project2 — stored flags UID 96 critical (CPM float 5d), CPM flags UID 99
+    critical (stored slack 10d) — so this pin asserted that one swap exactly. The metrics now
+    score on the effective basis (``effective_critical_incomplete``) and the membership matches
+    Fuse to the UID; the ratchet is the EMPTY symmetric difference, so a returning swap (or a
+    new one) fails loudly. The source-data premise is still pinned so the ratchet keeps
+    meaning something: the two bases DO disagree on that pair."""
     f = _fuse()["change_P2_to_P5"]
     p2, p5 = _schedule("Project2"), _schedule("Project5")
     ch = compute_change_metrics(p5, p2)
@@ -184,10 +187,10 @@ def test_no_longer_critical_count_matches_fuse_and_the_one_membership_swap_is_ex
     engine_set = set(ch["no_longer_critical"].offender_uids)
     assert ch["no_longer_critical"].count == f["no_longer_critical"] == 34
     assert len(fuse_set) == 34
-    assert engine_set - fuse_set == {99}
-    assert fuse_set - engine_set == {96}
+    assert engine_set ^ fuse_set == set()
+    assert 96 in engine_set and 99 not in engine_set
 
-    # pin the swap's root cause on the source data itself
+    # the premise that made this a swap in the first place, pinned on the source data itself
     p2_by_id = {t.unique_id: t for t in p2.tasks}
     cpm2 = compute_cpm(p2)
     assert p2_by_id[96].stored_is_critical is True and not cpm2.timings[96].is_critical

@@ -37,7 +37,7 @@ from schedule_forensics.engine.forecast import (
 from schedule_forensics.engine.grouping import available_fields_union
 from schedule_forensics.engine.metrics.field_forecast import compute_field_forecast
 from schedule_forensics.model.schedule import Schedule
-from schedule_forensics.web.chrome import _e
+from schedule_forensics.web.chrome import _EXPLAINERS, _e
 from schedule_forensics.web.components import (
     _mdY,
     _panel_head,
@@ -715,7 +715,7 @@ def _forecast_body(
         "still to go against a baseline finish of "
         f"{_mdY(latest.planned_finish) if latest.planned_finish else 'n/a'}."
     )
-    drift = ""
+    drift = cursor = drift_script = ""
     if len(sets) >= 2:
         drift_rows = "".join(
             f"<tr><td>{_e(sch.source_file or sch.name)}</td>"
@@ -762,18 +762,33 @@ version); step or play to watch the forecasts drift toward later dates as the pr
 progresses. Faint markers are the prior version's forecasts.</p>
 <div id=driftChart class=chart-host></div>
 <table><tr><th scope=col>Version</th><th scope=col>Data date</th><th scope=col>CPM</th><th scope=col>As-scheduled</th><th scope=col>Completion rate</th>
-<th scope=col>Earned schedule</th></tr>{drift_rows}</table></div>
-<script src="/static/drift.js"></script>"""
-    return f"""
-<div class=panel data-export="{fc_export}">{cards_head}
+<th scope=col>Earned schedule</th></tr>{drift_rows}</table></div>"""
+        # ── Claude Design cursor strip (ADR-0464): the drift stepper's own ◀ Prev / label / Next ▶
+        # / ▶ Auto-play are RE-HOMED by drift.js into #forecastMaster (same nodes, ids, handlers),
+        # ONE chip per version (drift opens on the OLDEST version, so the FIRST chip is on), and a
+        # frame pill. The chips carry no id and no census family word (DESIGN-SYSTEM §9).
+        chips = "".join(
+            f'<button type=button class="cd-chip{" on" if i == 0 else ""}" data-idx="{i}" '
+            f'title="{_e(s.source_file or s.name)}" data-no-i18n>v{i + 1}</button>'
+            for i, s in enumerate(schedules)
+        )
+        cursor = f"""
+<div class="viz-controls cd-cursor" id=forecastCursor>
+<span id=forecastMaster class=cd-master></span>
+<span class=cd-chips>{chips}</span>
+<span id=forecastFrame class="muted cd-pill" data-no-i18n></span>
+<span class="muted cd-note">One cursor &mdash; &#9664; Prev / Next &#9654; / &#9654; Auto-play step the forecast drift through the loaded files, oldest first; a chip jumps to that version.</span>
+</div>"""
+        drift_script = '<script src="/static/drift.js"></script>'
+    cards_panel = f"""<div class=panel data-export="{fc_export}">{cards_head}
 <p class=sf-take data-no-i18n>{cards_take}</p>
 <p class=muted>The reference deck's <i>Carnac</i> forecast KPIs (PBIX page 13): the project
 window, the forecast end dates, the completion rate, remaining and project duration,
 SPI(t), Earned Schedule, and the to-go activity count. A card with missing inputs shows
 "—" &mdash; never a fabricated value. Every figure reuses the forecast below.</p>
 {_user_tip("Independent methods (logic, the source schedule, throughput and performance) forecast the finish; where they disagree, the logic and the observed performance are telling different stories. A method whose inputs are missing shows a dash &mdash; never a fabricated date.")}
-{_carnac_cards(carnac)}</div>
-<div class=panel data-export="{fc_export}">{methods_head}
+{_carnac_cards(carnac)}</div>"""
+    methods_panel = f"""<div class=panel data-export="{fc_export}">{methods_head}
 <p class=sf-take data-no-i18n>{methods_take}</p>
 <p class=muted>Independent answers to "when will it really end": the schedule's own
 logic (CPM), the observed completion throughput, and earned-schedule performance
@@ -781,8 +796,34 @@ logic (CPM), the observed completion throughput, and earned-schedule performance
 A method whose inputs are missing shows "—" &mdash; never a fabricated date.</p>
 <table><tr><th scope=col>Method</th><th scope=col>Forecast finish</th><th scope=col>Basis</th></tr>{method_rows}</table>
 <h3>Inputs</h3><table>{inputs}</table>
-<p class=cite>Finish-controlling: {_e(cite)}</p></div>
-{_forecast_explainer(latest, prov=prov)}{drift}
+<p class=cite>Finish-controlling: {_e(cite)}</p></div>"""
+    # ── Claude Design layout (ADR-0464): artboard "09 Where it lands" ─────────────────────────
+    # The page is RE-ARRANGED into the design, functionality unchanged (ADR-0451/0456/0460's
+    # method): the cursor strip (when two or more versions are loaded), then the design's order —
+    # the methodology panel with its ruler full width (the mock's WHERE THE FINISH LANDS), the
+    # finish-forecast methods + inputs beside the Carnac cards (the mock's method-card row), the
+    # drift stepper + table beside a "How to read this" block whose three beats are this page's
+    # own explainer (the mock's FORECAST DRIFT, BY VERSION beside WHICH TO BELIEVE), and the
+    # field-forecast panel the route appends after. Every panel is byte-for-byte what it was; the
+    # mock's S-curve & finish walk is /scurve's chart and is NOT ported (named in the ADR).
+    what, how, decide = _EXPLAINERS["Forecast"]
+    beats = "".join(
+        f'<div class="cd-beat {cls}"><b>{lead}</b> {_e(text)}</div>'
+        for cls, lead, text in (
+            ("cd-beat-accent", "What it shows.", what),
+            ("cd-beat-warn", "How to read it.", how),
+            ("cd-beat-bad", "Why it matters.", decide),
+        )
+    )
+    reading = f'<section class="cd-block cd-read"><h2>How to read this</h2>{beats}</section>'
+    row_methods = f'<div class="cd-grid cd-grid-2">{methods_panel}{cards_panel}</div>'
+    rows = (
+        f'{row_methods}<div class="cd-grid cd-grid-12">{drift}{reading}</div>'
+        if drift
+        else f"{row_methods}{reading}"
+    )
+    return f"""{cursor}
+{_forecast_explainer(latest, prov=prov)}{rows}{drift_script}
 <script src="/static/panelkit.js"></script>"""
 
 

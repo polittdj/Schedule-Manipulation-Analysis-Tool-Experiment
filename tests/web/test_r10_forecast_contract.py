@@ -318,7 +318,9 @@ def test_takes_quote_the_exact_cells_they_claim(client: TestClient) -> None:
     column and the rollup SPI(t) cells (the golden pair's pinned values)."""
     page = client.get("/forecast?group_field=Resource").text
     takes = [html.unescape(re.sub(r"<[^>]+>", "", t)) for t in _takes(page)]
-    cards, methods, explainer, drift, _fields, rollup = takes
+    # the takes read in the DESIGN's panel order since ADR-0464 (the ruler panel first, the
+    # methods beside the cards, then the drift); every take's text is byte-identical to before.
+    explainer, methods, cards, drift, _fields, rollup = takes
 
     # V3 — the Carnac cards: "Tasks to complete" and "Latest finish (CPM)"
     assert cards == (

@@ -586,8 +586,10 @@ def _change_findings(
 
 def _driving_path_findings(schedule: Schedule, target_uid: int) -> list[Finding]:
     task = schedule.tasks_by_id.get(target_uid)
-    if task is None or task.is_summary:
-        return []  # summary rollups are not in the logic network — nothing to trace
+    if task is None or task.is_summary or not task.is_active:
+        # summary rollups and inactive tasks are not in the logic network (ADR-0128) — nothing
+        # to trace; compute_driving_slack raises KeyError for either (REC-02, ADR-0463)
+        return []
     results = compute_driving_slack(schedule, target_uid=target_uid)
     on_path = tuple(sorted(uid for uid, r in results.items() if r.on_driving_path))
     if not on_path:

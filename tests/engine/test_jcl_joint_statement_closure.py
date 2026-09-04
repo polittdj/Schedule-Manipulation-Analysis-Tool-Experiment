@@ -183,8 +183,12 @@ def test_default_cost_target_compares_unrounded_and_displays_rounded() -> None:
     """EAC = 999 x (1 - 33.4/100) = 665.334: the DISPLAYED deterministic EAC and target are
     rounded to 665.33, but the ≤-comparison must use the raw value — an all-point-mass run
     is 100% confident at its own default targets. Rounding the comparison target down to
-    665.33 would turn every iteration's 665.334 into a cost overrun (ccl = 0)."""
-    t1 = _task(1, 5, budgeted_cost=999.0, percent_complete=33.4)
+    665.33 would turn every iteration's 665.334 into a cost overrun (ccl = 0).
+
+    The actual cost is RECORDED as 0.0 (re-baselined 2026-09-04, MC-03 / ADR-0463): an ABSENT
+    actual now counts the performed share of budget as spent (EAC exactly 999, no rounding edge
+    left to exercise), while a recorded zero spend keeps this fixture's 665.334."""
+    t1 = _task(1, 5, budgeted_cost=999.0, actual_cost=0.0, percent_complete=33.4)
     s = Schedule(name="S", project_start=MON, tasks=(t1, _task(2, 1)), relationships=(_rel(1, 2),))
     r = compute_jcl(s, config=SRAConfig(iterations=20))
     assert r.deterministic_eac == 665.33  # displayed: rounded

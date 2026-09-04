@@ -16,6 +16,10 @@ integrated cost-schedule risk). Per iteration::
 
 * a **completed** task contributes its recorded ``actual_cost`` (else its ``budgeted_cost``)
   as a fixed point estimate — the cost mirror of "completed work carries no uncertainty";
+* an **incomplete** task's ``spent_u`` is its recorded ``actual_cost``; when the source carries
+  none it is the performed share of its budget (``budgeted_cost · pc/100`` — the same
+  on-budget assumption the completed branch makes, never a fabricated 0), and the number of
+  tasks that assumption touched is reported as ``actuals_assumed_count`` (MC-03, ADR-0463);
 * an **incomplete** task's remaining budget ``rem_u = budgeted_cost · (1 - pc/100)`` splits
   into a **time-dependent** share ``τ`` (default 1.0 — a labor-dominant screening default)
   burning at the ML rate over the **sampled** remaining duration, and a time-independent
@@ -160,6 +164,9 @@ class JCLResult:
     correlation_frobenius_distance: float = 0.0
     #: the sampler that produced this run (ADR-0271): "mc" (Monte-Carlo) or "lhs" (Latin Hypercube)
     sampling: str = "mc"
+    #: open tasks whose actual cost the source did not carry, so their spent-to-date is the
+    #: performed share of their budget — an assumption, disclosed (MC-03, ADR-0463)
+    actuals_assumed_count: int = 0
 
 
 def cost_loaded_total(schedule: Schedule) -> float:
@@ -172,7 +179,7 @@ class _CostEntry:
     """One incomplete task's constant cost parts (the per-iteration variable is d_u,i)."""
 
     unique_id: int
-    spent: float  # actuals to date (0 when unrecorded)
+    spent: float  # actuals to date (the performed share of budget when unrecorded — MC-03)
     ti: float  # time-independent remaining budget
     td: float  # time-dependent remaining budget (burns over the sampled duration)
     ml_minutes: int  # the burn-rate denominator; 0 == wholly time-independent
@@ -273,6 +280,7 @@ def compute_jcl(
 
     completed_total = 0.0
     completed_count = 0
+    actuals_assumed = 0
     entries: list[_CostEntry] = []
     for t in tasks:  # ascending unique_id — the cost-multiplier draw order
         if _is_completed(t):
@@ -281,7 +289,16 @@ def compute_jcl(
             continue
         pc = max(0.0, min(100.0, t.percent_complete))
         rem = t.budgeted_cost * (1.0 - pc / 100.0)
-        spent = t.actual_cost if t.actual_cost is not None else 0.0
+        if t.actual_cost is not None:
+            spent = t.actual_cost
+        else:
+            # MC-03 (ADR-0463): an ABSENT actual is not a spent 0 — that dropped the performed
+            # share of the budget from the EAC (a 990 jump between 99 % and 100 % complete). The
+            # completed branch already assumes the budget when actuals are absent; the open branch
+            # assumes the same for the work performed so far, and the count is disclosed.
+            spent = t.budgeted_cost * (pc / 100.0)
+            if spent > 0.0:
+                actuals_assumed += 1
         d_ml = ml[t.unique_id]
         if d_ml <= 0:  # no burn rate exists — wholly time-independent
             ti, td = rem, 0.0
@@ -387,6 +404,7 @@ def compute_jcl(
         tau=tau,
         cost_uncertainty_on=cost_uncertainty_on,
         prepared=prepared,
+        actuals_assumed=actuals_assumed,
     )
 
 
@@ -419,6 +437,7 @@ def _build_jcl_result(
     td_total: float,
     completed_count: int,
     incomplete_costed: int,
+    actuals_assumed: int = 0,
     tau: float,
     cost_uncertainty_on: bool,
     prepared: PreparedCorrelation | None = None,
@@ -518,6 +537,7 @@ def _build_jcl_result(
         remaining_td_total=round(td_total, 2),
         completed_count=completed_count,
         incomplete_costed_count=incomplete_costed,
+        actuals_assumed_count=actuals_assumed,
         td_share=tau,
         cost_uncertainty_on=cost_uncertainty_on,
         correlation_matrix_applied=prepared is not None,

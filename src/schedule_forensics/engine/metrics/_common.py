@@ -13,7 +13,7 @@ import datetime as dt
 from dataclasses import dataclass
 from enum import StrEnum
 
-from schedule_forensics.engine.cpm import datetime_to_offset
+from schedule_forensics.engine.cpm import CPMResult, datetime_to_offset
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
 
@@ -109,6 +109,24 @@ def is_effective_critical(task: Task, recomputed_total_float: float) -> bool:
     if task.stored_is_critical is not None:
         return task.stored_is_critical
     return recomputed_total_float <= 0 and is_incomplete(task)
+
+
+def effective_critical_incomplete(schedule: Schedule, cpm: CPMResult) -> set[int]:
+    """UIDs that count as *Critical* and are not done, on the effective basis.
+
+    The one set the change metrics (Acumen §E SN03/SN04), the manipulation detectors (a
+    deleted/deactivated task that WAS critical) and the trend's critical count score on. Each
+    kept a private twin on pure-logic ``timing.is_critical`` while every other Critical figure
+    went through :func:`is_effective_critical` — so on the golden P2→P5 pair the No-Longer-
+    Critical membership carried the documented 96↔99 swap against Fuse. On the effective
+    basis it is UID-exact (MAN-01, ADR-0463); a file without stored flags is unchanged."""
+    by_id = schedule.tasks_by_id
+    return {
+        uid
+        for uid, timing in cpm.timings.items()
+        if is_effective_critical(by_id[uid], timing.total_float)
+        and by_id[uid].percent_complete < 100.0
+    }
 
 
 def percent(count: int, population: int) -> float:

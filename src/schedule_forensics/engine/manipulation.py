@@ -37,6 +37,7 @@ from dataclasses import dataclass
 from schedule_forensics.engine.cpm import CPMResult, compute_cpm, offset_to_datetime
 from schedule_forensics.engine.dcma_audit import Citation
 from schedule_forensics.engine.diff import LinkKey, VersionDiff, diff_versions
+from schedule_forensics.engine.metrics._common import effective_critical_incomplete
 from schedule_forensics.engine.recommendations import (
     SEVERITY_ORDER,
     Category,
@@ -52,12 +53,8 @@ def _cite(file: str | None, task: Task) -> Citation:
 
 
 def _critical_incomplete(schedule: Schedule, cpm: CPMResult) -> set[int]:
-    by_id = schedule.tasks_by_id
-    return {
-        uid
-        for uid, t in cpm.timings.items()
-        if t.is_critical and by_id[uid].percent_complete < 100.0
-    }
+    """Critical-and-incomplete on the effective basis — the shared helper (MAN-01, ADR-0463)."""
+    return effective_critical_incomplete(schedule, cpm)
 
 
 def detect_manipulation(

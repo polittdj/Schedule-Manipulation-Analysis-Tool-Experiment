@@ -35,7 +35,7 @@
     document.getElementById("driftLabel").textContent =
       (index + 1) + " / " + versions.length + " — " + v.label +
       (v.as_of ? " (data date " + v.as_of + ")" : "");
-    box.innerHTML = "";
+    box.innerHTML = ""; box.setAttribute("data-frame", String(index)); syncCursor();  // ADR-0464: the design cursor reads the frame here
 
     // ADR-0303: the method rows sit 12px lower than they used to (padT + 26, H grown to
     // match) so the Y caption band inside the plot top is clear of the first row name —
@@ -211,6 +211,50 @@
       document.getElementById("prevDrift").addEventListener("click", function () { stopAuto(); step(-1); });
       document.getElementById("nextDrift").addEventListener("click", function () { stopAuto(); step(1); });
       document.getElementById("driftPlay").addEventListener("click", toggleAuto);
+      mountCursor();
     })
     .catch(function () { box.textContent = "Failed to load the forecast-drift data."; });
+
+  // ── Claude Design cursor strip (ADR-0464, artboard "09 Where it lands") ──────────────────
+  // The page serves #forecastCursor with a #forecastMaster slot, ONE .cd-chip per version and a
+  // #forecastFrame pill. This stepper's own ◀ Prev / label / Next ▶ / ▶ Auto-play are RE-HOMED into
+  // the slot (the same nodes, ids, listeners and reduced-motion branch — appendChild moves them);
+  // a chip clicks the Next button that already exists the number of times that lands the chart
+  // on that version, so nothing renders any other way than the buttons render it. Off the strip
+  // (no slot served) the stepper renders exactly as before. The chips carry no id and no census
+  // family word; render() publishes the frame as data-frame on #driftChart and calls syncCursor().
+  function syncCursor() {
+    var strip = document.getElementById("forecastCursor");
+    if (!strip || !data) return;
+    var chips = strip.querySelectorAll(".cd-chip[data-idx]");
+    Array.prototype.forEach.call(chips, function (c) {
+      c.classList.toggle("on", Number(c.getAttribute("data-idx")) === index);
+    });
+    var pill = document.getElementById("forecastFrame");
+    if (pill) {
+      var v = data.versions[index];
+      pill.textContent = "v" + (index + 1) + " · " + v.label + (v.as_of ? " · DD " + v.as_of : "");
+    }
+  }
+  function mountCursor() {
+    var slot = document.getElementById("forecastMaster");
+    if (slot) {
+      ["prevDrift", "driftLabel", "nextDrift", "driftPlay"].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) slot.appendChild(el);
+      });
+      var play = document.getElementById("driftPlay");
+      if (play) play.classList.add("cd-play");
+    }
+    var strip = document.getElementById("forecastCursor");
+    if (!strip) return;
+    var next = document.getElementById("nextDrift");
+    Array.prototype.forEach.call(strip.querySelectorAll(".cd-chip[data-idx]"), function (c) {
+      c.addEventListener("click", function () {
+        var i = Number(this.getAttribute("data-idx")) || 0, n = data.versions.length;
+        for (var s = ((i - index) % n + n) % n; s > 0; s--) next.click();
+      });
+    });
+    syncCursor();
+  }
 })();

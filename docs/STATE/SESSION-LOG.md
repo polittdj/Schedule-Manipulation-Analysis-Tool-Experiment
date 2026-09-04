@@ -16480,3 +16480,41 @@ shadows it on PATH).
   installer-smoke pair is path-filtered off a docs-only diff — four-plus-two is the full set here). This line's
   own push restarts #636's run; the next session reads the head's checks, never this line, before trusting it.
   Standing down: the check-in is deleted; the branch is clean at this commit.
+
+## 2026-09-04 (f) — WP6 COMPLETE: the six ledger highs all CONFIRMED by execution and FIXED red-first, REC-02 widened to the whole app (ADR-0463); /forecast is the fourth page on the Claude Design layout (ADR-0464) — v1.0.237
+
+- **Branch:** `claude/polaris-audit-campaign-kr8maj`, restarted FRESH on `origin/main` @ `3c3c398` (the #636
+  docs merge — that PR had merged before this session opened; no open PRs). `main`'s run #1728 for the
+  #635 squash `c89e9c3b` read `success` (16:07:29Z); #1732 for `3c3c398` was `in_progress` at 17:20Z.
+  The container had NO package: `pip install -e '.[dev,browser]' --retries 8 --timeout 180` (rc 0).
+- **WP6 (ADR-0463).** Every row re-derived from the finder's cited line AS IT READ on 2026-08-16
+  (`git show 1b833c6a:…` — all six line numbers had moved). CPM-01: `cpm.py:1316` was
+  `total = late_start - early_start`; the ADR-0309 floor moves EF but LS was `LF - stored duration` →
+  golden EVM2 UID 20 read TF 10.0 wd / non-critical against MS Project's Critical = Yes and `LF - EF` 0
+  → `total = min(LS - ES, LF - EF)`. CPM-02: the `date_basis` fallback (project axis) beside a
+  successor-calendar stored date → an undated 24/7-successor predecessor 3,840 min off-path vs 0
+  on-path dated → re-measured on the successor's calendar when its pattern differs. MC-02: the third
+  path is the LIVE legacy `compute_sra` (via `_risk_events`) — certain ×2 on a completed driver P50
+  8,148 → 12,948 → `done` guard. MC-03: EAC 680 vs 1,180 with/without the recorded actual, a 990 jump at
+  100 % → the performed share of budget when no actual is recorded, `actuals_assumed_count` disclosed.
+  MAN-01: effective basis → Fuse §E membership UID-exact (96↔99 swap gone), counts unchanged → one shared
+  helper; parity pin re-baselined to the empty symmetric difference. REC-02: `KeyError(5)` at the engine
+  AND `scope()` truncating to an inactive UID → 51 of 63 GET routes 5xx (absent UID 0, control 0) → the
+  presence test is the network's membership. Red-first on a pristine worktree 16 failed / 8 passed;
+  green 23 + the parity pin; seven mutations red by name; engine + parity 1,137 passed / 1 failed (the
+  JCL rounding-edge fixture, re-baselined as a RECORDED 0.0 with its reason; 51 JCL green after).
+- **/forecast on the design (ADR-0464).** Artboard 09 recovered by executing the v2 canvas — served over
+  loopback HTTP because `file://` blocks the `crossorigin` React scripts (four blank screenshots first);
+  four themes, zero page errors. `_forecast_body`: the cursor strip (`#forecastCursor` / `#forecastMaster`
+  / one `.cd-chip` per version, the first on / `#forecastFrame`), the ruler panel full width, `cd-grid-2`
+  (methods + inputs | Carnac cards), `cd-grid-12` (drift | "How to read this" from `_EXPLAINERS`);
+  `drift.js` re-homes its server-rendered stepper into the slot, publishes `data-frame` (line 38, a
+  same-line-count edit above the line-136 DD pin), chips click the existing Next. Contract counts measured
+  identical pristine → patched; four-theme render census moved on the design's keys only; red-first 7 / 1;
+  8 green; six mutations red by name; 410 passed / 3 skipped across the /forecast-pinning modules with
+  ONE premise pin re-derived (`test_takes_quote_the_exact_cells_they_claim` unpacked the takes in the old
+  panel order; assertions unchanged) → 40 green; census + stepper drivers 78 passed.
+- **Ledger:** WP6 → COMPLETE (six rows CONFIRMED-FIXED, the tail named for WP6b); the design table gains
+  /forecast; `docs/DESIGN-SYSTEM.md` §9 gains the re-home idiom and the loopback-HTTP recipe step.
+- **Version + installers:** 1.0.237; wheel + nine installers rebuilt after the last source edit; the
+  lockstep and the full gate are recorded in the follow-up line below, with the draft PR number.

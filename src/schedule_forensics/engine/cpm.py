@@ -41,7 +41,9 @@ Scope of this engine (documented, not silently limited — Law 2):
   re-derived. It is therefore **conditionally progress-aware**: a file that records no
   reschedule (``resume == stop``, or either absent — every fixture without progress) is
   scheduled by logic alone and is byte-identical to the pre-ADR-0309 engine. Floored
-  UniqueIDs join :attr:`CPMResult.date_driven`, the same disclosure ADR-0034 uses.
+  UniqueIDs join :attr:`CPMResult.date_driven`, the same disclosure ADR-0034 uses. A floored
+  task's total float is the smaller of its start slack and its finish slack (ADR-0463): the
+  floor moves the finish, so ``LS - ES`` alone overstated the float by the floor's gap.
 * **A recorded ACTUAL START is a floor** (ADR-0391): work that has begun cannot begin
   earlier than it did, so a started task's early start is
   ``max(logic_es, offset(actual_start))``. This closes the ADR-0108 understatement —
@@ -1313,7 +1315,14 @@ def compute_cpm(
                 )
                 free = _wall_minutes_between(ef_wall[tid], tw, cal_t, tod0)
         else:
-            total = late_start[tid] - early_start[tid]
+            # Total float is the smaller of start slack (LS - ES) and finish slack (LF - EF) —
+            # MS Project's own rule. Identical for a contiguous task (EF == ES + duration); they
+            # differ only when the ADR-0309 resume floor moved the finish past the logic finish,
+            # and then the finish slack is the truth: the start can slip up to LS without moving
+            # the floored finish, but the finish itself drives what follows (CPM-01, ADR-0463 —
+            # golden EVM2 UID 20 read 10 working days of float and non-critical while MS Project
+            # flags it Critical and its floored finish IS the network finish).
+            total = min(late_start[tid] - early_start[tid], late_finish[tid] - early_finish[tid])
             if succs[tid]:
                 free = min(
                     link_slack(

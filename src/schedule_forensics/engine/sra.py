@@ -416,6 +416,10 @@ def compute_sra(
     uid_set = set(uids)
     # only risks touching a present activity get RNG draws (an empty/dangling risk is inert)
     active_risks = [r for r in risks if any(uid in uid_set for uid in r.affected)]
+    # ADR-0308's rule on this model too (MC-02, ADR-0463): finished work cannot be delayed by a
+    # future risk. This loop multiplied a completed activity's point-mass duration — a certain x2
+    # on a 100 %-complete 10-day driver moved P50 by 10 working days.
+    done = {t.unique_id for t in tasks if _is_completed(t)}
     sampled_durations: dict[int, list[int]] = {uid: [] for uid in uids}
     critical_counts: dict[int, int] = dict.fromkeys(uids, 0)
     finishes: list[int] = []
@@ -445,7 +449,7 @@ def compute_sra(
                     max(risk.impact_high, 0.0),
                 )
                 for uid in risk.affected:
-                    if uid in overrides_i:
+                    if uid in overrides_i and uid not in done:
                         overrides_i[uid] = max(0, round(overrides_i[uid] * factor))
         result = compute_cpm(schedule, duration_overrides=overrides_i)
         finishes.append(result.project_finish)
