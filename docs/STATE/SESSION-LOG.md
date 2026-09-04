@@ -16452,3 +16452,9 @@ shadows it on PATH).
   dist-info, not the tree) — `pip install -e . --no-deps --no-build-isolation` after the suite, then the
   four version-dependent modules + the installer lockstep re-run: 170 passed. `main`'s run #1724 for the
   #634 merge read at this follow-up (see the next line).
+- **Follow-up (13:38Z):** `main`'s run **#1724** for the #634 merge `66364af7` concluded **`success`** at
+  13:29:17Z — `main` is green on its tip. On #635's first head `d558324c`: `browser` **success** at
+  13:23:39Z (the caption sweep green on the fixed layout under CI's own runner), `linux` / `windows` /
+  `cui-guard` success; the three test jobs were cancelled by the concurrency group when the docs-only
+  follow-up `6e5c4205` was pushed, and again by this line's push — the PR's verdict is read on its FINAL
+  head at the next check-in (armed for 14:12Z), never assumed from a cancelled run.

@@ -16,9 +16,10 @@ premise pins re-derived, the sweep's zero-caption line carries its diagnosis) an
 counterfactual report FIXED (ADR-0462: /integrity printed a calendar-date subtraction as "working
 day(s)"; both deltas are now the CPM's working-minute move over the calendar's day, the project-finish
 ACTIVITY is named, the target line carries its own move, and one line says the two finishes are
-different activities).** This session's draft PR is open from `claude/polaris-audit-resume-xqte7c`
-(branched from `origin/main` @ `66364af7`, the #634 docs merge). Read `main`'s run **#1724** for
-`66364af7` (it was `in_progress` at 12:16Z) and the PR's own checks FIRST; #1721 for the #633 merge
+different activities).** This session's draft PR **#635** is open from `claude/polaris-audit-resume-xqte7c`
+(branched from `origin/main` @ `66364af7`, the #634 docs merge; `main`'s run **#1724** for `66364af7`
+concluded `success` at 13:29Z). Read #635's own checks on its CURRENT head FIRST (every docs push
+restarts its run — the concurrency group cancels the previous one); #1721 for the #633 merge
 concluded `success` in full; #632 was closed unmerged. Campaign decisions (operator, 2026-08-27,
 standing): SOLO lead · fix-as-verified · BOTH folder-ask builds. QC-1/QC-2 bind every session —
 ADR-0393, pinned by `tests/test_standing_rules.py`. git fetch origin before you branch, number an
