@@ -99,7 +99,9 @@ burndown.
   master / trio drivers; the caption sweep and the operator-content censuses.
 - **Rendered, TP4 × 5, 1440 px, four themes:** the DOM census against the pristine page moved on
   exactly the design's keys — `chips 0 → 5`, `chipOn [] → ["4"]`, the panel-head ORDER, `.panel`
-  11 → 10 (the master's `.panel` shell is now the strip) and the page height (+137 px) — with 21
+  11 → 10 (the master's `.panel` shell is now the strip; `test_ch05_panelkit.py`'s DOM promotion
+  census, which CI's browser job caught RED at 11 on the first push, is re-baselined to 10 with a
+  dated comment — a count that goes DOWN is not a promotion) and the page height (+137 px) — with 21
   charts, 21 framed steppers, 6 takes, 6 provenance chips, 69 drills, 27 series toggles, 10
   series-all, 2 chart hosts, 2 cf-bars and zero page errors unchanged; no VISIBLE element wider
   than the viewport (the widest boxes in daylight / apollo are the offscreen `sr-only` a11y

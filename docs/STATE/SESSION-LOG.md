@@ -16273,3 +16273,12 @@ shadows it on PATH).
   by dated re-baseline); HANDOFF rotated (2026-09-03 (d) archived); LESSONS Part VIII; kickoff refreshed. Version
   1.0.233 → 1.0.235 (1.0.234 is #630's). Wheel + nine installers rebuilt LAST; full suite + parity + drift guards
   recorded in the addendum below AFTER the runs finished.
+- **First push → draft PR #631; CI's `browser` job RED on ONE cell (1 failed / 431 passed):**
+  `test_ch05_panelkit.py::test_panelkit_click_census_and_jarvis[/trend]` — the DOM promotion census
+  pinned 11 `.panel` on /trend and the page now has 10, because the master's JS-created `.panel` shell
+  mounts inside the cursor strip without the shell (the deliberate 11 → 10 recorded above; a browser
+  module the pre-push sweep did not include — grepping r11 and the M1 census for "/trend" was a search
+  that could not see this pin). Re-baselined DELIBERATELY to 10 with a dated comment (a count that goes
+  DOWN is not a promotion; the guard's direction is unchanged), the three routes re-run green locally,
+  pushed as the fix commit. `cui-guard`, `linux`, `windows` green on the first head; `test (3.11)`,
+  `test (3.13)`, `floor` were still running.

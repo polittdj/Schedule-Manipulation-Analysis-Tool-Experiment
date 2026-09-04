@@ -48,7 +48,13 @@ pytest.importorskip("playwright", reason="playwright not installed (deliberate: 
 
 #: .panel elements on each page BEFORE the rank-9 conversion, on this fixture pair. The
 #: conversion decorates existing panels only — it must never promote a new one.
-PANELS_BEFORE = {"/trend": 11, "/curves": 4, "/scurve": 3}
+#: DELIBERATE re-baseline (ADR-0460, /trend on the Claude Design layout): 11 → 10. The page
+#: master (▶ Play all / ⏭ Step all) used to be created by trend.js inside its own `.panel`
+#: shell above the charts; it now mounts into the masthead cursor strip (`#trendMaster`)
+#: WITHOUT that shell — ids, handlers and the ADR-0275 registration untouched. A count that
+#: goes DOWN is not a promotion; the guard's direction (no NEW `.panel`) is unchanged, and the
+#: server-HTML panel census (10) is pinned separately in test_trend_design_layout.py.
+PANELS_BEFORE = {"/trend": 10, "/curves": 4, "/scurve": 3}
 
 #: a selector that is on the page only once its client-side chart has actually drawn
 READY = {
