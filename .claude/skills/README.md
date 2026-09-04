@@ -38,6 +38,7 @@ history, with the ADR or lessons-log date that bought it. Nothing here is generi
 | `ui-change` | the Mission Ops design system + its Definition of Done | ADR-0195 (a forced redesign after dozens of unsystematised tweaks); ADR-0342 (a DD line on a version axis); `--danger` (which does not exist) |
 | `cui-guard` | Law 1 — what may leave the machine or enter git | ADR-0152 (the guard vs the real workflow); ADR-0144 (the wheel that omitted `web/static`); the "dead defense-in-depth" class wired only at ADR-0241 |
 | `session-close` | ADR + handoff rotation + logs + wheel/installers + PR | the twice-repeated silent state-doc drift; the 417 KB handoff (ADR-0246); ADR-0148 (nine installers embedding a 14-hour-old wheel) |
+| `steward` | driving, watching and standing down on a PR — the check set, the red-cell diagnosis order, what may be pushed or posted, the squash-merge restart | CI-01/CI-02/CI-03 (ADR-0455/0461: a GitHub-side outage vs a race called a flake three times); a `main` re-run spent on a tree identical to the green head; the squash commit amended to satisfy a hook; nine installers stale behind a late edit (ADR-0148) |
 
 ## Relationship to the rest of `.claude/`
 

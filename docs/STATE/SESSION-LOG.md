@@ -16518,3 +16518,8 @@ shadows it on PATH).
   /forecast; `docs/DESIGN-SYSTEM.md` §9 gains the re-home idiom and the loopback-HTTP recipe step.
 - **Version + installers:** 1.0.237; wheel + nine installers rebuilt after the last source edit; the
   lockstep and the full gate are recorded in the follow-up line below, with the draft PR number.
+- **Follow-up (18:2xZ):** the operator asked for a PR-handling skill; `.claude/skills/steward/SKILL.md` (NEW)
+  records this repo's PR conventions and posture from the workflows and the paid-for record (the operator
+  merges; the `ci.yml` check set and its concurrency cancel; the red-cell order — tree hashes, the job's own
+  log line, CI-01 as the only GitHub-side shape, "flake" never; what may be pushed or posted; the
+  `--prune` restart). Indexed in `.claude/skills/README.md`. `.claude/`-only: no version bump, no rebuild.
