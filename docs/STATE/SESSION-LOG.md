@@ -16523,3 +16523,10 @@ shadows it on PATH).
   merges; the `ci.yml` check set and its concurrency cancel; the red-cell order — tree hashes, the job's own
   log line, CI-01 as the only GitHub-side shape, "flake" never; what may be pushed or posted; the
   `--prune` restart). Indexed in `.claude/skills/README.md`. `.claude/`-only: no version bump, no rebuild.
+- **Follow-up (19:10Z):** draft PR **#637** (`claude/polaris-audit-campaign-kr8maj` @ `5be0c6da` on
+  `origin/main` `3c3c398`); subscribed; a 19:25Z check-in reads its FINAL head. Full gate on the pushed
+  tree: ruff / format / mypy --strict / bandit / node --check green; **4,806 passed / 5 skipped (the
+  standing env skips) / 0 failed in 50:29**, parity included; installer lockstep 68 green. On the head
+  `5be0c6da` at this line: `cui-guard` · `floor` · `browser` · `linux` · `windows` **success**, `test (3.11)`
+  / `test (3.13)` still running — this line's own push restarts the run (the concurrency group), so the
+  next reader takes the verdict from the final head's run, never from this line.
