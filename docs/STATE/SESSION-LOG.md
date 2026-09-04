@@ -16474,3 +16474,9 @@ shadows it on PATH).
   design page start in a FRESH session from `docs/STATE/NEXT-SESSION-PROMPT.md`.
 - **Draft PR for this record:** **#636** (`claude/polaris-audit-resume-xqte7c` @ `9b37159d` on `origin/main`
   `c89e9c3b`); subscribed; a 16:15Z check-in reads `main`'s run #1728 and #636's checks.
+- **Follow-up (16:12Z):** `main`'s run **#1728** for the squash commit `c89e9c3b` concluded **`success`** at
+  16:07:29Z — `main` is green on the merged tree, no CI-03 cell struck under the fixed layout. #636's checks on
+  `772e4006`: `check` · `test (3.11)` · `test (3.13)` · `floor` · `browser` · `cui-guard` all **success** (the
+  installer-smoke pair is path-filtered off a docs-only diff — four-plus-two is the full set here). This line's
+  own push restarts #636's run; the next session reads the head's checks, never this line, before trusting it.
+  Standing down: the check-in is deleted; the branch is clean at this commit.
