@@ -16282,3 +16282,13 @@ shadows it on PATH).
   DOWN is not a promotion; the guard's direction is unchanged), the three routes re-run green locally,
   pushed as the fix commit. `cui-guard`, `linux`, `windows` green on the first head; `test (3.11)`,
   `test (3.13)`, `floor` were still running.
+- **Full-suite addendum (recorded AFTER the run finished, QC-1):** `python -m pytest -q` on the tree as
+  pushed in `1e295140` — **4,750 passed / 5 skipped / 1 failed in 41:50**. The ONE failure is
+  `test_ch05_panelkit.py::test_panelkit_click_census_and_jarvis[/trend]` (the 11-vs-10 pin above; this
+  run collected the module BEFORE the re-baseline commit `9e308d36`, which re-ran the three routes green).
+  Five skips, the same count as every recorded run (identities not printed by this `-q` run — UNVERIFIED
+  that they are the usual 2 loopback-allowlist + 3 axis-title SVG cases; the count matches). Statics,
+  drift guards (12) and the installer lockstep (68) were green before the push; the parity-marked tests
+  ran inside this full run. Draft **PR #631** carries the work; CI on head `9e308d36` was running at
+  this record (`cui-guard` green; `browser` / `test (3.11)` / `test (3.13)` / `floor` / `linux` /
+  `windows` in progress).
