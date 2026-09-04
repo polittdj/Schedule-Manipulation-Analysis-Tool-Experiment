@@ -16361,3 +16361,4 @@ shadows it on PATH).
   in this entry — docs only; drift guards recorded below.
 - **Context:** this session closed at ~84% of its assumed 800k wall — WP6 and the next design page (/forecast 09 or
   /performance 07) start in a FRESH session from `docs/STATE/NEXT-SESSION-PROMPT.md`.
+- **Draft PR for this record:** #633 (`claude/continue-yznv26` restarted on `origin/main` @ `d9bac11a`).
