@@ -41,7 +41,7 @@
   var data = null, metrics = [], versions = [], current = 0, selId = null, maxCount = 1, timer = null;
 
   function renderBars() {
-    bars.innerHTML = "";
+    bars.innerHTML = ""; bars.setAttribute("data-frame", String(current));
     var v = versions[current];
     document.getElementById("qualLabel").textContent =
       (current + 1) + " / " + versions.length + " — " + shortLabel(v, current) +

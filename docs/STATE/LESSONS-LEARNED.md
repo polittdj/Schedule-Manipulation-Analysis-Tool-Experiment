@@ -6239,3 +6239,40 @@ and that is the lesson worth keeping.
   ribbon defect would never have run on the machine that gates merges. A repo-wide guard caught it.
   **Before copying a test's scaffolding, check whether that scaffolding is what a recent ADR was
   about.**
+
+### 2026-09-04 — WP5 and the third design page (ADR-0459 / ADR-0460)
+
+- **A mutation that SURVIVES is a claim about the fixture before it is a claim about the code.** The
+  margin stepper's "publish the frame" line survived its mutation and the first instinct was "the
+  test is weak". The measurement said otherwise: the TP4 corpus has no task named *margin*, so the
+  margin burndown renders no stepper on /trend at all — the mutated line never executed. The fix
+  was a second corpus (a synthetic two-version pair whose "Schedule Margin" burns 10 → 5 days,
+  `/api/margin` verified before the test was written), after which the same mutation went red by
+  name. **Before calling a surviving mutant a weak test, ask whether the fixture reaches the code.**
+- **A real `webkitdirectory` FileList arrives in filesystem-traversal order.** On this box Artemis
+  came before Apollo. The UI now sorts sub-folders by name so the same folder reads the same way on
+  every machine — and it was the test that assumed alphabetical order that caught it. A fake-entry
+  fixture would have handed the names in the order the test author typed them and hidden this.
+- **Playwright 1.62 uploads a REAL directory to a `webkitdirectory` input** (`set_input_files(dir)`);
+  the FileList carries genuine `webkitRelativePath` values. Measured with a 5-line probe before the
+  test was designed. When the platform can supply real objects, the fake-entry machinery is for the
+  one gesture a test cannot mint (an OS drag), nothing else.
+- **A line-number-keyed pin is edited with same-line-count replacements, and new code goes below the
+  last pin.** r11 pins each axis caption by (file, LINE, digest). Six edits above `trend.js`'s first
+  pin were single-line replacements; `sfDesignCursor` was defined after L920; the patch script
+  asserted the pin lines `[483, 587, 712, 830, 920]` unchanged before writing. A byte-frozen page
+  script (`volatility.js`) changes only by a dated, commented re-baseline — never silently.
+- **An intake screenshot's FILE NAME is testimony.** `screenshots-v2/05-screen.png` shows Chapter
+  11. The design truth was recovered by EXECUTING the canvas (the npm registry is reachable; every
+  CDN is not) and viewing artboard 05 in four themes — the recipe ADR-0456 paid for worked
+  unchanged.
+- **Two sessions in flight need a merge plan, not a pause.** The operator offered to wait for #630's
+  checks. The right move was to sequence: build on `main`, number ADRs after the in-flight PR's,
+  hold the version bump / installer rebuild / docs rotation to the very end, and write the
+  re-merge + rebuild step into the handoff (the lockstep pin compares the embedded wheel to `src/`
+  byte-for-byte, so whichever PR lands second rebuilds).
+- **"One cursor" over 21 charts is achievable through the buttons that already exist.** A chip
+  clicks each chart's own Next the number of times that lands it on the chosen version, after each
+  stepper publishes the frame it shows as `data-frame`. Nothing renders any other way than the
+  buttons render it, the ADR-0275 coordinator contract holds, and the census sees no new control —
+  the cheapest way to add a design gesture without adding functionality.

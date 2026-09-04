@@ -548,7 +548,7 @@
     var lbl = document.getElementById("volLabel");
     if (lbl) lbl.textContent = (cursor + 1) + " / " + N + " — " + V[cursor].label +
       (V[cursor].status_date ? " (data date " + V[cursor].status_date + ")" : "");
-    document.querySelectorAll(".vol-chip").forEach(function (ch) {
+    document.querySelectorAll(".cd-chip").forEach(function (ch) {
       ch.classList.toggle("on", Number(ch.getAttribute("data-idx")) === cursor);
     });
     renderKpi();
@@ -578,7 +578,7 @@
   if (prev) prev.addEventListener("click", function () { stopPlay(); stepTo(cursor - 1); });
   if (next) next.addEventListener("click", function () { stopPlay(); stepTo(cursor + 1); });
   if (play) play.addEventListener("click", togglePlay);
-  document.querySelectorAll(".vol-chip").forEach(function (ch) { // the design's version chips
+  document.querySelectorAll(".cd-chip").forEach(function (ch) { // the design's version chips
     ch.addEventListener("click", function () { stopPlay(); stepTo(Number(ch.getAttribute("data-idx")) || 0); });
   });
 

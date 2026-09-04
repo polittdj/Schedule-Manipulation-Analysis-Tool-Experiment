@@ -221,3 +221,20 @@ toolbar glyph and figure it carried before** ("don't modify any of the functiona
   to the loaded-terms audit surface; a "How to read this" block is that explainer in the open.
 - Verify in all four themes by render (`render-verify`), and diff the DOM census (panels · forms ·
   chart bars · zero page errors · nothing wider than the viewport) against the pristine page.
+- **A page whose master play control is CREATED by its script mounts it into the strip** (ADR-0460,
+  /trend): the page serves a `#<page>Master` slot inside `.cd-cursor`; the script appends its
+  existing `#sfPlayAll` (restyled `.cd-play`) / `#sfStepAll` there instead of its old `.panel`
+  wrapper, ids and handlers untouched. When the steppers are per-chart (the `sf-frame` trios), a
+  chip clicks the Next buttons that already exist until every chart shows that version, and each
+  stepper publishes the frame it is showing as `data-frame` so the cursor can count — the cursor
+  follows the FIRST framed chart. No new master control is minted (a ◂ Back with no page master
+  behind it is a new in-family control, not a restyle).
+- **The vocabulary is one family since the third page (ADR-0460):** `cd-cursor` · `cd-play` ·
+  `cd-chips` · `cd-chip` · `cd-pill` · `cd-master` · `cd-note` · `cd-options` · `cd-grid` with
+  `cd-grid-2` (1.1fr / .9fr) and `cd-grid-12` (1.2fr / .8fr) · `cd-stack` (a column of two
+  surfaces) · `cd-block` / `cd-read` / `cd-beat-*`. /volatility's `vol-*` cursor classes were
+  aliased onto it; only its page-specific `vol-block` / `vol-row` / `vol-kpi` / `vol-band` remain.
+- **A byte-frozen page script (r11 `PAGE_SCRIPTS`) or a line-pinned axis caption changes only by
+  a DELIBERATE, dated re-baseline** — and an edit above a line pin is a same-line-count edit
+  (ADR-0460 replaced six single lines in `trend.js` / `margin.js` / `trend_drill.js` and added its
+  new function below the last pin, asserting the pin lines `[483, 587, 712, 830, 920]` unchanged).

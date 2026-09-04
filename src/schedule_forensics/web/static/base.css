@@ -169,6 +169,13 @@ transition:border-color .15s,background .15s;background:var(--dz-bg)}
 .dz-icon{font-size:34px;color:var(--accent);line-height:1}
 .dz-title{font-size:16px;margin:10px 0 4px}
 .dz-actions{margin-top:16px;display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap}
+.dz-how{display:inline-block;text-align:left;margin:12px auto 0;padding-left:20px;font-size:13px;color:var(--muted);max-width:760px}
+.dz-how li{margin:3px 0}
+.dz-how i{color:var(--ink)}
+.dz-ask{text-align:left}
+.dz-ask-title{margin:0 0 6px;font-weight:600;color:var(--ink)}
+.dz-ask-list{margin:0 0 8px;padding-left:20px}
+.dz-ask .dz-actions{justify-content:flex-start;margin-top:10px}
 .btn{display:inline-block;background:var(--accent);color:var(--btn-ink);border-radius:7px;padding:9px 18px;
 font-weight:600;text-decoration:none}.btn:hover{filter:brightness(1.08)}
 .btn-link{color:var(--accent);font-weight:600}

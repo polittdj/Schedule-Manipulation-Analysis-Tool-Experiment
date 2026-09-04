@@ -38,7 +38,7 @@ from schedule_forensics.engine.trend import (
     compute_quality_trend,
 )
 from schedule_forensics.model.schedule import Schedule
-from schedule_forensics.web.chrome import _e
+from schedule_forensics.web.chrome import _EXPLAINERS, _e
 from schedule_forensics.web.components import (
     _focus_panel,
     _mdY,
@@ -260,7 +260,43 @@ Focus the trend on a specific activity &mdash; UniqueID:
 placeholder="UID"> <button type=submit>Focus</button>
 {'<a class=btn-link href="/trend?target=">clear focus</a>' if target is not None else ""}
 </form></div>"""
-    return f"""
+    # ── Claude Design layout (ADR-0460): artboard "05 How it moved" ──────────────────────────
+    # The page is RE-ARRANGED into the design, functionality unchanged (ADR-0451/0456's method):
+    # a masthead cursor strip — the page's own ▶ Play all / ⏭ Step all master mounts into
+    # #trendMaster (trend.js), ONE chip per version, the frame pill — the Focus form as the
+    # options row, then the design's rows: the version table beside the manipulation signals (the
+    # mock's "computed finish, by version" beside "net finish impact, per update"), the trend
+    # charts full width (the mock's slope and float-erosion visuals live there), the quality
+    # drill-down beside a stack of the schedule-quality sentences and a "How to read this" block
+    # whose three beats are this page's own explainer (no new prose enters the loaded-terms audit
+    # surface), the margin burndown full width. Every panel below is byte-for-byte what it was;
+    # the .cd-* family is the page-neutral vocabulary (DESIGN-SYSTEM §9). A chip is the page's own
+    # steppers: trend.js clicks the Next buttons that already exist until every chart shows that
+    # version — the charts open fully revealed, so the LAST chip is on.
+    chips = "".join(
+        f'<button type=button class="cd-chip{" on" if i == n_ver - 1 else ""}" data-idx="{i}" '
+        f'title="{_e(s.source_file or s.name)}" data-no-i18n>v{i + 1}</button>'
+        for i, s in enumerate(schedules)
+    )
+    what, how, decide = _EXPLAINERS["Trend"]
+    beats = "".join(
+        f'<div class="cd-beat {cls}"><b>{lead}</b> {_e(text)}</div>'
+        for cls, lead, text in (
+            ("cd-beat-accent", "What it shows.", what),
+            ("cd-beat-warn", "How to read it.", how),
+            ("cd-beat-bad", "Why it matters.", decide),
+        )
+    )
+    cursor = f"""
+<div class="viz-controls cd-cursor" id=trendCursor>
+<span id=trendMaster class=cd-master></span>
+<span class=cd-chips>{chips}</span>
+<span id=trendFrame class="muted cd-pill" data-no-i18n></span>
+<span class="muted cd-note">One cursor &mdash; &#9654; Play all / &#9197; Step all beat every chart on this page through the loaded files in lockstep; a chip jumps every chart to that version.</span>
+</div>"""
+    return f"""{cursor}
+<div class=cd-options>{focus_form}</div>{focus_panel}
+<div class="cd-grid cd-grid-12">
 <div class=panel data-export="/export/xlsx/trend">{
         _panel_head(
             f"Version trend &mdash; {len(schedules)} versions, oldest first (by data date)",
@@ -282,11 +318,29 @@ placeholder="UID"> <button type=submit>Focus</button>
     }</table>
 <p>Net Finish Impact across the series: <b class={cls}>{days:+d} calendar days</b>
 &mdash; the project finish moved {word} between the first and last version.</p></div>
-{focus_form}{focus_panel}
+<div class=panel>{
+        _panel_head(
+            "Manipulation-trend signals (consecutive versions)", tools=_shell_tools(), prov=prov
+        )
+    }
+{signals_take}
+<p class=muted>Each signal with cited activities is a <b>view N tasks</b> link &mdash; click it to
+list the exact activities behind that finding (UID / name / duration / % complete / start /
+finish), add any standard or custom field, filter, and export to Excel.</p>
+<table><tr><th scope=col>Step</th><th scope=col>Severity</th><th scope=col>Signal</th><th scope=col>Course of action</th></tr>
+{
+        "".join(signal_rows)
+        or "<tr><td colspan=4 class=muted>No manipulation signals detected across the series (honest progress).</td></tr>"
+    }</table>
+<div id=findingsDrill class=findings-drill></div>
+<script type="application/json" id=findingsData>{signals_blob}</script>
+<script src="/static/findings_drill.js"></script></div>
+</div>
 <div class=panel data-export="/export/xlsx/trend">{_panel_head("Trend charts", prov=prov)}
 {charts_take}
 <div id=trendCharts class="charts chart-host"
 data-target="{target if target is not None else ""}"></div></div>
+<div class="cd-grid cd-grid-2">
 <div class=panel id=qualDrillPanel data-export="/export/xlsx/trend">{
         _panel_head(
             "Quality drill-down &amp; animation",
@@ -310,6 +364,7 @@ list the exact activities behind its number in the current version (the drill-do
 <div id=qualBars class=qual-bars></div>
 <div id=qualDrill class=qual-offenders></div>
 </div></div>
+<div class=cd-stack>
 <div class=panel data-export="/export/xlsx/trend">{
         _panel_head(
             "Schedule-quality trends", tools=_shell_tools(export_title=trend_xlsx), prov=prov
@@ -318,23 +373,9 @@ list the exact activities behind its number in the current version (the drill-do
 {qtrend_take}
 <p class=muted>How each schedule-quality metric moves across the versions.</p>
 <ul>{quality_items}</ul></div>
-<div class=panel>{
-        _panel_head(
-            "Manipulation-trend signals (consecutive versions)", tools=_shell_tools(), prov=prov
-        )
-    }
-{signals_take}
-<p class=muted>Each signal with cited activities is a <b>view N tasks</b> link &mdash; click it to
-list the exact activities behind that finding (UID / name / duration / % complete / start /
-finish), add any standard or custom field, filter, and export to Excel.</p>
-<table><tr><th scope=col>Step</th><th scope=col>Severity</th><th scope=col>Signal</th><th scope=col>Course of action</th></tr>
-{
-        "".join(signal_rows)
-        or "<tr><td colspan=4 class=muted>No manipulation signals detected across the series (honest progress).</td></tr>"
-    }</table>
-<div id=findingsDrill class=findings-drill></div>
-<script type="application/json" id=findingsData>{signals_blob}</script>
-<script src="/static/findings_drill.js"></script></div>
+<section class="cd-block cd-read"><h2>How to read this</h2>{beats}</section>
+</div>
+</div>
 <div class=panel data-export="/export/xlsx/margin">{
         _panel_head("Schedule margin burndown", prov=prov)
     }

@@ -1249,14 +1249,9 @@ tr.row-found td.sf-frozen-col { background: #fff3b0; }
 /* /volatility — the Claude Design "How stable is the path" layout (operator 2026-09-02). Tokens only;
    the ten visuals keep their .tile shells inside the five numbered panels. */
 .vol-masthead .vol-headline { margin: 6px 0 4px; font-size: 22px; line-height: 1.15; color: var(--ink); }
-.vol-cursor { gap: 8px; }
-.vol-cursor .vol-play { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 700; }
-.vol-chips { display: inline-flex; gap: 4px; flex-wrap: wrap; }
-.vol-chip { background: transparent; color: var(--muted); border: 1px solid var(--line); border-radius: 4px;
-  padding: 2px 8px; font: 600 9px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; cursor: pointer; }
-.vol-chip.on, .vol-chip:hover { background: var(--accent); color: var(--bg); border-color: var(--accent); }
-.vol-pill { border: 1px solid var(--line); border-radius: 9px; padding: 3px 9px; font-size: 9px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: .04em; }
+/* the cursor strip / play / chips / pill vocabulary moved to the shared `.cd-*` family with the
+   third design page (ADR-0460) — /volatility's masthead now speaks cd-cursor / cd-play / cd-chips /
+   cd-chip / cd-pill; only the page-specific blocks, rows, KPI and bands stay `vol-*`. */
 .vol-layout { display: grid; gap: 10px; margin-top: 10px; }
 .vol-row { display: grid; gap: 10px; }
 .vol-row-1 { grid-template-columns: 1.05fr .95fr; }
@@ -1302,8 +1297,14 @@ tr.row-found td.sf-frozen-col { background: #fff3b0; }
 .cd-options .viz-controls { margin: 4px 0; }
 .cd-grid { display: grid; gap: 10px; margin-top: 10px; }
 .cd-grid-2 { grid-template-columns: 1.1fr .9fr; }
-@media (max-width: 1100px) { .cd-grid-2 { grid-template-columns: 1fr; } }
+.cd-grid-12 { grid-template-columns: 1.2fr .8fr; }
+@media (max-width: 1100px) { .cd-grid-2, .cd-grid-12 { grid-template-columns: 1fr; } }
 .cd-grid > .panel { margin: 0; min-width: 0; }
+.cd-stack { display: grid; gap: 10px; align-content: start; min-width: 0; }
+.cd-stack > .panel { margin: 0; min-width: 0; }
+/* the page's own master (▶ Play all / ⏭ Step all) mounts into the cursor's slot on /trend */
+.cd-master, .cd-master .sf-master-controls { display: inline-flex; gap: 6px; align-items: center; }
+.cd-note { font-size: 10px; }
 .cd-block { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; min-width: 0; }
 .cd-block h2 { margin: 0 0 8px; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink); }
 .cd-read { display: flex; flex-direction: column; gap: 10px; font-size: 11px; line-height: 1.6; color: var(--ink); }

@@ -114,7 +114,7 @@
     var play = btn("sf-frame-play", "▶ Play", "Animate through the loaded files");
     function show(k) {
       idx = (k + frames.n) % frames.n;
-      label.textContent = sfCaption(idx, frames.n, frames.name(idx), frames.date(idx));
+      label.textContent = sfCaption(idx, frames.n, frames.name(idx), frames.date(idx)); bar.setAttribute("data-frame", String(idx));
       frames.draw(idx);
     }
     function stop() {
