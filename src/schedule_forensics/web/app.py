@@ -564,9 +564,13 @@ from schedule_forensics.web.help import (
 from schedule_forensics.web.integrity import _integrity_body as _integrity_body
 from schedule_forensics.web.integrity import _integrity_header as _integrity_header
 from schedule_forensics.web.integrity import _integrity_ledger_tables as _integrity_ledger_tables
+from schedule_forensics.web.integrity import (
+    _integrity_population_note as _integrity_population_note,
+)
 from schedule_forensics.web.integrity import _lag_chip as _lag_chip
 from schedule_forensics.web.integrity import _ledger_was_now as _ledger_was_now
 from schedule_forensics.web.integrity import _logic_changes_panel as _logic_changes_panel
+from schedule_forensics.web.integrity import _scope_phrase as _scope_phrase
 from schedule_forensics.web.integrity import _target_effect_html as _target_effect_html
 from schedule_forensics.web.integrity import _was_now as _was_now
 from schedule_forensics.web.launch import _EMPTY_ACTION as _EMPTY_ACTION
@@ -3510,31 +3514,63 @@ def create_app(
         # two versions' REAL networks — the session Target UID anchors the measurement inside
         # _integrity_body, it must never truncate the populations being diffed (_pair_versions).
         schedules, cpms, skipped = _pair_versions()
+        # I-01 (operator 2026-09-03, ADR-0457): with more than one Project loaded this page
+        # pairs ONLY the active Project's versions (ADR-0258). A testimony surface must SAY so
+        # — which Project, how many of the loaded files it holds, where the others are — and
+        # never tell the operator to "load two versions" while the other version sits loaded
+        # in another Project one switch away.
+        active = st.active_population()
+        with st._lock:
+            pops = st.populations()
+        project_note = (
+            _integrity_population_note(active, pops, len(st.all_versions()))
+            if active is not None and len(pops) > 1
+            else ""
+        )
         if len(schedules) < 2:
-            return _page(
-                st,
-                "Schedule Integrity",
-                _skipped_notice(skipped)
-                + "<div class=panel>Load at least two versions of the schedule — integrity "
-                "findings are version-over-version comparisons (what changed, and what the "
-                "change did to the critical path).</div>",
-            )
+            if project_note:
+                body = (
+                    "<div class=panel>Integrity findings compare two versions inside ONE "
+                    f"Project, and Project <b>{_e(active[1])}</b> has "  # type: ignore[index]
+                    f"{len(schedules)} solvable version{'s' if len(schedules) != 1 else ''}. "
+                    "Switch to a Project that holds two or more, or — if these files are "
+                    "updates of one schedule — combine them on "
+                    '<a class=btn-link href="/portfolio">Portfolio</a>.</div>'
+                )
+            else:
+                body = (
+                    "<div class=panel>Load at least two versions of the schedule — integrity "
+                    "findings are version-over-version comparisons (what changed, and what "
+                    "the change did to the critical path).</div>"
+                )
+            return _page(st, "Schedule Integrity", _skipped_notice(skipped) + project_note + body)
         # back-compat: a bare ?file=<label> means "compare that file to its predecessor"
         if b < 0 and file:
             labels = [sch.source_file or sch.name for sch in schedules]
             if file in labels:
                 b = labels.index(file)
                 a = b - 1
+        # a REDUCE filter narrows the pair the detectors see (a role-named criterion with no
+        # mapping matches NOTHING — ADR-0450): the page states the in-scope counts, and an
+        # empty side never reads as "no findings" (ADR-0457)
+        raw_sizes: dict[int, int] | None = None
+        if st.filter_mode != "highlight" and (st.active_filter or st.active_saved_filter):
+            # _pair_versions walks ordered_versions() in order and drops the skipped keys, so
+            # the surviving raw schedules line up with ``schedules`` by index
+            kept = [sch for key, sch in st.ordered_versions() if key not in skipped]
+            raw_sizes = {i: len(sch.tasks) for i, sch in enumerate(kept[: len(schedules)])}
         return _page(
             st,
             "Schedule Integrity",
             _skipped_notice(skipped)
+            + project_note
             + _integrity_body(
                 schedules,
                 cpms,
                 st.target_uid,
                 baseline_idx=a,
                 comparison_idx=b,
+                raw_sizes=raw_sizes,
             ),
         )
 

@@ -30,6 +30,7 @@ import json
 import socket
 import threading
 import time
+from itertools import pairwise
 from pathlib import Path
 from typing import Any
 
@@ -440,4 +441,112 @@ def test_a2_matrix_cell_evolution_geometry_and_zoom_are_sane_again(
         }"""
     )
     assert before is not None and after is not None and abs(after - before) >= 1.0, (before, after)
+    page.context.close()
+
+
+# ── T-01 (operator 2026-09-03): "when I tell it I want two tiers it doesn't work correctly" ────
+
+#: every tier ROW of a scale as the browser laid it out — computed position and rendered y
+#: relative to the scale (ADR-0445's lesson: never inline styles), plus the band census.
+_RENDERED_TIERS = """(sel) => [...document.querySelectorAll(sel)].map(sc => {
+  const r = sc.getBoundingClientRect();
+  return {h: Math.round(r.height), tiers: [...sc.querySelectorAll('.g-tier')].map(t => {
+    const tr = t.getBoundingClientRect(); const bs = [...t.querySelectorAll('.g-band')];
+    return {y: Math.round(tr.top - r.top), h: Math.round(tr.height),
+            pos: getComputedStyle(t).position, bands: bs.length,
+            labeled: bs.filter(b => b.textContent.trim()).length};
+  })};
+})"""
+
+
+def _set_show(page: Any, n: int) -> None:
+    """Open the dialog, pick "n tiers" in the Show menu THROUGH the select (the dialog's own
+    change listener stores Number(v)), and commit with OK."""
+    _open_dialog(page)
+    page.evaluate(
+        """(n) => {
+          const sels = [...document.querySelectorAll('.ts-dialog select')];
+          const s = sels.find(s => [...s.options].some(o => /tier/i.test(o.text)));
+          s.value = String(n);
+          s.dispatchEvent(new Event('change', {bubbles: true}));
+        }""",
+        n,
+    )
+    page.click(OK_BTN)
+    page.wait_for_timeout(900)
+
+
+def _assert_rows(scales: list[dict[str, Any]], n: int, where: str) -> None:
+    assert scales, f"{where}: no tiered scale rendered"
+    for sc in scales:
+        tiers = sc["tiers"]
+        assert len(tiers) == n, f"{where}: Show={n} but {len(tiers)} rows rendered: {tiers}"
+        # rows are stacked 18 px apart from the scale's top (the caption row, when present, sits
+        # above them), absolutely positioned, every row banded and labeled
+        ys = [t["y"] for t in tiers]
+        assert ys == sorted(ys) and all(b - a == 18 for a, b in pairwise(ys)), (
+            f"{where}: rows not stacked at 18 px: {ys}"
+        )
+        for t in tiers:
+            assert t["pos"] == "absolute", f"{where}: a tier lost its positioning: {t}"
+            assert t["bands"] > 0 and t["labeled"] > 0, f"{where}: an empty tier row: {t}"
+        # the scale's own height follows the row count (g-scale-rows-N), caption row included
+        assert sc["h"] == ys[-1] + 18, f"{where}: scale height {sc['h']} vs rows {ys}"
+
+
+def test_t01_two_tiers_render_exactly_two_rows_on_path_across_zoom_and_reload(
+    browser: Any, served: str
+) -> None:
+    """Show = "Two tiers (Middle, Bottom)" on /path: exactly two rendered rows at the page's
+    opening zoom, after doubling the zoom slider, after View entire project, after a reload
+    (the persisted ``show`` reloads as the number 2), then one and three again through the same
+    menu. Measured by computed position and rendered y, never by config or inline styles."""
+    page, errors = _open(browser, served, PATH)
+    _assert_rows(page.evaluate(_RENDERED_TIERS, ".path-scale"), 3, "path default")
+    _set_show(page, 2)
+    assert page.evaluate(_CFG)["show"] == 2
+    _assert_rows(page.evaluate(_RENDERED_TIERS, ".path-scale"), 2, "path show=2")
+    _drag_path_zoom(page)
+    _assert_rows(page.evaluate(_RENDERED_TIERS, ".path-scale"), 2, "path show=2 zoomed")
+    page.click("#pathFit")
+    page.wait_for_timeout(800)
+    _assert_rows(page.evaluate(_RENDERED_TIERS, ".path-scale"), 2, "path show=2 fitted")
+    page.reload(wait_until="load")
+    page.wait_for_selector(".path-track", timeout=30000)
+    page.wait_for_timeout(1000)
+    assert page.evaluate(_CFG)["show"] == 2
+    _assert_rows(page.evaluate(_RENDERED_TIERS, ".path-scale"), 2, "path show=2 reloaded")
+    _set_show(page, 1)
+    _assert_rows(page.evaluate(_RENDERED_TIERS, ".path-scale"), 1, "path show=1")
+    _set_show(page, 3)
+    _assert_rows(page.evaluate(_RENDERED_TIERS, ".path-scale"), 3, "path show=3")
+    assert errors == []
+    page.context.close()
+
+
+def test_t01_two_tiers_render_exactly_two_rows_on_analysis_across_the_zoom_ladder(
+    browser: Any, served: str
+) -> None:
+    """The same on /analysis (the ADR-0449 windowed grid, whose header is rebuilt by
+    renderGrid on the dialog's event): two rows at the opening zoom, through three zoom-in
+    and six zoom-out steps (the ADR-0447/0452 demote/promote ladder must never re-add a row
+    the operator removed), and after Fit."""
+    key = "TP4_DataCenter_v5"
+    page, errors = _open(browser, served, f"/analysis/{key}")
+    page.wait_for_selector("#grid table.gantt-grid", timeout=30000)
+    _assert_rows(page.evaluate(_RENDERED_TIERS, "#grid .g-scale"), 3, "analysis default")
+    _set_show(page, 2)
+    _assert_rows(page.evaluate(_RENDERED_TIERS, "#grid .g-scale"), 2, "analysis show=2")
+    for i in range(3):
+        page.click("#zoomIn")
+        page.wait_for_timeout(500)
+        _assert_rows(page.evaluate(_RENDERED_TIERS, "#grid .g-scale"), 2, f"zoom in {i + 1}")
+    for i in range(6):
+        page.click("#zoomOut")
+        page.wait_for_timeout(500)
+        _assert_rows(page.evaluate(_RENDERED_TIERS, "#grid .g-scale"), 2, f"zoom out {i + 1}")
+    page.click("#fitBtn")
+    page.wait_for_timeout(800)
+    _assert_rows(page.evaluate(_RENDERED_TIERS, "#grid .g-scale"), 2, "analysis fitted")
+    assert errors == []
     page.context.close()
