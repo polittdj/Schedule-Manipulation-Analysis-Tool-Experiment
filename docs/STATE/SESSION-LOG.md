@@ -16472,4 +16472,5 @@ shadows it on PATH).
   amend of the squash); the PR subscription for #635 removed; the 15:17Z check-in deleted once the head was green.
 - **Context:** this record was written at ~72% of the assumed 800k wall (WARN band); WP6 and the owed /forecast
   design page start in a FRESH session from `docs/STATE/NEXT-SESSION-PROMPT.md`.
-- **Draft PR for this record:** number recorded in the follow-up line below.
+- **Draft PR for this record:** **#636** (`claude/polaris-audit-resume-xqte7c` @ `9b37159d` on `origin/main`
+  `c89e9c3b`); subscribed; a 16:15Z check-in reads `main`'s run #1728 and #636's checks.
