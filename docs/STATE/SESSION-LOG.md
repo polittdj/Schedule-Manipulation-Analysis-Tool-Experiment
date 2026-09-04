@@ -16530,3 +16530,4 @@ shadows it on PATH).
   `5be0c6da` at this line: `cui-guard` · `floor` · `browser` · `linux` · `windows` **success**, `test (3.11)`
   / `test (3.13)` still running — this line's own push restarts the run (the concurrency group), so the
   next reader takes the verdict from the final head's run, never from this line.
+- **Follow-up (19:4xZ):** the operator's feature request — a two-sheet One-Pager COMPARE view that draws and labels every slip — is specified in `docs/STATE/NEXT-SESSION-PROMPT.md` (an /onepager-compare route; matched on the (swimlane, item) pair because the ADR-0446 intake carries no unique id; deltas in CALENDAR days because the sheet carries no calendar; the operator asks named) and takes the next session's design-page slot; one sentence in `HANDOFF.md`'s queue so the two cannot disagree. Docs-only; committed locally and pushed by the 20:22Z check-in AFTER the running checks complete, so the head's run is not cancelled at minute 25.

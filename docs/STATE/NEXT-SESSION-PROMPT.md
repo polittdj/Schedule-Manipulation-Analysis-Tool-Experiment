@@ -57,6 +57,42 @@ UID 152 as the target, does the target line's working-day move read right agains
 I-01 (which finding, which two files, folders or Titles) · T-01 (page, zoom, screenshot) · is the
 residual /analysis lag gone. UNKNOWABLE and closed: the blank-header banner, the 08-26 incident.
 
+⇢ OPERATOR FEATURE REQUEST (2026-09-04, verbatim gist): "create a new One-Pager view where the user
+can drag in TWO Excel sheets, formatted as the One-Pager page already takes them, and show how much
+change has occurred between versions — the same kind of one-pager with the swimlanes, but make it
+perfectly clear which tasks have slipped and by how much." Build it as **/onepager-compare** (its own
+route, page module, painter and .pptx export — never a mode bolted onto /onepager, whose r11 contract,
+ADR-0446 intake and byte-frozen painter stay untouched). FACTS that shape it, read from
+`web/onepager.py` + `reports/onepager.py` + ADR-0446, not assumed: the intake is ONE sheet of THREE
+columns (A swimlane · B task or milestone · C a single date = milestone, a range = activity), parsed by
+`read_xlsx` + `parse_span` with every decision named by sheet row, and it carries NO unique id and NO
+calendar. Therefore: (1) the two sheets are matched on the normalised (swimlane, item) pair — the ONLY
+key the file has — and an unmatched row is reported as ADDED or REMOVED by name, never guessed, with a
+rename visibly counted as one removed + one added (say so on the page); (2) "how much" is the FINISH
+delta and the START delta in CALENDAR days, labelled "calendar days" on every figure (the sheet has no
+calendar; a working-day figure would be fabricated — the CF-01 lesson: a number's unit is its
+provenance), a milestone's move being its date's move; (3) which sheet is PRIOR is the operator's
+choice, never inferred from file names — a two-slot drop zone (prior / current) with the two file
+names echoed on the slide and in the export; (4) the slide is the ADR-0446 layout with the delta
+encoded so it survives print, PowerPoint and all four themes: the prior bar/marker as a ghost, the
+current one solid, a slip drawn as an arrow from prior to current with its "+N cal d" label, a pull-in
+the same with "−N", unchanged items plain, added items badged NEW, removed items listed (not drawn as
+ghosts alone), and a per-swimlane summary strip (slipped n · pulled in n · new n · removed n · worst
+slip named); (5) the parsed-rows table gains prior/current/delta columns and the ⤓ EXCEL export carries
+them; the .pptx export draws the same shapes natively (ADR-0446's writer) — a one-pager that says
+"slipped" in the browser and not in PowerPoint is a defect; (6) every delta figure the takeaway quotes
+is a cell the table renders, selected out of the rendered rows (the r10 rule), no new arithmetic
+beyond the subtraction; (7) QC-1 in full: an engine function `compare_onepager_docs(prior, current)`
+pinned red-first on a synthetic pair (a slip, a pull-in, a new, a removed, a rename, a milestone→activity
+change, a duplicate-name collision that must be REPORTED not merged), mutations by name, the four-theme
+render census on the design's keys, the M1 census row for the new route, the DD-line and axis-caption
+ledgers (the slide has a today line — ADR-0446's), the r10/r11 contracts, the route-coverage instrument.
+ASK the operator before building on a guess: does a task that changed swimlane count as moved or as
+removed + added; is there a slip threshold below which an item reads "unchanged"; should the compare
+slide ALSO ship the single-version slide for each sheet. This request takes the next session's
+design-page slot (it is a One-Pager-family page); /performance (07) moves one session later; WP6b
+continues after it.
+
 ⇢ NEXT — branch FRESH from origin/main once this PR merges (`git fetch --prune origin && git checkout
 -B <branch> origin/main`); open a NEW draft PR. **WP6b** — the ledger TAIL by the same method (re-derive
 each finder's line from `git show 1b833c6a:<path>`, build the refuting check, fix as verified): CPM-03/04
