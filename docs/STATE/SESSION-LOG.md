@@ -16444,3 +16444,11 @@ shadows it on PATH).
 - **Version + installers:** 1.0.236; wheel + nine installers rebuilt after the last source edit; lockstep
   re-run recorded in the follow-up line. Full gate: statics green; the suite's result and the draft PR number
   are recorded in the follow-up line below.
+- **Follow-up (13:36Z):** draft PR **#635** (`claude/polaris-audit-resume-xqte7c` @ `d558324c` on
+  `origin/main` `66364af7`); `cui-guard` green at 13:06:38Z, the other six checks (test 3.11 / 3.13, floor,
+  browser, linux, windows) running at this line. Full gate on the pushed tree: ruff / format / bandit /
+  node --check green; **4,775 passed / 5 skipped (the standing env skips) / 0 failed in 40:28**; parity
+  included. The editable install's metadata still reported 1.0.235 after the pyproject bump (a stale
+  dist-info, not the tree) — `pip install -e . --no-deps --no-build-isolation` after the suite, then the
+  four version-dependent modules + the installer lockstep re-run: 170 passed. `main`'s run #1724 for the
+  #634 merge read at this follow-up (see the next line).
