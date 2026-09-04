@@ -355,6 +355,29 @@ def _free_port() -> int:
     return port
 
 
+#: What a ZERO-caption cell looked like, so the failure names its mechanism (CI-03, ADR-0461).
+#: The three "no captions rendered" strikes carried no evidence at all — a page that rendered
+#: nothing and a page that had not rendered YET read identically. This reports the page's
+#: readiness, whether the frame helper existed, the chart hosts / svgs present, any chart module's
+#: own "Failed to load …" sentence (the ``.catch`` that swallowed a ``ReferenceError`` in the
+#: race ADR-0461 closed) and every page error, so the next strike — if any — is attributable.
+_DIAG = """() => ({
+  ready: document.readyState,
+  frame: typeof window.SFChartFrame,
+  hosts: document.querySelectorAll('.chart-host').length,
+  svgs: document.querySelectorAll('svg').length,
+  failed: [...document.querySelectorAll('main *')]
+    .filter(n => n.children.length === 0 && /Failed to load/.test(n.textContent || ''))
+    .map(n => n.textContent.trim()).slice(0, 4),
+})"""
+
+
+def _diagnose(page: Any, page_errors: list[str]) -> str:
+    d = dict(page.evaluate(_DIAG))
+    d["pageerrors"] = list(page_errors)
+    return " ".join(f"{k}={v!r}" for k, v in d.items())
+
+
 pytest.importorskip("playwright", reason="playwright not installed (deliberate: see module docs)")
 
 
@@ -511,11 +534,14 @@ def test_captions_survive_every_theme_and_scale(
     with sync_playwright() as p:
         browser = p.chromium.launch(**chrome_kwargs())
         page = browser.new_page(viewport={"width": 1600, "height": 1100})
+        page_errors: list[str] = []
+        page.on("pageerror", lambda e: page_errors.append(str(e).splitlines()[0][:160]))
         page.goto(served + "/", wait_until="domcontentloaded")
 
-        def load(route: str, theme: str, scale: str) -> list[dict[str, Any]]:
+        def load(route: str, theme: str, scale: str) -> tuple[list[dict[str, Any]], str]:
             base = _base_for(route)
             real = REAL_ROUTE.get(route, route)
+            page_errors.clear()
             # localStorage is per-ORIGIN and /margin + /sra+run run on their own ports: land on
             # the target origin first, so the theme/scale below binds to the page being measured.
             if not page.url.startswith(base):
@@ -534,18 +560,26 @@ def test_captions_survive_every_theme_and_scale(
                 page.click(button, timeout=10000)
             for _button, host in CLICK_RUNS.get(route, ()):
                 page.wait_for_selector(f"{host} text.ch-at", timeout=10000, state="attached")
-            with contextlib.suppress(Exception):  # a page may legitimately chart nothing
+            # The 5 s wait is SUPPRESSED so a cell that renders nothing still reaches the probe
+            # and is reported below WITH its diagnosis, instead of a bare TimeoutError aborting
+            # the whole sweep — not a "may chart nothing" allowance (every PAGES entry charts).
+            # The timeout is deliberately NOT widened (CI-03, ADR-0461): the three "no captions
+            # rendered" strikes were a load-order race — the chart module's fetch callback ran
+            # before chartframe.js had executed — not a slow paint; time-to-first-caption stayed
+            # under 2.5 s even at 8x CPU throttle with six CPU hogs.
+            with contextlib.suppress(Exception):
                 page.wait_for_selector("text.ch-at", timeout=5000, state="attached")
             page.wait_for_timeout(150)
-            return list(page.evaluate(_PROBE))
+            caps = list(page.evaluate(_PROBE))
+            return caps, ("" if caps else _diagnose(page, page_errors))
 
         for theme in THEMES:
             for scale in SCALES:
                 for route in PAGES:
-                    caps = load(route, theme, scale)
+                    caps, diag = load(route, theme, scale)
                     where = f"{theme}@{scale} {route}"
                     if not caps:
-                        problems.append(f"{where}: no captions rendered")
+                        problems.append(f"{where}: no captions rendered — {diag}")
                         continue
                     floor = MIN_CAPTIONS.get(route, 0)
                     if len(caps) < floor:

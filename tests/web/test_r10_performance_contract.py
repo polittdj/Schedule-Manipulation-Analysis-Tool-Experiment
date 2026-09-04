@@ -540,12 +540,19 @@ def test_performance_js_is_deferred_so_chartframe_exists_first(page: str) -> Non
     but ``chartframe.js`` is emitted by ``_LAYOUT`` AFTER ``</main>``. Without ``defer`` the
     first paint threw ``SFChartFrame is not defined`` and the three quad tiles stayed empty
     until the operator's first Prev/Next/Play click re-rendered — the exact defect round 10
-    fixed on the ONLY other blob-driven module (/resources)."""
+    fixed on the ONLY other blob-driven module (/resources).
+
+    ADR-0461 (CI-03) then moved ``chartframe.js`` into the layout HEAD — the callback-time
+    twin of this defect had been left open on every fetch-driven module — so the helper now
+    exists before ANY body script, deferred or not. ``defer`` stays: it is part of this page's
+    byte-pinned contract and harmless; what this test now pins is that the helper precedes
+    ``<main>``, which is the property the first paint actually depends on."""
     assert re.search(r'<script defer src="/static/performance\.js', page), (
         "performance.js must be deferred — see test_r10_resources_contract's twin"
     )
-    # the layout really does load chartframe.js after </main>, which is WHY defer is required
-    assert page.index("</main>") < page.index("/static/chartframe.js")
+    # the layout loads chartframe.js in the HEAD, before <main> (ADR-0461): the helper is
+    # defined before performance.js — deferred or not — can run
+    assert page.index("/static/chartframe.js") < page.index("<main>")
 
 
 def test_first_paint_renders_the_quads_with_no_pageerror(served: str) -> None:

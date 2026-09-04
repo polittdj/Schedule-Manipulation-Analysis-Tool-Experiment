@@ -16402,3 +16402,45 @@ shadows it on PATH).
   identical to #1717's — CI-03 CONFIRMED intermittent. #1717 stays `failure` (attempt 1) / `cancelled` (attempt 2)
   in history by design (never an empty commit to kick CI); this follow-up commit carries the verdict into
   HANDOFF, the kickoff and the ledger row. #632 still open at this follow-up — close it unmerged.
+
+## 2026-09-04 (d) — CI-03 ROOT-CAUSED and FIXED (chartframe.js in the layout head, ADR-0461) + the operator's counterfactual report: working days and the finish activity NAMED (ADR-0462) — v1.0.236
+
+- **Branch:** `claude/polaris-audit-resume-xqte7c` from `origin/main` @ `66364af7` (the #634 docs merge; `main`'s
+  run #1724 for it was `in_progress` at 12:16Z — read its conclusion; #1721 for #633 concluded `success` in full;
+  #632 was closed unmerged at 08:13Z). Package installed fresh (`pip install -e '.[dev,browser]'` — the first
+  attempt died on a PyPI read timeout with a truncated log that LOOKED green; `--retries 8 --timeout 180`).
+- **CI-03 (ADR-0461).** The kickoff's hypothesis (a slow first paint outrunning the sweep's suppressed 5-s wait)
+  was REFUTED by measurement and replaced: every fetch-driven chart module (`cei.js`, `curves.js`, `drift.js`,
+  `scurve.js`, `trend.js`, `sra.js`, … — eleven by census) draws inside its fetch callback, and `chartframe.js`
+  (the only `SFChartFrame`) was emitted AFTER `</main>`; the parser yields while it downloads a sync script,
+  so the callback could run first, throw `SFChartFrame is not defined`, and the module's `.catch` printed
+  "Failed to load the … data." with zero captions. R1 (the asset held 1.5 s): /cei /curves /forecast /scurve
+  /trend → 0 captions + the false sentence, `pageerror` EMPTY; the four `defer`red pages survived. R2 (NO delay,
+  6 CPU hogs + CDP 8×, fresh browser, 12 cold loads × 3 routes, pristine tree): 1/36 → `Failed to load the
+  forecast-drift data.`; max time-to-first-caption 2,494 ms. #1717's own log: the sweep ran in the job's first
+  minute (cold browser, cold server, first cell). FIX: the `chartframe.js` tag moves to the end of the head
+  script group (one line in `web/chrome.py`). Five premise pins re-derived (`test_axis_titles`,
+  `test_dd_line_ledger`, `test_r10_performance_contract`, `test_r10_resources_contract`,
+  `test_margin_dashboard_view`); `docs/DESIGN-SYSTEM.md` §4 re-worded; the sweep's zero-caption line now carries
+  `ready/frame/hosts/svgs/failed/pageerrors` (teeth: on the pristine layout with a slow asset it reads
+  `failed=['Failed to load the bow-wave data.']`). NEW `tests/web/test_chartframe_load_order_browser.py`
+  (1 layout + 6 routes + 1 Chromium slow-asset proof): red 8/8 on the pristine tree, green 8/8 after; mutation
+  (middleware sleep neutralised, constant intact) red by name; the six pinning modules 143 passed / 3 env skips.
+- **CF-01 — the operator's mid-session report (ADR-0462).** "31 working day(s)" on /integrity's counterfactual
+  was `(cf_finish - actual_finish).days` — a calendar-date subtraction under a working-day label
+  (2029-09-28 → 2029-10-29 IS 31 calendar days) while the change-effects table beneath it was already working
+  days; and the two dates were two ACTIVITIES (the network's last finish vs the target) that the panel never told
+  apart. Engine: both deltas are now the CPM's working-minute move over the calendar's day; NEW
+  `finish_uid`/`finish_name`. Page: the finish activity named, the target line carries its own working-day move
+  (recovery / pushed out / no change), one muted line says the two are different activities. /evolution's
+  `_delta_words` and the Ask-the-AI counterfactual fact say "working day(s)". Red-first: engine 2 tests (`7 == 5`,
+  `AttributeError: finish_uid`) → green; page 3 pins red against a pristine scratch copy on `PYTHONPATH` → green;
+  the one data pin on the old number (`test_duplicate_restored_links_are_deduplicated`) re-baselined 7 → 5 with
+  the reason; 449 tests across evolution / integrity / ai / reports / coverage green; `mypy --strict` clean.
+- **Ledger:** CI-03 → CLOSED (root-caused, fixed); CF-01 added to the open operator batch as FIXED with its ASK.
+- **Not done this session (named):** the standing one-design-page-per-session ask (/forecast 09) — the operator's
+  live counterfactual report took the slot under fix-as-verified; CI-04 (the /driving-path header-row race)
+  stays a candidate; the `.catch` conflation ("Failed to load" for a render throw) is a UI-map row.
+- **Version + installers:** 1.0.236; wheel + nine installers rebuilt after the last source edit; lockstep
+  re-run recorded in the follow-up line. Full gate: statics green; the suite's result and the draft PR number
+  are recorded in the follow-up line below.

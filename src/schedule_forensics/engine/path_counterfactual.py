@@ -11,7 +11,11 @@ This module isolates the activities that left the path **without completing** an
 **duration / logic / constraints changed**, reverts exactly those changes to their prior-version
 values, re-runs CPM, and reports what the project finish (and an optional target activity's
 finish) **would have been**. The gap between that counterfactual finish and the real one is the
-schedule time the *changes* — not real progress — removed from the path.
+schedule time the *changes* — not real progress — removed from the path. Both gaps are
+**working days** — the CPM's working-minute move over the calendar's day, the unit every other
+delta in this tool reports — and the project finish is NAMED (``finish_uid`` / ``finish_name``):
+it is the network's last activity, which is usually not the target, so the two finishes are
+different activities and legitimately move by different amounts (ADR-0462).
 
 Everything is computed from the two loaded versions; nothing is fabricated. Completed activities
 are excluded by construction (you cannot "un-complete" delivered work).
@@ -67,12 +71,21 @@ class PathCounterfactual:
     gained_float: tuple[GainedFloatActivity, ...]
     actual_finish: str  # the current version's real computed finish (ISO date)
     counterfactual_finish: str  # the finish with the reverts applied (ISO date)
-    finish_delta_days: int  # counterfactual minus actual; > 0 means the changes pulled finish IN
+    #: counterfactual minus actual in WORKING days (the CPM's own working-minute move divided by
+    #: the calendar's day, rounded — the unit every other delta in this tool reports); > 0 means
+    #: the changes pulled the finish IN. Until ADR-0462 this was a calendar-date subtraction
+    #: printed under a working-day label (the operator's 31 "working" days were 31 calendar days).
+    finish_delta_days: int
     target_uid: int | None = None
     target_name: str | None = None
     target_actual_finish: str | None = None
     target_counterfactual_finish: str | None = None
-    target_delta_days: int | None = None
+    target_delta_days: int | None = None  # WORKING days, same convention as finish_delta_days
+    #: The activity that carries the current version's project finish — the network's last
+    #: early finish — so a page can say WHICH activity "the project finish" is. It is usually
+    #: NOT the target: the two finishes are different activities and move by different amounts.
+    finish_uid: int | None = None
+    finish_name: str | None = None
     #: candidates existed but re-running CPM with the reverts failed (e.g. a cycle) — the panel
     #: degrades to naming the activities without a counterfactual finish.
     uncomputable: bool = field(default=False)
@@ -169,6 +182,21 @@ def compute_path_counterfactual(
     target_name = (
         cur_by[target_uid].name if target_uid is not None and target_uid in cur_by else None
     )
+    # the activity the project finish belongs to: the first, in file order, whose early finish
+    # IS the network finish (cpm.py's own finish-candidate rule)
+    finish_uid = next(
+        (
+            t.unique_id
+            for t in current.tasks
+            if t.unique_id in current_cpm.timings
+            and current_cpm.timings[t.unique_id].early_finish == current_cpm.project_finish
+        ),
+        None,
+    )
+    finish_name = cur_by[finish_uid].name if finish_uid is not None else None
+
+    def _working_days(delta_minutes: int) -> int:
+        return round(delta_minutes / (per_day or 1))
 
     if not reverted:
         # only "gained float" (unchanged) leavers — nothing to revert; report + explain them.
@@ -182,6 +210,8 @@ def compute_path_counterfactual(
             finish_delta_days=0,
             target_uid=target_uid,
             target_name=target_name,
+            finish_uid=finish_uid,
+            finish_name=finish_name,
         )
 
     # Build the counterfactual schedule: revert the candidates' task fields, and revert the logic
@@ -228,6 +258,8 @@ def compute_path_counterfactual(
             finish_delta_days=0,
             target_uid=target_uid,
             target_name=target_name,
+            finish_uid=finish_uid,
+            finish_name=finish_name,
             uncomputable=True,
         )
 
@@ -239,13 +271,14 @@ def compute_path_counterfactual(
         and target_uid in current_cpm.timings
         and target_uid in cf_cpm.timings
     ):
-        ta = offset_to_datetime(
-            current.project_start, current_cpm.timings[target_uid].early_finish, current.calendar
-        ).date()
-        tc = offset_to_datetime(
-            cf.project_start, cf_cpm.timings[target_uid].early_finish, cf.calendar
-        ).date()
-        t_actual, t_cf, t_delta = ta.isoformat(), tc.isoformat(), (tc - ta).days
+        ta_minutes = current_cpm.timings[target_uid].early_finish
+        tc_minutes = cf_cpm.timings[target_uid].early_finish
+        ta = offset_to_datetime(current.project_start, ta_minutes, current.calendar).date()
+        tc = offset_to_datetime(cf.project_start, tc_minutes, cf.calendar).date()
+        # the same project start and calendar on both sides (cf is a copy of current), so the
+        # minute offsets are directly comparable — a working-day move, never a calendar count
+        t_actual, t_cf = ta.isoformat(), tc.isoformat()
+        t_delta = _working_days(tc_minutes - ta_minutes)
 
     return PathCounterfactual(
         prior_label=prior.source_file or prior.name,
@@ -254,10 +287,12 @@ def compute_path_counterfactual(
         gained_float=tuple(gained_float),
         actual_finish=actual_finish.isoformat(),
         counterfactual_finish=cf_finish.isoformat(),
-        finish_delta_days=(cf_finish - actual_finish).days,
+        finish_delta_days=_working_days(cf_cpm.project_finish - current_cpm.project_finish),
         target_uid=target_uid,
         target_name=target_name,
         target_actual_finish=t_actual,
         target_counterfactual_finish=t_cf,
         target_delta_days=t_delta,
+        finish_uid=finish_uid,
+        finish_name=finish_name,
     )

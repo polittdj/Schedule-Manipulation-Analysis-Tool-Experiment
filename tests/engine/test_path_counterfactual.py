@@ -145,3 +145,46 @@ def test_gained_float_only_returns_a_no_revert_explanation() -> None:
     assert pc.reverted == ()  # nothing to revert — the leaver was not itself changed
     assert [g.uid for g in pc.gained_float] == [1]
     assert pc.finish_delta_days == 0
+
+
+# ── units and identity (operator 2026-09-04, ADR-0462) ─────────────────────────────────────
+
+
+def test_finish_deltas_are_working_days_not_calendar_days() -> None:
+    """The operator's /integrity read "31 working day(s)" for a 2029-09-28 → 2029-10-29 move —
+    which is exactly 31 CALENDAR days (about 21 working days on a five-day calendar). The delta
+    was a ``date`` subtraction wearing a working-day label. Every other delta this tool reports
+    (``change_effects``) is the CPM's own working-minute move divided by the calendar day; the
+    counterfactual now says the same thing in the same unit.
+
+    Here the restored 10-day A pushes C from Tue 2026-01-13 to Tue 2026-01-20: SEVEN calendar
+    days, FIVE working days. The pre-fix engine returned 7."""
+    prior = _sched("v1", 10 * DAY)
+    current = _sched("v2", 3 * DAY)
+    pc = compute_path_counterfactual(
+        prior, current, compute_cpm(prior), compute_cpm(current), target_uid=3
+    )
+    assert pc is not None
+    assert (pc.actual_finish, pc.counterfactual_finish) == ("2026-01-13", "2026-01-20")
+    assert pc.finish_delta_days == 5, pc.finish_delta_days  # working days, not the 7 calendar
+    assert pc.target_delta_days == 5, pc.target_delta_days  # C is the finish activity here
+
+
+def test_the_project_finish_activity_is_named_and_can_differ_from_the_target() -> None:
+    """Two dates on one panel confused the operator: "the project finish would have been X"
+    and "Target UID 152 would have finished Y". They are two DIFFERENT activities — the
+    network's last finish and the chosen target — so the engine now names the finish activity,
+    and a target that the reverted activities do not drive reads a zero move while the project
+    still moves. With the target on B (UID 2): restoring A's duration moves C (the finish) by
+    5 working days and B by none."""
+    prior = _sched("v1", 10 * DAY)
+    current = _sched("v2", 3 * DAY)
+    pc = compute_path_counterfactual(
+        prior, current, compute_cpm(prior), compute_cpm(current), target_uid=2
+    )
+    assert pc is not None
+    assert (pc.finish_uid, pc.finish_name) == (3, "C")
+    assert pc.finish_delta_days == 5
+    assert pc.target_uid == 2 and pc.target_name == "B"
+    assert pc.target_delta_days == 0
+    assert pc.target_actual_finish == pc.target_counterfactual_finish == "2026-01-09"

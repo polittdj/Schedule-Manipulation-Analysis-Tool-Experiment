@@ -672,25 +672,55 @@ and re-runs CPM. A <b class=fail>positive</b> value is the working-day slip the 
             logging.getLogger("schedule_forensics").warning("path counterfactual failed: %s", exc)
             cf = None
         if cf is not None and cf.reverted:
+            # ADR-0462 (operator 2026-09-04): the delta is the engine's WORKING-day move (it was
+            # a calendar-date subtraction printed as "working day(s)"), the project finish is
+            # NAMED — it is the network's last activity, not the target — and the target line
+            # carries its own working-day move, so two different dates on one panel read as
+            # two different activities rather than as a contradiction.
             delta_txt = (
                 f" — <b class=fail>{cf.finish_delta_days} working day(s)</b> of apparent"
                 " recovery came from the changes themselves, not from performed work"
                 if cf.finish_delta_days > 0
                 else ""
             )
+            finish_who = (
+                f" (the network's last activity, UID {cf.finish_uid} "
+                f"&ldquo;{_e(cf.finish_name or '')}&rdquo;)"
+                if cf.finish_uid is not None
+                else ""
+            )
             reverted = ", ".join(str(r.uid) for r in cf.reverted[:12])
             tgt = ""
             if cf.target_uid is not None and cf.target_counterfactual_finish:
+                td = cf.target_delta_days
+                if td is not None and td > 0:
+                    tgt_delta = (
+                        f" — <b class=fail>{td} working day(s)</b> of apparent recovery on the"
+                        " target came from the changes themselves"
+                    )
+                elif td is not None and td < 0:
+                    tgt_delta = f" — the changes pushed the target out <b>{-td} working day(s)</b>"
+                elif td == 0:
+                    tgt_delta = " — <b>no change</b> on the target"
+                else:
+                    tgt_delta = ""
+                different = (
+                    "<p class=muted>The project finish and the target are different activities,"
+                    " so their two moves differ; each is the CPM re-run on the same reverted"
+                    " network.</p>"
+                    if cf.finish_uid is not None and cf.finish_uid != cf.target_uid
+                    else ""
+                )
                 tgt = (
                     f"<p>Target UID {cf.target_uid} ({_e(cf.target_name or '')}): would have"
                     f" finished <b>{_e(cf.target_counterfactual_finish)}</b> instead of"
-                    f" <b>{_e(cf.target_actual_finish or '?')}</b>.</p>"
+                    f" <b>{_e(cf.target_actual_finish or '')}</b>{tgt_delta}.</p>{different}"
                 )
             cf_html = f"""
 <div class="panel counterfactual">{_panel_head("Counterfactual — without these changes", tools=_shell_tools(), prov=pair_prov)}
 <p>Activities left the critical/driving path after their own duration / logic / constraints
 changed (UIDs {_e(reverted)}). Reverting exactly those changes and re-running CPM: the project
-finish would have been <b>{_e(cf.counterfactual_finish)}</b> instead of the reported
+finish{finish_who} would have been <b>{_e(cf.counterfactual_finish)}</b> instead of the reported
 <b>{_e(cf.actual_finish)}</b>{delta_txt}.</p>{tgt}</div>"""
         empty = (
             ""

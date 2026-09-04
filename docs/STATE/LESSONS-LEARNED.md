@@ -435,6 +435,87 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-04 (b) — Three "no captions rendered" strikes were ONE load-order race; a calendar subtraction wore a working-day label
+
+- **A wait whose failure reads the same as "not yet" reports nothing.** The caption sweep's suppressed
+  5-s wait made "rendered nothing" and "had not rendered yet" identical, so three CI strikes carried zero
+  evidence and the ledger's diagnosis (a slow first paint) was a hypothesis dressed as a plan. Measured
+  first: at 8× CPU throttle under six hogs the first caption still arrived inside 2.5 s — the wait never
+  bit. A zero-caption cell now reports `readyState` / `SFChartFrame` / hosts / svgs / the page's own
+  "Failed to load" sentence / page errors, so the next strike names its mechanism (ADR-0461).
+- **Fix the class where the dependency lives, not the consumer where it bites.** The parse-time form of
+  this defect had been fixed FOUR times per module with `defer` (resources, performance, margin_dashboard,
+  volatility) while eleven fetch-callback consumers stayed exposed, because "after the fetch" felt like
+  "after the script". The parser yields while it downloads a sync script; a callback can run first.
+  Emitting `chartframe.js` in the layout head fixed all eleven with one moved line.
+- **A `.catch` that swallows a `ReferenceError` prints a FALSE sentence, and no oracle sees it.** "Failed to
+  load the bow-wave data." with the data loaded, `pageerror` empty. The deterministic reproduction was
+  route interception — and the first attempt measured NOTHING because every static URL carries
+  `?v=<version>`, so a glob without a trailing `*` never matched. A probe that shows no effect must first
+  prove its intervention landed.
+- **Premise pins earn their keep only when you re-derive on firing.** Five tests asserted `</main>` before
+  `chartframe.js` as the REASON for something and each said "re-derive, do not just delete". They fired;
+  each got its new reason (the DOM helpers stay in `gantt.js` by filing, not by necessity).
+- **A mutation must break what the test guards, not the test's own constant.** `SLOW_MS = 0` also zeroed
+  the teeth threshold and the proof stayed green; neutralising the middleware's sleep with the constant
+  intact made it red by name.
+- **A number's UNIT is part of its provenance.** `(cf_finish - actual_finish).days` is a calendar-date
+  subtraction; the panel printed it as "working day(s)"; the table beneath it (`change_effects`) used
+  working minutes; nobody had compared the two units on one page. The operator's "31 working days" were
+  31 calendar days (ADR-0462). Every delta a page prints comes from the engine's working minutes over the
+  calendar's day — the model's own rule, "the days conversion happens only at the presentation boundary".
+- **Two dates that look like a contradiction are usually two SUBJECTS.** "The project finish" and
+  "Target UID 152" are different activities; a sentence that does not name its subject reads as a
+  contradiction. Name the activity, give each its own move, and say in one line that they differ.
+- **The lessons log's own order is a rule too.** Part VIII says newest first; the previous entry had
+  been appended at the bottom. Moved, verbatim.
+
+### 2026-09-04 — WP5 and the third design page (ADR-0459 / ADR-0460)
+
+- **A mutation that SURVIVES is a claim about the fixture before it is a claim about the code.** The
+  margin stepper's "publish the frame" line survived its mutation and the first instinct was "the
+  test is weak". The measurement said otherwise: the TP4 corpus has no task named *margin*, so the
+  margin burndown renders no stepper on /trend at all — the mutated line never executed. The fix
+  was a second corpus (a synthetic two-version pair whose "Schedule Margin" burns 10 → 5 days,
+  `/api/margin` verified before the test was written), after which the same mutation went red by
+  name. **Before calling a surviving mutant a weak test, ask whether the fixture reaches the code.**
+- **A real `webkitdirectory` FileList arrives in filesystem-traversal order.** On this box Artemis
+  came before Apollo. The UI now sorts sub-folders by name so the same folder reads the same way on
+  every machine — and it was the test that assumed alphabetical order that caught it. A fake-entry
+  fixture would have handed the names in the order the test author typed them and hidden this.
+- **Playwright 1.62 uploads a REAL directory to a `webkitdirectory` input** (`set_input_files(dir)`);
+  the FileList carries genuine `webkitRelativePath` values. Measured with a 5-line probe before the
+  test was designed. When the platform can supply real objects, the fake-entry machinery is for the
+  one gesture a test cannot mint (an OS drag), nothing else.
+- **A line-number-keyed pin is edited with same-line-count replacements, and new code goes below the
+  last pin.** r11 pins each axis caption by (file, LINE, digest). Six edits above `trend.js`'s first
+  pin were single-line replacements; `sfDesignCursor` was defined after L920; the patch script
+  asserted the pin lines `[483, 587, 712, 830, 920]` unchanged before writing. A byte-frozen page
+  script (`volatility.js`) changes only by a dated, commented re-baseline — never silently.
+- **An intake screenshot's FILE NAME is testimony.** `screenshots-v2/05-screen.png` shows Chapter
+  11. The design truth was recovered by EXECUTING the canvas (the npm registry is reachable; every
+  CDN is not) and viewing artboard 05 in four themes — the recipe ADR-0456 paid for worked
+  unchanged.
+- **Two sessions in flight need a merge plan, not a pause.** The operator offered to wait for #630's
+  checks. The right move was to sequence: build on `main`, number ADRs after the in-flight PR's,
+  hold the version bump / installer rebuild / docs rotation to the very end, and write the
+  re-merge + rebuild step into the handoff (the lockstep pin compares the embedded wheel to `src/`
+  byte-for-byte, so whichever PR lands second rebuilds).
+- **"One cursor" over 21 charts is achievable through the buttons that already exist.** A chip
+  clicks each chart's own Next the number of times that lands it on the chosen version, after each
+  stepper publishes the frame it shows as `data-frame`. Nothing renders any other way than the
+  buttons render it, the ADR-0275 coordinator contract holds, and the census sees no new control —
+  the cheapest way to add a design gesture without adding functionality.
+- **Compare TREE hashes before blaming a squash merge, and never spend a `main` re-run while a push is
+  imminent.** `main`'s run for the #631 squash went red on one caption-sweep cell while
+  `d9bac11a^{tree}` == `46a96ec6^{tree}` — the same bytes had passed the same job 46 minutes earlier
+  on the PR head. That equality is the refutation; a red X on a merge commit is a claim about the
+  RUNNER until the trees differ. The failed job's single re-run was then cancelled by the concurrency
+  group 40 s in, because the next docs-only squash landed on `main` — when the product code is
+  unchanged, the NEXT push's run is the re-run; read it instead of spending the one permitted re-run
+  into a cancellation. (CI-03's third strike; its root cause is still a hypothesis in the ledger.)
+
+
 ### 2026-09-03 (e) — A differential that comes back IDENTICAL is the finding; the page's own sentences were the defect; measure frame times on a QUIET box
 
 - **"Not picking up the same findings it once did" reproduced as STATE, not code.** The same inputs through
@@ -6273,48 +6354,3 @@ and that is the lesson worth keeping.
   ribbon defect would never have run on the machine that gates merges. A repo-wide guard caught it.
   **Before copying a test's scaffolding, check whether that scaffolding is what a recent ADR was
   about.**
-
-### 2026-09-04 — WP5 and the third design page (ADR-0459 / ADR-0460)
-
-- **A mutation that SURVIVES is a claim about the fixture before it is a claim about the code.** The
-  margin stepper's "publish the frame" line survived its mutation and the first instinct was "the
-  test is weak". The measurement said otherwise: the TP4 corpus has no task named *margin*, so the
-  margin burndown renders no stepper on /trend at all — the mutated line never executed. The fix
-  was a second corpus (a synthetic two-version pair whose "Schedule Margin" burns 10 → 5 days,
-  `/api/margin` verified before the test was written), after which the same mutation went red by
-  name. **Before calling a surviving mutant a weak test, ask whether the fixture reaches the code.**
-- **A real `webkitdirectory` FileList arrives in filesystem-traversal order.** On this box Artemis
-  came before Apollo. The UI now sorts sub-folders by name so the same folder reads the same way on
-  every machine — and it was the test that assumed alphabetical order that caught it. A fake-entry
-  fixture would have handed the names in the order the test author typed them and hidden this.
-- **Playwright 1.62 uploads a REAL directory to a `webkitdirectory` input** (`set_input_files(dir)`);
-  the FileList carries genuine `webkitRelativePath` values. Measured with a 5-line probe before the
-  test was designed. When the platform can supply real objects, the fake-entry machinery is for the
-  one gesture a test cannot mint (an OS drag), nothing else.
-- **A line-number-keyed pin is edited with same-line-count replacements, and new code goes below the
-  last pin.** r11 pins each axis caption by (file, LINE, digest). Six edits above `trend.js`'s first
-  pin were single-line replacements; `sfDesignCursor` was defined after L920; the patch script
-  asserted the pin lines `[483, 587, 712, 830, 920]` unchanged before writing. A byte-frozen page
-  script (`volatility.js`) changes only by a dated, commented re-baseline — never silently.
-- **An intake screenshot's FILE NAME is testimony.** `screenshots-v2/05-screen.png` shows Chapter
-  11. The design truth was recovered by EXECUTING the canvas (the npm registry is reachable; every
-  CDN is not) and viewing artboard 05 in four themes — the recipe ADR-0456 paid for worked
-  unchanged.
-- **Two sessions in flight need a merge plan, not a pause.** The operator offered to wait for #630's
-  checks. The right move was to sequence: build on `main`, number ADRs after the in-flight PR's,
-  hold the version bump / installer rebuild / docs rotation to the very end, and write the
-  re-merge + rebuild step into the handoff (the lockstep pin compares the embedded wheel to `src/`
-  byte-for-byte, so whichever PR lands second rebuilds).
-- **"One cursor" over 21 charts is achievable through the buttons that already exist.** A chip
-  clicks each chart's own Next the number of times that lands it on the chosen version, after each
-  stepper publishes the frame it shows as `data-frame`. Nothing renders any other way than the
-  buttons render it, the ADR-0275 coordinator contract holds, and the census sees no new control —
-  the cheapest way to add a design gesture without adding functionality.
-- **Compare TREE hashes before blaming a squash merge, and never spend a `main` re-run while a push is
-  imminent.** `main`'s run for the #631 squash went red on one caption-sweep cell while
-  `d9bac11a^{tree}` == `46a96ec6^{tree}` — the same bytes had passed the same job 46 minutes earlier
-  on the PR head. That equality is the refutation; a red X on a merge commit is a claim about the
-  RUNNER until the trees differ. The failed job's single re-run was then cancelled by the concurrency
-  group 40 s in, because the next docs-only squash landed on `main` — when the product code is
-  unchanged, the NEXT push's run is the re-run; read it instead of spending the one permitted re-run
-  into a cancellation. (CI-03's third strike; its root cause is still a hypothesis in the ledger.)
