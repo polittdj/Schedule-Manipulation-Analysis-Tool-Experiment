@@ -16348,3 +16348,25 @@ shadows it on PATH).
   ran inside this full run. Draft **PR #631** carries the work; CI on head `9e308d36` was running at
   this record (`cui-guard` green; `browser` / `test (3.11)` / `test (3.13)` / `floor` / `linux` /
   `windows` in progress).
+
+## 2026-09-04 (b) — PR #631 MERGED; branch restarted; main's merge-commit run in progress (docs-only)
+
+- **Merge:** #631 (WP5 · ADR-0459 + /trend on the design · ADR-0460, v1.0.235) marked ready and squash-merged by the
+  operator at 04:55:43Z → `main` @ `d9bac11a`. On its merged head `46a96ec6` all eight checks were green (`cui-guard`,
+  `check`, `test (3.11)`, `test (3.13)`, `browser`, `floor`, `linux`, `windows`); GitHub reported it `clean`. `main`'s
+  own run for the merge commit is **#1717** (created 04:55:47Z — 4 s after the push), in progress at this record;
+  #1714 (the #630 merge) concluded `success`, so `main` was green going in.
+- **Hygiene:** `git fetch --prune` (GitHub deleted the merged head), the branch restarted on `origin/main` @ `d9bac11a`
+  (never an amend of the squash commit); the PR subscription and the 05:25Z check-in Routine removed. No product code
+  in this entry — docs only; drift guards recorded below.
+- **Context:** this session closed at ~84% of its assumed 800k wall — WP6 and the next design page (/forecast 09 or
+  /performance 07) start in a FRESH session from `docs/STATE/NEXT-SESSION-PROMPT.md`.
+- **Draft PR for this record:** #633 (`claude/continue-yznv26` restarted on `origin/main` @ `d9bac11a`).
+- **CI-04 candidate (recorded, not fixed):** the OTHER session's docs-only draft **#632** (`claude/record-630-merge-0904`
+  @ `73e7a4dc`, branched from `19e7414` BEFORE #631 — it does NOT contain current `main`) failed its `browser` job on ONE
+  cell (1 failed / 426 passed): `tests/web/test_driving_path_whole_schedule_browser.py:104` — the /driving-path-embed vs
+  /path header-row equality oracle saw EXTRA timescale tick labels (`Mar 9 … Apr 6 … 13`) on one side, i.e. the two pages
+  were read at different render/zoom states — a timing race, not the diff's (docs-only). The same module was GREEN on
+  #631's merged head an hour later with the identical Chrome build. Queue it beside CI-03 for the caption/header-sweep
+  root-cause PR. **#632 itself is SUPERSEDED**: `main` already records #630's merge (via #631's state docs) and #633
+  records #631's; merging #632 would conflict with or regress HANDOFF/kickoff — recommended to the operator: close it.
