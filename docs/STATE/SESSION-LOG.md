@@ -16268,3 +16268,8 @@ shadows it on PATH).
   parity gate `-m parity` **72 passed in 15:45**, exit 0 — Law 2 unmoved · then wheel + nine installers rebuilt at
   v1.0.234 (MPXJ pin `42d92dc9` unchanged; the clone deepened 300 so the pin is a real touch, not the graft boundary) ·
   `tests/installer/test_installers.py` **68 passed** · drift guards 12 passed.
+- **PR:** draft **#630** from `claude/polaris-batch-0903e-integrity-timescale` (head `7f03863` + the merge of `origin/main`
+  @ `f2be8a0` — #629's squash landed while this session ran; the five state-doc conflicts resolved with this branch's
+  versions, byte-identical to #629's content plus this session's additions, `git diff 6a93b6c f2be8a0 -- docs` empty);
+  subscribed for CI/review events; a check-in Routine armed ~70 min out. The GitHub MCP integration returned 403 on PR
+  creation; the PR was opened through the proxied REST API.
