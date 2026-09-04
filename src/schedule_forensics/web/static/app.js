@@ -698,6 +698,7 @@
       window.requestAnimationFrame(() => {
         winScrollQueued = false;
         if (!winState || !lastBody) return;
+        trueSpacers(pane, lastBody.tbody);
         const rowH = winRowH > 0 ? winRowH : 18;
         const headH = lastBody.tbody.offsetTop || 0;
         const visStart = Math.floor(Math.max(0, pane.scrollTop - headH) / rowH);
@@ -705,10 +706,126 @@
         const margin = WINDOW_OVERSCAN / 2;
         if ((visStart - winState.start < margin && winState.start > 0) ||
             (winState.end - visEnd < margin && winState.end < winState.total)) {
-          renderBody(lastBody.tbody, lastBody.fields, lastBody.axis, lastBody.grid);
+          reaimWindow(pane);
         }
       });
     }, { passive: true });
+  }
+  // Slide the materialized window to the pane's current scroll position by touching ONLY the
+  // rows that enter or leave it (ADR-0458). Measured at operator scale (2,280 rows, two files)
+  // BEFORE this: every re-aim re-sorted the population, emptied the tbody and repainted the
+  // whole ~115-row window — 100-266 ms per scroll step, p95 scroll frames of 100-183 ms, half of
+  // it native layout of rows that were already on screen. Rows that stay keep their nodes (and
+  // their sticky offsets); the spacers absorb the rows that left. A window that no longer
+  // overlaps the old one (a jump), or any body whose paint context changed, takes the full
+  // renderBody path as before.
+  // copy the frozen-column pinning (position:sticky + left offset + classes) from one row to another
+  function freezeLike(from, to) {
+    const src = from.children, dst = to.children;
+    for (let c = 0; c < src.length && c < dst.length; c++) {
+      if (src[c].style.position !== "sticky") break; // the timeline cell and beyond are not frozen
+      dst[c].style.position = "sticky";
+      dst[c].style.left = src[c].style.left;
+      dst[c].classList.add("sf-frozen-col");
+      if (src[c].classList.contains("sf-frozen-last")) dst[c].classList.add("sf-frozen-last");
+    }
+  }
+  // Re-true the two spacers to the RENDERED pitch when it drifted from the estimate the paint
+  // used (the initial paint runs before the table is connected and assumes 18 px; the first
+  // scroll is where the real pitch is known). The pane keeps its place: the top spacer's delta
+  // is added back to scrollTop.
+  function trueSpacers(pane, tbody) {
+    const ws = winState;
+    if (!ws || !tbody.isConnected) return;
+    const pitch = measuredPitch(tbody);
+    if (!(pitch > 0) || Math.abs(pitch - winRowH) < 0.25) return;
+    winRowH = pitch;
+    const sps = tbody.querySelectorAll("tr.g-vspacer td");
+    let delta = 0;
+    if (ws.start > 0 && sps.length) {
+      const oldH = parseFloat(sps[0].style.height) || 0, newH = Math.round(ws.start * pitch);
+      sps[0].style.height = newH + "px";
+      delta = newH - oldH;
+    }
+    if (ws.end < ws.total && sps.length && (ws.start === 0 || sps.length > 1)) {
+      sps[sps.length - 1].style.height = Math.round((ws.total - ws.end) * pitch) + "px";
+    }
+    if (delta && pane) pane.scrollTop += delta;
+  }
+  // the rendered row pitch of a CONNECTED body (0 when it cannot be measured)
+  function measuredPitch(tbody) {
+    if (!tbody.isConnected) return 0;
+    const trs = tbody.querySelectorAll("tr:not(.g-vspacer)");
+    if (trs.length < 2) return 0;
+    const last = trs[trs.length - 1];
+    const span = last.offsetTop + last.offsetHeight - trs[0].offsetTop;
+    return span > 0 ? span / trs.length : 0;
+  }
+  function reaimWindow(pane) {
+    const ws = winState, body = lastBody;
+    if (!ws || !body || !ws.nodes || !body.paintOne || !pane) return;
+    const tbody = body.tbody;
+    if (!tbody.isConnected) return;
+    const rowH = winRowH > 0 ? winRowH : 18;
+    const headH = tbody.offsetTop || 0;
+    const visTop = Math.max(0, pane.scrollTop - headH);
+    const nStart = Math.max(0, Math.floor(visTop / rowH) - WINDOW_OVERSCAN);
+    const wCount = Math.ceil((pane.clientHeight || 600) / rowH) + 2 * WINDOW_OVERSCAN;
+    let nEnd = Math.min(ws.total, nStart + wCount);
+    if (ws.total - nEnd <= WINDOW_OVERSCAN / 2) nEnd = ws.total;
+    if (nStart === ws.start && nEnd === ws.end) return;
+    if (nStart >= ws.end || nEnd <= ws.start) { // no overlap: a jump — repaint outright
+      renderBody(tbody, body.fields, body.axis, body.grid);
+      return;
+    }
+    const keep = pane.scrollTop;
+    const cols = body.fields.length + (body.axis ? 1 : 0);
+    const sps = tbody.querySelectorAll("tr.g-vspacer");
+    let topSp = ws.start > 0 ? sps[0] : null;
+    let botSp = ws.end < ws.total ? sps[sps.length - 1] : null;
+    // rows that left the window
+    for (let i = ws.start; i < Math.min(nStart, ws.end); i++) tbody.removeChild(ws.nodes[i - ws.start]);
+    for (let i = Math.max(nEnd, ws.start); i < ws.end; i++) tbody.removeChild(ws.nodes[i - ws.start]);
+    const nodes = new Array(nEnd - nStart);
+    const entered = [];
+    for (let i = Math.max(nStart, ws.start); i < Math.min(nEnd, ws.end); i++) nodes[i - nStart] = ws.nodes[i - ws.start];
+    // rows that entered above the surviving slice (in order, right after the top spacer)
+    const firstKept = nodes.find((n) => n) || botSp || null;
+    for (let i = nStart; i < Math.min(ws.start, nEnd); i++) {
+      const tr = body.paintOne(ws.rows[i]);
+      tbody.insertBefore(tr, firstKept);
+      nodes[i - nStart] = tr;
+      entered.push(tr);
+    }
+    // ... and below it (before the bottom spacer)
+    for (let i = Math.max(ws.end, nStart); i < nEnd; i++) {
+      const tr = body.paintOne(ws.rows[i]);
+      tbody.insertBefore(tr, botSp);
+      nodes[i - nStart] = tr;
+      entered.push(tr);
+    }
+    // spacers: keep the scroll extent truthful for the rows outside the window, at the pitch
+    // the browser actually laid out (the initial paint measures 18 px before the table is
+    // connected; the first re-aim is where the real pitch is known)
+    const pitch = measuredPitch(tbody);
+    if (pitch > 0) winRowH = pitch;
+    const rowPx = winRowH > 0 ? winRowH : rowH;
+    if (nStart > 0) {
+      if (!topSp) { topSp = vSpacer(cols, 0); tbody.insertBefore(topSp, tbody.firstChild); }
+      topSp.firstChild.style.height = Math.round(nStart * rowPx) + "px";
+    } else if (topSp) { tbody.removeChild(topSp); topSp = null; }
+    if (nEnd < ws.total) {
+      if (!botSp) { botSp = vSpacer(cols, 0); tbody.appendChild(botSp); }
+      botSp.firstChild.style.height = Math.round((ws.total - nEnd) * rowPx) + "px";
+    } else if (botSp) { tbody.removeChild(botSp); botSp = null; }
+    winState = { start: nStart, end: nEnd, total: ws.total, rows: ws.rows, nodes: nodes };
+    // pin the entered rows' frozen columns by COPYING a surviving row's sticky offsets — no
+    // header-width read, so no forced layout in the middle of the re-aim (SFGantt.freezeColumns
+    // measures the header; measured at operator scale that read alone doubled the frame)
+    const survivor = nodes.find((n) => n && n.classList && entered.indexOf(n) < 0);
+    if (survivor) entered.forEach((tr) => freezeLike(survivor, tr));
+    if (pane.scrollTop !== keep) pane.scrollTop = keep;
+    window.requestAnimationFrame(function () { drawLinks(tbody.parentNode); });
   }
   window.addEventListener("beforeprint", () => {
     if (winState && lastBody) { windowFullOnce = true; renderBody(lastBody.tbody, lastBody.fields, lastBody.axis, lastBody.grid); }
@@ -727,13 +844,12 @@
       });
     // flat file + default order -> derive the MS-Project hierarchy view from the WBS codes
     if (derivedMode() && sortKey === "order") rows = withWbsRollups(rows);
-    lastBody = { tbody, fields, axis, grid };
     const pane = document.getElementById("grid");
     attachWindowScroll(pane);
     // capture BEFORE the clear: emptying the tbody clamps the pane's scrollTop to 0
     let keepTop = pane ? pane.scrollTop : 0;
     tbody.innerHTML = "";
-    const paintOne = (act) => {
+    const paintOne = (act) => { // builds one row (the scroll re-aim paints entering rows with it)
       const tr = el("tr");
       if (act.__wbsRollup) {
         tr.className = "sum wbs-rollup";
@@ -755,8 +871,9 @@
       });
       if (axis) tr.appendChild(timelineCell(act, axis, grid));
       if (!act.__wbsRollup) tr.addEventListener("click", () => drill(act));
-      tbody.appendChild(tr);
+      return tr;
     };
+    lastBody = { tbody, fields, axis, grid, paintOne };
     const cols = fields.length + (axis ? 1 : 0);
     const wantWindow = !windowFullOnce && rows.length >= WINDOW_MIN_ROWS;
     windowFullOnce = false;
@@ -770,9 +887,10 @@
       let wEnd = Math.min(rows.length, wStart + wCount);
       if (rows.length - wEnd <= WINDOW_OVERSCAN / 2) wEnd = rows.length; // paint a short tail outright
       if (wStart > 0) tbody.appendChild(vSpacer(cols, wStart * rowH));
-      for (let wi = wStart; wi < wEnd; wi++) paintOne(rows[wi]);
+      const nodes = new Array(wEnd - wStart);
+      for (let wi = wStart; wi < wEnd; wi++) tbody.appendChild(nodes[wi - wStart] = paintOne(rows[wi]));
       if (wEnd < rows.length) tbody.appendChild(vSpacer(cols, (rows.length - wEnd) * rowH));
-      winState = { start: wStart, end: wEnd, total: rows.length, rows };
+      winState = { start: wStart, end: wEnd, total: rows.length, rows, nodes };
       // refine the pitch from what actually painted (a connected paint only), then re-true the
       // spacers so a jump-to-bottom lands on the tail; a top-spacer change shifts the content
       // under the viewport, so the pane position is compensated by the same delta
@@ -794,7 +912,7 @@
         }
       }
     } else {
-      rows.forEach(paintOne);
+      rows.forEach((act) => tbody.appendChild(paintOne(act)));
     }
     if (!rows.length) {
       const tr = el("tr");
@@ -824,25 +942,34 @@
   function drawLinks(table) {
     const pane = document.getElementById("grid");
     if (!pane || !table || !table.isConnected) return;
-    const old = pane.querySelector("svg.g-links");
-    if (old) old.parentNode.removeChild(old);
-    if (!linksOn()) return;
+    let svg = pane.querySelector("svg.g-links");
+    if (!linksOn()) { if (svg) svg.parentNode.removeChild(svg); return; }
     if (getComputedStyle(pane).position === "static") pane.style.position = "relative";
     const anchors = {}; // uid -> {x1 (left), x2 (right), y (mid)} in pane content coords
     const svgNS = "http://www.w3.org/2000/svg";
-    const svg = document.createElementNS(svgNS, "svg");
-    svg.setAttribute("class", "g-links");
-    svg.setAttribute("width", table.scrollWidth);
-    svg.setAttribute("height", table.offsetHeight);
-    pane.appendChild(svg);
+    // ONE overlay per pane, reused across repaints (ADR-0458): re-creating a table-sized SVG
+    // (36,000 x 37,000 px at operator scale) on every scroll re-aim re-layered and re-painted the
+    // whole pane — measured as the largest residual scroll cost (p50 67-83 ms/frame with links on,
+    // 17 ms with them off). Its size attributes are rewritten only when the table's size moved.
+    if (!svg) {
+      svg = document.createElementNS(svgNS, "svg");
+      svg.setAttribute("class", "g-links");
+      pane.appendChild(svg);
+    }
+    const w = String(table.scrollWidth), h = String(table.offsetHeight);
+    if (svg.getAttribute("width") !== w) svg.setAttribute("width", w);
+    if (svg.getAttribute("height") !== h) svg.setAttribute("height", h);
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
     const base = svg.getBoundingClientRect();
+    let winTop = Infinity, winBottom = -Infinity; // the materialized rows' y-range (content coords)
     table.querySelectorAll("tbody tr[data-uid]").forEach(function (tr) {
       const bar = tr.querySelector(".g-bar, .g-ms");
       if (!bar) return;
       const r = bar.getBoundingClientRect();
-      anchors[tr.getAttribute("data-uid")] = {
-        x1: r.left - base.left, x2: r.right - base.left, y: r.top - base.top + r.height / 2,
-      };
+      const y = r.top - base.top + r.height / 2;
+      if (y < winTop) winTop = y;
+      if (y > winBottom) winBottom = y;
+      anchors[tr.getAttribute("data-uid")] = { x1: r.left - base.left, x2: r.right - base.left, y: y };
     });
     // windowed grid: rows outside the materialized slice are anchored by INDEX MATH on the
     // same axis (x from the bar's dates, y from the spacer + row pitch), so a long connector
@@ -869,12 +996,24 @@
       }
     }
     const frag = document.createDocumentFragment();
+    // a link is drawn when it can be SEEN from the materialized window: an endpoint inside it,
+    // or an elbow whose vertical run crosses it (a long connector between two off-window rows
+    // still shows as the vertical line through the viewport). Links entirely above or below
+    // the window are not painted — on a 2,280-row file that was every relationship, every
+    // re-aim, into one overlay.
+    const winMode = !!(winState && isFinite(winTop));
+    const visible = function (a, b) {
+      if (!winMode) return true;
+      const lo = Math.min(a.y, b.y), hi = Math.max(a.y, b.y);
+      return (a.y >= winTop && a.y <= winBottom) || (b.y >= winTop && b.y <= winBottom) ||
+        (lo < winTop && hi > winBottom);
+    };
     activities.forEach(function (act) {
       const to = anchors[act.unique_id];
       if (!to) return;
       (act.predecessors || []).forEach(function (pr) {
         const from = anchors[pr.uid];
-        if (!from) return;
+        if (!from || !visible(from, to)) return;
         // anchor points per dependency type (FS default): FS pred-right -> succ-left,
         // SS pred-left -> succ-left, FF pred-right -> succ-right, SF pred-left -> succ-right
         const tp = pr.type || "FS";

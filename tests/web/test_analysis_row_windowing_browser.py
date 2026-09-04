@@ -165,3 +165,153 @@ def test_find_reaches_a_row_outside_the_window(browser: Any, served: tuple[str, 
     )
     assert hit is not None and "row-found" in hit, f"Find did not mark the tail row: {hit}"
     page.context.close()
+
+
+# ── ADR-0458: a scroll re-aim keeps the rows that stay on screen (incremental window) ────────
+
+_MARK_MID = """() => { const g = document.getElementById('grid');
+  const trs = [...g.querySelectorAll('tbody tr[data-uid]')];
+  const mid = trs[Math.floor(trs.length / 2)];
+  mid.__sfProbe = true;
+  return {uid: mid.getAttribute('data-uid'), start: trs[0].getAttribute('data-uid'),
+          painted: trs.length}; }"""
+_CHECK_MARK = """(uid) => { const g = document.getElementById('grid');
+  const trs = [...g.querySelectorAll('tbody tr[data-uid]')];
+  const tr = g.querySelector('tbody tr[data-uid="' + uid + '"]');
+  return {present: !!tr, same: !!(tr && tr.__sfProbe), connected: !!(tr && tr.isConnected),
+          start: trs.length ? trs[0].getAttribute('data-uid') : null, painted: trs.length,
+          spacers: g.querySelectorAll('tbody tr.g-vspacer').length,
+          scrollTop: g.scrollTop, scrollH: g.scrollHeight}; }"""
+
+
+def test_a_scroll_re_aim_keeps_the_nodes_of_rows_that_stay_in_the_window(
+    browser: Any, served: tuple[str, int]
+) -> None:
+    """Scroll so the window must re-aim (past the overscan margin) while a middle row stays
+    inside it: that row's <tr> must be the SAME node afterwards. Pre-ADR-0458 every re-aim
+    emptied the tbody and repainted the whole window — observed RED (same=False) on the
+    pristine tree — which is where the operator's residual scroll lag lived (a ~115-row
+    repaint, half of it native layout, on every step)."""
+    page = _open(browser, served)
+    before = page.evaluate(_MARK_MID)
+    # one viewport plus half the overscan: the window MUST move, the middle row MUST survive
+    page.evaluate(
+        "() => { const g = document.getElementById('grid'); g.scrollTop += 900 + 20 * 18; }"
+    )
+    page.wait_for_timeout(600)
+    after = page.evaluate(_CHECK_MARK, before["uid"])
+    assert after["start"] != before["start"], f"the window did not re-aim: {before} → {after}"
+    assert after["present"] and after["connected"], f"the marked row left the window: {after}"
+    assert after["same"], f"the row that stayed on screen was repainted as a new node: {after}"
+    assert after["spacers"] >= 1 and after["scrollH"] >= served[1] * 12
+    assert after["painted"] < served[1] / 2, "the re-aim un-windowed the grid"
+    # the rows that ENTERED were pinned like the rest: every painted row's first cell is sticky
+    # at the frozen offset (computed style, never the inline attribute)
+    frozen = page.evaluate(
+        """() => [...document.querySelectorAll('#grid tbody tr[data-uid]')].map(tr => {
+          const cs = getComputedStyle(tr.firstElementChild);
+          return cs.position === 'sticky' && cs.left !== 'auto'; })"""
+    )
+    assert frozen and all(frozen), f"{frozen.count(False)} rows lost the frozen column"
+    page.context.close()
+
+
+def test_re_aims_in_both_directions_keep_the_window_contiguous_and_the_extent_honest(
+    browser: Any, served: tuple[str, int]
+) -> None:
+    """Twelve alternating scroll steps: after each, the painted rows are one contiguous run of
+    the population in order (no gaps, no duplicates), the spacers hold exactly the rows outside
+    the window, and the scroll extent still spans every row."""
+    page = _open(browser, served)
+    # the population's order comes from the page's own JSON (file order = the grid's default
+    # sort); the oracle is guarded: the opening window must be its prefix
+    order = [
+        str(a["unique_id"])
+        for a in page.request.get(f"{served[0]}/api/analysis/{KEY}").json()["activities"]
+    ]
+    opening = page.evaluate(
+        "() => [...document.querySelectorAll('#grid tbody tr[data-uid]')]"
+        ".map(t => t.getAttribute('data-uid'))"
+    )
+    assert opening and order[: len(opening)] == opening, (opening[:5], order[:5])
+    total = served[1]
+    deltas = [700, 700, -300, 1500, -900, 400, 2200, -2500, 600, 600, -100, 900]
+    for d in deltas:
+        page.evaluate("(d) => { document.getElementById('grid').scrollTop += d; }", d)
+        page.wait_for_timeout(350)
+        s = page.evaluate(
+            """() => { const g = document.getElementById('grid');
+              const rows = [...g.querySelectorAll('tbody tr')];
+              const uids = rows.filter(t => t.hasAttribute('data-uid'))
+                .map(t => t.getAttribute('data-uid'));
+              const kinds = rows.map(t => t.classList.contains('g-vspacer') ? 'S'
+                : (t.hasAttribute('data-uid') ? 'R' : 'W'));
+              const sp = rows.filter(t => t.classList.contains('g-vspacer'))
+                .map(t => parseFloat(t.firstChild.style.height));
+              const painted = rows.filter(t => t.hasAttribute('data-uid'));
+              const first = painted[0], last = painted[painted.length - 1];
+              const pitch = painted.length > 1
+                ? (last.offsetTop + last.offsetHeight - first.offsetTop) / painted.length : 0;
+              return {uids, kinds: kinds.join(''), sp, pitch, scrollH: g.scrollHeight,
+                      clientH: g.clientHeight}; }"""
+        )
+        assert len(set(s["uids"])) == len(s["uids"]), f"duplicate rows after {d}: {s['kinds']}"
+        # the painted rows are ONE contiguous slice of the population, in order
+        first = order.index(s["uids"][0])
+        assert s["uids"] == order[first : first + len(s["uids"])], (
+            f"the window is not a contiguous ordered slice after {d}: {s['kinds']}"
+        )
+        # and the spacers account for exactly the rows outside it, at the RENDERED row pitch
+        # (spacer heights are whole pixels; the pitch is whatever the browser laid out)
+        if s["sp"]:
+            outside = total - len(s["uids"])
+            assert abs(sum(s["sp"]) / outside - s["pitch"]) <= 1.0, (s["sp"], outside, s["pitch"])
+        assert s["kinds"].count("S") <= 2 and "SS" not in s["kinds"], s["kinds"]
+        assert s["kinds"].strip("S").find("S") < 0, (
+            f"a spacer inside the window after {d}: {s['kinds']}"
+        )
+        assert s["scrollH"] >= total * 12, f"scroll extent {s['scrollH']} too short after {d}"
+    page.context.close()
+
+
+#: MARK stamps the overlay once; CHECK only READS the stamp — a check that re-stamped would be
+#: satisfied by a brand-new node (the first draft of this pin did exactly that and stayed green
+#: on the "overlay re-created per draw" mutant).
+_MARK_LINKS = """() => { const svg = document.querySelector('#grid svg.g-links');
+  if (svg) svg.__sfProbe = 'marked';
+  return !!svg; }"""
+_LINKS = """() => { const g = document.getElementById('grid');
+  const svg = g.querySelector('svg.g-links');
+  return {present: !!svg, same: !!(svg && svg.__sfProbe === 'marked'),
+          paths: svg ? svg.querySelectorAll('path').length : 0,
+          painted: g.querySelectorAll('tbody tr[data-uid]').length}; }"""
+
+
+def test_the_link_overlay_is_one_reused_node_drawing_only_what_the_window_can_see(
+    browser: Any, served: tuple[str, int]
+) -> None:
+    """The dependency-link overlay is ONE svg per pane, kept across scroll re-aims, and it holds
+    only the links the materialized window can see — not every relationship in the file.
+    Pre-ADR-0458 every re-aim removed and re-created a table-sized svg holding EVERY link
+    (observed RED on the pristine tree: a new node after the re-aim; paths ≈ the whole
+    population), which was the largest residual scroll cost at operator scale."""
+    page = _open(browser, served)
+    total = served[1]
+    assert page.evaluate(_MARK_LINKS), "links are on by default and the overlay must exist"
+    first = page.evaluate(_LINKS)
+    assert first["present"] and first["same"]
+    # visible-only: a 605-row file has ~one predecessor per row; the window is ~1/4 of it
+    assert first["paths"] < total * 0.6, f"the overlay holds the whole file's links: {first}"
+    page.evaluate("() => { document.getElementById('grid').scrollTop += 900 + 20 * 18; }")
+    page.wait_for_timeout(600)
+    after = page.evaluate(_LINKS)
+    assert after["present"] and after["same"], f"the overlay was re-created on a re-aim: {after}"
+    assert 0 < after["paths"] < total * 0.6, after
+    # and the toggle still removes it outright
+    page.evaluate(
+        "() => { const c = document.getElementById('showLinks'); c.checked = false;"
+        " c.dispatchEvent(new Event('change', {bubbles: true})); }"
+    )
+    page.wait_for_timeout(600)
+    assert not page.evaluate(_LINKS)["present"]
+    page.context.close()

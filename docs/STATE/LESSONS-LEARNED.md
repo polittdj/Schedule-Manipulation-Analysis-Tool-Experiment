@@ -435,6 +435,40 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-03 (e) — A differential that comes back IDENTICAL is the finding; the page's own sentences were the defect; measure frame times on a QUIET box
+
+- **"Not picking up the same findings it once did" reproduced as STATE, not code.** The same inputs through
+  three trees (v1.0.221 / v1.0.229 / v1.0.233) gave detector rows identical by name, and the detectors were
+  byte-identical since v1.0.221 — so every code-side hypothesis the ledger listed was refuted in one run. The
+  two states that DO empty the page (a second Project holding the other version; a reduce filter on an unmapped
+  role name) were both already disclosed by the banners, but the page's own sentences were wrong for them:
+  "load two versions" with two loaded, "no findings" over an empty population. **On a testimony surface the
+  wrong sentence IS the defect; the differential is what earns the right to say the engine is innocent.**
+- **A "does not take effect" report is measured by DRIVING the control and counting RENDERED rows** by
+  computed position — five pages, three zoom regimes, a reload — before a line is changed. Two tiers rendered
+  two rows everywhere; the report is pinned, not fixed, and the operator is asked for the page and zoom.
+- **Frame times measured while a battery runs are noise.** The same tree measured p95 250 ms with three
+  chromiums alive and 83 ms alone; a first "after" run looked worse than "before" for that reason only.
+  Measure on a quiet box, and say so in the ADR.
+- **Isolate the native cost by SUBTRACTION in the live page** (links off · freezeColumns stubbed · sticky
+  cells stripped) before touching code: the CPU profile said "(program) 50%", which names nothing; the
+  subtraction named the table-sized link overlay re-created per re-aim, then the forced layout of a
+  header-width read inside the re-aim. The class-based freeze ADR-0449 guessed at was NOT the first residue.
+- **A pointer placed by `bounding_box()` can sit below the viewport** — the first lag probe wheeled at y≈1100
+  on a 1000-px page and reported a perfect 16.7 ms while `scrollTop` stayed 0. Assert the effect (scrollTop
+  moved) before believing the timing.
+- **`pkill -f <pattern>` matches the shell that runs it** (the kickoff's waiter trap in another coat) — the
+  chain died with exit 144 and the tree was mutated under a probe that had never started. Kill by pidfile, or
+  don't kill: wait on a sentinel.
+- **An estimate baked in before the table is connected survives until something re-measures it**: the
+  initial /analysis paint assumed 18 px rows (16.18 rendered), so the spacers inflated the scroll extent by
+  11 % and the window aimed 11 % off until the first full repaint — which the incremental re-aim had just
+  removed. Re-true the estimate at the first scroll; pin the spacer sum against the RENDERED pitch.
+- **A slice-of-the-population oracle needs the whole population**: the contiguity pin's first draft compared
+  against the opening window and ran out of rows after the first scroll — a wrong oracle looks exactly like a
+  defect (WP2's lesson again). Take the order from the page's own JSON and guard the oracle against the
+  opening window.
+
 
 ### 2026-09-03 (c) — A run's conclusion is the measurement; a latency table beats a remembered outage; a substring count is not a census
 
