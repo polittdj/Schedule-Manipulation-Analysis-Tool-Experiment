@@ -64,6 +64,7 @@ _LAYOUT = Template(
 <script src="/static/translate.js"></script>
 <script src="/static/drilldown.js"></script>
 <script src="/static/tooltips.js"></script>
+<script src="/static/chartframe.js"></script>
 <link rel=stylesheet href="/static/base.css"><link rel=stylesheet href="/static/app.css"><link rel=stylesheet href="/static/hud.css"><link rel=stylesheet href="/static/sf-themes.css">
 <style>
 /* Density + containment overrides (operator request, ADR-0150): tighter spacing everywhere,
@@ -117,7 +118,6 @@ title="POLARIS² — Program Oversight &amp; Logic Analysis for Risk &amp; Integ
 <span class="nasa-globe" data-no-i18n title="Local AI status: the globe spins up while the model is generating"><canvas width="96" height="96" aria-hidden="true"></canvas></span>
 </header>
 <main>{{ banner }}{{ body }}</main><script src="/static/heartbeat.js"></script>
-<script src="/static/chartframe.js"></script>
 <script src="/static/legend_toggle.js"></script>
 <script src="/static/target.js"></script>
 <script src="/static/globe.js"></script>

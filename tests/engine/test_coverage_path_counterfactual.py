@@ -214,7 +214,11 @@ def test_duplicate_restored_links_are_deduplicated() -> None:
     assert not pc.uncomputable
     assert [r.uid for r in pc.reverted] == [1]
     # restoring A's 10-day duration moves the finish out exactly the cut amount (10d - 3d = 7d).
-    assert pc.finish_delta_days == 7
+    # DELIBERATE re-baseline 7 → 5 (ADR-0462): the delta is now the CPM's WORKING-day move.
+    # Restoring A pushes C from Tue 2026-01-13 to Tue 2026-01-20 — 7 calendar days, which the
+    # old date subtraction reported under a working-day label; the five working days between
+    # those dates is the number the page prints.
+    assert pc.finish_delta_days == 5
 
 
 def test_revert_that_forms_a_cycle_is_uncomputable() -> None:

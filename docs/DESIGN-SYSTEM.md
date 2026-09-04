@@ -98,13 +98,16 @@ toolbar as chips/selects, and persist.
   `SFChartFrame.axisTitles` (`.ch-at`, corner placement); DOM visuals caption natively —
   a data table carries `<caption class="ch-atd">` via `SFGantt.tableCaption`, and a
   Gantt-family timescale carries the ONE slot row `buildTierScale` renders from the page's
-  `data-ts-caption` marker. Both DOM mechanisms live in `gantt.js` because it is head-loaded
-  and every captioned table is built by a body script (ADR-0340); no other module may name
-  `.ch-atd`. Same token, same case, same color voice; only the mechanism follows the medium.
+  `data-ts-caption` marker. Both DOM mechanisms live in `gantt.js` — originally because it was
+  the head-loaded module and every captioned table is built by a body script (ADR-0340); since
+  ADR-0461 `chartframe.js` is head-loaded too (a fetch callback could outrun a post-`</main>`
+  script — CI-03), so the split is now by MEDIUM, not by load order — and no other module may
+  name `.ch-atd`. Same token, same case, same color voice; only the mechanism follows the medium.
 - Data date: always a red vertical line labeled `DD` / `DATA DATE`, on every
   time-axis chart, no exceptions. **One mechanism (ADR-0342):** `SFGantt.dataDateLine`,
-  in `gantt.js` for the same head-loaded reason `tableCaption` is — most charted pages
-  draw at parse time, before `chartframe.js` exists. Colour and type come from `.ch-dd`
+  in `gantt.js` for the same reason `tableCaption` is (one head-loaded home; since ADR-0461
+  `chartframe.js` is head-loaded as well, so no page can draw before either exists). Colour
+  and type come from `.ch-dd`
   (`--bad`, and the same `--sf-fs-axis-title` token the captions read); no chart may
   hand-roll a marker or hard-code its size. **"Time axis" is narrower than "ordered by
   time" and narrower than "denominated in dates"** — a *version* axis (one tick per

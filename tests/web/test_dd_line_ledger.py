@@ -360,10 +360,17 @@ def test_the_marker_has_exactly_one_implementation() -> None:
 
 def test_the_helper_lives_where_the_load_order_requires() -> None:
     """ADR-0340's lesson, applied: WHERE a shared drawing helper lives is a load-order question,
-    not a filing one. ``_LAYOUT`` emits ``chartframe.js`` AFTER ``</main>``, so a parse-time body
-    script — which is what cei/curves/drift/scurve are — would find a ``window.SFChartFrame``
-    helper undefined at the moment it draws, and the marker would silently never appear.
-    ``gantt.js`` is head-loaded, so it is defined for the deferred family too.
+    not a filing one. ``_LAYOUT`` used to emit ``chartframe.js`` AFTER ``</main>``, so a
+    parse-time body script — which is what cei/curves/drift/scurve are — would find a
+    ``window.SFChartFrame`` helper undefined at the moment it draws, and the marker would
+    silently never appear. ``gantt.js`` is head-loaded, so it is defined for the deferred
+    family too.
+
+    Re-derived under ADR-0461 (CI-03): those same modules draw inside a FETCH callback, and a
+    callback can run before a post-``</main>`` script has executed — the layout now emits
+    ``chartframe.js`` in the HEAD too (after ``gantt.js``). The marker keeps its ONE home in
+    ``gantt.js`` (ADR-0342's one-mechanism rule); the order pinned here is the new one, so a
+    re-ordering re-opens the question by name.
     """
     # `_LAYOUT` moved to `web/chrome.py` (ADR-0349, monolith split phase 2). This guard reads the
     # layout's INTERNAL script order, which is only meaningful inside the module that defines it.
@@ -371,7 +378,7 @@ def test_the_helper_lives_where_the_load_order_requires() -> None:
     head = layout.index('<script src="/static/gantt.js"></script>')
     main = layout.index("<main>{{ banner }}{{ body }}</main>")
     frame = layout.index('<script src="/static/chartframe.js"></script>')
-    assert head < main < frame, (
+    assert head < frame < main, (
         "the layout's script order changed — re-derive the helper's home before trusting it"
     )
     assert "dataDateLine" not in (STATIC / "chartframe.js").read_text(encoding="utf-8")

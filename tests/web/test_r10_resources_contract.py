@@ -370,15 +370,21 @@ def test_every_id_resources_js_reads_survives(client: TestClient) -> None:
 
 def test_resources_js_is_deferred_so_chartframe_exists_first(client: TestClient) -> None:
     """resources.js calls ``draw()`` synchronously and ``draw()`` calls
-    ``SFChartFrame.axisTitles``, but ``chartframe.js`` is emitted by ``_LAYOUT`` AFTER
+    ``SFChartFrame.axisTitles``, but ``chartframe.js`` WAS emitted by ``_LAYOUT`` AFTER
     ``<main>``. Without ``defer`` the page threw ``SFChartFrame is not defined`` and rendered
-    NO histogram until the operator touched the picker (measured in chromium)."""
+    NO histogram until the operator touched the picker (measured in chromium).
+
+    ADR-0461 (CI-03) moved ``chartframe.js`` into the layout HEAD — the callback-time twin of
+    this defect had been left open on every fetch-driven module — so the helper now precedes
+    every body script, deferred or not. ``defer`` stays (byte-pinned contract, harmless); the
+    property the first paint depends on, and the one pinned here, is the helper before
+    ``<main>``."""
     page = client.get("/resources").text
     assert re.search(r'<script defer src="/static/resources\.js', page), (
         "resources.js must be deferred — see the module docstring"
     )
-    # the layout really does load chartframe.js after <main>, which is WHY defer is required
-    assert page.index("</main>") < page.index("/static/chartframe.js")
+    # the layout loads chartframe.js in the HEAD, before <main> (ADR-0461)
+    assert page.index("/static/chartframe.js") < page.index("<main>")
 
 
 def test_axis_caption_call_site_is_untouched() -> None:

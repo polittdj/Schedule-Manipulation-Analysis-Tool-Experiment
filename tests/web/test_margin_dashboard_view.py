@@ -83,8 +83,10 @@ def test_margin_dashboard_js_is_deferred_so_chartframe_exists_first() -> None:
     assert re.search(r'<script defer src="/static/margin_dashboard\.js', page), (
         "margin_dashboard.js must be deferred — see the docstring"
     )
-    # the layout really does load chartframe.js after <main>, which is WHY defer is required
-    assert page.index("</main>") < page.index("/static/chartframe.js")
+    # ADR-0461 (CI-03): the layout now loads chartframe.js in the HEAD, before <main>, so the
+    # helper precedes every body script, deferred or not; `defer` stays (byte-pinned contract,
+    # harmless) and the property pinned here is the one the first paint depends on.
+    assert page.index("/static/chartframe.js") < page.index("<main>")
 
 
 def test_dashboard_api_carries_the_workbook_columns_and_erosion() -> None:

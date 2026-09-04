@@ -727,10 +727,12 @@ def _whatif_added_rows(
 def _delta_words(days: int) -> str:
     """The counterfactual finish move in words, sign preserved. ONE wording shared by the panel
     body's emphasised line and its takeaway line, so the two can never quote different digits."""
+    # WORKING days since ADR-0462 (the engine's delta is the CPM's working-minute move; the old
+    # calendar-date subtraction printed 31 "days" for a 21-working-day move)
     if days > 0:
-        return f"+{days} day(s) later"
+        return f"+{days} working day(s) later"
     if days < 0:
-        return f"{days} day(s) earlier"
+        return f"{days} working day(s) earlier"
     return "no change"
 
 

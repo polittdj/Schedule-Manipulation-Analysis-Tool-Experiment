@@ -322,12 +322,21 @@ def test_no_module_reimplements_the_dom_caption() -> None:
 def test_the_dom_caption_helper_is_reachable_before_every_caller_runs() -> None:
     """Placement, not merely existence — the load-order trap ADR-0340 was written around.
 
-    Every table-captioning module is a script inside ``<main>``; the layout emits
+    Every table-captioning module is a script inside ``<main>``; the layout USED TO emit
     ``chartframe.js`` (the SVG helper's home) AFTER ``<main>``, and ``whatif.js`` renders
     SYNCHRONOUSLY at parse time. Had the DOM helper been added to ``SFChartFrame``, whatif's
     caption would silently never render while every source-level assertion above still passed.
     ``gantt.js`` is emitted in the head, before ``<main>`` — that ordering IS the fix, so it is
     pinned here rather than left as a comment.
+
+    Re-derived under ADR-0461 (CI-03): ``chartframe.js`` now sits in the layout HEAD as well,
+    because every FETCH-driven chart module draws inside a callback that could run before a
+    post-``</main>`` script had executed (the parser yields while it downloads a sync script),
+    which is how three caption-sweep cells read "no captions rendered". Both helpers are
+    therefore defined before any body script runs; the DOM helper stays in ``gantt.js`` by
+    FILING (it is a table / Gantt primitive, ADR-0340), no longer by necessity. The order
+    inside the head — ``gantt.js`` before ``chartframe.js`` — is pinned so a future re-ordering
+    re-opens this question by name rather than silently.
     """
     # ADR-0349 (monolith split, phase 2): `_LAYOUT` — and therefore every script-order fact this
     # test asserts — now lives in `web/chrome.py`. The subject is the LAYOUT, so the guard follows
@@ -340,9 +349,14 @@ def test_the_dom_caption_helper_is_reachable_before_every_caller_runs() -> None:
         "gantt.js must be emitted in the layout HEAD, before <main> — every table-captioning "
         "module is a body script, and whatif.js captions at parse time"
     )
-    assert app.index("</main>") < app.index('<script src="/static/chartframe.js"></script>'), (
-        "this test's premise moved: chartframe.js is no longer emitted after </main>, so the "
-        "reason the DOM helper lives in gantt.js needs re-deriving (do not just delete this)"
+    frame_tag = '<script src="/static/chartframe.js"></script>'
+    assert frame_tag in head, (
+        "this test's premise moved: chartframe.js is no longer emitted in the layout HEAD "
+        "(ADR-0461 put it there so fetch callbacks can never outrun it) — re-derive where BOTH "
+        "caption helpers live before touching this (do not just delete it)"
+    )
+    assert head.index('<script src="/static/gantt.js"></script>') < head.index(frame_tag), (
+        "gantt.js must precede chartframe.js in the head — the DOM helper's home is gantt.js"
     )
 
 

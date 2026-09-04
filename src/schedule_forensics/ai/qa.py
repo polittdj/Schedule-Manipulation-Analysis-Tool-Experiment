@@ -452,19 +452,26 @@ def manipulation_forensics_facts(
         tgt = ""
         if pc.target_uid is not None and pc.target_delta_days is not None:
             tgt = (
-                f" UID {pc.target_uid}'s own finish would move from "
+                f" Target UID {pc.target_uid}'s own finish would move from "
                 f"{pc.target_actual_finish} to {pc.target_counterfactual_finish} "
-                f"({pc.target_delta_days:+d} days)."
+                f"({pc.target_delta_days:+d} working day(s))."
             )
+        # the project finish is NAMED (ADR-0462): it is the network's last activity, which is
+        # usually not the target, so the two finishes move by different amounts
+        finish_who = (
+            f" (the network's last activity, UID {pc.finish_uid} '{pc.finish_name}')"
+            if pc.finish_uid is not None
+            else ""
+        )
         if not pc.uncomputable:
             facts.append(
                 CitedStatement(
                     f"Counterfactual (changes reverted): {len(pc.reverted)} activities left "
                     f"the path between {prior_label} and {cur_label} because they were "
                     f"CHANGED, not completed — {names}. Reverting exactly those changes "
-                    f"moves the computed finish from {pc.actual_finish} to "
-                    f"{pc.counterfactual_finish} ({pc.finish_delta_days:+d} days) — schedule "
-                    f"time removed by the edits, not by progress.{tgt}",
+                    f"moves the computed project finish{finish_who} from {pc.actual_finish} to "
+                    f"{pc.counterfactual_finish} ({pc.finish_delta_days:+d} working day(s)) — "
+                    f"schedule time removed by the edits, not by progress.{tgt}",
                     cites,
                 )
             )

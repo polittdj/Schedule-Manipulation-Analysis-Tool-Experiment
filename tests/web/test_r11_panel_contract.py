@@ -535,9 +535,10 @@ PAGE_SCRIPTS = {
     # function is touched, so buildTierScale / paintGrid / gridLines / timeTiers still cannot have
     # moved a caption, axis or tick — and the 28-call-site census below still passes unchanged,
     # which is the independent check on that claim. It lives HERE rather than in chartframe.js
-    # because the layout emits chartframe.js after </main> while every captioned table is built by
-    # a body script; whatif.js captions at parse time, so the SVG helper's home would have been
-    # undefined at that instant. d31341313ceaddb852f9e10c73718c52 → below.
+    # because the layout THEN emitted chartframe.js after </main> while every captioned table is
+    # built by a body script; whatif.js captions at parse time, so the SVG helper's home would
+    # have been undefined at that instant (since ADR-0461 chartframe.js is head-loaded too — the
+    # home stands by filing, not by necessity). d31341313ceaddb852f9e10c73718c52 → below.
     # DELIBERATE re-baseline (ADR-0342): gantt.js gained `dataDateLine`, the ONE implementation of
     # the data-date marker, retiring four hand-rolled copies that drew two different colours, two
     # dash patterns and three labelling schemes. `git diff --numstat` is 55 added / 1 removed, and
