@@ -16273,3 +16273,78 @@ shadows it on PATH).
   versions, byte-identical to #629's content plus this session's additions, `git diff 6a93b6c f2be8a0 -- docs` empty);
   subscribed for CI/review events; a check-in Routine armed ~70 min out. The GitHub MCP integration returned 403 on PR
   creation; the PR was opened through the proxied REST API.
+## 2026-09-04 — WP5 shipped (ADR-0459) + /trend on the Claude Design layout, `vol-*` aliased onto `cd-*` (ADR-0460), v1.0.235
+
+- **Branch:** `claude/continue-yznv26` from `origin/main` @ `f2be8a0f` (the #629 docs merge). `main`'s run #1706
+  for the #628 merge commit `0f098cce` READ FIRST: `completed` / `success`. A second session (`session_01Lu2bK7…`)
+  was RUNNING the operator's evening batch and had opened draft **#630** (ADR-0457/0458, v1.0.234, `unstable` at
+  this close); its rows were not touched. This session took the next queue items and numbered its ADRs after
+  #630's; version 1.0.235; the PR must merge AFTER #630 (re-merge `origin/main` → rebuild the wheel + installers).
+- **Mode:** SOLO lead (ADR-0240 as the operator chose for the campaign); QC-1/QC-2 throughout — every claim below
+  had a red-first check, a mutation, or a rendered measurement before it was written.
+- **WP5 — BOTH folder-ask builds (ADR-0459).** Facts taken as given (2026-08-21): the dialog cannot multi-select;
+  dropping N folders works; Ctrl/Shift on files works. (A) `choose one folder…` + a `.dz-how` legend naming the
+  three gestures + hover hints; the pinned phrases and ids survive. (B) `home.js`: `ingest()` funnel,
+  `subfolderPlan()` (one root, ≥2 schedule-bearing immediate sub-folders, extensions from the input's own `accept`
+  == `supported_extensions()`), the served hidden `#dzAsk` shell filled with `textContent` (sub-folders BY NAME —
+  the real FileList arrived Artemis-before-Apollo), `reroot()` (drop the parent segment from 3+-segment rels;
+  2-segment rels stay and the box says so); server untouched; multi-root drops never ask (ADR-0437 byte-for-byte);
+  a single dropped parent asks. Red-first: `test_folder_ask.py` 3/3 build pins red (the two SERVER facts green
+  before and after — they are the reason the question exists), `test_folder_ask_browser.py` 7/7 red. Green: 6 + 7
+  new; 94 across the related modules; the M1 `/` census row. Mutations on scratch copies (never `git checkout --`):
+  `reroot` no-op → 2 red · plan always `null` → 5 red / 2 never-ask green · `<2`→`<1` → 1 red · sort removed → 1
+  red; `home.js` byte-identical after. Playwright 1.62 uploads a REAL directory to `#folderInput` (genuine
+  `webkitRelativePath`, measured before the test). Four-theme render of the open question: zero errors, nothing
+  wider than the viewport, focus on the per-sub-folder button; PNGs viewed.
+- **/trend (ADR-0460).** Artboard 05 recovered by EXECUTING the v2 canvas in the container (`npm pack` React /
+  ReactDOM / Babel; `support.js` patched local; seeds `sfredux-screen=tr`, `sfredux-guided=1`,
+  `sfops-boot.skipNext=true`, `sfredux-theme`); four themes rendered and viewed. The intake's
+  `screenshots-v2/05-screen.png` is CHAPTER 11 — not used. Shipped: the master re-homed into `#trendMaster` inside
+  `.cd-cursor` (trend.js keeps ids/handlers/ADR-0275 registration; no `.panel` shell there; no ◂ Back — named
+  omission), one `.cd-chip` per version driving every framed chart's Next + `#qualNext` (each stepper publishes
+  `data-frame`; the cursor follows the FIRST framed chart; a chip halts the master through the coordinator), the
+  Focus form as `.cd-options` (byte-exact, still `.panel`), `.cd-grid-12` (version table | signals), charts full
+  width, `.cd-grid-2` (quality drill | `.cd-stack` of the quality sentences + "How to read this" =
+  `_EXPLAINERS["Trend"]`), margin full width. `vol-*` cursor classes → `cd-*` (volatility.py/js, five CSS rules
+  retired); r11's `volatility.js` byte-freeze re-baselined DELIBERATELY (`bca57830… → 381fec11…`). Six edits above
+  axis-caption pins were same-line-count replacements; `sfDesignCursor` sits below the last pin; the patch asserted
+  `[483, 587, 712, 830, 920]` / `[224]` / `[110]` unchanged. Red-first: layout 5/5, browser 2/2. Green: 254 across
+  the TestClient modules that pin /trend and /volatility (r11 included), census rows `/trend` + `/volatility`, 38 M3
+  drivers, the caption sweep + operator-content censuses (23). Four-theme census vs the pristine page: chips 0→5,
+  chipOn []→["4"], panel-head ORDER, `.panel` 11→10 (the master's shell), height +137 px; charts 21, frames 21,
+  takes 6, prov 6, drills 69, toggles 27, series-all 10, hosts 2, cf-bars 2, zero page errors unchanged; the
+  "widest" boxes in daylight/apollo are the offscreen `sr-only` a11y tables (hidden by design, as on the baseline).
+- **Mutation battery (/trend, scratch copies):** `goTo` clicks nothing → 2 red · chip sync neutered → 2 red · the
+  drill publishes garbage → 2 red · the server serves no chips → 3 red (layout + 2 drivers) · **the margin stepper
+  publishes garbage → GREEN on TP4** — because TP4 carries no task named "margin" and the burndown renders NO
+  stepper there (measured: 21 framed steppers, all trend.js's; `#marginBurndown` empty). Fixed the INSTRUMENT, not
+  the claim: a third driver with a synthetic two-version corpus whose "Schedule Margin" task burns 10 → 5 wd
+  (`/api/margin` verified first) — the burndown then carries a two-frame stepper, the chip lands it on the chosen
+  version, and the same mutation is RED by name. Files byte-identical to the pre-battery copies afterwards.
+- **Statics (final tree):** `python -m ruff check .` clean · `ruff format --check .` clean (25 E501/RUF findings in
+  the four NEW test files fixed; `/root/.local/bin/ruff` 0.15.8 shadows the pinned 0.16 — always `python -m ruff`) ·
+  `mypy src/` strict clean (161 files) · bandit exit 0 · `node --check` every static JS.
+- **Docs:** ADR-0459, ADR-0460; ledger WP5 section + design-migration row; DESIGN-SYSTEM §9 (+3 bullets: the
+  script-created master mounts into the strip; the one-family vocabulary; frozen scripts / line pins change only
+  by dated re-baseline); HANDOFF rotated (2026-09-03 (d) archived); LESSONS Part VIII; kickoff refreshed. Version
+  1.0.233 → 1.0.235 (1.0.234 is #630's). Wheel + nine installers rebuilt LAST; full suite + parity + drift guards
+  recorded in the addendum below AFTER the runs finished.
+- **First push → draft PR #631; CI's `browser` job RED on ONE cell (1 failed / 431 passed):**
+  `test_ch05_panelkit.py::test_panelkit_click_census_and_jarvis[/trend]` — the DOM promotion census
+  pinned 11 `.panel` on /trend and the page now has 10, because the master's JS-created `.panel` shell
+  mounts inside the cursor strip without the shell (the deliberate 11 → 10 recorded above; a browser
+  module the pre-push sweep did not include — grepping r11 and the M1 census for "/trend" was a search
+  that could not see this pin). Re-baselined DELIBERATELY to 10 with a dated comment (a count that goes
+  DOWN is not a promotion; the guard's direction is unchanged), the three routes re-run green locally,
+  pushed as the fix commit. `cui-guard`, `linux`, `windows` green on the first head; `test (3.11)`,
+  `test (3.13)`, `floor` were still running.
+- **Full-suite addendum (recorded AFTER the run finished, QC-1):** `python -m pytest -q` on the tree as
+  pushed in `1e295140` — **4,750 passed / 5 skipped / 1 failed in 41:50**. The ONE failure is
+  `test_ch05_panelkit.py::test_panelkit_click_census_and_jarvis[/trend]` (the 11-vs-10 pin above; this
+  run collected the module BEFORE the re-baseline commit `9e308d36`, which re-ran the three routes green).
+  Five skips, the same count as every recorded run (identities not printed by this `-q` run — UNVERIFIED
+  that they are the usual 2 loopback-allowlist + 3 axis-title SVG cases; the count matches). Statics,
+  drift guards (12) and the installer lockstep (68) were green before the push; the parity-marked tests
+  ran inside this full run. Draft **PR #631** carries the work; CI on head `9e308d36` was running at
+  this record (`cui-guard` green; `browser` / `test (3.11)` / `test (3.13)` / `floor` / `linux` /
+  `windows` in progress).

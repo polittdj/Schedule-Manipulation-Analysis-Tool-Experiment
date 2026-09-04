@@ -87,7 +87,8 @@ def test_page_carries_the_five_design_panels_in_order_and_every_original_id() ->
         assert f"id={pid}" in html or f'id="{pid}"' in html, f"lost #{pid}"
     # the master cursor strip: Prev / Play / Next plus ONE chip per version and the DD pill
     assert "id=volCursor" in html or 'id="volCursor"' in html
-    chips = re.findall(r'class="vol-chip[^"]*" data-idx="(\d+)"', html)
+    # the chips speak the shared `.cd-*` vocabulary since the third design page (ADR-0460)
+    chips = re.findall(r'class="cd-chip[^"]*" data-idx="(\d+)"', html)
     assert chips == ["0", "1", "2"], chips
     assert "id=volKpi" in html or 'id="volKpi"' in html
     # the data blob still rides the page unchanged in shape

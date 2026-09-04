@@ -119,7 +119,7 @@ def _volatility_body(schedules: list[Schedule], cpms: list[CPMResult]) -> str:
     )
     band_cls, band_txt = _stability_band(stability)
     chips = "".join(
-        f'<button type=button class="vol-chip{" on" if i == len(versions) - 1 else ""}" '
+        f'<button type=button class="cd-chip{" on" if i == len(versions) - 1 else ""}" '
         f'data-idx="{i}" data-no-i18n title="{_e(str(v.get("label", "")))}">v{i}</button>'
         for i, v in enumerate(versions)
     )
@@ -168,12 +168,12 @@ controlling chain away from slipping work. The ten visuals below answer two ques
 loaded files: <b>which activities stayed on the critical path longest</b>, and <b>which jumped
 off and on over time</b> (every figure derives from the same effective-critical sets the other
 pages use; nothing is fabricated).</p>
-<div class="viz-controls vol-cursor" id=volCursor>
+<div class="viz-controls cd-cursor" id=volCursor>
 <button id=volPrev type=button>&#9664; Prev</button>
-<button id=volPlay type=button class=vol-play>&#9654; Play</button>
+<button id=volPlay type=button class=cd-play>&#9654; Play</button>
 <button id=volNext type=button>Next &#9654;</button>
-<span class=vol-chips>{chips}</span>
-<span id=volLabel class="muted vol-pill" data-no-i18n></span>
+<span class=cd-chips>{chips}</span>
+<span id=volLabel class="muted cd-pill" data-no-i18n></span>
 </div></div>
 <div id=volGrid class=vol-layout>
 <div class="vol-row vol-row-1">

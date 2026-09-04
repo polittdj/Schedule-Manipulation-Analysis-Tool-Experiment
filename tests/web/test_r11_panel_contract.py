@@ -513,7 +513,12 @@ PAGE_SCRIPTS = {
     # change that never happened. The diff is that one index plus an early branch that names the
     # baseline and draws no bars. No axis, tick, caption or column logic is touched; the other ten
     # visuals in this module are byte-identical. 67a625584f35c78f067ae27446883d2a → below.
-    "volatility.js": "bca57830bcc5cc59f6c3c4bc3e0ec2b1",
+    # DELIBERATE re-baseline (ADR-0460, the third design page): the two `.vol-chip` selectors
+    # became `.cd-chip` when /volatility's cursor vocabulary joined the shared `.cd-*` family;
+    # two selector strings changed, no axis caption, tick, chart or stepper logic touched, and
+    # test_volatility_design_layout.py drives the same chips under the new class.
+    # bca57830bcc5cc59f6c3c4bc3e0ec2b1 → below.
+    "volatility.js": "381fec11837b7086f697633b83f0c418",
     # DELIBERATE re-baseline (ADR-0326, decision B1): buildTierScale gained the ONE timescale
     # caption slot (a `data-ts-caption`-fed row above the tiers; pages without the marker render
     # byte-identically). 2a4ccb612899cf141bbf30af3b64286e → 9fa3a69245deec12de6f1d71698a24b0.

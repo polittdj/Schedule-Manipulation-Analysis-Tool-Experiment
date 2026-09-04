@@ -273,7 +273,7 @@
     var play = btn("sf-frame-play", "▶ Play", "Animate through the loaded files");
     function show(k) {
       idx = (k + frames.n) % frames.n;
-      label.textContent = sfCaption(idx, frames.n, frames.name(idx), frames.date(idx));
+      label.textContent = sfCaption(idx, frames.n, frames.name(idx), frames.date(idx)); bar.setAttribute("data-frame", String(idx));
       frames.draw(idx);
     }
     function stop() {
@@ -302,7 +302,7 @@
     var panel = box.closest ? box.closest(".panel") : null;
     if (!panel || !panel.parentNode) return;
     var bar = document.createElement("div");
-    bar.className = "panel viz-controls sf-master-controls";
+    var cur = document.getElementById("trendMaster"); bar.className = cur ? "sf-master-controls" : "panel viz-controls sf-master-controls";
     function mkBtn(id, text) {
       var b = document.createElement("button");
       b.type = "button";
@@ -311,13 +311,13 @@
       bar.appendChild(b);
       return b;
     }
-    var play = mkBtn("sfPlayAll", "▶ Play all");
+    var play = mkBtn("sfPlayAll", "▶ Play all"); if (cur) play.className = "cd-play";
     var stepBtn = mkBtn("sfStepAll", "⏭ Step all");
     var note = document.createElement("span");
     note.className = "muted";
     note.textContent =
       "Animate every chart on this page through the loaded files in lockstep (one beat per file).";
-    bar.appendChild(note);
+    if (!cur) bar.appendChild(note);
     var timer = null;
     function stepAll() {
       Array.prototype.forEach.call(
@@ -345,7 +345,7 @@
     // The order-independent idiom removes the accident.
     (window.SFPlayAll = window.SFPlayAll ||
       { _pending: [], register: function (f) { this._pending.push(f); } }).register(stop);
-    panel.parentNode.insertBefore(bar, panel);
+    if (cur) cur.appendChild(bar); else panel.parentNode.insertBefore(bar, panel);
   }
 
   // ── helpers ──────────────────────────────────────────────────────────────────
@@ -949,6 +949,69 @@
     box.appendChild(h);
   }
 
+  // ── Claude Design cursor (ADR-0460) ──────────────────────────────────────────
+  // One chip per version in the masthead strip (server-rendered by web/trend.py). A chip is the
+  // page's OWN steppers: it clicks every framed chart's Next (and the quality drill-down's) the
+  // number of times that lands that chart on the chosen version, so nothing renders any other
+  // way than the buttons already render it. Each stepper publishes the frame it is showing as
+  // data-frame on the bar it owns (trend.js / margin.js) or on #qualBars (trend_drill.js); the
+  // active chip and the frame pill follow the FIRST framed chart — the design's slope — whichever
+  // control moved it (a chip, Prev / Next / Play, the master's programmatic beat). A chip halts
+  // the page master first (ADR-0275's coordinator), exactly as a trusted click on a chart would.
+  function sfDesignCursor() {
+    var chips = document.querySelectorAll("#trendCursor .cd-chip[data-idx]");
+    var pill = document.getElementById("trendFrame");
+    if (!chips.length || !sfMeta) return;
+    function frameOf(el) {
+      var v = el ? Number(el.getAttribute("data-frame")) : NaN;
+      return isNaN(v) ? null : v;
+    }
+    function framedBars() {
+      return Array.prototype.map.call(document.querySelectorAll(".sf-frame-next"), function (b) {
+        return b.parentNode;
+      });
+    }
+    function currentFrame() {
+      var k = frameOf(framedBars()[0]);
+      return k == null ? sfMeta.n - 1 : k;
+    }
+    function syncChips() {
+      var k = currentFrame();
+      Array.prototype.forEach.call(chips, function (c) {
+        c.classList.toggle("on", Number(c.getAttribute("data-idx")) === k);
+      });
+      if (pill) {
+        pill.textContent = "v" + (k + 1) + " · " + (sfMeta.names[k] || "") +
+          (sfMeta.dates[k] ? " · DD " + sfMeta.dates[k] : "");
+      }
+    }
+    function clicksTo(i, k) { return ((i - k) % sfMeta.n + sfMeta.n) % sfMeta.n; }
+    function goTo(i) {
+      if (window.SFPlayAll && typeof window.SFPlayAll.stopAll === "function") window.SFPlayAll.stopAll();
+      framedBars().forEach(function (bar) {
+        var k = frameOf(bar);
+        if (k == null) return;
+        var next = bar.querySelector(".sf-frame-next");
+        for (var s = clicksTo(i, k); s > 0; s--) next.click();
+      });
+      var qualBars = document.getElementById("qualBars"), qualNext = document.getElementById("qualNext");
+      var qk = frameOf(qualBars);
+      if (qk != null && qualNext) { for (var t = clicksTo(i, qk); t > 0; t--) qualNext.click(); }
+      syncChips();
+    }
+    Array.prototype.forEach.call(chips, function (c) {
+      c.addEventListener("click", function () { goTo(Number(this.getAttribute("data-idx")) || 0); });
+    });
+    // any stepper click — a chart's own, the drill's, or the master's programmatic beat — moves the cursor
+    document.addEventListener("click", function (ev) {
+      var t = ev.target;
+      if (t && t.closest && t.closest(".sf-frame-prev, .sf-frame-next, .sf-frame-play, #qualPrev, #qualNext, #qualPlay, #sfStepAll, #sfPlayAll")) {
+        setTimeout(syncChips, 0);
+      }
+    });
+    syncChips();
+  }
+
   // ── main ─────────────────────────────────────────────────────────────────────
   var target = box.dataset.target;
   fetch("/api/trend?target=" + encodeURIComponent(target || ""))
@@ -1276,6 +1339,7 @@
 
       // master "Play all / Step all" for the whole Trends page (mission.js pattern)
       sfMasterBar();
+      sfDesignCursor();
     })
     .catch(function () { hostBox.textContent = "Failed to load trend data."; });
 })();

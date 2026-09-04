@@ -1525,15 +1525,17 @@ def create_app(
   <div id=dropzone class=dropzone>
     <div class=dz-icon>&#8682;</div>
     <p class=dz-title>Drop schedules here, or
-      <button type=button class=linkbtn id=pickBtn>choose files&hellip;</button>
+      <button type=button class=linkbtn id=pickBtn title="Pick one file, or several &mdash; Ctrl-click / Shift-click selects more than one">choose files&hellip;</button>
       <span class=muted>&middot;</span>
-      <button type=button class=linkbtn id=pickFolderBtn>choose a folder&hellip;</button></p>
+      <button type=button class=linkbtn id=pickFolderBtn title="Pick ONE folder &mdash; it loads as one Project; to load several folders at once, drop them here together">choose one folder&hellip;</button></p>
     <p class=muted>Microsoft Project <code>.mpp</code> / <code>.mpt</code>, MS Project XML
-      <code>.xml</code>, Primavera <code>.xer</code>, or the tool's own <code>.json</code>.
-      Load any number of files, or whole folders (nested sub-folders and all) &mdash;
-      each folder is its own Project and every schedule inside it is a version. To load several
-      Projects at once, drop several folders at once; the picker dialog selects one folder per
-      pick.</p>
+      <code>.xml</code>, Primavera <code>.xer</code>, or the tool's own <code>.json</code> &mdash;
+      each folder is its own Project and every schedule inside it (nested sub-folders and all) is a version.</p>
+    <ul class=dz-how>
+      <li><b>Several files</b> &mdash; <i>choose files&hellip;</i>, then Ctrl-click (&#8984;-click on a Mac) or Shift-click to select more than one; loose files group by their document Title.</li>
+      <li><b>One folder</b> &mdash; <i>choose one folder&hellip;</i>; the dialog takes one folder per pick.</li>
+      <li><b>Several Projects at once</b> &mdash; select the folders together in File Explorer or Finder and drop several folders at once anywhere on this page; each becomes its own Project. Picking one parent folder that holds several project folders asks you how to load it.</li>
+    </ul>
     <div class=dz-actions>
       <form id=exampleForm action="/example" method=post><button type=submit class=btn>Load example</button></form>
       <span class=muted>or import your own above</span>
@@ -1545,6 +1547,19 @@ def create_app(
     <input id=fileMeta type=hidden name=file_meta value="">
   </form>
   <div id=uploadNotice class="notice warn" hidden role=alert></div>
+  <div id=dzAsk class="notice info dz-ask" hidden role=dialog aria-labelledby=dzAskTitle>
+    <p id=dzAskTitle class=dz-ask-title></p>
+    <ul id=dzAskList class=dz-ask-list></ul>
+    <p id=dzAskNote class=muted hidden></p>
+    <p class=muted>Sub-folders that are years or updates of one schedule are <b>one Project</b> with
+      versions; sub-folders that are different programs are <b>one Project each</b>.
+      The tool never guesses &mdash; you choose.</p>
+    <div class=dz-actions>
+      <button type=button class=btn id=dzAskSplit></button>
+      <button type=button class=btn id=dzAskOne></button>
+      <button type=button class=linkbtn id=dzAskCancel>Cancel</button>
+    </div>
+  </div>
 </div>
 <div id=loadOverlay class=load-overlay hidden role=status aria-live=assertive aria-hidden=true>
   <div class=load-card>
