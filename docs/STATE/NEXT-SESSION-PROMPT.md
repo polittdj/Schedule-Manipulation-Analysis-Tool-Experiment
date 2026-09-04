@@ -13,8 +13,9 @@ instrument COMMITTED (`tools/route_coverage.py`, `SF_ROUTE_COVERAGE=1`, populati
 BY NAME in the ledger), Law 1's blocklist running in CI (`cui-guard`), `installer-smoke.yml` dispatchable; ADR-0456:
 /cei on the Claude Design layout) · WP0, its addendum, WP1, WP2, WP3 AND WP4 complete; the header root cause
 (ADR-0445), the One-Pager (ADR-0446), the OPERATOR BATCH (ADR-0447..0453) and WP3 (ADR-0454, #626) ALL MERGED;
-WP4 + /cei ride the draft PR opened at close from `claude/polaris-audit-wp4-huxuz3` — CHECK whether it merged
-before branching (if merged: branch fresh from `origin/main` for WP5 and open a NEW draft PR; if open: resume it).**
+WP4 + /cei MERGED as #628 → `main` @ `0f098cce` (2026-09-03 22:54Z) — branch fresh from `origin/main` for WP5 and
+open a NEW draft PR; read `main`'s run #1706 for that merge commit FIRST (in progress at close — a red there is
+yours to root-cause before building on it).**
 Campaign decisions (operator, 2026-08-27, standing): **SOLO lead · fix-as-verified · BOTH folder-ask builds**.
 QC-1/QC-2 bind every session — ADR-0393, pinned by `tests/test_standing_rules.py`. **git fetch origin before you
 branch, number an ADR, or commit — and RE-fetch before writing the docs.** **STANDING OPERATOR ASK (2026-09-03):
@@ -124,7 +125,7 @@ the `1.1fr .9fr` row (CEI panel verbatim · "How to read this" from the page's e
 5/3, 160 TestClient green, four-theme render census moved on the chip keys only. **Do NOT re-chase the 08-26
 outage, and do NOT re-derive the route population by hand — run the instrument.**
 
-⇢ NEXT — **WP5** (BOTH folder-ask builds — the three 2026-08-21 folder-gesture facts govern, do NOT
+⇢ NEXT — **FIRST: the operator's 2026-09-03 evening batch (ledger section "Operator answers + new batch"; measure before believing, red-first tests that FAIL on the defect and PASS on the fix, mutation-proved, ADR per fix):** **I-01** /integrity "not picking up the same findings it once did; not working correctly" — highest severity (testimony surface); instrument = a DIFFERENTIAL run of the SAME inputs (golden pair, TP4 corpus, the operator's IPMR files if present) through this tree vs `git worktree` checkouts at v1.0.221 (`dfa09ac`) and v1.0.229 (`cc21cb5`), diffing detector rows by name; suspects (REFUTE, don't believe): ADR-0450 scope/field-roles narrowing the detector population, ADR-0421/0422 raw-vs-scoped pairing, ADR-0371 pair truncation, ADR-0424 all-N pairing · **T-01** the Timescale "two tiers" setting does not take effect — drive the dialog (M2 module) to show=2 on /analysis and /path across zooms and count RENDERED tier rows by computed position; suspects: the ADR-0441/0452/0453 promotion ladder overriding `show`, a string `show` the ADR-0440 sanitizer rejects, "View entire project" re-applying its tier set · **(c)** /analysis residual lag — frame times at TP5 scale (2,280 rows, two files) before any change; the ADR-0449 residue names the sticky cells of ~130 materialized rows. ASK the operator for I-01's exact finding + file pair and T-01's page + zoom, but run the differential first. CLOSED by the operator: the One-Pager opened in PowerPoint (ADR-0446). UNKNOWABLE: the blank-header banner; the 08-26 incident. THEN **WP5** (BOTH folder-ask builds — the three 2026-08-21 folder-gesture facts govern, do NOT
 re-derive) → **WP6** (ledger highs: CPM-01 `cpm.py:1316` · CPM-02 `driving_slack.py:314` · MC-02 · MC-03
 `jcl.py:284` · MAN-01 · REC-02; parity-sensitive rows through the metric-parity skill; any golden shift =
 CONFIRMED-DEFERRED, never a silent re-pin; RC-02's never-reached / never-adverse endpoints are WP6/WP7 rows) →
