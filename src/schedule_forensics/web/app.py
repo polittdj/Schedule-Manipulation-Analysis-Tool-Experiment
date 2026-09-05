@@ -219,8 +219,9 @@ from schedule_forensics.reports.docx import (
     render_document,
     render_docx,
 )
-from schedule_forensics.reports.onepager import onepager_tableset, parse_workbook
-from schedule_forensics.reports.pptx import render_onepager_pptx
+from schedule_forensics.reports.onepager import OnePagerDoc, onepager_tableset, parse_workbook
+from schedule_forensics.reports.onepager_compare import compare_tableset
+from schedule_forensics.reports.pptx import render_onepager_compare_pptx, render_onepager_pptx
 from schedule_forensics.reports.tables import (
     Cell,
     Table,
@@ -609,6 +610,11 @@ from schedule_forensics.web.offload import (
     shutdown_offload,
 )
 from schedule_forensics.web.onepager import _onepager_body, onepager_layout, onepager_template
+from schedule_forensics.web.onepager_compare import (
+    _onepager_compare_body,
+    onepager_compare_doc,
+    onepager_compare_layout,
+)
 from schedule_forensics.web.path import _path_body as _path_body
 from schedule_forensics.web.path import _what_drives_header as _what_drives_header
 
@@ -4068,6 +4074,130 @@ def create_app(
                 status_code=422,
             )
         return _export_response(fmt, onepager_tableset(doc), "one-pager-list")
+
+    # ── /onepager-compare: two One-Pager lists — PRIOR and CURRENT — matched on the (swimlane,
+    # item) pair, every move in calendar days (ADR-0465). Same intake as /onepager; the page module
+    # compares and lays out; these routes only move bytes and state. ──
+    def _opc_parse(file: UploadFile) -> OnePagerDoc | str:
+        """The workbook parsed into a One-Pager document, or the failure sentence."""
+        data = file.file.read(_MAX_UPLOAD_BYTES + 1)
+        if len(data) > _MAX_UPLOAD_BYTES:
+            return (
+                f"List not loaded — file exceeds the {_MAX_UPLOAD_BYTES // (1024 * 1024)} MB cap."
+            )
+        try:
+            sheets = read_xlsx(data)
+        except XlsxError as exc:
+            return f"Could not read that file: {exc}"
+        return parse_workbook(sheets, _onepager_source_name(file.filename))
+
+    @app.get("/onepager-compare", response_class=HTMLResponse)
+    def onepager_compare() -> HTMLResponse:
+        st = session()
+        return _page(st, "One-Pager Compare", _onepager_compare_body(st, _onepager_today(st)))
+
+    @app.post("/onepager-compare/upload")
+    def onepager_compare_upload(file: UploadFile, slot: str = Form("current")) -> RedirectResponse:
+        """Parse the list into the slot it was dropped on and redirect with a one-shot summary.
+        The slot is the operator's statement of which list is PRIOR — never inferred."""
+        st = session()
+        slot = slot.strip().lower()
+        if slot not in ("prior", "current"):
+            st.onepager_compare_msg = (
+                f"Unknown slot “{slot}” — drop the list onto PRIOR or CURRENT."
+            )
+            st.onepager_compare_is_error = True
+            return RedirectResponse(url="/onepager-compare", status_code=303)
+        parsed = _opc_parse(file)
+        if isinstance(parsed, str):
+            st.onepager_compare_msg = parsed
+            st.onepager_compare_is_error = True
+            return RedirectResponse(url="/onepager-compare", status_code=303)
+        if slot == "prior":
+            st.onepager_prior = parsed
+        else:
+            st.onepager_current = parsed
+        st.onepager_compare_title = ""
+        if not parsed.items:
+            st.onepager_compare_msg = (
+                f"No usable rows in {parsed.source} ({slot.upper()}) — {len(parsed.problems)} row(s) "
+                "skipped; see the list below."
+            )
+            st.onepager_compare_is_error = True
+        else:
+            skipped = f"; {len(parsed.problems)} row(s) skipped" if parsed.problems else ""
+            st.onepager_compare_msg = (
+                f"Loaded {len(parsed.items)} item(s) from {parsed.source} as the {slot.upper()} "
+                f"list{skipped}."
+            )
+            st.onepager_compare_is_error = bool(parsed.problems)
+        return RedirectResponse(url="/onepager-compare", status_code=303)
+
+    @app.post("/onepager-compare/swap")
+    def onepager_compare_swap() -> RedirectResponse:
+        st = session()
+        st.onepager_prior, st.onepager_current = st.onepager_current, st.onepager_prior
+        st.onepager_compare_title = ""
+        st.onepager_compare_msg = "Prior and current swapped."
+        st.onepager_compare_is_error = False
+        return RedirectResponse(url="/onepager-compare", status_code=303)
+
+    @app.post("/onepager-compare/title")
+    def onepager_compare_set_title(title: str = Form("")) -> RedirectResponse:
+        session().onepager_compare_title = title.strip()[:120]
+        return RedirectResponse(url="/onepager-compare", status_code=303)
+
+    @app.post("/onepager-compare/clear")
+    def onepager_compare_clear() -> RedirectResponse:
+        st = session()
+        st.onepager_prior = None
+        st.onepager_current = None
+        st.onepager_compare_title = ""
+        st.onepager_compare_msg = "Both lists cleared."
+        st.onepager_compare_is_error = False
+        return RedirectResponse(url="/onepager-compare", status_code=303)
+
+    @app.get("/export/pptx/onepager-compare")
+    def export_onepager_compare_pptx() -> Response:
+        """The compare slide the page previews, as native PowerPoint shapes — refused, not blank,
+        until both lists are loaded."""
+        st = session()
+        today = _onepager_today(st)
+        lay = onepager_compare_layout(st, today)
+        doc = onepager_compare_doc(st)
+        if lay is None or doc is None:
+            return JSONResponse(
+                {"error": "load a PRIOR and a CURRENT one-pager list first — there is no slide"},
+                status_code=422,
+            )
+        _cls, marking = _cui_marking(st)
+        source = (
+            f"Prior: {doc.prior_source} · Current: {doc.current_source} · {len(doc.rows)} rows · "
+            f"moves in calendar days · generated {today.isoformat()} by POLARIS²"
+        )
+        safe = (
+            "".join(ch if ch.isalnum() or ch in "._-" else "_" for ch in lay.title)
+            or "one-pager-compare"
+        )
+        return Response(
+            content=render_onepager_compare_pptx(lay, marking=marking, source=source),
+            media_type=_PPTX_MEDIA,
+            headers={"Content-Disposition": f'attachment; filename="{safe}.pptx"'},
+        )
+
+    @app.get("/export/{fmt}/onepager-compare")
+    def export_onepager_compare(fmt: str) -> Response:
+        """The compared rows — prior, current and delta columns — plus the per-swimlane summary,
+        the collisions and the notes."""
+        if (bad := _bad_format(fmt)) is not None:
+            return bad
+        doc = onepager_compare_doc(session())
+        if doc is None:
+            return JSONResponse(
+                {"error": "load a PRIOR and a CURRENT one-pager list first — nothing to export"},
+                status_code=422,
+            )
+        return _export_response(fmt, compare_tableset(doc), "one-pager-compare")
 
     @app.get("/export/{fmt}/ask")
     def export_ask(fmt: str) -> Response:

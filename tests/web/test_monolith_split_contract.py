@@ -172,6 +172,7 @@ VIEW_MODULES = (
     "margin.py",
     "mission.py",
     "onepager.py",
+    "onepager_compare.py",
     "path.py",
     "performance.py",
     "portfolio.py",

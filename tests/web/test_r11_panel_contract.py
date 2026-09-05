@@ -590,6 +590,9 @@ AXIS_CALL_SITES = [
     # ADR-0446: the One-Pager painter joins the caption convention — 28 -> 29, a DELIBERATE
     # re-baseline (one new call site; no existing caption moved).
     ("onepager.js", 83, "53bfe6309e237fab7137cb9933db21c6"),
+    # ADR-0465: the One-Pager COMPARE painter joins the caption convention — 29 -> 30, a DELIBERATE
+    # re-baseline (one new call site; no existing caption moved; onepager.js's bytes untouched).
+    ("onepager_compare.js", 131, "ed5a829de52fa34fb468b30a41bdc3e4"),
     ("performance.js", 472, "db8ae0464072322438172fe30f85fb71"),
     ("resources.js", 243, "251b7d09fffcc7a9f8adaf5f88ab94eb"),
     # line refreshed by ADR-0317 (sfControls grew above the call site); caption bytes intact
@@ -655,17 +658,17 @@ def test_the_seven_page_owned_scripts_are_byte_frozen() -> None:
         assert hashlib.md5(path.read_bytes()).hexdigest() == digest, name
 
 
-def test_all_twenty_nine_axis_title_call_sites_are_frozen() -> None:
-    """Standing requirement 5: the axis captions are finished — nothing may move one. 29 is the
+def test_all_thirty_axis_title_call_sites_are_frozen() -> None:
+    """Standing requirement 5: the axis captions are finished — nothing may move one. 30 is the
     real count (``grep -c 'SFChartFrame.axisTitles(' static/*.js``; 16 → 18 in ADR-0325 when
     margin_dashboard.js's two charts were captioned; 18 → 24 in ADR-0329 when sra.js's two and
     volatility.js's four joined in batch 3c-i; 24 → 28 in ADR-0330 when sra_jcl.js's two and
     sra_ssi.js's two joined in batch 3c-ii, emptying the PENDING ledger; 28 → 29 in ADR-0446 when
-    onepager.js, the One-Pager painter, joined); chartframe.js's definition and export are not
-    call sites."""
+    onepager.js, the One-Pager painter, joined; 29 → 30 in ADR-0465 when onepager_compare.js, the
+    COMPARE painter, joined); chartframe.js's definition and export are not call sites."""
     sites = _axis_call_sites()
-    assert len(sites) == 29, len(sites)
-    assert len({d for _n, _l, d in sites}) == 29, "a hash collided — the freeze is not selective"
+    assert len(sites) == 30, len(sites)
+    assert len({d for _n, _l, d in sites}) == 30, "a hash collided — the freeze is not selective"
     # THE LOAD-BEARING HALF: same files, same caption bytes. A failure here means a caption moved
     # — STOP AND REPORT, do not refresh the constant.
     assert [(n, d) for n, _l, d in sites] == [(n, d) for n, _l, d in AXIS_CALL_SITES], (

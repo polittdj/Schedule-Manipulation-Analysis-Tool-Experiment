@@ -483,6 +483,19 @@ _EXPLAINERS: dict[str, tuple[str, str, str]] = {
         "Use the gap and its growth rate to justify (or refute) a recovery plan: a widening "
         "gap with a flat actual curve will not be closed by optimism.",
     ),
+    "One-Pager Compare": (
+        "Two One-Pager lists — a prior and a current — on one swimlane slide: the current position "
+        "drawn solid, the prior as a ghost, an arrow from the old finish to the new one with the "
+        "move in calendar days, NEW and REMOVED items tagged, and a per-swimlane strip counting "
+        "slips, pull-ins, additions and removals.",
+        "A right-pointing arrow with +N is a slip; left with \u2212N is a pull-in; a ghost with no "
+        "solid shape is REMOVED; a solid shape with no ghost is NEW. Moves are calendar days because "
+        "the list carries no calendar. A row whose swimlane and name appear twice in one list is "
+        "DUPLICATE NAME and is compared with nothing.",
+        "Decide which swimlanes carry the movement, which single item slipped most, and whether the "
+        "new and removed rows are real scope changes or renames the two lists spell differently — "
+        "before the slide goes to the review board.",
+    ),
     "Forecast": (
         "Multiple engine-computed finish forecasts side by side: schedule-logic CPM (with started "
         "work anchored to its recorded actual start), the stored as-scheduled finish, and "
@@ -878,6 +891,15 @@ _SPINE: tuple[tuple[str, tuple[_Chapter, ...]], ...] = (
                 (),
                 ("One-Pager Timeline",),
                 "Turn a three-column Excel list into a swimlane one-pager and a PowerPoint slide.",
+            ),
+            _Chapter(
+                "",
+                "One-Pager Compare",
+                "/onepager-compare",
+                (),
+                ("One-Pager Compare",),
+                "Two One-Pager lists side by side: every slip and pull-in in calendar days, "
+                "NEW and REMOVED named.",
             ),
             _Chapter(
                 "",

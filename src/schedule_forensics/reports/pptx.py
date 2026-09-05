@@ -22,6 +22,7 @@ import io
 import zipfile
 
 from schedule_forensics.reports.onepager import Layout
+from schedule_forensics.reports.onepager_compare import CompareLayout
 
 _EMU_PER_PT = 12700
 _SLIDE_W, _SLIDE_H = 12192000, 6858000  # 13.333 x 7.5 in — 16:9
@@ -232,6 +233,7 @@ class _Slide:
         prst: str = "rect",
         line: str | None = None,
         line_pt: float = 0.5,
+        dash: str | None = None,
         name: str,
     ) -> None:
         self.parts.append(
@@ -240,7 +242,52 @@ class _Slide:
             f'<a:xfrm><a:off x="{_emu(x)}" y="{_emu(y)}"/>'
             f'<a:ext cx="{_emu(w)}" cy="{_emu(h)}"/></a:xfrm>'
             f'<a:prstGeom prst="{prst}"><a:avLst/></a:prstGeom>'
-            f"{_fill(fill)}{_ln(line, line_pt)}</p:spPr></p:sp>"
+            f"{_fill(fill)}{_ln(line, line_pt, dash)}</p:spPr></p:sp>"
+        )
+
+    def arrow(
+        self, x0: float, x1: float, y: float, color: str, width_pt: float, *, name: str
+    ) -> None:
+        """A horizontal connector from ``x0`` to ``x1`` with a triangle head at ``x1`` — the
+        compare slide's "the finish moved from here to here". DrawingML puts the ``tailEnd`` at
+        the line's END, and a leftward line is a rightward one flipped, so a pull-in is
+        ``flipH`` with its head still at ``x1``."""
+        flip = ' flipH="1"' if x1 < x0 else ""
+        self.parts.append(
+            f'<p:cxnSp><p:nvCxnSpPr><p:cNvPr id="{self._id()}" name="{_esc(name)}"/>'
+            "<p:cNvCxnSpPr/><p:nvPr/></p:nvCxnSpPr><p:spPr>"
+            f'<a:xfrm{flip}><a:off x="{_emu(min(x0, x1))}" y="{_emu(y)}"/>'
+            f'<a:ext cx="{_emu(abs(x1 - x0))}" cy="0"/></a:xfrm>'
+            '<a:prstGeom prst="line"><a:avLst/></a:prstGeom>'
+            f'<a:ln w="{_emu(width_pt)}">{_fill(color)}'
+            '<a:tailEnd type="triangle" w="med" len="med"/></a:ln></p:spPr></p:cxnSp>'
+        )
+
+    def text_runs(
+        self,
+        x: float,
+        y: float,
+        w: float,
+        h: float,
+        runs: list[tuple[str, str, bool]],
+        size_pt: float,
+        *,
+        align: str = "l",
+        anchor: str = "ctr",
+        name: str,
+    ) -> None:
+        """One paragraph of several runs — ``(text, colour, bold)`` each — so a label can carry
+        its calendar-day delta in the slip or pull-in colour beside the item's own name."""
+        body = "".join(_run(t, size_pt, c, b) for t, c, b in runs)
+        self.parts.append(
+            f'<p:sp><p:nvSpPr><p:cNvPr id="{self._id()}" name="{_esc(name)}"/>'
+            '<p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr><p:spPr>'
+            f'<a:xfrm><a:off x="{_emu(x)}" y="{_emu(y)}"/>'
+            f'<a:ext cx="{_emu(w)}" cy="{_emu(h)}"/></a:xfrm>'
+            '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/></p:spPr>'
+            f'<p:txBody><a:bodyPr wrap="none" lIns="0" tIns="0" rIns="0" bIns="0" '
+            f'anchor="{anchor}"/><a:lstStyle/><a:p><a:pPr algn="{align}"/>{body}</a:p>'
+            "</p:txBody></p:sp>"
         )
 
     def vline(
@@ -542,6 +589,332 @@ def render_onepager_pptx(layout: Layout, *, marking: str, source: str) -> bytes:
         [
             "Timeline: months and years · bars = activities · diamonds = milestones · "
             "red line = today"
+        ],
+        5.5,
+        _MUTED,
+        align="r",
+        name="Read-me",
+    )
+    return _package(s)
+
+
+# ── the One-Pager COMPARE slide (ADR-0465) ────────────────────────────────────────────────────
+
+#: Print colours for the delta encoding — a slip, a pull-in, a NEW tag, a REMOVED tag, a
+#: DUPLICATE-NAME tag. The browser paints the same roles through --bad / --ok / --accent /
+#: --muted / --warn.
+_SLIP, _PULL, _NEW, _REMOVED, _DUP = "B3261E", "1E7B34", "1F6FEB", "6B7280", "B8860B"
+_BADGE_INK = "FFFFFF"
+
+
+def _tag_color(badge: str) -> str:
+    return {"NEW": _NEW, "REMOVED": _REMOVED}.get(badge, _DUP)
+
+
+def render_onepager_compare_pptx(layout: CompareLayout, *, marking: str, source: str) -> bytes:
+    """The compare layout as one 16:9 slide of native shapes: the ADR-0446 slide with the PRIOR
+    position as a dashed ghost, the CURRENT one solid, an arrow per moved finish carrying its
+    calendar-day delta, NEW / REMOVED / DUPLICATE NAME tags, and the per-swimlane summary
+    column. Same geometry as the page (one layout unit = one point = 12,700 EMU)."""
+    lay = layout
+    s = _Slide()
+    s.text(0, 1, lay.w, 8, [marking], 6, _CUI, bold=True, align="ctr", name="CUI marking (top)")
+    s.text(
+        0,
+        lay.h - 9,
+        lay.w,
+        8,
+        [marking],
+        6,
+        _CUI,
+        bold=True,
+        align="ctr",
+        name="CUI marking (bottom)",
+    )
+    s.text(
+        lay.lane_col_x0, lay.title_y - 15, 760, 18, [lay.title], 16, _INK, bold=True, name="Title"
+    )
+    if lay.subtitle:
+        s.text(
+            lay.lane_col_x0, lay.sub_y - 8, 900, 10, [lay.subtitle], 7.5, _MUTED, name="Subtitle"
+        )
+    top, bot = lay.year_y0, lay.lanes_y1
+    for band in lay.years:
+        s.shape(
+            band.x0,
+            top,
+            band.x1 - band.x0,
+            bot - top,
+            _YEAR_SHADE[band.shade],
+            name=f"Year band {band.label}",
+        )
+        if band.x1 - band.x0 > 18:
+            s.text(
+                band.x0,
+                top,
+                band.x1 - band.x0,
+                lay.year_y1 - top,
+                [band.label],
+                8,
+                _INK,
+                bold=True,
+                align="ctr",
+                name=f"Year {band.label}",
+            )
+    for tick in lay.months:
+        s.vline(
+            tick.x, lay.year_y1, bot, _GRID, 0.4, dash="sysDot", name=f"Month line {tick.x:.0f}"
+        )
+        if tick.label:
+            half = tick.label_x - tick.x
+            s.text(
+                tick.x,
+                lay.year_y1,
+                2 * half,
+                lay.mon_y1 - lay.year_y1,
+                [tick.label],
+                lay.month_pt,
+                _MUTED,
+                align="ctr",
+                name="Month label",
+            )
+    for band in lay.years:
+        s.vline(band.x0, top, bot, _LINE, 0.6, name="Year line")
+    s.vline(lay.x1, top, bot, _LINE, 0.6, name="Year line")
+    s.hline(lay.lane_col_x0, lay.summary_x1, lay.mon_y1, _LINE, 0.7, name="Header line")
+    s.text(
+        lay.summary_x0 + 2,
+        lay.year_y1,
+        lay.summary_x1 - lay.summary_x0 - 2,
+        lay.mon_y1 - lay.year_y1,
+        ["CHANGE SUMMARY"],
+        5.5,
+        _MUTED,
+        bold=True,
+        name="Summary header",
+    )
+    col_w = lay.lane_col_x1 - lay.lane_col_x0
+    for lane in lay.lanes:
+        hue = LANE_PALETTE[lane.color % len(LANE_PALETTE)]
+        h = lane.y1 - lane.y0
+        s.shape(
+            lay.lane_col_x0,
+            lane.y0,
+            lay.x1 - lay.lane_col_x0,
+            h,
+            tint(hue, 0.07),
+            name=f"Lane: {lane.name}",
+        )
+        s.shape(
+            lay.lane_col_x0, lane.y0, col_w, h, tint(hue, 0.16), name=f"Lane label: {lane.name}"
+        )
+        s.shape(lay.lane_col_x0, lane.y0, 3, h, hue, name="Lane edge")
+        s.text(
+            lay.lane_col_x0 + 7,
+            lane.y0,
+            col_w - 8,
+            h,
+            lane.lines,
+            lane.name_pt,
+            _INK,
+            bold=True,
+            name=f"Lane name: {lane.name}",
+        )
+    for box in lay.summaries:
+        hue = LANE_PALETTE[lay.lanes[box.lane].color % len(LANE_PALETTE)]
+        s.shape(
+            box.x0,
+            box.y0,
+            box.x1 - box.x0,
+            box.y1 - box.y0,
+            tint(hue, 0.10),
+            name=f"Summary: {lay.lanes[box.lane].name}",
+        )
+        s.text(
+            box.x0 + 2.5,
+            box.y0,
+            box.x1 - box.x0 - 4,
+            box.y1 - box.y0,
+            box.lines,
+            box.pt,
+            _INK,
+            name=f"Summary text: {lay.lanes[box.lane].name}",
+        )
+    for p in lay.items:
+        hue = LANE_PALETTE[lay.lanes[p.lane].color % len(LANE_PALETTE)]
+        if p.ghost_x0 is not None and p.ghost_x1 is not None:
+            if p.ghost_milestone:
+                s.shape(
+                    p.ghost_x0 - lay.ms / 2,
+                    p.y - lay.ms / 2,
+                    lay.ms,
+                    lay.ms,
+                    None,
+                    prst="diamond",
+                    line=hue,
+                    line_pt=0.75,
+                    dash="dash",
+                    name=f"Prior milestone: {p.name}",
+                )
+            else:
+                s.shape(
+                    p.ghost_x0,
+                    p.y - lay.bar_h / 2,
+                    p.ghost_x1 - p.ghost_x0,
+                    lay.bar_h,
+                    None,
+                    prst="roundRect",
+                    line=hue,
+                    line_pt=0.75,
+                    dash="dash",
+                    name=f"Prior activity: {p.name}",
+                )
+        if p.arrow_x0 is not None and p.arrow_x1 is not None:
+            slip = p.status == "slipped"
+            s.arrow(
+                p.arrow_x0,
+                p.arrow_x1,
+                p.arrow_y,
+                _SLIP if slip else _PULL,
+                0.9,
+                name=f"{'Slip' if slip else 'Pull-in'}: {p.name}",
+            )
+        if p.x0 is not None and p.x1 is not None:
+            if p.milestone:
+                s.shape(
+                    p.x0 - lay.ms / 2,
+                    p.y - lay.ms / 2,
+                    lay.ms,
+                    lay.ms,
+                    hue,
+                    prst="diamond",
+                    line=_WHITE,
+                    name=f"Milestone: {p.name}",
+                )
+            else:
+                s.shape(
+                    p.x0,
+                    p.y - lay.bar_h / 2,
+                    p.x1 - p.x0,
+                    lay.bar_h,
+                    hue,
+                    prst="roundRect",
+                    line=_WHITE,
+                    name=f"Activity: {p.name}",
+                )
+        delta_color = {"slipped": _SLIP, "pulled in": _PULL}.get(p.status, _DUP)
+        ink = _WHITE if p.inside else _INK
+        runs: list[tuple[str, str, bool]] = [(p.label, ink, bool(p.inside))]
+        if p.delta:
+            runs.append((" " + p.delta, delta_color, True))
+        box_w, box_y = p.label_w + 4, p.y - lay.row_h / 2
+        if p.label_anchor == "end":
+            right = p.label_x - (p.badge_w + 2 if p.badge else 0.0)
+            s.text_runs(
+                right - box_w,
+                box_y,
+                box_w,
+                lay.row_h,
+                runs,
+                lay.label_pt,
+                align="r",
+                name=f"Label: {p.name}",
+            )
+        else:
+            s.text_runs(
+                p.label_x, box_y, box_w, lay.row_h, runs, lay.label_pt, name=f"Label: {p.name}"
+            )
+        if p.badge:
+            s.shape(
+                p.badge_x,
+                p.y - lay.label_pt * 0.6,
+                p.badge_w,
+                lay.label_pt * 1.2,
+                _tag_color(p.badge),
+                prst="roundRect",
+                name=f"Tag: {p.badge} — {p.name}",
+            )
+            s.text(
+                p.badge_x,
+                p.y - lay.label_pt * 0.6,
+                p.badge_w,
+                lay.label_pt * 1.2,
+                [p.badge],
+                lay.label_pt,
+                _BADGE_INK,
+                bold=True,
+                align="ctr",
+                name=f"Tag text: {p.badge} — {p.name}",
+            )
+    if lay.today_x is not None:
+        s.vline(lay.today_x, top, bot, _TODAY, 1.5, name="Today")
+        if lay.today_label_anchor == "start":
+            s.text(
+                lay.today_label_x,
+                lay.today_label_y - 6,
+                90,
+                8,
+                [lay.today_label],
+                6,
+                _TODAY,
+                bold=True,
+                name="Today label",
+            )
+        else:
+            s.text(
+                lay.today_label_x - 90,
+                lay.today_label_y - 6,
+                90,
+                8,
+                [lay.today_label],
+                6,
+                _TODAY,
+                bold=True,
+                align="r",
+                name="Today label",
+            )
+    s.hline(lay.lane_col_x0, lay.summary_x1, lay.legend_y0, _LINE, 0.7, name="Legend line")
+    lp = lay.legend_pt
+    for e in lay.legend:
+        cy = e.y - 2.5
+        if e.kind == "activity":
+            s.shape(e.x, cy - 2.5, 10, 5, _SYMBOL, prst="roundRect", name="Legend: current")
+        elif e.kind in ("ghost", "removed"):
+            s.shape(
+                e.x,
+                cy - 2.5,
+                10,
+                5,
+                None,
+                prst="roundRect",
+                line=_SYMBOL,
+                line_pt=0.75,
+                dash="dash",
+                name=f"Legend: {e.kind}",
+            )
+        elif e.kind == "slip":
+            s.arrow(e.x, e.x + 10, cy, _SLIP, 0.9, name="Legend: slip")
+        elif e.kind == "pull":
+            s.arrow(e.x + 10, e.x, cy, _PULL, 0.9, name="Legend: pull-in")
+        elif e.kind == "new":
+            s.shape(e.x, cy - 3, 10, 6, _NEW, prst="roundRect", name="Legend: new")
+        elif e.kind == "today":
+            s.vline(e.x + 5, cy - 4, cy + 4, _TODAY, 1.5, name="Legend: today")
+        else:
+            hue = LANE_PALETTE[e.color % len(LANE_PALETTE)]
+            s.shape(e.x, cy - 3, 10, 6, hue, prst="roundRect", name=f"Legend: {e.label}")
+        s.text(
+            e.x + 13, e.y - lp - 2, e.w, lp + 4, [e.label], lp, _INK, name=f"Legend text: {e.label}"
+        )
+    s.text(lay.lane_col_x0, lay.h - 18, 520, 8, [source], 5.5, _MUTED, name="Source")
+    s.text(
+        lay.summary_x1 - 380,
+        lay.h - 18,
+        380,
+        8,
+        [
+            "Solid = current · dashed ghost = prior · arrow = the finish moved (+N cal d slipped, "
+            "\u2212N pulled in) · NEW / REMOVED tags · red line = today"
         ],
         5.5,
         _MUTED,

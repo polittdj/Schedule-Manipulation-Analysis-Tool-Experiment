@@ -156,16 +156,17 @@ def test_the_project5_family_is_the_shape_adr_0112_relies_on(entries: list[Any])
 
 
 def test_shipped_static_assets_are_not_mislabelled() -> None:
-    """The rotation never reached the product. 67 vendored assets, each matching its extension.
+    """The rotation never reached the product. 69 vendored assets, each matching its extension.
 
     65 -> 67 in ADR-0426 (``launch.js`` + ``launch.css``, the boot screen); 67 -> 68 in ADR-0446
-    (``onepager.js``, the One-Pager painter + drop-zone intake). The count is pinned
+    (``onepager.js``, the One-Pager painter + drop-zone intake); 68 -> 69 in ADR-0465
+    (``onepager_compare.js``, the COMPARE painter + two-slot intake). The count is pinned
     deliberately: this guard's subject is a bulk-upload rotation that mislabelled 99 intake files,
     so a NEW shipped asset must be an explicit decision rather than something that slips in under
     a glob.
     """
     assets = sorted(p for p in STATIC.iterdir() if p.is_file())
-    assert len(assets) == 68
+    assert len(assets) == 69
     wrong = {
         p.name: tool.detect_family(p.read_bytes())
         for p in assets

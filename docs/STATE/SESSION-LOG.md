@@ -16557,3 +16557,73 @@ shadows it on PATH).
   `c0800680`); subscribed; a check-in about an hour out reads its checks (a docs-only diff: the six CI checks,
   installer-smoke path-filtered off) and `main`'s run #1737 for the squash. The next session reads the
   head's checks, never this line, before trusting it.
+
+## 2026-09-05 (b) — /onepager-compare SHIPPED: the operator's two-list One-Pager compare, matched on the only key the sheet carries, every move in calendar days, native in PowerPoint, on the Claude Design layout (ADR-0465) — v1.0.238
+
+- **Branch:** `claude/polaris-audit-resume-e9t5h1` on `origin/main` @ `46a91fd2` (#638's docs-only merge had
+  landed before this session opened; no open PRs). `main`'s run **#1737** for the #637 squash `c0800680`
+  concluded **success** (01:47:27Z), installer-smoke #643 success, #1740 for `46a91fd2` success. The
+  container had NO package: `pip install -e '.[dev,browser]' --retries 8 --timeout 180` (rc 0); `python -m
+  build` was absent too (`pip install build`).
+- **Artboard (design truth):** the v2 canvas carries a "Library One-Pager Timeline" section (`setScreen('op')`).
+  Recovered by EXECUTING the canvas over loopback HTTP (npm-packed React/ReactDOM/Babel, `support.js` patched to
+  `./pkgs/…` with the three `_SRI` constants blanked, `sfredux-screen=op` · `sfredux-guided=1` ·
+  `sfops-boot.skipNext=true` · `sfredux-theme` seeded): four themes, zero page errors, viewed — it is the shape
+  ADR-0446 built /onepager from (kicker · takeaway · two notice boxes · one slide panel with the ▦ / ⤓ / ⤓
+  POWERPOINT / ⛶ strip · title row · slide · intake). The mock's ⛶ PRESENT stays ⛶ ENLARGE (r11 vocabulary).
+- **Engine (`reports/onepager_compare.py`, NEW).** `item_key` = the layout's ADR-0446 lane merge key + the
+  whitespace-collapsed casefolded name — the ONLY key the sheet carries. `compare_onepager_docs`: statuses
+  slipped / pulled in / start moved / unchanged / new / removed / ambiguous; deltas `current − prior` in CALENDAR
+  days (start and finish); a rename or a swimlane move = one removed + one new, the names seen on both sides under
+  different swimlanes COUNTED and said, never inferred; a duplicate name under one swimlane in EITHER sheet =
+  a collision reported by sheet and row, every row AMBIGUOUS, compared with nothing; a type change compared on
+  its finish and named; spelling-variant matches named. `LaneSummary` per swimlane + totals with the worst
+  slip named. Tests written FIRST and observed red at import (`ModuleNotFoundError`); 16 green after.
+- **Layout (`build_compare_layout`).** The ADR-0446 frame plus a 118-pt summary column (`X1` 826); per row the
+  current shape solid, the prior a ghost (a diamond ghost under a bar on a type change), an arrow from the
+  prior finish to the current when the finish moved, the label `name (finish)` + `+N cal d` / `−N cal d` /
+  `start +N cal d`, a NEW / REMOVED / DUPLICATE NAME tag box; the packer reserves ghost + shape + arrow +
+  label + tag; the summary strip lists non-zero counts and names the worst slip (3 → 2 → 1 lines, never
+  below 3.6 pt — the first render truncated "removed 0" behind an ellipsis at 6 pt, so zeros were dropped);
+  the legend leads with the encoding. 21 layout tests green (one, the ghost-packing test, re-aimed to mid-April
+  so the L6 mutant becomes visible).
+- **Painter (`static/onepager_compare.js`, NEW) + .pptx (`render_onepager_compare_pptx`).** SVG viewBox
+  painter; `SFGantt.dataDateLine` + `SFChartFrame.axisTitles` (line 131; xLabel "Timeline by month and year
+  (prior as ghost, current solid)" — WORDED differently from onepager.js's on purpose: identical caption bytes
+  hash identically and the r11 freeze rejects a collision as non-selective); two-slot intake, a stray drop
+  refused with a hint. The writer: dashed `noFill` ghosts, `triangle`-headed connectors (a pull-in `flipH`-ed,
+  head at the current finish), two-run labels, tag boxes, summary boxes; `_Slide.shape(dash=)`, `arrow`,
+  `text_runs` added — the ADR-0446 twin deck's sha256 `159632e3…` IDENTICAL before and after; `onepager.js`
+  `525b61ad…` and `reports/onepager.py` `e695062a…` untouched.
+- **Page (`web/onepager_compare.py`, NEW) + routes + state + rail + i18n + CSS.** GET /onepager-compare · POST
+  upload (slot=prior|current; an unknown slot refused by name) · swap · title · clear · GET
+  /export/pptx/onepager-compare (422 until both lists) · GET /export/{fmt}/onepager-compare (rows with prior /
+  current / delta columns, the per-swimlane summary, collisions, notes). Five `SessionState` fields; a LIBRARY
+  rail entry; `_EXPLAINERS["One-Pager Compare"]`; i18n ×8 × 4 (hand-translated — UNVERIFIED as idiomatic);
+  `.opc-*` tokens-only CSS; the E501 exemption. The design rows: the slide panel · `cd-grid-12` (summary panel
+  beside the `cd-read` "How to read this") · `cd-grid-2` slots as `cd-block`s · a `cd-read` rules block stating
+  the three unanswered rulings as the current rule. The takeaway quotes only cells the Total row and the rows
+  table render (r10, pinned).
+- **Sweeps joined (deliberate re-baselines):** M1 census row · oracle labels +30, empty fingerprint `{200: 44,
+  400: 17, 422: 4}` · DD ledger `("onepager_compare.js", 131)` · r11 axis sites 29 → 30 · `VIEW_MODULES` + both
+  whole-view-layer guards · shipped assets 68 → 69 · the LIBRARY rail pin · `pyproject` per-file-ignore.
+- **Verification:** engine + layout 37 · page 11 · browser 4 (two-slot upload paints 16 ghosts, 3 headed arrows
+  whose heads point the way the line runs, 2 tags, the DD line at the layout's x, 17 drawer rows; a stray
+  drop refused, a slot drop lands in its slot; four themes: distinct slip / pull-in colours, `fill:none`
+  dashed ghost, filled tag, scrolling summary table, nothing wider than the viewport, zero page errors; ⤓
+  POWERPOINT downloads a package with `Slip: Boots 1` and `Prior activity:` shapes) · 17 touched guard
+  modules 394 green / 3 env skips · mutation batteries on scratch copies (PYTHONPATH-shadowed): engine/layout **15/15**,
+  painter/CSS/pptx **12/12** red by name, controls green · four-theme render census `.panel` 2 · blocks 4 ·
+  grids 2 · ghosts 16 · arrows 5 · tags 2 · summary boxes 7 · ⤓ 2 · ⛶ 1 · ▦ 1, zero page errors, nothing
+  wider than the viewport, identical across themes; /onepager control unchanged. Three of my own pins were
+  wrong and corrected against the page (`<div class=panel` matched `panel-head`; `<tr><td>` matched the
+  second table; `.opc-summary` matched the table) and one browser helper loaded "if empty" and inherited the
+  drop test's list — load unconditionally.
+- **Version + installers:** 1.0.238; wheel + nine installers rebuilt after the last source edit (the script
+  refused the graft-boundary MPXJ ref first; `git fetch --deepen=300` resolved it to `42d92dc9`); lockstep 68.
+  Statics: ruff (whole tree) · format · mypy --strict (163 files) · node --check green; bandit exit 0 — after its ONE finding (B101, an `assert isinstance` in the page module's summary table) became a typed parameter, and the wheel + installers were rebuilt again after that edit.
+  Full pytest: **4,855 passed / 5 skipped (the standing env skips) / 0 failed in 33:28**; `tests/test_state_docs.py` + `test_standing_rules.py` run after the docs rotated: 12 green.
+- **Docs:** ADR-0465; HANDOFF rotated (2026-09-04 (f) → the archive top); ledger design-table row + the
+  feature-request section; DESIGN-SYSTEM §9 gains the no-cursor family page; LESSONS-LEARNED 2026-09-05 entry;
+  the kickoff prompt refreshed. The operator's THREE rulings (swimlane move · slip threshold · single-version
+  slides) are in the HANDOFF's ASK block and on the page.
