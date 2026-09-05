@@ -4,7 +4,9 @@
 
 ---
 
-Resume the POLARIS² full-tool audit campaign (Schedule-Manipulation-Analysis-Tool). Read
+Resume the POLARIS² full-tool audit campaign (Schedule-Manipulation-Analysis-Tool). **The previous session
+ended on the context wall (session-token-guardian TRIP at 94 % of the assumed wall) right after the
+operator said "Continue"; nothing of the next item was started — start it here, first line.** Read
 docs/STATE/HANDOFF.md FIRST (auto-injected), then **docs/STATE/AUDIT-2026-08-27.md — the
 campaign's live ledger (appended per-WP, never batch-written)**; the 2026-08-16 ledger stays the
 historical row source for the WP6b tail. As of last close: **v1.0.238 · highest ADR 0465 —
