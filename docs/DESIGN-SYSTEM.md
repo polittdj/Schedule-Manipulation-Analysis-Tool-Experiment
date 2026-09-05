@@ -251,3 +251,15 @@ toolbar glyph and figure it carried before** ("don't modify any of the functiona
   npm-packed React/Babel with a `crossorigin` attribute, and a `file://` origin is `null`, so Chromium
   blocks the local scripts by CORS and the app never boots (blank screenshots, the artboard section
   present but hidden). `python -m http.server --bind 127.0.0.1` on the patched copy is the whole fix.
+- **A page with no version cursor still wears the family** (ADR-0465, /onepager-compare — the fifth
+  page, built NEW on the design rather than migrated): the artboard is the "Library One-Pager
+  Timeline" section (`setScreen('op')`), whose shape is kicker · takeaway · notices · ONE slide panel
+  with the ▦ / ⤓ / ⛶ strip · the intake below. A compare page adds `cd-grid-12` (the summary panel
+  beside a `cd-block cd-read` "How to read this" from its own `_EXPLAINERS` entry), `cd-grid-2` for
+  the TWO intake slots as `cd-block`s (blocks, not panels — the page's `.panel` count is the slide and
+  the summary, nothing else), and a `cd-block cd-read` rules block that states every matching rule
+  the operator has not yet ruled on as the CURRENT rule, in the open. A delta encoding must survive
+  print, PowerPoint and all four themes, so it is carried by SHAPE — a dashed ghost, an arrow with a
+  head, a text tag — and colour only reinforces it; the browser and the .pptx paint the same layout
+  numbers, and a slide that says "slipped" in one and not the other is a defect. The mock's ⛶ PRESENT
+  label stays unported (the r11 vocabulary is ⛶ ENLARGE).

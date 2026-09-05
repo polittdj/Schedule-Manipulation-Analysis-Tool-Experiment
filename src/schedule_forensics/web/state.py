@@ -725,6 +725,14 @@ class SessionState:
     onepager_is_error: bool = False
     #: Test seam: the "today" the one-pager draws. ``None`` is the real clock.
     onepager_today: dt.date | None = None
+    # ── /onepager-compare (ADR-0465): the PRIOR and CURRENT lists (the operator's choice of slot,
+    # never inferred), the slide title, and the one-shot message — cleared by "Clear both lists" ──
+    onepager_prior: OnePagerDoc | None = None
+    onepager_current: OnePagerDoc | None = None
+    onepager_compare_title: str = ""
+    onepager_compare_msg: str | None = None
+    #: Whether :attr:`onepager_compare_msg` reports a FAILURE (the ADR-0313 rule).
+    onepager_compare_is_error: bool = False
     # JCL joint cost-&-schedule confidence settings (ADR-0269). Blank targets (None) mean
     # "use the run's deterministic finish / EAC"; td_share is the time-dependent cost share
     # τ; the 1/1/1 multipliers mean cost-estimating uncertainty is OFF (duration-driven

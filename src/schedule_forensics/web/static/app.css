@@ -1245,6 +1245,24 @@ tr.row-found td.sf-frozen-col { background: #fff3b0; }
 .op-pptx{margin-right:1em}
 .op-table td,.op-table th{white-space:nowrap}
 @media print{.op-svg{border:0}}
+/* ── the One-Pager COMPARE slide (ADR-0465): the ADR-0446 language plus a dashed ghost per prior
+   position, an arrow per moved finish, NEW / REMOVED / DUPLICATE NAME tags and a per-swimlane
+   summary column. Colours come only from theme tokens; the .pptx paints fixed print hues. ── */
+.opc-ghost{fill:none;stroke-width:.7;stroke-dasharray:1.6 1.1}
+.opc-removed .opc-ghost{stroke:var(--muted)}
+.opc-arrow{stroke-width:.7} .opc-arrow-slip{stroke:var(--bad)} .opc-arrow-pull{stroke:var(--ok)}
+.opc-arrow-head-slip{fill:var(--bad)} .opc-arrow-head-pull{fill:var(--ok)}
+.opc-delta{font-weight:700} .opc-delta-slipped{fill:var(--bad)} .opc-delta-pulled-in{fill:var(--ok)} .opc-delta-start-moved{fill:var(--warn)}
+.opc-badge-new{fill:var(--accent)} .opc-badge-removed{fill:var(--muted)} .opc-badge-ambiguous{fill:var(--warn)}
+.opc-badge-text{fill:var(--bg);font-weight:700}
+.opc-sum-bg{fill-opacity:.09} .opc-sum-text{fill:var(--ink)} .opc-sum-head{font-weight:700}
+.opc-legend-ghost{fill:none;stroke:var(--muted);stroke-width:.7;stroke-dasharray:1.6 1.1}
+.opc-slots .dropzone{padding:18px 14px} .opc-slot-name{font-size:12px;color:var(--muted)} .opc-slot-name b{color:var(--ink)}
+.opc-status-slipped{color:var(--bad);font-weight:600} .opc-status-pulled-in{color:var(--ok);font-weight:600}
+.opc-status-start-moved{color:var(--warn)} .opc-status-new{color:var(--accent)} .opc-status-removed{color:var(--muted)} .opc-status-ambiguous{color:var(--warn)}
+.opc-hint{margin:.4em 0 0;font-size:12px;color:var(--warn)}
+.opc-swap-form{display:inline-flex;margin-right:1em}
+.opc-scroll{overflow-x:auto} .opc-summary-table{width:100%} .opc-summary-table th,.opc-summary-table td{white-space:nowrap}
 
 /* /volatility — the Claude Design "How stable is the path" layout (operator 2026-09-02). Tokens only;
    the ten visuals keep their .tile shells inside the five numbered panels. */

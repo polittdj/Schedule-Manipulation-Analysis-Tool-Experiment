@@ -71,6 +71,7 @@ TIME_AXIS = {
     ("drift.js", 136),
     ("margin_dashboard.js", 323),
     ("onepager.js", 83),
+    ("onepager_compare.js", 131),
     ("resources.js", 243),
     ("scurve.js", 168),
 }

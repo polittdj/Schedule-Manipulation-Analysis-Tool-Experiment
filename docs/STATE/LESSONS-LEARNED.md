@@ -435,6 +435,45 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-05 — Two identical captions hash identically; a missed mutant is a fixture question; a counting pin must count what it names
+
+- **A content-keyed freeze rejects identical content, and that is a feature.** The compare painter's
+  axis-caption call was copied verbatim from the One-Pager's — same L/R/T/B expression, same two
+  labels — and the r11 census, which md5s each call site's argument object and asserts the digests
+  are DISTINCT ("a hash collided — the freeze is not selective"), would have gone red. The fix was
+  also the better disclosure: the compare caption says what the sibling's cannot ("prior as ghost,
+  current solid"). **When a new call site must join a per-site freeze, it must say something no other
+  site says** — a freeze cannot tell two identical sites apart, by construction.
+- **A "missed" mutation is a question about the fixture before it is a question about the test.**
+  Mutation L6 (the packer ignoring the ghost's extent) produced nothing red on the first data: the
+  pull-in's LABEL was long enough to push the newcomer to a second row on both trees, so the ghost's
+  overhang never mattered. Moving the newcomer to mid-April — past the label, under the ghost — made
+  the mutant visible and the test red by name. Same lesson as the 2026-08-18 symmetric fixture, new
+  shape: **the fixture has to put the two code paths on different rows**.
+- **A counting pin must count exactly what it names.** Three superset counts in one session:
+  `page.count("<div class=panel")` also matched `<div class=panel-head>`; `page.count("<tr><td>")`
+  also matched the second table on the page; `.opc-summary` on the summary TABLE also matched the
+  slide's SVG summary boxes. Each read as a page defect for a minute. Anchor a count on a delimiter
+  (`<div class=panel[ >]`), scope it to a container (the drawer), or give the second thing its own
+  class — and when a count is wrong, suspect the counter first.
+- **A module-shared browser session is state.** The compare browser module serves ONE app for its
+  four tests; a helper that uploaded "if the slot is empty" inherited the list the stray-drop test
+  had left in the CURRENT slot (the twin), so the download test compared the twin with itself and
+  found no slip. Load unconditionally. The failure looked like a writer bug; it was test order.
+- **The unit is part of the provenance at DESIGN time, not only at repair time.** CF-01 (ADR-0462)
+  was a calendar subtraction under a working-day label. The compare page was designed the other way
+  round: the sheet carries no calendar, so the ONLY honest unit is calendar days, and it is written
+  on every figure, header, subtitle and lede — a working-day figure here would have been invented.
+- **State the operator's unanswered rulings on the page as the current rule.** Three questions the
+  request left open (a swimlane move · a slip threshold · single-version slides) could not be asked
+  mid-session. Rather than assume them silently, the page carries a "How the two lists are matched"
+  block that states each rule as it stands today, the ADR lists the three rulings wanted, and the
+  code keeps each a one-place change. Building under uncertainty is fine; hiding the uncertainty is
+  not.
+- **The installer's graft-boundary refusal fired again, and `--deepen=300` was enough this time** —
+  the MPXJ last-touch resolved to `42d92dc9`, off the boundary; and `python -m build` is not in the
+  container (`pip install build` first). Both are now in the kickoff's trap list.
+
 ### 2026-09-04 (c) — A finder's line number is a date; a floored finish must reach the float; `file://` is not an origin
 
 - **A finder's cited line is a DATE, not an address.** All six WP6 rows pointed at line numbers three

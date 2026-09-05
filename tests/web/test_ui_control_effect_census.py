@@ -324,6 +324,9 @@ CENSUS: dict[str, dict[str, Any]] = {
     # /onepager (ADR-0446) renders its empty state on the census load (no list uploaded):
     # the drop zone only — no chart host, no ⛶, nothing in the zoom/fit/play family.
     "/onepager": {"ids": {}, "anon": {}, "floors": (0, 0, 0, 0, 0, 0, 0, 0)},
+    # /onepager-compare (ADR-0465) renders its empty state on the census load (no lists dropped):
+    # the two slots and the rules block only — no chart host, no ⛶, nothing in the family.
+    "/onepager-compare": {"ids": {}, "anon": {}, "floors": (0, 0, 0, 0, 0, 0, 0, 0)},
     "/help": {"ids": {}, "anon": {}, "floors": (0, 0, 0, 0, 0, 0, 0, 0)},
     DP: {
         "ids": {

@@ -58,6 +58,7 @@ def test_drilldown_runtime_is_loaded_globally_not_per_page() -> None:
             "margin.py",
             "mission.py",
             "onepager.py",
+            "onepager_compare.py",
             "path.py",
             "performance.py",
             "portfolio.py",

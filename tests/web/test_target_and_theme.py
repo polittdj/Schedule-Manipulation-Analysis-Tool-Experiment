@@ -334,9 +334,16 @@ def test_per_file_rail_entries_are_skipped_until_a_file_is_loaded(client: TestCl
     assert 'href="/wbs/Project5"' in loaded and 'href="/card/Project5"' in loaded
     # and the promoted entries are the ONLY place those routes appear in the nav now
     library = next(chs for label, chs in _SPINE if label == "LIBRARY")
-    # ADR-0446 added the One-Pager to the rail — the only non-schedule page on it, so it is
-    # never skipped for want of a loaded file.
-    assert {c.route for c in library} == {"/workbench", "/onepager", "@wbs", "@card", "/evm"}
+    # ADR-0446 added the One-Pager to the rail (ADR-0465 its COMPARE sibling) — the non-schedule
+    # pages on it, so they are never skipped for want of a loaded file.
+    assert {c.route for c in library} == {
+        "/workbench",
+        "/onepager",
+        "/onepager-compare",
+        "@wbs",
+        "@card",
+        "/evm",
+    }
 
 
 def test_rank12_pages_all_carry_a_takeaway_and_a_context_line() -> None:
