@@ -36,8 +36,10 @@ from enum import StrEnum
 from schedule_forensics.engine.cpm import (
     CPMResult,
     _count_working_days,
+    _working_pattern_key,
     compute_cpm,
     datetime_to_offset,
+    offset_to_datetime,
 )
 from schedule_forensics.engine.path_trace import ancestors_of, descendants_of, topo_order
 from schedule_forensics.model.calendar import Calendar
@@ -286,6 +288,7 @@ def compute_driving_slack(
     )
     trace = related | {target_uid}
     project_cal = schedule.calendar
+    project_pattern = _working_pattern_key(project_cal)
     per_day = project_cal.working_minutes_per_day
     ps = schedule.project_start
     tasks_by_id = schedule.tasks_by_id
@@ -306,11 +309,21 @@ def compute_driving_slack(
         In ``ignore_leveling_delay`` mode only the per-task-calendar measurement is skipped:
         every endpoint comes from ``date_basis`` — which itself still prefers the stored
         dates (on the project calendar) and recomputes CPM only for undated tasks, so a
-        dated task's endpoints do NOT change to pure-logic offsets (ADR-0251)."""
+        dated task's endpoints do NOT change to pure-logic offsets (ADR-0251).
+
+        The fallback is a PROJECT-calendar offset. When ``cal`` is a materially different
+        calendar, the same instant is re-measured on ``cal`` so a link's two ends share one
+        ruler (CPM-02, ADR-0463: an undated predecessor of a 24/7 successor read 8 days of
+        slack and OFF the driving path, 0 and ON it once dated at its own CPM dates). A
+        same-pattern calendar and a fully dated file are byte-identical to before."""
         if not ignore_leveling_delay:
             when = tasks_by_id[uid].finish if finish else tasks_by_id[uid].start
             if when is not None:
                 return _stored_offset(ps, when, cal)
+            off = early_finish[uid] if finish else early_start[uid]
+            if _working_pattern_key(cal) != project_pattern:
+                return _stored_offset(ps, offset_to_datetime(ps, off, project_cal), cal)
+            return off
         return early_finish[uid] if finish else early_start[uid]
 
     successors: dict[int, list[tuple[int, RelationshipType, int]]] = {uid: [] for uid in trace}

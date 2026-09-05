@@ -241,3 +241,13 @@ toolbar glyph and figure it carried before** ("don't modify any of the functiona
   a DELIBERATE, dated re-baseline** — and an edit above a line pin is a same-line-count edit
   (ADR-0460 replaced six single lines in `trend.js` / `margin.js` / `trend_drill.js` and added its
   new function below the last pin, asserting the pin lines `[483, 587, 712, 830, 920]` unchanged).
+- **A page whose master is SERVER-rendered inside a panel is re-homed, not mounted** (ADR-0464,
+  /forecast): the page serves the `#<page>Master` slot and the script MOVES its existing stepper
+  nodes (`appendChild` keeps ids, listeners and the reduced-motion branch) into it, restyling the
+  play control `.cd-play`; a chip clicks the stepper's own Next the number of times that lands it on
+  that version, and the stepper publishes `data-frame` on the chart host so the cursor can follow.
+  Off the strip (one version, no slot) the stepper renders exactly as before.
+- **Execute the canvas over loopback HTTP, never `file://`** (ADR-0464): `support.js` injects the
+  npm-packed React/Babel with a `crossorigin` attribute, and a `file://` origin is `null`, so Chromium
+  blocks the local scripts by CORS and the app never boots (blank screenshots, the artboard section
+  present but hidden). `python -m http.server --bind 127.0.0.1` on the patched copy is the whole fix.

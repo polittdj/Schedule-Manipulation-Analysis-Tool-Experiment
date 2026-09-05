@@ -827,10 +827,14 @@ class SessionState:
             else:
                 scoped = sch
             if self.target_uid is not None and any(
-                t.unique_id == self.target_uid and not t.is_summary for t in scoped.tasks
+                t.unique_id == self.target_uid and not t.is_summary and t.is_active
+                for t in scoped.tasks
             ):
-                # target present in this version → truncate to it + its drivers; a version that
-                # doesn't contain the target keeps its full (filtered) population.
+                # target present in this version's NETWORK (non-summary AND active — the same
+                # membership path_trace uses, ADR-0128) → truncate to it + its drivers; a version
+                # that doesn't contain the target, or carries it inactive, keeps its full
+                # (filtered) population. An inactive target used to reach subschedule_to_target
+                # and raise KeyError on 51 of 63 GET routes (REC-02, ADR-0463).
                 scoped = subschedule_to_target(scoped, self.target_uid)
             self._scoped[id(sch)] = (sch, scoped)
             return scoped

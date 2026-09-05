@@ -16480,3 +16480,60 @@ shadows it on PATH).
   installer-smoke pair is path-filtered off a docs-only diff — four-plus-two is the full set here). This line's
   own push restarts #636's run; the next session reads the head's checks, never this line, before trusting it.
   Standing down: the check-in is deleted; the branch is clean at this commit.
+
+## 2026-09-04 (f) — WP6 COMPLETE: the six ledger highs all CONFIRMED by execution and FIXED red-first, REC-02 widened to the whole app (ADR-0463); /forecast is the fourth page on the Claude Design layout (ADR-0464) — v1.0.237
+
+- **Branch:** `claude/polaris-audit-campaign-kr8maj`, restarted FRESH on `origin/main` @ `3c3c398` (the #636
+  docs merge — that PR had merged before this session opened; no open PRs). `main`'s run #1728 for the
+  #635 squash `c89e9c3b` read `success` (16:07:29Z); #1732 for `3c3c398` was `in_progress` at 17:20Z.
+  The container had NO package: `pip install -e '.[dev,browser]' --retries 8 --timeout 180` (rc 0).
+- **WP6 (ADR-0463).** Every row re-derived from the finder's cited line AS IT READ on 2026-08-16
+  (`git show 1b833c6a:…` — all six line numbers had moved). CPM-01: `cpm.py:1316` was
+  `total = late_start - early_start`; the ADR-0309 floor moves EF but LS was `LF - stored duration` →
+  golden EVM2 UID 20 read TF 10.0 wd / non-critical against MS Project's Critical = Yes and `LF - EF` 0
+  → `total = min(LS - ES, LF - EF)`. CPM-02: the `date_basis` fallback (project axis) beside a
+  successor-calendar stored date → an undated 24/7-successor predecessor 3,840 min off-path vs 0
+  on-path dated → re-measured on the successor's calendar when its pattern differs. MC-02: the third
+  path is the LIVE legacy `compute_sra` (via `_risk_events`) — certain ×2 on a completed driver P50
+  8,148 → 12,948 → `done` guard. MC-03: EAC 680 vs 1,180 with/without the recorded actual, a 990 jump at
+  100 % → the performed share of budget when no actual is recorded, `actuals_assumed_count` disclosed.
+  MAN-01: effective basis → Fuse §E membership UID-exact (96↔99 swap gone), counts unchanged → one shared
+  helper; parity pin re-baselined to the empty symmetric difference. REC-02: `KeyError(5)` at the engine
+  AND `scope()` truncating to an inactive UID → 51 of 63 GET routes 5xx (absent UID 0, control 0) → the
+  presence test is the network's membership. Red-first on a pristine worktree 16 failed / 8 passed;
+  green 23 + the parity pin; seven mutations red by name; engine + parity 1,137 passed / 1 failed (the
+  JCL rounding-edge fixture, re-baselined as a RECORDED 0.0 with its reason; 51 JCL green after).
+- **/forecast on the design (ADR-0464).** Artboard 09 recovered by executing the v2 canvas — served over
+  loopback HTTP because `file://` blocks the `crossorigin` React scripts (four blank screenshots first);
+  four themes, zero page errors. `_forecast_body`: the cursor strip (`#forecastCursor` / `#forecastMaster`
+  / one `.cd-chip` per version, the first on / `#forecastFrame`), the ruler panel full width, `cd-grid-2`
+  (methods + inputs | Carnac cards), `cd-grid-12` (drift | "How to read this" from `_EXPLAINERS`);
+  `drift.js` re-homes its server-rendered stepper into the slot, publishes `data-frame` (line 38, a
+  same-line-count edit above the line-136 DD pin), chips click the existing Next. Contract counts measured
+  identical pristine → patched; four-theme render census moved on the design's keys only; red-first 7 / 1;
+  8 green; six mutations red by name; 410 passed / 3 skipped across the /forecast-pinning modules with
+  ONE premise pin re-derived (`test_takes_quote_the_exact_cells_they_claim` unpacked the takes in the old
+  panel order; assertions unchanged) → 40 green; census + stepper drivers 78 passed.
+- **Ledger:** WP6 → COMPLETE (six rows CONFIRMED-FIXED, the tail named for WP6b); the design table gains
+  /forecast; `docs/DESIGN-SYSTEM.md` §9 gains the re-home idiom and the loopback-HTTP recipe step.
+- **Version + installers:** 1.0.237; wheel + nine installers rebuilt after the last source edit; the
+  lockstep and the full gate are recorded in the follow-up line below, with the draft PR number.
+- **Follow-up (18:2xZ):** the operator asked for a PR-handling skill; `.claude/skills/steward/SKILL.md` (NEW)
+  records this repo's PR conventions and posture from the workflows and the paid-for record (the operator
+  merges; the `ci.yml` check set and its concurrency cancel; the red-cell order — tree hashes, the job's own
+  log line, CI-01 as the only GitHub-side shape, "flake" never; what may be pushed or posted; the
+  `--prune` restart). Indexed in `.claude/skills/README.md`. `.claude/`-only: no version bump, no rebuild.
+- **Follow-up (19:10Z):** draft PR **#637** (`claude/polaris-audit-campaign-kr8maj` @ `5be0c6da` on
+  `origin/main` `3c3c398`); subscribed; a 19:25Z check-in reads its FINAL head. Full gate on the pushed
+  tree: ruff / format / mypy --strict / bandit / node --check green; **4,806 passed / 5 skipped (the
+  standing env skips) / 0 failed in 50:29**, parity included; installer lockstep 68 green. On the head
+  `5be0c6da` at this line: `cui-guard` · `floor` · `browser` · `linux` · `windows` **success**, `test (3.11)`
+  / `test (3.13)` still running — this line's own push restarts the run (the concurrency group), so the
+  next reader takes the verdict from the final head's run, never from this line.
+- **Follow-up (19:4xZ):** the operator's feature request — a two-sheet One-Pager COMPARE view that draws and labels every slip — is specified in `docs/STATE/NEXT-SESSION-PROMPT.md` (an /onepager-compare route; matched on the (swimlane, item) pair because the ADR-0446 intake carries no unique id; deltas in CALENDAR days because the sheet carries no calendar; the operator asks named) and takes the next session's design-page slot; one sentence in `HANDOFF.md`'s queue so the two cannot disagree. Docs-only; committed locally and pushed by the 20:22Z check-in AFTER the running checks complete, so the head's run is not cancelled at minute 25.
+- **Follow-up (20:2xZ):** on #637's head `77aa0197` all EIGHT checks **success** — `check` 20:22:25Z ·
+  `test (3.11)` 20:20:29Z · `test (3.13)` 20:22:19Z · `floor` 19:45:45Z · `browser` 19:27:30Z · `cui-guard`
+  19:10:44Z · `linux` 19:10:53Z · `windows` 19:14:35Z (the installer pair ran because the installers were
+  rebuilt). `main`'s run **#1732** for the base `3c3c398` (#636) concluded **success** at 18:32:32Z. This
+  line's push carries the queued /onepager-compare request (`9d55dfca`) and restarts the run; the next
+  reader takes the verdict from the new head, and the operator marks ready and squash-merges when satisfied.

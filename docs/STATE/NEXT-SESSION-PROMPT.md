@@ -7,136 +7,146 @@
 Resume the POLARIS² full-tool audit campaign (Schedule-Manipulation-Analysis-Tool). Read
 docs/STATE/HANDOFF.md FIRST (auto-injected), then **docs/STATE/AUDIT-2026-08-27.md — the
 campaign's live ledger (appended per-WP, never batch-written)**; the 2026-08-16 ledger stays the
-historical row source for WP6. As of last close: **v1.0.236 · highest ADR 0462 — CI-03 ROOT-CAUSED
-and FIXED (ADR-0461: every fetch-driven chart module draws inside its fetch callback and
-`chartframe.js` — the only `SFChartFrame` — was emitted AFTER `</main>`; the parser yields while it
-downloads a sync script, so the callback could run first, throw, and the module's `.catch` printed
-"Failed to load the … data." with zero captions; the tag now sits at the end of the layout HEAD, five
-premise pins re-derived, the sweep's zero-caption line carries its diagnosis) and the operator's
-counterfactual report FIXED (ADR-0462: /integrity printed a calendar-date subtraction as "working
-day(s)"; both deltas are now the CPM's working-minute move over the calendar's day, the project-finish
-ACTIVITY is named, the target line carries its own move, and one line says the two finishes are
-different activities).** **PR #635 MERGED** by the operator at 14:57:15Z → `main` @ `c89e9c3b` (all eight checks green on
-its final head `649ed1a5`; `c89e9c3b^{tree}` == `649ed1a5^{tree}`). Read `main`'s run **#1728** for
-`c89e9c3b` FIRST (`in_progress` at this record — a red cell there on a tree identical to the green PR
-head is a runner claim, not a merge claim: compare the trees before believing it); #1724 for the #634
-merge concluded `success`. The docs-only record of the merge rides a new draft PR from
-`claude/polaris-audit-resume-xqte7c` restarted on `c89e9c3b` (number in the SESSION-LOG) — merge or
-close it, then branch FRESH. Campaign decisions (operator, 2026-08-27,
-standing): SOLO lead · fix-as-verified · BOTH folder-ask builds. QC-1/QC-2 bind every session —
-ADR-0393, pinned by `tests/test_standing_rules.py`. git fetch origin before you branch, number an
-ADR, or commit — and RE-fetch before writing the docs. STANDING OPERATOR ASK (2026-09-03): migrate at
-least ONE page per session onto the Claude Design layout — design truth `00_REFERENCE_INTAKE/references/
-design_handoff_mission_ops_redesign/Mission Ops Redesign v2.dc.html`, method ADR-0451/ADR-0456/ADR-0460,
-rules `docs/DESIGN-SYSTEM.md` §9; done: /volatility (04), /cei (06), /trend (05); **the 2026-09-04 (d)
-session did NOT migrate a page** (the operator's live report took the slot) — /forecast (09) is owed
-first, then /performance (07); /compare (10) is a feature change (needs /integrity's ledger); the family
-carries `cd-grid-12`, `cd-stack`, `cd-master`, `cd-note`; a script-created master mounts into a
-`#<page>Master` slot inside `.cd-cursor` (DESIGN-SYSTEM §9).
+historical row source for the WP6b tail. As of last close: **v1.0.237 · highest ADR 0464 — WP6
+COMPLETE (ADR-0463: the six ledger highs CPM-01 · CPM-02 · MC-02 · MC-03 · MAN-01 · REC-02 were ALL
+confirmed by execution and fixed red-first; REC-02 was the whole app — an inactive session target
+turned 51 of 63 GET routes into 500s through `SessionState.scope()`) and /forecast is the FOURTH page
+on the Claude Design layout (ADR-0464: the drift stepper re-homed into a masthead strip; the canvas
+must be EXECUTED over loopback HTTP because `file://` blocks its `crossorigin` scripts).** The draft
+PR for this work is named in the SESSION-LOG's follow-up line — read its checks on its FINAL head and
+`main`'s own run for the squash after the operator merges it (compare TREE hashes before believing a
+red cell on `main`). Campaign decisions (operator, 2026-08-27, standing): SOLO lead · fix-as-verified ·
+BOTH folder-ask builds. QC-1/QC-2 bind every session — ADR-0393, pinned by
+tests/test_standing_rules.py. `git fetch origin` before you branch, number an ADR, or commit — and
+RE-fetch before writing the docs. STANDING OPERATOR ASK (2026-09-03): migrate at least ONE page per
+session onto the Claude Design layout — design truth `00_REFERENCE_INTAKE/references/
+design_handoff_mission_ops_redesign/Mission Ops Redesign v2.dc.html`, method ADR-0451/0456/0460/0464,
+rules docs/DESIGN-SYSTEM.md §9; done: /volatility (04), /cei (06), /trend (05), /forecast (09);
+**/performance (07 How we execute) is next**; /compare (10) is a feature change (needs /integrity's
+ledger); the family carries `cd-grid-2`, `cd-grid-12`, `cd-stack`, `cd-master`, `cd-note`,
+`cd-block`/`cd-read`; a script-CREATED master mounts into a `#<page>Master` slot, a SERVER-rendered
+stepper is MOVED into it (`appendChild`, same nodes) — DESIGN-SYSTEM §9.
 
-⇢ WHAT'S DONE — do not re-open. 2026-08-27 (ADR-0440, v1.0.222, MERGED): Timescale load path
-sanitized; M2 (16 tests). 2026-08-28 (ADR-0441, v1.0.223, MERGED): the operator's 12.3-year evidence
-relocated the live defect to SCALE. 2026-08-31 (ADR-0442, v1.0.224, MERGED): WP1 M1 census COMPLETE
-(`test_ui_control_effect_census.py`, sitewide and computed). 2026-08-31 (ADR-0443, v1.0.225): WP2 M3 +
-M5 COMPLETE (59 + 8 + 10 tests; five defects fixed red-first; the A2 reduced-motion pin computed).
-2026-09-01 (ADR-0444, v1.0.226, MERGED #620): the timescale's EDGE bands clamped. 2026-09-01
-(ADR-0445, v1.0.227, MERGED #621): the diagonal header ROOT-CAUSED (`hud.css`'s
-`[data-sf-hint]{position:relative}`; `:where()`); UI-01's `sizeGrip` DELETED. 2026-09-01 (ADR-0446,
-v1.0.228, MERGED #621): the One-Pager (`/onepager`, SVG preview + native PowerPoint shapes).
-2026-09-02 (b) (ADR-0447..0451, v1.0.229): the six-item operator batch (demote ladder · bow-wave
-target pin · /analysis DOM budget + windowing · field ROLES · /volatility on the design). 2026-09-03
-(ADR-0454, v1.0.232, MERGED #626): WP3 · M4 COMPLETE (the SRA grid driven with a REAL clipboard; six
-silent defects fixed). 2026-09-03 (docs #627): the intake manifest regenerated after the operator's six
-web uploads (a web upload bypasses the pre-commit guard). 2026-09-03 (c) (ADR-0455 + ADR-0456,
-v1.0.233, MERGED #628): WP4 COMPLETE (CI-01 GitHub-side · CI-02 REFUTED · the route-coverage instrument
-· `cui-guard` CI job · every workflow dispatchable) + /cei on the design. 2026-09-03 (e) (ADR-0457 +
-ADR-0458, v1.0.234, MERGED #630): I-01 root-caused to session POPULATION (page names it) · T-01
-measured working · /analysis re-aim incremental. 2026-09-04 (ADR-0459 + ADR-0460, v1.0.235, MERGED
-#631): WP5 SHIPPED (the three folder gestures named; a PARENT folder is ASKED about) + /trend on the
-design (`vol-*` aliased onto `cd-*`). **2026-09-04 (d) (ADR-0461 + ADR-0462, v1.0.236, this PR):
-CI-03 CLOSED — R1 (asset held 1.5 s) blanked /cei /curves /forecast /scurve /trend while the four
-`defer`red pages survived; R2 (NO delay, 6 CPU hogs + CDP 8×, fresh browser, 12 cold loads × 3
-routes) reproduced `Failed to load the forecast-drift data.` 1/36 with the first caption never later
-than 2,494 ms (the 5-s wait never bit — slow paint REFUTED); FIX one moved line in `web/chrome.py`;
-`test_chartframe_load_order_browser.py` (8) red 8/8 pristine → green; sleep-neutralised mutation red
-by name. CF-01 CLOSED — engine `7 == 5` + `AttributeError: finish_uid` red → green; page 3 pins red on a
-pristine scratch copy → green; one data pin re-baselined 7 → 5 with the reason.** Do NOT re-run R1/R2,
-do NOT widen the sweep's timeout, do NOT add per-module `SFChartFrame` guards (the head placement is
-the fix), and do NOT re-derive the counterfactual unit by hand — run the engine.
+⇢ WHAT'S DONE — do not re-open. 2026-08-27..09-04 (ADR-0440..0462, v1.0.222..236, all MERGED): WP0
+(timescale sanitized, scale root-caused), WP1 (M1 census), WP2 (M3 + M5), the diagonal header, WP3 (M4
+SRA grid), WP4 (CI-01/02, the route-coverage instrument, cui-guard), WP5 (folder gestures), CI-03
+(chartframe.js in the head), CF-01 (working days, the finish activity named), /volatility /cei /trend
+on the design. 2026-09-04 (f) (ADR-0463 + ADR-0464, v1.0.237, this PR): **WP6 COMPLETE** — CPM-01
+(`total = min(LS - ES, LF - EF)`; golden EVM2 UID 20 was 10 wd / non-critical against MS Project's
+Critical = Yes) · CPM-02 (the `date_basis` fallback re-measured on the successor's calendar when its
+pattern differs; 8 d off-path vs 0 on-path) · MC-02 (the LIVE legacy `compute_sra` gets ADR-0308's
+`done` guard; P50 8,148 → 12,948 under a certain ×2 on finished work) · MC-03 (an absent actual is the
+performed share of budget, `actuals_assumed_count` disclosed on /jcl; EAC 680 vs 1,180, a 990 jump at
+100 %) · MAN-01 (one shared `effective_critical_incomplete`; the Fuse §E membership is UID-exact, the
+96↔99 swap gone; the parity pin re-baselined to the EMPTY symmetric difference) · REC-02 (the target's
+presence test is the network's membership — non-summary AND active; the recommender treats an inactive
+target like a summary). Red-first 16 / 8 on a pristine worktree; seven mutations red by name; engine +
+parity 1,137 / 1 with the one JCL fixture re-baselined to a RECORDED 0.0. **/forecast (09)**: the strip
+(`#forecastCursor` · `#forecastMaster` · `.cd-chip` per version, the FIRST on · `#forecastFrame`), the
+ruler full width, methods + inputs beside the Carnac cards, the drift beside "How to read this"; every
+drift.js edit above the line-136 DD pin same-line-count; contract counts measured identical pristine →
+patched; four-theme census moved on the design's keys only; six mutations red by name; the r10 take
+tuple re-derived to the design's order (assertions unchanged). Do NOT re-run the WP6 probes, do NOT
+re-derive the golden numbers by hand — run the engine.
 
-⇢ ASK FIRST (operator questions; do not build on the answer you assume): (a) NEW — on v1.0.236,
-/integrity with the same pair and UID 152 as the target: the first line names the network's last
-activity and the target line carries its own working-day move — does the count read right against the
-file's calendar (five-day or seven-day)? (b) #631's: on `/`, pick a PARENT folder holding two project
-folders — does the question appear and do both answers land as promised; on /trend with ≥2 files do the
-chips move every chart and the drill together? (c) #630's stand: I-01 (which finding, which two files,
-folders or Titles) · T-01 (page, zoom, screenshot) · (c) is the residual /analysis lag gone. UNKNOWABLE
-and closed: the blank-header banner, the 08-26 incident.
+⇢ ASK FIRST (operator questions; do not build on the answer you assume): (a) NEW — on v1.0.237, /forecast
+with two or more files: do the chips and the re-homed ◀ Prev / Next ▶ / ▶ Auto-play in the masthead
+strip move the drift chart, and does the pill name the version expected? (b) #635's: on /integrity with
+UID 152 as the target, does the target line's working-day move read right against the file's calendar
+(five-day or seven-day)? (c) #631's / #630's stand: the parent-folder question on `/`; /trend's chips;
+I-01 (which finding, which two files, folders or Titles) · T-01 (page, zoom, screenshot) · is the
+residual /analysis lag gone. UNKNOWABLE and closed: the blank-header banner, the 08-26 incident.
 
-⇢ NEXT — branch FRESH from `origin/main` @ `c89e9c3b` or later (`git fetch --prune origin && git
-checkout -B <branch> origin/main`); open a NEW draft PR. **WP6** (ledger highs: CPM-01 `cpm.py:1316`
-· CPM-02 `driving_slack.py:314` · MC-02 · MC-03 `jcl.py:284` · MAN-01 · REC-02; parity-sensitive rows
-through the metric-parity skill; any golden shift = CONFIRMED-DEFERRED, never a silent re-pin; RC-02's
-never-reached / never-adverse endpoints are WP6/WP7 rows) → **WP7** (thin dims, `ai/txlog.py` first —
-Law 1) → **WP8** (consolidated report + roadmap by testimony risk). PLUS the design page owed from this
-session: /forecast (09 Where it lands) — recover artboard 09 by EXECUTING the canvas (npm-pack
-React/Babel; `support.js` patched local; seeds `sfredux-screen`, `sfredux-guided`,
-`sfops-boot.skipNext`; view four themes), re-home `drift.js`'s own Prev/Next/Play into a `#forecastMaster`
-slot, rows over VERBATIM panels, red-first + mutations by name, four-theme census moved on the design's
-keys only. CI-04 (the /driving-path header-row equality race, #632's docs-only diff) is the remaining
-CI candidate: measure first, induce the race, fix where the dependency lives — never a wider wait.
-Each WP ends commit-able: red-first → mutation proofs → full gate → ADR → state docs → draft PR.
+⇢ OPERATOR FEATURE REQUEST (2026-09-04, verbatim gist): "create a new One-Pager view where the user
+can drag in TWO Excel sheets, formatted as the One-Pager page already takes them, and show how much
+change has occurred between versions — the same kind of one-pager with the swimlanes, but make it
+perfectly clear which tasks have slipped and by how much." Build it as **/onepager-compare** (its own
+route, page module, painter and .pptx export — never a mode bolted onto /onepager, whose r11 contract,
+ADR-0446 intake and byte-frozen painter stay untouched). FACTS that shape it, read from
+`web/onepager.py` + `reports/onepager.py` + ADR-0446, not assumed: the intake is ONE sheet of THREE
+columns (A swimlane · B task or milestone · C a single date = milestone, a range = activity), parsed by
+`read_xlsx` + `parse_span` with every decision named by sheet row, and it carries NO unique id and NO
+calendar. Therefore: (1) the two sheets are matched on the normalised (swimlane, item) pair — the ONLY
+key the file has — and an unmatched row is reported as ADDED or REMOVED by name, never guessed, with a
+rename visibly counted as one removed + one added (say so on the page); (2) "how much" is the FINISH
+delta and the START delta in CALENDAR days, labelled "calendar days" on every figure (the sheet has no
+calendar; a working-day figure would be fabricated — the CF-01 lesson: a number's unit is its
+provenance), a milestone's move being its date's move; (3) which sheet is PRIOR is the operator's
+choice, never inferred from file names — a two-slot drop zone (prior / current) with the two file
+names echoed on the slide and in the export; (4) the slide is the ADR-0446 layout with the delta
+encoded so it survives print, PowerPoint and all four themes: the prior bar/marker as a ghost, the
+current one solid, a slip drawn as an arrow from prior to current with its "+N cal d" label, a pull-in
+the same with "−N", unchanged items plain, added items badged NEW, removed items listed (not drawn as
+ghosts alone), and a per-swimlane summary strip (slipped n · pulled in n · new n · removed n · worst
+slip named); (5) the parsed-rows table gains prior/current/delta columns and the ⤓ EXCEL export carries
+them; the .pptx export draws the same shapes natively (ADR-0446's writer) — a one-pager that says
+"slipped" in the browser and not in PowerPoint is a defect; (6) every delta figure the takeaway quotes
+is a cell the table renders, selected out of the rendered rows (the r10 rule), no new arithmetic
+beyond the subtraction; (7) QC-1 in full: an engine function `compare_onepager_docs(prior, current)`
+pinned red-first on a synthetic pair (a slip, a pull-in, a new, a removed, a rename, a milestone→activity
+change, a duplicate-name collision that must be REPORTED not merged), mutations by name, the four-theme
+render census on the design's keys, the M1 census row for the new route, the DD-line and axis-caption
+ledgers (the slide has a today line — ADR-0446's), the r10/r11 contracts, the route-coverage instrument.
+ASK the operator before building on a guess: does a task that changed swimlane count as moved or as
+removed + added; is there a slip threshold below which an item reads "unchanged"; should the compare
+slide ALSO ship the single-version slide for each sheet. This request takes the next session's
+design-page slot (it is a One-Pager-family page); /performance (07) moves one session later; WP6b
+continues after it.
 
-⇢ Traps paid for, by name (2026-09-04 (d) first): a wait whose failure reads the same as "not yet"
-reports nothing — make the zero case name what it saw · fix the class where the dependency LIVES (one
-layout line) rather than the consumer where it bites (`defer` ×4, eleven still exposed) · a `.catch`
-that swallows a `ReferenceError` prints a false sentence and no oracle sees it — read the page's own
-text · a probe that shows no effect must first prove its intervention landed (every static URL carries
-`?v=<version>`; a route glob needs a trailing `*`) · a premise pin that fires is re-derived, never
-deleted · a mutation must break what the test guards, not the test's constant (`SLOW_MS = 0` zeroed
-the threshold too) · a number's UNIT is part of its provenance — compare units across one page's panels
-· two dates that look like a contradiction are two subjects — name them · a pip log's last line can
-look green while the install died on a read timeout — check the exit code (`--retries 8 --timeout
-180`) · `cd` inside one Bash call moves the shell's cwd for every later call · the lessons log's order
-(newest first) is a rule · a mutation that SURVIVES is a claim about the FIXTURE before it is a claim
-about the code · a real `webkitdirectory` FileList arrives in filesystem-traversal order — sort by name
-· a line-number-keyed pin is edited with SAME-LINE-COUNT replacements and new code BELOW the last pin ·
-a byte-frozen page script changes only by a dated re-baseline · an intake screenshot's FILE NAME is
-testimony — execute the canvas · two sessions in flight: number ADRs after the in-flight PR's, hold the
-version / installers / docs rotation to the end · `build` is NOT in the dev extras (`pip install build`)
-· a differential that comes back IDENTICAL is the finding · the page's own sentences on a testimony
-surface are the defect even when the banners disclose the state · frame times measured while a battery
-runs are noise · isolate native cost by SUBTRACTION in the live page · a `bounding_box()` pointer can
-sit below the viewport — assert `scrollTop` moved · `pkill -f <pattern>` kills the shell that runs it
-— sentinel files, never process greps · a run's CONCLUSION is the measurement — read the merge
-commit's run · compare TREE hashes before blaming a squash merge, and never spend a `main` re-run while
-a push is imminent · `spec_from_file_location` + `dataclass` + `from __future__ import annotations`
-needs `sys.modules[spec.name] = module` BEFORE `exec_module` · resolve a route template BEFORE dispatch
-· every CDN is egress-blocked, the npm registry is not (`npm pack`) · `git reset --soft <base>` stages
-exactly `base..HEAD` for the hook · the build container may have NO package installed — `pip install
--e '.[dev,browser]'` before the first test · `tooltips.js` moves `title=` to `data-sf-hint` at load ·
-`/root/.local/bin/ruff` shadows the pinned ruff — run `python -m ruff` · prove each half of a two-sided
-fix with its OWN revert · a positioning claim is measured by RENDERED `y` and COMPUTED `position` ·
-`:where([attr])` for any global rule that sets `position` · `python -m pytest` puts CWD on `sys.path`;
-CI's plain `pytest` does not — never `from tests.…`, always `from web.<module>`, and check `pytest
---collect-only -q` before pushing · `git checkout --` is NOT a mutation restore — restore from a `cp`
-of the WORKING TREE · a guard with a hand-written population fails OPEN · never pipe a mutation battery
-through `head` · the installer build refuses a shallow clone (`git fetch --deepen=300` first; the
-2026-09-04 (d) deepen resolved the true MPXJ last touch `42d92dc9`) · rebuild the wheel + nine
-installers as the LAST step, after the final source edit · browser-job ceiling 25m.
+⇢ NEXT — branch FRESH from origin/main once this PR merges (`git fetch --prune origin && git checkout
+-B <branch> origin/main`); open a NEW draft PR. **WP6b** — the ledger TAIL by the same method (re-derive
+each finder's line from `git show 1b833c6a:<path>`, build the refuting check, fix as verified): CPM-03/04
+· MF-03/04/06..10 (MF-05 stays do-not-fix-blind) · MC-04..08 · IMP-02..06 · MAN-02/03 · JS-02..06 ·
+TST-02/03; plus RC-02's 3 never-2xx routes (`GET /export/{fmt}/resource-drill` ·
+`GET /export/{fmt}/ribbon-drill/{name}` · `POST /sra/factor-table`) and 15 never-adverse POSTs → **WP7**
+(thin dims, `ai/txlog.py` first — Law 1) → **WP8** (consolidated report + roadmap by testimony risk).
+PLUS the design page owed each session: **/performance (07 How we execute)** — recover artboard 07 by
+EXECUTING the canvas over loopback HTTP (`npm pack react@18.3.1 react-dom@18.3.1 @babel/standalone@7.29.0`,
+`support.js` patched to `./pkgs/…`, seeds `sfredux-screen=<key from the canvas's setScreen('…') calls>`,
+`sfredux-guided=1`, `sfops-boot.skipNext=true`, `sfredux-theme`; view four themes), then rows over
+VERBATIM panels, red-first + mutations by name, the four-theme census moved on the design's keys only.
+Observed, not fixed blind (own rows): `evm.py`'s `actual_cost or 0.0` ACWP on a mixed population (an EVM
+parity family with an Acumen oracle) · `path_evolution`'s pure-logic per-version critical list. CI-04
+(the /driving-path header-row equality race, #632's docs-only diff) is the remaining CI candidate:
+measure first, induce the race, fix where the dependency lives — never a wider wait. Each WP ends
+commit-able: red-first → mutation proofs → full gate → ADR → state docs → draft PR.
 
-⇢ Measured-false / deliberately-held — do NOT re-chase: CI-03 as a "slow first paint" (REFUTED by
-R2: max first caption 2,494 ms at 8× throttle) · the `.catch` conflation ("Failed to load" for a render
-throw) — a UI-map row, byte-frozen scripts, not this queue · the `defer` attributes on resources /
-performance / margin_dashboard / volatility (kept: byte-pinned, harmless) · `legend_toggle.js` and the
-rest of the post-`</main>` group (no page module calls `SFLegend`; measured by grep) · the change-effects
-table's deltas (already working days; pins +7 / +1 / +2 / +9 / +3 hold) · the legal 25% Size floor look
-· `path_evolution.js:515`'s misattributing catch · /driving-path's empty-corridor hint · /evolution at
-operator scale (needs ≥2 versions) · the g-head sizing duplication · `#uiScale` is NOT dead · the
-Name-column 200px + Chromium ~53px resize floors · MF-05 · MC-01 parity leg · ADR-0417/0419 fixtures ·
-the citations.reattach pin · the 6 dead E501 per-file-ignores · the evolution 0% cell ·
-Insufficient-Detail V05/V06 + TP2 (BLOCKED, operator-owned). CLOSED: the /mission 30-hosts-vs-9-cf-bars
-question · the diagonal timeline header (ADR-0445; a report on ≥ v1.0.227 is a NEW defect) · the
-One-Pager in PowerPoint (opened) · CI-01/CI-02 (ADR-0455) · CI-03 (ADR-0461). OBSERVED, not fixed
-blind: the sticky controls bar over the sticky header at the top scroll position; the docx/xlsx
-writers stamping CUI regardless of mode.
+⇢ Traps paid for, by name (2026-09-04 (f) first): a finder's line number is a DATE — `git show
+<sha-as-of-then>:path` before judging the claim · a floored FINISH must reach the float — `total_float
+<= LF - EF` on every task is the one-line invariant · two ends of one link share one ruler — an undated
+end's fallback axis is part of the measurement · "guarded in two places" is a count, not a proof —
+enumerate every loop over the population · an ABSENT figure at a formula's boundary shows up as a
+discontinuity (99 % → 100 %) · a documented swap pinned by a parity test is a measurement waiting to
+become exact — try the other basis · a finder's row can be the small half — sweep the route table with
+the hostile state against a control · a test red on BOTH trees proves nothing — red-first is a pair of
+observations · a fixture that lost its purpose is re-baselined to keep its PURPOSE (a RECORDED 0.0) ·
+`file://` is not a browser origin — serve the canvas over loopback HTTP · a premise pin on panel ORDER
+fires on a re-arrangement — re-derive the order, never the assertions · `--deepen=300` can leave the
+clone shallow; check the resolved MPXJ ref, not the flag · the container may have NO package installed
+— `pip install -e '.[dev,browser]' --retries 8 --timeout 180` and check the exit code · the editable
+install's metadata goes stale after a version bump — `pip install -e . --no-deps --no-build-isolation`
+· never measure a tree a battery is mutating — scratch copies, `PYTHONPATH`, never `git checkout --` ·
+a wait whose failure reads the same as "not yet" reports nothing · fix the class where the dependency
+LIVES · a `.catch` that swallows a ReferenceError prints a false sentence · a number's UNIT is part of
+its provenance · two dates that look like a contradiction are two subjects · a mutation must break what
+the test guards, not the test's constant · a line-number-keyed pin is edited with SAME-LINE-COUNT
+replacements and new code BELOW the last pin · an intake screenshot's FILE NAME is testimony — execute
+the canvas · compare TREE hashes before blaming a squash merge · `python -m pytest` puts CWD on
+sys.path; CI's plain pytest does not — `from web.<module>`, never `from tests.…` · rebuild the wheel +
+nine installers as the LAST step, after the final source edit · browser-job ceiling 25m.
+
+⇢ Measured-false / deliberately-held — do NOT re-chase: `late_start` for a floored task stays
+`LF - duration` (the start slack is real; only the total float changed) · the S-curve & finish walk on
+/forecast (it is /scurve's chart) · the mock's P10–P90 window, target chip, SPREAD column and "plan to
+the window" line (new arithmetic on a testimony surface) · CI-03 as a "slow first paint" (REFUTED) ·
+the `.catch` conflation (a UI-map row) · the `defer` attributes on resources / performance /
+margin_dashboard / volatility · the change-effects table's deltas (already working days) · the legal
+25% Size floor look · `path_evolution.js:515`'s misattributing catch · /driving-path's empty-corridor
+hint · /evolution at operator scale (needs ≥2 versions) · the g-head sizing duplication · `#uiScale`
+is NOT dead · the Name-column 200px + Chromium ~53px resize floors · MF-05 · MC-01 parity leg ·
+ADR-0417/0419 fixtures · the `citations.reattach` pin · the 6 dead E501 per-file-ignores · the
+evolution 0% cell · Insufficient-Detail V05/V06 + TP2 (BLOCKED, operator-owned). CLOSED: the /mission
+30-hosts-vs-9-cf-bars question · the diagonal timeline header (ADR-0445) · the One-Pager in PowerPoint
+· CI-01/CI-02 (ADR-0455) · CI-03 (ADR-0461) · CF-01 (ADR-0462) · WP6's six highs (ADR-0463). OBSERVED,
+not fixed blind: the sticky controls bar over the sticky header at the top scroll position; the
+docx/xlsx writers stamping CUI regardless of mode; `evm.py`'s ACWP none-vs-zero on a mixed population.

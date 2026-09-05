@@ -435,6 +435,50 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-04 (c) — A finder's line number is a date; a floored finish must reach the float; `file://` is not an origin
+
+- **A finder's cited line is a DATE, not an address.** All six WP6 rows pointed at line numbers three
+  weeks stale (`cpm.py:1316` had become the float computation's neighbour). `git show <sha-as-of-then>:path`
+  recovered what each finder actually looked at, and two claims read completely differently once the
+  original line was in view. Re-derive the line from the tree as it read THEN before judging the claim now.
+- **A floored finish has to reach the float.** ADR-0309 moved a task's early finish past its logic finish
+  and nobody asked what its total float became: `LS - ES` with `LS = LF - duration` never saw the gap,
+  so the golden EVM2's UID 20 showed 10 working days of float while MS Project flagged it Critical. The
+  invariant that catches the whole class is one line per task — `total_float <= LF - EF` — and it held on
+  every golden except the one that mattered. When a rule moves one date, re-derive every quantity built
+  from the pair.
+- **Two ends of one link must share one ruler.** The fallback axis of an undated endpoint was part of
+  the measurement, and the cleanest oracle needed no reference tool at all: dating a task at exactly its
+  own CPM dates cannot change its slack. An invariant that must hold by construction is an oracle that
+  costs nothing and refutes cleanly.
+- **"Guarded in two places" is a count, not a proof.** Enumerating every loop over `risk.affected` found
+  four callers, three guarded, and the fourth LIVE behind an adapter (`_risk_events`). Grep the
+  population before saying a rule is everywhere.
+- **An absent figure at a formula's boundary shows up as a discontinuity.** `spent = actual or 0.0`
+  looked like a rounding detail until the EAC jumped by the whole performed budget between 99 % and
+  100 % complete. Probe the boundary where the two branches meet.
+- **A documented swap pinned by a parity test is a measurement waiting to become exact.** The 96↔99
+  membership swap had been asserted "exactly" as a known residual; the other basis was one monkeypatch
+  away and made the membership UID-exact with Fuse. Try the other basis before defending the residual —
+  and re-baseline THROUGH the pin's own path (the ratchet became the empty symmetric difference; the
+  source-data premise stayed pinned so the ratchet keeps meaning something).
+- **A finder's row can be the small half.** REC-02 was filed against the recommender; the same inactive
+  UID set through the real form turned 51 of 63 routes into 500s. Sweep the whole route table with the
+  hostile state against a control before sizing a defect, and fix it where the dependency lives
+  (`scope()`'s presence test), not only where it was reported.
+- **A test that is red on BOTH trees proves nothing.** One of the new tests failed on pristine for the
+  wrong reason (a mis-typed metric id) and looked like a red-first success; it was only trusted once the
+  same test was green on the fix and red again under its mutation. Red-first is a pair of observations.
+- **A fixture that lost its purpose to the fix is re-baselined to keep its PURPOSE, not its number.** The
+  JCL rounding-edge test's task had no actual cost; recording the actual as an explicit 0.0 kept its
+  665.334 edge and made its own premise (a recorded zero spend) honest.
+- **`file://` is not a browser origin.** The design canvas injects React with `crossorigin`; under
+  `file://` the origin is `null`, Chromium blocks the local scripts, and the artboard section is present
+  but hidden behind four blank screenshots. `python -m http.server --bind 127.0.0.1` was the whole fix —
+  and the recipe now says so.
+- **A premise pin on panel ORDER fires on a re-arrangement.** The r10 take test unpacked the takes in the
+  old page order; the takes were byte-identical. Re-derive the order, never the assertions.
+
 ### 2026-09-04 (b) — Three "no captions rendered" strikes were ONE load-order race; a calendar subtraction wore a working-day label
 
 - **A wait whose failure reads the same as "not yet" reports nothing.** The caption sweep's suppressed

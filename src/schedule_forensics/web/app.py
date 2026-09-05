@@ -8125,6 +8125,7 @@ def _jcl_data(sch: Schedule, result: JCLResult) -> dict[str, object]:
             "remaining_td": result.remaining_td_total,
             "completed": result.completed_count,
             "incomplete_costed": result.incomplete_costed_count,
+            "actuals_assumed": result.actuals_assumed_count,
             "td_share_pct": round(result.td_share * pct, 1),
             "cost_uncertainty_on": result.cost_uncertainty_on,
         },
@@ -8166,6 +8167,10 @@ def _jcl_export_tables(result: JCLResult) -> tuple[Table, ...]:
         ("EAC mean", result.cost_mean),
         ("EAC std deviation", result.cost_std),
         ("Sunk (actuals + completed finals)", result.sunk_total),
+        (
+            "Open tasks with no recorded actual (spent assumed at budget)",
+            result.actuals_assumed_count,
+        ),
         ("Remaining budget - time-independent", result.remaining_ti_total),
         ("Remaining budget - time-dependent", result.remaining_td_total),
         ("Time-dependent share (tau) %", round(result.td_share * pct, 1)),

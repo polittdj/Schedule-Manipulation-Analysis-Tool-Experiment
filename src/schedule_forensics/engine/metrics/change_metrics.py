@@ -34,6 +34,7 @@ from schedule_forensics.engine.cpm import CPMResult, compute_cpm, offset_to_date
 from schedule_forensics.engine.metrics._common import (
     CheckStatus,
     MetricResult,
+    effective_critical_incomplete,
     non_summary,
 )
 from schedule_forensics.model.schedule import Schedule
@@ -56,13 +57,9 @@ def _count_metric(
 
 
 def _critical_incomplete(schedule: Schedule, cpm_result: CPMResult) -> set[int]:
-    """Acumen "Critical" basis: on the critical path (CPM total float ≤ 0) and not done."""
-    by_id = schedule.tasks_by_id
-    return {
-        uid
-        for uid, timing in cpm_result.timings.items()
-        if timing.is_critical and by_id[uid].percent_complete < 100.0
-    }
+    """Acumen "Critical" basis: the source tool's stored flag when carried, else CPM float ≤ 0,
+    and not done — the shared :func:`effective_critical_incomplete` (MAN-01, ADR-0463)."""
+    return effective_critical_incomplete(schedule, cpm_result)
 
 
 def compute_change_metrics(
