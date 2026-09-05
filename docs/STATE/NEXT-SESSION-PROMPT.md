@@ -11,11 +11,12 @@ historical row source for the WP6b tail. As of last close: **v1.0.238 · highest
 /onepager-compare SHIPPED (ADR-0465): the operator's two-list One-Pager compare, built as its own route,
 page module, painter and .pptx export on the Claude Design layout (the FIFTH design page — built NEW on
 the family's "Library One-Pager Timeline" artboard rather than migrated); /onepager's ADR-0446 intake,
-painter and export byte-identical.** **This session's draft PR is **#639** (`claude/polaris-audit-resume-e9t5h1`
-on `origin/main` @ `46a91fd2`) — read ITS checks on its FINAL head first (a red cell on a tree
-byte-identical to a green head is a runner claim: compare TREE hashes before believing it); the operator
-merges. Then branch FRESH from `origin/main` (`git fetch --prune origin && git checkout -B <branch>
-origin/main`).** `main` is green: #1737 (the #637 squash) and #1740 (#638) both `success`. Campaign
+painter and export byte-identical.** **PR #639 MERGED by the operator at 23:21:09Z (2026-09-05) → `main` @ `b8e8aa42`, tree-identical to its green
+final head `55c8f2c3` (`616b326e…`); read `main`'s OWN run #1743 for the squash FIRST (in_progress at this
+record — a red cell there is a runner claim on the green PR head's bytes: compare `git rev-parse
+b8e8aa42^{tree}` with `55c8f2c3^{tree}` before believing it). The docs-only record of the merge rides a new
+draft PR from the restarted branch (number in the SESSION-LOG) — merge or close it, then branch FRESH
+(`git fetch --prune origin && git checkout -B <branch> origin/main`).** Campaign
 decisions (operator, 2026-08-27, standing): SOLO lead · fix-as-verified · BOTH folder-ask builds.
 QC-1/QC-2 bind every session — ADR-0393, pinned by tests/test_standing_rules.py. `git fetch origin`
 before you branch, number an ADR, or commit — and RE-fetch before writing the docs. STANDING OPERATOR
@@ -65,7 +66,7 @@ the masthead strip move the drift chart, and does the pill name the version expe
 file's calendar? (d) #631's / #630's stand: the parent-folder question on `/`; /trend's chips; I-01 · T-01 ·
 the residual /analysis lag. UNKNOWABLE and closed: the blank-header banner, the 08-26 incident.
 
-⇢ NEXT — after #639 merges, branch FRESH. **WP6b** — the ledger TAIL by the same method (re-derive each
+⇢ NEXT — once the docs-only PR is merged or closed, branch FRESH from `origin/main`. **WP6b** — the ledger TAIL by the same method (re-derive each
 finder's line from `git show 1b833c6a:<path>`, build the refuting check, fix as verified): CPM-03/04 ·
 MF-03/04/06..10 (MF-05 stays do-not-fix-blind) · MC-04..08 · IMP-02..06 · MAN-02/03 · JS-02..06 ·
 TST-02/03; plus RC-02's 3 never-2xx routes (`GET /export/{fmt}/resource-drill` ·

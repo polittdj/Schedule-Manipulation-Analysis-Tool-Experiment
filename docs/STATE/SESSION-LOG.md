@@ -16632,3 +16632,13 @@ shadows it on PATH).
   installers changed, so the installer-smoke pair runs too — eight checks). This line's own push restarts the
   run (the concurrency group); the next reader takes the verdict from the head's run, never from this line,
   and the operator marks ready and squash-merges when satisfied.
+- **Follow-up (23:2xZ) — PR #639 MERGED.** The operator marked #639 ready and squash-merged it at 23:21:09Z →
+  `main` @ `b8e8aa42`; `b8e8aa42^{tree}` == `55c8f2c3^{tree}` (`616b326e…` — the PR's final head, all eight
+  checks green there at 20:38Z). `main`'s OWN runs for the squash: CI **#1743** (id 33998442501) and
+  installer-smoke **#646** (id 33998442461), both `in_progress` at this record — the next session reads
+  #1743's conclusion before trusting `main` (a red cell there on a tree identical to the green head is the
+  runner's claim, not the merge's). The Codex connector left a usage-limit notice on the PR (no action). The
+  branch `claude/polaris-audit-resume-e9t5h1` was restarted on `origin/main` @ `b8e8aa42` (`git fetch --prune`
+  + `remote set-head` + `checkout -B`, never an amend of the squash); this record rides a NEW docs-only draft PR
+  (number in the next follow-up line).
+
