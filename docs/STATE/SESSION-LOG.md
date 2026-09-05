@@ -16553,3 +16553,7 @@ shadows it on PATH).
   check-in chain deleted. This record rides a NEW draft PR (number in the follow-up line).
 - **Context:** written at ~82 % of the assumed 800k wall (WARN band); the next session starts FRESH from
   `docs/STATE/NEXT-SESSION-PROMPT.md` — the operator's /onepager-compare request first, then WP6b.
+- **Follow-up (00:4xZ):** draft PR **#638** (`claude/polaris-audit-campaign-kr8maj` @ `1c1914ec` on `origin/main`
+  `c0800680`); subscribed; a check-in about an hour out reads its checks (a docs-only diff: the six CI checks,
+  installer-smoke path-filtered off) and `main`'s run #1737 for the squash. The next session reads the
+  head's checks, never this line, before trusting it.
