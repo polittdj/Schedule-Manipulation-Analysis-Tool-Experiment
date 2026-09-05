@@ -16537,3 +16537,23 @@ shadows it on PATH).
   rebuilt). `main`'s run **#1732** for the base `3c3c398` (#636) concluded **success** at 18:32:32Z. This
   line's push carries the queued /onepager-compare request (`9d55dfca`) and restarts the run; the next
   reader takes the verdict from the new head, and the operator marks ready and squash-merges when satisfied.
+
+## 2026-09-05 (a) — PR #637 MERGED; branch restarted on `main` @ `c0800680`; `main`'s run #1737 in progress (docs-only)
+
+- **Merge:** the operator marked #637 ready at 00:36:42Z and squash-merged it at 00:36:48Z → `main` @
+  `c0800680`. Its final head `a587c94d` had all EIGHT checks green (`check` · `test (3.11)` · `test (3.13)` ·
+  `floor` · `browser` · `cui-guard` · `linux` · `windows`) and mergeable state `clean`. Refutation on file:
+  `git rev-parse c0800680^{tree}` == `git rev-parse a587c94d^{tree}` == `f93636c2ef48f15237cd81bfe780ff57a2a2d395`.
+  A Codex bot comment ("usage limits for code reviews") landed at 00:36:47Z — noise, no review content.
+- **`main`'s own runs for the squash:** CI **#1737** and installer-smoke **#643**, both created 00:36:49Z and
+  `in_progress` at this record — read #1737's conclusion before trusting `main`; a red cell on this tree is
+  the RUNNER's claim (the tree is the green PR head's). #1732 for the previous base `3c3c398` was `success`.
+- **Branch:** `git fetch --prune` + `git checkout -B claude/polaris-audit-campaign-kr8maj origin/main` (GitHub
+  deleted the head branch; never an amend of the squash). The PR subscription ended with the merge; the
+  check-in chain deleted. This record rides a NEW draft PR (number in the follow-up line).
+- **Context:** written at ~82 % of the assumed 800k wall (WARN band); the next session starts FRESH from
+  `docs/STATE/NEXT-SESSION-PROMPT.md` — the operator's /onepager-compare request first, then WP6b.
+- **Follow-up (00:4xZ):** draft PR **#638** (`claude/polaris-audit-campaign-kr8maj` @ `1c1914ec` on `origin/main`
+  `c0800680`); subscribed; a check-in about an hour out reads its checks (a docs-only diff: the six CI checks,
+  installer-smoke path-filtered off) and `main`'s run #1737 for the squash. The next session reads the
+  head's checks, never this line, before trusting it.

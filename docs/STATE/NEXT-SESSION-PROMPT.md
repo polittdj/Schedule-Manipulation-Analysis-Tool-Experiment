@@ -12,10 +12,12 @@ COMPLETE (ADR-0463: the six ledger highs CPM-01 · CPM-02 · MC-02 · MC-03 · M
 confirmed by execution and fixed red-first; REC-02 was the whole app — an inactive session target
 turned 51 of 63 GET routes into 500s through `SessionState.scope()`) and /forecast is the FOURTH page
 on the Claude Design layout (ADR-0464: the drift stepper re-homed into a masthead strip; the canvas
-must be EXECUTED over loopback HTTP because `file://` blocks its `crossorigin` scripts).** The draft
-PR for this work is named in the SESSION-LOG's follow-up line — read its checks on its FINAL head and
-`main`'s own run for the squash after the operator merges it (compare TREE hashes before believing a
-red cell on `main`). Campaign decisions (operator, 2026-08-27, standing): SOLO lead · fix-as-verified ·
+must be EXECUTED over loopback HTTP because `file://` blocks its `crossorigin` scripts).** **PR #637
+MERGED by the operator at 00:36:48Z (2026-09-05) → `main` @ `c0800680`, tree-identical to its green final
+head `a587c94d`; read `main`'s OWN run #1737 for the squash FIRST (in_progress at this record — a red cell
+there is a runner claim on the green PR head's bytes: compare `git rev-parse c0800680^{tree}` with
+`a587c94d^{tree}` before believing it). The docs-only record of the merge rides a new draft PR from the
+restarted branch (number in the SESSION-LOG) — merge or close it, then branch FRESH.** Campaign decisions (operator, 2026-08-27, standing): SOLO lead · fix-as-verified ·
 BOTH folder-ask builds. QC-1/QC-2 bind every session — ADR-0393, pinned by
 tests/test_standing_rules.py. `git fetch origin` before you branch, number an ADR, or commit — and
 RE-fetch before writing the docs. STANDING OPERATOR ASK (2026-09-03): migrate at least ONE page per
