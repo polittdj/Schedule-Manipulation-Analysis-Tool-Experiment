@@ -16641,4 +16641,8 @@ shadows it on PATH).
   branch `claude/polaris-audit-resume-e9t5h1` was restarted on `origin/main` @ `b8e8aa42` (`git fetch --prune`
   + `remote set-head` + `checkout -B`, never an amend of the squash); this record rides a NEW docs-only draft PR
   (number in the next follow-up line).
+- **Follow-up (23:3xZ):** draft PR **#640** (`claude/polaris-audit-resume-e9t5h1` @ `3e353020` on `origin/main`
+  `b8e8aa42`, docs-only); subscribed; a check-in about an hour out reads its six checks on its FINAL head and
+  `main`'s run #1743 for the #639 squash. The next session reads the head's checks, never this line, before
+  trusting it; the operator merges or closes it, then the next session branches FRESH.
 

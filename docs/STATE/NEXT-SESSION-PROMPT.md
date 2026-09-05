@@ -14,8 +14,8 @@ the family's "Library One-Pager Timeline" artboard rather than migrated); /onepa
 painter and export byte-identical.** **PR #639 MERGED by the operator at 23:21:09Z (2026-09-05) → `main` @ `b8e8aa42`, tree-identical to its green
 final head `55c8f2c3` (`616b326e…`); read `main`'s OWN run #1743 for the squash FIRST (in_progress at this
 record — a red cell there is a runner claim on the green PR head's bytes: compare `git rev-parse
-b8e8aa42^{tree}` with `55c8f2c3^{tree}` before believing it). The docs-only record of the merge rides a new
-draft PR from the restarted branch (number in the SESSION-LOG) — merge or close it, then branch FRESH
+b8e8aa42^{tree}` with `55c8f2c3^{tree}` before believing it). The docs-only record of the merge rides draft PR
+**#640** from the restarted branch — merge or close it, then branch FRESH
 (`git fetch --prune origin && git checkout -B <branch> origin/main`).** Campaign
 decisions (operator, 2026-08-27, standing): SOLO lead · fix-as-verified · BOTH folder-ask builds.
 QC-1/QC-2 bind every session — ADR-0393, pinned by tests/test_standing_rules.py. `git fetch origin`
