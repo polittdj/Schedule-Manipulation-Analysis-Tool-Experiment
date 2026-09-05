@@ -11,7 +11,7 @@ historical row source for the WP6b tail. As of last close: **v1.0.238 · highest
 /onepager-compare SHIPPED (ADR-0465): the operator's two-list One-Pager compare, built as its own route,
 page module, painter and .pptx export on the Claude Design layout (the FIFTH design page — built NEW on
 the family's "Library One-Pager Timeline" artboard rather than migrated); /onepager's ADR-0446 intake,
-painter and export byte-identical.** **This session's draft PR is the one recorded in the SESSION-LOG's 2026-09-05 (b) follow-up line (`claude/polaris-audit-resume-e9t5h1`
+painter and export byte-identical.** **This session's draft PR is **#639** (`claude/polaris-audit-resume-e9t5h1`
 on `origin/main` @ `46a91fd2`) — read ITS checks on its FINAL head first (a red cell on a tree
 byte-identical to a green head is a runner claim: compare TREE hashes before believing it); the operator
 merges. Then branch FRESH from `origin/main` (`git fetch --prune origin && git checkout -B <branch>
@@ -33,7 +33,7 @@ nodes); a page with no version cursor still wears the family (DESIGN-SYSTEM §9)
 SRA grid), WP4 (CI-01/02, the route-coverage instrument, cui-guard), WP5 (folder gestures), CI-03
 (chartframe.js in the head), CF-01 (working days, the finish activity named), WP6 COMPLETE (the six ledger
 highs CPM-01 · CPM-02 · MC-02 · MC-03 · MAN-01 · REC-02 all CONFIRMED and fixed red-first), /volatility
-/cei /trend /forecast on the design. 2026-09-05 (b) (ADR-0465, v1.0.238, this session's draft PR): **/onepager-compare** —
+/cei /trend /forecast on the design. 2026-09-05 (b) (ADR-0465, v1.0.238, PR #639): **/onepager-compare** —
 `reports/onepager_compare.py` (`item_key` = the ADR-0446 lane merge key + the whitespace-collapsed
 casefolded name, the ONLY key the sheet carries; `compare_onepager_docs` → slipped / pulled in / start
 moved / unchanged / new / removed / ambiguous, deltas `current − prior` in CALENDAR days, a rename or a
@@ -65,7 +65,7 @@ the masthead strip move the drift chart, and does the pill name the version expe
 file's calendar? (d) #631's / #630's stand: the parent-folder question on `/`; /trend's chips; I-01 · T-01 ·
 the residual /analysis lag. UNKNOWABLE and closed: the blank-header banner, the 08-26 incident.
 
-⇢ NEXT — after this session's PR merges, branch FRESH. **WP6b** — the ledger TAIL by the same method (re-derive each
+⇢ NEXT — after #639 merges, branch FRESH. **WP6b** — the ledger TAIL by the same method (re-derive each
 finder's line from `git show 1b833c6a:<path>`, build the refuting check, fix as verified): CPM-03/04 ·
 MF-03/04/06..10 (MF-05 stays do-not-fix-blind) · MC-04..08 · IMP-02..06 · MAN-02/03 · JS-02..06 ·
 TST-02/03; plus RC-02's 3 never-2xx routes (`GET /export/{fmt}/resource-drill` ·

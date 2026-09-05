@@ -16627,3 +16627,8 @@ shadows it on PATH).
   feature-request section; DESIGN-SYSTEM §9 gains the no-cursor family page; LESSONS-LEARNED 2026-09-05 entry;
   the kickoff prompt refreshed. The operator's THREE rulings (swimlane move · slip threshold · single-version
   slides) are in the HANDOFF's ASK block and on the page.
+- **Follow-up (19:4xZ):** draft PR **#639** (`claude/polaris-audit-resume-e9t5h1` @ `6296542f` on `origin/main`
+  `46a91fd2`); subscribed; a check-in about an hour out reads its checks on its FINAL head (the wheel + nine
+  installers changed, so the installer-smoke pair runs too — eight checks). This line's own push restarts the
+  run (the concurrency group); the next reader takes the verdict from the head's run, never from this line,
+  and the operator marks ready and squash-merges when satisfied.
