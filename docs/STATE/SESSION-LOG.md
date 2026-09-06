@@ -16831,3 +16831,11 @@ shadows it on PATH).
   + nine installers REBUILT from the fixed `src` (lockstep 68), pushed. The final tree's full suite that was already
   running on a worktree of `471b72fa` is recorded, when it ends, as that head's figure (the one-token fix is in a
   served string; the guard that catches it is in the run).
+- **Follow-up (08:11Z) — the final tree's full suite, on a worktree of `471b72fa` (launched before the floor red;
+  `PYTHONPATH=<worktree>/src`): 4,997 passed / 5 skipped / 1 failed in 50:34** — the one failure is
+  `test_presentation_fixes.py::test_no_mdash_entity_sentinel_values_remain_in_app_source`, the same guard CI's
+  floor job caught, fixed in `d9749cd8` (the guard + the card modules 14 green there); the five skips are the
+  standing env skips. `main`'s OWN run **#1751** for the #640 squash `5b219952` concluded **success** at 07:33Z
+  (installer-smoke #651 success) — `main` is green on the merged tree. #643's checks on `d9749cd8` at this record:
+  cui-guard · linux green; floor · test (3.11) · test (3.13) · browser · windows in progress; this docs-only line
+  restarts the run — the next reader takes the verdict from the FINAL head, never from this line.
