@@ -465,6 +465,11 @@ those fixed defects in earlier "closed" fixes:
 - **`ls` the test path before piping its run through a filter** (the trap list's own rule, met again:
   a guessed `test_sra_risk_register.py` made a whole neighbour run "pass" with EXIT=4). The census
   module's `_FAMILY` is a raw pattern, not a compiled regex.
+- **`"&mdash;"` is never a VALUE.** The view-layer guard forbids a quoted `&mdash;` sentinel anywhere in
+  source (it double-escapes through `_e`); a missing figure is the character `—`. The guard reads every
+  view module's source and prints the whole file when it fires — recognise that shape in a CI log
+  before fetching a thousand lines. And run the source-reading guards locally before a UI push; the
+  targeted modules a page's tests name are not the whole population that reads its bytes.
 - **The mock's Law-1 footnote must not be ported.** "Nothing leaves this machine" is an assurance the
   observed-banner discipline derives from measured locality and withdraws when the gateway is armed; a
   static sentence on a page would contradict the banner. Name the omission in the ADR.

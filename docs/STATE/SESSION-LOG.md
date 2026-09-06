@@ -16817,3 +16817,17 @@ shadows it on PATH).
   in the follow-up lines.
 - **Docs:** ADR-0469 · ADR-0470 · the ledger's WP7 section + the design table (/card row, /compare priced, next
   candidates) · DESIGN-SYSTEM §9 · HANDOFF rotated · LESSONS 2026-09-06 (c) · the kickoff prompt.
+- **Follow-up (07:48Z) — the merge worktree's full suite (commit `44107596`, `PYTHONPATH=<worktree>/src`, the
+  editable install shadowed): 4,921 passed / 5 skipped / 0 failed in 50:54** (the five standing env skips:
+  loopback-allowlist ×2, axis-titles ×3; 4,926 collected minus 5). **#643's first head `471b72fa` went RED on
+  `floor (declared minimum)`** (job 101447559113, 1 failed / 4,645 passed / 259 skipped in 23:45 — the skips are
+  the browser modules, no Playwright at the floor) while browser · cui-guard · linux · windows were green and both
+  `test` jobs still ran. Diagnosed in the steward's order: the tree is this PR's own, and the job's log line was an
+  assertion whose message printed the whole of `settings.py` — a guard that reads the view layer's SOURCE.
+  Reproduced locally by running the source-reading guards:
+  `test_presentation_fixes.py::test_no_mdash_entity_sentinel_values_remain_in_app_source` — the ADR-0470 pill
+  used a quoted `"&mdash;"` as its missing-date VALUE (`card.py:71`); the rule is the character (`"—"`), because
+  a quoted entity double-escapes through `_e`. Fixed (one token), the guard + the card modules 14 green, the wheel
+  + nine installers REBUILT from the fixed `src` (lockstep 68), pushed. The final tree's full suite that was already
+  running on a worktree of `471b72fa` is recorded, when it ends, as that head's figure (the one-token fix is in a
+  served string; the guard that catches it is in the run).

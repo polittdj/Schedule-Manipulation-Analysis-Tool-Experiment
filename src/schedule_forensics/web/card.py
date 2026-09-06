@@ -68,7 +68,7 @@ def _version_chips(key: str, sch: Schedule, versions: tuple[str, ...]) -> str:
         f'href="/card/{quote(k, safe="")}" title="{_e(k)}" data-no-i18n>v{i + 1}</a>'
         for i, k in enumerate(versions)
     )
-    dd = _mdY(sch.status_date) if sch.status_date else "&mdash;"
+    dd = _mdY(sch.status_date) if sch.status_date else "—"
     pill = f"v{versions.index(key) + 1} &middot; {_e(sch.source_file or sch.name)} &middot; DD {dd}"
     return (
         '<div class="viz-controls cd-cursor" id=cardCursor>'
