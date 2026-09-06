@@ -33,6 +33,7 @@ from schedule_forensics.engine.metrics._common import (
     is_incomplete,
     non_summary,
     percent,
+    round_half_up,
 )
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
@@ -72,7 +73,7 @@ def compute_float_sums(schedule: Schedule, cpm_result: CPMResult | None = None) 
     )
     denom = per_day if per_day else 1
     return FloatSums(
-        total_days=round(total_min / denom, 1),
+        total_days=round_half_up(total_min / denom, 1),
         free_days=round(free_min / denom, 1),
     )
 

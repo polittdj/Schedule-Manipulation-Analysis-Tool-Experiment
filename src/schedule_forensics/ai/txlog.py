@@ -12,8 +12,9 @@ Two rules shape the format:
   recorded as its SHA-256 and byte length, never its text (a plaintext prompt copy would be an
   uncontrolled CUI artifact on disk — the same discipline as ``logging_redaction``'s
   "no log file by default" rule). Endpoint, model and classification are operator
-  configuration, not schedule data. Error text is the short sanitized probe reason, never a
-  raw exception body.
+  configuration, not schedule data. Error text is :func:`error_summary`'s closed vocabulary —
+  an HTTP status, a fixed transport reason, or an exception's class name — never ``str(exc)``
+  (a ``BadStatusLine`` carries the reply's first line; ADR-0469).
 * **An unrecorded transmission must not happen.** The caller writes the ``*.sent`` record
   *before* transmitting and lets a write failure propagate (fail closed — the gateway backend
   refuses to send what it cannot record). The ``*.done`` completion record is best-effort:
@@ -31,6 +32,7 @@ import hashlib
 import json
 import os
 import threading
+import urllib.error
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -51,6 +53,28 @@ def default_log_path() -> Path:
     env = os.environ.get("SF_AI_LOG_DIR")
     base = Path(env) if env else Path.home() / ".local" / "state" / "schedule-forensics"
     return base / LOG_FILENAME
+
+
+def error_summary(exc: BaseException) -> str:
+    """The bounded failure reason a ``*.done`` record may carry — never ``str(exc)``.
+
+    ``probe_error_text``'s fallback is the exception's own text, which is right for a settings
+    diagnostic rendered locally and wrong for a durable record: ``http.client.BadStatusLine``
+    carries the RESPONSE's first line verbatim, so a misbehaving gateway could write its reply —
+    model output derived from the prompt — into the audit log (WP7, ADR-0469, measured end to end
+    through the real ``urllib`` opener). Here the vocabulary is closed: the HTTP status for an
+    ``HTTPError``, one of three fixed transport reasons, else the exception's class name.
+    """
+    if isinstance(exc, urllib.error.HTTPError):
+        return f"server returned HTTP {exc.code}"
+    low = str(getattr(exc, "reason", exc)).lower()
+    if "refused" in low:
+        return "connection refused — the model server isn't listening on this address"
+    if "timed out" in low or "timeout" in low:
+        return "timed out — the server didn't respond (wrong port, or still starting?)"
+    if any(s in low for s in ("getaddrinfo", "name or service", "nodename", "no address")):
+        return "host could not be resolved"
+    return exc.__class__.__name__
 
 
 def record(

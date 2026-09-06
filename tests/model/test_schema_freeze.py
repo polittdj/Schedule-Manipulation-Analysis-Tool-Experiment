@@ -16,6 +16,13 @@ from schedule_forensics.model.assignment import Assignment
 from schedule_forensics.model.calendar import Calendar
 from schedule_forensics.model.relationship import Relationship, RelationshipType
 from schedule_forensics.model.resource import Resource, ResourceType
+from schedule_forensics.model.saved_view import (
+    Criterion,
+    GroupClause,
+    Operand,
+    SavedFilter,
+    SavedGroup,
+)
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import ConstraintType, Task
 
@@ -102,6 +109,19 @@ _EXPECTED_FIELDS: dict[type[pydantic.BaseModel], set[str]] = {
         "saved_groups",
         "import_notes",
     },
+    # IMP-03 (ADR-0467): the five saved-view models (MS Project filters / groups, ADR-0450's
+    # surface) were outside the freeze — 6 of the 11 model classes were change-controlled.
+    Operand: {"kind", "text", "field_enum", "value_type"},
+    Criterion: {"operator", "field", "field_enum", "operands", "children"},
+    SavedFilter: {
+        "name",
+        "criteria",
+        "is_task_filter",
+        "show_related_summary_rows",
+        "prompt_count",
+    },
+    GroupClause: {"field", "field_enum", "ascending", "group_on", "interval", "start_at"},
+    SavedGroup: {"name", "show_summary_tasks", "clauses"},
 }
 
 

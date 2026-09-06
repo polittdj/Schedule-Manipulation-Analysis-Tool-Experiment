@@ -44,6 +44,7 @@
     { key: "baseline_finish", label: "Baseline finish", on: false },
   ];
   var cols = null, filterText = "", cache = null;
+  var refocus = false; // a rebuild the filter's own keystroke caused hands focus back (JS-03)
 
   function savedState() {
     try { return JSON.parse(localStorage.getItem(COLS_KEY) || "null"); } catch (e) { return null; }
@@ -154,7 +155,7 @@
       }
       var flt = el("input", { type: "search", placeholder: "Filter rows by any shown field" });
       flt.value = filterText;
-      flt.addEventListener("input", function () { filterText = flt.value; render(); });
+      flt.addEventListener("input", function () { filterText = flt.value; refocus = true; render(); });
       bar.appendChild(flt);
       bar.appendChild(el("span", {
         class: "muted", text: rows.length + " / " + merged.length + " shown",
@@ -171,6 +172,9 @@
         (extra.length ? "&cols=" + encodeURIComponent(extra.join(",")) : "");
       bar.appendChild(el("a", { class: "btn-link", href: href, text: "Excel (these columns)" }));
       mount.appendChild(bar);
+      // JS-03 (ADR-0467): render() replaces the input under the caret; give the new one the focus
+      // and the caret back, or the second character of a filter lands in <body>
+      if (refocus) { refocus = false; flt.focus(); flt.setSelectionRange(flt.value.length, flt.value.length); }
       var scroller = el("div", { class: "hist-drill-scroll" });
       var table = el("table", { class: "hist-drill-table" });
       // B1's table caption (ADR-0326 / ADR-0340): the tier column is this table's organising

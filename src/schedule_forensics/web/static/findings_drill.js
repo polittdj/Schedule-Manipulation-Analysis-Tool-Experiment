@@ -36,6 +36,7 @@
     { key: "baseline_finish", label: "Baseline finish", on: false },
   ];
   var cols = null, filterText = "", selected = null, cache = {}; // cache keyed by file
+  var refocus = false; // a rebuild the filter's own keystroke caused hands focus back (JS-03)
   var selectedSev = ""; // the ENGINE severity read off the clicked finding's own table row
 
   function savedState() {
@@ -137,7 +138,7 @@
       bar.appendChild(colMount);
       var flt = el("input", { type: "search", placeholder: "Filter rows by any shown field" });
       flt.value = filterText;
-      flt.addEventListener("input", function () { filterText = flt.value; render(); });
+      flt.addEventListener("input", function () { filterText = flt.value; refocus = true; render(); });
       bar.appendChild(flt);
       bar.appendChild(el("span", {
         class: "muted", text: rows.length + " / " + uids.length + " shown",
@@ -183,6 +184,9 @@
       scroller.appendChild(table);
       card.appendChild(scroller);
       drill.appendChild(card);
+      // JS-03 (ADR-0467): render() replaces the input under the caret; give the new one the focus
+      // and the caret back, or the second character of a filter lands in <body>
+      if (refocus) { refocus = false; flt.focus(); flt.setSelectionRange(flt.value.length, flt.value.length); }
       drill.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }).catch(function () { drill.textContent = "Failed to load the activity data."; });
   }

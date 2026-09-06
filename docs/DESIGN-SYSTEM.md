@@ -263,3 +263,22 @@ toolbar glyph and figure it carried before** ("don't modify any of the functiona
   head, a text tag — and colour only reinforces it; the browser and the .pptx paint the same layout
   numbers, and a slide that says "slipped" in one and not the other is a defect. The mock's ⛶ PRESENT
   label stays unported (the r11 vocabulary is ⛶ ENLARGE).
+- **A page whose tiles share ONE grid that its enlarge and export contracts span keeps that grid**
+  (ADR-0468, /performance — the sixth page): `.is-big` spans `#perfGrid`'s columns and the script
+  re-points every `[data-export]` under it per step, so the design's numbered panels become
+  `<h2 class="cd-band">` headings (`grid-column: 1 / -1`) that regroup the tiles VERBATIM in the
+  design's order — bands, not panels (`.panel` 18 → 18). A contract test that zips tiles to mounts
+  POSITIONALLY is a premise pin on order: re-derive the tuple to the served order, dated, and leave
+  every per-tile assertion alone. The reading block reuses the page's own `_explain` beats, hoisted
+  into module constants (and re-exported from `web.app` `X as X` — the monolith split contract), when
+  the page has no `_EXPLAINERS` entry. The server-rendered stepper is re-homed as ADR-0464's was; the
+  one edit above a line-keyed pin is same-line-count and publishes `data-frame` + syncs the chips in
+  the same task (ADR-0466), so no observer is needed when every control funnels through one function.
+- **A per-file drill wears the cursor strip as NAVIGATION** (ADR-0470, /card — the seventh page): a
+  card has no stepper and no frames, so the strip holds one `<a class="cd-chip">` per loaded version of
+  the ACTIVE project (`ordered_versions()`, oldest first), the open version `on`, linking to the sibling
+  page, with the family's `vN · file · DD` pill and a `cd-note`; no `data-frame`, no master, served only
+  with two or more versions (one version renders exactly as before). A mock's Law-1 footnote ("nothing
+  leaves this machine") is never ported as a static sentence — an assurance derives from the session's
+  measured backend locality and is withdrawn when the gateway is armed (ADR-0396). A page's `.panel`
+  count includes the chrome's Ask panel: a pin counts what the page SERVES.

@@ -407,10 +407,16 @@ def _apply_ssi_setup(st: SessionState, data: dict[str, object]) -> None:
     rows = data.get("factor_table")
     if isinstance(rows, list) and len(rows) == 5:
         with contextlib.suppress(TypeError, ValueError, IndexError):
-            st.sra_factor_rows = tuple(
+            parsed = tuple(
                 (int(r[0]), min(100.0, max(0.0, float(r[1]))), min(300.0, max(0.0, float(r[2]))))
                 for r in rows
             )
+            # MC-07 (ADR-0467): the engine refuses a table that does not cover factors 1..5
+            # exactly once; a setup carrying one is ignored here (its ValueError is suppressed
+            # above) and the session keeps the table it had — never a table the run would read
+            # as a zero Best Case
+            RiskFactorTable(rows=parsed)
+            st.sra_factor_rows = parsed
     focus = data.get("focus_uid")
     st.sra_focus_uid = focus if isinstance(focus, int) and _ok(focus) else None
     mode = data.get("occurrence_mode")

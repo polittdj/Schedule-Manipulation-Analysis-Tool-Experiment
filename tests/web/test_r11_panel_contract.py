@@ -494,8 +494,15 @@ PAGE_SCRIPTS = {
     # DELIBERATE re-baseline (ADR-0340): the tier table gained its B1 <caption class="ch-atd">
     # via SFGantt.tableCaption. The diff is ONE call plus its comment, inserted between the
     # `el("table", …)` and the `<thead>` build; no axis, tick, bar or column logic is touched.
-    # f44f6d35ce10798aafb7ed298dcd7570 → the digest below.
-    "driving_tiers.js": "b1ce5866859110bb86d374e26c3d1cc8",
+    # f44f6d35ce10798aafb7ed298dcd7570 → b1ce5866859110bb86d374e26c3d1cc8.
+    # DELIBERATE re-baseline (ADR-0467, JS-03): the text filter's own keystroke rebuilt the
+    # panel and dropped the caret into <body> (measured in Chromium: typing "ab" left "a"). The
+    # diff is a module flag set in the input handler and one line after `mount.appendChild(bar)`
+    # that hands focus and the caret back to the new input; no axis, tick, column, export or
+    # geometry logic touched. Driven by test_drill_filter_keeps_focus_browser.py (observed RED
+    # pre-fix on the two sibling drills built from the same pattern).
+    # b1ce5866859110bb86d374e26c3d1cc8 → the digest below.
+    "driving_tiers.js": "63e788a5d13f33340576ab98efb2a83e",
     "path_evolution.js": "f901da4e52b223174f5d3fed6ebbdeda",
     # DELIBERATE re-baseline (ADR-0340): both counterfactual grids gained a B1 caption, and the
     # text is per-table (carried in each `initTable` config) because the two grids share a column

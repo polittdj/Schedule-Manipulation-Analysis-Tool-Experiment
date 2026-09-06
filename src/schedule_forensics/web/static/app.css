@@ -1326,6 +1326,10 @@ tr.row-found td.sf-frozen-col { background: #fff3b0; }
 .cd-block { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; min-width: 0; }
 .cd-block h2 { margin: 0 0 8px; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink); }
 .cd-read { display: flex; flex-direction: column; gap: 10px; font-size: 11px; line-height: 1.6; color: var(--ink); }
+/* ADR-0468 (/performance): a design band inside the ONE grid the enlarge contract spans — a numbered
+   heading or the reading block — takes the full row; tiles keep their mosaic cells. */
+.mosaic > .cd-band { grid-column: 1 / -1; }
+h2.cd-band { margin: 8px 0 -6px; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink); }
 .cd-beat b { color: var(--accent); }
 .cd-beat-warn b { color: var(--warn); }
 .cd-beat-bad b { color: var(--bad); }

@@ -683,13 +683,23 @@ class RiskFactorTable:
         (5, 10.0, 50.0),
     )
 
+    def __post_init__(self) -> None:
+        # MC-07 (ADR-0467): a table that does not cover factors 1..5 exactly once is refused
+        # here, by name — ``for_factor`` used to answer a missing factor with ``(0.0, 0.0)``, a
+        # Best Case of 0 % of the ML and a +0 % Worst Case, in silence (the optimistic direction).
+        factors = sorted(f for f, _sub, _add in self.rows)
+        if factors != [1, 2, 3, 4, 5]:
+            raise ValueError(
+                f"RiskFactorTable rows must cover factors 1..5 exactly once (got {factors})"
+            )
+
     def for_factor(self, factor: int) -> tuple[float, float]:
         """``(best-case % OF ML, % to add for the worst case)`` for a 1..5 factor (clamped)."""
         f = max(1, min(5, factor))
         for row_f, sub, add in self.rows:
             if row_f == f:
                 return (sub, add)
-        return (0.0, 0.0)
+        raise ValueError(f"RiskFactorTable has no row for factor {f}")  # unreachable: validated
 
 
 @dataclass(frozen=True)
@@ -983,10 +993,21 @@ def _ml_minutes(task: Task) -> int:
 
 
 def _finish_of(result: CPMResult, target_uid: int | None) -> int:
-    """The focus event's early finish (the SSI 'Flag for Analysis' target), else project finish."""
-    if target_uid is None or target_uid not in result.timings:
+    """The focus event's early finish (the SSI 'Flag for Analysis' target); the project finish
+    when no focus is set. A focus the network does not time — a summary, an inactive or deleted
+    activity, a stale UID from a setup file — is REFUSED by name (MC-05, ADR-0467): it used to
+    fall back to the project finish in silence, so every figure under the focus's label was the
+    project's."""
+    if target_uid is None:
         return result.project_finish
-    return result.timings[target_uid].early_finish
+    timing = result.timings.get(target_uid)
+    if timing is None:
+        raise ValueError(
+            f"SRA focus UID {target_uid} is not a schedulable activity in this schedule (a "
+            "summary, an inactive task, or a UID this version does not carry) — no finish "
+            "distribution exists for it; clear the focus or choose an activity"
+        )
+    return timing.early_finish
 
 
 def deterministic_margin_bounds(

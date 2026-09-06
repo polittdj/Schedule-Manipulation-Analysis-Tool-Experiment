@@ -42,6 +42,7 @@
   var cols = null;        // [{key,label,on,custom}] built per available custom fields
   var selected = null;    // {file, metric}
   var filterText = "";    // narrows the drilled rows by text across every shown column
+  var refocus = false;    // a rebuild the filter's own keystroke caused hands focus back (JS-03)
 
   function savedState() {
     try { return JSON.parse(localStorage.getItem(COLS_KEY) || "null"); } catch (e) { return null; }
@@ -139,9 +140,12 @@
       // filter the drilled activities by text across every shown column (operator 2026-07-08)
       var flt = el("input", { type: "search", placeholder: "Filter rows by any shown field" });
       flt.value = filterText;
-      flt.addEventListener("input", function () { filterText = flt.value; render(); });
+      flt.addEventListener("input", function () { filterText = flt.value; refocus = true; render(); });
       bar.appendChild(flt);
       drill.appendChild(bar);
+      // JS-03 (ADR-0467): render() replaces the input under the caret; give the new one the focus
+      // and the caret back, or the second character of a filter lands in <body>
+      if (refocus) { refocus = false; flt.focus(); flt.setSelectionRange(flt.value.length, flt.value.length); }
       var ql = filterText.trim().toLowerCase();
       var rows = uids.map(function (uid) { return an.byUid[uid]; }).filter(function (a) {
         if (!a) return false;

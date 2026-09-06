@@ -46,18 +46,23 @@ GOLDEN = ROOT / "tests" / "fixtures" / "golden" / "fuse_hardfile"
 PERF_JS = ROOT / "src" / "schedule_forensics" / "web" / "static" / "performance.js"
 
 #: the fourteen chart mounts, in render order (test_performance_view.py pins the same list)
+#: The fourteen tiles in SERVED order — this tuple is zipped positionally against the grid. Since
+#: ADR-0468 (the Claude Design "07 How we execute" layout) the tiles sit under five numbered bands
+#: in the design's order: ① census + workoff burden · ② duration ratio · ③ bow wave + cumulative S
+#: · ④ execution indices · ⑤ portfolio quads. The premise (order) was re-derived; every assertion
+#: on each tile is unchanged.
 MOUNTS = (
     "g1Census",
     "g1Normal",
+    "g4Starts",
+    "g4Finishes",
+    "g5Scurve",
+    "g5Hist",
     "g2Starts",
     "g2Finishes",
     "g2Cum",
     "g3Starts",
     "g3Finishes",
-    "g4Starts",
-    "g4Finishes",
-    "g5Scurve",
-    "g5Hist",
     "quadHmiCei",
     "quadRatio",
     "quadBeiCp",

@@ -157,6 +157,13 @@ def test_golden_finish_totals(golden_project5: Schedule) -> None:
     v = curves.versions[0]
     # 27 activities carry an actual finish (the golden completed count); the rest scheduled
     assert sum(v.actual_finishes) >= 27
-    # every non-summary activity with a finish date is counted once
-    assert sum(v.actual_finishes) == sum(v.actual_finishes)  # axis covers all (no clipping)
+    # every non-summary, active activity with a finish date is counted once — the axis covers
+    # them all (no clipping). TST-03 (ADR-0467): this line was a self-comparison that could not
+    # fail; the population is now counted independently from the schedule itself.
+    with_finish = sum(
+        1
+        for t in golden_project5.tasks
+        if not t.is_summary and t.is_active and (t.actual_finish or t.finish) is not None
+    )
+    assert sum(v.actual_finishes) == with_finish
     assert len(curves.month_labels) == len(v.actual_starts)

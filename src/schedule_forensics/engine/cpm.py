@@ -55,7 +55,11 @@ Scope of this engine (documented, not silently limited — Law 2):
   only push work LATER, never earlier, so a file with no actuals — or whose actuals
   agree with logic — is byte-identical to the pre-ADR-0391 engine. Floored UniqueIDs
   are reported on :attr:`CPMResult.actual_start_driven`, deliberately SEPARATE from
-  ``date_driven`` (a recorded actual is evidence, not an unsupported date).
+  ``date_driven`` (a recorded actual is evidence, not an unsupported date). The floor applies
+  under a constraint pin as well (CPM-03, ADR-0467): a started Must-Start-On / Must-Finish-On
+  task is scheduled at its actual start, not at its constraint date — MS Project's own rule
+  (its stored Start equals the Actual Start on every started task in the corpus, constraint
+  or not); before ADR-0467 the pin branch skipped the floor and understated such a finish.
   **Still not anchored:** a completed task's actual FINISH. Its start is now honored,
   but its finish is still ``start + duration`` rather than the stored ``actual_finish``,
   so a completed activity that ran longer or shorter than planned still computes a
@@ -1133,13 +1137,17 @@ def compute_cpm(
                 date_driven.append(tid)
             else:
                 es_w = logic_es_wall
-                # work that has begun cannot begin earlier than it did (ADR-0391) — on the
-                # task's OWN calendar, from the raw stored instant
-                if task.actual_start is not None:
-                    started_wall = _snap_to_working(max(task.actual_start, ps), cal_t, tod0)
-                    if started_wall > es_w:
-                        es_w = started_wall
-                        actual_driven.append(tid)
+            # work that has begun cannot begin earlier than it did (ADR-0391) — on the task's
+            # OWN calendar, from the raw stored instant, and in EVERY branch above, the constraint
+            # pin included (CPM-03, ADR-0467): MS Project schedules a started task at its Actual
+            # Start whatever its constraint says. The stored-pin / stored-floor branches only ever
+            # hold UNSTARTED tasks (_stored_date_bounds), so applying the floor after the chain is
+            # byte-identical for them.
+            if task.actual_start is not None:
+                started_wall = _snap_to_working(max(task.actual_start, ps), cal_t, tod0)
+                if started_wall > es_w:
+                    es_w = started_wall
+                    actual_driven.append(tid)
             ef_w = _advance_wall(es_w, dur_s, cal_t, tod0)
             # ADR-0309 resume floor, on the task's own calendar from the raw stored dates
             if task.resume is not None and task.stop is not None and task.resume > task.stop:
@@ -1175,11 +1183,13 @@ def compute_cpm(
             date_driven.append(tid)
         else:
             es = logic_es
-            # work that has begun cannot begin earlier than it did (ADR-0391)
-            started_off = actual_floor.get(tid)
-            if started_off is not None and started_off > es:
-                es = started_off
-                actual_driven.append(tid)
+        # work that has begun cannot begin earlier than it did (ADR-0391) — in EVERY branch, the
+        # constraint pin included (CPM-03, ADR-0467; the pin's logic-vs-constraint violation is
+        # measured above, before the floor)
+        started_off = actual_floor.get(tid)
+        if started_off is not None and started_off > es:
+            es = started_off
+            actual_driven.append(tid)
         early_start[tid] = es
         ef = es + dur_s
         # in-progress work MS Project itself rescheduled: its remaining duration runs from the

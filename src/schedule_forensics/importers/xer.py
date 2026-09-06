@@ -217,6 +217,18 @@ def parse_xer_text(text: str, *, source_file: str | None = None) -> Schedule:
     # ``Schedule.company`` stays None for XER imports — documented, never guessed (ADR-0260).
     short_name = _g(project, "proj_short_name")
     project_title = _root_project_name(tables.get("PROJWBS", []), proj_id) or short_name
+    # IMP-05 (ADR-0467): the per-task baseline dates below are P6's TARGET (Planned) dates —
+    # MPXJ 16.2.0 maps the same columns to PLANNED_START / PLANNED_FINISH, never to a baseline.
+    # P6 shows them as the BL dates only while no baseline project is assigned; an assigned
+    # baseline project is a separate PROJECT the XER may not even carry, and is not read here.
+    # The values stay (they are what P6 shows in the no-baseline case); their provenance is SAID.
+    planned_note = (
+        "P6 XER: baseline start/finish are the activities' target (Planned) dates "
+        "(target_start_date / target_end_date) — what P6 shows as BL dates only while no "
+        "baseline project is assigned; an assigned baseline project is not read from an XER."
+        if any(t.baseline_start is not None or t.baseline_finish is not None for t in tasks)
+        else None
+    )
     try:
         return Schedule(
             name=short_name or proj_id or (source_file or "Untitled"),
@@ -233,7 +245,7 @@ def parse_xer_text(text: str, *, source_file: str | None = None) -> Schedule:
             # register the Activity-ID custom field (ADR-0185) as a selectable
             # grouping/display field — grouping only resolves registered labels
             custom_field_labels=(("Activity ID",) if any(t.custom_fields for t in tasks) else ()),
-            import_notes=(anchor_note,) if anchor_note else (),
+            import_notes=tuple(n for n in (anchor_note, planned_note) if n),
         )
     except pydantic.ValidationError as exc:
         raise ImporterError(f"XER does not form a valid schedule: {exc}") from exc
