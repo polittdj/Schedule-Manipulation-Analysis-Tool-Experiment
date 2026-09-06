@@ -408,9 +408,12 @@ def to_json_text(schedule: Schedule) -> str:
     out: dict[str, Any] = {
         "name": schedule.name,
         "project_start": schedule.project_start.isoformat(),
-        # the project default calendar, then the FULL per-task registry (QC audit D5)
+        # the project default calendar, then the FULL per-task registry (QC audit D5) — written
+        # AS IS: an empty registry stays empty on reopen instead of growing a one-entry copy of the
+        # project calendar the original never had (IMP-06, ADR-0467; the loader's older-save
+        # fallback reads a lone ``calendars`` list only when no ``calendar`` object is present)
         "calendar": _calendar_out(schedule.calendar),
-        "calendars": [_calendar_out(c) for c in (schedule.calendars or (schedule.calendar,))],
+        "calendars": [_calendar_out(c) for c in schedule.calendars],
         "tasks": [],
         "relationships": [
             {

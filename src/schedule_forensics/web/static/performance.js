@@ -43,7 +43,7 @@
     // with the same provenance the caption above already carries — a forensic export control
     // must never disagree with the visual it sits on.
     var href = "/export/xlsx/performance?file=" + encodeURIComponent(v.label || "");
-    var grid = document.getElementById("perfGrid");
+    var grid = publishFrame(cursor); // #perfGrid, its data-frame published + the cursor synced (ADR-0468)
     if (grid) {
       grid.querySelectorAll("[data-export]").forEach(function (tile) {
         tile.setAttribute("data-export", href);
@@ -541,5 +541,48 @@
     scheduleNext();
     playB.textContent = "⏸ Stop";
   });
+  mountCursor(); // the Claude Design strip, when the page serves one (ADR-0468)
   step(cursor); // initial render (also writes the file caption)
+
+  // ── Claude Design cursor (ADR-0468). When the page serves a #performanceMaster slot (two or
+  // more files) the server-rendered stepper is RE-HOMED into the masthead strip: the SAME nodes,
+  // ids and listeners move (appendChild), Play is restyled as the primary control, and a chip calls
+  // the same step() the buttons call. Every setVersion() publishes the frame it shows as data-frame
+  // on #perfGrid and syncs the chips + pill in the SAME task — state derived from a published
+  // attribute is never one task behind it (ADR-0466). Off the strip (one file, no slot) nothing
+  // moves and the stepper renders exactly as before. Declared below the line-keyed pins.
+  function publishFrame(k) {
+    var grid = document.getElementById("perfGrid");
+    if (grid) grid.setAttribute("data-frame", String(k));
+    syncCursor();
+    return grid;
+  }
+  function syncCursor() {
+    var chips = document.querySelectorAll("#performanceCursor .cd-chip");
+    Array.prototype.forEach.call(chips, function (c) {
+      c.classList.toggle("on", Number(c.getAttribute("data-idx")) === cursor);
+    });
+    var pill = document.getElementById("performanceFrame");
+    var v = PV[cursor];
+    if (pill && v) {
+      pill.textContent = "v" + (cursor + 1) + " · " + (v.label || "") +
+        (v.status_date ? " · DD " + v.status_date : "");
+    }
+  }
+  function mountCursor() {
+    var slot = document.getElementById("performanceMaster");
+    if (!slot) return;
+    var old = document.getElementById("perfStep") ? document.getElementById("perfStep").parentNode : null;
+    ["perfPrev", "perfStep", "perfNext", "perfPlay"].forEach(function (id) {
+      var node = document.getElementById(id);
+      if (node) slot.appendChild(node);
+    });
+    if (playB) playB.classList.add("cd-play");
+    // the intro panel's now-empty controls row (its explanatory note) yields to the strip's note
+    if (old && !old.querySelector("button")) old.hidden = true;
+    var chips = document.querySelectorAll("#performanceCursor .cd-chip");
+    Array.prototype.forEach.call(chips, function (c) {
+      c.addEventListener("click", function () { stop(); step(Number(c.getAttribute("data-idx")) || 0); });
+    });
+  }
 })();

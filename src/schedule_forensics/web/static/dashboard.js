@@ -92,7 +92,7 @@
         grid.appendChild(stat("Activities", String(c.activities)));
         grid.appendChild(stat("% complete", c.percent_complete + "%"));
         grid.appendChild(stat("Critical", c.critical_count + " (" + c.critical_pct + "%)"));
-        var fin = c.cpm_finish + (c.finish_delta_days != null
+        var fin = (c.cpm_finish || "—") + (c.finish_delta_days != null
           ? " (" + (c.finish_delta_days > 0 ? "+" : "") + c.finish_delta_days + "d vs base)" : "");
         grid.appendChild(stat("Computed finish", fin));
         grid.appendChild(stat("Data date", c.data_date || "—"));

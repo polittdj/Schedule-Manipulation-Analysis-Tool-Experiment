@@ -16709,3 +16709,77 @@ shadows it on PATH).
   pattern) and CI run #34000698790 + installer-smoke #34000698796 started on it (eight checks); this
   docs-only line restarts the run — the next reader takes the verdict from the FINAL head, never from this
   line. PR #640's title and body carry the full record.
+
+## 2026-09-06 — WP6b COMPLETE: the ledger TAIL verified by execution — 11 rows CONFIRMED and fixed red-first, 6 REFUTED, RC-02's never-2xx list empty (ADR-0467); /performance is the sixth page on the Claude Design layout (ADR-0468) — v1.0.240
+
+- **Branch:** `claude/continue-previous-rsq655`, branched by the harness on `origin/main` @ `b8e8aa42` (the #639
+  squash; `main`'s run #1743 `success`, installer-smoke #646 `success`). Draft PR #640 (ADR-0466, v1.0.239) was OPEN
+  on `claude/polaris-audit-resume-e9t5h1` — five checks green, both `test` jobs in progress on `9681d5f0` — so this
+  session numbers past it: ADR-0467/0468, version 1.0.240. The container had NO package (`pip install -e
+  '.[dev,browser]'`), no `build` (`pip install build`); 4,865 collected before this session's tests.
+- **WP6b (ADR-0467).** Every tail row re-derived (`git show 1b833c6a:…`) and probed. Red-first on the pristine
+  tree: 21 failed + `test_round_half_up.py` red at import across 15 new modules; 63 guards green on both trees
+  (the three RC-02 success paths among them — coverage, not defects). Green: 90 across the new + repaired modules;
+  the 108-module web/ai/guard subset 1,120 passed / 3 skipped after ONE real regression — the CPM-04 resolver skip
+  had swallowed the I-01 "nothing to compare" disclosure (a FILE with no activity vs a FILTER that emptied the
+  scope); fixed, and now mutation M23. Mutations on scratch copies under `PYTHONPATH`: **23/23 red by name** — the
+  battery first reported M23 GREEN because its anchor missed a blank line and the mutation never landed; the runner
+  now aborts loudly on a failed patch. Rows: CPM-03 (the actual-start floor under a pin; MS Project's stored Start
+  == Actual Start on 240/240 started fixture tasks), CPM-04 (8 surfaces printed the project start as a finish),
+  MF-03/04 (docs), MF-06 REFUTED (the finder's basis empties the numerator), MF-08 (30 sites half-up; CEI 1/8
+  0.12 → 0.13; parity unmoved), MC-04 REFUTED, MC-05 (focus refused by name), MC-06 REFUTED, MC-07 (factor table
+  validated; setup restore guarded), IMP-02 REFUTED, IMP-03 (freeze +5 classes), IMP-04 NON-REPRODUCED, IMP-05
+  CONFIRMED by MPXJ 16.2.0 (PLANNED, not baseline) and disclosed, IMP-06, MAN-02, MAN-03, JS-02 REFUTED (29/29),
+  JS-03 (three drills, Chromium), JS-04 REFUTED, JS-05 MEASURED (56 tokens), JS-06, TST-02/03; MF-07/09/10 and
+  MC-08 UNVERIFIABLE as filed.
+- **/performance (ADR-0468).** Artboard 07 executed over loopback HTTP (`setScreen('px')`; seeds raw except
+  `sfops-boot.skipNext` JSON), four themes, zero errors. Fourteen tiles verbatim in the ONE grid, five `.cd-band`
+  headings, the stepper re-homed, `data-frame` published + cursor synced in `setVersion` (one same-line-count edit
+  above the pin at 472), the reading block from the page's own `_explain` beats (`_READ_*`, re-exported `X as X`).
+  Red-first against a pristine shadow (layout red at import; browser red on the wait); green: layout 6 · browser 2
+  · r10 contract (MOUNTS re-derived to the served order, dated) · view tests · census/stepper rows 5 · the ledgers,
+  r11, accessibility, i18n, monolith split, oracle corpus, docs 216. Four-theme census: `.panel` 18 · tiles 14 ·
+  forms 5 · hosts 14 · cf-bars 14 · svgs 15 · takes 15 · prov 15 identical pristine → patched; moved on chips /
+  chipOn / strip / master buttons / bands / `data-frame` only; widest 1440 in all four.
+- **Statics:** ruff (whole tree) · format · mypy --strict (163 files) · bandit exit 0 · `node --check` every static
+  file. Version 1.0.240; wheel + nine installers rebuilt after the last source edit. The full suite's figure is
+  recorded in the follow-up commit (the first engine+parity run died without a summary under five concurrent jobs).
+- **Docs:** ADR-0467 · ADR-0468 · the ledger's WP6b section + the design table row · DESIGN-SYSTEM §9 · METRIC-
+  DICTIONARY regenerated · HANDOFF rotated · LESSONS 2026-09-06 · the kickoff prompt.
+
+## 2026-09-06 (b) — Resume session: #640 merged beside #641; #641's content merged onto `main` by MERGE (never renumbered), the nine installers rebuilt; WP7 begins
+
+- **Branch:** `claude/polaris-audit-resume-0gv4bo`, the harness's designated branch, checked out on `origin/main` @
+  `5b219952` — the #640 squash, merged by the operator at 06:22:01Z (ADR-0466, v1.0.239). Per #642's record
+  `5b219952^{tree}` == `9681d5f0^{tree}` (`aef52f7e…`); `origin/main`'s tree re-read here as `aef52f7e…`, but the
+  #640 head object is not in this clone, so the equality is #642's measurement, not this session's. `main`'s OWN
+  runs for that squash: CI **#1751** (id 34016299655) `in_progress` at this record; installer-smoke **#651**
+  (id 34016299661) `success`.
+- **#641 read on its FINAL head `d61f6395`:** CI #1750 (id 34008351716) `success` — check · floor · cui-guard ·
+  test (3.11) · test (3.13) · browser; installer-smoke #650 (id 34008351755) `success` — linux · windows. The
+  operator had marked it READY (not draft) at 06:22Z; GitHub `mergeable_state: dirty`. `git merge-tree
+  --write-tree origin/main d61f6395` → 15 conflicted paths: `pyproject.toml` (1.0.239 vs 1.0.240), the nine
+  installers, `AUDIT-2026-08-27.md`, `HANDOFF.md`, `LESSONS-LEARNED.md`, `NEXT-SESSION-PROMPT.md`,
+  `SESSION-LOG.md` — #641 forked from the #639 squash `b8e8aa42` beside #640, and both bumped the version,
+  rebuilt the installers and appended the same docs. The sibling session's docs-only draft **#642**
+  (`claude/polaris-audit-resume-e9t5h1` @ `1ea77085`, 06:25Z) records #640's merge and is in flight.
+- **Resolved by MERGE (steward §1, "two PRs in flight"), never by renumbering.** `git merge --no-ff
+  origin/claude/continue-previous-rsq655` on this branch: `pyproject.toml` → 1.0.240 (#641's; #640's 1.0.239 is
+  inside it); the nine installers REBUILT from the merged `src` (`pip install -e . --no-deps
+  --no-build-isolation` → `python -m build --wheel` → `tools/installer/build_installers.py`; MPXJ pinned to
+  `42d92dc9`, off the graft boundary after `git fetch --deepen=300`); SESSION-LOG = #640's 2026-09-06 (a) entry
+  then #641's WP6b entry (chronological); the ledger = the CI-red section (0466) then the WP6b section (0467);
+  LESSONS = both 2026-09-06 entries, the later session's on top; HANDOFF = #641's rotation + a (c) addendum;
+  HANDOFF-ARCHIVE's 2026-09-05 (b) section replaced by `main`'s FINAL version of it (WITH the ADR-0466 addendum
+  and the NOT-YET-ANSWERED block that #641's copy predated); the kickoff = #641's with the PR-state sentence
+  corrected. Every splice asserted by the resolver script (region counts, no residual markers). A session may
+  not push to another PR's branch, so the merge rides THIS branch's draft PR (number in the follow-up line):
+  the operator merges it and closes #641, or grants the push and the identical merge commit fast-forwards onto
+  #641's branch.
+- **Gate on the merged tree before the push:** `/usr/local/bin/ruff` 0.16.6 (the PATH `ruff` is a shadowed
+  0.15.8 — the full-gate skill's trap, met again) check + format (1,181 files) · mypy --strict 163 files ·
+  bandit exit 0 · `node --check` 63/63 · `pytest --collect-only` **4,926** · the lockstep / docs-sync /
+  split-contract pins + #641's engine, importer and web modules **606 passed** · the browser modules both
+  parents touched (the trend cursor race, the performance design page, the drill focus) **38 passed** ·
+  `tests/test_state_docs.py` + `tests/test_standing_rules.py` 12 green after the docs. The full suite runs on a
+  worktree of the pushed commit; its figure follows in a docs-only line.

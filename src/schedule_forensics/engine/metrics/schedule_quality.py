@@ -31,6 +31,7 @@ from schedule_forensics.engine.metrics._common import (
     is_incomplete,
     non_summary,
     percent,
+    round_half_up,
 )
 from schedule_forensics.model.schedule import Schedule
 
@@ -98,7 +99,7 @@ def compute_schedule_quality(
         "Critical",
         len(crit),
         n_inc,
-        round(percent(len(crit), n_inc), 0),
+        round_half_up(percent(len(crit), n_inc), 0),
         "%",
         CheckStatus.NOT_APPLICABLE,
         offender_uids=crit,

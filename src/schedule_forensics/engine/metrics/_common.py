@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import datetime as dt
 from dataclasses import dataclass
+from decimal import ROUND_HALF_UP, Decimal
 from enum import StrEnum
 
 from schedule_forensics.engine.cpm import CPMResult, datetime_to_offset
@@ -132,6 +133,16 @@ def effective_critical_incomplete(schedule: Schedule, cpm: CPMResult) -> set[int
 def percent(count: int, population: int) -> float:
     """``100 * count / population`` (0.0 when the population is empty)."""
     return 100.0 * count / population if population else 0.0
+
+
+def round_half_up(value: float, ndigits: int = 0) -> float:
+    """Round half AWAY from zero at ``ndigits`` — the spreadsheet / Fuse convention for a displayed
+    figure (QC audit D19; MF-08, ADR-0467). Plain ``round()`` is banker's rounding and sends an
+    exact tie to the even digit (``0.125 -> 0.12``, ``12.5 -> 12``), which disagrees with the
+    reference tools in the last displayed digit exactly where an analyst compares by eye — and a
+    tie is common in a small population (1 of 8). Non-ties are unchanged."""
+    quantum = Decimal(1).scaleb(-ndigits)
+    return float(Decimal(str(value)).quantize(quantum, rounding=ROUND_HALF_UP))
 
 
 def to_offset(schedule: Schedule, when: dt.datetime | None) -> int | None:

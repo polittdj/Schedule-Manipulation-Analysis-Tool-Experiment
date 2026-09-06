@@ -29,6 +29,7 @@ from schedule_forensics.engine.metrics._common import (
     is_incomplete,
     non_summary,
     percent,
+    round_half_up,
     to_offset,
 )
 from schedule_forensics.model.relationship import RelationshipType
@@ -461,7 +462,7 @@ def compute_bei(schedule: Schedule, *, acumen_parity: bool = False) -> MetricRes
             "BEI",
             bei_complete,
             bei_den,
-            round(bei, 2),
+            round_half_up(bei, 2),
             "ratio",
             evaluate(bei, 0.95, Direction.GE),
             0.95,
@@ -678,7 +679,7 @@ def _cpli(
         "CPLI",
         0,
         1,
-        round(cpli, 2),
+        round_half_up(cpli, 2),
         "ratio",
         status_flag,
         0.95,

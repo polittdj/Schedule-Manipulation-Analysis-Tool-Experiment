@@ -102,14 +102,40 @@ def test_driving_path_opportunity_and_missing_target() -> None:
 def test_summary_only_schedule_yields_cited_findings_never_empty() -> None:
     # a summary-only template solves to an empty CPM timing set; any finding it produces
     # must still cite something (the terminal fallback: the first task rows) — an
-    # offender-less finding once 500'd every page via the §6 citation gate
+    # offender-less finding once 500'd every page via the §6 citation gate.
+    # TST-02 (ADR-0467): measured, ``recommend`` yields NO finding for this template, so the
+    # loop below asserted nothing — a green test that could never fail. The measured outcome is
+    # pinned so a finding that appears is noticed, and the fallback the comment describes is
+    # exercised directly in ``test_the_terminal_citation_fallback_cites_the_first_task_rows``.
     s = Schedule(
         name="template",
         project_start=MON,
         tasks=(Task(unique_id=0, name="Root", duration_minutes=0, is_summary=True),),
     )
-    for finding in recommend(s):
+    findings = recommend(s)
+    assert findings == (), [f.metric_id for f in findings]
+    for finding in findings:  # the guard for the day a finding appears
         assert finding.citations, finding.metric_id
+
+
+def test_the_terminal_citation_fallback_cites_the_first_task_rows() -> None:
+    # the §6 never-uncited invariant's last anchor: with no schedulable activity at all, the
+    # finish-driver citation falls back to the first task rows — never an empty tuple
+    from schedule_forensics.engine.cpm import compute_cpm
+    from schedule_forensics.engine.recommendations import _finish_driver_citations
+
+    s = Schedule(
+        name="template",
+        project_start=MON,
+        tasks=(
+            Task(unique_id=0, name="Root", duration_minutes=0, is_summary=True),
+            Task(unique_id=5, name="Phase", duration_minutes=0, is_summary=True),
+        ),
+    )
+    cpm = compute_cpm(s)
+    assert not cpm.timings
+    cited = _finish_driver_citations(s, cpm)
+    assert [c.unique_id for c in cited] == [0, 5]
 
 
 def test_logic_on_summary_tasks_is_flagged_and_cited() -> None:
