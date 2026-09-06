@@ -16721,3 +16721,7 @@ shadows it on PATH).
   draft **#641** (WP6b, ADR-0467; /performance, ADR-0468; v1.0.240; based on `b8e8aa42`, 70 files, its checks
   green at 04:27Z) — it must merge `main` (installers · pyproject · the state docs) before it lands; its body
   already reserves ADR-0467/0468 and 1.0.240 above #640's numbers.
+- **Follow-up (06:3xZ):** draft PR **#642** (`claude/polaris-audit-resume-e9t5h1` @ `f708974e` on `origin/main`
+  `5b219952`, docs-only); subscribed; a check-in about an hour out reads its six checks on its FINAL head and
+  `main`'s run #1751 for the #640 squash. The operator merges or closes it; the next session reads the head's
+  checks, never this line. When #641 lands first, #642 needs a `main` merge (the state docs; trivial, additive).
