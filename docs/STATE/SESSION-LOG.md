@@ -16646,3 +16646,53 @@ shadows it on PATH).
   `main`'s run #1743 for the #639 squash. The next session reads the head's checks, never this line, before
   trusting it; the operator merges or closes it, then the next session branches FRESH.
 
+
+## 2026-09-06 (a) — #640 red on the /trend design cursor race; fixed where the dependency lives (ADR-0466) — v1.0.239
+
+- **The wake (23:41Z):** `browser (measured-box proof)` failed on #640's head `914f74ba` —
+  `test_trend_design_browser.py::test_the_master_step_moves_the_cursor_and_a_single_next_moves_only_its_chart`
+  line 183, `on == ['2']` with `frames == [3] * 21` and `qual == 3`. Diagnosis in the steward's order: tree
+  hashes first — #640's `src` / `tests` / `pyproject.toml` / `.github` trees are byte-identical to `main` @
+  `b8e8aa42` (`30cb40b9…` / `60df5fa7…` / `7c66e78c…` / `08fef405…`); main's own run #1743 ran the browser job
+  on those bytes and went green at 23:38Z (job 101392932202); #639's final head was green before that. Then the
+  job's own log line, not the cell colour: an assertion on the chip after every frame had moved.
+- **The mechanism, read then measured:** `sfDesignCursor` (ADR-0460) synced the chips from a document-level click
+  listener that deferred `syncChips` with `setTimeout(…, 0)`; every stepper publishes `data-frame` synchronously
+  inside the click (`show()` in trend.js / margin.js, `render()` in trend_drill.js). The chip was one macrotask
+  behind the attribute the test waits on, and a CDP `evaluate` is a separate task. BY CONSTRUCTION: a state read
+  inside the click's own task shows `on == ['2']` with every frame on 3, three probes of three; the next task
+  shows `['3']`. The runner's cross-task ordering did NOT reproduce locally: 0 of 34 runs (12 on one browser,
+  unthrottled and CPU-throttled 10×; 16 with a fresh browser per run under three CPU hogs and 4× throttling;
+  the module ×3) — runner Chrome 151.0.7922.34 (build 1234) vs the container's chromium-1194; a scheduler
+  difference is plausible and UNVERIFIED. A second defect of the same class read out of the code: a chart's own
+  ▶ Play advances by its interval with no click, so the cursor followed only Play's first beat (ADR-0460
+  promised "whichever control moved it"); measured red.
+- **The fix (`static/trend.js`, one block; lines 1345 → 1348 below every line-keyed pin):** a `MutationObserver`
+  on `data-frame` (`subtree`, `attributeFilter`) replaces the click listener and the timer — a microtask at the
+  end of the mutating task, so no later task can see the frames and the chip out of step, and every publication
+  is seen, click or not.
+- **Proofs:** two tests NEW — `test_the_cursor_never_lags_the_frames_once_a_step_settles` (⏭ Step all, then a
+  chart's Next, clicked inside `page.evaluate`, one microtask awaited, state read in the same task) and
+  `test_a_charts_own_play_moves_the_cursor_on_every_beat_not_only_the_first` (Play's second beat, the interval
+  alone) — both RED against the pristine `trend.js` (md5 `1f872059…`: `on == ['2']`), GREEN after (5/5 in the
+  module, three consecutive runs), RED BY NAME with HEAD's `trend.js` restored on a scratch `src` under
+  `PYTHONPATH` (`schedule_forensics.__file__` proven to resolve there). Guards that read or pin trend.js:
+  r11 contract · DD ledger · trend layout · animation · mission · bar drill · readability · legend ·
+  accessibility · target/theme · axis titles — 176 green / 3 standing env skips; the M1 control-effect census
+  59 green; installers 68.
+- **A trap found on the way (recorded, partly fixed):** the first red-first run failed for the WRONG reason —
+  `EvalError: Refused to evaluate a string as JavaScript` from `wait_for_function`. Measured on the served page
+  under `script-src 'self'` on chromium-1194: an EXPRESSION-string predicate is evaluated with the DevTools
+  bypass on its first poll only; every later poll re-evals in the page and throws; a `() => …` FUNCTION string
+  survives later polls (same page: an expression flipped by a 400 ms timer fails, the function form resolves).
+  The CPU hogs had pushed the module's existing waits into a second poll. This module's four waits became
+  function strings; the other browser modules' expression-string waits are OBSERVED, not fixed blind (census
+  next). Whether the runner's Chrome 151 blocks later polls is UNVERIFIED (its `_open` needed more than one
+  poll and did not throw, which suggests not). Also: `pkill -f` with a pattern that appears in the calling
+  shell's own command line kills that shell (exit 144) — anchor the pattern.
+- **Version + installers:** 1.0.239; `pip install -e . --no-deps --no-build-isolation`; wheel + nine installers
+  rebuilt after the last source edit; lockstep 68. Statics: ruff (whole tree) · format · mypy --strict (163
+  files) · bandit exit 0 · `node --check` every static file · `pytest --collect-only` 4,867.
+- **Docs:** ADR-0466; HANDOFF addendum (the file is not rotated — the session is the same); this entry;
+  LESSONS-LEARNED 2026-09-06; the ledger's CI-red section; the kickoff prompt (v1.0.239 · ADR-0466 · #640 no
+  longer docs-only, EIGHT checks).

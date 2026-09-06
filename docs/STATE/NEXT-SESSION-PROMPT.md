@@ -9,15 +9,15 @@ ended on the context wall (session-token-guardian TRIP at 94 % of the assumed wa
 operator said "Continue"; nothing of the next item was started — start it here, first line.** Read
 docs/STATE/HANDOFF.md FIRST (auto-injected), then **docs/STATE/AUDIT-2026-08-27.md — the
 campaign's live ledger (appended per-WP, never batch-written)**; the 2026-08-16 ledger stays the
-historical row source for the WP6b tail. As of last close: **v1.0.238 · highest ADR 0465 —
+historical row source for the WP6b tail. As of last close: **v1.0.239 · highest ADR 0466 (the 2026-09-06 fix of the /trend design cursor race that turned #640's browser check red — read ADR-0466 before touching any stepper, cursor or `wait_for_function`) —
 /onepager-compare SHIPPED (ADR-0465): the operator's two-list One-Pager compare, built as its own route,
 page module, painter and .pptx export on the Claude Design layout (the FIFTH design page — built NEW on
 the family's "Library One-Pager Timeline" artboard rather than migrated); /onepager's ADR-0446 intake,
 painter and export byte-identical.** **PR #639 MERGED by the operator at 23:21:09Z (2026-09-05) → `main` @ `b8e8aa42`, tree-identical to its green
 final head `55c8f2c3` (`616b326e…`); read `main`'s OWN run #1743 for the squash FIRST (in_progress at this
 record — a red cell there is a runner claim on the green PR head's bytes: compare `git rev-parse
-b8e8aa42^{tree}` with `55c8f2c3^{tree}` before believing it). The docs-only record of the merge rides draft PR
-**#640** from the restarted branch — merge or close it, then branch FRESH
+b8e8aa42^{tree}` with `55c8f2c3^{tree}` before believing it). Draft PR **#640** rides the restarted branch and is NO LONGER docs-only: the record of the merge PLUS the ADR-0466 fix
+(v1.0.239, wheel + nine installers rebuilt — EIGHT checks). Read its checks on its FINAL head; the operator merges or closes it, then branch FRESH
 (`git fetch --prune origin && git checkout -B <branch> origin/main`).** Campaign
 decisions (operator, 2026-08-27, standing): SOLO lead · fix-as-verified · BOTH folder-ask builds.
 QC-1/QC-2 bind every session — ADR-0393, pinned by tests/test_standing_rules.py. `git fetch origin`
@@ -68,7 +68,7 @@ the masthead strip move the drift chart, and does the pill name the version expe
 file's calendar? (d) #631's / #630's stand: the parent-folder question on `/`; /trend's chips; I-01 · T-01 ·
 the residual /analysis lag. UNKNOWABLE and closed: the blank-header banner, the 08-26 incident.
 
-⇢ NEXT — once the docs-only PR is merged or closed, branch FRESH from `origin/main`. **WP6b** — the ledger TAIL by the same method (re-derive each
+⇢ NEXT — once #640 is merged or closed, branch FRESH from `origin/main`. **WP6b** — the ledger TAIL by the same method (re-derive each
 finder's line from `git show 1b833c6a:<path>`, build the refuting check, fix as verified): CPM-03/04 ·
 MF-03/04/06..10 (MF-05 stays do-not-fix-blind) · MC-04..08 · IMP-02..06 · MAN-02/03 · JS-02..06 ·
 TST-02/03; plus RC-02's 3 never-2xx routes (`GET /export/{fmt}/resource-drill` ·
@@ -87,7 +87,13 @@ header-row equality race, #632's docs-only diff) is the remaining CI candidate: 
 race, fix where the dependency lives — never a wider wait. Each WP ends commit-able: red-first → mutation
 proofs → full gate → ADR → state docs → draft PR.
 
-⇢ Traps paid for, by name (2026-09-05 (b) first): two charts that caption identically HASH identically —
+⇢ Traps paid for, by name (2026-09-06 first): state derived from a PUBLISHED attribute is driven by the publication
+(a `MutationObserver` — a microtask), never by a click proxy with a `setTimeout(…, 0)` (one macrotask behind, blind to
+non-click movements such as a Play interval) · when a runner's scheduling will not reproduce, prove the race BY
+CONSTRUCTION (a same-task read) and judge the fix by the gap being gone · under the page's CSP a `wait_for_function`
+EXPRESSION string re-evals on every poll after the first and throws `EvalError` on chromium-1194 — write `() => …`
+FUNCTION strings, and read a red test's error TYPE before its colour · `pkill -f` with a pattern in your own command
+line kills your shell (exit 144) — anchor it · two charts that caption identically HASH identically —
 a content-keyed freeze needs distinct content per site · a "missed" mutation is a FIXTURE question first —
 put the two code paths on different rows · a counting pin must count what it NAMES (`<div class=panel`
 matched `panel-head`; `<tr><td>` matched a second table; a shared class matched the table beside the SVG)
@@ -126,6 +132,7 @@ Insufficient-Detail V05/V06 + TP2 (BLOCKED, operator-owned) · the compare page'
 pt — a design choice, re-price only if the operator asks). CLOSED: the /mission 30-hosts-vs-9-cf-bars
 question · the diagonal timeline header (ADR-0445) · the One-Pager in PowerPoint · CI-01/CI-02 (ADR-0455)
 · CI-03 (ADR-0461) · CF-01 (ADR-0462) · WP6's six highs (ADR-0463) · the 2026-09-04 One-Pager compare
-request (ADR-0465). OBSERVED, not fixed blind: the sticky controls bar over the sticky header at the top
+request (ADR-0465). OBSERVED, not fixed blind: the other browser modules' EXPRESSION-string `wait_for_function` predicates (ADR-0466 §3 —
+a census, then function strings; never a blind rewrite); the sticky controls bar over the sticky header at the top
 scroll position; the docx/xlsx writers stamping CUI regardless of mode; `evm.py`'s ACWP none-vs-zero on
 a mixed population.
