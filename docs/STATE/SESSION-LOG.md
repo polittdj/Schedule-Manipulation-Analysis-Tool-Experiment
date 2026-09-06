@@ -16696,3 +16696,16 @@ shadows it on PATH).
 - **Docs:** ADR-0466; HANDOFF addendum (the file is not rotated — the session is the same); this entry;
   LESSONS-LEARNED 2026-09-06; the ledger's CI-red section; the kickoff prompt (v1.0.239 · ADR-0466 · #640 no
   longer docs-only, EIGHT checks).
+- **Follow-up (00:4xZ) — the full gate for the ADR-0466 fix, on a git worktree of the final bytes
+  (`PYTHONPATH=<worktree>/src`, the editable install shadowed; launched 00:07:51Z while the docs were being
+  written in the main tree — never measure a tree a battery is mutating):** **4,861 passed / 5 skipped /
+  1 failed in 34:45**. The five skips are the standing env skips (loopback-allowlist ×2, axis-titles ×3). The
+  one failure is `tests/test_state_docs.py::test_handoff_top_section_pins_the_current_pyproject_version` —
+  expected by construction: the worktree carried the bumped `pyproject.toml` beside the PRE-edit state docs;
+  on the main tree after the docs landed, `tests/test_state_docs.py` + `tests/test_standing_rules.py` are
+  12/12 green. 4,867 collected and every one ran (the previous record's run: 4,855 passed / 5 skipped; this
+  session added 2 tests; the other 5 are not explained by the `-q` summaries on file — UNVERIFIED, not
+  chased). The fix was pushed as `44b0750a` at 00:12Z on the targeted gate (the steward's first-push
+  pattern) and CI run #34000698790 + installer-smoke #34000698796 started on it (eight checks); this
+  docs-only line restarts the run — the next reader takes the verdict from the FINAL head, never from this
+  line. PR #640's title and body carry the full record.

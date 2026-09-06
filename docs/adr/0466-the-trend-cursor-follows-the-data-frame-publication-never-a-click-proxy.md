@@ -97,4 +97,7 @@ expression-string waits — observed, not fixed blind; a census is the next step
   the same asserts, controls green on the real tree.
 - Statics: ruff (whole tree) · format · mypy --strict (163 files) · bandit exit 0 · `node --check`
   every static file · `pytest --collect-only` 4,867.
-- Full pytest on a worktree of the final bytes: see the SESSION-LOG follow-up line (2026-09-06).
+- Full pytest on a git worktree of the final bytes: **4,861 passed / 5 skipped (the standing env
+  skips) / 1 failed in 34:45** — the one failure the state-docs version pin against the worktree's
+  PRE-edit docs (expected by construction; 12/12 green on the main tree once the docs landed);
+  4,867 collected, every one ran.
