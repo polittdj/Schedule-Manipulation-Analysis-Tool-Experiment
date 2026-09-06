@@ -4,6 +4,8 @@
 
 ---
 
+**PR state (2026-09-06 23:3xZ): #643 MERGED → `main` @ `dee28ab3` (tree-identical to its green head; read `main`'s run #1759 first); #641 is to be CLOSED unmerged (its content landed via #643); #642 was marked ready but conflicts — its head is merged into draft PR #644 on the resume branch (merge #644, close #642). The paragraph below records the earlier PR state.**
+
 Resume the POLARIS² full-tool audit campaign (Schedule-Manipulation-Analysis-Tool). Read
 docs/STATE/HANDOFF.md FIRST (auto-injected), then **docs/STATE/AUDIT-2026-08-27.md — the
 campaign's live ledger (appended per-WP, never batch-written)**. As of last close: **v1.0.241 · highest ADR
