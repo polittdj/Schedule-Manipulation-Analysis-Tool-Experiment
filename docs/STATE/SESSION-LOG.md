@@ -16783,3 +16783,7 @@ shadows it on PATH).
   parents touched (the trend cursor race, the performance design page, the drill focus) **38 passed** ·
   `tests/test_state_docs.py` + `tests/test_standing_rules.py` 12 green after the docs. The full suite runs on a
   worktree of the pushed commit; its figure follows in a docs-only line.
+- **Follow-up (06:47Z):** draft PR **#643** (`claude/polaris-audit-resume-0gv4bo` @ `44107596` on `origin/main`
+  `5b219952`; the merge commit's second parent is #641's head `d61f6395`); subscribed; a check-in about an hour out
+  reads its EIGHT checks on its FINAL head and `main`'s run #1751 for the #640 squash. This docs-only line restarts
+  the run (the concurrency group); the next reader takes the verdict from the head's run, never from this line.

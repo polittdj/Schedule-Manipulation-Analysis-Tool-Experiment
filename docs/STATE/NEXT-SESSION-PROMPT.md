@@ -15,7 +15,7 @@ ADR-0467/0468, v1.0.240) went **8/8 green on its FINAL head `d61f6395`** and the
 `dirty` against `main` (15 files). Its content was therefore MERGED onto `main` — never renumbered — on
 `claude/polaris-audit-resume-0gv4bo` (the resume session's designated branch; a session may not push to another
 PR's branch): `5b219952` + merge of `d61f6395`, version 1.0.240 kept, wheel + nine installers REBUILT from the
-merged `src`, the five state docs spliced (PR number in the SESSION-LOG follow-up). The operator merges that PR and
+merged `src`, the five state docs spliced (draft PR **#643**). The operator merges that PR and
 closes #641 — or says the word and the identical merge commit is fast-forwarded onto #641's branch. The docs-only
 **#642** (`claude/polaris-audit-resume-e9t5h1`) records #640's merge and needs a `main` merge whichever lands
 second. Read each open PR's checks on its FINAL head (a red cell on a tree byte-identical to a green head is a
