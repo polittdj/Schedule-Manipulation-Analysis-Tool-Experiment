@@ -16787,3 +16787,33 @@ shadows it on PATH).
   `5b219952`; the merge commit's second parent is #641's head `d61f6395`); subscribed; a check-in about an hour out
   reads its EIGHT checks on its FINAL head and `main`'s run #1751 for the #640 squash. This docs-only line restarts
   the run (the concurrency group); the next reader takes the verdict from the head's run, never from this line.
+- **WP7 (ADR-0469) — `ai/txlog.py` FIRST, then RC-02's 21 routes.** Every promise of the transaction log given a
+  check built to refute it; one refuted the code: through the REAL `urllib` opener a loopback peer's malformed status
+  line landed VERBATIM in the `generate.done` record (`BadStatusLine(line)` → `probe_error_text` → `str(exc)`) —
+  the audit log had a path to becoming CUI. Fixed at the boundary (`txlog.error_summary`, a closed vocabulary). The
+  pre-consent catalog probe is body-less, key-bearing and recorded (design, disclosed — an operator ask); the
+  transport inventory is pinned by census (six modules); the record survives the quit-path clear and the wipe
+  under a scratch HOME; the retention rule is now SAID on /settings. RC-02: the 15 never-adverse POSTs + 6 exports
+  driven with an empty session, unknown keys/UIDs, `nan`/`inf`/`1e999`, `--5`, `²`, host-bearing redirect
+  targets — three defects red-first: `/sra/branch` 500 on `--5` (the L5 pattern on its sibling), `/sra/jcl-config`
+  storing a non-finite cost target, `/sra/risk` storing garbage as a `(0, 0, 0)` override; the other 18 pinned
+  fail-soft. Red-first 3 + 7 failed on the pristine tree; green 8 + 64; a 10-mutation battery on scratch copies
+  under `PYTHONPATH` (every anchor asserted) red by name **10/10**; the neighbouring suites (`tests/ai`, the SRA/JCL
+  web modules, the gateway settings, the route-coverage + egress guards) **537 passed**.
+- **/card on the Claude Design layout (ADR-0470).** /compare (10) priced FIRST: a feature (M–L — the cross-pair
+  evidence ledger + a slip decomposition no page computes). The cheapest candidate by artboard size against an
+  extracted page module: Library Schedule ID Card (3 KB / 184 lines). Its cursor is NAVIGATION — one `.cd-chip`
+  LINK per loaded version of the active project, the open one on, the `vN · file · DD` pill, served only with two
+  or more versions; both panels and every figure verbatim; the mock's ⤓ EXCEL (ADR-0327), verdict word and
+  "nothing leaves this machine" footnote (ADR-0396) NOT ported, named. Red-first 4 / 1 (the one-version control)
+  on the pristine page; green: layout 5 + the 151-test guard set (monolith contract after the `X as X`
+  re-export, card view, r12, i18n, accessibility, r11, target/theme, filter, portfolio) + the census rows 2;
+  four-theme render census (Chromium, 1440 px): chips 2 · on `1` · `.panel` 3 identical · widest 1440 · distinct
+  on/off chip colours in every theme · the click opens the sibling card with its own chip on · zero page errors.
+  The artboard was read from the canvas's own section markup, NOT executed (UNVERIFIED by execution, named).
+- **Statics (07:16Z):** `/usr/local/bin/ruff` 0.16.6 check + format (whole tree) · mypy --strict 163 files · bandit
+  exit 0 · `node --check` 63/63 · `pytest --collect-only`: figure in the follow-up. Version **1.0.241**; wheel +
+  nine installers rebuilt after the last source edit. The merge worktree's full suite and the final tree's: figures
+  in the follow-up lines.
+- **Docs:** ADR-0469 · ADR-0470 · the ledger's WP7 section + the design table (/card row, /compare priced, next
+  candidates) · DESIGN-SYSTEM §9 · HANDOFF rotated · LESSONS 2026-09-06 (c) · the kickoff prompt.

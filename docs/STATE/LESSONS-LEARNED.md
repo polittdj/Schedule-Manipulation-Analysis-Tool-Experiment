@@ -435,6 +435,40 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-06 (c) — An audit record's error field needs a closed vocabulary; a boundary rule holds only where EVERY site applies it; the second lander merges on its own branch
+
+- **`str(exc)` is not a sanitizer.** `http.client.BadStatusLine(line)` carries the peer's first reply
+  line verbatim, so a "short sanitized reason" that falls back to the exception's text can write a
+  gateway's reply — model output derived from the prompt — into the Law-1 audit log. Measured end to end
+  through the real `urllib` opener. A durable record's free-text field gets a CLOSED vocabulary (status,
+  fixed reasons, class name); the local diagnostic may keep the fuller text.
+- **A boundary rule is a census, not a helper.** `_to_float` refused `nan`/`inf` everywhere — except the
+  one route that called `float()` itself under a bare `suppress(ValueError)`. When a rule is "at the
+  boundary", grep for every `float(` / `int(` OUTSIDE the helper; the sibling of a fixed route is the
+  first place the old pattern survives (`/sra/branch` carried the exact lstrip-then-int 500 that audit L5
+  removed from `/sra/conditional`, with the fix's own comment beside it).
+- **Garbage that parses to a default is a fabricated figure.** `_to_float("abc", 0.0)` inside a
+  three-point override stored `(0, 0, 0)` — a certain zero-duration activity the operator never typed.
+  A supplied field that does not parse is REFUSED by name (ADR-0313); only a BLANK field may take a
+  default.
+- **Two PRs in flight, the second lander's session is dead, and the harness forbids pushing to another
+  PR's branch:** merge `origin/main` + the in-flight head on the DESIGNATED branch (a merge commit whose
+  second parent IS the other PR's head), rebuild the installers from the merged `src`, and hand the
+  operator two doors — merge this PR and close the other, or grant the push and fast-forward the
+  identical commit. Never renumber, never rebase either side.
+- **`git merge-tree` old-style output prefixes every line** — a `grep '^<<<<<<<'` reads 0 conflicts on
+  a merge with fifteen. `git merge-tree --write-tree` names the conflicted paths; use the instrument
+  that can say no.
+- **A page's `.panel` count includes the chrome's Ask panel**, and a panel head prints the project TITLE,
+  not the key: two premises corrected before a pin was trusted. Excel truncates a sheet name to 31
+  characters — assert an export's ROW text, never its sheet title.
+- **`ls` the test path before piping its run through a filter** (the trap list's own rule, met again:
+  a guessed `test_sra_risk_register.py` made a whole neighbour run "pass" with EXIT=4). The census
+  module's `_FAMILY` is a raw pattern, not a compiled regex.
+- **The mock's Law-1 footnote must not be ported.** "Nothing leaves this machine" is an assurance the
+  observed-banner discipline derives from measured locality and withdraws when the gateway is armed; a
+  static sentence on a page would contradict the banner. Name the omission in the ADR.
+
 ### 2026-09-06 — a mutation must LAND before its verdict counts; "no schedulable activity" must say whose emptiness it is
 
 - **The battery read a mutation as GREEN that had never been applied.** M23's anchor missed the blank line

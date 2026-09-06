@@ -274,3 +274,11 @@ toolbar glyph and figure it carried before** ("don't modify any of the functiona
   the page has no `_EXPLAINERS` entry. The server-rendered stepper is re-homed as ADR-0464's was; the
   one edit above a line-keyed pin is same-line-count and publishes `data-frame` + syncs the chips in
   the same task (ADR-0466), so no observer is needed when every control funnels through one function.
+- **A per-file drill wears the cursor strip as NAVIGATION** (ADR-0470, /card — the seventh page): a
+  card has no stepper and no frames, so the strip holds one `<a class="cd-chip">` per loaded version of
+  the ACTIVE project (`ordered_versions()`, oldest first), the open version `on`, linking to the sibling
+  page, with the family's `vN · file · DD` pill and a `cd-note`; no `data-frame`, no master, served only
+  with two or more versions (one version renders exactly as before). A mock's Law-1 footnote ("nothing
+  leaves this machine") is never ported as a static sentence — an assurance derives from the session's
+  measured backend locality and is withdrawn when the gateway is armed (ADR-0396). A page's `.panel`
+  count includes the chrome's Ask panel: a pin counts what the page SERVES.

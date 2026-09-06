@@ -54,8 +54,39 @@ def _count_bar_table(headers: tuple[str, str], rows: list[tuple[str, int, float]
     )
 
 
+def _version_chips(key: str, sch: Schedule, versions: tuple[str, ...]) -> str:
+    """The Claude Design cursor strip for a per-file drill (ADR-0470, the seventh page on the
+    layout): one ``.cd-chip`` per loaded version of the active project, oldest first, the open
+    version ``on``, and the family's ``vN · file · DD`` pill. A card has no stepper, so the chips
+    are LINKS to the sibling versions' cards — the artboard's "Pick a version to read its card" —
+    and, like the family, the strip is served only with two or more versions. Chips carry no id
+    and no family word (the control census recognises steppers by id+className)."""
+    if len(versions) < 2 or key not in versions:
+        return ""
+    chips = "".join(
+        f'<a class="cd-chip{" on" if k == key else ""}" data-idx="{i}" '
+        f'href="/card/{quote(k, safe="")}" title="{_e(k)}" data-no-i18n>v{i + 1}</a>'
+        for i, k in enumerate(versions)
+    )
+    dd = _mdY(sch.status_date) if sch.status_date else "&mdash;"
+    pill = f"v{versions.index(key) + 1} &middot; {_e(sch.source_file or sch.name)} &middot; DD {dd}"
+    return (
+        '<div class="viz-controls cd-cursor" id=cardCursor>'
+        f"<span class=cd-chips>{chips}</span>"
+        f'<span class="muted cd-pill" data-no-i18n>{pill}</span>'
+        '<span class="muted cd-note">One card per loaded version &mdash; a chip opens that '
+        "version&rsquo;s card; every figure on it is that file&rsquo;s own.</span>"
+        "</div>"
+    )
+
+
 def _card_body(
-    key: str, sch: Schedule, analysis: _Analysis, *, margin_days: float | None = None
+    key: str,
+    sch: Schedule,
+    analysis: _Analysis,
+    *,
+    margin_days: float | None = None,
+    versions: tuple[str, ...] = (),
 ) -> str:
     """The deck's *Metrics* page (PBIX page 1) — the schedule's ID card.
 
@@ -64,6 +95,8 @@ def _card_body(
     engine outputs already computed for this schedule (no recomputation of the CPM).
     ``margin_days`` (OR-01, ADR-0321) is the effective schedule margin from the caller's
     cached summary tier — rendered "—" when ``None`` (unsolvable or n/a), never 0.
+    ``versions`` (ADR-0470) is the active project's ordered keys: with two or more, the page
+    wears the Claude Design cursor strip (:func:`_version_chips`) above its panels.
 
     Panel contract (rank 12 toolbar sweep, ADR-0327): both panels wear the head strip +
     ⛶ ENLARGE + this file's provenance chip. **Neither carries ⤓ EXCEL** — no existing export
@@ -166,7 +199,7 @@ def _card_body(
     pivots_head = _panel_head(
         "Makeup, status &amp; performance pivots", tools=_shell_tools(), prov=prov
     )
-    return f"""{takeaway}
+    return f"""{takeaway}{_version_chips(key, sch, versions)}
 <div class=panel>{card_head}
 <p class=muted>The schedule's ID card (the reference deck's <i>Metrics</i> page): activity
 makeup, status, completion performance, the primary-constraint distribution, and the
