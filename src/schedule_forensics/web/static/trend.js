@@ -1002,12 +1002,15 @@
     Array.prototype.forEach.call(chips, function (c) {
       c.addEventListener("click", function () { goTo(Number(this.getAttribute("data-idx")) || 0); });
     });
-    // any stepper click — a chart's own, the drill's, or the master's programmatic beat — moves the cursor
-    document.addEventListener("click", function (ev) {
-      var t = ev.target;
-      if (t && t.closest && t.closest(".sf-frame-prev, .sf-frame-next, .sf-frame-play, #qualPrev, #qualNext, #qualPlay, #sfStepAll, #sfPlayAll")) {
-        setTimeout(syncChips, 0);
-      }
+    // The cursor follows the PUBLICATION, never a click proxy (ADR-0466): every stepper writes
+    // data-frame synchronously on the bar it owns — a chart's Prev / Next, EVERY beat of its Play
+    // interval (no click anywhere), the drill's, the master's programmatic beat — and a mutation
+    // observer on that attribute runs as a microtask at the end of the same task, so no later
+    // task (a reader over CDP, the next paint) can see the frames and the chip out of step. A
+    // setTimeout(…, 0) from a document click listener was one macrotask behind, a runner read the
+    // chip in that gap (2026-09-05), and Play's later beats it never saw at all.
+    new MutationObserver(syncChips).observe(document.body, {
+      subtree: true, attributes: true, attributeFilter: ["data-frame"],
     });
     syncChips();
   }

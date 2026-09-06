@@ -119,8 +119,8 @@ def _open(p: Any, url: str, n_framed: int = N_FRAMED) -> tuple[Any, Any, list[st
     errors: list[str] = []
     page.on("pageerror", lambda e: errors.append(str(e)))
     page.goto(url + "/trend", wait_until="domcontentloaded")
-    page.wait_for_function(
-        f"document.querySelectorAll('.sf-frame-next').length >= {n_framed}"
+    page.wait_for_function(  # a FUNCTION string: an expression string re-evals under CSP per poll
+        f"() => document.querySelectorAll('.sf-frame-next').length >= {n_framed}"
         " && !!document.getElementById('sfPlayAll')"
         " && document.getElementById('qualBars').hasAttribute('data-frame')",
         timeout=60_000,
@@ -130,7 +130,8 @@ def _open(p: Any, url: str, n_framed: int = N_FRAMED) -> tuple[Any, Any, list[st
 
 def _wait_drill_frame(page: Any, k: int) -> None:
     page.wait_for_function(
-        f"document.getElementById('qualBars').getAttribute('data-frame') === '{k}'", timeout=10_000
+        f"() => document.getElementById('qualBars').getAttribute('data-frame') === '{k}'",
+        timeout=10_000,
     )
 
 
@@ -188,6 +189,66 @@ def test_the_master_step_moves_the_cursor_and_a_single_next_moves_only_its_chart
     assert errors == []
 
 
+def test_the_cursor_never_lags_the_frames_once_a_step_settles(served: str) -> None:
+    """The 2026-09-05 red cell on a docs-only PR (the same bytes green on main minutes earlier):
+    a state read after ⏭ Step all found every chart on frame 3 and the chip still on 2. The
+    cursor was synced by a timer scheduled from a document CLICK listener — one macrotask behind
+    the data-frame the charts publish synchronously — and a CDP read landed in that gap.
+
+    Measured by construction, not by luck: read in the click's own task once its microtasks
+    settle, the chip and the pill must already agree with the FIRST framed chart. A deferred
+    timer can never satisfy this; a publication-driven sync (a mutation observer on data-frame,
+    a microtask) always does. Red-first against the timer: on == ['2'] with every frame on 3."""
+    from playwright.sync_api import sync_playwright
+
+    settle = "async () => { %s; await Promise.resolve(); return (" + _STATE + ")(); }"
+    with sync_playwright() as p:
+        browser, page, errors = _open(p, served)
+        page.click('#trendCursor .cd-chip[data-idx="2"]')
+        _wait_drill_frame(page, 2)
+        stepped = page.evaluate(settle % "document.getElementById('sfStepAll').click()")
+        one = page.evaluate(settle % "document.querySelector('.sf-frame-next').click()")
+        browser.close()
+    assert stepped["frames"] == [3] * N_FRAMED and stepped["qual"] == 3, stepped["frames"]
+    assert stepped["on"] == ["3"] and stepped["pill"].startswith("v4 ·"), (
+        stepped["on"],
+        stepped["pill"],
+    )
+    assert one["frames"][0] == 4 and one["on"] == ["4"] and one["pill"].startswith("v5 ·"), (
+        one["frames"][0],
+        one["on"],
+    )
+    assert errors == []
+
+
+def test_a_charts_own_play_moves_the_cursor_on_every_beat_not_only_the_first(served: str) -> None:
+    """ADR-0460 promised the cursor follows the first chart "whichever control moved it (a chip,
+    Prev / Next / Play, the master's programmatic beat)". Play's first beat is the click itself;
+    its later beats are the chart's own interval calling show() with NO click anywhere — a click
+    proxy cannot see them, the data-frame publication can. Red-first against the click proxy:
+    beat two leaves the chip on the previous version."""
+    from playwright.sync_api import sync_playwright
+
+    with sync_playwright() as p:
+        browser, page, errors = _open(p, served)
+        page.click('#trendCursor .cd-chip[data-idx="1"]')
+        _wait_drill_frame(page, 1)
+        page.locator(".sf-frame-play").first.click()  # beat one: frame 2, by the click
+        page.wait_for_function(  # beat two: frame 3, by the interval alone (1600 ms, real)
+            "() => document.querySelector('.sf-frame-next').parentNode"
+            ".getAttribute('data-frame') === '3'",
+            timeout=10_000,
+        )
+        beat_two = page.evaluate(_STATE)
+        browser.close()
+    assert beat_two["frames"][0] == 3, beat_two["frames"][0]
+    assert beat_two["on"] == ["3"] and beat_two["pill"].startswith("v4 ·"), (
+        beat_two["on"],
+        beat_two["pill"],
+    )
+    assert errors == []
+
+
 def test_the_cursor_also_drives_the_margin_burndown_when_it_has_frames(served_margin: str) -> None:
     """margin.js is the one framed stepper outside #trendCharts; it publishes its frame like the
     trend charts do, so a chip lands it on the same version as everything else."""
@@ -196,7 +257,7 @@ def test_the_cursor_also_drives_the_margin_burndown_when_it_has_frames(served_ma
     with sync_playwright() as p:
         browser, page, errors = _open(p, served_margin, n_framed=1)
         page.wait_for_function(
-            "document.getElementById('marginBurndown').closest('.panel')"
+            "() => document.getElementById('marginBurndown').closest('.panel')"
             ".querySelectorAll('.sf-frame-next').length === 1",
             timeout=30_000,
         )

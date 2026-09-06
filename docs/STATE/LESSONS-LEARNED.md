@@ -435,6 +435,32 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-06 — Derived state follows the publication, not a proxy of the control; a CSP wait that only ever passed on poll one
+
+- **A click proxy plus a timer is two defects wearing one line.** The /trend cursor learned "a chart
+  moved" from a document click listener and then synced itself with `setTimeout(…, 0)`. The timer put
+  the chip one macrotask behind the `data-frame` every stepper writes synchronously — and a runner's
+  CDP read landed in that gap (the #640 red cell). The proxy was blind to every movement that is not a
+  click: a chart's own ▶ Play advances through its interval, so the cursor followed only Play's first
+  beat. **State derived from another element's published attribute is driven by the publication** — a
+  `MutationObserver` on that attribute runs as a microtask at the end of the mutating task, so no later
+  task can observe the two out of step, and it sees every writer, present and future.
+- **When the scheduler will not reproduce the race, prove it by construction.** 34 local runs —
+  throttled, hogged, a fresh browser each — never read the chip behind the frames across the CDP
+  boundary; a state read inside the click's own task showed the lag every single time. The fix is
+  judged by whether the gap is GONE (the same-task read agrees; the old code on a scratch tree fails
+  by name), never by whether the luck came back. "Could not reproduce" is a statement about the
+  instrument, not about the defect.
+- **A wait that only ever passed on its first poll is a wait that fails under load.** Under the page's
+  `script-src 'self'`, a Playwright `wait_for_function` EXPRESSION string is evaluated with the DevTools
+  bypass once; every later poll re-evals it in the page and throws `EvalError`. The module's waits had
+  passed for a week because the page was already ready when poll one ran; three CPU hogs turned all of
+  them into errors before an assertion could run. Write `() => …` FUNCTION strings — measured to survive
+  later polls — and read a red test's error TYPE before its colour: this red was not the red I was
+  looking for.
+- **`pkill -f` matches your own shell.** A pattern that appears in the calling command line kills the
+  shell running it (exit 144). Anchor the pattern (`^python -c …`) or kill by pid.
+
 ### 2026-09-05 — Two identical captions hash identically; a missed mutant is a fixture question; a counting pin must count what it names
 
 - **A content-keyed freeze rejects identical content, and that is a feature.** The compare painter's

@@ -16632,3 +16632,80 @@ shadows it on PATH).
   installers changed, so the installer-smoke pair runs too — eight checks). This line's own push restarts the
   run (the concurrency group); the next reader takes the verdict from the head's run, never from this line,
   and the operator marks ready and squash-merges when satisfied.
+- **Follow-up (23:2xZ) — PR #639 MERGED.** The operator marked #639 ready and squash-merged it at 23:21:09Z →
+  `main` @ `b8e8aa42`; `b8e8aa42^{tree}` == `55c8f2c3^{tree}` (`616b326e…` — the PR's final head, all eight
+  checks green there at 20:38Z). `main`'s OWN runs for the squash: CI **#1743** (id 33998442501) and
+  installer-smoke **#646** (id 33998442461), both `in_progress` at this record — the next session reads
+  #1743's conclusion before trusting `main` (a red cell there on a tree identical to the green head is the
+  runner's claim, not the merge's). The Codex connector left a usage-limit notice on the PR (no action). The
+  branch `claude/polaris-audit-resume-e9t5h1` was restarted on `origin/main` @ `b8e8aa42` (`git fetch --prune`
+  + `remote set-head` + `checkout -B`, never an amend of the squash); this record rides a NEW docs-only draft PR
+  (number in the next follow-up line).
+- **Follow-up (23:3xZ):** draft PR **#640** (`claude/polaris-audit-resume-e9t5h1` @ `3e353020` on `origin/main`
+  `b8e8aa42`, docs-only); subscribed; a check-in about an hour out reads its six checks on its FINAL head and
+  `main`'s run #1743 for the #639 squash. The next session reads the head's checks, never this line, before
+  trusting it; the operator merges or closes it, then the next session branches FRESH.
+
+
+## 2026-09-06 (a) — #640 red on the /trend design cursor race; fixed where the dependency lives (ADR-0466) — v1.0.239
+
+- **The wake (23:41Z):** `browser (measured-box proof)` failed on #640's head `914f74ba` —
+  `test_trend_design_browser.py::test_the_master_step_moves_the_cursor_and_a_single_next_moves_only_its_chart`
+  line 183, `on == ['2']` with `frames == [3] * 21` and `qual == 3`. Diagnosis in the steward's order: tree
+  hashes first — #640's `src` / `tests` / `pyproject.toml` / `.github` trees are byte-identical to `main` @
+  `b8e8aa42` (`30cb40b9…` / `60df5fa7…` / `7c66e78c…` / `08fef405…`); main's own run #1743 ran the browser job
+  on those bytes and went green at 23:38Z (job 101392932202); #639's final head was green before that. Then the
+  job's own log line, not the cell colour: an assertion on the chip after every frame had moved.
+- **The mechanism, read then measured:** `sfDesignCursor` (ADR-0460) synced the chips from a document-level click
+  listener that deferred `syncChips` with `setTimeout(…, 0)`; every stepper publishes `data-frame` synchronously
+  inside the click (`show()` in trend.js / margin.js, `render()` in trend_drill.js). The chip was one macrotask
+  behind the attribute the test waits on, and a CDP `evaluate` is a separate task. BY CONSTRUCTION: a state read
+  inside the click's own task shows `on == ['2']` with every frame on 3, three probes of three; the next task
+  shows `['3']`. The runner's cross-task ordering did NOT reproduce locally: 0 of 34 runs (12 on one browser,
+  unthrottled and CPU-throttled 10×; 16 with a fresh browser per run under three CPU hogs and 4× throttling;
+  the module ×3) — runner Chrome 151.0.7922.34 (build 1234) vs the container's chromium-1194; a scheduler
+  difference is plausible and UNVERIFIED. A second defect of the same class read out of the code: a chart's own
+  ▶ Play advances by its interval with no click, so the cursor followed only Play's first beat (ADR-0460
+  promised "whichever control moved it"); measured red.
+- **The fix (`static/trend.js`, one block; lines 1345 → 1348 below every line-keyed pin):** a `MutationObserver`
+  on `data-frame` (`subtree`, `attributeFilter`) replaces the click listener and the timer — a microtask at the
+  end of the mutating task, so no later task can see the frames and the chip out of step, and every publication
+  is seen, click or not.
+- **Proofs:** two tests NEW — `test_the_cursor_never_lags_the_frames_once_a_step_settles` (⏭ Step all, then a
+  chart's Next, clicked inside `page.evaluate`, one microtask awaited, state read in the same task) and
+  `test_a_charts_own_play_moves_the_cursor_on_every_beat_not_only_the_first` (Play's second beat, the interval
+  alone) — both RED against the pristine `trend.js` (md5 `1f872059…`: `on == ['2']`), GREEN after (5/5 in the
+  module, three consecutive runs), RED BY NAME with HEAD's `trend.js` restored on a scratch `src` under
+  `PYTHONPATH` (`schedule_forensics.__file__` proven to resolve there). Guards that read or pin trend.js:
+  r11 contract · DD ledger · trend layout · animation · mission · bar drill · readability · legend ·
+  accessibility · target/theme · axis titles — 176 green / 3 standing env skips; the M1 control-effect census
+  59 green; installers 68.
+- **A trap found on the way (recorded, partly fixed):** the first red-first run failed for the WRONG reason —
+  `EvalError: Refused to evaluate a string as JavaScript` from `wait_for_function`. Measured on the served page
+  under `script-src 'self'` on chromium-1194: an EXPRESSION-string predicate is evaluated with the DevTools
+  bypass on its first poll only; every later poll re-evals in the page and throws; a `() => …` FUNCTION string
+  survives later polls (same page: an expression flipped by a 400 ms timer fails, the function form resolves).
+  The CPU hogs had pushed the module's existing waits into a second poll. This module's four waits became
+  function strings; the other browser modules' expression-string waits are OBSERVED, not fixed blind (census
+  next). Whether the runner's Chrome 151 blocks later polls is UNVERIFIED (its `_open` needed more than one
+  poll and did not throw, which suggests not). Also: `pkill -f` with a pattern that appears in the calling
+  shell's own command line kills that shell (exit 144) — anchor the pattern.
+- **Version + installers:** 1.0.239; `pip install -e . --no-deps --no-build-isolation`; wheel + nine installers
+  rebuilt after the last source edit; lockstep 68. Statics: ruff (whole tree) · format · mypy --strict (163
+  files) · bandit exit 0 · `node --check` every static file · `pytest --collect-only` 4,867.
+- **Docs:** ADR-0466; HANDOFF addendum (the file is not rotated — the session is the same); this entry;
+  LESSONS-LEARNED 2026-09-06; the ledger's CI-red section; the kickoff prompt (v1.0.239 · ADR-0466 · #640 no
+  longer docs-only, EIGHT checks).
+- **Follow-up (00:4xZ) — the full gate for the ADR-0466 fix, on a git worktree of the final bytes
+  (`PYTHONPATH=<worktree>/src`, the editable install shadowed; launched 00:07:51Z while the docs were being
+  written in the main tree — never measure a tree a battery is mutating):** **4,861 passed / 5 skipped /
+  1 failed in 34:45**. The five skips are the standing env skips (loopback-allowlist ×2, axis-titles ×3). The
+  one failure is `tests/test_state_docs.py::test_handoff_top_section_pins_the_current_pyproject_version` —
+  expected by construction: the worktree carried the bumped `pyproject.toml` beside the PRE-edit state docs;
+  on the main tree after the docs landed, `tests/test_state_docs.py` + `tests/test_standing_rules.py` are
+  12/12 green. 4,867 collected and every one ran (the previous record's run: 4,855 passed / 5 skipped; this
+  session added 2 tests; the other 5 are not explained by the `-q` summaries on file — UNVERIFIED, not
+  chased). The fix was pushed as `44b0750a` at 00:12Z on the targeted gate (the steward's first-push
+  pattern) and CI run #34000698790 + installer-smoke #34000698796 started on it (eight checks); this
+  docs-only line restarts the run — the next reader takes the verdict from the FINAL head, never from this
+  line. PR #640's title and body carry the full record.
