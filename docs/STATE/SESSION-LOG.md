@@ -16709,3 +16709,15 @@ shadows it on PATH).
   pattern) and CI run #34000698790 + installer-smoke #34000698796 started on it (eight checks); this
   docs-only line restarts the run — the next reader takes the verdict from the FINAL head, never from this
   line. PR #640's title and body carry the full record.
+- **Follow-up (06:2xZ) — PR #640 MERGED.** The operator marked #640 ready and squash-merged it at 06:22:01Z →
+  `main` @ `5b219952`; `5b219952^{tree}` == `9681d5f0^{tree}` (`aef52f7e…` — the PR's final head, all eight
+  checks green there at 01:53Z). `main`'s OWN runs for the squash: CI **#1751** (id 34016299655) and
+  installer-smoke **#651** (id 34016299661), both `in_progress` at this record — the next session reads #1751's
+  conclusion before trusting `main` (a red cell there on a tree identical to the green head is the runner's
+  claim, not the merge's). The #639 squash's runs concluded: CI #1743 `success` (00:32Z), installer-smoke #646
+  `success`. The branch `claude/polaris-audit-resume-e9t5h1` was restarted on `origin/main` @ `5b219952`
+  (`git fetch --prune` + `remote set-head` + `checkout -B`, never an amend of the squash); this record rides a
+  NEW docs-only draft PR (number in the next follow-up line). IN FLIGHT at this record: the sibling session's
+  draft **#641** (WP6b, ADR-0467; /performance, ADR-0468; v1.0.240; based on `b8e8aa42`, 70 files, its checks
+  green at 04:27Z) — it must merge `main` (installers · pyproject · the state docs) before it lands; its body
+  already reserves ADR-0467/0468 and 1.0.240 above #640's numbers.
