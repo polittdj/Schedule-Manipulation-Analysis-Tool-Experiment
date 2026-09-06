@@ -152,7 +152,7 @@ class GatewayBackend:
                     model=self.model,
                     classification=self._classification,
                     ok=False,
-                    error=probe_error_text(exc),
+                    error=txlog.error_summary(exc),  # a closed vocabulary — never str(exc)
                 )
             raise
         # best-effort again: the answer is already in hand; the sent record stands either way

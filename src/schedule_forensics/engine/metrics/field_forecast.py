@@ -28,7 +28,12 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 
 from schedule_forensics.engine.grouping import field_value
-from schedule_forensics.engine.metrics._common import CheckStatus, MetricResult, non_summary
+from schedule_forensics.engine.metrics._common import (
+    CheckStatus,
+    MetricResult,
+    non_summary,
+    round_half_up,
+)
 from schedule_forensics.engine.metrics.dcma14 import compute_bei
 from schedule_forensics.engine.metrics.evm import compute_evm_indices
 from schedule_forensics.engine.metrics.hmi import compute_hmi
@@ -107,7 +112,7 @@ def _sei(schedule: Schedule) -> float | None:
     if not due:
         return None
     started = sum(1 for t in due if t.actual_start is not None)
-    return round(started / len(due), 2)
+    return round_half_up(started / len(due), 2)
 
 
 def compute_field_forecast(schedules: Sequence[Schedule], field: str) -> tuple[GroupMetrics, ...]:

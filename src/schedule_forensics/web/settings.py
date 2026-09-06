@@ -169,7 +169,8 @@ def _gateway_status_note(cfg: AIConfig) -> str:
         f"<code>{_e(cfg.gateway_endpoint)}</code> is reachable and serving its approved model "
         "catalog. <b>Prompts (schedule content) LEAVE this machine to this endpoint</b>; every "
         "transmission is recorded in the AI transaction log at "
-        f"<code>{_e(txlog.default_log_path())}</code>.</div>"
+        f"<code>{_e(txlog.default_log_path())}</code> (append-only; retained until you delete "
+        "it — nothing in the tool purges it).</div>"
     )
 
 

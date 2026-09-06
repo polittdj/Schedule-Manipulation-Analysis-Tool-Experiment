@@ -25,7 +25,12 @@ status date:
 
 from __future__ import annotations
 
-from schedule_forensics.engine.metrics._common import CheckStatus, MetricResult, non_summary
+from schedule_forensics.engine.metrics._common import (
+    CheckStatus,
+    MetricResult,
+    non_summary,
+    round_half_up,
+)
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
 
@@ -45,7 +50,7 @@ def _ratio(
         name,
         num,
         den,
-        round(num / den, 2),
+        round_half_up(num / den, 2),
         "ratio",
         CheckStatus.NOT_APPLICABLE,
         offender_uids=offenders,

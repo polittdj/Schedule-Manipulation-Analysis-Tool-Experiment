@@ -952,13 +952,16 @@ def _where_we_stand_header(
     total = makeup.total or 1
     complete_pct = 100.0 * makeup.complete / total
 
+    # CPM-04 (ADR-0467): a network with no schedulable activity computes no finish — the offset
+    # is 0 (the project start), which is not a finish and must not be printed as one
+    has_network = bool(cpm.timings)
     cpm_finish_dt = offset_to_datetime(sch.project_start, cpm.project_finish, cal)
-    cpm_finish_str = _mdY(cpm_finish_dt)
+    cpm_finish_str = _mdY(cpm_finish_dt) if has_network else "—"
 
     # vs-baseline finish variance — the existing forecast helper is handed the cached CPM, so no
     # second solve; planned_finish is the latest baseline finish (None when the file carries none).
     fset = compute_finish_forecasts(sch, cpm)
-    if fset.planned_finish is not None:
+    if fset.planned_finish is not None and has_network:
         var_days = (cpm_finish_dt.date() - fset.planned_finish).days
         if var_days > 0:
             vs_base = f"+{var_days}d"
@@ -995,7 +998,12 @@ def _where_we_stand_header(
 
     # takeaway h1 — a sentence with a number; every clause is a real figure or is omitted
     plan_clause = f" against a {plan_at_dd} baseline plan at the data date" if plan_at_dd else ""
-    takeaway = f"{complete_pct:.0f}% complete{plan_clause} — computed finish {cpm_finish_str}, "
+    finish_clause = (
+        f"computed finish {cpm_finish_str}, "
+        if has_network
+        else "no schedulable activity, so no computed finish, "
+    )
+    takeaway = f"{complete_pct:.0f}% complete{plan_clause} — {finish_clause}"
     # base_phrase / vs_base may carry an entity (&mdash;); keep the takeaway HTML-safe by escaping
     # only the parts we build from user-independent computed values (all of the above are).
 

@@ -435,6 +435,73 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-06 (c) — An audit record's error field needs a closed vocabulary; a boundary rule holds only where EVERY site applies it; the second lander merges on its own branch
+
+- **`str(exc)` is not a sanitizer.** `http.client.BadStatusLine(line)` carries the peer's first reply
+  line verbatim, so a "short sanitized reason" that falls back to the exception's text can write a
+  gateway's reply — model output derived from the prompt — into the Law-1 audit log. Measured end to end
+  through the real `urllib` opener. A durable record's free-text field gets a CLOSED vocabulary (status,
+  fixed reasons, class name); the local diagnostic may keep the fuller text.
+- **A boundary rule is a census, not a helper.** `_to_float` refused `nan`/`inf` everywhere — except the
+  one route that called `float()` itself under a bare `suppress(ValueError)`. When a rule is "at the
+  boundary", grep for every `float(` / `int(` OUTSIDE the helper; the sibling of a fixed route is the
+  first place the old pattern survives (`/sra/branch` carried the exact lstrip-then-int 500 that audit L5
+  removed from `/sra/conditional`, with the fix's own comment beside it).
+- **Garbage that parses to a default is a fabricated figure.** `_to_float("abc", 0.0)` inside a
+  three-point override stored `(0, 0, 0)` — a certain zero-duration activity the operator never typed.
+  A supplied field that does not parse is REFUSED by name (ADR-0313); only a BLANK field may take a
+  default.
+- **Two PRs in flight, the second lander's session is dead, and the harness forbids pushing to another
+  PR's branch:** merge `origin/main` + the in-flight head on the DESIGNATED branch (a merge commit whose
+  second parent IS the other PR's head), rebuild the installers from the merged `src`, and hand the
+  operator two doors — merge this PR and close the other, or grant the push and fast-forward the
+  identical commit. Never renumber, never rebase either side.
+- **`git merge-tree` old-style output prefixes every line** — a `grep '^<<<<<<<'` reads 0 conflicts on
+  a merge with fifteen. `git merge-tree --write-tree` names the conflicted paths; use the instrument
+  that can say no.
+- **A page's `.panel` count includes the chrome's Ask panel**, and a panel head prints the project TITLE,
+  not the key: two premises corrected before a pin was trusted. Excel truncates a sheet name to 31
+  characters — assert an export's ROW text, never its sheet title.
+- **`ls` the test path before piping its run through a filter** (the trap list's own rule, met again:
+  a guessed `test_sra_risk_register.py` made a whole neighbour run "pass" with EXIT=4). The census
+  module's `_FAMILY` is a raw pattern, not a compiled regex.
+- **`"&mdash;"` is never a VALUE.** The view-layer guard forbids a quoted `&mdash;` sentinel anywhere in
+  source (it double-escapes through `_e`); a missing figure is the character `—`. The guard reads every
+  view module's source and prints the whole file when it fires — recognise that shape in a CI log
+  before fetching a thousand lines. And run the source-reading guards locally before a UI push; the
+  targeted modules a page's tests name are not the whole population that reads its bytes.
+- **The mock's Law-1 footnote must not be ported.** "Nothing leaves this machine" is an assurance the
+  observed-banner discipline derives from measured locality and withdraws when the gateway is armed; a
+  static sentence on a page would contradict the banner. Name the omission in the ADR.
+
+### 2026-09-06 — a mutation must LAND before its verdict counts; "no schedulable activity" must say whose emptiness it is
+
+- **The battery read a mutation as GREEN that had never been applied.** M23's anchor missed the blank line
+  between two functions; the patch's `assert` failed inside a heredoc, the shell carried on, and the test ran on
+  an unmutated copy. The runner now aborts on a failed patch and prints it. Every "survived" mutant is first a
+  question about the battery (ADR-0443's lesson, re-paid): print that the patch landed, not only where the
+  shadow resolved.
+- **The CPM-04 skip broke the I-01 disclosure on its first cut.** "Skip a version whose CPM has no timings"
+  is two different facts: a FILE with no schedulable activity (skip it, by name) and a FILTER that left nothing
+  in scope (the page's own "nothing to compare" sentence). The 108-module run caught it; the distinction is now
+  a named mutation. When a guard keys on emptiness, ask what emptied it.
+- **A finder's proposed fix can be wrong in the opposite direction.** MF-06 asked for
+  `is_effective_critical`; that helper excludes completed work and would have emptied the Critical CEI
+  numerator on every file. The validated basis stayed; the honest N/A on an XER is now said in the
+  dictionary. Measure the proposed fix as hard as the claim.
+- **Two byte-identical function bodies defeat an exact-match patcher** — anchor on the one line that differs
+  (`cpm_scoped_for` vs `cpm_pair_for`), or the patch either fails or lands in the wrong place.
+- **`pgrep -f` matched the grep's own shell** and reported a finished suite as "still running"; a long run
+  that died without a summary under five concurrent jobs was re-run alone. Read `etime` and the child list,
+  not the pattern match.
+- **A positional zip in a contract test is a premise pin on ORDER.** The r10 performance contract zipped
+  MOUNTS to served tiles; the design layout reordered the tiles, the pin fired, the tuple was re-derived and
+  every per-tile assertion kept — the trap list's rule, met again on a new page.
+- **Two "silent" test runs were `file or directory not found`** — a guessed module path. `ls` the path
+  before a run whose output is piped through a filter; a filter hides the error line that names the mistake.
+- **A served tile spans lines** when its hint attribute carries real newlines: a `.*?` without `re.S` finds
+  nothing and the assertion reads `[] == [...]`.
+
 ### 2026-09-06 — Derived state follows the publication, not a proxy of the control; a CSP wait that only ever passed on poll one
 
 - **A click proxy plus a timer is two defects wearing one line.** The /trend cursor learned "a chart

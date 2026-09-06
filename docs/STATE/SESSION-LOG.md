@@ -16725,3 +16725,133 @@ shadows it on PATH).
   `5b219952`, docs-only); subscribed; a check-in about an hour out reads its six checks on its FINAL head and
   `main`'s run #1751 for the #640 squash. The operator merges or closes it; the next session reads the head's
   checks, never this line. When #641 lands first, #642 needs a `main` merge (the state docs; trivial, additive).
+
+## 2026-09-06 — WP6b COMPLETE: the ledger TAIL verified by execution — 11 rows CONFIRMED and fixed red-first, 6 REFUTED, RC-02's never-2xx list empty (ADR-0467); /performance is the sixth page on the Claude Design layout (ADR-0468) — v1.0.240
+
+- **Branch:** `claude/continue-previous-rsq655`, branched by the harness on `origin/main` @ `b8e8aa42` (the #639
+  squash; `main`'s run #1743 `success`, installer-smoke #646 `success`). Draft PR #640 (ADR-0466, v1.0.239) was OPEN
+  on `claude/polaris-audit-resume-e9t5h1` — five checks green, both `test` jobs in progress on `9681d5f0` — so this
+  session numbers past it: ADR-0467/0468, version 1.0.240. The container had NO package (`pip install -e
+  '.[dev,browser]'`), no `build` (`pip install build`); 4,865 collected before this session's tests.
+- **WP6b (ADR-0467).** Every tail row re-derived (`git show 1b833c6a:…`) and probed. Red-first on the pristine
+  tree: 21 failed + `test_round_half_up.py` red at import across 15 new modules; 63 guards green on both trees
+  (the three RC-02 success paths among them — coverage, not defects). Green: 90 across the new + repaired modules;
+  the 108-module web/ai/guard subset 1,120 passed / 3 skipped after ONE real regression — the CPM-04 resolver skip
+  had swallowed the I-01 "nothing to compare" disclosure (a FILE with no activity vs a FILTER that emptied the
+  scope); fixed, and now mutation M23. Mutations on scratch copies under `PYTHONPATH`: **23/23 red by name** — the
+  battery first reported M23 GREEN because its anchor missed a blank line and the mutation never landed; the runner
+  now aborts loudly on a failed patch. Rows: CPM-03 (the actual-start floor under a pin; MS Project's stored Start
+  == Actual Start on 240/240 started fixture tasks), CPM-04 (8 surfaces printed the project start as a finish),
+  MF-03/04 (docs), MF-06 REFUTED (the finder's basis empties the numerator), MF-08 (30 sites half-up; CEI 1/8
+  0.12 → 0.13; parity unmoved), MC-04 REFUTED, MC-05 (focus refused by name), MC-06 REFUTED, MC-07 (factor table
+  validated; setup restore guarded), IMP-02 REFUTED, IMP-03 (freeze +5 classes), IMP-04 NON-REPRODUCED, IMP-05
+  CONFIRMED by MPXJ 16.2.0 (PLANNED, not baseline) and disclosed, IMP-06, MAN-02, MAN-03, JS-02 REFUTED (29/29),
+  JS-03 (three drills, Chromium), JS-04 REFUTED, JS-05 MEASURED (56 tokens), JS-06, TST-02/03; MF-07/09/10 and
+  MC-08 UNVERIFIABLE as filed.
+- **/performance (ADR-0468).** Artboard 07 executed over loopback HTTP (`setScreen('px')`; seeds raw except
+  `sfops-boot.skipNext` JSON), four themes, zero errors. Fourteen tiles verbatim in the ONE grid, five `.cd-band`
+  headings, the stepper re-homed, `data-frame` published + cursor synced in `setVersion` (one same-line-count edit
+  above the pin at 472), the reading block from the page's own `_explain` beats (`_READ_*`, re-exported `X as X`).
+  Red-first against a pristine shadow (layout red at import; browser red on the wait); green: layout 6 · browser 2
+  · r10 contract (MOUNTS re-derived to the served order, dated) · view tests · census/stepper rows 5 · the ledgers,
+  r11, accessibility, i18n, monolith split, oracle corpus, docs 216. Four-theme census: `.panel` 18 · tiles 14 ·
+  forms 5 · hosts 14 · cf-bars 14 · svgs 15 · takes 15 · prov 15 identical pristine → patched; moved on chips /
+  chipOn / strip / master buttons / bands / `data-frame` only; widest 1440 in all four.
+- **Statics:** ruff (whole tree) · format · mypy --strict (163 files) · bandit exit 0 · `node --check` every static
+  file. Version 1.0.240; wheel + nine installers rebuilt after the last source edit. The full suite's figure is
+  recorded in the follow-up commit (the first engine+parity run died without a summary under five concurrent jobs).
+- **Docs:** ADR-0467 · ADR-0468 · the ledger's WP6b section + the design table row · DESIGN-SYSTEM §9 · METRIC-
+  DICTIONARY regenerated · HANDOFF rotated · LESSONS 2026-09-06 · the kickoff prompt.
+
+## 2026-09-06 (b) — Resume session: #640 merged beside #641; #641's content merged onto `main` by MERGE (never renumbered), the nine installers rebuilt; WP7 begins
+
+- **Branch:** `claude/polaris-audit-resume-0gv4bo`, the harness's designated branch, checked out on `origin/main` @
+  `5b219952` — the #640 squash, merged by the operator at 06:22:01Z (ADR-0466, v1.0.239). Per #642's record
+  `5b219952^{tree}` == `9681d5f0^{tree}` (`aef52f7e…`); `origin/main`'s tree re-read here as `aef52f7e…`, but the
+  #640 head object is not in this clone, so the equality is #642's measurement, not this session's. `main`'s OWN
+  runs for that squash: CI **#1751** (id 34016299655) `in_progress` at this record; installer-smoke **#651**
+  (id 34016299661) `success`.
+- **#641 read on its FINAL head `d61f6395`:** CI #1750 (id 34008351716) `success` — check · floor · cui-guard ·
+  test (3.11) · test (3.13) · browser; installer-smoke #650 (id 34008351755) `success` — linux · windows. The
+  operator had marked it READY (not draft) at 06:22Z; GitHub `mergeable_state: dirty`. `git merge-tree
+  --write-tree origin/main d61f6395` → 15 conflicted paths: `pyproject.toml` (1.0.239 vs 1.0.240), the nine
+  installers, `AUDIT-2026-08-27.md`, `HANDOFF.md`, `LESSONS-LEARNED.md`, `NEXT-SESSION-PROMPT.md`,
+  `SESSION-LOG.md` — #641 forked from the #639 squash `b8e8aa42` beside #640, and both bumped the version,
+  rebuilt the installers and appended the same docs. The sibling session's docs-only draft **#642**
+  (`claude/polaris-audit-resume-e9t5h1` @ `1ea77085`, 06:25Z) records #640's merge and is in flight.
+- **Resolved by MERGE (steward §1, "two PRs in flight"), never by renumbering.** `git merge --no-ff
+  origin/claude/continue-previous-rsq655` on this branch: `pyproject.toml` → 1.0.240 (#641's; #640's 1.0.239 is
+  inside it); the nine installers REBUILT from the merged `src` (`pip install -e . --no-deps
+  --no-build-isolation` → `python -m build --wheel` → `tools/installer/build_installers.py`; MPXJ pinned to
+  `42d92dc9`, off the graft boundary after `git fetch --deepen=300`); SESSION-LOG = #640's 2026-09-06 (a) entry
+  then #641's WP6b entry (chronological); the ledger = the CI-red section (0466) then the WP6b section (0467);
+  LESSONS = both 2026-09-06 entries, the later session's on top; HANDOFF = #641's rotation + a (c) addendum;
+  HANDOFF-ARCHIVE's 2026-09-05 (b) section replaced by `main`'s FINAL version of it (WITH the ADR-0466 addendum
+  and the NOT-YET-ANSWERED block that #641's copy predated); the kickoff = #641's with the PR-state sentence
+  corrected. Every splice asserted by the resolver script (region counts, no residual markers). A session may
+  not push to another PR's branch, so the merge rides THIS branch's draft PR (number in the follow-up line):
+  the operator merges it and closes #641, or grants the push and the identical merge commit fast-forwards onto
+  #641's branch.
+- **Gate on the merged tree before the push:** `/usr/local/bin/ruff` 0.16.6 (the PATH `ruff` is a shadowed
+  0.15.8 — the full-gate skill's trap, met again) check + format (1,181 files) · mypy --strict 163 files ·
+  bandit exit 0 · `node --check` 63/63 · `pytest --collect-only` **4,926** · the lockstep / docs-sync /
+  split-contract pins + #641's engine, importer and web modules **606 passed** · the browser modules both
+  parents touched (the trend cursor race, the performance design page, the drill focus) **38 passed** ·
+  `tests/test_state_docs.py` + `tests/test_standing_rules.py` 12 green after the docs. The full suite runs on a
+  worktree of the pushed commit; its figure follows in a docs-only line.
+- **Follow-up (06:47Z):** draft PR **#643** (`claude/polaris-audit-resume-0gv4bo` @ `44107596` on `origin/main`
+  `5b219952`; the merge commit's second parent is #641's head `d61f6395`); subscribed; a check-in about an hour out
+  reads its EIGHT checks on its FINAL head and `main`'s run #1751 for the #640 squash. This docs-only line restarts
+  the run (the concurrency group); the next reader takes the verdict from the head's run, never from this line.
+- **WP7 (ADR-0469) — `ai/txlog.py` FIRST, then RC-02's 21 routes.** Every promise of the transaction log given a
+  check built to refute it; one refuted the code: through the REAL `urllib` opener a loopback peer's malformed status
+  line landed VERBATIM in the `generate.done` record (`BadStatusLine(line)` → `probe_error_text` → `str(exc)`) —
+  the audit log had a path to becoming CUI. Fixed at the boundary (`txlog.error_summary`, a closed vocabulary). The
+  pre-consent catalog probe is body-less, key-bearing and recorded (design, disclosed — an operator ask); the
+  transport inventory is pinned by census (six modules); the record survives the quit-path clear and the wipe
+  under a scratch HOME; the retention rule is now SAID on /settings. RC-02: the 15 never-adverse POSTs + 6 exports
+  driven with an empty session, unknown keys/UIDs, `nan`/`inf`/`1e999`, `--5`, `²`, host-bearing redirect
+  targets — three defects red-first: `/sra/branch` 500 on `--5` (the L5 pattern on its sibling), `/sra/jcl-config`
+  storing a non-finite cost target, `/sra/risk` storing garbage as a `(0, 0, 0)` override; the other 18 pinned
+  fail-soft. Red-first 3 + 7 failed on the pristine tree; green 8 + 64; a 10-mutation battery on scratch copies
+  under `PYTHONPATH` (every anchor asserted) red by name **10/10**; the neighbouring suites (`tests/ai`, the SRA/JCL
+  web modules, the gateway settings, the route-coverage + egress guards) **537 passed**.
+- **/card on the Claude Design layout (ADR-0470).** /compare (10) priced FIRST: a feature (M–L — the cross-pair
+  evidence ledger + a slip decomposition no page computes). The cheapest candidate by artboard size against an
+  extracted page module: Library Schedule ID Card (3 KB / 184 lines). Its cursor is NAVIGATION — one `.cd-chip`
+  LINK per loaded version of the active project, the open one on, the `vN · file · DD` pill, served only with two
+  or more versions; both panels and every figure verbatim; the mock's ⤓ EXCEL (ADR-0327), verdict word and
+  "nothing leaves this machine" footnote (ADR-0396) NOT ported, named. Red-first 4 / 1 (the one-version control)
+  on the pristine page; green: layout 5 + the 151-test guard set (monolith contract after the `X as X`
+  re-export, card view, r12, i18n, accessibility, r11, target/theme, filter, portfolio) + the census rows 2;
+  four-theme render census (Chromium, 1440 px): chips 2 · on `1` · `.panel` 3 identical · widest 1440 · distinct
+  on/off chip colours in every theme · the click opens the sibling card with its own chip on · zero page errors.
+  The artboard was read from the canvas's own section markup, NOT executed (UNVERIFIED by execution, named).
+- **Statics (07:16Z):** `/usr/local/bin/ruff` 0.16.6 check + format (whole tree) · mypy --strict 163 files · bandit
+  exit 0 · `node --check` 63/63 · `pytest --collect-only`: figure in the follow-up. Version **1.0.241**; wheel +
+  nine installers rebuilt after the last source edit. The merge worktree's full suite and the final tree's: figures
+  in the follow-up lines.
+- **Docs:** ADR-0469 · ADR-0470 · the ledger's WP7 section + the design table (/card row, /compare priced, next
+  candidates) · DESIGN-SYSTEM §9 · HANDOFF rotated · LESSONS 2026-09-06 (c) · the kickoff prompt.
+- **Follow-up (07:48Z) — the merge worktree's full suite (commit `44107596`, `PYTHONPATH=<worktree>/src`, the
+  editable install shadowed): 4,921 passed / 5 skipped / 0 failed in 50:54** (the five standing env skips:
+  loopback-allowlist ×2, axis-titles ×3; 4,926 collected minus 5). **#643's first head `471b72fa` went RED on
+  `floor (declared minimum)`** (job 101447559113, 1 failed / 4,645 passed / 259 skipped in 23:45 — the skips are
+  the browser modules, no Playwright at the floor) while browser · cui-guard · linux · windows were green and both
+  `test` jobs still ran. Diagnosed in the steward's order: the tree is this PR's own, and the job's log line was an
+  assertion whose message printed the whole of `settings.py` — a guard that reads the view layer's SOURCE.
+  Reproduced locally by running the source-reading guards:
+  `test_presentation_fixes.py::test_no_mdash_entity_sentinel_values_remain_in_app_source` — the ADR-0470 pill
+  used a quoted `"&mdash;"` as its missing-date VALUE (`card.py:71`); the rule is the character (`"—"`), because
+  a quoted entity double-escapes through `_e`. Fixed (one token), the guard + the card modules 14 green, the wheel
+  + nine installers REBUILT from the fixed `src` (lockstep 68), pushed. The final tree's full suite that was already
+  running on a worktree of `471b72fa` is recorded, when it ends, as that head's figure (the one-token fix is in a
+  served string; the guard that catches it is in the run).
+- **Follow-up (08:11Z) — the final tree's full suite, on a worktree of `471b72fa` (launched before the floor red;
+  `PYTHONPATH=<worktree>/src`): 4,997 passed / 5 skipped / 1 failed in 50:34** — the one failure is
+  `test_presentation_fixes.py::test_no_mdash_entity_sentinel_values_remain_in_app_source`, the same guard CI's
+  floor job caught, fixed in `d9749cd8` (the guard + the card modules 14 green there); the five skips are the
+  standing env skips. `main`'s OWN run **#1751** for the #640 squash `5b219952` concluded **success** at 07:33Z
+  (installer-smoke #651 success) — `main` is green on the merged tree. #643's checks on `d9749cd8` at this record:
+  cui-guard · linux green; floor · test (3.11) · test (3.13) · browser · windows in progress; this docs-only line
+  restarts the run — the next reader takes the verdict from the FINAL head, never from this line.

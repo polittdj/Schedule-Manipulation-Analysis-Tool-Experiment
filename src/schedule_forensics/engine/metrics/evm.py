@@ -34,6 +34,7 @@ from schedule_forensics.engine.metrics._common import (
     evaluate,
     non_summary,
     percent,
+    round_half_up,
     to_offset,
 )
 from schedule_forensics.model.schedule import Schedule
@@ -62,7 +63,7 @@ def _ratio_result(
 ) -> MetricResult:
     """A percentage metric. Informational (NA) unless an industry ``threshold``/``direction`` is
     supplied, in which case it is scored PASS/FAIL against it (empty population stays NA)."""
-    value = round(percent(count, population), 1)
+    value = round_half_up(percent(count, population), 1)
     status = (
         CheckStatus.NOT_APPLICABLE
         if threshold is None or direction is None or population == 0
@@ -236,7 +237,7 @@ def _offender_ratio(
     """Percentage metric whose offenders are the citable activities behind the count. Informational
     (NA) unless an industry ``threshold``/``direction`` is supplied (empty population stays NA)."""
     uids = tuple(sorted(t.unique_id for t in tasks))
-    value = round(percent(len(uids), population), 1)
+    value = round_half_up(percent(len(uids), population), 1)
     status = (
         CheckStatus.NOT_APPLICABLE
         if threshold is None or direction is None or population == 0
@@ -358,7 +359,7 @@ def _index(
         name,
         0,
         1,
-        round(value, 2),
+        round_half_up(value, 2),
         "ratio",
         evaluate(value, threshold, direction),
         threshold,
@@ -432,7 +433,7 @@ def _spi_t(schedule: Schedule, tasks: list[Task]) -> MetricResult:
         "SPI(t)",
         es.ev,
         es.planned_count,
-        round(es.spi_t, 2),
+        round_half_up(es.spi_t, 2),
         "ratio",
         evaluate(es.spi_t, 1.0, Direction.GE),
         1.0,
@@ -492,7 +493,7 @@ def _spi_t_acumen(schedule: Schedule, tasks: list[Task]) -> MetricResult:
         "SPI(t) — Acumen",
         len(contributing),
         len(ratios),
-        round(value, 2),
+        round_half_up(value, 2),
         "ratio",
         evaluate(value, 1.0, Direction.GE),
         1.0,
@@ -559,9 +560,9 @@ def compute_schedule_variance(
     if es is None:
         svt_days = es_days = at_days = None
     else:
-        svt_days = round((es.es_minutes - es.at_minutes) / wmpd, 1)
-        es_days = round(es.es_minutes / wmpd, 1)
-        at_days = round(es.at_minutes / wmpd, 1)
+        svt_days = round_half_up((es.es_minutes - es.at_minutes) / wmpd, 1)
+        es_days = round_half_up(es.es_minutes / wmpd, 1)
+        at_days = round_half_up(es.at_minutes / wmpd, 1)
 
     variances: list[ActivityVariance] = []
     start_variances: list[ActivityVariance] = []
@@ -572,20 +573,24 @@ def compute_schedule_variance(
         actual = to_offset(schedule, t.actual_finish)
         baseline = to_offset(schedule, t.baseline_finish)
         if actual is not None and baseline is not None:
-            var_days = round((actual - baseline) / wmpd, 1)
+            var_days = round_half_up((actual - baseline) / wmpd, 1)
             variances.append(ActivityVariance(unique_id=t.unique_id, variance_days=var_days))
         # START variance: any activity that has actually started + carries a baseline start —
         # so a statused-but-mostly-unfinished schedule still shows its in-progress slippage.
         a_start = to_offset(schedule, t.actual_start)
         b_start = to_offset(schedule, t.baseline_start)
         if a_start is not None and b_start is not None:
-            sv_days = round((a_start - b_start) / wmpd, 1)
+            sv_days = round_half_up((a_start - b_start) / wmpd, 1)
             start_variances.append(ActivityVariance(unique_id=t.unique_id, variance_days=sv_days))
     completed = len(variances)
     started = len(start_variances)
-    mean_var = round(sum(v.variance_days for v in variances) / completed, 1) if completed else None
+    mean_var = (
+        round_half_up(sum(v.variance_days for v in variances) / completed, 1) if completed else None
+    )
     mean_start = (
-        round(sum(v.variance_days for v in start_variances) / started, 1) if started else None
+        round_half_up(sum(v.variance_days for v in start_variances) / started, 1)
+        if started
+        else None
     )
     # the latest finishers / starters first (largest positive variance), capped for the UI
     worst = tuple(sorted(variances, key=lambda v: v.variance_days, reverse=True)[:worst_cap])

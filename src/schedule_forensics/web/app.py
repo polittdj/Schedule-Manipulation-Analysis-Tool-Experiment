@@ -301,6 +301,7 @@ from schedule_forensics.web.briefing import _cite_tag as _cite_tag
 from schedule_forensics.web.briefing import _the_briefing_header as _the_briefing_header
 from schedule_forensics.web.card import _card_body as _card_body
 from schedule_forensics.web.card import _count_bar_table as _count_bar_table
+from schedule_forensics.web.card import _version_chips as _version_chips
 from schedule_forensics.web.cei import _cei_body as _cei_body
 from schedule_forensics.web.cei import _cei_data as _cei_data
 from schedule_forensics.web.cei import _stack_not_measured as _stack_not_measured
@@ -617,6 +618,9 @@ from schedule_forensics.web.onepager_compare import (
 )
 from schedule_forensics.web.path import _path_body as _path_body
 from schedule_forensics.web.path import _what_drives_header as _what_drives_header
+from schedule_forensics.web.performance import _READ_DECIDE as _READ_DECIDE
+from schedule_forensics.web.performance import _READ_HOW as _READ_HOW
+from schedule_forensics.web.performance import _READ_WHAT as _READ_WHAT
 
 # ADR-0378 (phase 3, slice 14): the /performance page family - the memoised per-version
 # G1-G5 block, the dataset builder the page AND the export share, the chapter-07 header and
@@ -1907,7 +1911,14 @@ def create_app(
         return _page(
             st,
             f"{name} — card",
-            focus + _card_body(name, analysis.scoped, analysis, margin_days=margin_days),
+            focus
+            + _card_body(
+                name,
+                analysis.scoped,
+                analysis,
+                margin_days=margin_days,
+                versions=tuple(k for k, _s in st.ordered_versions()),
+            ),
             ask_schedule=name,
             # ADR-0311: a dynamic title can never resolve through _TITLE_TO_CHAPTER, so this page
             # rendered with NO kicker at all. It is a per-file drill of chapter 01 (linked beside
@@ -2232,10 +2243,17 @@ def create_app(
                 # ADR-0263: the (scoped, cpm) pair comes from ONE call so a concurrent scope
                 # change can never pair an old-epoch solve with a new-epoch population.
                 scoped, cpm = st.cpm_scoped_for(key, sch)
-                cpms.append(cpm)
-                schedules.append(scoped)
             except CPMError:
                 skipped.append(key)
+                continue
+            # CPM-04 (ADR-0467): a FILE with no schedulable activity computes no finish and is
+            # skipped by name; a filter that leaves nothing in scope is NOT skipped — that state is
+            # the page's own disclosure (I-01, ADR-0457: "nothing to compare", never "no findings")
+            if not cpm.timings and not non_summary(sch):
+                skipped.append(key)
+                continue
+            cpms.append(cpm)
+            schedules.append(scoped)
         return schedules, cpms, skipped
 
     def _solvable_versions_full() -> tuple[
@@ -2250,11 +2268,17 @@ def create_app(
         for key, sch in st.ordered_versions():
             try:
                 a = st.analysis_for(key, sch)
-                schedules.append(a.scoped)  # the exact schedule a.cpm was computed from (ADR-0263)
-                cpms.append(a.cpm)
-                analyses.append(a)
             except CPMError:
                 skipped.append(key)
+                continue
+            if not a.cpm.timings and not non_summary(
+                sch
+            ):  # CPM-04 (ADR-0467): an activity-less FILE
+                skipped.append(key)
+                continue
+            schedules.append(a.scoped)  # the exact schedule a.cpm was computed from (ADR-0263)
+            cpms.append(a.cpm)
+            analyses.append(a)
         return schedules, cpms, analyses, skipped
 
     def _pair_versions() -> tuple[list[Schedule], list[CPMResult], list[str]]:
@@ -2272,10 +2296,14 @@ def create_app(
         for key, sch in st.ordered_versions():
             try:
                 scoped, cpm = st.cpm_pair_for(key, sch)
-                cpms.append(cpm)
-                schedules.append(scoped)
             except CPMError:
                 skipped.append(key)
+                continue
+            if not cpm.timings and not non_summary(sch):  # CPM-04 (ADR-0467): an activity-less FILE
+                skipped.append(key)
+                continue
+            cpms.append(cpm)
+            schedules.append(scoped)
         return schedules, cpms, skipped
 
     def _skipped_notice(skipped: list[str]) -> str:
@@ -2283,8 +2311,8 @@ def create_app(
             return ""
         names = ", ".join(_e(s) for s in skipped)
         return (
-            f'<div class="notice err">Skipped (network cannot be solved — see each report '
-            f"for the reason): {names}</div>"
+            f'<div class="notice err">Skipped (network cannot be solved, or holds no schedulable '
+            f"activity — see each report for the reason): {names}</div>"
         )
 
     @app.get("/path", response_class=HTMLResponse)
@@ -5838,6 +5866,28 @@ def create_app(
                 _, sch, _cpm = chosen
                 task = sch.tasks_by_id.get(add_uid)
                 if task is not None and not task.is_summary:
+                    # A supplied field that is not a finite, non-negative number is REFUSED by
+                    # name — the old path parsed it to 0.0 and stored a (0, 0, 0) override, a
+                    # zero-duration point mass the operator never entered (WP7, ADR-0469;
+                    # ADR-0313's rule). Blank fields keep the order coercion below.
+                    entered = (
+                        ("Optimistic", opt_days),
+                        ("Most likely", ml_days),
+                        ("Pessimistic", pess_days),
+                    )
+                    bad = [
+                        f"{label} {raw.strip()!r}"
+                        for label, raw in entered
+                        if raw.strip() and _to_float(raw, -1.0) < 0
+                    ]
+                    if bad:
+                        st.sra_import_msg = (
+                            "3-point override not stored — not a non-negative number: "
+                            + ", ".join(bad)
+                            + "."
+                        )
+                        st.sra_import_is_error = True
+                        return RedirectResponse(url="/sra", status_code=303)
                     per_day = sch.calendar.working_minutes_per_day or 1
                     o = max(0, round(_to_float(opt_days, 0.0) * per_day))
                     m = max(0, round(_to_float(ml_days, 0.0) * per_day))
@@ -5945,8 +5995,10 @@ def create_app(
             return RedirectResponse(url="/sra", status_code=303)
         chosen = _sra_selected(st)
         sch = chosen[1] if chosen is not None else None
-        a = int(after_uid) if _decimal_digits(after_uid.strip().lstrip("-")) else None
-        b = int(before_uid) if _decimal_digits(before_uid.strip().lstrip("-")) else None
+        # _parse_uid, never int() behind an lstrip("-") guard: "--5" passed that guard and
+        # int("--5") answered 500 (WP7, ADR-0469 — the L5 defect on a second route)
+        a = _parse_uid(after_uid)
+        b = _parse_uid(before_uid)
         label = name.strip()
         ok = (
             sch is not None
@@ -6415,7 +6467,11 @@ def create_app(
         raw_cost = target_cost.strip()
         if raw_cost:
             with contextlib.suppress(ValueError):
-                st.jcl_target_cost = float(raw_cost)
+                parsed_cost = float(raw_cost)
+                # audit L2's boundary rule, at the one site that bypassed _to_float: inf/nan
+                # parse cleanly and would become the JCL cost target (WP7, ADR-0469)
+                if math.isfinite(parsed_cost):
+                    st.jcl_target_cost = parsed_cost
         else:
             st.jcl_target_cost = None
         if td_share.strip():
@@ -7728,10 +7784,12 @@ _HB_CONSUME_SEC = "&sect;7.3.3.2.3 Sufficiency of Margin (the handbook's example
 _FLOAT_HIST_BANDS: tuple[tuple[str, Callable[[float], bool]], ...] = (
     ("< 0", lambda v: v < 0),
     ("0", lambda v: v == 0),
-    ("1-5", lambda v: 0 < v <= 5),
-    ("6-10", lambda v: 5 < v <= 10),
-    ("11-20", lambda v: 10 < v <= 20),
-    ("21-44", lambda v: 20 < v <= 44),
+    # upper-bound inclusive, and labelled so (JS-06, ADR-0467): a 0.75-day float is "<= 5", not
+    # "1-5" — the histogram's own labels say the same in "≤" glyphs
+    ("<= 5", lambda v: 0 < v <= 5),
+    ("<= 10", lambda v: 5 < v <= 10),
+    ("<= 20", lambda v: 10 < v <= 20),
+    ("<= 44", lambda v: 20 < v <= 44),
     ("> 44", lambda v: v > 44),
 )
 
@@ -8879,6 +8937,9 @@ def _dashboard_data(st: SessionState) -> dict[str, object]:
         # each segment with its NAME and the drill resolves the set on demand via `_drill_uid_set`
         # against THIS card's file (ADR-0295), using the same predicates `compute_activity_makeup`
         # used — so the drill rows are byte-identical, just no longer pre-shipped.
+        # CPM-04 (ADR-0467): a network with no schedulable activity computes no finish — its
+        # offset is 0 (the project start), which is not a finish and is not shipped as one
+        has_network = bool(non_summary(scoped))
         cpm_finish = offset_to_datetime(
             scoped.project_start, core.project_finish, scoped.calendar
         ).date()
@@ -8897,11 +8958,11 @@ def _dashboard_data(st: SessionState) -> dict[str, object]:
                 "percent_complete": round(100 * makeup.complete / total, 1) if total else 0.0,
                 "critical_count": core.critical_count,
                 "critical_pct": round(core.critical_pct, 1),
-                "cpm_finish": cpm_finish.isoformat(),
+                "cpm_finish": cpm_finish.isoformat() if has_network else None,
                 "baseline_finish": baseline_finish.isoformat() if baseline_finish else None,
                 # positive = computed finish later than baseline (a slip)
                 "finish_delta_days": (cpm_finish - baseline_finish).days
-                if baseline_finish
+                if baseline_finish and has_network
                 else None,
                 "dcma": [
                     {"id": mid, "name": nm, "status": status} for mid, nm, status in core.dcma

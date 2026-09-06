@@ -26,7 +26,12 @@ from __future__ import annotations
 
 import datetime as dt
 
-from schedule_forensics.engine.metrics._common import CheckStatus, MetricResult, non_summary
+from schedule_forensics.engine.metrics._common import (
+    CheckStatus,
+    MetricResult,
+    non_summary,
+    round_half_up,
+)
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
 
@@ -102,7 +107,7 @@ def _cei_starts(
         name,
         started,
         len(forecast),
-        round(started / len(forecast), 2),
+        round_half_up(started / len(forecast), 2),
         "ratio",
         CheckStatus.NOT_APPLICABLE,
         offender_uids=misses,
@@ -138,7 +143,7 @@ def _cei_adjusted(
         name,
         done,
         len(denom),
-        round(done / len(denom), 2),
+        round_half_up(done / len(denom), 2),
         "ratio",
         CheckStatus.NOT_APPLICABLE,
     )
@@ -179,7 +184,7 @@ def _cei(
         name,
         len(done),
         len(forecast),
-        round(len(done) / len(forecast), 2),
+        round_half_up(len(done) / len(forecast), 2),
         "ratio",
         CheckStatus.NOT_APPLICABLE,
         offender_uids=misses,

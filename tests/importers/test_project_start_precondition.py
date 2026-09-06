@@ -176,7 +176,10 @@ def test_every_committed_schedule_is_already_inside_the_supported_domain() -> No
         tod = _minute_of_day(sch.project_start)
         per_day = sch.calendar.working_minutes_per_day
         assert tod + per_day <= MINUTES_PER_CALENDAR_DAY, name
-        assert sch.import_notes == (), name
+        # ADR-0467 (IMP-05): a P6 import carries a provenance DISCLOSURE note ("P6 XER: …");
+        # it is not an anchoring note, so this precondition guard reads only the anchoring ones
+    anchoring = tuple(n for n in sch.import_notes if not n.startswith("P6 XER:"))
+    assert anchoring == (), name
 
 
 # --- the importers carry it, and the note survives a save/reopen ---------------------
