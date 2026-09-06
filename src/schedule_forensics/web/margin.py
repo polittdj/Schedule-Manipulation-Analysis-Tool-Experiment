@@ -37,6 +37,7 @@ from schedule_forensics.engine.margin_guideline import (
     band_position,
     expected_margin_band,
 )
+from schedule_forensics.engine.metrics._common import non_summary
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.web.chrome import _e
 from schedule_forensics.web.components import (
@@ -63,6 +64,8 @@ def _solvable_scoped_versions(st: SessionState) -> list[tuple[str, Schedule, CPM
         try:
             a = st.analysis_for(key, raw)
         except CPMError:
+            continue
+        if not a.cpm.timings and not non_summary(raw):  # CPM-04 (ADR-0467): an activity-less FILE
             continue
         versions.append((raw.source_file or raw.name, a.scoped, a.cpm))
     return versions

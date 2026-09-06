@@ -738,29 +738,54 @@ def _resource_assignment_edits(
     if not rows:
         return []
     plan_rows = [r for r in rows if r.kind in ("added", "removed") or r.total_work_changed]
-    statusing = len(rows) - len(plan_rows)
     if not plan_rows:
         return []
+    # MAN-03 (ADR-0467): a remaining-work row with NO figure on one side is a column that
+    # appeared or vanished between the two exports, not work burned down — the two are told apart
+    plan_keys = {(r.task_uid, r.resource) for r in plan_rows}
+    other = [r for r in rows if (r.task_uid, r.resource) not in plan_keys]
+    burned = sum(1 for r in other if r.before_minutes is not None and r.after_minutes is not None)
+    figure_moved = len(other) - burned
     added = sum(1 for r in plan_rows if r.kind == "added")
     removed = sum(1 for r in plan_rows if r.kind == "removed")
     rebooked = len(plan_rows) - added - removed
     cur_by_id = current.tasks_by_id
     prior_by_id = prior.tasks_by_id
     seen: dict[int, Citation] = {}
+    gone = 0
     for r in plan_rows:
-        task = cur_by_id.get(r.task_uid) or prior_by_id.get(r.task_uid)
-        if task is not None and r.task_uid not in seen:
+        if r.task_uid in seen:
+            continue
+        task = cur_by_id.get(r.task_uid)
+        if task is not None:
             seen[r.task_uid] = _cite(current_file, task)
+            continue
+        # MAN-02 (ADR-0467): a booking whose activity exists only in the PRIOR version (deleted
+        # since) is cited to the file the activity is IN, never to one it is absent from
+        task = prior_by_id.get(r.task_uid)
+        if task is not None:
+            seen[r.task_uid] = _cite(prior.source_file, task)
+            gone += 1
     detail = (
         f"{len(plan_rows)} resource bookings were edited since the prior version "
         f"({added} added, {removed} removed, {rebooked} re-booked effort) — moving resources "
         "off work, or cutting a booking's effort, holds the plan's shape while its capacity "
         "to execute quietly changes."
     )
-    if statusing:
+    if gone:
         detail += (
-            f" (A further {statusing} booking(s) only burned down remaining work with "
+            f" ({gone} of the edited activities are absent from the current version — their "
+            "bookings are cited from the prior file.)"
+        )
+    if burned:
+        detail += (
+            f" (A further {burned} booking(s) only burned down remaining work with "
             "progress — normal statusing, not counted here.)"
+        )
+    if figure_moved:
+        detail += (
+            f" ({figure_moved} booking(s) gained or lost a remaining-work figure between the two "
+            "exports — a column change, not a work change.)"
         )
     return [
         Finding(

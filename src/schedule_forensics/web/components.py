@@ -31,7 +31,7 @@ from urllib.parse import quote
 
 from schedule_forensics.engine.cpm import CPMError, CPMResult, offset_to_datetime
 from schedule_forensics.engine.driving_slack import PathTier
-from schedule_forensics.engine.metrics._common import MetricResult
+from schedule_forensics.engine.metrics._common import MetricResult, non_summary
 from schedule_forensics.engine.sra import ScheduleRisk, SSIRiskStat
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.web.chrome import _e
@@ -308,6 +308,10 @@ def _latest_solvable(st: SessionState) -> tuple[str, Schedule, CPMResult] | None
             analysis = st.analysis_for(key, raw)
         except CPMError:
             continue
+        # CPM-04 (ADR-0467): a FILE with no schedulable activity is not analyzable; a filter that
+        # leaves nothing in scope still is (that state is the page's own disclosure, I-01)
+        if not analysis.cpm.timings and not non_summary(raw):
+            continue
         chosen = (key, analysis.scoped, analysis.cpm)
     return chosen
 
@@ -324,7 +328,8 @@ def _sra_selected(st: SessionState) -> tuple[str, Schedule, CPMResult] | None:
         except CPMError:
             pass  # the chosen file no longer solves (e.g. filtered to nothing) -> fall back
         else:
-            return (key, analysis.scoped, analysis.cpm)
+            if analysis.cpm.timings or non_summary(raw):  # CPM-04 (ADR-0467): no activity-less FILE
+                return (key, analysis.scoped, analysis.cpm)
     return _latest_solvable(st)
 
 

@@ -17,10 +17,10 @@
   var BUCKETS = [
     { label: "< 0", lo: -Infinity, hi: 0, crit: true },     // negative float — behind a constraint
     { label: "0", lo: 0, hi: 0, crit: true },               // zero float — critical
-    { label: "1–5", lo: 1, hi: 5 },
-    { label: "6–10", lo: 6, hi: 10 },
-    { label: "11–20", lo: 11, hi: 20 },
-    { label: "21–44", lo: 21, hi: 44 },
+    { label: "≤ 5", lo: 1, hi: 5 },       // upper-bound inclusive: 0 < v <= 5 (JS-06, ADR-0467)
+    { label: "≤ 10", lo: 6, hi: 10 },
+    { label: "≤ 20", lo: 11, hi: 20 },
+    { label: "≤ 44", lo: 21, hi: 44 },
     { label: "> 44", lo: 45, hi: Infinity, high: true },    // high float — DCMA-06 / missing logic
   ];
 
@@ -104,7 +104,7 @@
     var name = box.getAttribute("data-name") || "";
     drill.appendChild(el("h3", {
       text: rows.length + (rows.length === 1 ? " activity" : " activities") +
-        " with total float " + BUCKETS[i].label + " working days",
+        " with " + bandSentence(i),
     }));
     var bar = el("div", { class: "hist-drill-bar" });
     var colMount = el("span", { class: "field-toggles" });
@@ -267,4 +267,15 @@
       render(floats);
     })
     .catch(function () { box.textContent = "Failed to load the float-distribution data."; });
+
+  // The float bands are upper-bound inclusive (0 < v <= 5 is the third band), so a fractional float
+  // such as 0.75 d belongs to "≤ 5"; the drill heading spells the open lower bound (JS-06, ADR-0467).
+  // Declared last so the line-keyed pins above it are untouched; function declarations hoist.
+  function bandSentence(i) {
+    var BANDS = [0, 0, 5, 10, 20, 44, 45];
+    if (i === 0) return "negative total float";
+    if (i === 1) return "zero total float";
+    if (i === 6) return "total float over 44 working days";
+    return "total float over " + BANDS[i - 1] + " and up to " + BANDS[i] + " working days";
+  }
 })();

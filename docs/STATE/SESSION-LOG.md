@@ -16632,3 +16632,40 @@ shadows it on PATH).
   installers changed, so the installer-smoke pair runs too — eight checks). This line's own push restarts the
   run (the concurrency group); the next reader takes the verdict from the head's run, never from this line,
   and the operator marks ready and squash-merges when satisfied.
+
+## 2026-09-06 — WP6b COMPLETE: the ledger TAIL verified by execution — 11 rows CONFIRMED and fixed red-first, 6 REFUTED, RC-02's never-2xx list empty (ADR-0467); /performance is the sixth page on the Claude Design layout (ADR-0468) — v1.0.240
+
+- **Branch:** `claude/continue-previous-rsq655`, branched by the harness on `origin/main` @ `b8e8aa42` (the #639
+  squash; `main`'s run #1743 `success`, installer-smoke #646 `success`). Draft PR #640 (ADR-0466, v1.0.239) was OPEN
+  on `claude/polaris-audit-resume-e9t5h1` — five checks green, both `test` jobs in progress on `9681d5f0` — so this
+  session numbers past it: ADR-0467/0468, version 1.0.240. The container had NO package (`pip install -e
+  '.[dev,browser]'`), no `build` (`pip install build`); 4,865 collected before this session's tests.
+- **WP6b (ADR-0467).** Every tail row re-derived (`git show 1b833c6a:…`) and probed. Red-first on the pristine
+  tree: 21 failed + `test_round_half_up.py` red at import across 15 new modules; 63 guards green on both trees
+  (the three RC-02 success paths among them — coverage, not defects). Green: 90 across the new + repaired modules;
+  the 108-module web/ai/guard subset 1,120 passed / 3 skipped after ONE real regression — the CPM-04 resolver skip
+  had swallowed the I-01 "nothing to compare" disclosure (a FILE with no activity vs a FILTER that emptied the
+  scope); fixed, and now mutation M23. Mutations on scratch copies under `PYTHONPATH`: **23/23 red by name** — the
+  battery first reported M23 GREEN because its anchor missed a blank line and the mutation never landed; the runner
+  now aborts loudly on a failed patch. Rows: CPM-03 (the actual-start floor under a pin; MS Project's stored Start
+  == Actual Start on 240/240 started fixture tasks), CPM-04 (8 surfaces printed the project start as a finish),
+  MF-03/04 (docs), MF-06 REFUTED (the finder's basis empties the numerator), MF-08 (30 sites half-up; CEI 1/8
+  0.12 → 0.13; parity unmoved), MC-04 REFUTED, MC-05 (focus refused by name), MC-06 REFUTED, MC-07 (factor table
+  validated; setup restore guarded), IMP-02 REFUTED, IMP-03 (freeze +5 classes), IMP-04 NON-REPRODUCED, IMP-05
+  CONFIRMED by MPXJ 16.2.0 (PLANNED, not baseline) and disclosed, IMP-06, MAN-02, MAN-03, JS-02 REFUTED (29/29),
+  JS-03 (three drills, Chromium), JS-04 REFUTED, JS-05 MEASURED (56 tokens), JS-06, TST-02/03; MF-07/09/10 and
+  MC-08 UNVERIFIABLE as filed.
+- **/performance (ADR-0468).** Artboard 07 executed over loopback HTTP (`setScreen('px')`; seeds raw except
+  `sfops-boot.skipNext` JSON), four themes, zero errors. Fourteen tiles verbatim in the ONE grid, five `.cd-band`
+  headings, the stepper re-homed, `data-frame` published + cursor synced in `setVersion` (one same-line-count edit
+  above the pin at 472), the reading block from the page's own `_explain` beats (`_READ_*`, re-exported `X as X`).
+  Red-first against a pristine shadow (layout red at import; browser red on the wait); green: layout 6 · browser 2
+  · r10 contract (MOUNTS re-derived to the served order, dated) · view tests · census/stepper rows 5 · the ledgers,
+  r11, accessibility, i18n, monolith split, oracle corpus, docs 216. Four-theme census: `.panel` 18 · tiles 14 ·
+  forms 5 · hosts 14 · cf-bars 14 · svgs 15 · takes 15 · prov 15 identical pristine → patched; moved on chips /
+  chipOn / strip / master buttons / bands / `data-frame` only; widest 1440 in all four.
+- **Statics:** ruff (whole tree) · format · mypy --strict (163 files) · bandit exit 0 · `node --check` every static
+  file. Version 1.0.240; wheel + nine installers rebuilt after the last source edit. The full suite's figure is
+  recorded in the follow-up commit (the first engine+parity run died without a summary under five concurrent jobs).
+- **Docs:** ADR-0467 · ADR-0468 · the ledger's WP6b section + the design table row · DESIGN-SYSTEM §9 · METRIC-
+  DICTIONARY regenerated · HANDOFF rotated · LESSONS 2026-09-06 · the kickoff prompt.

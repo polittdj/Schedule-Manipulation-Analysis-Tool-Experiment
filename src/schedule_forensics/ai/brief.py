@@ -117,7 +117,11 @@ def _summary_section(schedules: list[Schedule], cpms: list[CPMResult]) -> BriefS
             f"ordered by data date. The newest version, {label}, holds "
             f"{len(tasks)} activities — {complete} complete, {in_progress} in progress, "
             f"{len(tasks) - complete - in_progress} still to start — and its network "
-            f"computes a finish of {finish.isoformat()}.",
+            + (
+                f"computes a finish of {finish.isoformat()}."
+                if latest_cpm.timings  # CPM-04 (ADR-0467): no activity, no finish to quote
+                else "holds no schedulable activity, so it computes no finish."
+            ),
             _drivers(latest, latest_cpm),
         )
     )

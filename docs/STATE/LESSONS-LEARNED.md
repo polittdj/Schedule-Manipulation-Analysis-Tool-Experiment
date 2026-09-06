@@ -435,6 +435,34 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-06 — a mutation must LAND before its verdict counts; "no schedulable activity" must say whose emptiness it is
+
+- **The battery read a mutation as GREEN that had never been applied.** M23's anchor missed the blank line
+  between two functions; the patch's `assert` failed inside a heredoc, the shell carried on, and the test ran on
+  an unmutated copy. The runner now aborts on a failed patch and prints it. Every "survived" mutant is first a
+  question about the battery (ADR-0443's lesson, re-paid): print that the patch landed, not only where the
+  shadow resolved.
+- **The CPM-04 skip broke the I-01 disclosure on its first cut.** "Skip a version whose CPM has no timings"
+  is two different facts: a FILE with no schedulable activity (skip it, by name) and a FILTER that left nothing
+  in scope (the page's own "nothing to compare" sentence). The 108-module run caught it; the distinction is now
+  a named mutation. When a guard keys on emptiness, ask what emptied it.
+- **A finder's proposed fix can be wrong in the opposite direction.** MF-06 asked for
+  `is_effective_critical`; that helper excludes completed work and would have emptied the Critical CEI
+  numerator on every file. The validated basis stayed; the honest N/A on an XER is now said in the
+  dictionary. Measure the proposed fix as hard as the claim.
+- **Two byte-identical function bodies defeat an exact-match patcher** — anchor on the one line that differs
+  (`cpm_scoped_for` vs `cpm_pair_for`), or the patch either fails or lands in the wrong place.
+- **`pgrep -f` matched the grep's own shell** and reported a finished suite as "still running"; a long run
+  that died without a summary under five concurrent jobs was re-run alone. Read `etime` and the child list,
+  not the pattern match.
+- **A positional zip in a contract test is a premise pin on ORDER.** The r10 performance contract zipped
+  MOUNTS to served tiles; the design layout reordered the tiles, the pin fired, the tuple was re-derived and
+  every per-tile assertion kept — the trap list's rule, met again on a new page.
+- **Two "silent" test runs were `file or directory not found`** — a guessed module path. `ls` the path
+  before a run whose output is piped through a filter; a filter hides the error line that names the mistake.
+- **A served tile spans lines** when its hint attribute carries real newlines: a `.*?` without `re.S` finds
+  nothing and the assertion reads `[] == [...]`.
+
 ### 2026-09-05 — Two identical captions hash identically; a missed mutant is a fixture question; a counting pin must count what it names
 
 - **A content-keyed freeze rejects identical content, and that is a feature.** The compare painter's

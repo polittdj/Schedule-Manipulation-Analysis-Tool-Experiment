@@ -370,8 +370,11 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
     "critical": _doc(
         "critical",
         "Critical",
-        "Incomplete activities on the critical path.",
-        "count(total_float <= 0 and incomplete)",
+        "Incomplete activities on the critical path, on the source tool's own basis: the STORED "
+        "Critical flag where the file carries one (Acumen's count), pure-logic CPM float only "
+        "where it does not.",
+        "count(incomplete activities the source flagged Critical; total_float <= 0 where no flag "
+        "is stored)",
         _SQ,
     ),
     "hard_constraints": _doc(
@@ -405,15 +408,17 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
     "number_of_lags": _doc(
         "number_of_lags",
         "Number of Lags",
-        "Relationships carrying a positive lag.",
-        "count(lag > 0) / activities <= 5%",
+        "Activities with a positive-lag predecessor link — DISTINCT successor activities (the "
+        "Fuse activity scope: a task with two lagged predecessors is ONE), not lag links.",
+        "count(distinct successor activities of lag > 0 links) / activities <= 5%",
         _SQ,
     ),
     "number_of_leads": _doc(
         "number_of_leads",
         "Number of Leads",
-        "Relationships carrying a negative lag.",
-        "count(lag < 0) / activities",
+        "Activities with a negative-lag (lead) predecessor link — DISTINCT successor activities "
+        "(the Fuse activity scope), not lead links.",
+        "count(distinct successor activities of lag < 0 links) / activities",
         _SQ,
     ),
     "merge_hotspot": _doc(
@@ -986,8 +991,11 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "cei_critical",
         "Critical CEI",
         "CEI restricted to the critical-path activities — of the CRITICAL activities the prior "
-        "schedule forecast to finish this period, the share that actually completed.",
-        "CEI (Tasks), population filtered to current critical-path activities",
+        "schedule forecast to finish this period, the share that actually completed. Critical is "
+        "the CURRENT schedule's stored Critical flag (Acumen's basis); a file whose source wrote "
+        "no flag — a P6 XER — reads N/A rather than a recomputed stand-in.",
+        "CEI (Tasks), population filtered to activities the current schedule flags Critical "
+        "(N/A without a stored flag)",
         _HMI,
         importance="Execution on the critical path is what moves the finish; this isolates CEI to "
         "the activities that matter most.",

@@ -19,6 +19,7 @@ from schedule_forensics.engine.metrics._common import (
     CheckStatus,
     MetricResult,
     non_summary,
+    round_half_up,
 )
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
@@ -108,7 +109,9 @@ def _epi(tasks: list[Task]) -> MetricResult:
     actual_finishes = sum(1 for t in tasks if t.actual_finish is not None)
     baseline_finishes = sum(1 for t in tasks if t.baseline_finish is not None)
     denominator = actual_starts + baseline_finishes
-    value = round((actual_starts + actual_finishes) / denominator, 2) if denominator else 0.0
+    value = (
+        round_half_up((actual_starts + actual_finishes) / denominator, 2) if denominator else 0.0
+    )
     return MetricResult(
         "epi",
         "EPI",
@@ -133,7 +136,7 @@ def _start_finish_ratio(tasks: list[Task]) -> MetricResult:
     actual_pairs = sum(
         1 for t in tasks if t.actual_start is not None and t.actual_finish is not None
     )
-    value = round(scheduled_pairs / actual_pairs, 2) if actual_pairs else 0.0
+    value = round_half_up(scheduled_pairs / actual_pairs, 2) if actual_pairs else 0.0
     return MetricResult(
         "start_finish_ratio",
         "Start-to-Finish Ratio",
@@ -151,7 +154,7 @@ def _tasks(pairs: list[tuple[Task, int]]) -> list[Task]:
 
 def _count(mid: str, name: str, offenders: list[Task], population: int) -> MetricResult:
     uids = tuple(sorted(t.unique_id for t in offenders))
-    value = round(100.0 * len(uids) / population, 1) if population else 0.0
+    value = round_half_up(100.0 * len(uids) / population, 1) if population else 0.0
     return MetricResult(
         mid, name, len(uids), population, value, "%", CheckStatus.NOT_APPLICABLE, offender_uids=uids
     )
@@ -160,7 +163,7 @@ def _count(mid: str, name: str, offenders: list[Task], population: int) -> Metri
 def _average(
     mid: str, name: str, day_values: list[int], offenders: list[Task], population: int
 ) -> MetricResult:
-    value = round(sum(day_values) / len(day_values), 1) if day_values else 0.0
+    value = round_half_up(sum(day_values) / len(day_values), 1) if day_values else 0.0
     return MetricResult(
         mid,
         name,
@@ -176,7 +179,7 @@ def _average(
 def _ratio(
     mid: str, name: str, ratios: list[float], pick: Callable[[list[float]], float]
 ) -> MetricResult:
-    value = round(pick(ratios), 2) if ratios else 0.0
+    value = round_half_up(pick(ratios), 2) if ratios else 0.0
     return MetricResult(
         mid, name, len(ratios), len(ratios), value, "ratio", CheckStatus.NOT_APPLICABLE
     )
@@ -205,7 +208,7 @@ def _mei(schedule: Schedule, tasks: list[Task]) -> MetricResult:
         "MEI",
         finished,
         len(due),
-        round(finished / len(due), 2),
+        round_half_up(finished / len(due), 2),
         "ratio",
         CheckStatus.NOT_APPLICABLE,
         offender_uids=offenders,
@@ -232,7 +235,7 @@ def _staleness(schedule: Schedule) -> MetricResult:
         name,
         quiet,
         elapsed,
-        round(100.0 * quiet / elapsed, 1),
+        round_half_up(100.0 * quiet / elapsed, 1),
         "%",
         CheckStatus.NOT_APPLICABLE,
     )

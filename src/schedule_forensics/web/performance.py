@@ -260,6 +260,31 @@ def _how_we_execute_header(sch: Schedule) -> str:
     )
 
 
+#: The page's own three explainer beats — rendered by the intro's ``_explain`` block AND by the
+#: design layout's "How to read this" block under ④ (ADR-0468), from ONE source so they cannot
+#: drift; never new prose on the loaded-terms surface.
+_READ_WHAT = (
+    "The seven graph families of the Performance Analysis Summary workbook, recreated "
+    "live from the loaded schedule(s): a monthly census of where the remaining work sits "
+    "(G1), the bow-wave of activity starts and finishes against the baseline (G2), the "
+    "BEI/HMI execution-index curves (G3), the workoff burden of past-due baseline work "
+    "(G4), the duration-ratio S-curve and histogram (G5), and three portfolio quad charts "
+    "with one dot per loaded version (G6/G7)."
+)
+_READ_HOW = (
+    "Time-series charts share a month axis; the vertical dashed line is the data date. "
+    "Counts left of the line are history (actuals); everything right of it is forecast. "
+    "Index curves stop at the data date — no index is fabricated for future months. N/A "
+    "means the qualifying population is empty, never zero-filled."
+)
+_READ_DECIDE = (
+    "Where the remaining work is piling up (bow wave), whether execution is keeping pace "
+    "with the baseline (BEI/HMI), how much past-due baseline work is being carried "
+    "(workoff burden), how realistic remaining durations are (DRM), and which loaded "
+    "version sits in the danger quadrant of each portfolio quad."
+)
+
+
 def _performance_body(
     st: SessionState, schedules: list[Schedule], cpms: list[CPMResult], file: str
 ) -> str:
@@ -285,7 +310,11 @@ def _performance_body(
       :func:`_series_prov_chip` (a first→last RANGE that holds at every frame), never
       :func:`_prov_chip` of one file. The one figure the intro take quotes, ``sel``, is already
       rendered verbatim by the selected ``<option>`` and the export href below it, and is framed
-      as the opening state ("open on") that the stepper is described as moving."""
+      as the opening state ("open on") that the stepper is described as moving.
+
+    Claude Design layout (ADR-0468, artboard "07 How we execute"): the cursor strip above the
+    intro panel, five numbered ``.cd-band`` headings spanning the grid in the design's order, the
+    reading block under ④; every tile, id, form byte, toolbar glyph and figure unchanged."""
     data = _performance_data(st, schedules, cpms, file)
     blob = json.dumps(data).replace("<", "\\u003c")
     versions = cast(list[str], data["versions"])
@@ -300,22 +329,7 @@ def _performance_body(
         if data["truncated"]
         else ""
     )
-    intro = _explain(
-        "The seven graph families of the Performance Analysis Summary workbook, recreated "
-        "live from the loaded schedule(s): a monthly census of where the remaining work sits "
-        "(G1), the bow-wave of activity starts and finishes against the baseline (G2), the "
-        "BEI/HMI execution-index curves (G3), the workoff burden of past-due baseline work "
-        "(G4), the duration-ratio S-curve and histogram (G5), and three portfolio quad charts "
-        "with one dot per loaded version (G6/G7).",
-        "Time-series charts share a month axis; the vertical dashed line is the data date. "
-        "Counts left of the line are history (actuals); everything right of it is forecast. "
-        "Index curves stop at the data date — no index is fabricated for future months. N/A "
-        "means the qualifying population is empty, never zero-filled.",
-        "Where the remaining work is piling up (bow wave), whether execution is keeping pace "
-        "with the baseline (BEI/HMI), how much past-due baseline work is being carried "
-        "(workoff burden), how realistic remaining durations are (DRM), and which loaded "
-        "version sits in the danger quadrant of each portfolio quad.",
-    )
+    intro = _explain(_READ_WHAT, _READ_HOW, _READ_DECIDE)
     # ── The panel contract for this page. The provenance chip is the SERIES chip on every
     # visual (the stepper walks G1-G5 through the whole loaded list, so a single-file chip
     # would be falsified on the first tick); the tools strip is panel-scoped because each
@@ -340,9 +354,47 @@ def _performance_body(
         'title="Enlarge / shrink this visual" '
         'aria-label="Enlarge this visual">⛶ ENLARGE</button></span>'
     )
+    # ── Claude Design layout (ADR-0468): artboard "07 How we execute" ──────────────────────────
+    # The masthead cursor strip (two or more files): a #performanceMaster slot performance.js
+    # re-homes its own ◀ Prev / caption / Next ▶ / ▶ Play into (the SAME nodes, ids and listeners;
+    # appendChild moves them), one chip per loaded file — the SELECTED file on, because the page
+    # opens on the newest — and the frame pill the script fills. With one file there is no strip
+    # and the stepper renders exactly where it always did. The fourteen tiles stay VERBATIM inside
+    # the ONE grid the enlarge contract (.is-big spanning #perfGrid) depends on, regrouped under the
+    # design's five numbered bands in the design's order; the artboard's ⑥ EVM ledger and ⑦ SPI(t)
+    # by WBS are other pages' data and are not ported.
+    sel_idx = cast(int, data["cursor"])
+    cursor_strip = ""
+    if len(versions) >= 2:
+        chips = "".join(
+            f'<button type=button class="cd-chip{" on" if i == sel_idx else ""}" data-idx="{i}" '
+            f'title="{_e(v)}" data-no-i18n>v{i + 1}</button>'
+            for i, v in enumerate(versions)
+        )
+        cursor_strip = f"""
+<div class="viz-controls cd-cursor" id=performanceCursor>
+<span id=performanceMaster class=cd-master></span>
+<span class=cd-chips>{chips}</span>
+<span id=performanceFrame class="muted cd-pill" data-no-i18n></span>
+<span class="muted cd-note">One cursor &mdash; &#9664; Prev / Next &#9654; / &#9654; Play step G1&ndash;G5 through the loaded files (the caption names the file on deck); a chip jumps to that file. The G6/G7 quads always plot every file and ring the one on deck.</span>
+</div>"""
+    # the reading block under ④ (the artboard's "What this shows" paragraph) is the page's OWN
+    # three explainer beats — the same strings the intro's _explain block renders above
+    reading = (
+        '<section class="cd-block cd-read cd-band"><h2>How to read this</h2>'
+        + "".join(
+            f'<div class="cd-beat {cls}"><b>{lead}</b> {_e(text)}</div>'
+            for cls, lead, text in (
+                ("cd-beat-accent", "What it shows.", _READ_WHAT),
+                ("cd-beat-warn", "How to read it.", _READ_HOW),
+                ("cd-beat-bad", "Why it matters.", _READ_DECIDE),
+            )
+        )
+        + "</section>"
+    )
     # bandit B608 false positive: this is server-rendered HTML (a <select> control + prose
     # containing the words select/from), not SQL construction.
-    return f"""
+    return f"""{cursor_strip}
 <div class=panel>{head}{intro_take}
 <p class=muted>Recreates the operator's <b>PerformanceAnalysisSummary</b> reference workbook
 (G1&ndash;G7) from the loaded files &mdash; no manual pasting: every series below is computed
@@ -363,17 +415,23 @@ cited on the other pages.</p>{intro}{trunc_note}
 shown at each step); the quads ring the current file's dot</span>
 </div></div>
 <div class=mosaic id=perfGrid>
+<h2 class="cd-band">① Work-to-go census + workoff burden</h2>
 <section class="tile panel"{tile_export}><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: per calendar month, the tasks &amp; milestones ACTIVE in that month (span overlaps it) — total, completed, and still to-go — plus how many sit on the longest path.\n\nHOW TO READ: the to-go area right of the data date is the remaining-work profile; a hump far right of the baseline plan is the bow wave. The longest-path line shows how much of each month's work controls the finish.\n\nDECIDE: which months are overloaded with remaining work and deserve resource/logic scrutiny.">G1 &mdash; Completed vs Work-to-Go (Tasks &amp; Milestones)</h3>{tile_tools}</div>{tile_prov}<div class=chart-host id=g1Census></div><p class=sf-take data-no-i18n>Every task and milestone active in each month, split completed vs still to go, with the longest-path share drawn over it.</p></section>
 <section class="tile panel"{tile_export}><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: the same census restricted to NORMAL tasks (no milestones): active, to-go, and longest-path counts per month.\n\nHOW TO READ: normal tasks carry the real work; a widening gap between the active line and the to-go line left of the data date is completed work, and the to-go line right of it is the workload still ahead.\n\nDECIDE: whether the remaining normal-task load is spread or spiking.">G1 &mdash; Work-to-Go (Normal Tasks)</h3>{tile_tools}</div>{tile_prov}<div class=chart-host id=g1Normal></div><p class=sf-take data-no-i18n>The same monthly census with milestones removed, so the line is the remaining normal-task workload on its own.</p></section>
+<section class="tile panel"{tile_export}><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: workoff burden for STARTS. Above the axis, each month's starts categorized: on-plan (baselined that month), early, workoff of a PAST-DUE baseline, past-due backlog now forecast here, and slipped future baseline. BELOW the axis, the same un-started work mirrored at the month its baseline promised it.\n\nHOW TO READ: below-axis bars are broken promises at their original month; the matching above-axis bars show where that work has been pushed — the further right, the bigger the bow wave.\n\nDECIDE: how much past-due work the forecast is carrying and where it has been re-stacked.">G4 &mdash; Workoff burden (starts)</h3>{tile_tools}</div>{tile_prov}<div class=chart-host id=g4Starts></div><p class=sf-take data-no-i18n>Un-started baseline work mirrored below the axis at the month it was promised, and above it at the month it is now forecast.</p></section>
+<section class="tile panel"{tile_export}><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: the same workoff-burden categorization for FINISHES — where past-due baseline finishes went, and the un-finished backlog mirrored below the axis at its baselined month.\n\nHOW TO READ: a tall past-due (workoff) stack just right of the data date = a recovery plan betting on immediate catch-up; spread far right = acknowledged slip.\n\nDECIDE: whether the finish workoff plan is credible or front-loaded hope.">G4 &mdash; Workoff burden (finishes)</h3>{tile_tools}</div>{tile_prov}<div class=chart-host id=g4Finishes></div><p class=sf-take data-no-i18n>The same workoff view for finishes &mdash; promised below the axis, re-planned above it.</p></section>
+<h2 class="cd-band">② Duration ratio</h2>
+<section class="tile panel"{tile_export}><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: the Duration Ratio S-curve — every COMPLETED task's actual duration &divide; baseline duration (DRM), sorted ascending against cumulative probability.\n\nHOW TO READ: DRM 1.0 = took exactly as long as baselined. The curve's crossing of 1.0 tells you what share of completed work beat its baseline; a long right tail = chronic under-estimation.\n\nDECIDE: what growth factor history supports when judging the remaining durations (and any SRA).">G5 &mdash; Duration Ratio S-curve</h3>{tile_tools}</div>{tile_prov}<div class=chart-host id=g5Scurve></div><p class=sf-take data-no-i18n>Every completed activity's actual-to-baseline duration ratio, sorted against cumulative probability.</p></section>
+<section class="tile panel"{tile_export}><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: histogram of the MIDDLE 70% of completed-task duration ratios (the workbook's convention — the tails are excluded from the bars but included in the min/avg/max chips).\n\nHOW TO READ: a mode below 1.0 = durations typically beaten; mass above 1.0 = systematic overrun. The chips carry the full-population min / average / max and the excluded-count disclosure.\n\nDECIDE: the realistic duration growth factor for forecasts.">G5 &mdash; Duration Ratio histogram (middle 70%)</h3>{tile_tools}</div>{tile_prov}<div class=chart-host id=g5Hist></div><div id=g5Stats class=stat-row></div><p class=sf-take data-no-i18n>The middle 70% of those duration ratios as a histogram; the chips beneath carry the full-population min, average and max.</p></section>
+<h2 class="cd-band">③ Bow wave + cumulative S</h2>
 <section class="tile panel"{tile_export}><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: activity STARTS per month — baselined vs scheduled/forecast vs actual (lines), with stacked bars for starts that happened late vs baseline (&le;30 / 31&ndash;60 / &gt;60 days).\n\nHOW TO READ: actuals tracking under the baseline line = starts falling behind; tall late-bars show how late. Right of the data date the scheduled line is the forecast start plan.\n\nDECIDE: whether work is being initiated on pace (a start bow-wave precedes a finish bow-wave).">G2 &mdash; Activity Starts (baselined / scheduled / actual + late buckets)</h3>{tile_tools}</div>{tile_prov}<div class=chart-host id=g2Starts></div><p class=sf-take data-no-i18n>Monthly activity starts on three bases &mdash; baselined, scheduled and actual &mdash; with the late-start buckets stacked beneath them.</p></section>
 <section class="tile panel"{tile_export}><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: activity FINISHES per month — baselined vs scheduled/forecast vs actual (lines) with late-finish buckets (&le;30 / 31&ndash;60 / &gt;60 days vs baseline).\n\nHOW TO READ: if starts are on pace but finishes lag, in-progress work is piling up (the classic bow wave); the late buckets show the severity distribution.\n\nDECIDE: whether completion (not initiation) is the constraint, and how much forecast finish work is stacked after the data date.">G2 &mdash; Activity Finishes (baselined / scheduled / actual + late buckets)</h3>{tile_tools}</div>{tile_prov}<div class=chart-host id=g2Finishes></div><p class=sf-take data-no-i18n>Monthly activity finishes on the same three bases, with the late-finish buckets stacked beneath them.</p></section>
 <section class="tile panel"{tile_export}><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: cumulative S-curves — baselined, scheduled and actual starts and finishes accumulated over time.\n\nHOW TO READ: the horizontal gap between the baseline curve and the actual curve is schedule slip in time units; a scheduled curve bending right of baseline is the re-planned (slipped) plan.\n\nDECIDE: how far behind the baseline the schedule is running and whether the recovery slope is credible.">G2 &mdash; Cumulative S-curves (starts &amp; finishes)</h3>{tile_tools}</div>{tile_prov}<div class=chart-host id=g2Cum></div><p class=sf-take data-no-i18n>The same starts and finishes accumulated, so the horizontal gap between the baseline and actual curves reads as elapsed slip.</p></section>
+<h2 class="cd-band">④ Execution indices</h2>
 <section class="tile panel"{tile_export}><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: execution-index curves for STARTS — BEI-Starts (cumulative actual &divide; cumulative baselined) and the monthly HMI-Starts hit rate with its 3-month rolling average. Curves stop at the data date; nothing is projected.\n\nHOW TO READ: BEI &lt; 0.95 (DCMA practice band) = execution behind plan; HMI is the sharper month-by-month pulse.\n\nDECIDE: whether start execution is recovering or deteriorating.">G3 &mdash; Start execution indices (BEI / HMI)</h3>{tile_tools}</div>{tile_prov}<div class=chart-host id=g3Starts></div><p class=sf-take data-no-i18n>Cumulative BEI-Starts against the monthly HMI-Starts pulse and its rolling average, both stopping at the data date.</p></section>
 <section class="tile panel"{tile_export}><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: the same indices for FINISHES — BEI-Finishes and monthly HMI-Finishes (+ 3-mo rolling average).\n\nHOW TO READ: finish indices below the start indices mean work is started but not being closed out — the in-progress pileup signature.\n\nDECIDE: whether completion discipline (not just starts) is holding.">G3 &mdash; Finish execution indices (BEI / HMI)</h3>{tile_tools}</div>{tile_prov}<div class=chart-host id=g3Finishes></div><p class=sf-take data-no-i18n>The same two indices for finishes, so start discipline and closeout discipline can be read apart.</p></section>
-<section class="tile panel"{tile_export}><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: workoff burden for STARTS. Above the axis, each month's starts categorized: on-plan (baselined that month), early, workoff of a PAST-DUE baseline, past-due backlog now forecast here, and slipped future baseline. BELOW the axis, the same un-started work mirrored at the month its baseline promised it.\n\nHOW TO READ: below-axis bars are broken promises at their original month; the matching above-axis bars show where that work has been pushed — the further right, the bigger the bow wave.\n\nDECIDE: how much past-due work the forecast is carrying and where it has been re-stacked.">G4 &mdash; Workoff burden (starts)</h3>{tile_tools}</div>{tile_prov}<div class=chart-host id=g4Starts></div><p class=sf-take data-no-i18n>Un-started baseline work mirrored below the axis at the month it was promised, and above it at the month it is now forecast.</p></section>
-<section class="tile panel"{tile_export}><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: the same workoff-burden categorization for FINISHES — where past-due baseline finishes went, and the un-finished backlog mirrored below the axis at its baselined month.\n\nHOW TO READ: a tall past-due (workoff) stack just right of the data date = a recovery plan betting on immediate catch-up; spread far right = acknowledged slip.\n\nDECIDE: whether the finish workoff plan is credible or front-loaded hope.">G4 &mdash; Workoff burden (finishes)</h3>{tile_tools}</div>{tile_prov}<div class=chart-host id=g4Finishes></div><p class=sf-take data-no-i18n>The same workoff view for finishes &mdash; promised below the axis, re-planned above it.</p></section>
-<section class="tile panel"{tile_export}><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: the Duration Ratio S-curve — every COMPLETED task's actual duration &divide; baseline duration (DRM), sorted ascending against cumulative probability.\n\nHOW TO READ: DRM 1.0 = took exactly as long as baselined. The curve's crossing of 1.0 tells you what share of completed work beat its baseline; a long right tail = chronic under-estimation.\n\nDECIDE: what growth factor history supports when judging the remaining durations (and any SRA).">G5 &mdash; Duration Ratio S-curve</h3>{tile_tools}</div>{tile_prov}<div class=chart-host id=g5Scurve></div><p class=sf-take data-no-i18n>Every completed activity's actual-to-baseline duration ratio, sorted against cumulative probability.</p></section>
-<section class="tile panel"{tile_export}><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: histogram of the MIDDLE 70% of completed-task duration ratios (the workbook's convention — the tails are excluded from the bars but included in the min/avg/max chips).\n\nHOW TO READ: a mode below 1.0 = durations typically beaten; mass above 1.0 = systematic overrun. The chips carry the full-population min / average / max and the excluded-count disclosure.\n\nDECIDE: the realistic duration growth factor for forecasts.">G5 &mdash; Duration Ratio histogram (middle 70%)</h3>{tile_tools}</div>{tile_prov}<div class=chart-host id=g5Hist></div><div id=g5Stats class=stat-row></div><p class=sf-take data-no-i18n>The middle 70% of those duration ratios as a histogram; the chips beneath carry the full-population min, average and max.</p></section>
+{reading}
+<h2 class="cd-band">⑤ Portfolio quads</h2>
 <section class="tile panel"{tile_export}><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: portfolio quad — HMI (tasks, latest period) vs CEI (finish) for EVERY loaded version; dashed guides at the 0.95 practice band used across this tool's index metrics.\n\nHOW TO READ: top-right = hitting current commitments AND closing out to plan; bottom-left = missing both. A version drifting left over time is losing period discipline.\n\nDECIDE: which version/update deserves the deep-dive first.">G3 quad &mdash; HMI vs CEI (per loaded version)</h3>{tile_tools}</div>{tile_prov}<div class=chart-host id=quadHmiCei></div><p class=sf-take data-no-i18n>One dot per loaded version, plotting period hit rate against closeout performance inside the practice-band guides.</p></section>
 <section class="tile panel"{tile_export}><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: portfolio quad — to-go starts ratio vs to-go finishes ratio (remaining scheduled work &divide; work the baseline said should remain). Guides at 1.0 = carrying exactly what the baseline planned.\n\nHOW TO READ: above/right of 1.0 = more to-go work than planned (the bow wave, quantified); far above the diagonal = finishes lagging starts.\n\nDECIDE: which version is quietly accumulating un-done work.">G6 quad &mdash; To-Go Starts vs To-Go Finishes</h3>{tile_tools}</div>{tile_prov}<div class=chart-host id=quadRatio></div><p class=sf-take data-no-i18n>One dot per loaded version, plotting remaining scheduled starts against remaining scheduled finishes, each against what the baseline left.</p></section>
 <section class="tile panel"{tile_export}><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: portfolio quad — BEI (baseline execution) vs the share of the to-go work sitting on the critical path. Vertical guide at BEI 0.95 (DCMA practice); horizontal guide at the portfolio median critical share (labeled — no industry threshold exists for this axis).\n\nHOW TO READ: bottom-right (high BEI, low critical share) is healthy; top-left (poor execution AND a critical-heavy backlog) is the danger quadrant.\n\nDECIDE: which version pairs poor execution with a critical-path-loaded backlog.">G7 quad &mdash; BEI vs % critical of to-go work</h3>{tile_tools}</div>{tile_prov}<div class=chart-host id=quadBeiCp></div><p class=sf-take data-no-i18n>One dot per loaded version, plotting baseline execution against how much of the remaining work sits on the critical path.</p></section>
