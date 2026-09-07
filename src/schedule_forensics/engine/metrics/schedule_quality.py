@@ -128,11 +128,18 @@ def compute_schedule_quality(
     # this reproduces Fuse 6/6 where the effective/recompute mix missed in both directions).
     # A file whose incomplete work carries no stored slack ANYWHERE keeps the recomputed-CPM
     # count — the signal must not become a fabricated clean bill on the tool's own formats.
+    # Fuse classifies the stored slack in WHOLE days: a -139-minute (-0.29 d) slack on the
+    # operator's Large Test File2 is Fuse's "Zero Days Float", not negative (ADR-0473, the
+    # Detailed Metric Report's activity marks: 122 negative, 66 zero). ``round`` at an exact
+    # half-day tie is banker's rounding — what Fuse does at exactly -0.5 d is R-03's open
+    # question and is not flipped here.
+    mpd = schedule.calendar.working_minutes_per_day
     if any(t.stored_total_float_minutes is not None for t in incomplete):
         neg = tuple(
             t.unique_id
             for t in incomplete
-            if t.stored_total_float_minutes is not None and t.stored_total_float_minutes < 0
+            if t.stored_total_float_minutes is not None
+            and round(t.stored_total_float_minutes / mpd) < 0
         )
     else:
         neg = tuple(
@@ -153,8 +160,13 @@ def compute_schedule_quality(
     #   SUM((OriginalDuration / (ProjectFinish - ProjectStart) > 0.1) * 1)
     # the activity's CURRENT (Original) duration in working days over the project's CALENDAR span
     # (ProjectFinish - ProjectStart in days — the date subtraction; Acumen does not convert the
-    # denominator to working time). Verified == Acumen's 43 on the Large Test File report. Current
-    # duration, not baseline; 0-duration milestones never qualify.
+    # denominator to working time). Current duration, not baseline; 0-duration milestones never
+    # qualify. Every status counts: this is the RIBBON tile (IncludeComplete=true), 2/2/2 on the
+    # operator's Hard_File / updated / updated2 ribbons where an incomplete-only rule reads 2/1/0.
+    # The Bible carries a same-named Metric History variant with IncludeComplete=false and
+    # IncludeMilestone=false (22 where this tile reads 43 on the Large Test File) — a different
+    # metric; each Fuse figure is an oracle only for the tile its own workbook section carries
+    # (ADR-0473).
     per_day = schedule.calendar.working_minutes_per_day
     finishes = [t.finish for t in tasks if t.finish is not None]
     span_days = max((max(finishes) - schedule.project_start).days, 1) if finishes else 1
@@ -174,7 +186,10 @@ def compute_schedule_quality(
     )
 
     # Fuse counts ACTIVITIES with lags/leads, not lag/lead links ("2 activities (1%)
-    # have 3. Lags" — the golden Fuse briefing): distinct successors, order-preserving.
+    # have 3. Lags" — the golden Fuse briefing): distinct successors, order-preserving, every
+    # status — the Project5 golden's ribbon counts a COMPLETED successor's lag (2, where an
+    # incomplete scope reads 1), so the library entries carrying IncludeComplete=false are not
+    # the tile the ribbon shows (ADR-0473: same name, different inclusion sets per section).
     lags = tuple(dict.fromkeys(r.successor_id for r in links if r.lag_minutes > 0))
     out["number_of_lags"] = _pct_result(
         "number_of_lags", "Number of Lags", len(lags), n_tasks, 5.0, Direction.LE, lags
@@ -192,6 +207,11 @@ def compute_schedule_quality(
         offender_uids=leads,
     )
 
+    # The ribbon tile "Merge Hotspot" is the Bible's all-statuses variant (IncludePlanned +
+    # IncludeInProgress + IncludeComplete), matched 10/10 on Project2/5 and on every Hard_File
+    # snapshot. The Metric History row "Merge Hotspot (Predecessors >2)" is a DIFFERENT metric —
+    # planned (not yet started) activities only — and reads 125 where this tile reads 156 on the
+    # operator's Large Test File (ADR-0473): compare each to its own row, never across.
     merge = tuple(uid for uid, c in npred.items() if c >= MERGE_HOTSPOT_MIN_PREDECESSORS)
     out["merge_hotspot"] = MetricResult(
         "merge_hotspot",

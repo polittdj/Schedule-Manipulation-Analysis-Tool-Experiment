@@ -128,7 +128,7 @@ one long after it was closed, understating measured SSI fidelity (ADR-0385).
 | 5 | Hard Constraint | 0 / 1 | 0 / 1 | ✅ ENGINE==FUSE (was misprinted 0 / 0 here; case.json always pinned P5 = 1) |
 | 6 | **High Float** | 44 / 44 | 44 / 44 | ✅ ENGINE==FUSE ("High Float 44d"; former −1 residual closed, ADR-0109/0112) |
 | 7 | Negative Float | 0 / 0 | 0 / 0 | ✅ ENGINE==FUSE |
-| 8 | High Duration | 1 / 0 | 1 / 0 | ✅ ENGINE==FUSE ("High Planned Duration (44d)") |
+| 8 | High Duration | 1 / 0 | 1 / 0 | ✅ ENGINE==FUSE ("High **Baseline** Duration (44d)" — the row the engine implements; Fuse's "High Planned Duration (44d)" is a different row that coincides here and reads 124 vs 87 on the Large Test File, ADR-0473) |
 | 9 | Invalid Dates | 0 / 0 | 0 / 0 | ✅ ENGINE==FUSE ("Wrong Status" + "Invalid Forecast Dates") |
 | 10 | Resources | 0 / 0 | 0 / 0 | ✅ engine==golden (not in the 2026-06 suite) |
 | 11 | Missed Activities | 18 / 37 | 18 / 37 | ✅ ENGINE==FUSE (Finished Late 11/18 + due-but-unfinished 7/19) |
@@ -186,6 +186,42 @@ engine-pinned float/critical subset is now asserted against **transcribed Fuse v
 
 Cost-based EVM (SPI / CPI / TCPI) is reported **NOT_APPLICABLE** — the sample schedules carry no cost
 data, and the tool never fabricates a value (Law 2).
+
+## Multi-project Metric History + EVM ribbon oracle (2026-09-07, ADR-0473)
+
+Three operator-delivered Fuse workbooks that no test had read — `AlltheProjects - Metric History
+Report.xlsx` (twelve projects on one report), the Large Test File / File2 Metric History, and the
+Hard_File update-vs-update Metric History and ribbon exports — are now read from the vendor `.xlsx`
+by `tests/parity/test_fuse_metric_history_oracle.py` (std-lib, no transcription step). What they
+settled, each red-first on the pre-ADR-0473 tree:
+
+| Family | Fuse (workbook) | Engine before | Engine now | Status |
+|---|---|---|---|---|
+| §C baseline compliance — every count + BFC/BSC, 12 oracles (EVM1/2, TP4 v1/v3/v4/v5, P2, P5, Large Test File / File2, Hard_File_updated2/3) | e.g. EVM1 Completed On Time 5 · Large Test File2 159 · Hard_File_updated2 13 | 0 · 117 · 7 (scored on `actual_finish` / `actual_start`) | exact on all 12 (the Bible's `Finish` / `Start` — actual once finished, else the forecast) | ✅ ENGINE==FUSE |
+| Ribbon Negative Float, Large Test File2 | 122 | 123 (a −139-minute stored slack read as negative) | 122 (stored slack classified in whole days) | ✅ ENGINE==FUSE (the exact −0.5 d tie stays R-03) |
+| BAC / BCWP / ACWP, Hard_File_updated ribbon | 133,400 / 16,800 / 20,800 | 13,340,000 / 1,680,000 / 2,080,000 (MSPDI hundredths read as units) | exact | ✅ ENGINE==FUSE |
+| BCWS (time-phased PV), Hard_File_updated2 / updated3 / updated | 64,240 / 110,440 / 16,000 | 64,240 / 107,240 / 12,400 (step at baseline finish) | 64,240 / 110,440 / 16,150 (linear over the baseline span) | ✅ exact / ✅ exact / ⚠ +150 (one straddling activity on a 16-hour resource calendar — documented) |
+| CPI, Hard_File_updated / updated2 | 0.81 / 0.78 | 0.81 / 0.78 | 0.81 / 0.78 | ✅ ENGINE==FUSE (blank actual = 0 is Fuse's own evaluation; the started, budgeted activities with no actual cost are now DISCLOSED beside CPI/TCPI) |
+| SPI (cost), Hard_File_updated / updated2 | 1.05 / 0.77 | 1.35 / 0.77 | 1.04 / 0.77 | ✅ within 0.01 / ✅ exact |
+| TCPI, Hard_File_updated / updated2 | 1.04 / 1.21 | 1.04 / 1.20 | 1.04 / 1.20 | ✅ exact / ⚠ 0.01 (Fuse's ACWP-to-time-now trims 342 of 63,763 — OPEN) |
+
+**Same name, different metric — the trap this oracle paid for.** The reference library carries
+several metrics under one display name with different inclusion sets per workbook section:
+`Insufficient Detail™` (the ribbon tile counts every status — 2/2/2 on the Hard_File ribbons; the
+Metric History row leaves completed activities and milestones out — 22 vs the tile's 43 on the
+Large Test File), `Merge Hotspot` (the tile counts every status; the History row "Merge Hotspot
+(Predecessors >2)" counts not-yet-started activities only — 125 vs 156), and the lag counts (the
+DCMA tile "3. Lags" is planned + in-progress; the History row "Total # Predecessor Lags" is
+planned-only — 2 vs 5). The engine implements the ribbon tiles and stays exact on them; a Fuse
+figure is an oracle only for the tile its own workbook section carries. Documented residuals
+this oracle measured and did not fix: Hard_File's CPM finish runs 42 days later than MS Project's
+stored finish because its resources sit on 16-hour and 24-hour calendars the base CPM does not
+model (the file's own Fuse Project Finish is the stored 2026-11-05); Hard_File_updated3's BAC /
+BCWP (Fuse 121,800 / 53,715 vs 133,400 / 59,340 — no per-task cost oracle in the export);
+SPI(t)–Acumen 8.24 vs 8.22 on the Large Test File; the DCMA tile "8. High Duration" carries
+IncludeComplete=true in the library where the engine scores incomplete activities (no
+discriminating figure in the repo); the older `golden/ssi_uid152` Large Test File fixture is the
+underscore-named sibling `.mpp` (31 negative-float activities), not the Fuse-scored file (41).
 
 ## Residuals — what was closed, and what remains
 

@@ -73,9 +73,11 @@ def test_fully_populated_task(schedule: Schedule) -> None:
     assert t.actual_finish == dt.datetime(2025, 1, 17, 16, 30)
     assert t.baseline_start == dt.datetime(2025, 1, 6, 8, 0)
     assert t.baseline_finish == dt.datetime(2025, 1, 17, 17, 0)
-    assert t.cost == 52000.0
-    assert t.actual_cost == 52000.0
-    assert t.budgeted_cost == 50000.0  # baseline cost (BAC)
+    # MSPDI currency elements are HUNDREDTHS of the currency unit (<Cost>52000</Cost> is
+    # $520.00; CurrencyDigits=2) — read as units since ADR-0473
+    assert t.cost == 520.0
+    assert t.actual_cost == 520.0
+    assert t.budgeted_cost == 500.0  # baseline cost (BAC)
     assert t.resource_ids == (1,)
     assert t.resource_names == ("Architect",)
 
@@ -104,7 +106,7 @@ def test_partial_progress_task(schedule: Schedule) -> None:
 def test_multi_resource_task(schedule: Schedule) -> None:
     t = schedule.task_by_id(4)
     assert t.constraint_type is ConstraintType.FNLT  # code 7
-    assert t.budgeted_cost == 800000.0
+    assert t.budgeted_cost == 8000.0  # <Cost>800000</Cost> in hundredths (ADR-0473)
     assert t.resource_ids == (1, 2)
     assert t.resource_names == ("Architect", "Concrete")
 
@@ -421,8 +423,8 @@ def test_negative_costs_are_tolerated() -> None:
     # BASELINE cost (the EV budget basis) clamps to 0 instead of sinking the file
     body = (
         "<Tasks><Task><UID>1</UID><Duration>PT8H0M0S</Duration>"
-        "<Cost>-150.5</Cost><ActualCost>-75</ActualCost>"
-        "<Baseline><Number>0</Number><Cost>-200</Cost></Baseline></Task></Tasks>"
+        "<Cost>-15050</Cost><ActualCost>-7500</ActualCost>"
+        "<Baseline><Number>0</Number><Cost>-20000</Cost></Baseline></Task></Tasks>"
     )
     sch = parse_mspdi_text(_doc(body))
     t = sch.tasks_by_id[1]

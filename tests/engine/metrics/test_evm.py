@@ -508,3 +508,90 @@ def test_spi_t_acumen_rules_in_progress_zero_and_zero_span_excluded() -> None:
     # without a status date the in-progress term cannot be assessed; completions still average
     r2 = compute_evm_indices(_sched(tasks))["spi_t_acumen"]
     assert r2.value == 0.75 and r2.population == 2
+
+
+# --- ADR-0473: time-phased BCWS and the CPI/TCPI actuals disclosure ---------------------------
+
+
+def test_bcws_accrues_each_budget_linearly_over_its_baseline_span() -> None:
+    """The planned value of an activity straddling the status date is the elapsed share of its
+    baseline span (working time), not all-or-nothing at its baseline finish: a 10-day, 1,000-unit
+    activity baselined to run days 0-10 contributes 400 at a status date 4 working days in. The
+    former step function read 0 for it — 12,400 where Fuse read 16,000 on the operator's
+    Hard_File_updated (the multi-project oracle pins the real file; this pins the rule)."""
+    status = MON + dt.timedelta(days=4)  # Friday 08:00 — 4 working days elapsed
+    tasks = [
+        Task(  # baselined to finish before status: the whole budget
+            unique_id=1,
+            name="done-plan",
+            duration_minutes=2 * DAY,
+            budgeted_cost=500.0,
+            baseline_start=MON,
+            baseline_finish=MON + dt.timedelta(days=1, hours=9),
+        ),
+        Task(  # straddles the status date: 4 of 10 working days -> 40 %
+            unique_id=2,
+            name="straddle",
+            duration_minutes=10 * DAY,
+            budgeted_cost=1000.0,
+            baseline_start=MON,
+            baseline_finish=MON + dt.timedelta(days=11, hours=9),
+        ),
+        Task(  # baselined to start after status: nothing yet
+            unique_id=3,
+            name="future",
+            duration_minutes=5 * DAY,
+            budgeted_cost=700.0,
+            baseline_start=MON + dt.timedelta(days=14),
+            baseline_finish=MON + dt.timedelta(days=18, hours=9),
+        ),
+    ]
+    from schedule_forensics.engine.metrics.evm import _planned_value
+
+    sched = _sched(tasks, status_date=status)
+    assert _planned_value(sched, tasks) == pytest.approx(500.0 + 400.0)
+
+
+def test_cpi_and_tcpi_disclose_started_budgeted_activities_with_no_actual_cost() -> None:
+    """R-01 (ADR-0473): ACWP is the library's sum(ACWPAC) — a blank actual is a 0 term — and the
+    figure is not fabricated away; instead the started, budgeted activities carrying no actual
+    cost ride CPI and TCPI as count / population / offender UIDs, so a CPI flattered by an
+    unrecorded spend is never shown without saying so."""
+    status = MON + dt.timedelta(days=10)
+    tasks = [
+        Task(  # started, budgeted, actual recorded
+            unique_id=1,
+            name="booked",
+            duration_minutes=5 * DAY,
+            budgeted_cost=1000.0,
+            actual_cost=600.0,
+            percent_complete=50.0,
+            actual_start=MON,
+            baseline_start=MON,
+            baseline_finish=MON + dt.timedelta(days=4, hours=9),
+        ),
+        Task(  # started, budgeted, NO actual cost — the disclosed case
+            unique_id=2,
+            name="unbooked",
+            duration_minutes=5 * DAY,
+            budgeted_cost=1000.0,
+            percent_complete=50.0,
+            actual_start=MON,
+            baseline_start=MON,
+            baseline_finish=MON + dt.timedelta(days=4, hours=9),
+        ),
+        Task(  # not started: a missing actual is nothing spent, not a disclosure
+            unique_id=3,
+            name="unstarted",
+            duration_minutes=5 * DAY,
+            budgeted_cost=1000.0,
+            baseline_start=MON + dt.timedelta(days=14),
+            baseline_finish=MON + dt.timedelta(days=18, hours=9),
+        ),
+    ]
+    e = compute_evm_indices(_sched(tasks, status_date=status))
+    assert e["cpi"].value == 1.67  # 1000 earned / 600 spent — the blank read as 0
+    assert e["cpi"].count == 1 and e["cpi"].population == 2
+    assert e["cpi"].offender_uids == (2,)
+    assert e["tcpi"].count == 1 and e["tcpi"].offender_uids == (2,)
+    assert e["spi"].offender_uids == ()  # SPI has no ACWP term — nothing to disclose

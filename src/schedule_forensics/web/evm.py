@@ -168,6 +168,25 @@ def _how_we_execute_evm_header(st: SessionState) -> str:
     )
 
 
+def _actuals_missing_note(cost_idx: dict[str, MetricResult]) -> str:
+    """The CPI/TCPI disclosure (ADR-0473): the started, budgeted activities that carry no actual
+    cost. Their ACWP term is 0 — the reference library's own evaluation of a blank — so the reader
+    is told how many such activities sit behind the figure, by count and by UID, instead of the
+    sum silently reading them as work that cost nothing. Empty when there are none (or no CPI)."""
+    cpi = cost_idx.get("cpi")
+    if cpi is None or cpi.status is CheckStatus.NOT_APPLICABLE or not cpi.offender_uids:
+        return ""
+    uids = ", ".join(str(u) for u in cpi.offender_uids[:12])
+    more = f" (+{len(cpi.offender_uids) - 12} more)" if len(cpi.offender_uids) > 12 else ""
+    return (
+        f'<p class="muted" data-sf-actuals-missing="{cpi.count}">'
+        f"<b>{cpi.count} of {cpi.population}</b> started, budgeted activities carry <b>no actual "
+        "cost</b> &mdash; CPI and TCPI read their spend as 0 (the reference library evaluates a "
+        f"blank actual as 0); earned value with nothing recorded against it: UID {_e(uids)}{_e(more)}."
+        "</p>"
+    )
+
+
 def _evm_body(st: SessionState) -> str:
     """Earned Value Management page: schedule-based EVM always, plus cost EVM when the schedule is
     cost-loaded (else gracefully N/A), baseline compliance, and the worst finish variances."""
@@ -362,7 +381,7 @@ baseline-anchored Current Execution Index (finish / start).</p>
 <p class=muted>Cost-based EVM indices &mdash; applicable only when the schedule carries task budgets
 and actual costs.</p>
 {cost_note}
-{_metric_scorecard_table(cost_idx)}</div>
+{_metric_scorecard_table(cost_idx)}{_actuals_missing_note(cost_idx)}</div>
 <div class=panel{_analysis_export_attr(key)}>{comp_head}
 {take(comp_take)}
 <p class=muted>How the executed work lines up with the baseline dates (BFC / BSC and the on-time
