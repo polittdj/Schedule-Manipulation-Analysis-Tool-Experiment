@@ -16865,3 +16865,57 @@ shadows it on PATH).
   MERGED here: its two SESSION-LOG follow-up lines spliced under the 2026-09-06 (a) entry, the HANDOFF and kickoff
   kept as `main`'s (they already carry every fact #642 recorded); this record rides a NEW docs-only draft PR (number
   in the follow-up) — the operator merges it and closes #642.
+
+## 2026-09-07 — WP8 COMPLETE: the consolidated report + repair roadmap ordered by testimony risk, pinned to the tree (ADR-0472); /wbs is the EIGHTH page on the Claude Design layout (ADR-0471) — v1.0.242
+
+- **Branch:** `claude/polaris-audit-resume-uw726u` (the harness's designated branch) on `origin/main` @ `b1cd1739` (#644,
+  docs-only). No PR was open at start — #641–#644 all closed or merged; `main`'s CI #1759 (`dee28ab3`) `success` at 00:24Z,
+  installer-smoke #657 `success`; #1763 (`b1cd1739`) `in_progress` at 00:27Z. `git fetch --prune` + `--deepen=300` (the
+  clone stays shallow at 377 commits; the installer build succeeded regardless).
+- **Environment (a trap, recorded):** the SessionStart preflight printed `[ok] python` while `schedule_forensics`, pytest and
+  playwright were ABSENT and CI's ruff was not at `/usr/local/bin`; `python3 -m pip install -e '.[dev,browser]'` →
+  playwright 1.62.0 · ruff 0.16.6 · pytest 9.1.1 · mypy 2.3.1 · bandit 1.9.4; `build` for the wheel; the three canvas
+  packages npm-packed (the registry is reachable through the proxy).
+- **/wbs on the Claude Design layout (ADR-0471).** The artboard EXECUTED over loopback HTTP (`setScreen('wr')`) in four
+  themes, zero page errors, DOM-censused (1 h1 · 1 select with ten options · buttons `⤓ EXCEL` and `Segment Forecast →` ·
+  5 clickable rows). Pristine page measured first (Tier-1 renders of /wbs ×3 and /card; a four-theme Chromium census:
+  `.panel` 4 · svg 1 · cf-bar 1 · exports 2 · widest 1440; the Field-roles picker ABOVE the takeaway, y 267 vs 330).
+  Shipped: `_version_chips` descended into `components.py` (`route` / `cursor_id` / `noun`), `card.py` imports it,
+  `_wbs_body(sch=, versions=, options=)` owns the order (masthead · strip · picker · pivots · script), the route hands the
+  pieces over, `web.app` re-exports from the definition. `tests/web/test_wbs_design_layout.py` (7): red-first **4 failed /
+  3 passed** on the pristine tree; green 7; the guard set **174** (card layout, monolith contract, wbs view, field roles,
+  r12, target/theme, the sentinel guard, bar-drill, coverage, categorical drill) and **225 / 3 skipped** (i18n,
+  accessibility, r11, global filter, portfolio, air-gap, visuals, DD ledger, axis titles, the four sibling design modules)
+  and the census rows **3**; 8-mutation battery on scratch copies under `PYTHONPATH` (the imported module asserted) red by
+  name **8/8**; /card's render **byte-identical** across the move; four-theme census pristine → patched moved on `chips 0 → 2`
+  · `chipOn ["1"]` · the strip · the height only, the click opening `/wbs/Project2` with its own chip on, zero errors. Two
+  instrument defects corrected: the family regex on raw markup (`<span` matches `pan(?!d)` — the test reads id/class VALUES);
+  "widest element" cannot see a pseudo-element (below).
+- **WP8 (ADR-0472).** Every inherited residual RE-MEASURED before pricing: the `176 round(` figure unreproducible by four
+  definitions on `d61f6395` and this tree (AST calls **325** outside `engine/metrics` in 44 files: web 161 · engine 132 ·
+  ai 18 · reports 10 · importers 4; 45 inside) — retired; expression-string waits **0 of 15** (the three on `b8e8aa42`
+  were trend's, converted by ADR-0466) — closed; /volatility's four themes — a DOM census (13 panels · 2 chips · widest
+  1440 · 10 cf-bars · zero errors, identical) — closed; /card's artboard EXECUTED (`setScreen('ic')`, four themes) — closed;
+  TEST-01 (0 `/chromium-1194/` path pins) and ENG-DEAD-01 (`actual_start_driven` consumed by four modules) — closed;
+  DOC-01 FIXED: FINAL-REPORT's "COMPLETE and parity-green" headline tempered under a `test_docs` pin observed red first.
+  NEW row **UI-03**: `document.scrollingElement.scrollWidth` 1719 on `/` and the pristine /wbs, 1734 on /card and the
+  migrated /wbs at a 1440 viewport, no element box past 1440; attributed to `[data-sf-hint]::after` (computed
+  `position:absolute; left:0; width 340px; visibility:hidden; opacity 0; display:block`) on the right-aligned Reset-view
+  button of every `.viz-controls` row; `body` overflow-x `visible`; 75 hint hosts — priced S (R-20), not fixed blind.
+  The report `docs/STATE/AUDIT-2026-08-27-REPORT.md` (35.7 KB): 78 register rows (every ledger id), 43 roadmap rows in
+  tier order (11 OPEN · 8 ASK · 4 ORG · 11 HELD · 6 CLOSED-WP8 · 3 CLOSED), 9 census figures with methods, §5 the
+  operator questions, §6 the design queue (8 done · /compare a feature · 22 remain), §7 the 2026-08-13 plan reconciled.
+  `tests/guards/test_audit_report_wp8.py` (8): red-first with the report absent (5 failed / 3 positive controls); green 8;
+  mutations on the report red by name 4/4 (a census value 325 → 324 · the TX-05 row dropped · R-20 unpriced · R-33 moved
+  above R-02); two instrument defects fixed on the way (a settling observation is owed by open rows only; the guard's own
+  source carried the literal it censuses — excluded, the `pgrep -f` trap in a new coat).
+- **Statics (whole tree, after every edit):** ruff 0.16.6 check + format (1,191 files) · mypy --strict 163 files · bandit
+  exit 0 · `node --check` 63/63. Version **1.0.242**; wheel + nine installers rebuilt after the last source edit;
+  `tests/installer` **68 passed**. Doc guards: `test_state_docs`, `test_standing_rules`, `test_docs`, the WP8 guard —
+  figures in the follow-up line. The FULL suite ran on a snapshot worktree (`git worktree add --detach HEAD` + this
+  session's five changed files, `PYTHONPATH=<worktree>/src`): started 01:02:05Z; its one `F` (index 2110 of 5,010 collected)
+  is `tests/installer/test_installers.py::test_embedded_wheel_is_in_lockstep_with_the_source_tree` — by construction (the
+  snapshot's installers predate the rebuild); the final figure follows in the follow-up line.
+- **Docs:** ADR-0471 · ADR-0472 · the ledger's WP8 section (UI-03 and CI-04 as table rows; the closures) and design table
+  (/wbs; next /standards or /scorecards) · `docs/DESIGN-SYSTEM.md` §9 (two rules) · FINAL-REPORT's headline · HANDOFF rotated
+  (the 2026-09-06 (c) section archived) · this entry · LESSONS 2026-09-07 · the kickoff prompt.

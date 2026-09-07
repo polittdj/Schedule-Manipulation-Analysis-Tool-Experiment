@@ -435,6 +435,37 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-07 — A report that cannot go red is a rumour; a census self-matches; a hidden box still scrolls
+
+- **A figure without a method is a rumour.** The ledger's "176 `round(` sites outside `engine/metrics`" was copied
+  into three handoffs and a kickoff and reproduces under NO definition (AST calls 325 · non-engine 193 · web+reports+
+  importers 175 · web 161). WP8's census table states each figure WITH its method, and a guard recomputes every one;
+  the report goes red when the tree moves under it — that is what makes it a measurement.
+- **A census instrument that names the literal it censuses self-matches.** The WP8 guard's own source carried
+  `/chromium-1194/` and counted itself (the render-verify skill's `pgrep -f` trap, in a new coat). Exclude the
+  instrument's own file, and mutate the SUBJECT to prove the count moves.
+- **The family regex belongs on id and class VALUES, never on raw markup.** `pan(?!d)` matches `<span`; a "no family
+  word in the strip" assertion on innerHTML was red on a correct page. Read the emitter, then write the oracle.
+- **Element boxes cannot see a pseudo-element.** Every "widest element 1440" census since ADR-0451 missed that
+  `document.scrollingElement.scrollWidth` reads 1719–1734 on every page: the hidden tooltip box
+  (`[data-sf-hint]::after`, absolute, 340 px, `visibility:hidden`) on right-aligned Reset-view buttons scrolls the page
+  sideways. Measure the document's own overflow, attribute by computed style on the pseudo-element, price it (UI-03),
+  and do not change chrome-wide CSS blind.
+- **The preflight's `[ok] python` is an interpreter check.** The container had no project install, no pytest, no
+  playwright; the first `python3 -m pytest` said `No module named pytest`. Install the extras before measuring anything.
+- **A shared helper descends the moment a second extracted module refers to it** (ADR-0351, met again on
+  `_version_chips`): keep the first caller's output byte-identical through parameter DEFAULTS and prove it by a render
+  diff, not by reading the diff of the source.
+- **A single-card artboard's migration is the ORDER.** When the page already IS the card in verbatim panels, the
+  design's contribution is the masthead-first order, the family's strip and the picker's position — inventing a
+  two-column row the artboard does not have would be a design of one's own.
+- **A snapshot worktree's lockstep pin fails by construction** once the installers are rebuilt after the snapshot.
+  Map an `F`'s index onto `--collect-only` and read the test's NAME before calling a run red or waiting an hour for
+  its summary.
+- **Execute the canvas for a Library screen with its registry key** (`setScreen('wr')`, `'ic'`, `'sd'`, `'sk'`): the
+  keys live in the canvas's chapter registry, not in the screenshot file names; an executed artboard's DOM census
+  (h1 · buttons · selects · rows) beside the page's keeps the design's figures from being mistaken for the tool's.
+
 ### 2026-09-06 (c) — An audit record's error field needs a closed vocabulary; a boundary rule holds only where EVERY site applies it; the second lander merges on its own branch
 
 - **`str(exc)` is not a sanitizer.** `http.client.BadStatusLine(line)` carries the peer's first reply

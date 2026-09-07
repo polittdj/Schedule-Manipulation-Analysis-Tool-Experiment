@@ -36,6 +36,7 @@ from schedule_forensics.web.components import (
     _prov_chip,
     _shell_tools,
     _stat_cards,
+    _version_chips,
 )
 from schedule_forensics.web.state import _Analysis
 
@@ -51,32 +52,6 @@ def _count_bar_table(headers: tuple[str, str], rows: list[tuple[str, int, float]
     return (
         f"<table class=card-table><tr><th scope=col>{_e(headers[0])}</th><th scope=col>Count</th>"
         f"<th scope=col>{_e(headers[1])}</th></tr>{body}</table>"
-    )
-
-
-def _version_chips(key: str, sch: Schedule, versions: tuple[str, ...]) -> str:
-    """The Claude Design cursor strip for a per-file drill (ADR-0470, the seventh page on the
-    layout): one ``.cd-chip`` per loaded version of the active project, oldest first, the open
-    version ``on``, and the family's ``vN · file · DD`` pill. A card has no stepper, so the chips
-    are LINKS to the sibling versions' cards — the artboard's "Pick a version to read its card" —
-    and, like the family, the strip is served only with two or more versions. Chips carry no id
-    and no family word (the control census recognises steppers by id+className)."""
-    if len(versions) < 2 or key not in versions:
-        return ""
-    chips = "".join(
-        f'<a class="cd-chip{" on" if k == key else ""}" data-idx="{i}" '
-        f'href="/card/{quote(k, safe="")}" title="{_e(k)}" data-no-i18n>v{i + 1}</a>'
-        for i, k in enumerate(versions)
-    )
-    dd = _mdY(sch.status_date) if sch.status_date else "—"
-    pill = f"v{versions.index(key) + 1} &middot; {_e(sch.source_file or sch.name)} &middot; DD {dd}"
-    return (
-        '<div class="viz-controls cd-cursor" id=cardCursor>'
-        f"<span class=cd-chips>{chips}</span>"
-        f'<span class="muted cd-pill" data-no-i18n>{pill}</span>'
-        '<span class="muted cd-note">One card per loaded version &mdash; a chip opens that '
-        "version&rsquo;s card; every figure on it is that file&rsquo;s own.</span>"
-        "</div>"
     )
 
 

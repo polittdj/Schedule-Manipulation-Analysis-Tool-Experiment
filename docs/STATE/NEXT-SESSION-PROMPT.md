@@ -4,97 +4,85 @@
 
 ---
 
-**PR state (2026-09-06 23:3xZ): #643 MERGED → `main` @ `dee28ab3` (tree-identical to its green head; read `main`'s run #1759 first); #641 is to be CLOSED unmerged (its content landed via #643); #642 was marked ready but conflicts — its head is merged into draft PR #644 on the resume branch (merge #644, close #642). The paragraph below records the earlier PR state.**
+**PR state (2026-09-07): this session's draft PR (number in the SESSION-LOG follow-up line) carries WP8 + /wbs at v1.0.242 on `claude/polaris-audit-resume-uw726u`, branched on `main` @ `b1cd1739` (the #644 squash). Read `main`'s run #1763 for `b1cd1739` and the PR's checks on its FINAL head first (a red cell on a tree byte-identical to a green head is a runner claim: compare TREE hashes). Once merged, branch FRESH.**
 
-Resume the POLARIS² full-tool audit campaign (Schedule-Manipulation-Analysis-Tool). Read
-docs/STATE/HANDOFF.md FIRST (auto-injected), then **docs/STATE/AUDIT-2026-08-27.md — the
-campaign's live ledger (appended per-WP, never batch-written)**. As of last close: **v1.0.241 · highest ADR
-0470 — WP7 COMPLETE (ADR-0469: the AI transaction log under Law 1 by execution — a malformed gateway reply
-was landing VERBATIM in the audit record, fixed with a closed error vocabulary; the 21 never-adverse routes
-driven adversely — three defects fixed red-first, 18 pinned fail-soft) and /card is the SEVENTH page on the
-Claude Design layout (ADR-0470).** **PR state at this record (2026-09-06):** #640 MERGED (`main` @ `5b219952`,
-ADR-0466, v1.0.239; read `main`'s own CI run **#1751** for it first). **#641** (`claude/continue-previous-rsq655`,
-ADR-0467/0468, v1.0.240) is 8/8 green on its final head `d61f6395`, READY, but `dirty` against `main`; its content
-was merged onto `main` by MERGE (never renumbered) in **draft PR #643** on `claude/polaris-audit-resume-0gv4bo`
-(`5b219952` + merge of `d61f6395`, installers rebuilt from the merged `src`, the five state docs spliced) — which
-ALSO carries this session's WP7 + /card at v1.0.241. The operator merges #643 and closes #641, or grants the push
-and the merge commit `44107596` fast-forwards onto #641's branch. The docs-only draft **#642**
-(`claude/polaris-audit-resume-e9t5h1`) records #640's merge and needs a `main` merge whichever lands second. Read
-each open PR's checks on its FINAL head (a red cell on a tree byte-identical to a green head is a runner claim:
-compare TREE hashes first). Then branch FRESH (`git fetch --prune origin && git checkout -B <branch> origin/main`).
-Campaign decisions (operator, 2026-08-27, standing): SOLO lead · fix-as-verified · BOTH folder-ask builds.
-QC-1/QC-2 bind every session — ADR-0393, pinned by tests/test_standing_rules.py. `git fetch origin` before you
-branch, number an ADR, or commit — and RE-fetch before writing the docs. STANDING OPERATOR ASK (2026-09-03):
-migrate at least ONE page per session onto the Claude Design layout — design truth
-`00_REFERENCE_INTAKE/references/design_handoff_mission_ops_redesign/Mission Ops Redesign v2.dc.html`, method
-ADR-0451/0456/0460/0464/0465/0468/0470, rules docs/DESIGN-SYSTEM.md §9; done: /volatility (04), /cei (06),
-/trend (05), /forecast (09), /onepager-compare (Library), /performance (07), /card (Library Schedule ID Card);
-**/compare (10) is PRICED — a feature change (M–L)**: its artboard needs the cross-pair evidence ledger ("All five
-pairs × every edit") and a slip decomposition update by update that no page computes; **next by cost: /wbs**
-(Library WBS Rollup, 6 KB of artboard / 8 headings, `wbs.py` 154 lines), then /standards, /scorecards; the family
-carries `cd-cursor`/`cd-chips`/`cd-chip`/`cd-pill`/`cd-note`, `cd-grid-2`, `cd-grid-12`, `cd-stack`,
-`cd-master`, `cd-block`/`cd-read`, `cd-band` — and, since ADR-0470, a per-file drill's chips are LINKS.
+Work the POLARIS² audit's plan-forward (Schedule-Manipulation-Analysis-Tool). Read docs/STATE/HANDOFF.md FIRST
+(auto-injected), then **docs/STATE/AUDIT-2026-08-27-REPORT.md** — the campaign's consolidated report and repair
+roadmap (WP8, ADR-0472), pinned to the tree by `tests/guards/test_audit_report_wp8.py` (every ledger row registered,
+every roadmap row priced or owned, a nine-figure census recomputed by method — re-measure, never edit by hand). As
+of last close: **v1.0.242 · highest ADR 0472 — THE CAMPAIGN IS CLOSED (WP0–WP8, ADR-0440..0472)**; /wbs is the EIGHTH
+page on the Claude Design layout (ADR-0471). Campaign decisions (operator, 2026-08-27, standing): SOLO lead ·
+fix-as-verified · BOTH folder-ask builds. QC-1/QC-2 bind every session — ADR-0393, pinned by
+tests/test_standing_rules.py. `git fetch origin` before you branch, number an ADR, or commit — and RE-fetch before
+writing the docs. **The container may have NO project install** (the preflight's `[ok] python` is an interpreter
+check): `python3 -m pip install -e '.[dev,browser]'` (playwright 1.62 · ruff 0.16.6 · pytest 9.1 · mypy 2.3) and
+`pip install build` before measuring anything; the vendored Chromium is under `/opt/pw-browsers`.
 
-⇢ WHAT'S DONE — do not re-open. 2026-08-27..09-06 (ADR-0440..0470, v1.0.222..241): WP0–WP6b as recorded in
-the ledger; **WP7** (ADR-0469): TX-01 (the `*.done` error text — `BadStatusLine(line)` carried the peer's reply
-into the record; `txlog.error_summary` closes the vocabulary) · TX-02 (the ten-key record shape + bounded error
-pinned) · TX-03 (no transmission before consent on /settings; the operator-initiated catalog probe is body-less,
-key-bearing, recorded — DESIGN, disclosed, an operator ask) · TX-04 (the transport inventory pinned by census —
-six modules) · TX-05 (the record survives the quit-path clear and the wipe under a scratch HOME) · TX-06 (the
-completion record is best-effort) · TX-07 (the retention rule SAID on /settings) · RC-02: `/sra/branch` 500 on
-`--5` · `/sra/jcl-config` storing a non-finite cost target · `/sra/risk` storing garbage as a `(0, 0, 0)`
-override — fixed; the other 12 POSTs + 6 exports pinned. **/card** (ADR-0470): the cursor strip as navigation
-(link chips, the `vN · file · DD` pill, two or more versions only), both panels verbatim; the mock's ⤓ EXCEL,
-verdict word and "nothing leaves this machine" footnote NOT ported (named). Do NOT re-derive any of it — read
-the two ADRs.
+⇢ WHAT'S DONE — do not re-open. WP0–WP7 as recorded in the ledger; **WP8** (ADR-0472): the report's 78 register rows ·
+43 roadmap rows in testimony-tier order (T1 a cited figure could be WRONG · T2 misread · T3 the record · T4 controls and
+rendering · T5 process · T6 organizational) · the census with methods · the closures made by re-measurement: the `176
+round(` figure retired (AST calls 325 outside `engine/metrics`, 45 inside) · ADR-0466's expression-string waits EMPTY
+(0 of 15) · ADR-0451's /volatility four themes (a DOM census) · ADR-0470's /card artboard EXECUTED (`setScreen('ic')`) ·
+TEST-01 and ENG-DEAD-01 (grep) · DOC-01 FIXED (FINAL-REPORT's headline tempered, `test_docs` pin) · **UI-03** NEW and
+ATTRIBUTED (every page scrolls sideways at 1440: the hidden `[data-sf-hint]::after` box on right-aligned Reset-view
+buttons; priced S, R-20, NOT fixed blind). **/wbs** (ADR-0471): the artboard executed (`setScreen('wr')`), the
+masthead-first order, the navigation strip (`_version_chips` DESCENDED into `components.py` with `route` / `cursor_id` /
+`noun`; /card byte-identical), the picker in the options position; not ported: the row click (R-22), the bars/colour,
+the footnote wording (the mock says duration-weighted, the engine counts), the Continue footer. Do NOT re-derive any of
+it — read the two ADRs and the report.
 
-⇢ ASK FIRST (operator questions; do not build on the answer you assume): (a) NEW — TX-03: keep the model
-dropdown's catalog probe firing BEFORE the acknowledgment (a body-less `GET /v1/models` carrying the session's
-key, recorded), or gate it behind the acknowledgment too? (b) IMP-05 (ADR-0467): on a P6 XER should HMI/BEI keep
-reading the PLANNED (target) dates as the baseline, or read N/A until a baseline project is exported? A Fuse
-export on an XER settles the parity leg. (c) the /onepager-compare rulings stand as stated on the page (swimlane
-move · threshold · one vs three slides) — and does its .pptx open in PowerPoint? (d) #635's: /integrity with UID
-152 — does the working-day move read right? (e) the standing asks: /forecast's chips with two files; the
-parent-folder question on `/`; /trend's chips; T-01 · I-01 · the /analysis lag. UNKNOWABLE and closed: the
-blank-header banner, the 08-26 incident.
+⇢ ASK FIRST (operator questions; do not build on the answer you assume — the report's §5 names the rows each decides):
+(a) TX-03 — keep the model dropdown's catalog probe firing BEFORE the acknowledgment, or gate it too? (R-12) (b) IMP-05 —
+on a P6 XER should HMI/BEI keep reading the PLANNED dates as the baseline, or read N/A until a baseline project is
+exported? A Fuse export on an XER settles the parity leg (R-02). (c) the /onepager-compare rulings (swimlane move ·
+threshold · one vs three slides) — and does its .pptx open in PowerPoint? (R-31) (d) #635's /integrity with UID 152 —
+does the working-day move read right? (R-30) (e) /forecast's chips with two files; the parent-folder question on `/`;
+/trend's chips; T-01 (which page, which zoom, a screenshot) · I-01 (which finding, which two files) · the /analysis lag
+(R-23 · R-24 · R-29). UNKNOWABLE and closed: the blank-header banner, the 08-26 incident (R-43).
 
-⇢ NEXT — once the PRs are merged or closed, branch FRESH. **WP8** — the consolidated report + repair roadmap
-ordered by testimony risk: every ledger row's verdict, measurement and residual is in
-docs/STATE/AUDIT-2026-08-27.md (WP0..WP7 + the operator batches); WP8 orders them by what a wrong number would
-cost in testimony, prices each open residual (S/M/L) with its first executable step, and lands as a document
-(no code unless a residual is fixed as verified). PLUS the design page owed each session: **/wbs** (or
-/standards, /scorecards); /compare stays a feature. Observed, not fixed blind (own rows): `evm.py`'s
-`actual_cost or 0.0` ACWP · `path_evolution`'s pure-logic critical list · MF-08's residual (`dcma14.py`'s
-float-band integer roundings; 176 `round(` sites outside `engine/metrics`) · JS-05's 56 tokens · the other
-browser modules' EXPRESSION-string waits (ADR-0466 §3) · IMP-05's stricter option · TX-03's pre-consent probe ·
-the `workbench` 400 vs its siblings' 422 · the transaction record's missing schema version / correlation (a
-design question). CI-04 (the /driving-path header-row equality race) is the remaining CI candidate. Each WP
-ends commit-able: red-first → mutation proofs → full gate → ADR → state docs → draft PR.
+⇢ NEXT — once the PR is merged, branch FRESH (`git fetch --prune origin && git checkout -B <branch> origin/main`).
+Work the report's §3 in order, one row per unit of work, each commit-able (red-first → mutation proofs by name → the
+full gate → an ADR → the state docs → a draft PR): **R-01 FIRST** — `evm.py`'s ACWP `actual_cost or 0.0` on a mixed
+cost-loaded population: a two-task fixture with one `actual_cost=None`, a red test that CPI/TCPI read NA-or-disclosed
+(an `actuals_missing_count`, JCL's ADR-0463 shape), the Fuse EVM export the parity leg; then **R-03** (dcma14's two
+parity-mode roundings — build the ±0.5 d / 44.5 d fixture, ASK for the Acumen run, never flip blind) · **R-04** (classify
+the 325 `round()` sites by exposure with the census script; render /sra and /jcl on a half-day fixture) · **R-09** (the
+`.catch` conflation — a browser test that stubs `SFChartFrame.axisTitles` to throw, then a shared helper across the 13
+modules) · **R-13** · **R-18** (NUM-01, UNVERIFIED — grep PARITY-REPORT for tolerance-accepted families) · **R-20** (UI-03:
+render the tooltip box only on hover/focus; pin `scrollingElement.scrollWidth <= innerWidth` across the census's 34 page
+states, red-first) · **R-21** · **R-22** · **R-32** (CI-04) · **R-39**. PLUS the design page owed each session:
+**/standards** (Control Standards and Execution Indices, `setScreen('sd')`) or **/scorecards** (`'sk'`) — the recipe:
+`npm pack react@18.3.1 react-dom@18.3.1 @babel/standalone@7.29.0`, patch `support.js` to the local files with the SRI
+constants blanked, `python -m http.server --bind 127.0.0.1`, seed `sfredux-screen` / `sfredux-guided=1` /
+`sfops-boot.skipNext=true` / `sfredux-theme`, screenshot `section[data-screen-label]` in four themes, DOM-census it
+BEFORE writing a line; measure the pristine page (Tier-1 renders + a four-theme census incl. `scrollingElement.scrollWidth`),
+write the layout tests red-first, keep every panel verbatim, mutation battery on scratch copies under `PYTHONPATH`.
+/compare (10) stays a feature (M-L). Each unit ends commit-able; the wheel + nine installers rebuild as the LAST step.
 
-⇢ Traps paid for, by name (2026-09-06 (c) first): `str(exc)` is not a sanitizer — a durable record's free-text
-field gets a CLOSED vocabulary · a boundary rule is a census: grep every `float(` / `int(` outside the helper,
-and the SIBLING of a fixed route first (`/sra/branch` carried the exact 500 audit L5 removed from
-`/sra/conditional`) · garbage that parses to a default is a fabricated figure — refuse a supplied field by name,
-default only a blank · old-style `git merge-tree` prefixes every line (`grep '^<<<<<<<'` reads 0 on 15
-conflicts) — `--write-tree` names them · the harness's "never push to another PR's branch" beats the steward's
-"second lander re-merges": merge on the DESIGNATED branch, offer the fast-forward · a page's `.panel` count
-includes the chrome's Ask panel; a panel head prints the project TITLE · Excel truncates a sheet name to 31
-characters — assert the row · `ls` a test path before filtering its run · the census `_FAMILY` is a raw pattern ·
-a mock's Law-1 footnote is never a static sentence (ADR-0396) · the PATH `ruff` is 0.15.8, CI's 0.16.6 is at
-`/usr/local/bin/ruff` · a mutation must LAND before its verdict counts · a module-level name in an extracted
-page module needs the `X as X` re-export in `web.app` · `python -m pytest` puts CWD on sys.path; CI's plain
-pytest does not — `from web.<module>` · the installer build refuses a graft-boundary MPXJ ref — `git fetch
---deepen=300` · rebuild the wheel + nine installers as the LAST step · browser-job ceiling 25m · compare TREE
+⇢ Traps paid for, by name (2026-09-07 first): a figure without a method is a rumour — pin the method with the number ·
+a census instrument that names the literal it censuses self-matches — exclude its own file · the family regex belongs
+on id/class VALUES, never raw markup (`<span` matches `pan(?!d)`) · element boxes cannot see a pseudo-element — measure
+`document.scrollingElement.scrollWidth` · the preflight's `[ok] python` is an interpreter check · a shared helper
+descends when a second extracted module refers to it; prove the first caller unchanged by render diff · a single-card
+artboard's migration is the ORDER · a snapshot worktree's lockstep pin fails by construction after an installer rebuild —
+map the `F` onto `--collect-only` · the Library/Control screens boot with the canvas's own keys · `git fetch --deepen=300`
+may leave the clone shallow and the installer build still succeeds · `str(exc)` is not a sanitizer · a boundary rule is a
+census · garbage that parses to a default is a fabricated figure · old-style `git merge-tree` prefixes every line —
+`--write-tree` · merge on the DESIGNATED branch, offer the fast-forward · a page's `.panel` count includes the chrome's
+Ask panel · Excel truncates a sheet name to 31 characters · `ls` a test path before filtering its run · `"&mdash;"` is
+never a VALUE sentinel · a mutation must LAND before its verdict counts · a module-level name in an extracted page
+module needs the `X as X` re-export in `web.app` · `python -m pytest` puts CWD on sys.path; CI's plain pytest does not —
+`from web.<module>` · rebuild the wheel + nine installers as the LAST step · browser-job ceiling 25m · compare TREE
 hashes before blaming a squash merge · never measure a tree a battery is mutating.
 
-⇢ Measured-false / deliberately-held — do NOT re-chase: `late_start` for a floored task stays `LF -
-duration` · the S-curve & finish walk on /forecast · the mock's P10–P90 window / target chip / SPREAD column ·
-CI-03 as a "slow first paint" (REFUTED) · the `.catch` conflation · the `defer` attributes · the change-effects
-deltas · the legal 25 % Size floor · `path_evolution.js:515`'s catch · /driving-path's empty-corridor hint ·
-/evolution at operator scale · the g-head sizing duplication · `#uiScale` is NOT dead · the Name-column floors
-· MF-05 · MC-01 parity leg · ADR-0417/0419 fixtures · the `citations.reattach` pin · the 6 dead E501s · the
-evolution 0 % cell · Insufficient-Detail V05/V06 + TP2 (BLOCKED, operator-owned) · the compare page's 118-pt
-summary column · the artboard's ⑥ EVM ledger and ⑦ SPI(t)-by-WBS on /performance · MF-07/09/10 and MC-08
-(unverifiable as filed — no blind sweep) · JS-02 as a leak · IMP-02's tolerated gaps · `/margin/confirm`'s
-all-unknown tick list as a deliberate "no margin" (documented, pinned) · the pre-consent catalog probe as a
-defect (design — ask, do not gate blind).
+⇢ Measured-false / deliberately-held — do NOT re-chase (the report's HELD and CLOSED rows carry each measurement):
+`late_start` for a floored task stays `LF − duration` · the S-curve & finish walk on /forecast · the mock's P10–P90
+window / target chip / SPREAD column · CI-03 as a "slow first paint" (REFUTED) · the `defer` attributes · the
+change-effects deltas · the legal 25 % Size floor (R-26) · `path_evolution.js:515`'s catch (R-09's named instance) ·
+/driving-path's empty-corridor hint (R-26) · /evolution at operator scale (R-27) · the g-head sizing duplication ·
+`#uiScale` is NOT dead · the Name-column floors (R-26) · MF-05 · MC-01 parity leg · ADR-0417/0419 fixtures · the
+`citations.reattach` pin · the 6 dead E501s · the evolution 0 % cell (R-08) · Insufficient-Detail V05/V06 + TP2 (BLOCKED,
+operator-owned) · the compare page's 118-pt summary column · the artboard's ⑥ EVM ledger and ⑦ SPI(t)-by-WBS on
+/performance · MF-07/09/10 and MC-08 (R-06, unverifiable as filed) · IMP-04 (R-07) · JS-02 as a leak · IMP-02's tolerated
+gaps · `/margin/confirm`'s all-unknown tick list as a deliberate "no margin" · the pre-consent catalog probe as a defect
+(R-12 — ask, do not gate blind) · the WBS mock's footnote wording (R-11) · the 176 (R-38, retired).

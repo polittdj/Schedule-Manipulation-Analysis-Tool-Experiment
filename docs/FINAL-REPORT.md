@@ -5,7 +5,7 @@ Local, NASA-themed forensic schedule-analysis tool, built autonomously across se
 units rule (§3), and the QC/PM regime (§7) to its implementing module(s) and verifying evidence. The
 authoritative, row-by-row status is `docs/PLAN/RTM.md`; this is the narrative closeout.
 
-**Status: COMPLETE and parity-green — every milestone (M1–M17) delivered.** Every §6 requirement is
+**Status: every milestone (M1–M17) delivered; parity is GATE-LOCKED with named, gate-locked residuals (§6.B and `docs/PARITY-REPORT.md` — exact where it says exact, tolerance-accepted where it says so; the 2026-08-13 audit's DOC-01, closed by WP8 / ADR-0472).** Every §6 requirement is
 `Implemented + Tested + Validated`, including **§6.A's `.pbix` enrichment (M15)**: the operator deposited
 `NSATDeploymentRevisionAlpha.pbix` and its measure families now enrich the dashboard (ADR-0030; the deck
 itself stays git-ignored CUI, read locally only). The acceptance gate (Acumen Fuse v8.11.0 + SSI) is
