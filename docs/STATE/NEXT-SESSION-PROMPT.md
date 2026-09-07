@@ -4,7 +4,7 @@
 
 ---
 
-**PR state (2026-09-07): draft PR **#645** carries WP8 + /wbs at v1.0.242 on `claude/polaris-audit-resume-uw726u`, branched on `main` @ `b1cd1739` (the #644 squash). Read `main`'s run #1763 for `b1cd1739` and the PR's checks on its FINAL head first (a red cell on a tree byte-identical to a green head is a runner claim: compare TREE hashes). Once merged, branch FRESH.**
+**PR state (2026-09-07): draft PR **#645** carries WP8 + /wbs at v1.0.242 on `claude/polaris-audit-resume-uw726u`, branched on `main` @ `b1cd1739` (the #644 squash). `main`'s run #1763 for `b1cd1739` concluded `success`; read the PR's checks on its FINAL head first (a red cell on a tree byte-identical to a green head is a runner claim: compare TREE hashes). Once merged, branch FRESH.**
 
 Work the POLARIS² audit's plan-forward (Schedule-Manipulation-Analysis-Tool). Read docs/STATE/HANDOFF.md FIRST
 (auto-injected), then **docs/STATE/AUDIT-2026-08-27-REPORT.md** — the campaign's consolidated report and repair

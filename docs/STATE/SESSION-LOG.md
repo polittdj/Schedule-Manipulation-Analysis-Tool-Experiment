@@ -16930,3 +16930,11 @@ shadows it on PATH).
   report's method text updated; `tests/audit` + the WP8 guard **29 passed** locally; pushed as the next head — read the
   verdict on the FINAL head. The snapshot full suite was at 4,464 / 5,010 at 01:42Z (the lockstep pin its only failure);
   its figure and `main`'s #1763 conclusion follow in the next docs-only line.
+- **Follow-up (01:56Z) — the snapshot full suite: 5,004 passed / 5 skipped / 1 failed in 51:22** (01:02:05Z → 01:53:34Z,
+  5,010 collected on the worktree of `b1cd1739` + this session's four `src` files and the layout test, `PYTHONPATH=<worktree>/src`).
+  The one failure is `tests/installer/test_installers.py::test_embedded_wheel_is_in_lockstep_with_the_source_tree`, by
+  construction — the snapshot's installers predate the rebuild; on the real tree `tests/installer` is 68 green. The five skips
+  are the standing env skips. The snapshot predates the WP8 guard, the report, the doc edits and the version bump; those ride
+  the doc guards (39 green on the final tree) and CI. **`main`'s run #1763 for `b1cd1739` concluded `success`** at 01:36Z
+  (installer-smoke green). #645's checks on `84faa0ab` at this record: `cui-guard` · `linux` · `windows` green; `test (3.11)` ·
+  `test (3.13)` · `floor` · `browser` in progress — the verdict is read on the FINAL head by the next wake or the 02:27Z check-in.
