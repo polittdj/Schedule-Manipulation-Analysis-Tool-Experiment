@@ -435,6 +435,45 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-07 (d) — A solver called a thousand times per request cannot carry per-solve work that depends on the schedule alone; never key a hot memo on a frozen pydantic model
+
+**What happened.** ADR-0474's draft PR (#649) went red on the browser job's `/sra` caption sweep:
+the page loaded, nothing errored, and the SRA data had not arrived inside the proof's caption wait.
+`compute_cpm` on the leveled goldens had gone 1.3 → 3.7 ms and `GET /api/sra` — one thousand solves
+of the selected schedule — 1.58 → 4.27 s. The previous head had passed the same module once and
+failed it twice: a timing failure right at the edge of the wait, which is the least legible kind.
+
+- **Profile the SRA, not the solve.** A 2.4 ms regression on one solve is invisible in every unit
+  test and on every page but one; the Monte-Carlo multiplies it by a thousand. An engine change is
+  priced by `python -m cProfile` on `compute_cpm` over a leveled golden BEFORE the PR, and by timing
+  `GET /api/sra` on the served golden pair (the browser proof's own fixture) — 1.6 s was the number
+  to keep. The three mechanisms found were all "work that is a function of the schedule alone, done
+  per solve": the execution plans re-derived from every assignment (~300 pattern keys per pass), the
+  network and the stored-date bounds rebuilt per pass, and the day tests behind every wall helper.
+- **A memo keyed on a frozen pydantic model pays a full-model hash AND equality on every hit.**
+  `lru_cache` on `Calendar` looked free ("frozen, hashable, bounded") and cost ~1.1 µs per lookup —
+  8 607 `__hash__` calls across twenty solves. The fix is to find the object by IDENTITY (`id()`,
+  re-checked against a weak reference so a recycled address cannot serve a stale entry) and let a
+  `weakref.finalize` retire the entry with the object — nothing outlives the schedule that owns it,
+  and the lookup is a dict get.
+- **Byte-identity is proven by a dump, not by the test suite.** The test suite pins what someone
+  once thought to pin; a pure-performance change needs every field of every result on every fixture
+  in the repo, before and after: 31 schedule files × three solves (plain, required finish, halved
+  durations) + the DCMA-12 injection surface + a fixed-seed SRA = 7.7 MB, compared byte for byte
+  after each round. Two rounds, two identical dumps — and that dump is what let the second, bolder
+  round (memoizing the network and the date cores) ship the same day.
+- **A ratio gate that compares against a moving baseline proves nothing.** The first draft asserted
+  "the leveled solve costs < 2× the same schedule with its delays stripped"; the fix made the
+  stripped (fast-path) solve faster too, so the ratio stayed above two on the fixed tree and sat at
+  2.05 on the broken one. The gates that shipped are COUNTS in the perf file's own doctrine — the
+  shapes, the network and the rulers are derived once per schedule object — red on the pristine
+  engine and on the ADR-0474 head by name, red on a three-mutation scratch copy, green on the tree.
+  The latency itself is recorded in the ADR and read on CI's browser job, the outcome gate.
+- **The remaining excess is the feature.** After the fix the leveled solve still costs ~35 µs per
+  leveled activity over the integer fast path: that is the wall arithmetic MS Project's stored dates
+  demanded, not overhead. Knowing which part of a cost is fidelity and which is waste is the whole
+  of a performance decision under Law 2.
+
 ### 2026-09-07 (c) — The reference tool's stored dates are a per-activity CPM oracle; a scheduling rule proven on one file is a hypothesis on the next
 
 - **The oracle was in the file.** R-44 sat priced "L" for a session because the parity habit here is

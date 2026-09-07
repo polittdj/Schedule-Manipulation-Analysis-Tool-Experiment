@@ -100,10 +100,10 @@ edge behavior is a defined model pending live MS Project validation (ADR-0010).
 from __future__ import annotations
 
 import datetime as dt
+import weakref
 from collections import deque
 from collections.abc import Mapping
 from dataclasses import dataclass
-from functools import lru_cache
 from typing import NamedTuple
 
 from schedule_forensics.engine.summary_logic import (
@@ -245,6 +245,107 @@ def link_slack(rel: RelationshipType, es_p: int, ef_p: int, es_s: int, ef_s: int
     return ef_s - (es_p + lag)  # SF
 
 
+# --- per-calendar lookup structures, found by object identity ------------------------------
+
+
+class _Ruler:
+    """The lookup structures every calendar-arithmetic helper in this module consumes, built
+    ONCE per ``Calendar`` OBJECT and found by identity (:func:`_ruler`).
+
+    The model stores a calendar's pattern as tuples, so the helpers were scanning tuples or
+    rebuilding sets on every call; the memo that first replaced those scans (an ``lru_cache``
+    keyed on the frozen model) paid a full-model ``__hash__`` + ``__eq__`` on EVERY lookup —
+    measured at ~1.1 µs, on ~400 day tests per solve of a leveled golden — which, with the
+    per-solve rebuild of the execution plans, took ``compute_cpm`` on Project2 from 1.3 ms to
+    3.7 ms and the SRA's thousand solves past the browser proof's caption wait (ADR-0474's
+    latency follow-up, pinned by ``tests/perf/test_perf_regression.py``). Purely a
+    lookup-structure change: the same members give the same answers, and the counting loops
+    keep the model's own tuple (``holiday_seq``) so even a duplicated holiday counts exactly as
+    it always did. The entry dies with its calendar (a weakref finalizer), so nothing outlives
+    the schedule that owns it, and every hit re-checks the ``id`` against a weak reference so a
+    recycled address can never serve a stale ruler."""
+
+    __slots__ = (
+        "_segments",
+        "advances",
+        "counts",
+        "declared_segments",
+        "extra",
+        "holiday_seq",
+        "holidays",
+        "is_24x7",
+        "mpd",
+        "owner",
+        "retreats",
+        "wdpw",
+        "weekdays",
+    )
+
+    def __init__(self, cal: Calendar) -> None:
+        self.owner: weakref.ref[Calendar] = weakref.ref(cal)
+        self.mpd: int = cal.working_minutes_per_day
+        self.weekdays: frozenset[int] = frozenset(cal.work_weekdays)
+        self.wdpw: int = len(self.weekdays)  # the model refuses duplicate weekdays
+        self.holidays: frozenset[dt.date] = frozenset(cal.holidays)
+        self.holiday_seq: tuple[dt.date, ...] = cal.holidays
+        self.extra: frozenset[dt.date] = frozenset(cal.working_days)
+        self.is_24x7: bool = self.mpd >= 1440 and len(cal.work_weekdays) == 7 and not cal.holidays
+        self.declared_segments: tuple[tuple[int, int], ...] = cal.day_segments
+        self._segments: dict[int, tuple[tuple[int, int], ...]] = {}
+        #: Memos of the three day-walking cores — ``[d0, d1)`` working-day counts and the
+        #: k-th working day after / before a day. A solve asks the same questions of the same
+        #: dates over and over (every stored date projects from the project start; the SRA's
+        #: thousand passes revisit the same working days), and each answer is a pure function of
+        #: the calendar. Bounded by :data:`_MEMO_CAP` (cleared, never evicted piecemeal).
+        self.counts: dict[tuple[dt.date, dt.date], int] = {}
+        self.advances: dict[tuple[dt.date, int], dt.date] = {}
+        self.retreats: dict[tuple[dt.date, int], dt.date] = {}
+
+    def is_working_day(self, day: dt.date) -> bool:
+        """:meth:`Calendar.is_working_day`: a working weekday that is not a holiday."""
+        return day.weekday() in self.weekdays and day not in self.holidays
+
+    def is_worked(self, day: dt.date) -> bool:
+        """:meth:`Calendar.is_worked`: honouring the extra ``working_days`` exceptions too."""
+        return day in self.extra or (day.weekday() in self.weekdays and day not in self.holidays)
+
+    def segments(self, day_start_tod: int) -> tuple[tuple[int, int], ...]:
+        """The calendar's intraday working blocks as minutes-from-midnight, memoized per day
+        start. Falls back to one contiguous block anchored at ``day_start_tod`` (the project
+        start's time of day — the engine's existing single-block convention) when the source
+        declared no segments; a 24-hour day is the whole day."""
+        got = self._segments.get(day_start_tod)
+        if got is not None:
+            return got
+        if self.declared_segments:
+            got = self.declared_segments
+        elif self.mpd >= 1440:
+            got = ((0, 1440),)
+        else:
+            start = day_start_tod if day_start_tod + self.mpd <= 1440 else 0
+            got = ((start, start + self.mpd),)
+        self._segments[day_start_tod] = got
+        return got
+
+
+_RULERS: dict[int, _Ruler] = {}
+#: Entries a ruler's date memo may hold before it is cleared (a cap, not an eviction policy —
+#: a full memo on a 2 000-task, 100-holiday schedule is a few thousand entries).
+_MEMO_CAP = 65_536
+
+
+def _ruler(cal: Calendar) -> _Ruler:
+    """The :class:`_Ruler` of ``cal`` — by object identity, built on first sight."""
+    key = id(cal)
+    hit = _RULERS.get(key)
+    if hit is not None and hit.owner() is cal:
+        return hit
+    made = _Ruler(cal)
+    _RULERS[key] = made
+    weakref.finalize(cal, _RULERS.pop, key, None)
+    return made
+
+
 def _count_working_days(calendar: Calendar, d0: dt.date, d1: dt.date) -> int:
     """Number of working days in the half-open range ``[d0, d1)`` (requires ``d0 <= d1``).
 
@@ -252,17 +353,30 @@ def _count_working_days(calendar: Calendar, d0: dt.date, d1: dt.date) -> int:
     that fall on a working weekday inside the range — O(weeks-of-remainder + holidays),
     not O(days). Equivalent to the day-by-day count (see ``test_cpm_date_equivalence``).
     """
+    return _count_working_days_r(_ruler(calendar), d0, d1)
+
+
+def _count_working_days_r(r: _Ruler, d0: dt.date, d1: dt.date) -> int:
     total = (d1 - d0).days
     if total <= 0:
         return 0
-    workdays = set(calendar.work_weekdays)
+    memo = r.counts
+    key = (d0, d1)
+    hit = memo.get(key)
+    if hit is not None:
+        return hit
+    workdays = r.weekdays
     full_weeks, remainder = divmod(total, 7)
-    count = full_weeks * len(workdays)
+    count = full_weeks * r.wdpw
     w0 = d0.weekday()
     # the remainder days are d0+full_weeks*7+i for i in [0,remainder); weekday == (w0+i)%7
     count += sum(1 for i in range(remainder) if (w0 + i) % 7 in workdays)
     # a holiday only ever removed a day that was otherwise a working weekday
-    count -= sum(1 for h in calendar.holidays if d0 <= h < d1 and h.weekday() in workdays)
+    if r.holiday_seq:
+        count -= sum(1 for h in r.holiday_seq if d0 <= h < d1 and h.weekday() in workdays)
+    if len(memo) >= _MEMO_CAP:
+        memo.clear()
+    memo[key] = count
     return count
 
 
@@ -274,16 +388,15 @@ def datetime_to_offset(start: dt.datetime, target: dt.datetime, calendar: Calend
     ``[0, working_minutes_per_day]``. A target on a non-working day contributes no
     intraday minutes (ADR-0010, H-CONSTRAINT-DATETIME).
     """
-    per_day = calendar.working_minutes_per_day
+    r = _ruler(calendar)
+    per_day = r.mpd
     start_tod = start.hour * 60 + start.minute
     target_tod = target.hour * 60 + target.minute
-    on_working_day = (
-        target.date().weekday() in calendar.work_weekdays and target.date() not in calendar.holidays
-    )
-    intraday = min(max(target_tod - start_tod, 0), per_day) if on_working_day else 0
-    if target.date() >= start.date():
-        return _count_working_days(calendar, start.date(), target.date()) * per_day + intraday
-    return -_count_working_days(calendar, target.date(), start.date()) * per_day + intraday
+    target_day = target.date()
+    intraday = min(max(target_tod - start_tod, 0), per_day) if r.is_working_day(target_day) else 0
+    if target_day >= start.date():
+        return _count_working_days_r(r, start.date(), target_day) * per_day + intraday
+    return -_count_working_days_r(r, target_day, start.date()) * per_day + intraday
 
 
 def _elapsed_finish_offset(
@@ -313,8 +426,9 @@ def _elapsed_start_offset(
 
 
 def _next_working_day(day: dt.datetime, calendar: Calendar) -> dt.datetime:
+    r = _ruler(calendar)
     nxt = day + dt.timedelta(days=1)
-    while nxt.date().weekday() not in calendar.work_weekdays or nxt.date() in calendar.holidays:
+    while not r.is_working_day(nxt.date()):
         nxt += dt.timedelta(days=1)
     return nxt
 
@@ -327,11 +441,20 @@ def _advance_working_days(start_day: dt.date, k: int, calendar: Calendar) -> dt.
     may add more, so it iterates — but only over holidays, never day-by-day). Equivalent to
     applying ``_next_working_day`` ``k`` times (see ``test_cpm_date_equivalence``).
     """
+    return _advance_working_days_r(start_day, k, _ruler(calendar))
+
+
+def _advance_working_days_r(start_day: dt.date, k: int, r: _Ruler) -> dt.date:
     if k <= 0:
         return start_day
-    workdays = set(calendar.work_weekdays)
-    wdpw = len(workdays)
-    holidays = calendar.holidays
+    memo = r.advances
+    key = (start_day, k)
+    hit = memo.get(key)
+    if hit is not None:
+        return hit
+    workdays = r.weekdays
+    wdpw = r.wdpw
+    holidays = r.holiday_seq
     cur = start_day
     needed = k
     while needed > 0:
@@ -343,8 +466,15 @@ def _advance_working_days(start_day: dt.date, k: int, calendar: Calendar) -> dt.
             if nxt.weekday() in workdays:
                 steps -= 1
         # working-weekday holidays in (cur, nxt] did not actually advance us — make them up
-        needed = sum(1 for h in holidays if cur < h <= nxt and h.weekday() in workdays)
+        needed = (
+            sum(1 for h in holidays if cur < h <= nxt and h.weekday() in workdays)
+            if holidays
+            else 0
+        )
         cur = nxt
+    if len(memo) >= _MEMO_CAP:
+        memo.clear()
+    memo[key] = cur
     return cur
 
 
@@ -358,9 +488,10 @@ def offset_to_datetime(start: dt.datetime, minutes: int, calendar: Calendar) -> 
     """
     if minutes < 0:
         raise ValueError("offset_to_datetime: minutes must be >= 0")
-    per_day = calendar.working_minutes_per_day
+    r = _ruler(calendar)
+    per_day = r.mpd
     day = start
-    while day.date().weekday() not in calendar.work_weekdays or day.date() in calendar.holidays:
+    while not r.is_working_day(day.date()):
         day = _next_working_day(day, calendar)
     # Whole working days consumed, then the intraday remainder. An exact multiple of per_day
     # lands at the END of the last full day (the strict ``remaining > per_day`` boundary), so
@@ -372,7 +503,7 @@ def offset_to_datetime(start: dt.datetime, minutes: int, calendar: Calendar) -> 
         advance, intraday = quotient - 1, per_day
     else:
         advance, intraday = quotient, remainder
-    target_date = _advance_working_days(day.date(), advance, calendar)
+    target_date = _advance_working_days_r(day.date(), advance, r)
     day += dt.timedelta(days=(target_date - day.date()).days)  # preserve time-of-day exactly
     return day + dt.timedelta(minutes=intraday)
 
@@ -395,14 +526,15 @@ def offset_to_start_datetime(start: dt.datetime, minutes: int, calendar: Calenda
     """
     if minutes < 0:
         raise ValueError("offset_to_start_datetime: minutes must be >= 0")
-    per_day = calendar.working_minutes_per_day
+    r = _ruler(calendar)
+    per_day = r.mpd
     quotient, remainder = divmod(minutes, per_day)
     if remainder:
         return offset_to_datetime(start, minutes, calendar)
     day = start
-    while day.date().weekday() not in calendar.work_weekdays or day.date() in calendar.holidays:
+    while not r.is_working_day(day.date()):
         day = _next_working_day(day, calendar)
-    target_date = _advance_working_days(day.date(), quotient, calendar)
+    target_date = _advance_working_days_r(day.date(), quotient, r)
     return day + dt.timedelta(days=(target_date - day.date()).days)
 
 
@@ -464,6 +596,114 @@ class _Exec(NamedTuple):
     axis: Calendar
 
 
+class _LegShape(NamedTuple):
+    """One execution leg before the solve's durations are known: its calendar, the share of the
+    task's EFFECTIVE duration it spans (1.0 = the whole task), and whether that calendar differs
+    materially from the project calendar."""
+
+    calendar: Calendar
+    ratio: float
+    off_pattern: bool
+
+
+class _PlanShape(NamedTuple):
+    """Everything about a task's execution plan that depends on the SCHEDULE alone — never on
+    the durations of one solve (the SRA hands ``compute_cpm`` a fresh override map per
+    iteration; the legs' spans scale with it, nothing else does)."""
+
+    elapsed: bool
+    legs: tuple[_LegShape, ...]
+    task_calendar: Calendar | None
+    leveled: bool
+
+
+class _ShapeContext(NamedTuple):
+    schedule: Schedule
+    project_key: tuple[object, ...]
+    by_uid: dict[int, Calendar]
+    same_pattern: dict[int, bool]  # id(calendar) → its pattern equals the project calendar's
+
+
+def _same_pattern(cal: Calendar, ctx: _ShapeContext) -> bool:
+    key = id(cal)
+    got = ctx.same_pattern.get(key)
+    if got is None:
+        got = ctx.same_pattern[key] = cal.working_pattern_key() == ctx.project_key
+    return got
+
+
+def _task_shape(t: Task, ctx: _ShapeContext) -> _PlanShape | None:
+    """The :class:`_PlanShape` of ``t``, or ``None`` when no duration can ever take it off the
+    project calendar's integer fast path."""
+    if t.duration_is_elapsed and t.duration_minutes > 0:
+        return _PlanShape(True, (), None, False)
+    task_cal = ctx.by_uid.get(t.calendar_uid) if t.calendar_uid is not None else None
+    if task_cal is not None and _same_pattern(task_cal, ctx):
+        task_cal = None
+    legs: list[_LegShape] = []
+    if t.resource_assignments and not t.ignore_resource_calendar and t.duration_minutes > 0:
+        res_by_id = ctx.schedule.resources_by_id
+        for a in t.resource_assignments:
+            res = res_by_id.get(a.resource_id)
+            if (
+                res is None
+                or res.type is not ResourceType.WORK
+                or a.work_minutes <= 0
+                or a.units <= 0
+            ):
+                continue
+            rcal = ctx.by_uid.get(res.calendar_uid) if res.calendar_uid is not None else None
+            if rcal is None or _same_pattern(rcal, ctx):
+                rcal = ctx.schedule.calendar
+            leg_cal = rcal if task_cal is None or _is_24x7(task_cal) else task_cal
+            # a FIXED_UNITS assignment runs work / units of its calendar (it may end before
+            # the task: Hard_File UID 200); a fixed-duration / fixed-work assignment spans
+            # the whole task, its work contoured over it (Large Test File2: 78 of 117
+            # fixed-work assignments with work / units below the duration span it exactly,
+            # none span work / units)
+            ratio = (
+                min(1.0, (a.work_minutes / a.units) / t.duration_minutes)
+                if t.task_type is TaskType.FIXED_UNITS
+                else 1.0
+            )
+            legs.append(_LegShape(leg_cal, ratio, not _same_pattern(leg_cal, ctx)))
+    # legs that all sit on the project pattern under no task calendar can never form a plan,
+    # whatever the durations: they are not carried
+    if legs and task_cal is None and not any(leg.off_pattern for leg in legs):
+        legs = []
+    leveled = t.leveling_delay_minutes > 0
+    if not legs and task_cal is None and not leveled:
+        return None
+    return _PlanShape(False, tuple(legs), task_cal, leveled)
+
+
+_SHAPES: dict[int, tuple[weakref.ref[Schedule], dict[int, _PlanShape | None]]] = {}
+
+
+def _plan_shapes(schedule: Schedule) -> dict[int, _PlanShape | None]:
+    """UniqueID → :class:`_PlanShape` (``None`` = never off the fast path) for every task of
+    ``schedule``, derived once per schedule OBJECT and found by identity — the same weakref
+    discipline as :func:`_ruler`. Re-deriving the shapes per solve read every assignment and
+    its resource's calendar pattern ~300 times per pass on Project2, the SRA's thousand passes
+    included (ADR-0474's latency follow-up)."""
+    key = id(schedule)
+    hit = _SHAPES.get(key)
+    if hit is not None and hit[0]() is schedule:
+        return hit[1]
+    ctx = _ShapeContext(
+        schedule,
+        schedule.calendar.working_pattern_key(),
+        {c.uid: c for c in schedule.calendars},
+        {},
+    )
+    shapes: dict[int, _PlanShape | None] = {
+        t.unique_id: _task_shape(t, ctx) for t in schedule.tasks
+    }
+    _SHAPES[key] = (weakref.ref(schedule), shapes)
+    weakref.finalize(schedule, _SHAPES.pop, key, None)
+    return shapes
+
+
 def _execution_plans(
     schedule: Schedule, tasks: list[Task], duration: Mapping[int, int]
 ) -> dict[int, _Exec]:
@@ -483,57 +723,46 @@ def _execution_plans(
       delay's elapsed arithmetic runs segment-aware on the wall path.
 
     Legs that all sit on the project pattern (and no task calendar, no delay) stay on the
-    fast path: the stored duration is then the span, exactly as before.
+    fast path: the stored duration is then the span, exactly as before. The duration-free
+    part of every plan is the task's :class:`_PlanShape`, derived once per schedule object.
     """
-    project_key = schedule.calendar.working_pattern_key()
-    by_uid = {c.uid: c for c in schedule.calendars}
-    res_by_id = schedule.resources_by_id
+    shapes = _plan_shapes(schedule)
     ps = schedule.project_start
     tod0 = ps.hour * 60 + ps.minute
     out: dict[int, _Exec] = {}
     for t in tasks:
-        dur = duration[t.unique_id]
-        if t.duration_is_elapsed and t.duration_minutes > 0:
-            out[t.unique_id] = _Exec(((_ELAPSED_CALENDAR, dur),), _ELAPSED_CALENDAR)
+        uid = t.unique_id
+        shape = shapes.get(uid, _FOREIGN)
+        if shape is _FOREIGN:  # a task the schedule does not carry: derive it on the spot
+            shape = _task_shape(
+                t,
+                _ShapeContext(
+                    schedule,
+                    schedule.calendar.working_pattern_key(),
+                    {c.uid: c for c in schedule.calendars},
+                    {},
+                ),
+            )
+        if shape is None:
             continue
-        task_cal = by_uid.get(t.calendar_uid) if t.calendar_uid is not None else None
-        if task_cal is not None and task_cal.working_pattern_key() == project_key:
-            task_cal = None
+        dur = duration[uid]
+        if shape.elapsed:
+            out[uid] = _Exec(((_ELAPSED_CALENDAR, dur),), _ELAPSED_CALENDAR)
+            continue
         legs: list[_Leg] = []
-        if t.resource_assignments and not t.ignore_resource_calendar and t.duration_minutes > 0:
-            for a in t.resource_assignments:
-                res = res_by_id.get(a.resource_id)
-                if (
-                    res is None
-                    or res.type is not ResourceType.WORK
-                    or a.work_minutes <= 0
-                    or a.units <= 0
-                ):
-                    continue
-                rcal = by_uid.get(res.calendar_uid) if res.calendar_uid is not None else None
-                if rcal is None or rcal.working_pattern_key() == project_key:
-                    rcal = schedule.calendar
-                leg_cal = rcal if task_cal is None or _is_24x7(task_cal) else task_cal
-                # a FIXED_UNITS assignment runs work / units of its calendar (it may end before
-                # the task: Hard_File UID 200); a fixed-duration / fixed-work assignment spans
-                # the whole task, its work contoured over it (Large Test File2: 78 of 117
-                # fixed-work assignments with work / units below the duration span it exactly,
-                # none span work / units)
-                ratio = (
-                    min(1.0, (a.work_minutes / a.units) / t.duration_minutes)
-                    if t.task_type is TaskType.FIXED_UNITS
-                    else 1.0
-                )
-                span = round(ratio * dur)
-                if span > 0:
-                    legs.append((leg_cal, span))
-        off_pattern = any(c.working_pattern_key() != project_key for c, _ in legs)
+        off_pattern = False
+        for leg_cal, ratio, off in shape.legs:
+            span = round(ratio * dur)
+            if span > 0:
+                legs.append((leg_cal, span))
+                off_pattern = off_pattern or off
+        task_cal = shape.task_calendar
         plan: _Plan
         if legs and (off_pattern or task_cal is not None):
             plan = tuple(dict.fromkeys(legs))
         elif task_cal is not None:
             plan = ((task_cal, dur),)
-        elif t.leveling_delay_minutes > 0:
+        elif shape.leveled:
             plan = ((schedule.calendar, dur),)
         else:
             continue
@@ -549,8 +778,12 @@ def _execution_plans(
                     reverse=True,
                 )
             )
-        out[t.unique_id] = _Exec(plan, task_cal if task_cal is not None else schedule.calendar)
+        out[uid] = _Exec(plan, task_cal if task_cal is not None else schedule.calendar)
     return out
+
+
+#: Sentinel for a task absent from the schedule's shape map (never a real shape).
+_FOREIGN = _PlanShape(False, (), None, False)
 
 
 def execution_calendar_of(schedule: Schedule, task: Task) -> Calendar | None:
@@ -582,12 +815,17 @@ def injected_finish_wall(
 def _plan_snap(wall: dt.datetime, plan: _Plan, day_start_tod: int) -> dt.datetime:
     """The earliest instant at or after ``wall`` on which ANY leg of the plan can work — the
     task's start (MS Project: the earliest assignment start)."""
+    if len(plan) == 1:  # the one-leg plan (a task calendar, an elapsed duration, a delay)
+        return _snap_to_working(wall, plan[0][0], day_start_tod)
     return min(_snap_to_working(wall, c, day_start_tod) for c, _ in plan)
 
 
 def _plan_finish(start: dt.datetime, plan: _Plan, day_start_tod: int) -> dt.datetime:
     """The task's finish from ``start``: every leg starts at its own calendar's first working
     instant at or after ``start``, consumes its span there; the latest leg finish wins."""
+    if len(plan) == 1:
+        c, span = plan[0]
+        return _advance_wall(_snap_to_working(start, c, day_start_tod), span, c, day_start_tod)
     return max(
         _advance_wall(_snap_to_working(start, c, day_start_tod), span, c, day_start_tod)
         for c, span in plan
@@ -596,6 +834,9 @@ def _plan_finish(start: dt.datetime, plan: _Plan, day_start_tod: int) -> dt.date
 
 def _plan_retreat(finish: dt.datetime, plan: _Plan, day_start_tod: int) -> dt.datetime:
     """The latest start from which every leg still finishes by ``finish``."""
+    if len(plan) == 1:
+        c, span = plan[0]
+        return _retreat_wall(finish, span, c, day_start_tod)
     return min(_retreat_wall(finish, span, c, day_start_tod) for c, span in plan)
 
 
@@ -608,17 +849,9 @@ def _plan_scaled(plan: _Plan, minutes: int, duration: int) -> _Plan:
 
 
 def _day_segments_of(cal: Calendar, day_start_tod: int) -> tuple[tuple[int, int], ...]:
-    """The calendar's intraday working blocks as minutes-from-midnight. Falls back to one
-    contiguous block anchored at ``day_start_tod`` (the project start's time of day — the
-    engine's existing single-block convention) when the source declared no segments; a
-    24-hour day is the whole day."""
-    if cal.day_segments:
-        return cal.day_segments
-    mpd = cal.working_minutes_per_day
-    if mpd >= 1440:
-        return ((0, 1440),)
-    start = day_start_tod if day_start_tod + mpd <= 1440 else 0
-    return ((start, start + mpd),)
+    """The calendar's intraday working blocks as minutes-from-midnight (see
+    :meth:`_Ruler.segments`)."""
+    return _ruler(cal).segments(day_start_tod)
 
 
 def _worked_before(segments: tuple[tuple[int, int], ...], tod: int) -> int:
@@ -643,37 +876,30 @@ def _tod_at_worked(segments: tuple[tuple[int, int], ...], k: int) -> int:
     return segments[-1][1]
 
 
-@lru_cache(maxsize=64)
-def _worked_day_sets(
-    cal: Calendar,
-) -> tuple[frozenset[dt.date], frozenset[dt.date], frozenset[int]]:
-    """``(holidays, extra_working_days, work_weekdays)`` as FROZENSETS, memoized per calendar.
-
-    The model stores these as tuples, so the day-stepping wall helpers below were doing an
-    O(len(holidays)) scan per day stepped — measured as the dominant cost of the ADR-0322
-    off-calendar paths inside the SRA Monte-Carlo (139 off-calendar tasks x ~2000 solves x
-    day-walks over 100+ holidays; CI's coverage tracing multiplied it into hours). Purely a
-    lookup-structure change: same members, same answers, O(1) membership. Safe to cache —
-    ``Calendar`` is a frozen (hashable) model and the cache is small and bounded."""
-    return frozenset(cal.holidays), frozenset(cal.working_days), frozenset(cal.work_weekdays)
-
-
 def _is_worked_day(cal: Calendar, day: dt.date) -> bool:
     """Task-calendar working-day test, honoring extra ``working_days`` exceptions
     (set-based twin of :meth:`Calendar.is_worked` — identical answers, O(1) membership)."""
-    holidays, extra_working, weekdays = _worked_day_sets(cal)
-    return day in extra_working or (day.weekday() in weekdays and day not in holidays)
+    return _ruler(cal).is_worked(day)
 
 
 def _retreat_working_days(start_day: dt.date, k: int, calendar: Calendar) -> dt.date:
     """The working day ``k`` working-days BEFORE ``start_day`` — the backward mirror of
     :func:`_advance_working_days` (same full-weeks jump + short remainder + holiday
     make-up over the traversed span, which is ``[nxt, cur)`` going backward)."""
+    return _retreat_working_days_r(start_day, k, _ruler(calendar))
+
+
+def _retreat_working_days_r(start_day: dt.date, k: int, r: _Ruler) -> dt.date:
     if k <= 0:
         return start_day
-    workdays = set(calendar.work_weekdays)
-    wdpw = len(workdays)
-    holidays = calendar.holidays
+    memo = r.retreats
+    key = (start_day, k)
+    hit = memo.get(key)
+    if hit is not None:
+        return hit
+    workdays = r.weekdays
+    wdpw = r.wdpw
+    holidays = r.holiday_seq
     cur = start_day
     needed = k
     while needed > 0:
@@ -684,8 +910,15 @@ def _retreat_working_days(start_day: dt.date, k: int, calendar: Calendar) -> dt.
             nxt -= dt.timedelta(days=1)
             if nxt.weekday() in workdays:
                 steps -= 1
-        needed = sum(1 for h in holidays if nxt <= h < cur and h.weekday() in workdays)
+        needed = (
+            sum(1 for h in holidays if nxt <= h < cur and h.weekday() in workdays)
+            if holidays
+            else 0
+        )
         cur = nxt
+    if len(memo) >= _MEMO_CAP:
+        memo.clear()
+    memo[key] = cur
     return cur
 
 
@@ -701,19 +934,22 @@ def _shift_worked_days(cal: Calendar, day: dt.date, n: int) -> dt.date:
     half-open traversed span, so a non-working start day is handled exactly. A calendar
     WITH extra working days keeps the exhaustive per-day step (extras break the weekly
     period; they are rare and few)."""
-    holidays, extra_working, weekdays = _worked_day_sets(cal)
-    if not extra_working:
+    return _shift_worked_days_r(_ruler(cal), day, n)
+
+
+def _shift_worked_days_r(r: _Ruler, day: dt.date, n: int) -> dt.date:
+    if not r.extra:
         if n == 0:
             return day
         if n > 0:
-            return _advance_working_days(day, n, cal)
-        return _retreat_working_days(day, -n, cal)
+            return _advance_working_days_r(day, n, r)
+        return _retreat_working_days_r(day, -n, r)
     step = 1 if n >= 0 else -1
     remaining = abs(n)
     cur = day
     while remaining > 0:
         cur += dt.timedelta(days=step)
-        if cur in extra_working or (cur.weekday() in weekdays and cur not in holidays):
+        if r.is_worked(cur):
             remaining -= 1
     return cur
 
@@ -733,23 +969,24 @@ def _offset_to_wall(start: dt.datetime, offset: int, cal: Calendar, *, role: str
     multiple lands at the NEXT working day's first block start (so "end of 8/31" and
     "start of 10/1" — one grid point across a void — resolve by role)."""
     day_start_tod = start.hour * 60 + start.minute
-    segments = _day_segments_of(cal, day_start_tod)
-    mpd = cal.working_minutes_per_day
+    r = _ruler(cal)
+    segments = r.segments(day_start_tod)
+    mpd = r.mpd
     base = start.date()
-    if not cal.is_working_day(base):  # anchored starts are working days; defensive
-        base = _shift_worked_days(cal, base, 1)
+    if not r.is_working_day(base):  # anchored starts are working days; defensive
+        base = _shift_worked_days_r(r, base, 1)
     quotient, remainder = divmod(offset, mpd)  # floor division: negative offsets go backward
     if role == "finish" and offset != 0 and remainder == 0:
         # an exact multiple ENDS at the previous working day's last block (offset 0 stays
         # the project-start instant); same rule on the negative side — "-1 day, finish
         # role" is the end of the working day before that, not its start
         quotient, remainder = quotient - 1, mpd
-    day = _advance_working_days(base, quotient, cal) if quotient >= 0 else base
+    day = _advance_working_days_r(base, quotient, r) if quotient >= 0 else base
     if quotient < 0:
         cur, back = base, -quotient
         while back > 0:
             cur -= dt.timedelta(days=1)
-            if cal.is_working_day(cur):
+            if r.is_working_day(cur):
                 back -= 1
         day = cur
     tod = _tod_at_worked(segments, remainder)
@@ -775,7 +1012,7 @@ def _wall_to_offset(start: dt.datetime, wall: dt.datetime, cal: Calendar) -> int
 
 
 def _is_24x7(cal: Calendar) -> bool:
-    return cal.working_minutes_per_day >= 1440 and len(cal.work_weekdays) == 7 and not cal.holidays
+    return _ruler(cal).is_24x7
 
 
 def _advance_wall(
@@ -784,13 +1021,14 @@ def _advance_wall(
     """Consume ``minutes >= 0`` of working time on ``cal`` forward from ``wall``."""
     if minutes <= 0:
         return wall
-    if _is_24x7(cal):
+    r = _ruler(cal)
+    if r.is_24x7:
         return wall + dt.timedelta(minutes=minutes)
-    segments = _day_segments_of(cal, day_start_tod)
-    mpd = cal.working_minutes_per_day
+    segments = r.segments(day_start_tod)
+    mpd = r.mpd
     day, tod = wall.date(), wall.hour * 60 + wall.minute
     remaining = minutes
-    if _is_worked_day(cal, day):
+    if r.is_worked(day):
         available_today = mpd - _worked_before(segments, tod)
         if remaining <= available_today:
             new_tod = _tod_at_worked(segments, _worked_before(segments, tod) + remaining)
@@ -799,7 +1037,7 @@ def _advance_wall(
     quotient, part = divmod(remaining, mpd)
     if part == 0:
         quotient, part = quotient - 1, mpd
-    day = _shift_worked_days(cal, day, quotient + 1)
+    day = _shift_worked_days_r(r, day, quotient + 1)
     tod = _tod_at_worked(segments, part)
     return _at_minute(day, tod)
 
@@ -810,13 +1048,14 @@ def _retreat_wall(
     """Consume ``minutes >= 0`` of working time on ``cal`` backward from ``wall``."""
     if minutes <= 0:
         return wall
-    if _is_24x7(cal):
+    r = _ruler(cal)
+    if r.is_24x7:
         return wall - dt.timedelta(minutes=minutes)
-    segments = _day_segments_of(cal, day_start_tod)
-    mpd = cal.working_minutes_per_day
+    segments = r.segments(day_start_tod)
+    mpd = r.mpd
     day, tod = wall.date(), wall.hour * 60 + wall.minute
     remaining = minutes
-    if _is_worked_day(cal, day):
+    if r.is_worked(day):
         available_today = _worked_before(segments, tod)
         if remaining <= available_today:
             new_tod = _tod_at_worked(segments, available_today - remaining)
@@ -825,7 +1064,7 @@ def _retreat_wall(
     quotient, part = divmod(remaining, mpd)
     if part == 0:
         quotient, part = quotient - 1, mpd
-    day = _shift_worked_days(cal, day, -(quotient + 1))
+    day = _shift_worked_days_r(r, day, -(quotient + 1))
     tod = _tod_at_worked(segments, mpd - part)
     return _at_minute(day, tod)
 
@@ -836,31 +1075,29 @@ def _wall_minutes_between(a: dt.datetime, b: dt.datetime, cal: Calendar, day_sta
     measures a task's slack in its own calendar's working time."""
     if b < a:
         return -_wall_minutes_between(b, a, cal, day_start_tod)
-    if _is_24x7(cal):
+    r = _ruler(cal)
+    if r.is_24x7:
         return int((b - a).total_seconds() // 60)
-    segments = _day_segments_of(cal, day_start_tod)
-    mpd = cal.working_minutes_per_day
-    a_intraday = (
-        _worked_before(segments, a.hour * 60 + a.minute) if _is_worked_day(cal, a.date()) else 0
-    )
-    b_intraday = (
-        _worked_before(segments, b.hour * 60 + b.minute) if _is_worked_day(cal, b.date()) else 0
-    )
-    if a.date() == b.date():
+    segments = r.segments(day_start_tod)
+    mpd = r.mpd
+    a_day, b_day = a.date(), b.date()
+    a_worked = r.is_worked(a_day)
+    a_intraday = _worked_before(segments, a.hour * 60 + a.minute) if a_worked else 0
+    b_intraday = _worked_before(segments, b.hour * 60 + b.minute) if r.is_worked(b_day) else 0
+    if a_day == b_day:
         return b_intraday - a_intraday
     # Full worked days STRICTLY between the two dates: the proven full-weeks arithmetic
     # (O(weeks + holidays), never a per-day walk — these spans can be months of slack)
     # plus the calendar's extra working days a weekday-minus-holiday count misses.
-    lo, hi = a.date() + dt.timedelta(days=1), b.date()
-    full_days_between = _count_working_days(cal, lo, hi) if lo < hi else 0
-    holidays, extra_working, weekdays = _worked_day_sets(cal)
-    if extra_working:
+    lo, hi = a_day + dt.timedelta(days=1), b_day
+    full_days_between = _count_working_days_r(r, lo, hi) if lo < hi else 0
+    if r.extra:
         full_days_between += sum(
             1
-            for d in extra_working
-            if lo <= d < hi and (d.weekday() not in weekdays or d in holidays)
+            for d in r.extra
+            if lo <= d < hi and (d.weekday() not in r.weekdays or d in r.holidays)
         )
-    tail = mpd - a_intraday if _is_worked_day(cal, a.date()) else 0
+    tail = mpd - a_intraday if a_worked else 0
     return tail + full_days_between * mpd + b_intraday
 
 
@@ -877,12 +1114,13 @@ def _advance_wall_signed(
 def _snap_to_working(wall: dt.datetime, cal: Calendar, day_start_tod: int) -> dt.datetime:
     """The earliest working instant on ``cal`` at or after ``wall`` (a task cannot start
     inside its own calendar's non-working time)."""
-    if _is_24x7(cal):
+    r = _ruler(cal)
+    if r.is_24x7:
         return wall
-    segments = _day_segments_of(cal, day_start_tod)
+    segments = r.segments(day_start_tod)
     day, tod = wall.date(), wall.hour * 60 + wall.minute
     while True:
-        if _is_worked_day(cal, day):
+        if r.is_worked(day):
             for seg_start, seg_end in segments:
                 if tod < seg_end:
                     new_tod = max(tod, seg_start)
@@ -896,12 +1134,13 @@ def _snap_back_to_working(wall: dt.datetime, cal: Calendar, day_start_tod: int) 
     FINISH-role instant: the start of a working block (Monday 08:00) is the same grid point as
     the previous block's end (Friday 17:00), and MS Project writes a late finish as the latter
     (ADR-0474: a fast-path successor's late-start need arrives as a start-role instant)."""
-    if _is_24x7(cal):
+    r = _ruler(cal)
+    if r.is_24x7:
         return wall
-    segments = _day_segments_of(cal, day_start_tod)
+    segments = r.segments(day_start_tod)
     day, tod = wall.date(), wall.hour * 60 + wall.minute
     while True:
-        if _is_worked_day(cal, day):
+        if r.is_worked(day):
             for seg_start, seg_end in reversed(segments):
                 if tod > seg_start:
                     return _at_minute(day, min(tod, seg_end))
@@ -1151,6 +1390,77 @@ def _resume_bounds(
     return floor
 
 
+class _Network(NamedTuple):
+    """The duration-free part of a solve: the scheduled activities, their lowered logic in
+    topological order, and the stored-date bounds — every one a function of the schedule alone,
+    so derived once per schedule OBJECT (the weakref discipline of :func:`_ruler`) and shared
+    read-only by every solve of it. The SRA hands ``compute_cpm`` a fresh duration map a
+    thousand times per request; before this, each pass re-lowered the summary logic, re-sorted
+    the network and re-projected every stored date (ADR-0474's latency follow-up)."""
+
+    tasks: list[Task]
+    task_ids: list[int]
+    order: list[int]
+    preds: dict[int, list[_Link]]
+    succs: dict[int, list[_Link]]
+    task_by_id: dict[int, Task]
+    stored_pin: dict[int, int]
+    stored_floor: dict[int, int]
+    actual_floor: dict[int, int]
+
+
+_NETWORKS: dict[int, tuple[weakref.ref[Schedule], _Network]] = {}
+
+
+def _network(schedule: Schedule) -> _Network:
+    """The :class:`_Network` of ``schedule`` — by object identity, built on first sight. A
+    schedule the engine refuses (a cycle, a summary-logic explosion) raises here every time
+    and is never memoized."""
+    key = id(schedule)
+    hit = _NETWORKS.get(key)
+    if hit is not None and hit[0]() is schedule:
+        return hit[1]
+    tasks = _scheduled_tasks(schedule)
+    task_ids = [t.unique_id for t in tasks]
+    id_set = set(task_ids)
+    # Logic attached to a SUMMARY task is honored the way MS Project does it: lowered onto
+    # the summary's leaf descendants (ADR-0043). A no-op for schedules without summary
+    # logic, so the leaf-only network — and parity — is unchanged. A pathologically dense
+    # summary-to-summary cross-product fails loud (audit-E) as a CPMError so the web layer
+    # degrades to a disclosed 422 instead of hanging/OOM-ing.
+    try:
+        relationships = lower_summary_relationships(schedule)
+    except SummaryLogicExplosion as exc:
+        raise CPMError(str(exc)) from exc
+    edges = [
+        (r.predecessor_id, r.successor_id, r.type, r.lag_minutes)
+        for r in relationships
+        if r.predecessor_id in id_set and r.successor_id in id_set
+    ]
+    order = _topo_order(task_ids, [(pred, succ) for pred, succ, _rel, _lag in edges])
+    preds: dict[int, list[_Link]] = {tid: [] for tid in task_ids}
+    succs: dict[int, list[_Link]] = {tid: [] for tid in task_ids}
+    for pred, succ, rel, lag in edges:
+        preds[succ].append((pred, rel, lag))
+        succs[pred].append((succ, rel, lag))
+    has_preds = frozenset(tid for tid in task_ids if preds[tid])
+    stored_pin, stored_floor = _stored_date_bounds(schedule, tasks, has_preds)
+    made = _Network(
+        tasks,
+        task_ids,
+        order,
+        preds,
+        succs,
+        {t.unique_id: t for t in tasks},
+        stored_pin,
+        stored_floor,
+        _actual_start_bounds(schedule, tasks),
+    )
+    _NETWORKS[key] = (weakref.ref(schedule), made)
+    weakref.finalize(schedule, _NETWORKS.pop, key, None)
+    return made
+
+
 def compute_cpm(
     schedule: Schedule,
     *,
@@ -1183,35 +1493,15 @@ def compute_cpm(
     duration: dict[int, int] = {t.unique_id: _effective_duration(t) for t in tasks}
     es_floor, es_pin, lf_cap = _constraint_bounds(schedule, tasks, duration)
 
-    task_ids = [t.unique_id for t in tasks]
-    id_set = set(task_ids)
-    # Logic attached to a SUMMARY task is honored the way MS Project does it: lowered onto
-    # the summary's leaf descendants (ADR-0043). A no-op for schedules without summary
-    # logic, so the leaf-only network — and parity — is unchanged. A pathologically dense
-    # summary-to-summary cross-product fails loud (audit-E) as a CPMError so the web layer
-    # degrades to a disclosed 422 instead of hanging/OOM-ing.
-    try:
-        relationships = lower_summary_relationships(schedule)
-    except SummaryLogicExplosion as exc:
-        raise CPMError(str(exc)) from exc
-    edges = [
-        (r.predecessor_id, r.successor_id, r.type, r.lag_minutes)
-        for r in relationships
-        if r.predecessor_id in id_set and r.successor_id in id_set
-    ]
-    order = _topo_order(task_ids, [(pred, succ) for pred, succ, _rel, _lag in edges])
-
-    preds: dict[int, list[_Link]] = {tid: [] for tid in task_ids}
-    succs: dict[int, list[_Link]] = {tid: [] for tid in task_ids}
-    for pred, succ, rel, lag in edges:
-        preds[succ].append((pred, rel, lag))
-        succs[pred].append((succ, rel, lag))
+    # the network and the stored-date bounds depend on the schedule alone — derived once per
+    # schedule object, read-only here (the SRA solves one object a thousand times)
+    net = _network(schedule)
+    task_ids, order, preds, succs = net.task_ids, net.order, net.preds, net.succs
 
     # ---- forward pass (ES >= 0 == project start; raised by SNET/FNET; pinned by MSO/MFO;
     # stored starts honored for unstarted manual / logic-unbound tasks — ADR-0034) ----
-    has_preds = frozenset(tid for tid in task_ids if preds[tid])
-    stored_pin, stored_floor = _stored_date_bounds(schedule, tasks, has_preds)
-    actual_floor = _actual_start_bounds(schedule, tasks)
+    stored_pin, stored_floor = net.stored_pin, net.stored_floor
+    actual_floor = net.actual_floor
     resume_ef_floor = _resume_bounds(schedule, tasks, duration_overrides)
     # Tasks executing on their OWN calendar(s) — a materially different task calendar, an
     # elapsed duration (== the 24/7 calendar), a work resource on another calendar, or a
@@ -1219,7 +1509,7 @@ def compute_cpm(
     # is the primary leg's calendar minutes. Everything else stays on the integer project axis
     # (byte-identical fast path).
     exec_plan = _execution_plans(schedule, tasks, duration)
-    task_by_id: dict[int, Task] = {t.unique_id: t for t in tasks}
+    task_by_id = net.task_by_id
     ps, cal = schedule.project_start, schedule.calendar
     tod0 = ps.hour * 60 + ps.minute
     early_start: dict[int, int] = {}
@@ -1425,16 +1715,19 @@ def compute_cpm(
             return lf_wall[s]
         return _offset_to_wall(ps, late_finish[s] - lag, cal, role="finish")
 
+    # the one instant every off-fast-path task retreats from (``target_wall`` is set whenever a
+    # plan exists; the fallback keeps the expression total) — derived once, not per task
+    tw = (
+        target_wall
+        if target_wall is not None
+        else (_offset_to_wall(ps, backward_target, cal, role="finish") if exec_plan else ps)
+    )
+
     for tid in reversed(order):
         dur_p = duration[tid]
         if tid in exec_plan:
             plan, cal_t = exec_plan[tid]
             task = task_by_id[tid]
-            tw = (
-                target_wall
-                if target_wall is not None
-                else _offset_to_wall(ps, backward_target, cal, role="finish")
-            )
             finish_needs: list[dt.datetime] = [tw]
             start_needs: list[dt.datetime] = []
             for s, rel, lag in succs[tid]:
@@ -1517,11 +1810,6 @@ def compute_cpm(
                     free_cands.append(_wall_minutes_between(anchor, need, cal_t, tod0))
                 free = min(free_cands)
             else:
-                tw = (
-                    target_wall
-                    if target_wall is not None
-                    else _offset_to_wall(ps, backward_target, cal, role="finish")
-                )
                 free = _wall_minutes_between(ef_wall[tid], tw, cal_t, tod0)
         else:
             # Total float is the smaller of start slack (LS - ES) and finish slack (LF - EF) —

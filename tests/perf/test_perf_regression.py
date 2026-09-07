@@ -444,3 +444,120 @@ def test_the_probe_loop_really_stops_and_restarts(monkeypatch) -> None:  # type:
     probed.clear()
     system.snapshot()  # a viewer comes back
     assert probed.wait(5.0), "the parked loop never woke on a new request"
+
+
+# ── ADR-0474 follow-up: the leveled / resource-calendar wall path must not tax the SRA ──────────
+#
+# ADR-0474 put every task with a leveling delay or a crew calendar on the wall-clock path, and the
+# per-solve overheads of that path — the execution plans re-derived from every assignment on every
+# solve (~300 `working_pattern_key` calls on Project2), and a memo keyed on the frozen `Calendar`
+# that cost a full-model `__hash__` + `__eq__` per day test — took `compute_cpm` on the leveled
+# goldens from 1.3 ms to 3.7 ms and `GET /api/sra` (2 x 1000 solves) from 1.6 s to 4.3 s, past the
+# browser proof's 5 s caption wait (#649's red cell). The three gates below pin the fix: two are
+# deterministic COUNTS (a genuine reintroduction fails by construction), the third is the one
+# RELATIVE timing this file allows itself — a ratio of two solves of the same schedule measured
+# back to back, never an absolute threshold.
+
+
+@pytest.fixture(scope="module")
+def project2() -> Schedule:
+    """The committed non-CUI golden with 21 leveled activities on a lunch-gapped calendar — the
+    exact population the SRA solves 1000 times per request."""
+    from schedule_forensics.importers.mspdi import parse_mspdi_text
+
+    path = Path(__file__).resolve().parents[1] / "fixtures" / "golden" / "project2_5"
+    return parse_mspdi_text((path / "Project2.mspdi.xml").read_text(encoding="utf-8"))
+
+
+def _sampled(sch: Schedule, i: int) -> dict[int, int]:
+    """A duration-override map shaped like one SRA iteration (every task, varied per pass)."""
+    return {t.unique_id: max(0, t.duration_minutes - 30 * (i % 7)) for t in sch.tasks}
+
+
+def test_execution_plan_shapes_are_derived_once_per_schedule_object(
+    project2: Schedule, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """REGRESSION GATE (count): after one solve, further solves of the SAME schedule object — the
+    SRA's duration-override passes — derive ZERO calendar pattern keys. The which-leg-on-which-
+    calendar shape of every task depends only on the schedule, so it is built once per schedule
+    object and found by identity; only the spans scale with the sampled durations. Rebuilding the
+    shapes per solve (the ADR-0474 first cut) calls ``working_pattern_key`` hundreds of times per
+    pass and fails."""
+    from schedule_forensics.engine.cpm import compute_cpm
+    from schedule_forensics.model.calendar import Calendar
+
+    calls = {"n": 0}
+    real = Calendar.working_pattern_key
+
+    def counting(self: Calendar) -> tuple[object, ...]:
+        calls["n"] += 1
+        return real(self)
+
+    monkeypatch.setattr(Calendar, "working_pattern_key", counting)
+    compute_cpm(project2)  # the first solve of this object may derive the shapes
+    assert calls["n"] > 0, "the instrument saw nothing — the spy is not on the code path"
+    calls["n"] = 0
+    for i in range(20):
+        compute_cpm(project2, duration_overrides=_sampled(project2, i))
+    assert calls["n"] == 0, f"{calls['n']} pattern keys re-derived across 20 solves of one object"
+
+
+def test_wall_helpers_find_a_calendar_by_identity_not_by_value(
+    project2: Schedule, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """REGRESSION GATE (count): a solve on the wall path never hashes a ``Calendar``. The day
+    tests behind every wall helper consult per-calendar lookup structures found by object
+    identity; a memo keyed on the frozen model itself (``lru_cache`` on the ``Calendar``) pays a
+    full-model ``__hash__`` + ``__eq__`` on EVERY lookup — ~400 per solve on this golden — and
+    fails this by the thousand."""
+    from schedule_forensics.engine.cpm import compute_cpm
+    from schedule_forensics.model.calendar import Calendar
+
+    calls = {"n": 0}
+    real = Calendar.__hash__
+
+    def counting(self: Calendar) -> int:
+        calls["n"] += 1
+        return real(self)
+
+    monkeypatch.setattr(Calendar, "__hash__", counting)
+    assert hash(project2.calendar) and calls["n"] == 1, "the __hash__ spy is not wired"
+    compute_cpm(project2)  # warm: a first solve may build the per-object structures
+    calls["n"] = 0
+    for i in range(20):
+        compute_cpm(project2, duration_overrides=_sampled(project2, i))
+    assert calls["n"] == 0, f"{calls['n']} Calendar hashes across 20 solves — a value-keyed memo"
+
+
+def test_the_network_and_stored_date_bounds_are_derived_once_per_schedule_object(
+    project2: Schedule, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """REGRESSION GATE (count): after one solve, further solves of the SAME schedule object
+    re-sort NO network and re-project NO stored date. The lowered logic, its topological order
+    and the stored-start / actual-start bounds are functions of the schedule alone, so they are
+    derived once per object; only the duration-dependent bounds and the two passes run per
+    solve. Rebuilding them per pass (the pre-fix engine: one ``_topo_order`` and ~130 stored-date
+    projections per solve on this golden) fails by the count."""
+    from schedule_forensics.engine import cpm as cpm_mod
+    from schedule_forensics.engine.cpm import compute_cpm
+
+    calls = {"topo": 0, "stored": 0}
+    real_topo, real_stored = cpm_mod._topo_order, cpm_mod._stored_date_bounds
+
+    def counting_topo(task_ids, edges):  # type: ignore[no-untyped-def]
+        calls["topo"] += 1
+        return real_topo(task_ids, edges)
+
+    def counting_stored(schedule, tasks, has_preds):  # type: ignore[no-untyped-def]
+        calls["stored"] += 1
+        return real_stored(schedule, tasks, has_preds)
+
+    monkeypatch.setattr(cpm_mod, "_topo_order", counting_topo)
+    monkeypatch.setattr(cpm_mod, "_stored_date_bounds", counting_stored)
+    # a FRESH object, so the first solve is observed deriving the network exactly once
+    fresh = project2.model_copy()
+    compute_cpm(fresh)
+    assert calls == {"topo": 1, "stored": 1}, f"the spies are not on the code path: {calls}"
+    for i in range(20):
+        compute_cpm(fresh, duration_overrides=_sampled(fresh, i))
+    assert calls == {"topo": 1, "stored": 1}, f"re-derived across 20 solves of one object: {calls}"

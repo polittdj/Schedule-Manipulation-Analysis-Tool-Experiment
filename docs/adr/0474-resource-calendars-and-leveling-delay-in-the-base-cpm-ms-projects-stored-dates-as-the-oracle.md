@@ -105,3 +105,57 @@ Large Test Files and the EVM goldens, before and after every rule.
   R-56 bookings and the milestone snaps; not chased.
 - The XER importer carries no resource calendar (P6 `clndr_id` on `RSRC`); `calendar_uid` stays
   `None` there and the task / project calendar governs, as before.
+
+## Amendment (2026-09-07, later the same day) — the latency follow-up: the wall path must not tax the SRA
+
+**Observed.** #649's `browser (measured-box proof)` job went red on the final head: `/sra: no captions
+rendered` in all twelve theme × zoom cells of `tests/web/test_axis_titles_visual.py` (page loaded,
+no page errors — the SRA data had not arrived inside the proof's caption wait). Measured on the
+committed goldens: `compute_cpm` on Project2 / Project5 1.3 / 1.3 ms → 3.7 / 4.1 ms, and
+`GET /api/sra` (the legacy run: 1 000 solves of the selected schedule) 1.58 s → 4.27 s.
+
+**Root cause — per-solve work that depended on the schedule alone, on a solver called a thousand
+times per request.** Three mechanisms, each measured by profile: (1) the execution plans were
+re-derived from every assignment on every solve (~300 `working_pattern_key` calls per pass — 0.41 ms
+of a 3.7 ms solve); (2) the day tests behind every wall helper went through a memo keyed on the
+frozen `Calendar` model (`lru_cache`), which paid a full-model `__hash__` + `__eq__` on EVERY lookup
+(~1.1 µs, ~400 lookups per solve — 8 607 hashes across 20 solves); (3) the network (the lowered
+summary logic, the topological order) and the stored-date bounds (~130 stored-date projections) were
+rebuilt per solve — pre-existing cost, but the same class.
+
+**Decision — purely lookup-structure changes, byte-identical by construction and by measurement.**
+Everything that is a function of the schedule alone is derived once per schedule OBJECT and found by
+identity (`id()` re-checked against a weak reference; a `weakref.finalize` drops the entry with the
+object, so nothing outlives the schedule that owns it): a `_Ruler` per `Calendar` (the frozensets,
+the segments per day start, and memos of the three day-walking cores — `[d0, d1)` counts, the k-th
+working day after / before a day — capped, cleared, never evicted piecemeal), the `_PlanShape` per
+task (the legs' calendars and ratios; only the spans scale with a solve's durations), and the
+`_Network` per schedule (the scheduled tasks, edges, order, adjacency, stored-start / actual-start
+bounds). The backward target's wall instant is derived once per solve instead of per task, and a
+one-leg plan skips the generator. The counting loops keep the model's own holiday tuple so even a
+duplicated holiday counts exactly as before.
+
+**Measured after:** `compute_cpm` Project2 / Project5 **1.8–2.1 / 1.7–1.8 ms**; `GET /api/sra`
+**2.0 s** (was 4.27 s; the pre-ADR tree read 1.58 s). The remaining excess over the pre-ADR tree is
+the wall arithmetic of the 21 / 20 leveled activities themselves (~35 µs each) — the fidelity the
+ADR bought, not overhead.
+
+**Proof (QC-1).** A std-lib harness dumped EVERY `CPMResult` / `TaskTiming` field (integer offsets,
+wall instants, floats, critical flags, the driven lists) for every schedule fixture in the repo (31
+files: the goldens, the Hard_File snapshots, the Large Test Files, the test projects, the XER, the
+shipped demo) under three solves each (plain, a required finish, every duration halved), the
+DCMA-12 injection surface per task, and a fixed-seed legacy SRA on Project2 / Project5 / Hard_File:
+7.7 MB BEFORE the change, byte-identical AFTER each of the two rounds. Three deterministic count
+gates in `tests/perf/test_perf_regression.py` (in the file's own doctrine — counts, never a
+wall-clock threshold): the shapes, the network + stored-date bounds, and the calendar rulers are
+derived once per schedule object and never by value. Red first: the pristine engine fails the shapes
+and network gates (21 / 21 rebuilds), the ADR-0474 head fails the hash gate (8 607); a targeted
+three-mutation scratch copy (each memo disabled) fails all three by name; the real tree passes.
+`test_cpm_date_equivalence` (the randomized day-by-day oracle of the date cores), the synthetic
+resource-calendar module, the stored-dates oracle and the multi-calendar suite: unmoved.
+
+**Lesson, promoted.** An engine change is priced on the SRA before it ships: `compute_cpm` runs a
+thousand times per `/api/sra` request, so a per-solve cost that is a function of the schedule alone
+is a bug there whatever it costs once — profile a leveled golden inside the Monte-Carlo, and never
+key a hot memo on a frozen pydantic model (its `__hash__` / `__eq__` walk every field on every
+lookup; find the object by identity and let a weakref retire the entry).
