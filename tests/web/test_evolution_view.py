@@ -111,7 +111,7 @@ def test_api_evolution_serves_per_version_snapshots(client: TestClient) -> None:
     assert first["finish_delta_days"] is None  # no prior version
     # ADR-0150: effective (stored-flag) critical basis — the Acumen-validated 41/4
     assert len(first["critical"]) == 41 and len(second["critical"]) == 4
-    assert second["finish_delta_days"] == 148  # the known P2->P5 slip
+    assert second["finish_delta_days"] == 134  # the known P2->P5 slip (Fuse's -134; ADR-0474)
     assert len(second["left"]) == 38 and second["entered"] == [131]
     # critical UIDs carry display names; the "left" ones resolve from the prior version
     assert all(str(u) in second["names"] for u in second["critical"])
@@ -281,7 +281,7 @@ def test_evolution_chapter_04_page_shell(client: TestClient) -> None:
     assert 'class="page-takeaway"' in page
     assert "critical path" in page
     assert "1 activity entered it and 38 left" in page  # golden P2->P5 churn
-    assert "the finish slipped 148 calendar days" in page  # known P2->P5 slip
+    assert "the finish slipped 134 calendar days" in page  # known P2->P5 slip
 
     # the six-KPI strip and both composition bars
     assert 'class="ws-kpi"' in page and "Versions compared" in page and "Critical now" in page

@@ -158,9 +158,12 @@ def _optioned_versions(
     """Apply the trace options to every loaded version (operator 2026-07-08).
 
     ``ignore_constraints`` re-solves each version on a constraint-stripped copy;
-    ``ignore_leveling`` additionally clears incomplete tasks' stored dates so the
-    corridor/evolution engines (which honor stored dates) run on the pure-logic CPM
-    ("0-day leveling delay"). This is a genuine re-solve — a **counterfactual** view,
+    ``ignore_leveling`` additionally clears incomplete tasks' stored dates AND their stored
+    resource-leveling delay (ADR-0474 made the base CPM honour ``leveling_delay_minutes``, so
+    clearing the stored dates alone left the delay in the "pure-logic" re-solve and the option
+    nearly inert — 2 of Project5's targets diverged where 33 had) so the corridor/evolution
+    engines (which honor stored dates) run on the pure-logic CPM ("0-day leveling delay").
+    This is a genuine re-solve — a **counterfactual** view,
     stronger than SSI's same-named Directional Path options, which keep reporting against
     the stored (leveled/progressed) dates: SSI's own options-ON export is reproduced by
     the stored-date trace, NOT by this transform (ADR-0251) — so paths here diverge from
@@ -177,7 +180,9 @@ def _optioned_versions(
         s2 = strip_constraints(sch) if ignore_constraints else sch
         if ignore_leveling:
             tasks = tuple(
-                t.model_copy(update={"start": None, "finish": None}) if not t.is_complete else t
+                t.model_copy(update={"start": None, "finish": None, "leveling_delay_minutes": 0})
+                if not t.is_complete
+                else t
                 for t in s2.tasks
             )
             s2 = s2.model_copy(update={"tasks": tasks})

@@ -435,6 +435,97 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-07 (d) — A solver called a thousand times per request cannot carry per-solve work that depends on the schedule alone; never key a hot memo on a frozen pydantic model
+
+**What happened.** ADR-0474's draft PR (#649) went red on the browser job's `/sra` caption sweep:
+the page loaded, nothing errored, and the SRA data had not arrived inside the proof's caption wait.
+`compute_cpm` on the leveled goldens had gone 1.3 → 3.7 ms and `GET /api/sra` — one thousand solves
+of the selected schedule — 1.58 → 4.27 s. The previous head had passed the same module once and
+failed it twice: a timing failure right at the edge of the wait, which is the least legible kind.
+
+- **Profile the SRA, not the solve.** A 2.4 ms regression on one solve is invisible in every unit
+  test and on every page but one; the Monte-Carlo multiplies it by a thousand. An engine change is
+  priced by `python -m cProfile` on `compute_cpm` over a leveled golden BEFORE the PR, and by timing
+  `GET /api/sra` on the served golden pair (the browser proof's own fixture) — 1.6 s was the number
+  to keep. The three mechanisms found were all "work that is a function of the schedule alone, done
+  per solve": the execution plans re-derived from every assignment (~300 pattern keys per pass), the
+  network and the stored-date bounds rebuilt per pass, and the day tests behind every wall helper.
+- **A memo keyed on a frozen pydantic model pays a full-model hash AND equality on every hit.**
+  `lru_cache` on `Calendar` looked free ("frozen, hashable, bounded") and cost ~1.1 µs per lookup —
+  8 607 `__hash__` calls across twenty solves. The fix is to find the object by IDENTITY (`id()`,
+  re-checked against a weak reference so a recycled address cannot serve a stale entry) and let a
+  `weakref.finalize` retire the entry with the object — nothing outlives the schedule that owns it,
+  and the lookup is a dict get.
+- **Byte-identity is proven by a dump, not by the test suite.** The test suite pins what someone
+  once thought to pin; a pure-performance change needs every field of every result on every fixture
+  in the repo, before and after: 31 schedule files × three solves (plain, required finish, halved
+  durations) + the DCMA-12 injection surface + a fixed-seed SRA = 7.7 MB, compared byte for byte
+  after each round. Two rounds, two identical dumps — and that dump is what let the second, bolder
+  round (memoizing the network and the date cores) ship the same day.
+- **A ratio gate that compares against a moving baseline proves nothing.** The first draft asserted
+  "the leveled solve costs < 2× the same schedule with its delays stripped"; the fix made the
+  stripped (fast-path) solve faster too, so the ratio stayed above two on the fixed tree and sat at
+  2.05 on the broken one. The gates that shipped are COUNTS in the perf file's own doctrine — the
+  shapes, the network and the rulers are derived once per schedule object — red on the pristine
+  engine and on the ADR-0474 head by name, red on a three-mutation scratch copy, green on the tree.
+  The latency itself is recorded in the ADR and read on CI's browser job, the outcome gate.
+- **"Unmoved" in one measure is not unmoved.** The ADR called the Large Test Files "unmoved" on
+  the finish-within-a-day count (1 558 / 1 723) and the slack-exact count — and their pure-logic
+  critical SET went 2 → 33, exactly MS Project's stored `Critical` flags. A fidelity WIN, seen only
+  by the dashboard's byte pin. When a change is declared neutral on a fixture, say on WHICH
+  measures; a byte pin on the payload is the measure that cannot be talked past.
+- **An option that EMULATED a feature goes inert the day the engine implements it.** The Driving
+  Path `ignore_leveling` view got its "0-day leveling delay" by clearing stored dates, because the
+  engine had no delay to clear. Once ADR-0474 honoured the stored delay, the same code left the
+  delay inside the "pure-logic" re-solve — 2 of Project5's targets diverged where 33 had — and
+  only the contract test noticed. After implementing a feature, grep for every toggle, flag or
+  page named after it and re-read what each one actually clears.
+- **A page that re-runs a seeded simulation on every load is a latency bug waiting for a slower
+  runner.** The engine fix took `/api/sra` from 4.3 s to 2.0 s and the CI runner still lost the
+  last theme's cells: twelve loads of `/sra` against one session, twelve identical thousand-solve
+  runs. The run is a pure function of the session's inputs, so it is memoized per input set —
+  identity on the scoped schedule object (the analysis tier's own anchor), value-equality on the
+  frozen config / overrides / risks, single-flight on a stripe — and the served result is the
+  same object, byte-identical by construction. Halving a cost that is paid N times is not the
+  same fix as paying it once; measure the REQUEST PATTERN, not only the request.
+- **Read the `floor` job even when the `test` jobs are cancelled.** It runs the whole suite
+  without coverage tracing and finishes first; on this PR it was the only job that reached the
+  seven pins a 52-minute coverage run never got to.
+- **The remaining excess is the feature.** After the fix the leveled solve still costs ~35 µs per
+  leveled activity over the integer fast path: that is the wall arithmetic MS Project's stored dates
+  demanded, not overhead. Knowing which part of a cost is fidelity and which is waste is the whole
+  of a performance decision under Law 2.
+
+### 2026-09-07 (c) — The reference tool's stored dates are a per-activity CPM oracle; a scheduling rule proven on one file is a hypothesis on the next
+
+- **The oracle was in the file.** R-44 sat priced "L" for a session because the parity habit here is
+  Fuse workbooks, and Fuse has no per-activity date export. MS Project's MSPDI carries `Start`,
+  `Finish`, `EarlyStart` / `EarlyFinish`, `LateStart` / `LateFinish`, `TotalSlack` and `Critical`
+  for every activity — 110 × 5 snapshots of computed dates, plus the goldens. Diffing the engine's
+  instants against them named every rule (crew calendars, the leveling delay's unit and base, the
+  slack axis, the finish-role late finish, the successor's delay in the backward pass) and each
+  residual, without a single new export. **When the reference tool writes its own computation into
+  the file, that IS the oracle — read it before asking anyone for a workbook.**
+- **A rule that reproduces one file exactly can break another exactly.** "A booking spans
+  work / units on the crew calendar" fit Hard_File (80 of 87) and moved Large Test File2's
+  fixed-work bookings off their stored dates (1 563 → 1 520 within a day) — those bookings are
+  contoured over the task duration, and the task's `Type` decides. **Before shipping a scheduling
+  rule, tally it by task type on every golden the tree carries; the goldens are free and the
+  parity gate is 12 minutes.** The first measurement is a hypothesis about the file it was taken on.
+- **A unit read from the model is not the raw value.** Project2's UID 37 showed `2880` in the model
+  (already ÷ 10) and I read it as the file's `2880` tenths, "proving" the delay was minutes in one
+  file and tenths in another. The raw `28800` settled it in one line. **Print the RAW field beside
+  the derived one before calling a unit inconsistent between files.**
+- **Two instants on one grid point are not the same date.** Friday 17:00 and Monday 08:00 are one
+  project-axis offset, and a fast-path successor's late-start need arrives as the Monday. Taking it
+  as a late finish read Large Test File's late finishes a working day late (930 → 888 within an
+  hour) while every offset was right. **A wall instant carries a role (start / finish); snap a late
+  finish BACK to the previous working instant before it leaves the backward pass.**
+- **A re-pin must move onto the reference, and the reference must be named in the pin.** Eight
+  golden tests and three parity tests moved with this unit; each was checked against the stored
+  value it now equals (a finish, a slack, Fuse's −134) before its number changed, and the pin says so.
+  A pin that moves toward the engine's own new output is a rumour with a test around it.
+
 ### 2026-09-07 (b) — Same name, different metric: a Fuse figure is an oracle only for the tile its own workbook section carries
 
 - Ran every reference workbook in the repo against the engine (16 snapshots × 3 Fuse workbooks +

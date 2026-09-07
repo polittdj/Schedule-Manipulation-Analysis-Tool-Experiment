@@ -34,8 +34,8 @@ _REFERENCE: dict[str, tuple[Path, int, str | None]] = {
     "Project2": (
         GOLD / "Project2.mspdi.xml",
         20,
-        None,
-    ),  # workbook's Project2 differs (08-30 vs 09-14)
+        "2027-09-14",
+    ),  # the workbook's 09-14 IS the file's finish: ADR-0474 honours its leveling delays
     "TP1_Library_Progressed": (TP / "TP1_Library_Progressed.xml", 4, "2026-09-17"),  # ADR-0391
     "TP3_Outage_DCMA_Seeded": (TP / "TP3_Outage_DCMA_Seeded.xml", 8, None),  # -5d, to reconcile
     "TP4_DataCenter_v1": (TP / "TP4_DataCenter_v1.xml", 1, "2026-06-05"),

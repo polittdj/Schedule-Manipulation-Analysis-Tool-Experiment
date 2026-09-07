@@ -444,3 +444,192 @@ def test_the_probe_loop_really_stops_and_restarts(monkeypatch) -> None:  # type:
     probed.clear()
     system.snapshot()  # a viewer comes back
     assert probed.wait(5.0), "the parked loop never woke on a new request"
+
+
+# ── ADR-0474 follow-up: the leveled / resource-calendar wall path must not tax the SRA ──────────
+#
+# ADR-0474 put every task with a leveling delay or a crew calendar on the wall-clock path, and the
+# per-solve overheads of that path — the execution plans re-derived from every assignment on every
+# solve (~300 `working_pattern_key` calls on Project2), and a memo keyed on the frozen `Calendar`
+# that cost a full-model `__hash__` + `__eq__` per day test — took `compute_cpm` on the leveled
+# goldens from 1.3 ms to 3.7 ms and `GET /api/sra` (2 x 1000 solves) from 1.6 s to 4.3 s, past the
+# browser proof's 5 s caption wait (#649's red cell). The three gates below pin the fix: two are
+# deterministic COUNTS (a genuine reintroduction fails by construction), the third is the one
+# RELATIVE timing this file allows itself — a ratio of two solves of the same schedule measured
+# back to back, never an absolute threshold.
+
+
+@pytest.fixture(scope="module")
+def project2() -> Schedule:
+    """The committed non-CUI golden with 21 leveled activities on a lunch-gapped calendar — the
+    exact population the SRA solves 1000 times per request."""
+    from schedule_forensics.importers.mspdi import parse_mspdi_text
+
+    path = Path(__file__).resolve().parents[1] / "fixtures" / "golden" / "project2_5"
+    return parse_mspdi_text((path / "Project2.mspdi.xml").read_text(encoding="utf-8"))
+
+
+def _sampled(sch: Schedule, i: int) -> dict[int, int]:
+    """A duration-override map shaped like one SRA iteration (every task, varied per pass)."""
+    return {t.unique_id: max(0, t.duration_minutes - 30 * (i % 7)) for t in sch.tasks}
+
+
+def test_execution_plan_shapes_are_derived_once_per_schedule_object(
+    project2: Schedule, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """REGRESSION GATE (count): after one solve, further solves of the SAME schedule object — the
+    SRA's duration-override passes — derive ZERO calendar pattern keys. The which-leg-on-which-
+    calendar shape of every task depends only on the schedule, so it is built once per schedule
+    object and found by identity; only the spans scale with the sampled durations. Rebuilding the
+    shapes per solve (the ADR-0474 first cut) calls ``working_pattern_key`` hundreds of times per
+    pass and fails."""
+    from schedule_forensics.engine.cpm import compute_cpm
+    from schedule_forensics.model.calendar import Calendar
+
+    calls = {"n": 0}
+    real = Calendar.working_pattern_key
+
+    def counting(self: Calendar) -> tuple[object, ...]:
+        calls["n"] += 1
+        return real(self)
+
+    monkeypatch.setattr(Calendar, "working_pattern_key", counting)
+    compute_cpm(project2)  # the first solve of this object may derive the shapes
+    assert calls["n"] > 0, "the instrument saw nothing — the spy is not on the code path"
+    calls["n"] = 0
+    for i in range(20):
+        compute_cpm(project2, duration_overrides=_sampled(project2, i))
+    assert calls["n"] == 0, f"{calls['n']} pattern keys re-derived across 20 solves of one object"
+
+
+def test_wall_helpers_find_a_calendar_by_identity_not_by_value(
+    project2: Schedule, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """REGRESSION GATE (count): a solve on the wall path never hashes a ``Calendar``. The day
+    tests behind every wall helper consult per-calendar lookup structures found by object
+    identity; a memo keyed on the frozen model itself (``lru_cache`` on the ``Calendar``) pays a
+    full-model ``__hash__`` + ``__eq__`` on EVERY lookup — ~400 per solve on this golden — and
+    fails this by the thousand."""
+    from schedule_forensics.engine.cpm import compute_cpm
+    from schedule_forensics.model.calendar import Calendar
+
+    calls = {"n": 0}
+    real = Calendar.__hash__
+
+    def counting(self: Calendar) -> int:
+        calls["n"] += 1
+        return real(self)
+
+    monkeypatch.setattr(Calendar, "__hash__", counting)
+    assert hash(project2.calendar) and calls["n"] == 1, "the __hash__ spy is not wired"
+    compute_cpm(project2)  # warm: a first solve may build the per-object structures
+    calls["n"] = 0
+    for i in range(20):
+        compute_cpm(project2, duration_overrides=_sampled(project2, i))
+    assert calls["n"] == 0, f"{calls['n']} Calendar hashes across 20 solves — a value-keyed memo"
+
+
+def test_the_network_and_stored_date_bounds_are_derived_once_per_schedule_object(
+    project2: Schedule, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """REGRESSION GATE (count): after one solve, further solves of the SAME schedule object
+    re-sort NO network and re-project NO stored date. The lowered logic, its topological order
+    and the stored-start / actual-start bounds are functions of the schedule alone, so they are
+    derived once per object; only the duration-dependent bounds and the two passes run per
+    solve. Rebuilding them per pass (the pre-fix engine: one ``_topo_order`` and ~130 stored-date
+    projections per solve on this golden) fails by the count."""
+    from schedule_forensics.engine import cpm as cpm_mod
+    from schedule_forensics.engine.cpm import compute_cpm
+
+    calls = {"topo": 0, "stored": 0}
+    real_topo, real_stored = cpm_mod._topo_order, cpm_mod._stored_date_bounds
+
+    def counting_topo(task_ids, edges):  # type: ignore[no-untyped-def]
+        calls["topo"] += 1
+        return real_topo(task_ids, edges)
+
+    def counting_stored(schedule, tasks, has_preds):  # type: ignore[no-untyped-def]
+        calls["stored"] += 1
+        return real_stored(schedule, tasks, has_preds)
+
+    monkeypatch.setattr(cpm_mod, "_topo_order", counting_topo)
+    monkeypatch.setattr(cpm_mod, "_stored_date_bounds", counting_stored)
+    # a FRESH object, so the first solve is observed deriving the network exactly once
+    fresh = project2.model_copy()
+    compute_cpm(fresh)
+    assert calls == {"topo": 1, "stored": 1}, f"the spies are not on the code path: {calls}"
+    for i in range(20):
+        compute_cpm(fresh, duration_overrides=_sampled(fresh, i))
+    assert calls == {"topo": 1, "stored": 1}, f"re-derived across 20 solves of one object: {calls}"
+
+
+# ── ADR-0474 follow-up (2): one seeded simulation per set of inputs, per session ─────────────────
+#
+# `/sra` fires `GET /api/sra` on every page load, and the legacy run is a thousand solves of the
+# selected schedule under a FIXED seed — a pure function of (schedule object, config, overrides,
+# risks). The browser proof loads `/sra` twelve times (four themes x three scales) against one
+# session and each load re-ran the identical simulation; on the CI runner the later cells timed
+# out inside the caption wait even after the engine fix above. The memo below is single-flight and
+# invalidated by object identity (a re-upload or a scope epoch flips the scoped object) and by
+# value-equality of every input the route hands the engine; the result it serves is the SAME
+# object, so the payload is byte-identical by construction.
+
+
+@pytest.fixture
+def sra_client(project2: Schedule):  # type: ignore[no-untyped-def]
+    from fastapi.testclient import TestClient
+
+    import schedule_forensics.web.app as app_module
+
+    st = SessionState()
+    st.schedules["Project2.mspdi.xml"] = project2
+    return TestClient(app_module.create_app(st)), st
+
+
+def test_api_sra_runs_the_seeded_simulation_once_per_inputs(  # type: ignore[no-untyped-def]
+    sra_client, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """REGRESSION GATE (count): identical `/api/sra` requests on one session run `compute_sra`
+    ONCE; a request whose inputs differ — the iteration count, the distribution, the auto
+    three-point, a per-activity override, or a re-uploaded (new) schedule object — runs it
+    again, and an identical request after that is served from the memo again. Re-running the
+    simulation per page load (the pre-fix route) fails on the second request."""
+    import schedule_forensics.web.app as app_module
+    from schedule_forensics.engine.metrics._common import non_summary
+
+    client, st = sra_client
+    calls = {"n": 0}
+    real = app_module.compute_sra
+
+    def counting(*a, **k):  # type: ignore[no-untyped-def]
+        calls["n"] += 1
+        return real(*a, **k)
+
+    monkeypatch.setattr(app_module, "compute_sra", counting)
+
+    first = client.get("/api/sra").json()
+    assert calls["n"] == 1
+    assert client.get("/api/sra").json() == first  # the same result object: byte-identical
+    assert client.get("/api/sra?iterations=1000&distribution=triangular").json() == first
+    assert calls["n"] == 1, "identical inputs must be served from the memo"
+
+    assert client.get("/api/sra?iterations=200").status_code == 200
+    assert calls["n"] == 2, "a different iteration count is a different simulation"
+    assert client.get("/api/sra?distribution=pert").status_code == 200
+    assert calls["n"] == 3, "a different distribution is a different simulation"
+    st.sra_high = st.sra_high + 0.25  # the auto three-point (SRAConfig.auto_high) changed
+    assert client.get("/api/sra").status_code == 200
+    assert calls["n"] == 4, "a changed auto three-point is a different simulation"
+    assert client.get("/api/sra").status_code == 200
+    assert calls["n"] == 4, "and its repeat is served from the memo"
+    uid = non_summary(st.schedules["Project2.mspdi.xml"])[0].unique_id
+    st.sra_overrides = {**st.sra_overrides, uid: (480, 960, 2400)}
+    assert client.get("/api/sra").status_code == 200
+    assert calls["n"] == 5, "a per-activity override is a different simulation"
+    # a re-upload makes a NEW Schedule object; the analysis tier is identity-anchored on it, so
+    # the scoped object the route solves is rebuilt and the memo must miss
+    st.schedules["Project2.mspdi.xml"] = st.schedules["Project2.mspdi.xml"].model_copy()
+    assert client.get("/api/sra").status_code == 200
+    assert calls["n"] == 6, "a new schedule object is a different simulation"
+    assert client.get("/api/sra").status_code == 200
+    assert calls["n"] == 6

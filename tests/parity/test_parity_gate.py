@@ -153,7 +153,8 @@ def test_acumen_change_metrics_and_net_finish_impact() -> None:
     # §E is Fuse-validated (ENGINE==FUSE) against the delivered 2026-06/07 export suite —
     # UID-exact where Fuse publishes a per-activity list (new_critical, float_erosion,
     # finish_date_slips, remaining_duration_increases); the one membership swap (no_longer_critical
-    # 96↔99) and the net-finish-impact basis (-148 CPM vs -134 stored) are asserted exactly in
+    # 96↔99, closed by ADR-0474) and the net-finish-impact basis (-134 CPM == -134 stored since
+    # ADR-0474; -148 before) are asserted exactly in
     # tests/parity/test_fuse_export_parity.py (ADR-0151; see case.json _deltas and
     # fuse_exports_2026-06.json).
     for key in (
@@ -168,7 +169,7 @@ def test_acumen_change_metrics_and_net_finish_impact() -> None:
         "in_progress",  # 2
     ):
         assert ch[key].count == g[key], f"{key}: {ch[key].count} != {g[key]}"
-    assert compute_net_finish_impact(p5, p2).value == g["net_finish_impact_days"]  # -148
+    assert compute_net_finish_impact(p5, p2).value == g["net_finish_impact_days"]  # -134
 
     # first snapshot has no prior: state counts computed, change counts 0, impact 0/NA
     first = g["_first_snapshot_P2"]

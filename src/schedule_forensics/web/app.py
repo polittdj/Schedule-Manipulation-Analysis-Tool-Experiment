@@ -6192,15 +6192,20 @@ def create_app(
         # never 500 on the simulation — surface the engine message as a 422 instead. A large schedule
         # runs the 1000x CPM Monte-Carlo in a worker process so a concurrent request (e.g. Ask-the-AI)
         # isn't starved while it computes; the result is byte-identical to an in-process run.
+        # The seeded run is a pure function of the four inputs handed over here, so the session
+        # memoizes it per input set (single-flight): every load of /sra re-ran the identical
+        # thousand solves before (ADR-0474's latency follow-up).
         heavy = len(sch.tasks_by_id) >= OFFLOAD_TASK_THRESHOLD
+        risks = _risk_events(st)
         try:
-            result = run_maybe_offloaded(
-                heavy,
-                compute_sra,
+            result = st.sra_result(
                 sch,
-                config=config,
-                overrides=overrides,
-                risks=_risk_events(st),
+                config,
+                overrides,
+                risks,
+                lambda: run_maybe_offloaded(
+                    heavy, compute_sra, sch, config=config, overrides=overrides, risks=risks
+                ),
             )
         except Exception as exc:
             return JSONResponse({"error": str(exc)}, status_code=422)

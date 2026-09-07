@@ -555,7 +555,12 @@ def _critical_path_test(schedule: Schedule, result: CPMResult) -> MetricResult:
         # failed the test (QC audit D3; generalized from elapsed to any execution calendar).
         # Inject 100 days on the task's own axis and compute the EXPECTED working-offset movement
         # of its finish exactly, from its true wall finish instant.
-        from schedule_forensics.engine.cpm import _advance_wall, _offset_to_wall, _wall_to_offset
+        from schedule_forensics.engine.cpm import (
+            _advance_wall,
+            _offset_to_wall,
+            _wall_to_offset,
+            injected_finish_wall,
+        )
 
         delay_inj = _CRITICAL_PATH_TEST_DELAY_DAYS * exec_cal.working_minutes_per_day
         cal = schedule.calendar
@@ -569,7 +574,13 @@ def _critical_path_test(schedule: Schedule, result: CPMResult) -> MetricResult:
                 schedule.calendar,
                 role="finish",
             )
-        new_finish = _advance_wall(old_finish, delay_inj, exec_cal, tod0)
+        # the finish the task's EXECUTION PLAN reaches with the longer duration (ADR-0474: a
+        # resource-driven task's legs scale with its duration, so advancing the primary leg
+        # alone would mis-state the movement of a multi-resource task); the single-calendar
+        # advance is the plan-less fallback and is identical for a one-leg plan
+        new_finish = injected_finish_wall(
+            schedule, target, result.timings[target.unique_id], delay_inj
+        ) or _advance_wall(old_finish, delay_inj, exec_cal, tod0)
         expected = _wall_to_offset(schedule.project_start, new_finish, cal) - _wall_to_offset(
             schedule.project_start, old_finish, cal
         )

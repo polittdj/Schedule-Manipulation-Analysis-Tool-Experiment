@@ -46,7 +46,9 @@ def test_golden_change_parity_p2_to_p5(
     assert ch["finish_date_slips"].count == g["finish_date_slips"]  # 9
     assert ch["completed"].count == g["completed"]  # 27
     assert ch["in_progress"].count == g["in_progress"]  # 2
-    assert compute_net_finish_impact(p5, p2).value == g["net_finish_impact_days"]  # -148
+    # -134 since ADR-0474 (was -148): the engine's CPM finishes ARE the stored finishes on both
+    # goldens, so its basis coincides with Fuse's stored-finish HSD10
+    assert compute_net_finish_impact(p5, p2).value == g["net_finish_impact_days"]  # -134
 
     # float/critical-dependent subset now pinned to the engine's pure-logic CPM output
     # on the authoritative Project5 (ADR-0112); case.json g[...] values match the engine.

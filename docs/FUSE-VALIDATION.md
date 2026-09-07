@@ -58,7 +58,7 @@ the TP4 series, Project2, TP1, and TP3.
 | TP3_Outage_DCMA_Seeded | 2026-06-25 | 2026-06-30 | −5 days (to reconcile) |
 | TP4_DataCenter_v5 | 2026-07-17 | 2026-07-17 | match (was the ADR-0108 understatement, CPM 06-26; closed by ADR-0391) |
 | TP2_Bridge_4x10_Calendar | 2026-11-04 | 2026-09-24 | **known**: MS Project dropped the 4×10 calendar's 4 holiday exceptions on `.mpp` save; the committed XML (4 holidays → 11-04) is authoritative (PARITY-REPORT R-04) |
-| Project2 | 2027-08-30 | 2027-09-14 | the committed golden + native `.mpp` both compute 08-30 (zero field diffs, per HANDOFF); the workbook's "Project2" differs — operator to confirm it is the same file/version |
+| Project2 | 2027-09-14 | 2027-09-14 | match (was 2027-08-30: the file's resource-leveling delays were not honoured; closed by ADR-0474 — the workbook's Project2 IS the committed file) |
 
 **Reading:** the tool now reproduces Fuse's finish on **all five** TP4 snapshots and on TP1, and
 matches every completion count. The two remaining gaps are a documented calendar caveat (TP2 —
@@ -70,7 +70,8 @@ the CPM: a pure forward pass had been re-packing late-started work at its logic 
 the successor chain — and the project finish — back with it. That was a real CPM change, and it is
 gate-checked: `pytest -m parity` stays green, and the project finish is unchanged on all four
 genuine MS Project exports (Project2 2027-08-30, Project5 2028-01-25, EVM1 2012-09-12, EVM2
-2012-10-02). Against MS Project's own stored `EarlyFinish`, per-task disagreements fell 132 → 117
+2012-10-02 — the Project2 / Project5 figures moved to the stored 2027-09-14 / 2028-01-26 with
+ADR-0474, which honours those files' resource-leveling delays). Against MS Project's own stored `EarlyFinish`, per-task disagreements fell 132 → 117
 with none in the engine-later direction.
 
 Note what this table is: Fuse read the `.mpp`s MS Project produced from the committed XML, so it is
@@ -143,7 +144,7 @@ Detail™, Merge Hotspot, and Logic Density™ were decoded earlier.
   Detail™, Merge Hotspot, Number of Leads/Lags, Avg/Max Float, calibrated to the per-project
   values above, and surface them in a Ribbon view.
 - **Year Trend/Phase view** (next PR): reproduce the Ribbon Browser + the year Trend Analysis.
-- **Operator reconciliation**: confirm whether the workbook's Project2 / Project3 / Project4 /
-  Project5_TAMPERED / Large Test File are the same files as the committed fixtures (the committed
-  Project2 computes 2027-08-30, matching the golden and the native `.mpp`; the workbook reads
-  2027-09-14). Re-deposit those `.mpp`s to validate them in-tool.
+- **Operator reconciliation**: confirm whether the workbook's Project3 / Project4 /
+  Project5_TAMPERED / Large Test File are the same files as the committed fixtures. Project2 is
+  settled: the committed file computes 2027-09-14 since ADR-0474 (its resource-leveling delays
+  honoured), which is what the workbook reads. Re-deposit the others to validate them in-tool.

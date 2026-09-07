@@ -387,7 +387,7 @@ def _maximal_schedule():  # type: ignore[no-untyped-def]
         SavedGroup,
     )
     from schedule_forensics.model.schedule import Schedule
-    from schedule_forensics.model.task import ConstraintType, Task
+    from schedule_forensics.model.task import ConstraintType, Task, TaskType
 
     project_cal = Calendar(
         uid=3,
@@ -443,6 +443,9 @@ def _maximal_schedule():  # type: ignore[no-untyped-def]
         resource_assignments=(
             Assignment(resource_id=21, work_minutes=960, units=0.5, remaining_work_minutes=180),
         ),
+        task_type=TaskType.FIXED_WORK,
+        ignore_resource_calendar=True,
+        leveling_delay_minutes=239,
         custom_fields=(("CA-WBS", "X.1"), ("Text20", "note")),
         notes="Constraint added per CE direction 7/1; see change log.",
     )
@@ -471,6 +474,7 @@ def _maximal_schedule():  # type: ignore[no-untyped-def]
                 is_generic=True,
                 max_units=2.5,
                 standard_rate=180.0,
+                calendar_uid=7,
             ),
         ),
         custom_field_labels=("CA-WBS", "Text20"),

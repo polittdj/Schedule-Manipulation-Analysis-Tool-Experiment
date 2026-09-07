@@ -93,8 +93,9 @@ def test_golden_pins(golden_project2: Schedule, golden_project5: Schedule) -> No
     # flag first) — 41/4 are the Acumen-validated Critical counts (case.json; the pure-logic
     # CPM gave 43 on P2, and on the operator's progressed Large file collapsed to 2 of 33).
     assert len(first.critical) == 41 and len(second.critical) == 4
-    # P2 -> P5 slips 148 calendar days (the Net Finish Impact on the authoritative file ADR-0112)
-    assert second.finish_delta_days == 148
+    # P2 -> P5 slips 134 calendar days — the Net Finish Impact on the authoritative file
+    # (ADR-0112), Fuse's own figure since ADR-0474 honours the leveling delays (was 148)
+    assert second.finish_delta_days == 134
     assert len(second.left) == 38 and len(second.stayed) == 3 and second.entered == (131,)
     # the month-to-month "what got done on the path" record: exactly the left-with-reason
     # 'completed' set (4 activities on P2's path completed by P5)

@@ -52,6 +52,19 @@ _MANDATORY_CONSTRAINTS: frozenset[ConstraintType] = frozenset(
 )
 
 
+class TaskType(StrEnum):
+    """MS Project's task scheduling type (MSPDI ``<Type>``: 0 / 1 / 2) — which of duration,
+    units and work MS Project holds fixed when the others change. It decides how an
+    assignment spreads over the task (ADR-0474): a FIXED_UNITS assignment runs
+    ``work / units`` of its calendar's time (it may end before the task), a FIXED_DURATION
+    or FIXED_WORK assignment spans the task's whole duration (its work is contoured over it).
+    Other sources carry no equivalent and keep the MS Project default."""
+
+    FIXED_UNITS = "FIXED_UNITS"
+    FIXED_DURATION = "FIXED_DURATION"
+    FIXED_WORK = "FIXED_WORK"
+
+
 class Task(StrictFrozenModel):
     """A single schedule activity. ``unique_id`` is the only cross-version key."""
 
@@ -160,6 +173,18 @@ class Task(StrictFrozenModel):
     # Per-resource bookings with work + units — the source for resource loading / over-allocation
     # (engine/resources.py). Empty when the file records only names/UIDs (no work-phased loading).
     resource_assignments: tuple[Assignment, ...] = ()
+    #: MS Project's scheduling type (MSPDI ``<Type>``); the default is MS Project's own.
+    task_type: TaskType = TaskType.FIXED_UNITS
+    #: MS Project "Scheduling ignores resource calendars" (MSPDI ``<IgnoreResourceCalendar>``):
+    #: when set, the task is scheduled on its own / the project calendar even though its
+    #: resources carry different calendars (ADR-0474).
+    ignore_resource_calendar: bool = False
+    #: MS Project resource-leveling delay (MSPDI ``<LevelingDelay>``, stored in tenths of a
+    #: minute, read as whole minutes): ELAPSED time MS Project adds after the task's own
+    #: calendar first admits it before the task may start. A stored scheduling input the
+    #: reference tool honours, so the CPM honours it too and names the activity in
+    #: ``CPMResult.leveling_driven`` (ADR-0474). 0 = no leveling delay.
+    leveling_delay_minutes: int = Field(default=0, ge=0)
 
     #: Free-text task note (MSPDI <Notes>). Forensic content — surfaced verbatim in the Task
     #: Information dialog's Notes tab; ``None`` = the source recorded no note (never "").

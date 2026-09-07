@@ -34,7 +34,7 @@ def test_golden_recommendations_p5_vs_p2(golden: Callable[[str], Schedule]) -> N
     # version-pair forensic signals are present and cited
     assert "HSD10" in by_id  # net finish impact slip
     assert by_id["HSD10"].category is Category.CONCERN and by_id["HSD10"].severity is Severity.HIGH
-    assert "148" in by_id["HSD10"].title  # -148 day slip surfaced (authoritative file ADR-0112)
+    assert "134" in by_id["HSD10"].title  # the -134 day slip (Fuse's HSD10; ADR-0112, ADR-0474)
     assert by_id["HSD10"].citations  # cites the finish-controlling activity
     assert by_id["SN05"].category is Category.RISK  # finish slips
     assert by_id["not_completed"].severity is Severity.HIGH

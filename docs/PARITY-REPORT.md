@@ -43,7 +43,7 @@ battery), model-equivalence transitively carries those numbers to the `.mpp`.
 
 | File | Tasks | Links | Computed finish | vs committed MSPDI twin | Verdict |
 |---|---|---|---|---|---|
-| `Project2.mpp` | 145 | 176 | 2027-08-30 | full model match, zero field diffs | ✅ faithful |
+| `Project2.mpp` | 145 | 176 | 2027-09-14 (2027-08-30 before ADR-0474 honoured its leveling delays) | full model match, zero field diffs | ✅ faithful |
 | `TP1_Library_Progressed` | 28 | 30 | 2026-09-16 | topology+links+finish match; `percent_complete`/few durations differ | ✅ (see progress note) |
 | `TP3_Outage_DCMA_Seeded` | 25 | 25 | 2026-06-25 | topology+links+finish match; `percent_complete`/few durations differ | ✅ (see progress note) |
 | `TP4_DataCenter_v1…v5` | 16 | 20 | v1–3 2026-06-05 · v4–5 2026-06-26 | topology+links+finish match; `percent_complete` differs | ✅ (see progress note) |
@@ -174,15 +174,17 @@ engine-pinned float/critical subset is now asserted against **transcribed Fuse v
 | SN04 No Longer Critical | 34 | 34 (Metric History + DCMA offender list + Forensic derivation) | ✅ ENGINE==FUSE count; membership 33/34 — engine UID 99 ↔ Fuse UID 96 (stored-vs-CPM critical basis, asserted exactly) |
 | SN09 Float Erosion | 1 (UID 131) | 1, UID 131 (derived from the Forensic Total-Float sheet, engine scope) | ✅ ENGINE==FUSE, **UID-exact** |
 
-> Honesty notes, asserted by the gate rather than smoothed over: (1) the SN04 sets differ by exactly one
-> member — in Project2, MS Project's stored Critical flag marks UID 96 (CPM float 5d) while pure-logic
-> CPM marks UID 99 (stored slack 10d); both bases count 41, and the swap is pinned as
-> `engine−fuse=={99}` / `fuse−engine=={96}`. (2) HSD10: Fuse subtracts stored project finishes
-> (2027-09-14 → 2028-01-26 = 134d; verbatim .aft formula `ROUND(ProjectPreviousFinish −
-> ProjectFinish, 0)`); the engine subtracts its own CPM finishes (2027-08-30 → 2028-01-25 = 148d) for
-> independence (ADR-0010) — the P2 CPM finish lands 15d before stored and P5's 1d before, so the two
-> figures reconcile exactly. The stored finishes imported from the goldens equal Fuse's serials
-> (data-level parity is also asserted).
+> Honesty notes, asserted by the gate rather than smoothed over — both CLOSED by ADR-0474 (the CPM
+> honours the goldens' resource-leveling delays): (1) the SN04 sets are UID-exact on both bases —
+> in Project2, MS Project's stored Critical flag marks UID 96 and not UID 99, and the recomputed CPM
+> now agrees (UID 96 carries a 21-day leveling delay; until ADR-0474 pure-logic CPM read UID 96 at
+> 5d of float and UID 99 at 0, the one-member swap pinned as `engine−fuse=={99}` /
+> `fuse−engine=={96}`). (2) HSD10: Fuse subtracts stored project finishes (2027-09-14 → 2028-01-26 =
+> 134d; verbatim .aft formula `ROUND(ProjectPreviousFinish − ProjectFinish, 0)`); the engine
+> subtracts its own CPM finishes for independence (ADR-0010), and those ARE the stored finishes
+> since ADR-0474 — the bridge is `-134 = -134 - 0 + 0`. Until ADR-0474 the CPM landed 15d before
+> P2's stored finish and 1d before P5's (`-148 = -134 - 15 + 1`). The stored finishes imported from
+> the goldens equal Fuse's serials (data-level parity is also asserted).
 
 Cost-based EVM (SPI / CPI / TCPI) is reported **NOT_APPLICABLE** — the sample schedules carry no cost
 data, and the tool never fabricates a value (Law 2).
@@ -222,6 +224,32 @@ SPI(t)–Acumen 8.24 vs 8.22 on the Large Test File; the DCMA tile "8. High Dura
 IncludeComplete=true in the library where the engine scores incomplete activities (no
 discriminating figure in the repo); the older `golden/ssi_uid152` Large Test File fixture is the
 underscore-named sibling `.mpp` (31 negative-float activities), not the Fuse-scored file (41).
+
+## Resource calendars and leveling delay — MS Project's stored dates as the CPM oracle (2026-09-07, ADR-0474)
+
+Every MSPDI carries MS Project's own computed dates per activity (`Start` / `Finish`, the early and
+late pair, `TotalSlack`, `Critical`), so the base CPM has a per-activity oracle in every file. R-44's
+42-day Hard_File gap had two causes, both now honoured: an ASSIGNMENT runs on the resource's calendar
+(Hard_File's crews work 16-hour and 24-hour days), and a resource-LEVELING delay is elapsed time added
+after the task's calendar admits it. The rules were derived from the stored dates and are pinned by
+`tests/parity/test_hard_file_stored_dates_oracle.py` (floors) and
+`tests/engine/test_resource_calendar_cpm.py` (each rule alone).
+
+| File | Stored finish | CPM finish (before → after) | Finish within a day (of 110 / 126) | Critical agreed | Stored slack exact |
+|---|---|---|---|---|---|
+| Hard_File | 2026-11-05 | +42.0 d → −1.0 d | 92 | 108 (was 54) | 3 / 76 |
+| Hard_File_updated | 2026-11-05 | +31.2 d → −1.0 d | 100 | 110 (was 59) | 52 / 70 |
+| Hard_File_updated2 | 2026-11-06 | +34.8 d → −1.0 d | 87 | 80 (was 73) | 8 / 76 |
+| Hard_File_updated3 | 2026-12-12 | +18.7 d → −6.0 d (R-55: progress semantics) | 42 | 96 (was 65) | 6 / 68 |
+| Project2 | 2027-09-14 | −15 d → exact | 126 (was 66) | 124 (was 120) | **65 / 65** (was 7) |
+| Project5 | 2028-01-26 | −1 d → exact | 126 (was 75) | 126 (was 124) | **95 / 95** (was 8) |
+| Large Test File / File2 | 2028-09-29 / 2029-04-20 | unmoved | 1 558 / 1 563 (unmoved) | 1 682 / 1 686 (unmoved) | 842 / 655 (unmoved) |
+
+The one-day residual on the three early Hard_File snapshots is four bookings the MSPDI cannot explain
+(R-56: UID 14 spans 40 h where the rule gives 24 h). Slack is measured on the TASK's calendar — UID
+178's stored 240 minutes are project-calendar minutes between Monday 17:00 and Tuesday 13:00; its
+16-hour crew calendar would read 720. The §E consequences: Net Finish Impact reads Fuse's own −134
+(the CPM finishes are the stored finishes), and the SN04 96↔99 membership swap is closed.
 
 ## Residuals — what was closed, and what remains
 

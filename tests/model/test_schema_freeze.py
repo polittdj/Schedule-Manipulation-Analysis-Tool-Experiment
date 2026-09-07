@@ -24,7 +24,7 @@ from schedule_forensics.model.saved_view import (
     SavedGroup,
 )
 from schedule_forensics.model.schedule import Schedule
-from schedule_forensics.model.task import ConstraintType, Task
+from schedule_forensics.model.task import ConstraintType, Task, TaskType
 
 _EXPECTED_FIELDS: dict[type[pydantic.BaseModel], set[str]] = {
     Task: {
@@ -69,12 +69,23 @@ _EXPECTED_FIELDS: dict[type[pydantic.BaseModel], set[str]] = {
         "resource_names",
         "resource_ids",
         "resource_assignments",
+        "task_type",
+        "ignore_resource_calendar",
+        "leveling_delay_minutes",
         "custom_fields",
         "notes",
     },
     Assignment: {"resource_id", "work_minutes", "units", "remaining_work_minutes"},
     Relationship: {"predecessor_id", "successor_id", "type", "lag_minutes"},
-    Resource: {"unique_id", "name", "type", "is_generic", "max_units", "standard_rate"},
+    Resource: {
+        "unique_id",
+        "name",
+        "type",
+        "is_generic",
+        "max_units",
+        "standard_rate",
+        "calendar_uid",
+    },
     Calendar: {
         "uid",
         "name",
@@ -126,7 +137,7 @@ _EXPECTED_FIELDS: dict[type[pydantic.BaseModel], set[str]] = {
 
 
 def test_schema_version() -> None:
-    assert model.SCHEMA_VERSION == "2.11.0"
+    assert model.SCHEMA_VERSION == "2.12.0"
 
 
 @pytest.mark.parametrize("cls", list(_EXPECTED_FIELDS))
@@ -147,6 +158,7 @@ def test_enum_members_are_frozen() -> None:
     }
     assert {t.value for t in RelationshipType} == {"FS", "SS", "FF", "SF"}
     assert {t.value for t in ResourceType} == {"WORK", "MATERIAL", "COST"}
+    assert {t.value for t in TaskType} == {"FIXED_UNITS", "FIXED_DURATION", "FIXED_WORK"}
 
 
 @pytest.mark.parametrize("cls", list(_EXPECTED_FIELDS))
@@ -168,5 +180,6 @@ def test_public_api_exports() -> None:
         "ResourceType",
         "Schedule",
         "Task",
+        "TaskType",
         "units",
     }

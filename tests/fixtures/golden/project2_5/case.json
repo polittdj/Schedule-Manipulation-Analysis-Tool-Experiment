@@ -142,7 +142,8 @@
     "float_erosion": 1,
     "completed": 27,
     "in_progress": 2,
-    "net_finish_impact_days": -148,
+    "net_finish_impact_days": -134,
+    "_net_finish_impact_basis": "-134 since ADR-0474 (was -148): the engine subtracts its own CPM finishes (ADR-0010) and those now equal the stored finishes on both goldens (2027-09-14 / 2028-01-26) because the resource-leveling delays the files carry are honoured; Fuse's stored-finish HSD10 reads the same -134.",
     "_first_snapshot_P2": {
       "activities_added": 144,
       "completed": 20,

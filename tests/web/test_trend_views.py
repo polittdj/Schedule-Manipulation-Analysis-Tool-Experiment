@@ -38,7 +38,7 @@ def test_trend_view_orders_by_data_date_and_shows_quality_trends(client: TestCli
     page = client.get("/trend").text
     assert "2 versions, oldest first" in page
     assert page.index("Project2.mspdi.xml") < page.index("Project5.mspdi.xml")
-    assert "Net Finish Impact across the series" in page and "-148 calendar days" in page
+    assert "Net Finish Impact across the series" in page and "-134 calendar days" in page
     assert "Critical: decreases over time" in page  # quality-trend sentence (41 -> 4)
     assert "Hard Constraints: increases over time" in page
     assert "id=trendCharts" in page and "/static/trend.js" in page
@@ -231,7 +231,7 @@ def test_trend_chapter_05_page_shell(client: TestClient) -> None:
 
     # data-driven takeaway carries the real net move (golden P2->P5 slip) and update count
     assert 'class="page-takeaway"' in page
-    assert "the finish slipped 148 calendar days" in page
+    assert "the finish slipped 134 calendar days" in page
     assert "1 of 1 update slipped it" in page
 
     # the six-KPI strip and both composition bars

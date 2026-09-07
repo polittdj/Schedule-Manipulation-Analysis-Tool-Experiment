@@ -79,9 +79,13 @@ from schedule_forensics.engine.recommendations import (
     Finding,
 )
 from schedule_forensics.engine.sra import (
+    ActivityRisk,
     ConditionalBranch,
     ProbabilisticBranch,
+    RiskEvent,
     RiskFactorTable,
+    SRAConfig,
+    SRAResult,
 )
 from schedule_forensics.engine.summary import VersionSummary, compute_summary
 from schedule_forensics.engine.trend import (
@@ -283,6 +287,9 @@ _ANALYSIS_CACHE_MAX = 48
 #: larger cap costs far less memory while keeping more versions cheap to re-serve after an analysis
 #: eviction. 144 x 641 KiB is ~90 MiB worst case.
 _CPM_CACHE_MAX = _ANALYSIS_CACHE_MAX * 3
+#: Legacy SRA results memoized per session (see ``SessionState.sra_memo``): the current page's
+#: run plus a few recent input sets (an iteration-count or distribution toggle and back).
+_SRA_MEMO_MAX = 4
 
 #: ADR-0258: sentinel population id for the pooled title-less loose files — stable, storable and
 #: selectable like a real Project pid, and never colliding with the engine's pid prefixes
@@ -504,6 +511,18 @@ class SessionState:
     #: SINGLE-entry so epoch flips can never accumulate retained schedule lists. Wiped by
     #: default (not in the keep-set). The live-model variant (/api/ai/briefing) is never cached.
     briefing_memo: tuple[str, tuple[Schedule, ...], dt.date, ExecutiveBriefing] | None = None
+    #: ADR-0474's latency follow-up: the legacy ``/api/sra`` result per set of inputs. The seeded
+    #: thousand-solve simulation is a pure function of (the scoped schedule OBJECT, the SRAConfig,
+    #: the per-activity overrides, the risk events) and every load of /sra re-ran it — twelve
+    #: times over in the browser proof, which timed out on the CI runner once the leveled goldens
+    #: cost more per solve. Identity-checked on the schedule (a re-upload or a scope-epoch flip
+    #: rebuilds the scoped object — the analysis tier is identity-anchored the same way), value-
+    #: checked on the three frozen inputs; newest first, at most :data:`_SRA_MEMO_MAX` entries;
+    #: single-flight under the ``"sra-memo"`` stripe so concurrent identical loads share ONE run.
+    #: Wiped by default (not in the keep-set). Served results are the same object: byte-identical.
+    sra_memo: list[
+        tuple[Schedule, SRAConfig, dict[int, ActivityRisk], tuple[RiskEvent, ...], SRAResult]
+    ] = field(default_factory=list)
     # ADR-0261 P3: per-version Performance-page memo, keyed by the SCOPED schedule's object
     # identity (one scoped object per version per epoch, courtesy of the scope memo):
     # id -> (scoped ref, effective-critical set, serialized G1-G5 block, truncated flag). The
@@ -973,6 +992,33 @@ class SessionState:
                 if f.name in WIPE_PRESERVED:
                     continue
                 setattr(self, f.name, getattr(fresh, f.name))
+
+    def sra_result(
+        self,
+        sch: Schedule,
+        config: SRAConfig,
+        overrides: dict[int, ActivityRisk],
+        risks: tuple[RiskEvent, ...],
+        compute: Callable[[], SRAResult],
+    ) -> SRAResult:
+        """The legacy SRA result for exactly these inputs — served from :attr:`sra_memo` when the
+        same scoped schedule OBJECT was last simulated under value-equal config, overrides and
+        risks, else computed by ``compute`` (single-flight: a concurrent identical request waits
+        for the run in progress and is served its result — the ADR-0281 stripe discipline, on a
+        stripe of its own key). An exception from ``compute`` propagates and memoizes nothing."""
+        with self._stripe_for("sra-memo"):
+            for entry in self.sra_memo:
+                if (
+                    entry[0] is sch
+                    and entry[1] == config
+                    and entry[2] == overrides
+                    and entry[3] == risks
+                ):
+                    return entry[4]
+            result = compute()
+            self.sra_memo.insert(0, (sch, config, overrides, risks, result))
+            del self.sra_memo[_SRA_MEMO_MAX:]
+            return result
 
     def set_filter(self, criteria: Sequence[Criterion]) -> None:
         """Set (or clear, with ``()``) the session-wide FIELD filter and invalidate the scope/

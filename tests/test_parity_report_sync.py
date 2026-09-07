@@ -45,8 +45,9 @@ def test_parity_report_reflects_current_case_json() -> None:
         f"{p5['baseline_compliance']['baseline_start_compliance_pct']}%" in report
     )  # 41% / 25%
 
-    # §E change metrics — the authoritative pairing (Net Impact -148, not the old -99)
-    assert str(chg["net_finish_impact_days"]) in report  # -148
+    # §E change metrics — the authoritative pairing (Net Impact -134 since ADR-0474; -148 before,
+    # never the old -99)
+    assert str(chg["net_finish_impact_days"]) in report  # -134
     assert str(chg["no_longer_critical"]) in report  # 34
     assert str(chg["finish_date_slips"]) in report  # 9
 
@@ -60,14 +61,17 @@ def test_fuse_validation_marker_cannot_be_silently_deleted_f01() -> None:
     self-consistency to ENGINE==FUSE against the delivered 2026-06/07 export suite. The prior
     version of this test pinned the honest *disclaimer*; this version pins the honest *upgrade*
     — the provenance markers and the two asserted divergences (the 96↔99 membership swap and
-    the -148 vs -134 Net-Finish-Impact basis) may not be silently deleted from either the
+    the -148 vs -134 Net-Finish-Impact basis, BOTH closed by ADR-0474, which honours the
+    goldens' resource-leveling delays) may not be silently deleted from either the
     human-readable report or the golden's machine-readable caveat."""
     root = Path(__file__).resolve().parents[1]
     report = _norm((root / "docs" / "PARITY-REPORT.md").read_text(encoding="utf-8"))
     assert "ENGINE==FUSE" in report
     assert "fuse_exports_2026-06.json" in report
-    assert "-148 = -134 - 15 + 1" in report  # the Net-Finish-Impact basis reconciliation
+    assert "-134 = -134 - 0 + 0" in report  # the Net-Finish-Impact bridge (zero since ADR-0474)
+    assert "-148 = -134 - 15 + 1" in report  # ...and the pre-ADR-0474 bridge it replaced
     assert "UID 99" in report and "UID 96" in report  # the SN04 membership swap disclosure
+    assert "ADR-0474" in report
 
     case = json.loads(
         (root / "tests" / "fixtures" / "golden" / "project2_5" / "case.json").read_text(

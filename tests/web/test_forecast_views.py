@@ -41,7 +41,7 @@ def test_forecast_page_shows_three_methods_and_inputs(client: TestClient) -> Non
         "Earned-schedule",
     ):
         assert method in page
-    assert "01/25/2028" in page  # CPM (dates render MM/DD/YYYY)
+    assert "01/26/2028" in page  # CPM — the stored finish since ADR-0474 (MM/DD/YYYY)
     assert "01/26/2028" in page  # as-scheduled (source-tool stored finish, MM/DD/YYYY)
     assert "06/10/2028" in page  # rate
     assert "02/01/2029" in page  # earned schedule (exact-ratio IEAC)
@@ -69,7 +69,7 @@ def test_forecast_page_carries_carnac_cards(client: TestClient) -> None:
         assert label in page, label
     # card values cross-check the methods (golden P5)
     assert "03/02/2026" in page  # earliest start (MM/DD/YYYY)
-    assert "497" in page  # project duration (working days)
+    assert "498" in page  # project duration (working days; the stored finish, ADR-0474)
     assert ">99<" in page  # to-go count card value
 
 
@@ -102,7 +102,7 @@ def test_forecast_drift_table_across_versions_and_api(client: TestClient) -> Non
     labels = [v["label"] for v in data["versions"]]
     assert labels == ["Project2.mspdi.xml", "Project5.mspdi.xml"]  # by data date
     first, last = data["versions"][0], data["versions"][-1]
-    assert first["forecasts"]["cpm"] == "2027-08-30"
+    assert first["forecasts"]["cpm"] == "2027-09-14"  # the stored finish (ADR-0474)
     assert first["forecasts"]["earned_schedule"] == "2029-03-08"
     assert last["forecasts"]["rate"] == "2028-06-10"
     assert last["spi_t"] == 0.47 and last["remaining"] == 99
@@ -155,7 +155,7 @@ def test_report_page_shows_float_bands_and_completion_panels(client: TestClient)
     assert "18 of 27 (66.7%)" in page  # completed behind baseline
     data = client.get("/api/analysis/Project5").json()
     assert data["float_bands"]["float_total_0"]["count"] == 4
-    assert data["float_bands"]["float_free_lt10"]["count"] == 73
+    assert data["float_bands"]["float_free_lt10"]["count"] == 69  # 73 before ADR-0474
     assert data["completion"]["avg_days_late"]["value"] == 39.2
     assert data["completion"]["mei"]["population"] == 0  # NA on the goldens — honest
 
