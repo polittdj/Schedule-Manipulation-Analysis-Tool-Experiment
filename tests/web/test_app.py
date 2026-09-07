@@ -197,7 +197,7 @@ def test_compare_two_versions_shows_trend_and_no_false_manipulation(client: Test
     assert "2 logic links removed since the prior version" in page.text  # the authoritative
     # TAMPERED file deletes 2 links (106->135, 113->138; ADR-0112) — correctly flagged
     assert "Net Finish Impact" in page.text  # the headline number is on the page
-    assert "-148 calendar days" in page.text  # golden P2->P5 slip (validated parity target)
+    assert "-134 calendar days" in page.text  # golden P2->P5 slip (validated parity target)
 
 
 def test_compare_orders_versions_by_data_date_not_load_order(client: TestClient) -> None:
@@ -207,7 +207,7 @@ def test_compare_orders_versions_by_data_date_not_load_order(client: TestClient)
     _upload(client, "Project2")  # older status date, loaded second
     page = client.get("/compare").text
     assert "Project2.mspdi.xml &rarr; Project5.mspdi.xml" in page  # chronological, not load order
-    assert "-148 calendar days" in page  # impact computed in the correct direction
+    assert "-134 calendar days" in page  # impact computed in the correct direction
     assert (
         "2 logic links removed since the prior version" in page
     )  # signal surfaces either load order
@@ -433,7 +433,7 @@ def test_compare_panels_wear_the_contract_shell(client: TestClient) -> None:
     # the Net-Finish-Impact sentence IS the trend panel's takeaway now (figures verbatim)
     assert (
         "<p class=sf-take data-no-i18n>Net Finish Impact: "
-        "<b class=fail>-148 calendar days</b>" in page
+        "<b class=fail>-134 calendar days</b>" in page
     )
     # the 'v4→v5'-style pair provenance chip — i18n-inert (version labels never translate)
     assert (

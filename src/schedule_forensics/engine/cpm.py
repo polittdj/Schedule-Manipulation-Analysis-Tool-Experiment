@@ -18,6 +18,21 @@ Scope of this engine (documented, not silently limited — Law 2):
   calendar void. Cross-calendar link **lag** is applied on the PROJECT axis (documented
   approximation — both oracle files carry only zero lags; MS Project's own lag calendar
   on cross-calendar links is unpinned until an oracle exists).
+* **Resource calendars honored** (ADR-0474). MS Project schedules an assignment on the
+  RESOURCE's calendar (intersected with the task's own calendar unless the task ignores
+  resource calendars), so a task whose crew works 16-hour or 24-hour days finishes on that
+  calendar. Each such task carries an *execution plan* — one leg per work-resource
+  assignment ``(calendar, span)`` where the span is the task duration scaled by
+  ``min(1, (work / units) / duration)`` — and starts at the earliest leg's first working
+  instant, finishes at the latest leg's finish, with the retreat / float axis on the
+  latest-finishing ("primary") leg. A task calendar intersected with a resource calendar
+  is approximated: a 24-hour task calendar yields the resource calendar exactly; any other
+  task calendar wins (documented; two Hard_File activities). A same-pattern resource
+  calendar changes nothing and stays on the integer fast path.
+* **Leveling delay honored** (ADR-0474): MS Project's stored resource-leveling delay is
+  ELAPSED time added after the task's own calendar first admits it (Hard_File UID 403:
+  Friday 08:00 + 25 d 7 h → the stored Tuesday 15:00). Delayed UniqueIDs are reported on
+  :attr:`CPMResult.leveling_driven` — a stored scheduling input, not an unsupported date.
 * **Link types:** all four (FS / SS / FF / SF) with lag/lead, in working minutes.
 * **Date constraints honored** (MS Project "honor constraint dates" mode):
   ``SNET`` / ``FNET`` are forward floors; ``SNLT`` / ``FNLT`` are backward caps;
@@ -89,6 +104,7 @@ from collections import deque
 from collections.abc import Mapping
 from dataclasses import dataclass
 from functools import lru_cache
+from typing import NamedTuple
 
 from schedule_forensics.engine.summary_logic import (
     SummaryLogicExplosion,
@@ -96,8 +112,9 @@ from schedule_forensics.engine.summary_logic import (
 )
 from schedule_forensics.model.calendar import Calendar
 from schedule_forensics.model.relationship import RelationshipType
+from schedule_forensics.model.resource import ResourceType
 from schedule_forensics.model.schedule import Schedule
-from schedule_forensics.model.task import ConstraintType, Task
+from schedule_forensics.model.task import ConstraintType, Task, TaskType
 
 #: Constraints the engine refuses (fail loud rather than schedule wrongly — Law 2).
 _REFUSED_CONSTRAINTS = frozenset({ConstraintType.ALAP})
@@ -162,6 +179,11 @@ class CPMResult:
     #: concern, and a recorded actual is evidence of what happened, not an unsupported date.
     #: This is the disclosure surface for "the schedule is anchored to reported progress".
     actual_start_driven: tuple[int, ...] = ()
+    #: UniqueIDs whose early start carries MS Project's stored resource-LEVELING DELAY
+    #: (ADR-0474): elapsed time the reference tool itself adds before the task may start.
+    #: Reported separately — a stored scheduling input, neither an unsupported date
+    #: (``date_driven``) nor evidence of work begun (``actual_start_driven``).
+    leveling_driven: tuple[int, ...] = ()
     #: The true wall-clock instant of the network finish when an off-calendar task's
     #: finish is not exactly representable on the project axis (e.g. an elapsed task
     #: ending on a weekend). ``None`` when every task follows the project calendar —
@@ -423,31 +445,166 @@ _ELAPSED_CALENDAR = Calendar(
 )
 
 
-def _execution_calendars(schedule: Schedule, tasks: list[Task]) -> dict[int, Calendar]:
-    """UniqueID → the calendar the task's duration actually consumes, for every task whose
-    execution pattern MATERIALLY differs from the project calendar. Elapsed durations map to
-    the 24/7 calendar; a ``calendar_uid`` resolving to a same-pattern calendar (or to nothing)
-    stays on the project-calendar integer fast path."""
-    project_key = _working_pattern_key(schedule.calendar)
+#: One execution leg of a task: the calendar a work-resource assignment (or the task itself)
+#: consumes its working time on, and the working minutes it consumes there.
+_Leg = tuple[Calendar, int]
+#: A task's execution legs, PRIMARY (latest-finishing) leg first: the task starts at the
+#: earliest leg's first working instant and finishes at the latest leg's finish.
+_Plan = tuple[_Leg, ...]
+
+
+class _Exec(NamedTuple):
+    """How an off-fast-path task executes: its legs, and the calendar its SLACK is measured on
+    — the task's OWN calendar (the 24/7 calendar for an elapsed duration), else the project
+    calendar. MS Project measures Total Slack on the task calendar even when the assignment
+    runs on a resource calendar (Hard_File UID 178: ES Mon 17:00 → LS Tue 13:00 is 240 project
+    minutes, the stored slack; the crew's 16-hour calendar would read 720)."""
+
+    legs: _Plan
+    axis: Calendar
+
+
+def _execution_plans(
+    schedule: Schedule, tasks: list[Task], duration: Mapping[int, int]
+) -> dict[int, _Exec]:
+    """UniqueID → the execution plan of every task that does NOT run its whole duration on
+    the project calendar's integer fast path (ADR-0322 task calendars, ADR-0474 resource
+    calendars and leveling delays). ``duration`` is the effective working duration per task
+    (the SRA / DCMA-12 overrides included) — a leg's span scales with it.
+
+    * an elapsed duration → one leg on the 24/7 calendar;
+    * work-resource assignments (unless the task ignores resource calendars): one leg per
+      assignment on the resource's registered calendar (the project calendar when the
+      resource carries none or a same-pattern one), spanning ``min(1, (work / units) /
+      stored duration) x duration``; a task calendar intersects: a 24-hour task calendar
+      yields the resource calendar, any other task calendar wins (approximation);
+    * a materially different task calendar with no such legs → one leg on it;
+    * a leveling delay on a project-calendar task → one leg on the project calendar, so the
+      delay's elapsed arithmetic runs segment-aware on the wall path.
+
+    Legs that all sit on the project pattern (and no task calendar, no delay) stay on the
+    fast path: the stored duration is then the span, exactly as before.
+    """
+    project_key = schedule.calendar.working_pattern_key()
     by_uid = {c.uid: c for c in schedule.calendars}
-    out: dict[int, Calendar] = {}
+    res_by_id = schedule.resources_by_id
+    ps = schedule.project_start
+    tod0 = ps.hour * 60 + ps.minute
+    out: dict[int, _Exec] = {}
     for t in tasks:
+        dur = duration[t.unique_id]
         if t.duration_is_elapsed and t.duration_minutes > 0:
-            out[t.unique_id] = _ELAPSED_CALENDAR
+            out[t.unique_id] = _Exec(((_ELAPSED_CALENDAR, dur),), _ELAPSED_CALENDAR)
             continue
-        if t.calendar_uid is None:
+        task_cal = by_uid.get(t.calendar_uid) if t.calendar_uid is not None else None
+        if task_cal is not None and task_cal.working_pattern_key() == project_key:
+            task_cal = None
+        legs: list[_Leg] = []
+        if t.resource_assignments and not t.ignore_resource_calendar and t.duration_minutes > 0:
+            for a in t.resource_assignments:
+                res = res_by_id.get(a.resource_id)
+                if (
+                    res is None
+                    or res.type is not ResourceType.WORK
+                    or a.work_minutes <= 0
+                    or a.units <= 0
+                ):
+                    continue
+                rcal = by_uid.get(res.calendar_uid) if res.calendar_uid is not None else None
+                if rcal is None or rcal.working_pattern_key() == project_key:
+                    rcal = schedule.calendar
+                leg_cal = rcal if task_cal is None or _is_24x7(task_cal) else task_cal
+                # a FIXED_UNITS assignment runs work / units of its calendar (it may end before
+                # the task: Hard_File UID 200); a fixed-duration / fixed-work assignment spans
+                # the whole task, its work contoured over it (Large Test File2: 78 of 117
+                # fixed-work assignments with work / units below the duration span it exactly,
+                # none span work / units)
+                ratio = (
+                    min(1.0, (a.work_minutes / a.units) / t.duration_minutes)
+                    if t.task_type is TaskType.FIXED_UNITS
+                    else 1.0
+                )
+                span = round(ratio * dur)
+                if span > 0:
+                    legs.append((leg_cal, span))
+        off_pattern = any(c.working_pattern_key() != project_key for c, _ in legs)
+        plan: _Plan
+        if legs and (off_pattern or task_cal is not None):
+            plan = tuple(dict.fromkeys(legs))
+        elif task_cal is not None:
+            plan = ((task_cal, dur),)
+        elif t.leveling_delay_minutes > 0:
+            plan = ((schedule.calendar, dur),)
+        else:
             continue
-        cal = by_uid.get(t.calendar_uid)
-        if cal is not None and _working_pattern_key(cal) != project_key:
-            out[t.unique_id] = cal
+        if len(plan) > 1:
+            # primary leg first: the one finishing latest from the project start (stable, so
+            # equal finishes keep the assignment order)
+            plan = tuple(
+                sorted(
+                    plan,
+                    key=lambda leg: _advance_wall(
+                        _snap_to_working(ps, leg[0], tod0), leg[1], leg[0], tod0
+                    ),
+                    reverse=True,
+                )
+            )
+        out[t.unique_id] = _Exec(plan, task_cal if task_cal is not None else schedule.calendar)
     return out
 
 
 def execution_calendar_of(schedule: Schedule, task: Task) -> Calendar | None:
     """The calendar ``task``'s duration actually consumes when it differs from the project
-    calendar (the 24/7 calendar for an elapsed duration), else ``None`` — the single public
-    lookup consumers (e.g. the DCMA-12 delay injection) use to work on the task's own axis."""
-    return _execution_calendars(schedule, [task]).get(task.unique_id)
+    calendar's fast path — the 24/7 calendar for an elapsed duration, its own or its primary
+    resource's calendar otherwise — else ``None``. The single public lookup consumers (the
+    DCMA-12 delay injection) use to size a delay on the task's own axis."""
+    plan = _execution_plans(schedule, [task], {task.unique_id: task.duration_minutes})
+    ex = plan.get(task.unique_id)
+    return None if ex is None else ex.legs[0][0]
+
+
+def injected_finish_wall(
+    schedule: Schedule, task: Task, timing: TaskTiming, extra_minutes: int
+) -> dt.datetime | None:
+    """The finish instant ``task`` would reach were its duration ``extra_minutes`` longer, run
+    on its execution plan from its computed early start (every leg scales with the duration).
+    ``None`` when the task runs on the integer fast path (no plan / no wall start) — the
+    caller then reasons on the project axis."""
+    ex = _execution_plans(
+        schedule, [task], {task.unique_id: task.duration_minutes + extra_minutes}
+    ).get(task.unique_id)
+    if ex is None or timing.early_start_wall is None:
+        return None
+    ps = schedule.project_start
+    return _plan_finish(timing.early_start_wall, ex.legs, ps.hour * 60 + ps.minute)
+
+
+def _plan_snap(wall: dt.datetime, plan: _Plan, day_start_tod: int) -> dt.datetime:
+    """The earliest instant at or after ``wall`` on which ANY leg of the plan can work — the
+    task's start (MS Project: the earliest assignment start)."""
+    return min(_snap_to_working(wall, c, day_start_tod) for c, _ in plan)
+
+
+def _plan_finish(start: dt.datetime, plan: _Plan, day_start_tod: int) -> dt.datetime:
+    """The task's finish from ``start``: every leg starts at its own calendar's first working
+    instant at or after ``start``, consumes its span there; the latest leg finish wins."""
+    return max(
+        _advance_wall(_snap_to_working(start, c, day_start_tod), span, c, day_start_tod)
+        for c, span in plan
+    )
+
+
+def _plan_retreat(finish: dt.datetime, plan: _Plan, day_start_tod: int) -> dt.datetime:
+    """The latest start from which every leg still finishes by ``finish``."""
+    return min(_retreat_wall(finish, span, c, day_start_tod) for c, span in plan)
+
+
+def _plan_scaled(plan: _Plan, minutes: int, duration: int) -> _Plan:
+    """The plan's legs scaled to ``minutes`` of the ``duration`` they were built for (the
+    remaining-work floor); a zero duration collapses onto the primary leg."""
+    if duration <= 0:
+        return ((plan[0][0], minutes),)
+    return tuple((c, round(span * minutes / duration)) for c, span in plan)
 
 
 def _day_segments_of(cal: Calendar, day_start_tod: int) -> tuple[tuple[int, int], ...]:
@@ -734,18 +891,28 @@ def _snap_to_working(wall: dt.datetime, cal: Calendar, day_start_tod: int) -> dt
         tod = 0
 
 
+def _snap_back_to_working(wall: dt.datetime, cal: Calendar, day_start_tod: int) -> dt.datetime:
+    """The latest working instant on ``cal`` at or before ``wall`` at which work can END — a
+    FINISH-role instant: the start of a working block (Monday 08:00) is the same grid point as
+    the previous block's end (Friday 17:00), and MS Project writes a late finish as the latter
+    (ADR-0474: a fast-path successor's late-start need arrives as a start-role instant)."""
+    if _is_24x7(cal):
+        return wall
+    segments = _day_segments_of(cal, day_start_tod)
+    day, tod = wall.date(), wall.hour * 60 + wall.minute
+    while True:
+        if _is_worked_day(cal, day):
+            for seg_start, seg_end in reversed(segments):
+                if tod > seg_start:
+                    return _at_minute(day, min(tod, seg_end))
+        day -= dt.timedelta(days=1)
+        tod = 1440
+
+
 def _working_pattern_key(cal: Calendar) -> tuple[object, ...]:
-    """The fields that make a calendar's working pattern materially distinct — everything the
-    date/float math consumes, and nothing cosmetic (``uid`` / ``name`` are identity, not pattern).
-    Order-independent, so two calendars listing the same holidays in a different order compare
-    equal (a purely re-ordered registry entry is not a real divergence)."""
-    return (
-        cal.working_minutes_per_day,
-        tuple(sorted(cal.work_weekdays)),
-        tuple(sorted(cal.holidays)),
-        tuple(sorted(cal.working_days)),
-        tuple(sorted(cal.day_segments)),
-    )
+    """The calendar's material working pattern — :meth:`Calendar.working_pattern_key` (moved
+    onto the model by ADR-0474 so the importer's registry can apply the same test)."""
+    return cal.working_pattern_key()
 
 
 def off_project_calendars(schedule: Schedule) -> tuple[Calendar, ...]:
@@ -1046,11 +1213,12 @@ def compute_cpm(
     stored_pin, stored_floor = _stored_date_bounds(schedule, tasks, has_preds)
     actual_floor = _actual_start_bounds(schedule, tasks)
     resume_ef_floor = _resume_bounds(schedule, tasks, duration_overrides)
-    # Tasks executing on their OWN calendar (a materially different task calendar, or an
-    # elapsed duration == the 24/7 calendar): dates advance in wall-clock arithmetic on that
-    # calendar; float is that calendar's working minutes. Everything else stays on the
-    # integer project axis (byte-identical fast path).
-    exec_cal = _execution_calendars(schedule, tasks)
+    # Tasks executing on their OWN calendar(s) — a materially different task calendar, an
+    # elapsed duration (== the 24/7 calendar), a work resource on another calendar, or a
+    # leveling delay: dates advance in wall-clock arithmetic on the task's execution plan; float
+    # is the primary leg's calendar minutes. Everything else stays on the integer project axis
+    # (byte-identical fast path).
+    exec_plan = _execution_plans(schedule, tasks, duration)
     task_by_id: dict[int, Task] = {t.unique_id: t for t in tasks}
     ps, cal = schedule.project_start, schedule.calendar
     tod0 = ps.hour * 60 + ps.minute
@@ -1067,21 +1235,23 @@ def compute_cpm(
     #: analyst to tie the activity into the network, which would be a false signal about work
     #: that has demonstrably already started.
     actual_driven: list[int] = []
+    #: UIDs whose early start carries the stored leveling delay (ADR-0474).
+    leveling_driven: list[int] = []
 
     def _pred_finish_wall(p: int) -> dt.datetime:
-        if p in exec_cal:
+        if p in exec_plan:
             return ef_wall[p]
         return _offset_to_wall(ps, early_finish[p], cal, role="finish")
 
     def _pred_start_wall(p: int) -> dt.datetime:
-        if p in exec_cal:
+        if p in exec_plan:
             return es_wall[p]
         return _offset_to_wall(ps, early_start[p], cal, role="start")
 
     for tid in order:
         dur_s = duration[tid]
-        if tid in exec_cal:
-            cal_t = exec_cal[tid]
+        if tid in exec_plan:
+            plan, cal_t = exec_plan[tid]  # the legs, and the task's slack axis
             task = task_by_id[tid]
             # the pure logic+constraint early start, as a wall instant on the task's calendar
             cands: list[dt.datetime] = [ps]
@@ -1098,7 +1268,7 @@ def compute_cpm(
                         if lag == 0
                         else _offset_to_wall(ps, early_start[p] + lag, cal, role="start")
                     )
-                else:  # FF / SF bound the FINISH; retreat the duration on the task calendar
+                else:  # FF / SF bound the FINISH; retreat the plan from it
                     if rel is RelationshipType.FF:
                         fin = (
                             _pred_finish_wall(p)
@@ -1111,29 +1281,35 @@ def compute_cpm(
                             if lag == 0
                             else _offset_to_wall(ps, early_start[p] + lag, cal, role="start")
                         )
-                    drive = _retreat_wall(fin, dur_s, cal_t, tod0)
+                    drive = _plan_retreat(fin, plan, tod0)
                 cands.append(drive)
             if tid in es_floor:
                 # date-constraint floor from the RAW date (exact even inside a project void)
                 if task.constraint_type is ConstraintType.SNET and task.constraint_date:
                     cands.append(task.constraint_date)
                 elif task.constraint_type is ConstraintType.FNET and task.constraint_date:
-                    cands.append(_retreat_wall(task.constraint_date, dur_s, cal_t, tod0))
+                    cands.append(_plan_retreat(task.constraint_date, plan, tod0))
                 else:
                     cands.append(_offset_to_wall(ps, es_floor[tid], cal, role="start"))
-            logic_es_wall = _snap_to_working(max(cands), cal_t, tod0)
+            logic_es_wall = _plan_snap(max(cands), plan, tod0)
+            if task.leveling_delay_minutes > 0:
+                # MS Project's resource-leveling delay: ELAPSED time added after the task's own
+                # calendar first admits it, then the calendar admits it again (ADR-0474)
+                delayed = logic_es_wall + dt.timedelta(minutes=task.leveling_delay_minutes)
+                logic_es_wall = _plan_snap(delayed, plan, tod0)
+                leveling_driven.append(tid)
             if tid in es_pin and task.constraint_date is not None:
                 if task.constraint_type is ConstraintType.MSO:
-                    es_w = _snap_to_working(task.constraint_date, cal_t, tod0)
+                    es_w = _plan_snap(task.constraint_date, plan, tod0)
                 else:  # MFO — pin the finish, derive the start
-                    es_w = _retreat_wall(task.constraint_date, dur_s, cal_t, tod0)
+                    es_w = _plan_retreat(task.constraint_date, plan, tod0)
                 pin_violation[tid] = _wall_minutes_between(logic_es_wall, es_w, cal_t, tod0)
             elif tid in stored_pin and task.start is not None:
-                es_w = _snap_to_working(max(task.start, ps), cal_t, tod0)
+                es_w = _plan_snap(max(task.start, ps), plan, tod0)
                 if es_w != logic_es_wall:
                     date_driven.append(tid)
             elif tid in stored_floor and task.start is not None and task.start > logic_es_wall:
-                es_w = _snap_to_working(task.start, cal_t, tod0)
+                es_w = _plan_snap(task.start, plan, tod0)
                 date_driven.append(tid)
             else:
                 es_w = logic_es_wall
@@ -1144,17 +1320,19 @@ def compute_cpm(
             # hold UNSTARTED tasks (_stored_date_bounds), so applying the floor after the chain is
             # byte-identical for them.
             if task.actual_start is not None:
-                started_wall = _snap_to_working(max(task.actual_start, ps), cal_t, tod0)
+                started_wall = _plan_snap(max(task.actual_start, ps), plan, tod0)
                 if started_wall > es_w:
                     es_w = started_wall
                     actual_driven.append(tid)
-            ef_w = _advance_wall(es_w, dur_s, cal_t, tod0)
-            # ADR-0309 resume floor, on the task's own calendar from the raw stored dates
+            ef_w = _plan_finish(es_w, plan, tod0)
+            # ADR-0309 resume floor, on the task's own calendar(s) from the raw stored dates
             if task.resume is not None and task.stop is not None and task.resume > task.stop:
                 ov = duration_overrides or {}
                 remaining = ov.get(tid, task.remaining_duration_minutes)
                 if remaining is not None and remaining > 0:
-                    resumed = _advance_wall(max(task.resume, ps), remaining, cal_t, tod0)
+                    resumed = _plan_finish(
+                        max(task.resume, ps), _plan_scaled(plan, remaining, dur_s), tod0
+                    )
                     if resumed > ef_w:
                         ef_w = resumed
                         date_driven.append(tid)
@@ -1208,7 +1386,7 @@ def compute_cpm(
     # true latest finish instant. Monotonicity of the wall→offset projection means the
     # latest-wall task is among the max-offset tasks, so only those need their walls.
     target_wall: dt.datetime | None = None
-    if exec_cal:
+    if exec_plan:
         if required_finish_offset is not None:
             target_wall = _offset_to_wall(ps, required_finish_offset, cal, role="finish")
         else:
@@ -1216,7 +1394,7 @@ def compute_cpm(
             target_wall = max(
                 (
                     ef_wall[t]
-                    if t in exec_cal
+                    if t in exec_plan
                     else _offset_to_wall(ps, early_finish[t], cal, role="finish")
                     for t in finish_cands
                 ),
@@ -1226,24 +1404,31 @@ def compute_cpm(
     # ---- backward pass (LF capped at the backward target, and by SNLT/FNLT/MSO/MFO/deadline) ----
     late_finish: dict[int, int] = {}
     late_start: dict[int, int] = {}
+    #: the late-start NEED a task presents to its predecessors on the project axis: its late
+    #: start less its stored leveling delay (ADR-0474) — equal to ``late_start`` for every task
+    #: without one
+    ls_need: dict[int, int] = {}
     ls_wall: dict[int, dt.datetime] = {}
     lf_wall: dict[int, dt.datetime] = {}
     exec_slack: dict[int, int] = {}
 
     def _succ_ls_wall(s: int, lag: int) -> dt.datetime:
-        if lag == 0 and s in exec_cal:
-            return ls_wall[s]
-        return _offset_to_wall(ps, late_start[s] - lag, cal, role="start")
+        # a successor's stored leveling delay sits between its predecessors' finish and its own
+        # late start (MS Project: Hard_File UID 14 LF 11:00 = UID 141 LS 21:00 minus its 10 h)
+        delay = dt.timedelta(minutes=task_by_id[s].leveling_delay_minutes)
+        if lag == 0 and s in exec_plan:
+            return ls_wall[s] - delay
+        return _offset_to_wall(ps, late_start[s] - lag, cal, role="start") - delay
 
     def _succ_lf_wall(s: int, lag: int) -> dt.datetime:
-        if lag == 0 and s in exec_cal:
+        if lag == 0 and s in exec_plan:
             return lf_wall[s]
         return _offset_to_wall(ps, late_finish[s] - lag, cal, role="finish")
 
     for tid in reversed(order):
         dur_p = duration[tid]
-        if tid in exec_cal:
-            cal_t = exec_cal[tid]
+        if tid in exec_plan:
+            plan, cal_t = exec_plan[tid]
             task = task_by_id[tid]
             tw = (
                 target_wall
@@ -1265,22 +1450,35 @@ def compute_cpm(
                 if task.constraint_type in (ConstraintType.FNLT, ConstraintType.MFO):
                     finish_needs.append(task.constraint_date)
                 elif task.constraint_type in (ConstraintType.SNLT, ConstraintType.MSO):
-                    finish_needs.append(_advance_wall(task.constraint_date, dur_p, cal_t, tod0))
+                    finish_needs.append(_plan_finish(task.constraint_date, plan, tod0))
             if task.deadline is not None:
                 finish_needs.append(task.deadline)
+            # MS Project's own backward pass: the late finish is the tightest finish need, the
+            # late start retreats every leg from it (a start need tightens the start, and then
+            # the finish follows it); total slack is the smaller of the start slack and the
+            # finish slack, both measured on the task's slack axis (ADR-0474 — on a resource
+            # calendar the two differ, and the stored slack is their minimum)
+            lf_w = _snap_back_to_working(min(finish_needs), plan[0][0], tod0)
+            ls_w = _plan_retreat(lf_w, plan, tod0)
+            if start_needs and min(start_needs) < ls_w:
+                ls_w = min(start_needs)
+                lf_w = min(lf_w, _plan_finish(ls_w, plan, tod0))
             slack = min(
-                [_wall_minutes_between(ef_wall[tid], f, cal_t, tod0) for f in finish_needs]
-                + [_wall_minutes_between(es_wall[tid], s0, cal_t, tod0) for s0 in start_needs]
+                _wall_minutes_between(es_wall[tid], ls_w, cal_t, tod0),
+                _wall_minutes_between(ef_wall[tid], lf_w, cal_t, tod0),
             )
             exec_slack[tid] = slack
-            lf_w = _advance_wall_signed(ef_wall[tid], slack, cal_t, tod0)
-            ls_w = _advance_wall_signed(es_wall[tid], slack, cal_t, tod0)
             ls_wall[tid], lf_wall[tid] = ls_w, lf_w
             late_finish[tid] = _wall_to_offset(ps, lf_w, cal)
             late_start[tid] = _wall_to_offset(ps, ls_w, cal)
+            ls_need[tid] = (
+                _wall_to_offset(ps, ls_w - dt.timedelta(minutes=task.leveling_delay_minutes), cal)
+                if task.leveling_delay_minutes > 0
+                else late_start[tid]
+            )
             continue
         bounds = [
-            lf_upper_bound(rel, late_start[s], late_finish[s], lag, dur_p)
+            lf_upper_bound(rel, ls_need[s], late_finish[s], lag, dur_p)
             for s, rel, lag in succs[tid]
         ]
         if tid in lf_cap:
@@ -1288,21 +1486,22 @@ def compute_cpm(
         lf = min([backward_target, *bounds])
         late_finish[tid] = lf
         late_start[tid] = lf - dur_p
+        ls_need[tid] = late_start[tid]
 
     def _succ_early_start_wall(s: int, lag: int) -> dt.datetime:
-        if lag == 0 and s in exec_cal:
+        if lag == 0 and s in exec_plan:
             return es_wall[s]
         return _offset_to_wall(ps, early_start[s] - lag, cal, role="start")
 
     def _succ_early_finish_wall(s: int, lag: int) -> dt.datetime:
-        if lag == 0 and s in exec_cal:
+        if lag == 0 and s in exec_plan:
             return ef_wall[s]
         return _offset_to_wall(ps, early_finish[s] - lag, cal, role="finish")
 
     timings: dict[int, TaskTiming] = {}
     for tid in task_ids:
-        if tid in exec_cal:
-            cal_t = exec_cal[tid]
+        if tid in exec_plan:
+            cal_t = exec_plan[tid].axis
             total = exec_slack[tid]
             if succs[tid]:
                 free_cands = []
@@ -1374,5 +1573,6 @@ def compute_cpm(
         critical_path=critical_path,
         date_driven=tuple(sorted(date_driven)),
         actual_start_driven=tuple(sorted(actual_driven)),
+        leveling_driven=tuple(sorted(leveling_driven)),
         project_finish_wall=target_wall if required_finish_offset is None else None,
     )

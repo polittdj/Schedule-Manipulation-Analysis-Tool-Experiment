@@ -115,14 +115,14 @@ def test_carnac_summary_reuses_forecast_and_cpm(golden_project5: Schedule) -> No
     fs = compute_finish_forecasts(golden_project5, cpm)
     c = compute_carnac_summary(golden_project5, cpm, fs)
     by_id = {f.method_id: f for f in fs.forecasts}
-    assert c.latest_finish == by_id["cpm"].finish == dt.date(2028, 1, 25)
+    assert c.latest_finish == by_id["cpm"].finish == dt.date(2028, 1, 26)  # stored (ADR-0474)
     assert c.forecasted_end == by_id["rate"].finish == dt.date(2028, 6, 10)
     assert c.estimated_end_es == by_id["earned_schedule"].finish == dt.date(2029, 2, 1)
     assert c.spi_t == fs.spi_t == 0.47
     assert c.avg_tasks_per_month == fs.rate_per_month == 4.62
     assert c.to_go_count == fs.remaining_count == 99
     # derived working-day spans (golden P5: 497 wd project span, ES 60 wd)
-    assert c.project_duration_days == 497.0
+    assert c.project_duration_days == 498.0
     assert c.earned_schedule_days == 60.0
     assert c.earliest_start == dt.date(2026, 3, 2)
     # remaining duration is positive and no longer than the whole project
@@ -161,13 +161,13 @@ def test_carnac_summary_without_stored_starts_has_no_project_window() -> None:
 def test_golden_pins(golden_project2: Schedule, golden_project5: Schedule) -> None:
     p2 = compute_finish_forecasts(golden_project2)
     by_id = {f.method_id: f for f in p2.forecasts}
-    assert by_id["cpm"].finish == dt.date(2027, 8, 30)
+    assert by_id["cpm"].finish == dt.date(2027, 9, 14)  # the stored finish (ADR-0474; was 08-30)
     assert by_id["rate"].finish == dt.date(2027, 8, 7)
     assert by_id["earned_schedule"].finish == dt.date(2029, 3, 8)
     assert p2.spi_t == 0.45 and p2.rate_per_month == 7.33
     p5 = compute_finish_forecasts(golden_project5)
     by_id5 = {f.method_id: f for f in p5.forecasts}
-    assert by_id5["cpm"].finish == dt.date(2028, 1, 25)
+    assert by_id5["cpm"].finish == dt.date(2028, 1, 26)  # the stored finish (ADR-0474; was 01-25)
     assert by_id5["rate"].finish == dt.date(2028, 6, 10)
     # exact-ratio IEAC(t): dividing by the 2-decimal SPI(t) (0.47 vs 0.4651) read 9 days early
     assert by_id5["earned_schedule"].finish == dt.date(2029, 2, 1)

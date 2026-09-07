@@ -82,9 +82,9 @@ def test_trend_panels_wear_head_take_and_prov(pair: TestClient) -> None:
 def test_trend_takes_quote_figures_the_page_already_renders(pair: TestClient) -> None:
     page = pair.get("/trend").text
     # the Net Finish Impact figure is the one already printed under the version table
-    assert "Net Finish Impact across the series" in page and "-148 calendar days" in page
+    assert "Net Finish Impact across the series" in page and "-134 calendar days" in page
     assert "Across 2 versions the Net Finish Impact is" in page
-    assert "-148 calendar days</b> &mdash; the project finish moved later" in page
+    assert "-134 calendar days</b> &mdash; the project finish moved later" in page
     # the signal count matches the rows the table actually renders
     assert "manipulation-trend signals across 1 consecutive-version step." in page
 

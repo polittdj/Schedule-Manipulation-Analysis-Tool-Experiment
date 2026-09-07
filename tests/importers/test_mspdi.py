@@ -13,6 +13,7 @@ from schedule_forensics.model import (
     RelationshipType,
     ResourceType,
     Schedule,
+    TaskType,
 )
 
 FIXTURE = (
@@ -1200,3 +1201,70 @@ def test_pattern_less_base_calendar_works_the_default_week_and_keeps_its_holiday
     )
     # the worked Saturday survives as an extra working day
     assert dt.date(2027, 6, 5) in cal.working_days
+
+
+# --- resource calendars, task type, leveling delay (ADR-0474) --------------------------------
+
+_STD_WEEK = "".join(
+    _weekday(d, ("08:00:00", "12:00:00"), ("13:00:00", "17:00:00")) for d in (2, 3, 4, 5, 6)
+)
+_ROUND_THE_CLOCK = "".join(_weekday(d, ("00:00:00", "00:00:00")) for d in range(1, 8))
+_CREW_DOC = f"""
+<CalendarUID>1</CalendarUID>
+<Calendars>
+<Calendar><UID>1</UID><Name>Standard</Name><IsBaseCalendar>1</IsBaseCalendar>
+<BaseCalendarUID>-1</BaseCalendarUID><WeekDays>{_weekday(1)}{_STD_WEEK}{_weekday(7)}</WeekDays>
+</Calendar>
+<Calendar><UID>10</UID><Name>24 Hours</Name><IsBaseCalendar>1</IsBaseCalendar>
+<BaseCalendarUID>-1</BaseCalendarUID><WeekDays>{_ROUND_THE_CLOCK}</WeekDays></Calendar>
+<Calendar><UID>3</UID><Name>Content Developer</Name><IsBaseCalendar>0</IsBaseCalendar>
+<BaseCalendarUID>10</BaseCalendarUID></Calendar>
+<Calendar><UID>4</UID><Name>Customer Service Lead</Name><IsBaseCalendar>0</IsBaseCalendar>
+<BaseCalendarUID>1</BaseCalendarUID></Calendar>
+<Calendar><UID>5</UID><Name>Nobody</Name><IsBaseCalendar>0</IsBaseCalendar>
+<BaseCalendarUID>10</BaseCalendarUID></Calendar>
+</Calendars>
+<Tasks>
+<Task><UID>1</UID><Name>A</Name><Duration>PT16H0M0S</Duration><Type>2</Type>
+<IgnoreResourceCalendar>1</IgnoreResourceCalendar><LevelingDelay>2390</LevelingDelay>
+<LevelingDelayFormat>8</LevelingDelayFormat></Task>
+<Task><UID>2</UID><Name>B</Name><Duration>PT8H0M0S</Duration><Type>1</Type><LevelingDelay>-50</LevelingDelay></Task>
+<Task><UID>3</UID><Name>C</Name><Duration>PT8H0M0S</Duration></Task>
+</Tasks>
+<Resources>
+<Resource><UID>1</UID><Name>Content Developer</Name><Type>1</Type>
+<CalendarUID>3</CalendarUID></Resource>
+<Resource><UID>2</UID><Name>Customer Service Lead</Name><Type>1</Type>
+<CalendarUID>4</CalendarUID></Resource>
+<Resource><UID>3</UID><Name>Nobody</Name><Type>1</Type><CalendarUID>5</CalendarUID></Resource>
+<Resource><UID>4</UID><Name>No calendar</Name><Type>1</Type><CalendarUID>-1</CalendarUID></Resource>
+</Resources>
+<Assignments>
+<Assignment><UID>1</UID><TaskUID>1</TaskUID><ResourceUID>1</ResourceUID>
+<Work>PT16H0M0S</Work><Units>1</Units></Assignment>
+<Assignment><UID>2</UID><TaskUID>2</TaskUID><ResourceUID>2</ResourceUID>
+<Work>PT8H0M0S</Work><Units>1</Units></Assignment>
+</Assignments>"""
+
+
+def test_resource_calendar_task_type_ignore_flag_and_leveling_delay_are_read() -> None:
+    """ADR-0474: ``Resource/CalendarUID`` (-1 = none), ``Task/Type`` (0 / 1 / 2),
+    ``IgnoreResourceCalendar`` and ``LevelingDelay`` (tenths of a minute, never negative)."""
+    sch = parse_mspdi_text(_doc(_CREW_DOC))
+    assert sch.resource_by_id(1).calendar_uid == 3
+    assert sch.resource_by_id(2).calendar_uid == 4
+    assert sch.resource_by_id(4).calendar_uid is None
+    a, b, c = (sch.task_by_id(uid) for uid in (1, 2, 3))
+    assert a.task_type is TaskType.FIXED_WORK and a.ignore_resource_calendar is True
+    assert a.leveling_delay_minutes == 239  # 2390 tenths of a minute
+    assert b.task_type is TaskType.FIXED_DURATION and b.leveling_delay_minutes == 0
+    assert c.task_type is TaskType.FIXED_UNITS and c.ignore_resource_calendar is False
+
+
+def test_registry_carries_only_assigned_crews_off_pattern_calendars() -> None:
+    """The 24-hour crew's calendar (uid 3) is registered because a task is assigned to it;
+    the Standard-pattern crew calendar (uid 4) is not — it schedules like the project
+    calendar; the unassigned 24-hour crew (uid 5) is not — no activity runs on it."""
+    sch = parse_mspdi_text(_doc(_CREW_DOC))
+    assert [c.uid for c in sch.calendars] == [1, 3]
+    assert sch.calendars[1].working_minutes_per_day == 1440

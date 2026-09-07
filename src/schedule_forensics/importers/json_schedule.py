@@ -23,7 +23,7 @@ from schedule_forensics.model.calendar import Calendar
 from schedule_forensics.model.relationship import Relationship, RelationshipType
 from schedule_forensics.model.resource import Resource, ResourceType
 from schedule_forensics.model.saved_view import SavedFilter, SavedGroup
-from schedule_forensics.model.task import ConstraintType, Task
+from schedule_forensics.model.task import ConstraintType, Task, TaskType
 
 _DATE_FIELDS = (
     "start",
@@ -177,6 +177,7 @@ def _task(raw: dict[str, Any]) -> Task:
         "is_estimated_duration",
         "is_level_of_effort",
         "is_active",
+        "ignore_resource_calendar",
         "percent_complete",
         "resource_names",
     ):
@@ -189,6 +190,7 @@ def _task(raw: dict[str, Any]) -> Task:
         "outline_level",
         "priority",
         "stored_total_float_minutes",
+        "leveling_delay_minutes",
     ):
         if raw.get(key) is not None:
             fields[key] = _int(raw[key], key)
@@ -217,6 +219,8 @@ def _task(raw: dict[str, Any]) -> Task:
             fields[field] = _dt(raw[field])
     if raw.get("constraint_type"):
         fields["constraint_type"] = ConstraintType(str(raw["constraint_type"]))
+    if raw.get("task_type"):
+        fields["task_type"] = TaskType(str(raw["task_type"]))
     if isinstance(fields.get("resource_names"), list):
         fields["resource_names"] = tuple(str(r) for r in fields["resource_names"])
     if isinstance(raw.get("resource_ids"), list):
@@ -250,6 +254,8 @@ def _resource(raw: dict[str, Any]) -> Resource:
     for key in ("max_units", "standard_rate"):
         if raw.get(key) is not None:
             kwargs[key] = float(raw[key])
+    if raw.get("calendar_uid") is not None:
+        kwargs["calendar_uid"] = _int(raw["calendar_uid"], "resource calendar_uid")
     return Resource(**kwargs)
 
 
@@ -456,6 +462,7 @@ def to_json_text(schedule: Schedule) -> str:
                 "is_generic": res.is_generic,
                 "max_units": res.max_units,
                 "standard_rate": res.standard_rate,
+                "calendar_uid": res.calendar_uid,
             }
             for res in schedule.resources
         ]
@@ -502,6 +509,13 @@ def to_json_text(schedule: Schedule) -> str:
             task["is_active"] = False
         if t.calendar_uid is not None:
             task["calendar_uid"] = t.calendar_uid
+        # the scheduling-type / resource-calendar / leveling inputs (ADR-0474): defaults omitted
+        if t.task_type is not TaskType.FIXED_UNITS:
+            task["task_type"] = str(t.task_type)
+        if t.ignore_resource_calendar:
+            task["ignore_resource_calendar"] = True
+        if t.leveling_delay_minutes:
+            task["leveling_delay_minutes"] = t.leveling_delay_minutes
         if t.outline_level:
             task["outline_level"] = t.outline_level
         if t.outline_number is not None:

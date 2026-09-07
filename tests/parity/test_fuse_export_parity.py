@@ -190,20 +190,25 @@ def test_no_longer_critical_membership_is_uid_exact_with_fuse() -> None:
     assert engine_set ^ fuse_set == set()
     assert 96 in engine_set and 99 not in engine_set
 
-    # the premise that made this a swap in the first place, pinned on the source data itself
+    # the premise that made this a swap in the first place, pinned on the source data itself —
+    # and CLOSED by ADR-0474: UID 96 carries a 21-day resource-leveling delay; honouring it, the
+    # recomputed CPM agrees with the stored flags on both activities (the swap cannot return)
     p2_by_id = {t.unique_id: t for t in p2.tasks}
     cpm2 = compute_cpm(p2)
-    assert p2_by_id[96].stored_is_critical is True and not cpm2.timings[96].is_critical
-    assert p2_by_id[99].stored_is_critical is False and cpm2.timings[99].is_critical
+    assert p2_by_id[96].leveling_delay_minutes == 30240
+    assert p2_by_id[96].stored_is_critical is True and cpm2.timings[96].is_critical
+    assert p2_by_id[99].stored_is_critical is False and not cpm2.timings[99].is_critical
 
 
 def test_net_finish_impact_bases_reconcile_to_the_day() -> None:
-    """Engine -148 (pure-logic CPM finishes) vs Fuse HSD10 -134 (stored finishes) — exact.
+    """Engine -134 (CPM finishes) == Fuse HSD10 -134 (stored finishes) — exact since ADR-0474.
 
     The .aft Bible formula is ``ROUND(ProjectPreviousFinish - ProjectFinish, 0)`` over the
     STORED project finishes; the engine deliberately subtracts its own CPM finishes
-    (independence/auditability, ADR-0010 — the gap is the ADR-0108 data-date behaviour, not a
-    computation error). Assert BOTH numbers and the day-exact reconciliation between them."""
+    (independence/auditability, ADR-0010). Until ADR-0474 the engine read -148: its CPM landed
+    15 days before Project2's stored finish and 1 day before Project5's because it ignored the
+    goldens' resource-leveling delays. Honouring them, both CPM finishes ARE the stored finishes
+    and the two bases coincide. Assert BOTH numbers and the day-exact bridge (now zero)."""
     f = _fuse()["change_P2_to_P5"]
     p2, p5 = _schedule("Project2"), _schedule("Project5")
 
@@ -217,10 +222,10 @@ def test_net_finish_impact_bases_reconcile_to_the_day() -> None:
 
     # the engine's CPM-basis figure, and the exact bridge between the two bases
     engine_impact = compute_net_finish_impact(p5, p2).value
-    assert engine_impact == -148.0
+    assert engine_impact == -134.0
     cpm_p2 = offset_to_datetime(p2.project_start, compute_cpm(p2).project_finish, p2.calendar)
     cpm_p5 = offset_to_datetime(p5.project_start, compute_cpm(p5).project_finish, p5.calendar)
-    gap_p2 = (stored_p2 - cpm_p2.date()).days  # CPM lands 15 days before the stored finish
-    gap_p5 = (stored_p5 - cpm_p5.date()).days  # CPM lands 1 day before the stored finish
-    assert (gap_p2, gap_p5) == (15, 1)
-    assert engine_impact == fuse_impact - gap_p2 + gap_p5  # -148 == -134 - 15 + 1
+    gap_p2 = (stored_p2 - cpm_p2.date()).days  # the CPM lands ON the stored finish (was 15 early)
+    gap_p5 = (stored_p5 - cpm_p5.date()).days  # the CPM lands ON the stored finish (was 1 early)
+    assert (gap_p2, gap_p5) == (0, 0)
+    assert engine_impact == fuse_impact - gap_p2 + gap_p5  # -134 == -134 - 0 + 0

@@ -435,6 +435,36 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-07 (c) — The reference tool's stored dates are a per-activity CPM oracle; a scheduling rule proven on one file is a hypothesis on the next
+
+- **The oracle was in the file.** R-44 sat priced "L" for a session because the parity habit here is
+  Fuse workbooks, and Fuse has no per-activity date export. MS Project's MSPDI carries `Start`,
+  `Finish`, `EarlyStart` / `EarlyFinish`, `LateStart` / `LateFinish`, `TotalSlack` and `Critical`
+  for every activity — 110 × 5 snapshots of computed dates, plus the goldens. Diffing the engine's
+  instants against them named every rule (crew calendars, the leveling delay's unit and base, the
+  slack axis, the finish-role late finish, the successor's delay in the backward pass) and each
+  residual, without a single new export. **When the reference tool writes its own computation into
+  the file, that IS the oracle — read it before asking anyone for a workbook.**
+- **A rule that reproduces one file exactly can break another exactly.** "A booking spans
+  work / units on the crew calendar" fit Hard_File (80 of 87) and moved Large Test File2's
+  fixed-work bookings off their stored dates (1 563 → 1 520 within a day) — those bookings are
+  contoured over the task duration, and the task's `Type` decides. **Before shipping a scheduling
+  rule, tally it by task type on every golden the tree carries; the goldens are free and the
+  parity gate is 12 minutes.** The first measurement is a hypothesis about the file it was taken on.
+- **A unit read from the model is not the raw value.** Project2's UID 37 showed `2880` in the model
+  (already ÷ 10) and I read it as the file's `2880` tenths, "proving" the delay was minutes in one
+  file and tenths in another. The raw `28800` settled it in one line. **Print the RAW field beside
+  the derived one before calling a unit inconsistent between files.**
+- **Two instants on one grid point are not the same date.** Friday 17:00 and Monday 08:00 are one
+  project-axis offset, and a fast-path successor's late-start need arrives as the Monday. Taking it
+  as a late finish read Large Test File's late finishes a working day late (930 → 888 within an
+  hour) while every offset was right. **A wall instant carries a role (start / finish); snap a late
+  finish BACK to the previous working instant before it leaves the backward pass.**
+- **A re-pin must move onto the reference, and the reference must be named in the pin.** Eight
+  golden tests and three parity tests moved with this unit; each was checked against the stored
+  value it now equals (a finish, a slack, Fuse's −134) before its number changed, and the pin says so.
+  A pin that moves toward the engine's own new output is a rumour with a test around it.
+
 ### 2026-09-07 (b) — Same name, different metric: a Fuse figure is an oracle only for the tile its own workbook section carries
 
 - Ran every reference workbook in the repo against the engine (16 snapshots × 3 Fuse workbooks +

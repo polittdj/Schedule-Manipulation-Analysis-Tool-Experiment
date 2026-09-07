@@ -64,6 +64,20 @@ class Calendar(StrictFrozenModel):
             raise ValueError("each day segment must be 0 <= start < end <= 1440 minutes")
         return self
 
+    def working_pattern_key(self) -> tuple[object, ...]:
+        """The fields that make this calendar's working pattern materially distinct — everything
+        the date/float math consumes and nothing cosmetic (``uid`` / ``name`` are identity, not
+        pattern; the declared duration-scale properties are display settings). Order-independent,
+        so two calendars listing the same holidays in a different order compare equal. Two
+        calendars with equal keys schedule identically (the CPM's fast-path test, ADR-0322)."""
+        return (
+            self.working_minutes_per_day,
+            tuple(sorted(self.work_weekdays)),
+            tuple(sorted(self.holidays)),
+            tuple(sorted(self.working_days)),
+            tuple(sorted(self.day_segments)),
+        )
+
     def intraday_worked_minutes(self, minute_of_day: int) -> int:
         """Working minutes elapsed from day-start to ``minute_of_day``, honoring lunch breaks.
 

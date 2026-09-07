@@ -96,8 +96,10 @@ def test_float_days_convert_on_the_schedules_calendar() -> None:
 @pytest.mark.parametrize(
     ("name", "critical_raw", "critical_incomplete", "finish_days"),
     [
-        ("Project2", 43, 41, Decimal("391")),
-        ("Project5", 4, 4, Decimal("497.00")),
+        # network finish in working days: the STORED finishes since ADR-0474 (the leveled
+        # goldens' resource-leveling delays are honoured — 391 / 497 read 15 d / 1 d early)
+        ("Project2", 43, 41, Decimal("402")),
+        ("Project5", 4, 4, Decimal("498.00")),
     ],
 )
 def test_golden_critical_parity(

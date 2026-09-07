@@ -56,7 +56,7 @@ def test_golden_narrative_is_fully_cited(
     assert narrative.statements
     assert_all_cited(narrative.statements)  # §6.D — every statement cited
     text = narrative.to_text()
-    assert "148 calendar days" in text  # the headline slip is told
+    assert "134 calendar days" in text  # the headline slip is told (Fuse's -134; ADR-0474)
     assert "Project2.mspdi.xml → Project5.mspdi.xml" in narrative.title
 
 

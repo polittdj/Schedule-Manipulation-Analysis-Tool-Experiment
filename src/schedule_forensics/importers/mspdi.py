@@ -59,6 +59,7 @@ from schedule_forensics.model import (
     ResourceType,
     Schedule,
     Task,
+    TaskType,
 )
 from schedule_forensics.model.units import MINUTES_PER_DAY
 
@@ -88,6 +89,14 @@ _RELATIONSHIP_BY_CODE: dict[int, RelationshipType] = {
     1: RelationshipType.FS,
     2: RelationshipType.SF,
     3: RelationshipType.SS,
+}
+
+#: MSPDI ``Task/Type`` numeric code → the scheduling type (0 fixed units, 1 fixed duration,
+#: 2 fixed work); absent = MS Project's default (ADR-0474).
+_TASK_TYPE_BY_CODE: dict[int, TaskType] = {
+    0: TaskType.FIXED_UNITS,
+    1: TaskType.FIXED_DURATION,
+    2: TaskType.FIXED_WORK,
 }
 
 #: MSPDI ``Resource/Type`` numeric code → model resource type.
@@ -230,7 +239,10 @@ def parse_mspdi_text(text: str, *, source_file: str | None = None) -> Schedule:
             status_date=status_date,
             baseline_finish=baseline_finish,
             calendar=project_calendar,
-            calendars=parse_calendar_registry(root, tuple(tasks)),  # per-task cals (ADR-0118)
+            # per-task calendars (ADR-0118) + assigned resources' off-pattern calendars (ADR-0474)
+            calendars=parse_calendar_registry(
+                root, tuple(tasks), tuple(resources), project_calendar
+            ),
             tasks=tuple(tasks),
             relationships=tuple(relationships),
             resources=tuple(resources),
@@ -397,10 +409,23 @@ def _calendars_by_uid(root: ET.Element) -> dict[str, ET.Element]:
     return out
 
 
-def parse_calendar_registry(root: ET.Element, tasks: tuple[Task, ...]) -> tuple[Calendar, ...]:
-    """Every calendar a task is scheduled on (plus the project calendar), UID-keyed, for the
-    SSI driving-slack parity path (ADR-0118 — a link's free float is counted on the successor's
-    own calendar). Best-effort: a calendar that won't parse is skipped, never sinking the file."""
+def parse_calendar_registry(
+    root: ET.Element,
+    tasks: tuple[Task, ...],
+    resources: tuple[Resource, ...] = (),
+    project_calendar: Calendar | None = None,
+) -> tuple[Calendar, ...]:
+    """Every calendar an activity is scheduled on (plus the project calendar), UID-keyed.
+
+    Task calendars feed the SSI driving-slack parity path (ADR-0118 — a link's free float is
+    counted on the successor's own calendar) and the base CPM (ADR-0322). Since ADR-0474 the
+    calendars of the WORK resources any task is assigned to are registered too — MS Project
+    schedules an assignment on the resource's calendar, so the engine must resolve them by
+    uid — but only when their working pattern differs from ``project_calendar``'s: a
+    same-pattern resource calendar (the common derived "Resource X" calendar that inherits
+    everything) schedules identically to the project calendar and would only clutter the
+    registry the pages list. Best-effort: a calendar that won't parse is skipped, never
+    sinking the file."""
     by_uid = _calendars_by_uid(root)
     needed: set[str] = set()
     proj = _text(root, "CalendarUID")
@@ -415,6 +440,23 @@ def parse_calendar_registry(root: ET.Element, tasks: tuple[Task, ...]) -> tuple[
             cal = None
         if cal is not None:
             out[cal.uid] = cal
+    assigned = {a.resource_id for t in tasks for a in t.resource_assignments}
+    resource_uids = {
+        str(r.calendar_uid)
+        for r in resources
+        if r.calendar_uid is not None and r.unique_id in assigned and r.type is ResourceType.WORK
+    } - needed
+    project_key = None if project_calendar is None else project_calendar.working_pattern_key()
+    for uid in resource_uids:
+        try:
+            cal = _build_calendar(uid, by_uid)
+        except Exception:
+            cal = None
+        if cal is None or cal.uid in out:
+            continue
+        if project_key is not None and cal.working_pattern_key() == project_key:
+            continue
+        out[cal.uid] = cal
     return tuple(out[k] for k in sorted(out))
 
 
@@ -704,6 +746,10 @@ def _parse_task(
             resource_names=assigned_names_by_task.get(uid, ()),
             resource_ids=assigned_uids_by_task.get(uid, ()),
             resource_assignments=assignments_by_task.get(uid, ()),
+            task_type=_TASK_TYPE_BY_CODE.get(_int(task_el, "Type") or 0, TaskType.FIXED_UNITS),
+            ignore_resource_calendar=_bool(task_el, "IgnoreResourceCalendar", default=False),
+            # tenths of a minute in the file (like LinkLag); a negative value is meaningless
+            leveling_delay_minutes=max(0, (_int(task_el, "LevelingDelay") or 0) // 10),
             stored_total_float_minutes=_stored_slack_minutes(task_el),
             stored_is_critical=_bool_or_none(task_el, "Critical"),
             custom_fields=_task_custom_fields(task_el, ext_defs),
@@ -916,11 +962,19 @@ def _parse_resources(root: ET.Element) -> list[Resource]:
                     is_generic=_bool(res_el, "IsGeneric", default=False),
                     max_units=parse_float(_text(res_el, "MaxUnits")),
                     standard_rate=parse_float(_text(res_el, "StandardRate")),
+                    # the resource's own calendar (ADR-0474); MSPDI writes -1 for "none"
+                    calendar_uid=_positive_int_or_none(res_el, "CalendarUID"),
                 )
             )
         except pydantic.ValidationError as exc:
             raise ImporterError(f"resource UID {uid} is invalid: {exc}") from exc
     return resources
+
+
+def _positive_int_or_none(parent: ET.Element, tag: str) -> int | None:
+    """An integer UID reference, or ``None`` when absent or negative (MSPDI's -1 sentinel)."""
+    value = _int(parent, tag)
+    return value if value is not None and value >= 0 else None
 
 
 def _parse_assignments(

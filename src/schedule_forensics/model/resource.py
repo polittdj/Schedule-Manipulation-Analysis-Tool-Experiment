@@ -33,3 +33,10 @@ class Resource(StrictFrozenModel):
     is_generic: bool = False
     max_units: float | None = Field(default=None, ge=0.0)  # capacity as a ratio (1.0 == 100%)
     standard_rate: float | None = Field(default=None, ge=0.0)  # cost per unit (currency)
+    #: The resource's OWN calendar (MSPDI ``Resource/CalendarUID``), resolved against
+    #: ``Schedule.calendars`` by ``uid``. MS Project schedules an assignment on the resource's
+    #: calendar (intersected with the task's own calendar, unless the task ignores resource
+    #: calendars), so a task whose crew works 16-hour or 24-hour days finishes on THAT calendar,
+    #: not the project's (ADR-0474). ``None`` = the source carries no resource calendar (XER,
+    #: older saves) — the engine then schedules on the task / project calendar as before.
+    calendar_uid: int | None = None

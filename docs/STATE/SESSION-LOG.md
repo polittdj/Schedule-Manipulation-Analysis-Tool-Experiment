@@ -16976,3 +16976,55 @@ shadows it on PATH).
 - **Follow-up (09:23Z) — #647 GREEN on its final head `eb02a2c6`:** CI run **34099275416** — `check` · `cui-guard` · `test (3.11)` (49 min) · `test (3.13)` (71 min) · `floor` · `browser` — and installer-smoke **34099275427** (`linux` · `windows`) all `success`; eight checks, the installer set. No comments, no conflict. A green, mergeable draft waits on the operator; the next session reads `main`'s own run for the squash commit first.
 - **Follow-up (10:43Z) — #647 MERGED** by the operator (marked ready and squash-merged; the Codex reviewer bot posted a usage-limit notice only): `main` @ `e010d3af`, tree-identical to the PR's green head `6f5d5bee` (`db8a5237…` both). `main`'s own CI run **#1774** (id 34112940740) and installer-smoke **#665** (34112940741) were `in_progress` at this record — the next session reads #1774 first. Branch restarted on `e010d3af` (`git fetch --prune` + `remote set-head` + `checkout -B`, never an amend of the squash); the merged check-in deleted. This docs-only record rides a NEW draft PR (number in the next follow-up line).
 - **Follow-up (10:50Z) — draft PR #648** carries this merge record (docs-only; six checks apply); subscribed, a check-in armed ~1 h out that also reads `main`'s #1774. The operator merges it and the next session branches FRESH on R-44.
+- **Follow-up (13:27Z) — #648 MERGED** by the operator (marked ready and squash-merged; the Codex reviewer bot posted a usage-limit notice only): `main` @ `dcd64509`, tree-identical to the PR's head `c9c264be` (`4025c0fd…` both). #648's run 34113146359 was green on all six checks (`check` 11:56Z; `test (3.11)` 69 min, `test (3.13)` 70 min), and `main`'s own #1774 (34112940740) and installer-smoke #665 concluded `success` for the #647 squash. Branch restarted with `--prune` + `remote set-head` + `checkout -B` on `dcd64509`; the same session continued with R-44 (entry (c) below).
+
+## 2026-09-07 (c) — branch `claude/polaris-audit-plan-forward-3vp28m` — ADR-0474 — v1.0.244
+
+- **Scope:** R-44, the first §3 row after ADR-0473 — Hard_File's CPM finish 42 days later than
+  MS Project's stored 2026-11-05. Read on arrival: the R-44 row, ADR-0322 (the per-task-calendar wall
+  machinery), the CPM's forward / backward passes, the importer's calendar registry, the Hard_File
+  `.mpp` conversions (crews on a 16-hour calendar with 52 exceptions and on 24-hour calendars, twelve
+  `LevelingDelay` carriers, one fixed-duration task, 200 % bookings).
+- **Method (QC-1):** MS Project's stored Start / Finish / EarlyStart / EarlyFinish / LateStart /
+  LateFinish / TotalSlack / Critical per activity ARE the oracle. A std-lib harness diffed the engine's
+  instants with them on the five Hard_File snapshots before a line changed (+42.0 / +31.2 / +34.8 /
+  +18.7 / +42.7 d; Critical agreed 54 / 59 / 73 / 65 / 31 of 110), then tested three hypotheses per
+  booking (span on the crew calendar == duration: 78 / 87; == work / units: 80 / 87; on the project
+  calendar: 44 / 87) and two units for the leveling delay on four files (tenths of a minute, elapsed,
+  from the snapped early start: 12 / 12, 16 / 16, 18 / 18, 16 / 16). Every rule that landed was
+  re-measured on Hard_File, Project2 / Project5, the Large Test Files and the EVM goldens; the first
+  cut's work / units rule for every booking moved Large Test File2 (1 563 → 1 520 within a day) and
+  was replaced by the task-type rule (fixed-work bookings span the task: 78 of 117 exact, 0 at
+  work / units), which restored it exactly.
+- **Shipped (ADR-0474):** `Resource.calendar_uid`, `Task.task_type` / `ignore_resource_calendar` /
+  `leveling_delay_minutes`, `Calendar.working_pattern_key` (schema 2.12.0, JSON round trip, the
+  freeze test); the importer reads `Resource/CalendarUID`, `Task/Type`, `IgnoreResourceCalendar`,
+  `LevelingDelay` (÷ 10) and registers assigned crews' off-pattern calendars; `compute_cpm` runs
+  execution plans (one leg per WORK booking on the crew's calendar, the latest leg the primary; a
+  24-hour task calendar yields the crew calendar, any other wins), adds the leveling delay as elapsed
+  time after the plan admits the task, measures slack on the task's calendar, snaps a late finish back
+  to a finish instant, subtracts a leveled successor's delay from its late-start need on both the wall
+  and the integer paths, and reports `leveling_driven`; DCMA-12 injects through `injected_finish_wall`.
+- **After:** Hard_File −1.0 d (92 / 110 finishes within a day, Critical 108 / 110), updated −1.0 d
+  (100, 110 / 110, stored slack 52 / 70 exact), updated2 −1.0 d (87, 80), updated3 −6.0 d (R-55);
+  Project2 finish EXACT (was −15 d) with 126 / 126 within a day, 65 / 65 stored slack exact (was 7),
+  late finish within an hour 108 / 126 (was 38), Critical 124 / 126; Project5 exact, 95 / 95 (was 8),
+  126 / 126; Large Test File / File2 unmoved (1 558 / 1 563 within a day, 842 / 655 slack-exact).
+- **Re-pins, each onto the reference:** Net Finish Impact −148 → −134 (= Fuse's HSD10; the bridge
+  `-134 = -134 - 0 + 0`), the SN04 96↔99 swap closed (both bases agree; UID 96 carries a 21-day
+  delay), forecast CPM finishes 2027-09-14 / 2028-01-26 (the stored finishes — `/api/forecast`, the
+  narrative, the trend and evolution pages follow), float summary 391 → 402 / 497 → 498 working
+  days, float bands lt10 46 → 45 · free_0 71 → 68 · P5 free_lt10 73 → 69, `test_fuse_reference`
+  pins Project2 at the workbook's 2027-09-14 (FUSE-VALIDATION's "Project2 differs" row closed).
+- **How verified:** red-first — the oracle module against a `git archive HEAD src` scratch copy:
+  7 failed / 2 passed by name (the two "Large Test Files unmoved" pins pass on both); the synthetic
+  module (14) cannot import there (the fields do not exist). Two targeted mutations in a scratch copy
+  (the delay ignored; every booking at the duration): 8 failed by name (the leveling test, the
+  fixed-units test, six oracle rows). ADR-0322's Jacked-Up oracles, the actual-start / resume-floor /
+  DCMA-14 / SRA / driving-slack suites unmoved. Statics green (ruff whole tree, format, mypy
+  --strict 163, bandit 0). The full-suite and parity-gate figures are in the follow-up line.
+- **Left, registered:** R-55 (T1, M — progress semantics: started work floored not pinned, completed
+  milestones snapped; a scratch-copy pin read updated3 −13 d / updated3_24hr −2 d) · R-56 (HELD —
+  four bookings the MSPDI cannot explain) · R-57 (assignment-level delay) · R-58 (the task ∩ crew
+  intersection) · R-59 (the /analysis disclosure). The design page owed per session was NOT delivered
+  (two units shipped; the page is owed twice).

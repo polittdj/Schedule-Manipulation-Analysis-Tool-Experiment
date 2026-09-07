@@ -84,21 +84,85 @@
   "change_P2_to_P5": {
     "activities_added": 0,
     "newly_critical": 1,
-    "newly_critical_uids": [131],
+    "newly_critical_uids": [
+      131
+    ],
     "no_longer_critical": 34,
     "no_longer_critical_uids": [
-      35, 38, 39, 42, 44, 48, 49, 51, 52, 53, 55, 57, 58, 60, 61, 62, 63, 65, 66, 67,
-      68, 69, 78, 82, 94, 95, 96, 100, 106, 135, 138, 139, 140, 141
+      35,
+      38,
+      39,
+      42,
+      44,
+      48,
+      49,
+      51,
+      52,
+      53,
+      55,
+      57,
+      58,
+      60,
+      61,
+      62,
+      63,
+      65,
+      66,
+      67,
+      68,
+      69,
+      78,
+      82,
+      94,
+      95,
+      96,
+      100,
+      106,
+      135,
+      138,
+      139,
+      140,
+      141
     ],
     "float_erosion_stored_basis": 1,
-    "float_erosion_stored_basis_uids": [131],
+    "float_erosion_stored_basis_uids": [
+      131
+    ],
     "finish_slips_cei_incomplete": 9,
-    "finish_slips_cei_incomplete_uids": [34, 35, 36, 37, 38, 39, 40, 42, 44],
+    "finish_slips_cei_incomplete_uids": [
+      34,
+      35,
+      36,
+      37,
+      38,
+      39,
+      40,
+      42,
+      44
+    ],
     "start_cei_by_status_dates": 0.4,
     "original_duration_increases": 9,
-    "original_duration_increases_uids": [31, 34, 35, 39, 49, 50, 55, 106, 107],
+    "original_duration_increases_uids": [
+      31,
+      34,
+      35,
+      39,
+      49,
+      50,
+      55,
+      106,
+      107
+    ],
     "remaining_duration_increases_nonsummary": 7,
-    "remaining_duration_increases_nonsummary_uids": [35, 39, 49, 50, 55, 106, 107],
+    "remaining_duration_increases_nonsummary_uids": [
+      35,
+      39,
+      49,
+      50,
+      55,
+      106,
+      107
+    ],
     "completed": 27,
     "in_progress": 2,
     "net_finish_impact_days_stored": -134,
@@ -118,8 +182,8 @@
     }
   },
   "_documented_divergences": {
-    "no_longer_critical_membership": "Counts are equal (34 == 34) but ONE member differs: the engine lists UID 99 where Fuse lists UID 96. Root cause is the critical-flag basis (ADR-0010): in Project2, MS Project's stored progress-aware Critical flag marks UID 96 True (stored) while pure-logic CPM float is 5d (not critical), and marks UID 99 False (stored slack 10d) while pure-logic CPM float is 0 (critical). Both bases count 41 critical in Project2 and agree on the other 33 transitions. Asserted exactly (symmetric difference == {96, 99}) in test_fuse_export_parity.py.",
-    "net_finish_impact_basis": "Engine -148 vs Fuse -134. Fuse subtracts the STORED project finishes (46644.708 -> 46778.708 = 134 calendar days; .aft formula above). The engine subtracts its own pure-logic CPM finishes (P2 2027-08-30, P5 2028-01-25 = 148 days) for independence/auditability. Reconciliation: the P2 CPM finish lands 15 days before the stored finish and the P5 CPM finish 1 day before, so -148 = -134 - 15 + 1 exactly — the ADR-0108 data-date gap, not a computation error. Asserted exactly in test_fuse_export_parity.py.",
+    "no_longer_critical_membership": "Counts are equal (34 == 34) and, since ADR-0474, the membership is UID-exact on BOTH bases: in Project2 MS Project's stored Critical flag marks UID 96 True and UID 99 False; the recomputed CPM agrees once UID 96's 21-day resource-leveling delay is honoured (until ADR-0474 pure-logic CPM read UID 96 at 5 d of float and UID 99 at 0, the one-member swap pinned as engine-fuse=={99} / fuse-engine=={96}). Asserted exactly (symmetric difference == {}) in test_fuse_export_parity.py, with the closed premise pinned on the source data.",
+    "net_finish_impact_basis": "Engine -134 == Fuse -134 since ADR-0474. Fuse subtracts the STORED project finishes (46644.708 -> 46778.708 = 134 calendar days; .aft formula above). The engine subtracts its own CPM finishes for independence/auditability (ADR-0010), and those ARE the stored finishes once the goldens' resource-leveling delays are honoured (P2 2027-09-14, P5 2028-01-26): the bridge is -134 = -134 - 0 + 0. Until ADR-0474 the CPM landed 15 days before P2's stored finish and 1 day before P5's (-148 = -134 - 15 + 1, once attributed to the ADR-0108 data-date gap). Asserted exactly in test_fuse_export_parity.py.",
     "sn07_name_vs_basis": "QC audit D14 disposition: the .aft Bible has no 'Remaining Duration Increases' metric (nor any date-slip/float-erosion metric) — the SN05/SN06/SN07/SN09 §E names are this tool's forensic metrics, and Fuse's own export codes differ (Fuse SN05 = Newly Critical, SN06 = No Longer Critical). The engine's SN07 total-duration comparison is UID-EXACT against the Fuse Forensic Original-Duration change sheet (9/9); the remaining-duration basis would give 7. The engine formula is unchanged; help.py states the validated basis."
   }
 }

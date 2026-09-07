@@ -144,9 +144,13 @@ def test_golden_pins(golden_project2: Schedule, golden_project5: Schedule) -> No
     p2 = compute_float_bands(golden_project2)
     assert (p2["float_total_0"].count, p2["float_total_0"].population) == (41, 106)
     assert p2["float_total_lt5"].count == 42
-    assert p2["float_total_lt10"].count == 46
-    assert p2["float_free_0"].count == 71
+    # 45 since ADR-0474 (46 before): the recomputed float now equals MS Project's stored slack
+    # on every Project2 activity that carries one (65 / 65), so the <10-day band follows the file
+    assert p2["float_total_lt10"].count == 45
+    # 68 since ADR-0474 (71 before): the leveled successors start later, so three more
+    # predecessors carry free float
+    assert p2["float_free_0"].count == 68
     p5 = compute_float_bands(golden_project5)
     assert (p5["float_total_0"].count, p5["float_total_0"].population) == (4, 99)
     assert p5["float_total_lt10"].count == 5
-    assert p5["float_free_lt10"].count == 73
+    assert p5["float_free_lt10"].count == 69  # 73 before ADR-0474 (leveled successors)

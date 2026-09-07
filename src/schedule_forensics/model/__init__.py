@@ -29,7 +29,7 @@ from schedule_forensics.model.calendar import Calendar
 from schedule_forensics.model.relationship import Relationship, RelationshipType
 from schedule_forensics.model.resource import Resource, ResourceType
 from schedule_forensics.model.schedule import Schedule
-from schedule_forensics.model.task import ConstraintType, Task
+from schedule_forensics.model.task import ConstraintType, Task, TaskType
 
 #: Bump on ANY change to a model's field set (see tests/model/test_schema_freeze.py).
 # 2.11.0: Calendar.declared_minutes_per_day (ADR-0355) — the file's own MinutesPerDay
@@ -43,7 +43,9 @@ from schedule_forensics.model.task import ConstraintType, Task
 #   2.8.0, because the guard only asserts a literal and cannot see an un-bumped add. Both
 #   additive fields are covered here rather than leaving the record wrong.
 # 2.8.0: Task priority/outline_number/stop (ADR-0234); 2.7.0: saved filters/groups (ADR-0231).
-SCHEMA_VERSION = "2.11.0"
+# 2.12.0: Resource.calendar_uid, Task.ignore_resource_calendar, Task.leveling_delay_minutes
+#   (ADR-0474) — the resource-calendar / leveling-delay scheduling inputs the CPM now honours.
+SCHEMA_VERSION = "2.12.0"
 
 __all__ = [
     "SCHEMA_VERSION",
@@ -56,5 +58,6 @@ __all__ = [
     "ResourceType",
     "Schedule",
     "Task",
+    "TaskType",
     "units",
 ]
