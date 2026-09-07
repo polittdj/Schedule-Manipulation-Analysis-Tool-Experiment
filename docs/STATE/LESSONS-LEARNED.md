@@ -480,6 +480,14 @@ failed it twice: a timing failure right at the edge of the wait, which is the le
   delay inside the "pure-logic" re-solve — 2 of Project5's targets diverged where 33 had — and
   only the contract test noticed. After implementing a feature, grep for every toggle, flag or
   page named after it and re-read what each one actually clears.
+- **A page that re-runs a seeded simulation on every load is a latency bug waiting for a slower
+  runner.** The engine fix took `/api/sra` from 4.3 s to 2.0 s and the CI runner still lost the
+  last theme's cells: twelve loads of `/sra` against one session, twelve identical thousand-solve
+  runs. The run is a pure function of the session's inputs, so it is memoized per input set —
+  identity on the scoped schedule object (the analysis tier's own anchor), value-equality on the
+  frozen config / overrides / risks, single-flight on a stripe — and the served result is the
+  same object, byte-identical by construction. Halving a cost that is paid N times is not the
+  same fix as paying it once; measure the REQUEST PATTERN, not only the request.
 - **Read the `floor` job even when the `test` jobs are cancelled.** It runs the whole suite
   without coverage tracing and finishes first; on this PR it was the only job that reached the
   seven pins a 52-minute coverage run never got to.

@@ -561,3 +561,75 @@ def test_the_network_and_stored_date_bounds_are_derived_once_per_schedule_object
     for i in range(20):
         compute_cpm(fresh, duration_overrides=_sampled(fresh, i))
     assert calls == {"topo": 1, "stored": 1}, f"re-derived across 20 solves of one object: {calls}"
+
+
+# ── ADR-0474 follow-up (2): one seeded simulation per set of inputs, per session ─────────────────
+#
+# `/sra` fires `GET /api/sra` on every page load, and the legacy run is a thousand solves of the
+# selected schedule under a FIXED seed — a pure function of (schedule object, config, overrides,
+# risks). The browser proof loads `/sra` twelve times (four themes x three scales) against one
+# session and each load re-ran the identical simulation; on the CI runner the later cells timed
+# out inside the caption wait even after the engine fix above. The memo below is single-flight and
+# invalidated by object identity (a re-upload or a scope epoch flips the scoped object) and by
+# value-equality of every input the route hands the engine; the result it serves is the SAME
+# object, so the payload is byte-identical by construction.
+
+
+@pytest.fixture
+def sra_client(project2: Schedule):  # type: ignore[no-untyped-def]
+    from fastapi.testclient import TestClient
+
+    import schedule_forensics.web.app as app_module
+
+    st = SessionState()
+    st.schedules["Project2.mspdi.xml"] = project2
+    return TestClient(app_module.create_app(st)), st
+
+
+def test_api_sra_runs_the_seeded_simulation_once_per_inputs(  # type: ignore[no-untyped-def]
+    sra_client, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """REGRESSION GATE (count): identical `/api/sra` requests on one session run `compute_sra`
+    ONCE; a request whose inputs differ — the iteration count, the distribution, the auto
+    three-point, a per-activity override, or a re-uploaded (new) schedule object — runs it
+    again, and an identical request after that is served from the memo again. Re-running the
+    simulation per page load (the pre-fix route) fails on the second request."""
+    import schedule_forensics.web.app as app_module
+    from schedule_forensics.engine.metrics._common import non_summary
+
+    client, st = sra_client
+    calls = {"n": 0}
+    real = app_module.compute_sra
+
+    def counting(*a, **k):  # type: ignore[no-untyped-def]
+        calls["n"] += 1
+        return real(*a, **k)
+
+    monkeypatch.setattr(app_module, "compute_sra", counting)
+
+    first = client.get("/api/sra").json()
+    assert calls["n"] == 1
+    assert client.get("/api/sra").json() == first  # the same result object: byte-identical
+    assert client.get("/api/sra?iterations=1000&distribution=triangular").json() == first
+    assert calls["n"] == 1, "identical inputs must be served from the memo"
+
+    assert client.get("/api/sra?iterations=200").status_code == 200
+    assert calls["n"] == 2, "a different iteration count is a different simulation"
+    assert client.get("/api/sra?distribution=pert").status_code == 200
+    assert calls["n"] == 3, "a different distribution is a different simulation"
+    st.sra_high = st.sra_high + 0.25  # the auto three-point (SRAConfig.auto_high) changed
+    assert client.get("/api/sra").status_code == 200
+    assert calls["n"] == 4, "a changed auto three-point is a different simulation"
+    assert client.get("/api/sra").status_code == 200
+    assert calls["n"] == 4, "and its repeat is served from the memo"
+    uid = non_summary(st.schedules["Project2.mspdi.xml"])[0].unique_id
+    st.sra_overrides = {**st.sra_overrides, uid: (480, 960, 2400)}
+    assert client.get("/api/sra").status_code == 200
+    assert calls["n"] == 5, "a per-activity override is a different simulation"
+    # a re-upload makes a NEW Schedule object; the analysis tier is identity-anchored on it, so
+    # the scoped object the route solves is rebuilt and the memo must miss
+    st.schedules["Project2.mspdi.xml"] = st.schedules["Project2.mspdi.xml"].model_copy()
+    assert client.get("/api/sra").status_code == 200
+    assert calls["n"] == 6, "a new schedule object is a different simulation"
+    assert client.get("/api/sra").status_code == 200
+    assert calls["n"] == 6

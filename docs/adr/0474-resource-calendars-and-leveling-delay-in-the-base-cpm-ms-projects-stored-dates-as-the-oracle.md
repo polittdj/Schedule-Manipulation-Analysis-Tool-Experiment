@@ -197,3 +197,21 @@ its UID 67 anchor still anchored. The SSI-parity family (`/api/driving`) keeps t
 trace and is unchanged, as ADR-0251 documents. Lesson: an option that EMULATED a feature goes
 inert the day the engine implements it — re-read every toggle named after the thing you just
 built.
+
+### The third mechanism: one seeded simulation per input set (2026-09-07, later still)
+
+With the engine at 2.0 s per `/api/sra` the browser proof still lost the LAST theme's three
+`/sra` cells on the CI runner (9 of 12 green): the proof loads `/sra` twelve times against one
+session, every load re-ran the identical seeded thousand-solve simulation, and the runner sat at
+the edge of the caption wait. The run is a pure function of four inputs the route hands the
+engine — the scoped schedule OBJECT, the `SRAConfig`, the per-activity overrides, the risk
+events — so `SessionState.sra_result` now memoizes it per input set: identity-checked on the
+schedule (a re-upload or a scope-epoch flip rebuilds the scoped object, exactly as the analysis
+tier is identity-anchored), value-checked on the three frozen inputs, newest-first with four
+entries, single-flight on a stripe of its own key so concurrent identical loads share one run,
+wiped by default. The served result is the same object, so the payload is byte-identical by
+construction. Gate: `tests/perf/test_perf_regression.py::test_api_sra_runs_the_seeded_simulation_once_per_inputs`
+— identical requests run `compute_sra` once; a changed iteration count, distribution, auto
+three-point, override or schedule object runs it again; red by name on a scratch copy whose memo
+is never consulted. Every SRA web module, the wipe-is-total guard and the monolith-split
+contract: unmoved (205 passed).
