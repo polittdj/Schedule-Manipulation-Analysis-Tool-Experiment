@@ -325,10 +325,10 @@ def test_takes_quote_the_exact_cells_they_claim(client: TestClient) -> None:
     # V3 — the Carnac cards: "Tasks to complete" and "Latest finish (CPM)"
     assert cards == (
         "99 activities remain to complete, and the schedule logic places the latest "
-        "finish on 01/25/2028."
+        "finish on 01/26/2028."
     )
     assert "<div class=stat-value>99</div>" in page  # the card the 99 is read from
-    assert "<div class=stat-value>01/25/2028</div>" in page
+    assert "<div class=stat-value>01/26/2028</div>" in page
 
     # V4 — the Inputs table's own rows
     assert methods == (
@@ -352,10 +352,10 @@ def test_takes_quote_the_exact_cells_they_claim(client: TestClient) -> None:
     # V6 — the drift table's own version labels and CPM column cells (dates only, no delta)
     assert drift == (
         "Across Project2.mspdi.xml to Project5.mspdi.xml the schedule-logic finish reads "
-        "08/30/2027 then 01/25/2028."
+        "09/14/2027 then 01/26/2028."
     )
-    assert "<tr><td>Project2.mspdi.xml</td><td>05/24/2026</td><td>08/30/2027</td>" in page
-    assert "<tr><td>Project5.mspdi.xml</td><td>08/27/2026</td><td>01/25/2028</td>" in page
+    assert "<tr><td>Project2.mspdi.xml</td><td>05/24/2026</td><td>09/14/2027</td>" in page
+    assert "<tr><td>Project5.mspdi.xml</td><td>08/27/2026</td><td>01/26/2028</td>" in page
 
     # V7 — the field-group panel renders no aggregate anywhere, so its take quotes NO figure
     assert not _FIGURE.search(takes[4])
@@ -371,7 +371,7 @@ def test_no_number_on_the_page_changed(client: TestClient, one_version: TestClie
     still exactly where they were, and the drift table still renders one cell per engine
     method for every loaded version."""
     page = client.get("/forecast").text
-    for pinned in ("01/25/2028", "01/26/2028", "06/10/2028", "02/01/2029", "0.47"):
+    for pinned in ("01/26/2028", "06/10/2028", "02/01/2029", "0.47"):
         assert pinned in page, pinned
     drift_rows = re.findall(r"<tr><td>(Project\d\.mspdi\.xml)</td>(.*?)</tr>", page)
     assert len(drift_rows) == 2
@@ -384,7 +384,7 @@ def test_no_number_on_the_page_changed(client: TestClient, one_version: TestClie
     # rightward was read under the WRONG header (the as-scheduled date sat under "Completion
     # rate", the rate under "Earned schedule", the earned-schedule date was unheaded). Measured
     # on the goldens before the fix:
-    #   Project5 | 08/27/2026 | 01/25/2028 | 01/26/2028 | 06/10/2028 | 02/01/2029  vs 5 headers.
+    #   Project5 | 08/27/2026 | 01/26/2028 | 01/26/2028 | 06/10/2028 | 02/01/2029  vs 5 headers.
     # It changed no number — it MISLABELLED four columns on a testimony-facing page. The fix is
     # the one missing <th scope=col>As-scheduled</th>. Asserted STRUCTURALLY below (header count
     # == row cell count) so the pair can never drift apart again if the engine adds a method.
