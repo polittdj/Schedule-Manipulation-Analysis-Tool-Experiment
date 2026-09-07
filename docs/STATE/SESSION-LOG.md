@@ -16972,3 +16972,4 @@ shadows it on PATH).
 - **Decided (the operator's five questions):** (a) probe kept · (b) planned-date basis kept with
   its disclosure · (c) rulings stand; the `.pptx` does not load in LibreOffice 7 (R-52) · (d) UID
   152 does not move on the repo's pair · (e) pinned by 24 tests; the rest is the operator's box.
+- **Follow-up — draft PR #647** carries ADR-0473 at v1.0.243 (`24384f8b`; installers touched, so seven checks apply). Full suite on the final code before the rebuild: 5,026 passed / 5 skipped / 3 failed (the version pin, the `_actuals_missing_note` re-export, the JCL dollar pin in hundredths — each re-pinned and green); the installer lockstep 68 green after the rebuild. Subscribed; a check-in armed ~1 h out. The operator merges it and the next session branches FRESH.
