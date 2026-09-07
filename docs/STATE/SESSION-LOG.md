@@ -16949,3 +16949,4 @@ shadows it on PATH).
   check-in deleted; `claude/polaris-audit-resume-uw726u` restarted on `origin/main` @ `1f5b8f53` (`git fetch --prune` +
   `remote set-head` + `checkout -B`, never an amend of the squash). This record rides a NEW docs-only draft PR (number in
   the follow-up line).
+- **Follow-up (03:16Z) — draft PR #646** carries this record (docs-only; six checks apply); subscribed, a check-in armed ~04:26Z. The operator merges it and the next session branches FRESH.
