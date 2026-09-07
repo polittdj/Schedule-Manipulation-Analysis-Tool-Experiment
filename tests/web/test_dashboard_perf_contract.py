@@ -365,13 +365,21 @@ def test_findings_and_narrative_follow_the_active_audit_per_mode() -> None:
 # test_portfolio_rollup_titles.py::test_dashboard_cards_carry_site_and_margin_verbatim proves
 # it at the row level (full key-set pins on both card shapes + engine-verbatim values).
 # All three recomputed via _dashboard_sha on this tree, same fixtures, same modes.
-_SHA_TWO_VERSION = "60379fbbe00b619123a5e4c0a217042bcbfd1e4fa602f9f6ebbb47daaf038e03"
-_SHA_UNSOLVABLE = "52c0d0f858e601244810b26a1db5c6c190c0df8603abcd7591fb340e8e13026b"
+# Re-pinned 2026-09-07 (ADR-0474): the base CPM now honours resource calendars and stored
+# leveling delays, and on THIS fixture that moves exactly two things — the pure-logic
+# ``critical_count`` 2 → 33 (MS Project's own stored ``Critical`` flags number 33, and the engine
+# now agrees on all 33 where it found 2 of them before) and DCMA-12 "Critical Path Test"
+# NA → FAIL (a critical path now exists to test). Nothing else in the payload moved (measured by
+# diffing the canonical JSON of both modes across the two engines); the pre-ADR values were
+# reproduced on the pristine engine before re-pinning.
+_SHA_TWO_VERSION = "360d1e2a1967cf2eb5b83539c38637cf70bf5576db4cf34b9a9630e6b91b582c"
+_SHA_UNSOLVABLE = "b246c6e9b7b9db7fa0dc38cf729fccb88fdee0b35d89699a377f604a7b29067d"
 # Parity mode diverges from default on THIS fixture only since ADR-0283: Large Test File carries a
 # single invalid-date activity with NO baseline duration, which Acumen's `Baseline Duration > 0`
 # population excludes, so parity DCMA-09 drops 1 → 0 and its card flips FAIL → PASS (the ONLY delta
-# vs `_SHA_TWO_VERSION`). Default mode is unchanged. Re-pinned 2026-07-24; 2026-07-31 (ADR-0321).
-_SHA_TWO_VERSION_PARITY = "df2b13585517a2dc14bd3db5eca4f2288866aac82959a315c2249a12c84527c7"
+# vs `_SHA_TWO_VERSION`). Default mode is unchanged. Re-pinned 2026-07-24; 2026-07-31 (ADR-0321);
+# 2026-09-07 (ADR-0474 — the same two deltas as the default payload, see above).
+_SHA_TWO_VERSION_PARITY = "f447afd55d381e3f5573b60914123b77d0ac598ca0d4e35352c771d4434a47e0"
 
 
 def test_dashboard_payload_two_versions_is_byte_identical(big: Schedule) -> None:

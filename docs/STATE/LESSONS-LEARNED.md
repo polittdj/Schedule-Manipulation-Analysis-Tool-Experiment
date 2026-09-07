@@ -469,6 +469,20 @@ failed it twice: a timing failure right at the edge of the wait, which is the le
   shapes, the network and the rulers are derived once per schedule object — red on the pristine
   engine and on the ADR-0474 head by name, red on a three-mutation scratch copy, green on the tree.
   The latency itself is recorded in the ADR and read on CI's browser job, the outcome gate.
+- **"Unmoved" in one measure is not unmoved.** The ADR called the Large Test Files "unmoved" on
+  the finish-within-a-day count (1 558 / 1 723) and the slack-exact count — and their pure-logic
+  critical SET went 2 → 33, exactly MS Project's stored `Critical` flags. A fidelity WIN, seen only
+  by the dashboard's byte pin. When a change is declared neutral on a fixture, say on WHICH
+  measures; a byte pin on the payload is the measure that cannot be talked past.
+- **An option that EMULATED a feature goes inert the day the engine implements it.** The Driving
+  Path `ignore_leveling` view got its "0-day leveling delay" by clearing stored dates, because the
+  engine had no delay to clear. Once ADR-0474 honoured the stored delay, the same code left the
+  delay inside the "pure-logic" re-solve — 2 of Project5's targets diverged where 33 had — and
+  only the contract test noticed. After implementing a feature, grep for every toggle, flag or
+  page named after it and re-read what each one actually clears.
+- **Read the `floor` job even when the `test` jobs are cancelled.** It runs the whole suite
+  without coverage tracing and finishes first; on this PR it was the only job that reached the
+  seven pins a 52-minute coverage run never got to.
 - **The remaining excess is the feature.** After the fix the leveled solve still costs ~35 µs per
   leveled activity over the integer fast path: that is the wall arithmetic MS Project's stored dates
   demanded, not overhead. Knowing which part of a cost is fidelity and which is waste is the whole

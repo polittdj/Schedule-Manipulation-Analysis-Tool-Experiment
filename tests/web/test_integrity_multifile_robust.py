@@ -140,11 +140,12 @@ def test_integrity_two_file_picker_compares_the_chosen_pair() -> None:
     page = c.get("/integrity?a=0&b=3").text
     assert "change-effects" in page
     assert "188&rarr;187" in page or "188→187" in page
-    # DELIBERATELY re-pinned +23 -> +21 (ADR-0322) -> +15 (ADR-0391): engine-derived
-    # counterfactual whose path crosses Hard_File's off-calendar tasks AND its started work —
-    # see test_change_effects_integration.py for the full adjudication (old value reproduced on
-    # the pre-change engine, new value verified stable).
-    assert "+15 wd" in page
+    # DELIBERATELY re-pinned +23 -> +21 (ADR-0322) -> +15 (ADR-0391) -> +12 (ADR-0474):
+    # engine-derived counterfactual whose path crosses Hard_File's off-calendar tasks, its started
+    # work AND (since ADR-0474) its crew-calendar bookings and stored leveling delays — see
+    # test_change_effects_integration.py for the full adjudication (old value reproduced on the
+    # pre-change engine, new value verified stable).
+    assert "+12 wd" in page
 
 
 def test_integrity_guards_same_file_for_a_and_b() -> None:

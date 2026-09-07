@@ -121,6 +121,13 @@ def test_ignore_options_diverge_by_page_family_as_documented(client: TestClient)
     # anything — dropping a constraint cannot pull work earlier than the date it actually began.
     # That is the floor behaving correctly, not the contract lapsing: 33 Project5 targets (and 39
     # on Project2) still diverge, and UID 70 is one of them.
+    # ADR-0474 (2026-09-07): the base CPM now honours the stored leveling delay itself, so clearing
+    # the stored dates alone left the delay inside the "pure-logic" re-solve and the toggle went
+    # nearly inert — 2 Project5 targets (and 0 on Project2) diverged, UID 70 not among them.
+    # `_optioned_versions` therefore ALSO zeroes `leveling_delay_minutes` on incomplete tasks
+    # under ignore_leveling ("0-day leveling delay", as documented): 50 Project5 targets (and 56
+    # on Project2) diverge, UID 70 among them, and UID 67 stays anchored (measured by a census of
+    # every target on both goldens).
     def tier_uids(extra: str = "", target: int = 70) -> set[int]:
         html = client.get(f"/driving-path?target={target}&file=Project5.mspdi.xml" + extra).text
         m = re.search(r"id=drivingTiersData>(.*?)</script>", html, re.S)

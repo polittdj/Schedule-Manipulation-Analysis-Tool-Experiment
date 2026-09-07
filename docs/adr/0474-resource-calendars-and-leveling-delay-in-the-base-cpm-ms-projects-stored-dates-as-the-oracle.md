@@ -159,3 +159,41 @@ thousand times per `/api/sra` request, so a per-solve cost that is a function of
 is a bug there whatever it costs once — profile a leveled golden inside the Monte-Carlo, and never
 key a hot memo on a frozen pydantic model (its `__hash__` / `__eq__` walk every field on every
 lookup; find the object by identity and let a weakref retire the entry).
+
+### The seven floor-job pins (2026-09-07, later still)
+
+The `floor (declared minimum)` job runs the whole suite without coverage and finished where the
+`test` jobs were cancelled: seven failures the first cut never saw (its local full suite died at
+58 %). Every one reproduces on the tree; every one is this ADR's, and they split into two kinds.
+
+**Six engine-derived pins, each adjudicated before it moved.**
+
+- **The dashboard payload on the Large Test File (`ssi_uid152`, three hashes).** Diffing the
+  canonical JSON of both modes across the two engines moves exactly two things: the pure-logic
+  `critical_count` **2 → 33**, and DCMA-12 "Critical Path Test" **NA → FAIL** (a critical path now
+  exists to test). MS Project's own stored `Critical` flags on that file number **33**; the old
+  engine agreed on 2 of them, the new engine on all 33 with none extra. "Unmoved" in this ADR's
+  finish-within-a-day measure (1 558 / 1 723) was never "unmoved" — the critical SET was the thing
+  that moved, onto the reference, and only the dashboard's byte pin was looking at it. The three
+  hashes are re-pinned with that adjudication written beside them.
+- **The 188→187 counterfactual on Hard_File (three assertions).** Restoring the removed FS link on
+  the updated snapshot and re-solving now moves UID 155 **+12 wd** (was +15; +23 and +21 before
+  ADR-0391 / ADR-0322). An engine-derived counterfactual moves with the base CPM by design: the
+  restored link now pushes the target through a path that already carries the crew-calendar
+  bookings and stored leveling delays MS Project applied (the snapshot's finishes sit within a
+  day of MS Project's on 100 of 110 activities). Old value reproduced on the pristine engine, new
+  value stable across two processes; the test's point — a NON-ZERO effect the AI cannot round
+  to "no effect" — is unchanged.
+
+**One product defect, fixed.** The Driving Path page's `ignore_leveling` option promises a
+"0-day leveling delay" re-solve. Before this ADR the engine had no leveling delay, so clearing
+incomplete tasks' stored dates WAS that re-solve; once the base CPM honoured
+`leveling_delay_minutes`, clearing the dates left the delay inside the "pure-logic" network and
+the toggle went nearly inert — a census of every target on both goldens found **2 of Project5's
+and 0 of Project2's** driving tiers diverging under the flags, where the contract test records
+**33 / 39** before the ADR. `_optioned_versions` now also zeroes `leveling_delay_minutes` on
+incomplete tasks under the option: **50 / 56** targets diverge, the test's UID 70 among them and
+its UID 67 anchor still anchored. The SSI-parity family (`/api/driving`) keeps the stored-date
+trace and is unchanged, as ADR-0251 documents. Lesson: an option that EMULATED a feature goes
+inert the day the engine implements it — re-read every toggle named after the thing you just
+built.
