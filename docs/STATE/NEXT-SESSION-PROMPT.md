@@ -1,15 +1,77 @@
 # Kickoff prompt — next session
 
-PR state (2026-09-07): #647 and #648 MERGED → `main` @ `dcd64509` (tree-identical to #648's head `c9c264be`); this unit (ADR-0474 + its latency amendment, **v1.0.245**) is **draft PR #649** — its browser job was RED on `a69b6395` / `d52f928f` (`/sra` captions timed out: `compute_cpm` on the leveled goldens 1.3 → 3.7 ms, `GET /api/sra` 1.58 → 4.27 s) and the FIX is pushed (per-schedule-object memos found by identity: `_Ruler` per calendar, `_PlanShape` per task, `_Network` per schedule; byte-identical on a 7.7 MB all-fixture dump; measured 1.8–2.1 ms / 2.0 s; three count gates in `tests/perf/test_perf_regression.py`), and the `floor` job's seven pins are adjudicated in the same PR (Large Test File critical count 2 → 33 = the stored flags, DCMA-12 NA → FAIL, the 188→187 counterfactual +15 → +12 wd, the Driving Path `ignore_leveling` re-solve now zeroes the stored delay — 50 / 56 targets diverge, was 2 / 0), and the legacy `/api/sra` result is memoized per input set on the session (`SessionState.sra_result`, single-flight; the browser proof's twelve loads of `/sra` had re-run the identical seeded simulation twelve times and the CI runner lost the last theme's cells at 9 / 12) — **#649 was GREEN eight of eight on `76552d57` (CI run #1784 + installer-smoke #672; a docs-only follow-up head came after it — read ITS six checks first)**; the operator merges it, then branch FRESH (`git fetch --prune origin && git remote set-head origin -a && git checkout -B <branch> origin/main`) and read `main`'s own CI run for its squash first.
+PR state (2026-09-07 d): `main` @ `5f34c2a8` (#649's squash) and **its own runs are GREEN — CI #1786
+(34156160638) + installer-smoke #674 — verified, no adjudication needed.** Two draft PRs may be open
+for the operator: **#650** (the prior session's docs-only merge record on
+`claude/polaris-audit-plan-forward-3vp28m`) and **this unit's** (ADR-0475, v1.0.246, on
+`claude/handoff-next-session-q74ju8`; its number is in the SESSION-LOG follow-up). **Read this unit's
+verdict on its FINAL head first** — `installer/**` changed, so eight checks apply. A red cell on a
+tree identical to a green head is the runner's claim: compare tree hashes before believing it.
 
-Work the POLARIS² audit's plan-forward (Schedule-Manipulation-Analysis-Tool). Read `docs/STATE/HANDOFF.md` FIRST (auto-injected), then `docs/STATE/AUDIT-2026-08-27-REPORT.md` §3 — the roadmap by testimony tier, pinned by `tests/guards/test_audit_report_wp8.py` (every row priced or owned, tier order, a nine-figure census recomputed by method — re-measure, never edit by hand). QC-1/QC-2 bind every session (ADR-0393). `git fetch origin` before you branch, number an ADR, or commit. The container may have NO project install: `python3 -m pip install -e '.[dev,browser]'` and `pip install build`; the installer builder needs the MPXJ history (`git fetch --deepen=400` on a shallow clone).
+Work the POLARIS² audit's plan-forward (Schedule-Manipulation-Analysis-Tool). Read
+`docs/STATE/HANDOFF.md` FIRST (auto-injected), then `docs/STATE/AUDIT-2026-08-27-REPORT.md` §3 — the
+roadmap by testimony tier, pinned by `tests/guards/test_audit_report_wp8.py` (every row priced or
+owned, tier order, a nine-figure census recomputed by method — re-measure, never edit by hand).
+QC-1/QC-2 bind every session (ADR-0393). `git fetch origin` before you branch, number an ADR, or
+commit. The container may have NO project install: `python3 -m pip install -e '.[dev,browser]'` and
+`pip install build`; the installer builder needs the MPXJ history (`git fetch --deepen=400` on a
+shallow clone).
 
-⇢ WHAT'S DONE — do not re-open. WP0–WP8 (ADR-0440..0472) · ADR-0473 (R-01, the multi-project Fuse oracle, the five operator questions decided) · **ADR-0474 (R-44 CLOSED):** the base CPM schedules each WORK booking on the crew's calendar (a FIXED_UNITS booking spans work / units, a fixed-duration / fixed-work booking the task), adds a resource-leveling delay as elapsed time after the calendar admits the task, measures slack on the task's calendar, and subtracts a leveled successor's delay in the backward pass — MS Project's OWN stored dates were the oracle: Hard_File +42 d → −1 d, Project2 / Project5 exact with every stored slack reproduced (65 / 65, 95 / 95), Net Finish Impact −134 = Fuse, the SN04 96↔99 swap closed, the Large Test Files unmoved. New fields `Resource.calendar_uid`, `Task.task_type` / `ignore_resource_calendar` / `leveling_delay_minutes` (schema 2.12.0). The oracle lives in `tests/parity/test_hard_file_stored_dates_oracle.py`; each rule alone in `tests/engine/test_resource_calendar_cpm.py`.
+⇢ WHAT'S DONE — do not re-open. WP0–WP8 (ADR-0440..0472) · ADR-0473 (R-01, the multi-project Fuse
+oracle) · ADR-0474 (R-44 CLOSED: resource calendars + leveling delay in the base CPM, MS Project's
+stored dates as the oracle; + the latency amendment and the floor job's seven pins) · **ADR-0475 —
+the design page, owed twice, delivered first and alone:** `/standards` wears the Control "Standards
+and Execution Indices" artboard (`setScreen('sd')`, executed over loopback in four themes, zero page
+errors). The mock's `· 16 / · 14 / · 10` were measured to BE the page's own live counts. The selector
+row is ported as NAVIGATION that hides nothing (`.viz-controls.cd-cursor#standardsFamilies`, anchor
+chips with live counts, a `cd-note` saying nothing is hidden); all three families gained the take the
+mock gives each; the REF column carries the ENGINE's `metric_id`. Refused and named: the tab-hiding,
+`⤓ EXCEL · ALL FAMILIES` (no covering export — ADR-0327), the mock's `INFO` status, its `01a`/`01b`
+split of DCMA-01, the Continue footer. **The design queue: 9 done, 21 artboards remain; /scorecards
+(`setScreen('sk')`) is next by cost.**
 
-⇢ NEXT — the report's §3 in order, one row per unit of work (red-first → mutation proofs by name → the full gate → an ADR → the state docs → a draft PR): **R-55** FIRST — progress semantics: a STARTED activity is floored (ADR-0391), not pinned, at its actual start, so logic still pushes it later (Hard_File_updated3's completed UIDs 291–298 land 36 days after their actual finish) and a completed milestone's actual instant is snapped to the project calendar; updated3 reads −6 d, updated3_24hr +17 d; a scratch-copy pin read −13 d / −2 d — the rest is UID 403's contour (R-56) and the milestone snaps; the SSI driving-slack goldens and ADR-0391's TP4 v5 / TP1 pins are the arbiter, `pytest -m parity` unmoved · **R-49** — MPXJ omits a ZERO `TotalSlack` (62 of Fuse's 66 zero-float activities on LTF2 carry none): the importer infers 0 when the file carries the element elsewhere and the task carries `Critical`; red-first on Fuse's Zero Days Float 66 / 2 · R-46 (BCWS +150 — prorate the straddling activity on its crew calendar, now that plans exist) · R-47 (SPI(t) 8.24 vs 8.22) · R-52 (the `.pptx` package LibreOffice refuses) · R-50 (expose the History variants) · R-57 / R-58 / R-59 (ADR-0474's residuals: assignment-level LevelingDelay, the task ∩ crew intersection, the /analysis disclosure) · then R-03 · R-04 · R-09 · R-13 · R-18 · R-20 · R-21 · R-22 · R-32 · R-39. PLUS the design page owed each session — OWED TWICE now: /standards (`setScreen('sd')`) or /scorecards (`'sk'`) — the recipe in ADR-0471/0472; deliver it FIRST this time, as its own unit.
+⇢ NEXT — the report's §3 in order, one row per unit of work (red-first → mutation proofs by name →
+the full gate → an ADR → the state docs → a draft PR): **R-55** FIRST — progress semantics: a STARTED
+activity is floored (ADR-0391), not pinned, at its actual start, so logic still pushes it later
+(Hard_File_updated3's completed UIDs 291–298 land 36 days after their actual finish) and a completed
+milestone's actual instant is snapped to the project calendar; updated3 reads −6 d, updated3_24hr
++17 d; a scratch-copy pin read −13 d / −2 d — the rest is UID 403's contour (R-56) and the milestone
+snaps; the SSI driving-slack goldens and ADR-0391's TP4 v5 / TP1 pins are the arbiter, `pytest -m
+parity` unmoved · **R-49** — MPXJ omits a ZERO `TotalSlack` (62 of Fuse's 66 zero-float activities on
+LTF2 carry none): the importer infers 0 when the file carries the element elsewhere and the task
+carries `Critical`; red-first on Fuse's Zero Days Float 66 / 2 · R-46 (BCWS +150 — prorate the
+straddling activity on its crew calendar) · R-47 (SPI(t) 8.24 vs 8.22) · R-52 (the `.pptx` LibreOffice
+refuses) · R-50 (expose the History variants) · R-57 / R-58 / R-59 (ADR-0474's residuals) · then R-03 ·
+R-04 · R-09 · R-13 · R-18 · R-20 · R-21 · R-22 · R-32 · R-39. PLUS the design page owed each session —
+**now CURRENT, not owed**: deliver **/scorecards** (`setScreen('sk')`) as its own unit, recipe in
+ADR-0471/0475.
 
-⇢ Traps paid for, by name (2026-09-07 c first): MS Project's stored Start / Finish / Early / Late / TotalSlack / Critical are a per-activity CPM oracle in every MSPDI — diff against them before asking for an export · `LevelingDelay` is tenths of a minute, elapsed, from the SNAPPED early start (print the RAW field before calling a unit inconsistent) · a booking rule proven on one file breaks another — tally by task `Type` on every golden · a fast-path successor's late-start need is a start-role instant; snap a late finish BACK · a re-pin moves only onto a named stored value · the full suite is ~40 min: start it in the background the moment the engine settles · (b): the reference library carries the SAME display name with DIFFERENT inclusion sets per workbook section · a harness's first-occurrence label lookup collides with same-named rows · MPXJ writes no zero (Cost / ActualCost / TotalSlack omitted at 0) · `Large_Test_File.mpp` ≠ `Large Test File.mpp`.
+⇢ Traps paid for, by name (2026-09-07 d first): **a mutation that comes back GREEN is a finding about
+the TEST** — a count that is structurally constant on every fixture (DCMA always 16, SEM always 10)
+cannot be distinguished from a hardcode; aim the pin at the value that VARIES (Fuse reads 9 with one
+file, 14 with two) and record the rest UNVERIFIABLE · **verify a literal against the RENDER, not
+memory** (two of my own probe strings were wrong before the tree was) · **the container's pip
+playwright may demand a browser build the container does not vendor** (`-1234` vs the vendored
+`-1194`) — use `tests/web/browser_chrome.py::chrome_kwargs()` in scratch probes too, never
+`playwright install` · **a helper added to an extracted page module is red on the monolith split
+contract until `app.py` carries its `X as X` re-export** · **do not leave a scratch script in the repo
+root** — `ruff check .` is whole-tree · a design mock's status word, decomposition and export label
+are claims about the ENGINE: check each before drawing it · a mock that HIDES is proposing a
+functionality change, not a layout. (Earlier, still live: MS Project's stored Start/Finish/Early/Late/
+TotalSlack/Critical are a per-activity CPM oracle in every MSPDI · `LevelingDelay` is tenths of a
+minute · a booking rule proven on one file breaks another — tally by task `Type` on every golden · the
+full suite is ~40 min, start it in the background the moment the engine settles · MPXJ writes no zero ·
+`Large_Test_File.mpp` ≠ `Large Test File.mpp`.)
 
-⇢ Measured-false / deliberately held — do NOT re-chase: the ribbon tiles' scopes (Insufficient Detail every status · Merge Hotspot every status · DCMA-03 planned + in-progress · Number of Lags every status) · TP3's ribbon 8 / Lags 3 (R-53) · the DCMA08 baseline basis (R-48) · Fuse's ACWP-to-time-now and updated3's BAC (R-45) · the four Hard_File bookings the MSPDI cannot explain (R-56 — UID 14's 40 h, 401's 56 h, 403's twelve-day contour, 385) · the HELD and CLOSED rows of the report · Hard_File's late finishes within an hour on 64 / 110 (the R-56 chains) · the S-curve & finish-window residuals of earlier sessions.
+⇢ Measured-false / deliberately held — do NOT re-chase: the ribbon tiles' scopes · TP3's ribbon 8 /
+Lags 3 (R-53) · the DCMA08 baseline basis (R-48) · Fuse's ACWP-to-time-now and updated3's BAC (R-45) ·
+the four Hard_File bookings the MSPDI cannot explain (R-56) · **the /standards strip's
+`document.scrollingElement.scrollWidth` 1719 → 1734** — the chrome-wide UI-03 condition (R-20), already
+1719 pristine, and the IDENTICAL +15 ADR-0471 recorded for the identical strip on /wbs · the HELD and
+CLOSED rows of the report · the S-curve & finish-window residuals of earlier sessions.
 
-⇢ Steward posture: draft PRs the OPERATOR merges (never mark ready, never merge, never approve); eight checks when `installer/**` changes, six for docs-only; read a verdict on the FINAL head; a red cell on `main` for a tree identical to the green PR head is the runner's claim — compare tree hashes first; after a squash-merge restart the branch with `--prune` + `remote set-head` + `checkout -B`, never amend the squash.
+⇢ Steward posture: draft PRs the OPERATOR merges (never mark ready, never merge, never approve); eight
+checks when `installer/**` changes, six for docs-only; read a verdict on the FINAL head; a red cell on
+`main` for a tree identical to the green PR head is the runner's claim — compare tree hashes first;
+after a squash-merge restart the branch with `--prune` + `remote set-head` + `checkout -B`, never amend
+the squash.

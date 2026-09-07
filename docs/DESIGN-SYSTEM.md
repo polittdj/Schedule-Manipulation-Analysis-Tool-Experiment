@@ -296,6 +296,25 @@ toolbar glyph and figure it carried before** ("don't modify any of the functiona
   canvas's own keys (`setScreen('wr')` WBS Rollup · `'ic'` Schedule ID Card · `'sd'` Standards ·
   `'sk'` Scorecards …), and the executed artboard's own DOM census (h1 · buttons · selects · rows) is
   recorded beside the page's so a reader can tell the design's figures from the tool's.
+- **A selector row is ported as NAVIGATION that hides nothing** (ADR-0475, /standards — the ninth
+  page, and the first Control screen): where a mock SELECTS one of N sections and hides the rest, the
+  page serves `.viz-controls.cd-cursor` with one `<a class="cd-chip">` per section anchored to that
+  section's panel (`anchor=` on the section helper) and keeps every section rendered. Hiding is a
+  functionality change, not a layout: a section behind a click is one a reviewer cannot Ctrl-F, print
+  or read beside its neighbours, and the `cd-note` must SAY the chip only jumps ("nothing is hidden
+  behind it") so it is never mistaken for a filter. No chip is `on` — an anchor list has no selected
+  state, and marking one asserts a state the page does not have (contrast ADR-0470's per-file drill,
+  where the open version genuinely is one). **A count printed on a chip is a `len()` of the sequence
+  the table renders**, never a constant beside it, so the chip cannot outlive its table — and the same
+  rule gives every family the mock's take line in the page's OWN existing idiom rather than the mock's
+  wording. A mock's extra column is ported with the ENGINE's identifier (`metric_id`), never the
+  mock's own decomposition of it. A mock's ⤓ labelled for data no endpoint covers is never ported
+  (ADR-0327's rank-3 law); a mock's status word the engine does not have (`INFO` against
+  PASS/FAIL/NA) is never ported, because a mock is never a metric definition. **A mutation battery
+  can only bite where the value varies:** a count that is structurally constant on every fixture in
+  the repo (DCMA always 16, SEM always 10) cannot be distinguished from a hardcode by any test —
+  aim the pin at the family that DOES vary (Fuse reads 9 with one file loaded, 14 with two) and
+  record the rest as unverifiable rather than pretending the green means something.
 - **A hidden tooltip box is still scrollable overflow** (UI-03, WP8 / ADR-0472): `[data-sf-hint]::after`
   is absolute, 340 px wide, `visibility:hidden` — on a right-aligned host (every `.viz-controls` row's
   Reset-view button, the family's strip included) it extends past the viewport and the document scrolls

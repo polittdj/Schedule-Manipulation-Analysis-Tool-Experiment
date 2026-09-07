@@ -780,6 +780,8 @@ from schedule_forensics.web.ssi import _ssi_setup_dict as _ssi_setup_dict
 # the one-family section panel and the page body - lives in ``web/standards.py`` now, extracted
 # verbatim. Same ``X as X`` re-export idiom.
 from schedule_forensics.web.standards import _standards_body as _standards_body
+from schedule_forensics.web.standards import _standards_counts as _standards_counts
+from schedule_forensics.web.standards import _standards_family_strip as _standards_family_strip
 from schedule_forensics.web.standards import _standards_rows as _standards_rows
 from schedule_forensics.web.standards import _standards_section as _standards_section
 from schedule_forensics.web.standards import _standards_value_cell as _standards_value_cell

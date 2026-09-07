@@ -17034,3 +17034,62 @@ shadows it on PATH).
 - **Follow-up (16:30Z) — the `floor` job's SEVEN failures on `d52f928f` (the `test` jobs were cancelled at 52 min and never reached them; the first cut's local suite died at 58 %), all reproduced on the tree, all this PR's:** (1) `test_dashboard_perf_contract` ×3 — the Large Test File payload: pure-logic `critical_count` **2 → 33** and DCMA-12 **NA → FAIL**, nothing else (canonical-JSON diff of both modes across the two engines); MS Project stores **33** critical activities on that file — the old engine agreed on 2, the new on all 33, none extra → re-pinned with the adjudication ("Large Test Files unmoved" was the finish measure; the critical SET moved onto the reference). (2) `test_change_effects_integration` ×2 + `test_integrity_multifile_robust` — the 188→187 restoration counterfactual on UID 155 **+15 → +12 wd** (old value reproduced on the pristine engine; new value stable across two processes; still non-zero, the test's point) → re-pinned, ADR-0474 named. (3) `test_path_options::test_ignore_options_diverge_by_page_family_as_documented` — a PRODUCT DEFECT: the Driving Path page's `ignore_leveling` re-solve cleared stored dates but not the stored leveling delay the base CPM now honours, so the "0-day leveling delay" view kept the delays — a census of every target on both goldens: **2 / 0** diverging (contract records 33 / 39) → `_optioned_versions` also zeroes `leveling_delay_minutes` on incomplete tasks: **50 / 56** diverge, UID 70 among them, UID 67 still anchored. Runs: the four modules **42 passed**; `tests/installer` 68 after the wheel + nine installers were rebuilt again at 1.0.245 (evolution.py changed); statics green. Second push follows; the full-suite figure for the final head follows in the next follow-up.
 - **Follow-up (16:55Z) — the browser job on `6d2a4b9e` (run #1783) lost the LAST theme's three `/sra` cells (jarvis @ 0.9 / 1 / 1.25 — 9 of 12 green, same latency signature: page loaded, no page errors, the SRA data late):** the proof loads `/sra` twelve times against one session and every load re-ran the identical seeded thousand-solve simulation; at 2.0 s per run the CI runner sat at the edge of the caption wait. **Fix — `SessionState.sra_result`:** the legacy `/api/sra` result memoized per input set (identity on the scoped schedule object — the analysis tier's own anchor —, value-equality on the frozen `SRAConfig` / overrides / risk events, four entries newest-first, single-flight on the `"sra-memo"` stripe, wiped by default; the served result is the same object → byte-identical). Red-first gate `test_api_sra_runs_the_seeded_simulation_once_per_inputs` (identical requests run `compute_sra` once; a changed iteration count / distribution / auto three-point / override / schedule object runs it again) — red by name on a scratch copy whose memo is never consulted, green on the tree. Runs: the wipe-is-total guard, the monolith-split contract, `tests/perf` and every SRA web module **205 passed**; the local `/sra` caption sweep **1 passed in 97 s** (was 156 s — eleven of the twelve loads now served from the memo), 1 008 caption renders; statics green; wheel + nine installers rebuilt again at 1.0.245 (`state.py` / `app.py` changed), `tests/installer` 68. The timestamps of the two follow-ups above were corrected to the commit times (16:19Z, 16:30Z). Third push follows; the full-suite figure for the final head follows in the next follow-up.
 - **Follow-up (17:40Z) — #649 GREEN on its final head `76552d57`, eight of eight:** CI run **#1784** (34145770706) — `cui-guard` ✓ · `browser (measured-box proof)` ✓ (17:16Z; the `/sra` cells that were red on `a69b6395` / `d52f928f` / `6d2a4b9e` render inside the wait) · `floor (declared minimum)` ✓ — the whole suite at the declared floors **4 706 passed, 259 skipped in 16:04**, the parity gate at the floor 96 passed · `test (3.11)` ✓ (17:38Z) and `test (3.13)` ✓ (17:36Z) with both coverage gates and the parity gate · `check` ✓ (17:38Z); installer-smoke **#672** (34145770717) — `linux` ✓ · `windows` ✓. Local full-suite figures: **6d2a4b9e: 5 057 passed, 5 skipped in 37:22** (the interim head, one commit before the `/api/sra` memo); **76552d57: NOT captured** — two attempts died at 45 % when the build container paused between turns, and a third was not started (CI's floor job and the two coverage jobs are the full-suite verdicts on this head). No comments beyond the 15:30Z standing-down note (now moot). The PR waits on the operator; the check-in re-arms hourly; this follow-up is docs-only (six checks apply to its head).
+
+## 2026-09-07 (d) — the design page owed TWICE, delivered first and alone: /standards on the Control "Standards and Execution Indices" artboard (ADR-0475) — v1.0.246
+
+- **Branch:** `claude/handoff-next-session-q74ju8` (the harness's designated branch), on `origin/main`
+  @ `5f34c2a8` (the #649 squash) — the tree was already identical to it at session start, so there was
+  nothing to restart. PR **#650** (the prior session's docs-only merge record) was open and untouched.
+- **The kickoff's first order, discharged before any work:** `main`'s own runs for the #649 squash are
+  GREEN — CI **#1786** (34156160638) and installer-smoke **#674** (34156160822), both `success` on
+  `5f34c2a8`. There was no red cell, so no tree-hash adjudication was needed.
+- **The unit (ADR-0475).** The operator's standing one-page-per-session ask was owed TWICE, so this
+  unit ships the design page FIRST and ALONE. `/standards` is the ninth page onto
+  `Mission Ops Redesign v2.dc.html` and the first **Control** screen.
+- **The artboard was EXECUTED, never read** (ADR-0464's recipe: `npm pack react@18.3.1
+  react-dom@18.3.1 @babel/standalone@7.29.0`, `support.js` repointed at the three local files with
+  its three SRI constants blanked, served over loopback by `python -m http.server --bind 127.0.0.1`,
+  `sfredux-screen=sd`): rendered in console, daylight, apollo and jarvis with **zero page errors**,
+  and each of its three family buttons CLICKED to learn that the mock swaps one family's table for
+  another's and recomputes its take line.
+- **The finding that made this a port and not an invention:** the artboard's counts `· 16 / · 14 /
+  · 10` are the page's OWN live counts on the golden Project2+Project5 pair — DCMA 16 rows, Fuse 14,
+  SEM 10, measured before a line was written. The mock was drawn against real tool output.
+- **Ported:** the selector row as `.viz-controls.cd-cursor#standardsFamilies` — one
+  `<a class="cd-chip">` per family carrying its LIVE count (a `len()` of the sequence the table
+  renders), anchored to that family's panel (`#std-dcma` / `#std-fuse` / `#std-sem` via a new
+  `anchor=` on `_standards_section`), a `cd-pill` (`40 metrics · Project5.mspdi.xml`) and a
+  `cd-note`; the per-family `.sf-take` the mock gives all three where the page carried one, in the
+  DCMA panel's EXISTING idiom (`0 passed · 1 failed · 13 N/A` on Fuse, `0 · 0 · 10` on SEM); the REF
+  column carrying the ENGINE's `metric_id`; the mock's footnote as the page's own disclosure.
+- **Refused, each named in the ADR:** the tab-HIDING itself (a family behind a click is one a
+  reviewer cannot Ctrl-F, print or read beside its neighbours — the `cd-note` says "nothing is hidden
+  behind it"); `⤓ EXCEL · ALL FAMILIES` (no export covers Fuse or SEM — ADR-0327's residual; the
+  label would lie); the mock's `INFO` status (the engine's vocabulary is PASS/FAIL/NA); the mock's
+  `01a`/`01b` split of DCMA-01 (the engine scores ONE `DCMA01`); the Continue footer.
+- **How verified:** red-first on the pristine tree **11 failed / 3 passed** (the three are "nothing
+  moves" guards true on both trees). Green after: the layout module **15**; standards view + r12
+  toolbar + split contract + presentation fixes + target/theme + roles + scoped population + air-gap
+  **139**; the M1 control census + i18n + accessibility + r11 + visuals + DD-line ledger + axis titles
+  + global filter **216 passed / 3 skipped**. **Mutation battery 13/13 RED BY NAME** on scratch copies
+  of the final src under `PYTHONPATH` (the imported module asserted to BE the copy; an unlanded patch
+  aborts). **Four-theme render census (Chromium 1440, the golden pair), pristine → patched:** `.panel`
+  5 · tables 3 · `tr` 43 · `data-export` 1 · `[data-sf-big]` 3 · widest 1440 · every table's box
+  `scrollWidth == clientWidth` — identical; moved only on the design's keys (`th` +Ref, `.sf-take`
+  1 → 3, chips [] → three, the pill, page height 3901 → 4588). The chips' EFFECT measured: clicking
+  `#std-sem` scrolled 2 753–4 003 px and left the panel in view in all four themes; zero page errors
+  in all four, pristine and patched. Statics: ruff (whole tree, 647 files) · format · mypy --strict
+  163 · bandit exit 0.
+- **The battery found a weak check of MY OWN, recorded rather than hidden:** the first mutation
+  ("hardcode the DCMA count to 16") came back GREEN — DCMA always scores exactly 16 checks and SEM
+  always 10, so no fixture in the repo can distinguish a hardcoded count from a measured one. The
+  **Fuse** family varies (**9** rows with one file loaded, **14** with two), so the single-version
+  test was strengthened to pin `Acumen-Fuse · 9` / `35 metrics` and the battery re-aimed there. The
+  DCMA and SEM counts stay UNVERIFIABLE as computed-vs-constant by any available fixture.
+- **Left, registered:** `document.scrollingElement.scrollWidth` 1719 → 1734 with the strip — the known
+  chrome-wide UI-03 condition (**R-20**), already 1719 pristine; ADR-0471 recorded the identical
+  1719 → 1734 for the identical strip on /wbs, which corroborates the attribution. Not fixed here.
+- **Docs:** ADR-0475 · `docs/DESIGN-SYSTEM.md` §9 (a selector row is navigation that hides nothing) ·
+  the WP8 report's §6 (Done 8 → 9, Remaining 22 → 21, /scorecards next by cost) and R-42 · HANDOFF
+  rotated · LESSONS 2026-09-07 (d) · the kickoff prompt. Version **1.0.246**; wheel + nine installers
+  rebuilt after the last source edit.
