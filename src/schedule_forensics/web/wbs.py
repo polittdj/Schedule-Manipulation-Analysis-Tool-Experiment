@@ -34,8 +34,9 @@ from __future__ import annotations
 from urllib.parse import quote
 
 from schedule_forensics.engine.metrics import WBSGroup
+from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.web.chrome import _e, _utility_takeaway
-from schedule_forensics.web.components import _panel_head, _shell_tools
+from schedule_forensics.web.components import _panel_head, _shell_tools, _version_chips
 
 
 def _num(value: float | None, *, suffix: str = "") -> str:
@@ -43,7 +44,15 @@ def _num(value: float | None, *, suffix: str = "") -> str:
     return f"{value:g}{suffix}" if value is not None else "—"
 
 
-def _wbs_body(key: str, groups: tuple[WBSGroup, ...], *, prov: str = "") -> str:
+def _wbs_body(
+    key: str,
+    groups: tuple[WBSGroup, ...],
+    *,
+    prov: str = "",
+    sch: Schedule | None = None,
+    versions: tuple[str, ...] = (),
+    options: str = "",
+) -> str:
     """The deck's *Completion Metrics* (PBIX 8) + *SPI and Earned Schedule* (PBIX 9) pages.
 
     Two WBS pivots over one version: a completion-by-WBS table (counts, %, ahead/on/behind,
@@ -57,9 +66,17 @@ def _wbs_body(key: str, groups: tuple[WBSGroup, ...], *, prov: str = "") -> str:
     and the combo chart's numbers are the ES table rendered directly beneath it in the same
     panel (the home-shell precedent). The no-groups branch renders a bare notice with NO
     controls — the ROUTE appends the panelkit include, gated on a control actually being in
-    the assembled body (a focus panel above this body carries controls of its own)."""
+    the assembled body (a focus panel above this body carries controls of its own).
+
+    ADR-0471 (the Claude Design "Library WBS Rollup" layout): ``versions`` is the active project's
+    ordered keys — with two or more (and ``sch``, whose file name and data date the pill prints),
+    the page wears the family's cursor strip as NAVIGATION (:func:`_version_chips`, one link chip
+    per version); ``options`` is the route's Field-roles
+    picker, byte-for-byte, placed in the family's options position between the strip and the
+    pivots. The masthead leads (the pristine page put the picker above its own takeaway). On the
+    no-groups branch the picker still leads the bare notice, as it always did."""
     if not groups:
-        return (
+        return options + (
             "<div class=panel><h2>WBS breakdown</h2><p class=muted>This schedule has no "
             "schedulable activities to break down by WBS.</p></div>"
         )
@@ -112,7 +129,12 @@ def _wbs_body(key: str, groups: tuple[WBSGroup, ...], *, prov: str = "") -> str:
         f"Completion metrics by WBS &mdash; {len(groups)} groups", tools=wbs_tools, prov=prov
     )
     es_head = _panel_head("SPI(t) &amp; Earned Schedule by WBS", tools=wbs_tools, prov=prov)
-    return f"""{takeaway}
+    strip = (
+        _version_chips(key, sch, versions, route="wbs", cursor_id="wbsCursor", noun="WBS roll-up")
+        if sch is not None
+        else ""
+    )
+    return f"""{takeaway}{strip}{options}
 <div class=panel data-export="{wbs_export}">{completion_head}
 <p class=muted>The reference deck's <i>Completion Metrics</i> pivot (PBIX page 8), grouped by
 the top-level WBS segment: counts and completion, the ahead / on-schedule / behind split with

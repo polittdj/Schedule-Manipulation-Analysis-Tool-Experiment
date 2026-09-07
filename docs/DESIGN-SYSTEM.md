@@ -282,3 +282,23 @@ toolbar glyph and figure it carried before** ("don't modify any of the functiona
   leaves this machine") is never ported as a static sentence — an assurance derives from the session's
   measured backend locality and is withdrawn when the gateway is armed (ADR-0396). A page's `.panel`
   count includes the chrome's Ask panel: a pin counts what the page SERVES.
+- **A single-card artboard maps to the masthead-first order** (ADR-0471, /wbs — the eighth page): when
+  the design is ONE card and the page already IS that card in verbatim panels, the migration is the
+  ORDER (the takeaway leads — the pristine page put its Field-roles picker above its own takeaway), the
+  family's navigation strip for a per-file drill (`components._version_chips`, descended from `card.py`
+  the moment a second extracted module referred to it — ADR-0351's rule; `route`, `cursor_id` and the
+  note's noun are parameters, the card's bytes unchanged), and the page's own picker in the options
+  position between the strip and the card, byte-for-byte. A mock's row click, its in-table encodings
+  and its footnote wording are not layout: the click is a drill-floor change (priced, never built
+  blind on a byte-frozen script), the footnote is the panel's own read-me line with the ENGINE's basis
+  (a mock never redefines a metric — /wbs's SPI(t) is count-based, the mock said duration-weighted),
+  and the Continue footer is the chrome's spine. The Library and Control screens execute with the
+  canvas's own keys (`setScreen('wr')` WBS Rollup · `'ic'` Schedule ID Card · `'sd'` Standards ·
+  `'sk'` Scorecards …), and the executed artboard's own DOM census (h1 · buttons · selects · rows) is
+  recorded beside the page's so a reader can tell the design's figures from the tool's.
+- **A hidden tooltip box is still scrollable overflow** (UI-03, WP8 / ADR-0472): `[data-sf-hint]::after`
+  is absolute, 340 px wide, `visibility:hidden` — on a right-aligned host (every `.viz-controls` row's
+  Reset-view button, the family's strip included) it extends past the viewport and the document scrolls
+  sideways on every page at 1440 px. Measure `document.scrollingElement.scrollWidth`, not element boxes;
+  the fix (render the box only on hover/focus, pinned across the census's 34 page states) is priced in
+  the WP8 report, not made blind.

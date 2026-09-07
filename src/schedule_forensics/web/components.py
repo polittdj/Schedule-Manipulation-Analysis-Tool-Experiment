@@ -134,6 +134,43 @@ def _sources_line(schedules: Sequence[Schedule]) -> str:
     )
 
 
+def _version_chips(
+    key: str,
+    sch: Schedule,
+    versions: tuple[str, ...],
+    *,
+    route: str = "card",
+    cursor_id: str = "cardCursor",
+    noun: str = "card",
+) -> str:
+    """The Claude Design cursor strip for a per-file drill (ADR-0470, born on /card; descended
+    here for /wbs in ADR-0471 — ADR-0351's rule: a second extracted referrer forces a shared
+    name down into the kernel): one ``.cd-chip`` per loaded version of the active project,
+    oldest first, the open version ``on``, and the family's ``vN · file · DD`` pill. A drill has
+    no stepper, so the chips are LINKS to the sibling versions' pages (``/<route>/<key>`` — the
+    artboard's "Pick a version to read its card") and, like the family, the strip is served
+    only with two or more versions. Chips carry no id and no family word (the control census
+    recognises steppers by id+className); ``cursor_id`` names the strip per page and ``noun``
+    is what the note calls one version's page."""
+    if len(versions) < 2 or key not in versions:
+        return ""
+    chips = "".join(
+        f'<a class="cd-chip{" on" if k == key else ""}" data-idx="{i}" '
+        f'href="/{route}/{quote(k, safe="")}" title="{_e(k)}" data-no-i18n>v{i + 1}</a>'
+        for i, k in enumerate(versions)
+    )
+    dd = _mdY(sch.status_date) if sch.status_date else "—"
+    pill = f"v{versions.index(key) + 1} &middot; {_e(sch.source_file or sch.name)} &middot; DD {dd}"
+    return (
+        f'<div class="viz-controls cd-cursor" id={cursor_id}>'
+        f"<span class=cd-chips>{chips}</span>"
+        f'<span class="muted cd-pill" data-no-i18n>{pill}</span>'
+        f'<span class="muted cd-note">One {noun} per loaded version &mdash; a chip opens that '
+        f"version&rsquo;s {noun}; every figure on it is that file&rsquo;s own.</span>"
+        "</div>"
+    )
+
+
 def _shell_tools(*, export_title: str = "", big: bool = True) -> str:
     """The three-glyph tool strip (panelkit.js wiring): ⤓ EXCEL renders ONLY when the panel
     carries a ``data-export`` URL to an EXISTING endpoint (never a dead link — rank-3 law);

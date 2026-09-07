@@ -47,6 +47,11 @@ def test_final_report_states_locality_conditionally_and_names_the_gateway_record
     assert "_observed_banner" in report and "transaction log" in report
     # and the parity evidence stays tempered: residuals are named, never blanketed
     assert "gate-locked residuals" in report
+    # WP8 (ADR-0472, the 2026-08-13 plan's DOC-01): the HEADLINE may not blanket what the body
+    # tempers — "parity-green" as an unqualified status contradicted §6.B's own named residuals
+    # for a year. The status line names the gate and points at the residuals instead.
+    assert "COMPLETE and parity-green" not in report
+    assert "gate-locked residuals" in report.split("## §6.A", 1)[0], "the headline must temper"
 
 
 def test_parity_report_states_the_headline_results() -> None:

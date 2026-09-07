@@ -301,7 +301,6 @@ from schedule_forensics.web.briefing import _cite_tag as _cite_tag
 from schedule_forensics.web.briefing import _the_briefing_header as _the_briefing_header
 from schedule_forensics.web.card import _card_body as _card_body
 from schedule_forensics.web.card import _count_bar_table as _count_bar_table
-from schedule_forensics.web.card import _version_chips as _version_chips
 from schedule_forensics.web.cei import _cei_body as _cei_body
 from schedule_forensics.web.cei import _cei_data as _cei_data
 from schedule_forensics.web.cei import _stack_not_measured as _stack_not_measured
@@ -475,6 +474,10 @@ from schedule_forensics.web.components import _status_stack as _status_stack
 from schedule_forensics.web.components import _target_panel as _target_panel
 from schedule_forensics.web.components import _task_name_across as _task_name_across
 from schedule_forensics.web.components import _user_tip as _user_tip
+
+# ADR-0471: ``_version_chips`` DESCENDED from ``card`` into the kernel when ``wbs`` became its
+# second referrer (ADR-0351's rule); the re-export follows the definition.
+from schedule_forensics.web.components import _version_chips as _version_chips
 from schedule_forensics.web.components import _volatility_data as _volatility_data
 
 # ADR-0389 (phase 4, slice 24): the FOUR remaining zero-descent page families leave together —
@@ -1947,10 +1950,18 @@ def create_app(
                 focus = _target_panel(sch, st.analysis_for(name, sch), st.target_uid)
             except CPMError:
                 focus = ""  # unschedulable: skip the focus panel, still show the WBS pivot
-        body = (
-            focus
-            + _field_roles_panel(st, [sch], next_url=f"/wbs/{quote(name, safe='')}", compact=True)
-            + _wbs_body(name, groups, prov=_prov_chip(sch))
+        # ADR-0471 (the Claude Design layout): the body owns the order — the masthead leads, then
+        # the family's cursor strip (link chips, two or more versions), then the Field-roles picker
+        # in the options position, then the two pivots verbatim. The picker's bytes are unchanged.
+        body = focus + _wbs_body(
+            name,
+            groups,
+            prov=_prov_chip(sch),
+            sch=sch,
+            versions=tuple(k for k, _s in st.ordered_versions()),
+            options=_field_roles_panel(
+                st, [sch], next_url=f"/wbs/{quote(name, safe='')}", compact=True
+            ),
         )
         # the include rides ONLY a render that carries a contract control (the r11 law), so
         # the gate reads the ASSEMBLED body, not one builder's branch: the no-groups branch
