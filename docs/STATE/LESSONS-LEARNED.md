@@ -435,6 +435,34 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-07 (b) — Same name, different metric: a Fuse figure is an oracle only for the tile its own workbook section carries
+
+- Ran every reference workbook in the repo against the engine (16 snapshots × 3 Fuse workbooks +
+  the Detailed Metric Reports' X-marks). The harness raised ~20 mismatches per big file; root-causing
+  each on the Bible's formula AND its inclusion flags split them into three kinds: real defects
+  (the §C compliance block on actual dates where the Bible reads the CURRENT Finish/Start; MSPDI
+  currency read as units when the format stores hundredths; a step-function BCWS; a −0.29 d slack
+  classed negative), harness mapping errors (Actual Starts, Zero Days Float, Logic Density at two
+  scopes, "Started Late" at rows 398 AND 699), and — the lesson — the library's SAME display name
+  carrying DIFFERENT inclusion sets per workbook section (Insufficient Detail™ 43 vs 22, Merge
+  Hotspot 156 vs 125, Lags 5 vs 2).
+- Three of those were changed to the History variant, each went red on a ribbon oracle or a golden
+  pin within the hour (Hard_File_updated's ribbon 2 → 1; the Project5 golden's Number of Lags 2 → 1;
+  TP3's operator ribbon Lags 3 → 2), and each was reverted. The goldens did exactly what they exist
+  for. **Lesson:** before a metric's rule moves, prove the oracle row is the SAME metric as the tool's
+  tile — read the library's inclusion block, not just its formula — and prove it on a ribbon oracle
+  that discriminates.
+- Provenance again: the `ssi_uid152` Large Test File fixture is `Large_Test_File.mpp` (underscore),
+  not the Fuse-scored `Large Test File.mpp` (space) — 31 vs 41 negative-float activities. A fixture is
+  not the file Fuse scored until the file names AND the counts are matched.
+- MPXJ writes no zero: Cost, ActualCost and TotalSlack are all omitted at 0, so "absent" on an
+  MPXJ-converted file is a different fact from "the source did not provide it" (R-49).
+- A 2-dp ratio must be derived from the counts (8/13 = 0.62), never from the 1-dp percentage (61.5 →
+  0.61); a `<= 0.01` tolerance needs `0.0101` against float error; `git archive HEAD src` on
+  `PYTHONPATH` is the cheapest pristine tree for a red-first proof.
+- Question (c) got an answer nobody asked for: LibreOffice 7 refuses BOTH exported `.pptx` decks. The
+  cheapest executable check available beat the intended one (PowerPoint, absent here).
+
 ### 2026-09-07 — A report that cannot go red is a rumour; a census self-matches; a hidden box still scrolls
 
 - **A figure without a method is a rumour.** The ledger's "176 `round(` sites outside `engine/metrics`" was copied

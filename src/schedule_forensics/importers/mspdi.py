@@ -305,6 +305,20 @@ def _bool_or_none(parent: ET.Element, tag: str) -> bool | None:
     return raw.strip().lower() in {"1", "true"}
 
 
+def _currency(parent: ET.Element, tag: str) -> float | None:
+    """An MSPDI currency element → currency units (``None`` if absent). MS Project's XML stores
+    every cost field in HUNDREDTHS of the currency unit (``<CurrencyDigits>2</CurrencyDigits>``):
+    a $1,334.00 task is written ``<Cost>133400</Cost>``, and MPXJ's MSPDI writer multiplies by
+    100 for the same reason. Read verbatim, every cost the tool showed from an MSPDI / ``.mpp``
+    source was 100 times the file's figure — the operator's Hard_File_updated carried a BAC of
+    $133,400 and an ACWP of $20,800 in the Fuse ribbon while the tool summed 13,340,000 and
+    2,080,000 (ADR-0473). Ratios (SPI / CPI / TCPI) cancelled the scale; the task-info drawer's
+    amounts and the JCL's dollar figures did not. A P6 XER carries real currency and is untouched.
+    """
+    raw = parse_float(_text(parent, tag))
+    return None if raw is None else raw / 100.0
+
+
 def _stored_slack_minutes(task_el: ET.Element) -> int | None:
     """MSPDI ``Task/TotalSlack`` → working minutes (``None`` if absent). MS Project stores slack
     fields in **tenths of a minute** (verified against the goldens — stored ÷ 10 == recomputed
@@ -681,8 +695,8 @@ def _parse_task(
             baseline_finish=bl_finish,
             stop=parse_datetime(_text(task_el, "Stop")),
             resume=parse_datetime(_text(task_el, "Resume")),
-            cost=parse_float(_text(task_el, "Cost")),
-            actual_cost=parse_float(_text(task_el, "ActualCost")),
+            cost=_currency(task_el, "Cost"),
+            actual_cost=_currency(task_el, "ActualCost"),
             budgeted_cost=bl_cost,
             work_minutes=_optional_minutes(task_el, "Work"),
             actual_work_minutes=_optional_minutes(task_el, "ActualWork"),
@@ -737,7 +751,7 @@ def _primary_baseline(
             chosen = bl
     if chosen is None:
         return None, None, 0.0, None, None
-    cost = parse_float(_text(chosen, "Cost"))
+    cost = _currency(chosen, "Cost")
     duration = _optional_minutes(chosen, "Duration")
     work = _optional_minutes(chosen, "Work")
     return (

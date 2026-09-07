@@ -192,8 +192,12 @@ def test_jcl_runs_through_the_real_mspdi_import_path() -> None:
     page = c.get("/sra").text
     assert "id=jclRun" in page  # the gate opened from IMPORTED costs alone
     d = c.get("/api/sra/jcl?iterations=50").json()
-    assert d["deterministic"]["eac"] == 852000.0
-    assert d["provenance"]["sunk"] == 52000.0  # the completed task's recorded actual
+    # 852,000 → 8,520 on 2026-09-07 (ADR-0473): the fixture's MSPDI <Cost> literals are HUNDREDTHS
+    # of the currency unit, read as units since the importer's currency fix; the same EAC in dollars
+    assert d["deterministic"]["eac"] == 8520.0
+    assert (
+        d["provenance"]["sunk"] == 520.0
+    )  # the completed task's recorded actual (hundredths, ADR-0473)
     assert d["provenance"]["completed"] == 1  # UID 2 (the only completed non-summary)
     assert d["provenance"]["incomplete_costed"] == 1  # UID 4 carries the remaining budget
     # the date axis is realigned to the stored plan finish (ADR-0123 realignment through

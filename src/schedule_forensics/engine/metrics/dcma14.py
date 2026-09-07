@@ -138,7 +138,11 @@ def compute_dcma14(
 
     # DCMA-02 Leads — incomplete ACTIVITIES with a negative-lag predecessor link (count,
     # must be 0). Fuse counts activities, not links ("0 activities (0%) have 2. Leads" in
-    # the golden Fuse briefing): two leads into one task is ONE offender.
+    # the golden Fuse briefing): two leads into one task is ONE offender. The scope is the
+    # Bible's DCMA ribbon tile '2. Leads' / '3. Lags' (IncludePlanned + IncludeInProgress, not
+    # Complete) — NOT the Metric History row 'Total # Predecessor Lags', which is planned-only
+    # and reads 2 where the tile reads 5 on the operator's Large Test File (ADR-0473: the two
+    # are different metrics; the operator's TP3 ribbon counted a started successor's lag).
     leads = tuple(
         dict.fromkeys(
             r.successor_id

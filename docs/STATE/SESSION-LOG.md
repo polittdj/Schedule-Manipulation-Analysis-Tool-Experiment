@@ -16950,3 +16950,27 @@ shadows it on PATH).
   `remote set-head` + `checkout -B`, never an amend of the squash). This record rides a NEW docs-only draft PR (number in
   the follow-up line).
 - **Follow-up (03:16Z) — draft PR #646** carries this record (docs-only; six checks apply); subscribed, a check-in armed ~04:26Z. The operator merges it and the next session branches FRESH.
+
+## 2026-09-07 (b) — branch `claude/polaris-audit-plan-forward-3vp28m` — ADR-0473 — v1.0.243
+
+- **What changed:** the plan-forward's R-01 closed and every metric family run against every Fuse
+  workbook in the repo — the multi-project Metric History + EVM ribbon oracle
+  (`tests/parity/test_fuse_metric_history_oracle.py`, NEW, 15; fixtures `golden/fuse_ltf/`). Engine:
+  the §C compliance block scores the Bible's CURRENT Finish/Start; BCWS is time-phased (linear over
+  the baseline span); CPI/TCPI disclose the started, budgeted activities with no actual cost; the
+  ribbon Negative Float classifies the stored slack in whole days. Importer: MSPDI currency ÷ 100.
+  Page: /evm prints the disclosure. Docs: help + dictionary, PARITY-REPORT (§B row 8 re-attributed to
+  High BASELINE Duration; a new oracle section), the report's §3 (R-01 CLOSED, the five ASK rows
+  decided, R-44..R-54 added), §4 (`round_calls_inside_engine_metrics` 45 → 46, re-measured), §5.
+- **How verified:** red-first — the new module + two `test_evm.py` pins against a `git archive HEAD
+  src` scratch copy on `PYTHONPATH`: 12 failed / 5 passed by name; on this tree 34 passed. The
+  compliance rows 692–701 re-read from the sheets after the fix: exact on every oracle. Three
+  History-variant changes (Insufficient Detail, Merge Hotspot, Lags) each went red on a ribbon
+  oracle or a golden pin and were reverted the same hour. `pytest -m parity` 72 passed before the
+  change (10:49); statics green (ruff whole tree, format, mypy --strict 163, bandit 0). The
+  full-suite figure and the PR number are in the follow-up line.
+- **Decided (the operator's five questions):** (a) probe kept · (b) planned-date basis kept with
+  its disclosure · (c) rulings stand; the `.pptx` does not load in LibreOffice 7 (R-52) · (d) UID
+  152 does not move on the repo's pair · (e) pinned by 24 tests; the rest is the operator's box.
+- **Follow-up — draft PR #647** carries ADR-0473 at v1.0.243 (`24384f8b`; installers touched, so seven checks apply). Full suite on the final code before the rebuild: 5,026 passed / 5 skipped / 3 failed (the version pin, the `_actuals_missing_note` re-export, the JCL dollar pin in hundredths — each re-pinned and green); the installer lockstep 68 green after the rebuild. Subscribed; a check-in armed ~1 h out. The operator merges it and the next session branches FRESH.
+- **Follow-up (09:23Z) — #647 GREEN on its final head `eb02a2c6`:** CI run **34099275416** — `check` · `cui-guard` · `test (3.11)` (49 min) · `test (3.13)` (71 min) · `floor` · `browser` — and installer-smoke **34099275427** (`linux` · `windows`) all `success`; eight checks, the installer set. No comments, no conflict. A green, mergeable draft waits on the operator; the next session reads `main`'s own run for the squash commit first.

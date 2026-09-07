@@ -112,23 +112,36 @@ def compute_baseline_compliance(
     def before(when: dt.datetime | None) -> bool:
         return when is not None and when < status
 
+    def current_finish(t: Task) -> dt.datetime | None:
+        # the Bible's Finish: the recorded actual finish once the activity has finished, else
+        # the scheduled (forecast) finish — MS Project writes Finish == ActualFinish when done
+        return t.actual_finish if t.actual_finish is not None else t.finish
+
+    def current_start(t: Task) -> dt.datetime | None:
+        return t.actual_start if t.actual_start is not None else t.start
+
     # ---- finish side (Finish basis; INT date comparisons per the Bible formulas) ----
     fin_due = [t for t in tasks if before(t.baseline_finish)]
-    # "Finish < now" — the activity has actually finished by the data date.
-    finished = [t for t in fin_due if t.actual_finish is not None and t.actual_finish < status]
+    # "Finish < now" is the Bible's CURRENT finish — the actual finish once the activity has
+    # finished, else the forecast (scheduled) finish. An unfinished activity whose forecast
+    # finish already lies before the data date (an invalid forecast date) therefore counts as
+    # finished here, exactly as Fuse counts it; scoring on ``actual_finish`` instead read 0 on
+    # time where Fuse read 5/5 (EVM1) and 117 where Fuse read 159 (Large Test File2), and agreed
+    # only on files with no stale forecasts (ADR-0473, ten Fuse oracles).
+    finished = [t for t in fin_due if (cf := current_finish(t)) is not None and cf < status]
     on_time = [
         t
         for t in finished
-        if t.actual_finish is not None
+        if (cf := current_finish(t)) is not None
         and t.baseline_finish is not None
-        and t.actual_finish.date() <= t.baseline_finish.date()
+        and cf.date() <= t.baseline_finish.date()
     ]
     late = [
         t
         for t in finished
-        if t.actual_finish is not None
+        if (cf := current_finish(t)) is not None
         and t.baseline_finish is not None
-        and t.actual_finish.date() > t.baseline_finish.date()
+        and cf.date() > t.baseline_finish.date()
     ]
     not_completed = [t for t in fin_due if t.percent_complete < 100.0]
     n_fin = len(fin_due)
@@ -164,20 +177,23 @@ def compute_baseline_compliance(
 
     # ---- start side ----
     start_due = [t for t in tasks if before(t.baseline_start)]
-    started = [t for t in start_due if t.actual_start is not None and t.actual_start < status]
+    # "Start < now" — the Bible's CURRENT start (actual once started, else the forecast start),
+    # the same basis as the finish side above. "Not Started" stays the recorded fact (no actual
+    # start) — Fuse's own count on every oracle.
+    started = [t for t in start_due if (cs := current_start(t)) is not None and cs < status]
     s_on_time = [
         t
         for t in started
-        if t.actual_start is not None
+        if (cs := current_start(t)) is not None
         and t.baseline_start is not None
-        and t.actual_start.date() <= t.baseline_start.date()
+        and cs.date() <= t.baseline_start.date()
     ]
     s_late = [
         t
         for t in started
-        if t.actual_start is not None
+        if (cs := current_start(t)) is not None
         and t.baseline_start is not None
-        and t.actual_start.date() > t.baseline_start.date()
+        and cs.date() > t.baseline_start.date()
     ]
     not_started = [t for t in start_due if t.actual_start is None]
     n_start = len(start_due)
@@ -189,9 +205,9 @@ def compute_baseline_compliance(
     bsc_compliant = [
         t
         for t in started
-        if t.actual_start is not None
+        if (cs := current_start(t)) is not None
         and t.baseline_finish is not None
-        and t.actual_start.date() <= t.baseline_finish.date()
+        and cs.date() <= t.baseline_finish.date()
     ]
 
     out["forecast_to_be_started"] = _ratio_result(
@@ -279,9 +295,25 @@ def compute_evm_indices(
     if total_budget > 0:
         bcwp = sum(t.budgeted_cost * (t.percent_complete / 100.0) for t in tasks)
         bcws = _planned_value(schedule, tasks)
+        # ACWP = sum(ACWPAC), the Bible's formula: an activity with no recorded actual cost is a
+        # 0 term — Acumen evaluates a blank field as 0 (proven on SPI(t), ADR-0176), and both
+        # source tools compute actual cost from assignments, so a task with none has spent
+        # nothing as far as the file knows. What the sum cannot know is disclosed instead of
+        # guessed: ``actuals_missing`` names the STARTED, budgeted activities carrying no actual
+        # cost — earned value with nothing spent against it, the case that flatters CPI/TCPI
+        # (R-01, ADR-0473). Their count rides the CPI/TCPI results as count/population/offenders.
         acwp = sum(t.actual_cost or 0.0 for t in tasks)
+        started_budgeted = [t for t in tasks if t.budgeted_cost > 0 and t.percent_complete > 0]
+        actuals_missing = tuple(t.unique_id for t in started_budgeted if not t.actual_cost)
         out["spi"] = _index("spi", "SPI", bcwp / bcws if bcws else None, 1.0)
-        out["cpi"] = _index("cpi", "CPI", bcwp / acwp if acwp else None, 1.0)
+        out["cpi"] = _index(
+            "cpi",
+            "CPI",
+            bcwp / acwp if acwp else None,
+            1.0,
+            actuals_missing=actuals_missing,
+            started_budgeted=len(started_budgeted),
+        )
         tcpi_denom = total_budget - acwp
         # TCPI is the efficiency the REMAINING work must achieve, so the pass bar runs the
         # other way from SPI/CPI: <= 1.0 means the programme has room, > 1.0 means it must
@@ -294,6 +326,8 @@ def compute_evm_indices(
             (total_budget - bcwp) / tcpi_denom if tcpi_denom else None,
             1.0,
             Direction.LE,
+            actuals_missing=actuals_missing,
+            started_budgeted=len(started_budgeted),
         )
     else:
         out["spi"] = _na_index("spi", "SPI")
@@ -328,15 +362,34 @@ def compute_evm_indices(
 
 
 def _planned_value(schedule: Schedule, tasks: list[Task]) -> float:
-    """Cost-loaded BCWS: budget of activities the baseline placed on/before status."""
-    status = schedule.status_date
-    if status is None:
+    """Cost-loaded BCWS (the Bible's ``sum(BCWSPV)``): each activity's budget accrued LINEARLY
+    over its baseline span — working time on the project calendar — up to the status date, the
+    time-phased planned value MS Project stores and Fuse sums. An activity baselined to finish
+    on/before the status date contributes its whole budget; one baselined to start after it
+    contributes nothing; one straddling the status date contributes the elapsed share of its
+    baseline span. The former step function (whole budget once the baseline FINISH had passed,
+    else nothing) read 12,400 where Fuse read 16,000 and made SPI 1.35 where Fuse read 1.05 on
+    the operator's Hard_File_updated (ADR-0473). Validated on the Fuse ribbon: 64,240 and
+    110,440 exact on updated2/updated3; 16,150 vs 16,000 on updated — one straddling task on a
+    16-hour resource calendar the project-calendar proration cannot see (documented residual)."""
+    status_off = to_offset(schedule, schedule.status_date)
+    if status_off is None:
         return 0.0
-    return sum(
-        t.budgeted_cost
-        for t in tasks
-        if t.baseline_finish is not None and t.baseline_finish <= status
-    )
+    total = 0.0
+    for t in tasks:
+        if not t.budgeted_cost:
+            continue
+        bl_finish = to_offset(schedule, t.baseline_finish)
+        if bl_finish is None:
+            continue
+        if bl_finish <= status_off:
+            total += t.budgeted_cost
+            continue
+        bl_start = to_offset(schedule, t.baseline_start)
+        if bl_start is None or bl_start >= status_off or bl_finish <= bl_start:
+            continue
+        total += t.budgeted_cost * (status_off - bl_start) / (bl_finish - bl_start)
+    return total
 
 
 def _index(
@@ -345,25 +398,33 @@ def _index(
     value: float | None,
     threshold: float,
     direction: Direction = Direction.GE,
+    *,
+    actuals_missing: tuple[int, ...] = (),
+    started_budgeted: int = 0,
 ) -> MetricResult:
     """Build an EVM index result; NA when the denominator was absent.
 
     ``direction`` defaults to GE because SPI and CPI really are "higher is better", but it
     is NOT a shared property of the family: TCPI is inverted by definition (MF-01,
     ADR-0410), so the caller states it rather than inheriting a wrong default silently.
+
+    ``actuals_missing`` / ``started_budgeted`` (CPI and TCPI only, ADR-0473) ride the result as
+    ``count`` / ``population`` / ``offender_uids``: how many of the started, budgeted activities
+    carry no actual cost — the disclosure beside a figure whose ACWP term read those as 0.
     """
     if value is None:
         return _na_index(metric_id, name)
     return MetricResult(
         metric_id,
         name,
-        0,
-        1,
+        len(actuals_missing),
+        started_budgeted if actuals_missing or started_budgeted else 1,
         round_half_up(value, 2),
         "ratio",
         evaluate(value, threshold, direction),
         threshold,
         direction,
+        offender_uids=actuals_missing,
     )
 
 

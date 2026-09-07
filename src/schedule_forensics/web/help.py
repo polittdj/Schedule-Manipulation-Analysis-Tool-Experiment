@@ -129,7 +129,9 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "Lags",
         "Relationships with a positive lag into an incomplete successor. Counted as DISTINCT"
         " incomplete-successor activities over a total-links denominator (the Fuse-validated"
-        " scope): a task with two lagged predecessors is ONE offender (QC audit D22).",
+        " scope — the reference library's DCMA tile '3. Lags', planned and in-progress successors;"
+        " its Metric History row 'Total # Predecessor Lags' is planned-only and a different"
+        " metric, ADR-0473): a task with two lagged predecessors is ONE offender (QC audit D22).",
         "count(distinct incomplete successors of lag > 0 links) / links <= 5%",
         _DCMA,
         importance="Lags bury real work (cure, delivery, review) inside a relationship where it "
@@ -401,7 +403,10 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
     "insufficient_detail": _doc(
         "insufficient_detail",
         "Insufficient Detail",
-        "Activities whose (current) duration exceeds 10% of the project's calendar span.",
+        "Activities whose (current) duration exceeds 10% of the project's calendar span, every "
+        "status — the reference library's ribbon tile (its Metric History carries a same-named "
+        "variant that leaves completed activities and milestones out; a different metric, "
+        "ADR-0473).",
         "count(OriginalDuration_workdays / (ProjectFinish - ProjectStart)_days > 0.1) <= 5%",
         _SQ,
     ),
@@ -424,7 +429,9 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
     "merge_hotspot": _doc(
         "merge_hotspot",
         "Merge Hotspot",
-        "Activities with 3 or more predecessors (a merge point).",
+        "Activities with 3 or more predecessors (a merge point), every status — the reference "
+        "library's ribbon tile (its Metric History row 'Merge Hotspot (Predecessors >2)' counts "
+        "not-yet-started activities only and is a different metric, ADR-0473).",
         "count(predecessors >= 3) / activities",
         _SQ,
     ),
@@ -439,8 +446,11 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
     "completed_on_time": _doc(
         "completed_on_time",
         "Completed On Time",
-        "Due activities completed on/before their baseline finish.",
-        "count(complete and actual_finish <= baseline_finish) / due",
+        "Due activities whose CURRENT finish (the actual finish once finished, else the forecast) "
+        "lies before the status date and on/before their baseline finish — the reference "
+        "library's Finish basis, so an unfinished activity with a stale forecast finish counts "
+        "exactly as the reference tool counts it (ADR-0473, ten Fuse oracles).",
+        "count(finish < status and INT(finish) <= INT(baseline_finish)) / due",
         _ONTIME_SRC,
         threshold=_ONTIME_THR,
         example_ok="19 of 20 due activities finished on their baseline date = 95% -> PASS.",
@@ -449,8 +459,9 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
     "completed_late": _doc(
         "completed_late",
         "Completed Late",
-        "Due activities completed after their baseline finish.",
-        "count(complete and actual_finish > baseline_finish) / due",
+        "Due activities whose CURRENT finish lies before the status date and after their "
+        "baseline finish (the reference library's Finish basis, ADR-0473).",
+        "count(finish < status and INT(finish) > INT(baseline_finish)) / due",
         _ONTIME_SRC,
         threshold=_LATE_THR,
         example_ok="1 of 40 due activities finished late = 2.5% -> PASS (under 5%).",
@@ -516,8 +527,10 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
     "started_on_time": _doc(
         "started_on_time",
         "Started On Time",
-        "Start-due activities started on/before their baseline start.",
-        "count(actual_start <= baseline_start) / start-due",
+        "Start-due activities whose CURRENT start (actual once started, else the forecast) lies "
+        "before the status date and on/before their baseline start (the reference library's "
+        "Start basis, ADR-0473).",
+        "count(start < status and INT(start) <= INT(baseline_start)) / start-due",
         _ONTIME_SRC,
         threshold=_ONTIME_THR,
         example_ok="47 of 49 start-due activities started on time = 96% -> PASS.",
@@ -526,8 +539,9 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
     "started_late": _doc(
         "started_late",
         "Started Late",
-        "Start-due activities started after their baseline start.",
-        "count(actual_start > baseline_start) / start-due",
+        "Start-due activities whose CURRENT start lies before the status date and after their "
+        "baseline start (the reference library's Start basis, ADR-0473).",
+        "count(start < status and INT(start) > INT(baseline_start)) / start-due",
         _ONTIME_SRC,
         threshold=_LATE_THR,
         example_ok="0 of 12 start-due activities started late = 0% -> PASS.",
@@ -546,7 +560,7 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "Share of start-due activities that started before their baseline FINISH (the reference "
         "tool's Half-Step-Delay definition — distinct from Started On Time, which uses baseline "
         "start).",
-        "count(actual start <= baseline finish) / forecast_to_be_started",
+        "count(start < status and INT(start) <= INT(baseline finish)) / forecast_to_be_started",
         _ONTIME_SRC,
         threshold=_ONTIME_THR,
         example_ok="BSC 95% -> PASS.",
@@ -559,7 +573,8 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "Schedule Performance Index (cost-based; N/A unless the schedule is cost-loaded — this "
         "is a data limitation of the file, not a missing threshold: without BCWP/BCWS the ratio "
         "is undefined and is never fabricated as 0).",
-        "BCWP / BCWS  (pass >= 1.0 when cost-loaded)",
+        "BCWP / BCWS  (pass >= 1.0 when cost-loaded); BCWS accrues each budget LINEARLY over its"
+        " baseline span up to the status date (time-phased planned value, ADR-0473)",
         _EVM,
         threshold="On a cost-loaded schedule, SPI >= 1.0 is on/ahead of the planned value; "
         "< 1.0 is behind. N/A when the file carries no cost.",
@@ -568,8 +583,11 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "cpi",
         "CPI",
         "Cost Performance Index (N/A unless cost-loaded — a data limitation, not a missing "
-        "threshold).",
-        "BCWP / ACWP  (pass >= 1.0 when cost-loaded)",
+        "threshold). ACWP is the reference library's sum(ACWPAC): an activity with no recorded "
+        "actual cost is a 0 term, and the started, budgeted activities carrying none are counted "
+        "and named beside the figure (ADR-0473) — never silently assumed to have spent nothing.",
+        "BCWP / ACWP  (pass >= 1.0 when cost-loaded); disclosed: started budgeted activities "
+        "with no actual cost",
         _EVM,
         threshold="CPI >= 1.0 is on/under budget; < 1.0 is an overrun. N/A without cost.",
     ),
@@ -577,8 +595,10 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "tcpi",
         "TCPI",
         "To-Complete Performance Index (N/A unless cost-loaded — a data limitation, not a "
-        "missing threshold).",
-        "(BAC - BCWP) / (BAC - ACWP)  (pass <= 1.0 when cost-loaded)",
+        "missing threshold). ACWP as for CPI; the started, budgeted activities with no actual "
+        "cost are counted and named beside the figure (ADR-0473).",
+        "(BAC - BCWP) / (BAC - ACWP)  (pass <= 1.0 when cost-loaded); disclosed: started "
+        "budgeted activities with no actual cost",
         _EVM,
         threshold="TCPI <= 1.0 means the remaining work can complete within budget at the "
         "current efficiency; > 1.0 requires better-than-planned performance. N/A without cost.",
