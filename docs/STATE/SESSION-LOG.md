@@ -16919,3 +16919,14 @@ shadows it on PATH).
 - **Docs:** ADR-0471 · ADR-0472 · the ledger's WP8 section (UI-03 and CI-04 as table rows; the closures) and design table
   (/wbs; next /standards or /scorecards) · `docs/DESIGN-SYSTEM.md` §9 (two rules) · FINAL-REPORT's headline · HANDOFF rotated
   (the 2026-09-06 (c) section archived) · this entry · LESSONS 2026-09-07 · the kickoff prompt.
+- **Follow-up (01:45Z) — draft PR #645** (`claude/polaris-audit-resume-uw726u` → `main`, head `294d5f0e`; subscribed; a
+  check-in armed for 02:27Z). At 01:20Z the run registered eight checks (the installers changed): `cui-guard` and `linux`
+  green in a minute; **`floor (declared minimum)` RED at 01:40Z** — 1 failed / 4,660 passed / 259 skipped in 19:22, the
+  one failure `tests/audit/test_audit_findings.py::test_test01_no_test_hardcodes_a_chromium_build_number` naming
+  `tests/guards/test_audit_report_wp8.py`: the WP8 guard's census carried the literal `chromium-<build>/` it counts, and
+  TEST-01's own oracle (`chromium-\d{3,}/` over every test file) counted the guard as the offender — the self-match trap
+  in its THIRD coat this campaign (the `pgrep -f` waiter; the guard excluding itself; now another instrument reading the
+  same literal). Fixed: the census is the same REGEX (no literal digits in the module), the self-exclusion gone, the
+  report's method text updated; `tests/audit` + the WP8 guard **29 passed** locally; pushed as the next head — read the
+  verdict on the FINAL head. The snapshot full suite was at 4,464 / 5,010 at 01:42Z (the lockstep pin its only failure);
+  its figure and `main`'s #1763 conclusion follow in the next docs-only line.

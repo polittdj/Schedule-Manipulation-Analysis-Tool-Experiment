@@ -217,7 +217,7 @@ Re-measure, never edit by hand.
 | `evm_acwp_or_zero_sites` | 1 | occurrences of `actual_cost or 0.0` in `engine/metrics/evm.py` (R-01; 0 once fixed) |
 | `dcma14_parity_round_sites` | 2 | occurrences of `round(` in `engine/metrics/dcma14.py` (R-03; the two parity-mode classifications) |
 | `license_placeholder` | 1 | the first line of `LICENSE` contains `PLACEHOLDER` (R-41) |
-| `chromium_build_path_pins_in_tests` | 0 | test files containing the path literal `/chromium-1194/` (R-35; the two remaining mentions are documentary) |
+| `chromium_build_path_pins_in_tests` | 0 | test files whose text matches TEST-01's own oracle, `chromium-` + three or more digits + `/` (R-35; the two remaining build-number mentions are documentary and carry no trailing slash) |
 | `final_report_headline_unqualified` | 0 | `docs/FINAL-REPORT.md` contains `COMPLETE and parity-green` (R-17; tempered this session) |
 
 **Provenance notes.** The ledger's "176 `round(` sites outside `engine/metrics`" (ADR-0467 §3) could

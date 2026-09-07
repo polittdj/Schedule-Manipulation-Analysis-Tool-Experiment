@@ -173,13 +173,14 @@ def _census_from_tree() -> dict[str, int]:
         "license_placeholder": int(
             "PLACEHOLDER" in (REPO / "LICENSE").read_text(encoding="utf-8").splitlines()[0]
         ),
-        # this module names the literal it censuses — exclude itself, or the census self-matches
-        # (the `pgrep -f` trap the render-verify skill records, in a new coat)
+        # TEST-01's own oracle (tests/audit/test_audit_findings.py): a pinned build segment is
+        # `chromium-<3+ digits>/`. Expressed as a REGEX so this module never carries the literal
+        # it censuses — a first cut did, and CI's TEST-01 guard counted this file as the offender
+        # (the `pgrep -f` self-match trap, in its third coat this campaign).
         "chromium_build_path_pins_in_tests": sum(
             1
             for p in (REPO / "tests").rglob("*.py")
-            if p.resolve() != Path(__file__).resolve()
-            and "/chromium-1194/" in p.read_text(encoding="utf-8")
+            if re.search(r"chromium-\d{3,}/", p.read_text(encoding="utf-8"))
         ),
         "final_report_headline_unqualified": int(
             "COMPLETE and parity-green"

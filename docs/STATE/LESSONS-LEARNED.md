@@ -444,6 +444,9 @@ those fixed defects in earlier "closed" fixes:
 - **A census instrument that names the literal it censuses self-matches.** The WP8 guard's own source carried
   `/chromium-1194/` and counted itself (the render-verify skill's `pgrep -f` trap, in a new coat). Exclude the
   instrument's own file, and mutate the SUBJECT to prove the count moves.
+  **Third coat, an hour later:** CI's TEST-01 guard reads every test file for `chromium-<digits>/` and counted
+  the WP8 guard — self-exclusion does not help when ANOTHER instrument reads the same literal. A census over
+  source carries its pattern as a regex with no literal digits, the way TEST-01 itself does.
 - **The family regex belongs on id and class VALUES, never on raw markup.** `pan(?!d)` matches `<span`; a "no family
   word in the strip" assertion on innerHTML was red on a correct page. Read the emitter, then write the oracle.
 - **Element boxes cannot see a pseudo-element.** Every "widest element 1440" census since ADR-0451 missed that
