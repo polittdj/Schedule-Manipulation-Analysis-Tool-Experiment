@@ -1,6 +1,6 @@
 # Kickoff prompt — next session
 
-PR state (2026-09-07, session b): #645 and #646 MERGED → `main` @ `0408c56`; this session's draft PR (number in the SESSION-LOG follow-up) carries ADR-0473 at **v1.0.243** — merge it, then branch FRESH (`git fetch --prune origin && git checkout -B <branch> origin/main`).
+PR state (2026-09-07 10:43Z): #647 MERGED → `main` @ `e010d3af` (tree-identical to its green head `6f5d5bee`; read `main`'s run #1774 first); this docs-only record rides a new draft PR (number in the SESSION-LOG follow-up) — merge it, then branch FRESH (`git fetch --prune origin && git remote set-head origin -a && git checkout -B <branch> origin/main`).
 
 Work the POLARIS² audit's plan-forward (Schedule-Manipulation-Analysis-Tool). Read `docs/STATE/HANDOFF.md` FIRST (auto-injected), then `docs/STATE/AUDIT-2026-08-27-REPORT.md` §3 — the roadmap by testimony tier, pinned by `tests/guards/test_audit_report_wp8.py` (every row priced or owned, tier order, a nine-figure census recomputed by method — re-measure, never edit by hand). QC-1/QC-2 bind every session (ADR-0393). `git fetch origin` before you branch, number an ADR, or commit. The container may have NO project install: `python3 -m pip install -e '.[dev,browser]'` and `pip install build` before measuring anything; the vendored Chromium is under `/opt/pw-browsers`; `java` is present for `tools/mpxj/` (`java -cp tools/mpxj/classes:tools/mpxj/lib/* MpxjToMspdi <in.mpp> <out.xml>`).
 
