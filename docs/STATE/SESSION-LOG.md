@@ -16938,3 +16938,15 @@ shadows it on PATH).
   the doc guards (39 green on the final tree) and CI. **`main`'s run #1763 for `b1cd1739` concluded `success`** at 01:36Z
   (installer-smoke green). #645's checks on `84faa0ab` at this record: `cui-guard` · `linux` · `windows` green; `test (3.11)` ·
   `test (3.13)` · `floor` · `browser` in progress — the verdict is read on the FINAL head by the next wake or the 02:27Z check-in.
+- **Follow-up (03:12Z) — PR #645 MERGED.** The operator marked #645 ready and squash-merged it at 03:09:35Z → `main` @
+  `1f5b8f53`; `1f5b8f53^{tree}` == `2ebc53cd^{tree}` (`4c97d87d…` — the PR's FINAL head, all EIGHT checks green there:
+  `check` · `floor` 02:23Z · `test (3.11)` 03:07Z · `test (3.13)` 03:06Z · `browser` 02:12Z · `cui-guard` · `linux` ·
+  `windows`; `mergeable_state` clean). No docs-only verdict line was pushed before the merge — on purpose: a push would
+  have moved the head and restarted a 75-minute cycle on a docs-only tree (the ADR-0466 shape); the verdict is GitHub's on
+  the final head. `main`'s OWN runs for the squash: CI **#1767** (id 34078684593) and installer-smoke **#661** (id
+  34078684648), both `in_progress` at this record — the next session reads #1767's conclusion before trusting `main`.
+  The Codex reviewer bot posted a usage-limit notice on #645 — no review content, no action. Unsubscribed; the 03:24Z
+  check-in deleted; `claude/polaris-audit-resume-uw726u` restarted on `origin/main` @ `1f5b8f53` (`git fetch --prune` +
+  `remote set-head` + `checkout -B`, never an amend of the squash). This record rides a NEW docs-only draft PR (number in
+  the follow-up line).
+- **Follow-up (03:16Z) — draft PR #646** carries this record (docs-only; six checks apply); subscribed, a check-in armed ~04:26Z. The operator merges it and the next session branches FRESH.
