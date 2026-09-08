@@ -17260,3 +17260,44 @@ shadows it on PATH).
 - **Gate.** ruff (whole tree) · `ruff format --check` · `mypy --strict` 163 files · bandit exit 0 ·
   `node --check` · the full suite. Version 1.0.248; wheel + nine installers rebuilt after the last
   source edit (`SF_MPXJ_REF` override required — this container is a shallow clone).
+
+## 2026-09-08 (c) — OR-11a CLOSED (ADR-0479): the driving path is computed for EVERY version — v1.0.249
+
+- **Branch** `claude/polaris-audit-r55-r20-handoff-uoa34g`, restarted on `origin/main` @ `340b025`
+  (#655's squash; its tree was verified byte-identical to head `5a2681f`, on which all EIGHT check
+  runs were `completed`/`success`). Operator instruction: "Do OR-11a".
+- **The defect, measured on the pristine tree** (32 synthetic versions of golden Project5, the focus
+  UID named in a driving-intent question, the real endpoint): **1** driving-path fact reached the
+  model, citing **1** of 32 files — the newest — and `/api/driving-path` with no scope answered for
+  the same one. Both surfaces did the same thing: `driving_path_facts(schedules[-1], cpms[-1], …)`.
+  Thirty-one versions were loaded, parsed and CPM-solved, then never asked.
+- **Three measurements decided the design, before a line was written.** (1) `compute_driving_slack`
+  reproduces the operator's SSI Directional Path export for UID 152 on the real 2,126-task master
+  IMS **exactly — 76 of 76 members**, membership identical, against `golden/ssi_uid152/case.json`;
+  the series inherits SSI parity by construction. (2) One call there costs **0.039 s**, so 32
+  versions × 2 UIDs ≈ **2.5 s**, only on a driving-intent question naming a UID. (3) The full
+  32-version sheet is **32 facts** against `model_evidence`'s **48**-fact cap: nothing is dropped
+  today, but 32 more facts would have crossed it and started evicting the frame silently — so the
+  answer is ONE pinned series line, the shape `version_facts.py` already uses, not N facts.
+- **ADR-0479.** `ai/driving_facts.py` gains `driving_path_series` / `driving_path_series_facts`,
+  emitting two pinned facts: DRIVING-PATH SERIES (every version, oldest data date first, each with
+  its own driver count and the focus's own computed finish; absent and unreadable are DIFFERENT
+  statements and neither is ever a fabricated 0) and DRIVING-PATH MOVEMENT (first-to-last count,
+  finish movement in days, and the step census — how many steps changed WHICH activities drive the
+  focus and how many of those held its finish, stated as a COUNT and explicitly not a motive).
+  Both surfaces wired; a scoped request and a single-version session are byte-identical to before.
+  `version_facts._elide` promoted to the shared public `elide_series` rather than duplicated.
+- **After, same measurement:** **32 of 32** versions named inside the series fact on both surfaces,
+  0.2 s and 0.1 s. On the REAL `Project2 → Project5` pair the series catches UID 35's driving path
+  collapsing from **6 drivers to 0**.
+- **Red first, then teeth.** 18 new tests (11 unit + 7 endpoint) written against the pristine tree;
+  the unit file failed on the absent API, 3 of 7 endpoint tests on the behaviour, and the other 4
+  were green BY DESIGN (they pin what must not change). Mutation battery: **11 RED / 1 GREEN**
+  first — the green was a finding about the TEST (the movement check asserted the sentence's
+  wording, which a zero-hardwired census still produces), re-aimed at the VALUES and paired with a
+  zero control; **12/12 RED by name** after. Repo md5 verified unchanged by the battery.
+- **The fixture was verified against the engine before it was trusted**: v1 `{1,2}`, v2 `{3}` (zero
+  overlap), focus early finish 12,000 working minutes in BOTH — a re-wire with the date held.
+- **Gate.** ruff (whole tree) · `ruff format --check` · `mypy --strict` 163 files · bandit exit 0 ·
+  `node --check` · the full suite · `-m parity`. Version 1.0.249; wheel + nine installers rebuilt
+  after the last source edit.
