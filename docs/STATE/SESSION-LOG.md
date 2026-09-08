@@ -17182,3 +17182,18 @@ shadows it on PATH).
 - **Docs:** ADR-0476 · ADR-0477 · HANDOFF rotated · LESSONS 2026-09-08 · the kickoff prompt (which was
   one commit stale — it named `main @ f3dfd32a` and omitted #652 as merged; corrected). Version
   **1.0.247**; wheel + nine installers rebuilt after the last source edit.
+- **Follow-up (16:29Z) — the clean full gate on the SETTLED tree: 5,095 passed, 5 skipped, 0 failed in
+  37:37** (the five are the two `test_loopback_allowlist` urlparse round-trip skips and the three standing
+  `test_axis_titles` env skips); `git status` verified byte-identical before and after the run. **This run
+  replaces two earlier ones that are NOT valid measurements**, and both are recorded rather than quietly
+  dropped: the first was started before the version bump and the wheel/installer rebuild — the same
+  QC-1 violation ("never measure a tree a battery is mutating") the 2026-09-07 (d) session logged, walked
+  into again; the second was valid for the code but pre-dated the DCMA-12, backward-pass and fixture work
+  the second run's own 9 failures caused. The 9 were the session's largest finding and are written up in
+  ADR-0476: they were NOT caused by the pin, they were exposed by it. Draft PR **#653**
+  (`10057b28`); `installer/**` changed, so the eight-check set applies. Subscribed to its activity.
+- **Follow-up (16:29Z) — `main`'s runs were verified against the API rather than inherited from the
+  kickoff:** CI **#1794** (34173243277) and installer-smoke **#678** (34173243278) `success` on
+  `f3dfd32a`, and — a fact the kickoff did not carry — CI **#1797** (34189570581) `success` on
+  **`260cd994`**, this session's actual base, finishing 05:46:12Z. The kickoff's staleness the operator
+  flagged (it named `f3dfd32a` and omitted #652) is corrected in `NEXT-SESSION-PROMPT.md`.
