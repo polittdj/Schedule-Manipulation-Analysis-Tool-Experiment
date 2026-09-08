@@ -6683,3 +6683,52 @@ and that is the lesson worth keeping.
   ribbon defect would never have run on the machine that gates merges. A repo-wide guard caught it.
   **Before copying a test's scaffolding, check whether that scaffolding is what a recent ADR was
   about.**
+
+### 2026-09-07 (d) — a mutation that comes back GREEN is a finding about the TEST (ADR-0475)
+
+- **A mutation battery's most valuable result is the one that does NOT go red.** Twelve mutations
+  turned a named test red; the thirteenth — "hardcode the DCMA family's chip count to the mock's
+  16" — came back GREEN, and that was the useful one. The DCMA audit always emits exactly 16 checks
+  and the SEM family always 10, so on **every fixture in the repo** a hardcoded 16 and a measured 16
+  produce identical bytes: the mutation is behaviourally equivalent, and the test asserting the count
+  "is a measurement" could never have refuted the opposite. The cure was not to weaken the mutation
+  until it passed. It was to find the value that VARIES — the Fuse family's row count is 9 with one
+  file loaded and 14 with two, because the CEI rows need a prior version — aim the pin there, and
+  record the DCMA and SEM counts as **unverifiable as computed-vs-constant** rather than let a green
+  imply a proof. *A green mutation is data. Treat it as a defect report against your instrument, not
+  as a nuisance to be tuned away.*
+- **Ask which of a claim's values can differ before you write the check.** A pin on a quantity that
+  is structurally constant across the whole corpus tests nothing about how the quantity is produced.
+  Before pinning "this figure is computed", find the fixture where a wrong computation would print a
+  different number — if none exists, say so in the deliverable.
+- **A design mock's status word, decomposition and export label are all claims about the ENGINE.**
+  The `sd` artboard showed an `INFO` status (the engine's vocabulary is PASS / FAIL / NA), split
+  DCMA-01 into `01a` / `01b` (the engine scores ONE `DCMA01` check), and labelled a ⤓ `ALL FAMILIES`
+  (no export covers two of the three). Each would have been a lie rendered in the tool's own voice.
+  ADR-0471 already learned this for a footnote's wording; the generalisation is that **a mock's
+  every factual token gets checked against the engine before it is drawn, not just its prose.**
+- **A mock that HIDES is proposing a functionality change, not a layout.** The artboard's selector
+  swaps one family's table for another's. Porting that would have removed rows a reviewer Ctrl-Fs,
+  prints, and reads side by side — on a page whose stated purpose is "every standards metric in one
+  place." The port kept the affordance (chips, with the live counts) and dropped the concealment
+  (they anchor, they do not filter), and the `cd-note` SAYS so, because an affordance that looks
+  like a filter and is not is its own defect.
+- **Verify a literal against the render, never against memory.** Two of my own probe strings were
+  wrong before the tree ever was: an assumed source citation (`Acumen Fuse v8.11.0`; the page says
+  `Fuse v8.11.0 Metric History parity.`) and an arithmetic slip in a pill total (39 for 16+9+10=35).
+  Both failed as *my* errors inside a red-first run, which is the cheap place to find them — but both
+  would have been avoided by reading the rendered page for the string instead of typing what I
+  expected it to say.
+- **The container's pip playwright can expect a browser build the container does not vendor.**
+  `BrowserType.launch` demanded `chromium_headless_shell-1234` while `/opt/pw-browsers` held `-1194`,
+  and the printed cure (`playwright install`) is exactly wrong in an offline build container. The
+  repo already owns the answer — `tests/web/browser_chrome.py::chrome_kwargs()`, globbed, never a
+  pinned build number (ADR-0406). **Use the repo's own resolver in scratch probes too**, not just in
+  committed tests; a throwaway script that reaches for the network is a Law-1 shaped habit.
+- **A helper added to an extracted page module is incomplete until `app.py` re-exports it.** The
+  monolith split contract went red by name on the two new `standards.py` helpers. That is the seam
+  working, and it is cheaper than discovering the missing re-export from an import error later.
+- **Do not leave a tool's own scratch file in the repo root.** The session-token guardian's
+  `token_audit.py`, copied to the working directory per its instructions, broke `ruff check .` —
+  which this repo runs on the WHOLE TREE. The script belongs in the scratchpad; the gate's scope is
+  part of the gate.

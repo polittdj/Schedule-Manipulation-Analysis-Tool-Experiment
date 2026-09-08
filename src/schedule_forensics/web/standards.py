@@ -89,11 +89,54 @@ def _standards_rows(items: Sequence[tuple[AuditCheck | MetricResult | None, str,
         thr = _e(doc.threshold) if doc and doc.threshold else "—"
         formula = f"<code>{_e(doc.formula)}</code>" if doc and doc.formula else "—"
         source = _e(doc.source) if doc and doc.source else "—"
+        # the artboard's REF column (ADR-0475), carrying the ENGINE's own metric_id — the key
+        # docs/METRIC-DICTIONARY.md files the row under, so a reader can look up what they read.
+        # Never the mock's `01a`/`01b` decomposition: the engine scores ONE `DCMA01` check.
+        ref = _e(mid) if mid else "—"
         out.append(
-            f"<tr><td>{name}</td><td class=num>{val}</td>{status_html}"
+            f"<tr><td class=std-ref>{ref}</td><td>{name}</td><td class=num>{val}</td>{status_html}"
             f"<td>{thr}</td><td class=std-formula>{formula}</td><td>{source}</td></tr>"
         )
     return "".join(out)
+
+
+def _standards_counts(items: Sequence[tuple[AuditCheck | MetricResult | None, str, str]]) -> str:
+    """The family's ``.sf-take`` counts, tallied over the rows the family actually RENDERS.
+
+    The artboard gives every family a take line where the page carried one (on DCMA only). The
+    figures are a measurement of ``items`` — the same sequence ``_standards_rows`` turns into
+    ``<tr>``s — so the take can never drift from the table beneath it. A row that could not be
+    built at all (``m is None``) counts with the N/A rows: it scored nothing."""
+    passed = sum(1 for m, _mid, _n in items if m is not None and m.status is CheckStatus.PASS)
+    failed = sum(1 for m, _mid, _n in items if m is not None and m.status is CheckStatus.FAIL)
+    return f"{passed} passed · {failed} failed · {len(items) - passed - failed} N/A"
+
+
+def _standards_family_strip(fname: str, counts: Sequence[tuple[str, str, int]]) -> str:
+    """The artboard's family selector row, ported as IN-PAGE NAVIGATION (ADR-0475).
+
+    One ``.cd-chip`` per family carrying its live row count — the mock's ``· 16 / · 14 / · 10`` are
+    this page's own counts on the golden pair — anchored to that family's panel. The mock SELECTS
+    a family and hides the other two; this strip only scrolls, because "every standards metric in
+    one place" is the page's purpose and a hidden family is one a reviewer cannot Ctrl-F, print or
+    read beside its neighbours. The ``cd-note`` says so, so the chip cannot be mistaken for a
+    filter. Chips carry no id and no census family word (the M1 control census keys on id +
+    className); they are anchors, so unlike a per-file drill's cursor (ADR-0470) no chip is ``on``
+    — there is no selected state to tell the truth about."""
+    chips = "".join(
+        f'<a class="cd-chip" data-idx="{i}" href="#{anchor}" data-no-i18n>'
+        f"{_e(short)} &middot; {rows}</a>"
+        for i, (anchor, short, rows) in enumerate(counts)
+    )
+    total = sum(rows for _a, _s, rows in counts)
+    return (
+        '<div class="viz-controls cd-cursor" id=standardsFamilies>'
+        f"<span class=cd-chips>{chips}</span>"
+        f'<span class="muted cd-pill" data-no-i18n>{total} metrics &middot; {fname}</span>'
+        '<span class="muted cd-note">Three standards families, all on this page &mdash; '
+        "a chip jumps to one; nothing is hidden behind it.</span>"
+        "</div>"
+    )
 
 
 def _standards_section(
@@ -105,20 +148,25 @@ def _standards_section(
     prov: str = "",
     take: str = "",
     export_url: str = "",
+    anchor: str = "",
 ) -> str:
     """One formula-first metric family as a contract panel (rank 12, ADR-0327): head strip +
     tools + provenance chip, an optional ``.sf-take`` (data-driven counts), the muted ``note``
     as the read-me line, then the table. ``export_url`` becomes the panel ``data-export``
     panelkit.js follows — pass it ONLY with a covering endpoint (dead/lying ⤓ is a defect
     class; the Fuse/SEM families have no covering export today, so their panels carry ⛶ only).
-    Defaults keep the pre-rank-12 shape byte-compatible for any caller that passes none."""
+    ``anchor`` is the family strip's jump target (ADR-0475): an id on the PANEL, never a control,
+    so the M1 control census is untouched. Defaults keep the pre-rank-12 shape byte-compatible for
+    any caller that passes none."""
     export_attr = f' data-export="{_e(export_url)}"' if export_url else ""
+    anchor_attr = f" id={_e(anchor)}" if anchor else ""
     take_html = f"<p class=sf-take data-no-i18n>{take}</p>" if take else ""
     return (
-        f"<div class=panel{export_attr}>{_panel_head(title, tools=tools, prov=prov)}"
+        f"<div class=panel{anchor_attr}{export_attr}>{_panel_head(title, tools=tools, prov=prov)}"
         f"{take_html}<p class=muted>{note}</p>"
         '<div style="overflow-x:auto"><table class=card-table>'
-        "<tr><th scope=col>Metric</th><th scope=col>Value</th><th scope=col>Status</th>"
+        "<tr><th scope=col>Ref</th><th scope=col>Metric</th><th scope=col>Value</th>"
+        "<th scope=col>Status</th>"
         "<th scope=col>Threshold</th><th scope=col>Formula</th><th scope=col>Source</th></tr>"
         f"{rows_html}</table></div></div>"
     )
@@ -153,7 +201,8 @@ def _standards_body(
         f"<b>{fname}</b> (period metrics use the prior file's data date"
         f"{' — none loaded' if prior is None else ''}). Formulas and sources are the same "
         "entries the metric dictionary pins to the NASA Acumen metric library; each family "
-        "below names its framework.</p></div>"
+        "below names its framework. A metric this file cannot score prints &mdash; with an "
+        "N/A status; the tool never fabricates a zero.</p></div>"
     )
     # §1 DCMA-14 — re-projected from the cached audit (no new math). The panel contract
     # (rank 12, ADR-0327): the old counts note becomes the .sf-take (same figures, verbatim),
@@ -163,7 +212,10 @@ def _standards_body(
     # carries them).
     audit = analysis.audit
     prov = _prov_chip(sch)
-    dcma_rows = _standards_rows([(c, c.metric_id, "") for c in audit.checks])
+    dcma_items: list[tuple[AuditCheck | MetricResult | None, str, str]] = [
+        (c, c.metric_id, "") for c in audit.checks
+    ]
+    dcma_rows = _standards_rows(dcma_items)
     dcma = _standards_section(
         "DCMA-14 point assessment",
         "One row per DCMA-14 check: the measured value, its PASS / FAIL / N&#47;A status, the "
@@ -175,6 +227,7 @@ def _standards_body(
         take=f"{audit.passed} passed · {audit.failed} failed · {audit.not_applicable} N/A "
         f"on {fname}.",
         export_url=f"/export/xlsx/analysis/{quote(key, safe='')}",
+        anchor="std-dcma",
     )
     # §2 NASA / Acumen-Fuse execution indices (single-file forms; CEI needs a prior version)
     idx: list[tuple[AuditCheck | MetricResult | None, str, str]] = []
@@ -205,11 +258,16 @@ def _standards_body(
         _standards_rows(idx),
         tools=_shell_tools(),
         prov=prov,
+        take=f"{_standards_counts(idx)} on {fname}.",
+        anchor="std-fuse",
     )
     # §3 Schedule Execution Metrics (SEM) — the full Bible family (engine/metrics/sem.py),
     # validated verbatim against the committed Fuse DCMA report SEM rows (ADR-0238)
     sem_results = compute_sem(sch, prior)
-    sem_rows = _standards_rows([(m, mid, "") for mid, m in sem_results.items()])
+    sem_items: list[tuple[AuditCheck | MetricResult | None, str, str]] = [
+        (m, mid, "") for mid, m in sem_results.items()
+    ]
+    sem_rows = _standards_rows(sem_items)
     fri_note = (
         ""
         if prior is not None
@@ -223,5 +281,25 @@ def _standards_body(
         sem_rows,
         tools=_shell_tools(),
         prov=prov,
+        take=f"{_standards_counts(sem_items)} on {fname}.",
+        anchor="std-sem",
     )
-    return takeaway + intro + dcma + fuse + sem + '\n<script src="/static/panelkit.js"></script>'
+    # ADR-0475: the artboard's family selector row, between the masthead and the intro. Its
+    # counts are len() of the very sequences rendered above, so a chip cannot outlive its table.
+    strip = _standards_family_strip(
+        fname,
+        (
+            ("std-dcma", "DCMA-14", len(dcma_items)),
+            ("std-fuse", "Acumen-Fuse", len(idx)),
+            ("std-sem", "SEM", len(sem_items)),
+        ),
+    )
+    return (
+        takeaway
+        + strip
+        + intro
+        + dcma
+        + fuse
+        + sem
+        + '\n<script src="/static/panelkit.js"></script>'
+    )

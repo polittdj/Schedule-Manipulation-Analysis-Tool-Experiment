@@ -17037,3 +17037,66 @@ shadows it on PATH).
 - **Follow-up (19:40Z) — #649 MERGED by the operator (marked ready 19:35:16Z, merged 19:35:23Z):** `main` @ **`5f34c2a8`** (the squash, committer polittdj), **tree-identical to the PR's final head `225256d7`** (`git rev-parse 5f34c2a8^{tree}` == `225256d7^{tree}`); the head branch was deleted by the merge and restarted locally on `origin/main` (`git fetch --prune origin && git remote set-head origin -a && git checkout -B claude/polaris-audit-plan-forward-3vp28m origin/main`). `main`'s own runs for the squash: CI **#1786** (34156160638, queued at 19:35:24Z) and installer-smoke **#674** (34156160822, in progress) — the next session reads #1786's verdict FIRST (a red cell on a tree identical to the green PR head is the runner's claim: compare tree hashes before believing it). A Codex bot comment on the PR ("usage limits for code reviews") needed nothing. This session ends at the token wall (guardian 83 %): the design page unit (owed twice) and R-55 go to a FRESH session; this docs-only commit records the merge on the restarted branch.
 - **Follow-up (19:42Z):** the merge record above is **draft PR #650** (head `be99f68c`, docs-only, six checks); subscribed, a check-in armed ~40 min out. The next session reads `main`'s run #1786 first, then #650's verdict.
 - **Follow-up (20:20Z):** `main`'s own CI run **#1786** (34156160638) for the #649 squash `5f34c2a8` — **success** (20:16Z); #650's CI run #1788 (34156307111) on `273e046b` — success (20:17Z). The unit is closed on `main`; #650 waits on the operator.
+
+## 2026-09-07 (d) — the design page owed TWICE, delivered first and alone: /standards on the Control "Standards and Execution Indices" artboard (ADR-0475) — v1.0.246
+
+- **Branch:** `claude/handoff-next-session-q74ju8` (the harness's designated branch), on `origin/main`
+  @ `5f34c2a8` (the #649 squash) — the tree was already identical to it at session start, so there was
+  nothing to restart. PR **#650** (the prior session's docs-only merge record) was open and untouched.
+- **The kickoff's first order, discharged before any work:** `main`'s own runs for the #649 squash are
+  GREEN — CI **#1786** (34156160638) and installer-smoke **#674** (34156160822), both `success` on
+  `5f34c2a8`. There was no red cell, so no tree-hash adjudication was needed.
+- **The unit (ADR-0475).** The operator's standing one-page-per-session ask was owed TWICE, so this
+  unit ships the design page FIRST and ALONE. `/standards` is the ninth page onto
+  `Mission Ops Redesign v2.dc.html` and the first **Control** screen.
+- **The artboard was EXECUTED, never read** (ADR-0464's recipe: `npm pack react@18.3.1
+  react-dom@18.3.1 @babel/standalone@7.29.0`, `support.js` repointed at the three local files with
+  its three SRI constants blanked, served over loopback by `python -m http.server --bind 127.0.0.1`,
+  `sfredux-screen=sd`): rendered in console, daylight, apollo and jarvis with **zero page errors**,
+  and each of its three family buttons CLICKED to learn that the mock swaps one family's table for
+  another's and recomputes its take line.
+- **The finding that made this a port and not an invention:** the artboard's counts `· 16 / · 14 /
+  · 10` are the page's OWN live counts on the golden Project2+Project5 pair — DCMA 16 rows, Fuse 14,
+  SEM 10, measured before a line was written. The mock was drawn against real tool output.
+- **Ported:** the selector row as `.viz-controls.cd-cursor#standardsFamilies` — one
+  `<a class="cd-chip">` per family carrying its LIVE count (a `len()` of the sequence the table
+  renders), anchored to that family's panel (`#std-dcma` / `#std-fuse` / `#std-sem` via a new
+  `anchor=` on `_standards_section`), a `cd-pill` (`40 metrics · Project5.mspdi.xml`) and a
+  `cd-note`; the per-family `.sf-take` the mock gives all three where the page carried one, in the
+  DCMA panel's EXISTING idiom (`0 passed · 1 failed · 13 N/A` on Fuse, `0 · 0 · 10` on SEM); the REF
+  column carrying the ENGINE's `metric_id`; the mock's footnote as the page's own disclosure.
+- **Refused, each named in the ADR:** the tab-HIDING itself (a family behind a click is one a
+  reviewer cannot Ctrl-F, print or read beside its neighbours — the `cd-note` says "nothing is hidden
+  behind it"); `⤓ EXCEL · ALL FAMILIES` (no export covers Fuse or SEM — ADR-0327's residual; the
+  label would lie); the mock's `INFO` status (the engine's vocabulary is PASS/FAIL/NA); the mock's
+  `01a`/`01b` split of DCMA-01 (the engine scores ONE `DCMA01`); the Continue footer.
+- **How verified:** red-first on the pristine tree **11 failed / 3 passed** (the three are "nothing
+  moves" guards true on both trees). Green after: the layout module **15**; standards view + r12
+  toolbar + split contract + presentation fixes + target/theme + roles + scoped population + air-gap
+  **139**; the M1 control census + i18n + accessibility + r11 + visuals + DD-line ledger + axis titles
+  + global filter **216 passed / 3 skipped**. **Mutation battery 13/13 RED BY NAME** on scratch copies
+  of the final src under `PYTHONPATH` (the imported module asserted to BE the copy; an unlanded patch
+  aborts). **Four-theme render census (Chromium 1440, the golden pair), pristine → patched:** `.panel`
+  5 · tables 3 · `tr` 43 · `data-export` 1 · `[data-sf-big]` 3 · widest 1440 · every table's box
+  `scrollWidth == clientWidth` — identical; moved only on the design's keys (`th` +Ref, `.sf-take`
+  1 → 3, chips [] → three, the pill, page height 3901 → 4588). The chips' EFFECT measured: clicking
+  `#std-sem` scrolled 2 753–4 003 px and left the panel in view in all four themes; zero page errors
+  in all four, pristine and patched. Statics: ruff (whole tree, 647 files) · format · mypy --strict
+  163 · bandit exit 0.
+- **The battery found a weak check of MY OWN, recorded rather than hidden:** the first mutation
+  ("hardcode the DCMA count to 16") came back GREEN — DCMA always scores exactly 16 checks and SEM
+  always 10, so no fixture in the repo can distinguish a hardcoded count from a measured one. The
+  **Fuse** family varies (**9** rows with one file loaded, **14** with two), so the single-version
+  test was strengthened to pin `Acumen-Fuse · 9` / `35 metrics` and the battery re-aimed there. The
+  DCMA and SEM counts stay UNVERIFIABLE as computed-vs-constant by any available fixture.
+- **Left, registered:** `document.scrollingElement.scrollWidth` 1719 → 1734 with the strip — the known
+  chrome-wide UI-03 condition (**R-20**), already 1719 pristine; ADR-0471 recorded the identical
+  1719 → 1734 for the identical strip on /wbs, which corroborates the attribution. Not fixed here.
+- **Docs:** ADR-0475 · `docs/DESIGN-SYSTEM.md` §9 (a selector row is navigation that hides nothing) ·
+  the WP8 report's §6 (Done 8 → 9, Remaining 22 → 21, /scorecards next by cost) and R-42 · HANDOFF
+  rotated · LESSONS 2026-09-07 (d) · the kickoff prompt. Version **1.0.246**; wheel + nine installers
+  rebuilt after the last source edit.
+- **Follow-up (21:45Z) — draft PR #651** carries ADR-0475 at v1.0.246 (`e1a932f4`; `installer/**` changed, so eight checks apply): CI run **#1790** (34164216504) and installer-smoke **#675** (34164216410) started 21:44Z; `cui-guard` **success** at 21:44Z (its MUTATION step confirmed a staged `.mpp` is still refused), ruff / format / mypy --strict green on both `test (3.11)` and `test (3.13)`, the rest in progress. Subscribed; a check-in armed for 22:45Z.
+- **Follow-up (22:20Z) — the clean full suite on the settled tree: 5 073 passed, 5 skipped, 0 failed in 34:11** (the five are the two `test_loopback_allowlist` urlparse round-trip skips and the three standing `test_axis_titles` env skips). **This run replaces the first one, which is not a valid measurement:** that run was started BEFORE the version bump and the wheel/installer rebuild, so it read a tree that was still being mutated — a direct violation of QC-1's "never measure a tree a battery is mutating" — and its single failure (`test_installers.py::test_embedded_wheel_is_in_lockstep_with_the_source_tree`, 1 failed / 5 072 passed) was that artifact, not a defect. The re-run was started only after `git status` was clean and the tree was left untouched for its whole duration (verified clean again at the end). The lockstep test also passes on its own on the settled tree (1 passed). Recorded rather than quietly replaced, because "the suite was green" is a claim about the METHOD as much as the number.
+- **Follow-up (22:25Z) — #650 was MERGED by the operator mid-flight and #651 went `mergeable_state: dirty`; resolved by MERGE, never a rebase.** `main` moved `5f34c2a8` → **`fc2ddf7c`** (#650's squash, docs-only). The three conflicts were all state docs, because #650 recorded its merge in the same files this session rewrote: **`SESSION-LOG.md` kept BOTH sides** (it is append-only — #650's three 2026-09-07 (c) follow-ups precede this session's (d) entry), `HANDOFF.md` and `NEXT-SESSION-PROMPT.md` took this session's newer text, and **`HANDOFF-ARCHIVE.md`'s (c) section was replaced with #650's FINAL wording** so its "#649 MERGED at 19:35Z, `main` @ 5f34c2a8, tree-identical to 225256d7" record survives the rotation rather than being silently replaced by the staler base text this session had archived. `git diff 5f34c2a8 origin/main` is **three docs files, six insertions** — no source, wheel or installer is affected by the new base, so v1.0.246's artifacts stand unrebuilt. Per CLAUDE.md and the steward rules the branch was NOT rebased or force-pushed: a merge commit keeps the published history intact.
+- **Follow-up (23:05Z) — #651 GREEN on its final head `761740cc` (the merge commit), EIGHT of eight:** CI run **#1791** (34166452454) — `cui-guard` ✓ (22:22Z; its MUTATION step refused a staged `.mpp`) · `linux` ✓ · `windows` ✓ (installer-smoke run 34166452462) · `browser (measured-box proof)` ✓ (22:38Z — every browser module ran; a skip there is a FAILURE) · `floor (declared minimum)` ✓ (22:44Z — **the whole suite at the declared floors: 4 721 passed, 259 skipped in 17:34**, the 259 being the browser modules the floor runner deliberately has no playwright for, then the parity gate **96 passed, 14 deselected in 3:47** under the `set -o pipefail` skip guard) · `test (3.13)` ✓ (22:58Z) and `test (3.11)` ✓ (23:02Z), both with the overall ≥70 % and engine ≥85 % coverage gates, the parity gate, bandit and pip-audit · `check` ✓ (23:02Z). The pre-merge code head `e1a932f4` had already been green on cui-guard / floor / browser / test 3.11 and installer-smoke #675, so the `origin/main` merge cost nothing. Local corroboration on the same tree: the clean full suite **5 073 passed / 5 skipped / 0 failed** (a8494a54). **The PR now waits on the operator** — draft, never marked ready, never merged, never approved. No comments were posted on the PR: nothing stood down, nothing was blocked.
