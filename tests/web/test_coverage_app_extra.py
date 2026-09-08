@@ -517,10 +517,18 @@ def test_ask_response_skips_agreement_when_an_answer_is_empty(monkeypatch) -> No
     st.schedules["s"] = _three_task("s")
     second = types.SimpleNamespace(name="second", model="m")
     monkeypatch.setattr(appmod, "_second_backend", lambda state: second)
+    # BOTH call sites: the primary answer goes through ``answer_question_detail`` now (it also
+    # reports why there is no answer), while the cross-check second model still calls the
+    # two-tuple ``answer_question``. Patching per name instead of per call site leaves one live.
     monkeypatch.setattr(
         appmod,
         "answer_question",
         lambda backend, facts, text, mode, data_block=None: ("", ()),
+    )
+    monkeypatch.setattr(
+        appmod,
+        "answer_question_detail",
+        lambda backend, facts, text, mode, data_block=None: ("", (), None),
     )
     c = TestClient(create_app(st), raise_server_exceptions=False)
     r = c.post("/api/ask/s", data={"question": "anything"})

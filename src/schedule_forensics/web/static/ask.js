@@ -141,11 +141,17 @@
               : "Model-generated strictly from the cited facts below — verify against them.",
           }));
         } else {
+          // WHY there is no answer comes from the SERVER (res.j.no_answer), because every
+          // actionable half of it is configuration the panel cannot see: which endpoint, which
+          // model, which timeout, which answer mode. The one sentence that used to live here
+          // covered five different causes and led with the one an operator looking at a
+          // configured model in AI Settings can see is false.
+          var why = res.j.no_answer;
           var note = el("p", { class: "muted" });
           note.appendChild(document.createTextNode(
-            "No local model is active (or strict mode discarded its answer) — these are the " +
-            "engine's cited facts that match your question. For a full written analysis, "));
-          note.appendChild(el("a", { href: "/settings" }, [document.createTextNode("enable a local Ollama model in AI Settings")]));
+            (why && why.text ? why.text + " " : "No written answer was produced. ") +
+            "These are the engine's cited facts that match your question — "));
+          note.appendChild(el("a", { href: "/settings" }, [document.createTextNode("open AI Settings")]));
           note.appendChild(document.createTextNode("."));
           out.appendChild(note);
         }

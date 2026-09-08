@@ -46,10 +46,12 @@ from __future__ import annotations
 import re
 from collections import Counter
 from collections.abc import Callable, Iterable
+from dataclasses import dataclass
 
 from schedule_forensics.ai.backend import AIBackend
 from schedule_forensics.ai.citations import _TOKEN_RE, CitedStatement, figure_tokens
 from schedule_forensics.ai.derivation import RATIO_KINDS, Derivation, verify_derivation
+from schedule_forensics.ai.ollama import probe_error_text
 from schedule_forensics.engine.change_effects import compute_change_effects
 from schedule_forensics.engine.cpm import CPMResult, offset_to_datetime
 from schedule_forensics.engine.dcma_audit import Citation, ScheduleAudit
@@ -910,51 +912,84 @@ def _annotate_unsourced(
     return out
 
 
-def answer_question(
+#: Stable codes for :class:`NoAnswer`. They are the qa layer's HALF of the diagnosis — it sees
+#: the routed backend, the transport exception and the gate verdict, and nothing about the
+#: operator's configuration. The web layer owns the other half (which endpoint, which model,
+#: which timeout) and turns ``code`` + ``detail`` into the sentence the Ask panel shows.
+NO_MODEL = "no_model"
+GENERATION_FAILED = "generation_failed"
+EMPTY_ANSWER = "empty_answer"
+DISCARDED_UNSOURCED = "discarded_unsourced"
+
+#: Most offending figures NAMED in a strict-discard reason (the remainder are counted). A
+#: discard the operator cannot read is a discard they cannot act on.
+_MAX_NAMED_FIGURES = 4
+
+
+@dataclass(frozen=True)
+class NoAnswer:
+    """Why an ask produced no model prose: a stable ``code`` plus a short, local ``detail``.
+
+    ``detail`` is diagnostic text that never leaves the machine — a transport reason from
+    :func:`~schedule_forensics.ai.ollama.probe_error_text`, or the figures a strict-mode
+    discard tripped over (which the panel is already showing in the cited facts beside it).
+    """
+
+    code: str
+    detail: str = ""
+
+
+def _discard_detail(
+    unverified: list[str],
+    id_reused: list[str],
+    unit_misused: list[str],
+    nonratio: list[Derivation],
+) -> str:
+    """Which figures cost the operator the answer — the strict gate's verdict, in words."""
+
+    def named(figs: list[str]) -> str:
+        shown = ", ".join(figs[:_MAX_NAMED_FIGURES])
+        return f"{shown}, ..." if len(figs) > _MAX_NAMED_FIGURES else shown
+
+    parts: list[str] = []
+    if unverified:
+        parts.append(f"{len(unverified)} figure(s) the engine never computed ({named(unverified)})")
+    if id_reused:
+        parts.append(f"{len(id_reused)} identifier(s) used as a value ({named(id_reused)})")
+    if unit_misused:
+        parts.append(
+            f"{len(unit_misused)} figure(s) written with a unit the facts never state "
+            f"({named(unit_misused)})"
+        )
+    if nonratio:
+        exprs = "; ".join(d.expression for d in nonratio[:2])
+        parts.append(
+            f"{len(nonratio)} figure(s) reconstructed only by a non-ratio derivation ({exprs})"
+        )
+    return "; ".join(parts)
+
+
+def answer_question_detail(
     backend: AIBackend,
     facts: tuple[CitedStatement, ...],
     question: str,
     *,
     mode: str = "strict",
     data_block: str | None = None,
-) -> tuple[str | None, tuple[CitedStatement, ...]]:
-    """(model answer or ``None``, the cited facts used). Fail-closed; mode-gated.
+) -> tuple[str | None, tuple[CitedStatement, ...], NoAnswer | None]:
+    """:func:`answer_question` plus **why** there is no answer (``None`` when there is one).
 
-    The Null backend (or an empty/failed generation) answers with no prose — the caller
-    shows the facts themselves. The operator chooses the mode (AI Settings); the figure
-    guarantee depends on it (ADR-0129):
-
-    * **strict** — a model answer survives only if every number it contains is a cited engine
-      **value**, a correct **identifier reference** (a ``UID n`` / quoted cited activity name —
-      ADR-0138), **or a ratio-class reconstruction** of cited values (Layer B, ADR-0135 — a
-      standard rate recomputed by the tool, shown with its arithmetic; integer targets must
-      reconstruct **exactly**). An invented figure, an additive-only reconstruction, **or a figure
-      matching only an activity name/UID used as a value** (a re-roled identifier — F-11 role gate,
-      checked BEFORE the derivation gate so it can never launder through one) discards the answer
-      wholesale. No invented or re-roled number reaches the analyst.
-    * **annotate** (default) — the model may derive figures from the facts; a figure not stated as a
-      value is shown as a **verified derivation** (reconstructed, Layer B), flagged as an
-      **identifier reused as a figure** (matches only a name/UID — F-11), or flagged **AI-derived**
-      (no reconstruction) — so a derived number can never be mistaken for an engine figure.
-    * **interpretive** — the model's text is returned verbatim, ungated; the operator opts
-      into raw model analysis and the "AI can err — verify against the citations" disclaimer
-      rides every answer. (This mode does NOT guarantee sourced figures.)
-    * **unrestricted** (ADR-0361) — the operator's full-power opt-in: verbatim and ungated
-      like interpretive, and the model is explicitly INVITED to calculate new figures and
-      interpret without restraint; when the caller supplies ``data_block`` (the bounded
-      per-activity data table) it rides the prompt as raw material for those calculations.
-      Locality is untouched — the backend is the same loopback-validated one every mode uses
-      (Law 1 lives at backend construction, not here), and the standing disclaimer rides
-      every answer.
-
-    The strict/annotate gate is **role-aware** (audit F-11; hardened ADR-0138): it splits a figure
-    that appears as an engine value from one that appears only as an activity name/UID, and the
-    latter — when used *as a value* — is discarded (strict) or flagged (annotate). See the module
-    docstring for the span/date/priority hardening.
+    Every no-prose path used to return the same ``(None, facts)`` pair, so the panel had one
+    hard-coded sentence for five materially different failures: no model routed, a refused or
+    timed-out generation (an Ollama that is up but has not pulled the selected model answers
+    HTTP 404), an empty completion, and a strict-mode discard. The operator was told "no local
+    model is active" while their AI Settings showed one configured, and in ANNOTATE mode was
+    offered a strict-mode discard that cannot happen there. The information existed at every
+    one of those returns and was thrown away at the boundary; this returns it instead.
     """
     shown = relevant_facts(facts, question)
     if backend.name == "null":
-        return None, shown
+        return None, shown, NoAnswer(NO_MODEL)
     if mode == "unrestricted":
         evidence = model_evidence(facts, question)
         data = f"\n\nACTIVITY DATA:\n{data_block}" if data_block else ""
@@ -1007,10 +1042,13 @@ def answer_question(
         )
     try:
         text = backend.generate(prompt).strip()
-    except Exception:
-        return None, shown
+    except Exception as exc:
+        # WHICH failure: refused / timed out / HTTP status. `probe_error_text` is the same
+        # classifier the settings page reports a dead server with (ollama, openai and gateway
+        # all route their probe errors through it), so one vocabulary describes both pages.
+        return None, shown, NoAnswer(GENERATION_FAILED, probe_error_text(exc))
     if not text:
-        return None, shown
+        return None, shown, NoAnswer(EMPTY_ANSWER)
     value_figs, id_figs, id_names, unit_roles = _figure_roles(evidence)
     if mode == "strict":
         verified, id_reused, unverified, unit_misused = _classify_figures(
@@ -1021,16 +1059,67 @@ def answer_question(
         # Layer B, ADR-0135). An unverified figure, an additive-only reconstruction, OR an
         # identifier reused as a figure (matches only a name/UID — F-11 role gate) discards the
         # whole answer (the caller shows the cited facts instead).
-        if (
-            unverified
-            or id_reused
-            or unit_misused  # an explicit-unit contradiction (ADR-0145) is a re-roled figure
-            or any(d.kind not in RATIO_KINDS for d in verified)
-        ):
-            return None, shown
+        nonratio = [d for d in verified if d.kind not in RATIO_KINDS]
+        if unverified or id_reused or unit_misused or nonratio:
+            return (
+                None,
+                shown,
+                NoAnswer(
+                    DISCARDED_UNSOURCED,
+                    _discard_detail(unverified, id_reused, unit_misused, nonratio),
+                ),
+            )
         if verified:  # all ratio-class — accept, but show how each was recomputed
             text += _DERIVED_NOTE.format(exprs="; ".join(d.expression for d in verified))
     elif mode == "annotate":
         # keep the answer; verify/role/flag its figures
         text = _annotate_unsourced(text, value_figs, id_figs, id_names, unit_roles)
-    return text, shown
+    return text, shown, None
+
+
+def answer_question(
+    backend: AIBackend,
+    facts: tuple[CitedStatement, ...],
+    question: str,
+    *,
+    mode: str = "strict",
+    data_block: str | None = None,
+) -> tuple[str | None, tuple[CitedStatement, ...]]:
+    """(model answer or ``None``, the cited facts used). Fail-closed; mode-gated.
+
+    The Null backend (or an empty/failed generation) answers with no prose — the caller
+    shows the facts themselves. The operator chooses the mode (AI Settings); the figure
+    guarantee depends on it (ADR-0129):
+
+    * **strict** — a model answer survives only if every number it contains is a cited engine
+      **value**, a correct **identifier reference** (a ``UID n`` / quoted cited activity name —
+      ADR-0138), **or a ratio-class reconstruction** of cited values (Layer B, ADR-0135 — a
+      standard rate recomputed by the tool, shown with its arithmetic; integer targets must
+      reconstruct **exactly**). An invented figure, an additive-only reconstruction, **or a figure
+      matching only an activity name/UID used as a value** (a re-roled identifier — F-11 role gate,
+      checked BEFORE the derivation gate so it can never launder through one) discards the answer
+      wholesale. No invented or re-roled number reaches the analyst.
+    * **annotate** (default) — the model may derive figures from the facts; a figure not stated as a
+      value is shown as a **verified derivation** (reconstructed, Layer B), flagged as an
+      **identifier reused as a figure** (matches only a name/UID — F-11), or flagged **AI-derived**
+      (no reconstruction) — so a derived number can never be mistaken for an engine figure.
+    * **interpretive** — the model's text is returned verbatim, ungated; the operator opts
+      into raw model analysis and the "AI can err — verify against the citations" disclaimer
+      rides every answer. (This mode does NOT guarantee sourced figures.)
+    * **unrestricted** (ADR-0361) — the operator's full-power opt-in: verbatim and ungated
+      like interpretive, and the model is explicitly INVITED to calculate new figures and
+      interpret without restraint; when the caller supplies ``data_block`` (the bounded
+      per-activity data table) it rides the prompt as raw material for those calculations.
+      Locality is untouched — the backend is the same loopback-validated one every mode uses
+      (Law 1 lives at backend construction, not here), and the standing disclaimer rides
+      every answer.
+
+    The strict/annotate gate is **role-aware** (audit F-11; hardened ADR-0138): it splits a figure
+    that appears as an engine value from one that appears only as an activity name/UID, and the
+    latter — when used *as a value* — is discarded (strict) or flagged (annotate). See the module
+    docstring for the span/date/priority hardening.
+    """
+    answer, shown, _why = answer_question_detail(
+        backend, facts, question, mode=mode, data_block=data_block
+    )
+    return answer, shown
