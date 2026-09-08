@@ -8,7 +8,9 @@ branched `claude/polaris-audit-r55-r20-handoff-uoa34g` on `9eeff406` and shipped
 materially different failures with ONE payload and ONE (wrong-first) sentence. **Read that PR's
 verdict on its FINAL head first** — and read `main`'s own runs for #653's squash, CI **#1800**
 (34253938690) and installer-smoke **#681** (34253938590), which the last session started but did not
-live to read. Then take the next §3 row — **R-56**.
+live to read — and a red cell on a tree identical to a green PR head is the runner's claim, so
+compare `git rev-parse <merge>^{tree}` against `git rev-parse <pr-head>^{tree}` before believing
+it. Then take the next §3 row — **R-56**.
 
 Work the POLARIS² audit's plan-forward (Schedule-Manipulation-Analysis-Tool). Read
 `docs/STATE/HANDOFF.md` FIRST (auto-injected), then `docs/STATE/AUDIT-2026-08-27-REPORT.md` §3 — the
