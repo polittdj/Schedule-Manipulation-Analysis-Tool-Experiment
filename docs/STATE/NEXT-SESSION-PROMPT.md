@@ -1,12 +1,13 @@
 # Kickoff prompt — next session
 
-PR state (2026-09-08): **#649, #650 and #651 are all MERGED** → `main` @ **`f3dfd32a`** (#651's squash,
-ADR-0475, v1.0.246), whose tree is **byte-identical to the PR's final head `8d2f6bfb`**
-(`bfb1866b5a066ab08e5c80360a7475e442c91ec7` on both). **Read `main`'s own CI run #1794 (34173243277) +
-installer-smoke #678 (34173243278) for the squash FIRST** — a red cell on a tree identical to a green PR
-head is the runner's claim: compare tree hashes before believing it. The branch
-`claude/handoff-next-session-q74ju8` was restarted on `origin/main` and carries only this docs-only merge
-record (its draft PR number is in the SESSION-LOG). Then **R-55**.
+PR state (2026-09-08, end of the R-55 session): **#649, #650, #651 and #652 are ALL MERGED** → `main`
+@ **`260cd994`** (#652's squash, the docs-only merge record for ADR-0475 / v1.0.246). `main`'s own runs were
+VERIFIED GREEN this session against the API, not inherited: for #651's squash (`f3dfd32a`) CI
+**#1794** (34173243277) and installer-smoke **#678** (34173243278), and for **`260cd994` itself**
+CI **#1797** (34189570581, `success` 05:46:12Z) — the kickoff did not carry that last one. This session branched `claude/polaris-audit-r55-semantics-2k82r8` fresh on `260cd994`
+and shipped **ADR-0476 (R-55)** and **ADR-0477 (R-20 / UI-03)** at **v1.0.247**; its draft PR number and
+check verdicts are in the SESSION-LOG follow-up. **Read that PR's verdict on its FINAL head first**, then
+take the next §3 row — **R-56**.
 
 Work the POLARIS² audit's plan-forward (Schedule-Manipulation-Analysis-Tool). Read
 `docs/STATE/HANDOFF.md` FIRST (auto-injected), then `docs/STATE/AUDIT-2026-08-27-REPORT.md` §3 — the
@@ -31,23 +32,63 @@ split of DCMA-01, the Continue footer. **The design queue: 9 done, 21 artboards 
 (`setScreen('sk')`) is next by cost.**
 
 ⇢ NEXT — the report's §3 in order, one row per unit of work (red-first → mutation proofs by name →
-the full gate → an ADR → the state docs → a draft PR): **R-55** FIRST — progress semantics: a STARTED
-activity is floored (ADR-0391), not pinned, at its actual start, so logic still pushes it later
-(Hard_File_updated3's completed UIDs 291–298 land 36 days after their actual finish) and a completed
-milestone's actual instant is snapped to the project calendar; updated3 reads −6 d, updated3_24hr
-+17 d; a scratch-copy pin read −13 d / −2 d — the rest is UID 403's contour (R-56) and the milestone
-snaps; the SSI driving-slack goldens and ADR-0391's TP4 v5 / TP1 pins are the arbiter, `pytest -m
-parity` unmoved · **R-49** — MPXJ omits a ZERO `TotalSlack` (62 of Fuse's 66 zero-float activities on
+the full gate → an ADR → the state docs → a draft PR): **R-56** FIRST, and it is now far better
+specified than the report's row. It is a duration-CONTOUR defect on UNSTARTED work, so no progress rule
+reaches it, and it is what still holds `Hard_File_updated3`'s finish 13 d early after ADR-0476.
+updated3 has **SEVEN chain heads** (a disagreeing activity whose every predecessor already agrees) and
+45 rows inherited from them; the report names only UID 403 and **UID 385 is the larger driver**:
+
+| UID | duration | engine span | MS Project span |
+| --- | ---: | --- | --- |
+| 385 | 5,664 min | ~6 wd (**944 min/d**) | ~17 wd (**333 min/d**) |
+| 403 | 1,920 min | ~5 wd (**384 min/d**) | ~14 wd (**137 min/d**) |
+
+MS Project is spreading these at a FRACTION of a working day — a contoured / part-time assignment the
+booking rule does not model. First executable step: tally `<Assignment>` `Units`, `Work` and any
+`TimephasedData` for 385 / 403 / 302 against their `<Task>` `Duration`, and check the rule against
+EVERY golden by task `Type` before believing it (a booking rule proven on one file has broken another
+here twice). What settles it: updated3 within a day of the stored 2026-12-12 with `-m parity` unmoved
+and Project2 / Project5 still exact. Two heads are the day-boundary residual below, not R-56's ·
+**R-49** — MPXJ omits a ZERO `TotalSlack` (62 of Fuse's 66 zero-float activities on
 LTF2 carry none): the importer infers 0 when the file carries the element elsewhere and the task
 carries `Critical`; red-first on Fuse's Zero Days Float 66 / 2 · R-46 (BCWS +150 — prorate the
 straddling activity on its crew calendar) · R-47 (SPI(t) 8.24 vs 8.22) · R-52 (the `.pptx` LibreOffice
 refuses) · R-50 (expose the History variants) · R-57 / R-58 / R-59 (ADR-0474's residuals) · then R-03 ·
-R-04 · R-09 · R-13 · R-18 · R-20 · R-21 · R-22 · R-32 · R-39. PLUS the design page owed each session —
+R-04 · R-09 · R-13 · R-18 · R-21 · R-22 · R-32 · R-39. PLUS the design page owed each session —
 **now CURRENT, not owed**: deliver **/scorecards** (`setScreen('sk')`) as its own unit, recipe in
 ADR-0471/0475.
 
-⇢ Traps paid for, by name (2026-09-07 d first): **a mutation that comes back GREEN is a finding about
-the TEST** — a count that is structurally constant on every fixture (DCMA always 16, SEM always 10)
+⇢ Traps paid for, by name (2026-09-08 first): **a green suite is not evidence the INPUTS are
+consistent — only that nothing reads the inconsistent part**: `clean_program` passed 41 tests for
+months over completed leaves recording an 8-working-day window against a declared 10-day duration and
+starting before their predecessors finished, because the engine read neither; when a long-green fixture
+fails, ask FIRST whether the change made the engine read something it used to ignore · **when a change
+makes the engine honour a previously-ignored input, sweep for code whose correctness depended on it
+being ignored** — the backward pass (retreating by the PLANNED duration against a RECORDED window put
+−13 wd of float on finished work) and DCMA-12 (injecting a delay into an activity the pin makes
+immovable) both broke, neither caused by the rule · **measure the blast radius of a fixture redesign
+before committing to one** — three "corrections" scored 16, 16 and 7 failures against leaving it at 3 ·
+**never let an example into a comment without executing it** — mine said Project2's UID 26 carried no
+actuals; it carries both · **two errors can CANCEL** — R-55 improved every
+per-activity measure (engine-LATE 68/31/13 → 0, completed activities past their own record → 0
+corpus-wide) while making updated3's project finish look WORSE (−6 → −13 d), because the old engine's
+spurious lateness was propping the composite up; when a fix that improves every constituent worsens the
+composite, a second bug was holding it together — quantify both and pin the constituents · **an
+inherited attribution is TESTIMONY** — the report's "UID 403's contour and the milestone snaps" named
+the smaller of two drivers and one head of seven, and the "milestone snaps" are not milestone-specific
+· **refute your own hypothesis before the report's** — a data-date theory was built first and died on
+its own probe (5 of 68 unstarted activities start before `StatusDate`, 1 of the 50 disagreeing rows) ·
+**a GREEN mutation may mean the FIXTURE CORPUS cannot express the case, not that the assertion is
+weak** — count the population before re-aiming: zero part-complete activities carry an `ActualFinish`,
+zero completed activities have `resume > stop`, zero actuals are inverted in ANY committed golden, so
+three branches needed hand-authored rigs that say so · **Playwright's virtual mouse SURVIVES `goto()`**
+— park it (`page.mouse.move(0, 0)`) before any resting measurement, or you measure a hovered page ·
+**run the CONTROL before believing a red from an instrument you just wrote** (a /evolution hover
+"failure" reproduced identically on the pristine stylesheet) · **an `assert` in `src/` is a house-style
+violation** — there are none in the tree and `python -O` strips the narrowing · **the full suite must be
+started AFTER the version bump and the wheel/installer rebuild**, or the lockstep test fails as an
+artifact and the run is not a valid measurement (2026-09-07 d paid for this too). (2026-09-07 d:) **a
+mutation that comes back GREEN is a finding about the TEST** — a count that is structurally constant on every fixture (DCMA always 16, SEM always 10)
 cannot be distinguished from a hardcode; aim the pin at the value that VARIES (Fuse reads 9 with one
 file, 14 with two) and record the rest UNVERIFIABLE · **verify a literal against the RENDER, not
 memory** (two of my own probe strings were wrong before the tree was) · **the container's pip
@@ -65,10 +106,18 @@ full suite is ~40 min, start it in the background the moment the engine settles 
 
 ⇢ Measured-false / deliberately held — do NOT re-chase: the ribbon tiles' scopes · TP3's ribbon 8 /
 Lags 3 (R-53) · the DCMA08 baseline basis (R-48) · Fuse's ACWP-to-time-now and updated3's BAC (R-45) ·
-the four Hard_File bookings the MSPDI cannot explain (R-56) · **the /standards strip's
-`document.scrollingElement.scrollWidth` 1719 → 1734** — the chrome-wide UI-03 condition (R-20), already
-1719 pristine, and the IDENTICAL +15 ADR-0471 recorded for the identical strip on /wbs · the HELD and
-CLOSED rows of the report · the S-curve & finish-window residuals of earlier sessions.
+the four Hard_File bookings the MSPDI cannot explain (R-56) · **R-20 / UI-03 is now CLOSED (ADR-0477)** — every page measures
+`document.scrollingElement.scrollWidth == innerWidth == 1440` in all four themes; do NOT re-chase the
+1719 / 1734 readings · the HELD and CLOSED rows of the report · the S-curve & finish-window residuals of earlier sessions.
+
+⇢ NEW residuals registered this session (both measured, neither taken): **the working-minute axis
+cannot carry a recorded instant that lands on a day boundary or a non-working moment** — UID 323's
+`Wed 2026-08-19 08:00` renders back as `Tue 08-18 16:00`, UID 300's **Sunday** `08-30 04:00` as
+`Fri 08-28 16:00`, and UID 292 (not a milestone) loses an hour; 2 of 42 completed activities on
+updated3, 19 of 699 on Large_Test_File. Carrying the raw instant means populating the wall fields on
+the project-axis path, which today SIGNAL "off-calendar task" codebase-wide — structural, not a
+one-liner. **And:** the hint bubble still widens the document WHILE OPEN near the right edge (ADR-0477
+fixed only the resting state); closing it needs edge-aware placement, not a size reset.
 
 ⇢ Steward posture: draft PRs the OPERATOR merges (never mark ready, never merge, never approve); eight
 checks when `installer/**` changes, six for docs-only; read a verdict on the FINAL head; a red cell on

@@ -17102,3 +17102,83 @@ shadows it on PATH).
 - **Follow-up (23:05Z) — #651 GREEN on its final head `761740cc` (the merge commit), EIGHT of eight:** CI run **#1791** (34166452454) — `cui-guard` ✓ (22:22Z; its MUTATION step refused a staged `.mpp`) · `linux` ✓ · `windows` ✓ (installer-smoke run 34166452462) · `browser (measured-box proof)` ✓ (22:38Z — every browser module ran; a skip there is a FAILURE) · `floor (declared minimum)` ✓ (22:44Z — **the whole suite at the declared floors: 4 721 passed, 259 skipped in 17:34**, the 259 being the browser modules the floor runner deliberately has no playwright for, then the parity gate **96 passed, 14 deselected in 3:47** under the `set -o pipefail` skip guard) · `test (3.13)` ✓ (22:58Z) and `test (3.11)` ✓ (23:02Z), both with the overall ≥70 % and engine ≥85 % coverage gates, the parity gate, bandit and pip-audit · `check` ✓ (23:02Z). The pre-merge code head `e1a932f4` had already been green on cui-guard / floor / browser / test 3.11 and installer-smoke #675, so the `origin/main` merge cost nothing. Local corroboration on the same tree: the clean full suite **5 073 passed / 5 skipped / 0 failed** (a8494a54). **The PR now waits on the operator** — draft, never marked ready, never merged, never approved. No comments were posted on the PR: nothing stood down, nothing was blocked.
 - **Follow-up (00:26Z) — #651 MERGED by the operator** (marked ready 00:24:56Z, merged 00:25:03Z): `main` @ **`f3dfd32a`** (the squash, committer polittdj), **tree-identical to the PR's final head `8d2f6bfb`** — `git rev-parse` reads `bfb1866b5a066ab08e5c80360a7475e442c91ec7` on BOTH, so the eight-of-eight verdict already recorded for `761740cc`, and the docs head's own eight green cells, transfer to the squash; a red cell on `main` for this tree is the runner's claim, not a defect. `main`'s own runs for the squash: CI **#1794** (34173243277) and installer-smoke **#678** (34173243278), both started 00:25:04Z — the NEXT session reads #1794's verdict first. The branch was restarted with `git fetch --prune origin && git remote set-head origin -a && git checkout -B claude/handoff-next-session-q74ju8 origin/main` (GitHub auto-deleted the merged head; the squash was never amended). The session was auto-unsubscribed from #651's activity by the merge event. **One comment arrived on #651 and needed no action:** `chatgpt-codex-connector[bot]` reported *"You have reached your Codex usage limits for code reviews"* — a service notice, not a review finding, so nothing was addressed and nothing was replied. **The design page is now CURRENT, not owed**; the next unit is **R-55** (progress semantics) with **/scorecards** (`setScreen('sk')`) as the next design page.
 - **Follow-up (00:31Z) — the operator asked whether #651 was merged BEFORE its checks finished; AUDITED against the API, and it was not.** All **eight** check runs on the merged head `8d2f6bfb` were `completed` / `success`, and the LAST to finish was `check` at **23:43:00Z**; the PR was marked ready at **00:24:56Z** and merged at **00:25:03Z** — **42.0 minutes after the final check completed**, with `total_count = 8` (the exact expected set: cui-guard 23:05:09Z · installer-smoke linux 23:05:36Z · windows 23:09:41Z · browser 23:21:08Z · floor 23:25:40Z · test 3.13 23:33:45Z · test 3.11 23:42:55Z · check 23:43:00Z), **zero queued or in-progress**, and `mergeable_state: clean` read at 23:43Z. The ready-for-review flip created **no new check run** (the eight run IDs are unchanged from the 23:43Z reading), so nothing was started-and-bypassed in those seven seconds; the only thing it did trigger was the Codex bot's usage-limit notice, which is not a gate. The decisive independent fact is the tree hash: `main` @ `f3dfd32a` and head `8d2f6bfb` both read `bfb1866b5a066ab08e5c80360a7475e442c91ec7`, so what landed is byte-for-byte the tree the eight checks passed. **No premature merge, nothing to remediate.** `main`'s own run #1794 was still `in_progress` at this audit — that is a POST-merge confirmation run, never a merge gate, and it is the next check-in's first read.
+
+## 2026-09-08 — R-55 CLOSED (ADR-0476): a completed activity occupies exactly its recorded window · R-20 / UI-03 CLOSED (ADR-0477): no page scrolls sideways · v1.0.247
+
+- **Branch** `claude/polaris-audit-r55-semantics-2k82r8`, started fresh on `origin/main` @ `260cd994`
+  (verified identical at session start; no PR open, nothing to restart). Kickoff state re-verified
+  rather than trusted: `main @ 260cd994` ✓, updated3 reading **−6 d** ✓ and updated3_24hr **+17 d** ✓,
+  both reproduced by measurement before any change.
+- **ADR-0476 (R-55).** ADR-0391 floored a started activity at its `actual_start` and named the half it
+  left open. **The oracle was measured first**: across six progressed goldens MS Project's stored
+  `Finish` equals `ActualFinish` on **2,289 of 2,289** completed activities and stored `Start` equals
+  `ActualStart` on **2,601 of 2,601** started ones. A completed activity (100 % **and** both actuals)
+  is now **pinned at both ends** in both forward-pass branches, disclosed on a new
+  `CPMResult.actual_finish_driven` deliberately kept out of `date_driven`.
+- **Measured, pristine → now.** updated3_24hr and updated4_24h **+17 d → −2 d**; updated3 −6 d → −13 d
+  (below); disagreements 75 → **14**, 76 → **52**, 188 → **173** (LTF), 180 → **150** (LTF2);
+  engine-LATE 68 → **0**, 31 → **0**, 13 → **0**; **completed activities scheduled past their own
+  recorded finish 50 / 21 / 13 / 11 → 0 / 0 / 0 / 0**; Critical 62 → **70** and 96 → **103** of 110;
+  stored TotalSlack 0 → **4** and 6 → **9**. **Project2 / Project5 UNMOVED** — 0 disagreements, stored
+  slack exact 65/65 and 95/95. `tests/engine` + `tests/parity` **1,213 passed**; `-m parity` **96 passed**.
+- **Three rules the corpus paid for.** In-progress work keeps the FLOOR — pinning every started start
+  moved `Large_Test_File` UID 1489 (95 % complete, out of sequence) from 26 d early to **162 d early**,
+  a 136-day swing in the direction Law 2 forbids. The two halves must ship TOGETHER — a completed start
+  pinned with a computed finish moved LTF UID 7113 from **exact to 85 d early**. All three records are
+  required — 100 % with no `ActualFinish` is a claim, not a record.
+- **The number that got worse, and why it is the finding.** updated3's project finish moves −6 d →
+  −13 d: a second defect stopped being masked (31 activities were being pushed LATER than MS Project,
+  partly cancelling an understatement). **The inherited attribution was corrected against the tree**:
+  the report names "UID 403's contour and the milestone snaps"; updated3 actually has **seven** chain
+  heads with 45 inherited rows, and the larger driver is **UID 385** (MS Project 333 min/d vs the
+  engine's 944; UID 403 is 137 vs 384). Both are `percent_complete == 0`, so no progress rule reaches
+  them — that is R-56 (HELD). A data-date hypothesis was constructed and **REFUTED** (5 of 68 unstarted
+  activities start before `StatusDate 2026-10-12T17:00`, 1 of the 50 disagreeing). The "milestone snaps"
+  are **not milestone-specific**: a recorded instant on a day boundary or a non-working moment cannot
+  round-trip the working-minute axis — registered as a NEW residual.
+- **ADR-0477 (R-20 / UI-03), pulled forward on the operator's instruction.** Attribution proven by
+  EXPERIMENT: an element sweep found nothing past the edge (the culprit is a pseudo-element), so
+  injecting `[data-sf-hint]::after{content:none}` alone was used as the probe — `/`, `/driving-path`,
+  `/evolution`, `/standards`, `/scorecards` dropped from 1719 / 1734 / 1727 / 1720 to **exactly 1440**.
+  The fix collapses only the RESTING bubble, leaving the shown bubble, its fade and the 1.5 s delay
+  byte-identical; `display:none` (the roadmap's proposed remedy) was rejected as not animatable. All
+  sixteen page×theme states now measure 1440. Left, measured: an open bubble near the right edge still
+  widens the document — that needs edge-aware placement.
+- **Two defects the pin EXPOSED, fixed in the same PR because shipping without them ships a wrong
+  number.** (1) The backward pass retreated by the PLANNED duration while the forward pass placed the
+  RECORDED window, so `LS − ES` and `LF − EF` disagreed and ADR-0463's `min()` reported **spurious
+  negative float on finished work — −13 working days** on a completed activity, dragging it onto the
+  critical path and failing DCMA-12/13. Both branches now retreat by the recorded span (the exec path via
+  `_retreat_wall` on the task's own axis); **all nine goldens byte-identical across the fix**. (2) DCMA-12
+  injected its delay into an activity the pin makes IMMOVABLE — you cannot delay work that is done — so
+  its target set now excludes `is_recorded_complete`. Scoped to that predicate rather than
+  `percent_complete >= 100` because the disqualifying property is immovability; measured, it changes the
+  target on exactly ONE golden (**Project2, UID 26 → 29, 2 of 43 candidates excluded**) with the verdict
+  and counts byte-identical everywhere. My first code comment on this asserted UID 26 carried no actuals —
+  it carries both; corrected against a measurement rather than memory.
+- **The synthetic battery: a fixture whose progress data had never been read.** `clean_program` went
+  41-passing → 9-failing and every failure traced to the fixture: its three completed leaves each record an
+  **8-working-day window against a declared 10-day duration** and each **starts before its predecessor
+  finished**. The old engine ignored `actual_finish` and its actual-start floor never bound (an
+  out-of-sequence start is EARLIER than logic), so the progress data was inert and the docstring's
+  "progressed consistently" was false with nothing able to detect it. The oracle settles it: out-of-sequence
+  completed work is rare in the real corpus (2 / 2 / 1 / 3) and **8 of 8 have MS Project's stored Start ==
+  ActualStart**, and the pin adds **zero** new negative float on any real golden (269 engine-negative vs
+  MS Project's 423, sign agreement 4,369, identical before and after). Three fixture redesigns were
+  measured and REJECTED (16 and 7 failures against this version's 3); the fixture was left and its four
+  expectations re-measured with the reason recorded at each.
+- **Red-first and mutation.** `tests/engine/test_recorded_completed_window.py` observed **18 / 18 red**
+  on the pristine engine (plus four re-measured oracle rows); `tests/web/test_no_horizontal_overflow.py`
+  **2 of 3 red** with the exact reported figures (the third is a control that must pass on both trees).
+  **Mutation battery 15 / 15 RED BY NAME** on fresh scratch copies under `PYTHONPATH`, repo md5-verified
+  unchanged — **six came back GREEN across the runs and each was a finding about the TEST**; a corpus census
+  explains why (zero part-complete activities with an `ActualFinish`, zero completed activities with
+  `resume > stop`, zero inverted actuals in ANY committed golden), so those branches are pinned by
+  hand-authored synthetic rigs that say so.
+- **Pins re-measured, never re-fitted.** `test_hard_file_stored_dates_oracle.py`: updated3's tolerance
+  6 → 13 d with finish-within-a-day 42 → 60 and Critical 96 → 103; updated2 87 → 93; LTF 1558 → 1569;
+  LTF2 1563 → 1589 and stored slack 655 → 668. Its docstring records which row loosened, why, and that
+  closing R-56 is what tightens it — so the 13 cannot later read as a licence.
+- **Docs:** ADR-0476 · ADR-0477 · HANDOFF rotated · LESSONS 2026-09-08 · the kickoff prompt (which was
+  one commit stale — it named `main @ f3dfd32a` and omitted #652 as merged; corrected). Version
+  **1.0.247**; wheel + nine installers rebuilt after the last source edit.

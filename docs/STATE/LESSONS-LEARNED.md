@@ -435,6 +435,145 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-08 — A fixture whose progress data the engine could never read: 41 green tests over a contradiction
+
+**What happened.** ADR-0476 took the synthetic `clean_program` battery from 41 passing to 9 failing.
+The instinct was to suspect the change. The fixture was the problem: its three completed leaves each
+record an **8-working-day window against a declared 10-day duration**, and each **starts before its
+predecessor finished**. Its docstring claimed the program was "progressed consistently".
+
+**Why nothing caught it for months.** The pre-ADR-0476 engine ignored `actual_finish` entirely, and
+ADR-0391's actual-start FLOOR never bound because an out-of-sequence start is EARLIER than logic. The
+fixture's progress data was **inert** — 41 tests passed over data the engine never read.
+
+**What was tried.** Three redesigns of the fixture, each measured: the first (fewer completed tasks +
+a wider stagger) produced 16 failures, the second (stagger only) 16, the third (in-sequence, faster
+execution) 7 — all worse than leaving it at 3, because every one moved the completed work and cascaded
+into the EVM and forecast pins.
+
+**What settled it.** The oracle, not the argument. Out-of-sequence completed work is rare in the real
+corpus (2 / 2 / 1 / 3 cases) and in **8 of 8 MS Project's stored Start equals the ActualStart** — the
+reference tool honours the record. And the pin adds **zero** new negative float on any real golden
+(269 engine-negative against MS Project's own 423, sign agreement 4,369, identical before and after).
+The engine was right; the fixture is an artificial configuration; its expectations were re-measured
+with the reason recorded at each one, and its docstring now states what it actually is.
+
+**The lesson.** A green test suite is not evidence that the inputs are consistent — only that nothing
+reads the inconsistent part. When a change makes a long-green fixture fail, ask first whether the
+change has made the engine read something it previously ignored. And when you do change a fixture,
+measure the blast radius before committing to the design: "make it correct" has several shapes and
+most of them are worse.
+
+### 2026-09-08 — Reading a record makes previously harmless code wrong: two defects the pin exposed
+
+**What happened.** Pinning a completed activity's window broke two things that had been fine while
+completed work was scheduled by logic. (1) The **backward pass** still retreated by the PLANNED
+duration while the forward pass placed the RECORDED window, so `LS − ES` and `LF − EF` disagreed and
+ADR-0463's `min()` produced **negative float on work that was already finished** — −13 working days,
+which also dragged it onto the critical path. (2) **DCMA-12** injects a delay into the lowest-UID
+critical activity and requires the finish to move; once a completed activity is pinned it is
+immovable, so the check failed for a reason with nothing to do with logic continuity.
+
+**What worked.** Fixing both in the same change, each scoped by measurement rather than by category:
+the backward pass retreats by `early_finish − early_start` (and by `_retreat_wall` over the recorded
+span on the execution-plan path), and DCMA-12 excludes `is_recorded_complete` — **not**
+`percent_complete >= 100`, because the disqualifying property is *immovability*, which only the pin
+confers. Both were verified against the nine goldens: byte-identical, except DCMA-12's chosen target
+on Project2 (UID 26 → 29), with the verdict unchanged.
+
+**A wrong claim in shipped code, caught by measuring it.** The comment justifying that scoping said a
+completed task "WITHOUT actuals (Project2's UID 26)" stays a valid target. UID 26 carries **both**
+actuals. The reasoning was right and the example was invented; measuring it produced a better comment
+that names the one golden the filter actually moves.
+
+**The lesson.** When a change makes the engine honour an input it used to ignore, sweep for code whose
+correctness silently depended on that input being ignored — a backward pass, a metric that perturbs
+the schedule, anything that assumes an activity can move. And never let an example into a comment
+without executing it.
+
+### 2026-09-08 — Two errors can cancel: removing one makes a headline number look WORSE, and that is the finding, not a regression
+
+**What happened.** R-55 pinned completed activities at their recorded windows. Every per-activity
+fidelity measure improved — engine-LATE disagreements 68 / 31 / 13 → **0**, completed activities
+scheduled past their own recorded finish 50 / 21 / 13 / 11 → **0** across the corpus, Critical
+62 → 70 and 96 → 103 of 110, Project2 / Project5 completely unmoved — and yet
+`Hard_File_updated3`'s **project finish moved further from MS Project's**, −6 d to −13 d. The old
+engine was pushing 31 activities on that file LATER than the reference tool, and that spurious
+lateness was partly cancelling an understatement underneath it. Fixing one error exposed the other.
+
+**What was tried.** The temptation was to treat the widened gap as a regression and hunt for a
+compensating rule. Instead the residual was TRACED: of 52 remaining disagreements, seven are chain
+heads (every predecessor already agreeing) and 45 are inherited from them.
+
+**What worked.** Naming the second defect precisely, and pinning the improvement so the relaxation
+is not free — the oracle row's tolerance moved 6 → 13 d, but its finish-within-a-day floor moved
+42 → 60 and its Critical floor 96 → 103 in the same edit, and its docstring says closing R-56 is
+what tightens the 13 back down.
+
+**The lesson.** A composed number (a project finish) can be right for the wrong reasons. When a fix
+that improves every constituent measure makes the composite look worse, the composite was being
+propped up by a second bug — say so, quantify both, and pin the constituents so the composite
+cannot be quietly re-fitted later.
+
+### 2026-09-08 — An inherited attribution is testimony; the report named the smaller of two drivers and one head out of seven
+
+**What happened.** The audit report and the kickoff both attributed updated3's residual to "UID 403's
+contour and the milestone snaps". Measured on the tree: there are **seven** chain heads, and the
+largest is **UID 385**, not 403 — MS Project spreads its 5,664 minutes over ~17 working days
+(333 min/d) where the engine's booking rule gives ~6 (944 min/d); UID 403 is 137 vs 384 min/d.
+
+**What was tried.** A data-date hypothesis was constructed first and **refuted by its own probe**:
+updated3 carries `StatusDate 2026-10-12T17:00`, and the engine starts only 5 of 68 unstarted
+activities before it (MS Project: 0) — 1 of the 50 disagreeing rows. A data-date floor would have
+closed one row in fifty and been reported as the fix.
+
+**What else it corrected.** The "milestone snaps" are **not milestone-specific**: a recorded instant
+at a day boundary or on a non-working moment cannot round-trip the working-minute axis at all
+(UID 292 is not a milestone and loses an hour; UID 323's `Wed 08:00` and UID 300's **Sunday** instant
+lose a whole day).
+
+**The lesson.** QC-2 is not a formality on residual rows. A residual that no one has re-measured
+since it was named will be described in the vocabulary of the session that found it, and the next
+session will fix the wrong thing confidently. Trace a residual to its chain heads before quoting it.
+
+### 2026-09-08 — Four of twelve mutations came back GREEN, and the corpus census explained why: the fixtures could not express the case
+
+**What happened.** The R-55 mutation battery caught 8 of 12 on the first run. The four survivors —
+the own-calendar start-pin, the `percent_complete >= 100` test, the window-order guard and ADR-0309's
+resume precedence — were not passing tests, they were tests that could not fail.
+
+**What was tried.** Rather than assume the fixtures were merely thin, a census counted the conditions
+across **every** committed MSPDI golden: **zero** part-complete activities carrying an `ActualFinish`,
+**zero** completed activities with `resume > stop`, **zero** inverted actuals. Three of the four
+branches are not reachable by any fixture in the repository.
+
+**What worked.** Hand-authored synthetic rigs for the three unreachable branches (each saying in its
+docstring that no committed fixture can reach it), and a genuinely out-of-sequence own-calendar case
+for the fourth. Battery re-run: **12 / 12 red by name.** One of the new tests was itself wrong first
+time — the "inverted actuals" fixture was not actually inverted, so it asserted a condition that
+never occurred; the fixture was fixed, not the conclusion.
+
+**The lesson.** "The mutation was not caught" has two very different causes — a weak assertion, or a
+fixture corpus that cannot express the input. Counting the population tells you which, and the answer
+changes the remedy from *re-aim the pin* to *build the case by hand and say so out loud*.
+
+### 2026-09-08 — Playwright's virtual mouse survives goto(); a hover probe that does not park it measures an already-hovered page
+
+**What happened.** The R-20 verification sweep reported the tooltip BROKEN on nine of twelve
+page/theme states. It was not: the virtual mouse persists across navigation, so each new route
+loaded with the pointer already resting on a hint host, and the "resting" measurement was of a
+hovered page.
+
+**What worked.** `page.mouse.move(0, 0)` before every resting read — and, when three states still
+looked wrong, running the identical probe against the **pristine** stylesheet. It reproduced the same
+3-of-4 theme pattern and the same 15.34 px width, which exonerated the change and identified the real
+cause: a hint host inside the Gantt's own horizontal scroll container, whose hover reachability is
+theme-dependent (the same trap `test_r11_panel_contract` documents for the 359 px daylight nav).
+
+**The lesson.** Before believing a red from an instrument you just wrote, run the control. An
+instrument that has misbehaved once has no credibility left in the same session until it is
+re-validated against a known-good tree.
+
 ### 2026-09-07 (d) — A solver called a thousand times per request cannot carry per-solve work that depends on the schedule alone; never key a hot memo on a frozen pydantic model
 
 **What happened.** ADR-0474's draft PR (#649) went red on the browser job's `/sra` caption sweep:
