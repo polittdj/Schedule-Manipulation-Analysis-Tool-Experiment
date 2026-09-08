@@ -1,10 +1,10 @@
 # Kickoff prompt — next session
 
-PR state (2026-09-08, end of the OR-11a session): **#655 is MERGED** → `main` @ **`340b025`**
-(ADR-0478, v1.0.248), whose tree was verified byte-identical to the head its **eight of eight**
-checks passed on (`5a2681f`, `11e650748b51d15cf137b7260e55e89efb45500e` on both). This session then
-shipped **ADR-0479 (OR-11a)** at **v1.0.249** on the same designated branch, restarted on
-`340b025`. **Read that PR's verdict on its FINAL head first**, then the operator queue.
+PR state (2026-09-08, end of the OR-11c session): **#656 is MERGED** → `main` @ **`3b2604e`**
+(ADR-0479, v1.0.249), tree verified byte-identical to the head its eight checks passed on
+(`a398b96334517824e18d505c35eb1485c2130a96` on both). This session shipped **ADR-0480 (OR-11c)** at
+**v1.0.250** on the same designated branch, restarted on `3b2604e`. **Read that PR's verdict on its
+FINAL head first**, then the operator queue (OR-11e / OR-11b / OR-11d) before the audit rows.
 
 Work the POLARIS² audit's plan-forward (Schedule-Manipulation-Analysis-Tool). Read
 `docs/STATE/HANDOFF.md` FIRST (auto-injected), then `docs/STATE/AUDIT-2026-08-27-REPORT.md` §3 — the

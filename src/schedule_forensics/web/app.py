@@ -58,6 +58,7 @@ from schedule_forensics.ai.driving_facts import (
 )
 from schedule_forensics.ai.factory import resolve_gateway_api_key
 from schedule_forensics.ai.narrative import clean_polish, polish_prompt
+from schedule_forensics.ai.ollama import GenerationStats, truncation_warning
 from schedule_forensics.ai.ollama_process import OllamaLauncher
 from schedule_forensics.ai.pair_facts import pairwise_comparison_facts
 from schedule_forensics.ai.qa import (
@@ -1070,6 +1071,21 @@ def _no_answer_note(cfg: AIConfig, why: NoAnswer) -> str:
             "instead of dropped."
         )
     return _no_model_note(cfg)
+
+
+def _evidence_warning(backend: AIBackend) -> str | None:
+    """Whether the model demonstrably did not read the whole prompt (OR-11c).
+
+    Read from the backend's OWN record of the generation that just ran — the server's
+    ``prompt_eval_count`` against the prompt we sent — never from configuration, which cannot
+    know the operator's context window. ``getattr`` because the protocol does not carry it: a
+    test stand-in, the Null backend and an OpenAI-compatible server all legitimately lack it,
+    and an absent measurement is UNKNOWN, which is not a warning.
+    """
+    stats = getattr(backend, "last_stats", None)
+    if not isinstance(stats, GenerationStats):
+        return None
+    return truncation_warning(stats)
 
 
 def _ai_translate(texts: list[str], lang: str, backend: AIBackend) -> dict[str, str]:
@@ -2623,6 +2639,10 @@ def create_app(
         return JSONResponse(
             {
                 "answer": answer,  # null => see "no_answer" for WHICH of the five causes
+                # OR-11c: an answer can ARRIVE and still rest on a prompt the model only
+                # partly read (Ollama drops what exceeds its context window rather than
+                # erroring). Measured from the server's own prompt_eval_count.
+                "evidence_warning": _evidence_warning(backend) if answer is not None else None,
                 # The diagnosis, not a guess: five materially different failures used to share
                 # one hard-coded panel sentence (ADR-0478). Null when an answer was produced.
                 "no_answer": (

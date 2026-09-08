@@ -16,6 +16,7 @@ import json
 import urllib.error
 import urllib.request
 from collections.abc import Callable
+from dataclasses import dataclass
 from typing import Any
 
 from schedule_forensics.ai.backend import (
@@ -39,6 +40,61 @@ DEFAULT_MODEL = "qwen2.5:7b-instruct"
 #: operator's install (ADR-0315, audit F-13) — this is a hardening layer, never the cleanup
 #: mechanism (that is the launcher's three-tier shutdown + reconciliation).
 GENERATE_KEEP_ALIVE = "5m"
+
+
+#: The most characters a single token can plausibly encode. Deliberately GENEROUS: real BPE
+#: tokenizers average ~4 characters per token on English prose, and our fact sheets are denser
+#: than prose (dates, UIDs, decimals all tokenize hard), so the true figure is smaller. Using a
+#: larger number makes :func:`truncation_warning` ONE-SIDED — it can only fire when the server
+#: evaluated fewer tokens than the prompt could possibly contain, never the reverse.
+MAX_CHARS_PER_TOKEN = 6
+
+
+@dataclass(frozen=True)
+class GenerationStats:
+    """What the server reported about the LAST generation, as evidence, not as a claim.
+
+    ``prompt_eval_count`` is Ollama's own count of the prompt tokens it evaluated
+    (``POST /api/generate``, documented). ``None`` means the server did not report one — an
+    older build, a proxy, or an OpenAI-compatible server — which is UNKNOWN, never "fine".
+    ``prompt_chars`` is the length of the prompt WE sent, so the comparison is between our
+    input and the server's own measurement of what it read.
+    """
+
+    prompt_chars: int
+    prompt_eval_count: int | None = None
+    done_reason: str = ""
+
+
+def truncation_warning(stats: GenerationStats) -> str | None:
+    """A disclosure when the model demonstrably did not read the whole prompt, else ``None``.
+
+    Ollama's context window is VRAM-tiered and its defaults moved in v0.15.5 (4,096 below
+    24 GiB — ollama/ollama#14073); a prompt past the window does not error, it comes back as a
+    confident answer formed on part of the evidence. This tool never sends ``num_ctx``, so the
+    window is whatever the operator's server is set to and CANNOT be assumed from here.
+
+    So the test is empirical and one-sided: if the tokens the server says it evaluated are fewer
+    than the prompt could possibly tokenize to at :data:`MAX_CHARS_PER_TOKEN`, the model did not
+    see all of it. Silence means "no evidence of truncation", NOT "verified complete" — the
+    warning direction is allowed to under-fire; the reassurance is not (the same asymmetry
+    ``net_guard``'s banner uses).
+    """
+    count = stats.prompt_eval_count
+    if not count or stats.prompt_chars <= 0:
+        return None  # nothing measured — unknown, and unknown is not an accusation
+    floor = stats.prompt_chars // MAX_CHARS_PER_TOKEN
+    if count >= floor:
+        return None
+    return (
+        f"EVIDENCE WARNING — the local model evaluated only {count:,} prompt token(s) for a "
+        f"{stats.prompt_chars:,}-character prompt. At the most generous "
+        f"{MAX_CHARS_PER_TOKEN} characters per token that prompt cannot be under {floor:,} "
+        f"tokens, so the model did NOT read all of the cited evidence: Ollama silently drops "
+        f"what does not fit its context window. The answer above may therefore rest on a "
+        f"partial fact sheet. Raise the window (OLLAMA_CONTEXT_LENGTH on the Ollama server — "
+        f"AI Settings reports its current value) or ask a narrower question, then ask again."
+    )
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -154,6 +210,10 @@ class OllamaBackend:
         # server, not a slow one (ADR-0299).
         self._pull_timeout = pull_timeout
         self._open: Opener = opener or _urllib_opener
+        #: What the server reported about the most recent generation (OR-11c). ``None``
+        #: until one has run; replaced by every generation so a stale measurement can
+        #: never be attached to a later answer.
+        self.last_stats: GenerationStats | None = None
 
     def _get(self, path: str, *, timeout: float | None = None) -> Any:
         return json.loads(
@@ -213,5 +273,11 @@ class OllamaBackend:
                 },
             },
         )
-        response = payload.get("response", "") if isinstance(payload, dict) else ""
-        return str(response)
+        body = payload if isinstance(payload, dict) else {}
+        count = body.get("prompt_eval_count")
+        self.last_stats = GenerationStats(
+            prompt_chars=len(prompt),
+            prompt_eval_count=count if isinstance(count, int) else None,
+            done_reason=str(body.get("done_reason", "")),
+        )
+        return str(body.get("response", ""))

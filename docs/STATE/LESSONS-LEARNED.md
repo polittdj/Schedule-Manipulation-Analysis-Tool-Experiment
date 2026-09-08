@@ -435,6 +435,39 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-08 (d) — a source pin cannot see behaviour, and a test that never runs the deployed path proves nothing
+
+**Two green mutations, two different species, both mine.**
+
+**C8 — the test never exercised the shape that ships.** Every endpoint test patched in a bare
+`OllamaBackend`. In the deployed app `_active_backend` WRAPS it in `_UseMarking` whenever the
+launcher hook is set. So the mutation that made the wrapper swallow the measurement broke
+production and left the suite green. The generalisable rule: **when a value has to cross a
+wrapper, decorator or adapter that only production installs, one test must install it too.**
+Patching the inner object is convenient and it is exactly what hides this class of defect.
+
+**C9 — a source pin is not an execution proof.** `assert "evidence_warning" in js` survives
+`if (false) { …render… }`: the string is still in the file. Greps prove a name exists, never that
+a branch runs. Anything about what a page SHOWS needs the harness, and the harness assertion
+should pin ORDER too (here: the warning must precede the answer — a caveat under a confident
+paragraph is a caveat nobody reads).
+
+**Resolve an UNVERIFIED from the primary source, and keep the parts still unresolved out of the
+design.** This unit turned entirely on `prompt_eval_count` existing — taken from ollama's own
+`docs/api.md`, not memory. The truncation SEMANTICS are still unconfirmed, so nothing depends on
+them: the detector compares two numbers we can both observe. A design that needs an unverified
+fact to be true is a design that will be wrong the day it changes.
+
+**Evidence can forbid the obvious fix.** The instinct was "send a bigger `num_ctx`". The same
+issue that documents the new defaults documents a 52 GB machine going unresponsive under them.
+So the unit MEASURES and DISCLOSES and leaves the knob to the operator. The obvious fix would
+have traded their machine for a longer prompt without asking.
+
+**One-sided by construction, and say which side.** The bound is deliberately generous, so the
+detector under-fires rather than crying wolf — and the docstring states that silence means "no
+evidence of truncation", never "verified complete". A reassurance that can be wrong is worse than
+a warning that can be missed.
+
 ### 2026-09-08 (c) — a green mutation is a finding about the test, and the shape repeats
 
 **The same trap, two sessions running.** ADR-0478's battery returned 8 RED / 1 GREEN; ADR-0479's

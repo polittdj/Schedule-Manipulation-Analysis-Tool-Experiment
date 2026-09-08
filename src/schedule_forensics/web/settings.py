@@ -86,6 +86,16 @@ class _UseMarking:
         self.name = inner.name
         self.is_local = inner.is_local
 
+    @property
+    def last_stats(self) -> object | None:
+        """The wrapped backend's last generation measurement (OR-11c).
+
+        Without this the wrapper SWALLOWS it: `_active_backend` wraps every routed Ollama,
+        so the truncation disclosure would be silently absent in exactly the deployed
+        configuration it exists for, and present only in tests.
+        """
+        return getattr(self._inner, "last_stats", None)
+
     def is_available(self) -> bool:
         return self._inner.is_available()
 

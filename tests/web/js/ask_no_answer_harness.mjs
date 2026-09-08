@@ -105,6 +105,21 @@ async function run() {
   check("renders a real answer", out.includes("The dates were held."), out.slice(0, 200));
   check("no reason line on a real answer", !out.includes(SERVER_REASON), out.slice(0, 200));
 
+  // 4. OR-11c: an answer that arrived on a prompt the model only partly read must carry the
+  //    warning, ABOVE the answer — a source pin cannot see either fact (measured: `if (false)`
+  //    around the render leaves the string in the file and passes a grep).
+  const WARN = "EVIDENCE WARNING - the local model evaluated only 12 prompt token(s)";
+  ids = boot({ answer: "The programme is behind its plan.", mode: "annotate", facts: FACTS,
+               evidence_warning: WARN });
+  await new Promise((r) => setTimeout(r, 0));
+  out = rendered(ids.askOut);
+  check("renders the evidence warning", out.includes(WARN), out.slice(0, 200));
+  check("warning precedes the answer",
+        out.indexOf(WARN) < out.indexOf("The programme is behind"), out.slice(0, 240));
+  ids = boot({ answer: "The programme is behind its plan.", mode: "annotate", facts: FACTS });
+  await new Promise((r) => setTimeout(r, 0));
+  check("no warning when the server sent none", !rendered(ids.askOut).includes("EVIDENCE WARNING"));
+
   if (failures) { console.error(`${failures} failure(s)`); process.exit(1); }
   console.log("OK ask no-answer");
 }

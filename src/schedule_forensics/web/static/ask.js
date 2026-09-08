@@ -132,6 +132,12 @@
           return;
         }
         showExports(true);  // the server recorded this exchange; the export links are live now
+        if (res.j.evidence_warning) {
+          // OR-11c: the answer arrived, but the server's own prompt_eval_count says the model
+          // did not read all of the prompt. This rides ABOVE the answer deliberately — a
+          // caveat printed under a confident paragraph is a caveat nobody reads.
+          out.appendChild(el("p", { class: "notice err", text: res.j.evidence_warning }));
+        }
         if (res.j.answer) {
           out.appendChild(el("p", { class: "ask-answer", text: res.j.answer }));
           out.appendChild(el("p", {
