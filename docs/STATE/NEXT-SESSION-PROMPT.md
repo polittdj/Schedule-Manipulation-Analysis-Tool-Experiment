@@ -1,12 +1,12 @@
 # Kickoff prompt — next session
 
-PR state (2026-09-07 d): `main` @ **`fc2ddf7c`** (#650's squash, docs-only) on top of `5f34c2a8`
-(#649's squash, whose own runs are GREEN — CI #1786 / installer-smoke #674, verified). **#650 is
-MERGED.** The one draft PR open for the operator is **#651** (ADR-0475, v1.0.246, on
-`claude/handoff-next-session-q74ju8`). #650's merge landed mid-flight and made #651 conflict; it was
-resolved by merging `origin/main` in (three state-doc conflicts, `SESSION-LOG.md` keeping both sides).
-**Read #651's verdict on its FINAL head** — `installer/**` changed, so eight checks apply. A red cell
-on a tree identical to a green head is the runner's claim: compare tree hashes before believing it.
+PR state (2026-09-08): **#649, #650 and #651 are all MERGED** → `main` @ **`f3dfd32a`** (#651's squash,
+ADR-0475, v1.0.246), whose tree is **byte-identical to the PR's final head `8d2f6bfb`**
+(`bfb1866b5a066ab08e5c80360a7475e442c91ec7` on both). **Read `main`'s own CI run #1794 (34173243277) +
+installer-smoke #678 (34173243278) for the squash FIRST** — a red cell on a tree identical to a green PR
+head is the runner's claim: compare tree hashes before believing it. The branch
+`claude/handoff-next-session-q74ju8` was restarted on `origin/main` and carries only this docs-only merge
+record (its draft PR number is in the SESSION-LOG). Then **R-55**.
 
 Work the POLARIS² audit's plan-forward (Schedule-Manipulation-Analysis-Tool). Read
 `docs/STATE/HANDOFF.md` FIRST (auto-injected), then `docs/STATE/AUDIT-2026-08-27-REPORT.md` §3 — the
