@@ -1,16 +1,10 @@
 # Kickoff prompt — next session
 
-PR state (2026-09-08, end of the ADR-0478 session): **#653 is MERGED** → `main` @ **`9eeff406`**
-(the R-55 / R-20 squash at v1.0.247; its tree was verified byte-identical to the PR's final head
-`b09fba7e`, and all EIGHT check runs on that head were `completed/success`). This session then
-branched `claude/polaris-audit-r55-r20-handoff-uoa34g` on `9eeff406` and shipped **ADR-0478** at
-**v1.0.248** — an operator-reported UI/API defect, not a §3 row: the Ask-the-AI panel reported five
-materially different failures with ONE payload and ONE (wrong-first) sentence. **Read that PR's
-verdict on its FINAL head first** — and read `main`'s own runs for #653's squash, CI **#1800**
-(34253938690) and installer-smoke **#681** (34253938590), which the last session started but did not
-live to read — and a red cell on a tree identical to a green PR head is the runner's claim, so
-compare `git rev-parse <merge>^{tree}` against `git rev-parse <pr-head>^{tree}` before believing
-it. Then take the next §3 row — **R-56**.
+PR state (2026-09-08, end of the OR-11a session): **#655 is MERGED** → `main` @ **`340b025`**
+(ADR-0478, v1.0.248), whose tree was verified byte-identical to the head its **eight of eight**
+checks passed on (`5a2681f`, `11e650748b51d15cf137b7260e55e89efb45500e` on both). This session then
+shipped **ADR-0479 (OR-11a)** at **v1.0.249** on the same designated branch, restarted on
+`340b025`. **Read that PR's verdict on its FINAL head first**, then the operator queue.
 
 Work the POLARIS² audit's plan-forward (Schedule-Manipulation-Analysis-Tool). Read
 `docs/STATE/HANDOFF.md` FIRST (auto-injected), then `docs/STATE/AUDIT-2026-08-27-REPORT.md` §3 — the

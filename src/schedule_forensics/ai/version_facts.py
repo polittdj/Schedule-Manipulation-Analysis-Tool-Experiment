@@ -49,8 +49,14 @@ def _anchor(schedules: list[Schedule]) -> tuple[Citation, ...]:
     return tuple(Citation(s.source_file, 0, s.source_file or s.name) for s in schedules)
 
 
-def _elide(entries: list[str]) -> tuple[str, str]:
-    """``(rendered series, elision note)`` — the whole series, or both edges plus a stated gap."""
+def elide_series(entries: list[str]) -> tuple[str, str]:
+    """``(rendered series, elision note)`` — the whole series, or both edges plus a stated gap.
+
+    PUBLIC because the driving-path series (``ai/driving_facts.py``, OR-11a) renders the same
+    shape of per-version line and must elide it by the same rule. Two implementations of
+    "how long may a series line be" would drift, and the drift would be invisible: both sides
+    look correct in isolation.
+    """
     if len(entries) <= _SERIES_FULL_MAX:
         return "; ".join(entries), ""
     hidden = len(entries) - 2 * _SERIES_EDGE
@@ -67,7 +73,7 @@ def _population_fact(series: VersionSeries, cite: tuple[Citation, ...]) -> Cited
         f"{p.label} (data date {p.status_date.isoformat() if p.status_date else 'none'})"
         for p in series.points
     ]
-    rendered, note = _elide(entries)
+    rendered, note = elide_series(entries)
     n = len(series.points)
     return CitedStatement(
         f"WORKBOOK POPULATION: {n} schedule version(s) are loaded and analyzed together as one "
@@ -102,7 +108,7 @@ def _scurve_fact(series: VersionSeries, cite: tuple[Citation, ...]) -> CitedStat
             f"{p.label} ({p.status_date.isoformat() if p.status_date else 'none'}) "
             f"actual {p.actual_pct}% vs planned {p.planned_pct}% (gap {p.gap_pct:+} points)"
         )
-    rendered, note = _elide(entries)
+    rendered, note = elide_series(entries)
     return CitedStatement(
         f"S-CURVE SERIES across all {len(series.points)} loaded version(s) — each version's "
         f"cumulative S-curve read AT ITS OWN DATA DATE, as the percentage of that version's "
@@ -155,7 +161,7 @@ def _finish_fact(series: VersionSeries, cite: tuple[Citation, ...]) -> CitedStat
         return None
     dated = [p for p in series.points if p.finish is not None]
     entries = [f"{p.label} {p.finish.isoformat()}" for p in series.points if p.finish is not None]
-    rendered, note = _elide(entries)
+    rendered, note = elide_series(entries)
     verdict = (
         "later (the computed finish slipped across the series)"
         if moved > 0

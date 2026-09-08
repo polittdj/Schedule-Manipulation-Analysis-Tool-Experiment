@@ -435,6 +435,42 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-08 (c) — a green mutation is a finding about the test, and the shape repeats
+
+**The same trap, two sessions running.** ADR-0478's battery returned 8 RED / 1 GREEN; ADR-0479's
+returned 11 RED / 1 GREEN. Both greens were the same species: an assertion aimed at a sentence's
+WORDING rather than its VALUES. Here the movement fact's check was `"membership" in text` — and a
+re-wire census hard-wired to zero still emits every word of that sentence. The generalisable rule:
+**when a fact's payload is a NUMBER, assert the number.** Substring checks on template prose are
+satisfied by the template.
+
+**And pair it with a control in the opposite direction.** Asserting `1 changed WHICH activities
+drive it` catches a census stuck at 0; it does not catch one stuck at 1. The fix is a second
+fixture — two identical-logic versions — that must report **0**. Two tests, opposite directions,
+and no constant survives either. Neither test alone has teeth; together they are a measurement.
+
+**Verify the FIXTURE before trusting the test built on it.** The synthetic workbook claims "the
+path is re-wired while the focus's finish is held". That claim was run through the engine first:
+v1 `{1,2}`, v2 `{3}`, zero overlap, focus early finish 12,000 minutes in both. Had the durations
+not lined up, every assertion above would have been fiction that happened to pass. A fixture is an
+instrument; an unverified instrument measures nothing.
+
+**Re-pair by identity after any reorder.** `order_versions` returns a NEW ordering; zipping CPMs
+positionally after it silently measures one version's network against another's timings. It has
+its own mutation and its own test because the failure mode is invisible — every number still
+looks like a number.
+
+**A test that is green on the first run is not automatically weak.** Four of seven endpoint tests
+here passed before the fix, by design: they pin what must NOT change (a scoped request, a
+single-version session, an unrelated question, an unknown UID). The way to earn confidence in a
+never-red test is a mutation that makes it red — N8 and N10 do exactly that. "Red before green"
+governs the tests that assert the NEW behaviour; the blast-radius guards are proved differently.
+
+**Measure the budget before adding to it.** The instinct was one fact per version. The 32-version
+sheet is 32 facts against a 48-fact cap: 32 more would have crossed it and started evicting the
+pinned frame — silently, since nothing reports an eviction. One pinned series line costs one slot
+and carries all 32. The cap was measured, not assumed, and the measurement changed the design.
+
 ### 2026-09-08 (b) — a failure that cannot name itself is a failure the operator cannot fix
 
 **What happened.** The Ask panel told an operator "No local model is active" while their AI Settings

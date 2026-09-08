@@ -50,7 +50,12 @@ from schedule_forensics.ai.briefing import (
 )
 from schedule_forensics.ai.citations import CitedStatement, Narrative, preserves_figures
 from schedule_forensics.ai.config_store import load_ai_config, save_ai_config
-from schedule_forensics.ai.driving_facts import driving_path_facts, driving_path_summary
+from schedule_forensics.ai.driving_facts import (
+    driving_path_facts,
+    driving_path_series,
+    driving_path_series_facts,
+    driving_path_summary,
+)
 from schedule_forensics.ai.factory import resolve_gateway_api_key
 from schedule_forensics.ai.narrative import clean_polish, polish_prompt
 from schedule_forensics.ai.ollama_process import OllamaLauncher
@@ -2738,6 +2743,12 @@ def create_app(
             schedules, cpms, pair_schedules=pair_schedules, pair_cpms=pair_cpms
         )
         facts += driving_path_facts(schedules[-1], cpms[-1], text)
+        # OR-11a: the line above answers for the NEWEST version only, which on a 32-version
+        # workbook is 1 of 32 — measured, with the focus UID named: one driving-path fact
+        # citing one file. "the driving path for UID X for each version" was unanswerable
+        # from the evidence, whatever the model. The series recomputes it on every version's
+        # own network (pinned, so neither selector's cap can rank the frame out).
+        facts += driving_path_series_facts(schedules, cpms, text)
         # cross-version manipulation forensics (ADR-0150): duration cuts on the driving/
         # critical path, the reverted-changes counterfactual, the focus's baseline variance —
         # so "what was shortened to keep UID X from slipping?" is answerable with citations.
@@ -2770,6 +2781,7 @@ def create_app(
         if not st.schedules:
             return JSONResponse({"error": "no schedule loaded"}, status_code=400)
         key = scope.strip()
+        series: tuple[CitedStatement, ...] = ()
         if key and key in st.schedules:
             raw = st.schedules[key]
             try:
@@ -2783,7 +2795,10 @@ def create_app(
             if not schedules:
                 return JSONResponse({"error": "no analyzable schedule loaded"}, status_code=422)
             sch, cpm = schedules[-1], cpms[-1]
-        facts = driving_path_summary(sch, cpm, uid)
+            # OR-11a: no scope means "the workbook", so the engine-only answer must cover the
+            # workbook. Naming a scope still means that one file exactly — unchanged.
+            series = driving_path_series(schedules, cpms, uid)
+        facts = series + driving_path_summary(sch, cpm, uid)
         question = f"Driving path to UID {uid}"
         if not facts:
             missing = f"UID {uid} is not a scheduled activity in this file."
