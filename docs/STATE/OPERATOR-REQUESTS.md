@@ -220,6 +220,35 @@ ADR-0408; the repo is xfail-free). This section is the requested ledger; `HANDOF
 (auto-injected every session) and `NEXT-SESSION-PROMPT.md` carry the same state with
 per-unit rotation. **Every remaining open item on this page is operator-owned.**
 
+## 2026-09-08 — Ask-the-AI returned no answer on `/integrity` (screenshot, 32-version workbook)
+
+### OR-11 — "Figure out what the root problem is and then create tests, both pass and fail, and test your proposed solution in a sandbox environment prior to implementing the fix" · `SHIPPED (ADR-0478, PR #655, v1.0.248)`
+
+The question asked (verbatim intent): compare all 32 versions two data dates at a time, oldest
+forward; say whether there are signs of an intentional effort to keep **UID 152** from slipping
+right; give the evidence; deliver it as a ~10-minute speech for senior management; **and compute
+the driving path for UID 152 for each version** (the tasks are not marked critical in the parent
+files). The panel answered *"No local model is active (or strict mode discarded its answer)"* while
+AI Settings showed a configured model.
+
+**Root problem (measured, not inferred):** `/api/ask` was not self-diagnosing. Five materially
+different failures — nothing routed · the generation REFUSED (an Ollama that is up but has not
+pulled the selected model answers HTTP 404) · a timeout · an empty completion · a strict-mode
+discard — all returned a byte-identical payload with no key distinguishing them, so one hard-coded
+`ask.js` sentence covered all five. It led with the cause the operator can see is false, and offered
+a strict-mode discard in ANNOTATE mode (the default), where a discard is impossible. Closed by
+ADR-0478: `no_answer: {code, text}` on the payload, composed from the operator's own configuration,
+rendered by the panel.
+
+### 🔎 WHAT OR-11 DID **NOT** ANSWER — the operator's question still needs these
+
+| # | Open item | Why it blocks the ask | Status |
+|---|---|---|---|
+| OR-11a | **Per-version driving path.** `ask_workbook` adds `driving_path_facts(schedules[-1], cpms[-1], text)` — the **newest version only**. The other 31 versions' driving paths are never computed and never reach the model. | "calculate the driving path for UID 152 for each version" is unanswerable from the evidence handed over, however good the model is. The deterministic `/api/driving-path` button is per-scope, so today it is one run per version by hand. | `OPEN` |
+| OR-11b | **The evidence cap.** `qa._MODEL_MAX_FACTS = 48` (pinned population facts survive it; the rest are ranked by question overlap). | UNVERIFIED how many facts a 32-version workbook produces, so it is not yet known how much of the 31-pair comparison series is dropped before the model sees it. Measure before changing anything. | `OPEN (measure first)` |
+| OR-11c | **The model's own context window is neither set nor disclosed.** `OllamaBackend.generate` sends `temperature` / `seed` / `top_p` and **no `num_ctx`**; the server's `OLLAMA_CONTEXT_LENGTH` is *reported* on the settings page but never applied per request. | UNVERIFIED whether current Ollama silently truncates an over-long prompt. If it does, a long forensic question over many versions is truncated with no disclosure — the exact defect class ADR-0392 closed for the question box, still open on the prompt. | `OPEN (verify against current Ollama docs first)` |
+| OR-11d | **An unanswered ask exports without its reason.** `_AskRecord` still stores only `answer=None`, so the Q&A Excel/Word export of a failed ask says nothing about why. | Cosmetic next to the above, but it re-creates the same "no diagnosis" gap in the exhibit. | `OPEN` |
+
 ### ⏳ PENDING OPERATOR VERIFICATION (the "what we still have left to verify" list)
 
 | # | What to verify | How | Outcome recorded where |
