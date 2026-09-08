@@ -17225,7 +17225,8 @@ shadows it on PATH).
   never asks whether the CONFIGURED model exists, so an Ollama that is up but has not pulled the
   model routes fine and 404s every generation. The note now re-probes the install list and prints
   the model, what IS installed, and `ollama pull <model>`.
-- **Red first, then teeth.** 20 new tests written against the pristine tree and observed to fail
+- **Red first, then teeth.** **21** new tests (14 web + 7 qa; the fourteenth was added BY the
+  battery below) written against the pristine tree and observed to fail
   (the web file on the absent `no_answer` key, the qa file on the absent API). Nine-mutation battery
   on fresh scratch copies: **8 RED / 1 GREEN** first time — the green was a finding about the TEST
   (the "never blames strict" check only walked the `ollama` branch), remedied by a census over every

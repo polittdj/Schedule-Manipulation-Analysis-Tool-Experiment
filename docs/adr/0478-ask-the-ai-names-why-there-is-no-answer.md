@@ -104,9 +104,9 @@ which is honest rather than confident.
 
 ## Evidence
 
-* Red first: `tests/web/test_ask_no_answer_reason.py` (13 tests) and
-  `tests/ai/test_qa_no_answer_reason.py` (7) were written against the pristine tree and observed
-  to fail — the web file on the absent `no_answer` key, the qa file on the absent API.
+* Red first: `tests/web/test_ask_no_answer_reason.py` (**14** tests — 13 written first, the
+  fourteenth added by the mutation battery below) and `tests/ai/test_qa_no_answer_reason.py`
+  (**7**), **21** in all, were written against the pristine tree and observed to fail — the web file on the absent `no_answer` key, the qa file on the absent API.
 * Teeth: a nine-mutation battery on fresh scratch copies (collapse every cause to the no-model
   note; drop the not-installed hint; report a refused generation as no model; restore the blanket
   sentence in `ask.js`; drop the payload key; empty the discard detail; leak "strict" into a
