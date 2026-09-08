@@ -1,24 +1,29 @@
 # Kickoff prompt — next session
 
-PR state (2026-09-08, after the R-55 session): **#649 … #653 are ALL MERGED** → `main` @
-**`9eeff406`** (#653's squash, ADR-0476 + ADR-0477, **v1.0.247**), whose tree is **byte-identical to
-the PR's final head `b09fba7e`** (`c5e429b09eb5e676cfe7563d8fb549b636a1fc59` on both) and which the
-operator merged 19 seconds after the LAST of its eight green checks (audited: `total_count = 8`, all
-`success`, zero pending). **Read `main`'s own runs for the squash FIRST — CI #1800 (34253938690) and
-installer-smoke #681 (34253938590)**, both started 16:54:51Z: a red cell on a tree identical to a
-green PR head is the runner's claim, so compare `git rev-parse <merge>^{tree}` against
-`git rev-parse <pr-head>^{tree}` before believing it. The branch
-`claude/polaris-audit-r55-semantics-2k82r8` was restarted on `origin/main` and carries only this
-docs-only merge record (its draft PR number is in the SESSION-LOG). Then **R-56**.
+PR state (2026-09-08, end of the ADR-0478 session): **#653 is MERGED** → `main` @ **`9eeff406`**
+(the R-55 / R-20 squash at v1.0.247; its tree was verified byte-identical to the PR's final head
+`b09fba7e`, and all EIGHT check runs on that head were `completed/success`). This session then
+branched `claude/polaris-audit-r55-r20-handoff-uoa34g` on `9eeff406` and shipped **ADR-0478** at
+**v1.0.248** — an operator-reported UI/API defect, not a §3 row: the Ask-the-AI panel reported five
+materially different failures with ONE payload and ONE (wrong-first) sentence. **Read that PR's
+verdict on its FINAL head first** — and read `main`'s own runs for #653's squash, CI **#1800**
+(34253938690) and installer-smoke **#681** (34253938590), which the last session started but did not
+live to read — and a red cell on a tree identical to a green PR head is the runner's claim, so
+compare `git rev-parse <merge>^{tree}` against `git rev-parse <pr-head>^{tree}` before believing
+it. Then take the next §3 row — **R-56**.
 
 Work the POLARIS² audit's plan-forward (Schedule-Manipulation-Analysis-Tool). Read
 `docs/STATE/HANDOFF.md` FIRST (auto-injected), then `docs/STATE/AUDIT-2026-08-27-REPORT.md` §3 — the
 roadmap by testimony tier, pinned by `tests/guards/test_audit_report_wp8.py` (every row priced or
 owned, tier order, a nine-figure census recomputed by method — re-measure, never edit by hand).
 QC-1/QC-2 bind every session (ADR-0393). `git fetch origin` before you branch, number an ADR, or
-commit. The container may have NO project install: `python3 -m pip install -e '.[dev,browser]'` and
-`pip install build`; the installer builder needs the MPXJ history (`git fetch --deepen=400` on a
-shallow clone).
+commit. The container may have NO project install, and **pip read-timed-out on it twice** —
+`uv pip install --python /usr/local/bin/python3 --system -e '.[dev]'` completed first try
+(add `build` the same way). The installer builder REFUSES a shallow clone: `git log -1 --
+tools/mpxj` resolves to the graft boundary. Deepening is one remedy; the cheap one is
+`git fetch --depth 1 origin <true last-touch sha>` then `SF_MPXJ_REF=<sha>` — the script verifies
+the tree is identical itself. As of v1.0.248 that sha is
+`42d92dc9acc98f7d87f19c82dc62be3e5d3c15ca` (tree `2001032378e5253edaecf0a8fe142bcbd54f666e`).
 
 ⇢ WHAT'S DONE — do not re-open. WP0–WP8 (ADR-0440..0472) · ADR-0473 (R-01, the multi-project Fuse
 oracle) · ADR-0474 (R-44 CLOSED: resource calendars + leveling delay in the base CPM, MS Project's
@@ -31,7 +36,13 @@ chips with live counts, a `cd-note` saying nothing is hidden); all three familie
 mock gives each; the REF column carries the ENGINE's `metric_id`. Refused and named: the tab-hiding,
 `⤓ EXCEL · ALL FAMILIES` (no covering export — ADR-0327), the mock's `INFO` status, its `01a`/`01b`
 split of DCMA-01, the Continue footer. **The design queue: 9 done, 21 artboards remain; /scorecards
-(`setScreen('sk')`) is next by cost.**
+(`setScreen('sk')`) is next by cost.** · **ADR-0476 (R-55 CLOSED)** · **ADR-0477 (R-20 / UI-03
+CLOSED)** · **ADR-0478 — `/api/ask` says WHY there is no written answer** (`NoAnswer` +
+`answer_question_detail` in `ai/qa.py`; `_no_answer_note` in `web/app.py`; `no_answer: {code,
+text}` on the payload; `ask.js` renders the server's sentence). Do NOT re-open: the panel's
+blanket sentence is pinned gone, and the primary answer's call site is
+`answer_question_detail` — a monkeypatch left on `answer_question` intercepts the cross-check
+SECOND model only.
 
 ⇢ NEXT — the report's §3 in order, one row per unit of work (red-first → mutation proofs by name →
 the full gate → an ADR → the state docs → a draft PR): **R-56** FIRST, and it is now far better

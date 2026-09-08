@@ -17219,3 +17219,44 @@ shadows it on PATH).
   correct final head (`b09fba7e`) it reported nothing about this PR. This is exactly why the steward
   rule says a PR's verdict is read on its FINAL head and why every wake re-reads the PR's own state
   rather than trusting the event's payload.
+## 2026-09-08 (b) — Ask-the-AI names WHY there is no answer (ADR-0478) — v1.0.248
+
+- **Branch** `claude/polaris-audit-r55-r20-handoff-uoa34g` (the harness's designated branch), on
+  `origin/main` @ `9eeff406`. Operator report: on `/integrity`, a 32-version workbook and a long
+  manipulation question about UID 152 answered *"No local model is active (or strict mode discarded
+  its answer)"* — with AI Settings showing a configured model.
+- **The root problem was measured, not reasoned.** `/api/ask` was driven end-to-end against a REAL
+  loopback fake-Ollama (`ThreadingHTTPServer` on 127.0.0.1) with 32 synthetic versions of golden
+  Project5 and the operator's verbatim question. Six worlds: healthy · model not installed
+  (`/api/generate` → 404) · server down (refused) · generation timed out · empty completion ·
+  strict-mode discard. **Five of the six returned a byte-identical payload** — `answer: null`,
+  `mode`, `second_answer: null`, `second_model: null`, `agreement: null`, `facts[]` — with **no key
+  distinguishing them**, so one hard-coded `ask.js` sentence had to cover all five. It leads with
+  the cause an operator looking at a configured model can see is false, and offers a strict-mode
+  discard **in ANNOTATE mode (the default), where `qa.answer_question` cannot discard at all**.
+- **ADR-0478.** `ai/qa.py`: `NoAnswer(code, detail)` + `answer_question_detail(...)` — codes
+  `no_model` / `generation_failed` / `empty_answer` / `discarded_unsourced`, the four things the qa
+  layer can OBSERVE; `answer_question` stays a two-tuple wrapper so its dozen call sites and their
+  tests are untouched. `web/app.py`: `_no_answer_note(cfg, why)` turns a code + the operator's
+  CONFIGURATION into one sentence carrying the next action, shipped as `no_answer: {code, text}`.
+  `detail` is local diagnostics only — `probe_error_text(exc)`, the same classifier `settings`
+  reports a dead server with, or the figures a discard tripped over. `static/ask.js` renders the
+  server's sentence and degrades to a usable line without one; the retired sentence is pinned gone.
+- **The 404 case is the one the old sentence was worst at.** `is_available()` probes `/api/tags` and
+  never asks whether the CONFIGURED model exists, so an Ollama that is up but has not pulled the
+  model routes fine and 404s every generation. The note now re-probes the install list and prints
+  the model, what IS installed, and `ollama pull <model>`.
+- **Red first, then teeth.** **21** new tests (14 web + 7 qa; the fourteenth was added BY the
+  battery below) written against the pristine tree and observed to fail
+  (the web file on the absent `no_answer` key, the qa file on the absent API). Nine-mutation battery
+  on fresh scratch copies: **8 RED / 1 GREEN** first time — the green was a finding about the TEST
+  (the "never blames strict" check only walked the `ollama` branch), remedied by a census over every
+  cause × every backend selection at the composer; **9/9 RED by name** after. Repo md5 verified
+  unchanged by the battery.
+- **Two existing tests re-aimed PER CALL SITE** (ADR-0390's rule): the primary answer moved to
+  `answer_question_detail`, so `test_unrestricted_ask_feeds_the_newest_versions_activity_table` and
+  `test_ask_response_skips_agreement_when_an_answer_is_empty` patched a name nothing calls any more.
+  The second patches **both** — the cross-check second model still calls `answer_question`.
+- **Gate.** ruff (whole tree) · `ruff format --check` · `mypy --strict` 163 files · bandit exit 0 ·
+  `node --check` · the full suite. Version 1.0.248; wheel + nine installers rebuilt after the last
+  source edit (`SF_MPXJ_REF` override required — this container is a shallow clone).

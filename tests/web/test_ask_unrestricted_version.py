@@ -69,14 +69,17 @@ def test_unrestricted_ask_feeds_the_newest_versions_activity_table(
     st: SessionState, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     captured: dict[str, str | None] = {}
-    original = app_mod.answer_question
+    original = app_mod.answer_question_detail
 
     def spy(backend, facts, question, *, mode="strict", data_block=None):  # type: ignore[no-untyped-def]
         captured["block"] = data_block
         return original(backend, facts, question, mode=mode, data_block=data_block)
 
-    # patched on web.app: that is the module whose code CALLS it (_ask_response)
-    monkeypatch.setattr(app_mod, "answer_question", spy)
+    # patched on web.app: that is the module whose code CALLS it (_ask_response). RE-AIMED per
+    # CALL SITE, not per name: the primary answer now goes through ``answer_question_detail``
+    # (which also reports WHY there is no answer), so a patch left on ``answer_question`` would
+    # go inert and this test would silently capture nothing.
+    monkeypatch.setattr(app_mod, "answer_question_detail", spy)
 
     client = TestClient(create_app(st))
     resp = client.post("/api/ask", data={"question": "Summarise the schedule."})

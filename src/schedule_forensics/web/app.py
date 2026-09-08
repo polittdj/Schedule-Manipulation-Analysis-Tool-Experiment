@@ -56,7 +56,12 @@ from schedule_forensics.ai.narrative import clean_polish, polish_prompt
 from schedule_forensics.ai.ollama_process import OllamaLauncher
 from schedule_forensics.ai.pair_facts import pairwise_comparison_facts
 from schedule_forensics.ai.qa import (
+    DISCARDED_UNSOURCED,
+    EMPTY_ANSWER,
+    GENERATION_FAILED,
+    NoAnswer,
     answer_question,
+    answer_question_detail,
     build_fact_sheet,
     build_workbook_fact_sheet,
     figure_agreement,
@@ -927,6 +932,139 @@ def _active_backend(state: SessionState) -> AIBackend:
         backend = _UseMarking(backend, hook, state.ai_config.model, state.ai_config.endpoint)
     state.backend_cache = (state.ai_config, now, backend)
     return backend
+
+
+def _probe_reason(probe: AIBackend) -> str | None:
+    """Why a constructed local backend is not answering, or ``None`` if it is.
+
+    ``unavailable_reason`` is on the concrete local backends, not on the ``AIBackend``
+    protocol; fall back to ``is_available`` for any other object (a test/cloud stand-in).
+    Mirrors ``settings._ai_status_note``'s probe, deliberately — one vocabulary, two pages.
+    """
+    reason_fn = getattr(probe, "unavailable_reason", None)
+    if callable(reason_fn):
+        text: str | None = reason_fn()
+        return text
+    return None if probe.is_available() else "not reachable"
+
+
+def _installed_models(cfg: AIConfig) -> tuple[str, ...]:
+    """The models this Ollama actually has, or ``()`` — diagnostics only, never fatal."""
+    probe = _ollama_or_none(cfg)
+    if probe is None:
+        return ()
+    try:
+        return probe.list_models()
+    except Exception:  # a failed list must never replace the real reason with an error
+        return ()
+
+
+def _no_model_note(cfg: AIConfig) -> str:
+    """Why routing fell closed to the offline Null backend — the settings-page diagnosis,
+    delivered at the place the operator actually hit the failure."""
+    if cfg.backend == "null":
+        return "AI answering is switched OFF in AI Settings (backend: none), so no model was asked."
+    if cfg.backend == "cloud":
+        return (
+            "Cloud AI is refused while this project is CLASSIFIED (Law 1), so routing fell closed "
+            "to the offline engine. Select a local model in AI Settings."
+        )
+    if cfg.backend == "gateway":
+        if not cfg.gateway_endpoint:
+            return "No approved gateway endpoint is selected in AI Settings, so nothing was asked."
+        if not cfg.gateway_approved:
+            return (
+                "The approved gateway is not armed - its approval acknowledgment is not recorded "
+                "in AI Settings - so routing fell closed to the offline engine."
+            )
+        probe = _gateway_or_none(cfg)
+        if probe is None:
+            return (
+                f"The configured gateway {cfg.gateway_endpoint} is not on the approved list, so "
+                "the tool refuses to send anything to it (Law 1)."
+            )
+        return (
+            f"The approved gateway {cfg.gateway_endpoint} did not answer: "
+            f"{_probe_reason(probe) or 'not reachable'}."
+        )
+    is_ollama = cfg.backend == "ollama"
+    label = "Ollama" if is_ollama else "the OpenAI-compatible server"
+    endpoint = cfg.endpoint if is_ollama else cfg.openai_endpoint
+    local = _ollama_or_none(cfg) if is_ollama else _openai_or_none(cfg)
+    if local is None:
+        return (
+            f"The configured endpoint {endpoint} is not a loopback address, so the tool refuses "
+            "to send schedule data to it (Law 1). Correct it in AI Settings."
+        )
+    reason = _probe_reason(local)
+    if reason is not None:
+        return (
+            f"No model answered - could not reach {label} at {endpoint}: {reason}. Start it (or "
+            "correct the port in AI Settings) and ask again."
+        )
+    return (
+        f"{label} at {endpoint} answered its availability probe, but no model was routed for this "
+        "question. Open AI Settings, confirm the backend, and ask again."
+    )
+
+
+def _generation_failed_note(cfg: AIConfig, detail: str) -> str:
+    """A generation the model server REFUSED or abandoned - never "no local model is active"."""
+    is_ollama = cfg.backend == "ollama"
+    label = "Ollama" if is_ollama else "the model server"
+    endpoint = cfg.endpoint if is_ollama else cfg.openai_endpoint
+    if is_ollama and "404" in detail and cfg.model:
+        # An Ollama that is UP answers /api/tags (so it routes) and 404s a generation whose model
+        # was never pulled. The availability probe cannot see this; the install list can.
+        installed = _installed_models(cfg)
+        if installed and not _model_installed(cfg.model, installed):
+            return (
+                f"{label} is reachable at {endpoint}, but the selected model '{cfg.model}' is not "
+                f"installed there (installed: {', '.join(installed)}). Pick an installed model in "
+                f"AI Settings, or run: ollama pull {cfg.model}"
+            )
+    if "timed out" in detail.lower() or "timeout" in detail.lower():
+        return (
+            f"The model at {endpoint} TIMED OUT - it did not finish within the "
+            f"{cfg.gen_timeout:g}s generation timeout, so the answer was abandoned. Raise the "
+            "generation timeout in AI Settings, "
+            "or choose a smaller/faster model - a long forensic question over many versions is "
+            "the slowest thing this tool asks of a local model."
+        )
+    return (
+        f"{label} at {endpoint} was reachable, but the generation itself failed: {detail}. "
+        "AI Settings shows its live status."
+    )
+
+
+def _no_answer_note(cfg: AIConfig, why: NoAnswer) -> str:
+    """The Ask panel's one-sentence WHY, plus the operator's next action (ADR-0478).
+
+    Composed on the SERVER because every actionable half of it is configuration - which
+    endpoint, which model, which timeout, which answer mode - and no client-side string can
+    know that. The panel previously carried ONE hard-coded sentence for five materially
+    different causes; it named "no local model is active" first (the cause an operator whose
+    AI Settings show a configured model can see is false), and offered a strict-mode discard
+    even in annotate/interpretive/unrestricted mode, where a discard cannot happen.
+
+    Local diagnostics only: an endpoint, a model name, a transport reason, and figures the
+    panel is already showing in the cited facts beside it. No schedule content is added.
+    """
+    if why.code == GENERATION_FAILED:
+        return _generation_failed_note(cfg, why.detail)
+    if why.code == EMPTY_ANSWER:
+        return (
+            "The local model ran but returned no text, so there was nothing to show - nothing was "
+            "discarded. Ask again, or select a different model in AI Settings."
+        )
+    if why.code == DISCARDED_UNSOURCED:
+        return (
+            f"STRICT answer mode discarded the model's answer: it contained {why.detail}. The "
+            "cited facts below are the engine's own and are unaffected. Set AI answer mode to "
+            '"annotate" in AI Settings to keep such an answer with those figures flagged '
+            "instead of dropped."
+        )
+    return _no_model_note(cfg)
 
 
 def _ai_translate(texts: list[str], lang: str, backend: AIBackend) -> dict[str, str]:
@@ -2447,7 +2585,9 @@ def create_app(
         engine compares, never a third model."""
         mode = st.ai_config.qa_mode
         backend = _active_backend(st)
-        answer, used = answer_question(backend, facts, text, mode=mode, data_block=data_block)
+        answer, used, why = answer_question_detail(
+            backend, facts, text, mode=mode, data_block=data_block
+        )
         second_answer: str | None = None
         second_model: str | None = None
         agreement: str | None = None
@@ -2477,7 +2617,14 @@ def create_app(
         )
         return JSONResponse(
             {
-                "answer": answer,  # null => no local model active / answer failed the gate
+                "answer": answer,  # null => see "no_answer" for WHICH of the five causes
+                # The diagnosis, not a guess: five materially different failures used to share
+                # one hard-coded panel sentence (ADR-0478). Null when an answer was produced.
+                "no_answer": (
+                    {"code": why.code, "text": _no_answer_note(st.ai_config, why)}
+                    if why is not None
+                    else None
+                ),
                 "mode": mode,
                 "second_answer": second_answer,
                 "second_model": second_model,

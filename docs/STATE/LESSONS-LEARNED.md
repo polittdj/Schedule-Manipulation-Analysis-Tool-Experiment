@@ -435,6 +435,49 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-08 (b) — a failure that cannot name itself is a failure the operator cannot fix
+
+**What happened.** The Ask panel told an operator "No local model is active" while their AI Settings
+showed a configured model. Driving `/api/ask` against a real loopback fake-Ollama showed why: five
+materially different failures — nothing routed, an unreachable server, a refused generation (HTTP
+404 because the selected model was never pulled), a timeout, an empty completion and a strict-mode
+discard — returned a **byte-identical payload**. The client had one `else` branch and had to guess.
+
+**The generalisable lesson.** *A boundary that collapses distinct causes into one value has thrown
+away a diagnosis the code already made.* Every one of those five returns had the reason in hand: the
+backend's own name, the caught exception, the gate's verdict. `return None` erased it. Two symptoms
+mark this class: (a) the single error string names more than one cause with "or"; (b) the string
+offers a cause the current configuration cannot produce (here, a strict-mode discard in annotate
+mode). Both were visible on the operator's screenshot before a line of code was read.
+
+**Second lesson — a written diagnosis on the wrong page is not a diagnosis.** `settings._ai_status_note`
+has said "could not reach Ollama at …" and "the selected model … isn't installed" for months. It was
+never reachable from the point of failure, and the operator hitting the Ask panel had no reason to
+go and look. Diagnosis belongs where the failure surfaces, not where the setting lives.
+
+**Third — an availability probe answers the question it asks, not the one you meant.**
+`OllamaBackend.is_available()` GETs `/api/tags`. It proves a SERVER is up; it says nothing about
+whether the CONFIGURED model exists. That gap is the whole 404 case, and it is why "the backend is
+available" and "the ask will work" were never the same claim.
+
+**Fourth — a green mutation is a finding about the test, again.** 8 RED / 1 GREEN on the first
+battery: the "no non-strict cause ever blames strict mode" check only ever walked the `ollama`
+branch, so the leak planted in the AI-switched-off sentence passed it. Sampled negatives do not
+prove a named positive is caught — the remedy was a census over every cause × every backend
+selection, straight at the composer.
+
+**Fifth — over-specify a census and it fails for the right reason at the wrong altitude.** The first
+version asserted "five causes ⇒ five distinct CODES". False by design: *AI switched off* and *server
+unreachable* are both `no_model`; they are separated by their SENTENCE. Assert the contract (five
+distinct sentences), let the code name the class.
+
+**Environment lesson (container).** `python -m pip install -e '.[dev]'` read-timed-out twice against
+`files.pythonhosted.org` while `curl` to pypi answered 200 in 0.08 s; `uv pip install --system`
+completed first try. And the installer build REFUSES a shallow clone (`git log -1 -- tools/mpxj`
+resolves to the graft boundary): the whole remedy is `git fetch --depth 1 origin <true last-touch
+sha>` + `SF_MPXJ_REF=<sha>` — the script verifies tree-identity itself, so the override is checked,
+not trusted.
+
 ### 2026-09-08 — A fixture whose progress data the engine could never read: 41 green tests over a contradiction
 
 **What happened.** ADR-0476 took the synthetic `clean_program` battery from 41 passing to 9 failing.
