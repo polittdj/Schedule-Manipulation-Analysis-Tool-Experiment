@@ -17197,3 +17197,25 @@ shadows it on PATH).
   `f3dfd32a`, and — a fact the kickoff did not carry — CI **#1797** (34189570581) `success` on
   **`260cd994`**, this session's actual base, finishing 05:46:12Z. The kickoff's staleness the operator
   flagged (it named `f3dfd32a` and omitted #652) is corrected in `NEXT-SESSION-PROMPT.md`.
+- **Follow-up (16:55Z) — #653 MERGED by the operator** (marked ready 16:54:47Z, merged 16:54:50Z):
+  `main` @ **`9eeff406`** (the squash), **tree-identical to the PR's final head `b09fba7e`** — both
+  read `c5e429b09eb5e676cfe7563d8fb549b636a1fc59`, so the eight-of-eight verdict transfers to the
+  squash. **Audited against the API, not assumed** (the question the operator raised on #651): all
+  **eight** check runs on `b09fba7e` were `completed`/`success`, `total_count = 8`, zero queued or
+  in-progress — `linux` 16:17:52Z · `cui-guard` 16:18:11Z · `windows` 16:21:44Z · `browser
+  (measured-box proof)` 16:34:22Z · `floor (declared minimum)` 16:37:33Z · `test (3.13)` 16:53:12Z ·
+  `test (3.11)` 16:54:26Z · `check` **16:54:31Z, the last to finish**. The merge landed **19 seconds**
+  after that, so nothing was started-and-bypassed, and the ready-for-review flip created no new check
+  run. `main`'s own post-merge confirmation runs: CI **#1800** (34253938690) and installer-smoke
+  **#681** (34253938590), both started 16:54:51Z — never a merge gate, and the next session's first
+  read. Branch restarted with `git fetch --prune origin && git remote set-head origin -a && git
+  checkout -B claude/polaris-audit-r55-semantics-2k82r8 origin/main`; the squash was never amended.
+  The 17:17Z self check-in was deleted and the session auto-unsubscribed. **No comment was ever
+  posted on #653** — no failure, no conflict, no review thread, nothing to stand down on.
+- **Follow-up (16:55Z) — a wake that was NOT a verdict, recorded because the trap is reusable.** A
+  `check_suite.completed` event arrived naming head **`10057b28`** — the head the docs-only follow-up
+  push had SUPERSEDED, and whose CI run **#1798** the concurrency group had already `cancelled`. Its
+  own text warns that cancelled suites are not covered and to verify the PR's state; read on the
+  correct final head (`b09fba7e`) it reported nothing about this PR. This is exactly why the steward
+  rule says a PR's verdict is read on its FINAL head and why every wake re-reads the PR's own state
+  rather than trusting the event's payload.
