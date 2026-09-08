@@ -1,13 +1,15 @@
 # Kickoff prompt — next session
 
-PR state (2026-09-08, end of the R-55 session): **#649, #650, #651 and #652 are ALL MERGED** → `main`
-@ **`260cd994`** (#652's squash, the docs-only merge record for ADR-0475 / v1.0.246). `main`'s own runs were
-VERIFIED GREEN this session against the API, not inherited: for #651's squash (`f3dfd32a`) CI
-**#1794** (34173243277) and installer-smoke **#678** (34173243278), and for **`260cd994` itself**
-CI **#1797** (34189570581, `success` 05:46:12Z) — the kickoff did not carry that last one. This session branched `claude/polaris-audit-r55-semantics-2k82r8` fresh on `260cd994`
-and shipped **ADR-0476 (R-55)** and **ADR-0477 (R-20 / UI-03)** at **v1.0.247**; its draft PR number and
-check verdicts are in the SESSION-LOG follow-up. **Read that PR's verdict on its FINAL head first**, then
-take the next §3 row — **R-56**.
+PR state (2026-09-08, after the R-55 session): **#649 … #653 are ALL MERGED** → `main` @
+**`9eeff406`** (#653's squash, ADR-0476 + ADR-0477, **v1.0.247**), whose tree is **byte-identical to
+the PR's final head `b09fba7e`** (`c5e429b09eb5e676cfe7563d8fb549b636a1fc59` on both) and which the
+operator merged 19 seconds after the LAST of its eight green checks (audited: `total_count = 8`, all
+`success`, zero pending). **Read `main`'s own runs for the squash FIRST — CI #1800 (34253938690) and
+installer-smoke #681 (34253938590)**, both started 16:54:51Z: a red cell on a tree identical to a
+green PR head is the runner's claim, so compare `git rev-parse <merge>^{tree}` against
+`git rev-parse <pr-head>^{tree}` before believing it. The branch
+`claude/polaris-audit-r55-semantics-2k82r8` was restarted on `origin/main` and carries only this
+docs-only merge record (its draft PR number is in the SESSION-LOG). Then **R-56**.
 
 Work the POLARIS² audit's plan-forward (Schedule-Manipulation-Analysis-Tool). Read
 `docs/STATE/HANDOFF.md` FIRST (auto-injected), then `docs/STATE/AUDIT-2026-08-27-REPORT.md` §3 — the

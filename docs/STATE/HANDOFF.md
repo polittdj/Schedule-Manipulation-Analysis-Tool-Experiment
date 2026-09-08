@@ -1,6 +1,24 @@
 # Handoff — 2026-09-08 (R-55 CLOSED: a completed activity occupies exactly its RECORDED window (ADR-0476) — updated3_24hr +17 d → −2 d, no completed activity anywhere in the corpus now scheduled past the date its file records, Project2/Project5 unmoved; plus R-20 / UI-03 CLOSED (ADR-0477) — every page stopped scrolling sideways; v1.0.247)
 
-> ## STATUS (current) — **Branch `claude/polaris-audit-r55-semantics-2k82r8` (the harness's designated branch), started FRESH on `origin/main` @ `260cd994` — verified identical at session start, nothing to restart, no PR open. Two units, both engine/UI-complete and both proven red-first. Highest ADR **0477**. Banner **v1.0.247** (wheel + nine installers rebuilt AFTER the last source edit). Statics on this tree: `ruff check .` + `ruff format --check .` (whole tree) · mypy --strict 163 files · bandit exit 0 · `node --check`. `tests/engine` + `tests/parity`: **1,213 passed**. `pytest -m parity`: **96 passed**. Full local gate on the settled tree: **5,095 passed, 5 skipped, 0 failed in 37:37** (the five are standing env skips); tree verified identical before and after. Draft PR **#653** (`10057b28`), eight checks apply (`installer/**` changed), subscribed. QC-1/QC-2 bind every session — ADR-0393, pinned by `tests/test_standing_rules.py`.**
+> ## STATUS (current) — **Branch `claude/polaris-audit-r55-semantics-2k82r8` (the harness's designated branch), started FRESH on `origin/main` @ `260cd994` — verified identical at session start, nothing to restart, no PR open. Two units, both engine/UI-complete and both proven red-first. Highest ADR **0477**. Banner **v1.0.247** (wheel + nine installers rebuilt AFTER the last source edit). Statics on this tree: `ruff check .` + `ruff format --check .` (whole tree) · mypy --strict 163 files · bandit exit 0 · `node --check`. `tests/engine` + `tests/parity`: **1,213 passed**. `pytest -m parity`: **96 passed**. Full local gate on the settled tree: **5,095 passed, 5 skipped, 0 failed in 37:37** (the five are standing env skips); tree verified identical before and after. PR **#653** MERGED — see the addendum. QC-1/QC-2 bind every session — ADR-0393, pinned by `tests/test_standing_rules.py`.**
+> **16:55Z addendum — #653 MERGED by the operator** (marked ready 16:54:47Z, merged 16:54:50Z):
+> `main` @ **`9eeff406`**, and its tree is **byte-identical to the PR's final head `b09fba7e`** —
+> `git rev-parse` reads `c5e429b09eb5e676cfe7563d8fb549b636a1fc59` on BOTH, so what landed is
+> byte-for-byte the tree the checks passed; a red cell on `main` for this tree would be the runner's
+> claim, not a defect. **Audited against the API rather than assumed: EIGHT of eight check runs on
+> `b09fba7e` were `completed`/`success`, `total_count = 8`, zero queued or in-progress** — linux
+> 16:17:52Z · cui-guard 16:18:11Z · windows 16:21:44Z · browser (measured-box proof) 16:34:22Z ·
+> floor (declared minimum) 16:37:33Z · test (3.13) 16:53:12Z · test (3.11) 16:54:26Z · **check
+> 16:54:31Z, the last to finish** — so the merge landed **19 seconds** after the final check went
+> green, not before it. `main`'s own runs for the squash are CI **#1800** (34253938690) and
+> installer-smoke **#681** (34253938590), both started 16:54:51Z — **read #1800's verdict FIRST next
+> session.** The branch was restarted on `origin/main` with `--prune` + `remote set-head` +
+> `checkout -B` (GitHub auto-deleted the merged head; the squash was never amended). This session was
+> auto-unsubscribed by the merge event and its 17:17Z check-in deleted. **No comment was ever posted
+> on #653** — no failure, no conflict, no review thread. One wake during the watch was a
+> `check_suite.completed` for the SUPERSEDED head `10057b28`, whose CI run #1798 the concurrency
+> group had cancelled: read on the correct final head it was not a verdict at all. This docs-only
+> merge record rides a NEW draft PR.
 >
 > ## R-55 → ADR-0476: a completed activity occupies exactly its recorded window
 > ADR-0391 floored a started activity at its `actual_start` and NAMED the half it left: a completed
