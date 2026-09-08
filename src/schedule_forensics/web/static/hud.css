@@ -40,6 +40,22 @@
   box-shadow:0 6px 22px rgba(0,0,0,.35);
   opacity:0;visibility:hidden;pointer-events:none;
   transition:opacity .1s linear,visibility 0s linear .1s}
+/* R-20 / UI-03 (ADR-0477). `visibility:hidden` hides a box but KEEPS IT IN LAYOUT, and this one
+   is up to 340px wide, `position:absolute; left:0` on a host that is often right-aligned — the
+   Reset-view button ending every `.viz-controls` row. A box whose right edge lands past the
+   viewport counts in the document's SCROLLABLE OVERFLOW even while invisible, so every page with
+   a hint host scrolled sideways at rest: measured `document.scrollingElement.scrollWidth` 1719 on
+   `/` and `/driving-path`, 1734 on `/evolution`, `/standards` and `/scorecards` at a 1440-px
+   viewport, against `innerWidth` 1440. Proven by experiment rather than by reading: injecting
+   `content:none` on this pseudo-element alone drops all five to exactly 1440.
+   Collapsing the RESTING box costs nothing — it is not painted — and the visible state is left
+   completely alone, so the fade and the `--sf-tip-delay` are byte-identical to before. Scoped
+   with `:not(:hover):not(:focus-visible)` rather than folded into the base rule precisely so the
+   shown bubble never reads these values; do NOT move them up into `[data-sf-hint]::after`.
+   Residual, measured and left: a bubble anchored near the right edge still widens the document
+   WHILE it is open. That needs edge-aware placement, not a size reset. */
+[data-sf-hint]:not(:hover):not(:focus-visible)::after{
+  max-width:0;padding-left:0;padding-right:0;border-width:0;overflow:hidden}
 [data-sf-hint]:hover::after,[data-sf-hint]:focus-visible::after{
   opacity:1;visibility:visible;
   transition:opacity .12s linear var(--sf-tip-delay),visibility 0s linear var(--sf-tip-delay)}

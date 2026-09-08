@@ -12,8 +12,17 @@ The pins below are floors measured on 2026-09-07 with the plan-aware engine; a r
 any of them fails by name. The residuals are named, not hidden: Hard_File's UID 14 (a 200 %
 booking on a 24-hour task calendar with a 16-hour crew) spans 40 h where the rule gives 24 h,
 so the three unprogressed / lightly progressed snapshots read one day early; updated3's
-six-day gap is progress semantics outside this ADR (completed activities scheduled by logic,
-UID 403's contoured assignment) — registered as its own roadmap row.
+remaining gap is UID 385 / 403's CONTOURED assignments (R-56), measured in ADR-0476: MS Project
+spreads UID 385's 5,664 minutes over ~17 working days (333 min/d) where the engine's booking
+rule gives ~6 (944 min/d), and the 45 activities downstream of the seven chain heads inherit it.
+
+ADR-0476 (R-55) closed the progress half and RE-MEASURED every row below. updated3's project-finish
+gap WIDENED, 6 d to 13 d, and that is the point: the pre-ADR-0476 engine pushed completed activities
+past their recorded finishes (31 of them engine-LATE on this file, worst +38 d), which masked the
+contour understatement underneath. Every per-activity measure improved or held — updated3
+finish-within-a-day 42 -> 60, stored slack 6 -> 9, Critical 96 -> 103; updated2 87 -> 93; LTF
+1558 -> 1569; LTF2 1563 -> 1589 and slack 655 -> 668 — and Project2 / Project5 did not move at all.
+Closing R-56 is what tightens the 13 back down; nothing else in this file may loosen.
 
 Red first (pre-ADR-0474 engine): Hard_File finish +42.0 d, critical agreement 54 / 110;
 Project2 finish 2027-08-30 vs stored 09-14, stored slack exact on 7 / 65.
@@ -84,8 +93,14 @@ _HARD_FILE = [
     # rel, stored finish, |finish gap| <= days, finish-within-a-day floor, critical floor
     ("fuse_hardfile/Hard_File.mspdi.xml.gz", dt.datetime(2026, 11, 5, 12, 0), 1, 92, 108),
     ("fuse_hardfile/Hard_File_updated.mspdi.xml.gz", dt.datetime(2026, 11, 5, 12, 0), 1, 100, 110),
-    ("fuse_hardfile/Hard_File_updated2.mspdi.xml.gz", dt.datetime(2026, 11, 6, 17, 0), 1, 87, 80),
-    ("fuse_hardfile/Hard_File_updated3.mspdi.xml.gz", dt.datetime(2026, 12, 12, 17, 0), 6, 42, 96),
+    ("fuse_hardfile/Hard_File_updated2.mspdi.xml.gz", dt.datetime(2026, 11, 6, 17, 0), 1, 93, 80),
+    (
+        "fuse_hardfile/Hard_File_updated3.mspdi.xml.gz",
+        dt.datetime(2026, 12, 12, 17, 0),
+        13,
+        60,
+        103,
+    ),
 ]
 
 
@@ -156,8 +171,8 @@ def test_leveled_goldens_reproduce_the_stored_finish_and_every_stored_slack(
 # --- the Large Test Files: eighteen crew calendars that differ only by holidays, unmoved -------
 
 _LARGE = [
-    ("fuse_ltf/Large_Test_File.mspdi.xml.gz", 1723, 1558, 842, 1022, 1682),
-    ("fuse_ltf/Large_Test_File2.mspdi.xml.gz", 1722, 1563, 655, 936, 1686),
+    ("fuse_ltf/Large_Test_File.mspdi.xml.gz", 1723, 1569, 842, 1022, 1682),
+    ("fuse_ltf/Large_Test_File2.mspdi.xml.gz", 1722, 1589, 668, 936, 1686),
 ]
 
 

@@ -70,9 +70,26 @@ N = 24
 
 def clean_program() -> Schedule:
     """A 24-leaf serial program + finish milestone: fully linked, baselined, resource- and
-    cost-loaded, progressed consistently to the data date, no constraints, modest durations.
+    cost-loaded, progressed to the data date, no constraints, modest durations.
     Measured clean: every DCMA check with a population PASSES (the one terminal open end is
-    1/22 = 4.5%, inside DCMA01's 5% tolerance — that is how real programs pass it too)."""
+    1/22 = 4.5%, inside DCMA01's 5% tolerance — that is how real programs pass it too).
+
+    **Its progress is NOT logic-consistent, and until ADR-0476 no engine could tell.** The three
+    completed leaves each record an 8-working-day window against a declared 10-day duration (they
+    ran fast), and each STARTS BEFORE ITS PREDECESSOR FINISHED — the 7-calendar-day stagger is 5
+    working days against 10-day tasks. The pre-ADR-0476 engine ignored ``actual_finish`` entirely
+    and its actual-start FLOOR never bound (an out-of-sequence start is EARLIER than logic), so
+    this fixture's progress data was inert and the contradiction invisible. ADR-0476 pins a
+    completed activity to its recorded window, so the fixture now schedules the way its own record
+    says it ran: the completed prefix overlaps, the finish lands 2026-11-17 rather than 2026-12-04,
+    and the predecessors of the out-of-sequence merge point carry NEGATIVE float — the correct
+    retained-logic report of out-of-sequence progress. Deliberately left as it is: the numbers
+    below are re-measured rather than the fixture redesigned, because every redesign tried moved
+    the completed work and cascaded into the EVM and forecast pins (measured: 16 and 7 failures
+    against this version's 3). On the SIX real progressed goldens the same engine introduces ZERO
+    new negative float — 269 engine-negative against MS Project's own 423, sign agreement 4,369,
+    identical before and after — so this is a property of this synthetic configuration, not of the
+    rule."""
     tasks: list[Task] = []
     rels: list[Relationship] = []
     for i in range(1, N + 1):
@@ -317,7 +334,12 @@ SEEDS: tuple[tuple[str, Callable[[Schedule], Schedule], frozenset[str]], ...] = 
     ("DCMA06", _seed_high_float, frozenset()),
     ("DCMA07", _seed_negative_float, frozenset({"DCMA05", "DCMA12", "DCMA13"})),
     ("DCMA08", _seed_high_duration, frozenset()),
-    ("DCMA09", _seed_invalid_dates, frozenset({"DCMA11"})),
+    # DCMA13 joined the collateral under ADR-0476 and it is the SAME physical defect: the seed
+    # moves a COMPLETED activity's actual finish ten days past the data date, and a recorded
+    # window is now scheduling input, so the bad date really does push the controlling path and
+    # move the CPLI. Before ADR-0476 the seeded date was inert on the network — the check could
+    # not see the very thing the seed exists to inject.
+    ("DCMA09", _seed_invalid_dates, frozenset({"DCMA11", "DCMA13"})),
     ("DCMA10", _seed_missing_resources, frozenset()),
     ("DCMA11", _seed_missed_task, frozenset()),
     ("DCMA12", _seed_cp_broken, frozenset()),
@@ -826,7 +848,12 @@ def test_schedule_quality_pair_on_the_wide_program() -> None:
     assert sq["insufficient_detail"].status is CheckStatus.PASS
     assert sq["insufficient_detail"].count == 0
     assert sq["number_of_lags"].status is CheckStatus.PASS and sq["number_of_lags"].count == 0
-    assert (sq["hard_constraints"].count, sq["negative_float"].count) == (0, 0)
+    # ADR-0476: the 16 are UIDs 200-215, the merge point's predecessors. UID 2 is COMPLETE and
+    # its record says it began before UID 1 finished, so it is pinned there and every predecessor
+    # of that merge is late against the declared logic by 6 working days. Negative float is the
+    # correct retained-logic report of out-of-sequence progress, and MS Project reports MORE of it
+    # than this engine does on every real golden (423 against 269) — see clean_program's docstring.
+    assert (sq["hard_constraints"].count, sq["negative_float"].count) == (0, 16)
     assert sq["merge_hotspot"].offender_uids == (2,), "the 17-predecessor merge point"
     assert (sq["logic_density"].count, sq["logic_density"].value) == (56, 2.73)
 
@@ -861,12 +888,18 @@ def test_forecast_methods_pair() -> None:
     """PASS half: all four methods answer on the dated program, the performance methods land
     EARLIER than the logic methods (execution ran twice plan speed), and the logic/stored pair
     agree to two days. FAIL half: un-finishing tasks 2/3 pushes the throughput and
-    earned-schedule answers out by over a year while the pure-logic and stored answers stand
-    still — the divergence IS the finding. Missing inputs answer None with an honest basis."""
+    earned-schedule answers out by over a year while the stored answer stands still and the
+    pure-logic one barely moves — the divergence IS the finding. Missing inputs answer None with
+    an honest basis."""
     d = _dated(clean_program())
     fs = compute_finish_forecasts(d)
     by = {f.method_id: f.finish for f in fs.forecasts}
-    assert by["cpm"] == dt.date(2026, 12, 4)
+    # ADR-0476: 2026-12-04 was the pre-recorded-window answer, which scheduled the three
+    # completed leaves by logic and ignored the overlapping windows their own record carries.
+    # Reading the record compresses the completed prefix; the stored-date leg below is the
+    # control and does NOT move, and the claim this test exists for — the performance methods
+    # landing earlier than the logic methods — still holds with room to spare.
+    assert by["cpm"] == dt.date(2026, 11, 17)
     assert by["as_scheduled"] == dt.date(2026, 12, 6)
     assert by["rate"] == dt.date(2026, 8, 26)
     assert by["earned_schedule"] == dt.date(2026, 8, 14)
@@ -880,7 +913,13 @@ def test_forecast_methods_pair() -> None:
         2027, 11, 5
     )
     assert slow.spi_t == 0.5
-    assert slow_by["cpm"] == by["cpm"] and slow_by["as_scheduled"] == by["as_scheduled"]
+    # ADR-0476: un-finishing 2 and 3 takes their windows OUT of the record, so the pure-logic
+    # leg legitimately moves — it stood still before only because the engine was blind to
+    # completion. The stored-date leg is the control and still does not move, and the divergence
+    # this test exists to demonstrate is untouched: 14 days against the throughput leg's year.
+    assert slow_by["as_scheduled"] == by["as_scheduled"]
+    assert slow_by["cpm"] == dt.date(2026, 12, 1)
+    assert (slow_by["rate"] - by["rate"]).days > 300 > (slow_by["cpm"] - by["cpm"]).days
 
     no_dd = compute_finish_forecasts(d.model_copy(update={"status_date": None}))
     for f in no_dd.forecasts:

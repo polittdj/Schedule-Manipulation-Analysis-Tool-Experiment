@@ -75,11 +75,24 @@ Scope of this engine (documented, not silently limited — Law 2):
   task is scheduled at its actual start, not at its constraint date — MS Project's own rule
   (its stored Start equals the Actual Start on every started task in the corpus, constraint
   or not); before ADR-0467 the pin branch skipped the floor and understated such a finish.
-  **Still not anchored:** a completed task's actual FINISH. Its start is now honored,
-  but its finish is still ``start + duration`` rather than the stored ``actual_finish``,
-  so a completed activity that ran longer or shorter than planned still computes a
-  finish that differs from the record — which is why consumers needing real per-task
-  dates continue to read the stored ones first (``driving_slack.py``).
+* **A COMPLETED activity occupies exactly its RECORDED WINDOW** (ADR-0476, closing the
+  half ADR-0391 named and left): 100% complete with both actuals present, its early start
+  is PINNED at ``actual_start`` and its early finish PINNED at ``actual_finish``. Completed
+  work is history, not a forecast — ``start + duration`` is a *prediction of* a span the
+  file already measured, and predicting a fact is how a completed activity came to land 36
+  days after the date its own file says it finished. Measured on the corpus that licenses
+  the rule: MS Project's stored ``Finish`` equals ``ActualFinish`` on **2,289 of 2,289**
+  completed activities across six progressed goldens, and stored ``Start`` equals
+  ``ActualStart`` on **2,601 of 2,601** started ones, so the pin reproduces the reference
+  tool's own dates by construction rather than by fitting. Pinned UniqueIDs are reported on
+  :attr:`CPMResult.actual_finish_driven`, the sibling of ``actual_start_driven``.
+  **Deliberately a FLOOR, not a pin, for work still IN PROGRESS:** its start is recorded but
+  its finish is a forecast, and pinning an out-of-sequence in-progress start lets the
+  network pull EARLIER — measured at **136 days** on Large_Test_File UID 1489 (95% complete)
+  when the pin was applied to every started task. Understating a slip is the one direction
+  a forensic delay tool must never be wrong in (Law 2), so in-progress work keeps ADR-0391's
+  floor. The two halves must also ship TOGETHER: pinning a completed start while leaving its
+  finish at ``start + duration`` moved Large_Test_File UID 7113 from exact to 85 days early.
 * **Refused** (raises :class:`CPMError` rather than emit a silently-wrong schedule —
   Law 2): ``ALAP``. Its as-late-as-possible semantics are backward-pass-driven and
   interact subtly with float; it does not appear in the parity schedules and is out of
@@ -179,6 +192,12 @@ class CPMResult:
     #: concern, and a recorded actual is evidence of what happened, not an unsupported date.
     #: This is the disclosure surface for "the schedule is anchored to reported progress".
     actual_start_driven: tuple[int, ...] = ()
+    #: UniqueIDs whose early FINISH is their RECORDED ``actual_finish`` because the activity is
+    #: complete (ADR-0476) — a transcribed measurement rather than a computed forecast. The
+    #: sibling of :attr:`actual_start_driven`, and disclosed separately for the same reason:
+    #: neither is an unsupported date, and merging either into ``date_driven`` would emit a
+    #: false manipulation signal on every progressed schedule.
+    actual_finish_driven: tuple[int, ...] = ()
     #: UniqueIDs whose early start carries MS Project's stored resource-LEVELING DELAY
     #: (ADR-0474): elapsed time the reference tool itself adds before the task may start.
     #: Reported separately — a stored scheduling input, neither an unsupported date
@@ -1343,6 +1362,47 @@ def _actual_start_bounds(schedule: Schedule, tasks: list[Task]) -> dict[int, int
     return floor
 
 
+def is_recorded_complete(task: Task) -> bool:
+    """Is this activity's whole window a matter of RECORD (ADR-0476)?
+
+    100% complete **and** carrying both actuals. All three are required: the percentage alone
+    is a claim, and an activity reported complete with no ``ActualFinish`` has nothing to be
+    pinned to. Tasks failing this keep ADR-0391's actual-start FLOOR and a computed finish.
+    """
+    return (
+        task.percent_complete >= 100.0
+        and task.actual_start is not None
+        and task.actual_finish is not None
+    )
+
+
+def _actual_finish_bounds(schedule: Schedule, tasks: list[Task]) -> dict[int, int]:
+    """Early-FINISH PINS from a COMPLETED activity's recorded ``actual_finish`` (ADR-0476).
+
+    The fourth and last member of the stored-date family, and the only one that is a **pin in
+    both directions**: :func:`_actual_start_bounds` may only push a task later, this one places
+    a finished activity exactly where the file says it finished — earlier or later than logic.
+    That is not a licence the others have, and it is granted for one reason: a completed
+    activity's dates are not a schedule, they are a measurement. Its span is
+    ``actual_finish - actual_start``, which is what the work *took*; ``duration_minutes`` is
+    what it was *expected* to take, and the two differ on any activity that ran long or short.
+
+    Applies only where :func:`is_recorded_complete` holds. Offsets clamp at the project start.
+    An ``actual_finish`` at a day boundary or on a non-working instant cannot be represented
+    exactly on the working-minute axis and lands on the previous working moment — a residual
+    this pin exposes rather than creates, measured and named in ADR-0476.
+    """
+    pin: dict[int, int] = {}
+    for task in tasks:
+        finish = task.actual_finish  # bound locally: the narrowing must survive ``python -O``
+        if finish is None or not is_recorded_complete(task):
+            continue
+        pin[task.unique_id] = max(
+            datetime_to_offset(schedule.project_start, finish, schedule.calendar), 0
+        )
+    return pin
+
+
 def _resume_bounds(
     schedule: Schedule, tasks: list[Task], duration_overrides: Mapping[int, int] | None
 ) -> dict[int, int]:
@@ -1407,6 +1467,7 @@ class _Network(NamedTuple):
     stored_pin: dict[int, int]
     stored_floor: dict[int, int]
     actual_floor: dict[int, int]
+    actual_finish_pin: dict[int, int]
 
 
 _NETWORKS: dict[int, tuple[weakref.ref[Schedule], _Network]] = {}
@@ -1455,6 +1516,7 @@ def _network(schedule: Schedule) -> _Network:
         stored_pin,
         stored_floor,
         _actual_start_bounds(schedule, tasks),
+        _actual_finish_bounds(schedule, tasks),
     )
     _NETWORKS[key] = (weakref.ref(schedule), made)
     weakref.finalize(schedule, _NETWORKS.pop, key, None)
@@ -1502,6 +1564,7 @@ def compute_cpm(
     # stored starts honored for unstarted manual / logic-unbound tasks — ADR-0034) ----
     stored_pin, stored_floor = net.stored_pin, net.stored_floor
     actual_floor = net.actual_floor
+    actual_finish_pin = net.actual_finish_pin
     resume_ef_floor = _resume_bounds(schedule, tasks, duration_overrides)
     # Tasks executing on their OWN calendar(s) — a materially different task calendar, an
     # elapsed duration (== the 24/7 calendar), a work resource on another calendar, or a
@@ -1525,6 +1588,10 @@ def compute_cpm(
     #: analyst to tie the activity into the network, which would be a false signal about work
     #: that has demonstrably already started.
     actual_driven: list[int] = []
+    #: UIDs whose early FINISH was placed at their RECORDED actual finish because the activity
+    #: is complete (ADR-0476). The sibling of ``actual_driven``: a transcribed measurement, not
+    #: a computed forecast, and disclosed as such.
+    actual_finish_driven: list[int] = []
     #: UIDs whose early start carries the stored leveling delay (ADR-0474).
     leveling_driven: list[int] = []
 
@@ -1611,10 +1678,19 @@ def compute_cpm(
             # byte-identical for them.
             if task.actual_start is not None:
                 started_wall = _plan_snap(max(task.actual_start, ps), plan, tod0)
-                if started_wall > es_w:
+                # a completed activity is PINNED at its recorded start (its whole window is a
+                # measurement — ADR-0476); anything still running keeps ADR-0391's FLOOR
+                if started_wall > es_w or (started_wall != es_w and tid in actual_finish_pin):
                     es_w = started_wall
                     actual_driven.append(tid)
             ef_w = _plan_finish(es_w, plan, tod0)
+            if tid in actual_finish_pin and task.actual_finish is not None:
+                # completed: the finish is the RECORD, not ``start + duration`` (ADR-0476).
+                # ``max`` keeps the window ordered when the start snapped past the raw instant.
+                recorded_w = max(task.actual_finish, es_w)
+                if recorded_w != ef_w:
+                    actual_finish_driven.append(tid)
+                ef_w = recorded_w
             # ADR-0309 resume floor, on the task's own calendar(s) from the raw stored dates
             if task.resume is not None and task.stop is not None and task.resume > task.stop:
                 ov = duration_overrides or {}
@@ -1655,17 +1731,29 @@ def compute_cpm(
         # constraint pin included (CPM-03, ADR-0467; the pin's logic-vs-constraint violation is
         # measured above, before the floor)
         started_off = actual_floor.get(tid)
-        if started_off is not None and started_off > es:
+        # completed → PIN at the recorded start; still running → ADR-0391's FLOOR (ADR-0476)
+        if started_off is not None and (
+            started_off > es or (started_off != es and tid in actual_finish_pin)
+        ):
             es = started_off
             actual_driven.append(tid)
         early_start[tid] = es
         ef = es + dur_s
         # in-progress work MS Project itself rescheduled: its remaining duration runs from the
         # stored Resume, so the finish floors there (ADR-0309). Logic may still push it later.
-        resume_ef = resume_ef_floor.get(tid)
-        if resume_ef is not None and resume_ef > ef:
-            ef = resume_ef
-            date_driven.append(tid)
+        finished_off = actual_finish_pin.get(tid)
+        if finished_off is not None:
+            # completed work sits at its RECORDED finish (ADR-0476); the ADR-0309 resume floor
+            # is a rule about REMAINING work and cannot apply to an activity that has none
+            recorded = max(finished_off, es)
+            if recorded != ef:
+                actual_finish_driven.append(tid)
+            ef = recorded
+        else:
+            resume_ef = resume_ef_floor.get(tid)
+            if resume_ef is not None and resume_ef > ef:
+                ef = resume_ef
+                date_driven.append(tid)
         early_finish[tid] = ef
 
     network_finish = max(early_finish.values(), default=0)
@@ -1724,7 +1812,15 @@ def compute_cpm(
     )
 
     for tid in reversed(order):
-        dur_p = duration[tid]
+        # ADR-0476: the backward pass must retreat by the SAME span the forward pass PLACED. A
+        # recorded-complete activity occupies the window its file records, which is what the work
+        # TOOK; ``duration_minutes`` is what it was expected to take, and on any activity that ran
+        # long or short the two differ. Retreating by the planned duration makes ``LS - ES`` and
+        # ``LF - EF`` disagree, and ``min()`` of the two then reports SPURIOUS NEGATIVE FLOAT on
+        # work that is already finished — measured at -13 working days on a completed activity,
+        # which also drags it onto the critical path and fails DCMA-12/13. Float in the past is
+        # not a forecast; it must at least be self-consistent.
+        dur_p = early_finish[tid] - early_start[tid] if tid in actual_finish_pin else duration[tid]
         if tid in exec_plan:
             plan, cal_t = exec_plan[tid]
             task = task_by_id[tid]
@@ -1752,7 +1848,16 @@ def compute_cpm(
             # finish slack, both measured on the task's slack axis (ADR-0474 — on a resource
             # calendar the two differ, and the stored slack is their minimum)
             lf_w = _snap_back_to_working(min(finish_needs), plan[0][0], tod0)
-            ls_w = _plan_retreat(lf_w, plan, tod0)
+            if tid in actual_finish_pin:
+                # the recorded span, on the task's own axis (ADR-0476) — never the plan's legs
+                ls_w = _retreat_wall(
+                    lf_w,
+                    _wall_minutes_between(es_wall[tid], ef_wall[tid], cal_t, tod0),
+                    cal_t,
+                    tod0,
+                )
+            else:
+                ls_w = _plan_retreat(lf_w, plan, tod0)
             if start_needs and min(start_needs) < ls_w:
                 ls_w = min(start_needs)
                 lf_w = min(lf_w, _plan_finish(ls_w, plan, tod0))
@@ -1861,6 +1966,7 @@ def compute_cpm(
         critical_path=critical_path,
         date_driven=tuple(sorted(date_driven)),
         actual_start_driven=tuple(sorted(actual_driven)),
+        actual_finish_driven=tuple(sorted(actual_finish_driven)),
         leveling_driven=tuple(sorted(leveling_driven)),
         project_finish_wall=target_wall if required_finish_offset is None else None,
     )
