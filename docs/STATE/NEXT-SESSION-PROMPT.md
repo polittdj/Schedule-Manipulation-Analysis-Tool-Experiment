@@ -1,10 +1,24 @@
 # Kickoff prompt — next session
 
-PR state (2026-09-08, end of the OR-11c session): **#656 is MERGED** → `main` @ **`3b2604e`**
-(ADR-0479, v1.0.249), tree verified byte-identical to the head its eight checks passed on
-(`a398b96334517824e18d505c35eb1485c2130a96` on both). This session shipped **ADR-0480 (OR-11c)** at
-**v1.0.250** on the same designated branch, restarted on `3b2604e`. **Read that PR's verdict on its
-FINAL head first**, then the operator queue (OR-11e / OR-11b / OR-11d) before the audit rows.
+PR state (2026-09-09): **#655, #656 and #657 are ALL MERGED** → `main` @ **`872aa7e`** (ADR-0480,
+**v1.0.250**). Every one was tree-verified against the head its eight checks passed on — #657's is
+`dd5bcc009ddd0676891fe2a78c2106ea77e20b7f` on both the squash and `ecd5f1c`. The branch
+`claude/polaris-audit-r55-r20-handoff-uoa34g` was restarted on `872aa7e` and carries only the
+docs-only merge record; its draft PR number is in the SESSION-LOG. **Read `main`'s own post-merge
+runs for the `872aa7e` squash FIRST** — a red cell on a tree identical to a green PR head is the
+runner's claim, so compare `git rev-parse <merge>^{tree}` against `git rev-parse <pr-head>^{tree}`
+before believing it.
+
+**Then take OR-11e** — the operator's queue comes before the audit rows this arc. Three operator
+units shipped back-to-back (ADR-0478/0479/0480) and OR-11e is the one that FIXES what 0480 only
+measures: the tool detects a truncated prompt but still never sends `num_ctx`, so only the operator
+can widen the window. It must ship with the VRAM cost stated in the form — ollama/ollama#14073
+records a 52 GB machine going unresponsive under a large default, which is exactly why ADR-0480
+refused to auto-raise it.
+
+**Heads-up on review cover:** `chatgpt-codex-connector[bot]` reported EXHAUSTED Codex review quota
+on #655, #656 AND #657 — three merges with no automated review performed. Until that is restored,
+the mutation battery and the full gate are the only review this repo is actually getting.
 
 Work the POLARIS² audit's plan-forward (Schedule-Manipulation-Analysis-Tool). Read
 `docs/STATE/HANDOFF.md` FIRST (auto-injected), then `docs/STATE/AUDIT-2026-08-27-REPORT.md` §3 — the

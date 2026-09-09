@@ -17326,3 +17326,27 @@ shadows it on PATH).
   tests absent from the lean sandbox; all named ones pass on the real tree.
 - **Gate.** ruff (whole tree) · `ruff format --check` · `mypy --strict` 163 files · bandit exit 0 ·
   `node --check` · the full suite · `-m parity`. v1.0.250; wheel + nine installers rebuilt.
+
+## 2026-09-09 — session close: #655, #656 and #657 all merged; three operator units in one arc
+
+- **Follow-up to the (b)/(c)/(d) entries.** All three PRs merged by the operator, each verified
+  tree-identical to the head its checks passed on, by `git rev-parse`, never assumed:
+  #655 → `340b025` (`11e6507…`) · #656 → `3b2604e` (`a398b96…`) · #657 → `872aa7e`
+  (`dd5bcc0…`). #657's eight check runs on `ecd5f1c` were all `completed`/`success`,
+  `total_count = 8`, zero pending, `check` last at 00:16:44Z. No comment was posted on any of them.
+- **A finding worth carrying forward: the automated reviewer reviewed nothing.**
+  `chatgpt-codex-connector[bot]` posted "You have reached your Codex usage limits for code reviews"
+  on #655, #656 AND #657 — three consecutive merges with no automated review actually performed.
+  Not a defect in the diffs, but it means the mutation batteries and the full gate were the ONLY
+  review these units received. Recorded so nobody reads three quiet PRs as three clean reviews.
+- **The arc in one line each.** ADR-0478: five distinct ask failures stopped sharing one payload
+  and one (wrong-first) sentence. ADR-0479: the driving path to a focus UID is computed for EVERY
+  loaded version — 1 of 32 → 32 of 32 on both Ask surfaces. ADR-0480: an answer built on a prompt
+  the model only partly read discloses it, measured from the server's own `prompt_eval_count`.
+- **Three mutation batteries, three greens found in MY OWN tests** (M7, N6, C8+C9) — the recurring
+  shape is an assertion aimed at a sentence's WORDING or at a name's PRESENCE rather than at a
+  measured VALUE or an executed BRANCH, and a test that never installs the wrapper production
+  installs. All remedied; the batteries closed 9/9, 12/12 and 10/10 RED by name.
+- **Branch restarted on `872aa7e`** with `--prune` + `remote set-head` + `checkout -B`; no squash
+  was ever amended. Session context reached ~86% of the assumed wall, so this close is deliberate
+  rather than forced: the next session starts fresh on OR-11e.
