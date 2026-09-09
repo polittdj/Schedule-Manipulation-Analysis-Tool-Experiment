@@ -3,8 +3,7 @@
 PR state (2026-09-09): **#658 MERGED** → `main` @ **`46c23e8a`** (it landed AFTER the last handoff
 was written, which is why that handoff says `872aa7e`; check `git log origin/main` before trusting
 any inherited sha). This session opened a draft PR for
-`claude/polaris-audit-plan-forward-41qww9` carrying **ADR-0481 / OR-11e, v1.0.251** — its number is
-in the SESSION-LOG. **Read that PR's own checks on its FINAL head before anything else**, and if a
+`claude/polaris-audit-plan-forward-41qww9` carrying **ADR-0481 / OR-11e, v1.0.251**: **#659**. **Read that PR's own checks on its FINAL head before anything else**, and if a
 cell on `main` is red for a tree identical to a green PR head, that is the runner's claim: compare
 `git rev-parse <merge>^{tree}` against `git rev-parse <pr-head>^{tree}` before believing it.
 

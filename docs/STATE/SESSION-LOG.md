@@ -17376,6 +17376,7 @@ shadows it on PATH).
   started after that. The shallow clone was **deepened** (cumulative `60+200+400` on `origin main`,
   742 commits) until `git log -1 -- tools/mpxj` resolved to the true `42d92dc9…` — no
   `SF_MPXJ_REF`, no new graft artifact.
+- **Draft PR [#659](https://github.com/polittdj/Schedule-Manipulation-Analysis-Tool-Experiment/pull/659)** opened on `claude/polaris-audit-plan-forward-41qww9` (operator merges; never marked ready here).
 - **Still owed and not delivered:** the design page (`/scorecards`, `setScreen('sk')`).
 - **Review cover still absent** — Codex quota exhausted on #655/#656/#657; the mutation battery
   and the full gate remain the only review this repo receives.
