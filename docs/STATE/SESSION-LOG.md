@@ -17301,3 +17301,28 @@ shadows it on PATH).
 - **Gate.** ruff (whole tree) · `ruff format --check` · `mypy --strict` 163 files · bandit exit 0 ·
   `node --check` · the full suite · `-m parity`. Version 1.0.249; wheel + nine installers rebuilt
   after the last source edit.
+
+## 2026-09-08 (d) — OR-11c CLOSED (ADR-0480): an answer formed on a truncated prompt discloses it — v1.0.250
+
+- **Branch** `claude/polaris-audit-r55-r20-handoff-uoa34g` on `origin/main` @ `3b2604e` (#656's
+  squash, tree verified byte-identical to the head its eight checks passed on). Operator: "Do OR-11c".
+- **The UNVERIFIED was resolved from primary sources BEFORE any design.** ollama `docs/api.md`:
+  `/api/generate` with `stream:false` returns `prompt_eval_count`. ollama/ollama#14073: default
+  context is VRAM-tiered and moved in v0.15.5 (`<24 GiB` 4,096 · `24-48 GiB` 32,768 · `>=48 GiB`
+  262,144), and a 52 GB machine goes unresponsive spilling to CPU on the larger default. The exact
+  truncation semantics are STILL not verbatim-confirmed, so the design does not rest on them.
+- **ADR-0480.** `GenerationStats` + `truncation_warning` in `ai/ollama.py`; `OllamaBackend.last_stats`
+  captured per generation and replaced each time; `evidence_warning` on the ask payload beside an
+  answer that arrived; `ask.js` renders it ABOVE the answer; `_UseMarking` forwards `last_stats`.
+  ONE-SIDED by construction (`MAX_CHARS_PER_TOKEN = 6`, generous): silence means "no evidence of
+  truncation", never "verified complete". No `num_ctx` is sent — auto-raising it was REJECTED on
+  the #14073 evidence; that is OR-11e.
+- **Red first, then teeth.** 13 new tests (7 unit + 6 endpoint) failed on the pristine tree.
+  Mutation battery **8 RED / 2 GREEN** first — C8 (the `_UseMarking` wrapper swallowing the
+  measurement) and C9 (the panel not rendering it) BOTH walked through, because no endpoint test
+  set `ai_use_hook` (so the deployed wrapped path was never exercised) and the panel check was a
+  source pin a `if (false)` satisfies. Both remedied; **10/10 RED by name** after.
+- **Triage before believing a red:** the sandbox sweep's failures were `installer/`/`docs/`-reading
+  tests absent from the lean sandbox; all named ones pass on the real tree.
+- **Gate.** ruff (whole tree) · `ruff format --check` · `mypy --strict` 163 files · bandit exit 0 ·
+  `node --check` · the full suite · `-m parity`. v1.0.250; wheel + nine installers rebuilt.
