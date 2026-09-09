@@ -50,6 +50,40 @@ GENERATE_KEEP_ALIVE = "5m"
 MAX_CHARS_PER_TOKEN = 6
 
 
+#: The smallest window the tool will ASK for. Below roughly this, the request is
+#: self-defeating: the fact sheets this tool builds do not fit, so a "window" that small
+#: guarantees the very truncation :func:`truncation_warning` exists to report. A non-zero
+#: value under it is raised to it rather than honoured — the operator wanted a bigger
+#: window, not a smaller one, and the form shows what actually resolved.
+MIN_NUM_CTX = 2_048
+
+#: The largest window the tool will ASK for, and NOT a number of our own choosing: 262,144 is
+#: Ollama's OWN default for the ``>= 48 GiB`` VRAM tier (ollama/ollama#14073, the defaults that
+#: moved in v0.15.5 — ``< 24 GiB`` 4,096 · ``24-48 GiB`` 32,768 · ``>= 48 GiB`` 262,144). Bounding
+#: at the reference implementation's own largest tier default means the tool can never request
+#: more than Ollama would hand the biggest machine it recognises. It is a bound, NOT a safety
+#: guarantee: that same issue reports a 52 GB-VRAM machine going unresponsive at that very
+#: number, which is why this whole control is OFF unless the operator turns it on, and why
+#: the form states the cost. The tool cannot see the operator's VRAM and does not pretend to.
+MAX_NUM_CTX = 262_144
+
+
+def clamp_num_ctx(value: int) -> int:
+    """The operator's requested window, bounded — or ``0``, meaning "ask for nothing".
+
+    ``0`` is the default and the only value that changes nothing: no ``num_ctx`` goes on the
+    wire and the server's own default (``OLLAMA_CONTEXT_LENGTH``, or its VRAM tier) governs,
+    exactly as before ADR-0481. Anything below zero is nonsense and reads as off; anything
+    else is pulled into ``[MIN_NUM_CTX, MAX_NUM_CTX]``. Applied at EVERY boundary the value
+    crosses — the form, the settings file, and the backend constructor — because each is
+    separately reachable (a hand-edited file, a direct construction) and an unbounded
+    allocation request must not have a route in.
+    """
+    if value <= 0:
+        return 0
+    return max(MIN_NUM_CTX, min(MAX_NUM_CTX, value))
+
+
 @dataclass(frozen=True)
 class GenerationStats:
     """What the server reported about the LAST generation, as evidence, not as a claim.
@@ -59,11 +93,17 @@ class GenerationStats:
     older build, a proxy, or an OpenAI-compatible server — which is UNKNOWN, never "fine".
     ``prompt_chars`` is the length of the prompt WE sent, so the comparison is between our
     input and the server's own measurement of what it read.
+
+    ``num_ctx_sent`` is the window the tool REQUESTED on that generation (ADR-0481), or
+    ``None`` when it requested none. It is a record of our own outbound payload, never a
+    claim about the window the server actually allocated — the disclosure uses it only to
+    avoid telling an operator to raise a window they already raised.
     """
 
     prompt_chars: int
     prompt_eval_count: int | None = None
     done_reason: str = ""
+    num_ctx_sent: int | None = None
 
 
 def truncation_warning(stats: GenerationStats) -> str | None:
@@ -71,8 +111,10 @@ def truncation_warning(stats: GenerationStats) -> str | None:
 
     Ollama's context window is VRAM-tiered and its defaults moved in v0.15.5 (4,096 below
     24 GiB — ollama/ollama#14073); a prompt past the window does not error, it comes back as a
-    confident answer formed on part of the evidence. This tool never sends ``num_ctx``, so the
-    window is whatever the operator's server is set to and CANNOT be assumed from here.
+    confident answer formed on part of the evidence. Since ADR-0481 the tool CAN request a
+    window (``num_ctx``), but only when the operator sets one — off by default — and a request
+    is not an allocation: the window actually in force is still the server's business and
+    CANNOT be assumed from here.
 
     So the test is empirical and one-sided: if the tokens the server says it evaluated are fewer
     than the prompt could possibly tokenize to at :data:`MAX_CHARS_PER_TOKEN`, the model did not
@@ -86,14 +128,28 @@ def truncation_warning(stats: GenerationStats) -> str | None:
     floor = stats.prompt_chars // MAX_CHARS_PER_TOKEN
     if count >= floor:
         return None
+    # What the tool ASKED for, named — so an operator who already raised the window is not
+    # told to raise it again with no way to tell that their setting took (ADR-0481).
+    if stats.num_ctx_sent:
+        asked = (
+            f"This tool requested a {stats.num_ctx_sent:,}-token window for this generation; "
+            f"the server is not obliged to grant it, and a granted window can still be smaller "
+            f"than this prompt needs. Raise it further in AI Settings (Ollama context window), "
+            f"raise OLLAMA_CONTEXT_LENGTH on the server, or ask a narrower question"
+        )
+    else:
+        asked = (
+            "This tool requested no window for this generation, so the server's own default "
+            "applied. Set one in AI Settings (Ollama context window), raise "
+            "OLLAMA_CONTEXT_LENGTH on the server, or ask a narrower question"
+        )
     return (
         f"EVIDENCE WARNING — the local model evaluated only {count:,} prompt token(s) for a "
         f"{stats.prompt_chars:,}-character prompt. At the most generous "
         f"{MAX_CHARS_PER_TOKEN} characters per token that prompt cannot be under {floor:,} "
         f"tokens, so the model did NOT read all of the cited evidence: Ollama silently drops "
         f"what does not fit its context window. The answer above may therefore rest on a "
-        f"partial fact sheet. Raise the window (OLLAMA_CONTEXT_LENGTH on the Ollama server — "
-        f"AI Settings reports its current value) or ask a narrower question, then ask again."
+        f"partial fact sheet. {asked}, then ask again."
     )
 
 
@@ -180,6 +236,7 @@ class OllamaBackend:
         timeout: float = 120.0,
         probe_timeout: float = 8.0,
         pull_timeout: float = 6.0 * 3600.0,
+        num_ctx: int = 0,
         opener: Opener | None = None,
     ) -> None:
         # OBSERVED locality (DoD 001b): ``is_local`` records the validator's verdict on the
@@ -209,6 +266,11 @@ class OllamaBackend:
         # operator-initiated and local, so the only thing this bound guards against is a wedged
         # server, not a slow one (ADR-0299).
         self._pull_timeout = pull_timeout
+        #: The context window this backend REQUESTS per generation, or 0 to request none
+        #: (ADR-0481, OR-11e). Clamped here as well as at the form and the settings file:
+        #: a direct construction is a real, separately reachable caller, and the one thing
+        #: that must have no route in is an unbounded KV-cache allocation request.
+        self.num_ctx = clamp_num_ctx(num_ctx)
         self._open: Opener = opener or _urllib_opener
         #: What the server reported about the most recent generation (OR-11c). ``None``
         #: until one has run; replaced by every generation so a stale measurement can
@@ -258,6 +320,17 @@ class OllamaBackend:
         yields the same answer run-to-run — the engine is already deterministic, and a forensic
         tool must not give two analysts different prose for the same question.
         """
+        options: dict[str, Any] = {
+            "temperature": DETERMINISTIC_TEMPERATURE,
+            "seed": DETERMINISTIC_SEED,
+            "top_p": DETERMINISTIC_TOP_P,
+        }
+        # Only an operator who set a window gets one on the wire (ADR-0481). Omitting the key
+        # is NOT the same as sending a default: it leaves the server's own configuration
+        # (OLLAMA_CONTEXT_LENGTH, or its VRAM tier) in charge, which is what every install
+        # did before this option existed and what every install still does by default.
+        if self.num_ctx:
+            options["num_ctx"] = self.num_ctx
         payload = self._post(
             "/api/generate",
             {
@@ -266,11 +339,7 @@ class OllamaBackend:
                 "stream": False,
                 # bounded residency (see GENERATE_KEEP_ALIVE) — decoding options unchanged
                 "keep_alive": GENERATE_KEEP_ALIVE,
-                "options": {
-                    "temperature": DETERMINISTIC_TEMPERATURE,
-                    "seed": DETERMINISTIC_SEED,
-                    "top_p": DETERMINISTIC_TOP_P,
-                },
+                "options": options,
             },
         )
         body = payload if isinstance(payload, dict) else {}
@@ -279,5 +348,6 @@ class OllamaBackend:
             prompt_chars=len(prompt),
             prompt_eval_count=count if isinstance(count, int) else None,
             done_reason=str(body.get("done_reason", "")),
+            num_ctx_sent=self.num_ctx or None,
         )
         return str(body.get("response", ""))

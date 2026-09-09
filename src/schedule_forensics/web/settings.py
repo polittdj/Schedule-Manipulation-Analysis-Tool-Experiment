@@ -52,6 +52,7 @@ from schedule_forensics.ai import (
     route_backend,
     txlog,
 )
+from schedule_forensics.ai.ollama import MAX_NUM_CTX, MIN_NUM_CTX
 from schedule_forensics.net_guard import APPROVED_GATEWAY_ENDPOINTS
 from schedule_forensics.web.chrome import _e, _observed_banner
 from schedule_forensics.web.components import _user_tip
@@ -279,6 +280,52 @@ _RUNTIME_STATUS_NOTES = {
     ),
     "starting": ("info", "the tool started Ollama; it was still coming up at the last check."),
 }
+
+
+def _num_ctx_cost_note(cfg: AIConfig) -> str:
+    """What raising the Ollama context window COSTS, stated beside the field that raises it.
+
+    ADR-0480 refused to raise ``num_ctx`` automatically on evidence: the KV cache scales with
+    the window, and ollama/ollama#14073 reports a machine with 52 GB of VRAM going
+    unresponsive once v0.15.5's larger VRAM-tiered default spilled out of GPU memory. ADR-0481 gives the
+    operator the lever anyway — the truncation disclosure was otherwise naming a remedy the
+    tool could not perform — so the evidence behind that refusal has to travel WITH the lever
+    or the refusal's reasoning is simply discarded.
+
+    What is stated is only what is sourced: the mechanism, the ``OLLAMA_NUM_PARALLEL``
+    multiplier, Ollama's own tier defaults as a calibration, and the reported incident,
+    attributed. **No GB-per-token figure is given** — that depends on the model's layer and
+    KV-head geometry and its cache dtype, none of which this tool reads, and a fabricated
+    number on a page an operator sizes hardware from would be worse than no number.
+    """
+    tiers = (
+        "Ollama&rsquo;s own defaults, by machine VRAM, are "
+        "<b>4,096</b> under 24&nbsp;GiB &middot; <b>32,768</b> at 24&ndash;48&nbsp;GiB &middot; "
+        f"<b>{MAX_NUM_CTX:,}</b> at 48&nbsp;GiB and above (ollama/ollama#14073) &mdash; use them "
+        "to calibrate."
+    )
+    if cfg.num_ctx:
+        state = (
+            f"<b>In force: this tool asks for {cfg.num_ctx:,} tokens</b> on every generation "
+            "(primary and cross-check model alike). Asking is not allocating &mdash; the server "
+            "decides, and it may refuse or cap it."
+        )
+    else:
+        state = (
+            "<b>In force: nothing.</b> The tool sends no window, so your server&rsquo;s own "
+            "setting (<code>OLLAMA_CONTEXT_LENGTH</code>, else its VRAM tier) applies "
+            "unchanged."
+        )
+    return (
+        '<p class=muted style="margin:-4px 0 10px">'
+        f"{state} Raising the window raises <b>memory</b>: the KV cache grows with it and is "
+        "multiplied by <code>OLLAMA_NUM_PARALLEL</code>. A window your GPU cannot hold spills "
+        "to system RAM &mdash; issue&nbsp;#14073 reports a machine with 52&nbsp;GB of VRAM "
+        "becoming "
+        f"unresponsive that way. {tiers} Raise it only as far as your prompts actually need; "
+        "an evidence warning under an answer tells you when they needed more."
+        "</p>"
+    )
 
 
 def _ai_runtime_note(manager: object) -> str:
@@ -542,6 +589,10 @@ def _settings_body(state: SessionState, runtime_note: str = "") -> str:
 <p>Generation timeout (seconds):
 <input name=gen_timeout type=number min=30 max=3600 step=10 value="{_e(int(cfg.gen_timeout))}"
  title="How long a single answer may take. Defaults to the maximum (3600 s = 1 hour) so a big, slow model (e.g. llama3.1:70b) can always finish; lower it if you prefer to cap it."> <span class=muted>(default = max, 3600 s)</span></p>
+<p>Ollama context window (tokens, Ollama backend only):
+<input name=num_ctx type=number min=0 max={MAX_NUM_CTX} step=1024 value="{_e(int(cfg.num_ctx))}"
+ title="Sent as Ollama&rsquo;s num_ctx on every generation. 0 asks for nothing and leaves your server&rsquo;s own setting in charge. Raising it costs memory: the KV cache grows with the window and is multiplied by OLLAMA_NUM_PARALLEL, and a window your GPU cannot hold spills to system RAM and can make the machine crawl."> <span class=muted>({MIN_NUM_CTX:,}&ndash;{MAX_NUM_CTX:,} tokens; <b>0 = leave it to the server</b>)</span></p>
+{_num_ctx_cost_note(cfg)}
 <p>Ollama endpoint (loopback only):
 <input name=endpoint size=28 value="{_e(cfg.endpoint)}"
  title="Ollama defaults to http://127.0.0.1:11434"></p>

@@ -28,7 +28,10 @@ def ollama_or_none(config: AIConfig) -> OllamaBackend | None:
         return None
     try:
         return OllamaBackend(
-            endpoint=config.endpoint, model=config.model, timeout=config.gen_timeout
+            endpoint=config.endpoint,
+            model=config.model,
+            timeout=config.gen_timeout,
+            num_ctx=config.num_ctx,
         )
     except Exception:
         return None
@@ -96,6 +99,10 @@ def second_or_none(config: AIConfig) -> AIBackend | None:
                 endpoint=config.endpoint,
                 model=config.second_model or config.model,
                 timeout=config.gen_timeout,
+                # the cross-check reads the SAME fact sheet, so a window set for the primary
+                # that the second model does not get would truncate exactly the comparison
+                # the cross-check exists to make (ADR-0481)
+                num_ctx=config.num_ctx,
             )
         return OpenAICompatBackend(
             endpoint=config.openai_endpoint, model=config.second_model, timeout=config.gen_timeout

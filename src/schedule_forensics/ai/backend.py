@@ -84,6 +84,15 @@ class AIConfig:
     #: being cut off. Operator-adjustable DOWN; the availability *probe* stays short — this bounds
     #: only the actual generate/pull work.
     gen_timeout: float = 3600.0
+    #: The Ollama context window this session REQUESTS per generation, in tokens — 0 (the
+    #: default) requests none and leaves the server's own default in force, which is exactly
+    #: what every install did before ADR-0481. It exists because ADR-0480's truncation
+    #: disclosure had a remedy the tool could not perform; it is OFF by default and bounded
+    #: (``ollama.clamp_num_ctx``) because raising it raises the KV-cache allocation, and
+    #: ollama/ollama#14073 records a 52 GB machine going unresponsive at a large window. The
+    #: settings form states that cost beside the field. Ollama-only: an OpenAI-compatible
+    #: server has no such parameter and is unaffected.
+    num_ctx: int = 0
     #: The approved AI gateway (ADR-0402, DoD 001c): a REMOTE, organization-approved,
     #: OpenAI-compatible endpoint — e.g. the NASA-approved gateway serving ITAR-authorized
     #: models. "" = none selected. Only endpoints on

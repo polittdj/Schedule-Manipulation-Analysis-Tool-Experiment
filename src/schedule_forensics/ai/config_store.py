@@ -40,6 +40,7 @@ import sys
 from pathlib import Path
 
 from schedule_forensics.ai.backend import AIConfig, Classification
+from schedule_forensics.ai.ollama import clamp_num_ctx
 from schedule_forensics.net_guard import is_approved_gateway_endpoint, is_local_http_endpoint
 
 logger = logging.getLogger(__name__)
@@ -147,6 +148,7 @@ def save_ai_config(cfg: AIConfig, path: Path | None = None) -> None:
         "second_backend": cfg.second_backend,
         "second_model": cfg.second_model,
         "gen_timeout": cfg.gen_timeout,
+        "num_ctx": cfg.num_ctx,
         "gateway_endpoint": cfg.gateway_endpoint,
         "gateway_approved": cfg.gateway_approved,
     }
@@ -219,6 +221,16 @@ def load_ai_config(path: Path | None = None) -> AIConfig:
     raw_timeout = doc.get("gen_timeout")
     gen_timeout = float(raw_timeout) if isinstance(raw_timeout, (int, float)) else 3600.0
     gen_timeout = min(3600.0, max(30.0, gen_timeout))
+    # the same bound the form applies (ADR-0481) — this file is operator-editable, so a
+    # hand-typed 10,000,000 must not become a ten-million-token allocation request at the
+    # next launch. A missing key (every file written before ADR-0481) or a non-integer
+    # reads as OFF: an upgrade never silently starts dictating a window.
+    raw_num_ctx = doc.get("num_ctx")
+    num_ctx = (
+        clamp_num_ctx(raw_num_ctx)
+        if isinstance(raw_num_ctx, int) and not isinstance(raw_num_ctx, bool)
+        else 0
+    )
     return AIConfig(
         classification=classification,
         backend=_s("backend", "ollama"),
@@ -229,6 +241,7 @@ def load_ai_config(path: Path | None = None) -> AIConfig:
         second_backend=second_backend,
         second_model=_s("second_model", ""),
         gen_timeout=gen_timeout,
+        num_ctx=num_ctx,
         gateway_endpoint=gateway_endpoint,
         gateway_approved=doc.get("gateway_approved") is True,
         gateway_api_key=_load_key(doc),

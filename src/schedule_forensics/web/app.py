@@ -58,7 +58,7 @@ from schedule_forensics.ai.driving_facts import (
 )
 from schedule_forensics.ai.factory import resolve_gateway_api_key
 from schedule_forensics.ai.narrative import clean_polish, polish_prompt
-from schedule_forensics.ai.ollama import GenerationStats, truncation_warning
+from schedule_forensics.ai.ollama import GenerationStats, clamp_num_ctx, truncation_warning
 from schedule_forensics.ai.ollama_process import OllamaLauncher
 from schedule_forensics.ai.pair_facts import pairwise_comparison_facts
 from schedule_forensics.ai.qa import (
@@ -730,6 +730,7 @@ from schedule_forensics.web.settings import _ai_status_note as _ai_status_note
 from schedule_forensics.web.settings import _gateway_or_none as _gateway_or_none
 from schedule_forensics.web.settings import _gateway_status_note as _gateway_status_note
 from schedule_forensics.web.settings import _model_installed as _model_installed
+from schedule_forensics.web.settings import _num_ctx_cost_note as _num_ctx_cost_note
 from schedule_forensics.web.settings import _ollama_or_none as _ollama_or_none
 from schedule_forensics.web.settings import _openai_or_none as _openai_or_none
 from schedule_forensics.web.settings import _second_backend as _second_backend
@@ -7451,6 +7452,7 @@ def create_app(
         second_backend: str = Form("none"),
         second_model: str = Form(""),
         gen_timeout: float = Form(3600.0),
+        num_ctx: int = Form(0),
         gateway_endpoint: str = Form(""),
         gateway_approved: str = Form(""),
         gateway_api_key: str = Form(""),
@@ -7467,6 +7469,12 @@ def create_app(
         # generation timeout: clamp to a sane window (30s … 1h) so a big slow model can finish
         # but a wedged one can't hang a request forever
         gen_timeout = min(3600.0, max(30.0, gen_timeout))
+        # Ollama context window (ADR-0481): 0 = request none, which is the default and leaves
+        # the server's own default in force. A non-zero value is bounded to Ollama's own
+        # smallest-useful/largest-tier range — the backend and the settings file clamp too,
+        # because each is separately reachable. The 303 re-renders the form from the SAVED
+        # config, so a clamp is visible rather than a silent disagreement with what was typed.
+        num_ctx = clamp_num_ctx(num_ctx)
         # the backend constructor enforces loopback too (Law 1) — this just keeps a typo'd
         # remote host from sitting in the config looking accepted
         if not is_local_http_endpoint(endpoint.strip()):
@@ -7493,6 +7501,7 @@ def create_app(
             second_backend=second_backend,
             second_model=second_model.strip(),
             gen_timeout=gen_timeout,
+            num_ctx=num_ctx,
             gateway_endpoint=gateway_endpoint,
             # an absent checkbox posts nothing — only the literal checked value records the
             # operator's approval assertion; anything else is False (fail closed)
