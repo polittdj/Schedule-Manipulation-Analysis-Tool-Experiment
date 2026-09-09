@@ -17350,3 +17350,33 @@ shadows it on PATH).
 - **Branch restarted on `872aa7e`** with `--prune` + `remote set-head` + `checkout -B`; no squash
   was ever amended. Session context reached ~86% of the assumed wall, so this close is deliberate
   rather than forced: the next session starts fresh on OR-11e.
+
+## 2026-09-09 — OR-11e: the operator can set the Ollama context window (ADR-0481, v1.0.251)
+
+- **`main` was at `46c23e8a`, not `872aa7e`.** #658 (the docs-only session-close recording
+  #655/#656/#657) merged after the last handoff was written. Branch
+  `claude/polaris-audit-plan-forward-41qww9` cut fresh from `origin/main` after `git fetch origin`.
+- **One unit, engine untouched: ADR-0481 (OR-11e).** ADR-0480 detected a partly-read prompt and
+  named a remedy the tool could not perform. `OllamaBackend` now sends `num_ctx` — but only when
+  the operator sets one. Default `0` omits the key entirely (byte-for-byte the old request);
+  non-zero clamps at **all three** entry points (form POST, settings file, constructor) into
+  `[2048, 262144]`, the ceiling being **Ollama's own `>= 48 GiB` tier default**, not ours.
+  `_num_ctx_cost_note` states the mechanism, the `OLLAMA_NUM_PARALLEL` multiplier, the tier
+  defaults, the `#14073` incident attributed, and what is actually in force — with **no
+  GB-per-token figure**, because the tool never reads the model's KV geometry.
+  `GenerationStats.num_ctx_sent` keeps ADR-0480's disclosure true against its own product.
+- **Red first** (both modules failed at collection), then a **20-mutation battery, 20/20 RED by
+  name** — after two came back GREEN and were findings about my own tests (see below).
+- **`/settings` RENDERED over loopback in four themes**: field and note visible, zero page errors,
+  the clamped value shown back.
+- **Registered, measured, NOT taken:** `/settings` scrolls sideways (1877 / 1641 / 1877 / 1877 at
+  1440). A pristine `HEAD` control measures byte-identical figures — pre-existing, different
+  mechanism (an over-wide `<select>`), and on a page ADR-0477's four-route guard never renders.
+- **Version 1.0.251**; wheel + nine installers rebuilt after the last source edit, full suite
+  started after that. The shallow clone was **deepened** (cumulative `60+200+400` on `origin main`,
+  742 commits) until `git log -1 -- tools/mpxj` resolved to the true `42d92dc9…` — no
+  `SF_MPXJ_REF`, no new graft artifact.
+- **Draft PR [#659](https://github.com/polittdj/Schedule-Manipulation-Analysis-Tool-Experiment/pull/659)** opened on `claude/polaris-audit-plan-forward-41qww9` (operator merges; never marked ready here).
+- **Still owed and not delivered:** the design page (`/scorecards`, `setScreen('sk')`).
+- **Review cover still absent** — Codex quota exhausted on #655/#656/#657; the mutation battery
+  and the full gate remain the only review this repo receives.

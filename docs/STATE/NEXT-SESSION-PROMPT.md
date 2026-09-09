@@ -1,24 +1,48 @@
 # Kickoff prompt — next session
 
-PR state (2026-09-09): **#655, #656 and #657 are ALL MERGED** → `main` @ **`872aa7e`** (ADR-0480,
-**v1.0.250**). Every one was tree-verified against the head its eight checks passed on — #657's is
-`dd5bcc009ddd0676891fe2a78c2106ea77e20b7f` on both the squash and `ecd5f1c`. The branch
-`claude/polaris-audit-r55-r20-handoff-uoa34g` was restarted on `872aa7e` and carries only the
-docs-only merge record; its draft PR number is in the SESSION-LOG. **Read `main`'s own post-merge
-runs for the `872aa7e` squash FIRST** — a red cell on a tree identical to a green PR head is the
-runner's claim, so compare `git rev-parse <merge>^{tree}` against `git rev-parse <pr-head>^{tree}`
-before believing it.
+PR state (2026-09-09): **#658 MERGED** → `main` @ **`46c23e8a`** (it landed AFTER the last handoff
+was written, which is why that handoff says `872aa7e`; check `git log origin/main` before trusting
+any inherited sha). This session opened a draft PR for
+`claude/polaris-audit-plan-forward-41qww9` carrying **ADR-0481 / OR-11e, v1.0.251**: **#659**. **Read that PR's own checks on its FINAL head before anything else**, and if a
+cell on `main` is red for a tree identical to a green PR head, that is the runner's claim: compare
+`git rev-parse <merge>^{tree}` against `git rev-parse <pr-head>^{tree}` before believing it.
 
-**Then take OR-11e** — the operator's queue comes before the audit rows this arc. Three operator
-units shipped back-to-back (ADR-0478/0479/0480) and OR-11e is the one that FIXES what 0480 only
-measures: the tool detects a truncated prompt but still never sends `num_ctx`, so only the operator
-can widen the window. It must ship with the VRAM cost stated in the form — ollama/ollama#14073
-records a 52 GB machine going unresponsive under a large default, which is exactly why ADR-0480
-refused to auto-raise it.
+**Then take R-56** — the operator queue is now EMPTY of blocking rows (OR-11a/c/e all shipped;
+OR-11b needs a measurement first and OR-11d is cosmetic), so the audit rows resume. R-56 is far
+better specified than the report's row: it is a duration-CONTOUR defect on UNSTARTED work, so no
+progress rule reaches it, and it is what still holds `Hard_File_updated3`'s finish 13 d early after
+ADR-0476. updated3 has **SEVEN** chain heads (a disagreeing activity whose every predecessor
+already agrees) and 45 rows inherited from them; the report names only UID 403, and **UID 385 is
+the larger driver**:
+
+| UID | duration | engine span | MS Project span |
+|---|---|---|---|
+| 385 | 5,664 min | ~6 wd (944 min/d) | ~17 wd (333 min/d) |
+| 403 | 1,920 min | ~5 wd (384 min/d) | ~14 wd (137 min/d) |
+
+MS Project is spreading these at a FRACTION of a working day — a contoured / part-time assignment
+the booking rule does not model. First executable step: tally `<Assignment>` Units, Work and any
+TimephasedData for 385 / 403 / 302 against their `<Task>` Duration, and **check the rule against
+EVERY golden by task Type** before believing it (a booking rule proven on one file has broken
+another here twice). What settles it: updated3 within a day of the stored 2026-12-12 with
+`-m parity` unmoved and Project2 / Project5 still exact. Two heads are the day-boundary residual
+below, not R-56's.
+
+**Environment, MEASURED this session — the shallow-clone remedy is DEEPENING, and budget it big.**
+`git fetch --deepen=25 origin` (no refspec) did nothing at all. `--deepen=<n> origin main` moved the
+graft boundary, and `git log -1 -- tools/mpxj` then resolved to the NEW boundary — the same
+artifact one commit further back — twice running. Only a cumulative **`60 + 200 + 400` on
+`origin main`** (742 commits, boundary `d582e104`) surfaced the true last touch
+`42d92dc9acc98f7d87f19c82dc62be3e5d3c15ca`, after which `build_installers.py` pinned it with **no
+`SF_MPXJ_REF` and no new graft artifact**. A partial deepen is indistinguishable from success
+unless you check the sha. The container may have NO project install:
+`uv pip install --python /usr/local/bin/python3 --system -e '.[dev]'` completes first try (add
+`build` and `playwright` the same way; do NOT run `playwright install` — use
+`tests/web/browser_chrome.py::chrome_kwargs()` in scratch probes too).
 
 **Heads-up on review cover:** `chatgpt-codex-connector[bot]` reported EXHAUSTED Codex review quota
-on #655, #656 AND #657 — three merges with no automated review performed. Until that is restored,
-the mutation battery and the full gate are the only review this repo is actually getting.
+on #655, #656 AND #657. Until it is restored, the mutation battery and the full gate are the only
+review this repo is actually getting.
 
 Work the POLARIS² audit's plan-forward (Schedule-Manipulation-Analysis-Tool). Read
 `docs/STATE/HANDOFF.md` FIRST (auto-injected), then `docs/STATE/AUDIT-2026-08-27-REPORT.md` §3 — the
@@ -50,7 +74,14 @@ CLOSED)** · **ADR-0478 — `/api/ask` says WHY there is no written answer** (`N
 text}` on the payload; `ask.js` renders the server's sentence). Do NOT re-open: the panel's
 blanket sentence is pinned gone, and the primary answer's call site is
 `answer_question_detail` — a monkeypatch left on `answer_question` intercepts the cross-check
-SECOND model only.
+SECOND model only. · **ADR-0481 (OR-11e CLOSED)** — the tool SENDS `num_ctx`, but only
+when the operator sets one: `num_ctx=0` (default) omits the key, so the request is
+byte-for-byte the old one; non-zero clamps at all THREE entry points (form POST, settings
+file, backend constructor) into `[2048, 262144]`, the ceiling being Ollama's OWN `>= 48 GiB`
+tier default, not ours. `_num_ctx_cost_note` states the mechanism, the `OLLAMA_NUM_PARALLEL`
+multiplier, the tier defaults, the #14073 incident **attributed** (a 52 GB-VRAM machine), and
+what is actually in force — and NO GB-per-token figure, which the tool cannot know. Do NOT
+re-open: what the server does on RECEIPT is UNVERIFIED by design and claimed nowhere.
 
 ⇢ NEXT — the report's §3 in order, one row per unit of work (red-first → mutation proofs by name →
 the full gate → an ADR → the state docs → a draft PR): **R-56** FIRST, and it is now far better
@@ -79,7 +110,7 @@ R-04 · R-09 · R-13 · R-18 · R-21 · R-22 · R-32 · R-39. PLUS the design pa
 **now CURRENT, not owed**: deliver **/scorecards** (`setScreen('sk')`) as its own unit, recipe in
 ADR-0471/0475.
 
-⇢ Traps paid for, by name (2026-09-08 first): **a green suite is not evidence the INPUTS are
+⇢ Traps paid for, by name (2026-09-09 first): **an assertion is only as strong as the text that was NOT already there** — two of twenty mutations came back GREEN because the cost-note checks searched the WHOLE `/settings` body, which already carried `OLLAMA_NUM_PARALLEL` (the ADR-0315 env report) and `262,144` (the new input's own `max=`); deleting the note entirely walked through. Before asserting a NEW string is present in a rendered artifact, grep that artifact for it FIRST; the fix that works is compositional — assert the PRODUCER's return value carries it AND that its exact output is a substring of the page · **the suite measures the tree as it was at second zero** — I fixed three docstrings mid-run after verifying a sourced number, and had to kill it, rebuild the wheel + nine installers, and restart; freeze the source, THEN build, THEN run · **run the CONTROL before believing your own new instrument** — `/settings` measured scrollWidth 1877 vs innerWidth 1440, and a pristine `HEAD` worktree measured byte-identical, so the finding is about SCOPE (ADR-0477's guard renders FOUR routes and fixed the HINT-BUBBLE mechanism; `/settings` was never in that census and its cause is an over-wide `<select>`), not a regression · **refute your own hypothesis first** — I was sure a blank `<input type=number>` would 422 a FastAPI `int = Form(0)`; measured, blank AND absent both fall back to the default with 200, so the defensive handler I was about to write was unnecessary. (2026-09-08 first:) **a green suite is not evidence the INPUTS are
 consistent — only that nothing reads the inconsistent part**: `clean_program` passed 41 tests for
 months over completed leaves recording an 8-working-day window against a declared 10-day duration and
 starting before their predecessors finished, because the engine read neither; when a long-green fixture
@@ -131,7 +162,9 @@ the four Hard_File bookings the MSPDI cannot explain (R-56) · **R-20 / UI-03 is
 `document.scrollingElement.scrollWidth == innerWidth == 1440` in all four themes; do NOT re-chase the
 1719 / 1734 readings · the HELD and CLOSED rows of the report · the S-curve & finish-window residuals of earlier sessions.
 
-⇢ NEW residuals registered this session (both measured, neither taken): **the working-minute axis
+⇢ NEW residual registered 2026-09-09 (measured, not taken): **`/settings` scrolls sideways** — `document.scrollingElement.scrollWidth` 1877 / 1641 / 1877 / 1877 at a 1440 viewport (console / daylight / apollo / jarvis), IDENTICAL on a pristine `HEAD` control, widest element the `AI answer mode` `<select>` sized by Chrome to its longest option. NOT the hint bubble, NOT a regression, NOT covered by ADR-0477's four-route guard — its own UI unit with the design-system DoD. Do NOT re-chase the hint bubble at rest: that IS closed.
+
+⇢ Residuals from 2026-09-08 (both measured, neither taken): **the working-minute axis
 cannot carry a recorded instant that lands on a day boundary or a non-working moment** — UID 323's
 `Wed 2026-08-19 08:00` renders back as `Tue 08-18 16:00`, UID 300's **Sunday** `08-30 04:00` as
 `Fri 08-28 16:00`, and UID 292 (not a milestone) loses an hour; 2 of 42 completed activities on

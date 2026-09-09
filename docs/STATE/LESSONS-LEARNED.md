@@ -435,6 +435,61 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-09 — an assertion is only as strong as the text that was NOT already there
+
+**The green mutation, in a new species.** Two of twenty mutations came back green, and the
+diagnosis was neither of the two shapes 2026-09-08 recorded. The check asserted that
+`/settings` contains `OLLAMA_NUM_PARALLEL` and `262,144` — reasonable words for a note about
+KV-cache cost. Both strings were **already on that page for other reasons**: the multiplier
+from ADR-0315's `OLLAMA_* ` environment report, and `262,144` from the new input's own `max=`
+attribute. So a mutation that deleted the entire cost note, and one that gutted its text, each
+left every asserted token satisfied by text the mutation had not touched. The check read as
+thorough and could not fail.
+
+**The generalisation, and it is cheap to apply.** *Before asserting that a new string is
+present in a rendered artifact, grep that artifact for the string first.* If the page already
+says it, the assertion is measuring the OLD text, and the new thing has no check at all. The
+remedy that works is compositional: assert the **producer's own return value** carries the
+content, and separately assert **that exact output is a substring of the page**. Deleting the
+call fails the second; gutting the text fails the first. Neither can be satisfied by a
+coincidence elsewhere in the document.
+
+**A hypothesis died on its own probe before any design rested on it — which is the point of
+QC-1.** I was confident a blank `<input type=number>` would 422 a FastAPI `int = Form(0)`
+handler, and was about to write a defensive `str`-and-parse handler that diverged from the
+`gen_timeout` field beside it. Measured in ten lines: blank AND absent both fall back to the
+default with 200; only literal garbage 422s, which `type=number` will not submit. The
+divergence was unnecessary. Cost of the probe: under a minute. Cost of the belief: a
+permanently odd handler and a false residual filed against `gen_timeout`.
+
+**A red from an instrument you just wrote needs a CONTROL, and this one paid.** The new
+`/settings` render measured `scrollWidth` 1877 against `innerWidth` 1440 — which contradicts
+ADR-0477's closed R-20 / UI-03. A pristine `HEAD` worktree measured **byte-identical** figures
+in all four themes, so the overflow predates the change; the widest element is the `AI answer
+mode` `<select>`, which Chrome sizes to its longest option. The finding that survives is about
+SCOPE, not about a regression: ADR-0477's guard renders **four** routes and fixed the
+**hint-bubble** mechanism, so "every page measures 1440" is a generalisation past what was
+measured. Two claims that sound identical — "the fix regressed" and "the fix never covered
+this page" — demand opposite responses, and only the control tells them apart.
+
+**I walked into the lockstep trap the kickoff names, by a route it does not.** The rule is
+"start the full suite AFTER the version bump and the wheel/installer rebuild." I did — and then
+verified a sourced number against the primary issue, found my own wording imprecise (the issue
+says 52 GB of **VRAM**, not "a 52 GB machine"), and fixed three source files while the suite ran.
+Correct fix, invalid run: the wheel no longer byte-matched `src/`, so the measurement was of a
+tree that no longer existed. Killed it, rebuilt, restarted. The rule generalises past the version
+bump: **the suite measures the tree as it was at second zero — any source edit during the run
+invalidates it, including a docstring.** Freeze the source, THEN build, THEN run; a late
+improvement is worth its cost only if you pay for the re-run.
+
+**Deepening a shallow clone is not one command, and a partial deepen looks exactly like
+success.** `git fetch --deepen=25 origin` (no refspec) did nothing. `--deepen=<n> origin main`
+moved the graft boundary, and `git log -1 -- tools/mpxj` then resolved to the NEW boundary —
+the same artifact, one commit further back — twice in a row. Only a cumulative `60 + 200 + 400`
+(742 commits) surfaced the true last touch. A deepen that "worked" and still reports a boundary
+commit is indistinguishable from a deepen that worked and reports the truth, unless you know
+the answer in advance. Budget generously and verify against the expected sha.
+
 ### 2026-09-08 (d) — a source pin cannot see behaviour, and a test that never runs the deployed path proves nothing
 
 **Two green mutations, two different species, both mine.**
