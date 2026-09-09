@@ -1401,6 +1401,23 @@ _CF_QUERY = Query(default_factory=list)
 _CV_QUERY = Query(default_factory=list)
 
 
+#: How often ``static/heartbeat.js`` beats, in seconds. Mirrored here because
+#: :data:`CLOSE_GRACE` is only correct RELATIVE to it, and the JS is vendored with no build
+#: step that could share the number. ``tests/web/test_browser_close_stops_promptly.py`` reads
+#: the literal back out of the JS, so the two cannot drift apart silently.
+HEARTBEAT_INTERVAL = 3.0
+
+#: How long an armed close-fuse burns before the tool stops (ADR-0482).
+#:
+#: It MUST exceed :data:`HEARTBEAT_INTERVAL`. The fuse is cancelled by the next heartbeat, and
+#: in this 35-route server-rendered app every link click unloads the page and arms it — so a
+#: fuse shorter than the gap between beats would stop the tool on an ordinary click. Two
+#: seconds of margin over the 3 s beat is enough for the new page to load and beat, and short
+#: enough that a real close frees the local model's VRAM effectively at once instead of after
+#: the 600 s idle grace.
+CLOSE_GRACE = 5.0
+
+
 def create_app(
     state: SessionState | None = None,
     *,
@@ -1449,6 +1466,10 @@ def create_app(
     app.state.last_beat = time.monotonic()
     app.state.browser_seen = False  # armed once the first heartbeat arrives
     app.state.shutting_down = False
+    # When the browser told us a page is going away (ADR-0482): the monotonic instant of that
+    # signal, or None when no close is pending. A heartbeat CLEARS it — that is how an ordinary
+    # navigation (which unloads a page like any close) cancels the fuse it just armed.
+    app.state.closing_at = None
     app.state.request_shutdown = None  # set by serve() to flip the server's should_exit
     app.state.active_requests = 0  # in-flight work holds the auto-shutdown watchdog
     app.mount("/static", StaticFiles(directory=_STATIC_DIR), name="static")
@@ -1497,10 +1518,23 @@ def create_app(
         s: SessionState = app.state.session
         return s
 
+    @app.post("/api/closing")
+    def api_closing() -> dict[str, bool]:
+        """A page is unloading (``pagehide``) — arm the close fuse (ADR-0482).
+
+        This is NOT "stop". Every one of this app's server-rendered routes unloads the page on
+        a click, so this fires constantly during ordinary use; the next page's first heartbeat
+        clears it. Only a fuse that burns past :data:`CLOSE_GRACE` with no beat means the
+        browser really went away.
+        """
+        app.state.closing_at = time.monotonic()
+        return {"closing": True}
+
     @app.post("/api/heartbeat")
     def heartbeat() -> JSONResponse:
         app.state.last_beat = time.monotonic()
         app.state.browser_seen = True
+        app.state.closing_at = None  # a live page cancels any pending close (ADR-0482)
         return JSONResponse({"ok": True})
 
     @app.get("/api/whoami")
@@ -9257,8 +9291,41 @@ def _is_idle(browser_seen: bool, idle_seconds: float, grace: float) -> bool:
     return browser_seen and idle_seconds > grace
 
 
+def _shutdown_due(
+    *,
+    browser_seen: bool,
+    idle_seconds: float,
+    grace: float,
+    closing_seconds: float | None,
+    close_grace: float,
+) -> bool:
+    """Whether the browser is gone, by EITHER of two independent routes (ADR-0482).
+
+    1. **The long idle rule, unchanged.** No heartbeat for ``grace`` seconds (600 s). This is
+       the walked-away case and it is deliberately generous: an operator reading a long report
+       without clicking must never be shut down under them.
+    2. **The close fuse.** The page told us it was unloading ``closing_seconds`` ago and no
+       heartbeat has arrived since (a beat sets ``closing_at`` back to ``None``, so a live page
+       is represented here by ``closing_seconds is None``). Because every navigation in this
+       server-rendered app unloads a page, route 2 is only meaningful once the fuse has burned
+       past ``close_grace`` — long enough for the next page to load and beat.
+
+    ``browser_seen`` gates both: a server no browser has ever reached does not stop itself,
+    whatever arrives on the wire.
+    """
+    if not browser_seen:
+        return False
+    if _is_idle(browser_seen, idle_seconds, grace):
+        return True
+    return closing_seconds is not None and closing_seconds > close_grace
+
+
 def _watchdog(app: FastAPI, *, poll: float = 2.0) -> None:
-    """Stop the server when the browser stops beating (closing the window = tool off).
+    """Stop the server when the browser is gone (closing the window = tool off).
+
+    Two routes, see :func:`_shutdown_due`: the 600 s no-heartbeat idle rule, and the short
+    close fuse a ``pagehide`` beacon arms (ADR-0482) — which is what makes a deliberate close
+    stop the tool in seconds instead of ten minutes.
 
     In-flight requests hold it off: a long import/trace is the opposite of an absent
     operator, even when the beat goes quiet because the work itself is consuming the
@@ -9268,8 +9335,20 @@ def _watchdog(app: FastAPI, *, poll: float = 2.0) -> None:
         time.sleep(poll)
         if app.state.active_requests > 0:
             continue
-        if _is_idle(app.state.browser_seen, time.monotonic() - app.state.last_beat, grace):
-            logger.info("no browser heartbeat for %.0fs — shutting the tool down", grace)
+        now = time.monotonic()
+        closing_at = app.state.closing_at
+        closing_seconds = None if closing_at is None else now - closing_at
+        if _shutdown_due(
+            browser_seen=app.state.browser_seen,
+            idle_seconds=now - app.state.last_beat,
+            grace=grace,
+            closing_seconds=closing_seconds,
+            close_grace=CLOSE_GRACE,
+        ):
+            if closing_seconds is not None:
+                logger.info("the browser reported it was closing — shutting the tool down")
+            else:
+                logger.info("no browser heartbeat for %.0fs — shutting the tool down", grace)
             _trigger_shutdown(app)
             return
 

@@ -17405,3 +17405,34 @@ shadows it on PATH).
 - **Codex review quota EXHAUSTED on #659 too** — its only comment. That is now **four**
   consecutive merges (#655, #656, #657, #659) with no automated review performed.
 - **Still owed and not delivered:** the `/scorecards` design page (`setScreen('sk')`).
+
+## 2026-09-09 (c) — OR-12: closing the browser stops the tool in seconds (ADR-0482, v1.0.252)
+
+- **Operator report:** closing the browser without *Wipe and Quit* leaves the program running.
+  **Measured — it was the spec, working as written:** `idle_grace` 600 s, and `heartbeat.js`
+  sent nothing on unload, so a deliberate close and a coffee break were the same event. Ollama
+  held its VRAM for the full ten minutes. `launcher.py`'s own comment already named the window;
+  ADR-0334 built the port handover to survive it. This closes it.
+- **`pagehide` arms a fuse, it does not mean stop** — the app is 35 server-rendered routes, so
+  every link click is a real page unload. `sendBeacon` → `POST /api/closing` sets `closing_at`;
+  a heartbeat clears it; the next page beats immediately on load, so navigation self-cancels.
+  `_shutdown_due` fires on the unchanged 600 s idle rule OR a fuse past `CLOSE_GRACE = 5.0`.
+  `CLOSE_GRACE > HEARTBEAT_INTERVAL = 3.0` is a constraint (a shorter fuse dies on a click), and
+  a test reads the `3000` literal out of the JS so the two cannot drift.
+- **Excluded deliberately:** `visibilitychange` (fires on a tab switch; cancellation would ride
+  on a throttled background tab) and `event.persisted` (bfcache — would stop the tool behind a
+  Back button). **Rejected:** lowering `idle_grace`, which is load-bearing.
+- **Two of the report's premises were false, and are corrected in the ADR:** skipping
+  Wipe-and-Quit does NOT leave CUI on disk (`_trigger_shutdown` seals+clears on every path), and
+  the Desktop icon runs `pythonw.exe` — no console, so there is no PowerShell window from it.
+- **14-mutation battery, 14/14 RED by name** — after two green rounds that were both findings
+  about the checks: one mutation with `old == new` (a no-op reading as a pass; the harness now
+  refuses those), and an assertion that compared post-probe state to a "before" value read out
+  of the same state the mutation corrupts, so `None == None` held. An oracle derived from the
+  thing under test cannot judge it.
+- **Registered residual:** a late close-beacon on a session whose only remaining page is a
+  throttled background tab could stop the tool with a hidden tab open. Bounded by the ADR-0334
+  handover; strictly better than the ten-minute hang; recorded rather than claimed away.
+- Operator's machine updated to v1.0.251 earlier the same day, and a shadow **editable** install
+  (v1.0.211 → `C:\Users\dpolitte\smat`) was found ahead of it on PATH and removed — it would
+  have run a dev checkout while reporting an old version number.

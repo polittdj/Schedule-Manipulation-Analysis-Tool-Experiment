@@ -435,6 +435,42 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-09 (c) — an oracle read out of the state under test cannot judge that state
+
+**The green mutation, third species this arc, and the worst of them.** The check said: arm the
+fuse, record `armed = app.state.closing_at`, probe `/api/whoami`, assert the value is unchanged.
+The mutation cleared `closing_at` on *every* request. So `armed` was **already** `None` when it
+was read, the post-probe value was `None`, and `None == None` passed — while the feature was
+comprehensively broken. **A "before" value read out of the same state a mutation corrupts is not
+an anchor; it is a second victim.** QC-1 states the general form ("an oracle must be independent
+of the thing it judges"); this is what it looks like in a three-line test nobody would flag on
+review. The remedy is an **absolute** assertion first — *is it armed at all?* — and only then the
+relative one.
+
+**And the mutation that proved nothing at all.** Another entry in the same battery had `old ==
+new`: the sandbox applied a no-op replace, the named test passed, and the harness reported it as
+a finding only because it was *expecting* red. Had it been in a battery I skimmed, it would have
+read as one more confirmation. **The mutation harness now refuses any mutation whose replacement
+is identical to its anchor** — a testing tool needs its own guard rails, because it is exactly
+the instrument nothing else is checking.
+
+**A red that proves the instrument, before the instrument is trusted.** The node harness for
+`heartbeat.js` failed on precisely the three assertions about the new behaviour while its other
+five passed against the unmodified file. That shape — *some* pass, *the new ones* fail — is worth
+engineering for deliberately: a harness that fails everything might simply be broken, and one
+that passes everything proves nothing. Five green plus three red says the stub world is sound and
+the gap is real.
+
+**A design note worth generalising past this unit.** The fix had to distinguish "the window
+closed" from "the operator clicked a link" in an app where *both are the same DOM event*. The
+resolution was not a better event — it was to make the signal **cancellable**: `pagehide` arms a
+fuse, the next page's heartbeat cancels it. Where two situations are indistinguishable at the
+moment they occur, stop trying to tell them apart at that moment and let the *next* few seconds
+disambiguate them. The cost is a constant that must exceed another constant (`CLOSE_GRACE >
+HEARTBEAT_INTERVAL`), which is cheap to pin — and was pinned, including reading the JS literal
+back out so the vendored file and the Python constant cannot drift apart silently.
+
+
 ### 2026-09-09 (b) — a status API that reports "pending" because it has nothing to report
 
 **`get_status` says `pending` on a fully green PR, and it is not lying — it is answering a

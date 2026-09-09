@@ -1,22 +1,27 @@
 # Kickoff prompt — next session
 
-PR state (2026-09-09): **#659 MERGED** → `main` @ **`a5a65547`** (ADR-0481 / OR-11e, **v1.0.251**),
-tree-verified before it was believed — `git rev-parse` reads
-`7086a92de34a139d4373bd2d0939083692798355` on BOTH the squash and the PR's final head
-`54159640`. Eight of eight checks were green on that head (`total_count: 8`, zero pending). The
-branch `claude/polaris-audit-plan-forward-41qww9` was restarted on `a5a65547` with `--prune` +
-`remote set-head` + `checkout -B`; the squash was never amended. **Always `git fetch origin` and
-read `git log origin/main` before trusting any sha written here** — the previous kickoff said
-`872aa7e` and `main` had already moved twice.
+PR state (2026-09-09): **#659 and #660 both MERGED** → `main` @ **`f8d639f7`**, each tree-verified
+before it was believed. This session then shipped **ADR-0482 / OR-12, v1.0.252** on branch
+`claude/polaris-audit-plan-forward-41qww9`; its draft PR number is in the SESSION-LOG. **Always
+`git fetch origin` and read `git log origin/main` before trusting any sha written here** — two
+consecutive kickoffs have been stale by the time they were read.
 
-**Two steward traps, both measured this arc — do not re-learn either:**
+**Three steward traps, all measured this arc — do not re-learn any of them:**
 1. `pull_request_read` method **`get_status`** returns `{"state":"pending","total_count":0,
-   "statuses":[]}` on a PR whose eight check runs are ALL green. That is the LEGACY commit-status
-   API; this repo posts none, and GitHub rolls up an empty set as "pending". **It is not a pending
-   or red check.** Use **`get_check_runs`** — and read `total_count`, which gives the lie away.
-2. A `check_suite.completed` event can carry a **superseded** `head_sha` (one arrived for the
-   PR's first commit after a second push). Always re-read the PR's CURRENT head before acting on
-   an event's payload.
+   "statuses":[]}` on a PR whose checks are ALL green. That is the LEGACY commit-status API; this
+   repo posts none, and GitHub rolls up an empty set as "pending". Use **`get_check_runs`**;
+   `total_count` gives the lie away.
+2. A `check_suite.completed` event can carry a **superseded** `head_sha`. Re-read the PR's current
+   head before acting on an event payload.
+3. Check set: **eight** when `installer/**` changes, **six** for docs-only (no `windows` job).
+
+**Environment, measured:** the shallow-clone remedy is **deepening**, and budget it big —
+`--deepen=25` did nothing, and `--deepen=<n> origin main` kept resolving `git log -1 -- tools/mpxj`
+to the NEW graft boundary twice running. A cumulative **`60 + 200 + 400` on `origin main`** (742
+commits) surfaced the true `42d92dc9acc98f7d87f19c82dc62be3e5d3c15ca`, after which
+`build_installers.py` pinned it with **no `SF_MPXJ_REF`**. Install with
+`uv pip install --python /usr/local/bin/python3 --system -e '.[dev]'` (add `build` and `playwright`
+the same way; never `playwright install` — use `tests/web/browser_chrome.py::chrome_kwargs()`).
 
 **Then take R-56** — the operator queue is now EMPTY of blocking rows (OR-11a/c/e all shipped;
 OR-11b needs a measurement first and OR-11d is cosmetic), so the audit rows resume. R-56 is far
@@ -85,7 +90,17 @@ CLOSED)** · **ADR-0478 — `/api/ask` says WHY there is no written answer** (`N
 text}` on the payload; `ask.js` renders the server's sentence). Do NOT re-open: the panel's
 blanket sentence is pinned gone, and the primary answer's call site is
 `answer_question_detail` — a monkeypatch left on `answer_question` intercepts the cross-check
-SECOND model only. · **ADR-0481 (OR-11e CLOSED)** — the tool SENDS `num_ctx`, but only
+SECOND model only. · **ADR-0481 (OR-11e CLOSED)** — the tool SENDS `num_ctx`, but only when the
+operator sets one; `0` (default) omits the key entirely, non-zero clamps at all THREE entry
+points into `[2048, 262144]`, ceiling = Ollama's OWN `>= 48 GiB` tier default. What the server
+does on RECEIPT is UNVERIFIED by design and claimed nowhere. · **ADR-0482 (OR-12 CLOSED)** —
+closing the browser stops the tool in ~5 s instead of 600 s: `heartbeat.js` beacons
+`POST /api/closing` on `pagehide`, the server arms a fuse, and **a heartbeat CLEARS it** so an
+ordinary navigation (every one of 35 server-rendered routes unloads the page!) cancels the fuse
+it just armed. `CLOSE_GRACE = 5.0 > HEARTBEAT_INTERVAL = 3.0` is a CONSTRAINT. Do NOT wire
+`visibilitychange` (tab switch; cancellation would ride on a throttled background tab) and do
+NOT beacon on `event.persisted` (bfcache — stops the tool behind a Back button). Do NOT 'fix'
+this by lowering `idle_grace`; it is load-bearing for a long unattended read. · **ADR-0481 (OR-11e CLOSED)** — the tool SENDS `num_ctx`, but only
 when the operator sets one: `num_ctx=0` (default) omits the key, so the request is
 byte-for-byte the old one; non-zero clamps at all THREE entry points (form POST, settings
 file, backend constructor) into `[2048, 262144]`, the ceiling being Ollama's OWN `>= 48 GiB`
@@ -121,7 +136,7 @@ R-04 · R-09 · R-13 · R-18 · R-21 · R-22 · R-32 · R-39. PLUS the design pa
 **now CURRENT, not owed**: deliver **/scorecards** (`setScreen('sk')`) as its own unit, recipe in
 ADR-0471/0475.
 
-⇢ Traps paid for, by name (2026-09-09 first): **an assertion is only as strong as the text that was NOT already there** — two of twenty mutations came back GREEN because the cost-note checks searched the WHOLE `/settings` body, which already carried `OLLAMA_NUM_PARALLEL` (the ADR-0315 env report) and `262,144` (the new input's own `max=`); deleting the note entirely walked through. Before asserting a NEW string is present in a rendered artifact, grep that artifact for it FIRST; the fix that works is compositional — assert the PRODUCER's return value carries it AND that its exact output is a substring of the page · **the suite measures the tree as it was at second zero** — I fixed three docstrings mid-run after verifying a sourced number, and had to kill it, rebuild the wheel + nine installers, and restart; freeze the source, THEN build, THEN run · **run the CONTROL before believing your own new instrument** — `/settings` measured scrollWidth 1877 vs innerWidth 1440, and a pristine `HEAD` worktree measured byte-identical, so the finding is about SCOPE (ADR-0477's guard renders FOUR routes and fixed the HINT-BUBBLE mechanism; `/settings` was never in that census and its cause is an over-wide `<select>`), not a regression · **refute your own hypothesis first** — I was sure a blank `<input type=number>` would 422 a FastAPI `int = Form(0)`; measured, blank AND absent both fall back to the default with 200, so the defensive handler I was about to write was unnecessary. (2026-09-08 first:) **a green suite is not evidence the INPUTS are
+⇢ Traps paid for, by name (2026-09-09 b first): **an oracle read out of the state under test cannot judge that state** — a check recorded a 'before' value from `app.state`, probed, then asserted equality; the mutation cleared that state on EVERY request, so both sides were `None` and it passed over a comprehensively broken feature. Assert the ABSOLUTE fact first (is it armed at all?), the relative one second · **a mutation with `old == new` proves nothing and reads exactly like a pass** — the sandbox harness now refuses them; a testing tool needs its own guard rails · **engineer the red to prove the instrument**: the node harness failed on exactly the 3 new-behaviour assertions while its other 5 passed against the OLD file — all-red might just be a broken harness, all-green proves nothing. (2026-09-09 a:) **an assertion is only as strong as the text that was NOT already there** — two of twenty mutations came back GREEN because the cost-note checks searched the WHOLE `/settings` body, which already carried `OLLAMA_NUM_PARALLEL` (the ADR-0315 env report) and `262,144` (the new input's own `max=`); deleting the note entirely walked through. Before asserting a NEW string is present in a rendered artifact, grep that artifact for it FIRST; the fix that works is compositional — assert the PRODUCER's return value carries it AND that its exact output is a substring of the page · **the suite measures the tree as it was at second zero** — I fixed three docstrings mid-run after verifying a sourced number, and had to kill it, rebuild the wheel + nine installers, and restart; freeze the source, THEN build, THEN run · **run the CONTROL before believing your own new instrument** — `/settings` measured scrollWidth 1877 vs innerWidth 1440, and a pristine `HEAD` worktree measured byte-identical, so the finding is about SCOPE (ADR-0477's guard renders FOUR routes and fixed the HINT-BUBBLE mechanism; `/settings` was never in that census and its cause is an over-wide `<select>`), not a regression · **refute your own hypothesis first** — I was sure a blank `<input type=number>` would 422 a FastAPI `int = Form(0)`; measured, blank AND absent both fall back to the default with 200, so the defensive handler I was about to write was unnecessary. (2026-09-08 first:) **a green suite is not evidence the INPUTS are
 consistent — only that nothing reads the inconsistent part**: `clean_program` passed 41 tests for
 months over completed leaves recording an 8-working-day window against a declared 10-day duration and
 starting before their predecessors finished, because the engine read neither; when a long-green fixture
