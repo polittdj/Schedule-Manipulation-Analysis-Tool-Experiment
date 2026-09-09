@@ -1,11 +1,22 @@
 # Kickoff prompt — next session
 
-PR state (2026-09-09): **#658 MERGED** → `main` @ **`46c23e8a`** (it landed AFTER the last handoff
-was written, which is why that handoff says `872aa7e`; check `git log origin/main` before trusting
-any inherited sha). This session opened a draft PR for
-`claude/polaris-audit-plan-forward-41qww9` carrying **ADR-0481 / OR-11e, v1.0.251**: **#659**. **Read that PR's own checks on its FINAL head before anything else**, and if a
-cell on `main` is red for a tree identical to a green PR head, that is the runner's claim: compare
-`git rev-parse <merge>^{tree}` against `git rev-parse <pr-head>^{tree}` before believing it.
+PR state (2026-09-09): **#659 MERGED** → `main` @ **`a5a65547`** (ADR-0481 / OR-11e, **v1.0.251**),
+tree-verified before it was believed — `git rev-parse` reads
+`7086a92de34a139d4373bd2d0939083692798355` on BOTH the squash and the PR's final head
+`54159640`. Eight of eight checks were green on that head (`total_count: 8`, zero pending). The
+branch `claude/polaris-audit-plan-forward-41qww9` was restarted on `a5a65547` with `--prune` +
+`remote set-head` + `checkout -B`; the squash was never amended. **Always `git fetch origin` and
+read `git log origin/main` before trusting any sha written here** — the previous kickoff said
+`872aa7e` and `main` had already moved twice.
+
+**Two steward traps, both measured this arc — do not re-learn either:**
+1. `pull_request_read` method **`get_status`** returns `{"state":"pending","total_count":0,
+   "statuses":[]}` on a PR whose eight check runs are ALL green. That is the LEGACY commit-status
+   API; this repo posts none, and GitHub rolls up an empty set as "pending". **It is not a pending
+   or red check.** Use **`get_check_runs`** — and read `total_count`, which gives the lie away.
+2. A `check_suite.completed` event can carry a **superseded** `head_sha` (one arrived for the
+   PR's first commit after a second push). Always re-read the PR's CURRENT head before acting on
+   an event's payload.
 
 **Then take R-56** — the operator queue is now EMPTY of blocking rows (OR-11a/c/e all shipped;
 OR-11b needs a measurement first and OR-11d is cosmetic), so the audit rows resume. R-56 is far
