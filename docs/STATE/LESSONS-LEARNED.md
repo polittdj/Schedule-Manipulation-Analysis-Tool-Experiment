@@ -435,6 +435,33 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-09 (b) — a status API that reports "pending" because it has nothing to report
+
+**`get_status` says `pending` on a fully green PR, and it is not lying — it is answering a
+different question.** `pull_request_read` method `get_status` returned
+`{"state":"pending","total_count":0,"statuses":[]}` on #659 while all EIGHT of its check runs
+were `completed`/`success`. That endpoint reads the **legacy commit-status** API; this repo
+posts no legacy statuses at all, and GitHub rolls up an empty set as `pending`. A session that
+took that at face value would have "waited for CI" on a PR that finished, or worse, started
+diagnosing a failure that does not exist.
+
+**The rule this belongs to is already in the playbook, one level up:** *know what produced a
+signal before believing its colour.* The repo learned it as "a red cell on `main` for a tree
+identical to a green PR head is the runner's claim, so compare tree hashes first." This is the
+same defect wearing green-turned-amber: an aggregate over an empty set is not evidence of
+anything. **`get_check_runs` is the authoritative signal here** (GitHub Actions posts check
+runs, not statuses), and `total_count` is the field that gives the lie away — zero rows cannot
+be pending.
+
+**Second, smaller: a check-in interval is a cost, and a no-op poll is not free.** Five
+consecutive hourly steward check-ins on a green PR waiting purely on a human merge each burned
+~2.4% of the session context wall to learn nothing. The interval was stretched 60 → 180 → 360
+minutes on the reasoning that PR-activity **webhooks are the primary signal** and the check-in
+is only a backstop for a missed one. The merge then arrived by webhook, ~2 h before the next
+backstop would have fired — so the stretch cost nothing and saved the context that the
+post-merge tree verification and branch restart actually needed. Poll at the rate the watched
+thing can change, not at the rate a rule's example happened to name.
+
 ### 2026-09-09 — an assertion is only as strong as the text that was NOT already there
 
 **The green mutation, in a new species.** Two of twenty mutations came back green, and the

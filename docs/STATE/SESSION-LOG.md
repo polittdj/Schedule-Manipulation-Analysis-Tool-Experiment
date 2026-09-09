@@ -17380,3 +17380,28 @@ shadows it on PATH).
 - **Still owed and not delivered:** the design page (`/scorecards`, `setScreen('sk')`).
 - **Review cover still absent** — Codex quota exhausted on #655/#656/#657; the mutation battery
   and the full gate remain the only review this repo receives.
+
+## 2026-09-09 (b) — #659 merged (ADR-0481 / OR-11e); branch restarted (docs-only)
+
+- **#659 MERGED ~12:09Z** → `main` @ **`a5a65547`**. Tree-verified before believing it:
+  `git rev-parse <merge>^{tree}` and `git rev-parse 54159640^{tree}` both read
+  `7086a92de34a139d4373bd2d0939083692798355`, so the squash carries exactly what the eight
+  green checks ran on. Branch restarted with `--prune` + `remote set-head` + `checkout -B`;
+  the squash was never amended; the pending 16:34Z check-in was deleted.
+- **Eight of eight checks green on the final head** `54159640` (`total_count: 8`, zero pending):
+  cui-guard · linux · windows · browser · floor · test (3.11) · test (3.13) · check (last, 04:20:42Z).
+  `mergeable_state` `clean` throughout. Local full suite agreed independently:
+  `5181 passed, 5 skipped, exit 0` in 40:39.
+- **A steward trap recorded, and it nearly cost a false alarm.** `pull_request_read` method
+  `get_status` returned `{"state":"pending","total_count":0,"statuses":[]}` on a PR whose eight
+  check runs were all green. That is the LEGACY commit-status API; this repo posts none, and
+  GitHub rolls up an empty set as "pending". It is not a pending or red check — `get_check_runs`
+  is the authoritative signal. Same species as "a red cell on a tree identical to a green head
+  is the runner's claim": know what produced a colour before believing it.
+- **The check-in interval was stretched deliberately, 60 → 180 → 360 min**, because five
+  consecutive no-change polls each cost ~2.4% of the session context wall for zero information
+  while PR-activity webhooks remained the primary signal. The merge arrived by webhook, as
+  designed, ~2 h before the next backstop would have fired.
+- **Codex review quota EXHAUSTED on #659 too** — its only comment. That is now **four**
+  consecutive merges (#655, #656, #657, #659) with no automated review performed.
+- **Still owed and not delivered:** the `/scorecards` design page (`setScreen('sk')`).
