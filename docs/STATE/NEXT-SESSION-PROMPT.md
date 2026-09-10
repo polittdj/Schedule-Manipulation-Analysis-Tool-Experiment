@@ -1,52 +1,55 @@
 # Kickoff prompt — next session
 
-PR state (2026-09-10): **#661 MERGED** → `main` @ **`6c4f2f31`** (ADR-0482 / OR-12, **v1.0.252**),
-tree-verified `9ce04715…` on both the squash and head `03e33b34`, eight of eight checks green.
-**PR #662 is OPEN (docs-only)**, registering OR-13. **Always `git fetch origin` and read
-`git log origin/main` before trusting any sha written here** — three consecutive kickoffs have been
-stale by the time they were read.
+PR state (2026-09-10 b): `main` @ **`6c4f2f31`** (#661, ADR-0482 / OR-12, v1.0.252). **The OR-13
+fix is on `claude/blissful-clarke-tyggug` (ADR-0483, v1.0.253) in its own draft PR, which also
+CONTAINS PR #662's two docs commits** — so #662 can be closed in favour of it, or merged first and
+this branch merge-resolved. **Always `git fetch origin` and read `git log origin/main` before
+trusting any sha written here** — four consecutive kickoffs have been stale by the time they were
+read.
 
-## TAKE OR-13 FIRST. It is ahead of R-56, and the operator lost a day to it.
+## OR-13 is CLOSED (ADR-0483). Take R-56.
 
-**Root cause is FOUND and verified against the installed API, not from memory:**
+`SHUTDOWN_DRAIN_TIMEOUT = 5` now goes to `uvicorn.Config`; without it `timeout_graceful_shutdown`
+is `None`, which `asyncio.wait_for` reads as **wait forever**, and a peer that stopped draining an
+in-flight write left the tool alive with its port unbindable. The bound comes from
+`launcher._HANDOVER_TIMEOUT` (20 s): `CLOSE_GRACE 5 + watchdog poll 2 + drain 5 = ~12 s`, and the
+**arithmetic** is pinned, not the constant — raising any of the three re-opens the question.
 
-```
-uvicorn 0.52.4 — Config(..., timeout_graceful_shutdown: int | None = None)
-web/app.py serve(): uvicorn.Config(app, host=host, port=port, log_level=log_level)   # never set
-```
+**Do NOT re-open, and do NOT restore the comment that was there:** `active_requests > 0` does
+**not** protect a streaming response. Starlette's `BaseHTTPMiddleware` decrements on *dispatch
+return*, before the body is written, so the watchdog fires with megabytes still queued — measured.
+The browser's heartbeat is what protects a live download. `force_exit` was rejected and must stay
+rejected: it skips the ASGI lifespan shutdown, which is the hook that clears the on-disk CUI cache
+(ADR-0335).
 
-`None` means **wait forever**. The watchdog fires, `_trigger_shutdown` sets `should_exit`, and
-uvicorn then blocks indefinitely draining a connection the browser abandoned. The operator's live
-reproduction, on v1.0.252:
+**Two rules that cost this session real time.**
+· **A repro that does not reproduce is a result, not a delay.** Five plausible shapes of "the
+  browser went away" — idle keep-alive, half-closed after a small response, unread small response,
+  truncated request, truncated POST — all stopped cleanly in ~6 s. Only a peer that stops draining
+  a **large** in-flight write wedges it. Enumerate shapes and let them fail.
+· **Put the red arm INSIDE the test.** `tests/web/test_exit_is_bounded.py` runs the pre-fix
+  configuration against the same wedge and requires it to HANG before trusting the green arm, so a
+  box with bigger socket buffers gets a FAILURE rather than a green that measured nothing. Two of
+  the eight mutations target the **instrument** (wide receive window · one small response) — those
+  are the ones that make "the control hung" mean anything.
 
-```
-LocalPort RemotePort    State OwningProcess
-     8321      54055 FinWait2         16876      <- half-closed; the browser is gone
-     8321          0   Listen         16876      <- and it is STILL answering /api/whoami
-```
+**Environment, re-measured 2026-09-10 (b).** The
+clone arrives shallow at depth 50 and its answer for `git log -1 -- tools/mpxj` is plausible at
+**every** depth: `+60` → `f021b5e6`, `+200` → `1df4d4a1`, `+400` → `42d92dc9`. Deepen until
+`git rev-parse --is-shallow-repository` prints **false** (a further `+100` reached 760 commits) and
+confirm the sha is STABLE before running `build_installers.py` without `SF_MPXJ_REF`. The true
+value is `42d92dc9acc98f7d87f19c82dc62be3e5d3c15ca`. Install with
+`uv pip install --python /usr/local/bin/python3 --system -e '.[dev]'` (add `build` and `playwright`
+the same way; never `playwright install` — use `tests/web/browser_chrome.py::chrome_kwargs()`).
+**Keep the token-guardian's `token_audit.py` in the scratchpad** — `ruff check .` is whole-tree and
+a scratch file in the repo root fails the gate.
 
-**The bug was never in the detection. It is in the EXIT.** This also explains why the 600 s idle
-rule never worked either (a server survived ~18 h), and why the desktop icon fails **invisibly**
-under `pythonw` — a handover timeout with stderr going to `nul`.
-
-**ADR-0482 is NOT the culprit and is not wrong.** A real-Chromium test measures `POST
-/api/heartbeat` → 200, `POST /api/closing` sent on unload, and the server stopping **5 s** after a
-clean single-cycle close. Do not "fix" ADR-0482.
-
-**DO NOT ship the one-line fix without a RED-FIRST repro.** The proposal is a bounded
-`timeout_graceful_shutdown`. The argument that a short value is safe — `active_requests > 0`
-already blocks the watchdog while real work is in flight — **is the same species of reasoning that
-was wrong FOUR times on 2026-09-10**: the CSRF gate refusing the beacon, an Ollama-manager hang,
-the `browser_seen` gate, a surviving tab. All dead on measurement. Build the repro first: a
-half-closed socket that hangs the current build and goes green with the timeout. Every refutation
-is recorded in `docs/STATE/OPERATOR-REQUESTS.md` OR-13.
-
-**Two diagnostic rules this cost a day to learn.** A filter in a diagnostic is an ASSERTION about
-where the answer lives: `Get-Process pythonw` and `Get-NetTCPConnection -State Listen` both
-returned empty while a server was running and holding the port, because the evidence was a
-`FinWait2` connection the filter excluded by construction. And **every "install this and try
-again" must end with a command that prints what actually got installed** — the operator spent a
-day testing v1.0.251 because I never asked.
+**Every "install this and try again" must end with a command that prints what actually got
+installed.** The operator spent a day testing v1.0.251 against a fix that shipped in 1.0.252.
+**And a filter in a diagnostic is an ASSERTION about where the answer lives** — `Get-Process
+pythonw` and `Get-NetTCPConnection -State Listen` both returned empty while a server was running
+and holding the port, because the evidence was a `FinWait2` connection the filter excluded by
+construction. **Use the real browser** (`render-verify`) for any claim about what a page does.
 
 **Three steward traps, all measured — do not re-learn any of them:**
 1. `pull_request_read` method **`get_status`** returns `{"state":"pending","total_count":0,
@@ -55,17 +58,7 @@ day testing v1.0.251 because I never asked.
 2. A `check_suite.completed` event can carry a **superseded** `head_sha`. Re-read the current head.
 3. Check set: **eight** when `installer/**` changes, **six** for docs-only (no `windows` job).
 
-**Environment, measured:** the shallow-clone remedy is **deepening**, and budget it big —
-`--deepen=25` did nothing, and `--deepen=<n> origin main` kept resolving `git log -1 -- tools/mpxj`
-to the NEW graft boundary twice running. A cumulative **`60 + 200 + 400` on `origin main`** (742
-commits) surfaced the true `42d92dc9acc98f7d87f19c82dc62be3e5d3c15ca`, after which
-`build_installers.py` pinned it with **no `SF_MPXJ_REF`**. Install with
-`uv pip install --python /usr/local/bin/python3 --system -e '.[dev]'` (add `build` and `playwright`
-the same way; never `playwright install` — use `tests/web/browser_chrome.py::chrome_kwargs()`).
-**Use the real browser.** `render-verify` exists for exactly this and skipping it is what let
-OR-12 ship without touching the operator's actual failure.
-
-**After OR-13 take R-56** — the operator queue is now EMPTY of blocking rows (OR-11a/c/e all shipped;
+**Take R-56** — OR-13 is CLOSED (ADR-0483) and the operator queue is now EMPTY of blocking rows (OR-11a/c/e all shipped;
 OR-11b needs a measurement first and OR-11d is cosmetic), so the audit rows resume. R-56 is far
 better specified than the report's row: it is a duration-CONTOUR defect on UNSTARTED work, so no
 progress rule reaches it, and it is what still holds `Hard_File_updated3`'s finish 13 d early after
@@ -86,20 +79,8 @@ another here twice). What settles it: updated3 within a day of the stored 2026-1
 `-m parity` unmoved and Project2 / Project5 still exact. Two heads are the day-boundary residual
 below, not R-56's.
 
-**Environment, MEASURED this session — the shallow-clone remedy is DEEPENING, and budget it big.**
-`git fetch --deepen=25 origin` (no refspec) did nothing at all. `--deepen=<n> origin main` moved the
-graft boundary, and `git log -1 -- tools/mpxj` then resolved to the NEW boundary — the same
-artifact one commit further back — twice running. Only a cumulative **`60 + 200 + 400` on
-`origin main`** (742 commits, boundary `d582e104`) surfaced the true last touch
-`42d92dc9acc98f7d87f19c82dc62be3e5d3c15ca`, after which `build_installers.py` pinned it with **no
-`SF_MPXJ_REF` and no new graft artifact**. A partial deepen is indistinguishable from success
-unless you check the sha. The container may have NO project install:
-`uv pip install --python /usr/local/bin/python3 --system -e '.[dev]'` completes first try (add
-`build` and `playwright` the same way; do NOT run `playwright install` — use
-`tests/web/browser_chrome.py::chrome_kwargs()` in scratch probes too).
-
 **Heads-up on review cover:** `chatgpt-codex-connector[bot]` reported EXHAUSTED Codex review quota
-on #655, #656 AND #657. Until it is restored, the mutation battery and the full gate are the only
+on #655, #656, #657, #659, #660 AND #661 — six consecutive merges. Until it is restored, the mutation battery and the full gate are the only
 review this repo is actually getting.
 
 Work the POLARIS² audit's plan-forward (Schedule-Manipulation-Analysis-Tool). Read

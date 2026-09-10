@@ -7140,3 +7140,41 @@ and that is the lesson worth keeping.
   `token_audit.py`, copied to the working directory per its instructions, broke `ruff check .` —
   which this repo runs on the WHOLE TREE. The script belongs in the scratchpad; the gate's scope is
   part of the gate.
+
+### 2026-09-10 (b) — a fix can be right while the reason written beside it is wrong
+
+- **Ship the fix; do not ship the argument that came with it.** OR-13 named the correct one-line
+  fix AND a reason it was safe: `active_requests > 0` blocks the watchdog while real work is in
+  flight, so nothing legitimate can be cut off. The fix was right. **The reason was false**, and it
+  took a measurement to see: Starlette's `BaseHTTPMiddleware` decrements on *dispatch return*, which
+  precedes the response body being written, so a stop can be requested with megabytes still queued.
+  Had the fix shipped on that argument, the repo would now carry a comment asserting a protection
+  that does not exist — and the next person to change `CLOSE_GRACE` or the watchdog would have
+  trusted it. **A hypothesis that survives because nobody tested it is not evidence, even when the
+  action it recommends is correct.**
+- **A repro that does not reproduce is the most valuable result of the day.** Five plausible shapes
+  of "the browser went away" — idle keep-alive, half-closed, unread response, truncated request,
+  truncated POST — all stopped cleanly in ~6 s. Every one of them is what a person *pictures* when
+  they read "half-closed socket", and every one would have been written up as the reproduction if
+  the check had been inspectional. The mechanism turned out to be narrower than the picture: the
+  peer must stop draining a **large in-flight write**. Enumerate shapes and let them fail; the ones
+  that fail to fail tell you the mechanism is not what you think.
+- **Put the red arm inside the test, not in the session that wrote it.** A red-first run proves the
+  check works *on the machine that ran it, on the day it ran*. `test_exit_is_bounded.py` instead
+  runs the pre-fix configuration against the same wedge and requires it to hang before it will
+  trust the green arm — so a CI box with larger socket buffers gets a FAILURE rather than a green
+  that measured nothing. This repo's most-repeated defect is a green test that could never fail;
+  a permanent control arm is the version of red-first that survives the session.
+- **Mutate the instrument, not just the subject.** Two of the eight mutations widened the receive
+  window and shrank the request to one small response — neither touches the code under test, both
+  neuter the wedge. They are the only mutations that prove "the control hung" means anything. A
+  battery that mutates only the subject cannot distinguish a working oracle from a lucky one.
+- **A shallow clone's answer to "what last touched this path" is plausible at every depth.** `+60`,
+  `+200` and `+400` each produced a different, real-looking SHA for `tools/mpxj`; only a full clone
+  (760 commits) settled it. A graft boundary does not announce itself. When a build step pins a
+  remote URL by commit, `git rev-parse --is-shallow-repository` is part of the check, not trivia.
+- **Read the evidence for what the instrument could see.** OR-13 read a `Listen` row as "still
+  serving *during* the hang". It cannot be — uvicorn closes the listener before it waits — so that
+  capture was taken before the fuse burned. The observation was real and the diagnosis it supported
+  was correct; only the inference between them was wrong, which is the hardest kind to catch,
+  because everything around it is right.

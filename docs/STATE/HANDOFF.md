@@ -1,47 +1,26 @@
-# Handoff — 2026-09-09 (b) (OR-12 CLOSED (ADR-0482): closing the browser stops the tool in seconds, not in ten minutes; v1.0.252)
+# Handoff — 2026-09-10 (OR-13 CLOSED (ADR-0483): the tool that decides to stop actually exits; v1.0.253)
 
-STATUS (current) — `main` @ **`6c4f2f31`** (#661, ADR-0482 / OR-12, **v1.0.252** — tree-verified `9ce04715…` on both the squash and head `03e33b34`, eight of eight checks green). Branch `claude/polaris-audit-plan-forward-41qww9` restarted on it; **PR #662 is OPEN (docs-only)** registering **OR-13**. Highest ADR **0482**. QC-1/QC-2 bind every session — ADR-0393.
+STATUS (current) — `main` @ **`6c4f2f31`** (#661, ADR-0482 / OR-12, tree-verified). Branch `claude/blissful-clarke-tyggug`, which **contains PR #662's two docs commits** (it fast-forwarded onto them) so the OR-13 registration and this closure travel together — #662 can be closed in favour of this PR, or merged first and this branch merge-resolved. One unit, **engine untouched**, red-first, mutation-tested **8/8 by name**. Highest ADR **0483**. Version **1.0.253** (wheel + nine installers rebuilt AFTER the last source edit; full suite started after THAT). QC-1/QC-2 bind every session — ADR-0393.
 
-**OR-13 IS THE NEXT UNIT, ahead of R-56.** The operator lost a day to it. Read its section below and `docs/STATE/OPERATOR-REQUESTS.md` OR-13 before touching anything.
+## OR-13 — the tool decided to stop and then could not exit
 
-## OR-12 — the operator closed the window and the program kept running
+**Root cause, confirmed by measurement rather than adopted from the handoff.** `uvicorn.Config` defaults `timeout_graceful_shutdown` to `None`; `Server.shutdown` hands that to `asyncio.wait_for`, where `None` means **wait forever**. A peer that stops draining bytes the server is still writing never leaves `server_state.connections`, so the drain never ends — listener already closed, process alive, **port unbindable**. That last one is the operator's sentence, measured: `port_rebindable=False`. Fix is `SHUTDOWN_DRAIN_TIMEOUT = 5` on the Config, bounded by `launcher._HANDOVER_TIMEOUT` (20 s), not by taste: `CLOSE_GRACE 5 + watchdog poll 2 + drain 5 = ~12 s`, ~8 s of margin, and the **arithmetic** is pinned, not the constant.
 
-**The report:** close the browser without *Wipe and Quit* and the tool does not stop. **Measured, and it was the spec working as written:** `idle_grace` is **600 s** and `static/heartbeat.js` sent **nothing** on unload — so "I closed the window" and "I walked away" were the SAME event and both waited ten minutes, with Ollama holding its VRAM the whole time. `launcher.py`'s own comment already said so: *"a server legitimately outlives its browser by up to ten minutes. That ten-minute window is exactly when a relaunch lands on it."* ADR-0334 built the port handover to SURVIVE that window; this closes it.
+**The kickoff's own safety argument was refuted, and the fix shipped anyway.** OR-13 said a short value looked safe because `active_requests > 0` blocks the watchdog while real work is in flight. **False, and now measured:** Starlette's `BaseHTTPMiddleware` runs the `finally` when *dispatch returns*, which is before the response body finishes streaming — the watchdog fires with megabytes still queued. The counter never protected a streaming response. The heartbeat does. Same one line, different reason; the code comments that claimed otherwise are corrected.
 
-**`pagehide` arms a short fuse; it does NOT mean stop** — forced by the app's shape: **35 server-rendered routes, so every link click is a real page unload**. `heartbeat.js` beacons `POST /api/closing` via `sendBeacon` (the only send that survives unload; CSP `connect-src 'self'` already allows it); the server records `closing_at`; **a heartbeat clears it**, and the next page beats immediately on load, so a navigation cancels the fuse it just armed within ~1 s. `_shutdown_due` stops on EITHER the unchanged 600 s idle rule OR a fuse burned past `CLOSE_GRACE = 5.0`. **`CLOSE_GRACE > HEARTBEAT_INTERVAL = 3.0` is a CONSTRAINT, not a preference** — a fuse shorter than the beat gap expires during an ordinary navigation. Two exclusions, both deliberate: **not `visibilitychange`** (fires on a tab switch, and cancellation would then ride on a THROTTLED background tab) and **not on `event.persisted`** (bfcache — beaconing there stops the tool behind a Back button). **Rejected:** just lowering `idle_grace` — it is load-bearing for the operator reading a long report without clicking.
-
-**Two of the operator's premises were false and are corrected in the ADR:** skipping Wipe-and-Quit does NOT leave CUI on disk (`_trigger_shutdown` seals+clears on every path, watchdog included — ADR-0335); and the Desktop icon launches **`pythonw.exe`** (`template.ps1:460`), which opens no console, so there is no PowerShell window to close from the icon.
+**Five plausible repro shapes stopped cleanly in ~6 s and proved nothing:** idle keep-alive · half-closed after a small response · unread small response · truncated request · truncated POST. Only a peer that stops draining a *large* in-flight write wedges it (tiny receive window + pipelined requests for a real vendored asset). A second failure mode — a request pinning `active_requests` forever, which would explain the operator's `Listen` row — was hypothesised, searched for, and **refuted**; that capture was simply taken before the fuse burned. OR-13's observation was right, one inference from it was wrong, the diagnosis was right anyway.
 
 ## Traps this session paid for, by name
 
-* **2 of 14 mutations came back GREEN and BOTH were findings about the checks.** (a) One mutation had `old == new` — a no-op that reads exactly like a pass; the sandbox harness now REFUSES any mutation whose replacement equals its anchor. (b) Worse species: `test_the_probe_endpoint_never_arms_or_disarms_the_fuse` compared the post-probe value to a "before" value **read out of the same state the mutation corrupts** — clearing the fuse on every request made both sides `None` and the equality held. **An oracle derived from the thing under test cannot judge it** (QC-1). Re-aimed at an ABSOLUTE anchor: armed *at all* first, unchanged second.
-* **The red proved the instrument before the instrument was trusted:** the node harness failed on exactly the 3 new-behaviour assertions while its other 5 passed against the OLD code.
-
-## Registered residual (measured, not taken)
-
-A close beacon arriving LATE re-arms the fuse on a live session; the next beat (≤3 s) clears it and the fuse is 5 s, so the beat wins with 2 s margin. **Not covered:** a session whose only remaining page is a THROTTLED background tab beating slower than the fuse burns — the tool could stop with a hidden tab open. Bounded (relaunch + ADR-0334 handover) and strictly better than the ten-minute hang, but real.
-
-## OR-13 (NEW, OPEN) — the tool cannot EXIT: `timeout_graceful_shutdown` is never set
-
-**Operator-reported after ADR-0482 shipped, and ADR-0482 is NOT the culprit.** A real-Chromium
-test measures the close beacon leaving the browser, passing CSRF, and the server stopping **5 s**
-after a clean single-cycle close. The defect is one layer down: `serve()` builds
-`uvicorn.Config(app, host=host, port=port, log_level=log_level)` and **never sets
-`timeout_graceful_shutdown`**, which defaults to `None` = **wait forever**. The watchdog fires,
-`should_exit` is set, and uvicorn then blocks indefinitely draining a connection that never
-closes. The operator's live repro: `8321 54055 FinWait2` beside `8321 0 Listen` on the same pid,
-still answering `/api/whoami`. **This also explains why the 600 s idle rule never worked** — a
-server survived ~18 h. The bug was never in the detection; it is in the EXIT. Fix (proposed, NOT
-built, NOT proven): a bounded `timeout_graceful_shutdown`; needs a red-first repro with a
-half-closed socket first. Workaround: `POST /api/shutdown` (measured — both pids gone in 4 s).
-**Four theories died on measurement first** (CSRF refusal · Ollama hang · `browser_seen` gate ·
-surviving tab) — see `docs/STATE/OPERATOR-REQUESTS.md` OR-13 for each refutation.
+* **The red arm lives INSIDE the test.** `test_exit_is_bounded.py` runs the pre-fix configuration against the same wedge and requires it to HANG before trusting the green arm. On a machine with bigger socket buffers the wedge would not bite — and the control exits early and the test **fails**, instead of returning a green that measured nothing.
+* **Two of the eight mutations target the instrument, not the subject** (wide receive window · one small response). Those are the ones that make "the control hung" mean anything; a battery that only mutates the subject cannot tell a working oracle from a lucky one.
+* **The shallow clone lies about the MPXJ pin, generously.** `+60` → `f021b5e6`, `+200` → `1df4d4a1`, `+400` → `42d92dc9`. Each intermediate answer is a graft boundary that *looks* like a real commit. Deepened to a full clone (760 commits, `shallow=false`) and confirmed `42d92dc9…` is stable — only then is `build_installers.py` allowed to run without `SF_MPXJ_REF`.
 
 ## Next — campaign queue
 
-**R-56** (add UID 385, seven heads, both `pc == 0`) · R-49 · R-46 · R-47 · R-52 · R-50 · R-57/58/59 · then R-03 · R-04 · R-09 · R-13 · R-18 · R-21 · R-22 · R-32 · R-39. Other residuals: `/settings` horizontal overflow (its own UI unit; NOT the hint bubble, that is closed) · OR-11b (measure the 48-fact cap on a real 32-file workbook first) · OR-11d (`_AskRecord` exports an unanswered ask without its reason) · the working-minute axis cannot carry a recorded instant on a day boundary · the hint bubble still widens the document while OPEN. **PLUS the design page, owed and still not delivered: `/scorecards` (`setScreen('sk')`)**, 21 artboards remaining (report §6).
+**R-56** (add UID 385, seven heads, both `pc == 0`) · R-49 · R-46 · R-47 · R-52 · R-50 · R-57/58/59 · then R-03 · R-04 · R-09 · R-13 · R-18 · R-21 · R-22 · R-32 · R-39. Other residuals: ADR-0483's own (a live-peer response is cut at 5 s; a slow-but-live drain is indistinguishable from a dead one at this layer) · `/settings` horizontal overflow (its own UI unit; NOT the hint bubble, that is closed) · OR-11b (measure the 48-fact cap on a real 32-file workbook first) · OR-11d · the working-minute axis cannot carry a recorded instant on a day boundary · the hint bubble still widens the document while OPEN. **PLUS the design page, owed four sessions running and still not delivered: `/scorecards` (`setScreen('sk')`)**, 21 artboards remaining (report §6).
 
-**Review cover is still absent** — Codex quota EXHAUSTED on #655, #656, #657, #659 AND #660. Five consecutive PRs with no automated review performed; the mutation battery and the full gate are all this repo gets.
+**Review cover is still absent** — Codex quota EXHAUSTED on #655, #656, #657, #659, #660 AND #661. Six consecutive merges with no automated review performed; the mutation battery and the full gate are all this repo gets.
 
 # (prior) handoffs — archived
 

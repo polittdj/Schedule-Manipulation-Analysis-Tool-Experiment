@@ -17464,3 +17464,50 @@ shadows it on PATH).
 - **PR #662 (docs-only) registers OR-13 with the full diagnosis. The FIX is deliberately not in it**
   — it needs a red-first repro (a half-closed socket that hangs the current build) and this session
   was at ~81% context.
+
+## 2026-09-10 (b) — OR-13 CLOSED (ADR-0483): the tool that decides to stop actually exits; v1.0.253
+
+- **The proposed one-line fix was NOT shipped on the argument that came with it.** OR-13 recorded
+  the fix together with its justification — a short `timeout_graceful_shutdown` looks safe because
+  `active_requests > 0` already blocks the watchdog while real work is in flight — and flagged that
+  reasoning as the same species that had died four times. **It was right to. The argument is false,
+  and now measured:** Starlette's `BaseHTTPMiddleware` runs the dispatch `finally` when *dispatch
+  returns*, which is BEFORE the response body finishes streaming. In the reproduction the watchdog
+  fires — the listening socket closes — with megabytes still queued to the wedged peer. The counter
+  never protected a streaming response and never could; the browser's heartbeat is what does. Same
+  one line, different reason, and the code comments that claimed otherwise are corrected.
+- **Red first, and five plausible shapes proved nothing.** Against a real `serve()` in a real
+  subprocess: an idle keep-alive, a half-closed socket after a small response, an unread small
+  response, a truncated request, and a truncated POST whose body never arrives **all stopped
+  cleanly in ~6 s**. What wedges it is a peer that stops draining a *large* in-flight write — a tiny
+  receive window plus pipelined requests for a real vendored asset. Then, and only then:
+  `exited=False`, `listening=False`, **`port_rebindable=False`**. That last field is the operator's
+  sentence — "I cannot open the program" — as a measurement.
+- **A second failure mode was hypothesised, searched for, and REFUTED.** The operator's capture
+  shows the listener in `Listen` while OR-13 reads it as "still serving during the hang"; that
+  cannot be, since `Server.shutdown` closes the listener *before* it waits. So a path where the
+  watchdog never fires at all (a request pinning `active_requests`) was tested with a truncated
+  POST — it does not pin, and no such path was found. The capture was taken before the fuse burned.
+  **OR-13's observation was right, one inference from it was wrong, and its diagnosis was right
+  anyway.** Recorded because the repo has shipped that exact shape before (ADR-0393, QC-2).
+- **Fix:** `SHUTDOWN_DRAIN_TIMEOUT = 5` on `uvicorn.Config`, bounded by `launcher._HANDOVER_TIMEOUT`
+  (20 s) — `CLOSE_GRACE 5 + watchdog poll 2 + drain 5 = ~12 s measured`, ~8 s margin. The test pins
+  the **arithmetic**, not the constant. `force_exit` was rejected: it skips the ASGI lifespan
+  shutdown, which is the hook that clears the on-disk CUI cache (ADR-0335) — Law 1 outranks
+  promptness. Verified the parameter exists and is used at the declared floor (`uvicorn==0.29.0`)
+  by installing the floor and introspecting it, so `constraints/floor.txt` is unchanged.
+- **The red arm lives inside the test.** `test_exit_is_bounded.py` runs the pre-fix configuration
+  against the same wedge and requires it to HANG before trusting the green arm — so a machine whose
+  socket buffers swallow the wedge gets a FAILURE, not a green that measured nothing.
+- **Mutation battery 8/8 RED by name**, in an isolated worktree with its own venv, the harness
+  refusing any mutation whose replacement equals its anchor (ADR-0482's lesson). Two of the eight
+  mutate the **instrument** (wide receive window · one small response) and are caught by the red arm.
+- **The shallow clone lies about the MPXJ pin, and every intermediate answer looks real.** `+60` →
+  `f021b5e6`, `+200` → `1df4d4a1`, `+400` → `42d92dc9`. Deepened to a full clone (760 commits,
+  `shallow=false`) and confirmed `42d92dc9…` is stable before letting `build_installers.py` run
+  without `SF_MPXJ_REF`.
+- **v1.0.253**: wheel + nine installers rebuilt after the last source edit; the full suite started
+  after that, so the lockstep test measures the tree it is pinned to.
+- Branch `claude/blissful-clarke-tyggug` fast-forwarded onto **PR #662's** two docs commits, so the
+  OR-13 registration and this closure travel together; #662 can be closed in favour of this PR, or
+  merged first and this branch merge-resolved.
