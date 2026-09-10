@@ -17511,3 +17511,26 @@ shadows it on PATH).
 - Branch `claude/blissful-clarke-tyggug` fast-forwarded onto **PR #662's** two docs commits, so the
   OR-13 registration and this closure travel together; #662 can be closed in favour of this PR, or
   merged first and this branch merge-resolved.
+
+### Follow-up — the gate, measured after the version bump and the rebuild
+
+- **PR #663** (draft) — `claude/blissful-clarke-tyggug` @ `8673620e`, base `main` @ `6c4f2f31`.
+- **Full suite: 4844 passed, 259 skipped, 0 failed, exit 0** in 17m17s. Every one of the 259 skips
+  is `playwright not installed (runtime stays stdlib-only)` — environment-gated in this container
+  and NOT a silent pass: CI's `browser (measured-box proof)` job runs the same modules and **fails
+  on any skip** (the census is computed by `tools/browser_modules.py`, not hand-listed).
+- `ruff check .` (whole tree) clean · `ruff format --check .` 659 files · `python -m mypy src/`
+  strict, no issues in 163 source files · `bandit -q -r src` **exit 0** (three `nosec` warnings on
+  `web/system.py`, which are not failures) · `node --check` on every vendored JS.
+- CUI pre-commit guard PASSES on the staged change, and was proven able to REFUSE: a staged probe
+  `.mpp` was rejected, and the guard went green again once it was removed.
+- **Eight checks apply** (`installer/**` changed). At the time of writing: `cui-guard` ✅ ·
+  `linux` ✅ · `windows` ✅; `test (3.11)`, `test (3.13)`, `floor`, `browser` in flight, and `check`
+  appears once its `needs` complete. `main`'s own run for the squash is recorded by the next session.
+- **A step of §4's sequence was skipped and caught:** the editable install's metadata still read
+  `1.0.252` after the bump, so `_ASSET_VERSION` (`chrome.py`, `importlib.metadata.version`) was
+  stale during the local run. Checked rather than assumed before spending a re-run:
+  `test_static_cache.py` uses `_ASSET_VERSION` as a variable on BOTH sides of every assertion, and
+  `test_installers.py` compares the embedded wheel name to `pyproject.toml`'s string read from the
+  FILE — so the run was a valid measurement. Metadata refreshed afterwards regardless; CI installs
+  fresh and never saw it.
