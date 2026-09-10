@@ -7178,3 +7178,27 @@ and that is the lesson worth keeping.
   capture was taken before the fuse burned. The observation was real and the diagnosis it supported
   was correct; only the inference between them was wrong, which is the hardest kind to catch,
   because everything around it is right.
+
+### 2026-09-10 (c) — the merge phase has its own failure modes
+
+- **A tree comparison turns "take ours" from a guess into a decision.** When the operator
+  squash-merged the docs PR this branch was built on, git conflicted on four state docs — both
+  sides had "changed" them from the same base. Resolving to our side was obviously right *and
+  entirely unproven* until `9922e276^{tree}` was compared to `abf372cf^{tree}` and found identical,
+  and the post-resolution `git write-tree` was compared to the pre-merge tree and found identical
+  too. Two hash comparisons, ten seconds, and the difference between "I believe I lost nothing" and
+  "nothing was lost". Do this on every conflict resolution where one side should be a superset.
+- **A wake event's `head_sha` is a claim about a moment, not about now.** A `check_suite.completed`
+  arrived saying nothing was running or failed — for a head that a later push had CANCELLED. A
+  cancelled run is not a verdict, and the event cannot know it has been superseded. Re-read the
+  PR's current head every time; the event is a prompt to look, never the answer.
+- **Recording "CI was green" in a pushed document invalidates its own claim.** Each such push
+  creates a new head whose CI is again unrecorded, and the regress ends only when someone stops
+  pushing. The verdict belongs in the PR body and the session log — artifacts that do not restart
+  the thing they describe. Stating the omission deliberately is part of it, so the next session
+  reads a decision rather than an oversight.
+- **Seven consecutive merges with no automated review.** Codex quota has been exhausted on #655,
+  #656, #657, #659, #660, #661 and #663. That is not a lesson about tooling but about weight: the
+  mutation battery and the full gate are carrying the entire review function of this repository,
+  and a battery that only mutates the subject rather than the instrument would not notice it was
+  failing. Budget accordingly until the quota returns.

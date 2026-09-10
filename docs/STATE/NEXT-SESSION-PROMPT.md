@@ -1,13 +1,12 @@
 # Kickoff prompt — next session
 
-PR state (2026-09-10 b): **#662 MERGED** → `main` @ **`9922e276`** (docs-only, the OR-13
-registration). **The OR-13 FIX is PR #663 on `claude/blissful-clarke-tyggug` (ADR-0483, v1.0.253),
-draft, 8/8 GREEN on head `7209e985`**, then merge-resolved against #662's squash (proven no-op:
-merged tree == pre-merge tree `cf3f7659…`). **Always `git fetch origin` and read `git log origin/main` before
-trusting any sha written here** — four consecutive kickoffs have been stale by the time they were
-read.
+PR state (2026-09-10 b): **#663 MERGED** → `main` @ **`b13dbd61`** (ADR-0483 / OR-13, **v1.0.253**),
+tree-verified `609e146f…` on BOTH the squash and the PR head `51a45639`, 8/8 checks green. `main`'s
+own run for the squash is **1827 (`34532629609`)** — read it first. #662 merged before it
+(`9922e276`, docs-only). **Always `git fetch origin` and read `git log origin/main` before trusting
+any sha written here** — four consecutive kickoffs have been stale by the time they were read.
 
-## OR-13 is CLOSED (ADR-0483). Take R-56.
+## OR-13 is CLOSED AND MERGED (ADR-0483, #663). **Take R-56.**
 
 `SHUTDOWN_DRAIN_TIMEOUT = 5` now goes to `uvicorn.Config`; without it `timeout_graceful_shutdown`
 is `None`, which `asyncio.wait_for` reads as **wait forever**, and a peer that stopped draining an
