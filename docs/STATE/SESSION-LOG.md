@@ -17547,3 +17547,32 @@ shadows it on PATH).
   `test_installers.py` compares the embedded wheel name to `pyproject.toml`'s string read from the
   FILE — so the run was a valid measurement. Metadata refreshed afterwards regardless; CI installs
   fresh and never saw it.
+
+### Follow-up — #663 MERGED (`main` @ `b13dbd61`), tree-verified
+
+- **#663 merged 2026-09-10 21:31Z** → `main` @ **`b13dbd61`**. Verified rather than assumed:
+  `git rev-parse b13dbd61^{tree}` and `git rev-parse 51a45639^{tree}` both read
+  **`609e146fe4ec91ac89a98f46d581a64afb8c5ac6`**, so the squash carries exactly the tree the eight
+  green checks ran on. `main`'s own run for the squash is **1827 (`34532629609`)**.
+- Branch restarted on `origin/main` with `--prune` + `remote set-head -a` + `checkout -B`; GitHub
+  auto-deleted both merged head branches, and the squash was **never amended**.
+- **The operator merged #662 first, mid-session, and it conflicted.** #662 was docs-only and this
+  branch already carried its two commits as real commits, so git saw both sides rewrite the same
+  four state docs. Resolved by merging `origin/main` IN (never a rebase of pushed history) to this
+  branch's side, and the choice was PROVEN: `9922e276^{tree}` == `abf372cf^{tree}` == `08f79d88…`,
+  so main contributed nothing, and the merged tree equalled the pre-merge tree `cf3f7659…`. That is
+  the standing cost of a squash-merge under a branch built on the same content, and the tree
+  comparison is what turns "take ours" from a guess into a decision.
+- **A `check_suite.completed` wake carried the SUPERSEDED head `8673620e`** and said nothing was
+  running or failed. That run had been CANCELLED by the follow-up push (`cancel-in-progress: true`),
+  and a cancelled run is not a verdict. Steward trap #2, and it cost nothing only because the
+  kickoff named it in advance.
+- **Codex review quota EXHAUSTED again on #663** — `chatgpt-codex-connector[bot]` posted the same
+  usage-limit notice. That is **seven consecutive merges** (#655, #656, #657, #659, #660, #661,
+  #663) with no automated review actually performed. The mutation battery and the full gate remain
+  the only review this repository receives, which puts more weight on a single session's discipline
+  than any of us should be comfortable with.
+- **Deliberately NOT done, and worth naming:** no docs commit was pushed purely to record "8/8 green
+  on head X". Each such push creates a new head whose CI is again unrecorded, so the regress only
+  ends when someone stops; the PR body and this log carry the verdict instead. Recorded so the next
+  session does not read the omission as an oversight.
