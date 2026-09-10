@@ -222,7 +222,7 @@ per-unit rotation. **Every remaining open item on this page is operator-owned.**
 
 ## 2026-09-08 — Ask-the-AI returned no answer on `/integrity` (screenshot, 32-version workbook)
 
-### OR-13 — "I still can't open the program when I close the browser without quitting" · `OPEN — root cause FOUND, fix not yet written`
+### OR-13 — "I still can't open the program when I close the browser without quitting" · `SHIPPED (ADR-0483, v1.0.253)`
 
 **The operator's report (2026-09-10), after ADR-0482 shipped.** Closing the browser without
 *Wipe and Quit* still leaves the tool unopenable. **ADR-0482 is not the culprit and is not
@@ -269,6 +269,30 @@ makes the current build hang, going green with the timeout) before a line is wri
 **Immediate operator workaround, measured:** `POST http://127.0.0.1:8321/api/shutdown` stops a
 stuck instance (both processes exited within 4 s). The desktop icon's handover also replaces a
 stuck predecessor, so the operator is not hard-blocked.
+
+**CLOSED by ADR-0483 (v1.0.253).** `SHUTDOWN_DRAIN_TIMEOUT = 5` is passed to `uvicorn.Config`, and
+the bound comes from `launcher._HANDOVER_TIMEOUT` (20 s) rather than from taste: `CLOSE_GRACE 5 +
+watchdog poll 2 + drain 5 = ~12 s` measured, ~8 s of margin, with the **arithmetic** pinned by a
+test so raising any of the three re-opens the question.
+
+**The demand for a red-first repro paid for itself twice.**
+
+1. **Five plausible shapes did not reproduce** — idle keep-alive, half-closed after a small
+   response, unread small response, truncated request, truncated POST — all stopped cleanly in
+   ~6 s. The mechanism is narrower than "a half-closed socket": the peer must stop draining a
+   **large in-flight write**. Wedged that way, the current build gives `exited=False`,
+   `listening=False`, **`port_rebindable=False`** — the operator's sentence as a measurement.
+2. **The safety argument recorded above is FALSE.** `active_requests > 0` does not protect a
+   streaming response: Starlette's middleware decrements on *dispatch return*, before the body is
+   written, so the watchdog fires with megabytes still queued. The fix is the same one line; the
+   justification for it is not the one written here, and the code comments now say so.
+
+**One correction to the evidence reading above.** The `Listen` row cannot show the process "STILL
+serving" *during* the hang — `Server.shutdown` closes the listener before it waits, and in every
+reproduction the listener is closed while the process hangs. That capture was taken before the fuse
+burned. A second failure mode in which the watchdog never fires at all was hypothesised and
+searched for; the truncated-POST shape refutes it. The observation was real, that one inference
+from it was wrong, and the diagnosis was right regardless.
 
 ### OR-11 — "Figure out what the root problem is and then create tests, both pass and fail, and test your proposed solution in a sandbox environment prior to implementing the fix" · `SHIPPED (ADR-0478, PR #655, v1.0.248)`
 

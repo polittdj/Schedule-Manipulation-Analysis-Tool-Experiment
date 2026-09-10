@@ -9,7 +9,13 @@ import pytest
 import uvicorn
 from fastapi.testclient import TestClient
 
-from schedule_forensics.web.app import _is_idle, _watchdog, create_app, serve
+from schedule_forensics.web.app import (
+    SHUTDOWN_DRAIN_TIMEOUT,
+    _is_idle,
+    _watchdog,
+    create_app,
+    serve,
+)
 
 
 class _FakeServer:
@@ -100,6 +106,24 @@ def test_serve_wires_shutdown_and_runs() -> None:
     assert app.state.request_shutdown is not None
     app.state.request_shutdown()  # the Quit/watchdog hook flips the server's should_exit
     assert holder["s"].should_exit is True
+
+
+def test_serve_bounds_the_graceful_drain() -> None:
+    """OR-13 (ADR-0483): uvicorn defaults this to None, and None means drain FOREVER.
+
+    The behavioural proof is tests/web/test_exit_is_bounded.py, which wedges a real socket against
+    a real server; this one is the fast belt — it names the field, so a regression fails in
+    milliseconds instead of after a 30-second subprocess battery.
+    """
+    holder: dict[str, _FakeServer] = {}
+
+    def factory(config: uvicorn.Config) -> uvicorn.Server:
+        holder["s"] = _FakeServer(config)
+        return holder["s"]  # type: ignore[return-value]
+
+    serve(create_app(), "127.0.0.1", 9997, server_factory=factory)
+    assert holder["s"].config.timeout_graceful_shutdown == SHUTDOWN_DRAIN_TIMEOUT
+    assert SHUTDOWN_DRAIN_TIMEOUT is not None  # the whole defect was this being unset
 
 
 def test_serve_refuses_non_loopback() -> None:

@@ -1417,6 +1417,35 @@ HEARTBEAT_INTERVAL = 3.0
 #: the 600 s idle grace.
 CLOSE_GRACE = 5.0
 
+#: How long uvicorn may drain in-flight connections after a stop is requested, in seconds.
+#:
+#: **Setting this at all is the fix for OR-13** (ADR-0483). ``uvicorn.Config`` defaults
+#: ``timeout_graceful_shutdown`` to ``None``, and ``None`` is passed straight to
+#: ``asyncio.wait_for``, where it means *wait forever*. A connection whose peer has stopped
+#: draining its socket — a browser that went away with response bytes still queued to it —
+#: then never leaves ``server_state.connections``, so ``Server.shutdown`` blocks for good:
+#: the listening socket is closed, the process never exits, and the port stays unbindable.
+#: Measured: the tool decided to stop and was still alive, holding its port, at the deadline.
+#: That is the operator's "I close the browser and then I cannot open the program again".
+#:
+#: The bound is set by the LAUNCHER, not by taste: ``launcher._HANDOVER_TIMEOUT`` (20 s) is how
+#: long a replacement launch waits for a stood-down predecessor to release the port before it
+#: gives up — invisibly, under ``pythonw``, where stderr goes to nul. The whole stop must fit
+#: inside that with room to spare: :data:`CLOSE_GRACE` (5 s) + the watchdog poll (2 s) + this
+#: drain = ~12 s measured, leaving ~8 s of margin. Do not raise it without re-checking that sum.
+#:
+#: It does not shorten any legitimate response. A drain only starts once a stop has been
+#: REQUESTED, which means the operator hit Quit, a replacement launch stood this one down, or
+#: the browser has been gone for :data:`CLOSE_GRACE` (or the 600 s idle grace) — in every one
+#: of those the peer is either absent or has asked to leave. Note the guard that looks like it
+#: covers this, ``active_requests > 0``, does NOT: Starlette's middleware decrements on dispatch
+#: return, which happens BEFORE the response body finishes streaming, so a stop can be requested
+#: with megabytes still queued (measured). The browser's own heartbeat is what protects a live
+#: download, not the in-flight counter.
+#:
+#: ``int``, not ``float``: that is uvicorn 0.52.4's annotation for the field.
+SHUTDOWN_DRAIN_TIMEOUT = 5
+
 
 def create_app(
     state: SessionState | None = None,
@@ -9369,7 +9398,17 @@ def serve(
     """
     if not is_loopback_host(host):
         raise ValueError(f"refusing to bind a non-loopback host {host!r} (CUI: local-only).")
-    server = server_factory(uvicorn.Config(app, host=host, port=port, log_level=log_level))
+    server = server_factory(
+        uvicorn.Config(
+            app,
+            host=host,
+            port=port,
+            log_level=log_level,
+            # OR-13 / ADR-0483: without this uvicorn drains FOREVER and the tool that just
+            # decided to stop never exits. See SHUTDOWN_DRAIN_TIMEOUT for why 5 and not more.
+            timeout_graceful_shutdown=SHUTDOWN_DRAIN_TIMEOUT,
+        )
+    )
     app.state.request_shutdown = lambda: setattr(server, "should_exit", True)
     if app.state.auto_shutdown:
         threading.Thread(target=_watchdog, args=(app,), daemon=True).start()

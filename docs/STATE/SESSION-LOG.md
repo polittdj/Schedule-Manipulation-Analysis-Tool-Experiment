@@ -17464,3 +17464,86 @@ shadows it on PATH).
 - **PR #662 (docs-only) registers OR-13 with the full diagnosis. The FIX is deliberately not in it**
   — it needs a red-first repro (a half-closed socket that hangs the current build) and this session
   was at ~81% context.
+
+## 2026-09-10 (b) — OR-13 CLOSED (ADR-0483): the tool that decides to stop actually exits; v1.0.253
+
+- **The proposed one-line fix was NOT shipped on the argument that came with it.** OR-13 recorded
+  the fix together with its justification — a short `timeout_graceful_shutdown` looks safe because
+  `active_requests > 0` already blocks the watchdog while real work is in flight — and flagged that
+  reasoning as the same species that had died four times. **It was right to. The argument is false,
+  and now measured:** Starlette's `BaseHTTPMiddleware` runs the dispatch `finally` when *dispatch
+  returns*, which is BEFORE the response body finishes streaming. In the reproduction the watchdog
+  fires — the listening socket closes — with megabytes still queued to the wedged peer. The counter
+  never protected a streaming response and never could; the browser's heartbeat is what does. Same
+  one line, different reason, and the code comments that claimed otherwise are corrected.
+- **Red first, and five plausible shapes proved nothing.** Against a real `serve()` in a real
+  subprocess: an idle keep-alive, a half-closed socket after a small response, an unread small
+  response, a truncated request, and a truncated POST whose body never arrives **all stopped
+  cleanly in ~6 s**. What wedges it is a peer that stops draining a *large* in-flight write — a tiny
+  receive window plus pipelined requests for a real vendored asset. Then, and only then:
+  `exited=False`, `listening=False`, **`port_rebindable=False`**. That last field is the operator's
+  sentence — "I cannot open the program" — as a measurement.
+- **A second failure mode was hypothesised, searched for, and REFUTED.** The operator's capture
+  shows the listener in `Listen` while OR-13 reads it as "still serving during the hang"; that
+  cannot be, since `Server.shutdown` closes the listener *before* it waits. So a path where the
+  watchdog never fires at all (a request pinning `active_requests`) was tested with a truncated
+  POST — it does not pin, and no such path was found. The capture was taken before the fuse burned.
+  **OR-13's observation was right, one inference from it was wrong, and its diagnosis was right
+  anyway.** Recorded because the repo has shipped that exact shape before (ADR-0393, QC-2).
+- **Fix:** `SHUTDOWN_DRAIN_TIMEOUT = 5` on `uvicorn.Config`, bounded by `launcher._HANDOVER_TIMEOUT`
+  (20 s) — `CLOSE_GRACE 5 + watchdog poll 2 + drain 5 = ~12 s measured`, ~8 s margin. The test pins
+  the **arithmetic**, not the constant. `force_exit` was rejected: it skips the ASGI lifespan
+  shutdown, which is the hook that clears the on-disk CUI cache (ADR-0335) — Law 1 outranks
+  promptness. Verified the parameter exists and is used at the declared floor (`uvicorn==0.29.0`)
+  by installing the floor and introspecting it, so `constraints/floor.txt` is unchanged.
+- **The red arm lives inside the test.** `test_exit_is_bounded.py` runs the pre-fix configuration
+  against the same wedge and requires it to HANG before trusting the green arm — so a machine whose
+  socket buffers swallow the wedge gets a FAILURE, not a green that measured nothing.
+- **Mutation battery 8/8 RED by name**, in an isolated worktree with its own venv, the harness
+  refusing any mutation whose replacement equals its anchor (ADR-0482's lesson). Two of the eight
+  mutate the **instrument** (wide receive window · one small response) and are caught by the red arm.
+- **The shallow clone lies about the MPXJ pin, and every intermediate answer looks real.** `+60` →
+  `f021b5e6`, `+200` → `1df4d4a1`, `+400` → `42d92dc9`. Deepened to a full clone (760 commits,
+  `shallow=false`) and confirmed `42d92dc9…` is stable before letting `build_installers.py` run
+  without `SF_MPXJ_REF`.
+- **v1.0.253**: wheel + nine installers rebuilt after the last source edit; the full suite started
+  after that, so the lockstep test measures the tree it is pinned to.
+- Branch `claude/blissful-clarke-tyggug` fast-forwarded onto **PR #662's** two docs commits, so the
+  OR-13 registration and this closure travel together; #662 can be closed in favour of this PR, or
+  merged first and this branch merge-resolved.
+
+### Follow-up — the gate, measured after the version bump and the rebuild
+
+- **PR #663** (draft) — `claude/blissful-clarke-tyggug` @ `8673620e`, base `main` @ `6c4f2f31`.
+- **Full suite: 4844 passed, 259 skipped, 0 failed, exit 0** in 17m17s. Every one of the 259 skips
+  is `playwright not installed (runtime stays stdlib-only)` — environment-gated in this container
+  and NOT a silent pass: CI's `browser (measured-box proof)` job runs the same modules and **fails
+  on any skip** (the census is computed by `tools/browser_modules.py`, not hand-listed).
+- `ruff check .` (whole tree) clean · `ruff format --check .` 659 files · `python -m mypy src/`
+  strict, no issues in 163 source files · `bandit -q -r src` **exit 0** (three `nosec` warnings on
+  `web/system.py`, which are not failures) · `node --check` on every vendored JS.
+- CUI pre-commit guard PASSES on the staged change, and was proven able to REFUSE: a staged probe
+  `.mpp` was rejected, and the guard went green again once it was removed.
+- **Eight checks apply** (`installer/**` changed) and all EIGHT came back GREEN on head `7209e985`
+  — runs `34523021244` (`check`, `browser`, `cui-guard`, `test (3.11)`, `test (3.13)`, `floor`) and
+  `34523021294` (`linux`, `windows`). The `browser (measured-box proof)` job is what covers the 259
+  playwright modules this container skips, so none of those skips is a silent pass. `main`'s own run
+  for #663's eventual squash is recorded by the next session.
+- **A `check_suite.completed` wake carried the SUPERSEDED head `8673620e`** and reported nothing
+  running or failed. That run had been CANCELLED by the follow-up push (the concurrency group has
+  `cancel-in-progress: true`), and a cancelled run is not a verdict. Re-read the PR's current head;
+  the kickoff's steward trap #2 is real and cost nothing only because it was expected.
+- **#662 was squash-merged by the operator mid-session (`main` @ `9922e276`), and conflicted with
+  this branch**, which already carried its two docs commits as real commits — the documented cost of
+  a squash under a branch built on the same content. Merged `origin/main` INTO the branch (never a
+  rebase of pushed history) and resolved all four state docs to this branch's side. The choice was
+  PROVEN, not asserted: `9922e276^{tree}` == `abf372cf^{tree}` == `08f79d88…`, so main contributed
+  nothing this branch lacked, and the merged tree came out equal to the pre-merge tree `cf3f7659…`
+  — the resolution added and lost nothing.
+- **A step of §4's sequence was skipped and caught:** the editable install's metadata still read
+  `1.0.252` after the bump, so `_ASSET_VERSION` (`chrome.py`, `importlib.metadata.version`) was
+  stale during the local run. Checked rather than assumed before spending a re-run:
+  `test_static_cache.py` uses `_ASSET_VERSION` as a variable on BOTH sides of every assertion, and
+  `test_installers.py` compares the embedded wheel name to `pyproject.toml`'s string read from the
+  FILE — so the run was a valid measurement. Metadata refreshed afterwards regardless; CI installs
+  fresh and never saw it.
