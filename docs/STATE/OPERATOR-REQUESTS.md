@@ -222,6 +222,54 @@ per-unit rotation. **Every remaining open item on this page is operator-owned.**
 
 ## 2026-09-08 — Ask-the-AI returned no answer on `/integrity` (screenshot, 32-version workbook)
 
+### OR-13 — "I still can't open the program when I close the browser without quitting" · `OPEN — root cause FOUND, fix not yet written`
+
+**The operator's report (2026-09-10), after ADR-0482 shipped.** Closing the browser without
+*Wipe and Quit* still leaves the tool unopenable. **ADR-0482 is not the culprit and is not
+wrong** — a real-Chromium test on a clean single cycle measures the beacon leaving the browser,
+passing the CSRF gate, and the server stopping **5 s** after the close. The defect is one layer
+further down, in the EXIT.
+
+**ROOT CAUSE, verified against the installed API rather than from memory:**
+
+```
+uvicorn 0.52.4 — Config(..., timeout_graceful_shutdown: int | None = None)
+web/app.py serve(): uvicorn.Config(app, host=host, port=port, log_level=log_level)   # never set
+```
+
+`None` means **wait forever**. So: the watchdog fires correctly, `_trigger_shutdown` sets
+`should_exit`, uvicorn begins a GRACEFUL shutdown — and then blocks indefinitely waiting for a
+connection that will never drain. The operator's live repro showed exactly that socket:
+
+```
+LocalPort RemotePort    State OwningProcess
+     8321      54055 FinWait2         16876      <-- half-closed; the browser is gone
+     8321          0   Listen         16876      <-- and it is STILL serving
+```
+
+**This explains the whole arc, including the pre-ADR-0482 behaviour**: the 600 s idle rule never
+worked either (a server survived 8:35 PM → next day, ~18 h), the process keeps answering
+`/api/whoami` while "shutting down", the port stays held, and the desktop icon then has to rely on
+ADR-0334's handover — which under `pythonw` fails INVISIBLY if it times out. **The bug was never
+in the detection. It is in the exit.**
+
+**Four theories died on measurement before this one survived** — the CSRF gate refusing the
+beacon (refuted: real Chromium, `POST /api/closing` sent and accepted, server stopped in 5 s), an
+Ollama-manager hang (refuted: the server still answers, so it never left `serve()`), the
+`browser_seen` gate (refuted: the operator had used the app), and a surviving tab holding the
+fuse open (refuted: every browser window closed, 20 s, still alive).
+
+**Proposed fix, NOT yet built and NOT yet proven:** pass a bounded `timeout_graceful_shutdown` to
+`uvicorn.Config`. The value looks safe to keep short because `active_requests > 0` already blocks
+the watchdog from requesting a stop while real work is in flight — so by the time `should_exit` is
+set there should be no legitimate long request to cut off. **That reasoning is exactly the kind
+that has been wrong four times today; it needs a red-first reproduction (a half-closed socket that
+makes the current build hang, going green with the timeout) before a line is written.**
+
+**Immediate operator workaround, measured:** `POST http://127.0.0.1:8321/api/shutdown` stops a
+stuck instance (both processes exited within 4 s). The desktop icon's handover also replaces a
+stuck predecessor, so the operator is not hard-blocked.
+
 ### OR-11 — "Figure out what the root problem is and then create tests, both pass and fail, and test your proposed solution in a sandbox environment prior to implementing the fix" · `SHIPPED (ADR-0478, PR #655, v1.0.248)`
 
 The question asked (verbatim intent): compare all 32 versions two data dates at a time, oldest

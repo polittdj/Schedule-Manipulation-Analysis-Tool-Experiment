@@ -1,18 +1,58 @@
 # Kickoff prompt — next session
 
-PR state (2026-09-09): **#659 and #660 both MERGED** → `main` @ **`f8d639f7`**, each tree-verified
-before it was believed. This session then shipped **ADR-0482 / OR-12, v1.0.252** on branch
-`claude/polaris-audit-plan-forward-41qww9`; its draft PR number is in the SESSION-LOG. **Always
-`git fetch origin` and read `git log origin/main` before trusting any sha written here** — two
-consecutive kickoffs have been stale by the time they were read.
+PR state (2026-09-10): **#661 MERGED** → `main` @ **`6c4f2f31`** (ADR-0482 / OR-12, **v1.0.252**),
+tree-verified `9ce04715…` on both the squash and head `03e33b34`, eight of eight checks green.
+**PR #662 is OPEN (docs-only)**, registering OR-13. **Always `git fetch origin` and read
+`git log origin/main` before trusting any sha written here** — three consecutive kickoffs have been
+stale by the time they were read.
 
-**Three steward traps, all measured this arc — do not re-learn any of them:**
+## TAKE OR-13 FIRST. It is ahead of R-56, and the operator lost a day to it.
+
+**Root cause is FOUND and verified against the installed API, not from memory:**
+
+```
+uvicorn 0.52.4 — Config(..., timeout_graceful_shutdown: int | None = None)
+web/app.py serve(): uvicorn.Config(app, host=host, port=port, log_level=log_level)   # never set
+```
+
+`None` means **wait forever**. The watchdog fires, `_trigger_shutdown` sets `should_exit`, and
+uvicorn then blocks indefinitely draining a connection the browser abandoned. The operator's live
+reproduction, on v1.0.252:
+
+```
+LocalPort RemotePort    State OwningProcess
+     8321      54055 FinWait2         16876      <- half-closed; the browser is gone
+     8321          0   Listen         16876      <- and it is STILL answering /api/whoami
+```
+
+**The bug was never in the detection. It is in the EXIT.** This also explains why the 600 s idle
+rule never worked either (a server survived ~18 h), and why the desktop icon fails **invisibly**
+under `pythonw` — a handover timeout with stderr going to `nul`.
+
+**ADR-0482 is NOT the culprit and is not wrong.** A real-Chromium test measures `POST
+/api/heartbeat` → 200, `POST /api/closing` sent on unload, and the server stopping **5 s** after a
+clean single-cycle close. Do not "fix" ADR-0482.
+
+**DO NOT ship the one-line fix without a RED-FIRST repro.** The proposal is a bounded
+`timeout_graceful_shutdown`. The argument that a short value is safe — `active_requests > 0`
+already blocks the watchdog while real work is in flight — **is the same species of reasoning that
+was wrong FOUR times on 2026-09-10**: the CSRF gate refusing the beacon, an Ollama-manager hang,
+the `browser_seen` gate, a surviving tab. All dead on measurement. Build the repro first: a
+half-closed socket that hangs the current build and goes green with the timeout. Every refutation
+is recorded in `docs/STATE/OPERATOR-REQUESTS.md` OR-13.
+
+**Two diagnostic rules this cost a day to learn.** A filter in a diagnostic is an ASSERTION about
+where the answer lives: `Get-Process pythonw` and `Get-NetTCPConnection -State Listen` both
+returned empty while a server was running and holding the port, because the evidence was a
+`FinWait2` connection the filter excluded by construction. And **every "install this and try
+again" must end with a command that prints what actually got installed** — the operator spent a
+day testing v1.0.251 because I never asked.
+
+**Three steward traps, all measured — do not re-learn any of them:**
 1. `pull_request_read` method **`get_status`** returns `{"state":"pending","total_count":0,
-   "statuses":[]}` on a PR whose checks are ALL green. That is the LEGACY commit-status API; this
-   repo posts none, and GitHub rolls up an empty set as "pending". Use **`get_check_runs`**;
-   `total_count` gives the lie away.
-2. A `check_suite.completed` event can carry a **superseded** `head_sha`. Re-read the PR's current
-   head before acting on an event payload.
+   "statuses":[]}` on a PR whose checks are ALL green — that is the LEGACY commit-status API and
+   this repo posts none. Use **`get_check_runs`**; `total_count` gives the lie away.
+2. A `check_suite.completed` event can carry a **superseded** `head_sha`. Re-read the current head.
 3. Check set: **eight** when `installer/**` changes, **six** for docs-only (no `windows` job).
 
 **Environment, measured:** the shallow-clone remedy is **deepening**, and budget it big —
@@ -22,8 +62,10 @@ commits) surfaced the true `42d92dc9acc98f7d87f19c82dc62be3e5d3c15ca`, after whi
 `build_installers.py` pinned it with **no `SF_MPXJ_REF`**. Install with
 `uv pip install --python /usr/local/bin/python3 --system -e '.[dev]'` (add `build` and `playwright`
 the same way; never `playwright install` — use `tests/web/browser_chrome.py::chrome_kwargs()`).
+**Use the real browser.** `render-verify` exists for exactly this and skipping it is what let
+OR-12 ship without touching the operator's actual failure.
 
-**Then take R-56** — the operator queue is now EMPTY of blocking rows (OR-11a/c/e all shipped;
+**After OR-13 take R-56** — the operator queue is now EMPTY of blocking rows (OR-11a/c/e all shipped;
 OR-11b needs a measurement first and OR-11d is cosmetic), so the audit rows resume. R-56 is far
 better specified than the report's row: it is a duration-CONTOUR defect on UNSTARTED work, so no
 progress rule reaches it, and it is what still holds `Hard_File_updated3`'s finish 13 d early after

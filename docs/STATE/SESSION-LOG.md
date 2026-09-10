@@ -17436,3 +17436,31 @@ shadows it on PATH).
 - Operator's machine updated to v1.0.251 earlier the same day, and a shadow **editable** install
   (v1.0.211 → `C:\Users\dpolitte\smat`) was found ahead of it on PATH and removed — it would
   have run a dev checkout while reporting an old version number.
+
+## 2026-09-10 — #661 merged (ADR-0482); OR-13 root-caused from a live operator repro
+
+- **#661 MERGED** → `main` @ **`6c4f2f31`**, tree-verified: `9ce04715eac6ac1c4ee99cc0e0c8a58353c33aac`
+  on both the squash and head `03e33b34`; eight of eight checks green. Branch restarted, squash
+  never amended.
+- **The operator reported ADR-0482 had not fixed their problem, and they were right — twice over.**
+  First: they were still on **v1.0.251**. The fix shipped in 1.0.252 and I had given them no
+  verify-what-you-installed step, so they spent a day testing the old build. Second, and worse:
+  once on 1.0.252 the symptom persisted.
+- **OR-13 root-caused, verified against the installed API rather than from memory.** uvicorn 0.52.4
+  exposes `Config(..., timeout_graceful_shutdown: int | None = None)`; `web/app.py`'s `serve()`
+  builds `uvicorn.Config(app, host=host, port=port, log_level=log_level)` and **never sets it**.
+  `None` = wait forever. The watchdog fires, `_trigger_shutdown` sets `should_exit`, and uvicorn
+  then blocks indefinitely draining a connection the browser abandoned. The operator's live repro:
+  `8321 54055 FinWait2 16876` beside `8321 0 Listen 16876`, still answering `/api/whoami`.
+  **The bug was never in the detection. It is in the exit.** It also explains why the 600 s idle
+  rule never worked (a server survived ~18 h) and why the desktop icon fails INVISIBLY under
+  `pythonw` (handover timeout, stderr to `nul`).
+- **ADR-0482 is NOT the culprit and is not wrong**: a real-Chromium test measures `POST
+  /api/heartbeat` → 200, `POST /api/closing` sent on unload, and the server stopping **5 s** after
+  a clean single-cycle close.
+- **Four theories died on measurement before the fifth survived** — CSRF refusing the beacon,
+  an Ollama-manager hang, the `browser_seen` gate, a surviving tab. Each refutation is recorded in
+  OPERATOR-REQUESTS.md OR-13, because the dead ends are what stop the next session re-walking them.
+- **PR #662 (docs-only) registers OR-13 with the full diagnosis. The FIX is deliberately not in it**
+  — it needs a red-first repro (a half-closed socket that hangs the current build) and this session
+  was at ~81% context.

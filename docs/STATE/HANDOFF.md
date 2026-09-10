@@ -1,6 +1,8 @@
 # Handoff — 2026-09-09 (b) (OR-12 CLOSED (ADR-0482): closing the browser stops the tool in seconds, not in ten minutes; v1.0.252)
 
-STATUS (current) — `main` @ **`f8d639f7`** (#660, the docs-only record of #659's merge, tree-verified `c89dda54…`). Branch `claude/polaris-audit-plan-forward-41qww9`, restarted on it. One unit, **engine untouched**, red-first, mutation-tested **14/14 by name**. Highest ADR **0482**. Version **1.0.252** (wheel + nine installers rebuilt AFTER the last source edit; full suite started after THAT). QC-1/QC-2 bind every session — ADR-0393.
+STATUS (current) — `main` @ **`6c4f2f31`** (#661, ADR-0482 / OR-12, **v1.0.252** — tree-verified `9ce04715…` on both the squash and head `03e33b34`, eight of eight checks green). Branch `claude/polaris-audit-plan-forward-41qww9` restarted on it; **PR #662 is OPEN (docs-only)** registering **OR-13**. Highest ADR **0482**. QC-1/QC-2 bind every session — ADR-0393.
+
+**OR-13 IS THE NEXT UNIT, ahead of R-56.** The operator lost a day to it. Read its section below and `docs/STATE/OPERATOR-REQUESTS.md` OR-13 before touching anything.
 
 ## OR-12 — the operator closed the window and the program kept running
 
@@ -18,6 +20,22 @@ STATUS (current) — `main` @ **`f8d639f7`** (#660, the docs-only record of #659
 ## Registered residual (measured, not taken)
 
 A close beacon arriving LATE re-arms the fuse on a live session; the next beat (≤3 s) clears it and the fuse is 5 s, so the beat wins with 2 s margin. **Not covered:** a session whose only remaining page is a THROTTLED background tab beating slower than the fuse burns — the tool could stop with a hidden tab open. Bounded (relaunch + ADR-0334 handover) and strictly better than the ten-minute hang, but real.
+
+## OR-13 (NEW, OPEN) — the tool cannot EXIT: `timeout_graceful_shutdown` is never set
+
+**Operator-reported after ADR-0482 shipped, and ADR-0482 is NOT the culprit.** A real-Chromium
+test measures the close beacon leaving the browser, passing CSRF, and the server stopping **5 s**
+after a clean single-cycle close. The defect is one layer down: `serve()` builds
+`uvicorn.Config(app, host=host, port=port, log_level=log_level)` and **never sets
+`timeout_graceful_shutdown`**, which defaults to `None` = **wait forever**. The watchdog fires,
+`should_exit` is set, and uvicorn then blocks indefinitely draining a connection that never
+closes. The operator's live repro: `8321 54055 FinWait2` beside `8321 0 Listen` on the same pid,
+still answering `/api/whoami`. **This also explains why the 600 s idle rule never worked** — a
+server survived ~18 h. The bug was never in the detection; it is in the EXIT. Fix (proposed, NOT
+built, NOT proven): a bounded `timeout_graceful_shutdown`; needs a red-first repro with a
+half-closed socket first. Workaround: `POST /api/shutdown` (measured — both pids gone in 4 s).
+**Four theories died on measurement first** (CSRF refusal · Ollama hang · `browser_seen` gate ·
+surviving tab) — see `docs/STATE/OPERATOR-REQUESTS.md` OR-13 for each refutation.
 
 ## Next — campaign queue
 
