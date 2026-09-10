@@ -435,6 +435,45 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-10 — a diagnostic filter is an assertion, and mine hid the bug for hours
+
+**The operator lost a day because I never gave them a verify step.** ADR-0482 shipped in v1.0.252.
+They re-ran the install and reported it still broken. They were on **v1.0.251** — one
+`print(s.__version__)` would have caught it in the first minute. **Every "go install this and try
+again" must end with a command that prints what actually got installed.** A fix the operator
+cannot confirm they are running is not a fix; it is a request for them to do unpaid QA on the
+wrong binary.
+
+**Then the diagnostics I wrote hid the real bug.** I asked for
+`Get-Process pythonw` and `Get-NetTCPConnection -LocalPort 8321 -State Listen`. Both came back
+empty while a server was demonstrably running and holding that port. **A filter in a diagnostic is
+an assertion about where the answer lives** — `pythonw` asserted the process name, `-State Listen`
+asserted the connection state, and the evidence that cracked the case was a connection in
+**`FinWait2`**, which my own filter excluded by construction. When a check returns "nothing", the
+first question is not *what does that mean* but *could this instrument have seen it at all?*
+
+**Four theories died on measurement before the fifth held**, and the discipline that mattered was
+refusing to write code after each one: the CSRF gate refusing `sendBeacon` (killed by a real
+Chromium run — beacon sent, accepted, server stopped in 5 s), an Ollama-manager hang (killed by the
+server still answering `/api/whoami`: it never left `serve()`), the `browser_seen` gate (killed —
+the operator had used the app), and a surviving tab cancelling the fuse (killed — every window
+closed, 20 s, still alive). **Each refutation narrowed the space; a shipped guess would not have.**
+
+**The root cause was one layer below everything the fix touched.** `serve()` never passes
+`timeout_graceful_shutdown` to `uvicorn.Config`, and its default `None` means *wait forever*. So
+the tool decided to stop and then could not — which is also why the 600 s idle rule had never
+worked, a fact sitting in plain sight for months as "a server legitimately outlives its browser".
+**Generalise: when a mechanism reports success but the observable effect never arrives, stop
+auditing the decision and go audit the execution.** Detection and exit are different subsystems and
+this repo had tested only the first.
+
+**And the honest one: I closed OR-12 on a node stub and a TestClient.** The real-browser test I ran
+today — Playwright, the vendored Chromium, the actual beacon over the actual CSRF gate — takes
+about ninety seconds and I had the browser available the whole time. `render-verify` exists as a
+standing skill in this repo precisely for this, and I skipped it because unit tests were green.
+The unit tests were right and still proved nothing about the operator's machine.
+
+
 ### 2026-09-09 (c) — an oracle read out of the state under test cannot judge that state
 
 **The green mutation, third species this arc, and the worst of them.** The check said: arm the

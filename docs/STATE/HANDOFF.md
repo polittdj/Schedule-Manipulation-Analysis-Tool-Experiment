@@ -1,6 +1,8 @@
 # Handoff — 2026-09-09 (b) (OR-12 CLOSED (ADR-0482): closing the browser stops the tool in seconds, not in ten minutes; v1.0.252)
 
-STATUS (current) — `main` @ **`f8d639f7`** (#660, the docs-only record of #659's merge, tree-verified `c89dda54…`). Branch `claude/polaris-audit-plan-forward-41qww9`, restarted on it. One unit, **engine untouched**, red-first, mutation-tested **14/14 by name**. Highest ADR **0482**. Version **1.0.252** (wheel + nine installers rebuilt AFTER the last source edit; full suite started after THAT). QC-1/QC-2 bind every session — ADR-0393.
+STATUS (current) — `main` @ **`6c4f2f31`** (#661, ADR-0482 / OR-12, **v1.0.252** — tree-verified `9ce04715…` on both the squash and head `03e33b34`, eight of eight checks green). Branch `claude/polaris-audit-plan-forward-41qww9` restarted on it; **PR #662 is OPEN (docs-only)** registering **OR-13**. Highest ADR **0482**. QC-1/QC-2 bind every session — ADR-0393.
+
+**OR-13 IS THE NEXT UNIT, ahead of R-56.** The operator lost a day to it. Read its section below and `docs/STATE/OPERATOR-REQUESTS.md` OR-13 before touching anything.
 
 ## OR-12 — the operator closed the window and the program kept running
 
