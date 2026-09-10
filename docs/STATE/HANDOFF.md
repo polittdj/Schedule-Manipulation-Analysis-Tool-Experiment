@@ -19,6 +19,22 @@ STATUS (current) — `main` @ **`f8d639f7`** (#660, the docs-only record of #659
 
 A close beacon arriving LATE re-arms the fuse on a live session; the next beat (≤3 s) clears it and the fuse is 5 s, so the beat wins with 2 s margin. **Not covered:** a session whose only remaining page is a THROTTLED background tab beating slower than the fuse burns — the tool could stop with a hidden tab open. Bounded (relaunch + ADR-0334 handover) and strictly better than the ten-minute hang, but real.
 
+## OR-13 (NEW, OPEN) — the tool cannot EXIT: `timeout_graceful_shutdown` is never set
+
+**Operator-reported after ADR-0482 shipped, and ADR-0482 is NOT the culprit.** A real-Chromium
+test measures the close beacon leaving the browser, passing CSRF, and the server stopping **5 s**
+after a clean single-cycle close. The defect is one layer down: `serve()` builds
+`uvicorn.Config(app, host=host, port=port, log_level=log_level)` and **never sets
+`timeout_graceful_shutdown`**, which defaults to `None` = **wait forever**. The watchdog fires,
+`should_exit` is set, and uvicorn then blocks indefinitely draining a connection that never
+closes. The operator's live repro: `8321 54055 FinWait2` beside `8321 0 Listen` on the same pid,
+still answering `/api/whoami`. **This also explains why the 600 s idle rule never worked** — a
+server survived ~18 h. The bug was never in the detection; it is in the EXIT. Fix (proposed, NOT
+built, NOT proven): a bounded `timeout_graceful_shutdown`; needs a red-first repro with a
+half-closed socket first. Workaround: `POST /api/shutdown` (measured — both pids gone in 4 s).
+**Four theories died on measurement first** (CSRF refusal · Ollama hang · `browser_seen` gate ·
+surviving tab) — see `docs/STATE/OPERATOR-REQUESTS.md` OR-13 for each refutation.
+
 ## Next — campaign queue
 
 **R-56** (add UID 385, seven heads, both `pc == 0`) · R-49 · R-46 · R-47 · R-52 · R-50 · R-57/58/59 · then R-03 · R-04 · R-09 · R-13 · R-18 · R-21 · R-22 · R-32 · R-39. Other residuals: `/settings` horizontal overflow (its own UI unit; NOT the hint bubble, that is closed) · OR-11b (measure the 48-fact cap on a real 32-file workbook first) · OR-11d (`_AskRecord` exports an unanswered ask without its reason) · the working-minute axis cannot carry a recorded instant on a day boundary · the hint bubble still widens the document while OPEN. **PLUS the design page, owed and still not delivered: `/scorecards` (`setScreen('sk')`)**, 21 artboards remaining (report §6).
