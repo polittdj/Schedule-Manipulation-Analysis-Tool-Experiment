@@ -17524,9 +17524,22 @@ shadows it on PATH).
   `web/system.py`, which are not failures) · `node --check` on every vendored JS.
 - CUI pre-commit guard PASSES on the staged change, and was proven able to REFUSE: a staged probe
   `.mpp` was rejected, and the guard went green again once it was removed.
-- **Eight checks apply** (`installer/**` changed). At the time of writing: `cui-guard` ✅ ·
-  `linux` ✅ · `windows` ✅; `test (3.11)`, `test (3.13)`, `floor`, `browser` in flight, and `check`
-  appears once its `needs` complete. `main`'s own run for the squash is recorded by the next session.
+- **Eight checks apply** (`installer/**` changed) and all EIGHT came back GREEN on head `7209e985`
+  — runs `34523021244` (`check`, `browser`, `cui-guard`, `test (3.11)`, `test (3.13)`, `floor`) and
+  `34523021294` (`linux`, `windows`). The `browser (measured-box proof)` job is what covers the 259
+  playwright modules this container skips, so none of those skips is a silent pass. `main`'s own run
+  for #663's eventual squash is recorded by the next session.
+- **A `check_suite.completed` wake carried the SUPERSEDED head `8673620e`** and reported nothing
+  running or failed. That run had been CANCELLED by the follow-up push (the concurrency group has
+  `cancel-in-progress: true`), and a cancelled run is not a verdict. Re-read the PR's current head;
+  the kickoff's steward trap #2 is real and cost nothing only because it was expected.
+- **#662 was squash-merged by the operator mid-session (`main` @ `9922e276`), and conflicted with
+  this branch**, which already carried its two docs commits as real commits — the documented cost of
+  a squash under a branch built on the same content. Merged `origin/main` INTO the branch (never a
+  rebase of pushed history) and resolved all four state docs to this branch's side. The choice was
+  PROVEN, not asserted: `9922e276^{tree}` == `abf372cf^{tree}` == `08f79d88…`, so main contributed
+  nothing this branch lacked, and the merged tree came out equal to the pre-merge tree `cf3f7659…`
+  — the resolution added and lost nothing.
 - **A step of §4's sequence was skipped and caught:** the editable install's metadata still read
   `1.0.252` after the bump, so `_ASSET_VERSION` (`chrome.py`, `importlib.metadata.version`) was
   stale during the local run. Checked rather than assumed before spending a re-run:

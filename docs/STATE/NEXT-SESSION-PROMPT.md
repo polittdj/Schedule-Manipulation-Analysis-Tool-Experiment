@@ -1,9 +1,9 @@
 # Kickoff prompt — next session
 
-PR state (2026-09-10 b): `main` @ **`6c4f2f31`** (#661, ADR-0482 / OR-12, v1.0.252). **The OR-13
-fix is on `claude/blissful-clarke-tyggug` (ADR-0483, v1.0.253) in its own draft PR, which also
-CONTAINS PR #662's two docs commits** — so #662 can be closed in favour of it, or merged first and
-this branch merge-resolved. **Always `git fetch origin` and read `git log origin/main` before
+PR state (2026-09-10 b): **#662 MERGED** → `main` @ **`9922e276`** (docs-only, the OR-13
+registration). **The OR-13 FIX is PR #663 on `claude/blissful-clarke-tyggug` (ADR-0483, v1.0.253),
+draft, 8/8 GREEN on head `7209e985`**, then merge-resolved against #662's squash (proven no-op:
+merged tree == pre-merge tree `cf3f7659…`). **Always `git fetch origin` and read `git log origin/main` before
 trusting any sha written here** — four consecutive kickoffs have been stale by the time they were
 read.
 
