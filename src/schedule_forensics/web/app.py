@@ -58,7 +58,12 @@ from schedule_forensics.ai.driving_facts import (
 )
 from schedule_forensics.ai.factory import resolve_gateway_api_key
 from schedule_forensics.ai.narrative import clean_polish, polish_prompt
-from schedule_forensics.ai.ollama import GenerationStats, clamp_num_ctx, truncation_warning
+from schedule_forensics.ai.ollama import (
+    GenerationStats,
+    clamp_num_ctx,
+    is_auth_refusal,
+    truncation_warning,
+)
 from schedule_forensics.ai.ollama_process import OllamaLauncher
 from schedule_forensics.ai.pair_facts import pairwise_comparison_facts
 from schedule_forensics.ai.qa import (
@@ -1006,6 +1011,23 @@ def _no_model_note(cfg: AIConfig) -> str:
         )
     reason = _probe_reason(local)
     if reason is not None:
+        if not is_ollama and is_auth_refusal(reason):
+            # the server ANSWERED the availability probe and refused it (a catalog behind LM
+            # Studio's "Require Authentication"): "start it" is the wrong advice - name the field
+            # and the cause the tool cannot see (ADR-0485)
+            held = (
+                "a token is saved - if it still gets this, the token may be wrong or revoked"
+                if cfg.openai_api_key
+                else "no token is saved"
+            )
+            return (
+                f"No model answered - {label} at {endpoint} refused its availability probe: "
+                f"{reason}. If it requires authentication (LM Studio: Developer > Server Settings > "
+                "Require Authentication, then Manage Tokens), paste its API token into the Local "
+                f"server API token field in AI Settings and Save ({held}). If authentication is "
+                "off, the refusal came from the server itself or from something in front of it on "
+                "this machine - check the server's log."
+            )
         return (
             f"No model answered - could not reach {label} at {endpoint}: {reason}. Start it (or "
             "correct the port in AI Settings) and ask again."
@@ -1019,8 +1041,15 @@ def _no_model_note(cfg: AIConfig) -> str:
 def _generation_failed_note(cfg: AIConfig, detail: str) -> str:
     """A generation the model server REFUSED or abandoned - never "no local model is active"."""
     is_ollama = cfg.backend == "ollama"
-    label = "Ollama" if is_ollama else "the model server"
-    endpoint = cfg.endpoint if is_ollama else cfg.openai_endpoint
+    is_gateway = cfg.backend == "gateway"
+    label = (
+        "Ollama" if is_ollama else ("the approved gateway" if is_gateway else "the model server")
+    )
+    # each backend's OWN endpoint - before ADR-0485 a gateway failure was reported at the local
+    # server's address
+    endpoint = (
+        cfg.endpoint if is_ollama else (cfg.gateway_endpoint if is_gateway else cfg.openai_endpoint)
+    )
     if is_ollama and "404" in detail and cfg.model:
         # An Ollama that is UP answers /api/tags (so it routes) and 404s a generation whose model
         # was never pulled. The availability probe cannot see this; the install list can.
@@ -1039,6 +1068,34 @@ def _generation_failed_note(cfg: AIConfig, detail: str) -> str:
             "or choose a smaller/faster model - a long forensic question over many versions is "
             "the slowest thing this tool asks of a local model."
         )
+    if is_auth_refusal(detail):
+        # The server ANSWERED the generation and refused its credentials (HTTP 401/403): the
+        # availability probe passed, so "AI Settings shows its live status" sends the operator
+        # to a page that reads ON. Name the credential field (ADR-0403 for the gateway,
+        # ADR-0485 for the local server). The tool cannot see whether the local server's
+        # authentication is on, so the other cause is stated, never hidden.
+        if is_gateway:
+            return (
+                f"{label} at {endpoint} answered the generation with {detail}: it requires "
+                "authentication. Paste your organization-issued key into the Gateway API key "
+                "field in AI Settings and Save; if a saved key still gets this, it may be "
+                "expired or not entitled to this gateway."
+            )
+        if not is_ollama:
+            held = (
+                "a token is saved - if it still gets this, the token may be wrong or revoked"
+                if cfg.openai_api_key
+                else "no token is saved"
+            )
+            return (
+                f"{label} at {endpoint} answered the generation with {detail} - it refused the "
+                "request, not the connection. If your server requires authentication (LM Studio: "
+                "Developer > Server Settings > Require Authentication, then Manage Tokens), paste "
+                "its API token into the Local server API token field in AI Settings and Save "
+                f"({held}). If authentication is off, the refusal came from the server itself or "
+                "from something in front of it on this machine (a proxy or endpoint-security "
+                "agent) - check the server's log."
+            )
     return (
         f"{label} at {endpoint} was reachable, but the generation itself failed: {detail}. "
         "AI Settings shows its live status."
@@ -7520,6 +7577,7 @@ def create_app(
         gateway_endpoint: str = Form(""),
         gateway_approved: str = Form(""),
         gateway_api_key: str = Form(""),
+        openai_api_key: str = Form(""),
     ) -> RedirectResponse:
         st = session()
         try:
@@ -7555,6 +7613,9 @@ def create_app(
         # BLANK — blank means KEEP the held key (a save of any other setting must not
         # silently de-authenticate the gateway); a non-blank value replaces it (ADR-0403)
         gateway_api_key = gateway_api_key.strip() or st.ai_config.gateway_api_key
+        # the local server's API token (ADR-0485) follows the same rule: blank keeps, a value
+        # replaces; Turn-the-AI-off and a wipe rebuild the config and so forget it
+        openai_api_key = openai_api_key.strip() or st.ai_config.openai_api_key
         st.ai_config = AIConfig(
             classification=cls,
             backend=backend,
@@ -7571,6 +7632,7 @@ def create_app(
             # operator's approval assertion; anything else is False (fail closed)
             gateway_approved=gateway_approved == "1",
             gateway_api_key=gateway_api_key,
+            openai_api_key=openai_api_key,
         )
         st.backend_cache = None  # re-route immediately — a settings change must take effect now
         st.second_cache = None
@@ -7635,7 +7697,13 @@ def create_app(
                 be = (
                     OllamaBackend(endpoint=ep or default, model="", timeout=8.0)
                     if kind == "ollama"
-                    else OpenAICompatBackend(endpoint=ep or default, model="", timeout=8.0)
+                    else OpenAICompatBackend(
+                        endpoint=ep or default,
+                        model="",
+                        timeout=8.0,
+                        # the SESSION's saved token, never the probe URL (ADR-0485, as ADR-0403)
+                        api_key=session().ai_config.openai_api_key,
+                    )
                 )
             except Exception as exc:  # loopback guard or bad URL — report, never raise outward
                 return JSONResponse({"reachable": False, "models": [], "reason": str(exc)})

@@ -27,7 +27,8 @@ Three rules shape the store:
   silently downgrade to plaintext). On POSIX there is no ubiquitous stdlib protector: the
   key is stored under the honestly-named ``gateway_api_key_plain`` in a 0600 file — the
   same protection class as the ``SF_GATEWAY_API_KEY`` user environment variable it
-  substitutes for.
+  substitutes for. The local OpenAI-compatible server's API token (ADR-0485) is a second
+  credential under the same protector, in ``openai_api_key_dpapi`` / ``openai_api_key_plain``.
 """
 
 from __future__ import annotations
@@ -123,10 +124,12 @@ if sys.platform == "win32":  # pragma: no cover - the POSIX suite exercises the 
     _protect_key = _dpapi_protect
     _unprotect_key = _dpapi_unprotect
     _KEY_FIELD = "gateway_api_key_dpapi"
+    _OPENAI_KEY_FIELD = "openai_api_key_dpapi"
 else:
     _protect_key = _plain_passthrough
     _unprotect_key = _plain_passthrough
     _KEY_FIELD = "gateway_api_key_plain"
+    _OPENAI_KEY_FIELD = "openai_api_key_plain"
 
 
 # ── save / load ────────────────────────────────────────────────────────────────────────────
@@ -152,24 +155,31 @@ def save_ai_config(cfg: AIConfig, path: Path | None = None) -> None:
         "gateway_endpoint": cfg.gateway_endpoint,
         "gateway_approved": cfg.gateway_approved,
     }
-    if cfg.gateway_api_key:
-        try:
-            wrapped = _protect_key(cfg.gateway_api_key.encode("utf-8"))
-            doc[_KEY_FIELD] = base64.b64encode(wrapped).decode("ascii")
-        except Exception:
-            # fail CLOSED on the credential (it is simply not persisted), fail SOFT on the
-            # rest — never downgrade a broken protector to plaintext behind the operator
-            logger.warning("could not protect the gateway key; persisting settings without it")
+    _protect_into(doc, _KEY_FIELD, cfg.gateway_api_key, "gateway key")
+    _protect_into(doc, _OPENAI_KEY_FIELD, cfg.openai_api_key, "local server API token")
     target.parent.mkdir(parents=True, exist_ok=True)
     tmp = target.with_suffix(".json.tmp")
     tmp.write_text(json.dumps(doc, ensure_ascii=True, sort_keys=True), encoding="utf-8")
-    if _KEY_FIELD == "gateway_api_key_plain":
-        os.chmod(tmp, 0o600)  # owner-only where the key may be stored plain (POSIX)
+    if _KEY_FIELD.endswith("_plain") or _OPENAI_KEY_FIELD.endswith("_plain"):
+        os.chmod(tmp, 0o600)  # owner-only where a credential may be stored plain (POSIX)
     tmp.replace(target)
 
 
-def _load_key(doc: dict[str, object]) -> str:
-    encoded = doc.get(_KEY_FIELD)
+def _protect_into(doc: dict[str, object], field_name: str, secret: str, what: str) -> None:
+    """Wrap ``secret`` under ``field_name`` — or omit it when the protector fails."""
+    if not secret:
+        return
+    try:
+        wrapped = _protect_key(secret.encode("utf-8"))
+        doc[field_name] = base64.b64encode(wrapped).decode("ascii")
+    except Exception:
+        # fail CLOSED on the credential (it is simply not persisted), fail SOFT on the
+        # rest — never downgrade a broken protector to plaintext behind the operator
+        logger.warning("could not protect the %s; persisting settings without it", what)
+
+
+def _load_key(doc: dict[str, object], field_name: str, what: str) -> str:
+    encoded = doc.get(field_name)
     if not isinstance(encoded, str) or not encoded:
         return ""
     try:
@@ -177,7 +187,7 @@ def _load_key(doc: dict[str, object]) -> str:
     except Exception:
         # a key protected by another account/machine (or corrupted) is unrecoverable by
         # design — come up keyless rather than fail the launch
-        logger.warning("could not unprotect the stored gateway key; starting without it")
+        logger.warning("could not unprotect the stored %s; starting without it", what)
         return ""
 
 
@@ -244,5 +254,6 @@ def load_ai_config(path: Path | None = None) -> AIConfig:
         num_ctx=num_ctx,
         gateway_endpoint=gateway_endpoint,
         gateway_approved=doc.get("gateway_approved") is True,
-        gateway_api_key=_load_key(doc),
+        gateway_api_key=_load_key(doc, _KEY_FIELD, "gateway key"),
+        openai_api_key=_load_key(doc, _OPENAI_KEY_FIELD, "local server API token"),
     )

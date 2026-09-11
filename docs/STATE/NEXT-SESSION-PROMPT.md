@@ -1,12 +1,20 @@
 # Kickoff prompt — next session
 
-PR state (2026-09-11 b): the `/scorecards` design page (ADR-0484, **v1.0.254**) is draft **PR #668**
-on branch `claude/optimistic-ride-3qv2jc` — **8/8 checks green** on head `3a7d3f9b` (CI run 1837,
-installer-smoke 701), then `main` moved under it (#667 merged, rewriting the same three state docs),
-so `origin/main` was merged IN and the three conflicts resolved by hand. `main` was **`fda4fa06`**
-(#667) when this was written. **Always `git fetch origin` and read `git log origin/main` before
+PR state (2026-09-11 c): the `/scorecards` design page (ADR-0484, v1.0.254) is **MERGED** — `main` is
+**`5d8d01fb`** (#668, tree-verified after the squash). The session's second unit, **OR-14 / ADR-0485
+(v1.0.255)** — the local OpenAI-compatible server learns to authenticate (the operator's `/integrity`
+Ask panel showed *"server returned HTTP 403"* from LM Studio; the tool had nowhere to hold a token) —
+is a **draft PR** from branch `claude/optimistic-ride-3qv2jc`; its number and checks are in the
+SESSION-LOG's follow-up entry. **Always `git fetch origin` and read `git log origin/main` before
 trusting any sha written here** — six consecutive kickoffs have been stale by the time they were
-read, and this one's `main` moved *during* its own PR.
+read. **If #668's successor PR is still open, the state docs below already describe its content;
+if it merged, restart the branch with `--prune` + `remote set-head` + `checkout -B`.**
+
+**OR-14 leaves ONE thing for the operator's machine, not for you:** paste the LM Studio token into
+AI Settings → *Local server API token* → Save → ask again. LM Studio's exact refusal code (401 vs
+403) and whether its `/v1/models` is exempt are UNVERIFIED (the docs page read does not say; the fix
+accepts both codes and both catalog shapes). Do NOT re-open the refused options (an env-var
+fallback; an `x-api-key` header) without a field report that needs them.
 
 ## The design page is CURRENT, not owed. **Take R-56.**
 
@@ -88,7 +96,10 @@ ADR-0475 (/standards on the design) · ADR-0476 (R-55) · ADR-0477 (R-20 / UI-03
 (OR-13 — `SHUTDOWN_DRAIN_TIMEOUT = 5`; `active_requests > 0` does NOT protect a streaming response;
 `force_exit` stays rejected) · **ADR-0484 (/scorecards on the design — see above). The design queue:
 10 done, 20 artboards remain; `/margin` (Control Margin Dashboard, `setScreen('mg')`) is next by
-cost, the last Control screen.**
+cost, the last Control screen.** · **ADR-0485 (OR-14 — the local OpenAI-compatible server's Bearer
+token: `AIConfig.openai_api_key`, the 4-arg `HeaderOpener`, the *Local server API token* field, the
+401/403 note that names the field AND the cause the tool cannot see; the gateway-endpoint mislabel
+fixed).**
 
 ⇢ NEXT — the report's §3 in order, one row per unit of work (red-first → mutation proofs by name →
 the full gate → an ADR → the state docs → a draft PR): **R-56** FIRST (above) · **R-49** — MPXJ omits a
@@ -101,7 +112,13 @@ is `/margin`, recipe in ADR-0471 / 0475 / 0484 (execute the canvas; census the a
 layout with every id, form byte, panel, glyph and figure; refuse and NAME every mock claim the engine
 does not make; measure in four themes; a battery whose greens are read).
 
-⇢ Traps paid for, by name (2026-09-11 b first): **read every green in a battery as a finding about
+⇢ Traps paid for, by name (2026-09-11 c/d first): **a diagnostic that names a PAGE is true and
+useless when that page reads ON — name the FIELD, and state the cause you cannot see** · **condition
+a hint on what the transport proved, never on "unreachable" as a catch-all** · **a page-wide substring
+assertion the page's own form satisfies cannot fail — read the element** · **negative pins are green
+on the pristine tree by construction; prove them with a mutant** · **the same defect class lands
+twice when a spec has no auth dimension — give every OpenAI-compatible surface one from day one**.
+(2026-09-11 b:) **read every green in a battery as a finding about
 the instrument** (three rebuilt this unit) · **grep the artifact FIRST for a string you assert
 absent** (`cal d` ⊂ "technical data") · **a rect cannot see text spilling inside a fixed cell; a
 panel's `scrollWidth` sees jarvis's decoration** · **two sufficient mechanisms make a single-rule
@@ -138,7 +155,9 @@ UI unit) · **the working-minute axis cannot carry a recorded instant on a day b
 non-working moment** (structural) · **the hint bubble still widens the document WHILE OPEN** near
 the right edge · **OR-11b** (measure the 48-fact cap on a real 32-file workbook first) · **OR-11d**
 (`_AskRecord` exports an unanswered ask without its reason) · **ADR-0483's own** (a live-peer response
-is cut at 5 s) · **NEW, ADR-0484:** the in-grid scorecard rows as the mock's compact status-pill row
+is cut at 5 s) · **ADR-0485's own:** `_gateway_status_note` still detects a refusal by substring
+(`"401" in reason`) — a one-line unit onto `is_auth_refusal` with its own red; the live model dropdown
+probes with the SAVED token only (Save first; the gateway behaves the same) · **NEW, ADR-0484:** the in-grid scorecard rows as the mock's compact status-pill row
 WITHOUT losing table semantics — at 1440 the cells wrap hard and apollo breaks long tokens as a last
 resort; ⛶ ENLARGE gives any card the full viewport meanwhile.
 

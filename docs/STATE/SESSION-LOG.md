@@ -17793,3 +17793,68 @@ called a flake turned out to have a mechanism (ADR-0442 UI-02, ADR-0443, ADR-046
   The conflict is therefore expected work, not a mishap — and the resolution is never "take mine":
   it is to ask, per file, which side is the RECORD (append both) and which is the POINTER (newest
   wins, carrying the other's live residuals forward).
+
+## 2026-09-11 (c) — OR-14 CLOSED (ADR-0485): the local OpenAI-compatible server learns to authenticate; the Ask panel's HTTP 403 named for what it is; v1.0.255
+
+- **Branch:** `claude/optimistic-ride-3qv2jc`, restarted on `origin/main` @ `5d8d01fb` (#668, this
+  session's first unit, tree-verified after the squash).
+- **The operator's ask, verbatim:** *"do a deep dive and figure out why the ASK the AI is not working
+  the way it should and fix it."* — with a screenshot of `/integrity`'s Ask panel, backend =
+  OpenAI-compatible (LM Studio on `http://127.0.0.1:1234`), a manipulation question, and the note
+  *"the model server at http://127.0.0.1:1234 was reachable, but the generation itself failed: server
+  returned HTTP 403. AI Settings shows its live status."* over the raw cited facts.
+- **The deep dive, refuted before reported.** A corporate proxy in the path — refuted on the code
+  (`openai_compat` already sends through `_NO_REDIRECT_OPENER`, built with an EMPTY `ProxyHandler`;
+  a proxy refusal would have failed the probe too). A wrong model id — a 404/400 with a JSON error,
+  not a 403. The Ollama path — `backend == "openai"` never touches it. What survived: **the local
+  backend has ZERO credential surface** — no `AIConfig` field, no form input (the form's only
+  password input is `gateway_api_key`), no constructor parameter, no argument at either factory
+  call site, no header slot in its 3-arg opener — while LM Studio 0.4+ can *Require Authentication*
+  (`Authorization: Bearer <token>`; off by default; Developer → Server Settings; *Manage Tokens*;
+  read 2026-09-11 from LM Studio's docs repository on GitHub, `authentication.mdx`, lmstudio.ai
+  being egress-blocked — no verified URL recorded). The only 401/403 diagnostic in the tree was the
+  gateway's (ADR-0403): the same defect class, closed remote, open local. **UNVERIFIED:** the exact
+  refusal code (401 vs 403) and whether `/v1/models` is exempt — the docs page does not say; the
+  screenshot (403, catalog open) is the only evidence.
+- **Reproduced on the wire on the pristine tree:** a loopback `http.server` in the operator's shape
+  (catalog 200; chat 403 without the Bearer) behind a real `/api/ask`, a real `OpenAICompatBackend`
+  and the real urllib transport gave the note verbatim (*"…http://127.0.0.1:35801 was reachable, but
+  the generation itself failed: server returned HTTP 403…"*).
+- **Shipped (ADR-0485, v1.0.255):** `AIConfig.openai_api_key` (`repr=False`) · `ollama.HeaderOpener`
+  + `_urllib_header_opener` + `is_auth_refusal` (word-bounded) · `OpenAICompatBackend(api_key=…)`
+  sending the Bearer on the probe, the catalog and the generation, nothing when empty, on the 4-arg
+  opener · `factory` threads it to the primary AND the second backend · the models probe uses the
+  SESSION's token · `config_store` holds it under `openai_api_key_dpapi` / `_plain` (the single-key
+  machinery generalised to `_protect_into` / `_load_key(doc, field, what)`) · the **Local server API
+  token** form field (masked, never echoed, placeholder discloses held/none, blank keeps; ai-off and a
+  wipe forget it) · `_generation_failed_note`'s 401/403 branch — the local server's names the field
+  AND the cause the tool cannot see ("if authentication is off, the refusal came from the server
+  itself or from something in front of it on this machine — check the server's log"); the gateway's
+  names the *Gateway API key* field; Ollama stays generic · each backend's OWN endpoint (a gateway
+  failure was reported at `127.0.0.1:1234`) · the `/settings` refused-probe hint and `_no_model_note`'s
+  refused-probe branch (no more *"Start your local server"* / *"Start it"* for a server that
+  answered — a catalog behind *Require Authentication* is refused at the probe and never routes). **Refused:** an env-var fallback (ADR-0404 removed
+  the friction), an undocumented `x-api-key` header.
+- **Verification (QC-1):** the 25 new tests RED on a pristine `origin/main` worktree — **23 failed /
+  2 passed**, the two being the negative pins, green by construction until a mutant makes the branch
+  fire where it must not (the four migrated 4-arg doubles red too — the contract change; 27 / 24
+  over the three files); GREEN with the touched neighbourhood (13 files) at **314 passed / 2
+  skipped**; a **30-mutant** battery on a scratch copy under a PYTHONPATH shadow (the instrument
+  never mutated; `schedule_forensics.__file__` proved the shadow) — **30/30 caught by the named
+  test**, including `auth_refusal_matches_404` / `auth_refusal_unbounded` /
+  `ollama_gets_the_token_note` / `probe_note_for_ollama_too` (the negative pins' teeth),
+  `store_skips_the_protector`, `form_echoes_the_token`, `probe_drops_session_token`,
+  `ai_off_keeps_the_token`, `transport_drops_headers`, `probe_note_branch_not_taken`. One instrument
+  found weak while being written: a page-wide `FIELD in page` assertion that the form's own label
+  satisfied — it reads the notice now. The battery's anchor guard fired once (two mutants aborted
+  `ANCHOR x2` when the refused-probe branch duplicated the `held` block; re-aimed, 30/30).
+- **Build:** version 1.0.255; wheel + nine installers rebuilt with
+  `SF_MPXJ_REF=42d92dc9acc98f7d87f19c82dc62be3e5d3c15ca` (the clone is unshallowed; `git log -1 --
+  tools/mpxj` reads that sha itself, so no `--depth` remedy and no graft in `.git/shallow`).
+- **The gate, measured after the bump and the rebuild:** both ruff binaries clean (0.16.7 = CI's,
+  0.15.8 on PATH), mypy strict 163 files clean, bandit exit 0, `node --check` clean, 5,242 collected;
+  full suite **5,238 passed / 5 skipped in 35:52**; `-m parity` **96 passed**.
+- **Docs:** ADR-0485 · OPERATOR-REQUESTS OR-14 (SHIPPED; the operator's next step and the pending
+  verification stated) · HANDOFF rotated · LESSONS-LEARNED (2026-09-11 (d)) · NEXT-SESSION-PROMPT
+  refreshed.
+- **PR:** draft, from this branch — see the follow-up entry for the number and the checks.

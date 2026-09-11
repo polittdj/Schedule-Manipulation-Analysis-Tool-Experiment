@@ -43,7 +43,11 @@ def openai_or_none(config: AIConfig) -> OpenAICompatBackend | None:
     try:
         # construction enforces loopback (CUIEgressError on a remote host — Law 1)
         return OpenAICompatBackend(
-            endpoint=config.openai_endpoint, model=config.model, timeout=config.gen_timeout
+            endpoint=config.openai_endpoint,
+            model=config.model,
+            timeout=config.gen_timeout,
+            # the local server's token (ADR-0485): LM Studio can require one on every request
+            api_key=config.openai_api_key,
         )
     except Exception:
         return None
@@ -105,7 +109,10 @@ def second_or_none(config: AIConfig) -> AIBackend | None:
                 num_ctx=config.num_ctx,
             )
         return OpenAICompatBackend(
-            endpoint=config.openai_endpoint, model=config.second_model, timeout=config.gen_timeout
+            endpoint=config.openai_endpoint,
+            model=config.second_model,
+            timeout=config.gen_timeout,
+            api_key=config.openai_api_key,
         )
     except Exception:
         return None

@@ -113,6 +113,15 @@ class AIConfig:
     #: cache. "" = none; ``factory.resolve_gateway_api_key`` may then fall back to the
     #: ``SF_GATEWAY_API_KEY`` environment variable. The settings form never echoes it back.
     gateway_api_key: str = field(default="", repr=False)
+    #: The LOCAL OpenAI-compatible server's API token (ADR-0485 — the operator's LM Studio
+    #: answered ``GET /v1/models`` and refused the chat completion with HTTP 403: LM Studio
+    #: 0.4+ can "Require Authentication" with API tokens, and this tool sent none because it
+    #: had nowhere to hold one). Sent as ``Authorization: Bearer <token>`` on EVERY request to
+    #: ``openai_endpoint`` — a loopback destination, so the token never leaves this machine —
+    #: and on nothing else. ``repr=False`` and blank-means-keep like its gateway sibling; "" =
+    #: none, and then no header at all (a server with authentication off sees the exact
+    #: request it saw before the field existed).
+    openai_api_key: str = field(default="", repr=False)
 
 
 @dataclass(frozen=True)

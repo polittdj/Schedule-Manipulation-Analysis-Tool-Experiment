@@ -1,4 +1,9 @@
-"""Backend tests — NullBackend, OllamaBackend (loopback-guarded, injected opener), routing."""
+"""Backend tests — NullBackend, OllamaBackend (loopback-guarded, injected opener), routing.
+
+Opener shapes (ADR-0485): Ollama's injected opener is the 3-arg ``(url, data, timeout)``; the
+OpenAI-compatible backend's is the 4-arg ``(url, data, timeout, headers)`` because LM Studio
+can require a Bearer token on every request — its doubles below carry the fourth parameter.
+"""
 
 from __future__ import annotations
 
@@ -153,7 +158,7 @@ def test_openai_compat_rejects_remote_endpoint() -> None:
 
 
 def test_openai_compat_loopback_with_injected_opener() -> None:
-    def opener(url: str, data: bytes | None, timeout: float) -> str:
+    def opener(url: str, data: bytes | None, timeout: float, headers: dict[str, str]) -> str:
         if url.endswith("/v1/models"):
             return json.dumps({"data": [{"id": "qwen2.5-7b-instruct"}, {"id": "phi-4"}]})
         if url.endswith("/v1/chat/completions"):
@@ -171,22 +176,22 @@ def test_openai_compat_loopback_with_injected_opener() -> None:
 
 
 def test_openai_compat_fails_soft() -> None:
-    def boom(url: str, data: bytes | None, timeout: float) -> str:
+    def boom(url: str, data: bytes | None, timeout: float, headers: dict[str, str]) -> str:
         raise OSError("connection refused")
 
     assert OpenAICompatBackend(opener=boom).is_available() is False
 
-    def malformed(url: str, data: bytes | None, timeout: float) -> str:
+    def malformed(url: str, data: bytes | None, timeout: float, headers: dict[str, str]) -> str:
         return json.dumps({"unexpected": True})
 
     assert OpenAICompatBackend(opener=malformed).generate("x") == ""  # never raises mid-ask
 
 
 def test_route_openai_when_available_else_null() -> None:
-    def up(url: str, data: bytes | None, timeout: float) -> str:
+    def up(url: str, data: bytes | None, timeout: float, headers: dict[str, str]) -> str:
         return json.dumps({"data": []})
 
-    def down(url: str, data: bytes | None, timeout: float) -> str:
+    def down(url: str, data: bytes | None, timeout: float, headers: dict[str, str]) -> str:
         raise OSError("down")
 
     cfg = AIConfig(backend="openai")
@@ -290,7 +295,7 @@ def test_ollama_generate_sends_a_finite_keep_alive() -> None:
 def test_openai_compat_generate_sends_deterministic_temperature_and_seed() -> None:
     captured: dict[str, object] = {}
 
-    def opener(url: str, data: bytes | None, timeout: float) -> str:
+    def opener(url: str, data: bytes | None, timeout: float, headers: dict[str, str]) -> str:
         if url.endswith("/v1/chat/completions") and data is not None:
             captured.update(json.loads(data))
             return json.dumps({"choices": [{"message": {"content": "ok"}}]})
@@ -298,3 +303,111 @@ def test_openai_compat_generate_sends_deterministic_temperature_and_seed() -> No
 
     OpenAICompatBackend(opener=opener).generate("Q?")
     assert captured.get("temperature") == 0.0 and captured.get("seed") == 0
+
+
+# --- the local OpenAI-compatible server's API token (ADR-0485) --------------------------------
+
+
+def _recording_opener(seen: dict[str, dict[str, str]]):
+    """A 4-arg (header-capable) opener that records the headers each path was sent with."""
+
+    def opener(url: str, data: bytes | None, timeout: float, headers: dict[str, str]) -> str:
+        seen[url.rsplit("/", 1)[-1]] = dict(headers)
+        if url.endswith("/v1/models"):
+            return json.dumps({"data": [{"id": "phi-4"}]})
+        return json.dumps({"choices": [{"message": {"content": "ok"}}]})
+
+    return opener
+
+
+def test_openai_compat_sends_the_bearer_token_on_every_request_when_set() -> None:
+    """LM Studio's 'Require Authentication' refuses ANY unauthenticated request, so the token
+    rides the probe, the catalog and the generation alike — never the generation alone."""
+    seen: dict[str, dict[str, str]] = {}
+    be = OpenAICompatBackend(model="phi-4", api_key="lm-tok", opener=_recording_opener(seen))
+    assert be.is_available()
+    assert be.list_models() == ("phi-4",)
+    assert be.generate("Q?") == "ok"
+    assert seen["models"]["Authorization"] == "Bearer lm-tok"
+    assert seen["completions"]["Authorization"] == "Bearer lm-tok"
+
+
+def test_openai_compat_sends_no_authorization_header_without_a_token() -> None:
+    """An empty token sends NO header at all — never a malformed bare 'Bearer ' (ADR-0403's
+    rule, now for the local server too: a server with authentication off must see the exact
+    request it saw before the field existed)."""
+    seen: dict[str, dict[str, str]] = {}
+    be = OpenAICompatBackend(model="phi-4", opener=_recording_opener(seen))
+    be.is_available()
+    be.list_models()
+    be.generate("Q?")
+    assert seen and all("Authorization" not in h for h in seen.values()), seen
+    assert not any("Bearer" in v for h in seen.values() for v in h.values())
+
+
+def test_openai_compat_keeps_the_token_out_of_repr_str_and_config_repr() -> None:
+    be = OpenAICompatBackend(api_key="lm-SECRET", opener=_recording_opener({}))
+    assert "lm-SECRET" not in repr(be) and "lm-SECRET" not in str(be)
+    cfg = AIConfig(backend="openai", openai_api_key="lm-SECRET")
+    assert "lm-SECRET" not in repr(cfg) and "lm-SECRET" not in str(cfg)
+    # still in equality: pasting a new token busts the routed-backend cache
+    assert cfg != AIConfig(backend="openai", openai_api_key="lm-OTHER")
+
+
+def test_the_default_transport_writes_the_headers_onto_the_request(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The injected-opener tests prove the backend HANDS the header to its opener; this proves
+    the default urllib transport puts it on the wire (and keeps the JSON content type)."""
+    from schedule_forensics.ai import ollama
+
+    captured: dict[str, object] = {}
+
+    class _Resp:
+        def __enter__(self) -> _Resp:
+            return self
+
+        def __exit__(self, *exc: object) -> bool:
+            return False
+
+        def read(self) -> bytes:
+            return b'{"choices":[{"message":{"content":"hi"}}]}'
+
+    class _Director:
+        def open(self, request: object, timeout: float) -> _Resp:
+            captured["auth"] = request.get_header("Authorization")  # type: ignore[attr-defined]
+            captured["ctype"] = request.get_header("Content-type")  # type: ignore[attr-defined]
+            captured["method"] = getattr(request, "method", None)
+            return _Resp()
+
+    monkeypatch.setattr(ollama, "_NO_REDIRECT_OPENER", _Director())
+    # the raw transport, called the way the backend calls it
+    out = ollama._urllib_header_opener(
+        "http://127.0.0.1:1234/v1/chat/completions", b"{}", 5.0, {"Authorization": "Bearer t"}
+    )
+    assert json.loads(out)["choices"][0]["message"]["content"] == "hi"
+    assert captured == {"auth": "Bearer t", "ctype": "application/json", "method": "POST"}
+    # and the backend's DEFAULT binding is that transport — a token with no injected opener
+    # reaches the wire (the old 3-arg default had nowhere to put it)
+    captured.clear()
+    assert OpenAICompatBackend(api_key="lm-tok").generate("Q?") == "hi"
+    assert captured["auth"] == "Bearer lm-tok"
+    captured.clear()
+    OpenAICompatBackend().generate("Q?")
+    assert captured["auth"] is None  # no token, no header
+
+
+def test_only_401_and_403_read_as_an_authentication_refusal() -> None:
+    from schedule_forensics.ai.ollama import is_auth_refusal
+
+    assert is_auth_refusal("server returned HTTP 401")
+    assert is_auth_refusal("server returned HTTP 403")
+    for other in (
+        "server returned HTTP 404",
+        "server returned HTTP 500",
+        "server returned HTTP 4013",  # a word boundary, not a substring
+        "timed out — the server didn't respond (wrong port, or still starting?)",
+        "connection refused — the model server isn't listening on this address",
+        "",
+    ):
+        assert not is_auth_refusal(other), other

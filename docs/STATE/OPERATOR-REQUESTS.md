@@ -220,6 +220,43 @@ ADR-0408; the repo is xfail-free). This section is the requested ledger; `HANDOF
 (auto-injected every session) and `NEXT-SESSION-PROMPT.md` carry the same state with
 per-unit rotation. **Every remaining open item on this page is operator-owned.**
 
+## 2026-09-11 — Ask-the-AI on `/integrity`: "server returned HTTP 403" from the local OpenAI-compatible server (screenshot)
+
+### OR-14 — "do a deep dive and figure out why the ASK the AI is not working the way it should and fix it." · `SHIPPED (ADR-0485, v1.0.255)`
+
+**The operator's screenshot (2026-09-11):** backend = OpenAI-compatible (LM Studio on
+`http://127.0.0.1:1234`), a manipulation question in the box, and the note *"the model server at
+http://127.0.0.1:1234 was reachable, but the generation itself failed: server returned HTTP 403. AI
+Settings shows its live status."* over the raw cited facts.
+
+**ROOT CAUSE, measured on the code and reproduced on the wire before the fix:** the server answers
+`GET /v1/models` (so the backend routes and AI Settings reads ON) and refuses
+`POST /v1/chat/completions` with 403 — the shape of an LM Studio whose *Require Authentication*
+is on (LM Studio 0.4+ can demand `Authorization: Bearer <token>`). **The tool sent no credential
+and had NO WAY to send one for this backend:** no `AIConfig` field, no form field, no constructor
+parameter, no header slot in its 3-arg opener. The only 401/403 diagnostic in the tree belonged to
+the approved gateway (ADR-0403) — the same defect class, closed for the remote backend a month ago
+and left open for the local one. Three other hypotheses (a corporate proxy — refuted, the client
+already bypasses every proxy; a wrong model id — a 404/400 shape, not a 403; the Ollama path — not
+involved) died first.
+
+**CLOSED by ADR-0485 (v1.0.255):** a **Local server API token** field in AI Settings (masked,
+never echoed, blank keeps, persisted with the same DPAPI / 0600 protector as the gateway key,
+forgotten by Turn-the-AI-off and a wipe), sent as the Bearer header on EVERY request to the
+loopback server (probe, catalog, generation; the cross-check second model and the live model
+dropdown included) and on nothing else; an empty token sends no header. The Ask note and the
+settings hint now NAME the field on a 401/403 — and state, honestly, that if authentication is off
+the refusal came from the server or from something in front of it (check the server's log), because
+the tool cannot see which. A gateway generation failure is also no longer mislabelled with the
+local server's address.
+
+**What to do on the deployed machine:** LM Studio → Developer → Server Settings → *Require
+Authentication* → *Manage Tokens*; paste the token into **Local server API token** in AI Settings →
+Save → ask again. **PENDING OPERATOR VERIFICATION:** LM Studio's exact refusal code (401 vs 403)
+and whether its `/v1/models` is exempt are UNVERIFIED (the docs do not say; the fix accepts both
+codes and both catalog shapes). If the 403 persists WITH a token saved, the token is wrong/revoked
+or something on the machine sits in front of the server — the note says so.
+
 ## 2026-09-08 — Ask-the-AI returned no answer on `/integrity` (screenshot, 32-version workbook)
 
 ### OR-13 — "I still can't open the program when I close the browser without quitting" · `SHIPPED (ADR-0483, v1.0.253)`
