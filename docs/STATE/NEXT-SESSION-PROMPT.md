@@ -1,10 +1,12 @@
 # Kickoff prompt — next session
 
-PR state (2026-09-11 b): the `/scorecards` design page (ADR-0484, **v1.0.254**) is on branch
-`claude/optimistic-ride-3qv2jc` as a **draft PR** — read the SESSION-LOG follow-up for its number and
-verdict, and `git log origin/main` for whether it has merged. `main` was `26d821e3` (#666, docs-only)
-when this was written. **Always `git fetch origin` and read `git log origin/main` before trusting any
-sha written here** — five consecutive kickoffs have been stale by the time they were read.
+PR state (2026-09-11 b): the `/scorecards` design page (ADR-0484, **v1.0.254**) is draft **PR #668**
+on branch `claude/optimistic-ride-3qv2jc` — **8/8 checks green** on head `3a7d3f9b` (CI run 1837,
+installer-smoke 701), then `main` moved under it (#667 merged, rewriting the same three state docs),
+so `origin/main` was merged IN and the three conflicts resolved by hand. `main` was **`fda4fa06`**
+(#667) when this was written. **Always `git fetch origin` and read `git log origin/main` before
+trusting any sha written here** — six consecutive kickoffs have been stale by the time they were
+read, and this one's `main` moved *during* its own PR.
 
 ## The design page is CURRENT, not owed. **Take R-56.**
 
@@ -127,7 +129,11 @@ the four Hard_File bookings the MSPDI cannot explain (R-56) · R-20 / UI-03 (ADR
 measures `scrollWidth == innerWidth == 1440`; `/scorecards` is now IN that census) · the HELD and
 CLOSED rows of the report · the S-curve & finish-window residuals of earlier sessions.
 
-⇢ Residuals registered, none taken: **`/settings` scrolls sideways** (an over-wide `<select>`; its own
+⇢ Residuals registered, none taken: **`test_driving_path_whole_schedule_browser.py:104` is
+WIDTH-RACY** (registered by #667, carried forward — red on a docs-only PR while `main` passed the
+identical code two minutes earlier; it compares the rendered `thead` inner_text of two separately
+rendered pages while both captures wait on ROWS, never on the timescale. A race with a mechanism, not
+a flake — its own unit, and **never** fix it by widening a wait) · **`/settings` scrolls sideways** (an over-wide `<select>`; its own
 UI unit) · **the working-minute axis cannot carry a recorded instant on a day boundary or a
 non-working moment** (structural) · **the hint bubble still widens the document WHILE OPEN** near
 the right edge · **OR-11b** (measure the 48-fact cap on a real 32-file workbook first) · **OR-11d**

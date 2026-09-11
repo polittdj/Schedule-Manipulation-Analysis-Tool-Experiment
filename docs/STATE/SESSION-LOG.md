@@ -17624,6 +17624,66 @@ shadows it on PATH).
 - This is the session's own QC-2 finding against its own durable state: an inherited claim is
   testimony even when the session that wrote it is this one, and one commit old.
 
+### Follow-up — #666 MERGED (`main` @ `26d821e3`); the corrected rule proved itself on its own merge
+
+- **#666 merged 2026-09-11 01:32Z** → `main` @ **`26d821e3`**, tree-verified: `26d821e3^{tree}` and
+  `dfa7bb6c^{tree}` both read **`9b244aff28fc77ad91e6d90a1f7b08acc14e099a`**. `main`'s run **1833**
+  (`34551102503`). **Four PRs, four merges, every squash tree-verified, none amended.**
+- **The corrected restart rule demonstrated itself on the very merge that shipped it.** Running both
+  checks side by side on #666's restart: the TREE comparison said EQUAL (nothing to carry, correct),
+  while `git log origin/main..HEAD` listed `dfa7bb6c` — a commit whose content was already in the
+  squash, and which the old rule would have had us cherry-pick into a duplicate. A rule and its
+  refutation, one merge apart, on the same branch.
+- **No PR was opened merely to record #666's merge.** That regress does not terminate: every
+  merge-record PR would need its own merge record. This repo's actual pattern is that the NEXT
+  unit's session-close carries the previous merge, and this entry is that carry. Recorded so the
+  omission reads as a decision.
+- **Session closed at 64% context by operator choice.** The next unit — `/scorecards`, 21 artboards,
+  four-theme render-verify, design-system DoD, plus the 35-minute gate and an installer rebuild —
+  starts fresh rather than risking a mid-unit handoff at the seam of a design deliverable. That is a
+  different call from the five prior deferrals, which ranked it below an operator-reported bug each
+  time; this one is about whether the work fits the room left.
+- **Codex quota EXHAUSTED on #665 as well: EIGHT consecutive merges** (#655, #656, #657, #659, #660,
+  #661, #663, #665) with no automated review performed. Every quality claim in this repo currently
+  rests on a session checking its own work. This session produced two findings against ITSELF — the
+  false `active_requests` rationale and the bad restart rule — which is the system working, but
+  self-review has a ceiling and the repo is sitting on it.
+
+### NEW DEFECT registered 2026-09-11 — `test_driving_path_whole_schedule_browser` is width-racy
+
+**Measured.** #667's `browser (measured-box proof)` job went RED on
+`test_driving_path_whole_schedule_browser.py:104` — `assert dp_headers == path_headers` — while
+`main`'s run **1833 browser job PASSED on the identical code** two minutes earlier (01:49:21 vs
+01:51:37). #667 is docs-only: `git diff origin/main <head> -- src tests` is **EMPTY**, so the diff
+cannot have caused it. This is a pre-existing intermittent defect, surfaced by this PR, not created
+by it.
+
+**What the failure says.** `dp_headers` carried MORE timescale columns than `path_headers` —
+`Qtr 2 2025`, `March`, `April`, out to `Apr 6` — against an oracle that stopped at `Feb 9`. The
+assertion compares the `.path-grid thead tr` **inner_text of two separately-rendered pages**, and
+that text includes the rendered timescale, so **the assertion is width-sensitive by construction**.
+
+**Mechanism, part measured and part hypothesis — the split matters (QC-1).**
+
+* **Read from the test, verifiable by inspection:** both captures are gated on
+  `page.wait_for_selector("#pathBody tr[data-uid]")` — a wait on **ROWS**. Nothing waits on the
+  **timescale** having finished laying out. The oracle and the subject are therefore sampled at two
+  unsynchronised moments on two different pages.
+* **UNVERIFIED hypothesis:** that the timescale widens in a later measure-then-draw pass (rAF /
+  ResizeObserver in the vendored `timescale.js`), so a capture taken just after rows appear can
+  catch a narrower header than one taken a beat later. **What would settle it:** instrument the two
+  captures with `evaluate` to record the column count and the grid's measured width at capture
+  time, run the module in a loop under CPU throttling, and show the two pages disagreeing.
+
+**The fix is NOT a longer wait.** A wait widened until it usually passes has a failure mode that
+reads exactly like "not yet" — this repo's standing rule. The wait must be on the timescale's own
+completion signal, or the assertion must compare a width-INDEPENDENT projection of the header
+(the column LABELS the grid owns, not the timescale it renders).
+
+**Its own unit, not this session's.** Registered here so the next session does not rediscover it as
+a mystery red cell, and so nobody writes it off as a flake — every intermittent cell this repo has
+called a flake turned out to have a mechanism (ADR-0442 UI-02, ADR-0443, ADR-0461).
+
 ## 2026-09-11 (b) — the /scorecards design page DELIVERED (ADR-0484): the artboard's three-card grid, its verbatim tables laid out fixed, the score from the engine's own field; v1.0.254
 
 - **Branch:** `claude/optimistic-ride-3qv2jc`, restarted on `origin/main` @ `26d821e3` (#666). The
@@ -17697,3 +17757,39 @@ shadows it on PATH).
   #668's state docs (HANDOFF / SESSION-LOG / NEXT-SESSION-PROMPT / LESSONS) will need a merge from
   `main` — resolve by merge, never by rebasing published history.
 
+### Follow-up — `main` moved UNDER #668 (#667 merged); `origin/main` merged IN, three doc conflicts resolved by hand
+
+- **#668 was 8/8 GREEN and `mergeable_state` clean at the 04:13Z, 07:17Z and 10:19Z check-ins**
+  (CI run 1837 on head `3a7d3f9b`: check · test 3.11 · test 3.13 · floor · browser · cui-guard;
+  installer-smoke 701: linux · windows). At ~12:50Z the operator's own view showed **"This branch
+  has conflicts that must be resolved"** over those same eight green checks: `main` had moved to
+  **`fda4fa06`** (#667, the sibling session's docs-only close, merged 08:50Z-ish).
+- **The collision was structural, not a race between edits.** #667 and #668 are two sessions closing
+  against the same three durable-state docs: `HANDOFF.md` (#667 amended the very section #668 had
+  already ARCHIVED), `NEXT-SESSION-PROMPT.md` (#667's kickoff pointed AT `/scorecards`, the unit
+  #668 delivered) and `SESSION-LOG.md` (both appended at the tail).
+- **Resolved by merging `origin/main` IN — never a rebase** (the branch is pushed history; a merge
+  commit keeps every checkout valid), one deliberate decision per file:
+  - **`SESSION-LOG.md`** — append-only, newest at the BOTTOM, so BOTH sides survive in time order:
+    #667's `#666 MERGED` follow-up and its NEW-DEFECT registration lead, then this session's
+    `2026-09-11 (b)` entry and its PR-#668 follow-up. Nothing was dropped from either side.
+  - **`HANDOFF.md`** — this session's section is the current one and wins structurally, but it
+    ABSORBS what #667 registered: the width-race residual is carried forward verbatim and marked
+    "NOT this unit's", and the STATUS line now reads `main` @ `fda4fa06`.
+  - **`NEXT-SESSION-PROMPT.md`** — this session's kickoff supersedes #667's wholesale, because
+    #667's pointed at `/scorecards` as the next unit and `/scorecards` is what this PR delivers.
+    The width-race joins its residual list so it cannot be rediscovered as a surprise.
+  - **`HANDOFF-ARCHIVE.md`** — the archived 2026-09-10 section was a PRE-#667 snapshot; it was
+    refreshed to the form #667 last left it in, taken from `git show fda4fa06:` rather than
+    retyped. An archive that says "verbatim" should mean the section's FINAL form.
+- **Two stale shas this session had knowingly left were corrected in the same commit**, since the
+  merge costs a CI cycle anyway and a second commit would only move the head again: the handoff's
+  PR head (`d2cd0f45` → `3a7d3f9b`) and `main` (`26d821e3` → `fda4fa06`).
+- **No rebuild was owed and none was done:** `git diff 26d821e3 fda4fa06 -- src tests installer
+  pyproject.toml` is EMPTY, so the embedded wheel stays in lockstep with `src/` and v1.0.254 stands.
+  Checked rather than assumed — the lockstep pin compares every packaged file byte-for-byte.
+- **The lesson, and it is not "merge sooner":** two sessions closing in parallel will collide on the
+  durable-state docs BY CONSTRUCTION, because every session close rewrites the same three files.
+  The conflict is therefore expected work, not a mishap — and the resolution is never "take mine":
+  it is to ask, per file, which side is the RECORD (append both) and which is the POINTER (newest
+  wins, carrying the other's live residuals forward).

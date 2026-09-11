@@ -435,6 +435,33 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-11 (c) — two sessions closing in parallel collide on the state docs BY CONSTRUCTION
+
+- **A green PR went conflicted without anyone touching it.** #668 sat 8/8 green and `mergeable_state`
+  clean across three check-ins; then the sibling session's docs-only #667 merged and the same three
+  durable-state files — HANDOFF, NEXT-SESSION-PROMPT, SESSION-LOG — came back as conflicts over the
+  still-green checks. **This is not a mishap and not a race to merge first: every session close
+  rewrites exactly those three files, so any two closes in flight collide by construction.** Budget
+  the merge as expected work at the end of a parallel session, not as an incident.
+- **"Take mine" is the wrong reflex; ask per file whether it is a RECORD or a POINTER.** The
+  SESSION-LOG is append-only history — BOTH sides survive, in time order, and dropping either would
+  destroy the record the file exists to be. The kickoff prompt is a pointer — the newest wins
+  wholesale, because #667's pointed at `/scorecards` and `/scorecards` is what #668 delivered. The
+  HANDOFF is a pointer that must ABSORB: the other side's live residual (a width-racy browser test)
+  was carried forward verbatim, or it would have been silently deleted by a "my section wins" merge.
+- **An archive should hold a section's FINAL form, not the snapshot you happened to take.** #668 had
+  archived the 2026-09-10 handoff section; #667 then amended that same section on `main`. The archived
+  copy was refreshed from `git show fda4fa06:…` rather than retyped — a stale archive is a quiet lie
+  about what the prior session actually said, and the git object is the only trustworthy source.
+- **Fold known-stale facts into the merge commit you already owe.** Two shas in the handoff were
+  knowingly stale (the PR head, recorded one commit before the commit that recorded it; and `main`).
+  A separate commit to fix them would have moved the head and burned another ~45-minute CI cycle for
+  nothing; the conflict resolution was the cycle that was already being spent.
+- **Verify "docs-only" before skipping the rebuild.** `git diff <base> <new-main> -- src tests
+  installer pyproject.toml` was run and came back EMPTY, so the embedded wheel stays in lockstep and
+  no version bump was owed. The installer pin compares every packaged file byte-for-byte; "it was
+  called a docs PR" is testimony, and the diff is evidence.
+
 ### 2026-09-11 (b) — a green mutation is a finding about the instrument, and this unit had three
 
 - **The battery found three of my own instruments weak, by name, before any of them could pass over
