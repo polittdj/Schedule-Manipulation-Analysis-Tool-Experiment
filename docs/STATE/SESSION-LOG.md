@@ -17857,4 +17857,6 @@ called a flake turned out to have a mechanism (ADR-0442 UI-02, ADR-0443, ADR-046
 - **Docs:** ADR-0485 · OPERATOR-REQUESTS OR-14 (SHIPPED; the operator's next step and the pending
   verification stated) · HANDOFF rotated · LESSONS-LEARNED (2026-09-11 (d)) · NEXT-SESSION-PROMPT
   refreshed.
-- **PR:** draft, from this branch — see the follow-up entry for the number and the checks.
+- **PR:** **draft #669**, head `e9387761` (this docs-only record commit follows it). Eight checks
+  expected (`installer/**` changed); the steward check-in an hour out reads the verdicts on the
+  FINAL head with `get_check_runs`, never `get_status`.

@@ -4,8 +4,8 @@ PR state (2026-09-11 c): the `/scorecards` design page (ADR-0484, v1.0.254) is *
 **`5d8d01fb`** (#668, tree-verified after the squash). The session's second unit, **OR-14 / ADR-0485
 (v1.0.255)** — the local OpenAI-compatible server learns to authenticate (the operator's `/integrity`
 Ask panel showed *"server returned HTTP 403"* from LM Studio; the tool had nowhere to hold a token) —
-is a **draft PR** from branch `claude/optimistic-ride-3qv2jc`; its number and checks are in the
-SESSION-LOG's follow-up entry. **Always `git fetch origin` and read `git log origin/main` before
+is **draft PR #669** (head `e9387761` + a docs-only record commit) from branch
+`claude/optimistic-ride-3qv2jc`; its check verdicts are in the SESSION-LOG's follow-up entry. **Always `git fetch origin` and read `git log origin/main` before
 trusting any sha written here** — six consecutive kickoffs have been stale by the time they were
 read. **If #668's successor PR is still open, the state docs below already describe its content;
 if it merged, restart the branch with `--prune` + `remote set-head` + `checkout -B`.**
