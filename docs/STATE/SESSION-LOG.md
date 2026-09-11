@@ -17623,3 +17623,28 @@ shadows it on PATH).
   work both times, and the commit list was along for the ride.
 - This is the session's own QC-2 finding against its own durable state: an inherited claim is
   testimony even when the session that wrote it is this one, and one commit old.
+
+### Follow-up — #666 MERGED (`main` @ `26d821e3`); the corrected rule proved itself on its own merge
+
+- **#666 merged 2026-09-11 01:32Z** → `main` @ **`26d821e3`**, tree-verified: `26d821e3^{tree}` and
+  `dfa7bb6c^{tree}` both read **`9b244aff28fc77ad91e6d90a1f7b08acc14e099a`**. `main`'s run **1833**
+  (`34551102503`). **Four PRs, four merges, every squash tree-verified, none amended.**
+- **The corrected restart rule demonstrated itself on the very merge that shipped it.** Running both
+  checks side by side on #666's restart: the TREE comparison said EQUAL (nothing to carry, correct),
+  while `git log origin/main..HEAD` listed `dfa7bb6c` — a commit whose content was already in the
+  squash, and which the old rule would have had us cherry-pick into a duplicate. A rule and its
+  refutation, one merge apart, on the same branch.
+- **No PR was opened merely to record #666's merge.** That regress does not terminate: every
+  merge-record PR would need its own merge record. This repo's actual pattern is that the NEXT
+  unit's session-close carries the previous merge, and this entry is that carry. Recorded so the
+  omission reads as a decision.
+- **Session closed at 64% context by operator choice.** The next unit — `/scorecards`, 21 artboards,
+  four-theme render-verify, design-system DoD, plus the 35-minute gate and an installer rebuild —
+  starts fresh rather than risking a mid-unit handoff at the seam of a design deliverable. That is a
+  different call from the five prior deferrals, which ranked it below an operator-reported bug each
+  time; this one is about whether the work fits the room left.
+- **Codex quota EXHAUSTED on #665 as well: EIGHT consecutive merges** (#655, #656, #657, #659, #660,
+  #661, #663, #665) with no automated review performed. Every quality claim in this repo currently
+  rests on a session checking its own work. This session produced two findings against ITSELF — the
+  false `active_requests` rationale and the bad restart rule — which is the system working, but
+  self-review has a ceiling and the repo is sitting on it.

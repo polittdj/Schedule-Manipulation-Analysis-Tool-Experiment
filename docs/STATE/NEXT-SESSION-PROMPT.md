@@ -1,54 +1,90 @@
 # Kickoff prompt — next session
 
-PR state (2026-09-10 b): **#663 MERGED** → `main` @ **`b13dbd61`** (ADR-0483 / OR-13, **v1.0.253**),
-tree-verified `609e146f…` on BOTH the squash and the PR head `51a45639`, 8/8 checks green. `main`'s
-own run for the squash is **1827 (`34532629609`)** — read it first. #662 merged before it
-(`9922e276`, docs-only). **Always `git fetch origin` and read `git log origin/main` before trusting
-any sha written here** — four consecutive kickoffs have been stale by the time they were read.
+PR state (2026-09-11): **#663, #664, #665 and #666 ALL MERGED** → `main` @ **`26d821e3`**. Every
+squash tree-verified against its head — `609e146f…` / `95b7039e…` / `52c1d084…` / `9b244aff…` — and
+none amended. `main`'s runs **1827 SUCCESS**, **1829 SUCCESS**, **1833** (`34551102503`) — read 1833
+first. **OR-13 is CLOSED** (ADR-0483, v1.0.253). Highest ADR **0483**. Branch
+`claude/blissful-clarke-tyggug` restarted on `origin/main`, clean, no PR open. **Always
+`git fetch origin` and read `git log origin/main` before trusting any sha written here.**
 
-## OR-13 is CLOSED AND MERGED (ADR-0483, #663). **Take R-56.**
+## ⇢ THE UNIT IS `/scorecards`. It is owed FIVE sessions. Do not defer it again.
 
-`SHUTDOWN_DRAIN_TIMEOUT = 5` now goes to `uvicorn.Config`; without it `timeout_graceful_shutdown`
-is `None`, which `asyncio.wait_for` reads as **wait forever**, and a peer that stopped draining an
-in-flight write left the tool alive with its port unbindable. The bound comes from
-`launcher._HANDOVER_TIMEOUT` (20 s): `CLOSE_GRACE 5 + watchdog poll 2 + drain 5 = ~12 s`, and the
-**arithmetic** is pinned, not the constant — raising any of the three re-opens the question.
+**`setScreen('sk')`**, 21 artboards remaining (audit report §6). The recipe is ADR-0471/0475 —
+**read ADR-0475 first**, because it is the one prior design page that was delivered and it records
+what was ported, what was REFUSED, and why. Its refusals are the template: a mock's status word,
+its decomposition and its export label are **claims about the ENGINE**, and each is checked before
+it is drawn; a mock that HIDES something is proposing a functionality change, not a layout.
 
-**Do NOT re-open, and do NOT restore the comment that was there:** `active_requests > 0` does
-**not** protect a streaming response. Starlette's `BaseHTTPMiddleware` decrements on *dispatch
-return*, before the body is written, so the watchdog fires with megabytes still queued — measured.
-The browser's heartbeat is what protects a live download. `force_exit` was rejected and must stay
-rejected: it skips the ASGI lifespan shutdown, which is the hook that clears the on-disk CUI cache
-(ADR-0335).
+Bound by `docs/DESIGN-SYSTEM.md` (Mission Ops, ADR-0195) and its Definition of Done: colour, type
+and radius from theme tokens ONLY; every data visual honours the chart contract (takeaway headline,
+labelled axes, legend, DD line, hover callout, provenance chip, ▦ DATA / ⤓ EXCEL / ⛶ ENLARGE);
+**verify in all four themes** (console / daylight / apollo / jarvis). **Never touch `engine/` for a
+UI change.** Missing shows `—`, never a fabricated figure.
 
-**Two rules that cost this session real time.**
-· **A repro that does not reproduce is a result, not a delay.** Five plausible shapes of "the
-  browser went away" — idle keep-alive, half-closed after a small response, unread small response,
-  truncated request, truncated POST — all stopped cleanly in ~6 s. Only a peer that stops draining
-  a **large** in-flight write wedges it. Enumerate shapes and let them fail.
+**`render-verify` is not optional here.** In this repo, inspection and green unit tests have
+repeatedly disagreed with the browser, and OR-12 shipped without touching the operator's actual
+failure precisely because a node stub and a `TestClient` stood in for a real page. Render the page
+over loopback, in four themes, and measure it — `tests/web/browser_chrome.py::chrome_kwargs()` for
+the browser, never `playwright install`.
+
+**Why this got a fresh session:** the previous session closed at 64% context with OR-13 fully
+merged. 21 artboards + four-theme render-verify + the 35-minute gate + a version bump and installer
+rebuild does not fit that headroom, and a design deliverable split across a handoff loses coherence
+at the seam. It was NOT deferred again — it was given room.
+
+**After `/scorecards`: R-56** (duration-CONTOUR defect on UNSTARTED work, so no progress rule
+reaches it; **UID 385 is the LARGER driver, not the 403 the report names**; seven chain heads; both
+`pc == 0`). Then R-49 · R-46 · R-47 · R-52 · R-50 · R-57/58/59 · R-03 · R-04 · R-09 · R-13 · R-18 ·
+R-21 · R-22 · R-32 · R-39.
+
+## ⇢ What OR-13 settled, so it is not re-opened
+
+`SHUTDOWN_DRAIN_TIMEOUT = 5` on `uvicorn.Config`. Unset, `timeout_graceful_shutdown` is `None`,
+which `asyncio.wait_for` reads as **wait forever**, and a peer that stopped draining an in-flight
+write left the tool alive with its port unbindable. The bound comes from `launcher._HANDOVER_TIMEOUT`
+(20 s): `CLOSE_GRACE 5 + watchdog poll 2 + drain 5 = ~12 s`, and the **arithmetic** is pinned, not
+the constant.
+
+**Do NOT restore the comment that was there:** `active_requests > 0` does **not** protect a
+streaming response — Starlette's `BaseHTTPMiddleware` decrements on *dispatch return*, before the
+body is written, so the watchdog fires with megabytes still queued (measured). The heartbeat is what
+protects a live download. **`force_exit` was rejected and stays rejected:** it skips the ASGI
+lifespan shutdown, the hook that clears the on-disk CUI cache (ADR-0335).
+
+## ⇢ Three rules this arc paid for, by name
+
+· **A repro that does not reproduce is a result.** Five plausible shapes of "the browser went away"
+  — idle keep-alive, half-closed after a small response, unread small response, truncated request,
+  truncated POST — all stopped cleanly in ~6 s. Only a peer that stops draining a **large**
+  in-flight write wedges it. Enumerate shapes and let them fail.
 · **Put the red arm INSIDE the test.** `tests/web/test_exit_is_bounded.py` runs the pre-fix
-  configuration against the same wedge and requires it to HANG before trusting the green arm, so a
-  box with bigger socket buffers gets a FAILURE rather than a green that measured nothing. Two of
-  the eight mutations target the **instrument** (wide receive window · one small response) — those
-  are the ones that make "the control hung" mean anything.
+  configuration against the same wedge and requires it to HANG before trusting the green arm — so a
+  box with bigger socket buffers gets a FAILURE, not a green that measured nothing. Two of the eight
+  mutations target the **instrument** (wide receive window · one small response); those are what
+  make "the control hung" mean anything.
+· **The post-merge restart check is a TREE comparison, NOT `git log origin/main..HEAD`.** A
+  squash-merge never makes the PR's own commits ancestors of `main`, so that command lists them
+  after EVERY squash and acting on it duplicates merged content. Compare `HEAD^{tree}` with
+  `origin/main^{tree}`: equal → nothing to carry; unequal → cherry-pick. The rule was written wrong
+  into this very log, then refuted by running it one merge later (ADR-free, see SESSION-LOG
+  2026-09-11). **A rule validated on one confirming case is not validated.**
 
-**Environment, re-measured 2026-09-10 (b).** The
-clone arrives shallow at depth 50 and its answer for `git log -1 -- tools/mpxj` is plausible at
-**every** depth: `+60` → `f021b5e6`, `+200` → `1df4d4a1`, `+400` → `42d92dc9`. Deepen until
+## ⇢ Environment, measured
+
+The clone arrives **shallow at depth 50** and its answer for `git log -1 -- tools/mpxj` is plausible
+at **every** depth: `+60` → `f021b5e6`, `+200` → `1df4d4a1`, `+400` → `42d92dc9`. Deepen until
 `git rev-parse --is-shallow-repository` prints **false** (a further `+100` reached 760 commits) and
-confirm the sha is STABLE before running `build_installers.py` without `SF_MPXJ_REF`. The true
-value is `42d92dc9acc98f7d87f19c82dc62be3e5d3c15ca`. Install with
+confirm the sha is STABLE before running `build_installers.py` without `SF_MPXJ_REF`. True value:
+`42d92dc9acc98f7d87f19c82dc62be3e5d3c15ca`. Install with
 `uv pip install --python /usr/local/bin/python3 --system -e '.[dev]'` (add `build` and `playwright`
-the same way; never `playwright install` — use `tests/web/browser_chrome.py::chrome_kwargs()`).
-**Keep the token-guardian's `token_audit.py` in the scratchpad** — `ruff check .` is whole-tree and
-a scratch file in the repo root fails the gate.
+the same way; **never** `playwright install`). After a version bump also run
+`uv pip install --python /usr/local/bin/python3 --system -e . --no-deps` or the editable metadata
+stays stale and `_ASSET_VERSION` reports the OLD version. **Keep the token-guardian's
+`token_audit.py` in the scratchpad** — `ruff check .` is whole-tree. The full suite is ~17–35 min;
+start it AFTER the version bump and the wheel/installer rebuild, and no source edit during the run.
 
-**Every "install this and try again" must end with a command that prints what actually got
-installed.** The operator spent a day testing v1.0.251 against a fix that shipped in 1.0.252.
-**And a filter in a diagnostic is an ASSERTION about where the answer lives** — `Get-Process
-pythonw` and `Get-NetTCPConnection -State Listen` both returned empty while a server was running
-and holding the port, because the evidence was a `FinWait2` connection the filter excluded by
-construction. **Use the real browser** (`render-verify`) for any claim about what a page does.
+**Review cover: Codex quota EXHAUSTED on EIGHT consecutive merges** (#655, #656, #657, #659, #660,
+#661, #663, #665). The mutation battery and the full gate are the only review this repo gets.
 
 **Three steward traps, all measured — do not re-learn any of them:**
 1. `pull_request_read` method **`get_status`** returns `{"state":"pending","total_count":0,
