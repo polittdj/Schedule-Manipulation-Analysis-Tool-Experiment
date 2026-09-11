@@ -17686,3 +17686,14 @@ shadows it on PATH).
   **96 passed** (5:23). The 5 skips are the standing loopback-allowlist and axis-title env skips.
 - **Next:** R-56 (the campaign queue, unchanged) · the next design page is `/margin` (Control Margin
   Dashboard, `setScreen('mg')`).
+
+### Follow-up — draft PR #668 opened
+
+- **#668** — https://github.com/polittdj/Schedule-Manipulation-Analysis-Tool-Experiment/pull/668,
+  head `d2cd0f45` (tree `ecb0a681…`), draft, base `main` @ `26d821e3`. Eight checks apply
+  (`installer/**` changed). The session is subscribed to its activity; the operator merges.
+- `origin/claude/blissful-clarke-tyggug` (the prior session's branch) gained two docs-only commits
+  after #666 (`3c826715`, `c99fb2e5`) while this unit was in flight; if that branch merges first,
+  #668's state docs (HANDOFF / SESSION-LOG / NEXT-SESSION-PROMPT / LESSONS) will need a merge from
+  `main` — resolve by merge, never by rebasing published history.
+
