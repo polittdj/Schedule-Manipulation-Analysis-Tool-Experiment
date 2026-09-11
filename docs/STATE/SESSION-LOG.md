@@ -17599,7 +17599,27 @@ shadows it on PATH).
   commit silently, and a silent discard of a durable-state record is exactly the failure this log
   exists to prevent. Restarted on `origin/main` and **cherry-picked the one commit forward**
   (`de7c71f0`); it applied cleanly because `main` already carried the base it was written against.
-  **Check for unmerged commits BEFORE restarting a branch whose PR just merged** — `git log
-  origin/main..HEAD` costs nothing and the alternative is losing work that was never reviewed.
+  **Check before restarting a branch whose PR just merged** — but see the CORRECTION below for what
+  the check actually is, because the rule as first written here was wrong.
 - Neither squash was amended, and no published history was rewritten: the only rebase was of a
   commit that had never reached `main`.
+
+### Follow-up — #665 MERGED (`main` @ `b195c7d3`), and a CORRECTION to the rule written above
+
+- **#665 merged 2026-09-11 00:45Z** → `main` @ **`b195c7d3`**, tree-verified: `b195c7d3^{tree}` and
+  `1098bcf7^{tree}` both read **`52c1d08477cf68ff796f3539a08846afd47e1e85`**. All three squashes of
+  this arc are now tree-verified against their heads, and no squash was ever amended.
+- **CORRECTION, found by running the rule this log recorded one commit earlier.** That entry said to
+  run `git log origin/main..HEAD` before a post-merge restart and cherry-pick anything it lists.
+  **That is wrong, and following it literally would DUPLICATE already-merged content.** A
+  squash-merge never makes the PR's own commits ancestors of `main`, so `origin/main..HEAD` lists
+  them **every time** — it listed `1098bcf7` here, whose content was already in the squash.
+- **The real discriminator is the TREE, not the commit list.** Compare `HEAD^{tree}` with
+  `origin/main^{tree}`: equal means the squash already carries everything and there is nothing to
+  carry forward; unequal means something on the branch is genuinely not on `main` and must be
+  cherry-picked. The #664 case was a true positive — `c8bbace5` was pushed AFTER the merge, so its
+  content was never in the squash — and that is why the commit-list check appeared to work. **A
+  rule validated on a single true positive is not validated**; it was the tree comparison doing the
+  work both times, and the commit list was along for the ride.
+- This is the session's own QC-2 finding against its own durable state: an inherited claim is
+  testimony even when the session that wrote it is this one, and one commit old.

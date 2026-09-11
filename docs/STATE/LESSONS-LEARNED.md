@@ -7202,3 +7202,24 @@ and that is the lesson worth keeping.
   mutation battery and the full gate are carrying the entire review function of this repository,
   and a battery that only mutates the subject rather than the instrument would not notice it was
   failing. Budget accordingly until the quota returns.
+
+### 2026-09-11 — a rule validated on one true positive is not validated
+
+- **`git log origin/main..HEAD` is the WRONG post-merge safety check, and it looked right because
+  it fired correctly once.** A squash-merge never makes the PR's own commits ancestors of `main`,
+  so that command lists them after **every** squash — it cannot distinguish "this branch holds work
+  that is not on `main`" from "this branch holds the commits that just became the squash". Acting on
+  it literally duplicates already-merged content. **Compare `HEAD^{tree}` with `origin/main^{tree}`
+  instead:** equal means everything is carried and there is nothing to do; unequal means something
+  is genuinely unmerged.
+- **The rule was written into durable state one commit before it was refuted, by the session that
+  wrote it, after a case where it happened to be right.** The #664 case was a true positive — a
+  commit pushed *after* the merge, whose content really was absent from the squash — and the
+  commit-list check flagged it. But the tree comparison flagged it too, and the tree comparison is
+  what was actually doing the work; the commit list was along for the ride and got the credit. One
+  confirming case is not validation, and a check that cannot produce a false positive is not the
+  same as a check that did not produce one this time.
+- **QC-2 applies to state this session wrote an hour ago.** "Inherited claims are testimony" is not
+  only about prior sessions. The correction was cheap because the rule was exercised immediately;
+  had it sat in the log until a future session followed it, the cost would have been duplicated
+  commits in a state document whose whole job is to be trustworthy.

@@ -1,6 +1,6 @@
 # Handoff — 2026-09-10 (OR-13 CLOSED (ADR-0483): the tool that decides to stop actually exits; v1.0.253)
 
-STATUS (current) — `main` @ **`902088b0`** (#664, the docs-only record of #663's merge), **both merges tree-verified**: #663's squash `b13dbd61` and its head `51a45639` both read tree `609e146f…`; #664's squash `902088b0` and its head `931c0e0e` both read tree `95b7039e…`. `main`'s own runs: **1827 SUCCESS** (`34532629609`, #663) and **1829** (`34536395999`, #664). **OR-13 is CLOSED and ON `main`** — ADR-0483, **v1.0.253**, engine untouched, red-first, mutation-tested **8/8 by name**, 8/8 CI green on the PR and green again on `main` itself. Highest ADR **0483**. Branch `claude/blissful-clarke-tyggug` restarted on `origin/main`; neither squash was amended. QC-1/QC-2 bind every session — ADR-0393.
+STATUS (current) — `main` @ **`b195c7d3`** (#665). **The OR-13 arc is fully merged and every squash tree-verified**: #663 `b13dbd61` == head `51a45639` (`609e146f…`) · #664 `902088b0` == head `931c0e0e` (`95b7039e…`) · #665 `b195c7d3` == head `1098bcf7` (`52c1d084…`). `main`'s own runs **1827 SUCCESS** and **1829 SUCCESS**. **OR-13 CLOSED** — ADR-0483, **v1.0.253**, engine untouched, red-first, mutation-tested **8/8 by name**, 8/8 green on the PR and green on `main` itself. Highest ADR **0483**. Branch restarted on `origin/main`; no squash was ever amended. QC-1/QC-2 bind every session — ADR-0393.
 
 ## OR-13 — the tool decided to stop and then could not exit
 
