@@ -315,6 +315,34 @@ toolbar glyph and figure it carried before** ("don't modify any of the functiona
   the repo (DCMA always 16, SEM always 10) cannot be distinguished from a hardcode by any test —
   aim the pin at the family that DOES vary (Fuse reads 9 with one file loaded, 14 with two) and
   record the rest as unverifiable rather than pretending the green means something.
+- **A grid of cards that holds the page's verbatim wide tables lays them out FIXED and wraps
+  anywhere** (ADR-0484, /scorecards — the tenth page, the second Control screen): the artboard's
+  `repeat(auto-fit, minmax(320px, 1fr))` grid (`cd-grid-3`) puts three framework cards side by side
+  at 1440 px, and each card's four-column `table.scorecard-table` was WIDER than a third of the page
+  at its natural width — 449 / 585 / 466 px inside a 374-px card (console / apollo / jarvis), with
+  daylight's card scrolling 463 against its 453 — and apollo scrolled the DOCUMENT sideways (1527 px), the UI-03 class. Inside the grid the
+  table is `table-layout: fixed` with a chip-sized Result column, and its cells `overflow-wrap:
+  anywhere` (+ `hyphens: auto`) as the last resort; the chips themselves are `white-space: nowrap`
+  so a verdict never reads "PAS / S". Measure the fit with element RECTS and per-cell
+  `scrollWidth − clientWidth`, never the panel's `scrollWidth`: jarvis's corner brackets sit at
+  `right:-1px` on every panel by design, and a rect cannot see text spilling inside a fixed cell.
+  **Each of the two rules alone keeps the table inside its card** (a wrap-anywhere cell has a
+  one-character min-content, so even an auto table shrinks) — a battery must mutate both together
+  to prove the geometry pin, and the wrap rule alone to prove the spill pin. The family's cursor
+  strip serves a page that picks its version by QUERY (`_version_chips(..., query="file")` →
+  `/scorecards?file=<key>`; the path form is byte-identical by default). A mock's card-head score is
+  ported from the ENGINE's own field (`Scorecard.score`, one decimal — the page's percentage idiom,
+  never the mock's integer), prints `—` with an EMPTY bar when nothing is scored, and wears the
+  ACCENT role: the mock's pass / caution / fail thresholds on that score are a claim the engine does
+  not make, and INFO drawn as a caution colour asserts a caution the engine never raised. A mock's
+  compact status-pill rows are not the page's table (a display-changed `<table>` loses its
+  semantics — priced, not built blind); its reserve tiles, its "no new simulation runs" note (FALSE
+  here — the card RUNS the Monte-Carlo on demand) and its calendar-day figure (not in the payload)
+  are never ported. Three instruments of this unit were found weak BY the battery and rebuilt: a
+  slice that ended at the reserve card's own shell could not see a reserve card pulled INSIDE the
+  grid; a class extractor that stopped at the first space read `"cd-score-bar ok"` as clean; and a
+  prose word-search flagged the bar's own "checks pass". **Grep the artifact FIRST** for any string
+  you are about to assert absent — `cal d` lives inside the CUI notice's "technical data".
 - **A hidden tooltip box is still scrollable overflow** (UI-03, WP8 / ADR-0472): `[data-sf-hint]::after`
   is absolute, 340 px wide, `visibility:hidden` — on a right-aligned host (every `.viz-controls` row's
   Reset-view button, the family's strip included) it extends past the viewport and the document scrolls

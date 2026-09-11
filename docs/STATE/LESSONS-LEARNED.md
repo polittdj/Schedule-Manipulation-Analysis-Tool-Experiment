@@ -435,6 +435,79 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-11 (c) — two sessions closing in parallel collide on the state docs BY CONSTRUCTION
+
+- **A green PR went conflicted without anyone touching it.** #668 sat 8/8 green and `mergeable_state`
+  clean across three check-ins; then the sibling session's docs-only #667 merged and the same three
+  durable-state files — HANDOFF, NEXT-SESSION-PROMPT, SESSION-LOG — came back as conflicts over the
+  still-green checks. **This is not a mishap and not a race to merge first: every session close
+  rewrites exactly those three files, so any two closes in flight collide by construction.** Budget
+  the merge as expected work at the end of a parallel session, not as an incident.
+- **"Take mine" is the wrong reflex; ask per file whether it is a RECORD or a POINTER.** The
+  SESSION-LOG is append-only history — BOTH sides survive, in time order, and dropping either would
+  destroy the record the file exists to be. The kickoff prompt is a pointer — the newest wins
+  wholesale, because #667's pointed at `/scorecards` and `/scorecards` is what #668 delivered. The
+  HANDOFF is a pointer that must ABSORB: the other side's live residual (a width-racy browser test)
+  was carried forward verbatim, or it would have been silently deleted by a "my section wins" merge.
+- **An archive should hold a section's FINAL form, not the snapshot you happened to take.** #668 had
+  archived the 2026-09-10 handoff section; #667 then amended that same section on `main`. The archived
+  copy was refreshed from `git show fda4fa06:…` rather than retyped — a stale archive is a quiet lie
+  about what the prior session actually said, and the git object is the only trustworthy source.
+- **Fold known-stale facts into the merge commit you already owe.** Two shas in the handoff were
+  knowingly stale (the PR head, recorded one commit before the commit that recorded it; and `main`).
+  A separate commit to fix them would have moved the head and burned another ~45-minute CI cycle for
+  nothing; the conflict resolution was the cycle that was already being spent.
+- **Verify "docs-only" before skipping the rebuild.** `git diff <base> <new-main> -- src tests
+  installer pyproject.toml` was run and came back EMPTY, so the embedded wheel stays in lockstep and
+  no version bump was owed. The installer pin compares every packaged file byte-for-byte; "it was
+  called a docs PR" is testimony, and the diff is evidence.
+
+### 2026-09-11 (b) — a green mutation is a finding about the instrument, and this unit had three
+
+- **The battery found three of my own instruments weak, by name, before any of them could pass over
+  a defect.** A grid test sliced the page up to the reserve card's own `<div class=panel>` shell — so
+  a reserve card pulled INSIDE the grid ended the slice before it could be seen, and the mutation
+  walked through green. A class extractor (`class="?([^" >]+)"?`) stopped at the first space, so a
+  quoted `"cd-score-bar ok"` read back as clean. A prose word-search for `pass|fail|ok|warn|bad`
+  flagged the bar's own aria-label "checks pass" — a false RED, the mirror defect. **The lesson is
+  the one ADR-0475 recorded and this session re-paid: a battery that only mutates the subject
+  cannot tell a working oracle from a lucky one; run it, read every green, and rebuild the
+  instrument, not the assertion count.**
+- **Grep the artifact FIRST for any string you are about to assert absent.** `assert "cal d" not in
+  page` failed on the PRISTINE page: the CUI notice says "techni**cal d**ata". A probe that already
+  occurs in the artifact can never prove the thing absent — the same trap as the `OLLAMA_NUM_PARALLEL`
+  / `262,144` collisions of 2026-09-09, now on the negative side.
+- **A rect cannot see text spilling inside a fixed table cell, and a panel's `scrollWidth` sees the
+  theme's decoration.** The geometry pin first read `panel.scrollWidth <= clientWidth` and failed
+  jarvis by exactly 1 px — that theme's corner brackets sit at `right:-1px` on every panel by design.
+  Re-aimed at element rects it was decoration-proof but blind to an unbreakable token overflowing a
+  fixed cell; the pin now also reads per-cell `scrollWidth − clientWidth`, and the wrap-anywhere
+  rule alone removed is RED through that measure only.
+- **Two mechanisms that each suffice make a single-rule mutation behaviourally equivalent, not a
+  weak test.** `table-layout: fixed` removed alone stayed green because `overflow-wrap: anywhere`
+  gives a cell a one-character min-content and even an auto table shrinks to its card. The battery
+  now mutates both together for the geometry pin; the fixed layout is kept for the column split it
+  controls, and the ADR says so instead of pretending the green meant something.
+- **A mutation can be case-equivalent.** `scorecardsPanCursor` stayed green because the control
+  census's `_FAMILY` regex is case-sensitive — `Pan` is out of family for the census too, so the
+  page was never at risk from it; lowercase `pan` is RED. Read the oracle's own rule before calling
+  its mirror weak.
+- **The mock's grid was right and its content was wrong for THIS page: measure before accepting a
+  layout.** Three cards side by side at 1440 px held four-column tables 449 / 585 / 466 px wide
+  inside 374-px cards (daylight's card scrolled 463 against its 453), and apollo scrolled the document sideways — the exact defect class
+  ADR-0477 had just retired, reintroduced by a faithful port. The census caught it because it
+  measured `document.scrollingElement.scrollWidth` AND per-table widths in all four themes; a
+  console-only look would have shipped an apollo regression.
+- **A remedy can satisfy the tool and fail the guard that watches the tool.** The kickoff's cheap
+  shallow-clone fix (`git fetch --depth 1 origin <true MPXJ sha>` + `SF_MPXJ_REF`) let the installer
+  builder verify the pinned tree — and wrote that very sha into `.git/shallow`, so the suite's
+  graft-boundary guard refused the correct pin three times over. Two checks, one fact, opposite
+  verdicts, because one reads the tree and the other reads the clone's graft file. The remedy that
+  satisfies both is the full unshallow, after which `git log` derives the pin itself.
+- **The "exactly once" guard in the battery harness aborted a mutation whose anchor text occurs in
+  both branches of a function** — that is the harness doing its job (ADR-0483's rule that a
+  testing tool needs its own guard rails); anchor a mutation on the branch's own text.
+
 ### 2026-09-10 — a diagnostic filter is an assertion, and mine hid the bug for hours
 
 **The operator lost a day because I never gave them a verify step.** ADR-0482 shipped in v1.0.252.

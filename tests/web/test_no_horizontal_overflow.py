@@ -46,7 +46,15 @@ VERSIONS = [f"TP4_DataCenter_v{i}.xml" for i in range(1, 6)]
 TARGET_UID = 26
 VIEWPORT = {"width": 1440, "height": 900}
 THEMES = ("console", "daylight", "apollo", "jarvis")
-ROUTES = ("/", f"/driving-path?source=11&target={TARGET_UID}", "/evolution", "/standards")
+#: ``/scorecards`` joined the census with ADR-0484: its three-card grid holds four-column tables
+#: that scrolled the document sideways in apollo (1527 px) before the tables laid out fixed.
+ROUTES = (
+    "/",
+    f"/driving-path?source=11&target={TARGET_UID}",
+    "/evolution",
+    "/standards",
+    "/scorecards",
+)
 
 #: scrollWidth, innerWidth, and how many hint hosts the page carries.
 _PROBE = """() => ({
