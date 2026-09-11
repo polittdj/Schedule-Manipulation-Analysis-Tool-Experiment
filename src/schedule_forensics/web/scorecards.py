@@ -39,6 +39,7 @@ from schedule_forensics.web.components import (
     _prov_chip,
     _shell_tools,
     _sources_line,
+    _version_chips,
 )
 from schedule_forensics.web.state import _Analysis
 
@@ -67,6 +68,28 @@ def _scorecard_export_table(sc: Scorecard) -> Table:
     return Table(f"{sc.name} — {sc.framework}", ("Check", "Result", "Detail", "Source"), rows)
 
 
+def _scorecard_score_head(sc: Scorecard) -> str:
+    """The artboard's card-head score (ADR-0484): ``passed / scored``, the engine's own
+    :attr:`Scorecard.score` as ``N% of scored`` (one decimal — the page's percentage idiom, never
+    the mock's integer), and a bar whose width IS that score. A card with nothing scored prints
+    ``—`` and an EMPTY bar — never a fabricated 0. The bar wears the ACCENT role, not a verdict
+    colour: the mock's ``100 % → ok / ≥ 70 % → caution / else fail`` thresholds are a claim the
+    engine does not make, so they are not drawn."""
+    if sc.score is None:
+        return (
+            "<div class=cd-score data-no-i18n><span class=cd-score-n>—</span>"
+            "<span class=cd-score-pct>no scored checks</span>"
+            '<span class=cd-score-bar role=img aria-label="no scored checks"><i></i></span></div>'
+        )
+    pct = f"{100.0 * sc.score:.1f}"
+    return (
+        f"<div class=cd-score data-no-i18n><span class=cd-score-n>{sc.passed} / {sc.scored}</span>"
+        f"<span class=cd-score-pct>{pct}% of scored</span>"
+        f'<span class=cd-score-bar role=img aria-label="{pct}% of scored checks pass">'
+        f'<i style="width:{pct}%"></i></span></div>'
+    )
+
+
 def _scorecard_panel(sc: Scorecard, file_key: str, *, prov: str = "", export_url: str = "") -> str:
     """One assessment scorecard as a panel: a pass/fail/info chip ribbon over a detail table.
 
@@ -79,7 +102,9 @@ def _scorecard_panel(sc: Scorecard, file_key: str, *, prov: str = "", export_url
     (``prov``), with the existing score line restyled as the ``sf-take`` (same engine figures,
     verbatim). ⤓ EXCEL renders only when ``export_url`` names an EXISTING endpoint (the
     three-scorecard workbook, /export/xlsx/scorecards); ▦ DATA is omitted — the table IS the
-    data (the home-shell precedent)."""
+    data (the home-shell precedent). ADR-0484: the artboard's card-head score
+    (:func:`_scorecard_score_head`) sits between the head and the framework line, as the mock
+    puts the score in the card head; everything beneath it is byte for byte what it was."""
     score = f"{sc.passed}/{sc.scored} scored checks pass" if sc.scored else "no scored checks"
     chips = "".join(
         f'<span class="sl-chip sl-{_sc_status_class(c.status)}" '
@@ -116,6 +141,7 @@ def _scorecard_panel(sc: Scorecard, file_key: str, *, prov: str = "", export_url
     return (
         f'<div class=panel data-scorecard="{_e(sc.key)}"{export_attr}>'
         + _panel_head(_e(sc.name), tools=tools, prov=prov)
+        + _scorecard_score_head(sc)
         + f"<p class=muted>{_e(sc.framework)}</p>"
         + f"<p class=sf-take data-no-i18n><b>{score}</b> &middot; {sc.info} informational "
         f"&middot; {sc.na} n/a</p>"
@@ -133,7 +159,16 @@ def _scorecards_body(
     a: _Analysis,
 ) -> str:
     """The Assessment Scorecards page (issue #331): NASA STAT + GAO-10 + SRA-readiness ribbons for
-    the chosen version, plus a reserve-sizing card fed by the on-demand SRA buffer API."""
+    the chosen version, plus a reserve-sizing card fed by the on-demand SRA buffer API.
+
+    ADR-0484 — the Claude Design "Control Assessment Scorecards" layout, functionality unchanged:
+    the masthead leads (as it already did), then the family's cursor strip as NAVIGATION for a
+    per-file drill (:func:`_version_chips` in its ``?file=`` form — one link chip per loaded
+    version, the assessed one ``on``, served only with two or more), then the page's own picker
+    byte for byte in the options position, then the three scorecard panels VERBATIM inside the
+    artboard's auto-fit grid (``cd-grid cd-grid-3``), then the reserve card. The mock's reserve
+    tiles, its "no new simulation runs" note (false here — the card RUNS the Monte-Carlo on
+    demand) and its calendar-day figure (not in the API's payload) are deliberately not ported."""
     stat, gao, ready = compute_scorecards(sch, a.cpm, a.audit)
 
     def _clause(sc: Scorecard, noun: str) -> str:
@@ -182,6 +217,18 @@ def _scorecards_body(
         + _scorecard_panel(gao, current_key, prov=prov, export_url=export_url)
         + _scorecard_panel(ready, current_key, prov=prov, export_url=export_url)
     )
+    # ADR-0484: the artboard's ONE auto-fit grid holds the three cards; the reserve card stays a
+    # full-width panel beneath it, exactly as the mock draws it.
+    grid = f'<div class="cd-grid cd-grid-3">{panels}</div>'
+    strip = _version_chips(
+        current_key,
+        sch,
+        tuple(k for k, _vsch, _va in versions),
+        route="scorecards",
+        cursor_id="scorecardsCursor",
+        noun="assessment",
+        query="file",
+    )
     # rank 8: the Chapter-02 beat's muted lede under the existing takeaway h1 (the kicker
     # comes from _page's spine resolution — "Assessment Scorecards" is a ch-02 title).
     lede = (
@@ -195,8 +242,9 @@ def _scorecards_body(
         f'<h1 class="page-takeaway" data-no-i18n>{takeaway}</h1>'
         f"{lede}"
         f"{_sources_line([sch])}"
+        f"{strip}"
         f"{selector}"
-        f"{panels}"
+        f"{grid}"
         f"{reserve}"
         "<div id=sfDrillMount></div>"  # drilldown.js loaded globally in _LAYOUT
         '<script src="/static/scorecards.js"></script>'

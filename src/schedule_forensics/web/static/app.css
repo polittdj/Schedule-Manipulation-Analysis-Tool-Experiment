@@ -1318,6 +1318,29 @@ tr.row-found td.sf-frozen-col { background: #fff3b0; }
 .cd-grid-12 { grid-template-columns: 1.2fr .8fr; }
 @media (max-width: 1100px) { .cd-grid-2, .cd-grid-12 { grid-template-columns: 1fr; } }
 .cd-grid > .panel { margin: 0; min-width: 0; }
+/* ADR-0484 (/scorecards): the artboard's ONE auto-fit grid of framework cards (the mock's own
+   `repeat(auto-fit, minmax(320px, 1fr))`, cards aligned to the top), and its card-head score — the
+   engine's Scorecard.score as a figure and a bar. The bar wears the ACCENT role, never a verdict
+   colour: the mock's pass / caution / fail thresholds are not the engine's. */
+.cd-grid-3 { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); align-items: start; }
+/* The cards hold the page's VERBATIM four-column tables, which are wider than a third of the page at
+   their natural width (measured: 449–585 px inside a 374 px card, and apollo scrolled the document
+   sideways — UI-03's class). Inside the grid a table lays out FIXED, so it can never outgrow its card:
+   the Result column is sized to its chip, the rest share the width and long tokens wrap. */
+.cd-grid-3 .scorecard-table { table-layout: fixed; }
+.cd-grid-3 .scorecard-table th, .cd-grid-3 .scorecard-table td { padding: 5px 6px; hyphens: auto;
+  overflow-wrap: anywhere; }
+.cd-grid-3 .scorecard-table .sl-chip { white-space: nowrap; overflow-wrap: normal; } /* never "PAS / S" */
+.cd-grid-3 .scorecard-table th:nth-child(1) { width: 27%; }
+.cd-grid-3 .scorecard-table th:nth-child(2) { width: 68px; }
+.cd-grid-3 .scorecard-table th:nth-child(3) { width: 25%; }
+.cd-score { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin: 6px 0 4px; }
+.cd-score-n { font-size: 17px; font-weight: 700; line-height: 1.1; color: var(--ink); }
+.cd-score-pct { font: 600 8.5px ui-monospace, "IBM Plex Mono", Consolas, monospace; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--muted); }
+.cd-score-bar { flex: 1 1 100%; display: block; height: 4px; background: var(--field-bg); border-radius: 2px;
+  overflow: hidden; }
+.cd-score-bar > i { display: block; height: 100%; width: 0; background: var(--accent); }
 .cd-stack { display: grid; gap: 10px; align-content: start; min-width: 0; }
 .cd-stack > .panel { margin: 0; min-width: 0; }
 /* the page's own master (▶ Play all / ⏭ Step all) mounts into the cursor's slot on /trend */

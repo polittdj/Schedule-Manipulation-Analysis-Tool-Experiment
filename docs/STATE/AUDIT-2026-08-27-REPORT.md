@@ -217,7 +217,7 @@ T-01 · I-01 · CF-01 above.
 | R-53 | T5 | TP3's 2026-06-12 ribbon values (Lags 3 · Insufficient Detail 8) were captured on the `.mpp`, whose in-progress percentages differ from the committed XML; no variant of either formula yields 8 on the XML (ADR-0473) | HELD | — | the battery keeps the XML's own pins; a Fuse run on the committed XML would settle which ribbon figure the XML earns | a Fuse run on the committed TP3 XML |
 | R-54 | T5 | the `golden/ssi_uid152` Large Test File fixture is the underscore-named sibling `.mpp` (31 negative-float activities), not the Fuse-scored file (41) — it stays the SSI fixture; the Fuse oracles use fresh conversions under `golden/fuse_ltf/` (ADR-0473) | CLOSED | — | registered so no session re-chases the 31 vs 41; the provenance is in the oracle module's docstring | — |
 | R-41 | T6 | LIC-01 — `LICENSE` is a placeholder | ORG | — | the rights-holder's choice; census §4 pins `license_placeholder = 1` so this report cannot outlive the fix silently | a real LICENSE |
-| R-42 | T6 | the design migration queue — /compare (10) is a feature (M-L); /standards shipped (ADR-0475), /scorecards next; 21 artboards remain (§6) | ORG | — | one page per session (the standing ask); /compare needs the cross-pair evidence ledger ("All five pairs × every edit") and a slip decomposition update by update that no page computes | the operator's order |
+| R-42 | T6 | the design migration queue — /compare (10) is a feature (M-L); /standards (ADR-0475) and /scorecards (ADR-0484) shipped, /margin next; 20 artboards remain (§6) | ORG | — | one page per session (the standing ask); /compare needs the cross-pair evidence ledger ("All five pairs × every edit") and a slip decomposition update by update that no page computes | the operator's order |
 | R-43 | T6 | the blank-header banner (UNKNOWABLE) and the 08-26 incident's attribution (UNVERIFIABLE) | CLOSED | — | closed by the operator's answers of 2026-09-03; listed so nobody re-chases them | — |
 
 ## 4. Census — the figures this report states about the tree
@@ -286,21 +286,22 @@ HTTP with the canvas's own `setScreen` keys (`wr` = WBS Rollup, `ic` = Schedule 
 registry lists `wb` Metric Workbench · `ml` Metric Lab · `wf` Segment Forecast · `ev` EVM · `sl`
 Portfolio at Scale · `bs` Beyond the Schedule · `op` One-Pager Timeline).
 
-**Done (9):** /volatility (04) · /cei (06) · /trend (05) · /forecast (09) · /onepager-compare
+**Done (10):** /volatility (04) · /cei (06) · /trend (05) · /forecast (09) · /onepager-compare
 (Library One-Pager Timeline, built new on the design) · /performance (07) · /card (Library Schedule
 ID Card) · /wbs (Library WBS Rollup, ADR-0471) · /standards (Control Standards and Execution
-Indices, ADR-0475, this session — the first Control screen; the artboard's `· 16 / · 14 / · 10`
-were measured to BE the page's own live counts).
+Indices, ADR-0475 — the first Control screen; the artboard's `· 16 / · 14 / · 10`
+were measured to BE the page's own live counts) · /scorecards (Control Assessment Scorecards,
+ADR-0484 — the second Control screen; the artboard's three-card grid holds the page's verbatim
+four-column tables, which overflowed a third of the page in every theme until they laid out fixed).
 
 **Priced as a feature, not a migration:** /compare (10 What changed) — M-L (R-42).
 
-**Remaining (21 artboards):** 00 Import · 01 Where we stand · 02 Can we trust the plan · 03 What
+**Remaining (20 artboards):** 00 Import · 01 Where we stand · 02 Can we trust the plan · 03 What
 drives the date · 08 Who is overloaded · 11 What could go wrong · 12 The briefing · Control Margin
-Dashboard · Control Assessment
-Scorecards (/scorecards — next by cost, `setScreen('sk')`) · Forensics Schedule Integrity · Library Beyond the Schedule · Library EVM ·
-Library Metric Lab · Library Metric Workbench · Library Portfolio · Library Segment Forecast ·
-Mission Control · Program Portfolio · Setup AI Settings · Setup Groups and Filters · Setup Metric
-Dictionary.
+Dashboard (/margin — next by cost, `setScreen('mg')`, the last Control screen) · Forensics Schedule
+Integrity · Library Beyond the Schedule · Library EVM · Library Metric Lab · Library Metric
+Workbench · Library Portfolio · Library Segment Forecast · Mission Control · Program Portfolio ·
+Setup AI Settings · Setup Groups and Filters · Setup Metric Dictionary.
 
 ## 7. The earlier plans, reconciled
 

@@ -17623,3 +17623,66 @@ shadows it on PATH).
   work both times, and the commit list was along for the ride.
 - This is the session's own QC-2 finding against its own durable state: an inherited claim is
   testimony even when the session that wrote it is this one, and one commit old.
+
+## 2026-09-11 (b) — the /scorecards design page DELIVERED (ADR-0484): the artboard's three-card grid, its verbatim tables laid out fixed, the score from the engine's own field; v1.0.254
+
+- **Branch:** `claude/optimistic-ride-3qv2jc`, restarted on `origin/main` @ `26d821e3` (#666). The
+  kickoff said `b195c7d3` — one docs-only commit stale, the fifth stale kickoff in a row; verified
+  with `git fetch origin` + `git log origin/main` before anything else.
+- **The unit:** the design page owed five sessions running, shipped FIRST and ALONE. `/scorecards`
+  (`setScreen('sk')`) is the tenth page onto `Mission Ops Redesign v2.dc.html` and the second
+  Control screen. **ADR-0484 · v1.0.254 · engine untouched.**
+- **The artboard was EXECUTED, never read** (ADR-0464's recipe over loopback HTTP, `sfredux-screen=sk`):
+  four themes, zero page errors; 1 h1 · 18 buttons · 0 selects · 1 input; three cards with 10 / 10 / 9
+  status-pill rows (`PASS` / `FAIL` / `INFO` / `N/A`), a big `passed / scored` coloured by threshold,
+  `N% OF SCORED`, a bar, `⊞ N` drills; a reserve card with FOUR percentile tiles (`wd` + `cal d`) and a
+  note claiming "No new simulation runs".
+- **Ported:** the family's cursor strip as NAVIGATION in a NEW `?file=` form (`_version_chips(...,
+  query="file")`; `/card` and `/wbs` renders byte-identical across the change) · the picker byte for
+  byte in the options position · the three panels VERBATIM in the artboard's auto-fit grid
+  (`cd-grid-3`), the reserve card outside it · the card-head score from the ENGINE's own
+  `Scorecard.score` (one decimal; `—` and an EMPTY bar when nothing is scored; the accent role) ·
+  `/scorecards` into ADR-0477's sideways-scroll census.
+- **Refused, each named in the ADR:** the mock's score colour thresholds · INFO in the caution colour
+  · its status-pill rows (a display-changed `<table>` loses its semantics — priced) · its reserve
+  tiles, its "No new simulation runs" note (FALSE for this page — the card runs `compute_sra` on
+  demand) and its calendar-day figure (not in the API payload) · its take block (the h1 already
+  carries the three ratios) · the kicker, the single ⤓, the Continue footer.
+- **The first grid was a measured defect, then fixed:** the verbatim four-column tables read 449 / 585 /
+  466 px inside 374-px cards (console / apollo / jarvis), daylight's card scrolled 463 against its
+  453, and apollo scrolled
+  the document sideways (1527 > 1440). `table-layout: fixed` + a 68-px Result column + `overflow-wrap:
+  anywhere` + `hyphens: auto` + `white-space: nowrap` on the chips (the first fixed layout broke a
+  verdict as `PAS / S`, measured). After: 346 in 374 everywhere (425 in 453 daylight), document width
+  1440 in all four themes, heights 2992 / 2858 / 3543 / 2988.
+- **Red first, on a pristine worktree:** layout **11 failed / 1 passed** (the survives-guard is true
+  on both trees by design); browser geometry **4 failed / 1 passed** before the table rules (449 > 374 ·
+  463 > 453 · 585 > 374 · 466 > 374 on the measured scroll widths; apollo also failed the
+  sideways-scroll pin; the rect + spill form was then observed red by the battery).
+- **Green:** layout 12 · browser grid 5 · overflow census 3 · neighbours **282 passed / 3 skipped**
+  (the standing axis-title env skips) · statics clean (ruff check / format 661 files · mypy 163 ·
+  bandit 0 · node per file).
+- **Mutation, scratch copies under `PYTHONPATH`, 19 mutations / 18 RED BY NAME**; the 19th
+  (`table-layout: fixed` removed ALONE) is GREEN BY DESIGN — behaviourally equivalent for every
+  pinned claim because the wrap rule alone keeps the table inside its card — and recorded as such.
+  **Three instruments were found weak by the battery and rebuilt**: the grid slice that ended at the
+  reserve card's own shell · the class extractor that stopped at a space · the prose word-search that
+  flagged "checks pass". One probe collided with the pristine page (`cal d` ⊂ "technical data").
+  One mutation was case-equivalent, not weak (the census's `_FAMILY` is case-sensitive).
+- **Build:** version 1.0.254; wheel + nine installers rebuilt with
+  `SF_MPXJ_REF=42d92dc9acc98f7d87f19c82dc62be3e5d3c15ca` (the shallow clone reads `c3e4cea0` for
+  `tools/mpxj`, a graft-boundary lie; the true sha was fetched with `--depth 1` and the builder
+  verified the tree itself).
+- **Docs:** ADR-0484 · DESIGN-SYSTEM §9 (the ADR-0484 bullet) · AUDIT report §6 (10 done · 20 remain;
+  `/margin` next by cost) and the R-42 row · HANDOFF rotated · LESSONS-LEARNED (2026-09-11 (b)) ·
+  NEXT-SESSION-PROMPT refreshed.
+- **The gate, measured after the bump and the rebuild:** full suite **5210 passed / 5 skipped / 3
+  failed in 43:23** — the three were ONE guard, `test_the_converter_pin_is_a_real_touch_not_a_
+  shallow_graft_artifact[ps1|sh|command]`, refusing the MPXJ pin because my own `git fetch --depth 1
+  origin 42d92dc9…` had written that sha into `.git/shallow`; the kickoff's "cheap remedy" satisfies
+  the BUILDER's tree check but not this guard. `git fetch --unshallow origin` (765 commits, a 1.3 GB
+  `.git`) removed the graft file, `git log -1 -- tools/mpxj` on the full clone reads `42d92dc9` itself
+  (#370, 2026-07-16), and the installer module re-ran **68 passed** with no rebuild. `-m parity`
+  **96 passed** (5:23). The 5 skips are the standing loopback-allowlist and axis-title env skips.
+- **Next:** R-56 (the campaign queue, unchanged) · the next design page is `/margin` (Control Margin
+  Dashboard, `setScreen('mg')`).

@@ -142,6 +142,7 @@ def _version_chips(
     route: str = "card",
     cursor_id: str = "cardCursor",
     noun: str = "card",
+    query: str = "",
 ) -> str:
     """The Claude Design cursor strip for a per-file drill (ADR-0470, born on /card; descended
     here for /wbs in ADR-0471 — ADR-0351's rule: a second extracted referrer forces a shared
@@ -151,12 +152,19 @@ def _version_chips(
     artboard's "Pick a version to read its card") and, like the family, the strip is served
     only with two or more versions. Chips carry no id and no family word (the control census
     recognises steppers by id+className); ``cursor_id`` names the strip per page and ``noun``
-    is what the note calls one version's page."""
+    is what the note calls one version's page. ``query`` names the parameter of a page that
+    picks its version by ``?<query>=<key>`` rather than by path segment (ADR-0484, /scorecards);
+    empty keeps the ``/<route>/<key>`` form byte for byte."""
     if len(versions) < 2 or key not in versions:
         return ""
+
+    def _href(k: str) -> str:
+        target = quote(k, safe="")
+        return f"/{route}?{query}={target}" if query else f"/{route}/{target}"
+
     chips = "".join(
         f'<a class="cd-chip{" on" if k == key else ""}" data-idx="{i}" '
-        f'href="/{route}/{quote(k, safe="")}" title="{_e(k)}" data-no-i18n>v{i + 1}</a>'
+        f'href="{_href(k)}" title="{_e(k)}" data-no-i18n>v{i + 1}</a>'
         for i, k in enumerate(versions)
     )
     dd = _mdY(sch.status_date) if sch.status_date else "—"

@@ -697,6 +697,7 @@ from schedule_forensics.web.scorecards import _parse_committed_date as _parse_co
 from schedule_forensics.web.scorecards import _sc_status_class as _sc_status_class
 from schedule_forensics.web.scorecards import _scorecard_export_table as _scorecard_export_table
 from schedule_forensics.web.scorecards import _scorecard_panel as _scorecard_panel
+from schedule_forensics.web.scorecards import _scorecard_score_head as _scorecard_score_head
 from schedule_forensics.web.scorecards import _scorecards_body as _scorecards_body
 
 # ADR-0380 (phase 3, slice 16): the /scurve page family - the per-chart filter machinery, the
