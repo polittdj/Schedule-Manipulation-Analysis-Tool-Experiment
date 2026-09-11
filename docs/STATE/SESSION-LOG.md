@@ -17906,4 +17906,5 @@ called a flake turned out to have a mechanism (ADR-0442 UI-02, ADR-0443, ADR-046
   `-m parity` **96 passed**.
 - **Docs:** ADR-0486 · OPERATOR-REQUESTS (OR-14 corrected in place; OR-15 shipped) · HANDOFF rotated ·
   LESSONS-LEARNED (2026-09-11 (e)) · NEXT-SESSION-PROMPT refreshed.
-- **PR:** draft, from this branch — see the follow-up entry for the number and the checks.
+- **PR:** **draft #670**, head `bc087905` (eight checks expected — `installer/**` changed); the
+  next session's close records the verdicts on the final head.
