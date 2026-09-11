@@ -17553,7 +17553,7 @@ shadows it on PATH).
 - **#663 merged 2026-09-10 21:31Z** → `main` @ **`b13dbd61`**. Verified rather than assumed:
   `git rev-parse b13dbd61^{tree}` and `git rev-parse 51a45639^{tree}` both read
   **`609e146fe4ec91ac89a98f46d581a64afb8c5ac6`**, so the squash carries exactly the tree the eight
-  green checks ran on. `main`'s own run for the squash is **1827 (`34532629609`)**.
+  green checks ran on. `main`'s own run for the squash is **1827 (`34532629609`)**, conclusion **SUCCESS**.
 - Branch restarted on `origin/main` with `--prune` + `remote set-head -a` + `checkout -B`; GitHub
   auto-deleted both merged head branches, and the squash was **never amended**.
 - **The operator merged #662 first, mid-session, and it conflicted.** #662 was docs-only and this
@@ -17576,3 +17576,30 @@ shadows it on PATH).
   on head X". Each such push creates a new head whose CI is again unrecorded, so the regress only
   ends when someone stops; the PR body and this log carry the verdict instead. Recorded so the next
   session does not read the omission as an oversight.
+
+- **Both terminal verdicts, recorded rather than left to the next session to chase.** `main`'s run
+  **1827** on `b13dbd61` concluded **success**, so the merged OR-13 fix is green on `main` itself and
+  no tree-hash argument is needed to defend it. **PR #664 is 6/6 green** on `931c0e0e` (`check` ·
+  `test (3.11)` · `test (3.13)` · `floor` · `browser` · `cui-guard`) — the docs-only set, no
+  `linux`/`windows`, because `installer-smoke.yml`'s path filter did not fire.
+- **The regress that made "record the green" self-defeating does NOT apply to a run on another ref.**
+  Declining to push a commit recording a PR's own CI is correct — the push creates a new unrecorded
+  head. `main`'s run is unaffected by anything pushed to a branch, so its conclusion is a stable
+  external fact and belongs in the log the moment it is known. Two superficially identical decisions,
+  opposite answers; the discriminator is whether the act of recording changes the thing recorded.
+
+### Follow-up — #664 MERGED (`main` @ `902088b0`), and a branch restart that had to CARRY a commit
+
+- **#664 merged 2026-09-10 22:14Z** → `main` @ **`902088b0`**, tree-verified: `902088b0^{tree}` and
+  `931c0e0e^{tree}` both read **`95b7039e87696440663b953bb8f9f1dcebaaed24`**. `main`'s own run for it
+  is **1829 (`34536395999`)**.
+- **The merge landed while a push was in flight**, so for a moment the branch carried MERGED history
+  (`931c0e0e`, now squashed onto `main`) plus ONE unmerged commit (`c8bbace5`, recording run 1827's
+  SUCCESS). The restart therefore could not be a plain `checkout -B` — that discards the unmerged
+  commit silently, and a silent discard of a durable-state record is exactly the failure this log
+  exists to prevent. Restarted on `origin/main` and **cherry-picked the one commit forward**
+  (`de7c71f0`); it applied cleanly because `main` already carried the base it was written against.
+  **Check for unmerged commits BEFORE restarting a branch whose PR just merged** — `git log
+  origin/main..HEAD` costs nothing and the alternative is losing work that was never reviewed.
+- Neither squash was amended, and no published history was rewritten: the only rebase was of a
+  commit that had never reached `main`.
