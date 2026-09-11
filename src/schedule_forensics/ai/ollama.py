@@ -13,9 +13,10 @@ live server; a real Ollama on ``127.0.0.1:11434`` is only needed for an integrat
 from __future__ import annotations
 
 import json
+import re
 import urllib.error
 import urllib.request
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
@@ -28,6 +29,11 @@ from schedule_forensics.net_guard import CUIEgressError, is_local_http_endpoint
 
 #: Injectable opener: (url, data, timeout) -> decoded response body. Defaults to urllib.
 Opener = Callable[[str, bytes | None, float], str]
+
+#: Injectable opener WITH a headers dimension: (url, data, timeout, headers) -> body. The
+#: OpenAI-compatible local backend needs it because LM Studio can require a Bearer token on
+#: every request (ADR-0485); Ollama keeps the 3-arg ``Opener`` — it has no auth dimension.
+HeaderOpener = Callable[[str, "bytes | None", float, Mapping[str, str]], str]
 
 DEFAULT_ENDPOINT = "http://127.0.0.1:11434"
 DEFAULT_MODEL = "qwen2.5:7b-instruct"
@@ -210,6 +216,21 @@ def probe_error_text(exc: BaseException) -> str:
     return text or exc.__class__.__name__
 
 
+#: The two statuses that mean "the server answered and refused THIS request's credentials".
+_AUTH_REFUSAL = re.compile(r"\bHTTP (?:401|403)\b")
+
+
+def is_auth_refusal(reason: str) -> bool:
+    """Whether a ``probe_error_text`` reason is an authentication refusal (HTTP 401 or 403).
+
+    A POSITIVE transport result — the server answered — whose request lacked (or presented an
+    unaccepted) credential; the diagnostics then name the credential field instead of
+    repeating the code (ADR-0403 for the gateway, ADR-0485 for the local server).
+    Word-bounded: ``HTTP 4013`` is not a refusal.
+    """
+    return _AUTH_REFUSAL.search(reason) is not None
+
+
 def _urllib_opener(url: str, data: bytes | None, timeout: float) -> str:
     # nosec note: OllamaBackend.__init__ validates the endpoint with is_local_http_endpoint,
     # so the URL is an http(s) loopback URL — never a remote/file/custom scheme; and the
@@ -218,6 +239,23 @@ def _urllib_opener(url: str, data: bytes | None, timeout: float) -> str:
     method = "POST" if data is not None else "GET"
     request = urllib.request.Request(url, data=data, method=method)  # nosec B310
     request.add_header("Content-Type", "application/json")
+    with _NO_REDIRECT_OPENER.open(request, timeout=timeout) as response:  # nosec B310
+        body: bytes = response.read()
+    return body.decode("utf-8")
+
+
+def _urllib_header_opener(
+    url: str, data: bytes | None, timeout: float, headers: Mapping[str, str]
+) -> str:
+    # nosec note: OpenAICompatBackend.__init__ validates the endpoint with
+    # is_local_http_endpoint, so the URL is an http(s) loopback URL — never a remote/file/
+    # custom scheme; the shared opener refuses redirects and never consults a system proxy, so
+    # neither the request body nor the Authorization header can be bounced off this machine.
+    method = "POST" if data is not None else "GET"
+    request = urllib.request.Request(url, data=data, method=method)  # nosec B310
+    request.add_header("Content-Type", "application/json")
+    for name, value in headers.items():
+        request.add_header(name, value)
     with _NO_REDIRECT_OPENER.open(request, timeout=timeout) as response:  # nosec B310
         body: bytes = response.read()
     return body.decode("utf-8")

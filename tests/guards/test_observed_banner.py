@@ -93,7 +93,9 @@ class _NoLocalityFake:
         return prompt
 
 
-def _up(url: str, data: bytes | None, timeout: float) -> str:
+def _up(url: str, data: bytes | None, timeout: float, headers: dict[str, str] | None = None) -> str:
+    # one double for both opener shapes: Ollama's 3-arg and, since ADR-0485, the
+    # OpenAI-compatible backend's 4-arg (headers-bearing) opener
     return '{"models": [], "data": []}'
 
 

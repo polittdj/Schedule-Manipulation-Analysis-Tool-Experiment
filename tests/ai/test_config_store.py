@@ -143,3 +143,84 @@ def test_default_path_honors_the_env_override(monkeypatch: pytest.MonkeyPatch) -
     monkeypatch.delenv("SF_SETTINGS_DIR")
     assert config_store.default_settings_path().name == "ai-settings.json"
     assert ".cache" not in str(config_store.default_settings_path())  # never the wiped cache dir
+
+
+# --- the local server's API token persists like the gateway key (ADR-0485) --------------------
+
+
+def _local(token: str = "lm-TOKEN") -> AIConfig:
+    return AIConfig(
+        backend="openai",
+        model="qwen2.5-7b-instruct",
+        openai_endpoint="http://127.0.0.1:1234",
+        openai_api_key=token,
+    )
+
+
+def test_the_local_server_token_round_trips(tmp_path: Path) -> None:
+    path = tmp_path / "ai-settings.json"
+    config_store.save_ai_config(_local(), path)
+    assert config_store.load_ai_config(path) == _local()
+    assert config_store.load_ai_config(path).openai_api_key == "lm-TOKEN"
+
+
+def test_the_token_is_never_plaintext_in_the_file_when_protection_works(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(config_store, "_protect_key", lambda raw: b"WRAPPED:" + raw[::-1])
+    monkeypatch.setattr(
+        config_store,
+        "_unprotect_key",
+        lambda blob: blob.removeprefix(b"WRAPPED:")[::-1],
+    )
+    monkeypatch.setattr(config_store, "_KEY_FIELD", "gateway_api_key_dpapi")
+    monkeypatch.setattr(config_store, "_OPENAI_KEY_FIELD", "openai_api_key_dpapi")
+    path = tmp_path / "ai-settings.json"
+    config_store.save_ai_config(_local("lm-SECRET"), path)
+    raw = path.read_text(encoding="utf-8")
+    assert "lm-SECRET" not in raw and "openai_api_key_dpapi" in raw
+    assert "openai_api_key_plain" not in raw
+    assert config_store.load_ai_config(path).openai_api_key == "lm-SECRET"
+
+
+def test_a_failing_protector_omits_the_token_and_keeps_everything_else(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def _boom(raw: bytes) -> bytes:
+        raise OSError("DPAPI unavailable")
+
+    monkeypatch.setattr(config_store, "_protect_key", _boom)
+    monkeypatch.setattr(config_store, "_KEY_FIELD", "gateway_api_key_dpapi")
+    monkeypatch.setattr(config_store, "_OPENAI_KEY_FIELD", "openai_api_key_dpapi")
+    path = tmp_path / "ai-settings.json"
+    config_store.save_ai_config(_local("lm-SECRET"), path)
+    raw = path.read_text(encoding="utf-8")
+    assert "lm-SECRET" not in raw
+    loaded = config_store.load_ai_config(path)
+    assert loaded.openai_api_key == ""
+    assert loaded.backend == "openai" and loaded.openai_endpoint == "http://127.0.0.1:1234"
+
+
+def test_the_posix_plain_path_holds_the_token_owner_only_and_honestly_named(
+    tmp_path: Path,
+) -> None:
+    if config_store._OPENAI_KEY_FIELD != "openai_api_key_plain":
+        pytest.skip("platform has an OS key protector; the plain path is not in use")
+    path = tmp_path / "ai-settings.json"
+    config_store.save_ai_config(_local("lm-SECRET"), path)
+    doc = json.loads(path.read_text(encoding="utf-8"))
+    assert doc["openai_api_key_plain"] and "openai_api_key" not in doc
+    mode = stat.S_IMODE(path.stat().st_mode)
+    assert mode == 0o600, oct(mode)
+
+
+def test_an_unrecoverable_token_blob_comes_up_tokenless_not_broken(tmp_path: Path) -> None:
+    """A blob protected by another account/machine (or hand-corrupted) is unrecoverable by
+    design — launch without it, never fail the launch."""
+    path = tmp_path / "ai-settings.json"
+    config_store.save_ai_config(_local("lm-SECRET"), path)
+    doc = json.loads(path.read_text(encoding="utf-8"))
+    doc[config_store._OPENAI_KEY_FIELD] = "@@not-base64@@"
+    path.write_text(json.dumps(doc), encoding="utf-8")
+    loaded = config_store.load_ai_config(path)
+    assert loaded.openai_api_key == "" and loaded.backend == "openai"

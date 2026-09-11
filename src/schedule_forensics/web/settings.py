@@ -52,7 +52,7 @@ from schedule_forensics.ai import (
     route_backend,
     txlog,
 )
-from schedule_forensics.ai.ollama import MAX_NUM_CTX, MIN_NUM_CTX
+from schedule_forensics.ai.ollama import MAX_NUM_CTX, MIN_NUM_CTX, is_auth_refusal
 from schedule_forensics.net_guard import APPROVED_GATEWAY_ENDPOINTS
 from schedule_forensics.web.chrome import _e, _observed_banner
 from schedule_forensics.web.components import _user_tip
@@ -217,6 +217,23 @@ def _ai_status_note(cfg: AIConfig) -> str:
                 f"start it manually (the Ollama app, or <code>ollama serve</code>) and confirm the "
                 f"port matches <code>{_e(endpoint)}</code>. On a work laptop the local model still "
                 "works — the tool talks to it directly and never via a proxy."
+            )
+        elif is_auth_refusal(reason):
+            # the server ANSWERED and refused the request (ADR-0485): "start your server" is
+            # exactly the wrong advice. The tool cannot see whether its authentication is on,
+            # so the hint names the token field AND the other cause.
+            held = (
+                "a token is saved &mdash; if it still gets this, the token may be wrong or revoked"
+                if cfg.openai_api_key
+                else "no token is saved"
+            )
+            hint = (
+                "The server answered but <b>refused the request</b>. If it requires "
+                "authentication (LM Studio: Developer &rarr; Server Settings &rarr; Require "
+                "Authentication, then Manage Tokens), paste its API token into the <b>Local server "
+                f"API token</b> field below and Save ({held}). If authentication is off, the "
+                "refusal came from the server itself or from something in front of it on this "
+                "machine (a proxy or endpoint-security agent) &mdash; check the server&rsquo;s log."
             )
         else:
             hint = (
@@ -530,6 +547,13 @@ def _settings_body(state: SessionState, runtime_note: str = "") -> str:
         if factory.resolve_gateway_api_key(cfg)
         else "(none set — paste your organization-issued key)"
     )
+    # the local server's API token (ADR-0485) is a credential in the same sense: never echoed,
+    # only the placeholder discloses whether one is held
+    openai_key_placeholder = (
+        "(a token is saved — leave blank to keep it)"
+        if cfg.openai_api_key
+        else "(none set — only needed if your server requires authentication)"
+    )
 
     # The approved-gateway endpoint is a SELECT over the committed allowlist, never free text
     # (ADR-0402): the UI cannot even express an unapproved destination, the POST handler
@@ -599,6 +623,10 @@ def _settings_body(state: SessionState, runtime_note: str = "") -> str:
 <p>OpenAI-compatible endpoint (loopback only):
 <input name=openai_endpoint size=28 value="{_e(cfg.openai_endpoint)}"
  title="LM Studio defaults to http://127.0.0.1:1234; llamafile to http://127.0.0.1:8080"></p>
+<p>Local server API token (LM Studio &ldquo;Require Authentication&rdquo; &mdash; sent ONLY as the <code>Authorization</code> header to the loopback endpoint above; never logged, never shown again):
+<input name=openai_api_key type=password size=36 value="" autocomplete=off
+ placeholder="{openai_key_placeholder}"
+ title="Only needed when your OpenAI-compatible server requires authentication (LM Studio: Developer &rarr; Server Settings &rarr; Require Authentication, then Manage Tokens). Saved with your settings on THIS machine (Windows-encrypted for your user account) so every launch comes up ready; leave blank on later saves to keep it. Turn the AI off (or a session wipe) clears it."></p>
 <p>Approved gateway endpoint (organization-approved list only — used by the Approved AI gateway backend):
 <select name=gateway_endpoint id=gatewayEndpoint
  title="Only endpoints on the tool&rsquo;s approved-gateway allowlist (ADR-0402) can be selected; anything else is refused.">

@@ -6,6 +6,13 @@ text-generation-webui, vLLM — anything speaking the OpenAI ``/v1`` REST dialec
 stdlib-only HTTP (`urllib.request`; the egress guard forbids requests/httpx), and the
 endpoint is loopback-validated at construction — a remote host raises
 :class:`CUIEgressError` (fail closed, Law 1). The HTTP opener is injectable for tests.
+
+Since ADR-0485 the backend can authenticate: LM Studio 0.4+ can "Require Authentication"
+with API tokens, and the operator's server answered the catalog probe and refused the chat
+completion with HTTP 403 while this tool sent no credential. An ``api_key`` rides EVERY
+request as ``Authorization: Bearer <token>`` (probe, catalog, generation — a server that
+guards its catalog is refused before it ever routes); an empty key sends no header at all.
+The opener therefore has the gateway's 4-arg headers-bearing shape (``HeaderOpener``).
 """
 
 from __future__ import annotations
@@ -14,7 +21,7 @@ import json
 from typing import Any
 
 from schedule_forensics.ai.backend import DETERMINISTIC_SEED, DETERMINISTIC_TEMPERATURE
-from schedule_forensics.ai.ollama import Opener, _urllib_opener, probe_error_text
+from schedule_forensics.ai.ollama import HeaderOpener, _urllib_header_opener, probe_error_text
 from schedule_forensics.net_guard import CUIEgressError, is_local_http_endpoint
 
 #: LM Studio's default server port; llamafile defaults to 8080 — both are settable.
@@ -33,7 +40,8 @@ class OpenAICompatBackend:
         *,
         timeout: float = 120.0,
         probe_timeout: float = 8.0,
-        opener: Opener | None = None,
+        api_key: str = "",
+        opener: HeaderOpener | None = None,
     ) -> None:
         # OBSERVED locality (DoD 001b): ``is_local`` records the validator's verdict on the
         # ACTUAL endpoint instead of asserting a class constant. The raise keeps construction
@@ -51,18 +59,30 @@ class OpenAICompatBackend:
         self.model = model
         self._timeout = timeout
         self._probe_timeout = probe_timeout
-        self._open: Opener = opener or _urllib_opener
+        # the token rides ONLY the Authorization header of this backend's requests: never a
+        # log line, never a rendered page, never a repr (ADR-0403's rule, ADR-0485)
+        self._api_key = api_key
+        self._open: HeaderOpener = opener or _urllib_header_opener
+
+    def _headers(self) -> dict[str, str]:
+        # an empty token sends NO header at all — never a malformed bare "Bearer "
+        return {"Authorization": f"Bearer {self._api_key}"} if self._api_key else {}
 
     def _get(self, path: str, *, timeout: float | None = None) -> Any:
         return json.loads(
             self._open(
-                f"{self.endpoint}{path}", None, self._timeout if timeout is None else timeout
+                f"{self.endpoint}{path}",
+                None,
+                self._timeout if timeout is None else timeout,
+                self._headers(),
             )
         )
 
     def _post(self, path: str, payload: dict[str, Any]) -> Any:
         data = json.dumps(payload).encode("utf-8")
-        return json.loads(self._open(f"{self.endpoint}{path}", data, self._timeout))
+        return json.loads(
+            self._open(f"{self.endpoint}{path}", data, self._timeout, self._headers())
+        )
 
     def is_available(self) -> bool:
         return self.unavailable_reason() is None
@@ -91,8 +111,10 @@ class OpenAICompatBackend:
     def generate(self, prompt: str) -> str:
         """One non-streaming chat completion (``POST /v1/chat/completions``).
 
-        An empty configured model id is sent as-is — LM Studio and llamafile route an
-        empty/unknown model to the (single) loaded one.
+        An empty configured model id is sent as-is, on the INHERITED assumption that LM Studio
+        and llamafile route an empty/unknown model to the (single) loaded one — UNVERIFIED
+        against a live server (ADR-0485 records it); the settings page's live model dropdown
+        exists so the operator picks a served id instead.
         """
         payload = self._post(
             "/v1/chat/completions",

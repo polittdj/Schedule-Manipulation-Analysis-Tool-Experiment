@@ -435,6 +435,40 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-11 (d) — a diagnostic that names a PAGE instead of a FIELD is true and useless (ADR-0485)
+
+- **The operator's note was literally correct and could not help.** *"…was reachable, but the
+  generation itself failed: server returned HTTP 403. AI Settings shows its live status."*
+  "Reachable" meant the availability probe passed — so AI Settings read ON, and the note routed the
+  operator to a page whose every signal was green. The fix is not a better sentence about the code;
+  it is naming the FIELD that resolves the refusal, and stating the cause the tool cannot see
+  (authentication off → the server itself, or something in front of it). A hint conditioned on
+  "unreachable" as a catch-all (*"Start your local server"*) is exactly wrong for a server that
+  ANSWERED — condition it on what the transport proved (`is_auth_refusal`), never on the absence of
+  a happier branch.
+- **The same defect class landed twice, a month apart.** ADR-0403 closed "no credential dimension"
+  for the remote gateway and deliberately left the local backends' 3-arg opener alone ("a loopback
+  Ollama never has that dimension"). True for Ollama; false for the OpenAI-compatible server, whose
+  vendor (LM Studio 0.4.0) shipped token authentication after the integration was written.
+  Generalisation: every OpenAI-compatible surface needs the credential dimension from day one, empty
+  by default — an integration built faithfully to a spec with no auth dimension fails in the field
+  the day the vendor adds one, and the field is where you learn it.
+- **Reproduce on the wire before writing a line.** Three plausible causes were refuted on the code
+  in minutes (a corporate proxy the client already bypasses with an empty `ProxyHandler`; a wrong
+  model id, which is a 404/400 shape; the Ollama path, never touched). The loopback stub that then
+  produced the note verbatim — port and all — became the end-to-end test: the red run IS the
+  operator's screenshot as a measurement, and the green run is the operator's next click.
+- **A page-wide substring assertion cannot fail when the page's own form carries the string.**
+  `FIELD in page` was satisfied by the field's `<label>` before the hint existed; the test reads the
+  `notice err` element now and also pins the WRONG advice absent. Caught while writing the test —
+  the cheapest moment; the battery would have reported it as a GREEN mutant an hour later.
+- **Negative pins are green on the pristine tree by construction — expected, then prove them with
+  a mutant.** 2 of the 25 new tests passed in the red run. Four mutants (a regex that also matches
+  404, an unbounded regex, an Ollama branch that receives the token note — twice, once per note)
+  turned each red by name.
+  Without those mutants the two greens would have been the repo's most-repeated defect: a test that
+  could never fail.
+
 ### 2026-09-11 (c) — two sessions closing in parallel collide on the state docs BY CONSTRUCTION
 
 - **A green PR went conflicted without anyone touching it.** #668 sat 8/8 green and `mergeable_state`
