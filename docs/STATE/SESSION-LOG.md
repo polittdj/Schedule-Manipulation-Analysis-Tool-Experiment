@@ -17648,3 +17648,38 @@ shadows it on PATH).
   rests on a session checking its own work. This session produced two findings against ITSELF — the
   false `active_requests` rationale and the bad restart rule — which is the system working, but
   self-review has a ceiling and the repo is sitting on it.
+
+### NEW DEFECT registered 2026-09-11 — `test_driving_path_whole_schedule_browser` is width-racy
+
+**Measured.** #667's `browser (measured-box proof)` job went RED on
+`test_driving_path_whole_schedule_browser.py:104` — `assert dp_headers == path_headers` — while
+`main`'s run **1833 browser job PASSED on the identical code** two minutes earlier (01:49:21 vs
+01:51:37). #667 is docs-only: `git diff origin/main <head> -- src tests` is **EMPTY**, so the diff
+cannot have caused it. This is a pre-existing intermittent defect, surfaced by this PR, not created
+by it.
+
+**What the failure says.** `dp_headers` carried MORE timescale columns than `path_headers` —
+`Qtr 2 2025`, `March`, `April`, out to `Apr 6` — against an oracle that stopped at `Feb 9`. The
+assertion compares the `.path-grid thead tr` **inner_text of two separately-rendered pages**, and
+that text includes the rendered timescale, so **the assertion is width-sensitive by construction**.
+
+**Mechanism, part measured and part hypothesis — the split matters (QC-1).**
+
+* **Read from the test, verifiable by inspection:** both captures are gated on
+  `page.wait_for_selector("#pathBody tr[data-uid]")` — a wait on **ROWS**. Nothing waits on the
+  **timescale** having finished laying out. The oracle and the subject are therefore sampled at two
+  unsynchronised moments on two different pages.
+* **UNVERIFIED hypothesis:** that the timescale widens in a later measure-then-draw pass (rAF /
+  ResizeObserver in the vendored `timescale.js`), so a capture taken just after rows appear can
+  catch a narrower header than one taken a beat later. **What would settle it:** instrument the two
+  captures with `evaluate` to record the column count and the grid's measured width at capture
+  time, run the module in a loop under CPU throttling, and show the two pages disagreeing.
+
+**The fix is NOT a longer wait.** A wait widened until it usually passes has a failure mode that
+reads exactly like "not yet" — this repo's standing rule. The wait must be on the timescale's own
+completion signal, or the assertion must compare a width-INDEPENDENT projection of the header
+(the column LABELS the grid owns, not the timescale it renders).
+
+**Its own unit, not this session's.** Registered here so the next session does not rediscover it as
+a mystery red cell, and so nobody writes it off as a flake — every intermittent cell this repo has
+called a flake turned out to have a mechanism (ADR-0442 UI-02, ADR-0443, ADR-0461).
