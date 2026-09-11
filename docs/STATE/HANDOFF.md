@@ -1,6 +1,10 @@
 # Handoff — 2026-09-10 (OR-13 CLOSED (ADR-0483): the tool that decides to stop actually exits; v1.0.253)
 
-STATUS (current) — `main` @ **`b195c7d3`** (#665). **The OR-13 arc is fully merged and every squash tree-verified**: #663 `b13dbd61` == head `51a45639` (`609e146f…`) · #664 `902088b0` == head `931c0e0e` (`95b7039e…`) · #665 `b195c7d3` == head `1098bcf7` (`52c1d084…`). `main`'s own runs **1827 SUCCESS** and **1829 SUCCESS**. **OR-13 CLOSED** — ADR-0483, **v1.0.253**, engine untouched, red-first, mutation-tested **8/8 by name**, 8/8 green on the PR and green on `main` itself. Highest ADR **0483**. Branch restarted on `origin/main`; no squash was ever amended. QC-1/QC-2 bind every session — ADR-0393.
+STATUS (current) — `main` @ **`26d821e3`** (#666). **The OR-13 arc is FULLY MERGED — four PRs, every squash tree-verified against its head**: #663 `b13dbd61`/`51a45639` (`609e146f…`) · #664 `902088b0`/`931c0e0e` (`95b7039e…`) · #665 `b195c7d3`/`1098bcf7` (`52c1d084…`) · #666 `26d821e3`/`dfa7bb6c` (`9b244aff…`). No squash was ever amended. `main`'s runs **1827 SUCCESS**, **1829 SUCCESS**, **1833** (`34551102503`, #666). **OR-13 CLOSED** — ADR-0483, **v1.0.253**, engine untouched, red-first, mutation-tested **8/8 by name**, 8/8 green on the PR and green on `main` itself. Highest ADR **0483**. Branch restarted on `origin/main`, clean, no PR open.
+
+**NEW, registered 2026-09-11:** `test_driving_path_whole_schedule_browser.py:104` is **width-racy** — it went red on #667 (docs-only, `src`/`tests` byte-identical to `main`) while `main`'s run 1833 passed on the same code two minutes earlier. The assertion compares the rendered `thead` inner_text of two separately-rendered pages, so it is width-sensitive, and both captures wait on ROWS (`#pathBody tr[data-uid]`), never on the timescale. **Not a flake — a race with a mechanism.** Its own unit; do NOT fix it by widening a wait. Details in SESSION-LOG.
+
+**THE NEXT UNIT IS `/scorecards`, and the operator chose a FRESH SESSION for it** (2026-09-11, at 64% context here): 21 artboards with four-theme render-verify does not fit the headroom left, and a design unit split across a handoff loses coherence at the seam. See `NEXT-SESSION-PROMPT.md`.
 
 ## OR-13 — the tool decided to stop and then could not exit
 
