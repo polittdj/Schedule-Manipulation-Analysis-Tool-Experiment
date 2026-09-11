@@ -17860,3 +17860,50 @@ called a flake turned out to have a mechanism (ADR-0442 UI-02, ADR-0443, ADR-046
 - **PR:** **draft #669**, head `e9387761` (this docs-only record commit follows it). Eight checks
   expected (`installer/**` changed); the steward check-in an hour out reads the verdicts on the
   FINAL head with `get_check_runs`, never `get_status`.
+
+## 2026-09-11 (d) — #669 MERGED (ADR-0485, v1.0.255); OR-14 CORRECTED and OR-15 CLOSED (ADR-0486): the answer length is the tool's to set, a cut answer is disclosed, an empty one explained; v1.0.256
+
+- **#669 merged by the operator at 18:04Z** — squash `2ae8d06b`, tree `c5c3d117…` byte-identical to
+  the PR head `a97c5bee` (8/8 green: CI 1842, installer-smoke 705); `main`'s own runs for the squash:
+  **CI 1843 success (18:45Z), installer-smoke 706 success (18:09Z)**. Branch restarted with
+  `--prune` + `remote set-head` + `checkout -B`; no merge-record PR (the #667 rule).
+- **The re-diagnosis.** The operator's AI Settings screenshot: Backend = **Approved AI gateway**
+  (`proxy.fast.luna.nasa.gov`, `claude-opus-4.8-thinking-itar`, key saved, AI answer mode
+  Unrestricted, cross-check off) — and **no** *Local server API token* field (v1.0.255 not yet
+  installed). Their PowerShell against `http://127.0.0.1:1234`: *"Unable to connect to the remote
+  server"* — nothing listens; LM Studio is not in play. The morning note's `127.0.0.1:1234` was the
+  v1.0.254 mislabel (`endpoint = cfg.endpoint if is_ollama else cfg.openai_endpoint` — printed for
+  the gateway too), which ADR-0485 fixed and did not re-read its diagnosis in the light of. **The
+  403 was the gateway's** (catalog served → key valid → the chat completion refused). Its cause is
+  pending the operator's `ai-transactions.jsonl` tail (fields only — the log stores a SHA-256 and a
+  byte count per prompt, never the prompt).
+- **The operator's ask (OR-15), verbatim:** *"I want you to do option 3 and I want you to raise the
+  limit to the max."* — after two answers stopped mid-sentence and a third came back empty
+  (*"select a different model"*). Measured on the code: no `max_tokens` on either OpenAI-compatible
+  backend, `finish_reason` never read, reasoning fields never read, `str(content)` turning `null`
+  into "None". Refuted first: the tool's timeout (reported by name when it happens), a cut paste.
+- **Shipped (ADR-0486, v1.0.256):** `ai/completion.py` (constants 256 / 131,072 / default = max;
+  `clamp_answer_tokens`; `CompletionStats`; `limit_rejected` — a 400 whose body names
+  `max_tokens`/`max_completion_tokens`; `read_completion`; `answer_cut_warning`;
+  `empty_answer_detail`) · `AIConfig.answer_max_tokens` · `openai_compat` + `gateway` send it, retry
+  once without it on a rejection (the gateway logs both transmissions), keep `last_completion` ·
+  `factory` threads it (primary, cross-check, gateway) · `config_store` persists it, a missing key
+  reads as the maximum · the **Answer length limit** field + POST clamp · `_UseMarking.last_completion`
+  · `_evidence_warning` reads the output side · `_no_answer_note`'s measured empty sentence
+  (reasoning length, Annotate remedy) · `_generation_failed_note`'s gateway-403-with-a-valid-key
+  sentence (entitlement, prompt size, the transaction log). Refused: a hard-coded "max"; a second
+  `max_completion_tokens` attempt; touching Ollama's `num_predict`.
+- **Verification (QC-1):** both new modules fail COLLECTION on the pristine tree (the module does not
+  exist — a coarse red; the per-behaviour refutations are the battery's); new modules **38 passed**;
+  touched neighbourhood (17 files) **306 passed**; a **30-mutant** battery on a scratch copy under a
+  PYTHONPATH shadow — first run **29/30**: `wrapper_swallows_completion` was caught by the wrapper's
+  unit test but NOT by the e2e that claimed "the deployed wrapping" — because the app wraps only a
+  routed Ollama (ADR-0315: `backend.name == "ollama"` / `cfg.second_backend == "ollama"`); the false
+  claim was corrected in the test and the property's docstring, second run **30/30**.
+- **Build:** version 1.0.256; wheel + nine installers rebuilt (`SF_MPXJ_REF=42d92dc9…`).
+- **The gate, measured after the bump and the rebuild:** both ruff binaries clean, mypy strict 164
+  files clean, bandit exit 0, `node --check` clean, 5,281 collected; full suite **5,275 passed / 5 skipped / 1 failed in 36:19 — the one red is `test_driving_path_whole_schedule_browser.py:104`, the #667 width race (registered, outside this diff: no driving/path/chrome/static file is touched), green on an immediate re-run alone**;
+  `-m parity` **96 passed**.
+- **Docs:** ADR-0486 · OPERATOR-REQUESTS (OR-14 corrected in place; OR-15 shipped) · HANDOFF rotated ·
+  LESSONS-LEARNED (2026-09-11 (e)) · NEXT-SESSION-PROMPT refreshed.
+- **PR:** draft, from this branch — see the follow-up entry for the number and the checks.

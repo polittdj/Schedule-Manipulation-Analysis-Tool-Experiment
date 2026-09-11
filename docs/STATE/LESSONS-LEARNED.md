@@ -435,6 +435,36 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-11 (e) — a fixed bug is evidence against the hypothesis it lived under (ADR-0486)
+
+- **The mislabel I fixed was the mislabel that misled me.** ADR-0485 found that the Ask panel's note
+  printed the OpenAI endpoint (`127.0.0.1:1234`) for EVERY non-Ollama backend, fixed it — and still
+  shipped a diagnosis built on that endpoint being LM Studio. The operator's backend was the
+  approved gateway; nothing listens on 1234 on that machine (they measured it). The unit was real
+  (a genuine capability gap for LM Studio users) and it was not the operator's fix. Rule: the moment
+  a defect is found in the instrument that produced the evidence, re-read every conclusion drawn
+  from that evidence before building on it. QC-2 says inherited claims are testimony; a claim
+  inherited from a bug is worse than testimony.
+- **A diagnostic's mislabel costs the next diagnostician a unit, not just the operator a click.**
+  Every note now names its own backend, and the ledger records the correction in the same OR entry
+  it corrects, not in a footnote.
+- **"Raise the limit to the max" has no number.** Every model and server has its own output
+  ceiling, so a constant "max" would turn every answer into an HTTP 400 on the first stricter
+  server. The design that honours the directive is a bounded default at the form's ceiling PLUS a
+  disclosed fallback (a 400 that names the parameter → one retry without it → the panel says the
+  server's default cut the answer and to LOWER the field). The fallback is what makes "max" safe to
+  default to — unlike `num_ctx`, nothing allocates on the value.
+- **The battery found a FALSE claim, not a weak check.** The e2e's docstring said it exercised "the
+  deployed wrapping (ADR-0315)"; with the wrapper's forwarding removed it stayed green — because the
+  deployed app wraps only a routed Ollama. A green mutant is read, not counted: the test now states
+  what it measures, and the wrapper's own unit test pins the forwarding for the day the wrapping is
+  extended.
+- **Read a completion as evidence, never coerce it.** `str(content)` shipped the word "None" as an
+  answer for as long as the backend existed; `finish_reason` was on every response and nobody read
+  it. Two answers that stop at the same length are a measurement of the server's output cap, and
+  an empty third is the same cap landing earlier — the shape was diagnosable from the pastes alone
+  once the tool's blind spots were listed.
+
 ### 2026-09-11 (d) — a diagnostic that names a PAGE instead of a FIELD is true and useless (ADR-0485)
 
 - **The operator's note was literally correct and could not help.** *"…was reachable, but the

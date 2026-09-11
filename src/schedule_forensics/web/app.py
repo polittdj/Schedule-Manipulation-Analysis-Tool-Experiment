@@ -42,6 +42,7 @@ from schedule_forensics.ai import (
     OpenAICompatBackend,
     reattach,
     route_backend,
+    txlog,
 )
 from schedule_forensics.ai.brief import brief_blocks, build_brief
 from schedule_forensics.ai.briefing import (
@@ -49,6 +50,12 @@ from schedule_forensics.ai.briefing import (
     build_briefing,
 )
 from schedule_forensics.ai.citations import CitedStatement, Narrative, preserves_figures
+from schedule_forensics.ai.completion import (
+    DEFAULT_ANSWER_TOKENS,
+    CompletionStats,
+    answer_cut_warning,
+    clamp_answer_tokens,
+)
 from schedule_forensics.ai.config_store import load_ai_config, save_ai_config
 from schedule_forensics.ai.driving_facts import (
     driving_path_facts,
@@ -1075,6 +1082,18 @@ def _generation_failed_note(cfg: AIConfig, detail: str) -> str:
         # ADR-0485 for the local server). The tool cannot see whether the local server's
         # authentication is on, so the other cause is stated, never hidden.
         if is_gateway:
+            if resolve_gateway_api_key(cfg):
+                # the catalog served, so the key WORKS; "paste your key" is the wrong advice.
+                # Name what a valid key can still be refused for, and where the evidence is.
+                return (
+                    f"{label} at {endpoint} accepted your key for its model catalog but refused "
+                    f"this generation ({detail}). Common causes: the selected model "
+                    f"'{cfg.model}' is not authorized for your key, or a gateway policy refused "
+                    "the request - an over-large prompt is a frequent one (Unrestricted answer "
+                    "mode sends the full per-activity table; try Annotate). The AI transaction "
+                    f"log at {txlog.default_log_path()} records each refusal with the prompt's "
+                    "size."
+                )
             return (
                 f"{label} at {endpoint} answered the generation with {detail}: it requires "
                 "authentication. Paste your organization-issued key into the Gateway API key "
@@ -1118,6 +1137,15 @@ def _no_answer_note(cfg: AIConfig, why: NoAnswer) -> str:
     if why.code == GENERATION_FAILED:
         return _generation_failed_note(cfg, why.detail)
     if why.code == EMPTY_ANSWER:
+        if why.detail:
+            # measured (ADR-0486): the server said WHY there is no text — a thinking model that
+            # spent its whole answer budget reasoning is not "select a different model"
+            return (
+                f"The model ran but produced no answer text: {why.detail}. Raise the Answer length "
+                "limit in AI Settings if it is below the maximum, switch AI answer mode to Annotate "
+                "(a much smaller prompt), or choose a non-thinking model - the cited facts below "
+                "are the engine's own and are unaffected."
+            )
         return (
             "The local model ran but returned no text, so there was nothing to show - nothing was "
             "discarded. Ask again, or select a different model in AI Settings."
@@ -1142,9 +1170,15 @@ def _evidence_warning(backend: AIBackend) -> str | None:
     and an absent measurement is UNKNOWN, which is not a warning.
     """
     stats = getattr(backend, "last_stats", None)
-    if not isinstance(stats, GenerationStats):
-        return None
-    return truncation_warning(stats)
+    if isinstance(stats, GenerationStats):
+        return truncation_warning(stats)
+    # the OpenAI-compatible backends measure the OUTPUT side instead (ADR-0486): a server that
+    # stopped the answer at an output limit reports finish_reason=length, and an answer that
+    # ends mid-sentence with no caveat is a caveat nobody can read
+    completion = getattr(backend, "last_completion", None)
+    if isinstance(completion, CompletionStats):
+        return answer_cut_warning(completion)
+    return None
 
 
 def _ai_translate(texts: list[str], lang: str, backend: AIBackend) -> dict[str, str]:
@@ -7578,6 +7612,7 @@ def create_app(
         gateway_approved: str = Form(""),
         gateway_api_key: str = Form(""),
         openai_api_key: str = Form(""),
+        answer_max_tokens: int = Form(DEFAULT_ANSWER_TOKENS),
     ) -> RedirectResponse:
         st = session()
         try:
@@ -7597,6 +7632,9 @@ def create_app(
         # because each is separately reachable. The 303 re-renders the form from the SAVED
         # config, so a clamp is visible rather than a silent disagreement with what was typed.
         num_ctx = clamp_num_ctx(num_ctx)
+        # the answer budget (ADR-0486): bounded at the form boundary like the window; an absent
+        # field reads as the maximum (the default), never as off
+        answer_max_tokens = clamp_answer_tokens(answer_max_tokens)
         # the backend constructor enforces loopback too (Law 1) — this just keeps a typo'd
         # remote host from sitting in the config looking accepted
         if not is_local_http_endpoint(endpoint.strip()):
@@ -7627,6 +7665,7 @@ def create_app(
             second_model=second_model.strip(),
             gen_timeout=gen_timeout,
             num_ctx=num_ctx,
+            answer_max_tokens=answer_max_tokens,
             gateway_endpoint=gateway_endpoint,
             # an absent checkbox posts nothing — only the literal checked value records the
             # operator's approval assertion; anything else is False (fail closed)

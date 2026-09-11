@@ -50,6 +50,7 @@ from dataclasses import dataclass
 
 from schedule_forensics.ai.backend import AIBackend
 from schedule_forensics.ai.citations import _TOKEN_RE, CitedStatement, figure_tokens
+from schedule_forensics.ai.completion import empty_answer_detail
 from schedule_forensics.ai.derivation import RATIO_KINDS, Derivation, verify_derivation
 from schedule_forensics.ai.ollama import probe_error_text
 from schedule_forensics.engine.change_effects import compute_change_effects
@@ -1048,7 +1049,13 @@ def answer_question_detail(
         # all route their probe errors through it), so one vocabulary describes both pages.
         return None, shown, NoAnswer(GENERATION_FAILED, probe_error_text(exc))
     if not text:
-        return None, shown, NoAnswer(EMPTY_ANSWER)
+        # WHY it is empty, when the backend measured it (ADR-0486): a thinking model that spent
+        # its whole answer budget reasoning is not "select a different model"
+        return (
+            None,
+            shown,
+            NoAnswer(EMPTY_ANSWER, empty_answer_detail(getattr(backend, "last_completion", None))),
+        )
     value_figs, id_figs, id_names, unit_roles = _figure_roles(evidence)
     if mode == "strict":
         verified, id_reused, unverified, unit_misused = _classify_figures(

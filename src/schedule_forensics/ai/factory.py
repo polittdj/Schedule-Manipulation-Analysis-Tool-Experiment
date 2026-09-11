@@ -48,6 +48,7 @@ def openai_or_none(config: AIConfig) -> OpenAICompatBackend | None:
             timeout=config.gen_timeout,
             # the local server's token (ADR-0485): LM Studio can require one on every request
             api_key=config.openai_api_key,
+            max_tokens=config.answer_max_tokens,
         )
     except Exception:
         return None
@@ -83,6 +84,7 @@ def gateway_or_none(config: AIConfig) -> GatewayBackend | None:
             classification=str(config.classification),
             api_key=resolve_gateway_api_key(config),
             timeout=config.gen_timeout,
+            max_tokens=config.answer_max_tokens,
         )
     except Exception:
         return None
@@ -113,6 +115,7 @@ def second_or_none(config: AIConfig) -> AIBackend | None:
             model=config.second_model,
             timeout=config.gen_timeout,
             api_key=config.openai_api_key,
+            max_tokens=config.answer_max_tokens,
         )
     except Exception:
         return None

@@ -41,6 +41,7 @@ import sys
 from pathlib import Path
 
 from schedule_forensics.ai.backend import AIConfig, Classification
+from schedule_forensics.ai.completion import DEFAULT_ANSWER_TOKENS, clamp_answer_tokens
 from schedule_forensics.ai.ollama import clamp_num_ctx
 from schedule_forensics.net_guard import is_approved_gateway_endpoint, is_local_http_endpoint
 
@@ -152,6 +153,7 @@ def save_ai_config(cfg: AIConfig, path: Path | None = None) -> None:
         "second_model": cfg.second_model,
         "gen_timeout": cfg.gen_timeout,
         "num_ctx": cfg.num_ctx,
+        "answer_max_tokens": cfg.answer_max_tokens,
         "gateway_endpoint": cfg.gateway_endpoint,
         "gateway_approved": cfg.gateway_approved,
     }
@@ -241,6 +243,15 @@ def load_ai_config(path: Path | None = None) -> AIConfig:
         if isinstance(raw_num_ctx, int) and not isinstance(raw_num_ctx, bool)
         else 0
     )
+    # the answer budget (ADR-0486): bounded like the window, but a MISSING key reads as the
+    # maximum, not as off — the operator's directive, and the failure mode of a large value is
+    # a disclosed fallback, not a memory allocation
+    raw_answer = doc.get("answer_max_tokens")
+    answer_max_tokens = (
+        clamp_answer_tokens(raw_answer)
+        if isinstance(raw_answer, int) and not isinstance(raw_answer, bool)
+        else DEFAULT_ANSWER_TOKENS
+    )
     return AIConfig(
         classification=classification,
         backend=_s("backend", "ollama"),
@@ -252,6 +263,7 @@ def load_ai_config(path: Path | None = None) -> AIConfig:
         second_model=_s("second_model", ""),
         gen_timeout=gen_timeout,
         num_ctx=num_ctx,
+        answer_max_tokens=answer_max_tokens,
         gateway_endpoint=gateway_endpoint,
         gateway_approved=doc.get("gateway_approved") is True,
         gateway_api_key=_load_key(doc, _KEY_FIELD, "gateway key"),
