@@ -34,13 +34,22 @@ from __future__ import annotations
 
 import contextlib
 import json
+import urllib.error
 import urllib.request
 from collections.abc import Callable, Mapping
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
 from schedule_forensics.ai import txlog
 from schedule_forensics.ai.backend import DETERMINISTIC_SEED, DETERMINISTIC_TEMPERATURE
+from schedule_forensics.ai.completion import (
+    DEFAULT_ANSWER_TOKENS,
+    CompletionStats,
+    clamp_answer_tokens,
+    limit_rejected,
+    read_completion,
+)
 from schedule_forensics.ai.ollama import _NO_REDIRECT_OPENER, probe_error_text
 from schedule_forensics.net_guard import (
     CUIEgressError,
@@ -86,6 +95,7 @@ class GatewayBackend:
         api_key: str = "",
         timeout: float = 120.0,
         probe_timeout: float = 8.0,
+        max_tokens: int = DEFAULT_ANSWER_TOKENS,
         opener: GatewayOpener | None = None,
         log_path: Path | None = None,
     ) -> None:
@@ -113,6 +123,10 @@ class GatewayBackend:
         self._api_key = api_key
         self._timeout = timeout
         self._probe_timeout = probe_timeout
+        # the answer budget (ADR-0486), bounded at this boundary too
+        self._max_tokens = clamp_answer_tokens(max_tokens)
+        #: What the gateway reported about the LAST generation — evidence for the disclosures
+        self.last_completion: CompletionStats | None = None
         self._open: GatewayOpener = opener or _urllib_gateway_opener
         self._log_path = log_path if log_path is not None else txlog.default_log_path()
 
@@ -198,21 +212,40 @@ class GatewayBackend:
         Deterministic decoding, like every backend (temperature 0 + fixed seed): a forensic
         tool must not give two analysts different prose for one question.
         """
-        payload = self._request(
-            "/v1/chat/completions",
-            {
-                "model": self.model,
-                "messages": [{"role": "user", "content": prompt}],
-                "stream": False,
-                "temperature": DETERMINISTIC_TEMPERATURE,
-                "seed": DETERMINISTIC_SEED,
-            },
-            kind="generate",
-            timeout=self._timeout,
-            prompt=prompt,
-        )
+        request: dict[str, Any] = {
+            "model": self.model,
+            "messages": [{"role": "user", "content": prompt}],
+            "stream": False,
+            "temperature": DETERMINISTIC_TEMPERATURE,
+            "seed": DETERMINISTIC_SEED,
+        }
+        if self._max_tokens:
+            request["max_tokens"] = self._max_tokens
+        rejected = False
         try:
-            content = payload["choices"][0]["message"]["content"]
-        except (KeyError, IndexError, TypeError):
-            return ""
-        return str(content)
+            payload = self._request(
+                "/v1/chat/completions",
+                request,
+                kind="generate",
+                timeout=self._timeout,
+                prompt=prompt,
+            )
+        except urllib.error.HTTPError as exc:
+            # the gateway refused the answer budget ITSELF (HTTP 400 naming it): one more
+            # transmission without it — recorded in the log like any other — and the
+            # rejection is remembered so the disclosure names the right remedy (ADR-0486)
+            if not self._max_tokens or not limit_rejected(exc):
+                raise
+            rejected = True
+            payload = self._request(
+                "/v1/chat/completions",
+                {k: v for k, v in request.items() if k != "max_tokens"},
+                kind="generate",
+                timeout=self._timeout,
+                prompt=prompt,
+            )
+        content, stats = read_completion(payload)  # a null content is "", never "None"
+        self.last_completion = replace(
+            stats, max_tokens_sent=self._max_tokens or None, limit_rejected=rejected
+        )
+        return content

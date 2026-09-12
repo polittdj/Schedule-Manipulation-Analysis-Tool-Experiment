@@ -23,6 +23,8 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Protocol, runtime_checkable
 
+from schedule_forensics.ai.completion import DEFAULT_ANSWER_TOKENS
+
 #: Deterministic decoding parameters every local backend sends, so the SAME prompt yields the SAME
 #: answer run-to-run (forensic consistency). ``temperature 0`` is greedy decoding; a fixed ``seed``
 #: pins any residual sampling. A forensic tool must not give two analysts different prose for one
@@ -122,6 +124,11 @@ class AIConfig:
     #: none, and then no header at all (a server with authentication off sees the exact
     #: request it saw before the field existed).
     openai_api_key: str = field(default="", repr=False)
+    #: The answer budget sent as ``max_tokens`` to an OpenAI-compatible server or the approved
+    #: gateway (ADR-0486). Default = the MAXIMUM the form allows (operator directive: "raise the
+    #: limit to the max"); 0 sends none. A server that rejects the value is asked once more
+    #: without it, and the answer says so. Ollama is unaffected (it has no such default cap).
+    answer_max_tokens: int = DEFAULT_ANSWER_TOKENS
 
 
 @dataclass(frozen=True)

@@ -1,20 +1,21 @@
 # Kickoff prompt — next session
 
-PR state (2026-09-11 c): the `/scorecards` design page (ADR-0484, v1.0.254) is **MERGED** — `main` is
-**`5d8d01fb`** (#668, tree-verified after the squash). The session's second unit, **OR-14 / ADR-0485
-(v1.0.255)** — the local OpenAI-compatible server learns to authenticate (the operator's `/integrity`
-Ask panel showed *"server returned HTTP 403"* from LM Studio; the tool had nowhere to hold a token) —
-is **draft PR #669** (head `e9387761` + a docs-only record commit) from branch
-`claude/optimistic-ride-3qv2jc`; its check verdicts are in the SESSION-LOG's follow-up entry. **Always `git fetch origin` and read `git log origin/main` before
-trusting any sha written here** — six consecutive kickoffs have been stale by the time they were
-read. **If #668's successor PR is still open, the state docs below already describe its content;
-if it merged, restart the branch with `--prune` + `remote set-head` + `checkout -B`.**
+PR state (2026-09-11 d): **#669 is MERGED** — `main` is **`2ae8d06b`** (ADR-0485, v1.0.255; tree-verified;
+`main`'s runs CI 1843 / installer-smoke 706 success). The session's third unit, **OR-15 / ADR-0486
+(v1.0.256)** — the answer length is the tool's to set (`max_tokens` at the maximum, an honest fallback
+when a server rejects it, a cut answer disclosed, an empty answer explained) **and OR-14 corrected: the
+operator's backend is the approved gateway, not LM Studio** — is a **draft PR** from branch
+`claude/optimistic-ride-3qv2jc`; its number and checks are in the SESSION-LOG's follow-up entry.
+**Always `git fetch origin` and read `git log origin/main` before trusting any sha written here.** If
+that PR merged, restart the branch with `--prune` + `remote set-head` + `checkout -B`.
 
-**OR-14 leaves ONE thing for the operator's machine, not for you:** paste the LM Studio token into
-AI Settings → *Local server API token* → Save → ask again. LM Studio's exact refusal code (401 vs
-403) and whether its `/v1/models` is exempt are UNVERIFIED (the docs page read does not say; the fix
-accepts both codes and both catalog shapes). Do NOT re-open the refused options (an env-var
-fallback; an `x-api-key` header) without a field report that needs them.
+**The operator still owes ONE piece of evidence, and it decides the next unit:** the tail of
+`ai-transactions.jsonl` (`Get-Content "$env:USERPROFILE\.local\state\schedule-forensics\ai-transactions.jsonl" -Tail 40`
+— fields only, the log holds no schedule content). If the `"error":"server returned HTTP 403"` lines
+carry larger `prompt_bytes` than the answered ones, the gateway refuses oversized requests and
+**Unrestricted mode needs a prompt-size guard** (its own unit, red-first against the measured size);
+if equal, the refusal was the gateway's own and nothing in the tool is owed. Do NOT rebuild anything
+for LM Studio — nothing listens on the operator's port 1234 (measured).
 
 ## The design page is CURRENT, not owed. **Take R-56.**
 
@@ -99,7 +100,11 @@ ADR-0475 (/standards on the design) · ADR-0476 (R-55) · ADR-0477 (R-20 / UI-03
 cost, the last Control screen.** · **ADR-0485 (OR-14 — the local OpenAI-compatible server's Bearer
 token: `AIConfig.openai_api_key`, the 4-arg `HeaderOpener`, the *Local server API token* field, the
 401/403 note that names the field AND the cause the tool cannot see; the gateway-endpoint mislabel
-fixed).**
+fixed).** · **ADR-0486 (OR-15 — `ai/completion.py`: the *Answer length limit* field, default = max,
+`max_tokens` on both OpenAI-compatible backends with one retry without it on a 400 that names it;
+`finish_reason` / reasoning / `usage` read as `last_completion`; a `length` stop disclosed beside the
+answer; an empty answer explained; `null` content empty, never "None"; a gateway 403 with a valid key
+names entitlement + prompt size + the transaction log. OR-14 CORRECTED: the gateway, not LM Studio.)**
 
 ⇢ NEXT — the report's §3 in order, one row per unit of work (red-first → mutation proofs by name →
 the full gate → an ADR → the state docs → a draft PR): **R-56** FIRST (above) · **R-49** — MPXJ omits a
@@ -112,7 +117,11 @@ is `/margin`, recipe in ADR-0471 / 0475 / 0484 (execute the canvas; census the a
 layout with every id, form byte, panel, glyph and figure; refuse and NAME every mock claim the engine
 does not make; measure in four themes; a battery whose greens are read).
 
-⇢ Traps paid for, by name (2026-09-11 c/d first): **a diagnostic that names a PAGE is true and
+⇢ Traps paid for, by name (2026-09-11 e first): **a fixed bug is evidence against the hypothesis it
+lived under — re-read every conclusion drawn through a mislabel the moment the mislabel is found** ·
+**"raise the limit to the max" has no number: a bounded default plus a disclosed fallback** · **the
+battery found a FALSE claim ("the deployed wrapping") — the app wraps only Ollama (ADR-0315)** · **read a
+completion as evidence, never `str()` it**. (2026-09-11 c/d:) **a diagnostic that names a PAGE is true and
 useless when that page reads ON — name the FIELD, and state the cause you cannot see** · **condition
 a hint on what the transport proved, never on "unreachable" as a catch-all** · **a page-wide substring
 assertion the page's own form satisfies cannot fail — read the element** · **negative pins are green
@@ -157,7 +166,9 @@ the right edge · **OR-11b** (measure the 48-fact cap on a real 32-file workbook
 (`_AskRecord` exports an unanswered ask without its reason) · **ADR-0483's own** (a live-peer response
 is cut at 5 s) · **ADR-0485's own:** `_gateway_status_note` still detects a refusal by substring
 (`"401" in reason`) — a one-line unit onto `is_auth_refusal` with its own red; the live model dropdown
-probes with the SAVED token only (Save first; the gateway behaves the same) · **NEW, ADR-0484:** the in-grid scorecard rows as the mock's compact status-pill row
+probes with the SAVED token only (Save first; the gateway behaves the same) · **ADR-0486's own:** a second
+`max_completion_tokens` attempt before falling back to no limit; an output-side disclosure for Ollama
+from `GenerationStats.done_reason`; the cross-check's `last_completion` recorded but not surfaced · **NEW, ADR-0484:** the in-grid scorecard rows as the mock's compact status-pill row
 WITHOUT losing table semantics — at 1440 the cells wrap hard and apollo breaks long tokens as a last
 resort; ⛶ ENLARGE gives any card the full viewport meanwhile.
 

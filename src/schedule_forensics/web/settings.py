@@ -52,6 +52,7 @@ from schedule_forensics.ai import (
     route_backend,
     txlog,
 )
+from schedule_forensics.ai.completion import MAX_ANSWER_TOKENS, MIN_ANSWER_TOKENS
 from schedule_forensics.ai.ollama import MAX_NUM_CTX, MIN_NUM_CTX, is_auth_refusal
 from schedule_forensics.net_guard import APPROVED_GATEWAY_ENDPOINTS
 from schedule_forensics.web.chrome import _e, _observed_banner
@@ -96,6 +97,15 @@ class _UseMarking:
         configuration it exists for, and present only in tests.
         """
         return getattr(self._inner, "last_stats", None)
+
+    @property
+    def last_completion(self) -> object | None:
+        """The wrapped backend's last completion evidence (ADR-0486) — the same swallow the
+        property above prevents, for the cut / empty-answer disclosures. Only a routed Ollama
+        is wrapped today (ADR-0315), and Ollama has no ``last_completion``; this exists so an
+        extension of the wrapping to the OpenAI-compatible backends cannot silently hide the
+        disclosure — its unit test pins the forwarding on the wrapper itself."""
+        return getattr(self._inner, "last_completion", None)
 
     def is_available(self) -> bool:
         return self._inner.is_available()
@@ -613,6 +623,9 @@ def _settings_body(state: SessionState, runtime_note: str = "") -> str:
 <p>Generation timeout (seconds):
 <input name=gen_timeout type=number min=30 max=3600 step=10 value="{_e(int(cfg.gen_timeout))}"
  title="How long a single answer may take. Defaults to the maximum (3600 s = 1 hour) so a big, slow model (e.g. llama3.1:70b) can always finish; lower it if you prefer to cap it."> <span class=muted>(default = max, 3600 s)</span></p>
+<p>Answer length limit (tokens, OpenAI-compatible and approved-gateway backends):
+<input name=answer_max_tokens type=number min=0 max={MAX_ANSWER_TOKENS} step=256 value="{_e(int(cfg.answer_max_tokens))}"
+ title="Sent as max_tokens on every generation to an OpenAI-compatible server or the approved gateway, so a long forensic answer is not cut short by the server&rsquo;s own default. A thinking model spends part of this budget reasoning before it writes. A server that rejects the value is asked once more without it, and the answer says so. 0 = send no limit."> <span class=muted>({MIN_ANSWER_TOKENS:,}&ndash;{MAX_ANSWER_TOKENS:,} tokens; <b>default = max</b>; 0 = leave it to the server)</span></p>
 <p>Ollama context window (tokens, Ollama backend only):
 <input name=num_ctx type=number min=0 max={MAX_NUM_CTX} step=1024 value="{_e(int(cfg.num_ctx))}"
  title="Sent as Ollama&rsquo;s num_ctx on every generation. 0 asks for nothing and leaves your server&rsquo;s own setting in charge. Raising it costs memory: the KV cache grows with the window and is multiplied by OLLAMA_NUM_PARALLEL, and a window your GPU cannot hold spills to system RAM and can make the machine crawl."> <span class=muted>({MIN_NUM_CTX:,}&ndash;{MAX_NUM_CTX:,} tokens; <b>0 = leave it to the server</b>)</span></p>

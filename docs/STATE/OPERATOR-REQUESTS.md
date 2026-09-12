@@ -220,6 +220,38 @@ ADR-0408; the repo is xfail-free). This section is the requested ledger; `HANDOF
 (auto-injected every session) and `NEXT-SESSION-PROMPT.md` carry the same state with
 per-unit rotation. **Every remaining open item on this page is operator-owned.**
 
+## 2026-09-11 (b) — the Ask panel's answers stop mid-sentence, then come back empty (two pastes + the settings screenshot; the backend is the approved gateway)
+
+### OR-15 — "I want you to do option 3 and I want you to raise the limit to the max." · `SHIPPED (ADR-0486, v1.0.256)`
+
+**The operator's evidence (2026-09-11):** two answers from `claude-opus-4.8-thinking-itar` via the
+approved gateway that stop mid-sentence (*"…an SPI of"*, *"…62 workdays behind"*), then a
+one-sentence-longer question that produced *"The local model ran but returned no text … select a
+different model in AI Settings."*; AI answer mode = Unrestricted.
+
+**ROOT CAUSE, measured on the code:** neither OpenAI-compatible backend sent `max_tokens` (the
+server's default output budget governed, and a thinking model spends it reasoning before it writes);
+neither read `finish_reason` (a `length` stop rendered as a complete answer); neither read the
+reasoning fields (an empty answer could not say why); and a `null` content became the literal word
+"None". The tool's timeout was refuted (it reports a timeout by name); a cut paste was refuted (twice
+the same shape, then an empty third).
+
+**CLOSED by ADR-0486 (v1.0.256):** an **Answer length limit** field in AI Settings — bounded
+256–131,072, **default = the maximum** (the directive), 0 = server default — sent as `max_tokens` on
+every generation to an OpenAI-compatible server or the gateway. "The max" is not a number: a server
+that REJECTS the value (HTTP 400 naming it) gets the request once more without it and the answer says
+the server's own default cut it and to lower the setting. A `length` stop is disclosed beside the
+answer; an empty answer says the budget was spent thinking (with the characters of reasoning, when
+the server exposes them) and names the smaller-prompt remedy (Annotate); `null` is empty, never
+"None"; a gateway 403 with a valid key names entitlement and prompt size instead of "paste your key".
+
+**What to do on the deployed machine:** install v1.0.256 and ask again — the setting is already at
+the maximum. If the answer still stops, the panel now says which of three things happened (the
+server rejected the limit → lower it; the budget was spent thinking → Annotate mode or a
+non-thinking model; a clean stop → the answer was complete). **PENDING OPERATOR VERIFICATION:** the
+gateway model's real output ceiling (UNVERIFIED — the fallback is designed so the tool need not know
+it) and whether the gateway exposes reasoning fields at all.
+
 ## 2026-09-11 — Ask-the-AI on `/integrity`: "server returned HTTP 403" from the local OpenAI-compatible server (screenshot)
 
 ### OR-14 — "do a deep dive and figure out why the ASK the AI is not working the way it should and fix it." · `SHIPPED (ADR-0485, v1.0.255)`
@@ -256,6 +288,19 @@ Save → ask again. **PENDING OPERATOR VERIFICATION:** LM Studio's exact refusal
 and whether its `/v1/models` is exempt are UNVERIFIED (the docs do not say; the fix accepts both
 codes and both catalog shapes). If the 403 persists WITH a token saved, the token is wrong/revoked
 or something on the machine sits in front of the server — the note says so.
+
+**CORRECTED the same day (ADR-0486).** The operator's AI Settings screenshot shows the backend is
+the **approved gateway** (`https://proxy.fast.luna.nasa.gov`, `claude-opus-4.8-thinking-itar`, key
+saved, Unrestricted mode), and their PowerShell against `http://127.0.0.1:1234` reads *"Unable to
+connect to the remote server"* — **nothing listens on port 1234; LM Studio is not in play.** The
+morning note said `127.0.0.1:1234` because v1.0.254 printed the OpenAI endpoint for EVERY non-Ollama
+backend — the mislabel ADR-0485 fixed, and the misdirection it did not re-read. **The 403 was the
+gateway's**, on the chat completion, with a key the catalog accepts. The LM Studio token stands as a
+real capability gap closed for LM Studio users; it was not this operator's fix. **PENDING OPERATOR
+EVIDENCE (still open):** the tail of `ai-transactions.jsonl` (no schedule content — a SHA-256 and a
+byte count per prompt) to see whether the 403s correlate with `prompt_bytes` (Unrestricted mode ships
+the per-activity table) or were the gateway's own. v1.0.256's note for a gateway 403 with a valid key
+now names both causes and the log.
 
 ## 2026-09-08 — Ask-the-AI returned no answer on `/integrity` (screenshot, 32-version workbook)
 

@@ -18,9 +18,18 @@ The opener therefore has the gateway's 4-arg headers-bearing shape (``HeaderOpen
 from __future__ import annotations
 
 import json
+import urllib.error
+from dataclasses import replace
 from typing import Any
 
 from schedule_forensics.ai.backend import DETERMINISTIC_SEED, DETERMINISTIC_TEMPERATURE
+from schedule_forensics.ai.completion import (
+    DEFAULT_ANSWER_TOKENS,
+    CompletionStats,
+    clamp_answer_tokens,
+    limit_rejected,
+    read_completion,
+)
 from schedule_forensics.ai.ollama import HeaderOpener, _urllib_header_opener, probe_error_text
 from schedule_forensics.net_guard import CUIEgressError, is_local_http_endpoint
 
@@ -41,6 +50,7 @@ class OpenAICompatBackend:
         timeout: float = 120.0,
         probe_timeout: float = 8.0,
         api_key: str = "",
+        max_tokens: int = DEFAULT_ANSWER_TOKENS,
         opener: HeaderOpener | None = None,
     ) -> None:
         # OBSERVED locality (DoD 001b): ``is_local`` records the validator's verdict on the
@@ -62,6 +72,11 @@ class OpenAICompatBackend:
         # the token rides ONLY the Authorization header of this backend's requests: never a
         # log line, never a rendered page, never a repr (ADR-0403's rule, ADR-0485)
         self._api_key = api_key
+        # the answer budget (ADR-0486): bounded here too, because a constructor is reachable
+        self._max_tokens = clamp_answer_tokens(max_tokens)
+        #: What the server reported about the LAST generation (finish_reason, lengths, whether
+        #: it rejected the answer budget) — evidence for the panel's disclosures, never prose.
+        self.last_completion: CompletionStats | None = None
         self._open: HeaderOpener = opener or _urllib_header_opener
 
     def _headers(self) -> dict[str, str]:
@@ -116,20 +131,32 @@ class OpenAICompatBackend:
         against a live server (ADR-0485 records it); the settings page's live model dropdown
         exists so the operator picks a served id instead.
         """
-        payload = self._post(
-            "/v1/chat/completions",
-            {
-                "model": self.model,
-                "messages": [{"role": "user", "content": prompt}],
-                "stream": False,
-                # deterministic decoding: same prompt -> same answer run-to-run (forensic
-                # consistency); the engine is already deterministic, this pins the model too
-                "temperature": DETERMINISTIC_TEMPERATURE,
-                "seed": DETERMINISTIC_SEED,
-            },
-        )
+        request: dict[str, Any] = {
+            "model": self.model,
+            "messages": [{"role": "user", "content": prompt}],
+            "stream": False,
+            # deterministic decoding: same prompt -> same answer run-to-run (forensic
+            # consistency); the engine is already deterministic, this pins the model too
+            "temperature": DETERMINISTIC_TEMPERATURE,
+            "seed": DETERMINISTIC_SEED,
+        }
+        if self._max_tokens:
+            request["max_tokens"] = self._max_tokens
+        rejected = False
         try:
-            content = payload["choices"][0]["message"]["content"]
-        except (KeyError, IndexError, TypeError):
-            return ""
-        return str(content)
+            payload = self._post("/v1/chat/completions", request)
+        except urllib.error.HTTPError as exc:
+            # the server refused the answer budget ITSELF (an HTTP 400 naming it): ask once
+            # more without it — its own default then governs — and RECORD that it did, so the
+            # disclosure names the right remedy (ADR-0486). Any other failure propagates.
+            if not self._max_tokens or not limit_rejected(exc):
+                raise
+            rejected = True
+            payload = self._post(
+                "/v1/chat/completions", {k: v for k, v in request.items() if k != "max_tokens"}
+            )
+        content, stats = read_completion(payload)  # a null content is "", never "None"
+        self.last_completion = replace(
+            stats, max_tokens_sent=self._max_tokens or None, limit_rejected=rejected
+        )
+        return content
