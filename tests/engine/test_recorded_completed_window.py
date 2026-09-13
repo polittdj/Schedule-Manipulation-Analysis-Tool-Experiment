@@ -331,7 +331,8 @@ def test_no_completed_activity_is_scheduled_past_the_date_it_finished(
 )
 def test_the_hard_file_family_never_reads_later_than_ms_project(rel: str) -> None:
     """Pristine: 13 / 31 / 68 activities finished LATER than the stored date. The remaining
-    disagreement on these files is entirely engine-EARLY — R-56's contoured bookings."""
+    disagreement on these files is entirely engine-EARLY — UID 403's leveling split (R-60) and
+    the day-boundary milestones; R-56's material / cost spans are read since ADR-0487."""
     sch, res = _load(rel)
     late = []
     for t in sch.tasks:

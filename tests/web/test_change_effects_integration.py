@@ -126,7 +126,12 @@ def test_capped_pair_reports_the_full_artifact_total_and_starves_only_artifacts(
     assert "44 constraint change(s) look like the MS Project" in page
     assert "11 further artifact-pattern change(s)" in page  # capped remainder disclosed in-cluster
     assert "11 of them match the MS Project reschedule-artifact pattern" in page  # and in the note
-    assert "33 of 33 have no effect on the target finish" in page
+    # 33 → 32 since ADR-0487: restoring UID 384's data-date SNET now moves the target finish
+    # (-1 wd) because its successor UID 385 — finished by a recorded material span — sits on the
+    # chain that drives updated3's finish exactly as in MS Project; the pre-ADR-0487 engine
+    # finished 385 fifteen days early and that chain was inert. An engine-derived counterfactual
+    # moves with the base CPM by design (ADR-0474's 188→187 adjudication).
+    assert "32 of 33 have no effect on the target finish" in page
 
 
 def test_integrity_exception_field_is_removed(client23: TestClient) -> None:

@@ -245,8 +245,10 @@ after the task's calendar admits it. The rules were derived from the stored date
 | Project5 | 2028-01-26 | −1 d → exact | 126 (was 75) | 126 (was 124) | **95 / 95** (was 8) |
 | Large Test File / File2 | 2028-09-29 / 2029-04-20 | unmoved | 1 558 / 1 563 (unmoved) | 1 682 / 1 686 (unmoved) | 842 / 655 (unmoved) |
 
-The one-day residual on the three early Hard_File snapshots is four bookings the MSPDI cannot explain
-(R-56: UID 14 spans 40 h where the rule gives 24 h). Slack is measured on the TASK's calendar — UID
+The one-day residual on the three early Hard_File snapshots is leveling splits the MSPDI cannot
+carry (R-60: UID 14 spans 40 h where the rule gives 24 h — two work pieces in the `.mpp`); updated3's
+material / cost bookings are read from their recorded windows since ADR-0487 (R-56 closed: the
+project finish exact, 103 of 110 activities within a day of MS Project). Slack is measured on the TASK's calendar — UID
 178's stored 240 minutes are project-calendar minutes between Monday 17:00 and Tuesday 13:00; its
 16-hour crew calendar would read 720. The §E consequences: Net Finish Impact reads Fuse's own −134
 (the CPM finishes are the stored finishes), and the SN04 96↔99 membership swap is closed.

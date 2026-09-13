@@ -25,6 +25,7 @@ from schedule_forensics.ai.backend import (
     DETERMINISTIC_TEMPERATURE,
     DETERMINISTIC_TOP_P,
 )
+from schedule_forensics.ai.refusal import http_refusal_detail
 from schedule_forensics.net_guard import CUIEgressError, is_local_http_endpoint
 
 #: Injectable opener: (url, data, timeout) -> decoded response body. Defaults to urllib.
@@ -201,9 +202,17 @@ _NO_REDIRECT_OPENER = _make_opener()
 
 
 def probe_error_text(exc: BaseException) -> str:
-    """A short, human-readable reason for a failed local-server probe (settings diagnostics)."""
+    """A short, human-readable reason for a failed local-server probe (settings diagnostics).
+
+    An HTTP error quotes the server's OWN reason when it gave one (OR-16: the challenge
+    header or the error body, bounded to one line by :func:`http_refusal_detail`) — the
+    status code alone sent an operator to PowerShell to learn why a saved key was refused.
+    Without a reason the text is exactly the status, as every prior pin expects.
+    """
     if isinstance(exc, urllib.error.HTTPError):
-        return f"server returned HTTP {exc.code}"
+        said = http_refusal_detail(exc)
+        suffix = f' (its reason: "{said}")' if said else ""
+        return f"server returned HTTP {exc.code}{suffix}"
     reason = getattr(exc, "reason", exc)
     text = str(reason).strip()
     low = text.lower()

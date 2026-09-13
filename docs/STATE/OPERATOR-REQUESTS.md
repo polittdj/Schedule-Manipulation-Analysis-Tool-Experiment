@@ -220,6 +220,56 @@ ADR-0408; the repo is xfail-free). This section is the requested ledger; `HANDOF
 (auto-injected every session) and `NEXT-SESSION-PROMPT.md` carry the same state with
 per-unit rotation. **Every remaining open item on this page is operator-owned.**
 
+## 2026-09-12 — the approved gateway refuses a SAVED key on the availability probe (HTTP 401; the AI Settings screenshot, then two PowerShell runs on the NASA machine); "I want the AI setup to be as user friendly and simple as possible."
+
+### OR-16 — "I can't log into Opus 4.8 Thinking even if I put in the API Gateway Key." · `SHIPPED IN PART (ADR-0488, v1.0.257): the diagnostics; the simplification is OR-16b, OPEN`
+
+**The operator's evidence (2026-09-12):** AI Settings on v1.0.256 — Backend = Approved AI gateway,
+the key field's placeholder *"a key is saved"*, the banner *"could not reach
+https://proxy.fast.luna.nasa.gov : server returned HTTP 401. The gateway answered but requires
+authentication: paste your organization-issued key …"*, and the Model dropdown showing
+`qwen2.5:7b-instruct — not installed` (the catalog never loaded, so the gateway model could not be
+picked — the "can't log into Opus" of the report). Then, at this session's request, PowerShell on
+the NASA machine with the same key, outside the tool:
+`Invoke-WebRequest https://proxy.fast.luna.nasa.gov/v1/models -Headers @{Authorization="Bearer …"}`
+→ **HTTP 401** (the masked paste read 25 characters).
+
+**ROOT CAUSE, measured:** **the gateway refuses the key itself.** The tool's key path — form →
+session → DPAPI store → reload → `Authorization: Bearer` on `GET /v1/models` — is unchanged between
+v1.0.254 (which answered the operator on 2026-09-11 21:44–21:58Z) and v1.0.256 (diffed), and on the
+real code a saved key comes back byte-identical and rides the probe (an executable check plus the 32
+existing gateway / store tests). A key the gateway accepted at 21:58Z on 09-11 and refuses on 09-12
+has expired, been rotated, or is not the key being pasted. **What the tool got WRONG:** the banner
+threw the gateway's own reason away (the response body and the RFC 6750 `WWW-Authenticate`
+challenge) and said only "HTTP 401"; it could not say WHICH credential it had sent; "paste your key"
+is the wrong advice when a key IS saved; and it detected the refusal by substring (ADR-0485's
+residual).
+
+**SHIPPED (ADR-0488, v1.0.257):** `ai/refusal.py` — the server's own one-line reason, bounded,
+quoted in every probe / generation refusal for every backend (`server returned HTTP 401 (its reason:
+"…")`), the response body read once and shared with the answer-length fallback; the gateway banner
+names the credential sent — *the saved key* or *SF_GATEWAY_API_KEY* — with its character count
+(never its characters, ADR-0403) and sends the operator for the CURRENT key from the Hub; the key
+field's placeholder states the saved key's length so a cut paste is visible; the refusal is
+word-bounded.
+
+**What to do on the deployed machine:** install v1.0.257 and open AI Settings — the banner now
+quotes the gateway's reason and the length of the key it sent. Compare that length with the key the
+AI Hub shows; if the Hub's key has expired or rotated, paste the current one and Save. **PENDING
+OPERATOR VERIFICATION (V-4):** the gateway's reason text — the step-2 PowerShell (the
+`WWW-Authenticate` header and the 401 body) was requested and had not arrived when this shipped.
+
+### OR-16b — "I want the AI setup to be as user friendly and simple as possible." · `OPEN (its own UI unit, under the design-system DoD)`
+
+The page renders every backend's rows at once — two look-alike masked secret fields one above the
+other (the *Local server API token* directly above the *Gateway API key*), Ollama's endpoint,
+context window and runtime note under a gateway session, an Ollama default model under the gateway
+backend when its catalog probe fails. The unit: show only the selected backend's fields
+(progressive disclosure in `settings.js`, every field still posted; no-JS renders everything), the
+Ollama runtime note only under Ollama, no local default model presented for the gateway, and a
+*Test connection* verdict inline. What "simple" will NOT mean: removing the classification, the
+approval acknowledgment, or the loopback locks — Law 1 stays.
+
 ## 2026-09-11 (b) — the Ask panel's answers stop mid-sentence, then come back empty (two pastes + the settings screenshot; the backend is the approved gateway)
 
 ### OR-15 — "I want you to do option 3 and I want you to raise the limit to the max." · `SHIPPED (ADR-0486, v1.0.256)`
@@ -410,6 +460,7 @@ rendered by the panel.
 |---|---|---|---|
 | V-1 | **v1.0.205 (or later) arm-once flow on the NASA machine**: reinstall, arm once (endpoint + acknowledgment + key + model), quit, then a plain double-click launch must come up ARMED with the model catalog populated | Desktop icon → AI Settings shows "Approved-gateway AI is ON" without any re-entry | Tell the session; HANDOFF "Next" clears its first item |
 | V-2 | **The gateway accepts the Bearer key** (`Authorization: Bearer <AI-Hub key>`) | Same check as V-1 — the catalog populating IS the proof; still-401-with-key means the AI Hub uses a different scheme: capture their documented auth header (name/format, never the key value) | A follow-on ADR implements the real scheme on evidence |
+| V-4 | **The gateway's own reason for refusing the saved key** (OR-16): the v1.0.257 banner quotes it; the step-2 PowerShell (`WWW-Authenticate` + the 401 body) says the same | Open AI Settings on v1.0.257 with the refused key saved; paste the banner's quoted reason (never the key) | If it names expiry / rotation: a fresh Hub key closes OR-16; if it names the scheme: a follow-on ADR implements the real one |
 | V-3 | **The AI transaction log records real gateway use** | After a few questions: `Get-Content "$env:USERPROFILE\.local\state\schedule-forensics\ai-transactions.jsonl" -Tail 20` shows `generate.sent/done` lines | Spot-check only; no session action needed if present |
 
 ### 🔒 BLOCKED ON OPERATOR (not verifiable or executable by an agent)

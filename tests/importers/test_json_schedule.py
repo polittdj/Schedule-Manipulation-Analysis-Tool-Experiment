@@ -441,7 +441,15 @@ def _maximal_schedule():  # type: ignore[no-untyped-def]
         resource_names=("Crane", "Crew A"),
         resource_ids=(21,),
         resource_assignments=(
-            Assignment(resource_id=21, work_minutes=960, units=0.5, remaining_work_minutes=180),
+            Assignment(
+                resource_id=21,
+                work_minutes=960,
+                units=0.5,
+                remaining_work_minutes=180,
+                # the booking's recorded window (ADR-0487) — written and read back
+                start=dt.datetime(2025, 1, 6, 8, 0),
+                finish=dt.datetime(2025, 1, 8, 12, 0),
+            ),
         ),
         task_type=TaskType.FIXED_WORK,
         ignore_resource_calendar=True,

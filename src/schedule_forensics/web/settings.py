@@ -167,23 +167,49 @@ def _gateway_status_note(cfg: AIConfig) -> str:
     if reason is not None:
         # HTTP 401/403 mean the NETWORK path works and the gateway answered — the request
         # lacked (or presented an unaccepted) credential. Say what to DO, not just the code
-        # (field report, ADR-0403: the operator photographed exactly this state).
-        if "401" in reason or "403" in reason:
-            hint = (
-                " The gateway answered but <b>requires authentication</b>: paste your "
-                "organization-issued key (e.g. from the NASA AI Hub) into the <b>Gateway API "
-                "key</b> field below and Save. If a saved key still gets this, the key may be "
-                "expired or not yet entitled to this gateway."
+        # (field report, ADR-0403: the operator photographed exactly this state). Since OR-16
+        # (ADR-0488) the refusal is detected by the word-bounded test, never a substring
+        # (ADR-0485's residual: "HTTP 4013" contains "401"), the note states WHICH credential
+        # was sent — the saved key or the environment variable, and how long it is; never its
+        # characters (ADR-0403) — so a cut paste, a rotated key and a missing key each read
+        # differently, and the gateway's own reason, when it gave one, rides inside ``reason``.
+        if is_auth_refusal(reason):
+            key = factory.resolve_gateway_api_key(cfg)
+            if not key:
+                hint = (
+                    " The gateway answered but <b>requires authentication</b>, and the tool "
+                    "holds NO key: paste your organization-issued key (e.g. from the NASA AI "
+                    "Hub) into the <b>Gateway API key</b> field below and Save."
+                )
+            else:
+                source = (
+                    "the saved key"
+                    if cfg.gateway_api_key
+                    else "the <code>SF_GATEWAY_API_KEY</code> environment variable"
+                )
+                hint = (
+                    f" The gateway answered and <b>refused the credential the tool sent</b> "
+                    f"&mdash; {source}, {len(key)} characters. A key that worked before and is "
+                    "refused now has usually expired or been rotated at the AI Hub, or is not "
+                    "entitled to this gateway: paste the CURRENT key from the Hub into the "
+                    "<b>Gateway API key</b> field below and Save (what you paste replaces the "
+                    "saved key; blank keeps it). Compare that length with the key the Hub "
+                    "shows &mdash; a shorter saved key is a cut paste."
+                )
+            lead = (
+                f"<code>{_e(cfg.gateway_endpoint)}</code> answered but refused the request: "
+                f"{_e(reason)}."
             )
         else:
             hint = (
                 " The gateway is only reachable from networks your organization connects to "
                 "it; check your network, then reload this page."
             )
+            lead = f"could not reach <code>{_e(cfg.gateway_endpoint)}</code>: {_e(reason)}."
         return (
-            f'<div class="notice err">Approved-gateway AI is OFF — could not reach '
-            f"<code>{_e(cfg.gateway_endpoint)}</code>: {_e(reason)}.{hint} Until it answers, "
-            "answers fall back to the offline deterministic engine (nothing is sent).</div>"
+            f'<div class="notice err">Approved-gateway AI is OFF — {lead}{hint} Until it '
+            "answers, answers fall back to the offline deterministic engine (nothing is "
+            "sent).</div>"
         )
     return (
         '<div class="notice ok">Approved-gateway AI is ON — '
@@ -552,9 +578,13 @@ def _settings_body(state: SessionState, runtime_note: str = "") -> str:
     # The credential is NEVER echoed back into the page (ADR-0403): the input renders empty
     # every time, and only the placeholder discloses whether a key is currently held —
     # resolved the same way routing resolves it (config first, then SF_GATEWAY_API_KEY).
+    # its LENGTH is disclosed (OR-16): a cut paste is invisible behind a masked field, and the
+    # length is the one thing the operator can compare against the key the Hub shows
+    held_key = factory.resolve_gateway_api_key(cfg)
     gateway_key_placeholder = (
-        "(a key is saved — leave blank to keep it)"
-        if factory.resolve_gateway_api_key(cfg)
+        f"(a key is saved — {len(held_key)} characters; leave blank to keep it, paste a new one "
+        "to replace it)"
+        if held_key
         else "(none set — paste your organization-issued key)"
     )
     # the local server's API token (ADR-0485) is a credential in the same sense: never echoed,
@@ -605,7 +635,7 @@ def _settings_body(state: SessionState, runtime_note: str = "") -> str:
 {_user_tip(tip_text)}
 <p>Active backend: <b>{_e(backend.name)}</b> &middot; installed models: {model_list}
 &middot; cross-check model: <b>{second_status}</b></p>
-{status_note}{runtime_note}
+{status_note}<div data-backend-only="ollama">{runtime_note}</div>
 <form action="/settings" method=post>
 <p>Classification:
 <select name=classification>
@@ -623,9 +653,12 @@ def _settings_body(state: SessionState, runtime_note: str = "") -> str:
 <p>Generation timeout (seconds):
 <input name=gen_timeout type=number min=30 max=3600 step=10 value="{_e(int(cfg.gen_timeout))}"
  title="How long a single answer may take. Defaults to the maximum (3600 s = 1 hour) so a big, slow model (e.g. llama3.1:70b) can always finish; lower it if you prefer to cap it."> <span class=muted>(default = max, 3600 s)</span></p>
+<div data-backend-only="openai gateway">
 <p>Answer length limit (tokens, OpenAI-compatible and approved-gateway backends):
 <input name=answer_max_tokens type=number min=0 max={MAX_ANSWER_TOKENS} step=256 value="{_e(int(cfg.answer_max_tokens))}"
  title="Sent as max_tokens on every generation to an OpenAI-compatible server or the approved gateway, so a long forensic answer is not cut short by the server&rsquo;s own default. A thinking model spends part of this budget reasoning before it writes. A server that rejects the value is asked once more without it, and the answer says so. 0 = send no limit."> <span class=muted>({MIN_ANSWER_TOKENS:,}&ndash;{MAX_ANSWER_TOKENS:,} tokens; <b>default = max</b>; 0 = leave it to the server)</span></p>
+</div>
+<div data-backend-only="ollama">
 <p>Ollama context window (tokens, Ollama backend only):
 <input name=num_ctx type=number min=0 max={MAX_NUM_CTX} step=1024 value="{_e(int(cfg.num_ctx))}"
  title="Sent as Ollama&rsquo;s num_ctx on every generation. 0 asks for nothing and leaves your server&rsquo;s own setting in charge. Raising it costs memory: the KV cache grows with the window and is multiplied by OLLAMA_NUM_PARALLEL, and a window your GPU cannot hold spills to system RAM and can make the machine crawl."> <span class=muted>({MIN_NUM_CTX:,}&ndash;{MAX_NUM_CTX:,} tokens; <b>0 = leave it to the server</b>)</span></p>
@@ -633,6 +666,8 @@ def _settings_body(state: SessionState, runtime_note: str = "") -> str:
 <p>Ollama endpoint (loopback only):
 <input name=endpoint size=28 value="{_e(cfg.endpoint)}"
  title="Ollama defaults to http://127.0.0.1:11434"></p>
+</div>
+<div data-backend-only="openai">
 <p>OpenAI-compatible endpoint (loopback only):
 <input name=openai_endpoint size=28 value="{_e(cfg.openai_endpoint)}"
  title="LM Studio defaults to http://127.0.0.1:1234; llamafile to http://127.0.0.1:8080"></p>
@@ -640,6 +675,8 @@ def _settings_body(state: SessionState, runtime_note: str = "") -> str:
 <input name=openai_api_key type=password size=36 value="" autocomplete=off
  placeholder="{openai_key_placeholder}"
  title="Only needed when your OpenAI-compatible server requires authentication (LM Studio: Developer &rarr; Server Settings &rarr; Require Authentication, then Manage Tokens). Saved with your settings on THIS machine (Windows-encrypted for your user account) so every launch comes up ready; leave blank on later saves to keep it. Turn the AI off (or a session wipe) clears it."></p>
+</div>
+<div data-backend-only="gateway">
 <p>Approved gateway endpoint (organization-approved list only — used by the Approved AI gateway backend):
 <select name=gateway_endpoint id=gatewayEndpoint
  title="Only endpoints on the tool&rsquo;s approved-gateway allowlist (ADR-0402) can be selected; anything else is refused.">
@@ -653,6 +690,7 @@ def _settings_body(state: SessionState, runtime_note: str = "") -> str:
 <input name=gateway_api_key type=password size=36 value="" autocomplete=off
  placeholder="{gateway_key_placeholder}"
  title="Issued by your organization (e.g. via the NASA AI Hub). Saved with your settings on THIS machine (Windows-encrypted for your user account) so every launch comes up ready; leave blank on later saves to keep it. Turn the AI off (or a session wipe) clears it. SF_GATEWAY_API_KEY also works as a per-machine alternative."></p>
+</div>
 <p>AI answer mode:
 <select name=qa_mode>
 <option value=annotate{sel("annotate", cfg.qa_mode)}>Annotate (default) — the model may analyze and

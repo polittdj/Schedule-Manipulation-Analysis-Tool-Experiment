@@ -1268,3 +1268,33 @@ def test_registry_carries_only_assigned_crews_off_pattern_calendars() -> None:
     sch = parse_mspdi_text(_doc(_CREW_DOC))
     assert [c.uid for c in sch.calendars] == [1, 3]
     assert sch.calendars[1].working_minutes_per_day == 1440
+
+
+# --- the booking's recorded window (ADR-0487) ---------------------------------------------
+
+
+def test_assignment_windows_are_read_and_a_pair_spans_its_earliest_to_its_latest_row() -> None:
+    """``Assignment/Start`` and ``/Finish`` reach the model (the span a MATERIAL / COST
+    booking occupies is the one scheduling input the file carries for it); a task+resource
+    pair with several rows spans the earliest start to the latest finish; a booking whose
+    rows carry no dates has no window (None, never a fabricated instant)."""
+    import datetime as dt
+
+    body = (
+        "<Tasks><Task><UID>1</UID><Duration>PT8H0M0S</Duration></Task></Tasks>"
+        "<Resources><Resource><UID>1</UID><Name>Cleaning</Name><Type>0</Type></Resource>"
+        "<Resource><UID>2</UID><Name>Crew</Name><Type>1</Type></Resource></Resources>"
+        "<Assignments>"
+        "<Assignment><TaskUID>1</TaskUID><ResourceUID>1</ResourceUID>"
+        "<Start>2025-01-07T08:00:00</Start><Finish>2025-01-08T12:00:00</Finish></Assignment>"
+        "<Assignment><TaskUID>1</TaskUID><ResourceUID>1</ResourceUID>"
+        "<Start>2025-01-06T08:00:00</Start><Finish>2025-01-07T17:00:00</Finish></Assignment>"
+        "<Assignment><TaskUID>1</TaskUID><ResourceUID>2</ResourceUID></Assignment>"
+        "</Assignments>"
+    )
+    by_res = {
+        a.resource_id: a for a in parse_mspdi_text(_doc(body)).task_by_id(1).resource_assignments
+    }
+    assert by_res[1].start == dt.datetime(2025, 1, 6, 8, 0)
+    assert by_res[1].finish == dt.datetime(2025, 1, 8, 12, 0)
+    assert by_res[2].start is None and by_res[2].finish is None

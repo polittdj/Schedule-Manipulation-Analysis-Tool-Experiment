@@ -435,6 +435,37 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-12 — the "contour" was a booking the engine SKIPPED: check what the engine ignores before tuning what it computes (ADR-0487); and one request made OUTSIDE the tool settled a fault in one step (ADR-0488)
+
+- **What happened.** Two ADRs described R-56 as a duration-contour defect on the WORK bookings of
+  UIDs 385 / 403. The register's own first step — tally the bookings against the duration — was
+  executed against the `.mpp` through the vendored MPXJ, because the committed MSPDI carries ZERO
+  `TimephasedData` (MPXJ's writer never emits it). The work legs were exact to the minute; MS
+  Project's finish was the finish of a MATERIAL / COST booking the engine never looked at (non-WORK
+  resources contributed no leg since ADR-0474).
+- **What was tried and refuted.** Quantity ÷ rate, rate × duration, the duration on every calendar in
+  the file, the work legs' spans — each reproduces one head and fails the other (302's two bookings
+  with different quantities share one 36 h span; 385's span 24 h and 125 h). A data-date floor,
+  again. Regenerating the fixture from the intake `.mpp` — refuted by provenance: it is a later
+  re-save than the file Fuse analysed (the Fuse report's own figure for UID 403 decided it).
+- **What worked.** The one fact the file carries for such a booking — its recorded window — read as
+  a plan leg, measured on a scratch copy across the whole corpus BEFORE a model field existed:
+  updated3's finish −13 d → exact, 60 → 103 of 110 within a day, nothing else moved. Then the
+  segment-aware span (the contiguous ruler was one lunch gap late), then the perf count-gate caught
+  the first cut hashing the frozen `Calendar` (420 per 20 solves) — identity keys.
+- **The lesson.** A residual that survives two rules may not be in the thing the rules touch. List
+  what the engine deliberately IGNORES (resource types, fields, elements) and check whether the
+  reference tool ignores the same things, before refining what it computes. And "the XML cannot
+  explain it" is a statement about the converter's output, not about the file: read the source
+  binary through the converter's own library before calling a rule unrecoverable.
+- **The other lesson (OR-16).** The operator's "can't log in with the key" could have consumed a unit
+  chasing the tool; one request outside the tool — the same probe from PowerShell — returned the
+  same 401 and settled tool-vs-gateway before a line was written. Build the discriminator first;
+  then fix what the tool got wrong (it had thrown the gateway's own reason away).
+- **Instrument findings, three, each recorded in its ADR:** a page-wide substring matched a field's
+  TITLE text (the handoff had warned; it recurred); a mutation rig with only project-pattern legs
+  cannot see a disclosure mutation; a 4 KB read limit dropped a long reason instead of bounding it.
+
 ### 2026-09-11 (e) — a fixed bug is evidence against the hypothesis it lived under (ADR-0486)
 
 - **The mislabel I fixed was the mislabel that misled me.** ADR-0485 found that the Ask panel's note

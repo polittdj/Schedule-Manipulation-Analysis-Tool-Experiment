@@ -993,6 +993,7 @@ def _parse_assignments(
     work_by_task_res: dict[int, dict[int, int]] = {}
     units_by_task_res: dict[int, dict[int, float]] = {}
     remaining_by_task_res: dict[int, dict[int, int]] = {}
+    window_by_task_res: dict[int, dict[int, tuple[dt.datetime | None, dt.datetime | None]]] = {}
     assignments_el = root.find("Assignments")
     for assign_el in [] if assignments_el is None else assignments_el.findall("Assignment"):
         task_uid = _int(assign_el, "TaskUID")
@@ -1022,17 +1023,31 @@ def _parse_assignments(
             rem_map[resource_uid] = rem_map.get(resource_uid, 0) + max(
                 0, iso_duration_to_minutes(rem)
             )
+        # the booking's recorded window (ADR-0487): a pair with several rows spans the earliest
+        # start to the latest finish; a row without dates leaves the window as it is
+        w_start = parse_datetime(_text(assign_el, "Start"))
+        w_finish = parse_datetime(_text(assign_el, "Finish"))
+        if w_start is not None or w_finish is not None:
+            win_map = window_by_task_res.setdefault(task_uid, {})
+            prev = win_map.get(resource_uid, (None, None))
+            win_map[resource_uid] = (
+                min((x for x in (prev[0], w_start) if x is not None), default=None),
+                max((x for x in (prev[1], w_finish) if x is not None), default=None),
+            )
     assignments_by_task: dict[int, tuple[Assignment, ...]] = {}
     for task_uid, uids in uids_by_task.items():
         work_map = work_by_task_res.get(task_uid, {})
         units_map = units_by_task_res.get(task_uid, {})
         rem_map = remaining_by_task_res.get(task_uid, {})
+        win_map = window_by_task_res.get(task_uid, {})
         assignments_by_task[task_uid] = tuple(
             Assignment(
                 resource_id=ruid,
                 work_minutes=work_map.get(ruid, 0),
                 units=units_map.get(ruid, 1.0),
                 remaining_work_minutes=rem_map.get(ruid),
+                start=win_map.get(ruid, (None, None))[0],
+                finish=win_map.get(ruid, (None, None))[1],
             )
             for ruid in uids
         )
