@@ -236,6 +236,9 @@ def _task(raw: dict[str, Any]) -> Task:
                     if a.get("remaining_work_minutes") is None
                     else _int(a["remaining_work_minutes"], "remaining_work_minutes")
                 ),
+                # the booking's recorded window (ADR-0487); absent in every earlier Save
+                start=_dt(a.get("start")),
+                finish=_dt(a.get("finish")),
             )
             for a in raw["resource_assignments"]
             if isinstance(a, dict) and a.get("resource_id") is not None
@@ -487,6 +490,8 @@ def to_json_text(schedule: Schedule) -> str:
                     if a.remaining_work_minutes is None
                     else {"remaining_work_minutes": a.remaining_work_minutes}
                 )
+                | ({} if a.start is None else {"start": a.start.isoformat()})
+                | ({} if a.finish is None else {"finish": a.finish.isoformat()})
                 for a in t.resource_assignments
             ]
         # every field the parser reads is written back: a Save .json round-trip must not

@@ -17908,3 +17908,104 @@ called a flake turned out to have a mechanism (ADR-0442 UI-02, ADR-0443, ADR-046
   LESSONS-LEARNED (2026-09-11 (e)) · NEXT-SESSION-PROMPT refreshed.
 - **PR:** **draft #670**, head `bc087905` (eight checks expected — `installer/**` changed); the
   next session's close records the verdicts on the final head.
+
+## 2026-09-12 — #670 MERGED (ADR-0486, v1.0.256); R-56 CLOSED (ADR-0487): a material / cost booking occupies the span the file records for it — updated3's finish 13 d early → EXACT; OR-16 (ADR-0488): the gateway refused the operator's key, the tool now quotes the gateway's own reason and names the credential it sent, and AI Settings shows one backend at a time; v1.0.257
+
+- **#670 merged by the operator at 2026-09-12 00:01Z** — squash `c31259fe`; `main`'s own runs for the
+  squash: **CI 1846 success (00:42Z), installer-smoke 709 success (00:06Z)** (read from the Actions
+  API). Branch `claude/jolly-bohr-cs1rze` started at `c31259fe` (tree-identical to `origin/main`);
+  no merge-record PR (the #667 rule). The clone arrived shallow (`git log -1 -- tools/mpxj` read
+  `844e1d3a`, a graft lie) and was unshallowed FIRST (765 commits, 1.3 GB, ~1 min): it then reads
+  `42d92dc9`.
+- **R-56, the kickoff's unit — the register's own first step, executed.** The five Hard_File
+  snapshots' `<Assignment>` units / work were tallied against the `<Task>` duration: **no `TimephasedData`
+  exists in ANY committed MSPDI golden** (MPXJ's writer does not emit it), so the "contour" was read from
+  the `.mpp` itself through the vendored MPXJ 16.2.0 (`getRawTimephasedRemainingRegularWork`,
+  `getWorkSplits`, `Resource.getType`). Finding: the engine's WORK legs are exact to the minute on
+  both heads (385: CST 4,224 min on the 16 h calendar → 10-20 06:24; 302: CSL 30 h → 10-19 15:00) and
+  MS Project's task finish is the finish of a MATERIAL / COST booking the engine skipped — 385's
+  *Cleaning* (COST, 0.06 %, 2.5 units) 10-14 08:00 → 11-04 14:24; 302's *Cleaning* and *AI Token Time*
+  BOTH 36 h + one 8 h split gap → 10-21 12:00. No stored quantity or rate reproduces both spans
+  (quantity ÷ rate, rate × duration, the duration on any calendar, the work legs — each fails one
+  head); the `.mpp` reports no split on 385 and MS Project's own `Duration` (94.4 h) is not the task's
+  span on the project calendar (125.4 h). The file DOES record each booking's window.
+- **Chain heads re-derived on the live engine** (finish > 1 d off, every predecessor agreeing):
+  **five** — 385 (−15.33 d), 403 (−12.76), 302 (−1.88), 188 (−1.0), 300 (−1.5) — plus 45 inherited;
+  ADR-0476's "seven" was a threshold artefact. **403 is a leveling SPLIT**: two work pieces seven days
+  apart in the `.mpp` (10-19 15:00 → 10-21 12:00, 10-28 13:00 → 10-30 15:00 in the intake save).
+- **Provenance (QC-2):** the intake `Hard_File_updated3.mpp` converts to Revision 5 (LastSaved
+  2026-07-15 13:26); the fixture is Revision 2 (07-09 10:12); 12 tasks / 12 bookings differ, all
+  re-leveling (129, 235, 237, 267, 281, 283, 289, 315, 392, 402, 403, 404; 403's finish 10-30 vs
+  11-05; 267's delay 190,200 vs 262,200). Fuse's *update2 vs update3 Forensic Analysis Report* (read
+  with the standard library — no openpyxl here) records 403 finishing **2026-11-05 09:12** = the
+  fixture → the fixture is Fuse's file; the intake `.mpp` is a later re-save. Not regenerated.
+  `Hard_File.mpp` (Rev 4 vs 1) and `updated2.mpp` convert to byte-identical task / booking sets.
+- **The rule, measured on a scratch copy (spans read from the XML into a side table, `PYTHONPATH`
+  shadow proven by `cpm.__file__`) BEFORE a model field existed — pristine → rule, every golden:**
+  updated3 (both copies) **finish gap −13.00 d → 0.00 d, within-1d 60 → 103 / 110, stored slack exact
+  9 → 42 / 68, Critical 103 → 103**; Hard_File / updated / 24hr / updated4 byte-identical; updated2
+  Critical 80 → 81, else unmoved; LTF / LTF2 / Leveled / ssi copies unmoved on every figure (7 spans
+  used, none primary); Project2 / Project5 unmoved (0 spans); EVM1 unmoved; **EVM2 −2.21 → −1.00 d,
+  within-1d 5 → 6**. UID 385 landed 15:24 vs the stored 14:24 — the contiguous projection ruler
+  (`_wall_to_offset`) over-counts a lunch gap; the shipped `_recorded_span` is segment-aware: 7,524
+  minutes, **14:24 exact**; 302 **10-21 12:00 exact**; 403 unchanged.
+- **Shipped (ADR-0487, v1.0.257):** `Assignment.start` / `finish` (the booking's recorded window;
+  `None` when unrecorded) · `importers/mspdi.py` reads them (earliest start → latest finish per pair) ·
+  `json_schedule` round-trips them (the maximal fixture carries a window; the D5 writer census pins it)
+  · `engine/cpm.py`: `_recorded_span`, `_LegShape.recorded`, `_Exec.recorded`, the non-work leg in
+  `_task_shape` (WORK bookings never), the two plan-forming rules admit a ratio above 1,
+  `CPMResult.booking_span_driven` (**210, 302, 385** on updated3 — 210 a completed fixed-duration task
+  whose 24-hour crew leg alone ends four days early; the material window carries the plan to the
+  recorded finish, which ADR-0476's pin confirms) · the oracle re-pinned toward the reference (updated3
+  1 d / 103 / 103 + an exact-instant test) · the EVM2 residual re-pinned knowingly (finish 2012-10-02 →
+  10-03, NFI −20 → −21, Acumen −22) · report rows **R-56 CLOSED, R-60 / R-61 registered**.
+- **OR-16 (mid-session, the operator's screenshot + two messages).** *"I can't log into Opus 4.8
+  Thinking even if I put in the API Gateway Key"* — v1.0.256, a key saved, the probe 401. Refuted first:
+  the key path v1.0.254 → v1.0.256 diffed (form → session → DPAPI store → reload → Bearer on
+  `GET /v1/models`: unchanged) and proven on the real code (round trip byte-identical; the probe carries
+  the key; a stale key yields the photographed text; POST replaces / blank keeps). The discriminator,
+  at this session's request, on the NASA machine outside the tool: the same request from PowerShell →
+  **HTTP 401** with the same key (masked paste 25 characters). The gateway refuses the key itself.
+  **Shipped (ADR-0488):** `ai/refusal.py` (`http_error_body` once-read + cached on the exception,
+  shared with `limit_rejected`; `http_refusal_detail` — `WWW-Authenticate` `error_description` /
+  `error`, else `error.message` / `error` / `message` / `detail` / first text line; ≤ 160 chars, one
+  line, markup never, a truncated body's opening run) · `probe_error_text` → `server returned HTTP 401
+  (its reason: "…")`, the bare status when none · the gateway banner: *answered but refused the
+  credential the tool sent — the saved key, 25 characters* (or `SF_GATEWAY_API_KEY`), the CURRENT-key
+  remedy; *requires authentication … paste your key* only when NO key is held · the placeholder *"a key
+  is saved — 25 characters; …"* · `is_auth_refusal` in place of the substring (ADR-0485's residual).
+  **OR-16b** (*"as user friendly and simple as possible"*): `data-backend-only` on every
+  backend-specific row (Ollama window + cost note + endpoint + the runtime note above the form; the
+  OpenAI endpoint + local token; the gateway endpoint + acknowledgment + key; the answer-length limit for
+  `openai gateway`); `settings.js::syncVisibility` on load and on both pickers' change (`hidden`;
+  every field posts; no-JS shows all). Refused: a *Test connection* button (the banner and *Refresh
+  models* already report the verdict inline); removing the classification / acknowledgment / loopback
+  locks. Ledger: OR-16 shipped in part, OR-16b shipped, **V-4** pending (the step-2 PowerShell — the
+  `WWW-Authenticate` header and the body — requested, not received).
+- **Verification (QC-1):** red-first — `test_recorded_booking_span.py` and `test_refusal_reason.py`
+  cannot import on the pristine tree; the oracle module on the pristine engine **2 failed / 8 passed**
+  by name; the four new settings pins **4 failed / 24**; the disclosure pins **3 failed / 2** (the two
+  negative pins green by construction). Green: engine + parity + importers + perf + ai + model **455
+  passed** (the EVM re-pin then 6 passed); `-m parity` **97 passed** in 5:04; the AI / settings
+  neighbourhood **160 passed**, then **100 passed** with the disclosure; the Chromium disclosure test
+  **4 passed** (console / daylight / apollo / jarvis). **Mutation battery: 23 mutants / 23 RED by
+  name** (12 R-56, 11 OR-16) on shadowed copies with a green control — after two instrument findings:
+  `m12` (any recorded leg flags the task) read GREEN because the "shorter window" rig had only
+  project-pattern legs (the fast path drops them; the disclosure was empty either way) — the rig now
+  carries the two-shift crew; `o11`'s anchor went stale when `reason` was renamed `said` for mypy.
+  **The perf count-gate caught a real first-cut regression:** recorded legs in a `set` keyed on the
+  frozen `Calendar` — 420 `__hash__` calls across 20 solves; identity keys now, 0. Two more instrument
+  findings: a page-wide `"requires authentication" not in page` matched the OpenAI token's title text
+  (the pins read the gateway banner alone now); a 10 KB body exceeded the 4 KB read and the JSON no
+  longer parsed (the truncated-body fallback exists because that test failed).
+- **The gate:** both ruff binaries clean (0.15.8 on PATH, 0.16.7 = CI), `ruff format --check` clean,
+  mypy strict 165 files clean, bandit exit 0 (one Low, then none after `contextlib.suppress`),
+  `node --check` clean; **full suite 5,308 passed / 5 skipped / 2 failed in 41:44 — both reds were pins the change moved on purpose and re-pinned in the same commit with their reasons beside them: the `Assignment` schema freeze (the two recorded-window fields) and the Hard_File → updated3 change-effects sentence 33 → 32 of 33 (restoring UID 384's data-date SNET now moves the target finish −1 wd, because its successor 385 is on the driving chain exactly as in MS Project); the two modules then green**; `-m parity` **97 passed in 4:50, run after the suite on the same tree**.
+- **Build:** version 1.0.257; wheel + nine installers rebuilt (`SF_MPXJ_REF=42d92dc9…`, the clone
+  unshallowed; `git log -1 -- tools/mpxj` reads that sha itself).
+- **Measured, not fixed:** `/settings` scrolls sideways — **1,877 px** (console / apollo / jarvis) /
+  **1,641** (daylight) at a 1,440 viewport (the registered over-wide `<select>`; its own unit).
+- **Docs:** ADR-0487 · ADR-0488 · OPERATOR-REQUESTS (OR-16, OR-16b, V-4) · AUDIT report (R-56 CLOSED,
+  R-60, R-61) · PARITY-REPORT (the R-56 paragraph) · HANDOFF rotated · LESSONS-LEARNED (2026-09-12) ·
+  NEXT-SESSION-PROMPT refreshed (`/margin` first — owed and not delivered this session).
+- **PR:** the follow-up entry below records the draft PR's number and head.

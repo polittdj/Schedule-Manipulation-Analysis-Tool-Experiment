@@ -24,6 +24,13 @@ finish-within-a-day 42 -> 60, stored slack 6 -> 9, Critical 96 -> 103; updated2 
 1558 -> 1569; LTF2 1563 -> 1589 and slack 655 -> 668 — and Project2 / Project5 did not move at all.
 Closing R-56 is what tightens the 13 back down; nothing else in this file may loosen.
 
+ADR-0487 (R-56) closed it: the two heads, UIDs 302 and 385, are finished by MATERIAL / COST
+bookings whose recorded windows the engine now reads as execution legs — updated3's project
+finish is EXACT (2026-12-12 17:00), finish-within-a-day 60 -> 103 of 110, stored slack exact
+9 -> 42 of 68, Critical 103 unmoved; every other golden below is byte-identical. The remaining
+seven disagreements are UID 403's leveling split and its chain, the two day-boundary
+milestones and UID 188 — none a contour.
+
 Red first (pre-ADR-0474 engine): Hard_File finish +42.0 d, critical agreement 54 / 110;
 Project2 finish 2027-08-30 vs stored 09-14, stored slack exact on 7 / 65.
 """
@@ -97,11 +104,30 @@ _HARD_FILE = [
     (
         "fuse_hardfile/Hard_File_updated3.mspdi.xml.gz",
         dt.datetime(2026, 12, 12, 17, 0),
-        13,
-        60,
+        1,
+        103,
         103,
     ),
 ]
+
+
+def test_updated3_finishes_where_ms_project_finishes_once_recorded_bookings_are_read() -> None:
+    """R-56 (ADR-0487): UIDs 302 and 385 are finished by material / cost bookings whose
+    recorded windows the engine now reads. The project finish is EXACT (it read 13 days early),
+    both heads land on the recorded instant, and the disclosure names them. UID 403 is the
+    remaining head — a leveling SPLIT (seven days of gap between two work pieces in the .mpp)
+    the MSPDI does not carry; its own row."""
+    sch, res = _load("fuse_hardfile/Hard_File_updated3.mspdi.xml.gz")
+    assert _finish_wall(sch, res) == dt.datetime(2026, 12, 12, 17, 0)
+    assert res.timing(385).early_finish_wall == dt.datetime(2026, 11, 4, 14, 24)
+    assert res.timing(302).early_finish_wall == dt.datetime(2026, 10, 21, 12, 0)
+    # UID 210 too: a COMPLETED fixed-duration task whose 24-hour crew leg alone would end four
+    # days early; its material window carries the plan to the recorded finish, which the
+    # completed-window pin (ADR-0476) then confirms — the disclosure names what the plan did
+    assert res.booking_span_driven == (210, 302, 385)
+    assert res.timing(403).early_finish_wall == dt.datetime(2026, 10, 23, 15, 0)
+    census = _census(sch, res)
+    assert census["tf_exact"] >= 42 and census["tf_n"] == 68
 
 
 @pytest.mark.parametrize(("rel", "stored", "days", "finish_floor", "critical_floor"), _HARD_FILE)

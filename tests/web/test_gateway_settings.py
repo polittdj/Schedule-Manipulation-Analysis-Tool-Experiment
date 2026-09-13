@@ -408,3 +408,86 @@ def test_the_401_state_names_the_missing_credential(
     page = client.get("/settings").text
     assert "HTTP 401" in page
     assert "Gateway API key" in page and "requires authentication" in page
+
+
+# --- OR-16: the refusal names the credential the tool sent, and the gateway's own reason ------
+
+
+def _gateway_banner(page: str) -> str:
+    """The gateway status notice alone — the page also carries the local server's field
+    titles ("requires authentication"), so a page-wide substring cannot fail honestly."""
+    start = page.index('<div class="notice err">Approved-gateway AI is OFF')
+    return page[start : page.index("</div>", start)]
+
+
+def _refusing(reason: str, tmp_path: Path) -> GatewayBackend:
+    class _Refused(GatewayBackend):
+        def unavailable_reason(self) -> str:
+            return reason
+
+    return _Refused(
+        ENDPOINT, model="m", classification="CLASSIFIED", opener=_up, log_path=tmp_path / "t.jsonl"
+    )
+
+
+def test_a_refused_saved_key_is_named_with_its_length_and_the_gateways_reason(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The 2026-09-12 field state: a key IS saved and the probe still gets 401. "Paste your
+    key" is the wrong advice; the note must say which credential was sent (its source and
+    length — never its characters, ADR-0403), carry the gateway's own words, and send the
+    operator for the CURRENT key."""
+    monkeypatch.delenv("SF_GATEWAY_API_KEY", raising=False)
+    be = _refusing('server returned HTTP 401 (its reason: "The access token expired")', tmp_path)
+    monkeypatch.setattr(settings_module, "_gateway_or_none", lambda cfg: be)
+    _arm(client, key="k" * 25)
+    page = client.get("/settings").text
+    banner = _gateway_banner(page)
+    assert "refused the credential the tool sent" in banner
+    assert "the saved key, 25 characters" in banner
+    assert "The access token expired" in banner
+    assert "paste the CURRENT key" in banner and "Gateway API key" in banner
+    assert "requires authentication" not in banner  # that is the NO-key wording
+    assert "could not reach" not in banner  # it WAS reached: the gateway answered
+    assert "k" * 25 not in page
+
+
+def test_an_environment_key_is_named_as_the_credential_sent(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("SF_GATEWAY_API_KEY", "e" * 40)
+    be = _refusing("server returned HTTP 403", tmp_path)
+    monkeypatch.setattr(settings_module, "_gateway_or_none", lambda cfg: be)
+    _arm(client)  # no key in the form: the environment variable is what routing resolves
+    page = client.get("/settings").text
+    banner = _gateway_banner(page)
+    assert "SF_GATEWAY_API_KEY" in banner and "40 characters" in banner
+    assert "refused the credential the tool sent" in banner
+    assert "e" * 40 not in page
+
+
+def test_a_status_that_merely_contains_401_is_not_a_refusal(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """ADR-0485's registered residual: the note detected a refusal by substring, so a
+    (hypothetical) "HTTP 4013" read as one. Word-bounded now, like every other consumer."""
+    monkeypatch.delenv("SF_GATEWAY_API_KEY", raising=False)
+    be = _refusing("server returned HTTP 4013", tmp_path)
+    monkeypatch.setattr(settings_module, "_gateway_or_none", lambda cfg: be)
+    _arm(client, key="k" * 25)
+    banner = _gateway_banner(client.get("/settings").text)
+    assert "could not reach" in banner and "HTTP 4013" in banner
+    assert "refused the credential" not in banner and "requires authentication" not in banner
+
+
+def test_the_key_placeholder_states_the_saved_keys_length(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A cut paste is invisible behind a masked field; its LENGTH is not a secret and is the
+    one thing the operator can compare against the key the Hub shows."""
+    monkeypatch.delenv("SF_GATEWAY_API_KEY", raising=False)
+    be = _refusing("server returned HTTP 401", tmp_path)
+    monkeypatch.setattr(settings_module, "_gateway_or_none", lambda cfg: be)
+    _arm(client, key="k" * 25)
+    page = client.get("/settings").text
+    assert "a key is saved — 25 characters" in page

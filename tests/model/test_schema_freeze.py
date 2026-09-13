@@ -75,7 +75,16 @@ _EXPECTED_FIELDS: dict[type[pydantic.BaseModel], set[str]] = {
         "custom_fields",
         "notes",
     },
-    Assignment: {"resource_id", "work_minutes", "units", "remaining_work_minutes"},
+    # start / finish: the booking's recorded window (ADR-0487) — a MATERIAL / COST booking's
+    # span, the one scheduling input the file carries for it; None when unrecorded
+    Assignment: {
+        "resource_id",
+        "work_minutes",
+        "units",
+        "remaining_work_minutes",
+        "start",
+        "finish",
+    },
     Relationship: {"predecessor_id", "successor_id", "type", "lag_minutes"},
     Resource: {
         "unique_id",

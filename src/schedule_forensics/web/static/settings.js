@@ -13,6 +13,13 @@
  *  2) CROSS-CHECK AUTOFILL. Turning the cross-check on copies the primary model id into the (still
  *     blank) second-model box so a one-click cross-check works; it never clobbers a chosen value.
  *
+ *  3) ONE BACKEND'S FIELDS AT A TIME (OR-16b, ADR-0488). A row that belongs to a backend carries
+ *     data-backend-only="<backend …>"; it is shown when one of those backends is the primary OR the
+ *     cross-check backend and hidden otherwise (the hidden attribute — nothing is removed from the
+ *     form, every field still posts, and without JavaScript every row shows). The operator asked
+ *     for a setup "as user friendly and simple as possible": two look-alike masked secret fields and
+ *     Ollama's endpoint, window and runtime note no longer render under a gateway session.
+ *
  * Dependency-free, same-origin only (air-gap): the only fetch THIS PAGE makes is to
  * /api/ai/models on this host — a gateway probe happens server-side, allowlisted and logged.
  */
@@ -82,10 +89,27 @@
       .catch(function () { if (statusEl) statusEl.textContent = "check failed"; });
   }
 
+  // Show a backend-specific row iff its backend is in use (primary or cross-check) — OR-16b.
+  function syncVisibility() {
+    var backendSel = $("backendSel");
+    var secondSel = $("secondBackend");
+    var primary = backendSel ? backendSel.value : "";
+    var second = secondSel ? secondSel.value : "";
+    var rows = document.querySelectorAll("[data-backend-only]");
+    Array.prototype.forEach.call(rows, function (el) {
+      var owners = (el.getAttribute("data-backend-only") || "").split(/\s+/);
+      var on = owners.indexOf(primary) >= 0 || owners.indexOf(second) >= 0;
+      el.hidden = !on;
+    });
+  }
+
   document.addEventListener("DOMContentLoaded", function () {
     var backendSel = $("backendSel");
     var primaryModel = $("primaryModel");
     var secondSel = $("secondBackend");
+    syncVisibility();
+    if (backendSel) backendSel.addEventListener("change", syncVisibility);
+    if (secondSel) secondSel.addEventListener("change", syncVisibility);
     var secondModel = $("secondModel");
     var primaryStatus = $("primaryModelStatus");
     var secondStatus = $("secondModelStatus");

@@ -33,6 +33,8 @@ import urllib.error
 from dataclasses import dataclass
 from typing import Any
 
+from schedule_forensics.ai.refusal import http_error_body
+
 #: The smallest answer budget worth sending — below this a forensic answer cannot even list
 #: its citations, and a server default is strictly better.
 MIN_ANSWER_TOKENS = 256
@@ -94,14 +96,8 @@ def limit_rejected(exc: BaseException) -> bool:
     """
     if not isinstance(exc, urllib.error.HTTPError) or exc.code != 400:
         return False
-    reader = getattr(exc, "read", None)
-    if not callable(reader):
-        return False
-    try:
-        body = reader()
-    except Exception:
-        return False
-    text = body.decode("utf-8", "replace") if isinstance(body, bytes) else str(body)
+    # read once, cached on the exception: the diagnostics quote the same body (OR-16)
+    text = http_error_body(exc).decode("utf-8", "replace")
     return _LIMIT_PARAM.search(text) is not None
 
 
