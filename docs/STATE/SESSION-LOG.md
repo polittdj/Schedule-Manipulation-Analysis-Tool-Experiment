@@ -18008,4 +18008,6 @@ called a flake turned out to have a mechanism (ADR-0442 UI-02, ADR-0443, ADR-046
 - **Docs:** ADR-0487 · ADR-0488 · OPERATOR-REQUESTS (OR-16, OR-16b, V-4) · AUDIT report (R-56 CLOSED,
   R-60, R-61) · PARITY-REPORT (the R-56 paragraph) · HANDOFF rotated · LESSONS-LEARNED (2026-09-12) ·
   NEXT-SESSION-PROMPT refreshed (`/margin` first — owed and not delivered this session).
-- **PR:** the follow-up entry below records the draft PR's number and head.
+- **PR:** **draft #671**, head `bdec5119` (branch `claude/jolly-bohr-cs1rze`; eight checks expected —
+  `installer/**` changed). The steward check-in an hour out reads the verdicts on the FINAL head with
+  `get_check_runs`, never `get_status`; the #667 width race is the one red that is not this PR's.
