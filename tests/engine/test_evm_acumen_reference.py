@@ -115,9 +115,13 @@ def test_known_residuals_are_documented(evm1: Schedule, evm2: Schedule) -> None:
     finish EXACTLY (it was 14 calendar days early), and the project finish moved 2012-10-01 →
     2012-10-02. The remaining 2 working days are a DIFFERENT defect, in the unstarted successor
     chain (UIDs 23/25/26/28/29/30 each still start 1-5 days before their stored dates), not the
-    progress override — so they are recorded here rather than folded into ADR-0309's claim."""
+    progress override — so they are recorded here rather than folded into ADR-0309's claim.
+
+    ADR-0487 closed **1 more**: UIDs 23 and 25 are finished by MATERIAL bookings whose recorded
+    windows the engine now reads, so the project finish moved 2012-10-02 → 2012-10-03 and the
+    Net Finish Impact -20 -> -21 (Acumen -22). One working day remains, in the same chain."""
     c2 = compute_cpm(evm2)
     fin2 = offset_to_datetime(evm2.project_start, c2.project_finish, evm2.calendar).date()
-    assert fin2 == dt.date(2012, 10, 2)  # RESIDUAL: Acumen 2012-10-04 (2 working days short)
+    assert fin2 == dt.date(2012, 10, 3)  # RESIDUAL: Acumen 2012-10-04 (1 working day short)
     nfi = compute_net_finish_impact(evm2, evm1)
-    assert nfi.value == -20.0  # RESIDUAL: Acumen -22
+    assert nfi.value == -21.0  # RESIDUAL: Acumen -22 (ADR-0487 closed one more day)

@@ -29,6 +29,15 @@ Scope of this engine (documented, not silently limited — Law 2):
   is approximated: a 24-hour task calendar yields the resource calendar exactly; any other
   task calendar wins (documented; two Hard_File activities). A same-pattern resource
   calendar changes nothing and stays on the integer fast path.
+* **A material / cost booking's RECORDED span honored** (ADR-0487, R-56): MS Project spreads
+  a MATERIAL or COST booking over a span that no stored quantity determines (measured on
+  Hard_File_updated3 — UID 302's two non-work bookings, 1 unit at 100 % and 0.15 units at
+  0.06 %, share one 36 h span; at UID 385 the 1-unit / 100 % booking spans 24 h and the
+  2.5-unit / 0.06 % booking 125 h), so the file's recorded
+  assignment window (``Assignment.start`` / ``finish``) is read as a leg of the execution
+  plan and the task finishes where the reference tool finishes it; the task is disclosed on
+  :attr:`CPMResult.booking_span_driven`. A WORK booking's window is never read — the engine
+  reproduces it (ADR-0474). updated3's project finish: 13 days early → exact.
 * **Leveling delay honored** (ADR-0474): MS Project's stored resource-leveling delay is
   ELAPSED time added after the task's own calendar first admits it (Hard_File UID 403:
   Friday 08:00 + 25 d 7 h → the stored Tuesday 15:00). Delayed UniqueIDs are reported on
@@ -203,6 +212,12 @@ class CPMResult:
     #: Reported separately — a stored scheduling input, neither an unsupported date
     #: (``date_driven``) nor evidence of work begun (``actual_start_driven``).
     leveling_driven: tuple[int, ...] = ()
+    #: UniqueIDs whose early FINISH a MATERIAL / COST booking's RECORDED span decides
+    #: (ADR-0487): MS Project spreads such a booking over a window no stored quantity
+    #: determines, the file records the window, and the engine reads it as the task's primary
+    #: execution leg. A stored scheduling input read like the leveling delay — neither an
+    #: unsupported date (``date_driven``) nor evidence of work begun.
+    booking_span_driven: tuple[int, ...] = ()
     #: The true wall-clock instant of the network finish when an off-calendar task's
     #: finish is not exactly representable on the project axis (e.g. an elapsed task
     #: ending on a weekend). ``None`` when every task follows the project calendar —
@@ -609,20 +624,25 @@ class _Exec(NamedTuple):
     — the task's OWN calendar (the 24/7 calendar for an elapsed duration), else the project
     calendar. MS Project measures Total Slack on the task calendar even when the assignment
     runs on a resource calendar (Hard_File UID 178: ES Mon 17:00 → LS Tue 13:00 is 240 project
-    minutes, the stored slack; the crew's 16-hour calendar would read 720)."""
+    minutes, the stored slack; the crew's 16-hour calendar would read 720). ``recorded`` says
+    the PRIMARY leg is a material / cost booking's recorded span (ADR-0487) — the finish is
+    then the file's, and the task is disclosed on ``CPMResult.booking_span_driven``."""
 
     legs: _Plan
     axis: Calendar
+    recorded: bool = False
 
 
 class _LegShape(NamedTuple):
     """One execution leg before the solve's durations are known: its calendar, the share of the
-    task's EFFECTIVE duration it spans (1.0 = the whole task), and whether that calendar differs
-    materially from the project calendar."""
+    task's EFFECTIVE duration it spans (1.0 = the whole task; above 1.0 only for a recorded
+    material / cost span, ADR-0487), whether that calendar differs materially from the project
+    calendar, and whether the leg IS a recorded span."""
 
     calendar: Calendar
     ratio: float
     off_pattern: bool
+    recorded: bool = False
 
 
 class _PlanShape(NamedTuple):
@@ -664,17 +684,30 @@ def _task_shape(t: Task, ctx: _ShapeContext) -> _PlanShape | None:
         res_by_id = ctx.schedule.resources_by_id
         for a in t.resource_assignments:
             res = res_by_id.get(a.resource_id)
-            if (
-                res is None
-                or res.type is not ResourceType.WORK
-                or a.work_minutes <= 0
-                or a.units <= 0
-            ):
+            if res is None:
                 continue
             rcal = ctx.by_uid.get(res.calendar_uid) if res.calendar_uid is not None else None
             if rcal is None or _same_pattern(rcal, ctx):
                 rcal = ctx.schedule.calendar
             leg_cal = rcal if task_cal is None or _is_24x7(task_cal) else task_cal
+            if res.type is not ResourceType.WORK:
+                # a MATERIAL / COST booking (ADR-0487): MS Project spreads it over a span no
+                # stored quantity determines; the file RECORDS the span, and the engine reads
+                # it as a leg — the booking's window on the crew's calendar — so the task
+                # finishes where the reference tool finishes it. No window, no leg.
+                if a.start is None or a.finish is None:
+                    continue
+                span = _recorded_span(leg_cal, a.start, a.finish)
+                if span <= 0:
+                    continue
+                legs.append(
+                    _LegShape(
+                        leg_cal, span / t.duration_minutes, not _same_pattern(leg_cal, ctx), True
+                    )
+                )
+                continue
+            if a.work_minutes <= 0 or a.units <= 0:
+                continue
             # a FIXED_UNITS assignment runs work / units of its calendar (it may end before
             # the task: Hard_File UID 200); a fixed-duration / fixed-work assignment spans
             # the whole task, its work contoured over it (Large Test File2: 78 of 117
@@ -687,8 +720,9 @@ def _task_shape(t: Task, ctx: _ShapeContext) -> _PlanShape | None:
             )
             legs.append(_LegShape(leg_cal, ratio, not _same_pattern(leg_cal, ctx)))
     # legs that all sit on the project pattern under no task calendar can never form a plan,
-    # whatever the durations: they are not carried
-    if legs and task_cal is None and not any(leg.off_pattern for leg in legs):
+    # whatever the durations — unless one of them outspans the task (a recorded material /
+    # cost span, ADR-0487): the fast path could not carry the task past its duration
+    if legs and task_cal is None and not any(leg.off_pattern or leg.ratio > 1.0 for leg in legs):
         legs = []
     leveled = t.leveling_delay_minutes > 0
     if not legs and task_cal is None and not leveled:
@@ -737,6 +771,8 @@ def _execution_plans(
       resource carries none or a same-pattern one), spanning ``min(1, (work / units) /
       stored duration) x duration``; a task calendar intersects: a 24-hour task calendar
       yields the resource calendar, any other task calendar wins (approximation);
+    * a MATERIAL / COST booking with a recorded window: one leg spanning that window on the
+      crew's calendar — the span the file records, the one input it carries (ADR-0487);
     * a materially different task calendar with no such legs → one leg on it;
     * a leveling delay on a project-calendar task → one leg on the project calendar, so the
       delay's elapsed arithmetic runs segment-aware on the wall path.
@@ -769,15 +805,20 @@ def _execution_plans(
             out[uid] = _Exec(((_ELAPSED_CALENDAR, dur),), _ELAPSED_CALENDAR)
             continue
         legs: list[_Leg] = []
+        # recorded legs by calendar IDENTITY and span — never by hashing the frozen Calendar
+        # model on a solver the SRA calls a thousand times (ADR-0474's latency amendment)
+        recorded: set[tuple[int, int]] = set()
         off_pattern = False
-        for leg_cal, ratio, off in shape.legs:
+        for leg_cal, ratio, off, rec in shape.legs:
             span = round(ratio * dur)
             if span > 0:
                 legs.append((leg_cal, span))
                 off_pattern = off_pattern or off
+                if rec:
+                    recorded.add((id(leg_cal), span))
         task_cal = shape.task_calendar
         plan: _Plan
-        if legs and (off_pattern or task_cal is not None):
+        if legs and (off_pattern or task_cal is not None or any(s > dur for _, s in legs)):
             plan = tuple(dict.fromkeys(legs))
         elif task_cal is not None:
             plan = ((task_cal, dur),)
@@ -797,7 +838,11 @@ def _execution_plans(
                     reverse=True,
                 )
             )
-        out[uid] = _Exec(plan, task_cal if task_cal is not None else schedule.calendar)
+        out[uid] = _Exec(
+            plan,
+            task_cal if task_cal is not None else schedule.calendar,
+            (id(plan[0][0]), plan[0][1]) in recorded,
+        )
     return out
 
 
@@ -1028,6 +1073,30 @@ def _wall_to_offset(start: dt.datetime, wall: dt.datetime, cal: Calendar) -> int
     projects up to the gap width LATER than its true worked minutes (never earlier), one
     boundary per off-calendar link; the true instants still ride ``TaskTiming.*_wall``."""
     return datetime_to_offset(start, wall, cal)
+
+
+def _recorded_span(cal: Calendar, start: dt.datetime, finish: dt.datetime) -> int:
+    """Working minutes of ``cal`` inside the RECORDED window ``[start, finish]`` — the span a
+    material / cost booking occupies (ADR-0487). Segment-aware at both ends (a 14:24 finish on
+    a 08-12 / 13-17 day is 324 minutes into it, not 384: the contiguous projection ruler
+    over-counts a lunch gap by its width, one hour late on Hard_File_updated3 UID 385), whole
+    days by the ruler's count, elapsed time on a 24/7 calendar. 0 for an empty or inverted
+    window."""
+    if finish <= start:
+        return 0
+    r = _ruler(cal)
+    if r.is_24x7:
+        return int((finish - start).total_seconds() // 60)
+    d0, d1 = start.date(), finish.date()
+    worked_by = cal.intraday_worked_minutes
+    start_tod = start.hour * 60 + start.minute
+    finish_tod = finish.hour * 60 + finish.minute
+    if d0 == d1:
+        return worked_by(finish_tod) - worked_by(start_tod) if r.is_working_day(d0) else 0
+    first = r.mpd - worked_by(start_tod) if r.is_working_day(d0) else 0
+    middle = _count_working_days_r(r, d0 + dt.timedelta(days=1), d1) * r.mpd
+    last = worked_by(finish_tod) if r.is_working_day(d1) else 0
+    return first + middle + last
 
 
 def _is_24x7(cal: Calendar) -> bool:
@@ -1594,6 +1663,8 @@ def compute_cpm(
     actual_finish_driven: list[int] = []
     #: UIDs whose early start carries the stored leveling delay (ADR-0474).
     leveling_driven: list[int] = []
+    #: UIDs whose finish a MATERIAL / COST booking's recorded span decides (ADR-0487).
+    booking_span_driven: list[int] = []
 
     def _pred_finish_wall(p: int) -> dt.datetime:
         if p in exec_plan:
@@ -1608,7 +1679,10 @@ def compute_cpm(
     for tid in order:
         dur_s = duration[tid]
         if tid in exec_plan:
-            plan, cal_t = exec_plan[tid]  # the legs, and the task's slack axis
+            ex = exec_plan[tid]
+            plan, cal_t = ex.legs, ex.axis  # the legs, and the task's slack axis
+            if ex.recorded:
+                booking_span_driven.append(tid)
             task = task_by_id[tid]
             # the pure logic+constraint early start, as a wall instant on the task's calendar
             cands: list[dt.datetime] = [ps]
@@ -1822,7 +1896,7 @@ def compute_cpm(
         # not a forecast; it must at least be self-consistent.
         dur_p = early_finish[tid] - early_start[tid] if tid in actual_finish_pin else duration[tid]
         if tid in exec_plan:
-            plan, cal_t = exec_plan[tid]
+            plan, cal_t = exec_plan[tid].legs, exec_plan[tid].axis
             task = task_by_id[tid]
             finish_needs: list[dt.datetime] = [tw]
             start_needs: list[dt.datetime] = []
@@ -1968,5 +2042,6 @@ def compute_cpm(
         actual_start_driven=tuple(sorted(actual_driven)),
         actual_finish_driven=tuple(sorted(actual_finish_driven)),
         leveling_driven=tuple(sorted(leveling_driven)),
+        booking_span_driven=tuple(sorted(booking_span_driven)),
         project_finish_wall=target_wall if required_finish_offset is None else None,
     )
