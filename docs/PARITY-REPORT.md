@@ -254,7 +254,7 @@ the task works through in working minutes of the leg's calendar, forward and on 
 Large Test Files' within-a-day counts rose by 97 / 98 with no activity moving away from its stored
 finish (UID 5306's chain on the leveled SSI golden aside, by the 8 minutes MS Project's own
 arithmetic carries). The goldens were regenerated from their own saves, proven by section diff
-(`tests/fixtures/golden/PROVENANCE.json`). updated3's material / cost bookings are read from
+(the provenance manifest `PROVENANCE.json` beside the goldens, guarded). updated3's material / cost bookings are read from
 their recorded windows since ADR-0487 (R-56 closed). Slack is measured on the TASK's calendar — UID
 178's stored 240 minutes are project-calendar minutes between Monday 17:00 and Tuesday 13:00; its
 16-hour crew calendar would read 720. The §E consequences: Net Finish Impact reads Fuse's own −134

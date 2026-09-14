@@ -18071,3 +18071,16 @@ called a flake turned out to have a mechanism (ADR-0442 UI-02, ADR-0443, ADR-046
 - **Build:** version 1.0.259; the converter class is committed FIRST so `SF_MPXJ_REF` can name a commit
   whose `tools/mpxj` tree is the working tree's; wheel + nine installers rebuilt in the next commit.
 - **PR:** draft, number in the follow-up (eight checks expected — `installer/**` changed).
+
+### 2026-09-14 — follow-up: PR #673, the first CI verdicts, one citation reworded
+
+- **PR:** **draft #673**, branch `claude/fervent-hawking-7z7kx0`, head `324efc4f` (two commits: the unit at
+  `d58d00db`, the installers at `324efc4f` with `SF_MPXJ_REF=d58d00db` — tree-identical); eight checks
+  apply (`installer/**` changed). First verdicts on that head: `cui-guard` and `linux` success; **`floor
+  (declared minimum)` FAILED on exactly one test — `test_parity_report_sync.py::test_the_parity_evidence_
+  never_cites_a_golden_that_does_not_exist`** (1 failed / 4,981 passed / 264 skipped in 18:25 under the
+  floor pins): the PARITY-REPORT paragraph cited `tests/fixtures/golden/PROVENANCE.json`, and the guard
+  reads the token after `golden/` as a golden directory. Reworded to the bare name (the guard's own
+  docstring says so); the guard green locally (4 passed). Not a code change; the wheel and installers
+  stand. The local full suite (with the browser tests) was still running when this was written — its
+  figures follow in the next entry if they add anything.
