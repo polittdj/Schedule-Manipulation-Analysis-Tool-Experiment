@@ -196,11 +196,20 @@ def parse_mspdi_text(text: str, *, source_file: str | None = None) -> Schedule:
     tasks: list[Task] = []
     raw_links: list[tuple[int, ET.Element]] = []
     tasks_el = root.find("Tasks")
-    for task_el in [] if tasks_el is None else tasks_el.findall("Task"):
+    task_els = [] if tasks_el is None else tasks_el.findall("Task")
+    # R-49 (ADR-0490): the file carries the element somewhere — so an absent one on a Critical
+    # task is a zero the vendored writer dropped, never an unknown (see _stored_slack_minutes)
+    file_carries_slack = any(el.find("TotalSlack") is not None for el in task_els)
+    for task_el in task_els:
         if _text(task_el, "IsNull") == "1":
             continue  # an explicitly null placeholder row (not a real activity)
         task = _parse_task(
-            task_el, assigned_uids_by_task, assigned_names_by_task, assignments_by_task, ext_defs
+            task_el,
+            assigned_uids_by_task,
+            assigned_names_by_task,
+            assignments_by_task,
+            ext_defs,
+            file_carries_slack=file_carries_slack,
         )
         tasks.append(task)
         raw_links.extend((task.unique_id, el) for el in task_el.findall("PredecessorLink"))
@@ -331,12 +340,25 @@ def _currency(parent: ET.Element, tag: str) -> float | None:
     return None if raw is None else raw / 100.0
 
 
-def _stored_slack_minutes(task_el: ET.Element) -> int | None:
-    """MSPDI ``Task/TotalSlack`` → working minutes (``None`` if absent). MS Project stores slack
-    fields in **tenths of a minute** (verified against the goldens — stored ÷ 10 == recomputed
-    CPM float on clean tasks); the engine's float axis is whole minutes (480/day)."""
+def _stored_slack_minutes(task_el: ET.Element, *, zero_when_absent: bool = False) -> int | None:
+    """MSPDI ``Task/TotalSlack`` → working minutes (``None`` if absent — unless the caller has
+    proven the absence is a dropped zero, ``zero_when_absent``). MS Project stores slack fields
+    in **tenths of a minute** (verified against the goldens — stored ÷ 10 == recomputed CPM
+    float on clean tasks); the engine's float axis is whole minutes (480/day).
+
+    ``zero_when_absent`` (R-49, ADR-0490): the vendored MPXJ MSPDI writer OMITS a zero duration.
+    Measured on the intake ``Large Test File2.mpp`` through MPXJ itself: the reader holds
+    ``TotalSlack = 0.0d`` for all 62 Critical activities whose element the written XML lacks
+    (and NULL for none; 786 zero slacks in memory, 0 literal zeros in the XML). The caller passes
+    it only when the FILE carries ``TotalSlack`` somewhere (a writer that never emits the element
+    dropped nothing) and THIS task is flagged ``Critical`` — MS Project flags Critical exactly
+    when slack ≤ the critical-slack threshold, and a negative slack is always written, so the only
+    absent value a Critical task can carry is 0. A completed task's zero, which the writer drops
+    too, stays ``None`` (the wider inference is priced in the ADR, not made blind)."""
     raw = _int(task_el, "TotalSlack")
-    return None if raw is None else round(raw / 10)
+    if raw is None:
+        return 0 if zero_when_absent else None
+    return round(raw / 10)
 
 
 # --- calendar ---------------------------------------------------------------------
@@ -677,10 +699,13 @@ def _parse_task(
     assigned_names_by_task: dict[int, tuple[str, ...]],
     assignments_by_task: dict[int, tuple[Assignment, ...]],
     ext_defs: dict[str, str],
+    *,
+    file_carries_slack: bool = False,
 ) -> Task:
     uid = _int(task_el, "UID")
     if uid is None:
         raise ImporterError("a <Task> has no <UID> (UniqueID is the required identity key)")
+    stored_critical = _bool_or_none(task_el, "Critical")
 
     constraint_code = _int(task_el, "ConstraintType")
     constraint_type = _CONSTRAINT_BY_CODE.get(constraint_code or 0, ConstraintType.ASAP)
@@ -750,8 +775,10 @@ def _parse_task(
             ignore_resource_calendar=_bool(task_el, "IgnoreResourceCalendar", default=False),
             # tenths of a minute in the file (like LinkLag); a negative value is meaningless
             leveling_delay_minutes=max(0, (_int(task_el, "LevelingDelay") or 0) // 10),
-            stored_total_float_minutes=_stored_slack_minutes(task_el),
-            stored_is_critical=_bool_or_none(task_el, "Critical"),
+            stored_total_float_minutes=_stored_slack_minutes(
+                task_el, zero_when_absent=bool(file_carries_slack and stored_critical)
+            ),
+            stored_is_critical=stored_critical,
             custom_fields=_task_custom_fields(task_el, ext_defs),
         )
     except pydantic.ValidationError as exc:
