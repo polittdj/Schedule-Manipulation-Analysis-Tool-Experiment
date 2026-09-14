@@ -60,6 +60,7 @@ from schedule_forensics.model import (
     Schedule,
     Task,
     TaskType,
+    WorkPiece,
 )
 from schedule_forensics.model.units import MINUTES_PER_DAY
 
@@ -977,6 +978,48 @@ def _positive_int_or_none(parent: ET.Element, tag: str) -> int | None:
     return value if value is not None and value >= 0 else None
 
 
+#: MSPDI ``TimephasedData/Type`` codes of a booking's own WORK series: 1 = assignment remaining
+#: work, 2 = assignment actual work. Verified block-for-block against MPXJ 16.2.0's
+#: ``getRawTimephasedRemainingRegularWork`` / ``getRawTimephasedActualRegularWork`` on the
+#: Hard_File_updated3 save (Revision 2) whose UID 403 carries the split (ADR-0491). Every other
+#: Type (baseline work 4, baseline cost 5, overtime, cost) is not read.
+_WORK_SERIES = frozenset({"1", "2"})
+
+
+def _timephased_pieces(assign_el: ET.Element) -> list[WorkPiece]:
+    """The booking's work as the file time-phases it, split at its zero-work blocks (ADR-0491):
+    the ``TimephasedData`` blocks of the booking's own work series in time order — the writer's
+    raw blocks, a block with no ``Value`` (or a zero one) written exactly where MS Project's
+    leveling split the booking. Every maximal run of worked blocks is one piece; a zero block
+    between two runs is the split; a zero block at either edge bounds nothing. Fewer than two
+    pieces is no split: ``[]`` (the engine's ordinary contiguous leg)."""
+    blocks: list[tuple[dt.datetime, dt.datetime, int]] = []
+    for tp in assign_el.findall("TimephasedData"):
+        if _text(tp, "Type") not in _WORK_SERIES:
+            continue
+        start = parse_datetime(_text(tp, "Start"))
+        finish = parse_datetime(_text(tp, "Finish"))
+        if start is None or finish is None:
+            continue
+        blocks.append((start, finish, max(0, iso_duration_to_minutes(_text(tp, "Value")))))
+    blocks.sort(key=lambda b: (b[0], b[1]))
+    runs: list[tuple[dt.datetime, dt.datetime, int]] = []
+    open_run = False
+    for start, finish, minutes in blocks:
+        if minutes <= 0:
+            open_run = False  # a zero-work block closes the run
+            continue
+        if open_run:
+            run_start, run_finish, run_minutes = runs[-1]
+            runs[-1] = (run_start, max(run_finish, finish), run_minutes + minutes)
+        else:
+            runs.append((start, finish, minutes))
+            open_run = True
+    if len(runs) < 2:
+        return []
+    return [WorkPiece(start=s, finish=f, work_minutes=m) for s, f, m in runs]
+
+
 def _parse_assignments(
     root: ET.Element, resource_name_by_uid: dict[int, str]
 ) -> tuple[
@@ -994,6 +1037,7 @@ def _parse_assignments(
     units_by_task_res: dict[int, dict[int, float]] = {}
     remaining_by_task_res: dict[int, dict[int, int]] = {}
     window_by_task_res: dict[int, dict[int, tuple[dt.datetime | None, dt.datetime | None]]] = {}
+    pieces_by_task_res: dict[int, dict[int, list[WorkPiece]]] = {}
     assignments_el = root.find("Assignments")
     for assign_el in [] if assignments_el is None else assignments_el.findall("Assignment"):
         task_uid = _int(assign_el, "TaskUID")
@@ -1034,12 +1078,18 @@ def _parse_assignments(
                 min((x for x in (prev[0], w_start) if x is not None), default=None),
                 max((x for x in (prev[1], w_finish) if x is not None), default=None),
             )
+        # the booking's leveling split (ADR-0491): its worked runs, split at zero-work blocks;
+        # a pair with several rows gathers every row's pieces in time order
+        pieces = _timephased_pieces(assign_el)
+        if pieces:
+            pieces_by_task_res.setdefault(task_uid, {}).setdefault(resource_uid, []).extend(pieces)
     assignments_by_task: dict[int, tuple[Assignment, ...]] = {}
     for task_uid, uids in uids_by_task.items():
         work_map = work_by_task_res.get(task_uid, {})
         units_map = units_by_task_res.get(task_uid, {})
         rem_map = remaining_by_task_res.get(task_uid, {})
         win_map = window_by_task_res.get(task_uid, {})
+        pieces_map = pieces_by_task_res.get(task_uid, {})
         assignments_by_task[task_uid] = tuple(
             Assignment(
                 resource_id=ruid,
@@ -1048,6 +1098,9 @@ def _parse_assignments(
                 remaining_work_minutes=rem_map.get(ruid),
                 start=win_map.get(ruid, (None, None))[0],
                 finish=win_map.get(ruid, (None, None))[1],
+                work_pieces=tuple(
+                    sorted(pieces_map.get(ruid, []), key=lambda p: (p.start, p.finish))
+                ),
             )
             for ruid in uids
         )

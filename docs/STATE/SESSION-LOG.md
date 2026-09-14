@@ -18011,3 +18011,63 @@ called a flake turned out to have a mechanism (ADR-0442 UI-02, ADR-0443, ADR-046
 - **PR:** **draft #671**, head `bdec5119` (branch `claude/jolly-bohr-cs1rze`; eight checks expected —
   `installer/**` changed). The steward check-in an hour out reads the verdicts on the FINAL head with
   `get_check_runs`, never `get_status`; the #667 width race is the one red that is not this PR's.
+
+## 2026-09-14 — R-60 CLOSED (ADR-0491): a leveling split is honoured inside the task the way the leveling delay is; every Hard_File snapshot's finish EXACT; 14 goldens regenerated from their own saves; v1.0.259
+
+- **Branch:** `claude/fervent-hawking-7z7kx0` off `main` `6708cbff` (#671). **#672** (ADR-0489 / 0490, v1.0.258)
+  was open and unmerged at start — this unit numbers ADR-0491 / v1.0.259 so both land in either order;
+  the second to merge resolves the state docs, `pyproject.toml` and the oracle's slack-population pins.
+- **Provenance first (QC-2).** `git show af4d154f:…/Hard_File_updated3.mpp` (blob `1908d073`, Revision 2)
+  converts to a file whose `<Tasks>` / `<Assignments>` sections are byte-identical to the golden's (the
+  32 differing lines are `CurrentDate` and four resource elements the writer resolves at conversion
+  time — R-63). All 36 historical blobs of the 30 intake `.mpp` paths converted and section-hashed:
+  14 of 16 goldens matched to one save each (`tests/fixtures/golden/PROVENANCE.json`; the EVM pair has
+  no committed source). `git log --follow` listed two commits that never carried the file — blobs, not
+  paths. UID 403 on the fixture's save: THREE pieces (840 / 720 / 360 min; gaps of eight working days
+  and 3.2 h), the register's two were Revision 5's.
+- **Built:** `MpxjToMspdi.convert()` → `setWriteTimephasedData(true)` (class rebuilt at bytecode 61;
+  priced on Large_Test_File: 21.4 → 23.0 MB, same JVM wall time under `-Xmx1g`, Python parse 2.1 →
+  2.5 s; `setGenerateMissingTimephasedData` NPEs inside MPXJ 16.2.0 — refused); `WorkPiece` +
+  `Assignment.work_pieces` (SCHEMA_VERSION 2.13.0, ADR-0487's un-bumped fields recorded retroactively);
+  `_timephased_pieces` (Type 1 / 2, verified block-for-block against MPXJ's raw accessors); JSON round
+  trip; `_Leg(calendar, span, gaps)`, `_split_gaps` / `_worked_windows` / `_covered_span`,
+  `_leg_finish` / `_leg_retreat`, the two plan-forming rules, `_plan_scaled`, `CPMResult.split_driven`;
+  `tools/regenerate_timephased_goldens.py` (blob → convert → same-save proof → splice) and
+  `tests/guards/test_golden_provenance.py`.
+- **The finding.** The first cut honoured every gap: updated3's 403 exact, every Hard_File finish exact —
+  and Large_Test_File2's UID 5308 chain (24 activities) three weeks LATE. 5308: FIXED_DURATION, 228 h,
+  eight bookings, ONE with a three-week zero window the other seven work through; MS Project's Duration
+  already spans it. UID 5265 (one booking, daily afternoon-only gaps excluded from its 36.85-h duration)
+  landed exact under the same rule. The rule became: a gap NO OTHER WORK booking of the task works
+  through is the task's split (Duration excludes it); a gap another booking works through is that
+  booking's own contour. The away-mover whose predecessors are not away-movers found it in one derivation.
+- **Measured, pristine engine on pristine goldens → this engine on the regenerated goldens:** Hard_File /
+  updated / updated2 project finish **−1 d → EXACT**, within-a-day **92 → 103 / 100 → 108 / 93 → 109**,
+  stored slack 3 → 5 / 52 → 60 / 8 → 36, updated2's Critical **80 → 107**; updated3 104 → 106, slack 43 → 46
+  (SSI copy 45), UID 403 **11-05 09:12, LateStart 11-25 13:48, slack 12,888 — the stored values**, 404
+  exact; UID 14 spans its stored 10-26 20:00 → 10-29 11:00; 401 spans 5.6 d like MS Project, its chain
+  400 → 404 one working day early on milestone 387's external link (R-64); **Large_Test_File 1569 → 1666**
+  (slack 842 → 865, Critical 1682 → 1721), **File2 1589 → 1687** (1686 → 1717), Leveled 1569 → 1645 (slack
+  780 → 787); Project2 / Project5 exact, unmoved; the SSI Large_Test_File unmoved. Toward / away movers:
+  20/0, 20/0, 24/0, 2/0, 100/0, 104/0, 99/4 — the four are UID 5306's chain, +24.1 h → +24.2 h (four 2:36
+  daily gaps MS Project's own arithmetic carries; the engine's integer minutes read 8 of 10:24).
+- **Verification (QC-1):** red-first — `test_leveling_split.py`, the schema freeze and the maximal JSON
+  test cannot import on the pristine tree; the importer's two new tests fail by `ImportError`; the
+  oracle's re-pinned updated3 row red by name (10-23 15:00 vs 11-05 09:12; LateStart 12-08 08:00 vs
+  11-25 13:48). The first green refuted the RIG (a 240-min piece over a 480-min window). **Mutation
+  battery 18 / 18 RED by name** on shadowed copies (control green; a `-p mutcheck` plugin asserts the
+  copy is what imports): forward / backward gap walks, no gaps, elapsed gaps, both plan rules, the
+  disclosure, the veto removed / always, the scaled plan, three importer mutants, two JSON mutants,
+  pieces unsorted across rows (the first pass's one survivor — pinned now), the converter's flag off
+  (a mutated class under a scratch `SF_MPXJ_HOME`), the manifest naming Revision 5 (in memory).
+- **The gate:** both ruff binaries clean (0.15.8 on PATH, 0.16.7 = CI), `ruff format --check` clean,
+  mypy strict 165 files clean, bandit exit 0; oracle module 10 passed; engine / importer / JSON /
+  schema / guard modules green; the audit-report guard 8 passed (census 327 → 328: the gap position's
+  `round`). **Full suite and installer rebuild: recorded in this entry's follow-up** (the suite was
+  running when the state docs were written; 5,308 tests on the previous head).
+- **Docs:** ADR-0491 · AUDIT report (R-60 CLOSED; R-63 converter clock dependence, R-64 milestone 387's
+  external link registered; census 328) · PARITY-REPORT (the Hard_File table and paragraph) · HANDOFF
+  rotated · LESSONS-LEARNED (2026-09-14) · NEXT-SESSION-PROMPT refreshed (R-60 done; #672 pending).
+- **Build:** version 1.0.259; the converter class is committed FIRST so `SF_MPXJ_REF` can name a commit
+  whose `tools/mpxj` tree is the working tree's; wheel + nine installers rebuilt in the next commit.
+- **PR:** draft, number in the follow-up (eight checks expected — `installer/**` changed).

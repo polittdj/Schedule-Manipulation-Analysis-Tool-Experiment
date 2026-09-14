@@ -1298,3 +1298,149 @@ def test_assignment_windows_are_read_and_a_pair_spans_its_earliest_to_its_latest
     assert by_res[1].start == dt.datetime(2025, 1, 6, 8, 0)
     assert by_res[1].finish == dt.datetime(2025, 1, 8, 12, 0)
     assert by_res[2].start is None and by_res[2].finish is None
+
+
+# --- a WORK booking's split, from the file's timephased data (ADR-0491, R-60) -----------------
+
+
+def test_a_work_bookings_zero_work_blocks_bound_its_work_pieces() -> None:
+    """``Assignment/TimephasedData`` of Type 1 (remaining work) and 2 (actual work) are the
+    booking's own time-phasing; a block with no ``Value`` (or a zero one) between two worked
+    blocks is a leveling SPLIT, and the worked runs on either side become the booking's
+    ``work_pieces`` (start, finish, minutes). Baseline series (Types 4 / 5) are not read; a
+    zero block at either edge bounds nothing; a booking whose blocks carry no gap has no
+    pieces (``()`` — one contiguous piece, the engine's ordinary leg)."""
+    from schedule_forensics.model.assignment import WorkPiece
+
+    tp = (
+        "<TimephasedData><Type>{t}</Type><UID>1</UID><Start>{s}</Start><Finish>{f}</Finish>"
+        "<Unit>2</Unit>{v}</TimephasedData>"
+    )
+
+    def block(t: int, s: str, f: str, v: str | None) -> str:
+        return tp.format(t=t, s=s, f=f, v="" if v is None else f"<Value>{v}</Value>")
+
+    body = (
+        "<Tasks><Task><UID>1</UID><Duration>PT8H0M0S</Duration></Task>"
+        "<Task><UID>2</UID><Duration>PT8H0M0S</Duration></Task>"
+        "<Task><UID>3</UID><Duration>PT8H0M0S</Duration></Task></Tasks>"
+        "<Resources><Resource><UID>2</UID><Name>Crew</Name><Type>1</Type></Resource></Resources>"
+        "<Assignments>"
+        # task 1: actual 2 h, a zero block, remaining 6 h in two contiguous blocks, a trailing
+        # zero block, and a baseline series with its own gap (ignored)
+        "<Assignment><TaskUID>1</TaskUID><ResourceUID>2</ResourceUID><Work>PT8H0M0S</Work>"
+        + block(2, "2025-01-06T08:00:00", "2025-01-06T10:00:00", "PT2H0M0S")
+        + block(1, "2025-01-06T10:00:00", "2025-01-07T12:00:00", None)
+        + block(1, "2025-01-07T13:00:00", "2025-01-07T17:00:00", "PT4H0M0S")
+        + block(1, "2025-01-08T08:00:00", "2025-01-08T10:00:00", "PT2H0M0S")
+        + block(1, "2025-01-08T10:00:00", "2025-01-08T12:00:00", "PT0H0M0S")
+        + block(4, "2025-01-06T08:00:00", "2025-01-06T12:00:00", "PT4H0M0S")
+        + block(4, "2025-01-06T13:00:00", "2025-01-07T12:00:00", None)
+        + block(4, "2025-01-07T13:00:00", "2025-01-07T17:00:00", "PT4H0M0S")
+        + "</Assignment>"
+        # task 2: two worked blocks, no zero block between them — one piece, no split
+        "<Assignment><TaskUID>2</TaskUID><ResourceUID>2</ResourceUID><Work>PT8H0M0S</Work>"
+        + block(1, "2025-01-06T08:00:00", "2025-01-06T12:00:00", "PT4H0M0S")
+        + block(1, "2025-01-06T13:00:00", "2025-01-06T17:00:00", "PT4H0M0S")
+        + "</Assignment>"
+        # task 3: no timephased data at all
+        "<Assignment><TaskUID>3</TaskUID><ResourceUID>2</ResourceUID><Work>PT8H0M0S</Work>"
+        "</Assignment>"
+        "</Assignments>"
+    )
+    sch = parse_mspdi_text(_doc(body))
+    (a1,) = sch.task_by_id(1).resource_assignments
+    assert a1.work_pieces == (
+        WorkPiece(
+            start=dt.datetime(2025, 1, 6, 8, 0),
+            finish=dt.datetime(2025, 1, 6, 10, 0),
+            work_minutes=120,
+        ),
+        WorkPiece(
+            start=dt.datetime(2025, 1, 7, 13, 0),
+            finish=dt.datetime(2025, 1, 8, 10, 0),
+            work_minutes=360,
+        ),
+    )
+    (a2,) = sch.task_by_id(2).resource_assignments
+    (a3,) = sch.task_by_id(3).resource_assignments
+    assert a2.work_pieces == () and a3.work_pieces == ()
+
+
+def test_a_pair_recorded_in_several_rows_gathers_its_pieces_in_time_order() -> None:
+    """Two rows for one task+resource pair, the later week written first, each split by a zero
+    block: the booking's pieces come out in time order, not file order."""
+    from schedule_forensics.model.assignment import WorkPiece
+
+    def row(day: str) -> str:
+        tp = (
+            "<TimephasedData><Type>1</Type><UID>1</UID><Start>{s}</Start><Finish>{f}</Finish>"
+            "<Unit>2</Unit>{v}</TimephasedData>"
+        )
+        return (
+            "<Assignment><TaskUID>1</TaskUID><ResourceUID>2</ResourceUID><Work>PT4H0M0S</Work>"
+            + tp.format(s=f"{day}T08:00:00", f=f"{day}T10:00:00", v="<Value>PT2H0M0S</Value>")
+            + tp.format(s=f"{day}T10:00:00", f=f"{day}T12:00:00", v="")
+            + tp.format(s=f"{day}T13:00:00", f=f"{day}T15:00:00", v="<Value>PT2H0M0S</Value>")
+            + "</Assignment>"
+        )
+
+    body = (
+        "<Tasks><Task><UID>1</UID><Duration>PT8H0M0S</Duration></Task></Tasks>"
+        "<Resources><Resource><UID>2</UID><Name>Crew</Name><Type>1</Type></Resource></Resources>"
+        "<Assignments>" + row("2025-01-08") + row("2025-01-06") + "</Assignments>"
+    )
+    (booking,) = parse_mspdi_text(_doc(body)).task_by_id(1).resource_assignments
+    assert [p.start for p in booking.work_pieces] == [
+        dt.datetime(2025, 1, 6, 8, 0),
+        dt.datetime(2025, 1, 6, 13, 0),
+        dt.datetime(2025, 1, 8, 8, 0),
+        dt.datetime(2025, 1, 8, 13, 0),
+    ]
+    assert booking.work_pieces[0] == WorkPiece(
+        start=dt.datetime(2025, 1, 6, 8, 0), finish=dt.datetime(2025, 1, 6, 10, 0), work_minutes=120
+    )
+    assert booking.work_minutes == 480
+
+
+def test_the_updated3_golden_carries_403s_three_pieces() -> None:
+    """The regenerated golden (the Revision-2 save Fuse analysed, converted with the timephased
+    data on): UID 403's Customer Service Lead booking is 14 h, 12 h and 6 h with eight working
+    days and 3.2 hours of nothing between — the shape MS Project finishes 2026-11-05 09:12."""
+    import gzip
+
+    from schedule_forensics.model.assignment import WorkPiece
+
+    path = (
+        Path(__file__).resolve().parents[1]
+        / "fixtures"
+        / "golden"
+        / "fuse_hardfile"
+        / "Hard_File_updated3.mspdi.xml.gz"
+    )
+    sch = parse_mspdi_text(gzip.decompress(path.read_bytes()).decode("utf-8"))
+    (booking,) = sch.task_by_id(403).resource_assignments
+    assert booking.work_minutes == 1920
+    assert booking.work_pieces == (
+        WorkPiece(
+            start=dt.datetime(2026, 10, 19, 15, 0),
+            finish=dt.datetime(2026, 10, 21, 12, 0),
+            work_minutes=840,
+        ),
+        WorkPiece(
+            start=dt.datetime(2026, 11, 2, 13, 0),
+            finish=dt.datetime(2026, 11, 3, 17, 0),
+            work_minutes=720,
+        ),
+        WorkPiece(
+            start=dt.datetime(2026, 11, 4, 11, 12),
+            finish=dt.datetime(2026, 11, 5, 9, 12),
+            work_minutes=360,
+        ),
+    )
+    # the split bookings of this save, by task: 187 (completed; its actual series carries the
+    # gap), 302's material and cost bookings, and 403 — nothing else
+    split = sorted(
+        t.unique_id for t in sch.tasks if any(a.work_pieces for a in t.resource_assignments)
+    )
+    assert split == [187, 302, 403]

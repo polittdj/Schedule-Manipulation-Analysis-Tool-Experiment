@@ -21,6 +21,15 @@ from pydantic import Field
 from schedule_forensics.model._base import StrictFrozenModel
 
 
+class WorkPiece(StrictFrozenModel):
+    """One contiguous run of a WORK booking's time-phased work, as the file records it: the
+    run's first and last instants and the working minutes of work inside it (ADR-0491)."""
+
+    start: dt.datetime
+    finish: dt.datetime
+    work_minutes: int = Field(ge=0)
+
+
 class Assignment(StrictFrozenModel):
     """One resource's booking on one task: the resource UID, its work, and its units."""
 
@@ -45,3 +54,15 @@ class Assignment(StrictFrozenModel):
     #: delay, and discloses the task on ``CPMResult.booking_span_driven`` (ADR-0487, R-56).
     start: dt.datetime | None = None
     finish: dt.datetime | None = None
+    #: A WORK booking's leveling SPLIT as the file time-phases it (ADR-0491, R-60): MS Project's
+    #: resource leveling can leave zero-work gaps inside a booking, recorded only in the
+    #: assignment's time-phased work (MSPDI ``TimephasedData``, remaining and actual work). Each
+    #: piece is one maximal run of worked blocks; the gaps are what lies between consecutive
+    #: pieces. ``()`` = one contiguous piece, or a source that records no time-phasing (an XER,
+    #: a Save .json written before this field, a conversion made before the converter wrote
+    #: it). The engine honours every gap between the pieces as working minutes of the leg's
+    #: calendar, the way it honours the leveling delay before the start — measured on
+    #: Hard_File_updated3 UID 403: 14 h, eight working days of nothing, 12 h, 3.2 h of nothing,
+    #: 6 h; finish 2026-11-05 09:12 and LateStart 11-25 13:48, both MS Project's, to the minute.
+    #: A MATERIAL / COST booking's pieces are inert: its leg is its recorded window (ADR-0487).
+    work_pieces: tuple[WorkPiece, ...] = ()
