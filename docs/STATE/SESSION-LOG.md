@@ -18082,5 +18082,11 @@ called a flake turned out to have a mechanism (ADR-0442 UI-02, ADR-0443, ADR-046
   floor pins): the PARITY-REPORT paragraph cited `tests/fixtures/golden/PROVENANCE.json`, and the guard
   reads the token after `golden/` as a golden directory. Reworded to the bare name (the guard's own
   docstring says so); the guard green locally (4 passed). Not a code change; the wheel and installers
-  stand. The local full suite (with the browser tests) was still running when this was written — its
-  figures follow in the next entry if they add anything.
+  stand.
+- **The local full suite (with the browser tests): 10 failed / 5,316 passed / 5 skipped in 44:40** — and
+  every red was a test that ran BEFORE a later edit of this session landed: the report's census line
+  (327 → 328), the installer lockstep and the three MPXJ-manifest guards (the installers were rebuilt
+  mid-run), the oracle's old 403 start pin and the Large_Test_File `tf_exact` 842 (both re-pinned
+  mid-run), and the three state-doc guards (the docs were written mid-run). **All ten re-run on the
+  final head `7c8b5f6d`: 13 passed** (the manifest guard's three families expand the count). Pushed as
+  `7c8b5f6d`; CI's eight checks re-run there.
