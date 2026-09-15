@@ -18425,8 +18425,25 @@ called a flake turned out to have a mechanism (ADR-0442 UI-02, ADR-0443, ADR-046
   `055dfb3f`, tree-identical to `738f3e0d` (`1db9ef34…`, `git rev-parse` both).** GitHub deleted the remote branch;
   the session was auto-unsubscribed; the branch was restarted on the squash (`--prune` + `remote set-head` +
   `checkout -B`, the OR-19 working tree carried unchanged) — a merged PR tracks no new work.
-- **The OR-19 unit (ADR-0496, v1.0.264) is the commit carrying this entry** — ONE commit on `055dfb3f`, its OWN draft
-  PR (number and first CI verdict in the next follow-up). Not marked ready, not merged — the operator's.
-- `main`'s own runs for `055dfb3f` (#679's squash) and `e6ff45e1` (#678's): not read this session — the next
-  session reads them first (a red cell on a tree identical to a green PR head is the runner's claim).
+- **The OR-19 unit (ADR-0496, v1.0.264) was committed as `0d21347b`** — ONE commit on `055dfb3f` — and opened as
+  **draft PR #680** (17:11Z); its number and verdict: the follow-up below.
+
+### 2026-09-15 — follow-up: #680 MERGED (`main` @ `970a3bcc`, tree == `0d21347b`); every check and every `main` run of the day read
+
+- **#680 on `0d21347b` — all eight green:** CI run 35004936109 — `cui-guard` 18:02:23Z, `browser (measured-box
+  proof)` 18:19:31Z, `floor (declared minimum)` 18:21:30Z, `test (3.11)` 18:31:37Z, `test (3.13)` 18:43:59Z,
+  `check` 18:44:04Z; installer-smoke run 35004936060 — `linux` 18:02:54Z, `windows` 18:07:23Z.
+- **Marked ready and squash-merged by the operator at 18:44:19Z: `main` @ `970a3bcc`**, tree `dc6b8b66…` ==
+  `0d21347b`'s (`git rev-parse` both). GitHub deleted the remote branch; the session was auto-unsubscribed; the
+  branch restarted on the squash (`--prune` + `remote set-head` + `checkout -B`, working tree clean); the 19:03Z
+  check-in trigger deleted.
+- **`main`'s own runs, read this session:** `055dfb3f` (#679) — CI run 1874 (35004524652) **success** 18:39:06Z,
+  installer-smoke 733 (35004524665) **success** 18:02:54Z; `e6ff45e1` (#678) — CI run 1872 (34998796548)
+  **success** 17:48:32Z, installer-smoke 731 (34998796554) **success** 17:07:23Z; **`970a3bcc` (#680) — CI run
+  1876 (35009336354) and installer-smoke 735 (35009336321) IN PROGRESS at 18:44:36Z** — the next session reads
+  their conclusion first (a red cell on a tree identical to the green PR head `0d21347b` is the runner's claim;
+  compare tree hashes first).
+- This record is a docs-only commit on the restarted branch, opened as a draft PR (six checks apply — docs only).
+- Token guardian at this entry: ~72 % of the assumed wall — the session closes after this push; the next unit
+  (R-52) starts in a fresh session from the kickoff prompt.
 
