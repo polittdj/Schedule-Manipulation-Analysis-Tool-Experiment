@@ -1444,3 +1444,90 @@ def test_the_updated3_golden_carries_403s_three_pieces() -> None:
         t.unique_id for t in sch.tasks if any(a.work_pieces for a in t.resource_assignments)
     )
     assert split == [187, 302, 403]
+
+
+# --- a booking's baseline-cost series, from the file's timephased data (ADR-0492, R-46) -------
+
+
+def test_a_bookings_baseline_cost_blocks_are_its_baseline_cost_pieces() -> None:
+    """``Assignment/TimephasedData`` of Type 5 (assignment baseline cost) is the booking's
+    time-phased planned value — the BCWS MS Project stores and Fuse sums. Every block with a
+    value becomes one ``CostPiece`` (start, finish, cost in currency units — the file writes
+    hundredths), in time order whatever the file order; a block with no ``Value`` or a zero one
+    is nothing planned and carries no piece; the work series (Types 1 / 2 / 4) are not cost."""
+    from schedule_forensics.model.assignment import CostPiece
+
+    tp = (
+        "<TimephasedData><Type>{t}</Type><UID>1</UID><Start>{s}</Start><Finish>{f}</Finish>"
+        "<Unit>{u}</Unit>{v}</TimephasedData>"
+    )
+
+    def block(t: int, s: str, f: str, v: str | None, u: int = 1) -> str:
+        return tp.format(t=t, s=s, f=f, u=u, v="" if v is None else f"<Value>{v}</Value>")
+
+    body = (
+        "<Tasks><Task><UID>1</UID><Duration>PT16H0M0S</Duration></Task>"
+        "<Task><UID>2</UID><Duration>PT8H0M0S</Duration></Task></Tasks>"
+        "<Resources><Resource><UID>2</UID><Name>Crew</Name><Type>1</Type></Resource></Resources>"
+        "<Assignments>"
+        "<Assignment><TaskUID>1</TaskUID><ResourceUID>2</ResourceUID><Work>PT16H0M0S</Work>"
+        + block(5, "2025-01-07T08:00:00", "2025-01-07T17:00:00", "40000")  # the later day first
+        + block(5, "2025-01-06T08:00:00", "2025-01-06T17:00:00", "40000")
+        + block(5, "2025-01-06T17:00:00", "2025-01-07T08:00:00", None, u=2)  # the night: nothing
+        + block(5, "2025-01-07T17:00:00", "2025-01-07T23:00:00", "0")
+        + block(4, "2025-01-06T08:00:00", "2025-01-06T17:00:00", "PT8H0M0S")  # baseline WORK
+        + block(1, "2025-01-06T08:00:00", "2025-01-06T17:00:00", "PT8H0M0S")
+        + "</Assignment>"
+        "<Assignment><TaskUID>2</TaskUID><ResourceUID>2</ResourceUID><Work>PT8H0M0S</Work>"
+        "</Assignment>"
+        "</Assignments>"
+    )
+    sch = parse_mspdi_text(_doc(body))
+    (a1,) = sch.task_by_id(1).resource_assignments
+    assert a1.baseline_cost_pieces == (
+        CostPiece(
+            start=dt.datetime(2025, 1, 6, 8, 0), finish=dt.datetime(2025, 1, 6, 17, 0), cost=400.0
+        ),
+        CostPiece(
+            start=dt.datetime(2025, 1, 7, 8, 0), finish=dt.datetime(2025, 1, 7, 17, 0), cost=400.0
+        ),
+    )
+    assert a1.work_pieces == ()  # one worked block: no split
+    (a2,) = sch.task_by_id(2).resource_assignments
+    assert a2.baseline_cost_pieces == ()
+
+
+def test_the_updated_golden_carries_187s_front_loaded_baseline_cost() -> None:
+    """Hard_File_updated (the save Fuse analysed): UID 187's Customer Service Team booking —
+    120 h at 50 an hour on a 16-hour calendar — is one piece per valued block of the file's
+    Type-5 series (derived here from the golden's own XML, never transcribed), summing to its
+    6,000 budget, 3,600 of it planned by the 2026-08-11 17:00 status date: MS Project's 60 % and
+    Fuse's 16,000 ribbon, where the project-calendar proration read 3,750 (R-46)."""
+    import gzip
+    from xml.etree import ElementTree as ET
+
+    path = (
+        Path(__file__).resolve().parents[1]
+        / "fixtures"
+        / "golden"
+        / "fuse_hardfile"
+        / "Hard_File_updated.mspdi.xml.gz"
+    )
+    text = gzip.decompress(path.read_bytes()).decode("utf-8")
+    sch = parse_mspdi_text(text)
+    (booking,) = sch.task_by_id(187).resource_assignments
+    pieces = booking.baseline_cost_pieces
+    root = ET.fromstring(text)
+    ns = root.tag.split("}")[0] + "}"
+    raw = [
+        (tp.findtext(ns + "Start"), float(tp.findtext(ns + "Value") or 0) / 100.0)
+        for a in root.iter(ns + "Assignment")
+        if a.findtext(ns + "TaskUID") == "187"
+        for tp in a.findall(ns + "TimephasedData")
+        if tp.findtext(ns + "Type") == "5" and float(tp.findtext(ns + "Value") or 0) != 0
+    ]
+    assert len(raw) > 1  # positive control: the golden's series is there to compare against
+    assert [(p.start.isoformat(), p.cost) for p in pieces] == sorted(raw)
+    assert sum(p.cost for p in pieces) == 6000.0 == sch.task_by_id(187).budgeted_cost
+    assert sch.status_date == dt.datetime(2026, 8, 11, 17, 0)
+    assert sum(p.cost for p in pieces if p.finish <= sch.status_date) == 3600.0

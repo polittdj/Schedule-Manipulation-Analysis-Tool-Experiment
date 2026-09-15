@@ -18122,3 +18122,65 @@ called a flake turned out to have a mechanism (ADR-0442 UI-02, ADR-0443, ADR-046
   parity-report guard, the provenance guard, the importer / engine / schema modules — 165 passed; both
   ruff binaries and mypy strict clean; the installer module after the rebuild. CI's eight checks re-run on
   the merge commit.
+
+## 2026-09-15 — #673 MERGED (ADR-0491, v1.0.259; `main` @ `163d1942`); R-46 CLOSED (ADR-0492): BCWS is the file's own time-phased baseline cost — the importer reads a booking's baseline-cost series, the engine sums it through the status date and prorates a straddling block on the booking's calendar; the three Hard_File ribbons exact; v1.0.260
+
+- **Branch:** `claude/exciting-curie-n0wghm`, on `origin/main` `163d1942` (#673's squash — `HEAD^{tree}` ==
+  `origin/main^{tree}` at the start, nothing to restart). The clone arrived SHALLOW (`git fetch --unshallow`
+  first); `/usr/local/bin/ruff` 0.16.7 exists only AFTER `uv pip install … -e '.[dev]'` (both binaries ran).
+- **Measured before believed (QC-2):** the register's step ("prorate the straddler on its crew's calendar")
+  was a hypothesis about the mechanism. A probe summed each Hard_File golden's Type-5 (assignment
+  baseline-cost) blocks — the series ADR-0491's converter writes and nothing read — by the ribbon's own
+  status-date rule: **16,000.00 / 64,240.00** on updated / updated2 (Fuse 16,000 / 64,240, the engine
+  16,150 / 64,240) and 106,440 + one straddling merged block (UID 270, 4,800, two of three days → 3,200) +
+  800 of baseline cost with no series at all (UID 257) = **110,440** on updated3. The 150 is UID 187 alone:
+  its "Customer Service Team" crew works 06–08 / 08–17 / 17–23 and MS Project front-loads its 120 h on that
+  calendar (72 of 120 h → 3,600 planned; the project-calendar proration read 5 of 8 days → 3,750).
+  **110,440 was testimony until today** — it lives in `Hard_File_update2 vs update3_Fuse - Excel .xlsx`
+  (Ribbon View, status 46307), a workbook no test had opened; found by grepping every intake workbook's
+  sheet XML for the figure.
+- **The unit (ADR-0492):** `CostPiece` + `Assignment.baseline_cost_pieces` (SCHEMA_VERSION 2.14.0);
+  `importers/mspdi.py::_baseline_cost_pieces` (every valued Type-5 block, ÷100, time order; zero / absent
+  blocks carry nothing; a non-numeric Value fails loud — `parse_float`'s contract); the JSON Save round trip,
+  strict; `cpm.booking_calendar` / `cpm.working_minutes_between` (the plan builder's rule and ruler, public);
+  `evm._planned_value`: the series summed through the status date, a block the status date falls inside
+  prorated in working minutes of the booking's calendar, the budget no series carries by ADR-0473's linear
+  rule, a series exceeding the budget left as recorded. `help.py` + the dictionary say the basis.
+- **Census, per task, pristine → this engine, every golden:** ONE mover in the corpus — updated UID 187
+  3,750 → 3,600; BCWS 16,150 → 16,000, SPI 1.04 → **1.05** (= the ribbon); every other golden and task
+  unmoved (updated2 64,240; updated3 ×2 110,440; the 24h snapshots 133,400; Hard_File 0); EVM1 / EVM2 /
+  Project2 / Project5 / TP4 (no series) equal the old rule exactly (4,880 / 7,720 / 0 / 0). **Rendered:**
+  `/evm` on Hard_File_updated reads SPI 1.05 (header and table) on this tree, 1.04 on `git archive HEAD`.
+- **Verification (QC-1):** red-first on the pristine engine — 10 failed / 137 passed + two modules that
+  cannot import; the oracle's `updated` row red BY NAME (`150.0 <= 0.0`, `16150.0 - 16000.0`). **Mutation
+  battery on a shadowed copy (`-p mutcheck`; control 182 passed): 18 mutants, 17 red by name first pass, one
+  survivor equivalent** (a missing cost defaulted to zero BELOW the guard that refuses it) **re-cut with the
+  guard removed → red on exactly the strictness test: 18 / 18.** Each red set narrow and named (the log in
+  the scratchpad; the counts in the ADR).
+- **The gate:** ruff 0.15.8 + 0.16.7 clean, `ruff format --check` clean, mypy strict 165 files, bandit exit
+  0; the six touched modules 182 passed; the state-doc, standing-rule, audit-report and parity-report guards
+  green after the docs. **Full suite and `-m parity` on the final head: this entry's follow-up.**
+- **Docs:** ADR-0492 · AUDIT report (R-46 CLOSED) · PARITY-REPORT (the BCWS row exact on all three; SPI
+  1.05) · METRIC-DICTIONARY regenerated · HANDOFF rotated · LESSONS-LEARNED (2026-09-15) · kickoff refreshed.
+- **Build:** version 1.0.260; wheel + nine installers rebuilt on this tree (`tools/mpxj` unchanged —
+  `git log -1 -- tools/mpxj` stays ADR-0491's commit; no `SF_MPXJ_REF` needed).
+- **PR:** draft, number in the follow-up (eight checks apply — `installer/**` changed).
+
+### 2026-09-15 — follow-up: PR #674, the first CI verdict (eight green), the local suite and parity
+
+- **PR:** **draft #674**, branch `claude/exciting-curie-n0wghm`, head `b18fcb23` (two commits on `163d1942`:
+  the unit at `bfa6ec68`, the elapsed-fallback test + ADR / audit-row wording at `b18fcb23`). **All eight
+  checks green on that head**: CI run 34923255371 — `cui-guard`, `test (3.11)`, `test (3.13)`, `floor
+  (declared minimum)`, `browser (measured-box proof)`, `check`; installer-smoke run 34923255349 — `linux`,
+  `windows`. Not marked ready, not merged — the operator's.
+- **The local full suite on the same tree: 1 failed / 5,383 passed / 5 skipped in 37:20.** The one red is
+  `test_driving_path_whole_schedule_browser.py::test_whole_schedule_default_any_loaded_schedule_and_path_
+  column_parity` — the header-row equality race the handoff registers (R-32 / CI-04: the two grids read at
+  different timescale states, "Qtr 1 2025 / Qtr 2 2025" against "January / February / Jan 5"), a page this
+  diff never touches; the whole module re-run unfiltered: 1 passed. Not fixed here (its own row; never by
+  widening a wait). **`-m parity`: 98 passed in 4:13.**
+- **Environment:** the editable install's metadata read 1.0.259 after the bump until `uv pip install … -e .
+  --no-deps` (no test compares it to `pyproject.toml`; the served banner does carry it) — re-install after
+  every bump, as the kickoff says.
+- This push restarts CI on the new head; the next session reads the verdict on the FINAL head and, after the
+  operator merges, `main`'s own run for the squash commit (tree hashes first).

@@ -30,6 +30,15 @@ class WorkPiece(StrictFrozenModel):
     work_minutes: int = Field(ge=0)
 
 
+class CostPiece(StrictFrozenModel):
+    """One block of a booking's time-phased BASELINE COST as the file records it (ADR-0492):
+    the block's first and last instants and the currency units planned inside it."""
+
+    start: dt.datetime
+    finish: dt.datetime
+    cost: float
+
+
 class Assignment(StrictFrozenModel):
     """One resource's booking on one task: the resource UID, its work, and its units."""
 
@@ -66,3 +75,14 @@ class Assignment(StrictFrozenModel):
     #: 6 h; finish 2026-11-05 09:12 and LateStart 11-25 13:48, both MS Project's, to the minute.
     #: A MATERIAL / COST booking's pieces are inert: its leg is its recorded window (ADR-0487).
     work_pieces: tuple[WorkPiece, ...] = ()
+    #: The booking's time-phased BASELINE COST as the file records it (ADR-0492, R-46): every
+    #: valued block of the MSPDI assignment's baseline-cost series (``TimephasedData`` Type 5),
+    #: in time order, in currency units. This is the planned value MS Project stores per
+    #: activity as BCWS and the reference tool sums (the Bible's ``sum(BCWSPV)``): a crew on a
+    #: 16-hour calendar front-loads its budget, a merged block spans several equal days, and
+    #: neither is visible to a proration of the task's budget over its baseline span on the
+    #: project calendar (Hard_File_updated UID 187: 3,600 planned by the status date where
+    #: that proration read 3,750 — the ribbon's 16,000 against the engine's 16,150). ``()`` =
+    #: not recorded (an XER, a Save .json written before this field, a conversion made before
+    #: the converter wrote timephased data); the engine then accrues the budget linearly.
+    baseline_cost_pieces: tuple[CostPiece, ...] = ()

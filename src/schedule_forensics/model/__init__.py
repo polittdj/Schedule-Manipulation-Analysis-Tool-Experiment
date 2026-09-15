@@ -24,7 +24,7 @@ Change log:
 from __future__ import annotations
 
 from schedule_forensics.model import units
-from schedule_forensics.model.assignment import Assignment, WorkPiece
+from schedule_forensics.model.assignment import Assignment, CostPiece, WorkPiece
 from schedule_forensics.model.calendar import Calendar
 from schedule_forensics.model.relationship import Relationship, RelationshipType
 from schedule_forensics.model.resource import Resource, ResourceType
@@ -49,13 +49,16 @@ from schedule_forensics.model.task import ConstraintType, Task, TaskType
 #   file time-phases it; AND, retroactively, Assignment.start / finish (ADR-0487, #671), which
 #   shipped with the freeze test's field set updated but this version left at 2.12.0 — the
 #   2.9.0 case again: the guard asserts a literal and cannot see an un-bumped add.
-SCHEMA_VERSION = "2.13.0"
+# 2.14.0: Assignment.baseline_cost_pieces + CostPiece (ADR-0492) — a booking's time-phased
+#   baseline cost as the file records it: the BCWS MS Project stores and Fuse sums (R-46).
+SCHEMA_VERSION = "2.14.0"
 
 __all__ = [
     "SCHEMA_VERSION",
     "Assignment",
     "Calendar",
     "ConstraintType",
+    "CostPiece",
     "Relationship",
     "RelationshipType",
     "Resource",

@@ -21,6 +21,8 @@ from schedule_forensics.engine.metrics import (
     compute_baseline_compliance,
     compute_evm_indices,
 )
+from schedule_forensics.model.calendar import Calendar
+from schedule_forensics.model.resource import Resource
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
 
@@ -595,3 +597,175 @@ def test_cpi_and_tcpi_disclose_started_budgeted_activities_with_no_actual_cost()
     assert e["cpi"].offender_uids == (2,)
     assert e["tcpi"].count == 1 and e["tcpi"].offender_uids == (2,)
     assert e["spi"].offender_uids == ()  # SPI has no ACWP term — nothing to disclose
+
+
+# --- ADR-0492 (R-46): BCWS is the file's own time-phased baseline cost -----------------------
+
+_STANDARD = Calendar(uid=1, name="Standard", day_segments=((480, 720), (780, 1020)))
+_CAL_24 = Calendar(
+    uid=10, name="24 Hours", working_minutes_per_day=1440, work_weekdays=tuple(range(7))
+)
+_CREW = Resource(unique_id=1, name="Crew")  # on the project pattern
+_CREW_24 = Resource(unique_id=2, name="Round-the-clock crew", calendar_uid=10)
+TUE_1700 = MON + dt.timedelta(days=1, hours=9)
+
+
+def _cost_sched(tasks: list[Task], status: dt.datetime) -> Schedule:
+    return Schedule(
+        name="s",
+        project_start=MON,
+        calendar=_STANDARD,
+        calendars=(_STANDARD, _CAL_24),
+        resources=(_CREW, _CREW_24),
+        tasks=tuple(tasks),
+        status_date=status,
+    )
+
+
+def test_bcws_is_the_bookings_recorded_baseline_cost_where_the_file_carries_it() -> None:
+    """R-46 (ADR-0492): the Bible's PV (BCWS) is ``sum(BCWSPV)`` — each activity's BCWS as MS
+    Project stores it, its bookings' time-phased baseline cost through the status date. Where the
+    file carries that series (an MSPDI booking's Type-5 blocks) the engine sums it: a block
+    finishing on or before the status date counts whole, one starting at or after it counts
+    nothing. Task 2's crew front-loads the same 6,000 budget over the same six-day baseline span
+    as task 1 (a 16-hour day — Hard_File_updated UID 187's shape), so 4,800 of it is planned by
+    Tuesday 17:00 where the project-calendar proration reads 2,000 (Fuse's 16,000 ribbon against
+    the engine's 16,150); task 1 (no series) keeps the linear rule; task 3 (no series, baselined
+    before the status date) contributes whole."""
+    from schedule_forensics.engine.metrics.evm import _planned_value
+    from schedule_forensics.model.assignment import Assignment, CostPiece
+
+    bl_start, bl_finish = MON, MON + dt.timedelta(days=7, hours=9)  # Mon .. next Mon 17:00
+    h = dt.timedelta(hours=1)
+    pieces = (
+        CostPiece(start=MON, finish=MON + 9 * h, cost=1600.0),  # Mon 08:00-17:00
+        CostPiece(start=MON + 9 * h, finish=MON + 15 * h, cost=1200.0),  # Mon 17:00-23:00
+        CostPiece(start=MON + 22 * h, finish=MON + 24 * h, cost=400.0),  # Tue 06:00-08:00
+        CostPiece(start=MON + 24 * h, finish=TUE_1700, cost=1600.0),  # finishes AT the status
+        CostPiece(start=TUE_1700, finish=TUE_1700 + 6 * h, cost=1200.0),  # starts AT it
+    )
+    tasks = [
+        Task(
+            unique_id=1,
+            name="linear",
+            duration_minutes=6 * DAY,
+            budgeted_cost=6000.0,
+            baseline_start=bl_start,
+            baseline_finish=bl_finish,
+        ),
+        Task(
+            unique_id=2,
+            name="front-loaded",
+            duration_minutes=6 * DAY,
+            budgeted_cost=6000.0,
+            baseline_start=bl_start,
+            baseline_finish=bl_finish,
+            resource_assignments=(
+                Assignment(resource_id=1, work_minutes=6 * DAY, baseline_cost_pieces=pieces),
+            ),
+        ),
+        Task(
+            unique_id=3,
+            name="done-plan",
+            duration_minutes=DAY,
+            budgeted_cost=800.0,
+            baseline_start=MON,
+            baseline_finish=MON + 9 * h,
+        ),
+    ]
+    sched = _cost_sched(tasks, TUE_1700)
+    assert _planned_value(sched, [tasks[0]]) == pytest.approx(2000.0)
+    assert _planned_value(sched, [tasks[1]]) == pytest.approx(4800.0)
+    assert _planned_value(sched, [tasks[2]]) == pytest.approx(800.0)
+    assert _planned_value(sched, tasks) == pytest.approx(7600.0)
+
+
+def test_a_straddling_block_is_prorated_in_working_minutes_of_the_bookings_calendar() -> None:
+    """The writer merges equal days into one block (Hard_File_updated3 UID 270: three project
+    days, one block, 4,800); a block the status date falls inside contributes the share of ITS
+    working time that has elapsed, on the calendar the booking is scheduled on (ADR-0474's
+    rule). One Monday-08:00-to-Wednesday-17:00 block of 3,000 on a project-pattern crew is two
+    of three days (2,000) by Tuesday 17:00; on a round-the-clock crew it is 33 of 57 hours
+    (1,736.84). Elapsed time would read the first as 1,736.84 too — the calendar is the ruler."""
+    from schedule_forensics.engine.metrics.evm import _planned_value
+    from schedule_forensics.model.assignment import Assignment, CostPiece
+
+    wed_1700 = MON + dt.timedelta(days=2, hours=9)
+    block = CostPiece(start=MON, finish=wed_1700, cost=3000.0)
+
+    def task(uid: int, crew: int) -> Task:
+        return Task(
+            unique_id=uid,
+            name=f"t{uid}",
+            duration_minutes=3 * DAY,
+            budgeted_cost=3000.0,
+            baseline_start=MON,
+            baseline_finish=wed_1700,
+            resource_assignments=(
+                Assignment(resource_id=crew, work_minutes=3 * DAY, baseline_cost_pieces=(block,)),
+            ),
+        )
+
+    on_pattern, round_the_clock = task(1, 1), task(2, 2)
+    sched = _cost_sched([on_pattern, round_the_clock], TUE_1700)
+    assert _planned_value(sched, [on_pattern]) == pytest.approx(2000.0)
+    assert _planned_value(sched, [round_the_clock]) == pytest.approx(3000.0 * 33 / 57)
+
+
+def test_the_budget_no_booking_carries_accrues_linearly_beside_the_recorded_series() -> None:
+    """A task's baseline cost can exceed what its bookings' series carry (Hard_File_updated2 /
+    updated3 UID 257: 800 of baseline cost and no assignment series — a booking baselined and
+    since removed); the uncarried remainder accrues by the linear rule over the task's baseline
+    span while the series counts by its blocks. A series that exceeds the task's baseline cost
+    stands as recorded — nothing is subtracted: the file's arithmetic, not the tool's."""
+    from schedule_forensics.engine.metrics.evm import _planned_value
+    from schedule_forensics.model.assignment import Assignment, CostPiece
+
+    tue_1700 = MON + dt.timedelta(days=1, hours=9)  # a two-day baseline span, Mon .. Tue
+    monday = CostPiece(start=MON, finish=MON + dt.timedelta(hours=9), cost=600.0)
+
+    def task(uid: int, budget: float) -> Task:
+        return Task(
+            unique_id=uid,
+            name=f"t{uid}",
+            duration_minutes=2 * DAY,
+            budgeted_cost=budget,
+            baseline_start=MON,
+            baseline_finish=tue_1700,
+            resource_assignments=(
+                Assignment(resource_id=1, work_minutes=2 * DAY, baseline_cost_pieces=(monday,)),
+            ),
+        )
+
+    part, over = task(1, 1000.0), task(2, 500.0)
+    status = MON + dt.timedelta(days=1)  # Tuesday 08:00: one of the two working days elapsed
+    sched = _cost_sched([part, over], status)
+    assert _planned_value(sched, [part]) == pytest.approx(600.0 + 0.5 * 400.0)
+    assert _planned_value(sched, [over]) == pytest.approx(600.0)
+
+
+def test_a_block_the_calendar_sees_no_working_time_in_is_measured_by_elapsed_time() -> None:
+    """The writer's calendar and the rule's can differ (R-58's approximation): a block that the
+    booking's calendar sees no working time in — a Saturday block on a Monday-to-Friday crew —
+    cannot be prorated in working minutes, so it is measured by elapsed time, the only ruler
+    left: 4 of 9 hours by Saturday noon. The whole block counts once the status date passes it."""
+    from schedule_forensics.engine.metrics.evm import _planned_value
+    from schedule_forensics.model.assignment import Assignment, CostPiece
+
+    sat_0800 = MON + dt.timedelta(days=5)
+    block = CostPiece(start=sat_0800, finish=sat_0800 + dt.timedelta(hours=9), cost=900.0)
+    task = Task(
+        unique_id=1,
+        name="weekend",
+        duration_minutes=DAY,
+        budgeted_cost=900.0,
+        baseline_start=MON,
+        baseline_finish=MON + dt.timedelta(days=7, hours=9),
+        resource_assignments=(
+            Assignment(resource_id=1, work_minutes=DAY, baseline_cost_pieces=(block,)),
+        ),
+    )
+    noon = _cost_sched([task], sat_0800 + dt.timedelta(hours=4))
+    assert _planned_value(noon, [task]) == pytest.approx(900.0 * 4 / 9)
+    after = _cost_sched([task], MON + dt.timedelta(days=7))
+    assert _planned_value(after, [task]) == pytest.approx(900.0)

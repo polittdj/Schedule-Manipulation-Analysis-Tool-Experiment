@@ -18,7 +18,7 @@ from typing import Any
 
 from schedule_forensics.importers._common import ImporterError, anchored_project_start
 from schedule_forensics.model import Schedule
-from schedule_forensics.model.assignment import Assignment, WorkPiece
+from schedule_forensics.model.assignment import Assignment, CostPiece, WorkPiece
 from schedule_forensics.model.calendar import Calendar
 from schedule_forensics.model.relationship import Relationship, RelationshipType
 from schedule_forensics.model.resource import Resource, ResourceType
@@ -64,6 +64,25 @@ def _work_piece(raw: Any) -> WorkPiece:
     return WorkPiece(
         start=start, finish=finish, work_minutes=_int(raw.get("work_minutes", 0), "work_minutes")
     )
+
+
+def _cost_piece(raw: Any) -> CostPiece:
+    """One block of a booking's baseline-cost series (ADR-0492) — an object with a start, a
+    finish and its cost; anything less fails loud, never a fabricated (zero) piece."""
+    if not isinstance(raw, dict):
+        raise ImporterError("invalid baseline cost piece in JSON schedule: not an object")
+    start, finish = _dt(raw.get("start")), _dt(raw.get("finish"))
+    cost = raw.get("cost")
+    if (
+        start is None
+        or finish is None
+        or isinstance(cost, bool)
+        or not isinstance(cost, int | float)
+    ):
+        raise ImporterError(
+            "invalid baseline cost piece in JSON schedule: start, finish and cost are required"
+        )
+    return CostPiece(start=start, finish=finish, cost=float(cost))
 
 
 def _int(value: Any, field: str) -> int:
@@ -257,6 +276,15 @@ def _task(raw: dict[str, Any]) -> Task:
                     _work_piece(piece)
                     for piece in (
                         a["work_pieces"] if isinstance(a.get("work_pieces"), list) else ()
+                    )
+                ),
+                # the booking's baseline-cost series (ADR-0492); absent in every earlier Save
+                baseline_cost_pieces=tuple(
+                    _cost_piece(piece)
+                    for piece in (
+                        a["baseline_cost_pieces"]
+                        if isinstance(a.get("baseline_cost_pieces"), list)
+                        else ()
                     )
                 ),
             )
@@ -523,6 +551,20 @@ def to_json_text(schedule: Schedule) -> str:
                                 "work_minutes": piece.work_minutes,
                             }
                             for piece in a.work_pieces
+                        ]
+                    }
+                )
+                | (
+                    {}
+                    if not a.baseline_cost_pieces
+                    else {
+                        "baseline_cost_pieces": [
+                            {
+                                "start": piece.start.isoformat(),
+                                "finish": piece.finish.isoformat(),
+                                "cost": piece.cost,
+                            }
+                            for piece in a.baseline_cost_pieces
                         ]
                     }
                 )
