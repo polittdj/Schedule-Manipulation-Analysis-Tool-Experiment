@@ -31,7 +31,6 @@ pytest.importorskip("playwright", reason="playwright not installed (deliberate: 
 
 ENDPOINT = "https://proxy.fast.luna.nasa.gov"
 THEMES = ("console", "daylight", "apollo", "jarvis")
-KEY = "k" * 25
 
 
 def _free_port() -> int:
@@ -120,8 +119,12 @@ def test_the_receipt_and_the_version_chip_are_visible_after_save_and_gone_on_rel
         page.wait_for_selector("#backendSel")
         assert page.evaluate("() => document.documentElement.getAttribute('data-theme')") == theme
         assert page.evaluate(_BOX, "[data-receipt]") is None  # nothing before a save
-        # the operator's action on the real form: paste the key into the GATEWAY field, Save
-        page.fill("input[name=gateway_api_key]", KEY)
+        # the operator's action on the real form: paste the key into the GATEWAY field, Save.
+        # The server is shared across the four themes, so each theme pastes a DIFFERENT 25-
+        # character key — a re-save of the key already held is a re-paste, not a replacement
+        # (OR-19, ADR-0496), and that state is measured below in its own right.
+        key = (theme * 6)[:25]
+        page.fill("input[name=gateway_api_key]", key)
         with page.expect_navigation(wait_until="load"):
             page.click("form[action='/settings'] input[type=submit]")
         receipt = page.evaluate(_BOX, "[data-receipt]")
@@ -142,10 +145,24 @@ def test_the_receipt_and_the_version_chip_are_visible_after_save_and_gone_on_rel
             "() => getComputedStyle(document.querySelector('[data-receipt]')).borderTopWidth"
         )
         assert border not in ("", "0px"), (theme, border)
-        assert KEY not in page.content()
+        assert key not in page.content()
         # one-shot: a reload shows no receipt, and the placeholder now states the length
         page.reload(wait_until="load")
         assert page.evaluate(_BOX, "[data-receipt]") is None
         placeholder = page.get_attribute("input[name=gateway_api_key]", "placeholder") or ""
         assert "25 characters" in placeholder
+        # the operator's "I input the API code as I always have": the SAME key pasted again is
+        # a re-paste — a laid-out, bordered warning in this theme's tokens, never "replaced"
+        page.fill("input[name=gateway_api_key]", key)
+        with page.expect_navigation(wait_until="load"):
+            page.click("form[action='/settings'] input[type=submit]")
+        again = page.evaluate(_BOX, "[data-receipt]")
+        assert again is not None and not again["hidden"] and again["w"] > 0 and again["h"] > 0
+        assert "re-pasted" in again["text"] and "identical to the key already held" in again["text"]
+        assert "replaced" not in again["text"], again["text"]
+        border = page.evaluate(
+            "() => getComputedStyle(document.querySelector('[data-receipt]')).borderTopWidth"
+        )
+        assert border not in ("", "0px"), (theme, border)
+        assert key not in page.content()
         browser.close()

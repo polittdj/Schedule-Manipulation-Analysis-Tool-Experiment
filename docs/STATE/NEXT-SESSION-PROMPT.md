@@ -1,12 +1,12 @@
 # Kickoff prompt — next session
 
-**R-47 is CLOSED (ADR-0495, v1.0.263) — do not re-open.** Fuse's SPI(t) population is every STARTED activity with a non-zero actual span, baseline or not; an unbaselined member is the formula's blank-as-0 term (disclosed on `offender_uids` and as a note under the EVM scorecard). Large Test File / File2 read 8.22 / 8.14 over Fuse's own Record Count 717 / 726; 18 Fuse SPI(t) oracles are pinned from the workbooks. **OR-18 is SHIPPED (ADR-0494, v1.0.262) — #678 MERGED** (`main` @ **`e6ff45e1`**, tree == the PR head `c551cb68`; its eight checks all success; `main`'s own runs for `e6ff45e1` NOT yet read). **This unit is a draft PR from `claude/elegant-gauss-lpk1a4`, one commit on `e6ff45e1`** (number in the SESSION-LOG follow-up) — read ITS eight checks first, then `main`'s runs for `e6ff45e1`. **Always `git fetch origin` and read `git log origin/main` before trusting any sha written here** — and fetch again before every base decision: the branch you stack on can move under you (it did, an hour into this session). After the operator merges, restart the branch with `--prune` + `remote set-head` + `checkout -B`. The operator still owes OR-17 §4. The next unit is **R-52**.
+**OR-19 is SHIPPED (ADR-0496, v1.0.264) — do not re-open, and do NOT re-test the tool's key path.** The operator's v1.0.262 screenshot answered OR-17 §4: the gateway's own reason was *"Expired Key. Key Expiry time 2026-09-12 20:36:47 UTC …"* — the credential expired at the AI Hub; a server cannot call an unrecognised key expired, so the tool sent it intact (the stale-in-memory hypothesis refuted on the wire too). The tool now names a re-paste of the held key as such (a warning) and leads the banner with the expiry and the one remedy. **The operator generated a NEW Hub key the same afternoon and reports it works — OR-17 is CLOSED end to end** (a screenshot of the ON banner would pin it; not blocking). **R-47 is CLOSED (ADR-0495, v1.0.263) — #679 MERGED at 17:58Z, `main` @ `055dfb3f` (tree == its head `738f3e0d`; eight of eight green) — do not re-open.** Fuse's SPI(t) population is every STARTED activity with a non-zero actual span, baseline or not; an unbaselined member is the formula's blank-as-0 term (disclosed on `offender_uids` and as a note under the EVM scorecard). Large Test File / File2 read 8.22 / 8.14 over Fuse's own Record Count 717 / 726; 18 Fuse SPI(t) oracles are pinned from the workbooks. **OR-18 is SHIPPED (ADR-0494, v1.0.262) — #678 MERGED** (`e6ff45e1`). **`main`'s own runs for `055dfb3f` and `e6ff45e1` are NOT yet read.** **The OR-19 unit is a draft PR from `claude/elegant-gauss-lpk1a4`, one commit on `055dfb3f`** (number in the SESSION-LOG follow-up) — read ITS eight checks first, then `main`'s runs. **Always `git fetch origin` and read `git log origin/main` before trusting any sha written here** — and fetch again before every base decision: the branch you stack on can move under you (it did, an hour into this session). After the operator merges, restart the branch with `--prune` + `remote set-head` + `checkout -B`. OR-17 is CLOSED (ADR-0496 + the operator's new key); the operator owes only the 09-11 `"ok": false` lines. The next unit is **R-52**.
 
-PR state (2026-09-15, this close): this unit's draft PR from `claude/elegant-gauss-lpk1a4` (number in the SESSION-LOG follow-up) is ONE commit on `main` @ `e6ff45e1` — it was built stacked on #678's head `c551cb68` and restarted onto the squash once #678 merged (trees identical, nothing to resolve). Earlier: **#677 MERGED** — `18fa3ffb` (runs 1869 / 728 success, read this session).
+PR state (2026-09-15, this close): **#679 MERGED** (R-47 alone; `main` @ `055dfb3f`); **the OR-19 draft PR** from the restarted `claude/elegant-gauss-lpk1a4` (number in the SESSION-LOG follow-up) is ONE commit on `055dfb3f` — it was built stacked on #678's head `c551cb68` and restarted onto the squash once #678 merged (trees identical, nothing to resolve). Earlier: **#677 MERGED** — `18fa3ffb` (runs 1869 / 728 success, read this session).
 
-**The operator owes three things, none blocking:** **V-4** (the gateway's own refusal reason — the step-2
-PowerShell: `WWW-Authenticate` and the 401 body; the v1.0.257 banner quotes the same text); whether a fresh
-NASA AI Hub key made the gateway catalog load; and the `"ok": false` lines of the 09-11 morning 403
+**The operator owes one thing, not blocking** (the new Hub key is DONE — *"it seems to work now"*, 2026-09-15; V-4 was
+ANSWERED by the expiry verdict, ADR-0496; the completions request is no longer needed): the `"ok": false` lines of the
+09-11 morning 403
 (`Get-Content "$env:USERPROFILE\.local\state\schedule-forensics\ai-transactions.jsonl" -Tail 40`) — still
 the only evidence that decides whether a prompt-size guard is a unit. Do NOT build one without them.
 
@@ -69,8 +69,8 @@ mutation battery — assert the imported module IS the copy every time (a `-p mu
 (/standards) · ADR-0476 (R-55) · ADR-0477 (R-20 / UI-03) · ADR-0478 · ADR-0481 (OR-11e) · ADR-0482 (OR-12) ·
 ADR-0483 (OR-13) · ADR-0484 (/scorecards) · ADR-0485 (OR-14) · ADR-0486 (OR-15) · ADR-0487 (R-56) · ADR-0488
 (OR-16 / OR-16b) · ADR-0489 (/margin — the Control family COMPLETE) · ADR-0490 (R-49) · ADR-0491 (R-60 CLOSED, #673) ·
-ADR-0492 (R-46 CLOSED) · ADR-0493 (OR-17 in part, #677) · ADR-0494 (OR-18, #678) · **ADR-0495 (R-47 CLOSED — this
-session)**.
+ADR-0492 (R-46 CLOSED) · ADR-0493 (OR-17 in part, #677) · ADR-0494 (OR-18, #678) · **ADR-0495 (R-47 CLOSED, #679
+MERGED) · ADR-0496 (OR-19 — OR-17 §4 answered and OR-17 CLOSED; its own draft PR) — both this session**.
 ⇢ NEXT — the report's §3 in order, one row per unit of work (red-first → the per-task toward/away census
 across EVERY golden before the ADR → mutation proofs by name → the full gate → an ADR → the state docs →
 a draft PR): **R-52** (the `.pptx` LibreOffice
@@ -83,7 +83,10 @@ converter resolves `CurrentDate`, `MaxUnits`, `AvailableFrom/To` and the rates a
 `MaxUnits` feeds the loading view) · **R-62** (in #672's register: every absent slack the writer dropped is
 a zero, completed tasks included) · then R-03 · R-04 · R-09 · R-13 · R-18 · R-21 · R-22 · R-32 · R-39. The
 design queue is 19 artboards — the operator's order picks the next screen (§6 lists them).
-⇢ Traps paid for, by name (2026-09-15 first): **a register's step can name a column that is EMPTY** — the
+⇢ Traps paid for, by name (2026-09-15 first): **a verdict quoted on the page is evidence** — a server cannot call an
+unrecognised credential "expired"; read the quoted reason before re-testing the tool · **"replaced" for an identical
+paste is a false statement of change** — compare with the held value · **a wire test proves the path it drives** — a
+fresh-process test is not an in-process re-paste · **a register's step can name a column that is EMPTY** — the
 Detailed report's per-activity SPI(t) cells hold nothing; its Record Count row is the discriminating number, and
 membership is settled by the COUNT before any ratio is compared · **pin the population from the reference tool's own
 count, not only the 2-dp figure** · **an oracle's total at 2 dp cannot always discriminate a member's TERM** — say what
@@ -118,7 +121,9 @@ Playwright's virtual mouse SURVIVES `goto()` — park it · an `assert` in `src/
 a design mock's status word, decomposition and export label are claims about the ENGINE · MS Project's
 stored dates are a per-activity CPM oracle · `LevelingDelay` is tenths of a minute · MPXJ writes no zero ·
 `Large_Test_File.mpp` ≠ `Large Test File.mpp`.
-⇢ Measured-false / deliberately held — do NOT re-chase: (ADR-0495:) re-gating the SPI(t) population on a
+⇢ Measured-false / deliberately held — do NOT re-chase: (ADR-0496:) the tool's gateway key path as the cause of the
+401 (refuted by the gateway's own "Expired Key" and on the wire) · any code that "renews" a key · a key-expiry
+countdown (the tool learns the expiry only when refused) · (ADR-0495:) re-gating the SPI(t) population on a
 baseline (Fuse's Record Count refutes it) · the completed-unbaselined TERM's value beyond blank-as-0 (the corpus cannot
 discriminate; the operator's Fuse run would) · pinning the `ssi_uid152*` Large Test File saves as Fuse oracles
 (different saves) · TP3's 0.53 (synthetic, no oracle) · (ADR-0492:) re-deriving BCWS on the crew

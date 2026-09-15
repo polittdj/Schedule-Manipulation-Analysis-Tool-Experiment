@@ -129,3 +129,43 @@ def test_a_challenge_without_error_fields_names_its_scheme_last() -> None:
     text = probe_error_text(_err(401, b"", {"WWW-Authenticate": 'Bearer realm="luna"'}))
     assert text == 'server returned HTTP 401 (its reason: "challenge: Bearer realm="luna"")'
     assert is_auth_refusal(text)
+
+
+# --- an EXPIRED credential, in the gateway's own words (OR-19, ADR-0496) -----------------------
+
+
+def test_an_expired_key_verdict_is_parsed_with_its_expiry_and_the_gateways_clock() -> None:
+    """The 2026-09-15 v1.0.262 screenshot, verbatim: the approved gateway's reason names the
+    key's expiry and its own clock; the banner needs both — the date to state, the delta to say
+    how stale the paste is."""
+    import datetime as dt
+
+    from schedule_forensics.ai.refusal import expired_key_details
+
+    reason = (
+        'server returned HTTP 401 (its reason: "Authentication Error - Expired Key. Key Expiry '
+        "time 2026-09-12 20:36:47.844000+00:00 and current time 2026-09-15 "
+        '17:05:33.767685+00:00")'
+    )
+    found = expired_key_details(reason)
+    assert found is not None
+    assert found.expiry == dt.datetime(2026, 9, 12, 20, 36, 47, 844000, tzinfo=dt.UTC)
+    assert found.current == dt.datetime(2026, 9, 15, 17, 5, 33, 767685, tzinfo=dt.UTC)
+    assert found.expiry_text == "2026-09-12 20:36 UTC"
+    assert found.expired_for == "2 days 20 hours"
+
+
+def test_an_expiry_without_timestamps_is_still_an_expiry_and_a_plain_refusal_is_not() -> None:
+    from schedule_forensics.ai.refusal import expired_key_details
+
+    found = expired_key_details('server returned HTTP 401 (its reason: "The access token expired")')
+    assert found is not None and found.expiry is None and found.current is None
+    assert found.expiry_text == "" and found.expired_for == ""
+    assert expired_key_details('server returned HTTP 401 (its reason: "Invalid API key")') is None
+    assert expired_key_details("server returned HTTP 401") is None
+    # a clock that runs BEHIND the expiry (skew) names the date but claims no elapsed time
+    skewed = expired_key_details(
+        "Expired Key. Key Expiry time 2026-09-15T18:00:00Z and current time 2026-09-15T17:00:00Z"
+    )
+    assert skewed is not None and skewed.expiry_text == "2026-09-15 18:00 UTC"
+    assert skewed.expired_for == ""

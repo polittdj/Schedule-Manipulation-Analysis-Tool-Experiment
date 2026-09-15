@@ -223,6 +223,7 @@ per-unit rotation. **Every remaining open item on this page is operator-owned.**
 ## 2026-09-15 (b) — "Once this PR is squashed and merged I want you to add at the top of the launch page the version number of the installed program"
 
 ### OR-18 — "… add at the top of the launch page the version number of the installed program so that we don't have to go through so much effort to tell if the correct version has been uploaded to my computer." · `SHIPPED (ADR-0494, v1.0.262): the Boot Screen line and the header chip on every page`
+### OR-19 — "I am still getting this error message when I try to connect to the NASA approved API LLMs that are approved for CUI and ITAR use. Find the root cause for this error and fix it." (2026-09-15, the v1.0.262 screenshot) · `SHIPPED (ADR-0496, v1.0.264): root cause = the credential expired at the AI Hub on 2026-09-12 20:36:47 UTC (the gateway's own words, quoted by the banner); the tool now names a re-paste of the held key as such (a warning, never "replaced") and leads the refused-key banner with the expiry date, how long before the request, and the one remedy (a NEW key from the Hub); the operator generated a new key the same afternoon and reports it works`
 
 **Resolved from the code, not guessed:** "the launch page" is `/launch`, the Boot Screen (ADR-0426) the
 desktop icon opens on — OUTSIDE the story chrome (no header, no nav), rendered by
@@ -280,6 +281,21 @@ are ONE unit (AI Settings already carries `tool version:` since v1.0.261).
    hypothesis is registered UNVERIFIED (the tool gates routing on `GET /v1/models`); one request
    settles it: `Invoke-RestMethod https://proxy.fast.luna.nasa.gov/v1/chat/completions -Method Post
    -Headers @{Authorization="Bearer <key>"} -ContentType application/json -Body '{"model":"<id>","messages":[{"role":"user","content":"ping"}],"max_tokens":8}'`.
+
+5. **ANSWERED 2026-09-15 17:05Z by the v1.0.262 screenshot (ADR-0496).** V-4 is on the page: the
+   gateway's own reason is *"Authentication Error - Expired Key. Key Expiry time 2026-09-12
+   20:36:47.844000+00:00 and current time 2026-09-15 17:05:33.767685+00:00"* — the credential the
+   tool sent (the saved key, 25 characters, receipt "replaced") **expired at the AI Hub on
+   2026-09-12 20:36:47 UTC**, 2 days 20 hours before the request. A gateway cannot call a key it does
+   not recognise *expired*, so the 25 characters reached it intact — the key path is confirmed by
+   the server's own answer. The one competing hypothesis (a stale in-memory key after a Save) is
+   refuted on the wire (`test_a_key_re_pasted_in_the_same_process_is_the_key_sent_on_both_paths`).
+   **Root cause: the key, not the tool. Remedy: generate a NEW key at the NASA AI Hub, paste it,
+   Save** — re-pasting the expired key changes nothing, and v1.0.264 says so (OR-19). The
+   `/v1/chat/completions` request in §4 is no longer needed; the 09-11 `"ok": false` lines still are.
+6. **CLOSED by the operator, 2026-09-15:** *"I fixed the AI. The API code was expired so I made a new one and it
+   seems to work now."* A new Hub key answers — the whole of OR-17 is settled: the tool's part (ADR-0493 /
+   ADR-0496) and the key's part (the Hub's expiry).
 
 **The registration as written at the close of the previous session (2026-09-15, before the above):**
 

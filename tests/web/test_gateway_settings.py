@@ -602,3 +602,61 @@ def test_the_settings_page_states_the_installed_version(client: TestClient) -> N
     chip = page.split("<b data-tool-version>", 1)[1].split("</b>", 1)[0]
     assert chip == version("schedule-forensics")
     assert "tool version:" in page
+
+
+def test_an_expired_key_verdict_leads_the_banner_with_the_expiry_and_the_only_remedy(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The 2026-09-15 v1.0.262 screenshot (OR-19, ADR-0496): the gateway's own words said the
+    saved key EXPIRED on 2026-09-12 and the operator still asked the tool to be fixed. When the
+    reason names an expiry the banner must lead with it — the date, how long before the request,
+    and the one remedy (a NEW key from the Hub; re-pasting the expired one changes nothing) —
+    instead of the generic "has usually expired or been rotated" guess."""
+    monkeypatch.delenv("SF_GATEWAY_API_KEY", raising=False)
+    be = _refusing(
+        'server returned HTTP 401 (its reason: "Authentication Error - Expired Key. Key Expiry '
+        "time 2026-09-12 20:36:47.844000+00:00 and current time 2026-09-15 "
+        '17:05:33.767685+00:00")',
+        tmp_path,
+    )
+    monkeypatch.setattr(settings_module, "_gateway_or_none", lambda cfg: be)
+    _arm(client, key="k" * 25)
+    page = client.get("/settings").text
+    banner = _gateway_banner(page)
+    assert 'data-sf-key-expired="2026-09-12 20:36 UTC"' in banner
+    assert "EXPIRED on 2026-09-12 20:36 UTC" in banner
+    assert "2 days 20 hours before this request" in banner
+    assert "generate a NEW key at the AI Hub" in banner
+    assert "re-pasting the expired key changes nothing" in banner
+    assert "the saved key, 25 characters" in banner  # the credential sent is still named
+    assert "Expired Key" in banner  # the gateway's own words still ride the banner
+    assert "has usually expired" not in banner  # the guess yields to the verdict
+    assert "k" * 25 not in page
+
+
+def test_re_pasting_the_identical_credential_is_named_as_such_never_as_replaced(
+    client: TestClient, state: SessionState
+) -> None:
+    """The operator's "I input the API code as I always have" (OR-17 → OR-19): the key the
+    tool already held was re-pasted and the receipt read "replaced", which implied something
+    changed. A paste identical to the held credential is named as a re-paste — with the
+    consequence, that a refused key re-pasted stays refused — and a different key of the same
+    length is still a replacement. The local token (posted for the cross-check server, where it
+    is in use) follows the same rule. Never the characters."""
+    _post(client, gateway_api_key="k" * 25, second_backend="openai", openai_api_key="t" * 40)
+    client.get("/settings")  # consume the first receipt
+    _post(client, gateway_api_key="k" * 25, second_backend="openai", openai_api_key="t" * 40)
+    receipts = _receipts(client.get("/settings").text)
+    assert len(receipts) == 1
+    assert "Gateway API key: re-pasted" in receipts[0]
+    assert "identical to the key already held" in receipts[0]
+    assert "25 characters" in receipts[0]
+    assert "changes nothing" in receipts[0] and "NEW key" in receipts[0]
+    assert "Local server API token: re-pasted" in receipts[0]
+    assert "replaced" not in receipts[0]
+    assert "k" * 25 not in receipts[0] and "t" * 40 not in receipts[0]
+    _post(client, gateway_api_key="n" * 25, second_backend="openai")  # same length, new key
+    receipts = _receipts(client.get("/settings").text)
+    assert "Gateway API key: replaced" in receipts[0] and "25 characters now held" in receipts[0]
+    assert "Local server API token: kept" in receipts[0]
+    assert state.ai_config.gateway_api_key == "n" * 25

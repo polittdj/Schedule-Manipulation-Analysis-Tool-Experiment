@@ -18376,3 +18376,57 @@ called a flake turned out to have a mechanism (ADR-0442 UI-02, ADR-0443, ADR-046
   2-dp total cannot discriminate it from a substituted duration (two of 726); an operator-owned Fuse run on a small
   file would. **Environment:** shallow clone; the harness's git identity overridden per command; both ruff binaries.
 
+### 2026-09-15 — OR-19 SHIPPED (ADR-0496, v1.0.264): the gateway's own verdict was "Expired Key" — the credential expired at the AI Hub 2026-09-12 20:36:47 UTC, the tool sent it intact; a re-paste is named as such and an expiry verdict leads the banner
+
+- **Trigger (17:05Z):** the operator's screenshot of v1.0.262 — the first build that states its version and quotes
+  the gateway — with *"I am still getting this error message … Find the root cause for this error and fix it."*
+  The page: receipt *"Gateway API key: replaced — 25 characters now held"*; banner *"… server returned HTTP 401
+  (its reason: "Authentication Error - Expired Key. Key Expiry time 2026-09-12 20:36:47.844000+00:00 and current
+  time 2026-09-15 17:05:33.767685+00:00")"*. **V-4 (OR-17 §4) answered by the operator's own screen.**
+- **Root cause, measured:** the credential expired at the Hub 2 days 20 hours before the request. A gateway cannot
+  call an unrecognised key *expired* (that is *invalid*), so the 25 characters reached it intact — the key path is
+  confirmed by the server's answer (DPAPI, header shape, field). The competing hypothesis (a stale in-memory key
+  after a Save — ADR-0493's wire test drove a fresh process, not a re-paste) was read first (the settings probe
+  builds from `state.ai_config` at render time; the handler nulls `backend_cache`, whose key compares the
+  credential) and then refuted on the wire: `test_a_key_re_pasted_in_the_same_process_is_the_key_sent_on_both_paths`
+  green on the pristine tree, mutant M4 red by name. **No change to the tool can renew a key.**
+- **Shipped (what the tool still owed):** the receipt read "replaced" for a key identical to the one held →
+  `_settings_receipt` now receives the credentials held before the save and names an identical paste `unchanged`
+  (*"re-pasted — identical to the key already held (25 characters); … pasting it again changes nothing — get a
+  NEW key from the AI Hub"*, a WARNING; the local token likewise); `ai.refusal.expired_key_details` (word-bounded
+  *expired / expires / expiry*; the expiry after "expiry time / at / on" and the server's clock after "current
+  time", ISO-8601 with `Z` or an offset, naive = UTC; a clock behind the expiry claims no elapsed time) and the
+  refused-key banner leads with *"EXPIRED on 2026-09-12 20:36 UTC — 2 days 20 hours before this request. Nothing
+  in this tool can renew a key: generate a NEW key at the AI Hub, then paste the CURRENT key …"*
+  (`data-sf-key-expired`); the gateway's own words still ride the banner.
+- **Verification:** red-first 3 by name on the pristine tree (`…is_parsed_with_its_expiry…`, `…leads_the_banner…`,
+  `…identical_credential…never_as_replaced`; the date-less parser test red on import). After: **130 passed** across
+  `test_refusal_reason` / `test_gateway_settings` / `test_gateway_wire` / `test_settings_receipt_browser` / the
+  monolith-split contract. Chromium (four themes, 1,440 px, the real form): each theme pastes a distinct key; the
+  re-paste receipt is a laid-out, bordered box in the theme's notice tokens, never "replaced", the key never in
+  the page. **Mutation battery 5 / 5 RED by name** on a shadowed copy (`-p mutcheck` on `ai.refusal`, `web.settings`,
+  `web.app`; control green): M1 a re-paste reads "replaced" · M2 the expiry verdict never recognised · M3 the
+  handler forgets the previously held credentials · M4 the handler keeps the old key (the stale-key defect) · M5 the
+  timestamps never parsed. Statics clean (ruff 0.16.7 + 0.15.8, format, mypy strict, bandit, `node --check`).
+  Version 1.0.264, wheel + nine installers rebuilt, installer tests 68. **The full suite on the final tree: 5,449
+  passed / 5 skipped / 0 failed in 33:47; `-m parity` 118 passed / 0 failed in 3:32.**
+- **CONFIRMED by the operator while this unit's suite ran:** *"I fixed the AI. The API code was expired so I made a
+  new one and it seems to work now."* — the diagnosis's one prediction, measured on the operator's machine. OR-17 is
+  CLOSED end to end (the tool's part ADR-0493 / 0496, the key's part the Hub's). Not yet seen: the ON banner / the
+  catalog on v1.0.262+ with the new key — the operator's next screenshot, not blocking. The 09-11 `"ok": false`
+  lines still decide the prompt-size question (a 403, a different status).
+
+### 2026-09-15 — follow-up: #679's first CI verdict (the R-47 head), the OR-19 push, and the branch's final head
+
+- **#679 on `738f3e0d` (R-47 alone) — all eight green:** CI run 34999688113 — `cui-guard` 17:11:46Z, `browser
+  (measured-box proof)` 17:27:31Z, `floor (declared minimum)` 17:31:26Z, `test (3.13)` 17:52:16Z, `test (3.11)`
+  17:57:16Z, `check` 17:57:22Z; installer-smoke run 34999688062 — `linux` 17:12:13Z, `windows` 17:16:04Z.
+- **#679 was marked ready and squash-merged by the operator at 17:58Z with the R-47 commit alone: `main` @
+  `055dfb3f`, tree-identical to `738f3e0d` (`1db9ef34…`, `git rev-parse` both).** GitHub deleted the remote branch;
+  the session was auto-unsubscribed; the branch was restarted on the squash (`--prune` + `remote set-head` +
+  `checkout -B`, the OR-19 working tree carried unchanged) — a merged PR tracks no new work.
+- **The OR-19 unit (ADR-0496, v1.0.264) is the commit carrying this entry** — ONE commit on `055dfb3f`, its OWN draft
+  PR (number and first CI verdict in the next follow-up). Not marked ready, not merged — the operator's.
+- `main`'s own runs for `055dfb3f` (#679's squash) and `e6ff45e1` (#678's): not read this session — the next
+  session reads them first (a red cell on a tree identical to a green PR head is the runner's claim).
+

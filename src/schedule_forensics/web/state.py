@@ -120,11 +120,12 @@ class _SettingsReceipt:
     characters), and any credential pasted into a field that no selected backend uses.
     """
 
-    #: "replaced" | "kept" | "none" — what the save did with the gateway key.
+    #: "replaced" | "unchanged" | "kept" | "none" — what the save did with the gateway key
+    #: ("unchanged": a value was posted and it IS the value already held — a re-paste, OR-19).
     gateway_key: str
     #: The gateway key's length after the save (0 = none held); the one comparable fact.
     gateway_key_chars: int
-    #: "replaced" | "kept" | "none" — what the save did with the local server's API token.
+    #: "replaced" | "unchanged" | "kept" | "none" — the same for the local server's API token.
     local_token: str
     #: Which posted credentials no selected backend uses: "local_token" and/or "gateway_key".
     misplaced: tuple[str, ...] = ()
