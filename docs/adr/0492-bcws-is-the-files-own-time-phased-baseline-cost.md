@@ -119,9 +119,11 @@ answering the project always (5) / ignoring `ignore_resource_calendar` (1) / a 2
 no longer yielding to the crew (2), the schema version unbumped (1). **One survivor**, "a piece
 without a cost reads as zero": the mutated line sits BELOW the guard that refuses a missing cost,
 so it is unreachable — an equivalent mutant, not a test gap; re-cut with the guard removed it is
-red by name on exactly the strictness test (18 / 18). Boundary mutants (`<=` at the status date)
-are equivalent by arithmetic (a block finishing at the status date prorates to its whole) and were
-not cut.
+red by name on exactly the strictness test (18 / 18). A nineteenth, cut after the census showed
+the elapsed-time fallback had no test behind it (a block the booking's calendar sees no working
+time in — a Saturday block on a Monday-to-Friday crew): the fallback returning nothing is red on
+exactly that test (19 / 19). Boundary mutants (`<=` at the status date) are equivalent by
+arithmetic (a block finishing at the status date prorates to its whole) and were not cut.
 
 **The gate:** ruff 0.15.8 and 0.16.7 clean on the whole tree, `ruff format --check` clean, mypy
 strict 165 files clean, bandit exit 0, the audit-report guard, the parity-report guard and the

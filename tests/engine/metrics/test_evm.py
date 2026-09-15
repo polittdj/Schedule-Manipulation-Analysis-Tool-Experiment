@@ -742,3 +742,30 @@ def test_the_budget_no_booking_carries_accrues_linearly_beside_the_recorded_seri
     sched = _cost_sched([part, over], status)
     assert _planned_value(sched, [part]) == pytest.approx(600.0 + 0.5 * 400.0)
     assert _planned_value(sched, [over]) == pytest.approx(600.0)
+
+
+def test_a_block_the_calendar_sees_no_working_time_in_is_measured_by_elapsed_time() -> None:
+    """The writer's calendar and the rule's can differ (R-58's approximation): a block that the
+    booking's calendar sees no working time in — a Saturday block on a Monday-to-Friday crew —
+    cannot be prorated in working minutes, so it is measured by elapsed time, the only ruler
+    left: 4 of 9 hours by Saturday noon. The whole block counts once the status date passes it."""
+    from schedule_forensics.engine.metrics.evm import _planned_value
+    from schedule_forensics.model.assignment import Assignment, CostPiece
+
+    sat_0800 = MON + dt.timedelta(days=5)
+    block = CostPiece(start=sat_0800, finish=sat_0800 + dt.timedelta(hours=9), cost=900.0)
+    task = Task(
+        unique_id=1,
+        name="weekend",
+        duration_minutes=DAY,
+        budgeted_cost=900.0,
+        baseline_start=MON,
+        baseline_finish=MON + dt.timedelta(days=7, hours=9),
+        resource_assignments=(
+            Assignment(resource_id=1, work_minutes=DAY, baseline_cost_pieces=(block,)),
+        ),
+    )
+    noon = _cost_sched([task], sat_0800 + dt.timedelta(hours=4))
+    assert _planned_value(noon, [task]) == pytest.approx(900.0 * 4 / 9)
+    after = _cost_sched([task], MON + dt.timedelta(days=7))
+    assert _planned_value(after, [task]) == pytest.approx(900.0)
