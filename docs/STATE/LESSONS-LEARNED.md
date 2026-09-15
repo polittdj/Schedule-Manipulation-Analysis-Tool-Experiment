@@ -435,6 +435,28 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-15 (c) — a register's step can name a column that is EMPTY: the discriminating number was a COUNT the workbook carries, and membership is settled by the count before any ratio is compared (ADR-0495, R-47)
+
+- **What happened.** R-47's step read "diff the per-activity ratios against the Detailed Metric Report's SPI(t)
+  column by UID". Both Detailed reports hold nothing in that column on any activity row — only the total and a
+  Record Count (717 / 726). The engine's own sum of ratios over Fuse's count reproduced 8.22 / 8.14 to the
+  fourth decimal before a single ratio was compared: the residual was one and three missing 0-term members,
+  every one a started activity with no `<Baseline>` element, which the engine's ADR-0176 population gate
+  skipped and Fuse admits (its `Completed (w/o Baseline Duration)` = 2 names two of them).
+- **What was tried.** The scratch std-lib xlsx reader crashed twice on the vendor's SpreadsheetGear output —
+  cells without `r=`, then rows without `r=`; the repo's oracle helper already carries both counters. Three
+  candidate population rules were priced by COUNT against the Record Count (717 / 724 / 807) — only one fits.
+- **What the corpus cannot settle.** File2's total at 2 dp is the same whether its two completed-unbaselined
+  members score 0 or ≈1 (two of 726 move the third decimal). The ADR pins the formula's own blank-as-0 reading,
+  says exactly that, and registers the discriminating measurement (a Fuse run on a small file with a
+  completed, never-baselined activity) as the operator's — it does not build on the assumption.
+- **The lessons.** (1) When the register names a per-row column, check the column is POPULATED before
+  building the join; a report's aggregate rows (total, Record Count) can be the whole oracle. (2) Pin the
+  POPULATION from the reference tool's own count, not only the 2-dp figure — a figure can match by accident of
+  rounding, a count to the activity cannot. (3) A figure an ADR repeats is testimony until a test reads the
+  cell — 8.24 / 8.22 had none. (4) A branch another live session is stewarding can move under you: `git fetch
+  origin` before every base decision (the docs follow-up landed on #678 an hour into this session).
+
 ### 2026-09-15 (b) — a surface promised from memory is a claim: read the stylesheet before saying "it prints"; anchor placement pins on the exact tag; a new public name in an extracted module owes the contract its re-export (ADR-0494, OR-18)
 
 - **What happened.** The operator asked for the version at the top of the launch page and agreed to the same

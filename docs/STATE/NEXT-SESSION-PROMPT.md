@@ -1,14 +1,27 @@
 # Kickoff prompt — next session
 
-**OR-18 is SHIPPED (ADR-0494, v1.0.262) — do not re-open.** Every page states the installed build: `/launch` under the compliance chrome, every chrome page in the header beside the brand; `chrome.tool_version()` read at render time. **#677 MERGED** — `main` is **`18fa3ffb`** (tree == `1aacd3be`); this unit is a draft PR from `claude/dazzling-ptolemy-i1zig0` (number in the SESSION-LOG follow-up) — read ITS eight checks first, then `main`'s runs for `18fa3ffb`. After the operator merges, restart the branch with `--prune` + `remote set-head` + `checkout -B`. **Always `git fetch origin` and read `git log origin/main` before trusting any sha written here.** The operator still owes OR-17 §4 (a v1.0.262 screenshot after pasting the CURRENT Hub key; V-4; the completions request). The next unit is **R-47**.
+**R-47 is CLOSED (ADR-0495, v1.0.263) — do not re-open.** Fuse's SPI(t) population is every STARTED activity with a non-zero actual span, baseline or not; an unbaselined member is the formula's blank-as-0 term (disclosed on `offender_uids` and as a note under the EVM scorecard). Large Test File / File2 read 8.22 / 8.14 over Fuse's own Record Count 717 / 726; 18 Fuse SPI(t) oracles are pinned from the workbooks. **OR-18 is SHIPPED (ADR-0494, v1.0.262) — #678 MERGED** (`main` @ **`e6ff45e1`**, tree == the PR head `c551cb68`; its eight checks all success; `main`'s own runs for `e6ff45e1` NOT yet read). **This unit is a draft PR from `claude/elegant-gauss-lpk1a4`, one commit on `e6ff45e1`** (number in the SESSION-LOG follow-up) — read ITS eight checks first, then `main`'s runs for `e6ff45e1`. **Always `git fetch origin` and read `git log origin/main` before trusting any sha written here** — and fetch again before every base decision: the branch you stack on can move under you (it did, an hour into this session). After the operator merges, restart the branch with `--prune` + `remote set-head` + `checkout -B`. The operator still owes OR-17 §4. The next unit is **R-52**.
 
-PR state (2026-09-15, this close): the unit is a draft PR from `claude/dazzling-ptolemy-i1zig0` (its number in the SESSION-LOG follow-up); it CONTAINS the previous session's docs-only draft **#676** (fast-forwarded onto it), so the operator merges this one and closes #676, or merges #676 first and this branch merge-resolves on the state docs. Earlier: **#675 MERGED** — `main` is **`ec3adf6c`** (its CI run 1862 was in progress at the close); **#674 MERGED** — `9a9e400e` (ADR-0492, v1.0.260; its runs 1860 / 723 read success). **Always `git fetch origin` and read `git log origin/main` before trusting any sha written here.** After the operator merges, restart the branch with `--prune` + `remote set-head` + `checkout -B`; the next unit is **R-47**.
+PR state (2026-09-15, this close): this unit's draft PR from `claude/elegant-gauss-lpk1a4` (number in the SESSION-LOG follow-up) is ONE commit on `main` @ `e6ff45e1` — it was built stacked on #678's head `c551cb68` and restarted onto the squash once #678 merged (trees identical, nothing to resolve). Earlier: **#677 MERGED** — `18fa3ffb` (runs 1869 / 728 success, read this session).
 
 **The operator owes three things, none blocking:** **V-4** (the gateway's own refusal reason — the step-2
 PowerShell: `WWW-Authenticate` and the 401 body; the v1.0.257 banner quotes the same text); whether a fresh
 NASA AI Hub key made the gateway catalog load; and the `"ok": false` lines of the 09-11 morning 403
 (`Get-Content "$env:USERPROFILE\.local\state\schedule-forensics\ai-transactions.jsonl" -Tail 40`) — still
 the only evidence that decides whether a prompt-size guard is a unit. Do NOT build one without them.
+
+## R-47 is CLOSED (ADR-0495). The population is Fuse's Record Count — do not re-gate it on a baseline.
+
+What is now true, measured: the Detailed Metric Report's per-activity SPI(t) column is EMPTY on every activity
+row (both reports); it carries the total and a **Record Count (717 / 726)**, and the engine's sum of ratios over
+that count reproduces 8.22 / 8.14 exactly. The engine now admits every started activity with a non-zero actual
+span and scores an unbaselined one as 0 (UID 7260 in progress on both files; 7262 / 7551 completed on File2 —
+the workbook's `Completed (w/o Baseline Duration)` = 2; the zero-span milestone 7183 stays excluded). Corpus
+census 27 fixtures: 5 moved, all that class, none away (the `ssi_uid152*` saves → 8.22, NOT pinned as oracles;
+TP3 0.53 → 0.48 on UID 34, no oracle). Mutation battery 5 / 5 by name. **Held (operator-owned):** the VALUE of a
+completed-unbaselined term — 0 by the formula's blank-as-0; File2's 2-dp total cannot discriminate it from a
+substituted duration (two of 726). Only a Fuse run on a small file with a completed, never-baselined activity
+would. Do not build on either assumption.
 
 ## R-46 is CLOSED (ADR-0492). BCWS is the file's own series — do not re-derive it.
 
@@ -56,10 +69,11 @@ mutation battery — assert the imported module IS the copy every time (a `-p mu
 (/standards) · ADR-0476 (R-55) · ADR-0477 (R-20 / UI-03) · ADR-0478 · ADR-0481 (OR-11e) · ADR-0482 (OR-12) ·
 ADR-0483 (OR-13) · ADR-0484 (/scorecards) · ADR-0485 (OR-14) · ADR-0486 (OR-15) · ADR-0487 (R-56) · ADR-0488
 (OR-16 / OR-16b) · ADR-0489 (/margin — the Control family COMPLETE) · ADR-0490 (R-49) · ADR-0491 (R-60 CLOSED, #673) ·
-**ADR-0492 (R-46 CLOSED — this session)**.
+ADR-0492 (R-46 CLOSED) · ADR-0493 (OR-17 in part, #677) · ADR-0494 (OR-18, #678) · **ADR-0495 (R-47 CLOSED — this
+session)**.
 ⇢ NEXT — the report's §3 in order, one row per unit of work (red-first → the per-task toward/away census
 across EVERY golden before the ADR → mutation proofs by name → the full gate → an ADR → the state docs →
-a draft PR): **R-47** (SPI(t) 8.24 vs 8.22) · **R-52** (the `.pptx` LibreOffice
+a draft PR): **R-52** (the `.pptx` LibreOffice
 refuses) · **R-50** (expose the History variants) · **R-61** (a FIXED_DURATION leg on an off-pattern crew —
 updated3 UID 210) · **R-57** (an assignment's OWN leveling delay — Hard_File UID 398's RA 277 is a split ON a
 delayed assignment: its gap is honoured since ADR-0491, its delay is not; UID 188 on updated2) · **R-58** ·
@@ -69,7 +83,12 @@ converter resolves `CurrentDate`, `MaxUnits`, `AvailableFrom/To` and the rates a
 `MaxUnits` feeds the loading view) · **R-62** (in #672's register: every absent slack the writer dropped is
 a zero, completed tasks included) · then R-03 · R-04 · R-09 · R-13 · R-18 · R-21 · R-22 · R-32 · R-39. The
 design queue is 19 artboards — the operator's order picks the next screen (§6 lists them).
-⇢ Traps paid for, by name (2026-09-15 first): **a register's "first executable step" is a hypothesis
+⇢ Traps paid for, by name (2026-09-15 first): **a register's step can name a column that is EMPTY** — the
+Detailed report's per-activity SPI(t) cells hold nothing; its Record Count row is the discriminating number, and
+membership is settled by the COUNT before any ratio is compared · **pin the population from the reference tool's own
+count, not only the 2-dp figure** · **an oracle's total at 2 dp cannot always discriminate a member's TERM** — say what
+the corpus settles and what it cannot · **SpreadsheetGear omits `r=` on cells AND rows** — a std-lib reader needs both
+counters · **the branch you stack on can move — and MERGE — under you** — fetch before basing and before committing; compare tree hashes before restarting · **a register's "first executable step" is a hypothesis
 about the mechanism** — the file carried the output (the Type-5 series) since the last unit and nobody
 re-priced the row; measure whether the file records the answer BEFORE re-deriving it · **a figure with no
 test behind it is testimony however many ADRs repeat it** — grep the intake workbooks' sheet XML for the
@@ -99,7 +118,10 @@ Playwright's virtual mouse SURVIVES `goto()` — park it · an `assert` in `src/
 a design mock's status word, decomposition and export label are claims about the ENGINE · MS Project's
 stored dates are a per-activity CPM oracle · `LevelingDelay` is tenths of a minute · MPXJ writes no zero ·
 `Large_Test_File.mpp` ≠ `Large Test File.mpp`.
-⇢ Measured-false / deliberately held — do NOT re-chase: (ADR-0492:) re-deriving BCWS on the crew
+⇢ Measured-false / deliberately held — do NOT re-chase: (ADR-0495:) re-gating the SPI(t) population on a
+baseline (Fuse's Record Count refutes it) · the completed-unbaselined TERM's value beyond blank-as-0 (the corpus cannot
+discriminate; the operator's Fuse run would) · pinning the `ssi_uid152*` Large Test File saves as Fuse oracles
+(different saves) · TP3's 0.53 (synthetic, no oracle) · (ADR-0492:) re-deriving BCWS on the crew
 calendar instead of reading the series · a status date inside a merged block with unequal days (no oracle;
 the booking calendar's working time is the pinned ruler) · a series exceeding the task's baseline cost
 (left as recorded) · Type 4 / Type 10 as cost · an ELAPSED reading of a split gap (the file's own

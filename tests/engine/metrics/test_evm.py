@@ -769,3 +769,74 @@ def test_a_block_the_calendar_sees_no_working_time_in_is_measured_by_elapsed_tim
     assert _planned_value(noon, [task]) == pytest.approx(900.0 * 4 / 9)
     after = _cost_sched([task], MON + dt.timedelta(days=7))
     assert _planned_value(after, [task]) == pytest.approx(900.0)
+
+
+def test_spi_t_acumen_counts_started_work_without_a_baseline_as_a_zero_term() -> None:
+    """R-47 (ADR-0495) — the population is every STARTED activity with a non-zero actual span,
+    baseline or not: the Bible formula evaluates a blank baseline as 0, so an unbaselined
+    member dilutes the average exactly like an in-progress one (Large Test File UID 7260, File2
+    UIDs 7262 / 7551 — Fuse's Record Count 717 / 726 and its 8.22 / 8.14 prove it); a zero-span
+    completion stays excluded whether or not it is baselined (File UID 7183); a never-started
+    activity contributes nothing. The members whose term the file cannot know are disclosed by
+    UID, the way CPI discloses its blank actuals (ADR-0473)."""
+    status = MON + dt.timedelta(days=20)
+    tasks = [
+        Task(
+            unique_id=1,
+            name="on-pace",
+            duration_minutes=5 * DAY,
+            baseline_start=MON,
+            baseline_finish=MON + dt.timedelta(days=5),
+            actual_start=MON,
+            actual_finish=MON + dt.timedelta(days=5),
+            percent_complete=100.0,
+        ),
+        Task(
+            unique_id=2,
+            name="half-pace",
+            duration_minutes=5 * DAY,
+            baseline_start=MON,
+            baseline_finish=MON + dt.timedelta(days=5),
+            actual_start=MON,
+            actual_finish=MON + dt.timedelta(days=10),
+            percent_complete=100.0,
+        ),
+        # started, incomplete, NO baseline -> a 0 term (Large Test File UID 7260)
+        Task(
+            unique_id=3,
+            name="in-progress-unbaselined",
+            duration_minutes=5 * DAY,
+            actual_start=MON + dt.timedelta(days=6),
+            percent_complete=40.0,
+        ),
+        # completed, NO baseline, a positive actual span -> a 0 term (File2 UIDs 7262 / 7551)
+        Task(
+            unique_id=4,
+            name="complete-unbaselined",
+            duration_minutes=5 * DAY,
+            actual_start=MON,
+            actual_finish=MON + dt.timedelta(days=5),
+            percent_complete=100.0,
+        ),
+        # completed, NO baseline, zero span -> EXCLUDED (File UID 7183)
+        Task(
+            unique_id=5,
+            name="ms-unbaselined",
+            duration_minutes=0,
+            is_milestone=True,
+            actual_start=MON,
+            actual_finish=MON,
+            percent_complete=100.0,
+        ),
+        # never started, NO baseline -> contributes nothing
+        Task(unique_id=6, name="future-unbaselined", duration_minutes=5 * DAY),
+    ]
+    r = compute_evm_indices(_sched(tasks, status_date=status))["spi_t_acumen"]
+    # (1.0 + 0.5 + 0 + 0) / 4 = 0.375 -> 0.38 (half-up); the milestone and the unstarted excluded
+    assert r.value == 0.38
+    assert r.count == 4 and r.population == 4
+    assert r.offender_uids == (3, 4)
+    # without a status date the in-progress term cannot be assessed; the unbaselined completion
+    # still dilutes: (1.0 + 0.5 + 0) / 3
+    r2 = compute_evm_indices(_sched(tasks))["spi_t_acumen"]
+    assert r2.value == 0.5 and r2.population == 3 and r2.offender_uids == (4,)

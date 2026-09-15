@@ -541,6 +541,7 @@ from schedule_forensics.web.evm import _evm_explainer as _evm_explainer
 from schedule_forensics.web.evm import _evm_idx_str as _evm_idx_str
 from schedule_forensics.web.evm import _how_we_execute_evm_header as _how_we_execute_evm_header
 from schedule_forensics.web.evm import _threshold_legend as _threshold_legend
+from schedule_forensics.web.evm import _unbaselined_note as _unbaselined_note
 from schedule_forensics.web.evolution import _CH04_NUMERALS as _CH04_NUMERALS
 
 # ADR-0350 (phase 3 of the monolith split): the SHARED presentation kernel — the panel-contract

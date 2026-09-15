@@ -18336,3 +18336,43 @@ called a flake turned out to have a mechanism (ADR-0442 UI-02, ADR-0443, ADR-046
   is the runner's claim; compare tree hashes first). Its installer-smoke run was not read.
 - **Token guardian at this entry: ~84 % of the assumed wall** — the session ends after this push; the next
   unit (R-47) starts in a fresh session from the kickoff prompt.
+
+### 2026-09-15 — R-47 CLOSED (ADR-0495, v1.0.263): Fuse's SPI(t) population is every started activity with a non-zero actual span, baseline or not; Large Test File / File2 exact over Fuse's own 717 / 726
+
+- **Branch:** `claude/elegant-gauss-lpk1a4`. Built stacked on #678's head `c551cb68` (the previous session was still
+  alive — its docs follow-up landed there an hour in; #678's first run read 5 of 8 green with the test jobs running).
+  **#678 was marked ready and squash-merged while this unit's suite ran: `main` @ `e6ff45e1` (17:02Z),
+  tree-identical to `c551cb68` (`5cfd4cd1…`, `git rev-parse` both).** Its eight checks on `c551cb68` all success:
+  `check` 17:02:29Z · `test (3.11)` 17:02:22Z · `test (3.13)` 16:59:24Z · `floor` 16:36:38Z · `browser` 16:35:25Z ·
+  `cui-guard` 16:17:55Z · `linux` 16:17:10Z · `windows` 16:21:23Z. The branch was restarted onto the squash before the
+  commit (the working tree carried unchanged), so this PR is ONE commit on `main`. `main`'s runs for `e6ff45e1`: not
+  yet read. #677's squash `18fa3ffb`: runs 1869 / 728 success (read this session).
+- **Measured first (QC-2):** 8.24 / 8.22 had no test behind them — read from the Metric History's row 328 (8.22 /
+  8.14, the same pair on `AlltheProjects`). The register's step named the Detailed report's per-activity SPI(t)
+  column: EMPTY on all 2,126 / 2,125 activity rows in BOTH Detailed reports (7/15 and 7/21); the column carries the
+  total and a **Record Count 717 / 726**. Engine sum of ratios 5,896.9713 / 5,908.2441 over Fuse's count = 8.2245 /
+  8.1381 → 8.22 / 8.14 exactly: the residual was the population. Started activities with no `<Baseline>` element:
+  UID 7260 (in progress) on both, 7262 / 7551 (completed) on File2 — the workbook's `Completed (w/o Baseline
+  Duration)` = 2 names them; 7183 (zero-span milestone) stays out. "Started & non-zero span, any baseline" = 717 /
+  726 to the activity; the two alternatives refuted by count (724; 807 / 816).
+- **Shipped:** `evm._spi_t_acumen` admits every started activity, scores an unbaselined member 0 and discloses it
+  on `offender_uids`; `web/evm._unbaselined_note` under the schedule scorecard (re-exported from `web.app`);
+  `help.py` + the dictionary regenerated.
+- **Verification:** red-first 5 by name on the pristine tree (`test_acumen_spi_t_engine_equals_fuse` ×2,
+  `…population_equals_the_fuse_record_count` ×2, `test_spi_t_acumen_counts_started_work_without_a_baseline_as_a_zero_term`)
+  with 17 other oracle parametrizations green; after: 22 passed. **18 Fuse SPI(t) oracles** pinned from three
+  workbooks (N/A ↔ NOT_APPLICABLE); the Record Count streamed with `iterparse` and stopped at row 14. Corpus census
+  through the real engine: 27 fixtures, **5 moved, all the started-unbaselined class, none away** (LTF 717 / 8.22 —
+  7260; LTF2 726 / 8.14 — 7262, 7260, 7551; `ssi_uid152` and Leveled → 8.22, not pinned; TP3 12 / 0.48 — UID 34, no
+  oracle, nothing pinned 0.53). **Mutation battery 5 / 5 RED by name** on a shadowed copy (`-p mutcheck`; control 23
+  green): M1 the pre-ADR gate (6 red) · M2 zero-span unbaselined as 0 · M3 never-started unbaselined admitted · M4
+  disclosure dropped · M5 in-progress unbaselined excluded. Chromium, TP3 on `/evm`, four themes × 1,440 / 900: the
+  note inside its panel, muted ink, scroll width shown == hidden. Statics clean (ruff 0.16.7 + 0.15.8, format, mypy
+  strict, bandit, `node --check`); targeted 214 passed; audit guard 8; version 1.0.263, wheel + nine installers
+  rebuilt (`tools/mpxj` unchanged, `163d1942`), installer tests 68. **`-m parity` on the final tree: 118 passed / 0
+  failed in 3:46** (98 + this unit's 20 parametrizations). **The full suite on the final tree: 5,444 passed / 5
+  skipped / 0 failed in 35:08** (`pytest --collect-only` 5,449). The PR number and its checks: the follow-up below.
+- **Held, stated in the ADR:** the completed-unbaselined TERM's value — 0 by the formula's blank-as-0; File2's
+  2-dp total cannot discriminate it from a substituted duration (two of 726); an operator-owned Fuse run on a small
+  file would. **Environment:** shallow clone; the harness's git identity overridden per command; both ruff binaries.
+
