@@ -222,7 +222,7 @@ per-unit rotation. **Every remaining open item on this page is operator-owned.**
 
 ## 2026-09-15 (b) — "Once this PR is squashed and merged I want you to add at the top of the launch page the version number of the installed program"
 
-### OR-18 — "… add at the top of the launch page the version number of the installed program so that we don't have to go through so much effort to tell if the correct version has been uploaded to my computer." · `OPEN — queued behind #677's merge (received 2026-09-15 ~14:25Z, in chat)`
+### OR-18 — "… add at the top of the launch page the version number of the installed program so that we don't have to go through so much effort to tell if the correct version has been uploaded to my computer." · `SHIPPED (ADR-0494, v1.0.262): the Boot Screen line and the header chip on every page`
 
 **Resolved from the code, not guessed:** "the launch page" is `/launch`, the Boot Screen (ADR-0426) the
 desktop icon opens on — OUTSIDE the story chrome (no header, no nav), rendered by

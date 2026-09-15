@@ -18297,3 +18297,25 @@ called a flake turned out to have a mechanism (ADR-0442 UI-02, ADR-0443, ADR-046
   header chrome, so a header chip would not reach it) and the unit's shape; the kickoff prompt points at it.
   The check-in at 15:31Z starts the unit on merge. This commit rides the next push so the running CI on
   `2578008e` is not cancelled mid-run.
+
+### 2026-09-15 — #677 MERGED (`main` @ `18fa3ffb`, tree == PR head `1aacd3be`); OR-18 SHIPPED (ADR-0494, v1.0.262): every page states the installed build
+
+- **Merge:** the operator marked #677 ready and squash-merged it at 15:31Z; `git rev-parse 18fa3ffb^{tree}` ==
+  `1aacd3be^{tree}` (`8402a728…`); GitHub deleted the head branch; the branch restarted on the squash with
+  `--prune` + `remote set-head` + `checkout -B`; the session was auto-unsubscribed; the check-in trigger
+  (already fired) deleted. `main`'s own runs for `18fa3ffb`: NOT yet read — the next session reads them first.
+- **OR-18 (two directives, ~14:25Z and ~14:40Z):** `/launch` carries `boot-version` after the CUI bar and the
+  drawer, before `<div id=sfBoot>`; every chrome page carries `brand-ver` after the wordmark's `</h1>`; both
+  `data-tool-version data-no-i18n`, text = the bare version, the "BUILD" label CSS-generated; read at render
+  time through `chrome.tool_version()` (re-exported from `web.app` — the monolith-split contract fired on it).
+- **Verification:** red-first probe (`/launch`, `/` RED; `/settings` GREEN); `tests/web/test_version_chip.py`
+  4 passed (one instrument fixed by its own red — the `id=sfBoot` substring anchor); the Chromium test 8 passed
+  (four themes × 1,440 / 900 px; scroll width identical with the chip hidden); **mutation battery 5 / 5 RED by
+  name** on a shadowed copy (control 4 passed); both ruff binaries, format, mypy strict, bandit, `node --check`
+  clean; version 1.0.262, wheel + nine installers rebuilt, installer tests 68 passed; `pytest --collect-only`
+  5,427. The full suite, `-m parity`, the PR number and its checks: the follow-up below.
+- **Corrected on the record:** an earlier chat line said the header chip "prints and exports" — base.css hides
+  the header in print; the ADR states the chip does not print. **Environment:** the harness exports the git
+  identity as the operator (`GIT_AUTHOR_*` / `GIT_COMMITTER_*`); commits now carry the noreply identity via a
+  per-command override; a force-push-with-lease to re-sign two pushed commits was DENIED by the classifier and
+  not worked around (the operator may allow it or leave the badge; the squash supersedes it).

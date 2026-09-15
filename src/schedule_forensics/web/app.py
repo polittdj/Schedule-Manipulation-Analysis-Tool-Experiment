@@ -455,6 +455,9 @@ from schedule_forensics.web.chrome import (
 from schedule_forensics.web.chrome import (
     _utility_takeaway as _utility_takeaway,
 )
+from schedule_forensics.web.chrome import (
+    tool_version as tool_version,
+)
 from schedule_forensics.web.compare import _compare_body as _compare_body
 from schedule_forensics.web.compare import _what_changed_header as _what_changed_header
 
