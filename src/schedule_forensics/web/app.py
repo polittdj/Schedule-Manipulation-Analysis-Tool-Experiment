@@ -7662,11 +7662,13 @@ def create_app(
         # BLANK — blank means KEEP the held key (a save of any other setting must not
         # silently de-authenticate the gateway); a non-blank value replaces it (ADR-0403)
         posted_gateway_key = gateway_api_key.strip()
-        gateway_api_key = posted_gateway_key or st.ai_config.gateway_api_key
+        previous_gateway_key = st.ai_config.gateway_api_key
+        gateway_api_key = posted_gateway_key or previous_gateway_key
         # the local server's API token (ADR-0485) follows the same rule: blank keeps, a value
         # replaces; Turn-the-AI-off and a wipe rebuild the config and so forget it
         posted_local_token = openai_api_key.strip()
-        openai_api_key = posted_local_token or st.ai_config.openai_api_key
+        previous_local_token = st.ai_config.openai_api_key
+        openai_api_key = posted_local_token or previous_local_token
         st.ai_config = AIConfig(
             classification=cls,
             backend=backend,
@@ -7698,6 +7700,8 @@ def create_app(
             posted_gateway_key=posted_gateway_key,
             posted_local_token=posted_local_token,
             held_gateway_key=gateway_api_key,
+            previous_gateway_key=previous_gateway_key,
+            previous_local_token=previous_local_token,
             held_local_token=openai_api_key,
         )
         try:  # ADR-0404: settings survive the quit — the next launch comes up as configured

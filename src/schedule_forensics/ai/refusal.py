@@ -22,9 +22,11 @@ constraints, both enforced here:
 from __future__ import annotations
 
 import contextlib
+import datetime as dt
 import json
 import re
 import urllib.error
+from dataclasses import dataclass
 from typing import Any
 
 #: The longest reason the diagnostics will quote (one line).
@@ -139,3 +141,66 @@ def _body_reason(raw: bytes) -> str:
     if text.startswith("<"):
         return ""  # an HTML error page names nothing an operator can act on
     return _one_line(text.splitlines()[0])
+
+
+# --- an EXPIRED credential, in the server's own words (OR-19, ADR-0496) ------------------------
+
+_EXPIRED_WORD = re.compile(r"\bexpir(?:ed|es|y)\b", re.IGNORECASE)
+_STAMP = r"(\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?)"
+_EXPIRY_AT = re.compile(r"expir\w*\s+(?:time|at|on)?\s*:?\s*" + _STAMP, re.IGNORECASE)
+_CURRENT_AT = re.compile(r"current\s+time\s*:?\s*" + _STAMP, re.IGNORECASE)
+
+
+@dataclass(frozen=True)
+class ExpiredKey:
+    """The server's own verdict that the credential it was sent has EXPIRED, with the clock it
+    quoted — the 2026-09-15 field report's exact shape ("Expired Key. Key Expiry time … and
+    current time …"). ``expiry`` / ``current`` are ``None`` when the reason names the fact
+    without a timestamp ("The access token expired")."""
+
+    expiry: dt.datetime | None
+    current: dt.datetime | None
+
+    @property
+    def expiry_text(self) -> str:
+        """The expiry to the minute, in UTC — "" when the reason carried no timestamp."""
+        if self.expiry is None:
+            return ""
+        return self.expiry.astimezone(dt.UTC).strftime("%Y-%m-%d %H:%M UTC")
+
+    @property
+    def expired_for(self) -> str:
+        """How long the key had been expired at the server's clock ("2 days 20 hours") — "" when
+        either timestamp is missing or the clock runs behind the expiry (never a negative)."""
+        if self.expiry is None or self.current is None or self.current <= self.expiry:
+            return ""
+        delta = self.current - self.expiry
+        hours = delta.seconds // 3600
+        parts = []
+        if delta.days:
+            parts.append(f"{delta.days} day{'s' if delta.days != 1 else ''}")
+        if hours:
+            parts.append(f"{hours} hour{'s' if hours != 1 else ''}")
+        return " ".join(parts) or "under an hour"
+
+
+def _parse_stamp(text: str) -> dt.datetime | None:
+    try:
+        value = dt.datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return value if value.tzinfo is not None else value.replace(tzinfo=dt.UTC)
+
+
+def expired_key_details(reason: str) -> ExpiredKey | None:
+    """The expiry the server's reason names, or ``None`` when the reason says nothing about
+    expiry. Word-bounded (``expired`` / ``expires`` / ``expiry``); the timestamps are optional
+    and each is taken only when it parses."""
+    if not _EXPIRED_WORD.search(reason):
+        return None
+    at = _EXPIRY_AT.search(reason)
+    now = _CURRENT_AT.search(reason)
+    return ExpiredKey(
+        expiry=_parse_stamp(at.group(1)) if at else None,
+        current=_parse_stamp(now.group(1)) if now else None,
+    )

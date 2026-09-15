@@ -435,6 +435,26 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-15 (d) — a verdict quoted on the page is evidence: a server cannot call an unrecognised credential "expired", so one line settled the key path and the key's state; and "replaced" for an identical paste is a false statement of change (ADR-0496, OR-19)
+
+- **What happened.** The v1.0.262 screenshot carried the gateway's own reason — *Expired Key, expiry 2026-09-12
+  20:36:47 UTC, current time 2026-09-15 17:05:33 UTC* — under a receipt that read "replaced — 25 characters", and
+  the operator asked for the tool to be fixed. Three days of OR-16 / OR-17 work had been spent making the page
+  say exactly this; the page said it, and the reader still went to the tool.
+- **What was tried.** The competing hypothesis (a stale in-memory key after a Save) was read out of the code and
+  then refuted on the wire with a re-paste in ONE process — ADR-0493's wire test had only ever driven a fresh
+  process. Then the two things on the page that pointed the wrong way were fixed: the receipt now compares the
+  posted credential with the held one and calls an identical paste a re-paste (a warning), and the banner leads
+  with the expiry date and the one remedy when the server names an expiry.
+- **The lessons.** (1) Read the quoted reason as evidence before re-testing the tool: a server's *expired* implies
+  *recognised*, which proves the transport, the store and the field in one line. (2) A receipt that says
+  "replaced" without comparing to the held value asserts a change that may not exist — compare, and say
+  "identical" when it is. (3) A diagnostic that quotes a verdict and then offers the generic guess reads as
+  uncertainty; when the server has spoken, lead with its words and the remedy. (4) A wire test proves the path it
+  drives — persistence across a launch is not the in-process re-paste; name the path in the test's name.
+- **Held.** No code can renew a key; nothing pretends to. The proxy-family claims (key shape, message wording)
+  are from memory and unverified; nothing is built on them.
+
 ### 2026-09-15 (c) — a register's step can name a column that is EMPTY: the discriminating number was a COUNT the workbook carries, and membership is settled by the count before any ratio is compared (ADR-0495, R-47)
 
 - **What happened.** R-47's step read "diff the per-activity ratios against the Detailed Metric Report's SPI(t)

@@ -258,3 +258,36 @@ def test_the_shim_only_rewrites_the_host(fake: _FakeGateway) -> None:
 
     with pytest.raises(CUIEgressError):
         gateway_module.GatewayBackend(fake.base, model=MODEL, log_path=Path("/dev/null"))
+
+
+def test_a_key_re_pasted_in_the_same_process_is_the_key_sent_on_both_paths(
+    fake: _FakeGateway, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The 2026-09-15 v1.0.262 screenshot (OR-17 §4 answered, ADR-0496): a Save whose receipt read
+    "replaced — 25 characters" was followed by the gateway's own verdict "Expired Key". The one
+    competing hypothesis — the tool keeps sending a key held in memory from BEFORE the Save —
+    is refuted on both request paths: after a wrong key and then the right key are pasted in ONE
+    process, the settings probe and the Ask path's routed backend both send the key pasted LAST,
+    byte for byte, on the real transport."""
+    from schedule_forensics.web.app import _active_backend
+
+    _shim_transport(monkeypatch, fake.base)
+    monkeypatch.delenv("SF_GATEWAY_API_KEY", raising=False)
+    monkeypatch.setattr(settings_module, "_gateway_or_none", gateway_or_none)  # the real one
+    client = TestClient(create_app(SessionState()))
+    state = client.app.state.session  # type: ignore[attr-defined]
+    stale = "k" * 25
+    _arm(client, key=stale)
+    page = client.get("/settings").text
+    assert "refused the credential the tool sent" in page
+    assert fake.authorization_seen("/v1/models")[-1] == f"Bearer {stale}"
+    # the operator's fix: the CURRENT key pasted into the same running tool
+    _arm(client, key=KEY)
+    page = client.get("/settings").text
+    assert "Approved-gateway AI is ON" in page, page[page.index("Approved-gateway AI") :][:200]
+    assert fake.authorization_seen("/v1/models")[-1] == f"Bearer {KEY}"
+    assert stale not in page and KEY not in page
+    # the Ask path routes through the session cache — it must not serve the pre-Save backend
+    backend = _active_backend(state)
+    assert backend.generate("ping") == "ANSWER"
+    assert fake.authorization_seen("/v1/chat/completions") == [f"Bearer {KEY}"]

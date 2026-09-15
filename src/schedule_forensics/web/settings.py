@@ -54,6 +54,7 @@ from schedule_forensics.ai import (
 )
 from schedule_forensics.ai.completion import MAX_ANSWER_TOKENS, MIN_ANSWER_TOKENS
 from schedule_forensics.ai.ollama import MAX_NUM_CTX, MIN_NUM_CTX, is_auth_refusal
+from schedule_forensics.ai.refusal import expired_key_details
 from schedule_forensics.net_guard import APPROVED_GATEWAY_ENDPOINTS
 from schedule_forensics.web.chrome import _ASSET_VERSION, _e, _observed_banner
 from schedule_forensics.web.components import _user_tip
@@ -187,15 +188,37 @@ def _gateway_status_note(cfg: AIConfig) -> str:
                     if cfg.gateway_api_key
                     else "the <code>SF_GATEWAY_API_KEY</code> environment variable"
                 )
-                hint = (
-                    f" The gateway answered and <b>refused the credential the tool sent</b> "
-                    f"&mdash; {source}, {len(key)} characters. A key that worked before and is "
-                    "refused now has usually expired or been rotated at the AI Hub, or is not "
-                    "entitled to this gateway: paste the CURRENT key from the Hub into the "
-                    "<b>Gateway API key</b> field below and Save (what you paste replaces the "
-                    "saved key; blank keeps it). Compare that length with the key the Hub "
-                    "shows &mdash; a shorter saved key is a cut paste."
-                )
+                expired = expired_key_details(reason)
+                if expired is not None:
+                    # OR-19 (ADR-0496): the gateway's own words name an EXPIRED credential —
+                    # lead with the verdict, the date and the one remedy; the generic guess
+                    # ("has usually expired or been rotated") yields to the fact
+                    when = f" on {_e(expired.expiry_text)}" if expired.expiry_text else ""
+                    ago = (
+                        f" &mdash; {_e(expired.expired_for)} before this request"
+                        if expired.expired_for
+                        else ""
+                    )
+                    hint = (
+                        f" The gateway answered and <b>refused the credential the tool sent</b> "
+                        f"&mdash; {source}, {len(key)} characters &mdash; because it has "
+                        f'<b data-sf-key-expired="{_e(expired.expiry_text or "yes")}">EXPIRED'
+                        f"{when}</b>{ago}. Nothing in this tool can renew a key: "
+                        "<b>generate a NEW key at the AI Hub</b>, then paste the CURRENT key from "
+                        "the Hub into the <b>Gateway API key</b> field below and Save (re-pasting "
+                        "the expired key changes nothing; what you paste replaces the saved key, "
+                        "blank keeps it)."
+                    )
+                else:
+                    hint = (
+                        f" The gateway answered and <b>refused the credential the tool sent</b> "
+                        f"&mdash; {source}, {len(key)} characters. A key that worked before and is "
+                        "refused now has usually expired or been rotated at the AI Hub, or is not "
+                        "entitled to this gateway: paste the CURRENT key from the Hub into the "
+                        "<b>Gateway API key</b> field below and Save (what you paste replaces the "
+                        "saved key; blank keeps it). Compare that length with the key the Hub "
+                        "shows &mdash; a shorter saved key is a cut paste."
+                    )
             lead = (
                 f"<code>{_e(cfg.gateway_endpoint)}</code> answered but refused the request: "
                 f"{_e(reason)}."
@@ -513,20 +536,26 @@ def _settings_receipt(
     posted_local_token: str,
     held_gateway_key: str,
     held_local_token: str,
+    previous_gateway_key: str = "",
+    previous_local_token: str = "",
 ) -> _SettingsReceipt:
     """What a Save did with each credential (OR-17, ADR-0493) — computed at the POST from the
-    POSTED values (already stripped) and the values HELD after the blank-keeps rule.
+    POSTED values (already stripped), the values HELD after the blank-keeps rule, and the
+    values held BEFORE the save.
 
-    ``replaced`` when the field carried a value, ``kept`` when it was blank and a value was
-    already held, ``none`` when nothing is held. A credential posted for a backend that is
-    neither the primary nor the cross-check is reported as misplaced — the save still stores
-    it (a token is a token), but the page must say the paste landed where nothing sends it.
+    ``replaced`` when the field carried a value different from the one held before,
+    ``unchanged`` when it carried exactly the value already held (a re-paste — OR-19: the
+    operator "input the API code as I always have" and the receipt read "replaced", which
+    implied something changed), ``kept`` when it was blank and a value was already held,
+    ``none`` when nothing is held. A credential posted for a backend that is neither the
+    primary nor the cross-check is reported as misplaced — the save still stores it (a token
+    is a token), but the page must say the paste landed where nothing sends it.
     """
     in_use = {backend, second_backend}
 
-    def _state(posted: str, held: str) -> str:
+    def _state(posted: str, held: str, previous: str) -> str:
         if posted:
-            return "replaced"
+            return "unchanged" if posted == previous else "replaced"
         return "kept" if held else "none"
 
     misplaced = tuple(
@@ -538,9 +567,9 @@ def _settings_receipt(
         if posted and not (_CREDENTIAL_USERS[name] & in_use)
     )
     return _SettingsReceipt(
-        gateway_key=_state(posted_gateway_key, held_gateway_key),
+        gateway_key=_state(posted_gateway_key, held_gateway_key, previous_gateway_key),
         gateway_key_chars=len(held_gateway_key),
-        local_token=_state(posted_local_token, held_local_token),
+        local_token=_state(posted_local_token, held_local_token, previous_local_token),
         misplaced=misplaced,
     )
 
@@ -554,16 +583,24 @@ def _receipt_html(receipt: _SettingsReceipt | None) -> str:
         return ""
     gateway_words = {
         "replaced": f"<b>replaced</b> &mdash; {receipt.gateway_key_chars} characters now held",
+        "unchanged": (
+            f"<b>re-pasted &mdash; identical to the key already held</b> "
+            f"({receipt.gateway_key_chars} characters); if the gateway refuses this key, pasting "
+            "it again changes nothing &mdash; get a NEW key from the AI Hub"
+        ),
         "kept": f"<b>kept</b> (the field was blank; {receipt.gateway_key_chars} characters held)",
         "none": "<b>none held</b> (the field was blank and nothing was saved before)",
     }[receipt.gateway_key]
     local_words = {
         "replaced": "<b>replaced</b>",
+        "unchanged": "<b>re-pasted &mdash; identical to the token already held</b>",
         "kept": "<b>kept</b> (the field was blank)",
         "none": "<b>none held</b>",
     }[receipt.local_token]
+    # a re-paste of the very key the gateway is refusing is a warning, not a success
+    tone = "warn" if receipt.gateway_key == "unchanged" else "ok"
     parts = [
-        '<div class="notice ok" data-receipt>Saved. Gateway API key: '
+        f'<div class="notice {tone}" data-receipt>Saved. Gateway API key: '
         f"{gateway_words}. Local server API token: {local_words}.</div>"
     ]
     if "local_token" in receipt.misplaced:
