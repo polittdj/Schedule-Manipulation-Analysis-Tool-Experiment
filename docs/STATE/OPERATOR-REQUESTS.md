@@ -220,6 +220,24 @@ ADR-0408; the repo is xfail-free). This section is the requested ledger; `HANDOF
 (auto-injected every session) and `NEXT-SESSION-PROMPT.md` carry the same state with
 per-unit rotation. **Every remaining open item on this page is operator-owned.**
 
+## 2026-09-15 (b) — "Once this PR is squashed and merged I want you to add at the top of the launch page the version number of the installed program"
+
+### OR-18 — "… add at the top of the launch page the version number of the installed program so that we don't have to go through so much effort to tell if the correct version has been uploaded to my computer." · `OPEN — queued behind #677's merge (received 2026-09-15 ~14:25Z, in chat)`
+
+**Resolved from the code, not guessed:** "the launch page" is `/launch`, the Boot Screen (ADR-0426) the
+desktop icon opens on — OUTSIDE the story chrome (no header, no nav), rendered by
+`web/launch.py::_launch_html`; its first element is the CUI bar (design system §6: never displaced).
+**The unit:** a server-rendered line directly under the CUI bar carrying the installed package version
+(`chrome._ASSET_VERSION` — the running process's metadata, never a literal), `data-no-i18n`, tokens only,
+present even when the boot script never runs (the hero text is script-filled; this line is not);
+red-first (the pristine `/launch` carries no version), measured in Chromium in the four themes with the
+CUI bar still first, mutation by name (the line dropped; the version a literal); ADR-0494, v1.0.262,
+wheel + nine installers, the full gate, a draft PR. **Stated to the operator:** the line witnesses what is
+RUNNING (an older copy still serving the port shows its own, older, version — the truth); the installer's
+console banner is the only witness that the upload happened. **Offered, not done unasked:** the same chip
+in the global header so every page and every screenshot pins the build (AI Settings already carries
+`tool version:` since v1.0.261).
+
 ## 2026-09-12 — the approved gateway refuses a SAVED key on the availability probe (HTTP 401; the AI Settings screenshot, then two PowerShell runs on the NASA machine); "I want the AI setup to be as user friendly and simple as possible."
 
 ### OR-17 — "This is what I am getting when I try and activate the AI models approved for ITAR and CUI. I input the API code as I always have and it doesn't work. I also have no clue what 'Local server API token (LM Studio "Require Authentication" …)' means or does. This is new. … solve in the next session by getting to the root cause and creating tests, pass and fail, and testing your solution in a sandbox environment until you find a solution that fixes the problem." · `SHIPPED IN PART (ADR-0493, v1.0.261): the installed build measured, the tool's key path proven on the wire and on real Windows, a Save receipt, the version on the page; the key itself stays the operator's — V-4 and one more request settle the rest`

@@ -18288,3 +18288,12 @@ called a flake turned out to have a mechanism (ADR-0442 UI-02, ADR-0443, ADR-046
   merged INTO the branch (merge commit `e0e9ad3d`, no rebase), each of the four files kept at this branch's
   version and proven byte-identical to the pre-merge head (`git hash-object` == `HEAD:<file>`), no other file
   changed, the state-doc guards 12 passed. This push restarts CI; the check-in reads the new head.
+
+### 2026-09-15 — OR-18 registered (the version at the top of /launch), queued behind #677's merge (docs only)
+
+- The operator's directive arrived while #677's checks were running: *"Once this PR is squashed and merged …
+  add at the top of the launch page the version number of the installed program …"* Registered as OR-18
+  (OPERATOR-REQUESTS.md) with the page resolved from the code (`/launch`, the Boot Screen — outside the
+  header chrome, so a header chip would not reach it) and the unit's shape; the kickoff prompt points at it.
+  The check-in at 15:31Z starts the unit on merge. This commit rides the next push so the running CI on
+  `2578008e` is not cancelled mid-run.
