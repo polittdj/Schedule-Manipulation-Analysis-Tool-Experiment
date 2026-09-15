@@ -18012,6 +18012,17 @@ called a flake turned out to have a mechanism (ADR-0442 UI-02, ADR-0443, ADR-046
   `installer/**` changed). The steward check-in an hour out reads the verdicts on the FINAL head with
   `get_check_runs`, never `get_status`; the #667 width race is the one red that is not this PR's.
 
+## 2026-09-14 — #671 MERGED (ADR-0487 / 0488, v1.0.257; main's runs CI 1849 / installer-smoke 712 read from the Actions API); /margin on the Claude Design layout — the Control family complete (ADR-0489); R-49 CLOSED (ADR-0490): an absent `TotalSlack` on a `Critical` activity is the zero the MPXJ writer dropped; R-60 not taken, handed off; v1.0.258
+
+- **Branch:** `claude/confident-johnson-py46p9` from `origin/main` `6708cbff` (#671's squash; tree identical to the PR head `0e7904a5`; no merge-record PR). The clone arrived shallow — `git fetch --unshallow origin` first (58 s; `git log -1 -- tools/mpxj` then reads `42d92dc9`).
+- **Evidence the kickoff asked for:** none arrived — V-4, the fresh-key result and the `"ok": false` lines are all still owed; no prompt-size guard was built (the standing rule).
+- **/margin (ADR-0489).** The `mg` artboard executed over loopback HTTP (`npm pack` react 18.3.1 / react-dom / @babel/standalone 7.29.0; `support.js` repointed, SRI blanked; `sfredux-screen=mg`, `sfredux-guided=1`, `sfops-boot.skipNext=true`, `sfredux-theme`) in four themes with zero page errors and censused (1 h1 · 17 buttons · 3 inputs · 0 selects · 1 svg); its chips DRIVEN (a KPI selector: 7 wd → 44 wd). Shipped: `web/margin.py` (`_solvable_versions_keyed` NEW, `_solvable_scoped_versions` projects it; `_margin_cursor_strip` NEW; `_margin_dashboard_body` — the callout, the strip, the options, the `cd-grid-11` grid, the erosion disclosure), `web/app.py` (two `X as X` re-exports), `web/static/app.css` (`.cd-grid-11`, `.cd-callout`), `tests/web/test_margin_design_layout.py` (11), `tests/web/test_margin_design_browser.py` (5, chromium), `/margin` in `test_no_horizontal_overflow.py`, DESIGN-SYSTEM §9, the audit report §6 (11 done · 19 remain) and R-42. Red-first on a pristine worktree: 14 failed / 2 passed (the two are "nothing moves" guards). Mutation battery **24 / 24 RED by name** (control 107 green). Render census pristine → final: identical on `.panel` 8 · forms 7 · tables 2 · rows 9 · exports 3 · ⛶ 4 · ⤓ 3 · SVG 2 · details 1 · h1 · kicker · tiles · width 1 440 · zero errors; moved on chips 0 → 4, the pill, the note, the grid (569-px panels at one top; 687 daylight), heights 3 596 / 3 846 / 4 016 / 3 575 → 2 805 / 2 886 / 3 263 / 2 785.
+- **R-49 (ADR-0490).** MPXJ probe (`javac --release 17` against `tools/mpxj/lib`): on `Large Test File2.mpp` the reader holds `0.0d` for all 62 Critical activities whose element the XML lacks, NULL for none; the writer drops zero durations. `importers/mspdi.py`: `_stored_slack_minutes(zero_when_absent=)`, `_parse_task(file_carries_slack=)`. Red-first 5 failed / 2 by construction (`tests/importers/test_mspdi_zero_slack_inference.py`, 7); the red was Hard_File UIDs 241 / 249 (480 / 360 → 0) and a synthetic file — on every fixture the recomputed float of those tasks was already 0, so Fuse's 66 / 2 were exact before and are pinned. Family snapshot on eight goldens (624 entries): two moved (Hard_File float ratio 3.99 → 3.98, aggregate 2.82 → 2.80). Parity 5 failed / 92 → **97 passed** after four dated re-pins in `test_hard_file_stored_dates_oracle.py` (65 → 106 · 95 → 99 · 842 / 1 022 → 844 / 1 024 · 668 / 936 → 730 / 998) and ADR-0430's teeth pin re-aimed in `test_fuse_hardfile_parity.py` (its phantom set had recomputed to 0 / +480 / +360 since ADR-0474 — never negative; toothless for two months). Mutation battery **6 / 6 RED by name**. `case.json`'s `cause` note extended by one sentence (re-serialised in the file's own format after a first rewrite changed all 870 lines). R-62 registered (the wider inference, completed tasks included). Report row R-49 CLOSED; PARITY-REPORT row added.
+- **R-60 NOT taken** (token guardian 65 % before the close). Found for the next session: the Revision-2 `Hard_File_updated3.mpp` Fuse analysed is at `af4d154f` in git history (deleted `b2517780`, re-uploaded `dcacbf44`); `MSPDIWriter.setWriteTimephasedData` exists on the vendored 16.2.0.
+- **The gate:** both ruff binaries clean, `ruff format --check` clean, mypy strict 165 files, importers + engine + model 1 581 passed, the /margin neighbourhoods 370 + 94 / 3 skipped + 110, `-m parity` 97 passed; bandit exit 0; `node --check` clean on every vendored script; **full suite 5,333 passed / 5 skipped / 0 failed in 34:24** (the standing loopback-allowlist and axis-title env skips).
+- **Build:** version 1.0.258; wheel + nine installers rebuilt from the final tree (`mpxj_ref` resolved to `42d92dc9…` from the unshallowed log).
+- **Docs:** ADR-0489 · ADR-0490 · AUDIT report (§6, R-42, R-49 CLOSED, R-62) · PARITY-REPORT · DESIGN-SYSTEM §9 · HANDOFF rotated · LESSONS-LEARNED (2026-09-14) · NEXT-SESSION-PROMPT refreshed (R-60 first, with the facts).
+- **PR:** **draft #672**, head `07728f32` (branch `claude/confident-johnson-py46p9`; eight checks expected — `installer/**` changed; https://github.com/polittdj/Schedule-Manipulation-Analysis-Tool-Experiment/pull/672). The steward check-in an hour out reads the verdicts on the FINAL head with `get_check_runs`, never `get_status`; the #667 width race is the one red that is not this PR's.
 ## 2026-09-14 — R-60 CLOSED (ADR-0491): a leveling split is honoured inside the task the way the leveling delay is; every Hard_File snapshot's finish EXACT; 14 goldens regenerated from their own saves; v1.0.259
 
 - **Branch:** `claude/fervent-hawking-7z7kx0` off `main` `6708cbff` (#671). **#672** (ADR-0489 / 0490, v1.0.258)
@@ -18090,3 +18101,24 @@ called a flake turned out to have a mechanism (ADR-0442 UI-02, ADR-0443, ADR-046
   mid-run), and the three state-doc guards (the docs were written mid-run). **All ten re-run on the
   final head `7c8b5f6d`: 13 passed** (the manifest guard's three families expand the count). Pushed as
   `7c8b5f6d`; CI's eight checks re-run there.
+
+### 2026-09-15 — merge: #672 landed first; `origin/main` (`66d98c33`) merged into `claude/fervent-hawking-7z7kx0`, the pins re-measured on the merged engine
+
+- **Conflicts (16), resolved by script, never by hand-editing a golden:** `pyproject.toml` → 1.0.259; the nine
+  installers → rebuilt on the merged tree (wheel + installers; `git log -1 -- tools/mpxj` is ADR-0491's
+  `d58d00db`, tree-identical, no `SF_MPXJ_REF` needed); `SESSION-LOG` → theirs + this session's entries
+  appended; `LESSONS-LEARNED` → theirs + the 09-14 R-60 entry at the top of Part VIII; `HANDOFF.md` →
+  ADR-0491's section current, #672's demoted into the archive above the 09-12 section (once); the kickoff
+  prompt re-pointed; the AUDIT report → theirs + R-60 CLOSED / R-63 / R-64 / the census 327 → 328; the
+  stored-dates oracle → theirs (ADR-0490's inferred-slack populations) + ADR-0491's rows and pins.
+- **Re-measured on the merged engine (ADR-0490's inferred zeros + ADR-0491's splits), every golden:** the
+  finishes exactly as on 09-14 (Hard_File / updated / updated2 / updated3 project finish EXACT; within-a-day
+  103 / 108 / 109 / 106; Large_Test_File 1666, File2 1687; UID 403 11-05 09:12, slack 12,888 = stored);
+  stored slack exact / population now **Hard_File 37 / 110, updated 93 / 103, updated2 36 / 76, updated3
+  46 / 68, Large_Test_File 867 / 1024, File2 730 / 998, Project2 106 / 106, Project5 99 / 99**; Critical
+  108 / 110 / 107 / 103 / 1721 / 1717 / 124 / 126 unmoved. The `_LARGE` rows pin (1666, 867, 1024, 1721)
+  and (1687, 730, 998, 1717); updated3 `tf_exact >= 46`, `tf_n == 68`.
+- **Green on the merged tree:** the oracle module, `test_state_docs`, the audit-report guard, the
+  parity-report guard, the provenance guard, the importer / engine / schema modules — 165 passed; both
+  ruff binaries and mypy strict clean; the installer module after the rebuild. CI's eight checks re-run on
+  the merge commit.

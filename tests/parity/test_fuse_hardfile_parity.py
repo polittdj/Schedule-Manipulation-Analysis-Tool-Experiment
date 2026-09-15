@@ -146,8 +146,13 @@ def test_fuse_hardfile_divergences_are_exact_not_papered_over() -> None:
     Divergence 1 (negative float, engine 34/33 vs Fuse 0/0) was CLOSED by ADR-0430: the ribbon
     metric is now arithmetic on STORED Total Slack, so the 34 stored-less tasks the recompute
     fallback used to count as phantoms are absent — which is Fuse's own reading. The pin below
-    asserts the CLOSED state *and* that the fixture still carries the 34-task phantom population,
-    so reintroducing the per-task recompute fallback goes red here by name."""
+    asserts the CLOSED state *and* the 34-task population itself — re-aimed on 2026-09-14 (R-49,
+    ADR-0490): those 34 Critical activities carry no ``TotalSlack`` element because the MPXJ
+    writer drops a zero, and the importer now infers that zero, so the population reads
+    ``stored_total_float_minutes == 0`` (never ``None``). Recorded because it is the point: the
+    ADR-0430 teeth ("a recompute fallback re-counts 34 negatives") had already gone inert on the
+    post-ADR-0474 engine, whose recompute reads 0 for 32 of them and +480 / +360 for UIDs 241 /
+    249 — never negative. The teeth now are the inference's: remove it and the 34 read ``None``."""
     case = _case()
     div = case["_documented_divergences"]
     quality_base = compute_schedule_quality(_schedule("Hard_File"))
@@ -161,18 +166,24 @@ def test_fuse_hardfile_divergences_are_exact_not_papered_over() -> None:
         quality_upd["negative_float"].count == div["negative_float"]["engine"]["Hard_File_updated"]
     )
     assert quality_base["negative_float"].count == div["negative_float"]["fuse"]["Hard_File"]
-    # the TEETH: the fixture still carries exactly the 34 stored-Critical/stored-less incomplete
-    # tasks whose recomputed float reads negative — the phantom set a fallback would re-count
+    # the TEETH (re-aimed, ADR-0490): the fixture carries exactly 34 incomplete Critical activities
+    # whose ``TotalSlack`` element is absent — the zero the MPXJ writer dropped — and every one of
+    # them now carries the INFERRED stored zero; none is unknown, and none reads negative
     base_sched = _schedule("Hard_File")
-    phantom = [
+    inferred = [
         t
         for t in base_sched.tasks
         if not t.is_summary
         and t.percent_complete < 100.0
-        and t.stored_total_float_minutes is None
         and t.stored_is_critical
+        and t.stored_total_float_minutes == 0
     ]
-    assert len(phantom) == 34, len(phantom)
+    assert len(inferred) == 34, len(inferred)
+    assert not [
+        t
+        for t in base_sched.tasks
+        if not t.is_summary and t.stored_is_critical and t.stored_total_float_minutes is None
+    ]
 
     # 2. Missing logic on the updated snapshot: engine 10 vs Fuse 8 (Fuse definition nuance)
     assert quality_upd["missing_logic"].count == div["missing_logic_updated"]["engine"]

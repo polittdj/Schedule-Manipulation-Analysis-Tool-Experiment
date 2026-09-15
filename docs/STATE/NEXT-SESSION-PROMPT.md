@@ -1,17 +1,6 @@
 # Kickoff prompt — next session
 
-PR state (2026-09-14): **#671 is MERGED** — `main` is **`6708cbff`** (ADR-0487 / 0488, v1.0.257; `main`'s
-runs CI 1849 / installer-smoke 712 success, read from the Actions API). **Two draft PRs are in flight:**
-**#672** from branch `claude/confident-johnson-py46p9` (ADR-0489 `/margin` on the design + ADR-0490 R-49,
-v1.0.258 — open and unmerged when this session started) and **this session's unit, R-60 / ADR-0491**, from
-branch `claude/fervent-hawking-7z7kx0`, **v1.0.259** (its number and checks are in the SESSION-LOG's close
-entry). Both branched from the same `main`; whichever merges second must merge `origin/main` and resolve
-`HANDOFF.md` / `SESSION-LOG.md` / `LESSONS-LEARNED.md` / `NEXT-SESSION-PROMPT.md` / `pyproject.toml` (keep the
-higher version, re-pin the ADR tokens) and, in `tests/parity/test_hard_file_stored_dates_oracle.py`, the
-slack-population pins (`tf_n`: ADR-0490 re-baselined four of them by the inferred zero-slack count; ADR-0491
-raised the finish / slack / Critical FLOORS and set every Hard_File row's finish EXACT — keep both). **Always
-`git fetch origin` and read `git log origin/main` before trusting any sha written here.** After a
-squash-merge restart the branch with `--prune` + `remote set-head` + `checkout -B`.
+PR state (2026-09-15): **#672 is MERGED** — `main` is **`66d98c33`** (ADR-0489 / 0490, v1.0.258). This session's unit, **R-60 / ADR-0491**, is draft **PR #673** from branch `claude/fervent-hawking-7z7kx0`, **v1.0.259**, merged with `origin/main` after #672 landed (the state docs, the version, the installers and the oracle's pins resolved and re-measured on the merged tree — the SESSION-LOG's merge entry has the numbers). **Always `git fetch origin` and read `git log origin/main` before trusting any sha written here.** If #673 merged, restart the branch with `--prune` + `remote set-head` + `checkout -B`.
 
 **The operator owes three things, none blocking:** **V-4** (the gateway's own refusal reason — the step-2
 PowerShell: `WWW-Authenticate` and the 401 body; the v1.0.257 banner quotes the same text); whether a fresh

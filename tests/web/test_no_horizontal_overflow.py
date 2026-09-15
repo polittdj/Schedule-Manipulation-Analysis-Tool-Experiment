@@ -48,12 +48,16 @@ VIEWPORT = {"width": 1440, "height": 900}
 THEMES = ("console", "daylight", "apollo", "jarvis")
 #: ``/scorecards`` joined the census with ADR-0484: its three-card grid holds four-column tables
 #: that scrolled the document sideways in apollo (1527 px) before the tables laid out fixed.
+#: ``/margin`` joined with ADR-0489: its two-column chart grid fits at 1440 on both trees (green by
+#: construction here); the mutation that proves the census sees the page is a rule that widens
+#: the grid's panels past their column (``.cd-grid-11 > .panel { min-width: 900px }``), RED by name.
 ROUTES = (
     "/",
     f"/driving-path?source=11&target={TARGET_UID}",
     "/evolution",
     "/standards",
     "/scorecards",
+    "/margin",
 )
 
 #: scrollWidth, innerWidth, and how many hint hosts the page carries.
