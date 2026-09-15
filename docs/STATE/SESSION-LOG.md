@@ -18200,3 +18200,17 @@ called a flake turned out to have a mechanism (ADR-0442 UI-02, ADR-0443, ADR-046
 - The Codex connector posted its usage-limit notice on #674 (no review); review cover stays absent.
 - **Token guardian at the close: ~72 % of the assumed wall (WARN_70)** — this record is the last commit of
   the session; the next unit (R-47) starts in a fresh session from the kickoff prompt.
+
+### 2026-09-15 — close: #675 merged (`main` @ `ec3adf6c`, tree == `3ccdfb0e`); OR-17 registered from the operator's screenshot; session ended at the guardian's 85 % band
+
+- **#675 merged 12:09:39Z** (marked ready and merged by the operator); `origin/main` `ec3adf6c`, tree identical
+  to the record's head; the branch restarted on it with `--prune`; the check-ins are spent, nothing armed.
+- **OR-17 (operator, 2026-09-15):** the approved gateway answers HTTP 401 to the SAVED key, the LM Studio
+  token field is unexplained — root cause, red/green tests, a sandboxed fix, iterate until fixed. Registered
+  verbatim in `OPERATOR-REQUESTS.md`; FIRST in the handoff and the kickoff. The installed version and the
+  Windows key-store branch are the two UNVERIFIED facts the next session establishes before anything else.
+- The operator also asked for the PowerShell steps to install the latest build (the v1.0.260 installer on
+  `main`, three steps given in chat: tier from RAM / GPU, `Invoke-WebRequest` of `install-tierN.ps1` with a
+  banner-version check, `powershell -ExecutionPolicy Bypass -File`). Their outputs were not yet reported.
+- **Token guardian at the close: ~85 % of the assumed wall** — the session ends here on the operator's
+  instruction; this entry is a docs-only draft PR the operator merges.
