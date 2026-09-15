@@ -560,14 +560,22 @@ def _spi_t_acumen(schedule: Schedule, tasks: list[Task]) -> MetricResult:
                        /(ActualFinish-ActualStart)))
 
     Reverse-engineered against the Fuse Metric History on the operator's Hard_File series
-    and EXACT on all three snapshots (0.80 / 1.14 / 1.25):
+    and EXACT on all three snapshots (0.80 / 1.14 / 1.25), and on the Large Test File pair
+    (8.22 / 8.14 — R-47, ADR-0495, where the population rule was the whole residual):
 
-    - population: STARTED, baselined activities (actual start + baseline start/finish);
-      never-started tasks contribute nothing (their IF term references blank actuals).
+    - population: every STARTED activity (an actual start), baselined or not; never-started
+      tasks contribute nothing (their IF term references blank actuals). Fuse's own Record
+      Count under SPI(t) — 717 / 726 on the Large Test File pair — is this population.
     - complete: the baseline-vs-actual elapsed CALENDAR ratio (BF-BS)/(AF-AS); an activity
       whose actual span is zero (instantaneous, e.g. a completed milestone) is excluded —
       proven by updated2/updated3, whose 8/10 zero-span completions would otherwise drag
       the average to 0.87/0.95 (Fuse says 1.14/1.25, the zero-span-excluded value).
+    - no baseline: (BaselineFinish-BaselineStart) is (blank-blank) = 0 over the positive
+      actual span — a 0 TERM, not an exclusion (Acumen evaluates a blank as 0, the same
+      rule as the in-progress term below). Large Test File2's UIDs 7262 / 7551 (completed,
+      never baselined) and both files' UID 7260 (in progress, never baselined) are the one
+      and three contributors a baseline-gated population was missing: 8.24 → 8.22 and
+      8.17 → 8.14. The members scored this way are disclosed on ``offender_uids``.
     - in progress: the denominator (ActualFinish-ActualStart) has a BLANK ActualFinish, which
       Acumen's engine evaluates to a 0 term — the activity dilutes the average but adds no
       earned ratio. Proven by `updated`: 6 completions average 0.93, Fuse says 0.80
@@ -581,20 +589,30 @@ def _spi_t_acumen(schedule: Schedule, tasks: list[Task]) -> MetricResult:
     status_dt = schedule.status_date
     ratios: list[float] = []
     contributing: list[int] = []
+    unbaselined: list[int] = []
     for t in tasks:
-        if t.baseline_start is None or t.baseline_finish is None or t.actual_start is None:
-            continue
+        if t.actual_start is None:
+            continue  # never started: the IF term references blank actuals — nothing to average
         if t.percent_complete >= 100.0 and t.actual_finish is not None:
             actual_span = (t.actual_finish - t.actual_start).total_seconds()
             if actual_span <= 0:
                 continue  # zero-span completion (milestone) — excluded, proven vs Fuse
-            baseline_span = (t.baseline_finish - t.baseline_start).total_seconds()
-            ratios.append(baseline_span / actual_span)
+            if t.baseline_start is not None and t.baseline_finish is not None:
+                baseline_span = (t.baseline_finish - t.baseline_start).total_seconds()
+                ratios.append(baseline_span / actual_span)
+            else:
+                # no baseline: (blank - blank) = 0 over a positive actual span — a 0 term, not
+                # an exclusion (R-47: Large Test File2's UIDs 7262 / 7551 are two of Fuse's 726)
+                ratios.append(0.0)
+                unbaselined.append(t.unique_id)
             contributing.append(t.unique_id)
         elif status_dt is not None:
-            # started but incomplete: blank ActualFinish → Acumen evaluates the term to 0
+            # started but incomplete: blank ActualFinish → Acumen evaluates the term to 0,
+            # baseline or not (R-47: Large Test File's UID 7260 is Fuse's 717th contributor)
             ratios.append(0.0)
             contributing.append(t.unique_id)
+            if t.baseline_start is None or t.baseline_finish is None:
+                unbaselined.append(t.unique_id)
     if not ratios:
         return _na_index("spi_t_acumen", "SPI(t) — Acumen")
     value = sum(ratios) / len(ratios)
@@ -608,6 +626,7 @@ def _spi_t_acumen(schedule: Schedule, tasks: list[Task]) -> MetricResult:
         evaluate(value, 1.0, Direction.GE),
         1.0,
         Direction.GE,
+        offender_uids=tuple(unbaselined),
     )
 
 

@@ -187,6 +187,26 @@ def _actuals_missing_note(cost_idx: dict[str, MetricResult]) -> str:
     )
 
 
+def _unbaselined_note(sched_idx: dict[str, MetricResult]) -> str:
+    """The SPI(t) — Acumen disclosure (R-47, ADR-0495): the started activities that carry no
+    baseline. Fuse admits them to the average and scores each as the formula's blank-as-0 term —
+    (BaselineFinish - BaselineStart) evaluates to 0 over the actual span — so the reader is told how
+    many such activities pull the figure toward 0, by count and by UID, instead of the average
+    silently carrying members the file never planned. Empty when there are none (or no figure)."""
+    spi = sched_idx.get("spi_t_acumen")
+    if spi is None or spi.status is CheckStatus.NOT_APPLICABLE or not spi.offender_uids:
+        return ""
+    n = len(spi.offender_uids)
+    uids = ", ".join(str(u) for u in spi.offender_uids[:12])
+    more = f" (+{n - 12} more)" if n > 12 else ""
+    return (
+        f'<p class="muted" data-sf-unbaselined="{n}">'
+        f"<b>{n} of {spi.population}</b> started activities carry <b>no baseline</b> &mdash; "
+        "SPI(t) &mdash; Acumen scores each as 0 (the reference library evaluates a blank baseline "
+        f"span as 0), so they pull the average toward 0: UID {_e(uids)}{_e(more)}.</p>"
+    )
+
+
 def _evm_body(st: SessionState) -> str:
     """Earned Value Management page: schedule-based EVM always, plus cost EVM when the schedule is
     cost-loaded (else gracefully N/A), baseline compliance, and the worst finish variances."""
@@ -375,7 +395,7 @@ schedule and otherwise read N/A.</p>
 baseline-anchored Current Execution Index (finish / start).</p>
 {dual_spi}
 {_threshold_legend()}
-{_metric_scorecard_table(sched_idx)}</div>
+{_metric_scorecard_table(sched_idx)}{_unbaselined_note(sched_idx)}</div>
 <div class=panel data-export="/export/xlsx/evm">{cost_head}
 {take(cost_take)}
 <p class=muted>Cost-based EVM indices &mdash; applicable only when the schedule carries task budgets

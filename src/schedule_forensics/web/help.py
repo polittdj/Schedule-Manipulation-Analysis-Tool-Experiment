@@ -653,12 +653,15 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "spi_t_acumen",
         "SPI(t) — Acumen",
         "Acumen Fuse's per-activity SPI(t): the average duration-efficiency of STARTED "
-        "activities. Each completed activity contributes baselined span / actual span "
-        "(calendar); an in-progress activity contributes 0 until it finishes (the Fuse "
-        "formula's blank-ActualFinish term — faithfully reproduced); zero-span completions "
+        "activities, baselined or not. Each completed activity contributes baselined span / "
+        "actual span (calendar); an in-progress activity contributes 0 until it finishes (the "
+        "Fuse formula's blank-ActualFinish term — faithfully reproduced); a started activity with "
+        "no baseline contributes 0 too (a blank baseline span evaluates to 0 — a member, not an "
+        "exclusion; the members scored this way are disclosed by UID); zero-span completions "
         "(milestones) are excluded. >1 = completed work ran faster than baselined. Verified "
-        "EXACT vs the Fuse Metric History on Hard_File_updated/2/3 (0.80 / 1.14 / 1.25). "
-        "Only sees started work — read it together with the Earned-Schedule SPI(t) (ADR-0176).",
+        "EXACT vs the Fuse Metric History on Hard_File_updated/2/3 (0.80 / 1.14 / 1.25) and on "
+        "Large Test File / File2 (8.22 / 8.14 over Fuse's own 717 / 726 contributors). Only sees "
+        "started work — read it together with the Earned-Schedule SPI(t) (ADR-0176, ADR-0495).",
         'AVERAGE(IF(Status="Complete", (BaselineFinish-BaselineStart)/(ActualFinish-'
         "ActualStart), ((BaselineFinish-BaselineStart)-(Finish-ProjectTimeNow))/"
         "(ActualFinish-ActualStart)))",

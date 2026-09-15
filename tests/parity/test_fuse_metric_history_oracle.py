@@ -370,3 +370,157 @@ def test_hard_file_updated3_bcws_equals_the_fuse_ribbon_and_names_its_two_mechan
     sch1 = _gz("fuse_hardfile/Hard_File_updated.mspdi.xml.gz")
     assert _planned_value(sch1, [sch1.task_by_id(187)]) == pytest.approx(3600.0)
     assert _planned_value(sch1, non_summary(sch1)) == pytest.approx(16000.0)
+
+
+# --- SPI(t) — Acumen (R-47, ADR-0495): the per-activity average against EVERY Metric History sheet
+# that scores a committed fixture, and its population against the Detailed Metric Report's own
+# Record Count. Red-first (2026-09-15): Large Test File read 8.24 / 716 where Fuse reads 8.22 / 717,
+# File2 8.17 / 723 where Fuse reads 8.14 / 726 — the engine required a baseline to admit a started
+# activity; Fuse admits every started activity with a non-zero actual span and scores an unbaselined
+# member as the formula's blank-as-0 term. Every other sheet was exact before and after.
+# ------------------------------------------------------------------------------------------------
+_LTF_DETAIL = (
+    ACUMEN / "Large Test File vs Large Test File2 - Acumen Fuse - Detailed Metric Report.xlsx"
+)
+_SPI_T_ORACLES: list[tuple[str, str, Path, str, int]] = [
+    ("EVM1", "golden/evm/EVM1.mspdi.xml", _ALL_PROJECTS, "EVM1", 4),
+    ("EVM2", "golden/evm/EVM2.mspdi.xml", _ALL_PROJECTS, "EVM2", 4),
+    ("TP4v1", "test_projects/TP4_DataCenter_v1.xml", _ALL_PROJECTS, "TP4_DataCenter_v1", 4),
+    ("TP4v2", "test_projects/TP4_DataCenter_v2.xml", _ALL_PROJECTS, "TP4_DataCenter_v2", 4),
+    ("TP4v3", "test_projects/TP4_DataCenter_v3.xml", _ALL_PROJECTS, "TP4_DataCenter_v3", 4),
+    ("TP4v4", "test_projects/TP4_DataCenter_v4.xml", _ALL_PROJECTS, "TP4_DataCenter_v4", 4),
+    ("TP4v5", "test_projects/TP4_DataCenter_v5.xml", _ALL_PROJECTS, "TP4_DataCenter_v5", 4),
+    ("Project2", "golden/project2_5/Project2.mspdi.xml", _ALL_PROJECTS, "Project2", 4),
+    ("Project5", "golden/project2_5/Project5.mspdi.xml", _ALL_PROJECTS, "Project5_TAMPERED", 4),
+    ("JackedUp1", "mspdi/jacked_up_schedule_1.xml", _ALL_PROJECTS, "Jacked-Up-Schedule-1", 4),
+    ("JackedUp2", "mspdi/jacked_up_schedule_2.xml", _ALL_PROJECTS, "Jacked-up-Schedule-2", 4),
+    ("HardFile", "gz:fuse_hardfile/Hard_File.mspdi.xml.gz", _ALL_PROJECTS, "Hard_File", 4),
+    (
+        "HardFile_updated",
+        "gz:fuse_hardfile/Hard_File_updated.mspdi.xml.gz",
+        _ALL_PROJECTS,
+        "Hard_File_updated",
+        4,
+    ),
+    (
+        "HardFile_updated2",
+        "gz:fuse_hardfile/Hard_File_updated2.mspdi.xml.gz",
+        _HF23_HISTORY,
+        "Hard_File_updated2",
+        4,
+    ),
+    (
+        "HardFile_updated3",
+        "gz:fuse_hardfile/Hard_File_updated3.mspdi.xml.gz",
+        _HF23_HISTORY,
+        "Hard_File_updated2",
+        7,
+    ),
+    (
+        "HardFile_updated4_24h",
+        "gz:ssi_hardfile_24h_uid155/Hard_File_updated4_24h.mspdi.xml.gz",
+        _ALL_PROJECTS,
+        "Hard_File_updated4-24-hour-cal",
+        4,
+    ),
+    (
+        "LargeTestFile",
+        "gz:fuse_ltf/Large_Test_File.mspdi.xml.gz",
+        _LTF_HISTORY,
+        "Large-Test-File",
+        4,
+    ),
+    (
+        "LargeTestFile2",
+        "gz:fuse_ltf/Large_Test_File2.mspdi.xml.gz",
+        _LTF_HISTORY,
+        "Large-Test-File",
+        7,
+    ),
+]
+
+
+def _spi_t_cell(rows: Rows, col: int) -> str:
+    """The Metric History's 'SPI(t)' row (the Bible's per-activity average), raw cell text."""
+    hits = [r for r in sorted(rows) if rows[r].get(2, "").strip() == "SPI(t)"]
+    assert hits, "no 'SPI(t)' row — not a Metric History sheet"
+    return rows[hits[0]][col].strip()
+
+
+@pytest.mark.parametrize(
+    "label,spec,book,sheet,col", _SPI_T_ORACLES, ids=[o[0] for o in _SPI_T_ORACLES]
+)
+def test_acumen_spi_t_engine_equals_fuse(
+    label: str, spec: str, book: Path, sheet: str, col: int
+) -> None:
+    """ENGINE == FUSE on the 'SPI(t)' row of every Metric History sheet with a committed fixture;
+    a Fuse 'N/A' (nothing started) is the engine's NOT_APPLICABLE, never a fabricated figure."""
+    from schedule_forensics.engine.metrics import CheckStatus
+
+    cell = _spi_t_cell(_sheet(_load_workbook(book), sheet), col)
+    res = compute_evm_indices(_schedule(spec))["spi_t_acumen"]
+    if cell == "N/A":
+        assert res.status is CheckStatus.NOT_APPLICABLE, (label, res.value)
+        return
+    assert res.status is not CheckStatus.NOT_APPLICABLE, label
+    assert res.value == round_half_up(float(cell), 2), (label, res.value, cell)
+
+
+def _record_count(path: Path, sheet: str, metric: str) -> int:
+    """The Detailed Metric Report's 'Record Count' (row 14) under ``metric``'s column (row 11):
+    the number of activities Fuse admitted to that metric. Streams the 9 MB sheet and stops at
+    row 14 — the report's activity rows are never materialised."""
+    assert path.exists(), f"vendor workbook missing while the intake exists: {path.name}"
+    with zipfile.ZipFile(path) as zf:
+        wb = ET.fromstring(zf.read("xl/workbook.xml"))
+        rels = ET.fromstring(zf.read("xl/_rels/workbook.xml.rels"))
+        target = {r.get("Id"): r.get("Target") or "" for r in rels.findall(f"{_RELS}Relationship")}
+        part = ""
+        for sh in wb.iter(f"{_M}sheet"):
+            if sh.get("name") == sheet:
+                t = target[sh.get(f"{_R}id") or ""]
+                part = t if t.startswith("xl/") else "xl/" + t.lstrip("/")
+        assert part, f"sheet {sheet!r} not in {path.name}"
+        shared = [
+            "".join(t.text or "" for t in si.iter(f"{_M}t"))
+            for si in ET.fromstring(zf.read("xl/sharedStrings.xml")).findall(f"{_M}si")
+        ]
+        header: dict[int, str] = {}
+        with zf.open(part) as fh:
+            for _ev, el in ET.iterparse(fh):
+                if el.tag != f"{_M}row":
+                    continue
+                r = int(el.get("r") or 0)
+                cells: dict[int, str] = {}
+                for c in el.findall(f"{_M}c"):
+                    v = c.find(f"{_M}v")
+                    if v is None or v.text is None:
+                        continue
+                    cells[_col(c.get("r") or "")] = (
+                        shared[int(v.text)] if c.get("t") == "s" else v.text
+                    )
+                if r == 11:
+                    header = cells
+                elif r == 14:
+                    assert cells.get(5, "").strip() == "Record Count", cells.get(5)
+                    cols = [k for k, v in header.items() if v.strip() == metric]
+                    assert len(cols) == 1, (metric, cols)
+                    return int(float(cells[cols[0]]))
+                el.clear()
+    raise AssertionError(f"no 'Record Count' row in {sheet!r}")
+
+
+@pytest.mark.parametrize(
+    "spec,sheet",
+    [
+        ("gz:fuse_ltf/Large_Test_File.mspdi.xml.gz", "Large-Test-File"),
+        ("gz:fuse_ltf/Large_Test_File2.mspdi.xml.gz", "Large-Test-File2"),
+    ],
+    ids=["LargeTestFile", "LargeTestFile2"],
+)
+def test_acumen_spi_t_population_equals_the_fuse_record_count(spec: str, sheet: str) -> None:
+    """The engine averages exactly the activities Fuse averaged — the Detailed Metric Report's
+    'Record Count' under 'SPI(t)' (717 on Large Test File, 726 on File2) — not merely the same
+    2-dp figure. Red-first: 716 / 723 (the started-unbaselined members were skipped)."""
+    res = compute_evm_indices(_schedule(spec))["spi_t_acumen"]
+    assert res.population == _record_count(_LTF_DETAIL, sheet, "SPI(t)"), (sheet, res.population)

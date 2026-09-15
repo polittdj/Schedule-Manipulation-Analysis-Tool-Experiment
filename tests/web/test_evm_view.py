@@ -220,3 +220,20 @@ def test_field_group_panel_renders_on_evm_and_forecast(client: TestClient) -> No
     for route in ("/evm", "/forecast"):
         page = client.get(route).text
         assert "Execution metrics by field group" in page, route
+
+
+def test_evm_discloses_started_activities_without_a_baseline_behind_the_acumen_spi_t() -> None:
+    """R-47 (ADR-0495): a started activity with no baseline is a MEMBER of the Acumen SPI(t)
+    population, scored as 0 (Fuse's blank-as-0 term). The page says so by count and by UID —
+    TP3's UID 34 ('Craft onboarding & badging', completed, never baselined) — and says nothing on
+    a file where every started activity is baselined (Project5)."""
+    tp3 = GOLDEN.parents[1] / "test_projects" / "TP3_Outage_DCMA_Seeded.xml"
+    c = TestClient(create_app(SessionState()))
+    c.post("/upload", files={"files": (tp3.name, tp3.read_bytes(), "text/xml")})
+    page = c.get("/evm").text
+    assert 'data-sf-unbaselined="1"' in page
+    assert re.search(r"carry <b>no baseline</b>.*?toward 0: UID 34\.</p>", page), "the note"
+    c2 = TestClient(create_app(SessionState()))
+    data = (GOLDEN / "Project5.mspdi.xml").read_bytes()
+    c2.post("/upload", files={"files": ("Project5.mspdi.xml", data, "text/xml")})
+    assert "data-sf-unbaselined" not in c2.get("/evm").text
