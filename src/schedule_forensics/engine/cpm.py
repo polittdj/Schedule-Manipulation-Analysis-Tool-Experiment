@@ -126,12 +126,14 @@ import weakref
 from collections import deque
 from collections.abc import Mapping
 from dataclasses import dataclass
+from itertools import pairwise
 from typing import NamedTuple
 
 from schedule_forensics.engine.summary_logic import (
     SummaryLogicExplosion,
     lower_summary_relationships,
 )
+from schedule_forensics.model.assignment import Assignment
 from schedule_forensics.model.calendar import Calendar
 from schedule_forensics.model.relationship import RelationshipType
 from schedule_forensics.model.resource import ResourceType
@@ -218,6 +220,12 @@ class CPMResult:
     #: execution leg. A stored scheduling input read like the leveling delay — neither an
     #: unsupported date (``date_driven``) nor evidence of work begun.
     booking_span_driven: tuple[int, ...] = ()
+    #: UniqueIDs whose finish carries a leveling SPLIT (ADR-0491): zero-work gaps MS Project's
+    #: resource leveling left inside a WORK booking, recorded only in the file's time-phased
+    #: work, honoured between the booking's pieces as the delay is honoured before its start.
+    #: A stored scheduling input like the delay and the recorded span — neither an unsupported
+    #: date (``date_driven``) nor evidence of work begun.
+    split_driven: tuple[int, ...] = ()
     #: The true wall-clock instant of the network finish when an off-calendar task's
     #: finish is not exactly representable on the project axis (e.g. an elapsed task
     #: ending on a weekend). ``None`` when every task follows the project calendar —
@@ -611,9 +619,18 @@ _ELAPSED_CALENDAR = Calendar(
 )
 
 
-#: One execution leg of a task: the calendar a work-resource assignment (or the task itself)
-#: consumes its working time on, and the working minutes it consumes there.
-_Leg = tuple[Calendar, int]
+class _Leg(NamedTuple):
+    """One execution leg of a task: the calendar a work-resource assignment (or the task itself)
+    consumes its working time on, the working minutes it consumes there, and its leveling
+    SPLITS (ADR-0491) — ``(after, gap)`` pairs in ascending order, each strictly inside the
+    span: once ``after`` of the leg's minutes are worked, ``gap`` working minutes of the leg's
+    calendar pass with no work before the rest is worked."""
+
+    calendar: Calendar
+    span: int
+    gaps: tuple[tuple[int, int], ...] = ()
+
+
 #: A task's execution legs, PRIMARY (latest-finishing) leg first: the task starts at the
 #: earliest leg's first working instant and finishes at the latest leg's finish.
 _Plan = tuple[_Leg, ...]
@@ -626,11 +643,13 @@ class _Exec(NamedTuple):
     runs on a resource calendar (Hard_File UID 178: ES Mon 17:00 → LS Tue 13:00 is 240 project
     minutes, the stored slack; the crew's 16-hour calendar would read 720). ``recorded`` says
     the PRIMARY leg is a material / cost booking's recorded span (ADR-0487) — the finish is
-    then the file's, and the task is disclosed on ``CPMResult.booking_span_driven``."""
+    then the file's, and the task is disclosed on ``CPMResult.booking_span_driven``. ``split``
+    says a leg carries a leveling SPLIT (ADR-0491) — disclosed on ``CPMResult.split_driven``."""
 
     legs: _Plan
     axis: Calendar
     recorded: bool = False
+    split: bool = False
 
 
 class _LegShape(NamedTuple):
@@ -643,6 +662,11 @@ class _LegShape(NamedTuple):
     ratio: float
     off_pattern: bool
     recorded: bool = False
+    #: the leg's leveling splits (ADR-0491): ``(share, gap)`` pairs — the share of the
+    #: booking's work performed before the gap, and the gap's working minutes on the leg's
+    #: calendar (a calendar quantity, like the delay: it does not scale with the duration —
+    #: the share does)
+    gaps: tuple[tuple[float, int], ...] = ()
 
 
 class _PlanShape(NamedTuple):
@@ -671,6 +695,68 @@ def _same_pattern(cal: Calendar, ctx: _ShapeContext) -> bool:
     return got
 
 
+_Window = tuple[dt.datetime, dt.datetime]
+
+
+def _worked_windows(a: Assignment) -> list[_Window]:
+    """The windows a WORK booking records work in: its pieces when it is split, else its
+    recorded window (``None`` at either end: nothing known — it vetoes no gap)."""
+    if len(a.work_pieces) >= 2:
+        return [(p.start, p.finish) for p in a.work_pieces]
+    if a.start is not None and a.finish is not None:
+        return [(a.start, a.finish)]
+    return []
+
+
+def _covered_span(cal: Calendar, g0: dt.datetime, g1: dt.datetime, windows: list[_Window]) -> int:
+    """Working minutes of ``cal`` inside ``(g0, g1)`` that the ``windows`` cover (clipped,
+    merged, so an overlap is counted once)."""
+    clips = sorted((max(s, g0), min(f, g1)) for s, f in windows if s < g1 and f > g0)
+    covered = 0
+    run: _Window | None = None
+    for s, f in clips:
+        if run is not None and s <= run[1]:
+            run = (run[0], max(run[1], f))
+            continue
+        if run is not None:
+            covered += _recorded_span(cal, *run)
+        run = (s, f)
+    if run is not None:
+        covered += _recorded_span(cal, *run)
+    return covered
+
+
+def _split_gaps(
+    a: Assignment, cal: Calendar, others: list[_Window]
+) -> tuple[tuple[float, int], ...]:
+    """A WORK booking's leveling splits as leg-shape gaps (ADR-0491): for every pair of
+    consecutive work pieces the file records, the share of the booking's work performed before
+    the gap and the working minutes of ``cal`` between the pieces THAT NO OTHER WORK BOOKING OF
+    THE TASK WORKS THROUGH (``others``: their worked windows). A window nobody works is the
+    TASK's split — MS Project's Duration excludes it, so the leg must add it (Hard_File_updated3
+    UID 403; Large_Test_File UID 5265, its only booking's daily gaps excluded from a 36.85-hour
+    duration over a 15-day span). A window another booking works through is that booking's own
+    contour and the task's duration already spans it (Large_Test_File2 UID 5308: one of eight
+    bookings delayed three weeks inside a fixed 228-hour duration — adding it read the task 17
+    days late). A hole the calendar itself explains (a night, a lunch, a weekend between two
+    day-blocks) measures zero and is no gap."""
+    pieces = a.work_pieces
+    if len(pieces) < 2:
+        return ()
+    total = sum(p.work_minutes for p in pieces)
+    if total <= 0:
+        return ()
+    out: list[tuple[float, int]] = []
+    worked = 0
+    for prev, nxt in pairwise(pieces):
+        worked += prev.work_minutes
+        g0, g1 = prev.finish, nxt.start
+        gap = _recorded_span(cal, g0, g1) - _covered_span(cal, g0, g1, others)
+        if gap > 0 and 0 < worked < total:
+            out.append((worked / total, gap))
+    return tuple(out)
+
+
 def _task_shape(t: Task, ctx: _ShapeContext) -> _PlanShape | None:
     """The :class:`_PlanShape` of ``t``, or ``None`` when no duration can ever take it off the
     project calendar's integer fast path."""
@@ -682,6 +768,13 @@ def _task_shape(t: Task, ctx: _ShapeContext) -> _PlanShape | None:
     legs: list[_LegShape] = []
     if t.resource_assignments and not t.ignore_resource_calendar and t.duration_minutes > 0:
         res_by_id = ctx.schedule.resources_by_id
+        # every WORK booking's worked windows, so a split booking's gap can be told from a
+        # window another crew works through (ADR-0491's task-split test)
+        windows: dict[int, list[_Window]] = {}
+        for a in t.resource_assignments:
+            res = res_by_id.get(a.resource_id)
+            if res is not None and res.type is ResourceType.WORK and a.work_minutes > 0:
+                windows[id(a)] = _worked_windows(a)
         for a in t.resource_assignments:
             res = res_by_id.get(a.resource_id)
             if res is None:
@@ -718,11 +811,25 @@ def _task_shape(t: Task, ctx: _ShapeContext) -> _PlanShape | None:
                 if t.task_type is TaskType.FIXED_UNITS
                 else 1.0
             )
-            legs.append(_LegShape(leg_cal, ratio, not _same_pattern(leg_cal, ctx)))
+            others = [w for key, ws in windows.items() if key != id(a) for w in ws]
+            legs.append(
+                _LegShape(
+                    leg_cal,
+                    ratio,
+                    not _same_pattern(leg_cal, ctx),
+                    False,
+                    _split_gaps(a, leg_cal, others),
+                )
+            )
     # legs that all sit on the project pattern under no task calendar can never form a plan,
     # whatever the durations — unless one of them outspans the task (a recorded material /
-    # cost span, ADR-0487): the fast path could not carry the task past its duration
-    if legs and task_cal is None and not any(leg.off_pattern or leg.ratio > 1.0 for leg in legs):
+    # cost span, ADR-0487) or carries a leveling split (ADR-0491): the fast path could carry
+    # the task neither past its duration nor across a gap
+    if (
+        legs
+        and task_cal is None
+        and not any(leg.off_pattern or leg.ratio > 1.0 or leg.gaps for leg in legs)
+    ):
         legs = []
     leveled = t.leveling_delay_minutes > 0
     if not legs and task_cal is None and not leveled:
@@ -802,28 +909,44 @@ def _execution_plans(
             continue
         dur = duration[uid]
         if shape.elapsed:
-            out[uid] = _Exec(((_ELAPSED_CALENDAR, dur),), _ELAPSED_CALENDAR)
+            out[uid] = _Exec((_Leg(_ELAPSED_CALENDAR, dur),), _ELAPSED_CALENDAR)
             continue
         legs: list[_Leg] = []
         # recorded legs by calendar IDENTITY and span — never by hashing the frozen Calendar
-        # model on a solver the SRA calls a thousand times (ADR-0474's latency amendment)
+        # model on a solver the SRA calls a thousand times (ADR-0474's latency amendment);
+        # ``seen`` dedupes the legs the same way (one leg per distinct calendar, span, gaps)
         recorded: set[tuple[int, int]] = set()
-        off_pattern = False
-        for leg_cal, ratio, off, rec in shape.legs:
+        seen: set[tuple[int, int, tuple[tuple[int, int], ...]]] = set()
+        off_pattern = split = False
+        for leg_cal, ratio, off, rec, shares in shape.legs:
             span = round(ratio * dur)
-            if span > 0:
-                legs.append((leg_cal, span))
-                off_pattern = off_pattern or off
-                if rec:
-                    recorded.add((id(leg_cal), span))
+            if span <= 0:
+                continue
+            # the split's pieces scale with the leg, its gaps do not (ADR-0491)
+            gaps: list[tuple[int, int]] = []
+            for share, gap in shares:
+                after = round(share * span)
+                if 0 < after < span:
+                    gaps.append((after, gap))
+            key = (id(leg_cal), span, tuple(gaps))
+            if key in seen:
+                continue
+            seen.add(key)
+            legs.append(_Leg(leg_cal, span, tuple(gaps)))
+            off_pattern = off_pattern or off
+            split = split or bool(gaps)
+            if rec:
+                recorded.add((id(leg_cal), span))
         task_cal = shape.task_calendar
         plan: _Plan
-        if legs and (off_pattern or task_cal is not None or any(s > dur for _, s in legs)):
-            plan = tuple(dict.fromkeys(legs))
+        if legs and (
+            off_pattern or split or task_cal is not None or any(leg.span > dur for leg in legs)
+        ):
+            plan = tuple(legs)
         elif task_cal is not None:
-            plan = ((task_cal, dur),)
+            plan = (_Leg(task_cal, dur),)
         elif shape.leveled:
-            plan = ((schedule.calendar, dur),)
+            plan = (_Leg(schedule.calendar, dur),)
         else:
             continue
         if len(plan) > 1:
@@ -832,8 +955,8 @@ def _execution_plans(
             plan = tuple(
                 sorted(
                     plan,
-                    key=lambda leg: _advance_wall(
-                        _snap_to_working(ps, leg[0], tod0), leg[1], leg[0], tod0
+                    key=lambda leg: _leg_finish(
+                        _snap_to_working(ps, leg.calendar, tod0), leg, tod0
                     ),
                     reverse=True,
                 )
@@ -841,7 +964,8 @@ def _execution_plans(
         out[uid] = _Exec(
             plan,
             task_cal if task_cal is not None else schedule.calendar,
-            (id(plan[0][0]), plan[0][1]) in recorded,
+            (id(plan[0].calendar), plan[0].span) in recorded,
+            split,
         )
     return out
 
@@ -857,7 +981,7 @@ def execution_calendar_of(schedule: Schedule, task: Task) -> Calendar | None:
     DCMA-12 delay injection) use to size a delay on the task's own axis."""
     plan = _execution_plans(schedule, [task], {task.unique_id: task.duration_minutes})
     ex = plan.get(task.unique_id)
-    return None if ex is None else ex.legs[0][0]
+    return None if ex is None else ex.legs[0].calendar
 
 
 def injected_finish_wall(
@@ -880,36 +1004,75 @@ def _plan_snap(wall: dt.datetime, plan: _Plan, day_start_tod: int) -> dt.datetim
     """The earliest instant at or after ``wall`` on which ANY leg of the plan can work — the
     task's start (MS Project: the earliest assignment start)."""
     if len(plan) == 1:  # the one-leg plan (a task calendar, an elapsed duration, a delay)
-        return _snap_to_working(wall, plan[0][0], day_start_tod)
-    return min(_snap_to_working(wall, c, day_start_tod) for c, _ in plan)
+        return _snap_to_working(wall, plan[0].calendar, day_start_tod)
+    return min(_snap_to_working(wall, leg.calendar, day_start_tod) for leg in plan)
+
+
+def _leg_finish(start: dt.datetime, leg: _Leg, day_start_tod: int) -> dt.datetime:
+    """``start`` (on the leg calendar's working time) plus the leg: every piece of work and,
+    between the pieces, every leveling-split gap (ADR-0491), all in working minutes of the
+    leg's calendar — a gap travels with the work it interrupts, exactly as MS Project's stored
+    LateStart retreats through it (Hard_File_updated3 UID 403: 11-25 13:48, to the minute).
+    A leg without gaps is the one advance it always was."""
+    cal, span, gaps = leg
+    wall, worked = start, 0
+    for after, gap in gaps:
+        wall = _advance_wall(wall, after - worked, cal, day_start_tod)
+        wall = _advance_wall(wall, gap, cal, day_start_tod)
+        worked = after
+    return _advance_wall(wall, span - worked, cal, day_start_tod)
+
+
+def _leg_retreat(finish: dt.datetime, leg: _Leg, day_start_tod: int) -> dt.datetime:
+    """The latest start from which the leg — its pieces and the gaps between them — still
+    finishes by ``finish``: the mirror of :func:`_leg_finish`."""
+    cal, span, gaps = leg
+    wall, remaining = finish, span
+    for after, gap in reversed(gaps):
+        wall = _retreat_wall(wall, remaining - after, cal, day_start_tod)
+        wall = _retreat_wall(wall, gap, cal, day_start_tod)
+        remaining = after
+    return _retreat_wall(wall, remaining, cal, day_start_tod)
 
 
 def _plan_finish(start: dt.datetime, plan: _Plan, day_start_tod: int) -> dt.datetime:
     """The task's finish from ``start``: every leg starts at its own calendar's first working
     instant at or after ``start``, consumes its span there; the latest leg finish wins."""
     if len(plan) == 1:
-        c, span = plan[0]
-        return _advance_wall(_snap_to_working(start, c, day_start_tod), span, c, day_start_tod)
+        leg = plan[0]
+        return _leg_finish(_snap_to_working(start, leg.calendar, day_start_tod), leg, day_start_tod)
     return max(
-        _advance_wall(_snap_to_working(start, c, day_start_tod), span, c, day_start_tod)
-        for c, span in plan
+        _leg_finish(_snap_to_working(start, leg.calendar, day_start_tod), leg, day_start_tod)
+        for leg in plan
     )
 
 
 def _plan_retreat(finish: dt.datetime, plan: _Plan, day_start_tod: int) -> dt.datetime:
     """The latest start from which every leg still finishes by ``finish``."""
     if len(plan) == 1:
-        c, span = plan[0]
-        return _retreat_wall(finish, span, c, day_start_tod)
-    return min(_retreat_wall(finish, span, c, day_start_tod) for c, span in plan)
+        return _leg_retreat(finish, plan[0], day_start_tod)
+    return min(_leg_retreat(finish, leg, day_start_tod) for leg in plan)
 
 
 def _plan_scaled(plan: _Plan, minutes: int, duration: int) -> _Plan:
     """The plan's legs scaled to ``minutes`` of the ``duration`` they were built for (the
-    remaining-work floor); a zero duration collapses onto the primary leg."""
+    remaining-work floor — the TAIL of every leg); a zero duration collapses onto the primary
+    leg. A split gap keeps its length and its place in the work (ADR-0491): one inside the
+    consumed head is gone, one still ahead moves up by the head."""
     if duration <= 0:
-        return ((plan[0][0], minutes),)
-    return tuple((c, round(span * minutes / duration)) for c, span in plan)
+        return (_Leg(plan[0].calendar, minutes),)
+    out: list[_Leg] = []
+    for cal, span, gaps in plan:
+        scaled = round(span * minutes / duration)
+        head = span - scaled
+        out.append(
+            _Leg(
+                cal,
+                scaled,
+                tuple((after - head, gap) for after, gap in gaps if 0 < after - head < scaled),
+            )
+        )
+    return tuple(out)
 
 
 def _day_segments_of(cal: Calendar, day_start_tod: int) -> tuple[tuple[int, int], ...]:
@@ -1665,6 +1828,8 @@ def compute_cpm(
     leveling_driven: list[int] = []
     #: UIDs whose finish a MATERIAL / COST booking's recorded span decides (ADR-0487).
     booking_span_driven: list[int] = []
+    #: UIDs whose finish carries a leveling SPLIT read from the file's time-phased work (ADR-0491).
+    split_driven: list[int] = []
 
     def _pred_finish_wall(p: int) -> dt.datetime:
         if p in exec_plan:
@@ -1683,6 +1848,8 @@ def compute_cpm(
             plan, cal_t = ex.legs, ex.axis  # the legs, and the task's slack axis
             if ex.recorded:
                 booking_span_driven.append(tid)
+            if ex.split:
+                split_driven.append(tid)
             task = task_by_id[tid]
             # the pure logic+constraint early start, as a wall instant on the task's calendar
             cands: list[dt.datetime] = [ps]
@@ -2043,5 +2210,6 @@ def compute_cpm(
         actual_finish_driven=tuple(sorted(actual_finish_driven)),
         leveling_driven=tuple(sorted(leveling_driven)),
         booking_span_driven=tuple(sorted(booking_span_driven)),
+        split_driven=tuple(sorted(split_driven)),
         project_finish_wall=target_wall if required_finish_offset is None else None,
     )

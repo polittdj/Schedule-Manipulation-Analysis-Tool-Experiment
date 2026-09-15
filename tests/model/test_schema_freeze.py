@@ -12,7 +12,7 @@ import pydantic
 import pytest
 
 from schedule_forensics import model
-from schedule_forensics.model.assignment import Assignment
+from schedule_forensics.model.assignment import Assignment, WorkPiece
 from schedule_forensics.model.calendar import Calendar
 from schedule_forensics.model.relationship import Relationship, RelationshipType
 from schedule_forensics.model.resource import Resource, ResourceType
@@ -77,6 +77,8 @@ _EXPECTED_FIELDS: dict[type[pydantic.BaseModel], set[str]] = {
     },
     # start / finish: the booking's recorded window (ADR-0487) — a MATERIAL / COST booking's
     # span, the one scheduling input the file carries for it; None when unrecorded
+    # work_pieces: a WORK booking's split as the file time-phases it (ADR-0491) — the worked
+    # runs on either side of every zero-work block; () = one contiguous piece / not recorded
     Assignment: {
         "resource_id",
         "work_minutes",
@@ -84,7 +86,9 @@ _EXPECTED_FIELDS: dict[type[pydantic.BaseModel], set[str]] = {
         "remaining_work_minutes",
         "start",
         "finish",
+        "work_pieces",
     },
+    WorkPiece: {"start", "finish", "work_minutes"},
     Relationship: {"predecessor_id", "successor_id", "type", "lag_minutes"},
     Resource: {
         "unique_id",
@@ -146,7 +150,7 @@ _EXPECTED_FIELDS: dict[type[pydantic.BaseModel], set[str]] = {
 
 
 def test_schema_version() -> None:
-    assert model.SCHEMA_VERSION == "2.12.0"
+    assert model.SCHEMA_VERSION == "2.13.0"
 
 
 @pytest.mark.parametrize("cls", list(_EXPECTED_FIELDS))
@@ -190,5 +194,6 @@ def test_public_api_exports() -> None:
         "Schedule",
         "Task",
         "TaskType",
+        "WorkPiece",
         "units",
     }

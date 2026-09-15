@@ -1,0 +1,121 @@
+{
+ "_what": "Provenance of every MSPDI golden (ADR-0491): the intake .mpp save each golden was converted from, addressed by the git BLOB that IS that save (git cat-file blob <blob>) and the commit that carried it. Matched by measurement, not by name: the vendored converter's plain output for that blob has task and assignment sections byte-identical to the golden's. tools/regenerate_timephased_goldens.py consumes this file; tests/guards/test_golden_provenance.py pins each golden's own <Revision> / <LastSaved> header to it.",
+ "goldens": {
+  "evm/EVM1.mspdi.xml": {
+   "source": null,
+   "note": "no intake save in git history converts to this golden's task and assignment sections (EVM goldens: source .mpp never committed)",
+   "revision": "1",
+   "last_saved": "2026-06-21T17:14:00"
+  },
+  "evm/EVM2.mspdi.xml": {
+   "source": null,
+   "note": "no intake save in git history converts to this golden's task and assignment sections (EVM goldens: source .mpp never committed)",
+   "revision": "1",
+   "last_saved": "2026-06-21T17:18:00"
+  },
+  "fuse_hardfile/Hard_File.mspdi.xml.gz": {
+   "source": "00_REFERENCE_INTAKE/mpp/Hard_File.mpp",
+   "commit": "076e055c6f7a8f47a102ae284b95780b079950fd",
+   "blob": "50db7b5c323ba6b8b0c16913dbfbc7ea7dc9f977",
+   "committed": "2026-07-08",
+   "revision": "1",
+   "last_saved": "2026-07-08T10:49:00"
+  },
+  "fuse_hardfile/Hard_File_updated.mspdi.xml.gz": {
+   "source": "00_REFERENCE_INTAKE/mpp/Hard_File_updated.mpp",
+   "commit": "076e055c6f7a8f47a102ae284b95780b079950fd",
+   "blob": "7ce033d57cc439cfc1cdd86738458b2668c12a39",
+   "committed": "2026-07-08",
+   "revision": "1",
+   "last_saved": "2026-07-08T10:55:00"
+  },
+  "fuse_hardfile/Hard_File_updated2.mspdi.xml.gz": {
+   "source": "00_REFERENCE_INTAKE/mpp/Hard_File_updated2.mpp",
+   "commit": "af4d154f657496d35055a6a0c9450f17d4db97fb",
+   "blob": "8c1ffe266e550e31b58ec676e1879239c90d1680",
+   "committed": "2026-07-09",
+   "revision": "6",
+   "last_saved": "2026-07-09T10:01:00"
+  },
+  "fuse_hardfile/Hard_File_updated3.mspdi.xml.gz": {
+   "source": "00_REFERENCE_INTAKE/mpp/Hard_File_updated3.mpp",
+   "commit": "af4d154f657496d35055a6a0c9450f17d4db97fb",
+   "blob": "1908d073c85b8bb3e29073015a5c5ff64c38accf",
+   "committed": "2026-07-09",
+   "revision": "2",
+   "last_saved": "2026-07-09T10:12:00"
+  },
+  "fuse_hardfile/Hard_File_updated3_24hr.mspdi.xml.gz": {
+   "source": "00_REFERENCE_INTAKE/mpp/Hard_File_updated3 24 hour calendar.mpp",
+   "commit": "3136e1a61128e3039e8204de0c83ad1f972e9519",
+   "blob": "cab7ca96c30a8042c809aa7ae397903526ce4e6f",
+   "committed": "2026-07-14",
+   "revision": "2",
+   "last_saved": "2026-07-14T12:29:00"
+  },
+  "fuse_ltf/Large_Test_File.mspdi.xml.gz": {
+   "source": "00_REFERENCE_INTAKE/mpp/Large Test File.mpp",
+   "commit": "346c9fafbee59da01ec901664103621a56328b88",
+   "blob": "a6df8fab00468774b4460bb899eced5635793f3b",
+   "committed": "2026-07-16",
+   "revision": "1",
+   "last_saved": "2026-07-15T15:10:00"
+  },
+  "fuse_ltf/Large_Test_File2.mspdi.xml.gz": {
+   "source": "00_REFERENCE_INTAKE/mpp/Large Test File2.mpp",
+   "commit": "346c9fafbee59da01ec901664103621a56328b88",
+   "blob": "42a6b2f85b469cb7080da0971fa039f1e793f4f8",
+   "committed": "2026-07-16",
+   "revision": "1",
+   "last_saved": "2026-07-15T15:12:00"
+  },
+  "project2_5/Project2.mspdi.xml": {
+   "source": "00_REFERENCE_INTAKE/Project2.mpp",
+   "commit": "61d2ae3a7c3e411c8328b5802f05889f67081680",
+   "blob": "89d4e51537329bff64c677ca199cd066b342e002",
+   "committed": "2026-07-07",
+   "revision": "1",
+   "last_saved": "2026-05-24T15:51:00"
+  },
+  "project2_5/Project5.mspdi.xml": {
+   "source": "00_REFERENCE_INTAKE/mpp/Project5.mpp",
+   "commit": "a831bbb61bd534c3a14141813318aa2ac6473e81",
+   "blob": "2903781a2a6886378892f7acbb4692e326a9dd8e",
+   "committed": "2026-07-07",
+   "revision": "4",
+   "last_saved": "2026-06-09T07:54:00"
+  },
+  "ssi_hardfile_24h_uid155/Hard_File_updated3.mspdi.xml.gz": {
+   "source": "00_REFERENCE_INTAKE/mpp/Hard_File_updated3.mpp",
+   "commit": "dcacbf4458f2049aeec01be345b32d1685dae27c",
+   "blob": "248fb15b9b13b6899a7be8d4815e6642257a17f5",
+   "committed": "2026-07-15",
+   "revision": "5",
+   "last_saved": "2026-07-15T13:26:00"
+  },
+  "ssi_hardfile_24h_uid155/Hard_File_updated4_24h.mspdi.xml.gz": {
+   "source": "00_REFERENCE_INTAKE/mpp/Hard_File_updated4 24 hour calendar.mpp",
+   "commit": "346c9fafbee59da01ec901664103621a56328b88",
+   "blob": "42d9234c167e09ae2fd9bf1abf43c4ca4408803b",
+   "committed": "2026-07-16",
+   "revision": "4",
+   "last_saved": "2026-07-15T15:44:00"
+  },
+  "ssi_uid152/Large_Test_File.mspdi.xml.gz": {
+   "source": "00_REFERENCE_INTAKE/mpp/Large Test File.mpp",
+   "commit": "8cd042d5c5a82a667279c3652784d05363742304",
+   "blob": "8024dd278abc02c645b2da0e93656aa81d345adf",
+   "committed": "2026-07-07",
+   "revision": "4",
+   "last_saved": "2026-06-22T12:49:00"
+  },
+  "ssi_uid152_leveled/Large_Test_File_Leveled.mspdi.xml.gz": {
+   "source": "00_REFERENCE_INTAKE/mpp/Large Test File Leveled.mpp",
+   "commit": "28a39fcfe63cdce78c615b709e76ea1bc6065077",
+   "blob": "666a1d12202730fc600350ee917a61417134d1b3",
+   "committed": "2026-07-14",
+   "revision": "2",
+   "last_saved": "2026-07-14T17:24:00"
+  }
+ }
+}

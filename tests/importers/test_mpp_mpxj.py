@@ -82,6 +82,33 @@ def test_parse_real_mpp(path: Path, name: str) -> None:
     assert len(activities) == 144
 
 
+UPDATED3 = PROJECT2.parent / "Hard_File_updated3.mpp"
+
+
+@needs_java
+@pytest.mark.skipif(not UPDATED3.is_file(), reason="Hard_File_updated3.mpp not present")
+def test_the_converter_writes_the_timephased_data_a_leveling_split_lives_in() -> None:
+    """ADR-0491 (R-60): the vendored converter writes the MSPDI ``TimephasedData``
+    (``MSPDIWriter.setWriteTimephasedData``), so a resource-leveling split — recorded only there
+    — reaches the model. The intake save (Revision 5) books UID 403's Customer Service Lead as
+    two pieces, 10-19 15:00 → 10-21 12:00 and 10-28 13:00 → 10-30 15:00, seven days apart; a
+    converter that omits the series (the default) yields no pieces at all."""
+    import datetime as dt
+
+    (booking,) = parse_mpp(UPDATED3).task_by_id(403).resource_assignments
+    assert len(booking.work_pieces) == 2
+    first, second = booking.work_pieces
+    assert (first.start, first.finish) == (
+        dt.datetime(2026, 10, 19, 15, 0),
+        dt.datetime(2026, 10, 21, 12, 0),
+    )
+    assert (second.start, second.finish) == (
+        dt.datetime(2026, 10, 28, 13, 0),
+        dt.datetime(2026, 10, 30, 15, 0),
+    )
+    assert first.work_minutes + second.work_minutes == booking.work_minutes == 1920
+
+
 # --- error paths (no JVM needed) --------------------------------------------------
 
 

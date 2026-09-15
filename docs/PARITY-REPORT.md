@@ -238,18 +238,25 @@ after the task's calendar admits it. The rules were derived from the stored date
 
 | File | Stored finish | CPM finish (before → after) | Finish within a day (of 110 / 126) | Critical agreed | Stored slack exact |
 |---|---|---|---|---|---|
-| Hard_File | 2026-11-05 | +42.0 d → −1.0 d | 92 | 108 (was 54) | 3 / 76 |
-| Hard_File_updated | 2026-11-05 | +31.2 d → −1.0 d | 100 | 110 (was 59) | 52 / 70 |
-| Hard_File_updated2 | 2026-11-06 | +34.8 d → −1.0 d | 87 | 80 (was 73) | 8 / 76 |
-| Hard_File_updated3 | 2026-12-12 | +18.7 d → −6.0 d (R-55: progress semantics) | 42 | 96 (was 65) | 6 / 68 |
+| Hard_File | 2026-11-05 | +42.0 d → −1.0 d → **exact** (ADR-0491) | 103 (was 92) | 108 (was 54) | 5 / 76 |
+| Hard_File_updated | 2026-11-05 | +31.2 d → −1.0 d → **exact** (ADR-0491) | 108 (was 100) | 110 (was 59) | 60 / 70 |
+| Hard_File_updated2 | 2026-11-06 | +34.8 d → −1.0 d → **exact** (ADR-0491) | 109 (was 93) | 107 (was 80) | 36 / 76 |
+| Hard_File_updated3 | 2026-12-12 | +18.7 d → −6.0 d (R-55) → −13 d → **exact** (ADR-0487) | 106 (was 42) | 103 (was 65) | 46 / 68 |
 | Project2 | 2027-09-14 | −15 d → exact | 126 (was 66) | 124 (was 120) | **65 / 65** (was 7) |
 | Project5 | 2028-01-26 | −1 d → exact | 126 (was 75) | 126 (was 124) | **95 / 95** (was 8) |
-| Large Test File / File2 | 2028-09-29 / 2029-04-20 | unmoved | 1 558 / 1 563 (unmoved) | 1 682 / 1 686 (unmoved) | 842 / 655 (unmoved) |
+| Large Test File / File2 | 2028-09-29 / 2029-04-20 | unmoved | 1 666 / 1 687 (ADR-0491; were 1 558 / 1 563) | 1 721 / 1 717 (were 1 682 / 1 686) | 865 / 668 (were 842 / 655) |
 
-The one-day residual on the three early Hard_File snapshots is leveling splits the MSPDI cannot
-carry (R-60: UID 14 spans 40 h where the rule gives 24 h — two work pieces in the `.mpp`); updated3's
-material / cost bookings are read from their recorded windows since ADR-0487 (R-56 closed: the
-project finish exact, 103 of 110 activities within a day of MS Project). Slack is measured on the TASK's calendar — UID
+The one-day residual on the three early Hard_File snapshots WAS the leveling splits the MSPDI did
+not carry (R-60, closed by ADR-0491): the converter now writes the timephased data, a WORK
+booking's zero-work blocks bound its pieces, and the engine carries every gap no other booking of
+the task works through in working minutes of the leg's calendar, forward and on the backward pass
+— every Hard_File snapshot's project finish is exact, UID 14 spans its stored 10-26 20:00 →
+10-29 11:00, updated3's UID 403 lands on 11-05 09:12 with the stored LateStart and slack, and the
+Large Test Files' within-a-day counts rose by 97 / 98 with no activity moving away from its stored
+finish (UID 5306's chain on the leveled SSI golden aside, by the 8 minutes MS Project's own
+arithmetic carries). The goldens were regenerated from their own saves, proven by section diff
+(the provenance manifest `PROVENANCE.json` beside the goldens, guarded). updated3's material / cost bookings are read from
+their recorded windows since ADR-0487 (R-56 closed). Slack is measured on the TASK's calendar — UID
 178's stored 240 minutes are project-calendar minutes between Monday 17:00 and Tuesday 13:00; its
 16-hour crew calendar would read 720. The §E consequences: Net Finish Impact reads Fuse's own −134
 (the CPM finishes are the stored finishes), and the SN04 96↔99 membership swap is closed.

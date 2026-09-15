@@ -24,7 +24,7 @@ Change log:
 from __future__ import annotations
 
 from schedule_forensics.model import units
-from schedule_forensics.model.assignment import Assignment
+from schedule_forensics.model.assignment import Assignment, WorkPiece
 from schedule_forensics.model.calendar import Calendar
 from schedule_forensics.model.relationship import Relationship, RelationshipType
 from schedule_forensics.model.resource import Resource, ResourceType
@@ -45,7 +45,11 @@ from schedule_forensics.model.task import ConstraintType, Task, TaskType
 # 2.8.0: Task priority/outline_number/stop (ADR-0234); 2.7.0: saved filters/groups (ADR-0231).
 # 2.12.0: Resource.calendar_uid, Task.ignore_resource_calendar, Task.leveling_delay_minutes
 #   (ADR-0474) — the resource-calendar / leveling-delay scheduling inputs the CPM now honours.
-SCHEMA_VERSION = "2.12.0"
+# 2.13.0: Assignment.work_pieces + WorkPiece (ADR-0491) — a WORK booking's leveling split as the
+#   file time-phases it; AND, retroactively, Assignment.start / finish (ADR-0487, #671), which
+#   shipped with the freeze test's field set updated but this version left at 2.12.0 — the
+#   2.9.0 case again: the guard asserts a literal and cannot see an un-bumped add.
+SCHEMA_VERSION = "2.13.0"
 
 __all__ = [
     "SCHEMA_VERSION",
@@ -59,5 +63,6 @@ __all__ = [
     "Schedule",
     "Task",
     "TaskType",
+    "WorkPiece",
     "units",
 ]

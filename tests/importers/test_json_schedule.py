@@ -375,7 +375,7 @@ def _maximal_schedule():  # type: ignore[no-untyped-def]
     """Every model field set to a NON-DEFAULT value, so any writer omission is visible."""
     import datetime as dt
 
-    from schedule_forensics.model.assignment import Assignment
+    from schedule_forensics.model.assignment import Assignment, WorkPiece
     from schedule_forensics.model.calendar import Calendar
     from schedule_forensics.model.relationship import Relationship
     from schedule_forensics.model.resource import Resource, ResourceType
@@ -449,6 +449,19 @@ def _maximal_schedule():  # type: ignore[no-untyped-def]
                 # the booking's recorded window (ADR-0487) — written and read back
                 start=dt.datetime(2025, 1, 6, 8, 0),
                 finish=dt.datetime(2025, 1, 8, 12, 0),
+                # the booking's split (ADR-0491): two pieces of work, a gap between
+                work_pieces=(
+                    WorkPiece(
+                        start=dt.datetime(2025, 1, 6, 8, 0),
+                        finish=dt.datetime(2025, 1, 6, 12, 0),
+                        work_minutes=240,
+                    ),
+                    WorkPiece(
+                        start=dt.datetime(2025, 1, 8, 8, 0),
+                        finish=dt.datetime(2025, 1, 8, 12, 0),
+                        work_minutes=240,
+                    ),
+                ),
             ),
         ),
         task_type=TaskType.FIXED_WORK,

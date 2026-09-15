@@ -18,7 +18,7 @@ from typing import Any
 
 from schedule_forensics.importers._common import ImporterError, anchored_project_start
 from schedule_forensics.model import Schedule
-from schedule_forensics.model.assignment import Assignment
+from schedule_forensics.model.assignment import Assignment, WorkPiece
 from schedule_forensics.model.calendar import Calendar
 from schedule_forensics.model.relationship import Relationship, RelationshipType
 from schedule_forensics.model.resource import Resource, ResourceType
@@ -51,6 +51,19 @@ def _dt(value: Any) -> dt.datetime | None:
     # naive like every other importer (_common.parse_datetime): one tz-aware status_date mixed
     # with naive versions crashed order_versions -> every multi-version page (QC audit D11)
     return parsed.replace(tzinfo=None)
+
+
+def _work_piece(raw: Any) -> WorkPiece:
+    """One piece of a booking's split (ADR-0491) — an object with a start, a finish and its
+    work minutes; anything less fails loud (the module's contract), never a fabricated piece."""
+    if not isinstance(raw, dict):
+        raise ImporterError("invalid work piece in JSON schedule: not an object")
+    start, finish = _dt(raw.get("start")), _dt(raw.get("finish"))
+    if start is None or finish is None:
+        raise ImporterError("invalid work piece in JSON schedule: start and finish are required")
+    return WorkPiece(
+        start=start, finish=finish, work_minutes=_int(raw.get("work_minutes", 0), "work_minutes")
+    )
 
 
 def _int(value: Any, field: str) -> int:
@@ -239,6 +252,13 @@ def _task(raw: dict[str, Any]) -> Task:
                 # the booking's recorded window (ADR-0487); absent in every earlier Save
                 start=_dt(a.get("start")),
                 finish=_dt(a.get("finish")),
+                # the booking's leveling split (ADR-0491); absent in every earlier Save
+                work_pieces=tuple(
+                    _work_piece(piece)
+                    for piece in (
+                        a["work_pieces"] if isinstance(a.get("work_pieces"), list) else ()
+                    )
+                ),
             )
             for a in raw["resource_assignments"]
             if isinstance(a, dict) and a.get("resource_id") is not None
@@ -492,6 +512,20 @@ def to_json_text(schedule: Schedule) -> str:
                 )
                 | ({} if a.start is None else {"start": a.start.isoformat()})
                 | ({} if a.finish is None else {"finish": a.finish.isoformat()})
+                | (
+                    {}
+                    if not a.work_pieces
+                    else {
+                        "work_pieces": [
+                            {
+                                "start": piece.start.isoformat(),
+                                "finish": piece.finish.isoformat(),
+                                "work_minutes": piece.work_minutes,
+                            }
+                            for piece in a.work_pieces
+                        ]
+                    }
+                )
                 for a in t.resource_assignments
             ]
         # every field the parser reads is written back: a Save .json round-trip must not

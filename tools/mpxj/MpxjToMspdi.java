@@ -89,7 +89,16 @@ public class MpxjToMspdi {
 
     // The full per-file conversion: the MSPDI XML plus the saved-views sidecar.
     private static void convert(ProjectFile project, String output) throws Exception {
-        new MSPDIWriter().write(project, output);
+        MSPDIWriter writer = new MSPDIWriter();
+        // ADR-0491 (R-60): a resource-leveling SPLIT lives only in the assignment's timephased
+        // work — a zero-work block between two worked ones. The writer omits timephased data by
+        // default; with it on, every assignment's raw work / actual / baseline series is written
+        // as MSPDI <TimephasedData> (Large_Test_File, 1,723 activities: +7 % bytes, the same
+        // wall time under the --server heap cap; the Python importer reads Types 1 and 2 only).
+        // setGenerateMissingTimephasedData stays OFF: it throws a NullPointerException inside
+        // MPXJ 16.2.0 on that file, and a generated series carries no split anyway.
+        writer.setWriteTimephasedData(true);
+        writer.write(project, output);
         writeUtf8(output + ".views.json", viewsJson(project));
     }
 
