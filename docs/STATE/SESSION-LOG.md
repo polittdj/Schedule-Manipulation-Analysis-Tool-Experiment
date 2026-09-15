@@ -18462,3 +18462,21 @@ called a flake turned out to have a mechanism (ADR-0442 UI-02, ADR-0443, ADR-046
 
 - **`c942e741`** — ONE commit on `main` @ `69607e3b`, pushed to `claude/beautiful-hypatia-4aefrf`; **draft PR #682** (`installer/**` changed, so eight checks apply: `cui-guard` · `browser (measured-box proof)` · `floor (declared minimum)` · `test (3.11)` · `test (3.13)` · `check` · `linux` · `windows`). The session is subscribed to the PR and a one-hour check-in is armed; the first CI verdicts go into the next follow-up. The operator merges.
 - Token guardian at this entry: ~44 % of the assumed wall (ceiling not measured).
+
+### 2026-09-15 — follow-up: #682 MERGED (`main` @ `4b213dd8`, tree == `e86362df`); every check on the final head read; the branch restarted
+
+- **#682 on `e86362df` — all eight green:** CI run 1880 (35022363671) — `cui-guard` 20:54:54Z, `browser (measured-box
+  proof)` 21:12:11Z, `floor (declared minimum)` 21:18:59Z, `test (3.13)` 21:35:44Z, `test (3.11)` 21:38:18Z, `check`
+  21:38:25Z; installer-smoke run 737 (35022363652) — `linux` 20:54:13Z, `windows` 20:58:16Z. The first head
+  `c942e741`'s CI run 1879 was **cancelled** by the concurrency group when the docs follow-up pushed (not a verdict);
+  its installer-smoke 736 read success.
+- **Marked ready for review and squash-merged by the operator at 22:10:20Z: `main` @ `4b213dd8`**, tree `5f781ff4…`
+  == `e86362df`'s (`git rev-parse` both). The Codex connector posted its exhausted-quota notice on the PR (review cover
+  absent, as recorded). GitHub deleted the remote branch; the session was auto-unsubscribed; the 22:56Z check-in
+  trigger deleted; the branch restarted on the squash (`--prune` + `remote set-head` + `checkout -B`, working tree
+  clean).
+- **`main`'s own runs for `4b213dd8`: CI run 1881 (35029583803) and installer-smoke 738 (35029583809) IN PROGRESS at
+  22:10:29Z** — the next session (or this one's check-in) reads their conclusion first. `69607e3b`'s CI 1878 read
+  success at 20:12:05Z earlier in this session; no installer-smoke run exists for it (docs-only, path-filtered).
+- This record is a docs-only commit on the restarted branch, opened as a draft PR (six checks apply — docs only);
+  number in the next follow-up line. Token guardian at this entry: ~58 % of the assumed wall (ceiling not measured).
