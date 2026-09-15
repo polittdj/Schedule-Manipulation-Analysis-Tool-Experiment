@@ -18253,3 +18253,28 @@ called a flake turned out to have a mechanism (ADR-0442 UI-02, ADR-0443, ADR-046
   hypothesis (one `…/v1/chat/completions` request settles it; no completion probe built without it).
 - **The full suite, `-m parity`, the PR number and its checks (the `windows` DPAPI step first):** in the
   follow-up below.
+
+### 2026-09-15 — follow-up: PR #677 (ADR-0493), the final-head suite, parity, and the first CI verdict (eight of eight green; the real-Windows DPAPI step passed)
+
+- **PR:** **draft #677**, branch `claude/dazzling-ptolemy-i1zig0`, head **`6039db1d`** (three commits on
+  `ec3adf6c`: #676's docs commit `04a2f20b`, the unit at `92d3e6b9`, the contract re-export + the rebuild at
+  `6039db1d`). Not marked ready, not merged — the operator's. #676 is contained in it.
+- **The full suite on the final head `6039db1d`: 5,410 passed / 5 skipped / 0 failed in 32:54.** The earlier
+  run on the same `src/` minus two import lines read 10 reds, every one an artifact of the run's own
+  environment except one real miss: the installer lockstep and the three state-doc guards ran before the
+  rebuild / rotation / bump, the two version pins read the 1.0.260 metadata imported before the mid-run bump,
+  and `test_monolith_split_contract` named `_CREDENTIAL_USERS` / `_receipt_html` as un-re-exported (fixed in
+  `6039db1d`, re-run 71 passed). **`-m parity`: 98 passed in 3:19.** `pytest --collect-only`: 5,415 collected.
+- **CI on `6039db1d` — all eight green:** CI run 34975143163 — `cui-guard` (13:28:11Z), `browser (measured-box
+  proof)` (13:45:24Z), `floor (declared minimum)` (13:48:19Z), `test (3.13)` (14:08:42Z), `test (3.11)`
+  (14:13:52Z), `check` (14:13:58Z); installer-smoke run 34975143156 — `linux` (13:28:43Z), `windows`
+  (13:32:45Z). **The `windows` job's DPAPI step (step 6) concluded success in ~1 s and its own log line
+  reads: `DPAPI round-trip OK on real Windows for 2 keys (25 and 67 chars); tampered blob refused`** — the
+  first measurement of ADR-0404's Win32 branch on a real Windows machine: the kickoff's first hypothesis
+  (a saved key that does not survive the store) is refuted on both sides.
+- `main`'s run 1862 for `ec3adf6c` (#675, docs only): **success** (14:45:29Z — read this session).
+- **Environment, re-measured:** the clone arrived shallow (unshallowed first; `git log -1 -- tools/mpxj` reads
+  163d1942); no package until the dev install; CI's ruff 0.16.7 appears at /usr/local/bin only after it;
+  a `-c` inline python with nested quotes is the wrong tool for the CI step — a here-string file is.
+- Token guardian at this entry: ~63 % of the assumed wall (OK). This push restarts CI on the new head; the
+  next check-in reads the verdict on the FINAL head.
