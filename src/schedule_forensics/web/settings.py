@@ -55,9 +55,9 @@ from schedule_forensics.ai import (
 from schedule_forensics.ai.completion import MAX_ANSWER_TOKENS, MIN_ANSWER_TOKENS
 from schedule_forensics.ai.ollama import MAX_NUM_CTX, MIN_NUM_CTX, is_auth_refusal
 from schedule_forensics.net_guard import APPROVED_GATEWAY_ENDPOINTS
-from schedule_forensics.web.chrome import _e, _observed_banner
+from schedule_forensics.web.chrome import _ASSET_VERSION, _e, _observed_banner
 from schedule_forensics.web.components import _user_tip
-from schedule_forensics.web.state import SessionState
+from schedule_forensics.web.state import SessionState, _SettingsReceipt
 
 # The construction bodies moved DOWN to ``ai/factory.py`` (DoD 001b) so the observed-banner
 # derivation can build the same candidates the router uses. These module-global re-binds keep
@@ -496,7 +496,96 @@ answer uses more time and memory.</p></details>
 </div>"""
 
 
-def _settings_body(state: SessionState, runtime_note: str = "") -> str:
+#: Which backends send each credential field. A paste into a field that NO selected backend
+#: (primary or cross-check) uses is the operator's most likely wrong-field paste (OR-17: the
+#: local server's token field sat directly above the gateway key on the installed build).
+_CREDENTIAL_USERS: dict[str, frozenset[str]] = {
+    "gateway_key": frozenset({"gateway"}),
+    "local_token": frozenset({"openai"}),
+}
+
+
+def _settings_receipt(
+    backend: str,
+    second_backend: str,
+    *,
+    posted_gateway_key: str,
+    posted_local_token: str,
+    held_gateway_key: str,
+    held_local_token: str,
+) -> _SettingsReceipt:
+    """What a Save did with each credential (OR-17, ADR-0493) — computed at the POST from the
+    POSTED values (already stripped) and the values HELD after the blank-keeps rule.
+
+    ``replaced`` when the field carried a value, ``kept`` when it was blank and a value was
+    already held, ``none`` when nothing is held. A credential posted for a backend that is
+    neither the primary nor the cross-check is reported as misplaced — the save still stores
+    it (a token is a token), but the page must say the paste landed where nothing sends it.
+    """
+    in_use = {backend, second_backend}
+
+    def _state(posted: str, held: str) -> str:
+        if posted:
+            return "replaced"
+        return "kept" if held else "none"
+
+    misplaced = tuple(
+        name
+        for name, posted in (
+            ("gateway_key", posted_gateway_key),
+            ("local_token", posted_local_token),
+        )
+        if posted and not (_CREDENTIAL_USERS[name] & in_use)
+    )
+    return _SettingsReceipt(
+        gateway_key=_state(posted_gateway_key, held_gateway_key),
+        gateway_key_chars=len(held_gateway_key),
+        local_token=_state(posted_local_token, held_local_token),
+        misplaced=misplaced,
+    )
+
+
+def _receipt_html(receipt: _SettingsReceipt | None) -> str:
+    """The one-shot receipt notice: what the last Save did with each credential — never the
+    characters, only replaced / kept / none and the gateway key's length (ADR-0403's rule,
+    ADR-0488's disclosure). A misplaced paste gets its own warning naming the field it
+    landed in, the field it belongs in, and what happened to the key it was meant for."""
+    if receipt is None:
+        return ""
+    gateway_words = {
+        "replaced": f"<b>replaced</b> &mdash; {receipt.gateway_key_chars} characters now held",
+        "kept": f"<b>kept</b> (the field was blank; {receipt.gateway_key_chars} characters held)",
+        "none": "<b>none held</b> (the field was blank and nothing was saved before)",
+    }[receipt.gateway_key]
+    local_words = {
+        "replaced": "<b>replaced</b>",
+        "kept": "<b>kept</b> (the field was blank)",
+        "none": "<b>none held</b>",
+    }[receipt.local_token]
+    parts = [
+        '<div class="notice ok" data-receipt>Saved. Gateway API key: '
+        f"{gateway_words}. Local server API token: {local_words}.</div>"
+    ]
+    if "local_token" in receipt.misplaced:
+        parts.append(
+            '<div class="notice warn" data-receipt>A token was pasted into <b>Local server API '
+            "token</b> &mdash; a field only the OpenAI-compatible (local) backend uses; the "
+            "Approved AI gateway never sends it. <b>If that was your gateway key, paste it into "
+            "the Gateway API key field below and Save.</b> The Gateway API key itself was "
+            f"{gateway_words}, so the gateway is still being sent the key it had before.</div>"
+        )
+    if "gateway_key" in receipt.misplaced:
+        parts.append(
+            '<div class="notice warn" data-receipt>A key was pasted into <b>Gateway API key</b>, '
+            "but the Approved AI gateway is not the selected backend &mdash; nothing sends that "
+            "key until you select <b>Approved AI gateway</b> as the Backend above and Save.</div>"
+        )
+    return "".join(parts)
+
+
+def _settings_body(
+    state: SessionState, runtime_note: str = "", receipt: _SettingsReceipt | None = None
+) -> str:
     cfg = state.ai_config
     backend, _banner = route_backend(
         cfg,
@@ -634,8 +723,8 @@ def _settings_body(state: SessionState, runtime_note: str = "") -> str:
 <div class=panel><h2>Local AI</h2>
 {_user_tip(tip_text)}
 <p>Active backend: <b>{_e(backend.name)}</b> &middot; installed models: {model_list}
-&middot; cross-check model: <b>{second_status}</b></p>
-{status_note}<div data-backend-only="ollama">{runtime_note}</div>
+&middot; cross-check model: <b>{second_status}</b> &middot; tool version: <b data-tool-version>{_e(_ASSET_VERSION)}</b></p>
+{_receipt_html(receipt)}{status_note}<div data-backend-only="ollama">{runtime_note}</div>
 <form action="/settings" method=post>
 <p>Classification:
 <select name=classification>
@@ -671,7 +760,7 @@ def _settings_body(state: SessionState, runtime_note: str = "") -> str:
 <p>OpenAI-compatible endpoint (loopback only):
 <input name=openai_endpoint size=28 value="{_e(cfg.openai_endpoint)}"
  title="LM Studio defaults to http://127.0.0.1:1234; llamafile to http://127.0.0.1:8080"></p>
-<p>Local server API token (LM Studio &ldquo;Require Authentication&rdquo; &mdash; sent ONLY as the <code>Authorization</code> header to the loopback endpoint above; never logged, never shown again):
+<p>Local server API token &mdash; used ONLY by the <b>OpenAI-compatible (local)</b> backend above (LM Studio&rsquo;s &ldquo;Require Authentication&rdquo; token); <b>the Approved AI gateway never sends it &mdash; the gateway&rsquo;s key goes in the Gateway API key field</b>. Sent only as the <code>Authorization</code> header to the loopback endpoint above; never logged, never shown again:
 <input name=openai_api_key type=password size=36 value="" autocomplete=off
  placeholder="{openai_key_placeholder}"
  title="Only needed when your OpenAI-compatible server requires authentication (LM Studio: Developer &rarr; Server Settings &rarr; Require Authentication, then Manage Tokens). Saved with your settings on THIS machine (Windows-encrypted for your user account) so every launch comes up ready; leave blank on later saves to keep it. Turn the AI off (or a session wipe) clears it."></p>

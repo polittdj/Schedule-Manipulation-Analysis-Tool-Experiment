@@ -109,6 +109,28 @@ class _Flash:
 
 
 @dataclass(frozen=True)
+class _SettingsReceipt:
+    """What the last AI-settings Save did with each CREDENTIAL — shown once on the next
+    /settings render (OR-17, ADR-0493).
+
+    Both credential fields are masked and never echoed, so a paste that lands in the wrong
+    field is invisible: the page after the save reads "a key is saved" (the OLD key) and the
+    gateway keeps refusing. The receipt names, per field, whether the save REPLACED the held
+    value or KEPT it (a blank field keeps, ADR-0403), the length now held (never the
+    characters), and any credential pasted into a field that no selected backend uses.
+    """
+
+    #: "replaced" | "kept" | "none" — what the save did with the gateway key.
+    gateway_key: str
+    #: The gateway key's length after the save (0 = none held); the one comparable fact.
+    gateway_key_chars: int
+    #: "replaced" | "kept" | "none" — what the save did with the local server's API token.
+    local_token: str
+    #: Which posted credentials no selected backend uses: "local_token" and/or "gateway_key".
+    misplaced: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
 class _AskFact:
     """One cited fact as it was SHOWN with an answer — text plus its citations, flattened for
     export. Flattened deliberately: the export is a record of what the analyst saw, so it must
@@ -464,6 +486,9 @@ class SessionState:
     #: ADR-0392 — the latest Ask-the-AI exchange, so ``/export/{fmt}/ask`` can render the answer
     #: the analyst is looking at. Replaced by each new question; wiped with the session.
     last_ask: _AskRecord | None = None
+    #: OR-17 (ADR-0493) — the last AI-settings Save's credential receipt, consumed by the next
+    #: /settings render (one-shot, like ``flash``); never persisted, wiped with the session.
+    settings_receipt: _SettingsReceipt | None = None
     # per-schedule analysis cache (key -> (schedule, analysis)); identity-checked so a re-upload
     # under the same key recomputes. Bounded by the loaded-schedule count; cleared on wipe.
     analyses: _LRUCache[tuple[Schedule, _Analysis]] = field(
