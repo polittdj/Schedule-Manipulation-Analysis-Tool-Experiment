@@ -18165,3 +18165,22 @@ called a flake turned out to have a mechanism (ADR-0442 UI-02, ADR-0443, ADR-046
 - **Build:** version 1.0.260; wheel + nine installers rebuilt on this tree (`tools/mpxj` unchanged —
   `git log -1 -- tools/mpxj` stays ADR-0491's commit; no `SF_MPXJ_REF` needed).
 - **PR:** draft, number in the follow-up (eight checks apply — `installer/**` changed).
+
+### 2026-09-15 — follow-up: PR #674, the first CI verdict (eight green), the local suite and parity
+
+- **PR:** **draft #674**, branch `claude/exciting-curie-n0wghm`, head `b18fcb23` (two commits on `163d1942`:
+  the unit at `bfa6ec68`, the elapsed-fallback test + ADR / audit-row wording at `b18fcb23`). **All eight
+  checks green on that head**: CI run 34923255371 — `cui-guard`, `test (3.11)`, `test (3.13)`, `floor
+  (declared minimum)`, `browser (measured-box proof)`, `check`; installer-smoke run 34923255349 — `linux`,
+  `windows`. Not marked ready, not merged — the operator's.
+- **The local full suite on the same tree: 1 failed / 5,383 passed / 5 skipped in 37:20.** The one red is
+  `test_driving_path_whole_schedule_browser.py::test_whole_schedule_default_any_loaded_schedule_and_path_
+  column_parity` — the header-row equality race the handoff registers (R-32 / CI-04: the two grids read at
+  different timescale states, "Qtr 1 2025 / Qtr 2 2025" against "January / February / Jan 5"), a page this
+  diff never touches; the whole module re-run unfiltered: 1 passed. Not fixed here (its own row; never by
+  widening a wait). **`-m parity`: 98 passed in 4:13.**
+- **Environment:** the editable install's metadata read 1.0.259 after the bump until `uv pip install … -e .
+  --no-deps` (no test compares it to `pyproject.toml`; the served banner does carry it) — re-install after
+  every bump, as the kickoff says.
+- This push restarts CI on the new head; the next session reads the verdict on the FINAL head and, after the
+  operator merges, `main`'s own run for the squash commit (tree hashes first).
