@@ -435,6 +435,37 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-15 — a register's "first executable step" is a hypothesis about the mechanism: check whether the file already records the answer before re-deriving it (ADR-0492); and a mutant below a guard is equivalent, not a survivor
+
+- **What happened.** R-46's row said "prorate the straddling activity on its crew's calendar". Summing
+  the goldens' own Type-5 baseline-cost blocks — written by ADR-0491's converter, read by nothing —
+  reproduced Fuse's 16,000 / 64,240 / 110,440 to the unit BEFORE any code changed: the file records
+  MS Project's BCWS distribution, and the tool had been re-deriving a shape MS Project had already
+  written down. The crew-calendar re-derivation would have matched UID 187 (72 of 120 crew-hours)
+  and missed every contour the file records. The unit became "read the series" (ADR-0487's line,
+  extended from spans and splits to planned value), and one task moved in the whole corpus.
+- **The lesson.** Before modelling a reference tool's behaviour, check whether the file carries that
+  behaviour's OUTPUT (the metric-parity skill's own line: "check whether it wrote it down"). The
+  register's step was priced before ADR-0491 made the series available and nobody re-priced the row.
+  Re-price every open row against what the LAST unit made available, before taking its step.
+- **110,440 was testimony.** ADR-0473's "exact on updated3" was pinned by no test; the ribbon that
+  carries it (`Hard_File_update2 vs update3_Fuse - Excel`) had never been opened. One loop over the
+  intake workbooks' sheet XML for the figure itself found it. Grep for the NUMBER before trusting a
+  number's provenance.
+- **A number written mid-session is not a measurement.** "18 / 18 mutants red by name" went into the
+  audit row while the battery was still running. It held — but only because the row was re-read
+  against the log before the docs were closed. Write the row after the log, or write "recorded in the
+  follow-up"; never before.
+- **A mutant below a guard is equivalent, not a survivor.** "A missing cost reads as zero" came back
+  GREEN because the guard two lines above refuses a missing cost first — the mutated line never ran.
+  Read the survivor's position in the control flow before calling it a test gap; re-cut it AT the
+  guard (red on exactly the strictness test). Boundary mutants (`<=` vs `<` at the status date) were
+  equivalent by arithmetic and are named in the ADR instead of counted.
+- **A mutant that fails broadly can still be a finding about the CONTRACT, not the fixture.** Reading
+  the baseline-WORK series as cost failed twenty tests because ISO durations fail `parse_float` loud —
+  the importer's rule for every numeric field. The breadth said "this crashes the import", which is
+  the behaviour the module promises; read the failure's mechanism before discounting a wide red.
+
 ### 2026-09-14 — "honour what the file records" is not a rule until the corpus says WHOSE fact it is: a gap one booking records and another works through belongs to the booking, not the task (ADR-0491); and a golden's save is proven by section diff, not by testimony
 
 - **What happened.** R-60 (leveling splits) was built as specified — the converter writes the

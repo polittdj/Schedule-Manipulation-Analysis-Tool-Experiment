@@ -1,12 +1,26 @@
 # Kickoff prompt — next session
 
-PR state (2026-09-15): **#672 is MERGED** — `main` is **`66d98c33`** (ADR-0489 / 0490, v1.0.258). This session's unit, **R-60 / ADR-0491**, is draft **PR #673** from branch `claude/fervent-hawking-7z7kx0`, **v1.0.259**, merged with `origin/main` after #672 landed (the state docs, the version, the installers and the oracle's pins resolved and re-measured on the merged tree — the SESSION-LOG's merge entry has the numbers). **Always `git fetch origin` and read `git log origin/main` before trusting any sha written here.** If #673 merged, restart the branch with `--prune` + `remote set-head` + `checkout -B`.
+PR state (2026-09-15): **#673 is MERGED** — `main` is **`163d1942`** (ADR-0491, v1.0.259). This session's unit, **R-46 / ADR-0492**, is a draft PR from branch `claude/exciting-curie-n0wghm`, **v1.0.260**, branched ON `163d1942` (nothing to merge; the SESSION-LOG's close entry and its follow-up carry the PR number and the suite result). **Always `git fetch origin` and read `git log origin/main` before trusting any sha written here.** If that PR merged, restart the branch with `--prune` + `remote set-head` + `checkout -B`.
 
 **The operator owes three things, none blocking:** **V-4** (the gateway's own refusal reason — the step-2
 PowerShell: `WWW-Authenticate` and the 401 body; the v1.0.257 banner quotes the same text); whether a fresh
 NASA AI Hub key made the gateway catalog load; and the `"ok": false` lines of the 09-11 morning 403
 (`Get-Content "$env:USERPROFILE\.local\state\schedule-forensics\ai-transactions.jsonl" -Tail 40`) — still
 the only evidence that decides whether a prompt-size guard is a unit. Do NOT build one without them.
+
+## R-46 is CLOSED (ADR-0492). BCWS is the file's own series — do not re-derive it.
+
+What is now true, measured: the Bible's `PV (BCWS) = sum(BCWSPV)` is each activity's BCWS as MS Project
+stores it, and the regenerated goldens carry it — the assignment baseline-cost series (`TimephasedData`
+Type 5). The importer reads every valued block as a `CostPiece` on `Assignment.baseline_cost_pieces`
+(SCHEMA_VERSION 2.14.0; the JSON Save round-trips it), and `evm._planned_value` sums a task's series
+through the status date, prorates a block the status date falls inside in working minutes of the
+booking's calendar (`cpm.booking_calendar` — the plan builder's rule, public; `cpm.working_minutes_between`
+its ruler) and accrues the budget no series carries by ADR-0473's linear rule. The three Hard_File
+ribbons are exact (16,000 / 64,240 / 110,440 — the last pinned from `Hard_File_update2 vs update3_Fuse -
+Excel .xlsx`, a workbook no test had read); ONE task moved in the whole corpus (updated UID 187, 3,750 →
+3,600); SPI on updated 1.04 → 1.05 = the ribbon. The register's step (re-derive on the crew calendar) was
+refused with the reason in the ADR. R-45 (updated3's BAC / BCWP / ACWP) stays open.
 
 ## R-60 is CLOSED (ADR-0491). Read the ADR before touching a leg, a golden or the converter.
 
@@ -39,11 +53,11 @@ mutation battery — assert the imported module IS the copy every time (a `-p mu
 ⇢ WHAT'S DONE — do not re-open. WP0–WP8 (ADR-0440..0472) · ADR-0473 (R-01) · ADR-0474 (R-44) · ADR-0475
 (/standards) · ADR-0476 (R-55) · ADR-0477 (R-20 / UI-03) · ADR-0478 · ADR-0481 (OR-11e) · ADR-0482 (OR-12) ·
 ADR-0483 (OR-13) · ADR-0484 (/scorecards) · ADR-0485 (OR-14) · ADR-0486 (OR-15) · ADR-0487 (R-56) · ADR-0488
-(OR-16 / OR-16b) · ADR-0489 (/margin — the Control family COMPLETE; in #672) · ADR-0490 (R-49; in #672) ·
-**ADR-0491 (R-60 CLOSED — this session)**.
+(OR-16 / OR-16b) · ADR-0489 (/margin — the Control family COMPLETE) · ADR-0490 (R-49) · ADR-0491 (R-60 CLOSED, #673) ·
+**ADR-0492 (R-46 CLOSED — this session)**.
 ⇢ NEXT — the report's §3 in order, one row per unit of work (red-first → the per-task toward/away census
 across EVERY golden before the ADR → mutation proofs by name → the full gate → an ADR → the state docs →
-a draft PR): **R-46** (BCWS +150) · **R-47** (SPI(t) 8.24 vs 8.22) · **R-52** (the `.pptx` LibreOffice
+a draft PR): **R-47** (SPI(t) 8.24 vs 8.22) · **R-52** (the `.pptx` LibreOffice
 refuses) · **R-50** (expose the History variants) · **R-61** (a FIXED_DURATION leg on an off-pattern crew —
 updated3 UID 210) · **R-57** (an assignment's OWN leveling delay — Hard_File UID 398's RA 277 is a split ON a
 delayed assignment: its gap is honoured since ADR-0491, its delay is not; UID 188 on updated2) · **R-58** ·
@@ -53,7 +67,14 @@ converter resolves `CurrentDate`, `MaxUnits`, `AvailableFrom/To` and the rates a
 `MaxUnits` feeds the loading view) · **R-62** (in #672's register: every absent slack the writer dropped is
 a zero, completed tasks included) · then R-03 · R-04 · R-09 · R-13 · R-18 · R-21 · R-22 · R-32 · R-39. The
 design queue is 19 artboards — the operator's order picks the next screen (§6 lists them).
-⇢ Traps paid for, by name (2026-09-14 first): **"honour what the file records" is not a rule until the
+⇢ Traps paid for, by name (2026-09-15 first): **a register's "first executable step" is a hypothesis
+about the mechanism** — the file carried the output (the Type-5 series) since the last unit and nobody
+re-priced the row; measure whether the file records the answer BEFORE re-deriving it · **a figure with no
+test behind it is testimony however many ADRs repeat it** — grep the intake workbooks' sheet XML for the
+NUMBER · **a number written mid-session is not a measurement** — write the row after the log · **a survivor
+below a guard is an equivalent mutant** — re-cut it AT the guard · **a wide red can be the contract** —
+durations read as numbers fail the import loud on purpose · **the environment is cold every time** (shallow
+clone; no package; CI's ruff only after the dev install). (2026-09-14:) **"honour what the file records" is not a rule until the
 corpus says WHOSE fact it is** — a golden-level count hid 24 regressions behind 80 improvements on one file;
 run the per-task toward/away census and derive the away-mover whose predecessors are not away-movers ·
 **provenance is a diff, not a report** — the save an ADR called unavailable was in `git log --all`; address
@@ -76,7 +97,10 @@ Playwright's virtual mouse SURVIVES `goto()` — park it · an `assert` in `src/
 a design mock's status word, decomposition and export label are claims about the ENGINE · MS Project's
 stored dates are a per-activity CPM oracle · `LevelingDelay` is tenths of a minute · MPXJ writes no zero ·
 `Large_Test_File.mpp` ≠ `Large Test File.mpp`.
-⇢ Measured-false / deliberately held — do NOT re-chase: an ELAPSED reading of a split gap (the file's own
+⇢ Measured-false / deliberately held — do NOT re-chase: (ADR-0492:) re-deriving BCWS on the crew
+calendar instead of reading the series · a status date inside a merged block with unequal days (no oracle;
+the booking calendar's working time is the pinned ruler) · a series exceeding the task's baseline cost
+(left as recorded) · Type 4 / Type 10 as cost · an ELAPSED reading of a split gap (the file's own
 LateStart arithmetic is working-minute; the corpus cannot discriminate on a moved start — the chosen reading
 is pinned by name) · dropping the baseline timephased series from the converter (MPXJ exposes no setter;
 priced at +7 % and left) · a task-level `<Splits>` model field (derived data) · regenerating a golden from the

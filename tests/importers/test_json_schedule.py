@@ -375,7 +375,7 @@ def _maximal_schedule():  # type: ignore[no-untyped-def]
     """Every model field set to a NON-DEFAULT value, so any writer omission is visible."""
     import datetime as dt
 
-    from schedule_forensics.model.assignment import Assignment, WorkPiece
+    from schedule_forensics.model.assignment import Assignment, CostPiece, WorkPiece
     from schedule_forensics.model.calendar import Calendar
     from schedule_forensics.model.relationship import Relationship
     from schedule_forensics.model.resource import Resource, ResourceType
@@ -460,6 +460,19 @@ def _maximal_schedule():  # type: ignore[no-untyped-def]
                         start=dt.datetime(2025, 1, 8, 8, 0),
                         finish=dt.datetime(2025, 1, 8, 12, 0),
                         work_minutes=240,
+                    ),
+                ),
+                # the booking's baseline-cost series (ADR-0492): two blocks of planned value
+                baseline_cost_pieces=(
+                    CostPiece(
+                        start=dt.datetime(2025, 1, 6, 8, 0),
+                        finish=dt.datetime(2025, 1, 6, 17, 0),
+                        cost=400.0,
+                    ),
+                    CostPiece(
+                        start=dt.datetime(2025, 1, 8, 8, 0),
+                        finish=dt.datetime(2025, 1, 8, 12, 0),
+                        cost=150.5,
                     ),
                 ),
             ),
@@ -690,3 +703,25 @@ def test_duration_scale_properties_round_trip() -> None:
     back2 = parse_json_text(to_json_text(plain))
     assert back2.calendar.minutes_per_week is None
     assert back2.calendar.days_per_month is None
+
+
+def test_a_baseline_cost_piece_without_a_cost_fails_loud() -> None:
+    """ADR-0492: a Save's ``baseline_cost_pieces`` are read strictly like its ``work_pieces`` —
+    a block missing its cost (or a date) is refused, never read as a zero piece."""
+    doc = (
+        '{"name": "P", "project_start": "2026-01-05T08:00:00",'
+        ' "resources": [{"unique_id": 2, "name": "Crew"}],'
+        ' "tasks": [{"unique_id": 1, "name": "A", "duration_minutes": 480,'
+        '   "resource_assignments": [{"resource_id": 2, "baseline_cost_pieces": [%s]}]}]}'
+    )
+    with pytest.raises(ImporterError):
+        parse_json_text(doc % '{"start": "2026-01-05T08:00:00", "finish": "2026-01-05T17:00:00"}')
+    with pytest.raises(ImporterError):
+        parse_json_text(doc % '{"start": "2026-01-05T08:00:00", "cost": 400.0}')
+    with pytest.raises(ImporterError):
+        parse_json_text(doc % '"not an object"')
+    ok = parse_json_text(
+        doc % '{"start": "2026-01-05T08:00:00", "finish": "2026-01-05T17:00:00", "cost": 400}'
+    )
+    (booking,) = ok.task_by_id(1).resource_assignments
+    assert booking.baseline_cost_pieces[0].cost == 400.0

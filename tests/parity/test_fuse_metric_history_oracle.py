@@ -57,6 +57,7 @@ _LTF_HISTORY = (
 )
 _HF23_HISTORY = ACUMEN / "Hard_File_update2 vs update3_Fuse - Metric History Report.xlsx"
 _HF12_RIBBON = ACUMEN / "Hard_File_update vs update2_Fuse - Excel .xlsx"
+_HF23_RIBBON = ACUMEN / "Hard_File_update2 vs update3_Fuse - Excel .xlsx"
 _WORKBOOKS = (_ALL_PROJECTS, _LTF_HISTORY, _HF23_HISTORY, _HF12_RIBBON)
 
 pytestmark = [
@@ -284,9 +285,10 @@ def _ribbon_rows(book: Path) -> list[dict[str, str]]:
 
 def test_hard_file_evm_aggregates_and_indices_equal_the_fuse_ribbon() -> None:
     """The Hard_File_updated / updated2 ribbon (status 46245 / 46275): BAC, BCWP and ACWP exact in
-    currency units, BCWS exact on updated2 (a straddling activity on a 16-hour resource calendar
-    leaves 16,150 vs 16,000 on updated — documented in ADR-0473), CPI exact at 2 dp on both,
-    SPI / TCPI within 0.01 (Fuse's ACWP-to-time-now trims 342 on updated2)."""
+    currency units, BCWS exact on BOTH — 16,000 on updated since ADR-0492 (R-46: the file's own
+    time-phased baseline cost; the project-calendar proration read 16,150 for a straddling
+    activity on a 16-hour resource calendar), CPI exact at 2 dp on both, SPI / TCPI within 0.01
+    (Fuse's ACWP-to-time-now trims 342 on updated2)."""
     ribbon = {rec["Status Date "]: rec for rec in _ribbon_rows(_HF12_RIBBON)}
     updated = ribbon["46245"]
     updated2 = ribbon["46275"]
@@ -305,7 +307,7 @@ def test_hard_file_evm_aggregates_and_indices_equal_the_fuse_ribbon() -> None:
     from schedule_forensics.engine.metrics.evm import _planned_value
 
     for name, rec, bcws_tol in (
-        ("Hard_File_updated", updated, 150.0),
+        ("Hard_File_updated", updated, 0.0),
         ("Hard_File_updated2", updated2, 0.0),
     ):
         sch = _gz(f"fuse_hardfile/{name}.mspdi.xml.gz")
@@ -336,3 +338,35 @@ def test_currency_scale_reaches_the_task_level() -> None:
     sch = _gz("fuse_hardfile/Hard_File_updated.mspdi.xml.gz")
     root = next(t for t in sch.tasks if t.unique_id == 0)
     assert (root.cost, root.actual_cost, root.budgeted_cost) == (137400.0, 20800.0, 133400.0)
+
+
+def test_hard_file_updated3_bcws_equals_the_fuse_ribbon_and_names_its_two_mechanisms() -> None:
+    """The updated2-vs-updated3 ribbon (status 46275 / 46307; a workbook no test had read):
+    PV (BCWS) 64,240 / 110,440. On updated3 the file's own series (ADR-0492, R-46) settles the
+    two cases the linear rule could only agree with by construction: UID 270's three project
+    days are ONE merged block of 4,800 the status date falls inside — 3,200 planned, two of
+    three days in working minutes of the booking's calendar — and UID 257's 800 of baseline cost
+    has no assignment series at all (a booking baselined and since removed) and accrues by the
+    linear rule, whole. On updated, UID 187's 16-hour crew plans 3,600 of its 6,000 by the
+    status date, and the ribbon's 16,000 is exact. BAC / BCWP / ACWP on updated3 are R-45's
+    (the ribbon reads 121,800 / 53,715 where the file carries 133,400 / 59,340) — not pinned."""
+    ribbon = {rec["Status Date "]: rec for rec in _ribbon_rows(_HF23_RIBBON)}
+    assert (ribbon["46275"]["PV (BCWS)"], ribbon["46307"]["PV (BCWS)"]) == ("64240", "110440")
+
+    from schedule_forensics.engine.metrics.evm import _planned_value
+
+    sch3 = _gz("fuse_hardfile/Hard_File_updated3.mspdi.xml.gz")
+    assert _planned_value(sch3, non_summary(sch3)) == pytest.approx(110440.0)
+    t270, t257 = sch3.task_by_id(270), sch3.task_by_id(257)
+    (b270,) = t270.resource_assignments
+    (block,) = b270.baseline_cost_pieces
+    assert block.cost == 4800.0 and block.start < sch3.status_date < block.finish
+    assert _planned_value(sch3, [t270]) == pytest.approx(3200.0)
+    assert t257.budgeted_cost == 800.0
+    assert not any(a.baseline_cost_pieces for a in t257.resource_assignments)
+    assert _planned_value(sch3, [t257]) == pytest.approx(800.0)
+    sch2 = _gz("fuse_hardfile/Hard_File_updated2.mspdi.xml.gz")
+    assert _planned_value(sch2, non_summary(sch2)) == pytest.approx(64240.0)
+    sch1 = _gz("fuse_hardfile/Hard_File_updated.mspdi.xml.gz")
+    assert _planned_value(sch1, [sch1.task_by_id(187)]) == pytest.approx(3600.0)
+    assert _planned_value(sch1, non_summary(sch1)) == pytest.approx(16000.0)

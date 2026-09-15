@@ -53,6 +53,7 @@ from schedule_forensics.model import (
     Assignment,
     Calendar,
     ConstraintType,
+    CostPiece,
     Relationship,
     RelationshipType,
     Resource,
@@ -1011,6 +1012,12 @@ def _positive_int_or_none(parent: ET.Element, tag: str) -> int | None:
 #: Hard_File_updated3 save (Revision 2) whose UID 403 carries the split (ADR-0491). Every other
 #: Type (baseline work 4, baseline cost 5, overtime, cost) is not read.
 _WORK_SERIES = frozenset({"1", "2"})
+#: MSPDI ``TimephasedData/Type`` 5 = assignment BASELINE COST: the booking's planned value as MS
+#: Project time-phases it (ADR-0492, R-46). Measured on the Hard_File_updated save (Revision 1):
+#: the series sums to the file's 133,400 BAC, its per-block values are the crew's rate times the
+#: block's hours, and its blocks finishing on or before the status date sum to 16,000 — the
+#: Fuse ribbon's PV (BCWS) to the unit.
+_BASELINE_COST_SERIES = "5"
 
 
 def _timephased_pieces(assign_el: ET.Element) -> list[WorkPiece]:
@@ -1047,6 +1054,29 @@ def _timephased_pieces(assign_el: ET.Element) -> list[WorkPiece]:
     return [WorkPiece(start=s, finish=f, work_minutes=m) for s, f, m in runs]
 
 
+def _baseline_cost_pieces(assign_el: ET.Element) -> list[CostPiece]:
+    """The booking's baseline cost as the file time-phases it (ADR-0492): every Type-5 block
+    with a value, in time order — the value in currency units (the file writes hundredths,
+    like every MSPDI cost element). A block with no ``Value`` or a zero one is nothing planned
+    (a night, a weekend, a gap) and carries no piece; a block with no dates, or an inverted
+    one, is not a block. The series is read as recorded — a merged block spanning several equal
+    days stays one piece; the engine prorates it where the status date falls inside."""
+    out: list[CostPiece] = []
+    for tp in assign_el.findall("TimephasedData"):
+        if _text(tp, "Type") != _BASELINE_COST_SERIES:
+            continue
+        start = parse_datetime(_text(tp, "Start"))
+        finish = parse_datetime(_text(tp, "Finish"))
+        if start is None or finish is None or finish <= start:
+            continue
+        value = parse_float(_text(tp, "Value"))
+        if not value:
+            continue
+        out.append(CostPiece(start=start, finish=finish, cost=value / 100.0))
+    out.sort(key=lambda p: (p.start, p.finish))
+    return out
+
+
 def _parse_assignments(
     root: ET.Element, resource_name_by_uid: dict[int, str]
 ) -> tuple[
@@ -1065,6 +1095,7 @@ def _parse_assignments(
     remaining_by_task_res: dict[int, dict[int, int]] = {}
     window_by_task_res: dict[int, dict[int, tuple[dt.datetime | None, dt.datetime | None]]] = {}
     pieces_by_task_res: dict[int, dict[int, list[WorkPiece]]] = {}
+    cost_by_task_res: dict[int, dict[int, list[CostPiece]]] = {}
     assignments_el = root.find("Assignments")
     for assign_el in [] if assignments_el is None else assignments_el.findall("Assignment"):
         task_uid = _int(assign_el, "TaskUID")
@@ -1110,6 +1141,13 @@ def _parse_assignments(
         pieces = _timephased_pieces(assign_el)
         if pieces:
             pieces_by_task_res.setdefault(task_uid, {}).setdefault(resource_uid, []).extend(pieces)
+        # the booking's baseline-cost series (ADR-0492): every row's valued blocks, gathered so
+        # a pair recorded in several rows carries all of its planned value in time order
+        cost_pieces = _baseline_cost_pieces(assign_el)
+        if cost_pieces:
+            cost_by_task_res.setdefault(task_uid, {}).setdefault(resource_uid, []).extend(
+                cost_pieces
+            )
     assignments_by_task: dict[int, tuple[Assignment, ...]] = {}
     for task_uid, uids in uids_by_task.items():
         work_map = work_by_task_res.get(task_uid, {})
@@ -1117,6 +1155,7 @@ def _parse_assignments(
         rem_map = remaining_by_task_res.get(task_uid, {})
         win_map = window_by_task_res.get(task_uid, {})
         pieces_map = pieces_by_task_res.get(task_uid, {})
+        cost_map = cost_by_task_res.get(task_uid, {})
         assignments_by_task[task_uid] = tuple(
             Assignment(
                 resource_id=ruid,
@@ -1127,6 +1166,9 @@ def _parse_assignments(
                 finish=win_map.get(ruid, (None, None))[1],
                 work_pieces=tuple(
                     sorted(pieces_map.get(ruid, []), key=lambda p: (p.start, p.finish))
+                ),
+                baseline_cost_pieces=tuple(
+                    sorted(cost_map.get(ruid, []), key=lambda p: (p.start, p.finish))
                 ),
             )
             for ruid in uids

@@ -1266,6 +1266,44 @@ def _is_24x7(cal: Calendar) -> bool:
     return _ruler(cal).is_24x7
 
 
+def working_minutes_between(cal: Calendar, start: dt.datetime, finish: dt.datetime) -> int:
+    """Working minutes of ``cal`` inside the recorded window ``[start, finish]`` — the ruler the
+    plan builder measures a recorded span (ADR-0487) and a split's gap (ADR-0491) with, given a
+    public name for the planned-value proration (ADR-0492): segment-aware at both ends, whole
+    days by count, elapsed time on a 24/7 calendar, 0 for an empty or inverted window."""
+    return _recorded_span(cal, start, finish)
+
+
+def booking_calendar(
+    schedule: Schedule, task: Task, a: Assignment, by_uid: Mapping[int, Calendar] | None = None
+) -> Calendar:
+    """The calendar a booking of ``task`` is scheduled on — the rule ``_task_shape`` gives its
+    legs (ADR-0474), stated once so the planned-value proration measures a baseline-cost block
+    with the same ruler (ADR-0492): the resource's own calendar when the file carries one whose
+    pattern differs from the project's and the task does not ignore resource calendars; the
+    task's own calendar when it has one that is neither the project pattern nor 24x7 (ADR-0474's
+    approximation of MS Project's intersection — R-58); else the project calendar. A resource
+    the schedule does not carry schedules on the project calendar. Pass ``by_uid`` (the
+    schedule's calendars keyed by uid) when calling per booking."""
+    calendars = {c.uid: c for c in schedule.calendars} if by_uid is None else by_uid
+    project = schedule.calendar
+    project_key = project.working_pattern_key()
+    task_cal = calendars.get(task.calendar_uid) if task.calendar_uid is not None else None
+    if task_cal is not None and task_cal.working_pattern_key() == project_key:
+        task_cal = None
+    if task.ignore_resource_calendar:
+        return project if task_cal is None else task_cal
+    res = schedule.resources_by_id.get(a.resource_id)
+    rcal = (
+        calendars.get(res.calendar_uid)
+        if res is not None and res.calendar_uid is not None
+        else None
+    )
+    if rcal is None or rcal.working_pattern_key() == project_key:
+        rcal = project
+    return rcal if task_cal is None or _is_24x7(task_cal) else task_cal
+
+
 def _advance_wall(
     wall: dt.datetime, minutes: int, cal: Calendar, day_start_tod: int
 ) -> dt.datetime:

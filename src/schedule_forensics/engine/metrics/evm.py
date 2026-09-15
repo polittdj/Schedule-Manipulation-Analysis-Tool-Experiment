@@ -26,7 +26,7 @@ import datetime as dt
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-from schedule_forensics.engine.cpm import CPMResult
+from schedule_forensics.engine.cpm import CPMResult, booking_calendar, working_minutes_between
 from schedule_forensics.engine.metrics._common import (
     CheckStatus,
     Direction,
@@ -37,6 +37,8 @@ from schedule_forensics.engine.metrics._common import (
     round_half_up,
     to_offset,
 )
+from schedule_forensics.model.assignment import CostPiece
+from schedule_forensics.model.calendar import Calendar
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
 
@@ -362,34 +364,81 @@ def compute_evm_indices(
 
 
 def _planned_value(schedule: Schedule, tasks: list[Task]) -> float:
-    """Cost-loaded BCWS (the Bible's ``sum(BCWSPV)``): each activity's budget accrued LINEARLY
-    over its baseline span — working time on the project calendar — up to the status date, the
-    time-phased planned value MS Project stores and Fuse sums. An activity baselined to finish
-    on/before the status date contributes its whole budget; one baselined to start after it
-    contributes nothing; one straddling the status date contributes the elapsed share of its
-    baseline span. The former step function (whole budget once the baseline FINISH had passed,
-    else nothing) read 12,400 where Fuse read 16,000 and made SPI 1.35 where Fuse read 1.05 on
-    the operator's Hard_File_updated (ADR-0473). Validated on the Fuse ribbon: 64,240 and
-    110,440 exact on updated2/updated3; 16,150 vs 16,000 on updated — one straddling task on a
-    16-hour resource calendar the project-calendar proration cannot see (documented residual)."""
-    status_off = to_offset(schedule, schedule.status_date)
-    if status_off is None:
+    """Cost-loaded BCWS (the Bible's ``sum(BCWSPV)``): each activity's BCWS as MS Project stores
+    it — its bookings' time-phased baseline cost through the status date — which Fuse sums.
+
+    **Where the file carries the series** (``Assignment.baseline_cost_pieces``, an MSPDI
+    booking's Type-5 blocks; ADR-0492, R-46) the engine sums it: a block finishing on or before
+    the status date counts whole, one starting at or after it counts nothing, and a block the
+    status date falls inside (the writer merges equal days into one block) contributes the share
+    of its working time — on the calendar the booking is scheduled on, ADR-0474's rule — that
+    has elapsed. A crew on a 16-hour calendar front-loads its budget (Hard_File_updated UID 187:
+    3,600 of 6,000 planned by the status date), which no proration of the task's budget on the
+    project calendar can see (3,750 — the ribbon's 16,000 against the engine's former 16,150).
+
+    **The budget no booking carries** — the task's baseline cost less its series, whole when the
+    file records no series at all (an XER, an earlier Save, an earlier conversion; Hard_File
+    UID 257's 800 whose booking was baselined and since removed) — accrues LINEARLY over the
+    task's baseline span in working time of the project calendar (ADR-0473): whole once the
+    baseline finish has passed, nothing before the baseline start, the elapsed share between.
+    That rule alone reproduced 64,240 and 110,440 on updated2 / updated3; with the series the
+    three ribbons are exact (16,000 / 64,240 / 110,440). A series exceeding the task's baseline
+    cost stands as recorded — nothing is subtracted (the file's arithmetic, not the tool's)."""
+    status = schedule.status_date
+    status_off = to_offset(schedule, status)
+    if status is None or status_off is None:
         return 0.0
+    by_uid = {c.uid: c for c in schedule.calendars}
     total = 0.0
     for t in tasks:
         if not t.budgeted_cost:
             continue
-        bl_finish = to_offset(schedule, t.baseline_finish)
-        if bl_finish is None:
-            continue
-        if bl_finish <= status_off:
-            total += t.budgeted_cost
-            continue
-        bl_start = to_offset(schedule, t.baseline_start)
-        if bl_start is None or bl_start >= status_off or bl_finish <= bl_start:
-            continue
-        total += t.budgeted_cost * (status_off - bl_start) / (bl_finish - bl_start)
+        recorded = 0.0
+        planned = 0.0
+        for a in t.resource_assignments:
+            if not a.baseline_cost_pieces:
+                continue
+            cal = booking_calendar(schedule, t, a, by_uid)
+            for piece in a.baseline_cost_pieces:
+                recorded += piece.cost
+                planned += _piece_planned(piece, status, cal)
+        remainder = t.budgeted_cost - recorded
+        if remainder > 0.0:
+            planned += _linear_share(schedule, t, remainder, status_off)
+        total += planned
     return total
+
+
+def _piece_planned(piece: CostPiece, status: dt.datetime, cal: Calendar) -> float:
+    """The share of one baseline-cost block planned by ``status``: whole, nothing, or — for a
+    block the status date falls inside — its elapsed working minutes over the block's, on the
+    booking's calendar. A block that calendar sees no working time in (the writer's calendar
+    and the rule's differ) is measured by elapsed time, the only ruler left."""
+    if piece.finish <= status:
+        return piece.cost
+    if piece.start >= status:
+        return 0.0
+    span = working_minutes_between(cal, piece.start, piece.finish)
+    if span > 0:
+        done = working_minutes_between(cal, piece.start, status)
+        return piece.cost * min(1.0, done / span)
+    whole = (piece.finish - piece.start).total_seconds()
+    return piece.cost * (status - piece.start).total_seconds() / whole
+
+
+def _linear_share(schedule: Schedule, t: Task, budget: float, status_off: int) -> float:
+    """``budget`` accrued linearly over ``t``'s baseline span in working time of the project
+    calendar up to the status date (ADR-0473's rule): whole once the baseline finish has passed,
+    nothing before the baseline start or without a baseline finish, the elapsed share between."""
+    bl_finish = to_offset(schedule, t.baseline_finish)
+    if bl_finish is None:
+        return 0.0
+    if bl_finish <= status_off:
+        return budget
+    bl_start = to_offset(schedule, t.baseline_start)
+    if bl_start is None or bl_start >= status_off or bl_finish <= bl_start:
+        return 0.0
+    return budget * (status_off - bl_start) / (bl_finish - bl_start)
 
 
 def _index(

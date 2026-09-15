@@ -573,8 +573,11 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "Schedule Performance Index (cost-based; N/A unless the schedule is cost-loaded — this "
         "is a data limitation of the file, not a missing threshold: without BCWP/BCWS the ratio "
         "is undefined and is never fabricated as 0).",
-        "BCWP / BCWS  (pass >= 1.0 when cost-loaded); BCWS accrues each budget LINEARLY over its"
-        " baseline span up to the status date (time-phased planned value, ADR-0473)",
+        "BCWP / BCWS  (pass >= 1.0 when cost-loaded); BCWS is each activity's time-phased "
+        "baseline cost through the status date as the file records it — its bookings' "
+        "baseline-cost series, a block the status date falls inside prorated in working minutes "
+        "of the booking's calendar (ADR-0492) — and, for the budget no series carries, accrued "
+        "LINEARLY over the baseline span (ADR-0473)",
         _EVM,
         threshold="On a cost-loaded schedule, SPI >= 1.0 is on/ahead of the planned value; "
         "< 1.0 is behind. N/A when the file carries no cost.",
