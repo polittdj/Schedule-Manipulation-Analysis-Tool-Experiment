@@ -234,9 +234,11 @@ red-first (the pristine `/launch` carries no version), measured in Chromium in t
 CUI bar still first, mutation by name (the line dropped; the version a literal); ADR-0494, v1.0.262,
 wheel + nine installers, the full gate, a draft PR. **Stated to the operator:** the line witnesses what is
 RUNNING (an older copy still serving the port shows its own, older, version — the truth); the installer's
-console banner is the only witness that the upload happened. **Offered, not done unasked:** the same chip
-in the global header so every page and every screenshot pins the build (AI Settings already carries
-`tool version:` since v1.0.261).
+console banner is the only witness that the upload happened. **DIRECTED (operator, 2026-09-15 ~14:40Z: *"I agree with your
+recommendation"*):** the same chip in the global header (`chrome.py`'s `<header>`, beside the brand,
+`--header-muted`, `data-no-i18n`, never displacing the CUI bar or the nav, measured at 1,440 and a narrow
+width so no sideways scroll is added) so every page and every screenshot pins the build — the two surfaces
+are ONE unit (AI Settings already carries `tool version:` since v1.0.261).
 
 ## 2026-09-12 — the approved gateway refuses a SAVED key on the availability probe (HTTP 401; the AI Settings screenshot, then two PowerShell runs on the NASA machine); "I want the AI setup to be as user friendly and simple as possible."
 
