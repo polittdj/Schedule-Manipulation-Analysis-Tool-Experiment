@@ -79,6 +79,54 @@ jobs:
           & $venvPy -c "import schedule_forensics; from schedule_forensics.launcher import main; print('deployed import OK')"
           & $venvPy -c "import schedule_forensics.web.app as a, pathlib; d = pathlib.Path(a.__file__).parent / 'static'; assert d.is_dir() and any(d.iterdir()), 'static assets missing from wheel'; print('wheel static assets OK')"
 
+      - name: The DPAPI key store round-trips on REAL Windows and refuses a tampered blob (OR-17, ADR-0493)
+        shell: pwsh
+        run: |
+          # The credential store's Windows branch (ADR-0404) is two Win32 calls behind ctypes,
+          # `pragma: no cover`, and until this step was exercised only "in the field". The field
+          # reported a saved gateway key the gateway refuses (OR-16 / OR-17): a key that reads
+          # "saved" but does not survive DPAPI would produce exactly that. This is the one place
+          # the repo runs on Windows, so it is where the branch is measured — through the
+          # installed venv, on the real crypt32. The tamper leg is the step's teeth: a blob with
+          # one byte flipped must come up KEYLESS (CryptUnprotectData refuses it), never garbled;
+          # a passthrough or a broken marshaling would fail one of the four assertions by name.
+          $venvPy = Join-Path (Join-Path $env:RUNNER_TEMP "SFSmoke") "venv\Scripts\python.exe"
+          $probe = Join-Path $env:RUNNER_TEMP "dpapi_probe.py"
+          Set-Content -LiteralPath $probe -Encoding UTF8 -Value @'
+          import base64, json, sys, tempfile
+          from pathlib import Path
+          from schedule_forensics.ai import config_store as cs
+          from schedule_forensics.ai.backend import AIConfig
+          assert sys.platform == "win32", sys.platform
+          assert cs._KEY_FIELD == "gateway_api_key_dpapi", cs._KEY_FIELD  # the protector is in use
+          path = Path(tempfile.mkdtemp()) / "ai-settings.json"
+          for key in ("k" * 25, "sk-nasa-hub-KEY-0123456789-" + "x" * 40):
+              cfg = AIConfig(backend="gateway", gateway_endpoint="https://proxy.fast.luna.nasa.gov",
+                             gateway_approved=True, gateway_api_key=key, openai_api_key="lm-" + key)
+              cs.save_ai_config(cfg, path)
+              raw = path.read_text(encoding="utf-8")
+              assert key not in raw and "gateway_api_key_dpapi" in raw, "the key is plaintext at rest"
+              assert "gateway_api_key_plain" not in raw, "the plain field on Windows"
+              loaded = cs.load_ai_config(path)
+              assert loaded.gateway_api_key == key, ("round trip", len(loaded.gateway_api_key), len(key))
+              assert loaded.openai_api_key == "lm-" + key, "local token round trip"
+              # MUTATION: one flipped byte in the wrapped blob must come up keyless, never garbled
+              doc = json.loads(raw)
+              blob = bytearray(base64.b64decode(doc["gateway_api_key_dpapi"]))
+              blob[-1] ^= 0x5A
+              doc["gateway_api_key_dpapi"] = base64.b64encode(bytes(blob)).decode("ascii")
+              path.write_text(json.dumps(doc), encoding="utf-8")
+              tampered = cs.load_ai_config(path)
+              assert tampered.gateway_api_key == "", "a tampered blob was accepted"
+              assert tampered.openai_api_key == "lm-" + key, "the untouched token must survive"
+          print("DPAPI round-trip OK on real Windows for 2 keys (25 and 67 chars); tampered blob refused")
+          '@
+          & $venvPy $probe
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "::error::the DPAPI key store failed on real Windows — the saved gateway key would not survive a launch"
+            exit 1
+          }
+
       - name: One-file install with NO repo checkout (the operator's real deploy path, ADR-0299)
         shell: pwsh
         env:

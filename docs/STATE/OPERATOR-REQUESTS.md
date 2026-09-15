@@ -220,9 +220,69 @@ ADR-0408; the repo is xfail-free). This section is the requested ledger; `HANDOF
 (auto-injected every session) and `NEXT-SESSION-PROMPT.md` carry the same state with
 per-unit rotation. **Every remaining open item on this page is operator-owned.**
 
+## 2026-09-15 (b) — "Once this PR is squashed and merged I want you to add at the top of the launch page the version number of the installed program"
+
+### OR-18 — "… add at the top of the launch page the version number of the installed program so that we don't have to go through so much effort to tell if the correct version has been uploaded to my computer." · `OPEN — queued behind #677's merge (received 2026-09-15 ~14:25Z, in chat)`
+
+**Resolved from the code, not guessed:** "the launch page" is `/launch`, the Boot Screen (ADR-0426) the
+desktop icon opens on — OUTSIDE the story chrome (no header, no nav), rendered by
+`web/launch.py::_launch_html`; its first element is the CUI bar (design system §6: never displaced).
+**The unit:** a server-rendered line directly under the CUI bar carrying the installed package version
+(`chrome._ASSET_VERSION` — the running process's metadata, never a literal), `data-no-i18n`, tokens only,
+present even when the boot script never runs (the hero text is script-filled; this line is not);
+red-first (the pristine `/launch` carries no version), measured in Chromium in the four themes with the
+CUI bar still first, mutation by name (the line dropped; the version a literal); ADR-0494, v1.0.262,
+wheel + nine installers, the full gate, a draft PR. **Stated to the operator:** the line witnesses what is
+RUNNING (an older copy still serving the port shows its own, older, version — the truth); the installer's
+console banner is the only witness that the upload happened. **DIRECTED (operator, 2026-09-15 ~14:40Z: *"I agree with your
+recommendation"*):** the same chip in the global header (`chrome.py`'s `<header>`, beside the brand,
+`--header-muted`, `data-no-i18n`, never displacing the CUI bar or the nav, measured at 1,440 and a narrow
+width so no sideways scroll is added) so every page and every screenshot pins the build — the two surfaces
+are ONE unit (AI Settings already carries `tool version:` since v1.0.261).
+
 ## 2026-09-12 — the approved gateway refuses a SAVED key on the availability probe (HTTP 401; the AI Settings screenshot, then two PowerShell runs on the NASA machine); "I want the AI setup to be as user friendly and simple as possible."
 
-### OR-17 — "This is what I am getting when I try and activate the AI models approved for ITAR and CUI. I input the API code as I always have and it doesn't work. I also have no clue what 'Local server API token (LM Studio "Require Authentication" …)' means or does. This is new. … solve in the next session by getting to the root cause and creating tests, pass and fail, and testing your solution in a sandbox environment until you find a solution that fixes the problem." · `OPEN — FIRST in the next session (reported 2026-09-15, screenshot of /settings)`
+### OR-17 — "This is what I am getting when I try and activate the AI models approved for ITAR and CUI. I input the API code as I always have and it doesn't work. I also have no clue what 'Local server API token (LM Studio "Require Authentication" …)' means or does. This is new. … solve in the next session by getting to the root cause and creating tests, pass and fail, and testing your solution in a sandbox environment until you find a solution that fixes the problem." · `SHIPPED IN PART (ADR-0493, v1.0.261): the installed build measured, the tool's key path proven on the wire and on real Windows, a Save receipt, the version on the page; the key itself stays the operator's — V-4 and one more request settle the rest`
+
+**MEASURED 2026-09-15 (ADR-0493) — read this before the registration below it.**
+
+1. **The installed build is v1.0.255 or v1.0.256, NOT v1.0.257+.** The screenshot's placeholder
+   *"(a key is saved — leave blank to keep it)"* and its banner *"could not reach … requires
+   authentication: paste your organization-issued key"* are the pre-ADR-0488 strings: at the
+   v1.0.257 commit the placeholder reads *"a key is saved — N characters; …"* and the banner
+   *"refused the credential the tool sent"*, and `data-backend-only` (the one-backend rule) is
+   absent at 0.255 / 0.256 and present at 0.257 (`git show` on the three release commits). Every
+   diagnostic OR-16 shipped never reached the operator's machine; the "every backend's fields at
+   once" is that build, not a regression. **Install v1.0.261 first.**
+2. **The tool's key path is NOT the cause — measured, not read.** On this tree a key pasted once
+   survives a fresh launch and authenticates byte for byte on the REAL urllib transport against a
+   loopback fake of the gateway that demands exactly `Authorization: Bearer <key>`
+   (`tests/web/test_gateway_wire.py`); a stale key on disk renders the photographed banner with the
+   gateway's own reason and the key's length. The Windows DPAPI branch: its Python (struct layout,
+   buffer lifetime, length, flags, `LocalFree`) runs against a fake `crypt32` on every CI
+   (`tests/ai/test_dpapi_marshaling.py`); the real Win32 calls run on a real Windows runner in
+   `installer-smoke.yml` (round trip of a 25- and a 67-character key, no plaintext at rest, a
+   tampered blob comes up keyless) — **its first verdict is in the SESSION-LOG follow-up**.
+3. **The failure the installed build could not show — a fresh key pasted into the WRONG masked
+   field.** On 0.255 / 0.256 the *Local server API token* field sits directly above *Gateway API
+   key*; a paste there keeps the OLD gateway key (blank keeps, ADR-0403), the page reads *"a key is
+   saved"* and the gateway keeps refusing — reproduced red on the pristine tree. v1.0.261 answers
+   every Save with a one-shot receipt (*"Gateway API key: replaced — 25 characters now held"* /
+   *"kept (the field was blank …)"*) and a warning when a credential lands in a field no selected
+   backend uses; the local-token label now says which backend uses it and that the gateway never
+   does; the page states its own version so the next screenshot pins the build.
+4. **What only the operator can settle (asked again, not blocking):** V-4 — the gateway's own
+   refusal text (on v1.0.261 the banner quotes it, including a scheme-only challenge such as
+   `Basic realm=…`, which would mean `Bearer` is the wrong shape); and **whether the key being
+   pasted is the CURRENT key from the NASA AI Hub** — on 2026-09-12 the same key answered HTTP 401
+   outside the tool (PowerShell), so a key that "always worked" and is refused since 09-12 has
+   expired, been rotated or lost its entitlement. The catalog-refused-but-generation-works
+   hypothesis is registered UNVERIFIED (the tool gates routing on `GET /v1/models`); one request
+   settles it: `Invoke-RestMethod https://proxy.fast.luna.nasa.gov/v1/chat/completions -Method Post
+   -Headers @{Authorization="Bearer <key>"} -ContentType application/json -Body '{"model":"<id>","messages":[{"role":"user","content":"ping"}],"max_tokens":8}'`.
+
+**The registration as written at the close of the previous session (2026-09-15, before the above):**
+
 
 **What the operator's screen shows (the settings page, no schedule content):** Backend "Approved AI
 gateway"; endpoint `https://proxy.fast.luna.nasa.gov` with the approval box checked; the Gateway API
@@ -291,7 +351,7 @@ AI Hub shows; if the Hub's key has expired or rotated, paste the current one and
 OPERATOR VERIFICATION (V-4):** the gateway's reason text — the step-2 PowerShell (the
 `WWW-Authenticate` header and the 401 body) was requested and had not arrived when this shipped.
 
-### OR-16b — "I want the AI setup to be as user friendly and simple as possible." · `OPEN (its own UI unit, under the design-system DoD)`
+### OR-16b — "I want the AI setup to be as user friendly and simple as possible." · `SHIPPED (ADR-0488 decision 4, v1.0.257 — this status line was stale until 2026-09-15; the disclosure is JavaScript-driven, so a build before v1.0.257 or a page without JavaScript still shows every backend's rows)`
 
 The page renders every backend's rows at once — two look-alike masked secret fields one above the
 other (the *Local server API token* directly above the *Gateway API key*), Ollama's endpoint,

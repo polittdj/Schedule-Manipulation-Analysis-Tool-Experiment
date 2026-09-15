@@ -103,3 +103,29 @@ def test_the_body_is_read_once_and_shared_by_every_reader() -> None:
     second = _err(400, body)
     assert "max_tokens is too large" in probe_error_text(second) and limit_rejected(second)
     assert http_error_body(second) == body
+
+
+def test_a_challenge_without_error_fields_names_its_scheme_last() -> None:
+    """OR-17 (ADR-0493): a 401 whose challenge carries no error field and whose body says
+    nothing still names the SCHEME the server wants — the one fact that decides whether
+    ``Authorization: Bearer`` is the right shape. It is the LAST resort: error fields and a
+    body reason still win; a blank challenge is no reason."""
+    assert (
+        http_refusal_detail(_err(401, b"", {"WWW-Authenticate": 'Basic realm="luna"'}))
+        == 'challenge: Basic realm="luna"'
+    )
+    assert (
+        http_refusal_detail(_err(401, b"<html>401</html>", {"WWW-Authenticate": "Bearer"}))
+        == "challenge: Bearer"
+    )
+    # the body's reason still outranks a bare challenge
+    assert (
+        http_refusal_detail(
+            _err(401, b'{"detail": "Not authenticated"}', {"WWW-Authenticate": "Bearer"})
+        )
+        == "Not authenticated"
+    )
+    assert http_refusal_detail(_err(401, b"", {"WWW-Authenticate": "   "})) == ""
+    text = probe_error_text(_err(401, b"", {"WWW-Authenticate": 'Bearer realm="luna"'}))
+    assert text == 'server returned HTTP 401 (its reason: "challenge: Bearer realm="luna"")'
+    assert is_auth_refusal(text)

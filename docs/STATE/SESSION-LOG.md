@@ -18214,3 +18214,86 @@ called a flake turned out to have a mechanism (ADR-0442 UI-02, ADR-0443, ADR-046
   banner-version check, `powershell -ExecutionPolicy Bypass -File`). Their outputs were not yet reported.
 - **Token guardian at the close: ~85 % of the assumed wall** — the session ends here on the operator's
   instruction; this entry is a docs-only draft PR the operator merges.
+
+### 2026-09-15 — OR-17 SHIPPED IN PART (ADR-0493, v1.0.261): the installed build measured from the screenshot's wording (v1.0.255/256); the key path proven on the wire; the DPAPI branch pinned on real Windows in CI; a Save receipt; the version on the page
+
+- **Branch:** `claude/dazzling-ptolemy-i1zig0`, restarted on `ec3adf6c` (#675's squash) and fast-forwarded to
+  `04a2f20b` — the head of the previous session's open docs-only draft **#676** (the OR-17 registration) —
+  so this PR contains #676. `main`'s runs for `9a9e400e`: CI 1860 **success**, installer-smoke 723
+  **success** (read this session); run 1862 for `ec3adf6c` was in progress.
+- **Established first (QC-2 on the kickoff):** "Full entry: OR-17 in OPERATOR-REQUESTS.md" was true of #676,
+  not of `main`; "ADR-0488's one-backend rule absent → the version is UNVERIFIED" — the rule IS ADR-0488's
+  decision 4 (the OR-16b ledger line said OPEN; corrected). The page carries no version; the screenshot's
+  strings do — `git show 2ae8d06b / c31259fe / 6708cbff : web/settings.py`: the photographed placeholder and
+  banner exist at 0.255 / 0.256 only. **The operator's build predates every OR-16 diagnostic.**
+- **Red-first, on the pristine tree (probes, then tests):** a fresh key posted into `openai_api_key` under
+  the gateway backend leaves the OLD key, the page reads "a key is saved" + HTTP 401, nothing names the
+  paste — RED; no version in the visible text — RED; a scheme-only challenge yields "" — RED; the REAL
+  `_urllib_gateway_opener` puts `Bearer <key>` on a loopback socket and a 401's challenge reaches
+  `probe_error_text` — GREEN (the chain proof). The DPAPI Python against a fake `crypt32` — GREEN on the
+  pristine code (its teeth: six mutants).
+- **Shipped:** `_SettingsReceipt` + `SessionState.settings_receipt` (one-shot, consumed by the GET);
+  `_settings_receipt` / `_receipt_html` (replaced / kept / none, the length held, misplaced-field warning);
+  `tool version:` on the status line (`data-tool-version`, the installed metadata); the local-token label;
+  `http_refusal_detail`'s last-resort `challenge: …`; the `installer-smoke` Windows DPAPI step (round trip
+  of a 25- and a 67-char key, no plaintext, a flipped byte → keyless). Tests: `tests/ai/test_dpapi_marshaling.py`
+  (8), `tests/web/test_gateway_wire.py` (6), `tests/web/test_settings_receipt_browser.py` (4 themes),
+  `tests/web/test_gateway_settings.py` (+6 → 34), `tests/ai/test_refusal_reason.py` (+1 → 10).
+- **Verification:** the touched five modules 63 passed; the Chromium receipt test 4 passed (console / daylight
+  / apollo / jarvis); **mutation battery 20 / 20 RED by name** on a shadowed copy (control 19 passed; two
+  instrument fixes on the first pass — the rig's matcher blind to parametrized ids read M13 / M17 as "red
+  (other)", and M19 (the transport consulting the system proxy) SURVIVED because the container's `NO_PROXY`
+  excludes 127.0.0.1 — the test now deletes `NO_PROXY` / `no_proxy` and reads red); both ruff binaries
+  (0.15.8 / CI's 0.16.7), `ruff format --check`, mypy strict 165 files, bandit exit 0, `node --check`
+  clean; wheel + nine installers rebuilt on the final tree (v1.0.261; `tools/mpxj` unchanged, `mpxj_ref`
+  163d1942), installer tests 68 passed.
+- **Docs:** ADR-0493 · OPERATOR-REQUESTS (OR-17 measured, §4 the two requests to the operator; OR-16b
+  corrected) · HANDOFF rotated · LESSONS-LEARNED (2026-09-15, second entry) · kickoff refreshed.
+- **Not settled here, by design:** the key itself (09-12's 401 outside the tool), V-4, the catalog-401
+  hypothesis (one `…/v1/chat/completions` request settles it; no completion probe built without it).
+- **The full suite, `-m parity`, the PR number and its checks (the `windows` DPAPI step first):** in the
+  follow-up below.
+
+### 2026-09-15 — follow-up: PR #677 (ADR-0493), the final-head suite, parity, and the first CI verdict (eight of eight green; the real-Windows DPAPI step passed)
+
+- **PR:** **draft #677**, branch `claude/dazzling-ptolemy-i1zig0`, head **`6039db1d`** (three commits on
+  `ec3adf6c`: #676's docs commit `04a2f20b`, the unit at `92d3e6b9`, the contract re-export + the rebuild at
+  `6039db1d`). Not marked ready, not merged — the operator's. #676 is contained in it.
+- **The full suite on the final head `6039db1d`: 5,410 passed / 5 skipped / 0 failed in 32:54.** The earlier
+  run on the same `src/` minus two import lines read 10 reds, every one an artifact of the run's own
+  environment except one real miss: the installer lockstep and the three state-doc guards ran before the
+  rebuild / rotation / bump, the two version pins read the 1.0.260 metadata imported before the mid-run bump,
+  and `test_monolith_split_contract` named `_CREDENTIAL_USERS` / `_receipt_html` as un-re-exported (fixed in
+  `6039db1d`, re-run 71 passed). **`-m parity`: 98 passed in 3:19.** `pytest --collect-only`: 5,415 collected.
+- **CI on `6039db1d` — all eight green:** CI run 34975143163 — `cui-guard` (13:28:11Z), `browser (measured-box
+  proof)` (13:45:24Z), `floor (declared minimum)` (13:48:19Z), `test (3.13)` (14:08:42Z), `test (3.11)`
+  (14:13:52Z), `check` (14:13:58Z); installer-smoke run 34975143156 — `linux` (13:28:43Z), `windows`
+  (13:32:45Z). **The `windows` job's DPAPI step (step 6) concluded success in ~1 s and its own log line
+  reads: `DPAPI round-trip OK on real Windows for 2 keys (25 and 67 chars); tampered blob refused`** — the
+  first measurement of ADR-0404's Win32 branch on a real Windows machine: the kickoff's first hypothesis
+  (a saved key that does not survive the store) is refuted on both sides.
+- `main`'s run 1862 for `ec3adf6c` (#675, docs only): **success** (14:45:29Z — read this session).
+- **Environment, re-measured:** the clone arrived shallow (unshallowed first; `git log -1 -- tools/mpxj` reads
+  163d1942); no package until the dev install; CI's ruff 0.16.7 appears at /usr/local/bin only after it;
+  a `-c` inline python with nested quotes is the wrong tool for the CI step — a here-string file is.
+- Token guardian at this entry: ~63 % of the assumed wall (OK). This push restarts CI on the new head; the
+  next check-in reads the verdict on the FINAL head.
+
+### 2026-09-15 — follow-up: #676 squash-merged by the operator (`main` @ `447d1db1`); this branch merge-resolved on the state docs (docs only)
+
+- **#676 landed on `main` as `447d1db1`** (GitHub deleted `claude/exciting-curie-n0wghm`); its tree is
+  IDENTICAL to `04a2f20b`, the commit this branch had fast-forwarded onto (`f1c45a1d…` both) — so the squash
+  carried nothing this branch did not already have. GitHub read #677 as `dirty` (the squash and this branch's
+  later rotation touch the same hunks of the four state docs). Resolved per the steward rule: `origin/main`
+  merged INTO the branch (merge commit `e0e9ad3d`, no rebase), each of the four files kept at this branch's
+  version and proven byte-identical to the pre-merge head (`git hash-object` == `HEAD:<file>`), no other file
+  changed, the state-doc guards 12 passed. This push restarts CI; the check-in reads the new head.
+
+### 2026-09-15 — OR-18 registered (the version at the top of /launch), queued behind #677's merge (docs only)
+
+- The operator's directive arrived while #677's checks were running: *"Once this PR is squashed and merged …
+  add at the top of the launch page the version number of the installed program …"* Registered as OR-18
+  (OPERATOR-REQUESTS.md) with the page resolved from the code (`/launch`, the Boot Screen — outside the
+  header chrome, so a header chip would not reach it) and the unit's shape; the kickoff prompt points at it.
+  The check-in at 15:31Z starts the unit on merge. This commit rides the next push so the running CI on
+  `2578008e` is not cancelled mid-run.

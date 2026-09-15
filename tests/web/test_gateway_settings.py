@@ -491,3 +491,114 @@ def test_the_key_placeholder_states_the_saved_keys_length(
     _arm(client, key="k" * 25)
     page = client.get("/settings").text
     assert "a key is saved — 25 characters" in page
+
+
+# --- OR-17 (ADR-0493): a Save says what it did with each credential; the page names its build ---
+
+
+def _receipts(page: str) -> list[str]:
+    """The one-shot receipt notices, text only (the key must never be among the characters)."""
+    import re
+
+    return [
+        re.sub(r"<[^>]+>", "", chunk)
+        for chunk in re.findall(r'<div class="notice [a-z]+" data-receipt>(.*?)</div>', page, re.S)
+    ]
+
+
+def _post(client: TestClient, **fields: str) -> None:
+    data = {
+        "classification": "CLASSIFIED",
+        "backend": "gateway",
+        "model": "claude-opus-4.8-thinking-itar",
+        "gateway_endpoint": ENDPOINT,
+        "gateway_approved": "1",
+    }
+    data.update(fields)
+    client.post("/settings", data=data, follow_redirects=False)
+
+
+def test_a_save_states_what_happened_to_each_credential_exactly_once(
+    client: TestClient, state: SessionState
+) -> None:
+    """Both credential fields are masked and never echoed, so the page after a save could not
+    say whether a paste landed; the receipt on the redirect's GET says replaced / kept and the
+    length now held, and the NEXT render carries nothing (one-shot, like the import flash)."""
+    _post(client, gateway_api_key="k" * 25)
+    receipts = _receipts(client.get("/settings").text)
+    assert len(receipts) == 1
+    assert "Gateway API key: replaced" in receipts[0] and "25 characters now held" in receipts[0]
+    assert "Local server API token: none held" in receipts[0]
+    assert _receipts(client.get("/settings").text) == []  # consumed
+    _post(client)  # an ordinary re-save: both fields blank
+    receipts = _receipts(client.get("/settings").text)
+    assert "Gateway API key: kept" in receipts[0] and "25 characters held" in receipts[0]
+    assert state.ai_config.gateway_api_key == "k" * 25
+
+
+def test_a_key_pasted_into_the_local_token_field_is_named_as_misplaced(
+    client: TestClient, state: SessionState
+) -> None:
+    """THE 2026-09-15 failure shape on the installed build (v1.0.255/256): two look-alike masked
+    fields, the local server's token directly above the gateway key. A fresh key pasted into
+    the wrong one leaves the OLD key in force — the page reads "a key is saved" and the gateway
+    keeps refusing, and nothing said where the paste went. Now the receipt does."""
+    _post(client, gateway_api_key="OLD-EXPIRED-KEY-0123456789")
+    client.get("/settings")  # consume that receipt
+    _post(client, openai_api_key="FRESH-KEY-FROM-THE-HUB-01")
+    page = client.get("/settings").text
+    receipts = _receipts(page)
+    assert len(receipts) == 2, receipts
+    assert "Gateway API key: kept" in receipts[0]
+    assert "Local server API token: replaced" in receipts[0]
+    warn = receipts[1]
+    assert "pasted into Local server API token" in warn
+    assert "the Approved AI gateway never sends it" in warn
+    assert "paste it into the Gateway API key field" in warn
+    assert "kept" in warn  # what happened to the key it was meant for
+    assert state.ai_config.gateway_api_key == "OLD-EXPIRED-KEY-0123456789"
+    assert state.ai_config.openai_api_key == "FRESH-KEY-FROM-THE-HUB-01"
+    assert "FRESH-KEY" not in page and "OLD-EXPIRED" not in page
+
+
+def test_a_key_pasted_for_an_unselected_gateway_is_named_as_misplaced(client: TestClient) -> None:
+    client.post(
+        "/settings",
+        data={"backend": "ollama", "model": "x", "gateway_api_key": "k" * 25},
+        follow_redirects=False,
+    )
+    receipts = _receipts(client.get("/settings").text)
+    assert len(receipts) == 2
+    assert "Gateway API key: replaced" in receipts[0]
+    assert "not the selected backend" in receipts[1] and "Approved AI gateway" in receipts[1]
+
+
+def test_a_token_for_the_cross_check_server_is_not_misplaced(client: TestClient) -> None:
+    """The cross-check backend counts as in use (ADR-0488's disclosure rule): a token posted
+    for it under a gateway primary is exactly where it belongs — no warning."""
+    _post(client, second_backend="openai", openai_api_key="lm-token")
+    receipts = _receipts(client.get("/settings").text)
+    assert len(receipts) == 1 and "Local server API token: replaced" in receipts[0]
+
+
+def test_the_local_token_label_names_the_backend_that_uses_it_and_the_one_that_never_does(
+    client: TestClient,
+) -> None:
+    page = client.get("/settings").text
+    row = page.split("name=openai_api_key", 1)[0]
+    label = row[row.rindex("<p>") :]
+    assert "used ONLY by the <b>OpenAI-compatible (local)</b> backend" in label
+    assert "the Approved AI gateway never sends it" in label
+    assert "Gateway API key field" in label
+
+
+def test_the_settings_page_states_the_installed_version(client: TestClient) -> None:
+    """A screenshot of AI Settings could not pin the build (OR-17: the version lived only in
+    static-asset URLs), so which diagnostics the operator had was UNVERIFIED. The status line
+    now carries the installed package version, never a literal."""
+    from importlib.metadata import version
+
+    page = client.get("/settings").text
+    chip = page.split("<b data-tool-version>", 1)[1].split("</b>", 1)[0]
+    assert chip == version("schedule-forensics")
+    assert "tool version:" in page

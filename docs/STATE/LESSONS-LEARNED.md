@@ -435,6 +435,40 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-15 — the words on a screenshot pin the build when the page carries no version; "the tool's path is verified" means nothing until the REAL transport meets a socket; and a battery's green can be the environment's, not the code's (ADR-0493, OR-17)
+
+- **What happened.** The operator's 401 came back three days after OR-16 shipped its diagnostics. The
+  kickoff said "establish the version from the banner" — the page has no version anywhere (only static
+  asset URLs carry `?v=`). The screenshot's own strings settled it in one `git show` per release commit:
+  the placeholder and banner wording exist only at v1.0.255 / 0.256. Everything ADR-0488 shipped had never
+  been installed. **The lesson:** when a diagnostic must be read off a screenshot, the page has to state
+  its build; and before diagnosing "a regression", diff the photographed strings against the release
+  commits — wording is a version fingerprint.
+- **The first hypothesis was refuted by a fake, not by reading.** The DPAPI branch is `pragma: no cover`
+  and every store test injects a lambda; the ctypes marshaling had never run under a test. A fake
+  `crypt32` that reads the input blob through the real pointer (with a `gc.collect()` inside the read)
+  proved the buffer lifetime, the length, the flags and the free — and six mutants prove the fake can
+  tell. The Win32 call itself is measured where the repo runs on Windows (installer-smoke), with a
+  tamper leg so the step can fail. Reading the two functions and concluding "looks right" was the
+  temptation; QC-1 says run it.
+- **"The key path is verified" (ADR-0488) had never put the real transport on a socket.** Every prior
+  pin injected an opener. A loopback fake of the gateway behind the REAL `_urllib_gateway_opener` —
+  the approved host rewritten to loopback inside a shim, the allowlist pinned to still refuse loopback
+  at construction — is what proves the header, the persisted key and the fresh-launch chain. An
+  injected opener verifies the caller; only a socket verifies the transport.
+- **A masked field cannot show where a paste landed; a receipt can.** Two masked fields one above the
+  other on the installed build, blank-keeps on both: a fresh key in the wrong one is invisible. The fix
+  is not a smarter field, it is the page saying, once, what the save did with each credential — and
+  refusing to move a secret between fields silently.
+- **A green in a battery can be the ENVIRONMENT's.** The proxy-consulting mutant survived because the
+  build container's `NO_PROXY` excludes 127.0.0.1 — the test read its environment, not the code. Delete
+  the exclusion in the test (the corporate-laptop shape the opener exists for) and it reads red. And a
+  by-name matcher that ignores parametrized ids reports "red (other)" for a test that failed exactly by
+  name: read every non-by-name verdict as a finding about the instrument first.
+- **A kickoff can point at a document that is not on the tree.** "Full entry: OR-17 in
+  OPERATOR-REQUESTS.md" was true of an unmerged draft PR (#676), not of `main`; the branch had to be
+  merged in before the entry existed here. Grep for the entry before trusting the pointer.
+
 ### 2026-09-15 — a register's "first executable step" is a hypothesis about the mechanism: check whether the file already records the answer before re-deriving it (ADR-0492); and a mutant below a guard is equivalent, not a survivor
 
 - **What happened.** R-46's row said "prorate the straddling activity on its crew's calendar". Summing

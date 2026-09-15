@@ -91,7 +91,10 @@ def http_refusal_detail(exc: BaseException) -> str:
 
     Order of authority: the ``WWW-Authenticate`` challenge (``error_description``, then
     ``error``), then the body — a JSON error document's reason string, or the first line of a
-    plain-text body. Markup is never quoted. Bounded by :func:`_one_line`.
+    plain-text body — and, last, the bare challenge itself when it carries no error field and
+    the body says nothing: ``challenge: Basic realm="…"`` names the SCHEME the server wants,
+    which is the one fact that decides whether ``Authorization: Bearer`` is the right shape
+    (OR-17, ADR-0493). Markup is never quoted. Bounded by :func:`_one_line`.
     """
     if not isinstance(exc, urllib.error.HTTPError):
         return ""
@@ -106,7 +109,21 @@ def http_refusal_detail(exc: BaseException) -> str:
     for key in ("error_description", "error"):
         if fields.get(key, "").strip():
             return _one_line(fields[key])
-    text = http_error_body(exc).decode("utf-8", "replace").strip()
+    body_reason = _body_reason(http_error_body(exc))
+    if body_reason:
+        return body_reason
+    # a challenge without an error field still names its scheme (RFC 7235: the first token)
+    # — quoted verbatim so the banner can show "Basic" or "Negotiate" where the tool sent
+    # Bearer; a challenge with no visible characters is no reason at all
+    if challenge.strip():
+        return _one_line(f"challenge: {challenge.strip()}")
+    return ""
+
+
+def _body_reason(raw: bytes) -> str:
+    """The reason a refused response's BODY carries, or ``""`` (a JSON error document's reason
+    string, the opening run of a truncated one, or the first line of plain text; markup never)."""
+    text = raw.decode("utf-8", "replace").strip()
     if not text:
         return ""
     if text[0] in "{[":
