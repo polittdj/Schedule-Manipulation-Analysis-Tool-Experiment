@@ -18278,3 +18278,13 @@ called a flake turned out to have a mechanism (ADR-0442 UI-02, ADR-0443, ADR-046
   a `-c` inline python with nested quotes is the wrong tool for the CI step — a here-string file is.
 - Token guardian at this entry: ~63 % of the assumed wall (OK). This push restarts CI on the new head; the
   next check-in reads the verdict on the FINAL head.
+
+### 2026-09-15 — follow-up: #676 squash-merged by the operator (`main` @ `447d1db1`); this branch merge-resolved on the state docs (docs only)
+
+- **#676 landed on `main` as `447d1db1`** (GitHub deleted `claude/exciting-curie-n0wghm`); its tree is
+  IDENTICAL to `04a2f20b`, the commit this branch had fast-forwarded onto (`f1c45a1d…` both) — so the squash
+  carried nothing this branch did not already have. GitHub read #677 as `dirty` (the squash and this branch's
+  later rotation touch the same hunks of the four state docs). Resolved per the steward rule: `origin/main`
+  merged INTO the branch (merge commit `e0e9ad3d`, no rebase), each of the four files kept at this branch's
+  version and proven byte-identical to the pre-merge head (`git hash-object` == `HEAD:<file>`), no other file
+  changed, the state-doc guards 12 passed. This push restarts CI; the check-in reads the new head.
