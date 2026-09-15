@@ -1,6 +1,6 @@
 # Kickoff prompt — next session
 
-PR state (2026-09-15): **#673 is MERGED** — `main` is **`163d1942`** (ADR-0491, v1.0.259). This session's unit, **R-46 / ADR-0492**, is a draft PR from branch `claude/exciting-curie-n0wghm`, **v1.0.260**, branched ON `163d1942` (nothing to merge; the SESSION-LOG's close entry and its follow-up carry the PR number and the suite result). **Always `git fetch origin` and read `git log origin/main` before trusting any sha written here.** If that PR merged, restart the branch with `--prune` + `remote set-head` + `checkout -B`.
+PR state (2026-09-15 07:47Z): **#674 is MERGED** — `main` is **`9a9e400e`** (ADR-0492, v1.0.260; tree-identical to the PR head `ca1d35d4`, which read eight of eight checks green). `main`'s own runs for the squash (CI 1860 / installer-smoke 723) were in progress at the close — read them first. The branch `claude/exciting-curie-n0wghm` was restarted on the squash; the merge record itself is a docs-only draft PR from it (its number in the SESSION-LOG's merge entry's follow-up, if any). **Always `git fetch origin` and read `git log origin/main` before trusting any sha written here.** After the operator merges that record, restart the branch with `--prune` + `remote set-head` + `checkout -B`; the next unit is **R-47**.
 
 **The operator owes three things, none blocking:** **V-4** (the gateway's own refusal reason — the step-2
 PowerShell: `WWW-Authenticate` and the 401 body; the v1.0.257 banner quotes the same text); whether a fresh

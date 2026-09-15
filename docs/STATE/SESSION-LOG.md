@@ -18184,3 +18184,19 @@ called a flake turned out to have a mechanism (ADR-0442 UI-02, ADR-0443, ADR-046
   every bump, as the kickoff says.
 - This push restarts CI on the new head; the next session reads the verdict on the FINAL head and, after the
   operator merges, `main`'s own run for the squash commit (tree hashes first).
+
+### 2026-09-15 — merge: #674 landed (ADR-0492, v1.0.260); `main` @ `9a9e400e`, tree-identical to the PR head; the branch restarted
+
+- **The operator marked #674 ready for review and squash-merged it at 07:47:27Z** (the ready-for-review
+  event and the merge four seconds apart). `origin/main` is **`9a9e400e`** (committer `noreply@github.com`);
+  `git rev-parse 9a9e400e^{tree}` == `ca1d35d4^{tree}` (`813ae843…`) — nothing was lost or added in the
+  squash. GitHub deleted the head branch; the local branch was restarted with `git fetch --prune origin &&
+  git remote set-head origin -a && git checkout -B claude/exciting-curie-n0wghm origin/main` (HEAD tree ==
+  origin/main tree). Unsubscribed from #674; the pending check-in deleted.
+- **`main`'s own runs for the squash: CI run 1860 (34943508827) and installer-smoke run 723 (34943508860),
+  both IN PROGRESS when this was written** (started 07:47:29Z) — the next session reads their conclusion
+  first; a red cell on a tree identical to the green PR head (eight of eight on `ca1d35d4`, run 34925885265 /
+  34925885359) is the runner's claim, never the merge's — compare tree hashes before believing it.
+- The Codex connector posted its usage-limit notice on #674 (no review); review cover stays absent.
+- **Token guardian at the close: ~72 % of the assumed wall (WARN_70)** — this record is the last commit of
+  the session; the next unit (R-47) starts in a fresh session from the kickoff prompt.
