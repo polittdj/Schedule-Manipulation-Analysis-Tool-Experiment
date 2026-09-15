@@ -19,7 +19,11 @@ from itertools import pairwise
 
 from schedule_forensics.ai.citations import CitedStatement
 from schedule_forensics.ai.version_facts import elide_series
-from schedule_forensics.engine.cpm import CPMResult, _offset_to_wall
+from schedule_forensics.engine.cpm import (
+    CPMResult,
+    _offset_to_wall,
+    datetime_to_offset,
+)
 from schedule_forensics.engine.dcma_audit import Citation
 from schedule_forensics.engine.driving_slack import (
     DEFAULT_SECONDARY_MAX_DAYS,
@@ -138,14 +142,47 @@ class _PathPoint:
     status_date: dt.datetime | None
     #: ``None`` when the focus is absent from this version, or its slack could not be computed.
     drivers: frozenset[int] | None
+    #: The focus's finish on the axis the drivers are measured on: the file's own stored Finish
+    #: (MS Project's — the date SSI's Directional Path shows), else the CPM early finish.
     finish: dt.date | None
+    #: True when ``finish`` is the file's stored Finish; False when the file stores none and the
+    #: CPM early finish stands in (hand-authored schedules).
+    finish_stored: bool = False
+    #: The engine's logic-only early finish, carried ONLY when it disagrees with the stored Finish
+    #: by a whole working day or more; ``None`` when they agree (or nothing is stored to disagree
+    #: with). ``logic_gap_days`` is that disagreement in working days, positive = logic later.
+    logic_finish: dt.date | None = None
+    logic_gap_days: int = 0
     #: True only when the focus EXISTS here but its driving slack could not be computed — a
     #: different fact from "the activity is not in this file", and never merged with it.
     unreadable: bool = False
 
 
-def _focus_finish(schedule: Schedule, cpm: CPMResult, uid: int) -> dt.date | None:
-    """The focus's own computed early finish as a date, honouring an own-calendar instant.
+@dataclass(frozen=True)
+class _FocusFinish:
+    """The focus's finish in one version on the two axes the tool keeps (ADR-0310)."""
+
+    finish: dt.date | None
+    stored: bool
+    logic_finish: dt.date | None
+    logic_gap_days: int
+
+
+# --- whose date the focus finish is (OR-20) ----------------------------------------------------
+#
+# The drivers above are measured on the file's STORED, progress-aware dates (``date_basis``): the
+# axis SSI runs on inside MS Project and the only one that reproduced its export (ADR-0011). The
+# finish printed beside them was the engine's logic-only CPM early finish, unlabelled. On the
+# operator's own IMS the two disagree by more than a day on 50 of 1,723 scheduled activities (up
+# to 106 days); a focus among them was reported at a date neither MS Project nor SSI shows, next
+# to a SCHEDULE-LOGIC FINISH SERIES of the same shape — and a 32-version answer tabled one such
+# date 656 days past the Finish the file carries. So the reported finish is the stored Finish, the
+# logic-only finish rides beside it only where the two part company (Law 2: stated, never
+# silently substituted), and the header says which date this line carries.
+
+
+def _logic_finish_wall(schedule: Schedule, cpm: CPMResult, uid: int) -> dt.datetime | None:
+    """The focus's own logic-only early finish as an instant, honouring an own-calendar instant.
 
     A task on its own calendar carries wall-clock instants the project working-minute axis
     cannot represent (ADR-0476); ``early_finish_wall`` is those, and it wins when present —
@@ -155,10 +192,42 @@ def _focus_finish(schedule: Schedule, cpm: CPMResult, uid: int) -> dt.date | Non
     if timing is None:
         return None
     if timing.early_finish_wall is not None:
-        return timing.early_finish_wall.date()
+        return timing.early_finish_wall
     return _offset_to_wall(
         schedule.project_start, timing.early_finish, schedule.calendar, role="finish"
-    ).date()
+    )
+
+
+def _focus_finish(schedule: Schedule, cpm: CPMResult, uid: int) -> _FocusFinish:
+    """The focus's finish as the file stores it, with the logic-only finish where it disagrees.
+
+    The stored Finish is the figure (the drivers' axis; MS Project's and SSI's date). The CPM
+    early finish stands in only when the file stores no Finish. A logic-only finish that differs
+    from the stored one by a whole working day or more is carried with its signed gap so the line
+    can disclose it; a sub-day difference is a representation, not a disagreement, and is not.
+
+    Both finishes are compared on ONE ruler — the project working-minute axis every CPM offset
+    lives on (ADR-0310), with the stored instant converted by :func:`datetime_to_offset`. On that
+    ruler a Friday 17:00 finish and the Monday 08:00 milestone MS Project stores after it are the
+    same offset; a wall-clock window between the two reads a full day (measured: 480 minutes of
+    :func:`working_minutes_between` on the default calendar) and would disclose a disagreement
+    that is only a representation.
+    """
+    task = schedule.tasks_by_id.get(uid)
+    stored = task.finish if task is not None else None
+    logic = _logic_finish_wall(schedule, cpm, uid)
+    if stored is None:
+        return _FocusFinish(logic.date() if logic is not None else None, False, None, 0)
+    timing = cpm.timings.get(uid)
+    if logic is None or timing is None:
+        return _FocusFinish(stored.date(), True, None, 0)
+    stored_offset = datetime_to_offset(schedule.project_start, stored, schedule.calendar)
+    gap_minutes = timing.early_finish - stored_offset
+    gap_days = abs(gap_minutes) // schedule.calendar.working_minutes_per_day
+    if gap_days < 1:
+        return _FocusFinish(stored.date(), True, None, 0)
+    signed = gap_days if gap_minutes > 0 else -gap_days
+    return _FocusFinish(stored.date(), True, logic.date(), signed)
 
 
 def _path_points(schedules: list[Schedule], cpms: list[CPMResult], uid: int) -> list[_PathPoint]:
@@ -182,8 +251,17 @@ def _path_points(schedules: list[Schedule], cpms: list[CPMResult], uid: int) -> 
             points.append(_PathPoint(label, schedule.status_date, None, None, unreadable=True))
             continue
         drivers = frozenset(u for u in driving_path(schedule, results) if u != uid)
+        ff = _focus_finish(schedule, cpm, uid)
         points.append(
-            _PathPoint(label, schedule.status_date, drivers, _focus_finish(schedule, cpm, uid))
+            _PathPoint(
+                label,
+                schedule.status_date,
+                drivers,
+                ff.finish,
+                finish_stored=ff.stored,
+                logic_finish=ff.logic_finish,
+                logic_gap_days=ff.logic_gap_days,
+            )
         )
     return points
 
@@ -198,7 +276,18 @@ def _series_entry(point: _PathPoint, uid: int) -> str:
         return f"{head} — the driving path to UID {uid} could not be computed for this version"
     if point.drivers is None:
         return f"{head} — UID {uid} is not in this version"
-    finish = f", focus finishes {_date(point.finish)}" if point.finish is not None else ""
+    finish = ""
+    if point.finish is not None:
+        finish = f"; UID {uid} finishes {_date(point.finish)}"
+        if not point.finish_stored:
+            finish += " (computed by CPM — the file stores no Finish for it)"
+        elif point.logic_finish is not None:
+            when = "later" if point.logic_gap_days > 0 else "earlier"
+            finish += (
+                f" (the file's stored Finish; this engine's logic-only finish for it is "
+                f"{_date(point.logic_finish)}, {abs(point.logic_gap_days)} working days {when} — "
+                f"a date the file's logic alone does not reproduce)"
+            )
     return f"{head} {_activities(len(point.drivers))} driving it{finish}"
 
 
@@ -228,14 +317,22 @@ def _movement_fact(
         else None
     )
     move_txt = (
-        f"its computed finish moved {moved:+d} calendar day(s), from {_date(first.finish)} in "
+        f"its Finish moved {moved:+d} calendar day(s), from {_date(first.finish)} in "
         f"{first.label} to {_date(last.finish)} in {last.label}"
         if moved is not None
-        else "its computed finish could not be read in both ends of the series"
+        else "its Finish could not be read in both ends of the series"
     )
     missing = (
         f" UID {uid} is absent from {absent} of the {len(points)} loaded version(s)."
         if absent
+        else ""
+    )
+    disagree = sum(1 for p in measured if p.logic_finish is not None)
+    logic_note = (
+        f" Note: in {disagree} of the {len(measured)} measured version(s) this engine's "
+        f"logic-only finish for UID {uid} disagrees with the stored Finish by a working day or "
+        f"more — read those lines with both dates in view."
+        if disagree
         else ""
     )
     return CitedStatement(
@@ -243,10 +340,10 @@ def _movement_fact(
         f"version(s): the count of activities driving it went from {len(first.drivers or ())} in "
         f"{first.label} to {len(last.drivers or ())} in {last.label}, and {move_txt}. Of the "
         f"{len(measured) - 1} version-to-version step(s), {rewired} changed WHICH activities "
-        f"drive it, and {held} of those changed the membership while leaving its computed finish "
-        f"on the same date. That is a count of what changed, not a statement of why: a re-wire "
-        f"can be re-planning, a correction, or a scope change, and reading intent into it "
-        f"requires the change and counterfactual facts, not this line.{missing}",
+        f"drive it, and {held} of those changed the membership while leaving its Finish on the "
+        f"same date. That is a count of what changed, not a statement of why: a re-wire can be "
+        f"re-planning, a correction, or a scope change, and reading intent into it requires the "
+        f"change and counterfactual facts, not this line.{missing}{logic_note}",
         cite,
         pinned=True,
     )
@@ -285,8 +382,12 @@ def driving_path_series(
             f"DRIVING-PATH SERIES for {focus_name} (UID {uid}) across all {len(points)} loaded "
             f"version(s) — each version's OWN driving path, recomputed on that version's own "
             f"network (activities with 0 days of driving slack to the focus), ordered oldest "
-            f"data date first, NOT the newest version's path applied to the others: "
-            f"{rendered}{note}.",
+            f"data date first, NOT the newest version's path applied to the others. The finish "
+            f"on each line is UID {uid}'s own stored Finish in that file (MS Project's Finish, "
+            f"the date SSI's Directional Path shows) — NOT the project's network finish, which "
+            f"the SCHEDULE-LOGIC FINISH SERIES carries separately; where this engine's logic-only "
+            f"finish for UID {uid} disagrees with the stored Finish by a working day or more, "
+            f"both dates are stated on that line: {rendered}{note}.",
             cite,
             pinned=True,
         )

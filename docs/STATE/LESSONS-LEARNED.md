@@ -435,6 +435,30 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-15 (e) — (ADR-0497) a model's diagnosis of its own error is testimony: one probe on the real IMS refuted "the focus finish was the network finish", and the real defect was two dates on two axes in one shape with no label
+
+- **What happened.** Asked for the driving path to UID 152 across 32 versions, the model tabled a "driving-path finish"
+  656 days past the Finish MS Project shows for one file, then wrote a confident memo blaming a routine that "populated
+  the focus finish with the network CPM finish — byte-for-byte identical in all 32 versions" and prescribing a
+  re-anchored backward pass. The operator asked for the root cause, pass-and-fail tests, a sandboxed fix, and proof the
+  tool's numbers match SSI / Fuse / MS Project.
+- **What was tried.** The memo was read as testimony (QC-2) and the claim measured on the one save of the operator's own
+  IMS in the repo: the builder read the focus's OWN early finish (two years from the network finish), SSI's export
+  matched the tool's stored dates on 76 of 76 members — refuted. The census that followed found the real class: the
+  engine's logic-only early finish disagrees with the file's stored Finish on 50 of 1,723 activities (up to 106 days),
+  and the series printed that logic-only date beside drivers measured on the stored axis, unlabelled, next to a
+  network-finish series of the same shape. The first threshold rule for "do they disagree" used a wall-clock window and
+  called a Friday-17:00 / Monday-08:00 milestone a day apart; the same-instant test was red-first on it.
+- **What worked.** Red-first by name (8 of 10), the fix on the stored Finish with the disagreement measured on the
+  CPM's own ruler, two SSI oracles on the real IMS in `-m parity`, a 7 / 7 mutation battery (the memo's allegation as a
+  mutant → both oracles red), and `-m parity` 118 / 0 as the executable answer to "prove the numbers match".
+- **The lessons.** (1) A model explaining its own mistake will produce a mechanism that fits its story, not the code —
+  measure before adopting it, and build the alleged defect as a mutant so the test that would have caught it exists.
+  (2) Two per-version date series in one prompt must differ in shape and say whose date they carry. (3) Drivers and the
+  finish beside them must sit on one axis; the census says how often the other axis bites. (4) "Do two instants
+  disagree" is a question for the project working-minute axis, never a wall-clock window. (5) The answer to "prove
+  parity" is the gate's own count and its stated scope — not prose. (6) Rebuild the wheel after the LAST edit.
+
 ### 2026-09-15 (d) — a verdict quoted on the page is evidence: a server cannot call an unrecognised credential "expired", so one line settled the key path and the key's state; and "replaced" for an identical paste is a false statement of change (ADR-0496, OR-19)
 
 - **What happened.** The v1.0.262 screenshot carried the gateway's own reason — *Expired Key, expiry 2026-09-12
