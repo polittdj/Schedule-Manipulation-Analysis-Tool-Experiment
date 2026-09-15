@@ -175,9 +175,13 @@ def test_hard_file_crews_and_leveling_delays_are_what_the_engine_honours() -> No
 
 # --- Project2 / Project5: the leveled Fuse §E goldens ------------------------------------------
 
+# tf_n RE-PINNED 65 → 106 and 95 → 99 on 2026-09-14 (R-49, ADR-0490): the importer now infers the
+# zero the MPXJ writer dropped on every Critical activity whose ``TotalSlack`` element is absent
+# (41 on Project2, 4 on Project5), so the stored-slack population grows by exactly those — and
+# tf_exact grows by the same, because the engine's pure-logic float is 0 for every one of them.
 _PROJECTS = [
-    ("project2_5/Project2.mspdi.xml", dt.datetime(2027, 9, 14, 17, 0), 65, 124),
-    ("project2_5/Project5.mspdi.xml", dt.datetime(2028, 1, 26, 17, 0), 95, 126),
+    ("project2_5/Project2.mspdi.xml", dt.datetime(2027, 9, 14, 17, 0), 106, 124),
+    ("project2_5/Project5.mspdi.xml", dt.datetime(2028, 1, 26, 17, 0), 99, 126),
 ]
 
 
@@ -196,9 +200,13 @@ def test_leveled_goldens_reproduce_the_stored_finish_and_every_stored_slack(
 
 # --- the Large Test Files: eighteen crew calendars that differ only by holidays, unmoved -------
 
+# (tf_exact, tf_n) RE-PINNED (842, 1022) → (844, 1024) and (668, 936) → (730, 998) on 2026-09-14
+# (R-49, ADR-0490): the inferred zeros — 2 on Large Test File, 62 on File2, every one a Critical
+# activity whose element the MPXJ writer dropped — join the stored-slack population, and each is
+# reproduced exactly by the engine's own float. The pre-inference figures are the ones on the left.
 _LARGE = [
-    ("fuse_ltf/Large_Test_File.mspdi.xml.gz", 1723, 1569, 842, 1022, 1682),
-    ("fuse_ltf/Large_Test_File2.mspdi.xml.gz", 1722, 1589, 668, 936, 1686),
+    ("fuse_ltf/Large_Test_File.mspdi.xml.gz", 1723, 1569, 844, 1024, 1682),
+    ("fuse_ltf/Large_Test_File2.mspdi.xml.gz", 1722, 1589, 730, 998, 1686),
 ]
 
 

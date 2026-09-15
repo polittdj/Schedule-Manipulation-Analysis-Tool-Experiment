@@ -343,6 +343,33 @@ toolbar glyph and figure it carried before** ("don't modify any of the functiona
   grid; a class extractor that stopped at the first space read `"cd-score-bar ok"` as clean; and a
   prose word-search flagged the bar's own "checks pass". **Grep the artifact FIRST** for any string
   you are about to assert absent — `cal d` lives inside the CUI notice's "technical data".
+- **A mock's status-date selector is ported as NAVIGATION to where that version's state is set,
+  never as a client-side state** (ADR-0489, /margin — the eleventh page, the third and LAST Control
+  screen): the executed artboard's `v0`…`v5` chips were DRIVEN and re-pointed every KPI tile to the
+  clicked status date (`7 wd` → `44 wd`) — a selector STATE, and "don't modify any of the
+  functionality" is the standing rule. The page serves one `<a class="cd-chip">` per solvable version
+  (the SAME population rule the provenance chip uses — `_solvable_versions_keyed`, one function
+  projected two ways, so a chip can never name a version that contributes no bar) linking to
+  `/analysis/<key>`, where that version's margin set is confirmed (the mock's "Which activities ARE
+  margin?" card IS that page's per-version form and stays there); no chip is `on`, and the pill names
+  the version the takeaway and the tiles already read — built from the SAME `months` list as the
+  takeaway, so the two cannot disagree. A mock's ⓘ callout that repeats a glossary the page already
+  carries inside a panel is that glossary HOISTED to the masthead as a `.cd-block cd-callout` (moved,
+  never duplicated — a count pin; the block is the one frame, the `<details>` inside it loses its
+  own). Two chart panels of one viewBox each go into an EQUAL two-column grid (`cd-grid-11`, the
+  mock's `1fr 1fr`; the SVGs scale with `width: 100%`), so the geometry pin reads each panel's SVG
+  and every child of its head strip against the panel's rect — the whole-series provenance chip is
+  the element that would overrun a half-width head. A mock sentence that is TRUE of the engine
+  (`_erosion` extrapolates only on a negative slope) may become the panel's own read-me line, proven
+  on the fixture that exercises the rule (a growing margin → no zero date, a `—` tile); a mock's "no
+  second simulation" is FALSE where the panel runs the SRA on demand (as on /scorecards), and a mock's
+  ON / OFF toggle for an overlay the page draws whenever its dates are entered has no state to toggle.
+  Two red-first lessons: a chip-effect test that LOOPS over the chips passes on a page with none —
+  assert the count first; and "Where it lands" is the chrome's own chapter link, so it can prove no
+  footer absent (grep the artifact first, AGAIN). A battery lesson: a pin that compares a helper's
+  output to its own output in the page (`_margin_rate_control(30.0) in page`) proves the page EMBEDS
+  the helper verbatim, not that the helper is unchanged — the helper's bytes are pinned by their own
+  modules, and the mutant for the embedding pin is a MODIFIED embedding.
 - **A hidden tooltip box is still scrollable overflow** (UI-03, WP8 / ADR-0472): `[data-sf-hint]::after`
   is absolute, 340 px wide, `visibility:hidden` — on a right-aligned host (every `.viz-controls` row's
   Reset-view button, the family's strip included) it extends past the viewport and the document scrolls

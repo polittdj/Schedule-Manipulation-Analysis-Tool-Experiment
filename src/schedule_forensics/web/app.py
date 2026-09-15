@@ -619,6 +619,7 @@ from schedule_forensics.web.launch import _quick_action_html as _quick_action_ht
 # ``web/margin.py`` now, extracted verbatim. Same ``X as X`` re-export idiom.
 from schedule_forensics.web.margin import _band_payload as _band_payload
 from schedule_forensics.web.margin import _margin_band_control as _margin_band_control
+from schedule_forensics.web.margin import _margin_cursor_strip as _margin_cursor_strip
 from schedule_forensics.web.margin import _margin_dashboard_body as _margin_dashboard_body
 from schedule_forensics.web.margin import _margin_dashboard_data as _margin_dashboard_data
 from schedule_forensics.web.margin import _margin_dashboard_for as _margin_dashboard_for
@@ -626,6 +627,7 @@ from schedule_forensics.web.margin import _margin_dashboard_header as _margin_da
 from schedule_forensics.web.margin import _margin_rate_control as _margin_rate_control
 from schedule_forensics.web.margin import _margin_risk_panel as _margin_risk_panel
 from schedule_forensics.web.margin import _solvable_scoped_versions as _solvable_scoped_versions
+from schedule_forensics.web.margin import _solvable_versions_keyed as _solvable_versions_keyed
 from schedule_forensics.web.margin import _wmpd_label as _wmpd_label
 
 # ADR-0372 (phase 3, slice 8): Mission Control's wall body - the tile mosaic, the verdict

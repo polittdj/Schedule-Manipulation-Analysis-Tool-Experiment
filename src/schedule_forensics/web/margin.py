@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+from urllib.parse import quote
 
 from schedule_forensics.engine.cpm import CPMError, CPMResult
 from schedule_forensics.engine.margin_dashboard import (
@@ -54,12 +55,13 @@ from schedule_forensics.web.state import SessionState
 # ── Executive Margin Dashboard (NASA Margin/Contingency Burn-Down + Margin Erosion Trend) ──────
 
 
-def _solvable_scoped_versions(st: SessionState) -> list[tuple[str, Schedule, CPMResult]]:
-    """Loaded versions oldest→newest whose network solves, each as (label, scoped schedule,
-    cpm) — the ONE population rule the margin dashboard computes from AND the provenance chip
-    describes (codex-review round, ADR-0327 addendum: a chip built from the raw loaded list
-    could name an unschedulable version that contributes no row or chart point)."""
-    versions: list[tuple[str, Schedule, CPMResult]] = []
+def _solvable_versions_keyed(st: SessionState) -> list[tuple[str, str, Schedule, CPMResult]]:
+    """Loaded versions oldest→newest whose network solves, each as (session key, label, scoped
+    schedule, cpm) — the ONE population rule the margin dashboard computes from, the provenance
+    chip describes AND the design's cursor strip links (ADR-0489): a chip built from the raw
+    loaded list could name an unschedulable version that contributes no row or chart point
+    (codex-review round, ADR-0327 addendum)."""
+    versions: list[tuple[str, str, Schedule, CPMResult]] = []
     for key, raw in st.ordered_versions():
         try:
             a = st.analysis_for(key, raw)
@@ -67,8 +69,15 @@ def _solvable_scoped_versions(st: SessionState) -> list[tuple[str, Schedule, CPM
             continue
         if not a.cpm.timings and not non_summary(raw):  # CPM-04 (ADR-0467): an activity-less FILE
             continue
-        versions.append((raw.source_file or raw.name, a.scoped, a.cpm))
+        versions.append((key, raw.source_file or raw.name, a.scoped, a.cpm))
     return versions
+
+
+def _solvable_scoped_versions(st: SessionState) -> list[tuple[str, Schedule, CPMResult]]:
+    """(label, scoped schedule, cpm) per solvable version — :func:`_solvable_versions_keyed`
+    without the session key: the shape ``compute_margin_dashboard`` takes and the provenance
+    chip describes. One population rule, projected."""
+    return [(label, sch, cpm) for _key, label, sch, cpm in _solvable_versions_keyed(st)]
 
 
 def _margin_dashboard_for(st: SessionState) -> MarginDashboard:
@@ -79,6 +88,47 @@ def _margin_dashboard_for(st: SessionState) -> MarginDashboard:
         target_uid=st.target_uid,
         gold_rule_per_year=st.margin_rate,
         margin_uids=st.confirmed_margin_union(),
+    )
+
+
+def _margin_cursor_strip(st: SessionState, d: MarginDashboard) -> str:
+    """The Claude Design cursor strip, served as NAVIGATION (ADR-0489, in the ADR-0470 / ADR-0475
+    form): one ``.cd-chip`` LINK per solvable version, oldest first, to that version's analysis
+    page — where its margin set is confirmed or reset, because the confirm form is per version
+    and lives there — plus the family's ``vN · file · DD`` pill naming the version the takeaway
+    and the KPI tiles read (the LATEST dated one) and a ``cd-note`` that says so.
+
+    The artboard's chips SELECT the status date its tiles show. A selector is a new client-side
+    state on a testimony surface (the tiles would read one version while the takeaway reads
+    another), so it is not built here — priced, never blind — and no chip is ``on``: nothing on
+    this page is one version's. Served only with two or more solvable versions (one version
+    renders exactly as before); chips carry no id and no census family word (the control
+    census recognises steppers by id + className, ADR-0470)."""
+    versions = _solvable_versions_keyed(st)
+    if len(versions) < 2:
+        return ""
+    chips = "".join(
+        f'<a class="cd-chip" data-idx="{i}" href="/analysis/{quote(key, safe="")}" '
+        f'title="{_e(key)}" data-no-i18n>v{i + 1}</a>'
+        for i, (key, _label, _sch, _cpm) in enumerate(versions)
+    )
+    # the pill names the month the takeaway reads (``_margin_dashboard_header``'s ``dated[-1]``)
+    # — the same list, the same date, so the two can never disagree
+    dated = [i for i, m in enumerate(d.months) if m.status_date is not None]
+    pill = ""
+    if dated and len(d.months) == len(versions):
+        i = dated[-1]
+        pill = (
+            f'<span class="muted cd-pill" data-no-i18n>v{i + 1} &middot; {_e(versions[i][1])} '
+            f"&middot; DD {_mdY(d.months[i].status_date)}</span>"
+        )
+    return (
+        '<div class="viz-controls cd-cursor" id=marginCursor>'
+        f"<span class=cd-chips>{chips}</span>{pill}"
+        '<span class="muted cd-note">One margin set per loaded version &mdash; a chip opens that '
+        "version&rsquo;s analysis page, where its margin activities are confirmed or reset; "
+        "nothing on this page is hidden behind a chip, and the pill names the version the "
+        "takeaway and the tiles read.</span></div>"
     )
 
 
@@ -379,6 +429,18 @@ def _margin_dashboard_body(st: SessionState) -> str:
     (burn-down + erosion trend), the per-version table, and the embedded dataset
     margin_dashboard.js reads.
 
+    Since ADR-0489 the page wears the Claude Design "Control Margin Dashboard" layout, every id,
+    form byte, panel, glyph and figure unchanged: the masthead (takeaway · lede · the eight
+    tiles) leads; the glossary the burn-down panel carried is the artboard's ⓘ callout (a
+    ``.cd-block``, never a panel); the cursor strip follows as navigation
+    (:func:`_margin_cursor_strip`); the export bar and the two operator forms sit in the options
+    position, byte for byte; the two chart panels go VERBATIM into the artboard's equal
+    two-column grid (``cd-grid-11``); the risk panel and the per-version table follow full width.
+    The erosion panel's read-me gains the one mock sentence that is TRUE of the engine (a flat or
+    growing margin yields no zero-margin date — ``_erosion`` extrapolates only on a negative
+    slope); the mock's KPI selector, confirm card, ▦ DATA drawer, "no second simulation" note and
+    verdict pill are refused by name in the ADR.
+
     Panel contract (rank 12 toolbar sweep, ADR-0327): the two charts and the per-version table
     wear the headline strip + tools + the whole-series provenance chip, with ⤓ EXCEL on all
     three pointing at the ONE existing margin workbook (/export/xlsx/margin — the per-version
@@ -432,9 +494,16 @@ def _margin_dashboard_body(st: SessionState) -> str:
     fit = f" (R&sup2; {r2:.2f})" if r2 is not None else ""
     return (
         _margin_dashboard_header(d)
+        # the artboard's ⓘ callout: the page's own glossary, hoisted out of the burn-down panel
+        # to the masthead as a block — the promotion census pins the panel count
+        + '<div class="cd-block cd-callout">'
+        + _margin_terminology()
+        + "</div>"
+        + _margin_cursor_strip(st, d)
         + _export_bar("margin")
         + _margin_rate_control(st.margin_rate)
         + _margin_band_control(st)
+        + '<div class="cd-grid cd-grid-11">'
         + '<div class="panel" data-export="/export/xlsx/margin">'
         + _panel_head(
             "Margin &amp; Contingency Burn-Down",
@@ -442,7 +511,6 @@ def _margin_dashboard_body(st: SessionState) -> str:
             prov=prov,
             h2_attrs=" data-no-i18n",
         )
-        + _margin_terminology()
         + '<p class="muted" data-no-i18n>Per status date: effective schedule <b>margin</b> (work days) '
         "stacked with <b>contingency</b> (weekends + holidays to the target), against the NASA "
         "Gold-Rule requirement line. A red bar is a month where margin has fallen below the "
@@ -463,8 +531,11 @@ def _margin_dashboard_body(st: SessionState) -> str:
         )
         + f'<p class="muted" data-no-i18n>Effective margin (work days) over the status dates with a '
         f"least-squares erosion line extrapolated to zero{fit}. The projected zero-margin date is "
-        "the honest linear read of the current trend, not a commitment.</p>"
+        "the honest linear read of the current trend, not a commitment. A flat or growing margin "
+        "yields no zero-margin date &mdash; the projection is suppressed rather than extrapolated "
+        "backwards.</p>"
         '<div class="chart-host" id="marginErosionChart"></div></div>'
+        + "</div>"
         + _margin_risk_panel(st)
         + '<div class="panel" data-export="/export/xlsx/margin">'
         + _panel_head(
