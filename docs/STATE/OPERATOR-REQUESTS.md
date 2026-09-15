@@ -222,6 +222,38 @@ per-unit rotation. **Every remaining open item on this page is operator-owned.**
 
 ## 2026-09-12 — the approved gateway refuses a SAVED key on the availability probe (HTTP 401; the AI Settings screenshot, then two PowerShell runs on the NASA machine); "I want the AI setup to be as user friendly and simple as possible."
 
+### OR-17 — "This is what I am getting when I try and activate the AI models approved for ITAR and CUI. I input the API code as I always have and it doesn't work. I also have no clue what 'Local server API token (LM Studio "Require Authentication" …)' means or does. This is new. … solve in the next session by getting to the root cause and creating tests, pass and fail, and testing your solution in a sandbox environment until you find a solution that fixes the problem." · `OPEN — FIRST in the next session (reported 2026-09-15, screenshot of /settings)`
+
+**What the operator's screen shows (the settings page, no schedule content):** Backend "Approved AI
+gateway"; endpoint `https://proxy.fast.luna.nasa.gov` with the approval box checked; the Gateway API
+key field reads "(a key is saved — leave blank to keep it)"; the red panel reads "Approved-gateway AI
+is OFF — could not reach https://proxy.fast.luna.nasa.gov: server returned HTTP 401. The gateway
+answered but requires authentication: paste your organization-issued key … If a saved key still gets
+this, the key may be expired or not yet entitled to this gateway"; the Model row reads
+"qwen2.5:7b-instruct — not installed · not reachable: server returned HTTP 401"; "Active backend:
+null · installed models: null". The page ALSO shows the Ollama endpoint, the OpenAI-compatible
+endpoint and the LM Studio token field at the same time as the gateway fields — ADR-0488 said AI
+Settings shows one backend at a time, so either the installed build predates v1.0.257 or the
+one-backend rule regressed; **the installed version is UNVERIFIED (the banner is not in the
+screenshot) — establish it first.** The banner quotes no gateway reason of its own (ADR-0488's
+"quotes the gateway's own refusal reason" — either absent from the response, or the build predates it).
+
+**The operator says the same key that used to work no longer does.** Nothing here proves the key is
+wrong: the key store's Windows DPAPI branch is UNVERIFIED (carried in every handoff since ADR-0488),
+so a saved key that does not round-trip on Windows (empty or garbled after decryption) would produce
+exactly this 401 with "a key is saved" in the field. That is the first hypothesis to refute or
+confirm, before the header shape (`Authorization: Bearer …` versus what the gateway expects) and
+before the catalog probe (`GET /v1/models` answering 401 while generation would not).
+
+**The directive (the operator's, verbatim intent):** root cause first; tests that FAIL on the
+defect and PASS on the fix; the fix tested in a sandbox (a loopback fake of the gateway that answers
+401 with and without a body / `WWW-Authenticate`, and a fake of the Windows key store) before it is
+implemented; iterate until it is fixed. The LM Studio token field: explain it in one sentence on the
+page or hide it unless the OpenAI-compatible backend is selected — it is the "Require Authentication"
+token of a LOCAL LM Studio server (ADR-0485), sent only to the loopback endpoint, and has nothing to
+do with the gateway. V-4 (the gateway's own reason, via the step-2 PowerShell) remains the one
+measurement only the operator can make; ask for it again, but do not wait on it to start.
+
 ### OR-16 — "I can't log into Opus 4.8 Thinking even if I put in the API Gateway Key." · `SHIPPED IN PART (ADR-0488, v1.0.257): the diagnostics; the simplification is OR-16b, OPEN`
 
 **The operator's evidence (2026-09-12):** AI Settings on v1.0.256 — Backend = Approved AI gateway,
