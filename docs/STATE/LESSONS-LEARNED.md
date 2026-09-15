@@ -435,6 +435,19 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-15 (b) — a surface promised from memory is a claim: read the stylesheet before saying "it prints"; anchor placement pins on the exact tag; a new public name in an extracted module owes the contract its re-export (ADR-0494, OR-18)
+
+- **What happened.** The operator asked for the version at the top of the launch page and agreed to the same
+  chip in the header. The chat reply said the header chip "prints and exports" — base.css hides the header in
+  print, so it does not. The placement pin first anchored on `id=sfBoot`, a substring that occurs earlier in the
+  head, and read the line as misplaced. The new `chrome.tool_version` fired the monolith-split contract because
+  `web.app` did not re-export it.
+- **The lessons.** A promise about a rendered surface is a claim under QC-1 — grep the CSS (print rules included)
+  before making it. A placement pin anchors on the exact tag, never a substring. Every new public name in an
+  extracted view module needs its `X as X` line in `web.app` BEFORE the suite runs, or the contract is the
+  first red. And the brand subtitle is hidden in three of four themes — a chip's host is chosen by measuring
+  all four, not by reading one.
+
 ### 2026-09-15 — the words on a screenshot pin the build when the page carries no version; "the tool's path is verified" means nothing until the REAL transport meets a socket; and a battery's green can be the environment's, not the code's (ADR-0493, OR-17)
 
 - **What happened.** The operator's 401 came back three days after OR-16 shipped its diagnostics. The

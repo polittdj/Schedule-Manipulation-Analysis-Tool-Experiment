@@ -30,7 +30,7 @@ import datetime as dt
 import json
 from dataclasses import dataclass
 
-from .chrome import _compliance_drawer, _e
+from .chrome import _compliance_drawer, _e, tool_version
 from .state import SessionState
 
 #: The em dash the design system requires for "the session cannot supply this". The LITERAL
@@ -174,6 +174,7 @@ def _launch_html(state: SessionState, *, cui_class: str, cui_text: str) -> str:
 </head><body class=boot-body>
 <div class="cui-banner {cui_class}" data-no-i18n>{cui_text}</div>
 {drawer}
+<div class=boot-version data-tool-version data-no-i18n title="The installed build of this tool — the version the running program reports">{_e(tool_version())}</div>
 <div id=sfBoot>
 <canvas id=sfBootCanvas aria-hidden=true></canvas>
 <div class=boot-stage>

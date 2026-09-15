@@ -169,6 +169,16 @@ html[data-theme=daylight], html[data-theme=light] {
   text-align: left;
   min-width: 0;
 }
+/* OR-18 (ADR-0494): the installed build, first thing under the compliance chrome */
+.boot-version {
+  font-family: ui-monospace, "IBM Plex Mono", Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: .14em;
+  color: var(--boot-muted);
+  text-align: center;
+  padding: 6px 12px 0;
+}
+.boot-version::before { content: "BUILD "; }
 .boot-tel-k {
   font-family: ui-monospace, "IBM Plex Mono", Consolas, monospace;
   font-size: 9px;

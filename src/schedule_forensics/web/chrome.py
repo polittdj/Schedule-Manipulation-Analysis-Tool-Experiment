@@ -33,6 +33,15 @@ try:  # the installed package version, used to cache-bust static asset URLs on u
     _ASSET_VERSION = importlib.metadata.version("schedule-forensics")
 except importlib.metadata.PackageNotFoundError:  # running from a raw source tree
     _ASSET_VERSION = "dev"
+
+
+def tool_version() -> str:
+    """The installed package version every page states (OR-18, ADR-0494) — read through this
+    accessor at RENDER time (never bound at import) so a test can prove the chip is not a
+    literal. "dev" when the package is not installed (a source-tree run)."""
+    return _ASSET_VERSION
+
+
 #: /static/<asset> not already carrying a query — rewritten to /static/<asset>?v=<version> at the
 #: page-render boundary. Deployed installs serve a FIXED port, so the browser cache origin
 #: persists across upgrades; without a versioned URL a browser may serve a heuristically-cached
@@ -112,6 +121,7 @@ title="POLARIS² — Program Oversight &amp; Logic Analysis for Risk &amp; Integ
 </svg>
 <span class=brand-sub>Program Oversight &amp; Logic Analysis for Risk &amp; Integrity of Schedules</span>
 </h1>
+<span class=brand-ver data-tool-version data-no-i18n title="The installed build of this tool — the version the running program reports">{{ build_version }}</span>
 <input type=checkbox id=navToggle class=nav-toggle aria-label="Toggle navigation menu">
 <label for=navToggle class=nav-burger title="Menu" data-no-i18n><span aria-hidden=true>&#9776;</span></label>
 {{ nav }}
@@ -1379,6 +1389,8 @@ def _page(
                 # reflected-XSS in <title> (audit F-06 / ADR-0130). The CSP allows 'unsafe-inline', so
                 # escaping — not CSP — is the barrier; do NOT pass raw schedule-derived text as `title`.
                 title=_e(title),
+                # OR-18 (ADR-0494): every page pins its build — read at render time
+                build_version=_e(tool_version()),
                 nav=_render_nav(state),
                 banner=_banner_html(state),
                 body=(

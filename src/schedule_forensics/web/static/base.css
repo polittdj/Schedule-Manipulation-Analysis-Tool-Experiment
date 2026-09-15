@@ -290,6 +290,9 @@ html[data-theme=light]{--grid-dot:rgba(60,84,120,.14)}
 header{background:var(--header-bg);border-bottom:3px solid var(--header-line)}
 header h1{color:var(--header-ink);text-shadow:var(--header-shadow)}
 header nav a{color:var(--header-muted)}
+/* OR-18 (ADR-0494): the installed build beside the brand on every page (the header never prints) */
+.brand-ver{display:inline-block;margin:0 0 0 10px;font:600 10px/1 ui-monospace,"IBM Plex Mono",Consolas,monospace;letter-spacing:.12em;color:var(--header-muted);vertical-align:top;white-space:nowrap}
+.brand-ver::before{content:"BUILD "}
 header nav a:hover{color:var(--header-ink)}
 header nav .navform button,header nav #themeToggle{color:var(--header-muted)}
 header nav .navform button:hover,header nav #themeToggle:hover{color:var(--header-ink)}
