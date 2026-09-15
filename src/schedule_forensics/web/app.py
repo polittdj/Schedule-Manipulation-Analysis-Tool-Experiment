@@ -737,6 +737,7 @@ from schedule_forensics.web.scurve import _scurve_status_point as _scurve_status
 # through this re-export (ADR-0351's rule permits either remedy; only a referrer in another
 # extracted module forces ``components.py``).
 from schedule_forensics.web.settings import _BACKEND_PROBE_TTL as _BACKEND_PROBE_TTL
+from schedule_forensics.web.settings import _CREDENTIAL_USERS as _CREDENTIAL_USERS
 from schedule_forensics.web.settings import _OLLAMA_ENV_VARS as _OLLAMA_ENV_VARS
 from schedule_forensics.web.settings import _RUNTIME_STATUS_NOTES as _RUNTIME_STATUS_NOTES
 from schedule_forensics.web.settings import _ai_backend_explainer as _ai_backend_explainer
@@ -748,6 +749,7 @@ from schedule_forensics.web.settings import _model_installed as _model_installed
 from schedule_forensics.web.settings import _num_ctx_cost_note as _num_ctx_cost_note
 from schedule_forensics.web.settings import _ollama_or_none as _ollama_or_none
 from schedule_forensics.web.settings import _openai_or_none as _openai_or_none
+from schedule_forensics.web.settings import _receipt_html as _receipt_html
 from schedule_forensics.web.settings import _second_backend as _second_backend
 from schedule_forensics.web.settings import _settings_body as _settings_body
 from schedule_forensics.web.settings import _settings_receipt as _settings_receipt
