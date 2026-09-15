@@ -18319,3 +18319,20 @@ called a flake turned out to have a mechanism (ADR-0442 UI-02, ADR-0443, ADR-046
   identity as the operator (`GIT_AUTHOR_*` / `GIT_COMMITTER_*`); commits now carry the noreply identity via a
   per-command override; a force-push-with-lease to re-sign two pushed commits was DENIED by the classifier and
   not worked around (the operator may allow it or leave the badge; the squash supersedes it).
+
+### 2026-09-15 — follow-up: PR #678 (ADR-0494), the final-tree suite and parity, main's run for the #677 squash, the first CI verdict
+
+- **PR:** **draft #678**, branch `claude/dazzling-ptolemy-i1zig0`, head **`7f5dd32f`** (one commit on `18fa3ffb`,
+  committed under the `noreply@anthropic.com` identity). Not marked ready, not merged — the operator's.
+- **The full suite on the final tree (the working tree committed as `7f5dd32f`; the log's HEAD line reads the
+  base `18fa3ffb` because the run was launched before the commit): 5,422 passed / 5 skipped / 0 failed in
+  32:31.** `-m parity`: 98 passed in 3:09. `pytest --collect-only`: 5,427.
+- **CI on `7f5dd32f` at this write:** CI run 34990205991 — `cui-guard` green (15:42:30Z), `test (3.11)`,
+  `test (3.13)`, `floor`, `browser` in progress; installer-smoke run 34990205988 — `linux` green (15:42:58Z),
+  `windows` in progress. Eight checks apply (installers changed). The 16:43Z check-in reads the verdict on the
+  FINAL head — this docs push restarts the run.
+- **`main`'s own CI run for the #677 squash `18fa3ffb`: run 1869 (34989013795), IN PROGRESS at 15:31:33Z** —
+  the next session reads its conclusion first (a red cell on a tree identical to the green PR head `1aacd3be`
+  is the runner's claim; compare tree hashes first). Its installer-smoke run was not read.
+- **Token guardian at this entry: ~84 % of the assumed wall** — the session ends after this push; the next
+  unit (R-47) starts in a fresh session from the kickoff prompt.
