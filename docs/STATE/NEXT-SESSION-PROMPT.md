@@ -1,38 +1,49 @@
 # Kickoff prompt — next session
 
-**R-61 is SETTLED — ADR-0501, on the repository's own 29 `.mpp` files. Do NOT re-open it and do
-NOT re-run its census expecting a different answer.** ADR-0500 closed it on the 15 goldens and
-deferred a residual reading "only a production IMS can settle it"; that was a claim about the
-GOLDENS wearing the clothes of a claim about the world. The repo carries **29** `.mpp` files —
-including `24Hour Calendar.mpp`, `Hard_File_updated4 24 hour calendar.mpp`, `Jacked Up Schedule
-1/2`, `Project3/4`, the `Project5_FX0*` and `TP4_DataCenter` tamper sets and the
-`Large Test File*.mpp` family, none of which became a golden. Converted through the vendored MPXJ
-converter into the SCRATCHPAD (never the repo — Law 1), artifacts asserted to EXIST, never the
-exit code.
+**#691 IS OPEN AND DRAFT — R-57 / ADR-0502, v1.0.268. `main` @ `4d53e070` (#690, merged 19:39:33Z). READ #691's CHECKS TO CONCLUSION FIRST: it touches `installer/**`, so the correct set is EIGHT, not six — `installer-smoke`'s `linux` and `windows` cells DO apply here, unlike the last four docs-only PRs.** The operator merges; never mark ready, never merge, never approve.
 
-Measured: **483** tasks are placed by an off-pattern ratio-1.0 crew leg; the recorded window and
-the engine's occupancy (duration + ADR-0491 gaps) are **byte-identical on 369**; nearly all the
-rest differ by **1–28 MINUTES** (gap granularity → **R-65**, registered not taken); on the 18
-UIDs a leg-alone probe matches neither, the **shipped solve is within a day on 17**. The corpus's
-ONE decisive case, `Large_Test_File2` **UID 5263** — *started*, so its stored Finish really is a
-schedule; window 9,600 min past the duration; leg alone four weeks early — is **EXACT in the
-shipped solve** and disclosed on **`date_driven`**: a stored date places it, not the leg.
+**R-57 is CLOSED — ADR-0502. A BOOKING's own `Assignment/LevelingDelay` is honoured on that leg
+alone, and it rides ADR-0474 / ADR-0501's TYPE AXIS — do not re-derive it and do not "fix" the
+absorb half.** A leg with its OWN span (`FIXED_UNITS`, ratio < 1) is **PUSHED** by its delay; a leg
+that **SPANS THE TASK** (ratio 1.0) **ABSORBS** it, because the delay lies inside the span it shares
+with the task. On **16 of the 18** absorbing bookings the file's own `Assignment/Finish` IS its
+`Task/Finish`. The row's literal remedy — "delay that leg alone" for everything — was built first,
+measured, and **cost `Large_Test_File` 93 of its 1,666 finishes-within-a-day**, taking UIDs 5266 /
+5267 / 5270 from EXACT to days late. Population: **24 delayed bookings on 17 tasks across 6 of the
+15 goldens**, split 6 push (all Hard_File) / 18 absorb (all Large_Test_File).
 
-**Two corrections to ADR-0500, both measured, do NOT re-inherit its wording:** (a) its refutation
-witness **UID 5231 is recorded-COMPLETE**, so its stored Finish IS its ActualFinish — a record,
-not a schedule — and adjudicates nothing; (b) the engine's leg does NOT "get it right" there but
-lands **eighty days late**, the solve being exact only through ADR-0476's pin. ADR-0500's
-"315 away / 0 toward" **stands** (a different, valid measurement); the sentence explaining UID
-5231 does not.
+Working minutes of the leg's own calendar; read to the **NEAREST** minute (tenths of a minute in
+the file; 17/24 against MS Project's own `Assignment/Start`, truncation 14); part of the leg's
+**dedup identity**; never read on a MATERIAL / COST booking (ADR-0487); and it does **NOT move the
+task's start**. Disclosed on `CPMResult.assignment_leveling_driven` only when the delayed leg
+PLACES the finish. Measured: every golden byte-identical except `Hard_File_updated` (exact finishes
+58 → 61, exact stored slack 93 → 99); UID 398 **EXACT 2026-08-27 11:59**; UID 188 from 15 h 45 m
+early to **66 seconds**.
 
-**Traps this unit paid for:** **a residual must name the POPULATION it was measured against** or
-it reads as a statement about the world · **a completed task cannot adjudicate a scheduling
-rule** — ask whether its date is a schedule or a measurement before using it as an oracle · **an
-instrument that cannot detect its own failure reports a confident zero** — pairing by calendar
-identity said "no window" for all 483; pair by index and `assert len(pairs) == len(legs)` ·
-**a survivor is only a survivor once the cut is proved to be a MUTATION** — a stub inserted
-before the real definition loses the name · **a leg-alone probe is not the engine** — judge the
-product by the product.
+**R-57's oracle is reached on `Hard_File_updated`, NOT on the base `Hard_File`, and the blocker is
+not leveling — that is R-66.** UID **381** finishes a full working day early on that snapshot
+(08-20 11:59 vs the stored 08-21 11:59); 396 inherits it and 398 lands early by exactly the 240
+working minutes 396 is. ADR-0474's task-delay arithmetic is EXACT on BOTH snapshots when fed the
+stored predecessor finish.
+
+**Registered, NOT taken — do not treat as settled:** **R-66** (above); the **task-level** reader
+still TRUNCATES (`// 10`) where the assignment reader rounds — the inconsistency is named in
+ADR-0502 and **was never measured**, so measure it before changing it (it is pinned by many
+goldens); and a task whose bookings are **ALL** delayed would read its start early — **no witness
+exists anywhere in the corpus**, so it is UNVERIFIED, not wrong.
+
+**Traps this unit paid for:** **an audit row's REMEDY is testimony too** — R-57's "delay that leg
+alone" was right for 6 of 24 bookings and a regression for 18; price a remedy against the whole
+population before writing a line of it, the census takes seconds · **a SURVIVOR is worth more than
+the eight cuts that go red** — M6 (the BACKWARD pass) survived and turned out to be worth three
+exact stored slacks (UIDs 321 / 381 / 396) · **a line that cannot fire must be DELETED, not shipped
+with a comment** — and "the corpus is byte-identical without it" is weak evidence when the corpus
+never reaches the line; a 31,479-combination sweep is what settled it · **a disclosure that
+over-claims is worse than none** — ranking legs by the project-start sort order falsely named a task
+whose delay is inert · **`ruff format` after the wheel build breaks the lockstep pin**; rebuild and
+re-run rather than inferring the one-test delta.
+
+**Baselines to attribute against: full suite 5,508 passed / 0 failed / 7 skipped; `-m parity` 150 / 0. Version 1.0.268; highest ADR 0502; schema 2.15.0.**
 
 
 **R-61 is CLOSED — ADR-0500, and it is CLOSED as REFUTED. Do not re-open it, do not implement "a
@@ -260,7 +271,7 @@ inside a fixed cell · measure every theme · two errors can CANCEL · an inheri
 Playwright's virtual mouse SURVIVES `goto()` — park it · an `assert` in `src/` is a house-style violation ·
 a design mock's status word, decomposition and export label are claims about the ENGINE · MS Project's
 stored dates are a per-activity CPM oracle · `LevelingDelay` is tenths of a minute · MPXJ writes no zero ·
-`Large_Test_File.mpp` ≠ `Large Test File.mpp`.
+`Large_Test_File.mpp` ≠ `Large Test File.mpp` · an audit row's REMEDY is testimony too — price it against the whole population before writing it · a MUTATION SURVIVOR is worth more than the cuts that go red · a line that cannot fire must be deleted, not shipped with a comment, and "the corpus is byte-identical without it" is weak when the corpus never reaches the line · `ruff format` after the wheel build breaks the lockstep pin.
 ⇢ Measured-false / deliberately held — do NOT re-chase: (ADR-0498:) the exported `.pptx` as a malformed package (refuted — the refusing LibreOffice had no presentation import filter and refused a PowerPoint-authored deck too) · `presProps`/`viewProps`/`tableStyles` as the CAUSE of anything (they are written now, and LibreOffice's import is byte-identical with and without them) · re-creating "LibreOffice 7" (the mechanism is a missing filter, not a version) · `python-pptx` as a second reader (a dev dep for one test, and it is not PowerPoint) · (ADR-0496:) the tool's gateway key path as the cause of the
 401 (refuted by the gateway's own "Expired Key" and on the wire) · any code that "renews" a key · a key-expiry
 countdown (the tool learns the expiry only when refused) · (ADR-0495:) re-gating the SPI(t) population on a
