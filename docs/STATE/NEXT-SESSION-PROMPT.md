@@ -1,6 +1,6 @@
 # Kickoff prompt — next session
 
-**#691 IS OPEN AND DRAFT — R-57 / ADR-0502, v1.0.268. `main` @ `4d53e070` (#690, merged 19:39:33Z). READ #691's CHECKS TO CONCLUSION FIRST: it touches `installer/**`, so the correct set is EIGHT, not six — `installer-smoke`'s `linux` and `windows` cells DO apply here, unlike the last four docs-only PRs.** The operator merges; never mark ready, never merge, never approve.
+**#691 IS MERGED — `main` @ `2c549d8d`, squash TREE-IDENTICAL to the reviewed head `96a987b1` (tree `4f5633e0…` on both), EIGHT of eight green on that head (eight because it touches `installer/**`), zero review threads. `main`'s OWN runs for `2c549d8d` are ALREADY SETTLED and read to conclusion: CI 1906 (`35160954016`) SUCCESS all six jobs, installer-smoke 746 (`35160953983`) SUCCESS 23:13:38Z — that second run EXISTS because this merge rebuilt the installers, the contrast with #689's docs-only merge where its absence was correct. Nothing about `2c549d8d` is outstanding; do NOT re-read it. The branch was restarted on the squash and the session unsubscribed.**
 
 **R-57 is CLOSED — ADR-0502. A BOOKING's own `Assignment/LevelingDelay` is honoured on that leg
 alone, and it rides ADR-0474 / ADR-0501's TYPE AXIS — do not re-derive it and do not "fix" the

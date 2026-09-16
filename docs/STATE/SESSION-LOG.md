@@ -18829,3 +18829,16 @@ combinations, 6 landing exactly on a segment end, it never moved a leg finish.
 Shipped ADR-0502, schema 2.15.0, the two test modules (18 pins), the closed R-57 row, the new
 R-66 row, the census 328 → 329, and **v1.0.268** with the wheel and nine installers rebuilt in
 lockstep.
+
+**Follow-up — #691 MERGED and `main`'s own runs read to conclusion.** The operator marked #691 ready
+at 23:08Z and squash-merged it as **`2c549d8d`**; the squash is **TREE-IDENTICAL** to the reviewed head
+`96a987b1` (tree `4f5633e0…` on both, `git rev-parse <sha>^{tree}`). #691 itself was **eight of eight
+green** on `96a987b1` — eight because the diff touches `installer/**`, so `installer-smoke`'s `linux`
+and `windows` cells applied. `main`'s own runs for the squash are **SETTLED**: **CI 1906**
+(`35160954016`) SUCCESS, all six jobs (`cui-guard` 23:08:44Z · `browser` 23:26:22Z, R-52 interop gate
+run-and-not-skipped on `main` itself · `floor` 23:30:01Z · `test (3.13)` 23:39:21Z · `test (3.11)`
+23:54:56Z · `check` 23:55:04Z), and **installer-smoke 746** (`35160953983`) SUCCESS 23:13:38Z. That
+second run EXISTS here and that is the point: this merge rebuilt the installers, where #689's docs-only
+merge correctly had none. Branch restarted with `--prune` + `remote set-head` + `checkout -B`, post-merge
+safety check (`HEAD^{tree}` vs `origin/main^{tree}`) identical, session unsubscribed. Codex posted its
+usage-limit notice on #691 — review cover remains ABSENT.
