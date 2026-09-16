@@ -9,7 +9,9 @@ cell already wears)."""
 from __future__ import annotations
 
 import datetime as dt
+import io
 import re
+import zipfile
 from pathlib import Path
 
 import pytest
@@ -128,9 +130,33 @@ def test_ribbon_matrix_panel_wears_the_contract(client: TestClient, loaded: str)
     assert client.get("/export/xlsx/ribbon").status_code == 200
 
 
+def _panels_by_heading(html: str) -> dict[str, str]:
+    """{panel heading: that panel's own markup} — the /ribbon page carries MORE than one matrix
+    since R-50 (ADR-0499), so every per-row assertion must name its panel.
+
+    Split on the ``<div class=panel`` boundary, never "from an h2 to the next </table>": the page
+    header's own headings sit outside any panel and would otherwise swallow the panel below them,
+    silently attributing one panel's rows to another."""
+    out: dict[str, str] = {}
+    for chunk in re.split(r"<div class=panel[ >]", html)[1:]:
+        heading = re.search(r"<h2[^>]*>([^<]*)</h2>", chunk)
+        if heading is not None:
+            out[heading.group(1)] = chunk.split("</table>", 1)[0]
+    return out
+
+
 def test_ribbon_row_labels_wear_the_left_edge(loaded: str) -> None:
-    """One 3px-edge row label per loaded schedule (k-edge / cite-card family), i18n-inert."""
-    assert loaded.count("<td class=rib-row-label data-no-i18n>") == 2
+    """One 3px-edge row label per loaded schedule, in EVERY matrix panel (k-edge / cite-card
+    family), i18n-inert.
+
+    Counted PER PANEL, not page-wide. The Metric History variants panel (R-50, ADR-0499) is a
+    second matrix over the same two schedules, and a page-wide total of 4 cannot tell "both
+    panels label both rows" from "one panel labels four rows and the other labels none"."""
+    tag = "<td class=rib-row-label data-no-i18n>"
+    panels = _panels_by_heading(loaded)
+    for title in ("Schedule Quality Ribbon", "Metric History variants"):
+        assert title in panels, (title, sorted(panels))
+        assert panels[title].count(tag) == 2, (title, panels[title].count(tag))
     css = (STATIC / "app.css").read_text(encoding="utf-8")
     assert "td.rib-row-label { border-left: 3px solid var(--accent); font-weight: 600; }" in css
     # the restyle is token-pure: the new rib rules carry no hex/rgb literals
@@ -206,3 +232,104 @@ def test_ribbon_export_writes_na_sentinel_for_empty_float_population() -> None:
     assert sheet.count("<t>—</t>") == 2
     # …and no fabricated "0" mean/max float value is present in the data row
     assert "all-complete" in sheet
+
+
+# =====================================================================================
+# R-50 (ADR-0499) — the reference library's same-named Metric History variants
+# =====================================================================================
+def test_the_metric_history_variants_render_as_their_own_panel(loaded: str) -> None:
+    """A reader holding a Metric History report can find all three figures on the page, each
+    under a heading that names the filter making it a different metric from its ribbon tile."""
+    panels = _panels_by_heading(loaded)
+    assert "Metric History variants" in panels, sorted(panels)
+    panel = panels["Metric History variants"]
+    for label, attr in (
+        ("Insufficient Detail™ (incomplete, no milestones)", "insufficient_detail_history"),
+        ("Merge Hotspot (Predecessors &gt;2, planned only)", "merge_hotspot_predecessors_gt2"),
+        ("Total # Predecessor Lags (planned only)", "total_predecessor_lags"),
+    ):
+        assert label in panel, label
+        assert f'data-metric="{attr}"' in panel, attr
+    # the explainer states WHY the two disagree — the row exists to stop a cross-report read
+    assert "read each against its own report row, never across" in panel
+    assert "will normally disagree" in panel
+
+
+def test_the_variant_cells_carry_the_engine_s_own_counts(client: TestClient) -> None:
+    """Render-verify: the figure on the page IS the engine's count for that file, not a
+    re-derivation in the view layer."""
+    from schedule_forensics.engine.metrics import compute_schedule_quality
+    from schedule_forensics.importers.mspdi import parse_mspdi
+
+    data = (GOLD / "Project5.mspdi.xml").read_bytes()
+    client.post("/upload", files={"files": ("Project5.mspdi.xml", data, "text/xml")})
+    page = client.get("/ribbon").text
+    quality = compute_schedule_quality(parse_mspdi(GOLD / "Project5.mspdi.xml"))
+    for attr in (
+        "insufficient_detail_history",
+        "merge_hotspot_predecessors_gt2",
+        "total_predecessor_lags",
+    ):
+        cell = re.search(
+            rf'<td class="rib-cell[^"]*" data-file="[^"]*" data-metric="{attr}"[^>]*>([^<]*)</td>',
+            page,
+        )
+        assert cell is not None, attr
+        assert cell.group(1) == str(quality[attr].count), (attr, cell.group(1))
+
+
+def test_the_variant_cells_drill_to_the_activities_behind_the_figure(loaded: str) -> None:
+    """The click-drill's embedded data carries a label AND a UID list for each variant, so the
+    page can name the activities the reference tool marked (R-50's "UID-exact")."""
+    import json
+
+    blob = re.search(
+        r'<script id=sfRibbonDrillData type="application/json">(.*?)</script>', loaded, re.S
+    )
+    assert blob is not None
+    payload = json.loads(blob.group(1))
+    for attr in (
+        "insufficient_detail_history",
+        "merge_hotspot_predecessors_gt2",
+        "total_predecessor_lags",
+    ):
+        assert attr in payload["labels"], attr
+        for file_key, metrics in payload["drill"].items():
+            assert attr in metrics, (file_key, attr)
+
+
+def test_the_variant_panel_excel_target_is_a_live_endpoint(client: TestClient) -> None:
+    """Rank-3 law: the panel's ⤓ EXCEL never points at a dead link, and the workbook it opens
+    carries each variant's HEADER **and the engine's figure under it**.
+
+    Asserting only that the headers are present is not enough — a header with nothing written
+    beneath it survives the column being dropped from the row (the R-50 mutation battery's one
+    survivor, M11): the writer simply emits a shorter row and the header string is still there.
+    So the value is addressed by its own header's column letter.
+    """
+    from schedule_forensics.engine.metrics import compute_schedule_quality
+    from schedule_forensics.importers.mspdi import parse_mspdi
+
+    data = (GOLD / "Project2.mspdi.xml").read_bytes()
+    client.post("/upload", files={"files": ("Project2.mspdi.xml", data, "text/xml")})
+    panel = _panels_by_heading(client.get("/ribbon").text)["Metric History variants"]
+    assert 'data-export="/export/xlsx/ribbon"' in panel
+    book = client.get("/export/xlsx/ribbon")
+    assert book.status_code == 200
+    with zipfile.ZipFile(io.BytesIO(book.content)) as zf:
+        sheet = next(n for n in zf.namelist() if n.startswith("xl/worksheets/"))
+        xml = zf.read(sheet).decode("utf-8")
+    header_cell = dict(
+        (text, ref[:-1])  # "M1" -> column "M"
+        for ref, text in re.findall(r'<c r="([A-Z]+1)"[^>]*><is><t>([^<]*)</t></is></c>', xml)
+    )
+    quality = compute_schedule_quality(parse_mspdi(GOLD / "Project2.mspdi.xml"))
+    for header, attr in (
+        ("Insufficient Detail™ (incomplete, no milestones)", "insufficient_detail_history"),
+        ("Merge Hotspot (Predecessors &gt;2, planned only)", "merge_hotspot_predecessors_gt2"),
+        ("Total # Predecessor Lags (planned only)", "total_predecessor_lags"),
+    ):
+        assert header in header_cell, (header, sorted(header_cell))
+        value = re.search(rf'<c r="{header_cell[header]}2"[^>]*><v>([^<]*)</v></c>', xml)
+        assert value is not None, f"{header}: header written with no figure beneath it"
+        assert value.group(1) == str(quality[attr].count), (header, value.group(1))

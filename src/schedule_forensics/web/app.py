@@ -4777,6 +4777,12 @@ def create_app(
             "Insufficient Detail™",
             "Avg Float (d)",
             "Max Float (d)",
+            # the reference library's same-named Metric History variants (R-50, ADR-0499) — the
+            # /ribbon page shows them in their own panel; the workbook carries them as the last
+            # columns of the same row, each header naming the filter that makes it its own metric
+            "Insufficient Detail™ (incomplete, no milestones)",
+            "Merge Hotspot (Predecessors >2, planned only)",
+            "Total # Predecessor Lags (planned only)",
         )
         body = []
         for key, sch in st.ordered_versions():
@@ -4802,6 +4808,9 @@ def create_app(
                     r.insufficient_detail,
                     "—" if na_floats else r.avg_float_days,
                     "—" if na_floats else r.max_float_days,
+                    r.insufficient_detail_history,
+                    r.merge_hotspot_predecessors_gt2,
+                    r.total_predecessor_lags,
                 )
             )
         if not body:

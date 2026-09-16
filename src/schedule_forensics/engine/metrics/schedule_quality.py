@@ -224,6 +224,87 @@ def compute_schedule_quality(
         offender_uids=tuple(sorted(merge)),
     )
 
+    # ── The Bible's same-named METRIC HISTORY variants (R-50, ADR-0499) ──────────────────────
+    # Three library metrics share a stem with a tile above and are a DIFFERENT metric: the same
+    # formula under a different ``PrimaryFilter``. A reader holding the Metric History report
+    # could not find their figures in the tool at all, because the tool only exposed the tile
+    # (ADR-0473 named the problem; this exposes the variants). Each is published under the
+    # library's own row label with its filter IN the name, so the two are never compared across.
+    # Pinned UID-exact against Fuse's own per-activity X marks in the Detailed Metric Report
+    # (tests/parity/test_fuse_history_variants_oracle.py): Large Test File / File2 read 22 / 21,
+    # 125 / 123 and 2 / 2, with Fuse's own **Record Count** as each population (945 / 919,
+    # 916 / 906, 2 / 2) — the count of rows that contribute a term to the aggregate.
+
+    # "Insufficient Detail™", Bible GUID c71b82fe-006e-42b1-a817-4b8a2cfcf1c4, group
+    # "Quality - Duration": the tile's formula filtered IncludeMilestone=false +
+    # IncludeComplete=false. MEASURED CORRECTION to the ADR-0473 wording repeated above: the
+    # TILE's own entry (GUID a80debf6…) is ALSO IncludeMilestone=false in its PrimaryFilter, so
+    # the discriminator between the two is IncludeComplete alone; only the tile's unused
+    # TripwireFilter carries IncludeMilestone=true. Milestones are excluded here explicitly all
+    # the same — a 0-duration milestone can never clear the 10% bar, but a milestone carrying a
+    # duration could, and the filter is the library's, not an accident of the data.
+    detail_pop = [t for t in tasks if not t.is_milestone and not t.is_complete]
+    detail_hist = tuple(
+        sorted(
+            t.unique_id
+            for t in detail_pop
+            if (t.duration_minutes / (1440 if t.duration_is_elapsed else per_day)) / span_days
+            > 0.10
+        )
+    )
+    out["insufficient_detail_history"] = _pct_result(
+        "insufficient_detail_history",
+        "Insufficient Detail™ (incomplete, no milestones)",
+        len(detail_hist),
+        len(detail_pop),
+        5.0,
+        Direction.LE,
+        detail_hist,
+    )
+
+    # "Merge Hotspot (Predecessors >2)", Bible GUID c5196e05-2c1d-463b-835b-fedcce1c9f86: the
+    # tile's formula filtered IncludeInProgress=false + IncludeComplete=false — PLANNED (not yet
+    # started) activities only. Same >2 threshold, same external-predecessor term; only the
+    # population differs. The Bible's thresholds are colour bands with Fail=false on every one,
+    # exactly like the tile's, so this stays NOT_APPLICABLE rather than inventing a pass/fail.
+    planned = [t for t in tasks if t.is_not_started]
+    merge_planned = tuple(
+        sorted(t.unique_id for t in planned if npred[t.unique_id] >= MERGE_HOTSPOT_MIN_PREDECESSORS)
+    )
+    out["merge_hotspot_predecessors_gt2"] = MetricResult(
+        "merge_hotspot_predecessors_gt2",
+        "Merge Hotspot (Predecessors >2, planned only)",
+        len(merge_planned),
+        len(planned),
+        percent(len(merge_planned), len(planned)),
+        "%",
+        CheckStatus.NOT_APPLICABLE,
+        offender_uids=merge_planned,
+    )
+
+    # "Total # Predecessor Lags", Bible GUID 37c0df8f-17b8-4a1d-913c-e86fd3a8cc54,
+    # ``sum(numberoflags)`` over the planned-only filter. Its Description settles the unit:
+    # "Total number of predecessor relationships with lags in the schedule" — LINKS, where the
+    # ``number_of_lags`` tile above counts distinct ACTIVITIES (8 to this metric's 2 on the Large
+    # Test File). ``population`` is Fuse's Record Count for a SUM metric: the activities that
+    # actually contribute a term, i.e. the offenders themselves — so it is a raw count, never a
+    # percentage of them.
+    planned_ids = {t.unique_id for t in planned}
+    lag_links: Counter[int] = Counter(
+        r.successor_id for r in links if r.lag_minutes > 0 and r.successor_id in planned_ids
+    )
+    lag_carriers = tuple(sorted(lag_links))
+    out["total_predecessor_lags"] = MetricResult(
+        "total_predecessor_lags",
+        "Total # Predecessor Lags (planned only)",
+        sum(lag_links.values()),
+        len(lag_carriers),
+        float(sum(lag_links.values())),
+        "count",
+        CheckStatus.NOT_APPLICABLE,
+        offender_uids=lag_carriers,
+    )
+
     return out
 
 

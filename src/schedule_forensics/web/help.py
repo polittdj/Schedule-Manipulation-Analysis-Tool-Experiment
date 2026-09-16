@@ -404,9 +404,10 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "insufficient_detail",
         "Insufficient Detail",
         "Activities whose (current) duration exceeds 10% of the project's calendar span, every "
-        "status — the reference library's ribbon tile (its Metric History carries a same-named "
-        "variant that leaves completed activities and milestones out; a different metric, "
-        "ADR-0473).",
+        "status — the reference library's ribbon tile. Its Metric History carries a same-named "
+        "variant that leaves completed activities and milestones out: a DIFFERENT metric, "
+        "published here as 'Insufficient Detail™ (incomplete, no milestones)' "
+        "(ADR-0473, ADR-0499).",
         "count(OriginalDuration_workdays / (ProjectFinish - ProjectStart)_days > 0.1) <= 5%",
         _SQ,
     ),
@@ -414,7 +415,10 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "number_of_lags",
         "Number of Lags",
         "Activities with a positive-lag predecessor link — DISTINCT successor activities (the "
-        "Fuse activity scope: a task with two lagged predecessors is ONE), not lag links.",
+        "Fuse activity scope: a task with two lagged predecessors is ONE), not lag links, and "
+        "every status. The reference library's Metric History row 'Total # Predecessor Lags' "
+        "counts LINKS into not-yet-started activities and is a DIFFERENT metric, published here "
+        "as 'Total # Predecessor Lags (planned only)' (ADR-0499).",
         "count(distinct successor activities of lag > 0 links) / activities <= 5%",
         _SQ,
     ),
@@ -430,9 +434,48 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "merge_hotspot",
         "Merge Hotspot",
         "Activities with 3 or more predecessors (a merge point), every status — the reference "
-        "library's ribbon tile (its Metric History row 'Merge Hotspot (Predecessors >2)' counts "
-        "not-yet-started activities only and is a different metric, ADR-0473).",
+        "library's ribbon tile. Its Metric History row 'Merge Hotspot (Predecessors >2)' counts "
+        "not-yet-started activities only and is a DIFFERENT metric, published here as 'Merge "
+        "Hotspot (Predecessors >2, planned only)' (ADR-0473, ADR-0499).",
         "count(predecessors >= 3) / activities",
+        _SQ,
+    ),
+    # --- the reference library's same-named METRIC HISTORY variants (R-50, ADR-0499) ---
+    # Each is a DIFFERENT metric from the same-stemmed tile above: the same formula under a
+    # different library filter. The variant is named in the definition so a reader holding the
+    # Metric History report can find the figure they are looking at, and never compare across.
+    "insufficient_detail_history": _doc(
+        "insufficient_detail_history",
+        "Insufficient Detail™ (incomplete, no milestones)",
+        "The reference library's METRIC HISTORY variant of Insufficient Detail (library GUID "
+        "c71b82fe…, group 'Quality - Duration'): the same 10%-of-span formula as the ribbon tile, "
+        "but scored over NOT-YET-COMPLETE, NON-MILESTONE activities only. It is a different "
+        "metric from the tile, not a different rounding of it — 22 where the tile reads 43 on the "
+        "reference Large Test File — so read each against its own report row.",
+        "count(OriginalDuration_workdays / (ProjectFinish - ProjectStart)_days > 0.1 "
+        "over incomplete non-milestone activities) <= 5%",
+        _SQ,
+    ),
+    "merge_hotspot_predecessors_gt2": _doc(
+        "merge_hotspot_predecessors_gt2",
+        "Merge Hotspot (Predecessors >2, planned only)",
+        "The reference library's METRIC HISTORY row 'Merge Hotspot (Predecessors >2)' (library "
+        "GUID c5196e05…): the same 3-or-more-predecessors formula as the ribbon tile, but scored "
+        "over PLANNED (not yet started) activities only. A different metric from the tile — 125 "
+        "where the tile reads 156 on the reference Large Test File.",
+        "count(predecessors >= 3 over not-started activities) / not-started activities",
+        _SQ,
+    ),
+    "total_predecessor_lags": _doc(
+        "total_predecessor_lags",
+        "Total # Predecessor Lags (planned only)",
+        "The reference library's METRIC HISTORY row 'Total # Predecessor Lags' (library GUID "
+        "37c0df8f…): the number of predecessor RELATIONSHIPS carrying a positive lag into a "
+        "PLANNED (not yet started) activity. Counted in LINKS, where the 'Number of Lags' tile "
+        "counts distinct ACTIVITIES across every status — 2 links where that tile counts 8 "
+        "activities on the reference Large Test File. The denominator shown is the reference "
+        "tool's Record Count for a sum metric: the activities that actually carry a lag.",
+        "sum(count of lag > 0 predecessor links) over not-started activities",
         _SQ,
     ),
     # --- Baseline compliance / Half-Step-Delay (§C) ---

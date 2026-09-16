@@ -1,55 +1,54 @@
 # Kickoff prompt — next session
 
-**R-52 is CLOSED and SHIPPED — PR #684 MERGED 2026-09-16 01:39:53Z, `main` @ `93593ef5` (ADR-0498, v1.0.266). Do not re-open, and do not re-chase the `.pptx` as a
-malformed package.** **FIRST: read `main`'s own runs for `93593ef5` — CI 1886 (35044973862) and installer-smoke 741 (35044973863) were IN PROGRESS at the merge.** The register said the exported decks "do not load in LibreOffice 7 headless
-(source file could not be loaded)". **Measured 2026-09-15: that was the INSTRUMENT.** The same
-install refused a deck **PowerPoint wrote** and a Microsoft-authored `.xlsx` with the identical
-sentence — it was `libreoffice-core` + `libreoffice-common` with **no `libreoffice-impress`**, i.e.
-no PresentationML import filter at all. With the filter installed, LibreOffice 24.2.7.2 loads BOTH
-decks and parses every shape (1 page · 54 custom shapes · 10 frames · 18 connectors · every label ·
-the CUI banner · our selection-pane names). `soffice` **exits 0 when it refuses a file** — never
-read its exit code, read whether the artifact exists. Pinned by
-`tests/reports/test_pptx_libreoffice_interop.py`, which loads a PowerPoint-authored **control**
-deck before it will judge ours and SKIPS (with the reason named) when the instrument is unusable;
-the `browser` job installs the filter and treats a skip as a failure. The register's repair step ran
-anyway: `presProps` / `viewProps` / `tableStyles` were the whole structural delta and are now
-written — **as the removal of a variable, not as a fix** (the flat ODF LibreOffice imports is
-byte-identical before and after). **PowerPoint itself stays UNVERIFIED** — registered as **V-5** in
-`OPERATOR-REQUESTS.md`: the operator double-clicking either export settles it in a minute.
+**R-50 is CLOSED and SHIPPED — ADR-0499, v1.0.267. Do not re-open, and do not re-derive the three variants' filters.**
+The register said the library's same-named **Metric History variants** were not exposed, so a reader of the History
+report could not find them in the tool. All three are now published as their own metrics under the library's own row
+label **with the filter IN the name** — `Insufficient Detail™ (incomplete, no milestones)` · `Merge Hotspot
+(Predecessors >2, planned only)` · `Total # Predecessor Lags (planned only)` — in their **own panel** on `/ribbon`
+(not three more ribbon columns: the Ribbon and the Metric History are different reports, and a tile beside its variant
+in one matrix invites exactly the cross-report read the row exists to prevent). Pinned **UID-exact against Fuse's own
+per-activity X marks** in the Detailed Metric Report: **22 / 125 / 2** on the Large Test File and **21 / 123 / 2** on
+File2, every mark, with the engine's populations equal to Fuse's own **Record Counts** (945 / 919 · 916 / 906 · 2 / 2).
+Red-first 8 of 11; mutation battery **14 / 14 by name**; corpus census 15 goldens / 8,805 values **zero moved**, 90
+added; rendered in four themes at 1440 and 390 px with **0 px document overflow**.
 
-**OR-20 is SHIPPED (ADR-0497, v1.0.265) — do not re-open.** The 32-version Ask-the-AI answer tabled a "driving-path finish" of 2028-02-22 for `USA IPMR Format 6_January 2024.mpp` where MS Project shows 2026-05-07, and the model's own memo blamed a routine that "populated the focus finish with the network finish". **Measured on the operator's own IMS in the repo (`ssi_uid152`): refuted** — the builder read the focus's OWN early finish (2026-10-02 = its stored Finish = SSI's export), two years from the network finish (2028-09-28). **The real defect:** drivers measured on the file's stored dates (SSI's axis) with the engine's logic-only finish printed beside them, unlabelled, next to a network-finish series of the same shape; the two disagree on 50 of 1,723 activities on that IMS. Now the line carries the stored Finish, discloses the logic-only finish with its working-day gap only where they disagree (compared on the project axis), says whose date it is, and the movement census counts the disagreeing versions. Red-first 8 / 10, two SSI oracles in `-m parity`, mutation 7 / 7, `-m parity` 118 / 0 on the pristine tree. **The operator owes, not blocking:** the Jan 2024 DRIVING-PATH SERIES line from the original session (cited facts under the answer, or `/export/{fmt}/ask`), or the same question re-asked on v1.0.265; and a decision on OR-20b (a stored project finish beside the CPM one in the finish series) / OR-20c (the focus's stored Total Slack per line). **#682 MERGED at 22:10Z — `main` @ `4b213dd8`, tree == its head `e86362df` (eight of eight green). `main`'s own runs for it — CI 1881 (35029583803) and installer-smoke 738 (35029583809) — were IN PROGRESS at the close: read them FIRST.** Then the docs-only merge-record draft PR from the restarted branch (six checks; number in the SESSION-LOG follow-up): read its checks; after the operator merges it, restart the branch with `--prune` + `remote set-head` + `checkout -B`. **Always `git fetch origin` and read `git log origin/main` before trusting any sha written here.** Everything below OR-20 is unchanged: OR-19 / OR-18 / R-47 / R-46 / R-60 are CLOSED or SHIPPED as stated; the next §3 unit is **R-52**.
+**TWO CORRECTIONS this unit measured — do NOT re-inherit ADR-0473's wording.** (a) `IncludeMilestone` is **false on
+BOTH** `Insufficient Detail™` entries in their `PrimaryFilter`; only the tile's unused `TripwireFilter` carries `true`,
+so **`IncludeComplete` alone** separates the two. (b) The register's "2 vs 5" is **"2 vs 8"** — the `Number of Lags`
+tile reads 8 on both Large Test Files — and they are not the same unit: the Bible's own Description makes
+`Total # Predecessor Lags` a count of **relationships**, where the tile counts distinct **activities**.
 
-**Run the session-token-guardian's `scripts/token_audit.py` as the FIRST action** (copy it to the scratchpad — `ruff check .` is whole-tree) and before each operator prompt.
+**Still unexposed and deliberately out of R-50's scope** (named so a later row can price them): `Critical
+w/Insufficient Detail™`, `Merge Hotspot w/Predecessor Lags` (& Low Total Float), the whole successor-side lag family
+(`Activities w/Lags on Successor` = 8 on both files), `Max/Min Predecessor Lag (days)`, `Max # of Predecessor Lags on
+an Activity`. And the three shipped variants are pinned **on the Large Test File / File2 pair only** — no other corpus
+export scores them, so their figures on Hard_File / Project2-5 / EVM are the engine's own and UNPINNED.
 
-## R-50 is NEXT. Its starting point is MEASURED — do not re-derive it.
+**FIRST: read `main`'s own CI run for the merge of this unit's PR, and re-read CI 1890 (35051509437) for `9cb46317`**
+— at the close of the R-50 session three of its five jobs were SUCCESS (`cui-guard` 03:22:10Z, `browser` 03:38:14Z
+with the R-52 interop gate run-and-not-skipped, `floor` 03:47:19Z) and `test (3.11)` / `test (3.13)` were still inside
+the pytest step. **Always `git fetch origin` and read `git log origin/main` before trusting any sha written here.**
 
-The register (§3, R-50, T2) says the library's same-named **Metric History variants** are not exposed,
-so a reader of the History report cannot find them in the tool: **Insufficient Detail™** (incomplete,
-no milestones: 22 vs the tile's 43) · **Merge Hotspot (Predecessors >2)** (planned only: 125 vs 156) ·
-**Total # Predecessor Lags** (planned only: 2 vs 5). Its first executable step: expose each as its own
-metric with the variant named in its definition, and pin the Large Test File / File2 History rows
-UID-exact from the Detailed Metric Report's marks.
+**Run the session-token-guardian's `scripts/token_audit.py` as the FIRST action** (copy it to the scratchpad —
+`ruff check .` is whole-tree) and before each operator prompt.
 
-**Measured 2026-09-16 (recon only — no code touched):** all three ARE in the Bible as metrics of their
-own. `NASA Metrics_Complete_20260708.aft` holds **5,427 `<Name>` values, 1,200 distinct**, among them:
+## The next §3 unit is R-61.
 
-* `Insufficient Detail™` — and `Critical w/Insufficient Detail™`
-* `Merge Hotspot (Predecessors &gt;2)` — beside `Merge Hotspot`, `Critical Merge Hotspot`,
-  `Merge Hotspot w/Predecessor Lags`, `Merge Hotspot w/Predecessor Lags &amp; Low Total Float`
-* `Total # Predecessor Lags` — beside `Max # of Predecessor Lags on an Activity`,
-  `Max/Min Predecessor Lag (days)`, `Critical with Predecessor Lag`, `Negative Float with Predecessor Lag`
+**R-61** — a `FIXED_DURATION` booking on an off-pattern crew spans the DURATION in crew minutes (ADR-0474's type rule)
+where MS Project keeps the task's window: `Hard_File_updated3` UID 210's Content Developer booking is recorded over
+four project days and computed as 1.33 days on the 24-hour calendar — masked today by the completed-window pin
+(ADR-0476) and by the material leg (ADR-0487). Its first executable step: **census every `FIXED_DURATION` task with an
+off-pattern crew across the goldens**, recorded booking window vs the computed leg; if the window is the rule, a
+fixed-duration leg spans the task's window on the crew calendar. The oracle is the stored booking windows of those
+tasks. Read `engine/cpm.py`'s plan builder and ADR-0474 / 0487 / 0491 before touching a leg.
 
-So each variant's formula is pullable VERBATIM from the `.aft` (CLAUDE.md's rule), and the row's
-"same-named variants" is literally true — several metrics share a stem and differ only by qualifier.
-
-**A trap already paid for on this row:** the `.aft` names metrics in **`<Name>` ELEMENTS, not `Name="…"`
-attributes**. A regex over attributes returns **zero** for all three and reads exactly like "these are
-Acumen built-ins, not library metrics" — a false negative that would have sent the unit down the wrong
-path. Parse elements, and remember the values are XML-escaped (`&gt;`, `&amp;`).
-
-Where the stems live today: `engine/metrics/{dcma14,schedule_quality,ribbon}.py`, `engine/metric_catalog.py`,
-`web/{help,ribbon,app}.py`, and the oracles in `tests/parity/test_fuse_transcription_oracle.py` +
-`tests/engine/test_aft_formula_audit.py`. Start by reading, then red-first.
+**Traps R-50 paid for, carried forward:** a **page-wide** guard is under-specified the moment the page grows a second
+matrix — count PER PANEL (the page-level twin of `CLAUDE.md`'s phase-2 source-path trap) · asserting a **header**
+exists is not asserting a **value** exists (a header with nothing beneath it survives the column being dropped from
+the row) · the `.aft` names metrics in `<Name>` **elements**, not `Name="…"` attributes, and a zero-result search must
+be proven able to return non-zero before the zero is believed · a same-named Bible metric needs its **GUID** as the
+key · the reference tool's **Record Count** is a second independent oracle the totals cannot replace · reuse the
+page's existing tooltip vocabulary rather than writing a second one.
 
 ## R-47 is CLOSED (ADR-0495). The population is Fuse's Record Count — do not re-gate it on a baseline.
 

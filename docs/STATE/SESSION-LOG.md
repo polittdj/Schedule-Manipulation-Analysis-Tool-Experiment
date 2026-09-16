@@ -18579,3 +18579,50 @@ called a flake turned out to have a mechanism (ADR-0442 UI-02, ADR-0443, ADR-046
   "these are Acumen built-ins, not library metrics", a false negative that would have sent R-50 down
   the wrong path. Values are XML-escaped (`&gt;`, `&amp;`).
 
+
+## 2026-09-16 — R-50 CLOSED (ADR-0499): the library's same-named Metric History variants are exposed as their own metrics — v1.0.267
+
+- **Session start state, verified not assumed:** `git fetch --unshallow origin && git fetch --prune origin`
+  then `git log origin/main` — `main` @ **`9cb46317`** (#685), matching the kickoff. The branch
+  `claude/polaris-r50-audit-xi4ow6` sits on it, tree-identical, clean.
+- **`main`'s own CI 1890 (35051509437) for `9cb46317` was still IN PROGRESS at session start and was
+  read as it ran, never guessed:** `cui-guard` SUCCESS 03:22:10Z · `browser` SUCCESS 03:38:14Z (the
+  R-52 interop gate ran and did **not** skip on `main` itself, 3 s) · `floor` SUCCESS 03:47:19Z
+  (parity gate included). `test (3.11)` / `test (3.13)` were still inside the pytest step when this
+  entry was written — **re-read run 1890 before any "all green" claim about `9cb46317`.** No
+  `installer-smoke` run exists for it and that absence is correct (docs-only; path-filtered).
+- **R-50 worked as its own unit** (register §3, T2): three library metrics share a name with a ribbon
+  tile, are a **different metric** (same formula, different `PrimaryFilter`), and were not exposed —
+  so an analyst holding a Metric History report saw the same NAME carrying two numbers with nothing
+  on screen to say they are different metrics. **ADR-0499**, v1.0.267.
+- **Measured from the Bible before anything was written:** `Insufficient Detail™` GUID `c71b82fe…`
+  (`IncludeComplete=false`) · `Merge Hotspot (Predecessors >2)` GUID `c5196e05…` (planned only) ·
+  `Total # Predecessor Lags` GUID `37c0df8f…` (planned only, `sum(numberoflags)` = **links**).
+- **Two corrections to ADR-0473's wording, both measured.** (a) `IncludeMilestone` is **not** the
+  discriminator for Insufficient Detail™ — **both** entries are `IncludeMilestone=false` in their
+  `PrimaryFilter`; only the tile's unused `TripwireFilter` carries `true`, so `IncludeComplete` alone
+  separates them. (b) The register's "2 vs 5" is **"2 vs 8"** — the `Number of Lags` tile reads 8 on
+  both Large Test Files, and it is not the same unit (relationships vs distinct activities).
+- **Shipped:** `engine/metrics/schedule_quality.py` (three `MetricResult`s) · `engine/metrics/ribbon.py`
+  (three `RibbonMetrics` fields + drill sets) · `engine/metric_catalog.py` (a new **Metric History**
+  family) · `web/help.py` (three entries + the three tiles' cross-references) · `web/ribbon.py` (the
+  **Metric History variants** panel — its own panel, not three more ribbon columns) · `web/app.py`
+  (the ribbon workbook's last three columns) · `docs/METRIC-DICTIONARY.md` regenerated ·
+  `tests/parity/test_fuse_history_variants_oracle.py` (new) · three pins in
+  `tests/engine/test_aft_formula_audit.py` · three filter units in
+  `tests/engine/metrics/test_schedule_quality.py` · four panel tests and **two re-aimed guards** in
+  `tests/web/test_ribbon_view.py`.
+- **Verified.** Red first by name: the oracle failed **8 of 11** on the pristine tree (the three green
+  are the vendor-report cross-check, which must pass without the engine). Engine == Fuse **UID-exact
+  on both files** — 22 / 125 / 2 and 21 / 123 / 2, every mark — with populations equal to Fuse's own
+  **Record Counts** (945 / 919 · 916 / 906 · 2 / 2). **Mutation battery 14 / 14 red by name** on a
+  shadow `src/` copy with a `-p mutcheck` plugin; **M11 survived the first pass and the survivor was a
+  hole in the TEST** (a header with no value beneath it survives the column being dropped from the
+  row). **Corpus census: 15 goldens, 8,805 pre-existing values, ZERO moved, ZERO removed, 90 added.**
+  **Rendered in four themes × 1440/390 px: the panel once in all eight, document overflow 0 px in all
+  eight**, ⓘ call-outs present, the click-drill lists the activities behind the figure.
+- **Traps written down:** a page-wide guard is under-specified the moment the page grows a second
+  matrix (count PER PANEL) · asserting a HEADER exists is not asserting a VALUE exists · the `.aft`
+  names metrics in `<Name>` elements, not attributes · a same-named Bible metric needs its GUID as the
+  key · Fuse's Record Count is a second independent oracle the totals cannot replace · reuse the page's
+  existing tooltip vocabulary instead of writing a second one.

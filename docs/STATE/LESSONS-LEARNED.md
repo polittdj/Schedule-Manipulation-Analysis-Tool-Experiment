@@ -7607,3 +7607,58 @@ and that is the lesson worth keeping.
   only about prior sessions. The correction was cheap because the rule was exercised immediately;
   had it sat in the log until a future session followed it, the cost would have been duplicated
   commits in a state document whose whole job is to be trustworthy.
+
+### 2026-09-16 — R-50: a metric nobody can find is a metric that does not exist, and the mutation battery's job is to fail YOUR TEST
+
+**What happened.** Three NASA-library metrics share a name (or a stem) with a Schedule Quality
+Ribbon tile and are a genuinely different metric — the same formula under a different
+`PrimaryFilter`. The tool computed the tiles and not the variants, so an analyst holding an Acumen
+Metric History report saw `Insufficient Detail™ = 22` on paper and `Insufficient Detail = 43` on
+screen, with nothing anywhere to say those are two metrics rather than one metric disagreeing with
+itself. Three code comments in `schedule_quality.py` already said, correctly, that the variants
+exist and are different. **Knowing it in a comment is not exposing it.** In a testimony context a
+same-named disagreement is worse than a missing number: the missing number prompts a question, the
+disagreement prompts a conclusion.
+
+**The lesson that generalises.** *Parity is not only "our number equals theirs" — it is also "the
+reader can tell WHICH number of theirs ours is."* A metric family where several entries share a
+label is a naming problem before it is an arithmetic one, and the fix is to publish the
+discriminator **in the name**, on the screen, not in a comment or an ADR.
+
+**What fought back.**
+
+- **The mutation battery found a hole in the TEST, not in the code** — the single most valuable
+  result of the session. M11 dropped the three variant columns out of the ribbon workbook's data
+  row and the export test stayed **green**, because the test asserted the three HEADERS were in the
+  workbook. A header with nothing beneath it survives the value being dropped: the writer just
+  emits a shorter row. Generalised: **asserting a label exists is not asserting a value exists**,
+  and any "the export carries X" test must address X's value by X's own column, not scan the file
+  for X's name. This is the same defect class as the repo's most-repeated one (a green test that
+  could never fail), wearing a different hat.
+- **A page-wide guard is under-specified the moment the page grows a second matrix.** `CLAUDE.md`
+  records the phase-2 trap for tests that read a module's SOURCE by path; this is its page-level
+  twin. `test_ribbon_row_labels_wear_the_left_edge` counted row labels across the whole `/ribbon`
+  page and read 2; a second panel over the same two schedules made it 4 and the guard failed — but
+  the honest repair is not `== 4`, because a page-wide 4 cannot distinguish "both panels label both
+  rows" from "one panel labels four rows and the other labels none". Counting **per panel** keeps
+  the teeth, and a mutant that strips the new panel's row labels proves it.
+- **A false negative can look exactly like a finding.** The Bible names metrics in `<Name>`
+  **elements**; an attribute regex (`Name="…"`) returns zero for all three and reads precisely like
+  *"these are Acumen built-ins, not library metrics"* — a conclusion that would have sent the unit
+  to invent formulas instead of pulling them verbatim. **When a search returns zero, prove the
+  search can return non-zero before believing the zero.**
+- **The reference tool ships a second, independent oracle almost nobody reads: the Record Count.**
+  Three different filters can produce the same total by coincidence; they cannot produce the same
+  *population*. Matching 945 / 916 / 2 was the check the rule did not get to choose, and it is what
+  turns "our number equals theirs" into "our number equals theirs for their reason".
+- **Reuse the page's existing tooltip vocabulary instead of writing a second one.** The first cut of
+  the variant cells wrote their own `title=` text and immediately broke a page-wide tooltip guard
+  that scans every `.rib-cell`. Routing them through the shared `_ribbon_cell_class` /
+  `_ribbon_cell_title` deleted the new helper and the failure in one edit — the guard was right and
+  the new code was wrong.
+
+**What paid off.** Doing the recon in the PREVIOUS unit (the `.aft` census recorded in the kickoff)
+meant this unit opened on measured ground and spent its first hour on the oracle rather than on
+archaeology. And running the three candidate rules against Fuse's per-activity marks in a scratch
+probe **before writing any engine code** meant the implementation was a transcription of a proven
+rule, not a hypothesis that then had to be defended.
