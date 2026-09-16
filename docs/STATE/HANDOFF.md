@@ -108,6 +108,8 @@ this section was written** — CI run 1893 (`35097402239`): `cui-guard` 12:42:51
 13:00:24Z SUCCESS, `test (3.11)` / `test (3.13)` / `floor` in progress; installer-smoke run 744
 (`35097402279`) also in progress. **Read them to conclusion before trusting this line.**
 
+**PR [#688](https://github.com/polittdj/Schedule-Manipulation-Analysis-Tool-Experiment/pull/688) — SIX OF SIX GREEN on the merged head `a41ec69e`** (CI run 35104750413: `cui-guard` 13:53:02Z · `browser` 14:09:51Z · `floor` 14:13:14Z · `test (3.11)` 14:31:25Z · `test (3.13)` 14:36:04Z · `check` 14:36:09Z); `mergeable_state: clean`, **zero review threads**, and the operator marked it ready for review at 13:49Z — they squash-merge. **Six is the correct set here**: no `installer/**` path is touched and `installer-smoke.yml` is path-filtered, so the absence of `linux` / `windows` is correct, not a missing check. No *Claude Approvals* check runs on this repository. Base `6b92d937`, unmoved between the push and this reading. An earlier six-of-six on `980aa8b2` is SUPERSEDED — that head predates the #687 merge commit, and a `check_suite.completed` event carrying it is the steward's known stale-`head_sha` case, not a second verdict. `chatgpt-codex-connector` posted its usage-limit notice again: **review cover remains ABSENT**.
+
 Then the report's §3 in order: **R-57** (an assignment's OWN leveling delay — Hard_File UID 398's
 RA 277 is a split ON a delayed assignment: its gap is honoured since ADR-0491, its delay is not;
 UID 188 on updated2) · **R-58** · **R-59** · **R-64** · **R-63** · **R-62** · **R-45** · then

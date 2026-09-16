@@ -37,6 +37,8 @@ Measured, all of it on a shadow copy of `src/`, never the tree under measurement
 row → CLOSED. Battery **6 / 6 red by name**, control green, every one of the 10 pins red under at
 least one mutant.
 
+**PR [#688](https://github.com/polittdj/Schedule-Manipulation-Analysis-Tool-Experiment/pull/688) — SIX OF SIX GREEN on the merged head `a41ec69e`** (CI run 35104750413: `cui-guard` 13:53:02Z · `browser` 14:09:51Z · `floor` 14:13:14Z · `test (3.11)` 14:31:25Z · `test (3.13)` 14:36:04Z · `check` 14:36:09Z); `mergeable_state: clean`, **zero review threads**, and the operator marked it ready for review at 13:49Z — they squash-merge. **Six is the correct set here**: no `installer/**` path is touched and `installer-smoke.yml` is path-filtered, so the absence of `linux` / `windows` is correct, not a missing check. No *Claude Approvals* check runs on this repository. Base `6b92d937`, unmoved between the push and this reading. An earlier six-of-six on `980aa8b2` is SUPERSEDED — that head predates the #687 merge commit, and a `check_suite.completed` event carrying it is the steward's known stale-`head_sha` case, not a second verdict. `chatgpt-codex-connector` posted its usage-limit notice again: **review cover remains ABSENT**.
+
 **The residual, named and OPEN — do NOT re-chase without it:** only a production IMS carrying a
 FIXED_DURATION activity on an off-pattern crew **with NO project-calendar co-booking**, alongside
 MS Project's stored dates, can settle the rule. **A sixth row appearing in the census test is the
