@@ -161,6 +161,36 @@ jobs:
             exit 1
           fi
 
+      # R-52 (ADR-0498). The exported .pptx is read back by an INDEPENDENT implementation, in the
+      # job that already exists to prove things in a real renderer rather than in our own parser.
+      #
+      # The instrument needs installing on purpose. `libreoffice-core` + `libreoffice-common`
+      # WITHOUT `libreoffice-impress` has no PresentationML import filter, and such an install
+      # refuses a PowerPoint-authored .pptx — and a Microsoft-authored .xlsx — with the very
+      # sentence the audit register carried against OUR writer for eight days ("source file could
+      # not be loaded"). The test refuses to judge the writer on an instrument it has not first
+      # watched load a PowerPoint-authored control deck; without this step it would skip, and the
+      # step after it turns a skip into a failure. So the gate cannot go quietly decorative.
+      - name: Install LibreOffice Impress (the interop gate's instrument)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends libreoffice-impress
+
+      # `set -o pipefail` is load-bearing here for the same reason it is above: GitHub's shell is
+      # `bash -e {0}` (no pipefail), so `pytest | tee` would yield TEE's exit code and a real
+      # failure would exit 0. A skip is a FAILURE — not because a skip is wrong (the test skips
+      # honestly when the instrument is unusable) but because a skip HERE means nothing was
+      # measured, which is precisely how the original finding survived.
+      - name: The exported .pptx loads in LibreOffice, and a skip is a FAILURE (R-52)
+        run: |
+          set -o pipefail
+          pytest -q tests/reports/test_pptx_libreoffice_interop.py -p no:cacheprovider -rs 2>&1 | tee lo.txt
+          if grep -qE "^SKIPPED|[0-9]+ skipped" lo.txt; then
+            echo "::error::the .pptx interop gate SKIPPED — the instrument was missing, so nothing was measured"
+            grep -E "^SKIPPED" lo.txt || true
+            exit 1
+          fi
+
   # The DECLARED MINIMUM, executed (ADR-0346). The `test` matrix above installs unbounded and
   # therefore always measures the NEWEST resolution; nothing measured the oldest one we claim to
   # support. That gap was not theoretical — the same commit gave pytest 8.0.2 FAIL / 8.4.2 FAIL /

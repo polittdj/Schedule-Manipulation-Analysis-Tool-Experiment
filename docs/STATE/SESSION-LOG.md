@@ -18480,3 +18480,50 @@ called a flake turned out to have a mechanism (ADR-0442 UI-02, ADR-0443, ADR-046
   success at 20:12:05Z earlier in this session; no installer-smoke run exists for it (docs-only, path-filtered).
 - This record is a docs-only commit on the restarted branch, opened as a draft PR (six checks apply — docs only);
   number in the next follow-up line. Token guardian at this entry: ~58 % of the assumed wall (ceiling not measured).
+
+## 2026-09-15 (f) — `main`'s run 1883 for `3e64e3e0` read SUCCESS; R-52 CLOSED (ADR-0498): the exported `.pptx` DOES load — the register's "LibreOffice refuses it" was an install with no PresentationML import filter, which refuses a PowerPoint-authored deck and a Microsoft-authored `.xlsx` identically; both decks pinned by a gate that skips rather than accuses; PowerPoint still UNVERIFIED; v1.0.266
+
+- **Branch** `claude/eloquent-allen-2hg06l`, restarted on `3e64e3e0` (= `origin/main`) after `git fetch --unshallow`
+  + `--prune` + `remote set-head`. ONE commit; draft PR (eight checks — the nine installers were rebuilt).
+- **First action, as instructed:** `main`'s CI run **1883 (35033509512)** for `3e64e3e0` — left IN PROGRESS by the
+  previous session — completed **SUCCESS at 23:44:19Z** (`browser`, `test (3.13)`, `cui-guard`, `floor` were already
+  green when this session started; `test (3.11)` finished last). Docs-only sha, so no `installer-smoke` run exists
+  for it, as the path filter implies.
+- **R-52, worked as its own unit — and REFUTED rather than repaired.** The register's step named
+  `presProps`/`viewProps`/`tableStyles`; QC-2 says that is a hypothesis, so the refusal was reproduced first.
+  Both decks: `Error: source file could not be loaded`, **`rc=0`** (LibreOffice exits 0 when it refuses). Then the
+  control the original finding never ran — the same install, same command, on `00_REFERENCE_INTAKE/mpp/Politte
+  Schedule Tool.pptx` (PowerPoint-authored, 53 parts, `presentationml.presentation.main+xml`, six slides) and on
+  `00_REFERENCE_INTAKE/P2-P5 - Detailed Metric Report.xlsx`: **both refused, same sentence.** `dpkg -l` named the
+  mechanism — `libreoffice-common`, `libreoffice-core`, `libreoffice-style-colibre`, `libreoffice-uiconfig-common`
+  and **no `libreoffice-impress`**; the registry held `main.xcd` / `Langpack-en-US.xcd` / `lingucomponent.xcd` /
+  `pdfimport.xcd` / `xsltfilter.xcd` and no `impress.xcd`.
+- **With the filter installed** (`apt-get install -y --no-install-recommends libreoffice-impress`), LibreOffice
+  **24.2.7.2 420(Build:2)** converts all three: `ref.pdf` 150,219 B · `onepager.pdf` 48,275 B · `compare.pdf`
+  56,460 B, `pdftotext` showing the CUI marking, titles, month grid, every activity label with its date and the
+  compare deck's `+12 cal d` deltas. Converted to flat ODF the one-pager reads **1 `draw:page` · 54
+  `draw:custom-shape` · 10 `draw:frame` · 18 `draw:connector`**, with the selection-pane names intact. The PNG
+  render (1920×1080) was read by eye — title, subtitle, CUI banner top and bottom, year band, month ticks, three
+  lane bands, bars with in-bar labels, milestone diamonds, the red TODAY line and label, legend, provenance footer.
+- **Shipped:** `tests/reports/test_pptx_libreoffice_interop.py` (2 tests; loads the PowerPoint-authored CONTROL deck
+  before it will judge ours; skips with the reason named when `soffice`, the control deck, or the filter is absent) ·
+  `tests/reports/test_onepager.py::test_the_package_carries_the_three_parts_powerpoint_always_writes` ·
+  `src/schedule_forensics/reports/pptx.py` (`presProps` / `viewProps` / `tableStyles` + content-type overrides +
+  relationships; the `tblStyleLst def` GUID read out of the reference deck, not remembered) ·
+  `.github/workflows/ci.yml` (the `browser` job installs the filter and treats a skip as a failure).
+- **Verified.** Red-first by name: the part-list test failed on the pristine writer (`ppt/presProps.xml is missing
+  from the package`). The three parts change **nothing** LibreOffice reads — the flat ODF is byte-identical before
+  and after (**181,935 bytes both**, same shape census); decks 7,706 → 8,636 B and 8,532 → 9,462 B.
+  **Mutation battery 8 / 8 by name** on a shadow copy of `src/` with a `-p mutcheck` plugin (C0 control 2 passed;
+  M1 corrupt main content type → both FAIL *"the package is the problem, not the instrument"*; M2 markings emptied →
+  both FAIL on the CUI banner; M3 names dropped → FAIL on the selection pane; M4 delta emptied → compare FAILS on
+  `+12 cal d`; **M5 the 2026-09-07 instrument → SKIP naming the missing filter**; M6 no `soffice` on PATH → SKIP;
+  M7 control absent → SKIP; M8 the slide listed twice → both FAIL on the ONE-slide assertion). M2 needed three cuts;
+  the first two were recorded as **non-mutations, not survivors**. The CI step was exercised both ways under
+  `bash -e` + `set -o pipefail`: **exit 1** with a crippled `soffice`, **exit 0** with the real one.
+- **Release ritual:** version 1.0.266; wheel built after the LAST source edit and its `schedule_forensics/reports/
+  pptx.py` diffed byte-for-byte against `src/` (sha `1d444bca2296c450…`, 35,765 B, identical); nine installers
+  rebuilt from that wheel, all reading 1.0.266.
+- **Registered, operator-owned:** **V-5** in `OPERATOR-REQUESTS.md` — PowerPoint opening either export is the one
+  reader still unverified; its complaint, if any, names the part.
+- **ADR-0498.** Gate results and the PR number in the follow-up line below.

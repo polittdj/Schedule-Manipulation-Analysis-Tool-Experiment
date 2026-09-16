@@ -343,6 +343,49 @@ def test_the_package_has_every_part_and_every_part_is_well_formed(
         assert size is not None and (size.get("cx"), size.get("cy")) == ("12192000", "6858000")
 
 
+def test_the_package_carries_the_three_parts_powerpoint_always_writes(
+    deck: tuple[op.Layout, bytes],
+) -> None:
+    """``presProps`` / ``viewProps`` / ``tableStyles`` — the whole structural delta, closed.
+
+    These three are OPTIONAL: LibreOffice loads both decks without them (measured 2026-09-15,
+    ADR-0498 — the register's "does not load" finding was an instrument with no PresentationML
+    filter, not a malformed package), and nothing here claims they were the cause of anything.
+    They are written because a part-list diff against a PowerPoint-authored deck
+    (``00_REFERENCE_INTAKE/mpp/Politte Schedule Tool.pptx``) showed them to be the ONLY parts it
+    carries that we did not, once its own content — extra slides, layouts, media, thumbnail — is
+    set aside. Whether PowerPoint itself opens our deck is **UNVERIFIED** (no PowerPoint in any
+    container we can reach); writing what the reference implementation writes removes the package
+    shape as a variable, so if PowerPoint ever refuses a deck the cause is in the content.
+
+    The shapes below are MEASURED from that reference deck, not remembered — including the empty
+    table-style list's ``def`` GUID.
+    """
+    _, data = deck
+    with zipfile.ZipFile(io.BytesIO(data)) as zf:
+        names = zf.namelist()
+        ct = zf.read("[Content_Types].xml").decode()
+        rels = zf.read("ppt/_rels/presentation.xml.rels").decode()
+        for part, kind in (
+            ("ppt/presProps.xml", "presProps"),
+            ("ppt/viewProps.xml", "viewProps"),
+            ("ppt/tableStyles.xml", "tableStyles"),
+        ):
+            assert part in names, f"{part} is missing from the package"
+            ET.fromstring(zf.read(part))  # well-formed, or this raises
+            override = (
+                f'PartName="/{part}" ContentType="application/vnd.openxmlformats-'
+                f'officedocument.presentationml.{kind}+xml"'
+            )
+            assert override in ct, f"no content-type override for {part}"
+            target = part.removeprefix("ppt/")
+            assert f'relationships/{kind}" Target="{target}"' in rels, (
+                f"presentation.xml.rels does not point at {part}"
+            )
+        styles = zf.read("ppt/tableStyles.xml").decode()
+        assert 'def="{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}"' in styles
+
+
 def test_every_layout_element_is_a_named_native_shape(deck: tuple[op.Layout, bytes]) -> None:
     lay, data = deck
     names = [_name(s) for s in _shapes(data)]
