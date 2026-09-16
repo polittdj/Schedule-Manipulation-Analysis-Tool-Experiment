@@ -21,6 +21,36 @@ byte-identical before and after). **PowerPoint itself stays UNVERIFIED** — reg
 
 **Run the session-token-guardian's `scripts/token_audit.py` as the FIRST action** (copy it to the scratchpad — `ruff check .` is whole-tree) and before each operator prompt.
 
+## R-50 is NEXT. Its starting point is MEASURED — do not re-derive it.
+
+The register (§3, R-50, T2) says the library's same-named **Metric History variants** are not exposed,
+so a reader of the History report cannot find them in the tool: **Insufficient Detail™** (incomplete,
+no milestones: 22 vs the tile's 43) · **Merge Hotspot (Predecessors >2)** (planned only: 125 vs 156) ·
+**Total # Predecessor Lags** (planned only: 2 vs 5). Its first executable step: expose each as its own
+metric with the variant named in its definition, and pin the Large Test File / File2 History rows
+UID-exact from the Detailed Metric Report's marks.
+
+**Measured 2026-09-16 (recon only — no code touched):** all three ARE in the Bible as metrics of their
+own. `NASA Metrics_Complete_20260708.aft` holds **5,427 `<Name>` values, 1,200 distinct**, among them:
+
+* `Insufficient Detail™` — and `Critical w/Insufficient Detail™`
+* `Merge Hotspot (Predecessors &gt;2)` — beside `Merge Hotspot`, `Critical Merge Hotspot`,
+  `Merge Hotspot w/Predecessor Lags`, `Merge Hotspot w/Predecessor Lags &amp; Low Total Float`
+* `Total # Predecessor Lags` — beside `Max # of Predecessor Lags on an Activity`,
+  `Max/Min Predecessor Lag (days)`, `Critical with Predecessor Lag`, `Negative Float with Predecessor Lag`
+
+So each variant's formula is pullable VERBATIM from the `.aft` (CLAUDE.md's rule), and the row's
+"same-named variants" is literally true — several metrics share a stem and differ only by qualifier.
+
+**A trap already paid for on this row:** the `.aft` names metrics in **`<Name>` ELEMENTS, not `Name="…"`
+attributes**. A regex over attributes returns **zero** for all three and reads exactly like "these are
+Acumen built-ins, not library metrics" — a false negative that would have sent the unit down the wrong
+path. Parse elements, and remember the values are XML-escaped (`&gt;`, `&amp;`).
+
+Where the stems live today: `engine/metrics/{dcma14,schedule_quality,ribbon}.py`, `engine/metric_catalog.py`,
+`web/{help,ribbon,app}.py`, and the oracles in `tests/parity/test_fuse_transcription_oracle.py` +
+`tests/engine/test_aft_formula_audit.py`. Start by reading, then red-first.
+
 ## R-47 is CLOSED (ADR-0495). The population is Fuse's Record Count — do not re-gate it on a baseline.
 
 What is now true, measured: the Detailed Metric Report's per-activity SPI(t) column is EMPTY on every activity
