@@ -1,128 +1,90 @@
-# Handoff — 2026-09-16 (b) (R-61 CLOSED (ADR-0500) as **REFUTED** — the census the row asked for was run and **the population is ONE task**; the row's premise is mis-stated and its proposed rule is inert as written and **315-to-0 wrong** when generalized; `engine/` untouched, **v1.0.267 unchanged**)
+# Handoff — 2026-09-16 (c) (R-61 **SETTLED** on the repository's own 29 `.mpp` files (ADR-0501) — twice the golden population; ADR-0474's type rule upheld, ADR-0500's deferred residual **discharged** and its refutation witness **corrected**; `engine/` untouched, **v1.0.267 unchanged**)
 
-STATUS (current) — `main` @ **`6b92d937`** (#687, the docs-only merge record of #686; merged after this session branched, which is why this branch carries a merge commit rather than a rebase). Before it **`0b010936`** (#686 — R-50, ADR-0499, v1.0.267), whose squash was TREE-IDENTICAL to the reviewed head `92b0693c` (`f4e70212b63306d5624a90b5aa9e4fdc2869f500` on both). **`main`'s own runs for `0b010936` are SETTLED — read to conclusion this session, not inherited: CI 1893 (`35097402239`) `completed` / **SUCCESS**, all six jobs (`cui-guard` 12:42:51Z · `browser` 13:00:24Z with the R-52 interop gate run-and-NOT-skipped on `main` itself · `floor` 13:07:42Z · `test (3.13)` 13:12:57Z · `test (3.11)` 13:27:52Z · `check` 13:27:58Z), and installer-smoke 744 (`35097402279`) `completed` / **SUCCESS** 12:47:28Z. Nothing about `0b010936` is outstanding.** Highest ADR **0500**. Version **1.0.267**, unchanged — this unit touched no `src/`. QC-1/QC-2 bind every session — ADR-0393.
+STATUS (current) — `main` @ **`6288ef16`** (#688, R-61 / ADR-0500, merged 15:45Z; the squash was TREE-IDENTICAL to the reviewed head `0a25715a`, tree `06ac408a…` on both, and #688 was six-of-eight… **six of six** green on that head: `cui-guard` 14:37:55Z · `browser` 14:55:22Z · `floor` 15:02:53Z · `test (3.13)` 15:22:14Z · `test (3.11)` 15:25:58Z · `check` 15:26:10Z). Before it `6b92d937` (#687) and `0b010936` (#686, R-50 / ADR-0499), whose own `main` runs are **settled**: CI 1893 (`35097402239`) SUCCESS all six jobs, installer-smoke 744 (`35097402279`) SUCCESS 12:47:28Z. Highest ADR **0501**. Version **1.0.267**, unchanged — this unit touched no `src/`. QC-1/QC-2 bind every session — ADR-0393.
 
 ## What landed
 
-**R-61 is CLOSED, and nothing in `src/` changed — that is the finding.** The roadmap row said a
-FIXED_DURATION booking on an off-pattern crew spans the DURATION in crew minutes where MS Project
-keeps the task's window, named `Hard_File_updated3` UID 210 as the witness, and asked for a census
-across the goldens with the stored booking windows as the oracle. The census was run. It settles
-the row three ways, none of them the row's.
+**The operator's instruction was "use the `.mpp` files in the repo to settle the rule", and it
+exposed a scoping error in ADR-0500 that is the main lesson of this unit.** ADR-0500 closed R-61
+on **15 goldens** and deferred a residual reading *"only a production IMS can settle it"*. The
+repository carries **29 `.mpp` files** — roughly twice that population, including files no golden
+was ever made from (`24Hour Calendar.mpp`, `Hard_File_updated4 24 hour calendar.mpp`, `Jacked Up
+Schedule 1/2`, `Project3/4`, the `Project5_FX0*` and `TP4_DataCenter` tamper sets, the
+`Large Test File*.mpp` family). **The residual was a claim about the goldens wearing the clothes
+of a claim about the world.** All 29 were converted through the vendored MPXJ converter into the
+scratchpad (never the repo — Law 1), every artifact asserted to EXIST rather than the exit code.
 
-**1 — the population is ONE task.** Across all **15 MSPDI goldens** the set of (golden, task) pairs
-where an active FIXED_DURATION task carries a WORK leg on a materially different calendar is
-exactly **five rows — UID 210 in five snapshots of one file**. No second task, no *unstarted*
-witness, none without a project-calendar co-booking. No golden can discriminate the rule.
+**The wider census upholds ADR-0474 and discharges the residual.** 483 tasks are placed by an
+off-pattern ratio-1.0 crew leg:
 
-The row's arithmetic on the witness is right: duration **1,920** min (4 project days), the leg
-spans 1,920 min of the 24-hour *Content Developer* calendar (1.33 days there), the file records
-the booking over **7,740** of them — and that window is the **task's own** window
-(2026-08-20 08:00 → 2026-08-25 17:00), which MS Project writes onto all four of the task's
-assignments, work and material alike.
+| | count |
+| --- | --- |
+| window **byte-identical** to the engine's occupancy (duration + ADR-0491 gaps) | **369** |
+| differ, adjudicating, margin **1–28 minutes** | most of the remainder |
+| leg-alone probe matches neither rule | 18 UIDs — **shipped solve within a day on 17** |
+| **decisive** disagreement | **exactly one: UID 5263** |
 
-**2 — the premise is mis-stated: neither named rule is the mask.** Read off the live plan builder,
-UID 210's **primary (finish-placing) leg is the `Standard`-calendar WORK leg** of the Logistics
-Apprentice booking — the same 1,920 minutes on the *project* calendar, landing on the stored
-finish exactly. The crew leg finishes **2026-08-21 16:00**, four days earlier, and has never
-placed the task. On a shadow engine with each named rule cut in turn:
+The minutes are **gap-arithmetic granularity**, not a rule: UID 5342 occupancy 2,757 vs window
+2,758 (**one minute**), UID 5316 9,329 vs 9,333 (**four**). Registered as **R-65**.
 
-| tree | UID 210's early finish | vs the stored 2026-08-25 17:00 |
-| --- | --- | --- |
-| pristine | 2026-08-25 17:00 | **exact** |
-| ADR-0476's completed-window pin CUT | 2026-08-26 14:00 | **+1,260 min — LATE, not early** |
-| pin CUT **and** ADR-0487's material leg CUT | 2026-08-26 14:00 | **unmoved by the second cut** |
+**The one decisive case adjudicates FOR the engine.** `Large_Test_File2` UID 5263 is *started*
+(86 %, no `ActualFinish`) so its stored `Finish` really is MS Project's scheduled output. Its
+window runs **9,600 min past** the duration and the leg alone lands **four weeks early** — and
+the **shipped solve is exact**, disclosed on **`date_driven`**: a stored date places it, not the
+leg. The mechanism was measured: the first explanation offered (ADR-0391's actual-start floor)
+was cut in the battery and the task did not move, so it was refuted before it was written down.
 
-(The material-leg cut has teeth elsewhere — it moves updated3's project finish 12-12 → 12-06 and
-within-a-day 106 → 44. It simply does not touch 210.)
+**Two corrections to ADR-0500, both measured.** Its refutation witness `Large_Test_File` UID 5231
+is **recorded-COMPLETE**, so its stored `Finish` IS its `actual_finish` — a record, not a
+schedule — and by ADR-0476's own reasoning it adjudicates a scheduling rule in neither direction.
+And the engine's leg does **not** "get it right" there: alone it lands 2024-10-01 17:00, **eighty
+days** past the file's date, the solve being exact only through ADR-0476's pin. ADR-0500's
+headline *"315 away / 0 toward"* **stands** (a different, valid measurement — the window rule
+inside a full solve); the sentence explaining UID 5231 does not.
 
-**3 — the rule is INERT as written and REFUTED generalized.** Implemented on the shadow engine
-exactly as the row specifies, it **fires** (ratio 1.0000 → 4.0312, span 1,920 → 7,740, that leg's
-finish 08-21 16:00 → 08-25 17:00) and changes **nothing**: project finish, within-a-day and
-stored-slack-exact **byte-identical on all 15 goldens**; its only effect is a *lost* disclosure
-(210 drops off `booking_span_driven`). MS Project has no separate scheduler for FIXED_DURATION, so
-the claim is about ratio-1.0 WORK legs generally (**267** tasks in the corpus are placed by one).
-Generalized: within-a-day **1,666 → 1,568**, **1,687 → 1,585**, **1,645 → 1,567** on the three
-Large Test File goldens, every other golden unmoved, and the **per-task census is 315 AWAY / 0
-TOWARD** (worst +309,865 min). Mechanism: a split booking's recorded window spans the leveling
-gaps ADR-0491 honours *separately* — `Large_Test_File` UID 5231's window (89,760) is **26,880
-crew minutes SHORTER** than the correct occupancy (89,760 + 26,880 of gap).
-
-**4 — the one alternative the row does not name, refuted too.** A fixed-duration leg on the
-*task's* axis rather than the crew's (MS Project's duration is a property of the task): **0 toward,
-5 away** — it drops 210 off the wall path entirely, so ADR-0476's pin lands on the integer axis at
-**16:00**, ADR-0476's own day-boundary residual, 60 minutes away.
-
-**Shipped:** `tests/parity/test_r61_fixed_duration_leg_oracle.py` (10 pins: the census population,
-the witness's two numbers, the corrected premise, five stored-finish oracles, the ADR-0491
-refutation witness, and one **tripwire** on the type rule — labelled a tripwire in its own
-docstring, because a shape pin is not evidence about MS Project) · **ADR-0500** · the R-61 row →
-CLOSED.
+**Shipped:** the test module's witness renamed and re-reasoned
+(`test_uid_5231_is_a_completed_task_so_its_leg_never_places_it`), a new
+`test_uid_5263_the_corpus_only_decisive_counter_case_is_exact_in_the_solve` pinning
+`date_driven` as the mechanism, the corrected module docstring, **ADR-0501**, the amended R-61
+row and the new **R-65** row. **`engine/` untouched.**
 
 ## How it was verified
 
-* **Mutation battery 6 / 6 red BY NAME**, control green, on a shadow copy of `src/` with a
-  `-p mutcheck` plugin asserting the modules measured ARE the copy: M1 the proposed rule → 3 red ·
-  M2 the crew calendar never resolved → 10 red · M3 ADR-0491's gaps not honoured → 1 red ·
-  M4 legs sorted earliest-first → 1 red · M5 ADR-0476's pin cut → 5 red · M6 `_recorded_span`
-  reading elapsed minutes → 2 red. **Every one of the 10 pins is red under at least one mutant.**
-* **The battery caught this unit's own first cut.** The census originally re-implemented the plan
-  builder's three leg-calendar lines inside the test, and it was **GREEN under M2** — the mutant
-  that breaks exactly that resolution — because it was measuring the re-implementation, not the
-  engine. Re-aimed onto `_task_shape`, it goes red. *A parallel implementation in a test is an
-  oracle for itself.*
-* **Gate on the final tree: 5,489 passed / 0 failed / 7 skipped in 35:36**, and `-m parity`
-  **141 passed / 0 failed** in 4:28. Both deltas are ATTRIBUTED, not assumed: the previous
-  unit's 5,479 and 131 plus this module's **exactly 10**
-  (`pytest -m parity tests/parity/test_r61_fixed_duration_leg_oracle.py --collect-only`).
-  The 7 skips are the documented set — the urlparse pair, three INCIDENTAL_SVG axis cases,
-  and the two `test_pptx_libreoffice_interop` skips that are CORRECT in this container (no
-  libreoffice-impress; CI installs the filter and treats a skip there as a FAILURE).
-  Statics green on both ruff binaries, `ruff format`, `mypy --strict`, `bandit`,
-  `node --check` and `pytest --collect-only` (5,496).
+* **Four cuts of the census, each correcting the last — and the corrections ARE the finding.**
+  Cut 1 counted co-bookings as masking (masking is whichever leg finishes **LAST**, computed).
+  Cut 2 paired a leg to its booking by **calendar identity** and silently reported "no window"
+  for all 483 — a leg on a TASK calendar matches no resource's calendar object; the fix pairs by
+  index and **asserts `len(pairs) == len(legs)`** so the instrument detects its own failure.
+  Cut 3 compared a **gapless** leg against a window that spans the gaps, handing every split
+  booking to the window by construction. Cut 4 is the engine's real occupancy.
+* **Mutation battery, control green:** N1 (ADR-0476's pin cut) → the 5231 correction red by name;
+  N2 (R-61's window rule) → the 5263 pin and three others red by name.
+* **N3 is recorded as a NON-MUTATION on its first cut** — the stub was inserted BEFORE the real
+  definition so the real one won the name. Re-cut so the stub wins, it SURVIVES, and that is how
+  `date_driven` was found.
+* Statics green on both ruff binaries, `ruff format`, `mypy --strict`, `bandit`; 11 pins green.
+
+**Gate on the final tree: 5,490 passed / 0 failed / 7 skipped in 35:41**, and **`-m parity` 142 passed / 0 failed** in 4:36. Both deltas ATTRIBUTED, not assumed: the previous unit's 5,489 and 141 plus this module's one new pin — it collects **exactly 11** under `-m parity`, up from 10 (`pytest -m parity tests/parity/test_r61_fixed_duration_leg_oracle.py --collect-only`). The 7 skips are the documented set (the urlparse pair, three INCIDENTAL_SVG axis cases, and the two `test_pptx_libreoffice_interop` skips that are correct in this container — CI installs the filter and treats a skip there as a FAILURE, ADR-0498). Statics green on both ruff binaries, `ruff format`, `mypy --strict`, `bandit`.
+
+**PR [#689](https://github.com/polittdj/Schedule-Manipulation-Analysis-Tool-Experiment/pull/689) — SIX OF SIX GREEN on head `86a13a72`** (CI run 35120093272: `cui-guard` 16:09:56Z · `browser` 16:27:40Z · `floor` 16:38:59Z · `test (3.13)` 16:52:02Z · `test (3.11)` 16:57:13Z · `check` 16:57:19Z); base `6288ef16`, unmoved. Six is the correct set: no `installer/**` path is touched and `installer-smoke.yml` is path-filtered, so the absence of `linux` / `windows` is correct and not a missing check. **No record of THIS commit's own CI will be pushed** — that treadmill (each record moving the head it describes and restarting CI) was named in the previous unit.
 
 ## Deliberately NOT done
 
-* **No `engine/` change, no version bump, no wheel/installer rebuild.** Under QC-1 a change with no
-  check in the corpus capable of refuting it does not get to touch the engine, and the only
-  candidate rule is refuted 315-to-0 where it *can* be tested. `pyproject.toml` stays **1.0.267**.
-* **No `src/` comment** in place of the executable tripwire — prose is what this repo's own audit
-  calls load-bearing data with nothing asserting it is still there.
-* **Nothing re-numbered or relaxed** in ADR-0474 / 0476 / 0487 / 0491 to accommodate either
-  candidate.
-
-## The residual, named and OPEN
-
-The corpus cannot prove no such task can exist — only that **no oracle in this repository can
-validate any change to the rule**, and that the proposed change is refuted where testable.
-**What would settle it:** a production IMS carrying a FIXED_DURATION activity on an off-pattern
-crew **with no project-calendar co-booking**, alongside MS Project's stored dates for it. The
-census test names the population; **a sixth row appearing in it is the signal to re-read
-ADR-0500.** Do not re-chase the window rule without such a file.
+No `engine/` change, no version bump, no wheel/installer rebuild. ADR-0500's "315 away / 0
+toward" is not withdrawn — only the sentence that mis-explained its witness. R-65 is registered,
+not taken.
 
 ## Next — campaign queue
 
-**Read `git log origin/main` before trusting any sha written here.** `main` @ **`0b010936`**
-(#686, R-50 / ADR-0499, v1.0.267). **Main's own runs for that merge were still IN PROGRESS when
-this section was written** — CI run 1893 (`35097402239`): `cui-guard` 12:42:51Z SUCCESS, `browser`
-13:00:24Z SUCCESS, `test (3.11)` / `test (3.13)` / `floor` in progress; installer-smoke run 744
-(`35097402279`) also in progress. **Read them to conclusion before trusting this line.**
+**Read `git log origin/main` before trusting any sha here.** Then the report's §3 in order:
+**R-57** (an assignment's OWN leveling delay — `Hard_File` UID 398's RA 277 is a split ON a
+delayed assignment: its gap is honoured since ADR-0491, its delay is not; UID 188 on updated2) ·
+**R-58** · **R-59** · **R-64** · **R-63** · **R-62** · **R-65** (this unit's granularity
+residual) · **R-45** · then R-03 · R-04 · R-09 · R-13 · R-18 · R-21 · R-22 · R-32 · R-39. The
+design queue is 19 artboards.
 
-**PR [#688](https://github.com/polittdj/Schedule-Manipulation-Analysis-Tool-Experiment/pull/688) — SIX OF SIX GREEN on the merged head `a41ec69e`** (CI run 35104750413: `cui-guard` 13:53:02Z · `browser` 14:09:51Z · `floor` 14:13:14Z · `test (3.11)` 14:31:25Z · `test (3.13)` 14:36:04Z · `check` 14:36:09Z); `mergeable_state: clean`, **zero review threads**, and the operator marked it ready for review at 13:49Z — they squash-merge. **Six is the correct set here**: no `installer/**` path is touched and `installer-smoke.yml` is path-filtered, so the absence of `linux` / `windows` is correct, not a missing check. No *Claude Approvals* check runs on this repository. Base `6b92d937`, unmoved between the push and this reading. An earlier six-of-six on `980aa8b2` is SUPERSEDED — that head predates the #687 merge commit, and a `check_suite.completed` event carrying it is the steward's known stale-`head_sha` case, not a second verdict. `chatgpt-codex-connector` posted its usage-limit notice again: **review cover remains ABSENT**.
-
-Then the report's §3 in order: **R-57** (an assignment's OWN leveling delay — Hard_File UID 398's
-RA 277 is a split ON a delayed assignment: its gap is honoured since ADR-0491, its delay is not;
-UID 188 on updated2) · **R-58** · **R-59** · **R-64** · **R-63** · **R-62** · **R-45** · then
-R-03 · R-04 · R-09 · R-13 · R-18 · R-21 · R-22 · R-32 · R-39. The design queue is 19 artboards.
-
-**Operator-owned, none blocking:** V-5 (PowerPoint opens the `.pptx`); OR-20's Jan-2024 fact line;
-decisions on OR-20b / OR-20c; the 09-11 `"ok": false` transaction-log lines (a 403); an ON-banner
-screenshot on v1.0.264+; `test_driving_path_whole_schedule_browser.py:104` width-racy (#667);
-`/settings` sideways scroll; the residuals of ADR-0488 / 0486 / 0485 / 0483; OR-11b, OR-11d; the
-working-minute axis; the hint bubble; ADR-0484's in-grid rows.
-
-**Review cover is still absent** — Codex quota EXHAUSTED; the mutation batteries and the full gate
-are all this repo gets.
+**Review cover is still absent** — Codex quota EXHAUSTED; the mutation batteries and the full
+gate are all this repo gets.
 
 # (prior) handoffs — archived
 

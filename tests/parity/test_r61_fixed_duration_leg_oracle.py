@@ -1,34 +1,40 @@
 """R-61 — a FIXED_DURATION leg on an off-pattern crew: the census, the corrected premise, and
-the refutation of "the window is the rule" (ADR-0500).
+why the rule is ADR-0474's and not the recorded window (ADR-0500, corrected and settled by
+ADR-0501).
 
-The roadmap row (report §3, R-61) said a FIXED_DURATION booking on an off-pattern crew spans
-the DURATION in crew minutes (ADR-0474's type rule) "where MS Project keeps the task's window",
-named ``Hard_File_updated3`` UID 210 as the witness, and set the first executable step: census
-every such task across the goldens, recorded booking window vs the computed leg. This module is
-that census, executed and pinned, plus the three things the census measured:
+The roadmap row (report §3, R-61) said such a booking spans the DURATION in crew minutes "where
+MS Project keeps the task's window", named ``Hard_File_updated3`` UID 210, and set the first
+executable step: census every such task, recorded booking window vs the computed leg.
 
-* **The population is ONE task.** Across all 15 MSPDI goldens there are exactly five
-  (golden, task) pairs where an active FIXED_DURATION task carries an off-pattern WORK leg, and
-  all five are UID 210 in five snapshots of the same file. There is no unstarted witness, and
-  none without a project-calendar co-booking — so no golden can discriminate the rule.
-* **The row's premise is mis-stated.** UID 210 is not "masked by the completed-window pin
-  (ADR-0476) and by the material leg (ADR-0487)". Its finish-placing PRIMARY leg is the
-  ``Standard``-calendar WORK leg of the Logistics Apprentice booking, spanning the same 1,920
-  minutes on the PROJECT calendar and landing on the stored finish exactly. The 24-hour Content
-  Developer leg finishes four days earlier and has never placed the task.
-* **The proposed rule is refuted where it can be tested.** MS Project has no separate scheduler
-  for FIXED_DURATION, so "a leg spans the recorded window" is a claim about ratio-1.0 WORK legs
-  generally. Generalized over the corpus it moves 315 activities AWAY from their files' own
-  stored finishes and NOT ONE toward (ADR-0500's census). The mechanism is already understood:
-  a split booking's recorded window spans the leveling gaps ADR-0491 honours separately, so
-  reading the window overrides them — the witness pinned below is Large_Test_File UID 5231,
-  whose recorded window is 26,880 crew minutes SHORTER than the occupancy the engine correctly
-  places.
+**ADR-0500** ran that census over the 15 MSPDI goldens and closed the row. **ADR-0501 re-ran it
+over the repository's own 29 ``.mpp`` files** — roughly twice the population — because
+ADR-0500's residual ("only a production IMS can settle it") was a claim about the GOLDENS
+wearing the clothes of a claim about the world. The wider census settles the rule the same way
+and corrects ADR-0500 twice:
 
-The oracle for the placement pins is MS Project's own stored ``Finish`` — independent of the
+* **The population is one task in the goldens** — five (golden, task) pairs, all UID 210 in
+  five snapshots of one file. Pinned below; a sixth row is the signal to re-read both ADRs.
+* **The row's premise is mis-stated.** UID 210's finish-placing PRIMARY leg is the
+  ``Standard``-calendar WORK leg of the Logistics Apprentice booking, landing on the stored
+  finish exactly. The 24-hour Content Developer leg finishes four days earlier and has never
+  placed the task.
+* **The rule is ADR-0474's.** Over the 29 ``.mpp`` files, 483 tasks are placed by an off-pattern
+  ratio-1.0 crew leg; on **369** the recorded window and the engine's occupancy (duration plus
+  the ADR-0491 gaps) are byte-identical, and nearly all the rest differ by MINUTES — gap
+  granularity, not a different rule.
+* **ADR-0500's refutation witness was invalid.** UID 5231 is recorded-COMPLETE, so its stored
+  ``Finish`` is its ``actual_finish`` — a record, not a schedule — and it adjudicates nothing.
+  ADR-0500 said the engine's leg "gets it right" there; the leg alone is eighty days late and
+  only ADR-0476's pin makes the solve exact. That correction is pinned below by name.
+* **The corpus's one decisive counter-case adjudicates FOR the engine.** UID 5263 is STARTED,
+  not complete, so its stored ``Finish`` really is MS Project's scheduled output; its window
+  runs 9,600 minutes past the duration and the leg alone lands four weeks early — and the
+  SHIPPED solve is exact, because a leg-alone probe is not the engine.
+
+The oracle for every placement pin is MS Project's own stored ``Finish`` — independent of the
 engine that is judged. The shape pin on the type rule is a TRIPWIRE, not evidence: it exists so
 that implementing the refuted rule cannot happen silently, and it says nothing about MS Project.
-Every pin here is proved able to fail by the ADR's mutation battery.
+Every pin here is proved able to fail by the ADRs' mutation batteries.
 """
 
 from __future__ import annotations
@@ -53,6 +59,7 @@ GOLDEN = Path(__file__).resolve().parents[1] / "fixtures" / "golden"
 
 UPDATED3 = "fuse_hardfile/Hard_File_updated3.mspdi.xml.gz"
 LTF = "fuse_ltf/Large_Test_File.mspdi.xml.gz"
+LTF2 = "fuse_ltf/Large_Test_File2.mspdi.xml.gz"
 
 #: Every (golden, UniqueID) pair in the corpus where an ACTIVE FIXED_DURATION task carries a
 #: WORK booking whose leg calendar differs materially from the project calendar — the whole
@@ -198,12 +205,20 @@ def test_uid_210_lands_on_ms_projects_stored_finish_in_every_snapshot(rel: str) 
 # --- the refutation -------------------------------------------------------------------------
 
 
-def test_reading_a_work_bookings_window_would_undo_the_leveling_split() -> None:
-    """Large_Test_File UID 5231 is why "the leg spans the recorded window" cannot be the rule:
-    its recorded window is 26,880 crew minutes SHORTER than the span plus the gap ADR-0491
-    measured, so reading the window would collapse a leveling split the engine gets right.
-    Generalized over the corpus the rule moves 315 activities away from their stored finishes
-    and none toward (ADR-0500)."""
+def test_uid_5231_is_a_completed_task_so_its_leg_never_places_it(tmp_path: object = None) -> None:
+    """ADR-0501's correction to ADR-0500. This task was cited there as proof that "reading the
+    recorded window would collapse a leveling split the engine gets right". The arithmetic was
+    right and the reasoning was wrong, and the ``.mpp`` corpus says why:
+
+    UID 5231 is **recorded-complete** — 100 % with both actuals — so its stored ``Finish`` IS its
+    ``actual_finish``: a record of what happened, not the scheduler's output. It cannot
+    adjudicate a scheduling rule in either direction. And on this task the engine's LEG does not
+    get it right: alone it lands 2024-10-01 17:00, **eighty days** past the file's own date. The
+    shipped engine is exact only because ADR-0476 pins a completed activity at its record.
+
+    What is pinned here is therefore what is actually true and load-bearing: the numbers, the
+    completeness, the leg's overshoot, and the solve's exactness through the pin.
+    """
     sch = _load(LTF)
     ctx = _ctx(sch)
     t = next(x for x in sch.tasks if x.unique_id == 5231)
@@ -236,7 +251,86 @@ def test_reading_a_work_bookings_window_would_undo_the_leveling_split() -> None:
     window = C._recorded_span(leg_cal, a.start, a.finish)
     assert (span, gaps, span + gaps) == (89760, 26880, 116640)
     assert window == 89760
-    assert window - (span + gaps) == -26880
+
+    # the correction: this is a RECORD, not a schedule — so it adjudicates nothing
+    assert C.is_recorded_complete(t)
+    assert t.actual_finish == t.finish == dt.datetime(2024, 7, 12, 17, 0)
+
+    # and the leg alone overshoots the file's own date by eighty days
+    ps = sch.project_start
+    tod0 = ps.hour * 60 + ps.minute
+    start = t.start
+    assert start is not None
+    leg_only = C._leg_finish(
+        C._snap_to_working(start, leg_cal, tod0),
+        C._Leg(leg_cal, span, ((round(0.5 * span), gaps),)),
+        tod0,
+    )
+    assert leg_only > t.finish
+    assert (leg_only - t.finish).days >= 60
+
+    # the shipped engine is exact here, and ADR-0476's pin is why
+    res = compute_cpm(sch)
+    tm = res.timing(5231)
+    ef = tm.early_finish_wall or offset_to_datetime(
+        sch.project_start, tm.early_finish, sch.calendar
+    )
+    assert ef == t.finish
+
+
+def test_uid_5263_the_corpus_only_decisive_counter_case_is_exact_in_the_solve() -> None:
+    """The one task in the whole 29-file ``.mpp`` corpus where the recorded window beats the
+    duration DECISIVELY (28 days, not the minutes that separate them elsewhere), and it is
+    STARTED rather than complete — so unlike UID 5231 its stored ``Finish`` really is MS
+    Project's scheduled output and really can adjudicate (ADR-0501).
+
+    It adjudicates for the engine, and the MECHANISM is measured rather than assumed. The leg
+    alone lands 2025-03-25 14:42, four weeks early; the SHIPPED solve lands 2025-04-22 14:42 —
+    the file's own date, exactly — and the task is disclosed on ``CPMResult.date_driven``: a
+    STORED DATE places it, not the leg. (ADR-0501's battery cut ADR-0391's actual-start floor to
+    test the first explanation offered for this and the task did not move: that explanation was
+    refuted before it was written down.) A leg-alone probe is not the engine, and this is the
+    task that proves it.
+    """
+    sch = _load(LTF2)
+    ctx = _ctx(sch)
+    t = next(x for x in sch.tasks if x.unique_id == 5263)
+    assert t.task_type is TaskType.FIXED_WORK
+    assert not C.is_recorded_complete(t)  # started, not complete: the date IS a schedule
+    assert t.percent_complete == 86.0
+    assert t.duration_minutes == 107862
+    assert t.finish == dt.datetime(2025, 4, 22, 14, 42)
+
+    shape = C._task_shape(t, ctx)
+    assert shape is not None
+    lg = shape.legs[0]
+    assert lg.off_pattern and not lg.recorded and lg.ratio == 1.0 and not lg.gaps
+    a = next(
+        x
+        for x in t.resource_assignments
+        if (r := sch.resources_by_id.get(x.resource_id)) is not None
+        and r.type is ResourceType.WORK
+        and x.start is not None
+    )
+    assert C._recorded_span(lg.calendar, a.start, a.finish) == 117462  # 9,600 min past the duration
+
+    ps = sch.project_start
+    tod0 = ps.hour * 60 + ps.minute
+    start = t.start
+    assert start is not None
+    leg_only = C._leg_finish(
+        C._snap_to_working(start, lg.calendar, tod0), C._Leg(lg.calendar, t.duration_minutes), tod0
+    )
+    assert leg_only == dt.datetime(2025, 3, 25, 14, 42)  # the leg alone: four weeks early
+    assert (t.finish - leg_only).days == 28
+
+    res = compute_cpm(sch)
+    tm = res.timing(5263)
+    ef = tm.early_finish_wall or offset_to_datetime(
+        sch.project_start, tm.early_finish, sch.calendar
+    )
+    assert ef == t.finish  # the SHIPPED engine is exact
+    assert 5263 in set(res.date_driven)  # ...and a STORED DATE is why, not the leg
 
 
 # --- the tripwire (a shape pin, not an oracle) ----------------------------------------------

@@ -435,6 +435,42 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-16 (c) — a residual must name the POPULATION it was measured against, or it will be read as a statement about the world (ADR-0501, R-61 settled)
+
+- ADR-0500 closed R-61 on the **15 goldens** and wrote its residual as *"only a production IMS can
+  settle it"*. The operator answered in one line — *use the .mpp files in the repo* — and the repo
+  turned out to carry **29** of them, including whole families no golden was made from. The
+  residual was true of the goldens and false of the world, and nothing in its wording said which.
+  **The lesson: write the population into the residual.** "No oracle in the 15 goldens can settle
+  this" would have been correct and would have pointed straight at the other fourteen files.
+- **The wider census upheld the rule anyway** — 369 of 483 candidate legs byte-identical, the rest
+  differing by 1–28 minutes — so the close was right and the reasoning under it was not. Those are
+  different things and both get recorded.
+- **A completed task cannot adjudicate a scheduling rule.** ADR-0500's refutation witness (UID
+  5231) is recorded-complete, so its stored Finish IS its ActualFinish: a record of what happened,
+  not the scheduler's output. ADR-0476 established exactly this and the ADR that cited it still
+  picked the wrong witness. *Before a task is used as an oracle for a RULE, ask whether its date
+  is a schedule or a measurement.*
+- **And that witness hid a second error:** ADR-0500 said the engine's leg "gets it right" there.
+  The leg alone is **eighty days late**; only ADR-0476's pin makes the solve exact. A claim about
+  a leg was validated against a number the leg never produced.
+- **Four cuts of one census, each correcting the last, and the corrections were the finding.**
+  Masking is whichever leg finishes LAST (computed, never counted). Pairing a leg to its booking
+  by CALENDAR IDENTITY silently reported "no window" for all 483 — a leg on a task calendar
+  matches no resource's calendar object; pairing by index with `assert len(pairs) == len(legs)`
+  lets the instrument detect its own failure instead of under-reporting. And comparing a GAPLESS
+  leg against a window that spans the gaps hands every split booking to the window by
+  construction — the same apples-to-oranges error caught earlier in the same unit and
+  reintroduced. *An instrument that cannot detect its own failure will report a confident zero.*
+- **A survivor is only a survivor once the cut is proved to be a mutation.** N3 inserted a stub
+  BEFORE the real definition, so the real one won the name: a non-mutation logged as a survivor
+  would have been a lie. Re-cut so the stub wins, it survived for real — which is how the actual
+  mechanism (`date_driven` places UID 5263, not the leg, not ADR-0391's floor) was found. *The
+  refuted explanation was refuted before it was written down.*
+- **A leg-alone probe is not the engine.** 18 tasks matched neither candidate rule; the shipped
+  solve was within a day on 17. Judge the product by the product.
+
+
 ### 2026-09-16 (b) — a register row can be RIGHT about the arithmetic and WRONG about the mechanism: measure which leg PLACES the finish before fixing the leg that looks wrong (ADR-0500, R-61)
 
 - R-61 said a FIXED_DURATION leg on an off-pattern crew spans the duration in crew minutes "where
