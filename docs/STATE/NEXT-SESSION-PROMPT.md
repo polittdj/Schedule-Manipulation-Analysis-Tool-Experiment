@@ -42,13 +42,18 @@ FIXED_DURATION activity on an off-pattern crew **with NO project-calendar co-boo
 MS Project's stored dates, can settle the rule. **A sixth row appearing in the census test is the
 signal to re-read ADR-0500.**
 
-**FIRST: read `main`'s own CI runs for the merge of PR #686** (R-50 / ADR-0499, `0b010936`). They
-were STILL IN PROGRESS when this was written — CI run 1893 (`35097402239`): `cui-guard` 12:42:51Z
-SUCCESS, `browser` 13:00:24Z SUCCESS, `test (3.11)` / `test (3.13)` / `floor` in progress;
-installer-smoke run 744 (`35097402279`) in progress. **Read them to conclusion; do not inherit this
-line as a verdict.** (CI 1890 (`35051509437`) for `9cb46317` is already settled — completed /
-SUCCESS, all five jobs. Do NOT re-read it.) Always `git fetch origin` and read `git log origin/main`
-before trusting any sha written here.
+**`main` IS SETTLED THROUGH `6b92d937` — do NOT re-read these runs.** #686 (R-50 / ADR-0499) was
+squash-merged at 12:42:32Z to **`0b010936`**, TREE-IDENTICAL to its reviewed head `92b0693c` (tree
+`f4e70212…` on both), and #687 (the docs-only record of that merge) followed at **`6b92d937`**.
+`main`'s own runs for `0b010936` were READ TO CONCLUSION this session, not inherited: **CI 1893
+(`35097402239`) completed / SUCCESS, all six jobs** — `cui-guard` 12:42:51Z · `browser` 13:00:24Z
+(the R-52 interop gate run-and-NOT-skipped on `main` itself) · `floor` 13:07:42Z · `test (3.13)`
+13:12:57Z · `test (3.11)` 13:27:52Z · `check` 13:27:58Z — and **installer-smoke 744
+(`35097402279`) completed / SUCCESS 12:47:28Z**. CI 1890 (`35051509437`) for `9cb46317` was settled
+earlier. Nothing on `main` is outstanding. **Still always `git fetch origin` and read
+`git log origin/main` before trusting any sha written here** — this session branched from
+`0b010936` and `main` moved to `6b92d937` underneath it mid-unit, which is why PR #688 carries a
+merge commit rather than a rebase.
 
 **Environment, re-measured 2026-09-16: run the full sweep with `-v`, never `-q`.** This container
 has NO pytest-timeout, so a stalled test never becomes a failure — the R-50 sweep sat at 78 % for

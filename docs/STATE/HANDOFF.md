@@ -1,5 +1,7 @@
 # Handoff — 2026-09-16 (b) (R-61 CLOSED (ADR-0500) as **REFUTED** — the census the row asked for was run and **the population is ONE task**; the row's premise is mis-stated and its proposed rule is inert as written and **315-to-0 wrong** when generalized; `engine/` untouched, **v1.0.267 unchanged**)
 
+STATUS (current) — `main` @ **`6b92d937`** (#687, the docs-only merge record of #686; merged after this session branched, which is why this branch carries a merge commit rather than a rebase). Before it **`0b010936`** (#686 — R-50, ADR-0499, v1.0.267), whose squash was TREE-IDENTICAL to the reviewed head `92b0693c` (`f4e70212b63306d5624a90b5aa9e4fdc2869f500` on both). **`main`'s own runs for `0b010936` are SETTLED — read to conclusion this session, not inherited: CI 1893 (`35097402239`) `completed` / **SUCCESS**, all six jobs (`cui-guard` 12:42:51Z · `browser` 13:00:24Z with the R-52 interop gate run-and-NOT-skipped on `main` itself · `floor` 13:07:42Z · `test (3.13)` 13:12:57Z · `test (3.11)` 13:27:52Z · `check` 13:27:58Z), and installer-smoke 744 (`35097402279`) `completed` / **SUCCESS** 12:47:28Z. Nothing about `0b010936` is outstanding.** Highest ADR **0500**. Version **1.0.267**, unchanged — this unit touched no `src/`. QC-1/QC-2 bind every session — ADR-0393.
+
 ## What landed
 
 **R-61 is CLOSED, and nothing in `src/` changed — that is the finding.** The roadmap row said a
