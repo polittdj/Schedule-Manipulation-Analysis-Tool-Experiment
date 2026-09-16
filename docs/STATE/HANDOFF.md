@@ -64,6 +64,10 @@ row and the new **R-65** row. **`engine/` untouched.**
   `date_driven` was found.
 * Statics green on both ruff binaries, `ruff format`, `mypy --strict`, `bandit`; 11 pins green.
 
+**Gate on the final tree: 5,490 passed / 0 failed / 7 skipped in 35:41**, and **`-m parity` 142 passed / 0 failed** in 4:36. Both deltas ATTRIBUTED, not assumed: the previous unit's 5,489 and 141 plus this module's one new pin — it collects **exactly 11** under `-m parity`, up from 10 (`pytest -m parity tests/parity/test_r61_fixed_duration_leg_oracle.py --collect-only`). The 7 skips are the documented set (the urlparse pair, three INCIDENTAL_SVG axis cases, and the two `test_pptx_libreoffice_interop` skips that are correct in this container — CI installs the filter and treats a skip there as a FAILURE, ADR-0498). Statics green on both ruff binaries, `ruff format`, `mypy --strict`, `bandit`.
+
+**PR [#689](https://github.com/polittdj/Schedule-Manipulation-Analysis-Tool-Experiment/pull/689) — SIX OF SIX GREEN on head `86a13a72`** (CI run 35120093272: `cui-guard` 16:09:56Z · `browser` 16:27:40Z · `floor` 16:38:59Z · `test (3.13)` 16:52:02Z · `test (3.11)` 16:57:13Z · `check` 16:57:19Z); base `6288ef16`, unmoved. Six is the correct set: no `installer/**` path is touched and `installer-smoke.yml` is path-filtered, so the absence of `linux` / `windows` is correct and not a missing check. **No record of THIS commit's own CI will be pushed** — that treadmill (each record moving the head it describes and restarting CI) was named in the previous unit.
+
 ## Deliberately NOT done
 
 No `engine/` change, no version bump, no wheel/installer rebuild. ADR-0500's "315 away / 0
