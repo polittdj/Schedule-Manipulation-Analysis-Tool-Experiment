@@ -140,6 +140,39 @@ _RIBBON_ENTRIES: tuple[tuple[str, str, str, str, bool | None, float | None, str]
         None,
         "Largest total float among the incomplete activities.",
     ),
+    # The reference library's same-named METRIC HISTORY variants (R-50, ADR-0499). Their own
+    # family, not "Schedule Quality": they come from a different report and each is a DIFFERENT
+    # metric from the same-stemmed ribbon tile, so the picker must not file them together.
+    (
+        "insufficient_detail_history",
+        "Insufficient Detail™ (incomplete, no milestones)",
+        "Metric History",
+        "count",
+        True,
+        None,
+        "The library's Metric History variant: the tile's 10%-of-span test over not-yet-complete, "
+        "non-milestone activities only.",
+    ),
+    (
+        "merge_hotspot_predecessors_gt2",
+        "Merge Hotspot (Predecessors >2, planned only)",
+        "Metric History",
+        "count",
+        True,
+        None,
+        "The library's Metric History row: the tile's three-or-more-predecessors test over "
+        "not-yet-started activities only.",
+    ),
+    (
+        "total_predecessor_lags",
+        "Total # Predecessor Lags (planned only)",
+        "Metric History",
+        "count",
+        True,
+        None,
+        "The library's Metric History row: lagged predecessor LINKS into not-yet-started "
+        "activities (Number of Lags counts activities, across every status).",
+    ),
 )
 
 

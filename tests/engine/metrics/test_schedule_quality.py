@@ -171,3 +171,64 @@ def test_insufficient_detail_uses_the_current_duration_not_baseline() -> None:
         )
     )
     assert q["insufficient_detail"].count == 1 and q["insufficient_detail"].offender_uids == (1,)
+
+
+# =====================================================================================
+# R-50 (ADR-0499) — the reference library's same-named Metric History variants.
+# Hand-built schedules, so each filter is exercised by an activity that ONLY that filter
+# excludes: a fixture built from the goldens could not tell "the filter works" from "the
+# golden happens not to contain the excluded case".
+# =====================================================================================
+def _span_schedule(tasks: list[Task], rels: tuple[Relationship, ...] = ()) -> Schedule:
+    return Schedule(name="s", project_start=MON, tasks=tuple(tasks), relationships=rels)
+
+
+def test_insufficient_detail_history_drops_completed_and_milestones() -> None:
+    """The variant's filter is IncludeComplete=false + IncludeMilestone=false; the tile keeps
+    both. Every task here is long enough to qualify, so only the FILTER can move the number."""
+    long_task = 60 * DAY  # 60 working days against a ~60-calendar-day span → well over 10%
+    tasks = [
+        Task(unique_id=1, name="planned", duration_minutes=long_task),
+        Task(unique_id=2, name="done", duration_minutes=long_task, percent_complete=100.0),
+        Task(unique_id=3, name="ms", duration_minutes=long_task, is_milestone=True),
+    ]
+    q = compute_schedule_quality(_span_schedule(tasks))
+    assert q["insufficient_detail"].offender_uids == (1, 2, 3)
+    assert q["insufficient_detail_history"].offender_uids == (1,)
+    assert q["insufficient_detail_history"].population == 1  # the tile's is 3
+
+
+def test_merge_hotspot_variant_keeps_planned_activities_only() -> None:
+    """Two identical merge points; one successor has started, so only the PLANNED one counts."""
+    tasks = [Task(unique_id=i, name=f"T{i}", duration_minutes=DAY) for i in range(1, 4)]
+    tasks += [
+        Task(unique_id=10, name="planned", duration_minutes=DAY),
+        Task(unique_id=11, name="started", duration_minutes=DAY, percent_complete=50.0),
+    ]
+    rels = tuple(
+        Relationship(predecessor_id=p, successor_id=s) for s in (10, 11) for p in (1, 2, 3)
+    )
+    q = compute_schedule_quality(_span_schedule(tasks, rels))
+    assert q["merge_hotspot"].offender_uids == (10, 11)
+    assert q["merge_hotspot_predecessors_gt2"].offender_uids == (10,)
+    assert q["merge_hotspot_predecessors_gt2"].population == 4  # 1,2,3,10 — not the started 11
+
+
+def test_total_predecessor_lags_counts_links_where_the_tile_counts_activities() -> None:
+    """One planned successor with TWO lagged predecessors: the tile counts 1 activity, the
+    variant counts 2 links. A started successor's lag is outside the variant's filter."""
+    tasks = [Task(unique_id=i, name=f"T{i}", duration_minutes=DAY) for i in (1, 2, 3)]
+    tasks += [
+        Task(unique_id=10, name="planned", duration_minutes=DAY),
+        Task(unique_id=11, name="started", duration_minutes=DAY, percent_complete=50.0),
+    ]
+    rels = (
+        Relationship(predecessor_id=1, successor_id=10, lag_minutes=DAY),
+        Relationship(predecessor_id=2, successor_id=10, lag_minutes=DAY),
+        Relationship(predecessor_id=3, successor_id=11, lag_minutes=DAY),
+    )
+    q = compute_schedule_quality(_span_schedule(tasks, rels))
+    assert q["number_of_lags"].count == 2 and q["number_of_lags"].offender_uids == (10, 11)
+    assert q["total_predecessor_lags"].count == 2  # LINKS into the planned successor
+    assert q["total_predecessor_lags"].offender_uids == (10,)
+    assert q["total_predecessor_lags"].unit == "count"

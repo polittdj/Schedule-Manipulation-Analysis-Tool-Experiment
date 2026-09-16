@@ -248,6 +248,41 @@ AUDIT: tuple[Row, ...] = (
         MATCH,
         ">2 predecessors == >=3 predecessors; identical.",
     ),
+    # --- the Bible's same-named METRIC HISTORY variants (R-50, ADR-0499) ---
+    # Each shares a NAME (or a stem) with a tile above and is a DIFFERENT Bible <Metric>: same
+    # formula, different PrimaryFilter. The Bible names metrics in <Name> ELEMENTS, not Name="…"
+    # attributes, and escapes the values (&gt;, &amp;) — an attribute regex reports zero of these
+    # and reads exactly like "not in the library". The GUIDs below disambiguate the entries a
+    # shared name cannot.
+    Row(
+        "insufficient_detail_history",
+        "Insufficient Detail™",
+        "SUM((OriginalDuration / (ProjectFinish-ProjectStart) > 0.1) * 1)",
+        MATCH,
+        "Bible GUID c71b82fe-006e-42b1-a817-4b8a2cfcf1c4, group 'Quality - Duration' — the same "
+        "formula as the 'insufficient_detail' tile (GUID a80debf6…, which divides by "
+        "ProjectDuration) under PrimaryFilter IncludeComplete=false + IncludeMilestone=false. "
+        "Both entries carry the same NAME, so the guard's per-name formula SET holds both.",
+    ),
+    Row(
+        "merge_hotspot_predecessors_gt2",
+        "Merge Hotspot (Predecessors >2)",
+        "SUM((NumberOfPredecessors+NumberofExternalPredecessors>2)*1)",
+        MATCH,
+        "Bible GUID c5196e05-2c1d-463b-835b-fedcce1c9f86 — the 'merge_hotspot' tile's formula "
+        "under PrimaryFilter IncludeInProgress=false + IncludeComplete=false (planned only). "
+        ">2 predecessors == >=3 predecessors; identical.",
+    ),
+    Row(
+        "total_predecessor_lags",
+        "Total # Predecessor Lags",
+        "sum(numberoflags)",
+        MATCH,
+        "Bible GUID 37c0df8f-17b8-4a1d-913c-e86fd3a8cc54, PrimaryFilter planned-only. The Bible's "
+        "own Description settles the unit — 'Total number of predecessor relationships with lags "
+        "in the schedule' — so this sums LINKS, where the 'number_of_lags' tile counts distinct "
+        "ACTIVITIES across every status (2 vs 8 on the Large Test File).",
+    ),
     # --- Baseline compliance / Half-Step-Delay (Acumen 'by Status Dates' family) ---
     Row(
         "forecast_to_be_finished",

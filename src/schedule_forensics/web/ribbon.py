@@ -48,6 +48,17 @@ _RIBBON_PCT5 = {"hard_constraints"}
 #: 0.0 when that population is empty, so they render "—" not a fabricated figure (audit NEW-1)
 _RIBBON_FLOAT_EXTRAS = {"avg_float_days", "max_float_days"}
 
+#: The reference library's same-named **Metric History variants** (R-50, ADR-0499). They get their
+#: OWN panel rather than three more ribbon columns because they come from a different report: the
+#: Ribbon tile and the Metric History row share a name and are a different metric, and a reader who
+#: finds them side by side in one matrix is being invited to make exactly the comparison this row
+#: exists to prevent. Each label states the filter that makes it a different metric.
+_HISTORY_VARIANT_COLS: tuple[tuple[str, str], ...] = (
+    ("Insufficient Detail™ (incomplete, no milestones)", "insufficient_detail_history"),
+    ("Merge Hotspot (Predecessors >2, planned only)", "merge_hotspot_predecessors_gt2"),
+    ("Total # Predecessor Lags (planned only)", "total_predecessor_lags"),
+)
+
 
 def _ribbon_cell_class(attr: str, r: object, quality: dict[str, MetricResult]) -> str:
     """pass (green) / warning (yellow) / fail (red) for thresholded measures; '' = no threshold.
@@ -252,7 +263,7 @@ def _ribbon_body(
         # rank 8: the row label wears the 3px LEFT edge (the k-edge / cite-card family) and is
         # i18n-inert (a filename must never be translated).
         body += f"<tr><td class=rib-row-label data-no-i18n>{_e(key)}</td>{cells}</tr>"
-    labels = {attr: label for label, attr in cols}
+    labels = {attr: label for label, attr in (*cols, *_HISTORY_VARIANT_COLS)}
     # <-escape the inline-JSON embeds like every sibling embed (audit ADR-0250): a </script> in a
     # schedule key can't currently arise (keys are Path.name, no slash) but the escape is the
     # explicit barrier, not an implicit Path.name side effect, and keeps the pattern uniform.
@@ -281,6 +292,7 @@ def _ribbon_body(
         export_title="Export the quality ribbon — one row per loaded file — opens in Excel"
     )
     head = _panel_head("Schedule Quality Ribbon", tools=tools, prov=prov)
+    variants = _history_variants_panel(rows, prov=prov)
     return f"""{note}
 <div class=panel data-export="/export/xlsx/ribbon">{head}
 {take}
@@ -303,5 +315,73 @@ reference schedule-quality export. <i>Float Ratio™ is omitted pending its exac
 (&ge;80% of threshold)</span> <span class=rib-fail>fail</span> &mdash; colored where a
 published threshold exists; unthresholded measures stay neutral.</span>
 <b>Click any metric cell</b> to list the activities behind that figure below.</p>
-<table><tr>{head_row}</tr>{body}</table></div>{drill_script}
+<table><tr>{head_row}</tr>{body}</table></div>
+{variants}{drill_script}
 <script src="/static/panelkit.js"></script>"""
+
+
+def _history_variants_panel(
+    rows: list[tuple[str, object, dict[str, MetricResult]]], *, prov: str = ""
+) -> str:
+    """The reference library's same-named **Metric History variants** (R-50, ADR-0499).
+
+    Three library metrics share a stem with a Ribbon tile above and are a DIFFERENT metric — the
+    same formula under a different library filter. Before this panel a reader holding the Metric
+    History report could not find their figures in the tool at all, and the nearest same-named
+    tile reads a different number (43 / 156 / 8 against 22 / 125 / 2 on the reference Large Test
+    File). Every column states the filter that makes it its own metric, every cell drills to the
+    activities behind the figure through the same click-drill as the ribbon above, and the figures
+    are the engine's own ``MetricResult`` counts — never re-judged here.
+    """
+    if not rows:
+        return ""
+    head_row = "<th scope=col>Schedule</th>" + "".join(
+        f"<th scope=col class=metric-th>"
+        f"{_metric_help_cell(label, attr, align='right' if i else 'left')}</th>"
+        for i, (label, attr) in enumerate(_HISTORY_VARIANT_COLS)
+    )
+    body = ""
+    for key, ribbon_row, quality in rows:
+        cells = ""
+        for label, attr in _HISTORY_VARIANT_COLS:
+            # A metric the engine did not emit shows the missing-figure sentinel, never a 0 that
+            # would read as a measurement (the design system's "missing shows —" rule).
+            metric = quality.get(attr)
+            if metric is None:
+                cells += '<td class="rib-na" title="Not emitted for this schedule">&mdash;</td>'
+                continue
+            # SAME threshold vocabulary as the ribbon above — never a second tooltip system
+            # (Mission Ops rank 8): the class and the verdict word come from the shared helpers,
+            # so a variant cell is judged by exactly the rule its tile is judged by.
+            cls = _ribbon_cell_class(attr, ribbon_row, quality)
+            title = _ribbon_cell_title(label, attr, ribbon_row, quality, cls)
+            cells += (
+                f'<td class="rib-cell {cls}" data-file="{_e(key)}" data-metric="{attr}" '
+                f'tabindex=0 role=button title="{_e(title)}">'
+                f"{_e(metric.count)}</td>"
+            )
+        body += f"<tr><td class=rib-row-label data-no-i18n>{_e(key)}</td>{cells}</tr>"
+    n_rows = len(rows)
+    take = (
+        f"<p class=sf-take data-no-i18n>{n_rows} schedule version{'s' if n_rows != 1 else ''} "
+        f"&times; {len(_HISTORY_VARIANT_COLS)} Metric History measures — same names as the ribbon "
+        "above, different metrics: read each against its own report row, never across."
+    )
+    tools = _shell_tools(
+        export_title="Export the quality ribbon — these measures are its last columns — "
+        "opens in Excel"
+    )
+    head = _panel_head("Metric History variants", tools=tools, prov=prov)
+    return f"""<div class=panel id=metricHistoryVariants data-export="/export/xlsx/ribbon">{head}
+{take}</p>
+<p class=muted>The reference metric library carries, under names the ribbon above already uses,
+<b>separate metrics with a different population</b> — the rows a Metric History report prints. They
+are published here so a figure read off that report can be found in the tool.
+<b>Insufficient Detail™ (incomplete, no milestones)</b> applies the ribbon tile's 10%-of-span
+formula to not-yet-complete, non-milestone activities only; <b>Merge Hotspot (Predecessors &gt;2,
+planned only)</b> applies the tile's three-or-more-predecessors test to activities that have not
+started; <b>Total # Predecessor Lags (planned only)</b> counts lagged predecessor <i>links</i> into
+activities that have not started, where the ribbon's <b>Number of Lags</b> counts distinct
+<i>activities</i> across every status. A tile and its variant will normally disagree &mdash; that is
+the point, not a defect. <b>Click any cell</b> to list the activities behind that figure below.</p>
+<table><tr>{head_row}</tr>{body}</table></div>"""

@@ -36,6 +36,14 @@ docs/FUSE-VALIDATION.md):
   (ProjectFinish-ProjectStart) > 0.1) * 1)`` — Fuse-validated ENGINE==FUSE on the delivered
   exports (P2=1, P5=0; ADR-0151/0155). Sourced from :mod:`schedule_quality` (single formula).
 
+* **The Metric History variants** — ``Insufficient Detail™ (incomplete, no milestones)``,
+  ``Merge Hotspot (Predecessors >2, planned only)`` and ``Total # Predecessor Lags (planned
+  only)``: three library metrics that share a stem with a tile above and are a DIFFERENT metric,
+  the same formula under a different ``PrimaryFilter``. They ride here so a reader holding the
+  Metric History report can find their figures (R-50, ADR-0499), and each names its filter so the
+  two are never read across. Sourced from :mod:`schedule_quality` (single formula) and pinned
+  UID-exact against Fuse's own per-activity marks in the Detailed Metric Report.
+
 Float Ratio™ remains deliberately left out pending its exact Fuse formula (docs/FUSE-VALIDATION.md).
 """
 
@@ -75,6 +83,16 @@ class RibbonMetrics:
     avg_float_days: float
     max_float_days: float
     insufficient_detail: int
+    #: The reference library's same-named **Metric History variants** (R-50, ADR-0499) — the same
+    #: formulas as the tiles above under a different library filter, so a reader holding the
+    #: Metric History report can find their figures. Each is a DIFFERENT metric from its tile and
+    #: is never compared across: ``insufficient_detail_history`` excludes completed activities and
+    #: milestones, and the other two are PLANNED-only; ``total_predecessor_lags`` counts LINKS
+    #: where ``number_of_lags`` counts activities. Sourced from :mod:`schedule_quality` (single
+    #: formula), pinned UID-exact against Fuse's own per-activity marks.
+    insufficient_detail_history: int
+    merge_hotspot_predecessors_gt2: int
+    total_predecessor_lags: int
     #: Size of the incomplete-activity float population ``avg_float_days`` / ``max_float_days`` are
     #: computed over. ``0`` means that population is empty (a fully-progressed schedule, every
     #: non-summary activity 100% complete) → both float figures degraded to a placeholder ``0.0``,
@@ -171,6 +189,12 @@ def ribbon_offender_map(
         "avg_float_days": floats_desc,
         "max_float_days": floats_desc,
         "insufficient_detail": quality["insufficient_detail"].offender_uids,
+        # The Metric History variants drill to the SAME activities the reference tool marked
+        # (R-50): for ``total_predecessor_lags`` — a LINK count — the offenders are the planned
+        # activities carrying those lags, which is what the reference report marks per row.
+        "insufficient_detail_history": quality["insufficient_detail_history"].offender_uids,
+        "merge_hotspot_predecessors_gt2": quality["merge_hotspot_predecessors_gt2"].offender_uids,
+        "total_predecessor_lags": quality["total_predecessor_lags"].offender_uids,
     }
 
 
@@ -247,4 +271,7 @@ def compute_ribbon(schedule: Schedule, cpm: CPMResult, audit: ScheduleAudit) -> 
         max_float_days=max_float,
         insufficient_detail=quality["insufficient_detail"].count,
         incomplete_float_count=len(floats),
+        insufficient_detail_history=quality["insufficient_detail_history"].count,
+        merge_hotspot_predecessors_gt2=quality["merge_hotspot_predecessors_gt2"].count,
+        total_predecessor_lags=quality["total_predecessor_lags"].count,
     )

@@ -679,12 +679,16 @@ from schedule_forensics.web.resources import _resource_loading_json as _resource
 from schedule_forensics.web.resources import _resources_body as _resources_body
 from schedule_forensics.web.resources import _resources_explainer as _resources_explainer
 from schedule_forensics.web.resources import _who_is_overloaded_header as _who_is_overloaded_header
+from schedule_forensics.web.ribbon import _HISTORY_VARIANT_COLS as _HISTORY_VARIANT_COLS
 from schedule_forensics.web.ribbon import _RIBBON_CLS_VERDICT as _RIBBON_CLS_VERDICT
 from schedule_forensics.web.ribbon import _RIBBON_FLOAT_EXTRAS as _RIBBON_FLOAT_EXTRAS
 from schedule_forensics.web.ribbon import _RIBBON_PCT5 as _RIBBON_PCT5
 from schedule_forensics.web.ribbon import _RIBBON_WARN_FRACTION as _RIBBON_WARN_FRACTION
 from schedule_forensics.web.ribbon import _RIBBON_ZERO_TOLERANCE as _RIBBON_ZERO_TOLERANCE
 from schedule_forensics.web.ribbon import _can_we_trust_header as _can_we_trust_header
+from schedule_forensics.web.ribbon import (
+    _history_variants_panel as _history_variants_panel,
+)
 from schedule_forensics.web.ribbon import _ribbon_body as _ribbon_body
 from schedule_forensics.web.ribbon import _ribbon_cell_class as _ribbon_cell_class
 from schedule_forensics.web.ribbon import _ribbon_cell_title as _ribbon_cell_title
@@ -4777,6 +4781,12 @@ def create_app(
             "Insufficient Detail™",
             "Avg Float (d)",
             "Max Float (d)",
+            # the reference library's same-named Metric History variants (R-50, ADR-0499) — the
+            # /ribbon page shows them in their own panel; the workbook carries them as the last
+            # columns of the same row, each header naming the filter that makes it its own metric
+            "Insufficient Detail™ (incomplete, no milestones)",
+            "Merge Hotspot (Predecessors >2, planned only)",
+            "Total # Predecessor Lags (planned only)",
         )
         body = []
         for key, sch in st.ordered_versions():
@@ -4802,6 +4812,9 @@ def create_app(
                     r.insufficient_detail,
                     "—" if na_floats else r.avg_float_days,
                     "—" if na_floats else r.max_float_days,
+                    r.insufficient_detail_history,
+                    r.merge_hotspot_predecessors_gt2,
+                    r.total_predecessor_lags,
                 )
             )
         if not body:

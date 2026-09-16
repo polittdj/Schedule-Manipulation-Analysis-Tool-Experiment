@@ -18579,3 +18579,78 @@ called a flake turned out to have a mechanism (ADR-0442 UI-02, ADR-0443, ADR-046
   "these are Acumen built-ins, not library metrics", a false negative that would have sent R-50 down
   the wrong path. Values are XML-escaped (`&gt;`, `&amp;`).
 
+
+## 2026-09-16 — R-50 CLOSED (ADR-0499): the library's same-named Metric History variants are exposed as their own metrics — v1.0.267
+
+- **Session start state, verified not assumed:** `git fetch --unshallow origin && git fetch --prune origin`
+  then `git log origin/main` — `main` @ **`9cb46317`** (#685), matching the kickoff. The branch
+  `claude/polaris-r50-audit-xi4ow6` sits on it, tree-identical, clean.
+- **`main`'s own CI 1890 (35051509437) for `9cb46317` was still IN PROGRESS at session start and was
+  read as it ran, never guessed:** `cui-guard` SUCCESS 03:22:10Z · `browser` SUCCESS 03:38:14Z (the
+  R-52 interop gate ran and did **not** skip on `main` itself, 3 s) · `floor` SUCCESS 03:47:19Z
+  (parity gate included). `test (3.11)` / `test (3.13)` were still inside the pytest step when this
+  entry was first written, and the run was then read to CONCLUSION: **`completed` / `SUCCESS`,
+  all five jobs, 04:07:52Z** — nothing about `9cb46317` is outstanding. No
+  `installer-smoke` run exists for it and that absence is correct (docs-only; path-filtered).
+- **R-50 worked as its own unit** (register §3, T2): three library metrics share a name with a ribbon
+  tile, are a **different metric** (same formula, different `PrimaryFilter`), and were not exposed —
+  so an analyst holding a Metric History report saw the same NAME carrying two numbers with nothing
+  on screen to say they are different metrics. **ADR-0499**, v1.0.267.
+- **Measured from the Bible before anything was written:** `Insufficient Detail™` GUID `c71b82fe…`
+  (`IncludeComplete=false`) · `Merge Hotspot (Predecessors >2)` GUID `c5196e05…` (planned only) ·
+  `Total # Predecessor Lags` GUID `37c0df8f…` (planned only, `sum(numberoflags)` = **links**).
+- **Two corrections to ADR-0473's wording, both measured.** (a) `IncludeMilestone` is **not** the
+  discriminator for Insufficient Detail™ — **both** entries are `IncludeMilestone=false` in their
+  `PrimaryFilter`; only the tile's unused `TripwireFilter` carries `true`, so `IncludeComplete` alone
+  separates them. (b) The register's "2 vs 5" is **"2 vs 8"** — the `Number of Lags` tile reads 8 on
+  both Large Test Files, and it is not the same unit (relationships vs distinct activities).
+- **Shipped:** `engine/metrics/schedule_quality.py` (three `MetricResult`s) · `engine/metrics/ribbon.py`
+  (three `RibbonMetrics` fields + drill sets) · `engine/metric_catalog.py` (a new **Metric History**
+  family) · `web/help.py` (three entries + the three tiles' cross-references) · `web/ribbon.py` (the
+  **Metric History variants** panel — its own panel, not three more ribbon columns) · `web/app.py`
+  (the ribbon workbook's last three columns) · `docs/METRIC-DICTIONARY.md` regenerated ·
+  `tests/parity/test_fuse_history_variants_oracle.py` (new) · three pins in
+  `tests/engine/test_aft_formula_audit.py` · three filter units in
+  `tests/engine/metrics/test_schedule_quality.py` · four panel tests and **two re-aimed guards** in
+  `tests/web/test_ribbon_view.py`.
+- **Verified.** Red first by name: the oracle failed **8 of 11** on the pristine tree (the three green
+  are the vendor-report cross-check, which must pass without the engine). Engine == Fuse **UID-exact
+  on both files** — 22 / 125 / 2 and 21 / 123 / 2, every mark — with populations equal to Fuse's own
+  **Record Counts** (945 / 919 · 916 / 906 · 2 / 2). **Mutation battery 14 / 14 red by name** on a
+  shadow `src/` copy with a `-p mutcheck` plugin; **M11 survived the first pass and the survivor was a
+  hole in the TEST** (a header with no value beneath it survives the column being dropped from the
+  row). **Corpus census: 15 goldens, 8,805 pre-existing values, ZERO moved, ZERO removed, 90 added.**
+  **Rendered in four themes × 1440/390 px: the panel once in all eight, document overflow 0 px in all
+  eight**, ⓘ call-outs present, the click-drill lists the activities behind the figure.
+- **Traps written down:** a page-wide guard is under-specified the moment the page grows a second
+  matrix (count PER PANEL) · asserting a HEADER exists is not asserting a VALUE exists · the `.aft`
+  names metrics in `<Name>` elements, not attributes · a same-named Bible metric needs its GUID as the
+  key · Fuse's Record Count is a second independent oracle the totals cannot replace · reuse the page's
+  existing tooltip vocabulary instead of writing a second one.
+- **The FULL SUITE is why the push was held.** With the static gate, every targeted module, the
+  14-mutant battery, the corpus census and the four-theme render already green, the first
+  whole-tree run returned **5,475 passed / 4 failed / 7 skipped in 37:23** — and all four failures
+  were real consequences of this change: `test_catalog_shape_and_families` and
+  `/api/workbench`'s family list + `len(metrics) == 21`, both moved by the deliberate new **Metric
+  History** catalog family; the monolith-split contract, because `_HISTORY_VARIANT_COLS` /
+  `_history_variants_panel` were not re-exported `X as X` from `web.app`; and the `/ribbon`
+  panelkit promotion census (4 `.panel` → 5). **Six guards were re-aimed across the unit and the
+  targeted runs had found only two of them.** The panelkit repair needed a DOM change — the two
+  matrices share one `data-export`, so the selector was ambiguous under Playwright strict mode —
+  and the variants panel now carries `id=metricHistoryVariants`; the census was **strengthened**,
+  not renumbered (both matrices proved click-driven by name, `[data-sf-big]` pinned at 2).
+  **M15: deleting that id turns the named test red.** Wheel + nine installers rebuilt again after
+  this second round of source edits, six files byte-identical to `src/` by sha.
+- **Final gate on the final tree: 5,479 passed / 0 failed / 7 skipped in 39:48; `-m parity` 131
+  passed / 0 failed in 5:43.** Parity 120 → 131, attributed not assumed — the new oracle collects
+  **exactly 11** under `-m parity`. Skips: the `urlparse` pair, the three `INCIDENTAL_SVG` axis
+  cases, and the two `test_pptx_libreoffice_interop` skips that are CORRECT in this container (no
+  `libreoffice-impress`; CI installs it and treats a skip as a failure, ADR-0498).
+- **A hang cost 2 h 16 m of wall clock and is written down.** The post-repair sweep stalled at 78 %
+  with the machine IDLE (load 0.02, pytest 10 % CPU, a chromium alive 1 h 53 m, no test server
+  listening) — a deadlocked browser test. `pytest-timeout` is not installed, so a stall never
+  becomes a failure, and `-q` gave no suspect. Killed, strays cleared, re-run with **`-v`** so the
+  last line without a verdict names the test in flight; it completed clean. The hung test was NOT
+  identified and did NOT recur — **UNVERIFIED**, and nothing implicates the register's known
+  width-racy `test_driving_path_whole_schedule_browser.py:104` (#667).
+- **PR [#686](https://github.com/polittdj/Schedule-Manipulation-Analysis-Tool-Experiment/pull/686) — EIGHT OF EIGHT GREEN on head `ea62ea36`** (CI run 35070302027: `cui-guard` 07:47:27Z · `linux` 07:47:55Z · `windows` 07:51:59Z (installer-smoke 35070301835) · `browser` 08:03:32Z · `floor` 08:11:35Z · `test (3.13)` 08:31:33Z · `test (3.11)` 08:33:32Z · `check` 08:33:39Z); `mergeable_state: clean`, **zero review threads**, still DRAFT — the operator marks it ready and squash-merges. Eight is the correct set here because `installer/**` is touched (`installer-smoke.yml` is path-filtered; a docs-only PR shows six). No *Claude Approvals* check runs on this repository. Base `9cb46317`, unmoved between the push and this reading.
