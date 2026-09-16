@@ -1,58 +1,98 @@
 # Kickoff prompt — next session
 
-**R-50 is CLOSED and SHIPPED — ADR-0499, v1.0.267. Do not re-open, and do not re-derive the three variants' filters.**
-The register said the library's same-named **Metric History variants** were not exposed, so a reader of the History
-report could not find them in the tool. All three are now published as their own metrics under the library's own row
-label **with the filter IN the name** — `Insufficient Detail™ (incomplete, no milestones)` · `Merge Hotspot
-(Predecessors >2, planned only)` · `Total # Predecessor Lags (planned only)` — in their **own panel** on `/ribbon`
-(not three more ribbon columns: the Ribbon and the Metric History are different reports, and a tile beside its variant
-in one matrix invites exactly the cross-report read the row exists to prevent). Pinned **UID-exact against Fuse's own
-per-activity X marks** in the Detailed Metric Report: **22 / 125 / 2** on the Large Test File and **21 / 123 / 2** on
-File2, every mark, with the engine's populations equal to Fuse's own **Record Counts** (945 / 919 · 916 / 906 · 2 / 2).
-Red-first 8 of 11; mutation battery **14 / 14 by name**; corpus census 15 goldens / 8,805 values **zero moved**, 90
-added; rendered in four themes at 1440 and 390 px with **0 px document overflow**.
+**R-61 is CLOSED — ADR-0500, and it is CLOSED as REFUTED. Do not re-open it, do not implement "a
+fixed-duration leg spans the task's window", and do not re-run its census expecting a different
+population.** The row was right about the arithmetic and wrong about the mechanism, and `engine/`
+was deliberately left untouched — **v1.0.267 is unchanged, no wheel or installer rebuild**.
 
-**TWO CORRECTIONS this unit measured — do NOT re-inherit ADR-0473's wording.** (a) `IncludeMilestone` is **false on
-BOTH** `Insufficient Detail™` entries in their `PrimaryFilter`; only the tile's unused `TripwireFilter` carries `true`,
-so **`IncludeComplete` alone** separates the two. (b) The register's "2 vs 5" is **"2 vs 8"** — the `Number of Lags`
-tile reads 8 on both Large Test Files — and they are not the same unit: the Bible's own Description makes
-`Total # Predecessor Lags` a count of **relationships**, where the tile counts distinct **activities**.
+Measured, all of it on a shadow copy of `src/`, never the tree under measurement:
 
-**Still unexposed and deliberately out of R-50's scope** (named so a later row can price them): `Critical
-w/Insufficient Detail™`, `Merge Hotspot w/Predecessor Lags` (& Low Total Float), the whole successor-side lag family
-(`Activities w/Lags on Successor` = 8 on both files), `Max/Min Predecessor Lag (days)`, `Max # of Predecessor Lags on
-an Activity`. And the three shipped variants are pinned **on the Large Test File / File2 pair only** — no other corpus
-export scores them, so their figures on Hard_File / Project2-5 / EVM are the engine's own and UNPINNED.
+* **The census the row asked for returns ONE TASK.** Across all 15 MSPDI goldens the population of
+  (active FIXED_DURATION task × off-pattern WORK leg) is **five rows = UID 210 in five snapshots of
+  one file**. No second task, no unstarted witness, none without a project-calendar co-booking — so
+  **no golden can discriminate the rule.** The witness's numbers are the row's: duration 1,920 min,
+  leg 1,920 min of the 24-hour *Content Developer* calendar, recorded window **7,740**, and that
+  window is the TASK's own (08-20 08:00 → 08-25 17:00), which MS Project writes onto all four of
+  the task's assignments, work and material alike.
+* **Neither mask the row names is the mask.** UID 210's primary (finish-placing) leg is the
+  **`Standard`-calendar WORK leg** of the Logistics Apprentice booking — 1,920 min on the PROJECT
+  calendar, landing on the stored finish exactly. The crew leg finishes 08-21 16:00, four days
+  earlier, and has never placed the task. Cutting ADR-0476's pin reads 210 **+1,260 min LATE**, not
+  early; cutting ADR-0487's material leg moves it **not at all** (that cut does move updated3's
+  project finish 12-12 → 12-06 and within-a-day 106 → 44, so it has teeth — it just misses 210).
+* **The proposed rule FIRES and changes nothing** (ratio 1.0000 → 4.0312, span 1,920 → 7,740, that
+  leg's finish 08-21 16:00 → 08-25 17:00): every figure on all 15 goldens byte-identical, its only
+  effect a LOST `booking_span_driven` disclosure.
+* **Generalized it is refuted 315-to-0.** MS Project has no separate scheduler for FIXED_DURATION
+  and 267 corpus tasks are placed by a ratio-1.0 WORK leg: within-a-day 1,666 → 1,568 ·
+  1,687 → 1,585 · 1,645 → 1,567 on the three Large Test File goldens, every other golden unmoved,
+  **315 activities AWAY / 0 TOWARD** (worst +309,865 min). A split booking's window spans the
+  leveling gaps ADR-0491 honours separately — `Large_Test_File` UID 5231's window (89,760) is
+  **26,880 crew minutes SHORTER** than the correct occupancy.
+* **The alternative the row does not name is refuted too**: a fixed-duration leg on the TASK's axis
+  is 0 toward / 5 away — it drops 210 off the wall path, so ADR-0476's pin lands at 16:00 (that
+  ADR's own day-boundary residual).
 
-**FIRST: read `main`'s own CI run for the merge of PR #686** (R-50; it was EIGHT OF EIGHT GREEN on head
-`ea62ea36`, `mergeable_state: clean`, zero review threads, draft, when this session stood down). (CI 1890 (35051509437) for `9cb46317` is
-already settled — read to conclusion during the R-50 session: **`completed` / `SUCCESS`, all five jobs, 04:07:52Z**,
-the R-52 interop gate run-and-not-skipped on `main` itself. Do NOT re-read it.) **Always `git fetch origin` and read `git log origin/main` before trusting any sha written here.**
+**Shipped:** `tests/parity/test_r61_fixed_duration_leg_oracle.py` (10 pins) · ADR-0500 · the R-61
+row → CLOSED. Battery **6 / 6 red by name**, control green, every one of the 10 pins red under at
+least one mutant.
 
-**Environment, re-measured 2026-09-16: run the full sweep with `-v`, never `-q`.** This container has NO
-`pytest-timeout`, so a stalled test never becomes a failure — the R-50 sweep sat at **78 % for 2 h 16 m** with the
-machine IDLE (load 0.02, pytest 10 % CPU, a chromium alive 1 h 53 m, no test server listening: a deadlocked browser
-test). Dots give no suspect; `-v` names the test in flight, and the hang signal is **no progress while the load
-average is ~0**, which a percentage cannot tell you. The run was killed, strays cleared, and the `-v` re-run completed
-clean in 39:48 — the hung test was NOT identified and did NOT recur (**UNVERIFIED**; nothing implicates the register's
-known width-racy `test_driving_path_whole_schedule_browser.py:104`, #667). Expect **7 skips** locally: the `urlparse`
-pair, three `INCIDENTAL_SVG` axis cases, and the two `test_pptx_libreoffice_interop` skips that are CORRECT here (no
-`libreoffice-impress`; CI installs it and treats a skip as a FAILURE).
+**The residual, named and OPEN — do NOT re-chase without it:** only a production IMS carrying a
+FIXED_DURATION activity on an off-pattern crew **with NO project-calendar co-booking**, alongside
+MS Project's stored dates, can settle the rule. **A sixth row appearing in the census test is the
+signal to re-read ADR-0500.**
 
-**Run the session-token-guardian's `scripts/token_audit.py` as the FIRST action** (copy it to the scratchpad —
-`ruff check .` is whole-tree) and before each operator prompt.
+**FIRST: read `main`'s own CI runs for the merge of PR #686** (R-50 / ADR-0499, `0b010936`). They
+were STILL IN PROGRESS when this was written — CI run 1893 (`35097402239`): `cui-guard` 12:42:51Z
+SUCCESS, `browser` 13:00:24Z SUCCESS, `test (3.11)` / `test (3.13)` / `floor` in progress;
+installer-smoke run 744 (`35097402279`) in progress. **Read them to conclusion; do not inherit this
+line as a verdict.** (CI 1890 (`35051509437`) for `9cb46317` is already settled — completed /
+SUCCESS, all five jobs. Do NOT re-read it.) Always `git fetch origin` and read `git log origin/main`
+before trusting any sha written here.
 
-## The next §3 unit is R-61.
+**Environment, re-measured 2026-09-16: run the full sweep with `-v`, never `-q`.** This container
+has NO pytest-timeout, so a stalled test never becomes a failure — the R-50 sweep sat at 78 % for
+2 h 16 m with the machine IDLE (load 0.02, pytest 10 % CPU, a chromium alive 1 h 53 m, no test
+server listening: a deadlocked browser test). Dots give no suspect; `-v` names the test in flight,
+and the hang signal is no progress while the load average is ~0, which a percentage cannot tell
+you. The hung test was NOT identified and did NOT recur (UNVERIFIED). Expect **7 skips** locally:
+the urlparse pair, three INCIDENTAL_SVG axis cases, and the two `test_pptx_libreoffice_interop`
+skips that are CORRECT here (no libreoffice-impress; CI installs it and treats a skip as a
+FAILURE). The clone arrives SHALLOW — `git fetch --unshallow origin` FIRST. Install with
+`uv pip install --python /usr/local/bin/python3 --system -e '.[dev]' build playwright` (never
+`playwright install`). `/root/.local/bin/ruff` 0.15.8 shadows CI's `/usr/local/bin/ruff` 0.16.7 on
+PATH — run both.
 
-**R-61** — a `FIXED_DURATION` booking on an off-pattern crew spans the DURATION in crew minutes (ADR-0474's type rule)
-where MS Project keeps the task's window: `Hard_File_updated3` UID 210's Content Developer booking is recorded over
-four project days and computed as 1.33 days on the 24-hour calendar — masked today by the completed-window pin
-(ADR-0476) and by the material leg (ADR-0487). Its first executable step: **census every `FIXED_DURATION` task with an
-off-pattern crew across the goldens**, recorded booking window vs the computed leg; if the window is the rule, a
-fixed-duration leg spans the task's window on the crew calendar. The oracle is the stored booking windows of those
-tasks. Read `engine/cpm.py`'s plan builder and ADR-0474 / 0487 / 0491 before touching a leg.
+**Run the session-token-guardian's `scripts/token_audit.py` as the FIRST action** (copy it to the
+scratchpad — `ruff check .` is whole-tree) and before each operator prompt.
 
-**Traps R-50 paid for, carried forward:** **an additive change to a metric catalog is NOT additive to the
+## The next §3 unit is R-57.
+
+**R-57** — an assignment's OWN leveling delay is not read: only the task's is honoured (ADR-0474).
+`Hard_File` UID 398's RA 277 is a split ON a delayed assignment — its gap has been honoured since
+ADR-0491, its delay is not; UID 188 on updated2 is the same class. First executable step: read
+`Assignment/LevelingDelay` onto the `Assignment` model and delay that leg alone; pin UID 398's
+stored finish **2026-08-27 11:59**. The oracle is the stored finish of UID 398. Read
+`engine/cpm.py`'s plan builder and ADR-0474 / 0487 / 0491 / **0500** before touching a leg — 0500
+is why the leg you are looking at may not be the leg that places the finish.
+
+**Traps R-61 paid for, carried forward:** **a register row can be RIGHT about the arithmetic and
+WRONG about the mechanism** — print the PLAN, sorted, with every leg's finish, before believing any
+diagnosis about one leg; a leg that computes wrong is not a defect until it is the leg that PLACES
+the finish · **run the census before pricing the fix** — a row is only as real as its population,
+and this one's was a single task masked three ways · **proving a patch inert requires proving it
+FIRED** — an unchanged corpus is otherwise indistinguishable from a patch that never ran (this one
+moved a ratio 1.0000 → 4.0312 and changed nothing) · **test a vendor-rule claim at the vendor's
+scale** — "the window is the rule" is a claim about every ratio-1.0 WORK leg, and there it is
+315-to-0 wrong · **a parallel implementation in a test is an oracle for itself** — the first census
+re-implemented the plan builder's three leg-calendar lines and was GREEN under the mutant that
+breaks exactly that resolution; route it through the engine's own entry point and let a mutant
+prove it · **the deliverable of a refuted row is a pinned measurement, not a shrug** — ship the
+population, the corrected premise, the refutation witness and a labelled tripwire, and name what
+would settle it.
+
+**Traps R-50 paid for, still live:**
+**an additive change to a metric catalog is NOT additive to the
 guards** — with the static gate, every targeted module, a 14-mutant battery, the corpus census and a
 four-theme render all green, the first FULL-SUITE run still returned **4 failed** (the catalog family tuple,
 pinned in two places, plus `len(metrics) == 21`; the monolith-split contract's `X as X` re-exports; the
@@ -130,11 +170,10 @@ ADR-0492 (R-46 CLOSED) · ADR-0493 (OR-17 in part, #677) · ADR-0494 (OR-18, #67
 MERGED) · ADR-0496 (OR-19 — OR-17 §4 answered and OR-17 CLOSED; #680 MERGED) · ADR-0497 (OR-20 —
 the driving-path series on the stored Finish; the model's self-diagnosis refuted) · **ADR-0498
 (R-52 CLOSED — the `.pptx` loads; the LibreOffice refusal was an install with no presentation import
-filter; this session)**.
+filter)** · **ADR-0499 (R-50 CLOSED — the library's same-named Metric History variants exposed as their own metrics, #686 MERGED)** · **ADR-0500 (R-61 CLOSED as REFUTED — the census returns one task; the window rule is inert as written and 315-to-0 wrong generalized; `engine/` untouched; this session)**.
 ⇢ NEXT — the report's §3 in order, one row per unit of work (red-first → the per-task toward/away census
 across EVERY golden before the ADR → mutation proofs by name → the full gate → an ADR → the state docs →
-a draft PR): **R-50** (expose the History variants) · **R-61** (a FIXED_DURATION leg on an off-pattern crew —
-updated3 UID 210) · **R-57** (an assignment's OWN leveling delay — Hard_File UID 398's RA 277 is a split ON a
+a draft PR): **R-57** (an assignment's OWN leveling delay — Hard_File UID 398's RA 277 is a split ON a
 delayed assignment: its gap is honoured since ADR-0491, its delay is not; UID 188 on updated2) · **R-58** ·
 **R-59** · **R-64** (Hard_File milestone 387 hangs on an external predecessor, UID −65535 — the one working
 day the chain 400 → 404 still sits early; their spacing is MS Project's to the minute) · **R-63** (the

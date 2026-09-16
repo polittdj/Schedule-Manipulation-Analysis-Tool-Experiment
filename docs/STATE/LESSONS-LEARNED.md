@@ -435,6 +435,45 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-16 (b) — a register row can be RIGHT about the arithmetic and WRONG about the mechanism: measure which leg PLACES the finish before fixing the leg that looks wrong (ADR-0500, R-61)
+
+- R-61 said a FIXED_DURATION leg on an off-pattern crew spans the duration in crew minutes "where
+  MS Project keeps the task's window", named `Hard_File_updated3` UID 210, and said the defect was
+  masked by ADR-0476's completed-window pin and ADR-0487's material leg. Every number in that
+  sentence checks out — 1,920 crew minutes against a 7,740-minute recorded window — and the
+  conclusion is still wrong.
+- **The census the row itself asked for was the whole answer, and nobody had run it.** Across all
+  15 goldens the population of FIXED_DURATION × off-pattern-crew is **five rows = one task in five
+  snapshots of one file**. A row whose population is one witness, and whose witness is completed
+  AND carries a material leg AND carries a project-calendar co-booking, has no oracle at all. *Run
+  the census before pricing the fix: a row is only as real as its population.*
+- **Neither named mask was the mask.** Cutting ADR-0476's pin reads 210 **+1,260 min LATE**, not
+  four days early; cutting ADR-0487's material leg moves it **not at all** (though the same cut
+  moves the file's project finish 12-12 → 12-06, so it plainly has teeth). The finish-placing leg
+  is a `Standard`-calendar WORK leg nobody had looked at. *A leg that computes wrong is not a
+  defect until it is the leg that PLACES the finish — print the plan, sorted, with each leg's
+  finish, before believing a diagnosis about any one of them.*
+- **The proposed fix fires and changes nothing.** Implemented exactly as written it moves the leg's
+  ratio 1.0000 → 4.0312 and its finish four days later, and every figure on all 15 goldens stays
+  byte-identical. *Proving a patch inert requires proving it FIRED — an unchanged corpus is
+  otherwise indistinguishable from a patch that never ran.*
+- **Generalized, the hypothesis is refuted 315-to-0.** MS Project has no separate scheduler for
+  FIXED_DURATION, so "the window is the rule" is a claim about every ratio-1.0 WORK leg. Applied
+  there it moves 315 activities away from their files' own stored finishes and none toward, because
+  a split booking's window spans the leveling gaps ADR-0491 honours separately. *When a row states
+  a rule about a vendor, test it at the scale the vendor works at, not at the scale of the one
+  task that suggested it.*
+- **The battery caught this unit's own hole.** The first census re-implemented the plan builder's
+  three leg-calendar lines inside the test, and it was **green under the mutant that breaks exactly
+  that resolution** — it was measuring the re-implementation. *A parallel implementation in a test
+  is an oracle for itself; route the census through the engine's own entry point, and let a mutant
+  prove it.*
+- **The deliverable of a refuted row is a pinned measurement, not a shrug.** 10 pins ship (the
+  population, the witness, the corrected premise, five stored-finish oracles, the refutation
+  witness, one tripwire), with the residual named: only a production IMS with such a task and NO
+  project-calendar co-booking can settle it, and a sixth row in the census test is the signal.
+
+
 ### 2026-09-15 (f) — (ADR-0498) an error message is a statement by the INSTRUMENT, not about the file: one control run refuted eight days of a filed defect
 
 - **What happened.** The audit register carried R-52 since 2026-09-07: the exported `.pptx` "does not load in
