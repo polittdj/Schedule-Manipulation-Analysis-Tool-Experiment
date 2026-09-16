@@ -18783,3 +18783,49 @@ survival is how `date_driven` was found.
 **Gate on the final tree: 5,490 passed / 0 failed / 7 skipped in 35:41**, and **`-m parity` 142 passed / 0 failed** in 4:36. Both deltas ATTRIBUTED, not assumed: the previous unit's 5,489 and 141 plus this module's one new pin — it collects **exactly 11** under `-m parity`, up from 10 (`pytest -m parity tests/parity/test_r61_fixed_duration_leg_oracle.py --collect-only`). The 7 skips are the documented set (the urlparse pair, three INCIDENTAL_SVG axis cases, and the two `test_pptx_libreoffice_interop` skips that are correct in this container — CI installs the filter and treats a skip there as a FAILURE, ADR-0498). Statics green on both ruff binaries, `ruff format`, `mypy --strict`, `bandit`.
 
 **PR [#689](https://github.com/polittdj/Schedule-Manipulation-Analysis-Tool-Experiment/pull/689) — SIX OF SIX GREEN on head `86a13a72`** (CI run 35120093272: `cui-guard` 16:09:56Z · `browser` 16:27:40Z · `floor` 16:38:59Z · `test (3.13)` 16:52:02Z · `test (3.11)` 16:57:13Z · `check` 16:57:19Z); base `6288ef16`, unmoved. Six is the correct set: no `installer/**` path is touched and `installer-smoke.yml` is path-filtered, so the absence of `linux` / `windows` is correct and not a missing check. **No record of THIS commit's own CI will be pushed** — that treadmill (each record moving the head it describes and restarting CI) was named in the previous unit.
+
+## 2026-09-16 (d) — R-57 CLOSED (ADR-0502): a booking's own leveling delay, on ADR-0474's type axis — v1.0.268
+
+**First, the mandated read:** `main`'s own CI for **`ed977f29`** (#689) was carried to
+conclusion rather than inherited — run 1902 (`35133877304`) SUCCESS, all six jobs
+(`cui-guard` 18:21:36Z · `browser` 18:38:57Z · `floor` 18:46:41Z · `test (3.11)` 18:56:21Z ·
+`test (3.13)` 19:01:31Z · `check` 19:01:36Z). **No installer-smoke run exists for it and that
+absence is CORRECT**, confirmed against the run list rather than assumed: the three heads that
+touched `installer/**` each have one, the four docs-only heads have none. **#690 is still
+OPEN** — the operator has not merged it.
+
+**R-57** asked for `Assignment/LevelingDelay` to be read and "that leg alone" delayed, oracled
+on Hard_File UID 398's stored finish 2026-08-27 11:59. The mechanism is real and the oracle is
+reached. Two things in the row were wrong, and both were found before any code changed.
+
+*The population is wider than the row.* Six of the fifteen goldens carry the field — **24
+delayed bookings on 17 tasks**, every `Large_Test_File` snapshot included, not the two
+Hard_File activities the row names.
+
+*"Delay that leg alone" is right for 6 of the 24 and a REGRESSION for the other 18.* Built
+exactly as written it cost `Large_Test_File` **93 of its 1,666** finishes-within-a-day and took
+UIDs 5266 / 5267 / 5270 from EXACT to days late. The rule is **ADR-0474 / ADR-0501's type
+axis**: a leg with its OWN span (`FIXED_UNITS`, ratio < 1) is **PUSHED** by its delay; a leg
+that **SPANS THE TASK** (ratio 1.0) **ABSORBS** it — and on **16 of those 18** the file's own
+`Assignment/Finish` IS its `Task/Finish`.
+
+Working minutes of the leg's own calendar; read to the NEAREST minute (17 / 24 against MS
+Project's own `Assignment/Start`, truncation 14, never worse on any booking); part of the leg's
+dedup identity; never read on a MATERIAL / COST booking; and it does not move the task's start
+(`Task.Start == min(Assignment.Start)`, 17 / 17).
+
+**Measured:** every golden byte-identical except `Hard_File_updated` (exact finishes 58 → 61,
+exact stored slack 93 → 99). UID 398 → EXACT; UID 188 from 15 h 45 m early to **66 seconds**.
+The base `Hard_File` snapshot is NOT exact and the blocker is upstream: **UID 381 finishes a day
+early there**, 396 inherits it, 398 lands early by exactly the 240 working minutes 396 is.
+Registered as **R-66**, not hidden in R-57.
+
+**Battery 9 / 9 red by name**, control green before and after, every cut checksum-verified as a
+real mutation and every restore checksum-verified. **M6 — the BACKWARD pass — SURVIVED the
+first pass** and turned out to be worth three exact stored slacks (UIDs 321 / 381 / 396); killed
+by a pin naming them. A post-delay snap was **deleted rather than shipped**: swept over 31,479
+combinations, 6 landing exactly on a segment end, it never moved a leg finish.
+
+Shipped ADR-0502, schema 2.15.0, the two test modules (18 pins), the closed R-57 row, the new
+R-66 row, the census 328 → 329, and **v1.0.268** with the wheel and nine installers rebuilt in
+lockstep.

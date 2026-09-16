@@ -75,6 +75,16 @@ class Assignment(StrictFrozenModel):
     #: 6 h; finish 2026-11-05 09:12 and LateStart 11-25 13:48, both MS Project's, to the minute.
     #: A MATERIAL / COST booking's pieces are inert: its leg is its recorded window (ADR-0487).
     work_pieces: tuple[WorkPiece, ...] = ()
+    #: The BOOKING's own resource-leveling delay (MSPDI ``Assignment/LevelingDelay``, stored in
+    #: tenths of a minute, read to the nearest whole minute), distinct from the task's
+    #: :attr:`~schedule_forensics.model.task.Task.leveling_delay_minutes` (ADR-0474): MS Project
+    #: levels one crew off a task without moving the task or its other crews. The engine delays
+    #: that LEG alone — WORKING minutes of the leg's own calendar before the leg's work begins,
+    #: then the calendar admits it again — and discloses the task on
+    #: ``CPMResult.assignment_leveling_driven`` (ADR-0502, R-57). The task's START is NOT moved:
+    #: on all 17 goldens' tasks that carry one, ``Task.Start`` is the earliest booking's start
+    #: and every one of them also carries an undelayed booking. 0 = no delay on this booking.
+    leveling_delay_minutes: int = Field(default=0, ge=0)
     #: The booking's time-phased BASELINE COST as the file records it (ADR-0492, R-46): every
     #: valued block of the MSPDI assignment's baseline-cost series (``TimephasedData`` Type 5),
     #: in time order, in currency units. This is the planned value MS Project stores per

@@ -81,6 +81,8 @@ _EXPECTED_FIELDS: dict[type[pydantic.BaseModel], set[str]] = {
     # runs on either side of every zero-work block; () = one contiguous piece / not recorded
     # baseline_cost_pieces: the booking's time-phased BASELINE COST as the file records it
     # (ADR-0492) — the BCWS MS Project stores and Fuse sums; () = not recorded
+    # leveling_delay_minutes: the BOOKING's own resource-leveling delay (ADR-0502) — MS Project
+    # levels one crew off a task without moving the task; 0 = none
     Assignment: {
         "resource_id",
         "work_minutes",
@@ -88,6 +90,7 @@ _EXPECTED_FIELDS: dict[type[pydantic.BaseModel], set[str]] = {
         "remaining_work_minutes",
         "start",
         "finish",
+        "leveling_delay_minutes",
         "work_pieces",
         "baseline_cost_pieces",
     },
@@ -154,7 +157,7 @@ _EXPECTED_FIELDS: dict[type[pydantic.BaseModel], set[str]] = {
 
 
 def test_schema_version() -> None:
-    assert model.SCHEMA_VERSION == "2.14.0"
+    assert model.SCHEMA_VERSION == "2.15.0"
 
 
 @pytest.mark.parametrize("cls", list(_EXPECTED_FIELDS))
