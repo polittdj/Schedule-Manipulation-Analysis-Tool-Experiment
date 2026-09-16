@@ -106,10 +106,10 @@ def test_panelkit_click_census_and_jarvis_probe_on_ribbon(served: str) -> None:
         page.wait_for_selector("td.rib-row-label", timeout=10000)
 
         # Promotion census: the panel-contract conversion added ZERO .panel elements
-        # (pre-conversion count 4). R-50 (ADR-0499) then added ONE by design — the Metric
-        # History variants matrix — so the baseline is 5. The count alone was never the whole
-        # claim and is weaker now that the page carries two matrices, so every panel that
-        # advertises the ⛶ affordance is proved CLICK-DRIVEN below, by name, not just counted.
+        # (pre-conversion count 4). RE-DERIVED 2026-09-16: R-50 (ADR-0499) added ONE by design —
+        # the Metric History variants matrix — so the baseline is 5. The count alone was never
+        # the whole claim and is weaker now that the page carries two matrices, so every panel
+        # that advertises the ⛶ affordance is proved CLICK-DRIVEN below, by name, not counted.
         assert page.evaluate("() => document.querySelectorAll('.panel').length") == 5
 
         # both matrices carry the ⛶ affordance and BOTH are proved click-driven by name — the
