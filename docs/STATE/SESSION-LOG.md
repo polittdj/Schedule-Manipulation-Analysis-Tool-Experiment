@@ -18527,3 +18527,22 @@ called a flake turned out to have a mechanism (ADR-0442 UI-02, ADR-0443, ADR-046
 - **Registered, operator-owned:** **V-5** in `OPERATOR-REQUESTS.md` — PowerPoint opening either export is the one
   reader still unverified; its complaint, if any, names the part.
 - **ADR-0498.** Gate results and the PR number in the follow-up line below.
+
+- **Follow-up — PR [#684](https://github.com/polittdj/Schedule-Manipulation-Analysis-Tool-Experiment/pull/684)
+  (draft, head `5a4efce8`), EIGHT OF EIGHT GREEN.** CI run **1884** (35038520524) all six jobs SUCCESS —
+  `cui-guard` 00:06:02Z, `browser` 00:23:38Z, `floor` 00:29:05Z, `test (3.13)` 00:46:02Z, `test (3.11)`
+  00:50:49Z, `check` 00:50:54Z — and installer-smoke run **739** (35038520476) SUCCESS at 00:10:25Z
+  (`linux` + `windows`; `installer/**` was touched). **The two new `browser` steps ran on the runner and
+  did NOT skip:** *"Install LibreOffice Impress (the interop gate's instrument)"* 00:23:16→00:23:31Z (15 s)
+  and *"The exported .pptx loads in LibreOffice, and a skip is a FAILURE (R-52)"* 00:23:31→00:23:34Z (3 s),
+  both success — the gate measured on GitHub's runner, not only in this container.
+- **The local gate on the same tree: the full suite 5,463 passed / 5 skipped / 0 failed in 49:09** (exit 0;
+  the five skips are the ones every run carries — two `urlparse` host round-trips in
+  `test_loopback_allowlist.py` and three `INCIDENTAL_SVG` cases in `test_axis_titles.py`), and
+  **`-m parity` 120 passed / 0 failed in 6:32**. The handoff's 118 was the PRISTINE-tree count from the
+  previous unit, which then pinned two SSI oracles (118 + 2 = 120); `tests/reports/` contributes **0** tests
+  to the parity selection, so this unit did not move that population — measured with
+  `pytest -m parity --collect-only`.
+- The unit ran 2026-09-15 23:34Z → 2026-09-16 (UTC); the dates in this entry are UTC, which is why the
+  commit falls on 09-16 while the measurements are dated 09-15.
+
