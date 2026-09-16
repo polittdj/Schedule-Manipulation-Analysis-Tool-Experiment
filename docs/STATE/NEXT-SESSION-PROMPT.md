@@ -1,5 +1,40 @@
 # Kickoff prompt — next session
 
+**R-61 is SETTLED — ADR-0501, on the repository's own 29 `.mpp` files. Do NOT re-open it and do
+NOT re-run its census expecting a different answer.** ADR-0500 closed it on the 15 goldens and
+deferred a residual reading "only a production IMS can settle it"; that was a claim about the
+GOLDENS wearing the clothes of a claim about the world. The repo carries **29** `.mpp` files —
+including `24Hour Calendar.mpp`, `Hard_File_updated4 24 hour calendar.mpp`, `Jacked Up Schedule
+1/2`, `Project3/4`, the `Project5_FX0*` and `TP4_DataCenter` tamper sets and the
+`Large Test File*.mpp` family, none of which became a golden. Converted through the vendored MPXJ
+converter into the SCRATCHPAD (never the repo — Law 1), artifacts asserted to EXIST, never the
+exit code.
+
+Measured: **483** tasks are placed by an off-pattern ratio-1.0 crew leg; the recorded window and
+the engine's occupancy (duration + ADR-0491 gaps) are **byte-identical on 369**; nearly all the
+rest differ by **1–28 MINUTES** (gap granularity → **R-65**, registered not taken); on the 18
+UIDs a leg-alone probe matches neither, the **shipped solve is within a day on 17**. The corpus's
+ONE decisive case, `Large_Test_File2` **UID 5263** — *started*, so its stored Finish really is a
+schedule; window 9,600 min past the duration; leg alone four weeks early — is **EXACT in the
+shipped solve** and disclosed on **`date_driven`**: a stored date places it, not the leg.
+
+**Two corrections to ADR-0500, both measured, do NOT re-inherit its wording:** (a) its refutation
+witness **UID 5231 is recorded-COMPLETE**, so its stored Finish IS its ActualFinish — a record,
+not a schedule — and adjudicates nothing; (b) the engine's leg does NOT "get it right" there but
+lands **eighty days late**, the solve being exact only through ADR-0476's pin. ADR-0500's
+"315 away / 0 toward" **stands** (a different, valid measurement); the sentence explaining UID
+5231 does not.
+
+**Traps this unit paid for:** **a residual must name the POPULATION it was measured against** or
+it reads as a statement about the world · **a completed task cannot adjudicate a scheduling
+rule** — ask whether its date is a schedule or a measurement before using it as an oracle · **an
+instrument that cannot detect its own failure reports a confident zero** — pairing by calendar
+identity said "no window" for all 483; pair by index and `assert len(pairs) == len(legs)` ·
+**a survivor is only a survivor once the cut is proved to be a MUTATION** — a stub inserted
+before the real definition loses the name · **a leg-alone probe is not the engine** — judge the
+product by the product.
+
+
 **R-61 is CLOSED — ADR-0500, and it is CLOSED as REFUTED. Do not re-open it, do not implement "a
 fixed-duration leg spans the task's window", and do not re-run its census expecting a different
 population.** The row was right about the arithmetic and wrong about the mechanism, and `engine/`

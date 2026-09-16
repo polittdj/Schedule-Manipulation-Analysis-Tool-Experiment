@@ -18725,3 +18725,57 @@ FIXED_DURATION activity on an off-pattern crew and NO project-calendar co-bookin
 Project's stored dates. A sixth row in the census test is the signal to re-read ADR-0500.
 
 **PR [#688](https://github.com/polittdj/Schedule-Manipulation-Analysis-Tool-Experiment/pull/688) — SIX OF SIX GREEN on the merged head `a41ec69e`** (CI run 35104750413: `cui-guard` 13:53:02Z · `browser` 14:09:51Z · `floor` 14:13:14Z · `test (3.11)` 14:31:25Z · `test (3.13)` 14:36:04Z · `check` 14:36:09Z); `mergeable_state: clean`, **zero review threads**, and the operator marked it ready for review at 13:49Z — they squash-merge. **Six is the correct set here**: no `installer/**` path is touched and `installer-smoke.yml` is path-filtered, so the absence of `linux` / `windows` is correct, not a missing check. No *Claude Approvals* check runs on this repository. Base `6b92d937`, unmoved between the push and this reading. An earlier six-of-six on `980aa8b2` is SUPERSEDED — that head predates the #687 merge commit, and a `check_suite.completed` event carrying it is the steward's known stale-`head_sha` case, not a second verdict. `chatgpt-codex-connector` posted its usage-limit notice again: **review cover remains ABSENT**.
+
+## 2026-09-16 (c) — R-61 SETTLED on the repository's own 29 `.mpp` files (ADR-0501): ADR-0474's type rule upheld on twice the golden population, ADR-0500's deferred residual DISCHARGED and its refutation witness CORRECTED — `engine/` untouched, v1.0.267 unchanged
+
+Branch `claude/inspiring-darwin-76wgqi` restarted from `origin/main` @ `6288ef16` (#688 merged
+15:45Z, squash tree-identical to head `0a25715a`).
+
+**The instruction and the scoping error it exposed.** The operator said: *use the .mpp files in
+the repo to settle the rule*. ADR-0500 had closed R-61 on **15 goldens** and deferred a residual
+reading "only a production IMS can settle it". The repo carries **29 `.mpp` files** — roughly
+twice that, including files no golden was ever made from (`24Hour Calendar.mpp`,
+`Hard_File_updated4 24 hour calendar.mpp`, `Jacked Up Schedule 1/2`, `Project3/4`, the
+`Project5_FX0*` and `TP4_DataCenter` tamper sets, the `Large Test File*.mpp` family). The
+residual was a claim about the GOLDENS wearing the clothes of a claim about the WORLD. All 29
+were converted through the vendored MPXJ converter into the scratchpad (never the repo — Law 1),
+each artifact asserted to EXIST rather than the converter's exit code.
+
+**The census.** 483 tasks are placed by an off-pattern ratio-1.0 crew leg. On **369** the
+recorded window and the engine's occupancy (duration + ADR-0491 gaps) are **byte-identical**.
+Nearly all the rest differ by **1–28 MINUTES** — UID 5342 occupancy 2,757 vs window 2,758 (one
+minute), UID 5316 9,329 vs 9,333 (four) — gap-arithmetic granularity, now registered as **R-65**,
+not a different scheduling rule. On the 18 UIDs where a leg-alone probe matches neither rule the
+**shipped solve is within a day on 17**: the probe's failure is the probe's, not the product's.
+
+**The one decisive case adjudicates FOR the engine.** `Large_Test_File2` UID 5263 is *started*
+(86 %, no ActualFinish), so its stored Finish really is MS Project's scheduled output. Window
+9,600 min past the duration; the leg alone lands four weeks early (2025-03-25 14:42 vs the stored
+2025-04-22 14:42); the **shipped solve is EXACT**, and the mechanism was measured rather than
+assumed — the task is disclosed on **`date_driven`**: a stored date places it, not the leg.
+
+**Two corrections to ADR-0500.** Its refutation witness `Large_Test_File` UID 5231 is
+**recorded-COMPLETE**: its stored Finish IS its ActualFinish, a record and not a schedule, so by
+ADR-0476's own reasoning it adjudicates nothing in either direction. And the engine's leg does
+NOT "get it right" there — alone it lands 2024-10-01 17:00, **eighty days** past the file's date;
+the solve is exact only through ADR-0476's pin. ADR-0500's headline "315 away / 0 toward" STANDS
+(a different, valid measurement: the window rule inside a full solve across the goldens); the
+sentence explaining UID 5231 does not.
+
+**Shipped.** The witness renamed and re-reasoned
+(`test_uid_5231_is_a_completed_task_so_its_leg_never_places_it`), a new
+`test_uid_5263_the_corpus_only_decisive_counter_case_is_exact_in_the_solve` pinning `date_driven`
+as the mechanism, the corrected module docstring, **ADR-0501**, the amended R-61 row and the new
+**R-65** row. `engine/` untouched; `pyproject.toml` stays 1.0.267; no wheel or installer rebuild.
+
+**Verified — and the census's own four cuts are the finding.** Cut 1 counted co-bookings as
+masking (masking is whichever leg finishes LAST, computed). Cut 2 paired a leg to its booking by
+CALENDAR IDENTITY and silently reported "no window" for all 483 — a leg on a task calendar
+matches no resource's calendar object; the fix pairs by index and ASSERTS `len(pairs) ==
+len(legs)` so the instrument detects its own failure. Cut 3 compared a GAPLESS leg against a
+window that spans the gaps, handing every split booking to the window by construction. Cut 4 is
+the engine's real occupancy. Mutation battery, control green: N1 (ADR-0476's pin cut) → the 5231
+correction red by name; N2 (R-61's window rule) → the 5263 pin and three others red by name. N3
+is recorded as a **NON-MUTATION on its first cut** (the stub was inserted BEFORE the real
+definition, so the real one won the name); re-cut so the stub wins, it SURVIVES — and that
+survival is how `date_driven` was found.
