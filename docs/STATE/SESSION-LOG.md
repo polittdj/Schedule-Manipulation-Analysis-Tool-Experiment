@@ -18545,4 +18545,37 @@ called a flake turned out to have a mechanism (ADR-0442 UI-02, ADR-0443, ADR-046
   `pytest -m parity --collect-only`.
 - The unit ran 2026-09-15 23:34Z → 2026-09-16 (UTC); the dates in this entry are UTC, which is why the
   commit falls on 09-16 while the measurements are dated 09-15.
+- **MERGED.** The operator marked #684 ready at 01:39:49Z and squash-merged it at **01:39:53Z** —
+  `main` @ **`93593ef5`**, tree `46de0c02…` identical to the PR head `9acac1fd`'s (`git rev-parse`
+  both). The final head carried **eight of eight green**: CI run **1885** (35042374478) — `cui-guard`
+  01:01:14Z, `browser` 01:18:36Z, `floor` 01:22:10Z, `test (3.13)` 01:27:50Z, `test (3.11)` 01:39:03Z,
+  `check` 01:39:09Z — and installer-smoke **740** (35042374407); `mergeable_state: clean`, zero review
+  threads. The `browser` job's two new steps ran and did NOT skip on **both** heads (the Impress
+  install 15 s then 17 s, the interop gate 3 s then 3 s), so the R-52 gate has now measured on
+  GitHub's runner twice on two different commits — not only in this container.
+- **`main`'s OWN runs for `93593ef5`: CI 1886 (35044973862) and installer-smoke 741 (35044973863),
+  IN PROGRESS at 01:39:55Z** — the next session reads their conclusion first. GitHub deleted the
+  remote branch; `claude/eloquent-allen-2hg06l` was restarted on the squash (`git fetch --prune` +
+  `remote set-head` + `checkout -B`, working tree clean, stale upstream unset), the session
+  unsubscribed from the merged PR and its pending check-in trigger was deleted. This record is a
+  docs-only commit on the restarted branch, opened as its own draft PR (**six** checks apply —
+  docs only, `installer-smoke` is path-filtered); number in the follow-up line.
+- **`main`'s own runs for the squash `93593ef5` READ, both SUCCESS: CI 1886 (35044973862) completed
+  02:25:40Z and installer-smoke 741 (35044973863) completed 01:44:04Z.** The merge is green on `main`
+  itself, not only on the PR head — R-52 / ADR-0498 is closed end to end and nothing about #684 is
+  outstanding.
+- **The merge-record PR is [#685](https://github.com/polittdj/Schedule-Manipulation-Analysis-Tool-Experiment/pull/685)**
+  (docs only, two commits: the merge record `ab88bae1` + R-50's measured starting point `6fb4dcb1`).
+  **CI 1888 (35045213782) SUCCESS on the final head `6fb4dcb1`**, `mergeable_state: clean`, zero review
+  threads, draft — the operator merges. Run 1887 on `ab88bae1` reads `cancelled`: the concurrency group
+  killed it when the second commit pushed, which is not a verdict (ci.yml sets
+  `cancel-in-progress: true`, and the PR's verdict is read on its FINAL head only).
+- **R-50 recon, recorded in the kickoff and measured this session (no code touched):**
+  `NASA Metrics_Complete_20260708.aft` holds **5,427 `<Name>` values, 1,200 distinct**, and carries
+  `Insufficient Detail™`, `Merge Hotspot (Predecessors &gt;2)` and `Total # Predecessor Lags` as
+  metrics of their own, so each variant's formula is pullable verbatim per CLAUDE.md's Bible rule.
+  **The trap this session paid for and wrote down: the `.aft` names metrics in `<Name>` ELEMENTS, not
+  `Name="…"` attributes** — an attribute regex returns **zero** for all three and reads exactly like
+  "these are Acumen built-ins, not library metrics", a false negative that would have sent R-50 down
+  the wrong path. Values are XML-escaped (`&gt;`, `&amp;`).
 
