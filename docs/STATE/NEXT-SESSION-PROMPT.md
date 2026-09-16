@@ -24,8 +24,10 @@ w/Insufficient Detail™`, `Merge Hotspot w/Predecessor Lags` (& Low Total Float
 an Activity`. And the three shipped variants are pinned **on the Large Test File / File2 pair only** — no other corpus
 export scores them, so their figures on Hard_File / Project2-5 / EVM are the engine's own and UNPINNED.
 
-**FIRST: read `main`'s own CI run for the merge of PR #686** (R-50; it was EIGHT OF EIGHT GREEN on head
-`ea62ea36`, `mergeable_state: clean`, zero review threads, draft, when this session stood down). (CI 1890 (35051509437) for `9cb46317` is
+**#686 IS MERGED — `main` @ `0b010936`, squash TREE-IDENTICAL to the reviewed head `92b0693c` (tree
+`f4e70212…` on both). FIRST: read `main`'s OWN runs for `0b010936` — CI 1893 (35097402239) and
+installer-smoke 744 (35097402279), both created 12:42:32Z and IN PROGRESS when the R-50 session closed.**
+Read their CONCLUSIONS before trusting any "green on main" claim, and record them in the next handoff. (CI 1890 (35051509437) for `9cb46317` is
 already settled — read to conclusion during the R-50 session: **`completed` / `SUCCESS`, all five jobs, 04:07:52Z**,
 the R-52 interop gate run-and-not-skipped on `main` itself. Do NOT re-read it.) **Always `git fetch origin` and read `git log origin/main` before trusting any sha written here.**
 
