@@ -1,7 +1,7 @@
 # Kickoff prompt — next session
 
-**R-52 is CLOSED (ADR-0498, v1.0.266) — do not re-open, and do not re-chase the `.pptx` as a
-malformed package.** The register said the exported decks "do not load in LibreOffice 7 headless
+**R-52 is CLOSED and SHIPPED — PR #684 MERGED 2026-09-16 01:39:53Z, `main` @ `93593ef5` (ADR-0498, v1.0.266). Do not re-open, and do not re-chase the `.pptx` as a
+malformed package.** **FIRST: read `main`'s own runs for `93593ef5` — CI 1886 (35044973862) and installer-smoke 741 (35044973863) were IN PROGRESS at the merge.** The register said the exported decks "do not load in LibreOffice 7 headless
 (source file could not be loaded)". **Measured 2026-09-15: that was the INSTRUMENT.** The same
 install refused a deck **PowerPoint wrote** and a Microsoft-authored `.xlsx` with the identical
 sentence — it was `libreoffice-core` + `libreoffice-common` with **no `libreoffice-impress`**, i.e.
