@@ -18655,3 +18655,73 @@ called a flake turned out to have a mechanism (ADR-0442 UI-02, ADR-0443, ADR-046
   width-racy `test_driving_path_whole_schedule_browser.py:104` (#667).
 - **PR [#686](https://github.com/polittdj/Schedule-Manipulation-Analysis-Tool-Experiment/pull/686) — EIGHT OF EIGHT GREEN on head `ea62ea36`** (CI run 35070302027: `cui-guard` 07:47:27Z · `linux` 07:47:55Z · `windows` 07:51:59Z (installer-smoke 35070301835) · `browser` 08:03:32Z · `floor` 08:11:35Z · `test (3.13)` 08:31:33Z · `test (3.11)` 08:33:32Z · `check` 08:33:39Z); `mergeable_state: clean`, **zero review threads**, still DRAFT — the operator marks it ready and squash-merges. Eight is the correct set here because `installer/**` is touched (`installer-smoke.yml` is path-filtered; a docs-only PR shows six). No *Claude Approvals* check runs on this repository. Base `9cb46317`, unmoved between the push and this reading.
 - **PR [#686](https://github.com/polittdj/Schedule-Manipulation-Analysis-Tool-Experiment/pull/686) is MERGED** — the operator marked it ready 12:42:26Z and squash-merged at **12:42:32Z**: `main` @ **`0b010936`**, and the squash is **TREE-IDENTICAL to the reviewed head `92b0693c`** (`f4e70212b63306d5624a90b5aa9e4fdc2869f500` on both — compared with `git rev-parse <sha>^{tree}`, steward §2's tree-hashes-first rule). Its final head was EIGHT OF EIGHT GREEN (CI 35070302027 · installer-smoke 35074724199 / 35074724302 lineage; `check` 09:21:29Z last), `mergeable_state: clean`, zero review threads. **`main`'s OWN runs for `0b010936` — CI **1893** (35097402239) and **installer-smoke 744** (35097402279), both created 12:42:32Z — were IN PROGRESS at this writing: READ THEIR CONCLUSIONS FIRST.** Both exist and that is correct (`installer/**` changed, so the path-filtered smoke workflow runs). The branch was restarted on the squash (`--prune` + `remote set-head` + `checkout -B`, upstream unset, working tree clean) and the session unsubscribed automatically. `chatgpt-codex-connector` posted its usage-limit notice on #686 — review cover remains ABSENT.
+
+## 2026-09-16 (b) — R-61 CLOSED (ADR-0500) as REFUTED: the census the row asked for returns ONE task, the row's premise is mis-stated, and its rule is inert as written / 315-to-0 wrong generalized — tests + docs only, `engine/` untouched, v1.0.267 unchanged
+
+Branch `claude/inspiring-darwin-76wgqi` from `origin/main` @ `0b010936` (#686, R-50 / ADR-0499).
+
+**The row.** R-61 said a FIXED_DURATION booking on an off-pattern crew spans the DURATION in crew
+minutes (ADR-0474's type rule) "where MS Project keeps the task's window", named
+`Hard_File_updated3` UID 210, and set the first executable step: census every such task across the
+goldens, recorded booking window vs the computed leg, with the stored booking windows as the oracle.
+
+**The census, run over all 15 MSPDI goldens through the engine's own `_task_shape`.** The population
+is **five (golden, task) rows = ONE task**: UID 210 in `Hard_File_updated2`, `_updated3`,
+`_updated3_24hr` and the two `ssi_hardfile_24h_uid155` snapshots. No second task, no unstarted
+witness, none without a project-calendar co-booking — so no golden can discriminate the rule. The
+row's arithmetic on the witness is correct: duration 1,920 min (4 project days), leg 1,920 min of
+the 24-hour *Content Developer* calendar (1.33 days there), recorded window **7,740** of them, and
+that window is the TASK's own (08-20 08:00 → 08-25 17:00), written by MS Project onto all four
+assignments — work and material alike.
+
+**The premise is mis-stated.** UID 210's primary (finish-placing) leg is the `Standard`-calendar
+WORK leg of the Logistics Apprentice booking — the same 1,920 minutes on the PROJECT calendar,
+landing on the stored finish exactly. The crew leg finishes 2026-08-21 16:00, four days earlier,
+and has never placed the task. Measured on a shadow engine: pristine → exact; ADR-0476's
+completed-window pin CUT → **2026-08-26 14:00, +1,260 min LATE** (not early); pin + ADR-0487's
+material leg CUT → **unmoved** (that cut does move updated3's project finish 12-12 → 12-06 and
+within-a-day 106 → 44, so it plainly has teeth — it just does not touch 210).
+
+**The proposed rule is inert as written.** Implemented exactly as specified it FIRES (ratio
+1.0000 → 4.0312, span 1,920 → 7,740, that leg's finish 08-21 16:00 → 08-25 17:00) and every figure
+on all 15 goldens is byte-identical to pristine; its only consequence is a LOST disclosure (210
+drops off `booking_span_driven`). **Generalized it is refuted.** MS Project has no separate
+scheduler for FIXED_DURATION, and 267 corpus tasks are placed by a ratio-1.0 WORK leg: within-a-day
+1,666 → 1,568 · 1,687 → 1,585 · 1,645 → 1,567 on the three Large Test File goldens, every other
+golden unmoved, and the per-task census is **315 AWAY / 0 TOWARD** (worst +309,865 min). The
+mechanism is known: a split booking's window spans the leveling gaps ADR-0491 honours separately —
+`Large_Test_File` UID 5231's window (89,760) is 26,880 crew minutes SHORTER than the correct
+occupancy. The alternative the row does not name (a fixed-duration leg on the TASK's axis) is
+**0 toward / 5 away**: it drops 210 off the wall path, so ADR-0476's pin lands at 16:00 — that
+ADR's own day-boundary residual.
+
+**Shipped.** `tests/parity/test_r61_fixed_duration_leg_oracle.py` — 10 pins (census population,
+the witness's two numbers, the corrected premise, five stored-finish oracles, the ADR-0491
+refutation witness, one labelled **tripwire** on the type rule) · **ADR-0500** · report §3 R-61 →
+CLOSED. `engine/` untouched; `pyproject.toml` stays 1.0.267; no wheel or installer rebuild.
+
+**Verified.** Mutation battery **6 / 6 red BY NAME**, control green, on a shadow copy of `src/`
+with a `-p mutcheck` plugin asserting the modules measured ARE the copy (M1 the proposed rule → 3
+red · M2 the crew calendar never resolved → 10 · M3 ADR-0491's gaps not honoured → 1 · M4 legs
+sorted earliest-first → 1 · M5 ADR-0476's pin cut → 5 · M6 `_recorded_span` reading elapsed
+minutes → 2). Every one of the 10 pins is red under at least one mutant. **The battery caught this
+unit's own first cut:** the census originally re-implemented the plan builder's three leg-calendar
+lines inside the test and was GREEN under M2 — the mutant that breaks exactly that resolution —
+because it measured the re-implementation, not the engine. Re-aimed onto `_task_shape` it goes red.
+
+**Gate on the final tree.** Full suite **5,489 passed / 0 failed / 7 skipped in 35:36**;
+`-m parity` **141 passed / 0 failed** in 4:28. Both deltas attributed rather than assumed:
+5,479 + 10 and 131 + 10, this module collecting EXACTLY 10 under `-m parity`. The 7 skips
+are the documented set (the urlparse pair, three INCIDENTAL_SVG axis cases, and the two
+`test_pptx_libreoffice_interop` skips that are correct in this container — CI installs
+libreoffice-impress and treats a skip there as a FAILURE, ADR-0498). Statics green on both
+ruff binaries, `ruff format`, `mypy --strict`, `bandit`, `node --check`, `--collect-only`
+(5,496). **PR [#688](https://github.com/polittdj/Schedule-Manipulation-Analysis-Tool-Experiment/pull/688)**
+opened as a draft on head `980aa8b2`; six checks apply (no `installer/**` in the diff).
+
+**Residual, named and OPEN.** The corpus cannot prove no such task can exist — only that no oracle
+here can validate any change to the rule. What would settle it: a production IMS with a
+FIXED_DURATION activity on an off-pattern crew and NO project-calendar co-booking, plus MS
+Project's stored dates. A sixth row in the census test is the signal to re-read ADR-0500.
+
+**PR [#688](https://github.com/polittdj/Schedule-Manipulation-Analysis-Tool-Experiment/pull/688) — SIX OF SIX GREEN on the merged head `a41ec69e`** (CI run 35104750413: `cui-guard` 13:53:02Z · `browser` 14:09:51Z · `floor` 14:13:14Z · `test (3.11)` 14:31:25Z · `test (3.13)` 14:36:04Z · `check` 14:36:09Z); `mergeable_state: clean`, **zero review threads**, and the operator marked it ready for review at 13:49Z — they squash-merge. **Six is the correct set here**: no `installer/**` path is touched and `installer-smoke.yml` is path-filtered, so the absence of `linux` / `windows` is correct, not a missing check. No *Claude Approvals* check runs on this repository. Base `6b92d937`, unmoved between the push and this reading. An earlier six-of-six on `980aa8b2` is SUPERSEDED — that head predates the #687 merge commit, and a `check_suite.completed` event carrying it is the steward's known stale-`head_sha` case, not a second verdict. `chatgpt-codex-connector` posted its usage-limit notice again: **review cover remains ABSENT**.
