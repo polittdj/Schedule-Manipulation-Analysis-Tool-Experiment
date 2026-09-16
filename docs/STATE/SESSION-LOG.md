@@ -18560,4 +18560,22 @@ called a flake turned out to have a mechanism (ADR-0442 UI-02, ADR-0443, ADR-046
   unsubscribed from the merged PR and its pending check-in trigger was deleted. This record is a
   docs-only commit on the restarted branch, opened as its own draft PR (**six** checks apply —
   docs only, `installer-smoke` is path-filtered); number in the follow-up line.
+- **`main`'s own runs for the squash `93593ef5` READ, both SUCCESS: CI 1886 (35044973862) completed
+  02:25:40Z and installer-smoke 741 (35044973863) completed 01:44:04Z.** The merge is green on `main`
+  itself, not only on the PR head — R-52 / ADR-0498 is closed end to end and nothing about #684 is
+  outstanding.
+- **The merge-record PR is [#685](https://github.com/polittdj/Schedule-Manipulation-Analysis-Tool-Experiment/pull/685)**
+  (docs only, two commits: the merge record `ab88bae1` + R-50's measured starting point `6fb4dcb1`).
+  **CI 1888 (35045213782) SUCCESS on the final head `6fb4dcb1`**, `mergeable_state: clean`, zero review
+  threads, draft — the operator merges. Run 1887 on `ab88bae1` reads `cancelled`: the concurrency group
+  killed it when the second commit pushed, which is not a verdict (ci.yml sets
+  `cancel-in-progress: true`, and the PR's verdict is read on its FINAL head only).
+- **R-50 recon, recorded in the kickoff and measured this session (no code touched):**
+  `NASA Metrics_Complete_20260708.aft` holds **5,427 `<Name>` values, 1,200 distinct**, and carries
+  `Insufficient Detail™`, `Merge Hotspot (Predecessors &gt;2)` and `Total # Predecessor Lags` as
+  metrics of their own, so each variant's formula is pullable verbatim per CLAUDE.md's Bible rule.
+  **The trap this session paid for and wrote down: the `.aft` names metrics in `<Name>` ELEMENTS, not
+  `Name="…"` attributes** — an attribute regex returns **zero** for all three and reads exactly like
+  "these are Acumen built-ins, not library metrics", a false negative that would have sent R-50 down
+  the wrong path. Values are XML-escaped (`&gt;`, `&amp;`).
 
