@@ -1,5 +1,22 @@
 # Kickoff prompt — next session
 
+**R-52 is CLOSED (ADR-0498, v1.0.266) — do not re-open, and do not re-chase the `.pptx` as a
+malformed package.** The register said the exported decks "do not load in LibreOffice 7 headless
+(source file could not be loaded)". **Measured 2026-09-15: that was the INSTRUMENT.** The same
+install refused a deck **PowerPoint wrote** and a Microsoft-authored `.xlsx` with the identical
+sentence — it was `libreoffice-core` + `libreoffice-common` with **no `libreoffice-impress`**, i.e.
+no PresentationML import filter at all. With the filter installed, LibreOffice 24.2.7.2 loads BOTH
+decks and parses every shape (1 page · 54 custom shapes · 10 frames · 18 connectors · every label ·
+the CUI banner · our selection-pane names). `soffice` **exits 0 when it refuses a file** — never
+read its exit code, read whether the artifact exists. Pinned by
+`tests/reports/test_pptx_libreoffice_interop.py`, which loads a PowerPoint-authored **control**
+deck before it will judge ours and SKIPS (with the reason named) when the instrument is unusable;
+the `browser` job installs the filter and treats a skip as a failure. The register's repair step ran
+anyway: `presProps` / `viewProps` / `tableStyles` were the whole structural delta and are now
+written — **as the removal of a variable, not as a fix** (the flat ODF LibreOffice imports is
+byte-identical before and after). **PowerPoint itself stays UNVERIFIED** — registered as **V-5** in
+`OPERATOR-REQUESTS.md`: the operator double-clicking either export settles it in a minute.
+
 **OR-20 is SHIPPED (ADR-0497, v1.0.265) — do not re-open.** The 32-version Ask-the-AI answer tabled a "driving-path finish" of 2028-02-22 for `USA IPMR Format 6_January 2024.mpp` where MS Project shows 2026-05-07, and the model's own memo blamed a routine that "populated the focus finish with the network finish". **Measured on the operator's own IMS in the repo (`ssi_uid152`): refuted** — the builder read the focus's OWN early finish (2026-10-02 = its stored Finish = SSI's export), two years from the network finish (2028-09-28). **The real defect:** drivers measured on the file's stored dates (SSI's axis) with the engine's logic-only finish printed beside them, unlabelled, next to a network-finish series of the same shape; the two disagree on 50 of 1,723 activities on that IMS. Now the line carries the stored Finish, discloses the logic-only finish with its working-day gap only where they disagree (compared on the project axis), says whose date it is, and the movement census counts the disagreeing versions. Red-first 8 / 10, two SSI oracles in `-m parity`, mutation 7 / 7, `-m parity` 118 / 0 on the pristine tree. **The operator owes, not blocking:** the Jan 2024 DRIVING-PATH SERIES line from the original session (cited facts under the answer, or `/export/{fmt}/ask`), or the same question re-asked on v1.0.265; and a decision on OR-20b (a stored project finish beside the CPM one in the finish series) / OR-20c (the focus's stored Total Slack per line). **#682 MERGED at 22:10Z — `main` @ `4b213dd8`, tree == its head `e86362df` (eight of eight green). `main`'s own runs for it — CI 1881 (35029583803) and installer-smoke 738 (35029583809) — were IN PROGRESS at the close: read them FIRST.** Then the docs-only merge-record draft PR from the restarted branch (six checks; number in the SESSION-LOG follow-up): read its checks; after the operator merges it, restart the branch with `--prune` + `remote set-head` + `checkout -B`. **Always `git fetch origin` and read `git log origin/main` before trusting any sha written here.** Everything below OR-20 is unchanged: OR-19 / OR-18 / R-47 / R-46 / R-60 are CLOSED or SHIPPED as stated; the next §3 unit is **R-52**.
 
 **Run the session-token-guardian's `scripts/token_audit.py` as the FIRST action** (copy it to the scratchpad — `ruff check .` is whole-tree) and before each operator prompt.
@@ -64,12 +81,13 @@ mutation battery — assert the imported module IS the copy every time (a `-p mu
 ADR-0483 (OR-13) · ADR-0484 (/scorecards) · ADR-0485 (OR-14) · ADR-0486 (OR-15) · ADR-0487 (R-56) · ADR-0488
 (OR-16 / OR-16b) · ADR-0489 (/margin — the Control family COMPLETE) · ADR-0490 (R-49) · ADR-0491 (R-60 CLOSED, #673) ·
 ADR-0492 (R-46 CLOSED) · ADR-0493 (OR-17 in part, #677) · ADR-0494 (OR-18, #678) · ADR-0495 (R-47 CLOSED, #679
-MERGED) · ADR-0496 (OR-19 — OR-17 §4 answered and OR-17 CLOSED; #680 MERGED) · **ADR-0497 (OR-20 —
-the driving-path series on the stored Finish; the model's self-diagnosis refuted; this session)**.
+MERGED) · ADR-0496 (OR-19 — OR-17 §4 answered and OR-17 CLOSED; #680 MERGED) · ADR-0497 (OR-20 —
+the driving-path series on the stored Finish; the model's self-diagnosis refuted) · **ADR-0498
+(R-52 CLOSED — the `.pptx` loads; the LibreOffice refusal was an install with no presentation import
+filter; this session)**.
 ⇢ NEXT — the report's §3 in order, one row per unit of work (red-first → the per-task toward/away census
 across EVERY golden before the ADR → mutation proofs by name → the full gate → an ADR → the state docs →
-a draft PR): **R-52** (the `.pptx` LibreOffice
-refuses) · **R-50** (expose the History variants) · **R-61** (a FIXED_DURATION leg on an off-pattern crew —
+a draft PR): **R-50** (expose the History variants) · **R-61** (a FIXED_DURATION leg on an off-pattern crew —
 updated3 UID 210) · **R-57** (an assignment's OWN leveling delay — Hard_File UID 398's RA 277 is a split ON a
 delayed assignment: its gap is honoured since ADR-0491, its delay is not; UID 188 on updated2) · **R-58** ·
 **R-59** · **R-64** (Hard_File milestone 387 hangs on an external predecessor, UID −65535 — the one working
@@ -78,7 +96,7 @@ converter resolves `CurrentDate`, `MaxUnits`, `AvailableFrom/To` and the rates a
 `MaxUnits` feeds the loading view) · **R-62** (in #672's register: every absent slack the writer dropped is
 a zero, completed tasks included) · then R-03 · R-04 · R-09 · R-13 · R-18 · R-21 · R-22 · R-32 · R-39. The
 design queue is 19 artboards — the operator's order picks the next screen (§6 lists them).
-⇢ Traps paid for, by name (2026-09-15 (e) first): **a model's memo about its own error is testimony** — measure the mechanism on the real file before adopting it, and build the alleged defect as a mutant · **two per-version date series of one shape in one prompt get cross-wired** — say whose date each line carries · **drivers and the finish beside them must share an axis** · **"do two instants disagree" is a project-axis question** — `working_minutes_between(Fri 17:00, Mon 08:00)` reads 480 on a segment-less calendar · **rebuild the wheel after the LAST edit** · **the transaction log cannot replay a prompt** (Law 1) — the cited facts under the answer and the ask export are the record · (2026-09-15 earlier:) **a verdict quoted on the page is evidence** — a server cannot call an
+⇢ Traps paid for, by name (2026-09-15 (f) first): **an error message is a statement by the INSTRUMENT, not about the file** — hand the same tool a known-good artifact the reference implementation authored BEFORE diagnosing your own · **a converter that exits 0 on refusal** (`soffice`) — assert the artifact exists, never the exit code · **a mutant that does not change the thing under test proves nothing** — two cuts of the CUI-marking mutant were NON-mutations, not survivors · **prove a CI fragment under the CI shell** (`bash -e`, `set -o pipefail`) — the first local proof exited 0 on a collection error · **a gate that can SKIP silently measures nothing** — install the instrument in CI and make a skip a failure. (2026-09-15 (e):) **a model's memo about its own error is testimony** — measure the mechanism on the real file before adopting it, and build the alleged defect as a mutant · **two per-version date series of one shape in one prompt get cross-wired** — say whose date each line carries · **drivers and the finish beside them must share an axis** · **"do two instants disagree" is a project-axis question** — `working_minutes_between(Fri 17:00, Mon 08:00)` reads 480 on a segment-less calendar · **rebuild the wheel after the LAST edit** · **the transaction log cannot replay a prompt** (Law 1) — the cited facts under the answer and the ask export are the record · (2026-09-15 earlier:) **a verdict quoted on the page is evidence** — a server cannot call an
 unrecognised credential "expired"; read the quoted reason before re-testing the tool · **"replaced" for an identical
 paste is a false statement of change** — compare with the held value · **a wire test proves the path it drives** — a
 fresh-process test is not an in-process re-paste · **a register's step can name a column that is EMPTY** — the
@@ -116,7 +134,7 @@ Playwright's virtual mouse SURVIVES `goto()` — park it · an `assert` in `src/
 a design mock's status word, decomposition and export label are claims about the ENGINE · MS Project's
 stored dates are a per-activity CPM oracle · `LevelingDelay` is tenths of a minute · MPXJ writes no zero ·
 `Large_Test_File.mpp` ≠ `Large Test File.mpp`.
-⇢ Measured-false / deliberately held — do NOT re-chase: (ADR-0496:) the tool's gateway key path as the cause of the
+⇢ Measured-false / deliberately held — do NOT re-chase: (ADR-0498:) the exported `.pptx` as a malformed package (refuted — the refusing LibreOffice had no presentation import filter and refused a PowerPoint-authored deck too) · `presProps`/`viewProps`/`tableStyles` as the CAUSE of anything (they are written now, and LibreOffice's import is byte-identical with and without them) · re-creating "LibreOffice 7" (the mechanism is a missing filter, not a version) · `python-pptx` as a second reader (a dev dep for one test, and it is not PowerPoint) · (ADR-0496:) the tool's gateway key path as the cause of the
 401 (refuted by the gateway's own "Expired Key" and on the wire) · any code that "renews" a key · a key-expiry
 countdown (the tool learns the expiry only when refused) · (ADR-0495:) re-gating the SPI(t) population on a
 baseline (Fuse's Record Count refutes it) · the completed-unbaselined TERM's value beyond blank-as-0 (the corpus cannot
