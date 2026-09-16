@@ -147,9 +147,32 @@ system.
   scroll added), each header carries its ⓘ definition call-out, and clicking a variant cell opens
   the existing drill — *"10 activities behind Merge Hotspot (Predecessors >2, planned only) —
   Project2.mspdi.xml"* — with UID / name / duration / % complete / start / finish.
-* Full local gate on the final tree, and `-m parity`: recorded in the handoff.
+* **The first full-suite run on the final tree found FOUR failures the targeted runs could not
+  see** — every one a real consequence of this change, none an environment skip or a flake — and
+  they were repaired before any push. The suite that found them: **5,475 passed / 4 failed / 7
+  skipped in 37:23**. The final full gate and `-m parity` are recorded in the handoff.
 
-**Two guards were re-aimed in this commit, and had to be.** Both read the WHOLE PAGE and were
+**SIX guards were re-aimed in this commit, and every one of them had to be.** Two were found by
+the targeted runs; **four more only by the full suite**, which is the reason the suite runs before
+the push and not after it:
+
+| guard | what it pinned | why the change moved it |
+|---|---|---|
+| `test_ribbon_row_labels_wear_the_left_edge` | row labels **page-wide** (2) | a second matrix over the same two schedules → now counted **per panel** |
+| `test_ribbon_cells_carry_threshold_tooltips_never_re_judged` | every `.rib-cell`'s tooltip vocabulary | needed **no change** once the new cells used the shared title helper — the reason to reuse it |
+| `test_catalog_shape_and_families` | `("DCMA-14", "Schedule Quality", "Float")` | the new **Metric History** family is deliberate (see above) |
+| `test_api_workbench_matrix_is_chronological_and_validated` | the same family list **and** `len(metrics) == 21` | → 24; both pins kept, so a metric still cannot enter or leave unnoticed |
+| `test_every_extracted_name_is_reexported_by_app_as_the_same_object[ribbon.py]` | the monolith-split contract | `_HISTORY_VARIANT_COLS` / `_history_variants_panel` now re-exported `X as X` |
+| `test_panelkit_click_census_and_jarvis_probe_on_ribbon` | `.panel` count on `/ribbon` (4) | → 5, **and strengthened**: both matrices are now proved click-driven BY NAME, and the `[data-sf-big]` count is pinned at 2 so a third panel must force a decision rather than ride along unproved |
+
+That last repair needed a DOM change: the two matrices share one `data-export` (one workbook, all
+measures), so `.panel[data-export="/export/xlsx/ribbon"]` became ambiguous under Playwright's
+strict mode. The variants panel carries `id=metricHistoryVariants` — a real anchor, not a
+test-only hook — and the ribbon panel is addressed as the one that is *not* it. **M15: deleting
+that id turns `test_panelkit_click_census_and_jarvis_probe_on_ribbon` red by name**, so the new
+assertions have teeth like the other fourteen.
+
+**Two of those six were page-wide counts, and had to be re-aimed rather than re-numbered.** Both read the WHOLE PAGE and were
 under-specified the moment it grew a second matrix — the page-level twin of the phase-2 trap in
 `CLAUDE.md`. `test_ribbon_row_labels_wear_the_left_edge` counted row labels page-wide (2) and now
 counts them **per panel**, because a page-wide total of 4 cannot tell *"both panels label both

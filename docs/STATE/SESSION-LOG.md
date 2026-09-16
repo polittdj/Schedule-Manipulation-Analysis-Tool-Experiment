@@ -18589,7 +18589,8 @@ called a flake turned out to have a mechanism (ADR-0442 UI-02, ADR-0443, ADR-046
   read as it ran, never guessed:** `cui-guard` SUCCESS 03:22:10Z · `browser` SUCCESS 03:38:14Z (the
   R-52 interop gate ran and did **not** skip on `main` itself, 3 s) · `floor` SUCCESS 03:47:19Z
   (parity gate included). `test (3.11)` / `test (3.13)` were still inside the pytest step when this
-  entry was written — **re-read run 1890 before any "all green" claim about `9cb46317`.** No
+  entry was first written, and the run was then read to CONCLUSION: **`completed` / `SUCCESS`,
+  all five jobs, 04:07:52Z** — nothing about `9cb46317` is outstanding. No
   `installer-smoke` run exists for it and that absence is correct (docs-only; path-filtered).
 - **R-50 worked as its own unit** (register §3, T2): three library metrics share a name with a ribbon
   tile, are a **different metric** (same formula, different `PrimaryFilter`), and were not exposed —
@@ -18626,3 +18627,17 @@ called a flake turned out to have a mechanism (ADR-0442 UI-02, ADR-0443, ADR-046
   names metrics in `<Name>` elements, not attributes · a same-named Bible metric needs its GUID as the
   key · Fuse's Record Count is a second independent oracle the totals cannot replace · reuse the page's
   existing tooltip vocabulary instead of writing a second one.
+- **The FULL SUITE is why the push was held.** With the static gate, every targeted module, the
+  14-mutant battery, the corpus census and the four-theme render already green, the first
+  whole-tree run returned **5,475 passed / 4 failed / 7 skipped in 37:23** — and all four failures
+  were real consequences of this change: `test_catalog_shape_and_families` and
+  `/api/workbench`'s family list + `len(metrics) == 21`, both moved by the deliberate new **Metric
+  History** catalog family; the monolith-split contract, because `_HISTORY_VARIANT_COLS` /
+  `_history_variants_panel` were not re-exported `X as X` from `web.app`; and the `/ribbon`
+  panelkit promotion census (4 `.panel` → 5). **Six guards were re-aimed across the unit and the
+  targeted runs had found only two of them.** The panelkit repair needed a DOM change — the two
+  matrices share one `data-export`, so the selector was ambiguous under Playwright strict mode —
+  and the variants panel now carries `id=metricHistoryVariants`; the census was **strengthened**,
+  not renumbered (both matrices proved click-driven by name, `[data-sf-big]` pinned at 2).
+  **M15: deleting that id turns the named test red.** Wheel + nine installers rebuilt again after
+  this second round of source edits, six files byte-identical to `src/` by sha.

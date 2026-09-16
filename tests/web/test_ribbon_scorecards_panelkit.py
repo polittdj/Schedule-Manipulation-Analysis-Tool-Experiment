@@ -6,9 +6,12 @@ proves, in real chromium, on EACH converted page:
 
 * panelkit.js actually LOADS (script element present + the delegated listener works), by
   clicking ⛶ ENLARGE and reading ``.is-big`` back off the panel (and the label flip);
-* the PROMOTION CENSUS holds — no element gained ``.panel`` in the conversion (the counts are
+* the PROMOTION CENSUS holds — no element gained ``.panel`` in the conversion (the counts were
   pinned to the pre-conversion render of this same fixture pair: 4 on /ribbon, 5 on
-  /scorecards), so nothing new competes with jarvis's broad ``.panel`` rule;
+  /scorecards), so nothing new competes with jarvis's broad ``.panel`` rule. /ribbon's baseline
+  is **5** since R-50 (ADR-0499) added the Metric History variants matrix by design; the count
+  alone was never the whole claim, so every panel advertising ⛶ is now proved click-driven by
+  name rather than merely counted;
 * the jarvis probe (computed styles, never markup): the ribbon row-label keeps its 3px LEFT
   edge, a colored count cell keeps a non-transparent status tint, and the threshold tooltip
   rides the EXISTING mechanism (tooltips.js promotes the cell's ``title=`` to
@@ -102,10 +105,23 @@ def test_panelkit_click_census_and_jarvis_probe_on_ribbon(served: str) -> None:
         page.goto(served + "/ribbon", wait_until="domcontentloaded")
         page.wait_for_selector("td.rib-row-label", timeout=10000)
 
-        # promotion census: the conversion added ZERO .panel elements (pre-conversion count 4)
-        assert page.evaluate("() => document.querySelectorAll('.panel').length") == 4
+        # Promotion census: the panel-contract conversion added ZERO .panel elements
+        # (pre-conversion count 4). R-50 (ADR-0499) then added ONE by design — the Metric
+        # History variants matrix — so the baseline is 5. The count alone was never the whole
+        # claim and is weaker now that the page carries two matrices, so every panel that
+        # advertises the ⛶ affordance is proved CLICK-DRIVEN below, by name, not just counted.
+        assert page.evaluate("() => document.querySelectorAll('.panel').length") == 5
 
-        _prove_panelkit_click(page, '.panel[data-export="/export/xlsx/ribbon"]')
+        # both matrices carry the ⛶ affordance and BOTH are proved click-driven by name — the
+        # ribbon panel is addressed as the one that is NOT the variants panel, because the two
+        # now share the same data-export (one workbook, all measures)
+        _prove_panelkit_click(
+            page, '.panel[data-export="/export/xlsx/ribbon"]:not(#metricHistoryVariants)'
+        )
+        _prove_panelkit_click(page, "#metricHistoryVariants")
+        # exactly the panels proved above advertise ⛶ — a third one appearing must force a
+        # decision here rather than riding along unproved
+        assert page.evaluate("() => document.querySelectorAll('.panel [data-sf-big]').length") == 2
 
         # jarvis probe — computed styles, never markup (the standing rank-2/D1 lesson)
         page.evaluate("() => document.documentElement.setAttribute('data-theme','jarvis')")

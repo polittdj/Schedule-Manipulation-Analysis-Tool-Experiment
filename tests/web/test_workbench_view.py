@@ -49,8 +49,12 @@ def test_api_workbench_matrix_is_chronological_and_validated(client: TestClient)
     _upload(client, "Project2")
     d = client.get("/api/workbench").json()
     assert [v["label"] for v in d["versions"]] == ["Project2.mspdi.xml", "Project5.mspdi.xml"]
-    assert d["families"] == ["DCMA-14", "Schedule Quality", "Float"]
-    assert len(d["metrics"]) == 21
+    # + 'Metric History' since R-50 (ADR-0499): the library's same-named variants are their
+    # own family in the picker, never filed with the tiles they share a name with.
+    assert d["families"] == ["DCMA-14", "Schedule Quality", "Float", "Metric History"]
+    # 21 + the three Metric History variants (R-50, ADR-0499) = 24. Pinned, so a metric
+    # cannot enter or leave the selectable library unnoticed.
+    assert len(d["metrics"]) == 24
     # High Float on the latest golden is the Acumen-validated 44.44% FAIL with 44 offenders
     latest = d["versions"][-1]["key"]
     cell = d["cells"]["DCMA06"][latest]

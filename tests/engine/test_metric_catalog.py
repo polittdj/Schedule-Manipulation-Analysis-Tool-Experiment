@@ -31,7 +31,11 @@ def test_catalog_shape_and_families() -> None:
     entries = catalog_entries()
     ids = [e.metric_id for e in entries]
     assert len(ids) == len(set(ids)), "metric ids must be unique"
-    assert catalog_families() == ("DCMA-14", "Schedule Quality", "Float")
+    # 'Metric History' is the library's same-named variants (R-50, ADR-0499) — deliberately
+    # its OWN family, not filed with the tiles they share a name with, because they come
+    # from a different report and must never be read across. The tuple stays pinned so a
+    # family cannot be added by accident.
+    assert catalog_families() == ("DCMA-14", "Schedule Quality", "Float", "Metric History")
     # the 16 DCMA checks lead, then the ribbon extras
     assert ids[:3] == ["DCMA01", "DCMA02", "DCMA03"]
     assert {"logic_density", "insufficient_detail", "merge_hotspot"} <= set(ids)

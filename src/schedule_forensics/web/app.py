@@ -679,12 +679,16 @@ from schedule_forensics.web.resources import _resource_loading_json as _resource
 from schedule_forensics.web.resources import _resources_body as _resources_body
 from schedule_forensics.web.resources import _resources_explainer as _resources_explainer
 from schedule_forensics.web.resources import _who_is_overloaded_header as _who_is_overloaded_header
+from schedule_forensics.web.ribbon import _HISTORY_VARIANT_COLS as _HISTORY_VARIANT_COLS
 from schedule_forensics.web.ribbon import _RIBBON_CLS_VERDICT as _RIBBON_CLS_VERDICT
 from schedule_forensics.web.ribbon import _RIBBON_FLOAT_EXTRAS as _RIBBON_FLOAT_EXTRAS
 from schedule_forensics.web.ribbon import _RIBBON_PCT5 as _RIBBON_PCT5
 from schedule_forensics.web.ribbon import _RIBBON_WARN_FRACTION as _RIBBON_WARN_FRACTION
 from schedule_forensics.web.ribbon import _RIBBON_ZERO_TOLERANCE as _RIBBON_ZERO_TOLERANCE
 from schedule_forensics.web.ribbon import _can_we_trust_header as _can_we_trust_header
+from schedule_forensics.web.ribbon import (
+    _history_variants_panel as _history_variants_panel,
+)
 from schedule_forensics.web.ribbon import _ribbon_body as _ribbon_body
 from schedule_forensics.web.ribbon import _ribbon_cell_class as _ribbon_cell_class
 from schedule_forensics.web.ribbon import _ribbon_cell_title as _ribbon_cell_title

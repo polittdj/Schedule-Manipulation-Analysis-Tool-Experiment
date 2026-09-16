@@ -372,7 +372,7 @@ def _history_variants_panel(
         "opens in Excel"
     )
     head = _panel_head("Metric History variants", tools=tools, prov=prov)
-    return f"""<div class=panel data-export="/export/xlsx/ribbon">{head}
+    return f"""<div class=panel id=metricHistoryVariants data-export="/export/xlsx/ribbon">{head}
 {take}</p>
 <p class=muted>The reference metric library carries, under names the ribbon above already uses,
 <b>separate metrics with a different population</b> — the rows a Metric History report prints. They

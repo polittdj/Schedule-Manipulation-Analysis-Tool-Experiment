@@ -24,10 +24,9 @@ w/Insufficient Detail™`, `Merge Hotspot w/Predecessor Lags` (& Low Total Float
 an Activity`. And the three shipped variants are pinned **on the Large Test File / File2 pair only** — no other corpus
 export scores them, so their figures on Hard_File / Project2-5 / EVM are the engine's own and UNPINNED.
 
-**FIRST: read `main`'s own CI run for the merge of this unit's PR, and re-read CI 1890 (35051509437) for `9cb46317`**
-— at the close of the R-50 session three of its five jobs were SUCCESS (`cui-guard` 03:22:10Z, `browser` 03:38:14Z
-with the R-52 interop gate run-and-not-skipped, `floor` 03:47:19Z) and `test (3.11)` / `test (3.13)` were still inside
-the pytest step. **Always `git fetch origin` and read `git log origin/main` before trusting any sha written here.**
+**FIRST: read `main`'s own CI run for the merge of this unit's PR.** (CI 1890 (35051509437) for `9cb46317` is
+already settled — read to conclusion during the R-50 session: **`completed` / `SUCCESS`, all five jobs, 04:07:52Z**,
+the R-52 interop gate run-and-not-skipped on `main` itself. Do NOT re-read it.) **Always `git fetch origin` and read `git log origin/main` before trusting any sha written here.**
 
 **Run the session-token-guardian's `scripts/token_audit.py` as the FIRST action** (copy it to the scratchpad —
 `ruff check .` is whole-tree) and before each operator prompt.
@@ -42,7 +41,14 @@ off-pattern crew across the goldens**, recorded booking window vs the computed l
 fixed-duration leg spans the task's window on the crew calendar. The oracle is the stored booking windows of those
 tasks. Read `engine/cpm.py`'s plan builder and ADR-0474 / 0487 / 0491 before touching a leg.
 
-**Traps R-50 paid for, carried forward:** a **page-wide** guard is under-specified the moment the page grows a second
+**Traps R-50 paid for, carried forward:** **an additive change to a metric catalog is NOT additive to the
+guards** — with the static gate, every targeted module, a 14-mutant battery, the corpus census and a
+four-theme render all green, the first FULL-SUITE run still returned **4 failed** (the catalog family tuple,
+pinned in two places, plus `len(metrics) == 21`; the monolith-split contract's `X as X` re-exports; the
+`/ribbon` panelkit `.panel` census), every one a real consequence and none a flake. **Six guards were
+re-aimed across the unit; the targeted runs found only two.** Price the GUARD surface before adding a
+metric, a family or a panel, and re-aim a fired guard while KEEPING its teeth rather than renumbering it.
+Also: a **page-wide** guard is under-specified the moment the page grows a second
 matrix — count PER PANEL (the page-level twin of `CLAUDE.md`'s phase-2 source-path trap) · asserting a **header**
 exists is not asserting a **value** exists (a header with nothing beneath it survives the column being dropped from
 the row) · the `.aft` names metrics in `<Name>` **elements**, not `Name="…"` attributes, and a zero-result search must

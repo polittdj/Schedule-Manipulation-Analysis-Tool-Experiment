@@ -7662,3 +7662,23 @@ meant this unit opened on measured ground and spent its first hour on the oracle
 archaeology. And running the three candidate rules against Fuse's per-activity marks in a scratch
 probe **before writing any engine code** meant the implementation was a transcription of a proven
 rule, not a hypothesis that then had to be defended.
+
+**Addendum, same day — the full suite earned its 37 minutes.** Everything else was already green:
+the static gate, every targeted module, a 14-mutant battery red by name, a 15-golden corpus census
+showing zero movement, and a four-theme browser render. The first whole-tree run still came back
+**4 failed** — and not one was a flake or an environment skip. All four were the same shape:
+**an additive change to a metric catalog is not additive to the guards.** Three independent places
+pinned something the addition legitimately moved (the family tuple, twice; the selectable-metric
+count; the `.panel` census on the page that gained a panel), and a fourth — the monolith-split
+contract — required the two new module-level names to be re-exported `X as X` from `web.app`.
+
+The generalisation worth keeping: **before adding a metric, a family, or a panel, price the GUARD
+surface, not just the code.** A repo that pins its own shape well enough to catch drift will,
+by construction, fire on every deliberate change too; that is the guard working, and the repair is
+to re-aim it while keeping its teeth, never to renumber it and move on. Two of the six re-aimed
+guards here were page-wide counts that had to become per-panel or per-name claims; one
+(`test_panelkit_click_census…`) came out *stronger* than it went in, because the fix forced both
+matrices to be proved click-driven individually instead of trusting a single total. And the last
+mutation — deleting the DOM id the new selector depends on — was run for exactly the reason the
+other fourteen were: a repaired guard is a new claim, and a new claim is a hypothesis until it has
+been observed to fail.
