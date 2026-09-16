@@ -18641,3 +18641,15 @@ called a flake turned out to have a mechanism (ADR-0442 UI-02, ADR-0443, ADR-046
   not renumbered (both matrices proved click-driven by name, `[data-sf-big]` pinned at 2).
   **M15: deleting that id turns the named test red.** Wheel + nine installers rebuilt again after
   this second round of source edits, six files byte-identical to `src/` by sha.
+- **Final gate on the final tree: 5,479 passed / 0 failed / 7 skipped in 39:48; `-m parity` 131
+  passed / 0 failed in 5:43.** Parity 120 → 131, attributed not assumed — the new oracle collects
+  **exactly 11** under `-m parity`. Skips: the `urlparse` pair, the three `INCIDENTAL_SVG` axis
+  cases, and the two `test_pptx_libreoffice_interop` skips that are CORRECT in this container (no
+  `libreoffice-impress`; CI installs it and treats a skip as a failure, ADR-0498).
+- **A hang cost 2 h 16 m of wall clock and is written down.** The post-repair sweep stalled at 78 %
+  with the machine IDLE (load 0.02, pytest 10 % CPU, a chromium alive 1 h 53 m, no test server
+  listening) — a deadlocked browser test. `pytest-timeout` is not installed, so a stall never
+  becomes a failure, and `-q` gave no suspect. Killed, strays cleared, re-run with **`-v`** so the
+  last line without a verdict names the test in flight; it completed clean. The hung test was NOT
+  identified and did NOT recur — **UNVERIFIED**, and nothing implicates the register's known
+  width-racy `test_driving_path_whole_schedule_browser.py:104` (#667).

@@ -150,7 +150,9 @@ system.
 * **The first full-suite run on the final tree found FOUR failures the targeted runs could not
   see** — every one a real consequence of this change, none an environment skip or a flake — and
   they were repaired before any push. The suite that found them: **5,475 passed / 4 failed / 7
-  skipped in 37:23**. The final full gate and `-m parity` are recorded in the handoff.
+  skipped in 37:23**. After the repairs the gate on the final tree is **5,479 passed / 0 failed /
+  7 skipped in 39:48**, and **`-m parity` 131 passed / 0 failed in 5:43** — up from 120, a delta
+  attributed rather than assumed: this unit's oracle collects **exactly 11** under `-m parity`.
 
 **SIX guards were re-aimed in this commit, and every one of them had to be.** Two were found by
 the targeted runs; **four more only by the full suite**, which is the reason the suite runs before

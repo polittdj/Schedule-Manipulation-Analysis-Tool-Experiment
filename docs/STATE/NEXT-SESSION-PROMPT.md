@@ -28,6 +28,16 @@ export scores them, so their figures on Hard_File / Project2-5 / EVM are the eng
 already settled — read to conclusion during the R-50 session: **`completed` / `SUCCESS`, all five jobs, 04:07:52Z**,
 the R-52 interop gate run-and-not-skipped on `main` itself. Do NOT re-read it.) **Always `git fetch origin` and read `git log origin/main` before trusting any sha written here.**
 
+**Environment, re-measured 2026-09-16: run the full sweep with `-v`, never `-q`.** This container has NO
+`pytest-timeout`, so a stalled test never becomes a failure — the R-50 sweep sat at **78 % for 2 h 16 m** with the
+machine IDLE (load 0.02, pytest 10 % CPU, a chromium alive 1 h 53 m, no test server listening: a deadlocked browser
+test). Dots give no suspect; `-v` names the test in flight, and the hang signal is **no progress while the load
+average is ~0**, which a percentage cannot tell you. The run was killed, strays cleared, and the `-v` re-run completed
+clean in 39:48 — the hung test was NOT identified and did NOT recur (**UNVERIFIED**; nothing implicates the register's
+known width-racy `test_driving_path_whole_schedule_browser.py:104`, #667). Expect **7 skips** locally: the `urlparse`
+pair, three `INCIDENTAL_SVG` axis cases, and the two `test_pptx_libreoffice_interop` skips that are CORRECT here (no
+`libreoffice-impress`; CI installs it and treats a skip as a FAILURE).
+
 **Run the session-token-guardian's `scripts/token_audit.py` as the FIRST action** (copy it to the scratchpad —
 `ruff check .` is whole-tree) and before each operator prompt.
 
