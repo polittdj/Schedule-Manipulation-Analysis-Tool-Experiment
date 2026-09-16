@@ -435,6 +435,31 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-15 (f) — (ADR-0498) an error message is a statement by the INSTRUMENT, not about the file: one control run refuted eight days of a filed defect
+
+- **What happened.** The audit register carried R-52 since 2026-09-07: the exported `.pptx` "does not load in
+  LibreOffice 7 headless — source file could not be loaded", with a repair step naming three missing OOXML parts.
+  The unit began by reproducing it rather than by editing the writer, and the refusal reproduced exactly.
+- **What was tried.** Before diagnosing our package, the same install was handed a deck **PowerPoint wrote** (a
+  committed, non-CUI intake file) and a Microsoft-authored `.xlsx`. It refused both with the identical sentence.
+  `dpkg -l` finished it: `libreoffice-core` + `libreoffice-common` and **no `libreoffice-impress`** — an install with
+  no import filter for presentations. With the filter added, both decks load and render every shape.
+- **What worked.** The gate that now pins this loads a PowerPoint-authored **control** deck before it will judge
+  ours, and SKIPS — naming the reason — when the instrument is unusable. Only "the control loaded and ours did not"
+  is a failure. CI installs the filter and treats a skip as a failure, so the gate cannot go quietly decorative.
+- **What did not work.** `soffice` **exits 0 when it refuses a file**; a gate reading the exit code would have
+  called every refusal a pass. And the first local proof of the CI fragment exited 0 on a collection error because
+  the subshell lacked `-e` — GitHub's shell is `bash -e {0}`. The harness was wrong before the step was.
+- **Also paid for.** A mutant that does not change the thing under test proves nothing: emptying the CUI marking
+  took three cuts (one call site of two; then the top strip while the bottom still carried the text). Both earlier
+  runs were recorded as **non-mutations**, never as survivors.
+- **The lesson.** When a tool refuses an artifact, the first executable step is not "what is wrong with the
+  artifact" but "does this tool accept a known-good one?" — a control the reference implementation authored, run
+  through the same command, in the same environment, before any diagnosis is written down. A register's repair step
+  is a hypothesis about the mechanism; run it only after the mechanism is measured, and if it survives, ship it for
+  what it is (here: the removal of a variable, PowerPoint being unreachable) and say so in every place it appears.
+
+
 ### 2026-09-15 (e) — (ADR-0497) a model's diagnosis of its own error is testimony: one probe on the real IMS refuted "the focus finish was the network finish", and the real defect was two dates on two axes in one shape with no label
 
 - **What happened.** Asked for the driving path to UID 152 across 32 versions, the model tabled a "driving-path finish"

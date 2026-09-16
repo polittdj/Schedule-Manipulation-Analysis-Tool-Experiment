@@ -93,6 +93,12 @@ _CONTENT_TYPES = (
     f'<Override PartName="/ppt/slides/slide1.xml" ContentType="{_CT_BASE}'
     'presentationml.slide+xml"/>'
     f'<Override PartName="/ppt/theme/theme1.xml" ContentType="{_CT_BASE}theme+xml"/>'
+    f'<Override PartName="/ppt/presProps.xml" ContentType="{_CT_BASE}'
+    'presentationml.presProps+xml"/>'
+    f'<Override PartName="/ppt/viewProps.xml" ContentType="{_CT_BASE}'
+    'presentationml.viewProps+xml"/>'
+    f'<Override PartName="/ppt/tableStyles.xml" ContentType="{_CT_BASE}'
+    'presentationml.tableStyles+xml"/>'
     '<Override PartName="/docProps/core.xml" '
     'ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>'
     f'<Override PartName="/docProps/app.xml" ContentType="{_CT_BASE}extended-properties+xml"/>'
@@ -108,10 +114,31 @@ _PRESENTATION = (
 )
 _PRESENTATION_RELS = _rels(
     [
+        # rId1 / rId2 are named by <p:sldMasterId> / <p:sldId> in _PRESENTATION — appending only.
         ("slideMaster", "slideMasters/slideMaster1.xml"),
         ("slide", "slides/slide1.xml"),
         ("theme", "theme/theme1.xml"),
+        ("presProps", "presProps.xml"),
+        ("viewProps", "viewProps.xml"),
+        ("tableStyles", "tableStyles.xml"),
     ]
+)
+# The three parts every PowerPoint-authored package carries and this writer did not (R-52,
+# ADR-0498). All three are OPTIONAL — LibreOffice Impress loads both decks without them, measured;
+# the register's "does not load in LibreOffice 7" was an install with NO presentation import
+# filter, which refuses a PowerPoint-authored .pptx and a Microsoft-authored .xlsx with the same
+# sentence. They are written anyway because a part-list diff against
+# `00_REFERENCE_INTAKE/mpp/Politte Schedule Tool.pptx` showed them to be the whole structural
+# delta, and PowerPoint itself is UNVERIFIED here: matching the reference implementation's package
+# shape removes that shape as a variable. Each is the MEASURED minimum of what that deck carries —
+# PowerPoint's own MRU colours, window geometry and 2010/2012 extensions are editor state, not
+# document content, so they are not copied. The tableStyles `def` GUID is the empty-list default
+# read out of that same deck.
+_PRES_PROPS = _XML + f"<p:presentationPr {_NS}/>"
+_VIEW_PROPS = _XML + f'<p:viewPr {_NS}><p:gridSpacing cx="76200" cy="76200"/></p:viewPr>'
+_TABLE_STYLES = (
+    _XML + '<a:tblStyleLst xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" '
+    'def="{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}"/>'
 )
 _PH_FILL = '<a:solidFill><a:schemeClr val="phClr"/></a:solidFill>'
 _PH_LINE = (
@@ -365,6 +392,9 @@ def _package(slide: _Slide) -> bytes:
         ("ppt/presentation.xml", _PRESENTATION),
         ("ppt/_rels/presentation.xml.rels", _PRESENTATION_RELS),
         ("ppt/theme/theme1.xml", _THEME),
+        ("ppt/presProps.xml", _PRES_PROPS),
+        ("ppt/viewProps.xml", _VIEW_PROPS),
+        ("ppt/tableStyles.xml", _TABLE_STYLES),
         ("ppt/slideMasters/slideMaster1.xml", _MASTER),
         ("ppt/slideMasters/_rels/slideMaster1.xml.rels", _MASTER_RELS),
         ("ppt/slideLayouts/slideLayout1.xml", _LAYOUT_PART),
