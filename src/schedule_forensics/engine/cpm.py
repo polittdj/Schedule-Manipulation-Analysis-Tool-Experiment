@@ -42,6 +42,13 @@ Scope of this engine (documented, not silently limited — Law 2):
   ELAPSED time added after the task's own calendar first admits it (Hard_File UID 403:
   Friday 08:00 + 25 d 7 h → the stored Tuesday 15:00). Delayed UniqueIDs are reported on
   :attr:`CPMResult.leveling_driven` — a stored scheduling input, not an unsupported date.
+* **A BOOKING's own leveling delay honored** (ADR-0502): MS Project can level ONE crew off a
+  task without moving the task or its other crews (MSPDI ``Assignment/LevelingDelay``). That
+  delay runs on the delayed leg alone, in WORKING minutes of the leg's calendar before its work
+  begins, and the calendar then admits the work again — the task's start does not move
+  (Hard_File UID 398: the Technology Lead waits 239 minutes from the task's 13:00 start and
+  finishes 08-27 11:59, MS Project's own instant, where the undelayed leg read 08-26 17:00).
+  Disclosed on :attr:`CPMResult.assignment_leveling_driven` when that leg places the finish.
 * **Link types:** all four (FS / SS / FF / SF) with lag/lead, in working minutes.
 * **Date constraints honored** (MS Project "honor constraint dates" mode):
   ``SNET`` / ``FNET`` are forward floors; ``SNLT`` / ``FNLT`` are backward caps;
@@ -226,6 +233,14 @@ class CPMResult:
     #: A stored scheduling input like the delay and the recorded span — neither an unsupported
     #: date (``date_driven``) nor evidence of work begun.
     split_driven: tuple[int, ...] = ()
+    #: UniqueIDs whose finish the BOOKING's OWN leveling delay places (ADR-0502): MS Project
+    #: levels one crew off a task without moving the task or its other crews, and the delay is
+    #: carried by that leg alone — working minutes of the leg's calendar before its work
+    #: begins. Reported only when the delayed leg is the PRIMARY one, i.e. the delay is what
+    #: decides the finish; a delay on an earlier-finishing leg moves that booking without
+    #: moving the task. A stored scheduling input like the task's own delay, the recorded span
+    #: and the split — neither an unsupported date nor evidence of work begun.
+    assignment_leveling_driven: tuple[int, ...] = ()
     #: The true wall-clock instant of the network finish when an off-calendar task's
     #: finish is not exactly representable on the project axis (e.g. an elapsed task
     #: ending on a weekend). ``None`` when every task follows the project calendar —
@@ -621,14 +636,16 @@ _ELAPSED_CALENDAR = Calendar(
 
 class _Leg(NamedTuple):
     """One execution leg of a task: the calendar a work-resource assignment (or the task itself)
-    consumes its working time on, the working minutes it consumes there, and its leveling
+    consumes its working time on, the working minutes it consumes there, its leveling
     SPLITS (ADR-0491) — ``(after, gap)`` pairs in ascending order, each strictly inside the
     span: once ``after`` of the leg's minutes are worked, ``gap`` working minutes of the leg's
-    calendar pass with no work before the rest is worked."""
+    calendar pass with no work before the rest is worked — and its own leveling DELAY
+    (ADR-0502): working minutes of the leg's calendar before ANY of its work begins."""
 
     calendar: Calendar
     span: int
     gaps: tuple[tuple[int, int], ...] = ()
+    delay: int = 0
 
 
 #: A task's execution legs, PRIMARY (latest-finishing) leg first: the task starts at the
@@ -644,12 +661,19 @@ class _Exec(NamedTuple):
     minutes, the stored slack; the crew's 16-hour calendar would read 720). ``recorded`` says
     the PRIMARY leg is a material / cost booking's recorded span (ADR-0487) — the finish is
     then the file's, and the task is disclosed on ``CPMResult.booking_span_driven``. ``split``
-    says a leg carries a leveling SPLIT (ADR-0491) — disclosed on ``CPMResult.split_driven``."""
+    says a leg carries a leveling SPLIT (ADR-0491) — disclosed on ``CPMResult.split_driven``.
+    ``delayed`` says SOME leg carries the BOOKING's own leveling delay (ADR-0502); whether that
+    leg is the one that PLACES the finish is decided in the forward pass, from the task's real
+    early start, and only then is the task disclosed on ``CPMResult.assignment_leveling_driven``
+    — the legs are ORDERED from the project start, which is not the order they finish in from
+    the task's own start (Hard_File_updated2 UID 398's delayed crew sorts first and is not what
+    finishes the task). A delay on a leg that finishes earlier moves that booking alone."""
 
     legs: _Plan
     axis: Calendar
     recorded: bool = False
     split: bool = False
+    delayed: bool = False
 
 
 class _LegShape(NamedTuple):
@@ -667,6 +691,9 @@ class _LegShape(NamedTuple):
     #: calendar (a calendar quantity, like the delay: it does not scale with the duration —
     #: the share does)
     gaps: tuple[tuple[float, int], ...] = ()
+    #: the BOOKING's own leveling delay (ADR-0502), working minutes of the leg's calendar
+    #: before its work begins — a calendar quantity like a gap, so it does not scale either
+    delay: int = 0
 
 
 class _PlanShape(NamedTuple):
@@ -812,6 +839,18 @@ def _task_shape(t: Task, ctx: _ShapeContext) -> _PlanShape | None:
                 else 1.0
             )
             others = [w for key, ws in windows.items() if key != id(a) for w in ws]
+            # the BOOKING's own leveling delay (ADR-0502, R-57), on the SAME type axis as the
+            # span above. A leg with its OWN span (ratio < 1) is PUSHED by its delay: it starts
+            # late and still owes all of its work, so the finish moves out (Hard_File UID 398's
+            # Technology Lead, 239 minutes, and updated2 UID 188's Content Developer, 960).
+            # A leg that SPANS THE TASK (ratio 1.0) ABSORBS it: the delay lies inside the span
+            # it shares with the task, so the booking starts late and still ends with the task —
+            # on 16 of the goldens' 18 such bookings ``Assignment/Finish`` IS ``Task/Finish``,
+            # and the two that are not are co-bookings that finish earlier either way. Adding
+            # the delay there instead of absorbing it double-counts: it cost Large_Test_File 93
+            # of its 1,666 finishes-within-a-day, and UIDs 5266 / 5267 / 5270 their EXACT ones.
+            # WORK bookings only — a MATERIAL / COST leg IS its recorded window (ADR-0487),
+            # which already embeds whatever delay MS Project applied.
             legs.append(
                 _LegShape(
                     leg_cal,
@@ -819,16 +858,18 @@ def _task_shape(t: Task, ctx: _ShapeContext) -> _PlanShape | None:
                     not _same_pattern(leg_cal, ctx),
                     False,
                     _split_gaps(a, leg_cal, others),
+                    a.leveling_delay_minutes if ratio < 1.0 else 0,
                 )
             )
     # legs that all sit on the project pattern under no task calendar can never form a plan,
     # whatever the durations — unless one of them outspans the task (a recorded material /
-    # cost span, ADR-0487) or carries a leveling split (ADR-0491): the fast path could carry
-    # the task neither past its duration nor across a gap
+    # cost span, ADR-0487), carries a leveling split (ADR-0491) or carries the booking's own
+    # leveling delay (ADR-0502): the fast path could carry the task neither past its duration
+    # nor across a gap nor past a delayed crew
     if (
         legs
         and task_cal is None
-        and not any(leg.off_pattern or leg.ratio > 1.0 or leg.gaps for leg in legs)
+        and not any(leg.off_pattern or leg.ratio > 1.0 or leg.gaps or leg.delay for leg in legs)
     ):
         legs = []
     leveled = t.leveling_delay_minutes > 0
@@ -882,7 +923,9 @@ def _execution_plans(
       crew's calendar — the span the file records, the one input it carries (ADR-0487);
     * a materially different task calendar with no such legs → one leg on it;
     * a leveling delay on a project-calendar task → one leg on the project calendar, so the
-      delay's elapsed arithmetic runs segment-aware on the wall path.
+      delay's elapsed arithmetic runs segment-aware on the wall path;
+    * a work booking carrying its OWN leveling delay (ADR-0502) → that leg, and only that leg,
+      waits the delay in working minutes of its calendar before its work begins.
 
     Legs that all sit on the project pattern (and no task calendar, no delay) stay on the
     fast path: the stored duration is then the span, exactly as before. The duration-free
@@ -916,9 +959,9 @@ def _execution_plans(
         # model on a solver the SRA calls a thousand times (ADR-0474's latency amendment);
         # ``seen`` dedupes the legs the same way (one leg per distinct calendar, span, gaps)
         recorded: set[tuple[int, int]] = set()
-        seen: set[tuple[int, int, tuple[tuple[int, int], ...]]] = set()
-        off_pattern = split = False
-        for leg_cal, ratio, off, rec, shares in shape.legs:
+        seen: set[tuple[int, int, tuple[tuple[int, int], ...], int]] = set()
+        off_pattern = split = delayed = False
+        for leg_cal, ratio, off, rec, shares, delay in shape.legs:
             span = round(ratio * dur)
             if span <= 0:
                 continue
@@ -928,19 +971,26 @@ def _execution_plans(
                 after = round(share * span)
                 if 0 < after < span:
                     gaps.append((after, gap))
-            key = (id(leg_cal), span, tuple(gaps))
+            # the delay is part of the leg's IDENTITY (ADR-0502): two crews sharing a calendar
+            # and a span are two different legs when only one of them is leveled off
+            key = (id(leg_cal), span, tuple(gaps), delay)
             if key in seen:
                 continue
             seen.add(key)
-            legs.append(_Leg(leg_cal, span, tuple(gaps)))
+            legs.append(_Leg(leg_cal, span, tuple(gaps), delay))
             off_pattern = off_pattern or off
             split = split or bool(gaps)
+            delayed = delayed or bool(delay)
             if rec:
                 recorded.add((id(leg_cal), span))
         task_cal = shape.task_calendar
         plan: _Plan
         if legs and (
-            off_pattern or split or task_cal is not None or any(leg.span > dur for leg in legs)
+            off_pattern
+            or split
+            or delayed
+            or task_cal is not None
+            or any(leg.span > dur for leg in legs)
         ):
             plan = tuple(legs)
         elif task_cal is not None:
@@ -966,6 +1016,7 @@ def _execution_plans(
             task_cal if task_cal is not None else schedule.calendar,
             (id(plan[0].calendar), plan[0].span) in recorded,
             split,
+            delayed,
         )
     return out
 
@@ -1013,9 +1064,19 @@ def _leg_finish(start: dt.datetime, leg: _Leg, day_start_tod: int) -> dt.datetim
     between the pieces, every leveling-split gap (ADR-0491), all in working minutes of the
     leg's calendar — a gap travels with the work it interrupts, exactly as MS Project's stored
     LateStart retreats through it (Hard_File_updated3 UID 403: 11-25 13:48, to the minute).
-    A leg without gaps is the one advance it always was."""
-    cal, span, gaps = leg
+    A leg without gaps is the one advance it always was.
+
+    The leg's OWN leveling delay (ADR-0502) runs first, in working minutes of the same calendar.
+    MS Project reports such a booking's START at the next WORKING instant (Large_Test_File UID
+    5270's 180-minute leg delay from 09:00 begins 13:00, not 12:00), but re-snapping here would
+    be dead code: the work that follows is itself an ``_advance_wall``, which counts a wall at a
+    segment END and one at the next segment's start identically. Swept over 31,479 delay / span /
+    gap combinations — 6 of them landing exactly on a segment end — the snap never moved a leg
+    finish, so it is not written."""
+    cal, span, gaps, delay = leg
     wall, worked = start, 0
+    if delay:
+        wall = _advance_wall(wall, delay, cal, day_start_tod)
     for after, gap in gaps:
         wall = _advance_wall(wall, after - worked, cal, day_start_tod)
         wall = _advance_wall(wall, gap, cal, day_start_tod)
@@ -1024,15 +1085,16 @@ def _leg_finish(start: dt.datetime, leg: _Leg, day_start_tod: int) -> dt.datetim
 
 
 def _leg_retreat(finish: dt.datetime, leg: _Leg, day_start_tod: int) -> dt.datetime:
-    """The latest start from which the leg — its pieces and the gaps between them — still
-    finishes by ``finish``: the mirror of :func:`_leg_finish`."""
-    cal, span, gaps = leg
+    """The latest start from which the leg — its own leveling delay, its pieces and the gaps
+    between them — still finishes by ``finish``: the mirror of :func:`_leg_finish`."""
+    cal, span, gaps, delay = leg
     wall, remaining = finish, span
     for after, gap in reversed(gaps):
         wall = _retreat_wall(wall, remaining - after, cal, day_start_tod)
         wall = _retreat_wall(wall, gap, cal, day_start_tod)
         remaining = after
-    return _retreat_wall(wall, remaining, cal, day_start_tod)
+    wall = _retreat_wall(wall, remaining, cal, day_start_tod)
+    return _retreat_wall(wall, delay, cal, day_start_tod) if delay else wall
 
 
 def _plan_finish(start: dt.datetime, plan: _Plan, day_start_tod: int) -> dt.datetime:
@@ -1058,11 +1120,12 @@ def _plan_scaled(plan: _Plan, minutes: int, duration: int) -> _Plan:
     """The plan's legs scaled to ``minutes`` of the ``duration`` they were built for (the
     remaining-work floor — the TAIL of every leg); a zero duration collapses onto the primary
     leg. A split gap keeps its length and its place in the work (ADR-0491): one inside the
-    consumed head is gone, one still ahead moves up by the head."""
+    consumed head is gone, one still ahead moves up by the head. The leg's own leveling DELAY
+    (ADR-0502) is dropped: it precedes the work, so a resumed TAIL is already past it."""
     if duration <= 0:
         return (_Leg(plan[0].calendar, minutes),)
     out: list[_Leg] = []
-    for cal, span, gaps in plan:
+    for cal, span, gaps, _delay in plan:
         scaled = round(span * minutes / duration)
         head = span - scaled
         out.append(
@@ -1868,6 +1931,8 @@ def compute_cpm(
     booking_span_driven: list[int] = []
     #: UIDs whose finish carries a leveling SPLIT read from the file's time-phased work (ADR-0491).
     split_driven: list[int] = []
+    #: UIDs whose finish the BOOKING's own leveling delay places (ADR-0502).
+    assignment_leveling_driven: list[int] = []
 
     def _pred_finish_wall(p: int) -> dt.datetime:
         if p in exec_plan:
@@ -1963,6 +2028,14 @@ def compute_cpm(
                     es_w = started_wall
                     actual_driven.append(tid)
             ef_w = _plan_finish(es_w, plan, tod0)
+            if ex.delayed and any(
+                leg.delay
+                and _leg_finish(_snap_to_working(es_w, leg.calendar, tod0), leg, tod0) == ef_w
+                for leg in plan
+            ):
+                # a BOOKING's own delay is what places this finish (ADR-0502) — measured from
+                # the task's REAL early start, not from the project start the legs are sorted by
+                assignment_leveling_driven.append(tid)
             if tid in actual_finish_pin and task.actual_finish is not None:
                 # completed: the finish is the RECORD, not ``start + duration`` (ADR-0476).
                 # ``max`` keeps the window ordered when the start snapped past the raw instant.
@@ -2249,5 +2322,6 @@ def compute_cpm(
         leveling_driven=tuple(sorted(leveling_driven)),
         booking_span_driven=tuple(sorted(booking_span_driven)),
         split_driven=tuple(sorted(split_driven)),
+        assignment_leveling_driven=tuple(sorted(assignment_leveling_driven)),
         project_finish_wall=target_wall if required_finish_offset is None else None,
     )

@@ -1094,6 +1094,7 @@ def _parse_assignments(
     units_by_task_res: dict[int, dict[int, float]] = {}
     remaining_by_task_res: dict[int, dict[int, int]] = {}
     window_by_task_res: dict[int, dict[int, tuple[dt.datetime | None, dt.datetime | None]]] = {}
+    delay_by_task_res: dict[int, dict[int, int]] = {}
     pieces_by_task_res: dict[int, dict[int, list[WorkPiece]]] = {}
     cost_by_task_res: dict[int, dict[int, list[CostPiece]]] = {}
     assignments_el = root.find("Assignments")
@@ -1125,6 +1126,17 @@ def _parse_assignments(
             rem_map[resource_uid] = rem_map.get(resource_uid, 0) + max(
                 0, iso_duration_to_minutes(rem)
             )
+        # the BOOKING's own leveling delay (ADR-0502, R-57), tenths of a minute like the task's;
+        # to the NEAREST minute, not truncated — measured against MS Project's own
+        # Assignment/Start on the 24 delayed bookings of the goldens, round reproduces 17 and
+        # floor 14, and round is never the worse of the two on any one of them. The largest
+        # value for a pair recorded in several rows wins (the delay is the pair's, not a row's).
+        delay_tenths = _int(assign_el, "LevelingDelay")
+        if delay_tenths:
+            delay_map = delay_by_task_res.setdefault(task_uid, {})
+            delay_map[resource_uid] = max(
+                delay_map.get(resource_uid, 0), max(0, round(delay_tenths / 10))
+            )
         # the booking's recorded window (ADR-0487): a pair with several rows spans the earliest
         # start to the latest finish; a row without dates leaves the window as it is
         w_start = parse_datetime(_text(assign_el, "Start"))
@@ -1154,6 +1166,7 @@ def _parse_assignments(
         units_map = units_by_task_res.get(task_uid, {})
         rem_map = remaining_by_task_res.get(task_uid, {})
         win_map = window_by_task_res.get(task_uid, {})
+        delay_map = delay_by_task_res.get(task_uid, {})
         pieces_map = pieces_by_task_res.get(task_uid, {})
         cost_map = cost_by_task_res.get(task_uid, {})
         assignments_by_task[task_uid] = tuple(
@@ -1164,6 +1177,7 @@ def _parse_assignments(
                 remaining_work_minutes=rem_map.get(ruid),
                 start=win_map.get(ruid, (None, None))[0],
                 finish=win_map.get(ruid, (None, None))[1],
+                leveling_delay_minutes=delay_map.get(ruid, 0),
                 work_pieces=tuple(
                     sorted(pieces_map.get(ruid, []), key=lambda p: (p.start, p.finish))
                 ),

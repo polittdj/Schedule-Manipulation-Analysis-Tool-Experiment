@@ -271,6 +271,10 @@ def _task(raw: dict[str, Any]) -> Task:
                 # the booking's recorded window (ADR-0487); absent in every earlier Save
                 start=_dt(a.get("start")),
                 finish=_dt(a.get("finish")),
+                # the booking's OWN leveling delay (ADR-0502); absent in every earlier Save
+                leveling_delay_minutes=_int(
+                    a.get("leveling_delay_minutes", 0), "leveling_delay_minutes"
+                ),
                 # the booking's leveling split (ADR-0491); absent in every earlier Save
                 work_pieces=tuple(
                     _work_piece(piece)
@@ -540,6 +544,11 @@ def to_json_text(schedule: Schedule) -> str:
                 )
                 | ({} if a.start is None else {"start": a.start.isoformat()})
                 | ({} if a.finish is None else {"finish": a.finish.isoformat()})
+                | (
+                    {}
+                    if not a.leveling_delay_minutes
+                    else {"leveling_delay_minutes": a.leveling_delay_minutes}
+                )
                 | (
                     {}
                     if not a.work_pieces

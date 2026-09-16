@@ -7757,3 +7757,47 @@ matrices to be proved click-driven individually instead of trusting a single tot
 mutation — deleting the DOM id the new selector depends on — was run for exactly the reason the
 other fourteen were: a repaired guard is a new claim, and a new claim is a hypothesis until it has
 been observed to fail.
+
+### 2026-09-16 (d) — the audit row is testimony, and its remedy is a hypothesis
+
+R-57 did not just name a defect; it named a **remedy**: *"read `Assignment/LevelingDelay` onto
+the Assignment model and delay that leg alone."* That sentence is as much an inherited claim as
+any number in a handoff (QC-2), and this unit is what happens when it is treated as one.
+
+Built exactly as written, "delay that leg alone" is **correct for 6 of the corpus's 24 delayed
+bookings and a regression for the other 18** — it cost `Large_Test_File` 93 of its 1,666
+finishes-within-a-day and turned three EXACT activities into days-late ones. Nothing about the
+row hinted at that, because the row had been written from the two activities it names. The
+correct rule turned out to be one the repo already owned: **ADR-0474 / ADR-0501's type axis**,
+the same ratio that decides a leg's span decides whether its delay is pushed or absorbed. The
+finding was not a new mechanism; it was noticing that the mechanism already had an axis.
+
+Three things generalize.
+
+**Price the remedy against the whole population before writing a line of it.** The census that
+refuted the first cut took one probe and ran in seconds. It ran *before* the rule was believed,
+which is the only reason "93 finishes-within-a-day" is a sentence in an ADR instead of a
+regression in `main`. A row's remedy is scoped to the row's witnesses; the corpus is not.
+
+**A survivor in the mutation battery is worth more than the eight cuts that go red.** Eight cuts
+confirmed what was already believed. The ninth — dropping the delay from the **backward** pass —
+survived, and chasing it found three exact stored slacks (UIDs 321 / 381 / 396) that depended on
+a line no test touched. The value of the battery is concentrated entirely in the cut that does
+not behave.
+
+**A line that cannot fire must be deleted, not shipped with a comment.** The first `_leg_finish`
+re-snapped after the delay, and the justification was true about MS Project (it reports a
+delayed booking's start at the next working instant) and irrelevant to this code (the work that
+follows is itself an `_advance_wall`, which cannot tell a segment end from the next segment's
+start). The corpus agreed it was inert, but only weakly — its one segment-end delay sits on an
+*absorbing* leg and never reaches the function at all, which is exactly the shape of evidence
+that looks conclusive and proves nothing. A 31,479-combination sweep is what settled it. "Proving
+a patch inert requires proving it fired" has a mirror: proving a line *needed* requires proving
+it **can** fire.
+
+And one on honesty of scope. R-57's oracle is reached on `Hard_File_updated` and **not** on the
+base `Hard_File`, where the activity is early by exactly the 240 working minutes its
+predecessor's predecessor is early by. That is a different defect (**R-66**) wearing R-57's
+clothes, and the difference between "R-57 is closed" and "R-57 is closed, and here is the
+snapshot where its oracle is still unmet and why" is the whole distance between a report and
+testimony.

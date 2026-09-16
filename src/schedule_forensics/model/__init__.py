@@ -51,7 +51,9 @@ from schedule_forensics.model.task import ConstraintType, Task, TaskType
 #   2.9.0 case again: the guard asserts a literal and cannot see an un-bumped add.
 # 2.14.0: Assignment.baseline_cost_pieces + CostPiece (ADR-0492) — a booking's time-phased
 #   baseline cost as the file records it: the BCWS MS Project stores and Fuse sums (R-46).
-SCHEMA_VERSION = "2.14.0"
+# 2.15.0: Assignment.leveling_delay_minutes (ADR-0502) — a BOOKING's own resource-leveling
+#   delay, which MS Project applies to that crew's leg alone without moving the task (R-57).
+SCHEMA_VERSION = "2.15.0"
 
 __all__ = [
     "SCHEMA_VERSION",

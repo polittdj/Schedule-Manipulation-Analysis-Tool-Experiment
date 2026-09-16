@@ -450,6 +450,7 @@ def _maximal_schedule():  # type: ignore[no-untyped-def]
                 start=dt.datetime(2025, 1, 6, 8, 0),
                 finish=dt.datetime(2025, 1, 8, 12, 0),
                 # the booking's split (ADR-0491): two pieces of work, a gap between
+                leveling_delay_minutes=45,
                 work_pieces=(
                     WorkPiece(
                         start=dt.datetime(2025, 1, 6, 8, 0),
