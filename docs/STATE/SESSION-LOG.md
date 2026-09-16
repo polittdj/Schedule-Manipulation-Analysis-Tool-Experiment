@@ -18708,6 +18708,16 @@ unit's own first cut:** the census originally re-implemented the plan builder's 
 lines inside the test and was GREEN under M2 — the mutant that breaks exactly that resolution —
 because it measured the re-implementation, not the engine. Re-aimed onto `_task_shape` it goes red.
 
+**Gate on the final tree.** Full suite **5,489 passed / 0 failed / 7 skipped in 35:36**;
+`-m parity` **141 passed / 0 failed** in 4:28. Both deltas attributed rather than assumed:
+5,479 + 10 and 131 + 10, this module collecting EXACTLY 10 under `-m parity`. The 7 skips
+are the documented set (the urlparse pair, three INCIDENTAL_SVG axis cases, and the two
+`test_pptx_libreoffice_interop` skips that are correct in this container — CI installs
+libreoffice-impress and treats a skip there as a FAILURE, ADR-0498). Statics green on both
+ruff binaries, `ruff format`, `mypy --strict`, `bandit`, `node --check`, `--collect-only`
+(5,496). **PR [#688](https://github.com/polittdj/Schedule-Manipulation-Analysis-Tool-Experiment/pull/688)**
+opened as a draft on head `980aa8b2`; six checks apply (no `installer/**` in the diff).
+
 **Residual, named and OPEN.** The corpus cannot prove no such task can exist — only that no oracle
 here can validate any change to the rule. What would settle it: a production IMS with a
 FIXED_DURATION activity on an off-pattern crew and NO project-calendar co-booking, plus MS

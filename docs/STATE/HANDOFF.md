@@ -69,7 +69,15 @@ CLOSED.
   that breaks exactly that resolution — because it was measuring the re-implementation, not the
   engine. Re-aimed onto `_task_shape`, it goes red. *A parallel implementation in a test is an
   oracle for itself.*
-* Gate on the final tree: see the session log for the figures.
+* **Gate on the final tree: 5,489 passed / 0 failed / 7 skipped in 35:36**, and `-m parity`
+  **141 passed / 0 failed** in 4:28. Both deltas are ATTRIBUTED, not assumed: the previous
+  unit's 5,479 and 131 plus this module's **exactly 10**
+  (`pytest -m parity tests/parity/test_r61_fixed_duration_leg_oracle.py --collect-only`).
+  The 7 skips are the documented set — the urlparse pair, three INCIDENTAL_SVG axis cases,
+  and the two `test_pptx_libreoffice_interop` skips that are CORRECT in this container (no
+  libreoffice-impress; CI installs the filter and treats a skip there as a FAILURE).
+  Statics green on both ruff binaries, `ruff format`, `mypy --strict`, `bandit`,
+  `node --check` and `pytest --collect-only` (5,496).
 
 ## Deliberately NOT done
 
