@@ -1,5 +1,7 @@
 # Kickoff prompt — next session
 
+**#689 IS MERGED — `main` @ `ed977f29`, squash TREE-IDENTICAL to the reviewed head `c6f762d9` (tree `947d59b3…` on both), six of six green, zero review threads. `main`'s OWN runs for `ed977f29` were NOT read before that session closed — READ THEM TO CONCLUSION FIRST; no `installer-smoke` run should exist (docs+tests only, path-filtered) and that absence is CORRECT.**
+
 **R-61 is SETTLED — ADR-0501, on the repository's own 29 `.mpp` files. Do NOT re-open it and do
 NOT re-run its census expecting a different answer.** ADR-0500 closed it on the 15 goldens and
 deferred a residual reading "only a production IMS can settle it"; that was a claim about the
