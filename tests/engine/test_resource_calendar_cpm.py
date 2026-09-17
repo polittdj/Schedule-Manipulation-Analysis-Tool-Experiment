@@ -145,8 +145,10 @@ def test_ignore_resource_calendar_keeps_the_task_on_its_own_calendar() -> None:
 
 
 def test_a_24_hour_task_calendar_yields_the_crew_calendar() -> None:
-    """The task's own 24-hour calendar intersected with a 16-hour crew IS the crew calendar
-    (the only exact intersection the engine models; any other task calendar wins)."""
+    """The task's own 24-hour calendar intersected with a 16-hour crew IS the crew calendar,
+    and a 16-hour task calendar inside a 24-hour crew IS the task calendar — the two
+    intersections that reduce to one of the calendars themselves (since ADR-0503 every other
+    pair is intersected too: ``tests/engine/test_calendar_intersection.py``)."""
     crewed = Task(
         unique_id=1,
         name="both",

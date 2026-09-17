@@ -18842,3 +18842,57 @@ second run EXISTS here and that is the point: this merge rebuilt the installers,
 merge correctly had none. Branch restarted with `--prune` + `remote set-head` + `checkout -B`, post-merge
 safety check (`HEAD^{tree}` vs `origin/main^{tree}`) identical, session unsubscribed. Codex posted its
 usage-limit notice on #691 — review cover remains ABSENT.
+
+## 2026-09-17 — R-58 CLOSED (ADR-0503): a task calendar meets a crew calendar on their intersection; the witness was UID 94, not UID 14 — v1.0.269
+
+**First, the mandated read:** `main`'s own CI for **`80ae617e`** (#692) was in progress when the last
+session closed and was carried to conclusion here — run 1908 (`35175117266`) completed / SUCCESS,
+all six jobs (`cui-guard` 02:37:38Z · `browser` 02:55:06Z, the R-52 interop gate run-and-not-skipped
+· `floor` 03:03:03Z · `test (3.13)` 03:07:16Z · `test (3.11)` 03:15:54Z · `check` 03:16:18Z). **No
+installer-smoke run exists for it and that absence is CORRECT**, verified against the `main` run list
+(newest 746, for `2c549d8d`) rather than assumed: #692 changed three `docs/STATE/` files. The PR head
+`b0b5f851` (fetched as `refs/pull/692/head` — GitHub had deleted the branch) and the merge share tree
+`4c10140f…`.
+
+**R-58** named Hard_File UID 14 "on `Standard+Sat.` with the 16-hour crew". Read off the XML, UID 14
+is on **`24 Hours`** in every snapshot — the intersection ADR-0474 already modelled exactly — and the
+task on `Standard+Sat.` is **UID 94**. The row's witness was mis-stated; ADR-0500's lesson applied to
+a witness rather than a rule.
+
+*The population is one task.* On the engine's own `_task_shape`, the 15 goldens carry 301 tasks with
+an off-pattern task calendar and a WORK booking (294 non-24-hour, 293 of them Large Test File tasks
+under same-pattern crews that restrict nothing; UID 14's seven on `24 Hours`); exactly one task's crew
+cuts into its calendar — **UID 94 in five snapshots, three recorded-complete**. The 29 `.mpp` files
+(all converted; the `Large Test File` / `Large_Test_File` name collision ADR-0501 warned about bit the
+first loop and was caught by counting 28 artefacts for 29 files) add the same task in one more save.
+
+*What was wrong:* UID 94 read 16:30 where MS Project stores 17:00 (the task calendar resumes at
+12:30, the common afternoon at the crew's 13:00), and on `updated` its late finish sat on a
+**Saturday** the crew never works (08-15 23:30) where MS Project stores **Friday** 08-14 23:00 —
+slack 3,180 against 2,190.
+
+**Shipped** `_calendar_intersection` behind the plan builder and `booking_calendar` — weekdays ∩,
+intraday blocks pairwise ∩, holidays ∪, extras only when both work them; identity preserved when one
+calendar restricts nothing of the other (a 24-hour task calendar → the crew's object, as before);
+WORK crews that name a calendar only; disjoint calendars fall back to the task calendar (UNVERIFIED);
+the slack axis stays the task calendar (ADR-0474, confirmed by UID 94's own 6,360 / 2,190).
+
+**Measured, pristine (a separate worktree) → this tree:** Hard_File exact finishes 38 → 40 and exact
+stored slack 37 → 39; `updated` 106 → 108 and 99 → 101; **12 activities moved, 0 away**, project
+finishes and every disclosure unmoved, **13 goldens byte-identical**; on `updated` UID 94 reproduces
+**all five** stored values and UID 157 is exact with it (TF 1,440). The `.mpp` corpus: 26 of 29
+byte-identical, 18 task-moves on the three Hard_File saves, none away. On the base snapshot UID 94's
+finish is exact and its slack reads 6,510 vs 6,360: milestone 147's stored LateStart is **Saturday
+13:00** (kept by MS Project on the elapsed axis; the integer axis reads Monday 08:00; 157's late
+finish and 94's float inherit it) — registered as **R-67**.
+
+**Red first** in the pristine worktree (the synthetic module cannot import; the parity oracle 10 of 20
+red by name; the re-pin red). **The rig was refuted twice** before the engine was (the 150 minutes are
+the START-slack gap, the finish-slack gap is 120; "301 non-24-hour" was 294 + 7). **Battery:**
+13 cuts on a shadow copy of `src/` (a `-p mutcheck` plugin asserts the engine measured IS the copy; `cpm.py`'s checksum changed under every cut; the control run green, 50 passed, before and after): M01 the old rule, the task calendar wins → 19 red · M02 blocks not intersected → 16 · M03 weekdays not intersected → 6 · M04 holidays not unioned → 2 · M05 extras from the task alone → 1 · M06 no identity shortcuts → 2 · M06b the general path never returning the crew → 1 · M07 material / unknown crews intersected too → 1 · M08 `booking_calendar` on the old rule → 3 · M09 the memo never consulted → 1 · M10 the late finish snapped back on the task calendar (pre-existing code) → 6 · M11 the empty-intersection fallback returning the crew → 1 · M12 the plan builder never intersecting → 19. **13 / 13 red by name. M06b SURVIVED the first pass** — the identity shortcut for a task calendar that CONTAINS the crew's pattern (a Mon–Sat task calendar over a crew on the project's Mon–Fri) had no pin; it is not dead code and its effect is real (the leg is the crew's real calendar object, the thing R-59's disclosure will name) — killed by a pin naming that case, and the whole battery re-run. Perf gates unmoved. Statics green on both ruff binaries, format, mypy strict, bandit, node.
+
+**Gate on the final tree:** **5,539 passed / 0 failed / 7 skipped in 39:18** (05:56–06:35Z, run with `-v` and a stall monitor: no stall, load 0.9–1.2 throughout), and **`-m parity` 170 passed / 0 failed in 5:51**. Both deltas ATTRIBUTED, not assumed: the previous unit's 5,508 + this unit's 31 (11 synthetic + 20 parity; `--collect-only` 5,546 = 5,515 + 31) = 5,539, and 150 + 20 = 170. The 7 skips are the documented set — the loopback-allowlist (urlparse) pair, the three INCIDENTAL_SVG axis cases, and the two `test_pptx_libreoffice_interop` skips that are correct in this container (no libreoffice-impress; CI installs it and treats a skip as a FAILURE, ADR-0498). Recorded in the follow-up docs-only commit, the pattern every campaign PR used; the first push (`b5c947a6`) carried the code
+
+Shipped ADR-0503, the two test modules (11 + 20 pins), the dated re-pin, the closed R-58 row, the new
+R-67 row, and **v1.0.269** with the wheel and nine installers rebuilt in lockstep (MPXJ ref
+`163d1942`, on `origin/main`). Draft PR [#693](https://github.com/polittdj/Schedule-Manipulation-Analysis-Tool-Experiment/pull/693), head `b5c947a6` — the operator merges.

@@ -82,14 +82,29 @@ def test_the_resources_own_calendar_unless_the_task_ignores_it() -> None:
     assert _cal(sch, 2) is STANDARD
 
 
-def test_a_task_calendar_that_is_neither_the_project_pattern_nor_24x7_wins() -> None:
-    """ADR-0474's approximation of MS Project's intersection (R-58 is the open row)."""
+def test_a_task_calendar_that_is_neither_the_project_pattern_nor_24x7_meets_the_crews() -> None:
+    """RE-PINNED 2026-09-17 (R-58, ADR-0503): the booking runs on the INTERSECTION of the task
+    calendar and the crew's — the night calendar (20:00-24:00) over the 16-hour crew
+    (06:00-12:00 + 13:00-23:00) is their common 20:00-23:00 — where ADR-0474 approximated it
+    by the task calendar alone. A copy of the project pattern is still no task calendar at
+    all, and a task that ignores resource calendars still keeps its own."""
     sch = _sched(
         _task(1, 2, calendar_uid=4),  # the night calendar over a 16-hour crew
         _task(2, 2, calendar_uid=2),  # a copy of the project pattern is no task calendar at all
         _task(3, 2, calendar_uid=4, ignore_resource_calendar=True),
     )
-    assert _cal(sch, 1) is NIGHT
+    common = _cal(sch, 1)
+    assert common is not NIGHT and common is not CAL_16
+    assert (
+        common.working_pattern_key()
+        == Calendar(
+            uid=-2,
+            name="Night ∩ 16 hours",
+            working_minutes_per_day=180,
+            day_segments=((1200, 1380),),
+        ).working_pattern_key()
+    )
+    assert common.uid == -2 and common.name == "Night ∩ 16 hours"
     assert _cal(sch, 2) is CAL_16
     assert _cal(sch, 3) is NIGHT
 
