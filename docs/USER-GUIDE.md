@@ -110,7 +110,13 @@ dashboard. Stop it with `Ctrl-C`.
      opens with the target's dates, floats, % complete, flags, and finish-vs-baseline variance,
      and the driving-path trace to it runs automatically.
    - **Working calendar** — the time basis behind the numbers: calendar name, hours/day (exact
-     minutes), work week, and holidays, as imported from the file.
+     minutes), work week, and holidays, as imported from the file. When the file runs anything
+     off that calendar's pattern, the panel names every other calendar the engine honours with
+     the activities it touches — an activity's own calendar (the axis its total float is
+     measured on), the crews' calendars its bookings are scheduled on, a derived
+     `task ∩ crew` calendar where a task calendar meets a crew calendar, and the count of
+     elapsed-duration activities that run round the clock. A single-calendar file shows no such
+     notice.
    - **Float analysis (low-float bands)** — how much of the to-go work is running out of room:
      incomplete activities at **0 / < 5 / < 10 working days** of total and free float (cumulative
      bands on the schedule's own calendar). A swelling low-float band is the early warning that

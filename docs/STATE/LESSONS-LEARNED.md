@@ -435,6 +435,49 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-17 (b) — a disclosure predicate that reads one field cannot see a rule that reads another, and a rig built on the engine's own maps still owes the population filter, every time (ADR-0504, R-59 closed)
+
+- **An over-claimed LIMITATION is as false as an over-claimed rule.** The Working-calendar panel
+  said, for seven weeks after ADR-0322 / ADR-0474 / ADR-0503, that the base CPM "models the single
+  project calendar … a single-calendar approximation". Nothing about that sentence was true any
+  more, and an expert reading it would have discounted every date on the page for nothing. R-59
+  was filed as "incomplete"; the first measurement was that it was wrong. **The lesson: a
+  disclosure is a claim about the engine and is re-verified when the engine changes, the way a
+  parity pin is** — ADR-0474 changed the engine and left the page describing the engine before it.
+- **A predicate that reads a task's `calendar_uid` cannot name a calendar that reaches the plan
+  through the assignment's resource.** `off_project_calendars` was correct about the question it
+  answers and structurally blind to the one the row asks. The fix was not a wider predicate but a
+  listing read off the engine's own execution plans — and the tempting middle path, listing
+  `booking_calendar` over every assignment, OVER-CLAIMS against the plan (`24 Hours` on nine
+  bookings no leg runs on; a crew on an elapsed task). **Read the plans, not the inputs to the
+  plans**: only the plan builder knows which bookings it dropped.
+- **The rig was refuted three times before the engine was, and all three were the same defect:
+  an unstated population filter.** (1) The XML derivation counted crews whose calendars the
+  importer does not register (their pattern equals the project's) — the registry is a PREMISE
+  and the test now asserts it; (2) it excluded the elapsed task before the booking loop and then
+  asserted the crew had booked it; (3) the shape map covers EVERY task and the derivation met a
+  SUMMARY task with a material leg (UID 5334). ADR-0491's "the rig can be wrong before the engine
+  is" and ADR-0503's "twice" are now "three times, and it is always the population". **Write the
+  population of a derivation as its first line, and assert it.**
+- **Probe the pristine tree before writing what the red run "would show".** The web module's
+  docstring first said the pristine panel "still carries the single-calendar sentence"; probed,
+  the pristine panel is SILENT on the crewed schedule the test uses (no notice at all) and carries
+  the sentence only on the task-calendar variant. A docstring's red-first claim is testimony until
+  it is observed, and the cost of observing it was one script.
+- **The seam is a decision, not a reflex.** "Never touch `engine/` for a UI change" protects
+  calculations; the listing changes none (the API payload is byte-identical on three goldens) and
+  the alternative — `web/` importing a private engine name for the first time in the repo — is the
+  worse engineering. The ADR argues it and names the operator's right to overrule; the move is
+  trivial either way. Write the tension down rather than pick silently.
+- **The version bump and the handoff's version pin ride ONE push.** The stop hook pressed for
+  a push while the docs waited on the suite's figures; the code commit carried the bump to
+  1.0.270 and not the rotated handoff, so `test_state_docs.py::test_handoff_top_section_pins_
+  the_current_pyproject_version` went red on that tree — locally in the worktree run, and on
+  CI for the first push, a wasted cycle. The drift guard is part of the SUITE: every pushed
+  commit's tree must satisfy it, not only the final head. Hold the push until the handoff's
+  top section carries the new version, or write that section BEFORE the bump (the figures
+  can follow in the docs-only commit; the pin cannot).
+
 ### 2026-09-17 — a row's WITNESS is testimony too: read the activity's own XML before pricing the rule it is said to prove (ADR-0503, R-58 closed)
 
 - R-58 named Hard_File UID 14 "on `Standard+Sat.` with the 16-hour crew". UID 14 is on `24 Hours`

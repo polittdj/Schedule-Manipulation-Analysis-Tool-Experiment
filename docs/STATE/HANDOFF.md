@@ -1,92 +1,113 @@
-# Handoff — 2026-09-17 (R-58 **CLOSED** (ADR-0503) — a task calendar meets a crew calendar on their **INTERSECTION**; the row's witness was **UID 94, not UID 14**, and the one activity in the corpus whose crew cuts into its calendar lands on MS Project's **five** stored values — **v1.0.269**, wheel + nine installers rebuilt)
+# Handoff — 2026-09-17 (b) (R-59 **CLOSED** (ADR-0504) — the `/analysis` calendar disclosure names EVERY calendar the base pass runs on, read off the engine's own execution plans; the page's old sentence was **FALSE, not incomplete** — **v1.0.270**, wheel + nine installers rebuilt)
 
-STATUS (current) — `main` @ **`80ae617e`** (#692, the docs-only record of #691's merge; before it **`2c549d8d`**, #691, R-57 / ADR-0502). **`main`'s OWN CI for `80ae617e` was read TO CONCLUSION this session, not inherited: run 1908 (`35175117266`) completed / SUCCESS, all SIX jobs** (`cui-guard` 02:37:38Z · `browser` 02:55:06Z, the R-52 interop gate run-and-NOT-skipped on `main` itself · `floor` 03:03:03Z · `test (3.13)` 03:07:16Z · `test (3.11)` 03:15:54Z · `check` 03:16:18Z). **No installer-smoke run exists for `80ae617e` and that absence is CORRECT** — verified against the `main` run list (its newest is 746 for `2c549d8d`, the head that rebuilt the installers), not assumed: #692's diff is three `docs/STATE/` files and the workflow is path-filtered. The PR head `b0b5f851` and the merge share tree `4c10140f…`. This unit ships on branch `claude/polaris-audit-r58-calendar-2gxhxw` as **draft PR [#693](https://github.com/polittdj/Schedule-Manipulation-Analysis-Tool-Experiment/pull/693)** (the operator merges; never marked ready here). `chatgpt-codex-connector`'s quota is still exhausted — **review cover remains ABSENT**; the battery and the gate are all this repo gets. Highest ADR **0503**. Version **1.0.269**. Schema 2.15.0, unchanged. QC-1/QC-2 bind every session — ADR-0393.
+STATUS (current) — `main` @ **`a95482c1`** (#693, R-58 / ADR-0503, **MERGED** 12:31Z; the squash is **TREE-IDENTICAL** to this session's starting checkout, tree `912f3c91…`, compared with `git rev-parse <sha>^{tree}`). #693 was **EIGHT OF EIGHT GREEN** on its head (CI run 35191015379: `cui-guard` 06:42:57Z · `browser` 06:59:51Z · `floor` 07:10:01Z · `test (3.13)` 07:25:38Z · `test (3.11)` 07:28:31Z · `check` 07:28:36Z; installer-smoke 35191015272: `linux` 06:43:18Z · `windows` 06:47:22Z). **`main`'s OWN runs for `a95482c1` are SETTLED — read to conclusion this session, not inherited: CI 1911 (`35221600468`) SUCCESS, all six jobs (`cui-guard` 12:31:51Z · `browser` 12:49:04Z with the R-52 interop gate run-and-NOT-skipped on `main` itself · `floor` 12:59:18Z · `test (3.13)` 13:07:18Z · `test (3.11)` 13:20:46Z · `check` 13:20:53Z), and installer-smoke 749 (`35221600523`) SUCCESS 12:36:31Z — which EXISTS, correctly, because #693 rebuilt the installers. Nothing about `a95482c1` is outstanding.** This unit ships on branch `claude/brave-clarke-ittq3w` (restarted on the squash with `--prune` + `remote set-head` + `checkout -B`) as **draft PR [#694](https://github.com/polittdj/Schedule-Manipulation-Analysis-Tool-Experiment/pull/694)** (the operator merges; never marked ready here). `chatgpt-codex-connector`'s quota is still exhausted — **review cover remains ABSENT**; the battery and the gate are all this repo gets. Highest ADR **0504**. Version **1.0.270**. Schema 2.15.0, unchanged. QC-1/QC-2 bind every session — ADR-0393.
 
 ## What landed
 
-**R-58 asked for a calendar-intersection helper behind the plan builder and named Hard_File UID 14
-"on `Standard+Sat.` with the 16-hour crew" as the witness. The mechanism is MS Project's own and the
-witness was WRONG — found by reading the XML before touching a leg.**
+**R-59 asked the `/analysis` Working-calendar panel to name the crews' calendars beside the task
+calendars. The first measurement was that the panel's sentence was not incomplete but FALSE:** it
+still read *"the base CPM models the single project calendar (ADR-0028) … a single-calendar
+approximation"* — an approximation ADR-0322 / ADR-0474 / ADR-0503 had retired. An over-claimed
+LIMITATION discounts every date on the page for nothing (ADR-0502's lesson, applied to a disclosure
+of a limitation rather than of a rule).
 
-**UID 14 is on `24 Hours` (calendar 10) in all seven snapshots** — the one intersection ADR-0474
-already modelled exactly (a 24-hour task calendar yields the crew's), which is why ADR-0491 found its
-stored span reproduced to the minute. **The task on `Standard+Sat.` (calendar 12: 07:00-12:00,
-12:30-19:00, 19:30-23:30, Mon–Sat) is UID 94**, an 8-hour FIXED_UNITS activity on the same 16-hour
-crew (06:00-12:00 + 13:00-23:00, Mon–Fri). The row conflated the two.
+**The predicate cannot see what the row asks it to name.** `off_project_calendars` reads a task's
+own `calendar_uid`; a crew's calendar reaches the plan through the ASSIGNMENT's resource. Censused
+on the engine's own plan shapes over the 15 goldens: on Hard_File the page named `24 Hours` and
+`Standard+Sat.` while the plans ran legs on **Customer Service Team** (25 activities), **Content
+Developer** (18), **Logistics** (1) and the derived **`Standard+Sat. ∩ Customer Service Team`**
+(UID 94) — none named; the Large Test Files run 138 activities on `ZIN Project Calendar` (73 through
+crew legs that are ZIN by identity — 183 legs — and 65 through a one-leg plan); Project2 / Project5 /
+EVM are single-calendar. A per-booking `booking_calendar` listing was priced and **REFUSED** as the
+source: it over-claims against the plan (`24 Hours` on 9 bookings no leg runs on, under
+`IgnoreResourceCalendar`; the Content Developer on the ELAPSED UID 146).
 
-**The population is ONE task.** Censused on the engine's own `_task_shape`: the 15 goldens carry
-**301** tasks with an off-pattern task calendar and a WORK booking — **294** non-24-hour (293 of them
-Large Test File activities under same-pattern crews that restrict nothing) and UID 14's seven — and
-exactly one task's crew cuts into its calendar: **UID 94, in 5 snapshots, 3 of them
-recorded-complete** (ADR-0476's pin adjudicates nothing). The repository's **29 `.mpp` files** add the
-same task in one more save. (The `Large Test File.mpp` / `Large_Test_File.mpp` collision ADR-0501
-warned about bit my first conversion loop — 28 artefacts for 29 files caught it.)
+**Shipped: `plan_calendars(schedule) -> PlanCalendars`** in `engine/cpm.py` beside the old
+predicate — read-only, built on the engine's OWN execution plans at the stored durations, never a
+re-derivation from the assignments:
 
-**What was wrong, measured on the pristine engine in a separate worktree:** UID 94 finished **16:30**
-where MS Project stores **17:00** on both unstarted snapshots (the task calendar alone resumes at
-12:30; the common afternoon begins at the crew's 13:00), and on `updated` its late finish sat on
-**Saturday 08-15 23:30** — a day the crew never works — where MS Project stores **Friday 08-14
-23:00**, its slack 3,180 against the stored 2,190.
+| field | what it carries | pinned by |
+| --- | --- | --- |
+| `axes` | the calendars total float is measured on — the task's own (ADR-0474's slack axis); never the project calendar, never the elapsed clock | the 24-hour-task-under-a-16-hour-crew pin; Hard_File `{10: (14,), 12: (94,)}` from the XML |
+| `legs` | the calendars execution legs run on — a crew's own, a task calendar the crew restricts nothing of, or their intersection, listed on the calendar OBJECT and never as a parent (`derived` = uid −2, `<task> ∩ <crew>`) | the crewed-task pin (`off_project_calendars` empty beside it); the derived pin; the two-derived-calendars pin; Hard_File 25 / 18 / 1 + UID 94 from the XML |
+| `elapsed` | tasks whose duration is elapsed — counted, not listed | UID 146; the synthetic elapsed pin |
+| `population` | ADR-0128's scheduled population, the "of N" | 110 on Hard_File, from the XML |
+| dedup / order | by OBJECT (every derived calendar shares uid −2), registered first by uid, derived after by name, one count per activity however many legs | the dedup pin; Large Test File's 138 once each |
 
-**Shipped: `_calendar_intersection`** (identity-memoized like `_ruler`, never hashed, never stored,
-never in `Schedule.calendars`, uid −2, both names) behind `_task_shape` and `booking_calendar`:
+The panel's takeaway and notice are rewritten from it — on Hard_File: *"Standard (8 h/day, a 5-day
+work week, 0 holiday(s)) is the time basis for **65 of 110** activities; the other **45** run wholly
+or partly on **6** other calendars, named below."* and a notice naming each calendar with its
+activity count, the derived one with both names and its UID, the elapsed count, the float-axis rule
+(MS Project's stored-slack basis, ADR-0474) and the one clause of the old sentence still true (the
+path views, ADR-0118). **A single-calendar file renders BYTE-IDENTICAL** (Project5, end to end). The
+`/api/analysis` payload is untouched (a derived calendar is never registered — ADR-0503).
 
-| rule | pinned by |
-| --- | --- |
-| weekdays ∩ · intraday blocks pairwise ∩ (merged) · holidays ∪ · an extra working day kept only when BOTH work it | a synthetic pin per rule, both directions where there are two |
-| a calendar the other restricts nothing of stands for the intersection **by identity** — a 24-hour task calendar → the crew's object (UID 14, byte-identical by construction); a task calendar inside a 24-hour crew → its own; core hours inside the project pattern → their own; a Mon–Sat task calendar over a crew on the project pattern → the **project calendar object** | `is` pins in both modules (the last case is the battery survivor's pin, below) |
-| WORK crews that NAME a calendar only — a MATERIAL / COST booking (ADR-0487) and a crew the file names no calendar for (an XER, an older Save) keep the task calendar | synthetic pins |
-| disjoint calendars fall back to the task calendar — **UNVERIFIED**, MS Project refuses such a booking, no witness | synthetic pin |
-| the slack axis stays the TASK calendar (ADR-0474) — UID 94's 6,360 / 2,190 are working minutes of `Standard+Sat.` | the parity five-value pin |
-
-**Measured, every golden, pristine → this tree with one instrument:** Hard_File exact finishes
-**38 → 40** (94, 157), exact stored slack **37 → 39** (95, 412); `updated` **106 → 108**, **99 → 101**;
-**12 activities moved, 0 away**, project finishes and every disclosure list unmoved, **the other 13
-goldens BYTE-IDENTICAL**. On `updated` UID 94 reproduces **all five** stored values (Start, Finish,
-LateStart 08-14 14:30, LateFinish Fri 08-14 23:00, TotalSlack 2,190) and UID 157 lands exact with it
-(TotalSlack 1,440). The 29-file `.mpp` census: **26 byte-identical**, 18 task-moves on the three
-Hard_File saves, **none away**.
-
-**The residual on the base snapshot is NOT this rule's — R-67.** UID 94's finish is exact there and
-its slack reads 6,510 against 6,360: milestone 147's stored LateStart is **Saturday 08-01 13:00**, an
-instant MS Project keeps on the elapsed axis inside the weekend (ADR-0476's day-boundary class); the
-engine's integer axis has no Saturday, 147 reads Monday 08:00, its 16-hour-crew predecessor 157 reads
-its late finish two hours late, and 94 inherits 150 minutes. ADR-0474's backward arithmetic is exact
-when fed the stored Saturday (snapped back on the crew calendar it IS 157's stored Friday 23:00).
-Computed in the oracle, registered as **R-67**.
+**The seam is argued, not assumed.** The design system's "never touch `engine/` for a UI change"
+protects calculations, proven untouched (the API payload byte-identical on three goldens); `web/`
+has never imported a private engine name and ADR-0492 is the precedent for giving a consumer the
+plan builder's rule under a public name in `cpm.py`. The operator may overrule — the move is
+trivial. `off_project_calendars` stays public with its docstring re-pointed; no production caller
+remains.
 
 ## How it was verified
 
-* **Red before green, in a SEPARATE WORKTREE at `origin/main`** (the pristine baseline was never
-  taken by mutating the tree under measurement): the synthetic module cannot import; the parity
-  oracle fails **10 of 20 by name**; the re-pinned `booking_calendar` case fails; the ten that pass
-  on the pristine tree are the seven UID 14 pins and the three completed-snapshot pins, by design.
-* **The rig was refuted twice before the engine was:** the residual's 150 minutes are the
-  START-slack gap (the finish-slack gap is 120 — both now computed and pinned), and "301 non-24-hour
-  tasks" was 294 + UID 14's seven. Recomputed from the rig's own numbers, not the engine's.
-* **Mutation battery: 13 cuts on a shadow copy of `src/` (a `-p mutcheck` plugin asserts the engine measured IS the copy; `cpm.py`'s checksum changed under every cut; the control run green, 50 passed, before and after): M01 the old rule, the task calendar wins → 19 red · M02 blocks not intersected → 16 · M03 weekdays not intersected → 6 · M04 holidays not unioned → 2 · M05 extras from the task alone → 1 · M06 no identity shortcuts → 2 · M06b the general path never returning the crew → 1 · M07 material / unknown crews intersected too → 1 · M08 `booking_calendar` on the old rule → 3 · M09 the memo never consulted → 1 · M10 the late finish snapped back on the task calendar (pre-existing code) → 6 · M11 the empty-intersection fallback returning the crew → 1 · M12 the plan builder never intersecting → 19. **13 / 13 red by name. M06b SURVIVED the first pass** — the identity shortcut for a task calendar that CONTAINS the crew's pattern (a Mon–Sat task calendar over a crew on the project's Mon–Fri) had no pin; it is not dead code and its effect is real (the leg is the crew's real calendar object, the thing R-59's disclosure will name) — killed by a pin naming that case, and the whole battery re-run.**
-* Perf gates unmoved (shapes once per object, zero `Calendar` hashes across 20 solves). Statics
-  green on **both** ruff binaries (0.15.8 and 0.16.8), `ruff format` (1,270 files), `mypy --strict`
-  (165 files), `bandit` (exit 0), `node --check`.
+* **Red before green, in a SEPARATE WORKTREE at `origin/main`:** both new modules cannot import;
+  the pristine panel PROBED with the import bypassed — SILENT on a crewed project-calendar task (no
+  notice at all), the stale sentence on a task-calendar one — and the web module's docstring states
+  what the probe showed, not what it was first written to assume.
+* **The rig was refuted THREE times before the engine was, all three the same defect — an
+  unstated population filter:** the XML derivation counted crews 4 / 5 / 7 (calendars on the project
+  pattern the importer never registers — the registry is now the test's asserted PREMISE); it
+  excluded the elapsed UID 146 before the booking loop and then asserted its crew had booked it; the
+  Large Test File pin read the shape map, which covers EVERY task, and met summary UID 5334 (a ZIN
+  material leg on a task never scheduled). Each was the rig.
+* **Mutation battery: 12 cuts on a shadow copy of `src/`** (a `-p mutcheck` plugin asserts the
+  package measured IS the copy; every cut's checksum changed; control 19 passed before and after):
+  M01 listing always empty → 12 red · M02 dedup by uid → 1 · M03 the derived calendar named as its
+  task parent → 5 · M04 off-pattern filter dropped → 2 · M05 elapsed listed, never counted → 3 ·
+  M06 inactive / summary in the population → 3 · M07 counted once per LEG → 2 · M08 the page ignores
+  the listing → 3 (web pins only, engine pins green — the page pins are the page's) · M09 the stale
+  sentence restored → 2 · M10 axes / legs swapped → 7 · M11 the derived flag never set → 5 · M12 the
+  takeaway keeps the old sentence → 2. **12 / 12 red by name, no survivor.**
+* **Rendered, not inspected:** pristine → this tree, one instrument — the `/analysis` page diff is
+  the two panel lines on Hard_File and Large_Test_File and EMPTY on Project5; `/api/analysis`
+  byte-identical on all three. A real Chromium at 1440 px, four themes: no page errors,
+  `scrollWidth == innerWidth` in all four, four different token colours on the notice.
+* Statics green on **both** ruff binaries (0.15.8 and 0.16.8) over the whole tree, `ruff format`
+  (1,271 files), `mypy --strict` (165 files), `bandit` (exit 0), `node --check` per file; the 141
+  neighbouring tests green.
+* **A trap this session paid for itself:** the code commit (`a911a4cd`) was pushed with the
+  version bump and WITHOUT the rotated handoff, so `test_state_docs.py`'s version-pin guard went
+  red on that tree (in the worktree run and on CI's first run of #694 — cancelled by the docs
+  push). The drift guard is part of the suite: the bump and the handoff pin ride ONE push.
 
-**Gate on the final tree: **5,539 passed / 0 failed / 7 skipped in 39:18** (05:56–06:35Z, run with `-v` and a stall monitor: no stall, load 0.9–1.2 throughout), and **`-m parity` 170 passed / 0 failed in 5:51**. Both deltas ATTRIBUTED, not assumed: the previous unit's 5,508 + this unit's 31 (11 synthetic + 20 parity; `--collect-only` 5,546 = 5,515 + 31) = 5,539, and 150 + 20 = 170. The 7 skips are the documented set — the loopback-allowlist (urlparse) pair, the three INCIDENTAL_SVG axis cases, and the two `test_pptx_libreoffice_interop` skips that are correct in this container (no libreoffice-impress; CI installs it and treats a skip as a FAILURE, ADR-0498). Recorded in the follow-up docs-only commit, the pattern every campaign PR used; the first push (`b5c947a6`) carried the code**
+**Gate:** the full suite and `-m parity` were running on this exact code commit (`a911a4cd`) in a
+separate worktree when this docs commit was written — 4,499 of 5,561 verdicts in (5,561 = the
+previous 5,546 + this unit's 19 − the rewritten module's 4, attributed by `--collect-only`), ONE red:
+`test_state_docs.py`'s version-pin guard, which fails on the CODE commit's tree because that tree
+carries the bump and not the rotated handoff (this commit carries it; CI's `floor` job read the same
+single failure: `1 failed, 5172 passed, 269 skipped`). **The measured figures are recorded in the
+follow-up docs-only commit — read the session log's last entry.**
 
 ## Deliberately NOT done
 
-**R-67** (147's Saturday late start, above) · the **empty-intersection fallback** (UNVERIFIED; a file
-carrying one is the signal to measure it) · an exception day's own working times (the model records
-a DayWorking exception as a date; inherited) · intersecting a crew the file names NO calendar for
-(unknown, not the project's) · a `CPMResult` disclosure for the intersection (a calendar rule, not a
-stored input) · registering the derived calendar (derived data) · **R-59** is next and unchanged —
-`/analysis` still names task calendars only.
+A **calendar table** (hours / day, work week per listed calendar) — a design-queue question · a
+machine-readable **`calendar_basis` on `/api/analysis`** (the payload is untouched by design; one
+dict if the operator wants it) · the **elapsed clock as a calendar line** (a duration property;
+counted in its own sentence) · **retiring `off_project_calendars`** (public, eight pins, kept) · the
+notice's **client-side translation** (unchanged exposure) · **the daylight telemetry HUD** — observed
+on the 1440-px screenshot overlaying the right edge of every full-width panel: pre-existing chrome,
+not this row's, named for the operator · **refused:** a per-booking `booking_calendar` listing as the
+source (over-claims) · re-implementing the plan builder's filters in `web/` · importing
+`_plan_shapes` into `web/` · any change to the `_execution_plans` / `_task_shape` rule.
 
 ## Next — campaign queue
 
-**Read `git log origin/main` before trusting any sha here.** Then §3 in order: **R-59** (disclose the
-crews' calendars beside the task calendars on `/analysis`; the derived intersection has a name of its
-own now) · **R-64** · **R-63** · **R-62** · **R-65** · **R-66** · **R-67** (this unit's residual) ·
-**R-45** · then R-03 · R-04 · R-09 · R-13 · R-18 · R-21 · R-22 · R-32 · R-39. The design queue is 19
-artboards.
+**Read `git log origin/main` before trusting any sha here.** Then §3 in order: **R-64** (Hard_File
+milestone 387 hangs on an external predecessor, UID −65535 — first step: read the link's
+`CrossProject` fields and pin 387's stored 08-18 17:00) · **R-63** · **R-62** · **R-65** · **R-66** ·
+**R-67** · **R-45** · then R-03 · R-04 · R-09 · R-13 · R-18 · R-21 · R-22 · R-32 · R-39. The design
+queue is 19 artboards.
 
 # (prior) handoffs — archived
 
