@@ -18985,3 +18985,41 @@ moved under the measurement); statics green on both ruff binaries, format, mypy 
 wheel built after the last format, lockstep pin green.
 
 **Gate, MEASURED in a separate worktree at the code commit `ae8ee1de`: full suite 1 failed / 5,571 passed / 7 skipped in 41:39; `-m parity` 171 / 0 in 6:42.** The one failure is the handoff version-pin guard on the code commit's unrotated handoff; the docs commit carries the pin and the final tree differs under `docs/` only — 5,572 green / 0 / 7 on the final tree. Attributed: 5,579 collected = 5,561 + 17 + 1; 5,554 + 18 − 1 = 5,571; parity 170 + 1 = 171. The 7 skips are the documented set. Version 1.0.271; the wheel and nine installers rebuilt after the last format (lockstep pin green).
+
+## 2026-09-17 (d) — R-63 CLOSED (ADR-0506): a resource's capacity is the file's own availability table at the status date; the converter's `MaxUnits` was the JVM's clock; R-68 registered — v1.0.272
+
+Branch `claude/loving-heisenberg-u4kgzs` (the designated branch, restarted on #695's squash `778da99c` with
+`--prune` + `remote set-head` + `checkout -B`; the squash tree-identical to the PR head `0ac20dbe`). Draft PR
+@@PR@@ (the operator merges). `main`'s own runs for `778da99c` read this session: installer-smoke 755 SUCCESS
+21:07:52Z; CI 1917 `cui-guard` 21:03:37Z · `browser` 21:20:57Z · `floor` 21:26:19Z · `test (3.13)` 21:39:35Z ·
+`test (3.11)` 21:51:47Z · `check` 21:51:52Z.
+
+**Confirmed first, executably.** MPXJ 16.2.0 resolves `MaxUnits`, `AvailableFrom` / `To`, `OverAllocated`, the
+rates and `CurrentDate` at `LocalDateTime.now()` (read off the bytecode) — MS Project's own "current row of the
+Resource Availability grid" semantics, and the `.mpp` even stores MS Project's save-time current row
+(`getCachedValue`), which the getter ignores. `faketime` on the updated3 golden's own blob: a 07-09 clock
+reproduces the committed golden to the second; 09-14 / 11-01 change 9 / 13 element pairs (ADR-0491's "32 lines"
+was the same 9 pairs in normal diff format); `<Tasks>`, `<Assignments>`, `<Calendars>` and every
+`AvailabilityPeriods` / `Rates` table byte-identical. The row's first step ("write the tables") was already
+the case. Censused over the 29 intake files at two clocks: 6 carry a table (three Hard_File saves with varying
+rows; three tampered Project5_FX saves with 32 single bounded rows each).
+
+**Shipped** `AvailabilityPeriod` + `Resource.availability` (schema 2.16.0, Save round trip), the importer's
+status-date resolution of `max_units` (the table) and `standard_rate` (cost-rate table A), the one resolution
+rule (`value_in_effect`, the latest row begun — the containing-row check whose mutant survived was deleted),
+the engine's per-working-day capacity from the table, the page's explainer and footnote, 35 new pins
+(9 importer + 4 engine + 4 model + 2 freeze/JSON + 16 parity + 2 rendered), `tools/conversion_clock_probe.py`;
+the report's R-63 row closed, R-68 registered (ASK) with question (f) in §5.
+
+**Measured** pristine → this tree over 73 file entries (2,601 resource rows, 7,966 month buckets): 230 tabled
+resources; 28 roster figures, 78 bucket capacities, 8 rates moved; 17 over-allocation flags cleared; the load
+never moved; the two clocks' conversions of one file import to different loadings for 3 of 29 files under the
+pristine importer and 0 of 29 under this one. Rendered through the real app (4 goldens × 17 routes): 56 of 68
+byte-identical, the twelve `/resources` renders the only movers.
+
+**Verified:** red-first on the pristine package (4 modules cannot import, 20 pins red by name); battery 16 / 16
+red by name (the first run's M05 survivor exposed dead code, its M08 was a malformed cut — both fixed, the
+whole battery re-run on the final code); statics green on both ruff binaries, format, mypy strict, bandit, node;
+wheel + nine installers rebuilt after the last format (lockstep pin 68 passed).
+
+**Gate, MEASURED in a separate worktree at the code commit `ce94c253`:** @@GATE@@
