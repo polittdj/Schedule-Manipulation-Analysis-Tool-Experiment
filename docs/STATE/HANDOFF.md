@@ -1,120 +1,127 @@
-# Handoff — 2026-09-17 (b) (R-59 **CLOSED** (ADR-0504) — the `/analysis` calendar disclosure names EVERY calendar the base pass runs on, read off the engine's own execution plans; the page's old sentence was **FALSE, not incomplete** — **v1.0.270**, wheel + nine installers rebuilt)
+# Handoff — 2026-09-17 (c) (R-64 **CLOSED** (ADR-0505) — a zero-duration task carries its driving predecessor's wall instant; the row's "external link" was MS Project's unassigned-work placeholder and the day was lost at milestone **181**, fifteen links above 404; **R-66 CLOSED** with it — **v1.0.271**, wheel + nine installers rebuilt)
 
-STATUS (current) — `main` @ **`a95482c1`** (#693, R-58 / ADR-0503, **MERGED** 12:31Z; the squash is **TREE-IDENTICAL** to this session's starting checkout, tree `912f3c91…`, compared with `git rev-parse <sha>^{tree}`). #693 was **EIGHT OF EIGHT GREEN** on its head (CI run 35191015379: `cui-guard` 06:42:57Z · `browser` 06:59:51Z · `floor` 07:10:01Z · `test (3.13)` 07:25:38Z · `test (3.11)` 07:28:31Z · `check` 07:28:36Z; installer-smoke 35191015272: `linux` 06:43:18Z · `windows` 06:47:22Z). **`main`'s OWN runs for `a95482c1` are SETTLED — read to conclusion this session, not inherited: CI 1911 (`35221600468`) SUCCESS, all six jobs (`cui-guard` 12:31:51Z · `browser` 12:49:04Z with the R-52 interop gate run-and-NOT-skipped on `main` itself · `floor` 12:59:18Z · `test (3.13)` 13:07:18Z · `test (3.11)` 13:20:46Z · `check` 13:20:53Z), and installer-smoke 749 (`35221600523`) SUCCESS 12:36:31Z — which EXISTS, correctly, because #693 rebuilt the installers. Nothing about `a95482c1` is outstanding.** This unit ships on branch `claude/brave-clarke-ittq3w` (restarted on the squash with `--prune` + `remote set-head` + `checkout -B`) as **draft PR [#694](https://github.com/polittdj/Schedule-Manipulation-Analysis-Tool-Experiment/pull/694)** (the operator merges; never marked ready here). `chatgpt-codex-connector`'s quota is still exhausted — **review cover remains ABSENT**; the battery and the gate are all this repo gets. Highest ADR **0504**. Version **1.0.270**. Schema 2.15.0, unchanged. QC-1/QC-2 bind every session — ADR-0393.
+STATUS (current) — `main` @ **`3db94b14`** (#694, R-59 / ADR-0504, **MERGED** 17:46Z; the squash is **TREE-IDENTICAL** to the reviewed PR head `7e9b74f1`, tree `3f9e5965…`, compared with `git rev-parse <sha>^{tree}`, and to this session's starting checkout). **`main`'s OWN runs for `3db94b14` are SETTLED — read to conclusion this session, not inherited: CI 1915 (`35254782501`) SUCCESS, all six jobs (`cui-guard` 17:46:59Z · `browser` 18:04:08Z · `floor` 18:12:51Z · `test (3.13)` 18:31:26Z · `test (3.11)` 18:33:52Z · `check` 18:33:58Z); installer-smoke 753 (`35254782608`) SUCCESS 17:51:32Z (read last session). Nothing about `3db94b14` is outstanding.** This unit ships on branch `claude/eager-rubin-otxlxk` (the designated branch, at the squash) as **draft PR [#695](https://github.com/polittdj/Schedule-Manipulation-Analysis-Tool-Experiment/pull/695)** (the operator merges; never marked ready here; EIGHT checks — `installer/**` changed). `chatgpt-codex-connector`'s quota is still exhausted — **review cover remains ABSENT**; the battery and the gate are all this repo gets. Highest ADR **0505**. Version **1.0.271**. Schema 2.15.0, unchanged. QC-1/QC-2 bind every session — ADR-0393.
 
 ## What landed
 
-**R-59 asked the `/analysis` Working-calendar panel to name the crews' calendars beside the task
-calendars. The first measurement was that the panel's sentence was not incomplete but FALSE:** it
-still read *"the base CPM models the single project calendar (ADR-0028) … a single-calendar
-approximation"* — an approximation ADR-0322 / ADR-0474 / ADR-0503 had retired. An over-claimed
-LIMITATION discounts every date on the page for nothing (ADR-0502's lesson, applied to a disclosure
-of a limitation rather than of a rule).
+**R-64 read: milestone 387 hangs on an external predecessor link (`PredecessorUID` −65535) the MSPDI
+cannot resolve. The mechanism was REFUTED by the activity's own XML before a line changed** (the R-58
+lesson, applied): 387's one `PredecessorLink` is UID 386 (`CrossProject` 0) in all five Hard_File
+goldens; censused over the whole corpus — **11,979 links across the 15 goldens, 21,609 across the 29
+intake `.mpp` files converted fresh — ZERO unresolvable endpoints, zero `CrossProject=1`, zero
+`ExternalTask=1`, zero negative UIDs.** The only −65535 in Hard_File is a `ResourceUID`: MS Project's
+unassigned-work placeholder, on 27 assignments, one of them on 387 itself (ADR-0278 named it in
+July). The row read an assignment as a link.
 
-**The predicate cannot see what the row asks it to name.** `off_project_calendars` reads a task's
-own `calendar_uid`; a crew's calendar reaches the plan through the ASSIGNMENT's resource. Censused
-on the engine's own plan shapes over the 15 goldens: on Hard_File the page named `24 Hours` and
-`Standard+Sat.` while the plans ran legs on **Customer Service Team** (25 activities), **Content
-Developer** (18), **Logistics** (1) and the derived **`Standard+Sat. ∩ Customer Service Team`**
-(UID 94) — none named; the Large Test Files run 138 activities on `ZIN Project Calendar` (73 through
-crew legs that are ZIN by identity — 183 legs — and 65 through a one-leg plan); Project2 / Project5 /
-EVM are single-calendar. A per-booking `booking_calendar` listing was priced and **REFUSED** as the
-source: it over-claims against the plan (`24 Hours` on 9 bookings no leg runs on, under
-`IgnoreResourceCalendar`; the Content Developer on the ELAPSED UID 146).
+**The arithmetic was right and the head was nine links higher.** Walking the engine's own network
+upstream from 404 against the stored dates: the first disagreement is **milestone 181**, stored at
+Tuesday 08-04 **08:00**, where its 16-hour crew (UID 178, 06:00–12:00 + 13:00–23:00) finished. The
+project axis is integer working minutes of the project calendar, on which Monday 17:00 and Tuesday
+08:00 are ONE minute; a project-axis milestone kept only the minute, and `_pred_finish_wall` handed
+the crew successor 189 the minute's end-of-day rendering, Monday 17:00 — an instant the crew works.
+189 ran fifteen hours early, 187 finished nine hours short, nine crew-hours before 08-14 17:00 is
+Friday morning on Standard, so 184 → 148 handed UID 384 a Friday instead of the stored Monday, and
+385 → 386 → 387 → 400 → 399 → 401 → 402 → 403 → 404 inherited the working day. The same handoff sat
+at 216 → 241, at **381 → 396 (R-66 — "a snapshot-specific defect upstream of leveling": it was this
+class)** and at 387 → 400. Censused on the engine's own plans over the 44 files: **2,056** zero-duration
+project-axis tasks, **230** driven by a crew-calendar activity, **111** rendered off their stored
+instant, **22** crew successors started on a wrong one.
 
-**Shipped: `plan_calendars(schedule) -> PlanCalendars`** in `engine/cpm.py` beside the old
-predicate — read-only, built on the engine's OWN execution plans at the stored durations, never a
-re-derivation from the assignments:
+**Shipped — the carry, in `engine/cpm.py`'s forward pass.** Once the integer pass has placed a
+zero-duration task (`ef == es`), `_carried_instant` collects the instants of every driver of its
+early start — a lag-0 link's endpoint (a wall-path predecessor's wall, a carried milestone's
+instant, a project-calendar activity's finish rendering), a raw SNET / FNET / MSO / MFO date, a manual
+task's stored start, a recorded actual start — and the latest wins (MS Project's `max` over instants;
+a milestone is neither snapped to its calendar nor rounded to the day: updated2's 387 is stored at
+23:00, the 24-hour snapshot's 156 on a Sunday). The integer offsets are untouched, so every
+project-calendar successor and every single-calendar file is byte-identical; nothing is carried
+unless some driver's instant is one the axis LOST (a lagged driver leaves the rendering in charge).
+The instant rides `TaskTiming.early_start_wall` / `early_finish_wall` (float stays the axis's, late
+walls `None`), feeds the successor's start, a wall-path predecessor's free float and the network's
+finish instant. **Two lines were deleted before they shipped:** a projection guard proved inert by
+construction, and a stored-start FLOOR candidate that can never fire (the floor exists only for a
+task without predecessors; a carried milestone has one).
 
-| field | what it carries | pinned by |
-| --- | --- | --- |
-| `axes` | the calendars total float is measured on — the task's own (ADR-0474's slack axis); never the project calendar, never the elapsed clock | the 24-hour-task-under-a-16-hour-crew pin; Hard_File `{10: (14,), 12: (94,)}` from the XML |
-| `legs` | the calendars execution legs run on — a crew's own, a task calendar the crew restricts nothing of, or their intersection, listed on the calendar OBJECT and never as a parent (`derived` = uid −2, `<task> ∩ <crew>`) | the crewed-task pin (`off_project_calendars` empty beside it); the derived pin; the two-derived-calendars pin; Hard_File 25 / 18 / 1 + UID 94 from the XML |
-| `elapsed` | tasks whose duration is elapsed — counted, not listed | UID 146; the synthetic elapsed pin |
-| `population` | ADR-0128's scheduled population, the "of N" | 110 on Hard_File, from the XML |
-| dedup / order | by OBJECT (every derived calendar shares uid −2), registered first by uid, derived after by name, one count per activity however many legs | the dedup pin; Large Test File's 138 once each |
+| golden | finishes within a day | exact finishes | stored slack exact | Critical agreed | project finish |
+| --- | --- | --- | --- | --- | --- |
+| **Hard_File** | 103 → **110 of 110** | 40 → **110** | 39 → **101** of 110 | 108 → **110** | exact, unchanged |
+| updated / updated2 / updated3 | 108 / 109 / 106 → **110 / 110 / 110** | 108 / 106 / 101 → 110 / 109 / 110 | 101 / 36 / 46, unmoved | 110 / 107 / 103 | exact |
+| updated3_24hr (now its own oracle row) | 100 → 109 | 92 → 104 | 4 → **7** of 19 | 70 | 11-17 01:00 → **11-19 01:00, the stored, EXACT** |
+| Project2 / Project5 / EVM1 / EVM2 / the Large Test Files and SSI copies | unmoved | unmoved (two milestones on the LTF family now sit ON their predecessor's finish instead of the lunch hour after it; EVM2 UID 25's START is now the stored one) | unmoved | unmoved | unchanged |
 
-The panel's takeaway and notice are rewritten from it — on Hard_File: *"Standard (8 h/day, a 5-day
-work week, 0 holiday(s)) is the time basis for **65 of 110** activities; the other **45** run wholly
-or partly on **6** other calendars, named below."* and a notice naming each calendar with its
-activity count, the derived one with both names and its UID, the elapsed count, the float-axis rule
-(MS Project's stored-slack basis, ADR-0474) and the one clause of the old sentence still true (the
-path views, ADR-0118). **A single-calendar file renders BYTE-IDENTICAL** (Project5, end to end). The
-`/api/analysis` payload is untouched (a derived calendar is never registered — ADR-0503).
-
-**The seam is argued, not assumed.** The design system's "never touch `engine/` for a UI change"
-protects calculations, proven untouched (the API payload byte-identical on three goldens); `web/`
-has never imported a private engine name and ADR-0492 is the precedent for giving a consumer the
-plan builder's rule under a public name in `cpm.py`. The operator may overrule — the move is
-trivial. `off_project_calendars` stays public with its docstring re-pointed; no production caller
-remains.
+Across the 44 files (22,050 scheduled activities): **220 finishes toward the stored instant, 41 away,
+21,789 unmoved**; exact 19,791 → 20,011; stored slack exact 10,666 → 10,800; Critical agreement
+21,873 → 21,877. The 41 "away" are two named mechanisms, neither this rule's: seven are the two
+lunch-hour milestones (UIDs 168 / 7107 and their copies — ADR-0322's contiguous-projection drift no
+longer displayed on a milestone) and thirty-four are ONE chain in the non-golden
+`Hard_File_updated_with_logic_reestablished` below UID 187, which MS Project starts out of sequence
+(60 % complete, before its predecessor's stored finish); ADR-0391's floor keeps the logic start, and
+the chain moved a day later WITH its now-exact predecessor.
 
 ## How it was verified
 
-* **Red before green, in a SEPARATE WORKTREE at `origin/main`:** both new modules cannot import;
-  the pristine panel PROBED with the import bypassed — SILENT on a crewed project-calendar task (no
-  notice at all), the stale sentence on a task-calendar one — and the web module's docstring states
-  what the probe showed, not what it was first written to assume.
-* **The rig was refuted THREE times before the engine was, all three the same defect — an
-  unstated population filter:** the XML derivation counted crews 4 / 5 / 7 (calendars on the project
-  pattern the importer never registers — the registry is now the test's asserted PREMISE); it
-  excluded the elapsed UID 146 before the booking loop and then asserted its crew had booked it; the
-  Large Test File pin read the shape map, which covers EVERY task, and met summary UID 5334 (a ZIN
-  material leg on a task never scheduled). Each was the rig.
-* **Mutation battery: 12 cuts on a shadow copy of `src/`** (a `-p mutcheck` plugin asserts the
-  package measured IS the copy; every cut's checksum changed; control 19 passed before and after):
-  M01 listing always empty → 12 red · M02 dedup by uid → 1 · M03 the derived calendar named as its
-  task parent → 5 · M04 off-pattern filter dropped → 2 · M05 elapsed listed, never counted → 3 ·
-  M06 inactive / summary in the population → 3 · M07 counted once per LEG → 2 · M08 the page ignores
-  the listing → 3 (web pins only, engine pins green — the page pins are the page's) · M09 the stale
-  sentence restored → 2 · M10 axes / legs swapped → 7 · M11 the derived flag never set → 5 · M12 the
-  takeaway keeps the old sentence → 2. **12 / 12 red by name, no survivor.**
-* **Rendered, not inspected:** pristine → this tree, one instrument — the `/analysis` page diff is
-  the two panel lines on Hard_File and Large_Test_File and EMPTY on Project5; `/api/analysis`
-  byte-identical on all three. A real Chromium at 1440 px, four themes: no page errors,
-  `scrollWidth == innerWidth` in all four, four different token colours on the notice.
-* Statics green on **both** ruff binaries (0.15.8 and 0.16.8) over the whole tree, `ruff format`
-  (1,271 files), `mypy --strict` (165 files), `bandit` (exit 0), `node --check` per file; the 141
-  neighbouring tests green.
-* **A trap this session paid for itself:** the code commit (`a911a4cd`) was pushed with the
-  version bump and WITHOUT the rotated handoff, so `test_state_docs.py`'s version-pin guard went
-  red on that tree (in the worktree run and on CI's first run of #694 — cancelled by the docs
-  push). The drift guard is part of the suite: the bump and the handoff pin ride ONE push.
+* **Red first, in a SEPARATE WORKTREE at `origin/main` (`3db94b14`), the package under test asserted
+  by the `-p mutcheck` plugin:** 12 of the 17 new pins fail on the pristine engine by name; 5 are
+  controls named as such in their docstrings (the lagged driver, the project-calendar-only
+  milestone, the project-calendar successor, the two gating cases that exist for the mutants). The
+  stored-dates oracle's crews test and every raised floor are red there.
+* **Two tests could not fail on the pristine tree and were rebuilt or rewritten, not kept:** the
+  free-float pin measured on a CREW task's slack axis (the project calendar, on which both instants
+  are one minute) — rebuilt on a TASK calendar, where the axis is the crew's; the zero-slack
+  inference test's Hard_File witness (241 / 249 recomputing to 480 / 360) was this chain's artefact
+  and now pins the engine's own zero beside the inferred stored zero; the chapter-01 Critical-basis
+  test's "not pure logic" witness (the stored count differing from pure logic on Hard_File) moved
+  to the progressed updated3 snapshot, where 7 of 110 flags still disagree — on the base snapshot
+  the two bases now coincide, and that is pinned as the agreement it is. **A test that needs the
+  engine to be wrong goes red when the engine is fixed.** `docs/PARITY-REPORT.md`'s stored-dates
+  table re-measured.
+* **Mutation battery: 18 cuts on a shadow copy of `src/`** (checksums verified; control 62 passed):
+  M01 the carry never stored → 18 red · M02 / M03 the predecessor finish / start ignores it → 12 / 1
+  · M04 the "lost" guard dropped → 4 red + 15 errors · M05 a lagged driver carries → 1 · M06 "lost"
+  ignores a carried predecessor → 4 · M07 the link roles swapped → 18 · M08 / M09 / M10 the
+  constraint / manual-pin / recorded-start candidate dropped → 1 / 1 / 1 · M11 the earliest instant
+  wins → 7 · M12 / M13 the two gating conditions dropped → 1 / 1 · M14 / M15 the instant not exposed
+  → 10 / 7 · M16 / M17 a successor's start / finish ignores it → 1 / 1 · M18 the finish instant
+  ignores it → 1. **18 / 18 red by name, no survivor.** The battery's FIRST run was DISCARDED: the
+  oracle was re-pinned while it ran — its control went red and its rows carried two generations of
+  parametrize ids. The instrument moved under the measurement (the QC-1 trap, paid for again); the
+  second run began only after every test edit was final.
+* **Rendered, not inspected — the real app (TestClient), pristine → this tree, 17 labels:** on
+  Hard_File the `/analysis` page differs in 8 lines (the two float panels), `/api/analysis` in the
+  float figures of 65 of 142 rows (64 `total_float_days`, 8 `free_float_days` — UID 189's 1.0 → 0.5
+  is its stored 240 minutes) and the two float-band counts, `/api/driving` in 64 rows' float;
+  **Project5 and Large_Test_File byte-identical on all three surfaces**, the eight session pages
+  byte-identical.
+* Statics green on **both** ruff binaries (0.15.8 and 0.16.8) over the whole tree, `ruff format`,
+  `mypy --strict` (165 files), `bandit` (exit 0), `node --check` per file; the wheel built AFTER the
+  last format (the lockstep pin green, 68 passed).
 
-**Gate on the final tree — MEASURED, in a separate worktree at the code commit `a911a4cd` (never in the tree
-the docs were written in): full suite 5,553 passed / 1 failed / 7 skipped in 46:47** (13:49–14:36Z, run
-with `-v` and a stall monitor: no stall, load 0.7–2.8 throughout), **`-m parity` 170 passed / 0 failed in
-8:26**. The ONE failure is `tests/test_state_docs.py::test_handoff_top_section_pins_the_current_pyproject_version`,
-red on the CODE commit's tree because it carries the 1.0.270 bump and not the rotated handoff (CI's `floor`
-job on that commit read the same single failure: `1 failed, 5172 passed, 269 skipped`); the docs commit
-`3a2b2da3` carries the pin, its module is green on the final tree (13 passed), and the final tree differs
-from the measured one under `docs/` only (`git diff a911a4cd..HEAD -- . ':!docs'` is empty) — so the final
-tree reads **5,554 green / 0 failed / 7 skipped**. Both deltas ATTRIBUTED: 5,553 + 1 + 7 = **5,561** collected
-= the previous unit's 5,546 + this unit's 19 (12 engine + 7 web) − the rewritten module's 4 (by
-`--collect-only` on both trees); the previous 5,539 passed + 15 = 5,554; parity 170 = 170 (no parity pin
-added). The 7 skips are the documented set — the loopback-allowlist (urlparse) pair, the three
-INCIDENTAL_SVG axis cases, and the two `test_pptx_libreoffice_interop` skips that are correct in this
-container (no libreoffice-impress; CI installs it and treats a skip as a FAILURE, ADR-0498).
+**Gate on the final tree — MEASURED, in a separate worktree at the code commit `ae8ee1de` (never in the tree the docs were written in; `PYTHONPATH` on the worktree's `src/`, the `-p mutcheck` plugin asserting it): full suite 1 failed / 5,571 passed / 7 skipped in 41:39** (19:18–20:00Z, `-v`, no stall), **`-m parity` 171 passed / 0 failed in 6:42**. The ONE failure is `tests/test_state_docs.py::test_handoff_top_section_pins_the_current_pyproject_version`, red on the CODE commit's tree because it carries the 1.0.271 bump and not the rotated handoff (the same single failure as #694's first run, known and attributed — the bump and the pin ride ONE push); the docs commit carries the pin, its module is green on the final tree, and the final tree differs from the measured one under `docs/` only (`git diff ae8ee1de..HEAD -- . ':!docs'` is empty) — so the final tree reads **5,572 green / 0 failed / 7 skipped**. Both deltas ATTRIBUTED: **5,579 collected** = the previous unit's 5,561 + this unit's 17 (`test_milestone_carried_instant.py`) + 1 (the stored-dates oracle's fifth row, the 24-hour snapshot) by `--collect-only` on both trees; the previous 5,554 passed + 18 − 1 = 5,571; parity 170 + 1 = 171. The 7 skips are the documented set — the loopback-allowlist (urlparse) pair, the three INCIDENTAL_SVG axis cases, and the two `test_pptx_libreoffice_interop` skips that are correct in this container (no libreoffice-impress; CI installs it and treats a skip as a FAILURE, ADR-0498). A first full run on the WORKING tree (the tree under edit — a signal, never the measurement) read 5 failed / 5,559 passed / 7 skipped in 42:25: the four re-pinned modules, the CH01 witness and the pre-rebuild wheel lockstep, every one addressed before the code commit.
 
 ## Deliberately NOT done
 
-A **calendar table** (hours / day, work week per listed calendar) — a design-queue question · a
-machine-readable **`calendar_basis` on `/api/analysis`** (the payload is untouched by design; one
-dict if the operator wants it) · the **elapsed clock as a calendar line** (a duration property;
-counted in its own sentence) · **retiring `off_project_calendars`** (public, eight pins, kept) · the
-notice's **client-side translation** (unchanged exposure) · **the daylight telemetry HUD** — observed
-on the 1440-px screenshot overlaying the right edge of every full-width panel: pre-existing chrome,
-not this row's, named for the operator · **refused:** a per-booking `booking_calendar` listing as the
-source (over-claims) · re-implementing the plan builder's filters in `web/` · importing
-`_plan_shapes` into `web/` · any change to the `_execution_plans` / `_task_shape` rule.
+**The backward carry (R-67)** — a milestone's LATE instant from a wall-path successor's late-start
+need is the mirror rule, with its own witnesses (147's Saturday 13:00; on the 24-hour snapshot
+156's stored late finish 11-02 09:00 vs the engine's 17:00, −4,740 vs −4,320) and its own row;
+re-measured unchanged (94's slack 6,510 vs 6,360; 404's 9,420 vs 9,480 is its family) · **a
+completed milestone's recorded instant without a crew driver** (a 14:24 milestone on a
+single-calendar file still renders 15:24 — the two-ruler lunch hour; the carry needs an instant the
+axis LOST, so single-calendar files stay byte-identical) · **a lagged driver's instant** (a lag lives
+on the integer axis; the status quo rendering stands, pinned by a control) · **`late_*_wall` on a
+carried milestone** (stay `None`: its late instant is still the axis's) · EVM2's UID 25 (a milestone
+stored with a Finish one day after its Start; start now exact, finish untouched) · the
+`logic_reestablished` file's out-of-sequence 187 and the `24Hour Calendar` intake file (23 of 126
+exact, unmoved) — neither a golden, each its own row · **deleted, not kept:** the projection guard
+(inert by construction) and the stored-floor candidate (cannot fire).
 
 ## Next — campaign queue
 
-**Read `git log origin/main` before trusting any sha here.** Then §3 in order: **R-64** (Hard_File
-milestone 387 hangs on an external predecessor, UID −65535 — first step: read the link's
-`CrossProject` fields and pin 387's stored 08-18 17:00) · **R-63** · **R-62** · **R-65** · **R-66** ·
-**R-67** · **R-45** · then R-03 · R-04 · R-09 · R-13 · R-18 · R-21 · R-22 · R-32 · R-39. The design
-queue is 19 artboards.
+**Read `git log origin/main` before trusting any sha here.** Then §3 in order: **R-63** (the converter
+resolves `CurrentDate`, `MaxUnits`, `AvailableFrom/To` and the rates at CONVERSION time) · **R-62**
+(every absent slack the writer dropped is a zero, completed tasks included) · **R-65** (the
+1–28-minute gap granularity) · **R-67** (now with its mechanism confirmed as ADR-0505's backward
+mirror — the natural next engine unit) · **R-45** · then R-03 · R-04 · R-09 · R-13 · R-18 · R-21 ·
+R-22 · R-32 · R-39. The design queue is 19 artboards.
 
 # (prior) handoffs — archived
 

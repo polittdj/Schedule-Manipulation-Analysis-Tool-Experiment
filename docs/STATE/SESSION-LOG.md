@@ -18942,3 +18942,46 @@ final head's run is the verdict — the operator merges.
 Shipped ADR-0504, the two test modules (12 + 7 pins), the closed R-59 row, the user-guide line, the
 lessons entry, and **v1.0.270** with the wheel and nine installers rebuilt in lockstep (MPXJ ref
 `163d1942`, on `origin/main`).
+
+## 2026-09-17 (c) — R-64 CLOSED (ADR-0505): a zero-duration task carries its driving predecessor's wall instant; the row's "external link" was an unassigned-work placeholder and the day was lost at milestone 181; R-66 CLOSED with it — v1.0.271
+
+**Branch** `claude/eager-rubin-otxlxk` (the designated branch, at the #694 squash `3db94b14`, tree-identical
+to the reviewed head `7e9b74f1`). `main`'s OWN CI for `3db94b14` read TO CONCLUSION: run 1915
+(`35254782501`) SUCCESS, all six jobs (`cui-guard` 17:46:59Z · `browser` 18:04:08Z · `floor` 18:12:51Z ·
+`test (3.13)` 18:31:26Z · `test (3.11)` 18:33:52Z · `check` 18:33:58Z); installer-smoke 753 was read last
+session. **ADR-0505.** Draft PR [#695](https://github.com/polittdj/Schedule-Manipulation-Analysis-Tool-Experiment/pull/695).
+
+**Refuted first.** R-64 said milestone 387 hangs on `PredecessorUID` −65535. 387's one link is UID 386;
+across the 15 goldens (11,979 links) and the 29 intake `.mpp` files converted fresh (21,609 links) there
+is no unresolvable, cross-project or external link and no negative UID; −65535 is the `ResourceUID` of
+MS Project's unassigned-work placeholder (27 assignments on Hard_File, one on 387). The head of the
+one-day chain is milestone 181, stored at Tuesday 08:00 where its 16-hour crew finished: the integer
+project axis rendered that minute as Monday 17:00 and started the crew successor 189 there. Censused on
+the engine's own plans over the 44 files: 2,056 zero-duration project-axis tasks, 230 driven by a crew
+activity, 111 rendered off their stored instant, 22 crew successors started on a wrong one.
+
+**Shipped** the carry in `engine/cpm.py`'s forward pass (`ms_wall`, `_carried_instant`; carried-aware
+predecessor / successor instants and finish instant; exposed on `TaskTiming`'s early walls), 17 pins
+in `tests/engine/test_milestone_carried_instant.py`, the stored-dates oracle re-pinned (every Hard_File
+floor raised, a stored-slack floor per row, the 24-hour snapshot's own row, the chain's dated pins, the
+wrong mechanism replaced), the R-57 oracle re-pinned (381 / 396 / 398 exact — R-66), the zero-slack
+inference witness rewritten, the chapter-01 Critical-basis witness moved to updated3 (the base
+snapshot's two bases now coincide, pinned), `docs/PARITY-REPORT.md`'s stored-dates table re-measured,
+the report's R-64 and R-66 rows closed and R-67 annotated as the backward mirror. Two lines deleted before shipping: an inert projection guard and a floor candidate that cannot
+fire.
+
+**Measured:** Hard_File 110 of 110 finishes exact (from 40), stored slack exact 39 → 101, Critical 108
+→ 110; updated / updated2 / updated3 110 within a day; the 24-hour snapshot's project finish 11-17
+01:00 → the stored 11-19 01:00 exact (stored slack 4 → 7 of 19); Project2 / Project5 / EVM / the Large
+Test Files unmoved. Across the 44 files: 220 finishes toward, 41 away (the two lunch-hour milestones ×
+copies, and one chain below an out-of-sequence activity in the non-golden `logic_reestablished` file),
+exact 19,791 → 20,011, stored slack exact 10,666 → 10,800. Rendered through the real app: Hard_File's
+`/analysis` differs in 8 lines (the float panels), `/api/analysis` in 65 rows' float figures; Project5
+and Large_Test_File byte-identical on every surface.
+
+**Verified:** red-first in a pristine worktree (12 of 17 pins by name; 5 controls named); battery
+18 / 18 red by name (its first run DISCARDED — the oracle was re-pinned while it ran; the instrument
+moved under the measurement); statics green on both ruff binaries, format, mypy strict, bandit, node;
+wheel built after the last format, lockstep pin green.
+
+**Gate, MEASURED in a separate worktree at the code commit `ae8ee1de`: full suite 1 failed / 5,571 passed / 7 skipped in 41:39; `-m parity` 171 / 0 in 6:42.** The one failure is the handoff version-pin guard on the code commit's unrotated handoff; the docs commit carries the pin and the final tree differs under `docs/` only — 5,572 green / 0 / 7 on the final tree. Attributed: 5,579 collected = 5,561 + 17 + 1; 5,554 + 18 − 1 = 5,571; parity 170 + 1 = 171. The 7 skips are the documented set. Version 1.0.271; the wheel and nine installers rebuilt after the last format (lockstep pin green).
