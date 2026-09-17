@@ -69,7 +69,7 @@ Computed in the oracle, registered as **R-67**.
   green on **both** ruff binaries (0.15.8 and 0.16.8), `ruff format` (1,270 files), `mypy --strict`
   (165 files), `bandit` (exit 0), `node --check`.
 
-**Gate on the final tree: the full suite (5,546 collected = the previous 5,515 + this unit's 31; `-m parity` collects 170 = 150 + 20, attributed by `--collect-only`) was still running at the first push, 2,627 verdicts in with 0 failures — its figures are recorded in the follow-up docs-only commit**
+**Gate on the final tree: **5,539 passed / 0 failed / 7 skipped in 39:18** (05:56–06:35Z, run with `-v` and a stall monitor: no stall, load 0.9–1.2 throughout), and **`-m parity` 170 passed / 0 failed in 5:51**. Both deltas ATTRIBUTED, not assumed: the previous unit's 5,508 + this unit's 31 (11 synthetic + 20 parity; `--collect-only` 5,546 = 5,515 + 31) = 5,539, and 150 + 20 = 170. The 7 skips are the documented set — the loopback-allowlist (urlparse) pair, the three INCIDENTAL_SVG axis cases, and the two `test_pptx_libreoffice_interop` skips that are correct in this container (no libreoffice-impress; CI installs it and treats a skip as a FAILURE, ADR-0498). Recorded in the follow-up docs-only commit, the pattern every campaign PR used; the first push (`b5c947a6`) carried the code**
 
 ## Deliberately NOT done
 

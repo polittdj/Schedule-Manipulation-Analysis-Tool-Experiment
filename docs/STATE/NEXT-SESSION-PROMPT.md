@@ -46,7 +46,7 @@ not its symptom ("R-58 partly done") · **`set -u` + `local a=$1 b=$a` is an unb
 first battery run died on line 9 and reported nothing; a battery that prints no verdict has run no
 mutant.
 
-**Baselines to attribute against: full suite and `-m parity` figures: in the follow-up docs-only commit (5,546 / 170 collected). Version 1.0.269; highest ADR 0503; schema 2.15.0.**
+**Baselines to attribute against: full suite 5,539 passed / 0 failed / 7 skipped; `-m parity` 170 / 0. Version 1.0.269; highest ADR 0503; schema 2.15.0.**
 
 **R-57 is CLOSED — ADR-0502 (#691, `main` @ `2c549d8d`). A BOOKING's own `Assignment/LevelingDelay`
 is honoured on that leg alone, on ADR-0474 / ADR-0501's TYPE AXIS — do not re-derive it and do not
