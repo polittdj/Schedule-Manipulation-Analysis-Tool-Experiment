@@ -140,8 +140,12 @@ at 1440 px — pre-existing chrome, named in the handoff's residuals.
   (1,271 files), `mypy --strict` (165 files), `bandit` (exit 0), `node --check` per file. The 141
   neighbouring tests (the monolith-split contract, `test_app`, the four calendar / intersection /
   booking-calendar engine modules) green.
-* **The full gate** — see the session log for the figures on the final tree (the suite ran in a
-  separate worktree at this unit's code commit, never in the tree the docs were being written in).
+* **The full gate**, measured in a separate worktree at this unit's code commit (never in the tree
+  the docs were being written in): **5,553 passed / 1 failed / 7 skipped in 46:47** and **`-m parity`
+  170 / 0 in 8:26**. The one failure is the handoff version-pin guard, red on the code commit's tree
+  because that commit carried the bump without the rotated handoff (a wasted CI cycle on #694's
+  first run — the lesson is in the log); the docs commit carries the pin and the final tree reads
+  5,554 green. Attributed: 5,561 collected = 5,546 + 19 − 4; parity 170 = 170.
 
 ## Deliberately NOT done — registered, or named
 

@@ -81,13 +81,20 @@ remains.
   red on that tree (in the worktree run and on CI's first run of #694 — cancelled by the docs
   push). The drift guard is part of the suite: the bump and the handoff pin ride ONE push.
 
-**Gate:** the full suite and `-m parity` were running on this exact code commit (`a911a4cd`) in a
-separate worktree when this docs commit was written — 4,499 of 5,561 verdicts in (5,561 = the
-previous 5,546 + this unit's 19 − the rewritten module's 4, attributed by `--collect-only`), ONE red:
-`test_state_docs.py`'s version-pin guard, which fails on the CODE commit's tree because that tree
-carries the bump and not the rotated handoff (this commit carries it; CI's `floor` job read the same
-single failure: `1 failed, 5172 passed, 269 skipped`). **The measured figures are recorded in the
-follow-up docs-only commit — read the session log's last entry.**
+**Gate on the final tree — MEASURED, in a separate worktree at the code commit `a911a4cd` (never in the tree
+the docs were written in): full suite 5,553 passed / 1 failed / 7 skipped in 46:47** (13:49–14:36Z, run
+with `-v` and a stall monitor: no stall, load 0.7–2.8 throughout), **`-m parity` 170 passed / 0 failed in
+8:26**. The ONE failure is `tests/test_state_docs.py::test_handoff_top_section_pins_the_current_pyproject_version`,
+red on the CODE commit's tree because it carries the 1.0.270 bump and not the rotated handoff (CI's `floor`
+job on that commit read the same single failure: `1 failed, 5172 passed, 269 skipped`); the docs commit
+`3a2b2da3` carries the pin, its module is green on the final tree (13 passed), and the final tree differs
+from the measured one under `docs/` only (`git diff a911a4cd..HEAD -- . ':!docs'` is empty) — so the final
+tree reads **5,554 green / 0 failed / 7 skipped**. Both deltas ATTRIBUTED: 5,553 + 1 + 7 = **5,561** collected
+= the previous unit's 5,546 + this unit's 19 (12 engine + 7 web) − the rewritten module's 4 (by
+`--collect-only` on both trees); the previous 5,539 passed + 15 = 5,554; parity 170 = 170 (no parity pin
+added). The 7 skips are the documented set — the loopback-allowlist (urlparse) pair, the three
+INCIDENTAL_SVG axis cases, and the two `test_pptx_libreoffice_interop` skips that are correct in this
+container (no libreoffice-impress; CI installs it and treats a skip as a FAILURE, ADR-0498).
 
 ## Deliberately NOT done
 

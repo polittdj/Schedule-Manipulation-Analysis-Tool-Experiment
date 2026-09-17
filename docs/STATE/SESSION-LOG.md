@@ -18928,10 +18928,16 @@ file's own fields; battery 12 / 12 red by name on a shadow copy (control green b
 checksums verified); four themes in a real Chromium (no page errors, no sideways scroll, token
 colours); statics green on both ruff binaries, format, mypy strict, bandit, node.
 
-**Gate:** running on the code commit (`a911a4cd`) in a separate worktree as this docs commit is
-written — 4,499 of 5,561 verdicts in, one red (the version-pin guard on the code commit's unrotated
-handoff; CI's `floor` job on that commit read the same `1 failed, 5172 passed, 269 skipped`). The
-measured figures follow in the docs-only follow-up commit.
+**Gate on the final tree — MEASURED in a separate worktree at the code commit `a911a4cd`: full suite
+5,553 passed / 1 failed / 7 skipped in 46:47** (13:49–14:36Z, `-v` + a stall monitor, no stall), **`-m parity`
+170 passed / 0 failed in 8:26**. The one failure is the handoff version-pin guard on the code commit's
+unrotated handoff (CI's `floor` job on `a911a4cd` read the same `1 failed, 5172 passed, 269 skipped`);
+`3a2b2da3` carries the pin, its module is green on the final tree, and the final tree differs from the
+measured one under `docs/` only — **5,554 green / 0 failed / 7 skipped** on the final tree. Attributed:
+5,561 collected = 5,546 + 19 − 4; 5,539 + 15 = 5,554; parity 170 = 170. The 7 skips are the documented set.
+Draft PR [#694](https://github.com/polittdj/Schedule-Manipulation-Analysis-Tool-Experiment/pull/694):
+the first run (`a911a4cd`) was red on `floor` by that one guard and cancelled by the docs push; the
+final head's run is the verdict — the operator merges.
 
 Shipped ADR-0504, the two test modules (12 + 7 pins), the closed R-59 row, the user-guide line, the
 lessons entry, and **v1.0.270** with the wheel and nine installers rebuilt in lockstep (MPXJ ref

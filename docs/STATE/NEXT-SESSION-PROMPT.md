@@ -31,9 +31,9 @@ before writing what the red run "would show"** — the pristine panel was SILENT
 schedule, not carrying the stale sentence · **write the seam tension down rather than pick
 silently**.
 
-**Baselines to attribute against: the previous unit's 5,539 passed / 7 skipped and `-m parity` 170 / 0
-until this unit's measured figures land in the follow-up docs-only commit on #694 (expected 5,561
-collected = 5,546 + 19 − 4). Version 1.0.270; highest ADR 0504; schema 2.15.0.**
+**Baselines to attribute against: full suite 5,554 green / 0 failed / 7 skipped on the final tree (measured
+5,553 / 1 / 7 on the code commit, the 1 being the version-pin guard fixed by the docs commit; 5,561 collected);
+`-m parity` 170 / 0. Version 1.0.270; highest ADR 0504; schema 2.15.0.**
 
 **R-58 is CLOSED — ADR-0503 (#693, `main` @ `a95482c1`).** A task calendar meets a crew calendar on
 their INTERSECTION — `_calendar_intersection` behind `_task_shape` and `booking_calendar`: weekdays
