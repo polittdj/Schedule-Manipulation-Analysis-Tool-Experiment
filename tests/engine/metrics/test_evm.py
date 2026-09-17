@@ -745,10 +745,12 @@ def test_the_budget_no_booking_carries_accrues_linearly_beside_the_recorded_seri
 
 
 def test_a_block_the_calendar_sees_no_working_time_in_is_measured_by_elapsed_time() -> None:
-    """The writer's calendar and the rule's can differ (R-58's approximation): a block that the
-    booking's calendar sees no working time in — a Saturday block on a Monday-to-Friday crew —
-    cannot be prorated in working minutes, so it is measured by elapsed time, the only ruler
-    left: 4 of 9 hours by Saturday noon. The whole block counts once the status date passes it."""
+    """The writer's calendar and the rule's can differ (MS Project spreads a block on a calendar
+    the model may not carry — an exception's own hours, a crew the file names no calendar for):
+    a block that the booking's calendar sees no working time in — a Saturday block on a
+    Monday-to-Friday crew — cannot be prorated in working minutes, so it is measured by elapsed
+    time, the only ruler left: 4 of 9 hours by Saturday noon. The whole block counts once the
+    status date passes it."""
     from schedule_forensics.engine.metrics.evm import _planned_value
     from schedule_forensics.model.assignment import Assignment, CostPiece
 

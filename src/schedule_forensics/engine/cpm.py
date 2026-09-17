@@ -25,10 +25,16 @@ Scope of this engine (documented, not silently limited — Law 2):
   assignment ``(calendar, span)`` where the span is the task duration scaled by
   ``min(1, (work / units) / duration)`` — and starts at the earliest leg's first working
   instant, finishes at the latest leg's finish, with the retreat / float axis on the
-  latest-finishing ("primary") leg. A task calendar intersected with a resource calendar
-  is approximated: a 24-hour task calendar yields the resource calendar exactly; any other
-  task calendar wins (documented; two Hard_File activities). A same-pattern resource
-  calendar changes nothing and stays on the integer fast path.
+  latest-finishing ("primary") leg. A task calendar meeting a crew calendar is their
+  **intersection** (ADR-0503, R-58): an instant is working only when BOTH calendars work
+  it — weekdays intersect, the intraday blocks intersect pairwise, a holiday of either is a
+  holiday. A 24-hour task calendar therefore yields the crew calendar exactly (Hard_File
+  UID 14) and a night-shift task inside a round-the-clock crew keeps its own; Hard_File
+  UID 94 on ``Standard+Sat.`` with the 16-hour crew resumes at the crew's 13:00, not the
+  task calendar's 12:30, and finishes at MS Project's 17:00 (the task calendar alone read
+  16:30), with its late finish on the Friday the crew works rather than the Saturday only
+  the task calendar does. The slack axis stays the task's own calendar (ADR-0474). A
+  same-pattern resource calendar changes nothing and stays on the integer fast path.
 * **A material / cost booking's RECORDED span honored** (ADR-0487, R-56): MS Project spreads
   a MATERIAL or COST booking over a span that no stored quantity determines (measured on
   Hard_File_updated3 — UID 302's two non-work bookings, 1 unit at 100 % and 0.15 units at
@@ -795,6 +801,8 @@ def _task_shape(t: Task, ctx: _ShapeContext) -> _PlanShape | None:
     legs: list[_LegShape] = []
     if t.resource_assignments and not t.ignore_resource_calendar and t.duration_minutes > 0:
         res_by_id = ctx.schedule.resources_by_id
+        ps = ctx.schedule.project_start
+        tod0 = ps.hour * 60 + ps.minute
         # every WORK booking's worked windows, so a split booking's gap can be told from a
         # window another crew works through (ADR-0491's task-split test)
         windows: dict[int, list[_Window]] = {}
@@ -809,7 +817,19 @@ def _task_shape(t: Task, ctx: _ShapeContext) -> _PlanShape | None:
             rcal = ctx.by_uid.get(res.calendar_uid) if res.calendar_uid is not None else None
             if rcal is None or _same_pattern(rcal, ctx):
                 rcal = ctx.schedule.calendar
-            leg_cal = rcal if task_cal is None or _is_24x7(task_cal) else task_cal
+            if task_cal is None:
+                leg_cal = rcal
+            elif res.type is ResourceType.WORK and res.calendar_uid is not None:
+                # the task's own calendar meets the crew's: MS Project schedules the booking
+                # on their INTERSECTION (ADR-0503, R-58) — the crew calendar itself under a
+                # 24-hour task calendar (Hard_File UID 14), the task calendar itself inside a
+                # round-the-clock crew, a derived calendar otherwise (Hard_File UID 94)
+                leg_cal = _calendar_intersection(task_cal, rcal, tod0)
+            else:
+                # a MATERIAL / COST resource has no calendar of its own, and a crew the file
+                # names no calendar for (an XER, an older Save) has an UNKNOWN one — nothing
+                # to intersect with, so the task calendar governs, as ADR-0474 had it
+                leg_cal = rcal if _is_24x7(task_cal) else task_cal
             if res.type is not ResourceType.WORK:
                 # a MATERIAL / COST booking (ADR-0487): MS Project spreads it over a span no
                 # stored quantity determines; the file RECORDS the span, and the engine reads
@@ -917,8 +937,10 @@ def _execution_plans(
     * work-resource assignments (unless the task ignores resource calendars): one leg per
       assignment on the resource's registered calendar (the project calendar when the
       resource carries none or a same-pattern one), spanning ``min(1, (work / units) /
-      stored duration) x duration``; a task calendar intersects: a 24-hour task calendar
-      yields the resource calendar, any other task calendar wins (approximation);
+      stored duration) x duration``; a task calendar INTERSECTS the crew's (ADR-0503): an
+      instant is working only when both calendars work it — a 24-hour task calendar yields
+      the crew calendar exactly, any other yields their common weekdays, intraday blocks and
+      working dates (a crew the file names no calendar for leaves the task calendar alone);
     * a MATERIAL / COST booking with a recorded window: one leg spanning that window on the
       crew's calendar — the span the file records, the one input it carries (ADR-0487);
     * a materially different task calendar with no such legs → one leg on it;
@@ -1329,6 +1351,139 @@ def _is_24x7(cal: Calendar) -> bool:
     return _ruler(cal).is_24x7
 
 
+def _merged_blocks(blocks: tuple[tuple[int, int], ...]) -> list[tuple[int, int]]:
+    """``blocks`` sorted, with touching or overlapping ones joined (a source that declares
+    06:00-08:00 and 08:00-12:00 as two blocks works one 06:00-12:00 stretch)."""
+    out: list[tuple[int, int]] = []
+    for s, e in sorted(blocks):
+        if out and s <= out[-1][1]:
+            out[-1] = (out[-1][0], max(out[-1][1], e))
+        else:
+            out.append((s, e))
+    return out
+
+
+def _blocks_intersection(
+    a: tuple[tuple[int, int], ...], b: tuple[tuple[int, int], ...]
+) -> tuple[tuple[int, int], ...]:
+    """The minutes of the day inside a block of ``a`` AND a block of ``b``, as merged blocks."""
+    out = [
+        (max(s1, s2), min(e1, e2))
+        for s1, e1 in _merged_blocks(a)
+        for s2, e2 in _merged_blocks(b)
+        if max(s1, s2) < min(e1, e2)
+    ]
+    return tuple(_merged_blocks(tuple(out)))
+
+
+def _restricts(
+    r: _Ruler,
+    blocks: list[tuple[int, int]],
+    other: _Ruler,
+    other_blocks: list[tuple[int, int]],
+) -> bool:
+    """Does the calendar behind ``r`` (its merged intraday ``blocks``) refuse ANY instant the
+    calendar behind ``other`` (``other_blocks``) works? False means intersecting with it
+    changes nothing, so the other calendar can stand for the intersection by identity."""
+    if not other.weekdays <= r.weekdays:
+        return True
+    if any(not any(s >= bs and e <= be for bs, be in blocks) for s, e in other_blocks):
+        return True
+    # a dated exception the other side works and this one does not
+    if any(other.is_worked(h) and not r.is_worked(h) for h in r.holiday_seq):
+        return True
+    return any(not r.is_worked(x) for x in other.extra)
+
+
+_INTERSECTIONS: dict[
+    tuple[int, int, int], tuple[weakref.ref[Calendar], weakref.ref[Calendar], Calendar]
+] = {}
+
+
+def _calendar_intersection(task_cal: Calendar, crew_cal: Calendar, day_start_tod: int) -> Calendar:
+    """The calendar a WORK booking runs on when its task carries a calendar of its own AND its
+    crew carries one (ADR-0503, R-58): an instant is working on the intersection iff it is
+    working on BOTH — MS Project's rule for a task calendar meeting a resource calendar unless
+    the task ignores resource calendars. Weekdays intersect, the intraday blocks intersect
+    pairwise, a holiday of either is a holiday, and an extra working day survives only when both
+    calendars work it.
+
+    Measured on Hard_File UID 94 (an 8-hour task on ``Standard+Sat.`` — 07:00-12:00,
+    12:30-19:00, 19:30-23:30, Monday to Saturday — with the 16-hour Customer Service Team,
+    06:00-12:00 + 13:00-23:00, Monday to Friday): from 08:00 the task calendar alone reads a
+    16:30 finish where MS Project stores 17:00 — the common afternoon begins at 13:00 — and on
+    the ``updated`` snapshot the task calendar alone put its late finish on a SATURDAY night
+    (08-15 23:30) where MS Project's is the Friday 23:00 the crew works to; on the
+    intersection its Start, Finish, LateStart, LateFinish and TotalSlack are the stored five.
+
+    Returns one of the two calendars ITSELF when the other refuses nothing it works — a
+    24-hour task calendar yields the crew's exactly (Hard_File UID 14, as ADR-0474 already had
+    it), a night-shift task inside a round-the-clock crew keeps its own — so the identity-keyed
+    rulers, the same-pattern test and the plan's dedup key all keep working by object. Falls
+    back to the TASK calendar when the two share no working time at all (a booking MS Project
+    refuses to schedule; the engine keeps ADR-0474's approximation there rather than invent a
+    calendar — UNVERIFIED against the reference tool, no witness in the corpus). A derived
+    calendar carries every intraday block explicitly, so a single common block keeps its own
+    start (the ruler's single-block fallback would re-anchor it at the project's day start),
+    the task calendar's duration-scale settings, uid ``-2`` and both names. Memoized per
+    (task calendar, crew calendar) OBJECT pair and day start, retired with either object —
+    never hashed, never stored, never in ``Schedule.calendars``."""
+    key = (id(task_cal), id(crew_cal), day_start_tod)
+    hit = _INTERSECTIONS.get(key)
+    if hit is not None and hit[0]() is task_cal and hit[1]() is crew_cal:
+        return hit[2]
+    made = _intersect_calendars(task_cal, crew_cal, day_start_tod)
+    _INTERSECTIONS[key] = (weakref.ref(task_cal), weakref.ref(crew_cal), made)
+    weakref.finalize(task_cal, _INTERSECTIONS.pop, key, None)
+    weakref.finalize(crew_cal, _INTERSECTIONS.pop, key, None)
+    return made
+
+
+def _intersect_calendars(a: Calendar, b: Calendar, day_start_tod: int) -> Calendar:
+    """:func:`_calendar_intersection` without the memo."""
+    ra, rb = _ruler(a), _ruler(b)
+    if ra.is_24x7:
+        return b
+    if rb.is_24x7 or a is b:
+        return a
+    blocks_a = _merged_blocks(ra.segments(day_start_tod))
+    blocks_b = _merged_blocks(rb.segments(day_start_tod))
+    if not _restricts(rb, blocks_b, ra, blocks_a):
+        return a
+    if not _restricts(ra, blocks_a, rb, blocks_b):
+        return b
+    weekdays = ra.weekdays & rb.weekdays
+    segments = _blocks_intersection(tuple(blocks_a), tuple(blocks_b))
+    if not weekdays or not segments:
+        return a  # no common working time: MS Project cannot schedule this booking either
+    holidays = sorted(
+        {
+            d
+            for d in (*ra.holiday_seq, *rb.holiday_seq)
+            if d.weekday() in weekdays and not (ra.is_worked(d) and rb.is_worked(d))
+        }
+    )
+    extra = sorted(
+        {
+            d
+            for d in (*ra.extra, *rb.extra)
+            if d.weekday() not in weekdays and ra.is_worked(d) and rb.is_worked(d)
+        }
+    )
+    return Calendar(
+        uid=-2,
+        name=f"{a.name} ∩ {b.name}",
+        working_minutes_per_day=sum(e - s for s, e in segments),
+        declared_minutes_per_day=a.declared_minutes_per_day,
+        minutes_per_week=a.minutes_per_week,
+        days_per_month=a.days_per_month,
+        work_weekdays=tuple(sorted(weekdays)),
+        holidays=tuple(holidays),
+        working_days=tuple(extra),
+        day_segments=segments,
+    )
+
+
 def working_minutes_between(cal: Calendar, start: dt.datetime, finish: dt.datetime) -> int:
     """Working minutes of ``cal`` inside the recorded window ``[start, finish]`` — the ruler the
     plan builder measures a recorded span (ADR-0487) and a split's gap (ADR-0491) with, given a
@@ -1343,11 +1498,13 @@ def booking_calendar(
     """The calendar a booking of ``task`` is scheduled on — the rule ``_task_shape`` gives its
     legs (ADR-0474), stated once so the planned-value proration measures a baseline-cost block
     with the same ruler (ADR-0492): the resource's own calendar when the file carries one whose
-    pattern differs from the project's and the task does not ignore resource calendars; the
-    task's own calendar when it has one that is neither the project pattern nor 24x7 (ADR-0474's
-    approximation of MS Project's intersection — R-58); else the project calendar. A resource
-    the schedule does not carry schedules on the project calendar. Pass ``by_uid`` (the
-    schedule's calendars keyed by uid) when calling per booking."""
+    pattern differs from the project's and the task does not ignore resource calendars; when
+    the task ALSO has a calendar of its own that is not the project pattern, the INTERSECTION
+    of the two for a WORK crew that names a calendar (ADR-0503, R-58 — the crew calendar
+    itself under a 24-hour task calendar), the task calendar for a material / cost booking or
+    a crew the file names no calendar for; else the project calendar. A resource the schedule
+    does not carry schedules on the project calendar. Pass ``by_uid`` (the schedule's
+    calendars keyed by uid) when calling per booking."""
     calendars = {c.uid: c for c in schedule.calendars} if by_uid is None else by_uid
     project = schedule.calendar
     project_key = project.working_pattern_key()
@@ -1364,7 +1521,12 @@ def booking_calendar(
     )
     if rcal is None or rcal.working_pattern_key() == project_key:
         rcal = project
-    return rcal if task_cal is None or _is_24x7(task_cal) else task_cal
+    if task_cal is None:
+        return rcal
+    if res is not None and res.type is ResourceType.WORK and res.calendar_uid is not None:
+        ps = schedule.project_start
+        return _calendar_intersection(task_cal, rcal, ps.hour * 60 + ps.minute)
+    return rcal if _is_24x7(task_cal) else task_cal
 
 
 def _advance_wall(

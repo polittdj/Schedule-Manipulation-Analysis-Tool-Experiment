@@ -435,6 +435,42 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-17 — a row's WITNESS is testimony too: read the activity's own XML before pricing the rule it is said to prove (ADR-0503, R-58 closed)
+
+- R-58 named Hard_File UID 14 "on `Standard+Sat.` with the 16-hour crew". UID 14 is on `24 Hours`
+  in every snapshot — the one intersection the engine already modelled exactly, which is why the
+  kickoff itself warned it "already spans its stored dates". The task on `Standard+Sat.` is UID
+  94, an activity nobody had looked at. **The lesson: a register row's named activity is a claim
+  about the file, and the census that finds the real witness costs one XML dump.** R-61's row was
+  right about the arithmetic and wrong about the mechanism; R-58's was right about the mechanism
+  and wrong about the activity. Both cost nothing to check and both had been repeated verbatim
+  through four ADRs and three kickoffs.
+- **A five-value oracle is worth more than a finish.** UID 94's stored Start, Finish, LateStart,
+  LateFinish and TotalSlack on `updated` are five independent readings of the same rule, and the
+  late finish was the decisive one: the task calendar alone put it on a Saturday the crew never
+  works. A rule that only had the 16:30 → 17:00 finish to show would have been thirty minutes of
+  evidence; the Friday-not-Saturday late finish is the weekday intersection observed.
+- **The rig was wrong twice before the engine was, and the first run said so.** "150 minutes" was
+  the start-slack gap, not the finish-slack gap (120); "301 non-24-hour tasks" was 294 plus UID
+  14's seven. Both expectations were hand-computed from a mental model of the numbers; both were
+  recomputed from the rig's own values and pinned as computations. ADR-0491's "the rig can be
+  wrong before the engine is" is not a one-off.
+- **A survivor that is not dead code is a missing pin, and the case it names is the finding.**
+  M06b — the identity shortcut for a task calendar that *contains* the crew's — survived the first
+  battery. It is not inert (a Monday–Saturday task calendar over an ordinary Monday–Friday crew
+  fires it) and its effect is real (the leg is the crew's real calendar object, the thing R-59's
+  disclosure will name), but nothing pinned it. The pin that killed it is also the only test of
+  that ordinary case.
+- **An instrument's own name-collision is the corpus lesson wearing new clothes.** ADR-0501 warned
+  that `Large Test File.mpp` ≠ `Large_Test_File.mpp`; the first conversion loop sanitised both to
+  one name and silently skipped the second. Counting artefacts (28 for 29 inputs) caught it —
+  ADR-0498's "assert the artefact exists, never the exit code" — and the census was re-run on all
+  29. Every sweep's population is part of its claim.
+- **Name the residual with its mechanism, not its symptom.** UID 94's 150-minute float gap on the
+  base snapshot is not "R-58 partly done"; it is milestone 147's Saturday late start on the elapsed
+  axis, inherited through 157, and ADR-0474's backward arithmetic reproduces the stored value the
+  moment it is fed the Saturday. That is a row of its own (R-67) with a first step, not a footnote.
+
 ### 2026-09-16 (c) — a residual must name the POPULATION it was measured against, or it will be read as a statement about the world (ADR-0501, R-61 settled)
 
 - ADR-0500 closed R-61 on the **15 goldens** and wrote its residual as *"only a production IMS can
