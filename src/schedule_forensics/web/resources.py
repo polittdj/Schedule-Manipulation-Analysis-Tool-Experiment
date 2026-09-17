@@ -370,9 +370,9 @@ def _resources_body(st: SessionState, granularity: str = "month") -> str:
 <div class=panel data-export="{export_url}">{roster_head}
 {take(roster_take)}
 <p class=muted>Every resource in the schedule — assigned or not — sorted by total work; unassigned
-resources show zero work. Max units is the file's own figure at the status date, read from the
-resource's availability table where the file carries one (&mdash; when the file does not state
-one; capacity then assumes 1 full unit, see the explainer). Over-allocated {unit}s are the count of
+resources show zero work. Max units is the file's own figure at the status date (the row of its
+availability table in force then, where the file carries one; &mdash; when the file does not state
+one, and capacity then assumes 1 full unit, see the explainer). Over-allocated {unit}s are the count of
 {unit}s booked beyond capacity.</p>
 {roster}</div>
 <div class=panel data-export="{export_url}">{util_head}
