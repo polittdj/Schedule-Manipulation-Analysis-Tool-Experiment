@@ -238,10 +238,11 @@ after the task's calendar admits it. The rules were derived from the stored date
 
 | File | Stored finish | CPM finish (before → after) | Finish within a day (of 110 / 126) | Critical agreed | Stored slack exact |
 |---|---|---|---|---|---|
-| Hard_File | 2026-11-05 | +42.0 d → −1.0 d → **exact** (ADR-0491) | 103 (was 92) | 108 (was 54) | 5 / 76 |
-| Hard_File_updated | 2026-11-05 | +31.2 d → −1.0 d → **exact** (ADR-0491) | 108 (was 100) | 110 (was 59) | 60 / 70 |
-| Hard_File_updated2 | 2026-11-06 | +34.8 d → −1.0 d → **exact** (ADR-0491) | 109 (was 93) | 107 (was 80) | 36 / 76 |
-| Hard_File_updated3 | 2026-12-12 | +18.7 d → −6.0 d (R-55) → −13 d → **exact** (ADR-0487) | 106 (was 42) | 103 (was 65) | 46 / 68 |
+| Hard_File | 2026-11-05 | +42.0 d → −1.0 d → **exact** (ADR-0491) | **110** (ADR-0505; was 103, was 92) | **110** (ADR-0505; was 108, was 54) | **101 / 110** (ADR-0505; was 39 / 110 on the same instrument) |
+| Hard_File_updated | 2026-11-05 | +31.2 d → −1.0 d → **exact** (ADR-0491) | **110** (ADR-0505; was 108, was 100) | 110 (was 59) | 101 / 103 |
+| Hard_File_updated2 | 2026-11-06 | +34.8 d → −1.0 d → **exact** (ADR-0491) | **110** (ADR-0505; was 109, was 93) | 107 (was 80) | 36 / 76 |
+| Hard_File_updated3 | 2026-12-12 | +18.7 d → −6.0 d (R-55) → −13 d → **exact** (ADR-0487) | **110** (ADR-0505; was 106, was 42) | 103 (was 65) | 46 / 68 |
+| Hard_File_updated3_24hr | 2026-11-19 01:00 | −2.0 d → **exact** (ADR-0505) | 109 | 70 | 7 / 19 (was 4) |
 | Project2 | 2027-09-14 | −15 d → exact | 126 (was 66) | 124 (was 120) | **65 / 65** (was 7) |
 | Project5 | 2028-01-26 | −1 d → exact | 126 (was 75) | 126 (was 124) | **95 / 95** (was 8) |
 | Large Test File / File2 | 2028-09-29 / 2029-04-20 | unmoved | 1 666 / 1 687 (ADR-0491; were 1 558 / 1 563) | 1 721 / 1 717 (were 1 682 / 1 686) | 865 / 668 (were 842 / 655) |
@@ -260,6 +261,22 @@ their recorded windows since ADR-0487 (R-56 closed). Slack is measured on the TA
 178's stored 240 minutes are project-calendar minutes between Monday 17:00 and Tuesday 13:00; its
 16-hour crew calendar would read 720. The §E consequences: Net Finish Impact reads Fuse's own −134
 (the CPM finishes are the stored finishes), and the SN04 96↔99 membership swap is closed.
+
+**ADR-0505 (R-64, R-66 — 2026-09-17): a zero-duration task carries its driving predecessor's wall
+instant.** The last per-activity disagreements on the four Standard-calendar Hard_File snapshots were
+one class: a project-calendar MILESTONE after a crew-calendar activity. The project axis is integer
+working minutes of the project calendar, on which Monday 17:00 and Tuesday 08:00 are one minute; a
+milestone stored at Tuesday 08:00 (UID 181, where its 16-hour crew finished) kept only the minute, and
+its crew successor (189) was started from the minute's end-of-day rendering — fifteen hours early,
+then a working day early once the shortfall crossed 08-14 17:00, all the way down 384 → … → 404 (the
+row had blamed an "external link" on milestone 387; no such link exists in any of the 44 corpus
+files, and −65535 is MS Project's unassigned-work placeholder on the milestone's own assignment).
+The milestone now carries the instant (its integer minute unchanged; every single-calendar file
+byte-identical), and a crew successor starts from it: **every one of Hard_File's 110 activities
+finishes on its stored instant**, its stored slack is exact on 101 of 110 and its Critical flag on
+110 of 110; the 24-hour snapshot's project finish is exact; Project2 / Project5 and the Large Test
+Files did not move. Pinned by the same oracle (raised floors, a stored-slack floor per row, the
+24-hour snapshot's own row) and by `tests/engine/test_milestone_carried_instant.py`.
 
 ## Residuals — what was closed, and what remains
 

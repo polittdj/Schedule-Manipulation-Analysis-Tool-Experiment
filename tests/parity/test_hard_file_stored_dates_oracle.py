@@ -44,12 +44,31 @@ Critical agreement 80 -> 107), updated3 104 -> 106 (UID 403 and 404 exact, 403's
 activity anywhere moved AWAY from its stored finish except UID 5306's chain on the leveled SSI
 golden, by the 8 minutes MS Project's own arithmetic carries (four 2:36 daily gaps) on a start
 already a day late. Hard_File's UID 14 now spans its stored 10-26 20:00 -> 10-29 11:00 exactly;
-UID 401 spans 5.6 days like MS Project and sits one working day early because milestone 387
-upstream hangs on an external predecessor the MSPDI cannot resolve (UID -65535) — the chain
-400 -> 404 inherits that day, and it is not a split.
+UID 401 spans 5.6 days like MS Project; its chain sat one working day early, registered as R-64
+with a mechanism ("milestone 387 hangs on an external predecessor, UID -65535") the file refutes:
+no external link exists in any golden, and -65535 is the ResourceUID of MS Project's unassigned-
+work placeholder on the milestone's own assignment.
+
+ADR-0505 (R-64) found and carried the instant the axis lost: a project-calendar MILESTONE between
+two crew-calendar activities. UID 178's 16-hour crew finishes Tuesday 08-04 08:00; milestone 181
+is stored there; the integer project axis cannot tell that minute from Monday 17:00, and the crew
+successor 189 was started from the minute's end-of-day rendering — fifteen hours early, then a
+working day early once 187's 9-hour shortfall crossed 08-14 17:00 (184 -> 148 -> 384 landed on
+the Friday, MS Project on the Monday) — all the way down 385 -> 386 -> 387 -> 400 -> 404. A
+zero-duration project-axis task now carries its driving predecessor's wall instant (its own
+integer minute unchanged), and a crew successor starts from it. Re-measured on every golden:
+Hard_File EVERY activity finishes on its stored instant (finish-within-a-day 103 -> 110, exact
+40 -> 110, stored slack exact 39 -> 101 of 110, Critical 108 -> 110); updated 108 -> 110;
+updated2 109 -> 110; updated3 106 -> 110; the 24-hour snapshot's project finish 11-17 01:00 ->
+the stored 11-19 01:00 EXACT (finish-within-a-day 100 -> 109, stored slack 4 -> 7 of 19: UID
+407's 1,920 and UIDs 411 / 155's -4,320 now exact); Project2 / Project5 / the Large Test Files
+unmoved (two milestones there, UIDs 168 and 7107, now sit ON their predecessor's finish instead
+of the lunch hour after it — the contiguous projection's documented drift, no longer displayed).
 
 Red first (pre-ADR-0474 engine): Hard_File finish +42.0 d, critical agreement 54 / 110;
-Project2 finish 2027-08-30 vs stored 09-14, stored slack exact on 7 / 65.
+Project2 finish 2027-08-30 vs stored 09-14, stored slack exact on 7 / 65. Red first
+(pre-ADR-0505 engine): every floor below at its new value, and every dated pin in
+test_hard_file_crews_and_leveling_delays_are_what_the_engine_honours, by name.
 """
 
 from __future__ import annotations
@@ -114,17 +133,47 @@ def _census(sch: Schedule, res: CPMResult) -> dict[str, int]:
 # --- Hard_File: 16-hour and 24-hour crews, twelve leveled activities ----------------------------
 
 _HARD_FILE = [
-    # rel, stored finish, |finish gap| <= days, finish-within-a-day floor, critical floor
-    # (ADR-0491: every snapshot's project finish is EXACT once the leveling splits are read)
-    ("fuse_hardfile/Hard_File.mspdi.xml.gz", dt.datetime(2026, 11, 5, 12, 0), 0, 103, 108),
-    ("fuse_hardfile/Hard_File_updated.mspdi.xml.gz", dt.datetime(2026, 11, 5, 12, 0), 0, 108, 110),
-    ("fuse_hardfile/Hard_File_updated2.mspdi.xml.gz", dt.datetime(2026, 11, 6, 17, 0), 0, 109, 107),
+    # rel, stored finish, |finish gap| <= days, finish-within-a-day floor, critical floor,
+    # stored-slack-exact floor
+    # (ADR-0491: every snapshot's project finish is EXACT once the leveling splits are read;
+    # ADR-0505: every activity of the four Standard-calendar snapshots finishes within a day —
+    # 110 of 110 — and the 24-hour snapshot's finish is EXACT too, its own row below)
+    ("fuse_hardfile/Hard_File.mspdi.xml.gz", dt.datetime(2026, 11, 5, 12, 0), 0, 110, 110, 101),
+    (
+        "fuse_hardfile/Hard_File_updated.mspdi.xml.gz",
+        dt.datetime(2026, 11, 5, 12, 0),
+        0,
+        110,
+        110,
+        101,
+    ),
+    (
+        "fuse_hardfile/Hard_File_updated2.mspdi.xml.gz",
+        dt.datetime(2026, 11, 6, 17, 0),
+        0,
+        110,
+        107,
+        36,
+    ),
     (
         "fuse_hardfile/Hard_File_updated3.mspdi.xml.gz",
         dt.datetime(2026, 12, 12, 17, 0),
         0,
-        106,
+        110,
         103,
+        46,
+    ),
+    # the 24-hour snapshot (its crews and the post-launch chain on the 24 Hours calendar):
+    # UID 156 "Post Launch Preparation COMPLETE" is stored on a SUNDAY, 11-15 17:00, where its
+    # crew predecessor finished; carrying that instant puts the chain 36 -> 9 -> 144 -> 145 ->
+    # 146 -> 411 / 155 on its stored dates and the project finish on the stored 11-19 01:00
+    (
+        "fuse_hardfile/Hard_File_updated3_24hr.mspdi.xml.gz",
+        dt.datetime(2026, 11, 19, 1, 0),
+        0,
+        109,
+        70,
+        7,
     ),
 ]
 
@@ -154,9 +203,16 @@ def test_updated3_finishes_where_ms_project_finishes_once_recorded_bookings_are_
     assert census["tf_exact"] >= 46 and census["tf_n"] == 68
 
 
-@pytest.mark.parametrize(("rel", "stored", "days", "finish_floor", "critical_floor"), _HARD_FILE)
+@pytest.mark.parametrize(
+    ("rel", "stored", "days", "finish_floor", "critical_floor", "tf_floor"), _HARD_FILE
+)
 def test_hard_file_finish_is_within_the_row_tolerance_of_ms_project(
-    rel: str, stored: dt.datetime, days: int, finish_floor: int, critical_floor: int
+    rel: str,
+    stored: dt.datetime,
+    days: int,
+    finish_floor: int,
+    critical_floor: int,
+    tf_floor: int,
 ) -> None:
     sch, res = _load(rel)
     assert sch.project_finish == stored  # the stored finish IS the file's FinishDate
@@ -166,6 +222,7 @@ def test_hard_file_finish_is_within_the_row_tolerance_of_ms_project(
     assert census["n"] == 110
     assert census["finish_1d"] >= finish_floor, census
     assert census["critical"] >= critical_floor, census
+    assert census["tf_exact"] >= tf_floor, census
 
 
 def test_hard_file_crews_and_leveling_delays_are_what_the_engine_honours() -> None:
@@ -180,19 +237,46 @@ def test_hard_file_crews_and_leveling_delays_are_what_the_engine_honours() -> No
     assert crews[1] == 3 and crews[4] == 6 and crews[6] == 8
     assert len(res.leveling_driven) == 12 and 403 in res.leveling_driven
     # UID 403: the calendar admits it at 08:00 the working day after its predecessor's
-    # finish and 25 d 7 h of ELAPSED delay put it at 15:00 on the Monday — MS Project's own
+    # finish and 25 d 7 h of ELAPSED delay put it at 15:00 on the Tuesday — MS Project's own
     # arithmetic (its 402 finishes Thursday 08-27, 08-28 08:00 + 25 d 7 h = the stored Tuesday
-    # 09-22 15:00). The engine's chain sits one working day earlier from milestone 387, whose
-    # only predecessor is an external link the MSPDI cannot resolve (UID -65535); UID 401's span
-    # itself (5.6 days for 40 h of work) is the split ADR-0491 reads, no longer a residual.
+    # 09-22 15:00). UID 401's span itself (5.6 days for 40 h of work) is the split ADR-0491
+    # reads. The chain sat one working day early until ADR-0505 (R-64): milestone 181 is
+    # stored at Tuesday 08-04 08:00, where its 16-hour crew (UID 178) finished; the project
+    # axis rendered that minute as Monday 17:00 and started the crew successor 189 there.
     admitted = _offset_to_wall(
         sch.project_start, res.timing(402).early_finish, sch.calendar, role="start"
     )
     assert sch.task_by_id(403).leveling_delay_minutes == 36420
-    assert admitted + dt.timedelta(minutes=36420) == dt.datetime(2026, 9, 21, 15, 0)
-    assert res.timing(403).early_start_wall == dt.datetime(2026, 9, 21, 15, 0)
-    assert res.timing(401).early_start_wall == dt.datetime(2026, 8, 20, 17, 0)
-    assert res.timing(401).early_finish_wall == dt.datetime(2026, 8, 26, 8, 0)
+    assert admitted + dt.timedelta(minutes=36420) == dt.datetime(2026, 9, 22, 15, 0)
+    assert res.timing(403).early_start_wall == dt.datetime(2026, 9, 22, 15, 0)
+    assert res.timing(401).early_start_wall == dt.datetime(2026, 8, 21, 17, 0)
+    assert res.timing(401).early_finish_wall == dt.datetime(2026, 8, 27, 8, 0)
+    # the R-64 chain, from the carried instant down to the milestone that closes it — every
+    # one on its stored Start / Finish (the carried milestones expose the instant on their
+    # early walls; the crew activities on theirs; UID 384 is a Standard-calendar activity,
+    # read through the axis), and the stored slack of the chain's head, 240 minutes
+    assert res.timing(178).early_finish_wall == dt.datetime(2026, 8, 4, 8, 0)
+    assert res.timing(181).early_start_wall == dt.datetime(2026, 8, 4, 8, 0)
+    assert res.timing(181).early_finish_wall == dt.datetime(2026, 8, 4, 8, 0)
+    assert res.timing(189).early_start_wall == dt.datetime(2026, 8, 4, 8, 0)
+    assert res.timing(189).early_finish_wall == dt.datetime(2026, 8, 4, 17, 0)
+    assert res.timing(189).total_float == sch.task_by_id(189).stored_total_float_minutes == 240
+    assert res.timing(187).early_finish_wall == dt.datetime(2026, 8, 14, 17, 0)
+    assert res.timing(184).early_finish_wall == dt.datetime(2026, 8, 14, 17, 0)
+    assert res.timing(148).early_finish_wall == dt.datetime(2026, 8, 14, 17, 0)
+    assert _offset_to_wall(
+        sch.project_start, res.timing(384).early_start, sch.calendar, role="start"
+    ) == dt.datetime(2026, 8, 17, 8, 0)
+    assert res.timing(387).early_finish_wall == dt.datetime(2026, 8, 18, 17, 0)
+    assert res.timing(400).early_start_wall == dt.datetime(2026, 8, 18, 17, 0)
+    assert res.timing(403).early_finish_wall == dt.datetime(2026, 10, 8, 15, 0)
+    assert res.timing(404).early_finish_wall == dt.datetime(2026, 10, 8, 15, 0)
+    # the other three handoffs the census found on this file: milestones 216 and 381 hand
+    # their crew successors 241 and 396 the stored instants; every one of the 110 activities
+    # now finishes on its stored Finish (the row's floor above is 110)
+    assert res.timing(241).early_start_wall == dt.datetime(2026, 8, 21, 12, 0)
+    assert res.timing(396).early_start_wall == dt.datetime(2026, 8, 24, 13, 0)
+    assert res.timing(396).early_finish_wall == dt.datetime(2026, 8, 25, 12, 0)
     # UID 14 (a 200 % booking on a 24-hour task calendar, a 16-hour crew, split by leveling):
     # the stored span, exactly
     assert res.timing(14).early_start_wall == dt.datetime(2026, 10, 26, 20, 0)

@@ -435,6 +435,52 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-17 (c) — a register row can be RIGHT about the arithmetic and WRONG about the mechanism twice over: the "external link" was a resource placeholder, and the head was nine links higher (ADR-0505, R-64 and R-66 closed)
+
+- **Read the activity's own XML before pricing the rule — again.** R-64 said milestone 387 hangs on
+  `PredecessorUID` −65535. One dump of 387's element showed its only link is UID 386; a census of every
+  `PredecessorLink` in the 44 corpus files (33,588 links) found no external link anywhere. −65535 is the
+  `ResourceUID` of MS Project's unassigned-work placeholder on the milestone's own ASSIGNMENT — a number
+  ADR-0278 had already named in July. The row read an assignment as a link, and three documents (an ADR,
+  an oracle's comments, the kickoff) repeated it. **A number that appears in the file is not evidence of
+  the mechanism it is attached to; the element it sits in is.**
+- **Walk the engine's own network to the first disagreement; never trust the row's head.** The chain
+  400 → 404 was a day early as the row said, but so were 384, 386, 385, 148, 184, 187, 188 and 189 above
+  387 — the first activity to disagree with MS Project was milestone 181, nine links above 387 and
+  fifteen above 404.
+  Printing engine-vs-stored for every predecessor upstream (the "print the plan, sorted" lesson applied
+  to a chain) found it in one pass; the row's "milestone 387" would have had a session patching the
+  wrong node.
+- **A lost wall instant is a class, not a file.** The project axis cannot tell Friday 17:00 from Monday
+  08:00; a project-axis milestone driven by a crew that finished at 08:00 handed its crew successor the
+  17:00 rendering. Censused on the engine's own plans: 230 such milestones over the corpus, 111 rendered
+  off their stored instant, 22 crew successors started wrong — and R-66 (381 → 396 → 398, filed as
+  "snapshot-specific, upstream of leveling") was the same class. **Two rows, one mechanism: close both,
+  and say so in both.**
+- **A test that cannot fail on the pristine tree is a control, and must say so or be rebuilt.** The
+  free-float pin was written on a CREW task, whose slack axis is the project calendar — on which the two
+  instants are one minute, so it was green before the fix. Rebuilt on a TASK calendar (the axis is the
+  crew's) it went red by name. The two gating cases (`dur == 0`, `finish == start`) are controls by
+  construction and are labelled as such: they exist for the mutants that drop the conditions.
+- **Never edit an instrument a measurement is using — paid for in cash this session.** The mutation
+  battery was launched in the background and the oracle re-pinned in the same round; the battery's
+  control went red and its rows carried two generations of parametrize ids. The whole run was
+  discarded and re-run after every test edit was final. Sequence the edits BEFORE the battery, or run
+  the battery on a snapshot of the tests too.
+- **A guard that provably cannot change an outcome is dead code — delete it, and say why in the
+  docstring.** The projection guard (`_wall_to_offset(carried) == es`) holds for every candidate by
+  construction; the stored-start FLOOR candidate needs a task without predecessors while the carry
+  needs one with. Both were removed before shipping; the docstring records the invariant that makes
+  the guard unnecessary.
+- **Name every "away" mover's mechanism before the ADR.** 41 finishes moved away from the stored
+  instant across the corpus: 7 are two milestones now sitting ON their predecessor's finish instead of
+  the lunch hour after it (the contiguous projection's documented drift), 34 are one chain below an
+  activity MS Project starts out of sequence (ADR-0391's floor keeps the logic start, by design). A
+  toward/away count without the mechanisms would have read as a regression.
+- **A milestone sits at the driving instant, unsnapped — from the corpus, not from belief.** updated2's
+  387 at 23:00 on the Standard calendar, updated3's at 22:24, the 24-hour snapshot's 156 on a Sunday:
+  the rule was written from stored instants no snap or rounding would produce.
+
 ### 2026-09-17 (b) — a disclosure predicate that reads one field cannot see a rule that reads another, and a rig built on the engine's own maps still owes the population filter, every time (ADR-0504, R-59 closed)
 
 - **An over-claimed LIMITATION is as false as an over-claimed rule.** The Working-calendar panel

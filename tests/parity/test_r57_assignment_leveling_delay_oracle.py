@@ -18,13 +18,17 @@ Pushing an absorbing leg — the obvious reading of the row — was tried first 
 Large_Test_File 93 of its 1,666 finishes-within-a-day and UIDs 5266 / 5267 / 5270 their EXACT
 finishes. That regression is the reason the type guard exists.
 
-**The row's oracle is reached on ``Hard_File_updated``, not on ``Hard_File``, and the
-difference is not this rule's.** On updated, UID 398 lands on 2026-08-27 11:59 exactly. On the
-base snapshot its predecessor's predecessor, UID 381, finishes a full day early (2026-08-20
-11:59 against the stored 08-21 11:59); 381 -> 396 -> 398 carries that forward, and 398 then
-lands early by exactly the 240 working minutes 396 is early by. ADR-0474's task-delay
-arithmetic is EXACT on both snapshots when fed the stored predecessor finish, so the residual
-is upstream of leveling entirely — registered as its own row, not hidden in this one.
+**The row's oracle was reached on ``Hard_File_updated`` first, not on ``Hard_File``, and the
+difference was not this rule's.** On updated, UID 398 lands on 2026-08-27 11:59 exactly. On the
+base snapshot its predecessor's predecessor, UID 381, finished a full day early (2026-08-20
+11:59 against the stored 08-21 11:59); 381 -> 396 -> 398 carried that forward, and 398 then
+landed early by exactly the 240 working minutes 396 was early by. ADR-0474's task-delay
+arithmetic was EXACT on both snapshots when fed the stored predecessor finish, so the residual
+was upstream of leveling entirely — registered as R-66, not hidden in this one. ADR-0505 (R-64)
+closed R-66 with it: 381 is a project-calendar MILESTONE after a crew-calendar activity (UID
+321, finishing Friday 08-21 11:59 on its crew's calendar); the integer project axis rendered
+that minute a day earlier, and the milestone now carries its predecessor's instant. Both
+snapshots reach the row's oracle, to the minute, with 381 / 396 / 398's stored slacks exact.
 
 Red first (pre-ADR-0502): ``Assignment`` refuses ``leveling_delay_minutes``, ``CPMResult``
 carries no ``assignment_leveling_driven``, Hard_File_updated UID 398 reads 2026-08-26 17:00
@@ -120,22 +124,24 @@ def test_uid_398_lands_on_ms_projects_own_finish_once_the_bookings_delay_is_read
     assert _finish(UPDATED, 381) == _stored_finish(UPDATED, 381)
 
 
-def test_on_the_base_snapshot_the_residual_is_uid_381_and_is_measured_not_asserted() -> None:
-    """The same activity on the base snapshot is NOT exact, and the gap is not this rule's: UID
-    381 finishes a day early there, 396 inherits it, and 398's finish is early by exactly the
-    working minutes 396's start is early by. Computed, not hand-copied — if either displacement
-    moves, this fails."""
-    sch, _ = _load(HARD_FILE)
+def test_on_the_base_snapshot_uid_381_and_its_chain_are_exact_since_the_carried_instant() -> None:
+    """R-66, closed by ADR-0505 (R-64). Until then the same activity on the base snapshot was NOT
+    exact, and the gap was not this rule's: milestone 381 read a day early (2026-08-20 11:59
+    against the stored 08-21 11:59), 396 inherited it and 398's finish was early by exactly the
+    240 working minutes 396's start was. The milestone now carries the Friday 11:59 its crew
+    predecessor 321 finished at, and the chain's three displacements are zero — computed, not
+    hand-copied, so a regression of the carried instant fails here by name too."""
+    sch, res = _load(HARD_FILE)
     tod0 = sch.project_start.hour * 60 + sch.project_start.minute
-    assert _finish(HARD_FILE, 381) == dt.datetime(2026, 8, 20, 11, 59)
-    assert _stored_finish(HARD_FILE, 381) == dt.datetime(2026, 8, 21, 11, 59)
-    gap_396 = _wall_minutes_between(
-        _finish(HARD_FILE, 396), _stored_finish(HARD_FILE, 396), sch.calendar, tod0
-    )
-    gap_398 = _wall_minutes_between(
-        _finish(HARD_FILE, 398), _stored_finish(HARD_FILE, 398), sch.calendar, tod0
-    )
-    assert gap_396 == gap_398 == 240, (gap_396, gap_398)
+    assert _finish(HARD_FILE, 321) == dt.datetime(2026, 8, 21, 11, 59)
+    assert res.timing(381).early_finish_wall == dt.datetime(2026, 8, 21, 11, 59)
+    assert _finish(HARD_FILE, 381) == _stored_finish(HARD_FILE, 381)
+    for uid in (381, 396, 398):
+        gap = _wall_minutes_between(
+            _finish(HARD_FILE, uid), _stored_finish(HARD_FILE, uid), sch.calendar, tod0
+        )
+        assert gap == 0, (uid, gap)
+        assert res.timing(uid).total_float == sch.task_by_id(uid).stored_total_float_minutes
 
 
 def test_uid_188s_delayed_crew_moves_from_fifteen_hours_early_to_inside_two_minutes() -> None:
