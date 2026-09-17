@@ -18895,4 +18895,4 @@ the START-slack gap, the finish-slack gap is 120; "301 non-24-hour" was 294 + 7)
 
 Shipped ADR-0503, the two test modules (11 + 20 pins), the dated re-pin, the closed R-58 row, the new
 R-67 row, and **v1.0.269** with the wheel and nine installers rebuilt in lockstep (MPXJ ref
-`163d1942`, on `origin/main`). Draft PR the draft PR opened from this branch (its number is recorded in the follow-up docs-only commit) — the operator merges.
+`163d1942`, on `origin/main`). Draft PR [#693](https://github.com/polittdj/Schedule-Manipulation-Analysis-Tool-Experiment/pull/693), head `b5c947a6` — the operator merges.
