@@ -15,10 +15,15 @@ wider inference is priced in the ADR, not made here).
 Why it matters (Law 2): ``effective_total_float`` prefers the source tool's STORED, progress-aware
 slack and falls back to the engine's pure-logic CPM float only when the file carried none — so the
 zero-slack subset, and ONLY that subset, was silently scored on the other basis. On every fixture in
-the repo but one the two bases agree to the minute for those tasks (Fuse's Zero Days Float 66 / 2
-on the Large Test Files was already exact); on ``Hard_File`` they do not: UID 241 recomputes to
+the repo but one the two bases agreed to the minute for those tasks (Fuse's Zero Days Float 66 / 2
+on the Large Test Files was already exact); on ``Hard_File`` they did not: UID 241 recomputed to
 480 min and UID 249 to 360 min where MS Project stored 0 — the red-first this module was observed
-to fail on (2026-09-14), on a real file, before the importer changed.
+to fail on (2026-09-14), on a real file, before the importer changed. Those two recomputed floats
+were the R-64 chain's artefact: milestone 216 hands UID 241 a Friday-noon instant the project axis
+rendered a day early, and 249 follows it. ADR-0505 carries the instant, and the two bases now agree
+on every stored-zero Critical activity of every golden (34 on Hard_File) — the engine's own float
+for 241 and 249 is 0. The inference is still what makes the STORED basis a zero; its red-first
+lives in the synthetic cases below, which no engine change can touch.
 """
 
 from __future__ import annotations
@@ -97,18 +102,22 @@ def test_the_inferred_zero_is_the_effective_float_where_pure_logic_says_otherwis
     assert effective_total_float(d, float(cpm.timings[4].total_float)) == 4 * 480  # the fallback
 
 
-def test_hard_file_uids_241_and_249_read_the_stored_zero_not_the_recomputed_float() -> None:
-    """The one fixture in the repo where the two bases disagree for a Critical task with an
-    absent element: pure logic gives 480 and 360 minutes; MS Project stored 0 (and flagged both
-    Critical). Red first on the pristine importer: 480 / 360."""
+def test_hard_file_uids_241_and_249_read_the_stored_zero_and_the_engine_now_agrees() -> None:
+    """The one fixture in the repo where the two bases disagreed for a Critical task with an
+    absent element: pure logic gave 480 and 360 minutes on the pre-ADR-0505 engine (the R-64
+    chain: milestone 216's Friday-noon instant rendered a day early, UID 241 started from it);
+    MS Project stored 0 and flagged both Critical. Red first on the pristine importer: the
+    stored basis was None. The engine's own float is 0 now — and pinned, so a regression of
+    the carried instant fails here by name as well as in the stored-dates oracle."""
     sch = _gz("fuse_hardfile/Hard_File.mspdi.xml.gz")
     cpm = compute_cpm(sch)
-    for uid, recomputed in ((241, 480), (249, 360)):
+    for uid in (241, 249):
         t = sch.tasks_by_id[uid]
         assert t.stored_is_critical is True
-        assert cpm.timings[uid].total_float == recomputed  # the pure-logic float, unchanged
-        assert t.stored_total_float_minutes == 0
-        assert effective_total_float(t, float(recomputed)) == 0.0
+        assert t.stored_total_float_minutes == 0  # the importer's inference: the stored basis
+        assert cpm.timings[uid].total_float == 0  # the engine's own float, since ADR-0505
+        # the stored basis wins whatever is recomputed
+        assert effective_total_float(t, 480.0) == 0.0
 
 
 def test_large_test_file2_infers_exactly_the_62_absent_critical_zeros() -> None:

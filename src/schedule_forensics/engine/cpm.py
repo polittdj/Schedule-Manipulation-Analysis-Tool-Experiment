@@ -193,6 +193,9 @@ class TaskTiming:
     #: project-calendar void — and ``total_float``/``free_float`` for such tasks are
     #: working minutes of the TASK'S calendar between these instants (MS Project's own
     #: stored-slack basis; display still divides by the project's minutes-per-day).
+    #: A project-calendar ZERO-duration task driven by such a task CARRIES its instant
+    #: (ADR-0505): its two early walls are that instant, its float is the axis's, and its
+    #: late walls stay ``None``.
     early_start_wall: dt.datetime | None = None
     early_finish_wall: dt.datetime | None = None
     late_start_wall: dt.datetime | None = None
@@ -2205,15 +2208,69 @@ def compute_cpm(
     #: UIDs whose finish the BOOKING's own leveling delay places (ADR-0502).
     assignment_leveling_driven: list[int] = []
 
+    #: wall instants CARRIED by project-axis ZERO-duration tasks (ADR-0505, R-64): a milestone
+    #: sits exactly where its driving predecessor finished. The project axis is integer working
+    #: minutes of the project calendar, on which Monday 17:00 and Tuesday 08:00 are ONE minute;
+    #: a crew on a 16-hour calendar tells them apart, and a crew successor read from the
+    #: minute's end-of-day rendering started fifteen hours before MS Project starts it
+    #: (Hard_File UID 189 after milestone 181, and the working day its chain 184 → 404 lost).
+    #: The integer offsets are untouched — a carried instant projects to the very minute the
+    #: integer pass chose — so a schedule with no wall-path task is byte-identical.
+    ms_wall: dict[int, dt.datetime] = {}
+
     def _pred_finish_wall(p: int) -> dt.datetime:
         if p in exec_plan:
             return ef_wall[p]
+        if p in ms_wall:
+            return ms_wall[p]
         return _offset_to_wall(ps, early_finish[p], cal, role="finish")
 
     def _pred_start_wall(p: int) -> dt.datetime:
         if p in exec_plan:
             return es_wall[p]
+        if p in ms_wall:
+            return ms_wall[p]
         return _offset_to_wall(ps, early_start[p], cal, role="start")
+
+    def _carried_instant(tid: int, es: int) -> dt.datetime | None:
+        """The wall instant a zero-duration project-axis task SITS AT when a driver of its
+        early start knows one the integer axis cannot represent (ADR-0505): a wall-path
+        predecessor's finish, or another carried milestone's instant. MS Project neither
+        snaps a milestone to its calendar (Hard_File_updated2 UID 387 sits at 23:00 on the
+        Standard calendar) nor rounds it to the project day (Hard_File UID 181 sits at Tuesday
+        08:00, where its 16-hour crew finished). Every driver must contribute a known instant
+        — a lag-0 link's endpoint, a raw SNET / FNET / MSO / MFO date, a stored or a recorded
+        start — and the latest wins, MS Project's ``max`` over instants; a lagged link (a
+        quantity of the integer axis) leaves the rendering in charge. Nothing is carried
+        unless some driver's instant is one the axis LOST: a milestone among project-calendar
+        activities only is untouched, and so is every single-calendar file. Every candidate
+        projects back to ``es`` or IS the rendering of ``es`` (a project-calendar activity's
+        finish), so the carried instant never disagrees with the integer pass. A stored-start
+        FLOOR never reaches here: it exists only for a task without predecessors, and a
+        carried milestone has one; a manual task's stored-start PIN does."""
+        task = task_by_id[tid]
+        cands: list[dt.datetime] = []
+        lost = False
+        for p, rel, lag in preds[tid]:
+            if es_lower_bound(rel, early_start[p], early_finish[p], lag, 0) != es:
+                continue  # not a driver of this start
+            if lag != 0:
+                return None
+            if p in exec_plan or p in ms_wall:
+                lost = True
+            if rel is RelationshipType.FS or rel is RelationshipType.FF:
+                cands.append(_pred_finish_wall(p))
+            else:
+                cands.append(_pred_start_wall(p))
+        if not lost:
+            return None
+        if task.constraint_date is not None and (es_pin.get(tid) == es or es_floor.get(tid) == es):
+            cands.append(task.constraint_date)
+        if task.start is not None and stored_pin.get(tid) == es:
+            cands.append(max(task.start, ps))
+        if task.actual_start is not None and actual_floor.get(tid) == es:
+            cands.append(max(task.actual_start, ps))
+        return max(cands)
 
     for tid in order:
         dur_s = duration[tid]
@@ -2378,6 +2435,10 @@ def compute_cpm(
                 ef = resume_ef
                 date_driven.append(tid)
         early_finish[tid] = ef
+        if dur_s == 0 and ef == es:
+            carried = _carried_instant(tid, es)
+            if carried is not None:
+                ms_wall[tid] = carried
 
     network_finish = max(early_finish.values(), default=0)
     backward_target = (
@@ -2396,6 +2457,8 @@ def compute_cpm(
                 (
                     ef_wall[t]
                     if t in exec_plan
+                    else ms_wall[t]
+                    if t in ms_wall
                     else _offset_to_wall(ps, early_finish[t], cal, role="finish")
                     for t in finish_cands
                 ),
@@ -2512,11 +2575,15 @@ def compute_cpm(
     def _succ_early_start_wall(s: int, lag: int) -> dt.datetime:
         if lag == 0 and s in exec_plan:
             return es_wall[s]
+        if lag == 0 and s in ms_wall:
+            return ms_wall[s]
         return _offset_to_wall(ps, early_start[s] - lag, cal, role="start")
 
     def _succ_early_finish_wall(s: int, lag: int) -> dt.datetime:
         if lag == 0 and s in exec_plan:
             return ef_wall[s]
+        if lag == 0 and s in ms_wall:
+            return ms_wall[s]
         return _offset_to_wall(ps, early_finish[s] - lag, cal, role="finish")
 
     timings: dict[int, TaskTiming] = {}
@@ -2576,8 +2643,8 @@ def compute_cpm(
             total_float=total,
             free_float=free,
             is_critical=total <= 0,
-            early_start_wall=es_wall.get(tid),
-            early_finish_wall=ef_wall.get(tid),
+            early_start_wall=es_wall.get(tid, ms_wall.get(tid)),
+            early_finish_wall=ef_wall.get(tid, ms_wall.get(tid)),
             late_start_wall=ls_wall.get(tid),
             late_finish_wall=lf_wall.get(tid),
         )
