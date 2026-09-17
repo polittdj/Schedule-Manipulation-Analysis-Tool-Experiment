@@ -13,6 +13,7 @@ from schedule_forensics.engine.cpm import compute_cpm
 from schedule_forensics.engine.resources import ResourcePeriod, compute_resource_loading
 from schedule_forensics.importers.mspdi import parse_mspdi
 from schedule_forensics.model import Assignment, Resource, Schedule, Task
+from schedule_forensics.model.resource import AvailabilityPeriod
 
 DAY = 480
 MON = dt.datetime(2026, 4, 6, 8, 0)  # a Monday
@@ -239,3 +240,75 @@ def test_declared_flag_distinguishes_a_stated_max_units_from_the_assumed_default
     assert stated.max_units_declared is True
     assert assumed.max_units_declared is False
     assert assumed.max_units == 1.0  # the math keeps the documented default
+
+
+# ── ADR-0506 (R-63): capacity is the FILE's availability table, per working day ─────────────────
+# MS Project's Resource Availability grid states units per date range. The converter used to
+# collapse it to one ``<MaxUnits>`` — the row at the JVM's clock — so the same save converted a
+# month apart carried two different capacities. The engine now earns each working day's capacity
+# from the row in force THAT day; the roster's scalar is the importer's status-date resolution.
+
+
+def _tabled(max_units: float, periods: tuple[AvailabilityPeriod, ...]) -> Schedule:
+    """A 10-working-day task from Monday 6 April 2026, booked 100 % to one tabled resource."""
+    a = (Assignment(resource_id=7, work_minutes=10 * DAY, units=1.0),)
+    return Schedule(
+        name="S",
+        project_start=MON,
+        tasks=(_task(1, 10, a),),
+        resources=(Resource(unique_id=7, name="Crew", max_units=max_units, availability=periods),),
+    )
+
+
+def _day_caps(sch: Schedule) -> dict[str, float]:
+    rl = compute_resource_loading(sch, compute_cpm(sch), "day")
+    return {p.period: p.capacity_minutes for p in rl.resources[0].series}
+
+
+def test_capacity_follows_the_availability_table_across_its_boundary() -> None:
+    """One unit through Friday 10 April, two from Saturday 11 April: the first week's day buckets
+    carry 480 minutes of capacity, the second week's 960 — from one resource, one table."""
+    periods = (
+        AvailabilityPeriod(available_to=dt.datetime(2026, 4, 10, 23, 59), units=1.0),
+        AvailabilityPeriod(available_from=dt.datetime(2026, 4, 11), units=2.0),
+    )
+    caps = _day_caps(_tabled(1.0, periods))
+    assert [caps[f"2026-04-{d:02d}"] for d in (6, 7, 8, 9, 10)] == [480.0] * 5
+    assert [caps[f"2026-04-{d:02d}"] for d in (13, 14, 15, 16, 17)] == [960.0] * 5
+
+
+def test_the_boundary_day_belongs_to_the_row_that_begins_on_it() -> None:
+    """A row beginning Wednesday 8 April 00:00 governs the 8th itself (MS Project's rows begin at
+    00:00 and end at 23:59) — the 7th is still the earlier row's day."""
+    periods = (
+        AvailabilityPeriod(available_to=dt.datetime(2026, 4, 7, 23, 59), units=1.0),
+        AvailabilityPeriod(available_from=dt.datetime(2026, 4, 8), units=2.0),
+    )
+    caps = _day_caps(_tabled(1.0, periods))
+    assert (caps["2026-04-07"], caps["2026-04-08"]) == (480.0, 960.0)
+
+
+def test_a_month_bucket_sums_the_units_of_each_working_day() -> None:
+    """Capacity scales with the working days in a bucket (the documented rule) and each day
+    brings its own row's units: five days at one unit and five at two is 480 x 15."""
+    periods = (
+        AvailabilityPeriod(available_to=dt.datetime(2026, 4, 10, 23, 59), units=1.0),
+        AvailabilityPeriod(available_from=dt.datetime(2026, 4, 11), units=2.0),
+    )
+    rl = compute_resource_loading(_tabled(1.0, periods), compute_cpm(_tabled(1.0, periods)))
+    assert [(p.period, p.capacity_minutes) for p in rl.resources[0].series] == [
+        ("2026-04", 480 * (5 * 1.0 + 5 * 2.0))
+    ]
+
+
+def test_the_roster_scalar_is_the_resolved_max_units_not_a_table_row() -> None:
+    """The roster's Max units is the importer's status-date resolution (here 0.5), even though the
+    table's later row says 2 — the bucket capacities read the table, the roster reads the row
+    in force at the schedule's own "now"."""
+    periods = (
+        AvailabilityPeriod(available_to=dt.datetime(2026, 4, 10, 23, 59), units=0.5),
+        AvailabilityPeriod(available_from=dt.datetime(2026, 4, 11), units=2.0),
+    )
+    rl = compute_resource_loading(_tabled(0.5, periods), compute_cpm(_tabled(0.5, periods)))
+    assert rl.resources[0].max_units == 0.5
+    assert rl.resources[0].max_units_declared is True

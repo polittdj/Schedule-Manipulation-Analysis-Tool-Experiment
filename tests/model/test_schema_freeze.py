@@ -15,7 +15,7 @@ from schedule_forensics import model
 from schedule_forensics.model.assignment import Assignment, CostPiece, WorkPiece
 from schedule_forensics.model.calendar import Calendar
 from schedule_forensics.model.relationship import Relationship, RelationshipType
-from schedule_forensics.model.resource import Resource, ResourceType
+from schedule_forensics.model.resource import AvailabilityPeriod, Resource, ResourceType
 from schedule_forensics.model.saved_view import (
     Criterion,
     GroupClause,
@@ -105,7 +105,11 @@ _EXPECTED_FIELDS: dict[type[pydantic.BaseModel], set[str]] = {
         "max_units",
         "standard_rate",
         "calendar_uid",
+        # availability: the file's own Resource Availability grid (ADR-0506, R-63) — capacity per
+        # working day from the row in force that day; max_units is the row at the status date
+        "availability",
     },
+    AvailabilityPeriod: {"available_from", "available_to", "units"},
     Calendar: {
         "uid",
         "name",
@@ -157,7 +161,7 @@ _EXPECTED_FIELDS: dict[type[pydantic.BaseModel], set[str]] = {
 
 
 def test_schema_version() -> None:
-    assert model.SCHEMA_VERSION == "2.15.0"
+    assert model.SCHEMA_VERSION == "2.16.0"
 
 
 @pytest.mark.parametrize("cls", list(_EXPECTED_FIELDS))
@@ -192,6 +196,7 @@ def test_public_api_exports() -> None:
     assert set(model.__all__) == {
         "SCHEMA_VERSION",
         "Assignment",
+        "AvailabilityPeriod",
         "Calendar",
         "ConstraintType",
         "CostPiece",

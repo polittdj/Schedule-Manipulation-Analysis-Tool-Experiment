@@ -21,7 +21,7 @@ from schedule_forensics.model import Schedule
 from schedule_forensics.model.assignment import Assignment, CostPiece, WorkPiece
 from schedule_forensics.model.calendar import Calendar
 from schedule_forensics.model.relationship import Relationship, RelationshipType
-from schedule_forensics.model.resource import Resource, ResourceType
+from schedule_forensics.model.resource import AvailabilityPeriod, Resource, ResourceType
 from schedule_forensics.model.saved_view import SavedFilter, SavedGroup
 from schedule_forensics.model.task import ConstraintType, Task, TaskType
 
@@ -311,6 +311,17 @@ def _resource(raw: dict[str, Any]) -> Resource:
             kwargs[key] = float(raw[key])
     if raw.get("calendar_uid") is not None:
         kwargs["calendar_uid"] = _int(raw["calendar_uid"], "resource calendar_uid")
+    if isinstance(raw.get("availability"), list):
+        # the availability table (ADR-0506): a row without units states nothing
+        kwargs["availability"] = tuple(
+            AvailabilityPeriod(
+                available_from=_dt(row.get("available_from")),
+                available_to=_dt(row.get("available_to")),
+                units=float(row["units"]),
+            )
+            for row in raw["availability"]
+            if isinstance(row, dict) and row.get("units") is not None
+        )
     return Resource(**kwargs)
 
 
@@ -519,6 +530,20 @@ def to_json_text(schedule: Schedule) -> str:
                 "standard_rate": res.standard_rate,
                 "calendar_uid": res.calendar_uid,
             }
+            | (
+                {}
+                if not res.availability
+                else {
+                    "availability": [
+                        {
+                            "available_from": iso(row.available_from),
+                            "available_to": iso(row.available_to),
+                            "units": row.units,
+                        }
+                        for row in res.availability
+                    ]
+                }
+            )
             for res in schedule.resources
         ]
     for t in schedule.tasks:

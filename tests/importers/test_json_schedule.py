@@ -378,7 +378,7 @@ def _maximal_schedule():  # type: ignore[no-untyped-def]
     from schedule_forensics.model.assignment import Assignment, CostPiece, WorkPiece
     from schedule_forensics.model.calendar import Calendar
     from schedule_forensics.model.relationship import Relationship
-    from schedule_forensics.model.resource import Resource, ResourceType
+    from schedule_forensics.model.resource import AvailabilityPeriod, Resource, ResourceType
     from schedule_forensics.model.saved_view import (
         Criterion,
         GroupClause,
@@ -510,6 +510,17 @@ def _maximal_schedule():  # type: ignore[no-untyped-def]
                 max_units=2.5,
                 standard_rate=180.0,
                 calendar_uid=7,
+                # the availability table (ADR-0506): an open-start row, a bounded row, an
+                # open-end row — every bound shape the reader must carry back
+                availability=(
+                    AvailabilityPeriod(available_to=dt.datetime(2026, 7, 31, 23, 59), units=1.5),
+                    AvailabilityPeriod(
+                        available_from=dt.datetime(2026, 8, 1),
+                        available_to=dt.datetime(2026, 8, 31, 23, 59),
+                        units=2.5,
+                    ),
+                    AvailabilityPeriod(available_from=dt.datetime(2026, 9, 1), units=3.0),
+                ),
             ),
         ),
         custom_field_labels=("CA-WBS", "Text20"),
@@ -593,6 +604,9 @@ def test_maximal_round_trip_is_lossless_qc_d5() -> None:
     assert len(reopened.calendars) == 2 and reopened.tasks[0].calendar_uid == 7
     assert reopened.calendar.name == "Project 10h"  # never swapped for calendars[0]/uid order
     assert reopened.resources[0].max_units == 2.5
+    assert [row.units for row in reopened.resources[0].availability] == [1.5, 2.5, 3.0]
+    assert reopened.resources[0].availability[0].available_from is None
+    assert reopened.resources[0].availability[2].available_to is None
     assert reopened.project_finish is not None and reopened.baseline_finish is not None
 
 

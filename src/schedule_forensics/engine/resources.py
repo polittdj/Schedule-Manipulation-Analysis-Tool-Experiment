@@ -3,8 +3,12 @@
 Time-phases each task's resource :class:`~schedule_forensics.model.assignment.Assignment` work
 across the task's CPM span and buckets it by **day / week / month** (selectable, ADR-0125/#74), per
 resource. A resource's per-bucket **capacity** is ``max_units x working-minutes-per-day x
-working-days-in-the-bucket``; any bucket whose booked work exceeds that capacity is
-**over-allocated**. Each bucket also records the per-task work behind it (the click-a-bar drill).
+working-days-in-the-bucket`` — and where the file carries the resource's availability table
+(ADR-0506, R-63), each working day earns the units that table states for THAT day, so a crew
+that doubles mid-project has one unit of capacity in the earlier buckets and two in the later,
+and nothing about the figure depends on the day the file was converted. Any bucket whose
+booked work exceeds that capacity is **over-allocated**. Each bucket also records the per-task
+work behind it (the click-a-bar drill).
 All derived (never stored on the model); parity-isolated (plain dataclasses, never a
 ``MetricResult``); std-lib only.
 
@@ -25,7 +29,7 @@ from schedule_forensics.engine.cpm import (
     span_start_datetime,
 )
 from schedule_forensics.engine.metrics._common import non_summary
-from schedule_forensics.model import Schedule
+from schedule_forensics.model import Resource, Schedule
 from schedule_forensics.model.calendar import Calendar
 
 #: Bucket granularities the loading histogram supports (operator #74).
@@ -109,18 +113,25 @@ def _is_working(cal: Calendar, day: dt.date) -> bool:
 
 def _period_working_days(
     cal: Calendar, lo: dt.date, hi: dt.date, granularity: str
-) -> dict[str, int]:
-    """Working-day count per bucket across [lo, hi] (inclusive) at the chosen granularity."""
-    out: dict[str, int] = {}
+) -> dict[str, list[dt.date]]:
+    """The working days per bucket across [lo, hi] (inclusive) at the chosen granularity."""
+    out: dict[str, list[dt.date]] = {}
     day = lo
     guard = 0
     while day <= hi and guard < 2_000_000:
         guard += 1
         if _is_working(cal, day):
-            key = bucket_key(day, granularity)
-            out[key] = out.get(key, 0) + 1
+            out.setdefault(bucket_key(day, granularity), []).append(day)
         day += dt.timedelta(days=1)
     return out
+
+
+def _units_on(res: Resource, day: dt.date, fallback: float) -> float:
+    """The availability table's units in force on ``day`` (ADR-0506), probed at the day's first
+    instant — MS Project's rows begin at 00:00 and end at 23:59, so a day never straddles two
+    rows; ``fallback`` (the resolved max units) only for a resource that carries no table."""
+    units = res.units_at(dt.datetime.combine(day, dt.time()))
+    return fallback if units is None else units
 
 
 def compute_resource_loading(
@@ -178,9 +189,10 @@ def compute_resource_loading(
                 bucket_tasks = res_contrib.setdefault(key, {})
                 bucket_tasks[task.unique_id] = bucket_tasks.get(task.unique_id, 0.0) + per_day
 
-    period_wd = (
+    period_days = (
         _period_working_days(cal, lo, hi, granularity) if lo is not None and hi is not None else {}
     )
+    period_wd = {period: len(days) for period, days in period_days.items()}
 
     resources: list[ResourceLoad] = []
     # the roster is the UNION of assigned ids and the file's own resource table (operator
@@ -206,7 +218,14 @@ def compute_resource_loading(
         res_contrib = contrib.get(rid, {})
         series = []
         for period in sorted(set(months) | (set(period_wd) & set(months))):
-            cap = max_units * wmpd * period_wd.get(period, 0)
+            if res is not None and res.availability:
+                # ADR-0506 (R-63): each working day earns the units the FILE's availability table
+                # states for that day — never one figure resolved at somebody's clock
+                cap = wmpd * sum(
+                    _units_on(res, day, max_units) for day in period_days.get(period, ())
+                )
+            else:
+                cap = max_units * wmpd * period_wd.get(period, 0)
             contributors = tuple(
                 sorted(res_contrib.get(period, {}).items(), key=lambda kv: (-kv[1], kv[0]))
             )
