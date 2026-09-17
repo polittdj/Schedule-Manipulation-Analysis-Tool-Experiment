@@ -275,7 +275,9 @@ from schedule_forensics.web.analysis import _EROSION_BADGE as _EROSION_BADGE
 from schedule_forensics.web.analysis import _WEEKDAY_NAMES as _WEEKDAY_NAMES
 from schedule_forensics.web.analysis import _analysis_body as _analysis_body
 from schedule_forensics.web.analysis import _analysis_data as _analysis_data
+from schedule_forensics.web.analysis import _calendar_disclosure as _calendar_disclosure
 from schedule_forensics.web.analysis import _calendar_panel as _calendar_panel
+from schedule_forensics.web.analysis import _calendar_uses as _calendar_uses
 from schedule_forensics.web.analysis import _cites_cell as _cites_cell
 from schedule_forensics.web.analysis import _completion_panel as _completion_panel
 from schedule_forensics.web.analysis import _constraint_checks_panel as _constraint_checks_panel

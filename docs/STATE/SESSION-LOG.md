@@ -18896,3 +18896,49 @@ the START-slack gap, the finish-slack gap is 120; "301 non-24-hour" was 294 + 7)
 Shipped ADR-0503, the two test modules (11 + 20 pins), the dated re-pin, the closed R-58 row, the new
 R-67 row, and **v1.0.269** with the wheel and nine installers rebuilt in lockstep (MPXJ ref
 `163d1942`, on `origin/main`). Draft PR [#693](https://github.com/polittdj/Schedule-Manipulation-Analysis-Tool-Experiment/pull/693), head `b5c947a6` — the operator merges.
+
+## 2026-09-17 (b) — R-59 CLOSED (ADR-0504): the `/analysis` calendar disclosure names every calendar the base pass runs on, read off the engine's own execution plans — v1.0.270
+
+Branch `claude/brave-clarke-ittq3w` off `origin/main` @ `a95482c1` (#693 merged; its own CI 1911 —
+all six jobs — and installer-smoke 749 read to conclusion, SUCCESS). Draft PR [#694](https://github.com/polittdj/Schedule-Manipulation-Analysis-Tool-Experiment/pull/694).
+
+**R-59** asked the Working-calendar panel to name the crews' calendars beside the task calendars.
+Measured first: the panel's sentence was FALSE, not incomplete — it still said the base CPM "models
+the single project calendar (ADR-0028) … a single-calendar approximation", retired by ADR-0322 /
+ADR-0474 / ADR-0503. And the predicate behind it, `off_project_calendars`, reads a task's own
+`calendar_uid` and is structurally blind to a crew's calendar, which reaches the plan through the
+assignment's resource. Census on the engine's own plan shapes: on Hard_File the page named
+`24 Hours` and `Standard+Sat.` while the plans ran legs on Customer Service Team (25), Content
+Developer (18), Logistics (1) and the derived `Standard+Sat. ∩ Customer Service Team` (UID 94).
+A per-booking `booking_calendar` listing was priced and refused as the source (it over-claims:
+`24 Hours` on 9 bookings no leg runs on; the crew of the elapsed UID 146).
+
+**Shipped** `plan_calendars` in `engine/cpm.py` (read-only; `axes` / `legs` / `elapsed` /
+`population`, from `_execution_plans` at the stored durations; dedup by object, registered first by
+uid, derived after by name), the rewritten panel (takeaway with the split — *65 of 110 activities;
+the other 45 on 6 other calendars* — and a notice naming every calendar with its count, the derived
+one with both names and its UID), the seam argued in the ADR. Single-calendar files byte-identical;
+the API payload byte-identical on Hard_File, Project5 and Large_Test_File.
+
+**Verified:** red-first in a pristine worktree (both modules cannot import; the pristine panel
+probed: silent on a crewed task, the stale sentence on a task-calendar one); the rig refuted three
+times before the engine was (crews 4 / 5 / 7 on the project pattern; the elapsed UID 146; summary
+UID 5334 — each an unstated population filter); the Hard_File pin derives its expectation from the
+file's own fields; battery 12 / 12 red by name on a shadow copy (control green before and after,
+checksums verified); four themes in a real Chromium (no page errors, no sideways scroll, token
+colours); statics green on both ruff binaries, format, mypy strict, bandit, node.
+
+**Gate on the final tree — MEASURED in a separate worktree at the code commit `a911a4cd`: full suite
+5,553 passed / 1 failed / 7 skipped in 46:47** (13:49–14:36Z, `-v` + a stall monitor, no stall), **`-m parity`
+170 passed / 0 failed in 8:26**. The one failure is the handoff version-pin guard on the code commit's
+unrotated handoff (CI's `floor` job on `a911a4cd` read the same `1 failed, 5172 passed, 269 skipped`);
+`3a2b2da3` carries the pin, its module is green on the final tree, and the final tree differs from the
+measured one under `docs/` only — **5,554 green / 0 failed / 7 skipped** on the final tree. Attributed:
+5,561 collected = 5,546 + 19 − 4; 5,539 + 15 = 5,554; parity 170 = 170. The 7 skips are the documented set.
+Draft PR [#694](https://github.com/polittdj/Schedule-Manipulation-Analysis-Tool-Experiment/pull/694):
+the first run (`a911a4cd`) was red on `floor` by that one guard and cancelled by the docs push; the
+final head's run is the verdict — the operator merges.
+
+Shipped ADR-0504, the two test modules (12 + 7 pins), the closed R-59 row, the user-guide line, the
+lessons entry, and **v1.0.270** with the wheel and nine installers rebuilt in lockstep (MPXJ ref
+`163d1942`, on `origin/main`).

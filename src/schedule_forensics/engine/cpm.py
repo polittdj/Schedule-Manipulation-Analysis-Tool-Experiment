@@ -1684,6 +1684,11 @@ def off_project_calendars(schedule: Schedule) -> tuple[Calendar, ...]:
     Deduplicated by ``uid`` and returned sorted by ``uid``. Fail-soft: a task whose ``calendar_uid``
     is absent from ``schedule.calendars`` cannot be compared and is skipped (never over-claims a
     divergence), and a task calendar whose pattern equals the project calendar is not reported.
+
+    TASK calendars only. The crews' calendars the base pass honours on a booking (ADR-0474), and
+    the intersection a task calendar meets a crew calendar on (ADR-0503), never appear here —
+    :func:`plan_calendars` lists every calendar the execution plans actually run on, and since
+    ADR-0504 (R-59) the ``/analysis`` disclosure reads that listing, not this one.
     """
     project_key = _working_pattern_key(schedule.calendar)
     by_uid = {c.uid: c for c in schedule.calendars}
@@ -1695,6 +1700,110 @@ def off_project_calendars(schedule: Schedule) -> tuple[Calendar, ...]:
         if cal is not None and _working_pattern_key(cal) != project_key:
             out.setdefault(cal.uid, cal)
     return tuple(out[uid] for uid in sorted(out))
+
+
+#: The uid every derived task ∩ crew calendar carries (:func:`_calendar_intersection`).
+_DERIVED_CALENDAR_UID = -2
+
+
+class CalendarUse(NamedTuple):
+    """One calendar the base pass measures or schedules something on, and the activities it
+    touches — active, non-summary UniqueIDs, ascending (the citation surface of a disclosure)."""
+
+    calendar: Calendar
+    task_uids: tuple[int, ...]
+
+    @property
+    def derived(self) -> bool:
+        """A task ∩ crew intersection (ADR-0503): uid ``-2``, named ``<task> ∩ <crew>``, computed
+        by the engine and carried by no file — never a calendar the analyst can open in the
+        source tool, which is why a disclosure must name it as such and never as a parent."""
+        return self.calendar.uid == _DERIVED_CALENDAR_UID
+
+
+@dataclass(frozen=True)
+class PlanCalendars:
+    """Every calendar the base pass runs anything on whose working pattern differs from the
+    project calendar's, read off the engine's own execution plans (R-59, ADR-0504)."""
+
+    #: the calendars a task's TOTAL FLOAT is measured on — its own calendar (ADR-0322 / ADR-0474's
+    #: slack axis); the project calendar and the elapsed clock are never listed
+    axes: tuple[CalendarUse, ...]
+    #: the calendars execution legs run on — a crew's own calendar (ADR-0474), a task calendar
+    #: the crew restricts nothing of, or their intersection (ADR-0503, ``derived``)
+    legs: tuple[CalendarUse, ...]
+    #: tasks whose duration is ELAPSED: they run round the clock on the synthetic 24/7 calendar,
+    #: which is a duration property of the task, not a calendar the file carries
+    elapsed: tuple[int, ...]
+    #: the scheduled population — active, non-summary tasks (ADR-0128), the "of N" of a sentence
+    population: int
+
+    @property
+    def touched(self) -> tuple[int, ...]:
+        """Every UniqueID that runs, wholly or partly, off the project calendar's pattern."""
+        uids: set[int] = set(self.elapsed)
+        for use in (*self.axes, *self.legs):
+            uids.update(use.task_uids)
+        return tuple(sorted(uids))
+
+
+def plan_calendars(schedule: Schedule) -> PlanCalendars:
+    """The calendars the base pass runs anything on other than the project calendar's pattern —
+    the disclosure ``off_project_calendars`` cannot give (R-59, ADR-0504): that predicate reads a
+    task's OWN ``calendar_uid`` and never sees the crew calendar a WORK booking is scheduled on
+    (ADR-0474) or the intersection a task calendar meets a crew calendar on (ADR-0503), so a page
+    built on it read "task calendars only" under a multi-calendar result.
+
+    Read off the engine's OWN execution plans (:func:`_execution_plans`, at the stored
+    durations — the plans ``compute_cpm`` solves with no override), never re-derived from the
+    assignments: a leg the plan builder drops (a zero-work or zero-units booking, a milestone's,
+    a booking under ``IgnoreResourceCalendar``, an elapsed task's crew) is not listed, and a leg
+    it keeps is listed on exactly the calendar OBJECT it runs on, so a derived intersection is
+    named ``<task> ∩ <crew>`` and never as either parent. Deduplicated by object — every derived
+    calendar shares uid ``-2``, so uid cannot be the key — registered calendars first in uid
+    order, derived ones after by name; a task with two legs on one calendar counts once for it.
+    A calendar whose pattern equals the project's is never listed (the crew's own calendar is
+    then the project's for the plan builder too). Cheap: the plan shapes are derived once per
+    schedule object; this call builds the plans exactly as one solve does."""
+    tasks = _scheduled_tasks(schedule)
+    plans = _execution_plans(schedule, tasks, {t.unique_id: t.duration_minutes for t in tasks})
+    project_key = schedule.calendar.working_pattern_key()
+    off_pattern: dict[int, bool] = {}
+
+    def _off(cal: Calendar) -> bool:
+        key = id(cal)
+        got = off_pattern.get(key)
+        if got is None:
+            got = off_pattern[key] = cal.working_pattern_key() != project_key
+        return got
+
+    axes: dict[int, tuple[Calendar, list[int]]] = {}
+    legs: dict[int, tuple[Calendar, list[int]]] = {}
+    elapsed: list[int] = []
+    for uid in sorted(plans):
+        ex = plans[uid]
+        if ex.axis is _ELAPSED_CALENDAR:
+            elapsed.append(uid)
+            continue
+        if _off(ex.axis):
+            axes.setdefault(id(ex.axis), (ex.axis, []))[1].append(uid)
+        seen: set[int] = set()
+        for leg in ex.legs:
+            cal = leg.calendar
+            if id(cal) in seen or not _off(cal):
+                continue
+            seen.add(id(cal))
+            legs.setdefault(id(cal), (cal, []))[1].append(uid)
+
+    def _ordered(uses: dict[int, tuple[Calendar, list[int]]]) -> tuple[CalendarUse, ...]:
+        return tuple(
+            CalendarUse(cal, tuple(uids))
+            for cal, uids in sorted(
+                uses.values(), key=lambda cu: (cu[0].uid < 0, max(cu[0].uid, 0), cu[0].name)
+            )
+        )
+
+    return PlanCalendars(_ordered(axes), _ordered(legs), tuple(elapsed), len(tasks))
 
 
 def _topo_order(task_ids: list[int], edges: list[tuple[int, int]]) -> list[int]:
