@@ -9,8 +9,10 @@ absent element on a task the file flags ``Critical`` can only be a zero: MS Proj
 exactly when slack ≤ the threshold, and a NEGATIVE slack is always written (123 of them on that
 file). The inference is bounded twice — never on a file that carries no ``TotalSlack`` at all (a
 writer that never emits the element is not one that dropped a zero), and never on a task the file
-does not flag Critical (a completed task's zero, also dropped by the writer, stays ``None`` — the
-wider inference is priced in the ADR, not made here).
+does not flag Critical — until R-62 (ADR-0507, 2026-09-18) retired that second bound: the writer's
+rule is class-blind, so every absent slack in a file that carries the element is the dropped zero
+(``test_mspdi_absent_slack_is_zero.py`` carries the provenance). The Critical pins below still hold;
+the two that asserted ``None`` for a non-Critical absent slack were re-derived on that date.
 
 Why it matters (Law 2): ``effective_total_float`` prefers the source tool's STORED, progress-aware
 slack and falls back to the engine's pure-logic CPM float only when the file carried none — so the
@@ -79,8 +81,10 @@ def test_an_absent_slack_on_a_critical_task_is_zero_when_the_file_carries_the_el
     assert by[1].stored_total_float_minutes == 0  # Critical, absent → the writer dropped a zero
     assert by[2].stored_total_float_minutes == 0
     assert by[9].stored_total_float_minutes == 0  # a critical milestone likewise
-    assert by[4].stored_total_float_minutes is None  # not Critical: absent stays unknown
-    assert by[5].stored_total_float_minutes is None  # no Critical element: nothing to infer from
+    # R-62 (ADR-0507): the writer drops EVERY zero, so a non-Critical absent slack is a zero too —
+    # re-derived 2026-09-18 from ``None`` (ADR-0490's deliberate second bound, now measured away)
+    assert by[4].stored_total_float_minutes == 0
+    assert by[5].stored_total_float_minutes == 0
     assert by[4].stored_is_critical is False and by[5].stored_is_critical is None
 
 
@@ -92,14 +96,19 @@ def test_no_inference_on_a_file_that_carries_no_total_slack_at_all() -> None:
 
 
 def test_the_inferred_zero_is_the_effective_float_where_pure_logic_says_otherwise() -> None:
-    """The point of the rule: the stored-preferring basis now covers the zero-slack subset."""
+    """The point of the rule: the stored-preferring basis now covers the zero-slack subset.
+    Re-derived 2026-09-18 (R-62, ADR-0507): D's absent slack is the file's own zero as well, so
+    the recomputed-float FALLBACK is reached only on a file that carries no element at all."""
     sch = _mspdi(_SYNTHETIC)
     cpm = compute_cpm(sch)
     b = sch.tasks_by_id[2]
     assert cpm.timings[2].total_float == 3 * 480  # pure logic: B has three days
     assert effective_total_float(b, float(cpm.timings[2].total_float)) == 0.0  # the file's own
     d = sch.tasks_by_id[4]
-    assert effective_total_float(d, float(cpm.timings[4].total_float)) == 4 * 480  # the fallback
+    assert cpm.timings[4].total_float == 4 * 480  # pure logic: D has four days
+    assert effective_total_float(d, float(cpm.timings[4].total_float)) == 0.0  # the file's own
+    bare = _mspdi(_SYNTHETIC.replace("<TotalSlack>19200</TotalSlack>", ""))
+    assert effective_total_float(bare.tasks_by_id[4], 4 * 480.0) == 4 * 480  # the fallback
 
 
 def test_hard_file_uids_241_and_249_read_the_stored_zero_and_the_engine_now_agrees() -> None:
@@ -122,13 +131,14 @@ def test_hard_file_uids_241_and_249_read_the_stored_zero_and_the_engine_now_agre
 
 def test_large_test_file2_infers_exactly_the_62_absent_critical_zeros() -> None:
     """62 of Fuse's 66 zero-float activities carry no element (the register's own count); the
-    other four carry a stored slack that rounds to a whole-day zero (12, -139, 100, 12 min)."""
+    other four carry a stored slack that rounds to a whole-day zero (12, -139, 100, 12 min).
+    Re-derived 2026-09-18 (R-62, ADR-0507): the completed activities the writer also zeroed read
+    0 now as well, so the incomplete zeros are selected by progress, and nothing stays unknown."""
     sch = _gz("fuse_ltf/Large_Test_File2.mspdi.xml.gz")
     ts = non_summary(sch)
-    inferred = [t for t in ts if t.stored_total_float_minutes == 0]
+    inferred = [t for t in ts if t.stored_total_float_minutes == 0 and t.percent_complete < 100]
     assert len(inferred) == 62
     assert all(t.stored_is_critical for t in inferred)
-    assert all(t.percent_complete < 100 for t in inferred)  # never a completed task
     per_day = sch.calendar.working_minutes_per_day or 480
     rounds_to_zero = [
         t
@@ -137,10 +147,10 @@ def test_large_test_file2_infers_exactly_the_62_absent_critical_zeros() -> None:
         and round(t.stored_total_float_minutes / per_day) == 0
     ]
     assert sorted(t.unique_id for t in rounds_to_zero) == [844, 906, 5283, 7015]
-    # every other absent slack stays unknown: the completed tasks the writer also zeroed
-    unknown = [t for t in ts if t.stored_total_float_minutes is None]
-    assert unknown and all(not t.stored_is_critical for t in unknown)
-    assert all(t.percent_complete >= 100 for t in unknown)
+    # the completed activities the writer also zeroed: 724 of them, every one a zero, none unknown
+    done = [t for t in ts if t.percent_complete >= 100]
+    assert len(done) == 724 and all(t.stored_total_float_minutes == 0 for t in done)
+    assert not [t for t in ts if t.stored_total_float_minutes is None]
 
 
 def test_fuse_zero_days_float_66_and_2_stay_exact_on_the_stored_basis() -> None:
@@ -170,4 +180,4 @@ def test_the_inferred_zero_survives_the_tools_own_save_format() -> None:
     sch = _mspdi(_SYNTHETIC)
     again = parse_json_text(to_json_text(sch))
     assert again.tasks_by_id[1].stored_total_float_minutes == 0
-    assert again.tasks_by_id[4].stored_total_float_minutes is None
+    assert again.tasks_by_id[4].stored_total_float_minutes == 0  # R-62: a zero too, and it survives

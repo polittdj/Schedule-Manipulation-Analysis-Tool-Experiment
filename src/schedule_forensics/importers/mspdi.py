@@ -204,8 +204,8 @@ def parse_mspdi_text(text: str, *, source_file: str | None = None) -> Schedule:
     raw_links: list[tuple[int, ET.Element]] = []
     tasks_el = root.find("Tasks")
     task_els = [] if tasks_el is None else tasks_el.findall("Task")
-    # R-49 (ADR-0490): the file carries the element somewhere — so an absent one on a Critical
-    # task is a zero the vendored writer dropped, never an unknown (see _stored_slack_minutes)
+    # R-49 (ADR-0490) / R-62 (ADR-0507): the file carries the element somewhere — so EVERY absent
+    # one is a zero the vendored writer dropped, never an unknown (see _stored_slack_minutes)
     file_carries_slack = any(el.find("TotalSlack") is not None for el in task_els)
     for task_el in task_els:
         if _text(task_el, "IsNull") == "1":
@@ -352,15 +352,19 @@ def _stored_slack_minutes(task_el: ET.Element, *, zero_when_absent: bool = False
     in **tenths of a minute** (verified against the goldens — stored ÷ 10 == recomputed CPM
     float on clean tasks); the engine's float axis is whole minutes (480/day).
 
-    ``zero_when_absent`` (R-49, ADR-0490): the vendored MPXJ MSPDI writer OMITS a zero duration.
-    Measured on the intake ``Large Test File2.mpp`` through MPXJ itself: the reader holds
-    ``TotalSlack = 0.0d`` for all 62 Critical activities whose element the written XML lacks
-    (and NULL for none; 786 zero slacks in memory, 0 literal zeros in the XML). The caller passes
-    it only when the FILE carries ``TotalSlack`` somewhere (a writer that never emits the element
-    dropped nothing) and THIS task is flagged ``Critical`` — MS Project flags Critical exactly
-    when slack ≤ the critical-slack threshold, and a negative slack is always written, so the only
-    absent value a Critical task can carry is 0. A completed task's zero, which the writer drops
-    too, stays ``None`` (the wider inference is priced in the ADR, not made blind)."""
+    ``zero_when_absent`` (R-49, ADR-0490; widened by R-62, ADR-0507): the vendored MPXJ MSPDI
+    writer OMITS a zero duration — ``printDurationInIntegerTenthsOfMinutes`` returns null for a
+    null duration and for one whose value is ``0.0`` (the bytecode). MPXJ's Total Slack is itself
+    computed from the file's stored Start Slack and Finish Slack (the MPP reader maps those two,
+    never a total), by MS Project's own rule (the smaller of the two; a started task's finish
+    slack). Measured over the 29 intake ``.mpp`` files (17,402 tasks): the element is absent for
+    exactly the 7,095 tasks whose computed total is ``0.0`` — 5,466 completed activities, 583
+    Critical incomplete ones, 1,046 summaries, no other class — and every completed activity
+    stores the pair (0, 0). So the caller passes it whenever the FILE carries ``TotalSlack``
+    somewhere (a writer that never emits the element dropped nothing); a task's class is not the
+    evidence, the writer's rule is. ADR-0490 had bounded the inference to ``Critical`` tasks and
+    priced the rest as R-62; a completed activity read ``None`` (an em-dash) where MS Project
+    shows ``0d``."""
     raw = _int(task_el, "TotalSlack")
     if raw is None:
         return 0 if zero_when_absent else None
@@ -782,7 +786,7 @@ def _parse_task(
             # tenths of a minute in the file (like LinkLag); a negative value is meaningless
             leveling_delay_minutes=max(0, (_int(task_el, "LevelingDelay") or 0) // 10),
             stored_total_float_minutes=_stored_slack_minutes(
-                task_el, zero_when_absent=bool(file_carries_slack and stored_critical)
+                task_el, zero_when_absent=file_carries_slack
             ),
             stored_is_critical=stored_critical,
             custom_fields=_task_custom_fields(task_el, ext_defs),

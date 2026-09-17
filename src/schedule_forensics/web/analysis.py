@@ -354,7 +354,7 @@ def _float_erosion_panel(
             "<div class=panel>"
             + _panel_head("Float erosion by WBS", tools=_shell_tools(), prov=prov)
             + picker
-            + "<p class=muted>No schedulable activities to group.</p></div>"
+            + "<p class=muted>No incomplete activities to group.</p></div>"
         )
     thr = f"{fe.low_float_threshold_days:g}"
     rows = []
@@ -388,7 +388,9 @@ def _float_erosion_panel(
         "&mdash; where buffer is thinning before the project-level margin is hit. The stoplight is on "
         f"each group's <b>minimum</b> total float: <b>red</b> below 0 (eroded / behind a constraint), "
         f"<b>amber</b> 0&ndash;{thr} working days (thin buffer), <b>green</b> above {thr}. Float is "
-        "read progress-aware (the source tool's stored Total Slack when present).</p>"
+        "read progress-aware (the source tool's stored Total Slack when present) over the "
+        "<b>incomplete</b> activities of each group &mdash; finished work has no buffer to consume, "
+        "and a group with no remaining work is not listed.</p>"
         f"{cards}"
         "<table><tr><th scope=col>WBS</th><th scope=col>Activities</th>"
         "<th scope=col>Min float (wd)</th><th scope=col>Avg float (wd)</th>"

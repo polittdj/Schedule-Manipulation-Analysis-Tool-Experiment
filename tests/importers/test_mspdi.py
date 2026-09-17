@@ -238,7 +238,10 @@ def test_estimated_duration_flag_is_read() -> None:
 def test_stored_total_slack_and_critical_are_read() -> None:
     """MS Project's stored Total Slack (tenths of a minute → working minutes) and Critical flag
     are captured so the DCMA float metrics can match Acumen on progressed files (ADR-0080).
-    Absent elements stay ``None`` so the metric falls back to the recomputed CPM float."""
+    An absent ``Critical`` stays ``None``. An absent ``TotalSlack`` in a file that carries the
+    element elsewhere is the ZERO the MPXJ writer dropped (R-62, ADR-0507 — re-derived 2026-09-18
+    from ``None``; ``test_mspdi_absent_slack_is_zero.py`` carries the provenance); only a file
+    with no ``TotalSlack`` at all leaves it ``None`` for the recomputed-float fallback."""
     body = (
         "<Tasks>"
         "<Task><UID>1</UID><Name>A</Name><Duration>PT8H0M0S</Duration>"
@@ -253,7 +256,7 @@ def test_stored_total_slack_and_critical_are_read() -> None:
     assert sch.tasks_by_id[1].stored_is_critical is True
     assert sch.tasks_by_id[2].stored_total_float_minutes == -2880
     assert sch.tasks_by_id[2].stored_is_critical is False
-    assert sch.tasks_by_id[3].stored_total_float_minutes is None
+    assert sch.tasks_by_id[3].stored_total_float_minutes == 0  # the file carries the element
     assert sch.tasks_by_id[3].stored_is_critical is None
 
 

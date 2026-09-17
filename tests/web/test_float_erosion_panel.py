@@ -41,6 +41,8 @@ def test_panel_renders_on_analysis_page(client: TestClient) -> None:
     page = client.get("/analysis/Project5").text
     assert "Float erosion by WBS" in page
     assert "Min float (wd)" in page
+    # R-62 (ADR-0507): the panel says whose float it reads — incomplete activities only
+    assert "finished work has no buffer to consume" in page
 
 
 def test_panel_flags_eroded_group_red() -> None:

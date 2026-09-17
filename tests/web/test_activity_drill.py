@@ -14,6 +14,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
+from schedule_forensics.importers.mspdi import parse_mspdi_text
 from schedule_forensics.web.app import SessionState, _status_stack, create_app
 
 GOLDEN = Path(__file__).resolve().parents[1] / "fixtures" / "golden" / "fuse_hardfile"
@@ -62,6 +63,32 @@ def test_activities_drill_api_returns_rows_and_fields(client: TestClient) -> Non
     # every returned row carries a uid + a fields map (so add-column works client-side)
     for row in body["rows"]:
         assert "uid" in row and "fields" in row
+
+
+def test_a_completed_activitys_total_slack_reads_zero_not_blank(client: TestClient) -> None:
+    """R-62 (ADR-0507): the drill grid is the Data Explorer, and its addable ``Total Slack (d)``
+    column reads the file's STORED slack (``grouping``'s field, never the engine's float). A
+    completed activity's stored slack is the zero the MPXJ writer dropped — MS Project shows
+    ``0d`` — so the column reads ``0``; before, ``None``, rendered as an em-dash."""
+    xml = gzip.decompress((GOLDEN / "Hard_File_updated3.mspdi.xml.gz").read_bytes())
+    sch = parse_mspdi_text(xml.decode("utf-8"))
+    done = [t.unique_id for t in sch.tasks if not t.is_summary and t.percent_complete >= 100.0]
+    assert len(done) == 42
+    body = client.get(
+        "/api/activities/drill",
+        params={
+            "file": "Hard_File_updated3.mspdi.xml",
+            "uids": ",".join(map(str, done)),
+            "title": "T",
+        },
+    ).json()
+    assert len(body["rows"]) == 42
+    assert "Total Slack (d)" in body["fields"]
+    for row in body["rows"]:
+        assert row["fields"]["Total Slack (d)"] == "0", (
+            row["uid"],
+            row["fields"]["Total Slack (d)"],
+        )
 
 
 def test_activities_drill_export(client: TestClient) -> None:

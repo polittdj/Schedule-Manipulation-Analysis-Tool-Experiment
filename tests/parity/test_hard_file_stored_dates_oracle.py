@@ -123,7 +123,12 @@ def _census(sch: Schedule, res: CPMResult) -> dict[str, int]:
                 sch.project_start, tm.early_finish, sch.calendar
             )
             out["finish_1d"] += abs((ef - t.finish).total_seconds()) <= 86400
-        if t.stored_total_float_minutes is not None:
+        # R-62 (ADR-0507, 2026-09-18): a completed activity's stored slack is MS Project's zero by
+        # fiat (its stored start AND finish slack are (0, 0) on every finished activity of every
+        # intake file) — a record, not a schedule — so it adjudicates nothing here. A no-op on
+        # the pre-R-62 importer (no finished activity carries the element on any golden) and
+        # load-bearing after it: without the progress guard Project2's tf_n reads 126, not 106.
+        if t.stored_total_float_minutes is not None and t.percent_complete < 100.0:
             out["tf_n"] += 1
             out["tf_exact"] += tm.total_float == t.stored_total_float_minutes
         out["critical"] += tm.is_critical == t.stored_is_critical

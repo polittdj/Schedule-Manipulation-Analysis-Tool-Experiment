@@ -7,7 +7,11 @@ many of its activities are critical, and a stoplight on the group's minimum floa
 
 Total float is read **progress-aware** via :func:`effective_total_float` (the source tool's stored
 Total Slack when present, else the recomputed CPM float), so the numbers agree with the rest of the
-tool's float-based metrics (Acumen parity, ADR-0080). Parity-isolated lightweight dataclasses (NOT
+tool's float-based metrics (Acumen parity, ADR-0080), and — like every one of them — over
+**incomplete** activities only (R-62, ADR-0507): finished work has no buffer to consume, and before
+that census the groups read a completed activity's float too — the engine's recomputed value, the
+file's own zero having been dropped by the MPXJ writer — which painted four of Hard_File_updated4's
+groups red on completed work. Parity-isolated lightweight dataclasses (NOT
 ``MetricResult``) — out of the Fuse ribbon and the metric-dictionary coverage test, like
 ``health_extra`` / ``logic_integrity`` / ``margin``.
 
@@ -24,6 +28,7 @@ from schedule_forensics.engine.cpm import CPMResult
 from schedule_forensics.engine.metrics._common import (
     effective_total_float,
     is_effective_critical,
+    is_incomplete,
     non_summary,
 )
 from schedule_forensics.engine.metrics.wbs_breakdown import _top_level
@@ -38,7 +43,8 @@ _LOW_FLOAT_DAYS = 10.0
 
 @dataclass(frozen=True)
 class WBSFloat:
-    """One top-level-WBS group's float-erosion figures (total float in working days)."""
+    """One top-level-WBS group's float-erosion figures (total float in working days, over the
+    group's INCOMPLETE activities — a group with no remaining work is not listed)."""
 
     wbs: str
     count: int
@@ -70,9 +76,11 @@ def compute_float_erosion(
 ) -> FloatErosion:
     """Per-top-level-WBS total-float summary for ``schedule`` (progress-aware float; CPM-derived).
 
-    Activities group by their top-level WBS segment (``"7.3"`` → ``"7"``; no code → ``"(none)"``),
-    matching ``wbs_breakdown``. Each group reports its minimum and average total float in working
-    days, its critical-activity count, and a stoplight on the minimum float.
+    Incomplete activities group by their top-level WBS segment (``"7.3"`` → ``"7"``; no code →
+    ``"(none)"``), matching ``wbs_breakdown``. Each group reports its minimum and average total
+    float in working days, its critical-activity count, and a stoplight on the minimum float.
+    Completed work is outside the population (ADR-0507): it has no float to erode, and MS Project's
+    own Total Slack for it is a zero by fiat — a record, not a schedule.
 
     ``wbs_field`` (ADR-0150) lets the operator group by ANY available field — e.g. a custom
     outline code like "CA-WBS" — instead of the built-in WBS column. ``None``/``"WBS"`` keeps
@@ -85,6 +93,8 @@ def compute_float_erosion(
     crit: dict[str, int] = {}
     use_custom = wbs_field is not None and wbs_field != "WBS"
     for task in non_summary(schedule):
+        if not is_incomplete(task):
+            continue
         timing = cpm.timings.get(task.unique_id)
         recomputed = float(timing.total_float) if timing is not None else 0.0
         tf_days = effective_total_float(task, recomputed) / per_day
