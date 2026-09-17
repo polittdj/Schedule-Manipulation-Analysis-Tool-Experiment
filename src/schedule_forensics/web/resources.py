@@ -109,7 +109,11 @@ def _resources_explainer() -> str:
 across the <b>working days</b> of the task's span (its CPM early start &rarr; early finish) and totalled
 into the chosen <b>bucket</b> (day / week / month), per resource. A resource's per-bucket <b>capacity</b>
 is <code>max&nbsp;units &times; working&nbsp;hours/day &times; working&nbsp;days&nbsp;in&nbsp;the&nbsp;bucket</code>,
-so over-allocation is consistent at every granularity.</p>
+so over-allocation is consistent at every granularity. Where the file carries a resource's
+<b>availability table</b> (MS Project's Resource Availability grid), each working day earns the units
+that table states for <i>that</i> day &mdash; a crew that doubles mid-project has one unit of capacity
+in the earlier buckets and two in the later &mdash; and the roster's max units is the row in force at
+the status date, so nothing here depends on the day the file was converted.</p>
 <p>A bucket where booked work <b>exceeds capacity</b> is <b class=res-over>over-allocated</b> (shown red)
 &mdash; the resource is asked to do more than its availability allows there, a signal to re-level,
 re-sequence, or add capacity. <b>Click any bar</b> to see the exact activities driving that bucket's
@@ -366,8 +370,9 @@ def _resources_body(st: SessionState, granularity: str = "month") -> str:
 <div class=panel data-export="{export_url}">{roster_head}
 {take(roster_take)}
 <p class=muted>Every resource in the schedule — assigned or not — sorted by total work; unassigned
-resources show zero work. Max units is the file's own figure (&mdash; when the file does not state
-one; capacity then assumes 1 full unit, see the explainer). Over-allocated {unit}s are the count of
+resources show zero work. Max units is the file's own figure at the status date (the row of its
+availability table in force then, where the file carries one; &mdash; when the file does not state
+one, and capacity then assumes 1 full unit, see the explainer). Over-allocated {unit}s are the count of
 {unit}s booked beyond capacity.</p>
 {roster}</div>
 <div class=panel data-export="{export_url}">{util_head}

@@ -27,7 +27,7 @@ from schedule_forensics.model import units
 from schedule_forensics.model.assignment import Assignment, CostPiece, WorkPiece
 from schedule_forensics.model.calendar import Calendar
 from schedule_forensics.model.relationship import Relationship, RelationshipType
-from schedule_forensics.model.resource import Resource, ResourceType
+from schedule_forensics.model.resource import AvailabilityPeriod, Resource, ResourceType
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import ConstraintType, Task, TaskType
 
@@ -53,11 +53,16 @@ from schedule_forensics.model.task import ConstraintType, Task, TaskType
 #   baseline cost as the file records it: the BCWS MS Project stores and Fuse sums (R-46).
 # 2.15.0: Assignment.leveling_delay_minutes (ADR-0502) — a BOOKING's own resource-leveling
 #   delay, which MS Project applies to that crew's leg alone without moving the task (R-57).
-SCHEMA_VERSION = "2.15.0"
+# 2.16.0: Resource.availability + AvailabilityPeriod (ADR-0506) — the resource's availability
+#   table as the file records it (MS Project's Resource Availability grid), so capacity is the
+#   save's own statement per day and Resource.max_units is that table at the STATUS date, not
+#   the vendored converter's wall clock (R-63).
+SCHEMA_VERSION = "2.16.0"
 
 __all__ = [
     "SCHEMA_VERSION",
     "Assignment",
+    "AvailabilityPeriod",
     "Calendar",
     "ConstraintType",
     "CostPiece",

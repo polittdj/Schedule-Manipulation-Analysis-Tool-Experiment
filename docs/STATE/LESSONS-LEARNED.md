@@ -435,6 +435,41 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-17 (d) — a row's first step can already be true: measure the artefact under a faked clock before pricing a converter change, and a survivor in the battery is a hole in the CODE as often as in the tests (ADR-0506, R-63 closed; R-68 registered)
+
+- **The row's remedy was testimony, and its first step was already the case.** R-63 said "write the
+  availability and cost-rate tables themselves". `javap` on the vendored jar showed `MSPDIWriter` already
+  calls `writeAvailability` and `writeCostRateTables`, and the goldens already carried the tables beside
+  the clock's scalars. The whole fix belonged to the importer and the engine. **Read the bytecode of the
+  thing you are about to change before you change it.**
+- **Fake the clock; don't reason about it.** `apt install faketime` + `LD_PRELOAD` moves the JVM's
+  `LocalDateTime.now()`. Converting ONE save under three frozen clocks turned "the converter depends on
+  the date" from an inherited claim into a diff: 07-09 reproduces the committed golden to the second;
+  09-14 and 11-01 change exactly the scalar elements; every table, task, assignment and calendar
+  byte-identical. The probe is committed (`tools/conversion_clock_probe.py`) so the next session can
+  re-run the measurement instead of re-reading this sentence.
+- **A number's provenance can be a stored field the getter ignores.** The `.mpp` stores MS Project's
+  own current-row `MaxUnits` at save time (100 / 100 / 50 / 25 for updated3's four tabled resources);
+  MPXJ's `getMaxUnits()` recomputes it from the table at the reader's clock and returns null outside
+  every row, which the writer prints as the default 1. Neither the stored value nor the printed one is
+  "the file's capacity" — the TABLE is.
+- **A surviving mutant exposed dead code, not a missing test.** The first battery's start-bound cut on the
+  "row containing the instant" check survived because the "latest row begun" fallback reconstructs the
+  same answer on every contiguous table — two code paths, one outcome. The check was deleted and the
+  rule reduced to one sentence; the re-aimed cut on the surviving comparison went red by name. **When a
+  mutant survives, ask first whether the code it cut could ever change an outcome.**
+- **A cut can be malformed and print no verdict.** M08's replacement string omitted the leading
+  indentation, left an `IndentationError` in the shadow copy and returned pytest's usage exit (4) with
+  no `[mutcheck]` line. A battery row without a verdict is not a red or a green; it is a broken
+  instrument. Read the stderr of every non-red row.
+- **Write the corpus figure AFTER the census, never before.** A docstring drafted before the census said
+  the FX saves' single rows "contain every loaded day of their resources"; the census counted 113 / 179
+  / 113 loaded days outside them. The sentence was corrected with the measured figures and the gap
+  registered as R-68 rather than asserted away.
+- **A shell variable set inside a backgrounded list is not set in the foreground.** `SCR=… && (…) &`
+  left `$SCR` empty for the next command; `bandit … > /bandit.log` failed on the redirect and reported
+  exit 1 with no log — a false red that cost a re-run. Set the variable on its own line.
+
 ### 2026-09-17 (c) — a register row can be RIGHT about the arithmetic and WRONG about the mechanism twice over: the "external link" was a resource placeholder, and the head was nine links higher (ADR-0505, R-64 and R-66 closed)
 
 - **Read the activity's own XML before pricing the rule — again.** R-64 said milestone 387 hangs on

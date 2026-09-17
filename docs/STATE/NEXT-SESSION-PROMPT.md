@@ -1,80 +1,65 @@
 # Kickoff prompt — next session
 
-**`main` @ `3db94b14` (#694, R-59 / ADR-0504, v1.0.270) — its OWN CI was read TO CONCLUSION: run 1915 (`35254782501`) SUCCESS, all six jobs (`cui-guard` 17:46:59Z · `browser` 18:04:08Z · `floor` 18:12:51Z · `test (3.13)` 18:31:26Z · `test (3.11)` 18:33:52Z · `check` 18:33:58Z), and installer-smoke 753 (`35254782608`) SUCCESS 17:51:32Z. Nothing about `3db94b14` is outstanding. Always `git fetch origin` and read `git log origin/main` before trusting any sha written here, including this one.**
+**`main` @ `778da99c` (#695, R-64 / ADR-0505, v1.0.271) — its OWN CI was read TO CONCLUSION: run 1917 (`35274461874`): `cui-guard` 21:03:37Z · `browser` 21:20:57Z · `floor` 21:26:19Z · `test (3.13)` 21:39:35Z · `test (3.11)` 21:51:47Z · `check` 21:51:52Z; installer-smoke 755 (`35274461873`) SUCCESS 21:07:52Z. Nothing about `778da99c` is outstanding. Always `git fetch origin` and read `git log origin/main` before trusting any sha written here, including this one.**
 
-**R-64 is CLOSED — ADR-0505, draft PR [#695](https://github.com/polittdj/Schedule-Manipulation-Analysis-Tool-Experiment/pull/695) (the OPERATOR merges; if it is merged when you arrive, `main` has moved past `3db94b14` — read ITS own six jobs AND its installer-smoke run to conclusion, since the diff touches `installer/**`, and expect EIGHT checks on the PR; a red cell on a tree identical to the green PR head is the RUNNER's claim — compare tree hashes before believing it; do NOT open a docs-only PR to record the merge). R-66 is CLOSED with it. The row's MECHANISM was refuted before a line changed — "milestone 387 hangs on `PredecessorUID` −65535" — by 387's own XML (its one link is UID 386) and by a census of every link in the 44 corpus files (11,979 across the 15 goldens, 21,609 across the 29 fresh `.mpp` conversions: ZERO unresolvable, cross-project, external or negative-UID links); −65535 is the `ResourceUID` of MS Project's unassigned-work placeholder on the milestone's own assignment. The day was lost at milestone **181**, fifteen links above 404: a project-axis zero-duration task driven by a 16-hour crew that finished at Tuesday 08:00 kept only the integer minute, which the axis renders as Monday 17:00, and the crew successor 189 was started there. **A zero-duration project-axis task now carries its driving predecessor's wall instant** (`_carried_instant` in `engine/cpm.py`'s forward pass: the latest instant among its lag-0 link drivers, a raw constraint date, a manual stored start or a recorded actual start; carried only when some driver's instant is one the axis LOST; the integer offsets untouched; exposed on `TaskTiming.early_start_wall` / `early_finish_wall`, late walls `None`), and a wall-path successor starts from it. Do not re-derive it, do not "snap" a milestone to its calendar (the corpus's own witnesses: updated2's 387 at 23:00, the 24-hour snapshot's 156 on a Sunday), and do not add the projection guard or the stored-floor candidate back (both proved inert / unreachable and were DELETED).**
+**R-63 is CLOSED — ADR-0506, draft PR [#696](https://github.com/polittdj/Schedule-Manipulation-Analysis-Tool-Experiment/pull/696) (the OPERATOR merges; if it is merged when you arrive, `main` has moved past `778da99c` — read ITS own six jobs AND its installer-smoke run to conclusion, since the diff touches `installer/**`, and expect EIGHT checks on the PR; a red cell on a tree identical to the green PR head is the RUNNER's claim — compare tree hashes before believing it; do NOT open a docs-only PR to record the merge).** The row's mechanism was CONFIRMED at the bytecode — MPXJ 16.2.0 resolves `MaxUnits` (`getCurrentAvailabilityTableEntry` → `LocalDateTime.now()`), `AvailableFrom` / `AvailableTo`, `OverAllocated`, the rates (`getCurrentCostRateTableEntry(0)`) and `CurrentDate` at the JVM's clock, MS Project's own "current row of the Resource Availability grid" semantics mirrored — and **its first step was already the case**: the writer already writes `AvailabilityPeriods` and `Rates`. Measured with `faketime` (`tools/conversion_clock_probe.py`, committed): the updated3 golden's own blob under a faked 07-09 clock reproduces the committed golden to the second; 09-14 / 11-01 change 9 / 13 element pairs (ADR-0491's "32 lines" was the same 9 pairs in normal diff format); every task, assignment, calendar and table byte-identical. **The model carries the table (`Resource.availability` of `AvailabilityPeriod`, schema 2.16.0, the Save round trip); the MSPDI importer resolves `max_units` (the table) and `standard_rate` (cost-rate table A) at the STATUS date, else the project start, reading the scalar `<MaxUnits>` / `<StandardRate>` only for a resource with no table; ONE resolution rule (`value_in_effect`: the latest row begun by the instant, else the earliest — the containing-row check was dead code, its mutant SURVIVED, deleted; `available_to` is carried as data); the loading engine earns each working day's capacity from the row in force that day; the roster's Max units is the status-date row.** Do not re-derive it, do not read the scalars as a file's statement, and do not touch the converter for it.
 
-**Measured:** Hard_File EVERY activity finishes on its stored instant (exact 40 → 110 of 110; stored slack exact 39 → 101; Critical 108 → 110); updated / updated2 / updated3 110 of 110 within a day; the 24-hour snapshot's project finish 11-17 01:00 → the stored 11-19 01:00 EXACT (its own oracle row now); Project2 / Project5 / EVM / the Large Test Files unmoved. Across the 44 files: 220 finishes toward the stored instant, 41 away — two named mechanisms, neither the rule's (the two lunch-hour milestones 168 / 7107 and their copies; one chain below the out-of-sequence UID 187 in the non-golden `logic_reestablished` file). The `/analysis` page on Hard_File differs in its two float panels only; `/api/analysis` in 65 rows' float figures; Project5 and Large_Test_File byte-identical on every surface.
+**Measured, pristine → this tree, over 73 file entries (15 goldens + the 29 `.mpp` files at two clocks; 2,601 resource rows, 7,966 month buckets):** 230 tabled resources; 28 roster figures, 78 bucket capacities, 8 rates moved; 17 over-allocation flags CLEARED; the load never moved; the two clocks' conversions of one file import to different loadings for 3 of 29 files under the pristine importer and **0 of 29** under this one (the row's oracle). The four tabled goldens: Customer Service Team 1 → 2, Customer Service Lead 1 → 2, Technology Lead 0.5 → 1, Logistics 0.25 → 0.5 (a three-row table), the apprentice's rate 10 → 30. Rendered through the real app: only the twelve `/resources` renders differ (56 of 68 byte-identical).
 
-**Baselines to attribute against: full suite 5,572 green / 0 failed / 7 skipped on the final tree (measured 5,571 / 1 / 7 at the code commit `ae8ee1de` in a separate worktree, the 1 being the version-pin guard fixed by the docs commit; 5,579 collected = 5,561 + 17 + 1); `-m parity` 171 / 0 (170 + the oracle's 24-hour row). Version 1.0.271; highest ADR 0505; schema 2.15.0.**
+**Baselines to attribute against:** **full suite 5 failed / 5,604 passed / 7 skipped in 39:06** (21:45–22:24Z, `-v`, the package under test asserted by the plugin, no stall) and **`-m parity` 187 passed / 0 failed in 6:58**. The five failures are all attributable and none is the change's: the four installer lockstep pins (`test_embedded_wheel_decodes_byte_exact_with_static_assets[ps1 / sh / command]` and `test_embedded_wheel_is_in_lockstep_with_the_source_tree`) are red by construction in a worktree that carries `main`'s old installers beside the new `src/` — the final tree's rebuilt installers pass that module 68 / 68 — and `tests/test_state_docs.py::test_handoff_top_section_pins_the_current_pyproject_version` is red on the code commit's unrotated handoff and green on the final tree (the docs commit carries the pin); the final tree differs from the measured one under `docs/`, `installer/` and the six-line footnote rewording in `web/resources.py` only — so the final tree reads **5,609 green / 0 failed / 7 skipped**. Attributed: **5,616 collected = 5,579 + 37** (the three new modules' 27 + the engine's 4 + the model's 4 + the freeze test's 2, by `--collect-only`); the previous unit's 5,572 green + 37 = 5,609; parity **187 = 171 + 16** (the new oracle). The 7 skips are the documented set (the loopback-allowlist pair, the three INCIDENTAL_SVG axis cases, the two LibreOffice interop skips that are correct in this container). Version 1.0.272; highest ADR 0506; schema 2.16.0.
 
-**R-59 is CLOSED — ADR-0504 (#694, `main` @ `3db94b14`).** The `/analysis` Working-calendar panel names EVERY calendar the base pass runs on, read off the engine's own execution plans: `plan_calendars(schedule) -> PlanCalendars` in `engine/cpm.py` beside `off_project_calendars` — `axes` / `legs` / `elapsed` / `population`; dedup by object, registered first by uid, derived after by name. Do not re-derive it, and do not "widen" `off_project_calendars` (structurally blind to a crew's calendar; kept as public API only).
+**R-64 is CLOSED — ADR-0505 (#695, `main` @ `778da99c`); R-66 CLOSED with it.** A zero-duration project-axis task carries its driving predecessor's wall instant (`_carried_instant` in `engine/cpm.py`'s forward pass; exposed on `TaskTiming.early_start_wall` / `early_finish_wall`); do not re-derive it, do not "snap" a milestone to its calendar, and do not add the projection guard or the stored-floor candidate back. **R-59 CLOSED — ADR-0504** (`plan_calendars(schedule)` in `engine/cpm.py` names every calendar the base pass runs on; do not "widen" `off_project_calendars`). **R-58 CLOSED — ADR-0503** (a task calendar meets a crew calendar on their INTERSECTION; the slack axis stays the TASK calendar). **R-57 CLOSED — ADR-0502** (a BOOKING's own `LevelingDelay` on the TYPE AXIS). **R-61 CLOSED / SETTLED — ADR-0500 / 0501.** R-47 CLOSED (ADR-0495). R-46 CLOSED (ADR-0492). R-60 CLOSED (ADR-0491): regenerate a golden ONLY through `tools/regenerate_timephased_goldens.py`.
 
-**R-58 is CLOSED — ADR-0503 (#693).** A task calendar meets a crew calendar on their INTERSECTION (`_calendar_intersection` behind `_task_shape` and `booking_calendar`); the slack axis stays the TASK calendar (ADR-0474). **R-57 is CLOSED — ADR-0502 (#691):** a BOOKING's own `Assignment/LevelingDelay` is honoured on that leg alone, on the TYPE AXIS (a leg with its OWN span is PUSHED, a leg that SPANS THE TASK ABSORBS). **R-61 CLOSED / SETTLED — ADR-0500 / ADR-0501.** R-47 CLOSED (ADR-0495). R-46 CLOSED (ADR-0492). R-60 CLOSED (ADR-0491): regenerate a golden ONLY through `tools/regenerate_timephased_goldens.py`.
-
-**Environment, re-measured 2026-09-17 (c): run the full sweep with `-v`, never `-q`.** This container
+**Environment, re-measured 2026-09-17 (d): run the full sweep with `-v`, never `-q`.** This container
 has NO pytest-timeout, so a stalled test never becomes a failure; the hang signal is no new results
-while the load average is ~0. Expect **7 skips** locally: the urlparse pair, three INCIDENTAL_SVG
-axis cases, and the two `test_pptx_libreoffice_interop` skips that are CORRECT here (no
-libreoffice-impress; CI installs it and treats a skip as a FAILURE). The clone arrives SHALLOW —
-`git fetch --unshallow origin` FIRST (~60 s). Install with `uv pip install --python
-/usr/local/bin/python3 --system -e '.[dev]' build playwright` (never `playwright install`);
-re-`uv pip install -e .` after a version bump. `/root/.local/bin/ruff` 0.15.8 shadows CI's
-`/usr/local/bin/ruff` **0.16.8** on PATH — run both. Keep the token-guardian's `token_audit.py` in
-the SCRATCHPAD (`ruff check .` is whole-tree). A `.pth` editable install lets `PYTHONPATH` shadow the
-package for a mutation battery — assert the imported module IS the copy every time (a `-p mutcheck`
-plugin does it) — and the same trick runs the working tree's tests against a pristine worktree's
-`src/` for the red-first proof. Take the pristine baseline in a SEPARATE WORKTREE (`git worktree
-add <scratch> origin/main`), never by mutating the tree under measurement; **run the full suite in a
-worktree at the CODE commit while the docs are written in the working tree** (with `PYTHONPATH` on
-the worktree's `src/` and the plugin asserting it). **Sequence every test edit BEFORE the mutation
-battery starts — a battery whose oracle is re-pinned mid-run is discarded** (paid for this session).
-The wheel must be built AFTER the last `ruff format` (the lockstep pin). Four-theme screenshots:
-serve with uvicorn on a free loopback port, `chrome_kwargs()` from `tests/web/browser_chrome.py`, set
-`data-theme` on the root. The 29 intake `.mpp` files convert in ~70 s total with the vendored MPXJ
-(`java -cp tools/mpxj/classes:"tools/mpxj/lib/*" MpxjToMspdi <in> <out>`, into the scratchpad).
+while the load average is ~0 (the SRA Monte-Carlo oracles sit at one verdict for minutes at 86 % CPU —
+that is not a stall). Expect **7 skips** locally: the urlparse pair, three INCIDENTAL_SVG axis cases,
+and the two `test_pptx_libreoffice_interop` skips that are CORRECT here (no libreoffice-impress; CI
+installs it and treats a skip as a FAILURE). The clone arrives SHALLOW — `git fetch --unshallow origin`
+FIRST (~60 s). Install with `uv pip install --python /usr/local/bin/python3 --system -e '.[dev]' build
+playwright` (never `playwright install`); re-`uv pip install -e . --no-deps` after a version bump.
+`/root/.local/bin/ruff` 0.15.8 shadows CI's `/usr/local/bin/ruff` **0.16.8** on PATH — run both. Keep
+the token-guardian's `token_audit.py` in the SCRATCHPAD (`ruff check .` is whole-tree). A `.pth`
+editable install lets `PYTHONPATH` shadow the package for a mutation battery — assert the imported
+module IS the copy every time (a `-p mutcheck` plugin does it) — and the same trick runs the working
+tree's tests against a pristine worktree's `src/` for the red-first proof. Take the pristine baseline in
+a SEPARATE WORKTREE (`git worktree add <scratch> origin/main`), never by mutating the tree under
+measurement; **run the full suite in a worktree at the CODE commit while the docs are written in the
+working tree** (with `PYTHONPATH` on the worktree's `src/` and the plugin asserting it) — and know that
+such a worktree carries `main`'s OLD installers beside the new `src/`, so the four installer lockstep
+pins are red there by construction and green on the final tree (rebuild, then run
+`tests/installer/test_installers.py` in the working tree). **Sequence every test edit BEFORE the
+mutation battery starts — a battery whose oracle is re-pinned mid-run is discarded**; read the stderr
+of every battery row that is neither red nor green. The wheel must be built AFTER the last `src/` edit
+and the last `ruff format` (the lockstep pin). `apt-get install faketime` works here; `faketime -f
+"@YYYY-MM-DD hh:mm:ss"` (with `FAKETIME_DONT_FAKE_MONOTONIC=1`) moves the JVM's `LocalDateTime.now()`.
+`bandit` B608 fires on an HTML f-string that contains `<select` and a later " from " — reword, do not
+nosec. Set a shell variable on its own line, never inside a backgrounded `A && (B) &` list. Four-theme
+screenshots: serve with uvicorn on a free loopback port, `chrome_kwargs()` from
+`tests/web/browser_chrome.py`, set `data-theme` on the root. The 29 intake `.mpp` files convert in ~70 s
+total with the vendored MPXJ (`java -cp tools/mpxj/classes:"tools/mpxj/lib/*" MpxjToMspdi <in> <out>`,
+into the scratchpad).
 
 **Run the session-token-guardian's `scripts/token_audit.py` as the FIRST action** (copy it to the
 scratchpad) and before each operator prompt.
 
-## The next §3 unit is R-63.
+## The next §3 unit is R-62.
 
-**R-63** (T3, S) — the vendored converter's output depends on the CONVERSION date, not only the save:
-`CurrentDate`, and a resource's `MaxUnits` / `OverAllocated` / `AvailableFrom` / `AvailableTo` /
-`StandardRate` / `OvertimeRate` resolve at "now" from the availability and cost-rate tables (measured
-2026-09-14: the same Hard_File_updated3 save converted 07-09 and 09-14 differs on exactly those 32
-lines; `MaxUnits` feeds the resource-loading view's capacity) — two operators converting one file a
-month apart get different loading figures (ADR-0491). First executable step: write the availability
-and cost-rate tables themselves (MSPDI `AvailabilityPeriods` / `Rates`) and have the importer resolve
-capacity at the STATUS date; red-first on a resource whose availability changes across the schedule.
-Oracle: the loading view's capacity independent of the conversion date. **Before pricing it:** convert
-the same save on two fabricated "now"s (the JVM's clock can be faked with `-Duser.timezone`-style
-options only for the zone — read `MpxjToMspdi.java` and MPXJ's availability resolution first; the
-kickoff's claim that the tables can simply be written is TESTIMONY), census which of the 29 `.mpp`
-files carry a non-trivial availability or rate table at all, and read every consumer of `MaxUnits` in
-`engine/` and `web/` (the loading view, the SRA?) before writing a line. The R-64 lesson applies:
-walk from the observed difference to its first cause in the converter's own output.
+**R-62** (T3, S) — every absent `TotalSlack` the MPXJ writer dropped is a zero, completed tasks
+included (the ADR-0490 probe: NULL for none, 786 zeros in memory on Large Test File2, 634 of them
+completed tasks); the importer infers only the `Critical` ones, so the Data Explorer's `Total Slack (d)`
+reads `—` for a completed task where MS Project reads `0d` (ADR-0490). First executable step: widen the
+inference to every absent slack when the file carries the element; census every metric that reads a
+completed task's slack first (today none does). Oracle: the Data Explorer column equal to MS Project's;
+`pytest -m parity` unmoved. **Before pricing it:** re-run ADR-0490's probe on the vendored jar (MPXJ's
+`getTotalSlack` vs the writer's null-drop — the bytecode, not the ADR's memory of it); census the
+completed tasks whose `<TotalSlack>` is absent across the 15 goldens AND the 29 `.mpp` conversions; read
+every consumer of `stored_total_float_minutes` (the ribbon's Negative Float classifies the STORED slack
+— ADR-0473 — and a widened inference could move it; `pytest -m parity unmoved` is the row's own pin);
+and confirm the Data Explorer reads the stored field, not the engine's float, before writing a line.
+The R-63 lesson applies: the row's first step may already be half true — measure the artefact first.
 
-⇢ WHAT'S DONE — do not re-open. WP0–WP8 (ADR-0440..0472) · ADR-0473 (R-01) · ADR-0474 (R-44) ·
-ADR-0475 (/standards) · ADR-0476 (R-55) · ADR-0477 (R-20 / UI-03) · ADR-0478 · ADR-0481 (OR-11e) ·
-ADR-0482 (OR-12) · ADR-0483 (OR-13) · ADR-0484 (/scorecards) · ADR-0485 (OR-14) · ADR-0486 (OR-15) ·
-ADR-0487 (R-56) · ADR-0488 (OR-16 / OR-16b) · ADR-0489 (/margin) · ADR-0490 (R-49) · ADR-0491 (R-60) ·
-ADR-0492 (R-46) · ADR-0493 (OR-17 in part) · ADR-0494 (OR-18) · ADR-0495 (R-47) · ADR-0496 (OR-19) ·
-ADR-0497 (OR-20) · ADR-0498 (R-52) · ADR-0499 (R-50) · ADR-0500 (R-61 refuted) · ADR-0501 (R-61
-settled on the `.mpp` corpus) · ADR-0502 (R-57, v1.0.268) · ADR-0503 (R-58, v1.0.269) · ADR-0504
-(R-59, v1.0.270) · **ADR-0505 (R-64 CLOSED with its mechanism corrected, R-66 CLOSED with it — the
-carried milestone instant; v1.0.271; this session)**.
-⇢ NEXT — the report's §3 in order, one row per unit of work (red-first → the per-task toward/away
-census across EVERY golden AND the 29 `.mpp` files before the ADR → mutation proofs by name → the full
-gate → an ADR → the state docs → a draft PR): **R-63** (above) · **R-62** (every absent slack the
-writer dropped is a zero, completed tasks included) · **R-65** (the 1–28-minute gap granularity) ·
-**R-67** (147's Saturday late start on the elapsed axis — now with its mechanism CONFIRMED as
-ADR-0505's backward mirror: a milestone's LATE instant from a wall-path successor's late-start need;
-witnesses 147's 08-01 13:00, the 24-hour snapshot's 156 (stored LF 11-02 09:00 vs 17:00, −4,740 vs
-−4,320), 94's 6,510 vs 6,360, 404's 9,420 vs 9,480) · **R-45** · then R-03 · R-04 · R-09 · R-13 ·
-R-18 · R-21 · R-22 · R-32 · R-39. The design queue is 19 artboards — the operator's order picks the
-next screen.
-⇢ Traps paid for, by name (2026-09-17 (c) first): **a number that appears in the file is not
+⇢ Traps paid for, by name (2026-09-17 (d) first): **a row's first step can already be TRUE — read the bytecode of the thing you are about to change** (`MSPDIWriter` already wrote the tables) · **fake the clock, don't reason about it** (`faketime` + `LD_PRELOAD` moves the JVM's `now()`; one save under three frozen clocks is a diff, not a memory) · **a number's provenance can be a stored field the getter ignores** (the `.mpp` stores MS Project's save-time `MaxUnits`; MPXJ recomputes it at the reader's clock) · **a surviving mutant is a hole in the CODE as often as in the tests** (the containing-row check was dead beside the latest-row-begun rule) · **a cut can be malformed and print no verdict — read every non-red row's stderr** · **write the corpus figure AFTER the census** (the FX rows do NOT contain every loaded day: 113 / 179 / 113 fall outside) · **a shell variable set inside a backgrounded list is unset in the foreground** (a false bandit red). (2026-09-17 (c):) **a number that appears in the file is not
 evidence of the mechanism it is attached to — the ELEMENT it sits in is** (−65535 was a
 `ResourceUID`, not a `PredecessorUID`) · **walk the engine's own network to the FIRST disagreement;
 never trust the row's head** (387 was nine links below it) · **a lost wall instant is a class,
@@ -116,7 +101,7 @@ the hypothesis it lived under · negative pins are green on the pristine tree by
 them with a mutant · read every green in a battery as a finding about the instrument · MS Project's
 stored dates are a per-activity CPM oracle · `LevelingDelay` is tenths of a minute · MPXJ writes no
 zero · `Large_Test_File.mpp` ≠ `Large Test File.mpp`.
-⇢ Measured-false / deliberately held — do NOT re-chase: (ADR-0505:) the BACKWARD carry (a
+⇢ Measured-false / deliberately held — do NOT re-chase: (ADR-0506:) a converter change for R-63 (the tables are already written) · a zero-availability reading outside every row (R-68 — the operator's Resource Graph decides it) · the XER `RSRCRATE` rows onto the model (the XER scalar is already data-date resolved; no P6 witness) · rate tables B–E / `OvertimeRate` / `CostPerUse` / the formats · reading `OverAllocated` / `AvailableFrom` / `AvailableTo` / `CurrentDate` (the clock's) · regenerating the goldens' resource sections · a Java-gated CI test on the golden's blob (the checkout is shallow) · a "varies" roster marker · (ADR-0505:) the BACKWARD carry (a
 milestone's late instant — R-67's, with its own witnesses) · a completed milestone's recorded instant
 on a single-calendar file (the two-ruler lunch hour: a 14:24 milestone renders 15:24; the carry needs
 an instant the axis LOST so single-calendar files stay byte-identical) · a lagged driver's instant (a
@@ -138,7 +123,7 @@ model field · regenerating a golden from the intake path's CURRENT bytes · the
 /margin (ADR-0489) · a quantity-or-rate rule for material / cost spans (ADR-0487) · a data-date
 floor (refuted twice) · the DCMA08 baseline basis (R-48) · Fuse's ACWP-to-time-now and updated3's
 BAC (R-45) · R-20 / UI-03 (ADR-0477) · the HELD and CLOSED rows of the report.
-⇢ Residuals registered, none taken: **R-67** (the backward mirror, above) · **R-65** · **the two
+⇢ Residuals registered, none taken: **R-68** (a day outside every availability row — ASK, question (f) in the report's §5: the three tampered `Project5_FX0x` saves book crews on 113 / 179 / 113 loaded days past their single bounded rows; the engine holds the latest row begun, the converter printed the default 1, MS Project's verdict unknown) · **R-67** (the backward mirror, above) · **R-65** · **the two
 lunch-hour milestones** (LTF2's 168 and Leveled's 7107 now sit on their predecessor's finish; the
 predecessors themselves ~20 h / ~70 h early for reasons of their own) · **404's slack 9,420 vs 9,480**
 (R-67's family) · **`Hard_File_updated_with_logic_reestablished`'s UID 187** (60 % complete, started
@@ -154,7 +139,7 @@ chain on the leveled SSI golden (a 2:36 daily gap read as 2) · ADR-0489's own (
 callout collapsed; two charts at 569 px) · ADR-0488's · ADR-0486's · ADR-0485's · ADR-0483's ·
 OR-11b · OR-11d · the working-minute axis · the hint bubble · ADR-0484's in-grid rows.
 ⇢ Steward posture: draft PRs the OPERATOR merges (never mark ready, never merge, never approve);
-EIGHT checks when `installer/**` changes (this PR does), SIX for docs-only; `pull_request_read`
+EIGHT checks when `installer/**` changes (this PR does), SIX for docs-only; `main`'s own run for a squash is read from its JOBS (the run object's `updated_at` sits at creation); `pull_request_read`
 `get_status` returns `pending / 0` on a fully green PR (the legacy API) — use `get_check_runs`; a
 `check_suite.completed` event can carry a superseded `head_sha` — re-read the current head; a red
 cell on `main` for a tree identical to the green PR head is the runner's claim — compare tree hashes

@@ -51,6 +51,7 @@ from schedule_forensics.importers._common import (
 )
 from schedule_forensics.model import (
     Assignment,
+    AvailabilityPeriod,
     Calendar,
     ConstraintType,
     CostPiece,
@@ -63,6 +64,7 @@ from schedule_forensics.model import (
     TaskType,
     WorkPiece,
 )
+from schedule_forensics.model.resource import units_in_effect, value_in_effect
 from schedule_forensics.model.units import MINUTES_PER_DAY
 
 logger = logging.getLogger("schedule_forensics.importers.mspdi")
@@ -187,7 +189,10 @@ def parse_mspdi_text(text: str, *, source_file: str | None = None) -> Schedule:
     if anchor_note:
         logger.warning("%s", anchor_note)
 
-    resources = _parse_resources(root)
+    # the schedule's own "now" (ADR-0506, R-63): a resource's time-varying tables resolve at the
+    # status date, else the project start — never at the converter's wall clock
+    status_date = parse_datetime(_text(root, "StatusDate"))
+    resources = _parse_resources(root, status_date or project_start)
     resource_name_by_uid = {res.unique_id: res.name for res in resources}
     assigned_uids_by_task, assigned_names_by_task, assignments_by_task = _parse_assignments(
         root, resource_name_by_uid
@@ -229,7 +234,6 @@ def parse_mspdi_text(text: str, *, source_file: str | None = None) -> Schedule:
     relationships = _in_file_links(_build_links(raw_links, durations), {t.unique_id for t in tasks})
 
     project_finish = parse_datetime(_text(root, "FinishDate"))
-    status_date = parse_datetime(_text(root, "StatusDate"))
     baseline_finish = _project_baseline_finish(root)
     # the real document Title (for grouping files into Projects) — None when the file carries none,
     # kept distinct from ``name`` which falls back to <Name>/filename
@@ -970,8 +974,19 @@ def _lag_tenths(value: str | None) -> Decimal:
 # --- resources & assignments -----------------------------------------------------
 
 
-def _parse_resources(root: ET.Element) -> list[Resource]:
-    """``Project/Resources/Resource`` → :class:`Resource` list (blank-name rows skipped)."""
+def _parse_resources(root: ET.Element, as_of: dt.datetime) -> list[Resource]:
+    """``Project/Resources/Resource`` → :class:`Resource` list (blank-name rows skipped).
+
+    ``as_of`` is the schedule's own "now" — the status date, else the project start — at which a
+    resource's time-varying tables resolve (ADR-0506, R-63): ``max_units`` is the availability
+    table's units in force then and ``standard_rate`` is cost-rate table A's rate in force then;
+    the scalar ``<MaxUnits>`` / ``<StandardRate>`` elements are read ONLY for a resource that
+    carries no table. Those scalars are MS Project's "current row" of each table, and the
+    vendored MPXJ writer resolves them at CONVERSION time (measured 2026-09-17: the same
+    Hard_File_updated3 save converted under a 07-09 and a 09-14 clock differs on exactly
+    ``CurrentDate`` and the per-resource ``MaxUnits`` / ``OverAllocated`` / ``AvailableFrom`` /
+    ``AvailableTo`` / ``StandardRate`` / ``OvertimeRate``, while every table is byte-identical).
+    """
     resources: list[Resource] = []
     resources_el = root.find("Resources")
     for res_el in [] if resources_el is None else resources_el.findall("Resource"):
@@ -981,6 +996,7 @@ def _parse_resources(root: ET.Element) -> list[Resource]:
             continue  # the UID-0 / unnamed placeholder resource MS Project always emits
         type_code = _int(res_el, "Type")
         try:
+            availability = _availability_periods(res_el)
             resources.append(
                 Resource(
                     unique_id=uid,
@@ -989,8 +1005,13 @@ def _parse_resources(root: ET.Element) -> list[Resource]:
                         1 if type_code is None else type_code, ResourceType.WORK
                     ),
                     is_generic=_bool(res_el, "IsGeneric", default=False),
-                    max_units=parse_float(_text(res_el, "MaxUnits")),
-                    standard_rate=parse_float(_text(res_el, "StandardRate")),
+                    max_units=(
+                        units_in_effect(availability, as_of)
+                        if availability
+                        else parse_float(_text(res_el, "MaxUnits"))
+                    ),
+                    standard_rate=_standard_rate_in_effect(res_el, as_of),
+                    availability=availability,
                     # the resource's own calendar (ADR-0474); MSPDI writes -1 for "none"
                     calendar_uid=_positive_int_or_none(res_el, "CalendarUID"),
                 )
@@ -998,6 +1019,48 @@ def _parse_resources(root: ET.Element) -> list[Resource]:
         except pydantic.ValidationError as exc:
             raise ImporterError(f"resource UID {uid} is invalid: {exc}") from exc
     return resources
+
+
+def _availability_periods(res_el: ET.Element) -> tuple[AvailabilityPeriod, ...]:
+    """The resource's availability table in time order (ADR-0506): every ``AvailabilityPeriod``
+    row that states units. MS Project's "NA" start (written 1984-01-01) reads as an open start
+    through the shared pre-1985 sentinel rule; a row without ``AvailableUnits`` states nothing
+    and is dropped rather than read as zero capacity."""
+    table = res_el.find("AvailabilityPeriods")
+    rows: list[AvailabilityPeriod] = []
+    for period_el in [] if table is None else table.findall("AvailabilityPeriod"):
+        units = parse_float(_text(period_el, "AvailableUnits"))
+        if units is None:
+            continue
+        rows.append(
+            AvailabilityPeriod(
+                available_from=parse_datetime(_text(period_el, "AvailableFrom")),
+                available_to=parse_datetime(_text(period_el, "AvailableTo")),
+                units=units,
+            )
+        )
+    rows.sort(key=lambda p: (p.available_from is not None, p.available_from or dt.datetime.min))
+    return tuple(rows)
+
+
+def _standard_rate_in_effect(res_el: ET.Element, as_of: dt.datetime) -> float | None:
+    """Cost-rate table A's standard rate in force at ``as_of`` (ADR-0506): the ``Rates/Rate`` rows
+    with ``RateTable`` 0 (MS Project's table A, the one a booking uses unless it names another).
+    A resource with no such row keeps the scalar ``<StandardRate>``. Tables B to E are not read: the
+    model carries one rate and no consumer reads a per-booking table."""
+    rates = res_el.find("Rates")
+    rows: list[tuple[dt.datetime | None, float]] = []
+    for rate_el in [] if rates is None else rates.findall("Rate"):
+        if (_text(rate_el, "RateTable") or "0").strip() != "0":
+            continue
+        rate = parse_float(_text(rate_el, "StandardRate"))
+        if rate is None:
+            continue
+        rows.append((parse_datetime(_text(rate_el, "RatesFrom")), rate))
+    if not rows:
+        return parse_float(_text(res_el, "StandardRate"))
+    rows.sort(key=lambda r: (r[0] is not None, r[0] or dt.datetime.min))
+    return value_in_effect(rows, as_of)
 
 
 def _positive_int_or_none(parent: ET.Element, tag: str) -> int | None:
