@@ -9,13 +9,16 @@ milestones **M5-M11** (see ``docs/PLAN/BUILD-PLAN.md``). Coverage gate: >=85%.
 from __future__ import annotations
 
 from schedule_forensics.engine.cpm import (
+    CalendarUse,
     CPMError,
     CPMResult,
+    PlanCalendars,
     TaskTiming,
     compute_cpm,
     datetime_to_offset,
     off_project_calendars,
     offset_to_datetime,
+    plan_calendars,
 )
 from schedule_forensics.engine.dcma_audit import (
     AuditCheck,
@@ -67,6 +70,7 @@ __all__ = [
     "AuditCheck",
     "CPMError",
     "CPMResult",
+    "CalendarUse",
     "Category",
     "Citation",
     "DrivingSlackResult",
@@ -75,6 +79,7 @@ __all__ = [
     "FloatResult",
     "MetricTrend",
     "PathTier",
+    "PlanCalendars",
     "ScheduleAudit",
     "ScheduleFloatSummary",
     "Severity",
@@ -95,6 +100,7 @@ __all__ = [
     "off_project_calendars",
     "offset_to_datetime",
     "order_versions",
+    "plan_calendars",
     "recommend",
     "summarize_floats",
     "topo_order",

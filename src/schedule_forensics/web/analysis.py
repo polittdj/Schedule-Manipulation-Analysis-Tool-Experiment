@@ -25,7 +25,13 @@ from collections.abc import Sequence
 from urllib.parse import quote
 
 from schedule_forensics.ai.citations import Narrative
-from schedule_forensics.engine.cpm import CPMResult, off_project_calendars, offset_to_datetime
+from schedule_forensics.engine.cpm import (
+    CalendarUse,
+    CPMResult,
+    PlanCalendars,
+    offset_to_datetime,
+    plan_calendars,
+)
 from schedule_forensics.engine.dcma_audit import AuditCheck
 from schedule_forensics.engine.forecast import compute_finish_forecasts
 from schedule_forensics.engine.metrics import compute_activity_makeup
@@ -753,14 +759,80 @@ def _float_histogram_panel(key: str, *, prov: str = "", take: str = "") -> str:
     )
 
 
-def _calendar_panel(sch: Schedule, *, prov: str = "") -> str:
-    """The working calendar the analysis runs on — imported from the file (ADR-0028).
+def _calendar_uses(uses: tuple[CalendarUse, ...]) -> str:
+    """``<b>name</b> (n)`` per calendar; a derived task ∩ crew calendar (ADR-0503) is named as
+    such — the engine computed it, no file carries it — and cites the activities it touches."""
+    parts: list[str] = []
+    for use in uses:
+        n = len(use.task_uids)
+        if use.derived:
+            cited = ", ".join(f"UID {uid}" for uid in use.task_uids[:5])
+            more = f" +{n - 5} more" if n > 5 else ""
+            parts.append(
+                f"<b>{_e(use.calendar.name)}</b> ({n} — {cited}{more}; a derived calendar: the "
+                "working time the task calendar and the crew calendar share)"
+            )
+        else:
+            parts.append(f"<b>{_e(use.calendar.name)}</b> ({n})")
+    return ", ".join(parts)
 
-    Every computed date, float, and day-denominated threshold rides this calendar, so the
-    analyst must be able to verify the time basis (and spot a fail-soft default) on the page.
-    When the file assigns some activities their own calendar, the base CPM still models only the
-    single project calendar (ADR-0028), so this panel discloses that single-calendar basis rather
-    than letting the analyst read the project-calendar row as the whole story (#26).
+
+def _calendar_disclosure(sch: Schedule, plans: PlanCalendars) -> str:
+    """The multi-calendar disclosure (R-59, ADR-0504): every calendar the base pass runs anything
+    on besides the project calendar's pattern, each with the activities it touches, from the
+    engine's own execution plans. Silent (empty) when nothing runs off the project pattern."""
+    if not plans.touched:
+        return ""
+
+    def _n(n: int) -> str:
+        return f"{n} activity" if n == 1 else f"{n} activities"
+
+    sentences = [f"<b>Not every activity runs on {_e(sch.calendar.name)}.</b>"]
+    if plans.axes:
+        n = len({uid for use in plans.axes for uid in use.task_uids})
+        own = "its" if n == 1 else "their"
+        sentences.append(
+            f"{_n(n)} {'carries' if n == 1 else 'carry'} a calendar of {own} own, and {own} total "
+            "float is measured in that calendar's working minutes (ADR-0322 / ADR-0474): "
+            f"{_calendar_uses(plans.axes)}."
+        )
+    if plans.legs:
+        n = len({uid for use in plans.legs for uid in use.task_uids})
+        sentences.append(
+            f"{_n(n)} {'has' if n == 1 else 'have'} a booking scheduled on the calendar the task "
+            "and its crew share — the crew's own calendar, the task's when the crew restricts "
+            "nothing it works, or their intersection (ADR-0474 / ADR-0503): "
+            f"{_calendar_uses(plans.legs)}."
+        )
+    if plans.elapsed:
+        n = len(plans.elapsed)
+        sentences.append(
+            f"{_n(n)} {'has' if n == 1 else 'have'} an elapsed duration and "
+            f"{'runs' if n == 1 else 'run'} round the clock."
+        )
+    sentences.append(
+        "Total float is measured on each activity's own calendar — the project calendar when it "
+        "has none — which is MS Project's basis for its stored slack (ADR-0474); the Path Analysis "
+        "/ Driving Path views measure a link's float on the successor's calendar (ADR-0118)."
+    )
+    return f'<div class="notice info">{" ".join(sentences)}</div>'
+
+
+def _calendar_panel(sch: Schedule, *, prov: str = "") -> str:
+    """The working calendar the analysis runs on — imported from the file (ADR-0028) — and every
+    other calendar the base pass runs anything on (R-59, ADR-0504).
+
+    Every computed date, float and day-denominated threshold rides the project calendar, so the
+    analyst must be able to verify the time basis (and spot a fail-soft default) on the page. The
+    base pass is NOT single-calendar: a task's own calendar is honoured and is the axis its float
+    is measured on (ADR-0322 / ADR-0474), a WORK booking runs on the calendar its task and crew
+    share — the crew's own, the task's when the crew restricts nothing it works, or their
+    intersection (ADR-0474 / ADR-0503) — and an elapsed duration runs round the clock. Until
+    ADR-0504 this panel disclosed a "single-calendar approximation" those ADRs had made false and
+    named task calendars only (``off_project_calendars`` never sees a crew's calendar); it now
+    names each calendar the engine's own execution plans run on (``plan_calendars``) with the
+    activities it touches, so the one project-calendar row is never read as the whole story.
+    Silent on a single-calendar file (no cry-wolf).
     """
     cal = sch.calendar
     days = ", ".join(_WEEKDAY_NAMES[d] for d in cal.work_weekdays)
@@ -772,34 +844,37 @@ def _calendar_panel(sch: Schedule, *, prov: str = "") -> str:
         )
     else:
         holidays = "none"
-    # Fail-soft disclosure (#26): the base CPM solves on this ONE project calendar; when the file
-    # carries per-task calendars with a different working pattern, its base-CPM dates/float are a
-    # single-calendar approximation for those activities (the SSI driving path honors each task's
-    # own calendar, ADR-0118). Silent on a single-calendar file (off is empty).
-    off = off_project_calendars(sch)
-    disclosure = ""
-    if off:
-        n = len(off)
-        cal_word = "calendar" if n == 1 else "calendars"
-        names = ", ".join(f"<b>{_e(c.name)}</b>" for c in off)
-        disclosure = (
-            f'<div class="notice info">Some activities run on {n} per-task {cal_word} whose working '
-            f"pattern differs from the project calendar <b>{_e(cal.name)}</b> ({names}). The engine's "
-            "base CPM models the single project calendar (ADR-0028), so a date or float it computes "
-            "(shown where the file carries no stored value of its own) is a single-calendar "
-            "approximation for those activities; the file's own stored dates and the Path Analysis / "
-            "Driving Path views honor each task's own calendar (ADR-0118)."
-            "</div>"
+    basis = (
+        f"{cal.working_minutes_per_day / 60:g} h/day, a {len(cal.work_weekdays)}-day work week, "
+        f"{len(cal.holidays)} holiday(s)"
+    )
+    # R-59 (ADR-0504): every calendar the base pass runs anything on besides the project
+    # calendar's pattern, from the engine's own execution plans — empty on a single-calendar file
+    plans = plan_calendars(sch)
+    disclosure = _calendar_disclosure(sch, plans)
+    touched = plans.touched
+    if touched:
+        n_other = len({id(use.calendar) for use in (*plans.axes, *plans.legs)})
+        if n_other:
+            tail = (
+                f"the other {len(touched)} run wholly or partly on {n_other} other "
+                f"{'calendar' if n_other == 1 else 'calendars'}, named below."
+            )
+        else:
+            tail = f"the other {len(touched)} have elapsed durations and run round the clock."
+        take = (
+            f"<p class=sf-take data-no-i18n>{_e(cal.name)} ({basis}) is the time basis for "
+            f"{plans.population - len(touched)} of {plans.population} activities; {tail}</p>"
+        )
+    else:
+        take = (
+            f"<p class=sf-take data-no-i18n>Every computed date and float rides {_e(cal.name)}: "
+            f"{basis}.</p>"
         )
     # ADR-0312: how the importer had to interpret this file, on the page rather than only in a
     # log line the analyst never sees. Empty for every file taken verbatim, which is the norm.
     for note in sch.import_notes:
         disclosure += f'<div class="notice warn">On import: {_e(note)}</div>'
-    take = (
-        f"<p class=sf-take data-no-i18n>Every computed date and float rides {_e(cal.name)}: "
-        f"{cal.working_minutes_per_day / 60:g} h/day, a {len(cal.work_weekdays)}-day work week, "
-        f"{len(cal.holidays)} holiday(s).</p>"
-    )
     return f"""
 <div class=panel>{_panel_head("Working calendar", tools=_shell_tools(), prov=prov)}{take}
 <p class=muted>The time basis behind every computed date, float, and day-denominated
