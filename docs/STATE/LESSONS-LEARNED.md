@@ -435,6 +435,108 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-18 (b) — a residual's range is the range the last census printed; a wall-clock census lies at a day boundary; and a rounding is chosen by measuring every candidate on the population, not by the one that reads right
+
+R-65 arrived as "1–28 minutes short on ~100 bookings" with three suspects. The four checks the
+kickoff demanded ran before a line changed, and each moved the row (QC-2).
+
+**Count the class beside the one you were told about, again.** Fresh conversions of all 29
+`.mpp` files: 239 split bookings, 173 differing from their window — and only 102 are the row's
+class. The 70 others have windows SHORTER than the occupancy by minutes to days at seconds
+resolution: completed records (ADR-0476) and ADR-0502's absorbed delays. A fix measured against
+"the ~100 that differ" would have chased 70 bookings that were never the mechanism. The honest
+count is 102 rows = 24 distinct bookings, because four saves of one schedule carry the same 19.
+
+**A residual's range is the range the last census printed.** ADR-0501 wrote "1–28" because those
+were the bookings it happened to list; the class runs to 62 (UID 5278, 69 gaps). Print the
+distribution, not three witnesses.
+
+**Name the mechanism at the resolution the file speaks.** All 3,742 split boundaries in the
+corpus are multiples of six seconds — MS Project's tenths of a minute — and every gap read 0.0 to
+0.9 minutes short, never long, because `hour * 60 + minute` drops both ends' seconds. The other
+two suspects were refuted by reading (the share places a gap, it does not size it) and by
+measurement (the block boundaries are the file's own instants — 217 of 239 windows begin and end
+exactly on the pieces).
+
+**Measure every candidate rounding on the population before choosing one.** Per-gap rounding
+"reads right" and drifts up to half a minute per gap: six minutes on UID 5316's nineteen gaps.
+Rounding the CUMULATIVE gap at every boundary puts 67 of 98 bookings within 30 s of the stored
+finish from the stored start and every one within 72 (the start's own truncated seconds). The
+first idea would have shipped a smaller residual with the same sign problem.
+
+**A wall-clock census lies at a day boundary.** The first goldens diff reported 20 "away" movers
+on the leveled golden and 2 on Large Test File: milestones whose finishes now land exactly at a
+day's end render as the next morning's first instant, 16 wall-hours "later" and 0 working minutes
+off. Counted in working minutes of the task's own calendar the leveled golden reads 96 toward /
+4 away, and the 4 are one chain (5306) whose leg is now 0.4 minutes from MS Project's behind a
+start that is a day late for its own reason.
+
+**A probe that crashes behind a `sed` filter reports the pristine number.** The patched census
+"showed nothing moved" because it still called a helper the patch had renamed; the traceback went
+to stderr, the filter dropped it, and the TSV it compared was the copy it had never overwritten.
+The direct probe of one witness (5,077 for 5,073) was what exposed it. Assert the run wrote its
+artefact, never the exit of the pipeline around it.
+
+**The one residual left is the model's, not the arithmetic's.** UID 5268: duration .8 up, gaps .5
+up, whole .3 down — one minute long, exact before by the coincidence of two truncations. The
+duration's seconds do not survive import (integer minutes are a Law of the model). Pinned by
+name; the next reader knows it is deliberate.
+
+**A full suite that dies with SIGBUS has measured nothing, and the first two mechanisms that fit
+were both wrong.** Run 1 of the gate died at 83 % with `Fatal Python error: Bus error` at the
+SQLite cache's WAL switch — a memory-mapped write. "Two processes shared the cache" was refuted by
+the conftest (a per-test `SF_CACHE_DIR`); "pytest pruned the running session's basetemp" was
+refuted by the listing (its directory survived; two finished ones were pruned). What is left is a
+candidate, not a mechanism — the session's fixed disk allowance at the instant of an mmap write,
+with three concurrent pytest sessions and 1.6 GB of scratch beside the suite — and it is written
+down as UNVERIFIED. The operating rule that costs nothing: run the gate ALONE, free the scratch
+first, and give any concurrent pytest its own `--basetemp`.
+
+### 2026-09-18 — a getter that answers 0.0 for "none" may be computing, not reading; and "no metric reads it" is a census, not a sentence
+
+R-62 arrived with two inherited numbers and one inherited absence. The numbers: "786 zeros in
+memory on Large Test File2, 634 of them completed tasks". The absence: "census every metric that
+reads a completed task's slack first (today none does)". All three were testimony, and this unit is
+what happens when each is treated as such (QC-2).
+
+**The provenance of a computed field is the reader's field map, not the getter.** ADR-0490's probe
+read `Task.getTotalSlack()` and reported "0.0d, NULL for none". True — and the getter is a
+*calculated* field: the MPP reader maps `START_SLACK` and `FINISH_SLACK` from the file and never a
+total, and `MicrosoftSlackCalculator` derives the total at read time. Read cached-first, the total
+slack's cache is null on all 17,402 rows. The file's statement about a finished activity is
+therefore not "0.0" but "(0, 0)" — two stored zeros — and MS Project's documented rule (the smaller
+of the two differences) reads 0 on them. That is a stronger oracle than the getter's answer, and it
+is the one the ADR stands on. The generalisation is ADR-0506's, one hop further: *a number's
+provenance can be a stored field the getter ignores* — and it can be TWO stored fields the getter
+combines.
+
+**Count the class you are told about, and the class next to it.** 786 − 634 = 152, not 62. The
+gap was 90 completed milestones the earlier probe had excluded from "tasks". The census that found
+it took one column (`milestone`) and one line of arithmetic; an ADR that repeated "634" would have
+been wrong by a round number nobody would have questioned.
+
+**"No metric reads it" is falsified by running the metrics, not by reading them.** The sandboxed
+family snapshot (the importer patched in memory, 18 families × 15 goldens) found float erosion by
+WBS moving on every golden with finished work. Reading the module would have found the same — the
+loop is `non_summary(schedule)` — but reading is what produced "today none does" in the first
+place. And what the metric was reading for finished work was not the file's zero (dropped) but the
+engine's recomputed float, so two 24-hour snapshots showed four WBS groups RED on completed work
+alone. The fix was not to let the zeros flow (measured: every group with a finished activity goes
+amber — a fabricated warning) but to give the metric the population every sibling float metric
+already had. A census that stops at "which metrics read the field" has not asked "and what do they
+read there".
+
+**A render diff lies until every per-process value is normalised.** The first two-tree render
+diff reported 130 of 260 routes moving, with identical byte lengths on every one — the version
+string, then the launch token, then the process id in `/api/whoami`, then live CPU telemetry in
+`/api/system`. Each was found by diffing ONE page, not by reasoning about the count. The honest
+figure was 12 of 250, three routes per golden, each with a mechanism.
+
+**A wrapper that exits 0 around a pytest that exits 4 has measured nothing.** The first
+full-suite launch died in thirteen seconds on an unknown config option (`-o cache_dir=`), and the
+background task reported "completed (exit code 0)" because the subshell's `echo` was the last
+command. The log's last line — `PYTEST_EXIT=4` — was the verdict; the notification was not.
+
 ### 2026-09-17 (d) — a row's first step can already be true: measure the artefact under a faked clock before pricing a converter change, and a survivor in the battery is a hole in the CODE as often as in the tests (ADR-0506, R-63 closed; R-68 registered)
 
 - **The row's remedy was testimony, and its first step was already the case.** R-63 said "write the
@@ -7961,48 +8063,3 @@ predecessor's predecessor is early by. That is a different defect (**R-66**) wea
 clothes, and the difference between "R-57 is closed" and "R-57 is closed, and here is the
 snapshot where its oracle is still unmet and why" is the whole distance between a report and
 testimony.
-
-### 2026-09-18 — a getter that answers 0.0 for "none" may be computing, not reading; and "no metric reads it" is a census, not a sentence
-
-R-62 arrived with two inherited numbers and one inherited absence. The numbers: "786 zeros in
-memory on Large Test File2, 634 of them completed tasks". The absence: "census every metric that
-reads a completed task's slack first (today none does)". All three were testimony, and this unit is
-what happens when each is treated as such (QC-2).
-
-**The provenance of a computed field is the reader's field map, not the getter.** ADR-0490's probe
-read `Task.getTotalSlack()` and reported "0.0d, NULL for none". True — and the getter is a
-*calculated* field: the MPP reader maps `START_SLACK` and `FINISH_SLACK` from the file and never a
-total, and `MicrosoftSlackCalculator` derives the total at read time. Read cached-first, the total
-slack's cache is null on all 17,402 rows. The file's statement about a finished activity is
-therefore not "0.0" but "(0, 0)" — two stored zeros — and MS Project's documented rule (the smaller
-of the two differences) reads 0 on them. That is a stronger oracle than the getter's answer, and it
-is the one the ADR stands on. The generalisation is ADR-0506's, one hop further: *a number's
-provenance can be a stored field the getter ignores* — and it can be TWO stored fields the getter
-combines.
-
-**Count the class you are told about, and the class next to it.** 786 − 634 = 152, not 62. The
-gap was 90 completed milestones the earlier probe had excluded from "tasks". The census that found
-it took one column (`milestone`) and one line of arithmetic; an ADR that repeated "634" would have
-been wrong by a round number nobody would have questioned.
-
-**"No metric reads it" is falsified by running the metrics, not by reading them.** The sandboxed
-family snapshot (the importer patched in memory, 18 families × 15 goldens) found float erosion by
-WBS moving on every golden with finished work. Reading the module would have found the same — the
-loop is `non_summary(schedule)` — but reading is what produced "today none does" in the first
-place. And what the metric was reading for finished work was not the file's zero (dropped) but the
-engine's recomputed float, so two 24-hour snapshots showed four WBS groups RED on completed work
-alone. The fix was not to let the zeros flow (measured: every group with a finished activity goes
-amber — a fabricated warning) but to give the metric the population every sibling float metric
-already had. A census that stops at "which metrics read the field" has not asked "and what do they
-read there".
-
-**A render diff lies until every per-process value is normalised.** The first two-tree render
-diff reported 130 of 260 routes moving, with identical byte lengths on every one — the version
-string, then the launch token, then the process id in `/api/whoami`, then live CPU telemetry in
-`/api/system`. Each was found by diffing ONE page, not by reasoning about the count. The honest
-figure was 12 of 250, three routes per golden, each with a mechanism.
-
-**A wrapper that exits 0 around a pytest that exits 4 has measured nothing.** The first
-full-suite launch died in thirteen seconds on an unknown config option (`-o cache_dir=`), and the
-background task reported "completed (exit code 0)" because the subshell's `echo` was the last
-command. The log's last line — `PYTEST_EXIT=4` — was the verdict; the notification was not.

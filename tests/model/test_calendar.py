@@ -90,3 +90,15 @@ def test_is_worked_and_extra_working_days() -> None:
     # only the worked weekend/holiday counts as "extra" over a weekday-minus-holiday tally
     assert cal.extra_working_days_in(dt.date(2025, 1, 6), dt.date(2025, 1, 20)) == 1
     assert cal.extra_working_days_in(dt.date(2025, 1, 13), dt.date(2025, 1, 20)) == 0
+
+
+def test_intraday_worked_seconds_is_the_minutes_rule_at_seconds_resolution() -> None:
+    """R-65 (ADR-0508): the seconds form measures a boundary MS Project stored in tenths of a
+    minute where it lies; the minutes form is the same rule at a whole minute."""
+    cal = Calendar(day_segments=((480, 720), (780, 1020)))
+    assert cal.intraday_worked_seconds(14 * 3600 + 24 * 60 + 36) == 240 * 60 + 84 * 60 + 36
+    assert cal.intraday_worked_seconds(12 * 3600 + 30 * 60) == 240 * 60  # inside the lunch
+    assert cal.intraday_worked_seconds(600 * 60) == cal.intraday_worked_minutes(600) * 60
+    # the legacy contiguous block: clamped to the day's working seconds
+    assert Calendar().intraday_worked_seconds(600 * 60) == 480 * 60
+    assert Calendar().intraday_worked_seconds(90) == 90

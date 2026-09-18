@@ -209,3 +209,26 @@ def test_recorded_span_arithmetic() -> None:
         == 2160
     )
     assert _recorded_span(STANDARD, mon.replace(hour=12), mon) == 0  # inverted
+
+
+def test_a_recorded_span_reads_a_stored_boundary_to_the_nearest_minute() -> None:
+    """R-65 (ADR-0508): MS Project stores instants in tenths of a minute, and a span whose two
+    ends carry different seconds is the nearest whole minute of its working seconds — never
+    each end truncated to its minute. 08:00:00 → 14:24:36 across the lunch hour is 324.6
+    minutes and reads 325 (truncation read 324); 08:00:36 → 12:00:00 is 239.4 and reads 239
+    (truncation read 240); a window whose ends carry the SAME seconds — a material booking
+    spread over whole days — reads the same either way; on the 24-hour calendar 02:00:36 of
+    elapsed time is 121 minutes (truncation read 120)."""
+    mon = dt.datetime(2026, 7, 6, 8, 0)
+    assert _recorded_span(STANDARD, mon, dt.datetime(2026, 7, 6, 14, 24, 36)) == 325
+    assert _recorded_span(STANDARD, dt.datetime(2026, 7, 6, 8, 0, 36), mon.replace(hour=12)) == 239
+    assert (
+        _recorded_span(
+            STANDARD, dt.datetime(2026, 7, 6, 8, 0, 30), dt.datetime(2026, 7, 8, 8, 0, 30)
+        )
+        == 960
+    )
+    assert _recorded_span(CAL_24, mon, dt.datetime(2026, 7, 6, 10, 0, 36)) == 121
+    # half up, like the importer's reading of a duration: 30 seconds is a minute, 29 is not
+    assert _recorded_span(CAL_24, mon, dt.datetime(2026, 7, 6, 8, 0, 30)) == 1
+    assert _recorded_span(CAL_24, mon, dt.datetime(2026, 7, 6, 8, 0, 29)) == 0

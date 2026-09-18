@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import datetime as dt
 
-from schedule_forensics.engine.cpm import _offset_to_wall, compute_cpm
+from schedule_forensics.engine.cpm import _offset_to_wall, _split_gaps, compute_cpm
 from schedule_forensics.model.assignment import Assignment, WorkPiece
 from schedule_forensics.model.calendar import Calendar
 from schedule_forensics.model.relationship import Relationship, RelationshipType
@@ -322,3 +322,109 @@ def test_the_updated3_403_shape_finishes_and_floats_where_ms_project_says() -> N
     assert tm.late_start_wall == dt.datetime(2026, 11, 25, 13, 48)
     assert tm.total_float == 12888
     assert res.split_driven == (403,)
+
+
+# --- the gap is measured in seconds and rounded cumulatively (R-65, ADR-0508) ------------------
+
+# MS Project places a split boundary in tenths of a minute (every one of the intake corpus's
+# 3,742 boundaries is a multiple of six seconds). Reading each gap with both ends truncated to
+# the whole minute left the leg short by up to a minute per gap and never long: 1 to 62 minutes
+# on 24 bookings of the Large Test Files. The gaps are now measured in working seconds and the
+# CUMULATIVE gap is rounded to the nearest minute at every boundary, so the whole is the nearest
+# minute of the true whole. Red first on the pristine engine: the four 2:36 gaps read 8, the
+# three 36-second gaps read 0, the 30-second gap is no split.
+
+
+def _pieces_24h(*spec: tuple[str, str, int]) -> tuple[WorkPiece, ...]:
+    return tuple(
+        WorkPiece(
+            start=dt.datetime.fromisoformat(s), finish=dt.datetime.fromisoformat(f), work_minutes=m
+        )
+        for s, f, m in spec
+    )
+
+
+def test_four_gaps_of_two_minutes_thirty_six_seconds_read_ten_minutes_not_eight() -> None:
+    """Large_Test_File_Leveled UID 5306's shape (ADR-0491 recorded it as the residual it
+    left): five pieces on a round-the-clock crew with 2:36 of nothing between each, 10.4
+    minutes of gap in all. MS Project's stored finish carries the 10:24; the engine's integer
+    minute honours the nearest whole minute of the WHOLE gap, 10, where truncating each gap's
+    two ends read 2 x 4 = 8. Pieces of 96 minutes on the 24-hour crew from Monday 08:00: the
+    work ends 16:00, the gaps carry it to 16:10."""
+    pieces = _pieces_24h(
+        ("2026-07-06T08:00:00", "2026-07-06T09:36:00", 96),
+        ("2026-07-06T09:38:36", "2026-07-06T11:14:36", 96),
+        ("2026-07-06T11:17:12", "2026-07-06T12:53:12", 96),
+        ("2026-07-06T12:55:48", "2026-07-06T14:31:48", 96),
+        ("2026-07-06T14:34:24", "2026-07-06T16:10:24", 96),
+    )
+    sch = _schedule(
+        _task(1, Assignment(resource_id=2, work_minutes=480, work_pieces=pieces), duration=480)
+    )
+    res = compute_cpm(sch)
+    assert res.timing(1).early_finish_wall == dt.datetime(2026, 7, 6, 16, 10)
+    assert res.split_driven == (1,)
+
+
+def test_three_gaps_of_thirty_six_seconds_read_two_minutes_rounded_cumulatively() -> None:
+    """Four pieces of an hour with 36 seconds of nothing between them: 1.8 minutes of gap.
+    Rounded cumulatively — 0.6 → 1, 1.2 → 1 (nothing more), 1.8 → 2 — the leg honours two
+    minutes, placed after the first and the third piece; rounding each gap on its own would
+    honour three, truncating each would honour none. The finish from Monday 08:00 is 12:02."""
+    pieces = _pieces_24h(
+        ("2026-07-06T08:00:00", "2026-07-06T09:00:00", 60),
+        ("2026-07-06T09:00:36", "2026-07-06T10:00:36", 60),
+        ("2026-07-06T10:01:12", "2026-07-06T11:01:12", 60),
+        ("2026-07-06T11:01:48", "2026-07-06T12:01:48", 60),
+    )
+    sch = _schedule(
+        _task(1, Assignment(resource_id=2, work_minutes=240, work_pieces=pieces), duration=240)
+    )
+    res = compute_cpm(sch)
+    assert res.timing(1).early_finish_wall == dt.datetime(2026, 7, 6, 12, 2)
+    a = sch.task_by_id(1).resource_assignments[0]
+    assert _split_gaps(a, CAL_24, []) == ((0.25, 1), (0.75, 1))
+
+
+def test_a_gap_under_thirty_seconds_is_no_split_and_one_of_thirty_seconds_is_a_minute() -> None:
+    """The rounding is half up, like the importer's reading of a duration: 24 seconds of nothing
+    between two pieces is no gap (the task is not split-driven), 30 seconds is one minute."""
+    under = _pieces_24h(
+        ("2026-07-06T08:00:00", "2026-07-06T12:00:00", 240),
+        ("2026-07-06T12:00:24", "2026-07-06T16:00:24", 240),
+    )
+    at = _pieces_24h(
+        ("2026-07-06T08:00:00", "2026-07-06T12:00:00", 240),
+        ("2026-07-06T12:00:30", "2026-07-06T16:00:30", 240),
+    )
+    sch_under = _schedule(
+        _task(1, Assignment(resource_id=2, work_minutes=480, work_pieces=under), duration=480)
+    )
+    sch_at = _schedule(
+        _task(1, Assignment(resource_id=2, work_minutes=480, work_pieces=at), duration=480)
+    )
+    res_under, res_at = compute_cpm(sch_under), compute_cpm(sch_at)
+    assert res_under.timing(1).early_finish_wall == dt.datetime(2026, 7, 6, 16, 0)
+    assert res_under.split_driven == ()
+    assert res_at.timing(1).early_finish_wall == dt.datetime(2026, 7, 6, 16, 1)
+    assert res_at.split_driven == (1,)
+
+
+def test_a_gap_on_a_segmented_calendar_is_measured_in_working_seconds() -> None:
+    """On the Standard calendar a boundary inside the lunch hour is measured where the working
+    time lies: pieces ending 11:59:24 and resuming 13:00:36 are 36 + 36 = 72 working seconds
+    apart (the lunch is not working time), and the second gap of 12 seconds at 15:00 brings the
+    whole to 84 seconds — one minute honoured, the finish 17:01 for a 480-minute booking from
+    Monday 08:00 (truncating each end read the lunch boundary as a full working minute on
+    neither side and the 12 seconds as nothing: 17:00)."""
+    pieces = _pieces_24h(
+        ("2026-07-06T08:00:00", "2026-07-06T11:59:24", 239),
+        ("2026-07-06T13:00:36", "2026-07-06T15:00:00", 120),
+        ("2026-07-06T15:00:12", "2026-07-06T17:01:12", 121),
+    )
+    sch = _schedule(
+        _task(1, Assignment(resource_id=1, work_minutes=480, work_pieces=pieces), duration=480)
+    )
+    res = compute_cpm(sch)
+    assert res.timing(1).early_finish_wall == dt.datetime(2026, 7, 7, 8, 1)
+    assert res.split_driven == (1,)
