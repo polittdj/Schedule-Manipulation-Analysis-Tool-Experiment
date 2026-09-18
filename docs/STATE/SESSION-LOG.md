@@ -19184,3 +19184,62 @@ through a completed / started successor; 67 / 34 across the corpus). ADR-0510 wr
 row closed, R-69 / R-70 rows added (the tier-order guard caught a T2 row placed after a T3 row — fixed);
 `docs/PARITY-REPORT.md` re-measured; the handoff rotated (the R-65 section MOVED to the archive); this
 entry; the lessons entry; the kickoff refreshed to R-45 with R-70 queued.
+
+## 2026-09-18 (d) — R-45 CLOSED (ADR-0511): EV (BCWP) and AC (ACWP) follow the booking's time-phased record, not the task's scalars; the ribbon's BAC is the workbook's time line — v1.0.276
+
+**main @ 60d75e93 (#699):** CI 1929 six of six green by its jobs (cui-guard 15:23:43Z, browser 15:41:20Z,
+test 3.13 15:50:30Z, floor 15:50:59Z, test 3.11 16:14:20Z, check 16:14:27Z), installer-smoke 767 green
+(linux 15:24:05Z, windows 15:28:42Z); the squash tree-identical to the PR head 383b1c54.
+
+**The unit.** Under QC-3 the plan was written and attacked before the first edit. Every `.xlsx` under the
+intake was opened sheet by sheet with the parity test's own reader: the row's "no per-task oracle" fell
+to Fuse's field map (`BCWP → BCWP (EV)`, `ACWP → ACWP (AC)`, `Baseline Cost → Budget Cost`) and to the
+Forensic Analysis Report (per-activity Actual / Remaining / Total Cost, status and % complete for both
+snapshots, 0 Baseline Cost changes, the whole-file Budget Cost 133,400 for updated3). BAC 121,800 is the
+Ribbon View's time line (2026-07..2026-11): the 15 December-starting activities of updated3 carry
+11,600 / 160 h — every ribbon delta to the unit, absent from Fuse's own per-activity view; "finish in
+December" (16,400 / 184 h) refuted. EV: updated / updated2 exact under BAC × %, so the 5,625 lived in
+updated3's changes — UID 290's booking, 40 h booked, 31 h in the scalar, 16 h + 6 h overtime in the
+time-phased record: 22 / 40 × 12,500 = 6,875, 53,715 exact; the scalar forms (56,590; 51,885) refuted.
+AC: the deltas +341.92 / −1,458.08 sum to 290's 1,800 of overtime; the record priced at the status-date
+rate row (the apprentice's 17.077 h at 30, not the 10 they were worked at) reads 20,800.00 / 64,104.61 /
+66,244.61 → 20,800 / 64,105 / 66,245; pricing at the block's date (63,763.07 / 65,903.07) refuted;
+"to time now" refuted by sign. MPXJ 16.2.0 reads no task / assignment / resource BCWP / ACWP / BCWS from
+a `.mpp` (a Java dumper over the three saves: 0 of 142). Corpus census (15 goldens + 29 conversions,
+1,079 budgeted tasks): EV moves on 290 and on four 24-hour-snapshot in-progress tasks (no oracle —
+UNVERIFIED), AC on 290 and 210; EVM1 / EVM2 carry no record and are byte-identical.
+
+**Shipped:** the four booking fields and the overtime rate (SCHEMA 2.17.0; the Save round-trips them),
+`_earned_value` / `_actual_cost_of_work_performed`, the SPI disclosure and the EVM page note, the parity
+pins (EV exact / AC to the unit / CPI 2 dp on the three ribbons; BAC = the Forensic report's whole-file
+figure and the ribbon's 121,800 reconciled through the time line read from the ribbon header), the
+synthetic pins, the help text and the regenerated dictionary. Red first on the pristine package by name;
+battery 13 / 13 red by name (control green). A session assumption fell mid-unit: rounding each booking's
+record once to whole minutes reads 64,104.17 (prints 64,104 for the ribbon's 64,105) — the record is
+stored in SECONDS, the model's one seconds-valued field, a recorded quantity and never an axis duration.
+Statics green on both ruff binaries, `ruff format`, `mypy --strict`, `bandit`; version 1.0.276; wheel
+built after the last `src/` edit; nine installers rebuilt; lockstep 68 passed. The full suite and
+`-m parity` run in a separate worktree at the code commit; their figures follow in the docs-only commit.
+ADR-0511 written; the report's R-45 row closed; `docs/PARITY-REPORT.md` re-measured; the handoff
+rotated (the R-67 section MOVED to the archive); this entry; the lessons entry; the kickoff refreshed to
+R-70. Draft PR #700 opened on `claude/ci-verification-task-scheduling-7y0gh8` (code commit `9e773d74`,
+docs commit `2dbe2ed4`); the worktree gate's figures follow below.
+
+**After the PR opened.** CI's `floor` job on `c33b87e4` failed ONE test —
+`tests/web/test_monolith_split_contract.py::test_every_extracted_name_is_reexported_by_app_as_the_same_object[evm.py]`:
+`_progress_disagreement_note` was defined in `web/evm.py` and not re-exported from `web/app.py` with the
+`X as X` idiom (the phase-3 contract CLAUDE.md names). Reproduced red locally. The first fix chain's
+anchor matched NOTHING, the chain ran on, and **`4eb4d4f3` was pushed with a message claiming a
+re-export it did not carry** (it carried rebuilt installers only) — a false statement of change, the
+trap this repo has named before, paid for again within the hour of writing it into the lessons.
+`52b18eae` carries the re-export (contract 71 passed; wheel + installers rebuilt; lockstep 68) and says
+so; `839f955e` sorts the import block ruff flagged on it. The worktree full suite at the code commit
+`9e773d74` finished after the hand-off was written: **4 failed / 5,653 passed / 7 skipped in 36:20**
+(`PYTEST_EXIT=1`), every failure attributable — the three state-doc pins (latest ADR in the handoff and
+the session log, the handoff's version pin) red by construction at a code commit, and the re-export
+contract fixed above. The 7 skips are the documented set. Against the previous unit's expected 5,650
+green plus this unit's 8 new tests the non-skipped count (5,657) is ONE short and unattributed — the
+previous figure was itself an expectation never measured locally (that run was cut); CI's test jobs
+on the final head are the count to attribute against next time. CI on the final head `839f955e` is the suite's read verdict — read it FIRST next
+session (eight checks). Token wall reached ~87 % of the assumed 800k; the session ends here by the
+guardian's rule, with every durable artefact committed and pushed.

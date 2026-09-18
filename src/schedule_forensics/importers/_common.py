@@ -118,6 +118,27 @@ def _dec(group: str | None) -> Decimal:
     return Decimal(group) if group else Decimal(0)
 
 
+def iso_duration_to_exact_minutes(value: str | None) -> Decimal:
+    """Convert an ISO-8601 ``PnDTnHnMnS`` span to working minutes at the file's own resolution
+    (an exact :class:`~decimal.Decimal`, seconds and all), unrounded — for a caller that sums
+    several spans and rounds ONCE (ADR-0508's lesson, applied to a booking's time-phased record
+    by ADR-0511). ``None``/empty → ``0``; a non-ISO string raises :class:`ImporterError`."""
+    if value is None:
+        return Decimal(0)
+    text = value.strip()
+    if not text:
+        return Decimal(0)
+    match = _ISO_DURATION_RE.match(text)
+    if match is None:
+        raise ImporterError(f"unparseable ISO-8601 duration: {value!r}")
+    return (
+        _dec(match["days"]) * _MINUTES_PER_ISO_DAY
+        + _dec(match["hours"]) * _MINUTES_PER_HOUR
+        + _dec(match["minutes"])
+        + _dec(match["seconds"]) / _MINUTES_PER_HOUR
+    )
+
+
 def iso_duration_to_minutes(value: str | None) -> int:
     """Convert an ISO-8601 ``PnDTnHnMnS`` span to whole working minutes.
 
@@ -127,20 +148,7 @@ def iso_duration_to_minutes(value: str | None) -> int:
     hours == 960 minutes == 2 working days at 480/day). A non-ISO string raises
     :class:`ImporterError` (loud — never a silent 0).
     """
-    if value is None:
-        return 0
-    text = value.strip()
-    if not text:
-        return 0
-    match = _ISO_DURATION_RE.match(text)
-    if match is None:
-        raise ImporterError(f"unparseable ISO-8601 duration: {value!r}")
-    total = (
-        _dec(match["days"]) * _MINUTES_PER_ISO_DAY
-        + _dec(match["hours"]) * _MINUTES_PER_HOUR
-        + _dec(match["minutes"])
-        + _dec(match["seconds"]) / _MINUTES_PER_HOUR
-    )
+    total = iso_duration_to_exact_minutes(value)
     return int(total.quantize(Decimal(1), rounding=ROUND_HALF_UP))
 
 

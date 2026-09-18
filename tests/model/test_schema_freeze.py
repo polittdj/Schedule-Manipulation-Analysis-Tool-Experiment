@@ -93,6 +93,12 @@ _EXPECTED_FIELDS: dict[type[pydantic.BaseModel], set[str]] = {
         "leveling_delay_minutes",
         "work_pieces",
         "baseline_cost_pieces",
+        # the booking's performed-work record and its own costs (ADR-0511, R-45): EV / AC follow
+        # the time-phased record MS Project computes them from, not the task's scalars
+        "performed_work_seconds",
+        "performed_overtime_seconds",
+        "baseline_cost",
+        "actual_cost",
     },
     WorkPiece: {"start", "finish", "work_minutes"},
     CostPiece: {"start", "finish", "cost"},
@@ -108,6 +114,9 @@ _EXPECTED_FIELDS: dict[type[pydantic.BaseModel], set[str]] = {
         # availability: the file's own Resource Availability grid (ADR-0506, R-63) — capacity per
         # working day from the row in force that day; max_units is the row at the status date
         "availability",
+        # the overtime rate at the status date (ADR-0511) — a booking's performed overtime is
+        # priced at it
+        "overtime_rate",
     },
     AvailabilityPeriod: {"available_from", "available_to", "units"},
     Calendar: {
@@ -161,7 +170,7 @@ _EXPECTED_FIELDS: dict[type[pydantic.BaseModel], set[str]] = {
 
 
 def test_schema_version() -> None:
-    assert model.SCHEMA_VERSION == "2.16.0"
+    assert model.SCHEMA_VERSION == "2.17.0"
 
 
 @pytest.mark.parametrize("cls", list(_EXPECTED_FIELDS))

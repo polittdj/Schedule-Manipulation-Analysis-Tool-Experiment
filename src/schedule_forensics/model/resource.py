@@ -93,6 +93,11 @@ class Resource(StrictFrozenModel):
     #: no max units at all (the loading engine then assumes one full unit and says so).
     max_units: float | None = Field(default=None, ge=0.0)
     standard_rate: float | None = Field(default=None, ge=0.0)  # cost per unit (currency)
+    #: The resource's OVERTIME rate (currency per hour), cost-rate table A's row in force at the
+    #: schedule's STATUS date like ``standard_rate`` (ADR-0506's rule, extended by ADR-0511): a
+    #: booking's performed overtime is priced at it. ``None`` = not recorded (an XER, a Save .json
+    #: written before this field); overtime is then priced at the standard rate.
+    overtime_rate: float | None = Field(default=None, ge=0.0)
     #: The resource's availability table as the file records it, in time order (ADR-0506):
     #: every row of MS Project's Resource Availability grid. ``()`` = the file carries no table
     #: (a single, unchanging availability — MPXJ writes the table only when a row's bounds are

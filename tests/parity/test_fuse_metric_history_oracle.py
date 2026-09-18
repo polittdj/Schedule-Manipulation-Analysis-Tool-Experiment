@@ -33,6 +33,7 @@ directory is absent; a missing individual workbook FAILS.
 
 from __future__ import annotations
 
+import datetime as dt
 import gzip
 import zipfile
 from pathlib import Path
@@ -288,7 +289,8 @@ def test_hard_file_evm_aggregates_and_indices_equal_the_fuse_ribbon() -> None:
     currency units, BCWS exact on BOTH — 16,000 on updated since ADR-0492 (R-46: the file's own
     time-phased baseline cost; the project-calendar proration read 16,150 for a straddling
     activity on a 16-hour resource calendar), CPI exact at 2 dp on both, SPI / TCPI within 0.01
-    (Fuse's ACWP-to-time-now trims 342 on updated2)."""
+    (updated2's ribbon ACWP is 64,105 against the file's 63,763.08 — the Logistics Apprentice's
+    hours priced at the status-date rate, ADR-0511; pinned below from the bookings' records)."""
     ribbon = {rec["Status Date "]: rec for rec in _ribbon_rows(_HF12_RIBBON)}
     updated = ribbon["46245"]
     updated2 = ribbon["46275"]
@@ -348,8 +350,8 @@ def test_hard_file_updated3_bcws_equals_the_fuse_ribbon_and_names_its_two_mechan
     three days in working minutes of the booking's calendar — and UID 257's 800 of baseline cost
     has no assignment series at all (a booking baselined and since removed) and accrues by the
     linear rule, whole. On updated, UID 187's 16-hour crew plans 3,600 of its 6,000 by the
-    status date, and the ribbon's 16,000 is exact. BAC / BCWP / ACWP on updated3 are R-45's
-    (the ribbon reads 121,800 / 53,715 where the file carries 133,400 / 59,340) — not pinned."""
+    status date, and the ribbon's 16,000 is exact. BAC / BCWP / ACWP on updated3 (the ribbon's
+    121,800 / 53,715 / 66,245) are R-45's, pinned below from the bookings' records (ADR-0511)."""
     ribbon = {rec["Status Date "]: rec for rec in _ribbon_rows(_HF23_RIBBON)}
     assert (ribbon["46275"]["PV (BCWS)"], ribbon["46307"]["PV (BCWS)"]) == ("64240", "110440")
 
@@ -524,3 +526,130 @@ def test_acumen_spi_t_population_equals_the_fuse_record_count(spec: str, sheet: 
     2-dp figure. Red-first: 716 / 723 (the started-unbaselined members were skipped)."""
     res = compute_evm_indices(_schedule(spec))["spi_t_acumen"]
     assert res.population == _record_count(_LTF_DETAIL, sheet, "SPI(t)"), (sheet, res.population)
+
+
+# --- R-45 (ADR-0511): EV / AC follow the booking's time-phased record; the ribbon's BAC is the
+# workbook's time line. Red-first (2026-09-18): the pristine engine read updated3's EV 59,340 and
+# ACWP 67,703.08 where the ribbon reads 53,715 / 66,245, and updated2's ACWP 63,763.08 for 64,105.
+
+_HF23_FORENSIC = ACUMEN / "Hard_File_updated2 vs update3 Forensic Analysis Report.xlsx"
+
+
+def _ribbon_rows_with_header(book: Path) -> tuple[dict[int, str], list[dict[str, str]]]:
+    rows = _sheet(_load_workbook(book), "Ribbon View")
+    hdr_row = next(r for r in sorted(rows) if any(v == "CPI" for v in rows[r].values()))
+    return rows[hdr_row], _ribbon_rows(book)
+
+
+def test_hard_file_ev_and_acwp_equal_the_fuse_ribbon_from_the_bookings_records() -> None:
+    """The three progressed Hard_File snapshots against the updated-vs-updated2 and
+    updated2-vs-updated3 ribbons: EV (BCWP) exact — 16,800 / 49,700 / 53,715, the last being the
+    file's 59,340 less UID 290's 5,625 (22 of 40 booked hours performed against a 100 % percent)
+    — and AC (ACWP) to the unit the ribbon prints — 20,800 / 64,105 / 66,245 (the engine's
+    20,800.00 / 64,104.61 / 66,244.61: the Logistics Apprentice's 17.077 h at the status-date row
+    30, UID 290's record 16 h x 200 + 6 h x 300). CPI exact at 2 dp on all three; SPI exact; TCPI
+    exact on updated / updated2. The disagreement is disclosed on SPI: UID 290 alone, on
+    updated3."""
+    ribbon12 = {rec["Status Date "]: rec for rec in _ribbon_rows(_HF12_RIBBON)}
+    ribbon23 = {rec["Status Date "]: rec for rec in _ribbon_rows(_HF23_RIBBON)}
+    from schedule_forensics.engine.metrics.evm import (
+        _actual_cost_of_work_performed,
+        _earned_value,
+    )
+
+    for name, rec, ev_expected, disclosed in (
+        ("Hard_File_updated", ribbon12["46245"], 16800.0, ()),
+        ("Hard_File_updated2", ribbon23["46275"], 49700.0, ()),
+        ("Hard_File_updated3", ribbon23["46307"], 53715.0, (290,)),
+    ):
+        sch = _gz(f"fuse_hardfile/{name}.mspdi.xml.gz")
+        ts = non_summary(sch)
+        ev, disagreeing = _earned_value(ts)
+        assert ev == pytest.approx(ev_expected) and float(rec["EV (BCWP)"]) == ev_expected, name
+        assert disagreeing == disclosed, (name, disagreeing)
+        acwp = _actual_cost_of_work_performed(sch, ts)
+        assert round(acwp) == float(rec["AC (ACWP)"]), (name, "ACWP", acwp)
+        idx = compute_evm_indices(sch)
+        assert idx["cpi"].value == round(float(rec["CPI"]), 2), (name, "CPI", idx["cpi"].value)
+        assert idx["spi"].value == round(float(rec["SPI"]), 2), (name, "SPI", idx["spi"].value)
+        assert idx["spi"].offender_uids == disclosed, name
+        if name != "Hard_File_updated3":  # updated3's ribbon TCPI runs on the time line's BAC
+            assert idx["tcpi"].value == round(float(rec["TCPI(BAC)"]), 2), (name, "TCPI")
+    sch3 = _gz("fuse_hardfile/Hard_File_updated3.mspdi.xml.gz")
+    assert _actual_cost_of_work_performed(sch3, non_summary(sch3)) == pytest.approx(
+        66244.61, abs=0.01
+    )
+    assert _earned_value([sch3.task_by_id(290)])[0] == pytest.approx(6875.0)  # 22 / 40 x 12,500
+
+
+def test_the_updated3_ribbons_bac_is_the_workbooks_time_line_not_a_fuse_definition() -> None:
+    """Fuse's own whole-file Budget Cost for updated3 (the Forensic report's ``Projects`` sheet) is
+    133,400 — the engine's BAC to the unit, and updated2's. The ribbon's 121,800 is the BAC of the
+    activities that START before the workbook's time line ends: the ``Time Line`` header is five
+    monthly ribbons (2026-07 to 2026-11, built around updated2's 11-06 finish) and updated3,
+    finishing
+    12-12, carries 15 activities starting in December — 11,600 of baseline cost — which Fuse's own
+    per-activity view of updated3 lists nowhere. SPI's denominator (BCWS) is untouched by the
+    window; TCPI(BAC) on the ribbon recomputes to 1.23 only with the window's BAC."""
+    import gzip
+    import xml.etree.ElementTree as ET
+
+    projects = _sheet(_load_workbook(_HF23_FORENSIC), "Projects")
+    hdr = next(r for r in sorted(projects) if projects[r].get(1) == "Name")
+    # the sheet pairs each label over a change-marker column and a value column: the value is last
+    budget_col = max(c for c, v in projects[hdr].items() if v == "Budget Cost")
+    fuse_whole_file = {
+        projects[r][1]: float(projects[r][budget_col]) for r in sorted(projects) if r > hdr
+    }
+    assert fuse_whole_file == {"Hard_File_updated2": 133400.0, "Hard_File_updated3": 133400.0}
+    hdr_cells, rows = _ribbon_rows_with_header(_HF23_RIBBON)
+    serials = sorted({int(v) for v in hdr_cells.values() if v.isdigit()})
+    assert serials == [46204, 46235, 46266, 46296, 46327]  # 2026-07-01 … 2026-11-01, monthly
+    last_ribbon = dt.date(1899, 12, 30) + dt.timedelta(days=serials[-1])
+    window_end = dt.datetime(
+        last_ribbon.year + last_ribbon.month // 12, last_ribbon.month % 12 + 1, 1
+    )
+    assert window_end == dt.datetime(2026, 12, 1)
+    ribbon = {rec["Status Date "]: rec for rec in rows}
+    ns = "{http://schemas.microsoft.com/project}"
+    for name, status, expected_outside in (
+        ("Hard_File_updated2", "46275", set()),
+        (
+            "Hard_File_updated3",
+            "46307",
+            {7, 9, 13, 14, 36, 141, 144, 145, 146, 409, 407, 410, 156, 411, 155},
+        ),
+    ):
+        path = FIXTURES / "golden" / "fuse_hardfile" / f"{name}.mspdi.xml.gz"
+        xml = gzip.decompress(path.read_bytes()).decode("utf-8")
+        root = ET.fromstring(xml)
+        stored_start = {
+            int(t.findtext(f"{ns}UID") or 0): dt.datetime.fromisoformat(
+                t.findtext(f"{ns}Start") or ""
+            )
+            for t in root.iter(f"{ns}Task")
+            if t.findtext(f"{ns}Start")
+        }
+        sch = parse_mspdi_text(xml, source_file=path.name)
+        ts = non_summary(sch)
+        bac = sum(t.budgeted_cost for t in ts)
+        assert bac == fuse_whole_file[name] == 133400.0, name
+        outside = {
+            t.unique_id
+            for t in ts
+            if t.unique_id in stored_start and stored_start[t.unique_id] >= window_end
+        }
+        assert outside == expected_outside, (name, sorted(outside))
+        inside_bac = sum(t.budgeted_cost for t in ts if t.unique_id not in outside)
+        assert inside_bac == float(ribbon[status]["BAC"]), (name, inside_bac)
+        assert bac - inside_bac == (11600.0 if expected_outside else 0.0)
+    sch3 = _gz("fuse_hardfile/Hard_File_updated3.mspdi.xml.gz")
+    idx = compute_evm_indices(sch3)
+    from schedule_forensics.engine.metrics.evm import _actual_cost_of_work_performed, _earned_value
+
+    ev, _ = _earned_value(non_summary(sch3))
+    ac = _actual_cost_of_work_performed(sch3, non_summary(sch3))
+    assert (
+        round((121800.0 - ev) / (121800.0 - ac), 2) == float(ribbon["46307"]["TCPI(BAC)"]) == 1.23
+    )
+    assert idx["tcpi"].value == 1.19  # the engine's, on the file's whole BAC

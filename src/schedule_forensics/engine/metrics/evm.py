@@ -37,8 +37,9 @@ from schedule_forensics.engine.metrics._common import (
     round_half_up,
     to_offset,
 )
-from schedule_forensics.model.assignment import CostPiece
+from schedule_forensics.model.assignment import Assignment, CostPiece
 from schedule_forensics.model.calendar import Calendar
+from schedule_forensics.model.resource import ResourceType
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
 
@@ -295,7 +296,10 @@ def compute_evm_indices(
     total_budget = sum(t.budgeted_cost for t in tasks)
 
     if total_budget > 0:
-        bcwp = sum(t.budgeted_cost * (t.percent_complete / 100.0) for t in tasks)
+        # BCWP = sum(BCWPEV): each booking earns its baseline cost in the share of its BOOKED
+        # work its time-phased RECORD says was performed (ADR-0511, R-45) — the field MS Project
+        # computes and Fuse imports; the budget no booking carries earns at the task's percent.
+        bcwp, disagreeing = _earned_value(tasks)
         bcws = _planned_value(schedule, tasks)
         # ACWP = sum(ACWPAC), the Bible's formula: an activity with no recorded actual cost is a
         # 0 term — Acumen evaluates a blank field as 0 (proven on SPI(t), ADR-0176), and both
@@ -304,17 +308,30 @@ def compute_evm_indices(
         # guessed: ``actuals_missing`` names the STARTED, budgeted activities carrying no actual
         # cost — earned value with nothing spent against it, the case that flatters CPI/TCPI
         # (R-01, ADR-0473). Their count rides the CPI/TCPI results as count/population/offenders.
-        acwp = sum(t.actual_cost or 0.0 for t in tasks)
+        # Where the file records every booking's own actual cost, a WORK booking's spend is its
+        # performed record priced at the status-date rates (ADR-0511) — see the helper.
+        acwp = _actual_cost_of_work_performed(schedule, tasks)
         started_budgeted = [t for t in tasks if t.budgeted_cost > 0 and t.percent_complete > 0]
         actuals_missing = tuple(t.unique_id for t in started_budgeted if not t.actual_cost)
-        out["spi"] = _index("spi", "SPI", bcwp / bcws if bcws else None, 1.0)
+        # the progress disagreement rides SPI (the EV-side index) the way the missing actuals
+        # ride CPI: the started, budgeted activities whose bookings' records earn a different
+        # value than the reported percent complete would — Hard_File_updated3's UID 290, 100 %
+        # complete with 22 of 40 booked hours performed. The forensic signal, not a footnote.
+        out["spi"] = _index(
+            "spi",
+            "SPI",
+            bcwp / bcws if bcws else None,
+            1.0,
+            disclosed=disagreeing,
+            population=len(started_budgeted),
+        )
         out["cpi"] = _index(
             "cpi",
             "CPI",
             bcwp / acwp if acwp else None,
             1.0,
-            actuals_missing=actuals_missing,
-            started_budgeted=len(started_budgeted),
+            disclosed=actuals_missing,
+            population=len(started_budgeted),
         )
         tcpi_denom = total_budget - acwp
         # TCPI is the efficiency the REMAINING work must achieve, so the pass bar runs the
@@ -328,8 +345,8 @@ def compute_evm_indices(
             (total_budget - bcwp) / tcpi_denom if tcpi_denom else None,
             1.0,
             Direction.LE,
-            actuals_missing=actuals_missing,
-            started_budgeted=len(started_budgeted),
+            disclosed=actuals_missing,
+            population=len(started_budgeted),
         )
     else:
         out["spi"] = _na_index("spi", "SPI")
@@ -361,6 +378,112 @@ def compute_evm_indices(
     out["spi_t"] = _spi_t(schedule, tasks)
     out["spi_t_acumen"] = _spi_t_acumen(schedule, tasks)
     return out
+
+
+def _booking_weight(a: Assignment) -> float:
+    """The baseline cost a booking earns against: its recorded baseline cost, else the sum of its
+    baseline-cost series (a conversion or Save that carries the series but not the scalar)."""
+    if a.baseline_cost is not None:
+        return a.baseline_cost
+    return sum(piece.cost for piece in a.baseline_cost_pieces)
+
+
+def _earned_share(a: Assignment, task_percent: float) -> float:
+    """The share of a booking's baseline cost that is EARNED: where the file time-phases the
+    booking's actual work, the performed seconds (regular + overtime) over the booked work,
+    capped at 1 the way MS Project caps % work complete; where it records no such thing, the
+    task's own percent complete."""
+    if a.performed_work_seconds is None or a.work_minutes <= 0:
+        return task_percent / 100.0
+    performed = a.performed_work_seconds + (a.performed_overtime_seconds or 0)
+    return min(1.0, performed / (a.work_minutes * 60))
+
+
+def _earned_value(tasks: list[Task]) -> tuple[float, tuple[int, ...]]:
+    """Cost-loaded BCWP (the Bible's ``sum(BCWPEV)``), per booking (ADR-0511, R-45).
+
+    MS Project's BCWP is *"the cumulative value of the task's timephased percent complete
+    multiplied by the task's timephased baseline cost"*, and its assignment BCWP *"the percentage
+    of work complete multiplied by the baseline costs"* — computed from the assignment's
+    TIME-PHASED actual work, not from the task's ``% Complete`` and not from the assignment's
+    scalar ``ActualWork``. Fuse imports that field as EV. On Hard_File_updated3 UID 290 is written
+    100 % complete, 31 h of actual work on a 40 h booking, but its record holds 16 h regular + 6 h
+    overtime: ``22 / 40 x 12,500 = 6,875`` where ``BAC x %`` reads 12,500, and the ribbon's 53,715
+    is the file's 59,340 less exactly that 5,625. updated and updated2, whose records agree with
+    their scalars, are unchanged (16,800 / 49,700).
+
+    Each booking with a baseline cost earns ``weight x share`` (:func:`_earned_share`); the budget
+    no booking carries — the task's baseline cost less its bookings' (floored at 0; UID 257's 800
+    whose booking was baselined and since removed) — earns at the task's percent, so a task with no
+    record anywhere reads exactly ``BAC x %``. Returns the total and the UIDs of the started,
+    budgeted activities whose earned value differs from ``BAC x %`` — the disagreement the EVM
+    page discloses beside SPI."""
+    total = 0.0
+    disagreeing: list[int] = []
+    for t in tasks:
+        booked = 0.0
+        earned = 0.0
+        for a in t.resource_assignments:
+            weight = _booking_weight(a)
+            if weight <= 0.0:
+                continue
+            booked += weight
+            earned += weight * _earned_share(a, t.percent_complete)
+        earned += max(0.0, t.budgeted_cost - booked) * (t.percent_complete / 100.0)
+        scalar = t.budgeted_cost * (t.percent_complete / 100.0)
+        if t.budgeted_cost > 0 and t.percent_complete > 0 and abs(earned - scalar) > 0.005:
+            disagreeing.append(t.unique_id)
+        total += earned
+    return total, tuple(disagreeing)
+
+
+def _actual_cost_of_work_performed(schedule: Schedule, tasks: list[Task]) -> float:
+    """Cost-loaded ACWP (the Bible's ``sum(ACWPAC)``), per booking where the file allows it
+    (ADR-0511, R-45).
+
+    MS Project's ACWP is the timephased actual cost — each WORK booking's performed regular work
+    at the resource's standard rate plus its performed overtime at the overtime rate, the rates
+    being the cost-rate table's row in force at the STATUS date (the row ADR-0506 resolves
+    ``standard_rate`` to). Fuse imports that field as AC, and the ribbon proves the row: the
+    Logistics Apprentice's table reads 10 / 15 until 2026-08-31 and 30 / 45 from it, UID 210's
+    17.077 h were worked on 08-20 / 08-24 and its ``ActualCost`` scalar prices them at 10
+    (170.77), but the ribbon's 64,105 on updated2 carries them at 30 (512.31) — pricing each block
+    at its own date reads 63,763 and is refuted. UID 290 on updated3: 16 h x 200 + 6 h x 300 =
+    5,000 where the scalar says 6,800. Together: 20,800 / 64,104.61 / 66,244.61 on the three
+    snapshots, which the ribbon prints as 20,800 / 64,105 / 66,245.
+
+    A MATERIAL / COST booking, or a WORK booking without a record or whose resource states no
+    rate, spends its own recorded actual cost; the task's actual cost no booking carries (a fixed
+    cost's actual) is added. A task whose bookings do not ALL record an actual cost — an XER, a Save
+    written before this version, a task with no bookings — spends its own actual cost as before,
+    a blank being the Bible's 0 term (ADR-0473); the disclosure beside CPI names those."""
+    by_uid = {r.unique_id: r for r in schedule.resources}
+    total = 0.0
+    for t in tasks:
+        bookings = t.resource_assignments
+        recorded = [x for x in (a.actual_cost for a in bookings) if x is not None]
+        if not bookings or len(recorded) != len(bookings):
+            total += t.actual_cost or 0.0
+            continue
+        spent = 0.0
+        for a, booking_actual in zip(bookings, recorded, strict=True):
+            res = by_uid.get(a.resource_id)
+            if (
+                res is not None
+                and res.type is ResourceType.WORK
+                and res.standard_rate is not None
+                and a.performed_work_seconds is not None
+            ):
+                overtime_rate = (
+                    res.standard_rate if res.overtime_rate is None else res.overtime_rate
+                )
+                spent += a.performed_work_seconds / 3600.0 * res.standard_rate
+                spent += (a.performed_overtime_seconds or 0) / 3600.0 * overtime_rate
+            else:
+                spent += booking_actual
+        task_actual = t.actual_cost if t.actual_cost is not None else 0.0
+        total += spent + max(0.0, task_actual - sum(recorded))
+    return total
 
 
 def _planned_value(schedule: Schedule, tasks: list[Task]) -> float:
@@ -448,8 +571,8 @@ def _index(
     threshold: float,
     direction: Direction = Direction.GE,
     *,
-    actuals_missing: tuple[int, ...] = (),
-    started_budgeted: int = 0,
+    disclosed: tuple[int, ...] = (),
+    population: int = 0,
 ) -> MetricResult:
     """Build an EVM index result; NA when the denominator was absent.
 
@@ -457,23 +580,25 @@ def _index(
     is NOT a shared property of the family: TCPI is inverted by definition (MF-01,
     ADR-0410), so the caller states it rather than inheriting a wrong default silently.
 
-    ``actuals_missing`` / ``started_budgeted`` (CPI and TCPI only, ADR-0473) ride the result as
-    ``count`` / ``population`` / ``offender_uids``: how many of the started, budgeted activities
-    carry no actual cost — the disclosure beside a figure whose ACWP term read those as 0.
+    ``disclosed`` / ``population`` ride the result as ``count`` / ``population`` /
+    ``offender_uids``: for CPI and TCPI the started, budgeted activities carrying no actual cost
+    (ADR-0473 — a figure whose ACWP term read those as 0); for SPI the started, budgeted
+    activities whose bookings' performed record earns a different value than their reported
+    percent complete would (ADR-0511).
     """
     if value is None:
         return _na_index(metric_id, name)
     return MetricResult(
         metric_id,
         name,
-        len(actuals_missing),
-        started_budgeted if actuals_missing or started_budgeted else 1,
+        len(disclosed),
+        population if disclosed or population else 1,
         round_half_up(value, 2),
         "ratio",
         evaluate(value, threshold, direction),
         threshold,
         direction,
-        offender_uids=actuals_missing,
+        offender_uids=disclosed,
     )
 
 

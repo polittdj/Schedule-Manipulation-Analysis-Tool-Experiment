@@ -463,6 +463,11 @@ def _maximal_schedule():  # type: ignore[no-untyped-def]
                         work_minutes=240,
                     ),
                 ),
+                # the booking's performed-work record and its own costs (ADR-0511)
+                performed_work_seconds=57600,
+                performed_overtime_seconds=21600,
+                baseline_cost=800.0,
+                actual_cost=650.0,
                 # the booking's baseline-cost series (ADR-0492): two blocks of planned value
                 baseline_cost_pieces=(
                     CostPiece(
@@ -509,6 +514,7 @@ def _maximal_schedule():  # type: ignore[no-untyped-def]
                 is_generic=True,
                 max_units=2.5,
                 standard_rate=180.0,
+                overtime_rate=270.0,
                 calendar_uid=7,
                 # the availability table (ADR-0506): an open-start row, a bounded row, an
                 # open-end row — every bound shape the reader must carry back
@@ -740,3 +746,51 @@ def test_a_baseline_cost_piece_without_a_cost_fails_loud() -> None:
     )
     (booking,) = ok.task_by_id(1).resource_assignments
     assert booking.baseline_cost_pieces[0].cost == 400.0
+
+
+def test_save_json_round_trips_the_bookings_performed_record_and_the_overtime_rate() -> None:
+    """ADR-0511 (R-45): a Save keeps each booking's performed-work record (regular / overtime), its
+    own baseline and actual cost, and the resource's overtime rate; a Save written before this
+    version reads them as ``None`` — an absent record is unknown, never 0."""
+    import datetime as dt
+
+    from schedule_forensics.model.assignment import Assignment
+    from schedule_forensics.model.resource import Resource
+    from schedule_forensics.model.schedule import Schedule
+    from schedule_forensics.model.task import Task
+
+    booking = Assignment(
+        resource_id=2,
+        work_minutes=2400,
+        baseline_cost=12500.0,
+        actual_cost=6800.0,
+        performed_work_seconds=57600,
+        performed_overtime_seconds=21600,
+    )
+    original = Schedule(
+        name="rt-record",
+        project_start=dt.datetime(2025, 1, 6, 8, 0),
+        resources=(Resource(unique_id=2, name="Lead", standard_rate=200.0, overtime_rate=300.0),),
+        tasks=(
+            Task(
+                unique_id=290,
+                name="Review",
+                duration_minutes=960,
+                resource_ids=(2,),
+                resource_assignments=(booking,),
+            ),
+        ),
+    )
+    reopened = parse_json_text(to_json_text(original))
+    assert reopened.tasks_by_id[290].resource_assignments == (booking,)
+    assert reopened.resources[0].overtime_rate == 300.0
+    import json
+
+    doc = json.loads(to_json_text(original))
+    for key in ("performed_work_seconds", "performed_overtime_seconds"):
+        del doc["tasks"][0]["resource_assignments"][0][key]
+    del doc["resources"][0]["overtime_rate"]
+    older = parse_json_text(json.dumps(doc))
+    (a,) = older.tasks_by_id[290].resource_assignments
+    assert (a.performed_work_seconds, a.performed_overtime_seconds) == (None, None)
+    assert older.resources[0].overtime_rate is None

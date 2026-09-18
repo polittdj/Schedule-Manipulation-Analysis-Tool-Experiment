@@ -291,6 +291,22 @@ def _task(raw: dict[str, Any]) -> Task:
                         else ()
                     )
                 ),
+                # the booking's performed-work record and its own costs (ADR-0511); absent in
+                # every earlier Save — None, never 0 (0 is a record with nothing performed)
+                performed_work_seconds=(
+                    None
+                    if a.get("performed_work_seconds") is None
+                    else _int(a["performed_work_seconds"], "performed_work_seconds")
+                ),
+                performed_overtime_seconds=(
+                    None
+                    if a.get("performed_overtime_seconds") is None
+                    else _int(a["performed_overtime_seconds"], "performed_overtime_seconds")
+                ),
+                baseline_cost=(
+                    None if a.get("baseline_cost") is None else float(a["baseline_cost"])
+                ),
+                actual_cost=None if a.get("actual_cost") is None else float(a["actual_cost"]),
             )
             for a in raw["resource_assignments"]
             if isinstance(a, dict) and a.get("resource_id") is not None
@@ -306,7 +322,7 @@ def _resource(raw: dict[str, Any]) -> Resource:
     }
     if raw.get("type"):
         kwargs["type"] = ResourceType(str(raw["type"]))
-    for key in ("max_units", "standard_rate"):
+    for key in ("max_units", "standard_rate", "overtime_rate"):
         if raw.get(key) is not None:
             kwargs[key] = float(raw[key])
     if raw.get("calendar_uid") is not None:
@@ -528,6 +544,7 @@ def to_json_text(schedule: Schedule) -> str:
                 "is_generic": res.is_generic,
                 "max_units": res.max_units,
                 "standard_rate": res.standard_rate,
+                "overtime_rate": res.overtime_rate,
                 "calendar_uid": res.calendar_uid,
             }
             | (
@@ -602,6 +619,18 @@ def to_json_text(schedule: Schedule) -> str:
                         ]
                     }
                 )
+                | (
+                    {}
+                    if a.performed_work_seconds is None
+                    else {"performed_work_seconds": a.performed_work_seconds}
+                )
+                | (
+                    {}
+                    if a.performed_overtime_seconds is None
+                    else {"performed_overtime_seconds": a.performed_overtime_seconds}
+                )
+                | ({} if a.baseline_cost is None else {"baseline_cost": a.baseline_cost})
+                | ({} if a.actual_cost is None else {"actual_cost": a.actual_cost})
                 for a in t.resource_assignments
             ]
         # every field the parser reads is written back: a Save .json round-trip must not

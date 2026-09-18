@@ -187,6 +187,27 @@ def _actuals_missing_note(cost_idx: dict[str, MetricResult]) -> str:
     )
 
 
+def _progress_disagreement_note(cost_idx: dict[str, MetricResult]) -> str:
+    """The SPI disclosure (ADR-0511, R-45): the started, budgeted activities whose bookings'
+    time-phased record earns a different value than the reported percent complete would. EV (BCWP)
+    follows the record — the field MS Project computes and the reference tool imports — so the
+    reader is told which activities report more (or less) progress than their crews' recorded
+    work supports, by count and by UID: on Hard_File_updated3, UID 290 reports 100 % complete with
+    22 of its 40 booked hours performed. Empty when there are none (or no SPI)."""
+    spi = cost_idx.get("spi")
+    if spi is None or spi.status is CheckStatus.NOT_APPLICABLE or not spi.offender_uids:
+        return ""
+    uids = ", ".join(str(u) for u in spi.offender_uids[:12])
+    more = f" (+{len(spi.offender_uids) - 12} more)" if len(spi.offender_uids) > 12 else ""
+    return (
+        f'<p class="muted" data-sf-progress-disagreement="{spi.count}">'
+        f"<b>{spi.count} of {spi.population}</b> started, budgeted activities report a percent "
+        "complete their bookings&rsquo; <b>recorded work</b> does not support &mdash; EV (BCWP) "
+        "follows the time-phased record, as MS Project computes it and the reference tool imports "
+        f"it, not the reported percent: UID {_e(uids)}{_e(more)}.</p>"
+    )
+
+
 def _unbaselined_note(sched_idx: dict[str, MetricResult]) -> str:
     """The SPI(t) — Acumen disclosure (R-47, ADR-0495): the started activities that carry no
     baseline. Fuse admits them to the average and scores each as the formula's blank-as-0 term —
@@ -401,7 +422,7 @@ baseline-anchored Current Execution Index (finish / start).</p>
 <p class=muted>Cost-based EVM indices &mdash; applicable only when the schedule carries task budgets
 and actual costs.</p>
 {cost_note}
-{_metric_scorecard_table(cost_idx)}{_actuals_missing_note(cost_idx)}</div>
+{_metric_scorecard_table(cost_idx)}{_actuals_missing_note(cost_idx)}{_progress_disagreement_note(cost_idx)}</div>
 <div class=panel{_analysis_export_attr(key)}>{comp_head}
 {take(comp_take)}
 <p class=muted>How the executed work lines up with the baseline dates (BFC / BSC and the on-time

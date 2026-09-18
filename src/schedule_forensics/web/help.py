@@ -616,11 +616,15 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "Schedule Performance Index (cost-based; N/A unless the schedule is cost-loaded — this "
         "is a data limitation of the file, not a missing threshold: without BCWP/BCWS the ratio "
         "is undefined and is never fabricated as 0).",
-        "BCWP / BCWS  (pass >= 1.0 when cost-loaded); BCWS is each activity's time-phased "
-        "baseline cost through the status date as the file records it — its bookings' "
-        "baseline-cost series, a block the status date falls inside prorated in working minutes "
-        "of the booking's calendar (ADR-0492) — and, for the budget no series carries, accrued "
-        "LINEARLY over the baseline span (ADR-0473)",
+        "BCWP / BCWS  (pass >= 1.0 when cost-loaded); BCWP is each booking's baseline cost earned "
+        "in the share of its booked work its time-phased record says was performed (regular + "
+        "overtime, capped at 100 %), the budget no booking carries earning at the task's percent "
+        "complete — the field MS Project computes and the reference tool imports (ADR-0511); BCWS "
+        "is each activity's time-phased baseline cost through the status date as the file records "
+        "it — its bookings' baseline-cost series, a block the status date falls inside prorated in "
+        "working minutes of the booking's calendar (ADR-0492) — and, for the budget no series "
+        "carries, accrued LINEARLY over the baseline span (ADR-0473); disclosed: started budgeted "
+        "activities whose recorded work disagrees with their reported percent complete",
         _EVM,
         threshold="On a cost-loaded schedule, SPI >= 1.0 is on/ahead of the planned value; "
         "< 1.0 is behind. N/A when the file carries no cost.",
@@ -632,8 +636,12 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "threshold). ACWP is the reference library's sum(ACWPAC): an activity with no recorded "
         "actual cost is a 0 term, and the started, budgeted activities carrying none are counted "
         "and named beside the figure (ADR-0473) — never silently assumed to have spent nothing.",
-        "BCWP / ACWP  (pass >= 1.0 when cost-loaded); disclosed: started budgeted activities "
-        "with no actual cost",
+        "BCWP / ACWP  (pass >= 1.0 when cost-loaded); ACWP is each WORK booking's performed record "
+        "priced at the status-date rates (regular at the standard rate, overtime at the overtime "
+        "rate), a material / cost booking's or an unrecorded booking's own actual cost, and the "
+        "task's actual cost no booking carries — the timephased actual cost MS Project computes "
+        "(ADR-0511); a task whose bookings do not all record an actual cost spends its own; "
+        "disclosed: started budgeted activities with no actual cost",
         _EVM,
         threshold="CPI >= 1.0 is on/under budget; < 1.0 is an overrun. N/A without cost.",
     ),
@@ -643,8 +651,8 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "To-Complete Performance Index (N/A unless cost-loaded — a data limitation, not a "
         "missing threshold). ACWP as for CPI; the started, budgeted activities with no actual "
         "cost are counted and named beside the figure (ADR-0473).",
-        "(BAC - BCWP) / (BAC - ACWP)  (pass <= 1.0 when cost-loaded); disclosed: started "
-        "budgeted activities with no actual cost",
+        "(BAC - BCWP) / (BAC - ACWP)  (pass <= 1.0 when cost-loaded); BCWP and ACWP as for SPI "
+        "and CPI (ADR-0511); disclosed: started budgeted activities with no actual cost",
         _EVM,
         threshold="TCPI <= 1.0 means the remaining work can complete within budget at the "
         "current efficiency; > 1.0 requires better-than-planned performance. N/A without cost.",
