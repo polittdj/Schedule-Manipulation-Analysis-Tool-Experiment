@@ -19296,3 +19296,19 @@ report's R-70 row closed, R-71 (T3) and R-72 (T1) registered with their censuses
 re-measured; the handoff rotated (the R-45 section MOVED to the archive); this entry; the lessons
 entry; the kickoff refreshed to R-72. Code commit `8e828bdb`; the full suite and `-m parity` run in a
 separate worktree at it — figures and the PR number in the docs-only follow-up.
+
+**After the PR opened.** Draft PR #701 opened on `claude/fervent-ramanujan-ttxvxk` (code `8e828bdb`,
+docs `56445980`). CI's `floor` job on `56445980` read **2 failed / 5,288 passed / 269 skipped**: the
+wide program's negative-float pins (`test_pass_fail_battery`: 16 → 0, and the MFO sink 38 → 22 of 38 —
+a finished merge point presents no late need) and CH01's critical-basis premise (`test_ch01_critical_basis`:
+the engine's pure-logic flag now agrees with MS Project's on every incomplete activity of all five
+Hard_File goldens — the remaining disagreements, updated2's 290, updated3's 261 and Large_Test_File2's
+6956, are completed activities — so the witness is synthetic). Both re-derived with dated reasons in
+`fe2ae49d`; the docs amended in `360bc36a`. **The worktree full suite at the code commit `8e828bdb`:
+4 failed / 5,667 passed / 7 skipped in 35:48** (`PYTEST_EXIT=1`), every failure attributable — the report
+census guard and the handoff's version pin (red by construction at a code commit, fixed in `56445980`)
+and the two pins above (fixed in `fe2ae49d`); the 7 skips are the documented set; the non-skipped count
+reconciles EXACTLY: the previous unit's 5,664 (5,653 + 4 + 7 − 7) plus this unit's 14 new tests (13
+synthetic, 1 oracle) = 5,678 = 5,667 + 4 + 7. `main`'s CI 1938 for `4d931ba7` finished **six of six** —
+`test (3.13)` 19:43:38Z · `check` 19:43:43Z — nothing about `4d931ba7` is outstanding.
+
