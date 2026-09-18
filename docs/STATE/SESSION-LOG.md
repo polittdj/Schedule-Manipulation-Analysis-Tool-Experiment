@@ -19222,4 +19222,5 @@ built after the last `src/` edit; nine installers rebuilt; lockstep 68 passed. T
 `-m parity` run in a separate worktree at the code commit; their figures follow in the docs-only commit.
 ADR-0511 written; the report's R-45 row closed; `docs/PARITY-REPORT.md` re-measured; the handoff
 rotated (the R-67 section MOVED to the archive); this entry; the lessons entry; the kickoff refreshed to
-R-70.
+R-70. Draft PR #700 opened on `claude/ci-verification-task-scheduling-7y0gh8` (code commit `9e773d74`,
+docs commit `2dbe2ed4`); the worktree gate's figures follow below.
