@@ -81,12 +81,15 @@ _C = _crew(4, "C", 480)
 def test_a_milestone_after_a_crew_finish_sits_at_the_crews_instant() -> None:
     """B ends Tuesday 08:00 on its crew calendar (Hard_File UID 178's shape); the milestone
     sits there, as MS Project stores UID 181 — not at Monday 17:00, the same project-axis
-    minute's end-of-day rendering. Its float stays the axis's, so its late walls are None."""
+    minute's end-of-day rendering. It is also the network's finish, so since R-67 (ADR-0510,
+    the backward mirror) its LATE instant is the finish instant — its own — where ADR-0505
+    had left the late walls None; its slack is the working time between the two, zero."""
     res = compute_cpm(_schedule(_A, _B, _M, links=((1, 2), (2, 3))))
     assert res.timing(2).early_finish_wall == TUE_0800
     tm = res.timing(3)
     assert tm.early_start_wall == TUE_0800 and tm.early_finish_wall == TUE_0800
-    assert tm.late_start_wall is None and tm.late_finish_wall is None
+    assert tm.late_start_wall == TUE_0800 and tm.late_finish_wall == TUE_0800
+    assert tm.total_float == 0
     # the integer axis is untouched: the milestone's minute is its driver's
     assert tm.early_start == tm.early_finish == res.timing(2).early_finish
 

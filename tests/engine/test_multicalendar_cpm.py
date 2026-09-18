@@ -241,11 +241,16 @@ def test_offcalendar_task_with_no_predecessors_starts_at_project_start(jacked1) 
 
 def test_same_pattern_task_calendar_stays_on_the_integer_fast_path(jacked1) -> None:
     """A task calendar whose working pattern equals the project calendar's (e.g. a derived
-    resource calendar that inherits everything) must NOT route through the wall machinery."""
-    _sch, res = jacked1
+    resource calendar that inherits everything) must NOT route through the wall machinery.
+    The fast-path sentinel is the EARLY wall: since R-67 (ADR-0510) a zero-duration fast-path
+    task may carry a LATE instant its successors' needs lost (UID 22 here is such a milestone,
+    and its stored LateStart is now exact), which is a carried instant, not the wall path."""
+    sch, res = jacked1
     for uid in (4, 5, 1, 3, 6, 2, 15, 14, 16, 17, 18, 21, 22):
         tm = res.timing(uid)
-        assert tm.early_start_wall is None and tm.late_finish_wall is None, uid
+        assert tm.early_start_wall is None, uid
+        if sch.task_by_id(uid).duration_minutes > 0:
+            assert tm.late_finish_wall is None, uid
 
 
 def test_dcma12_passes_a_perfect_elapsed_chain() -> None:

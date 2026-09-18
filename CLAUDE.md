@@ -66,11 +66,12 @@ detection, and serves an interactive, locally-rendered report with a cited local
 2. **Fidelity over speed.** Numbers must match the reference tools on the same inputs; a fast wrong
    number is worthless in a testimony context. Parity is gate-locked (`pytest -m parity`).
 
-## The two non-negotiable working rules
+## The three non-negotiable working rules
 
-> The laws above govern the **product** — what must be true of what we ship. The two rules below
+> The laws above govern the **product** — what must be true of what we ship. The three rules below
 > govern the **method** — how a claim is allowed to become an action. They are standing operator
-> directives (2026-08-13, ADR-0393), they bind **every** session, and they are **NOT optional**.
+> directives (QC-1 / QC-2: 2026-08-13, ADR-0393; QC-3: 2026-09-18, ADR-0509), they bind **every**
+> session, and they are **NOT optional**.
 > **NO EXCEPTIONS.** They are pinned by `tests/test_standing_rules.py` so they cannot be quietly
 > deleted, softened, or demoted; that guard exists because this project's own audit proved that a
 > rule written only in prose is load-bearing data with nothing asserting it is still there.
@@ -123,6 +124,29 @@ correction is made** — the fix is itself a claim, and it gets proven or refute
 - **Read the whole artifact, not the part that looks relevant.** A sweep's glob, population and
   pattern are part of its claim; a search that cannot see a compressed, wrapped, or renamed file
   under-reports by construction and will look exhaustive while being partial.
+
+### QC-3 — The plan is wrong until it survives your attempt to refute it
+
+**After the research and investigation are done and a plan exists — and before the first change is
+made — assume the plan is wrong. Double-check it: write down every load-bearing assumption the plan
+rests on, attack each one with an executable check or an independent reading of the artifact, and
+prove the plan correct before making changes.** A plan that has not survived its own author's
+attempt to refute it is a hypothesis, and hypotheses do not get to change code, numbers, or
+documents. (Operator directive 2026-09-18, ADR-0509.) **NO EXCEPTIONS.**
+
+- **The plan is a claim, and QC-1 applies to it.** The mechanism the plan names, the seam it names,
+  the witness it names and the population it names are each testable before the first edit. Test
+  them on the pristine tree, where the failure the plan predicts must be observable.
+- **Attack the premises, not only the steps.** This repo's most expensive failures were plans whose
+  steps were executed correctly against a premise that was false — a row's mechanism, a row's
+  witness, a row's remedy — each refuted only after the plan carrying it was already in motion.
+- **A check that agrees with the plan is not the check.** Look for the observation that would
+  contradict the plan, then try to produce it; count the class beside the case the plan was written
+  for, and measure every candidate rule on the population before choosing one.
+- **Record what fell.** The ADR and the handoff state which assumptions were tested, which
+  survived, and which were replaced. A plan revised in silence is a plan that was never attacked.
+- **When an assumption cannot be tested, say so.** Mark it UNVERIFIED in the plan and in the
+  deliverable, and do not build on it as though it were proven.
 
 ## Model & audit protocol (standing operator rule, ADR-0240)
 

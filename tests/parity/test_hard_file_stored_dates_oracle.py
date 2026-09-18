@@ -65,16 +65,41 @@ the stored 11-19 01:00 EXACT (finish-within-a-day 100 -> 109, stored slack 4 -> 
 unmoved (two milestones there, UIDs 168 and 7107, now sit ON their predecessor's finish instead
 of the lunch hour after it — the contiguous projection's documented drift, no longer displayed).
 
+R-67 (ADR-0510) carried the LATE instant, the backward mirror: a fast-path milestone whose
+binding need is an instant the axis lost — a wall-path successor's late start less its elapsed
+leveling delay, a carried milestone's instant, or (on a file with wall-path tasks) a binding
+deadline / constraint date or the backward target — sits at the earliest such instant, a
+wall-path predecessor retreats from it, and a milestone whose early instant is carried measures
+its slack between its two instants. Hard_File UID 147's stored LateStart is SATURDAY 08-01 13:00
+(178's late start less 72 elapsed hours); the crew predecessor 157 read Monday 08:00 for it and
+took its late finish two crew hours after the stored Friday 23:00, and UID 94 inherited 150
+minutes of slack on its own calendar (6,510 vs 6,360). On the 24-hour snapshot the chain head is
+milestone 155's DEADLINE, 11-05 17:00 — no successor at all — and the 24-hour crew below it read
+11-06 08:00, fifteen crew hours late, down to milestone 156 (-4,320 vs -4,740). Re-measured on
+every golden, late-finish instants EXACT: Hard_File 78 -> 94 of 110, updated 83 -> 87, updated2
+27 -> 37, updated3 30 -> 45, the 24-hour snapshot 3 -> 15; stored slack exact Hard_File 101 -> 108
+(404's 9,480), updated2 36 -> 38, updated3 46 -> 48, the 24-hour snapshot 7 -> 15; Project2 /
+Project5 unmoved (108 / 99 late finishes exact); the Large Test Files' late finishes unmoved
+(918 -> 919, 824) and 18 / 25 milestone late starts newly exact. Across the 44 files (15 goldens +
+29 conversions) 268 late finishes moved toward the stored instant and 17 away — every one of the
+17 on a chain whose late dates MS Project derives past a COMPLETED or STARTED successor the
+engine's backward pass still runs through (updated3's 188 is stored 12-12 while its completed
+successor 291's late start is 09-08), or a completed milestone's own record; registered, not
+this rule's.
+
 Red first (pre-ADR-0474 engine): Hard_File finish +42.0 d, critical agreement 54 / 110;
 Project2 finish 2027-08-30 vs stored 09-14, stored slack exact on 7 / 65. Red first
 (pre-ADR-0505 engine): every floor below at its new value, and every dated pin in
-test_hard_file_crews_and_leveling_delays_are_what_the_engine_honours, by name.
+test_hard_file_crews_and_leveling_delays_are_what_the_engine_honours, by name. Red first
+(pre-R-67 engine): every late-finish floor, the raised slack floors, and every dated pin in
+test_a_milestones_late_instant_is_carried_to_its_crew_predecessor, by name.
 """
 
 from __future__ import annotations
 
 import datetime as dt
 import gzip
+import xml.etree.ElementTree as ET
 from functools import cache
 from pathlib import Path
 
@@ -103,16 +128,37 @@ def _load(rel: str) -> tuple[Schedule, CPMResult]:
     return sch, compute_cpm(sch)
 
 
+_NS = "{http://schemas.microsoft.com/project}"
+
+
+@cache
+def _stored_late_finishes(rel: str) -> dict[int, dt.datetime]:
+    """MS Project's stored LateFinish per UID, read from the golden's own XML — the model does
+    not carry late dates (CPM dates are derived by the engine, never stored on the task).
+    Keyed by the golden's PATH: the Hard_File snapshots share one project name."""
+    path = GOLDEN / rel
+    raw = path.read_bytes()
+    text = gzip.decompress(raw).decode("utf-8") if path.suffix == ".gz" else raw.decode("utf-8")
+    out: dict[int, dt.datetime] = {}
+    for node in ET.fromstring(text).iter(_NS + "Task"):
+        uid, lf = node.findtext(_NS + "UID"), node.findtext(_NS + "LateFinish")
+        if uid is not None and lf:
+            out[int(uid)] = dt.datetime.fromisoformat(lf)
+    assert out, rel
+    return out
+
+
 def _finish_wall(sch: Schedule, res: CPMResult) -> dt.datetime:
     return res.project_finish_wall or offset_to_datetime(
         sch.project_start, res.project_finish, sch.calendar
     )
 
 
-def _census(sch: Schedule, res: CPMResult) -> dict[str, int]:
+def _census(sch: Schedule, res: CPMResult, rel: str) -> dict[str, int]:
     """Per-activity agreement with the stored values: finishes within a day, stored slack
-    reproduced exactly, Critical flag agreed."""
-    out = {"n": 0, "finish_1d": 0, "tf_n": 0, "tf_exact": 0, "critical": 0}
+    reproduced exactly, Critical flag agreed, late-finish instant exact (R-67)."""
+    out = {"n": 0, "finish_1d": 0, "tf_n": 0, "tf_exact": 0, "critical": 0, "lf_exact": 0}
+    stored_lf = _stored_late_finishes(rel)
     for t in sch.tasks:
         if t.is_summary or not t.is_active:
             continue
@@ -123,6 +169,12 @@ def _census(sch: Schedule, res: CPMResult) -> dict[str, int]:
                 sch.project_start, tm.early_finish, sch.calendar
             )
             out["finish_1d"] += abs((ef - t.finish).total_seconds()) <= 86400
+        # R-67 (ADR-0510): the late-finish INSTANT against MS Project's stored LateFinish (read
+        # from the file's own XML — the model carries no late dates), exact to the second
+        lf = tm.late_finish_wall or _offset_to_wall(
+            sch.project_start, tm.late_finish, sch.calendar, role="finish"
+        )
+        out["lf_exact"] += stored_lf.get(t.unique_id) == lf
         # R-62 (ADR-0507, 2026-09-18): a completed activity's stored slack is MS Project's zero by
         # fiat (its stored start AND finish slack are (0, 0) on every finished activity of every
         # intake file) — a record, not a schedule — so it adjudicates nothing here. A no-op on
@@ -139,11 +191,21 @@ def _census(sch: Schedule, res: CPMResult) -> dict[str, int]:
 
 _HARD_FILE = [
     # rel, stored finish, |finish gap| <= days, finish-within-a-day floor, critical floor,
-    # stored-slack-exact floor
+    # stored-slack-exact floor, late-finish-instant-exact floor
     # (ADR-0491: every snapshot's project finish is EXACT once the leveling splits are read;
     # ADR-0505: every activity of the four Standard-calendar snapshots finishes within a day —
-    # 110 of 110 — and the 24-hour snapshot's finish is EXACT too, its own row below)
-    ("fuse_hardfile/Hard_File.mspdi.xml.gz", dt.datetime(2026, 11, 5, 12, 0), 0, 110, 110, 101),
+    # 110 of 110 — and the 24-hour snapshot's finish is EXACT too, its own row below;
+    # R-67 / ADR-0510: the slack floors 101 -> 108, 36 -> 38, 46 -> 48, 7 -> 15 and the late-finish
+    # floors 94 / 87 / 37 / 45 / 15 — measured 2026-09-18 with the carried late instant)
+    (
+        "fuse_hardfile/Hard_File.mspdi.xml.gz",
+        dt.datetime(2026, 11, 5, 12, 0),
+        0,
+        110,
+        110,
+        108,
+        94,
+    ),
     (
         "fuse_hardfile/Hard_File_updated.mspdi.xml.gz",
         dt.datetime(2026, 11, 5, 12, 0),
@@ -151,6 +213,7 @@ _HARD_FILE = [
         110,
         110,
         101,
+        87,
     ),
     (
         "fuse_hardfile/Hard_File_updated2.mspdi.xml.gz",
@@ -158,7 +221,8 @@ _HARD_FILE = [
         0,
         110,
         107,
-        36,
+        38,
+        37,
     ),
     (
         "fuse_hardfile/Hard_File_updated3.mspdi.xml.gz",
@@ -166,19 +230,23 @@ _HARD_FILE = [
         0,
         110,
         103,
-        46,
+        48,
+        45,
     ),
     # the 24-hour snapshot (its crews and the post-launch chain on the 24 Hours calendar):
     # UID 156 "Post Launch Preparation COMPLETE" is stored on a SUNDAY, 11-15 17:00, where its
     # crew predecessor finished; carrying that instant puts the chain 36 -> 9 -> 144 -> 145 ->
-    # 146 -> 411 / 155 on its stored dates and the project finish on the stored 11-19 01:00
+    # 146 -> 411 / 155 on its stored dates and the project finish on the stored 11-19 01:00.
+    # R-67: milestone 155's late instant is its DEADLINE, and carrying it puts the same chain's
+    # LATE dates and slacks on the stored values too (156: -4,740; 146: -19,200)
     (
         "fuse_hardfile/Hard_File_updated3_24hr.mspdi.xml.gz",
         dt.datetime(2026, 11, 19, 1, 0),
         0,
         109,
         70,
-        7,
+        15,
+        15,
     ),
 ]
 
@@ -189,7 +257,8 @@ def test_updated3_finishes_where_ms_project_finishes_once_recorded_bookings_are_
     both heads land on the recorded instant, and the disclosure names them. UID 403 is the
     remaining head — a leveling SPLIT (seven days of gap between two work pieces in the .mpp)
     the MSPDI does not carry; its own row."""
-    sch, res = _load("fuse_hardfile/Hard_File_updated3.mspdi.xml.gz")
+    rel = "fuse_hardfile/Hard_File_updated3.mspdi.xml.gz"
+    sch, res = _load(rel)
     assert _finish_wall(sch, res) == dt.datetime(2026, 12, 12, 17, 0)
     assert res.timing(385).early_finish_wall == dt.datetime(2026, 11, 4, 14, 24)
     assert res.timing(302).early_finish_wall == dt.datetime(2026, 10, 21, 12, 0)
@@ -204,12 +273,13 @@ def test_updated3_finishes_where_ms_project_finishes_once_recorded_bookings_are_
     assert res.timing(403).late_start_wall == dt.datetime(2026, 11, 25, 13, 48)
     assert res.timing(403).total_float == sch.task_by_id(403).stored_total_float_minutes == 12888
     assert 403 in res.split_driven
-    census = _census(sch, res)
+    census = _census(sch, res, rel)
     assert census["tf_exact"] >= 46 and census["tf_n"] == 68
 
 
 @pytest.mark.parametrize(
-    ("rel", "stored", "days", "finish_floor", "critical_floor", "tf_floor"), _HARD_FILE
+    ("rel", "stored", "days", "finish_floor", "critical_floor", "tf_floor", "lf_floor"),
+    _HARD_FILE,
 )
 def test_hard_file_finish_is_within_the_row_tolerance_of_ms_project(
     rel: str,
@@ -218,16 +288,86 @@ def test_hard_file_finish_is_within_the_row_tolerance_of_ms_project(
     finish_floor: int,
     critical_floor: int,
     tf_floor: int,
+    lf_floor: int,
 ) -> None:
     sch, res = _load(rel)
     assert sch.project_finish == stored  # the stored finish IS the file's FinishDate
     gap = (_finish_wall(sch, res) - stored).total_seconds() / 86400
     assert abs(gap) <= days, f"CPM finish {_finish_wall(sch, res)} vs stored {stored}: {gap:+.1f} d"
-    census = _census(sch, res)
+    census = _census(sch, res, rel)
     assert census["n"] == 110
     assert census["finish_1d"] >= finish_floor, census
     assert census["critical"] >= critical_floor, census
     assert census["tf_exact"] >= tf_floor, census
+    assert census["lf_exact"] >= lf_floor, census
+
+
+def test_a_milestones_late_instant_is_carried_to_its_crew_predecessor() -> None:
+    """R-67 (ADR-0510), the backward mirror of ADR-0505. Base snapshot: milestone 147's stored
+    LateStart is Saturday 08-01 13:00 — UID 178's late start less its 72 elapsed hours of
+    leveling delay — and the crew predecessor 157 retreats from it onto its stored Friday
+    23:00 (its late start 15:00, its slack 2,760 — the START slack on the project calendar);
+    UID 94, one link higher, lands on its stored late window and its stored 6,360 on its own
+    ``Standard+Sat.`` calendar. The same rule one link down: milestone 181's late instant is
+    the crew successor 189's late start, 08-04 21:00 — an instant outside the Standard day —
+    and 178 / 179 / 180 retreat from it onto their stored 21:00 late finishes and their stored
+    slacks 240 / 480 / 720. Milestone 404, the network's end after a crew whose finish sits
+    mid-day (10-08 15:00), measures its slack between its two instants: 9,480, the stored
+    figure (the axis's contiguous projection read 9,420). The one form left, named: the engine
+    writes 178's late start at the END of the crew's morning block, 12:00, where MS Project
+    writes the START of its afternoon block, 13:00 — the same working minute on every calendar
+    in the file — so 147's carried instant reads Saturday 12:00 for the stored 13:00 (the
+    contiguous projection of the 13:00 form would hand every project-calendar predecessor the
+    lunch hour as float; registered, not chased)."""
+    rel = "fuse_hardfile/Hard_File.mspdi.xml.gz"
+    sch, res = _load(rel)
+    stored_lf = _stored_late_finishes(rel)
+    assert res.timing(189).late_start_wall == dt.datetime(2026, 8, 4, 21, 0)
+    assert res.timing(189).late_finish_wall == stored_lf[189] == dt.datetime(2026, 8, 5, 12, 0)
+    assert res.timing(181).late_start_wall == res.timing(181).late_finish_wall
+    assert res.timing(181).late_finish_wall == stored_lf[181] == dt.datetime(2026, 8, 4, 21, 0)
+    for uid, slack in ((178, 240), (179, 480), (180, 720)):
+        assert res.timing(uid).late_finish_wall == stored_lf[uid] == dt.datetime(2026, 8, 4, 21, 0)
+        assert res.timing(uid).late_start_wall == dt.datetime(2026, 8, 4, 12, 0)
+        assert res.timing(uid).total_float == sch.task_by_id(uid).stored_total_float_minutes
+        assert res.timing(uid).total_float == slack
+    assert res.timing(147).late_start_wall == res.timing(147).late_finish_wall
+    assert res.timing(147).late_finish_wall == dt.datetime(2026, 8, 1, 12, 0)
+    assert stored_lf[147] == dt.datetime(2026, 8, 1, 13, 0)
+    assert res.timing(147).total_float == sch.task_by_id(147).stored_total_float_minutes == 0
+    assert res.timing(157).late_finish_wall == stored_lf[157] == dt.datetime(2026, 7, 31, 23, 0)
+    assert res.timing(157).late_start_wall == dt.datetime(2026, 7, 31, 15, 0)
+    assert res.timing(157).total_float == sch.task_by_id(157).stored_total_float_minutes == 2760
+    assert res.timing(94).late_finish_wall == stored_lf[94] == dt.datetime(2026, 7, 31, 15, 0)
+    assert res.timing(94).late_start_wall == dt.datetime(2026, 7, 30, 22, 0)
+    assert res.timing(94).total_float == sch.task_by_id(94).stored_total_float_minutes == 6360
+    assert res.timing(404).late_finish_wall == stored_lf[404] == dt.datetime(2026, 11, 5, 12, 0)
+    assert res.timing(404).early_finish_wall == dt.datetime(2026, 10, 8, 15, 0)
+    assert res.timing(404).total_float == sch.task_by_id(404).stored_total_float_minutes == 9480
+    # the 24-hour snapshot: the chain head is milestone 155's DEADLINE, carried with no successor
+    # at all; the 24-hour crew 146 retreats from it (11-05 17:00, not the rendered 11-06 08:00)
+    # and the chain 145 -> 144 -> 9 -> 36 -> 156 lands on every stored late date and slack
+    rel = "fuse_hardfile/Hard_File_updated3_24hr.mspdi.xml.gz"
+    sch, res = _load(rel)
+    stored_lf = _stored_late_finishes(rel)
+    deadline = dt.datetime(2026, 11, 5, 17, 0)
+    assert sch.task_by_id(155).deadline == deadline
+    assert res.timing(155).late_finish_wall == res.timing(411).late_finish_wall == deadline
+    assert res.timing(146).late_finish_wall == stored_lf[146] == deadline
+    assert res.timing(146).late_start_wall == dt.datetime(2026, 11, 3, 17, 0)
+    assert res.timing(146).total_float == sch.task_by_id(146).stored_total_float_minutes == -19200
+    for uid, lf, slack in (
+        (145, dt.datetime(2026, 11, 3, 17, 0), -4740),
+        (144, dt.datetime(2026, 11, 3, 9, 0), -4740),
+        (9, dt.datetime(2026, 11, 3, 1, 0), -4380),
+        (36, dt.datetime(2026, 11, 2, 17, 0), -4740),
+        (141, dt.datetime(2026, 11, 2, 9, 0), -4800),
+    ):
+        assert res.timing(uid).late_finish_wall == stored_lf[uid] == lf
+        assert res.timing(uid).total_float == sch.task_by_id(uid).stored_total_float_minutes
+        assert res.timing(uid).total_float == slack
+    assert res.timing(156).late_finish_wall == stored_lf[156] == dt.datetime(2026, 11, 2, 9, 0)
+    assert res.timing(156).total_float == sch.task_by_id(156).stored_total_float_minutes == -4740
 
 
 def test_hard_file_crews_and_leveling_delays_are_what_the_engine_honours() -> None:
@@ -301,23 +441,26 @@ def test_hard_file_crews_and_leveling_delays_are_what_the_engine_honours() -> No
 # zero the MPXJ writer dropped on every Critical activity whose ``TotalSlack`` element is absent
 # (41 on Project2, 4 on Project5), so the stored-slack population grows by exactly those — and
 # tf_exact grows by the same, because the engine's pure-logic float is 0 for every one of them.
+# lf_exact (the late-finish INSTANT) 108 / 99 of 126 — unmoved by R-67 (ADR-0510): these
+# files carry no zero-duration task, so the carried late instant cannot touch them (a control).
 _PROJECTS = [
-    ("project2_5/Project2.mspdi.xml", dt.datetime(2027, 9, 14, 17, 0), 106, 124),
-    ("project2_5/Project5.mspdi.xml", dt.datetime(2028, 1, 26, 17, 0), 99, 126),
+    ("project2_5/Project2.mspdi.xml", dt.datetime(2027, 9, 14, 17, 0), 106, 124, 108),
+    ("project2_5/Project5.mspdi.xml", dt.datetime(2028, 1, 26, 17, 0), 99, 126, 99),
 ]
 
 
-@pytest.mark.parametrize(("rel", "stored", "tf_n", "critical_floor"), _PROJECTS)
+@pytest.mark.parametrize(("rel", "stored", "tf_n", "critical_floor", "lf_exact"), _PROJECTS)
 def test_leveled_goldens_reproduce_the_stored_finish_and_every_stored_slack(
-    rel: str, stored: dt.datetime, tf_n: int, critical_floor: int
+    rel: str, stored: dt.datetime, tf_n: int, critical_floor: int, lf_exact: int
 ) -> None:
     sch, res = _load(rel)
     assert sch.project_finish == stored
     assert _finish_wall(sch, res) == stored
-    census = _census(sch, res)
+    census = _census(sch, res, rel)
     assert census["n"] == 126 and census["finish_1d"] == 126
     assert (census["tf_exact"], census["tf_n"]) == (tf_n, tf_n)
     assert census["critical"] >= critical_floor, census
+    assert census["lf_exact"] == lf_exact, census
 
 
 # --- the Large Test Files: eighteen crew calendars that differ only by holidays, unmoved -------
@@ -331,22 +474,34 @@ def test_leveled_goldens_reproduce_the_stored_finish_and_every_stored_slack(
 # bookings occupy exactly the window MS Project recorded (they read 1 to 62 minutes short), and
 # 66 / 101 activities moved TOWARD their stored finish in working minutes, none away; File2's
 # finish-within-a-day 1687 → 1689.
+# lf_floor (the late-finish INSTANT, exact): 918 -> 919 and 824 on 2026-09-18 (R-67, ADR-0510) —
+# the carried late instant reaches one activity on Large Test File and no finish on File2, while
+# 18 / 25 of their milestones' late starts became exact with it.
 _LARGE = [
-    ("fuse_ltf/Large_Test_File.mspdi.xml.gz", 1723, 1666, 874, 1024, 1721),
-    ("fuse_ltf/Large_Test_File2.mspdi.xml.gz", 1722, 1689, 736, 998, 1717),
+    ("fuse_ltf/Large_Test_File.mspdi.xml.gz", 1723, 1666, 874, 1024, 1721, 919),
+    ("fuse_ltf/Large_Test_File2.mspdi.xml.gz", 1722, 1689, 736, 998, 1717, 824),
 ]
 
 
-@pytest.mark.parametrize(("rel", "n", "finish_floor", "tf_exact", "tf_n", "critical_floor"), _LARGE)
+@pytest.mark.parametrize(
+    ("rel", "n", "finish_floor", "tf_exact", "tf_n", "critical_floor", "lf_floor"), _LARGE
+)
 def test_large_test_files_are_unmoved_by_the_crew_calendars(
-    rel: str, n: int, finish_floor: int, tf_exact: int, tf_n: int, critical_floor: int
+    rel: str,
+    n: int,
+    finish_floor: int,
+    tf_exact: int,
+    tf_n: int,
+    critical_floor: int,
+    lf_floor: int,
 ) -> None:
     """Their 177 fixed-work bookings below work / units span the task (the type rule); the
     2026-09-07 figures equalled the pre-ADR-0474 engine's exactly, and ADR-0491's splits moved
     every one of their 100 / 104 movers TOWARD the stored finish, none away."""
     sch, res = _load(rel)
-    census = _census(sch, res)
+    census = _census(sch, res, rel)
     assert census["n"] == n
     assert census["finish_1d"] >= finish_floor, census
     assert (census["tf_exact"], census["tf_n"]) == (tf_exact, tf_n)
     assert census["critical"] >= critical_floor, census
+    assert census["lf_exact"] >= lf_floor, census

@@ -249,15 +249,23 @@ def test_uid_157_downstream_lands_on_ms_projects_instants_with_it(rel: str) -> N
         assert res.timing(157).total_float == t.stored_total_float_minutes == 1440
 
 
-def test_on_the_base_snapshot_the_residual_float_of_uid_94_is_milestone_147s_saturday() -> None:
-    """UID 94's slack on the base snapshot reads 6,510 against the stored 6,360 and the 150
-    minutes are NOT this rule's. 157's late finish is read from milestone 147's late start:
-    MS Project keeps that milestone's late start at Saturday 2026-08-01 13:00 — an instant on
-    the elapsed axis inside the weekend (ADR-0476's day-boundary class) — and snapped back on
-    the crew's 16-hour calendar it IS 157's stored Friday 23:00. The engine's integer axis
-    has no Saturday instant: 147 reads Monday 08:00, 157's late finish follows it, and 94's
-    two-hour-later late window is 150 minutes of ``Standard+Sat.``. Computed, not copied — if
-    147 moves, this fails and the residual is re-read."""
+def test_on_the_base_snapshot_uid_94s_float_is_exact_once_147s_saturday_is_carried() -> None:
+    """UID 94's slack on the base snapshot read 6,510 against the stored 6,360 and the 150
+    minutes were NOT this rule's (ADR-0503 named them R-67's). 157's late finish is read from
+    milestone 147's late start: MS Project keeps that milestone's late start at Saturday
+    2026-08-01 13:00 — UID 178's late start less its 72 elapsed hours of leveling delay, an
+    instant inside the weekend — and snapped back on the crew's 16-hour calendar it IS 157's
+    stored Friday 23:00. The engine's integer axis has no Saturday instant; until R-67
+    (ADR-0510) 147 read Monday 08:00 for the crew predecessor, 157's late finish followed it,
+    and 94's two-hour-later late window was 150 minutes of ``Standard+Sat.``. The milestone now
+    CARRIES the instant and the chain lands on every stored value. This test's witness used to
+    be the engine's disagreement with MS Project (ADR-0505's doctrine: such a test goes red
+    when the engine is fixed); it now pins the agreement, computed, not copied. The one form
+    left: the engine's 147 sits at Saturday 12:00 where MS Project writes 13:00 — 178's late
+    start written at the END of the crew's morning block where MS Project writes the start of
+    its afternoon block, the same working minute on every calendar in the file (registered,
+    not chased: the contiguous projection of the 13:00 form would hand every project-calendar
+    predecessor the lunch hour as float)."""
     sch, res = _load(HARD_FILE)
     ps = sch.project_start
     tod0 = ps.hour * 60 + ps.minute
@@ -270,27 +278,34 @@ def test_on_the_base_snapshot_the_residual_float_of_uid_94_is_milestone_147s_sat
     assert stored[147][0].weekday() == 5
     assert _snap_back_to_working(stored[147][0], by_uid[3], tod0) == stored[157][1]
     assert stored[157][1] == dt.datetime(2026, 7, 31, 23, 0)
-    _es, _ef, ls_147, _lf = _walls(HARD_FILE, 147)
-    assert ls_147 == dt.datetime(2026, 8, 3, 8, 0)
-    assert _walls(HARD_FILE, 157)[3] == ls_147
+    # the carried instant: 178's late start (the block-end form of the stored 13:00) less 72 h
+    ls_147 = res.timing(147).late_start_wall
+    assert ls_147 == res.timing(147).late_finish_wall == dt.datetime(2026, 8, 1, 12, 0)
+    assert res.timing(178).late_start_wall == dt.datetime(2026, 8, 4, 12, 0)
+    assert ls_147 == res.timing(178).late_start_wall - dt.timedelta(
+        minutes=sch.task_by_id(178).leveling_delay_minutes
+    )
+    assert _snap_back_to_working(ls_147, by_uid[3], tod0) == stored[157][1]
+    # 157 retreats from it onto its stored late window and its stored slack, 2,760
+    assert _walls(HARD_FILE, 157)[2:] == (
+        dt.datetime(2026, 7, 31, 15, 0),
+        dt.datetime(2026, 7, 31, 23, 0),
+    )
+    assert res.timing(157).total_float == sch.task_by_id(157).stored_total_float_minutes == 2760
+    # and 94, one link higher, lands on its stored late window and its stored slack, 6,360
     es, ef, ls, lf = _walls(HARD_FILE, 94)
     assert (es, ef) == (dt.datetime(2026, 7, 23, 8, 0), dt.datetime(2026, 7, 23, 17, 0))
-    gap = res.timing(94).total_float - (sch.task_by_id(94).stored_total_float_minutes or 0)
-    stored_ls, stored_lf = stored[94]
-    assert stored_ls is not None and stored_lf is not None
-    # the stored slack is the START slack (6,360; the finish slack there is 6,390) and so is
-    # the engine's (6,510 both ways): the gap is the late-start offset on the task calendar,
-    # Thursday 22:00 → Friday 08:00, and the late finish moved by the two hours 157 did
-    assert gap == _wall_minutes_between(stored_ls, ls, by_uid[12], tod0) == 150
-    assert _wall_minutes_between(stored_lf, lf, by_uid[12], tod0) == 120
-    assert (stored_ls, stored_lf) == (
-        dt.datetime(2026, 7, 30, 22, 0),
-        dt.datetime(2026, 7, 31, 15, 0),
+    assert (
+        (ls, lf)
+        == stored[94]
+        == (
+            dt.datetime(2026, 7, 30, 22, 0),
+            dt.datetime(2026, 7, 31, 15, 0),
+        )
     )
-    assert (ls, lf) == (dt.datetime(2026, 7, 31, 8, 0), dt.datetime(2026, 7, 31, 17, 0))
-
-
-# --- the population, so the claim can never quietly become a claim about the world ---------------
+    assert res.timing(94).total_float == sch.task_by_id(94).stored_total_float_minutes == 6360
+    assert _wall_minutes_between(es, ls, by_uid[12], tod0) == 6360
+    assert _wall_minutes_between(ef, lf, by_uid[12], tod0) == 6390
 
 
 def _derived_legs(rel: str) -> list[tuple[int, str]]:

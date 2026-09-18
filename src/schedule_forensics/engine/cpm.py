@@ -2514,17 +2514,31 @@ def compute_cpm(
     lf_wall: dict[int, dt.datetime] = {}
     exec_slack: dict[int, int] = {}
 
+    #: late instants CARRIED by project-axis ZERO-duration tasks (R-67, the backward mirror of
+    #: ADR-0505's ``ms_wall``): a milestone's late start IS its late finish, one instant, and MS
+    #: Project keeps it where the tightest successor need falls — Hard_File UID 147's stored
+    #: LateStart is SATURDAY 08-01 13:00, UID 178's late start less its 72 elapsed hours of
+    #: leveling delay. The integer axis has no Saturday instant: rendered start-role for the crew
+    #: predecessor 157 it read Monday 08:00, two crew hours after the stored Friday 23:00, and
+    #: UID 94 inherited 150 minutes of slack on its own calendar. The integer offsets are
+    #: untouched — every carried instant projects to the minute the integer pass chose.
+    ms_late_wall: dict[int, dt.datetime] = {}
+
     def _succ_ls_wall(s: int, lag: int) -> dt.datetime:
         # a successor's stored leveling delay sits between its predecessors' finish and its own
         # late start (MS Project: Hard_File UID 14 LF 11:00 = UID 141 LS 21:00 minus its 10 h)
         delay = dt.timedelta(minutes=task_by_id[s].leveling_delay_minutes)
         if lag == 0 and s in exec_plan:
             return ls_wall[s] - delay
+        if lag == 0 and s in ms_late_wall:
+            return ms_late_wall[s] - delay
         return _offset_to_wall(ps, late_start[s] - lag, cal, role="start") - delay
 
     def _succ_lf_wall(s: int, lag: int) -> dt.datetime:
         if lag == 0 and s in exec_plan:
             return lf_wall[s]
+        if lag == 0 and s in ms_late_wall:
+            return ms_late_wall[s]
         return _offset_to_wall(ps, late_finish[s] - lag, cal, role="finish")
 
     # the one instant every off-fast-path task retreats from (``target_wall`` is set whenever a
@@ -2534,6 +2548,50 @@ def compute_cpm(
         if target_wall is not None
         else (_offset_to_wall(ps, backward_target, cal, role="finish") if exec_plan else ps)
     )
+
+    def _carried_late_instant(tid: int, lf: int) -> dt.datetime | None:
+        """The wall instant a zero-duration project-axis task's late start / late finish SITS AT
+        when a need that binds it is one the integer axis cannot represent (R-67): a wall-path
+        successor's late-start need (its late start less its elapsed leveling delay — the
+        candidate ADR-0474 already hands a wall-path predecessor), another carried milestone's
+        instant, or — on a file with wall-path tasks — the raw instant of a binding deadline /
+        date constraint or the backward target itself (Hard_File_updated3_24hr UID 155's late
+        instant is its deadline, 11-05 17:00; the 24-hour crew below it read the minute's
+        start-role rendering, 11-06 08:00, fifteen crew hours late, and the chain down to
+        milestone 156 inherited them). Every binding need must contribute a known instant and
+        the earliest wins, MS Project's ``min`` over instants; a lagged link (a quantity of the
+        integer axis) leaves the rendering in charge. Nothing is carried unless some binding
+        need is an instant the axis LOST: a milestone among project-calendar activities only is
+        untouched, and so is every single-calendar file (``target_wall`` is ``None`` there, so
+        no cap or target can carry). Every candidate projects back to ``lf`` or IS the rendering
+        of ``lf`` (a project-calendar successor's late start), so the carried instant never
+        disagrees with the integer pass."""
+        task = task_by_id[tid]
+        cands: list[dt.datetime] = []
+        lost = False
+        for s, rel, lag in succs[tid]:
+            if lf_upper_bound(rel, ls_need[s], late_finish[s], lag, 0) != lf:
+                continue  # not a binding need of this late finish
+            if lag != 0:
+                return None
+            if s in exec_plan or s in ms_late_wall:
+                lost = True
+            if rel is RelationshipType.FS or rel is RelationshipType.SS:
+                cands.append(_succ_ls_wall(s, 0))
+            else:  # FF / SF: the successor's late finish binds this instant
+                cands.append(_succ_lf_wall(s, 0))
+        if target_wall is not None:
+            if lf_cap.get(tid) == lf:
+                for raw in (task.constraint_date, task.deadline):
+                    if raw is not None and _wall_to_offset(ps, raw, cal) == lf:
+                        cands.append(raw)
+                        lost = True
+            if lf == backward_target:
+                cands.append(tw)
+                lost = True
+        if not lost:
+            return None
+        return min(cands)
 
     for tid in reversed(order):
         # ADR-0476: the backward pass must retreat by the SAME span the forward pass PLACED. A
@@ -2609,6 +2667,10 @@ def compute_cpm(
         late_finish[tid] = lf
         late_start[tid] = lf - dur_p
         ls_need[tid] = late_start[tid]
+        if dur_p == 0:
+            carried_late = _carried_late_instant(tid, lf)
+            if carried_late is not None:
+                ms_late_wall[tid] = carried_late
 
     def _succ_early_start_wall(s: int, lag: int) -> dt.datetime:
         if lag == 0 and s in exec_plan:
@@ -2653,6 +2715,11 @@ def compute_cpm(
             # golden EVM2 UID 20 read 10 working days of float and non-critical while MS Project
             # flags it Critical and its floored finish IS the network finish).
             total = min(late_start[tid] - early_start[tid], late_finish[tid] - early_finish[tid])
+            if tid in ms_wall:
+                late_instant = ms_late_wall.get(tid) or _offset_to_wall(
+                    ps, late_finish[tid], cal, role="finish"
+                )
+                total = _wall_minutes_between(ms_wall[tid], late_instant, cal, tod0)
             if succs[tid]:
                 free = min(
                     link_slack(
@@ -2683,8 +2750,8 @@ def compute_cpm(
             is_critical=total <= 0,
             early_start_wall=es_wall.get(tid, ms_wall.get(tid)),
             early_finish_wall=ef_wall.get(tid, ms_wall.get(tid)),
-            late_start_wall=ls_wall.get(tid),
-            late_finish_wall=lf_wall.get(tid),
+            late_start_wall=ls_wall.get(tid, ms_late_wall.get(tid)),
+            late_finish_wall=lf_wall.get(tid, ms_late_wall.get(tid)),
         )
 
     critical_path = tuple(tid for tid in order if timings[tid].is_critical)
