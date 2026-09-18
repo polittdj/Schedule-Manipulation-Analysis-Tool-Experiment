@@ -19027,7 +19027,7 @@ wheel + nine installers rebuilt after the last format (lockstep pin 68 passed).
 ## 2026-09-18 — R-62 CLOSED (ADR-0507): every absent `TotalSlack` the MPXJ writer dropped is a zero, completed activities included; the writer's rule is class-blind; float erosion scores incomplete work only — v1.0.273
 
 Branch `claude/lucid-brown-hpmst7` (the designated branch, restarted on #696's squash `b7c76ece` with
-`--prune` + `remote set-head` + `checkout -B`; GitHub had already deleted the merged head). Draft PR whose number the follow-up commit records
+`--prune` + `remote set-head` + `checkout -B`; GitHub had already deleted the merged head). Draft PR [#697](https://github.com/polittdj/Schedule-Manipulation-Analysis-Tool-Experiment/pull/697)
 (the operator merges). **`main`'s OWN runs for `b7c76ece` read TO CONCLUSION this session, by their jobs:**
 CI 1920 (`35286496419`) `cui-guard` 23:22:13Z · `browser` 23:39:21Z · `floor` 23:47:23Z · `test (3.13)`
 00:04:42Z · `test (3.11)` 00:10:22Z · `check` 00:10:27Z — six of six green; installer-smoke 758
