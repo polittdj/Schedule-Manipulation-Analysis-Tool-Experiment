@@ -141,9 +141,14 @@ def test_own_calendar_floor_propagates_to_successors_and_project_finish() -> Non
     # Successor on the project axis starts after the floored finish (Wed 08:00).
     assert (t3.early_start, t3.early_finish) == (3360, 3840)
     assert res.project_finish == 3840  # Wed 2026-01-14 16:00, a week later than logic
-    # The floor re-shapes float/criticality: UID 1 gains the week the pour lost
-    # (its LF retreats from UID 2's late start, Mon Jan 12 08:00 = offset 2400).
-    assert t1.total_float == 1920 and not t1.is_critical
+    # The floor re-shapes float/criticality: UID 1 gains the week the pour lost. Its LF is
+    # the pour's REMAINING portion's late start (R-70, ADR-0512 — the pour is in progress,
+    # 25 % done, 2,160 of its 2,880 minutes still to do): Wednesday 08:00 less 2,160 minutes
+    # on the 24-hour calendar is Monday Jan 12 20:00, rendered on the Standard axis as that
+    # Monday's last minute, offset 2880 — five working days of float. Before R-70 the engine
+    # handed UID 1 the pour's whole-task late start (Monday 08:00, 2400: a re-do of the
+    # quarter already done) and read 1920.
+    assert (t1.late_finish, t1.total_float) == (2880, 2400) and not t1.is_critical
     assert t3.total_float == 0 and t3.is_critical
 
 

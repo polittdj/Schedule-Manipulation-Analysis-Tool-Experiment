@@ -73,10 +73,15 @@ def test_floored_task_total_float_is_its_finish_slack_and_it_is_critical() -> No
 
 
 def test_the_predecessor_keeps_its_start_slack_against_the_floored_successor() -> None:
-    """P can slip until X's late start without moving X's floored finish — 9 working days."""
+    """P can slip until X's REMAINING portion's late start without moving X's floored finish —
+    13 working days (R-70, ADR-0512: X is in progress, so the need it presents is its late
+    finish, 9,120, less its remaining day, 8,640; P's start slack is 8,640 - 2,400). Before
+    R-70 the engine handed P X's whole-task late start, 9,120 - 2,400 = 6,720, and read 9 days —
+    a re-do of the four days X had already done."""
     cpm = compute_cpm(_floored_chain())
     p = cpm.timings[1]
-    assert p.total_float == 9 * DAY
+    assert p.late_finish == 18 * DAY
+    assert p.total_float == 13 * DAY
     assert p.is_critical is False
 
 

@@ -109,6 +109,7 @@ from schedule_forensics.engine.cpm import (
     CPMResult,
     _offset_to_wall,
     compute_cpm,
+    is_recorded_complete,
     offset_to_datetime,
 )
 from schedule_forensics.importers.mspdi import parse_mspdi_text
@@ -157,7 +158,15 @@ def _finish_wall(sch: Schedule, res: CPMResult) -> dt.datetime:
 def _census(sch: Schedule, res: CPMResult, rel: str) -> dict[str, int]:
     """Per-activity agreement with the stored values: finishes within a day, stored slack
     reproduced exactly, Critical flag agreed, late-finish instant exact (R-67)."""
-    out = {"n": 0, "finish_1d": 0, "tf_n": 0, "tf_exact": 0, "critical": 0, "lf_exact": 0}
+    out = {
+        "n": 0,
+        "finish_1d": 0,
+        "tf_n": 0,
+        "tf_exact": 0,
+        "critical": 0,
+        "lf_n": 0,
+        "lf_exact": 0,
+    }
     stored_lf = _stored_late_finishes(rel)
     for t in sch.tasks:
         if t.is_summary or not t.is_active:
@@ -170,11 +179,17 @@ def _census(sch: Schedule, res: CPMResult, rel: str) -> dict[str, int]:
             )
             out["finish_1d"] += abs((ef - t.finish).total_seconds()) <= 86400
         # R-67 (ADR-0510): the late-finish INSTANT against MS Project's stored LateFinish (read
-        # from the file's own XML — the model carries no late dates), exact to the second
-        lf = tm.late_finish_wall or _offset_to_wall(
-            sch.project_start, tm.late_finish, sch.calendar, role="finish"
-        )
-        out["lf_exact"] += stored_lf.get(t.unique_id) == lf
+        # from the file's own XML — the model carries no late dates), exact to the second.
+        # R-70 (ADR-0512, 2026-09-18): INCOMPLETE activities only — a completed activity's
+        # stored LateFinish is its ActualFinish (8,644 of 8,644 across the 44-file corpus), a
+        # record the engine does not model (18 coincidental matches before R-70, 0 after), so
+        # it adjudicates nothing here, ADR-0507's decision 3 applied to the late dates.
+        if not is_recorded_complete(t):
+            lf = tm.late_finish_wall or _offset_to_wall(
+                sch.project_start, tm.late_finish, sch.calendar, role="finish"
+            )
+            out["lf_n"] += 1
+            out["lf_exact"] += stored_lf.get(t.unique_id) == lf
         # R-62 (ADR-0507, 2026-09-18): a completed activity's stored slack is MS Project's zero by
         # fiat (its stored start AND finish slack are (0, 0) on every finished activity of every
         # intake file) — a record, not a schedule — so it adjudicates nothing here. A no-op on
@@ -196,7 +211,12 @@ _HARD_FILE = [
     # ADR-0505: every activity of the four Standard-calendar snapshots finishes within a day —
     # 110 of 110 — and the 24-hour snapshot's finish is EXACT too, its own row below;
     # R-67 / ADR-0510: the slack floors 101 -> 108, 36 -> 38, 46 -> 48, 7 -> 15 and the late-finish
-    # floors 94 / 87 / 37 / 45 / 15 — measured 2026-09-18 with the carried late instant)
+    # floors 94 / 87 / 37 / 45 / 15 — measured 2026-09-18 with the carried late instant;
+    # R-70 / ADR-0512 (2026-09-18): a finished successor presents no late need and a started one
+    # its remaining portion — the Critical floors 107 -> 109, 103 -> 109 and 70 -> 110, the slack
+    # floor 48 -> 49 (updated3's UID 188, the row's witness) and the 24-hour snapshot's
+    # late-finish floor 15 -> 17 (UIDs 302 / 385, bound by the project finish once their
+    # completed successors bind nothing); the late-finish census counts incomplete work only)
     (
         "fuse_hardfile/Hard_File.mspdi.xml.gz",
         dt.datetime(2026, 11, 5, 12, 0),
@@ -220,7 +240,7 @@ _HARD_FILE = [
         dt.datetime(2026, 11, 6, 17, 0),
         0,
         110,
-        107,
+        109,
         38,
         37,
     ),
@@ -229,8 +249,8 @@ _HARD_FILE = [
         dt.datetime(2026, 12, 12, 17, 0),
         0,
         110,
-        103,
-        48,
+        109,
+        49,
         45,
     ),
     # the 24-hour snapshot (its crews and the post-launch chain on the 24 Hours calendar):
@@ -244,9 +264,9 @@ _HARD_FILE = [
         dt.datetime(2026, 11, 19, 1, 0),
         0,
         109,
-        70,
+        110,
         15,
-        15,
+        17,
     ),
 ]
 
@@ -443,8 +463,15 @@ def test_hard_file_crews_and_leveling_delays_are_what_the_engine_honours() -> No
 # tf_exact grows by the same, because the engine's pure-logic float is 0 for every one of them.
 # lf_exact (the late-finish INSTANT) 108 / 99 of 126 — unmoved by R-67 (ADR-0510): these
 # files carry no zero-duration task, so the carried late instant cannot touch them (a control).
+# lf_exact RE-PINNED 108 -> 106 of 106 and 99 of 99 on 2026-09-18 (R-70, ADR-0512): the census
+# now counts INCOMPLETE activities only — a completed activity's stored LateFinish is its
+# ActualFinish, a record (8,644 of 8,644 across the corpus) the engine does not model, and
+# Project2's two coincidental matches were completed activities bound to completed successors.
+# EVERY incomplete activity of both files now has its late-finish instant exact, and Project2's
+# Critical agreement is 126 of 126 (the two completed activities that read critical carry the
+# float of the project finish, as MS Project reads them).
 _PROJECTS = [
-    ("project2_5/Project2.mspdi.xml", dt.datetime(2027, 9, 14, 17, 0), 106, 124, 108),
+    ("project2_5/Project2.mspdi.xml", dt.datetime(2027, 9, 14, 17, 0), 106, 126, 106),
     ("project2_5/Project5.mspdi.xml", dt.datetime(2028, 1, 26, 17, 0), 99, 126, 99),
 ]
 
@@ -460,7 +487,7 @@ def test_leveled_goldens_reproduce_the_stored_finish_and_every_stored_slack(
     assert census["n"] == 126 and census["finish_1d"] == 126
     assert (census["tf_exact"], census["tf_n"]) == (tf_n, tf_n)
     assert census["critical"] >= critical_floor, census
-    assert census["lf_exact"] == lf_exact, census
+    assert (census["lf_exact"], census["lf_n"]) == (lf_exact, lf_exact), census
 
 
 # --- the Large Test Files: eighteen crew calendars that differ only by holidays, unmoved -------
@@ -477,9 +504,13 @@ def test_leveled_goldens_reproduce_the_stored_finish_and_every_stored_slack(
 # lf_floor (the late-finish INSTANT, exact): 918 -> 919 and 824 on 2026-09-18 (R-67, ADR-0510) —
 # the carried late instant reaches one activity on Large Test File and no finish on File2, while
 # 18 / 25 of their milestones' late starts became exact with it.
+# tf_exact RE-PINNED 874 -> 876 and 736 -> 740, lf_floor 919 -> 921 and 824 -> 828, the Critical
+# floors 1721 -> 1723 and 1717 -> 1721 on 2026-09-18 (R-70, ADR-0512): the predecessors of
+# finished work take their late dates from the project finish, and those of started work from
+# the remaining portion — 2 / 4 late finishes and 2 / 4 slacks newly exact, none lost.
 _LARGE = [
-    ("fuse_ltf/Large_Test_File.mspdi.xml.gz", 1723, 1666, 874, 1024, 1721, 919),
-    ("fuse_ltf/Large_Test_File2.mspdi.xml.gz", 1722, 1689, 736, 998, 1717, 824),
+    ("fuse_ltf/Large_Test_File.mspdi.xml.gz", 1723, 1666, 876, 1024, 1723, 921),
+    ("fuse_ltf/Large_Test_File2.mspdi.xml.gz", 1722, 1689, 740, 998, 1721, 828),
 ]
 
 
@@ -505,3 +536,35 @@ def test_large_test_files_are_unmoved_by_the_crew_calendars(
     assert (census["tf_exact"], census["tf_n"]) == (tf_exact, tf_n)
     assert census["critical"] >= critical_floor, census
     assert census["lf_exact"] >= lf_floor, census
+
+
+# --- R-70 (ADR-0512): the backward pass stops at finished work --------------------------------
+
+
+def test_the_backward_pass_does_not_run_through_a_completed_successor() -> None:
+    """Hard_File_updated3 UID 188's only successor is the completed UID 291, stored with a late
+    start of 09-08 08:00 — its own record. MS Project derives 188's late finish from the project
+    finish (stored 12-12 17:00, TotalSlack 203,345 tenths = 20,334.5 min, FreeSlack the same);
+    the pre-R-70 engine bound 188 to 291's need and read 09-08, three months early, -12,305
+    minutes of float, and 189 / 181 / 178 / 179 / 180 above it followed. Now 188's late finish
+    IS the backward target, its free float is measured to the project finish like its total
+    float, and the chain's floats sit within the half-minute of a sub-minute recorded instant
+    (188 finishes 14:05:30) of the stored figures. The target's instant is the Saturday 12-12
+    17:00 of a crew's calendar; a non-zero-duration activity on the project axis reads the
+    minute's Friday rendering, 12-11 17:00 — R-67's non-milestone class, named, not this row's."""
+    sch, res = _load("fuse_hardfile/Hard_File_updated3.mspdi.xml.gz")
+    by = {t.unique_id: t for t in sch.tasks}
+    tm = res.timing(188)
+    assert tm.late_finish == res.project_finish
+    assert tm.free_float == tm.total_float
+    assert tm.total_float > 0 and not tm.is_critical
+    for uid in (188, 189, 181, 178, 179, 180):
+        stored = by[uid].stored_total_float_minutes
+        assert stored is not None and abs(res.timing(uid).total_float - stored) <= 1, uid
+    # the 24-hour snapshot's three: 99 %-complete activities whose only successor is finished;
+    # each late finish is the project finish (stored 11-19 01:00), two on the crew's own instant
+    res24 = _load("fuse_hardfile/Hard_File_updated3_24hr.mspdi.xml.gz")[1]
+    for uid in (267, 302, 385):
+        assert res24.timing(uid).late_finish == res24.project_finish, uid
+    for uid in (302, 385):
+        assert res24.timing(uid).late_finish_wall == dt.datetime(2026, 11, 19, 1, 0), uid

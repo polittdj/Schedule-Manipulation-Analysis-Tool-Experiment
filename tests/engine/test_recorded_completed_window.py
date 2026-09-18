@@ -352,10 +352,15 @@ def test_dcma12_never_injects_its_delay_into_work_that_has_already_finished() ->
     it delays: the finish could not move, and the check would report a broken critical path for a
     reason that has nothing to do with logic continuity.
 
-    Project2 is the corpus case and the reason the filter is ``is_recorded_complete`` rather than
-    ``percent_complete >= 100``: its lowest-UID critical candidate, UID 26, IS recorded-complete,
-    so the target moves to UID 29 while the verdict stays PASS. Red-first: with the filter removed
-    the target is UID 26 again.
+    Project2 WAS the corpus case: its lowest-UID critical candidate, UID 26, is recorded-complete
+    and the target moved to UID 29. Since R-70 (ADR-0512, 2026-09-18) a finished successor
+    presents no late need, so UID 26 and the other completed activity that read critical now
+    carry the float of the project finish: Project2's 41 critical candidates are all movable
+    (MS Project's own 41), UID 29 is the lowest, and the corpus no longer holds a finished
+    activity on the critical path. The immovable case is therefore pinned on a rig — a finished
+    activity whose unstarted successor's deadline puts that successor's late start before the
+    record, so the finished activity reads negative float and sits on the critical path. Red-first:
+    with the filter removed the rig's target is UID 1, which cannot move, and the check FAILS.
     """
     from schedule_forensics.engine.cpm import is_recorded_complete
     from schedule_forensics.engine.metrics._common import CheckStatus
@@ -371,9 +376,30 @@ def test_dcma12_never_injects_its_delay_into_work_that_has_already_finished() ->
         and not by[tid].is_summary
         and by[tid].is_active
     ]
-    assert min(candidates) == 26, "the corpus premise: UID 26 is the lowest-UID critical candidate"
-    assert is_recorded_complete(by[26]), "and it is recorded-complete, so it cannot absorb a delay"
-    movable = [tid for tid in candidates if not is_recorded_complete(by[tid])]
-    assert min(movable) == 29, "the target the check must use instead"
-    assert len(candidates) - len(movable) == 2, "exactly two of the 43 candidates are immovable"
+    assert len(candidates) == 41 and min(candidates) == 29, candidates[:5]
+    assert not any(is_recorded_complete(by[tid]) for tid in candidates)
     assert compute_dcma14(sch, res)["DCMA12"].status is CheckStatus.PASS
+
+    # the rig: A finished on the project's first day; B (a day) must finish by that same
+    # evening, so B's late start is the project start and A's late finish falls a day before
+    # A's record — negative float on finished work, which is critical and immovable
+    done = Task(
+        unique_id=1,
+        name="A (recorded complete)",
+        duration_minutes=DAY,
+        percent_complete=100.0,
+        actual_start=MON,
+        actual_finish=MON + dt.timedelta(hours=9),
+        start=MON,
+        finish=MON + dt.timedelta(hours=9),
+    )
+    due = Task(unique_id=2, name="B", duration_minutes=DAY, deadline=MON + dt.timedelta(hours=9))
+    rig = Schedule(
+        name="rig",
+        project_start=MON,
+        tasks=(done, due),
+        relationships=(Relationship(predecessor_id=1, successor_id=2),),
+    )
+    rig_res = compute_cpm(rig)
+    assert rig_res.timing(1).total_float == -DAY and rig_res.critical_path == (1, 2)
+    assert compute_dcma14(rig, rig_res)["DCMA12"].status is CheckStatus.PASS
