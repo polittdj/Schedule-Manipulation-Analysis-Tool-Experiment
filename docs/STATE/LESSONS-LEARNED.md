@@ -7961,3 +7961,48 @@ predecessor's predecessor is early by. That is a different defect (**R-66**) wea
 clothes, and the difference between "R-57 is closed" and "R-57 is closed, and here is the
 snapshot where its oracle is still unmet and why" is the whole distance between a report and
 testimony.
+
+### 2026-09-18 — a getter that answers 0.0 for "none" may be computing, not reading; and "no metric reads it" is a census, not a sentence
+
+R-62 arrived with two inherited numbers and one inherited absence. The numbers: "786 zeros in
+memory on Large Test File2, 634 of them completed tasks". The absence: "census every metric that
+reads a completed task's slack first (today none does)". All three were testimony, and this unit is
+what happens when each is treated as such (QC-2).
+
+**The provenance of a computed field is the reader's field map, not the getter.** ADR-0490's probe
+read `Task.getTotalSlack()` and reported "0.0d, NULL for none". True — and the getter is a
+*calculated* field: the MPP reader maps `START_SLACK` and `FINISH_SLACK` from the file and never a
+total, and `MicrosoftSlackCalculator` derives the total at read time. Read cached-first, the total
+slack's cache is null on all 17,402 rows. The file's statement about a finished activity is
+therefore not "0.0" but "(0, 0)" — two stored zeros — and MS Project's documented rule (the smaller
+of the two differences) reads 0 on them. That is a stronger oracle than the getter's answer, and it
+is the one the ADR stands on. The generalisation is ADR-0506's, one hop further: *a number's
+provenance can be a stored field the getter ignores* — and it can be TWO stored fields the getter
+combines.
+
+**Count the class you are told about, and the class next to it.** 786 − 634 = 152, not 62. The
+gap was 90 completed milestones the earlier probe had excluded from "tasks". The census that found
+it took one column (`milestone`) and one line of arithmetic; an ADR that repeated "634" would have
+been wrong by a round number nobody would have questioned.
+
+**"No metric reads it" is falsified by running the metrics, not by reading them.** The sandboxed
+family snapshot (the importer patched in memory, 18 families × 15 goldens) found float erosion by
+WBS moving on every golden with finished work. Reading the module would have found the same — the
+loop is `non_summary(schedule)` — but reading is what produced "today none does" in the first
+place. And what the metric was reading for finished work was not the file's zero (dropped) but the
+engine's recomputed float, so two 24-hour snapshots showed four WBS groups RED on completed work
+alone. The fix was not to let the zeros flow (measured: every group with a finished activity goes
+amber — a fabricated warning) but to give the metric the population every sibling float metric
+already had. A census that stops at "which metrics read the field" has not asked "and what do they
+read there".
+
+**A render diff lies until every per-process value is normalised.** The first two-tree render
+diff reported 130 of 260 routes moving, with identical byte lengths on every one — the version
+string, then the launch token, then the process id in `/api/whoami`, then live CPU telemetry in
+`/api/system`. Each was found by diffing ONE page, not by reasoning about the count. The honest
+figure was 12 of 250, three routes per golden, each with a mechanism.
+
+**A wrapper that exits 0 around a pytest that exits 4 has measured nothing.** The first
+full-suite launch died in thirteen seconds on an unknown config option (`-o cache_dir=`), and the
+background task reported "completed (exit code 0)" because the subshell's `echo` was the last
+command. The log's last line — `PYTEST_EXIT=4` — was the verdict; the notification was not.

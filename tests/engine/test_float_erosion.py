@@ -102,3 +102,24 @@ def test_project_min_float_is_the_global_minimum() -> None:
     fe = compute_float_erosion(sched, compute_cpm(sched))
     assert fe.min_float_days == 0.0  # the critical chain's zero float is the global min
     assert fe.low_float_threshold_days == _LOW_FLOAT_DAYS
+
+
+def test_completed_work_is_outside_the_population() -> None:
+    """R-62 (ADR-0507): a finished activity has no float to erode. Before this pin the group read
+    it — on the goldens the ENGINE's recomputed float, the file's zero having been dropped by the
+    MPXJ writer, which painted four of Hard_File_updated4's groups RED on completed work — so a
+    completed task with a stored -5 d must not colour the group, count in it, or move its
+    average."""
+    done = _task(1, 10, wbs="4", percent_complete=100.0, stored_total_float_minutes=-5 * DAY)
+    live = _task(2, 1, wbs="4", stored_total_float_minutes=20 * DAY)
+    g = _by_wbs(_sched([done, live]))["4"]
+    assert (g.count, g.min_float_days, g.avg_float_days) == (1, 20.0, 20.0)
+    assert g.status == "green"
+    assert g.critical_count == 0
+
+
+def test_a_group_of_only_completed_work_is_not_listed() -> None:
+    sched = _sched([_task(1, wbs="7", percent_complete=100.0), _task(2, wbs="8")])
+    fe = compute_float_erosion(sched, compute_cpm(sched))
+    assert [g.wbs for g in fe.groups] == ["8"]
+    assert fe.min_float_days == 0.0  # the live activity's own float, never the finished work's
