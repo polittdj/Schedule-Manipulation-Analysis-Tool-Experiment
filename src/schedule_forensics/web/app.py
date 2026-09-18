@@ -537,12 +537,12 @@ from schedule_forensics.web.driving import _whole_schedule_data as _whole_schedu
 # header, the EVM page body, the index/days formatters, the explainer and the threshold
 # legend — lives in ``web/evm.py`` now, extracted verbatim. Same ``X as X`` re-export idiom.
 from schedule_forensics.web.evm import _actuals_missing_note as _actuals_missing_note
-from schedule_forensics.web.evm import _progress_disagreement_note as _progress_disagreement_note
 from schedule_forensics.web.evm import _evm_body as _evm_body
 from schedule_forensics.web.evm import _evm_days_str as _evm_days_str
 from schedule_forensics.web.evm import _evm_explainer as _evm_explainer
 from schedule_forensics.web.evm import _evm_idx_str as _evm_idx_str
 from schedule_forensics.web.evm import _how_we_execute_evm_header as _how_we_execute_evm_header
+from schedule_forensics.web.evm import _progress_disagreement_note as _progress_disagreement_note
 from schedule_forensics.web.evm import _threshold_legend as _threshold_legend
 from schedule_forensics.web.evm import _unbaselined_note as _unbaselined_note
 from schedule_forensics.web.evolution import _CH04_NUMERALS as _CH04_NUMERALS
