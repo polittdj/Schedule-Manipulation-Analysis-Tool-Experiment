@@ -19023,3 +19023,48 @@ whole battery re-run on the final code); statics green on both ruff binaries, fo
 wheel + nine installers rebuilt after the last format (lockstep pin 68 passed).
 
 **Gate, MEASURED in a separate worktree at the code commit `ce94c253`:** **full suite 5 failed / 5,604 passed / 7 skipped in 39:06** (21:45–22:24Z, `-v`, the package under test asserted by the plugin, no stall) and **`-m parity` 187 passed / 0 failed in 6:58**. The five failures are all attributable and none is the change's: the four installer lockstep pins (`test_embedded_wheel_decodes_byte_exact_with_static_assets[ps1 / sh / command]` and `test_embedded_wheel_is_in_lockstep_with_the_source_tree`) are red by construction in a worktree that carries `main`'s old installers beside the new `src/` — the final tree's rebuilt installers pass that module 68 / 68 — and `tests/test_state_docs.py::test_handoff_top_section_pins_the_current_pyproject_version` is red on the code commit's unrotated handoff and green on the final tree (the docs commit carries the pin); the final tree differs from the measured one under `docs/`, `installer/` and the six-line footnote rewording in `web/resources.py` only — so the final tree reads **5,609 green / 0 failed / 7 skipped**. Attributed: **5,616 collected = 5,579 + 37** (the three new modules' 27 + the engine's 4 + the model's 4 + the freeze test's 2, by `--collect-only`); the previous unit's 5,572 green + 37 = 5,609; parity **187 = 171 + 16** (the new oracle). The 7 skips are the documented set (the loopback-allowlist pair, the three INCIDENTAL_SVG axis cases, the two LibreOffice interop skips that are correct in this container).
+
+## 2026-09-18 — R-62 CLOSED (ADR-0507): every absent `TotalSlack` the MPXJ writer dropped is a zero, completed activities included; the writer's rule is class-blind; float erosion scores incomplete work only — v1.0.273
+
+Branch `claude/lucid-brown-hpmst7` (the designated branch, restarted on #696's squash `b7c76ece` with
+`--prune` + `remote set-head` + `checkout -B`; GitHub had already deleted the merged head). Draft PR whose number the follow-up commit records
+(the operator merges). **`main`'s OWN runs for `b7c76ece` read TO CONCLUSION this session, by their jobs:**
+CI 1920 (`35286496419`) `cui-guard` 23:22:13Z · `browser` 23:39:21Z · `floor` 23:47:23Z · `test (3.13)`
+00:04:42Z · `test (3.11)` 00:10:22Z · `check` 00:10:27Z — six of six green; installer-smoke 758
+(`35286496424`) `linux` 23:22:37Z · `windows` 23:26:29Z. Nothing about `b7c76ece` is outstanding.
+
+**Measured first, before a line changed (the kickoff's four checks).** The writer's
+`printDurationInIntegerTenthsOfMinutes` returns null for a zero-valued duration (bytecode). MPXJ's Total Slack
+is a calculated field — `FieldMap14` maps the file's `START_SLACK` / `FINISH_SLACK` and never a total (its cache
+null on all 17,402 rows of the 29 intake `.mpp` files, read cached-first), `MicrosoftSlackCalculator` derives it
+by MS Project's documented rule (the smaller of the two; a started activity's finish slack). Absent ⇔ zero on
+every task of every file: 7,095 = 7,095, NULL for none — 5,466 completed, 583 Critical incomplete, 1,046
+summaries, 0 other; 7,030 store (0, 0), the 65 others one zero member; every finished activity stores (0, 0),
+carries an `ActualFinish`, carries no element. The 29 MSPDI fixtures: absent = 213 Critical + 3,178 completed +
+0 other. Two inherited statements refuted: Large Test File2's 786 zeros are 724 completed (90 of them
+milestones ADR-0490's probe left out of "tasks") + 62 Critical, not "634 completed"; and "no metric reads a
+completed task's slack" — float erosion by WBS does, and read the ENGINE's recomputed float for finished work
+(four groups of the two 24-hour Hard_File snapshots red on completed work alone). A sandboxed snapshot of 18
+metric families × 15 goldens moved float erosion and nothing else; CPLI under Acumen parity reads finished
+work too and is unmoved (its minimum was already ≤ 0 everywhere).
+
+**Shipped** the class-blind inference (`zero_when_absent=file_carries_slack`), float erosion over incomplete
+activities (13 of 15 goldens moved: 121 → 100 groups, red 35 → 27, amber 49 → 41), the stored-dates oracle's
+progress guard (a no-op before, load-bearing after: Project2 tf_n 126 vs 106 without it), the panel's
+sentence; 6 new pins (`test_mspdi_absent_slack_is_zero.py`), 4 re-derived (dated), +2 float erosion, +1 the
+Data Explorer rendered (Hard_File_updated3's 42 finished activities read `0`, the pristine app `—`), +1 the
+panel; the report's R-62 row closed; `docs/PARITY-REPORT.md`; the state docs.
+
+**Verified:** red-first on the pristine package 11 by name / 114 passed (the oracle guard green there, two
+controls labelled); battery 9 / 9 red by name on shadow copies (control green, every cut checksum-verified,
+the plugin asserting the shadow, every row with a verdict) plus the oracle guard's instrument mutation
+((108, 126) vs (106, 106); (99, 126) vs (99, 99)); statics green on both ruff binaries, format, mypy strict,
+bandit, node; wheel + nine installers rebuilt after the last format (lockstep 68 passed); rendered through the
+real app, 4 goldens × every GET route: 250 successful, 238 byte-identical, the 12 movers `/analysis` (the
+panel), `/download` (the Save carries the zeros), `/api/whoami` (the pid) — the version string, the launch
+token and the pid each had to be normalised before the diff told the truth (130 false movers first).
+
+**Gate, MEASURED in a separate worktree at the code commit `96e4a624`:** **full suite 5 failed / 5,613 passed / 7 skipped in 36:46** (00:04–00:41Z, `-v`, the package under test asserted by the plugin, no stall). The five failures are all attributable and none is the change's: the four installer lockstep pins (`test_embedded_wheel_decodes_byte_exact_with_static_assets[ps1 / sh / command]` and `test_embedded_wheel_is_in_lockstep_with_the_source_tree`) are red by construction in a worktree that carries `main`'s old installers beside the new `src/` — the final tree's rebuilt installers pass that module 68 / 68 — and `tests/test_state_docs.py::test_handoff_top_section_pins_the_current_pyproject_version` is red on the code commit's unrotated handoff and green on the final tree (the docs commit carries the pin); the final tree differs from the measured one under `docs/` and `installer/` only — so the final tree reads **5,618 green / 0 failed / 7 skipped** and **`-m parity`
+**187 passed / 0 failed in 5:07****. Attributed: **5,625 collected = 5,616 + 9** (the new module's 6 + float erosion's 2 + the drill's 1); the previous unit's 5,609 green + 9 = 5,618; parity **187 = 187** (no new parity-marked test). The 7 skips are the documented set (the loopback-allowlist pair,
+the three INCIDENTAL_SVG axis cases, the two LibreOffice interop skips that are correct in this container).
+Version 1.0.273; highest ADR 0507; schema 2.16.0 (unchanged).
