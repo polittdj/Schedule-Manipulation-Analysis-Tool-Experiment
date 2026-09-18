@@ -482,6 +482,16 @@ up, whole .3 down — one minute long, exact before by the coincidence of two tr
 duration's seconds do not survive import (integer minutes are a Law of the model). Pinned by
 name; the next reader knows it is deliberate.
 
+**A full suite that dies with SIGBUS has measured nothing, and the first two mechanisms that fit
+were both wrong.** Run 1 of the gate died at 83 % with `Fatal Python error: Bus error` at the
+SQLite cache's WAL switch — a memory-mapped write. "Two processes shared the cache" was refuted by
+the conftest (a per-test `SF_CACHE_DIR`); "pytest pruned the running session's basetemp" was
+refuted by the listing (its directory survived; two finished ones were pruned). What is left is a
+candidate, not a mechanism — the session's fixed disk allowance at the instant of an mmap write,
+with three concurrent pytest sessions and 1.6 GB of scratch beside the suite — and it is written
+down as UNVERIFIED. The operating rule that costs nothing: run the gate ALONE, free the scratch
+first, and give any concurrent pytest its own `--basetemp`.
+
 ### 2026-09-18 — a getter that answers 0.0 for "none" may be computing, not reading; and "no metric reads it" is a census, not a sentence
 
 R-62 arrived with two inherited numbers and one inherited absence. The numbers: "786 zeros in
