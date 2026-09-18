@@ -82,8 +82,11 @@ def clean_program() -> Schedule:
     this fixture's progress data was inert and the contradiction invisible. ADR-0476 pins a
     completed activity to its recorded window, so the fixture now schedules the way its own record
     says it ran: the completed prefix overlaps, the finish lands 2026-11-17 rather than 2026-12-04,
-    and the predecessors of the out-of-sequence merge point carry NEGATIVE float — the correct
-    retained-logic report of out-of-sequence progress. Deliberately left as it is: the numbers
+    and, until R-70 (ADR-0512), the predecessors of the out-of-sequence merge point carried
+    NEGATIVE float through the completed merge's record — a finished successor now presents no
+    late need (MS Project's own rule: 40 of 40 predecessors of finished work on the corpus), so
+    they read the project finish's float and the out-of-sequence start is reported by the
+    forward pass alone (``actual_start_driven``). Deliberately left as it is: the numbers
     below are re-measured rather than the fixture redesigned, because every redesign tried moved
     the completed work and cascaded into the EVM and forecast pins (measured: 16 and 7 failures
     against this version's 3). On the SIX real progressed goldens the same engine introduces ZERO
@@ -848,12 +851,15 @@ def test_schedule_quality_pair_on_the_wide_program() -> None:
     assert sq["insufficient_detail"].status is CheckStatus.PASS
     assert sq["insufficient_detail"].count == 0
     assert sq["number_of_lags"].status is CheckStatus.PASS and sq["number_of_lags"].count == 0
-    # ADR-0476: the 16 are UIDs 200-215, the merge point's predecessors. UID 2 is COMPLETE and
-    # its record says it began before UID 1 finished, so it is pinned there and every predecessor
-    # of that merge is late against the declared logic by 6 working days. Negative float is the
-    # correct retained-logic report of out-of-sequence progress, and MS Project reports MORE of it
-    # than this engine does on every real golden (423 against 269) — see clean_program's docstring.
-    assert (sq["hard_constraints"].count, sq["negative_float"].count) == (0, 16)
+    # ADR-0476 read 16 here: UIDs 200-215, the merge point's predecessors. UID 2 is COMPLETE and
+    # its record says it began before UID 1 finished, so it is pinned there — and the pre-R-70
+    # backward pass bound its predecessors to that record's late start, 6 working days behind
+    # their declared logic. RE-PINNED 16 → 0 on 2026-09-18 (R-70, ADR-0512): a recorded-complete
+    # successor presents no late need (MS Project derives the predecessor's late dates from the
+    # project finish — every one of the corpus's 40 predecessors of finished work is stored so),
+    # so UIDs 200-215 read the project finish's float; the out-of-sequence start is still
+    # reported, by the forward pass (UID 2 is actual-start-driven), not as negative float.
+    assert (sq["hard_constraints"].count, sq["negative_float"].count) == (0, 0)
     assert sq["merge_hotspot"].offender_uids == (2,), "the 17-predecessor merge point"
     assert (sq["logic_density"].count, sq["logic_density"].value) == (56, 2.73)
 
@@ -878,7 +884,13 @@ def test_schedule_quality_pair_on_the_wide_program() -> None:
     constrained = compute_schedule_quality(_seed_hard_constraints(w))["hard_constraints"]
     assert (constrained.count, constrained.offender_uids) == (3, (7, 9, 11))
     negged = compute_schedule_quality(_seed_negative_float(w))["negative_float"]
-    assert negged.count == 38 and negged.population == 38, "an MFO 4 weeks early sinks the chain"
+    # RE-PINNED 38 → 22 of 38 on 2026-09-18 (R-70, ADR-0512): the MFO four weeks early sinks
+    # every activity the backward pass can reach from it — the chain 4 … 24 and the open end 99 —
+    # but not UIDs 200-215, whose only successor is the COMPLETED merge point UID 2: a finished
+    # successor presents no late need, so the sink stops at the record (before R-70 it ran
+    # through it and all 38 read negative).
+    assert (negged.count, negged.population) == (22, 38), "an MFO 4 weeks early sinks the chain"
+    assert negged.offender_uids == (*range(4, 25), 99)
 
 
 # --- forecast: the four finish methods --------------------------------------------

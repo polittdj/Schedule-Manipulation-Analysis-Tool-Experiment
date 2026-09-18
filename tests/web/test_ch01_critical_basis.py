@@ -6,12 +6,15 @@ Slack / Critical flag first). On a progressed file that made the SAME file show 
 Critical count on ch 01 than on 02/11. These tests pin the reconciliation on real goldens: the
 page's count equals the ribbon's on the base snapshot (where, since ADR-0505's carried milestone
 instant, the stored basis and the pure-logic count coincide — 110 of 110 flags agree), and the
-ribbon differs from the pure-logic count on the progressed updated3 snapshot (7 of 110 flags
-disagree), so a regression back to raw float is caught where the two bases can still be told apart.
+ribbon and the pure-logic count coincide on the progressed snapshots too since R-70 (ADR-0512:
+the engine's flag agrees with MS Project's on every incomplete Hard_File activity), so the
+regression back to raw float is caught on a synthetic schedule whose stored flag contradicts pure
+logic by construction.
 """
 
 from __future__ import annotations
 
+import datetime as dt
 import gzip
 import re
 from pathlib import Path
@@ -27,7 +30,11 @@ from schedule_forensics.engine.metrics._common import (
 )
 from schedule_forensics.engine.metrics.ribbon import compute_ribbon
 from schedule_forensics.importers.mspdi import parse_mspdi_text
+from schedule_forensics.model.schedule import Schedule
+from schedule_forensics.model.task import Task
 from schedule_forensics.web.app import SessionState, create_app
+
+MON = dt.datetime(2026, 7, 6, 8, 0)  # a Monday
 
 REPO = Path(__file__).resolve().parents[1]
 GOLD = REPO / "fixtures" / "golden" / "fuse_hardfile"
@@ -87,12 +94,33 @@ def test_ch01_critical_matches_the_ribbon_not_pure_logic_cpm(client: TestClient)
     # on 110 of 110 activities, so Hard_File can no longer witness the two bases apart (until
     # ADR-0505 it did: 108 of 110 agreed, and the counts differed). Pinned as the agreement it is.
     assert ch01_critical == _pure_logic_critical(sch, cpm)
-    # …the witness that the ribbon is the STORED basis and not pure logic is the progressed
-    # updated3 snapshot, where 7 of 110 flags still disagree (an odd number: the counts differ)
+    # …and since R-70 (ADR-0512, 2026-09-18) the progressed snapshots no longer witness the two
+    # bases apart either: the engine's pure-logic flag agrees with MS Project's on every
+    # INCOMPLETE activity of all five Hard_File goldens (updated3's one remaining disagreement,
+    # UID 261, and updated2's, UID 290, are completed activities — the record class, R-71). Pinned
+    # as the agreement it is on updated3 (the pre-R-70 witness: 7 of 110 flags disagreed there).
     sch3 = _sch("Hard_File_updated3")
     cpm3 = compute_cpm(sch3)
     ribbon3 = compute_ribbon(sch3, cpm3, audit_schedule(sch3, cpm3)).critical
-    assert ribbon3 != _pure_logic_critical(sch3, cpm3)
+    assert ribbon3 == _pure_logic_critical(sch3, cpm3) == 49
+    # The witness that the ribbon is the STORED basis and not pure logic is therefore
+    # synthetic: a two-activity schedule whose stored Critical flag contradicts pure logic by
+    # construction (A carries a stored flag and a stored slack of 0 while its pure-logic float is
+    # five days; B, the network's finish, carries neither and is critical on both bases). The
+    # ribbon reads the flag — two critical; pure logic reads the float — one.
+    a = Task(
+        unique_id=1,
+        name="A (flagged Critical by the file, five days of pure-logic float)",
+        duration_minutes=480,
+        stored_is_critical=True,
+        stored_total_float_minutes=0,
+    )
+    b = Task(unique_id=2, name="B (the network's finish)", duration_minutes=6 * 480)
+    synthetic = Schedule(name="stored flag vs pure logic", project_start=MON, tasks=(a, b))
+    cpm_s = compute_cpm(synthetic)
+    assert cpm_s.timings[1].total_float == 5 * 480
+    ribbon_s = compute_ribbon(synthetic, cpm_s, audit_schedule(synthetic, cpm_s)).critical
+    assert ribbon_s == 2 and _pure_logic_critical(synthetic, cpm_s) == 1
 
 
 def test_ch01_float_bands_use_effective_float(client: TestClient) -> None:
