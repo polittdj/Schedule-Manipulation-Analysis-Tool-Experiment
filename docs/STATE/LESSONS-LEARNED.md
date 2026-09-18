@@ -475,6 +475,34 @@ its first edit. It became QC-3, and R-67 was the first unit run under it.
   ADR-0497 as current; the committed handoff was eleven ADRs ahead. `git log origin/main` before
   trusting any sha — including the prompt's — is the rule that caught it.
 
+### 2026-09-18 (d) — the oracle the row said did not exist was three files away; a scalar the file writes beside a record it also writes is the one to distrust; and the unit-level match is decided at the file's resolution, not the model's (ADR-0511, R-45 closed)
+
+**"No per-task oracle in the export" was a claim about columns nobody had opened.** The Detailed Metric
+Report has none; Fuse's field map and its Forensic Analysis Report — in the same folder — have the whole
+mechanism: which MS Project field each ribbon figure is, and every per-activity value that changed
+between the snapshots. Read every artefact the reference tool wrote before asking the operator for one.
+
+**A ribbon's population is the workbook's, not the file's.** 121,800 was never a definition of BAC; it
+was five monthly ribbons built around the previous snapshot's finish. The tell was arithmetic: four
+figures fell by the same 11,600 / 160 h while the actuals stood still — the signature of not-started
+activities leaving a window. Reconcile a reference figure to the population it was summed over before
+pricing a rule for it.
+
+**The scalar and the record disagree only in the tampered file, and the reference follows the record.**
+UID 290 says 31 h in `ActualWork` and 22 h in its time-phased blocks; MS Project's BCWP and ACWP, and so
+Fuse's EV and AC, are computed from the blocks. The engine had been reading the field a manipulator can
+type; the reference reads the one the work leaves behind. That gap is now disclosed beside SPI — the
+tool's whole purpose, found by chasing a parity residual.
+
+**"Integer minutes keep the unit match" was measured on the wrong form and fell on the shipped one.** The
+per-block rounding that happened to land on 64,105 was not the rule; the per-booking rounding-once the
+importer shipped read 64,104.17 and printed 64,104. QC-3 says attack the assumption on the tree you will
+ship, not on the probe that suggested it. The record went to seconds — the file's own resolution.
+
+**A patch script that asserts each match and aborts on the first miss leaves the rest silently unapplied.**
+Twice this session a later edit never happened because an earlier anchor had been reflowed by the
+formatter. Assert per step and report per step; and never `.replace` without counting.
+
 ### 2026-09-18 (b) — a residual's range is the range the last census printed; a wall-clock census lies at a day boundary; and a rounding is chosen by measuring every candidate on the population, not by the one that reads right
 
 R-65 arrived as "1–28 minutes short on ~100 bookings" with three suspects. The four checks the
