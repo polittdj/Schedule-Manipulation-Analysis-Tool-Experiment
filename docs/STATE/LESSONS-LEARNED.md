@@ -435,6 +435,47 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-18 (e) — a row's remedy can be half right: measure the class beside the row before adopting it; the probe's own arithmetic is a suspect; and a battery survivor found a hole in the pins on the third unit running (ADR-0512, R-70 closed)
+
+R-70's remedy read "drop a recorded-complete successor's need; a started successor's remaining work
+needs its own measurement first". The first half held on 40 of 40; the second half was the unit.
+
+- **The class beside the row decided the rule.** "Drop a started successor" scored 138 of 222 on
+  the population and lost to one witness — the logic-reestablished 188, stored at 187's RESUME. Four
+  candidates were then measured (217 / 215 / 195 / 193); the winner separated from the runner-up by
+  ONE binding link and from the losers by the 22 SS links that never bind. A rule chosen from the
+  row's witness alone would have been the runner-up. Lesson: when a row says "measure first", the
+  measurement is every candidate on the whole population, and the discriminating cases are often
+  the links that do NOT bind.
+- **Two "misses" were the probe, and one "beats" was the probe.** Sixty-minute and ten-minute
+  free-slack misses, and the EVM1 case where the floored form "beat" the unfloored one, were my
+  offset arithmetic (lunch hours, a golden whose calendar and stored times disagree), not MS
+  Project's. The engine's own arithmetic on a shadow copy was the instrument that settled them.
+  Lesson: a file-only probe chooses the rule; only the engine measures the rule.
+- **Every miss was read case by case, and each was a different thing.** The five late-finish misses
+  were ONE activity (five copies) whose stored LateFinish equals its EarlyFinish while its slack keeps
+  −209,147 minutes — MS Project clamps the date, not the slack (R-71's clamp, 22 across the corpus).
+  Had the five been counted and not read, the rule would have been "217 of 222, three-quarters of a
+  percent short" instead of "222 of 222 on what it governs".
+- **"Away" needs a class column.** 6,176 late finishes moved away from the stored value — all
+  completed activities, whose stored late dates are their actuals and never were the engine's
+  (18 coincidences before, 0 after). Without the split by progress class the census would have read
+  as a regression. The instrument was changed to count what the rule can govern (ADR-0507's own
+  decision, applied to the late dates), with the reason in the test.
+- **A survivor, again.** M11 (the carried-late binding check reading the whole task) survived the
+  battery's first run: the milestone-between-crews shape was pinned nowhere. Third unit in a row where
+  the survivor was a missing pin, not a code hole — and the pin took a hand derivation on two
+  calendars to write. Lesson (promoted from ADR-0510's): run the battery BEFORE declaring the pins
+  complete, and treat each survivor as a pin to derive, not a mutant to explain away.
+- **What R-70 exposed that it did not cause.** The logic-reestablished chain now reads +4 days where
+  the file stores 0 (it read −8): the engine re-spans a floored started activity for its full duration.
+  The old wrong sign agreed with the stored Critical flag by accident; the new wrong magnitude does
+  not. Registered as R-72 with its census (7 of 192) rather than patched in passing — a fix of the
+  span is ADR-0476's territory, where a variant once moved a task 136 days.
+- **Kickoff shas go stale within an hour.** The kickoff named `839f955e` as PR #700's final head and
+  the handoff `3a6b3c63`; the real final head was `f193522a`, one docs-only push later. Read the PR's
+  commits, never the prose.
+
 ### 2026-09-18 (c) — attack the plan before the first edit: two of four assumptions fell, and a survivor is a missing pin as often as a code hole (ADR-0509 / ADR-0510)
 
 The operator's directive arrived mid-session — *assume the plan is all wrong, double-check it and

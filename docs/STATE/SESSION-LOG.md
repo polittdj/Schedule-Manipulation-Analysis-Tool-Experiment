@@ -19243,3 +19243,56 @@ previous figure was itself an expectation never measured locally (that run was c
 on the final head are the count to attribute against next time. CI on the final head `839f955e` is the suite's read verdict — read it FIRST next
 session (eight checks). Token wall reached ~87 % of the assumed 800k; the session ends here by the
 guardian's rule, with every durable artefact committed and pushed.
+
+## 2026-09-18 (e) — R-70 CLOSED (ADR-0512): the backward pass stops at finished work — a recorded-complete successor presents no late need and anchors no free float, a started successor presents its REMAINING portion, floored where the work resumes; R-71 / R-72 registered — v1.0.277
+
+**Arrival.** `main` @ `4d931ba7` (#700, ADR-0511, merged 18:56Z by the operator; tree-identical to
+the arrival HEAD, `912770e6…`). PR #700's FINAL head was `f193522a` (one docs-only push past the
+kickoff's `839f955e` and the handoff's `3a6b3c63`): eight of eight green — CI `35376823983`
+(`cui-guard` 17:52:10Z · `browser` 18:09:50Z · `floor` 18:19:17Z · `test (3.13)` 18:37:39Z ·
+`test (3.11)` 18:42:34Z · `check` 18:42:41Z), installer-smoke `35376823989` (`linux` 17:52:28Z ·
+`windows` 17:56:55Z). `main`'s own runs for `4d931ba7`: CI 1938 (`35383096831`) `cui-guard`
+18:56:51Z · `browser` 19:12:33Z · `floor` 19:25:42Z · `test (3.11)` 19:29:59Z green, `test (3.13)` /
+`check` still running at 19:40Z (recorded in the follow-up below); installer-smoke 776
+(`35383096874`) `linux` 18:57:16Z · `windows` 19:01:22Z green. Branch `claude/fervent-ramanujan-ttxvxk`
+started on the squash. Environment: the clone arrived shallow (`git fetch --unshallow`, 55 s); the
+package installed with `uv pip install --system -e '.[dev]' build playwright`; ruff 0.15.8 on the
+path, 0.16.8 through `uvx ruff@0.16.8`; the 29 intake `.mpp` converted once (MPXJ) into the
+scratchpad; a pristine worktree at `origin/main` and a `-p mutcheck` plugin asserting the package
+under test.
+
+**QC-3 first.** The plan was written and attacked on the pristine tree with file-only probes over
+the 44 files: the mechanism held (188 bound to 291's need, integer 21,600); the record held on every
+activity (LS = AS / LF = AF on 8,644 / 8,644 completed, LS = AS on 1,159 / 1,159 started); "drop a
+completed successor" reproduced all 40 stored late finishes (the binding rule 0 / 40); **"drop a
+started successor" fell** (138 / 222) to the logic-reestablished 188, stored at 187's Resume; the
+floored remaining-portion form scored 217 / 222 against unfloored 215, resume 195, record 193 — the
+five misses one activity's clamped own date (R-71); the free anchor fell (EVM1 17 → 18 stores 0
+against the record start); "every started task carries a remaining" fell (ten do not — the writer's
+dropped zero). Two anomalies read case by case: UID 5539's stored LateFinish = its EarlyFinish with
+FinishSlack −2,091,470 tenths (the clamp, 22 across the corpus); the started-successor links are
+220 FF / 22 SS / 2 FS, so the floor rests on the two FS witnesses and the 22 SS non-bindings.
+
+**Built in a shadow copy, measured engine-side on the 44 files** (pristine → candidate): late
+finishes exact 11,491 → 11,512, slacks 10,998 → 11,034, Critical 21,877 → 22,061, free slack 2,320 →
+2,349 (identical under either free anchor); toward / away on incomplete work 93 / 0 (late finish),
+69 / 0 (slack), 41 / 0 (free); the away movers the record class (6,176 completed late finishes, 22
+started late starts). Seven existing tests moved under the shadow, every one attributable and
+re-derived with a dated reason; ten errored for the shadow lacking `tools/mpxj` (an artefact of the
+copy, green in the worktree).
+
+**Shipped:** `engine/cpm.py` (`_late_need`, `_remaining`, `rem_need` / `rem_ls_wall`, the free-float
+links); `tests/engine/test_backward_pass_past_finished_work.py` (13 pins, 11 red on the pristine
+package by name, 2 named controls — one control's expectation was mis-derived and corrected from the
+pristine reading); the oracle re-pinned (late-finish census over incomplete work; Critical floors
+107 → 109 / 103 → 109 / 70 → 110, slack 48 → 49, the 24-hour snapshot's late finishes 15 → 17, Project2
+lf 108 → 106 of 106, LTF / File2 slacks 876 / 740, lf 921 / 828, Critical 1723 / 1721; the witness
+pinned); four re-derived (own-calendar floor 1,920 → 2,400 of float, resume-floor predecessor 9 → 13
+days, Project2's pure-logic critical 43 → 41, the DCMA-12 premise moved to a rig); version 1.0.277;
+wheel + nine installers rebuilt (lockstep 68). **Battery 12 / 12 red by name after one survivor**
+(M11, the carried-late binding check) exposed the milestone-between-crews pin. Statics green on both
+ruff binaries, `ruff format`, `mypy --strict` (165), `bandit`, `node --check`. ADR-0512 written; the
+report's R-70 row closed, R-71 (T3) and R-72 (T1) registered with their censuses; `PARITY-REPORT.md`
+re-measured; the handoff rotated (the R-45 section MOVED to the archive); this entry; the lessons
+entry; the kickoff refreshed to R-72. Code commit `8e828bdb`; the full suite and `-m parity` run in a
+separate worktree at it — figures and the PR number in the docs-only follow-up.
