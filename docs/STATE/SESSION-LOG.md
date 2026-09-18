@@ -19310,5 +19310,4 @@ census guard and the handoff's version pin (red by construction at a code commit
 and the two pins above (fixed in `fe2ae49d`); the 7 skips are the documented set; the non-skipped count
 reconciles EXACTLY: the previous unit's 5,664 (5,653 + 4 + 7 − 7) plus this unit's 14 new tests (13
 synthetic, 1 oracle) = 5,678 = 5,667 + 4 + 7. `main`'s CI 1938 for `4d931ba7` finished **six of six** —
-`test (3.13)` 19:43:38Z · `check` 19:43:43Z — nothing about `4d931ba7` is outstanding.
-
+`test (3.13)` 19:43:38Z · `check` 19:43:43Z — nothing about `4d931ba7` is outstanding. **`-m parity` at the same commit: 201 passed / 0 failed in 5:04** (`PYTEST_EXIT=0`; 200 before this unit plus the R-70 witness pin). Docs-only follow-ups `360bc36a` and `b0f7bd40`; CI on the PR's FINAL head is the suite's read verdict — read it first next session.
