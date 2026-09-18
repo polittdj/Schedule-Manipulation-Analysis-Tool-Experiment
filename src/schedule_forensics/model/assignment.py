@@ -96,3 +96,30 @@ class Assignment(StrictFrozenModel):
     #: not recorded (an XER, a Save .json written before this field, a conversion made before
     #: the converter wrote timephased data); the engine then accrues the budget linearly.
     baseline_cost_pieces: tuple[CostPiece, ...] = ()
+    #: The booking's ACTUAL work as the file TIME-PHASES it (ADR-0511, R-45): the sum of its MSPDI
+    #: ``TimephasedData`` Type-2 (actual regular work) blocks, in working SECONDS — the file's own
+    #: resolution (14h 46m 9s on Hard_File_updated2's UID 210), kept because the reference prices
+    #: the record to the unit: rounded to whole minutes per booking it reads 64,104.17 where the
+    #: ribbon prints 64,105 (the exact 64,104.61). The one seconds-valued field in the model, and
+    #: a recorded quantity, never an axis duration (integer working minutes remain the Law).
+    #: ``None`` = the file records no time-phased work
+    #: for the booking at all (an XER, a Save .json written before this field, a conversion made
+    #: without timephased data); 0 = a record with nothing performed. This is NOT the scalar
+    #: ``Assignment/ActualWork``: Hard_File_updated3's UID 290 is written 31 h of actual work on a
+    #: 40 h booking while its record holds 16 h regular + 6 h overtime, and MS Project's own
+    #: EV (BCWP) and AC (ACWP) — the fields Fuse imports — are computed from the RECORD: 22 of 40
+    #: booked hours earn 6,875 of the 12,500 baseline cost (the ribbon's 53,715, not the scalar's
+    #: 59,340), and 16 h x 200 + 6 h x 300 = 5,000 is spent, not the 6,800 the scalar says.
+    performed_work_seconds: int | None = Field(default=None, ge=0)
+    #: The booking's actual OVERTIME work as the file time-phases it (Type-3 blocks), read the
+    #: same way. Overtime counts toward the performed share of the booked work and is priced at the
+    #: resource's overtime rate.
+    performed_overtime_seconds: int | None = Field(default=None, ge=0)
+    #: The booking's recorded baseline cost (MSPDI ``Assignment/Baseline[0]/Cost``, currency
+    #: units, a negative clamped to 0 like the task's): the weight its performed share earns
+    #: against. ``None`` = not recorded (the engine then weighs the baseline-cost series).
+    baseline_cost: float | None = Field(default=None, ge=0.0)
+    #: The booking's recorded actual cost (MSPDI ``Assignment/ActualCost``, currency units): what a
+    #: MATERIAL / COST booking, or a WORK booking without a time-phased record, has spent.
+    #: ``None`` = not recorded; the task then spends its own actual cost as before.
+    actual_cost: float | None = None

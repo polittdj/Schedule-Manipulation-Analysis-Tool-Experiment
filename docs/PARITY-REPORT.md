@@ -208,7 +208,9 @@ settled, each red-first on the pre-ADR-0473 tree:
 | BCWS (time-phased PV), Hard_File_updated2 / updated3 / updated | 64,240 / 110,440 / 16,000 | 64,240 / 107,240 / 12,400 (step at baseline finish); then 64,240 / 110,440 / 16,150 (linear over the baseline span, ADR-0473) | 64,240 / 110,440 / 16,000 — the file's own time-phased baseline cost through the status date (the booking's baseline-cost series; a straddling block prorated on the booking's calendar; the budget no series carries linear), R-46 CLOSED 2026-09-15 (ADR-0492) | ✅ ENGINE==FUSE on all three (UID 187's 16-hour crew plans 3,600 of 6,000 where the project-calendar proration read 3,750; updated3's 110,440 now pinned from the updated2-vs-updated3 ribbon, a workbook no test had read) |
 | CPI, Hard_File_updated / updated2 | 0.81 / 0.78 | 0.81 / 0.78 | 0.81 / 0.78 | ✅ ENGINE==FUSE (blank actual = 0 is Fuse's own evaluation; the started, budgeted activities with no actual cost are now DISCLOSED beside CPI/TCPI) |
 | SPI (cost), Hard_File_updated / updated2 | 1.05 / 0.77 | 1.35 / 0.77 | 1.05 / 0.77 (was 1.04 / 0.77 until ADR-0492) | ✅ ENGINE==FUSE / ✅ exact |
-| TCPI, Hard_File_updated / updated2 | 1.04 / 1.21 | 1.04 / 1.20 | 1.04 / 1.20 | ✅ exact / ⚠ 0.01 (Fuse's ACWP-to-time-now trims 342 of 63,763 — OPEN) |
+| TCPI, Hard_File_updated / updated2 | 1.04 / 1.21 | 1.04 / 1.20 | 1.04 / 1.21 | ✅ exact / ✅ exact since ADR-0511 (the 342 was the Logistics Apprentice's hours priced at the status-date rate, not "to-time-now") |
+| EV (BCWP) / AC (ACWP), Hard_File_updated / updated2 / updated3 ribbons (R-45, ADR-0511, 2026-09-18) | 16,800 / 49,700 / 53,715 · 20,800 / 64,105 / 66,245 | 16,800 / 49,700 / **59,340** (BAC × % complete) · 20,800 / 63,763.08 / 67,703.08 (the tasks' actual-cost scalars) | the booking's time-phased record: each booking earns its baseline cost in the performed share of its booked work (UID 290: 22 of 40 h → 6,875 of 12,500) and spends that record at the status-date rates (16 h × 200 + 6 h × 300 = 5,000; the apprentice's 17.077 h at 30) — 16,800 / 49,700 / 53,715 exact · 20,800.00 / 64,104.61 / 66,244.61 | ✅ ENGINE==FUSE (EV exact; AC to the unit the ribbon prints; CPI 0.81 / 0.78 / 0.81 exact) |
+| BAC, Hard_File_updated3 ribbon (R-45, ADR-0511) | 121,800 (ribbon) · 133,400 (the Forensic report's whole-file Budget Cost) | 133,400 | 133,400 — the ribbon's figure is the workbook's time line (five monthly ribbons, 2026-07 to 2026-11): the 15 activities starting in December carry the 11,600 it omits, and the engine's BAC over the activities inside the time line reads 121,800 | ✅ ENGINE==FUSE on the whole file; the ribbon reconciled to the unit |
 
 **Same name, different metric — the trap this oracle paid for.** The reference library carries
 several metrics under one display name with different inclusion sets per workbook section:
@@ -222,7 +224,8 @@ figure is an oracle only for the tile its own workbook section carries. Document
 this oracle measured and did not fix: Hard_File's CPM finish runs 42 days later than MS Project's
 stored finish because its resources sit on 16-hour and 24-hour calendars the base CPM does not
 model (the file's own Fuse Project Finish is the stored 2026-11-05); Hard_File_updated3's BAC /
-BCWP (Fuse 121,800 / 53,715 vs 133,400 / 59,340 — no per-task cost oracle in the export);
+BCWP (Fuse 121,800 / 53,715 vs 133,400 / 59,340 — closed 2026-09-18 by ADR-0511: the ribbon's
+time line and the booking's time-phased record; the oracles were the field map and the Forensic report);
 SPI(t)–Acumen 8.24 vs 8.22 on the Large Test File; the DCMA tile "8. High Duration" carries
 IncludeComplete=true in the library where the engine scores incomplete activities (no
 discriminating figure in the repo); the older `golden/ssi_uid152` Large Test File fixture is the

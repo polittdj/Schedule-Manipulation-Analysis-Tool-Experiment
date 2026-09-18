@@ -842,3 +842,187 @@ def test_spi_t_acumen_counts_started_work_without_a_baseline_as_a_zero_term() ->
     # still dilutes: (1.0 + 0.5 + 0) / 3
     r2 = compute_evm_indices(_sched(tasks))["spi_t_acumen"]
     assert r2.value == 0.5 and r2.population == 3 and r2.offender_uids == (4,)
+
+
+# --- ADR-0511 (R-45): EV and AC follow the booking's time-phased record ------------------------
+
+from schedule_forensics.model.assignment import Assignment  # noqa: E402
+from schedule_forensics.model.resource import ResourceType  # noqa: E402
+
+_BL_START = MON
+_BL_FINISH = MON + dt.timedelta(days=4, hours=9)
+
+
+def _record_sched(tasks: list[Task]) -> Schedule:
+    return Schedule(
+        name="s",
+        project_start=MON,
+        calendar=_STANDARD,
+        calendars=(_STANDARD,),
+        resources=(  # built per call so the pins fail by NAME on a package without the fields
+            Resource(unique_id=2, name="Lead", standard_rate=200.0, overtime_rate=300.0),
+            Resource(unique_id=3, name="Apprentice", standard_rate=10.0),
+            Resource(unique_id=10, name="AI Token Time", type=ResourceType.MATERIAL),
+        ),
+        tasks=tuple(tasks),
+        status_date=MON + dt.timedelta(days=30),
+    )
+
+
+def _budgeted(uid: int, pct: float, budget: float, *bookings: Assignment, **kw: object) -> Task:
+    return Task(
+        unique_id=uid,
+        name=f"t{uid}",
+        duration_minutes=5 * DAY,
+        percent_complete=pct,
+        budgeted_cost=budget,
+        baseline_start=_BL_START,
+        baseline_finish=_BL_FINISH,
+        actual_start=MON if pct else None,
+        resource_ids=tuple(b.resource_id for b in bookings),
+        resource_assignments=bookings,
+        **kw,  # type: ignore[arg-type]
+    )
+
+
+def test_bcwp_is_the_bookings_performed_share_of_its_baseline_cost_where_the_file_records_it() -> (
+    None
+):
+    """ADR-0511 (R-45): MS Project's BCWP — the field Fuse imports as EV — is computed from the
+    assignment's TIME-PHASED actual work, not the task's percent. Hard_File_updated3's UID 290:
+    100 % complete, 40 booked hours, 16 regular + 6 overtime performed → 22 / 40 x 12,500 = 6,875
+    (the ribbon's 53,715 against the scalar's 59,340). A booking whose record agrees with the
+    percent, a booking with no record (an XER, an older Save — the task's percent, as before), the
+    budget no booking carries (the task's percent), and the cap at 100 % each pinned."""
+    tasks = [
+        _budgeted(  # the disagreement: reported 100 %, 22 of 40 booked hours performed
+            290,
+            100.0,
+            12500.0,
+            Assignment(
+                resource_id=2,
+                work_minutes=40 * 60,
+                baseline_cost=12500.0,
+                actual_cost=6800.0,
+                performed_work_seconds=16 * 3600,
+                performed_overtime_seconds=6 * 3600,
+            ),
+        ),
+        _budgeted(  # the record agrees with the percent: not disclosed
+            291,
+            100.0,
+            1600.0,
+            Assignment(
+                resource_id=2,
+                work_minutes=8 * 60,
+                baseline_cost=1600.0,
+                actual_cost=1600.0,
+                performed_work_seconds=8 * 3600,
+                performed_overtime_seconds=0,
+            ),
+        ),
+        _budgeted(  # no record at all: the task's percent, exactly as before this ADR
+            292, 50.0, 1000.0, Assignment(resource_id=2, work_minutes=8 * 60, baseline_cost=1000.0)
+        ),
+        _budgeted(  # the budget no booking carries earns at the task's percent: 400 + 200
+            257,
+            100.0,
+            1000.0,
+            Assignment(
+                resource_id=2,
+                work_minutes=8 * 60,
+                baseline_cost=800.0,
+                actual_cost=400.0,
+                performed_work_seconds=4 * 3600,
+            ),
+        ),
+        _budgeted(  # performed beyond the booked work: capped at 100 %
+            5259,
+            100.0,
+            500.0,
+            Assignment(
+                resource_id=2,
+                work_minutes=60,
+                baseline_cost=500.0,
+                actual_cost=500.0,
+                performed_work_seconds=90 * 60,
+            ),
+        ),
+    ]
+    from schedule_forensics.engine.metrics.evm import _earned_value
+
+    total, disagreeing = _earned_value(tasks)
+    assert total == pytest.approx(6875.0 + 1600.0 + 500.0 + 600.0 + 500.0)
+    assert disagreeing == (290, 257)
+    e = compute_evm_indices(_record_sched(tasks))
+    assert e["spi"].offender_uids == (290, 257)
+    assert (e["spi"].count, e["spi"].population) == (2, 5)
+
+
+def test_acwp_prices_the_performed_record_at_the_status_date_rates() -> None:
+    """ADR-0511 (R-45): MS Project's ACWP — Fuse's AC — is the time-phased actual cost: a WORK
+    booking's performed regular minutes at the standard rate and its overtime at the overtime
+    rate (UID 290: 16 h x 200 + 6 h x 300 = 5,000 where the scalar says 6,800); a MATERIAL booking
+    and a booking whose resource states no rate spend their recorded actual cost; an unrecorded
+    overtime rate prices overtime at the standard rate; a task's actual cost no booking carries is
+    added; a task whose bookings do not all record an actual cost spends its own, as before."""
+    tasks = [
+        _budgeted(
+            290,
+            100.0,
+            12500.0,
+            Assignment(
+                resource_id=2,
+                work_minutes=40 * 60,
+                baseline_cost=12500.0,
+                actual_cost=6800.0,
+                performed_work_seconds=16 * 3600,
+                performed_overtime_seconds=6 * 3600,
+            ),
+            actual_cost=6800.0,
+        ),
+        _budgeted(  # a material booking: its recorded actual; plus 200 no booking carries
+            210,
+            100.0,
+            800.0,
+            Assignment(
+                resource_id=10, work_minutes=69, actual_cost=5000.0, performed_work_seconds=69 * 60
+            ),
+            actual_cost=5200.0,
+        ),
+        _budgeted(  # no overtime rate recorded: overtime at the standard rate (10)
+            7,
+            100.0,
+            100.0,
+            Assignment(
+                resource_id=3,
+                work_minutes=8 * 60,
+                baseline_cost=100.0,
+                actual_cost=170.77,
+                performed_work_seconds=6 * 3600,
+                performed_overtime_seconds=2 * 3600,
+            ),
+            actual_cost=170.77,
+        ),
+        _budgeted(  # one booking without an actual cost: the task's own actual, as before
+            8,
+            50.0,
+            1000.0,
+            Assignment(
+                resource_id=2,
+                work_minutes=8 * 60,
+                baseline_cost=1000.0,
+                performed_work_seconds=240 * 60,
+            ),
+            actual_cost=999.0,
+        ),
+    ]
+    from schedule_forensics.engine.metrics.evm import _actual_cost_of_work_performed
+
+    sch = _record_sched(tasks)
+    assert _actual_cost_of_work_performed(sch, list(tasks)) == pytest.approx(
+        5000.0 + (5000.0 + 200.0) + 80.0 + 999.0
+    )
+    e = compute_evm_indices(sch)
+    # CPI = EV / AC with EV = 6,875 + 800 + 100 + 500 = 8,275 and AC = 11,279
+    assert e["cpi"].value == round(8275.0 / 11279.0, 2)

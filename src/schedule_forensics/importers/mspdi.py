@@ -31,7 +31,7 @@ import datetime as dt
 import logging
 import os
 import xml.etree.ElementTree as ET  # nosec B405  # hardened below: DTD/entity decls rejected
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 
 import pydantic
 
@@ -42,6 +42,7 @@ from schedule_forensics.importers._common import (
     clamped_percent_or_none,
     decimal_digits,
     dominant_day_minutes,
+    iso_duration_to_exact_minutes,
     iso_duration_to_minutes,
     parse_datetime,
     parse_float,
@@ -1014,7 +1015,10 @@ def _parse_resources(root: ET.Element, as_of: dt.datetime) -> list[Resource]:
                         if availability
                         else parse_float(_text(res_el, "MaxUnits"))
                     ),
-                    standard_rate=_standard_rate_in_effect(res_el, as_of),
+                    standard_rate=_rate_in_effect(res_el, as_of, "StandardRate"),
+                    # the overtime rate, the same table's same row (ADR-0511, R-45): the
+                    # reference prices a booking's performed overtime at it
+                    overtime_rate=_rate_in_effect(res_el, as_of, "OvertimeRate"),
                     availability=availability,
                     # the resource's own calendar (ADR-0474); MSPDI writes -1 for "none"
                     calendar_uid=_positive_int_or_none(res_el, "CalendarUID"),
@@ -1047,24 +1051,30 @@ def _availability_periods(res_el: ET.Element) -> tuple[AvailabilityPeriod, ...]:
     return tuple(rows)
 
 
-def _standard_rate_in_effect(res_el: ET.Element, as_of: dt.datetime) -> float | None:
-    """Cost-rate table A's standard rate in force at ``as_of`` (ADR-0506): the ``Rates/Rate`` rows
-    with ``RateTable`` 0 (MS Project's table A, the one a booking uses unless it names another).
-    A resource with no such row keeps the scalar ``<StandardRate>``. Tables B to E are not read: the
-    model carries one rate and no consumer reads a per-booking table."""
+def _rate_in_effect(res_el: ET.Element, as_of: dt.datetime, tag: str) -> float | None:
+    """Cost-rate table A's ``tag`` rate (``StandardRate`` or ``OvertimeRate``) in force at
+    ``as_of`` (ADR-0506; the overtime rate since ADR-0511): the ``Rates/Rate`` rows with
+    ``RateTable`` 0 (MS Project's table A, the one a booking uses unless it names another). A
+    resource with no such row keeps the scalar element of the same name. Tables B to E are not
+    read: the model carries one rate pair and no consumer reads a per-booking table."""
     rates = res_el.find("Rates")
     rows: list[tuple[dt.datetime | None, float]] = []
     for rate_el in [] if rates is None else rates.findall("Rate"):
         if (_text(rate_el, "RateTable") or "0").strip() != "0":
             continue
-        rate = parse_float(_text(rate_el, "StandardRate"))
+        rate = parse_float(_text(rate_el, tag))
         if rate is None:
             continue
         rows.append((parse_datetime(_text(rate_el, "RatesFrom")), rate))
     if not rows:
-        return parse_float(_text(res_el, "StandardRate"))
+        return parse_float(_text(res_el, tag))
     rows.sort(key=lambda r: (r[0] is not None, r[0] or dt.datetime.min))
     return value_in_effect(rows, as_of)
+
+
+def _standard_rate_in_effect(res_el: ET.Element, as_of: dt.datetime) -> float | None:
+    """ADR-0506's name for :func:`_rate_in_effect` on ``StandardRate``."""
+    return _rate_in_effect(res_el, as_of, "StandardRate")
 
 
 def _positive_int_or_none(parent: ET.Element, tag: str) -> int | None:
@@ -1085,6 +1095,37 @@ _WORK_SERIES = frozenset({"1", "2"})
 #: block's hours, and its blocks finishing on or before the status date sum to 16,000 — the
 #: Fuse ribbon's PV (BCWS) to the unit.
 _BASELINE_COST_SERIES = "5"
+#: MSPDI ``TimephasedData/Type`` 2 = assignment ACTUAL work, 3 = assignment actual OVERTIME work:
+#: the booking's performed work as the file records it (ADR-0511, R-45). MS Project's BCWP and
+#: ACWP — the fields Fuse imports as EV / AC — are computed from these blocks, not from the scalar
+#: ``ActualWork``: Hard_File_updated3's UID 290 says 31 h in the scalar and 16 h + 6 h in the
+#: record, and the ribbon's 53,715 / 66,245 follow the record.
+_ACTUAL_WORK_SERIES = "2"
+_ACTUAL_OVERTIME_SERIES = "3"
+#: A booking "has a record" when the file time-phases any of its own work series (1, 2 or 3); one
+#: that carries only baseline blocks (4, 5) or none at all is unrecorded and reads ``None``.
+_OWN_WORK_SERIES = frozenset({"1", "2", "3"})
+
+
+def _performed_seconds(assign_el: ET.Element, type_code: str) -> int | None:
+    """The booking's performed work of one series (``_ACTUAL_WORK_SERIES`` or
+    ``_ACTUAL_OVERTIME_SERIES``) as the file time-phases it: every block's ``Value`` summed at the
+    file's own resolution — the blocks carry seconds (14h 46m 9s on Hard_File_updated2's UID 210)
+    — and kept in whole SECONDS, rounded once. Minutes are not enough: the reference prices the
+    record to the unit, and per-booking minute rounding reads 64,104.17 where the ribbon prints
+    64,105 (the exact 64,104.61). ``None`` when the booking has no record at all."""
+    blocks = assign_el.findall("TimephasedData")
+    if not any(_text(tp, "Type") in _OWN_WORK_SERIES for tp in blocks):
+        return None
+    total = sum(
+        (
+            iso_duration_to_exact_minutes(_text(tp, "Value"))
+            for tp in blocks
+            if _text(tp, "Type") == type_code
+        ),
+        Decimal(0),
+    )
+    return max(0, int((total * 60).quantize(Decimal(1), rounding=ROUND_HALF_UP)))
 
 
 def _timephased_pieces(assign_el: ET.Element) -> list[WorkPiece]:
@@ -1164,7 +1205,19 @@ def _parse_assignments(
     delay_by_task_res: dict[int, dict[int, int]] = {}
     pieces_by_task_res: dict[int, dict[int, list[WorkPiece]]] = {}
     cost_by_task_res: dict[int, dict[int, list[CostPiece]]] = {}
+    performed_by_task_res: dict[int, dict[int, int]] = {}
+    overtime_by_task_res: dict[int, dict[int, int]] = {}
+    blcost_by_task_res: dict[int, dict[int, float]] = {}
+    actual_by_task_res: dict[int, dict[int, float]] = {}
     assignments_el = root.find("Assignments")
+    # the vendored MPXJ writer omits a ZERO-valued cost element (ADR-0507's writer rule, seen
+    # on Task/ActualCost: present on exactly the activities that have spent), so a booking with
+    # no <ActualCost> in a file that writes the element for other bookings has spent 0 — never
+    # "unknown", which would send its whole task back to the scalar (ADR-0511)
+    file_records_booking_actuals = any(
+        _text(a, "ActualCost") is not None
+        for a in ([] if assignments_el is None else assignments_el.findall("Assignment"))
+    )
     for assign_el in [] if assignments_el is None else assignments_el.findall("Assignment"):
         task_uid = _int(assign_el, "TaskUID")
         resource_uid = _int(assign_el, "ResourceUID")
@@ -1227,6 +1280,39 @@ def _parse_assignments(
             cost_by_task_res.setdefault(task_uid, {}).setdefault(resource_uid, []).extend(
                 cost_pieces
             )
+        # the booking's performed work as the file time-phases it (ADR-0511, R-45): a pair
+        # recorded in several rows sums every row's record; a row without one adds nothing and
+        # leaves the pair unrecorded unless another row records it
+        performed = _performed_seconds(assign_el, _ACTUAL_WORK_SERIES)
+        if performed is not None:
+            perf_map = performed_by_task_res.setdefault(task_uid, {})
+            perf_map[resource_uid] = perf_map.get(resource_uid, 0) + performed
+            ot_map = overtime_by_task_res.setdefault(task_uid, {})
+            ot_map[resource_uid] = ot_map.get(resource_uid, 0) + (
+                _performed_seconds(assign_el, _ACTUAL_OVERTIME_SERIES) or 0
+            )
+        # the booking's own baseline cost (its Baseline number 0 — present, its Cost or the
+        # writer's omitted zero; absent, unbaselined; a negative clamped to 0 like the task's) and
+        # actual cost, currency units, summed over a pair's rows
+        baseline_el = next(
+            (
+                bl
+                for bl in assign_el.findall("Baseline")
+                if (_text(bl, "Number") or "0").strip() == "0"
+            ),
+            None,
+        )
+        if baseline_el is not None:
+            bl_map = blcost_by_task_res.setdefault(task_uid, {})
+            bl_map[resource_uid] = bl_map.get(resource_uid, 0.0) + max(
+                0.0, _currency(baseline_el, "Cost") or 0.0
+            )
+        actual = _currency(assign_el, "ActualCost")
+        if actual is None and file_records_booking_actuals:
+            actual = 0.0
+        if actual is not None:
+            act_map = actual_by_task_res.setdefault(task_uid, {})
+            act_map[resource_uid] = act_map.get(resource_uid, 0.0) + actual
     assignments_by_task: dict[int, tuple[Assignment, ...]] = {}
     for task_uid, uids in uids_by_task.items():
         work_map = work_by_task_res.get(task_uid, {})
@@ -1236,6 +1322,10 @@ def _parse_assignments(
         delay_map = delay_by_task_res.get(task_uid, {})
         pieces_map = pieces_by_task_res.get(task_uid, {})
         cost_map = cost_by_task_res.get(task_uid, {})
+        perf_map = performed_by_task_res.get(task_uid, {})
+        ot_map = overtime_by_task_res.get(task_uid, {})
+        bl_map = blcost_by_task_res.get(task_uid, {})
+        act_map = actual_by_task_res.get(task_uid, {})
         assignments_by_task[task_uid] = tuple(
             Assignment(
                 resource_id=ruid,
@@ -1251,6 +1341,10 @@ def _parse_assignments(
                 baseline_cost_pieces=tuple(
                     sorted(cost_map.get(ruid, []), key=lambda p: (p.start, p.finish))
                 ),
+                performed_work_seconds=perf_map.get(ruid),
+                performed_overtime_seconds=ot_map.get(ruid),
+                baseline_cost=bl_map.get(ruid),
+                actual_cost=act_map.get(ruid),
             )
             for ruid in uids
         )

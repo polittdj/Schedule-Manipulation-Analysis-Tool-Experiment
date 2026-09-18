@@ -237,3 +237,32 @@ def test_evm_discloses_started_activities_without_a_baseline_behind_the_acumen_s
     data = (GOLDEN / "Project5.mspdi.xml").read_bytes()
     c2.post("/upload", files={"files": ("Project5.mspdi.xml", data, "text/xml")})
     assert "data-sf-unbaselined" not in c2.get("/evm").text
+
+
+def test_evm_page_discloses_the_activities_whose_recorded_work_disagrees_with_their_percent() -> (
+    None
+):
+    """ADR-0511 (R-45): on Hard_File_updated3 the EVM page names UID 290 — reported 100 % complete
+    with 22 of its 40 booked hours performed — beside SPI, the way CPI names the activities with no
+    actual cost; the not-cost-loaded Project5 page carries no such note."""
+    import gzip
+
+    c = TestClient(create_app(SessionState()))
+    gz = GOLDEN.parent / "fuse_hardfile" / "Hard_File_updated3.mspdi.xml.gz"
+    data = gzip.decompress(gz.read_bytes())
+    c.post("/upload", files={"files": ("Hard_File_updated3.mspdi.xml", data, "text/xml")})
+    html = c.get("/evm").text
+    assert 'data-sf-progress-disagreement="1"' in html
+    assert re.search(r"recorded work</b> does not support.*UID 290", html), html[-3000:]
+    other = TestClient(create_app(SessionState()))
+    other.post(
+        "/upload",
+        files={
+            "files": (
+                "Project5.mspdi.xml",
+                (GOLDEN / "Project5.mspdi.xml").read_bytes(),
+                "text/xml",
+            )
+        },
+    )
+    assert "data-sf-progress-disagreement" not in other.get("/evm").text

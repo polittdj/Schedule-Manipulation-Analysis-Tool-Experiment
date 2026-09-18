@@ -1534,3 +1534,80 @@ def test_the_updated_golden_carries_187s_front_loaded_baseline_cost() -> None:
     assert sum(p.cost for p in pieces) == 6000.0 == sch.task_by_id(187).budgeted_cost
     assert sch.status_date == dt.datetime(2026, 8, 11, 17, 0)
     assert sum(p.cost for p in pieces if p.finish <= sch.status_date) == 3600.0
+
+
+def test_a_bookings_performed_record_is_summed_at_seconds_resolution_and_rounded_once() -> None:
+    """ADR-0511 (R-45): ``TimephasedData`` Type 2 (actual work) and Type 3 (actual overtime) are
+    the booking's performed record — the blocks MS Project computes BCWP / ACWP from. Each series
+    is kept at the file's own resolution, whole SECONDS, summed once: 14h46m9s + 2h18m28s =
+    61,477 s (per-booking minute rounding would read 1,025 min and miss the ribbon by a unit). A
+    booking
+    that time-phases none of its own work series reads ``None`` (a record of nothing is 0, an
+    absent record is unknown); the booking's own baseline and actual cost are read in currency
+    units (the file writes hundredths; an omitted actual is the writer's zero once the file
+    writes the element anywhere); the overtime rate is table A's row at the status date."""
+    tp = (
+        "<TimephasedData><Type>{t}</Type><UID>1</UID><Start>{s}</Start><Finish>{f}</Finish>"
+        "<Unit>2</Unit><Value>{v}</Value></TimephasedData>"
+    )
+
+    def block(t: int, day: int, v: str) -> str:
+        return tp.format(t=t, s=f"2025-01-0{day}T08:00:00", f=f"2025-01-0{day}T17:00:00", v=v)
+
+    body = (
+        "<StatusDate>2025-09-10T17:00:00</StatusDate>"
+        "<Tasks><Task><UID>1</UID><Duration>PT40H0M0S</Duration><PercentComplete>100</PercentComplete></Task>"
+        "<Task><UID>2</UID><Duration>PT8H0M0S</Duration></Task></Tasks>"
+        "<Resources><Resource><UID>7</UID><Name>Apprentice</Name><Type>1</Type>"
+        "<StandardRate>10</StandardRate><OvertimeRate>15</OvertimeRate>"
+        "<Rates><Rate><RatesFrom>1984-01-01T00:00:00</RatesFrom><RatesTo>2025-08-30T23:59:00</RatesTo>"
+        "<RateTable>0</RateTable><StandardRate>10</StandardRate><OvertimeRate>15</OvertimeRate></Rate>"
+        "<Rate><RatesFrom>2025-08-31T00:00:00</RatesFrom><RatesTo>2049-12-31T23:59:00</RatesTo>"
+        "<RateTable>0</RateTable><StandardRate>30</StandardRate><OvertimeRate>45</OvertimeRate></Rate>"
+        "</Rates></Resource></Resources>"
+        "<Assignments>"
+        "<Assignment><TaskUID>1</TaskUID><ResourceUID>7</ResourceUID><Work>PT40H0M0S</Work>"
+        "<ActualWork>PT31H0M0S</ActualWork><ActualCost>680000</ActualCost>"
+        "<Baseline><Number>0</Number><Work>PT55H0M0S</Work><Cost>1250000</Cost></Baseline>"
+        + block(2, 6, "PT14H46M9S")
+        + block(2, 7, "PT2H18M28S")
+        + block(3, 7, "PT6H0M0S")
+        + block(5, 6, "1250000")
+        + "</Assignment>"
+        "<Assignment><TaskUID>2</TaskUID><ResourceUID>7</ResourceUID><Work>PT8H0M0S</Work>"
+        + block(5, 6, "40000")  # baseline cost only: no record of the booking's own work
+        + "</Assignment>"
+        "</Assignments>"
+    )
+    sch = parse_mspdi_text(_doc(body))
+    (a1,) = sch.task_by_id(1).resource_assignments
+    assert (a1.performed_work_seconds, a1.performed_overtime_seconds) == (61477, 21600)
+    assert (a1.baseline_cost, a1.actual_cost) == (12500.0, 6800.0)
+    (a2,) = sch.task_by_id(2).resource_assignments
+    assert a2.performed_work_seconds is None and a2.performed_overtime_seconds is None
+    # unbaselined: None; no <ActualCost> in a file that writes the element: the writer's omitted 0
+    assert (a2.baseline_cost, a2.actual_cost) == (None, 0.0)
+    (apprentice,) = [r for r in sch.resources if r.unique_id == 7]
+    assert (apprentice.standard_rate, apprentice.overtime_rate) == (30.0, 45.0)
+
+
+def test_the_updated3_golden_carries_290s_record_of_22_performed_hours_on_a_40_hour_booking() -> (
+    None
+):
+    """The R-45 witness (ADR-0511): Hard_File_updated3's UID 290 is written ``ActualWork 31 h`` on
+    a 40 h booking, but its time-phased record holds 16 h regular + 6 h overtime — the hours MS
+    Project's BCWP (6,875 of 12,500) and ACWP (5,000, not the scalar's 6,800) are computed from."""
+    import gzip
+
+    path = Path(__file__).resolve().parents[1] / "fixtures" / "golden" / "fuse_hardfile"
+    path = path / "Hard_File_updated3.mspdi.xml.gz"
+    sch = parse_mspdi_text(gzip.decompress(path.read_bytes()).decode("utf-8"))
+    (booking,) = sch.task_by_id(290).resource_assignments
+    assert booking.work_minutes == 40 * 60
+    assert (booking.performed_work_seconds, booking.performed_overtime_seconds) == (
+        16 * 3600,
+        6 * 3600,
+    )
+    assert (booking.baseline_cost, booking.actual_cost) == (12500.0, 6800.0)
+    (lead,) = [r for r in sch.resources if r.unique_id == 2]
+    assert (lead.standard_rate, lead.overtime_rate) == (200.0, 300.0)

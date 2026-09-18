@@ -57,7 +57,11 @@ from schedule_forensics.model.task import ConstraintType, Task, TaskType
 #   table as the file records it (MS Project's Resource Availability grid), so capacity is the
 #   save's own statement per day and Resource.max_units is that table at the STATUS date, not
 #   the vendored converter's wall clock (R-63).
-SCHEMA_VERSION = "2.16.0"
+# 2.17.0: Assignment.performed_work_seconds / performed_overtime_seconds / baseline_cost /
+#   actual_cost + Resource.overtime_rate (ADR-0511) — a booking's ACTUAL work as the file
+#   time-phases it (the record MS Project's BCWP / ACWP are computed from, not the scalar), its own
+#   baseline and actual cost, and the overtime rate at the status date (R-45).
+SCHEMA_VERSION = "2.17.0"
 
 __all__ = [
     "SCHEMA_VERSION",
