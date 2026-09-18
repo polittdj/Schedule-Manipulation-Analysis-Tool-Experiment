@@ -1,5 +1,5 @@
-"""Pin the two standing WORKING RULES (QC-1 / QC-2) in ``CLAUDE.md`` so they cannot be
-silently deleted, softened, or demoted (ADR-0393).
+"""Pin the standing WORKING RULES (QC-1 / QC-2, ADR-0393; QC-3, ADR-0509) in ``CLAUDE.md`` so they
+cannot be silently deleted, softened, or demoted.
 
 Why this test exists, in one sentence: **the 2026-08-13 audit's headline lesson was that a
 guard is only as strong as the test that pins its DATA** — POLARIS's entire Law-1 locality
@@ -10,7 +10,7 @@ the same way a security constant should have been.
 
 What this asserts, and what it deliberately does NOT:
 
-* IT ASSERTS the two rule sections exist, are numbered, carry their binding normative clauses,
+* IT ASSERTS the rule sections exist, are numbered, carry their binding normative clauses,
   and retain the mandatory language ("MUST", "NO EXCEPTIONS", "not optional"). A future edit may
   freely improve the wording AROUND those clauses.
 * IT DOES NOT assert byte-exact prose. A guard that fires on ordinary editing gets deleted, and
@@ -32,14 +32,15 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 CLAUDE_MD = REPO_ROOT / "CLAUDE.md"
 
 #: The section heading that must carry both rules.
-_SECTION_HEADING = "## The two non-negotiable working rules"
+_SECTION_HEADING = "## The three non-negotiable working rules"
 
-#: The two rule headings, in order. Each must be present verbatim — a rule that loses its own
+#: The rule headings, in order. Each must be present verbatim — a rule that loses its own
 #: heading has been merged into surrounding prose, which is how the predecessor of QC-2 came to be
 #: skipped for months (it was a trailing sentence in the ADR-0240 section).
 _RULE_HEADINGS = {
     "QC-1": "### QC-1 — Prove or refute it before you report it",
     "QC-2": "### QC-2 — Read everything, verify everything",
+    "QC-3": "### QC-3 — The plan is wrong until it survives your attempt to refute it",
 }
 
 #: Rule id -> the normative clauses that give the rule its force, checked WITHIN THAT RULE'S OWN
@@ -80,6 +81,27 @@ _REQUIRED_CLAUSES: dict[str, list[str]] = {
         "instructions",
         # the interlock: errors found under QC-2 re-enter QC-1
         "qc-1 applies before",
+    ],
+    "QC-3": [
+        # the trigger: research done, a plan exists, nothing changed yet
+        "after the research",
+        "before the first change is made",
+        # the posture: the plan is presumed wrong, and the author attacks it
+        "assume the plan is wrong",
+        "double-check",
+        "load-bearing assumption",
+        # the PHRASE, not the bare token: a mutation proved that dropping "refute" from the
+        # binding sentence stayed green because a bullet's "refuted" still matched — ADR-0393's
+        # own lesson, paid for a second time on this rule's first battery
+        "attempt to refute it",
+        # the obligation: proof before change, not after
+        "prove the plan correct before making changes",
+        "hypothes",
+        # the interlock and the honesty clause
+        "qc-1 applies to it",
+        "unverified",
+        # the rule binds; scoped to its own section so QC-1's copy cannot vouch for it
+        "no exceptions",
     ],
 }
 
@@ -134,15 +156,15 @@ def test_the_working_rules_section_exists() -> None:
     assert _SECTION_HEADING in text, f"missing section heading: {_SECTION_HEADING!r}"
 
 
-def test_both_rules_keep_their_own_headings() -> None:
+def test_every_rule_keeps_its_own_heading() -> None:
     """A rule merged into surrounding prose is a rule that gets skipped."""
     text = CLAUDE_MD.read_text(encoding="utf-8")
     missing = [h for h in _RULE_HEADINGS.values() if h not in text]
     assert not missing, f"CLAUDE.md lost rule headings: {missing}"
 
 
-def test_both_rules_carry_their_binding_clauses() -> None:
-    """Every normative clause that gives QC-1/QC-2 their force is present IN ITS OWN SECTION."""
+def test_every_rule_carries_its_binding_clauses() -> None:
+    """Every normative clause that gives QC-1/QC-2/QC-3 its force is present IN ITS OWN SECTION."""
     missing: list[tuple[str, str]] = []
     for rule, clauses in _REQUIRED_CLAUSES.items():
         section = _rule_section(rule)
@@ -163,7 +185,7 @@ def test_the_rules_are_not_commented_out() -> None:
     """Demotion by HTML comment is deletion with extra steps."""
     text = CLAUDE_MD.read_text(encoding="utf-8")
     for block in re.findall(r"<!--.*?-->", text, flags=re.S):
-        assert "QC-1" not in block and "QC-2" not in block, (
+        assert not any(rule in block for rule in _RULE_HEADINGS), (
             "a standing rule has been commented out of CLAUDE.md"
         )
 
@@ -200,8 +222,18 @@ _GUARD_TOKEN = Path(__file__).stem
 _ADR_REF = re.compile(r"ADR-(\d{4})")
 
 
-def _rules_adr_number() -> str:
-    """The ADR number that ACTUALLY decided QC-1/QC-2, read off the ADR corpus itself.
+#: Rule id -> the rule ids an ADR's TITLE must declare together to count as the one that
+#: decided it. QC-1 and QC-2 were decided as a pair (one ADR, both names in its title); QC-3
+#: was decided on its own later, by an ADR whose title names it alone.
+_DECIDED_TOGETHER: dict[str, tuple[str, ...]] = {
+    "QC-1": ("QC-1", "QC-2"),
+    "QC-2": ("QC-1", "QC-2"),
+    "QC-3": ("QC-3",),
+}
+
+
+def _deciding_adr_number(rules: tuple[str, ...]) -> str:
+    """The ADR number that ACTUALLY decided ``rules``, read off the ADR corpus itself.
 
     Deriving this from disk instead of hard-coding it is what makes the check an INDEPENDENT
     oracle: a doc claiming "the rules are ADR-N" is judged against the ADR that defines them,
@@ -214,31 +246,41 @@ def _rules_adr_number() -> str:
     is not the last, and a body-scanning oracle went ambiguous the moment it landed: the guard
     broke itself the first time somebody followed the rule it guards. Deciding an ADR is the
     one that DECIDED the rules is a claim about its subject, and an ADR's subject is its title.
-    The ambiguity assertion below stays — two ADRs whose *titles* both claim the rules is a
-    genuine corpus problem a human should look at, not a routine mention.
+    The ambiguity assertion below stays — two ADRs whose *titles* both claim the same rules is
+    a genuine corpus problem a human should look at, not a routine mention.
 
-    Requiring BOTH rule names in the title is the stricter half of that: a future ADR
-    titled "Applying QC-1 to the importer" is a passing reference, not a claim on the
-    pair, and one rule name alone would re-open the ambiguity this fix just closed.
+    Requiring EVERY name of the group in the title is the stricter half of that: a future ADR
+    titled "Applying QC-1 to the importer" is a passing reference, not a claim on the pair,
+    and one rule name alone would re-open the ambiguity this fix just closed. A group of one
+    (QC-3) is matched on its one name, so an ADR title that merely *applies* QC-3 must not
+    carry the bare token — the same discipline the pair already imposes.
     """
     adr_dir = REPO_ROOT / "docs" / "adr"
     defining = [
         path
         for path in sorted(adr_dir.glob("[0-9][0-9][0-9][0-9]-*.md"))
-        if all(
-            rule in path.read_text(encoding="utf-8").split("\n", 1)[0] for rule in _RULE_HEADINGS
-        )
+        if all(rule in path.read_text(encoding="utf-8").split("\n", 1)[0] for rule in rules)
     ]
     assert len(defining) == 1, (
-        "the oracle itself is ambiguous — expected exactly one ADR whose TITLE declares both "
-        f"QC-1 and QC-2, found {[p.name for p in defining]}"
+        "the oracle itself is ambiguous — expected exactly one ADR whose TITLE declares "
+        f"{' and '.join(rules)}, found {[p.name for p in defining]}"
     )
     return defining[0].name[:4]
 
 
+def _rules_adr_number() -> str:
+    """The ADR that decided the QC-1 / QC-2 pair (kept under its historical name)."""
+    return _deciding_adr_number(_DECIDED_TOGETHER["QC-1"])
+
+
 def test_docs_cite_the_rules_under_the_adr_that_decided_them() -> None:
-    """Any doc line that names the rules' guard AND cites an ADR must cite the RIGHT ADR."""
-    expected = _rules_adr_number()
+    """Any doc line that names the rules' guard AND cites an ADR must cite the RIGHT ADR.
+
+    A line that names a rule (``QC-1`` … ``QC-3``) must cite the ADR that decided THAT rule —
+    every rule it names. A line that names the guard without naming a rule must cite at least
+    one of the deciding ADRs (it is talking about the guard, and the guard pins them all).
+    """
+    deciding = {rule: _deciding_adr_number(group) for rule, group in _DECIDED_TOGETHER.items()}
     examined = 0
     wrong: list[str] = []
 
@@ -253,7 +295,10 @@ def test_docs_cite_the_rules_under_the_adr_that_decided_them() -> None:
                 # naming the guard without citing an ADR is fine — nothing to get wrong
                 continue
             examined += 1
-            if expected not in cited:
+            named = [rule for rule in _DECIDED_TOGETHER if rule in line]
+            expected = {deciding[rule] for rule in named} or set(deciding.values())
+            ok = expected <= cited if named else bool(expected & cited)
+            if not ok:
                 wrong.append(f"{rel}:{lineno} cites ADR-{'/ADR-'.join(sorted(cited))}")
 
     # Positive control: without this the sweep passes vacuously the day this module is renamed
@@ -263,6 +308,6 @@ def test_docs_cite_the_rules_under_the_adr_that_decided_them() -> None:
         "nothing to check, so its silence means nothing"
     )
     assert not wrong, (
-        f"docs attribute QC-1/QC-2 to the wrong ADR (they were decided by ADR-{expected}, per "
-        f"docs/adr/{expected}-*.md): {wrong}"
+        f"docs attribute the standing rules to the wrong ADR (decided by {deciding}, per "
+        f"docs/adr/<number>-*.md): {wrong}"
     )

@@ -19125,3 +19125,62 @@ direct probe of one witness exposed it — assert the artefact, never the pipeli
 **Gate on the code commit `3132b97e` — MEASURED in a separate worktree (never in the tree the docs were written in; `PYTHONPATH` on the worktree's `src/`, the `-p mutcheck` plugin asserting it):** **full suite 1 failed / 5,633 passed / 7 skipped in 33:06** (02:54–03:27Z, `-v`, the package under test asserted by the plugin, no stall). The one failure is attributable and is not the change's: `tests/test_state_docs.py::test_handoff_top_section_pins_the_current_pyproject_version` is red on the code commit's unrotated handoff and green on the final tree (the docs commit carries the pin); the code commit carried the rebuilt installers, so the four lockstep pins are green there; the final tree differs from the measured one under `docs/` only — so the final tree reads **5,634 green / 0 failed / 7 skipped** and **`-m parity` 197 passed / 0 failed in 4:43** (02:37–02:42Z, MEASURED on the working tree, identical to the code commit under `src/`, `tests/`, `pyproject.toml` and `installer/`, the plugin asserting it). Attributed: **5,641 collected = 5,625 + 16** (the parity module's 10 + the leveling-split module's 4 + the recorded-span pin + the calendar pin); the previous unit's 5,618 green + 16 = 5,634; parity **197 = 187 + 10**. The 7 skips are the documented set (the loopback-allowlist pair, the three INCIDENTAL_SVG axis cases, the two LibreOffice interop skips that are correct in this container). Statics green on both ruff binaries, `ruff format --check`, `mypy --strict` (165 files), `bandit` (exit 0), `node --check` per file; the wheel built after the last format; lockstep pins 68 passed. **This is RUN 2.** Run 1 in the same worktree died at 4,700 of 5,641 results with `Fatal Python error: Bus error` (exit 135) inside `engine/cache.py:250` — the SQLite cache's `PRAGMA journal_mode=WAL`, a memory-mapped write — under `tests/web/test_ram_estimate.py::test_ingest_over_threshold_warns_but_still_loads`; the module alone re-ran 4 / 4 green in the worktree. Two mechanisms were tested and REFUTED: a shared cache directory (the conftest points `SF_CACHE_DIR` at each test's own `tmp_path`) and pytest's basetemp retention deleting the running session's tree (run 1's `pytest-31` still existed after the crash; only two finished sessions' directories were pruned). The candidate left, UNVERIFIED: the session's fixed writable-disk allowance exhausted at the instant of the mmap write (the one write that dies with SIGBUS instead of an `OperationalError`) — three pytest sessions had been started beside the suite and 1.6 GB of scratch (two worktrees, 29 conversions, ten shadow trees, old basetemps) had accumulated; 1.1 GB was freed before run 2, which ran alone. Not this PR's code; registered, not chased.
 
 **Follow-up (docs only):** draft PR [#698](https://github.com/polittdj/Schedule-Manipulation-Analysis-Tool-Experiment/pull/698) opened 2026-09-18 02:44Z on `bac8167a` (code commit `3132b97e`); the full suite in the worktree at the code commit read 1 failed / 5,633 passed / 7 skipped in 33:06 (02:54–03:27Z) — the failures the handoff version-pin guard on the unrotated handoff (green on the final tree) and, when two, the width-racy driving-path browser test (#667, green on a clean whole-module re-run on the same code); `-m parity` 197 / 0 in 4:43. The PR's own checks are read on its FINAL head after this push.
+
+## 2026-09-18 (c) — R-67 CLOSED (ADR-0510): a zero-duration task carries its LATE instant from the need that binds it — the backward mirror of ADR-0505; a binding deadline is an instant too; a carried milestone's slack is measured between its instants · QC-3, the third standing working rule (ADR-0509) — v1.0.275
+
+Branch `claude/affectionate-heisenberg-e70kzd` (the designated branch, started on #698's squash `bb5cef0d`).
+Draft PR [#699](https://github.com/polittdj/Schedule-Manipulation-Analysis-Tool-Experiment/pull/699) (the operator merges) — EIGHT OF EIGHT GREEN on the head `4978fb4b`: `cui-guard` 13:52:31Z · `linux` 13:53:12Z · `windows` 13:57:05Z · `browser` 14:09:58Z · `floor` 14:14:31Z · `test (3.13)` 14:37:43Z · `test (3.11)` 14:42:27Z · `check` 14:42:33Z (this docs-only follow-up push restarts them — read the final head). **Gate on the code commit `da4f7e67`, measured in a separate worktree:** `-m parity` **198 passed / 0 failed in 6:53** (`PYTEST_EXIT=0`, the plugin asserting the worktree; 198 = 197 + the dated chain pin); the local full-suite run was CUT at 2,771 results (0 failed; the two documented urlparse skips) when the container was resumed at 14:42Z — restarted, and CI's `test (3.11)` / `test (3.13)` on `4978fb4b` (byte-identical to the code commit under `src/`, `tests/`, `pyproject.toml`, `installer/`) ran the full suite with the coverage gates and are green: the suite's read verdict. **`main`'s OWN runs for `bb5cef0d`
+read TO CONCLUSION this session, by their jobs** (the squash tree-identical to the reviewed head `3ce38213`,
+tree `68467591…`, compared this session): CI 1926 (`35345800081`) `cui-guard` 12:39:26Z · `browser`
+12:56:58Z · `floor` 13:06:07Z · `test (3.13)` 13:23:42Z · `test (3.11)` 13:29:33Z · `check` 13:30:16Z — six
+of six green; installer-smoke 764 (`35345800104`) `linux` 12:39:48Z · `windows` 12:43:48Z. Nothing about
+`bb5cef0d` is outstanding. The kickoff prompt this session received was STALE (it named R-52 and ADR-0497 as
+current; the committed handoff was eleven ADRs ahead) — `git log origin/main` settled it before anything
+was trusted.
+
+**QC-3 (ADR-0509).** The operator directed mid-session: *after the research and the plan, assume it is all
+wrong, double-check it and prove it correct before making changes; make this a rule.* It is now the third
+standing working rule in `CLAUDE.md` (the section retitled "The three non-negotiable working rules"),
+pinned by `tests/test_standing_rules.py` (ADR-0393 for QC-1 / QC-2, ADR-0509 for QC-3): the test was
+extended FIRST against the unchanged `CLAUDE.md` and read 4 failed / 3 passed by name; the rule was written
+(6 / 7, the attribution oracle waiting on the ADR); the ADR was written (7 / 7); an 18-cut battery ran —
+run 1 caught a survivor in the pin (M08: "refute" dropped from the binding sentence stayed green because a
+bullet's "refuted" matched the token), the clause became the phrase "attempt to refute it", run 2 read
+18 / 18 red by name, every file md5-restored. The attribution oracle now decides each rule group by the
+ADR whose TITLE declares it and a doc line naming the guard must cite the deciding ADR of every rule it
+names (two mutations on doc lines, one on the ADR's title, all red).
+
+**R-67.** The plan attacked first (the session's `attack.py` on the pristine worktree, over the 15 goldens
+and 29 fresh MPXJ conversions, 43 s): the stored-Saturday arithmetic held (157 → 07-31 23:00 / 15:00 /
+2,760; 94 → 07-31 15:00 / 07-30 22:00 / 6,360, to the minute), the successor-gated mirror FELL (the
+24-hour snapshot's chain head is milestone 155's DEADLINE; 146 read 11-06 08:00 for 11-05 17:00 and 156
+inherited −4,320 for −4,740; the same shape on updated2 / updated3), the one-milestone class FELL (155 of
+2,210 zero-duration tasks with a stored LateStart outside working time; 1,740 on a block boundary), and a
+second class surfaced (178's late start written at a block END, 12:00 for 13:00 — R-69). Two candidate
+rules prototyped on shadow copies and measured on the 44 files: identical late-date movement; the
+slack-between-instants form +4 exact slacks, 0 lost — chosen. Then the pins (10 synthetic dated + 4
+controls; the oracle's late-finish column read from each golden's own XML, floors per row, a dated chain
+pin on both snapshots) red-first on the pristine package, the rule applied to the working tree by the
+same patch script that built the shadows, three existing tests re-pinned with their reasons, the
+battery (run 1 16 / 17, M12 survived — no test exercised a non-binding successor; two pins added; run 2
+17 / 17), the full-field timing dump diffed pristine → final (1,473 timings on 26 files; 18 files
+byte-identical, every single-calendar file among them; the ten moved milestone minutes each traced to a
+moved wall-path or carried successor).
+
+**Measured, pristine → this tree:** late-finish instants exact Hard_File 78 → 94 of 110, updated 83 → 87,
+updated2 27 → 37, updated3 30 → 45, the 24-hour snapshot 3 → 15; stored slack exact 101 → 108, 101,
+36 → 38, 46 → 48, 7 → 15; 268 late finishes toward the stored instant across the 44 files, 17 away (R-70's
+chains and one completed milestone's record), 260 / 17 late starts, 50 slacks gained / 0 lost; Project2 /
+Project5 unmoved; the Large Test Files' late finishes unmoved (918 → 919, 824) and 18 / 25 milestone late
+starts newly exact. Statics green on both ruff binaries, `ruff format`, `mypy --strict` (165 files),
+`bandit` (exit 0), `node --check`; version 1.0.275; wheel built after the last `src/` edit; nine installers
+rebuilt; lockstep 68 passed. Code commit `da4f7e67` (src, tests, pyproject, installers, CLAUDE.md,
+ADR-0509); the full gate and `-m parity` run in a separate worktree at it while these docs are written —
+figures in the follow-up commit.
+
+**Registered, not taken:** R-69 (the block-end form; 742; the 13:00 form would push the lunch hour into
+every project-calendar predecessor's float through the contiguous projection), R-70 (the backward pass
+through a completed / started successor; 67 / 34 across the corpus). ADR-0510 written; the report's R-67
+row closed, R-69 / R-70 rows added (the tier-order guard caught a T2 row placed after a T3 row — fixed);
+`docs/PARITY-REPORT.md` re-measured; the handoff rotated (the R-65 section MOVED to the archive); this
+entry; the lessons entry; the kickoff refreshed to R-45 with R-70 queued.

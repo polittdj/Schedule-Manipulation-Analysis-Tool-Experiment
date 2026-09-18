@@ -435,6 +435,46 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-18 (c) — attack the plan before the first edit: two of four assumptions fell, and a survivor is a missing pin as often as a code hole (ADR-0509 / ADR-0510)
+
+The operator's directive arrived mid-session — *assume the plan is all wrong, double-check it and
+prove it correct before making changes; make this a rule* — while R-67 sat between its research and
+its first edit. It became QC-3, and R-67 was the first unit run under it.
+
+- **What the attack found that the plan did not say.** The row said "carry a leveled successor's
+  late-start need"; the census said the 24-hour snapshot's chain head is a milestone with NO
+  successor — its late instant is its DEADLINE. A successor-gated mirror (ADR-0505's gating,
+  mirrored by reflex) would have left the row's own witness (156's −4,320 vs −4,740) untouched and
+  read green on the base snapshot. The row's one milestone was 155 milestones; the arithmetic below
+  the row held; a second class (the block-end late-start form) surfaced. Two of four fell before a
+  line changed. **The lesson: the plan's PREMISES are where the cost lives — its steps are cheap to
+  execute correctly against a false one.**
+- **Measure every candidate on the population, then choose.** Two rules were prototyped on shadow
+  copies with the SAME patch script later applied to the working tree (no drift between what was
+  measured and what shipped): identical late-date movement, one gains four exact slacks and loses
+  none. A rule chosen by reasoning would have been the weaker one.
+- **A survivor is a missing pin as often as a code hole — twice in one session.** QC-3's own pin
+  battery: dropping "refute" from the binding sentence stayed green because a bullet's "refuted"
+  matched the bare token (ADR-0393's lesson, paid for again on the rule that cites it — pin the
+  PHRASE). R-67's battery: dropping the "binding need" check stayed green because no test exercised
+  a NON-binding successor; the check protects a lagged non-binding link from blocking the carry and
+  a non-binding crew successor from forcing a rendering-bound milestone to carry. Both times the
+  code was right and the test set was incomplete; both times the fix was two pins and a full re-run.
+- **Key an oracle by PATH, never by project name.** The stored late finishes were first looked up by
+  `Schedule.name`; the five Hard_File snapshots share one name, so four rows silently compared
+  against the base file's late finishes and went red for a reason that was not the engine's. A
+  wrong-file oracle looks exactly like a regression.
+- **Read the count, not the chain.** A `sed` rename that matched nothing (ruff had wrapped the line)
+  left `grep -c` at 0, exit 1, and the `&&` chain stopped before the battery — the battery "ran" for
+  zero rows. A re-run was cheap; an unread chain is not.
+- **Say what moved and why.** "The integer offsets are untouched" was false as written: ten fast-path
+  milestone minutes moved. Each traced to a wall-path successor retreating from a corrected instant
+  — the CARRY moves no minute, the successors' retreat does. The sentence in the ADR is the precise
+  one, because the dump was diffed field by field and the ten were named.
+- **A stale kickoff steers a fresh session at finished work.** This session's prompt named R-52 and
+  ADR-0497 as current; the committed handoff was eleven ADRs ahead. `git log origin/main` before
+  trusting any sha — including the prompt's — is the rule that caught it.
+
 ### 2026-09-18 (b) — a residual's range is the range the last census printed; a wall-clock census lies at a day boundary; and a rounding is chosen by measuring every candidate on the population, not by the one that reads right
 
 R-65 arrived as "1–28 minutes short on ~100 bookings" with three suspects. The four checks the

@@ -240,11 +240,11 @@ after the task's calendar admits it. The rules were derived from the stored date
 
 | File | Stored finish | CPM finish (before → after) | Finish within a day (of 110 / 126) | Critical agreed | Stored slack exact |
 |---|---|---|---|---|---|
-| Hard_File | 2026-11-05 | +42.0 d → −1.0 d → **exact** (ADR-0491) | **110** (ADR-0505; was 103, was 92) | **110** (ADR-0505; was 108, was 54) | **101 / 110** (ADR-0505; was 39 / 110 on the same instrument) |
+| Hard_File | 2026-11-05 | +42.0 d → −1.0 d → **exact** (ADR-0491) | **110** (ADR-0505; was 103, was 92) | **110** (ADR-0505; was 108, was 54) | **108 / 110** (ADR-0510; was 101 by ADR-0505, 39 / 110 on the same instrument) |
 | Hard_File_updated | 2026-11-05 | +31.2 d → −1.0 d → **exact** (ADR-0491) | **110** (ADR-0505; was 108, was 100) | 110 (was 59) | 101 / 103 |
-| Hard_File_updated2 | 2026-11-06 | +34.8 d → −1.0 d → **exact** (ADR-0491) | **110** (ADR-0505; was 109, was 93) | 107 (was 80) | 36 / 76 |
-| Hard_File_updated3 | 2026-12-12 | +18.7 d → −6.0 d (R-55) → −13 d → **exact** (ADR-0487) | **110** (ADR-0505; was 106, was 42) | 103 (was 65) | 46 / 68 |
-| Hard_File_updated3_24hr | 2026-11-19 01:00 | −2.0 d → **exact** (ADR-0505) | 109 | 70 | 7 / 19 (was 4) |
+| Hard_File_updated2 | 2026-11-06 | +34.8 d → −1.0 d → **exact** (ADR-0491) | **110** (ADR-0505; was 109, was 93) | 107 (was 80) | 38 / 76 (ADR-0510; was 36) |
+| Hard_File_updated3 | 2026-12-12 | +18.7 d → −6.0 d (R-55) → −13 d → **exact** (ADR-0487) | **110** (ADR-0505; was 106, was 42) | 103 (was 65) | 48 / 68 (ADR-0510; was 46) |
+| Hard_File_updated3_24hr | 2026-11-19 01:00 | −2.0 d → **exact** (ADR-0505) | 109 | 70 | **15 / 19** (ADR-0510; was 7, was 4) |
 | Project2 | 2027-09-14 | −15 d → exact | 126 (was 66) | 124 (was 120) | **65 / 65** (was 7) |
 | Project5 | 2028-01-26 | −1 d → exact | 126 (was 75) | 126 (was 124) | **95 / 95** (was 8) |
 | Large Test File / File2 | 2028-09-29 / 2029-04-20 | unmoved | 1 666 / 1 687 (ADR-0491; were 1 558 / 1 563) | 1 721 / 1 717 (were 1 682 / 1 686) | 865 / 668 (were 842 / 655) |
@@ -279,6 +279,33 @@ finishes on its stored instant**, its stored slack is exact on 101 of 110 and it
 110 of 110; the 24-hour snapshot's project finish is exact; Project2 / Project5 and the Large Test
 Files did not move. Pinned by the same oracle (raised floors, a stored-slack floor per row, the
 24-hour snapshot's own row) and by `tests/engine/test_milestone_carried_instant.py`.
+
+**ADR-0510 (R-67 — 2026-09-18): the backward mirror — a zero-duration task carries its LATE instant
+from the need that binds it.** MS Project keeps a milestone's late start / late finish as one wall
+instant wherever the tightest successor need falls: Hard_File UID 147's stored LateStart is
+SATURDAY 08-01 13:00 (UID 178's late start less its 72 elapsed hours of leveling delay), and
+Hard_File_updated3_24hr UID 155's is its DEADLINE, 11-05 17:00, with no successor at all. The axis
+kept only the minute; a crew PREDECESSOR reading the minute's start-role rendering (Monday 08:00)
+took its late finish two crew hours after the stored Friday 23:00 (UID 157), UID 94 inherited 150
+minutes of slack on its own calendar (6,510 for the stored 6,360), and on the 24-hour snapshot the
+24-hour crew below the deadline read 11-06 08:00, fifteen crew hours late, down to milestone 156
+(−4,320 for −4,740). The milestone now carries the earliest binding instant (a wall-path
+successor's late start less its elapsed delay, a carried milestone's instant, or — on a file with
+wall-path tasks — a binding deadline / date constraint or the backward target), a wall-path
+predecessor retreats from it, and a milestone whose early instant is carried measures its slack
+between its two instants (UID 404: 9,480, the stored figure, where the contiguous projection read
+9,420). **Late-finish instants exact: Hard_File 78 → 94 of 110, updated 83 → 87, updated2 27 → 37,
+updated3 30 → 45, the 24-hour snapshot 3 → 15**; stored slack exact as the table reads; Project2 /
+Project5 and the Large Test Files' finishes unmoved (their late finishes 108 / 99 and 919 / 824
+exact, 18 / 25 of the Large Test Files' milestone late starts newly exact). Across the 44 corpus
+files 268 late finishes moved toward the stored instant and 17 away — every one on a chain MS
+Project derives past a completed or started successor the engine still runs through (R-70) or a
+completed milestone's record. Two forms are named and registered, not chased: the engine writes a
+block-exact late start at the END of the block where MS Project writes the next block's START (UID
+178: 12:00 for 13:00, the same working minute; 742 late starts across the corpus — R-69), and the
+backward pass through a completed successor (R-70). Pinned by the oracle's late-finish floors per
+row, the raised slack floors, a dated chain pin on both snapshots, and
+`tests/engine/test_milestone_carried_late_instant.py`.
 
 ## Residuals — what was closed, and what remains
 
