@@ -85,14 +85,22 @@ class Calendar(StrictFrozenModel):
         not 480); falls back to a single contiguous block of ``working_minutes_per_day`` from
         the first segment / midnight when no segments are declared.
         """
+        return self.intraday_worked_seconds(minute_of_day * 60) // 60
+
+    def intraday_worked_seconds(self, second_of_day: int) -> int:
+        """:meth:`intraday_worked_minutes` at SECONDS resolution — the same segments and the
+        same fallback, so a boundary MS Project stored in tenths of a minute (every split
+        boundary in the intake corpus is a multiple of six seconds) is measured where it lies
+        instead of at the whole minute below it (R-65, ADR-0508). The minutes form is this
+        one at a whole minute: the segments are whole minutes, so the division is exact."""
         if not self.day_segments:
-            return max(0, min(minute_of_day, self.working_minutes_per_day))
+            return max(0, min(second_of_day, self.working_minutes_per_day * 60))
         worked = 0
         for start, end in self.day_segments:
-            if minute_of_day >= end:
-                worked += end - start
-            elif minute_of_day > start:
-                worked += minute_of_day - start
+            if second_of_day >= end * 60:
+                worked += (end - start) * 60
+            elif second_of_day > start * 60:
+                worked += second_of_day - start * 60
         return worked
 
     @property

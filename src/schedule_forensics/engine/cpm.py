@@ -744,9 +744,11 @@ def _worked_windows(a: Assignment) -> list[_Window]:
     return []
 
 
-def _covered_span(cal: Calendar, g0: dt.datetime, g1: dt.datetime, windows: list[_Window]) -> int:
-    """Working minutes of ``cal`` inside ``(g0, g1)`` that the ``windows`` cover (clipped,
-    merged, so an overlap is counted once)."""
+def _covered_seconds(
+    cal: Calendar, g0: dt.datetime, g1: dt.datetime, windows: list[_Window]
+) -> int:
+    """Working SECONDS of ``cal`` inside ``(g0, g1)`` that the ``windows`` cover (clipped,
+    merged, so an overlap is counted once) — the gap ruler's resolution (ADR-0508)."""
     clips = sorted((max(s, g0), min(f, g1)) for s, f in windows if s < g1 and f > g0)
     covered = 0
     run: _Window | None = None
@@ -755,10 +757,10 @@ def _covered_span(cal: Calendar, g0: dt.datetime, g1: dt.datetime, windows: list
             run = (run[0], max(run[1], f))
             continue
         if run is not None:
-            covered += _recorded_span(cal, *run)
+            covered += _recorded_seconds(cal, *run)
         run = (s, f)
     if run is not None:
-        covered += _recorded_span(cal, *run)
+        covered += _recorded_seconds(cal, *run)
     return covered
 
 
@@ -775,7 +777,18 @@ def _split_gaps(
     contour and the task's duration already spans it (Large_Test_File2 UID 5308: one of eight
     bookings delayed three weeks inside a fixed 228-hour duration — adding it read the task 17
     days late). A hole the calendar itself explains (a night, a lunch, a weekend between two
-    day-blocks) measures zero and is no gap."""
+    day-blocks) measures zero and is no gap.
+
+    The gaps are measured in working SECONDS and handed to the leg as whole minutes by rounding
+    the CUMULATIVE gap at every boundary (R-65, ADR-0508). MS Project places a split boundary in
+    tenths of a minute — every one of the intake corpus's 3,742 boundaries is a multiple of six
+    seconds — and reading each gap with both ends truncated to the whole minute left the leg
+    1 to 62 minutes short of the file's own recorded window on 24 bookings of the Large Test Files
+    (UID 5316: nineteen gaps, 5,076.8 minutes read 5,073; UID 5317: sixteen, fifteen minutes
+    short), never long. Rounded cumulatively, every boundary the leg honours is the nearest
+    whole minute of the true gap so far and their sum is the nearest whole minute of the whole,
+    so the occupancy meets the recorded window to the rounding of the duration; rounding each
+    gap on its own drifts by up to half a minute per gap (six minutes on UID 5316's booking)."""
     pieces = a.work_pieces
     if len(pieces) < 2:
         return ()
@@ -784,12 +797,18 @@ def _split_gaps(
         return ()
     out: list[tuple[float, int]] = []
     worked = 0
+    gap_seconds = 0  # the true gap so far, in working seconds of ``cal``
+    honoured = 0  # the whole minutes of it already handed to the leg
     for prev, nxt in pairwise(pieces):
         worked += prev.work_minutes
         g0, g1 = prev.finish, nxt.start
-        gap = _recorded_span(cal, g0, g1) - _covered_span(cal, g0, g1, others)
+        gap = _recorded_seconds(cal, g0, g1) - _covered_seconds(cal, g0, g1, others)
         if gap > 0 and 0 < worked < total:
-            out.append((worked / total, gap))
+            gap_seconds += gap
+            minutes = _nearest_minute(gap_seconds) - honoured
+            if minutes > 0:
+                out.append((worked / total, minutes))
+                honoured += minutes
     return tuple(out)
 
 
@@ -1326,26 +1345,43 @@ def _wall_to_offset(start: dt.datetime, wall: dt.datetime, cal: Calendar) -> int
     return datetime_to_offset(start, wall, cal)
 
 
+def _nearest_minute(seconds: int) -> int:
+    """``seconds >= 0`` of working time as whole minutes, half up — the importer's rounding of
+    a duration (``iso_duration_to_minutes``), applied to a measured span (ADR-0508)."""
+    return (seconds + 30) // 60
+
+
 def _recorded_span(cal: Calendar, start: dt.datetime, finish: dt.datetime) -> int:
     """Working minutes of ``cal`` inside the RECORDED window ``[start, finish]`` — the span a
-    material / cost booking occupies (ADR-0487). Segment-aware at both ends (a 14:24 finish on
-    a 08-12 / 13-17 day is 324 minutes into it, not 384: the contiguous projection ruler
-    over-counts a lunch gap by its width, one hour late on Hard_File_updated3 UID 385), whole
-    days by the ruler's count, elapsed time on a 24/7 calendar. 0 for an empty or inverted
-    window."""
+    material / cost booking occupies (ADR-0487) — to the NEAREST whole minute of its working
+    seconds (R-65, ADR-0508): a boundary MS Project stored in tenths of a minute is measured
+    where it lies, so 08:00:00 → 14:24:36 on a 08-12 / 13-17 day is 324.6 minutes and reads
+    325 where truncating each end to its minute read 324 (a window whose two ends carry the
+    same seconds — a material booking spread over whole days — reads the same either way).
+    Segment-aware at both ends (a 14:24 finish on that day is 324 minutes into it, not 384: the
+    contiguous projection ruler over-counts a lunch gap by its width, one hour late on
+    Hard_File_updated3 UID 385), whole days by the ruler's count, elapsed time on a 24/7
+    calendar. 0 for an empty or inverted window."""
+    return _nearest_minute(_recorded_seconds(cal, start, finish))
+
+
+def _recorded_seconds(cal: Calendar, start: dt.datetime, finish: dt.datetime) -> int:
+    """:func:`_recorded_span` unrounded, in working SECONDS of ``cal`` — the ruler a split's
+    gaps are measured on before the leg rounds their cumulative sum (ADR-0508)."""
     if finish <= start:
         return 0
     r = _ruler(cal)
     if r.is_24x7:
-        return int((finish - start).total_seconds() // 60)
+        return int((finish - start).total_seconds())
     d0, d1 = start.date(), finish.date()
-    worked_by = cal.intraday_worked_minutes
-    start_tod = start.hour * 60 + start.minute
-    finish_tod = finish.hour * 60 + finish.minute
+    worked_by = cal.intraday_worked_seconds
+    start_tod = start.hour * 3600 + start.minute * 60 + start.second
+    finish_tod = finish.hour * 3600 + finish.minute * 60 + finish.second
+    day = r.mpd * 60
     if d0 == d1:
         return worked_by(finish_tod) - worked_by(start_tod) if r.is_working_day(d0) else 0
-    first = r.mpd - worked_by(start_tod) if r.is_working_day(d0) else 0
-    middle = _count_working_days_r(r, d0 + dt.timedelta(days=1), d1) * r.mpd
+    first = day - worked_by(start_tod) if r.is_working_day(d0) else 0
+    middle = _count_working_days_r(r, d0 + dt.timedelta(days=1), d1) * day
     last = worked_by(finish_tod) if r.is_working_day(d1) else 0
     return first + middle + last
 
@@ -1489,9 +1525,11 @@ def _intersect_calendars(a: Calendar, b: Calendar, day_start_tod: int) -> Calend
 
 def working_minutes_between(cal: Calendar, start: dt.datetime, finish: dt.datetime) -> int:
     """Working minutes of ``cal`` inside the recorded window ``[start, finish]`` — the ruler the
-    plan builder measures a recorded span (ADR-0487) and a split's gap (ADR-0491) with, given a
-    public name for the planned-value proration (ADR-0492): segment-aware at both ends, whole
-    days by count, elapsed time on a 24/7 calendar, 0 for an empty or inverted window."""
+    plan builder measures a recorded span (ADR-0487) with, and the whole-minute reading of the
+    seconds ruler a split's gaps are measured on (ADR-0491, ADR-0508), given a public name for
+    the planned-value proration (ADR-0492): segment-aware at both ends, the nearest whole
+    minute of the working seconds, whole days by count, elapsed time on a 24/7 calendar, 0 for
+    an empty or inverted window."""
     return _recorded_span(cal, start, finish)
 
 

@@ -326,9 +326,14 @@ def test_leveled_goldens_reproduce_the_stored_finish_and_every_stored_slack(
 # (R-49, ADR-0490): the inferred zeros — 2 on Large Test File, 62 on File2, every one a Critical
 # activity whose element the MPXJ writer dropped — join the stored-slack population, and each is
 # reproduced exactly by the engine's own float. The pre-inference figures are the ones on the left.
+# tf_exact RE-PINNED 867 → 874 and 730 → 736 on 2026-09-18 (R-65, ADR-0508): the leveling gaps
+# are measured in working seconds and rounded cumulatively to the minute, so 13 / 21 split
+# bookings occupy exactly the window MS Project recorded (they read 1 to 62 minutes short), and
+# 66 / 101 activities moved TOWARD their stored finish in working minutes, none away; File2's
+# finish-within-a-day 1687 → 1689.
 _LARGE = [
-    ("fuse_ltf/Large_Test_File.mspdi.xml.gz", 1723, 1666, 867, 1024, 1721),
-    ("fuse_ltf/Large_Test_File2.mspdi.xml.gz", 1722, 1687, 730, 998, 1717),
+    ("fuse_ltf/Large_Test_File.mspdi.xml.gz", 1723, 1666, 874, 1024, 1721),
+    ("fuse_ltf/Large_Test_File2.mspdi.xml.gz", 1722, 1689, 736, 998, 1717),
 ]
 
 
