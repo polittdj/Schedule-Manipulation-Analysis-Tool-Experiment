@@ -19068,3 +19068,58 @@ token and the pid each had to be normalised before the diff told the truth (130 
 **187 passed / 0 failed in 5:07****. Attributed: **5,625 collected = 5,616 + 9** (the new module's 6 + float erosion's 2 + the drill's 1); the previous unit's 5,609 green + 9 = 5,618; parity **187 = 187** (no new parity-marked test). The 7 skips are the documented set (the loopback-allowlist pair,
 the three INCIDENTAL_SVG axis cases, the two LibreOffice interop skips that are correct in this container).
 Version 1.0.273; highest ADR 0507; schema 2.16.0 (unchanged).
+
+## 2026-09-18 (b) — R-65 CLOSED (ADR-0508): a leveling gap is measured in working seconds and the leg honours the nearest minute of the CUMULATIVE gap; the recorded span reads the nearest minute of its seconds — v1.0.274
+
+Branch `claude/nice-hypatia-ydw51z` (the designated branch, started on #697's squash `27ae8893`).
+Draft PR: see the follow-up line below (the operator merges). **`main`'s OWN runs for `27ae8893` read TO
+CONCLUSION this session, by their jobs** (the squash tree-identical to the reviewed head `598375dd`, tree
+`3459fa60…`, compared this session): CI 1923 (`35296778362`) `cui-guard` 01:48:22Z · `browser` 02:05:52Z ·
+`floor` 02:14:14Z · `test (3.13)` 02:17:03Z · `test (3.11)` 02:19:46Z · `check` 02:19:52Z — six of six green;
+installer-smoke 761 (`35296778353`) `linux` 01:48:55Z · `windows` 01:52:42Z. Nothing about `27ae8893` is
+outstanding.
+
+**Measured first, before a line changed (the kickoff's four checks).** All 29 intake `.mpp` files converted
+fresh (43 s; every artefact asserted to exist): 239 split WORK bookings, 173 differing from their recorded
+window, **102 exact to the second once the arithmetic is redone at seconds resolution** (the window IS the
+duration plus the uncovered gaps) — 24 distinct bookings on 14 tasks once the four saves of the Large Test
+File2 schedule are counted once (19 each; Leveled 16; `Large Test File.mpp` 10; the underscore
+`Large_Test_File.mpp` 0; the two byte-identical duplicate saves carry no split); 1 to 62 minutes short,
+never long (the row's "1–28" was the range ADR-0501 printed). The other 70: 49 completed records (5231 /
+5249) and 21 bookings with ADR-0502's absorbed delay (5270 / 5274) or ending before their task (5267) —
+windows SHORTER than the occupancy at seconds resolution too; plus UID 401 on the 24-hour snapshot (540 min,
+completed, a crew calendar with no declared segments in that save). The mechanism: all 3,742 split boundaries
+are multiples of six seconds (MS Project's tenths of a minute) and `_recorded_span` truncated both ends —
+every gap 0.0 to 0.9 min short. The other two suspects refuted (the share places a gap, it does not size it;
+the boundaries are the file's own instants: 217 of 239 windows begin on the first piece and end on the last).
+Three readings measured on the population from the stored start: truncation 0 of 98 within 30 s of the stored
+finish; per-gap rounding 8 (six minutes adrift on 5316's nineteen gaps); the cumulative gap rounded at every
+boundary 67 within 30 s, all within 72 (the start's own truncated seconds).
+
+**Shipped** `Calendar.intraday_worked_seconds` (the minutes form delegates), `cpm._recorded_seconds` /
+`_covered_seconds` (replacing `_covered_span`) / `_nearest_minute`, `_split_gaps` on seconds with cumulative
+rounding, `_recorded_span` the nearest minute of its seconds (106 material / cost windows in the corpus, 41 with
+seconds, 0 moved); 4 new leveling-split pins, 1 recorded-span pin, 1 calendar pin, the parity module
+`tests/parity/test_r65_gap_granularity_oracle.py` (10: the population per golden, the witnesses by name, the
+class beside the row, 5268, Leveled's 5306), the stored-dates oracle's two `_LARGE` floors re-derived upward
+(867 → 874, 730 → 736; File2 finish-within-a-day 1687 → 1689); the report's R-65 row closed;
+`docs/PARITY-REPORT.md`; the state docs.
+
+**Measured, pristine → this tree:** 102 of 102 corpus bookings read occupancy == window (0 before); the
+witnesses 5342 / 5316 / 5273 read 2,758 / 9,333 / 4,688 (2,757 / 9,329 / 4,687); on the goldens, in WORKING
+minutes of the task's execution calendar against the stored finish, Large Test File 66 toward / 0 away, File2
+101 / 0 (3 same), Leveled 96 / 4 — the four the 5306 chain (its four 2:36 gaps now read 10 where ADR-0491
+recorded 8 and MS Project carries 10:24; the leg 0.4 min from MS Project's; the chain a day late because
+5306's START is, for a reason that is not a split); every other golden byte-identical. A wall-clock census
+first reported 20 / 2 "away" — milestones now landing exactly at a day's end and rendering as the next
+morning's first instant, 0 working minutes off.
+
+**Verified:** red-first on the pristine package 17 by name / 51 passed; battery 9 / 9 red by name on shadow
+copies (control 68 green on the shadow, every cut checksum-verified, the plugin asserting the shadow, every row
+with a verdict): M01 13 · M02 12 · M03 12 · M04 32 · M05 8 · M06 20 · M07 8 · M08 4 · M09 2; statics green on
+both ruff binaries, format, mypy strict, bandit, node; wheel + nine installers rebuilt after the last format
+(lockstep 68 passed). A render diff was not run (view layer untouched; the movers are Large Test File finishes).
+One probe crashed behind a `sed` filter and reported the pristine number (its TSV never overwritten); the
+direct probe of one witness exposed it — assert the artefact, never the pipeline's exit.
+
+**Gate on the code commit `3132b97e`:** `-m parity` **197 passed / 0 failed in 4:43** (02:37–02:42Z, MEASURED on the working tree — identical to the code commit under `src/`, `tests/`, `pyproject.toml` and `installer/` — with the `-p mutcheck` plugin asserting the imported package); the FULL suite is running in a separate worktree at the code commit as this is written (`-v`, the plugin asserting it) and its figures land in the docs-only follow-up commit, the pattern of every campaign PR; statics green on both ruff binaries, `ruff format --check`, `mypy --strict` (165 files), `bandit` (exit 0), `node --check` per file; the wheel built after the last format; lockstep pins 68 passed. Attributed so far: **5,641 collected = 5,625 + 16** (the parity module's 10 + the leveling-split module's 4 + the recorded-span pin + the calendar pin); parity **197 = 187 + 10**.
