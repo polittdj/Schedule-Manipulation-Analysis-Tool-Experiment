@@ -19234,8 +19234,12 @@ re-export it did not carry** (it carried rebuilt installers only) — a false st
 trap this repo has named before, paid for again within the hour of writing it into the lessons.
 `52b18eae` carries the re-export (contract 71 passed; wheel + installers rebuilt; lockstep 68) and says
 so; `839f955e` sorts the import block ruff flagged on it. The worktree full suite at the code commit
-`9e773d74` was still running at hand-off (5,092 results at last read; its only non-construction
-failure is that same contract test, fixed above; the three state-doc pins are red there by
-construction). CI on the final head `839f955e` is the suite's read verdict — read it FIRST next
+`9e773d74` finished after the hand-off was written: **4 failed / 5,653 passed / 7 skipped in 36:20**
+(`PYTEST_EXIT=1`), every failure attributable — the three state-doc pins (latest ADR in the handoff and
+the session log, the handoff's version pin) red by construction at a code commit, and the re-export
+contract fixed above. The 7 skips are the documented set. Against the previous unit's expected 5,650
+green plus this unit's 8 new tests the non-skipped count (5,657) is ONE short and unattributed — the
+previous figure was itself an expectation never measured locally (that run was cut); CI's test jobs
+on the final head are the count to attribute against next time. CI on the final head `839f955e` is the suite's read verdict — read it FIRST next
 session (eight checks). Token wall reached ~87 % of the assumed 800k; the session ends here by the
 guardian's rule, with every durable artefact committed and pushed.
