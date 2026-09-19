@@ -1,54 +1,67 @@
-# Handoff — 2026-09-18 (d) (R-45 **CLOSED** (ADR-0511) — EV (BCWP) and AC (ACWP) follow the booking's TIME-PHASED record, not the task's scalars; the ribbon's BAC is the workbook's time line, not a definition — **v1.0.276**, schema **2.17.0**, wheel + nine installers rebuilt)
+# Handoff — 2026-09-18 (e) (R-70 **CLOSED** (ADR-0512) — the backward pass stops at finished work: a recorded-complete successor presents no late need and anchors no free float, a started successor presents its REMAINING portion, floored where the work resumes; R-71 / R-72 registered — **v1.0.277**)
 
-STATUS (current) — `main` @ **`60d75e93`** (#699, R-67 / ADR-0510 + QC-3 / ADR-0509, **MERGED** 2026-09-18 15:23Z by the operator; the squash TREE-IDENTICAL to the PR head `383b1c54`, tree `6e01fe7a…`, compared with `git rev-parse <sha>^{tree}` this session). **`main`'s OWN runs for `60d75e93` — read TO CONCLUSION this session, by their JOBS:** CI 1929 (`35362114564`): `cui-guard` 15:23:43Z · `browser` 15:41:20Z · `test (3.13)` 15:50:30Z · `floor` 15:50:59Z · `test (3.11)` 16:14:20Z · `check` 16:14:27Z — **SIX OF SIX GREEN**; installer-smoke 767 (`35362114719`): `linux` 15:24:05Z · `windows` 15:28:42Z. Nothing about `60d75e93` is outstanding. This unit ships on branch `claude/ci-verification-task-scheduling-7y0gh8` (the designated branch, started on the squash) as **draft PR [#700](https://github.com/polittdj/Schedule-Manipulation-Analysis-Tool-Experiment/pull/700)** (the operator merges; never marked ready here) — expect EIGHT checks (`installer/**` changed); read the FINAL head's checks, the docs-only follow-up push restarts them. **The gate:** statics green on both ruff binaries, `ruff format`, `mypy --strict` (165 files), `bandit` (exit 0); the 223 targeted pins green; the wheel built after the last `src/` edit; lockstep 68 passed; the full suite and `-m parity` ran in a separate worktree at the code commit `9e773d74`: **4 failed / 5,653 passed / 7 skipped in 36:20**, every failure attributable (the three state-doc pins red by construction at a code commit; the `web.app` re-export contract for `_progress_disagreement_note`, fixed in `52b18eae` / `839f955e`); the non-skipped count is one short of the naive expectation (5,650 + 8) and unattributed — the prior baseline was never measured locally. **EIGHT OF EIGHT GREEN on the final head `3a6b3c63`** (CI run `35371858317`: `cui-guard` 17:01:51Z · `browser` 17:19:09Z · `floor` 17:28:42Z · `test (3.13)` 17:45:54Z · `test (3.11)` 17:50:14Z · `check` 17:50:23Z; installer-smoke `35371858312`: `linux` 17:01:47Z · `windows` 17:04:54Z) — the suite's read verdict; the PR waits on the operator's merge; `floor` on `c33b87e4` had read 1 failed / 5,275 passed / 269 skipped, that one failure being the contract. Review cover remains ABSENT (Codex quota exhausted); the battery and the gate are all this repo gets. Highest ADR **0511**. Version **1.0.276**. Schema **2.17.0**. QC-1 / QC-2 (ADR-0393) and QC-3 (ADR-0509) bind every session.
+STATUS (current) — `main` @ **`4d931ba7`** (#700, R-45 / ADR-0511, **MERGED** 2026-09-18 18:56Z by the operator; the squash TREE-IDENTICAL to this session's arrival HEAD, tree `912770e6…`, compared with `git rev-parse <sha>^{tree}`). PR #700's FINAL head was **`f193522a`** (the kickoff's `839f955e` and the prior handoff's `3a6b3c63` were both superseded by one more docs-only push): its EIGHT checks were read to conclusion this session — CI `35376823983`: `cui-guard` 17:52:10Z · `browser` 18:09:50Z · `floor` 18:19:17Z · `test (3.13)` 18:37:39Z · `test (3.11)` 18:42:34Z · `check` 18:42:41Z; installer-smoke `35376823989`: `linux` 17:52:28Z · `windows` 17:56:55Z — eight of eight green. **`main`'s OWN runs for `4d931ba7`:** CI 1938 (`35383096831`): `cui-guard` 18:56:51Z · `browser` 19:12:33Z · `floor` 19:25:42Z · `test (3.11)` 19:29:59Z green; `test (3.13)` 19:43:38Z · `check` 19:43:43Z — **SIX OF SIX GREEN**, nothing about `4d931ba7` is outstanding; installer-smoke 776 (`35383096874`): `linux` 18:57:16Z · `windows` 19:01:22Z green. This unit ships on the designated branch **`claude/fervent-ramanujan-ttxvxk`** (started on the squash) as **draft PR [#701](https://github.com/polittdj/Schedule-Manipulation-Analysis-Tool-Experiment/pull/701)** (the operator merges; never marked ready here) — EIGHT checks (`installer/**` changed); read the FINAL head's checks. CI's `floor` job on the first head `56445980` read **2 failed / 5,288 passed / 269 skipped** — the wide program's negative-float pins and CH01's critical-basis premise, both R-70's effect on pins whose witness was the old backward pass (re-derived in `fe2ae49d`; the docs-only follow-up restarts CI once more). **The gate:** statics green on both ruff binaries (0.15.8 and 0.16.8), `ruff format`, `mypy --strict` (165 files), `bandit` (exit 0), `node --check`; the 13 new pins + the oracle module + the four re-derived pins green; the wheel built after the last `src/` edit; lockstep 68 passed; the full suite at the code commit `8e828bdb` read **4 failed / 5,667 passed / 7 skipped in 35:48** in a separate worktree — every failure attributable (two docs pins red by construction at a code commit; the two pins CI's floor job named, re-derived in `fe2ae49d`), the non-skipped count reconciling EXACTLY with the previous unit's 5,664 plus this unit's 14 new tests; `-m parity` at the same commit **201 passed / 0 failed in 5:04** (200 before this unit plus the witness pin). **EIGHT OF EIGHT GREEN on PR #701's final head `c5e31376`** (CI `35391393327`: `cui-guard` 20:27:18Z · `browser` 20:44:35Z · `floor` 20:53:51Z · `test (3.13)` 21:14:30Z · `test (3.11)` 21:20:10Z · `check` 21:20:16Z; installer-smoke `35391393126`: `linux` 20:26:31Z · `windows` 20:29:44Z) — the suite's read verdict; the PR waits on the operator's merge (this docs-only record restarts CI once more; read the FINAL head). Review cover remains ABSENT (Codex quota exhausted). Highest ADR **0512**. Version **1.0.277**. Schema **2.17.0** (unchanged). QC-1 / QC-2 (ADR-0393) and QC-3 (ADR-0509) bind every session.
 
 ## What landed
 
-**R-45 was three claims, and all three fell to the export the row said had no oracle.** Every sheet of
-every Hard_File workbook was opened. Fuse's field map maps MS Project's own `BCWP` / `ACWP` / `BCWS`
-onto its EV / AC / PV and `Baseline Cost` onto both its Baseline Cost and Budget Cost; the Forensic
-Analysis Report diffs the two snapshots activity by activity and states updated3's whole-file
-Budget Cost as **133,400** (unchanged) — the engine's figure to the unit.
+**R-70 was right about the mechanism and wrong about half its remedy.** The engine bound
+Hard_File_updated3's UID 188 to the completed 291's late-start need and read 09-08 for the stored
+12-12 17:00 (walked on the engine's own network: integer 21,600, −12,305 minutes of float, five
+activities above it following). Measured on the 44-file corpus (15 goldens + 29 conversions, 22,105
+activities): every completed activity stores its late dates as its ACTUALS (8,644 / 8,644, slack 0,
+never Critical) and every started one its late start as its actual start (1,159 / 1,159); dropping a
+finished successor reproduces the stored late finish of all 40 predecessors of finished work from the
+file alone (the binding rule 0 / 40). **"Drop a started successor" fell** to one witness — the
+logic-reestablished 188 is stored at 187's **Resume**, 08-17 17:00 (not the record 08-05, not the
+unfloored 08-12 13:00, not the next successor's 09-07) — and four candidates were measured on the 222
+predecessors of started work: the remaining portion's late start FLOORED where it resumes **217**,
+unfloored 215, resume 195, the record 193, dropping 138 (the five misses one activity's own clamped
+date — R-71); the 22 SS links into started work refute the record and resume.
 
-* **BAC 121,800 is the Ribbon View's time line.** The workbook's five monthly ribbons run 2026-07 to
-  2026-11 (built around updated2's 11-06 finish); updated3 finishes 12-12, and its **15
-  December-starting activities carry 11,600 / 160 h** — every ribbon delta to the unit (Budget /
-  Total / Remaining Cost −11,600, Baseline / Total Work −160 h, actuals unchanged), and Fuse's own
-  per-activity view of updated3 lists none of them. No engine change; pinned as a reconciliation.
-* **EV and AC follow the booking's time-phased record.** UID 290 (100 % complete) is written 31 h
-  of actual work on a 40 h booking; its Type-2 / Type-3 blocks hold **16 h regular + 6 h overtime**.
-  22 / 40 × 12,500 = 6,875 (53,715 = 59,340 − 5,625, exact on all three ribbons: 16,800 / 49,700 /
-  53,715); 16 h × 200 + 6 h × 300 = 5,000 spent where the scalar says 6,800, and the Logistics
-  Apprentice's 17.077 h are priced at the rate-table row in force at the **status date** (30, not
-  the 10 they were worked at): +341.5 — the two ACWP deltas (+341.92 / −1,458.08) sum to 290's
-  1,800 of overtime. AC 20,800.00 / 64,104.61 / 66,244.61 → the ribbon's 20,800 / 64,105 / 66,245.
-  "To time now" is refuted by sign.
-* **Shipped:** `Assignment.performed_work_seconds` / `performed_overtime_seconds` (the file's own
-  resolution — per-booking minute rounding reads 64,104.17, which prints 64,104), `baseline_cost`,
-  `actual_cost`; `Resource.overtime_rate` at the status date; SCHEMA 2.17.0; `evm._earned_value` /
-  `_actual_cost_of_work_performed`; the disagreement disclosed on SPI and the EVM page (UID 290).
+* **Shipped:** `_late_need` / `_remaining` / `rem_need` / `rem_ls_wall` in `engine/cpm.py` — a
+  recorded-complete successor presents no late need and anchors no free float (188's FreeSlack ==
+  TotalSlack); a started successor presents its remaining portion (late finish less remaining, never
+  earlier than early finish less remaining; FF / SF keep the late finish; an absent remaining — the
+  MPXJ writer's dropped zero on the 99 %-complete activities — reads the percent-derived remainder;
+  the SRA's override IS the remaining); wall and fast paths; the carried-late binding check reads the
+  same need. A started successor's free-float anchor stays its recorded start (EVM1 17 → 18 stores 0).
+* **Measured, pristine → this tree, incomplete work:** 93 late finishes toward the stored instant,
+  **0 away**, 39 newly exact; 36 slacks newly exact, 69 toward, 0 away; free slack 2,320 → 2,349;
+  Critical agreed 21,877 → **22,061** of 22,105 (updated3_24hr 70 → **110 / 110**, updated3 103 → 109,
+  updated2 107 → 109, Project2 124 → 126 — the pure-logic count is MS Project's own 41; Project2 /
+  Project5 every incomplete late finish exact, 106 / 106 and 99 / 99; LTF / File2 slacks 874 → 876 and
+  736 → 740). The movement AWAY is the record class alone (6,176 completed activities' computed late
+  finishes — 18 coincidences before, 0 after — and 22 started late starts under R-08's held
+  `LF − duration`), plus one file: the logic-reestablished conversion's Critical agreement 109 → 102,
+  where the chain above the witness reads +4 days for a stored 0 (the pre-R-70 engine read −8) because
+  the engine re-spans 187 for its full 120 h from the floor — **R-72**, exposed, not caused.
 
 ## How it was verified
 
-Red first on the pristine package by name (parity, importer, Save, schema, engine); battery **13 / 13
-red by name** on shadow copies (control green, the package asserted per row); corpus census 44 files /
-1,079 budgeted tasks: EV moves on 290 (every copy of updated3 and the 24-hour snapshots) and on four
-in-progress tasks of the 24-hour snapshots (**UNVERIFIED** — no ribbon for that save), AC on 290 and
-210, every other file byte-identical (EVM1 / EVM2 carry no record). Six QC-3 assumptions fell,
-recorded in ADR-0511's table — including the session's own "integer minutes keep the unit match".
+Red first on the pristine package by name (11 of 13 synthetic pins, 2 controls; the oracle's witness
+pin); **battery 12 / 12 red by name after ONE survivor** — the carried-late binding check reading the
+whole task — exposed a milestone-between-crews case no pin covered (written, red on the pristine
+engine and under the cut); six pins re-derived with dated reasons (four found by the shadow run, two by CI's floor job); the oracle's late-finish census
+now counts incomplete work only (ADR-0507's decision 3 applied to the late dates). Six QC-3
+assumptions recorded in ADR-0512's table: four held, three fell (drop-started, the free anchor, every
+started task carrying a remaining).
 
 ## Deliberately NOT done
 
-The 24-hour snapshots' four movers (no oracle) · MS Project's stored per-task BCWP / ACWP (MPXJ does
-not read them) · rate tables B to E · a per-booking BCWS read (ADR-0492's series already is).
+The record's own late dates — LS = AS / LF = AF on finished work, LS = AS on started work, and
+MS Project's clamped LateFinish on 22 started activities (**R-71**, T3: it moves `is_critical` on every
+finished activity) · the full-duration re-span of a floored started activity (**R-72**, T1: 7 of 192
+floored starts finish more than a day late) · the importer's dropped-zero `RemainingDuration` · a free
+float floored at zero (MS Project stores none negative) · the logic-reestablished file as a golden (the
+floor's only file witness; pinned synthetically).
 
 ## Next — campaign queue
 
-**Read `git log origin/main` before trusting any sha here.** Then §3 in order: **R-70** (T2, M — the
-backward pass through a completed / started successor; the repo carries the oracle: updated3's 188
-stored 12-12 17:00 against its completed successor 291's 09-08; the 67 / 34 census in ADR-0510) ·
-then R-03 · R-04 · R-09 · **R-69** · R-13 · R-18 · R-21 · R-22 · R-32 · R-39; **R-68** waits on the
-operator's reading (question (f)). The design queue is 19 artboards.
+**Read `git log origin/main` before trusting any sha here.** Then §3 in order: **R-72** (T1, M — the
+floored started activity spans its REMAINING from the later of the floor and Resume; red-first on
+187's 08-20 17:00; measure against ADR-0476's rejected variants on the whole corpus first — UID 1489's
+136-day swing is the trap) · R-03 · R-04 · R-09 · R-69 · **R-71** · R-13 · R-18 · R-21 · R-22 · R-32 ·
+R-39; R-68 waits on the operator's reading (question (f)). The design queue is 19 artboards.
 
 # (prior) handoffs — archived
 

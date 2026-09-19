@@ -245,10 +245,10 @@ after the task's calendar admits it. The rules were derived from the stored date
 |---|---|---|---|---|---|
 | Hard_File | 2026-11-05 | +42.0 d → −1.0 d → **exact** (ADR-0491) | **110** (ADR-0505; was 103, was 92) | **110** (ADR-0505; was 108, was 54) | **108 / 110** (ADR-0510; was 101 by ADR-0505, 39 / 110 on the same instrument) |
 | Hard_File_updated | 2026-11-05 | +31.2 d → −1.0 d → **exact** (ADR-0491) | **110** (ADR-0505; was 108, was 100) | 110 (was 59) | 101 / 103 |
-| Hard_File_updated2 | 2026-11-06 | +34.8 d → −1.0 d → **exact** (ADR-0491) | **110** (ADR-0505; was 109, was 93) | 107 (was 80) | 38 / 76 (ADR-0510; was 36) |
-| Hard_File_updated3 | 2026-12-12 | +18.7 d → −6.0 d (R-55) → −13 d → **exact** (ADR-0487) | **110** (ADR-0505; was 106, was 42) | 103 (was 65) | 48 / 68 (ADR-0510; was 46) |
-| Hard_File_updated3_24hr | 2026-11-19 01:00 | −2.0 d → **exact** (ADR-0505) | 109 | 70 | **15 / 19** (ADR-0510; was 7, was 4) |
-| Project2 | 2027-09-14 | −15 d → exact | 126 (was 66) | 124 (was 120) | **65 / 65** (was 7) |
+| Hard_File_updated2 | 2026-11-06 | +34.8 d → −1.0 d → **exact** (ADR-0491) | **110** (ADR-0505; was 109, was 93) | **109** (ADR-0512; was 107, was 80) | 38 / 76 (ADR-0510; was 36) |
+| Hard_File_updated3 | 2026-12-12 | +18.7 d → −6.0 d (R-55) → −13 d → **exact** (ADR-0487) | **110** (ADR-0505; was 106, was 42) | **109** (ADR-0512; was 103, was 65) | **49 / 68** (ADR-0512; was 48 by ADR-0510, was 46) |
+| Hard_File_updated3_24hr | 2026-11-19 01:00 | −2.0 d → **exact** (ADR-0505) | 109 | **110** (ADR-0512; was 70) | **15 / 19** (ADR-0510; was 7, was 4) |
+| Project2 | 2027-09-14 | −15 d → exact | 126 (was 66) | **126** (ADR-0512; was 124, was 120) | **65 / 65** (was 7) |
 | Project5 | 2028-01-26 | −1 d → exact | 126 (was 75) | 126 (was 124) | **95 / 95** (was 8) |
 | Large Test File / File2 | 2028-09-29 / 2029-04-20 | unmoved | 1 666 / 1 687 (ADR-0491; were 1 558 / 1 563) | 1 721 / 1 717 (were 1 682 / 1 686) | 865 / 668 (were 842 / 655) |
 
@@ -309,6 +309,24 @@ block-exact late start at the END of the block where MS Project writes the next 
 backward pass through a completed successor (R-70). Pinned by the oracle's late-finish floors per
 row, the raised slack floors, a dated chain pin on both snapshots, and
 `tests/engine/test_milestone_carried_late_instant.py`.
+
+**ADR-0512 (R-70 — 2026-09-18): the backward pass stops at finished work.** MS Project derives a
+predecessor's late dates from the project finish, the caps and its LIVE successors: a completed
+successor's stored late dates are its actuals (8,644 of 8,644 across the 44-file corpus) and it
+binds nothing — Hard_File_updated3 UID 188's stored LateFinish is the project finish, 12-12 17:00,
+while its only successor, the completed 291, is stored at its own record, 09-08; the engine had
+read 09-08 and −12,305 minutes of float for 188 and the five activities above it. A started
+successor presents its REMAINING portion — its late finish less its remaining, never earlier than
+where the remaining work resumes (the logic-reestablished 188 is stored at 187's Resume, 08-17
+17:00; the floored form reproduces 217 of the 222 predecessors of started work from the file
+alone, the five misses one activity's own clamped date). Re-measured on every golden, incomplete
+work: 93 late finishes toward the stored instant and 0 away; 36 stored slacks newly exact; Critical
+agreement 21,877 → 22,061 of 22,105 (the 24-hour snapshot 70 → **110 of 110**, updated3 103 → 109,
+updated2 107 → 109, Project2 124 → **126** — the pure-logic count is MS Project's own 41); every
+incomplete activity of Project2 / Project5 has its late-finish instant exact (106 / 106, 99 / 99).
+The stored-dates oracle's late-finish census counts incomplete work only (a finished activity's
+late dates are a record, ADR-0507's decision applied); pinned there and by
+`tests/engine/test_backward_pass_past_finished_work.py`.
 
 ## Residuals — what was closed, and what remains
 

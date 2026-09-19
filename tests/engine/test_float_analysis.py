@@ -98,7 +98,10 @@ def test_float_days_convert_on_the_schedules_calendar() -> None:
     [
         # network finish in working days: the STORED finishes since ADR-0474 (the leveled
         # goldens' resource-leveling delays are honoured — 391 / 497 read 15 d / 1 d early)
-        ("Project2", 43, 41, Decimal("402")),
+        # Project2's pure-logic count RE-PINNED 43 → 41 on 2026-09-18 (R-70, ADR-0512): the two
+        # completed activities that read critical were bound to completed successors' records;
+        # a finished successor presents no need, and the count is MS Project's own 41.
+        ("Project2", 41, 41, Decimal("402")),
         ("Project5", 4, 4, Decimal("498.00")),
     ],
 )

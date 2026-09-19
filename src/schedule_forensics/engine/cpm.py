@@ -2524,9 +2524,58 @@ def compute_cpm(
     #: untouched — every carried instant projects to the minute the integer pass chose.
     ms_late_wall: dict[int, dt.datetime] = {}
 
+    #: R-70: the need a successor presents to its predecessors follows the successor's PROGRESS.
+    #: A recorded-complete successor presents none — its dates are a record (ADR-0476), and MS
+    #: Project derives the predecessor's late dates from the project finish, not from finished
+    #: work (Hard_File_updated3 UID 188: stored LateFinish 12-12 17:00 while its only successor,
+    #: the completed 291, is stored with a late start of 09-08; the engine read 09-08). A STARTED
+    #: successor presents its REMAINING portion: the remaining work's late start (its late finish
+    #: less its remaining duration), never earlier than where that work is scheduled to resume
+    #: (its early finish less the same remaining — the logic-reestablished file's UID 188 is
+    #: stored at 187's Resume, 08-17 17:00, not at 187's record 08-05 nor at the unfloored
+    #: 08-12 13:00). FF / SF needs keep the successor's late finish: the remaining work's finish
+    #: IS the task's. An unstarted successor presents its late start, as before.
+    ov_r = duration_overrides or {}
+
+    def _remaining(s: int) -> int:
+        """The successor's remaining duration in ITS OWN duration minutes: the SRA's override
+        on an in-progress task IS a remaining duration (the _resume_bounds rule), else the
+        stored remaining, else the percent-derived remainder of the planned duration (the
+        MPXJ writer drops a zero remaining duration, so an absent element on a 99 % activity
+        reads 1 % of its duration here, not the unknown the model records)."""
+        stored = task_by_id[s].remaining_duration_minutes
+        rem = ov_r.get(s, stored)
+        if rem is None:
+            pct = task_by_id[s].percent_complete
+            rem = round(task_by_id[s].duration_minutes * (100.0 - pct) / 100.0)
+        return max(rem, 0)
+
+    #: the remaining portion's late-start need (project axis) and its wall instant, per STARTED
+    #: successor, filled as each task's backward step completes
+    rem_need: dict[int, int] = {}
+    rem_ls_wall: dict[int, dt.datetime] = {}
+
+    def _started(s: int) -> bool:
+        return s in actual_floor and s not in actual_finish_pin
+
+    def _late_need(s: int, rel: RelationshipType, lag: int, dur_p: int) -> int | None:
+        """The late-finish bound successor ``s`` imposes on its predecessor, or ``None`` when
+        it imposes none (R-70: a recorded-complete successor)."""
+        if s in actual_finish_pin:
+            return None
+        if s in rem_need:
+            return lf_upper_bound(rel, rem_need[s], late_finish[s], lag, dur_p)
+        return lf_upper_bound(rel, ls_need[s], late_finish[s], lag, dur_p)
+
     def _succ_ls_wall(s: int, lag: int) -> dt.datetime:
         # a successor's stored leveling delay sits between its predecessors' finish and its own
         # late start (MS Project: Hard_File UID 14 LF 11:00 = UID 141 LS 21:00 minus its 10 h)
+        if s in rem_need:
+            # R-70: a started successor's need is its remaining portion's late start; the
+            # leveling delay precedes the work and a resumed tail is already past it
+            if lag == 0:
+                return rem_ls_wall[s]
+            return _offset_to_wall(ps, rem_need[s] - lag, cal, role="start")
         delay = dt.timedelta(minutes=task_by_id[s].leveling_delay_minutes)
         if lag == 0 and s in exec_plan:
             return ls_wall[s] - delay
@@ -2570,8 +2619,8 @@ def compute_cpm(
         cands: list[dt.datetime] = []
         lost = False
         for s, rel, lag in succs[tid]:
-            if lf_upper_bound(rel, ls_need[s], late_finish[s], lag, 0) != lf:
-                continue  # not a binding need of this late finish
+            if _late_need(s, rel, lag, 0) != lf:
+                continue  # not a binding need of this late finish (none from a completed one)
             if lag != 0:
                 return None
             if s in exec_plan or s in ms_late_wall:
@@ -2603,12 +2652,15 @@ def compute_cpm(
         # which also drags it onto the critical path and fails DCMA-12/13. Float in the past is
         # not a forecast; it must at least be self-consistent.
         dur_p = early_finish[tid] - early_start[tid] if tid in actual_finish_pin else duration[tid]
+        dur_s_backward = duration[tid]
         if tid in exec_plan:
             plan, cal_t = exec_plan[tid].legs, exec_plan[tid].axis
             task = task_by_id[tid]
             finish_needs: list[dt.datetime] = [tw]
             start_needs: list[dt.datetime] = []
             for s, rel, lag in succs[tid]:
+                if s in actual_finish_pin:
+                    continue  # R-70: a recorded-complete successor presents no need
                 if rel is RelationshipType.FS:
                     finish_needs.append(_succ_ls_wall(s, lag))
                 elif rel is RelationshipType.FF:
@@ -2656,10 +2708,19 @@ def compute_cpm(
                 if task.leveling_delay_minutes > 0
                 else late_start[tid]
             )
+            if _started(tid):
+                # R-70: the remaining portion's late start on the task's own legs, never earlier
+                # than where the remaining work is scheduled to resume
+                tail = _plan_scaled(plan, _remaining(tid), dur_s_backward)
+                rem_ls_wall[tid] = max(
+                    _plan_retreat(lf_w, tail, tod0), _plan_retreat(ef_wall[tid], tail, tod0)
+                )
+                rem_need[tid] = _wall_to_offset(ps, rem_ls_wall[tid], cal)
             continue
         bounds = [
-            lf_upper_bound(rel, ls_need[s], late_finish[s], lag, dur_p)
+            bound
             for s, rel, lag in succs[tid]
+            if (bound := _late_need(s, rel, lag, dur_p)) is not None
         ]
         if tid in lf_cap:
             bounds.append(lf_cap[tid])
@@ -2667,6 +2728,10 @@ def compute_cpm(
         late_finish[tid] = lf
         late_start[tid] = lf - dur_p
         ls_need[tid] = late_start[tid]
+        if _started(tid):
+            # R-70: the remaining portion's late start, never earlier than where it resumes
+            rem_need[tid] = max(lf, early_finish[tid]) - _remaining(tid)
+            rem_ls_wall[tid] = _offset_to_wall(ps, rem_need[tid], cal, role="start")
         if dur_p == 0:
             carried_late = _carried_late_instant(tid, lf)
             if carried_late is not None:
@@ -2691,9 +2756,10 @@ def compute_cpm(
         if tid in exec_plan:
             cal_t = exec_plan[tid].axis
             total = exec_slack[tid]
-            if succs[tid]:
+            free_links = [link for link in succs[tid] if link[0] not in actual_finish_pin]
+            if free_links:
                 free_cands = []
-                for s, rel, lag in succs[tid]:
+                for s, rel, lag in free_links:
                     if rel is RelationshipType.FS:
                         anchor, need = ef_wall[tid], _succ_early_start_wall(s, lag)
                     elif rel is RelationshipType.SS:
@@ -2720,7 +2786,12 @@ def compute_cpm(
                     ps, late_finish[tid], cal, role="finish"
                 )
                 total = _wall_minutes_between(ms_wall[tid], late_instant, cal, tod0)
-            if succs[tid]:
+            # R-70: a recorded-complete successor anchors nothing (Hard_File_updated3 UID 188
+            # stores FreeSlack == TotalSlack with its only successor finished); a started one
+            # anchors at its recorded start, as before (EVM1 UID 17 stores 0 against UID 18's
+            # actual start, not the 360 its remaining portion would give)
+            free_links = [link for link in succs[tid] if link[0] not in actual_finish_pin]
+            if free_links:
                 free = min(
                     link_slack(
                         rel,
@@ -2730,7 +2801,7 @@ def compute_cpm(
                         early_finish[s],
                         lag,
                     )
-                    for s, rel, lag in succs[tid]
+                    for s, rel, lag in free_links
                 )
             else:
                 free = backward_target - early_finish[tid]

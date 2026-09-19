@@ -1,5 +1,57 @@
 # HANDOFF archive
 
+# (prior) Handoff — 2026-09-18 (d) (R-45 **CLOSED** (ADR-0511) — EV (BCWP) and AC (ACWP) follow the booking's TIME-PHASED record, not the task's scalars; the ribbon's BAC is the workbook's time line, not a definition — **v1.0.276**, schema **2.17.0**, wheel + nine installers rebuilt)
+
+STATUS (current) — `main` @ **`60d75e93`** (#699, R-67 / ADR-0510 + QC-3 / ADR-0509, **MERGED** 2026-09-18 15:23Z by the operator; the squash TREE-IDENTICAL to the PR head `383b1c54`, tree `6e01fe7a…`, compared with `git rev-parse <sha>^{tree}` this session). **`main`'s OWN runs for `60d75e93` — read TO CONCLUSION this session, by their JOBS:** CI 1929 (`35362114564`): `cui-guard` 15:23:43Z · `browser` 15:41:20Z · `test (3.13)` 15:50:30Z · `floor` 15:50:59Z · `test (3.11)` 16:14:20Z · `check` 16:14:27Z — **SIX OF SIX GREEN**; installer-smoke 767 (`35362114719`): `linux` 15:24:05Z · `windows` 15:28:42Z. Nothing about `60d75e93` is outstanding. This unit ships on branch `claude/ci-verification-task-scheduling-7y0gh8` (the designated branch, started on the squash) as **draft PR [#700](https://github.com/polittdj/Schedule-Manipulation-Analysis-Tool-Experiment/pull/700)** (the operator merges; never marked ready here) — expect EIGHT checks (`installer/**` changed); read the FINAL head's checks, the docs-only follow-up push restarts them. **The gate:** statics green on both ruff binaries, `ruff format`, `mypy --strict` (165 files), `bandit` (exit 0); the 223 targeted pins green; the wheel built after the last `src/` edit; lockstep 68 passed; the full suite and `-m parity` ran in a separate worktree at the code commit `9e773d74`: **4 failed / 5,653 passed / 7 skipped in 36:20**, every failure attributable (the three state-doc pins red by construction at a code commit; the `web.app` re-export contract for `_progress_disagreement_note`, fixed in `52b18eae` / `839f955e`); the non-skipped count is one short of the naive expectation (5,650 + 8) and unattributed — the prior baseline was never measured locally. **EIGHT OF EIGHT GREEN on the final head `3a6b3c63`** (CI run `35371858317`: `cui-guard` 17:01:51Z · `browser` 17:19:09Z · `floor` 17:28:42Z · `test (3.13)` 17:45:54Z · `test (3.11)` 17:50:14Z · `check` 17:50:23Z; installer-smoke `35371858312`: `linux` 17:01:47Z · `windows` 17:04:54Z) — the suite's read verdict; the PR waits on the operator's merge; `floor` on `c33b87e4` had read 1 failed / 5,275 passed / 269 skipped, that one failure being the contract. Review cover remains ABSENT (Codex quota exhausted); the battery and the gate are all this repo gets. Highest ADR **0511**. Version **1.0.276**. Schema **2.17.0**. QC-1 / QC-2 (ADR-0393) and QC-3 (ADR-0509) bind every session.
+
+## What landed
+
+**R-45 was three claims, and all three fell to the export the row said had no oracle.** Every sheet of
+every Hard_File workbook was opened. Fuse's field map maps MS Project's own `BCWP` / `ACWP` / `BCWS`
+onto its EV / AC / PV and `Baseline Cost` onto both its Baseline Cost and Budget Cost; the Forensic
+Analysis Report diffs the two snapshots activity by activity and states updated3's whole-file
+Budget Cost as **133,400** (unchanged) — the engine's figure to the unit.
+
+* **BAC 121,800 is the Ribbon View's time line.** The workbook's five monthly ribbons run 2026-07 to
+  2026-11 (built around updated2's 11-06 finish); updated3 finishes 12-12, and its **15
+  December-starting activities carry 11,600 / 160 h** — every ribbon delta to the unit (Budget /
+  Total / Remaining Cost −11,600, Baseline / Total Work −160 h, actuals unchanged), and Fuse's own
+  per-activity view of updated3 lists none of them. No engine change; pinned as a reconciliation.
+* **EV and AC follow the booking's time-phased record.** UID 290 (100 % complete) is written 31 h
+  of actual work on a 40 h booking; its Type-2 / Type-3 blocks hold **16 h regular + 6 h overtime**.
+  22 / 40 × 12,500 = 6,875 (53,715 = 59,340 − 5,625, exact on all three ribbons: 16,800 / 49,700 /
+  53,715); 16 h × 200 + 6 h × 300 = 5,000 spent where the scalar says 6,800, and the Logistics
+  Apprentice's 17.077 h are priced at the rate-table row in force at the **status date** (30, not
+  the 10 they were worked at): +341.5 — the two ACWP deltas (+341.92 / −1,458.08) sum to 290's
+  1,800 of overtime. AC 20,800.00 / 64,104.61 / 66,244.61 → the ribbon's 20,800 / 64,105 / 66,245.
+  "To time now" is refuted by sign.
+* **Shipped:** `Assignment.performed_work_seconds` / `performed_overtime_seconds` (the file's own
+  resolution — per-booking minute rounding reads 64,104.17, which prints 64,104), `baseline_cost`,
+  `actual_cost`; `Resource.overtime_rate` at the status date; SCHEMA 2.17.0; `evm._earned_value` /
+  `_actual_cost_of_work_performed`; the disagreement disclosed on SPI and the EVM page (UID 290).
+
+## How it was verified
+
+Red first on the pristine package by name (parity, importer, Save, schema, engine); battery **13 / 13
+red by name** on shadow copies (control green, the package asserted per row); corpus census 44 files /
+1,079 budgeted tasks: EV moves on 290 (every copy of updated3 and the 24-hour snapshots) and on four
+in-progress tasks of the 24-hour snapshots (**UNVERIFIED** — no ribbon for that save), AC on 290 and
+210, every other file byte-identical (EVM1 / EVM2 carry no record). Six QC-3 assumptions fell,
+recorded in ADR-0511's table — including the session's own "integer minutes keep the unit match".
+
+## Deliberately NOT done
+
+The 24-hour snapshots' four movers (no oracle) · MS Project's stored per-task BCWP / ACWP (MPXJ does
+not read them) · rate tables B to E · a per-booking BCWS read (ADR-0492's series already is).
+
+## Next — campaign queue
+
+**Read `git log origin/main` before trusting any sha here.** Then §3 in order: **R-70** (T2, M — the
+backward pass through a completed / started successor; the repo carries the oracle: updated3's 188
+stored 12-12 17:00 against its completed successor 291's 09-08; the 67 / 34 census in ADR-0510) ·
+then R-03 · R-04 · R-09 · **R-69** · R-13 · R-18 · R-21 · R-22 · R-32 · R-39; **R-68** waits on the
+operator's reading (question (f)). The design queue is 19 artboards.
+
 # (prior) Handoff — 2026-09-18 (c) (R-67 **CLOSED** (ADR-0510) — a zero-duration task carries its LATE instant from the need that binds it, the backward mirror of ADR-0505; a binding deadline is an instant too; a carried milestone's slack is measured between its instants; **QC-3** joins the standing working rules (ADR-0509) — **v1.0.275**, schema **2.16.0**, wheel + nine installers rebuilt)
 
 STATUS (current) — `main` @ **`bb5cef0d`** (#698, R-65 / ADR-0508, **MERGED** 2026-09-18 12:39Z by the operator; the squash TREE-IDENTICAL to the reviewed PR head `3ce38213`, tree `68467591…`, compared with `git rev-parse <sha>^{tree}` this session). **`main`'s OWN runs for `bb5cef0d` — read TO CONCLUSION this session, by their JOBS:** CI 1926 (`35345800081`): `cui-guard` 12:39:26Z · `browser` 12:56:58Z · `floor` 13:06:07Z · `test (3.13)` 13:23:42Z · `test (3.11)` 13:29:33Z · `check` 13:30:16Z — **SIX OF SIX GREEN**; installer-smoke 764 (`35345800104`): `linux` 12:39:48Z · `windows` 12:43:48Z. Nothing about `bb5cef0d` is outstanding. This unit ships on branch `claude/affectionate-heisenberg-e70kzd` (the designated branch, started on the squash) as **draft PR [#699](https://github.com/polittdj/Schedule-Manipulation-Analysis-Tool-Experiment/pull/699)** (the operator merges; never marked ready here). **EIGHT OF EIGHT GREEN on the head `4978fb4b`** (`installer/**` changed): `cui-guard` 13:52:31Z · `linux` 13:53:12Z · `windows` 13:57:05Z · `browser` 14:09:58Z · `floor` 14:14:31Z · `test (3.13)` 14:37:43Z · `test (3.11)` 14:42:27Z · `check` 14:42:33Z — the docs-only follow-up push restarts them; read the FINAL head. **The gate:** `-m parity` in the worktree at the code commit `da4f7e67` **198 passed / 0 failed in 6:53** (`PYTEST_EXIT=0`; 197 + the dated chain pin); the local full-suite run there was CUT at 2,771 results (0 failed, the two documented urlparse skips) when the container was resumed at 14:42Z, and restarted — CI's `test (3.11)` / `test (3.13)` on `4978fb4b`, whose `src/` / `tests/` / `pyproject.toml` / `installer/` are byte-identical to the code commit's, ran the full suite WITH the coverage gates and are green: that is the suite's read verdict. `chatgpt-codex-connector`'s quota is still exhausted — **review cover remains ABSENT**; the batteries and the gate are all this repo gets. Highest ADR **0510**. Version **1.0.275**. Schema **2.16.0** (unchanged: no model change). QC-1 / QC-2 (ADR-0393) and **QC-3 (ADR-0509)** bind every session; all three are pinned by `tests/test_standing_rules.py` (ADR-0393, ADR-0509).
