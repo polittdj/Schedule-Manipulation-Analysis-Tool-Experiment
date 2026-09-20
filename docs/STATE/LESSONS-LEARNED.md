@@ -435,6 +435,39 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-20 (d) — a reader must never filter the value it judges; a writer that skips a cell says so in the cell reference; the divisor is the task's OWN calendar, not the crew it is scheduled on (ADR-0516, R-75 closed; R-76 registered)
+
+R-75 asked which day Fuse divides its whole-day Total Float by, and the obvious candidate — the
+calendar the engine actually schedules the work on (the crew's, or the task ∩ crew intersection of
+ADR-0474 / ADR-0503) — was refuted by the reference's own grids on the first population read: UID 14's
+16-hour crew would print −4 for the displayed −3, the intersection would print 3 for UID 94's 2, and a
+task with no calendar of its own stays on the project day even when its crew works 24 hours. Fuse's
+field divides by the TASK's own calendar, 1440 raw for an elapsed duration, else the project's — 771 of
+771 displayed rows once each workbook was matched to the save it was made from.
+
+* **A reader must never filter the value it judges.** The first grid reader kept only integer cells,
+  dropped the one non-integer float in 771 rows (UID 146 at −13.333333333333334) and read "140 of 140"
+  for the elapsed case — which would have shipped a ROUNDED elapsed field the reference visibly does
+  not apply. The population pin (141, not 140) is what caught it; keep the value as the emitter wrote
+  it and let the comparison decide.
+* **A writer that skips a cell tells you so in the cell reference.** Fuse's xlsx omits `r` on
+  consecutive cells and writes it only where it skipped a column — an empty ratio at a zero 'before',
+  every date-sheet row. ADR-0515's document-order reader slid such rows one column left and dropped
+  them as non-numeric: 70 Hard_File float rows and the (1, 14) divisor assertion were never exercised
+  while the oracle was green. Place a cell at the column its reference names; a positional reader that
+  "works" is one emitter quirk from a silent no-op.
+* **Match a workbook to its SAVE by measurement, never by name.** Two `updated3` goldens exist (rev 2
+  and rev 5); the 7/9 and 7/15 workbooks each reproduce exactly one (110 / 110 vs 104 / 110; 141 / 141
+  vs 129 / 141). A single "updated3 → golden" map would have read six phantom misses as a rule defect.
+* **Two figures with the same name are not the same metric.** `schedule_quality.negative_float`
+  (every incomplete activity with a stored slack) reads 49 / 15 where the ribbon's DCMA-style tile reads
+  40 / 11 (baselined only). The first draft asserted them equal; the honest pin is "unmoved by this
+  change", with the population difference stated.
+* **Measure the neighbouring field while the grid is open.** The same rows showed Fuse's DURATION
+  fields on the task's own day too, with an elapsed asymmetry (original on the project day, remaining
+  on 1440) — registered as R-76 with its two corpus crossings priced, not folded into R-75.
+
+
 ### 2026-09-20 (c) — the reference tool's own REPORT is the oracle for its rounding; a "measured" example can be an illustration; and a row the rule does not reproduce can be a divisor, not a rounding (ADR-0515, R-04 closed; R-75 registered)
 
 R-04 was priced as a sweep: 330 `round()` sites outside `engine/metrics`, banker's rounding at every

@@ -11,7 +11,9 @@ activity, the field before, the change, a 2-dp ratio and the field after; agains
 exact values (integer working minutes over the 480-minute day):
 
 * **Original Duration / Remaining Duration / Total Float** — half-even reproduces every
-  comparable row (LTF 752 / 773 / 1297); the half-day ties of both parities are present
+  comparable row (LTF 755 / 779 / 1303; with the Hard_File pairs 810 / 855 / 1,514 — the
+  reader places a cell at the column its ``r`` names, ADR-0516, so a row whose zero 'before'
+  has no ratio cell is compared, not slid); the half-day ties of both parities are present
   (20 / 11 / 262 on the first snapshot) and half-away-from-zero misses exactly the even-part
   ones (10 / 4 / 111), truncation more.
 * **The change column is rounded(after) - rounded(before)**, never round(after - before):
@@ -25,10 +27,11 @@ exact values (integer working minutes over the 480-minute day):
 
 Three float rows are NOT rounding: Hard_File UIDs 14 / 146 / 94 display the stored slack over
 the ACTIVITY's own day (a 1440-minute task calendar, an elapsed duration, a 930-minute
-calendar), not the project's 480 — named here, owned by the divisor row the ADR registers. One
-duration row is the model's own minute grid: LTF2 UID 5267's file duration is PT107H59M36S
-(13.4992 days, below the tie) and the integer-minute model carries 6,480 (exactly 13.5); Fuse's
-13 is half-even on the file's seconds.
+calendar), not the project's 480 — the divisor R-75 named and ADR-0516 measured on every
+Hard_File grid (``activity_day_minutes``); the rule reproduces them here and the project day
+is asserted NOT to. One duration row is the model's own minute grid: LTF2 UID 5267's file
+duration is PT107H59M36S (13.4992 days, below the tie) and the integer-minute model carries
+6,480 (exactly 13.5); Fuse's 13 is half-even on the file's seconds.
 
 Absence semantics mirror ``test_fuse_total_float_field_oracle``: skip only when the intake dir
 is absent; a named workbook that is missing FAILS.
@@ -50,7 +53,10 @@ from xml.etree import ElementTree as ET
 import pytest
 
 from schedule_forensics.engine.cpm import compute_cpm
-from schedule_forensics.engine.metrics._common import effective_total_float
+from schedule_forensics.engine.metrics._common import (
+    activity_day_minutes,
+    effective_total_float,
+)
 from schedule_forensics.importers.mspdi import parse_mspdi_text
 from schedule_forensics.model.schedule import Schedule
 
@@ -93,7 +99,7 @@ _PAIRS: tuple[tuple[str, str, str], ...] = (
 )
 _DAY_SHEETS = ("Original-Duration", "Remaining-Duration", "Total-Float")
 
-#: the rows the rule does NOT decide, each with its mechanism (never excluded silently)
+#: the rows the PROJECT day does not decide — the activity's own day does (R-75, ADR-0516)
 _DIVISOR_ROWS = {  # (workbook index, UID) -> the activity's own day length in minutes
     (1, 14): 1440,  # task calendar "24 Hours"
     (2, 14): 1440,
@@ -116,9 +122,23 @@ def _trunc(d: Fraction) -> int:
     return int(d)
 
 
+def _col_index(ref: str) -> int:
+    """``"P14"`` → 15: the zero-based column of a cell reference. Fuse's writer omits ``r`` on
+    consecutive cells and writes it only where it SKIPPED a column (an empty ratio at a zero
+    'before'), so a reader that appends cells in document order slides every later value one
+    column left on exactly those rows."""
+    n = 0
+    for ch in ref:
+        if not ch.isalpha():
+            break
+        n = n * 26 + (ord(ch.upper()) - 64)
+    return n - 1
+
+
 @cache
 def _sheet(path: Path, name: str) -> list[list[Cell]]:
-    """One sheet of an xlsx as rows of typed cells (std-lib only), parsing only that sheet."""
+    """One sheet of an xlsx as rows of typed cells (std-lib only), parsing only that sheet; a
+    cell is placed at the column its ``r`` reference names, never merely appended."""
     with zipfile.ZipFile(path) as zf:
         shared: list[str] = []
         if "xl/sharedStrings.xml" in zf.namelist():
@@ -137,6 +157,10 @@ def _sheet(path: Path, name: str) -> list[list[Cell]]:
         for row in ET.fromstring(zf.read(target)).iter(f"{_M}row"):
             cells: list[Cell] = []
             for c in row.findall(f"{_M}c"):
+                ref = c.get("r")
+                if ref is not None:
+                    while len(cells) < _col_index(ref):
+                        cells.append(None)  # the column(s) the writer skipped
                 v = c.find(f"{_M}v")
                 if v is None or v.text is None:
                     cells.append(None)
@@ -158,11 +182,13 @@ def _sheet(path: Path, name: str) -> list[list[Cell]]:
 
 
 def _grid(path: Path, name: str, *, ratio: bool) -> list[tuple[int, list[Cell]]]:
-    """(UID, [before, change, ratio?, after]) per activity row of a change sheet, read
-    POSITIONALLY: the 'before' column sits just left of the repeated after-project header, then
-    the glyph, the change, the 2-dp ratio (a day sheet only — a date sheet has none) and the
-    after value. A row with no after value (an activity absent from the second snapshot) is
-    returned with ``None`` there, never with the ratio sliding into its place."""
+    """(UID, [before, change, ratio?, after]) per activity row of a change sheet, read by
+    COLUMN: the 'before' column sits just left of the repeated after-project header, then the
+    glyph, the change, the 2-dp ratio and — always four columns right of 'before' — the after
+    value. The ratio cell is EMPTY on a date sheet and at a zero 'before' (Fuse writes no cell
+    there and marks the after cell with its column reference, which ``_sheet`` honours); a row
+    with no after value (an activity absent from the second snapshot) is returned with ``None``
+    there, never with the ratio sliding into its place."""
     rows = _sheet(path, name)
     hdr = next(r for r in rows if r and r[0] == "#")
     id_i = hdr.index("ID")
@@ -170,7 +196,7 @@ def _grid(path: Path, name: str, *, ratio: bool) -> list[tuple[int, list[Cell]]]
     after_name = next(c for c, k in counts.items() if k >= 3)
     a_cols = [i for i, c in enumerate(hdr) if c == after_name]
     b_i = a_cols[0] - 1
-    after_i = b_i + (4 if ratio else 3)
+    after_i = b_i + 4
     out: list[tuple[int, list[Cell]]] = []
     for r in rows[rows.index(hdr) + 1 :]:
         if len(r) <= b_i + 2 or r[id_i] in (None, ""):
@@ -204,6 +230,7 @@ def _exact(name: str) -> dict[int, dict[str, Fraction]]:
     sch = _golden(name)
     cpm = compute_cpm(sch)
     mpd = sch.calendar.working_minutes_per_day
+    by_uid = {c.uid: c for c in sch.calendars}
     tf = {u: t.total_float for u, t in cpm.timings.items()}
     out: dict[int, dict[str, Fraction]] = {}
     for t in sch.tasks:
@@ -214,7 +241,9 @@ def _exact(name: str) -> dict[int, dict[str, Fraction]]:
         out[t.unique_id] = {
             "Original-Duration": Fraction(t.duration_minutes, mpd),
             "Remaining-Duration": Fraction(rem, mpd),
-            "Total-Float": Fraction(str(eff)) / mpd,
+            # the float field is over the activity's OWN day (R-75); the two duration sheets
+            # list only CHANGED rows, and no multi-calendar duration ever changed (R-76)
+            "Total-Float": Fraction(str(eff)) / activity_day_minutes(sch, t, by_uid),
         }
     return out
 
@@ -249,22 +278,20 @@ def test_every_whole_day_field_is_half_even_and_the_change_is_a_difference_of_ro
             )
             da, db = before_days[uid][sheet], after_days[uid][sheet]
             if (k, uid) in _DIVISOR_ROWS and sheet == "Total-Float":
-                # the stored slack over the activity's OWN day reproduces Fuse's field — the
-                # project day does not: the mechanism is the divisor, not the rounding
+                # the stored slack over the activity's OWN day is the engine's rule now — the
+                # project day does not reproduce the row: the mechanism was the divisor
                 own = _DIVISOR_ROWS[(k, uid)]
                 sch_b, sch_a = _golden(before_name), _golden(after_name)
                 mpd = sch_b.calendar.working_minutes_per_day
-                exact_own = [
-                    Fraction(str(effective_total_float(s.tasks_by_id[uid], 0))) / own
+                assert mpd == 480 and own != mpd
+                for s in (sch_b, sch_a):
+                    assert activity_day_minutes(s, s.tasks_by_id[uid]) == own, (k, uid)
+                over_project = [
+                    _half_even(Fraction(str(effective_total_float(s.tasks_by_id[uid], 0))) / mpd)
                     for s in (sch_b, sch_a)
                 ]
-                assert mpd == 480 and own != mpd
-                assert [_half_even(x) for x in exact_own] == [shown_before, shown_after], (
-                    k,
-                    uid,
-                )
-                assert _half_even(da) != shown_before or _half_even(db) != shown_after
-                continue
+                assert over_project != [shown_before, shown_after], (k, uid)
+                # and the row now flows through the general comparison below
             if (k, uid) in _MINUTE_GRID_ROWS and sheet != "Total-Float":
                 # the file's own seconds sit below the tie the integer-minute model lands on
                 raw = gzip.decompress((GOLDEN / f"{after_name}.mspdi.xml.gz").read_bytes()).decode(
@@ -294,9 +321,12 @@ def test_every_whole_day_field_is_half_even_and_the_change_is_a_difference_of_ro
     assert (
         compared
         == {
-            "Original-Duration": 752 - 1 + 31 + 24,
-            "Remaining-Duration": 773 - 1 + 47 + 29,
-            "Total-Float": 1297 + 39 + 100,
+            # LTF (5267 named above, never compared) + the two Hard_File pairs — read with the
+            # column-aware reader (ADR-0516): a zero 'before' has no ratio cell, and the earlier
+            # document-order reader slid such rows out of the population (806 / 848 / 1,436)
+            "Original-Duration": 755 + 31 + 24,
+            "Remaining-Duration": 779 + 47 + 29,
+            "Total-Float": 1303 + 109 + 102,
         }[sheet]
     ), (sheet, compared)
     assert not misses_even, f"{len(misses_even)} rows are not the half-even day: {misses_even[:8]}"

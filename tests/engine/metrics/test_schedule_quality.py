@@ -232,3 +232,38 @@ def test_total_predecessor_lags_counts_links_where_the_tile_counts_activities() 
     assert q["total_predecessor_lags"].count == 2  # LINKS into the planned successor
     assert q["total_predecessor_lags"].offender_uids == (10,)
     assert q["total_predecessor_lags"].unit == "count"
+
+
+def test_ribbon_negative_float_reads_the_stored_slack_over_the_activitys_own_day() -> None:
+    """The ribbon's Negative Float classifies the stored slack in whole days of the ACTIVITY's
+    own calendar (R-75, ADR-0516), like Fuse's field: -600 minutes on a 1,440-minute task
+    calendar is -0.42 d → 0, not negative; the same -600 on the project day is -1.25 d → -1,
+    negative; an elapsed activity's slack is raw elapsed days, so -600 minutes (-0.42 ed) IS
+    negative — never rounded to 0."""
+    from schedule_forensics.model.calendar import Calendar
+
+    cal24 = Calendar(
+        uid=4, name="24 Hours", working_minutes_per_day=1440, work_weekdays=(0, 1, 2, 3, 4, 5, 6)
+    )
+    tasks = (
+        Task(unique_id=1, name="own", duration_minutes=DAY, stored_total_float_minutes=-600),
+        Task(
+            unique_id=2,
+            name="24h",
+            duration_minutes=DAY,
+            stored_total_float_minutes=-600,
+            calendar_uid=4,
+        ),
+        Task(
+            unique_id=3,
+            name="elapsed",
+            duration_minutes=DAY,
+            stored_total_float_minutes=-600,
+            duration_is_elapsed=True,
+        ),
+    )
+    q = compute_schedule_quality(
+        Schedule(name="s", project_start=MON, tasks=tasks, calendars=(cal24,))
+    )
+    assert q["negative_float"].offender_uids == (1, 3)
+    assert q["negative_float"].count == 2 and q["negative_float"].population == 3

@@ -28,7 +28,8 @@ from schedule_forensics.engine.metrics._common import (
     CheckStatus,
     Direction,
     MetricResult,
-    acumen_whole_day_float,
+    activity_day_minutes,
+    acumen_total_float_field,
     effective_total_float,
     evaluate,
     forty_four_days_min,
@@ -96,6 +97,7 @@ def compute_dcma14(
     # predicate applies to them too — a zero-baseline-duration milestone falls out HERE, by
     # design (ADR-0367). Default = the full non-summary population (byte-identical).
     mpd = schedule.calendar.working_minutes_per_day
+    by_uid = {c.uid: c for c in schedule.calendars}
 
     def _baselined(t: Task) -> bool:
         return (t.baseline_duration_minutes or 0) >= mpd
@@ -124,12 +126,18 @@ def compute_dcma14(
     tf = {uid: t.total_float for uid, t in result.timings.items()}
     status_off = to_offset(schedule, schedule.status_date)
 
-    # Total Float basis: minute-grain (pure logic, default) or whole-day-grained under parity —
-    # Fuse's field is the stored slack in whole days rounded HALF-TO-EVEN (ADR-0280's -0.29 → 0;
-    # ADR-0514's 196 half-day displays: -0.5 → 0 is not negative, 44.5 → 44 is not high).
+    # Total Float basis: minute-grain (pure logic, default) or Fuse's FIELD under parity — the
+    # stored slack in whole days rounded HALF-TO-EVEN (ADR-0280's -0.29 → 0; ADR-0514's 196
+    # half-day displays: -0.5 → 0 is not negative, 44.5 → 44 is not high) of the ACTIVITY's own
+    # day — a task calendar's, 1440 for an elapsed slack (then raw), else the project's (R-75,
+    # ADR-0516: the 24-hour Hard_File's 49,680-minute slack is 34 days of its 24 Hours calendar,
+    # not 104 project-days, and Fuse's High Float reads 0 there).
+    def _fuse_field(t: Task, eff: float) -> float:
+        return acumen_total_float_field(t, eff, activity_day_minutes(schedule, t, by_uid))
+
     def _negative_float(t: Task) -> bool:
         eff = effective_total_float(t, tf.get(t.unique_id, 0))
-        return acumen_whole_day_float(eff, mpd) < 0 if acumen_parity else eff < 0
+        return _fuse_field(t, eff) < 0 if acumen_parity else eff < 0
 
     out: dict[str, MetricResult] = {}
 
@@ -219,13 +227,13 @@ def compute_dcma14(
     # the authoritative Project2/Project5 exports, closing the former recomputed-float residual,
     # ADR-0012/ADR-0109), else the recomputed CPM float (ADR-0080). Under parity the baselined
     # population KEEPS milestones (Acumen's High-Float detail includes baselined milestones) and the
-    # threshold is applied in whole days (ADR-0280).
+    # threshold is applied in whole days of the activity's own calendar (ADR-0280, ADR-0516).
     high_pop = ap_inc if acumen_parity else incomplete
     high_float = tuple(
         t.unique_id
         for t in high_pop
         if (
-            acumen_whole_day_float(effective_total_float(t, tf.get(t.unique_id, 0)), mpd) > 44
+            _fuse_field(t, effective_total_float(t, tf.get(t.unique_id, 0))) > 44
             if acumen_parity
             else effective_total_float(t, tf.get(t.unique_id, 0)) > forty_four
         )
