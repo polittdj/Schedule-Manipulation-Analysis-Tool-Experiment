@@ -467,6 +467,11 @@ those fixed defects in earlier "closed" fixes:
 - **Unverified, said so.** The filter's reading at the exact tie is inferred from the field's rule and
   the set identity, never observed. The probe fixture (now carrying the 44-day side) is the direct
   confirmation, demoted to optional.
+- **Twice is a mechanism, not bad luck.** The worktree full suite died unread at 57 % last unit and
+  at 47 % this unit, both while the session sat idle between wakes; both times the container came
+  back through a `SessionStart:resume` hook. A background process does not survive that gap. Stop
+  starting one: CI's `test` jobs on the final head are the suite verdict, and a local run must be
+  read within the turn that started it.
 
 ### 2026-09-20 — the trap a kickoff names can belong to the rule it rejected; a row's "floor" can be a constraint; six battery survivors were six missing wall-path pins (ADR-0513, R-72 closed)
 
