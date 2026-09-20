@@ -19369,3 +19369,5 @@ report's R-72 row closed, R-73 (T1, M) and R-74 (T2, S) registered, R-71 amended
 re-measured; the handoff rotated (the R-70 section MOVED to the archive); this entry; the lessons
 entry; the kickoff refreshed to R-03. Code commit `6bfbeac0`; the full suite and `-m parity` run in a
 separate worktree at it — figures and the PR number in the docs-only follow-up.
+
+**After the PR opened.** Draft PR #702 opened on `claude/dazzling-knuth-68vcoq` (code `6bfbeac0`, docs `1ea854a8`); this docs-only follow-up records the number and restarts CI — read the FINAL head. The worktree full suite at `6bfbeac0` was still running when the session's context wall was reached (WARN_85 at 88 %); its figures are the next session's to read from the log's `PYTEST_EXIT` line if the worktree survives, else CI's `test` jobs on the final head are the read verdict.
