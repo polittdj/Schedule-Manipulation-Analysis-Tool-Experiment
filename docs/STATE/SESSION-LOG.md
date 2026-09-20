@@ -19311,3 +19311,65 @@ and the two pins above (fixed in `fe2ae49d`); the 7 skips are the documented set
 reconciles EXACTLY: the previous unit's 5,664 (5,653 + 4 + 7 − 7) plus this unit's 14 new tests (13
 synthetic, 1 oracle) = 5,678 = 5,667 + 4 + 7. `main`'s CI 1938 for `4d931ba7` finished **six of six** —
 `test (3.13)` 19:43:38Z · `check` 19:43:43Z — nothing about `4d931ba7` is outstanding. **`-m parity` at the same commit: 201 passed / 0 failed in 5:04** (`PYTEST_EXIT=0`; 200 before this unit plus the R-70 witness pin). Docs-only follow-ups `360bc36a` and `b0f7bd40`; CI on the PR's FINAL head is the suite's read verdict — read it first next session. **EIGHT OF EIGHT GREEN on PR #701's final head `c5e31376`** (CI `35391393327`: `cui-guard` 20:27:18Z · `browser` 20:44:35Z · `floor` 20:53:51Z · `test (3.13)` 21:14:30Z · `test (3.11)` 21:20:10Z · `check` 21:20:16Z; installer-smoke `35391393126`: `linux` 20:26:31Z · `windows` 20:29:44Z) — the suite's read verdict; the PR waits on the operator's merge (this docs-only record restarts CI once more; read the FINAL head).
+
+## 2026-09-20 — R-72 CLOSED (ADR-0513): out-of-sequence progress resumes its REMAINING work at its recorded start, from the later of the stored Resume and the logic bounds for the remaining; a start-type successor need binds no started predecessor; R-73 / R-74 registered — v1.0.278
+
+**Arrival.** `main` @ `5b605970` (#701, ADR-0512, merged 2026-09-19 00:12Z by the operator; the
+squash tree-identical to PR #701's FINAL head `71372027`, tree `4a807e3f…` — the kickoff's `c5e31376`
+was one docs-only push stale, read from the PR's commits). PR #701's final head: eight of eight green
+— CI `35396337875` (`cui-guard` 21:21:32Z · `browser` 21:38:54Z · `floor` 21:47:12Z · `test (3.13)`
+22:07:33Z · `test (3.11)` 22:13:08Z · `check` 22:13:16Z), installer-smoke `35396337876` (`linux`
+21:22:04Z · `windows` 21:25:55Z). `main`'s own runs for `5b605970`, by their jobs: CI 1945
+(`35408559575`) `cui-guard` 00:13:01Z · `browser` 00:30:16Z · `floor` 00:40:20Z · `test (3.13)`
+00:59:03Z · `test (3.11)` 01:04:07Z · `check` 01:04:13Z — six of six; installer-smoke 783
+(`35408559573`) `linux` 00:13:31Z · `windows` 00:15:44Z. Branch `claude/dazzling-knuth-68vcoq`
+(designated; its origin ref pruned with the merge) started on the squash. Environment: the clone
+arrived shallow (`git fetch --unshallow`, 59 s); the package installed with `uv pip install --system
+-e '.[dev]' build playwright`; ruff 0.15.8 on the path, 0.16.8 through `uvx ruff@0.16.8`; the 29
+intake `.mpp` converted once (MPXJ) into the scratchpad — a space→underscore key collision skipped
+`Large_Test_File.mpp` behind `Large Test File.mpp` and was caught by the 43-file count (44 after a
+keyed re-conversion); a pristine worktree at `origin/main` and a `-p mutcheck` plugin asserting the
+package under test; `pkill -f <pattern>` matched its own shell (use `[p]attern`).
+
+**QC-3 first.** The plan was written and attacked on the pristine tree with a file-only probe (the
+engine's calendar ruler as the instrument) and six shadow engines over the 44 files: MS Project's
+`Finish = Resume + RemainingDuration` held on 1,113 of 1,159 started activities (Resume on 1,159 of
+1,159; `SplitsInProgressTasks` 1 on 44 of 44); the pristine census reproduced ADR-0512's figures
+(192 out of sequence, 25 late / 40 early); **the row's "floor" was a constraint on UID 4581** (its SNET
+after its actual start, the work resumed at the status date) and a link elsewhere; **the whole-task
+start was the wrong restart bound** (UID 1489's ten FF links from finished work); **the kickoff's trap
+belonged to ADR-0476's rejected rule**, rebuilt as V3 and reproducing its 60 movers away; the narrow
+rule (V1) moved 173 unstarted successors and 13 started finishes toward the record with nothing
+away; the recorded start (V1b) added 181 exact starts; the WIDE model (V2 / V6) gained more — late
+finishes 11,636, slacks 11,256, Critical 22,095, the 24Hour_Calendar finish 64 days late → exact — but
+its away movers decomposed into three mechanisms: the contiguous axis's hour on an after-lunch
+Resume (EVM1 18's 15:00 carries that golden's finish across midnight; TP4 19; 5505 / 5452 —
+ADR-0322's designed cost, `datetime_to_offset` reads 15:00 as minute 420), an SS / SF successor need
+bounding a started predecessor's late START (631 / 6147 / 5535 — a record; the drop alone, V0s, moved
+13 late finishes toward the stored instant, 11 newly exact, nothing away), and a completed
+activity's late finish (UID 34, the record). Shipped V5d: narrow + recorded start + the start-type
+drop on every started predecessor; the one mover away (UID 408's free float 18,960 for a total of
+16,740, both dates exact) is MS Project's own bound — stored FreeSlack never exceeds TotalSlack, 0 of
+3,315 — registered as R-74.
+
+**Shipped:** `engine/cpm.py` (`_remaining` moved ahead of the forward pass with `_restart_instant`;
+`rem_span` / `rem_start` / `rem_tail` / `rem_start_wall`; the respan on both paths; `_START_NEEDS` and
+the backward drop; the free-float anchors); `tests/engine/test_out_of_sequence_progress_remaining.py`
+(18 pins, 17 red on the pristine package by name, 1 named control — three hand derivations corrected
+from the calendar: a crew activity begun before the project start clamps to it, a Friday counted as a
+Thursday, 1489's slack carrying the axis's hour on its 13:24 Resume); the oracle module re-pinned
+(Large Test File finish-within-a-day 1,666 → 1,682, slacks 876 → 882, late finishes 921 → 922; File2
+740 → 741, 828 → 829; an R-72 witness pin on the golden's 1489 / 4581 / 5535); version 1.0.278; wheel +
+nine installers rebuilt (lockstep 68). **Battery 21 / 21 red by name on the third run** after six
+survivors across two runs, every one a missing wall-path pin (M06 the FF need, M09 the Resume — the
+first pin's Resume > Stop shape was covered by ADR-0309's floor, an equivalent mutant; M13 the
+start-type need on a crew predecessor, M15 the crew successor's anchor). Statics green on both ruff
+binaries, `ruff format`, `mypy --strict` (165), `bandit`, `node --check`. ADR-0513 written; the
+report's R-72 row closed, R-73 (T1, M) and R-74 (T2, S) registered, R-71 amended; `PARITY-REPORT.md`
+re-measured; the handoff rotated (the R-70 section MOVED to the archive); this entry; the lessons
+entry; the kickoff refreshed to R-03. Code commit `6bfbeac0`; the full suite and `-m parity` run in a
+separate worktree at it — figures and the PR number in the docs-only follow-up.
+
+**After the PR opened.** Draft PR #702 opened on `claude/dazzling-knuth-68vcoq` (code `6bfbeac0`, docs `1ea854a8`); this docs-only follow-up records the number and restarts CI — read the FINAL head. The worktree full suite at `6bfbeac0` was still running when the session's context wall was reached (WARN_85 at 88 %); its figures are the next session's to read from the log's `PYTEST_EXIT` line if the worktree survives, else CI's `test` jobs on the final head are the read verdict.
+
+**PR #702's first CI read (head `dc862dbf`; CI `35479625007`, installer-smoke `35479624953`):** `cui-guard` 00:46:32Z ✓ · `linux` 00:46:43Z ✓ · `windows` 00:51:00Z ✓ · `browser` 01:02:26Z ✓ · **`floor` 01:05:47Z ✗ — 3 failed / 5,306 passed / 269 skipped** · **`test (3.11)` 01:22:39Z ✗ — the same three** · `test (3.13)` still running and `check` not yet listed when this was written. The three: `tests/web/test_change_effects_integration.py::test_integrity_shows_per_change_effect_on_the_target`, `::test_ai_facts_carry_the_computed_counterfactual_not_zero`, `tests/web/test_integrity_multifile_robust.py::test_integrity_two_file_picker_compares_the_chosen_pair` — the 188→187 counterfactual's `+12 wd` pins (Hard_File → Hard_File_updated, target UID 155). Root-caused with probes on both engines (a `PYTHONPATH` shadow of the 5b605970 worktree, the imported package printed): the row reads **+3,120 min (+6 wd)** on this tree for +5,520 (+12) on the pristine engine; UID 187 — 60 % complete, 2,880 crew-minutes left on the Customer Service Team's 16-hour day, three project days — is the ONLY mover: with the removed link restored its logic start (188's finish, day 32) lies past its recorded start (day 20), so ADR-0513 resumes the remaining after 188 (finish day 35) where the pristine engine re-spanned the whole 8-day plan from 188's finish (day 40); the other five change rows read +0 on both engines and 155's 2,400-min difference is 187's own; the page renders `+6 wd` twice (table + logic diagram) with every other row "no effect"; the AI fact reads "+6 working day(s) LATER — the change hid that much slip". The aggregate (every change reverted together) reads +0 for the pristine +2: the joint revert pulls 188's finish to day 21.9, before 187's stored Resume (day 25), so the remaining resumes where the record says. The earlier hypothesis — 187's float on `updated` moved — was refuted first (TF 240 on both engines, the stored 240). **The worktree full suite at `6bfbeac0` DIED at 57 %** (`test_airgap`, log mtime 00:50Z, no `PYTEST_EXIT`): never read to conclusion; CI's `test` jobs on the final head are this unit's suite figures. **Fix — a tests + docs commit, no `src/` change, version 1.0.278 and the installers untouched:** the three pins re-derived +12 → +6 with the mechanism beside them (+23 → +21 → +15 → +12 → +6 across ADR-0322 / 0391 / 0474 / 0513), **red on the pristine engine by name (3 failed, each on the `+6` literal, the page and the facts reading +12) and green here (3 passed, the imported package asserted by `-p mutcheck`)**; ADR-0513's consequences and the report's R-72 row carry the record; the standing-down comment on the PR is superseded by the push. Read the FINAL head's checks.

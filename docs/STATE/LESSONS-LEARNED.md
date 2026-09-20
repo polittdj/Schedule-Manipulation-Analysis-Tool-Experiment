@@ -435,6 +435,64 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-20 — the trap a kickoff names can belong to the rule it rejected; a row's "floor" can be a constraint; six battery survivors were six missing wall-path pins (ADR-0513, R-72 closed)
+
+R-72's candidate read "a floored started activity spans its REMAINING from the later of the floor
+and Resume — UID 1489's 136-day swing is the trap". The rule held; the trap, the floor and the pins
+each turned out to be something else.
+
+- **Re-measure a named trap before designing around it.** ADR-0476's 136-day swing on UID 1489 was
+  the FULL-duration re-span from a pinned start, not the pinned start: its stored Finish is Resume +
+  remaining to the minute. The rejected variant was rebuilt (V3) and reproduced its 60 movers away;
+  the remaining-based rule with the recorded start put 181 starts on their record and 1489 on its
+  finish. Lesson: a trap is a measurement of one rule; it says nothing about another rule until it
+  is re-measured under that rule.
+- **Read the mechanism per case, not per class.** "The floor moved the start" was a LINK on 186 of
+  the 192 and a CONSTRAINT on UID 4581 (a SNET after its actual start — MS Project resumes the work
+  at the status date). One case, read to its links, changed the rule: constraints bind nothing once
+  work has begun. And the whole-task logic start was the wrong bound for a PORTION: 1489's ten FF
+  links from finished work bound its remaining 11 days, not its 229.
+- **Decompose "away" by mechanism before rejecting a rule.** The wide `Resume + remaining` model's
+  regressions were three unrelated things: the contiguous axis's hour on an after-lunch Resume
+  (ADR-0322's designed, bounded cost — not to be "fixed" with a second ruler), an SS / SF need
+  bounding a started predecessor's late START (a real finding, shipped alone-measured: 13 toward, 0
+  away; UID 5535's 2027-07-02 for the stored 11-05 was the pristine engine's own error), and a
+  completed activity's record. Rejecting the model wholesale would have hidden the second.
+- **Write every pin on BOTH paths from the start.** Six battery survivors across two runs were all
+  wall-path cuts no fast-path pin could reach — an FF need, a later Resume, a start-type need, a
+  free-float anchor — and one first attempt (Resume > Stop) was an equivalent mutant under ADR-0309's
+  older floor: the discriminating shape was Resume == Stop past the logic. Lesson: a fast-path pin
+  proves nothing about the crew's legs; and a pin whose shape an older rule already covers cannot
+  kill a cut of the newer one.
+- **Derive from the calendar, verify against the file, never from the engine's answer.** Three hand
+  derivations were wrong: an actual start before the project start (the axis clamps it), a weekday
+  miscounted, and 1489's slack carrying the axis's hour. Each was re-derived from the file's own
+  calendar and stated as such in the pin; the engine's figure was the check, not the source.
+- **A count needs its mechanism.** The probe's "Resume > Stop on 1,119 of 1,159" looked like MS
+  Project rescheduling nearly everything; it was the status date's night and weekend. And a
+  space→underscore key skipped one of the 29 conversions (`Large Test File.mpp` and
+  `Large_Test_File.mpp` collide) — the 43-file count caught it; key by PATH with a lossless encoding.
+- **`pkill -f <pattern>` matches its own shell.** Use `[p]attern`; the first relaunch killed its own
+  command chain and nothing after it ran.
+
+**Addendum, after the PR's first CI read — a CPM change must run the counterfactual's consumers,
+and a suite that was never read is a suite that never ran.** The push went out with
+`tests/engine` + `tests/parity` + the new module green and the full suite "running in a worktree".
+That worktree run died at 57 % (`test_airgap`, its log without a `PYTEST_EXIT` line) and nobody
+read it; CI read the whole tree and found three `+12 wd` pins of the 188→187 counterfactual — in
+`tests/web`, where `compute_change_effects` is consumed — that ADR-0513 had legitimately moved to +6
+(UID 187 resumes its remaining three project days after the restored link instead of re-spanning
+its 8-day plan). The figure was RIGHT and the pins were WRONG, which is the benign case; the lesson
+is the method. (1) `grep -rl compute_change_effects tests/` before pushing a CPM change — the
+engine's consumers are not where the engine's tests are, and the counterfactual re-solves the
+network with the shipped rule. (2) A `PYTEST_EXIT` line that does not exist is a verdict that does
+not exist — read the log's tail before calling a suite "running", and never let a push ride on a
+run that has not been read. (3) The standing-down comment named the wrong first hypothesis (187's
+float); the probe that refuted it (TF 240 on both engines, one line) was cheaper than the comment —
+run the probe first, comment second. And a Law 2 note filed under R-04: the effect cell renders
+3,120 min as "+6 wd" because `round()` is half-even at exactly 6.5 — the exact minutes ride on the
+`ChangeEffect`, but nothing renders them above a day.
+
 ### 2026-09-18 (e) — a row's remedy can be half right: measure the class beside the row before adopting it; the probe's own arithmetic is a suspect; and a battery survivor found a hole in the pins on the third unit running (ADR-0512, R-70 closed)
 
 R-70's remedy read "drop a recorded-complete successor's need; a started successor's remaining work

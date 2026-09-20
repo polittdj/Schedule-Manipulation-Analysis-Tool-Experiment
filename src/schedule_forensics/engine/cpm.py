@@ -115,6 +115,31 @@ Scope of this engine (documented, not silently limited — Law 2):
   a forensic delay tool must never be wrong in (Law 2), so in-progress work keeps ADR-0391's
   floor. The two halves must also ship TOGETHER: pinning a completed start while leaving its
   finish at ``start + duration`` moved Large_Test_File UID 7113 from exact to 85 days early.
+  R-72 (ADR-0513) read that measurement again: the 136-day swing belonged to the FULL-DURATION
+  re-span from the pinned start, not to the start itself — with the remaining work scheduled
+  from the later of the stored ``Resume`` and the logic bounds for the remaining portion (the
+  bullet below), UID 1489's start is its record and its finish is ``Resume + remaining``.
+* **Out-of-sequence progress resumes its REMAINING work, not its whole duration** (R-72,
+  ADR-0513): a started activity whose logic start lies PAST its recorded actual start — its
+  predecessors finish after it began; 192 of the 1,159 started activities across the 44-file
+  corpus — keeps its start at the RECORD and schedules the remaining work from the later of
+  the stored ``Resume`` and the link bounds evaluated for the remaining portion (an FF / SF
+  need retreats the remaining, not the whole task; a constraint on the start binds nothing,
+  the start has happened); its finish is that restart plus the remaining on its own legs —
+  MS Project's own ``Finish = Resume + RemainingDuration``, which the file alone reproduces
+  on 1,009 of 1,051 started activities. The pre-R-72 engine re-spanned the FULL duration from
+  the logic start: the logic-reestablished Hard_File's UID 187 (60 %, 48 h left) ran 120 crew
+  hours from its predecessor's 08-17 17:00 finish to 08-27 08:00 where MS Project resumes the
+  48 h there and finishes 08-20 17:00, and the need its predecessor read (R-70) was four days
+  late. The backward pass retreats such an activity by the remaining it was placed with; a
+  start-type (SS / SF) successor need binds NO started predecessor — its start is a record
+  (MS Project stores LateStart = ActualStart on every started activity in the corpus;
+  Large_Test_File UID 5535's SS successor bound its late finish to 2027-07-02 where the file
+  stores 11-05, its FS successor's late start); a predecessor's free float anchors at the
+  remaining portion's start. Started work that is NOT out of sequence keeps
+  ``actual_start + duration`` (R-73 names the general ``Resume + remaining`` model and the
+  contiguous axis's cost that holds it back); a source recording neither ``Resume`` nor
+  ``Stop`` is unchanged.
 * **Refused** (raises :class:`CPMError` rather than emit a silently-wrong schedule —
   Law 2): ``ALAP``. Its as-late-as-possible semantics are backward-pass-driven and
   interact subtly with float; it does not appear in the parity schedules and is out of
@@ -161,6 +186,8 @@ _FLOOR_CAP_CONSTRAINTS = frozenset(
 )
 #: Constraints that pin a task in time (forward pin + backward cap).
 _PIN_CONSTRAINTS = frozenset({ConstraintType.MSO, ConstraintType.MFO})
+#: Successor needs that bound a predecessor's START (R-72: none binds a STARTED predecessor).
+_START_NEEDS = frozenset({RelationshipType.SS, RelationshipType.SF})
 
 
 class CPMError(ValueError):
@@ -2220,6 +2247,40 @@ def compute_cpm(
     task_by_id = net.task_by_id
     ps, cal = schedule.project_start, schedule.calendar
     tod0 = ps.hour * 60 + ps.minute
+    ov_r = duration_overrides or {}
+
+    def _remaining(s: int) -> int:
+        """A task's remaining duration in ITS OWN duration minutes: the SRA's override on an
+        in-progress task IS a remaining duration (the _resume_bounds rule), else the stored
+        remaining, else the percent-derived remainder of the planned duration (the MPXJ
+        writer drops a zero remaining duration, so an absent element on a 99 % activity reads
+        1 % of its duration here, not the unknown the model records). Read by the forward
+        pass for an out-of-sequence activity's remaining portion (R-72) and by the backward
+        pass for the need a started successor presents (R-70)."""
+        stored = task_by_id[s].remaining_duration_minutes
+        rem = ov_r.get(s, stored)
+        if rem is None:
+            pct = task_by_id[s].percent_complete
+            rem = round(task_by_id[s].duration_minutes * (100.0 - pct) / 100.0)
+        return max(rem, 0)
+
+    def _restart_instant(task: Task) -> dt.datetime | None:
+        """The instant the file records the remaining work restarting (R-72): ``Resume``, which
+        MS Project writes on every started activity in the corpus (1,159 of 1,159), else
+        ``Stop``. ``None`` on a source that records neither (a P6 export, a synthetic fixture):
+        the placement is then unchanged — the row's oracle is MS Project's, and a file that
+        carries no reschedule cannot be read as one."""
+        return task.resume if task.resume is not None else task.stop
+
+    #: R-72 (ADR-0513): the remaining portion of an OUT-OF-SEQUENCE started activity, as the
+    #: forward pass placed it — its span (the remaining), its restart, and on the wall path
+    #: the plan's tail — so the backward pass retreats by the same span and a predecessor's
+    #: free float anchors where the remaining work starts, not at the recorded start that
+    #: precedes the predecessor's own finish.
+    rem_span: dict[int, int] = {}
+    rem_start: dict[int, int] = {}
+    rem_tail: dict[int, _Plan] = {}
+    rem_start_wall: dict[int, dt.datetime] = {}
     early_start: dict[int, int] = {}
     early_finish: dict[int, int] = {}
     es_wall: dict[int, dt.datetime] = {}
@@ -2386,14 +2447,74 @@ def compute_cpm(
             # Start whatever its constraint says. The stored-pin / stored-floor branches only ever
             # hold UNSTARTED tasks (_stored_date_bounds), so applying the floor after the chain is
             # byte-identical for them.
-            if task.actual_start is not None:
-                started_wall = _plan_snap(max(task.actual_start, ps), plan, tod0)
-                # a completed activity is PINNED at its recorded start (its whole window is a
-                # measurement — ADR-0476); anything still running keeps ADR-0391's FLOOR
-                if started_wall > es_w or (started_wall != es_w and tid in actual_finish_pin):
-                    es_w = started_wall
-                    actual_driven.append(tid)
+            started_wall = (
+                _plan_snap(max(task.actual_start, ps), plan, tod0)
+                if task.actual_start is not None
+                else None
+            )
+            # a completed activity is PINNED at its recorded start (its whole window is a
+            # measurement — ADR-0476); anything still running keeps ADR-0391's FLOOR
+            if started_wall is not None and (
+                started_wall > es_w or (started_wall != es_w and tid in actual_finish_pin)
+            ):
+                es_w = started_wall
+                actual_driven.append(tid)
             ef_w = _plan_finish(es_w, plan, tod0)
+            restart_at = _restart_instant(task)
+            if (
+                started_wall is not None
+                and tid not in actual_finish_pin
+                and es_w > started_wall
+                and restart_at is not None
+            ):
+                # R-72: out-of-sequence progress on the task's own legs. The logic start lies
+                # past the recorded start, so the floor did not bind and the whole plan was run
+                # from the logic start (the logic-reestablished Hard_File's UID 187: 120 crew
+                # hours from 08-17 17:00 to 08-27 08:00 where MS Project resumes its 48 h there
+                # and finishes 08-20 17:00). The start is the record; the REMAINING portion —
+                # the plan's tail — starts at the later of the stored Resume and the link
+                # bounds evaluated for the tail (an FF / SF need retreats the tail, not the
+                # whole plan); a constraint on the start binds nothing.
+                rem = _remaining(tid)
+                tail = _plan_scaled(plan, rem, dur_s)
+                tail_needs: list[dt.datetime] = [ps]
+                for p, rel, lag in preds[tid]:
+                    if rel is RelationshipType.FS:
+                        tail_needs.append(
+                            _pred_finish_wall(p)
+                            if lag == 0
+                            else _offset_to_wall(ps, early_finish[p] + lag, cal, role="finish")
+                        )
+                    elif rel is RelationshipType.SS:
+                        tail_needs.append(
+                            _pred_start_wall(p)
+                            if lag == 0
+                            else _offset_to_wall(ps, early_start[p] + lag, cal, role="start")
+                        )
+                    else:  # FF / SF bound the FINISH; retreat the TAIL from it
+                        if rel is RelationshipType.FF:
+                            fin = (
+                                _pred_finish_wall(p)
+                                if lag == 0
+                                else _offset_to_wall(ps, early_finish[p] + lag, cal, role="finish")
+                            )
+                        else:
+                            fin = (
+                                _pred_start_wall(p)
+                                if lag == 0
+                                else _offset_to_wall(ps, early_start[p] + lag, cal, role="start")
+                            )
+                        tail_needs.append(_plan_retreat(fin, tail, tod0))
+                logic_restart_w = _plan_snap(max(tail_needs), tail, tod0)
+                stored_restart_w = _plan_snap(max(restart_at, ps), tail, tod0)
+                restart_w = max(logic_restart_w, stored_restart_w)
+                es_w = started_wall
+                ef_w = _plan_finish(restart_w, tail, tod0)
+                rem_tail[tid], rem_start_wall[tid] = tail, restart_w
+                actual_driven.append(tid)
+                if stored_restart_w > logic_restart_w:
+                    # the stored Resume, not logic, places the work: ADR-0309's disclosure
+                    date_driven.append(tid)
             if ex.delayed and any(
                 leg.delay
                 and _leg_finish(_snap_to_working(es_w, leg.calendar, tod0), leg, tod0) == ef_w
@@ -2455,8 +2576,41 @@ def compute_cpm(
         ):
             es = started_off
             actual_driven.append(tid)
-        early_start[tid] = es
         ef = es + dur_s
+        restart_at = (
+            _restart_instant(task_by_id[tid])
+            if started_off is not None and es > started_off and tid not in actual_finish_pin
+            else None
+        )
+        if started_off is not None and restart_at is not None:
+            # R-72: out-of-sequence progress. The logic start lies past the recorded actual
+            # start, so the floor did not bind and the whole duration was re-spanned from the
+            # logic start. The start is the record; the REMAINING portion starts at the later
+            # of the stored Resume and the link bounds evaluated for the remaining — an FF
+            # need retreats the remaining, not the whole task (Large_Test_File UID 1489's ten
+            # FF links from finished work read its whole-task start 26 days before its Resume
+            # and its finish 26 days early); a constraint on the start binds nothing (UID
+            # 4581's SNET sits after its actual start, and MS Project resumes its work at the
+            # status date, not the constraint).
+            rem = _remaining(tid)
+            logic_restart = max(
+                [
+                    0,
+                    *(
+                        es_lower_bound(rel, early_start[p], early_finish[p], lag, rem)
+                        for p, rel, lag in preds[tid]
+                    ),
+                ]
+            )
+            stored_restart = max(datetime_to_offset(ps, restart_at, cal), 0)
+            restart = max(logic_restart, stored_restart)
+            es = started_off
+            ef = restart + rem
+            rem_span[tid], rem_start[tid] = rem, restart
+            actual_driven.append(tid)
+            if stored_restart > logic_restart:
+                date_driven.append(tid)  # the stored Resume places the work (ADR-0309)
+        early_start[tid] = es
         # in-progress work MS Project itself rescheduled: its remaining duration runs from the
         # stored Resume, so the finish floors there (ADR-0309). Logic may still push it later.
         finished_off = actual_finish_pin.get(tid)
@@ -2535,21 +2689,6 @@ def compute_cpm(
     #: stored at 187's Resume, 08-17 17:00, not at 187's record 08-05 nor at the unfloored
     #: 08-12 13:00). FF / SF needs keep the successor's late finish: the remaining work's finish
     #: IS the task's. An unstarted successor presents its late start, as before.
-    ov_r = duration_overrides or {}
-
-    def _remaining(s: int) -> int:
-        """The successor's remaining duration in ITS OWN duration minutes: the SRA's override
-        on an in-progress task IS a remaining duration (the _resume_bounds rule), else the
-        stored remaining, else the percent-derived remainder of the planned duration (the
-        MPXJ writer drops a zero remaining duration, so an absent element on a 99 % activity
-        reads 1 % of its duration here, not the unknown the model records)."""
-        stored = task_by_id[s].remaining_duration_minutes
-        rem = ov_r.get(s, stored)
-        if rem is None:
-            pct = task_by_id[s].percent_complete
-            rem = round(task_by_id[s].duration_minutes * (100.0 - pct) / 100.0)
-        return max(rem, 0)
-
     #: the remaining portion's late-start need (project axis) and its wall instant, per STARTED
     #: successor, filled as each task's backward step completes
     rem_need: dict[int, int] = {}
@@ -2651,8 +2790,19 @@ def compute_cpm(
         # work that is already finished — measured at -13 working days on a completed activity,
         # which also drags it onto the critical path and fails DCMA-12/13. Float in the past is
         # not a forecast; it must at least be self-consistent.
-        dur_p = early_finish[tid] - early_start[tid] if tid in actual_finish_pin else duration[tid]
+        # R-72: a respanned out-of-sequence activity retreats by the remaining it was placed
+        # with — its late start is the remaining portion's, the instant R-70's need reads
+        dur_p = (
+            early_finish[tid] - early_start[tid]
+            if tid in actual_finish_pin
+            else rem_span.get(tid, duration[tid])
+        )
         dur_s_backward = duration[tid]
+        # R-72: a start-type need cannot bind a STARTED predecessor — its start is a record
+        # (MS Project stores LateStart = ActualStart on 1,159 of 1,159 started activities), and
+        # only its finish is still scheduled. Large_Test_File UID 5535's SS successor bound its
+        # late finish to 2027-07-02 where the file stores 11-05, its FS successor's late start.
+        started_pred = _started(tid)
         if tid in exec_plan:
             plan, cal_t = exec_plan[tid].legs, exec_plan[tid].axis
             task = task_by_id[tid]
@@ -2666,8 +2816,9 @@ def compute_cpm(
                 elif rel is RelationshipType.FF:
                     finish_needs.append(_succ_lf_wall(s, lag))
                 elif rel is RelationshipType.SS:
-                    start_needs.append(_succ_ls_wall(s, lag))
-                else:  # SF: the successor's finish is anchored to THIS task's start
+                    if not started_pred:
+                        start_needs.append(_succ_ls_wall(s, lag))
+                elif not started_pred:  # SF: the successor's finish anchors THIS task's start
                     start_needs.append(_succ_lf_wall(s, lag))
             if task.constraint_date is not None:
                 if task.constraint_type in (ConstraintType.FNLT, ConstraintType.MFO):
@@ -2690,6 +2841,8 @@ def compute_cpm(
                     cal_t,
                     tod0,
                 )
+            elif tid in rem_tail:
+                ls_w = _plan_retreat(lf_w, rem_tail[tid], tod0)  # R-72: the tail's late start
             else:
                 ls_w = _plan_retreat(lf_w, plan, tod0)
             if start_needs and min(start_needs) < ls_w:
@@ -2720,7 +2873,8 @@ def compute_cpm(
         bounds = [
             bound
             for s, rel, lag in succs[tid]
-            if (bound := _late_need(s, rel, lag, dur_p)) is not None
+            if not (started_pred and rel in _START_NEEDS)
+            and (bound := _late_need(s, rel, lag, dur_p)) is not None
         ]
         if tid in lf_cap:
             bounds.append(lf_cap[tid])
@@ -2738,11 +2892,15 @@ def compute_cpm(
                 ms_late_wall[tid] = carried_late
 
     def _succ_early_start_wall(s: int, lag: int) -> dt.datetime:
+        # R-72: a respanned successor's start is its record, before the finish it was waiting
+        # for; the anchor is where its REMAINING work starts
+        if lag == 0 and s in rem_start_wall:
+            return rem_start_wall[s]
         if lag == 0 and s in exec_plan:
             return es_wall[s]
         if lag == 0 and s in ms_wall:
             return ms_wall[s]
-        return _offset_to_wall(ps, early_start[s] - lag, cal, role="start")
+        return _offset_to_wall(ps, rem_start.get(s, early_start[s]) - lag, cal, role="start")
 
     def _succ_early_finish_wall(s: int, lag: int) -> dt.datetime:
         if lag == 0 and s in exec_plan:
@@ -2797,7 +2955,7 @@ def compute_cpm(
                         rel,
                         early_start[tid],
                         early_finish[tid],
-                        early_start[s],
+                        rem_start.get(s, early_start[s]),  # R-72: the remaining's start
                         early_finish[s],
                         lag,
                     )
