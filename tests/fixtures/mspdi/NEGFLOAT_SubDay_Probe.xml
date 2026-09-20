@@ -21,16 +21,33 @@
     UID 105  NEG-WHOLEDAY-2   TF = -2.00 d (-960 min)  CONTROL - must be counted
     UID 106  ZERO-FLOAT       TF =  0.00 d (   0 min)  CONTROL - must NOT be counted
     UID 107  POSITIVE-FLOAT   TF = +8.00 d (+3840 min) CONTROL - must NOT be counted
-    UID 108  PROJECT-DRIVER   TF =  0.00 d (   0 min)  sets the project finish
+    UID 108  PROJECT-DRIVER   TF =  0.00 d (   0 min)  sets the project finish (46 d long)
+    UID 109  HIGH-WHOLEDAY-45 TF = +45.00 d (21600 min) CONTROL - must be counted by 6. High Float
+    UID 110  HIGH-SUBDAY-4475 TF = +44.75 d (21480 min) DISCRIMINATOR (round vs truncate)
+    UID 111  HIGH-SUBDAY-4450 TF = +44.50 d (21360 min) DISCRIMINATOR (rounding tie)
+    UID 112  HIGH-SUBDAY-4425 TF = +44.25 d (21240 min) DISCRIMINATOR (any whole-day rule drops it)
+    UID 113  HIGH-WHOLEDAY-44 TF = +44.00 d (21120 min) CONTROL - must NOT be counted (not > 44)
 
-  If Fuse's Negative Float detail does NOT list 104 and 105, the run is broken or
-  misconfigured and proves nothing — check that first, before reading 101/102/103.
+  STATUS AFTER ADR-0514 (R-03, 2026-09-20): the FIELD's rule is now KNOWN from the operator's
+  own Fuse exports — the Total Float Fuse displays beside every activity of the Large Test File
+  pair is the stored slack rounded HALF-TO-EVEN to whole days (196 exact half-day floats,
+  513.5 -> 514 and 514.5 -> 514), and the "6. High Float" / "7. Negative Float" sets are
+  UID-exact against the engine under that field on both snapshots. What this run still settles
+  DIRECTLY is the filter's reading at the two ties themselves (-0.50 d and +44.50 d), which no
+  corpus activity occupies: expected under the measured rule, 102 NOT counted by 7. Negative
+  Float and 111 NOT counted by 6. High Float. The run is a confirmation, not a blocker.
+
+  If Fuse's Negative Float detail does NOT list 104 and 105, or its High Float 44d detail
+  does NOT list 109, the run is broken or misconfigured and proves nothing — check that
+  first, before reading 101/102/103 and 110/111/112.
 
   DESIGN NOTES (why it is built this way — do not "tidy" these away):
   * NO logic links, by design. Every activity is independent, so each row's total
     float is authored solely by its own Finish-No-Later-Than constraint and nothing
-    propagates between rows. (Cost: DCMA "1. Logic" will read 100% on this file.
-    Ignore every check except 7. Negative Float.)
+    propagates between rows; the positive floats are authored by the 46-day PROJECT-DRIVER
+    (float = project finish - own finish) and the +8 d control by its own constraint.
+    (Cost: DCMA "1. Logic" will read 100% on this file. Ignore every check except
+    7. Negative Float and 6. High Float.)
   * EVERY task carries Baseline Number 0 with Duration > 0 whole working days. The
     .aft's "7. Negative Float" PrimaryFilter is literally
     [Baseline Duration GreaterThan 0] AND [Total Float LessThan 0]; a task without a
@@ -51,7 +68,7 @@
   <Title>Negative-Float sub-day probe (Acumen Fuse oracle, ADR-0280)</Title>
   <ScheduleFromStart>1</ScheduleFromStart>
   <StartDate>2026-03-02T08:00:00</StartDate>
-  <FinishDate>2026-03-13T16:00:00</FinishDate>
+  <FinishDate>2026-05-04T16:00:00</FinishDate>
   <CalendarUID>1</CalendarUID>
   <DefaultStartTime>08:00:00</DefaultStartTime>
   <DefaultFinishTime>16:00:00</DefaultFinishTime>
@@ -239,7 +256,7 @@
     <Task>
       <UID>104</UID>
       <ID>4</ID>
-      <Name>NEG-WHOLEDAY-1 (expect TF -1.00 d) MUST BE COUNTED</Name>
+      <Name>NEG-WHOLEDAY-1 (expect TF -1.00 d) MUST BE COUNTED BY NEGATIVE FLOAT</Name>
       <Active>1</Active>
       <Manual>0</Manual>
       <Type>1</Type>
@@ -274,7 +291,7 @@
     <Task>
       <UID>105</UID>
       <ID>5</ID>
-      <Name>NEG-WHOLEDAY-2 (expect TF -2.00 d) MUST BE COUNTED</Name>
+      <Name>NEG-WHOLEDAY-2 (expect TF -2.00 d) MUST BE COUNTED BY NEGATIVE FLOAT</Name>
       <Active>1</Active>
       <Manual>0</Manual>
       <Type>1</Type>
@@ -309,7 +326,7 @@
     <Task>
       <UID>106</UID>
       <ID>6</ID>
-      <Name>ZERO-FLOAT (expect TF 0.00 d) MUST NOT BE COUNTED</Name>
+      <Name>ZERO-FLOAT (expect TF 0.00 d) MUST NOT BE COUNTED BY EITHER</Name>
       <Active>1</Active>
       <Manual>0</Manual>
       <Type>1</Type>
@@ -344,7 +361,7 @@
     <Task>
       <UID>107</UID>
       <ID>7</ID>
-      <Name>POSITIVE-FLOAT (expect TF +8.00 d) MUST NOT BE COUNTED</Name>
+      <Name>POSITIVE-FLOAT (expect TF +8.00 d) MUST NOT BE COUNTED BY EITHER</Name>
       <Active>1</Active>
       <Manual>0</Manual>
       <Type>1</Type>
@@ -364,7 +381,8 @@
       <Critical>0</Critical>
       <TotalSlack>38400</TotalSlack>
       <PercentComplete>0</PercentComplete>
-      <ConstraintType>0</ConstraintType>
+      <ConstraintType>7</ConstraintType>
+      <ConstraintDate>2026-03-13T16:00:00</ConstraintDate>
       <PhysicalPercentComplete>0</PhysicalPercentComplete>
       <EarnedValueMethod>0</EarnedValueMethod>
       <Baseline>
@@ -378,7 +396,7 @@
     <Task>
       <UID>108</UID>
       <ID>8</ID>
-      <Name>PROJECT-DRIVER (expect TF 0.00 d) sets project finish</Name>
+      <Name>PROJECT-DRIVER (expect TF 0.00 d) sets project finish, 46 d</Name>
       <Active>1</Active>
       <Manual>0</Manual>
       <Type>1</Type>
@@ -388,8 +406,8 @@
       <OutlineLevel>1</OutlineLevel>
       <Priority>500</Priority>
       <Start>2026-03-02T08:00:00</Start>
-      <Finish>2026-03-13T16:00:00</Finish>
-      <Duration>PT80H0M0S</Duration>
+      <Finish>2026-05-04T16:00:00</Finish>
+      <Duration>PT368H0M0S</Duration>
       <DurationFormat>7</DurationFormat>
       <EffortDriven>0</EffortDriven>
       <Estimated>0</Estimated>
@@ -404,8 +422,178 @@
       <Baseline>
         <Number>0</Number>
         <Start>2026-03-02T08:00:00</Start>
-        <Finish>2026-03-13T16:00:00</Finish>
-        <Duration>PT80H0M0S</Duration>
+        <Finish>2026-05-04T16:00:00</Finish>
+        <Duration>PT368H0M0S</Duration>
+        <DurationFormat>7</DurationFormat>
+      </Baseline>
+    </Task>
+    <Task>
+      <UID>109</UID>
+      <ID>9</ID>
+      <Name>HIGH-WHOLEDAY-45 (expect TF +45.00 d) MUST BE COUNTED BY HIGH FLOAT</Name>
+      <Active>1</Active>
+      <Manual>0</Manual>
+      <Type>1</Type>
+      <IsNull>0</IsNull>
+      <WBS>9</WBS>
+      <OutlineNumber>9</OutlineNumber>
+      <OutlineLevel>1</OutlineLevel>
+      <Priority>500</Priority>
+      <Start>2026-03-02T08:00:00</Start>
+      <Finish>2026-03-02T16:00:00</Finish>
+      <Duration>PT8H0M0S</Duration>
+      <DurationFormat>7</DurationFormat>
+      <EffortDriven>0</EffortDriven>
+      <Estimated>0</Estimated>
+      <Milestone>0</Milestone>
+      <Summary>0</Summary>
+      <Critical>0</Critical>
+      <TotalSlack>216000</TotalSlack>
+      <PercentComplete>0</PercentComplete>
+      <ConstraintType>0</ConstraintType>
+      <PhysicalPercentComplete>0</PhysicalPercentComplete>
+      <EarnedValueMethod>0</EarnedValueMethod>
+      <Baseline>
+        <Number>0</Number>
+        <Start>2026-03-02T08:00:00</Start>
+        <Finish>2026-03-02T16:00:00</Finish>
+        <Duration>PT8H0M0S</Duration>
+        <DurationFormat>7</DurationFormat>
+      </Baseline>
+    </Task>
+    <Task>
+      <UID>110</UID>
+      <ID>10</ID>
+      <Name>HIGH-SUBDAY-4475 (expect TF +44.75 d) DISCRIMINATOR (round vs truncate)</Name>
+      <Active>1</Active>
+      <Manual>0</Manual>
+      <Type>1</Type>
+      <IsNull>0</IsNull>
+      <WBS>10</WBS>
+      <OutlineNumber>10</OutlineNumber>
+      <OutlineLevel>1</OutlineLevel>
+      <Priority>500</Priority>
+      <Start>2026-03-02T08:00:00</Start>
+      <Finish>2026-03-03T10:00:00</Finish>
+      <Duration>PT10H0M0S</Duration>
+      <DurationFormat>7</DurationFormat>
+      <EffortDriven>0</EffortDriven>
+      <Estimated>0</Estimated>
+      <Milestone>0</Milestone>
+      <Summary>0</Summary>
+      <Critical>0</Critical>
+      <TotalSlack>214800</TotalSlack>
+      <PercentComplete>0</PercentComplete>
+      <ConstraintType>0</ConstraintType>
+      <PhysicalPercentComplete>0</PhysicalPercentComplete>
+      <EarnedValueMethod>0</EarnedValueMethod>
+      <Baseline>
+        <Number>0</Number>
+        <Start>2026-03-02T08:00:00</Start>
+        <Finish>2026-03-03T10:00:00</Finish>
+        <Duration>PT10H0M0S</Duration>
+        <DurationFormat>7</DurationFormat>
+      </Baseline>
+    </Task>
+    <Task>
+      <UID>111</UID>
+      <ID>11</ID>
+      <Name>HIGH-SUBDAY-4450 (expect TF +44.50 d) DISCRIMINATOR (rounding tie)</Name>
+      <Active>1</Active>
+      <Manual>0</Manual>
+      <Type>1</Type>
+      <IsNull>0</IsNull>
+      <WBS>11</WBS>
+      <OutlineNumber>11</OutlineNumber>
+      <OutlineLevel>1</OutlineLevel>
+      <Priority>500</Priority>
+      <Start>2026-03-02T08:00:00</Start>
+      <Finish>2026-03-03T12:00:00</Finish>
+      <Duration>PT12H0M0S</Duration>
+      <DurationFormat>7</DurationFormat>
+      <EffortDriven>0</EffortDriven>
+      <Estimated>0</Estimated>
+      <Milestone>0</Milestone>
+      <Summary>0</Summary>
+      <Critical>0</Critical>
+      <TotalSlack>213600</TotalSlack>
+      <PercentComplete>0</PercentComplete>
+      <ConstraintType>0</ConstraintType>
+      <PhysicalPercentComplete>0</PhysicalPercentComplete>
+      <EarnedValueMethod>0</EarnedValueMethod>
+      <Baseline>
+        <Number>0</Number>
+        <Start>2026-03-02T08:00:00</Start>
+        <Finish>2026-03-03T12:00:00</Finish>
+        <Duration>PT12H0M0S</Duration>
+        <DurationFormat>7</DurationFormat>
+      </Baseline>
+    </Task>
+    <Task>
+      <UID>112</UID>
+      <ID>12</ID>
+      <Name>HIGH-SUBDAY-4425 (expect TF +44.25 d) DISCRIMINATOR</Name>
+      <Active>1</Active>
+      <Manual>0</Manual>
+      <Type>1</Type>
+      <IsNull>0</IsNull>
+      <WBS>12</WBS>
+      <OutlineNumber>12</OutlineNumber>
+      <OutlineLevel>1</OutlineLevel>
+      <Priority>500</Priority>
+      <Start>2026-03-02T08:00:00</Start>
+      <Finish>2026-03-03T14:00:00</Finish>
+      <Duration>PT14H0M0S</Duration>
+      <DurationFormat>7</DurationFormat>
+      <EffortDriven>0</EffortDriven>
+      <Estimated>0</Estimated>
+      <Milestone>0</Milestone>
+      <Summary>0</Summary>
+      <Critical>0</Critical>
+      <TotalSlack>212400</TotalSlack>
+      <PercentComplete>0</PercentComplete>
+      <ConstraintType>0</ConstraintType>
+      <PhysicalPercentComplete>0</PhysicalPercentComplete>
+      <EarnedValueMethod>0</EarnedValueMethod>
+      <Baseline>
+        <Number>0</Number>
+        <Start>2026-03-02T08:00:00</Start>
+        <Finish>2026-03-03T14:00:00</Finish>
+        <Duration>PT14H0M0S</Duration>
+        <DurationFormat>7</DurationFormat>
+      </Baseline>
+    </Task>
+    <Task>
+      <UID>113</UID>
+      <ID>13</ID>
+      <Name>HIGH-WHOLEDAY-44 (expect TF +44.00 d) MUST NOT BE COUNTED BY EITHER</Name>
+      <Active>1</Active>
+      <Manual>0</Manual>
+      <Type>1</Type>
+      <IsNull>0</IsNull>
+      <WBS>13</WBS>
+      <OutlineNumber>13</OutlineNumber>
+      <OutlineLevel>1</OutlineLevel>
+      <Priority>500</Priority>
+      <Start>2026-03-02T08:00:00</Start>
+      <Finish>2026-03-03T16:00:00</Finish>
+      <Duration>PT16H0M0S</Duration>
+      <DurationFormat>7</DurationFormat>
+      <EffortDriven>0</EffortDriven>
+      <Estimated>0</Estimated>
+      <Milestone>0</Milestone>
+      <Summary>0</Summary>
+      <Critical>0</Critical>
+      <TotalSlack>211200</TotalSlack>
+      <PercentComplete>0</PercentComplete>
+      <ConstraintType>0</ConstraintType>
+      <PhysicalPercentComplete>0</PhysicalPercentComplete>
+      <EarnedValueMethod>0</EarnedValueMethod>
+      <Baseline>
+        <Number>0</Number>
+        <Start>2026-03-02T08:00:00</Start>
+        <Finish>2026-03-03T16:00:00</Finish>
+        <Duration>PT16H0M0S</Duration>
         <DurationFormat>7</DurationFormat>
       </Baseline>
     </Task>

@@ -1,4 +1,5 @@
-"""The sub-day-negative-float probe fixture must keep DISCRIMINATING (ADR-0390 follow-up).
+"""The sub-day-float probe fixture must keep DISCRIMINATING (ADR-0390 follow-up; the 44-day
+side and the measured rule added by ADR-0514, R-03).
 
 `tests/fixtures/mspdi/NEGFLOAT_SubDay_Probe.xml` is not a test input — it is an **operator
 input**. It exists to be run through Deltek Acumen Fuse once, by hand, on a licensed machine, to
@@ -30,8 +31,15 @@ change ever flattened that, the fixture would still load, still look fine, and t
 burn a licensed-tool run on a schedule that could not answer the question — and we would not find
 out until the answer came back meaningless. So the discrimination is pinned here.
 
-This guard asserts the fixture's SHAPE, never Fuse's answer: the answer is the thing we do not
-know yet.
+This guard asserts the fixture's SHAPE, never Fuse's answer.
+
+**ADR-0514 (R-03) changed what the run is for.** The FIELD's rule is now measured from the
+operator's own Fuse exports (``tests/parity/test_fuse_total_float_field_oracle.py``): the Total
+Float Fuse displays is the stored slack rounded HALF-TO-EVEN to whole days, and the DCMA float
+sets read that field UID-exact on both Large Test File snapshots. The fixture therefore carries
+BOTH thresholds — the 44-day side (``+44.25 / +44.50 / +44.75 d`` discriminators, ``+45.00`` and
+``+44.00 d`` controls) beside the negative side — and the run's remaining value is the filter's
+reading exactly at the two ties, which no corpus activity occupies: a confirmation, not a blocker.
 """
 
 from __future__ import annotations
@@ -66,6 +74,16 @@ def _parity(minutes: int, mpd: int) -> bool:
     return round(minutes / mpd) < 0
 
 
+def _pure_high(minutes: int, mpd: int) -> bool:
+    """Fuse's "6. High Float" as written: a bare ``Total Float > 44`` (working days)."""
+    return minutes > 44 * mpd
+
+
+def _parity_high(minutes: int, mpd: int) -> bool:
+    """The parity rule on the 44-day side: whole days first (half-to-even), then ``> 44``."""
+    return round(minutes / mpd) > 44
+
+
 def test_the_fixture_still_discriminates_between_the_two_rules() -> None:
     """At least one activity where `pure` says negative and `parity` says not.
 
@@ -91,20 +109,30 @@ def test_the_controls_are_unambiguous() -> None:
     every control, or the control cannot adjudicate anything.
     """
     tf, mpd, names = _floats()
-    must_count = [u for u, n in names.items() if "MUST BE COUNTED" in n]
+    must_neg = [u for u, n in names.items() if "MUST BE COUNTED BY NEGATIVE FLOAT" in n]
+    must_high = [u for u, n in names.items() if "MUST BE COUNTED BY HIGH FLOAT" in n]
     must_not = [u for u, n in names.items() if "MUST NOT BE COUNTED" in n]
-    assert must_count and must_not, (
+    assert must_neg and must_high and must_not, (
         "the fixture's control activities are no longer identifiable by name — the operator reads "
         f"these labels off Fuse's grid to interpret the run. Names: {sorted(names.values())}"
     )
-    for u in must_count:
+    for u in must_neg:
         assert _pure(tf[u]) and _parity(tf[u], mpd), (
-            f"UID {u} ({names[u]}) is labelled MUST BE COUNTED but is not negative under both "
-            f"rules ({tf[u] / mpd:+.3f} d) — it cannot serve as a positive control"
+            f"UID {u} ({names[u]}) is labelled MUST BE COUNTED BY NEGATIVE FLOAT but is not "
+            f"negative under both rules ({tf[u] / mpd:+.3f} d) — it cannot serve as a control"
+        )
+    for u in must_high:
+        assert _pure_high(tf[u], mpd) and _parity_high(tf[u], mpd), (
+            f"UID {u} ({names[u]}) is labelled MUST BE COUNTED BY HIGH FLOAT but is not high "
+            f"under both rules ({tf[u] / mpd:+.3f} d) — it cannot serve as a control"
         )
     for u in must_not:
-        assert not _pure(tf[u]) and not _parity(tf[u], mpd), (
+        assert not (_pure(tf[u]) or _parity(tf[u], mpd)), (
             f"UID {u} ({names[u]}) is labelled MUST NOT BE COUNTED but reads as negative "
+            f"({tf[u] / mpd:+.3f} d) — it cannot serve as a negative control"
+        )
+        assert not (_pure_high(tf[u], mpd) or _parity_high(tf[u], mpd)), (
+            f"UID {u} ({names[u]}) is labelled MUST NOT BE COUNTED but reads as high float "
             f"({tf[u] / mpd:+.3f} d) — it cannot serve as a negative control"
         )
 
@@ -152,9 +180,48 @@ def test_the_shipped_metric_answers_differently_under_the_two_rules() -> None:
         f"cannot tell them apart: pure={pure.count}/{pure.population}, "
         f"parity={parity.count}/{parity.population}"
     )
+    pure_high = compute_dcma14(sch, cpm_result=cpm, acumen_parity=False)["DCMA06"]
+    parity_high = compute_dcma14(sch, cpm_result=cpm, acumen_parity=True)["DCMA06"]
+    assert pure_high.population == parity_high.population
+    assert pure_high.count > parity_high.count, (
+        "DCMA-06 returns the same count under both rules on the 44-day side: "
+        f"pure={pure_high.count}, parity={parity_high.count}"
+    )
 
 
-@pytest.mark.parametrize("uid_marker", ["DISCRIMINATOR", "MUST BE COUNTED", "MUST NOT BE COUNTED"])
+def test_the_fixture_discriminates_the_high_float_rules_too() -> None:
+    """The 44-day side (ADR-0514): at least one activity where ``> 44`` on the raw float and
+    ``> 44`` on the whole-day field disagree, and the tie itself (+44.50 d) present by value."""
+    tf, mpd, _names = _floats()
+    disagree = {u: v for u, v in tf.items() if _pure_high(v, mpd) != _parity_high(v, mpd)}
+    assert disagree, (
+        "no activity separates `total_float > 44 d` from `round(total_float/mpd) > 44`; the run "
+        f"could not adjudicate the 44-day side. Floats seen (days): "
+        f"{ {u: round(v / mpd, 3) for u, v in sorted(tf.items())} }"
+    )
+
+
+@pytest.mark.parametrize(("marker", "days"), [("NEG-SUBDAY-050", -0.5), ("HIGH-SUBDAY-4450", 44.5)])
+def test_the_two_ties_are_present_exactly(marker: str, days: float) -> None:
+    """The reason the fixture exists after ADR-0514: the two exact ties (-0.50 d / +44.50 d),
+    which no corpus activity occupies, each present by name at exactly that float — under the
+    measured half-to-even field neither is counted (0 is not negative; 44 is not > 44)."""
+    tf, mpd, names = _floats()
+    hits = [u for u, n in names.items() if marker in n]
+    assert len(hits) == 1, f"{marker!r} must name exactly one activity: {hits}"
+    assert tf[hits[0]] == days * mpd, f"{marker}: {tf[hits[0]] / mpd:+.3f} d, expected {days:+.2f}"
+    assert not _parity(tf[hits[0]], mpd) and not _parity_high(tf[hits[0]], mpd)
+
+
+@pytest.mark.parametrize(
+    "uid_marker",
+    [
+        "DISCRIMINATOR",
+        "MUST BE COUNTED BY NEGATIVE FLOAT",
+        "MUST BE COUNTED BY HIGH FLOAT",
+        "MUST NOT BE COUNTED",
+    ],
+)
 def test_every_role_the_operator_reads_is_present(uid_marker: str) -> None:
     """The operator identifies rows in Fuse's grid BY NAME; each role must exist to be read."""
     _, _, names = _floats()

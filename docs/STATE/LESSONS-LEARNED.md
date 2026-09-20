@@ -435,6 +435,44 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-20 (b) — the reference's exports already held the oracle: read what the tool DISPLAYS before asking the operator for a run; a tie nobody occupies is decided on the 196 ties others occupy; an audit row's remedy can duplicate a fixture the repo already owns (ADR-0514, R-03 closed)
+
+- **What happened.** R-03 said dcma14's two parity roundings were a banker's-rounding defect at an
+  exact half day and prescribed a fixture plus an operator's Acumen run. The fixture for the negative
+  side had existed since PR #576, was never run, and its ask had silently fallen off the operator list;
+  the audit row that "found" the residual never looked. The corpus, censused with dcma14's own
+  population, holds 772 exact half-day floats and none at the tie — and, unnoticed until now, nothing
+  that separates rounding from truncation either.
+- **What settled it.** Fuse prints a Total Float beside every activity of its detail grids. Thirteen
+  Large Test File workbooks, 1,140 grids, 3,637 distinct activities: every displayed value is the stored
+  slack rounded half-to-even, and the 196 half-day floats of the first snapshot split 118 odd-part UP /
+  78 even-part DOWN — only Python's ``round`` reproduces all of them. The complete "6. High Float" /
+  "7. Negative Float" sets are UID-exact against the engine on both snapshots. The row's remedy —
+  ``round_half_up`` — would have introduced a parity defect on every future tie.
+- **Lesson 1 — read the intake's DISPLAYED values before asking a human for a run.** A licensed-tool
+  run is the most expensive oracle in the repo and the slowest (this one waited months). The exports
+  the operator already delivered print per-activity fields; a rule visible on thousands of other
+  activities decides a case the corpus never shows. The ask is the last resort, not the remedy's first
+  line.
+- **Lesson 2 — grep ``tests/fixtures`` before building a fixture.** The remedy's first sentence
+  described a file that was already there. An audit row is written from the code it names; the
+  fixtures and guards around that code are part of the artifact and must be read (QC-2).
+- **Lesson 3 — say which pin has teeth on what.** The set oracle (814 / 35, 660 / 112) stays green
+  under BOTH mutants because the population has no tie; only the display oracle and the synthetic pin
+  go red at the tie. A battery result that reads "2 of 3 red" is fine when the ADR says why the third
+  cannot be, and dishonest when it does not.
+- **Trap paid for.** Fuse writes the grid's Id column as a STRING; the first extractor required a
+  number and read 0 rows under every header — and printed it confidently as "0 rows". A reader that
+  finds nothing must be suspected before the data is.
+- **Unverified, said so.** The filter's reading at the exact tie is inferred from the field's rule and
+  the set identity, never observed. The probe fixture (now carrying the 44-day side) is the direct
+  confirmation, demoted to optional.
+- **Twice is a mechanism, not bad luck.** The worktree full suite died unread at 57 % last unit and
+  at 47 % this unit, both while the session sat idle between wakes; both times the container came
+  back through a `SessionStart:resume` hook. A background process does not survive that gap. Stop
+  starting one: CI's `test` jobs on the final head are the suite verdict, and a local run must be
+  read within the turn that started it.
+
 ### 2026-09-20 — the trap a kickoff names can belong to the rule it rejected; a row's "floor" can be a constraint; six battery survivors were six missing wall-path pins (ADR-0513, R-72 closed)
 
 R-72's candidate read "a floored started activity spans its REMAINING from the later of the floor

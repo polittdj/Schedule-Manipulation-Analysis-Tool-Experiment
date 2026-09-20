@@ -488,3 +488,50 @@ def test_acumen_parity_invalid_dates_scoped_to_baselined_population() -> None:
     assert default.population == 3
     assert set(parity.offender_uids) == {1}  # parity: only the baselined activity survives
     assert parity.population == 1  # population scoped to Baseline Duration > 0
+
+
+def test_acumen_parity_float_ties_follow_fuses_half_even_field() -> None:
+    """R-03 (ADR-0514): at an exact half-day tie the parity classifications read Fuse's Total
+    Float FIELD, which is the stored slack rounded HALF-TO-EVEN to whole days — measured on 196
+    half-day displays of the operator's Large Test File (513.5 → 514, 514.5 → 514, 24.5 → 24) and
+    UID-exact on the "6. High Float" / "7. Negative Float" sets of both snapshots. So -0.5 d is 0
+    (NOT negative) and 44.5 d is 44 (NOT high); -0.75 / 44.75 round to -1 / 45 (truncation would
+    drop both); the quarter-day cases and the whole-day controls agree under every rule. The
+    delta the audit row asked for is named here: ``round_half_up`` would flip BOTH ties away from
+    Fuse. Default (pure-logic) mode keeps the minute grain, so it flags every sub-day negative and
+    everything past 44 exact days — the contrast that makes the parity rule visible."""
+    from schedule_forensics.engine.metrics._common import acumen_whole_day_float, round_half_up
+
+    cases = {  # uid: stored total float in minutes (480/day)
+        1: -120,  # -0.25 d
+        2: -240,  # -0.50 d  the tie
+        3: -360,  # -0.75 d
+        4: -480,  # -1.00 d  control
+        5: 44 * DAY + 120,  # 44.25 d
+        6: 44 * DAY + 240,  # 44.50 d  the tie
+        7: 44 * DAY + 360,  # 44.75 d
+        8: 45 * DAY,  # 45.00 d  control
+        9: 44 * DAY,  # 44.00 d  control
+    }
+    tasks = [
+        Task(
+            unique_id=uid,
+            name=f"tf-{uid}",
+            duration_minutes=DAY,
+            baseline_duration_minutes=2 * DAY,
+            stored_total_float_minutes=minutes,
+        )
+        for uid, minutes in cases.items()
+    ]
+    sch = _sched(tasks)
+    parity = compute_dcma14(sch, acumen_parity=True)
+    assert set(parity["DCMA07"].offender_uids) == {3, 4}
+    assert set(parity["DCMA06"].offender_uids) == {7, 8}
+    pure = compute_dcma14(sch)
+    assert set(pure["DCMA07"].offender_uids) == {1, 2, 3, 4}
+    assert set(pure["DCMA06"].offender_uids) == {5, 6, 7, 8}
+    # the field itself, at the two ties, and the alternative the row proposed
+    assert acumen_whole_day_float(-240, DAY) == 0
+    assert acumen_whole_day_float(44 * DAY + 240, DAY) == 44
+    assert round_half_up(-240 / DAY) == -1.0  # would read negative
+    assert round_half_up((44 * DAY + 240) / DAY) == 45.0  # would read high

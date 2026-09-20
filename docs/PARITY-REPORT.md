@@ -361,6 +361,8 @@ contiguous project axis (ADR-0322's two-ruler rule), so EVM1's finish date cross
 Pinned by the oracle's Large Test File rows and its R-72 witness pin, and by
 `tests/engine/test_out_of_sequence_progress_remaining.py`.
 
+**ADR-0514 (R-03 — 2026-09-20): Acumen Fuse's Total Float field is the stored slack rounded HALF-TO-EVEN to whole days.** The audit row read dcma14's two parity classifications (`round(eff / mpd) < 0` and `> 44`) as a banker's-rounding defect at an exact half day. The reference's own exports refuted it: Fuse prints a Total Float beside every activity of its detail grids, and all 3,637 distinct activities of the Large Test File pair (1,513 / 2,124 per snapshot) are the stored slack under half-to-even — the first snapshot's 196 exact half-day floats split 118 odd-part rounded UP (513.5 → 514) and 78 even-part rounded DOWN (514.5 → 514); half away from zero misses the 78, truncation the 118. The complete "6. High Float" / "7. Negative Float" detail sets are UID-exact against the engine's parity mode on both snapshots (814 / 35 and 660 / 112; UID 5283's −0.29 d displayed 0 and absent), so the filters read that field. No flip: the rule is named `acumen_whole_day_float` and pinned by `tests/parity/test_fuse_total_float_field_oracle.py`; the tie itself is inferred, never observed in the corpus — the probe fixture (extended to the 44-day side) is the operator's optional confirmation.
+
 ## Residuals — what was closed, and what remains
 
 The historical §A/§B/§C residuals are **closed**: High Float is now 44/44 exact (stored Total Slack,
