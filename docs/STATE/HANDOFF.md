@@ -1,84 +1,97 @@
-# Handoff — 2026-09-20 (e) (R-73 **CLOSED** (ADR-0517) — every started activity's remaining work is scheduled from its stored Resume, read in WORKING MINUTES of the calendar's own segments; the plan's first projection fell to the stored slack; the contiguous projection of the rest of the stored-date family registered as R-77 — **v1.0.281**)
+# Handoff — 2026-09-20 (f) (R-76 **CLOSED** (ADR-0518) — Acumen Fuse's duration FIELDS divide by the ACTIVITY's own CALENDAR day (Original / Baseline ignoring the elapsed flag, Remaining taking 1440 for it); the DCMA-14 parity population and the "8. High Duration" tile read the Baseline Duration FIELD, so a whole-day field of 0 leaves every population; Float Ratio™'s whole-day formula registered as R-78, the DCMA-09 tile's denominator as R-79 — **v1.0.282**)
 
-STATUS (current) — `main` @ **`b0545572`** (#705, R-75 / ADR-0516, **MERGED** 2026-09-20 10:50:27Z by the operator; the squash TREE-IDENTICAL to PR #705's FINAL head `418a7da9`, tree `211074bc…` — re-verified this session with `git rev-parse <sha>^{tree}`, this clone's `HEAD^{tree}` == `origin/main^{tree}`). **PR #705's FINAL head, EIGHT checks read to conclusion:** CI `35503523545` — `cui-guard` 09:53:27Z · `browser` 10:11:07Z · `floor` 10:16:54Z · `test (3.13)` 10:41:46Z · `test (3.11)` 10:49:20Z · `check` 10:49:26Z; installer-smoke `35503523552` — `linux` 09:53:38Z · `windows` 09:57:43Z — **eight of eight green**. **`main`'s OWN runs for `b0545572`, by their JOBS:** CI 1959 (`35506181085`) `cui-guard` 10:50:48Z · `browser` 11:07:13Z · `floor` 11:13:40Z · `test (3.13)` 11:40:47Z · `test (3.11)` 11:37:26Z · `check` 11:40:54Z — six of six; installer-smoke 793 (`35506181084`) `linux` 10:51:08Z · `windows` 10:55:23Z. Nothing about `b0545572` is outstanding. This unit ships on the designated branch **`claude/document-review-continuation-bvzkwm`** (restarted on the squash; its stale remote ref pruned) as a **draft PR the operator merges** (never marked ready here) — `src/` changed, the wheel and nine installers rebuilt, so **EIGHT checks** (CI's six + installer-smoke's `linux` / `windows`). Highest ADR **0517**. Version **1.0.281**. Schema **2.17.0** (unchanged). QC-1 / QC-2 (ADR-0393) and QC-3 (ADR-0509) bind every session.
+STATUS (current) — `main` @ **`601be5d3`** (#706, R-73 / ADR-0517, **MERGED** 2026-09-20 17:44:09Z by the operator; the squash TREE-IDENTICAL to PR #706's FINAL head `62c65a4a`, tree `e409412d…` — re-verified this session with `git rev-parse <sha>^{tree}`, this clone's `HEAD^{tree}` == `origin/main^{tree}`). **PR #706's FINAL head, EIGHT checks read to conclusion:** CI `35518839525` — `cui-guard` 15:12:53Z · `browser` 15:28:41Z · `floor` 15:43:45Z · `test (3.13)` 16:02:26Z · `test (3.11)` 16:07:34Z · `check` 16:07:41Z; installer-smoke `35518839551` — `linux` 15:13:00Z · `windows` 15:18:05Z — **eight of eight green**. **`main`'s OWN runs for `601be5d3`, by their JOBS:** CI 1962 (`35526809555`) `cui-guard` 17:44:27Z · `browser` 18:00:26Z · `floor` 18:15:01Z · `test (3.13)` 18:32:48Z · `test (3.11)` 18:32:00Z · `check` 18:32:55Z — six of six; installer-smoke 796 (`35526809525`) `linux` 17:44:51Z · `windows` 17:49:40Z. Nothing about `601be5d3` is outstanding. This unit ships on the designated branch **`claude/blissful-cori-2nukng`** (branched from the squash; its never-pushed remote-tracking ref pruned) as a **draft PR the operator merges** (never marked ready here) — `src/` changed, the wheel and nine installers rebuilt, so **EIGHT checks** (CI's six + installer-smoke's `linux` / `windows`). Highest ADR **0518**. Version **1.0.282**. Schema **2.17.0** (unchanged). QC-1 / QC-2 (ADR-0393) and QC-3 (ADR-0509) bind every session.
 
 ## What landed
 
-**R-73's premise was attacked before the first edit and the plan's projection FELL to an independent
-oracle.** The row's remedy was "decide the stored instant's projection first". The first candidate
-walked the remaining on the calendar's true segments from the Resume and projected the FINISH with the
-contiguous ruler (ADR-0322's wall→int rule): the census read 1,111 started finishes "exact" — while the
-stored slacks exact fell **11,177 → 9,930** and free slacks 2,367 → 2,041. The instrument had compared
-the engine's contiguous projection with the stored finish's contiguous projection and agreed with itself
-by construction; the stored slack, a working-minute quantity no ruler touches, refuted it. **The axis IS
-working minutes** — `start + duration` counts them exactly — and the contiguous ruler is wrong only
-where it PROJECTS a mid-day instant (15:00 on a 08-12 / 13-17 day is minute 420 there, 360 worked).
-The shipped rule reads the stored Resume SEGMENT-AWARE (`_stored_instant_offset`) and adds the
-remaining on the axis; that read is a floor under `max()` against the link bounds, so no restart can
-precede a linked predecessor's finish — ADR-0322's two-offsets trap does not bite a floor.
+**R-76's population rule was decided FIRST, on the reference's own ribbon, and it reached further
+than the row.** The row asked which duration DCMA-08 reads and how Fuse divides its duration fields.
+The `.aft`'s DCMA metric filters `Baseline Duration > 44` over `Baseline Duration > 0`, and the Large
+Test File pair's ribbon reads 87 / 86 — the Metric History's "High **Baseline** Duration (44d)", not
+"High Planned" (124 / 120) — over **927 / 904** (0.09 / 0.10; the engine's every-incomplete 1,024 / 998
+would print 0.08 / 0.09). On the 24-hour Hard_File the filter "Baseline Duration > 0" reads the FIELD
+on the activity's own day: UIDs 302 / 385 (a 480-minute baseline on a 1,440-minute calendar → 0) leave
+every parity population — "7. Negative Float" **0.92 = 11 / 12** (the engine's 14 printed 0.79),
+"9. Invalid Forecast Dates" **0.08 = 1 / 12**, and the tile's own detail grid lists UID 267 alone where
+the unfiltered Quick-Add grid lists 267 / 302 / 385 (the engine's parity DCMA-09 read 3; now 1).
 
-* **Shipped:** every started, incomplete activity with a recorded actual start, a restart instant and a
-  STORED remaining (or the SRA's override) resumes it at the later of its Resume and the link bounds for
-  the remaining, on both paths; the backward pass retreats by the remaining (the total float is the
-  finish slack); an in-sequence started successor keeps its RECORD as its predecessor's free-float
-  anchor (EVM1 17's 0); a reschedule is disclosed only where it moves the finish past logic and the
-  record's own plan; ADR-0309's floor is subsumed (kept for a reschedule on an activity without an actual
-  start). An absent remaining is MPXJ's dropped zero — `ActualDuration == Duration` on all 10 in the
-  corpus, in two shapes (Stop = Resume = the actual start on EVM1 17 / 267; = the finish on 302 / 385)
-  no single reading fits — and keeps `actual_start + duration`.
-* **Measured, pristine → this tree, 44 files, 22,105 activities:** started finishes exact 1,050 →
-  **1,114** (64 toward, 0 away — the segment-aware instrument; the first probe's 776 was the contiguous
-  ruler judging itself), within a day 1,107 → 1,126, starts 1,144 unchanged; 232 unstarted starts and
-  248 finishes newly exact; late-finish instants exact 11,543 → **11,645**; stored slacks 11,177 →
-  **11,383**; free slacks 2,367 → 2,428; Critical agreed 22,069 → **22,095**; no boolean measure lost a
-  member; project finishes exact 27 → 28 (`24Hour Calendar.mpp` 2027-08-23 → the stored 2027-08-04);
-  `date_driven` 525 → 490 (ten after-lunch Resumes that TIE their FF bound had been read past the tie).
-  Witnesses (engine − stored, working minutes): 4616 −34,080 → 0 (float 161,760 → the stored 127,680),
-  7378 +480 → 0 (306,720 / 60,240 exact), 5505 −14,400 → −1 (the minute grid), 1489 +60 → 0 (98,880),
-  the 24Hour file's 17 +92,160 → 0 (3,180 → 70,860); EVM1's 18 / 17 unmoved; TP4 v3's 19 exact both.
-  39 slacks on Large Test File2 read 30–60 min farther: their early finish's lateness no longer cancels
-  part of a 1,450 / 4,330-minute late-finish error (R-56's chains). 45 started finishes remain off,
-  every one named (the four split bookings, 5505's minute, the dropped-zero trio).
-* **Pinned:** `tests/engine/test_started_work_resumes_remaining.py` (11 — 9 red on the pristine package
-  by name, 2 controls); the R-72 module's in-sequence crew pin re-derived (Resume + 16 crew hours →
-  Wednesday 17:00, float 2,880); the stored-dates oracle re-pinned UPWARD (LTF finish-within-a-day
-  1,682 → 1,686, slacks 882 → 897; LTF2 741 → 746; the 24-hour snapshot 15 → 16), UID 1489 EXACT, an R-73
-  witness on 4616 / 7378 / 5505 and EVM1's 18 / 17. **Battery 8 / 8 red by name** (the contiguous Resume,
-  both triggers restricted, the percent fallback, the whole-duration retreat, the restart anchor, the
-  disclosed contiguous progress, ADR-0309's floor re-applied), the control green.
-* **Registered — R-77 (T2, M):** the rest of the stored-date family and the rendering project
-  contiguously: 4 after-lunch actual starts, 25 pinned completed finishes (54–60 min late), 212
-  unstarted finishes exactly one lunch gap off; the family and the rendering must move to a
-  segment-aware pair together (ADR-0322's trap).
+* **Shipped:** `_common.activity_calendar_day_minutes` (the task's own calendar's day, else the
+  project's — NO elapsed axis) and `acumen_duration_field` (whole days, half-even, a call to
+  `acumen_whole_day_float` — no new `round()`); dcma14's parity `_baselined` reads the Baseline field
+  (> 0) on that day; DCMA-08 under parity is the field > 44 over the baselined-incomplete population;
+  the pure-logic mode byte-identical (raw minutes against 44 project-days, 44 × 1440 for an elapsed
+  baseline, every incomplete activity). `activity_day_minutes` (R-75) delegates to the new selector
+  after its elapsed branch.
+* **Measured — the fields, every duration cell the operator's workbooks display over the committed
+  saves (the four Hard_File analysis workbooks 771 / 771 / 297, the AlltheProjects report 9,935 / 9,935 /
+  1,085 — 10,706 floats reproduce 100 % first, the save check):** *Original* and *Baseline* are the
+  minutes over the task's own CALENDAR day, half-even, the elapsed flag IGNORED (146's 2,880 elapsed
+  minutes display **6**; Jacked Up Schedule 1's elapsed UID 20: 46,080 → **96**) — 0 Baseline misses, 1
+  Original (Large Test File2's 5267 stores `PT107H59M36S`, 13.4992 → 13, where the model's minute grid
+  holds 6,480 → 14; R-65's class); *Remaining* takes 1440 for an elapsed activity (146 → **2**, UID 20 →
+  **32**) — the same 5267 and the two 99 % SUMMARIES 315 / 129 on the 24-hour snapshot whose
+  RemainingDuration MPXJ dropped as a zero (Fuse 0; the percent fallback 247 / 242 → 1). Refuted by
+  name: the project day (14 / 302 / 385 / 389 / Jacked Up 1's 19), 1440 for an elapsed Original (146, UID
+  20), the floor (1,409 rows), half away from zero (the 240-minute baselines 99 / 642 display **0** — the
+  tie is half-even at the field, and the population's reading follows it: 927, not 928). With the
+  intake-only saves the same rules read 15,314 / 15,314 / 2,180 cells with the same residuals.
+* **Measured — the corpus (44 files, 13,461 incomplete):** the population moves only on the three
+  24-hour Hard_File copies (302 / 385); DCMA-08 membership moves only on `24Hour Calendar.mpp` UID 17
+  (28,800-minute baseline: 60 project-days, 20 own-days; no Fuse oracle). Large Test File 87 / 86,
+  Project2 1, Project5 0, every Hard_File snapshot 0 — unchanged and UID-exact against the Detailed
+  Metric Reports' X-marks.
+* **Pinned:** `tests/parity/test_fuse_duration_fields_oracle.py` (the 12,088 committed cells under the
+  shipped helpers with exactly the three named residuals and the alternatives refuted by name; the
+  minute-grid `Duration` read back from the MSPDI; the 24-hour ribbon's 0.92 = 11 / 12 and 0.08 = 1 / 12
+  with the tile's grid (267) against the unfiltered one; the tile 87 / 927 → 0.09, 86 / 904 → 0.10,
+  Project2 1 / 106, the Hard_File snapshots 0, the pristine denominators' 0.08 / 0.09; the R-78 and R-79
+  registrations); `test_dcma14.py`'s synthetic pins on both modes (34.5 own-days not high, an elapsed
+  90 project-days high, the 44.4-day field 44, a 480-minute baseline on 1440 out of every population, the
+  denominator 6 not 8). **Red first on the pristine package, by name** (the helpers absent; (11, 14) ≠
+  (11, 12); (87, 1024) ≠ (87, 927)); **battery 8 / 8 red by name**, the control green — the raw-minutes
+  tile mutant red only on the synthetic pin, which is exactly the UNVERIFIED claim (no oracle activity
+  sits in 44 < d < 44.5).
+* **Registered — R-78 (T1, S):** Fuse's Float Ratio™ averages its WHOLE-DAY fields and reads N/A
+  whenever a Remaining Duration field is 0 — recomputed from Fuse's own displayed fields it reproduces
+  every numeric tile of the AlltheProjects ribbon to 4 dp (−10.9446 → −10.94, 14.0076, 0.7678, 0.2667,
+  0.3427) and every N/A (9 / 9 ⇔ a zero field); the engine averages minutes and skips a zero remaining
+  (−11.85 for −10.94 on the rev-5 updated3; 119.61 / 3.98 / 3.21 where Fuse reads N/A). **R-79 (T1, S):**
+  the DCMA-09 tile's denominator is the baselined INCOMPLETE population (File2 322 / 904 → 0.36; the
+  engine's 1,568 → 0.21) and it counts fields where the engine counts activities (322 vs 173).
+  `duration_days_axis` is HELD with R-78 (its only consumer).
 
 ## How it was verified
 
-Twelve QC-3 assumptions in ADR-0517: ten held, one fell (the projected finish), one held with a
-mechanism (the dropped zero). Pristine baseline reproduced ADR-0513's population to the number.
-`tests/engine` + `tests/parity` + `tests/test_projects` **1,563 passed** (`PYTEST_EXIT=0`, 6:22); the
-CPM counterfactual's consumers in `tests/web` + `tests/importers` + the SRA **470 passed**;
-`tests/installer` 68 after the rebuild; statics green on ruff 0.15.8 and 0.16.8 over the whole tree,
-`ruff format`, `mypy --strict` 165 files, `bandit`, `node --check`. The final tree reproduces the chosen
-candidate on all 22,105 activities (0 differing timings). The full suite is read in the session log
-with the PR number.
+Eleven QC-3 assumptions in ADR-0518: ten held, one fell (`duration_days_axis` as a divisor question —
+the whole Float Ratio™ formula differs; registered). The plan and every instrument are in the session
+record. Statics green on ruff 0.15.8 and `uvx ruff@0.16.8` (`check .` + `format --check .`, whole tree),
+`mypy --strict` 165 files, bandit exit 0, `node --check` per file. The DCMA and parity consumers **197
+passed**; `tests/engine` + `tests/test_projects` **1,353 passed**; `tests/installer` 68 (lockstep after the
+rebuild); the report guard 8. `-m parity` and the full suite: **218 passed / 0 failed** in 7:05 (`PYTEST_EXIT=0`); **5,714 passed / 7 skipped / 0 failed** in 38:11 (`PYTEST_EXIT=0`, the three doc guards deferred to after the last doc edit) —
+read within the session; the doc guards re-run after the last handoff edit.
 
 ## Deliberately NOT done
 
-Reading an absent remaining as zero (fixes 302 / 385 on the 24-hour snapshot, breaks 17 / 267) · a
-seconds-aware Resume (5505's minute is R-65's grid) · the late START of started work (R-71) · the
-free-float cap (R-74) · the four split bookings (R-60's tail) · a finish-slack-only total for the
-wide class (the retreat by the remaining already makes `min()` the finish slack) · the stored-date
-family's projection and the rendering (R-77 — a family, not a site).
+Float Ratio™'s formula, its N/A and `duration_days_axis` (R-78) · DCMA-09's parity denominator and
+its field-vs-activity count (R-79) · reading an absent remaining as zero for the Remaining Duration
+field (the two summaries are disclosed by name; ADR-0517's class keeps the CPM's reading) · the minute
+grid (R-65) · the "≥ 1 own day" alternative for the population (no witness in the (0.5, 1) own-day band;
+the exact tie is witnessed at the field, UID 642) · the pure-logic thresholds and the five project-day
+display sites (ADR-0516 decision 3) · the AlltheProjects labels whose saves the repo does not hold
+(EVM2 8 / 11, Hard_File_updated2 42 / 110, the five TP4 versions 7–13 / 15) and the intake-only `.mpp`
+labels — excluded from the committed oracle by name.
 
 ## Next — campaign queue
 
-**Read `git log origin/main` before trusting any sha here.** Then §3 in order: **R-76** (T1, S — the
-duration fields' divisor: DCMA-08's population rule on the `.aft` and the Detailed Metric Reports' "8.
-High Duration" marks first, then the 7/15 grids' 282 duration cells under the own-day rule with the
-elapsed asymmetry stated) · R-09 · **R-74** · **R-77** (T2, M — the segment-aware pair; census the
-212 / 25 / 4 and every rendered-time pin first) · R-69 · **R-71** · R-13 · R-18 · R-21 · R-22 · R-32 ·
-R-39; R-68 waits on the operator's reading (question (f)); the probe fixture's Fuse run is the
-operator's optional confirmation of ADR-0514's assumption 5.
+**Read `git log origin/main` before trusting any sha here.** Then §3 in order: **R-78** (T1, S — Float
+Ratio™ on the whole-day fields with N/A on a zero divisor; decide the tool's own reading of the N/A
+first, then `_scored` on `acumen_total_float_field` / `acumen_duration_field`, red-first on the rev-5
+updated3 (−11.85 → −10.94) and the Large Test File (119.61 → N/A); `duration_days_axis` retires) ·
+**R-79** (T1, S — the DCMA-09 tile's denominator `ap_inc`, red-first on File2 1,568 → 904 and the
+24-hour file 84 → 12; then the field-vs-activity count from the tile's detail grid) · R-09 · **R-74** ·
+**R-77** (T2, M — the segment-aware pair; census the 212 / 25 / 4 and every rendered-time pin first) ·
+R-69 · **R-71** · R-13 · R-18 · R-21 · R-22 · R-32 · R-39; R-68 waits on the operator's reading (question
+(f)); the probe fixture's Fuse run is the operator's optional confirmation of ADR-0514's assumption 5.
 
 # (prior) handoffs — archived
 

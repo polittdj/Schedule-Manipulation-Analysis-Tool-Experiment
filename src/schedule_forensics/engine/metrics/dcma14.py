@@ -28,7 +28,9 @@ from schedule_forensics.engine.metrics._common import (
     CheckStatus,
     Direction,
     MetricResult,
+    activity_calendar_day_minutes,
     activity_day_minutes,
+    acumen_duration_field,
     acumen_total_float_field,
     effective_total_float,
     evaluate,
@@ -65,9 +67,12 @@ def compute_dcma14(
     verbatim from the NASA Acumen metric library (``NASA_Metrics_Complete_*.aft``) and verified
     UID-exact against Acumen's flagged-task detail on the operator's Large Test File / File2
     (ADR-0280). The unifying rule is Acumen's population filter **Baseline Duration > 0**, where its
-    Baseline Duration is truncated to WHOLE DAYS (a sub-day baseline reads as 0). Under parity the
-    work checks (Logic 01, SS/FF 04, Hard 05, High/Neg float 06/07, Resources 10, Missed 11) scope
-    to baselined activities (>= 1 working day of baseline). Milestone-ness is neither an inclusion
+    Baseline Duration is Fuse's WHOLE-DAY field — half-even on the ACTIVITY's own calendar day, so
+    a baseline under half a day of its own calendar reads as 0 (R-76, ADR-0518: the 24-hour
+    Hard_File's 480-minute baselines on a "24 Hours" calendar leave the population). Under parity
+    the work checks (Logic 01, SS/FF 04, Hard 05, High/Neg float 06/07, High duration 08, Resources
+    10, Missed 11) scope to baselined activities (a baseline field of at least one day) — and the
+    "8. High Duration" tile reads that field against 44. Milestone-ness is neither an inclusion
     nor an exclusion (the library sets ``IncludeMilestone = 1``, so milestones are not filtered as
     a CLASS — the milestone-exclusion scope, ADR-0277/0278, was a coincidental proxy and is
     superseded) — but the baseline-duration predicate still applies to them, so an ordinary
@@ -91,16 +96,22 @@ def compute_dcma14(
     n_inc = len(incomplete)
 
     # Acumen-parity population (ADR-0280): Acumen's DCMA metrics filter on Baseline Duration > 0,
-    # truncated to whole days (a sub-day baseline reads as 0). Parity scopes the work checks to
-    # activities with >= 1 working day of baseline. Milestones are not excluded as a class
+    # in whole days (a sub-half-day baseline reads as 0). Parity scopes the work checks to
+    # activities with a baseline field of at least one day. Milestones are not excluded as a class
     # (IncludeMilestone=1; the ADR-0277/0278 milestone scope was a proxy), but the duration
     # predicate applies to them too — a zero-baseline-duration milestone falls out HERE, by
     # design (ADR-0367). Default = the full non-summary population (byte-identical).
-    mpd = schedule.calendar.working_minutes_per_day
     by_uid = {c.uid: c for c in schedule.calendars}
 
+    # …and "Baseline Duration > 0" is Fuse's Baseline Duration FIELD — whole days, half-even, of
+    # the ACTIVITY's own CALENDAR day, the elapsed flag ignored (R-76, ADR-0518): a 480-minute
+    # baseline on the 24-hour Hard_File's "24 Hours" calendar is 0.33 → 0, so its two activities
+    # (302 / 385) leave every parity population — the ribbon's Negative Float ratio is 11 / 12
+    # (0.92), not 11 / 14 (0.79), and its "9. Invalid Forecast Dates" detail lists UID 267 alone
+    # where the unfiltered Quick-Add metric lists 267 / 302 / 385.
     def _baselined(t: Task) -> bool:
-        return (t.baseline_duration_minutes or 0) >= mpd
+        day = activity_calendar_day_minutes(schedule, t, by_uid)
+        return acumen_duration_field(t.baseline_duration_minutes or 0, day) > 0
 
     ap_tasks = [t for t in tasks if _baselined(t)] if acumen_parity else tasks
     ap_inc = [t for t in incomplete if _baselined(t)] if acumen_parity else incomplete
@@ -251,15 +262,36 @@ def compute_dcma14(
         "DCMA07", "Negative Float", len(neg), len(neg_pop), "%", 0.0, Direction.EQ, neg
     )
 
-    # DCMA-08 High duration — incomplete activities with baseline duration > 44 days.
-    high_dur = tuple(
-        t.unique_id
-        for t in incomplete
-        if t.baseline_duration_minutes is not None
-        and t.baseline_duration_minutes > (44 * 1440 if t.duration_is_elapsed else forty_four)
-    )
+    # DCMA-08 High duration — incomplete activities with baseline duration > 44 days. Under parity
+    # (R-76, ADR-0518) the tile is Fuse's Baseline Duration FIELD > 44 — whole days, half-even, of
+    # the activity's own CALENDAR day with the elapsed flag ignored (a 30-calendar-day elapsed
+    # baseline is 90 project-days and high; a 103.5-project-day baseline on a "24 Hours" calendar
+    # is 34.5 → 34 and not) — over the baselined-incomplete population: Large Test File 87 / 927 →
+    # the ribbon's 0.09 (every incomplete activity, 1,024, would print 0.08; File2 86 / 904 → 0.10,
+    # not 0.09). Reading the whole-day field at 44 < d < 44.5 follows ADR-0514's float
+    # classifications — no oracle activity sits there (UNVERIFIED at the tie). The pure-logic mode
+    # keeps raw minutes against 44 project-days (44 x 1440 for an elapsed baseline) over every
+    # incomplete activity.
+    if acumen_parity:
+        high_dur = tuple(
+            t.unique_id
+            for t in ap_inc
+            if acumen_duration_field(
+                t.baseline_duration_minutes or 0, activity_calendar_day_minutes(schedule, t, by_uid)
+            )
+            > 44
+        )
+        high_dur_pop = n_ap_inc
+    else:
+        high_dur = tuple(
+            t.unique_id
+            for t in incomplete
+            if t.baseline_duration_minutes is not None
+            and t.baseline_duration_minutes > (44 * 1440 if t.duration_is_elapsed else forty_four)
+        )
+        high_dur_pop = n_inc
     out["DCMA08"] = _r(
-        "DCMA08", "High Duration", len(high_dur), n_inc, "%", 5.0, Direction.LE, high_dur
+        "DCMA08", "High Duration", len(high_dur), high_dur_pop, "%", 5.0, Direction.LE, high_dur
     )
 
     # DCMA-09 Invalid dates — actuals after the status date, or a forecast (early) date already
