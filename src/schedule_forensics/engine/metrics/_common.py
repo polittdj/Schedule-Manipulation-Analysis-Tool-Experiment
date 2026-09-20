@@ -145,6 +145,24 @@ def round_half_up(value: float, ndigits: int = 0) -> float:
     return float(Decimal(str(value)).quantize(quantum, rounding=ROUND_HALF_UP))
 
 
+def acumen_whole_day_float(minutes: float, minutes_per_day: int) -> int:
+    """Acumen Fuse's *Total Float* FIELD: the stored slack in WHOLE working days, rounded
+    half-to-even — Python's ``round``, deliberately NOT :func:`round_half_up`.
+
+    Measured, not assumed (ADR-0514, R-03): every Total Float that Fuse v8.11.0 displays in its
+    detail grids for the operator's Large Test File pair — 3,637 activities across the two
+    snapshots — reproduces from the stored slack under this rule, and the 196 exact half-day
+    floats of the first snapshot split 118 with an odd integer part (513.5 → 514) and 78 with an
+    even one (514.5 → 514, 24.5 → 24): half-away-from-zero misses the 78, truncation the 118
+    (and 154.75 → 155). The DCMA "6. High Float" / "7. Negative Float" detail sets are UID-exact
+    against the engine on both snapshots under this field, so the classifications READ it: a
+    -0.5-day float is 0 (not negative) and a 44.5-day float is 44 (not high). The pins live in
+    ``tests/parity/test_fuse_total_float_field_oracle.py`` and ``test_dcma14.py``; R-04's sweep
+    of ``round()`` sites toward ``round_half_up`` must leave this helper's callers alone.
+    ``minutes_per_day`` is the schedule's own working day — the thresholds are defined in days."""
+    return round(minutes / minutes_per_day)
+
+
 def to_offset(schedule: Schedule, when: dt.datetime | None) -> int | None:
     """Map a wall-clock date to the working-minute axis, or ``None`` if absent."""
     if when is None:

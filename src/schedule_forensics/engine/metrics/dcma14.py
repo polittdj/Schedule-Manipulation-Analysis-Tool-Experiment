@@ -28,6 +28,7 @@ from schedule_forensics.engine.metrics._common import (
     CheckStatus,
     Direction,
     MetricResult,
+    acumen_whole_day_float,
     effective_total_float,
     evaluate,
     forty_four_days_min,
@@ -124,10 +125,11 @@ def compute_dcma14(
     status_off = to_offset(schedule, schedule.status_date)
 
     # Total Float basis: minute-grain (pure logic, default) or whole-day-grained under parity —
-    # shows Total Float in days, so a -0.29-day float reads as 0, i.e. not negative (ADR-0280).
+    # Fuse's field is the stored slack in whole days rounded HALF-TO-EVEN (ADR-0280's -0.29 → 0;
+    # ADR-0514's 196 half-day displays: -0.5 → 0 is not negative, 44.5 → 44 is not high).
     def _negative_float(t: Task) -> bool:
         eff = effective_total_float(t, tf.get(t.unique_id, 0))
-        return round(eff / mpd) < 0 if acumen_parity else eff < 0
+        return acumen_whole_day_float(eff, mpd) < 0 if acumen_parity else eff < 0
 
     out: dict[str, MetricResult] = {}
 
@@ -223,7 +225,7 @@ def compute_dcma14(
         t.unique_id
         for t in high_pop
         if (
-            round(effective_total_float(t, tf.get(t.unique_id, 0)) / mpd) > 44
+            acumen_whole_day_float(effective_total_float(t, tf.get(t.unique_id, 0)), mpd) > 44
             if acumen_parity
             else effective_total_float(t, tf.get(t.unique_id, 0)) > forty_four
         )

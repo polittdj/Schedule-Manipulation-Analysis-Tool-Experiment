@@ -25,6 +25,7 @@ from schedule_forensics.engine.metrics._common import (
     CheckStatus,
     Direction,
     MetricResult,
+    acumen_whole_day_float,
     effective_total_float,
     evaluate,
     is_effective_critical,
@@ -130,16 +131,16 @@ def compute_schedule_quality(
     # count — the signal must not become a fabricated clean bill on the tool's own formats.
     # Fuse classifies the stored slack in WHOLE days: a -139-minute (-0.29 d) slack on the
     # operator's Large Test File2 is Fuse's "Zero Days Float", not negative (ADR-0473, the
-    # Detailed Metric Report's activity marks: 122 negative, 66 zero). ``round`` at an exact
-    # half-day tie is banker's rounding — what Fuse does at exactly -0.5 d is R-03's open
-    # question and is not flipped here.
+    # Detailed Metric Report's activity marks: 122 negative, 66 zero). The field rounds
+    # HALF-TO-EVEN — measured on 196 half-day displays (ADR-0514, R-03), so -0.5 d reads 0 and
+    # is not negative; ``acumen_whole_day_float`` names that rule for every caller.
     mpd = schedule.calendar.working_minutes_per_day
     if any(t.stored_total_float_minutes is not None for t in incomplete):
         neg = tuple(
             t.unique_id
             for t in incomplete
             if t.stored_total_float_minutes is not None
-            and round(t.stored_total_float_minutes / mpd) < 0
+            and acumen_whole_day_float(t.stored_total_float_minutes, mpd) < 0
         )
     else:
         neg = tuple(
