@@ -276,7 +276,9 @@ def test_sub_day_negative_effect_keeps_sign_in_minutes() -> None:
     assert r is not None
     e = next(x for x in r.per_change if x.kind == "duration_restored")
     assert e.target_finish_delta_minutes == -240
-    assert e.target_finish_delta_days == 0  # legacy round-half-even pinned (unchanged)
+    # half-even at the whole-day tie — Fuse's own whole-day fields round that way on every
+    # Forensic Analysis Report row (ADR-0515, R-04); half-up would read -1 here
+    assert e.target_finish_delta_days == 0
     assert r.aggregate_target_finish_delta_minutes == -240
 
 

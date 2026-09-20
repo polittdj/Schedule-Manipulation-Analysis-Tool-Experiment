@@ -155,11 +155,26 @@ def _expression_string_waits() -> int:
     return n
 
 
+def _round_families() -> dict[str, int]:
+    """Per-family counts of the round() site ledger (R-04, ADR-0515) — the ledger's membership is
+    tied to the tree by ``test_round_site_ledger.py``; the report states these counts."""
+    out: dict[str, int] = {}
+    ledger = REPO / "tests" / "guards" / "round_site_ledger.tsv"
+    for line in ledger.read_text(encoding="utf-8").splitlines():
+        if not line or line.startswith("#"):
+            continue
+        fam = line.split("\t")[1]
+        out[fam] = out.get(fam, 0) + 1
+    return out
+
+
 def _census_from_tree() -> dict[str, int]:
     static = SRC / "web" / "static"
     return {
         "round_calls_outside_engine_metrics": _round_calls(False),
         "round_calls_inside_engine_metrics": _round_calls(True),
+        "round_sites_ledgered": sum(_round_families().values()),
+        **{f"round_family_{fam}": n for fam, n in _round_families().items()},
         "wait_for_function_expression_strings": _expression_string_waits(),
         "fetch_catch_failed_to_load_modules": sum(
             1 for p in static.glob("*.js") if "Failed to load the" in p.read_text(encoding="utf-8")
