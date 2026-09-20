@@ -33,20 +33,23 @@ def test_integrity_shows_per_change_effect_on_the_target(client: TestClient) -> 
     assert "change-effects" in page
     assert "Effect of each change" in page
     # the removed 188→187 link shows its computed working-day effect (was hidden by removal).
-    # DELIBERATELY re-pinned +23 -> +21 (ADR-0322) -> +15 (ADR-0391) -> +12 (ADR-0474). This is
-    # an ENGINE-DERIVED counterfactual, so a base-CPM change legitimately moves it: ADR-0322 was
-    # the off-calendar honoring, ADR-0391 floors a started activity at its recorded actual_start,
-    # which holds part of this path in place that the old engine let slide back, and ADR-0474 runs
-    # Hard_File's crew-calendar bookings and stored leveling delays in the base CPM (the updated
-    # snapshot's finishes now sit within a day of MS Project's on 100 of 110 activities), so the
-    # restored link pushes the target through a path that already carries those delays. Reverting
-    # the link therefore recovers less. Old value reproduced on the pre-change engine (+15 on a
-    # `git archive dcd64509 src` scratch copy), new value verified stable across two processes on
-    # this tree.
+    # DELIBERATELY re-pinned +23 -> +21 (ADR-0322) -> +15 (ADR-0391) -> +12 (ADR-0474) -> +6
+    # (ADR-0513, 2026-09-20). This is an ENGINE-DERIVED counterfactual, so a base-CPM change
+    # legitimately moves it: ADR-0322 was the off-calendar honoring, ADR-0391 floors a started
+    # activity at its recorded actual_start, ADR-0474 runs Hard_File's crew-calendar bookings and
+    # stored leveling delays in the base CPM, and ADR-0513 resumes an out-of-sequence started
+    # activity's REMAINING work after its restored predecessor instead of re-spanning the whole
+    # plan: UID 187 is 60 % complete with 2,880 crew-minutes left on its team's 16-hour day (three
+    # project days), so with 188->187 restored it finishes on 188's day 32 + 3 = day 35, not
+    # day 32 + the full 8-day plan = day 40, and UID 155 moves 3,120 min = 6.5 wd (round-half-even
+    # -> +6; the pin sits on that boundary). 187 is the ONLY mover: the other five change rows read
+    # +0 on both engines and 155's 2,400-min difference is 187's own finish. Old value reproduced
+    # on the pre-change engine (+12 on a 5b605970 worktree), new value read on this tree in the
+    # page, in the AI fact base and in two probes.
     assert (
         "restore removed FS link 188&rarr;187" in page or "restore removed FS link 188→187" in page
     )
-    assert "+12 wd" in page
+    assert "+6 wd" in page
 
 
 def test_ai_facts_carry_the_computed_counterfactual_not_zero(client: TestClient) -> None:
@@ -63,11 +66,13 @@ def test_ai_facts_carry_the_computed_counterfactual_not_zero(client: TestClient)
     facts = manipulation_forensics_facts(schedules, cpms, target_uid=155)
     joined = " ".join(f.text for f in facts)
     assert "188→187" in joined
-    # DELIBERATELY re-pinned +23 -> +21 (ADR-0322) -> +15 (ADR-0391) -> +12 (ADR-0474); same
-    # adjudication as the /integrity pin above. The point of the test is unchanged and is the
-    # reason it exists: the fact base carries a NON-ZERO engine-computed effect, so the model
-    # cannot answer "no effect".
-    assert "+12 working day(s) LATER" in joined
+    # DELIBERATELY re-pinned +23 -> +21 (ADR-0322) -> +15 (ADR-0391) -> +12 (ADR-0474) -> +6
+    # (ADR-0513); same adjudication as the /integrity pin above. The point of the test is
+    # unchanged and is the reason it exists: the fact base carries a NON-ZERO engine-computed
+    # effect, so the model cannot answer "no effect". (The AGGREGATE fact legitimately reads +0
+    # since ADR-0513: every change reverted together pulls 188's finish to day 21.9, before 187's
+    # stored Resume on day 25, so the remaining resumes where the record says — not pinned here.)
+    assert "+6 working day(s) LATER" in joined
     assert "hid that much slip" in joined
 
 

@@ -165,4 +165,24 @@ are byte-identical on every timing field.
   EVM1's 17 and 267, so no single inference fits); UID 3849's holiday actual start; the witness file
   as a golden (its shape is pinned synthetically, and 1489 / 4581 / 5535 on the Large Test File
   golden carry the oracle).
-- Version **1.0.278**; the wheel and the nine installers rebuilt after the last `src/` edit.
+- **Three Hard_File-derived pins moved with it and were re-derived, not re-fitted (2026-09-20,
+  after PR #702's first CI read — `floor` and `test (3.11)` on `dc862dbf`, 3 failed / 5,306 passed /
+  269 skipped, the three the only red):** the 188→187 counterfactual on Hard_File →
+  Hard_File_updated, target UID 155, reads **+12 → +6 wd** (`test_change_effects_integration.py` ×2,
+  `test_integrity_multifile_robust.py`; +23 / +21 / +15 before ADR-0322 / ADR-0391 / ADR-0474).
+  UID 187 is 60 % complete with 2,880 crew-minutes left on the Customer Service Team's 16-hour day —
+  three project days — and with the removed link restored its logic start (188's finish, day 32)
+  lies past its recorded start (day 20): the pristine engine re-spanned the whole 8-day plan from
+  188's finish (day 40); this rule resumes the remaining after it (day 35); 155 moves 3,120 min =
+  6.5 wd, **+6** under `round()`'s half-even (the rounding sites are R-04's; the exact minutes ride
+  on the `ChangeEffect` but nothing renders them above a day). 187 is the ONLY mover: the other
+  five change rows read +0 on both engines and 155's 2,400-min difference is 187's own finish. The
+  aggregate (every change reverted together) reads +0 for the pristine +2: the joint revert pulls
+  188's finish to day 21.9, before 187's stored Resume (day 25), so the remaining resumes where the
+  record says. Red on the 5b605970 worktree by name (3 failed, each on the `+6` literal, the page and
+  the fact base reading +12) and green here (3 passed, the imported package asserted); the tests'
+  point — a NON-ZERO effect the AI cannot round to "no effect" — stands. Caught by CI, not by the
+  worktree suite, which died at 57 % unread: the counterfactual's consumers live in `tests/web`,
+  outside the `tests/engine` + `tests/parity` shadow run.
+- Version **1.0.278**; the wheel and the nine installers rebuilt after the last `src/` edit; the
+  pin re-derivation is a tests + docs commit with no `src/` change.

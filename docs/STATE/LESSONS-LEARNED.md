@@ -475,6 +475,24 @@ each turned out to be something else.
 - **`pkill -f <pattern>` matches its own shell.** Use `[p]attern`; the first relaunch killed its own
   command chain and nothing after it ran.
 
+**Addendum, after the PR's first CI read — a CPM change must run the counterfactual's consumers,
+and a suite that was never read is a suite that never ran.** The push went out with
+`tests/engine` + `tests/parity` + the new module green and the full suite "running in a worktree".
+That worktree run died at 57 % (`test_airgap`, its log without a `PYTEST_EXIT` line) and nobody
+read it; CI read the whole tree and found three `+12 wd` pins of the 188→187 counterfactual — in
+`tests/web`, where `compute_change_effects` is consumed — that ADR-0513 had legitimately moved to +6
+(UID 187 resumes its remaining three project days after the restored link instead of re-spanning
+its 8-day plan). The figure was RIGHT and the pins were WRONG, which is the benign case; the lesson
+is the method. (1) `grep -rl compute_change_effects tests/` before pushing a CPM change — the
+engine's consumers are not where the engine's tests are, and the counterfactual re-solves the
+network with the shipped rule. (2) A `PYTEST_EXIT` line that does not exist is a verdict that does
+not exist — read the log's tail before calling a suite "running", and never let a push ride on a
+run that has not been read. (3) The standing-down comment named the wrong first hypothesis (187's
+float); the probe that refuted it (TF 240 on both engines, one line) was cheaper than the comment —
+run the probe first, comment second. And a Law 2 note filed under R-04: the effect cell renders
+3,120 min as "+6 wd" because `round()` is half-even at exactly 6.5 — the exact minutes ride on the
+`ChangeEffect`, but nothing renders them above a day.
+
 ### 2026-09-18 (e) — a row's remedy can be half right: measure the class beside the row before adopting it; the probe's own arithmetic is a suspect; and a battery survivor found a hole in the pins on the third unit running (ADR-0512, R-70 closed)
 
 R-70's remedy read "drop a recorded-complete successor's need; a started successor's remaining work
