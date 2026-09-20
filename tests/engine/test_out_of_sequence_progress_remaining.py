@@ -349,14 +349,19 @@ def test_a_wall_path_resume_past_the_logic_places_the_tail() -> None:
 
 
 def test_a_start_type_need_binds_no_started_crew_predecessor() -> None:
-    """UID 5535's shape on the wall path. P is a started crew activity AT its record (32 crew
-    hours from Monday 08:00: 14 h Monday, 16 h Tuesday, 2 h → Wednesday 07-08 08:00) with a
-    start-to-start successor U (one day, deadline Tuesday 17:00 → late start Tuesday 08:00) and a
-    finish-to-start successor W (one day; late start 4,320 = Friday 07-17 08:00 under D's finish
-    at 4,800). P's late finish is W's late start — its start is a record and cannot slip toward
-    U's need — and its float on the project axis is seven days, 3,360. With the start need kept
-    (pre-R-72, the battery's M13) P's late start was pulled to Tuesday 08:00, its late finish to
-    Thursday 07-09 08:00, and its float read 480."""
+    """UID 5535's shape on the wall path. P is a started crew activity AT its record (32 crew hours
+    planned from Monday 08:00), 50 % done with 16 crew hours left, stopped and resuming Tuesday
+    17:00 — its remaining runs Tuesday 17:00-23:00 (6 h), Wednesday 06:00-12:00 (6 h) and
+    13:00-17:00 (4 h) → Wednesday 07-08 17:00 (R-73, ADR-0517: Resume + remaining on the crew's
+    legs; the pre-R-73 engine ran the whole 32 h from the record, 14 h Monday, 16 h Tuesday, 2
+    h → Wednesday 08:00). It has a start-to-start successor U (one day, deadline Tuesday 17:00
+    → late start Tuesday 08:00) and a finish-to-start successor W (one day; late start 4,320 =
+    Friday 07-17 08:00 under D's finish at 4,800). P's late finish is W's late start — its
+    start is a record and cannot slip toward U's need — and its float on the project axis is
+    the finish slack, Thursday 07-09 through Thursday 07-16, six days: 2,880 (its start slack,
+    to the late start the 16-hour tail retreats from Friday 08:00 — Thursday 07-16 08:00 — is
+    3,840). With the start need kept (pre-R-72, the battery's M13) P's late start was pulled to
+    Tuesday 08:00, its late finish to Thursday 07-09 08:00, and its float read 480."""
     p = Task(
         unique_id=14,
         name="P (crew, started at its record)",
@@ -375,10 +380,11 @@ def test_a_start_type_need_binds_no_started_crew_predecessor() -> None:
     res = compute_cpm(
         _schedule(p, u, w, d, rels=(_link(14, 15, RelationshipType.SS), _link(14, 16)), crew=True)
     )
-    assert res.timing(14).early_finish_wall == dt.datetime(2026, 7, 8, 8, 0)
+    assert res.timing(14).early_finish_wall == dt.datetime(2026, 7, 8, 17, 0)
     assert (res.timing(15).late_start, res.timing(16).late_start) == (480, 4320)
     assert res.timing(14).late_finish_wall == dt.datetime(2026, 7, 17, 8, 0)
-    assert res.timing(14).total_float == 3360
+    assert res.timing(14).late_start_wall == dt.datetime(2026, 7, 16, 8, 0)
+    assert res.timing(14).total_float == 2880
 
 
 def test_a_crew_predecessors_free_float_anchors_where_the_remaining_work_starts() -> None:

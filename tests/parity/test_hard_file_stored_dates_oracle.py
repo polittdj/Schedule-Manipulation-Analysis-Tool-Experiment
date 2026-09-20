@@ -108,6 +108,7 @@ import pytest
 from schedule_forensics.engine.cpm import (
     CPMResult,
     _offset_to_wall,
+    _stored_instant_offset,
     compute_cpm,
     datetime_to_offset,
     is_recorded_complete,
@@ -260,13 +261,15 @@ _HARD_FILE = [
     # 146 -> 411 / 155 on its stored dates and the project finish on the stored 11-19 01:00.
     # R-67: milestone 155's late instant is its DEADLINE, and carrying it puts the same chain's
     # LATE dates and slacks on the stored values too (156: -4,740; 146: -19,200)
+    # R-73 / ADR-0517 (2026-09-20): the slack floor 15 -> 16 — one started activity of the 24-hour
+    # snapshot now finishes at its Resume + remaining and its stored slack follows
     (
         "fuse_hardfile/Hard_File_updated3_24hr.mspdi.xml.gz",
         dt.datetime(2026, 11, 19, 1, 0),
         0,
         109,
         110,
-        15,
+        16,
         17,
     ),
 ]
@@ -516,9 +519,18 @@ def test_leveled_goldens_reproduce_the_stored_finish_and_every_stored_slack(
 # longer holds its start; 5376's FF-driven remaining), and a start-type successor need binds no
 # started predecessor (UID 5535's late finish 2027-07-02 -> the stored 11-05). Movers on the two
 # files: 16 started finishes and 173 unstarted successors toward the stored dates, none away.
+# tf_exact RE-PINNED 882 -> 897 and 741 -> 746, finish_floor 1682 -> 1686 on 2026-09-20 (R-73,
+# ADR-0517): EVERY started activity's remaining work is scheduled from its stored Resume, read in
+# working minutes of the calendar's own segments (UID 4616, 99 % with 13 h left, finished 106 days
+# early; 5505 43 days early; 7378 three days late; 1489's hour). Across the 44 files 64 started
+# finishes, 206 stored slacks, 61 free slacks, 102 late-finish instants and 26 Critical flags
+# moved to the stored value and no boolean measure lost a member; 39 slacks on Large Test File2
+# read farther by the 30-60 minutes their early finish had been LATE by (their late finishes sit
+# 1,450 / 4,330 minutes off before and after — R-56's chains — and the early-finish error had
+# been cancelling part of it). File2's lf floor 829 holds; its finish floor 1689 holds.
 _LARGE = [
-    ("fuse_ltf/Large_Test_File.mspdi.xml.gz", 1723, 1682, 882, 1024, 1723, 922),
-    ("fuse_ltf/Large_Test_File2.mspdi.xml.gz", 1722, 1689, 741, 998, 1721, 829),
+    ("fuse_ltf/Large_Test_File.mspdi.xml.gz", 1723, 1686, 897, 1024, 1723, 922),
+    ("fuse_ltf/Large_Test_File2.mspdi.xml.gz", 1722, 1689, 746, 998, 1721, 829),
 ]
 
 
@@ -589,8 +601,9 @@ def test_out_of_sequence_progress_resumes_its_remaining_at_its_recorded_start() 
     2023-10-24, so the pre-R-72 engine ran the full 229 days from there and finished 2025-01-31,
     26 days before the stored 02-26 17:00 — ADR-0476's "136-day swing" was this re-span from a
     PINNED start. Now the start is the record and the finish is Resume + remaining on the
-    engine's own axis; rendered, it lands within the contiguous axis's hour of the stored instant
-    (a Resume after the lunch break projects up to the gap later — ADR-0322's two-ruler rule).
+    engine's own axis — EXACT since R-73 (ADR-0517) reads the Resume in working minutes of the
+    calendar's own segments (13:24 is minute 264 of its day, not the contiguous ruler's 324, which
+    had landed the finish and its slack the lunch hour off).
     UID 4581 (14 %, 288 h left): its SNET of 04-01 lies after its actual start 01-31 and MS
     Project resumes the work at the status date — start and finish now the stored instants.
     UID 5535 (83 %): a start-to-start successor bound its late finish to 2027-07-02 where the
@@ -606,10 +619,8 @@ def test_out_of_sequence_progress_resumes_its_remaining_at_its_recorded_start() 
         assert task.actual_start is not None and task.start == task.actual_start
         assert _offset_to_wall(ps, tm.early_start, cal, role="start") == task.actual_start, uid
         assert task.stored_total_float_minutes is not None
-        # 1489's Resume falls after the lunch break (13:24): the contiguous axis reads it an
-        # hour late, so its finish slack is the stored 98,880 less that hour; 4581 / 5535 exact
-        tolerance = 60 if uid == 1489 else 0
-        assert abs(tm.total_float - task.stored_total_float_minutes) <= tolerance, uid
+        # 1489's stored 98,880 exact too since R-73 (its 13:24 Resume read segment-aware)
+        assert tm.total_float == task.stored_total_float_minutes, uid
         assert (
             tm.late_finish_wall is None
             and _offset_to_wall(ps, tm.late_finish, cal, role="finish") == stored_lf[uid]
@@ -617,16 +628,69 @@ def test_out_of_sequence_progress_resumes_its_remaining_at_its_recorded_start() 
     t1489 = by[1489]
     assert t1489.resume is not None and t1489.remaining_duration_minutes == 5496
     assert res.timing(1489).early_finish == (
-        datetime_to_offset(ps, t1489.resume, cal) + t1489.remaining_duration_minutes
+        _stored_instant_offset(ps, t1489.resume, cal) + t1489.remaining_duration_minutes
     )
     assert t1489.finish == dt.datetime(2025, 2, 26, 17, 0)
-    # the finish sits exactly the axis's hour past the stored instant, in WORKING minutes (an
-    # end-of-day stored finish plus an hour renders as the next morning's 09:00)
-    hour_past = res.timing(1489).early_finish - datetime_to_offset(ps, t1489.finish, cal)
-    assert 0 <= hour_past <= 60, hour_past
+    # the finish IS the stored instant on the axis (the contiguous read of the 13:24 Resume,
+    # minute 324 of its day for the 264 worked, had put it the lunch hour past it)
+    assert res.timing(1489).early_finish == datetime_to_offset(ps, t1489.finish, cal)
+    assert _stored_instant_offset(ps, t1489.resume, cal) == (
+        datetime_to_offset(ps, t1489.resume, cal) - 60
+    )
     assert 1489 in res.actual_start_driven and 1489 in res.date_driven
     t4581 = by[4581]
     assert t4581.constraint_date == dt.datetime(2025, 4, 1, 8, 0) > t4581.actual_start
     assert _offset_to_wall(ps, res.timing(4581).early_finish, cal, role="finish") == t4581.finish
     assert t4581.finish == dt.datetime(2025, 4, 1, 17, 0)
     assert stored_lf[5535] == dt.datetime(2027, 11, 5, 12, 0)
+
+
+# --- R-73 (ADR-0517): every started activity resumes its remaining work at its stored Resume ----
+
+
+def test_started_work_finishes_at_its_resume_plus_remaining_on_the_large_test_file() -> None:
+    """Large_Test_File's in-sequence started activities whose actual portion ran long or short.
+
+    UID 4616 (99 %, 12 h 58 m left, Resume = Stop = 2025-02-13 11:02:24) began 2024-03-15 and ran
+    a year past its 162-day plan: the pre-R-73 engine finished it 34,080 working minutes (71 days)
+    before the stored 2025-02-14 17:00 and read 161,760 minutes of float for the stored 127,680.
+    UID 7378 (84 %, 288 days left) finished a day LATE; UID 5505 (99 %, Resume 2025-02-13 14:45:36
+    with 10 h 14 m 24 s left) 30 days early. Each now sits on its stored finish (5505 within the
+    minute the model's whole-minute grid manufactures: 614 minutes for 614.4) with its stored
+    TotalSlack (5505's by that minute) and, where the file stores one, its FreeSlack. EVM1's UID 18
+    (25 %, Resume 15:00, 18 h left — the after-lunch shape that held the general model back in
+    ADR-0513) keeps its stored finish 2012-08-21 17:00 and that golden's 09-12 project finish, and
+    UID 17 keeps its stored 360 minutes of slack against 18's RECORD (its free float 0, the anchor
+    an in-sequence started successor keeps)."""
+    rel = "fuse_ltf/Large_Test_File.mspdi.xml.gz"
+    sch, res = _load(rel)
+    by = {t.unique_id: t for t in sch.tasks}
+    ps, cal = sch.project_start, sch.calendar
+    for uid, stored_finish in (
+        (4616, dt.datetime(2025, 2, 14, 17, 0)),
+        (7378, dt.datetime(2026, 4, 3, 17, 0)),
+    ):
+        task, tm = by[uid], res.timing(uid)
+        assert task.finish == stored_finish and task.actual_start is not None
+        assert tm.early_finish == datetime_to_offset(ps, task.finish, cal), uid
+        assert tm.total_float == task.stored_total_float_minutes, uid
+        assert _offset_to_wall(ps, tm.early_start, cal, role="start") == task.actual_start, uid
+    assert res.timing(4616).total_float == 127680
+    assert res.timing(7378).total_float == 306720 and res.timing(7378).free_float == 60240
+    t5505, tm5505 = by[5505], res.timing(5505)
+    assert t5505.resume == dt.datetime(2025, 2, 13, 14, 45, 36)
+    assert t5505.remaining_duration_minutes == 614  # PT10H14M24S on the model's minute grid
+    assert t5505.finish == dt.datetime(2025, 2, 14, 17, 0)
+    assert datetime_to_offset(ps, t5505.finish, cal) - tm5505.early_finish == 1
+    assert t5505.stored_total_float_minutes is not None
+    assert tm5505.total_float - t5505.stored_total_float_minutes == 1
+    # EVM1: the after-lunch Resume held exact, and the predecessor's slack and anchor
+    sch1, res1 = _load("evm/EVM1.mspdi.xml")
+    t18 = sch1.task_by_id(18)
+    assert t18.resume == dt.datetime(2012, 8, 17, 15, 0) and t18.remaining_duration_minutes == 1080
+    assert t18.finish == dt.datetime(2012, 8, 21, 17, 0)
+    ps1, cal1 = sch1.project_start, sch1.calendar
+    assert res1.timing(18).early_finish == datetime_to_offset(ps1, t18.finish, cal1)
+    assert _finish_wall(sch1, res1).date() == dt.date(2012, 9, 12)
+    assert res1.timing(17).total_float == sch1.task_by_id(17).stored_total_float_minutes == 360
+    assert res1.timing(17).free_float == 0

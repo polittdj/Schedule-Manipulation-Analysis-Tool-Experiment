@@ -435,6 +435,38 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-20 (e) — an instrument that projects both sides with the same wrong ruler reads agreement by construction; the stored slack is the oracle no ruler touches; the axis is working minutes and only the PROJECTION of a mid-day instant is wrong (ADR-0517, R-73 closed; R-77 registered)
+
+- **What happened.** R-73's remedy said "decide the stored instant's projection first". The plan's
+  first candidate did the obvious thing under ADR-0322's wall→int rule: walk the remaining on the
+  calendar's true segments from the Resume and project the FINISH contiguously. The census read 335
+  more started finishes "exact". The same census read **1,247 fewer stored slacks exact** and 326
+  fewer free slacks, and the Large Test File2 oracle floor dropped.
+- **Why the instrument lied.** Its "exact" compared the engine's finish offset with
+  `datetime_to_offset(stored finish)` — the SAME contiguous ruler on both sides. Two wrong projections
+  of one instant agree with each other. The pristine "776 exact" was the artefact too; re-baselined
+  with a segment-aware projection the pristine engine already had 1,050, and the honest ceiling of the
+  unit was ~60 finishes, not 335. **The stored slack is a working-minute quantity that no projection
+  touches** — it is the oracle that caught it, and the one to keep beside every date measure.
+- **The mechanism, once seen.** The axis IS working minutes: `start + duration` counts them exactly,
+  and every started activity whose actual start is a day boundary was already on the true
+  working-minute finish. What is wrong is `datetime_to_offset`'s clamp on a mid-day instant (15:00 on
+  a 08-12 / 13-17 day is 420 there, 360 worked) — and `offset_to_datetime`, its inverse, renders the
+  same hour early. So the Resume is read SEGMENT-AWARE and the remaining added on the axis; a
+  segment-aware read is only ever a FLOOR under `max()` against the link bounds, which is why
+  ADR-0322's two-offsets trap (a successor placed before its predecessor's finish) cannot bite it.
+- **A tie is a supported date.** 35 "dates not supported by logic" disclosures vanished: after-lunch
+  Resumes that tie their finish-to-finish bound (the pair scheduled to finish together) had been read
+  past the tie by the gap. A floor that binds by the width of a ruler's error is not a floor.
+- **The dropped zero has two shapes and no single reading fits both.** All ten absent-remaining
+  activities store `ActualDuration == Duration`; on two the Stop / Resume sit at the actual start, on
+  two at the finish. "Read it as zero" fixes two and finishes two the morning they began. The rule
+  reads only a STORED remaining, and the class keeps the record's plan — stated, not inferred.
+- **The lesson.** Before trusting an agreement count, ask what BOTH sides were measured with; if the
+  answer is the same instrument, the count measures the instrument. And a candidate that lifts every
+  date while dropping the slacks is not "mostly right" — it is wrong about the one quantity that is
+  independent, and that quantity is the verdict.
+
 ### 2026-09-20 (d) — a reader must never filter the value it judges; a writer that skips a cell says so in the cell reference; the divisor is the task's OWN calendar, not the crew it is scheduled on (ADR-0516, R-75 closed; R-76 registered)
 
 R-75 asked which day Fuse divides its whole-day Total Float by, and the obvious candidate — the
