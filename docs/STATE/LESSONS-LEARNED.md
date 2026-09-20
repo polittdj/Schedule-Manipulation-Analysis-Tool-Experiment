@@ -435,6 +435,47 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-20 (c) — the reference tool's own REPORT is the oracle for its rounding; a "measured" example can be an illustration; and a row the rule does not reproduce can be a divisor, not a rounding (ADR-0515, R-04 closed; R-75 registered)
+
+R-04 was priced as a sweep: 330 `round()` sites outside `engine/metrics`, banker's rounding at every
+displayed tie, to be moved toward `round_half_up` family by family. ADR-0514 had already amended the
+row to "measured per figure, never assumed" — and that amendment is the whole unit. The reference tool
+ships three Forensic Analysis Reports that print, per changed activity, a whole-day field before and
+after, the change, and a 2-dp ratio; read against the goldens' exact values every one of those
+figures is half-to-even (2,822 whole-day rows, 11 of 11 discriminating ratio ties), the change is the
+difference of the ROUNDED fields, and the date change is truncated calendar days. The sweep would have
+moved the tool away from the reference on the one figure class where a reference display exists.
+
+Three things generalize.
+
+**A "measured" example in a docstring is testimony until the population is found.** MF-08 rested on
+"the one Fuse-measured place (logic density, 2.625 → 2.63)". ADR-0141's own text says no golden value
+sits on an exact half; the parity pin is 2.79 / 2.81; and the reports store those metric values RAW
+under Excel's General format, so there is no Fuse-displayed 2.63 anywhere in the intake. The example
+was an illustration of the spreadsheet rule, and three later documents cited it as an observation.
+When a rule's basis is one number, find the population that decides it or write UNVERIFIED beside it.
+
+**A row the rule does not reproduce is a mechanism question before it is a rounding question.** Three
+Hard_File floats read −3 / −1 / 2 where half-even on the project day says −9 / −3 / 5. Half-up does
+not fix them; truncation does not fix them; the activity's OWN calendar day (1,440 / 1,440 / 930
+minutes) reproduces all three exactly. That is R-75, registered with its oracle — the 24-hour ribbon's
+High Float 0 that the engine currently reads as 2 — and with the case that refuses the obvious
+mechanism (UID 146 has no task calendar and is still shown over 1,440). Decide the mechanism on the
+corpus before touching the helper.
+
+**A parser's silent skip is the census's silent lie.** The first oracle draft read the "after" value
+as the last number in the row; a deleted activity's empty after cell let the 2-dp ratio slide into
+its place, and the population read 1,510 rows instead of 1,436 while every rule still passed. The
+population pin caught it, not the rule pin. Read the emitter's layout (a day sheet has a ratio column,
+a date sheet does not) and read positionally; then pin the population, because a rule that passes on
+the wrong population is the exact failure QC-1 names.
+
+Two smaller ones. Ties at the tool's displayed precisions are not hypothetical — 292 stored floats and
+74 durations in the goldens sit on one — so "no tie in the corpus" must be measured per figure, not
+inherited from the last unit. And the model's integer-minute grid manufactures ties the file does not
+have (`PT107H59M36S` is 13.4992 days, carried as 13.5): an oracle comparison must name that row rather
+than widen a tolerance to swallow it.
+
 ### 2026-09-20 (b) — the reference's exports already held the oracle: read what the tool DISPLAYS before asking the operator for a run; a tie nobody occupies is decided on the 196 ties others occupy; an audit row's remedy can duplicate a fixture the repo already owns (ADR-0514, R-03 closed)
 
 - **What happened.** R-03 said dcma14's two parity roundings were a banker's-rounding defect at an
