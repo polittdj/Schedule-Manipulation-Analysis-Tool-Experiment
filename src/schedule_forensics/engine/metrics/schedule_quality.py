@@ -25,7 +25,8 @@ from schedule_forensics.engine.metrics._common import (
     CheckStatus,
     Direction,
     MetricResult,
-    acumen_whole_day_float,
+    activity_day_minutes,
+    acumen_total_float_field,
     effective_total_float,
     evaluate,
     is_effective_critical,
@@ -133,14 +134,18 @@ def compute_schedule_quality(
     # operator's Large Test File2 is Fuse's "Zero Days Float", not negative (ADR-0473, the
     # Detailed Metric Report's activity marks: 122 negative, 66 zero). The field rounds
     # HALF-TO-EVEN — measured on 196 half-day displays (ADR-0514, R-03), so -0.5 d reads 0 and
-    # is not negative; ``acumen_whole_day_float`` names that rule for every caller.
-    mpd = schedule.calendar.working_minutes_per_day
+    # is not negative — in days of the ACTIVITY's own calendar, an elapsed slack raw over 1440
+    # (ADR-0516, R-75); ``acumen_total_float_field`` names that rule for every caller.
+    by_uid = {c.uid: c for c in schedule.calendars}
     if any(t.stored_total_float_minutes is not None for t in incomplete):
         neg = tuple(
             t.unique_id
             for t in incomplete
             if t.stored_total_float_minutes is not None
-            and acumen_whole_day_float(t.stored_total_float_minutes, mpd) < 0
+            and acumen_total_float_field(
+                t, t.stored_total_float_minutes, activity_day_minutes(schedule, t, by_uid)
+            )
+            < 0
         )
     else:
         neg = tuple(

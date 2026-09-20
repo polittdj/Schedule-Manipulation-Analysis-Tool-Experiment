@@ -535,3 +535,58 @@ def test_acumen_parity_float_ties_follow_fuses_half_even_field() -> None:
     assert acumen_whole_day_float(44 * DAY + 240, DAY) == 44
     assert round_half_up(-240 / DAY) == -1.0  # would read negative
     assert round_half_up((44 * DAY + 240) / DAY) == 45.0  # would read high
+
+
+def test_acumen_parity_float_field_divides_by_the_activitys_own_day() -> None:
+    """Fuse's Total Float FIELD divides the stored slack by the ACTIVITY's own day, not the
+    project's (R-75, ADR-0516) — measured on every Total Float the operator's Hard_File
+    workbooks display: a task on a 1,440-minute "24 Hours" calendar with 49,680 minutes of
+    stored slack reads 34 (not 104) and is NOT high float; an elapsed activity's slack is raw
+    elapsed days, so -19,200 minutes read -13.333… (UID 146) where the same minutes on a 24
+    Hours task calendar read -13 (UID 14). Both parity sites move with it; the pure-logic mode
+    keeps the minute grain on the project day, so the contrast stays visible. A task whose
+    calendar the schedule does not carry, and a task with none, stay on the project day."""
+    from schedule_forensics.engine.metrics._common import (
+        activity_day_minutes,
+        acumen_total_float_field,
+    )
+
+    cal24 = Calendar(
+        uid=4, name="24 Hours", working_minutes_per_day=1440, work_weekdays=(0, 1, 2, 3, 4, 5, 6)
+    )
+    cases = {  # uid: (stored total float in minutes, calendar uid, elapsed?)
+        1: (49_680, 4, False),  # 103.5 project-days, 34.5 own-days → 34: NOT high
+        2: (44 * 1440 + 720, 4, False),  # 44.5 own-days → 44: NOT high (133.5 project-days)
+        3: (45 * 1440, 4, False),  # 45 own-days → high under both readings
+        4: (-600, 4, False),  # -1.25 project-days, -0.42 own-days → 0: NOT negative
+        5: (-600, None, True),  # elapsed: RAW -0.4166… < 0 → negative (never rounded to 0)
+        6: (44 * 1440 + 100, None, True),  # elapsed: RAW 44.07 > 44 → high (not rounded to 44)
+        7: (-600, 99, False),  # a calendar uid the schedule does not carry → project day: -1
+        8: (-600, None, False),  # no calendar of its own → project day: -1
+    }
+    tasks = [
+        Task(
+            unique_id=uid,
+            name=f"own-day-{uid}",
+            duration_minutes=DAY,
+            baseline_duration_minutes=2 * DAY,
+            stored_total_float_minutes=minutes,
+            calendar_uid=cal_uid,
+            duration_is_elapsed=elapsed,
+        )
+        for uid, (minutes, cal_uid, elapsed) in cases.items()
+    ]
+    sch = _sched(tasks, calendars=(cal24,))
+    assert activity_day_minutes(sch, sch.tasks_by_id[1]) == 1440
+    assert activity_day_minutes(sch, sch.tasks_by_id[5]) == 1440
+    assert activity_day_minutes(sch, sch.tasks_by_id[7]) == 480
+    assert activity_day_minutes(sch, sch.tasks_by_id[8]) == 480
+    assert acumen_total_float_field(sch.tasks_by_id[1], 49_680, 1440) == 34
+    assert acumen_total_float_field(sch.tasks_by_id[5], -600, 1440) == -600 / 1440
+    parity = compute_dcma14(sch, acumen_parity=True)
+    assert set(parity["DCMA06"].offender_uids) == {3, 6}
+    assert set(parity["DCMA07"].offender_uids) == {5, 7, 8}
+    # the project day would have read 1 / 2 / 4 the other way — the pure-logic mode still does
+    pure = compute_dcma14(sch)
+    assert set(pure["DCMA06"].offender_uids) == {1, 2, 3, 6}
+    assert set(pure["DCMA07"].offender_uids) == {4, 5, 7, 8}

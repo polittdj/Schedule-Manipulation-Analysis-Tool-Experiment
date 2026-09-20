@@ -1,77 +1,95 @@
-# Handoff — 2026-09-20 (c) (R-04 **CLOSED** (ADR-0515) — Acumen Fuse's own rounding is half-to-even wherever its code rounds; the sweep of the `round()` sites toward `round_half_up` is REFUTED by measurement; the 374 sites classified by exposure and guarded; the whole-day DIVISOR registered as R-75 — **v1.0.279**, docs + tests only)
+# Handoff — 2026-09-20 (d) (R-75 **CLOSED** (ADR-0516) — Acumen Fuse's Total Float field divides the stored slack by the ACTIVITY's own day — a task calendar's, raw elapsed days for an elapsed duration, else the project's — never the crew's calendar and never the engine's execution calendar; the three parity callers pass it; the DURATION fields' divisor registered as R-76 — **v1.0.280**)
 
-STATUS (current) — `main` @ **`dc9135f0`** (#703, R-03 / ADR-0514, **MERGED** 2026-09-20 05:35:44Z by the operator; the squash TREE-IDENTICAL to PR #703's FINAL head **`cc9a7a9b`**, tree `9e1935e7…`, compared with `git rev-parse <sha>^{tree}`). PR #703's FINAL head's EIGHT checks read to conclusion this session — CI `35488995060`: `cui-guard` 04:23:07Z · `browser` 04:40:55Z · `floor` 04:52:50Z · `test (3.13)` 05:10:15Z · `test (3.11)` 05:16:07Z · `check` 05:16:12Z; installer-smoke `35488995051`: `linux` 04:24:06Z · `windows` 04:27:54Z — eight of eight green. **`main`'s OWN runs for `dc9135f0`, read by their JOBS:** installer-smoke 790 (`35492076147`): `linux` 05:36:27Z · `windows` 05:40:30Z green; CI 1952 (`35492076184`): `cui-guard` 05:36:03Z · `browser` 05:50:35Z · `floor` 05:57:40Z · `test (3.13)` 06:24:40Z · `test (3.11)` 06:30:05Z · `check` 06:30:12Z — **SIX OF SIX GREEN**. Nothing about `dc9135f0` is outstanding. This unit ships on the designated branch **`claude/gallant-cori-v8mh88`** (restarted on the squash) — code + docs commit **`967fc084`** as **draft PR [#704](https://github.com/polittdj/Schedule-Manipulation-Analysis-Tool-Experiment/pull/704)** (the operator merges; never marked ready here), then this docs-only follow-up — **docs + tests only, no `src/` change, so SIX checks, no version bump, no installer rebuild**; the follow-up restarts CI — read the FINAL head's checks. **The gate:** statics green on both ruff binaries (0.15.8 and 0.16.8) over the whole tree, `ruff format`, `mypy --strict`, `bandit`, `node --check` per file; the new parity oracle (6 passed, 4 s), the ledger guard (3), the WP8 report guard (8), the rendered-tie module (7), `test_change_effects` (re-aimed comment), the state-doc guards; red by name under three mutants of the oracle's rule and seven `round_half_up` mutants at the display callers (shadow copies, mutcheck). CI's `test` jobs on the final head are the suite verdict (no background worktree suite — the last two died unread). Review cover remains ABSENT (Codex quota exhausted). Highest ADR **0515**. Version **1.0.279** (unchanged). Schema **2.17.0** (unchanged). QC-1 / QC-2 (ADR-0393) and QC-3 (ADR-0509) bind every session.
+STATUS (current) — `main` @ **`9d5541af`** (#704, R-04 / ADR-0515, **MERGED** 2026-09-20 08:24:02Z by the operator; the squash TREE-IDENTICAL to PR #704's FINAL head `bee00008`, tree `c6b4fbad…` — re-verified this session, this clone's `HEAD^{tree}` == `origin/main^{tree}`). **`main`'s OWN run for `9d5541af` — CI 1956 (`35499451753`, created 08:24:04Z; no installer-smoke, that diff touched no `installer/**`) — read by its JOBS this session:** `cui-guard` 08:24:19Z · `browser` 08:42:22Z · `floor` 08:53:47Z (tests 08:46:59Z, parity 08:53:45Z) · `test (3.13)` 09:11:46Z (tests + coverage 09:05:56Z, engine gate, parity 09:11:36Z, bandit, pip-audit) — **FOUR GREEN**; `test (3.11)` tests + coverage green 09:12:28Z, engine gate 09:12:29Z, parity step IN PROGRESS at the last read; `check` not yet listed — the session log's follow-up carries the last two, and the next session re-reads them by their jobs before trusting this line. This unit ships on the designated branch **`claude/dreamy-euler-vjd862`** (started on the squash) as a draft PR the OPERATOR merges (number in the session log's follow-up) — `src/` changed, the wheel and nine installers are rebuilt, so **EIGHT checks** (CI's six + installer-smoke's `linux` / `windows`). Highest ADR **0516**. Version **1.0.280**. Schema **2.17.0** (unchanged). QC-1 / QC-2 (ADR-0393) and QC-3 (ADR-0509) bind every session.
 
 ## What landed
 
-**R-04's premise fell to the reference's own reports.** The row read the 330 builtin `round()` sites
-outside `engine/metrics` (44 more inside) as MF-08's residual — banker's rounding at every displayed
-tie, to be swept family by family toward `round_half_up`, each figure measured against the reference
-tool's OWN rule. The intake holds three Fuse **Forensic Analysis Reports** with a golden on both sides
-(the Large Test File pair, the two Hard_File pairs); against the goldens' exact days every whole-day
-field (Original / Remaining Duration, Total Float) is **half-to-even on every comparable row** (LTF
-752 / 773 / 1,297; half-day ties of both parities 20 / 11 / 262; half-away-from-zero misses exactly
-the even-part halves 10 / 4 / 111), the day change is the **difference of the ROUNDED fields** (the
-rounded exact difference reproduces only 1,216 of 1,297; Hard_File UID 37: 8.5 → 7 is shown −1, not
-−2), the 2-dp ratio is **ToEven on the SCALED value** (1/8 → 0.12, 9/8 → 1.12, 17/40 → 0.42, 1/40 →
-0.02 — half-up refuted on all 11 discriminating ties; Python's own `round(0.025, 2)` is 0.03, so the
-reference rounds the scaled double), and the Start / Finish change is the **calendar-day difference
-truncated toward zero** (2,741 / 2,741). Fuse's metric values in its Summary / History reports are
-stored **RAW under Excel's General format** (13,022 cells, 1,309 at an exact 3-dp tie) — so the D19
-"2.625 → 2.63" behind MF-08 was an illustration (ADR-0141 says no golden sits on a half; the pin is
-2.79 / 2.81), never an observation. Ties are common in the corpus (292 stored floats and 74 durations
-sit on a displayed tie across the 15 goldens), so the question was real; the answer is that `round()`
-IS the reference's rule wherever its code rounds.
+**R-75's mechanism was decided on the corpus before the first edit, and the corpus decided it against
+the obvious reading.** Every Hard_File workbook with detail grids prints a Total Float beside every
+activity — **771** rows over five snapshots (45 / 61 / 61 / 102 / 110 / 110 / 141 / 141) once each
+workbook is matched to the SAVE it was made from (the 7/15 analyst report `HA296F~1.XLS` is the rev-5
+`updated3`, 141 / 141 against 129 / 141 on rev 2; the 7/9 Analysis Report is rev 2, 110 / 110). The
+ACTIVITY's own day — 1440 for an elapsed duration, else the task's own calendar's working minutes per
+day, else the project's — reproduces every one. The project day misses exactly ten (94 on `updated`;
+14 / 146 on `updated2` and `updated3`; 14 / 146 / 302 / 385 / 389 on the 24-hour file). The CREW's
+calendar is refuted by name: UID 14's 16-hour crew reads −4 for −3; a task with no calendar of its own
+stays on the project day even when its crew works 24 hours (24-hour file UID 13: −10 shown, the crew's
+1440 reads −3); UID 389's crew is on the project pattern while its task is on 24 Hours (−14, not −41).
+The engine's EXECUTION calendar (ADR-0474 / ADR-0503) is refuted too: the task ∩ crew intersection's
+870 minutes read 3 for UID 94's 2, the crew under a 24-hour task calendar reads −4 for UID 14's −3.
+**The elapsed activity's field is RAW:** the 24-hour file displays UID 146 at −13.333333333333334 for a
+stored −19,200 minutes where UID 14, on a 24 Hours task calendar with the SAME minutes, reads −13 — the
+one non-integer cell in 771, and the first reader of the grids had filtered it to integers and read
+"140 of 140" for the elapsed case. UID 302 sits on an own-day tie (34.5 → 34, half-even on the task's
+axis too).
 
-* **Shipped:** no flip, no `src/` change. `tests/guards/round_site_ledger.tsv` classifies all 374
-  sites by exposure (twelve families, rules in `test_round_site_ledger.py`'s `FAMILIES`; the guard ties
-  the ledger to the tree — an added, moved or reworded site is unclassified until named; the family
-  counts are re-derived into the report's §4 by `test_audit_report_wp8.py`). `tests/parity/
-  test_fuse_forensic_rounding_oracle.py` pins the reference's four rules on all three reports with the
-  populations, the tie counts and the alternatives refuted BY NAME; the three Hard_File rows the rule
-  does not reproduce are named as a DIVISOR (R-75) and LTF2 UID 5267 as the model's minute grid
-  (`PT107H59M36S` carried as 6,480 min). `tests/web/test_round_display_rule_at_ties.py` observes each
-  display family at a derived tie on the rendered payloads (a 0.25-day lag → 0.2, a 1.125-day remaining
-  → 1.12, SCL 9/16 → 56.2, criticality 17/32 → 0.5312, 12.5 % → "12%"). `test_change_effects`'s
-  whole-day tie pin (240 min → 0) now cites the measured reason.
-* **Registered — R-75 (T1, S):** Fuse divides its whole-day float by the ACTIVITY's own day — Hard_File
-  UIDs 14 / 146 / 94 display −3 / −1 / 2 for stored −4,320 / −1,440 / 2,190 min (a 1,440-min task
-  calendar, an elapsed duration whose crew is on a 1,440-min calendar, a 930-min calendar) while
-  `acumen_whole_day_float`'s three callers pass the project's 480; on the 24-hour Hard_File the engine's
-  DCMA-06 reads **2** (UIDs 302 / 385) where Fuse's ribbon reads **0** (`HA296F~1.XLS`; Negative Float
-  40 / 11 agrees either way). Mechanism undecided (146 has no task calendar) — decide it first.
-* **Measured:** every existing figure unchanged — the Fuse parity oracles green, the goldens untouched.
+* **Shipped:** `_common.activity_day_minutes(schedule, task, by_uid)` and
+  `acumen_total_float_field(task, minutes, day)`; dcma14's "6. High Float" / "7. Negative Float" parity
+  sites and the ribbon's Negative Float read the field. No new `round()` (the ledger's 374 rows stand).
+  The 24-hour Hard_File's DCMA-06 under parity reads **0** with Fuse (was 2: 302 / 385's 49,680 /
+  44,796 minutes are 104 / 93 project-days and 34 / 31 days of their 24 Hours calendar).
+* **Pinned:** `tests/parity/test_fuse_hardfile_float_divisor_oracle.py` — the 771 rows per workbook and
+  save, the alternatives refuted by name, the raw cell, the 302 tie, the 7/15 ribbon's High Float 0 / 0
+  and Negative Float 40 / 11 with the Negative Float grids UID-exact against
+  `compute_dcma14(acumen_parity=True)`, the ribbon's own Negative Float unmoved at 49 / 15 (a wider
+  population than the DCMA tile's — no baseline filter), and the R-76 evidence; synthetic pins on both
+  parity paths and the ribbon site (`test_dcma14`, `test_schedule_quality`); the Forensic oracle
+  (ADR-0515) re-pointed to the engine's rule and its READER corrected.
+* **Measured, 44 files:** 1,578 activities carry an off-pattern task calendar or an elapsed duration;
+  **34** change their whole-day float (the Hard_File family, `24Hour Calendar.mpp` 17: 148 → 49,
+  `Jacked Up Schedule 1.mpp` 19 / 20); the Large Test File pair's 138 off-pattern task calendars are
+  480-minute days (0 movers; 814 / 35, 660 / 112 unmoved); DCMA-06 membership moves only on the
+  24-hour Hard_File, DCMA-07 nowhere, the ribbon's Negative Float on no file.
+* **ADR-0515's Forensic reader was wrong and is fixed:** Fuse's xlsx writer omits the cell reference on
+  consecutive cells and writes it only where it SKIPPED a column — an empty ratio at a zero 'before',
+  and every date-sheet row. The document-order reader slid such rows (the after value into the ratio
+  slot, the row dropped as non-numeric): 70 Hard_File float rows, 6 LTF float rows and 4 / 7 LTF
+  duration rows were never compared, and the (1, 14) divisor assertion never ran. Column-addressed
+  now: **810 / 855 / 1,514** rows, every one half-even under the own-day rule; date sheets 1,225 /
+  1,516 unchanged.
+* **Registered — R-76 (T1, S):** Fuse's Original / Remaining Duration fields divide by the task's own
+  day too (14: 1, not 3; the 24-hour file's 302 / 385 / 389: 2 / 3 / 1), an ELAPSED original duration
+  on the PROJECT day (146: 6) but its remaining on 1440 (2); two remaining rows (315 / 129: shown 0 for
+  247 / 242 minutes) a different mechanism; the DCMA-08 parity site and `duration_days_axis` priced
+  against it (two corpus crossings of 44 days, no Fuse oracle behind either).
 
 ## How it was verified
 
-Ten QC-3 assumptions in ADR-0515: eight held, two UNVERIFIED and said so (MS Project's 2-dp display
-rule — no MS Project-rendered export in the intake; Fuse's GUI display of a metric value at a tie — the
-exports carry raw values, so MF-08 stands on the spreadsheet convention). Fell: the row's premise; MF-08's
-"Fuse-measured" basis; the oracle's first grid reader (a deleted activity's empty after cell let the
-ratio slide into the after position — 1,510 rows instead of 1,436; positional now, population pinned).
-Red first: the oracle under three mutants of its rule (half-away 19 / 10 / 119 rows red; the rounded
-exact difference 806 → 783, 848 → 798, 1,436 → 1,351; the half-up ratio 11 red); the tie module under
-seven `round_half_up` mutants at the callers, each red on its own pin only (`0.3 == 0.2`,
-`1.13 == 1.12`, `56.3 == 56.2` ×2, `0.5313 == 0.5312`, `(1, 2, 3) == (0, 2, 2)`, the 12 % cell gone);
-the WP8 census red by name with the thirteen new keys before the report carried the rows.
+Ten QC-3 assumptions in ADR-0516: eight held, one UNVERIFIED and said so (elapsed-over-task-calendar
+precedence — 0 of 16 elapsed activities carries a task calendar), one FELL (the elapsed field
+"rounded" — the −13.333… cell). Red first BY VALUE on the pristine engine: the 24-hour DCMA-06
+(302, 385) against the ribbon's 0; the synthetic parity sets [1, 2, 3, 6] / [4, 5, 7, 8] against
+{3, 6} / {5, 7, 8}; the ribbon (1, 2, 3) against (1, 3). Green after (13 passed). Five mutants of the
+helper on shadow copies (the import asserted): the project day always → 5 pins red; the elapsed axis
+ignored → 3 (146 by name); the elapsed activity rounded → 3; half away from zero on the own day → 2
+(302's 34 → 35, 44.5 → 45); the execution calendar → 2 (94 / 14 / 13). The 23 modules consuming the
+DCMA or ribbon sets + the ledger guard 327 passed; statics green on ruff 0.15.8 and 0.16.8 over the
+whole tree, `mypy --strict` 165 files, bandit, `node --check`. The full suite ran within the session and is read in the
+session log's follow-up; CI's `test` jobs on the PR's FINAL head are the verdict.
+Fell in the unit's own plan: the first grid reader (a filter on the judged value), the ribbon-equals-
+DCMA-tile premise (49 / 15 against 40 / 11 — different populations, pinned as unmoved, not equal).
 
 ## Deliberately NOT done
 
-A `round_half_up` sweep of any family (refuted) · reverting MF-08 (no tie oracle either way;
-parity-green; restated, not moved) · a 2-dp precision change for the days families toward MS Project's
-display (a presentation change; MS Project's tie rule unverified) · the divisor fix (R-75 — mechanism
-first, on the corpus) · the Free Float sheet (no stored free float field in the model — R-74's row) ·
-reading the tool's `round(x, 2)` as the reference's `round(x * 100) / 100` (they differ only on
-decimal-looking near-ties such as 0.025, none of which the tool prints from a Fuse figure).
+The five whole-day display sites outside `engine/metrics` (the brief's two float sentences, the
+driving view's two at 1 dp, the recommendations' one) and the pure-logic DCMA thresholds stay on the
+PROJECT day — priced and HELD: the tool's own reading on the schedule's declared day, MS Project's slack
+display convention (UNVERIFIED: no MS Project-rendered export; a view export showing UID 14's Total
+Slack settles it) · rounding the elapsed field (the reference does not) · the duration fields (R-76 —
+DCMA-08's population rule first) · the LTF field oracle's document-order reader (its grids are
+full-width and all 3,637 rows match by value) · a separate pin on `HARD_F~3.XLS` (a duplicate) ·
+the Free Float sheet (R-74's row).
 
 ## Next — campaign queue
 
-**Read `git log origin/main` before trusting any sha here.** Then §3 in order: **R-75** (T1, S — the
-whole-day divisor: decide the mechanism on the corpus first — task calendar, elapsed axis, or the crew's
-— then the three callers, red-first on the 24-hour ribbon's High Float 0 / Negative Float 11 and the
-three Forensic rows, `-m parity` unmoved on the LTF pair) · **R-73** · R-09 · R-74 · R-69 · **R-71** ·
-R-13 · R-18 · R-21 · R-22 · R-32 · R-39; R-68 waits on the operator's reading (question (f)); the probe
-fixture's Fuse run is the operator's optional confirmation of ADR-0514's assumption 5.
+**Read `git log origin/main` before trusting any sha here.** Then §3 in order: **R-73** (T1, M — the
+general `Resume + remaining` model: decide the stored instant's projection FIRST, ADR-0322's two-ruler
+rule refuses a second ruler; the wide model's away movers were the after-lunch Resumes) · **R-76**
+(T1, S — the duration fields' divisor: DCMA-08's population rule on the `.aft` and the Detailed
+Metric Reports' "8. High Duration" marks first, then the 7/15 grids' 282 duration cells under the
+own-day rule with the elapsed asymmetry stated) · R-09 · **R-74** · R-69 · **R-71** · R-13 · R-18 ·
+R-21 · R-22 · R-32 · R-39; R-68 waits on the operator's reading (question (f)); the probe fixture's
+Fuse run is the operator's optional confirmation of ADR-0514's assumption 5.
 
 # (prior) handoffs — archived
 

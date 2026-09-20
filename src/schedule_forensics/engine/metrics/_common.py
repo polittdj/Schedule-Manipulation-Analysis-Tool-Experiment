@@ -10,13 +10,16 @@ minutes; days conversion happens at the presentation boundary (`model.units`).
 from __future__ import annotations
 
 import datetime as dt
+from collections.abc import Mapping
 from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal
 from enum import StrEnum
 
 from schedule_forensics.engine.cpm import CPMResult, datetime_to_offset
+from schedule_forensics.model.calendar import Calendar
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
+from schedule_forensics.model.units import MINUTES_PER_CALENDAR_DAY
 
 #: The DCMA high-float / high-duration tripwire, in working DAYS. The minute value
 #: depends on the schedule's calendar — use :func:`forty_four_days_min`.
@@ -159,8 +162,49 @@ def acumen_whole_day_float(minutes: float, minutes_per_day: int) -> int:
     -0.5-day float is 0 (not negative) and a 44.5-day float is 44 (not high). The pins live in
     ``tests/parity/test_fuse_total_float_field_oracle.py`` and ``test_dcma14.py``; R-04's sweep
     of ``round()`` sites toward ``round_half_up`` must leave this helper's callers alone.
-    ``minutes_per_day`` is the schedule's own working day — the thresholds are defined in days."""
+    ``minutes_per_day`` is the ACTIVITY's own day (:func:`activity_day_minutes` — R-75,
+    ADR-0516), not the project's — the thresholds are defined in days."""
     return round(minutes / minutes_per_day)
+
+
+def activity_day_minutes(
+    schedule: Schedule, task: Task, by_uid: Mapping[int, Calendar] | None = None
+) -> int:
+    """The working minutes in ``task``'s OWN day — the divisor Acumen Fuse's *Total Float* field
+    uses (R-75, ADR-0516): 1440 for an elapsed duration (its slack is wall-clock), the task's own
+    calendar's day when it names one the schedule carries, else the project calendar's. NOT the
+    crew's calendar and NOT the execution calendar the engine schedules the work on (ADR-0474 /
+    ADR-0503) — measured on every Total Float Fuse displays for the operator's Hard_File series
+    (771 grid rows over five snapshots): UID 14, on a "24 Hours" task calendar with a 16-hour
+    crew, reads -3 for a stored -4,320 minutes (the crew's 960 would read -4); UID 94 on
+    "Standard+Sat." (930) reads 2 for 2,190 (the task ∩ crew intersection's 870 would read 3);
+    a task with no calendar of its own stays on the project day even when its crew works 24
+    hours (24-hour file UID 13: -10 for -4,800, the crew's 1440 would read -3). No elapsed
+    activity in the corpus carries a task calendar, so that order is stated, not measured.
+    ``by_uid`` is the schedule's calendars keyed by uid, for callers that loop."""
+    if task.duration_is_elapsed:
+        return MINUTES_PER_CALENDAR_DAY
+    if task.calendar_uid is not None:
+        calendars = {c.uid: c for c in schedule.calendars} if by_uid is None else by_uid
+        own = calendars.get(task.calendar_uid)
+        if own is not None:
+            return own.working_minutes_per_day
+    return schedule.calendar.working_minutes_per_day
+
+
+def acumen_total_float_field(task: Task, minutes: float, day_minutes: int) -> float:
+    """Acumen Fuse's *Total Float* FIELD for one activity, in days of its own day
+    (:func:`activity_day_minutes`): an ELAPSED activity's slack RAW in elapsed days — the
+    24-hour Hard_File displays UID 146 at -13.333333333333334 for a stored -19,200 minutes where
+    UID 14, on a "24 Hours" task calendar with the same -19,200, reads -13 — else the stored
+    slack rounded half-to-even to whole days (:func:`acumen_whole_day_float`). The DCMA
+    "6. High Float" / "7. Negative Float" classifications read this field (``> 44`` / ``< 0``);
+    the elapsed activity's behaviour at a tie (-0.5 < x < 0, 44 < x < 44.5) is UNVERIFIED — no
+    elapsed activity in the corpus sits there — so the field is implemented as it is displayed
+    (R-75, ADR-0516)."""
+    if task.duration_is_elapsed:
+        return minutes / day_minutes
+    return float(acumen_whole_day_float(minutes, day_minutes))
 
 
 def to_offset(schedule: Schedule, when: dt.datetime | None) -> int | None:
