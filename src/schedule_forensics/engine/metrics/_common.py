@@ -167,6 +167,26 @@ def acumen_whole_day_float(minutes: float, minutes_per_day: int) -> int:
     return round(minutes / minutes_per_day)
 
 
+def activity_calendar_day_minutes(
+    schedule: Schedule, task: Task, by_uid: Mapping[int, Calendar] | None = None
+) -> int:
+    """The working minutes in ``task``'s own CALENDAR day — the task's own calendar's day when it
+    names one the schedule carries, else the project calendar's — with NO elapsed axis. This is
+    the divisor of Acumen Fuse's *Original Duration* and *Baseline Duration* fields (R-76,
+    ADR-0518), which IGNORE the elapsed flag: UID 146's 2,880 elapsed minutes display 6 on the
+    project's 480-minute day, not 2 — measured on every Original and Baseline Duration the
+    operator's Fuse v8.11.0 workbooks display (10,706 / 1,382 cells over the committed saves; one
+    minute-grid residual, no rule miss). :func:`activity_day_minutes` adds the elapsed axis
+    (1440) for the *Total Float* and *Remaining Duration* fields. ``by_uid`` is the schedule's
+    calendars keyed by uid, for callers that loop."""
+    if task.calendar_uid is not None:
+        calendars = {c.uid: c for c in schedule.calendars} if by_uid is None else by_uid
+        own = calendars.get(task.calendar_uid)
+        if own is not None:
+            return own.working_minutes_per_day
+    return schedule.calendar.working_minutes_per_day
+
+
 def activity_day_minutes(
     schedule: Schedule, task: Task, by_uid: Mapping[int, Calendar] | None = None
 ) -> int:
@@ -181,15 +201,13 @@ def activity_day_minutes(
     a task with no calendar of its own stays on the project day even when its crew works 24
     hours (24-hour file UID 13: -10 for -4,800, the crew's 1440 would read -3). No elapsed
     activity in the corpus carries a task calendar, so that order is stated, not measured.
-    ``by_uid`` is the schedule's calendars keyed by uid, for callers that loop."""
+    Fuse's *Remaining Duration* field divides by this day too (R-76: 146's 2,880 → 2, Jacked Up
+    Schedule 1's elapsed 46,080 → 32); its *Original* / *Baseline Duration* fields do not — see
+    :func:`activity_calendar_day_minutes`. ``by_uid`` is the schedule's calendars keyed by uid,
+    for callers that loop."""
     if task.duration_is_elapsed:
         return MINUTES_PER_CALENDAR_DAY
-    if task.calendar_uid is not None:
-        calendars = {c.uid: c for c in schedule.calendars} if by_uid is None else by_uid
-        own = calendars.get(task.calendar_uid)
-        if own is not None:
-            return own.working_minutes_per_day
-    return schedule.calendar.working_minutes_per_day
+    return activity_calendar_day_minutes(schedule, task, by_uid)
 
 
 def acumen_total_float_field(task: Task, minutes: float, day_minutes: int) -> float:
@@ -205,6 +223,29 @@ def acumen_total_float_field(task: Task, minutes: float, day_minutes: int) -> fl
     if task.duration_is_elapsed:
         return minutes / day_minutes
     return float(acumen_whole_day_float(minutes, day_minutes))
+
+
+def acumen_duration_field(minutes: int, day_minutes: int) -> int:
+    """Acumen Fuse's duration FIELDS — *Original*, *Remaining* and *Baseline Duration* — in
+    WHOLE days of ``day_minutes``, rounded half-to-even (R-76, ADR-0518). Measured on every
+    duration cell the operator's Fuse v8.11.0 workbooks display beside an activity (the four
+    Hard_File analysis workbooks and the AlltheProjects report over the committed saves: 10,706
+    Original, 10,706 Remaining, 1,382 Baseline cells): *Original* and *Baseline* divide by
+    :func:`activity_calendar_day_minutes` — the elapsed flag IGNORED (UID 146's 2,880 elapsed
+    minutes display 6 on the project's 480) — and *Remaining* by :func:`activity_day_minutes`
+    (1440 for an elapsed activity: the same 2,880 display 2; Jacked Up Schedule 1's 46,080 → 32
+    where its Original reads 96). UID 14's 1,440 minutes on "24 Hours" display 1 (the project day
+    would print 3); a 240-minute baseline on a 480 day displays 0 (the tie is half-even — half
+    away from zero would print 1; the floor of any duration is refuted on 1,409 rows). Two
+    residual classes, named in the oracle: a duration the file stores to the second
+    (``PT107H59M36S`` → 13.4992 → 13, where the model's minute grid holds 6,480 → 14), and the
+    dropped-zero remaining of a 99 %-complete summary (Fuse 0, the percent fallback 1). The
+    DCMA-14 parity population ("Baseline Duration > 0") and the "8. High Duration" tile (> 44)
+    read the *Baseline* field: the 24-hour Hard_File's 302 / 385 — 480 minutes on a 1,440-minute
+    calendar, 0.33 → 0 — leave every parity population (the ribbon's Negative Float 11 / 12 →
+    0.92, not 11 / 14 → 0.79). The same arithmetic as :func:`acumen_whole_day_float` — one
+    rounding site, ledgered once."""
+    return acumen_whole_day_float(minutes, day_minutes)
 
 
 def to_offset(schedule: Schedule, when: dt.datetime | None) -> int | None:

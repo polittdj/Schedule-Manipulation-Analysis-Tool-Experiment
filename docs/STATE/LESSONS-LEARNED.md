@@ -435,6 +435,44 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-20 (f) — a ribbon's ratio block is a denominator oracle; two grids with one label are two metrics; price a "site" by its consumer's own figure
+
+- **What happened.** R-76 asked which duration DCMA-08 reads and how Fuse divides its duration
+  fields — a divisor question, priced S. The `.aft` answered the basis in one read (`Baseline
+  Duration > 44` over `Baseline Duration > 0`), but the POPULATION rule — does "> 0" read the
+  whole-day field on the activity's own day? — has no detail grid that states it: a grid lists
+  offenders, never the denominator. The ribbon's second block does: "7. Negative Float" **0.92** on
+  the 24-hour Hard_File is 11 / **12** and only 12 (11 / 14 prints 0.79), "9. Invalid Forecast Dates"
+  0.08 is 1 / 12, and the tile's own detail grid lists UID 267 alone where a same-labelled Quick-Add
+  grid lists 267 / 302 / 385. Two activities with a 480-minute baseline on a 1,440-minute calendar
+  had sat in every parity population since ADR-0280; the engine's DCMA-09 read 3 for Fuse's 1.
+- **The lesson.** A 2-dp ratio beside a count is a denominator to within a handful of activities —
+  and a handful is exactly the class a population rule moves. Read the ratio block of every ribbon
+  when a population is in question, and derive the denominator's range before choosing a rule.
+- **Two grids, one description.** "All activities with planned work in the past" appears twice in
+  the 7/15 workbook: the DCMA tile's (filtered, [267]) and the Quick-Add metric's (unfiltered, [267,
+  302, 385]). A reader that keys grids by label merges them into one population. Key by position
+  and by the metric that owns the grid, and treat an equal label as a claim to test.
+- **Price a "site" by its consumer's figure.** The row said "then `duration_days_axis`". Its only
+  consumer is Float Ratio™, and the AlltheProjects ribbon — a workbook the repo already held —
+  carries Fuse's Float Ratio™ for 17 projects. Recomputed from Fuse's OWN displayed fields, the
+  formula is the mean of the WHOLE-DAY fields with N/A on any zero divisor (−10.9446 → −10.94 to the
+  digit; N/A ⇔ a zero field on 9 of 9); the engine averages minutes and skips zeros (−11.85; a
+  number for N/A on three files). Changing the divisor alone would have been a wrong number with a
+  better-looking reason. Registered as R-78 instead of half-fixed.
+- **Match the save by measurement, and print enough of the path to see which one matched.** The
+  AlltheProjects "Hard_File_updated3" is the rev-5 save, the update2-vs-update3 report's is rev 2;
+  both goldens share a basename, the first pass printed only the basename, and the wrong save
+  surfaced as 12 wrong floats in the Total Float check — the save check must run before a single
+  duration cell is scored, and its output must name the directory.
+- **The surviving mutant names the unverified claim.** Seven cuts went red on the oracle; the
+  eighth — compare raw minutes at the tile instead of the whole-day field — went red only on the
+  synthetic pin, because no oracle activity sits in 44 < d < 44.5. That is not a weakness to paper
+  over; it is the sentence "UNVERIFIED at the tie" written by the battery itself.
+- **The oracle the row said did not exist was one folder up.** "Jacked Up Schedule 1.mpp 20's
+  remaining 96 → 32 has no Fuse oracle" — the AlltheProjects grids display UID 20's Original 96 and
+  Remaining 32, the second elapsed activity after 146 and the one that separates the two rules.
+
 ### 2026-09-20 (e) — an instrument that projects both sides with the same wrong ruler reads agreement by construction; the stored slack is the oracle no ruler touches; the axis is working minutes and only the PROJECTION of a mid-day instant is wrong (ADR-0517, R-73 closed; R-77 registered)
 
 - **What happened.** R-73's remedy said "decide the stored instant's projection first". The plan's

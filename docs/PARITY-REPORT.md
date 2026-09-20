@@ -128,7 +128,7 @@ one long after it was closed, understating measured SSI fidelity (ADR-0385).
 | 5 | Hard Constraint | 0 / 1 | 0 / 1 | ✅ ENGINE==FUSE (was misprinted 0 / 0 here; case.json always pinned P5 = 1) |
 | 6 | **High Float** | 44 / 44 | 44 / 44 | ✅ ENGINE==FUSE ("High Float 44d"; former −1 residual closed, ADR-0109/0112) |
 | 7 | Negative Float | 0 / 0 | 0 / 0 | ✅ ENGINE==FUSE |
-| 8 | High Duration | 1 / 0 | 1 / 0 | ✅ ENGINE==FUSE ("High **Baseline** Duration (44d)" — the row the engine implements; Fuse's "High Planned Duration (44d)" is a different row that coincides here and reads 124 vs 87 on the Large Test File, ADR-0473) |
+| 8 | High Duration | 1 / 0 | 1 / 0 | ✅ ENGINE==FUSE ("High **Baseline** Duration (44d)" — the row the engine implements; Fuse's "High Planned Duration (44d)" is a different row that coincides here and reads 124 vs 87 on the Large Test File, ADR-0473). Under parity the tile is Fuse's Baseline Duration FIELD (whole days, half-even, on the activity's own calendar day, the elapsed flag ignored) over the baselined-incomplete population — Large Test File 87 / 927 → the ribbon's 0.09, File2 86 / 904 → 0.10 (ADR-0518, R-76) |
 | 9 | Invalid Dates | 0 / 0 | 0 / 0 | ✅ ENGINE==FUSE ("Wrong Status" + "Invalid Forecast Dates") |
 | 10 | Resources | 0 / 0 | 0 / 0 | ✅ engine==golden (not in the 2026-06 suite) |
 | 11 | Missed Activities | 18 / 37 | 18 / 37 | ✅ ENGINE==FUSE (Finished Late 11/18 + due-but-unfinished 7/19) |
@@ -227,8 +227,10 @@ model (the file's own Fuse Project Finish is the stored 2026-11-05); Hard_File_u
 BCWP (Fuse 121,800 / 53,715 vs 133,400 / 59,340 — closed 2026-09-18 by ADR-0511: the ribbon's
 time line and the booking's time-phased record; the oracles were the field map and the Forensic report);
 SPI(t)–Acumen 8.24 vs 8.22 on the Large Test File; the DCMA tile "8. High Duration" carries
-IncludeComplete=true in the library where the engine scores incomplete activities (no
-discriminating figure in the repo); the older `golden/ssi_uid152` Large Test File fixture is the
+IncludeComplete=**false** on both its primary (`Baseline Duration > 44`) and population
+(`Baseline Duration > 0`) filters — an earlier reading here said true; ADR-0518 re-read the `.aft` and
+measured the tile's denominator as the baselined-incomplete population (0.09 / 0.10 on the Large Test
+File pair); the older `golden/ssi_uid152` Large Test File fixture is the
 underscore-named sibling `.mpp` (31 negative-float activities), not the Fuse-scored file (41).
 
 ## Resource calendars and leveling delay — MS Project's stored dates as the CPM oracle (2026-09-07, ADR-0474)

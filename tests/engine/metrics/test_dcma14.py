@@ -590,3 +590,75 @@ def test_acumen_parity_float_field_divides_by_the_activitys_own_day() -> None:
     pure = compute_dcma14(sch)
     assert set(pure["DCMA06"].offender_uids) == {1, 2, 3, 6}
     assert set(pure["DCMA07"].offender_uids) == {4, 5, 7, 8}
+
+
+def test_acumen_parity_duration_fields_divide_by_the_activitys_own_calendar_day() -> None:
+    """R-76 (ADR-0518): the parity population filter ("Baseline Duration > 0") and the "8. High
+    Duration" tile read Fuse's *Baseline Duration* FIELD — the minutes over the task's own
+    calendar's day (the project's when it names none), half-to-even to whole days, the ELAPSED
+    flag IGNORED (UID 146's 2,880 elapsed minutes display 6 on the project's 480, not 2; measured
+    on 1,382 displayed Baseline Durations and 10,706 Original Durations, 0 and 1 misses). So a
+    103.5-project-day baseline on a "24 Hours" task calendar is 34.5 → 34 own-days and NOT high;
+    a 30-calendar-day elapsed baseline is 90 project-days and IS high (the pristine engine
+    compared it with 44 x 1440); a 480-minute baseline on the 24-hour calendar is a field of 0 and
+    leaves EVERY parity population (the 24-hour Hard_File's 302 / 385: Negative Float 11 / 12 →
+    the ribbon's 0.92, not 11 / 14 → 0.79); and the tile's denominator is that baselined-incomplete
+    population, not every incomplete activity (Large Test File 87 / 927 → 0.09, not 87 / 1,024 →
+    0.08). The 44.4-day case reads the ROUNDED field (44, not high) by analogy with ADR-0514's
+    float classifications — no oracle activity sits in (44, 44.5): stated UNVERIFIED there. The
+    pure-logic mode keeps the minute grain on the project day (1440 for an elapsed baseline) and
+    every incomplete activity, so the contrast stays visible."""
+    from schedule_forensics.engine.metrics._common import (
+        activity_calendar_day_minutes,
+        activity_day_minutes,
+        acumen_duration_field,
+    )
+
+    cal24 = Calendar(
+        uid=4, name="24 Hours", working_minutes_per_day=1440, work_weekdays=(0, 1, 2, 3, 4, 5, 6)
+    )
+    cases: dict[int, tuple[int | None, int | None, bool]] = {  # uid: (baseline, calendar, elapsed?)
+        1: (49_680, 4, False),  # 103.5 project-days = 34.5 own-days → 34: NOT high
+        2: (45 * 1440, 4, False),  # 45 own-days → high under both readings
+        3: (43_200, None, True),  # elapsed: 30 calendar days = 90 project-days → HIGH
+        4: (44 * DAY + 192, None, False),  # 44.4 project-days → the field reads 44: NOT high
+        5: (45 * DAY, None, False),  # control: high under both
+        6: (480, 4, False),  # a project-day baseline on the 24-hour calendar → field 0: OUT
+        7: (None, None, False),  # no baseline: out of the parity population, in the default's
+        8: (2 * DAY, None, False),  # control: in the population, not high
+    }
+    tasks = [
+        Task(
+            unique_id=uid,
+            name=f"dur-{uid}",
+            duration_minutes=DAY,
+            baseline_duration_minutes=baseline,
+            calendar_uid=cal_uid,
+            duration_is_elapsed=elapsed,
+            constraint_type=ConstraintType.MSO if uid in (6, 8) else ConstraintType.ASAP,
+            constraint_date=MON if uid in (6, 8) else None,
+        )
+        for uid, (baseline, cal_uid, elapsed) in cases.items()
+    ]
+    sch = _sched(tasks, calendars=(cal24,))
+    # the helpers: the calendar day never takes the elapsed axis; the float / remaining day does
+    assert activity_calendar_day_minutes(sch, sch.tasks_by_id[1]) == 1440
+    assert activity_calendar_day_minutes(sch, sch.tasks_by_id[3]) == 480
+    assert activity_day_minutes(sch, sch.tasks_by_id[3]) == 1440
+    assert acumen_duration_field(49_680, 1440) == 34
+    assert acumen_duration_field(43_200, 480) == 90
+    assert acumen_duration_field(44 * DAY + 192, 480) == 44
+    assert acumen_duration_field(480, 1440) == 0
+    assert acumen_duration_field(240, 480) == 0  # the half-even tie (UIDs 99 / 642 display 0)
+    assert (acumen_duration_field(2880, 480), acumen_duration_field(2880, 1440)) == (6, 2)
+    parity = compute_dcma14(sch, acumen_parity=True)
+    assert set(parity["DCMA08"].offender_uids) == {2, 3, 5}
+    assert parity["DCMA08"].population == 6  # 1-5 and 8: baselined incomplete, the field > 0
+    assert set(parity["DCMA05"].offender_uids) == {8}  # 6 is hard-constrained but out
+    assert parity["DCMA05"].population == parity["DCMA07"].population == 6
+    # the pure-logic mode: raw minutes against 44 project-days (1440 for an elapsed baseline),
+    # every incomplete activity in the denominator, every hard constraint an offender
+    pure = compute_dcma14(sch)
+    assert set(pure["DCMA08"].offender_uids) == {1, 2, 4, 5}
+    assert pure["DCMA08"].population == 8
+    assert set(pure["DCMA05"].offender_uids) == {6, 8}
