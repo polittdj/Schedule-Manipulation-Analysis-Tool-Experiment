@@ -328,6 +328,39 @@ The stored-dates oracle's late-finish census counts incomplete work only (a fini
 late dates are a record, ADR-0507's decision applied); pinned there and by
 `tests/engine/test_backward_pass_past_finished_work.py`.
 
+**ADR-0513 (R-72 — 2026-09-20): out-of-sequence progress resumes its REMAINING work.** A started
+activity whose logic start lies past its recorded actual start — its predecessors finish after it
+began; 192 of the corpus's 1,159 started activities — was re-spanned for its FULL duration from
+that logic start: the logic-reestablished Hard_File's UID 187 (60 %, 48 crew hours left) ran 120 h
+from 188's 08-17 17:00 finish to 08-27 08:00 where MS Project resumes the 48 h there and finishes
+08-20 17:00, and the need 188 read from it (R-70) sat four days late (the chain 94 … 188 read +4
+days for a stored 0). MS Project's rule, read from the corpus: `Finish = Resume + RemainingDuration`
+on the task's execution calendar holds on **1,113 of the 1,159** started activities from the file
+alone (every started activity carries a Resume; every file was scheduled with split-in-progress
+on); the 46 misses are the dropped-zero 99 % class, `updated`'s 187 and four split bookings. Such
+an activity now starts at its RECORD and its remaining portion starts at the later of the stored
+Resume and the link bounds evaluated for the remaining (an FF / SF need retreats the remaining, not
+the task — Large_Test_File UID 1489's ten FF links from finished work had put its whole-task start
+26 days before its Resume and its finish 26 days early; a constraint on the start binds nothing
+once work has begun — UID 4581's SNET lies after its actual start and MS Project resumes its work
+at the status date); the backward pass retreats it by the remaining; a start-type (SS / SF)
+successor need binds NO started predecessor, whose start is a record (UID 5535's late finish
+2027-07-02 → the stored 11-05); a predecessor's free float anchors at the remaining portion's
+start. Re-measured on the 44 files, pristine → this tree: started finishes within a day 1,094 →
+1,107 (exact 343 → 346), starts exact 963 → **1,144**; incomplete work's late finishes exact
+11,512 → 11,543, stored slacks exact 11,034 → 11,177, free slacks 2,354 → 2,372, Critical agreed
+22,061 → 22,069 of 22,105; 173 unstarted successors and 13 started finishes toward their stored
+dates and ONE figure away in 22,105 (UID 408's free float, larger than its total float — R-74);
+the witness file's Critical 102 → **110 of 110** and its project finish 11-15 08:15 → the stored
+**11-12 12:00** exact; Large_Test_File's stored slacks exact 876 → **882** of 1,024 (late finishes
+921 → 922), File2 740 → 741. The general `Resume + remaining` model for EVERY started activity was
+measured and registered, not taken (R-73): over this tree it gains 93 more exact late finishes, 79
+more exact slacks and 26 more Critical agreements and puts the 24Hour_Calendar file's finish, 64
+days late, on the stored instant — but it reads an after-lunch Resume an hour late on the
+contiguous project axis (ADR-0322's two-ruler rule), so EVM1's finish date crosses midnight.
+Pinned by the oracle's Large Test File rows and its R-72 witness pin, and by
+`tests/engine/test_out_of_sequence_progress_remaining.py`.
+
 ## Residuals — what was closed, and what remains
 
 The historical §A/§B/§C residuals are **closed**: High Float is now 44/44 exact (stored Total Slack,
