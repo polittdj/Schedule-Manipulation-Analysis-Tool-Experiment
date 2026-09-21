@@ -252,25 +252,45 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
     ),
     "DCMA09": _doc(
         "DCMA09",
-        "Invalid Dates",
-        "Actuals after the status date, or a stored forecast (early) date already in the past "
-        "without the matching actual — the Bible's Invalid Forecast Dates conditions, scored on "
-        "the file's OWN stored start/finish dates (Acumen basis, ADR-0176), with recomputed CPM "
-        "only as a fallback for files carrying no stored dates. Task-level count (Fuse's Metric "
-        "History counts fields, so its figure can be up to 2x this activity count).",
-        '((EarlyStart<Now)*(ActualStart="")) + ((EarlyFinish<Now)*(ActualFinish="")) '
-        "+ actuals after Now == 0",
+        "Invalid Forecast Dates",
+        "Incomplete work whose stored forecast (early) start or finish already lies before the "
+        "data date with no matching actual — the Bible's Invalid Forecast Dates conditions, "
+        "scored on the file's OWN stored start/finish dates (Acumen basis, ADR-0176), with "
+        "recomputed CPM only as a fallback for files carrying no stored dates. The population is "
+        "the INCOMPLETE activities (the NASA library's IncludeComplete=false), baselined under "
+        "Acumen parity. Under parity the numerator counts FIELDS, as Fuse's formula does (an "
+        "activity with both dates in the past counts twice); the default counts activities "
+        "(ADR-0520).",
+        '((EarlyStart<Now)*(ActualStart="")) + ((EarlyFinish<Now)*(ActualFinish="")) == 0',
         _DCMA,
-        importance="Actual dates in the future or forecast (incomplete) work in the past are "
-        "logically impossible and corrupt every downstream calculation.",
-        indicates="Invalid dates mean the schedule was not properly statused against the data "
-        "date; they must be corrected before any metric can be trusted.",
-        threshold="Zero actuals after the data date and zero incomplete (forecast) work "
-        "scheduled in the past.",
-        example_ok="Every actual is on or before the data date and every forecast is after it "
-        "-> PASS.",
-        example_fail="An actual finish dated two weeks after the data date -> FAIL; the schedule "
-        "was not statused.",
+        importance="Forecast (incomplete) work scheduled in the past is logically impossible "
+        "and corrupts every downstream date and float calculation.",
+        indicates="Forecast dates behind the data date mean the schedule was not properly "
+        "statused; they must be corrected before any metric can be trusted.",
+        threshold="Zero incomplete (forecast) work scheduled before the data date.",
+        example_ok="Every incomplete activity is forecast on or after the data date -> PASS.",
+        example_fail="A dozen open activities still show last month's start -> FAIL; the "
+        "schedule was not statused.",
+    ),
+    "DCMA09_ACTUAL": _doc(
+        "DCMA09_ACTUAL",
+        "Invalid Actual Dates",
+        "Activities carrying an actual start or actual finish AFTER the data date — a schedule "
+        "cannot be statused into the future. The population is the STARTED-OR-COMPLETE "
+        "activities (the NASA library's IncludePlanned=false), baselined under Acumen parity; "
+        "a file with no started or complete activity has an empty population and reports no "
+        "figure, exactly as Fuse prints N/A. Under parity the numerator counts FIELDS "
+        "(ADR-0520).",
+        "(ActualStart>Now) + (ActualFinish>Now) == 0",
+        _DCMA,
+        importance="An actual date in the future is a recording error that silently inflates "
+        "progress and distorts earned value.",
+        indicates="Actuals beyond the data date mean the status was entered against the wrong "
+        "date, or progress was claimed for work not yet performed.",
+        threshold="Zero actual starts or finishes after the data date.",
+        example_ok="Every recorded actual is on or before the data date -> PASS.",
+        example_fail="An actual finish dated two weeks after the data date -> FAIL; the "
+        "schedule was statused into the future.",
     ),
     "DCMA10": _doc(
         "DCMA10",
@@ -1713,6 +1733,7 @@ _DIM_CONSTRUCTION = frozenset(
         "DCMA07",
         "DCMA08",
         "DCMA09",
+        "DCMA09_ACTUAL",
         "DCMA12",
         "dcma_pass_rate",  # derived: the DCMA-14 construction-quality roll-up
         "logic_density",

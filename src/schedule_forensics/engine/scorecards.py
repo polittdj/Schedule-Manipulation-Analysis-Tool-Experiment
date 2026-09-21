@@ -370,7 +370,21 @@ def compute_gao_scorecard(schedule: Schedule, cpm: CPMResult, audit: ScheduleAud
     cp_status, cp_detail, cp_off = _audit_status(audit, "DCMA12")
     hf_status, hf_detail, hf_off = _audit_status(audit, "DCMA06")
     nf_status, nf_detail, nf_off = _audit_status(audit, "DCMA07")
-    inv_status, inv_detail, inv_off = _audit_status(audit, "DCMA09")
+    fore_status, fore_detail, fore_off = _audit_status(audit, "DCMA09")
+    act_status, act_detail, act_off = _audit_status(audit, "DCMA09_ACTUAL")
+    # BP9 reads BOTH halves of DCMA-14 check 9 — Fuse computes the forecast and actual date
+    # metrics separately over different populations (R-79, ADR-0520) — and combines them the way
+    # BP7 already combines high float with negative float: PASS only when both pass, NA only
+    # when neither can be assessed.
+    inv_status = (
+        PASS
+        if fore_status == PASS and act_status == PASS
+        else NA
+        if fore_status == NA and act_status == NA
+        else FAIL
+    )
+    inv_detail = f"forecast dates {fore_detail}; actual dates {act_detail}"
+    inv_off = tuple(dict.fromkeys(fore_off + act_off))
 
     summaries_tied = _summaries_with_logic(schedule)
     # BP7 float reasonableness passes only when BOTH high-float and negative-float pass.
@@ -459,7 +473,7 @@ def compute_gao_scorecard(schedule: Schedule, cpm: CPMResult, audit: ScheduleAud
             "9. Updating the schedule using logic and progress",
             inv_status,
             inv_detail,
-            "DCMA-14 check 9 — invalid dates (out-of-date status)",
+            "DCMA-14 check 9 — invalid forecast AND actual dates (out-of-date status)",
             inv_off,
         ),
         ScorecardCheck(

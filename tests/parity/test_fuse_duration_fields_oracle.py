@@ -554,9 +554,12 @@ def test_the_dcma_population_reads_the_baseline_field_on_the_own_day_on_the_24_h
     ]
     assert sorted(invalid, key=len) == [[267], [267, 302, 385]], invalid
     assert d["DCMA09"].offender_uids == (267,)
-    # R-79 (registered): the tile's denominator is the baselined INCOMPLETE population — File2's
-    # 322 / 0.36 reproduce only with 904 — where the engine's parity mode divides by every
-    # baselined activity (1,568 on File2; 84 here)
+    # R-79 (CLOSED, ADR-0520): the tile's denominator IS the baselined INCOMPLETE population —
+    # File2's 322 / 0.36 reproduce only with 904, where the engine's parity mode used to divide by
+    # every baselined activity (1,568 on File2; 84 here). The engine now reproduces the tile
+    # exactly, numerator included: 322 is a count of FIELDS, because the Bible's formula SUMs two
+    # terms per activity (170 activities carry at least one). The full oracle for both DCMA-09
+    # tiles lives in tests/parity/test_fuse_invalid_dates_oracle.py.
     lcounts, lratios = _ribbon(
         ACUMEN / "Large Test File vs Large Test File2 - Analyst Quick Add Metrics.xlsx",
         "Status Date ",
@@ -568,7 +571,10 @@ def test_the_dcma_population_reads_the_baseline_field_on_the_own_day_on_the_24_h
     assert (
         round(322 / 904, 2) == 0.36 and round(322 / 998, 2) == 0.32 and round(322 / 1568, 2) == 0.21
     )
-    assert compute_dcma14(_fixture(_LTF2), acumen_parity=True)["DCMA09"].population == 1568
+    lf2 = compute_dcma14(_fixture(_LTF2), acumen_parity=True)["DCMA09"]
+    assert (lf2.count, lf2.population) == (322, 904)
+    assert len(lf2.offender_uids) == 170  # FIELDS counted, ACTIVITIES cited
+    assert d["DCMA09"].population == 12  # here: 84 baselined, 12 of them incomplete
 
 
 def _detail_grids(path: Path) -> Iterator[tuple[str, dict[int, tuple[str, Cell]]]]:

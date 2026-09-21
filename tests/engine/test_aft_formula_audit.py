@@ -8,8 +8,9 @@ committed Bible snapshot (a guard against silent Bible drift *and* the canonical
 which NASA formula each tool metric was built against). ADR-0263: the guard audits ALL
 ``.aft`` files under ``00_REFERENCE_INTAKE/`` — auditing only ``sorted(...)[0]`` silently
 skipped the newer ``acumen_v8.11.0`` snapshot (verified near-identical: 759 metric names in
-both; one formula-set difference, 'Invalid Forecast Dates', which is a dropped duplicate
-entry differing only by outer parentheses and is not pinned here).
+both; one formula-set difference, the UNNUMBERED 'Invalid Forecast Dates', which is a dropped
+duplicate entry differing only by outer parentheses and is not pinned here — the NUMBERED
+'9. Invalid Forecast Dates' IS pinned, and is byte-identical in both snapshots).
 
 Why a curated table rather than a string-normalised auto-match: ``help.py`` formulas are
 plain-language pseudocode while the ``.aft`` carries Acumen's own formula notation, so a
@@ -135,7 +136,26 @@ AUDIT: tuple[Row, ...] = (
         "current OriginalDuration > 44d AND ActivityType=Normal. Differs on schedules where "
         "current duration ≠ baseline duration, or for non-Normal activities.",
     ),
-    Row("DCMA09", "", "", NOT_IN_BIBLE, "DCMA standard (invalid actuals/forecasts vs status)."),
+    Row(
+        "DCMA09",
+        "9. Invalid Forecast Dates",
+        '(SUM((((EarlyStart<ProjectTimeNow) * (ActualStart="")) '
+        '+((EarlyFinish<ProjectTimeNow) * (ActualFinish=""))) * 1))',
+        MATCH,
+        "This row read NOT_IN_BIBLE until R-79 re-read the .aft (ADR-0520): the Bible carries "
+        "BOTH DCMA-09 metrics verbatim. Its PrimaryFilter declares IncludeComplete=false — the "
+        "INCOMPLETE population — and the formula SUMs two terms, i.e. a FIELD count; parity "
+        "reproduces both. Scored on the file's STORED dates, not recomputed CPM (ADR-0176).",
+    ),
+    Row(
+        "DCMA09_ACTUAL",
+        "9. Invalid Actual Dates",
+        "SUM(((ActualStart>ProjectTimeNow) + (ActualFinish>ProjectTimeNow)) * 1)",
+        MATCH,
+        "The Bible's second DCMA-09 metric (R-79, ADR-0520). Its PrimaryFilter declares "
+        "IncludePlanned=false — the STARTED-OR-COMPLETE population — so an empty population "
+        "reports no figure, exactly as Fuse prints N/A for Hard_File's tile.",
+    ),
     Row(
         "DCMA10",
         "",
