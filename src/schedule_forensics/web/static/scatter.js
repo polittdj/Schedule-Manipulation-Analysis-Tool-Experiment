@@ -150,7 +150,7 @@
   var name = box.getAttribute("data-name") || "";
   fetch("/api/analysis/" + encodeURIComponent(name))
     .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
-    .then(function (d) {
+    .then(SFLoad.drawn(function (d) {
       var pts = (d.activities || [])
         .filter(function (a) { return !a.is_summary; })
         .map(function (a) {
@@ -163,6 +163,8 @@
       if (!pts.length) { box.textContent = "No activity data to plot."; return; }
       render(pts);
       sfControls(box, name || "current schedule"); // the panel's one ⛶ + "Source: <schedule>"
-    })
+    }, function () {
+      box.textContent = "The scatter data loaded, but the chart could not be drawn.";
+    }))
     .catch(function () { box.textContent = "Failed to load the scatter data."; });
 })();

@@ -258,14 +258,16 @@
   var name = box.getAttribute("data-name") || "";
   fetch("/api/analysis/" + encodeURIComponent(name))
     .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
-    .then(function (d) {
+    .then(SFLoad.drawn(function (d) {
       acts = (d.activities || [])
         .filter(function (a) { return !a.is_summary && a.total_float_days != null; });
       customLabels = d.custom_field_labels || [];
       var floats = acts.map(function (a) { return a.total_float_days; });
       if (!floats.length) { box.textContent = "No activity float data to plot."; return; }
       render(floats);
-    })
+    }, function () {
+      box.textContent = "The float-distribution data loaded, but the chart could not be drawn.";
+    }))
     .catch(function () { box.textContent = "Failed to load the float-distribution data."; });
 
   // The float bands are upper-bound inclusive (0 < v <= 5 is the third band), so a fractional float

@@ -219,7 +219,7 @@
 
   fetch("/api/trend")
     .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
-    .then(function (d) {
+    .then(SFLoad.drawn(function (d) {
       if (!d.quality || !d.versions || d.versions.length < 2) return;
       data = d;
       versions = d.versions;
@@ -243,6 +243,8 @@
       document.getElementById("qualPrev").addEventListener("click", function () { stopAuto(); step(-1); });
       document.getElementById("qualNext").addEventListener("click", function () { stopAuto(); step(1); });
       document.getElementById("qualPlay").addEventListener("click", toggleAuto);
-    })
+    }, function () {
+      bars.textContent = "The quality drill-down data loaded, but the chart could not be drawn.";
+    }))
     .catch(function () { bars.textContent = "Failed to load quality drill-down data."; });
 })();

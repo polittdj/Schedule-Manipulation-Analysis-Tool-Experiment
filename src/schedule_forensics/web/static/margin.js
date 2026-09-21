@@ -259,7 +259,7 @@
 
   fetch("/api/margin")
     .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
-    .then(function (data) {
+    .then(SFLoad.drawn(function (data) {
       var versions = data.versions || [];
       if (!versions.length) { box.textContent = "No data."; return; }
       var anyMargin = versions.some(function (v) { return v.total || v.effective; });
@@ -272,6 +272,8 @@
         return;
       }
       draw(versions);
-    })
+    }, function () {
+      box.textContent = "The schedule-margin data loaded, but the chart could not be drawn.";
+    }))
     .catch(function () { box.textContent = "Failed to load the schedule-margin data."; });
 })();

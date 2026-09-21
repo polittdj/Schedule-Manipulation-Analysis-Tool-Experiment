@@ -268,7 +268,7 @@
     stopAuto();
     fetch(buildURL())
       .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
-      .then(function (d) {
+      .then(SFLoad.drawn(function (d) {
         var lbl = document.getElementById("scurveLabel");
         if (!d.versions || !d.versions.length) {
           data = null;
@@ -280,7 +280,9 @@
         index = 0;
         buildVersionSelect();
         render();
-      })
+      }, function () {
+        box.textContent = "The S-curve data loaded, but the chart could not be drawn.";
+      }))
       .catch(function () { box.textContent = "Failed to load the S-curve data."; });
   }
   function buildFilterUI() {

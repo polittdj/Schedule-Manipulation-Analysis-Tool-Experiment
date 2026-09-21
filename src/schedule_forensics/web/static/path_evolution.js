@@ -457,7 +457,7 @@
         "&ignore_leveling=" + ignoreLeveling +
         (tgt ? "&target=" + encodeURIComponent(tgt) : ""))
     .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
-    .then(function (d) {
+    .then(SFLoad.drawn(function (d) {
       data = d;
       focusUid = (d.target == null) ? null : Number(d.target);
       var lo = 0, hi = 1;
@@ -511,6 +511,8 @@
         cb.addEventListener("change", function () { moveSet[cb.value] = cb.checked; render(); });
       });
       if (textBox) textBox.addEventListener("input", function () { searchText = textBox.value; render(); });
-    })
+    }, function () {
+      box.textContent = "The path-evolution data loaded, but the chart could not be drawn.";
+    }))
     .catch(function () { box.textContent = "Failed to load the path-evolution data."; });
 })();

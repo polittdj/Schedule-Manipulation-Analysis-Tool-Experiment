@@ -179,6 +179,14 @@ def _census_from_tree() -> dict[str, int]:
         "fetch_catch_failed_to_load_modules": sum(
             1 for p in static.glob("*.js") if "Failed to load the" in p.read_text(encoding="utf-8")
         ),
+        # ADR-0521: the article-keyed literal above UNDER-COUNTED the class it names by three.
+        # `app.js` ("Failed to load analysis."), `trend.js` ("Failed to load trend data.") and
+        # `trend_drill.js` ("Failed to load quality drill-down data.") omit the article, so R-09's
+        # registered population read 13 where the class is 16. Both are stated: the article count
+        # is what the campaign measured, this one is the population that was actually repaired.
+        "fetch_catch_load_sentence_modules": sum(
+            1 for p in static.glob("*.js") if "Failed to load" in p.read_text(encoding="utf-8")
+        ),
         "evm_acwp_or_zero_sites": (SRC / "engine" / "metrics" / "evm.py")
         .read_text(encoding="utf-8")
         .count("actual_cost or 0.0"),

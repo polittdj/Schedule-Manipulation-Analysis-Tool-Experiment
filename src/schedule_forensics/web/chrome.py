@@ -73,6 +73,7 @@ _LAYOUT = Template(
 <script src="/static/translate.js"></script>
 <script src="/static/drilldown.js"></script>
 <script src="/static/tooltips.js"></script>
+<script src="/static/loader.js"></script>
 <script src="/static/chartframe.js"></script>
 <link rel=stylesheet href="/static/base.css"><link rel=stylesheet href="/static/app.css"><link rel=stylesheet href="/static/hud.css"><link rel=stylesheet href="/static/sf-themes.css">
 <style>

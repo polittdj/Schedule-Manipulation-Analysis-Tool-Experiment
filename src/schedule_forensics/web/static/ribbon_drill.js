@@ -103,7 +103,7 @@
     if (!selected) return;
     var file = selected.file, metric = selected.metric;
     var uids = (DATA[file] || {})[metric] || [];
-    loadAnalysis(file).then(function (an) {
+    loadAnalysis(file).then(SFLoad.drawn(function (an) {
       buildCols(an.customLabels);
       var fields = cols.filter(function (f) { return f.on; });
       drill.textContent = "";
@@ -185,7 +185,9 @@
       scroller.appendChild(table);
       drill.appendChild(scroller);
       drill.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    }).catch(function () {
+    }, function () {
+      drill.textContent = "The activity data for " + file + " loaded, but the table could not be drawn.";
+    })).catch(function () {
       drill.textContent = "Failed to load the activity data for " + file + ".";
     });
   }

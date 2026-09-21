@@ -291,7 +291,7 @@
     : "";
   fetch("/api/cei" + trackQ)
     .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
-    .then(function (d) {
+    .then(SFLoad.drawn(function (d) {
       data = d;
       // locked cumulative axis: the largest running total any series reaches in any snapshot
       data.snapshots.forEach(function (s) {
@@ -311,6 +311,8 @@
       document.getElementById("autoPlay").addEventListener("click", toggleAuto);
       var cb = document.getElementById("ceiTotals");
       if (cb) cb.addEventListener("change", function () { totals = cb.checked; render(); });
-    })
+    }, function () {
+      box.textContent = "The bow-wave data loaded, but the chart could not be drawn.";
+    }))
     .catch(function () { box.textContent = "Failed to load the bow-wave data."; });
 })();

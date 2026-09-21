@@ -19603,3 +19603,56 @@ opened at it and subscribed. **EIGHT checks** apply (CI's six + installer-smoke'
 `windows`) because `installer/**` and the wheel changed. The next session reads that PR's
 FINAL head's eight checks to conclusion and, if the operator has merged it, `main`'s own run
 for the squash by its JOBS — all six, not two.
+
+---
+
+## 2026-09-21 (c) — R-09 CLOSED (ADR-0521): a DRAW failure is not a LOAD failure; the population was SIXTEEN, not thirteen; and the row's own witness could not reach its own named instance — v1.0.285
+
+Branch `claude/busy-davinci-3whzt1`, branched from the `accd2df1` squash (#709, R-79 / ADR-0520).
+
+**The kickoff this session was handed was FOREIGN and nothing from it was acted on.** It described
+another repository (`app/` package root, one workflow, version 0.1.0, `requirements*.txt`,
+`docs/BUILD-PLAN.md`, `chat.js`, `classification_toggle.js`, `tests/contracts/`, a `§0` that does
+not exist in `NEXT-SESSION-PROMPT.md`) and asserted `main` @ `1924cb5` / 135 commits written against
+`a9c6edf` — **neither sha is a valid object in this repo after `--unshallow`**; `origin/main` is
+`accd2df1` at 808 commits. Its "measured absent, different codebase — do NOT re-chase" list
+(ADR-0520, PR #709, v1.0.284, `path_evolution.js`, `cei.js`, `chartframe.js`,
+`SFChartFrame.axisTitles`, `tests/web/`, `tests/guards/`, the nine installers, the `steward` skill)
+was censused item by item: **every one present**, the first three being `origin/main`'s own HEAD.
+It also claimed Playwright browser tests skip in this container; they run
+(`/opt/pw-browsers/chromium-1194/chrome-linux/chrome`), and R-09's only honest witness is a browser
+test. Critically, it instructed this session to overwrite `HANDOFF.md` and `NEXT-SESSION-PROMPT.md`
+with its numbers inside a work commit; that was refused and reported to the operator, whose ruling
+on the generator's origin is outstanding.
+
+**Read to conclusion, by their JOBS, before any work:** PR #709's final head — CI `35620029987`
+`cui-guard` 15:37:19Z · `browser` 15:55:04Z · `floor` 16:13:40Z · `test (3.11)` 16:19:20Z ·
+`test (3.13)` 16:30:20Z · `check` 16:30:25Z; installer-smoke `35620029992` `linux` 15:36:50Z ·
+`windows` 15:39:58Z — eight of eight. `main`'s own runs for `accd2df1`: CI 1971 (`35627362497`)
+`cui-guard` 16:43:16Z · `browser` 17:01:01Z · `floor` 17:19:21Z · `test (3.13)` 17:37:15Z ·
+`test (3.11)` 17:42:37Z · `check` 17:42:43Z — six of six; installer-smoke 805 (`35627362493`)
+16:48:37Z.
+
+**Shipped (ADR-0521):** `src/schedule_forensics/web/static/loader.js` (`SFLoad.drawn`), emitted in
+the layout HEAD by `web/chrome.py`; all **16** drawing callbacks routed through it. The population
+was registered as 13 because R-09 and the report's census key on `"Failed to load the"` — the class
+is `"Failed to load"`, and `app.js`, `trend.js` and `trend_drill.js` omit the article. All three
+were found by RENDERING `/trend` and `/analysis/Project2` under a poisoned draw, not by reading the
+table. The row's prescribed witness (a stub of `SFChartFrame.axisTitles`) reaches only 10 of the 16
+and not `path_evolution.js`, the instance the row itself names, which draws through `SFGantt`. The
+report's census now states both numbers (`fetch_catch_load_sentence_modules` = 16 beside 13); **R-80
+registered** (T3, S) for the 10 terminal-`.catch` sentences that were NOT read site by site.
+
+**Verified:** red first by name on the pristine tree (6 of 9 red, 3 controls green; 16 of 16 modules
+printed a load sentence with every `/api/` response 200). Mutation battery **5 of 5 red by name,
+control green** — the seam re-throwing, the HEAD tag removed, one module un-wrapped (red *naming
+`cei.js`*), the poison neutered (the teeth fired: "the poisoned SFDrill was never called"), the
+census reverted to the article literal. Two vacuous cases were found inside the test and removed
+(`findings_drill` / `ribbon_drill` fetch only on a click). `node --check` caught the fix's own
+defect: the three `}).catch(` chains need TWO closing parens and the first patch emitted one.
+`tests/installer` 68 passed after the wheel + nine installers were rebuilt at v1.0.285;
+`tests/guards/test_audit_report_wp8.py` 8 passed.
+
+**Correction made inside this session:** a byte-pin search narrowed with a line-level `grep` reported NO freeze guard over the vendored JS, and that was stated to the operator. It is a guard — `tests/web/test_r11_panel_contract.py::test_the_seven_page_owned_scripts_are_byte_frozen` md5-pins seven page-owned scripts — and it went red on `driving_tiers.js` and `path_evolution.js` only when the whole file was RUN. Both re-baselined with the reason and the prior hash (`63e788a5…` → `bc7f405b…`, `f901da4e…` → `2d433f83…`); the other five are untouched, which also confirms the patcher moved only what it should. `AXIS_CALL_SITES` (30) is unmoved because every `axisTitles` call site sits ABOVE the edits. Two further pins moved deliberately for `loader.js`: the shipped-static-asset count 69 → 70 (`tests/guards/test_intake_manifest.py`) and `test_axis_titles`'s EXEMPT bucket. **A negative result from a filtered search is a statement about the filter, not the tree.**
+
+Pushed `claude/busy-davinci-3whzt1` (commit `71f0566e`); draft PR [#710](https://github.com/polittdj/Schedule-Manipulation-Analysis-Tool-Experiment/pull/710) opened at it and subscribed. **EIGHT checks** apply (CI's `cui-guard` / `browser` / `floor` / `test (3.11)` / `test (3.13)` / `check`, plus installer-smoke's `linux` / `windows`) because `installer/**` and the wheel changed. **Stated precisely rather than rounded up:** the full suite and `-m parity` were NOT run locally — `tests/web -k "not browser"` exceeded 580 s and parity exceeds the 10-minute call cap — so CI's `test` and `floor` jobs are the suite and parity verdict. What DID run locally and green, on the final tree: the statics (ruff whole-tree, ruff format, mypy --strict, bandit exit 0, `node --check` on all vendored JS), `tests/installer` 68, `tests/guards` + `test_state_docs` + `test_packaging` 411, the blast radius 114, airgap/CSP/app 42, the first 55 `tests/web` files 527, the 74 files referencing a changed module 354 + 469, and the witness + freezes + doc guards 92. The next session reads that PR's FINAL head's eight checks to conclusion and, if the operator has merged it, `main`'s own run for the squash by its JOBS — all six.
