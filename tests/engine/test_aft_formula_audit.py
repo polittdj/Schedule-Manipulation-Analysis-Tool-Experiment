@@ -755,16 +755,21 @@ AUDIT: tuple[Row, ...] = (
         "Float Ratio™",
         "AVERAGE(TotalFloat/RemainingDuration)",
         MATCH,
-        "Verbatim Bible formula (ADR-0103).",
+        "Verbatim Bible formula (ADR-0103). The name carries BOTH Bible forms — this one "
+        "(GUID a536d1a4) and the ratio-of-means below — and Fuse prints each under the same "
+        "tile depending on the metric group loaded (R-78, ADR-0519).",
     ),
     Row(
         "float_ratio_aggregate",
-        "CP - Float Ratio™",
+        "Float Ratio™",
         "AVERAGE(TotalFloat)/AVERAGE(RemainingDuration)",
-        VARIANT,
-        "Ratio-of-means companion to Float Ratio. The Bible metric with this exact formula is "
-        "critical-path-scoped ('CP - Float Ratio'); the tool applies it over the full Normal "
-        "planned/in-progress population (ADR-0103).",
+        MATCH,
+        "Verbatim Bible formula — the library defines 'Float Ratio™' under this form in five "
+        "further entries (GUIDs 8aec0857, 697a1c84, dc1bd267, 838991ea, 9c556fbd), so it is the "
+        "same NAMED metric's second algebraic form, not a critical-path borrowing: the tool's "
+        "earlier note mapping it to 'CP - Float Ratio™' was refuted by parsing both committed "
+        ".aft snapshots (R-78, ADR-0519). Applied over the same Normal planned/in-progress "
+        "population as the mean-of-ratios form (ADR-0103).",
     ),
     Row(
         "epi",
