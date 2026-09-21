@@ -19596,3 +19596,10 @@ path that is actually public. `tests/installer` 68 passed.
 the only edits after it are this SESSION-LOG entry and the HANDOFF/kickoff sentences recording the
 verdict, whose guards (`tests/test_state_docs.py`, `tests/guards/test_audit_report_wp8.py`) were
 re-run on the FINAL tree.
+
+Pushed `claude/friendly-maxwell-3zy2i9` (commit `e1d76a20`); draft PR
+[#709](https://github.com/polittdj/Schedule-Manipulation-Analysis-Tool-Experiment/pull/709)
+opened at it and subscribed. **EIGHT checks** apply (CI's six + installer-smoke's `linux` /
+`windows`) because `installer/**` and the wheel changed. The next session reads that PR's
+FINAL head's eight checks to conclusion and, if the operator has merged it, `main`'s own run
+for the squash by its JOBS — all six, not two.
