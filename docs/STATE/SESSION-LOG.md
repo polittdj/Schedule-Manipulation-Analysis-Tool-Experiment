@@ -19429,3 +19429,78 @@ separate worktree at it — figures and the PR number in the docs-only follow-up
 **Verified (QC-1):** statics green on ruff 0.15.8 and `uvx ruff@0.16.8` `check .` + `format --check .` over the whole tree, `mypy --strict` 165 files, `bandit` exit 0, `node --check` per file; the DCMA and parity consumers **197 passed**; `tests/engine` + `tests/test_projects` **1,353 passed** (`PYTEST_EXIT=0`); `tests/installer` 68 after the rebuild; the report guard 8. ADR-0518 written; the report's R-76 row CLOSED and R-78 / R-79 (both T1, S) inserted after it; `PARITY-REPORT.md` row 8 and its IncludeComplete sentence corrected (the `.aft`'s DCMA tile carries IncludeComplete=false on both filters); the handoff rotated (the R-73 section MOVED to the archive); this entry; the lessons entry; the kickoff refreshed to R-78. `-m parity`: **218 passed / 0 failed** in 7:05 (`PYTEST_EXIT=0`). The full suite: **5,714 passed / 7 skipped / 0 failed** in 38:11 (`PYTEST_EXIT=0`, the three doc guards deferred to after the last doc edit) (the three doc guards deferred and re-run after the last doc edit: 20 passed). The PR number is in the follow-up below.
 
 **Follow-up (same session):** pushed `claude/blissful-cori-2nukng` (code + docs commit `6e49c74b`); draft PR [#707](https://github.com/polittdj/Schedule-Manipulation-Analysis-Tool-Experiment/pull/707) opened at it and subscribed, a 60-minute check-in armed; this docs-only follow-up records the number — the next session reads the FINAL head's EIGHT checks (installer-smoke's `linux` / `windows` join CI's six: the installers changed) and, if the operator has merged it, `main`'s own run for the squash by its JOBS.
+
+## 2026-09-21 — R-78 CLOSED (ADR-0519): Acumen Fuse's `Float Ratio™` is TWO metrics under one name — the mean-of-ratios (N/A whenever a Remaining Duration field is 0) and the ratio-of-means (those zeros kept in both sums) — both on the whole-day FIELDS and both presented half AWAY from zero; `duration_days_axis` retired — v1.0.283
+
+**Branch:** `claude/charming-archimedes-ihwapd` (branched from the squash `01251bb2`). **ADR:** 0519.
+
+**Inherited state, re-verified first-hand before building on it (QC-2):** `origin/main` @ `01251bb2`
+(#707, R-76 / ADR-0518), this clone's `HEAD^{tree}` == `origin/main^{tree}` == `78b981fb…`.
+**PR #707's FINAL head read to conclusion:** CI `35535165650` — `cui-guard` 20:19:54Z · `browser`
+20:35:30Z · `floor` 20:53:27Z · `test (3.13)` 21:11:14Z · `test (3.11)` 21:16:55Z · `check`
+21:17:36Z; installer-smoke `35535165662` — `linux` 20:20:05Z · `windows` 20:24:06Z — **eight of
+eight green**. **`main`'s OWN runs for the squash, by their JOBS** (every `head_sha` `01251bb2`):
+CI 1965 (`35538468705`) — `cui-guard` 21:22:10Z · `browser` 21:38:14Z · `floor` 21:53:45Z ·
+`test (3.11)` 22:08:40Z · `test (3.13)` 22:11:19Z · `check` 22:11:25Z — six of six; installer-smoke
+799 (`35538468545`) — `linux` 21:22:34Z · `windows` 21:26:46Z. Nothing about `01251bb2` outstanding;
+recorded here rather than in a docs-only PR.
+
+**What the row got wrong.** R-78 was right that Fuse's `Float Ratio™` averages its whole-day fields
+and reads N/A on a zero divisor, and wrong that **the aggregate form has no oracle**. Both committed
+`.aft` snapshots define `Float Ratio™` under BOTH Bible forms — GUID `a536d1a4`
+`AVERAGE(TotalFloat/RemainingDuration)`, and `8aec0857` / `697a1c84` / `dc1bd267` / `838991ea` /
+`9c556fbd` `AVERAGE(TotalFloat)/AVERAGE(RemainingDuration)` — and the operator's workbooks print
+both under that one tile name. The rev-5 `Hard_File_updated3` save reads **-10.94** in the
+AlltheProjects ribbon and **-8.01** in the 7/15 Analyst ribbon; the 24-hour file reads **N/A** and
+**-3.58**. The row's prescribed trend remedy fell too: keying the series' "no value" test on the
+STATUS would blank every version, because `compute_float_ratio` returns `NOT_APPLICABLE` even when
+it returns a figure.
+
+**Shipped:** `engine/metrics/float_ratio.py` — `_scored` on `acumen_total_float_field` /
+`acumen_duration_field` over `activity_day_minutes`, a zero remaining KEPT; the mean-of-ratios N/A
+for the whole schedule on any zero divisor via `_na()` (population 0 — the only "no figure" signal
+the consumers have); the ratio-of-means keeping those activities in both sums; both presented
+through `round_half_up`. `_common.duration_days_axis` **retired** (its only consumer).
+`web/help.py` + regenerated `docs/METRIC-DICTIONARY.md`. `tests/guards/round_site_ledger.tsv`
+374 → 372 rows and the report's §4 census (`round_calls_inside_engine_metrics` 44 → 42,
+`round_sites_ledgered` 374 → 372, `round_family_value_dp` 119 → 117). `engine/trend.py`,
+`web/trend.py`, `web/standards.py` and `static/trend.js` **unchanged**. Version 1.0.283; wheel +
+nine installers rebuilt.
+
+**Measured:** the rule reproduces **39 / 39** AlltheProjects ribbon labels from Fuse's own displayed
+cells under the shipped presentation (37 / 39 under half-to-even — the two misses ARE the tie) and **19 / 19** mapped labels from the ENGINE (9 numeric to 4 dp, 10 N/A), plus **3 / 3**
+ratio-of-means tiles. The zero-kept discriminator: the 24-hour file's four zero-remaining fields
+(UIDs 267 / 302 / 385 / 389) keep the aggregate at the tile's -3.58 where dropping them prints
+-9.58. The rounding tie: the `.aft` declares `FormulaFormat='{0:N}'` for every `Float Ratio™` entry
+and the ribbon's ONLY tie — `TP4_DataCenter_v1`'s exact 5/8 — is WRITTEN **0.63**; the committed
+fixture lands on the same 5/8, so half-to-even was a live miss. Corpus: 30 committed fixtures
+re-scored, **16 moved**, N/A **1 → 10**. Named residual: update2-vs-update3's own
+`Hard_File_updated3` tile (-5.59, its CP twin -11.9) reproduces from no committed save under either
+form although that grid's 110 rows reproduce 110 / 110 and the sibling snapshot's tiles are exact.
+
+**Verified (QC-1 / QC-3):** nine plan assumptions attacked before the first edit — six held, three
+fell (the aggregate's "no oracle", the status-keyed trend remedy, the aft-audit row's
+`CP - Float Ratio™` mapping). Red first by name on the pristine package (the engine read 8 / 3.21
+where Fuse reads N/A; the aggregate -9.5 for -8.01). **Mutation battery 5 / 5 red by name** on fresh
+copies of `src/` with the imported module asserted to be the copy, the control green: raw minutes ·
+skipping a zero divisor · dropping the zeros from the aggregate's sums · keeping the population on
+an N/A (the trend trap) · the project day as the divisor. Statics green on ruff 0.15.8 and
+`uvx ruff@0.16.8` (`check .` + `format --check .`, whole tree), `mypy --strict` 165 files, bandit
+exit 0, `node --check` per file. `tests/engine` + `tests/test_projects` **1,355 passed**;
+`tests/guards` **403 passed / 2 skipped**; `tests/parity/test_fuse_duration_fields_oracle.py` 5
+passed. Full suite and `-m parity`: recorded in the follow-up below.
+
+**Follow-up (same session) — the gate's verdict, and what ran against which tree.** The full suite:
+**5,738 passed / 7 skipped / 0 failed** in 52:28 (`PYTEST_EXIT=0`; the two LibreOffice skips print
+"Error: source file could not be loaded" on stderr — that is the missing `libreoffice-impress`
+filter, the instrument, not a test). `-m parity`: **219 passed / 0 failed** in 12:03 (`PYTEST_EXIT=0`;
+218 last unit — the R-78 registration pin became two closing pins). The doc + ledger guards after the
+last doc edit: **23 passed**. **Stated precisely rather than rounded up:** the full suite began
+before the final `39 / 39`-from-Fuse's-cells assertion was added to
+`tests/parity/test_fuse_duration_fields_oracle.py`, so its verdict covers the tree **minus** that
+one addition; `-m parity` and the guards above ran on the FINAL tree and cover it. Pushed
+`claude/charming-archimedes-ihwapd` (commit `1581e1c8`); draft PR
+[#708](https://github.com/polittdj/Schedule-Manipulation-Analysis-Tool-Experiment/pull/708) opened
+at it and subscribed, an hourly check-in armed. The next session reads that PR's FINAL head's EIGHT
+checks (installer-smoke's `linux` / `windows` join CI's six: the installers changed) and, if the
+operator has merged it, `main`'s own run for the squash by its JOBS.

@@ -1233,29 +1233,38 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "Float Ratio™",
         "Average, across the live activities, of each activity's total float divided by its "
         "remaining duration — how much breathing room the remaining work has relative to how much "
-        "work is left. Over Normal planned/in-progress activities (completed work excluded). The "
-        "cited offenders are the very-tight activities (per-activity ratio < 0.1).",
+        "work is left. Over Normal planned/in-progress activities (completed work excluded). Both "
+        "terms are the reference tool's WHOLE-DAY fields on the activity's own calendar day, so "
+        "the figure is the one its grid displays. Reads N/A for the whole schedule whenever any "
+        "activity's Remaining Duration field rounds to 0 days — the reference tool's own "
+        "divide-by-zero, not a finding about the schedule; the aggregate form below still prints. "
+        "The cited offenders are the very-tight activities (per-activity ratio < 0.1).",
         "AVERAGE(TotalFloat / RemainingDuration), Normal planned/in-progress activities",
         _HMI,
         importance="Float Ratio reads how much slack the schedule carries per day of remaining "
         "work; bands (Bible): <0.1 very tight, 0.1-0.3 tight, 0.3-0.6 healthy, >0.6 generous.",
         indicates="A very low ratio is a schedule running out of room (delay risk); an excessively "
         "high ratio flags poor logic — missing links / out-of-sequence work inflating float. "
-        "Validated on the Large Test File: the population's average remaining duration (18.4 "
-        "working days) matches the reference tool's reported Avg. Remaining Duration (~18).",
+        "An em dash means N/A: at least one activity has under half a day of remaining duration, "
+        "so the average is undefined (verified against the reference tool's own ribbons, which "
+        "print N/A on exactly those schedules).",
     ),
     "float_ratio_aggregate": _doc(
         "float_ratio_aggregate",
         "Float Ratio (aggregate)",
-        "The ratio-of-means companion to Float Ratio™: total float over total remaining duration "
-        "across the same population. More robust than the mean-of-ratios to activities with a tiny "
-        "remaining duration (which can otherwise dominate the average).",
+        "The Bible's OTHER form of Float Ratio™, carried under the same name: total float over "
+        "total remaining duration across the same population and the same whole-day fields. It "
+        "has no per-activity division to fail, so it keeps near-finished activities in both sums "
+        "and still prints where the mean-of-ratios reads N/A.",
         "AVERAGE(TotalFloat) / AVERAGE(RemainingDuration), Normal planned/in-progress activities",
         _HMI,
         importance="Reported alongside the canonical Float Ratio so a few near-zero-remaining "
-        "activities can't skew the period-to-period read.",
+        "activities can't skew the period-to-period read — and so a schedule that makes the "
+        "canonical form N/A still carries a float-per-day figure.",
         indicates="Tracks the canonical Float Ratio; a divergence between the two means a handful "
-        "of almost-finished activities carry outsized float.",
+        "of almost-finished activities carry outsized float. The reference tool prints this form "
+        "under the Float Ratio™ tile in its Analyst-report metric group and the mean-of-ratios "
+        "form in its Quick-Add group — one name, two metrics.",
     ),
     "epi": _doc(
         "epi",

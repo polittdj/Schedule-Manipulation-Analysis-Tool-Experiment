@@ -435,6 +435,51 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-21 — the oracle a row says does not exist is in the OTHER workbook (again); one tile NAME can be two metrics and the library says so; a row's prescribed REMEDY is a claim too (ADR-0519, R-78 closed)
+
+- **The row said the aggregate form had no oracle. It had two workbooks' worth.** R-78 registered
+  Float Ratio™'s mean-of-ratios against the AlltheProjects ribbon and instructed the next session to
+  hold the ratio-of-means or mark it UNVERIFIED, "do not move it by analogy". Sweeping EVERY
+  committed Fuse workbook's ribbon — not just the one the row cited — found the 7/15 Analyst and
+  update2-vs-update3 ribbons printing the ratio-of-means under the same tile name, and both
+  reproduce to 4 dp. This is the **second** consecutive row to make this mistake (R-76's "the oracle
+  the row said did not exist was in the AlltheProjects grids"). **Lesson: before accepting "no
+  oracle exists", enumerate every committed reference artefact that could carry that tile and
+  measure each one. A row's absence claim is a claim about the sweep its author ran, not about the
+  corpus.**
+- **Two numbers under one name, and the `.aft` says so out loud.** `Float Ratio™` is defined in the
+  library under BOTH Bible formulas (GUID `a536d1a4` mean-of-ratios; five further GUIDs
+  ratio-of-means). The SAME save reads **-10.94** in one workbook's ribbon and **-8.01** in
+  another's. **Lesson: key a reference tile by (workbook, metric name), never by name alone — and
+  when two engine results look like "a metric and its companion", check whether the reference
+  actually defines both under one name before calling one of them a variant.** The repo's own
+  `test_aft_formula_audit` had mapped the aggregate to `CP - Float Ratio™` and called it
+  critical-path-scoped; parsing the library refuted that in one command.
+- **The row's prescribed REMEDY was wrong, and QC-3 caught it before the first edit.** R-78 named a
+  real trap (the trend decides "no value" by population, so an N/A that keeps its population plots
+  a fabricated 0.0) and prescribed moving that test to the **status**. But `compute_float_ratio`
+  returns `NOT_APPLICABLE` even when it returns a figure — the metric is informational and carries
+  no threshold — so the prescribed fix would have blanked the entire trend chart. **Lesson: a plan's
+  REMEDY is as much a claim as its finding. Run it against the artefact before implementing it.**
+- **A field that already means two things cannot carry a third.** `NOT_APPLICABLE` was spent on "no
+  threshold", so `population == 0` was the only "this carried no figure" signal every consumer
+  already reads. The honest N/A therefore does **not** keep its candidate count — and that cost is
+  disclosed rather than smuggled. **Lesson: when a new state needs a carrier, first read what the
+  existing fields already mean to their consumers; inventing a third meaning for an overloaded enum
+  is how a chart starts lying.**
+- **A refuted blanket sweep does not refute a single site.** ADR-0515 refused R-04's sweep of
+  `round()` toward `round_half_up` *because no reference display was known at that precision*. Here
+  one was found: the `.aft` declares `FormulaFormat='{0:N}'` (two decimals) for this metric where a
+  sibling ribbon metric with `FormulaFormat=''` writes `0.045833333333` raw, and the ribbon's ONLY
+  tie — `TP4_DataCenter_v1`'s exact 5/8 — is WRITTEN 0.63. **Lesson: "measured-false, do not
+  re-chase" attaches to the CLAIM that was measured. New evidence about a different claim (one site,
+  with a display) is not a re-chase — but say which claim you are answering.**
+- **Write the witness from the measurement, not from the prose.** The kickoff named UID 389 as the
+  24-hour file's zero-remaining witness; the test asserted exactly `[389]` and went red on the
+  measured `[267, 302, 385, 389]`. The code was right and the assertion was narrow. **Lesson: a pin
+  copied from a handoff's example inherits the example's scope. Re-measure the set before pinning
+  it — and be glad when a too-narrow pin fails, because that is the pin proving it can.**
+
 ### 2026-09-20 (f) — a ribbon's ratio block is a denominator oracle; two grids with one label are two metrics; price a "site" by its consumer's own figure
 
 - **What happened.** R-76 asked which duration DCMA-08 reads and how Fuse divides its duration

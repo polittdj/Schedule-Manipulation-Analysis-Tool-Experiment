@@ -1,33 +1,66 @@
-"""Float Ratio™ — average activity total float per day of remaining work (Acumen Bible formula).
+"""Float Ratio™ — activity total float per day of remaining work, on Acumen Fuse's own FIELDS.
 
 The Deltek Acumen Fuse "Float Ratio™" metric, taken verbatim from the NASA Acumen metric library
-(the "Bible", ``<Metric Name="Float Ratio™">``). It answers *how much breathing room does the
-remaining work have, relative to how much work is left* — the average, across the live activities,
-of each activity's total float divided by its remaining duration. A higher ratio means more float
-per day of remaining duration (a looser, lower-risk schedule); a ratio near zero means the work is
-running out of room.
+(the "Bible"). It answers *how much breathing room does the remaining work have, relative to how
+much work is left* — a higher ratio means more float per day of remaining duration (a looser,
+lower-risk schedule); a ratio near zero means the work is running out of room.
 
-The Bible carries two algebraic forms of the same idea, and this module computes **both**:
+**One name, two metrics.** The ``.aft`` carries ``Float Ratio™`` under BOTH of the Bible's
+algebraic forms, and Fuse v8.11.0 prints both under that one tile name depending on which metric
+group the workbook loaded. This module computes both, and each is pinned to the ribbon that
+displays it (R-78, ADR-0519 — ``tests/parity/test_fuse_duration_fields_oracle.py``):
 
-* the canonical, threshold-bearing definition — the *mean of the per-activity ratios*::
+* ``float_ratio`` — the *mean of the per-activity ratios*, the threshold-bearing form::
 
       Float Ratio = AVERAGE(TotalFloat / RemainingDuration)
 
-* an aggregate form some library entries use — the *ratio of the means* (equivalently
-  ``sum(TotalFloat) / sum(RemainingDuration)``)::
+  the AlltheProjects ribbon's tile: nine numeric tiles reproduce to 4 dp (Hard_File_updated3
+  -10.9446 → -10.94, Project2 14.0076 → 14.01, Project5_TAMPERED 22.0173 → 22.02, Jacked Up
+  Schedule 1 0.7678 → 0.77, Jacked up Schedule 2 0.2667 → 0.27) and ten N/A tiles reproduce
+  exactly.
+
+* ``float_ratio_aggregate`` — the *ratio of the means* (equivalently ``sum(TotalFloat) /
+  sum(RemainingDuration)`` over one population)::
 
       Float Ratio (aggregate) = AVERAGE(TotalFloat) / AVERAGE(RemainingDuration)
+
+  the 7/15 Analyst ribbon's tile (-8.0115 → -8.01 on the same rev-5 Hard_File_updated3 save the
+  other ribbon reads -10.94, and -3.5758 → -3.58 on the 24-hour file) and the
+  update2-vs-update3 ribbon's (5.7361 → 5.74 on Hard_File_updated2).
+
+**Both terms are Fuse's whole-day FIELDS, not raw minutes** (R-75 / ADR-0516, R-76 / ADR-0518):
+:func:`acumen_total_float_field` and :func:`acumen_duration_field`, each on the activity's OWN day
+(:func:`activity_day_minutes` — 1440 for an elapsed duration, else the task's own calendar's day,
+else the project's). That is what the analyst reads in the reference tool's grid, and averaging
+the underlying minutes instead put the engine at -11.85 where Fuse printed -10.94.
+
+**N/A is a divide-by-zero, not a finding.** A Remaining Duration field of 0 (a 480-minute
+remainder on a 1,440-minute calendar rounds to 0 whole days) makes one per-activity ratio an
+error, and Excel's ``AVERAGE`` propagates it: the mean-of-ratios tile prints **N/A** for the whole
+project. The engine reports that as :data:`CheckStatus.NOT_APPLICABLE` with a **zero population** —
+the only "this carried no figure" signal its consumers have, because the status pill is already
+spent saying "informational, no threshold" (``web/standards.py`` renders a 0-population ratio as
+an em dash; ``engine/trend.py`` emits ``None`` for that version rather than a fabricated 0.0).
+The candidate activity count is deliberately NOT reported on an N/A: there is no field left to
+carry it that a consumer would not read as a figure. The aggregate form has no per-activity
+division to fail, so it keeps every activity — zero-remaining ones included — in BOTH sums and
+stays computable; on the 24-hour file that is the tile's -3.58, where dropping them would print
+-9.58. It is therefore the figure that survives when the primary reads N/A.
 
 Population (the Bible's ``PrimaryFilter``): **Normal** activities (non-summary, non-milestone,
 non-hammock) that are **Planned or In-Progress** — completed work is excluded (it has no remaining
 duration and carries no forward risk). Total float is read from the source tool's stored,
 progress-aware value when present (matching Acumen — :func:`effective_total_float`), otherwise the
-engine's recomputed CPM float. Each term converts to days on **its own axis** before dividing:
-total float is always working minutes → working days (``per_day``); remaining duration converts on
-the activity's duration axis — working days normally, wall-clock days (1440 min) for an *elapsed*
-activity (audit NEW-1, corrected by QC audit D7: the float term stays on the working axis). This is
-the displayed-days ratio an analyst reads in MS Project ("1 day" float over "1 eday" remaining =
-1.0). Activities with no remaining duration are skipped (division guard).
+engine's recomputed CPM float; an activity with neither cannot contribute and is skipped.
+
+**The tile's two displayed decimals round half AWAY FROM ZERO.** ADR-0515 left every ``value_dp``
+rounding on Python's half-to-even because no reference display was known at that precision; for
+this metric there is one, and it has exactly one tie in the whole reference corpus — TP4_DataCenter
+v1's mean is exactly 5/8 and Fuse writes **0.63** into the ribbon (half-to-even writes 0.62). So
+both forms present through :func:`round_half_up` (MF-08, ADR-0467). Every other label in every
+committed ribbon is a non-tie and reads identically under either rule. A NEGATIVE tie does not
+occur in the corpus, so away-from-zero rather than toward positive infinity is the spreadsheet
+convention applied, not a measurement (UNVERIFIED).
 
 Bible interpretation bands (informational — Float Ratio is not a DCMA pass/fail check): ``< 0.1``
 very tight, ``0.1-0.3`` tight, ``0.3-0.6`` healthy, ``> 0.6`` generous (check for missing logic).
@@ -40,9 +73,12 @@ from schedule_forensics.engine.cpm import CPMResult, compute_cpm
 from schedule_forensics.engine.metrics._common import (
     CheckStatus,
     MetricResult,
-    duration_days_axis,
+    activity_day_minutes,
+    acumen_duration_field,
+    acumen_total_float_field,
     effective_total_float,
     non_summary,
+    round_half_up,
 )
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
@@ -70,36 +106,30 @@ def _remaining_minutes(task: Task) -> int:
     return round(task.duration_minutes * (100.0 - task.percent_complete) / 100.0)
 
 
-def _scored(schedule: Schedule, result: CPMResult) -> list[tuple[Task, float, float]]:
-    """``(task, total_float_days, remaining_days)`` for each scorable activity in the population.
+def _scored(schedule: Schedule, result: CPMResult) -> list[tuple[Task, float, int]]:
+    """``(task, total_float_field, remaining_duration_field)`` for each scorable activity.
 
-    Activities with no remaining duration (the division guard) or no available float (no stored
-    value and absent from the CPM result) are skipped — they cannot contribute a ratio."""
-    per_day = schedule.calendar.working_minutes_per_day or 1
-    out: list[tuple[Task, float, float]] = []
+    Both terms are the WHOLE-DAY fields Fuse displays, on the activity's own day. A zero
+    remaining field is **kept** — it is what makes the mean-of-ratios form N/A and what the
+    ratio-of-means form carries in its denominator sum, so the caller decides, not this loop.
+    Only an activity with no available float at all (no stored value and absent from the CPM
+    result) is dropped: it cannot contribute either figure."""
+    by_uid = {c.uid: c for c in schedule.calendars}
+    out: list[tuple[Task, float, int]] = []
     for t in _float_ratio_population(schedule):
-        remaining_days = duration_days_axis(
-            _remaining_minutes(t),
-            is_elapsed=t.duration_is_elapsed,
-            calendar_minutes_per_day=per_day,
-        )
-        if remaining_days <= 0:
-            continue
         if t.stored_total_float_minutes is None and t.unique_id not in result.timings:
             continue
         recomputed = (
             float(result.timings[t.unique_id].total_float) if t.unique_id in result.timings else 0.0
         )
-        # Each term converts to DAYS on ITS OWN axis. Total float — stored or recomputed — is
-        # ALWAYS working minutes (Task model; MSPDI "TotalSlack → working minutes"), so it divides
-        # by per_day even for an elapsed activity; only an elapsed activity's REMAINING duration is
-        # wall-clock (1440, handled by duration_days_axis above). This matches the displayed-days
-        # ratio an analyst reads in MSP ("1 day" float against "1 eday" remaining = 1.0). Audit
-        # NEW-1 fixed the remaining-duration axis but wrongly moved the float term to 1440 with it,
-        # understating every elapsed ratio by 1440/per_day (QC audit D7 corrects that). For
-        # non-elapsed activities — every golden — both axes are per_day, so no parity number moves.
-        float_days = effective_total_float(t, recomputed) / per_day
-        out.append((t, float_days, remaining_days))
+        day = activity_day_minutes(schedule, t, by_uid)
+        out.append(
+            (
+                t,
+                acumen_total_float_field(t, effective_total_float(t, recomputed), day),
+                acumen_duration_field(_remaining_minutes(t), day),
+            )
+        )
     return out
 
 
@@ -112,11 +142,13 @@ def compute_float_ratio(
 ) -> dict[str, MetricResult]:
     """Float Ratio™ over the normal planned/in-progress population — both Bible forms.
 
-    Returns ``float_ratio`` (the canonical mean-of-ratios, threshold-bearing) and
-    ``float_ratio_aggregate`` (the ratio-of-means). Both are single-snapshot and informational
-    (no pass/fail threshold); ``population`` is the activity count averaged (NA when it is zero,
-    e.g. a fully complete or milestone-only scope). ``offender_uids`` on the primary cut are the
-    very-tight activities (per-activity ratio ``< 0.1``)."""
+    Returns ``float_ratio`` (the mean-of-ratios, the AlltheProjects ribbon's tile) and
+    ``float_ratio_aggregate`` (the ratio-of-means, the Analyst ribbon's). Both are
+    single-snapshot and informational (no pass/fail threshold), so both carry an NA *status* even
+    when they carry a figure; ``population`` is the activity count scored, and a population of 0
+    is the "no figure" signal — the primary reads it whenever any Remaining Duration field is 0
+    (Fuse's own N/A), the aggregate only when every one of them is. ``offender_uids`` on the
+    primary are the very-tight activities (per-activity ratio ``< 0.1``)."""
     result = cpm_result if cpm_result is not None else compute_cpm(schedule)
     scored = _scored(schedule, result)
     count = len(scored)
@@ -125,10 +157,25 @@ def compute_float_ratio(
             "float_ratio": _na("float_ratio", "Float Ratio"),
             "float_ratio_aggregate": _na("float_ratio_aggregate", "Float Ratio (aggregate)"),
         }
+    total_remaining = sum(rd for _, _, rd in scored)
+    if total_remaining:
+        aggregate = MetricResult(
+            "float_ratio_aggregate",
+            "Float Ratio (aggregate)",
+            count,
+            count,
+            round_half_up(sum(tf for _, tf, _ in scored) / total_remaining, 2),
+            "ratio",
+            CheckStatus.NOT_APPLICABLE,
+        )
+    else:
+        aggregate = _na("float_ratio_aggregate", "Float Ratio (aggregate)")
+    if any(rd == 0 for _, _, rd in scored):
+        return {
+            "float_ratio": _na("float_ratio", "Float Ratio"),
+            "float_ratio_aggregate": aggregate,
+        }
     mean_of_ratios = sum(tf / rd for _, tf, rd in scored) / count
-    total_float_days = sum(tf for _, tf, _ in scored)
-    total_remaining_days = sum(rd for _, _, rd in scored)
-    aggregate = total_float_days / total_remaining_days if total_remaining_days else 0.0
     tight = tuple(sorted(t.unique_id for t, tf, rd in scored if tf / rd < _LOW_BAND))
     return {
         "float_ratio": MetricResult(
@@ -136,18 +183,10 @@ def compute_float_ratio(
             "Float Ratio",
             count,
             count,
-            round(mean_of_ratios, 2),
+            round_half_up(mean_of_ratios, 2),
             "ratio",
             CheckStatus.NOT_APPLICABLE,
             offender_uids=tight,
         ),
-        "float_ratio_aggregate": MetricResult(
-            "float_ratio_aggregate",
-            "Float Ratio (aggregate)",
-            count,
-            count,
-            round(aggregate, 2),
-            "ratio",
-            CheckStatus.NOT_APPLICABLE,
-        ),
+        "float_ratio_aggregate": aggregate,
     }

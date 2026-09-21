@@ -33,11 +33,21 @@ unfiltered Quick-Add metric lists 267 / 302 / 385. The "8. High Duration" tile i
 Duration field > 44 over that baselined-incomplete population: Large Test File 87 / 927 → 0.09
 and File2 86 / 904 → 0.10 (the engine's all-incomplete 1,024 / 998 would print 0.08 / 0.09).
 
-Registered here, NOT consumed by the engine yet: **R-78** — Fuse's Float Ratio™ is the mean of
-its whole-day fields (TotalFloat field / RemainingDuration field) and N/A whenever a divisor is
-0; **R-79** — the "9. Invalid Forecast Dates" tile's denominator is the baselined INCOMPLETE
-population (322 / 904 → 0.36 on File2) where the engine's parity mode divides by every baselined
-activity.
+**Float Ratio™ reads those same fields, and the name carries TWO metrics** (R-78, ADR-0519). The
+``.aft`` defines ``Float Ratio™`` under both Bible forms, and Fuse prints both under that one tile
+name: the AlltheProjects ribbon is ``AVERAGE(TotalFloat/RemainingDuration)`` — N/A whenever a
+Remaining Duration field is 0, because ``AVERAGE`` propagates the per-activity divide-by-zero —
+while the 7/15 Analyst and update2-vs-update3 ribbons are
+``AVERAGE(TotalFloat)/AVERAGE(RemainingDuration)``, which has no per-activity division to fail and
+so keeps the zero-remaining activities in BOTH sums. The rev-5 ``Hard_File_updated3`` save reads
+-10.94 in one ribbon and -8.01 in the other; the 24-hour file reads N/A and -3.58. One tile is
+excluded BY NAME as an unexplained residual: update2-vs-update3's own ``Hard_File_updated3``
+(-5.59, and its "CP - Float Ratio™" twin -11.9) reproduces from no committed save under either
+form, although that grid's 110 rows reproduce 110/110 and its sibling snapshot's tiles are exact.
+
+Registered here, NOT consumed by the engine yet: **R-79** — the "9. Invalid Forecast Dates" tile's
+denominator is the baselined INCOMPLETE population (322 / 904 → 0.36 on File2) where the engine's
+parity mode divides by every baselined activity.
 
 Absence semantics mirror ``test_fuse_hardfile_float_divisor_oracle``: skip only when the intake
 dir is absent; a named workbook that is missing FAILS (the oracle must not narrow silently).
@@ -50,6 +60,7 @@ import math
 import re
 import zipfile
 from collections.abc import Callable, Iterator
+from fractions import Fraction
 from functools import cache
 from pathlib import Path
 from xml.etree import ElementTree as ET
@@ -630,52 +641,186 @@ def test_the_high_duration_tile_is_the_baseline_field_over_the_baselined_incompl
     assert compute_dcma14(_fixture(_LTF))["DCMA08"].population == 1024
 
 
-# ── registered, not consumed yet ──────────────────────────────────────────────────────────────
+# ── Float Ratio™: ONE name, TWO metrics (R-78, ADR-0519) ──────────────────────────────────────
+#
+# The ``.aft`` carries "Float Ratio™" under BOTH of the Bible's algebraic forms — GUID
+# ``a536d1a4`` is ``AVERAGE(TotalFloat/RemainingDuration)``, five further entries are
+# ``AVERAGE(TotalFloat)/AVERAGE(RemainingDuration)`` — and the operator's workbooks display
+# both under that one tile name: the AlltheProjects ribbon prints the MEAN-OF-RATIOS, the
+# 7/15 Analyst and update2-vs-update3 ribbons print the RATIO-OF-MEANS. The rev-5
+# ``Hard_File_updated3`` save reads -10.94 in one ribbon and -8.01 in the other, so the two
+# forms are separated by MEASUREMENT, not by preference. Both terms are the whole-day FIELDS
+# of R-75 / R-76 (``acumen_total_float_field`` / ``acumen_duration_field`` on
+# ``activity_day_minutes``), which is why this oracle lives beside them.
+
+_UPD2VS3 = ACUMEN / "Hard_File_update2 vs update3_Fuse - Analysis Report.xlsx"
+_REV2 = "golden/fuse_hardfile/Hard_File_updated3.mspdi.xml.gz"  # the update2vs3 workbook's save
+_UPD2 = "golden/fuse_hardfile/Hard_File_updated2.mspdi.xml.gz"
 
 
-def test_fuses_float_ratio_is_the_mean_of_its_whole_day_fields_r78_registered() -> None:
-    """Fuse's Float Ratio™ (``AVERAGE(TotalFloat/RemainingDuration)``, Normal, planned or in
-    progress) averages its WHOLE-DAY fields and reads N/A whenever a Remaining Duration field is
-    0 — recomputed here from the fields Fuse itself displays, it reproduces every numeric tile of
-    the AlltheProjects ribbon and every N/A. The engine averages MINUTES and skips a zero
-    remaining, so it reads -11.85 where Fuse reads -10.94 (Hard_File_updated3, rev 5), and a
-    number where Fuse reads N/A (Large Test File, Hard_File, EVM1). R-78 registers it; this pin
-    keeps the row's premise executable (the engine-side assertion flips when the row closes)."""
+def _tiles(book: Path) -> dict[str, Cell]:
+    """Each snapshot's ``Float Ratio™`` ribbon tile. The metric carries no percentage, so the
+    ratios block is empty for it and the counts block is the only one that reads."""
+    counts, _ratios = _ribbon(book, "Float Ratio™")
+    return {label: cells["Float Ratio™"] for label, cells in counts.items()}
+
+
+def _fuse_pairs(book: Path, project: str) -> list[tuple[int, float, float]]:
+    """``(uid, Total Float, Remaining Duration)`` from the cells FUSE ITSELF displays for the
+    Float Ratio population (Normal, planned or in progress) — no engine helper is consulted, so
+    the expectations below cannot be produced by the code they judge."""
+    out: list[tuple[int, float, float]] = []
+    for (p, uid), cells in _displayed(book).items():
+        if p != project or cells.get("Type") != "Normal" or cells.get("Status") == "Complete":
+            continue
+        tf, rd = _as_number(cells.get("Total Float")), _as_number(cells.get("Remaining Duration"))
+        assert tf is not None and rd is not None, (book.name, project, uid)
+        out.append((uid, float(tf), float(rd)))
+    return out
+
+
+def test_fuses_float_ratio_tile_is_the_mean_of_its_whole_day_fields() -> None:
+    """The AlltheProjects ribbon's ``Float Ratio™`` is ``AVERAGE(TotalFloat/RemainingDuration)``
+    over the whole-day FIELDS, and reads **N/A whenever any Remaining Duration field is 0** —
+    Excel's own error propagation through ``AVERAGE``, not a finding about the schedule.
+
+    Measured two independent ways on every label the workbook maps to a committed save: from the
+    cells Fuse itself displays, and from the ENGINE (which derives the same fields out of the
+    MSPDI). Nine numeric tiles reproduce to 4 dp and ten N/A tiles reproduce exactly; the N/A
+    witnesses are a zero Remaining Duration field (the 24-hour file's UID 389 — 480 minutes on a
+    1,440-minute calendar; Hard_File's UID 99 — 240 on 480). Refuted by name below: the
+    ratio-of-means (that is the OTHER ribbon's tile) and the engine's former minute axis."""
     _workbooks_present()
-    _counts, _ratios = _ribbon(_ALL, "Float Ratio™")
-    fuse = {label: cells["Float Ratio™"] for label, cells in _counts.items()}
+    tiles = _tiles(_ALL)
+    numeric = na = 0
+    for label, rel in _WORKBOOKS[_ALL].items():
+        tile = tiles[label]
+        pairs = _fuse_pairs(_ALL, label)
+        assert pairs, label
+        zeros = [uid for uid, _tf, rd in pairs if rd == 0]
+        primary = compute_float_ratio(_fixture(rel))["float_ratio"]
+        if zeros:
+            na += 1
+            assert tile == "N/A", (label, zeros)
+            # the engine says "nothing was averaged" with a 0 population — the ONLY signal its
+            # consumers have (the status pill is spent on "informational, no threshold")
+            assert (primary.population, primary.value, primary.offender_uids) == (0, 0.0, ()), label
+        else:
+            numeric += 1
+            assert isinstance(tile, (int, float)) and not isinstance(tile, bool), label
+            from_cells = round(sum(tf / rd for _uid, tf, rd in pairs) / len(pairs), 4)
+            assert round(from_cells, 2) == round(float(tile), 2), (label, from_cells, tile)
+            assert primary.population == len(pairs), label
+            assert primary.value == round(float(tile), 2), (label, primary.value, tile)
+    assert (numeric, na) == (9, 10)
+    # the individual figures the row was registered on, spelled out
+    assert tiles["Hard_File_updated3"] == -10.94 and tiles["Project2"] == 14.01
+    assert tiles["Jacked Up Schedule 1"] == 0.77 and tiles["Jacked up Schedule 2"] == 0.27
+    assert tiles["Project5_TAMPERED"] == 22.02
+    assert sorted(uid for uid, _tf, rd in _fuse_pairs(_ALL, _H24) if rd == 0) == [
+        267,
+        302,
+        385,
+        389,
+    ]
+    assert sorted(uid for uid, _tf, rd in _fuse_pairs(_ALL, "Hard_File") if rd == 0) == [99]
+    # THE RULE, over EVERY label the ribbon displays — including the ones whose SAVE the repo
+    # does not hold (TP4 v1-v5, Project3/4, EVM2, this workbook's Hard_File_updated2, SRA). Those
+    # are evidence for the RULE, never for the engine, so they are scored from Fuse's own cells
+    # only. Under the shipped presentation every one of the 39 reproduces.
+    from_cells = 0
+    for other, tile_value in tiles.items():
+        cells = _fuse_pairs(_ALL, other)
+        assert cells, other
+        if any(rd == 0 for _uid, _tf, rd in cells):
+            assert tile_value == "N/A", other
+        else:
+            mean = round_half_up(sum(tf / rd for _uid, tf, rd in cells) / len(cells), 2)
+            assert isinstance(tile_value, (int, float)) and not isinstance(tile_value, bool), other
+            assert mean == round_half_up(float(tile_value), 2), (other, mean, tile_value)
+        from_cells += 1
+    assert from_cells == 39
 
-    def from_fields(book: Path, project: str) -> float | str:
-        terms: list[float] = []
-        for (p, _uid), cells in _displayed(book).items():
-            if p != project or cells.get("Type") != "Normal" or cells.get("Status") == "Complete":
-                continue
-            tf, rd = (
-                _as_number(cells.get("Total Float")),
-                _as_number(cells.get("Remaining Duration")),
-            )
-            assert tf is not None and rd is not None, (project, _uid)
-            if rd == 0:
-                return "N/A"
-            terms.append(tf / rd)
-        return round(sum(terms) / len(terms), 4)
+    # The tile's two decimals round half AWAY FROM ZERO. ADR-0515 left every ``value_dp``
+    # rounding on half-to-even because no reference display was known at that precision; here
+    # there is one, and the ribbon holds exactly ONE tie: TP4_DataCenter_v1's mean is exactly 5/8
+    # and Fuse WRITES 0.63 into the cell (not 0.625 under a 2-dp format — the workbook's value is
+    # 0.63), where half-to-even writes 0.62. Every other label is a non-tie and reads identically
+    # under either rule, so this one cell carries the whole claim — and it is asserted to be the
+    # only one, so a future corpus that adds a second tie cannot slip past unread.
+    ties = []
+    for other in tiles:
+        cells = _fuse_pairs(_ALL, other)
+        if not cells or any(rd == 0 for _uid, _tf, rd in cells):
+            continue
+        exact = sum(
+            Fraction(tf).limit_denominator(10**9) / Fraction(rd).limit_denominator(10**9)
+            for _uid, tf, rd in cells
+        ) / len(cells)
+        scaled = exact * 100
+        if scaled - int(scaled) in (Fraction(1, 2), Fraction(-1, 2)):
+            ties.append((other, exact, tiles[other]))
+    assert ties == [
+        ("TP4_DataCenter_v1", Fraction(5, 8), 0.63),
+        ("TP4_DataCenter_v1 2", Fraction(5, 8), 0.63),
+    ], ties
+    assert round(0.625, 2) == 0.62 != 0.63  # what half-to-even would have printed
 
-    assert (
-        from_fields(_ANALYST, "Hard_File_updated3") == -10.9446
-        and fuse["Hard_File_updated3"] == -10.94
+    # REFUTED by name: the ratio-of-means reads -8.01 on the same save (it is the Analyst
+    # ribbon's tile, asserted below), and the engine's former MINUTE axis read -11.85 / 119.61
+    assert compute_float_ratio(_fixture(_REV5))["float_ratio_aggregate"].value == -8.01
+    per_day = _fixture(_REV5).calendar.working_minutes_per_day
+    minutes = [
+        (
+            _effective(_REV5)[t.unique_id] / per_day,
+            _remaining_minutes(t) / (1440 if t.duration_is_elapsed else per_day),
+        )
+        for t in non_summary(_fixture(_REV5))
+        if not t.is_milestone and not t.is_level_of_effort and not t.is_complete
+    ]
+    old = round(sum(tf / rd for tf, rd in minutes if rd) / sum(1 for _tf, rd in minutes if rd), 2)
+    assert old == -11.85 != -10.94  # the engine's reading before R-78, reconstructed here
+
+
+def test_fuses_float_ratio_tile_is_the_ratio_of_field_means_in_the_other_ribbons() -> None:
+    """The 7/15 Analyst and update2-vs-update3 ribbons print the Bible's OTHER form under the
+    same name — ``AVERAGE(TotalFloat)/AVERAGE(RemainingDuration)`` over the same population and
+    the same whole-day fields — and it is **not** N/A on a zero divisor: there is no per-activity
+    division to fail, so the zero-remaining activities stay in BOTH sums.
+
+    The 24-hour file is the discriminator: four of its fourteen scored activities carry a
+    Remaining Duration field of 0. Keeping them prints the tile's -3.58; dropping them prints
+    -9.58. The mean-of-ratios form reads N/A on that same save (asserted above), which is how we
+    know the two tiles are two metrics rather than one tile we have mis-read."""
+    _workbooks_present()
+    analyst, quick = _tiles(_ANALYST), _tiles(_ALL)
+    # the SAME save, two ribbons, two numbers — one name
+    assert analyst["Hard_File_updated3"] == -8.01 and quick["Hard_File_updated3"] == -10.94
+    assert compute_float_ratio(_fixture(_REV5))["float_ratio_aggregate"].value == -8.01
+    assert analyst[_H24] == -3.58 and quick[_H24] == "N/A"
+    both = compute_float_ratio(_fixture(_G24))
+    assert (both["float_ratio_aggregate"].value, both["float_ratio_aggregate"].population) == (
+        -3.58,
+        14,
     )
-    assert from_fields(_ANALYST, _H24) == "N/A" and fuse[_H24] == "N/A"  # UID 389's field is 0
-    assert from_fields(_ALL, "Project2") == 14.0076 and fuse["Project2"] == 14.01
-    assert (
-        from_fields(_ALL, "Jacked Up Schedule 1") == 0.7678 and fuse["Jacked Up Schedule 1"] == 0.77
-    )
-    assert (
-        from_fields(_ALL, "Jacked up Schedule 2") == 0.2667 and fuse["Jacked up Schedule 2"] == 0.27
-    )
-    assert (
-        from_fields(_ALL, "Hard_File") == "N/A" and fuse["Hard_File"] == "N/A"
-    )  # UID 99: 240 min → 0
-    # the engine today (registered gap, R-78)
-    assert compute_float_ratio(_fixture(_REV5))["float_ratio"].value == -11.85
-    assert compute_float_ratio(_fixture(_LTF))["float_ratio"].value == 119.61
-    assert compute_float_ratio(_fixture(_P2))["float_ratio"].value == 14.01
+    assert both["float_ratio"].population == 0  # the mean-of-ratios form is N/A on the same save
+    # …and the discriminator, from FUSE's OWN cells: dropping the zeros would print -9.58
+    pairs = _fuse_pairs(_ANALYST, _H24)
+    assert len([1 for _uid, _tf, rd in pairs if rd == 0]) == 4
+    kept = sum(tf for _uid, tf, _rd in pairs) / sum(rd for _uid, _rd2, rd in pairs)
+    dropped = sum(tf for _uid, tf, rd in pairs if rd) / sum(rd for _uid, _tf, rd in pairs if rd)
+    assert (round(kept, 2), round(dropped, 2)) == (-3.58, -9.58)
+    # the update2vs3 workbook prints the same form: its update2 snapshot reproduces exactly
+    pair = _tiles(_UPD2VS3)
+    assert pair["Hard_File_updated2"] == 5.74
+    assert compute_float_ratio(_fixture(_UPD2))["float_ratio_aggregate"].value == 5.74
+    # NAMED RESIDUAL — that workbook's OTHER snapshot reproduces from no committed save under
+    # either form, although its grid's 110 rows reproduce 110/110 (asserted by the field oracle
+    # above) from the rev-2 save and its sibling snapshot's tile is exact. Its "CP - Float
+    # Ratio™" twin misses the same way (-11.9 against the critical-only -14.17). Disclosed, not
+    # explained: the tile is excluded from the oracle BY NAME, so it cannot silently start
+    # "passing" under a future rule that happens to hit -5.59.
+    assert pair["Hard_File_updated3"] == -5.59
+    residual = compute_float_ratio(_fixture(_REV2))
+    assert residual["float_ratio_aggregate"].value == -8.24
+    assert residual["float_ratio"].value == -11.26
