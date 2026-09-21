@@ -63,7 +63,7 @@
 
   fetch("/api/dashboard")
     .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
-    .then(function (data) {
+    .then(SFLoad.drawn(function (data) {
       var cards = data.cards || [];
       if (!cards.length) { box.textContent = "No schedules loaded."; return; }
       cards.forEach(function (c) {
@@ -135,6 +135,8 @@
 
         box.appendChild(card);
       });
-    })
+    }, function () {
+      box.textContent = "The dashboard health summary loaded, but it could not be drawn.";
+    }))
     .catch(function () { box.textContent = "Failed to load the dashboard health summary."; });
 })();

@@ -198,7 +198,7 @@
 
   fetch("/api/forecast")
     .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
-    .then(function (d) {
+    .then(SFLoad.drawn(function (d) {
       if (!d.versions || d.versions.length < 2 || !d.axis || !d.axis.min) return;
       data = d;
       methods = d.methods || [];
@@ -212,7 +212,9 @@
       document.getElementById("nextDrift").addEventListener("click", function () { stopAuto(); step(1); });
       document.getElementById("driftPlay").addEventListener("click", toggleAuto);
       mountCursor();
-    })
+    }, function () {
+      box.textContent = "The forecast-drift data loaded, but the chart could not be drawn.";
+    }))
     .catch(function () { box.textContent = "Failed to load the forecast-drift data."; });
 
   // ── Claude Design cursor strip (ADR-0464, artboard "09 Where it lands") ──────────────────

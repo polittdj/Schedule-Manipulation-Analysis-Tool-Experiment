@@ -96,7 +96,7 @@
     var finding = FINDINGS[selected];
     if (!finding) return;
     var file = finding.file || FILE; // a signal cites its own version; findings fall back to FILE
-    loadAnalysis(file).then(function (an) {
+    loadAnalysis(file).then(SFLoad.drawn(function (an) {
       buildCols(an.customLabels);
       var fields = cols.filter(function (f) { return f.on; });
       var uids = finding.uids || [];
@@ -188,7 +188,9 @@
       // and the caret back, or the second character of a filter lands in <body>
       if (refocus) { refocus = false; flt.focus(); flt.setSelectionRange(flt.value.length, flt.value.length); }
       drill.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    }).catch(function () { drill.textContent = "Failed to load the activity data."; });
+    }, function () {
+      drill.textContent = "The activity data loaded, but the table could not be drawn.";
+    })).catch(function () { drill.textContent = "Failed to load the activity data."; });
   }
 
   document.querySelectorAll("a.cite-more[data-finding]").forEach(function (a) {

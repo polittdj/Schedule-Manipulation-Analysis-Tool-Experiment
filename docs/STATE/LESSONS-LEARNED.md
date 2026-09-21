@@ -435,6 +435,64 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-21 (c) — every crude filter under-reports, and it under-reports in the direction that makes the work look done; a kickoff is testimony and this one was another project's (ADR-0521, R-09 closed; R-80 registered)
+
+* **Seven instruments under-reported in one unit, all the same way.** A zero-arg `render();` regex said
+  7 of 13 sites where the truth was 13 of 13 — `curves.js` passes `render` by reference, which the
+  regex could never see. A `fetch("` grep missed `fetch(buildURL())`. A route census that excluded
+  `{param}` routes lost four modules. A "dependency called inside the span" test confused *defined*
+  with *called* and read 4 of 13. A `src="/static/X.js"` matcher returned empty where the tag was
+  plainly present. And **the repo's own ledger literal** — `"Failed to load the"` — hid three
+  modules behind a definite article, which is why R-09's population was registered as 13 when the
+  class is **16**. **The lesson: a filter's population is part of its claim; measure the filter
+  before trusting the count, and prefer the execution to the grep.** Every one of these six was
+  wrong in the direction of "fewer sites, less work".
+* **The seventh instrument was mine, and it made me tell the operator a pin did not exist.**
+  A search for `read_bytes|st_size|getsize|hashlib` FILTERED to lines mentioning
+  `static`/`.js`/`script` found no byte pin over the vendored JS, so R-09's phrase "each
+  byte-frozen script re-baselined and dated" was reported as prose about care rather than an
+  automated guard. It IS a guard:
+  `tests/web/test_r11_panel_contract.py::test_the_seven_page_owned_scripts_are_byte_frozen`
+  md5-pins seven page-owned scripts, and it went red on `driving_tiers.js` and
+  `path_evolution.js` — found only because the whole file was eventually RUN. The line-level
+  narrowing of the grep is exactly what hid it. **The lesson: a negative result from a
+  filtered search is a statement about the filter, not about the tree — and the row was right
+  where it was called loose.** Both freezes re-baselined with the reason and the prior hash.
+* **The three hidden modules were found by rendering, not by reading.** `/trend` printed *two*
+  sentences the census does not know about while the census was being trusted. `render-verify` beat
+  six greps.
+* **A row's prescribed WITNESS is a claim, like its remedy.** R-09 asked for a stub of
+  `SFChartFrame.axisTitles` "green on each of the 13 modules". Only 10 of the 16 reference
+  `SFChartFrame` — and `path_evolution.js`, **the instance the row itself names**, is not one of
+  them. A witness that cannot reach its own named case would have reported the defect fixed.
+* **The test's own vacuous cases are the thing to hunt.** `findings_drill` / `ribbon_drill` fetch
+  only on a click; the first cut asserted on pages that had never fetched and was red for the wrong
+  reason — "no sentence at all" read the same as "the right sentence". A teeth assertion that the
+  poisoned dependency was actually REACHED, and that every `/api/` response was 200, is what
+  separated a draw throw from a real outage.
+* **`node --check` found what no test could.** The three `}).catch(` chains need TWO closing parens;
+  the first patch emitted one and three modules would not parse. A syntax check is not a formality
+  on a no-build-step vendored tree — it is the only thing standing between a regex patch and a dead
+  page.
+* **A seam must not quote the literal it censuses.** `loader.js` sits inside the `web/static/*.js`
+  glob, so its doc comment quoting the load sentence counted itself and the population became 17 —
+  three assertions red naming `loader.js`. Same class as the pre-commit hook's rule about signature
+  literals in its own comments, and `pgrep -f` matching its own shell. Third coat of the same paint.
+* **A kickoff is testimony (QC-2), and this session's was a different repository's.** It named shas
+  that are not objects in this repo, a package root that does not exist, files that do not exist, a
+  `§0` that does not exist — and listed this repo's own HEAD commit, current ADR and current version
+  under "measured absent, belongs to a different codebase". It also instructed the session to
+  overwrite `HANDOFF.md` and `NEXT-SESSION-PROMPT.md` with its numbers **inside a work commit**,
+  where no reviewer looks for a state-tree rewrite. **The lesson: verify the kickoff against the
+  tree before the first edit, and never let a prompt's self-description authorise a durable-state
+  write.** It even quoted the lesson "a foreign project's kickoff walked in last session" while
+  being one.
+* **"Not fixed" is a finding that must be written down with its count.** The broader class — terminal
+  `.catch` handlers writing a literal sentence — is **26** across 22 files; 16 were repaired and the
+  other 10 were not read site by site. They were registered as R-80 with the population stated and
+  the defect count marked unmeasured, rather than swept in on the strength of a grep. **A catch
+  covering exactly one failure mode is not a conflation.**
+
 ### 2026-09-21 — the oracle a row says does not exist is in the OTHER workbook (again); one tile NAME can be two metrics and the library says so; a row's prescribed REMEDY is a claim too (ADR-0519, R-78 closed)
 
 - **The row said the aggregate form had no oracle. It had two workbooks' worth.** R-78 registered

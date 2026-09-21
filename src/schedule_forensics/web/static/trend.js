@@ -1019,7 +1019,7 @@
   var target = box.dataset.target;
   fetch("/api/trend?target=" + encodeURIComponent(target || ""))
     .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
-    .then(function (data) {
+    .then(SFLoad.drawn(function (data) {
       var labels = shortLabels(data.versions);
       // the loaded files (in version order) — powers every chart's stepper + provenance label
       sfMeta = {
@@ -1343,6 +1343,8 @@
       // master "Play all / Step all" for the whole Trends page (mission.js pattern)
       sfMasterBar();
       sfDesignCursor();
-    })
+    }, function () {
+      hostBox.textContent = "The trend data loaded, but the chart could not be drawn.";
+    }))
     .catch(function () { hostBox.textContent = "Failed to load trend data."; });
 })();

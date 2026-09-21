@@ -30,7 +30,7 @@
 
   fetch("/api/wbs/" + encodeURIComponent(name))
     .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
-    .then(function (data) {
+    .then(SFLoad.drawn(function (data) {
       var groups = data.groups || [];
       if (!groups.length) { box.textContent = "No WBS groups to chart."; return; }
 
@@ -152,6 +152,8 @@
           })
         ));
       }
-    })
+    }, function () {
+      box.textContent = "The WBS data loaded, but the chart could not be drawn.";
+    }))
     .catch(function () { box.textContent = "Failed to load the WBS data."; });
 })();

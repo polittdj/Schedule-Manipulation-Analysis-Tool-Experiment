@@ -60,6 +60,9 @@ EXEMPT = {
     "home.js",
     "launch_audio.js",
     "legend_toggle.js",
+    # ADR-0521: the load/draw seam. It wraps other modules' drawing callbacks so a draw throw is
+    # reported as a draw failure instead of a load failure; it plots nothing of its own.
+    "loader.js",
     "mission.js",
     "panelkit.js",
     "persist.js",

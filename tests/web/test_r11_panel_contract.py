@@ -502,8 +502,28 @@ PAGE_SCRIPTS = {
     # geometry logic touched. Driven by test_drill_filter_keeps_focus_browser.py (observed RED
     # pre-fix on the two sibling drills built from the same pattern).
     # b1ce5866859110bb86d374e26c3d1cc8 → the digest below.
-    "driving_tiers.js": "63e788a5d13f33340576ab98efb2a83e",
-    "path_evolution.js": "f901da4e52b223174f5d3fed6ebbdeda",
+    # DELIBERATE re-baseline (ADR-0521, R-09): the drawing callback now runs inside
+    # SFLoad.drawn(...), so a throw while DRAWING is reported as a draw failure in this
+    # module's own words instead of reaching the chain's terminal .catch and printing its
+    # LOAD sentence — a false explanation with a 200 measured on the wire. Two lines added at
+    # the close of the callback plus the wrapper on its opening line; no axis caption, tick,
+    # column or geometry logic touched, and every axisTitles call site sits ABOVE the edit so
+    # AXIS_CALL_SITES is unmoved. Proven RENDERED by
+    # tests/web/test_render_throw_is_not_a_load_failure_browser.py (16 of 16 modules red
+    # pre-fix by name, mutation battery 5 of 5 red, control green).
+    # 63e788a5d13f33340576ab98efb2a83e -> below.
+    "driving_tiers.js": "bc7f405b8cde23594cd36fc2760d2f4d",
+    # DELIBERATE re-baseline (ADR-0521, R-09): the drawing callback now runs inside
+    # SFLoad.drawn(...), so a throw while DRAWING is reported as a draw failure in this
+    # module's own words instead of reaching the chain's terminal .catch and printing its
+    # LOAD sentence — a false explanation with a 200 measured on the wire. Two lines added at
+    # the close of the callback plus the wrapper on its opening line; no axis caption, tick,
+    # column or geometry logic touched, and every axisTitles call site sits ABOVE the edit so
+    # AXIS_CALL_SITES is unmoved. Proven RENDERED by
+    # tests/web/test_render_throw_is_not_a_load_failure_browser.py (16 of 16 modules red
+    # pre-fix by name, mutation battery 5 of 5 red, control green).
+    # f901da4e52b223174f5d3fed6ebbdeda -> below.
+    "path_evolution.js": "2d433f83268eae77f3d04952d5862af2",
     # DELIBERATE re-baseline (ADR-0340): both counterfactual grids gained a B1 caption, and the
     # text is per-table (carried in each `initTable` config) because the two grids share a column
     # header set and are otherwise indistinguishable. Same shape as driving_tiers above — one

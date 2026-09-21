@@ -113,7 +113,7 @@
   }
 
   function render() {
-    loadAnalysis().then(function (an) {
+    loadAnalysis().then(SFLoad.drawn(function (an) {
       buildCols(an.customLabels);
       var fields = cols.filter(function (f) { return f.on; });
       // merge the embedded tier + slack with each activity's fields
@@ -199,7 +199,9 @@
       table.appendChild(tbody);
       scroller.appendChild(table);
       mount.appendChild(scroller);
-    }).catch(function () { mount.textContent = "Failed to load the activity data."; });
+    }, function () {
+      mount.textContent = "The activity data loaded, but the table could not be drawn.";
+    })).catch(function () { mount.textContent = "Failed to load the activity data."; });
   }
 
   render();

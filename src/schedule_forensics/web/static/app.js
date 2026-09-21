@@ -1331,7 +1331,7 @@
 
   fetch("/api/analysis/" + enc)
     .then((r) => r.json())
-    .then((data) => {
+    .then(SFLoad.drawn((data) => {
       activities = data.activities || [];
       statusDate = data.status_date || null;
       hasRealSummaries = activities.some((a) => a.is_summary);
@@ -1361,7 +1361,9 @@
       scrollToDataDate(); // land on the data date (~1 inch in from the right) — initial load only
       // a session-wide target pre-fills the trace box — run the trace right away
       if (document.getElementById("targetUid").value) loadGantt();
-    })
+    }, function () {
+      document.getElementById("charts").textContent = "The analysis loaded, but the charts could not be drawn.";
+    }))
     .catch(() => { document.getElementById("charts").textContent = "Failed to load analysis."; });
 
   document.getElementById("ganttBtn").addEventListener("click", loadGantt);

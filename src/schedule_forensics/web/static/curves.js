@@ -509,7 +509,12 @@
     var hide = document.getElementById("curvesHideDone");
     fetch("/api/curves" + (hide && hide.checked ? "?hide_complete=1" : ""))
       .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
-      .then(render)
+      .then(SFLoad.drawn(render, function () {
+        ["finishesChart", "dataDateChart", "slippageChart"].forEach(function (id) {
+          var el = document.getElementById(id);
+          if (el) el.textContent = "The curve data loaded, but the charts could not be drawn.";
+        });
+      }))
       .catch(function () {
         ["finishesChart", "dataDateChart", "slippageChart"].forEach(function (id) {
           var el = document.getElementById(id);
