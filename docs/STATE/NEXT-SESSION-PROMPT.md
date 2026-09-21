@@ -27,8 +27,8 @@ write.** `HANDOFF.md` (auto-injected) always wins over this file on a disagreeme
 16:42:55Z. Its eight checks and `main`'s own six CI jobs were read to conclusion by their JOBS by the
 R-09 session (times in `HANDOFF.md`); **nothing about `accd2df1` is outstanding.**
 
-The R-09 unit ships on **`claude/busy-davinci-3whzt1`** (branched from the squash) as a **draft PR
-the OPERATOR merges** — `src/` changed and the wheel + nine installers were rebuilt, so **EIGHT
+The R-09 unit ships on **`claude/busy-davinci-3whzt1`** (branched from the squash) as draft PR [#710](https://github.com/polittdj/Schedule-Manipulation-Analysis-Tool-Experiment/pull/710),
+a **draft PR the OPERATOR merges** — `src/` changed and the wheel + nine installers were rebuilt, so **EIGHT
 checks** apply (CI's `cui-guard` / `browser` / `floor` / `test (3.11)` / `test (3.13)` / `check`,
 plus installer-smoke's `linux` / `windows`). Read that PR's FINAL head's eight checks to conclusion
 FIRST; if it is merged, restart the branch on the squash
