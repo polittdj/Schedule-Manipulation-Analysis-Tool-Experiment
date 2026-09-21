@@ -52,9 +52,10 @@ def test_api_workbench_matrix_is_chronological_and_validated(client: TestClient)
     # + 'Metric History' since R-50 (ADR-0499): the library's same-named variants are their
     # own family in the picker, never filed with the tiles they share a name with.
     assert d["families"] == ["DCMA-14", "Schedule Quality", "Float", "Metric History"]
-    # 21 + the three Metric History variants (R-50, ADR-0499) = 24. Pinned, so a metric
-    # cannot enter or leave the selectable library unnoticed.
-    assert len(d["metrics"]) == 24
+    # 21 + the three Metric History variants (R-50, ADR-0499) = 24, + DCMA09_ACTUAL since
+    # ADR-0520 split DCMA-14 check 9 into its forecast and actual halves = 25. Pinned, so a
+    # metric cannot enter or leave the selectable library unnoticed.
+    assert len(d["metrics"]) == 25
     # High Float on the latest golden is the Acumen-validated 44.44% FAIL with 44 offenders
     latest = d["versions"][-1]["key"]
     cell = d["cells"]["DCMA06"][latest]

@@ -8457,3 +8457,45 @@ predecessor's predecessor is early by. That is a different defect (**R-66**) wea
 clothes, and the difference between "R-57 is closed" and "R-57 is closed, and here is the
 snapshot where its oracle is still unmet and why" is the whole distance between a report and
 testimony.
+
+### 2026-09-21 (b) — the reference tool's own library declares the answer, and nobody had read it
+
+R-79 spent its evidence on ratios. Both committed `.aft` snapshots carried the answer as a
+**structured field** the whole time: every `Metric` record's `PrimaryFilter` declares
+`IncludePlanned` / `IncludeInProgress` / `IncludeComplete`, and the two DCMA-09 metrics differ on
+exactly those flags. The tool's own Bible-audit table had the metric pinned **`NOT_IN_BIBLE`** —
+a claim that was simply false, and that nobody had re-tested because the table is green.
+
+* **Read the reference library's FILTERS, not only its FORMULAS.** This repo has mined the `.aft`
+  for formulas for twenty ADRs and never looked at the population declarations sitting beside
+  them. A metric is a formula **and** a population; we had been deriving the second from ratio
+  arithmetic when the file states it.
+* **`NOT_IN_BIBLE` is a claim, and a green table never re-tests it.** The verdict means "I looked
+  and found nothing". Nothing in the suite distinguishes that from "nobody looked". When a row
+  asserts an absence, the cheapest possible check is to grep the artefact for the name.
+* **A count formula that SUMs tells you what it counts.** `SUM(a + b)` over activities is a FIELD
+  count; ADR-0283 wrote the 2× divergence down as a documented difference rather than reading the
+  formula that explains it. A divergence you can derive from the reference's own definition is
+  not a divergence — it is a defect.
+* **Two populations cannot share one denominator.** The row's remedy scoped "the" denominator; the
+  arithmetic proves there are two (322/904 and 4/752 cannot both come from one n). When a remedy
+  names a singular where the evidence has a plural, the remedy has not been tested.
+* **The surviving mutant is the deliverable, not the failure.** Five of six mutants went red by
+  name; the sixth — swapping the definition of "started" — left all 30 tests green. That is not a
+  weak test suite, it is a measured statement about the corpus: the candidate rules disagree on
+  **0** of 8,190 activities across all 24 fixtures. Write it down as UNVERIFIED and pin the census
+  so the day a fixture discriminates, the guard says so.
+* **A restricted-filter ribbon looks exactly like a contradicting oracle.** Two workbooks read the
+  tile 0 where three read 322. The discriminator was not the tile: over all 16 numbered tiles of
+  both projects the restricted pair is NEVER HIGHER, is strictly LOWER on 8 and 11 of them, and is
+  equal only where the whole-schedule value is 0 — except one equal NON-zero tile, the
+  project-level scalar `13. CPLI`, which an activity-population filter cannot move. Same save,
+  restricted filter. **The first draft of this very finding said "every count tile disagrees",
+  which is false — six of the sixteen agree at zero.** Before excluding a disagreeing source, find
+  the signature that explains it and assert the signature; and state it at the precision you
+  measured, not the precision that makes the point.
+* **`str.replace(old, new, 1)` picks the FIRST match, and "first" is not "mine".** The BP9 block
+  landed in `compute_nasa_stat` instead of `compute_gao_scorecard` because both functions contain
+  the same anchor line. Every unit test stayed green; `/scorecards` returned **HTTP 500**. Only
+  rendering the page — and rendering it against the pristine tree to prove the 500 was *mine* —
+  caught it. Anchor a splice on something unique to the target, and diff the two trees' renders.

@@ -281,7 +281,8 @@ def _seed_high_duration(s: Schedule) -> Schedule:
 
 
 def _seed_invalid_dates(s: Schedule) -> Schedule:
-    """A completed task whose actual finish sits AFTER the data date."""
+    """A completed task whose actual finish sits AFTER the data date — an ACTUAL-date defect,
+    which since ADR-0520 is its own metric (Fuse's "9. Invalid Actual Dates")."""
     return _replace_task(s, 2, actual_finish=DD + dt.timedelta(days=10))
 
 
@@ -342,7 +343,7 @@ SEEDS: tuple[tuple[str, Callable[[Schedule], Schedule], frozenset[str]], ...] = 
     # window is now scheduling input, so the bad date really does push the controlling path and
     # move the CPLI. Before ADR-0476 the seeded date was inert on the network — the check could
     # not see the very thing the seed exists to inject.
-    ("DCMA09", _seed_invalid_dates, frozenset({"DCMA11", "DCMA13"})),
+    ("DCMA09_ACTUAL", _seed_invalid_dates, frozenset({"DCMA11", "DCMA13"})),
     ("DCMA10", _seed_missing_resources, frozenset()),
     ("DCMA11", _seed_missed_task, frozenset()),
     ("DCMA12", _seed_cp_broken, frozenset()),

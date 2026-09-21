@@ -139,7 +139,12 @@ def test_invalid_dates_actual_after_status() -> None:
         ),  # started after status -> invalid
     ]
     d = compute_dcma14(_sched(tasks, status_date=status))
-    assert d["DCMA09"].count == 2 and d["DCMA09"].status is CheckStatus.FAIL
+    # both defects are ACTUAL dates in the future, so they land on that side alone (ADR-0520):
+    # Fuse scores "9. Invalid Actual Dates" over the started-or-complete population, and
+    # "9. Invalid Forecast Dates" — incomplete work forecast in the past — is clean here.
+    assert d["DCMA09_ACTUAL"].count == 2 and d["DCMA09_ACTUAL"].status is CheckStatus.FAIL
+    assert set(d["DCMA09_ACTUAL"].offender_uids) == {1, 2}
+    assert d["DCMA09"].count == 0 and d["DCMA09"].status is CheckStatus.PASS
 
 
 def test_missed_and_bei_with_baseline() -> None:
@@ -445,8 +450,9 @@ def test_acumen_parity_invalid_dates_scoped_to_baselined_population() -> None:
     (whole days) — which ADR-0280 applied everywhere EXCEPT DCMA-09. Default (pure-logic) still
     flags every non-summary activity with a stored date past the status date; parity drops the
     no-baseline placeholders/milestones Acumen never lists, reproducing Fuse's detail (Large Test
-    File2: 182 → 173). Each date condition self-excludes the wrong completion state, so one combined
-    loop equals Acumen's two separately-filtered metrics."""
+    File2: 182 → 173). R-79 / ADR-0520 then split the check: the two NASA metrics declare DIFFERENT
+    completion-state populations (forecast IncludeComplete=false, actual IncludePlanned=false), and
+    two populations cannot share one denominator, so this is now two MetricResults."""
     status = MON + dt.timedelta(days=30)
     past = MON  # a stored (forecast) date already behind the data date
     future = status + dt.timedelta(days=10)  # an actual after the data date
@@ -482,12 +488,24 @@ def test_acumen_parity_invalid_dates_scoped_to_baselined_population() -> None:
         ),
     ]
     sch = _sched(tasks, status_date=status)
-    default = compute_dcma14(sch)["DCMA09"]
-    parity = compute_dcma14(sch, acumen_parity=True)["DCMA09"]
-    assert set(default.offender_uids) == {1, 2, 3}  # pure logic: every stored date past the DD
-    assert default.population == 3
-    assert set(parity.offender_uids) == {1}  # parity: only the baselined activity survives
-    assert parity.population == 1  # population scoped to Baseline Duration > 0
+    dflt = compute_dcma14(sch)
+    par = compute_dcma14(sch, acumen_parity=True)
+    # default (pure logic): every stored date past the DD, split by the side it offends
+    assert set(dflt["DCMA09"].offender_uids) == {1, 2}  # forecast in the past
+    assert set(dflt["DCMA09_ACTUAL"].offender_uids) == {3}  # actual in the future
+    assert dflt["DCMA09"].population == dflt["DCMA09_ACTUAL"].population == 3
+    # parity, forecast side: only the baselined INCOMPLETE activity survives, and the numerator
+    # counts FIELDS — UID 1 has BOTH a stored start and a stored finish behind the data date, so
+    # Fuse's SUM scores it twice over a population of one (a field count may exceed its
+    # activity population; Fuse's own EVM1 tile is 8 fields over 8 activities = 1.00)
+    assert set(par["DCMA09"].offender_uids) == {1}
+    assert par["DCMA09"].population == 1  # population scoped to Baseline Duration > 0
+    assert par["DCMA09"].count == 2  # FIELDS, not activities (ADR-0520)
+    # parity, actual side: UID 3 is complete but carries NO baseline duration, so it leaves the
+    # population entirely — which is then EMPTY, and an empty population reports no figure,
+    # exactly as Fuse prints N/A for Hard_File's Invalid Actual Dates tile (ADR-0519's carrier)
+    assert par["DCMA09_ACTUAL"].population == 0
+    assert par["DCMA09_ACTUAL"].status is CheckStatus.NOT_APPLICABLE
 
 
 def test_acumen_parity_float_ties_follow_fuses_half_even_field() -> None:

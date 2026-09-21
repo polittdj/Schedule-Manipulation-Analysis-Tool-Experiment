@@ -19504,3 +19504,95 @@ one addition; `-m parity` and the guards above ran on the FINAL tree and cover i
 at it and subscribed, an hourly check-in armed. The next session reads that PR's FINAL head's EIGHT
 checks (installer-smoke's `linux` / `windows` join CI's six: the installers changed) and, if the
 operator has merged it, `main`'s own run for the squash by its JOBS.
+
+## 2026-09-21 (b) — R-79 CLOSED (ADR-0520): Acumen Fuse's DCMA-09 is TWO metrics with TWO populations and a FIELD numerator — the forecast tile over the baselined INCOMPLETE activities, the actual tile over the baselined STARTED-OR-COMPLETE ones — and the NASA library declares both out loud; the `DCMA09` aft-audit row moved from NOT_IN_BIBLE to MATCH — v1.0.284
+
+**`main`'s own runs for the squash `85feef00`, read to conclusion (the prior session read two of
+six and left four in progress).** CI 1968 (`35600035575`), every `head_sha` `85feef00`:
+`cui-guard` 12:31:48Z · `browser` 12:48:22Z · `floor` 13:05:08Z · `test (3.11)` 13:14:35Z ·
+`test (3.13)` 13:23:06Z · `check` 13:23:11Z — **six of six success**. installer-smoke 802
+(`35600035633`): `linux` 12:32:18Z · `windows` 12:36:09Z — **two of two success**. `main` is green
+and nothing about `85feef00` is outstanding. `HEAD^{tree}` == `origin/main^{tree}` == `03aafb9e…`.
+
+**The unit.** R-79 claimed the DCMA-09 tile's denominator is the baselined INCOMPLETE population
+and prescribed scoping the parity denominator to it. The claim held; the remedy fell. Fuse computes
+**two** metrics under check 9, with **two different populations**, and two populations cannot share
+one denominator — the remedy would have fixed the forecast side and silently put the ACTUAL count
+over the FORECAST denominator.
+
+**Evidence.** A sweep of every committed workbook (43 of the 98 xlsx-shaped intake files carry the
+tile) produced eight non-zero (count, ratio) pairs where the row had two. `Hard_File_updated2` pins
+the forecast denominator EXACTLY and uniquely at **58** (30 / 0.52; every baselined 84, every
+incomplete 76) — the row's File2 322 / 0.36 alone only bounds n to [883..907]. Both `.aft`
+snapshots then settled it independently of the ratios: every `Metric` record's `PrimaryFilter`
+carries `IncludeComplete=false` for `9. Invalid Forecast Dates` and `IncludePlanned=false` for
+`9. Invalid Actual Dates`, with the Remarks repeating it in prose. The FIELD numerator is readable
+in the Bible's Formula, which SUMs two terms per activity — File2's 322 is fields over 170
+activities, so ADR-0283's "documented divergence" was the tool being wrong.
+
+**Shipped.** `DCMA09` "Invalid Forecast Dates" + `DCMA09_ACTUAL` "Invalid Actual Dates", both keys
+present in BOTH modes (a key set varying by mode breaks every consumer that enumerates it), exactly
+as `DCMA04` is already three. Parity counts FIELDS over the two baselined populations; an empty
+population reports no figure via `population == 0`. `scorecards.py` BP9 ANDs the halves the way BP7
+already ANDs high/negative float; `metric_catalog`, `dcma_audit`, `help.py` and the regenerated
+`docs/METRIC-DICTIONARY.md` follow; `tests/engine/test_aft_formula_audit.py`'s `DCMA09` row moved
+from **NOT_IN_BIBLE to MATCH** and gained a `DCMA09_ACTUAL` sibling, both formulas pinned verbatim
+and byte-identical across the two snapshots. `audit_schedule` now returns 17 checks, not 16.
+
+**Measured.** 26 / 26 (workbook, label) pairs over six workbooks — every count, every ratio, and
+the N/A. File2 322 / **904** → 0.36 and 4 / **752** → 0.01; `Hard_File_updated2` 30 / **58** → 0.52;
+the 24-hour file 1 / **12** → 0.08; EVM1 8 / **8** → 1.00. `Hard_File` has no started-or-complete
+activity at all, so its actual population is empty and Fuse prints N/A. Two ribbons are excluded BY
+MEASUREMENT, not assertion: the two "Acumen Fuse (Analysis) Quick Add Metrics" workbooks read
+File2's tile 0. Measured over all 16 numbered tiles of both projects, the restricted pair is
+NEVER HIGHER, is strictly LOWER on 8 and 11 of them respectively (High Float 66 vs 814,
+Resources 66 vs 866, Missed 4 vs 1,115), and is equal only where the whole-schedule value is 0
+— except one equal NON-zero tile, `13. CPLI` (0.97 / 0.59), which an activity-population filter
+cannot move: the same save under a restricted filter. The oracle asserts that signature over
+every numbered tile, including that nothing is ever higher.
+
+**Verification.** Ten QC-3 assumptions attacked before the first edit; three fell (the row's
+remedy, "every ribbon reading is an oracle", "the corpus determines the completion-state rule").
+Red first by name on the pristine tree: `engine 5 != Fuse 8` on EVM1, 27 of 30 red. Mutation
+battery **5 of 6 red by name**, control green; five further mutants proved the three negative pins
+can fail. **The sixth mutant survived** — swapping "started" from `actual_start is not None` to
+`percent_complete > 0` leaves all 30 green, because three forecast-side and six actual-side rules
+each reproduce 16 of 16 tiles and disagree on 0 of the 8,190 activities in all 24 committed
+fixtures. Recorded UNVERIFIED in ADR-0520 and pinned by a census test that goes red the day a
+fixture discriminates. `/scorecards` regressed to HTTP 500 mid-unit — a `replace(..., 1)` put the
+BP9 block in `compute_nasa_stat` instead of `compute_gao_scorecard` — and was caught by RENDERING
+the page against the pristine tree, by no unit test.
+
+**Follow-up (same session) — the gate's verdict, and the thirteen failures the first run found.**
+The first full run came back **13 failed / 5,755 passed / 7 skipped** (`PYTEST_EXIT=1`, 43:29).
+Every one was a real consequence of adding a metric key, none a flake, and each was diagnosed from
+its own assertion:
+
+* `tests/parity/test_fuse_duration_fields_oracle.py` — the **R-79 REGISTRATION pin** that ADR-0518
+  left behind (`DCMA09.population == 1568`). This unit closes that row, so the pin became a
+  CLOSING pin: `(count, population) == (322, 904)`, 170 activities cited, and the 24-hour file's
+  own population 84 → 12.
+* `tests/web/test_dashboard_perf_contract.py` (3 SHA-256 payload pins) — re-pinned only after
+  **measuring** the delta: the canonical JSON was rebuilt on the PRISTINE engine (which reproduced
+  all three previous hashes exactly) and diffed against the current one. The change is the
+  insertion of `DCMA09_ACTUAL` at `dcma[11]` plus the `DCMA09` rename and the one-row tail shift;
+  **nothing outside the `dcma` arrays moved**, on any of the three payloads. The parity-vs-default
+  delta was re-measured too and is still exactly the DCMA-09 forecast card flipping FAIL → PASS.
+* `tests/web/test_standards_design_layout.py` (6) — the DCMA family strip: 16 → **17** rows, the
+  pill 40 → **41** metrics (35 → 36 single-version), the take "10 passed" → **11 passed**, and
+  ADR-0475's note that no fixture can distinguish a hardcoded count from a measured one.
+* `tests/web/test_portfolio_shell.py` — the rendered DCMA summary chips, 8 → **9**.
+* `tests/web/test_workbench_view.py` — the selectable metric library, 24 → **25**.
+
+After those fixes the full suite is **5,768 passed / 7 skipped / 0 failed** (`PYTEST_EXIT=0`,
+43:05) — the parity gate included, since `addopts` carries no `-m "not parity"`. Statics green on
+the final tree: `ruff@0.16.8 check .` + `format --check .` (1,306 files) AND the local 0.15.8
+(710 files), `mypy --strict` 165 files, `bandit` exit 0, `node --check` per file. The wheel
+(`schedule_forensics-1.0.284-py3-none-any.whl`) and the nine installers were rebuilt; the MPXJ pin
+`163d1942` was verified to be a commit AND an ancestor of `origin/main`, so the installers fetch a
+path that is actually public. `tests/installer` 68 passed.
+
+**Stated precisely rather than rounded up:** the green full run covers the tree as of its start;
+the only edits after it are this SESSION-LOG entry and the HANDOFF/kickoff sentences recording the
+verdict, whose guards (`tests/test_state_docs.py`, `tests/guards/test_audit_report_wp8.py`) were
+re-run on the FINAL tree.

@@ -172,7 +172,8 @@ def test_dcma_chips_wear_the_pill_vocabulary_around_engine_values(page: str) -> 
     assert len(pills) == 2  # one per project row
     for cls, npass, nfail in pills:
         assert (cls == "rib-pass sf-pill p-ok") == (nfail == "0")
-        assert int(npass) + int(nfail) == 8  # the engine's 8 rendered DCMA summary checks
+        # 9 since ADR-0520 split check 9 into its forecast and actual halves
+        assert int(npass) + int(nfail) == 9  # the engine's rendered DCMA summary checks
 
 
 def test_pill_css_is_token_pure() -> None:

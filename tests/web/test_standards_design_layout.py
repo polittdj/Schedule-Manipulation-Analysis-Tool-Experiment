@@ -5,7 +5,7 @@ The artboard (the v2 canvas's ``section[data-screen-label="Control Standards and
 Indices"]``, EXECUTED over loopback HTTP in all four themes — ADR-0464's recipe with
 ``setScreen('sd')``, zero page errors): kicker ``Control · Standards`` · headline ("Every metric,
 beside its formula and its source.") · lede · a FAMILY SELECTOR ROW whose three buttons carry the
-family name AND its row count (``DCMA 14-point assessment · 16`` · ``agency / Acumen-Fuse execution
+family name AND its row count (``DCMA 14-point assessment · 17`` · ``agency / Acumen-Fuse execution
 indices · 14`` · ``Industry Standards · Schedule Execution Metrics (SEM) · 10``) beside
 ``⤓ EXCEL · ALL FAMILIES`` · a per-family take line · ONE family panel at a time (head + note + a
 ``SOURCE:`` chip) · a SEVEN-column table ``REF · METRIC · VALUE · STATUS · THRESHOLD · FORMULA ·
@@ -13,7 +13,7 @@ SOURCE`` · a footnote ("A metric this file cannot score prints '—' with an N/
 never fabricates a zero") · an "Assessment scorecards →" footer.
 
 **The mock's three counts are this page's own live counts.** Measured on the golden Project2 +
-Project5 pair before a line was written: DCMA 16 rows, Fuse 14, SEM 10 — 16 / 14 / 10, the
+Project5 pair before a line was written: DCMA 17 rows, Fuse 14, SEM 10 — 17 / 14 / 10, the
 artboard's numbers exactly. That is what makes the count chips a port and not an invention.
 
 What the layout changes: the masthead already led (unlike /wbs, ADR-0471), so the move is the
@@ -69,7 +69,7 @@ ORDER = (
 )
 
 #: the artboard's own counts, which are this page's live counts on the golden pair
-FAMILIES = (("#std-dcma", "DCMA-14", 16), ("#std-fuse", "Acumen-Fuse", 14), ("#std-sem", "SEM", 10))
+FAMILIES = (("#std-dcma", "DCMA-14", 17), ("#std-fuse", "Acumen-Fuse", 14), ("#std-sem", "SEM", 10))
 
 
 def _client(*names: str) -> TestClient:
@@ -147,7 +147,7 @@ def test_every_chip_anchors_a_panel_that_is_served(pair: TestClient) -> None:
 def test_the_strip_carries_a_pill_and_says_nothing_is_hidden(pair: TestClient) -> None:
     page = pair.get("/standards").text
     pill = PILL.search(page)
-    assert pill and pill.group(1).startswith("40 metrics &middot; Project5.mspdi.xml"), pill
+    assert pill and pill.group(1).startswith("41 metrics &middot; Project5.mspdi.xml"), pill
     assert "a chip jumps to one" in page and "nothing is hidden" in page
 
 
@@ -209,10 +209,10 @@ def test_all_three_families_carry_the_take_the_mock_gives_each(pair: TestClient)
         # the r12 contract: the counts line precedes the muted read-me line
         assert chunk.index("sf-take") < chunk.index("<p class=muted>"), title
     # the DCMA take keeps its pinned wording verbatim; the two new ones use its exact idiom
-    assert "<p class=sf-take data-no-i18n>10 passed · 4 failed · 2 N/A on Project5.mspdi.xml.</p>"
+    assert "<p class=sf-take data-no-i18n>11 passed · 4 failed · 2 N/A on Project5.mspdi.xml.</p>"
     takes = re.findall(r"<p class=sf-take data-no-i18n>([^<]*)</p>", page)
     assert takes == [
-        "10 passed · 4 failed · 2 N/A on Project5.mspdi.xml.",
+        "11 passed · 4 failed · 2 N/A on Project5.mspdi.xml.",
         "0 passed · 1 failed · 13 N/A on Project5.mspdi.xml.",
         "0 passed · 0 failed · 10 N/A on Project5.mspdi.xml.",
     ], takes
@@ -254,7 +254,7 @@ def test_every_panel_figure_and_row_survives_the_layout(pair: TestClient) -> Non
     page = pair.get("/standards").text
     assert _panels(page) == 5  # intro · DCMA · Fuse · SEM · the chrome's Ask panel
     assert page.count("<table class=card-table>") == 3
-    assert page.count("<tr><td") == 40
+    assert page.count("<tr><td") == 41
     for probe in ("DCMA 14-Point Assessment", "Fuse v8.11.0 Metric History parity."):
         assert probe in page, probe
 
@@ -263,8 +263,8 @@ def test_a_single_loaded_version_still_serves_the_strip_with_its_own_counts() ->
     """Unlike a per-file drill (ADR-0470), the families exist with ONE file loaded — and this is
     the corpus that proves a count is COMPUTED rather than a constant beside the table.
 
-    The DCMA family always scores exactly 16 checks and SEM always 10, so no fixture in the repo
-    can distinguish a hardcoded 16 / 10 from a measured one (recorded in ADR-0475; the mutation
+    The DCMA family always scores exactly 17 checks and SEM always 10, so no fixture in the repo
+    can distinguish a hardcoded 17 / 10 from a measured one (recorded in ADR-0475; the mutation
     battery says so by name). The Fuse family DOES vary: the CEI rows need a prior version, so
     the same page reads 9 with one file loaded and 14 with two. A chip count that did not follow
     its table is caught here and nowhere else."""
@@ -276,8 +276,8 @@ def test_a_single_loaded_version_still_serves_the_strip_with_its_own_counts() ->
     fuse_rows = _family_chunk(page, "NASA / Acumen-Fuse execution indices").count("<tr><td")
     assert fuse_rows == 9, fuse_rows  # 14 on the pair: the CEI rows are the difference
     assert [label for _idx, _href, label in chips] == [
-        "DCMA-14 &middot; 16",
+        "DCMA-14 &middot; 17",
         "Acumen-Fuse &middot; 9",
         "SEM &middot; 10",
     ], chips
-    assert "35 metrics &middot; Project5.mspdi.xml" in page  # the pill follows too (40 on the pair)
+    assert "36 metrics &middot; Project5.mspdi.xml" in page  # the pill follows too (41 on the pair)

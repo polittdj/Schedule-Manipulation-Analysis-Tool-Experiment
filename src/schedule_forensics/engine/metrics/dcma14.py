@@ -61,7 +61,8 @@ def compute_dcma14(
     acumen_parity: bool = False,
 ) -> dict[str, MetricResult]:
     """Compute all 14 DCMA checks, keyed by id (``"DCMA01"`` … ``"DCMA14"`` with
-    ``DCMA04`` split into FS / SS-FF / SF rows to mirror the Acumen ribbon).
+    ``DCMA04`` split into FS / SS-FF / SF rows and ``DCMA09`` into forecast / actual rows to
+    mirror the Acumen ribbon).
 
     ``acumen_parity`` (default off) switches the checks to Acumen Fuse's exact definitions, taken
     verbatim from the NASA Acumen metric library (``NASA_Metrics_Complete_*.aft``) and verified
@@ -294,44 +295,61 @@ def compute_dcma14(
         "DCMA08", "High Duration", len(high_dur), high_dur_pop, "%", 5.0, Direction.LE, high_dur
     )
 
-    # DCMA-09 Invalid dates — actuals after the status date, or a forecast (early) date already
-    # in the past without the matching actual. The forecast side follows the Bible's Invalid
-    # Forecast Dates formula (ADR-0176): ((EarlyStart<ProjectTimeNow)*(ActualStart="")) +
-    # ((EarlyFinish<ProjectTimeNow)*(ActualFinish="")) — scored on the source tool's STORED
-    # start/finish fields (Acumen reads the file's own dates, which carry progress/reschedule
-    # state), NOT the pure-logic recomputed CPM early dates (which resurrect a pre-statusing
-    # picture and false-flag rescheduled work). Verified UID-exact vs Fuse on the operator's
-    # Hard_File_updated2 (21) / updated3 (0). Recomputed CPM remains the fallback when a file
-    # carries no stored dates. Task-level count (a task with both dates past counts once; Fuse's
-    # Metric History counts FIELDS, so its 42 = these 21 activities x 2 — documented divergence).
+    # DCMA-09 Invalid dates — Acumen Fuse computes **two** metrics here, not one, and the NASA
+    # library declares a DIFFERENT population for each (R-79, ADR-0520). Both are scored on the
+    # source tool's STORED start/finish fields, which carry progress/reschedule state, NOT the
+    # pure-logic recomputed CPM early dates (ADR-0176) — recomputed CPM stays the fallback for a
+    # file that carries no stored dates.
     #
-    # Population (ADR-0283): the NASA library's "9. Invalid Forecast/Actual Dates" metrics carry the
-    # SAME universal PrimaryFilter as the other work checks — Baseline Duration > 0 (whole days),
-    # milestones not class-excluded (IncludeMilestone=1) yet still subject to the duration
-    # predicate (ADR-0367). ADR-0280 scoped every other check to that population
-    # but left DCMA-09 on the full non-summary set; that over-flags no-baseline placeholders/
-    # milestones whose stored forecast dates precede the data date. Parity scopes to ap_tasks (the
-    # baselined population); each date condition self-excludes the wrong completion state (a
-    # complete activity carries actuals so it never trips a "no-actual" forecast term; a planned
-    # activity carries no actuals so it never trips an "actual-in-future" term), so the single
-    # combined loop reproduces Acumen's two separately-filtered metrics. Default (ap_tasks IS tasks)
-    # is unchanged and byte-identical. Verified UID-exact vs Fuse detail on Large Test File2 (173).
-    inv_pop = ap_tasks if acumen_parity else tasks
-    invalid: list[int] = []
+    #   "9. Invalid Forecast Dates"  SUM((((EarlyStart<ProjectTimeNow) * (ActualStart="")) +
+    #                                    ((EarlyFinish<ProjectTimeNow) * (ActualFinish=""))) * 1)
+    #       PrimaryFilter: IncludePlanned=true, IncludeInProgress=true, IncludeComplete=FALSE
+    #       → the **incomplete** population ("planned or in-progress", says its own Remarks).
+    #   "9. Invalid Actual Dates"    SUM(((ActualStart>ProjectTimeNow) +
+    #                                     (ActualFinish>ProjectTimeNow)) * 1)
+    #       PrimaryFilter: IncludePlanned=FALSE, IncludeInProgress=true, IncludeComplete=true
+    #       → the **started-or-complete** population ("in-progress or complete").
+    #
+    # Both formulas SUM two terms per activity, so the numerator counts **FIELDS**: an activity
+    # whose stored start AND stored finish both precede the data date with no actuals contributes
+    # 2. That is ADR-0283's documented "Fuse counts fields, we count activities" divergence, and
+    # Fuse is right — Large Test File2 displays 322 fields over 170 activities. Under parity we
+    # count fields; the default (pure-logic DCMA) keeps the handbook's activity count, and
+    # ``offender_uids`` stays the activity list in both modes (the UI labels it "N activities").
+    #
+    # Two populations cannot share one denominator, so the check is TWO MetricResults — exactly
+    # as DCMA-04 is already three (``DCMA04_FS`` / ``_SF`` / ``_SSFF``). Both keys are present in
+    # BOTH modes: a key set that varied by mode would break every consumer that enumerates it.
+    # Under parity each is additionally scoped to the baselined population (ADR-0280/0367/0518).
+    # Measured against Fuse's own ribbon cells: Large Test File2 322 / 904 → 0.36 (every baselined
+    # 1,568 → 0.21, every incomplete 998 → 0.32) and 4 / 752 → 0.01 (the unfiltered
+    # started-or-complete 816 cannot print 0.01); Hard_File_updated2 30 / 58 → 0.52 (84 → 0.36);
+    # the 24-hour Hard_File 1 / 12 → 0.08 (82 → 0.01); EVM1 8 / 8 → 1.00. ``Hard_File`` carries no
+    # started-or-complete activity at all and Fuse prints **N/A** for its Invalid Actual Dates
+    # tile — the empty population carrying "no figure", as ADR-0519 established.
+    #
+    # UNVERIFIED (ADR-0520): the corpus does not determine the completion-state boundary. Three
+    # forecast-side rules and six actual-side rules all reproduce 16 of 16 Fuse tiles and
+    # disagree on 0 of the 8,190 activities in the 24 committed fixtures, so ``is_incomplete``
+    # (the repo's DCMA convention) is a choice the evidence cannot yet refute or confirm.
+    started_or_complete = [t for t in tasks if t.actual_start is not None or not is_incomplete(t)]
+    fore_pop = ap_inc if acumen_parity else tasks
+    act_pop = [t for t in started_or_complete if _baselined(t)] if acumen_parity else tasks
     status_dt = schedule.status_date
-    for t in inv_pop:
-        bad = False
-        if status_dt is not None:
-            if t.actual_start is not None and t.actual_start > status_dt:
-                bad = True
-            if t.actual_finish is not None and t.actual_finish > status_dt:
-                bad = True
-            if t.actual_start is None and t.start is not None and t.start < status_dt:
-                bad = True
-            if t.actual_finish is None and t.finish is not None and t.finish < status_dt:
-                bad = True
+
+    def _forecast_fields(t: Task) -> int:
+        """Fuse's two forecast terms, counted separately (the Formula SUMs them)."""
+        if status_dt is None:
+            return 0
+        n = 0
+        if t.actual_start is None and t.start is not None and t.start < status_dt:
+            n += 1
+        if t.actual_finish is None and t.finish is not None and t.finish < status_dt:
+            n += 1
+        # no stored dates at all — fall back to the recomputed CPM early start (ADR-0176)
         if (
-            t.start is None
+            n == 0
+            and t.start is None
             and t.finish is None
             and is_incomplete(t)
             and t.actual_start is None
@@ -339,33 +357,34 @@ def compute_dcma14(
             and t.unique_id in result.timings
             and result.timings[t.unique_id].early_start < status_off
         ):
-            bad = True
-        if bad:
-            invalid.append(t.unique_id)
-    if status_dt is None:
-        # without a data date neither condition can be assessed — NA, not a fabricated PASS
-        out["DCMA09"] = MetricResult(
-            "DCMA09",
-            "Invalid Dates",
-            0,
-            len(inv_pop),
-            0.0,
-            "%",
-            CheckStatus.NOT_APPLICABLE,
-            0.0,
-            Direction.EQ,
-        )
-    else:
-        out["DCMA09"] = _r(
-            "DCMA09",
-            "Invalid Dates",
-            len(invalid),
-            len(inv_pop),
-            "%",
-            0.0,
-            Direction.EQ,
-            tuple(invalid),
-        )
+            n = 1
+        return n
+
+    def _actual_fields(t: Task) -> int:
+        """Fuse's two actual-date terms, counted separately."""
+        if status_dt is None:
+            return 0
+        n = 0
+        if t.actual_start is not None and t.actual_start > status_dt:
+            n += 1
+        if t.actual_finish is not None and t.actual_finish > status_dt:
+            n += 1
+        return n
+
+    for key, name, pop, fields in (
+        ("DCMA09", "Invalid Forecast Dates", fore_pop, _forecast_fields),
+        ("DCMA09_ACTUAL", "Invalid Actual Dates", act_pop, _actual_fields),
+    ):
+        marks = [(t.unique_id, fields(t)) for t in pop]
+        offenders = tuple(uid for uid, n in marks if n)
+        count = sum(n for _uid, n in marks) if acumen_parity else len(offenders)
+        if status_dt is None:
+            # without a data date neither condition can be assessed — NA, not a fabricated PASS
+            out[key] = MetricResult(
+                key, name, 0, len(pop), 0.0, "%", CheckStatus.NOT_APPLICABLE, 0.0, Direction.EQ
+            )
+        else:
+            out[key] = _r(key, name, count, len(pop), "%", 0.0, Direction.EQ, offenders)
 
     # DCMA-10 Resources — activities carrying no resource loading. Default (pure logic): incomplete,
     # real-duration activities with no named resource. Parity: Acumen flags on Baseline Cost = 0 AND

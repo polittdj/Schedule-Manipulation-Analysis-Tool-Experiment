@@ -206,12 +206,17 @@ def test_tp3_seeded_dcma_violations_register_with_the_seeded_counts() -> None:
     assert negative.count == 4  # the MFO-capped chain tail + the violated MFO itself
     assert {c.unique_id for c in negative.citations} == {24, 28, 29, 41}
     assert checks["High Duration"].count == 2  # 50-day and 60-day tasks
-    # 31 (actual finish after DD) + 4 stale stored forecasts (ADR-0176 Bible basis): 25/26/32
-    # never started with both stored dates past, plus 14 — IN PROGRESS with its stored forecast
-    # finish (02-27) two months behind the data date and no actual finish, which the old
-    # recomputed-CPM rule (actual-start-only) could not see.
-    assert checks["Invalid Dates"].count == 5
-    assert {c.unique_id for c in checks["Invalid Dates"].citations} == {14, 25, 26, 31, 32}
+    # R-79 / ADR-0520 split the old combined count of 5 along the seam its own comment already
+    # described: 4 stale stored forecasts (ADR-0176 Bible basis) — 25/26/32 never started with
+    # both stored dates past, plus 14, IN PROGRESS with its stored forecast finish (02-27) two
+    # months behind the data date and no actual finish, which the old recomputed-CPM rule
+    # (actual-start-only) could not see — and 31 alone, a COMPLETE task whose actual finish
+    # (05-05) is after the data date. Two different defects with two different remediations,
+    # now reported as Fuse reports them.
+    assert checks["Invalid Forecast Dates"].count == 4
+    assert {c.unique_id for c in checks["Invalid Forecast Dates"].citations} == {14, 25, 26, 32}
+    assert checks["Invalid Actual Dates"].count == 1
+    assert {c.unique_id for c in checks["Invalid Actual Dates"].citations} == {31}
     # BEI is Acumen "BEI - Value Tasks", cumulative (ADR-0176, corrects ADR-0089): complete AMONG
     # the baselined-due NORMAL tasks / NORMAL baselined-due — 7 of 12 = 0.58 (the 8th completion
     # is not yet baselined-due, so it no longer inflates the numerator; milestones AND summaries

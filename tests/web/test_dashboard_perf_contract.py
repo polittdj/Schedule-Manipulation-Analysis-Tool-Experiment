@@ -372,14 +372,20 @@ def test_findings_and_narrative_follow_the_active_audit_per_mode() -> None:
 # NA → FAIL (a critical path now exists to test). Nothing else in the payload moved (measured by
 # diffing the canonical JSON of both modes across the two engines); the pre-ADR values were
 # reproduced on the pristine engine before re-pinning.
-_SHA_TWO_VERSION = "360d1e2a1967cf2eb5b83539c38637cf70bf5576db4cf34b9a9630e6b91b582c"
-_SHA_UNSOLVABLE = "b246c6e9b7b9db7fa0dc38cf729fccb88fdee0b35d89699a377f604a7b29067d"
+# Re-pinned 2026-09-21 (ADR-0520): DCMA-14 check 9 split into DCMA09 "Invalid Forecast
+# Dates" + DCMA09_ACTUAL "Invalid Actual Dates", so a row is INSERTED at dcma[11] and the
+# tail shifts by one. Measured by diffing the canonical JSON against the pristine engine on
+# all three payloads: NOTHING outside the dcma arrays moved, and the pristine run reproduced
+# the previous three hashes exactly before re-pinning.
+_SHA_TWO_VERSION = "dc2ba01b667dda8aad5dff67bc46b70691107feca77d5cf4e885b8963a010bea"
+_SHA_UNSOLVABLE = "1745b85b1838cdedc9b9a5c738c2d1043e875c51128e166ac94e162932b09651"
 # Parity mode diverges from default on THIS fixture only since ADR-0283: Large Test File carries a
 # single invalid-date activity with NO baseline duration, which Acumen's `Baseline Duration > 0`
-# population excludes, so parity DCMA-09 drops 1 → 0 and its card flips FAIL → PASS (the ONLY delta
+# population excludes, so the parity DCMA-09 FORECAST card drops 1 → 0 and flips FAIL → PASS
+# (re-measured 2026-09-21 on the split engine: still the ONLY delta
 # vs `_SHA_TWO_VERSION`). Default mode is unchanged. Re-pinned 2026-07-24; 2026-07-31 (ADR-0321);
 # 2026-09-07 (ADR-0474 — the same two deltas as the default payload, see above).
-_SHA_TWO_VERSION_PARITY = "f447afd55d381e3f5573b60914123b77d0ac598ca0d4e35352c771d4434a47e0"
+_SHA_TWO_VERSION_PARITY = "32a907a44403b5129a35667ffa89ff155c6b86049c2ca7f1a571b53b9c06a590"
 
 
 def test_dashboard_payload_two_versions_is_byte_identical(big: Schedule) -> None:

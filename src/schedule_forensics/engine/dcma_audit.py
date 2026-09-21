@@ -84,8 +84,10 @@ _IMPROVEMENTS: dict[str, str] = {
     "negative float means the plan is already behind its constraint.",
     "DCMA08": "Break down activities longer than 44 working days into statusable detail so "
     "progress and risk are visible.",
-    "DCMA09": "Correct invalid dates: no actuals in the future, no incomplete forecast in the "
-    "past relative to the data date.",
+    "DCMA09": "Correct the forecast dates: no incomplete work may be scheduled before the "
+    "data date — re-status or re-schedule it forward.",
+    "DCMA09_ACTUAL": "Correct the actual dates: no activity may carry an actual start or "
+    "finish after the data date — a schedule cannot be statused into the future.",
     "DCMA10": "Resource-load the open, real-duration activities (or confirm they are LOE) so "
     "the schedule supports cost/EVM analysis.",
     "DCMA11": "Address missed activities: re-plan or recover the work baselined to finish by "

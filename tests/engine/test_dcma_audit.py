@@ -23,8 +23,9 @@ def test_citation_str_format() -> None:
 def test_golden_audit_project5(golden_project5: Schedule) -> None:
     audit = audit_schedule(golden_project5)
     assert audit.source_file == "Project5.mspdi.xml"
-    assert len(audit.checks) == 16  # 14 checks, DCMA-04 split into FS / SS-FF / SF rows
-    assert audit.passed + audit.failed + audit.not_applicable == 16
+    # 14 checks, DCMA-04 split into FS / SS-FF / SF rows and DCMA-09 into forecast / actual
+    assert len(audit.checks) == 17
+    assert audit.passed + audit.failed + audit.not_applicable == 17
     failed_ids = {c.metric_id for c in audit.failed_checks}
     assert {"DCMA06", "DCMA11", "DCMA14"} <= failed_ids  # known P5 failures
 
