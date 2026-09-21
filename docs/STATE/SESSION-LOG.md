@@ -19489,3 +19489,18 @@ an N/A (the trend trap) · the project day as the divisor. Statics green on ruff
 exit 0, `node --check` per file. `tests/engine` + `tests/test_projects` **1,355 passed**;
 `tests/guards` **403 passed / 2 skipped**; `tests/parity/test_fuse_duration_fields_oracle.py` 5
 passed. Full suite and `-m parity`: recorded in the follow-up below.
+
+**Follow-up (same session) — the gate's verdict, and what ran against which tree.** The full suite:
+**5,738 passed / 7 skipped / 0 failed** in 52:28 (`PYTEST_EXIT=0`; the two LibreOffice skips print
+"Error: source file could not be loaded" on stderr — that is the missing `libreoffice-impress`
+filter, the instrument, not a test). `-m parity`: **219 passed / 0 failed** in 12:03 (`PYTEST_EXIT=0`;
+218 last unit — the R-78 registration pin became two closing pins). The doc + ledger guards after the
+last doc edit: **23 passed**. **Stated precisely rather than rounded up:** the full suite began
+before the final `39 / 39`-from-Fuse's-cells assertion was added to
+`tests/parity/test_fuse_duration_fields_oracle.py`, so its verdict covers the tree **minus** that
+one addition; `-m parity` and the guards above ran on the FINAL tree and cover it. Pushed
+`claude/charming-archimedes-ihwapd` (commit `1581e1c8`); draft PR
+[#708](https://github.com/polittdj/Schedule-Manipulation-Analysis-Tool-Experiment/pull/708) opened
+at it and subscribed, an hourly check-in armed. The next session reads that PR's FINAL head's EIGHT
+checks (installer-smoke's `linux` / `windows` join CI's six: the installers changed) and, if the
+operator has merged it, `main`'s own run for the squash by its JOBS.
