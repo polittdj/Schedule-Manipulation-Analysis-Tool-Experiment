@@ -19749,3 +19749,68 @@ wheel changed. **The full gate ran locally on the SETTLED tree and is green:** s
 the previous two units, there is a single clean full-suite run on the final tree — the earlier
 overlapping run's 17 failures were triaged to 16 mid-run artifacts and 1 real defect, and both are
 recorded above.
+
+---
+
+## 2026-09-22 (b) — R-77 CLOSED (ADR-0523): the project axis is working minutes in BOTH directions
+
+Branch `claude/handoff-document-review-46tus2` (already on `d942832d`, #711's squash). §0 was run
+before the first edit and the tree agreed on every point: `origin/main` `d942832d`, 810 commits,
+`src` present and `app` absent, `ci.yml` + `installer-smoke.yml`, version 1.0.286, highest ADR 0522.
+PR #711's merge was re-verified against the API and its final head's tree (`3f1fa91c` →
+`ac2afe10`) is byte-identical to the squash's.
+
+**Shipped.** `datetime_to_offset` / `offset_to_datetime` as a segment-aware PAIR guarded on
+`declared_segments`, plus `_tod_at_worked_start` (the start-role spelling at an internal block
+boundary). ADR-0322's two-ruler rule superseded in part.
+
+**The row's numbers did not survive.** Only R-77's **4** reproduces, and only as a projection error
+at the stored instant; its **212** and **25** reproduce under no constructible measure; its named
+witness EVM2 UID 23 is exact on both axes; and an identical census at v1.0.281 returns the same
+figures, so it is not drift. The class the row does not count — **15,224 of 22,105** rendered
+finishes one gap early — is the defect.
+
+**Measured** against MS Project's stored slack over 44 files: total exact 10,610 → **11,041** of
+12,680, free exact 3,004 → **3,094** of 3,315 (high 198 → 134, low 113 → 87); rendered instants exact
+22,453 → **41,950** of 44,210. Three instants lost, all UID 305 across one file's three copies.
+
+**Verified.** Red-first 5 of 9 by name with 4 declared controls; 9 of 9 green after; mutation battery
+4 of 4 red by name; the patch proven behaviourally identical to the validated shadow before it
+touched the tree. Gate on the settled tree: `ruff check .` whole-tree · `ruff format --check .` 713
+files · `mypy --strict` 165 files · `bandit` exit 0 · `node --check` · `tests/engine` **1,299 passed**
+· `-m parity` **249 passed**.
+
+**Traps paid for, by name:** a shadow copy of `src/` is not the tree (no `tools/mpxj`: 22 phantom
+importer failures, 382 passed once symlinked) · `__version__` reports the INSTALLED distribution ·
+a pin projected and rendered by the same ruler cancels its own error · never run two suites
+concurrently when either binds a port or spawns a JVM · `pkill -f` matches its own command line ·
+red-first found three defects in the NEW TEST before any in the code, one of them a vacuous census.
+
+**Post-push addendum (same session, same PR).** The 53-agent adversarial blast-radius sweep landed
+after the first push and reported that the pair "breaks the origin contract
+`datetime_to_offset(start, start) == 0` on any schedule whose project-start time-of-day is not the
+calendar's first segment start". Re-scoped from the naive shadow it was measuring to the SHIPPED
+guarded version, the defect still held and was real: a legal 09:00 start read its own origin as 60,
+and an 08:00 start on a declared 24-hour day as 480 — an axis shifted by a working day. Fixed in the
+same PR by measuring the intraday term RELATIVE to the project start's own worked position, pinned
+by two further tests (both red by name on the pushed tree, 11 of 11 green after). It moves no
+measured figure: all 44 corpus files anchor at worked position 0, so the relative form is
+algebraically identical there — which is precisely why no census in this unit could have found it.
+Golden slack pins re-measured byte-identical after the fix: (4559, 4098) and (1142, 1075, 40, 27).
+
+**Second post-push addendum — a published claim CORRECTED.** The same sweep reported that R-77's
+figures are measured on the AXIS (the engine's working-minute offset against the stored instant
+projected segment-aware), not on the rendered wall instant this session had used, and that the 25
+therefore DOES reproduce. Re-verified independently on a proven-pristine v1.0.286 worktree (teeth:
+the worktree carries ADR-0522's free bound and lacks this unit's `_tod_at_worked_start`; the current
+tree has it) with a projection written independently of `engine.cpm`'s helpers: the started
+decomposition reproduces exactly (1,159 → 1,144 exact / 11 unprojectable / 4 at +60) and **the 25
+reproduces exactly** (34 completed activities in the +54..60 band, 25 of which also have an agreeing
+start). The 212 still does not — it reads 323 at exactly +60, 353 across the band. EVM2 UID 23 is
+exact on BOTH oracles; its chain diverges at UID 25 by −480, a whole working day, not a gap. The 11
+"holiday / clamp" starts are one activity (Large_Test_File UID 3849) in 11 file copies whose stored
+Start falls on a NON-WORKING day — an oracle-coverage gap, and it reproduces on a gapless calendar.
+The claim "the 212 and the 25 reproduce under no constructible measure" was FALSE for the 25 and is
+corrected in ADR-0523, HANDOFF.md, NEXT-SESSION-PROMPT.md, the roadmap row and the PR body. No
+shipped number changes: the mechanism, the fix and every figure measured against MS Project's stored
+slack are independent of which surface R-77 used.

@@ -488,17 +488,41 @@ def _count_working_days_r(r: _Ruler, d0: dt.date, d1: dt.date) -> int:
 def datetime_to_offset(start: dt.datetime, target: dt.datetime, calendar: Calendar) -> int:
     """Signed working-minute offset of ``target`` from ``start``.
 
-    ``start`` is assumed to sit at a working-day start. The date contributes whole
-    working days; the intraday term is ``(target_time - start_time)`` clamped to
-    ``[0, working_minutes_per_day]``. A target on a non-working day contributes no
-    intraday minutes (ADR-0010, H-CONSTRAINT-DATETIME).
+    ``start`` is assumed to sit at a working-day start. The date contributes whole working days;
+    the intraday term is the minutes the calendar's own SEGMENTS actually work before the target's
+    minute of the day — 15:00 on a 08-12 / 13-17 day is 360, not the 420 a contiguous clamp reads,
+    because the lunch hour is not work (R-77, ADR-0523). A target on a non-working day contributes
+    no intraday minutes (ADR-0010, H-CONSTRAINT-DATETIME).
+
+    The segment-aware reading is GUARDED on ``declared_segments`` rather than routed through
+    :meth:`_Ruler.segments`: that helper re-anchors its FALLBACK block to midnight once
+    ``day_start_tod + minutes_per_day > 1440``, which would silently re-base every schedule whose
+    project start sits late in the day. A source that declared no segments keeps the contiguous
+    clamp verbatim, so synthetic fixtures and P6 exports are byte-identical by construction.
+
+    This and :func:`offset_to_datetime` are ONE PAIR and move together. ADR-0322 refused a
+    segment-aware projection while the constraints, the stored pins and the rendering still
+    measured contiguously, because one instant then carried two offsets — a successor rendered
+    BEFORE its predecessor's finish, a same-instant SNET out-bounding the link inside one
+    ``max()``. That hazard is a property of the ASYMMETRY, not of the segment-aware reading; with
+    both directions moved there is one ruler again.
     """
     r = _ruler(calendar)
     per_day = r.mpd
     start_tod = start.hour * 60 + start.minute
     target_tod = target.hour * 60 + target.minute
     target_day = target.date()
-    intraday = min(max(target_tod - start_tod, 0), per_day) if r.is_working_day(target_day) else 0
+    if not r.is_working_day(target_day):
+        intraday = 0
+    elif r.declared_segments:
+        # relative to the START's own worked position, so the origin is 0 whatever the project
+        # start's time of day: ADR-0312 bounds only start_tod + mpd <= 1440 and returns a legal
+        # 09:00 start UNCHANGED, and anchoring at the segments would read that origin as 60 (or,
+        # on a declared 24-hour day, an 08:00 start as a whole 480 — an axis shifted by a day).
+        origin = _worked_before(r.declared_segments, start_tod)
+        intraday = min(max(_worked_before(r.declared_segments, target_tod) - origin, 0), per_day)
+    else:
+        intraday = min(max(target_tod - start_tod, 0), per_day)
     if target_day >= start.date():
         return _count_working_days_r(r, start.date(), target_day) * per_day + intraday
     return -_count_working_days_r(r, target_day, start.date()) * per_day + intraday
@@ -586,10 +610,16 @@ def _advance_working_days_r(start_day: dt.date, k: int, r: _Ruler) -> dt.date:
 def offset_to_datetime(start: dt.datetime, minutes: int, calendar: Calendar) -> dt.datetime:
     """Convert a non-negative working-minute offset to a wall-clock datetime.
 
-    ``start`` is assumed to sit at the beginning of a working day. Each working
-    weekday contributes ``calendar.working_minutes_per_day`` contiguous minutes;
-    weekends and holidays are skipped. Inverse of :func:`datetime_to_offset` on the
-    working-time grid.
+    ``start`` is assumed to sit at the beginning of a working day. Each working weekday
+    contributes ``calendar.working_minutes_per_day`` minutes laid out on the calendar's own
+    SEGMENTS, so a full day's offset expands to the day's real end — 17:00 on a 08-12 / 13-17 day,
+    the instant MS Project stores, where the contiguous expansion read 16:00 (R-77, ADR-0523).
+    Weekends and holidays are skipped. Inverse of :func:`datetime_to_offset` on the working-time
+    grid, and guarded on ``declared_segments`` for the same reason it is.
+
+    The contiguous pair was LOSSY: a 17:00 finish saturated the clamp at a full day's offset and
+    came back one gap early. 15,224 of the 44-file corpus's 22,105 rendered finishes sat exactly
+    one gap early for that reason alone.
     """
     if minutes < 0:
         raise ValueError("offset_to_datetime: minutes must be >= 0")
@@ -609,6 +639,9 @@ def offset_to_datetime(start: dt.datetime, minutes: int, calendar: Calendar) -> 
     else:
         advance, intraday = quotient, remainder
     target_date = _advance_working_days_r(day.date(), advance, r)
+    if r.declared_segments:
+        origin = _worked_before(r.declared_segments, start.hour * 60 + start.minute)
+        return _at_minute(target_date, _tod_at_worked(r.declared_segments, origin + intraday))
     day += dt.timedelta(days=(target_date - day.date()).days)  # preserve time-of-day exactly
     return day + dt.timedelta(minutes=intraday)
 
@@ -616,7 +649,7 @@ def offset_to_datetime(start: dt.datetime, minutes: int, calendar: Calendar) -> 
 def offset_to_start_datetime(start: dt.datetime, minutes: int, calendar: Calendar) -> dt.datetime:
     """Resolve an offset that denotes the **beginning** of work (ADR-0348).
 
-    The working axis is contiguous, so a day-boundary offset names one instant that has two
+    A day-boundary offset names one instant that has two
     equally valid wall-clock spellings: the **end** of working day ``k-1`` and the **start** of
     working day ``k``. :func:`offset_to_datetime` always chooses the first (``remainder == 0``
     takes the ``intraday = per_day`` branch), which is right for a finish and one working day
@@ -634,12 +667,19 @@ def offset_to_start_datetime(start: dt.datetime, minutes: int, calendar: Calenda
     r = _ruler(calendar)
     per_day = r.mpd
     quotient, remainder = divmod(minutes, per_day)
-    if remainder:
+    if remainder and not r.declared_segments:
         return offset_to_datetime(start, minutes, calendar)
     day = start
     while not r.is_working_day(day.date()):
         day = _next_working_day(day, calendar)
     target_date = _advance_working_days_r(day.date(), quotient, r)
+    if r.declared_segments:
+        # the same two-spellings rule one segment down (ADR-0523): a start takes the LATER form,
+        # so 240 worked minutes reads 13:00 where the finish role reads 12:00
+        origin = _worked_before(r.declared_segments, start.hour * 60 + start.minute)
+        return _at_minute(
+            target_date, _tod_at_worked_start(r.declared_segments, origin + remainder)
+        )
     return day + dt.timedelta(days=(target_date - day.date()).days)
 
 
@@ -1236,6 +1276,24 @@ def _worked_before(segments: tuple[tuple[int, int], ...], tod: int) -> int:
         elif tod > seg_start:
             worked += tod - seg_start
     return worked
+
+
+def _tod_at_worked_start(segments: tuple[tuple[int, int], ...], k: int) -> int:
+    """The minute-of-day at which working minute ``k`` BEGINS — the start-role spelling.
+
+    An offset landing exactly on an internal block boundary names one instant with two equally
+    valid wall-clock spellings: the END of block ``i`` and the START of block ``i+1`` (12:00 and
+    13:00 on a 08-12 / 13-17 day are both "240 minutes worked"). This is ADR-0348's day-boundary
+    rule one segment down: a FINISH takes the earlier spelling, a START the later one. Away from a
+    boundary the two agree exactly — only the ``k == block span`` case differs. Measured over the
+    941 internal-boundary instants in the 44-file corpus, MS Project spells a start with the later
+    form on 309 of 439 and a finish with the earlier form on 496 of 502 (ADR-0523).
+    """
+    for seg_start, seg_end in segments:
+        if k < seg_end - seg_start:
+            return seg_start + k
+        k -= seg_end - seg_start
+    return segments[-1][1]
 
 
 def _tod_at_worked(segments: tuple[tuple[int, int], ...], k: int) -> int:

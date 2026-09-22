@@ -528,9 +528,23 @@ def test_leveled_goldens_reproduce_the_stored_finish_and_every_stored_slack(
 # read farther by the 30-60 minutes their early finish had been LATE by (their late finishes sit
 # 1,450 / 4,330 minutes off before and after — R-56's chains — and the early-finish error had
 # been cancelling part of it). File2's lf floor 829 holds; its finish floor 1689 holds.
+# tf_exact RE-PINNED 897 -> 922 and 746 -> 760, and File2's finish floor LOWERED 1689 -> 1655 on
+# 2026-09-22 (R-77, ADR-0523): the offset pair became segment-aware in BOTH directions, so a stored
+# instant projects to the minutes the calendar actually works and expands back to the instant MS
+# Project stored. File: finish_1d 1686 -> 1689, lf_exact holds at 922, Critical holds at 1723.
+# File2: lf_exact 829 -> 838, Critical holds at 1721, and 1,089 of its finishes became EXACT with
+# NONE losing exactness -- but 35 unstarted finishes that were ALREADY ~1 day early (-1,251 to
+# -1,431 minutes, sitting on the band edge) moved 120-3,896 minutes FURTHER early and crossed the
+# one-day line, 1 entered it, net -34. They are concentrated on the file's SECOND calendar ("ZIN
+# Project Calendar", 23 of 35; the other 12 on the project calendar): of its 138 activities 27
+# moved further and 9 closer. This is the only measure in the unit that moves AWAY from the
+# reference tool, it is a coarse within-a-day proxy over activities the engine was already wrong
+# about, and the cross-calendar seam it exposes is registered as R-77's RESIDUAL rather than
+# fixed here: a link between two calendars projects a wall instant from one onto the other's
+# axis, and both axes moved.
 _LARGE = [
-    ("fuse_ltf/Large_Test_File.mspdi.xml.gz", 1723, 1686, 897, 1024, 1723, 922),
-    ("fuse_ltf/Large_Test_File2.mspdi.xml.gz", 1722, 1689, 746, 998, 1721, 829),
+    ("fuse_ltf/Large_Test_File.mspdi.xml.gz", 1723, 1686, 922, 1024, 1723, 922),
+    ("fuse_ltf/Large_Test_File2.mspdi.xml.gz", 1722, 1655, 760, 998, 1721, 829),
 ]
 
 
@@ -631,11 +645,14 @@ def test_out_of_sequence_progress_resumes_its_remaining_at_its_recorded_start() 
         _stored_instant_offset(ps, t1489.resume, cal) + t1489.remaining_duration_minutes
     )
     assert t1489.finish == dt.datetime(2025, 2, 26, 17, 0)
-    # the finish IS the stored instant on the axis (the contiguous read of the 13:24 Resume,
-    # minute 324 of its day for the 264 worked, had put it the lunch hour past it)
+    # the finish IS the stored instant on the axis. Until R-77 the two rulers disagreed here by
+    # exactly the lunch hour -- the contiguous read of the 13:24 Resume was minute 324 of its day
+    # for the 264 actually worked -- and this assertion pinned that GAP. ADR-0523 made
+    # ``datetime_to_offset`` segment-aware too, so there is one ruler and the two now AGREE; the
+    # assertion is inverted to pin the agreement, which is what the change bought.
     assert res.timing(1489).early_finish == datetime_to_offset(ps, t1489.finish, cal)
-    assert _stored_instant_offset(ps, t1489.resume, cal) == (
-        datetime_to_offset(ps, t1489.resume, cal) - 60
+    assert _stored_instant_offset(ps, t1489.resume, cal) == datetime_to_offset(
+        ps, t1489.resume, cal
     )
     assert 1489 in res.actual_start_driven and 1489 in res.date_driven
     t4581 = by[4581]

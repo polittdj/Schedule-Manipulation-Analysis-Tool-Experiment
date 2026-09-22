@@ -226,13 +226,17 @@ def test_the_goldens_reproduce_the_stored_free_slack_at_the_pinned_rate() -> Non
             exact += got == stored_free
             high += got > stored_free
             low += got < stored_free
-    assert (pop, exact, high, low) == (1142, 1034, 69, 39)
+    assert (pop, exact, high, low) == (1142, 1075, 40, 27)
 
 
 def test_the_total_float_is_untouched_by_this_change() -> None:
-    """A control: the bound reads the total, it never writes it. 10,610 of the 12,680 stored
-    TotalSlack figures across the corpus are exact before and after; over the goldens alone the
-    figure is this pin, and it is UNMOVED from the pristine engine."""
+    """A control: ADR-0522's bound reads the total, it never writes it — that is still true.
+
+    The figure MOVED on 2026-09-22 (R-77, ADR-0523) because the AXIS moved, not because the bound
+    began writing: 3,897 -> 4,098 of 4,559 over the goldens, 10,610 -> 11,041 of 12,680 across the
+    44-file corpus, every one of them TOWARD MS Project's own stored TotalSlack. A stored instant
+    read in the working minutes of the calendar's own segments lands its pin where the reference
+    tool put it; the contiguous clamp had been billing the lunch hour as work."""
     pop = exact = 0
     for rel in _GOLDENS:
         res = _load(rel)[1]
@@ -241,4 +245,4 @@ def test_the_total_float_is_untouched_by_this_change() -> None:
                 continue
             pop += 1
             exact += res.timing(uid).total_float == stored_total
-    assert (pop, exact) == (4559, 3897)
+    assert (pop, exact) == (4559, 4098)

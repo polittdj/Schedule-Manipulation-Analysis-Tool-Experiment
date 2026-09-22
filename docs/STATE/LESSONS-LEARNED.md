@@ -435,6 +435,76 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-22 — R-77 / ADR-0523: the axis pair, and four traps paid for in one session
+
+**The provenance rule applies to the ORACLE, not just the value — and I broke it.** QC-2 says know
+where a number came from before trusting it. I applied that to R-77's *figures* and not to its
+*instrument*: I measured the engine's RENDERED WALL INSTANT against MS Project's stored instant,
+found the row's classes reading 104 / 0 / 11, and published that "the 212 and the 25 reproduce under
+no constructible measure" in the ADR, the handoff, the kickoff, the roadmap row, the commit message
+and the PR body. R-77's figures are measured on the **AXIS** — the engine's working-minute OFFSET
+against the stored instant projected segment-aware. On that oracle, re-measured on a proven-pristine
+worktree with a projection written independently of `engine.cpm`'s own helpers, the row's started
+decomposition reproduces EXACTLY (1,144 / 11 / 4) and **its 25 reproduces exactly** (34 completed in
+the +54..60 band, 25 with an agreeing start). Only the 212 fails to reproduce (323). Two surfaces,
+both real, both named by the row — and I declared the row's numbers unreproducible while measuring
+the other one. **Before declaring a claim's figures irreproducible, reconstruct the instrument that
+produced them; an oracle mismatch looks exactly like a refutation.** The tell was available and I
+walked past it: the row's own decomposition ("15 starts inexact in all, 11 the holiday / clamp
+class") is a fingerprint of its instrument, and a measure that reproduces one of a row's numbers
+exactly while zeroing the rest is far more likely to be the wrong ruler than a wrong row.
+
+**The corpus could not have found it; the adversarial sweep did.** A 53-agent blast-radius sweep,
+run against the naive shadow while the guarded version was being built, reported that the change
+"breaks the origin contract `datetime_to_offset(start, start) == 0` on any schedule whose
+project-start time-of-day is not the calendar's first segment start." That claim was about the
+NAIVE shadow, but re-scoped to the shipped version it still held — and it was **already pushed**.
+ADR-0312's precondition bounds only `start_tod + mpd <= 1440` and returns a legal 09:00 start
+UNCHANGED, so anchoring the intraday term at the segments read that origin as 60, and an 08:00
+start on a declared 24-hour day as **480** — an axis shifted by a working day. All 44 corpus files
+start at 08:00 on an 08-12 / 13-17 calendar, where the start's worked position is 0, so **every
+measurement in the unit was blind to it by construction** and CI would have stayed green forever.
+The lesson is not "run more agents": it is that **a corpus is a sample, and a contract is a
+quantifier**. `f(x, x) == 0` is a claim about ALL x; no number of files can establish it and one
+counter-example refutes it. Properties of a function get property tests, not corpus censuses.
+
+**A shadow copy of `src/` is not the tree.** The standing recipe (`cp -a src <scratch>/vN/src;
+PYTHONPATH=<scratch>/vN/src`) silently breaks every MPXJ-dependent path, because the vendored-MPXJ
+discovery walks up from the PACKAGE's `__file__` and a shadow that holds only `src` has no
+`tools/mpxj`. The first suite run under the shadow reported **22 failures and 3 errors** in
+`tests/importers` — Java discovery, conversion, sidecar views — every one of which read as a
+consequence of the change under test. The pristine control was **486 passed**, and symlinking
+`tools/` into the shadow root turned 22 failures into **382 passed with the code unchanged**. A
+session that skipped the control would have spent the day chasing regressions that did not exist.
+**The recipe should be: `cp -a src <scratch>/vN/src` PLUS symlinks for `tools/` and
+`00_REFERENCE_INTAKE/`.**
+
+**`schedule_forensics.__version__` reports the INSTALLED distribution, not the imported source.**
+It is resolved through `importlib.metadata`, so a shadow-copy measurement that checks the version to
+confirm which tree it loaded gets the wrong answer every time — the v1.0.281 worktree reported
+**1.0.286**. Probe for a SYMBOL instead (`_succ_free_start_wall` exists only from ADR-0522), and
+prove the probe with a named positive AND a named negative.
+
+**A pin that is projected and rendered by the same ruler cancels its own error.** The first census
+compared the engine's rendered instant against MS Project's stored instant and found R-77's class-1
+population to be ZERO — because a stored date read through `clamp()` and written back through the
+same `clamp()` round-trips exactly. The defect was invisible to the measure and visible only at the
+PROJECTION, where the row's four reproduced exactly. **When a claim is about a conversion, measure
+the conversion, not the round trip.**
+
+**Never run two suites concurrently when either binds a port or spawns a JVM.** Three suites were
+launched at once and the MPXJ/JVM family failed; later two web runs were launched side by side and
+one Chromium audio test failed in the v2 run and not the pristine one. Both passed alone. The rule
+QC-1 already states — never measure a tree a battery is mutating — extends to shared *resources*,
+not just shared files.
+
+**And the row was right about the mechanism, wrong about its numbers and its witness — again.** R-77
+named 212 / 25 / 4 and EVM2 UID 23. Only the **4** reproduces, and only under a measure the row's
+prose does not state. EVM2 UID 23 is exact on both axes. The class the row does NOT count —
+**15,224 of 22,105** rendered finishes sitting one lunch gap early — is the defect. This is the third
+consecutive unit (R-74, R-09, R-77) where a register row's arithmetic survived and its population
+did not. **Re-measure a row's population before pricing its remedy; the row's own filter is a claim.**
+
 ### 2026-09-22 — an oracle's POPULATION is a claim: the filter that built R-74's evidence excluded exactly the rows that could have refuted it (ADR-0522, R-74 closed)
 
 * **"0 of 3,315" was true and meant nothing.** R-74 proved MS Project never stores a free slack above
