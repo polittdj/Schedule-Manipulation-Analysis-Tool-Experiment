@@ -242,7 +242,11 @@ from schedule_forensics.reports.docx import (
     render_document,
     render_docx,
 )
-from schedule_forensics.reports.onepager import OnePagerDoc, onepager_tableset, parse_workbook
+from schedule_forensics.reports.onepager import (
+    OnePagerDoc,
+    onepager_tableset,
+    parse_numbered_workbook,
+)
 from schedule_forensics.reports.onepager_compare import compare_tableset
 from schedule_forensics.reports.pptx import render_onepager_compare_pptx, render_onepager_pptx
 from schedule_forensics.reports.tables import (
@@ -264,7 +268,7 @@ from schedule_forensics.reports.tables import (
     wbs_breakdown_tables,
 )
 from schedule_forensics.reports.xlsx import render_xlsx
-from schedule_forensics.reports.xlsx_read import XlsxError, read_xlsx
+from schedule_forensics.reports.xlsx_read import XlsxError, read_xlsx, read_xlsx_numbered
 from schedule_forensics.web import i18n
 
 # ADR-0376 (phase 3, slice 12): the /analysis page family — the per-schedule report body,
@@ -4390,12 +4394,13 @@ def create_app(
             st.onepager_is_error = True
             return RedirectResponse(url="/onepager", status_code=303)
         try:
-            sheets = read_xlsx(data)
+            # the numbered reader: every row the page cites is the row Excel shows (ADR-0524)
+            sheets = read_xlsx_numbered(data)
         except XlsxError as exc:
             st.onepager_msg = f"Could not read that file: {exc}"
             st.onepager_is_error = True
             return RedirectResponse(url="/onepager", status_code=303)
-        doc = parse_workbook(sheets, _onepager_source_name(file.filename))
+        doc = parse_numbered_workbook(sheets, _onepager_source_name(file.filename))
         st.onepager = doc
         st.onepager_title = ""
         if not doc.items:
@@ -4482,10 +4487,10 @@ def create_app(
                 f"List not loaded — file exceeds the {_MAX_UPLOAD_BYTES // (1024 * 1024)} MB cap."
             )
         try:
-            sheets = read_xlsx(data)
+            sheets = read_xlsx_numbered(data)  # true Excel row numbers (ADR-0524)
         except XlsxError as exc:
             return f"Could not read that file: {exc}"
-        return parse_workbook(sheets, _onepager_source_name(file.filename))
+        return parse_numbered_workbook(sheets, _onepager_source_name(file.filename))
 
     @app.get("/onepager-compare", response_class=HTMLResponse)
     def onepager_compare() -> HTMLResponse:

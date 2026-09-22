@@ -188,3 +188,18 @@ def test_the_page_kicker_resolves_and_the_upload_cap_is_enforced(
     monkeypatch.setattr(app_mod, "_MAX_UPLOAD_BYTES", 64)
     page = _upload(client, twin_xlsx(TWIN_ROWS))
     assert "exceeds the 0 MB cap" in page and "opData" not in page
+
+
+def test_every_row_the_page_cites_is_the_row_excel_shows(client: TestClient) -> None:
+    """ADR-0524: Excel leaves an unformatted blank row OUT of the file, so a list with spacer rows
+    reaches the upload with gaps in its row numbers. The page must still send the operator to the
+    row Excel shows — the typo on row 23, the inherited swimlane on row 25 — not to the 16th and
+    18th row that happen to be present (the default twin writes every spacer and cannot see it)."""
+    page = _upload(client, twin_xlsx(TWIN_ROWS, omit_blank=True))
+    assert "row 23 (GRC-MET Testing · Blue Origin On-Dock)" in page
+    assert "row 25: no swimlane name" in page
+    assert "row 16 " not in page and "row 18:" not in page
+    drawer = re.search(r"<div class=sf-drawer hidden>(.*?)</div>", page, re.S)
+    assert drawer and "<td>Boots 1</td>" in drawer.group(1)
+    boots = next(tr for tr in drawer.group(1).split("<tr>") if "<td>Boots 1</td>" in tr)
+    assert re.findall(r"<td[^>]*>([^<]*)</td>", boots)[-1] == "3", boots

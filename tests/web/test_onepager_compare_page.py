@@ -103,7 +103,10 @@ def test_one_list_is_not_a_comparison(client: TestClient) -> None:
     page = _upload(client, twin_xlsx(TWIN_ROWS), "prior", "March_baseline.xlsx")
     assert "Loaded 16 item(s) from March_baseline.xlsx as the PRIOR list; 1 row(s) skipped." in page
     assert "One list loaded" in page and "opcData" not in page
-    assert "Loaded <b>March_baseline.xlsx</b> · 16 item(s) · 1 row(s) skipped." in page
+    # DELIBERATE re-baseline (ADR-0524): each slot also says what it read in column D
+    assert (
+        "Loaded <b>March_baseline.xlsx</b> · 16 item(s) · no column D · 1 row(s) skipped." in page
+    )
     assert "Rows skipped in the PRIOR list" in page and "10/122/2026" in page
     assert client.get("/export/pptx/onepager-compare").status_code == 422
     assert client.get("/export/xlsx/onepager-compare").status_code == 422
@@ -111,9 +114,11 @@ def test_one_list_is_not_a_comparison(client: TestClient) -> None:
 
 def test_both_lists_draw_the_compare_slide_and_state_every_move(client: TestClient) -> None:
     page = _both(client)
+    # DELIBERATE re-baseline (ADR-0524): the headline counts what did NOT slip too — the
+    # operator's goal is "to show the slips as well as show what has not slipped"
     assert (
-        "2 slipped, 1 pulled in, 1 new, 1 removed — March_baseline.xlsx → April_update.xlsx."
-        in page
+        "2 slipped, 1 pulled in, 12 unchanged, 1 new, 1 removed — March_baseline.xlsx → "
+        "April_update.xlsx." in page
     )
     # two slips (Boots 1 +30, TRR +19): the takeaway names the larger one, with its unit
     assert "Worst slip: Boots 1 +30 cal d." in page
@@ -252,8 +257,8 @@ def test_swap_title_and_clear(client: TestClient) -> None:
     assert "Prior and current swapped." in page
     # what was a slip is now a pull-in, by the same figure
     assert (
-        "1 slipped, 2 pulled in, 1 new, 1 removed — April_update.xlsx → March_baseline.xlsx."
-        in page
+        "1 slipped, 2 pulled in, 12 unchanged, 1 new, 1 removed — April_update.xlsx → "
+        "March_baseline.xlsx." in page
     )
     lay = _layout_block(page)
     assert {(p["name"], p["status"]) for p in lay["items"]} >= {
@@ -334,3 +339,147 @@ def test_the_nav_carries_the_page_on_the_library_rail(client: TestClient) -> Non
         cat = catalog_for(lang)
         for term in ("One-Pager Compare", "Per-swimlane summary", "Swap prior and current"):
             assert term in cat, (lang, term)
+
+
+# ── round two (ADR-0524): column D, a repeated name, the true sheet row, the words on the page ─
+
+#: A four-column pair, written the way Excel writes it (the spacer row between the swimlanes is
+#: ABSENT from the file, so every Beta row sits on a later Excel row than its position).
+PRIOR_D: tuple[tuple[object, ...], ...] = (
+    ("Swimlane", "Task", "Date", "Status"),
+    ("Alpha", "Design Review", "1/15/2027", "Complete"),
+    ("Alpha", "Design Review", "5/15/2027", "Not Started"),
+    ("Alpha", "Build", "2/1/2027 - 4/1/2027", "In Progress"),
+    (),
+    ("Beta", "Reopened", "2/10/2027", "Complete"),
+    ("Beta", "Dropped", "1/20/2027", "Complete"),
+)
+CURRENT_D: tuple[tuple[object, ...], ...] = (
+    ("Swimlane", "Task", "Date", "Status"),
+    ("Alpha", "Design Review", "1/15/2027", "Complete"),
+    ("Alpha", "Design Review", "5/15/2027", "In Progress"),
+    ("Alpha", "Build", "2/1/2027 - 4/20/2027", "Complete"),
+    (),
+    ("Beta", "Reopened", "2/10/2027", "In Progress"),
+    ("Beta", "Brand new", "5/1/2027", "Waiting on vendor"),
+)
+
+
+def _both_d(client: TestClient) -> str:
+    _upload(client, twin_xlsx(PRIOR_D, omit_blank=True), "prior", "prior_d.xlsx")
+    return _upload(client, twin_xlsx(CURRENT_D, omit_blank=True), "current", "current_d.xlsx")
+
+
+def test_a_repeated_name_that_did_not_move_is_drawn_once_with_no_duplicate_tag(
+    client: TestClient,
+) -> None:
+    page = _both_d(client)
+    lay = _layout_block(page)
+    reviews = [p for p in lay["items"] if p["name"] == "Design Review"]
+    assert len(reviews) == 2 and {p["status"] for p in reviews} == {"unchanged"}
+    assert all(p["badge"] == "" and p["ghost_x0"] is None for p in reviews)
+    assert "DUPLICATE NAME" not in json.dumps(lay) and "Duplicate names" not in page
+
+
+def test_column_d_is_counted_checked_flagged_and_its_unread_words_named(
+    client: TestClient,
+) -> None:
+    page = _both_d(client)
+    assert (
+        "1 slipped, 0 pulled in, 3 unchanged, 1 new, 1 removed — prior_d.xlsx → "
+        "current_d.xlsx. Worst slip: Build +19 cal d. 2 marked complete in column D." in page
+    )
+    lay = _layout_block(page)
+    assert sorted(p["name"] for p in lay["items"] if p["done"]) == ["Build", "Design Review"]
+    assert [e["kind"] for e in lay["legend"]].count("done") == 1
+    # the summary table and the drawer carry column D; the takeaway's count is the Total cell
+    summary = re.search(
+        r'<table class="op-table opc-summary-table sf-datatable">(.*?)</table>', page, re.S
+    )
+    assert summary and "<th>Complete</th>" in summary.group(1)
+    total = re.search(r"<tr><th>Total</th>(.*?)</tr>", summary.group(1), re.S)
+    assert total and re.findall(r"<td[^>]*>([^<]*)</td>", total.group(1))[7] == "2"
+    assert "<th>Prior complete</th>" in page and "<th>Current complete</th>" in page
+    # a completion that went backwards is flagged; a word column D could not read is named;
+    # a complete item that dropped off the list is named
+    assert "Completion changes between the lists" in page
+    assert "Reopened): marked complete in the prior list, not complete in the current" in page
+    assert "current_d.xlsx: column D “Waiting on vendor” (row 7)" in page
+    assert "marked complete in the prior list are not in the current list: “Dropped”" in page
+    # each slot says what it read in column D
+    assert "Loaded <b>prior_d.xlsx</b> · 5 item(s) · column D: 3 complete." in page
+    assert "Loaded <b>current_d.xlsx</b> · 5 item(s) · column D: 2 complete." in page
+
+
+def test_every_row_the_page_cites_is_the_row_excel_shows(client: TestClient) -> None:
+    """Excel leaves the blank spacer out of the file; the drawer must still say row 6."""
+    page = _both_d(client)
+    drawer = re.search(r"<div class=sf-drawer hidden>(.*?)</div>", page, re.S)
+    assert drawer
+    reopened = next(tr for tr in drawer.group(1).split("<tr>") if ">Reopened<" in tr)
+    cells = re.findall(r"<td[^>]*>([^<]*)</td>", reopened)
+    assert cells[9:11] == ["6", "6"], cells  # prior row, current row
+
+
+def test_a_three_column_list_says_it_has_no_column_d(client: TestClient) -> None:
+    page = _both(client)
+    assert (
+        "Loaded <b>March_baseline.xlsx</b> · 16 item(s) · no column D · 1 row(s) skipped." in page
+    )
+    assert "marked complete in column D" not in page
+    assert "done" not in [e["kind"] for e in _layout_block(page)["legend"]]
+
+
+def test_column_d_never_reaches_the_single_list_page(client: TestClient) -> None:
+    """/onepager draws no completion, so a sentence about column D would describe nothing it
+    shows — the notes travel apart (``completion_notes``)."""
+    r = client.post(
+        "/onepager/upload",
+        files={"file": ("d.xlsx", twin_xlsx(CURRENT_D, omit_blank=True), "application/x")},
+        follow_redirects=False,
+    )
+    assert r.status_code == 303
+    page = client.get("/onepager").text
+    assert "Waiting on vendor" not in page and "column D" not in page
+    assert 'id=opData type="application/json"' in page
+
+
+def test_the_words_on_the_page_describe_the_new_rules(client: TestClient) -> None:
+    empty = client.get("/onepager-compare").text
+    assert "an identical date in both lists" in empty and "drawn once" in empty
+    assert "never paired by elimination" in empty
+    assert "<b>Column D.</b>" in empty and "Complete, Completed, Done, Finished" in empty
+    assert "optional <b>D</b>" in empty  # the intake text names the fourth column
+    _what, how, _why = _EXPLAINERS["One-Pager Compare"]
+    assert "a solid shape with no ghost is NEW" not in how  # ADR-0465's sentence, now false
+    assert "an unchanged item is drawn once" in how and "check" in how
+    page = _both(client)
+    assert f"<b>How to read it.</b> {how}" in page
+
+
+def test_the_powerpoint_check_is_a_disc_and_two_round_capped_strokes(
+    client: TestClient,
+) -> None:
+    page = _both_d(client)
+    lay = _layout_block(page)
+    done = sorted(p["name"] for p in lay["items"] if p["done"])
+    r = client.get("/export/pptx/onepager-compare")
+    assert r.status_code == 200
+    with zipfile.ZipFile(io.BytesIO(r.content)) as zf:
+        slide = zf.read("ppt/slides/slide1.xml").decode()
+    ET.fromstring(slide)
+    assert sorted(re.findall(r'name="Done: ([^"]*)"', slide)) == done
+    assert slide.count('name="Done tick: ') == 2 * len(done) + 2  # + the legend's check
+    # one rising stroke per check (the legend's included) — flipped VERTICALLY, never flipH,
+    # drawn with round caps and a round join so the check has no notch at its vertex
+    assert slide.count('flipV="1"') == len(done) + 1
+    assert slide.count('flipH="1"') == 1  # the legend's pull-in only (this pair has no pull-in)
+    tick = re.search(
+        r'<p:cxnSp><p:nvCxnSpPr><p:cNvPr id="\d+" name="Done tick: .*?</p:cxnSp>', slide
+    )
+    assert tick and 'cap="rnd"' in tick.group(0) and "<a:round/>" in tick.group(0)
+    assert "<a:tailEnd" not in tick.group(0)
+    legend = re.search(
+        r'<p:sp><p:nvSpPr><p:cNvPr id="\d+" name="Legend: complete"/>.*?</p:sp>', slide
+    )
+    assert legend and 'prst="ellipse"' in legend.group(0)

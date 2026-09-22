@@ -11,6 +11,15 @@ numbers. Std-lib only (``zipfile`` + ``xml.etree``) — Law 1 (no third-party pa
 ``read_xlsx(data)`` returns ``{sheet_name: [[cell, …], …]}`` with every cell a **string** (numbers
 kept verbatim as written, gaps filled with ``""`` by column so a row's columns line up). The caller
 maps header names to columns and coerces — the reader never guesses types or fabricates a value.
+
+``read_xlsx_numbered(data)`` returns the same cells with each row's **Excel row number** beside it
+(ADR-0524): ``{sheet_name: [(row_number, [cell, …]), …]}``. Excel leaves an unformatted blank row
+OUT of ``<sheetData>`` (18 of the 51 Excel-authored workbooks under ``00_REFERENCE_INTAKE`` skip
+row numbers), so a row's position in the list is not the row the operator sees; the number comes
+from ``<row r=>``. ECMA-376 makes ``r=`` optional on rows and cells alike — a missing one is the
+previous row or column plus one — and a present one that cannot be read, or rows that run
+backwards, are refused by name rather than guessed. ``read_xlsx`` is unchanged (the SRA importers
+read through it); both readers share one decompression budget and one hardened XML parser.
 """
 
 from __future__ import annotations
@@ -19,6 +28,8 @@ import io
 import re
 import xml.etree.ElementTree as ET  # nosec B405  # hardened in _parse_xml (DTD/entity rejected)
 import zipfile
+from collections.abc import Callable
+from typing import TypeVar
 
 _MAIN = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
 _REL = "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}"
@@ -90,11 +101,32 @@ def _cell_text(cell: ET.Element, shared: list[str]) -> str:
     return (v.text or "") if v is not None else ""
 
 
+_Row = TypeVar("_Row")
+
+
 def read_xlsx(data: bytes) -> dict[str, list[list[str]]]:
     """Parse an ``.xlsx`` file's bytes into ``{sheet_name: rows}`` (every cell a string).
 
     Raises :class:`XlsxError` if the bytes are not a valid xlsx (bad zip / missing workbook).
     """
+    return _read_workbook(data, _read_sheet)
+
+
+def read_xlsx_numbered(data: bytes) -> dict[str, list[tuple[int, list[str]]]]:
+    """Parse an ``.xlsx`` into ``{sheet_name: [(excel_row_number, cells), …]}`` — the cells
+    :func:`read_xlsx` returns, each row with the number Excel shows for it (see the module doc).
+
+    Raises :class:`XlsxError` as :func:`read_xlsx` does, and also for a row or cell reference that
+    cannot be read or rows that are not in ascending order.
+    """
+    return _read_workbook(data, _read_sheet_numbered)
+
+
+def _read_workbook(
+    data: bytes, read_sheet: Callable[[ET.Element, list[str]], list[_Row]]
+) -> dict[str, list[_Row]]:
+    """Open the package once — the shared decompression budget, the hardened XML parser, the
+    shared strings, the sheet relationships — and hand every sheet to ``read_sheet``."""
     try:
         zf = zipfile.ZipFile(io.BytesIO(data))
     except zipfile.BadZipFile as exc:
@@ -140,7 +172,7 @@ def read_xlsx(data: bytes) -> dict[str, list[list[str]]]:
         return f"xl/{target}"
 
     wb = _parse_xml(_read("xl/workbook.xml"))
-    out: dict[str, list[list[str]]] = {}
+    out: dict[str, list[_Row]] = {}
     sheets = wb.find(f"{_MAIN}sheets")
     for sheet in [] if sheets is None else list(sheets):
         name = sheet.get("name") or f"Sheet{len(out) + 1}"
@@ -150,7 +182,7 @@ def read_xlsx(data: bytes) -> dict[str, list[list[str]]]:
         if path not in names:
             out[name] = []
             continue
-        out[name] = _read_sheet(_parse_xml(_read(path)), shared)
+        out[name] = read_sheet(_parse_xml(_read(path)), shared)
     return out
 
 
@@ -167,3 +199,42 @@ def _read_sheet(root: ET.Element, shared: list[str]) -> list[list[str]]:
         width = (max(cells) + 1) if cells else 0
         rows.append([cells.get(i, "") for i in range(width)])
     return rows
+
+
+def _read_sheet_numbered(root: ET.Element, shared: list[str]) -> list[tuple[int, list[str]]]:
+    """Every ``<row>`` with its Excel row number; each cell in the column its ``r=`` names, or the
+    column after the previous cell's when ``r=`` is absent (ECMA-376 — never column A)."""
+    rows: list[tuple[int, list[str]]] = []
+    data = root.find(f"{_MAIN}sheetData")
+    if data is None:
+        return rows
+    previous = 0
+    for row in data.findall(f"{_MAIN}row"):
+        number = _row_number(row.get("r"), previous)
+        previous = number
+        cells: dict[int, str] = {}
+        column = -1
+        for c in row.findall(f"{_MAIN}c"):
+            ref = c.get("r")
+            column = column + 1 if not ref else _ref_column(ref, number)
+            cells[column] = _cell_text(c, shared)
+        width = (max(cells) + 1) if cells else 0
+        rows.append((number, [cells.get(i, "") for i in range(width)]))
+    return rows
+
+
+def _row_number(ref: str | None, previous: int) -> int:
+    if not ref:
+        return previous + 1
+    if not ref.isdigit() or int(ref) < 1:
+        raise XlsxError(f"unreadable row number r={ref!r} after row {previous}")
+    number = int(ref)
+    if number <= previous:
+        raise XlsxError(f"rows out of order: row {number} follows row {previous}")
+    return number
+
+
+def _ref_column(ref: str, row: int) -> int:
+    if not _CELL_RE.match(ref):
+        raise XlsxError(f"unreadable cell reference {ref!r} on row {row}")
+    return _col_index(ref)

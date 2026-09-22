@@ -290,6 +290,35 @@ class _Slide:
             '<a:tailEnd type="triangle" w="med" len="med"/></a:ln></p:spPr></p:cxnSp>'
         )
 
+    def segment(
+        self,
+        x0: float,
+        y0: float,
+        x1: float,
+        y1: float,
+        color: str,
+        width_pt: float,
+        *,
+        name: str,
+    ) -> None:
+        """A straight stroke from ``(x0, y0)`` to ``(x1, y1)`` — column D's check is two of them
+        (ADR-0524). DrawingML's ``line`` preset runs from the top-left to the bottom-right of its
+        box, so the stroke is written left to right and a RISING one is that preset flipped
+        vertically (never ``flipH``). Round caps and a round join, so two strokes that meet at a
+        point leave no notch at the vertex."""
+        if x1 < x0:
+            x0, y0, x1, y1 = x1, y1, x0, y0
+        flip = ' flipV="1"' if y1 < y0 else ""
+        self.parts.append(
+            f'<p:cxnSp><p:nvCxnSpPr><p:cNvPr id="{self._id()}" name="{_esc(name)}"/>'
+            "<p:cNvCxnSpPr/><p:nvPr/></p:nvCxnSpPr><p:spPr>"
+            f'<a:xfrm{flip}><a:off x="{_emu(x0)}" y="{_emu(min(y0, y1))}"/>'
+            f'<a:ext cx="{_emu(x1 - x0)}" cy="{_emu(abs(y1 - y0))}"/></a:xfrm>'
+            '<a:prstGeom prst="line"><a:avLst/></a:prstGeom>'
+            f'<a:ln w="{_emu(width_pt)}" cap="rnd">{_fill(color)}<a:round/></a:ln>'
+            "</p:spPr></p:cxnSp>"
+        )
+
     def text_runs(
         self,
         x: float,
@@ -641,6 +670,21 @@ def _tag_color(badge: str) -> str:
     return {"NEW": _NEW, "REMOVED": _REMOVED}.get(badge, _DUP)
 
 
+#: Column D's check (ADR-0524): the page's ``--muted`` ("completed work", DESIGN-SYSTEM §1) in the
+#: slide's print palette, with a white check — the SAME points ``onepager_compare.js`` draws.
+_DONE = _MUTED
+
+
+def _done_badge(s: _Slide, cx: float, cy: float, r: float, *, name: str) -> None:
+    """A disc of radius ``r`` at ``(cx, cy)`` with a white check: a short stroke down to the
+    vertex, a long one up to the right — the second is the rising, flipped one."""
+    s.shape(cx - r, cy - r, 2 * r, 2 * r, _DONE, prst="ellipse", name=f"Done: {name}")
+    w = max(0.35, r * 0.32)
+    vx, vy = cx - 0.12 * r, cy + 0.42 * r
+    s.segment(cx - 0.5 * r, cy + 0.02 * r, vx, vy, _WHITE, w, name=f"Done tick: {name}")
+    s.segment(vx, vy, cx + 0.55 * r, cy - 0.4 * r, _WHITE, w, name=f"Done tick: {name}")
+
+
 def render_onepager_compare_pptx(layout: CompareLayout, *, marking: str, source: str) -> bytes:
     """The compare layout as one 16:9 slide of native shapes: the ADR-0446 slide with the PRIOR
     position as a dashed ghost, the CURRENT one solid, an arrow per moved finish carrying its
@@ -832,6 +876,8 @@ def render_onepager_compare_pptx(layout: CompareLayout, *, marking: str, source:
                     line=_WHITE,
                     name=f"Activity: {p.name}",
                 )
+        if p.done and p.done_x is not None:
+            _done_badge(s, p.done_x, p.y, p.done_r, name=p.name)
         delta_color = {"slipped": _SLIP, "pulled in": _PULL}.get(p.status, _DUP)
         ink = _WHITE if p.inside else _INK
         runs: list[tuple[str, str, bool]] = [(p.label, ink, bool(p.inside))]
@@ -928,6 +974,11 @@ def render_onepager_compare_pptx(layout: CompareLayout, *, marking: str, source:
             s.arrow(e.x + 10, e.x, cy, _PULL, 0.9, name="Legend: pull-in")
         elif e.kind == "new":
             s.shape(e.x, cy - 3, 10, 6, _NEW, prst="roundRect", name="Legend: new")
+        elif e.kind == "done":
+            s.shape(e.x + 2, cy - 3, 6, 6, _DONE, prst="ellipse", name="Legend: complete")
+            vx, vy = e.x + 4.64, cy + 1.26
+            s.segment(e.x + 3.5, cy + 0.06, vx, vy, _WHITE, 0.6, name="Done tick: legend")
+            s.segment(vx, vy, e.x + 6.65, cy - 1.2, _WHITE, 0.6, name="Done tick: legend")
         elif e.kind == "today":
             s.vline(e.x + 5, cy - 4, cy + 4, _TODAY, 1.5, name="Legend: today")
         else:
@@ -943,8 +994,8 @@ def render_onepager_compare_pptx(layout: CompareLayout, *, marking: str, source:
         380,
         8,
         [
-            "Solid = current · dashed ghost = prior · arrow = the finish moved (+N cal d slipped, "
-            "\u2212N pulled in) · NEW / REMOVED tags · red line = today"
+            "Solid = current (unchanged: once) · ghost = prior · arrow = finish moved "
+            "(\u00b1N cal d) · check = complete (col. D) · red line = today"
         ],
         5.5,
         _MUTED,

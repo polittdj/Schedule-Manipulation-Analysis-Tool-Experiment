@@ -1,9 +1,11 @@
 // onepager_compare.js — paints the One-Pager COMPARE slide the server laid out
 // (reports/onepager_compare.py) as ONE SVG in the same logical coordinates the .pptx export uses
 // (960 x 540 points, 16:9). The ADR-0446 one-pager language plus the delta encoding: the CURRENT
-// position solid, the PRIOR as a dashed ghost, an arrow from the old finish to the new one with the
-// move in calendar days, NEW / REMOVED / DUPLICATE NAME tags, and a per-swimlane summary column.
-// Geometry is never computed here — only painted — so the page is an honest preview of the slide.
+// position solid, the PRIOR as a dashed ghost where it moved (an unchanged item is drawn ONCE), an
+// arrow from the old finish to the new one with the move in calendar days, NEW / REMOVED /
+// DUPLICATE NAME tags, column D's check beside what is complete (ADR-0524), and a per-swimlane
+// summary column. Geometry is never computed here — only painted — so the page is an honest
+// preview of the slide.
 //
 // Strict CSP (script-src 'self'): the layout arrives in a non-executable JSON block (#opcData).
 // The data-date marker is the tool-wide SFGantt.dataDateLine (ADR-0342; here the data date is
@@ -35,14 +37,31 @@
       class: "opc-arrow-head opc-arrow-head-" + cls.replace("opc-arrow-", ""),
     }));
   }
+  function span(s, f) { return s === f ? f : s + " → " + f; }
   function tip(p) {
     var parts = [p.name];
-    if (p.prior_start) parts.push("prior " + (p.prior_start === p.prior_finish ? p.prior_finish : p.prior_start + " → " + p.prior_finish));
-    if (p.current_start) parts.push("current " + (p.current_start === p.current_finish ? p.current_finish : p.current_start + " → " + p.current_finish));
-    if (p.finish_delta_days !== null && p.finish_delta_days !== undefined) parts.push("finish " + (p.finish_delta_days >= 0 ? "+" : "−") + Math.abs(p.finish_delta_days) + " cal d");
+    // an unchanged item has ONE set of dates — say them once
+    if (p.current_start && p.prior_start === p.current_start && p.prior_finish === p.current_finish) {
+      parts.push(span(p.current_start, p.current_finish));
+    } else {
+      if (p.prior_start) parts.push("prior " + span(p.prior_start, p.prior_finish));
+      if (p.current_start) parts.push("current " + span(p.current_start, p.current_finish));
+    }
+    if (p.finish_delta_days) parts.push("finish " + (p.finish_delta_days >= 0 ? "+" : "−") + Math.abs(p.finish_delta_days) + " cal d");
     if (p.start_delta_days) parts.push("start " + (p.start_delta_days >= 0 ? "+" : "−") + Math.abs(p.start_delta_days) + " cal d");
     parts.push(p.status);
+    if (p.done) parts.push("complete (column D)");
     return parts.join(" · ");
+  }
+  // column D's check (ADR-0524): a --muted disc ("completed work") with a --bg check, BESIDE the
+  // current shape — the same points reports/pptx.py's _done_badge draws
+  function doneBadge(parent, cx, cy, r) {
+    parent.appendChild(el("circle", { cx: cx, cy: cy, r: r, class: "opc-done" }));
+    var vx = cx - 0.12 * r, vy = cy + 0.42 * r;
+    parent.appendChild(el("polyline", {
+      points: (cx - 0.5 * r) + "," + (cy + 0.02 * r) + " " + vx + "," + vy + " " + (cx + 0.55 * r) + "," + (cy - 0.4 * r),
+      class: "opc-done-check", "stroke-width": Math.max(0.35, r * 0.32),
+    }));
   }
 
   function paint(host, L) {
@@ -66,7 +85,7 @@
     // ── swimlanes: band, name block, summary box ──
     L.lanes.forEach(function (ln) {
       var fill = laneVar(ln.color);
-      svg.appendChild(el("rect", { x: L.lane_col_x0, y: ln.y0, width: L.x1 - L.lane_col_x0, height: ln.y1 - ln.y0, fill: fill, class: "op-lane-band" }));
+      svg.appendChild(el("rect", { x: L.lane_col_x0, y: ln.y0, width: L.x1 - L.lane_col_x0, height: ln.y1 - ln.y0, fill: fill, class: "op-lane-band", "data-lane": ln.index }));
       svg.appendChild(el("rect", { x: L.lane_col_x0, y: ln.y0, width: L.lane_col_x1 - L.lane_col_x0, height: ln.y1 - ln.y0, fill: fill, class: "op-lane-name-bg" }));
       svg.appendChild(el("rect", { x: L.lane_col_x0, y: ln.y0, width: 3, height: ln.y1 - ln.y0, fill: fill, class: "op-lane-edge" }));
       var lh = ln.name_pt * 1.2, top = (ln.y0 + ln.y1) / 2 - (ln.lines.length - 1) * lh / 2;
@@ -87,7 +106,7 @@
     var barH = L.bar_h, ms = L.ms;
     L.items.forEach(function (p) {
       var fill = laneVar(L.lanes[p.lane].color), st = slug(p.status);
-      var g = el("g", { class: "opc-item opc-" + st + (p.milestone ? " op-ms" : " op-act"), "data-status": p.status });
+      var g = el("g", { class: "opc-item opc-" + st + (p.milestone ? " op-ms" : " op-act"), "data-status": p.status, "data-lane": p.lane });
       g.appendChild(el("title", {}, tip(p)));
       if (p.ghost_x0 !== null) {
         if (p.ghost_milestone) g.appendChild(el("polygon", { points: diamondPoints(p.ghost_x0, p.y, ms / 2), stroke: fill, class: "opc-ghost opc-ghost-ms" }));
@@ -98,6 +117,7 @@
         if (p.milestone) g.appendChild(el("polygon", { points: diamondPoints(p.x0, p.y, ms / 2), fill: fill, class: "op-diamond" }));
         else g.appendChild(el("rect", { x: p.x0, y: p.y - barH / 2, width: p.x1 - p.x0, height: barH, rx: 1.2, fill: fill, class: "op-bar" }));
       }
+      if (p.done && p.done_x !== null) doneBadge(g, p.done_x, p.y, p.done_r);
       var tx = (p.label_anchor === "end" && p.badge) ? p.label_x - p.badge_w - 2 : p.label_x;
       var t = el("text", { x: tx, y: p.y + L.label_pt * 0.35, "text-anchor": p.label_anchor, class: "op-label" + (p.inside ? " op-label-in" : ""), style: "font-size:" + L.label_pt + "px" }, p.label);
       if (p.delta) t.appendChild(el("tspan", { class: "opc-delta opc-delta-" + st }, " " + p.delta));
@@ -121,6 +141,7 @@
       else if (e.kind === "slip") arrow(g, e.x, e.x + 10, cy, 2.2, "opc-arrow-slip");
       else if (e.kind === "pull") arrow(g, e.x + 10, e.x, cy, 2.2, "opc-arrow-pull");
       else if (e.kind === "new") g.appendChild(el("rect", { x: e.x, y: cy - 3, width: 10, height: 6, rx: 1, class: "opc-badge opc-badge-new" }));
+      else if (e.kind === "done") doneBadge(g, e.x + 5, cy, 3);
       else if (e.kind === "today") g.appendChild(el("line", { x1: e.x + 5, y1: cy - 4, x2: e.x + 5, y2: cy + 4, class: "op-legend-today" }));
       else g.appendChild(el("rect", { x: e.x, y: cy - 3, width: 10, height: 6, rx: 1, fill: laneVar(e.color), class: "op-legend-lane" }));
       g.appendChild(el("text", { x: e.x + 13, y: e.y, class: "op-legend-text", style: "font-size:" + L.legend_pt + "px" }, e.label));

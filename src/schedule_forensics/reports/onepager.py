@@ -20,6 +20,12 @@ lines, a red line at today, and a legend. This module is the whole of that compu
 Dates: the tool never invents one. A hand-typed ``05/2026`` (month only) spans the month; a
 two-digit year is 20xx; an Excel date typed into a General-formatted cell arrives as its serial
 (``46310``) and is recognised by range. Anything else is a problem row, not a default.
+
+Column D (ADR-0524) is an optional STATUS word saying whether the item is complete —
+:func:`read_completion`. Only the One-Pager COMPARE draws it; its notes travel apart from the
+parser's (``OnePagerDoc.completion_notes``) so /onepager, which draws no completion, never shows a
+sentence about something it does not draw. Row numbers are the rows Excel shows:
+:func:`parse_numbered_workbook` takes them from ``read_xlsx_numbered``.
 """
 
 from __future__ import annotations
@@ -61,6 +67,69 @@ _SPLIT_RE = re.compile(
     r"\s+(?:-|\u2013|\u2014|to|through|thru)\s+|\s*[\u2013\u2014]\s*", re.IGNORECASE
 )
 _HEADER_RE = re.compile(r"swim|lane|task|milestone|activity|date|name|finish|start", re.IGNORECASE)
+
+#: Column D: a status that STARTS with one of these words is complete, whatever follows it
+#: ("Complete (late)", "Finished Late", "Completed 3/1/27") — the operator types status words.
+_DONE_LEAD = ("complete", "completed", "done", "finished", "closed", "closeout")
+_DONE_EXACT = frozenset(
+    {"yes", "y", "x", "\u2713", "\u2714", "\u2611", "\u2705", "\u221a"}
+    | {"achieved", "met", "accomplished", "delivered"}
+)
+#: ...and a status that starts with one of these is known to be NOT complete (never named).
+_OPEN_LEAD = (
+    "in progress",
+    "in-progress",
+    "inprogress",
+    "started",
+    "ongoing",
+    "active",
+    "open",
+    "pending",
+    "planned",
+    "scheduled",
+    "underway",
+    "on hold",
+    "hold",
+    "late",
+    "delayed",
+    "behind",
+    "at risk",
+    "on track",
+    "in work",
+    "wip",
+    "tbd",
+    "future",
+)
+_OPEN_EXACT = frozenset({"n", "false", "n/a", "na", "none", "-", "\u2013", "\u2014"})
+#: A negation is never complete: "Not Complete", "No", "Not Yet Started", "Incomplete".
+_NEGATION_RE = re.compile(r"^(?:not|no)\b|^(?:in|un|non)[\s-]?complet")
+_PERCENT_RE = re.compile(r"^(\d+(?:\.\d+)?)\s*%")
+
+
+def _leads(text: str, words: tuple[str, ...]) -> bool:
+    """``text`` IS one of ``words`` or starts with one followed by a non-letter — so "Completely
+    blocked" is never read as "Complete", and "Complete (late)" still is."""
+    return any(text == w or (text.startswith(w) and not text[len(w)].isalnum()) for w in words)
+
+
+def read_completion(text: str) -> tuple[bool, bool]:
+    """Column D -> ``(complete, recognised)``. Blank, a negation, a percent below 100 or a known
+    open status is ``(False, True)``; a completion status ``(True, True)``; anything else —
+    an unknown word, a bare number, a date — is ``(False, False)``: drawn as not complete, and
+    NAMED by the caller so the operator can see the word this reader did not know."""
+    t = " ".join(text.split()).casefold().strip(" .!;:,")
+    if not t:
+        return False, True
+    if _NEGATION_RE.match(t):
+        return False, True
+    pct = _PERCENT_RE.match(t)
+    if pct:
+        return float(pct.group(1)) >= 100.0, True
+    if t in _DONE_EXACT or _leads(t, _DONE_LEAD):
+        return True, True
+    if t in _OPEN_EXACT or _leads(t, _OPEN_LEAD):
+        return False, True
+    return False, False
 
 
 def _year(text: str) -> int:
@@ -134,13 +203,17 @@ def parse_span(text: str) -> tuple[dt.date, dt.date] | None:
 
 @dataclass(frozen=True)
 class OnePagerItem:
-    """One row of the list: a milestone when ``start == finish``, otherwise an activity."""
+    """One row of the list: a milestone when ``start == finish``, otherwise an activity.
+
+    ``complete`` is column D read by :func:`read_completion`: ``None`` when the sheet has no
+    column D at all — which is not the same as ``False``, "the sheet says it is not complete"."""
 
     lane: str
     name: str
     start: dt.date
     finish: dt.date
     row: int
+    complete: bool | None = None
 
     @property
     def milestone(self) -> bool:
@@ -149,13 +222,22 @@ class OnePagerItem:
 
 @dataclass(frozen=True)
 class OnePagerDoc:
-    """A parsed workbook: the items, plus every row-level decision the parser made, by name."""
+    """A parsed workbook: the items, plus every row-level decision the parser made, by name.
+
+    ``completion_notes`` are column D's (the words it could not read) — kept apart from
+    ``notes`` because only the COMPARE page draws completion."""
 
     source: str
     sheet: str
     items: tuple[OnePagerItem, ...]
     problems: tuple[str, ...]
     notes: tuple[str, ...]
+    completion_notes: tuple[str, ...] = ()
+
+    @property
+    def completion(self) -> bool:
+        """Whether the list carries a column D at all."""
+        return any(it.complete is not None for it in self.items)
 
 
 def parse_rows(rows: list[list[str]]) -> tuple[list[OnePagerItem], list[str], list[str]]:
@@ -164,20 +246,43 @@ def parse_rows(rows: list[list[str]]) -> tuple[list[OnePagerItem], list[str], li
     ``problems`` are rows that were skipped and why; ``notes`` are rows that were kept under a
     stated assumption (an inherited swimlane, swapped dates). Both carry the sheet row number.
     """
+    items, problems, notes, _completion = parse_sheet(rows)
+    return items, problems, notes
+
+
+def _is_header(cells: list[str]) -> bool:
+    a, b, c = [*cells, "", "", ""][:3]
+    return parse_span(c) is None and bool(_HEADER_RE.search(f"{a} {b} {c}"))
+
+
+def parse_sheet(
+    rows: list[list[str]], numbers: list[int] | None = None
+) -> tuple[list[OnePagerItem], list[str], list[str], list[str]]:
+    """:func:`parse_rows` plus column D: ``(items, problems, notes, completion_notes)``.
+
+    ``numbers`` are the rows' Excel row numbers (``read_xlsx_numbered``); without them a row's
+    number is its position, which is right only when no blank row was left out of the sheet.
+    """
+    if numbers is not None and len(numbers) != len(rows):
+        raise ValueError("one row number per row")
+    stripped = [[c.strip() for c in row] for row in rows]
+    content = [k for k, cells in enumerate(stripped) if any(cells[:3])]
+    header = content[0] if content and _is_header(stripped[content[0]]) else None
+    # a column D exists when any row but the header carries something in it
+    has_d = any(len(cells) > 3 and cells[3] for k, cells in enumerate(stripped) if k != header)
     items: list[OnePagerItem] = []
     problems: list[str] = []
     notes: list[str] = []
+    unread: dict[str, list[int]] = {}
     lane = ""
-    first = True
-    for i, row in enumerate(rows, start=1):
-        cells = [c.strip() for c in row] + ["", "", ""]
-        a, b, c = cells[0], cells[1], cells[2]
+    for k, row in enumerate(stripped):
+        i = numbers[k] if numbers is not None else k + 1
+        cells = [*row, "", "", "", ""]
+        a, b, c, d = cells[0], cells[1], cells[2], cells[3]
         if not (a or b or c):
             continue  # a spacer row between swimlanes
-        if first:
-            first = False
-            if parse_span(c) is None and _HEADER_RE.search(f"{a} {b} {c}"):
-                continue  # the header row
+        if k == header:
+            continue  # the header row
         if a:
             lane = a
         elif lane:
@@ -196,17 +301,52 @@ def parse_rows(rows: list[list[str]]) -> tuple[list[OnePagerItem], list[str], li
         if finish < start:
             notes.append(f"row {i} ({lane} · {b}): finish before start — dates swapped")
             start, finish = finish, start
-        items.append(OnePagerItem(lane, b, start, finish, i))
-    return items, problems, notes
+        complete: bool | None = None
+        if has_d:
+            complete, recognised = read_completion(d)
+            if not recognised:
+                unread.setdefault(d, []).append(i)
+        items.append(OnePagerItem(lane, b, start, finish, i, complete))
+    completion_notes = [
+        f"column D “{value}” ({'rows' if len(at) > 1 else 'row'} "
+        f"{', '.join(str(n) for n in at)}): not a status read as complete — drawn as not complete"
+        for value, at in unread.items()
+    ]
+    return items, problems, notes, completion_notes
 
 
 def parse_workbook(sheets: dict[str, list[list[str]]], source: str) -> OnePagerDoc:
     """The first sheet with any content becomes the document (a one-pager list is one sheet)."""
     for name, rows in sheets.items():
         if any(any(cell.strip() for cell in row) for row in rows):
-            items, problems, notes = parse_rows(rows)
-            return OnePagerDoc(source, name, tuple(items), tuple(problems), tuple(notes))
+            return _doc(source, name, *parse_sheet(rows))
     return OnePagerDoc(source, "", (), ("the workbook has no rows",), ())
+
+
+def parse_numbered_workbook(
+    sheets: dict[str, list[tuple[int, list[str]]]], source: str
+) -> OnePagerDoc:
+    """:func:`parse_workbook` over ``read_xlsx_numbered``'s rows: every row number the document
+    cites is the row Excel shows. The numbers travel WITH their rows, so they cannot fall out of
+    step with the sheet that is picked."""
+    for name, numbered in sheets.items():
+        if any(any(cell.strip() for cell in cells) for _n, cells in numbered):
+            rows = [cells for _n, cells in numbered]
+            return _doc(source, name, *parse_sheet(rows, [n for n, _c in numbered]))
+    return OnePagerDoc(source, "", (), ("the workbook has no rows",), ())
+
+
+def _doc(
+    source: str,
+    sheet: str,
+    items: list[OnePagerItem],
+    problems: list[str],
+    notes: list[str],
+    completion_notes: list[str],
+) -> OnePagerDoc:
+    return OnePagerDoc(
+        source, sheet, tuple(items), tuple(problems), tuple(notes), tuple(completion_notes)
+    )
 
 
 # ── layout ────────────────────────────────────────────────────────────────────────────────────

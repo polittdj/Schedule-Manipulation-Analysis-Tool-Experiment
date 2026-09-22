@@ -1,8 +1,15 @@
 """The synthetic twin of the operator's One-Pager workbook, shared by the ADR-0446 tests.
 
-Written the way Excel writes one — a shared-strings table, bare numbers for dates — so the
+Written with a shared-strings table and bare numbers for dates — Excel's cell encoding — so the
 path ``read_xlsx`` takes on a real file is the path under test. The real workbook is not
 committed; every quirk it carried is reproduced here by row.
+
+One way the DEFAULT twin is NOT Excel's shape (ADR-0524): it writes an empty ``<row r="N">`` for
+every spacer row, and Excel omits a blank row that carries no formatting (18 of the 51
+Excel-authored workbooks under ``00_REFERENCE_INTAKE`` skip row numbers). A reader that counts
+``<row>`` elements instead of reading ``r=`` is therefore invisible to the default twin — pass
+``omit_blank=True`` for the shape Excel writes, and ``rless=True`` for a producer that leaves the
+optional ``r=`` off rows and cells (ECMA-376 allows both; 47 committed non-Excel workbooks do).
 """
 
 from __future__ import annotations
@@ -16,10 +23,13 @@ from collections.abc import Iterable
 _MAIN = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
 
 
-def twin_xlsx(rows: Iterable[tuple[object, ...]]) -> bytes:
+def twin_xlsx(
+    rows: Iterable[tuple[object, ...]], *, omit_blank: bool = False, rless: bool = False
+) -> bytes:
     """A minimal .xlsx with a SHARED-STRINGS table (Excel's own encoding, not the tool's
-    inline-string writer), numbers written bare — the exact shape ``read_xlsx`` sees in the
-    field."""
+    inline-string writer), numbers written bare. ``omit_blank`` drops the ``<row>`` element of
+    every row with no cell (Excel's shape for an unformatted spacer row); ``rless`` leaves ``r=``
+    off every row and cell (a blank cell then cannot be skipped, so it is written empty)."""
     shared: list[str] = []
 
     def sidx(s: str) -> int:
@@ -31,14 +41,19 @@ def twin_xlsx(rows: Iterable[tuple[object, ...]]) -> bytes:
     for r, row in enumerate(rows, start=1):
         cells = []
         for c, v in enumerate(row):
-            ref = f"{chr(65 + c)}{r}"
+            ref = "" if rless else f' r="{chr(65 + c)}{r}"'
             if v is None or v == "":
+                if rless:
+                    cells.append("<c/>")  # position is implied by order when r= is absent
                 continue
             if isinstance(v, (int, float)):
-                cells.append(f'<c r="{ref}" s="1"><v>{v}</v></c>')
+                cells.append(f'<c{ref} s="1"><v>{v}</v></c>')
             else:
-                cells.append(f'<c r="{ref}" t="s"><v>{sidx(str(v))}</v></c>')
-        sheet_rows.append(f'<row r="{r}">{"".join(cells)}</row>')
+                cells.append(f'<c{ref} t="s"><v>{sidx(str(v))}</v></c>')
+        if omit_blank and not any(v not in (None, "") for v in row):
+            continue
+        row_ref = "" if rless else f' r="{r}"'
+        sheet_rows.append(f"<row{row_ref}>{''.join(cells)}</row>")
     sst = "".join(f"<si><t>{s.replace('&', '&amp;').replace('<', '&lt;')}</t></si>" for s in shared)
     parts = {
         "[Content_Types].xml": (

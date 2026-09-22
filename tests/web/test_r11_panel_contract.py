@@ -619,7 +619,9 @@ AXIS_CALL_SITES = [
     ("onepager.js", 83, "53bfe6309e237fab7137cb9933db21c6"),
     # ADR-0465: the One-Pager COMPARE painter joins the caption convention — 29 -> 30, a DELIBERATE
     # re-baseline (one new call site; no existing caption moved; onepager.js's bytes untouched).
-    ("onepager_compare.js", 131, "ed5a829de52fa34fb468b30a41bdc3e4"),
+    # Line refreshed 131 -> 152 by ADR-0524 (column D's check + the one-date tooltip grew above the
+    # call site); the caption digest re-derived and matched, not retyped.
+    ("onepager_compare.js", 152, "ed5a829de52fa34fb468b30a41bdc3e4"),
     ("performance.js", 472, "db8ae0464072322438172fe30f85fb71"),
     ("resources.js", 243, "251b7d09fffcc7a9f8adaf5f88ab94eb"),
     # line refreshed by ADR-0317 (sfControls grew above the call site); caption bytes intact
