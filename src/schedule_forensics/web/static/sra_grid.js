@@ -423,7 +423,7 @@
     statusEl.textContent = "Loading grid...";
     fetch("/api/sra/grid")
       .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
-      .then(function (res) {
+      .then(SFLoad.drawn(function (res) {
         if (!res.ok) { statusEl.textContent = res.j.error || "Could not load the grid."; return; }
         rows = res.j.rows || [];
         dataDate = res.j.data_date || null;
@@ -433,7 +433,9 @@
         render();
         renderLegend();
         statusEl.textContent = loadedStatus(typeof note === "string" ? note : "");
-      })
+      }, function () {
+        statusEl.textContent = "The grid data arrived, but the grid could not be drawn.";
+      }))
       .catch(function () { statusEl.textContent = "Could not load the grid."; });
   }
 
@@ -447,13 +449,16 @@
       body: "deltas=" + encodeURIComponent(JSON.stringify(arr)),
     })
       .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
-      .then(function (res) {
+      .then(SFLoad.drawn(function (res) {
         if (!res.ok) { statusEl.textContent = res.j.error || "Save failed."; return; }
         // every delta was answered — applied, rejected (named) or clamped (named) — so the map
         // is spent; the reload carries the summary so it is still readable after the repaint
         pending = {};
         load(saveSummary(res.j));
-      })
+      }, function () {
+        // the deltas WERE saved - reporting this as "Save failed." would be a false negative
+        statusEl.textContent = "The deltas were saved, but the grid could not be redrawn.";
+      }))
       .catch(function () { statusEl.textContent = "Save failed."; });
   }
 

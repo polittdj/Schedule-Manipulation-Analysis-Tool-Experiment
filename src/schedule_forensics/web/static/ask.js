@@ -96,7 +96,7 @@
     fetch("/api/driving-path?uid=" + encodeURIComponent(uid) +
           "&scope=" + encodeURIComponent(scope))
       .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
-      .then(function (res) {
+      .then(SFLoad.drawn(function (res) {
         out.textContent = "";
         if (!res.ok) { showExports(false); out.textContent = res.j.error || "Could not compute."; return; }
         showExports(true);
@@ -105,7 +105,9 @@
           class: "muted", text: "Engine result — exact, computed directly (no AI).",
         }));
         renderFacts(out, res.j.facts);
-      })
+      }, function () {
+        out.textContent = "The driving path arrived, but the answer could not be drawn.";
+      }))
       .catch(function () { out.textContent = "Could not compute the driving path."; });
   }
 
@@ -122,7 +124,7 @@
     var url = scope ? "/api/ask/" + encodeURIComponent(scope) : "/api/ask";
     fetch(url, { method: "POST", body: body })
       .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
-      .then(function (res) {
+      .then(SFLoad.drawn(function (res) {
         var took = stop();
         out.textContent = "";
         if (!res.ok) {
@@ -175,7 +177,12 @@
           out.appendChild(el("p", { class: "muted ai-took", text: "Answered locally in " + took + "s." }));
         }
         renderFacts(out, res.j.facts);
-      })
+      }, function () {
+        // the model ANSWERED — blaming a timeout here sends the operator to AI Settings to
+        // fix a model that is working
+        stop();
+        out.textContent = "The answer arrived, but it could not be drawn.";
+      }))
       .catch(function () {
         stop();
         flashError();

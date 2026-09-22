@@ -19814,3 +19814,64 @@ The claim "the 212 and the 25 reproduce under no constructible measure" was FALS
 corrected in ADR-0523, HANDOFF.md, NEXT-SESSION-PROMPT.md, the roadmap row and the PR body. No
 shipped number changes: the mechanism, the fix and every figure measured against MS Project's stored
 slack are independent of which surface R-77 used.
+
+## 2026-09-22 (c) — R-69 CLOSED (ADR-0524) and R-80 CLOSED (ADR-0525): a late START is a start-role instant on the WALL path too, and ten of eleven terminal-`.catch` sentences are conflations — v1.0.288
+
+§0's anti-foreign-prompt block was run before the first edit and the tree agreed on every point
+(`origin/main` e0daccc4, 811 commits, `src` present / `app` absent, both workflows, version 1.0.287,
+highest ADR 0523). The 44-file corpus was rebuilt from the 15 committed goldens (11 gzipped) plus 29
+path-keyed MPXJ conversions and reproduces **22,105** activities exactly, so the instrument is the
+one ADR-0513 and ADR-0523 used.
+
+**R-69.** The row's mechanism is right and its named witness (Hard_File UID 178, stored 08-04 13:00,
+engine 12:00) is exact. Its population is not: **47** wall-path late starts in the class, not 742 —
+Hard_File 10 not 14, updated 5 not 9, Large_Test_File **0** not 166 — plus **24 late finishes** in a
+class the row says contains none. Above all, **its BLOCKER had been dead for five commits**: R-69 was
+priced "NOT a one-line fix" because the contiguous projection of the 13:00 form "reads 300 where
+12:00 reads 240", and ADR-0523 had made `datetime_to_offset` — and with it `_wall_to_offset` —
+segment-aware the day before. Both spellings now read **9360**. `_wall_to_offset`'s docstring still
+called itself "the CONTIGUOUS canonical ruler"; that stale prose is the direct source of the
+mispricing and was rewritten. A first census of my own read **38** rather than 47 because it required
+"the same working minute on EVERY calendar in the file" and Hard_File carries 24-hour crews with no
+lunch gap — every crude filter under-reports, in the direction that makes the work look done.
+
+The rule was measured from the files rather than assumed: MS Project spells a NON-MILESTONE
+internal-boundary late start with the LATER form on **754 of 780** (96.7 %) and a late finish with
+the EARLIER form on **880 of 911** (96.6 %), while a milestone's single instant splits 58/54. Shipped
+`_snap_start_role`, the segment-level twin of `_snap_back_to_working` (already documented as the
+FINISH role), applied to `ls_w` and never to `lf_w`. **No duration exception** — the first cut had
+one and the mutation battery refuted it: the 58/54 population is instants the FAST path carries, which
+this seam never reaches, and removing the guard was **+5 / −0** where a static simulation had priced
+it +9 / −36. A third mutant survived and was a finding about the CODE: a redundant `is_24x7`
+short-circuit, proven byte-identical across all 22,105 activities and deleted.
+
+Measured pristine → this tree: wall late starts exact **1,628 → 1,698**, late finishes **1,728 →
+1,755**, stored Total Slack **10,568 → 10,572**; per activity **70 + 27 toward** the stored instant
+and **none away**; no early instant, free float or Critical flag moved. ADR-0510's UID 147 Saturday
+residual closes for free (13:00, carried via 178's 72 ELAPSED hours) and so does R-57's "named rather
+than counted" 60 minutes on UID 379 (17,521 → **17,581** = the stored 175,810 tenths). An independent
+reconstruction on pinned v1.0.275 / v1.0.286 / v1.0.287 extracts re-derived the 47 and the 24 and
+showed the row's figures track a RENDERED oracle (659 on the tree it was registered against, 149 per
+Large_Test_File copy) — a surface nothing in the product reads, since `late_start` / `late_finish`
+have zero consumers outside `cpm.py`.
+
+**R-80.** Censused: **27** sites across **23** files, 16 repaired by ADR-0521, **11** residual — not
+26 / 22 / 10, and the row's own enumeration lists 11 while calling it 10. Read site by site: **ten
+are conflations, one is not.** `ai_polish.js:35` covers exactly one failure mode (the served CSP sets
+no Trusted Types directive, and its sentence stays true even if `innerHTML` throws) and is left
+untouched behind a control. Four of the ten are worse than the class ADR-0521 fixed because they
+assert facts about the SCHEDULE: a completed Monte-Carlo reported as "Run failed.", saved deltas as
+"Save failed.", a drawing bug as "No driving path for that UID." Proven executably rather than by
+reading — each site's function is sliced out of the tree's own bytes and run with a resolving fetch
+(200, valid JSON) and a throwing draw helper: **9 of 9 printed the LOAD sentence before, 0 after**.
+`path.js:767` and `sra.js:497` are the same defect and are invisible to a literal-matching census
+(a VARIABLE and a SETTER); both are named and deliberately NOT repaired, and the generalisable rule —
+census the SEAM, not the SENTENCE's syntax — is pinned.
+
+**R-71 was priced, not closed.** `is_critical AND NOT is_recorded_complete` is UID-exact against MS
+Project's stored `Critical` on all 22,105 activities (2,011 agree, 0 either way); dropping the term
+yields 10 named engine-only disagreements. Blast radius: 2 reads of `is_critical`, 2 of
+`critical_path`, DCMA-12 unchanged on 0 of 44 files. Two of the row's sub-claims fall — the
+`<TotalSlack>` element is ABSENT on all 8,644 completed rows (so "TotalSlack 0" describes the
+importer's inference, not the file) and UID 5263 is not confined to the Large_Test_File2 family. The
+flag change alters a DOCUMENTED field's meaning, so it is left for the operator's ruling.

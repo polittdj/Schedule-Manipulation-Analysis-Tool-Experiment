@@ -286,11 +286,14 @@
     fetch("/api/sra/jcl?iterations=" + encodeURIComponent(it) +
       "&distribution=" + encodeURIComponent(dist))
       .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
-      .then(function (res) {
+      .then(SFLoad.drawn(function (res) {
         if (!res.ok) { status.textContent = res.j.error || "Run failed."; return; }
         status.textContent = "";
         renderResult(res.j);
-      })
+      }, function () {
+        // the Monte-Carlo COMPLETED - "Run failed." would send the analyst to the wrong place
+        status.textContent = "The joint run completed, but its results could not be drawn.";
+      }))
       .catch(function () { status.textContent = "Run failed."; });
   }
 

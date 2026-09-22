@@ -236,7 +236,13 @@ def test_the_total_float_is_untouched_by_this_change() -> None:
     began writing: 3,897 -> 4,098 of 4,559 over the goldens, 10,610 -> 11,041 of 12,680 across the
     44-file corpus, every one of them TOWARD MS Project's own stored TotalSlack. A stored instant
     read in the working minutes of the calendar's own segments lands its pin where the reference
-    tool put it; the contiguous clamp had been billing the lunch hour as work."""
+    tool put it; the contiguous clamp had been billing the lunch hour as work.
+
+    It moved again on 2026-09-22 (R-69), 4,098 -> 4,100, for the same reason one level down: a
+    late START now takes the start-role spelling of an internal block boundary, so the gap
+    between the two spellings stops being float. Both movers are UID 379 (Hard_File and
+    Hard_File_updated), 17,521 -> 17,581 against a stored 175,810 tenths. Across the 44-file
+    corpus four total floats moved, all four TOWARD the stored figure and none away."""
     pop = exact = 0
     for rel in _GOLDENS:
         res = _load(rel)[1]
@@ -245,4 +251,4 @@ def test_the_total_float_is_untouched_by_this_change() -> None:
                 continue
             pop += 1
             exact += res.timing(uid).total_float == stored_total
-    assert (pop, exact) == (4559, 4098)
+    assert (pop, exact) == (4559, 4100)

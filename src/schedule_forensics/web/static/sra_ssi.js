@@ -402,14 +402,17 @@
     status.textContent = "Running the Monte-Carlo…";
     fetch("/api/sra/ssi?iterations=" + encodeURIComponent(it) + "&distribution=" + encodeURIComponent(dist))
       .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
-      .then(function (res) {
+      .then(SFLoad.drawn(function (res) {
         if (!res.ok) { status.textContent = res.j.error || "Run failed."; return; }
         status.textContent = "";
         renderResult(res.j);
         // the run cached a fresh per-activity Criticality Index server-side (ADR-0272); tell the
         // (decoupled) SSI grid to reload so its Gantt can tint by it.
         window.dispatchEvent(new Event("sf-ssi-run"));
-      })
+      }, function () {
+        // the Monte-Carlo COMPLETED - "Run failed." would send the analyst to the wrong place
+        status.textContent = "The simulation completed, but its results could not be drawn.";
+      }))
       .catch(function () { status.textContent = "Run failed."; });
   }
 
@@ -418,7 +421,7 @@
     out.textContent = "Running deterministic sensitivity (re-solves the schedule twice per task)…";
     fetch("/api/sra/oat")
       .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
-      .then(function (res) {
+      .then(SFLoad.drawn(function (res) {
         out.innerHTML = "";
         if (!res.ok) { out.textContent = res.j.error || "Sensitivity failed."; return; }
         if (!res.j.rows.length) {
@@ -439,7 +442,9 @@
             r.opportunity, r.risk, r.total]));
         });
         out.appendChild(t);
-      })
+      }, function () {
+        out.textContent = "The sensitivity run completed, but its table could not be drawn.";
+      }))
       .catch(function () { out.textContent = "Sensitivity failed."; });
   }
 

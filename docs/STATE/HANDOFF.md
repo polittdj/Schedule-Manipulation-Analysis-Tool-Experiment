@@ -1,125 +1,143 @@
-# Handoff — 2026-09-22 (b) (R-77 **CLOSED** (ADR-0523) — the project axis is **working minutes in BOTH directions**; the row's own population did **not** reproduce and its named witness was **exact** — **v1.0.287**)
+# Handoff — 2026-09-22 (c) (R-69 **CLOSED** (ADR-0524) and R-80 **CLOSED** (ADR-0525) — a late START is a start-role instant on the WALL path too, the blocker that deferred it had been dead five commits, and ten of eleven terminal-`.catch` sentences are conflations — **v1.0.288**)
 
-STATUS (current) — `main` @ **`d942832d`** (#711, R-74 / ADR-0522, **MERGED** 2026-09-22T05:01:19Z by the operator; head `3f1fa91c`, base `8279010d` — merge and the tree-equality check RE-VERIFIED this session against the API, not inherited; `HEAD^{tree}` == the PR final head's tree `ac2afe10`). **`main`'s OWN runs for `d942832d`, read by their JOBS this session:** installer-smoke 811 (`35689082248`) **success**; CI 1977 (`35689082290`) — `cui-guard` · `browser` · `test (3.11)` · `floor` all **success**, `test (3.13)` still in its parity step and `check` queued behind it when last read. Nothing about `d942832d` is red. 810 commits at session start. This unit ships on the designated branch **`claude/handoff-document-review-46tus2`** (already sitting on the squash; its stale remote-tracking ref pruned) — a **draft PR the operator merges** (never marked ready here) — `src/` changed, the wheel and nine installers rebuilt, so **EIGHT checks** (CI's six + installer-smoke's `linux` / `windows`). Highest ADR **0523**. Version **1.0.287**. Schema **2.17.0** (unchanged). QC-1 / QC-2 (ADR-0393) and QC-3 (ADR-0509) bind every session.
+STATUS (current) — `main` @ **`e0daccc4`** (#712, R-77 / ADR-0523, v1.0.287, MERGED 2026-09-22T15:03:30Z; its own runs were read to conclusion by the prior session and are NOT re-read here). 811 commits at session start. §0's anti-foreign-prompt block was RUN and the tree agreed on every point (`origin/main` e0daccc4, 811, `src` present / `app` absent, both workflows, version 1.0.287, highest ADR 0523). This unit ships on **`claude/determined-hopper-x13la6`** as a **draft PR the OPERATOR merges** — `src/` changed and the wheel + nine installers were rebuilt, so **EIGHT checks** apply (CI's `cui-guard` / `browser` / `floor` / `test (3.11)` / `test (3.13)` / `check`, plus installer-smoke's `linux` / `windows`). Highest ADR **0525**. Version **1.0.288**. Schema **2.17.0** (unchanged). QC-1 / QC-2 (ADR-0393) and QC-3 (ADR-0509) bind every session.
 
-## What landed
+## What landed — TWO rows
 
-`datetime_to_offset` and `offset_to_datetime` are now a **segment-aware PAIR**, guarded on
-`declared_segments`, plus `_tod_at_worked_start` — the start-role spelling at an internal block
-boundary. ADR-0322's two-ruler rule (int→wall segment-aware, wall→int contiguous) is **superseded in
-part**: its hazard was a property of the ASYMMETRY, and with both directions moved there is one ruler
-again. `_wall_to_offset` moves with `datetime_to_offset` by construction — R-77's plan-forward asked
-for the pair to move AND for `_wall_to_offset` to stay unchanged, which is not satisfiable.
+**R-69 (ADR-0524).** `_snap_start_role` gives the backward WALL pass the start-role spelling the
+offset path already had. `_retreat_wall` lands a block-exact retreat on the block's END because
+`_tod_at_worked` does; MS Project writes the START of the next block. Applied to `ls_w`, **never**
+to `lf_w`, and with **no duration exception**.
 
-**A THIRD rule, found AFTER the first push by the adversarial blast-radius sweep and fixed in the
-same PR:** the intraday term is measured **relative to the project start's own worked position**.
-ADR-0312 bounds only `start_tod + mpd <= 1440` and returns a legal 09:00 start UNCHANGED; anchoring
-at the segments read that origin as 60, and an 08:00 start on a declared 24-hour day as **480** — an
-axis shifted by a working day. It moves **no** measured figure: all 44 corpus files anchor at worked
-position 0, so the relative form is algebraically identical there.
+**R-80 (ADR-0525).** Ten of the eleven remaining terminal-`.catch` sentences route their drawing
+callback through ADR-0521's `SFLoad.drawn`. `ai_polish.js` does not — it was measured to cover
+exactly one failure mode, and a control test fails if anyone "repairs" it.
 
-## The row was right about the mechanism; I was wrong about its INSTRUMENT (corrected below)
+## The rows were right about the mechanism and wrong about their numbers — again
 
-Rebuilt corpus, **22,105 activities** (reproduces ADR-0513 exactly). R-77 claimed **212 / 25 / 4** and
-named EVM2 UID 23 as the witness.
+* **R-69's BLOCKER had been dead for five commits.** It was priced "NOT a one-line fix" because
+  "the contiguous projection of the 13:00 form reads 300 where 12:00 reads 240". ADR-0523 made
+  `datetime_to_offset` — and with it `_wall_to_offset` — segment-aware the day before; both
+  spellings now read **9360**. Three units have re-verified a row's *numbers*; nobody had
+  re-verified the sentence that said why it was expensive. `_wall_to_offset`'s docstring still
+  asserted the old behaviour, and that stale prose is the direct source of the mispricing. Both are
+  now pinned.
+* **R-69's population: 47, not 742** (Hard_File 10 not 14, updated 5 not 9, Large_Test_File **0**
+  not 166), plus **24 late finishes** in a class the row says has none. An independent
+  reconstruction on pinned v1.0.275 / v1.0.286 / v1.0.287 extracts re-derived the 47 and the 24 and
+  found the row's figures track a RENDERED oracle (**659** on the tree it was registered against,
+  149 per Large_Test_File copy) — a surface **nothing in the product reads**: `late_start` /
+  `late_finish` have ZERO consumers outside `cpm.py`.
+* **R-80's census: 27 sites / 23 files / 16 repaired / 11 residual**, not 26 / 22 / 16 / 10 — and
+  the row's own enumeration lists 11 while calling it 10.
 
-* **4 reproduces exactly** — but only as a **PROJECTION** error at the stored instant. A pin projected
-  and rendered by the SAME ruler cancels its own error, so the rendered census reads **0**. The first
-  census built here was blind to exactly the class the row names.
-* **CORRECTED after the adversarial sweep — R-77's figures are on the AXIS, not the wall.** The
-  first measurement here compared the engine's RENDERED instant to the stored one; R-77 compares the
-  engine's working-minute OFFSET to the stored instant projected SEGMENT-AWARE. Re-measured on a
-  proven-pristine v1.0.286 worktree with an independent projection: the started decomposition
-  **reproduces exactly** (1,144 exact / 11 unprojectable / 4 at +60), the **25 reproduces exactly**
-  (34 completed in the +54..60 band, 25 with an agreeing start), and only the **212** does not — it
-  reads **323** at exactly +60, 353 across the band. The published claim that "the 212 and the 25
-  reproduce under no constructible measure" was **FALSE for the 25**, and the failure was mine: I did
-  not establish the provenance of the row's INSTRUMENT before declaring its numbers unreproducible.
-  No shipped figure changes — every number measured against MS Project's stored slack is independent
-  of which surface the row used.
-* The 11 "holiday / clamp" starts are **one activity (`Large_Test_File` UID 3849) x 11 copies** whose
-  stored Start falls on a day the calendar marks NON-WORKING — the axis has no coordinate for it. An
-  oracle-coverage gap, not a lunch-gap effect (it reproduces on a gapless calendar); their FINISHES
-  are fixed by this change (−60 → 0 in 9 of 11).
-* **EVM2 UID 23 is EXACT on BOTH oracles** — wall and axis, ds 0 / df 0. The chain diverges at
-  **UID 25** by **−480**, a whole working day, which is not this row's 60-minute mechanism.
-* An identical census against **v1.0.281** returns the same figures, so it is **not drift** from the
-  five ADRs since.
-* **The class the row does not count is the defect: 15,224 of 22,105** rendered finishes sat exactly
-  one gap EARLY — a 17:00 finish saturates `clamp(1020−480, 0, 480)` at 480 and expands back to 16:00.
+## The rule, measured from the files rather than assumed
+
+MS Project's own spelling at an internal block boundary, read from the stored values (an oracle
+independent of this engine): a **non-milestone late START** takes the LATER form on **754 of 780**
+(96.7 %), a **late FINISH** the EARLIER form on **880 of 911** (96.6 %). The role rule holds harder
+on the backward pass than on the early dates ADR-0523 measured (71.9 %).
 
 ## What it measured
 
-Against **MS Project's own stored slack**, 44 files: total exact **10,610 → 11,041** of 12,680;
-free exact **3,004 → 3,094** of 3,315, high **198 → 134**, low **113 → 87**. Rendered instants exact
-**22,453 → 41,950** of 44,210 (start 17,009 → 20,990, finish 5,444 → 20,960). The pristine column
-reproduces ADR-0522's recorded figures to the digit, which is how the instrument is known to be the
-same one. Goldens only: total **3,897 → 4,098** of 4,559; free **1,034 → 1,075** of 1,142, high
-**69 → 40**, low **39 → 27**.
+44 files, 22,105 activities, against MS Project's stored values: wall late-START instants exact
+**1,628 → 1,698**, late-FINISH **1,728 → 1,755**, stored Total Slack **10,568 → 10,572** (goldens
+4,098 → 4,100). Per activity **70** late starts and **27** late finishes moved TOWARD the stored
+instant and **NONE away**; **no early instant, no free float and no Critical flag moved at all**.
+Two residuals other rows registered close for free: ADR-0510's **UID 147 Saturday 13:00** (carried
+through 178's 72 ELAPSED hours) and R-57's "named rather than counted" 60 minutes on **UID 379**
+(17,521 → **17,581** = the stored 175,810 tenths — the lunch hour had been float).
 
 ## How it was verified
 
-**Red first on the pristine engine, BY NAME — 5 of 9 red, 4 declared controls green; 9 of 9 green
-after.** **Mutation battery 4 of 4 red by name:** the guard removed (only the byte-identical control)
-· the start-role spelling removed (only the block-boundary test) · the projection half reverted · the
-expansion half reverted. The last two also redden
-`test_an_offset_survives_a_trip_through_the_wall_and_back`, which is green on BOTH the pristine and
-the shipped engine and red only when HALF the pair moves — the direct guard against ADR-0322's
-two-ruler hazard. The patch was proven **behaviourally identical** to the validated shadow before it
-touched the tree.
+R-69 red first **9 of 14 by name**, the 5 green ones being deliberate controls; battery **7 of 8
+red by name**. R-80 red first **9 of 9** by slicing each site's function out of the tree's own bytes
+and running it with a 200 + valid JSON and a throwing draw helper — every one printed its LOAD
+sentence; battery **4 of 4 red by name** with a green control.
+
+**Two mutants SURVIVED the first R-69 battery and both were findings.** One exposed a vacuous pin.
+The other **refuted the rule**: the `duration > 0` guard justified from a 58/54 milestone split
+governs a population this seam never reaches (fast-path carried instants), and removing it was
+**+5 / −0** where a static simulation had priced it +9 / −36. A third survivor was a finding about
+the CODE — a redundant `is_24x7` branch, proven byte-identical across 22,105 activities and deleted.
 
 ## Pins moved deliberately, each with its reason and prior value
 
-* `test_free_float_bounded_by_total.py` — the free-slack rate `(1142, 1034, 69, 39)` → **(1142, 1075,
-  40, 27)**; the total-float control `(4559, 3897)` → **(4559, 4098)**, docstring amended to say the
-  AXIS moved, not the bound.
-* `test_hard_file_stored_dates_oracle.py::_LARGE` — `tf_exact` **897 → 922** and **746 → 760**;
-  File2's finish floor **LOWERED 1689 → 1655**.
-* The R-73 assertion that `_stored_instant_offset == datetime_to_offset − 60` is **inverted to pin the
-  agreement** — that 60-minute gap WAS the two-ruler disagreement, and there is now one ruler.
+`test_free_float_bounded_by_total.py` and `test_segment_aware_axis_pair.py` — golden total slack
+**(4559, 4098) → (4559, 4100)**, both movers UID 379; free slack `(1142, 1075, 40, 27)` unmoved. ·
+`test_r57_assignment_leveling_delay_oracle.py` — UID 379 `17521 and stored 17581` → `== stored ==
+17581`. · `test_r58_calendar_intersection_oracle.py` — 147's and 178's instants 12:00 → **13:00**,
+both now the file's own; the carried relation (147 == 178's late start less 72 elapsed hours) is
+unchanged. · `test_hard_file_stored_dates_oracle.py` — 178 / 179 / 180 late start → 13:00, 147
+folded onto `stored_lf[147]`; its late FINISHES deliberately untouched.
 
 ## Deliberately NOT done
 
-**Three instants lost**, all `Hard_File_updated4` **UID 305** across its three copies — a completed
-zero-duration milestone whose 13:00 instant MS Project spells with the LATER form though it is a
-finish. **No rule in the file separates the two spellings:** over all **941** internal-boundary
-instants, 81 milestones spell a finish EARLIER and 3 LATER, 306 non-milestones spell a start LATER
-and 81 milestones EARLIER — milestone flag and zero duration each fail as a discriminator in both
-directions. · **R-77's residual:** on `Large_Test_File2` **1,089 finishes became exact and none lost
-exactness**, but **35** already-wrong unstarted finishes (−1,251 to −1,431 min, on the band edge)
-moved 120–3,896 min further out past the within-a-day proxy, 1 entered, net −34; **23 of 35 sit on the
-file's SECOND calendar** ("ZIN Project Calendar" — of its 138 activities 27 moved further, 9 closer).
-This is the **only** measure in the unit that moves AWAY from the reference; the cross-calendar seam
-is registered as R-77's residual, priced against R-56's chains, not re-opened here. · The **±1-minute**
-class (828 instants, MS Project's sub-minute boundaries — R-65's family) · collapsing
-`_stored_instant_offset` into `datetime_to_offset` now that they compute the same thing (same
-function, different CONTRACT — the former is only ever a floor under `max()`).
+The **24 late finishes** in the mirror class (MS Project's own convention is the earlier form;
+applying the start form to `lf_w` breaks **52** already-exact late finishes — pinned). · The
+**milestone spelling in general** (58/54 corpus, 29/25 goldens — ADR-0523's residual stands). · The
+**±1-minute** class (R-65) and the **completed-record** class (R-71), both visible in
+Large_Test_File's deltas and neither this row's. · **`path.js:767` and `sra.js:497`** — real,
+read, confirmed conflations that a literal-matching census cannot see (a VARIABLE and a SETTER),
+named and deliberately NOT repaired: widening a registered population by accident is how a census
+stops meaning anything. · **Extending ADR-0521's browser poison battery** to the ten — it poisons a
+shared dependency global and these draw through module-local helpers, so the instrument does not
+transfer; the node transplant is the substitute and the gap is named. · **i18n** for the new
+sentences (ADR-0521 held the same).
+
+## R-71 is PRICED, not closed — and its flag half needs one operator ruling
+
+Censused here, independently and with red-before-green: **`is_critical AND NOT is_recorded_complete`
+is UID-EXACT against MS Project's stored `Critical` on all 22,105 activities** (2,011 agree, 0
+engine-only, 0 stored-only); drop the term and **10** engine-only disagreements appear, named
+(Hard_File_updated2 UID 290, Hard_File_updated3 UID 261, Large_Test_File2 UID 6956, + twins). R-71's
+premise holds against the bytes: **0 of 8,644** finished activities carry stored `Critical=1`, and
+the negative control fires (2,011 incomplete do). Blast radius is tiny — `TaskTiming.is_critical`
+has **2** reads in `src/` (`cpm.py:3205`, `float_analysis.py:90`), `CPMResult.critical_path` **2**
+(`dcma14.py:596`, `web/path.py:51`), DCMA-12's target changes on **0 of 44** files because
+`dcma14.py` already filters `not is_recorded_complete`, and `float_analysis` already exposes both
+`critical_count` 2,021 and `critical_incomplete_count` 2,011 — a difference of exactly the 10.
+
+**The ruling needed:** `TaskTiming.is_critical` is documented as "the pure CPM property
+`total_float <= 0`". Honouring the record changes a documented field's MEANING. Does the field
+change, or does the record-aware answer stay in `is_effective_critical` (which already returns False
+for all 10) with `critical_path` alone filtered? Do not implement either without the ruling.
+
+R-71's other limbs also re-censused: **8,644** completed (engine and file-only tests agree exactly,
+symmetric difference 0) with LS == AS and LF == AF on **8,644 / 8,644**; **1,159** started with
+LS == AS on 1,159 / 1,159; the clamped class is **22** rows / 4 UIDs {389, 5263, 5539, 6444} and the
+5539 witness is byte-exact. **Two sub-claims fall:** the `<TotalSlack>` ELEMENT is **absent** on all
+8,644 completed rows, so "TotalSlack 0" describes the importer's dropped-zero inference, not the
+file (and on `evm/EVM2` it is `None` for UIDs 17/18/19); and UID 5263 is **not** confined to the
+Large_Test_File2 family — it carries three distinct signatures across the Leveled and
+Large_Test_File files too.
 
 ## Traps this session paid for, BY NAME
 
-**A shadow copy of `src/` is not the tree.** The standing recipe copies `src` only, so the vendored-MPXJ
-discovery — which walks up from the PACKAGE's `__file__` — finds no `tools/mpxj`. The first suite run
-under the shadow reported **22 failures and 3 errors** in `tests/importers` that all read as
-consequences of the change; the pristine control was **486 passed**, and symlinking `tools/` turned 22
-failures into **382 passed with the code unchanged**. **The recipe must add symlinks for `tools/` and
-`00_REFERENCE_INTAKE/`.** · **`schedule_forensics.__version__` reports the INSTALLED distribution, not
-the imported source** — the v1.0.281 worktree reported 1.0.286. Probe for a SYMBOL, with a named
-positive AND a named negative. · **A pin projected and rendered by the same ruler cancels its own
-error** — measure the CONVERSION, not the round trip. · **Never run two suites concurrently when either
-binds a port or spawns a JVM** (MPXJ failures once, a Chromium audio test once; both passed alone). ·
-**`pkill -f "<pattern>"` matches its own command line** — killed this session's shell twice; use the
-`[p]attern` bracket trick. · **Red-first found three defects in the NEW TEST before it found any in the
-code** — two "controls" carried red assertions, and the goldens test was VACUOUS (run from a scratch
-dir, `parents[1]` missed `tests/fixtures/` and the population was empty; its own population guard
-caught it).
+**A register row's BLOCKER is testimony too** — re-measure the reason a row was deferred, not only
+its claim. · **Stale prose is load-bearing**: `_wall_to_offset`'s docstring kept a superseded rule
+alive for a month. · **A surviving mutant is a finding about the RULE, not only the test** — two
+survived and one refuted my own scoping. · **A simulation of a seam is not the seam** (+9/−36
+predicted, +5/−0 measured). · **"A basename is not a key" cost 1,833 activities silently** — a
+per-activity dump keyed on `path.name` collapsed 22,105 → 20,272 because two goldens share basenames
+with two others, and the comparison still looked self-consistent. · **Every crude filter
+under-reports, twice in one unit**: R-69's first census read 38 not 47 (it required "the same
+working minute on EVERY calendar", and Hard_File's 24-hour crews have no lunch gap); R-80's
+registered census matched a LITERAL and so could not see a variable or a setter. · **A harness that
+prints "<nothing printed>" is a broken harness, not a clean site.** · **Do not mutate the tree a
+battery is measuring — INCLUDING its docs**: an ADR added mid-gate makes that run's
+`test_state_docs.py` meaningless, and a subagent independently caught the working tree changing
+under its own measurement and pinned a clean extract instead.
 
 ## Next — campaign queue
 
-**Read `git log origin/main` before trusting any sha here.** §3 in order: **R-69** · **R-71** (T3) ·
-**R-80** (T3, S — the 10 unassessed terminal `.catch` sentences, per-site verdicts BEFORE any edit) ·
-R-13 · R-18 · R-21 · R-22 · R-32 · R-39; R-68 waits on the operator's reading (question (f)).
-**R-77's residual** (the second-calendar family on `Large_Test_File2`) is unpriced and belongs beside
-R-56's chains. **Outstanding operator ruling: where the 2026-09-21 (c) foreign kickoff came from.**
+**Read `git log origin/main` before trusting any sha here.** §3 in order: **R-71** (T3, M — flag
+half priced above and BLOCKED on the operator's ruling; the record limbs are unbuilt) · R-13 · R-18
+· R-21 · R-22 · R-32 · R-39; R-68 waits on the operator's reading (question (f)).
+**R-77's residual** (the second-calendar family on `Large_Test_File2`) is unpriced and belongs
+beside R-56's chains. **R-80's two out-of-population conflations** (`path.js:767`, `sra.js:497`)
+need the operator's decision on whether to widen the row. **Outstanding operator ruling: where the
+2026-09-21 (c) foreign kickoff came from.**
 
 # (prior) handoffs — archived
 
