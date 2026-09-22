@@ -193,6 +193,43 @@ def test_a_calendar_with_no_declared_segments_is_byte_identical() -> None:
             )
 
 
+def test_the_origin_is_offset_zero_whatever_the_project_start_time_of_day() -> None:
+    """A project start is NOT required to sit at the calendar's first segment.
+
+    ADR-0312's importer precondition bounds only ``start_tod + minutes_per_day <= 1440``, and
+    inside that domain ``anchored_project_start`` returns the start **unchanged** — a 09:00 start
+    on an 8-hour day is legal and passes through untouched. The contiguous pair read its own
+    origin as 0 for every such start by construction (``clamp(tod - tod)``). A segment-aware pair
+    anchored at the SEGMENTS instead of at the start reads that origin as 60, and on a declared
+    24-hour day an 08:00 start as a whole **480** — an axis shifted by a working day, silently,
+    on a legal file. So the intraday term is measured RELATIVE to the start's own worked position.
+
+    The 44-file corpus cannot catch this: every one of its files starts at 08:00 on an
+    08-12 / 13-17 calendar, where the start's worked position is 0 and the relative form is
+    algebraically identical to the absolute one. That is also why this change moves no measured
+    figure.
+    """
+    day24 = Calendar(
+        working_minutes_per_day=1440,
+        work_weekdays=(0, 1, 2, 3, 4, 5, 6),
+        day_segments=((0, 1440),),
+    )
+    for cal in (GAPPED, PLAIN, day24):
+        for hour in (0, 8, 9, 13, 17, 20):
+            start = dt.datetime(2025, 1, 6, hour, 0)
+            assert datetime_to_offset(start, start, cal) == 0, (cal.day_segments, hour)
+
+
+def test_a_late_project_start_still_measures_its_own_working_day() -> None:
+    """The same anchor, one step out: from a 09:00 start the morning block's remaining 180
+    minutes are 180, and noon is where the morning ends — not 240, which is what an
+    origin anchored at 08:00 would report."""
+    start = dt.datetime(2025, 1, 6, 9, 0)
+    assert datetime_to_offset(start, dt.datetime(2025, 1, 6, 12, 0), GAPPED) == 180
+    assert datetime_to_offset(start, dt.datetime(2025, 1, 6, 13, 0), GAPPED) == 180
+    assert datetime_to_offset(start, dt.datetime(2025, 1, 6, 14, 0), GAPPED) == 240
+
+
 # --- the oracle: MS Project's own stored slack ---------------------------------------------------
 
 

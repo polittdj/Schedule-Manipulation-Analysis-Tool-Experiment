@@ -11,6 +11,13 @@ part**: its hazard was a property of the ASYMMETRY, and with both directions mov
 again. `_wall_to_offset` moves with `datetime_to_offset` by construction — R-77's plan-forward asked
 for the pair to move AND for `_wall_to_offset` to stay unchanged, which is not satisfiable.
 
+**A THIRD rule, found AFTER the first push by the adversarial blast-radius sweep and fixed in the
+same PR:** the intraday term is measured **relative to the project start's own worked position**.
+ADR-0312 bounds only `start_tod + mpd <= 1440` and returns a legal 09:00 start UNCHANGED; anchoring
+at the segments read that origin as 60, and an 08:00 start on a declared 24-hour day as **480** — an
+axis shifted by a working day. It moves **no** measured figure: all 44 corpus files anchor at worked
+position 0, so the relative form is algebraically identical there.
+
 ## The row was right about the mechanism and wrong about everything it counted
 
 Rebuilt corpus, **22,105 activities** (reproduces ADR-0513 exactly). R-77 claimed **212 / 25 / 4** and

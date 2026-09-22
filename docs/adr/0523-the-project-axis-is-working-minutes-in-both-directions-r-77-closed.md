@@ -66,6 +66,16 @@ Two rules the naive change got wrong, both found by QC-3 before the first edit t
   times of day. R-77's premise that "the fallback is the contiguous block by construction, so
   synthetic fixtures and P6 exports are byte-identical" is **FALSE as written**; the guard makes it
   true by construction.
+* **The intraday term is measured RELATIVE to the project start's own worked position.**
+  ADR-0312's importer precondition bounds only `start_tod + minutes_per_day <= 1440` and, inside
+  that domain, `anchored_project_start` returns the start **UNCHANGED** — a 09:00 start on an
+  8-hour day is legal and untouched. The contiguous pair read its own origin as 0 for every such
+  start by construction (`clamp(tod − tod)`); a segment-aware pair anchored at the SEGMENTS reads
+  it as 60, and on a declared 24-hour day an 08:00 start as a whole **480** — an axis shifted by a
+  working day, silently, on a legal file. This was found by the adversarial blast-radius sweep
+  AFTER the first push and fixed in the same PR. It moves **no** measured figure: every one of the
+  44 corpus files starts at 08:00 on an 08-12 / 13-17 calendar, where the start's worked position
+  is 0 and the relative form is algebraically identical to the absolute one (measured: 44 of 44).
 * **An offset on an internal block boundary has two spellings, and the role picks.** 12:00 and 13:00
   are both "240 minutes worked". A FINISH takes the earlier, a START the later — ADR-0348's
   day-boundary rule one segment down, shipped as `_tod_at_worked_start` and consumed by

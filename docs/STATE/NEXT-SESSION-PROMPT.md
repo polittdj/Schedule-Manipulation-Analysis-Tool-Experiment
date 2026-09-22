@@ -47,6 +47,13 @@ pair**, GUARDED on `declared_segments`, plus `_tod_at_worked_start` for the star
 internal block boundary. ADR-0322's two-ruler rule is **superseded in part**: its hazard came from the
 ASYMMETRY, and `_wall_to_offset` moves with `datetime_to_offset` by construction.
 
+A **third** rule was found AFTER the first push, by the adversarial blast-radius sweep, and fixed in
+the same PR: the intraday term is measured **relative to the project start's own worked position**,
+because ADR-0312 bounds only `start_tod + mpd <= 1440` and returns a legal 09:00 start unchanged.
+Anchoring at the segments read that origin as 60 — and an 08:00 start on a declared 24-hour day as
+**480**, an axis shifted by a working day. The corpus cannot catch it (all 44 files anchor at worked
+position 0), which is exactly why the sweep and not the census found it.
+
 **The row's own population did not reproduce.** Only its **4** reproduces — and only as a PROJECTION
 error at the stored instant, because a pin projected and rendered by the same ruler cancels its own
 error. Its **212** and **25** reproduce under no constructible measure (nearest 104 / 2,506 and

@@ -19785,3 +19785,15 @@ importer failures, 382 passed once symlinked) · `__version__` reports the INSTA
 a pin projected and rendered by the same ruler cancels its own error · never run two suites
 concurrently when either binds a port or spawns a JVM · `pkill -f` matches its own command line ·
 red-first found three defects in the NEW TEST before any in the code, one of them a vacuous census.
+
+**Post-push addendum (same session, same PR).** The 53-agent adversarial blast-radius sweep landed
+after the first push and reported that the pair "breaks the origin contract
+`datetime_to_offset(start, start) == 0` on any schedule whose project-start time-of-day is not the
+calendar's first segment start". Re-scoped from the naive shadow it was measuring to the SHIPPED
+guarded version, the defect still held and was real: a legal 09:00 start read its own origin as 60,
+and an 08:00 start on a declared 24-hour day as 480 — an axis shifted by a working day. Fixed in the
+same PR by measuring the intraday term RELATIVE to the project start's own worked position, pinned
+by two further tests (both red by name on the pushed tree, 11 of 11 green after). It moves no
+measured figure: all 44 corpus files anchor at worked position 0, so the relative form is
+algebraically identical there — which is precisely why no census in this unit could have found it.
+Golden slack pins re-measured byte-identical after the fix: (4559, 4098) and (1142, 1075, 40, 27).

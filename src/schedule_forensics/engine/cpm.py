@@ -515,7 +515,12 @@ def datetime_to_offset(start: dt.datetime, target: dt.datetime, calendar: Calend
     if not r.is_working_day(target_day):
         intraday = 0
     elif r.declared_segments:
-        intraday = _worked_before(r.declared_segments, target_tod)
+        # relative to the START's own worked position, so the origin is 0 whatever the project
+        # start's time of day: ADR-0312 bounds only start_tod + mpd <= 1440 and returns a legal
+        # 09:00 start UNCHANGED, and anchoring at the segments would read that origin as 60 (or,
+        # on a declared 24-hour day, an 08:00 start as a whole 480 — an axis shifted by a day).
+        origin = _worked_before(r.declared_segments, start_tod)
+        intraday = min(max(_worked_before(r.declared_segments, target_tod) - origin, 0), per_day)
     else:
         intraday = min(max(target_tod - start_tod, 0), per_day)
     if target_day >= start.date():
@@ -635,7 +640,8 @@ def offset_to_datetime(start: dt.datetime, minutes: int, calendar: Calendar) -> 
         advance, intraday = quotient, remainder
     target_date = _advance_working_days_r(day.date(), advance, r)
     if r.declared_segments:
-        return _at_minute(target_date, _tod_at_worked(r.declared_segments, intraday))
+        origin = _worked_before(r.declared_segments, start.hour * 60 + start.minute)
+        return _at_minute(target_date, _tod_at_worked(r.declared_segments, origin + intraday))
     day += dt.timedelta(days=(target_date - day.date()).days)  # preserve time-of-day exactly
     return day + dt.timedelta(minutes=intraday)
 
@@ -670,7 +676,10 @@ def offset_to_start_datetime(start: dt.datetime, minutes: int, calendar: Calenda
     if r.declared_segments:
         # the same two-spellings rule one segment down (ADR-0523): a start takes the LATER form,
         # so 240 worked minutes reads 13:00 where the finish role reads 12:00
-        return _at_minute(target_date, _tod_at_worked_start(r.declared_segments, remainder))
+        origin = _worked_before(r.declared_segments, start.hour * 60 + start.minute)
+        return _at_minute(
+            target_date, _tod_at_worked_start(r.declared_segments, origin + remainder)
+        )
     return day + dt.timedelta(days=(target_date - day.date()).days)
 
 

@@ -437,6 +437,20 @@ those fixed defects in earlier "closed" fixes:
 
 ### 2026-09-22 — R-77 / ADR-0523: the axis pair, and four traps paid for in one session
 
+**The corpus could not have found it; the adversarial sweep did.** A 53-agent blast-radius sweep,
+run against the naive shadow while the guarded version was being built, reported that the change
+"breaks the origin contract `datetime_to_offset(start, start) == 0` on any schedule whose
+project-start time-of-day is not the calendar's first segment start." That claim was about the
+NAIVE shadow, but re-scoped to the shipped version it still held — and it was **already pushed**.
+ADR-0312's precondition bounds only `start_tod + mpd <= 1440` and returns a legal 09:00 start
+UNCHANGED, so anchoring the intraday term at the segments read that origin as 60, and an 08:00
+start on a declared 24-hour day as **480** — an axis shifted by a working day. All 44 corpus files
+start at 08:00 on an 08-12 / 13-17 calendar, where the start's worked position is 0, so **every
+measurement in the unit was blind to it by construction** and CI would have stayed green forever.
+The lesson is not "run more agents": it is that **a corpus is a sample, and a contract is a
+quantifier**. `f(x, x) == 0` is a claim about ALL x; no number of files can establish it and one
+counter-example refutes it. Properties of a function get property tests, not corpus censuses.
+
 **A shadow copy of `src/` is not the tree.** The standing recipe (`cp -a src <scratch>/vN/src;
 PYTHONPATH=<scratch>/vN/src`) silently breaks every MPXJ-dependent path, because the vendored-MPXJ
 discovery walks up from the PACKAGE's `__file__` and a shadow that holds only `src` has no
