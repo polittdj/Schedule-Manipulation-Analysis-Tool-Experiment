@@ -19656,3 +19656,96 @@ defect: the three `}).catch(` chains need TWO closing parens and the first patch
 **Correction made inside this session:** a byte-pin search narrowed with a line-level `grep` reported NO freeze guard over the vendored JS, and that was stated to the operator. It is a guard — `tests/web/test_r11_panel_contract.py::test_the_seven_page_owned_scripts_are_byte_frozen` md5-pins seven page-owned scripts — and it went red on `driving_tiers.js` and `path_evolution.js` only when the whole file was RUN. Both re-baselined with the reason and the prior hash (`63e788a5…` → `bc7f405b…`, `f901da4e…` → `2d433f83…`); the other five are untouched, which also confirms the patcher moved only what it should. `AXIS_CALL_SITES` (30) is unmoved because every `axisTitles` call site sits ABOVE the edits. Two further pins moved deliberately for `loader.js`: the shipped-static-asset count 69 → 70 (`tests/guards/test_intake_manifest.py`) and `test_axis_titles`'s EXEMPT bucket. **A negative result from a filtered search is a statement about the filter, not the tree.**
 
 Pushed `claude/busy-davinci-3whzt1` (commit `71f0566e`); draft PR [#710](https://github.com/polittdj/Schedule-Manipulation-Analysis-Tool-Experiment/pull/710) opened at it and subscribed. **EIGHT checks** apply (CI's `cui-guard` / `browser` / `floor` / `test (3.11)` / `test (3.13)` / `check`, plus installer-smoke's `linux` / `windows`) because `installer/**` and the wheel changed. **Stated precisely rather than rounded up:** the full suite and `-m parity` were NOT run locally — `tests/web -k "not browser"` exceeded 580 s and parity exceeds the 10-minute call cap — so CI's `test` and `floor` jobs are the suite and parity verdict. What DID run locally and green, on the final tree: the statics (ruff whole-tree, ruff format, mypy --strict, bandit exit 0, `node --check` on all vendored JS), `tests/installer` 68, `tests/guards` + `test_state_docs` + `test_packaging` 411, the blast radius 114, airgap/CSP/app 42, the first 55 `tests/web` files 527, the 74 files referencing a changed module 354 + 469, and the witness + freezes + doc guards 92. The next session reads that PR's FINAL head's eight checks to conclusion and, if the operator has merged it, `main`'s own run for the squash by its JOBS — all six.
+
+## 2026-09-22 — R-74 CLOSED (ADR-0522): free float is BOUNDED BY the total, a successor's leveling delay is not slack, and the row's oracle population excluded the only rows that could have refuted it — v1.0.286
+
+Branch `claude/refresh-state-docs-pr710-j7qaia`, branched fresh from `origin/main` @ `8279010d`
+(#710, R-09 / ADR-0521, **MERGED** 2026-09-21T21:58:10Z by the operator — head `d65069db`, base
+`accd2df1`; CI 1974 `35660161146` **success** and installer-smoke 808 `35660161129` **success**, both
+RE-VERIFIED against the API this session rather than inherited from the kickoff). Both state docs
+opened stale by exactly one merge — 3 `accd2df1` references in `NEXT-SESSION-PROMPT.md` and 2 in
+`HANDOFF.md`, counted before the first edit — and were refreshed INSIDE this work commit.
+
+**§0 ran before the first edit and the tree agreed with the prompt on every point:** `origin/main` @
+`8279010d`, 809 commits, package root `src/` (no `app/`), two workflows (`ci.yml` + `installer-smoke.yml`),
+version 1.0.285, highest ADR 0521.
+
+**The corpus was rebuilt from scratch and reproduces ADR-0513's population exactly:** the 15 committed
+goldens under `tests/fixtures/golden/` plus 29 fresh path-keyed `.mpp` conversions — 44 files, 22,105
+scheduled activities, 3,315 storing both slack elements, **0** stored inversions, 1,116 stored equal.
+The engine's figure re-measures to **1,867**, not the row's 1,870.
+
+**The row's evidence was a statement about its filter.** All 1,230 rows whose stored `TotalSlack` is
+negative have `FreeSlack` **absent**, and the MPXJ writer omits a zero duration (ADR-0490 / R-62). So
+the 3,315 population cannot contain a negative total by construction, and read with that same writer
+rule **MS Project itself reads free (0) above total (negative) on 1,227 rows.** The engine's 1,867 is
+two classes: **1,229** negative-total rows (the class MS Project exhibits — not a defect, left alone)
+and **638** with a total ≥ 0, of which the 622 carrying a stored `FreeSlack` were ALL too high and 610
+store free equal to total.
+
+**Nine variants were built on shadow copies and measured on the whole population before one was
+chosen.** Both of the row's prescribed remedies fail as written: measuring to the successors' LATE
+starts collapses exact 2,471 → **963**; `min(free, total)` manufactures **1,239** negative free floats
+where the corpus stores none. A third mechanism the row does not name — ADR-0474 put a successor's
+leveling delay INTO its early start and OUT of `ls_need`, but never out of the free-float measurement —
+is worth +38 exact on its own and again on top of the bound. Shipped V6:
+`_succ_free_start_wall` / `_succ_free_start_off` plus `free = min(free, max(total, 0))`.
+
+**Measured:** exact **2,471 → 3,004** of 3,315, high **772 → 198**, total float untouched (10,610 /
+12,680 before and after). Isolated to the 2,926 rows whose total already matched exactly: **79.5% →
+97.7%** exact with the low count **unmoved at 14**. After the fix free exceeds total on exactly 1,229
+rows — the negative-total class, checked row by row over the goldens (427 above, 427 negative, the same
+rows; pristine 842 against the same 427).
+
+**ADR-0474's own pin movements recorded the defect as if it were the fix:** `float_free_0` on Project2
+71 → 68, `float_free_lt10` on Project5 73 → 69. MS Project's stored `FreeSlack` says **74** and **72**,
+and all four bands now reproduce exactly (P2 74/106 and 80/106; P5 68/99 and 72/99). Re-pinned with the
+reason and the prior values.
+
+**Verified.** Red first on the pristine engine, by name: 4 of 7 red (UID 408 reading 15,360 for a
+stored 2,400), 3 green and declared controls. Mutation battery **4 of 4 red by name** — the zero floor
+removed, the bound removed, the delay removed, the delay extended to FF / SF (which is what
+discriminates the rejected V8). The population control is not vacuous: a plain `*.xml` glob sees **4**
+of the 15 goldens because **11 are gzipped**. On the final tree: statics all green (ruff whole-tree,
+ruff format, mypy --strict on 165 files, bandit exit 0, `node --check` on 64 files), `tests/engine`
+**1,290 passed**, `-m parity` **246 passed**. `driving_slack.py` never reads `TaskTiming.free_float`,
+so the 100-row SSI driving-slack golden (ADR-0118) is untouched — confirmed by the parity run.
+
+**A second copy of the same pin was found only by RUNNING the suite.** The consumer sweep grepped
+`free_float` and therefore missed `tests/web/test_forecast_views.py:158`, which keys on the BAND ID
+(`data["float_bands"]["float_free_lt10"]`) and carried the identical ADR-0474 accommodation — `69`,
+commented "73 before ADR-0474". Re-pinned to **72** (MS Project's own figure) with the reason, and an
+exhaustive `float_free` sweep over the whole tree confirms those two are the only live band pins.
+*A consumer census keyed on the attribute name cannot see a consumer keyed on the metric id.*
+
+**The suite was run against a tree this session was still mutating, and it cost a 17-failure triage.**
+The background `tests` run overlapped the version bump (1.0.285 → 1.0.286), the doc rewrite and the
+installer rebuild; **16** of its 17 failures were the version chip / settings receipt / wheel lockstep
+re-reading a tree that had moved under them, and re-ran green on the settled tree. Exactly **one** was
+real — the band pin above. QC-1 says never measure a tree a battery is mutating; this is what ignoring
+it looks like, and the cost is that a real failure sat inside a pile of artifacts.
+
+**Traps paid for, by name.** A basename is not a key: converting the 29 intake `.mpp` files by basename
+silently produced **25** files (`Project2`, `Project5_TAMPERED`, `SRA Large Test File2` repeat across
+directories), and flattening `/` and spaces to `_` still collided `Large Test File.mpp` with
+`Large_Test_File.mpp`; only an index-prefixed key gave 29. A `*.xml` glob cannot see the corpus — 11 of
+the 15 goldens are `*.mspdi.xml.gz`, and the first census read 4 and looked complete.
+
+**Deliberately not done:** the 1,229 negative-total rows · the one negative free float in 22,105 rows
+(`Jacked up Schedule 2` UID 29, on a file that emits no `FreeSlack` element at all, so V5's
+floor-on-`free` is **UNVERIFIED** and was not taken) · the 198 residual high rows, 144 of them on rows
+whose TOTAL float is still inexact and 54 minute-scale residuals of the same Large Test File family,
+**registered as R-74's residual** · the finish-slack bound (V7, measured indistinguishable) ·
+`link_slack`'s non-FS semantics · a `stored_free_float_minutes` importer field (no consumer needs it).
+
+Pushed `claude/refresh-state-docs-pr710-j7qaia` (commit `c98a96b7`); draft PR [#711](https://github.com/polittdj/Schedule-Manipulation-Analysis-Tool-Experiment/pull/711) opened at it and
+subscribed. **EIGHT checks** apply (CI's `cui-guard` / `browser` / `floor` / `test (3.11)` /
+`test (3.13)` / `check`, plus installer-smoke's `linux` / `windows`) because `installer/**` and the
+wheel changed. **The full gate ran locally on the SETTLED tree and is green:** statics all pass
+(`ruff check .` whole-tree, `ruff format --check .` 712 files, `mypy --strict` 165 files, `bandit` exit
+0, `node --check` 64 files) and **`pytest tests` returned 5,785 passed / 7 skipped / 0 failed in
+48m33s with `-m parity` collected**; `-m parity` also ran alone (246 passed), as did `tests/engine`
+(1,290) and `tests/installer` (68, after the wheel + nine installers were rebuilt at v1.0.286). Unlike
+the previous two units, there is a single clean full-suite run on the final tree — the earlier
+overlapping run's 17 failures were triaged to 16 mid-run artifacts and 1 real defect, and both are
+recorded above.
