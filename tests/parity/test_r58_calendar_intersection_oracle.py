@@ -263,9 +263,16 @@ def test_on_the_base_snapshot_uid_94s_float_is_exact_once_147s_saturday_is_carri
     when the engine is fixed); it now pins the agreement, computed, not copied. The one form
     left: the engine's 147 sits at Saturday 12:00 where MS Project writes 13:00 — 178's late
     start written at the END of the crew's morning block where MS Project writes the start of
-    its afternoon block, the same working minute on every calendar in the file (registered,
-    not chased: the contiguous projection of the 13:00 form would hand every project-calendar
-    predecessor the lunch hour as float)."""
+    its afternoon block, the same working minute on every calendar in the file. R-69
+    (2026-09-22) closed it: a late start now takes the start-role spelling, so 178 reads the
+    stored 13:00 and 147's carried instant follows it to the stored Saturday 13:00. The reason
+    it was deferred -- that projecting the 13:00 form would hand every project-calendar
+    predecessor the lunch hour as float -- stopped being true at ADR-0523, which made the
+    projection segment-aware: both spellings now read the same working minute.
+
+    The carried relation below is the load-bearing one and it is unchanged: 147's instant is
+    still 178's late start less its 72 ELAPSED hours. Only the spelling of both moved, and it
+    moved onto the file's own values."""
     sch, res = _load(HARD_FILE)
     ps = sch.project_start
     tod0 = ps.hour * 60 + ps.minute
@@ -278,10 +285,11 @@ def test_on_the_base_snapshot_uid_94s_float_is_exact_once_147s_saturday_is_carri
     assert stored[147][0].weekday() == 5
     assert _snap_back_to_working(stored[147][0], by_uid[3], tod0) == stored[157][1]
     assert stored[157][1] == dt.datetime(2026, 7, 31, 23, 0)
-    # the carried instant: 178's late start (the block-end form of the stored 13:00) less 72 h
+    # the carried instant: 178's late start (the stored 13:00, start-role) less 72 elapsed hours
     ls_147 = res.timing(147).late_start_wall
-    assert ls_147 == res.timing(147).late_finish_wall == dt.datetime(2026, 8, 1, 12, 0)
-    assert res.timing(178).late_start_wall == dt.datetime(2026, 8, 4, 12, 0)
+    assert ls_147 == res.timing(147).late_finish_wall == stored[147][0]
+    assert ls_147 == dt.datetime(2026, 8, 1, 13, 0)
+    assert res.timing(178).late_start_wall == dt.datetime(2026, 8, 4, 13, 0)
     assert ls_147 == res.timing(178).late_start_wall - dt.timedelta(
         minutes=sch.task_by_id(178).leveling_delay_minutes
     )

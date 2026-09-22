@@ -1425,20 +1425,23 @@ def _offset_to_wall(start: dt.datetime, offset: int, cal: Calendar, *, role: str
 
 
 def _wall_to_offset(start: dt.datetime, wall: dt.datetime, cal: Calendar) -> int:
-    """Project-axis working-minute offset of a wall instant — the CONTIGUOUS canonical
-    ruler, i.e. exactly :func:`datetime_to_offset`.
+    """Project-axis working-minute offset of a wall instant — exactly :func:`datetime_to_offset`.
 
-    Deliberately asymmetric with :func:`_offset_to_wall` (the review-confirmed two-ruler
-    rule): int→wall EXPANSION is day-segment-aware so an off-calendar task anchors at MS
-    Project's true instant (an end-of-day offset expands to 17:00, not 16:00), but every
-    wall→int PROJECTION must use the same contiguous intraday convention as the rest of
-    the axis — constraint dates, stored pins, and the rendering path all measure
-    ``clamp(tod - start_tod)``, and projecting with a different (segment-aware) ruler made
-    the same instant carry two different offsets: a successor rendered BEFORE its
-    predecessor's finish, and a same-instant SNET out-bound the link inside one ``max()``.
-    The cost is bounded and conservative: a mid-day wall instant on a gapped calendar
-    projects up to the gap width LATER than its true worked minutes (never earlier), one
-    boundary per off-calendar link; the true instants still ride ``TaskTiming.*_wall``."""
+    **No longer the contiguous ruler.** ADR-0322 made this projection deliberately asymmetric
+    with :func:`_offset_to_wall`: int→wall expansion was segment-aware while every wall→int
+    projection stayed contiguous, because projecting with a different ruler made one instant
+    carry two offsets (a successor rendered BEFORE its predecessor's finish; a same-instant
+    SNET out-bounding the link inside one ``max()``). ADR-0523 removed the asymmetry instead of
+    preserving it — the PAIR moved together, and this function moved with
+    :func:`datetime_to_offset` by construction, so there is one segment-aware ruler again.
+
+    The consequence worth naming, because a register row was priced on its opposite: the two
+    wall-clock spellings of an internal block boundary now project to the SAME offset (12:00
+    and 13:00 on a 08-12 / 13-17 day both read 240 worked minutes, where the contiguous ruler
+    read 240 and 300). R-69 was recorded as "not a one-line fix" precisely because re-spelling a
+    late start was expected to hand every project-calendar predecessor the lunch hour as float;
+    it cannot, and :func:`_snap_start_role` relies on that. The claim is pinned by
+    ``tests/engine/test_late_start_role_spelling.py``."""
     return datetime_to_offset(start, wall, cal)
 
 
@@ -1825,6 +1828,44 @@ def _snap_back_to_working(wall: dt.datetime, cal: Calendar, day_start_tod: int) 
                     return _at_minute(day, min(tod, seg_end))
         day -= dt.timedelta(days=1)
         tod = 1440
+
+
+def _snap_start_role(wall: dt.datetime, cal: Calendar, day_start_tod: int) -> dt.datetime:
+    """The START-role spelling of an instant sitting on an INTERNAL block boundary (R-69).
+
+    The segment-level twin of :func:`_snap_back_to_working` (which is explicitly the FINISH
+    role, one grid point up at the day boundary), and the wall-path twin of
+    :func:`offset_to_start_datetime` vs :func:`offset_to_datetime`. An instant on the END of an
+    internal working block names the same working minute as the START of the next one (12:00
+    and 13:00 on a 08-12 / 13-17 day are both 240 minutes worked); :func:`_retreat_wall` always
+    lands on the earlier spelling because :func:`_tod_at_worked` does, so a late start read
+    08-04 12:00 where MS Project stores 13:00.
+
+    Measured on the 44-file corpus from the files' own stored values — an oracle independent of
+    this engine — MS Project writes a non-milestone late start with the LATER form on 754 of
+    780 internal-boundary late starts (96.7 %) and a non-milestone late finish with the EARLIER
+    form on 880 of 911 (96.6 %). That is why only the START role is re-spelled: the caller
+    applies this to ``ls_w`` and never to ``lf_w``.
+
+    There is deliberately NO zero-duration exception. The corpus's milestone boundary instants
+    split 58 / 54 between the spellings, which looked like a reason to exclude them, and a
+    mutation test refuted it: that population is instants the FAST path carries
+    (:func:`_carried_late_instant`), which this function never sees. Of the zero-duration
+    instants the wall path does reach, 5 of 5 with a determinate stored answer take the later
+    form. The general milestone ambiguity stays ADR-0523's named residual, not a rule invented
+    here.
+    """
+    r = _ruler(cal)
+    # a 24/7 or undeclared calendar yields ONE contiguous block, so it has no internal boundary
+    # and the length test below already covers it — no separate ``is_24x7`` short-circuit
+    segments = r.segments(day_start_tod)
+    if len(segments) < 2 or not r.is_worked(wall.date()):
+        return wall
+    tod = wall.hour * 60 + wall.minute
+    for (_seg_start, seg_end), (nxt_start, _nxt_end) in pairwise(segments):
+        if tod == seg_end:
+            return _at_minute(wall.date(), nxt_start)
+    return wall
 
 
 def _working_pattern_key(cal: Calendar) -> tuple[object, ...]:
@@ -3027,6 +3068,11 @@ def compute_cpm(
             if start_needs and min(start_needs) < ls_w:
                 ls_w = min(start_needs)
                 lf_w = min(lf_w, _plan_finish(ls_w, plan, tod0))
+            # R-69: a late START is a start-role instant. The retreat lands on the END of the
+            # block; MS Project writes the START of the next one — the same working minute, so
+            # no offset, need or slack axis can tell them apart (see _snap_start_role, and
+            # ``test_the_projection_cannot_tell_the_two_spellings_apart``).
+            ls_w = _snap_start_role(ls_w, cal_t, tod0)
             slack = min(
                 _wall_minutes_between(es_wall[tid], ls_w, cal_t, tod0),
                 _wall_minutes_between(ef_wall[tid], lf_w, cal_t, tod0),

@@ -82,10 +82,12 @@
     fetch("/api/ai/models?kind=" + encodeURIComponent(kind) +
           "&endpoint=" + encodeURIComponent(endpointFor(kind)))
       .then(function (r) { return r.json(); })
-      .then(function (j) {
+      .then(SFLoad.drawn(function (j) {
         fill(select, (j && j.models) || [], statusEl, j && j.reason);
         if (then) then();
-      })
+      }, function () {
+        if (statusEl) statusEl.textContent = "the model list arrived, but the control could not be filled";
+      }))
       .catch(function () { if (statusEl) statusEl.textContent = "check failed"; });
   }
 

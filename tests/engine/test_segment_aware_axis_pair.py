@@ -267,8 +267,12 @@ def test_the_goldens_move_toward_ms_projects_own_stored_slack() -> None:
     Total slack exact 3,897 -> 4,098 of 4,559; free slack exact 1,034 -> 1,075 of 1,142 with high
     69 -> 40 and low 39 -> 27. The free-float residual falls on BOTH sides at once, so the gain is
     not one direction bought with the other.
+
+    R-69 then took the total to 4,100 by giving a late START the start-role spelling of an
+    internal block boundary on the WALL path too (the same rule this file established for the
+    offset path). Free slack is unmoved -- not one of the 3,315 corpus free floats changed.
     """
     assert _GOLDENS and len(_GOLDENS) == 15, _GOLDENS
     total, free = _golden_slack_census()
-    assert total == (4559, 4098)
+    assert total == (4559, 4100)
     assert free == (1142, 1075, 40, 27)
