@@ -56,8 +56,13 @@ position 0), which is exactly why the sweep and not the census found it.
 
 **The row's own population did not reproduce.** Only its **4** reproduces — and only as a PROJECTION
 error at the stored instant, because a pin projected and rendered by the same ruler cancels its own
-error. Its **212** and **25** reproduce under no constructible measure (nearest 104 / 2,506 and
-23 / 34 / 0); its named witness **EVM2 UID 23 is exact on both axes**; an identical census at
+error. **CORRECTED in-session after the adversarial sweep:** R-77's figures are measured on the
+**AXIS** (the engine's working-minute OFFSET against the stored instant projected SEGMENT-AWARE),
+not on the rendered wall instant. On that oracle its started decomposition reproduces exactly
+(1,144 / 11 / 4) and **its 25 reproduces exactly** (34 completed in the +54..60 band, 25 with an
+agreeing start); only the **212** does not — it reads **323**. The earlier claim that both were
+unreproducible was FALSE for the 25. Its named witness **EVM2 UID 23 is exact on BOTH oracles** (the
+chain diverges at UID 25 by a whole working day, −480, not a gap); an identical census at
 **v1.0.281** returns the same figures, so it is **not drift**. The defect is the class the row does
 not count: **15,224 of 22,105** rendered finishes exactly one gap EARLY.
 

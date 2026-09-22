@@ -45,6 +45,38 @@ every gapped calendar, every day. The row names this only in its remedy ("an end
 renders 17:00, not 16:00") and counts it nowhere; it is two orders of magnitude larger than the three
 classes it does count.
 
+## CORRECTION (same session, after the adversarial sweep): R-77's figures are on the AXIS, and its 25 DOES reproduce
+
+**This ADR's first version was wrong about the row's instrument, and therefore about two of its
+claims.** It measured the engine's RENDERED WALL INSTANT against MS Project's stored instant and
+concluded that the 212 and the 25 "reproduce under no constructible measure". R-77's figures are
+measured on the **AXIS** — the engine's working-minute OFFSET against the stored instant projected
+**segment-aware** — which is a different surface, and one the row also names. Re-measured on a
+proven-pristine v1.0.286 worktree with a projection written independently of `engine.cpm`'s own
+helpers:
+
+| R-77's figure | on the axis oracle | verdict |
+| --- | --- | --- |
+| started decomposition "15 inexact = 11 + 4" | 1,159 started → **1,144 exact, 11 unprojectable, 4 at +60** | **reproduces exactly** |
+| the **25** completed finishes | 34 in the +54..60 band, of which **25** also have an agreeing start | **reproduces exactly** |
+| the **212** unstarted finishes | **323** at exactly +60 (353 across the band) | does **not** reproduce |
+| EVM2 UID 23 as the witness | ds 0, df 0 on **both** oracles; the chain diverges at **UID 25** by −480, a whole working day | **not this row's mechanism** |
+
+The 11 "holiday / clamp" starts are **one activity — `Large_Test_File` UID 3849 — in 11 file
+copies** whose stored `Start`/`ActualStart` (2023-01-02T08:00) falls on a day calendar 3 marks
+NON-WORKING. The axis has no coordinate for such an instant, so it renders on the next working day.
+That is an oracle-coverage gap, **not** a lunch-gap effect — it reproduces identically on a gapless
+calendar — and it must not be counted as start-side work this change fixes. (The same 11 rows'
+*finishes* are fixed: wall delta −60 → 0 in 9 of the 11.)
+
+**What this corrects and what it does not.** It corrects this ADR's characterisation of the row:
+two of its three classes reproduce, not one, and the failure was mine — I did not establish the
+provenance of the row's instrument before declaring its numbers unreproducible, which is QC-2's
+"know the provenance of a number before trusting it" applied to an oracle rather than a value. It
+changes **no shipped number**: the mechanism, the fix, and every figure measured against MS
+Project's stored slack are independent of which surface R-77 used, and the 15,224 one-gap-early
+rendered finishes remain a true statement about the RENDERING, which R-77 also names as a site.
+
 ## Decision
 
 `datetime_to_offset` and `offset_to_datetime` become a **segment-aware pair**, using the helpers

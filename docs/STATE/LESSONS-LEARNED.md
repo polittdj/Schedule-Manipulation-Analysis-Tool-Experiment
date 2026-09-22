@@ -437,6 +437,23 @@ those fixed defects in earlier "closed" fixes:
 
 ### 2026-09-22 — R-77 / ADR-0523: the axis pair, and four traps paid for in one session
 
+**The provenance rule applies to the ORACLE, not just the value — and I broke it.** QC-2 says know
+where a number came from before trusting it. I applied that to R-77's *figures* and not to its
+*instrument*: I measured the engine's RENDERED WALL INSTANT against MS Project's stored instant,
+found the row's classes reading 104 / 0 / 11, and published that "the 212 and the 25 reproduce under
+no constructible measure" in the ADR, the handoff, the kickoff, the roadmap row, the commit message
+and the PR body. R-77's figures are measured on the **AXIS** — the engine's working-minute OFFSET
+against the stored instant projected segment-aware. On that oracle, re-measured on a proven-pristine
+worktree with a projection written independently of `engine.cpm`'s own helpers, the row's started
+decomposition reproduces EXACTLY (1,144 / 11 / 4) and **its 25 reproduces exactly** (34 completed in
+the +54..60 band, 25 with an agreeing start). Only the 212 fails to reproduce (323). Two surfaces,
+both real, both named by the row — and I declared the row's numbers unreproducible while measuring
+the other one. **Before declaring a claim's figures irreproducible, reconstruct the instrument that
+produced them; an oracle mismatch looks exactly like a refutation.** The tell was available and I
+walked past it: the row's own decomposition ("15 starts inexact in all, 11 the holiday / clamp
+class") is a fingerprint of its instrument, and a measure that reproduces one of a row's numbers
+exactly while zeroing the rest is far more likely to be the wrong ruler than a wrong row.
+
 **The corpus could not have found it; the adversarial sweep did.** A 53-agent blast-radius sweep,
 run against the naive shadow while the guarded version was being built, reported that the change
 "breaks the origin contract `datetime_to_offset(start, start) == 0` on any schedule whose

@@ -19797,3 +19797,20 @@ by two further tests (both red by name on the pushed tree, 11 of 11 green after)
 measured figure: all 44 corpus files anchor at worked position 0, so the relative form is
 algebraically identical there — which is precisely why no census in this unit could have found it.
 Golden slack pins re-measured byte-identical after the fix: (4559, 4098) and (1142, 1075, 40, 27).
+
+**Second post-push addendum — a published claim CORRECTED.** The same sweep reported that R-77's
+figures are measured on the AXIS (the engine's working-minute offset against the stored instant
+projected segment-aware), not on the rendered wall instant this session had used, and that the 25
+therefore DOES reproduce. Re-verified independently on a proven-pristine v1.0.286 worktree (teeth:
+the worktree carries ADR-0522's free bound and lacks this unit's `_tod_at_worked_start`; the current
+tree has it) with a projection written independently of `engine.cpm`'s helpers: the started
+decomposition reproduces exactly (1,159 → 1,144 exact / 11 unprojectable / 4 at +60) and **the 25
+reproduces exactly** (34 completed activities in the +54..60 band, 25 of which also have an agreeing
+start). The 212 still does not — it reads 323 at exactly +60, 353 across the band. EVM2 UID 23 is
+exact on BOTH oracles; its chain diverges at UID 25 by −480, a whole working day, not a gap. The 11
+"holiday / clamp" starts are one activity (Large_Test_File UID 3849) in 11 file copies whose stored
+Start falls on a NON-WORKING day — an oracle-coverage gap, and it reproduces on a gapless calendar.
+The claim "the 212 and the 25 reproduce under no constructible measure" was FALSE for the 25 and is
+corrected in ADR-0523, HANDOFF.md, NEXT-SESSION-PROMPT.md, the roadmap row and the PR body. No
+shipped number changes: the mechanism, the fix and every figure measured against MS Project's stored
+slack are independent of which surface R-77 used.

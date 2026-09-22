@@ -18,7 +18,7 @@ at the segments read that origin as 60, and an 08:00 start on a declared 24-hour
 axis shifted by a working day. It moves **no** measured figure: all 44 corpus files anchor at worked
 position 0, so the relative form is algebraically identical there.
 
-## The row was right about the mechanism and wrong about everything it counted
+## The row was right about the mechanism; I was wrong about its INSTRUMENT (corrected below)
 
 Rebuilt corpus, **22,105 activities** (reproduces ADR-0513 exactly). R-77 claimed **212 / 25 / 4** and
 named EVM2 UID 23 as the witness.
@@ -26,8 +26,23 @@ named EVM2 UID 23 as the witness.
 * **4 reproduces exactly** — but only as a **PROJECTION** error at the stored instant. A pin projected
   and rendered by the SAME ruler cancels its own error, so the rendered census reads **0**. The first
   census built here was blind to exactly the class the row names.
-* **212 and 25 reproduce under no constructible measure** (nearest: 104 / 2,506 and 23 / 34 / 0).
-* **EVM2 UID 23 is EXACT on both axes** — start delta 0, finish delta 0.
+* **CORRECTED after the adversarial sweep — R-77's figures are on the AXIS, not the wall.** The
+  first measurement here compared the engine's RENDERED instant to the stored one; R-77 compares the
+  engine's working-minute OFFSET to the stored instant projected SEGMENT-AWARE. Re-measured on a
+  proven-pristine v1.0.286 worktree with an independent projection: the started decomposition
+  **reproduces exactly** (1,144 exact / 11 unprojectable / 4 at +60), the **25 reproduces exactly**
+  (34 completed in the +54..60 band, 25 with an agreeing start), and only the **212** does not — it
+  reads **323** at exactly +60, 353 across the band. The published claim that "the 212 and the 25
+  reproduce under no constructible measure" was **FALSE for the 25**, and the failure was mine: I did
+  not establish the provenance of the row's INSTRUMENT before declaring its numbers unreproducible.
+  No shipped figure changes — every number measured against MS Project's stored slack is independent
+  of which surface the row used.
+* The 11 "holiday / clamp" starts are **one activity (`Large_Test_File` UID 3849) x 11 copies** whose
+  stored Start falls on a day the calendar marks NON-WORKING — the axis has no coordinate for it. An
+  oracle-coverage gap, not a lunch-gap effect (it reproduces on a gapless calendar); their FINISHES
+  are fixed by this change (−60 → 0 in 9 of 11).
+* **EVM2 UID 23 is EXACT on BOTH oracles** — wall and axis, ds 0 / df 0. The chain diverges at
+  **UID 25** by **−480**, a whole working day, which is not this row's 60-minute mechanism.
 * An identical census against **v1.0.281** returns the same figures, so it is **not drift** from the
   five ADRs since.
 * **The class the row does not count is the defect: 15,224 of 22,105** rendered finishes sat exactly
