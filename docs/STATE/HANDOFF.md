@@ -1,100 +1,103 @@
-# Handoff — 2026-09-21 (c) (R-09 **CLOSED** (ADR-0521) — a DRAW failure is not a LOAD failure; the population was **SIXTEEN, not thirteen**, and the row's own prescribed witness could not reach its own named instance — **v1.0.285**)
+# Handoff — 2026-09-22 (R-74 **CLOSED** (ADR-0522) — free float is **BOUNDED BY** the total, a successor's leveling delay is **not slack the predecessor owns**, and the row's evidence that MS Project "never" inverts the pair was a statement about a **FILTER** — **v1.0.286**)
 
-STATUS (current) — `main` @ **`accd2df1`** (#709, R-79 / ADR-0520, **MERGED** 2026-09-21 16:42:55Z by the operator). **PR #709's FINAL head, EIGHT checks read to conclusion THIS session:** CI `35620029987` — `cui-guard` 15:37:19Z · `browser` 15:55:04Z · `floor` 16:13:40Z · `test (3.11)` 16:19:20Z · `test (3.13)` 16:30:20Z · `check` 16:30:25Z; installer-smoke `35620029992` — `linux` 15:36:50Z · `windows` 15:39:58Z — **eight of eight green**. **`main`'s OWN runs for `accd2df1`, by their JOBS (read this session, every `head_sha` accd2df1):** CI 1971 (`35627362497`) `cui-guard` 16:43:16Z · `browser` 17:01:01Z · `floor` 17:19:21Z · `test (3.13)` 17:37:15Z · `test (3.11)` 17:42:37Z · `check` 17:42:43Z — six of six; installer-smoke 805 (`35627362493`) success 16:48:37Z. Nothing about `accd2df1` is outstanding. This unit ships on the designated branch **`claude/busy-davinci-3whzt1`** (branched from the squash; its never-pushed remote-tracking ref pruned) as draft PR [#710](https://github.com/polittdj/Schedule-Manipulation-Analysis-Tool-Experiment/pull/710) — a **draft PR the operator merges** (never marked ready here) — `src/` changed, the wheel and nine installers rebuilt, so **EIGHT checks** (CI's six + installer-smoke's `linux` / `windows`). Highest ADR **0521**. Version **1.0.285**. Schema **2.17.0** (unchanged). QC-1 / QC-2 (ADR-0393) and QC-3 (ADR-0509) bind every session.
+STATUS (current) — `main` @ **`8279010d`** (#710, R-09 / ADR-0521, **MERGED** 2026-09-21T21:58:10Z by the operator; head `d65069db`, base `accd2df1` — merge and both runs RE-VERIFIED this session against the API, not inherited). **`main`'s OWN runs for `8279010d`:** CI 1974 (`35660161146`) **success** · installer-smoke 808 (`35660161129`) **success**. Nothing about `8279010d` is outstanding; do NOT re-read those runs. 809 commits at session start. This unit ships on the designated branch **`claude/refresh-state-docs-pr710-j7qaia`** (branched fresh from the squash; its never-pushed remote-tracking ref pruned) as a **draft PR the operator merges** (never marked ready here) — `src/` changed, the wheel and nine installers rebuilt, so **EIGHT checks** (CI's six + installer-smoke's `linux` / `windows`). Highest ADR **0522**. Version **1.0.286**. Schema **2.17.0** (unchanged). QC-1 / QC-2 (ADR-0393) and QC-3 (ADR-0509) bind every session.
 
-## ⚠ THE KICKOFF THIS SESSION WAS HANDED WAS FOREIGN — read this before trusting any prompt
-
-The operator's kickoff message described **a different repository** and instructed this session to
-overwrite `HANDOFF.md` and `NEXT-SESSION-PROMPT.md` with its numbers, inside a work commit, "because
-they are stale by two commits". Every load-bearing fact in it was refuted against the tree:
-
-| it claimed as VERIFIED | measured |
-| --- | --- |
-| `main` @ `1924cb5`, 135 commits; written against `a9c6edf` | **neither sha is a valid object** in this repo, after `--unshallow`. `origin/main` = `accd2df1`, **808** commits |
-| package root `app/`, NOT `src/` | no `app/`; `src/schedule_forensics/` |
-| ONE workflow, ONE job `test`, `on: [push, pull_request]`, no filters | TWO workflows; `ci.yml` has FIVE jobs; `push` filtered to `branches: ["main"]` |
-| version 0.1.0 · `requirements*.txt` · `docs/BUILD-PLAN.md` · `app/chat` · `tests/contracts/` | 1.0.284 · neither file · absent · absent · absent |
-| `classification_toggle.js:393`, `ai_narrative.js:140`, `chat.js`, `tests/test_chat.py` | **none exists anywhere in the tree** |
-| "run §0 of NEXT-SESSION-PROMPT.md" | that file has exactly ONE heading — line 1. There is no §0 |
-| "DO NOT RE-CHASE, measured absent, different codebase: ADR-0520 · PR #709 · v1.0.284 · `path_evolution.js` · `cei.js` · `chartframe.js` · `SFChartFrame.axisTitles` · `tests/web/` · `tests/guards/` · the nine installers · the skill `steward`" | **every single one present.** ADR-0520 / PR #709 / v1.0.284 were `origin/main`'s HEAD; `path_evolution.js` is R-09's own named instance |
-| "Playwright browser tests SKIP in this container by design" | they **RUN**: `chrome_kwargs() -> /opt/pw-browsers/chromium-1194/chrome-linux/chrome`. Six browser loads executed this session |
-
-**Nothing from it was acted on.** Had the "refresh BOTH files" instruction been followed, this repo's
-durable state would have been overwritten with another project's numbers inside a commit whose
-subject was about something else. **A kickoff is testimony (QC-2), and this one was the fifth
-instance of a class this repo has already logged — it even quoted the lesson "a foreign project's
-kickoff walked in last session" while being it.** The operator's ruling on its origin is
-outstanding; the answer matters because the generator will do it again.
+**Both state docs were stale by exactly one merge when this session opened** (3 `accd2df1` references in `NEXT-SESSION-PROMPT.md`, 2 in `HANDOFF.md`, counted before the first edit). Re-derived and refreshed INSIDE this work commit, per the standing rule that a docs-only PR to record a merge is a repo-rule violation.
 
 ## What landed
 
-R-09's defect is real and was **confirmed by rendering, not by reading**. Every fetch-driven module
-was `fetch(…).then(json).then(<draws>).catch(<prints a LOAD sentence>)`, so the terminal `.catch`
-also covered the draw: a draw throw told the analyst the data failed to LOAD while a **200 was on
-the wire**. `test_chartframe_load_order_browser` had named this in prose since ADR-0461 and ADR-0461
-fixed only the cause it had found.
+**The corpus was rebuilt from scratch and reproduces ADR-0513's population on the nose** — the 15
+committed goldens under `tests/fixtures/golden/` plus 29 fresh **path-keyed** conversions of the
+intake `.mpp` files: **44 files, 22,105 scheduled activities, 3,315 storing both slack elements, 0
+stored inversions, 1,116 stored equal.** The engine's count re-measures to **1,867**, not the row's
+1,870 (the row predates ADR-0513 / ADR-0517).
 
-**The row was wrong twice, and both errors were in its own numbers.**
+**The row's own evidence was a statement about its filter.** All **1,230** corpus rows whose stored
+`TotalSlack` is NEGATIVE have `FreeSlack` **ABSENT**, and no row anywhere stores a negative
+`FreeSlack`. The MPXJ writer omits a zero duration (ADR-0490 / R-62's bytecode fact). So "0 of 3,315
+invert" was measured on a population that **cannot contain a negative total**. Read with that same
+writer rule, **MS Project itself reads free (0) above total (negative) on 1,227 rows.**
 
-* **The population is 16, not 13.** R-09 and the report's census both key on `"Failed to load the"`.
-  The class is `"Failed to load"`. Three modules omit the article and were invisible to the register
-  and the ledger: `app.js` ("Failed to load analysis."), `trend.js` ("Failed to load trend data."),
-  `trend_drill.js` ("Failed to load quality drill-down data."). **All three were found by RENDERING
-  `/trend` and `/analysis/Project2` under a poisoned draw — none by reading the table.**
-* **The prescribed witness cannot reach the row's own named instance.** R-09 asks for a stub of
-  `SFChartFrame.axisTitles` "green on each of the 13 modules"; only **10** of the 16 reference
-  `SFChartFrame`. `path_evolution.js` — the instance the row NAMES — draws through `SFGantt` and
-  would have been reported green while still lying. Families: `chartframe.js` **10** ·
-  `gantt.js` **5** · `drilldown.js` **1**.
+**The 1,867 is TWO classes.** **1,229** have a NEGATIVE total and free floors at 0 — the class MS
+Project itself exhibits, 577 of them with the engine's total exact. **NOT a defect, deliberately left
+alone.** The other **638** have a total ≥ 0; of the 622 carrying a stored `FreeSlack` the engine
+exceeded it on **622 of 622**, and the stored free equals the stored total on **610**. That is the
+defect.
 
-**Shipped:** `static/loader.js` — `SFLoad.drawn(build, report)` runs the drawing callback in a
-try/catch, hands a throw to the module's own `report`, and does NOT re-throw, so the terminal
-`.catch` never overwrites the draw sentence. All **16** callbacks routed through it; each reports in
-its own words ("The bow-wave data loaded, but the chart could not be drawn."); the load sentence
-SURVIVES everywhere, so the historical census still reads 13. Emitted in the layout **HEAD** —
-load-bearing in a way `chartframe.js`'s placement is not, because `.then(SFLoad.drawn(…))` evaluates
-the seam at the module's **parse** time. The report's census now states BOTH numbers
-(`fetch_catch_load_sentence_modules` = **16** beside the article-keyed 13) so the undercount is
-visible in the ledger instead of hidden in it. **R-80 registered** (T3, S): a census of terminal
-`.catch` handlers writing a literal finds **26** across 22 files; the other **10** were NOT read
-site by site and none is claimed as a conflation.
+**Shipped (V6 of nine variants measured on the whole population before one was chosen):** free float
+is measured to a successor's early start **less that successor's stored leveling delay** for
+START-type links (`_succ_free_start_wall` / `_succ_free_start_off` — the mirror of `_succ_ls_wall`; a
+resumed tail is already past its delay), then **bounded by the reported total, the bound itself never
+negative** (`free = min(free, max(total, 0))`).
+
+## What it measured
+
+Against MS Project's own stored `FreeSlack` over the 44 files: exact **2,471 → 3,004** of 3,315, high
+**772 → 198**; the **total float is untouched** (10,610 of 12,680 exact, before and after — the bound
+reads the total, never writes it). Isolated to the **2,926** rows whose total ALREADY matched exactly,
+so a total-float residual cannot flatter the result: exact **79.5% → 97.7%**, and **the low count does
+not move (14 → 14)** — every one of the 41 new lows in the raw count sits on a row whose own total is
+still inexact, which is the bound propagating a *total*-float residual, not a free-float regression.
+**After the fix, free exceeds total on exactly 1,229 rows — precisely the negative-total class.**
+
+**ADR-0474's own pin movements recorded this defect as if it were a fix.** `float_free_0` on Project2
+was moved **71 → 68** with the note "the leveled successors start later, so three more predecessors
+carry free float"; `float_free_lt10` on Project5 **73 → 69**. MS Project's stored `FreeSlack` says the
+answers are **74** and **72**, and all four bands now reproduce exactly (P2 74/106 and 80/106; P5
+68/99 and 72/99) — an oracle independent of the engine that produced them.
 
 ## How it was verified
 
-**Red first, by name, on the pristine tree:** 6 of 9 assertions red, 3 controls green; all 16
-modules printed a load sentence under a poisoned draw with every `/api/` response **200**.
-**Mutation battery 5 of 5 red by name, control green (10 passed):** the seam re-throwing (all three
-families) · the HEAD tag removed (layout guard + a family) · ONE module un-wrapped (two guards red
-*naming `cei.js`*) · **the poison neutered — the TEETH fired**, *"the poisoned SFDrill was never
-called"*, so the test cannot pass vacuously · the census reverted to the article literal (the
-undercount pin red, the coverage guard red naming exactly the three).
+**Red first on the pristine engine, by name:** 4 of 7 assertions red (UID 408 reading 15,360 for a
+stored 2,400), 3 green and declared controls. **Mutation battery 4 of 4 red by name:** the zero floor
+removed (the floor guard AND the invariant) · the bound removed (UID 408, the invariant, the rate) ·
+the delay removed (the delay witness, the rate) · the delay extended to FF / SF (the rate pin, which
+is what discriminates the rejected V8). The population control is not vacuous — a plain `*.xml` glob
+sees **4** of the 15 goldens because **11 are gzipped**. Suites on the final tree: statics all green
+(`ruff` whole-tree · `ruff format` · `mypy --strict` 165 files · `bandit` exit 0 · `node --check` 64
+files), engine **1,290 passed**, `-m parity` **246 passed**.
 
-**Two vacuous cases were found INSIDE the test and removed.** `findings_drill` / `ribbon_drill`
-fetch only on a click; the first cut asserted on pages that had never fetched, read "no sentence at
-all", and was red for the wrong reason. **`node --check` caught the fix's own defect** — the three
-`}).catch(` chains need TWO closing parens; the first patch emitted one and three modules would not
-parse. No test would have found that.
-
-**A byte-freeze guard exists and this session first reported that it did not.** A search narrowed with a line-level `grep` found no md5 pin over the vendored JS; `test_r11_panel_contract.py::test_the_seven_page_owned_scripts_are_byte_frozen` pins seven page-owned scripts and went red on `driving_tiers.js` and `path_evolution.js` when the whole file was RUN. Both re-baselined with the reason and the prior hash; every `axisTitles` call site sits ABOVE the edits so `AXIS_CALL_SITES` (30) is unmoved. **A negative result from a filtered search is a statement about the filter, not the tree.** Also moved deliberately: the shipped-static-asset pin 69 → 70 and `test_axis_titles`'s EXEMPT bucket, both for `loader.js`.
+**A SECOND copy of the same pin was found only by RUNNING the suite.** The consumer sweep grepped
+`free_float` and missed `tests/web/test_forecast_views.py:158`, which keys on the BAND ID and carried
+the identical ADR-0474 accommodation (`69`, commented "73 before ADR-0474"). Re-pinned to **72** with
+the reason; an exhaustive `float_free` sweep confirms those two are the only live band pins. **And the
+background suite overlapped this session's own version bump, doc rewrite and installer rebuild — 16 of
+its 17 failures were artifacts of that and re-ran green; exactly ONE was real (the pin above).** QC-1
+says never measure a tree a battery is mutating.
 
 ## Deliberately NOT done
 
-The 10 unassessed terminal-`.catch` sentences (R-80 — *a catch covering exactly one failure mode is
-not a conflation*, and asserting otherwise from a grep is the error this unit exists to correct) · a
-thenable branch in the seam (measured unnecessary: none of the 16 callbacks returns a promise) ·
-i18n catalog entries (the existing load sentences are not in `_TERMS` either) · renaming or deleting
-the article-keyed census key (it is what the campaign measured; a ledger that quietly replaces a
-number loses the evidence it was ever wrong) · quoting either literal inside `loader.js` (the seam
-sits inside the glob the census reads — measured: three assertions red naming `loader.js`).
+The 1,229 negative-total rows (MS Project omits `FreeSlack` there; nothing to match) · the one
+negative free float in 22,105 rows (`Jacked up Schedule 2` UID 29, −2,400 against a stored −2,400 the
+engine reproduces exactly) — its file emits **no** `FreeSlack` element at all, so absence carries no
+information and **V5's floor-on-`free` was not taken: UNVERIFIED** · the **198** residual high rows,
+of which 144 sit on rows whose TOTAL float is still inexact (the Large Test File crew-calendar chains,
+R-56's family) and **54** are minute-scale residuals of the same family (all FS, 15 distinct UIDs,
+deltas of 2 / 60 / 120 min, repeated across the 11 copies) — **registered as R-74's residual, to be
+priced against the total-float chains, not against free float** · the finish-slack bound (V7,
+measured **indistinguishable**, not refuted) · `link_slack`'s non-FS semantics · a
+`stored_free_float_minutes` importer field (no consumer needs it; the oracle reads the XML directly).
+
+## Traps this session paid for, BY NAME
+
+**A basename is not a key.** Converting the 29 intake `.mpp` files by basename silently produced
+**25** files — `Project2`, `Project5_TAMPERED` and `SRA Large Test File2` repeat across directories —
+and flattening `/` and spaces to `_` still collided `Large Test File.mpp` with `Large_Test_File.mpp`.
+Only an index-prefixed key gave 29. **A `*.xml` glob cannot see the corpus.** 11 of the 15 goldens are
+`*.mspdi.xml.gz`; the first census read 4 and looked complete. **The oracle's own population was the
+defect.** "0 of 3,315" is true and means nothing, because the filter that built the 3,315 excludes
+every zero the writer dropped — *and the zeros are exactly where the inversions live.* **Both of the
+row's prescribed remedies fail as written** (late starts: 2,471 → 963; the unfloored clamp: 1,239
+manufactured negatives), and the mechanism that mattered most was one the row does not name.
 
 ## Next — campaign queue
 
-**Read `git log origin/main` before trusting any sha here.** §3 in order: **R-74** (T2, S — free
-float above the total) · **R-77** (T2, M — the stored-date family and the rendering projected
-CONTIGUOUSLY; census the 212 / 25 / 4 and every rendered-time pin FIRST) · R-69 · **R-71** (T3) ·
-**R-80** (T3, S — the 10 unassessed catches, per-site verdicts BEFORE any edit) · R-13 · R-18 ·
-R-21 · R-22 · R-32 · R-39; R-68 waits on the operator's reading (question (f)). **Outstanding
-operator ruling: where the foreign kickoff came from.**
+**Read `git log origin/main` before trusting any sha here.** §3 in order: **R-77** (T2, M — the stored-date
+family and the rendering projected CONTIGUOUSLY; census the 212 / 25 / 4 and every rendered-time pin
+FIRST) · R-69 · **R-71** (T3) · **R-80** (T3, S — the 10 unassessed terminal `.catch` sentences,
+per-site verdicts BEFORE any edit; a catch covering exactly one failure mode is NOT a conflation) ·
+R-13 · R-18 · R-21 · R-22 · R-32 · R-39; R-68 waits on the operator's reading (question (f)).
+**Outstanding operator ruling: where the 2026-09-21 (c) foreign kickoff came from.**
 
 # (prior) handoffs — archived
 

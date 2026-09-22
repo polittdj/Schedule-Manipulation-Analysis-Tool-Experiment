@@ -155,7 +155,14 @@ def test_report_page_shows_float_bands_and_completion_panels(client: TestClient)
     assert "18 of 27 (66.7%)" in page  # completed behind baseline
     data = client.get("/api/analysis/Project5").json()
     assert data["float_bands"]["float_total_0"]["count"] == 4
-    assert data["float_bands"]["float_free_lt10"]["count"] == 69  # 73 before ADR-0474
+    # RE-PINNED 69 -> 72 on 2026-09-22 (R-74, ADR-0522); ADR-0474 had moved it 73 -> 69. Both
+    # earlier figures were the DEFECT: a leveled successor's delay went into its early start
+    # without coming out of the free-float measurement, so a predecessor was credited with slack
+    # that belongs to the delay. MS Project's own stored FreeSlack is under 10 days on exactly 72
+    # of these 99 incomplete activities. The engine-side twin of this pin lives in
+    # tests/engine/metrics/test_float_bands.py::test_golden_pins -- THIS one was missed by a
+    # consumer sweep that grepped "free_float", because it keys on the band ID instead.
+    assert data["float_bands"]["float_free_lt10"]["count"] == 72
     assert data["completion"]["avg_days_late"]["value"] == 39.2
     assert data["completion"]["mei"]["population"] == 0  # NA on the goldens — honest
 

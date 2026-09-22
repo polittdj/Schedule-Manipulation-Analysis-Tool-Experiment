@@ -435,6 +435,55 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-22 — an oracle's POPULATION is a claim: the filter that built R-74's evidence excluded exactly the rows that could have refuted it (ADR-0522, R-74 closed)
+
+* **"0 of 3,315" was true and meant nothing.** R-74 proved MS Project never stores a free slack above
+  its total slack by counting the activities that store BOTH elements. But the MPXJ writer omits a
+  zero duration (ADR-0490's own bytecode fact), every one of the 1,230 rows with a NEGATIVE stored
+  total has its `FreeSlack` omitted, and **the inversions live exactly in those dropped zeros**. Read
+  with the writer's rule, MS Project inverts the pair on 1,227 rows. *A population defined by "carries
+  the field" silently excludes every case whose value was zero — and zero is rarely a neutral value.*
+* **The repo already owned the inference and did not apply it.** ADR-0490 and R-62 established
+  "absent == a dropped zero" for `TotalSlack` from the same writer. Nobody carried it across to
+  `FreeSlack`, so an audit row built its whole case on the un-inferred half. *An inference proved for
+  one field is a candidate for every field the same writer emits.*
+* **Both prescribed remedies failed, and the mechanism that mattered was unnamed.** Measuring free
+  slack to the successors' LATE starts collapsed the exact count 2,471 → 963. "Bounded by the total"
+  as literally written manufactured 1,239 negative free floats the corpus never stores — it needed the
+  bound floored at zero, which the row does not say. And the second real mechanism was not in the row
+  at all: ADR-0474 had put a leveled successor's delay INTO its early start and OUT of the need it
+  presents backward, but never out of the free-float measurement. *A row's remedy is a hypothesis with
+  the same standing as its finding, and a plan that only tests the remedies it was handed cannot find
+  the one it was not.*
+* **A pin moved to accommodate a defect looks exactly like a pin moved by a fix.** ADR-0474 moved
+  `float_free_0` on Project2 71 → 68 and wrote the reason down — "the leveled successors start later,
+  so three more predecessors carry free float" — which is the bug described as a feature. MS Project's
+  own stored values say 74. *When a change moves a parity pin, ask what the REFERENCE TOOL says the
+  number is, not whether the movement is explainable.*
+* **Two keys collapsed a 29-file corpus to 25 and then to 28.** Converting the intake `.mpp` files by
+  basename lost four (`Project2`, `Project5_TAMPERED`, `SRA Large Test File2` repeat across
+  directories); flattening `/` and spaces to `_` still collided `Large Test File.mpp` with
+  `Large_Test_File.mpp`. And a `*.xml` glob saw 4 of the 15 goldens, because 11 are `*.mspdi.xml.gz`.
+  *Every naming scheme is a hash function; verify it is injective on the actual inputs, and count the
+  population before believing a census built on it.*
+* **A consumer census keyed on the attribute name cannot see a consumer keyed on the metric id.** The
+  same defect-accommodating pin lived twice: `test_float_bands.py` (found by grepping `free_float`) and
+  `test_forecast_views.py` (keyed on `data["float_bands"]["float_free_lt10"]`, invisible to that grep,
+  found only by RUNNING the suite). *Sweep the identifier space the consumers actually use — the field
+  name AND the string key — or run the suite and let it tell you.*
+* **Never measure a tree a battery is mutating — this is what ignoring it costs.** A background full
+  suite overlapped this session's version bump, doc rewrite and installer rebuild, and produced 17
+  failures of which **16** were the version chip, settings receipt and wheel lockstep re-reading a tree
+  that had moved. Exactly one was real, and it was sitting inside the pile. *A batch of failures you
+  have to triage is worse than no run at all, because the real one hides in it.*
+
+* **The honest statement of a fix is the one that isolates it.** Raw counts said the change cost 41
+  newly-low figures. Restricted to the 2,926 rows whose TOTAL float already matched exactly, exact went
+  79.5% → 97.7% and the low count did not move at all — all 41 sit on rows whose own total is still
+  wrong, which is the new bound faithfully propagating a *different* defect. *Report the measure that
+  could separate your change from the residual it inherits, or you will be arguing about the wrong
+  number.*
+
 ### 2026-09-21 (c) — every crude filter under-reports, and it under-reports in the direction that makes the work look done; a kickoff is testimony and this one was another project's (ADR-0521, R-09 closed; R-80 registered)
 
 * **Seven instruments under-reported in one unit, all the same way.** A zero-arg `render();` regex said

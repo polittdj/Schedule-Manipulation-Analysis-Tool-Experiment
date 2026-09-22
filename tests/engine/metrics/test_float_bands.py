@@ -147,10 +147,19 @@ def test_golden_pins(golden_project2: Schedule, golden_project5: Schedule) -> No
     # 45 since ADR-0474 (46 before): the recomputed float now equals MS Project's stored slack
     # on every Project2 activity that carries one (65 / 65), so the <10-day band follows the file
     assert p2["float_total_lt10"].count == 45
-    # 68 since ADR-0474 (71 before): the leveled successors start later, so three more
-    # predecessors carry free float
-    assert p2["float_free_0"].count == 68
+    # RE-PINNED 68 -> 74 on 2026-09-22 (R-74, ADR-0522), and 71 -> 68 by ADR-0474 before it.
+    # Both earlier figures were the DEFECT, not the fix: ADR-0474 put a leveled successor's delay
+    # into its early start without taking it out of the free-float measurement, so a predecessor
+    # was credited with slack that belongs to the delay, and the pin was moved to accommodate it.
+    # 74 is MS Project's OWN answer -- its stored FreeSlack is zero (the element absent, its
+    # writer's dropped zero) on exactly 74 of these 106 incomplete activities -- and the <10-day
+    # band agrees the same way, 80 of 106. An oracle independent of the engine that produced it.
+    assert p2["float_free_0"].count == 74
+    assert p2["float_free_lt10"].count == 80
     p5 = compute_float_bands(golden_project5)
     assert (p5["float_total_0"].count, p5["float_total_0"].population) == (4, 99)
     assert p5["float_total_lt10"].count == 5
-    assert p5["float_free_lt10"].count == 69  # 73 before ADR-0474 (leveled successors)
+    # RE-PINNED 69 -> 72 on 2026-09-22 (R-74, ADR-0522); 73 -> 69 by ADR-0474, same defect as
+    # above. MS Project stores FreeSlack < 10 days on exactly 72 of these 99, and zero on 68.
+    assert p5["float_free_lt10"].count == 72
+    assert p5["float_free_0"].count == 68

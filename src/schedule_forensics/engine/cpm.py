@@ -203,6 +203,13 @@ class TaskTiming:
     ``total_float``/``free_float`` are working minutes (convert at the presentation
     boundary via :mod:`schedule_forensics.model.units`). ``is_critical`` is the pure
     CPM property ``total_float <= 0``.
+
+    ``free_float`` is **bounded by** ``total_float`` whenever the total is not negative
+    (R-74, ADR-0522): MS Project's stored Free Slack is never larger than its Total Slack
+    and is stored equal to it on 1,116 of the 3,315 corpus activities that carry both. Where
+    the total is NEGATIVE the bound does not apply — MS Project omits Free Slack there rather
+    than storing a negative, so the free float keeps whatever the logic gives it (0 on every
+    such corpus row) instead of being dragged down with the total.
     """
 
     unique_id: int
@@ -328,6 +335,11 @@ def link_slack(rel: RelationshipType, es_p: int, ef_p: int, es_s: int, ef_s: int
     Reduces to the standard FS free float. For SS/FF/SF this is the slack at the
     link's governing event (reference tools vary on non-FS free float; total float —
     the primary forensic signal — is exact for every type).
+
+    The caller supplies the successor's early instants; for a START-type link it must pass
+    the instant LESS the successor's stored leveling delay, because that delay sits between
+    the predecessor's finish and the successor's work and is not slack the predecessor owns
+    (R-74, ADR-0522 — :func:`_succ_free_start_wall` / :func:`_succ_free_start_off` do this).
     """
     if rel is RelationshipType.FS:
         return es_s - (ef_p + lag)
@@ -3011,6 +3023,35 @@ def compute_cpm(
             return ms_wall[s]
         return _offset_to_wall(ps, rem_start.get(s, early_start[s]) - lag, cal, role="start")
 
+    def _succ_free_start_wall(s: int, lag: int) -> dt.datetime:
+        """The instant a START-type link's successor needs, for FREE float — the mirror of
+        :func:`_succ_ls_wall` (R-74, ADR-0522).
+
+        The forward pass ADDS a successor's stored leveling delay to its early start and the
+        backward pass SUBTRACTS it from the need it presents (``ls_need``), because the delay
+        sits between the predecessor's finish and the successor's work. Measuring free float to
+        the raw early start therefore counted the delay as slack the predecessor owns:
+        Hard_File UID 14 read 600 minutes of free float against a total of 0, the 10 elapsed
+        hours of UID 141's delay. A resumed tail is already past its delay (the ``rem_start``
+        branch), exactly as in :func:`_succ_ls_wall`."""
+        w = _succ_early_start_wall(s, lag)
+        if s in rem_start or s in rem_start_wall:
+            return w
+        delay = task_by_id[s].leveling_delay_minutes
+        return w - dt.timedelta(minutes=delay) if delay else w
+
+    def _succ_free_start_off(s: int) -> int:
+        """:func:`_succ_free_start_wall` on the project axis, for a predecessor on the fast
+        path whose successor carries a delay (a leveled task is always in ``exec_plan``, so its
+        wall instant is the ruler the delay was applied on)."""
+        off = rem_start.get(s, early_start[s])
+        if s in rem_start:
+            return off
+        delay = task_by_id[s].leveling_delay_minutes
+        if not delay or s not in es_wall:
+            return off
+        return _wall_to_offset(ps, es_wall[s] - dt.timedelta(minutes=delay), cal)
+
     def _succ_early_finish_wall(s: int, lag: int) -> dt.datetime:
         if lag == 0 and s in exec_plan:
             return ef_wall[s]
@@ -3028,9 +3069,9 @@ def compute_cpm(
                 free_cands = []
                 for s, rel, lag in free_links:
                     if rel is RelationshipType.FS:
-                        anchor, need = ef_wall[tid], _succ_early_start_wall(s, lag)
+                        anchor, need = ef_wall[tid], _succ_free_start_wall(s, lag)
                     elif rel is RelationshipType.SS:
-                        anchor, need = es_wall[tid], _succ_early_start_wall(s, lag)
+                        anchor, need = es_wall[tid], _succ_free_start_wall(s, lag)
                     elif rel is RelationshipType.FF:
                         anchor, need = ef_wall[tid], _succ_early_finish_wall(s, lag)
                     else:  # SF
@@ -3064,7 +3105,7 @@ def compute_cpm(
                         rel,
                         early_start[tid],
                         early_finish[tid],
-                        rem_start.get(s, early_start[s]),  # R-72: the remaining's start
+                        _succ_free_start_off(s),  # R-72 / R-74: the remaining's start, less a delay
                         early_finish[s],
                         lag,
                     )
@@ -3077,6 +3118,17 @@ def compute_cpm(
         violation = pin_violation.get(tid)
         if violation is not None and violation < total:
             total = violation
+        # R-74 (ADR-0522): free float is BOUNDED BY the total — MS Project's Free Slack is never
+        # larger than its Total Slack, and is stored EQUAL to it on 1,116 of the 3,315 corpus
+        # activities that carry both (and on 116 of 116 that have no successor at all). The
+        # bound is the REPORTED total, so the invariant holds on the figures the analyst reads.
+        # The bound itself never goes negative: where the total is negative MS Project omits
+        # Free Slack (its writer drops a zero, ADR-0490) rather than storing the negative, so
+        # clamping to a negative total would MANUFACTURE a value the corpus never stores — 1,239
+        # of them, measured. A free float that is itself negative (a successor starting before
+        # its predecessor finishes) is left alone: nothing in the corpus witnesses what MS
+        # Project stores there, so nothing is asserted about it.
+        free = min(free, max(total, 0))
         timings[tid] = TaskTiming(
             unique_id=tid,
             early_start=early_start[tid],
