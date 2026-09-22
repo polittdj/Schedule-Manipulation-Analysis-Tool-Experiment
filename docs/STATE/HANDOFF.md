@@ -1,6 +1,6 @@
 # Handoff — 2026-09-22 (R-74 **CLOSED** (ADR-0522) — free float is **BOUNDED BY** the total, a successor's leveling delay is **not slack the predecessor owns**, and the row's evidence that MS Project "never" inverts the pair was a statement about a **FILTER** — **v1.0.286**)
 
-STATUS (current) — `main` @ **`8279010d`** (#710, R-09 / ADR-0521, **MERGED** 2026-09-21T21:58:10Z by the operator; head `d65069db`, base `accd2df1` — merge and both runs RE-VERIFIED this session against the API, not inherited). **`main`'s OWN runs for `8279010d`:** CI 1974 (`35660161146`) **success** · installer-smoke 808 (`35660161129`) **success**. Nothing about `8279010d` is outstanding; do NOT re-read those runs. 809 commits at session start. This unit ships on the designated branch **`claude/refresh-state-docs-pr710-j7qaia`** (branched fresh from the squash; its never-pushed remote-tracking ref pruned) as a **draft PR the operator merges** (never marked ready here) — `src/` changed, the wheel and nine installers rebuilt, so **EIGHT checks** (CI's six + installer-smoke's `linux` / `windows`). Highest ADR **0522**. Version **1.0.286**. Schema **2.17.0** (unchanged). QC-1 / QC-2 (ADR-0393) and QC-3 (ADR-0509) bind every session.
+STATUS (current) — `main` @ **`8279010d`** (#710, R-09 / ADR-0521, **MERGED** 2026-09-21T21:58:10Z by the operator; head `d65069db`, base `accd2df1` — merge and both runs RE-VERIFIED this session against the API, not inherited). **`main`'s OWN runs for `8279010d`:** CI 1974 (`35660161146`) **success** · installer-smoke 808 (`35660161129`) **success**. Nothing about `8279010d` is outstanding; do NOT re-read those runs. 809 commits at session start. This unit ships on the designated branch **`claude/refresh-state-docs-pr710-j7qaia`** (branched fresh from the squash; its never-pushed remote-tracking ref pruned) at commit **`c98a96b7`** as draft PR [#711](https://github.com/polittdj/Schedule-Manipulation-Analysis-Tool-Experiment/pull/711) — a **draft PR the operator merges** (never marked ready here) — `src/` changed, the wheel and nine installers rebuilt, so **EIGHT checks** (CI's six + installer-smoke's `linux` / `windows`). Highest ADR **0522**. Version **1.0.286**. Schema **2.17.0** (unchanged). QC-1 / QC-2 (ADR-0393) and QC-3 (ADR-0509) bind every session.
 
 **Both state docs were stale by exactly one merge when this session opened** (3 `accd2df1` references in `NEXT-SESSION-PROMPT.md`, 2 in `HANDOFF.md`, counted before the first edit). Re-derived and refreshed INSIDE this work commit, per the standing rule that a docs-only PR to record a merge is a repo-rule violation.
 
@@ -64,6 +64,14 @@ the reason; an exhaustive `float_free` sweep confirms those two are the only liv
 background suite overlapped this session's own version bump, doc rewrite and installer rebuild — 16 of
 its 17 failures were artifacts of that and re-ran green; exactly ONE was real (the pin above).** QC-1
 says never measure a tree a battery is mutating.
+
+**The local gate's verdict, stated precisely.** Everything ran on the SETTLED tree: `ruff check .`
+whole-tree · `ruff format --check .` 712 files · `mypy --strict` 165 files · `bandit` exit 0 ·
+`node --check` 64 files · **`pytest tests` 5,785 passed / 7 skipped / 0 failed in 48m33s, `-m parity`
+included** · `-m parity` 246 passed on its own earlier · `tests/engine` 1,290 · `tests/installer` 68
+after the wheel and nine installers were rebuilt at v1.0.286. The next session reads PR #711's FINAL
+head's **eight** checks to conclusion, and if the operator has merged it, `main`'s own run for the
+squash by its JOBS.
 
 ## Deliberately NOT done
 

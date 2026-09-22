@@ -19737,3 +19737,15 @@ floor-on-`free` is **UNVERIFIED** and was not taken) · the 198 residual high ro
 whose TOTAL float is still inexact and 54 minute-scale residuals of the same Large Test File family,
 **registered as R-74's residual** · the finish-slack bound (V7, measured indistinguishable) ·
 `link_slack`'s non-FS semantics · a `stored_free_float_minutes` importer field (no consumer needs it).
+
+Pushed `claude/refresh-state-docs-pr710-j7qaia` (commit `c98a96b7`); draft PR [#711](https://github.com/polittdj/Schedule-Manipulation-Analysis-Tool-Experiment/pull/711) opened at it and
+subscribed. **EIGHT checks** apply (CI's `cui-guard` / `browser` / `floor` / `test (3.11)` /
+`test (3.13)` / `check`, plus installer-smoke's `linux` / `windows`) because `installer/**` and the
+wheel changed. **The full gate ran locally on the SETTLED tree and is green:** statics all pass
+(`ruff check .` whole-tree, `ruff format --check .` 712 files, `mypy --strict` 165 files, `bandit` exit
+0, `node --check` 64 files) and **`pytest tests` returned 5,785 passed / 7 skipped / 0 failed in
+48m33s with `-m parity` collected**; `-m parity` also ran alone (246 passed), as did `tests/engine`
+(1,290) and `tests/installer` (68, after the wheel + nine installers were rebuilt at v1.0.286). Unlike
+the previous two units, there is a single clean full-suite run on the final tree — the earlier
+overlapping run's 17 failures were triaged to 16 mid-run artifacts and 1 real defect, and both are
+recorded above.
