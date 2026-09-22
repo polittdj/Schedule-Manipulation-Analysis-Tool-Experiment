@@ -435,6 +435,45 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-22 — R-77 / ADR-0523: the axis pair, and four traps paid for in one session
+
+**A shadow copy of `src/` is not the tree.** The standing recipe (`cp -a src <scratch>/vN/src;
+PYTHONPATH=<scratch>/vN/src`) silently breaks every MPXJ-dependent path, because the vendored-MPXJ
+discovery walks up from the PACKAGE's `__file__` and a shadow that holds only `src` has no
+`tools/mpxj`. The first suite run under the shadow reported **22 failures and 3 errors** in
+`tests/importers` — Java discovery, conversion, sidecar views — every one of which read as a
+consequence of the change under test. The pristine control was **486 passed**, and symlinking
+`tools/` into the shadow root turned 22 failures into **382 passed with the code unchanged**. A
+session that skipped the control would have spent the day chasing regressions that did not exist.
+**The recipe should be: `cp -a src <scratch>/vN/src` PLUS symlinks for `tools/` and
+`00_REFERENCE_INTAKE/`.**
+
+**`schedule_forensics.__version__` reports the INSTALLED distribution, not the imported source.**
+It is resolved through `importlib.metadata`, so a shadow-copy measurement that checks the version to
+confirm which tree it loaded gets the wrong answer every time — the v1.0.281 worktree reported
+**1.0.286**. Probe for a SYMBOL instead (`_succ_free_start_wall` exists only from ADR-0522), and
+prove the probe with a named positive AND a named negative.
+
+**A pin that is projected and rendered by the same ruler cancels its own error.** The first census
+compared the engine's rendered instant against MS Project's stored instant and found R-77's class-1
+population to be ZERO — because a stored date read through `clamp()` and written back through the
+same `clamp()` round-trips exactly. The defect was invisible to the measure and visible only at the
+PROJECTION, where the row's four reproduced exactly. **When a claim is about a conversion, measure
+the conversion, not the round trip.**
+
+**Never run two suites concurrently when either binds a port or spawns a JVM.** Three suites were
+launched at once and the MPXJ/JVM family failed; later two web runs were launched side by side and
+one Chromium audio test failed in the v2 run and not the pristine one. Both passed alone. The rule
+QC-1 already states — never measure a tree a battery is mutating — extends to shared *resources*,
+not just shared files.
+
+**And the row was right about the mechanism, wrong about its numbers and its witness — again.** R-77
+named 212 / 25 / 4 and EVM2 UID 23. Only the **4** reproduces, and only under a measure the row's
+prose does not state. EVM2 UID 23 is exact on both axes. The class the row does NOT count —
+**15,224 of 22,105** rendered finishes sitting one lunch gap early — is the defect. This is the third
+consecutive unit (R-74, R-09, R-77) where a register row's arithmetic survived and its population
+did not. **Re-measure a row's population before pricing its remedy; the row's own filter is a claim.**
+
 ### 2026-09-22 — an oracle's POPULATION is a claim: the filter that built R-74's evidence excluded exactly the rows that could have refuted it (ADR-0522, R-74 closed)
 
 * **"0 of 3,315" was true and meant nothing.** R-74 proved MS Project never stores a free slack above

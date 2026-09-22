@@ -19749,3 +19749,39 @@ wheel changed. **The full gate ran locally on the SETTLED tree and is green:** s
 the previous two units, there is a single clean full-suite run on the final tree — the earlier
 overlapping run's 17 failures were triaged to 16 mid-run artifacts and 1 real defect, and both are
 recorded above.
+
+---
+
+## 2026-09-22 (b) — R-77 CLOSED (ADR-0523): the project axis is working minutes in BOTH directions
+
+Branch `claude/handoff-document-review-46tus2` (already on `d942832d`, #711's squash). §0 was run
+before the first edit and the tree agreed on every point: `origin/main` `d942832d`, 810 commits,
+`src` present and `app` absent, `ci.yml` + `installer-smoke.yml`, version 1.0.286, highest ADR 0522.
+PR #711's merge was re-verified against the API and its final head's tree (`3f1fa91c` →
+`ac2afe10`) is byte-identical to the squash's.
+
+**Shipped.** `datetime_to_offset` / `offset_to_datetime` as a segment-aware PAIR guarded on
+`declared_segments`, plus `_tod_at_worked_start` (the start-role spelling at an internal block
+boundary). ADR-0322's two-ruler rule superseded in part.
+
+**The row's numbers did not survive.** Only R-77's **4** reproduces, and only as a projection error
+at the stored instant; its **212** and **25** reproduce under no constructible measure; its named
+witness EVM2 UID 23 is exact on both axes; and an identical census at v1.0.281 returns the same
+figures, so it is not drift. The class the row does not count — **15,224 of 22,105** rendered
+finishes one gap early — is the defect.
+
+**Measured** against MS Project's stored slack over 44 files: total exact 10,610 → **11,041** of
+12,680, free exact 3,004 → **3,094** of 3,315 (high 198 → 134, low 113 → 87); rendered instants exact
+22,453 → **41,950** of 44,210. Three instants lost, all UID 305 across one file's three copies.
+
+**Verified.** Red-first 5 of 9 by name with 4 declared controls; 9 of 9 green after; mutation battery
+4 of 4 red by name; the patch proven behaviourally identical to the validated shadow before it
+touched the tree. Gate on the settled tree: `ruff check .` whole-tree · `ruff format --check .` 713
+files · `mypy --strict` 165 files · `bandit` exit 0 · `node --check` · `tests/engine` **1,299 passed**
+· `-m parity` **249 passed**.
+
+**Traps paid for, by name:** a shadow copy of `src/` is not the tree (no `tools/mpxj`: 22 phantom
+importer failures, 382 passed once symlinked) · `__version__` reports the INSTALLED distribution ·
+a pin projected and rendered by the same ruler cancels its own error · never run two suites
+concurrently when either binds a port or spawns a JVM · `pkill -f` matches its own command line ·
+red-first found three defects in the NEW TEST before any in the code, one of them a vacuous census.
