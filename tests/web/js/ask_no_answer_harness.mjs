@@ -21,6 +21,19 @@ const here = dirname(fileURLToPath(import.meta.url));
 const STATIC = join(here, "../../../src/schedule_forensics/web/static");
 const src = readFileSync(join(STATIC, "ask.js"), "utf8");
 
+// The real load/draw seam (ADR-0521), from the real file. The served layout defines it in the
+// HEAD before any body script, so a harness that omits it is not modelling the page: ask.js's
+// `.then(SFLoad.drawn(...))` then throws ReferenceError and the panel never renders (R-80,
+// ADR-0525 — this harness went red the moment the seam landed, which is the harness being
+// incomplete, not the module being wrong).
+const seamWindow = {};
+new Function("window", readFileSync(join(STATIC, "loader.js"), "utf8"))(seamWindow);
+const SFLoad = seamWindow.SFLoad;
+if (!SFLoad || typeof SFLoad.drawn !== "function") {
+  console.error("loader.js did not define SFLoad.drawn");
+  process.exit(1);
+}
+
 let failures = 0;
 function check(label, ok, extra) {
   if (!ok) {
@@ -67,7 +80,7 @@ function boot(payload) {
     createTextNode: (t) => ({ tag: "#text", _text: String(t), children: [] }),
   };
   const fetchStub = () => Promise.resolve({ ok: true, json: () => Promise.resolve(payload) });
-  new Function("document", "fetch", src)(doc, fetchStub);
+  new Function("document", "fetch", "SFLoad", src)(doc, fetchStub, SFLoad);
   const click = (ids.askBtn.listeners.click || [])[0];
   if (!click) { check("panel wired a click handler", false); return null; }
   click();

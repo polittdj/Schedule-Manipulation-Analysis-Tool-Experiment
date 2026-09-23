@@ -337,12 +337,13 @@ def test_a_milestones_late_instant_is_carried_to_its_crew_predecessor() -> None:
     and 178 / 179 / 180 retreat from it onto their stored 21:00 late finishes and their stored
     slacks 240 / 480 / 720. Milestone 404, the network's end after a crew whose finish sits
     mid-day (10-08 15:00), measures its slack between its two instants: 9,480, the stored
-    figure (the axis's contiguous projection read 9,420). The one form left, named: the engine
-    writes 178's late start at the END of the crew's morning block, 12:00, where MS Project
-    writes the START of its afternoon block, 13:00 — the same working minute on every calendar
-    in the file — so 147's carried instant reads Saturday 12:00 for the stored 13:00 (the
-    contiguous projection of the 13:00 form would hand every project-calendar predecessor the
-    lunch hour as float; registered, not chased)."""
+    figure (the axis's contiguous projection read 9,420). The one form left over from ADR-0510 —
+    the engine writing 178's late start at the END of the crew's morning block, 12:00, where MS
+    Project writes the START of its afternoon block, 13:00 — was registered as R-69 and CLOSED
+    on 2026-09-22: a late start is a start-role instant on the wall path too, so 178 / 179 / 180
+    read the stored 13:00 and 147's carried instant follows its driver to the stored Saturday
+    13:00. The late FINISHES here are untouched and must stay so — 189's 08-05 12:00 is MS
+    Project's own, and only the START role is re-spelled."""
     rel = "fuse_hardfile/Hard_File.mspdi.xml.gz"
     sch, res = _load(rel)
     stored_lf = _stored_late_finishes(rel)
@@ -352,12 +353,11 @@ def test_a_milestones_late_instant_is_carried_to_its_crew_predecessor() -> None:
     assert res.timing(181).late_finish_wall == stored_lf[181] == dt.datetime(2026, 8, 4, 21, 0)
     for uid, slack in ((178, 240), (179, 480), (180, 720)):
         assert res.timing(uid).late_finish_wall == stored_lf[uid] == dt.datetime(2026, 8, 4, 21, 0)
-        assert res.timing(uid).late_start_wall == dt.datetime(2026, 8, 4, 12, 0)
+        assert res.timing(uid).late_start_wall == dt.datetime(2026, 8, 4, 13, 0)
         assert res.timing(uid).total_float == sch.task_by_id(uid).stored_total_float_minutes
         assert res.timing(uid).total_float == slack
     assert res.timing(147).late_start_wall == res.timing(147).late_finish_wall
-    assert res.timing(147).late_finish_wall == dt.datetime(2026, 8, 1, 12, 0)
-    assert stored_lf[147] == dt.datetime(2026, 8, 1, 13, 0)
+    assert res.timing(147).late_finish_wall == stored_lf[147] == dt.datetime(2026, 8, 1, 13, 0)
     assert res.timing(147).total_float == sch.task_by_id(147).stored_total_float_minutes == 0
     assert res.timing(157).late_finish_wall == stored_lf[157] == dt.datetime(2026, 7, 31, 23, 0)
     assert res.timing(157).late_start_wall == dt.datetime(2026, 7, 31, 15, 0)

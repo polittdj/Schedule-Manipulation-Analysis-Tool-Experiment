@@ -8676,3 +8676,51 @@ a claim that was simply false, and that nobody had re-tested because the table i
   the same anchor line. Every unit test stayed green; `/scorecards` returned **HTTP 500**. Only
   rendering the page — and rendering it against the pristine tree to prove the 500 was *mine* —
   caught it. Anchor a splice on something unique to the target, and diff the two trees' renders.
+
+### 2026-09-22 (c) — a register row's BLOCKER is testimony too, and a surviving mutant is a finding about YOUR rule (ADR-0524, ADR-0525)
+
+* **The row's mechanism was right, its witness was exact, and its blocker had been dead for five
+  commits.** R-69 was priced "NOT a one-line fix" because "the contiguous projection of the 13:00
+  form reads 300 where 12:00 reads 240". ADR-0523 had made that projection segment-aware the day
+  before; both spellings now read **9360**. Three sessions have now re-verified a row's *numbers*
+  and its *mechanism*. Nobody had re-verified the sentence that said why it was expensive — and
+  that sentence is what kept the row closed for a month. **Re-measure the reason a row was
+  deferred, not only the claim it makes.** It is now pinned, so it cannot silently become true
+  again.
+* **Stale prose is load-bearing.** `_wall_to_offset`'s docstring still called itself "the CONTIGUOUS
+  canonical ruler" after ADR-0523 moved it. That docstring is the direct source of the mispricing.
+  QC-2 says documentation is in scope; this is what it costs when it is not.
+* **A surviving mutant is a finding about the rule, not just about the test.** Two of eight mutants
+  survived the first battery. One exposed a vacuous pin (the milestone control did not exercise the
+  guard it was written to protect). The other refuted the rule itself: the `duration > 0` guard I
+  had justified from a 58/54 corpus split turned out to govern a population this seam never
+  reaches — the split belongs to instants the FAST path carries. Removing the guard was **+5 / −0**.
+  A static simulation had priced it +9 / −36. **Model the code path, or measure the engine; a
+  simulation of a seam is not the seam.**
+* **A third mutant survived and the CODE was wrong, not the test.** An `is_24x7` short-circuit was
+  unreachable-in-effect (a 24×7 ruler yields one block, which the length test already caught).
+  Proven byte-identical across 22,105 activities, then deleted. A branch no check can reach is not
+  a safety margin.
+* **"A basename is not a key" cost 1,833 activities, silently.** Keying a per-activity dump on
+  `path.name` collapsed the corpus from 22,105 to 20,272, because two goldens share a basename with
+  two others. The comparison still looked self-consistent. Assert the population against a number
+  you know, every time, not just when you suspect something.
+* **Every crude filter under-reports, in the direction that makes the work look done — twice in one
+  unit.** R-69's first census read 38 instead of 47 because it required "the same working minute on
+  EVERY calendar in the file", and Hard_File's 24-hour crews have no lunch gap. R-80's registered
+  census read 26/22/10 instead of 27/23/11 because it matched a *literal* assignment: `path.js`
+  prints a **variable** and `sra.js` routes through a **setter**, so both are invisible to it.
+  **Match the SEAM, not the SENTENCE's syntax.**
+* **The analyst-facing half of R-80 is worse than the class ADR-0521 fixed.** A completed
+  Monte-Carlo reported as "Run failed.", a saved edit reported as "Save failed.", and a drawing bug
+  reported as "No driving path for that UID." are true symptoms with false explanations *about the
+  schedule itself*. Proven executably by slicing each function out of the tree's own bytes and
+  running it with a resolving fetch and a throwing draw helper — 9 of 9 printed the load sentence
+  while a 200 was measured on the wire.
+* **A harness that prints "<nothing printed>" is a broken harness, not a clean site.** One site took
+  arguments the probe never passed. The failure message now says so explicitly, because the quiet
+  reading and the good reading looked identical.
+* **Do not mutate the tree a battery is measuring — including its DOCS.** An ADR file was added
+  while the full gate was mid-run, which makes that run's `test_state_docs.py` result meaningless.
+  A subagent independently caught the working tree changing under its own measurement and correctly
+  pinned a clean extract instead. The rule is not only about `src/`.

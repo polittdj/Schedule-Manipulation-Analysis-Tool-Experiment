@@ -1306,7 +1306,10 @@
     const ter = document.getElementById("terMax").value || 20;
     fetch("/api/driving/" + enc + "?target=" + target + "&secondary=" + sec + "&tertiary=" + ter)
       .then((r) => r.ok ? r.json() : Promise.reject(r.status))
-      .then(renderGantt)
+      .then(SFLoad.drawn(renderGantt, () => {
+        document.getElementById("gantt").textContent =
+          "The driving path arrived, but the Gantt could not be drawn.";
+      }))
       .catch(() => { document.getElementById("gantt").textContent = "No driving path for that UID."; });
   }
 

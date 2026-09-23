@@ -426,14 +426,20 @@
     // curve_basis names whichever basis produced the figures (shown in the provenance line)
     var zeroBox = document.getElementById("marginRiskZero");
     var zero = zeroBox && zeroBox.checked ? 1 : 0;
-    fetch("/api/margin/risk?zero_margin=" + zero).then(function (r) { return r.json(); }).then(function (d) {
-      if (status) status.textContent = "";
-      riskBtn.disabled = false;
-      renderRisk(d);
-    }).catch(function (e) {
-      if (status) status.textContent = "failed: " + e;
-      riskBtn.disabled = false;
-    });
+    fetch("/api/margin/risk?zero_margin=" + zero).then(function (r) { return r.json(); })
+      .then(SFLoad.drawn(function (d) {
+        if (status) status.textContent = "";
+        riskBtn.disabled = false;
+        renderRisk(d);
+      }, function () {
+        // the run finished and its figures arrived - say so, and never leave the button dead
+        if (status) status.textContent = "The risk figures arrived, but the panel could not be drawn.";
+        riskBtn.disabled = false;
+      }))
+      .catch(function (e) {
+        if (status) status.textContent = "failed: " + e;
+        riskBtn.disabled = false;
+      });
   });
 
   renderBurndown();

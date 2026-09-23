@@ -176,13 +176,16 @@ def test_the_backward_pass_retreats_through_the_delay_and_three_stored_slacks_de
     the retreat survived every other check in this module — it costs Hard_File_updated three of
     its 99 exactly-reproduced stored slacks, on the very chain that feeds UID 398: 321, 381 and
     396 each read 17,640 / 17,640 / 18,660 without it against MS Project's 17,521 / 17,521 /
-    18,480. UID 379 moves too (17,700 -> 17,521 against a stored 17,581): closer, not exact,
-    and named rather than counted."""
+    18,480. UID 379 moved too (17,700 -> 17,521 against a stored 17,581): closer, not exact, and
+    named rather than counted -- and R-69 (2026-09-22) closed that last 60 minutes. Its late
+    start sat on the END of the block where MS Project writes the START of the next one, so the
+    lunch hour was being counted as float; with the start-role spelling it reads 17,581 exactly.
+    The 60 was never this rule's, which is why dropping the retreat still moves it."""
     sch, res = _load(UPDATED)
     stored = {t.unique_id: t.stored_total_float_minutes for t in sch.tasks}
     for uid, tf in ((321, 17521), (381, 17521), (396, 18480)):
         assert res.timing(uid).total_float == stored[uid] == tf, uid
-    assert res.timing(379).total_float == 17521 and stored[379] == 17581
+    assert res.timing(379).total_float == stored[379] == 17581
 
 
 # --- the absorb half: the rule that keeps Large_Test_File where it was ---------------------------
