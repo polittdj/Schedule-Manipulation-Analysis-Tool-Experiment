@@ -616,7 +616,8 @@ AXIS_CALL_SITES = [
     ("margin_dashboard.js", 323, "ebda9aa1ac5ec542bead6a76250803d8"),
     # ADR-0446: the One-Pager painter joins the caption convention — 28 -> 29, a DELIBERATE
     # re-baseline (one new call site; no existing caption moved).
-    ("onepager.js", 83, "53bfe6309e237fab7137cb9933db21c6"),
+    # line refreshed 83 -> 95 by ADR-0526 (column D's check); caption md5 re-derived, identical
+    ("onepager.js", 95, "53bfe6309e237fab7137cb9933db21c6"),
     # ADR-0465: the One-Pager COMPARE painter joins the caption convention — 29 -> 30, a DELIBERATE
     # re-baseline (one new call site; no existing caption moved; onepager.js's bytes untouched).
     # Line refreshed 131 -> 152 by ADR-0524 (column D's check + the one-date tooltip grew above the

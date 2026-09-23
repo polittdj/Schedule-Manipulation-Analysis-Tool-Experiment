@@ -485,3 +485,44 @@ def test_the_geometry_oracle_has_teeth(
     p = next(p for p in lay.items if not p.milestone)
     x, _y, _cx, _cy = _xfrm(by_name[f"Activity: {p.name}"])
     assert x != round(p.x0 * EMU), "the read-back cannot tell a mis-scaled slide from a right one"
+
+
+# ── column D on the single-list slide (ADR-0526; operator ruling 2026-09-23) ─────────────────
+
+
+def test_a_complete_item_carries_a_check_beside_its_shape_on_the_single_slide() -> None:
+    """The same mark as the compare slide: a disc beside the shape on the label's side, never on
+    the bar, its width reserved by the packer; the legend explains it only when column D exists."""
+    rows = [
+        ["Swimlane", "Task", "Date", "Status"],
+        ["A", "Wide finished bar", "1/5/2027 - 9/30/2027", "Complete"],
+        ["A", "Open milestone", "3/1/2027", "In Progress"],
+        ["B", "Done milestone at the edge", "12/20/2027", "Done"],
+    ]
+    doc = op.parse_workbook({"L": rows}, "d.xlsx")
+    lay = op.build_layout(doc.items, dt.date(2027, 3, 1), "t")
+    by = {p.name: p for p in lay.items}
+    assert {n for n, p in by.items() if p.done} == {
+        "Wide finished bar",
+        "Done milestone at the edge",
+    }
+    for p in lay.items:
+        if not p.done:
+            assert p.done_x is None
+            continue
+        assert p.done_x is not None and not p.inside  # a done bar never takes an inside label
+        half = lay.ms / 2 if p.milestone else 0.0
+        s0, s1 = p.x0 - half, p.x1 + half
+        assert p.done_x + p.done_r <= s0 - 0.5 or p.done_x - p.done_r >= s1 + 0.5, p.name
+        if p.label_anchor == "start":
+            assert s1 < p.done_x < p.label_x
+        else:
+            assert p.label_x < p.done_x < s0
+        ln = lay.lanes[p.lane]
+        assert ln.y0 <= p.y - p.done_r and p.y + p.done_r <= ln.y1
+    assert by["Done milestone at the edge"].label_anchor == "end"
+    assert [e.kind for e in lay.legend].count("done") == 1
+    three = op.build_layout(
+        op.parse_workbook({"L": [r[:3] for r in rows]}, "c.xlsx").items, dt.date(2027, 3, 1), "t"
+    )
+    assert "done" not in [e.kind for e in three.legend] and not any(p.done for p in three.items)

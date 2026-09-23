@@ -430,9 +430,10 @@ def test_a_three_column_list_says_it_has_no_column_d(client: TestClient) -> None
     assert "done" not in [e["kind"] for e in _layout_block(page)["legend"]]
 
 
-def test_column_d_never_reaches_the_single_list_page(client: TestClient) -> None:
-    """/onepager draws no completion, so a sentence about column D would describe nothing it
-    shows — the notes travel apart (``completion_notes``)."""
+def test_the_single_list_page_draws_column_d_too(client: TestClient) -> None:
+    """DELIBERATE re-baseline (operator ruling 2026-09-23: the check goes on BOTH pages). ADR-0526's
+    first cut kept column D off /onepager, which drew nothing there; now it draws the same check,
+    so its unread words are named there too."""
     r = client.post(
         "/onepager/upload",
         files={"file": ("d.xlsx", twin_xlsx(CURRENT_D, omit_blank=True), "application/x")},
@@ -440,8 +441,18 @@ def test_column_d_never_reaches_the_single_list_page(client: TestClient) -> None
     )
     assert r.status_code == 303
     page = client.get("/onepager").text
-    assert "Waiting on vendor" not in page and "column D" not in page
-    assert 'id=opData type="application/json"' in page
+    m = re.search(r'<script id=opData type="application/json">(.*?)</script>', page, re.S)
+    assert m
+    lay = json.loads(m.group(1))
+    done = sorted(p["name"] for p in lay["items"] if p["done"])
+    assert done == ["Build", "Design Review"]  # the 1/15 review and Build are Complete
+    assert [e["kind"] for e in lay["legend"]].count("done") == 1
+    assert "column D “Waiting on vendor” (row 7)" in page
+    pptx = client.get("/export/pptx/onepager")
+    with zipfile.ZipFile(io.BytesIO(pptx.content)) as zf:
+        slide = zf.read("ppt/slides/slide1.xml").decode()
+    assert sorted(re.findall(r'name="Done: ([^"]*)"', slide)) == done
+    assert slide.count('flipV="1"') == len(done) + 1  # one rising stroke per check + legend
 
 
 def test_the_words_on_the_page_describe_the_new_rules(client: TestClient) -> None:

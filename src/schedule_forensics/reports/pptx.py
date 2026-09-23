@@ -560,6 +560,8 @@ def render_onepager_pptx(layout: Layout, *, marking: str, source: str) -> bytes:
                 line=_WHITE,
                 name=f"Activity: {p.name}",
             )
+        if p.done and p.done_x is not None:
+            _done_badge(s, p.done_x, p.y, p.done_r, name=p.name)
         box_w, box_y = p.label_w + 4, p.y - lay.row_h / 2
         if p.inside:
             s.text(
@@ -631,6 +633,11 @@ def render_onepager_pptx(layout: Layout, *, marking: str, source: str) -> bytes:
             s.shape(e.x, cy - 2.5, 10, 5, _SYMBOL, prst="roundRect", name="Legend: activity")
         elif e.kind == "milestone":
             s.shape(e.x + 1.5, cy - 3.5, 7, 7, _SYMBOL, prst="diamond", name="Legend: milestone")
+        elif e.kind == "done":
+            s.shape(e.x + 2, cy - 3, 6, 6, _DONE, prst="ellipse", name="Legend: complete")
+            vx, vy = e.x + 4.64, cy + 1.26
+            s.segment(e.x + 3.5, cy + 0.06, vx, vy, _WHITE, 0.6, name="Done tick: legend")
+            s.segment(vx, vy, e.x + 6.65, cy - 1.2, _WHITE, 0.6, name="Done tick: legend")
         elif e.kind == "today":
             s.vline(e.x + 5, cy - 4, cy + 4, _TODAY, 1.5, name="Legend: today")
         else:

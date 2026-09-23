@@ -11,6 +11,7 @@ The request: column D says whether a task is complete — show it on the chart; 
 * **Column D** (`reports/onepager.py read_completion`): status-word reader; unknown words, numbers and dates are not complete AND named (`completion_notes`, kept off /onepager). Check = `--muted` disc + `--bg` check BESIDE the shape (JS + pptx same points; pptx = ellipse + two round-capped line strokes, rising one `flipV`). Counted in strip / table / drawer / Excel / headline; completion regressions and moved-after-complete flagged.
 * **Summary strip** shrinks to fit (6 → 3.6 pt) before cutting anything; counts unchanged + complete.
 * **True rows:** `read_xlsx_numbered` + `parse_numbered_workbook` on BOTH One-Pager uploads (Excel omits unformatted blank rows — 18 of 51 Excel-authored intake workbooks). `read_xlsx` byte-identical for the SRA importers (whole-corpus digest `827ee8fc…` before = after).
+* **Addendum (operator ruling 2026-09-23): the same check on `/onepager`** — layout, painter, pptx, legend and its unread-word notice; 3/3 mutations red; rendered. Overdue cue and template column D: parked ("not at this time").
 * Compare page now shows each list's own reading ("How each list was read" — the inherited-swimlane decisions).
 
 ## How it was verified

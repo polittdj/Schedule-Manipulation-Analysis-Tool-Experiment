@@ -57,3 +57,8 @@ Three questions were put to the operator rather than assumed (user rule: no gap 
 - `read_xlsx`'s own r-less-cell handling (column A) is unchanged for the SRA path.
 - No cue yet for an open item whose date has passed; no column D in the shared /onepager template.
 - **UNVERIFIED:** PowerPoint itself (not in any container); the operator's real files (not in the repo) — every column-D word the reader does not know is named on the page for exactly this reason.
+
+## Addendum — 2026-09-23: the check on the single-list page too (operator ruling)
+
+Asked whether "the OnePager" meant the compare page only or both, the operator answered **both**. `/onepager` now draws the same mark — `reports/onepager.py build_layout` places it beside the shape (`Placed.done / done_x / done_r`, the packer reserves its width, a complete bar never takes an inside label), `static/onepager.js` and `render_onepager_pptx` paint the same points, the legend explains it when a list has a column D, and the page lists column D's unread words ("Column D" notice). The first cut's "column D never reaches /onepager" test is re-baselined DELIBERATELY to "the single-list page draws column D too". `onepager.js`'s axis-caption locator 83 → 95 (caption md5 `53bfe630…` identical). Mutations (check on the bar, inside label allowed for a done bar, pptx check dropped): 3/3 red by name; rendered with 0 page errors, nothing wider than the viewport in four themes. Also ruled: **no** overdue-open cue and **no** template column D "at this time" — both stay parked.
+

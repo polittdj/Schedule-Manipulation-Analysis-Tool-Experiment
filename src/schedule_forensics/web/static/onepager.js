@@ -17,6 +17,16 @@
     if (text !== null && text !== undefined) n.textContent = text;
     return n;
   }
+  // column D's check (ADR-0526): a --muted disc ("completed work") with a --bg check BESIDE the
+  // shape — the same mark and points as the compare painter and reports/pptx.py's _done_badge
+  function doneBadge(parent, cx, cy, r) {
+    parent.appendChild(el("circle", { cx: cx, cy: cy, r: r, class: "opc-done" }));
+    var vx = cx - 0.12 * r, vy = cy + 0.42 * r;
+    parent.appendChild(el("polyline", {
+      points: (cx - 0.5 * r) + "," + (cy + 0.02 * r) + " " + vx + "," + vy + " " + (cx + 0.55 * r) + "," + (cy - 0.4 * r),
+      class: "opc-done-check", "stroke-width": Math.max(0.35, r * 0.32),
+    }));
+  }
   function laneVar(i) { return "var(--lane-" + ((i % 10) + 1) + ")"; }
 
   function paint(host, L) {
@@ -52,7 +62,7 @@
     var barH = L.bar_h, ms = L.ms;
     L.items.forEach(function (p) {
       var fill = laneVar(L.lanes[p.lane].color), g = el("g", { class: "op-item" + (p.milestone ? " op-ms" : " op-act") });
-      var title = el("title", {}, p.name + (p.milestone ? " — " + p.finish : " — " + p.start + " → " + p.finish));
+      var title = el("title", {}, p.name + (p.milestone ? " — " + p.finish : " — " + p.start + " → " + p.finish) + (p.done ? " · complete (column D)" : ""));
       g.appendChild(title);
       if (p.milestone) {
         var h = ms / 2;
@@ -60,6 +70,7 @@
       } else {
         g.appendChild(el("rect", { x: p.x0, y: p.y - barH / 2, width: p.x1 - p.x0, height: barH, rx: 1.2, fill: fill, class: "op-bar" }));
       }
+      if (p.done && p.done_x !== null) doneBadge(g, p.done_x, p.y, p.done_r);
       g.appendChild(el("text", { x: p.label_x, y: p.y + L.label_pt * 0.35, "text-anchor": p.label_anchor, class: "op-label" + (p.inside ? " op-label-in" : ""), style: "font-size:" + L.label_pt + "px" }, p.label));
       svg.appendChild(g);
     });
@@ -72,6 +83,7 @@
     L.legend.forEach(function (e) {
       var g = el("g", { class: "op-legend-item" }), cy = e.y - 2.5;
       if (e.kind === "activity") g.appendChild(el("rect", { x: e.x, y: cy - 2.5, width: 10, height: 5, rx: 1, class: "op-legend-bar" }));
+      else if (e.kind === "done") doneBadge(g, e.x + 5, cy, 3);
       else if (e.kind === "milestone") g.appendChild(el("polygon", { points: (e.x + 5) + "," + (cy - 3.5) + " " + (e.x + 8.5) + "," + cy + " " + (e.x + 5) + "," + (cy + 3.5) + " " + (e.x + 1.5) + "," + cy, class: "op-legend-ms" }));
       else if (e.kind === "today") g.appendChild(el("line", { x1: e.x + 5, y1: cy - 4, x2: e.x + 5, y2: cy + 4, class: "op-legend-today" }));
       else g.appendChild(el("rect", { x: e.x, y: cy - 3, width: 10, height: 6, rx: 1, fill: laneVar(e.color), class: "op-legend-lane" }));

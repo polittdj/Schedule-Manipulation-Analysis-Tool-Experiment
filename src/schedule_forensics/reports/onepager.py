@@ -423,6 +423,9 @@ class Placed:
     label_w: float
     inside: bool
     clipped: bool
+    done: bool
+    done_x: float | None
+    done_r: float
 
 
 @dataclass(frozen=True)
@@ -514,7 +517,13 @@ def _next_month(d: dt.date) -> dt.date:
     return dt.date(d.year + 1, 1, 1) if d.month == 12 else dt.date(d.year, d.month + 1, 1)
 
 
-_PackRow = tuple[OnePagerItem, int, float, float, str, float, bool, bool, str, float]
+_PackRow = tuple[
+    OnePagerItem, int, float, float, str, float, bool, bool, str, float, float | None, float
+]
+#: Column D's check (ADR-0526): a disc this fraction of the label size in radius, drawn BESIDE the
+#: shape on its label's side — never on the bar — with this gap before the label text. The SAME
+#: mark and proportions as the One-Pager COMPARE (``reports.onepager_compare.DONE_F``).
+DONE_F, DONE_GAP = 0.55, 1.5
 
 
 def build_layout(
@@ -572,23 +581,30 @@ def build_layout(
         out: list[_PackRow] = []
         row_end: list[float] = []
         ms_w, bar_h = row_h * MS_F, row_h * BAR_F
+        done_r = label_pt * DONE_F
         for it in sorted(lane_items, key=lambda i: (i.start, i.finish, i.row)):
             xs, xe = x_of(it.start), x_of(it.finish)
             label = f"{it.name} ({mdy(it.finish)})"
             lw = text_w(label, label_pt)
             inside = clipped = False
+            done = it.complete is True
+            chk = 2 * done_r + DONE_GAP if done else 0.0
+            done_x: float | None = None
             if it.milestone:
                 left, right = xs - ms_w / 2, xs + ms_w / 2
             else:
                 xe = max(xe, xs + 3)
                 left, right = xs, xe
-                inside = lw + 4 <= xe - xs and bar_h >= label_pt
+                # a complete item's label stays outside: its check sits beside the bar, not on it
+                inside = not done and lw + 4 <= xe - xs and bar_h >= label_pt
             if inside:
                 anchor, lx, ext0, ext1 = "start", xs + 2, left, right
             else:
-                anchor, lx, ext0, ext1 = "start", right + 3, left, right + 3 + lw
+                anchor, lx, ext0, ext1 = "start", right + 3 + chk, left, right + 3 + chk + lw
+                done_x = right + 3 + done_r if done else None
                 if ext1 > X1 + 1:
-                    anchor, lx, ext0, ext1 = "end", left - 3, left - 3 - lw, right
+                    anchor, lx, ext0, ext1 = "end", left - 3 - chk, left - 3 - chk - lw, right
+                    done_x = left - 3 - done_r if done else None
                     if ext0 < X0 - 1:
                         clipped = True
                         ext0 = X0
@@ -599,7 +615,20 @@ def build_layout(
             else:
                 row_end[row] = ext1
             out.append(
-                (it, row, xs, xs if it.milestone else xe, anchor, lx, inside, clipped, label, lw)
+                (
+                    it,
+                    row,
+                    xs,
+                    xs if it.milestone else xe,
+                    anchor,
+                    lx,
+                    inside,
+                    clipped,
+                    label,
+                    lw,
+                    done_x,
+                    done_r,
+                )
             )
         return out
 
@@ -668,7 +697,7 @@ def build_layout(
                 merged.get(li, []),
             )
         )
-        for it, row, xs, xe, anchor, lx, inside, clipped, label, lw in packed[li]:
+        for it, row, xs, xe, anchor, lx, inside, clipped, label, lw, done_x, done_r in packed[li]:
             cy = y + LANE_PAD + row * row_h + row_h / 2
             placed.append(
                 Placed(
@@ -687,6 +716,9 @@ def build_layout(
                     lw,
                     inside,
                     clipped,
+                    done_x is not None,
+                    done_x,
+                    done_r,
                 )
             )
         y += h + LANE_GAP
@@ -720,6 +752,11 @@ def build_layout(
     entries: list[tuple[str, str, int]] = [
         ("activity", "Activity (start \u2013 finish)", -1),
         ("milestone", "Milestone (date)", -1),
+        *(
+            [("done", "Complete (column D)", -1)]
+            if any(i.complete is not None for i in items)
+            else []
+        ),
         ("today", f"Today ({mdy(today)})", -1),
     ] + [("lane", ln.name, ln.color) for ln in lanes]
     for _ in range(3):
