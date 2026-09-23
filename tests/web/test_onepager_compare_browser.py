@@ -25,7 +25,7 @@ from fastapi.testclient import TestClient
 from schedule_forensics.web.app import SessionState, create_app
 from web.browser_chrome import chrome_kwargs
 from web.onepager_twin import TWIN_ROWS, twin_xlsx
-from web.test_onepager_compare_page import CURRENT_ROWS
+from web.test_onepager_compare_page import CURRENT_D, CURRENT_ROWS, PRIOR_D
 
 TODAY = dt.date(2026, 9, 1)
 THEMES = ("console", "daylight", "apollo", "jarvis")
@@ -138,9 +138,12 @@ def test_the_two_slots_upload_and_the_delta_encoding_is_painted(
     page.wait_for_selector("svg.opc-svg")
     got = page.evaluate(_PAINTED)
     assert got["svg"] and got["lanes"] == 7 and got["summaries"] == 7 and got["sumLines"] >= 7
-    # 17 rows: 16 current (one of them NEW) + 1 REMOVED; 15 ghosts (every row with a prior),
-    # one of them a diamond ghost under the TRR bar; the REMOVED row has no solid shape
-    assert len(got["statuses"]) == 17 and got["ghosts"] == 16 and got["ghostDiamonds"] == 6
+    # 17 rows: 16 current (one of them NEW) + 1 REMOVED. DELIBERATE re-baseline (ADR-0524; the
+    # operator: an unchanged task is shown "once with the single date"): a ghost is drawn only
+    # where an item MOVED or left — Boots 1 and CDR (diamond ghosts), TRR (a diamond ghost under
+    # its new bar) and the REMOVED MET Testing — 4 ghosts, 3 of them diamonds. ADR-0465 drew one
+    # under each of the 12 unchanged items as well (16 and 6; its comment said 15).
+    assert len(got["statuses"]) == 17 and got["ghosts"] == 4 and got["ghostDiamonds"] == 3
     assert got["bars"] + got["diamonds"] == 16
     # three moved finishes: two slips point right, the pull-in points left; every arrow has a head
     slips = [a for a in got["arrows"] if a["item"] == "slipped"]
@@ -253,4 +256,83 @@ def test_the_powerpoint_button_downloads_the_compare_slide(
     with zipfile.ZipFile(io.BytesIO(data)) as zf:
         slide = zf.read("ppt/slides/slide1.xml").decode()
     assert 'name="Slip: Boots 1"' in slide and 'name="Prior activity: ' in slide
+    page.close()
+
+
+@pytest.fixture(scope="module")
+def dsheets(tmp_path_factory: pytest.TempPathFactory) -> tuple[Path, Path]:
+    d = tmp_path_factory.mktemp("onepager_compare_d")
+    prior, current = d / "prior_d.xlsx", d / "current_d.xlsx"
+    prior.write_bytes(twin_xlsx(PRIOR_D, omit_blank=True))
+    current.write_bytes(twin_xlsx(CURRENT_D, omit_blank=True))
+    return prior, current
+
+
+_CHECKS = """() => {
+  const q = s => [...document.querySelectorAll(s)];
+  const bands = {};
+  q('.op-lane-band').forEach(b => { bands[b.dataset.lane] = b.getBBox(); });
+  const items = q('.opc-item').map(g => {
+    const band = bands[g.dataset.lane];
+    const shapes = [...g.querySelectorAll('.op-bar, .op-diamond, .opc-ghost, .opc-done')];
+    const inLane = shapes.every(e => {
+      const b = e.getBBox();
+      return b.y >= band.y - 0.01 && b.y + b.height <= band.y + band.height + 0.01;
+    });
+    const solid = g.querySelector('.op-bar, .op-diamond');
+    const disc = g.querySelector('.opc-done');
+    const sb = solid && solid.getBBox(), db = disc && disc.getBBox();
+    return {
+      name: g.querySelector('title').textContent.split(' · ')[0],
+      lane: Number(g.dataset.lane), inLane,
+      done: !!disc, check: !!g.querySelector('.opc-done-check'),
+      clear: !disc || db.x + db.width <= sb.x + 0.01 || db.x >= sb.x + sb.width - 0.01,
+      discFill: disc ? getComputedStyle(disc).fill : null,
+      barFill: solid ? getComputedStyle(solid).fill : null,
+      tip: g.querySelector('title').textContent,
+    };
+  });
+  const legend = document.querySelector('.opc-legend-done .opc-done');
+  return {items, legendDisc: legend ? getComputedStyle(legend).fill : null,
+          legendCheck: !!document.querySelector('.opc-legend-done .opc-done-check')};
+}"""
+
+
+def test_column_d_checks_sit_beside_their_shapes_and_every_task_stays_in_its_lane(
+    browser: Any, served: str, dsheets: tuple[Path, Path]
+) -> None:
+    page = browser.new_page(viewport={"width": 1400, "height": 900})
+    errors: list[str] = []
+    page.on("pageerror", lambda e: errors.append(str(e)))
+    _load_both(page, served, dsheets)
+    lay = page.evaluate("() => JSON.parse(document.getElementById('opcData').textContent)")
+    expected_lane = {
+        "Design Review": "Alpha",
+        "Build": "Alpha",
+        "Reopened": "Beta",
+        "Dropped": "Beta",
+        "Brand new": "Beta",
+    }
+    for theme in THEMES:
+        page.evaluate("(t) => document.documentElement.setAttribute('data-theme', t)", theme)
+        got = page.evaluate(_CHECKS)
+        assert len(got["items"]) == len(lay["items"]) == 6, theme
+        for item in got["items"]:
+            # painted in the swimlane its row names, and wholly inside that band
+            assert lay["lanes"][item["lane"]]["name"] == expected_lane[item["name"]], item
+            assert item["inLane"], (theme, item)
+            assert item["clear"], (theme, "a check drawn on its own bar", item)
+            if item["done"]:
+                assert item["check"] and item["discFill"] not in (None, "none", "")
+                assert item["discFill"] != item["barFill"], (theme, item)
+                assert "complete (column D)" in item["tip"]
+        assert sorted(i["name"] for i in got["items"] if i["done"]) == ["Build", "Design Review"]
+        # the legend explains the check with the SAME mark, not a lane chip
+        assert got["legendCheck"] and got["legendDisc"] == next(
+            i["discFill"] for i in got["items"] if i["done"]
+        ), theme
+    # an unchanged item's hover says its dates ONCE
+    tips = [i["tip"] for i in page.evaluate(_CHECKS)["items"] if i["name"] == "Design Review"]
+    assert all("prior " not in t and "current " not in t for t in tips), tips
+    assert errors == []
     page.close()

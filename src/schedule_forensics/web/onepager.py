@@ -109,7 +109,9 @@ def _dropzone(st: SessionState, *, loaded: bool) -> str:
     <p class=muted>One sheet, three columns: <b>A</b> the swimlane name, <b>B</b> the task or milestone
       name, <b>C</b> the date &mdash; a single date is a <b>milestone</b> (a diamond), a range such as
       <code>04/20/2027 - 06/20/2027</code> or <code>05/2026 - 11/2026</code> is an <b>activity</b> (a
-      bar). Any number of rows per swimlane; blank rows between swimlanes are fine.
+      bar). An optional column <b>D</b> is a status word: Complete, Completed, Done, Finished or
+      Closed (or Yes, X, a check mark, 100%) draws a check beside the item. Any number of rows per
+      swimlane; blank rows between swimlanes are fine.
       <a href="/export/xlsx/onepager-template" download>Download the template</a>.</p>
     <input type=file id=opFile name=file accept=".xlsx" hidden>
     <noscript><button type=submit>Upload</button></noscript>
@@ -166,6 +168,8 @@ def _onepager_body(st: SessionState, today: dt.date) -> str:
 <form action="/onepager/clear" method=post class=op-clear-form><button type=submit>Clear the list</button></form>
 </div>"""
     notes = _notice_list("Read with an assumption", tuple(lay.notes) + doc.notes, "ok", "status")
+    # column D's words it could not read — shown now that this page draws completion (ADR-0526)
+    notes += _notice_list("Column D", doc.completion_notes, "ok", "status")
     problems = _notice_list("Rows skipped", doc.problems, "warn", "alert")
     if lay.today_note:
         notes += f'<div class="notice ok" role=status>{_e(lay.today_note)}</div>'
@@ -173,8 +177,9 @@ def _onepager_body(st: SessionState, today: dt.date) -> str:
 <div class=panel data-export="/export/xlsx/onepager">
 {_panel_head("One-Pager timeline", tools=tools, prov=prov)}
 <p class=muted>What you see is the slide: 16:9, one tinted band per swimlane, bars for activities and
-diamonds for milestones, dotted month lines under a month/year header, the red line at today, and the
-legend along the bottom. Hover any bar or diamond for its dates.</p>
+diamonds for milestones, a check beside what column D marks complete, dotted month lines under a
+month/year header, the red line at today, and the legend along the bottom. Hover any bar or diamond for
+its dates.</p>
 {controls}
 <div id=opHost class="op-host chart-host" role=img aria-label="{_e(lay.title)}"></div>
 <script id=opData type="application/json">{blob}</script>

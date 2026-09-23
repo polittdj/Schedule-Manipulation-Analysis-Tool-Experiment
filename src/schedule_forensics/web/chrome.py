@@ -496,13 +496,16 @@ _EXPLAINERS: dict[str, tuple[str, str, str]] = {
     ),
     "One-Pager Compare": (
         "Two One-Pager lists — a prior and a current — on one swimlane slide: the current position "
-        "drawn solid, the prior as a ghost, an arrow from the old finish to the new one with the "
-        "move in calendar days, NEW and REMOVED items tagged, and a per-swimlane strip counting "
-        "slips, pull-ins, additions and removals.",
+        "drawn solid, the prior as a ghost wherever it moved, an arrow from the old finish to the "
+        "new one with the move in calendar days, NEW and REMOVED items tagged, a check beside what "
+        "column D marks complete, and a per-swimlane strip counting slips, pull-ins, unchanged "
+        "items, additions, removals and completions.",
         "A right-pointing arrow with +N is a slip; left with \u2212N is a pull-in; a ghost with no "
-        "solid shape is REMOVED; a solid shape with no ghost is NEW. Moves are calendar days because "
-        "the list carries no calendar. A row whose swimlane and name appear twice in one list is "
-        "DUPLICATE NAME and is compared with nothing.",
+        "solid shape is REMOVED; a solid shape tagged NEW is new; an unchanged item is drawn once, "
+        "solid, at its one date, with no ghost. A check beside a shape means column D marks it "
+        "complete. Moves are calendar days because the list carries no calendar. A name repeated "
+        "under one swimlane pairs copy for copy on an identical date; copies left over in both "
+        "lists are DUPLICATE NAME and are compared with nothing.",
         "Decide which swimlanes carry the movement, which single item slipped most, and whether the "
         "new and removed rows are real scope changes or renames the two lists spell differently — "
         "before the slide goes to the review board.",

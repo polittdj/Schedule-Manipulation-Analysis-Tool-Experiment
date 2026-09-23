@@ -199,3 +199,63 @@ def test_libreoffice_loads_the_compare_deck(soffice: str, tmp_path: Path) -> Non
     words = _words(root)
     for probe in (_MARKING, "Program Compare", "Structure fabrication", "+12 cal d"):
         assert probe in words, f"LibreOffice loaded the compare deck but lost {probe!r}"
+
+
+def _local(tag: str) -> str:
+    return tag.rsplit("}", 1)[-1]
+
+
+def _attr(el: ET.Element, name: str) -> str | None:
+    return next((v for k, v in el.attrib.items() if _local(k) == name), None)
+
+
+def _cm(value: str | None) -> float:
+    assert value is not None and value.endswith("cm"), value
+    return float(value[:-2])
+
+
+def test_libreoffice_keeps_column_ds_check_a_check(soffice: str, tmp_path: Path) -> None:
+    """ADR-0524: column D's check is a disc and TWO strokes — a short one falling to the vertex
+    and a long one RISING from it, the rising one written as DrawingML's ``line`` preset flipped
+    vertically. An independent reader must come back with exactly that geometry: a writer that
+    lost the flip would draw a double backslash, and only the reader can say so."""
+    prior = OnePagerDoc(
+        "prior.xlsx",
+        "Sheet1",
+        tuple(OnePagerItem(*row, False) for row in _ROWS),
+        (),
+        (),
+    )
+    current = OnePagerDoc(
+        "current.xlsx",
+        "Sheet1",
+        tuple(
+            OnePagerItem(lane, name, start, finish, row, row % 2 == 0)
+            for lane, name, start, finish, row in _ROWS
+        ),
+        (),
+        (),
+    )
+    lay = build_compare_layout(compare_onepager_docs(prior, current), _TODAY, "Checks", "")
+    done = sorted(p.name for p in lay.items if p.done)
+    assert done, "the fixture must draw at least one check"
+    root = _loaded(
+        soffice,
+        render_onepager_compare_pptx(lay, marking=_MARKING, source="Prior: prior.xlsx"),
+        tmp_path,
+        "checks",
+    )
+    names = _shape_names(root)
+    assert {f"Done: {n}" for n in done} <= names and "Legend: complete" in names
+    strokes: dict[str, list[str]] = {}
+    for el in root.iter():
+        name = _attr(el, "name") or ""
+        if _local(el.tag) != "connector" or not name.startswith("Done tick: "):
+            continue
+        x1, y1, x2, y2 = (_cm(_attr(el, k)) for k in ("x1", "y1", "x2", "y2"))
+        if x2 < x1:
+            x1, y1, x2, y2 = x2, y2, x1, y1
+        strokes.setdefault(name, []).append("rising" if y2 < y1 else "falling")
+    assert set(strokes) == {f"Done tick: {n}" for n in done} | {"Done tick: legend"}, strokes
+    for name, kinds in strokes.items():
+        assert sorted(kinds) == ["falling", "rising"], (name, kinds)

@@ -19875,3 +19875,9 @@ yields 10 named engine-only disagreements. Blast radius: 2 reads of `is_critical
 `<TotalSlack>` element is ABSENT on all 8,644 completed rows (so "TotalSlack 0" describes the
 importer's inference, not the file) and UID 5263 is not confined to the Large_Test_File2 family. The
 flag change alters a DOCUMENTED field's meaning, so it is left for the operator's ruling.
+
+## 2026-09-23 — One-Pager Compare round two (ADR-0526, v1.0.289)
+
+Branch `claude/loving-euler-ek7ve9`. Operator: read column D for completion and mark it on the chart; an unchanged repeated name is not DUPLICATE NAME — show it once; keep tasks in their swimlanes; show slips and non-slips. Three rulings asked (swimlanes = requirement; same lane+name+date = one item; column D = status words). QC-3 plan attack by five skeptics refuted six premises (leftover pairing invents +90 cal d; collapse must run first; no numeric D inference; check never on the bar; ghost drop would re-pack; strip cut the new counts). Shipped: collapse-then-exact-date matcher, unchanged drawn once, status-word column D with a check beside the shape (JS + pptx), shrink-to-fit strip, typographic key folding, per-list reading notes, true Excel row numbers via `read_xlsx_numbered` on both One-Pager uploads. Verified: red-first, 38/38 mutations red by name, 4-theme renders vs pristine, full suite 5,917 passed pre-merge (installer lockstep rebuilt last), `read_xlsx` corpus digest identical. #713 (ADR-0524/0525) landed mid-session; merged, renumbered to ADR-0526.
+
+Addendum 2026-09-23 (ADR-0526): operator ruled the check goes on BOTH pages — `/onepager` now draws it (layout + onepager.js + single pptx + legend + unread-word notice); 3/3 mutations red; rendered in four themes. Overdue cue and template column D parked by ruling.

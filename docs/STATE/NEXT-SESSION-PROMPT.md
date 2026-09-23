@@ -1,4 +1,4 @@
-# Kickoff prompt — next session (handed over 2026-09-22 (c), after the R-69 + R-80 unit's push)
+# Kickoff prompt — next session (handed over 2026-09-23, after the One-Pager Compare round-two push, ADR-0526)
 
 ## ⚠ FIRST, BEFORE ANYTHING: verify this prompt is about THIS repository
 
@@ -14,7 +14,7 @@ happen again. **Run these before the first edit:**
 git fetch --unshallow origin; git fetch --prune origin && git remote set-head origin -a
 git log --oneline -1 origin/main && git rev-list --count origin/main   # expect e0daccc4-or-later, 811+
 ls -d src app 2>&1; ls .github/workflows; grep -n '^version' pyproject.toml
-ls docs/adr | sort | tail -1                                          # expect 0525 or higher
+ls docs/adr | sort | tail -1                                          # expect 0526 or higher
 ```
 
 **If a prompt's facts disagree with those outputs, the TREE wins and the prompt is suspect — report it
@@ -24,18 +24,14 @@ sessions both ran this block and the tree agreed on every point — that is what
 
 ## Where we are
 
-**`main` @ `e0daccc4`** (#712, R-77 / ADR-0523, v1.0.287) — MERGED 2026-09-22T15:03:30Z; its own runs
-(CI 1981, installer-smoke 815) were read to conclusion by the 2026-09-22 (b) session and **must not be
-re-read**. 811 commits at the (c) session's start.
-
-The R-69 + R-80 unit ships on **`claude/determined-hopper-x13la6`** as a **draft PR the OPERATOR
-merges** — `src/` changed and the wheel + nine installers were rebuilt, so **EIGHT checks** apply
-(CI's `cui-guard` / `browser` / `floor` / `test (3.11)` / `test (3.13)` / `check`, plus
-installer-smoke's `linux` / `windows`). Read that PR's FINAL head's eight checks to conclusion FIRST;
-if it is merged, restart the branch on the squash
-(`git fetch --prune origin && git remote set-head origin -a && git checkout -B <branch> origin/main`)
-and compare `HEAD^{tree}` with the PR's final head's tree. Highest ADR **0525**. Version **1.0.288**.
-Schema **2.17.0** unchanged.
+**`main` @ `f4703fd`** (#713, R-69 + R-80 / ADR-0524 + 0525, v1.0.288). The One-Pager Compare round
+two (operator request 2026-09-22: column D completion, unchanged repeated names drawn once, tasks
+stay in their swimlanes) ships on **`claude/loving-euler-ek7ve9`** as a **draft PR the OPERATOR
+merges** — ADR-0526, v1.0.289, `src/` changed and the wheel + nine installers rebuilt, so **EIGHT
+checks** apply. Read that PR's final head's checks to conclusion FIRST; if merged, restart the branch
+on the squash and compare trees. Highest ADR **0526**. Version **1.0.289**. Schema unchanged.
+Open for the operator: whether an OPEN item past its date needs a cue, and whether the shared
+/onepager template should carry a column D (ADR-0526 "Not done").
 
 ## What's done — do NOT re-open
 

@@ -320,13 +320,18 @@ def test_a_pull_in_arrow_points_left_with_a_minus_delta(lay: CompareLayout) -> N
     assert p.ghost_x1 is not None and p.x1 is not None and p.ghost_x1 > p.x1
 
 
-def test_an_unchanged_row_has_no_arrow_no_delta_and_a_ghost_under_its_bar(
+def test_an_unchanged_row_is_drawn_once_with_no_ghost_no_arrow_and_no_delta(
     lay: CompareLayout,
 ) -> None:
-    p = _placed(lay, "Steady")
-    assert p.status == UNCHANGED and p.arrow_x0 is None and p.arrow_x1 is None
-    assert p.delta == "" and p.badge == ""
-    assert (p.ghost_x0, p.ghost_x1) == (p.x0, p.x1)
+    """DELIBERATE re-baseline (ADR-0524, operator 2026-09-22: "only show it once with the single
+    date"): ADR-0465 drew a ghost exactly under an unchanged bar. Now nothing is drawn but the
+    bar — and its label stays outside the bar, where the ghost had kept it."""
+    for name in ("Steady", "Spaced Spelling"):
+        p = _placed(lay, name)
+        assert p.status == UNCHANGED and p.arrow_x0 is None and p.arrow_x1 is None
+        assert p.delta == "" and p.badge == ""
+        assert p.ghost_x0 is None and p.ghost_x1 is None and p.ghost_milestone is None
+        assert p.x0 is not None and p.inside is False
 
 
 def test_a_start_only_move_says_so_without_an_arrow(lay: CompareLayout) -> None:
@@ -387,7 +392,11 @@ def test_the_summary_column_has_one_box_per_lane_naming_the_worst_slip(
     for box, ln in zip(lay.summaries, lay.lanes, strict=True):
         assert (box.y0, box.y1) == (ln.y0, ln.y1) and box.lane == ln.index
         assert (box.x0, box.x1) == (lay.summary_x0, lay.summary_x1) and box.pt >= 3.6
-        assert 1 <= len(box.lines) <= 3 and all(box.lines)
+        # DELIBERATE re-baseline (ADR-0524): the strip also counts what did NOT slip, and it
+        # shrinks to fit rather than cut — so it takes as many lines as the box holds, not 3
+        assert len(box.lines) >= 1 and all(box.lines)
+        assert len(box.lines) * box.pt * 1.25 <= (box.y1 - box.y0) - 1.5 + 0.01
+        assert "…" not in " ".join(box.lines)
     a = lay.summaries[0].lines
     joined = " ".join(a)
     assert "slipped 1" in joined and "pulled in 1" in joined and "new 2" in joined

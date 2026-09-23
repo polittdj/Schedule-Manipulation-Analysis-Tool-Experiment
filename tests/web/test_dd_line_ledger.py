@@ -70,8 +70,8 @@ TIME_AXIS = {
     ("curves.js", 386),
     ("drift.js", 136),
     ("margin_dashboard.js", 323),
-    ("onepager.js", 83),
-    ("onepager_compare.js", 131),
+    ("onepager.js", 95),  # line refreshed 83 -> 95 by ADR-0526 (caption bytes intact)
+    ("onepager_compare.js", 152),  # line refreshed 131 -> 152 by ADR-0524 (caption bytes intact)
     ("resources.js", 243),
     ("scurve.js", 168),
 }
