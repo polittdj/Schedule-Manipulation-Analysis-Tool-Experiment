@@ -435,6 +435,13 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-23 — "pair what is left over" sounds like tidying and is a fabrication; a green test can be one whose example never touches the rule (ADR-0526)
+
+- The obvious extension of "same name + same date = one item" was to pair the copies left over. The skeptics built a rolling monthly review (1/1, 2/1, 3/1 → 2/1, 3/1, 4/1) and it produced a +90-day slip that never happened, promoted to the headline's worst slip. Elimination pairing is a guess wearing a rule's clothes: leftovers stay NEW / REMOVED / DUPLICATE NAME.
+- Two tests passed under a mutation that should have broken them. One used "Completion pending" to prove a word boundary — but "completion" never shares the letters of "complete"; the example could not reach the rule. The other exercised a summary strip on a lane that was never dense enough to hit the floor. **Lesson: when a test goes green on its first run, mutate the exact line it claims to guard — the defect is often the EXAMPLE, not the code.**
+- A number I wrote mid-session ("33 Excel files omit rows") was a count of files with gaps across ALL producers; the Excel-only figure is 18 of 51. Re-derive a figure before it reaches a doc.
+- A PR landed on `main` mid-session and took the ADR number I was about to use: fetch `main` before numbering, not after.
+
 ### 2026-09-22 — R-77 / ADR-0523: the axis pair, and four traps paid for in one session
 
 **The provenance rule applies to the ORACLE, not just the value — and I broke it.** QC-2 says know
