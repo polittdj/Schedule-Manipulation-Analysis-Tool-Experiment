@@ -33,7 +33,7 @@ from __future__ import annotations
 import calendar
 import datetime as dt
 import re
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from typing import Any
 
 from schedule_forensics.reports.tables import Cell, Table, TableSet
@@ -517,6 +517,105 @@ def _next_month(d: dt.date) -> dt.date:
     return dt.date(d.year + 1, 1, 1) if d.month == 12 else dt.date(d.year, d.month + 1, 1)
 
 
+# ── the date window (operator request 2026-09-23, ADR-0527) ──────────────────────────────────
+
+#: An operator-chosen ``(first day, last day)``, both inclusive. With one, the timescale runs from
+#: the first day to the END of the last day — never widened to whole months or to today — an item
+#: wholly outside it is left off, and one that runs past an edge is CUT at that edge.
+Window = tuple[dt.date, dt.date]
+
+
+def overlaps(start: dt.date, finish: dt.date, window: Window) -> bool:
+    """Whether ``start..finish`` (inclusive days) touches the window at all."""
+    return start <= window[1] and finish >= window[0]
+
+
+def window_items(
+    items: list[OnePagerItem] | tuple[OnePagerItem, ...], window: Window
+) -> tuple[list[OnePagerItem], list[OnePagerItem]]:
+    """``(kept, omitted)``: an item touching the window stays (a straddler is cut when drawn);
+    only an item WHOLLY outside it is omitted — and the caller names every one of those."""
+    kept = [i for i in items if overlaps(i.start, i.finish, window)]
+    omitted = [i for i in items if not overlaps(i.start, i.finish, window)]
+    return kept, omitted
+
+
+def window_text(window: Window) -> str:
+    return f"{mdy(window[0])} \u2013 {mdy(window[1])}"
+
+
+def item_when(it: OnePagerItem) -> str:
+    return mdy(it.finish) if it.milestone else f"{mdy(it.start)} to {mdy(it.finish)}"
+
+
+def timescale(
+    t0: dt.date, t1: dt.date, x0: float, x1: float, windowed: bool
+) -> tuple[list[Tick], list[Band], float]:
+    """The header over ``[t0, t1)``: a dotted line and a letter or abbreviation per month, and the
+    year bands; returns ``(months, years, month_pt)``. Without a window ``t0`` and ``t1`` are whole
+    months and every month is one uniform width (the ADR-0446 header, unchanged); with one, an
+    edge month is only its visible part, labelled only when the label fits it."""
+    total = (t1 - t0).days
+
+    def x_of(d: dt.date) -> float:
+        return x0 + (d - t0).days / total * (x1 - x0)
+
+    months: list[Tick] = []
+    years: list[Band] = []
+    if windowed:
+        month_w = (x1 - x0) * 30.44 / total  # a whole month's width, for the label size
+    else:
+        n_months = (t1.year - t0.year) * 12 + (t1.month - t0.month)
+        month_w = (x1 - x0) / max(1, n_months)
+    month_pt = 6.5 if month_w >= 20 else 5.5
+    d = t0 if not windowed else _first_of_month(t0)
+    while d < t1:
+        if windowed:
+            vis0, vis1 = max(d, t0), min(_next_month(d), t1)
+            width = x_of(vis1) - x_of(vis0)
+            fit = min(width, month_w)
+            x, label_x = x_of(vis0), x_of(vis0) + width / 2
+        else:
+            fit = month_w
+            x, label_x = x_of(d), x_of(d) + month_w / 2
+        if fit >= 20:
+            lab = calendar.month_abbr[d.month]
+        elif fit >= 6.5:
+            lab = calendar.month_abbr[d.month][0]
+        else:
+            lab = ""
+        months.append(Tick(x, lab, label_x))
+        d = _next_month(d)
+    yb = t0
+    while yb < t1:
+        ye = min(dt.date(yb.year + 1, 1, 1), t1)
+        years.append(Band(x_of(yb), x_of(ye), str(yb.year), len(years) % 2))
+        yb = ye
+    return months, years, month_pt
+
+
+def plot_window(
+    lo: dt.date, hi: dt.date, today: dt.date, window: Window | None
+) -> tuple[dt.date, dt.date, str]:
+    """``(t0, t1, today_note)`` — the plotted span ``[t0, t1)``. Without a window: whole months
+    around the data, widened to today when today is within ~6 months of it (ADR-0446). With one:
+    exactly the window, and today is drawn only when it falls inside it."""
+    if window is not None:
+        t0, t1 = window[0], window[1] + dt.timedelta(days=1)
+        note = (
+            ""
+            if t0 <= today < t1
+            else f"Today ({mdy(today)}) lies outside the chosen date window and is not drawn."
+        )
+        return t0, t1, note
+    today_note = ""
+    if lo - dt.timedelta(days=183) <= today <= hi + dt.timedelta(days=183):
+        lo, hi = min(lo, today), max(hi, today)
+    else:
+        today_note = f"Today ({mdy(today)}) lies outside the plotted window and is not drawn."
+    return _first_of_month(lo), _next_month(hi), today_note
+
+
 _PackRow = tuple[
     OnePagerItem, int, float, float, str, float, bool, bool, str, float, float | None, float
 ]
@@ -531,10 +630,19 @@ def build_layout(
     today: dt.date,
     title: str,
     subtitle: str = "",
+    window: Window | None = None,
 ) -> Layout:
-    """Place every item on the slide. Raises ``ValueError`` with nothing to place."""
+    """Place every item on the slide. Raises ``ValueError`` with nothing to place.
+
+    With a ``window`` (ADR-0527) the timescale is exactly that window; the caller has already left
+    off the items wholly outside it (:func:`window_items`), and an item running past an edge is
+    drawn cut at that edge — its label keeps its true finish date and the notes name it."""
     if not items:
         raise ValueError("nothing to lay out")
+    if window is not None:
+        outside = [i for i in items if not overlaps(i.start, i.finish, window)]
+        if outside:
+            raise ValueError(f"{len(outside)} item(s) lie wholly outside the window")
     notes: list[str] = []
     # swimlanes in first-seen order; spacing/case variants of one name merge, and say so
     lane_of: dict[str, int] = {}
@@ -553,22 +661,23 @@ def build_layout(
                 f"swimlane “{it.lane}” merged into “{lane_names[lane_of[key]]}” "
                 "(same name, different spacing or case)"
             )
-    # the window: whole months, and today when it is anywhere near the data
+    # the window: whole months, and today when it is anywhere near the data — or the operator's
     lo = min(i.start for i in items)
     hi = max(i.finish for i in items)
-    today_note = ""
-    if lo - dt.timedelta(days=183) <= today <= hi + dt.timedelta(days=183):
-        lo, hi = min(lo, today), max(hi, today)
-    else:
-        today_note = f"Today ({mdy(today)}) lies outside the plotted window and is not drawn."
-    t0, t1 = _first_of_month(lo), _next_month(hi)
+    t0, t1, today_note = plot_window(lo, hi, today, window)
     total = (t1 - t0).days
 
     def x_of(d: dt.date) -> float:
         return X0 + (d - t0).days / total * (X1 - X0)
 
-    n_months = (t1.year - t0.year) * 12 + (t1.month - t0.month)
-    month_w = (X1 - X0) / max(1, n_months)
+    if window is not None:
+        cut = [i for i in items if i.start < window[0] or i.finish > window[1]]
+        if cut:
+            notes.append(
+                f"{len(cut)} item(s) run past the date window's edge and are drawn cut at it — "
+                "each label keeps its true finish date: "
+                + "; ".join(f"{i.name} ({item_when(i)})" for i in cut)
+            )
     by_lane: dict[int, list[OnePagerItem]] = {}
     for it in items:
         by_lane.setdefault(lane_of[_lane_key(it.lane)], []).append(it)
@@ -594,6 +703,10 @@ def build_layout(
                 left, right = xs - ms_w / 2, xs + ms_w / 2
             else:
                 xe = max(xe, xs + 3)
+                if window is not None:  # cut at the window's edges (a no-op for an inside bar)
+                    xs, xe = max(xs, X0), min(xe, X1)
+                    if xe - xs < 3:  # keep the 3-pt floor INSIDE the chart
+                        xs, xe = (xs, xs + 3) if xs + 3 <= X1 else (xe - 3, xe)
                 left, right = xs, xe
                 # a complete item's label stays outside: its check sits beside the bar, not on it
                 inside = not done and lw + 4 <= xe - xs and bar_h >= label_pt
@@ -724,24 +837,7 @@ def build_layout(
         y += h + LANE_GAP
     lanes_y1 = y - LANE_GAP
     # the header: a dotted line per month, a letter or abbreviation as room allows, year bands
-    months: list[Tick] = []
-    years: list[Band] = []
-    month_pt = 6.5 if month_w >= 20 else 5.5
-    d = t0
-    while d < t1:
-        if month_w >= 20:
-            lab = calendar.month_abbr[d.month]
-        elif month_w >= 6.5:
-            lab = calendar.month_abbr[d.month][0]
-        else:
-            lab = ""
-        months.append(Tick(x_of(d), lab, x_of(d) + month_w / 2))
-        d = _next_month(d)
-    yb = t0
-    while yb < t1:
-        ye = min(dt.date(yb.year + 1, 1, 1), t1)
-        years.append(Band(x_of(yb), x_of(ye), str(yb.year), len(years) % 2))
-        yb = ye
+    months, years, month_pt = timescale(t0, t1, X0, X1, window is not None)
     # today: the DD line spans header + lanes; its dated caption sits in the gap below the lanes
     today_x = None if today_note else x_of(today)
     tl_anchor = "end" if today_x is not None and today_x > X1 - 110 else "start"
@@ -821,18 +917,37 @@ def layout_json(layout: Layout) -> dict[str, Any]:
     return asdict(layout)
 
 
-def subtitle_for(doc: OnePagerDoc, layout_lanes: int, today: dt.date) -> str:
+def subtitle_for(
+    doc: OnePagerDoc, layout_lanes: int, today: dt.date, window: Window | None = None
+) -> str:
     ms = sum(i.milestone for i in doc.items)
     return (
-        f"Prepared {today.isoformat()} · {len(doc.items)} items · {layout_lanes} swimlanes · "
+        f"Prepared {today.isoformat()} · "
+        + (f"window {window_text(window)} · " if window is not None else "")
+        + f"{len(doc.items)} items · {layout_lanes} swimlanes · "
         f"{ms} milestones · {len(doc.items) - ms} activities"
     )
+
+
+def windowed_doc(doc: OnePagerDoc, window: Window | None) -> tuple[OnePagerDoc, list[str]]:
+    """``(doc, omitted)``: the document scoped to the window — its items only those touching it —
+    and one sentence per item left off. Without a window the document itself, unchanged."""
+    if window is None:
+        return doc, []
+    kept, omitted = window_items(doc.items, window)
+    return replace(doc, items=tuple(kept)), [
+        f"{i.lane} · {i.name} ({item_when(i)}, row {i.row})" for i in omitted
+    ]
 
 
 # ── the ⤓ EXCEL side: the normalised list, with every parser decision alongside ─────────────
 
 
-def onepager_tableset(doc: OnePagerDoc) -> TableSet:
+def onepager_tableset(
+    doc: OnePagerDoc, window: Window | None = None, omitted: list[str] | tuple[str, ...] = ()
+) -> TableSet:
+    """The list — scoped to the date window when one is set, with the window and every item it
+    left off stated in the Notes table (ADR-0527)."""
     rows: tuple[tuple[Cell, ...], ...] = tuple(
         (
             it.lane,
@@ -851,6 +966,19 @@ def onepager_tableset(doc: OnePagerDoc) -> TableSet:
             rows,
         ),
         Table("Skipped rows", ("Problem",), tuple((p,) for p in doc.problems) or (("none",),)),
-        Table("Notes", ("Note",), tuple((n,) for n in doc.notes) or (("none",),)),
+        Table(
+            "Notes",
+            ("Note",),
+            tuple((n,) for n in (*doc.notes, *_window_notes(window, omitted))) or (("none",),),
+        ),
     ]
     return TableSet("POLARIS² — One-Pager", tuple(tables))
+
+
+def _window_notes(window: Window | None, omitted: list[str] | tuple[str, ...]) -> list[str]:
+    if window is None:
+        return []
+    return [
+        f"date window {window[0].isoformat()} to {window[1].isoformat()}: {len(omitted)} item(s) "
+        "wholly outside it left off the slide and this workbook"
+    ] + [f"left off (outside the window): {o}" for o in omitted]

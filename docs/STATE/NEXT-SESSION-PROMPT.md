@@ -1,4 +1,4 @@
-# Kickoff prompt — next session (handed over 2026-09-23, after the One-Pager Compare round-two push, ADR-0526)
+# Kickoff prompt — next session (handed over 2026-09-24, after the One-Pager date window + R-71 flag push, ADR-0527)
 
 ## ⚠ FIRST, BEFORE ANYTHING: verify this prompt is about THIS repository
 
@@ -12,9 +12,9 @@ happen again. **Run these before the first edit:**
 
 ```bash
 git fetch --unshallow origin; git fetch --prune origin && git remote set-head origin -a
-git log --oneline -1 origin/main && git rev-list --count origin/main   # expect e0daccc4-or-later, 811+
+git log --oneline -1 origin/main && git rev-list --count origin/main   # expect 8c71c639-or-later, 813+ (more once ADR-0527's PR merges)
 ls -d src app 2>&1; ls .github/workflows; grep -n '^version' pyproject.toml
-ls docs/adr | sort | tail -1                                          # expect 0526 or higher
+ls docs/adr | sort | tail -1                                          # expect 0527 or higher
 ```
 
 **If a prompt's facts disagree with those outputs, the TREE wins and the prompt is suspect — report it
@@ -24,16 +24,25 @@ sessions both ran this block and the tree agreed on every point — that is what
 
 ## Where we are
 
-**`main` @ `f4703fd`** (#713, R-69 + R-80 / ADR-0524 + 0525, v1.0.288). The One-Pager Compare round
-two (operator request 2026-09-22: column D completion, unchanged repeated names drawn once, tasks
-stay in their swimlanes) ships on **`claude/loving-euler-ek7ve9`** as a **draft PR the OPERATOR
-merges** — ADR-0526, v1.0.289, `src/` changed and the wheel + nine installers rebuilt, so **EIGHT
-checks** apply. Read that PR's final head's checks to conclusion FIRST; if merged, restart the branch
-on the squash and compare trees. Highest ADR **0526**. Version **1.0.289**. Schema unchanged.
-Open for the operator: whether an OPEN item past its date needs a cue, and whether the shared
-/onepager template should carry a column D (ADR-0526 "Not done").
+**`main` @ `8c71c639`** (#714, One-Pager Compare round two / ADR-0526, v1.0.289; #713 f4703fd2 before
+it). This unit — the **One-Pager date window** (operator request 2026-09-23) and **R-71's flag half**
+(operator ruling 2026-09-23) — ships on **`claude/tender-ptolemy-ua1y6k`** as a **draft PR the
+OPERATOR merges**: ADR-0527, v1.0.290, `src/` changed and the wheel + nine installers rebuilt, so
+**EIGHT checks** apply. Read that PR's final head's checks to conclusion FIRST; if merged, restart the
+branch on the squash and compare trees. Highest ADR **0527**. Version **1.0.290**. Schema unchanged.
 
 ## What's done — do NOT re-open
+
+**The One-Pager date window — ADR-0527.** Two dates on /onepager and /onepager-compare; timescale =
+exactly the window; straddlers kept and CUT at the edge (true finish in the label); wholly-outside
+items omitted AND NAMED; compare rows by prior OR current; the window scopes slide, pptx, takeaway,
+summary, ▦ DATA and ⤓ EXCEL; no window = byte-identical. Rulings recorded in the ADR — do not re-ask.
+
+**R-71's FLAG half is CLOSED — ADR-0527.** Ruling: `TaskTiming.is_critical` stays the pure CPM
+property; `CPMResult.critical_path` alone drops `is_recorded_complete` work (UID-exact vs stored
+Critical on the 15 goldens, 7,935 activities). DCMA-12's filter copy was removed as unreachable. Do
+NOT re-litigate the flag. R-71's RECORD limbs (LS = AS / LF = AF, the 22 clamped late finishes) remain.
+
 
 **R-69 is CLOSED — ADR-0524.** `_snap_start_role` gives the backward WALL pass the start-role spelling
 the offset path already had (`offset_to_start_datetime` vs `offset_to_datetime`); it is the
@@ -62,23 +71,8 @@ JSON and a throwing draw helper — 9 of 9 printed the LOAD sentence before, 0 a
 
 ## Next — §3 in order
 
-**R-71** (T3, M) · R-13 · R-18 · R-21 · R-22 · R-32 · R-39. R-68 waits on the operator's reading
-(question (f)).
-
-**R-71's flag half is PRICED and BLOCKED on one ruling — read this before starting it.** Measured
-here, independently, with red-before-green: **`is_critical AND NOT is_recorded_complete` is UID-EXACT
-against MS Project's stored `Critical` on all 22,105 activities** (2,011 agree, 0 engine-only, 0
-stored-only); drop the term and **10** engine-only disagreements appear, named (Hard_File_updated2 UID
-290, Hard_File_updated3 UID 261, Large_Test_File2 UID 6956, + conversion twins). The premise holds
-against the bytes: 0 of 8,644 finished activities carry stored `Critical=1`, and the negative control
-fires (2,011 incomplete do). Blast radius: `TaskTiming.is_critical` has **2** reads in `src/`
-(`cpm.py:3205`, `float_analysis.py:90`), `CPMResult.critical_path` **2** (`dcma14.py:596`,
-`web/path.py:51`); DCMA-12's target changes on **0 of 44** files; `float_analysis` already exposes
-`critical_count` 2,021 and `critical_incomplete_count` 2,011.
-**The ruling needed:** `is_critical` is documented as "the pure CPM property `total_float <= 0`".
-Does that documented field change meaning, or does the record-aware answer stay in
-`is_effective_critical` (already False for all 10) with `critical_path` alone filtered?
-**Do not implement either without the operator's answer.**
+**R-13** (T3, S) · R-18 · R-21 · R-22 · R-32 · R-39. R-71's record limbs when the queue allows.
+R-68 waits on the operator's reading (question (f)).
 
 R-71's other limbs, re-censused: **8,644** completed (engine and file-only tests agree exactly) with
 LS == AS and LF == AF on 8,644 / 8,644; **1,159** started with LS == AS on 1,159 / 1,159; the clamped
@@ -125,6 +119,12 @@ uv pip install --python /usr/local/bin/python3 --system -e . --no-deps   # after
 * The app is built with `create_app(SessionState())`, not a module-level `app`.
 
 ## Traps this session paid for, by name
+
+**(2026-09-24, ADR-0527)** A clamp is not a floor — cut THEN floor drew 88 bars backwards; fuzz the
+geometry, not a case · the render found a label over the lane names that 23 green tests missed · a
+census can be blind by construction (the UI-control census cannot see a plain form) · an inherited
+test DOCSTRING was false — correct prose in the commit that moves the pin · a rule moved upstream
+strands its downstream copy (DCMA-12's filter) — delete it, or it is the next surviving mutant.
 
 **A register row's BLOCKER is testimony too** — three units have now re-verified a row's numbers and
 its mechanism; nobody had re-verified the sentence saying why it was expensive, and that sentence kept
@@ -182,4 +182,4 @@ Work the POLARIS² audit's plan-forward. Read `docs/STATE/HANDOFF.md` FIRST (aut
 `tests/guards/test_audit_report_wp8.py`. QC-1 / QC-2 / QC-3 bind every session (ADR-0393, ADR-0509).
 Run the session-token-guardian's `scripts/token_audit.py` as the FIRST action (copy it to the
 scratchpad) and before each operator prompt. `git fetch origin` before you branch, number an ADR, or
-commit. Highest ADR 0525. Version 1.0.288. Schema 2.17.0.
+commit. Highest ADR 0527. Version 1.0.290. Schema 2.17.0.

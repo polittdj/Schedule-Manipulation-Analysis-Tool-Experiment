@@ -22,7 +22,6 @@ from schedule_forensics.engine.cpm import (
     CPMResult,
     compute_cpm,
     execution_calendar_of,
-    is_recorded_complete,
 )
 from schedule_forensics.engine.metrics._common import (
     CheckStatus,
@@ -598,20 +597,11 @@ def _critical_path_test(schedule: Schedule, result: CPMResult) -> MetricResult:
         and by_id[tid].duration_minutes > 0
         and not by_id[tid].is_summary
         and by_id[tid].is_active  # inactive tasks are off the network (ADR-0128)
-        # ADR-0476: an activity whose whole window is a RECORD is immovable — injecting a delay
-        # into work that has already finished cannot move the project finish, and must not. Before
-        # the recorded-window pin, a completed activity absorbed the injection like any other and
-        # this test measured it; after it, a completed lowest-UID target would fail the check for a
-        # reason that has nothing to do with logic continuity. DCMA-12 asks whether the REMAINING
-        # controlling path is continuous, so the target must be an activity that can still move.
-        # Scoped to ``is_recorded_complete`` rather than to ``percent_complete >= 100`` on purpose:
-        # the property that disqualifies a target is being IMMOVABLE, and only the recorded-window
-        # pin confers that. A task reported complete but carrying no actuals is still scheduled by
-        # logic, still absorbs the injection, and stays a valid target.
-        # Measured on the corpus: this filter changes the chosen target on exactly ONE golden —
-        # Project2, where it excludes 2 of 43 critical candidates and moves the target from UID 26
-        # to UID 29 — and DCMA-12's VERDICT and counts are byte-identical on every golden.
-        and not is_recorded_complete(by_id[tid])
+        # ADR-0476 kept a recorded-complete activity out of the targets here: it is IMMOVABLE, so
+        # an injected delay cannot move the finish, and DCMA-12 asks whether the REMAINING path is
+        # continuous. Since R-71 (ADR-0527) ``critical_path`` itself never holds one — MS Project
+        # stores Critical = No on every finished activity — so the rule lives in the engine and
+        # this list needs no second copy of it (a copy no product path could reach).
     ]
     if not targets:
         return MetricResult(

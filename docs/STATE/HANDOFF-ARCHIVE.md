@@ -1,6 +1,34 @@
 # HANDOFF archive
 
 
+# (prior) Handoff — 2026-09-23 (One-Pager Compare round two (ADR-0526) — a repeated name whose date did not move is ONE unchanged item, column D is a STATUS word drawn as a check, every row cites the row Excel shows — **v1.0.289**)
+
+STATUS (current) — branch **`claude/loving-euler-ek7ve9`**, draft PR opened this session (the operator merges; never marked ready here). Based on `main` @ `f4703fd` (#713, ADR-0524/0525, v1.0.288) — merged in cleanly mid-session because #713 landed while this unit was in flight, so this unit is **ADR-0526 / v1.0.289**, not 0524. `src/` changed: wheel + nine installers rebuilt as the LAST step, so **EIGHT checks** (CI's six + installer-smoke `linux` / `windows`). Highest ADR **0526**. Version **1.0.289**. Schema unchanged. QC-1 / QC-2 / QC-3 bind every session.
+
+## What landed (operator request 2026-09-22, three rulings asked for and given)
+
+The request: column D says whether a task is complete — show it on the chart; a task whose name and date did not change is NOT "DUPLICATE NAME" — show it once with its single date; tasks always stay in their swimlanes; show the slips AND what did not slip. Rulings: swimlanes = a standing requirement (no bug seen); same swimlane + name + date in both sheets = one item; column D = status words.
+
+* **Matching** (`reports/onepager_compare.py`): identical rows collapse per sheet FIRST (named); a repeated (swimlane, name) pairs only copies with an IDENTICAL (start, finish) — UNCHANGED, drawn once — and **never by elimination**; leftovers on one side are NEW / REMOVED, on both DUPLICATE NAME (rows named). Keys fold typographic twins (dash, curly quote, zero-width).
+* **Drawn once:** no ghost under an unchanged bar; `inside` stays gated on "no prior side", so no other geometry moves.
+* **Column D** (`reports/onepager.py read_completion`): status-word reader; unknown words, numbers and dates are not complete AND named (`completion_notes`, kept off /onepager). Check = `--muted` disc + `--bg` check BESIDE the shape (JS + pptx same points; pptx = ellipse + two round-capped line strokes, rising one `flipV`). Counted in strip / table / drawer / Excel / headline; completion regressions and moved-after-complete flagged.
+* **Summary strip** shrinks to fit (6 → 3.6 pt) before cutting anything; counts unchanged + complete.
+* **True rows:** `read_xlsx_numbered` + `parse_numbered_workbook` on BOTH One-Pager uploads (Excel omits unformatted blank rows — 18 of 51 Excel-authored intake workbooks). `read_xlsx` byte-identical for the SRA importers (whole-corpus digest `827ee8fc…` before = after).
+* **Addendum (operator ruling 2026-09-23): the same check on `/onepager`** — layout, painter, pptx, legend and its unread-word notice; 3/3 mutations red; rendered. Overdue cue and template column D: parked ("not at this time").
+* Compare page now shows each list's own reading ("How each list was read" — the inherited-swimlane decisions).
+
+## How it was verified
+
+QC-3: five skeptics attacked the plan before any edit — **leftover 1:1 pairing REFUTED** (+90 cal d invented on a rolling window), collapse-order, numeric column-D inference, check-on-the-bar (1.04–1.94:1), "ghost drop changes nothing else", and the 3-line strip all refuted and replaced; see ADR-0526's table. Red-first tests (3 new modules + page/browser/interop additions). **Mutation battery 38/38 red by name** on a scratch copy (two first-run survivors were test defects, fixed). Rendered pristine vs changed in 4 themes (4 DUPLICATE shapes → 2 unchanged items; 0 page errors). Full suite pre-merge: 5,917 passed / 5 standing skips / 1 fail = the installer lockstep, rebuilt as the last step. LibreOffice Impress had to be apt-installed in this container for the interop test to RUN locally (CI installs it and fails on a skip).
+
+## Deliberate re-baselines (reasons in each test)
+
+Unchanged-ghost pin inverted · strip ≤3-line pin → "whatever fits, no ellipsis" · browser ghosts 16/6 → 4/3 · both takeaway sentences gain "N unchanged" · slot line gains "no column D" / "column D: N complete" · r11 + DD-line locators `onepager_compare.js` 131 → 152 (caption md5 `ed5a829d…` identical).
+
+## Not done (measured, left) · carried forward
+
+Clipped end-anchored labels can run left of the chart (pre-existing, ~0.1 % of fuzzed labels) · tag text overruns its box under the container's substitute font (pre-existing) · `read_xlsx`'s r-less cells still land in column A on the SRA path · no overdue-open cue · no column D in the shared template. **UNVERIFIED:** PowerPoint itself; the operator's real column-D words (every unread word is named on the page for exactly this).
+
 # (prior) Handoff — 2026-09-22 (c) (R-69 **CLOSED** (ADR-0524) and R-80 **CLOSED** (ADR-0525) — a late START is a start-role instant on the WALL path too, the blocker that deferred it had been dead five commits, and ten of eleven terminal-`.catch` sentences are conflations — **v1.0.288**)
 
 STATUS (current) — `main` @ **`e0daccc4`** (#712, R-77 / ADR-0523, v1.0.287, MERGED 2026-09-22T15:03:30Z; its own runs were read to conclusion by the prior session and are NOT re-read here). 811 commits at session start. §0's anti-foreign-prompt block was RUN and the tree agreed on every point (`origin/main` e0daccc4, 811, `src` present / `app` absent, both workflows, version 1.0.287, highest ADR 0523). This unit ships on **`claude/determined-hopper-x13la6`** as a **draft PR the OPERATOR merges** — `src/` changed and the wheel + nine installers were rebuilt, so **EIGHT checks** apply (CI's `cui-guard` / `browser` / `floor` / `test (3.11)` / `test (3.13)` / `check`, plus installer-smoke's `linux` / `windows`). Highest ADR **0525**. Version **1.0.288**. Schema **2.17.0** (unchanged). QC-1 / QC-2 (ADR-0393) and QC-3 (ADR-0509) bind every session.

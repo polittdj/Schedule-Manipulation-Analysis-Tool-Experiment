@@ -48,7 +48,7 @@ def _what_drives_header(sch: Schedule, analysis: _Analysis) -> str:
     (``cpm.critical_path``) is already scoped to any global Analysis Target, so this respects it
     automatically. Every figure is read from what the report already computed (no engine math)."""
     cpm = analysis.cpm
-    chain = cpm.critical_path  # unique_ids with total_float <= 0, topo order
+    chain = cpm.critical_path  # total_float <= 0 and not recorded complete, topo order
     n = len(chain)
     total = sum(1 for _ in non_summary(sch)) or 1
 
