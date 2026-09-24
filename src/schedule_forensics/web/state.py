@@ -770,6 +770,9 @@ class SessionState:
     onepager_is_error: bool = False
     #: Test seam: the "today" the one-pager draws. ``None`` is the real clock.
     onepager_today: dt.date | None = None
+    #: The operator's date window on /onepager — ``(first day, last day)``, both inclusive — or
+    #: ``None`` for the whole list (ADR-0527). Kept across a replaced list; cleared with the list.
+    onepager_window: tuple[dt.date, dt.date] | None = None
     # ── /onepager-compare (ADR-0465): the PRIOR and CURRENT lists (the operator's choice of slot,
     # never inferred), the slide title, and the one-shot message — cleared by "Clear both lists" ──
     onepager_prior: OnePagerDoc | None = None
@@ -778,6 +781,8 @@ class SessionState:
     onepager_compare_msg: str | None = None
     #: Whether :attr:`onepager_compare_msg` reports a FAILURE (the ADR-0313 rule).
     onepager_compare_is_error: bool = False
+    #: The date window on /onepager-compare (ADR-0527), as :attr:`onepager_window`.
+    onepager_compare_window: tuple[dt.date, dt.date] | None = None
     # JCL joint cost-&-schedule confidence settings (ADR-0269). Blank targets (None) mean
     # "use the run's deterministic finish / EAC"; td_share is the time-dependent cost share
     # τ; the 1/1/1 multipliers mean cost-estimating uncertainty is OFF (duration-driven

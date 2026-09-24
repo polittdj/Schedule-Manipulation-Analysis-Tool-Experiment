@@ -40,7 +40,6 @@ the ADR-0446 slide in logical points, and the two painters (``static/onepager_co
 
 from __future__ import annotations
 
-import calendar
 import datetime as dt
 from dataclasses import asdict, dataclass, replace
 from typing import Any
@@ -73,9 +72,15 @@ from schedule_forensics.reports.onepager import (
     OnePagerItem,
     Tick,
     W,
+    Window,
     _lane_key,
+    _window_notes,
     mdy,
+    overlaps,
+    plot_window,
     text_w,
+    timescale,
+    window_text,
     wrap,
 )
 from schedule_forensics.reports.tables import Cell, Table, TableSet
@@ -475,6 +480,55 @@ def compare_onepager_docs(prior: OnePagerDoc, current: OnePagerDoc) -> CompareDo
     )
 
 
+def _row_spans(r: CompareRow) -> list[tuple[dt.date, dt.date]]:
+    return [
+        (a, b)
+        for a, b in ((r.prior_start, r.prior_finish), (r.current_start, r.current_finish))
+        if a is not None and b is not None
+    ]
+
+
+def row_in_window(r: CompareRow, window: Window) -> bool:
+    """A compared row is on a windowed slide when its PRIOR or its CURRENT position touches the
+    window (operator ruling 2026-09-23) — so an item that slipped OUT of the window stays on it,
+    its arrow running to the edge."""
+    return any(overlaps(a, b, window) for a, b in _row_spans(r))
+
+
+def window_compare(doc: CompareDoc, window: Window | None) -> tuple[CompareDoc, list[str]]:
+    """``(doc, omitted)``: the comparison scoped to the window — its rows only those
+    :func:`row_in_window` keeps, the per-swimlane summaries and the totals recounted over them —
+    and one sentence per row left off. Without a window the comparison itself, unchanged. The
+    matcher's own findings (collisions, completion changes, notes) are about the LISTS and are
+    kept whole."""
+    if window is None:
+        return doc, []
+    kept = [r for r in doc.rows if row_in_window(r, window)]
+    omitted = [r for r in doc.rows if not row_in_window(r, window)]
+    by_lane: dict[str, list[CompareRow]] = {}
+    for r in kept:
+        by_lane.setdefault(lane_key(r.lane), []).append(r)
+    lanes = tuple(
+        _summary(s.lane, by_lane[lane_key(s.lane)])
+        for s in doc.lanes
+        if lane_key(s.lane) in by_lane
+    )
+
+    def when(r: CompareRow) -> str:
+        parts = []
+        for side, a, b in (
+            ("prior", r.prior_start, r.prior_finish),
+            ("current", r.current_start, r.current_finish),
+        ):
+            if a is not None and b is not None:
+                parts.append(f"{side} {mdy(b) if a == b else f'{mdy(a)} to {mdy(b)}'}")
+        return ", ".join(parts)
+
+    return replace(doc, rows=tuple(kept), lanes=lanes, totals=_summary("Total", kept)), [
+        f"{r.lane} · {r.name} — {r.status} ({when(r)})" for r in omitted
+    ]
+
+
 def compare_json(doc: CompareDoc) -> dict[str, Any]:
     """The comparison as plain data (dates ISO) — for the page's non-executable JSON block."""
     out = asdict(doc)
@@ -666,11 +720,22 @@ class _Packed:
 
 
 def build_compare_layout(
-    doc: CompareDoc, today: dt.date, title: str, subtitle: str = ""
+    doc: CompareDoc,
+    today: dt.date,
+    title: str,
+    subtitle: str = "",
+    window: Window | None = None,
 ) -> CompareLayout:
-    """Place every compared row on the slide. Raises ``ValueError`` with nothing to place."""
+    """Place every compared row on the slide. Raises ``ValueError`` with nothing to place.
+
+    With a ``window`` (ADR-0527) the timescale is exactly that window and the caller has already
+    scoped the rows to it (:func:`window_compare`): a shape that runs past an edge is cut at it, a
+    shape wholly outside is not drawn, and an arrow runs to the edge its move crosses — its label
+    and its move keep the true dates, and the notes name every such row."""
     if not doc.rows:
         raise ValueError("nothing to lay out")
+    if window is not None and not all(row_in_window(r, window) for r in doc.rows):
+        raise ValueError("a row lies wholly outside the window")
     notes: list[str] = []
     lane_of: dict[str, int] = {}
     lane_names: list[str] = []
@@ -695,19 +760,42 @@ def build_compare_layout(
         if d is not None
     ]
     lo, hi = min(dates), max(dates)
-    today_note = ""
-    if lo - dt.timedelta(days=183) <= today <= hi + dt.timedelta(days=183):
-        lo, hi = min(lo, today), max(hi, today)
-    else:
-        today_note = f"Today ({mdy(today)}) lies outside the plotted window and is not drawn."
-    t0, t1 = _first_of_month(lo), _next_month(hi)
+    t0, t1, today_note = plot_window(lo, hi, today, window)
     total = (t1 - t0).days
 
     def x_of(d: dt.date) -> float:
         return X0 + (d - t0).days / total * (X1 - X0)
 
-    n_months = (t1.year - t0.year) * 12 + (t1.month - t0.month)
-    month_w = (X1 - X0) / max(1, n_months)
+    def shape(
+        start: dt.date, finish: dt.date, milestone: bool | None
+    ) -> tuple[float, float] | None:
+        """One side's shape in x: a milestone ``(x, x)``, a bar at least 3 pt wide — with a
+        window, cut at its edges, and ``None`` when that side lies wholly outside it."""
+        xs, xe = x_of(start), x_of(finish)
+        if milestone:
+            if window is not None and not overlaps(start, finish, window):
+                return None
+            return (xs, xs)
+        xe = max(xe, xs + 3)
+        if window is not None:
+            if not overlaps(start, finish, window):
+                return None
+            xs, xe = max(xs, X0), min(xe, X1)
+            if xe - xs < 3:  # keep the 3-pt floor INSIDE the chart
+                xs, xe = (xs, xs + 3) if xs + 3 <= X1 else (xe - 3, xe)
+        return (xs, xe)
+
+    def edge(x: float) -> float:
+        return min(max(x, X0), X1) if window is not None else x
+
+    if window is not None:
+        cut = [r for r in doc.rows if any(a < window[0] or b > window[1] for a, b in _row_spans(r))]
+        if cut:
+            notes.append(
+                f"{len(cut)} row(s) run past the date window's edge — a shape is cut at the edge, "
+                "one wholly outside is not drawn and its arrow runs to the edge; every label and "
+                "move keeps its true dates: " + "; ".join(f"{r.name} ({r.status})" for r in cut)
+            )
     by_lane: dict[int, list[CompareRow]] = {}
     for r in doc.rows:
         by_lane.setdefault(lane_of[lane_key(r.lane)], []).append(r)
@@ -733,16 +821,22 @@ def build_compare_layout(
             cur: tuple[float, float] | None = None
             ghost: tuple[float, float] | None = None
             if r.current_start and r.current_finish:
-                xs, xe = x_of(r.current_start), x_of(r.current_finish)
-                cur = (xs, xs) if r.current_milestone else (xs, max(xe, xs + 3))
+                cur = shape(r.current_start, r.current_finish, r.current_milestone)
             # an UNCHANGED row is drawn once: its ghost would sit exactly under its bar
             if r.prior_start and r.prior_finish and r.status != UNCHANGED:
-                gs, ge = x_of(r.prior_start), x_of(r.prior_finish)
-                ghost = (gs, gs) if r.prior_milestone else (gs, max(ge, gs + 3))
-            shapes = [sh for sh in (cur, ghost) if sh is not None]
+                ghost = shape(r.prior_start, r.prior_finish, r.prior_milestone)
             half = ms_w / 2
-            left = min(sh[0] - (half if sh[0] == sh[1] else 0) for sh in shapes)
-            right = max(sh[1] + (half if sh[0] == sh[1] else 0) for sh in shapes)
+            ext = [
+                (sh[0] - (half if sh[0] == sh[1] else 0), sh[1] + (half if sh[0] == sh[1] else 0))
+                for sh in (cur, ghost)
+                if sh is not None
+            ]
+            # a windowed arrow's cut end (its shape outside the window) is part of the extent
+            arrow_ends = _arrow(r)
+            if window is not None and arrow_ends is not None:
+                ext.append((min(arrow_ends), max(arrow_ends)))
+            left = min(e[0] for e in ext)
+            right = max(e[1] for e in ext)
             label, delta, badge = _label_for(r)
             text = " ".join(t for t in (label, delta) if t)
             lw = text_w(text, label_pt)
@@ -754,7 +848,13 @@ def build_compare_layout(
             done_x: float | None = None
             # only a row with NO prior side may carry its label inside its bar (as before), and
             # never a complete one — its check must sit beside the bar, not on it
-            if cur is not None and cur[0] != cur[1] and r.prior_start is None and not done:
+            # with a date window, a row whose ghost and arrow are both off the slide — an unchanged
+            # bar spanning the window is the common case — may too: outside, its end-anchored label
+            # would run over the swimlane names (the row has no other shape its label could cover)
+            no_other = r.prior_start is None or (
+                window is not None and ghost is None and arrow_ends is None
+            )
+            if cur is not None and cur[0] != cur[1] and no_other and not done:
                 inside = full + 4 <= cur[1] - cur[0] and bar_h >= label_pt
             if inside and cur is not None:
                 anchor, lx, ext0, ext1 = "start", cur[0] + 2, left, right
@@ -771,6 +871,19 @@ def build_compare_layout(
                     if ext0 < X0 - 1:
                         clipped = True
                         ext0 = X0
+                # with a date window a moved row's shapes can fill the chart, leaving no room
+                # outside it on either side: its label then sits ON its solid bar when it fits
+                # there, rather than running over the swimlane names
+                if (
+                    clipped
+                    and window is not None
+                    and not done
+                    and cur is not None
+                    and full + 4 <= cur[1] - cur[0]
+                    and bar_h >= label_pt
+                ):
+                    inside, clipped = True, False
+                    anchor, lx, ext0, ext1 = "start", cur[0] + 2, left, right
             row = next((i for i, end in enumerate(row_end) if end + 4 <= ext0), None)
             if row is None:
                 row = len(row_end)
@@ -800,6 +913,14 @@ def build_compare_layout(
                 )
             )
         return out
+
+    def _arrow(r: CompareRow) -> tuple[float, float] | None:
+        """The finish's move in x (``None`` when it did not move or a side is missing) — with a
+        window, each end held to the chart's edges."""
+        if not (r.matched and r.finish_delta_days and r.prior_finish and r.current_finish):
+            return None
+        a, b = edge(x_of(r.prior_finish)), edge(x_of(r.current_finish))
+        return None if window is not None and abs(b - a) < 0.5 else (a, b)
 
     avail = (LANES_Y1 - LANES_Y0) - n_lanes * 2 * LANE_PAD - (n_lanes - 1) * LANE_GAP
     packed: dict[int, list[_Packed]] = {}
@@ -871,7 +992,9 @@ def build_compare_layout(
             x0, x1 = pk.cur if pk.cur else (None, None)
             gx0, gx1 = pk.ghost if pk.ghost else (None, None)
             arrow: tuple[float, float] | None = None
-            if r.matched and r.finish_delta_days and gx1 is not None and x1 is not None:
+            if window is not None:
+                arrow = _arrow(r)
+            elif r.matched and r.finish_delta_days and gx1 is not None and x1 is not None:
                 arrow = (gx1, x1)
             placed.append(
                 PlacedCompare(
@@ -919,24 +1042,7 @@ def build_compare_layout(
             summaries.append(_summary_box(s, li, y, y + h))
         y += h + LANE_GAP
     lanes_y1 = y - LANE_GAP
-    months: list[Tick] = []
-    years: list[Band] = []
-    month_pt = 6.5 if month_w >= 20 else 5.5
-    d = t0
-    while d < t1:
-        if month_w >= 20:
-            lab = calendar.month_abbr[d.month]
-        elif month_w >= 6.5:
-            lab = calendar.month_abbr[d.month][0]
-        else:
-            lab = ""
-        months.append(Tick(x_of(d), lab, x_of(d) + month_w / 2))
-        d = _next_month(d)
-    yb = t0
-    while yb < t1:
-        ye = min(dt.date(yb.year + 1, 1, 1), t1)
-        years.append(Band(x_of(yb), x_of(ye), str(yb.year), len(years) % 2))
-        yb = ye
+    months, years, month_pt = timescale(t0, t1, X0, X1, window is not None)
     today_x = None if today_note else x_of(today)
     tl_anchor = "end" if today_x is not None and today_x > X1 - 110 else "start"
     tl_x = (today_x or X0) + (-3 if tl_anchor == "end" else 3)
@@ -1065,11 +1171,12 @@ def compare_layout_json(layout: CompareLayout) -> dict[str, Any]:
     return asdict(layout)
 
 
-def compare_subtitle(doc: CompareDoc, today: dt.date) -> str:
+def compare_subtitle(doc: CompareDoc, today: dt.date, window: Window | None = None) -> str:
     t = doc.totals
     return (
         f"Prior {doc.prior_source} → current {doc.current_source} · prepared {today.isoformat()} · "
-        f"{t.slipped} slipped · {t.pulled_in} pulled in · {t.new} new · {t.removed} removed · "
+        + (f"window {window_text(window)} · " if window is not None else "")
+        + f"{t.slipped} slipped · {t.pulled_in} pulled in · {t.new} new · {t.removed} removed · "
         f"{t.unchanged} unchanged · "
         + (f"{t.complete} complete (column D) · " if doc.completion else "")
         + "moves in calendar days"
@@ -1079,9 +1186,13 @@ def compare_subtitle(doc: CompareDoc, today: dt.date) -> str:
 # ── the ⤓ EXCEL side ──────────────────────────────────────────────────────────────────────────
 
 
-def compare_tableset(doc: CompareDoc) -> TableSet:
+def compare_tableset(
+    doc: CompareDoc, window: Window | None = None, omitted: list[str] | tuple[str, ...] = ()
+) -> TableSet:
     """The compared rows with prior / current / delta columns, the per-swimlane summary, and
-    every matcher decision — the same cells the page renders."""
+    every matcher decision — the same cells the page renders. With a date window (ADR-0527) the
+    rows and summaries are the window's, and the Notes table states the window and names every
+    row it left off."""
 
     def d(value: dt.date | None) -> Cell:
         return value.isoformat() if value else None
@@ -1169,7 +1280,11 @@ def compare_tableset(doc: CompareDoc) -> TableSet:
         ),
         Table("Collisions", ("Problem",), tuple((p,) for p in doc.problems) or (("none",),)),
         Table("Completion changes", ("Change",), tuple((f,) for f in doc.flags) or (("none",),)),
-        Table("Notes", ("Note",), tuple((n,) for n in doc.notes) or (("none",),)),
+        Table(
+            "Notes",
+            ("Note",),
+            tuple((n,) for n in (*doc.notes, *_window_notes(window, omitted))) or (("none",),),
+        ),
         Table(
             "How each list was read",
             ("Note",),

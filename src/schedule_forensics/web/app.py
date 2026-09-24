@@ -245,6 +245,7 @@ from schedule_forensics.reports.docx import (
 from schedule_forensics.reports.onepager import (
     OnePagerDoc,
     onepager_tableset,
+    parse_date,
     parse_numbered_workbook,
 )
 from schedule_forensics.reports.onepager_compare import compare_tableset
@@ -650,11 +651,17 @@ from schedule_forensics.web.offload import (
     run_maybe_offloaded,
     shutdown_offload,
 )
-from schedule_forensics.web.onepager import _onepager_body, onepager_layout, onepager_template
+from schedule_forensics.web.onepager import (
+    _onepager_body,
+    onepager_layout,
+    onepager_template,
+    onepager_view,
+)
 from schedule_forensics.web.onepager_compare import (
     _onepager_compare_body,
     onepager_compare_doc,
     onepager_compare_layout,
+    onepager_compare_view,
 )
 from schedule_forensics.web.path import _path_body as _path_body
 from schedule_forensics.web.path import _what_drives_header as _what_drives_header
@@ -4376,6 +4383,23 @@ def create_app(
         clean = "".join(ch for ch in base if ch.isprintable() and ch not in "\x1f")
         return clean.strip()[:120] or "list.xlsx"
 
+    def _onepager_window(start: str, end: str) -> tuple[dt.date, dt.date] | str:
+        """The two date inputs -> an inclusive ``(first, last)`` window, or the refusal sentence.
+        The date input sends ISO; a typed date the One-Pager itself reads (``5/1/27``, ``05/2027``
+        — a month-only first date is its first day, a month-only last date its last) is taken
+        too. Nothing is guessed: a blank or unreadable side, or a last date before the first,
+        is refused by name and the page keeps its current window."""
+        a, b = parse_date(start.strip()[:40]), parse_date(end.strip()[:40])
+        if a is None or b is None:
+            bad = [f"“{v.strip()[:40] or 'blank'}”" for v, p in ((start, a), (end, b)) if p is None]
+            return f"Date window not applied — enter both dates ({' and '.join(bad)} not read)."
+        if b[1] < a[0]:
+            return (
+                f"Date window not applied — the last date {b[1].isoformat()} is before the first "
+                f"{a[0].isoformat()}."
+            )
+        return (a[0], b[1])
+
     @app.get("/onepager", response_class=HTMLResponse)
     def onepager() -> HTMLResponse:
         st = session()
@@ -4420,10 +4444,31 @@ def create_app(
         session().onepager_title = title.strip()[:120]
         return RedirectResponse(url="/onepager", status_code=303)
 
+    @app.post("/onepager/window")
+    def onepager_set_window(
+        start: str = Form(""), end: str = Form(""), action: str = Form("apply")
+    ) -> RedirectResponse:
+        """Set or clear the slide's date window (ADR-0527) — a refusal is reported, never a
+        silently half-applied window."""
+        st = session()
+        if action == "clear":
+            st.onepager_window = None
+            st.onepager_msg, st.onepager_is_error = "Showing all dates.", False
+            return RedirectResponse(url="/onepager", status_code=303)
+        win = _onepager_window(start, end)
+        if isinstance(win, str):
+            st.onepager_msg, st.onepager_is_error = win, True
+        else:
+            st.onepager_window = win
+            st.onepager_msg = f"Date window set: {win[0].isoformat()} to {win[1].isoformat()}."
+            st.onepager_is_error = False
+        return RedirectResponse(url="/onepager", status_code=303)
+
     @app.post("/onepager/clear")
     def onepager_clear() -> RedirectResponse:
         st = session()
         st.onepager = None
+        st.onepager_window = None
         st.onepager_title = ""
         st.onepager_msg = "List cleared."
         st.onepager_is_error = False
@@ -4443,10 +4488,14 @@ def create_app(
         st = session()
         today = _onepager_today(st)
         lay = onepager_layout(st, today)
-        doc = st.onepager
+        doc, _omitted = onepager_view(st)
         if lay is None or doc is None:
             return JSONResponse(
-                {"error": "load a one-pager list first — there is no slide to export"},
+                {
+                    "error": "no item falls inside the date window — there is no slide to export"
+                    if st.onepager is not None and st.onepager.items
+                    else "load a one-pager list first — there is no slide to export"
+                },
                 status_code=422,
             )
         _cls, marking = _cui_marking(st)
@@ -4468,13 +4517,16 @@ def create_app(
         """The parsed list — swimlane, item, type, dates, sheet row — plus every skipped row."""
         if (bad := _bad_format(fmt)) is not None:
             return bad
-        doc = session().onepager
+        st = session()
+        doc, omitted = onepager_view(st)
         if doc is None:
             return JSONResponse(
                 {"error": "load a one-pager list first — there is nothing to export"},
                 status_code=422,
             )
-        return _export_response(fmt, onepager_tableset(doc), "one-pager-list")
+        return _export_response(
+            fmt, onepager_tableset(doc, st.onepager_window, omitted), "one-pager-list"
+        )
 
     # ── /onepager-compare: two One-Pager lists — PRIOR and CURRENT — matched on the (swimlane,
     # item) pair, every move in calendar days (ADR-0465). Same intake as /onepager; the page module
@@ -4548,11 +4600,33 @@ def create_app(
         session().onepager_compare_title = title.strip()[:120]
         return RedirectResponse(url="/onepager-compare", status_code=303)
 
+    @app.post("/onepager-compare/window")
+    def onepager_compare_set_window(
+        start: str = Form(""), end: str = Form(""), action: str = Form("apply")
+    ) -> RedirectResponse:
+        """Set or clear the compare slide's date window (ADR-0527), as /onepager/window."""
+        st = session()
+        if action == "clear":
+            st.onepager_compare_window = None
+            st.onepager_compare_msg, st.onepager_compare_is_error = "Showing all dates.", False
+            return RedirectResponse(url="/onepager-compare", status_code=303)
+        win = _onepager_window(start, end)
+        if isinstance(win, str):
+            st.onepager_compare_msg, st.onepager_compare_is_error = win, True
+        else:
+            st.onepager_compare_window = win
+            st.onepager_compare_msg = (
+                f"Date window set: {win[0].isoformat()} to {win[1].isoformat()}."
+            )
+            st.onepager_compare_is_error = False
+        return RedirectResponse(url="/onepager-compare", status_code=303)
+
     @app.post("/onepager-compare/clear")
     def onepager_compare_clear() -> RedirectResponse:
         st = session()
         st.onepager_prior = None
         st.onepager_current = None
+        st.onepager_compare_window = None
         st.onepager_compare_title = ""
         st.onepager_compare_msg = "Both lists cleared."
         st.onepager_compare_is_error = False
@@ -4565,10 +4639,15 @@ def create_app(
         st = session()
         today = _onepager_today(st)
         lay = onepager_compare_layout(st, today)
-        doc = onepager_compare_doc(st)
+        doc, _omitted = onepager_compare_view(st)
         if lay is None or doc is None:
+            full = onepager_compare_doc(st)
             return JSONResponse(
-                {"error": "load a PRIOR and a CURRENT one-pager list first — there is no slide"},
+                {
+                    "error": "no compared item falls inside the date window — there is no slide"
+                    if full is not None and full.rows
+                    else "load a PRIOR and a CURRENT one-pager list first — there is no slide"
+                },
                 status_code=422,
             )
         _cls, marking = _cui_marking(st)
@@ -4592,13 +4671,18 @@ def create_app(
         the collisions and the notes."""
         if (bad := _bad_format(fmt)) is not None:
             return bad
-        doc = onepager_compare_doc(session())
+        st = session()
+        doc, omitted = onepager_compare_view(st)
         if doc is None:
             return JSONResponse(
                 {"error": "load a PRIOR and a CURRENT one-pager list first — nothing to export"},
                 status_code=422,
             )
-        return _export_response(fmt, compare_tableset(doc), "one-pager-compare")
+        return _export_response(
+            fmt,
+            compare_tableset(doc, st.onepager_compare_window, omitted),
+            "one-pager-compare",
+        )
 
     @app.get("/export/{fmt}/ask")
     def export_ask(fmt: str) -> Response:

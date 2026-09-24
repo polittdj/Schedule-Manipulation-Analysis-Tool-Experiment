@@ -242,7 +242,11 @@ class CPMResult:
 
     timings: Mapping[int, TaskTiming]
     project_finish: int  # working-minute offset of the network's latest early finish
-    critical_path: tuple[int, ...]  # unique_ids with total_float <= 0, in topo order
+    #: unique_ids with total_float <= 0 that are NOT recorded complete, in topo order. MS Project
+    #: stores Critical = No on every finished activity (0 of 8,644 across the 44-file corpus), so
+    #: the path holds only work that can still move; ``TaskTiming.is_critical`` stays the pure CPM
+    #: property on every task, finished or not (R-71, operator ruling 2026-09-23, ADR-0527).
+    critical_path: tuple[int, ...]
     #: UniqueIDs whose forward dates come from their STORED start (manual pin or
     #: logic-unbound floor — ADR-0034), not from network logic: the schedule reproduces
     #: the source file, and these are the "dates not supported by logic" the findings cite.
@@ -3248,7 +3252,13 @@ def compute_cpm(
             late_finish_wall=lf_wall.get(tid, ms_late_wall.get(tid)),
         )
 
-    critical_path = tuple(tid for tid in order if timings[tid].is_critical)
+    # R-71 (ADR-0527): a recorded-complete activity is never on the path — UID-exact against
+    # MS Project's stored Critical flag on the corpus — while its pure ``is_critical`` stays
+    critical_path = tuple(
+        tid
+        for tid in order
+        if timings[tid].is_critical and not is_recorded_complete(task_by_id[tid])
+    )
     return CPMResult(
         timings=timings,
         project_finish=network_finish,

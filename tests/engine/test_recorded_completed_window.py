@@ -356,11 +356,18 @@ def test_dcma12_never_injects_its_delay_into_work_that_has_already_finished() ->
     and the target moved to UID 29. Since R-70 (ADR-0512, 2026-09-18) a finished successor
     presents no late need, so UID 26 and the other completed activity that read critical now
     carry the float of the project finish: Project2's 41 critical candidates are all movable
-    (MS Project's own 41), UID 29 is the lowest, and the corpus no longer holds a finished
-    activity on the critical path. The immovable case is therefore pinned on a rig — a finished
-    activity whose unstarted successor's deadline puts that successor's late start before the
-    record, so the finished activity reads negative float and sits on the critical path. Red-first:
-    with the filter removed the rig's target is UID 1, which cannot move, and the check FAILS.
+    (MS Project's own 41) and UID 29 is the lowest. The immovable case is pinned on a rig — a
+    finished activity whose unstarted successor's deadline puts that successor's late start before
+    the record, so the finished activity reads negative float.
+
+    Re-baselined 2026-09-24 (R-71, ADR-0527): this docstring used to say "the corpus no longer
+    holds a finished activity on the critical path" — FALSE: four committed goldens did
+    (Hard_File_updated2 UID 290, Hard_File_updated3 UID 261 twice, Large_Test_File2 UID 6956), all
+    stored Critical = No. The rule now lives in the ENGINE: ``critical_path`` never holds a
+    recorded-complete activity (UID-exact against the stored flag), while the rig's finished
+    activity keeps its pure-CPM ``is_critical``. DCMA-12's own copy of the filter could no longer
+    be reached from any product path and was removed. Red-first: with the engine rule removed the
+    rig's path is ``(1, 2)``, its target UID 1 cannot move, and the check FAILS.
     """
     from schedule_forensics.engine.cpm import is_recorded_complete
     from schedule_forensics.engine.metrics._common import CheckStatus
@@ -401,5 +408,6 @@ def test_dcma12_never_injects_its_delay_into_work_that_has_already_finished() ->
         relationships=(Relationship(predecessor_id=1, successor_id=2),),
     )
     rig_res = compute_cpm(rig)
-    assert rig_res.timing(1).total_float == -DAY and rig_res.critical_path == (1, 2)
+    assert rig_res.timing(1).total_float == -DAY and rig_res.timing(1).is_critical is True
+    assert rig_res.critical_path == (2,)  # finished work is never on the path (R-71)
     assert compute_dcma14(rig, rig_res)["DCMA12"].status is CheckStatus.PASS

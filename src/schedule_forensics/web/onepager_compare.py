@@ -24,7 +24,7 @@ from __future__ import annotations
 import datetime as dt
 import json
 
-from schedule_forensics.reports.onepager import OnePagerDoc
+from schedule_forensics.reports.onepager import OnePagerDoc, window_text
 from schedule_forensics.reports.onepager_compare import (
     CompareDoc,
     CompareLayout,
@@ -34,9 +34,11 @@ from schedule_forensics.reports.onepager_compare import (
     compare_onepager_docs,
     compare_subtitle,
     delta_text,
+    window_compare,
 )
 from schedule_forensics.web.chrome import _EXPLAINERS, _e, _utility_takeaway
 from schedule_forensics.web.components import _panel_head, _shell_tools
+from schedule_forensics.web.onepager import window_form, window_notice
 from schedule_forensics.web.state import SessionState
 
 #: The page's title (the rail entry, the kicker and the explainer key).
@@ -68,12 +70,24 @@ def onepager_compare_doc(st: SessionState) -> CompareDoc | None:
     return compare_onepager_docs(st.onepager_prior, st.onepager_current)
 
 
-def onepager_compare_layout(st: SessionState, today: dt.date) -> CompareLayout | None:
+def onepager_compare_view(st: SessionState) -> tuple[CompareDoc | None, list[str]]:
+    """``(doc, omitted)``: the comparison scoped to its date window (ADR-0527) — a row stays when
+    its prior OR its current position touches the window — with the summaries recounted over what
+    stays, and one sentence per row left off. The slide, the PowerPoint, the takeaway, both tables
+    and ⤓ EXCEL read THIS. Without a window, the comparison itself."""
     doc = onepager_compare_doc(st)
+    if doc is None:
+        return None, []
+    return window_compare(doc, st.onepager_compare_window)
+
+
+def onepager_compare_layout(st: SessionState, today: dt.date) -> CompareLayout | None:
+    doc, _omitted = onepager_compare_view(st)
     if doc is None or not doc.rows:
         return None
+    win = st.onepager_compare_window
     return build_compare_layout(
-        doc, today, onepager_compare_title(st), compare_subtitle(doc, today)
+        doc, today, onepager_compare_title(st), compare_subtitle(doc, today, win), window=win
     )
 
 
@@ -235,8 +249,23 @@ def _onepager_compare_body(st: SessionState, today: dt.date) -> str:
             skipped += _notice_list(
                 f"Rows skipped in the {name} list", doc.problems, "warn", "alert"
             )
-    cdoc = onepager_compare_doc(st)
+    full = onepager_compare_doc(st)
+    cdoc, omitted = onepager_compare_view(st)
     lay = onepager_compare_layout(st, today)
+    win = st.onepager_compare_window
+    if full is not None and full.rows and cdoc is not None and not cdoc.rows and win is not None:
+        # the window holds nothing: say so, and keep the control that clears it on the page
+        take = _utility_takeaway(
+            f"No compared item of {len(full.rows)} falls inside the date window "
+            f"{window_text(win)} — neither its prior nor its current position.",
+            f"{_e(full.prior_source)} → {_e(full.current_source)}. Widen the window, or show "
+            "all dates.",
+        )
+        return (
+            f'{take}{banner}{skipped}<div class="viz-controls" data-noprint=1>'
+            f"{window_form('/onepager-compare/window', win)}</div>"
+            f"{window_notice(win, 0, len(full.rows), omitted)}{_slots(st)}{_RULES}{_SCRIPT}"
+        )
     if cdoc is None or lay is None:
         have = sum(d is not None for d in (prior, current))
         head = (
@@ -273,9 +302,10 @@ def _onepager_compare_body(st: SessionState, today: dt.date) -> str:
         f"has no id to follow. Today is {today.isoformat()}.",
     )
     blob = json.dumps(compare_layout_json(lay)).replace("<", "\\u003c")
+    wtag = f" · WINDOW {win[0].isoformat()} to {win[1].isoformat()}" if win is not None else ""
     prov = (
         f"<span class=prov-chip data-no-i18n>PRIOR: {_e(cdoc.prior_source)} · CURRENT: "
-        f"{_e(cdoc.current_source)} · TODAY {today.isoformat()}</span>"
+        f"{_e(cdoc.current_source)} · TODAY {today.isoformat()}{wtag}</span>"
     )
     tools = _shell_tools(
         export_title="Export the compared rows (prior · current · delta in calendar days) to Excel"
@@ -291,6 +321,7 @@ def _onepager_compare_body(st: SessionState, today: dt.date) -> str:
 <form action="/onepager-compare/title" method=post class=op-title-form>
 <label>Slide title <input type=text name=title value="{_e(onepager_compare_title(st))}" maxlength=120 size=48></label>
 <button type=submit>Apply</button></form>
+{window_form("/onepager-compare/window", win)}
 <a class="btn op-pptx" id=opcPptx href="/export/pptx/onepager-compare" download>&#11015; POWERPOINT</a>
 <form action="/onepager-compare/swap" method=post class=opc-swap-form><button type=submit>Swap prior and current</button></form>
 <form action="/onepager-compare/clear" method=post class=op-clear-form><button type=submit>Clear both lists</button></form>
@@ -303,6 +334,8 @@ def _onepager_compare_body(st: SessionState, today: dt.date) -> str:
     # each list's own reading: an inherited swimlane (the decision that places a task in its
     # lane), a spelling merge, a column-D word it could not read
     notes += _notice_list("How each list was read", cdoc.sheet_notes, "ok", "status")
+    if full is not None:
+        notes += window_notice(win, len(cdoc.rows), len(full.rows), omitted)
     if lay.today_note:
         notes += f'<div class="notice ok" role=status>{_e(lay.today_note)}</div>'
     summary_tools = _shell_tools(export_title="Export the per-swimlane summary to Excel", big=False)

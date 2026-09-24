@@ -23,9 +23,12 @@ import json
 from schedule_forensics.reports.onepager import (
     Layout,
     OnePagerDoc,
+    Window,
     build_layout,
     layout_json,
     subtitle_for,
+    window_text,
+    windowed_doc,
 )
 from schedule_forensics.reports.tables import Cell, Table, TableSet
 from schedule_forensics.web.chrome import _e, _utility_takeaway
@@ -65,13 +68,61 @@ def onepager_title(st: SessionState) -> str:
     return "One-Pager"
 
 
+def onepager_view(st: SessionState) -> tuple[OnePagerDoc | None, list[str]]:
+    """``(doc, omitted)``: the session's list scoped to its date window (ADR-0527) — the slide,
+    the PowerPoint, the takeaway, ▦ DATA and ⤓ EXCEL all read THIS — and one sentence per item
+    the window left off. Without a window, the list itself and nothing omitted."""
+    if st.onepager is None:
+        return None, []
+    return windowed_doc(st.onepager, st.onepager_window)
+
+
 def onepager_layout(st: SessionState, today: dt.date) -> Layout | None:
-    """The laid-out slide for the session's list, or ``None`` with nothing (usable) loaded."""
-    doc = st.onepager
+    """The laid-out slide for the session's list, or ``None`` with nothing (usable) loaded — or
+    nothing inside the date window."""
+    doc, _omitted = onepager_view(st)
     if doc is None or not doc.items:
         return None
-    lay = build_layout(doc.items, today, onepager_title(st))
-    return build_layout(doc.items, today, lay.title, subtitle_for(doc, len(lay.lanes), today))
+    win = st.onepager_window
+    lay = build_layout(doc.items, today, onepager_title(st), window=win)
+    return build_layout(
+        doc.items, today, lay.title, subtitle_for(doc, len(lay.lanes), today, win), window=win
+    )
+
+
+def window_form(action: str, window: Window | None) -> str:
+    """The date-window control (ADR-0527): two dates and Apply, plus "Show all dates" once a window
+    is set. A plain POST form — no script, so it works under the strict CSP and without JS."""
+    start = window[0].isoformat() if window else ""
+    end = window[1].isoformat() if window else ""
+    clear = "<button type=submit name=action value=clear>Show all dates</button>" if window else ""
+    return (
+        f'<form action="{action}" method=post class="op-title-form op-window-form">'
+        f'<label>From <input type=date name=start value="{start}" required></label>'
+        f'<label>To <input type=date name=end value="{end}" required></label>'
+        f"<button type=submit name=action value=apply>Apply dates</button>{clear}</form>"
+    )
+
+
+def window_notice(window: Window | None, shown: int, total: int, omitted: list[str]) -> str:
+    """The window, stated: how many items it shows and every item it left off, by name."""
+    if window is None:
+        return ""
+    head = (
+        f"Date window {window[0].isoformat()} to {window[1].isoformat()}: showing {shown} of "
+        f"{total} item(s)"
+        + (
+            f"; {len(omitted)} wholly outside it are left off the slide, the PowerPoint, "
+            "▦ DATA and the Excel list:"
+            if omitted
+            else " — none lies wholly outside it."
+        )
+    )
+    return (
+        _notice_list(head, tuple(omitted), "ok", "status")
+        if omitted
+        else (f'<div class="notice ok" role=status>{_e(head)}</div>')
+    )
 
 
 def _notice_list(heading: str, items: tuple[str, ...], cls: str, role: str) -> str:
@@ -134,7 +185,21 @@ def _onepager_body(st: SessionState, today: dt.date) -> str:
         st.onepager_msg = None
         st.onepager_is_error = False
     lay = onepager_layout(st, today)
-    if lay is None or doc is None:
+    win = st.onepager_window
+    view, omitted = onepager_view(st)
+    if lay is None and doc is not None and doc.items and win is not None:
+        # the window holds nothing: say so, and keep the control that clears it on the page
+        take = _utility_takeaway(
+            f"No item of {len(doc.items)} falls inside the date window {window_text(win)}.",
+            f"From <b>{_e(doc.source)}</b>. Widen the window, or show all dates.",
+        )
+        return (
+            f'{take}{banner}<div class="viz-controls" data-noprint=1>'
+            f"{window_form('/onepager/window', win)}</div>"
+            f"{window_notice(win, 0, len(doc.items), omitted)}"
+            f"{_dropzone(st, loaded=True)}{_SCRIPT}"
+        )
+    if lay is None or doc is None or view is None:
         take = _utility_takeaway(
             "No list loaded — drop a three-column Excel list to build the one-pager.",
             "Swimlane · task or milestone · date. The page draws the slide and exports it to "
@@ -142,16 +207,22 @@ def _onepager_body(st: SessionState, today: dt.date) -> str:
         )
         problems = _notice_list("Rows skipped", doc.problems, "warn", "alert") if doc else ""
         return f"{take}{banner}{problems}{_dropzone(st, loaded=False)}{_SCRIPT}"
-    ms = sum(i.milestone for i in doc.items)
+    ms = sum(i.milestone for i in view.items)
+    span = (
+        f"the date window {window_text(win)}"
+        if win is not None
+        else f"{lay.years[0].label} to {lay.years[-1].label}"
+    )
     take = _utility_takeaway(
-        f"{len(lay.lanes)} swimlanes, {ms} milestones and {len(doc.items) - ms} activities on one "
-        f"slide — {lay.years[0].label} to {lay.years[-1].label}.",
+        f"{len(lay.lanes)} swimlanes, {ms} milestones and {len(view.items) - ms} activities on one "
+        f"slide — {span}.",
         f"From <b>{_e(doc.source)}</b>; today is {today.isoformat()}. Every bar and diamond is "
         "labelled with its name and finish date; ⤓ POWERPOINT exports the same slide as native, "
         "editable shapes.",
     )
     blob = json.dumps(layout_json(lay)).replace("<", "\\u003c")
-    prov = f"<span class=prov-chip data-no-i18n>SOURCE: {_e(doc.source)} · TODAY {today.isoformat()}</span>"
+    wtag = f" · WINDOW {win[0].isoformat()} to {win[1].isoformat()}" if win is not None else ""
+    prov = f"<span class=prov-chip data-no-i18n>SOURCE: {_e(doc.source)} · TODAY {today.isoformat()}{wtag}</span>"
     tools = _shell_tools(export_title="Export the parsed list (swimlane · item · dates) to Excel")
     data_btn = (
         '<button type=button data-sf-data aria-pressed=false aria-label="Show the parsed rows">'
@@ -164,6 +235,7 @@ def _onepager_body(st: SessionState, today: dt.date) -> str:
 <form action="/onepager/title" method=post class=op-title-form>
 <label>Slide title <input type=text name=title value="{_e(onepager_title(st))}" maxlength=120 size=48></label>
 <button type=submit>Apply</button></form>
+{window_form("/onepager/window", win)}
 <a class="btn op-pptx" id=opPptx href="/export/pptx/onepager" download>&#11015; POWERPOINT</a>
 <form action="/onepager/clear" method=post class=op-clear-form><button type=submit>Clear the list</button></form>
 </div>"""
@@ -171,6 +243,7 @@ def _onepager_body(st: SessionState, today: dt.date) -> str:
     # column D's words it could not read — shown now that this page draws completion (ADR-0526)
     notes += _notice_list("Column D", doc.completion_notes, "ok", "status")
     problems = _notice_list("Rows skipped", doc.problems, "warn", "alert")
+    notes += window_notice(win, len(view.items), len(doc.items), omitted)
     if lay.today_note:
         notes += f'<div class="notice ok" role=status>{_e(lay.today_note)}</div>'
     return f"""{take}{banner}{problems}{notes}
@@ -183,6 +256,6 @@ its dates.</p>
 {controls}
 <div id=opHost class="op-host chart-host" role=img aria-label="{_e(lay.title)}"></div>
 <script id=opData type="application/json">{blob}</script>
-{_data_table(doc)}
+{_data_table(view)}
 </div>
 {_dropzone(st, loaded=True)}{_SCRIPT}"""
