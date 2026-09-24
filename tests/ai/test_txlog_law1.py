@@ -50,9 +50,13 @@ ENDPOINT = "https://proxy.fast.luna.nasa.gov"
 SENTINEL = "SCHEDULE-CONTENT-SENTINEL-7f3a"
 SRC = Path(schedule_forensics.__file__).resolve().parent
 
-#: The whole vocabulary a record may carry (the ``txlog.record`` signature, by name).
+#: The whole vocabulary a record may carry (the ``txlog.record`` signature, by name). Re-baselined
+#: 2026-09-24 (R-13, ADR-0528, operator ruling): ten keys -> twelve, adding ``v`` (the format
+#: version) and ``run`` (a random per-process id — no names, no paths).
 RECORD_KEYS = frozenset(
     {
+        "v",
+        "run",
         "ts",
         "kind",
         "endpoint",
