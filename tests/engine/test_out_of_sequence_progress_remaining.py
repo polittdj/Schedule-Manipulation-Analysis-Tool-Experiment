@@ -122,13 +122,15 @@ def test_the_stored_resume_places_the_remaining_when_it_lies_past_the_logic() ->
 
 
 def test_the_backward_pass_retreats_the_remaining_and_the_predecessor_reads_its_start() -> None:
-    """S's late finish is the network finish, 3,360; its late start retreats the REMAINING,
-    2,400, and its float is its finish slack, 0. A's late finish is the remaining portion's
-    late start (R-70's need), 2,400 — A is critical. Pre-R-72: S 2,400 → 4,800 and A read a
-    late finish of 4,800 - 960 = 3,840 and three days of float."""
+    """S's late finish is the network finish, 3,360; its late START is its record (R-71,
+    ADR-0531: LS = ActualStart, minute 0 — re-pinned 2026-09-24 from 2,400, the remaining
+    portion's late start, which is the NEED and lives on A's late finish, not on S); its float
+    is its finish slack, 0. A's late finish is the remaining portion's late start (R-70's
+    need), 2,400 — A is critical. Pre-R-72: S 2,400 → 4,800 and A read a late finish of
+    4,800 - 960 = 3,840 and three days of float."""
     res = compute_cpm(_schedule(_A, _S, rels=(_link(1, 2),)))
     s, a = res.timing(2), res.timing(1)
-    assert (s.late_start, s.late_finish, s.total_float) == (2400, 3360, 0)
+    assert (s.late_start, s.late_finish, s.total_float) == (0, 3360, 0)
     assert (a.late_finish, a.total_float) == (2400, 0)
     assert a.is_critical and s.is_critical
 
@@ -296,7 +298,9 @@ def test_the_witness_shape_resumes_its_tail_on_the_crews_own_legs() -> None:
     assert 9 in res.actual_start_driven and 9 not in res.date_driven
     a = res.timing(10)
     assert (a.early_finish, a.late_finish, a.total_float) == (2880, 2880, 0)
-    assert s.late_start_wall == dt.datetime(2026, 7, 13, 17, 0) and s.total_float == 0
+    # R-71 (ADR-0531, 2026-09-24): S's late start is its RECORD (07-07 06:00; the remaining
+    # tail's late start, 07-13 17:00, is the need A reads — A's late finish 2,880 above)
+    assert s.late_start_wall == dt.datetime(2026, 7, 7, 6, 0) and s.total_float == 0
 
 
 #: A finish-to-finish need on the wall path. A10 (Standard, ten days: Monday 07-06 08:00 → Friday
@@ -383,7 +387,9 @@ def test_a_start_type_need_binds_no_started_crew_predecessor() -> None:
     assert res.timing(14).early_finish_wall == dt.datetime(2026, 7, 8, 17, 0)
     assert (res.timing(15).late_start, res.timing(16).late_start) == (480, 4320)
     assert res.timing(14).late_finish_wall == dt.datetime(2026, 7, 17, 8, 0)
-    assert res.timing(14).late_start_wall == dt.datetime(2026, 7, 16, 8, 0)
+    # R-71 (ADR-0531, 2026-09-24): the started predecessor's late start is its record (MON),
+    # re-pinned from 07-16 08:00 (its remaining tail's late start); its float is the finish slack
+    assert res.timing(14).late_start_wall == MON
     assert res.timing(14).total_float == 2880
 
 

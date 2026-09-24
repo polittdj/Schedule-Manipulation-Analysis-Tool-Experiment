@@ -351,13 +351,33 @@ def test_a_24_hour_project_calendar_does_not_crash_the_wall_mapping() -> None:
 
 def test_all_project_calendar_schedule_has_no_wall_fields() -> None:
     """Fast-path sentinel: with no off-calendar and no elapsed tasks the result must carry
-    no wall instants at all (the new machinery provably never ran)."""
+    no wall instants at all (the new machinery provably never ran) — except, since R-71
+    (ADR-0531, 2026-09-24), the LATE walls of progressed work, which are the record itself
+    (ActualStart / ActualFinish), not a wall-path computation."""
+    from schedule_forensics.engine.cpm import is_recorded_complete
+
     sch = parse_mspdi(_FIXTURES / "commercial_construction.xml")
     res = compute_cpm(sch)
     assert res.project_finish_wall is None
+    by = {t.unique_id: t for t in sch.tasks}
     assert all(
-        t.early_start_wall is None and t.late_finish_wall is None for t in res.timings.values()
+        t.early_start_wall is None and t.early_finish_wall is None for t in res.timings.values()
     )
+    progressed = 0
+    for tm in res.timings.values():
+        task = by[tm.unique_id]
+        if is_recorded_complete(task):
+            progressed += 1
+            assert (tm.late_start_wall, tm.late_finish_wall) == (
+                task.actual_start,
+                task.actual_finish,
+            )
+        elif task.actual_start is not None:
+            progressed += 1
+            assert tm.late_start_wall == task.actual_start and tm.late_finish_wall is None
+        else:
+            assert tm.late_start_wall is None and tm.late_finish_wall is None
+    assert progressed > 0  # the fixture exercises the record branch (positive control)
 
 
 def test_deadline_survives_import_and_drives_negative_float(tmp_path: Path) -> None:

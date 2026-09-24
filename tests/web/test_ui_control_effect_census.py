@@ -129,7 +129,9 @@ CENSUS: dict[str, dict[str, Any]] = {
             "cf-btn:Zoom in": (1, CF_DRIVER),
             "cf-btn:Zoom out": (1, CF_DRIVER),
         },
-        "floors": (1, 1, 0, 0, 0, 0, 8, 3),
+        # drill floor 8 -> 38 by ADR-0530 (R-22): every body row of BOTH pivots drills its
+        # branch (2 x 15 groups on TP4 v5) beside the 8 SPI bars; the other keys are unchanged
+        "floors": (1, 1, 0, 0, 0, 0, 38, 3),
     },
     "/standards": {"ids": {}, "anon": {}, "floors": (0, 0, 0, 0, 0, 0, 0, 3)},
     "/portfolio": {"ids": {}, "anon": {}, "floors": (0, 0, 0, 0, 0, 0, 0, 2)},

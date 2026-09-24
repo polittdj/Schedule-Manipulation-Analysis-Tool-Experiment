@@ -288,8 +288,12 @@ def test_hard_file_evm_aggregates_and_indices_equal_the_fuse_ribbon() -> None:
     """The Hard_File_updated / updated2 ribbon (status 46245 / 46275): BAC, BCWP and ACWP exact in
     currency units, BCWS exact on BOTH — 16,000 on updated since ADR-0492 (R-46: the file's own
     time-phased baseline cost; the project-calendar proration read 16,150 for a straddling
-    activity on a 16-hour resource calendar), CPI exact at 2 dp on both, SPI / TCPI within 0.01
-    (updated2's ribbon ACWP is 64,105 against the file's 63,763.08 — the Logistics Apprentice's
+    activity on a 16-hour resource calendar), CPI / SPI / TCPI exact at the 2 dp the ribbon
+    prints (R-18, 2026-09-24: the ``<= 0.0101`` band this test carried on SPI / TCPI was one
+    hundredth wider than the 2-dp pin
+    ``test_hard_file_ev_and_acwp_equal_the_fuse_ribbon_from_the_bookings_records`` already holds
+    on the same figures, and the parity report called the family "exact" beside it;
+    updated2's ribbon ACWP is 64,105 against the file's 63,763.08 — the Logistics Apprentice's
     hours priced at the status-date rate, ADR-0511; pinned below from the bookings' records)."""
     ribbon = {rec["Status Date "]: rec for rec in _ribbon_rows(_HF12_RIBBON)}
     updated = ribbon["46245"]
@@ -324,8 +328,8 @@ def test_hard_file_evm_aggregates_and_indices_equal_the_fuse_ribbon() -> None:
             assert acwp == float(rec["AC (ACWP)"]), (name, "ACWP", acwp)
         idx = compute_evm_indices(sch)
         assert idx["cpi"].value == round(float(rec["CPI"]), 2), (name, "CPI", idx["cpi"].value)
-        assert abs(idx["spi"].value - float(rec["SPI"])) <= 0.0101, (name, "SPI", idx["spi"].value)
-        assert abs(idx["tcpi"].value - float(rec["TCPI(BAC)"])) <= 0.0101, (
+        assert idx["spi"].value == round(float(rec["SPI"]), 2), (name, "SPI", idx["spi"].value)
+        assert idx["tcpi"].value == round(float(rec["TCPI(BAC)"]), 2), (
             name,
             "TCPI",
             idx["tcpi"].value,

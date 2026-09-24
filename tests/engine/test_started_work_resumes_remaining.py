@@ -108,9 +108,12 @@ def test_an_actual_portion_that_ran_short_lands_the_finish_earlier_than_the_plan
     """S is 75 % done with ONE day (480) left after one day of work (stopped and resuming Monday
     07-13 17:00, minute 2,880): Resume + remaining, 2,880 → 3,360 (Tuesday 17:00), a day EARLIER
     than the plan's 3,840. With D holding the network finish at 4,800, S's late finish is 4,800 and
-    its late start retreats the REMAINING: 4,320. Its total float is the finish slack, 1,440 — MS
-    Project's TotalSlack on started work — not the start slack 1,920 (which a retreat by the whole
-    duration would have read as 960 with the plan's finish). Pre-R-73: (3,840, 3,360, 960)."""
+    its late start is its RECORD, 2,400 (R-71, ADR-0531, re-pinned 2026-09-24 from 4,320 — the
+    remaining portion's late start, which is the need S presents upstream, not S's own late start;
+    MS Project stores LateStart = ActualStart on 1,159 of 1,159 started activities). Its total
+    float is the finish slack, 1,440 — MS Project's TotalSlack on started work (StartSlack 0 and
+    TotalSlack == FinishSlack on every started activity of the corpus) — not a start slack.
+    Pre-R-73: (3,840, 3,360, 960)."""
     s = _S.model_copy(
         update={
             "percent_complete": 75.0,
@@ -122,7 +125,7 @@ def test_an_actual_portion_that_ran_short_lands_the_finish_earlier_than_the_plan
     res = compute_cpm(_schedule(_A, s, _D, rels=(_link(1, 2),)))
     tm = res.timing(2)
     assert (tm.early_start, tm.early_finish) == (2400, 3360)
-    assert (tm.late_start, tm.late_finish) == (4320, 4800)
+    assert (tm.late_start, tm.late_finish) == (2400, 4800)
     assert tm.total_float == 1440 and not tm.is_critical
 
 
@@ -171,7 +174,9 @@ def test_a_predecessors_free_float_anchors_at_the_record_and_its_late_finish_at_
     a = res.timing(1)
     assert a.free_float == 0
     assert (a.late_finish, a.total_float) == (2760, 360)
-    assert res.timing(2).late_start == 2760 and res.timing(2).total_float == 0
+    # R-71 (ADR-0531, 2026-09-24): S's own late start is its record, 2,400 (was pinned at the
+    # need, 2,760 — which A's late finish above still carries); S's float is its finish slack
+    assert res.timing(2).late_start == 2400 and res.timing(2).total_float == 0
 
 
 def test_an_absent_remaining_is_the_dropped_zero_and_keeps_the_plan_from_the_record() -> None:

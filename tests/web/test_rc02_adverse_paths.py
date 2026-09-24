@@ -454,7 +454,8 @@ def test_each_never_adverse_export_refuses_or_discloses_an_empty_session(
             text = b"".join(z.read(n) for n in z.namelist() if n.endswith(".xml"))
         assert b"load another analyzable version of the active project" in text
     else:
-        assert resp.status_code in (400, 422), (name, resp.status_code)
+        # R-39: one status on all six — 422 (workbench answered 400 until 2026-09-24)
+        assert resp.status_code == 422, (name, resp.status_code)
         assert "load" in resp.json()["error"].lower()
 
 

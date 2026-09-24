@@ -168,6 +168,8 @@ def _census(sch: Schedule, res: CPMResult, rel: str) -> dict[str, int]:
         "critical": 0,
         "lf_n": 0,
         "lf_exact": 0,
+        "record_n": 0,
+        "record": 0,
     }
     stored_lf = _stored_late_finishes(rel)
     for t in sch.tasks:
@@ -200,7 +202,29 @@ def _census(sch: Schedule, res: CPMResult, rel: str) -> dict[str, int]:
         if t.stored_total_float_minutes is not None and t.percent_complete < 100.0:
             out["tf_n"] += 1
             out["tf_exact"] += tm.total_float == t.stored_total_float_minutes
-        out["critical"] += tm.is_critical == t.stored_is_critical
+        # R-71 (ADR-0531, 2026-09-24): a completed activity's late dates ARE its record —
+        # LateStart = ActualStart and LateFinish = ActualFinish on 8,644 of 8,644 across the
+        # corpus, every slack element absent (zero), Critical stored on NONE — while the pure
+        # flag reads its zero as 0 <= 0. So the flag census counts INCOMPLETE work only
+        # (ADR-0507's decision 3, as the late-finish census above already does; every Critical
+        # floor below dropped by exactly its file's completed count and was re-pinned to the
+        # same incomplete-only figure it read before), and the record itself is pinned EXACTLY:
+        # the late walls are the raw actuals and both floats are zero, on every finished one.
+        if is_recorded_complete(t):
+            out["record_n"] += 1
+            out["record"] += (
+                tm.late_start_wall,
+                tm.late_finish_wall,
+                tm.total_float,
+                tm.free_float,
+            ) == (
+                t.actual_start,
+                t.actual_finish,
+                0,
+                0,
+            )
+        else:
+            out["critical"] += tm.is_critical == t.stored_is_critical
     return out
 
 
@@ -218,7 +242,12 @@ _HARD_FILE = [
     # its remaining portion — the Critical floors 107 -> 109, 103 -> 109 and 70 -> 110, the slack
     # floor 48 -> 49 (updated3's UID 188, the row's witness) and the 24-hour snapshot's
     # late-finish floor 15 -> 17 (UIDs 302 / 385, bound by the project finish once their
-    # completed successors bind nothing); the late-finish census counts incomplete work only)
+    # completed successors bind nothing); the late-finish census counts incomplete work only;
+    # R-71 / ADR-0531 (2026-09-24): the Critical census counts INCOMPLETE work only too — a
+    # finished activity's flag is a record (stored on none, the pure flag 0 <= 0 on every one) —
+    # so each floor dropped by exactly its file's completed count, 110 / 103 / 76 / 68 / 19
+    # (0 / 7 / 34 / 42 / 91 finished), the same incomplete-only agreement as before, and the
+    # record itself is pinned exactly on every finished activity)
     (
         "fuse_hardfile/Hard_File.mspdi.xml.gz",
         dt.datetime(2026, 11, 5, 12, 0),
@@ -233,7 +262,7 @@ _HARD_FILE = [
         dt.datetime(2026, 11, 5, 12, 0),
         0,
         110,
-        110,
+        103,
         101,
         87,
     ),
@@ -242,7 +271,7 @@ _HARD_FILE = [
         dt.datetime(2026, 11, 6, 17, 0),
         0,
         110,
-        109,
+        76,
         38,
         37,
     ),
@@ -251,7 +280,7 @@ _HARD_FILE = [
         dt.datetime(2026, 12, 12, 17, 0),
         0,
         110,
-        109,
+        68,
         49,
         45,
     ),
@@ -268,7 +297,7 @@ _HARD_FILE = [
         dt.datetime(2026, 11, 19, 1, 0),
         0,
         109,
-        110,
+        19,
         16,
         17,
     ),
@@ -324,6 +353,7 @@ def test_hard_file_finish_is_within_the_row_tolerance_of_ms_project(
     assert census["critical"] >= critical_floor, census
     assert census["tf_exact"] >= tf_floor, census
     assert census["lf_exact"] >= lf_floor, census
+    assert census["record"] == census["record_n"], census  # R-71: the record, on every one
 
 
 def test_a_milestones_late_instant_is_carried_to_its_crew_predecessor() -> None:
@@ -474,9 +504,11 @@ def test_hard_file_crews_and_leveling_delays_are_what_the_engine_honours() -> No
 # EVERY incomplete activity of both files now has its late-finish instant exact, and Project2's
 # Critical agreement is 126 of 126 (the two completed activities that read critical carry the
 # float of the project finish, as MS Project reads them).
+# critical_floor 126 / 126 -> 106 / 99 on 2026-09-24 (R-71, ADR-0531): incomplete work only —
+# the 20 / 27 finished activities carry the record (pinned exactly below)
 _PROJECTS = [
-    ("project2_5/Project2.mspdi.xml", dt.datetime(2027, 9, 14, 17, 0), 106, 126, 106),
-    ("project2_5/Project5.mspdi.xml", dt.datetime(2028, 1, 26, 17, 0), 99, 126, 99),
+    ("project2_5/Project2.mspdi.xml", dt.datetime(2027, 9, 14, 17, 0), 106, 106, 106),
+    ("project2_5/Project5.mspdi.xml", dt.datetime(2028, 1, 26, 17, 0), 99, 99, 99),
 ]
 
 
@@ -492,6 +524,7 @@ def test_leveled_goldens_reproduce_the_stored_finish_and_every_stored_slack(
     assert (census["tf_exact"], census["tf_n"]) == (tf_n, tf_n)
     assert census["critical"] >= critical_floor, census
     assert (census["lf_exact"], census["lf_n"]) == (lf_exact, lf_exact), census
+    assert census["record"] == census["record_n"] > 0, census  # R-71: the record, on every one
 
 
 # --- the Large Test Files: eighteen crew calendars that differ only by holidays, unmoved -------
@@ -542,9 +575,11 @@ def test_leveled_goldens_reproduce_the_stored_finish_and_every_stored_slack(
 # about, and the cross-calendar seam it exposes is registered as R-77's RESIDUAL rather than
 # fixed here: a link between two calendars projects a wall instant from one onto the other's
 # axis, and both axes moved.
+# critical_floor 1723 / 1721 -> 1024 / 998 on 2026-09-24 (R-71, ADR-0531): incomplete work only —
+# the 699 / 724 finished activities carry the record (pinned exactly below)
 _LARGE = [
-    ("fuse_ltf/Large_Test_File.mspdi.xml.gz", 1723, 1686, 922, 1024, 1723, 922),
-    ("fuse_ltf/Large_Test_File2.mspdi.xml.gz", 1722, 1655, 760, 998, 1721, 829),
+    ("fuse_ltf/Large_Test_File.mspdi.xml.gz", 1723, 1686, 922, 1024, 1024, 922),
+    ("fuse_ltf/Large_Test_File2.mspdi.xml.gz", 1722, 1655, 760, 998, 998, 829),
 ]
 
 
@@ -570,6 +605,7 @@ def test_large_test_files_are_unmoved_by_the_crew_calendars(
     assert (census["tf_exact"], census["tf_n"]) == (tf_exact, tf_n)
     assert census["critical"] >= critical_floor, census
     assert census["lf_exact"] >= lf_floor, census
+    assert census["record"] == census["record_n"] > 0, census  # R-71: the record, on every one
 
 
 # --- R-70 (ADR-0512): the backward pass stops at finished work --------------------------------
