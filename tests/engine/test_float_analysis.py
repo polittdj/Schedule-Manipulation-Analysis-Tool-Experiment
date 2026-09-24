@@ -101,8 +101,12 @@ def test_float_days_convert_on_the_schedules_calendar() -> None:
         # Project2's pure-logic count RE-PINNED 43 → 41 on 2026-09-18 (R-70, ADR-0512): the two
         # completed activities that read critical were bound to completed successors' records;
         # a finished successor presents no need, and the count is MS Project's own 41.
-        ("Project2", 41, 41, Decimal("402")),
-        ("Project5", 4, 4, Decimal("498.00")),
+        # RE-PINNED 41 → 61 and 4 → 31 on 2026-09-24 (R-71, ADR-0531): a finished activity's
+        # float is its record's ZERO, so the PURE count (total_float <= 0) now carries every
+        # finished activity (20 on Project2, 27 on Project5); the parity figure is the
+        # incomplete count, unchanged at 41 / 4 — MS Project's own.
+        ("Project2", 61, 41, Decimal("402")),
+        ("Project5", 31, 4, Decimal("498.00")),
     ],
 )
 def test_golden_critical_parity(

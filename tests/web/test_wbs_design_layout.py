@@ -18,6 +18,10 @@ its %-complete bars and SPI(t) colour (an encoding inside a verbatim table, not 
 its footnote (the ES panel's read-me line says it with the page's COUNT basis; the mock's
 "duration-weighted" / "planned-to-date" wording contradicts the engine and "nothing leaves this
 machine" is never a static sentence — ADR-0396), and the Continue footer (the chrome's spine).
+(2026-09-24, ADR-0530 / R-22: the row click is now PORTED — every body row of both pivots drills
+its branch, ``tests/web/test_wbs_row_drill_browser.py``; and "``wbs.js`` is byte-frozen" above was
+never true of the whole file — only its ``axisTitles`` call site at line 133 is pinned, by the r11
+digest and the DD ledger, and the rows are marked below it so neither pin moved.)
 
 Red-first (2026-09-07): the pristine page served no strip, no chips, no pill, and its takeaway
 BELOW the picker.

@@ -192,9 +192,11 @@ def test_a_negative_total_does_not_drag_the_free_float_negative() -> None:
 
 def test_free_float_exceeds_the_total_on_exactly_the_negative_total_rows() -> None:
     """The shape of the fix, stated as a census over all fifteen goldens: free float is above the
-    total on 427 rows and 427 rows have a negative total -- the SAME rows. The pristine engine had
+    total on 423 rows and 423 rows have a negative total -- the SAME rows. The pristine engine had
     842 against the same 427, the 415 difference being the defect. Every row is checked
-    individually, so a coincidence of counts cannot pass this."""
+    individually, so a coincidence of counts cannot pass this. (427 -> 423 on 2026-09-24, R-71 /
+    ADR-0531: the four FINISHED activities that read negative float from logic — ADR-0527's four
+    engine-only critical witnesses — now carry the record's zero total and zero free.)"""
     above = negative = 0
     for rel in _GOLDENS:
         for tm in _load(rel)[1].timings.values():
@@ -205,7 +207,7 @@ def test_free_float_exceeds_the_total_on_exactly_the_negative_total_rows() -> No
                 assert tm.total_float < 0, (rel, tm.unique_id, tm.free_float, tm.total_float)
             else:
                 assert tm.free_float <= max(tm.total_float, 0), (rel, tm.unique_id)
-    assert (above, negative) == (427, 427)
+    assert (above, negative) == (423, 423)
 
 
 def test_the_goldens_reproduce_the_stored_free_slack_at_the_pinned_rate() -> None:

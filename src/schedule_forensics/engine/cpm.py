@@ -3027,6 +3027,25 @@ def compute_cpm(
         # only its finish is still scheduled. Large_Test_File UID 5535's SS successor bound its
         # late finish to 2027-07-02 where the file stores 11-05, its FS successor's late start.
         started_pred = _started(tid)
+        if tid in actual_finish_pin:
+            # R-71's record limb (ADR-0531): a recorded-complete activity's late dates ARE its
+            # record. MS Project stores LateStart = ActualStart and LateFinish = ActualFinish on
+            # 8,644 of 8,644 completed activities across the 44-file corpus, every slack element
+            # absent (its dropped zero, ADR-0507) and Critical on none; the engine's logic-derived
+            # late dates coincided with that record on 0 of 8,644. Nothing downstream reads them:
+            # a completed successor presents no need (R-70) and anchors no free float (R-70).
+            # The integer pair carries the record's zero slack; the wall pair carries the raw
+            # instants (an early wall may sit on a snapped minute, the late wall is the record).
+            task = task_by_id[tid]
+            late_start[tid] = early_start[tid]
+            late_finish[tid] = early_finish[tid]
+            ls_need[tid] = late_start[tid]
+            if task.actual_start is not None and task.actual_finish is not None:
+                ls_wall[tid] = task.actual_start
+                lf_wall[tid] = max(task.actual_finish, task.actual_start)
+            if tid in exec_plan:
+                exec_slack[tid] = 0
+            continue
         if tid in exec_plan:
             plan, cal_t = exec_plan[tid].legs, exec_plan[tid].axis
             task = task_by_id[tid]
@@ -3077,14 +3096,26 @@ def compute_cpm(
             # no offset, need or slack axis can tell them apart (see _snap_start_role, and
             # ``test_the_projection_cannot_tell_the_two_spellings_apart``).
             ls_w = _snap_start_role(ls_w, cal_t, tod0)
-            slack = min(
-                _wall_minutes_between(es_wall[tid], ls_w, cal_t, tod0),
-                _wall_minutes_between(ef_wall[tid], lf_w, cal_t, tod0),
-            )
+            if started_pred:
+                # R-71's record limb (ADR-0531): a started activity's late start is its record —
+                # MS Project stores LateStart = ActualStart on 1,159 of 1,159 started activities
+                # of the corpus, StartSlack 0 on every one, and TotalSlack == FinishSlack on
+                # every one: the total slack is the FINISH slack alone, never the min with a
+                # start slack the record has already spent. The need this activity presents to
+                # its predecessors is its remaining portion's (rem_ls_wall / rem_need, R-70),
+                # never this instant, so the pin moves no other activity.
+                slack = _wall_minutes_between(ef_wall[tid], lf_w, cal_t, tod0)
+                if task.actual_start is not None:
+                    ls_w = task.actual_start
+            else:
+                slack = min(
+                    _wall_minutes_between(es_wall[tid], ls_w, cal_t, tod0),
+                    _wall_minutes_between(ef_wall[tid], lf_w, cal_t, tod0),
+                )
             exec_slack[tid] = slack
             ls_wall[tid], lf_wall[tid] = ls_w, lf_w
             late_finish[tid] = _wall_to_offset(ps, lf_w, cal)
-            late_start[tid] = _wall_to_offset(ps, ls_w, cal)
+            late_start[tid] = early_start[tid] if started_pred else _wall_to_offset(ps, ls_w, cal)
             ls_need[tid] = (
                 _wall_to_offset(ps, ls_w - dt.timedelta(minutes=task.leveling_delay_minutes), cal)
                 if task.leveling_delay_minutes > 0
@@ -3109,9 +3140,14 @@ def compute_cpm(
             bounds.append(lf_cap[tid])
         lf = min([backward_target, *bounds])
         late_finish[tid] = lf
-        late_start[tid] = lf - dur_p
+        # R-71 (ADR-0531): a started activity's late start is its record (LS = AS); an
+        # unstarted one retreats by its span (R-08's held form)
+        late_start[tid] = early_start[tid] if started_pred else lf - dur_p
         ls_need[tid] = late_start[tid]
-        if _started(tid):
+        if started_pred:
+            task = task_by_id[tid]
+            if task.actual_start is not None:
+                ls_wall[tid] = task.actual_start  # the reported instant is the record itself
             # R-70: the remaining portion's late start, never earlier than where it resumes
             rem_need[tid] = max(lf, early_finish[tid]) - _remaining(tid)
             rem_ls_wall[tid] = _offset_to_wall(ps, rem_need[tid], cal, role="start")
@@ -3196,7 +3232,11 @@ def compute_cpm(
             # the floored finish, but the finish itself drives what follows (CPM-01, ADR-0463 —
             # golden EVM2 UID 20 read 10 working days of float and non-critical while MS Project
             # flags it Critical and its floored finish IS the network finish).
-            total = min(late_start[tid] - early_start[tid], late_finish[tid] - early_finish[tid])
+            total = (
+                late_finish[tid] - early_finish[tid]
+                if _started(tid)  # R-71: the record's StartSlack is 0; TotalSlack == FinishSlack
+                else min(late_start[tid] - early_start[tid], late_finish[tid] - early_finish[tid])
+            )
             if tid in ms_wall:
                 late_instant = ms_late_wall.get(tid) or _offset_to_wall(
                     ps, late_finish[tid], cal, role="finish"
@@ -3221,10 +3261,18 @@ def compute_cpm(
                 )
             else:
                 free = backward_target - early_finish[tid]
+        if tid in actual_finish_pin:
+            # R-71 (ADR-0531): finished work carries the record's slack — zero total AND zero
+            # free (every slack element is absent on all 8,644 completed activities of the
+            # corpus; the engine had read a non-zero free float on 8,079 of them). The pure
+            # ``is_critical`` (total <= 0) therefore reads True on finished work — the
+            # record-aware answer is ``is_effective_critical`` (ADR-0527's ruling) and
+            # ``critical_path`` drops finished work (ADR-0527).
+            total, free = 0, 0
         # a violated MSO/MFO pin reports the violation as negative slack (MS Project's own
         # stored Total Slack semantics — the pin holds the dates, the float carries the truth)
         violation = pin_violation.get(tid)
-        if violation is not None and violation < total:
+        if violation is not None and violation < total and tid not in actual_finish_pin:
             total = violation
         # R-74 (ADR-0522): free float is BOUNDED BY the total — MS Project's Free Slack is never
         # larger than its Total Slack, and is stored EQUAL to it on 1,116 of the 3,315 corpus

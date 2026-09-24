@@ -388,8 +388,10 @@ def test_dcma12_never_injects_its_delay_into_work_that_has_already_finished() ->
     assert compute_dcma14(sch, res)["DCMA12"].status is CheckStatus.PASS
 
     # the rig: A finished on the project's first day; B (a day) must finish by that same
-    # evening, so B's late start is the project start and A's late finish falls a day before
-    # A's record — negative float on finished work, which is critical and immovable
+    # evening, so B's late start is the project start and A's late finish would fall a day
+    # before A's record from logic — but A's late dates ARE its record (R-71, ADR-0531,
+    # 2026-09-24: zero float, re-pinned from -DAY), its pure flag reads critical (0 <= 0) and
+    # the path still drops it (ADR-0527)
     done = Task(
         unique_id=1,
         name="A (recorded complete)",
@@ -408,6 +410,6 @@ def test_dcma12_never_injects_its_delay_into_work_that_has_already_finished() ->
         relationships=(Relationship(predecessor_id=1, successor_id=2),),
     )
     rig_res = compute_cpm(rig)
-    assert rig_res.timing(1).total_float == -DAY and rig_res.timing(1).is_critical is True
+    assert rig_res.timing(1).total_float == 0 and rig_res.timing(1).is_critical is True
     assert rig_res.critical_path == (2,)  # finished work is never on the path (R-71)
     assert compute_dcma14(rig, rig_res)["DCMA12"].status is CheckStatus.PASS

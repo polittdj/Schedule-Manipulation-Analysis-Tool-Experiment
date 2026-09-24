@@ -1,0 +1,46 @@
+# Every tolerance-shaped assertion in the CI parity population, classified (R-18 / NUM-01, ADR-0529).
+# file	class	seen	site	anchor — the guard tests/guards/test_parity_tolerance_ledger.py ties this
+# file to the tree (an `ast` row's site is the comparison's normalized source; a `text` row's site
+# must still occur in the file) and the report to it (a `tolerance` row's anchor must sit in
+# docs/PARITY-REPORT.md on a line saying "within documented tolerance" with no "exact" beside it).
+tests/parity/test_fuse_forensic_rounding_oracle.py	exact	ast	abs(serial - shown) < 1e-6	
+tests/parity/test_fuse_hardfile_float_divisor_oracle.py	exact	ast	abs(field - shown) < 1e-9	
+tests/parity/test_fuse_metric_history_oracle.py	tolerance	ast	_actual_cost_of_work_performed(sch3, non_summary(sch3)) == pytest.approx( 66244.61, abs=0.01 )	ribbon ACWP to the cent
+tests/parity/test_fuse_metric_history_oracle.py	exact	ast	_earned_value([sch3.task_by_id(290)])[0] == pytest.approx(6875.0)	
+tests/parity/test_fuse_metric_history_oracle.py	exact	ast	_planned_value(sch1, [sch1.task_by_id(187)]) == pytest.approx(3600.0)	
+tests/parity/test_fuse_metric_history_oracle.py	exact	ast	_planned_value(sch1, non_summary(sch1)) == pytest.approx(16000.0)	
+tests/parity/test_fuse_metric_history_oracle.py	exact	ast	_planned_value(sch2, non_summary(sch2)) == pytest.approx(64240.0)	
+tests/parity/test_fuse_metric_history_oracle.py	exact	ast	_planned_value(sch3, [t257]) == pytest.approx(800.0)	
+tests/parity/test_fuse_metric_history_oracle.py	exact	ast	_planned_value(sch3, [t270]) == pytest.approx(3200.0)	
+tests/parity/test_fuse_metric_history_oracle.py	exact	ast	_planned_value(sch3, non_summary(sch3)) == pytest.approx(110440.0)	
+tests/parity/test_fuse_metric_history_oracle.py	exact	ast	abs(_planned_value(sch, ts) - float(rec["PV (BCWS)"])) <= bcws_tol	
+tests/parity/test_fuse_metric_history_oracle.py	exact	ast	ev == pytest.approx(ev_expected)	
+tests/parity/test_hard_file_stored_dates_oracle.py	tolerance	ast	abs((ef - t.finish).total_seconds()) <= 86400	stored finish within a day
+tests/parity/test_hard_file_stored_dates_oracle.py	exact	ast	abs(gap) <= days	
+tests/parity/test_hard_file_stored_dates_oracle.py	tolerance	ast	abs(res.timing(uid).total_float - stored) <= 1	UID 188 chain float within a minute
+tests/parity/test_r65_gap_granularity_oracle.py	tolerance	ast	abs(self.window_seconds - (t.duration_minutes * 60 + self.gap_seconds)) < 60	R-65 booking-window class
+tests/parity/test_sem_parity.py	tolerance	ast	m.value == pytest.approx(expected, abs=0.005)	SEM ten-metric battery
+tests/parity/test_sra_ssi_oracle_uid152.py	tolerance	ast	abs((computed - focus.finish).total_seconds()) <= 60	SRA Monte-Carlo focus UID 152 (ADR-0309 oracle)
+tests/parity/test_sra_ssi_oracle_uid152.py	tolerance	ast	abs(actual - expected) <= tol	SRA Monte-Carlo focus UID 152 (ADR-0309 oracle)
+tests/parity/test_sra_ssi_oracle_uid152.py	tolerance	ast	float(cells["B7"]) / weighted == pytest.approx(1.665, abs=0.01)	SRA Monte-Carlo focus UID 152 (ADR-0309 oracle)
+tests/parity/test_sra_ssi_oracle_uid152.py	tolerance	ast	float(cells["B7"]) == pytest.approx(st.pstdev(distinct), abs=1e-6)	SRA Monte-Carlo focus UID 152 (ADR-0309 oracle)
+tests/parity/test_sra_ssi_oracle_uid152.py	tolerance	ast	oracle.percentile_at(oracle.current_finish) == pytest.approx(0.0575, abs=1e-4)	SRA Monte-Carlo focus UID 152 (ADR-0309 oracle)
+tests/parity/test_sra_ssi_oracle_uid152.py	tolerance	ast	oracle_mean == pytest.approx(111.45, abs=0.01)	SRA Monte-Carlo focus UID 152 (ADR-0309 oracle)
+tests/parity/test_sra_ssi_oracle_uid152.py	tolerance	ast	oracle_sigma == pytest.approx(64.744, abs=0.01)	SRA Monte-Carlo focus UID 152 (ADR-0309 oracle)
+tests/parity/test_sra_ssi_oracle_uid152.py	tolerance	ast	ssi_run.deterministic_percentile == pytest.approx(0.0575, abs=0.02)	SRA Monte-Carlo focus UID 152 (ADR-0309 oracle)
+tests/parity/test_sra_ssi_oracle_uid152.py	tolerance	ast	st.fmean(oracle.offset(d) for d in samples) == pytest.approx(oracle_mean, abs=6.0)	SRA Monte-Carlo focus UID 152 (ADR-0309 oracle)
+tests/parity/test_sra_ssi_oracle_uid152.py	tolerance	ast	st.pstdev([d.toordinal() for d in samples]) == pytest.approx(oracle_sigma, rel=0.05)	SRA Monte-Carlo focus UID 152 (ADR-0309 oracle)
+tests/parity/test_sra_ssi_oracle_uid152_v2.py	tolerance	ast	abs(got.opportunity_days - abs(float(row["opp"]))) <= 0.06	SRA v2 focus UID 152 (ADR-0339 oracle)
+tests/parity/test_sra_ssi_oracle_uid152_v2.py	tolerance	ast	abs(got.risk_days - float(row["risk"])) <= 0.06	SRA v2 focus UID 152 (ADR-0339 oracle)
+tests/parity/test_sra_ssi_oracle_uid152_v2.py	tolerance	ast	abs(got.risk_days - float(row["risk"])) <= 0.06	SRA v2 focus UID 152 (ADR-0339 oracle)
+tests/parity/test_sra_ssi_oracle_uid152_v2.py	tolerance	ast	abs(r1.hits / ITERATIONS - 0.86) <= 0.02	SRA v2 focus UID 152 (ADR-0339 oracle)
+tests/parity/test_sra_ssi_oracle_uid152_v2.py	tolerance	ast	abs(r1.mean_delta_days - 304.48) <= 8.0	SRA v2 focus UID 152 (ADR-0339 oracle)
+tests/parity/test_sra_ssi_oracle_uid152_v2.py	tolerance	ast	abs(r2.hits / ITERATIONS - 0.63) <= 0.02	SRA v2 focus UID 152 (ADR-0339 oracle)
+tests/parity/test_sra_ssi_oracle_uid152_v2.py	tolerance	ast	abs(r2.mean_delta_days - 35.03) <= 8.0	SRA v2 focus UID 152 (ADR-0339 oracle)
+tests/parity/test_sra_ssi_oracle_uid152_v2.py	tolerance	ast	abs(st.mean(e_off) - st.mean(o_off)) <= 10.0	SRA v2 focus UID 152 (ADR-0339 oracle)
+tests/parity/test_sra_ssi_oracle_uid152_v2.py	tolerance	ast	abs(st.pstdev(e_off) / st.pstdev(o_off) - 1.0) <= 0.05	SRA v2 focus UID 152 (ADR-0339 oracle)
+tests/parity/test_ssi_hardfile_24h_uid155.py	tolerance	ast	abs(float(results[int(u)].driving_slack_days) - expect) <= _TOL_DAYS	SSI 24h focus UID 155
+tests/engine/test_ssi_leveled_uid152.py	tolerance	text	exact = sum(1 for d in diffs.values() if d < 0.02)	SSI leveled focus UID 152 (783 tasks)
+tests/engine/test_ssi_leveled_uid152.py	tolerance	text	assert exact >= 775	SSI leveled focus UID 152 (783 tasks)
+tests/engine/test_ssi_leveled_uid152.py	tolerance	text	assert worst <= 1.01	SSI leveled focus UID 152 (783 tasks)
+tests/parity/test_r57_assignment_leveling_delay_oracle.py	tolerance	text	assert 0 < (stored - got).total_seconds() <= 120	R-57 leveling-delay finish

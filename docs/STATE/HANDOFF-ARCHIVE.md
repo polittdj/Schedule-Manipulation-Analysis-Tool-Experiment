@@ -1,6 +1,22 @@
 # HANDOFF archive
 
 
+# (prior) Handoff — 2026-09-24 (b) (R-13 **CLOSED** — every AI transaction record carries a format version and a random per-process run id (ADR-0528) — **v1.0.291**)
+
+STATUS (current) — branch **`claude/tender-ptolemy-ua1y6k`**, restarted on `main` @ **`a65e1b21`** after #715 (ADR-0527, v1.0.290) squash-merged 2026-09-24; the squash tree `2a1addb2…` is BYTE-IDENTICAL to the PR head bf810775's tree, and all eight checks on that head were read to conclusion green (main's own post-merge runs NOT read — check them). This unit ships as a new **draft PR the OPERATOR merges**: ADR-0528, v1.0.291, `src/` changed so the wheel + nine installers were rebuilt as the LAST step and **EIGHT checks** apply. Highest ADR **0528**. Version **1.0.291**. Schema **2.17.0**. QC-1 / QC-2 / QC-3 bind every session.
+
+## What landed
+
+**R-13** (operator ruling 2026-09-24: a correlation id is acceptable — it carries no CUI). `ai/txlog.py`'s one writer adds `v` (`FORMAT_VERSION = 1`) and `run` (`RUN_ID = secrets.token_hex(8)`, drawn once per process — no name, path, host, or schedule content) to every record. /settings' gateway-ON sentence names both. TX-02's closed key vocabulary re-baselined 10 → 12, dated.
+
+## How it was verified
+
+QC-3: the writer census (every `txlog.` / `LOG_FILENAME` / `ai-transactions` / `jsonl` reference) found ONE writer and one caller — held. Red-first 3/3. Mutation 3/3 red by name; the load-bearing finding: a **hostname-derived** run id passes a literal "names nothing" check and is killed ONLY by the test that spawns two real interpreters.
+
+## Not done · carried forward
+
+Old log lines are not migrated (no `v` = the pre-version shape, by definition). No per-browser-session id (a different question, not ruled). Carried from ADR-0527: 20 / 7,161 windowed Compare labels still clip; M23b (the ADR-0446 month-letter threshold); the UI-control census cannot see a plain form. **Next:** R-18 · R-21 · R-22 · R-32 · R-39; R-71's record limbs; R-68 waits on the operator.
+
 # (prior) Handoff — 2026-09-24 (One-Pager DATE WINDOW on Timeline + Compare, and R-71's flag half **CLOSED** — finished work is never on the critical path while `is_critical` stays pure (ADR-0527) — **v1.0.290**)
 
 STATUS (current) — branch **`claude/tender-ptolemy-ua1y6k`**, draft PR opened this session (the operator merges; never marked ready here). Based on `main` @ **`8c71c639`** (#714, ADR-0526, v1.0.289 — merged 2026-09-23; #713 f4703fd2 before it). §0's anti-foreign-prompt block was RUN and the tree agreed on every point (8c71c639, 813 commits, `src` present / `app` absent, both workflows, 1.0.289, highest ADR 0526). The committed NEXT-SESSION-PROMPT / HANDOFF were stale (pre-#713/#714) and are refreshed here. `src/` changed: wheel + nine installers rebuilt as the LAST step, so **EIGHT checks**. Highest ADR **0527**. Version **1.0.290**. Schema **2.17.0** (unchanged). QC-1 / QC-2 / QC-3 bind every session.

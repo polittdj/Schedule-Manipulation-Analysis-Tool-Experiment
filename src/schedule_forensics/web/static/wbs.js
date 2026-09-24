@@ -152,6 +152,25 @@
           })
         ));
       }
+
+      // R-22 (ADR-0530): the mock's row click — every body row of BOTH pivots opens its
+      // branch's activities, the same set (and the same overlay) the SPI bar drills. A group
+      // with no computable SPI(t) has no bar, so its row is that branch's only drill. Rows are
+      // server-rendered (wbs.py) in the groups' order and matched here by the WBS name in the
+      // row header; the column-header row (its header reads "WBS") stays inert.
+      if (window.SFDrill) {
+        var byWbs = {};
+        groups.forEach(function (g) { byWbs[g.wbs] = g; });
+        var tables = document.querySelectorAll("table.wbs-table");
+        for (var ti = 0; ti < tables.length; ti++) {
+          var trs = tables[ti].querySelectorAll("tr");
+          for (var ri = 1; ri < trs.length; ri++) {
+            var th = trs[ri].querySelector("th");
+            var grp = th ? byWbs[th.textContent] : null;
+            if (grp) SFDrill.mark(trs[ri], grp.uids, name, "WBS " + grp.wbs);
+          }
+        }
+      }
     }, function () {
       box.textContent = "The WBS data loaded, but the chart could not be drawn.";
     }))

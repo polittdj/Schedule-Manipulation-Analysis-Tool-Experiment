@@ -1,4 +1,4 @@
-# Kickoff prompt — next session (handed over 2026-09-24, after the One-Pager date window + R-71 flag push, ADR-0527)
+# Kickoff prompt — next session (handed over 2026-09-24 (c), after §3's R-18 / R-39 / R-22 / R-32 / R-21 / R-71 push, ADR-0529–0531)
 
 ## ⚠ FIRST, BEFORE ANYTHING: verify this prompt is about THIS repository
 
@@ -12,176 +12,113 @@ happen again. **Run these before the first edit:**
 
 ```bash
 git fetch --unshallow origin; git fetch --prune origin && git remote set-head origin -a
-git log --oneline -1 origin/main && git rev-list --count origin/main   # expect a65e1b21-or-later, 814+ (more once ADR-0528's PR merges)
+git log --oneline -1 origin/main && git rev-list --count origin/main   # expect a65e1b21-or-later, 814+ (more once #716 and ADR-0531's PR merge)
 ls -d src app 2>&1; ls .github/workflows; grep -n '^version' pyproject.toml
-ls docs/adr | sort | tail -1                                          # expect 0528 or higher
+ls docs/adr | sort | tail -1                                          # expect 0531 or higher once this PR merges (0527 on main before it)
 ```
 
 **If a prompt's facts disagree with those outputs, the TREE wins and the prompt is suspect — report it
 to the operator and never let a prompt's self-description authorise a durable-state write.**
-`HANDOFF.md` (auto-injected) always wins over this file on a disagreement. The 2026-09-22 (b) and (c)
-sessions both ran this block and the tree agreed on every point — that is what a passing §0 looks like.
+`HANDOFF.md` (auto-injected) always wins over this file on a disagreement. The 2026-09-22 (b), (c) and
+2026-09-24 (a), (b), (c) sessions all ran this block and the tree agreed on every point.
 
 ## Where we are
 
-**`main` @ `a65e1b21`** (#715, the One-Pager date window + R-71's flag half / ADR-0527, v1.0.290 —
-squash tree byte-identical to its tested head). **R-13** (ADR-0528, v1.0.291) ships on
-**`claude/tender-ptolemy-ua1y6k`** as a **draft PR the OPERATOR merges** — `src/` changed, EIGHT
-checks. Read its checks to conclusion FIRST, and main's own runs for a65e1b21 (not yet read).
-Highest ADR **0528**. Version **1.0.291**. Schema unchanged.
+**`main` @ `a65e1b21`** (#715, ADR-0527, v1.0.290). **Two draft PRs the OPERATOR merges:** PR #716
+(R-13 / ADR-0528, v1.0.291, `claude/tender-ptolemy-ua1y6k` — all eight checks green 2026-09-24 09:38 UTC) and this unit on
+**`claude/polaris-smat-continue-4cmkc2`** (ADR-0529 / 0530 / 0531, v1.0.292, `src/` changed, wheel + nine
+installers rebuilt — **EIGHT checks**). Both touch the state docs, `pyproject.toml` and the installers:
+**whichever merges second needs a merge-resolve** (restart its branch from the squash with `--prune`,
+merge `origin/main`, keep BOTH ADR sets, take the higher version, rebuild the installers, re-run the
+gate). Read both PRs' final heads' checks to conclusion FIRST. Highest ADR **0531**. Schema 2.17.0.
 
 ## What's done — do NOT re-open
 
-**R-13 is CLOSED — ADR-0528.** Ruling 2026-09-24: a per-process correlation id is acceptable. Every
-AI transaction record carries `v` (1) and `run` (random, per process). Do not re-ask.
+**R-18 / NUM-01 CLOSED (ADR-0529)** — the parity tolerance ledger + guard + the report's
+**Tolerance-accepted families** table; SPI / TCPI gate tightened to 2 dp. **R-39 CLOSED** — 422.
+**R-22 CLOSED (ADR-0530)** — every body row of both WBS pivots drills its branch; census drill floor 38.
+**R-32 / CI-04 CLOSED (ADR-0530)** — the oracle reads both pages settled; induced-delay proof holds the
+frame chain. **R-21 re-priced, OPEN (ADR-0530)** — the probe is `tools/analysis_scroll_probe.py`; the
+criterion is met where it cannot discriminate and unreachable where it can; no pane. **R-71 CLOSED
+(ADR-0531)** — the record's late dates (finished: LS = AS, LF = AF, zero total / free; started: LS = AS,
+total = the finish slack alone); the clamp REFUTED by UID 187. Earlier: the One-Pager date window and
+R-71's flag half (ADR-0527), R-13 (ADR-0528, on #716).
 
-**The One-Pager date window — ADR-0527.** Two dates on /onepager and /onepager-compare; timescale =
-exactly the window; straddlers kept and CUT at the edge (true finish in the label); wholly-outside
-items omitted AND NAMED; compare rows by prior OR current; the window scopes slide, pptx, takeaway,
-summary, ▦ DATA and ⤓ EXCEL; no window = byte-identical. Rulings recorded in the ADR — do not re-ask.
+## Next
 
-**R-71's FLAG half is CLOSED — ADR-0527.** Ruling: `TaskTiming.is_critical` stays the pure CPM
-property; `CPMResult.critical_path` alone drops `is_recorded_complete` work (UID-exact vs stored
-Critical on the 15 goldens, 7,935 activities). DCMA-12's filter copy was removed as unreachable. Do
-NOT re-litigate the flag. R-71's RECORD limbs (LS = AS / LF = AF, the 22 clamped late finishes) remain.
+R-68 waits on the operator's MS Project reading (question (f)). **Operator question from ADR-0531:**
+the pure `is_critical` now reads True on finished work (its float is the record's zero) — every
+reported Critical figure is unaffected (effective flag / incomplete-only), but if the raw flag should
+stay False on finished work that is one clause. Then the register's remaining OPEN rows by tier (§3 of
+`docs/STATE/AUDIT-2026-08-27-REPORT.md`, pinned by `tests/guards/test_audit_report_wp8.py`).
 
+**Also open (do not re-litigate unprompted):** R-71's clamp residual (22 of 23; UID 187 the
+counter-witness) · R-21's criterion needs a named sequence and box · the R-32 product finding (the
+whole-schedule view opens extended by 60 days whenever the pane overflows by under an inch — the seat
+lands on the edge and ADR-0187's extend fires without a scroll) · DCMA-13's pure-branch project float
+is the min over ALL timings (unmoved on the four progressed goldens) · R-77's second-calendar residual ·
+R-80's widening to `path.js:767` / `sra.js:497` · the launcher wart (ADR-0412's notice is a `print()`
+the pythonw icon never shows, and it prints "port None") · the origin of the 2026-09-21 (c) foreign
+kickoff.
 
-**R-69 is CLOSED — ADR-0524.** `_snap_start_role` gives the backward WALL pass the start-role spelling
-the offset path already had (`offset_to_start_datetime` vs `offset_to_datetime`); it is the
-segment-level twin of `_snap_back_to_working`, which is already documented as the FINISH role. Applied
-to `ls_w`, **never** to `lf_w`, and with **no duration exception**.
-
-**The row's blocker had been dead for five commits.** R-69 was priced "NOT a one-line fix" because the
-contiguous projection of the 13:00 form "reads 300 where 12:00 reads 240"; ADR-0523 made
-`_wall_to_offset` segment-aware and both now read **9360**. `_wall_to_offset`'s docstring still
-asserted the old rule — that stale prose caused the mispricing and is rewritten and pinned.
-
-**The row's population did not reproduce: 47, not 742** (Hard_File 10 not 14, updated 5 not 9,
-Large_Test_File **0** not 166), plus **24 late finishes** in a class the row says has none. Its figures
-track a RENDERED oracle (659 on v1.0.275, the tree it was registered against; 149 per Large_Test_File
-copy) — a surface nothing in the product reads, since `late_start` / `late_finish` have ZERO consumers
-outside `cpm.py`. Measured: wall late starts exact **1,628 → 1,698**, late finishes **1,728 → 1,755**,
-stored Total Slack **10,568 → 10,572**; **70 + 27 toward** the stored instant and **none away**; no
-early instant, free float or Critical flag moved. Closes ADR-0510's UID 147 Saturday residual and
-R-57's UID 379 60 minutes (17,521 → **17,581**).
-
-**R-80 is CLOSED — ADR-0525.** Census: **27** sites / **23** files / 16 repaired / **11** residual, not
-26 / 22 / 10 — and the row's own list enumerates 11 while calling it 10. **Ten are conflations, one is
-not**: `ai_polish.js:35` covers exactly one failure mode and is left untouched behind a control. Proven
-executably by slicing each site's function from the tree's own bytes and running it with a 200 + valid
-JSON and a throwing draw helper — 9 of 9 printed the LOAD sentence before, 0 after.
-
-## Next — §3 in order
-
-**R-18** (T3, S) · R-21 · R-22 · R-32 · R-39. R-71's record limbs when the queue allows.
-R-68 waits on the operator's reading (question (f)).
-
-R-71's other limbs, re-censused: **8,644** completed (engine and file-only tests agree exactly) with
-LS == AS and LF == AF on 8,644 / 8,644; **1,159** started with LS == AS on 1,159 / 1,159; the clamped
-class is **22** rows / 4 UIDs {389, 5263, 5539, 6444}, 5539 byte-exact. **Two sub-claims fall:** the
-`<TotalSlack>` ELEMENT is ABSENT on all 8,644 completed rows (so "TotalSlack 0" describes the
-importer's dropped-zero inference, not the file; on `evm/EVM2` it is `None` for UIDs 17/18/19), and
-UID 5263 is NOT confined to the Large_Test_File2 family — three distinct signatures across the
-Leveled and Large_Test_File files too.
-
-**Also open:** R-77's residual (the second-calendar family on `Large_Test_File2`) is unpriced and
-belongs beside R-56's chains. **R-80's two out-of-population conflations** (`path.js:767` prints a
-VARIABLE, `sra.js:497` routes through a SETTER) are real, read and confirmed, and need the operator's
-decision on whether to widen the row rather than a silent expansion.
-**Outstanding operator ruling: where the 2026-09-21 (c) foreign kickoff came from.**
-
-## Environment (re-measured 2026-09-22 (c))
+## Environment (re-measured 2026-09-24 (c))
 
 ```bash
-git fetch --unshallow origin                     # the clone arrives SHALLOW
+git fetch --unshallow origin                     # the clone arrives SHALLOW (50 commits)
 uv pip install --python /usr/local/bin/python3 --system -e '.[dev]' build playwright
-uv pip install --python /usr/local/bin/python3 --system -e . --no-deps   # after a version bump
+apt-get update -q && apt-get install -y -q libreoffice-impress   # the first fetch 404s without the update
 ```
 
-* **A shadow copy of `src/` is NOT the tree.** `cp -a src <scratch>/vN/src` alone breaks every MPXJ
-  path — discovery walks up from the PACKAGE's `__file__`. Always add
-  `ln -s <repo>/tools <scratch>/vN/tools` and the same for `00_REFERENCE_INTAKE`.
-* **`schedule_forensics.__version__` reports the INSTALLED distribution, not the imported source.**
-  Probe for a SYMBOL, with a named positive AND a named negative, and print `module.__file__`.
-* **The 44-file corpus rebuilds in ~4 minutes** and is worth rebuilding for any stored-value row: 15
-  committed goldens (4 plain `.mspdi.xml` + **11 gzipped**) plus 29 conversions —
-  `java -cp "tools/mpxj/classes:tools/mpxj/lib/*" MpxjToMspdi <in.mpp> <out.xml>`, **one output name
-  per INPUT PATH, index-prefixed**. It must reproduce **22,105** activities.
-* **Key per-activity dumps on the full PATH, never the basename** — `Hard_File_updated3.mspdi.xml.gz`
-  and `Large_Test_File.mspdi.xml.gz` each appear TWICE in the corpus, and a basename key silently
-  collapses 22,105 rows to 20,272 while still looking self-consistent.
+* **The 44-file corpus:** `find tests/fixtures -name "*.mspdi.xml*"` (15, 11 gzipped) + the 29 intake
+  `.mpp` through `java -cp "tools/mpxj/classes:tools/mpxj/lib/*" MpxjToMspdi <in> <out>`, ONE output
+  per INPUT PATH, index-prefixed; ~4 min; reproduces **22,105** activities. Key every dump on the path.
+* **A shadow copy of `src/` is NOT the tree** — symlink `tools` and `00_REFERENCE_INTAKE` beside it.
 * **Never run two suites concurrently when either binds a port or spawns a JVM**, and **do not edit
-  the tree — INCLUDING `docs/` — while a gate is running**: `tests/test_state_docs.py` and the
-  `web/static/*.js` guards read the tree at TEST time, so an edit mid-run invalidates the result.
-* **A Bash call caps at 10 minutes and the harness backgrounds it at 2 minutes.** `-m parity` ~10 min
-  (249 tests), `tests/engine` ~2 min (1,315), the full suite ~45 min and much slower under subagent
-  CPU contention — stop background workflows before the final gate.
-* **`pkill -f "<pattern>"` matches its own command line.** Use the `[p]attern` bracket trick.
+  the tree — INCLUDING `docs/` — while a gate is running**.
+* **A Bash call caps at 10 minutes.** `-m parity` ~10 min, `tests/engine` ~3 min, the full suite ~45 min.
 * Keep the token-guardian's `token_audit.py` in the SCRATCHPAD (`ruff check .` is whole-tree).
 * The app is built with `create_app(SessionState())`, not a module-level `app`.
+* A pytest `-x` run hides the population of a change: run the whole suite once without it.
 
 ## Traps this session paid for, by name
 
-**(2026-09-24, ADR-0527)** A clamp is not a floor — cut THEN floor drew 88 bars backwards; fuzz the
-geometry, not a case · the render found a label over the lane names that 23 green tests missed · a
-census can be blind by construction (the UI-control census cannot see a plain form) · an inherited
-test DOCSTRING was false — correct prose in the commit that moves the pin · a rule moved upstream
-strands its downstream copy (DCMA-12's filter) — delete it, or it is the next surviving mutant.
+**(2026-09-24 (c), ADR-0529–0531)** A register row's PREMISE is testimony — three of five rows were
+wrong about the mechanism (R-22's builder and pin, R-32's late asset, R-21's 50) · reproduce a race
+from INSIDE the page (MutationObserver from document start) and hold the thing that races (the frame
+chain), not an asset · a substring row locator clicks the wrong branch · the stored StartSlack /
+FinishSlack elements settled the started-slack rule the derivation only argued · one counter-witness
+(UID 187) refutes a clamp rule — leave it unbuilt · a settle criterion without its sequence and box is
+not a criterion · when two rulings combine (pure flag + zero record) say what the combination does and
+ask · write the test name you cite, then grep it · an AST walker's population is a claim — two shapes
+were invisible by construction and are ledgered as text.
 
-**A register row's BLOCKER is testimony too** — three units have now re-verified a row's numbers and
-its mechanism; nobody had re-verified the sentence saying why it was expensive, and that sentence kept
-R-69 closed for a month. **Stale prose is load-bearing.** · **A surviving mutant is a finding about
-the RULE, not only about the test** — two survived R-69's first battery, one exposed a vacuous pin and
-the other refuted my own scoping (+5/−0 measured where a static simulation predicted +9/−36). **A
-simulation of a seam is not the seam.** · **A third survivor was a finding about the CODE** — a
-redundant branch no check could reach, proven inert and deleted. · **Every crude filter under-reports,
-twice in one unit** (R-69's "every calendar" filter; R-80's LITERAL-only census, which cannot see a
-variable or a setter). · **A harness that prints "<nothing printed>" is a broken harness, not a clean
-site.**
-
-(Still live, earlier:) a pin projected and rendered by the SAME ruler cancels its own error · a
-negative result from a filtered search is a statement about the filter · an oracle's POPULATION is a
-claim · an ambiguity with no rule in the file gets the dominant convention and a NAMED residual, not
-an invented rule · report the measure that isolates your change from the residual it inherits · a
-basename is not a key · a `*.xml` glob cannot see the corpus · the hidden cases were found by
-RENDERING, not reading · a row's prescribed WITNESS is a claim too · `node --check` finds what no test
-can · negative pins are green on the pristine tree by construction — prove them with a mutant · run
-the census before pricing the fix · a register row can be RIGHT about the arithmetic and WRONG about
-the mechanism.
+(Still live, earlier:) a clamp is not a floor · render the page · a census can be blind by
+construction · an inherited test docstring can be false · a rule moved upstream strands its downstream
+copy · a register row's BLOCKER is testimony · a surviving mutant is a finding about the RULE · every
+crude filter under-reports · a basename is not a key · `node --check` finds what no test can ·
+negative pins are green on the pristine tree by construction — prove them with a mutant.
 
 ## Measured-false / deliberately held — do NOT re-chase
 
-(ADR-0524:) R-69's **742 / 166 / 14 / 9** as reproducible figures (47 / 0 / 10 / 5 on the wall; no
-constructible oracle yields 742) · "no late finish among them" (there are 24) · the two-ruler BLOCKER
-(dead at ADR-0523; 9360 == 9360) · a duration exception on the start-role spelling (refuted by
-mutation) · applying the start form to `lf_w` (breaks 52 already-exact late finishes) · the milestone
-spelling in general (58/54 corpus, 29/25 goldens — ADR-0523's residual stands) · an `is_24x7`
-short-circuit in `_snap_start_role` (proven inert across 22,105 activities).
-(ADR-0525:) R-80's **26 / 22 / 10** census (27 / 23 / 11) · `ai_polish.js:35` as a conflation (it
-covers exactly one failure mode) · repairing `path.js:767` / `sra.js:497` without an operator decision
-· extending ADR-0521's browser poison battery to these ten (it poisons a shared dependency global;
-these draw through module-local helpers) · i18n entries for the new sentences.
-(ADR-0523:) R-77's 212 and 25 · EVM2 UID 23 as a divergence witness · the three UID 305 instants · the
-±1-minute class (R-65's family) · collapsing `_stored_instant_offset` into `datetime_to_offset` ·
-routing the pair through `_Ruler.segments`.
-(ADR-0522:) the 1,229 negative-total rows as a free-float defect · the one negative free float · the
-finish-slack bound (V7) · the delay on FF / SF anchors (V8) · `link_slack`'s non-FS semantics · a
-`stored_free_float_minutes` importer field. Plus every earlier ADR's held items (see previous
-kickoffs in git log).
+(ADR-0531:) the clamp as a rule (UID 187) · a start slack in the started total (SS is 0 on 1,159 /
+1,159) · a record-aware `is_critical` (ADR-0527 ruled it pure; the effective flag is the record-aware
+home) · a `late_start` pinned only on the wall (the integer pair carries the zero). (ADR-0530:)
+R-32 by a held asset or CPU throttling · a `path.js` settle signal (byte-frozen; the wait lives in the
+test) · R-22's encodings (verbatim table) · a frozen pane against the current criterion. (ADR-0529:)
+relabelling SPI / TCPI as banded (the 2-dp pin already existed) · widening R-39 to the eleven other
+400-answering exports. Plus every earlier ADR's held items (see previous kickoffs in git log).
 
 ## Steward posture
 
 Draft PRs the OPERATOR merges — never mark ready, never merge, never approve. EIGHT checks when
 `installer/**` changes, SIX for docs-only. `main`'s own run for a squash is read from its JOBS, **to
 conclusion**. `pull_request_read get_status` returns pending / 0 on a fully green PR — use
-`get_check_runs`. The post-merge safety check is `HEAD^{tree}` vs `origin/main^{tree}`, and it is only
-valid if nothing else merged in between. After a squash-merge restart the branch with `--prune`; never
-amend or rebase the squash commit. **Do NOT open a docs-only PR to record a merge or a run** — refresh
-the state docs inside the next work commit.
+`get_check_runs`. After a squash-merge restart the branch with `--prune`; never amend or rebase the
+squash commit. **Do NOT open a docs-only PR to record a merge or a run** — refresh the state docs inside
+the next work commit.
 
 Work the POLARIS² audit's plan-forward. Read `docs/STATE/HANDOFF.md` FIRST (auto-injected), then
-`docs/STATE/AUDIT-2026-08-27-REPORT.md` §3 — the roadmap by testimony tier, pinned by
-`tests/guards/test_audit_report_wp8.py`. QC-1 / QC-2 / QC-3 bind every session (ADR-0393, ADR-0509).
+`docs/STATE/AUDIT-2026-08-27-REPORT.md` §3. QC-1 / QC-2 / QC-3 bind every session (ADR-0393, ADR-0509).
 Run the session-token-guardian's `scripts/token_audit.py` as the FIRST action (copy it to the
 scratchpad) and before each operator prompt. `git fetch origin` before you branch, number an ADR, or
-commit. Highest ADR 0528. Version 1.0.291. Schema 2.17.0.
+commit. Highest ADR 0531. Version 1.0.292. Schema 2.17.0.

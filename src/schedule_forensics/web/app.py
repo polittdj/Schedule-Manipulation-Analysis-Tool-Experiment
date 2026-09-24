@@ -5156,7 +5156,9 @@ def create_app(
             return bad
         versions = _workbench_versions()
         if not versions:
-            return JSONResponse({"error": "no analyzable schedule loaded"}, status_code=400)
+            # R-39: 422 like its five sibling exports — an empty session is a state the request
+            # cannot be processed in, not a malformed request
+            return JSONResponse({"error": "no analyzable schedule loaded"}, status_code=422)
         labels = [sch.source_file or sch.name for _k, sch, _c, _a in versions]
         per_version = [evaluate_catalog(sch, cpm, a.audit) for _k, sch, cpm, a in versions]
         headers = ("Metric", "Family", "Unit", *labels)

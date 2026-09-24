@@ -6,7 +6,9 @@ computed-vs-golden summary for the committed, non-CUI commercial-construction sa
 (`Project2` / `Project5`, UID 2–145). It is enforced continuously by `tests/parity/` (`pytest -m parity`,
 a dedicated CI step) over the golden fixtures in `tests/fixtures/golden/`.
 
-**Status: every figure the engine reproduces against the committed recorded golden (`case.json`) is exact,
+**Status: every figure the engine reproduces against the committed recorded golden (`case.json`) is exact
+at the precision Fuse prints, the families a gate accepts inside a stated band are listed by name under
+**Tolerance-accepted families** below and are never called exact here (R-18, 2026-09-24),
 and the former §A/§B/§C residuals (High Float, Baseline-Start-Compliance) are now CLOSED. As of 2026-07-07
 (ADR-0151) the §E change subset — including the formerly engine-pinned float/critical rows — is
 Fuse-validated (ENGINE==FUSE) against the operator-delivered export suite; see §E.** Important scope
@@ -207,8 +209,8 @@ settled, each red-first on the pre-ADR-0473 tree:
 | BAC / BCWP / ACWP, Hard_File_updated ribbon | 133,400 / 16,800 / 20,800 | 13,340,000 / 1,680,000 / 2,080,000 (MSPDI hundredths read as units) | exact | ✅ ENGINE==FUSE |
 | BCWS (time-phased PV), Hard_File_updated2 / updated3 / updated | 64,240 / 110,440 / 16,000 | 64,240 / 107,240 / 12,400 (step at baseline finish); then 64,240 / 110,440 / 16,150 (linear over the baseline span, ADR-0473) | 64,240 / 110,440 / 16,000 — the file's own time-phased baseline cost through the status date (the booking's baseline-cost series; a straddling block prorated on the booking's calendar; the budget no series carries linear), R-46 CLOSED 2026-09-15 (ADR-0492) | ✅ ENGINE==FUSE on all three (UID 187's 16-hour crew plans 3,600 of 6,000 where the project-calendar proration read 3,750; updated3's 110,440 now pinned from the updated2-vs-updated3 ribbon, a workbook no test had read) |
 | CPI, Hard_File_updated / updated2 | 0.81 / 0.78 | 0.81 / 0.78 | 0.81 / 0.78 | ✅ ENGINE==FUSE (blank actual = 0 is Fuse's own evaluation; the started, budgeted activities with no actual cost are now DISCLOSED beside CPI/TCPI) |
-| SPI (cost), Hard_File_updated / updated2 | 1.05 / 0.77 | 1.35 / 0.77 | 1.05 / 0.77 (was 1.04 / 0.77 until ADR-0492) | ✅ ENGINE==FUSE / ✅ exact |
-| TCPI, Hard_File_updated / updated2 | 1.04 / 1.21 | 1.04 / 1.20 | 1.04 / 1.21 | ✅ exact / ✅ exact since ADR-0511 (the 342 was the Logistics Apprentice's hours priced at the status-date rate, not "to-time-now") |
+| SPI (cost), Hard_File_updated / updated2 | 1.05 / 0.77 | 1.35 / 0.77 | 1.05 / 0.77 (was 1.04 / 0.77 until ADR-0492) | ✅ ENGINE==FUSE / ✅ exact at the 2 dp the ribbon prints (R-18: the ±0.01 band the gate carried beside this row is gone) |
+| TCPI, Hard_File_updated / updated2 | 1.04 / 1.21 | 1.04 / 1.20 | 1.04 / 1.21 | ✅ exact at 2 dp / ✅ exact at 2 dp since ADR-0511 (the 342 was the Logistics Apprentice's hours priced at the status-date rate, not "to-time-now"; R-18 retired the ±0.01 band) |
 | EV (BCWP) / AC (ACWP), Hard_File_updated / updated2 / updated3 ribbons (R-45, ADR-0511, 2026-09-18) | 16,800 / 49,700 / 53,715 · 20,800 / 64,105 / 66,245 | 16,800 / 49,700 / **59,340** (BAC × % complete) · 20,800 / 63,763.08 / 67,703.08 (the tasks' actual-cost scalars) | the booking's time-phased record: each booking earns its baseline cost in the performed share of its booked work (UID 290: 22 of 40 h → 6,875 of 12,500) and spends that record at the status-date rates (16 h × 200 + 6 h × 300 = 5,000; the apprentice's 17.077 h at 30) — 16,800 / 49,700 / 53,715 exact · 20,800.00 / 64,104.61 / 66,244.61 | ✅ ENGINE==FUSE (EV exact; AC to the unit the ribbon prints; CPI 0.81 / 0.78 / 0.81 exact) |
 | BAC, Hard_File_updated3 ribbon (R-45, ADR-0511) | 121,800 (ribbon) · 133,400 (the Forensic report's whole-file Budget Cost) | 133,400 | 133,400 — the ribbon's figure is the workbook's time line (five monthly ribbons, 2026-07 to 2026-11): the 15 activities starting in December carry the 11,600 it omits, and the engine's BAC over the activities inside the time line reads 121,800 | ✅ ENGINE==FUSE on the whole file; the ribbon reconciled to the unit |
 
@@ -253,6 +255,20 @@ after the task's calendar admits it. The rules were derived from the stored date
 | Project2 | 2027-09-14 | −15 d → exact | 126 (was 66) | **126** (ADR-0512; was 124, was 120) | **65 / 65** (was 7) |
 | Project5 | 2028-01-26 | −1 d → exact | 126 (was 75) | 126 (was 124) | **95 / 95** (was 8) |
 | Large Test File / File2 | 2028-09-29 / 2029-04-20 | unmoved | 1 666 / 1 687 (ADR-0491; were 1 558 / 1 563) | 1 721 / 1 717 (were 1 682 / 1 686) | 865 / 668 (were 842 / 655) |
+
+**R-71 (ADR-0531, 2026-09-24) — the record's own late dates.** A finished activity's late start and
+finish are now its actuals with zero total and zero free float (8,644 of 8,644 across the 44-file
+corpus, exact; the engine read 0 before), and a started activity's late start is its actual start
+(1,159 of 1,159) with its total slack the finish slack alone (MS Project stores StartSlack 0 and
+TotalSlack = FinishSlack on every started activity). The "Critical agreed" column above is therefore
+counted on **incomplete work only** from this date (MS Project stores Critical on no finished activity,
+while the pure flag reads its zero as critical): 110 / 103 / 76 / 68 / 19 on the five Hard_File
+snapshots, 106 / 99 on Project2 / Project5, 1 024 / 998 on the Large Test Files — each the previous
+figure less its file's finished count — and the record itself is pinned exactly on every finished
+activity of the nine goldens. No unstarted late date and no started slack moved (1,012 started slacks
+exact before and after). The 22 clamped late finishes (LF written at EF with the unfloored
+FinishSlack kept) are NOT modelled: UID 187 on the logic-reestablished snapshot stores LF 3.5 days
+below EF with the same negative slack, so no rule reproduces 23 of 23.
 
 The one-day residual on the three early Hard_File snapshots WAS the leveling splits the MSPDI did
 not carry (R-60, closed by ADR-0491): the converter now writes the timephased data, a WORK
@@ -370,6 +386,35 @@ Pinned by the oracle's Large Test File rows and its R-72 witness pin, and by
 **ADR-0516 (R-75 — 2026-09-20): Acumen Fuse's Total Float field divides the stored slack by the ACTIVITY's own day — a task calendar's, raw elapsed days for an elapsed duration, else the project's; never the crew's calendar and never the engine's execution calendar.** ADR-0515 had named three Hard_File rows its rule did not reproduce (UIDs 14 / 146 / 94: −3 / −1 / 2 for −4,320 / −1,440 / 2,190 minutes) and left the mechanism open. Every Hard_File workbook with detail grids prints a Total Float beside every activity — 771 rows over five snapshots once each workbook is matched to the save it was made from (the 7/15 analyst report is the rev-5 `updated3`, 141 / 141 against 129 / 141 on rev 2) — and the activity's own day reproduces every one; the project day misses exactly ten, the crew's calendar misses UID 14 (a 16-hour crew reads −4), the no-calendar activities whose crew works 24 hours (24-hour file UID 13: −10, the crew's 1440 would read −3) and 389, and the engine's execution calendar (ADR-0474 / ADR-0503) misses 94 (the task ∩ crew intersection reads 3) and 14. The elapsed activity's field is RAW: the 24-hour file displays UID 146 at −13.333333333333334 where UID 14, on a 24 Hours calendar with the same −19,200 minutes, reads −13 (its tie behaviour is UNVERIFIED — no elapsed activity sits near a threshold). UID 302 sits on an own-day tie, 34.5 shown 34. The 7/15 ribbon's "6. High Float" 0 / 0 and "7. Negative Float" 40 / 11 reproduce UID-exact from `compute_dcma14(acumen_parity=True)` on both saves — the engine had read High Float **2** on the 24-hour file (302 / 385: 104 / 93 project-days are 34 / 31 days of their 24 Hours calendar). Pinned by `tests/parity/test_fuse_hardfile_float_divisor_oracle.py` (red by value on the pristine engine; five mutants of the helper red by name). The 44-file census moves 34 whole-day floats and one shipped set (that DCMA-06, 2 → 0); the Large Test File pair's 138 off-pattern task calendars are 480-minute days, its sets unmoved (814 / 35, 660 / 112). ADR-0515's Forensic reader was corrected in the same unit — Fuse writes a cell reference only where it skipped a column, and the document-order reader had slid 70 Hard_File float rows out of its population (810 / 855 / 1,514 rows now, every one half-even). Fuse's DURATION fields divide by the task's own day too (14: 1, not 3; an elapsed original duration on the project day, its remaining on 1440) — registered as R-76, not consumed by the engine yet.
 
 **ADR-0517 (R-73 — 2026-09-20): every started activity's remaining work is scheduled from its stored Resume, read in working minutes of the calendar's own segments.** ADR-0513 had generalized nothing beyond the out-of-sequence class because the contiguous projection ruler read an after-lunch Resume up to the lunch gap later (EVM1 UID 18's 15:00 carried that golden's finish across midnight). The plan's own first candidate — the remaining walked on the calendar's true segments and the FINISH projected contiguously — fell to the stored slack: the census read 1,111 started finishes "exact" against the same contiguous projection of the stored finish while the stored slacks exact fell 11,177 → 9,930, because the axis IS working minutes and only the projection of a mid-day instant is wrong. The Resume is now read segment-aware (`_stored_instant_offset`, a floor under `max()` against the link bounds — no restart can precede a linked predecessor's finish) and the remaining added on the axis, for every started, incomplete activity with a stored remaining or an SRA override; an absent remaining is MPXJ's dropped zero (`ActualDuration == Duration` on all ten in the corpus, in two shapes no single reading fits) and keeps `actual_start + duration`. Re-measured on the 44 files, pristine → this tree: started finishes exact 1,050 → **1,114** (64 toward, none away), within a day 1,107 → 1,126; late-finish instants exact 11,543 → **11,645**, stored slacks 11,177 → **11,383**, free slacks 2,367 → 2,428, Critical agreed 22,069 → **22,095** of 22,105, no boolean measure lost a member; the 24Hour_Calendar file's project finish 2027-08-23 → the stored 2027-08-04 exact; Large_Test_File UID 4616 (99 %, 13 h left) −34,080 working minutes → 0 with its float 161,760 → the stored 127,680, 7378 +480 → 0, 5505 −14,400 → −1 (the model's minute grid), 1489 +60 → 0 (98,880 exact); EVM1's 18 and 17 unmoved (08-21 17:00; 360 / 0). `date_driven` 525 → 490: ten after-lunch Resumes that tie their finish-to-finish bound had been read past the tie by the gap. Pinned by `tests/engine/test_started_work_resumes_remaining.py` and the stored-dates oracle (the Large Test File rows re-pinned upward: finish-within-a-day 1,682 → 1,686, slacks 882 → 897 and 741 → 746; UID 1489 exact; an R-73 witness on 4616 / 7378 / 5505 and EVM1). The rest of the stored-date family and the rendering still project contiguously — 212 unstarted finishes one lunch gap off, 25 pinned completed finishes, 4 after-lunch actual starts — registered as R-77.
+
+## Tolerance-accepted families — named, banded, and never called exact (R-18 / NUM-01, 2026-09-24)
+
+"Parity" in this report means one of two things, and the word "exact" is reserved for the first: an
+engine figure EQUAL to the reference's at the precision the reference prints, or agreement INSIDE a
+band the test states. Every gate in the CI parity population (`tests/parity/`,
+`tests/engine/test_ssi_leveled_uid152.py`, `tests/importers/test_msp_views.py`) that accepts a band
+is classified in `tests/guards/parity_tolerance_ledger.tsv`; the guard
+`tests/guards/test_parity_tolerance_ledger.py` ties that ledger to the tree (a new, moved or
+reworded banded assertion is unclassified until named there) and this table to the ledger (each
+family below must say "within documented tolerance", and no line naming it may say "exact"). The
+families, their bands, and why each is a band rather than an equality:
+
+| Family | Gate | Band — within documented tolerance | Why it is a band |
+|---|---|---|---|
+| **ribbon ACWP to the cent** — Hard_File_updated3 | `test_fuse_metric_history_oracle.py` (ADR-0511) | ±0.01 on 66,244.61 (the cent); the ribbon's own figure to the unit it prints | the bookings' record is priced in cents and the ribbon prints whole units — within documented tolerance |
+| **SEM ten-metric battery** — Project2 / Project5 (BRI, BPI, BEI, TC-BEI, FRI, Delta …) | `test_sem_parity.py` | ±0.005 | Fuse prints the SEM at 2 dp; the engine's value is accepted inside that display band — within documented tolerance |
+| **SSI 24h focus UID 155** — Hard_File_updated3_24hr | `test_ssi_hardfile_24h_uid155.py` | ±0.01 d per UID | SSI writes driving slack at 2 dp of a day — within documented tolerance |
+| **SSI leveled focus UID 152 (783 tasks)** — the leveled Large Test File | `test_ssi_leveled_uid152.py` | membership UID-for-UID; ≥ 775 of 783 slacks within 0.02 d; the worst ≤ 1.01 d | SSI's one-day calendar-handoff rounding at path junctions (ADR-0158) — within documented tolerance |
+| **SRA Monte-Carlo focus UID 152 (ADR-0309 oracle)** — SSI's own run | `test_sra_ssi_oracle_uid152.py` | deterministic finish ±60 s; deterministic percentile ±0.02; σ ±5 %; mean ±6 d; P10 / P50 / P80 / P90 ±10 / 5 / 5 / 5 d; the oracle's own figures re-derived from its workbook at ±0.01 / ±0.0001 / 1e-6 | a seeded simulation against another simulation: a distribution, never a figure — within documented tolerance |
+| **SRA v2 focus UID 152 (ADR-0339 oracle)** — SSI's run with risks and correlation | `test_sra_ssi_oracle_uid152_v2.py` | one-at-a-time sensitivity ±0.06 d; mean ±10 d; σ ratio ±5 %; P50 / P80 / P90 ±9 cal d; risk hit rates ±0.02; fired-alone delta ±8 d | the same — within documented tolerance |
+| **stored finish within a day** — the stored-dates oracle's per-activity column | `test_hard_file_stored_dates_oracle.py` | 86,400 s per activity, counted as a FLOOR beside the instant floors | the column is a within-a-day count by name; the instant-level columns beside it are pinned separately — within documented tolerance |
+| **UID 188 chain float within a minute** — Hard_File_updated3 UIDs 188 / 189 / 181 / 178 / 179 / 180 | `test_hard_file_stored_dates_oracle.py` (R-70) | ±1 working minute | the model's minute grid against MS Project's seconds — within documented tolerance |
+| **R-57 leveling-delay finish** — Hard_File_updated2 UID 188 | `test_r57_assignment_leveling_delay_oracle.py` | 0 < stored − engine ≤ 120 s | the engine floors to whole minutes and the booking's work is 348.x of them (R-65's class) — within documented tolerance |
+| **R-65 booking-window class** — the gap-granularity census | `test_r65_gap_granularity_oracle.py` | a booking is in class when its window is within 60 s of duration + gaps | a population filter, not a figure — within documented tolerance |
+
+Everything the ledger classes `exact` is an equality written in a tolerance shape — a zero band
+(`days` is 0 on every stored-dates row, `bcws_tol` 0.0), a float epsilon (1e-6 / 1e-9 on a serial or
+a divisor), or a bare `pytest.approx` (rel 1e-6) — and needs no row here.
 
 ## Residuals — what was closed, and what remains
 
