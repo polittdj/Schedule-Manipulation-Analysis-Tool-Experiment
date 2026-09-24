@@ -18,7 +18,7 @@ STATUS (current) — branch **`claude/polaris-smat-continue-4cmkc2`**, draft PR 
 
 ## How it was verified
 
-QC-3 attacked 20 assumptions across the three ADRs; **7 fell** (R-22's premise ×2; a substring row locator that clicked the wrong branch; R-32's prescribed asset hold and CPU throttling; R-21's own settle premise; the clamp rule). Red-first on every row; mutants: R-18 6 / 6, R-22 2 / 2, R-32 1 / 1, R-71 3 / 3 (9 / 6 / 12 pins red by name). Engine 1,316 / 1,316 after nine dated re-baselines; stored-dates oracle 15 / 15. Gate figures (parity, full suite) are in the session log entry for this session.
+QC-3 attacked 20 assumptions across the three ADRs; **7 fell** (R-22's premise ×2; a substring row locator that clicked the wrong branch; R-32's prescribed asset hold and CPU throttling; R-21's own settle premise; the clamp rule). Red-first on every row; mutants: R-18 6 / 6, R-22 2 / 2, R-32 1 / 1, R-71 3 / 3 (9 / 6 / 12 pins red by name). Engine 1,316 / 1,316 after nine dated re-baselines; stored-dates oracle 15 / 15. Gate on the final tree: parity **249 / 249** (0 skipped); the full suite **1 failed, 5,979 passed, 5 skipped** — the one red (`test_sra_ssi_web.py`'s driving-tie helper, which picked finished work once its float read the record's zero) struck identically on PR #717's first head in all three CI test jobs and is fixed in the follow-up commit (the helper picks from `critical_path`; module 35 / 35). Read #717's FINAL head's eight checks to conclusion.
 
 ## Deliberate re-baselines (all dated in the tests)
 

@@ -93,7 +93,14 @@ figure on all 23 (exact on 5539, 389, 5263-Leveled; off by one minute on 5263 an
 * **Red-first:** the census on the pristine engine — 0 / 8,644, 0 / 8,644, 0 / 1,159; the
   oracle's `record` pin would read 0 on every golden.
 * **Green:** the census after (table above); `tests/engine` 1,316 / 1,316 after the re-baselines;
-  the stored-dates oracle 15 / 15; the parity gate and the full suite in the session log.
+  the stored-dates oracle 15 / 15; parity 249 / 249; the full suite 5,979 passed with ONE red that
+  is this ADR's own consequence in a test helper — `tests/web/test_sra_ssi_web.py::_fs_tie` chose a
+  "driving" FS tie as one whose endpoints both read `total_float <= 0`, which now selects finished
+  work (UIDs 3 → 4, both 100 %) where a fragnet is inert; it picks from `critical_path` now
+  (131 → 142, live work) with a positive control, and the same strike hit PR #717's first head in
+  all three CI test jobs (1 failed / 5,581 passed each). **The general lesson:** any reader that
+  spelled "critical" as `total_float <= 0` over ALL activities now includes finished work — the
+  `src/` census found none outside the effective helpers; the tests held one.
 * **Mutation, each red by name:** M1 the completed record branch removed — 9 (the oracle's record
   pins on 8 goldens, the wall sentinel); M2 the started late start unpinned — 6 (the five
   started-work pins, the wall sentinel); M3 the started total back to min(start, finish) with

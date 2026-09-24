@@ -43,18 +43,27 @@ def _editable_uid(client: TestClient) -> int:
 
 
 def _fs_tie(client: TestClient, *, driving: bool) -> tuple[int, int]:
-    """A real FS tie in the loaded Project5 — both endpoints critical when ``driving``."""
-    from schedule_forensics.engine.cpm import compute_cpm
+    """A real FS tie in the loaded Project5 — both endpoints on the CRITICAL PATH when
+    ``driving``. The path (``CPMResult.critical_path``, ADR-0527) carries no finished work; a
+    bare ``total_float <= 0`` did until R-71 (ADR-0531), and since a finished activity's float
+    is now its record's zero that rule picked UIDs 3 → 4 (both 100 % complete) — a tie a fragnet
+    can never move, so the branch read a 0.0 finish impact (CI's floor job, 2026-09-24). The path
+    picks 131 → 142 (both 0 %), the tie the test was written for."""
+    from schedule_forensics.engine.cpm import compute_cpm, is_recorded_complete
     from schedule_forensics.importers.mspdi import parse_mspdi
     from schedule_forensics.model.relationship import RelationshipType
 
     sch = parse_mspdi(GOLDEN)
-    crit = {u for u, t in compute_cpm(sch).timings.items() if t.total_float <= 0}
+    by = {t.unique_id: t for t in sch.tasks}
+    crit = set(compute_cpm(sch).critical_path)
     for r in sch.relationships:
         if r.type != RelationshipType.FS:
             continue
         on = r.predecessor_id in crit and r.successor_id in crit
         if on == driving:
+            if driving:  # a driving tie must be live work — the positive control on the pick
+                assert not is_recorded_complete(by[r.predecessor_id])
+                assert not is_recorded_complete(by[r.successor_id])
             return r.predecessor_id, r.successor_id
     raise AssertionError("no matching FS tie")
 
