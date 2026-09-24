@@ -104,7 +104,7 @@ def test_windowed_doc_names_every_omitted_item_and_the_excel_says_so() -> None:
     assert flat[0].startswith("date window 2027-01-01 to 2027-06-30: 2 item(s)")
     assert "left off (outside the window): A · Before (6/1/26 to 12/31/26, row 2)" in flat
     assert op.subtitle_for(view, 3, TODAY, WIN).startswith(
-        "Prepared 2027-03-01 · window 1/1/27 – 6/30/27 · 6 items"
+        "Prepared 2027-03-01 · window 1/1/27 \u2013 6/30/27 · 6 items"
     )
 
 
@@ -210,7 +210,7 @@ def test_the_compare_excel_states_the_window_and_names_every_row_it_left_off() -
     notes = [r[0] for r in rows["Notes"].rows]
     assert any(n.startswith("date window 2027-01-01 to 2027-06-30: 3 item(s)") for n in notes)
     assert sum(n.startswith("left off (outside the window): ") for n in notes) == 3
-    assert oc.compare_subtitle(view, TODAY, WIN).count("window 1/1/27 – 6/30/27") == 1
+    assert oc.compare_subtitle(view, TODAY, WIN).count("window 1/1/27 \u2013 6/30/27") == 1
 
 
 def test_a_bar_filling_the_window_carries_its_label_on_the_bar_not_over_the_lane_names() -> None:
@@ -243,7 +243,8 @@ def test_an_edge_month_sliver_is_labelled_only_as_its_visible_part_allows() -> N
     first and last months are ~9-pt slivers. Each is labelled only as its VISIBLE part allows (a
     letter, never 'Jan') and every label sits inside its own visible slice, inside the chart."""
     win = (D(2026, 1, 20), D(2028, 12, 10))
-    lay = op.build_layout([_item("x", D(2027, 1, 1), D(2027, 2, 1))], D(2027, 1, 1), "T", window=win)
+    only = [_item("x", D(2027, 1, 1), D(2027, 2, 1))]
+    lay = op.build_layout(only, D(2027, 1, 1), "T", window=win)
     ms = lay.months
     assert len(ms) == 36
     assert (ms[0].label, ms[1].label, ms[-2].label, ms[-1].label) == ("J", "Feb", "Nov", "D")

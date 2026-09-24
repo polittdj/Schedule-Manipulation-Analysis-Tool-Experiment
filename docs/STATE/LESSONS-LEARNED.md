@@ -435,6 +435,15 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-24 — A clamp is not a floor, a green census can be blind by construction, and the render found what 23 tests did not
+
+- **Clamp order matters.** "Cut every bar to the chart, keep the 3-pt minimum" drew 88 of 3,751 fuzzed bars BACKWARDS past the left edge — the ones ending exactly on the window's first day — because the floor ran after the cut. A property fuzz (every shape inside `[X0, X1]`) found it in one run; no hand-written case did.
+- **Render before you believe the layout tests.** Every window test was green and the Compare slide still printed "Overall GTA Window" over the "BobbySon" lane name: ADR-0526 only lets a row with NO prior side carry its label inside its bar, and a window makes full-width unchanged bars common. Rendering through the real form in Chromium found it; a fuzz census then priced it (378 → 20 of 7,161).
+- **A census can be blind by design.** `test_ui_control_effect_census` stayed green after two new forms landed — it harvests zoom/fit/pan families only. Read what a guard harvests before counting its green as coverage.
+- **Inherited docstrings are testimony.** A re-baselined test's docstring asserted "the corpus no longer holds a finished activity on the critical path"; the golden census named four. Correct the prose in the same commit that moves the pin.
+- **A rule moved upstream strands its downstream copy.** Once `critical_path` itself excludes recorded-complete work, DCMA-12's copy of the filter can be reached by no product path — delete it and say why, or it becomes the next surviving mutant.
+- **Delegated mutation batteries pay when the harness is proven first.** The subagent printed `module.__file__` under its PYTHONPATH before any mutant, refreshed its snapshot when the lead edited mid-run, and re-ran the whole battery — its two survivors were one real missing test.
+
 ### 2026-09-23 — "pair what is left over" sounds like tidying and is a fabrication; a green test can be one whose example never touches the rule (ADR-0526)
 
 - The obvious extension of "same name + same date = one item" was to pair the copies left over. The skeptics built a rolling monthly review (1/1, 2/1, 3/1 → 2/1, 3/1, 4/1) and it produced a +90-day slip that never happened, promoted to the headline's worst slip. Elimination pairing is a guess wearing a rule's clothes: leftovers stay NEW / REMOVED / DUPLICATE NAME.

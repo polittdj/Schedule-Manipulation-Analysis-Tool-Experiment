@@ -101,7 +101,7 @@ def test_a_window_scopes_the_slide_and_names_every_item_it_leaves_off(
     notice = page.split("wholly outside it are left off", 1)[1].split("</ul>", 1)[0]
     for name in OUTSIDE:
         assert name in notice
-    assert "slide — the date window 1/1/27 – 6/30/27." in page
+    assert "slide — the date window 1/1/27 \u2013 6/30/27." in page
     assert "3 milestones" not in page  # the takeaway counts the window, not the list
     assert "WINDOW 2027-01-01 to 2027-06-30" in page
     drawer = page.split("<div class=sf-drawer hidden>", 1)[1].split("</table>", 1)[0]
@@ -122,7 +122,7 @@ def test_the_exports_follow_the_window(client: TestClient) -> None:
     assert p.status_code == 200
     with zipfile.ZipFile(io.BytesIO(p.content)) as zf:
         slide = zf.read("ppt/slides/slide1.xml").decode()
-    assert "window 1/1/27 – 6/30/27 · 9 items" in slide
+    assert "window 1/1/27 \u2013 6/30/27 · 9 items" in slide
     assert "Boots 2" not in slide and "Uncrewed Lander Campaign" in slide
 
 
@@ -131,7 +131,7 @@ def test_an_empty_window_keeps_its_controls_and_refuses_the_slide(
 ) -> None:
     _load(client)
     page = _window(client, "/onepager/window", start="2031-01-01", end="2031-02-01")
-    assert "No item of 16 falls inside the date window 1/1/31 – 2/1/31." in page
+    assert "No item of 16 falls inside the date window 1/1/31 \u2013 2/1/31." in page
     assert '<form action="/onepager/window"' in page and "Show all dates" in page
     assert "id=opData" not in page
     r = client.get("/export/pptx/onepager")
@@ -223,7 +223,7 @@ def test_the_compare_window_keeps_a_slip_out_of_the_window_on_the_slide(
     summary = page.split("opc-summary-table", 1)[1].split("</table>", 1)[0]
     assert "<th>Total</th><td data-no-i18n>2</td>" in summary
     x = client.get("/export/xlsx/onepager-compare")
-    compared = list(read_xlsx(x.content).values())[0]
+    compared = next(iter(read_xlsx(x.content).values()))
     assert len([r for r in compared[1:] if any(r)]) == 10
     assert client.get("/export/pptx/onepager-compare").status_code == 200
 
