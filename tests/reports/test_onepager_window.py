@@ -236,3 +236,18 @@ def test_a_bar_filling_the_window_carries_its_label_on_the_bar_not_over_the_lane
     # without a window the same unchanged row keeps the ADR-0526 rule (a prior side: outside)
     plain = oc.build_compare_layout(_cmp(prior, current), TODAY, "T")
     assert not {p.name: p for p in plain.items}["Overall GTA Window"].inside
+
+
+def test_an_edge_month_sliver_is_labelled_only_as_its_visible_part_allows() -> None:
+    """Mutation battery 2026-09-24 (M8a / M9 survived a 55-day window): on a multi-year window the
+    first and last months are ~9-pt slivers. Each is labelled only as its VISIBLE part allows (a
+    letter, never 'Jan') and every label sits inside its own visible slice, inside the chart."""
+    win = (D(2026, 1, 20), D(2028, 12, 10))
+    lay = op.build_layout([_item("x", D(2027, 1, 1), D(2027, 2, 1))], D(2027, 1, 1), "T", window=win)
+    ms = lay.months
+    assert len(ms) == 36
+    assert (ms[0].label, ms[1].label, ms[-2].label, ms[-1].label) == ("J", "Feb", "Nov", "D")
+    edges = [m.x for m in ms] + [op.X1]
+    for m, right in zip(ms, edges[1:], strict=True):
+        assert m.x <= m.label_x <= right, m
+        assert m.label_x == pytest.approx((m.x + right) / 2)
