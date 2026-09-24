@@ -240,7 +240,8 @@ def _gateway_status_note(cfg: AIConfig) -> str:
         "catalog. <b>Prompts (schedule content) LEAVE this machine to this endpoint</b>; every "
         "transmission is recorded in the AI transaction log at "
         f"<code>{_e(txlog.default_log_path())}</code> (append-only; retained until you delete "
-        "it — nothing in the tool purges it).</div>"
+        "it — nothing in the tool purges it). Each record carries a format version and a random "
+        "id for the run that wrote it — no names, no paths.</div>"
     )
 
 

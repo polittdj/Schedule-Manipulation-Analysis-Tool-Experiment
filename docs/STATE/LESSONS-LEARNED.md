@@ -435,7 +435,7 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
-### 2026-09-24 (b) — A register row's PREMISE is testimony: three of five rows were wrong about the mechanism, and the file's own stored fields settled what the plan could not
+### 2026-09-24 (c) — A register row's PREMISE is testimony: three of five rows were wrong about the mechanism, and the file's own stored fields settled what the plan could not
 
 - **Read the row's mechanism before its remedy.** R-22 said "wbs.js builds the table and is byte-frozen" — it builds no table and only one call site is pinned. R-32 said "hold a static asset" — there are no web fonts and a held stylesheet moves nothing; the race is a two-frame seat-and-extend chain inside the page. R-21 said "stripping the sticky cells measured 50" — on this box stripping reaches 86–115 on the only sequence that discriminates. Each remedy would have been executed correctly against a false premise.
 - **Reproduce a race from INSIDE the page, then hold the thing that races.** Four Playwright sampling scripts and CPU throttling × 20 saw nothing; a MutationObserver installed at document start showed the 137 → 216 header flip on every load, 50–110 ms wide. The induced delay that makes the mutant deterministic holds `requestAnimationFrame` per hop — the CI-03 method's spirit (hold, then prove the hold bit) applied to frames instead of bytes.
@@ -446,6 +446,12 @@ those fixed defects in earlier "closed" fixes:
 - **When two rulings combine, say what the combination does before it lands.** "Keep `is_critical` pure" (ADR-0527) plus "the record's slack is zero" (R-71) makes the pure flag read True on every finished activity. Nothing reported moves (every product figure is effective or incomplete-only), but the raw-flag census had to be re-scoped and the operator told — in the ADR, as a question, not buried in a floor.
 - **A rule you change in the engine is spelled again in the tests.** `is_critical` consumers in `src/` were censused before the R-71 edit (none raw); a TEST helper spelled "driving tie" as `total_float <= 0` on both ends and, once finished work read zero, picked a 100 %-complete tie — one red in 5,979, identical in all three CI jobs. Census the tests' spellings of a changed predicate too, not only the package's.
 - **Write the test name you cite, then grep it.** A docstring named `test_hard_file_ribbon_ev_ac_from_bookings`; the real test is twice as long. Caught by an `awk` over the file, not by the suite.
+
+### 2026-09-24 (b) — "Contains no identifying text" is not "derived from nothing"
+
+- R-13's run id had a test asserting it contains no user, host, home or pid. A mutant that set it to `sha256(hostname)[:16]` passed that test: a hash of an identifier contains none of its text. Only the test that spawned two real interpreters — and required their ids to DIFFER — killed it.
+- **The lesson:** to prove a value is random, test the property randomness has (independence across draws), not the absence of the strings you fear. Absence checks are necessary and never sufficient.
+- The writer census before the edit (one writer, one caller) is what made a two-key change safe to call complete.
 
 ### 2026-09-24 — A clamp is not a floor, a green census can be blind by construction, and the render found what 23 tests did not
 

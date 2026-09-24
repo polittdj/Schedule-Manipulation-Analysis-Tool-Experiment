@@ -21,6 +21,12 @@ Two rules shape the format:
   the transmission already happened, so losing it must not turn a delivered answer into an
   error; the ``sent`` record has already documented the egress.
 
+Every record also carries ``v`` (the record format's version, :data:`FORMAT_VERSION`) and ``run``
+(:data:`RUN_ID`, 16 random hex characters drawn once per process) so a reader years later can tell
+which shape a line holds and which lines one run of the tool wrote. The run id is from
+:mod:`secrets` — no name, no path, no host, nothing derived from the machine or the schedule
+(R-13, operator ruling 2026-09-24, ADR-0528).
+
 The log lives OUTSIDE the repo and outside the clear-on-quit cache (an audit record must
 survive the session that wrote it): ``$SF_AI_LOG_DIR`` if set, else
 ``~/.local/state/schedule-forensics/``.
@@ -31,6 +37,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import secrets
 import threading
 import urllib.error
 from datetime import UTC, datetime
@@ -38,6 +45,12 @@ from pathlib import Path
 
 #: File name of the append-only JSON-lines transaction log.
 LOG_FILENAME = "ai-transactions.jsonl"
+
+#: The record format's version — bump it whenever a key is added, removed or changes meaning.
+FORMAT_VERSION = 1
+
+#: This process's run id: random, drawn once at import, carrying nothing about the machine.
+RUN_ID = secrets.token_hex(8)
 
 #: One process-wide lock: routes run in Starlette's threadpool, so two generations may try
 #: to append concurrently; the lock keeps every JSON line whole.
@@ -96,6 +109,8 @@ def record(
     never reaches the file.
     """
     entry: dict[str, object] = {
+        "v": FORMAT_VERSION,
+        "run": RUN_ID,
         "ts": datetime.now(UTC).isoformat(timespec="seconds"),
         "kind": kind,
         "endpoint": endpoint,
