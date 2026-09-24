@@ -435,6 +435,12 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-24 (b) — "Contains no identifying text" is not "derived from nothing"
+
+- R-13's run id had a test asserting it contains no user, host, home or pid. A mutant that set it to `sha256(hostname)[:16]` passed that test: a hash of an identifier contains none of its text. Only the test that spawned two real interpreters — and required their ids to DIFFER — killed it.
+- **The lesson:** to prove a value is random, test the property randomness has (independence across draws), not the absence of the strings you fear. Absence checks are necessary and never sufficient.
+- The writer census before the edit (one writer, one caller) is what made a two-key change safe to call complete.
+
 ### 2026-09-24 — A clamp is not a floor, a green census can be blind by construction, and the render found what 23 tests did not
 
 - **Clamp order matters.** "Cut every bar to the chart, keep the 3-pt minimum" drew 88 of 3,751 fuzzed bars BACKWARDS past the left edge — the ones ending exactly on the window's first day — because the floor ran after the cut. A property fuzz (every shape inside `[X0, X1]`) found it in one run; no hand-written case did.

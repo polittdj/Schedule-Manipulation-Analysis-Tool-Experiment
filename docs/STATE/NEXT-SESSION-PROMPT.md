@@ -12,9 +12,9 @@ happen again. **Run these before the first edit:**
 
 ```bash
 git fetch --unshallow origin; git fetch --prune origin && git remote set-head origin -a
-git log --oneline -1 origin/main && git rev-list --count origin/main   # expect 8c71c639-or-later, 813+ (more once ADR-0527's PR merges)
+git log --oneline -1 origin/main && git rev-list --count origin/main   # expect a65e1b21-or-later, 814+ (more once ADR-0528's PR merges)
 ls -d src app 2>&1; ls .github/workflows; grep -n '^version' pyproject.toml
-ls docs/adr | sort | tail -1                                          # expect 0527 or higher
+ls docs/adr | sort | tail -1                                          # expect 0528 or higher
 ```
 
 **If a prompt's facts disagree with those outputs, the TREE wins and the prompt is suspect — report it
@@ -24,14 +24,16 @@ sessions both ran this block and the tree agreed on every point — that is what
 
 ## Where we are
 
-**`main` @ `8c71c639`** (#714, One-Pager Compare round two / ADR-0526, v1.0.289; #713 f4703fd2 before
-it). This unit — the **One-Pager date window** (operator request 2026-09-23) and **R-71's flag half**
-(operator ruling 2026-09-23) — ships on **`claude/tender-ptolemy-ua1y6k`** as a **draft PR the
-OPERATOR merges**: ADR-0527, v1.0.290, `src/` changed and the wheel + nine installers rebuilt, so
-**EIGHT checks** apply. Read that PR's final head's checks to conclusion FIRST; if merged, restart the
-branch on the squash and compare trees. Highest ADR **0527**. Version **1.0.290**. Schema unchanged.
+**`main` @ `a65e1b21`** (#715, the One-Pager date window + R-71's flag half / ADR-0527, v1.0.290 —
+squash tree byte-identical to its tested head). **R-13** (ADR-0528, v1.0.291) ships on
+**`claude/tender-ptolemy-ua1y6k`** as a **draft PR the OPERATOR merges** — `src/` changed, EIGHT
+checks. Read its checks to conclusion FIRST, and main's own runs for a65e1b21 (not yet read).
+Highest ADR **0528**. Version **1.0.291**. Schema unchanged.
 
 ## What's done — do NOT re-open
+
+**R-13 is CLOSED — ADR-0528.** Ruling 2026-09-24: a per-process correlation id is acceptable. Every
+AI transaction record carries `v` (1) and `run` (random, per process). Do not re-ask.
 
 **The One-Pager date window — ADR-0527.** Two dates on /onepager and /onepager-compare; timescale =
 exactly the window; straddlers kept and CUT at the edge (true finish in the label); wholly-outside
@@ -71,7 +73,7 @@ JSON and a throwing draw helper — 9 of 9 printed the LOAD sentence before, 0 a
 
 ## Next — §3 in order
 
-**R-13** (T3, S) · R-18 · R-21 · R-22 · R-32 · R-39. R-71's record limbs when the queue allows.
+**R-18** (T3, S) · R-21 · R-22 · R-32 · R-39. R-71's record limbs when the queue allows.
 R-68 waits on the operator's reading (question (f)).
 
 R-71's other limbs, re-censused: **8,644** completed (engine and file-only tests agree exactly) with
@@ -182,4 +184,4 @@ Work the POLARIS² audit's plan-forward. Read `docs/STATE/HANDOFF.md` FIRST (aut
 `tests/guards/test_audit_report_wp8.py`. QC-1 / QC-2 / QC-3 bind every session (ADR-0393, ADR-0509).
 Run the session-token-guardian's `scripts/token_audit.py` as the FIRST action (copy it to the
 scratchpad) and before each operator prompt. `git fetch origin` before you branch, number an ADR, or
-commit. Highest ADR 0527. Version 1.0.290. Schema 2.17.0.
+commit. Highest ADR 0528. Version 1.0.291. Schema 2.17.0.
