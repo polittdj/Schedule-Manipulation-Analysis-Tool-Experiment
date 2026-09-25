@@ -416,6 +416,16 @@ Everything the ledger classes `exact` is an equality written in a tolerance shap
 (`days` is 0 on every stored-dates row, `bcws_tol` 0.0), a float epsilon (1e-6 / 1e-9 on a serial or
 a divisor), or a bare `pytest.approx` (rel 1e-6) — and needs no row here.
 
+## Status-scoped Fuse metrics — the "8. High Duration" tile and "Estimated Duration" (2026-09-25, ADR-0532 / ADR-0533)
+
+Two register rows about WHICH activities a Fuse metric scores were settled by the library and the
+operator's workbooks, both read at test time:
+
+| Metric | The library (both committed `.aft` snapshots) | The oracle | Engine | Result |
+|---|---|---|---|---|
+| **"8. High Duration"** (R-48) | both entries `IncludeComplete=false` in both filters; Remarks "planned or in-progress" — the row's `IncludeComplete=true` premise is refuted | the Analyst ribbon on the Large Test File pair: 87 / 927 and 86 / 904, on files carrying 77 / 78 COMPLETED activities with a Baseline Duration field over 44 days — a tile admitting completed work would print 164 / 1,569 and 164 / 1,568 | scores planned-or-in-progress work only in both modes; no completed activity is an offender on ten progressed goldens | 87 / 86 reproduced; the inclusive reading refuted by the count on both files — `test_r48_high_duration_complete_oracle.py` |
+| **"Estimated Duration"** (R-51) | three entries: `IncludePlanned` / `IncludeInProgress` true, `IncludeComplete` false, `IncludeNormal` true, expression `IsEstimated = True`; the two DCMA-report entries `IncludeMilestone=false` | the AlltheProjects ribbon's count AND ratio on nineteen committed labels (Hard_File 68 / 0.80, Hard_File_updated 65 / 0.82, the rev-5 updated3 41 / 0.79, the 24-hour save 9 / 0.64, 0 on the rest) and the Detailed Metric Reports' X marks by UID (65 / 47 / 47 / 41) | the structural health check "Estimated (placeholder) durations" — the flag over planned-or-in-progress normal activities, its population that same scope (it had read the flag over every status: 63 where Fuse prints 47 / 41) | every count, ratio and UID set reproduced — `test_r51_estimated_duration_oracle.py`; the STAT scorecard's raw flag census over every status is a different, labelled figure |
+
 ## Residuals — what was closed, and what remains
 
 The historical §A/§B/§C residuals are **closed**: High Float is now 44/44 exact (stored Total Slack,

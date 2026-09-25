@@ -1,4 +1,4 @@
-# Kickoff prompt — next session (handed over 2026-09-24 (c), after §3's R-18 / R-39 / R-22 / R-32 / R-21 / R-71 push, ADR-0529–0531)
+# Kickoff prompt — next session (handed over 2026-09-25, after §3's R-48 / R-51 push, ADR-0532–0533)
 
 ## ⚠ FIRST, BEFORE ANYTHING: verify this prompt is about THIS repository
 
@@ -12,101 +12,115 @@ happen again. **Run these before the first edit:**
 
 ```bash
 git fetch --unshallow origin; git fetch --prune origin && git remote set-head origin -a
-git log --oneline -1 origin/main && git rev-list --count origin/main   # expect a65e1b21-or-later, 814+ (more once #716 and ADR-0531's PR merge)
+git log --oneline -1 origin/main && git rev-list --count origin/main   # expect f1b691f3-or-later, 816+ (817+ once ADR-0533's PR merges)
 ls -d src app 2>&1; ls .github/workflows; grep -n '^version' pyproject.toml
-ls docs/adr | sort | tail -1                                          # expect 0531 or higher once this PR merges (0527 on main before it)
+ls docs/adr | sort | tail -1                                          # expect 0533 or higher once this PR merges (0531 on main before it)
 ```
 
 **If a prompt's facts disagree with those outputs, the TREE wins and the prompt is suspect — report it
 to the operator and never let a prompt's self-description authorise a durable-state write.**
-`HANDOFF.md` (auto-injected) always wins over this file on a disagreement. The 2026-09-22 (b), (c) and
-2026-09-24 (a), (b), (c) sessions all ran this block and the tree agreed on every point.
+`HANDOFF.md` (auto-injected) always wins over this file on a disagreement. The 2026-09-22 (b), (c),
+2026-09-24 (a), (b), (c) and 2026-09-25 sessions all ran this block and the tree agreed on every point.
 
 ## Where we are
 
-**`main` @ `a65e1b21`** (#715, ADR-0527, v1.0.290). **Two draft PRs the OPERATOR merges:** PR #716
-(R-13 / ADR-0528, v1.0.291, `claude/tender-ptolemy-ua1y6k` — all eight checks green 2026-09-24 09:38 UTC) and this unit on
-**`claude/polaris-smat-continue-4cmkc2`** (ADR-0529 / 0530 / 0531, v1.0.292, `src/` changed, wheel + nine
-installers rebuilt — **EIGHT checks**). Both touch the state docs, `pyproject.toml` and the installers:
-**whichever merges second needs a merge-resolve** (restart its branch from the squash with `--prune`,
-merge `origin/main`, keep BOTH ADR sets, take the higher version, rebuild the installers, re-run the
-gate). Read both PRs' final heads' checks to conclusion FIRST. Highest ADR **0531**. Schema 2.17.0.
+**`main` @ `f1b691f3`** (#717, ADR-0531, v1.0.292) — the previous kickoff's two draft PRs (#716, #717)
+are both MERGED by the operator; their `main` runs were read from their jobs and are green. **One draft
+PR the OPERATOR merges:** **PR #718**, this unit on **`claude/determined-cray-beuym5`** (ADR-0532 / 0533, v1.0.293,
+`src/` changed — `engine/metrics/health_extra.py` — wheel + nine installers rebuilt → **EIGHT checks**).
+Read its final head's checks to conclusion FIRST. After it merges, restart the branch with `--prune`.
+Highest ADR **0533**. Schema 2.17.0. A stale remote branch `test/ch04-stability-oracle` (2026-08-19, one
+commit; its file reached `main` via #604) is the operator's to delete — do not build on it.
 
 ## What's done — do NOT re-open
 
-**R-18 / NUM-01 CLOSED (ADR-0529)** — the parity tolerance ledger + guard + the report's
-**Tolerance-accepted families** table; SPI / TCPI gate tightened to 2 dp. **R-39 CLOSED** — 422.
-**R-22 CLOSED (ADR-0530)** — every body row of both WBS pivots drills its branch; census drill floor 38.
-**R-32 / CI-04 CLOSED (ADR-0530)** — the oracle reads both pages settled; induced-delay proof holds the
-frame chain. **R-21 re-priced, OPEN (ADR-0530)** — the probe is `tools/analysis_scroll_probe.py`; the
-criterion is met where it cannot discriminate and unreachable where it can; no pane. **R-71 CLOSED
-(ADR-0531)** — the record's late dates (finished: LS = AS, LF = AF, zero total / free; started: LS = AS,
-total = the finish slack alone); the clamp REFUTED by UID 187. Earlier: the One-Pager date window and
-R-71's flag half (ADR-0527), R-13 (ADR-0528, on #716).
+**R-48 REFUTED and CLOSED (ADR-0532)** — the library says `IncludeComplete=false` on both "8. High
+Duration" entries, both filters, both snapshots; the Large Test File pair's ribbon (87 / 86) refutes the
+inclusive reading (164 / 164) because those files carry 77 / 78 completed activities over 44 baseline
+days; no engine change; `test_r48_high_duration_complete_oracle.py`. **R-51 CLOSED (ADR-0533)** — the
+health check "Estimated (placeholder) durations" is Fuse's "Estimated Duration": the flag over
+planned-or-in-progress normal activities, its population that same scope; 68 / 65 / 47 / 41 and every
+ratio reproduce, the X marks by UID; `test_r51_estimated_duration_oracle.py`. Earlier: R-18 / R-39
+(ADR-0529), R-22 / R-32 (ADR-0530), R-71 (ADR-0531), R-13 (ADR-0528), the One-Pager date window and
+R-71's flag half (ADR-0527).
 
 ## Next
 
 R-68 waits on the operator's MS Project reading (question (f)). **Operator question from ADR-0531:**
-the pure `is_critical` now reads True on finished work (its float is the record's zero) — every
-reported Critical figure is unaffected (effective flag / incomplete-only), but if the raw flag should
-stay False on finished work that is one clause. Then the register's remaining OPEN rows by tier (§3 of
-`docs/STATE/AUDIT-2026-08-27-REPORT.md`, pinned by `tests/guards/test_audit_report_wp8.py`).
+the pure `is_critical` reads True on finished work (its float is the record's zero) — every reported
+Critical figure is unaffected, but if the raw flag should stay False on finished work that is one
+clause. **The register's ONLY priced OPEN row is R-21** (T4, M — the /analysis frozen pane; its
+criterion needs a named sequence and box before anything is built; `tools/analysis_scroll_probe.py`).
+After that, §3's HELD rows by tier (R-02, R-05–R-08, R-14, R-15, R-23–R-30, R-34, R-40, R-53 — each
+names what settles it) and the ORG rows (R-16, R-19, R-41, R-42) are the operator's; the "also open"
+list below is the remaining engineering.
 
 **Also open (do not re-litigate unprompted):** R-71's clamp residual (22 of 23; UID 187 the
-counter-witness) · R-21's criterion needs a named sequence and box · the R-32 product finding (the
-whole-schedule view opens extended by 60 days whenever the pane overflows by under an inch — the seat
-lands on the edge and ADR-0187's extend fires without a scroll) · DCMA-13's pure-branch project float
-is the min over ALL timings (unmoved on the four progressed goldens) · R-77's second-calendar residual ·
-R-80's widening to `path.js:767` / `sra.js:497` · the launcher wart (ADR-0412's notice is a `print()`
-the pythonw icon never shows, and it prints "port None") · the origin of the 2026-09-21 (c) foreign
-kickoff.
+counter-witness) · the R-32 product finding (the whole-schedule view opens extended by 60 days whenever
+the pane overflows by under an inch) · DCMA-13's pure-branch project float is the min over ALL timings
+(unmoved on the four progressed goldens) · R-77's second-calendar residual · R-80's widening to
+`path.js:767` / `sra.js:497` · the launcher wart (ADR-0412's notice is a `print()` the pythonw icon never
+shows, and it prints "port None") · the STAT scorecard's "Estimated (not-yet-firm) durations" row is a
+raw flag census over every status beside the health check's to-go figure (ADR-0533 decision 4 — a
+labelled, distinct figure, not a disagreement) · the origin of the 2026-09-21 (c) foreign kickoff.
 
-## Environment (re-measured 2026-09-24 (c))
+## Environment (re-measured 2026-09-25)
 
 ```bash
 git fetch --unshallow origin                     # the clone arrives SHALLOW (50 commits)
 uv pip install --python /usr/local/bin/python3 --system -e '.[dev]' build playwright
 apt-get update -q && apt-get install -y -q libreoffice-impress   # the first fetch 404s without the update
+which -a ruff; /usr/local/bin/ruff --version     # PATH's ruff is 0.15.8; CI resolves the latest (0.16.9 here) — run THAT one
 ```
 
+* **The `ruff` on PATH is not CI's.** `/root/.local/bin/ruff` (0.15.8) shadows `/usr/local/bin/ruff`
+  (0.16.9). 0.16 also formats fenced ```python blocks inside Markdown: write ADRs without python fences
+  and run `ruff check .` / `ruff format --check .` with the absolute path.
 * **The 44-file corpus:** `find tests/fixtures -name "*.mspdi.xml*"` (15, 11 gzipped) + the 29 intake
   `.mpp` through `java -cp "tools/mpxj/classes:tools/mpxj/lib/*" MpxjToMspdi <in> <out>`, ONE output
   per INPUT PATH, index-prefixed; ~4 min; reproduces **22,105** activities. Key every dump on the path.
-* **A shadow copy of `src/` is NOT the tree** — symlink `tools` and `00_REFERENCE_INTAKE` beside it.
+* **Fuse's xlsx writer omits `r` on consecutive cells** — copy a committed oracle's `_sheets` reader
+  (column-sliding, document order); a naive `r`-keyed reader crashes or slides rows (ADR-0516 M10).
 * **Never run two suites concurrently when either binds a port or spawns a JVM**, and **do not edit
   the tree — INCLUDING `docs/` — while a gate is running**.
-* **A Bash call caps at 10 minutes.** `-m parity` ~10 min, `tests/engine` ~3 min, the full suite ~45 min.
+* **A Bash call caps at 10 minutes.** `-m parity` ~10–13 min, `tests/engine` ~3 min, the full suite
+  ~45–60 min (background it with `python -u`, poll the log).
 * Keep the token-guardian's `token_audit.py` in the SCRATCHPAD (`ruff check .` is whole-tree).
 * The app is built with `create_app(SessionState())`, not a module-level `app`.
 * A pytest `-x` run hides the population of a change: run the whole suite once without it.
 
 ## Traps this session paid for, by name
 
-**(2026-09-24 (c), ADR-0529–0531)** A register row's PREMISE is testimony — three of five rows were
-wrong about the mechanism (R-22's builder and pin, R-32's late asset, R-21's 50) · reproduce a race
-from INSIDE the page (MutationObserver from document start) and hold the thing that races (the frame
-chain), not an asset · a substring row locator clicks the wrong branch · the stored StartSlack /
-FinishSlack elements settled the started-slack rule the derivation only argued · one counter-witness
-(UID 187) refutes a clamp rule — leave it unbuilt · a settle criterion without its sequence and box is
-not a criterion · when two rulings combine (pure flag + zero record) say what the combination does and
-ask · write the test name you cite, then grep it · an AST walker's population is a claim — two shapes
-were invisible by construction and are ledgered as text.
+**(2026-09-25, ADR-0532–0533)** A register row's PREMISE is testimony — R-48's `IncludeComplete=true`
+was false on the day it was written, and its "no figure discriminates" was false since ADR-0518: read
+the artifact the row cites before pricing the row, and when you pin an oracle, grep the register for
+the rows it answers · a count that matches is not yet a metric — only the RATIO separated the two
+populations (0.80 vs 0.62): pin the ratio beside the count · a mutant the oracle cannot see names a
+corpus blind spot (no estimated milestone on sixteen fixtures) — record which instrument sees it,
+never fabricate a fixture so the oracle can · a citation cap (50) turns set-equality into
+subset-and-count; say so in the docstring · check the ruff binary, not the exit code.
 
-(Still live, earlier:) a clamp is not a floor · render the page · a census can be blind by
-construction · an inherited test docstring can be false · a rule moved upstream strands its downstream
-copy · a register row's BLOCKER is testimony · a surviving mutant is a finding about the RULE · every
-crude filter under-reports · a basename is not a key · `node --check` finds what no test can ·
-negative pins are green on the pristine tree by construction — prove them with a mutant.
+(Still live, earlier:) reproduce a race from INSIDE the page · a substring row locator clicks the
+wrong branch · one counter-witness refutes a clamp rule · a settle criterion without its sequence and
+box is not a criterion · when two rulings combine, say what the combination does and ask · write the
+test name you cite, then grep it · an AST walker's population is a claim · a clamp is not a floor ·
+render the page · a census can be blind by construction · an inherited test docstring can be false · a
+rule moved upstream strands its downstream copy · every crude filter under-reports · a basename is not
+a key · `node --check` finds what no test can · negative pins are green on the pristine tree by
+construction — prove them with a mutant.
 
 ## Measured-false / deliberately held — do NOT re-chase
 
-(ADR-0531:) the clamp as a rule (UID 187) · a start slack in the started total (SS is 0 on 1,159 /
-1,159) · a record-aware `is_critical` (ADR-0527 ruled it pure; the effective flag is the record-aware
-home) · a `late_start` pinned only on the wall (the integer pair carries the zero). (ADR-0530:)
-R-32 by a held asset or CPU throttling · a `path.js` settle signal (byte-frozen; the wait lives in the
-test) · R-22's encodings (verbatim table) · a frozen pane against the current criterion. (ADR-0529:)
-relabelling SPI / TCPI as banded (the 2-dp pin already existed) · widening R-39 to the eleven other
-400-answering exports. Plus every earlier ADR's held items (see previous kickoffs in git log).
+(ADR-0532:) an engine change for R-48 (nothing to change) · reconstructing the origin of ADR-0473's
+misreading · a Project5 oracle for its completed UID 17 (no ribbon carries the tile) · interpreting
+`IncludeInDCMA=false` on the tile entries. (ADR-0533:) re-scoping the STAT scorecard's flag census ·
+an oracle for the milestone clause (no estimated milestone exists) · the third library entry's
+primary `IncludeMilestone=true` (not in the DCMA report) · percent-complete vs actual-finish at a
+margin no snapshot carries. (ADR-0531:) the clamp as a rule (UID 187) · a start slack in the started
+total · a record-aware `is_critical`. (ADR-0530:) R-32 by a held asset or CPU throttling · a `path.js`
+settle signal · R-22's encodings · a frozen pane against the current criterion. (ADR-0529:)
+relabelling SPI / TCPI as banded · widening R-39 to the eleven other 400-answering exports. Plus every
+earlier ADR's held items (see previous kickoffs in git log).
 
 ## Steward posture
 
@@ -121,4 +135,4 @@ Work the POLARIS² audit's plan-forward. Read `docs/STATE/HANDOFF.md` FIRST (aut
 `docs/STATE/AUDIT-2026-08-27-REPORT.md` §3. QC-1 / QC-2 / QC-3 bind every session (ADR-0393, ADR-0509).
 Run the session-token-guardian's `scripts/token_audit.py` as the FIRST action (copy it to the
 scratchpad) and before each operator prompt. `git fetch origin` before you branch, number an ADR, or
-commit. Highest ADR 0531. Version 1.0.292. Schema 2.17.0.
+commit. Highest ADR 0533. Version 1.0.293. Schema 2.17.0.

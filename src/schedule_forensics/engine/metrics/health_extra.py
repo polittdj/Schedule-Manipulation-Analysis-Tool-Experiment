@@ -7,6 +7,13 @@ analyst sees not just "how many" but "which" and "why it matters". Lightweight d
 ``MetricResult``) — the metric-dictionary coverage test is intentionally untouched.
 
 Sources: Deck-1 slides 58-72 (Acumen metric-library names/definitions); Handbook pp.170-172.
+
+One check mirrors a Fuse metric by name and is parity-pinned against the operator's workbooks:
+"Estimated (placeholder) durations" is Fuse's "Estimated Duration" — the MS Project *Estimated*
+flag over PLANNED-OR-IN-PROGRESS normal activities, never completed work, never milestones (the
+library's ``IncludeComplete=false`` / ``IncludeMilestone=false``; R-51, ADR-0533,
+``tests/parity/test_r51_estimated_duration_oracle.py``). Its ``population`` is that same scope
+without the flag, so ``count / population`` is the ratio Fuse prints beside the count.
 """
 
 from __future__ import annotations
@@ -15,7 +22,11 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from schedule_forensics.engine.cpm import CPMResult
-from schedule_forensics.engine.metrics._common import is_effective_critical, non_summary
+from schedule_forensics.engine.metrics._common import (
+    is_effective_critical,
+    is_incomplete,
+    non_summary,
+)
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
 
@@ -131,10 +142,12 @@ def compute_health_checks(schedule: Schedule, cpm: CPMResult) -> HealthChecks:
         (
             "estimated_duration",
             "Estimated (placeholder) durations",
-            lambda t: t.is_estimated_duration and not t.is_milestone,
-            "Activities whose duration is still flagged 'Estimated' in MS Project are placeholders "
-            "the planner has not firmed up — an under-developed estimate that should be replaced "
-            "with a basis-backed duration before the schedule is relied upon.",
+            lambda t: t.is_estimated_duration and not t.is_milestone and is_incomplete(t),
+            "Planned or in-progress activities whose duration is still flagged 'Estimated' in MS "
+            "Project are placeholders the planner has not firmed up — an under-developed estimate "
+            "that should be replaced with a basis-backed duration before the schedule is relied "
+            "upon. Completed work is out of scope (its duration is actual) and milestones carry "
+            "none: Acumen Fuse's 'Estimated Duration' scope (R-51, ADR-0533).",
         ),
         (
             "missing_wbs",
@@ -152,6 +165,13 @@ def compute_health_checks(schedule: Schedule, cpm: CPMResult) -> HealthChecks:
         ),
     ]
 
+    # Fuse's "Estimated Duration" ratio is its count over the planned-or-in-progress NORMAL
+    # activities (the library's secondary filter: IncludeComplete=false, IncludeMilestone=false —
+    # R-51, ADR-0533: 68 / 85 = 0.80 on Hard_File, 47 / 58 = 0.81 on updated2); every other check
+    # keeps the whole non-summary population.
+    populations = {
+        "estimated_duration": sum(1 for t in tasks if not t.is_milestone and is_incomplete(t)),
+    }
     checks: list[HealthCheck] = []
     for key, label, predicate, desc in specs:
         offs = [t.unique_id for t in tasks if predicate(t)]
@@ -160,7 +180,7 @@ def compute_health_checks(schedule: Schedule, cpm: CPMResult) -> HealthChecks:
                 key=key,
                 label=label,
                 count=len(offs),
-                population=n,
+                population=populations.get(key, n),
                 offenders=tuple(offs[:_OFFENDER_CAP]),
                 description=desc,
             )
