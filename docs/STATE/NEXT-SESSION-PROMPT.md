@@ -26,7 +26,7 @@ to the operator and never let a prompt's self-description authorise a durable-st
 
 **`main` @ `f1b691f3`** (#717, ADR-0531, v1.0.292) — the previous kickoff's two draft PRs (#716, #717)
 are both MERGED by the operator; their `main` runs were read from their jobs and are green. **One draft
-PR the OPERATOR merges:** this unit on **`claude/determined-cray-beuym5`** (ADR-0532 / 0533, v1.0.293,
+PR the OPERATOR merges:** **PR #718**, this unit on **`claude/determined-cray-beuym5`** (ADR-0532 / 0533, v1.0.293,
 `src/` changed — `engine/metrics/health_extra.py` — wheel + nine installers rebuilt → **EIGHT checks**).
 Read its final head's checks to conclusion FIRST. After it merges, restart the branch with `--prune`.
 Highest ADR **0533**. Schema 2.17.0. A stale remote branch `test/ch04-stability-oracle` (2026-08-19, one
