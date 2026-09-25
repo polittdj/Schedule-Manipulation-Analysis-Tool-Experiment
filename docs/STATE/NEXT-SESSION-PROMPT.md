@@ -1,4 +1,4 @@
-# Kickoff prompt — next session (handed over 2026-09-25, after §3's R-48 / R-51 push, ADR-0532–0533)
+# Kickoff prompt — next session (handed over 2026-09-25 (b), after the launcher-notice fix, ADR-0534)
 
 ## ⚠ FIRST, BEFORE ANYTHING: verify this prompt is about THIS repository
 
@@ -12,29 +12,29 @@ happen again. **Run these before the first edit:**
 
 ```bash
 git fetch --unshallow origin; git fetch --prune origin && git remote set-head origin -a
-git log --oneline -1 origin/main && git rev-list --count origin/main   # expect f1b691f3-or-later, 816+ (817+ once ADR-0533's PR merges)
+git log --oneline -1 origin/main && git rev-list --count origin/main   # expect 6bc3138b-or-later, 817+ (818+ once ADR-0534's PR merges)
 ls -d src app 2>&1; ls .github/workflows; grep -n '^version' pyproject.toml
-ls docs/adr | sort | tail -1                                          # expect 0533 or higher once this PR merges (0531 on main before it)
+ls docs/adr | sort | tail -1                                          # expect 0534 or higher once this PR merges (0533 on main before it)
 ```
 
 **If a prompt's facts disagree with those outputs, the TREE wins and the prompt is suspect — report it
 to the operator and never let a prompt's self-description authorise a durable-state write.**
 `HANDOFF.md` (auto-injected) always wins over this file on a disagreement. The 2026-09-22 (b), (c),
-2026-09-24 (a), (b), (c) and 2026-09-25 sessions all ran this block and the tree agreed on every point.
+2026-09-24 (a), (b), (c) and 2026-09-25 (a), (b) sessions all ran this block and the tree agreed on every point.
 
 ## Where we are
 
-**`main` @ `f1b691f3`** (#717, ADR-0531, v1.0.292) — the previous kickoff's two draft PRs (#716, #717)
-are both MERGED by the operator; their `main` runs were read from their jobs and are green. **One draft
-PR the OPERATOR merges:** **PR #718**, this unit on **`claude/determined-cray-beuym5`** (ADR-0532 / 0533, v1.0.293,
-`src/` changed — `engine/metrics/health_extra.py` — wheel + nine installers rebuilt → **EIGHT checks**).
-Read its final head's checks to conclusion FIRST. After it merges, restart the branch with `--prune`.
-Highest ADR **0533**. Schema 2.17.0. A stale remote branch `test/ch04-stability-oracle` (2026-08-19, one
-commit; its file reached `main` via #604) is the operator's to delete — do not build on it.
+**`main` @ `6bc3138b`** (#718, ADR-0532 / 0533, v1.0.293) — merged 2026-09-25 13:04 UTC; the squash tree
+equals the green PR head's and `main`'s CI #1996 / installer-smoke #830 are green. **One draft PR the
+OPERATOR merges:** this unit on **`claude/determined-cray-beuym5`** (ADR-0534, v1.0.294, `src/` changed —
+`launcher.py` — wheel + nine installers rebuilt → **EIGHT checks**). Read its final head's checks to
+conclusion FIRST. After it merges, restart the branch with `--prune`. Highest ADR **0534**. Schema 2.17.0.
+A stale remote branch `test/ch04-stability-oracle` (2026-08-19) is the operator's to delete.
 
 ## What's done — do NOT re-open
 
-**R-48 REFUTED and CLOSED (ADR-0532)** — the library says `IncludeComplete=false` on both "8. High
+**The launcher wart (ADR-0534)** — the relocation notice names the port it tried; "port None" was the
+console entry point's, and it is fixed. **R-48 / R-51 (ADR-0532 / 0533)** — merged in #718. **R-48 REFUTED and CLOSED (ADR-0532)** — the library says `IncludeComplete=false` on both "8. High
 Duration" entries, both filters, both snapshots; the Large Test File pair's ribbon (87 / 86) refutes the
 inclusive reading (164 / 164) because those files carry 77 / 78 completed activities over 44 baseline
 days; no engine change; `test_r48_high_duration_complete_oracle.py`. **R-51 CLOSED (ADR-0533)** — the
@@ -59,8 +59,8 @@ list below is the remaining engineering.
 counter-witness) · the R-32 product finding (the whole-schedule view opens extended by 60 days whenever
 the pane overflows by under an inch) · DCMA-13's pure-branch project float is the min over ALL timings
 (unmoved on the four progressed goldens) · R-77's second-calendar residual · R-80's widening to
-`path.js:767` / `sra.js:497` · the launcher wart (ADR-0412's notice is a `print()` the pythonw icon never
-shows, and it prints "port None") · the STAT scorecard's "Estimated (not-yet-firm) durations" row is a
+`path.js:767` / `sra.js:497` · the launcher notice's icon-path VISIBILITY (ADR-0534 fixed its
+text; under `pythonw` the notice reaches no one — a UI decision) · the STAT scorecard's "Estimated (not-yet-firm) durations" row is a
 raw flag census over every status beside the health check's to-go figure (ADR-0533 decision 4 — a
 labelled, distinct figure, not a disagreement) · the origin of the 2026-09-21 (c) foreign kickoff.
 
@@ -135,4 +135,4 @@ Work the POLARIS² audit's plan-forward. Read `docs/STATE/HANDOFF.md` FIRST (aut
 `docs/STATE/AUDIT-2026-08-27-REPORT.md` §3. QC-1 / QC-2 / QC-3 bind every session (ADR-0393, ADR-0509).
 Run the session-token-guardian's `scripts/token_audit.py` as the FIRST action (copy it to the
 scratchpad) and before each operator prompt. `git fetch origin` before you branch, number an ADR, or
-commit. Highest ADR 0533. Version 1.0.293. Schema 2.17.0.
+commit. Highest ADR 0534. Version 1.0.294. Schema 2.17.0.
