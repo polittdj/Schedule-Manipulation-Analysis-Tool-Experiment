@@ -435,6 +435,36 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-25 (e) — A number that is free on `main` is not free, and a package's own checklist is not the gate (ADR-0535)
+
+- **List the OPEN pull requests before you number anything.** The package checked "ADR-0534 must still be free" against
+  `main`, and it was — while draft PR #719 had already claimed 0534 and the entry label "2026-09-25 (b)". The
+  uniqueness guard (`test_adr_numbers_are_unique`) would have fired on whichever pull request merged second. The fix
+  was cheap because it was caught before the first commit. The check that caught it was the one no checklist listed:
+  what else is in flight.
+- **A cited sentence is testimony until its file is grepped.** Five documents credited `.claude/skills/README.md:47-49`
+  with a sentence that lives at ADR-0344:85-86. The ledger had recorded the misattribution, and the documents built on
+  it never picked the correction up. When a correction lands in one record, grep every sibling for the same claim.
+- **A package's own pre-push checklist is not the full gate.** The charter's fast guard set is what an audit session
+  runs. CLAUDE.md's full gate still binds any commit that adds 45 tests to the suite.
+- **Read code cut from a document before executing it.** The harness refused to run the document's extractor until
+  its source had been read in full. That is the right default for any script that arrives inside a file someone
+  uploaded.
+- **Path length is a portability claim.** A 209-character ADR filename would have been the tree's longest path by 25
+  characters, and that is a Windows MAX_PATH hazard for anyone cloning into a deep folder. Keep new paths under the
+  tree's current longest.
+
+### 2026-09-25 (d) — A refutation pass that refutes nothing is only trustworthy where it narrowed something, and a package that waits must be re-based every time the base moves (ADR-0535)
+
+- Forty-seven findings went to fresh-context refuters told every one was false, with eight mandatory attacks each and a different reproduction method from the prosecution's test. None was refuted outright. **That zero is only worth reporting because the pass produced narrowings:** IMP-002's population qualifier was wrong in the letter (one committed synthetic fixture has the single-block shape, no shipped number moves), DOC-004 lost one of six statements to a dated heading, TST-003 turned out to describe a documented deliberate decision and was withdrawn, and DOC-014 was already fixed on `main`. A pass that changes nothing has not been run hard enough; write the narrowings first and the zero last.
+- **A package built against a base that moved must be re-based, file by file.** Three upstream commits landed while the operator held session 1's package: the campaign ADR number (0527 → 0532), six register rows (closed upstream), every kickoff prompt's §0 line, the queue, the DOC-014 marker step and README-APPLY all changed. Re-run `git fetch --prune origin` before touching any deliverable, then grep every file for the old numbers.
+- **A package that waits will be re-based more than once, so make the re-base a procedure, not an event.** Session 3 found `main` one commit past session 2's base: #718 took ADR numbers 0532 and 0533 and closed R-48 and R-51, so the campaign ADR moved a second time (off 0532), two rows left the queue, and every §0 line changed again. The second re-base was done by a script that asserted the count of every replacement, then proved by re-running the reproducers, the mechanism checks and the whole apply procedure on the new base; the package's `README-APPLY.md` now carries that procedure for the next time.
+- **A census instrument is itself a claim.** Session 1's MSPDI count (42) came from a filter that looked for the namespace in each file's first 4,096 bytes; one fixture's comment header pushed its root element to byte 4,616. The refuter counted 43 by a different method and the discrepancy exposed the instrument. Control every census with a second method, and record the window the instrument used.
+- **A documented deliberate decision is not a finding, even when the sentence describing it is stale** (charter §4): withdraw the class, keep the one true sentence as a scope note, and withdraw the ask that assumed the decision was open.
+- **A fixed-upstream finding keeps its evidence and loses its marker — and the un-marked pin must be shown to fail by name on the old tree**, or it pins nothing. DOC-014's pin read `1 failed` on the `8c71c639` clone and `1 passed` at `f1b691f3` (and again at `6bc3138b`) before it was accepted.
+- **The model a session ran on is a fact to verify, not to assert:** the harness transcripts record a model id on every message; read them rather than repeat what the prompt said.
+- Session 1's lessons (2026-09-23, recorded now because that package was never committed): **a gate is only as wide as its tokenizer** — 1,212 numeric code points (1,242 under Python 3.13), nine dash forms, number words and zero-width splits never reach the AI figure gates, so audit the tokenizer before the rule it feeds · **validate the thing that is used** — the Law-1 loopback check judges an endpoint's text while the transport connects wherever the resolver points · **compute the overlap before promising order-free work** — 14 of the 21 repair units share a file · **pin a predicate, not a count** — a population counted on one interpreter is a different number on another · **a truthful state document can close a finding** — plan for a document rewrite to be a fix · **re-derive every figure before it reaches a deliverable**, including the ones a colleague wrote down · **a plan that can only run from the tree is a plan that can be lost** — in a read-only session each kickoff prompt carries its finding's claim and authority.
+
 ### 2026-09-25 (b) — A carried "wart" is a claim too: its two halves were different defects on different entry paths
 
 - **Probe every entry path the claim names, not the one it implies.** "The notice is a print the icon never shows, and it prints port None" read as one defect. The probe split it: "port None" happens only on the console entry point (no port passed), whose print IS visible; the icon passes 8321, prints the right text, and shows it to no one. One fix per mechanism, and only one was a code defect.
