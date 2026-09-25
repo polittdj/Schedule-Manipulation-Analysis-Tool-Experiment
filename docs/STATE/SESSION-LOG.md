@@ -19912,3 +19912,88 @@ Branch `claude/determined-cray-beuym5`, from `main` @ f1b691f3 (#717). §0 run, 
 - **Docs:** ADR-0532 / ADR-0533; register rows R-48 / R-51 CLOSED (wp8 guard 8 / 8); PARITY-REPORT gained the status-scoped section (sync + tolerance-ledger guards green); HANDOFF rotated ((c) archived); LESSONS 2026-09-25; kickoff refreshed.
 - **Version:** 1.0.293; wheel + nine installers rebuilt last.
 - **Gate (recorded AFTER the runs, on the final tree):** statics on `/usr/local/bin/ruff` 0.16.9 — `ruff check .` clean, `ruff format --check .` 1,336 files clean · mypy strict 165 files clean · bandit exit 0 · `node --check` every static script · the full suite **6,005 passed, 5 skipped, 0 failed** (46:56; the five skips: two loopback-allowlist URL forms that do not round-trip through urlparse, `test_axis_titles`'s empty parameter set and its two INCIDENTAL_SVG scripts) · parity **271 passed, 0 failed, 0 skipped** (10:11 — 249 before + the 22 new oracle tests) · the doc / register / parity-report / installer guards 104 / 104. The first push (dc425f95, before the suite finished — the session's stop hook required the work committed) opened **PR #718**; its head read cui-guard · test (3.13) · floor · browser · linux · windows green with test (3.11) in flight when this docs-only follow-up was pushed (the push cancels that run); read the FINAL head's eight checks to conclusion.
+
+## 2026-09-23 (b) — AUDIT-2026-09-23 session 1: a READ-ONLY audit and repair plan — 47 confirmed defect classes, 21 repair units, nothing committed (entry appended 2026-09-25 with sessions 2 and 3's, because the package was not committed at the time; campaign ADR-0535, v1.0.289 then)
+
+No branch, no commit, no pull request: the operator directed a read-only audit ("Do not fix anything. Only generate a report and a plan forward."), which the charter ranks above itself. Base `main` @ `8c71c639` (#714, ADR-0526, v1.0.289, 813 commits); §0 passed. Lead and every sub-agent on model A (ADR-0240's named models substituted; no `worker`, no `qc-checker`). Hybrid paced waves, at most three sub-agents in flight, results on disk first, no agent deaths: scouts and a documentation finder (468 claims, 26 classes; 300 inherited rows tabulated), three lane finders (IMP, CPM/MET, AI/CUI), twelve verifier packets (50 claims, all reproduced), two assemblers (47 reproducers with teeth) and a bisector (14 exposure windows), two drafters.
+
+Result: 47 CONFIRMED-DEFERRED — T1 6 (AI-001/002/003 figure-gate tokenizer bypasses, MET-001 margin mixed basis, IMP-002 single-block calendars, IMP-003 XER activity calendars), T2 6, T3 19 (CUI-001 name-resolved loopback endpoint and CUI-002 redirect-following openers flagged LAW-1), T4 3, T5 13; HELD 3, REFUTED 2, DUPLICATE 1 (the one local red is R-32), UNVERIFIED 1 (UI-001), 13 leads unprobed. Gate at the base: statics clean; 5,942 passed · 1 failed (R-32 duplicate) · 5 skipped; `-m parity` 249 passed. Verified: 47 of 47 reproducers XFAIL on Python 3.11.15 and 3.13.13; teeth (i)-(iii) for all 47; each of the 18 product fix sketches re-applied flips exactly its own reproducer among all 47. Delivered as files: the charter, the ledger, the coverage census, the report, the repair plan, the operator asks (ten), the reproducers, the campaign ADR (numbered 0527 at the time) and proposed state documents. Not done: the 44-file corpus rebuild, per-row inherited re-proof, lanes SEC/EXP/FOR/PKG/PERF, the UI time-zone census.
+
+## 2026-09-25 (c) — AUDIT-2026-09-23 session 2: the falsification pass — every finding assumed false and attacked eight ways; 0 refuted, 3 narrowed, 1 fixed upstream, 1 withdrawn; the package re-based on f1b691f3 (campaign ADR numbered 0532 at the time, now ADR-0535; v1.0.292 unchanged)
+
+No branch, no commit, no pull request (the operator: "rerun the audit and assume all your findings were are false and prove that they are in fact valid and if valid keep them and if you find they are not omit them and then give me the reports again"). `git fetch --prune origin` first: `main` had moved `8c71c639` → `f1b691f3` (#717, v1.0.292, 816 commits) by #715 (ADR-0527), #716 (ADR-0528, R-13 CLOSED) and #717 (ADR-0529/0530/0531; R-18, R-39, R-22, R-32, R-71 CLOSED, R-21 re-priced), taking ADR numbers 0527–0531 — so the campaign ADR was renumbered off 0527 and every package file re-based on `f1b691f3`. Lead and every sub-agent on model B (the operator's `/model` switch; verified from the harness transcripts). Eleven fresh-context REFUTER packets (R01–R11), context-isolated from the session-1 reasoning and from the ledger, report and plan, each told every finding was FALSE, eight mandatory attacks per finding (authority re-read · deliberate-decision search · independent reproduction by a different method · environment · measures-the-stated-thing with populations recounted · alternative witness · re-run on `f1b691f3` · the steelman), one verdict JSON per finding; the lead re-ran all 47 reproducers at `8c71c639` (47 xfailed) and at `f1b691f3` (1 failed — DOC-014's strict XPASS — and 46 xfailed) and read every verdict.
+
+Outcome: **0 REFUTED · 44 NOT-REFUTED · 3 NARROWED · 1 FIXED-UPSTREAM · 1 WITHDRAWN → 46 retained, 45 open, all 45 STILL-PRESENT at `f1b691f3`.** TST-003 withdrawn as a class (the hook's non-registration is a documented deliberate decision — `.claude/agents/README.md:40-41`, ADR-0344:84-86; the one surviving sentence `.claude/skills/README.md:45` is U18's scope note; its test removed; ASK-04 withdrawn). DOC-014 FIXED UPSTREAM by a65e1b21 (#715); kept in the register, out of the plan (U16 = DOC-001 + DOC-013); its test a passing pin with no marker (negative control: `1 failed, 27 xfailed` over the doc + tst modules on the `8c71c639` clone, `1 passed, 27 xfailed` at `f1b691f3`). DOC-004 NARROWED six → five statements (`FUSE-VALIDATION.md:17` is a dated record). IMP-002's claim holds in full, its population corrected: `tests/fixtures/mspdi/NEGFLOAT_SubDay_Probe.xml` does declare a single 08:00–16:00 block and imports with `day_segments=()`, no shipped number moves (0 of 1,473 `.mpp` calendars, 0 real-intake MSPDI); session 1's census instrument had read only the first 4,096 bytes of each file for the MSPDI namespace and missed it (43 committed MSPDI, not 42; 2 segment-less calendars under 24 h, not 1). R-32 — session 1's one local red — verified CLOSED UPSTREAM locally (2 passed, twice, vendored chromium-1194 under the JVM lock). UI-001 now observed by two parties (ASK-11). Two UNVERIFIED refuter leads to WP-INH. Re-derived at write time on a fresh clone at `f1b691f3`: the reproducers 1 passed · 45 xfailed on Python 3.11.15 and 3.13.13; 816 commits; 2,239 tracked files; `app.py` 9,672 lines; 158 routes; 56 browser modules; ruff 726 vs 716 files; every unit's mechanism line present (six moved). Fast guard set with the whole package applied on `f1b691f3` by `README-APPLY.md`'s script verbatim: 449 passed · 2 skipped · 45 xfailed; ruff clean; the pre-commit guard accepted the commit and refused a probe `.mpp`; the allowlist gate clean. Delivered as files, re-based: the report (with §2 "The falsification pass"), the repair plan (U16 and U18 re-scoped; every kickoff's §0 re-based; a 50-entry merged queue from the 26 rows then open), the asks (eleven: ten live, ASK-04 withdrawn, ASK-11 new), 46 reproducers, the campaign ADR, these state documents. Not done: no new hunting; session 1's ledger and coverage census not rewritten for the census corrections; the corpus rebuild and lanes SEC/EXP/FOR/PKG/PERF still owed.
+
+## 2026-09-25 (d) — AUDIT-2026-09-23 session 3: the package re-based onto 6bc3138b and packaged for the operator — reproducers 1 passed · 45 xfailed, no finding fixed upstream, R-48 and R-51 closed upstream (ADR-0535, v1.0.293 unchanged)
+
+No branch, no commit, no pull request (still READ-ONLY; nothing in the checkout under audit changed). `main` had moved one commit past session 2's base: `f1b691f3` → `6bc3138b` (#718, v1.0.293, 817 commits; ADR-0532 REFUTED and CLOSED R-48, ADR-0533 CLOSED R-51; one `src/` file, `engine/metrics/health_extra.py`, that no finding touches). ADR numbers 0532 and 0533 are taken, so the campaign ADR is now **ADR-0535** and every package file was re-based on `6bc3138b` by a script that asserted the count of every replacement. Lead and packager on model A (the operator's selection). Measured on fresh `git clone --shared` clones: the seven reproducer modules at `6bc3138b` **1 passed · 45 xfailed** (Python 3.11.15; no XPASS, so no finding was fixed upstream; Python 3.13 was not available with pytest in the container); DOC-014's pin still fails by name at `8c71c639` (`1 failed, 27 xfailed` over the doc + tst modules) and passes at `6bc3138b`; the register 80 rows, 24 still open (CLOSED 50 · CLOSED-WP8 6 · HELD 18 · ORG 4 · OPEN 1 R-21 · ASK 1 R-68); every unit's mechanism line at the same line as at `f1b691f3` (only `docs/PARITY-REPORT.md` below L416 moved, by ten lines); 817 commits, 2,243 tracked files, 158 routes, 56 browser modules / 502 tests, parity 271 of 285 collected, ruff 728 vs 718 files. The REPORT's lead 13 (the kickoff had omitted R-48 and R-51) is resolved upstream. Fast guard set with the whole package applied on `6bc3138b` by `README-APPLY.md`'s script verbatim: 449 passed · 2 skipped · 45 xfailed (`tests/audit` alone 22 passed · 45 xfailed); ruff clean (1,350 files formatted); the pre-commit guard accepted the commit and refused a probe `.mpp`; the allowlist gate clean. Delivered as files, re-based: every document's base and ADR number, a "Session 3" note in the report, the plan (every kickoff's §0 expects `6bc3138b`-or-later, 817+, ADR 0535 or higher once committed; a 48-entry merged queue from the 24 rows still open; a QC-3 "Session 3 — the re-base" table), the asks (unchanged; ASK-08's base updated), the ledger and coverage notes, ADR-0535, these state documents, and a `README-APPLY.md` with the exact procedure for re-basing again if `main` moves before the package is applied. Not done: no finding re-attacked, no new hunting; the audit still resumes at WP-CPM once the operator answers ASK-08.
+
+## 2026-09-25 (e) — AUDIT-2026-09-23 session 4: the package committed on the operator's ASK-08 "yes" — ADR-0534 → ADR-0535 (open PR #719 claims 0534), model identifiers redacted, the errata of an independent full read corrected or recorded, v1.0.293 unchanged
+
+Branch `claude/confident-hawking-qriorj` (the session's designated branch, in place of README-APPLY's
+`claude/polaris2-audit-20260923-s1`), one draft pull request that the operator merges. The operator attached the
+campaign's master document ("read the attached and continue. Skip nothing. Assume nothing. Verify everything."). In
+the session's chat they then answered **ASK-08 "yes, commit"**; that was the one decision the document gates on.
+
+**§0 check.** `origin/main` `6bc3138b`, 817 commits, `src/schedule_forensics` present and `app` absent, both
+workflows, 1.0.293, highest ADR 0533 — the tree agreed on every point.
+
+**Materialising the package.** The document's stdlib-only extractor was read in full before it was executed; the
+harness's classifier refused to run it until then. It wrote 27 of 27 files OK. An independent `sha256sum -c` against
+the manifest table also read 27 of 27 OK, and a one-byte mutation of a copy turned that check red.
+
+**Reading the package.** Every one of the seven reproducer modules was read in full before execution: no network, no
+write to the real repository, and no Java; the hook and git probes run in a throwaway repository under `tmp_path`.
+The rest of the package was read in waves of at most three fresh-context verifiers (charter §7), each reading its
+range line by line and writing its notes to disk. The lead re-verified every erratum before it was acted on.
+
+**QC-3 on the application: two premises fell.**
+- **"ADR-0534 is free"** was true on `main` and false in fact. The open draft PR #719 (`claude/determined-cray-beuym5`,
+  v1.0.294) adds `docs/adr/0534-…` and rotates the same five state documents. The campaign ADR is renumbered to
+  **0535** (68 replacements, counted), and this package's 2026-09-25 SESSION-LOG labels move to (c), (d) and (e),
+  past #719's (b).
+- **"The text may be pushed as is"** failed: the ADR, the report, the ledger and the session log carried 15 concrete
+  model identifiers, and session 4's rules forbid one in anything it pushes. They now read "model A" / "model B".
+  The ADR-0240 substitution and the session-2 model switch are kept.
+
+**Measured on a scratch clone at `6bc3138b` with the package applied.**
+- The reproducers read **1 passed · 45 xfailed** on Python 3.11.15 and on **3.13.12**; the 3.13 run is new.
+- DOC-014's pin fails by name at `8c71c639` on both of its facts.
+- The archive prepend is byte-identical (6,948 bytes) to the handoff section it demotes.
+- Ruff 0.16.9 reads clean, with 1,350 files already formatted. PATH's ruff is 0.15.8, which is not CI's.
+- The browser census reads 56 modules with and without the reproducer modules.
+
+**Errata, each re-verified first-hand before correction.**
+- Five documents credited `.claude/skills/README.md:47-49` with the sentence "the `qc_session_start.sh` hook is still
+  unregistered and still needs a human". The sentence is ADR-0344:85-86's. The ledger had recorded this and the report,
+  the plan, the asks and the ADR had not; the pointer is dropped where it was wrong.
+- The report pinned TST-011 on the REFUTED CPM hypothesis. It belongs to F2-H1 (HELD); the sentence is clarified.
+- The ADR's filename was 209 characters, longer than any tracked path (184) and a Windows MAX_PATH hazard. It is now
+  110 characters.
+- The coverage census's route table predates two POST `/…/window` routes, and it cites `_import_risk_register` at line
+  8515, where the function starts at 8536. Both are recorded in a session-4 note, not rewritten.
+- The rest are listed in the report's "Session 4" note.
+
+**Disclosure.** One verifier's probe of U01's mechanism called the name resolver once for `ip6-localhost`. The call
+failed, and it carried no schedule content or derived figure. No other verifier reported a name lookup or a network
+call; the verifiers' reports are the only evidence of that.
+
+**Not done.** No finding was re-attacked, and no new defect was hunted. No `src/` change, so there is no version bump
+and no rebuild. The ten other asks keep their defaults.
+
+**Full gate.**
+- **Statics on the applied package:** `python3 -m ruff check .` is clean and `python3 -m ruff format --check .`
+  reports 1,350 files already formatted (ruff 0.16.9). `python3 -m mypy src/` is clean over 165 files, `bandit -q -r
+  src` exits 0, and `node --check`, run per file, passes 64 of 64.
+- **Full suite** (Python 3.11.15, the package applied, before the final documentation-only edits): **5,611 passed ·
+  271 skipped · 45 xfailed · 0 failed** (32:11). Every skip was triaged:
+  - 263 are "playwright not installed". CI's `browser` job runs them, and this package adds no browser test.
+  - 3 need LibreOffice's impress filter, which this container lacks.
+  - 5 are the pre-existing skips #718 recorded.
+- **After the final documentation-only edits** (the errata, the dated qualifiers and the DOC-004 xfail reason
+  string), on the committed tree:
+  - ruff is still clean, with 1,350 files already formatted.
+  - The charter's fast guard set (`tests/test_state_docs.py tests/test_standing_rules.py tests/guards tests/audit
+    tests/web/test_docs.py`) reads **449 passed · 2 skipped · 45 xfailed**.
+  - The eight non-browser modules outside that set that read `docs/` read 86 passed.
