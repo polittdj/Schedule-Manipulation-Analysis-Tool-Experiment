@@ -435,6 +435,12 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-25 (b) — A carried "wart" is a claim too: its two halves were different defects on different entry paths
+
+- **Probe every entry path the claim names, not the one it implies.** "The notice is a print the icon never shows, and it prints port None" read as one defect. The probe split it: "port None" happens only on the console entry point (no port passed), whose print IS visible; the icon passes 8321, prints the right text, and shows it to no one. One fix per mechanism, and only one was a code defect.
+- **An interpolated argument is not the value the code used.** The notice printed the caller's `port`; the launcher had already replaced it with an ephemeral pick. Name the variable the decision was made on.
+- **The mutant that "almost works" is the one to run.** Capturing the port after the relocation also removes "None", and it names the wrong port as busy. Both parametrized cases caught it; a test that only asserted "no None" would have passed it.
+
 ### 2026-09-25 — A register row is not re-read when the evidence that settles it lands elsewhere; a metric's population is half its definition
 
 - **Read the artifact the row cites before pricing the row.** R-48 said the library carries `IncludeComplete=true` on the "8. High Duration" tile. Both committed `.aft` snapshots say `false` in both filters, and neither file has changed since its upload — the premise was false on the day it was written (ADR-0473), and it sat as a priced T1 row for eighteen days. Ten minutes with a regex over the library settled what the row priced as "S, needs a Fuse ribbon".

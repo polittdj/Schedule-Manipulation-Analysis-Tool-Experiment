@@ -353,3 +353,37 @@ def test_resolve_port_reports_how_it_got_the_port() -> None:
 
     port, how = launcher.resolve_port("127.0.0.1", 8321, claim=stubborn)
     assert how == "relocated" and port != 8321
+
+
+@pytest.mark.parametrize("requested", [None, 8321], ids=["console-entry-point", "desktop-icon"])
+def test_the_relocation_notice_names_the_port_that_was_actually_tried(
+    requested: int | None, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The console entry point (``schedule-forensics`` → ``main()``) passes NO port, so the
+    launcher picks an ephemeral one; if that claim fails and the launch relocates, the notice
+    must name the port it TRIED, never the argument. Measured 2026-09-25 on the pristine
+    launcher: "port None was busy and would not release" (ADR-0534). The desktop icon passes
+    8321 and was already right; it is the true-positive twin."""
+    tried: list[int] = []
+
+    def claim(host: str, port: int) -> str:
+        tried.append(port)
+        if len(tried) == 1:
+            raise PortUnavailable("held")
+        return "free"
+
+    launcher.main(
+        port=requested,
+        serve=lambda app, host, port, **k: None,
+        browser=lambda url: True,
+        timer=_ImmediateTimer,
+        manage_ollama=False,
+        claim=claim,
+    )
+    notice = next(line for line in capsys.readouterr().out.splitlines() if "was busy" in line)
+    assert len(tried) == 2 and tried[0] != tried[1], tried
+    assert f"port {tried[0]} was busy" in notice, notice
+    assert f"on {tried[1]} instead" in notice, notice
+    assert "None" not in notice, notice
+    if requested is not None:
+        assert tried[0] == requested
