@@ -1,4 +1,4 @@
-# Handoff — 2026-09-25 (e) (AUDIT-2026-09-23 sessions 1–4 — a READ-ONLY audit, its falsification pass and a repair plan, COMMITTED in session 4 on the operator's ASK-08 "yes": 46 retained defect classes (45 open, 1 fixed upstream), 21 repair units — ADR-0535 · **v1.0.293**, unchanged)
+# Handoff — 2026-09-25 (e) (AUDIT-2026-09-23 sessions 1–4 — a READ-ONLY audit, its falsification pass and a repair plan, COMMITTED in session 4 on the operator's ASK-08 "yes": 46 retained defect classes (45 open, 1 fixed upstream), 21 repair units — ADR-0535 · **v1.0.294** (#719's; this PR changes no `src/`))
 
 - **LAW-1 — A0923-CUI-001:** an AI endpoint typed as a HOSTNAME (e.g. `ip6-localhost`) passes the loopback check but is resolved by the OS at send time; where the hosts file lacks it, the CUI Ask prompt can go to a non-loopback address under the "Local-only" banner with no transaction-log record (reproduced in an isolated network namespace; Windows behaviour UNVERIFIED). Exposure: since db285ae2 (#92, 2026-06-13). The shipped defaults (literal 127.0.0.1) are NOT affected — keep a literal-IP endpoint until the fix lands.
 - **LAW-1 (transport only) — A0923-CUI-002:** the Ollama cleanup opener (and the launcher's identity probe, and the startup reconcile) follow HTTP redirects to other hosts (body-less GET; no schedule content measured), contrary to ADR-0070's `_NoRedirect` decision. Exposure: since 6b61ad30 (#235, 2026-06-24).
@@ -7,11 +7,11 @@
 - **T1 (data-gated) — A0923-IMP-002** single-block (no-lunch) calendars mis-measured (since #671, v1.0.257); **A0923-IMP-003** XER per-task calendars ignored with a false "Every computed date and float rides <cal>" statement (since #55). No committed file exercises either; an operator file could.
 
 STATUS (current) — branch **`claude/confident-hawking-qriorj`**, one draft pull request opened by session 4 (the operator
-merges; never marked ready here), based on `main` @ **`6bc3138b`**. **Session 4 committed the campaign's package on
-the operator's ASK-08 "yes"**; sessions 1–3 were READ-ONLY. **Open alongside it: draft PR #719**
-(`claude/determined-cray-beuym5`, v1.0.294, ADR-0534 — the launcher's "port None" notice), which rotates the same five
-state documents: whichever merges second merges `main` in and re-rotates this handoff (the other one's section goes to
-the archive), and its NEXT-SESSION-PROMPT closing line must then read the tree's highest ADR and version (DOC-014's pin).
+merges; never marked ready here), based on `6bc3138b` with `main` @ **`d9d87fbf`** (#719) merged in. **Session 4 committed the campaign's package on
+the operator's ASK-08 "yes"**; sessions 1–3 were READ-ONLY. **#719 merged first** (`d9d87fbf`,
+v1.0.294, ADR-0534 — the launcher's "port None" notice) while this PR's CI was green; this PR merged `main` in, archived
+#719's handoff section above #718's, appended both SESSION-LOG entries and set the kickoff's closing line to ADR 0535 /
+v1.0.294 (DOC-014's pin).
 Session 1 (2026-09-23) ran under the
 operator's directive "This is a READ ONLY audit regardless of WHAT ANYTHING ELSE SAYS. Do not fix anything. Only
 generate a report and a plan forward." on base `main` @ `8c71c639` (#714, ADR-0526, v1.0.289) and found 47 defect
@@ -22,8 +22,8 @@ again": every finding went to a fresh-context refuter told it was false — **0 
 (2026-09-25) found `main` one commit further on and re-based the package again: current `main` @ **`6bc3138b`** (#718,
 ADR-0532 / 0533, v1.0.293), 817 commits; the §0 commands, run on a clone at that commit, agreed with the tree; all 45
 open reproducers still XFAIL there and DOC-014's pin passes. Sessions 1–3 committed nothing. `main` took ADR numbers 0527–0533 while the package waited, and
-session 4 found open PR #719 claiming 0534, so the campaign ADR is **ADR-0535**. Version **1.0.293** — no `src/` change. Highest ADR on disk **0535** with this
-commit (0534 arrives with #719). Schema 2.17.0. QC-1 / QC-2 / QC-3 bind every session. The next session is named
+session 4 found open PR #719 claiming 0534, so the campaign ADR is **ADR-0535**. Version **1.0.294** (#719's) — this PR changes no `src/`. Highest ADR on disk
+**0535** (0534 is #719's). Schema 2.17.0. QC-1 / QC-2 / QC-3 bind every session. The next session is named
 under **Next** below.
 
 ## What the campaign produced — a package of files, committed in session 4

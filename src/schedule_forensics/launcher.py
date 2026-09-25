@@ -285,6 +285,7 @@ def main(
     # free one rather than refusing to start — closing the app without its Quit button must never
     # lock the operator out. The contested port is still never bound.
     how = "free"
+    tried_port = chosen_port  # the port the notice names: the caller's, or the ephemeral pick
     if claim is not None:
         chosen_port, how = resolve_port(host, chosen_port, claim=claim)
     url = f"http://{host}:{chosen_port}"
@@ -304,7 +305,7 @@ def main(
         # Say it plainly: the operator's bookmark and every doc name 8321, so a silent move
         # would look like the tool ignoring them (ADR-0412).
         print(
-            f"POLARIS² — port {port} was busy and would not release, so this session is on "
+            f"POLARIS² — port {tried_port} was busy and would not release, so this session is on "
             f"{chosen_port} instead. Nothing was lost; the address below is the live one."
         )
     print(f"POLARIS² — serving the dashboard at {url}  (close the window to stop)")

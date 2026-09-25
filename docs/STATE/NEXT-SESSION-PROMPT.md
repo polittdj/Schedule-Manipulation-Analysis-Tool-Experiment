@@ -55,11 +55,9 @@ open and all 45 still XFAIL at `6bc3138b`. The deliverables — the charter, the
 (§2 "The falsification pass" and a "Session 3" note), the repair plan, the operator asks, 46 reproducers in
 `tests/audit/test_audit_20260923_*.py` (45 strict-xfail, DOC-014 a passing pin), ADR-0535 and these state documents —
 were handed over as a package. **If you are reading this file on `main`, the package was committed (ASK-08).** `main`
-took ADR numbers 0527–0533 while the package waited, and the open draft PR #719 (v1.0.294, the launcher's "port None"
-notice) claims 0534, which is why the campaign ADR is 0535. **If #719 and the campaign pull request are both open when
-you start, the operator merges; whichever lands second merges `main` in, keeps both ADRs, re-rotates `HANDOFF.md` (the
-other's section to the archive), appends both SESSION-LOG entries, and sets this file's closing line to the tree's
-highest ADR and version.** Schema 2.17.0.
+took ADR numbers 0527–0533 while the package waited, and PR #719 (`d9d87fbf`, v1.0.294, the launcher's "port None"
+notice) took 0534, which is why the campaign ADR is 0535. #719 merged first; the campaign pull request merged `main` in
+(both ADRs kept, #719's handoff archived, both SESSION-LOG entries appended, this file's closing line set to the tree). Schema 2.17.0.
 
 The campaign's **21 repair units** carry self-contained kickoff prompts (every §0 block expects `6bc3138b`-or-later,
 817+, ADR 0533 or later — 0535 or higher once the package is committed), and a **merged queue** of 48 entries that
@@ -102,15 +100,15 @@ carries the 24 rows of the 2026-08-27 register still open at `6bc3138b` unchange
 the counter-witness) · the R-32 product finding (the whole-schedule view opens extended by 60 days whenever the pane
 overflows by under an inch) · DCMA-13's pure-branch project float is the min over ALL timings (unmoved on the four
 progressed goldens) · R-77's second-calendar residual · R-80's widening to `path.js:767` / `sra.js:497` · the launcher
-wart (ADR-0412's notice is a `print()` the pythonw icon never shows, and it prints "port None" — the open draft PR #719
-addresses the "port None" half) · the STAT scorecard's
+notice's icon-path VISIBILITY (ADR-0534 fixed its text; under `pythonw` the notice reaches no one — a UI decision) · the STAT scorecard's
 "Estimated (not-yet-firm) durations" row is a raw flag census over every status beside the health check's to-go figure
 (ADR-0533 decision 4 — a labelled, distinct figure, not a disagreement) · the origin of the 2026-09-21 (c) foreign
 kickoff.
 
 ## What's done — do NOT re-open
 
-**The campaign's 46 retained classes:** the 45 open ones are CONFIRMED-DEFERRED — two session-1 verifications, a
+**The launcher wart (ADR-0534, #719)** — the relocation notice names the port it tried; "port None" was the
+console entry point's, and it is fixed. **The campaign's 46 retained classes:** the 45 open ones are CONFIRMED-DEFERRED — two session-1 verifications, a
 session-2 refutation attempt (eight attacks, a different method) that failed to break them, a reproducer each,
 teeth proven, the T1, T2 and LAW-1 fixes shadow-proven with their moving pins and exposure windows. Do not re-audit
 them; fix them through their units. DOC-014 is FIXED-UPSTREAM (its pin passes and must keep passing: this file's
@@ -238,4 +236,4 @@ gate) before every push.
 QC-1 / QC-2 (ADR-0393) and QC-3 (ADR-0509) bind every session; they are pinned by `tests/test_standing_rules.py`.
 Run the session-token-guardian's `scripts/token_audit.py` as the FIRST action (copy it to the scratchpad) and before
 each operator prompt. `git fetch origin` before you branch, number an ADR, or commit. Highest ADR 0535. Version
-1.0.293. Schema 2.17.0.
+1.0.294. Schema 2.17.0.

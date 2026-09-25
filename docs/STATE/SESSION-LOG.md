@@ -19913,6 +19913,15 @@ Branch `claude/determined-cray-beuym5`, from `main` @ f1b691f3 (#717). §0 run, 
 - **Version:** 1.0.293; wheel + nine installers rebuilt last.
 - **Gate (recorded AFTER the runs, on the final tree):** statics on `/usr/local/bin/ruff` 0.16.9 — `ruff check .` clean, `ruff format --check .` 1,336 files clean · mypy strict 165 files clean · bandit exit 0 · `node --check` every static script · the full suite **6,005 passed, 5 skipped, 0 failed** (46:56; the five skips: two loopback-allowlist URL forms that do not round-trip through urlparse, `test_axis_titles`'s empty parameter set and its two INCIDENTAL_SVG scripts) · parity **271 passed, 0 failed, 0 skipped** (10:11 — 249 before + the 22 new oracle tests) · the doc / register / parity-report / installer guards 104 / 104. The first push (dc425f95, before the suite finished — the session's stop hook required the work committed) opened **PR #718**; its head read cui-guard · test (3.13) · floor · browser · linux · windows green with test (3.11) in flight when this docs-only follow-up was pushed (the push cancels that run); read the FINAL head's eight checks to conclusion.
 
+## 2026-09-25 (b) — the relocation notice names the port it tried (ADR-0534) — v1.0.294
+
+Branch `claude/determined-cray-beuym5`, restarted with `--prune` on `main` @ 6bc3138b after the operator merged PR #718 (13:04 UTC). Squash tree b74fb3cc == PR head b226b856's tree; `main`'s CI #1996 and installer-smoke #830 both success; no check-ins left armed. The session switched to Opus 5.5 on the operator's instruction and continued.
+- **Launcher wart:** probed the pristine `launcher.main` with a claim that refuses the first port — console entry point (`main()`, no port) printed "port None was busy and would not release"; desktop icon (`main(port=8321)`, all nine installers) printed 8321 correctly into `pythonw`'s devnull sink. Fix: record `tried_port` before `resolve_port`. Test parametrized console / icon: red-first 1 failed / 15 passed (the console case, verbatim "port None"); green 16 / 16; mutant (capture after relocation) 2 red; restored and verified identical.
+- **Left open:** the icon-path visibility (a UI decision; the browser still opens on the live port).
+- **Docs:** ADR-0534; HANDOFF rotated (2026-09-25 archived); LESSONS 2026-09-25 (b); kickoff refreshed.
+- **Version:** 1.0.294; editable metadata refreshed; wheel + nine installers rebuilt last; `tests/installer` 68 / 68.
+- **Gate (recorded after the runs, on the final tree):** `/usr/local/bin/ruff` 0.16.9 `check .` clean and `format --check .` 1,337 files clean · mypy strict 165 files · bandit exit 0 · `node --check` per static script · `tests/test_state_docs.py` + `tests/test_standing_rules.py` + `tests/guards` + `tests/installer` + the launcher module + `tests/web/test_docs.py`: **511 passed, 2 skipped**. The full local suite was **NOT re-run** for this unit (a one-line `launcher.py` change on a tree whose full suite read 6,005 / 0 failed hours earlier); CI's `test (3.11)` / `test (3.13)` / `floor` run it on the PR head and are the gate.
+
 ## 2026-09-23 (b) — AUDIT-2026-09-23 session 1: a READ-ONLY audit and repair plan — 47 confirmed defect classes, 21 repair units, nothing committed (entry appended 2026-09-25 with sessions 2 and 3's, because the package was not committed at the time; campaign ADR-0535, v1.0.289 then)
 
 No branch, no commit, no pull request: the operator directed a read-only audit ("Do not fix anything. Only generate a report and a plan forward."), which the charter ranks above itself. Base `main` @ `8c71c639` (#714, ADR-0526, v1.0.289, 813 commits); §0 passed. Lead and every sub-agent on model A (ADR-0240's named models substituted; no `worker`, no `qc-checker`). Hybrid paced waves, at most three sub-agents in flight, results on disk first, no agent deaths: scouts and a documentation finder (468 claims, 26 classes; 300 inherited rows tabulated), three lane finders (IMP, CPM/MET, AI/CUI), twelve verifier packets (50 claims, all reproduced), two assemblers (47 reproducers with teeth) and a bisector (14 exposure windows), two drafters.
@@ -19997,3 +20006,16 @@ and no rebuild. The ten other asks keep their defaults.
   - The charter's fast guard set (`tests/test_state_docs.py tests/test_standing_rules.py tests/guards tests/audit
     tests/web/test_docs.py`) reads **449 passed · 2 skipped · 45 xfailed**.
   - The eight non-browser modules outside that set that read `docs/` read 86 passed.
+
+**Follow-up (2026-09-25 18:2x UTC).** PR #720's first head `bdc085e3` read all six checks green in run 36166208928:
+`test (3.11)`, `test (3.13)`, `floor (declared minimum)`, `browser (measured-box proof)`, `cui-guard` and `check`. So the
+45 strict-xfail pins also hold under the floor's pytest 8.0.0. Meanwhile #719 merged first (`d9d87fbf`, v1.0.294,
+ADR-0534, 818 commits), which is the collision the renumber anticipated. `main` was merged into the branch with a merge
+commit, not a rebase. The resolution:
+- both ADRs are kept;
+- #719's handoff section is archived above #718's;
+- both SESSION-LOG entries are appended, and the lessons entries are kept newest first;
+- the handoff's top section names v1.0.294;
+- the kickoff's closing line reads "Highest ADR 0535. Version 1.0.294.";
+- #719's launcher-wart closure and its narrowed residual (the notice's visibility under `pythonw`) are carried into
+  the kickoff.
