@@ -5,7 +5,7 @@ from __future__ import annotations
 import datetime as dt
 
 from schedule_forensics.engine.cpm import compute_cpm
-from schedule_forensics.engine.metrics.health_extra import compute_health_checks
+from schedule_forensics.engine.metrics.health_extra import HealthCheck, compute_health_checks
 from schedule_forensics.model.relationship import Relationship
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
@@ -16,6 +16,11 @@ MON = dt.datetime(2025, 1, 6, 8, 0)
 def _counts(sch: Schedule) -> dict[str, int]:
     cpm = compute_cpm(sch)
     return {c.key: c.count for c in compute_health_checks(sch, cpm).checks}
+
+
+def _check(sch: Schedule, key: str) -> HealthCheck:
+    cpm = compute_cpm(sch)
+    return next(c for c in compute_health_checks(sch, cpm).checks if c.key == key)
 
 
 def test_milestone_duration_zero_duration_and_missing_fields() -> None:
@@ -89,9 +94,24 @@ def test_estimated_duration_flags_placeholders_excluding_milestones() -> None:
             is_estimated_duration=True,
         ),
         Task(unique_id=3, name="firm", duration_minutes=480, wbs="A", baseline_finish=MON),
+        Task(  # a COMPLETED estimated activity is out of scope — its duration is actual, and
+            # Fuse's "Estimated Duration" is planned-or-in-progress only (R-51, ADR-0533)
+            unique_id=4,
+            name="est-done",
+            duration_minutes=480,
+            wbs="A",
+            baseline_finish=MON,
+            is_estimated_duration=True,
+            percent_complete=100.0,
+        ),
     )
-    counts = _counts(Schedule(name="s", project_start=MON, tasks=tasks, relationships=()))
-    assert counts["estimated_duration"] == 1  # UID 1 only
+    check = _check(
+        Schedule(name="s", project_start=MON, tasks=tasks, relationships=()), "estimated_duration"
+    )
+    assert check.count == 1 and check.offenders == (1,)  # UID 1 only
+    # the population is the same scope without the flag: the planned-or-in-progress normal
+    # activities (UIDs 1 and 3) — the milestone and the completed activity are outside it
+    assert check.population == 2
 
 
 def test_clean_schedule_has_zero_offenders() -> None:
