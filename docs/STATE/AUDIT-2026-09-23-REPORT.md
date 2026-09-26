@@ -1,5 +1,8 @@
-# POLARIS² full-spectrum provable-error audit — AUDIT-2026-09-23, session 1 + falsification pass (session 2) + re-base (session 3): the report (46 retained defect classes — 45 open, 1 fixed upstream — ordered by testimony risk · READ-ONLY · package base 6bc3138b · ADR-0535)
+# POLARIS² full-spectrum provable-error audit — AUDIT-2026-09-23, session 1 + falsification pass (session 2) + re-base (session 3) + WP-CPM (session 5): the report (56 retained defect classes — 55 open, 1 fixed upstream — ordered by testimony risk · sessions 1–3 READ-ONLY · package base 6bc3138b · session 5 base 19173728 · ADR-0535, ADR-0536)
 
+- **T1 — A0923-CPM-001:** every page that prints the schedule-logic (CPM) project finish (/path, /briefing, /brief, /, /portfolio, /forecast, /mission, /trend, /compare, /margin and their APIs) shows the project-calendar date of the finish offset, not the engine's own finish instant: when an elapsed or 24-hour-calendar task drives the finish into project non-working time the date reads a day EARLY (Hard_File_updated3: 12/11/2026 where MS Project, Acumen and SSI show Sat 2026-12-12), and calendar-day finish movements are short by the same day (+35 d for 36). Working-day figures are unaffected. Mechanism since afb8e729 (#497, v1.0.140, 2026-07-31). Until fixed, read the finish from the /path table's rows or the file's own Finish.
+- **T1 — A0923-CPM-002 / 003:** on the Large Test File family, an activity whose MS Project split is recorded on the unassigned-work placeholder booking (CPM-002, e.g. UID 7262: 3 working days early, total float 4 days high) and a predecessor linked finish-to-finish to a leveled task (CPM-003, UID 5314: late finish, total and free float 11 working days off) carry CPM figures that differ from MS Project's stored values. CPM-002 wrong at every decidable commit since afb8e729 (v1.0.140; no good commit exists), in its present form since 163d1942 (v1.0.259, ADR-0491); CPM-003 since 5f34c2a8 (v1.0.245, ADR-0474).
+- **T1 (latent — no committed file exercises them) — A0923-CPM-005/006/007/008, A0923-IMP-006:** CPM dates and floats are wrong on an operator file that carries a redundant lag-0 SS/SF link from a milestone into an off-calendar task (CPM-005), a worked-day exception on the project calendar (CPM-006), a project start inside the first working block such as 09:00 (CPM-007), logic on a summary task whose children carry custom WBS codes (CPM-008), or an elapsed link lag such as "2ed" (IMP-006). Check an operator file for these shapes before citing its CPM figures.
 - **LAW-1 — A0923-CUI-001:** an AI endpoint typed as a HOSTNAME (e.g. `ip6-localhost`) passes the loopback check but is resolved by the OS at send time; where the hosts file lacks it, the CUI Ask prompt can go to a non-loopback address under the "Local-only" banner with no transaction-log record (reproduced in an isolated network namespace; Windows behaviour UNVERIFIED). Exposure: since db285ae2 (#92, 2026-06-13). The shipped defaults (literal 127.0.0.1) are NOT affected — keep a literal-IP endpoint until the fix lands.
 - **LAW-1 (transport only) — A0923-CUI-002:** the Ollama cleanup opener (and the launcher's identity probe, and the startup reconcile) follow HTTP redirects to other hosts (body-less GET; no schedule content measured), contrary to ADR-0070's `_NoRedirect` decision. Exposure: since 6b61ad30 (#235, 2026-06-24).
 - **T1 — A0923-AI-001/002/003:** an unsourced number can reach the analyst through the narrative / briefing / strict / annotate gates when written as a word ("thirteen"), with a typographic minus or dash (sign flip), or as a fraction/superscript/circled/Roman numeral or zero-width-split digits. Since #69/#79 (2026-06-11). Verify AI prose against the citations until fixed.
@@ -10,30 +13,33 @@
 > campaign's package (ADR-0535). Its READ-ONLY statements describe sessions 1–3, which committed nothing; the
 > "Session 4" note below records what the applying session measured and changed.
 
-The five lines above are session 1's immediate disclosures, re-attacked in session 2 and NOT REFUTED; every one is
-STILL PRESENT at `f1b691f3` and, by its reproducer, at `6bc3138b` (session 3).
+The first three lines above are session 5's immediate disclosures (2026-09-26, base `19173728`; §3.1). The five
+below them are session 1's, re-attacked in session 2 and NOT REFUTED; every one is STILL PRESENT at `f1b691f3` and,
+by its reproducer, at `6bc3138b` (session 3) and at `19173728` (session 5: 1 passed · 45 xfailed before anything).
 
-This is the campaign's report after three **READ-ONLY** sessions. Session 1 (2026-09-23, base `8c71c639`) ran under
-the operator's directive — "This is a READ ONLY audit regardless of WHAT ANYTHING ELSE SAYS. Do not fix anything.
-Only generate a report and a plan forward." — and found 47 defect classes. Session 2 (2026-09-25) ran under a second
-directive — "rerun the audit and assume all your findings were are false and prove that they are in fact valid and
-if valid keep them and if you find they are not omit them and then give me the reports again" — and is described in
-§2: every finding was handed to a fresh-context refuter told it was false; none was refuted outright, three were
-narrowed, one was found fixed upstream, one was withdrawn as a class. Session 3 (2026-09-25) re-based the package
-onto the `main` that had moved again while the operator held it (see "Session 3" below). Both directives rank
-above the charter (charter §2), so nothing was committed, pushed, branched or opened as a pull request, and the checkout under audit stayed
-clean at every check. This report, the live ledger (`docs/STATE/AUDIT-2026-09-23.md`, one evidence block per
-finding), the coverage census (`docs/STATE/AUDIT-2026-09-23-COVERAGE.md`), the repair plan
-(`docs/STATE/AUDIT-2026-09-23-REPAIR-PLAN.md`), the operator asks (`docs/STATE/AUDIT-2026-09-23-OPERATOR-ASKS.md`),
-the charter, the 46 reproducers (`tests/audit/test_audit_20260923_*.py`), the campaign ADR (ADR-0535) and the
-proposed state-doc edits are delivered as one package of files that mirrors the repository's paths; ASK-08 decides
-whether they are committed. Every finding was reproduced at session 1's base **`8c71c639`** (`origin/main` then,
-#714, v1.0.289, highest ADR 0526) and re-run in session 2 on **`f1b691f3`** (#717, v1.0.292, 816
-commits, highest ADR 0531); session 3 re-ran every reproducer on current `main` **`6bc3138b`** (#718, v1.0.293, 817
-commits, highest ADR 0533). `main` took ADR numbers 0527–0533 while the package waited, so the campaign ADR — 0527 in
-session 1's package and 0532 in session 2's — is **0535**. The package is built to apply on `6bc3138b`. The census in
-§4 was re-derived in session 2 on a fresh clone at `f1b691f3`, each figure beside the command that produced it, and
-again in session 3 on a fresh clone at `6bc3138b` (§4's second table).
+This is the campaign's report after three **READ-ONLY** sessions (session 5: and after session 4, which committed the
+package, and session 5, WP-CPM, which committed its own findings — see their sections below). Session 1 (2026-09-23,
+base `8c71c639`) ran under the operator's directive — "This is a READ ONLY audit regardless of WHAT ANYTHING ELSE
+SAYS. Do not fix anything. Only generate a report and a plan forward." — and found 47 defect classes. Session 2
+(2026-09-25) ran under a second directive — "rerun the audit and assume all your findings were are false and prove
+that they are in fact valid and if valid keep them and if you find they are not omit them and then give me the
+reports again" — and is described in §2: every finding was handed to a fresh-context refuter told it was false; none
+was refuted outright, three were narrowed, one was found fixed upstream, one was withdrawn as a class. Session 3
+(2026-09-25) re-based the package onto the `main` that had moved again while the operator held it (see "Session 3"
+below). Both directives rank above the charter (charter §2), so nothing was committed, pushed, branched or opened as
+a pull request, and the checkout under audit stayed clean at every check. This report, the live ledger
+(`docs/STATE/AUDIT-2026-09-23.md`, one evidence block per finding), the coverage census
+(`docs/STATE/AUDIT-2026-09-23-COVERAGE.md`), the repair plan (`docs/STATE/AUDIT-2026-09-23-REPAIR-PLAN.md`), the
+operator asks (`docs/STATE/AUDIT-2026-09-23-OPERATOR-ASKS.md`), the charter, the 46 reproducers (session 5: 56;
+`tests/audit/test_audit_20260923_*.py`), the campaign ADR (ADR-0535) and the proposed state-doc edits are delivered
+as one package of files that mirrors the repository's paths; ASK-08 decides whether they are committed. Every finding
+was reproduced at session 1's base **`8c71c639`** (`origin/main` then, #714, v1.0.289, highest ADR 0526) and re-run
+in session 2 on **`f1b691f3`** (#717, v1.0.292, 816 commits, highest ADR 0531); session 3 re-ran every reproducer on
+current `main` **`6bc3138b`** (#718, v1.0.293, 817 commits, highest ADR 0533). `main` took ADR numbers 0527–0533
+while the package waited, so the campaign ADR — 0527 in session 1's package and 0532 in session 2's — is **0535**.
+The package is built to apply on `6bc3138b`. The census in §4 was re-derived in session 2 on a fresh clone at
+`f1b691f3`, each figure beside the command that produced it, and again in session 3 on a fresh clone at `6bc3138b`
+(§4's second table).
 
 ## Session 3 (2026-09-25): re-based onto `6bc3138b`
 
@@ -176,6 +182,150 @@ The full gate on the committed tree is recorded in the SESSION-LOG entry "2026-0
     "0 committed files" was contradicted inside its own wave-0 data, not only by the 4,096-byte census window.
   - UNVERIFIED (one reading): §7's DOC "56 instances" figure may not net out the other narrowings.
 
+## Session 5 (2026-09-25/26): WP-CPM
+
+**What ran.** Session 5 ran the first work package after the package landed: **WP-CPM**, in the charter's AUDIT +
+PLAN mode. It started on 2026-09-25 at about 20:40 UTC and ended on 2026-09-26. The §0 check agreed with the tree:
+`origin/main` = **`19173728`** (#720, the campaign package, ADR-0535), 819 commits, version 1.0.294, highest ADR
+0535, `src` present, `app` absent, workflows `ci.yml` and `installer-smoke.yml`, no open pull request at the check —
+so the session's ADR is **ADR-0536**. Unlike sessions 1–3, this session commits: on the harness-designated branch
+`claude/busy-noether-5oizoe`, as one draft pull request (charter §12). It changes no `src/` file, bumps no version and
+rebuilds nothing. Before anything else the reproducers were run at the base: **1 passed · 45 xfailed** (Python
+3.11.15), no XPASS, so no earlier finding changed status. No operator answer was found in the ASKS file or in the
+session chat, so every default stands.
+
+**Environment (measured).** 4 CPUs, 15 GB RAM, TZ UTC; Python 3.11.15 with the package installed editable, and a
+Python 3.13.12 venv carrying the declared dependencies only (the checkout's `src` on `PYTHONPATH`); ruff 0.16.9 at
+`/usr/local/bin/ruff` and via `python3 -m ruff` (PATH's first ruff is `/root/.local/bin/ruff` 0.15.8, stale — the
+documented trap); OpenJDK 21.0.10; node 22.22.2; playwright 1.63.0 with chromium-1194. The lead and every sub-agent
+ran on the session's model. The token guardian's readings stayed at or below about 60 % of an ASSUMED 800,000-token
+wall; the ceiling was not measured.
+
+**Orchestration.** Two workflows, at most three sub-agents in flight, every result written to disk first, no agent
+died. Wave A (6 agents): two fresh-context verifiers for the lead-found CPM-001 and four finders — F-RES (the
+census's residual classifier), F-META (metamorphic relations), F-EDGE-L (links, lags and constraints) and F-EDGE-C
+(calendars, progress and special tasks). Wave B (9 agents): five claim-only verifier packets P1–P5, each followed by
+an assembler (reproducer fragment, teeth, Python 3.13, fix sketch, moving pins, exposure window); P5 carried the
+artifact-gated claims and had no assembler.
+
+**The instrument — the 44-file corpus, rebuilt.** §6 of this report had said the corpus was not rebuilt by this
+campaign and that rebuilding it is WP-CPM's first step; session 5 did it. The 15 committed goldens
+(`find tests/fixtures -name "*.mspdi.xml*"`, 11 gzipped) plus the 29 tracked intake `.mpp` (all 29 OLE2, magic
+`d0cf11e0a1b11ae1`), converted with `java -cp "tools/mpxj/classes:tools/mpxj/lib/*" MpxjToMspdi <in> <out>` under a
+JVM flock, one output per INPUT path, index-prefixed 01..29: 29 of 29 exit 0. The corpus holds **22,105 scheduled
+activities by two methods** — the engine's timings, and a raw-XML ElementTree filter (Summary≠1, IsNull≠1, Active≠0,
+UID≠0) — in 24 distinct saves among the 44 files. Stored values are read from the raw MSPDI with ElementTree,
+independent of the importer; engine values come from `compute_cpm(parse_mspdi_text(...))`.
+
+**The differential census, first pass** (the lead's; re-derived byte-identically by F-RES):
+
+| field | exact | not exact | note |
+| --- | ---: | ---: | --- |
+| Start | 19,914 of 22,105 | 2,191 | 1,327 unstarted, 853 finished, 11 started; every one of the 853 finished is the engine's ActualStart to the working minute — 809 milestones rendered with `offset_to_start_datetime` where the product uses `span_start_datetime`, and 44 17:00 ActualStart spellings; with the product's helper the non-exact count falls 2,191 → 1,333 |
+| Finish | 20,756 | 1,349 | |
+| LateStart | 20,770 | 1,335 | |
+| LateFinish | 20,464 | 1,641 | |
+| TotalSlack | 10,572 of 12,680 stored | 801 within one minute + 1,307 beyond | absent on 9,425 (8,644 finished + 781); total-float SIGN disagreements 0 of 12,680 |
+| FreeSlack | 3,041 of 3,315 stored | 102 within one minute + 172 beyond | |
+| Critical | `critical_path` membership == stored Critical on 22,105 of 22,105 | 0 | |
+| project finish | the file's FinishDate == the latest stored task Finish on 44 of 44 files | — | |
+
+F-RES partitioned every non-exact row into classes and found a documented home for all but two (CPM-002 and CPM-003
+below): day- and block-boundary and non-working-time spellings with 0 working minutes of error (ADR-0348 / 0523 /
+0524 / 0510); the ±1-minute class (ADR-0523, R-65); the Large Test File 2 second-calendar family, the largest
+(about 370–635 rows per field; R-77's residual); calendar 79's 7-hour Saturday (ADR-0028); the started split
+bookings 5669 / 6565 / 7260 (ADR-0513 / 0517); the dropped-zero pair 302 / 385 (ADR-0517); the R-71 clamp (389,
+5539, 5263; ADR-0531); Hard_File's 264 / 274 late-finish mirror (ADR-0524, not done); EVM2 UID 25 (HELD, F2-H1); and
+a −960-minute slack-only class, one of whose two days is the worked Sunday exception 2018-08-26 (ADR-0028's
+documented day count) — the second day is UNVERIFIED (§3.3, lead 18).
+
+**The plan and its QC-3 attack.** The WP-CPM plan named eight load-bearing assumptions P1–P8 and attacked each on
+the pristine tree before any finder was spawned. **P7 FELL as a blanket premise** — "a date difference on the
+census is a defect": several documented residual classes exist, so every non-exact class had to be mapped to its
+register row or ADR before it could become a CANDIDATE (F-RES's job, screened by the lead). P8 (the metamorphic
+relations are sound on this engine) held with a condition: a whole-week shift is invariant only where calendar
+exceptions shift with it. P1 (44 files / 22,105 activities), P3 (the analyst sees the axis rendering, not the wall),
+P4 (the mechanism is the presentation, not the engine), P5 (FinishDate is MS Project's project finish, 44 of 44) and
+P6 (Critical is comparable on every activity, 22,105 of 22,105) held. P2 (the stored values are MS Project's, not
+the converter's) held for dates; whether MPXJ's own getters derive a missing slack internally is **UNVERIFIED**.
+**A deviation, recorded not hidden:** the corpus rebuild and the census's first pass ran before the plan was
+written down (about 30 minutes, in the same session).
+
+**The findings.** 13 CANDIDATEs — one found by the lead, twelve by the finders — gave **10 CONFIRMED-DEFERRED, 3
+ARTIFACT-GATED and 0 REFUTED**. The ten confirmed classes are in §3.1 (eight in the new CPM lane, two in IMP), the
+three artifact-gated records in §3.2, and five UNVERIFIED leads in §3.3 (leads 16–20). Provisional finder labels map
+to final ids as: lead → CPM-001; F-RES-C1 → CPM-002; F-RES-C2 → CPM-003; F-META-001 → CPM-004; F-META-002 → CPM-005;
+F-EDGE-C-003 → CPM-006; F-EDGE-C-001 → CPM-007; F-EDGE-C-002 → CPM-008; F-EDGE-L-001 → IMP-006; F-EDGE-L-004 →
+IMP-007; F-EDGE-L-002 → CPM-009; F-EDGE-L-003 → IMP-008; F-EDGE-C-004 → IMP-009.
+
+| id | tier | flags | the class, in one line | unit |
+| --- | --- | --- | --- | --- |
+| **CPM-001** | T1 | in the committed corpus | every page that prints the CPM project finish renders `offset_to_datetime(project_finish)` and ignores `CPMResult.project_finish_wall`: Hard_File_updated3 shows 12/11/2026 where MS Project, Acumen Fuse, SSI and the engine's own wall read Sat 2026-12-12 17:00 | U22 |
+| **CPM-002** | T1 | in the committed corpus | the importer drops the unassigned-work placeholder booking (ResourceUID −65535), so the split it records is never applied: LTF UID 7262 finishes 2025-04-03 17:00 for the stored 2025-04-08 17:00 | U23 |
+| **CPM-003** | T1 | narrow (FF only) | an FF need into a successor carrying a task LevelingDelay ignores the delay in the backward pass and the free float: LTF UID 5314 TF 227,757 / FF 9,361 for the stored 222,475.3 / 4,080 | U24 |
+| **CPM-005** | T1 | latent (0 committed instances) | a redundant lag-0 SS/SF link from an un-carried zero-duration predecessor into a wall-path successor moves the successor and the project finish (+240 / +960 working minutes) | U25 |
+| **CPM-006** | T1 | latent; + a T3 sibling | a DayWorking=1 exception on the PROJECT calendar is ignored by the integer fast path and honoured by the wall path, so a 1-minute delay moves a finish EARLIER | U26 |
+| **CPM-007** | T1 | latent | a project StartDate inside the first working block (Mon 09:00) makes the offset↔date pair lossy after day 0 | U27 |
+| **CPM-008** | T1 | latent | logic on a summary is lowered onto leaves found by WBS PREFIX, where MS Project rolls summaries up over their OUTLINE children | U28 |
+| **IMP-006** | T1 | latent | elapsed LagFormats are ignored and LinkLag/10 is read as WORKING minutes: FS+2ed becomes 6 working days | U29 |
+| **CPM-004** | T2 | — | an UNSTARTED multi-leg task's late finish, snapped on the primary leg, disagrees with MS Project's stored LateFinish; only `late_finish_wall` moves | U30 |
+| **IMP-007** | T2 | latent | ALAP→ASAP is documented (ADR-0026 D2) but its stated "logged by count" premise is false: no log record, no import note | U31 |
+
+**Verification.** Every CONFIRMED-DEFERRED class was reproduced by an independent fresh-context verifier given a
+claim-only packet, AND re-run by the lead (the red fails, the control passes); the lead-found CPM-001 was reproduced
+by TWO fresh-context verifiers (V1, V2). The lead re-ran the teeth on all ten, not only the assemblers: (i) the
+committed module on the pristine tree XFAILs on Python 3.11.15 AND 3.13.12 — "15 xfailed" over the cpm and imp
+modules on both; (ii) each fix sketch, re-applied by the lead to a FRESH copy of `src/`, strict-XPASSes exactly its
+own test ("1 failed, 7 xfailed" over the cpm module, "1 failed, 6 xfailed" over the imp module) and moves no other
+test; (iii) with its marker removed each test FAILS by name with AssertionError. No randomized probe was used (seed:
+none). The durable form of every red is the committed reproducer (§3.1's second table); the working records are
+session scratch (they vanish with the container).
+
+**CPM-001, the heaviest.** Witnesses independent of the MPXJ goldens: Acumen Fuse v8.11.0's "Hard_File_updated2 vs
+update3 Forensic Analysis Report.xlsx" (sheet Projects: Hard_File_updated3 Finish 2026-12-12 17:00, serial
+46368.708333; Hard_File_updated2 Finish 2026-11-06 17:00 — a 36-day move); SSI's
+"Hard File updated3_UID_155_Directional_Path_Analysis_2026-7-15.xlsx" (UIDs 146, 155 and 411 finish Sat
+2026-12-12); the 24-hour SSI export (2026-11-19 01:00). UID 146 is 48 elapsed hours (DurationFormat 8), Thu 12-10
+17:00 → Sat 12-12 17:00. The served pages were measured through TestClient AND real Chromium, under TZ UTC and
+America/New_York, on Python 3.11 and 3.13: /path "12/11/2026 Computed finish" (its own path table lists 146 / 411 /
+155 at 12/12/2026), /briefing "Friday, December 11, 2026", /brief "its network computes a finish of 2026-12-11", and
+/, /portfolio, /forecast ("CPM logic lands on 12/11/2026, 36 days behind the baseline" beside "As-scheduled
+12/12/2026" — a false CPM-versus-file gap), /mission, /trend ("slipped 35 calendar days"), /compare with updated2 +
+updated3 ("Finish move +35 d"; Acumen's pair: 36), /brief with two versions ("moved 35 calendar days", "disagree by
+95 calendar days" for 94), /margin and `/api/margin/dashboard`, `/api/dashboard`, `/api/forecast` and
+`/api/evolution` (`finish_delta_days` 35). Working-day figures are unaffected — both instants are the same working
+minute. Population: 6 of the 44 corpus files, 2 source schedules; mechanism census: 22 product call sites render
+`project_finish` through the axis and 10 render a task's early start or finish the same way; only
+`engine/metrics/dcma14.py:672-692` (DCMA-12) reads `project_finish_wall`. At task level 2,574 activities carry an
+early-finish wall; on 455 it differs from the axis rendering (396 by calendar date), and on 395 of the 455 the wall
+equals MS Project's stored Finish exactly while the axis rendering does not. `docs/PARITY-REPORT.md:253-254` records
+the file's CPM finish as exact, measured on the wall — the parity claim is proven on a figure no page prints. The
+fix sketch (21 hunks over 18 files, threading the wall through the dashboard's `_DashCore` in `web/state.py`) moves
+0 pins: `tests/engine` + `tests/ai` 1,674 passed; `tests/web` + `tests/parity` 2,832 passed, 3 skipped.
+
+**What was not done — WP-CPM is NOT closed.** Not probed beyond what the census and the time-zone sweep touched:
+`driving_path.py`, `path_trace.py`, `float_analysis.py`, `path_counterfactual.py`, `drag.py`, `month_axis.py`; the
+backward-pass mirror of CPM-005; a second round of probe families. The charter's saturation rule — two consecutive
+families with no new CANDIDATE — is NOT met: every family this session produced candidates. Lead L-CPM-a (§3.3, lead
+16) goes to the next CPM session. WP-UI still owes UI-001's committed Chromium-gated reproducer (ASK-11, default
+yes). The three ARTIFACT-GATED records each wait on an operator observation (ASK-12, ASK-13, ASK-14).
+
+**Probe families that found nothing (the negatives).** F-META: R1 renumber / rename, 132 runs, 0 violations; R2
+reorders (PredecessorLink, Exception, WeekDay, sibling leaves, TimephasedData, Resource, Calendar) 0 violations —
+only `<Assignment>` order moved anything, CPM-004's documented tie-break, not nondeterminism (8 of 16 tied plans
+change `late_finish_wall` only); R3 26,301 redundant FS0 and FF0 links, 0 CPM violations (SS0 / SF0 → CPM-005); R4
+whole-week shifts (+7, +364, −364 days), 132 runs, 0 violations; R5 removal of 49 completed isolated tasks, 0 changes
+(0 inactive tasks in the corpus). F-EDGE-L: the corpus carries LagFormat 7 only (34,674 elements in 72 MSPDI), FS /
+SS / FF (no SF), leads on FS only, constraints ASAP / SNET / FNET / MSO / MFO plus 25 deadlines (no ALAP, SNLT or
+FNLT in any MS Project save); FS positive-lag successors 35 / 35 agree, FF 3 / 3; 158 non-zero-lag instances checked;
+constraint rows agree to 0 working seconds or within a minute except EVM2 25 / 26 (HELD, F2-H1) and
+Hard_File_updated2 UID 189 (66 s); hand-built link type × working lag 17 / 17 agree. F-EDGE-C: no time-zone-aware
+arithmetic in `engine/`, `model/` or `importers/`; every CPM output byte-identical under TZ=America/New_York and UTC
+over the 44 files plus 4 synthetic schedules crossing 2026-03-08 / 2026-11-01; elapsed durations exact on 16 corpus
+tasks; the leap day exact on 51; year-end and weekend exceptions exact (synthetic); the 24-hour task calendars'
+misses all in documented classes; Night Shift multi-day runs at 48 h a week — ADR-0028's documented dominant-day
+approximation (0 corpus tasks use it).
+
 ## 0. How to read this
 
 **Status vocabulary (charter §5):** **CONFIRMED-DEFERRED** — this campaign's terminal state for a real defect:
@@ -205,69 +355,84 @@ bases are **CLOSED UPSTREAM**.
 | **T6** | ORGANIZATIONAL — decisions that are not engineering's to make |
 
 A Law-1 bypass additionally carries the flag **LAW-1** and is disclosed like a T1 (charter §5). Ids are
-`A0923-<LANE>-<NNN>`; the tables below drop the `A0923-` prefix. Units `U01`–`U21` are the repair units of the plan.
-Refuter packets are `R01`–`R11`, one verdict JSON per finding; those JSONs are the session-2 working record held
-with the lead's session material and are not part of this package — everything this report cites from them is
-restated here.
+`A0923-<LANE>-<NNN>`; the tables below drop the `A0923-` prefix. Units `U01`–`U21` are the repair units of the
+plan (session 5 adds `U22`–`U31`). Refuter packets are `R01`–`R11`, one verdict JSON per finding; those JSONs are
+the session-2 working record held with the lead's session material and are not part of this package — everything
+this report cites from them is restated here.
 
 **Basis.** Every retained finding is **ENGINE≠ORACLE**: it is settled in this environment against an oracle
 independent of the code under test — a hand-computed expectation, MPXJ, the file's own stored values, a public
 specification, a committed Fuse or SSI export, or the tree itself — and each refuter was required to reproduce it
-by a DIFFERENT method from the reproducer's before it could stand. None is ARTIFACT-GATED. Two are **data-gated**
-(IMP-002, IMP-003): the defect is proven on inline inputs; for IMP-002 one committed synthetic fixture now has the
-shape but no shipped number moves (§2), for IMP-003 no committed file exercises it.
+by a DIFFERENT method from the reproducer's before it could stand. None is ARTIFACT-GATED (session 5: still none
+of the retained classes; its three ARTIFACT-GATED records are not counted, §3.2). Two are **data-gated** (IMP-002,
+IMP-003): the defect is proven on inline inputs; for IMP-002 one committed synthetic fixture now has the shape but
+no shipped number moves (§2), for IMP-003 no committed file exercises it. (Session 5's refuter step is its
+fresh-context verifier plus the lead's re-run — see "Session 5" above.)
 
-**Reproducers.** Each open finding's test asserts the CORRECT behaviour and carries
-`@pytest.mark.xfail(strict=True, raises=<the exception observed red-first>, reason="A0923-…")` — `AssertionError`
-for 43 findings, `ValueError` for IMP-005 and WEB-002 — so the suite stays green today and the fixing pull request
-is forced to remove the marker (a strict XPASS fails the run). DOC-014's test carries no marker: its defect was
-fixed upstream, so it is kept as a passing pin that re-derives the kickoff's ADR and version line from the tree on
-every run (negative control: it fails by name on the `8c71c639` tree). TST-003's test was removed with its class.
-Inputs are built inline or taken from committed fixtures; the modules import only the package, the standard
-library, `pytest` and `httpx`; none launches a browser.
+**Reproducers.** Each open finding's test asserts the CORRECT behaviour and carries `@pytest.mark.xfail(strict=True,
+raises=<the exception observed red-first>, reason="A0923-…")` — `AssertionError` for 43 findings (session 5: 53, with
+its ten), `ValueError` for IMP-005 and WEB-002 — so the suite stays green today and the fixing pull request is forced
+to remove the marker (a strict XPASS fails the run). DOC-014's test carries no marker: its defect was fixed upstream,
+so it is kept as a passing pin that re-derives the kickoff's ADR and version line from the tree on every run
+(negative control: it fails by name on the `8c71c639` tree). TST-003's test was removed with its class. Inputs are
+built inline or taken from committed fixtures; the modules import only the package, the standard library, `pytest`
+and `httpx`; none launches a browser.
 
 ## 1. Verdict
 
 Session 1's paced waves — scouts and a documentation finder, three lane finders, twelve fresh-context verifier
-packets, then two assemblers and a bisector, at most three sub-agents in flight, every result written to disk
-before it was reported — confirmed 47 defect classes at `8c71c639`. Session 2 assumed every one of them false and
-tried to break it (§2): **0 were refuted outright, 44 were not refuted, 3 were narrowed, 1 was found fixed
-upstream, and 1 was withdrawn as a class.** After the pass **46 classes are retained** — 45 open and
-CONFIRMED-DEFERRED, all 45 STILL PRESENT at `f1b691f3` and still XFAIL at `6bc3138b`, plus DOC-014, valid at the base and FIXED UPSTREAM by #715 —
-six at T1 (three in the AI figure gates, the margin dashboard, and two data-gated importer calendar defects), six at
-T2, nineteen at T3 (two carrying the LAW-1 flag; one of the nineteen is the fixed-upstream DOC-014), three at T4 and
-twelve at T5. The heaviest findings are not in the CPM engine, the most-audited lane, but in the layers that carry
-engine figures to the analyst: the AI figure gates admit unsourced numbers in forms their tokenizer cannot see, the
-margin dashboard mixes two measurement bases without saying so, and the Law-1 locality check trusts a host name the
-operating system resolves — and each of those three survived a dedicated attempt to refute it by a different method.
-Three further hypotheses stay HELD by decisions in force, each with new evidence for the operator; two are refuted
-as posed; session 1's one local test failure was a DUPLICATE of R-32, which `main` has since CLOSED (ADR-0530) — the
-fix verified locally in session 2; one candidate (UI-001) is now observed by two parties and waits for a committed
-reproducer; thirteen leads plus two new refuter leads are carried to the plan unprobed (lead 13 has since been resolved upstream
-by #718). Nothing was fixed by this
-campaign. Every open class has a reproducer that flips only when fixed.
+packets, then two assemblers and a bisector, at most three sub-agents in flight, every result written to disk before
+it was reported — confirmed 47 defect classes at `8c71c639`. Session 2 assumed every one of them false and tried to
+break it (§2): **0 were refuted outright, 44 were not refuted, 3 were narrowed, 1 was found fixed upstream, and 1 was
+withdrawn as a class.** After the pass **46 classes are retained** — 45 open and CONFIRMED-DEFERRED, all 45 STILL
+PRESENT at `f1b691f3` and still XFAIL at `6bc3138b`, plus DOC-014, valid at the base and FIXED UPSTREAM by #715 — six
+at T1 (three in the AI figure gates, the margin dashboard, and two data-gated importer calendar defects), six at T2,
+nineteen at T3 (two carrying the LAW-1 flag; one of the nineteen is the fixed-upstream DOC-014), three at T4 and
+twelve at T5. The heaviest findings are not in the CPM engine, the most-audited lane (session 5: WP-CPM has since
+retained seven T1 classes in the CPM lane — see below), but in the layers that carry engine figures to the analyst:
+the AI figure gates admit unsourced numbers in forms their tokenizer cannot see, the margin dashboard mixes two
+measurement bases without saying so, and the Law-1 locality check trusts a host name the operating system resolves —
+and each of those three survived a dedicated attempt to refute it by a different method. Three further hypotheses
+stay HELD by decisions in force, each with new evidence for the operator; two are refuted as posed; session 1's one
+local test failure was a DUPLICATE of R-32, which `main` has since CLOSED (ADR-0530) — the fix verified locally in
+session 2; one candidate (UI-001) is now observed by two parties and waits for a committed reproducer; thirteen leads
+plus two new refuter leads are carried to the plan unprobed (lead 13 has since been resolved upstream by #718).
+Nothing was fixed by this campaign. Every open class has a reproducer that flips only when fixed.
 
-**Counts by tier and lane (the 46 retained classes; the one FIXED-UPSTREAM class, DOC-014, is a T3 DOC row — the
-open count is 45):**
+**After session 5 (2026-09-26, base `19173728`).** WP-CPM (see "Session 5" above) raised 13 CANDIDATEs and
+retained **10 new classes as CONFIRMED-DEFERRED** — 3 were ARTIFACT-GATED, 0 were refuted — so the register now
+holds **56 retained classes: 55 open and CONFIRMED-DEFERRED plus the FIXED-UPSTREAM DOC-014**. By tier: **T1 14** (6 →
+14), **T2 8** (6 → 8), T3 19, T4 3, T5 12. By lane: AI 5 · CUI 4 · WEB 2 · **IMP 7** (5 → 7) · MET 2 · DOC 16 · TST
+12 · **CPM 8** (new). Seven of the eight new T1 classes are in the CPM lane: CPM-001 at the boundary where an engine
+instant becomes a displayed date, CPM-002 at the importer's booking read, and CPM-003 / 005 / 006 / 007 / 008 in the
+CPM engine and its calendar model; the eighth, IMP-006, is an importer defect. Only CPM-001, CPM-002, CPM-003 and
+CPM-004 have instances in the committed corpus; the other six are latent (no committed file exercises them). The
+session-1 and session-2 statements above are dated and stand as written; nothing in session 5 moved one of them.
 
-| tier | AI | CUI | IMP | MET | WEB | DOC | TST | total |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| T1 | 3 | 0 | 2 | 1 | 0 | 0 | 0 | 6 |
-| T2 | 2 | 0 | 2 | 1 | 0 | 1 | 0 | 6 |
-| T3 | 0 | 4 | 0 | 0 | 0 | 15 | 0 | 19 |
-| T4 | 0 | 0 | 1 | 0 | 2 | 0 | 0 | 3 |
-| T5 | 0 | 0 | 0 | 0 | 0 | 0 | 12 | 12 |
-| T6 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
-| **total** | **5** | **4** | **5** | **2** | **2** | **16** | **12** | **46** |
-| of which OPEN | 5 | 4 | 5 | 2 | 2 | 15 | 12 | 45 |
+**Counts by tier and lane (the 56 retained classes after session 5; the one FIXED-UPSTREAM class, DOC-014, is a T3
+DOC row — the open count is 55):**
 
-LAW-1 flags: 2 (CUI-001; CUI-002, transport only). Session 1 counted 47 (T5 13, TST 13); TST-003 is withdrawn (§2),
-so T5 and TST read 12. Lanes with no retained class: **CPM** (three
-hypotheses probed: two HELD — EVM2 UID 25's, F2-H1, carries the record defect TST-011 — and one REFUTED), **UI** (one candidate, UI-001, observed by
-two parties, not yet counted), and **FOR, SEC, EXP, PKG, PERF** (not probed in either session; see §6 and §7).
+| tier | AI | CPM | CUI | IMP | MET | WEB | DOC | TST | total |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| T1 | 3 | 7 | 0 | 3 | 1 | 0 | 0 | 0 | 14 |
+| T2 | 2 | 1 | 0 | 3 | 1 | 0 | 1 | 0 | 8 |
+| T3 | 0 | 0 | 4 | 0 | 0 | 0 | 15 | 0 | 19 |
+| T4 | 0 | 0 | 0 | 1 | 0 | 2 | 0 | 0 | 3 |
+| T5 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 12 | 12 |
+| T6 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| **total** | **5** | **8** | **4** | **7** | **2** | **2** | **16** | **12** | **56** |
+| of which OPEN | 5 | 8 | 4 | 7 | 2 | 2 | 15 | 12 | 55 |
+
+Before session 5 the table read 46 (45 open): T1 6 · T2 6, IMP 5 and no CPM column. LAW-1 flags: 2 (CUI-001;
+CUI-002, transport only); session 5 added none. Session 1 counted 47 (T5 13, TST 13); TST-003 is withdrawn (§2), so
+T5 and TST read 12. Lanes with no retained class: **UI** (one candidate, UI-001, observed by two parties, not yet
+counted), and **FOR, SEC, EXP, PKG, PERF** (not probed in any session; see §6 and §7). Until session 5 the CPM lane
+had none (three hypotheses probed in session 1: two HELD — EVM2 UID 25's, F2-H1, carries the record defect TST-011 —
+and one REFUTED).
 
 **Rows that are not retained defects:** WITHDRAWN 1 · HELD 3 · REFUTED / NOT-A-FINDING 2 · DUPLICATE 1 (its row
-now CLOSED UPSTREAM) · CANDIDATE 1 · UNPROBED leads 13 + 2 (§3.2, §3.3; lead 13 resolved upstream at `6bc3138b`).
+now CLOSED UPSTREAM) · CANDIDATE 1 · **ARTIFACT-GATED 3 (session 5)** · UNPROBED leads 13 + 2 (§3.2, §3.3; lead 13
+resolved upstream at `6bc3138b`) · **UNVERIFIED leads 5 (session 5; §3.3, leads 16–20)**.
 
 ## 2. The falsification pass (session 2, 2026-09-25)
 
@@ -361,7 +526,7 @@ downgraded (no haiku `worker`, no `qc-checker`).
 
 ## 3. The register — every row, its verdict, what it carries forward
 
-### 3.1 The 46 retained classes (tier order)
+### 3.1 The 56 retained classes (tier order)
 
 Each row's full evidence — the verbatim authority, the red command and its output, the control, the class census,
 both session-1 verifications, every refutation attempt and the teeth proof — is the finding's block in the ledger
@@ -369,6 +534,11 @@ both session-1 verifications, every refutation attempt and the teeth proof — i
 named in the 'session 2' column; the JSONs sit with the lead's session material, not in this package). The 'at
 f1b691f3' column is the refuter's A7 evidence in one line. Session 3 re-ran every reproducer at `6bc3138b`: the
 45 open ones XFAIL and DOC-014's pin passes, so every STILL-PRESENT below also holds at `6bc3138b` by its reproducer.
+**Session 5's ten rows** (CPM-001 … CPM-008, IMP-006, IMP-007) were found at `19173728` and were not in session 2's
+pass: their 'session 2' column names the session-5 verification instead (a fresh-context verifier given a claim-only
+packet — two, V1 and V2, for the lead-found CPM-001 — plus the lead's own re-run), and their evidence blocks are in
+the ledger (`docs/STATE/AUDIT-2026-09-23.md`). Session 5 re-ran the 45 earlier reproducers at `19173728` first: 1 passed · 45
+xfailed, no XPASS, so every STILL-PRESENT below also holds there.
 
 | id | lane | tier | flag | verdict | session 2 | at `f1b691f3` | claim (the reproducer's scope) | unit |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -378,12 +548,22 @@ f1b691f3' column is the refuter's A7 evidence in one line. Session 3 re-ran ever
 | **IMP-002** | IMP | T1 | data-gated | CONFIRMED-DEFERRED | NARROWED (R03) | STILL-PRESENT — `importers/mspdi.py:601` and `model/calendar.py:96-97` unchanged (`cpm.py`'s +69/−11 is ADR-0531's late-date work); 540/0/60/480 and the Tue 08:00 finish on the clone's `src`; population corrected (see the narrowing) | A single contiguous working block (07:00-15:00) imports with `day_segments=()` (`importers/mspdi.py:601`); the recorded-window ruler then anchors the day at midnight (`model/calendar.py:96-97`), reading 540/0/60/480 working minutes for windows worth 720/120/480/240, and a material-booked task finishes Tue 08:00 instead of Tue 11:00 (hand arithmetic and MPXJ 16.2.0 agree). Population, corrected in session 2: one committed synthetic MSPDI (`tests/fixtures/mspdi/NEGFLOAT_SubDay_Probe.xml`) DOES declare a single 08:00-16:00 block and imports with `day_segments=()` (its ruler reads 0 minutes for a 180-minute in-block window), but it carries no bookings and none of its 13 pinned floats or finishes move; 0 of the 1,473 calendars in the 29 committed `.mpp` and 0 real-intake MSPDI calendars are single non-24 h blocks — 'no shipped NUMBER is affected' stands, '0 committed files' does not. | U07 |
 | **IMP-003** | IMP | T1 | data-gated; T2 disclosure | CONFIRMED-DEFERRED | NOT-REFUTED (R04) | STILL-PRESENT — `importers/xer.py` untouched by #715–#717; `Schedule.calendars` (), no import note, the 6-day-crew activity finishes 04-07 against the file's own 04-06 | The XER importer never reads `TASK.clndr_id` (`importers/xer.py:641`: per-task calendars 'stay deferred'), so an activity on a 7-day P6 calendar is scheduled on the 5-day project calendar (Tue 03-10 / Wed 03-11 instead of the file's own Sun 03-08 / Mon 03-09) while `/analysis` states 'Every computed date and float rides 5-Day' (`web/analysis.py:873`). | U08 |
 | **MET-001** | MET | T1 | latent in the committed corpus | CONFIRMED-DEFERRED | NOT-REFUTED (R04) | STILL-PRESENT — `engine/margin_dashboard.py` and `web/margin.py` untouched; the refuter's mixed-basis input reads the same erosion rate, zero-margin date, `mixed_basis=()` and a fired corrective-action trigger on the clone's `src` | When the target milestone is absent from some versions, the margin dashboard fits one erosion slope across versions measured to the target and to the project finish, and carries a plan measured on one basis into a version measured on the other (`engine/margin_dashboard.py:310`, `:328`): 39.13 wd/month and a zero-margin date before the as-of date against 1.09 wd/month and 2026-11-09 on one basis, and an 88.75 % 'consumed' that fires the corrective-action trigger; `/margin` discloses nothing. | U06 |
+| **CPM-001** | CPM | T1 | in the committed corpus | CONFIRMED-DEFERRED | — (session 5: fresh-context verifiers V1 and V2 + the lead's re-run) | n/a — found at `19173728` (session 5); XFAIL there on Python 3.11.15 and 3.13.12 | Every page that prints the CPM project finish renders `offset_to_datetime(project_finish)` and ignores `CPMResult.project_finish_wall`: Hard_File_updated3 shows 12/11/2026 where MS Project, Acumen Fuse, SSI and the engine's own wall read Sat 2026-12-12 17:00 (24-hour save: 11/18 for 2026-11-19 01:00); 22 product call sites render `project_finish` through the axis and 10 render a task's early start or finish the same way; only DCMA-12 (`engine/metrics/dcma14.py:672-692`) reads the wall. | U22 |
+| **CPM-002** | CPM | T1 | in the committed corpus | CONFIRMED-DEFERRED | — (session 5: verifier P1 + the lead's re-run) | n/a — found at `19173728` (session 5); XFAIL there on Python 3.11.15 and 3.13.12 | The importer drops MS Project's unassigned-work placeholder booking (ResourceUID −65535, `importers/mspdi.py:1224`), so the split it records is never applied: LTF UID 7262 finishes 2025-04-03 17:00 / TF 313,680 min for the stored 2025-04-08 17:00 / 311,760. | U23 |
+| **CPM-003** | CPM | T1 | narrow (FF only) | CONFIRMED-DEFERRED | — (session 5: verifier P1 + the lead's re-run) | n/a — found at `19173728` (session 5); XFAIL there on Python 3.11.15 and 3.13.12 | An FF need into a successor carrying a task LevelingDelay ignores the delay in the backward pass and the free float (`cpm.py` wall path): LTF UID 5314 reads LF 2028-06-14 11:54 / TF 227,757 / FF 9,361 for the stored 2028-05-30 11:53 / 222,475.3 / 4,080 — falsifies the premise of ADR-0522's documented rejection. | U24 |
+| **CPM-005** | CPM | T1 | latent (0 committed instances) | CONFIRMED-DEFERRED | — (session 5: verifier P2 + the lead's re-run) | n/a — found at `19173728` (session 5); XFAIL there on Python 3.11.15 and 3.13.12 | A transitively redundant lag-0 SS/SF link from an un-carried zero-duration predecessor into a wall-path successor moves the successor and the project finish (`_pred_start_wall`, `cpm.py:2469-2474`): +240 working minutes on Hard_File_updated, +960 on the 24-hour save. | U25 |
+| **CPM-006** | CPM | T1 | latent; + a T3 sibling | CONFIRMED-DEFERRED | — (session 5: verifier P2 + the lead's re-run) | n/a — found at `19173728` (session 5); XFAIL there on Python 3.11.15 and 3.13.12 | A DayWorking=1 exception on the PROJECT calendar is ignored by the integer fast path and honoured by the wall path: a 2-day task finishes Mon 17:00 (schema + hand arithmetic: Sat 17:00) while the same task with a 1-minute delay finishes Mon 08:01 — a delay moves a finish EARLIER; the stated premise (`calendar.py:117-118`, ADR-0118:55-57, ADR-0028:22-23 'logged count', `calendar.py:3-7`) is false. | U26 |
+| **CPM-007** | CPM | T1 | latent | CONFIRMED-DEFERRED | — (session 5: verifier P4 + the lead's re-run) | n/a — found at `19173728` (session 5); XFAIL there on Python 3.11.15 and 3.13.12 | A project StartDate inside the first working block (Mon 09:00 on 08-12/13-17, kept by ADR-0312) makes the offset↔date pair lossy after day 0: `offset_to_datetime(ps, 480)` = Mon 17:00 (hand: Tue 09:00), `datetime_to_offset(ps, Tue 08:30)` = 480 (hand: 450), and an elapsed successor starts before its FS predecessor's finish. | U27 |
+| **CPM-008** | CPM | T1 | latent | CONFIRMED-DEFERRED | — (session 5: verifier P4 + the lead's re-run) | n/a — found at `19173728` (session 5); XFAIL there on Python 3.11.15 and 3.13.12 | Logic on a summary is lowered onto leaves found by WBS PREFIX (ADR-0043), but MS Project rolls summaries up over their OUTLINE children (stored summary Start/Finish match the outline leaves 836/836 and the WBS-prefix leaves 419/836 in the LTF family); with LTF-shaped custom WBS the successor loses its predecessor silently; 0 of 5,139 committed summaries carry logic today. | U28 |
+| **IMP-006** | IMP | T1 | latent | CONFIRMED-DEFERRED | — (session 5: verifier P3 + the lead's re-run) | n/a — found at `19173728` (session 5); XFAIL there on Python 3.11.15 and 3.13.12 | The MSPDI importer ignores elapsed LagFormats (4/6/8/10/12, …) and reads LinkLag/10 as WORKING minutes, and the Relationship model has no elapsed flag: FS+2ed becomes 6 working days (B finishes 2026-06-24 for Microsoft's 2026-06-16); 0 elapsed LagFormats in the 72 committed MSPDI documents (finder: 34,674 LagFormat elements; verifier: 34,678 links). | U29 |
 | **AI-004** | AI | T2 | — | CONFIRMED-DEFERRED | NOT-REFUTED (R01) | STILL-PRESENT — `ai/qa.py` unchanged; '5.0% late' and '39.2% late' pass strict and annotate unflagged while the spaced control is discarded | The fact sheet glues units to values ('Average Days Late: 5.0days'); `ai/qa.py:760-763` requires a space before the unit word, so a days-only figure re-used as a percentage passes strict and annotate unflagged. | U04 |
 | **AI-005** | AI | T2 | — | CONFIRMED-DEFERRED | NOT-REFUTED (R01) | STILL-PRESENT — `citations.py`, `_ai_translate` and `CLAUDE.md:229-233` unchanged; 27 of 28 terms escape as plurals or compounds, translation serves '— fraud.' | `introduces_loaded_terms` matches whole words and `ai/citations.py:137` keeps 'fraud-like' as one word, so plural and hyphenated forms of 27 of the 28 listed accusation terms are served in the polished narrative and briefing; `/api/translate` applies no accusation guard although `CLAUDE.md:229-233` says the translation path does. | U05 |
 | **IMP-001** | IMP | T2 | — | CONFIRMED-DEFERRED | NOT-REFUTED (R03) | STILL-PRESENT — `reports/xlsx_read.py` unchanged and the three register routes untouched in `app.py`'s diff; the mixed-`r` workbook reads [last, first], 'Imported 0 risk(s); skipped 2 incomplete row(s)' as a non-error, register emptied, use flag False | `read_xlsx` places every cell without an `r=` reference in column A (`reports/xlsx_read.py:197`), so a legal mixed-reference risk register (Acumen Fuse's first-cell-only shape) replaces the session register with an empty one and switches it off under a non-error 'Imported 0 risk(s)' banner. | U10 |
 | **IMP-004** | IMP | T2 | — | CONFIRMED-DEFERRED | NOT-REFUTED (R04) | STILL-PRESENT — `mspdi.py:135` unchanged; the upload's decode line moved to `web/app.py:8252` (was :8166); U+FFFD × 5 in the task name, no import note, 'loaded 1 schedule(s); 0 rejected' | An MSPDI declared and encoded as windows-1252 (or ISO-8859-1) is decoded as UTF-8 with `errors="replace"` (`importers/mspdi.py:135`, `web/app.py:8166`), so task names load with U+FFFD and no import note while the upload reports '1 loaded, 0 rejected'. | U11 |
 | **MET-002** | MET | T2 | — | CONFIRMED-DEFERRED | NOT-REFUTED (R04) | STILL-PRESENT — `web/analysis.py` and `static/app.js` untouched; −33 / −31.81, −33 / −31.81, −34 / −32.73 under the one label 'Total float (d)'; 189 of 998 unchanged; `scatter.js` plots the recomputed value, so the panel's own chart and table also disagree | One `/analysis` render of Large_Test_File2 shows UIDs 6444/6445/5855 at −33/−33/−34 working days in 'Top pressure points' (the stored Total Slack, which Acumen reproduces) and −31.81/−31.81/−32.73 in the activity grid the panel calls its data table (recomputed CPM), neither labelled with its basis; 189 of 998 incomplete activities differ at whole-day resolution. | U09 |
 | **DOC-011** | DOC | T2 | — | CONFIRMED-DEFERRED | NOT-REFUTED (R07) | STILL-PRESENT — `docs/ACUMEN-PARITY-MODE.md` byte-identical; `dcma14.py`'s diff touches the DCMA-12 target filter only (ADR-0527); parity mode reports DCMA09 count 322 over 170 activities | `docs/ACUMEN-PARITY-MODE.md:61-62` says check 9 reports 'one row per activity … not the ribbon's field tally'; parity mode reports the field tally (322 fields over 170 activities on Large_Test_File2, ADR-0520). | U12 |
+| **CPM-004** | CPM | T2 | — | CONFIRMED-DEFERRED | — (session 5: verifier P2 + the lead's re-run) | n/a — found at `19173728` (session 5); XFAIL there on Python 3.11.15 and 3.13.12 | For UNSTARTED multi-leg tasks the late finish snapped on the primary leg (ADR-0474 decision 3, `cpm.py:3078`) disagrees with MS Project's stored LateFinish: Hard_File / Hard_File_updated UID 398, Hard_File_updated3 UIDs 188 and 385; only `late_finish_wall` moves (no reader in `src/` outside `cpm.py`). | U30 |
+| **IMP-007** | IMP | T2 | latent | CONFIRMED-DEFERRED | — (session 5: verifier P3 + the lead's re-run) | n/a — found at `19173728` (session 5); XFAIL there on Python 3.11.15 and 3.13.12 | ALAP→ASAP is a documented decision (ADR-0026 D2, pinned by `test_mspdi.py::test_alap_constraint_is_normalized_to_asap`), but its stated premise — `mspdi.py:19-25` 'logged by count — never silently changing a parity-relevant value' — is false: no log record, no import note, and the ALAP task's dates and float change; the engine's documented CPMError refusal (`cpm.py:143-146`) is unreachable from MSPDI / .mpp / XER. | U31 |
 | **CUI-001** | CUI | T3 | LAW-1 | CONFIRMED-DEFERRED | NOT-REFUTED (R02) | STILL-PRESENT — `net_guard.py`, `ai/ollama.py`, `ai/openai_compat.py` and `README.md` unchanged; in the namespace `is_local_http_endpoint('http://ip6-localhost:11434')` is True, `getaddrinfo` answers 192.0.2.10 and both backends DELIVER the Ask prompt there with 0 transaction-log records | An endpoint given by host name ('http://ip6-localhost:11434', or the userinfo form 'http://example.org@127.0.0.1:11434') passes the loopback validator (`net_guard.py:127`, `:246`), and the transport connects wherever the OS resolver points: reproduced delivering a CUI Ask prompt to a non-loopback address under the 'Local-only' banner with no transaction-log record. | U01 |
 | **CUI-002** | CUI | T3 | LAW-1 (transport only) | CONFIRMED-DEFERRED | NOT-REFUTED (R02) | STILL-PRESENT — `ai/ollama_process.py` and `launcher.py` unchanged; a 302 moves `/api/ps` to 192.0.2.10, the unload POST is followed as a body-less GET and counted `unloaded=1`, the shutdown declares itself clean after the redirected drain | `ai/ollama_process.py:200` builds the cleanup opener without `_NoRedirect`, so a 3xx from the loopback Ollama moves the cleanup GETs to the redirect target and an off-box follow counts as a successful unload; siblings: the launcher's identity-probe opener (`launcher.py:100`) and the startup reconcile's marker endpoint. | U02 |
 | **CUI-003** | CUI | T3 | — | CONFIRMED-DEFERRED | NOT-REFUTED (R02) | STILL-PRESENT — the six documents byte-identical; the option label now at `web/settings.py:769` (was :768); an armed CLASSIFIED session's Ask, narrative and translate prompts TLS-delivered off the box with the task name, UID and ISO date in the body | With the approved gateway armed (ADR-0402), a CLASSIFIED session's Ask prompt (task names, UIDs, ISO dates) leaves the machine, yet 12 statements in six documents say no schedule content ever leaves or that CLASSIFIED reaches only a loopback server, and `/settings` labels the option 'CLASSIFIED (CUI — local only)' (`web/settings.py:768`). | U13 |
@@ -421,8 +601,11 @@ f1b691f3' column is the refuter's A7 evidence in one line. Session 3 re-ran ever
 
 **Reproducers and exposure windows.** The exposure window is the first bad commit on `main`, found in session 1 by
 bisecting a pass/fail script built from the reproducer (charter §6.6); it is given for every T1, T2 and LAW-1
-finding. The reproducers were re-run at `f1b691f3` under Python 3.11.15 and 3.13.13 (§4): 45 XFAIL, DOC-014 PASS; session 3
-re-ran them at `6bc3138b` under Python 3.11.15 with the same result.
+finding. The reproducers were re-run at `f1b691f3` under Python 3.11.15 and 3.13.13 (§4): 45 XFAIL, DOC-014 PASS;
+session 3 re-ran them at `6bc3138b` under Python 3.11.15 with the same result. Session 5's ten were bisected in
+session 5 (a separate worktree per assembler; where no good commit exists the row says so and gives the first
+decidable commit and the mechanism's first commit instead); at `19173728` the eight modules read 1 passed · 55
+xfailed (§4).
 
 | id | reproducer (`path::test`) | `raises=` | first bad commit on `main` |
 | --- | --- | --- | --- |
@@ -432,12 +615,22 @@ re-ran them at `6bc3138b` under Python 3.11.15 with the same result.
 | IMP-002 | `tests/audit/test_audit_20260923_imp.py::test_a0923_imp_002_a_single_block_day_is_measured_where_the_file_puts_it` | `AssertionError` | 6708cbff (#671, 2026-09-12, v1.0.257) |
 | IMP-003 | `tests/audit/test_audit_20260923_imp.py::test_a0923_imp_003_an_xer_activity_runs_on_its_own_p6_calendar` | `AssertionError` | c18dcd24 (#55, 2026-06-09, v0.0.0) |
 | MET-001 | `tests/audit/test_audit_20260923_met.py::test_a0923_met_001_margin_trend_and_plan_never_span_two_measurement_bases` | `AssertionError` | 526831dc (#356, 2026-07-13, v1.0.33); carry-forward 869a8d0d (#357, v1.0.34) |
+| CPM-001 | `tests/audit/test_audit_20260923_cpm.py::test_a0923_cpm_001_the_displayed_cpm_finish_is_the_engines_true_finish` | `AssertionError` | afb8e729 (#497, ADR-0322, 2026-07-31, v1.0.140) — the commit that added the wall and left every view on the axis (probe exit 125 before it); first visible on the committed corpus at cacd769d (#578, ADR-0391, 2026-08-12, v1.0.198), `git bisect run` over afb8e729..5f34c2a8 in a separate worktree |
+| CPM-002 | `tests/audit/test_audit_20260923_cpm.py::test_a0923_cpm_002_a_split_recorded_on_the_unassigned_placeholder_delays_the_task` | `AssertionError` | no good commit (not bisectable): BAD at every decidable code state from afb8e729 (2026-07-31, v1.0.140) to the base; the placeholder-specific exclusion — work-booking splits honoured, the placeholder's dropped — from 163d1942 (ADR-0491, 2026-09-14, v1.0.259); before it no split was honoured at all |
+| CPM-003 | `tests/audit/test_audit_20260923_cpm.py::test_a0923_cpm_003_an_ff_predecessor_of_a_leveled_task_owns_none_of_its_delay` | `AssertionError` | no good commit (not bisectable): the mechanism from 5f34c2a8 (ADR-0474, 2026-09-07, v1.0.245), when leveling delay entered the base CPM; the golden witness decidable from e0daccc4 (2026-09-22, v1.0.287) and BAD there; ADR-0522 (d942832d, v1.0.286) re-affirmed the free-float half |
+| CPM-005 | `tests/audit/test_audit_20260923_cpm.py::test_a0923_cpm_005_a_redundant_lag0_start_link_from_a_milestone_moves_nothing` | `AssertionError` | afb8e729 (2026-07-31, v1.0.140) — mechanism, synthetic task-calendar witness, `git bisect run`; the committed golden's shape from 5f34c2a8 (2026-09-07, v1.0.245); the stored-oracle reproducer runnable from 778da99c (2026-09-17, v1.0.271) and BAD there and at every later commit |
+| CPM-006 | `tests/audit/test_audit_20260923_cpm.py::test_a0923_cpm_006_a_worked_exception_day_is_worked_by_every_task_on_its_calendar` | `AssertionError` | no good commit (not bisectable): the fast path ignores a worked exception at every sampled runnable commit since 40ac6976 (2026-06-17, v1.0.0); the delay-moves-a-finish-earlier reading expressible from 5f34c2a8 (2026-09-07, v1.0.245) and BAD on all 72 commits through the base |
+| CPM-007 | `tests/audit/test_audit_20260923_cpm.py::test_a0923_cpm_007_a_mid_block_project_start_keeps_a_lossless_working_minute_axis` | `AssertionError` | the reproducer as written: e0daccc4 (ADR-0523, 2026-09-22, v1.0.287; no good commit — the probe exits 125 before it); mechanism halves by `git bisect run`: the lossy round trip e0daccc4, the FS inversion afb8e729 (ADR-0322, 2026-07-31, v1.0.140) |
+| CPM-008 | `tests/audit/test_audit_20260923_cpm.py::test_a0923_cpm_008_summary_logic_follows_the_outline_children_not_the_wbs_code` | `AssertionError` | no good commit (not bisectable): 12acd0ec (2026-06-16, v1.0.0), the first commit where the reproducer can be judged, BAD there and at every sampled commit; the outline-keyed fix possible since 1d1150e2 (ADR-0234, 2026-07-16, v1.0.46) |
+| IMP-006 | `tests/audit/test_audit_20260923_imp.py::test_a0923_imp_006_an_elapsed_link_lag_counts_non_working_time` | `AssertionError` | c18dcd24 (#55, 2026-06-09, v0.0.0) — the commit that added the MSPDI importer and the CPM engine; no good commit exists, every shipped version |
 | AI-004 | `tests/audit/test_audit_20260923_ai.py::test_a0923_ai_004_a_days_figure_re_used_as_a_percentage_is_caught` | `AssertionError` | 17fa7d05 (#282, 2026-07-03, v1.0.0) |
 | AI-005 | `tests/audit/test_audit_20260923_ai.py::test_a0923_ai_005_polish_and_translation_never_add_an_accusation` | `AssertionError` | 85e75a6a (#273, 2026-06-26, v1.0.0); hyphenated half regressed at e71d56b5 (#378, v1.0.51) |
 | IMP-001 | `tests/audit/test_audit_20260923_imp.py::test_a0923_imp_001_a_mixed_r_risk_register_imports_whole` | `AssertionError` | b4658b17 (#338, 2026-07-11, v1.0.17) |
 | IMP-004 | `tests/audit/test_audit_20260923_imp.py::test_a0923_imp_004_a_windows_1252_mspdi_keeps_its_names_or_is_refused` | `AssertionError` | c18dcd24 (#55); upload path from 64a869ab (#68) |
 | MET-002 | `tests/audit/test_audit_20260923_met.py::test_a0923_met_002_one_activity_shows_one_total_float_or_both_are_labelled` | `AssertionError` | 1937a279 (#287, 2026-07-07, v1.0.3) |
 | DOC-011 | `tests/audit/test_audit_20260923_doc.py::test_a0923_doc_011_parity_mode_check9_count_is_what_the_doc_says` | `AssertionError` | accd2df1 (#709, 2026-09-21, v1.0.284) |
+| CPM-004 | `tests/audit/test_audit_20260923_cpm.py::test_a0923_cpm_004_an_unstarted_multi_leg_late_finish_is_ms_projects_stored_instant` | `AssertionError` | not bisectable to one transition for the whole reproducer (full scan 5f34c2a8^..19173728, 73 commits): the primary-leg snap line from 5f34c2a8 (2026-09-07, v1.0.245); UID 398 exact from 5f34c2a8 through 66d98c33 and first BAD at 163d1942 (2026-09-14, v1.0.259); UIDs 188 and 385 never exact at any scanned commit |
+| IMP-007 | `tests/audit/test_audit_20260923_imp.py::test_a0923_imp_007_an_alap_constraint_is_honored_or_its_collapse_is_disclosed` | `AssertionError` | 292e9202 (#64, 2026-06-11, v1.0.0), `git bisect run` — the same commit wrote both the collapse and the 'logged by count' promise; before it ALAP reached the engine and raised CPMError by name |
 | CUI-001 | `tests/audit/test_audit_20260923_cui.py::test_a0923_cui_001_an_accepted_local_endpoint_only_ever_connects_to_loopback` | `AssertionError` | db285ae2 (#92, 2026-06-13, v1.0.0); mechanism latent since c18dcd24 (#55) |
 | CUI-002 | `tests/audit/test_audit_20260923_cui.py::test_a0923_cui_002_the_cleanup_transport_never_follows_a_redirect_off_the_box` | `AssertionError` | 6b61ad30 (#235, 2026-06-24, v1.0.0) |
 | CUI-003 | `tests/audit/test_audit_20260923_cui.py::test_a0923_cui_003_no_document_or_label_denies_the_armed_gateway_egress` | `AssertionError` | — (T3 / T4 / T5) |
@@ -496,6 +689,16 @@ not by version.
 | local red: `tests/web/test_driving_path_whole_schedule_browser.py::test_whole_schedule_default_any_loaded_schedule_and_path_column_parity` | TST | **DUPLICATE-OF R-32** (CI-04) — **R-32 CLOSED UPSTREAM (ADR-0530, #717), verified locally in session 2** | at `8c71c639` the /path and /driving-path first header rows differed in timescale ticks, 3 of 3 alone (vendored chromium-1194, playwright 1.56.0, viewport 1360×900) while green in CI; ADR-0530 measured the race as a frame chain and made the oracle read both pages settled; at `f1b691f3` the module reads **2 passed, twice** (session-2 lead, under the JVM lock) | nothing — the row is closed; ASK-09 no longer waits on it |
 | A0923-UI-001 — /settings, /compare, /trend and /mission scroll horizontally at 1440 px in Chromium | UI | **CANDIDATE** (was UNVERIFIED, one party; now observed by two) | session-1 verifier P09: hidden boxes under selectors ADR-0477's rule does not cover (`#mh-critical.mtip`, `table.sr-only`) and a 1598 px select on /settings; refuter R08 (DOC-016's A7, at `f1b691f3`): `/settings` 1877 px in the console, apollo and jarvis themes, 1641 daylight, from the `qa_mode` select's 264-character option, while eight other pages read 1440; none of the pages is in the repository's overflow test | WP-UI turns it into a committed Chromium-gated reproducer in the browser census before it is counted (ASK-11) |
 
+**Session 5's ARTIFACT-GATED records** (the mechanism reproduced by a fresh-context verifier and re-run by the lead;
+MS Project's own behaviour cannot be observed in this environment; NOT counted among the retained classes; no
+committed reproducer):
+
+| row (finder label) | lane | verdict | what was measured | carried forward |
+| --- | --- | --- | --- | --- |
+| **A0923-CPM-009** (F-EDGE-L-002) — with HonorConstraints=1 an SNLT / FNLT that logic violates keeps its logic dates while MSO / MFO are held | CPM | **ARTIFACT-GATED** (verifier P3: mechanism REPRODUCED) | on a hand-built chain (Standard calendar, start Mon 2026-06-01; Z 5d → A 5d → B 2d → C 1d, B carrying SNLT 2026-06-10 08:00 or FNLT 2026-06-11 17:00) the engine keeps B at its logic dates 06-15 08:00..06-16 17:00 (TF −1440), C finishing 06-17 17:00, project finish offset 6240, while MSO / MFO siblings are held (finish 4800); HonorConstraints=0 and =1 give byte-identical output — the flag is never read. Microsoft's "constraints take precedence over dependencies" wording supports the claim; Microsoft's own KB formulas (SNLT "LS=CD (if Date<LS)", FNLT "LF=CD (if Date<LF)") match the engine, so no independent oracle pins the value; 0 conflicted SNLT / FNLT in any committed MS Project save | **ASK-12** — one MS Project run on the four-task file; default: the engine's behaviour is kept and the record stays ARTIFACT-GATED |
+| **A0923-IMP-008** (F-EDGE-L-003) — the percent-lag unit | IMP | **ARTIFACT-GATED** (verifier P5: mechanism REPRODUCED) | the vendored MPXJ 16.2.0 writer writes a 25 % lag as `<LinkLag>25</LinkLag><LagFormat>19</LagFormat>` (MPXJ reads it back as 25.0 %); the importer reads a LagFormat 19 / 20 LinkLag as TENTHS of a percent, so a 25 % lag on a 2,400-minute predecessor becomes 60 minutes for 600 (successor start Mon 2026-06-08 09:00 against the hand-computed Tue 2026-06-09 10:00). Whether a real MS Project percent lag reaches MPXJ as whole percent, and what MS Project writes in its own XML (25 or 250), is not established; 0 percent lags in the 21,609 links of the 29 tracked `.mpp` (verifier's census) | **ASK-13** — one operator `.mpp` with a percent lag plus MS Project's own XML export of it; default: no unit is built, the record stays ARTIFACT-GATED |
+| **A0923-IMP-009** (F-EDGE-C-004) — `LevelingDelayFormat` is never read | IMP | **ARTIFACT-GATED** (verifier P5: mechanism REPRODUCED) | a task delay stored in working-day format 7 (9600 tenths = 2 working days) is applied as 960 CLOCK minutes: start Tue 2026-03-03 08:00 for the working reading's Wed 2026-03-04 08:00 (a 1-day task on the Standard calendar starting Mon 2026-03-02). Corpus: every task delay is format 8 and the 75 booking delays are all format 7 (the verifier's two populations: 24 committed + 51 in the `.mpp` conversions); the finder's "389 task delays" is **UNVERIFIED** as a number — the verifier counts 276 over the 29 `.mpp` conversions and 173 over the committed MS-Project-derived XML, and reproduces only the class statement | **ASK-14** — an MS Project save with a "2d" task Leveling Delay, exported as XML; default: no unit is built, the record stays ARTIFACT-GATED |
+
 **Narrowed sub-claims (refuted parts of retained findings, both sessions):** a UTF-16 MSPDI is refused loudly, not
 silently (part of IMP-004's first claim); an all-`r`-less workbook is refused loudly and the register kept (part of
 IMP-001's); a sign-free word flip ('… EARLIER') passes the gates by documented design and is not counted (part of
@@ -519,6 +722,11 @@ IMP-002's population statement, session 2 — one synthetic fixture has the shap
 13. `docs/STATE/NEXT-SESSION-PROMPT.md`'s "§3 in order" queue omits OPEN R-48 (T1) and R-51 (T2) without saying why — UNVERIFIED whether deliberate; R-76's closure text (ADR-0518) records the `.aft`'s IncludeComplete for the High Duration tile as FALSE, which R-48's premise contradicts (at `f1b691f3` the kickoff names R-68 and 'the register's remaining OPEN rows by tier', still without naming R-48 or R-51). **Resolved upstream at `6bc3138b` (#718; recorded in session 3):** R-48 is CLOSED with its premise REFUTED (ADR-0532: both library entries carry `IncludeComplete=false`, as R-76's closure text had recorded) and R-51 is CLOSED (ADR-0533); nothing is left to probe.
 14. **(session 2, refuter lead)** the served `/ribbon` still prints "Float Ratio™ is omitted pending its exact definition" (`web/ribbon.py:313`) while Float Ratio™ is computed since ADR-0103 / ADR-0519 — a T4-shaped stale rendered statement, UNVERIFIED (one party).
 15. **(session 2, refuter lead)** `docs/ACUMEN-PARITY-MODE.md:23` "182 → 173" — refuter R07 reads it as stale, the session-1 finder withdrew it as holding for activity rows: conflicting readings, UNVERIFIED.
+16. **(session 5, WP-CPM — lead L-CPM-a)** the Large_Test_File family's CPM project finish renders 2028-09-28 (17:00) where MS Project stores and prints 2028-09-29 08:00 — the same working minute, carried by the SNET milestone UID 6077 that MS Project spells at start of day; ADR-0348's finish-role end-of-day rule is the documented decision, and the stored value contradicts its premise for constraint-dated milestones (also LTF 7550 / 7132, Hard_File 147, Jacked 2 UID 30). One party each (the lead and two finders' notes); not verified as a finding this session — UNVERIFIED, to the next CPM session.
+17. **(session 5, F-RES; WP-CPM)** R-77's residual head 5307 on Large_Test_File2 (a FIXED_WORK task whose booking on resource 76 carries its own LevelingDelay of 16082 tenths, absorbed under ADR-0502's "ratio 1.0 absorbs" rule; about 530 working minutes early) — the residual's mechanism may be ADR-0502's rule, not a calendar seam. UNTESTED — UNVERIFIED.
+18. **(session 5, F-RES; WP-IMP)** the second day of the −960-minute slack-only class may be a recurring "Thanksgiving" exception the importer skips (Occurrences 8) — needs a JVM probe. UNTESTED — UNVERIFIED.
+19. **(session 5, F-META R3; WP-CPM)** redundant FS0 / FF0 links changed no CPM output (26,301 per type) but moved driving slack on Hard_File_updated and the logic-reestablished conversion — ADR-0118's documented per-successor-calendar free float cannot satisfy the triangle inequality across calendars. ARTIFACT-GATED (an SSI export of such a file would settle it) — UNVERIFIED.
+20. **(session 5; WP-CPM)** CPM-005's backward-pass mirror was not probed — UNVERIFIED.
 
 ## 4. Census — the figures this report states about the tree, re-derived at write time
 
@@ -580,6 +788,26 @@ fixture, importer or AI module (the MSPDI, XER, calendar and code-point populati
 | every unit's mechanism line | all present, at the same line numbers as at `f1b691f3` | only `docs/PARITY-REPORT.md` below its line 416 moved (+10) |
 | the charter's fast guard set with this whole package applied on `6bc3138b` | **449 passed · 2 skipped · 45 xfailed** (about 100 s under Python 3.11.15; `tests/audit` alone: 22 passed — DOC-014's pin and the 21 pre-existing `test_audit_findings.py` tests — and 45 xfailed); `ruff check .` clean; `ruff format --check .` 1,350 files already formatted; the pre-commit guard accepted the commit and refused a probe `.mpp` in the same clone; the allowlist gate printed `allowlist clean` | a validation clone: `README-APPLY.md`'s script verbatim, then the charter §3 checks |
 
+**Re-derived in session 5 (2026-09-26, 03:19–03:20 UTC) in the checkout itself**, on the campaign branch
+`claude/busy-noether-5oizoe` at `da213bc3` (session 5's first checkpoint commit, one commit on top of `origin/main` =
+`19173728`), with the session's documentation edits uncommitted in the working tree (`git status --short`, at the
+run, listed only files under `docs/STATE/`), Python 3.11.15 with the package installed editable. A figure not listed
+here was not re-measured in session 5.
+
+| figure | value in session 5 | command |
+| --- | --- | --- |
+| `origin/main` / the branch head | `19173728c28cc45fc2eddf609d25661dc4fa168c` / `da213bc3c379cfc5c649d1a5926ff8a2116160d1` | `git rev-parse origin/main HEAD` |
+| commits on `main` / on the branch | 819 / 820 | `git rev-list --count origin/main` · `git rev-list --count HEAD` |
+| version | 1.0.294 | `grep -n '^version' pyproject.toml` |
+| highest ADR on disk / ADR files | 0536 (session 5's own; 0535 at the base) / 537 (0000–0536) | `ls docs/adr \| sort \| tail -1` · `ls docs/adr/[0-9][0-9][0-9][0-9]-*.md \| wc -l` |
+| tracked files · under `00_REFERENCE_INTAKE/` · `.mpp` / `.xlsx` | 2,260 · 698 · 29 / 91 | `git ls-files \| wc -l` · `git ls-files 00_REFERENCE_INTAKE \| wc -l` · `git ls-files '*.mpp' \| wc -l` · `git ls-files '*.xlsx' \| wc -l` |
+| reproducer tests, per module | **56 in 8 modules** — ai 5 · **cpm 8** (new) · cui 4 · doc 16 · **imp 7** (was 5) · met 2 · tst 12 · web 2 | `grep -c "^def test_a0923" tests/audit/test_audit_20260923_*.py` |
+| of which marked `xfail(strict=True)` | 55 (doc 15: DOC-014's pin carries no marker); by `raises=`: `AssertionError` 53, `ValueError` 2 | `grep -c 'pytest.mark.xfail' tests/audit/test_audit_20260923_*.py`; the `raises=` split read from each test's decorator with `ast` |
+| reproducers, Python 3.11.15 | **1 passed · 55 xfailed** in 59.65 s (no XPASS, no failure) | `python3 -m pytest tests/audit/test_audit_20260923_*.py -q -p no:cacheprovider` |
+| the same at the base, before anything (the lead's) | 1 passed · 45 xfailed (Python 3.11.15, 2026-09-25) | the same command at `19173728`, before session 5's modules existed |
+| the cpm + imp modules on Python 3.11.15 and 3.13.12 (the lead's teeth run (i)) | "15 xfailed" on both | the lead's record; the full eight-module run on 3.13.12 was not re-run for this report — UNVERIFIED here |
+| the stored-value corpus | **44 files: 15 committed goldens (11 gzipped) + 29 tracked intake `.mpp`** — re-derived at write time; **22,105 scheduled activities by two methods** (engine timings, and a raw-XML ElementTree filter Summary≠1, IsNull≠1, Active≠0, UID≠0) — the lead's count, session 5, 2026-09-25, not re-derived for this report; 24 distinct saves; 29 of 29 conversions exit 0 | `find tests/fixtures -name "*.mspdi.xml*" \| wc -l` (15) · `find tests/fixtures -name "*.mspdi.xml.gz" \| wc -l` (11) · `git ls-files '00_REFERENCE_INTAKE/*.mpp' \| wc -l` (29); conversion `java -cp "tools/mpxj/classes:tools/mpxj/lib/*" MpxjToMspdi <in> <out>` under a JVM flock, one output per input path |
+
 **The gate at session 1's base, as the lead measured it in WP0** (not re-run for this report): `ruff check .` clean ·
 `ruff format --check .` 1,320 files clean · `mypy src/` strict clean (165 files) · `bandit -q -r src` exit 0 ·
 `node --check` per file 64 of 64 · full suite **5,942 passed · 1 failed · 5 skipped · 0 xfailed** in 71:59 (the
@@ -595,7 +823,8 @@ the full suite 6,005 passed · 5 skipped · 0 failed and parity 271 / 271 (again
 
 ## 5. Operator questions — do not build on an assumed answer
 
-Eleven asks live in `docs/STATE/AUDIT-2026-09-23-OPERATOR-ASKS.md` — ten live, one withdrawn — each with exact steps,
+Eleven asks live in `docs/STATE/AUDIT-2026-09-23-OPERATOR-ASKS.md` — ten live, one withdrawn (session 5: fourteen —
+thirteen live, one withdrawn; no answer was found in session 5, so every default stands) — each with exact steps,
 the artifact expected and the default taken if it is never answered; answer by editing that file or by pasting
 answers into the next session's chat.
 
@@ -612,19 +841,22 @@ answers into the next session's chat.
 | ASK-09 | promote `browser` into `check`'s needs (56 modules / 502 tests at `f1b691f3` and at `6bc3138b`) | no change (R-32, the stated blocker, is now closed upstream; the ask stands on its own) |
 | ASK-10 | the installed version on the Windows machine, and PowerPoint opening the two exported decks (R-52's residual) | both stay UNVERIFIED |
 | ASK-11 | **new (session 2)** — promote A0923-UI-001 (observed by two parties) into the browser census as a committed Chromium-gated reproducer | yes, in the next audit session (WP-UI) |
+| ASK-12 | **new (session 5)** — build a four-task chain in MS Project with "honor constraint dates" ON and a Start / Finish No Later Than date that logic violates; report B's and C's dates (A0923-CPM-009) | keep the engine's behaviour; CPM-009 stays ARTIFACT-GATED, uncounted; no unit |
+| ASK-13 | **new (session 5)** — a synthetic project with a `FS+25%` lag, saved as `.mpp` and as XML; report the successor's Start and the XML's `LinkLag` / `LagFormat` (A0923-IMP-008) | keep the importer's reading; IMP-008 stays ARTIFACT-GATED, uncounted; no unit |
+| ASK-14 | **new (session 5)** — a synthetic project with a `2d` task Leveling Delay, saved as XML; report the Start and the XML's `LevelingDelay` / `LevelingDelayFormat` (A0923-IMP-009) | keep the engine's behaviour; IMP-009 stays ARTIFACT-GATED, uncounted; no unit |
 
 ## 6. What this report does not claim
 
 - **It is not a fix, and it is not committed.** All three sessions were READ-ONLY; no file in the repository changed, no CI run has seen these files, and the fast guard set in §4 was run in scratch clones only. Nothing here changes a figure the tool produces.
-- **Lanes not audited in either session:** SEC, EXP, FOR, PKG and PERF were not probed; the UI time-zone census was not run; the CPM differential census against stored values was not run; the CUI hook-bypass battery, the air-gap detector probes and the canary run were not run; IMP round trip and malformed-input fuzzing were not run; the MET four-way agreement table was not built; WEB cache invalidation and concurrency were not probed. Session 2 attacked the 47 session-1 findings; it did not look for new ones (its two leads are by-products). A lane with no retained finding is a statement about the probes that ran, never about the tree.
-- **The 44-file stored-value corpus (22,105 activities at ADR-0523) was not rebuilt by this campaign** (JVM lock contention and budget); ADR-0531's own session rebuilt it upstream and reproduced 22,105. No finding here rests on it; rebuilding it is the first step of WP-CPM.
+- **Lanes not audited in either session:** SEC, EXP, FOR, PKG and PERF were not probed; the UI time-zone census was not run; the CPM differential census against stored values was not run (session 5: run over the 44-file corpus — "Session 5" above); the CUI hook-bypass battery, the air-gap detector probes and the canary run were not run; IMP round trip and malformed-input fuzzing were not run; the MET four-way agreement table was not built; WEB cache invalidation and concurrency were not probed. Session 2 attacked the 47 session-1 findings; it did not look for new ones (its two leads are by-products). A lane with no retained finding is a statement about the probes that ran, never about the tree.
+- **The 44-file stored-value corpus (22,105 activities at ADR-0523) was not rebuilt by this campaign** (JVM lock contention and budget); ADR-0531's own session rebuilt it upstream and reproduced 22,105. No finding here rests on it; rebuilding it is the first step of WP-CPM. (Session 5: rebuilt from scratch — 15 goldens + 29 intake `.mpp`, 22,105 activities by two methods — and the in-corpus classes CPM-001 to CPM-004 were found on it (their reproducers read the committed goldens); WP-CPM is not closed — see "Session 5" above and §7.)
 - **Inherited rows were tabulated, not re-proven.** Scout A's 300 inherited rows read 59 still open by evidence, 62 unknown and 179 closed; the 24 rows of the 2026-08-27 register still open at `6bc3138b` are carried unchanged into the plan's merged queue and the eight closed upstream since session 1 are listed there by ADR (R-32's closure verified locally; the other seven read from the register, not re-proven). Their re-proof is WP-INH.
 - **The falsification pass tested the 47 findings against eight attacks; it does not prove the tree has no other defect,** and a refuter that found nothing to refute is a statement about those attacks — which is why the three narrowings and the one fix found upstream are recorded as the pass's product.
 - **Model substitution.** ADR-0240 names "Fable 5 Ultracode" and "Fable 5 Max"; session 1 ran the lead and every sub-agent on model A, session 2 on model B after the operator's `/model` switch — both verified from the harness's transcript records. Session 3 (the re-base; no finding was re-attacked) ran on model A, the model the operator selected for it. The haiku `worker` agent and the `qc-checker` agent were not used, and no verification was downgraded.
 - **Observations only the operator can make stay UNVERIFIED:** CUI-001's reachability on Windows (ASK-01; the refuter established only that the Windows default hosts file is comments-only), PowerPoint and the installed version (ASK-10).
 - **Exposure windows are first bad commits on `main`,** not a list of affected deliverables; mapping them to past work products is the operator's (§3.1's note on the version string). They were bisected in session 1 and not re-bisected.
 - **No legal standard is asserted.** Authorities are the repository's own contract, public specifications and the reference tools' exports; this is not legal advice.
-- **The token-budget ceiling was assumed, not measured** in both sessions (the guardian's readings stayed at or below about 55 % of an assumed 800,000-token wall).
+- **The token-budget ceiling was assumed, not measured** in both sessions (the guardian's readings stayed at or below about 55 % of an assumed 800,000-token wall; session 5: at or below about 60 % of the same assumed wall).
 - **The census corrections in §4 (43 MSPDI documents, not 42; 2 segment-less calendars under 24 h, not 1) correct this report's own figures;** session 1's ledger and coverage census still carry the old figures and are not rewritten here — the correction is recorded in the report, the plan (U07, U11) and the ADR.
 
 ## 7. Yield per lane
@@ -632,14 +864,17 @@ answers into the next session's chat.
 Population = what the lane's probes covered; classes = retained classes after the falsification pass (session 1's
 count in brackets where it differs); instances = the measured instance census of those classes (one finding per
 class, never one per instance); session 2 = the refuter verdicts for the lane.
+Session 5 adds its own CPM row below the session-1 one and extends the IMP row; in both, the 'session 2' column
+carries session 5's verification instead (a fresh-context verifier plus the lead's re-run).
 
 | lane | population | method | classes | session 2 | instances | not done, and why |
 | --- | --- | --- | ---: | --- | --- | --- |
 | INH | 300 inherited rows of the prior ledgers and the 2026-08-27 register (Scout A); 158 unique carried-forward items from HANDOFF, HANDOFF-ARCHIVE, NEXT-SESSION-PROMPT and 55 ADRs (Scout C); 14 leads SA-L01..L14; the charter's author-observed leads (a)–(e) | tabulation by grep and reading; each lead routed to its home lane | 0 of its own (its leads fed MET-001 via SA-L01, IMP-002 via SA-L02, IMP-004 via SA-L07, the AI gate probes via SA-L05, and DOC-001, TST-002, CUI-003, TST-013 and TST-012 via the charter's leads (a)–(e)) | — (six of the 32 open register rows closed upstream between the session-1 and session-2 bases; two more, R-48 and R-51, before session 3) | 59 still open by evidence, 62 unknown, 179 closed | per-row re-proof of the 59 + 62, of the 13 unprobed leads and of the two refuter leads — budget (WP-INH) |
 | CPM | the CPM and MET finder's engine hypotheses F2-H1 (EVM2 UID 25), F2-H3 (LevelingDelay rounding) and F2-H4 (the driving-slack floor), and the record claim F2-H1b | inline and golden-file probes with in-memory patch controls | 0 (the record defect TST-011 sits in TST) | — | — | the 44-file corpus rebuild, the differential census against stored values, the metamorphic relations and the edge matrix — JVM lock contention and budget (WP-CPM) |
+| CPM (session 5, WP-CPM) | the 44-file stored-value corpus rebuilt from scratch (15 committed goldens + 29 tracked intake `.mpp`; 22,105 scheduled activities by two methods; 24 distinct saves), field by field — Start, Finish, LateStart, LateFinish, TotalSlack, FreeSlack, Critical — and the project finish; the served pages and APIs that print the CPM finish; an AST census of the `offset_to_datetime` / `offset_to_start_datetime` / `span_start_datetime` call sites outside `cpm.py`; five metamorphic relations over the corpus (R1 and R4 132 runs each; R3 26,301 redundant links per type); the links / lags / constraints and the calendars / progress / special-task edge matrices | MS Project's stored values read from the raw MSPDI with ElementTree against `compute_cpm(parse_mspdi_text(...))`; every non-exact class mapped to its register row or ADR before it could be a candidate (F-RES; plan assumption P7 fell); metamorphic relations justified from an authority (F-META); hand-built inputs with hand arithmetic, MPXJ, the file's stored values, Microsoft's schema and Acumen Fuse / SSI exports as oracles (F-EDGE-L, F-EDGE-C); TestClient and real Chromium renders under TZ UTC and America/New_York on Python 3.11 and 3.13 | 8 (CPM-001 … CPM-008) | — (session 5: 8 CONFIRMED-DEFERRED, each by a fresh-context verifier — two for CPM-001 — and the lead's re-run; CPM-009 ARTIFACT-GATED; 0 REFUTED) | CPM-001: 6 of 44 corpus files (2 source schedules), 22 finish call sites plus 10 per-task sites, and 455 activities whose early-finish wall differs from the axis rendering (on 395 the wall is MS Project's stored Finish and the rendering is not); CPM-002: 10 of 44 corpus files, witnessing UIDs 7262, 7265 and 5376 on the Large_Test_File saves and 5376 on the LTF2 / SRA saves; CPM-003: UID 5314 in 9 files; CPM-004: 4 witnesses (UID 398 on Hard_File and Hard_File_updated, UIDs 188 and 385 on Hard_File_updated3); CPM-005, CPM-006 and CPM-007: 0 committed instances (latent); CPM-008: 0 of 5,139 committed summaries carry logic (latent) | `driving_path.py`, `path_trace.py`, `float_analysis.py`, `path_counterfactual.py`, `drag.py` and `month_axis.py` beyond what the census and the time-zone sweep touched; CPM-005's backward-pass mirror; a second round of probe families — the charter's saturation rule (two consecutive families with no new CANDIDATE) is NOT met, since every family produced candidates; lead L-CPM-a (§3.3, lead 16) — budget; WP-CPM continues in the next CPM session |
 | MET | the margin dashboard (engine, `/margin`, exports; F2-H5, F2-H5b) and the two float surfaces of `/analysis` (F2-H2, F2-H2b) | engine and rendered-page probes; hand-computed same-basis oracle; Acumen's per-activity float | 2 | 2 NOT-REFUTED (R04) | MET-001: 2 mechanisms (erosion fit, carry-forward), their render inheritors and the false `/margin` lede; MET-002: 3 of 5 pressure rows on Large_Test_File2, 189 of 998 incomplete activities differing at whole-day resolution, plus `scatter.js` | the four-way agreement table, SRA determinism, populations and N/A-versus-0 census — budget (WP-MET) |
 | FOR | — | — | 0 | — | — | not probed — budget (WP-FOR) |
-| IMP | 5 finder hypotheses over the MSPDI, XER and xlsx readers; 43 committed MSPDI (all UTF-8; session 1 counted 42); 1 committed XER (no CALENDAR table); the 29 intake `.mpp` converted once, under the JVM lock, for the calendar census (1,473 calendars, refuter R03) | inline inputs; MPXJ 16.2.0 and hand arithmetic as oracles; the file's own stored dates; Oracle's XER data map | 5 | 4 NOT-REFUTED, IMP-002 NARROWED (population) (R03, R04) | IMP-001: 2 import routes (596,068 fully `r`-less rows in the corpus); IMP-002: 1 committed synthetic fixture with the shape, 0 shipped numbers moved; IMP-003: 0 committed files; IMP-004: 2 entry points plus the cp1252-under-UTF-8 sibling; IMP-005: 2 routes | round trip, the two-path MPXJ-versus-MSPDI comparison, malformed-input fuzz and resource limits — budget (WP-IMP) |
+| IMP | 5 finder hypotheses over the MSPDI, XER and xlsx readers; 43 committed MSPDI (all UTF-8; session 1 counted 42); 1 committed XER (no CALENDAR table); the 29 intake `.mpp` converted once, under the JVM lock, for the calendar census (1,473 calendars, refuter R03); session 5 (WP-CPM's F-EDGE-L and F-EDGE-C finders): the link-lag and constraint reads of the MSPDI importer over the 72 MSPDI documents (34,674 LagFormat elements, all format 7), the task and booking LevelingDelayFormat reads, and the ALAP collapse | inline inputs; MPXJ 16.2.0 and hand arithmetic as oracles; the file's own stored dates; Oracle's XER data map; session 5: hand-built MSPDI with hand arithmetic, Microsoft's MSPDI schema pages and MPXJ 16.2.0's writer and reader as oracles | 7 (5 + 2 in session 5) | 4 NOT-REFUTED, IMP-002 NARROWED (population) (R03, R04); session 5: IMP-006 and IMP-007 CONFIRMED-DEFERRED (verifier P3 + the lead's re-run); IMP-008 and IMP-009 ARTIFACT-GATED, not counted (verifier P5; ASK-13, ASK-14) | IMP-001: 2 import routes (596,068 fully `r`-less rows in the corpus); IMP-002: 1 committed synthetic fixture with the shape, 0 shipped numbers moved; IMP-003: 0 committed files; IMP-004: 2 entry points plus the cp1252-under-UTF-8 sibling; IMP-005: 2 routes; IMP-006: 0 elapsed LagFormats in the 72 committed MSPDI documents (latent); IMP-007: 0 ALAP tasks in any committed MS Project save (latent) | round trip, the two-path MPXJ-versus-MSPDI comparison, malformed-input fuzz and resource limits — budget (WP-IMP); session 5 left the percent-lag unit (IMP-008) and the working-day task delay (IMP-009) ARTIFACT-GATED — only MS Project can settle them |
 | EXP | — | — | 0 | — | — | not probed — budget (WP-EXP) |
 | AI | the figure gates (strict and annotate Ask on two routes, narrative and briefing reattach, `/api/translate`) against scripted adversarial model output; 1,212 non-decimal numeric code points; 9 dash code points; the 28 listed accusation terms | `NullBackend` and scripted fake backends through the injectable opener; a network kill switch; nothing left the container | 5 | 5 NOT-REFUTED (R01) | AI-001: 2 gate sites on 2 routes; AI-002: 9 dash code points plus the 'DCMA-14' seed (and 'ADR-0108' as a −108 operand); AI-003: 1,212 code points plus 6 invisible separators; AI-004: 20 of 20 glued facts across 16 fixtures; AI-005: 27 of 28 listed terms plus 1 route | prompt injection through schedule content (no listed work package owns it yet) and model output rendered as HTML (WP-SEC's hostile-fixture census) |
 | CUI | 6 finder hypotheses on egress, locality claims and the transport; every locality sentence in the user-facing documents | private network namespace with the real resolver; in-process spies; 8 AI states rendered; the platform hosts files read from public references | 4 | 4 NOT-REFUTED (R02) | CUI-001: 2 name forms × 2 backends; CUI-002: 3 sites and the follow set 301/302/303(/307/308); CUI-003: 12 statements in 6 documents plus 1 label; CUI-004: 1 page, 8 of 8 states | the hook-bypass battery, the air-gap detector probes, the canary run and the egress-population census — budget; no work package in the lead's list owns them yet (the next audit session's plan must assign them) |

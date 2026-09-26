@@ -1,5 +1,8 @@
-# AUDIT-2026-09-23 — Operator asks (one batched list; every live ask has a default; re-issued after the session-2 falsification pass and re-based onto 6bc3138b in session 3)
+# AUDIT-2026-09-23 — Operator asks (one batched list; every live ask has a default; re-issued after the session-2 falsification pass, re-based onto 6bc3138b in session 3, and extended in session 5 (WP-CPM, base 19173728) with ASK-12–ASK-14)
 
+- **T1 — A0923-CPM-001:** every page that prints the schedule-logic (CPM) project finish (/path, /briefing, /brief, /, /portfolio, /forecast, /mission, /trend, /compare, /margin and their APIs) shows the project-calendar date of the finish offset, not the engine's own finish instant: when an elapsed or 24-hour-calendar task drives the finish into project non-working time the date reads a day EARLY (Hard_File_updated3: 12/11/2026 where MS Project, Acumen and SSI show Sat 2026-12-12), and calendar-day finish movements are short by the same day (+35 d for 36). Working-day figures are unaffected. Mechanism since afb8e729 (#497, v1.0.140, 2026-07-31). Until fixed, read the finish from the /path table's rows or the file's own Finish.
+- **T1 — A0923-CPM-002 / 003:** on the Large Test File family, an activity whose MS Project split is recorded on the unassigned-work placeholder booking (CPM-002, e.g. UID 7262: 3 working days early, total float 4 days high) and a predecessor linked finish-to-finish to a leveled task (CPM-003, UID 5314: late finish, total and free float 11 working days off) carry CPM figures that differ from MS Project's stored values. CPM-002 wrong at every decidable commit since afb8e729 (v1.0.140; no good commit exists), in its present form since 163d1942 (v1.0.259, ADR-0491); CPM-003 since 5f34c2a8 (v1.0.245, ADR-0474).
+- **T1 (latent — no committed file exercises them) — A0923-CPM-005/006/007/008, A0923-IMP-006:** CPM dates and floats are wrong on an operator file that carries a redundant lag-0 SS/SF link from a milestone into an off-calendar task (CPM-005), a worked-day exception on the project calendar (CPM-006), a project start inside the first working block such as 09:00 (CPM-007), logic on a summary task whose children carry custom WBS codes (CPM-008), or an elapsed link lag such as "2ed" (IMP-006). Check an operator file for these shapes before citing its CPM figures.
 - **LAW-1 — A0923-CUI-001:** an AI endpoint typed as a HOSTNAME (e.g. `ip6-localhost`) passes the loopback check but is resolved by the OS at send time; where the hosts file lacks it, the CUI Ask prompt can go to a non-loopback address under the "Local-only" banner with no transaction-log record (reproduced in an isolated network namespace; Windows behaviour UNVERIFIED). Exposure: since db285ae2 (#92, 2026-06-13). The shipped defaults (literal 127.0.0.1) are NOT affected — keep a literal-IP endpoint until the fix lands.
 - **LAW-1 (transport only) — A0923-CUI-002:** the Ollama cleanup opener (and the launcher's identity probe, and the startup reconcile) follow HTTP redirects to other hosts (body-less GET; no schedule content measured), contrary to ADR-0070's `_NoRedirect` decision. Exposure: since 6b61ad30 (#235, 2026-06-24).
 - **T1 — A0923-AI-001/002/003:** an unsourced number can reach the analyst through the narrative / briefing / strict / annotate gates when written as a word ("thirteen"), with a typographic minus or dash (sign flip), or as a fraction/superscript/circled/Roman numeral or zero-width-split digits. Since #69/#79 (2026-06-11). Verify AI prose against the citations until fixed.
@@ -13,10 +16,10 @@
 ## What this file is
 
 Everything in the AUDIT-2026-09-23 campaign that only you, the operator, can do or decide — eleven asks after two
-sessions: ten live, one withdrawn. Each live ask states the exact steps, the artifact expected back, the findings it
-settles, and the **default** the campaign takes if you never answer, so no session ever waits on a reply (charter
-§12–§13). Findings are cited by id; their evidence is in `docs/STATE/AUDIT-2026-09-23-REPORT.md` and their repairs
-in `docs/STATE/AUDIT-2026-09-23-REPAIR-PLAN.md`.
+sessions: ten live, one withdrawn (session 5: fourteen — thirteen live, one withdrawn). Each live ask states the
+exact steps, the artifact expected back, the findings it settles, and the **default** the campaign takes if you never
+answer, so no session ever waits on a reply (charter §12–§13). Findings are cited by id; their evidence is in
+`docs/STATE/AUDIT-2026-09-23-REPORT.md` and their repairs in `docs/STATE/AUDIT-2026-09-23-REPAIR-PLAN.md`.
 
 **Both sessions were READ-ONLY** (your directives: "This is a READ ONLY audit regardless of WHAT ANYTHING ELSE
 SAYS. Do not fix anything. Only generate a report and a plan forward." and, for session 2, "rerun the audit and
@@ -25,7 +28,7 @@ they are not omit them and then give me the reports again"). Nothing was committ
 pull request; this file exists only in the delivered package until you decide ASK-08. Session 2 re-attacked every
 finding: none was refuted, three were narrowed, one was fixed upstream (DOC-014), one was withdrawn (TST-003, which
 takes ASK-04 with it). The five disclosure lines above stand unchanged and are still present at `f1b691f3` and at
-`6bc3138b`.
+`6bc3138b` (session 5: and at `19173728`; they now sit below session 5's three).
 
 **Session 3 (2026-09-25) re-based the package onto `6bc3138b`** (#718, v1.0.293, 817 commits). `main` had moved one
 commit further: it closed register rows R-48 and R-51 and took ADR numbers 0532 and 0533, so the campaign ADR is now
@@ -35,6 +38,17 @@ every default stands.
 **Session 4 (2026-09-25) applied the package.** The operator answered ASK-08 "yes" in the session's chat (recorded
 under ASK-08 below). The ten other asks were not answered, so their defaults stand; answer them by editing this file.
 The campaign ADR is now **ADR-0535**, because the open draft pull request #719 claims 0534.
+
+**Session 5 (2026-09-25/26) ran WP-CPM** on `19173728` (#720, the committed campaign package, v1.0.294, 819 commits)
+and commits its own records on the branch `claude/busy-noether-5oizoe` as one draft pull request (ADR-0536). **No
+answers were found** — none in this file and none in the session chat — so **every default stands**, including
+ASK-11's (UI-001's committed reproducer is still owed by WP-UI). The session confirmed ten new defect classes (the
+eight at T1 are the three disclosure lines at the top of this file; CPM-004 and IMP-007 are T2) and left three
+records ARTIFACT-GATED: each needs one observation only MS Project on your machine can make. Those are the three new
+asks, **ASK-12, ASK-13 and ASK-14**, below. Each can be answered from a new, synthetic, non-CUI project you build by
+hand in MS Project; none needs a file from this session, and none needs a real schedule. Until you answer, the tool's
+current behaviour is kept, the three records stay ARTIFACT-GATED (not counted as findings), and no repair unit is
+built for them.
 
 ## How to answer — two channels (every session checks both)
 
@@ -226,4 +240,108 @@ An ask you skip takes its default. A second round of asks happens only if an ans
   other three pages, in the next audit session) or "no" (it stays a candidate in the report).
 - **Artifact expected:** the choice.
 - **Default if never answered:** yes, in the next audit session (WP-UI).
+- Answer: (none yet — the default applies)
+
+## ASK-12 — Does MS Project hold a "No Later Than" date against logic? (A0923-CPM-009; new in session 5)
+
+- **Settles:** A0923-CPM-009, ARTIFACT-GATED (not counted as a finding; no reproducer). With "Tasks will always honor
+  their constraint dates" ON (`<HonorConstraints>1</HonorConstraints>`), the engine HOLDS a Must Start On / Must
+  Finish On task at its date against a later predecessor, but schedules a **Start No Later Than** or **Finish No
+  Later Than** task at its logic dates and carries the conflict only as negative float; the flag itself is never
+  read (0 and 1 give identical output). Microsoft's wording for the option ("constraints take precedence over
+  dependencies") supports holding the date; Microsoft's own constraint-definition KB formulas (SNLT "LS=CD (if
+  Date<LS)", FNLT "LF=CD (if Date<LF)") match what the engine does. No committed MS Project save carries a
+  conflicted SNLT or FNLT, so only MS Project itself can say which reading it uses.
+- **Exact steps** (a new, blank, synthetic project; nothing from a real schedule, no file from this session):
+  1. File > New > Blank Project. Project > Project Information: Start date **Mon 2026-06-01**, schedule from the
+     project start date, calendar **Standard** (the default: Mon–Fri 08:00–12:00 and 13:00–17:00).
+  2. File > Options > Schedule > "Scheduling options for this project": tick **"Tasks will always honor their
+     constraint dates"**. Keep new tasks Auto Scheduled.
+  3. Enter four tasks in this order with these durations: **Z 5d**, **A 5d**, **B 2d**, **C 1d**. Link them
+     finish-to-start with no lag, Z → A → B → C (select the four rows, Task > Link the Selected Tasks).
+  4. Double-click **B** > Advanced: Constraint type **Start No Later Than**, Constraint date **Wed 2026-06-10
+     08:00**. If the Planning Wizard warns of a scheduling conflict, choose the option that continues and keeps
+     the constraint.
+  5. Write down **B's Start and Finish**, **C's Finish**, **B's Total Slack** and the **project Finish** (Project >
+     Project Information > Statistics, or the project summary task).
+  6. Change B's constraint to **Finish No Later Than**, **Thu 2026-06-11 17:00**, and write down the same five
+     values again.
+- **What the answer decides** (hand-computed expectations from the finder's and verifier's records):
+  - MS Project shows **B Wed 2026-06-10 08:00 – Thu 2026-06-11 17:00** and **C finishing Fri 2026-06-12 17:00** (the
+    project finishing Fri 2026-06-12 17:00) in step 5 and in step 6 → MS Project holds the date as the
+    "constraints take precedence" wording says (MPXJ's own scheduler gives the same dates); the engine is wrong
+    (it moves the project finish by three working days on this file), and CPM-009 becomes a counted, latent T1
+    class with a repair unit.
+  - MS Project shows **B Mon 2026-06-15 08:00 – Tue 2026-06-16 17:00** and **C finishing Wed 2026-06-17 17:00** —
+    the engine's dates today, with B's total slack negative (the engine: −1,440 working minutes, three 8-hour
+    days) → the engine matches MS Project, and CPM-009 is REFUTED.
+- **Artifact expected:** the values from steps 5 and 6 typed as two short lines (for example "SNLT: B 06-10 08:00 –
+  06-11 17:00, C 06-12 17:00, B slack −3d, finish 06-12"), or this synthetic file saved with File > Save As > XML
+  Format (`.xml`). Neither carries any of your schedule content.
+- **Default if never answered:** keep the engine's current behaviour; CPM-009 stays ARTIFACT-GATED, uncounted and
+  without a reproducer; no repair unit is built.
+- Answer: (none yet — the default applies)
+
+## ASK-13 — What unit does a percent lag carry: 25 or 250? (A0923-IMP-008; new in session 5)
+
+- **Settles:** A0923-IMP-008, ARTIFACT-GATED (not counted; no reproducer). The vendored MPXJ 16.2.0 writer — the
+  converter the tool uses to read an `.mpp` — writes a 25 % lag as `<LinkLag>25</LinkLag><LagFormat>19</LagFormat>`,
+  and MPXJ reads that back as 25.0 %. The tool's importer reads a LagFormat 19 / 20 `LinkLag` as TENTHS of a
+  percent, so the lag becomes 2.5 %: 60 working minutes where 25 % of a 5-day (2,400-minute) predecessor is 600.
+  Not known: what MS Project itself stores — whether a real `.mpp` percent lag reaches MPXJ as 25 or as 250, and
+  whether MS Project's own XML export writes 25 or 250. No committed file has a percent lag (0 of the 21,609 links
+  in the 29 tracked `.mpp`, by the verifier's census), so no shipped number moves today.
+- **Exact steps** (a new, blank, synthetic project):
+  1. File > New > Blank Project. Project Information: Start date **Mon 2026-06-01**, calendar **Standard**.
+  2. Task 1, **P**, duration **5d**.
+  3. Task 2, **S1**, duration 1d, Predecessors cell **`1FS+25%`**.
+  4. Task 3, **S2**, duration 1d, Predecessors cell **`1FS+25e%`** (an elapsed percent lag; if MS Project will
+     not accept it, skip S2 and say so).
+  5. Write down **S1's Start** and **S2's Start** as MS Project displays them.
+  6. File > Save (an `.mpp`), then File > Save As > XML Format (`.xml`).
+  7. Open the `.xml` in a text editor, find the `<PredecessorLink>` inside S1's `<Task>` and inside S2's, and copy
+     each one's `<LinkLag>` and `<LagFormat>` values.
+- **What the answer decides:** the hand-computed expectation for S1 is **Tue 2026-06-09 10:00** (600 working
+  minutes after P's finish); the tool today reads the MPXJ-written lag as 60 minutes and starts S1 **Mon
+  2026-06-08 09:00**. No expectation is asserted here for S2. An XML `<LinkLag>` of **25** means MS Project writes
+  whole percent and the importer is wrong on MS Project's own XML (IMP-008 is confirmed and gets a repair unit);
+  **250** means the importer's reading of MS Project's XML is right, and the `.mpp` path is then settled by running
+  the saved `.mpp` through the tool and comparing S1's Start with MS Project's.
+- **Artifact expected:** the two displayed Starts and the two `LinkLag` / `LagFormat` pairs, typed as text; or the
+  synthetic `.mpp` and `.xml` themselves, handed to the session (not committed: the pre-commit guard refuses an
+  `.mpp` outside `tests/fixtures/`). None of it is your schedule content.
+- **Default if never answered:** the importer's current reading is kept; IMP-008 stays ARTIFACT-GATED, uncounted
+  and without a reproducer; no repair unit is built, and the synthetic pin
+  `tests/importers/test_mspdi.py::test_percent_lag_format_reads_share_of_predecessor_duration` is left as it is.
+- Answer: (none yet — the default applies)
+
+## ASK-14 — Is a "2d" task Leveling Delay two working days or 960 clock minutes? (A0923-IMP-009; new in session 5)
+
+- **Settles:** A0923-IMP-009, ARTIFACT-GATED (not counted; no reproducer). No importer reads
+  `LevelingDelayFormat`: a task Leveling Delay stored in format 7 ("d"; 9600 tenths of a minute = 2 working days,
+  as MPXJ writes and reads it) is applied as 960 CLOCK minutes, so the task starts a working day early. Every task
+  delay in the committed corpus is format 8 (elapsed), so no shipped number moves today; the question is what MS
+  Project writes, and how it schedules, when a task delay is entered in working days.
+- **Exact steps** (new, blank, synthetic projects):
+  1. File > New > Blank Project. Project Information: Start date **Mon 2026-03-02**, calendar **Standard**.
+  2. Two tasks, no links: **T7**, duration **1d**; **T8**, duration **1d**.
+  3. Show the Leveling Delay column (right-click a column heading > Insert Column > **Leveling Delay**). Type
+     **`2d`** for T7 and **`2ed`** for T8.
+  4. Write down T7's and T8's **Start** and **Finish**.
+  5. A second blank project, Start date **Wed 2026-03-04**, calendar **Standard**: one task **W**, duration **1d**,
+     Leveling Delay **`1d`**. Write down W's **Start**.
+  6. Save each project with File > Save As > XML Format (`.xml`); in each task's `<Task>` block copy the
+     `<LevelingDelay>` and `<LevelingDelayFormat>` values.
+- **What the answer decides** (hand-computed expectations from the verifier's record): if MS Project counts a "d"
+  delay in working time, **T7 starts Wed 2026-03-04 08:00** (finishes Wed 17:00) — the tool today gives **Tue
+  2026-03-03 08:00** (Tue 17:00) — and **W starts Thu 2026-03-05 08:00**, where the tool gives **Wed 2026-03-04
+  16:00**. T8 is the control: the tool already reads an elapsed ("ed") delay as elapsed. If MS Project's dates are
+  the tool's, IMP-009 is REFUTED; if they are the working-time dates, it becomes a counted, latent T1 class with a
+  repair unit. The XML also shows whether MS Project keeps format 7 for "2d" and how it writes the value — 9600
+  (tenths of a minute, as MPXJ and the importer assume) or a bare day count (the Microsoft schema page's own
+  example writes a 3-day delay as 3).
+- **Artifact expected:** the Starts and Finishes from steps 4 and 5 and the `LevelingDelay` / `LevelingDelayFormat`
+  pairs, typed as text; or the synthetic `.xml` files. None of it is your schedule content.
+- **Default if never answered:** keep the engine's current behaviour; IMP-009 stays ARTIFACT-GATED, uncounted and
+  without a reproducer; no repair unit is built.
 - Answer: (none yet — the default applies)

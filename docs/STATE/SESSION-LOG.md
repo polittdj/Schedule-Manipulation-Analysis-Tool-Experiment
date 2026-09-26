@@ -20053,3 +20053,16 @@ commit, not a rebase. The resolution:
   asks (ASK-12..14; three new disclosure lines on top); ADR-0536; the state-doc ritual.
 - **Not done.** WP-CPM is not saturated (the remaining CPM modules, CPM-005's backward mirror, lead L-CPM-a); WP-UI's
   UI-001 reproducer; every lane session 1 left unprobed.
+- **The full gate** (CLAUDE.md's, on checkpoint 1 `da213bc3` — the code and reproducer tree — in a shared clone with its
+  own `src` first on `PYTHONPATH`, while the drafters edited `docs/` elsewhere): `ruff check .` clean · `ruff format
+  --check .` 1,353 files · mypy strict: no issues in 165 source files · bandit exit 0 · `node --check` 64 / 64 files
+  one by one · pytest **6,005 passed · 8 skipped · 55 xfailed · 0 failed** in 53:56. The 8 skips: the 5 recorded
+  pre-existing ones (2 loopback-host round-trips, the empty PENDING parametrization, 2 INCIDENTAL_SVG exemptions) and 3
+  LibreOffice-interop tests this container's LibreOffice cannot run (no Impress filter) — environment, none masks a
+  finding. PR #721's CI on that head: floor, browser, test (3.13) and cui-guard green (test (3.11) and check pending
+  at write time). After the documentation commit the charter's fast guard set and the doc-reading guards were re-run on
+  the final tree (below the checkpoint-2 commit message).
+- **Corrections made by the lead after the drafters:** CPM-002's disclosure line understated its window ("since
+  163d1942" is the present mechanism; the reproducer is red at every decidable commit since afb8e729, v1.0.140) —
+  corrected in all nine places; IMP-009's "389 task delays" is the finder's figure the verifier did not reproduce (276 +
+  173 by its count) — left UNVERIFIED with the disagreement named.
