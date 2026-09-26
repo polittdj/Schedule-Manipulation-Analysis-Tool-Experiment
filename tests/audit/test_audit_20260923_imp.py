@@ -24,6 +24,8 @@ from __future__ import annotations
 
 import datetime as dt
 import io
+import logging
+import re
 import socket
 import zipfile
 from pathlib import Path
@@ -32,10 +34,17 @@ from typing import Any
 import pytest
 from fastapi.testclient import TestClient
 
-from schedule_forensics.engine.cpm import compute_cpm, offset_to_datetime, working_minutes_between
+from schedule_forensics.engine.cpm import (
+    CPMError,
+    compute_cpm,
+    offset_to_datetime,
+    offset_to_start_datetime,
+    working_minutes_between,
+)
 from schedule_forensics.importers._common import ImporterError
 from schedule_forensics.importers.mspdi import parse_mspdi, parse_mspdi_text
 from schedule_forensics.importers.xer import parse_xer_text
+from schedule_forensics.model import ConstraintType
 from schedule_forensics.web.app import SessionState, create_app
 
 _LOOPBACK = frozenset({"127.0.0.1", "::1", "localhost"})
@@ -495,4 +504,328 @@ def test_a0923_imp_005_a_superscript_row_number_is_refused_by_name() -> None:
             )
             if resp.status_code != 303:
                 problems.append(f"{route} r={row!r} -> {resp.status_code}")
+    assert problems == [], "\n".join(problems)
+
+
+# --- A0923-IMP-006 fragment -------------------------------------------------------------------
+# Relies on the module header of tests/audit/test_audit_20260923_imp.py, and on nothing else:
+#   imports    datetime as dt, pytest,
+#              compute_cpm, offset_to_datetime (schedule_forensics.engine.cpm),
+#              parse_mspdi_text (schedule_forensics.importers.mspdi)
+#   fixture    the module-level autouse _air_gapped
+# Inputs: inline MSPDI text only. No fixture file, no Java, no network.
+
+#: Mon-Fri 08:00-12:00 / 13:00-17:00 (MS Project's Standard calendar); Sat/Sun non-working.
+_A0923_IMP_006_DAY = (
+    "<WorkingTimes><WorkingTime><FromTime>08:00:00</FromTime><ToTime>12:00:00</ToTime>"
+    "</WorkingTime><WorkingTime><FromTime>13:00:00</FromTime><ToTime>17:00:00</ToTime>"
+    "</WorkingTime></WorkingTimes>"
+)
+_A0923_IMP_006_WEEK = "".join(
+    f"<WeekDay><DayType>{d}</DayType><DayWorking>{1 if 2 <= d <= 6 else 0}</DayWorking>"
+    + (_A0923_IMP_006_DAY if 2 <= d <= 6 else "")
+    + "</WeekDay>"
+    for d in range(1, 8)
+)
+
+
+def _a0923_imp_006_mspdi(link_lag: int, lag_format: int) -> str:
+    """Z (5 d) -FS0-> A (5 d) -FS+lag-> B (2 d), start Mon 2026-06-01 08:00, the A -> B lag
+    written exactly as MS Project / MPXJ write it: ``<LinkLag>`` in tenths of a minute and
+    ``<LagFormat>`` naming the unit."""
+
+    def task(uid: int, name: str, hours: int, pred: int | None, lag: int, fmt: int) -> str:
+        link = (
+            ""
+            if pred is None
+            else f"<PredecessorLink><PredecessorUID>{pred}</PredecessorUID><Type>1</Type>"
+            f"<LinkLag>{lag}</LinkLag><LagFormat>{fmt}</LagFormat></PredecessorLink>"
+        )
+        return (
+            f"<Task><UID>{uid}</UID><ID>{uid}</ID><Name>{name}</Name>"
+            f"<Duration>PT{hours}H0M0S</Duration><DurationFormat>7</DurationFormat>{link}</Task>"
+        )
+
+    return f"""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Project xmlns="http://schemas.microsoft.com/project"><Name>imp006</Name>
+<ScheduleFromStart>1</ScheduleFromStart><StartDate>2026-06-01T08:00:00</StartDate>
+<CalendarUID>1</CalendarUID><MinutesPerDay>480</MinutesPerDay><MinutesPerWeek>2400</MinutesPerWeek>
+<Calendars><Calendar><UID>1</UID><Name>Standard</Name><IsBaseCalendar>1</IsBaseCalendar>
+ <BaseCalendarUID>-1</BaseCalendarUID><WeekDays>{_A0923_IMP_006_WEEK}</WeekDays></Calendar>
+</Calendars>
+<Tasks>{task(1, "Z", 40, None, 0, 7)}{task(2, "A", 40, 1, 0, 7)}
+{task(3, "B", 16, 2, link_lag, lag_format)}</Tasks></Project>"""
+
+
+def _a0923_imp_006_finishes(link_lag: int, lag_format: int) -> tuple[dt.datetime, dt.datetime]:
+    """(A's finish, B's finish) as the product renders a project-calendar task."""
+    sch = parse_mspdi_text(_a0923_imp_006_mspdi(link_lag, lag_format), source_file="imp006.xml")
+    if sorted(t.unique_id for t in sch.tasks) != [1, 2, 3] or len(sch.relationships) != 2:
+        pytest.fail(f"precondition: the three-task, two-link probe imports whole: {sch.tasks!r}")
+    cpm = compute_cpm(sch)
+
+    def finish(uid: int) -> dt.datetime:
+        timing = cpm.timings[uid]
+        return timing.early_finish_wall or offset_to_datetime(
+            sch.project_start, timing.early_finish, sch.calendar
+        )
+
+    return finish(2), finish(3)
+
+
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason="A0923-IMP-006: the MSPDI importer ignores LagFormat, so an ELAPSED link lag (ed / eh / "
+    "ew) is scheduled as the same number of WORKING minutes: FS+2ed (LinkLag 28800, LagFormat 8) "
+    "finishes B Wed 06-24 17:00 exactly as FS+6d does, where 48 clock hours after Fri 17:00 put B "
+    "at Tue 06-16 17:00; 12eh and 12h import to the identical Relationship",
+)
+def test_a0923_imp_006_an_elapsed_link_lag_counts_non_working_time() -> None:
+    """A0923-IMP-006 · IMP · T1 (latent)
+
+    Claim: at 19173728 a hand-built MSPDI (Standard 08-12/13-17 Mon-Fri calendar, start Mon
+    2026-06-01 08:00; Z 5d -FS0-> A 5d -FS+lag-> B 2d) through parse_mspdi_text + compute_cpm
+    finishes B at Wed 2026-06-24 17:00 for FS+2ed
+    (<LinkLag>28800</LinkLag><LagFormat>8</LagFormat>): the model holds lag_minutes=2880
+    WORKING minutes (6 working days), byte-identical to FS+6d (28800 / LagFormat 7). FS+12eh
+    (7200 / 6) and FS+12h (7200 / 5) import to the identical Relationship (it has no elapsed
+    field) and both finish B Thu 06-18 12:00; FS+1ew (100800 / 10) finishes B Wed 07-15 17:00.
+    A finishes Fri 2026-06-12 17:00 in every variant.
+
+    Correct (hand walk from Microsoft's definitions): 2ed = 48 clock hours -> Sun 06-14 17:00 ->
+    the next working instant Mon 06-15 08:00 -> B (16 working h) finishes Tue 2026-06-16 17:00;
+    12eh -> Sat 06-13 05:00 -> Mon 08:00 -> Tue 06-16 17:00; 1ew = 168 h -> Fri 06-19 17:00 ->
+    Mon 06-22 08:00 -> Tue 06-23 17:00. The working-unit controls (6d -> Wed 06-24 17:00,
+    12h -> Thu 06-18 12:00) are preconditions: the engine is right on them today and a fix must
+    keep them.
+
+    Authority: Microsoft Learn, 'DurationFormat Element' (the enumeration LagFormat uses),
+    https://learn.microsoft.com/office-project/xml-data-interchange/durationformat-element?view=project-client-2016
+    (retrieved 2026-09-25): "Elapsed time counts all time, including non-working time specified
+    in the project, resource, or task calendar. For example, if the calendar specifies Saturday
+    and Sunday as non-working days, a duration of 7d is seven working days such as Monday \u2013
+    Friday and the following Monday and Tuesday. A duration of 7ed is seven elapsed days, such as
+    Monday \u2013 Sunday." and its value table "6 | eh (elapsed hours)", "8 | ed (elapsed days)",
+    "10 | ew (elapsed weeks)"; 'LinkLag Element',
+    https://learn.microsoft.com/office-project/xml-data-interchange/linklag-element?view=project-client-2016
+    (retrieved 2026-09-25): "The amount of lag in tenths of a minute." / "LinkLag requires a
+    LagFormat to be specified." The repo premise this falsifies, src/schedule_forensics/importers/
+    mspdi.py:115-116: "MSPDI ``LinkLag`` is stored in tenths of a minute for time-unit
+    ``LagFormat``s, so ``LinkLag / 10`` is working minutes directly." -- an assumption
+    docs/adr/0008-m3-mspdi-xer-importers.md:48-50 filed under "Source-pending" ("``LagFormat``
+    governs display only ... unconfirmed against a real file") and never closed for the elapsed
+    formats (ADR-0026 Decision 3 closed only the percent formats 19/20).
+
+    Why the oracle is independent: Microsoft's published schema pages plus calendar arithmetic
+    written out above; the engine supplies only the observed value. MPXJ 16.2.0's reader, its
+    MSPDI writer (the product's own .mpp -> MSPDI path writes 2.0ed as 28800/8) and its
+    MicrosoftScheduler agree with the hand walk on all three elapsed formats, and agree with the
+    engine on the working-unit controls (verifier record A0923-IMP-006). MS Project's own stored
+    dates for this probe are UNVERIFIED; the claim does not depend on them -- under ANY fixed
+    reading of LinkLag, 12eh and 12h cannot both be right while they import identically.
+
+    Tier: T1 (not LAW-1; latent: 0 elapsed LagFormats among 34,678 links in 72 MSPDI documents).
+    """
+    a_finish = dt.datetime(2026, 6, 12, 17, 0)
+    controls = {  # working units: the engine agrees with MPXJ's MicrosoftScheduler today
+        "FS+6d (28800 / LagFormat 7)": (28800, 7, dt.datetime(2026, 6, 24, 17, 0)),
+        "FS+12h (7200 / LagFormat 5)": (7200, 5, dt.datetime(2026, 6, 18, 12, 0)),
+        "FS0 (0 / LagFormat 7)": (0, 7, dt.datetime(2026, 6, 16, 17, 0)),
+    }
+    for label, (lag, fmt, want) in controls.items():
+        got_a, got_b = _a0923_imp_006_finishes(lag, fmt)
+        if (got_a, got_b) != (a_finish, want):
+            pytest.fail(f"precondition: {label} finishes A {got_a} / B {got_b}; want {want}")
+    elapsed = {
+        "FS+2ed (28800 / LagFormat 8)": (28800, 8, dt.datetime(2026, 6, 16, 17, 0)),
+        "FS+12eh (7200 / LagFormat 6)": (7200, 6, dt.datetime(2026, 6, 16, 17, 0)),
+        "FS+1ew (100800 / LagFormat 10)": (100800, 10, dt.datetime(2026, 6, 23, 17, 0)),
+    }
+    problems = []
+    for label, (lag, fmt, want) in elapsed.items():
+        got_a, got_b = _a0923_imp_006_finishes(lag, fmt)
+        if got_a != a_finish:
+            pytest.fail(f"precondition: {label} moved A's finish to {got_a}")
+        if got_b != want:
+            problems.append(
+                f"{label}: B finishes {got_b:%a %Y-%m-%d %H:%M}; elapsed time gives "
+                f"{want:%a %Y-%m-%d %H:%M}"
+            )
+    assert problems == [], "\n".join(problems)
+
+
+# --- A0923-IMP-007 fragment -------------------------------------------------------------------
+# Relies on the module header of tests/audit/test_audit_20260923_imp.py:
+#   imports    datetime as dt, pytest,
+#              compute_cpm, offset_to_datetime (schedule_forensics.engine.cpm),
+#              ImporterError (schedule_forensics.importers._common),
+#              parse_mspdi_text (schedule_forensics.importers.mspdi)
+#   fixture    the module-level autouse _air_gapped; pytest's built-in caplog
+# and on FIVE names the header does not carry today -- merge them into its import block:
+#   import logging
+#   import re
+#   from schedule_forensics.engine.cpm import CPMError, offset_to_start_datetime
+#   from schedule_forensics.model import ConstraintType
+# Inputs: inline MSPDI text only. No fixture file, no Java, no network.
+
+#: Mon-Fri 08:00-12:00 / 13:00-17:00 (MS Project's Standard calendar); Sat/Sun non-working.
+_A0923_IMP_007_WEEK = "".join(
+    f"<WeekDay><DayType>{d}</DayType><DayWorking>{1 if 2 <= d <= 6 else 0}</DayWorking>"
+    + (
+        "<WorkingTimes><WorkingTime><FromTime>08:00:00</FromTime><ToTime>12:00:00</ToTime>"
+        "</WorkingTime><WorkingTime><FromTime>13:00:00</FromTime><ToTime>17:00:00</ToTime>"
+        "</WorkingTime></WorkingTimes>"
+        if 2 <= d <= 6
+        else ""
+    )
+    + "</WeekDay>"
+    for d in range(1, 8)
+)
+#: a disclosure names what was changed: ALAP, or a constraint collapsed to ASAP
+_A0923_IMP_007_NAMES_ALAP = re.compile(r"\bALAP\b|as[\s-]+late[\s-]+as[\s-]+possible", re.I)
+_A0923_IMP_007_NAMES_COLLAPSE = re.compile(r"constraint.*\b(ASAP|as[\s-]+soon)", re.I | re.S)
+
+
+def _a0923_imp_007_mspdi(b_constraint_code: int, *, external_link: bool = False) -> str:
+    """Z (5 d) -> A (5 d) -> C (1 d) and Z -> B (2 d) -> C, all FS0, start Mon 2026-06-01
+    08:00; B carries ``<ConstraintType>`` ``b_constraint_code`` (1 = As Late As Possible).
+    ``external_link`` adds a link from a UID outside the file on C (the capture control)."""
+
+    def task(uid: int, name: str, hours: int, preds: tuple[int, ...], extra: str = "") -> str:
+        links = "".join(
+            f"<PredecessorLink><PredecessorUID>{p}</PredecessorUID><Type>1</Type>"
+            "<LinkLag>0</LinkLag><LagFormat>7</LagFormat></PredecessorLink>"
+            for p in preds
+        )
+        return (
+            f"<Task><UID>{uid}</UID><ID>{uid}</ID><Name>{name}</Name>"
+            f"<Duration>PT{hours}H0M0S</Duration><DurationFormat>7</DurationFormat>"
+            f"{extra}{links}</Task>"
+        )
+
+    b_ct = f"<ConstraintType>{b_constraint_code}</ConstraintType>"
+    c_preds = (2, 3, 999) if external_link else (2, 3)
+    return f"""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Project xmlns="http://schemas.microsoft.com/project"><Name>imp007</Name>
+<ScheduleFromStart>1</ScheduleFromStart><StartDate>2026-06-01T08:00:00</StartDate>
+<CalendarUID>1</CalendarUID><MinutesPerDay>480</MinutesPerDay><MinutesPerWeek>2400</MinutesPerWeek>
+<HonorConstraints>1</HonorConstraints>
+<Calendars><Calendar><UID>1</UID><Name>Standard</Name><IsBaseCalendar>1</IsBaseCalendar>
+ <BaseCalendarUID>-1</BaseCalendarUID><WeekDays>{_A0923_IMP_007_WEEK}</WeekDays></Calendar>
+</Calendars>
+<Tasks>{task(1, "Z", 40, ())}{task(2, "A", 40, (1,))}{task(3, "B", 16, (1,), b_ct)}
+{task(4, "C", 8, c_preds)}</Tasks></Project>"""
+
+
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason="A0923-IMP-007: the MSPDI importer rewrites an As-Late-As-Possible task to ASAP "
+    "(mspdi.py:730-734) with no log record and no import note, so it is scheduled at its EARLY "
+    "dates (Mon 06-08..Tue 06-09, TF 1440) where MS Project's ALAP puts it (Thu 06-11..Fri 06-12) "
+    "-- the docstring's 'logged by count, never silently' contract is false",
+)
+def test_a0923_imp_007_an_alap_constraint_is_honored_or_its_collapse_is_disclosed(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A0923-IMP-007 · IMP · T1 (latent; T2/T3 if the value change is ruled HELD by ADR-0026 D2)
+
+    Claim (verifier's narrowed claim): at 19173728 an MSPDI ALAP task (ConstraintType 1) is
+    rewritten to ASAP by src/schedule_forensics/importers/mspdi.py:730-734 and scheduled at its
+    EARLY dates (B Mon 2026-06-08 08:00..Tue 06-09 17:00, TF 1440, FF 1440) with no log record,
+    no Schedule.import_notes entry and no mention on /analysis or /api/analysis -- falsifying the
+    importer's own disclosure contract, while Microsoft's ALAP definition places B at Thu 06-11
+    08:00..Fri 06-12 17:00. The ALAP -> ASAP normalization itself is a documented deliberate
+    decision (ADR-0026 Decision 2; pinned by tests/importers/test_mspdi.py::
+    test_alap_constraint_is_normalized_to_asap), so the finding stands on that decision's
+    falsified premise (silent + value-changing), not on the choice to normalize.
+
+    Correct = ONE of: (a) ALAP survives import and the engine honors it (B at Thu 06-11 08:00 ..
+    Fri 06-12 17:00) or refuses it by name (CPMError, src/schedule_forensics/engine/cpm.py:143-146
+    -- loud, the documented Law-2 outcome -- or an ImporterError at import); or (b) the collapse
+    is disclosed -- a log record (INFO or above, from the package's loggers) or an import note
+    that names it.
+
+    Authority: src/schedule_forensics/importers/mspdi.py:19-25 "**ALAP** constraints (out of scope
+    for the early-date CPM), and date-requiring constraints with the date cleared. These are
+    *valid* schedule states, not corruption, so they are normalized on import (links dropped,
+    those constraints collapsed to ASAP) and logged by count — never silently changing a
+    parity-relevant value of a well-formed file." Microsoft Learn, 'Definition of Microsoft
+    Project constraints',
+    https://learn.microsoft.com/en-us/previous-versions/troubleshoot/microsoft-365/microsoft-365-apps/project/definition-of-project-constraints
+    (retrieved 2026-09-25): "As Late As Possible: Schedules the task as late as it can without
+    delaying subsequent tasks. Use no constraint date. ES=(Calculated)LS". Hand walk: C starts
+    Mon 06-15 08:00 (A ends Fri 06-12 17:00), so B's latest finish is Fri 06-12 17:00 and its
+    latest start Thu 06-11 08:00.
+
+    Why the oracle is independent: the disclosure half needs no external oracle -- it is the
+    repo's own written contract against an executed log / import-note capture (with a positive
+    control proving the capture sees the importer's logger). The date half is Microsoft's
+    published definition plus the backward walk written above; MPXJ 16.2.0's MicrosoftScheduler
+    places B at 06-11..06-12 too (verifier record). MS Project's stored Total Slack for the ALAP
+    task is UNVERIFIED and not asserted.
+
+    Tier: T1 (not LAW-1; latent: ALAP = 0 of 28,188 tasks in 72 MSPDI documents and 0 CS_ALAP in
+    the committed XER); T2 / T3 if the lead rules the value change HELD by ADR-0026 D2.
+    """
+    caplog.set_level(logging.DEBUG)
+    parse_mspdi_text(_a0923_imp_007_mspdi(0, external_link=True), source_file="control.xml")
+    if not any(
+        r.name == "schedule_forensics.importers.mspdi" and r.levelno >= logging.INFO
+        for r in caplog.records
+    ):
+        pytest.fail("precondition: the capture sees the importer's own INFO record (dropped link)")
+    asap = parse_mspdi_text(_a0923_imp_007_mspdi(0), source_file="asap.xml")
+    asap_cpm = compute_cpm(asap)
+    c_finish = offset_to_datetime(
+        asap.project_start, asap_cpm.timings[4].early_finish, asap.calendar
+    )
+    if c_finish != dt.datetime(2026, 6, 15, 17, 0):
+        pytest.fail(f"precondition: the ASAP twin's C finishes Mon 06-15 17:00, not {c_finish}")
+    caplog.clear()
+
+    try:
+        sch = parse_mspdi_text(_a0923_imp_007_mspdi(1), source_file="alap.xml")
+    except ImporterError:
+        return  # a refusal by name at import is loud -- never a silently moved value
+    said = [
+        text
+        for text in (
+            *(
+                r.getMessage()
+                for r in caplog.records
+                if r.name.startswith("schedule_forensics") and r.levelno >= logging.INFO
+            ),
+            *sch.import_notes,
+        )
+        if _A0923_IMP_007_NAMES_ALAP.search(text) or _A0923_IMP_007_NAMES_COLLAPSE.search(text)
+    ]
+    b = sch.tasks_by_id[3]
+    alap = (dt.datetime(2026, 6, 11, 8, 0), dt.datetime(2026, 6, 12, 17, 0))
+    problems = []
+    try:
+        cpm = compute_cpm(sch)
+    except CPMError:
+        cpm = None  # a refusal by name is loud -- never a silently moved value
+    if cpm is not None:
+        t = cpm.timings[3]
+        placed = (
+            t.early_start_wall
+            or offset_to_start_datetime(sch.project_start, t.early_start, sch.calendar),
+            t.early_finish_wall
+            or offset_to_datetime(sch.project_start, t.early_finish, sch.calendar),
+        )
+        if b.constraint_type is ConstraintType.ALAP and placed != alap:
+            problems.append(
+                f"ALAP kept but B placed {placed[0]:%a %m-%d %H:%M}..{placed[1]:%a %m-%d %H:%M}; "
+                f"Microsoft's ALAP places it {alap[0]:%a %m-%d %H:%M}..{alap[1]:%a %m-%d %H:%M}"
+            )
+        elif b.constraint_type is not ConstraintType.ALAP and not said and placed != alap:
+            problems.append(
+                f"ALAP on UID 3 silently became {b.constraint_type}: B placed "
+                f"{placed[0]:%a %m-%d %H:%M}..{placed[1]:%a %m-%d %H:%M} TF {t.total_float} "
+                f"(ALAP: {alap[0]:%a %m-%d %H:%M}..{alap[1]:%a %m-%d %H:%M}); no log record or "
+                f"import note names it (import_notes={sch.import_notes!r})"
+            )
     assert problems == [], "\n".join(problems)
