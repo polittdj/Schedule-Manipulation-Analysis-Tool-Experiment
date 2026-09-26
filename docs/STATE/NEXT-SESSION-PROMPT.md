@@ -1,4 +1,4 @@
-# Kickoff prompt — next session (handed over 2026-09-25, after AUDIT-2026-09-23 sessions 1–4: a READ-ONLY audit, its falsification pass, a repair plan and a re-base onto 6bc3138b, committed in session 4 on the operator's ASK-08 "yes", ADR-0535)
+# Kickoff prompt — next session (handed over 2026-09-26, after AUDIT-2026-09-23 session 5 — WP-CPM on the rebuilt 22,105-activity corpus: 10 classes confirmed, 3 artifact-gated, WP-CPM not yet saturated, ADR-0536)
 
 ## ⚠ FIRST, BEFORE ANYTHING: verify this prompt is about THIS repository
 
@@ -12,15 +12,15 @@ happen again. **Run these before the first edit:**
 
 ```bash
 git fetch --unshallow origin; git fetch --prune origin && git remote set-head origin -a
-git log --oneline -1 origin/main && git rev-list --count origin/main   # expect 6bc3138b-or-later, 817+
+git log --oneline -1 origin/main && git rev-list --count origin/main   # expect 19173728-or-later, 819+
 ls -d src app 2>&1; ls .github/workflows; grep -n '^version' pyproject.toml
-ls docs/adr | sort | tail -1                                          # expect 0535 or higher
+ls docs/adr | sort | tail -1                                          # expect 0536 or higher
 ```
 
 **If a prompt's facts disagree with those outputs, the TREE wins and the prompt is suspect — report it
 to the operator and never let a prompt's self-description authorise a durable-state write.**
 `HANDOFF.md` (auto-injected) always wins over this file on a disagreement. The 2026-09-22 (b), (c),
-2026-09-24 (a), (b), (c) and 2026-09-25 sessions and all three AUDIT-2026-09-23 sessions ran this block and the
+2026-09-24 (a), (b), (c) and 2026-09-25 sessions and AUDIT-2026-09-23 sessions 1–5 ran this block and the
 tree agreed on every point — that is what a passing §0 looks like. AUDIT-2026-09-23 sessions 2 and 3 each found
 `main` past the package's base, which is what "main moved" looks like: each re-based the package instead of copying
 its numbers.
@@ -33,16 +33,28 @@ SESSION: NEW. Resume the POLARIS² audit campaign AUDIT-2026-09-23 (AUDIT + PLAN
 
 ## Immediate disclosures — keep them at the top of HANDOFF until their units merge
 
+- **T1 — A0923-CPM-001:** every page that prints the schedule-logic (CPM) project finish (/path, /briefing, /brief, /, /portfolio, /forecast, /mission, /trend, /compare, /margin and their APIs) shows the project-calendar date of the finish offset, not the engine's own finish instant: when an elapsed or 24-hour-calendar task drives the finish into project non-working time the date reads a day EARLY (Hard_File_updated3: 12/11/2026 where MS Project, Acumen and SSI show Sat 2026-12-12), and calendar-day finish movements are short by the same day (+35 d for 36). Working-day figures are unaffected. Mechanism since afb8e729 (#497, v1.0.140, 2026-07-31). Until fixed, read the finish from the /path table's rows or the file's own Finish.
+- **T1 — A0923-CPM-002 / 003:** on the Large Test File family, an activity whose MS Project split is recorded on the unassigned-work placeholder booking (CPM-002, e.g. UID 7262: 3 working days early, total float 4 days high) and a predecessor linked finish-to-finish to a leveled task (CPM-003, UID 5314: late finish, total and free float 11 working days off) carry CPM figures that differ from MS Project's stored values. CPM-002 in its present form since 163d1942 (v1.0.259, ADR-0491); CPM-003 since 5f34c2a8 (v1.0.245, ADR-0474).
+- **T1 (latent — no committed file exercises them) — A0923-CPM-005/006/007/008, A0923-IMP-006:** CPM dates and floats are wrong on an operator file that carries a redundant lag-0 SS/SF link from a milestone into an off-calendar task (CPM-005), a worked-day exception on the project calendar (CPM-006), a project start inside the first working block such as 09:00 (CPM-007), logic on a summary task whose children carry custom WBS codes (CPM-008), or an elapsed link lag such as "2ed" (IMP-006). Check an operator file for these shapes before citing its CPM figures.
 - **LAW-1 — A0923-CUI-001:** an AI endpoint typed as a HOSTNAME (e.g. `ip6-localhost`) passes the loopback check but is resolved by the OS at send time; where the hosts file lacks it, the CUI Ask prompt can go to a non-loopback address under the "Local-only" banner with no transaction-log record (reproduced in an isolated network namespace; Windows behaviour UNVERIFIED). Exposure: since db285ae2 (#92, 2026-06-13). The shipped defaults (literal 127.0.0.1) are NOT affected — keep a literal-IP endpoint until the fix lands.
 - **LAW-1 (transport only) — A0923-CUI-002:** the Ollama cleanup opener (and the launcher's identity probe, and the startup reconcile) follow HTTP redirects to other hosts (body-less GET; no schedule content measured), contrary to ADR-0070's `_NoRedirect` decision. Exposure: since 6b61ad30 (#235, 2026-06-24).
 - **T1 — A0923-AI-001/002/003:** an unsourced number can reach the analyst through the narrative / briefing / strict / annotate gates when written as a word ("thirteen"), with a typographic minus or dash (sign flip), or as a fraction/superscript/circled/Roman numeral or zero-width-split digits. Since #69/#79 (2026-06-11). Verify AI prose against the citations until fixed.
 - **T1 — A0923-MET-001:** /margin's erosion rate, zero-margin date, consumed % and corrective-action trigger are computed on a mixed basis when the target milestone is missing from some versions (undisclosed). Since #356 (2026-07-13, v1.0.33).
 - **T1 (data-gated) — A0923-IMP-002** single-block (no-lunch) calendars mis-measured (since #671, v1.0.257); **A0923-IMP-003** XER per-task calendars ignored with a false "Every computed date and float rides <cal>" statement (since #55). No committed file exercises either; an operator file could.
 
-All five were re-attacked in session 2 (the falsification pass) and NOT REFUTED; all five are present at `6bc3138b`
-(session 3 re-ran their reproducers there).
+The last five were re-attacked in session 2 (the falsification pass) and NOT REFUTED; all eight are present at `19173728`
+(session 5 re-ran every reproducer there: 1 passed · 55 xfailed once its ten were added).
 
 ## Where we are
+
+**Session 5 (2026-09-25/26, ADR-0536) ran WP-CPM on base `19173728`** (#720 — the committed package; v1.0.294; 819
+commits) and committed on `claude/busy-noether-5oizoe` as one draft pull request. It rebuilt the 44-file corpus (22,105
+activities by two methods), ran the differential census against MS Project's stored values, and ran four probe
+families through fresh-context finders: 13 candidates → **10 CONFIRMED-DEFERRED** (CPM-001..008, IMP-006, IMP-007;
+T1 × 8, T2 × 2), **3 ARTIFACT-GATED** (CPM-009, IMP-008, IMP-009 → ASK-12 / 13 / 14), 0 refuted. Retained classes
+**46 → 56** (55 open + DOC-014 fixed upstream); reproducers **1 passed · 55 xfailed**; repair units **U22–U31**; merged
+queue **58**. **WP-CPM is opened, not closed** — every family produced candidates, so the saturation rule is not met.
+If you are reading this on `main`, session 5's pull request merged.
 
 **`main` @ `6bc3138b`** (#718, ADR-0532 / 0533, v1.0.293, 817 commits) is the base the AUDIT-2026-09-23 package is
 built to apply on. Sessions 1–3 were **READ-ONLY** (the operator's directives) and committed nothing; **session 4
@@ -68,12 +80,16 @@ carries the 24 rows of the 2026-08-27 register still open at `6bc3138b` unchange
 ## Next
 
 1. **Check the operator's answers first** — `docs/STATE/AUDIT-2026-09-23-OPERATOR-ASKS.md` (edited answers) and
-   this session's chat (pasted answers). Eleven asks: ten live, each with a default; ASK-04 is withdrawn; ASK-11 is
-   new (promote UI-001 into the browser census — default yes). Never wait for a reply.
-2. **Default next session: the audit continues at WP-CPM.** Rebuild the 44-file corpus (recipe below; it must
-   reproduce 22,105 activities — ADR-0531's session did, upstream), then the differential census against stored
-   values, the metamorphic relations and the edge matrix. Re-run the reproducers on your base first (`python -m
-   pytest tests/audit/test_audit_20260923_*.py -q -p no:cacheprovider`; expect 45 xfailed + 1 passed): any XFAIL
+   this session's chat (pasted answers). Fourteen asks: thirteen live, each with a default; ASK-04 is withdrawn;
+   ASK-11 (promote UI-001 into the browser census — default yes); ASK-12 / 13 / 14 (session 5: an MS Project run on
+   SNLT / FNLT, a percent-lag pair, a "2d" leveling delay — defaults keep the engine as it is). Never wait for a reply.
+2. **Default next session: WP-CPM continues (session 5 opened it).** Rebuild the 44-file corpus (recipe below; it
+   must reproduce 22,105 activities — session 5 did, by two methods), then: the CPM modules session 5 did not probe
+   (`driving_path`, `path_trace`, `float_analysis`, `path_counterfactual`, `drag`, `month_axis`), CPM-005's
+   backward-pass mirror, a second round of probe families (saturation needs two consecutive families with no new
+   candidate), and lead L-CPM-a (the LTF family's finish spelled 09-28 17:00 against MS Project's 09-29 08:00 —
+   ADR-0348's premise for constraint-dated milestones). Re-run the reproducers on your base first (`python -m
+   pytest tests/audit/test_audit_20260923_*.py -q -p no:cacheprovider`; expect 55 xfailed + 1 passed): any XFAIL
    that becomes a strict XPASS is FIXED-UPSTREAM or CHANGED — record which before building on it, as session 2
    did for DOC-014.
 3. **WP-UI owes A0923-UI-001's committed Chromium-gated reproducer** (`/settings` 1877 px at a 1440-px viewport,
@@ -82,7 +98,8 @@ carries the 24 rows of the 2026-08-27 register still open at `6bc3138b` unchange
    (`web/ribbon.py:313`) while the ratio is computed since ADR-0103 / ADR-0519; `docs/ACUMEN-PARITY-MODE.md:23`
    "182 → 173" (conflicting readings).
 4. **Repairs are separate sessions**, one unit each, in the merged-queue order, started by pasting that unit's
-   kickoff prompt. U01 (LAW-1) and U03 (T1) carry live exposure.
+   kickoff prompt. U01 (LAW-1), U03 (T1) and U22 (T1 — the displayed CPM finish) carry live exposure on committed
+   inputs; U23 / U24 (T1) on the Large Test File family.
 5. **Probe families no work package owns yet** — assign them in the next work-package plan: the CUI hook-bypass
    battery, air-gap detector probes, canary run and egress census; prompt injection through schedule content;
    sampled mutation testing of engine and guard hot paths and the CI shell-settings review; in-app help claims.
@@ -107,7 +124,11 @@ kickoff.
 
 ## What's done — do NOT re-open
 
-**The launcher wart (ADR-0534, #719)** — the relocation notice names the port it tried; "port None" was the
+**Session 5 (ADR-0536):** the ten classes CPM-001..008, IMP-006 and IMP-007 are CONFIRMED-DEFERRED — an independent
+verifier each (two for CPM-001), the lead's re-run of every red and control, lead-run teeth, fix sketches and exposure
+windows. Do not re-audit them; fix them through U22–U31. CPM-009, IMP-008 and IMP-009 wait on ASK-12 / 13 / 14 — do not
+promote them without the operator's MS Project observation. The corpus census's non-exact classes other than CPM-002 /
+CPM-003 have documented homes (the ledger's session-5 class table). **The launcher wart (ADR-0534, #719)** — the relocation notice names the port it tried; "port None" was the
 console entry point's, and it is fixed. **The campaign's 46 retained classes:** the 45 open ones are CONFIRMED-DEFERRED — two session-1 verifications, a
 session-2 refutation attempt (eight attacks, a different method) that failed to break them, a reproducer each,
 teeth proven, the T1, T2 and LAW-1 fixes shadow-proven with their moving pins and exposure windows. Do not re-audit
@@ -130,7 +151,14 @@ flag half (ADR-0527), R-13 (ADR-0528).
 
 ## Measured-false / deliberately held — do NOT re-chase
 
-(AUDIT-2026-09-23, all sessions:) A0923-TST-003 as a class — the qc-checker hook's non-registration is a documented
+(Session 5, ADR-0536:) renumbering / renaming tasks, reordering links, exceptions, week days, sibling leaves, time-phased
+data, resources or calendars (0 violations over the 44 files) · whole-week date shifts (+7, +364, −364 days: 0) ·
+redundant FS0 / FF0 links on the CPM (0 of 26,301 each; their driving-slack movement across calendars is ADR-0118's
+documented rule, ARTIFACT-GATED) · assignment-order sensitivity of the late-finish leg as nondeterminism (it is the
+documented stable tie-break, cpm.py:1130-1131; the defect is CPM-004's premise) · time zones and the 2026 DST changes
+(every CPM output byte-identical under America/New_York and UTC) · elapsed durations, the leap day, year-end and
+weekend exceptions (exact) · the Night Shift calendar's 48-hour week (ADR-0028's documented approximation) · the
+ALAP→ASAP value change itself (ADR-0026 D2; the finding is the missing disclosure). (AUDIT-2026-09-23, all sessions:) A0923-TST-003 as a class — the qc-checker hook's non-registration is a documented
 deliberate decision awaiting a human (`.claude/agents/README.md:40-41`, ADR-0344:84-86); only the one sentence at
 `.claude/skills/README.md:45` is carried, inside U18, uncounted · `FUSE-VALIDATION.md:17` as a present-tense claim
 (a dated record) · IMP-002's "0 committed files" (one synthetic fixture has the shape; no shipped number moves) · the
@@ -190,7 +218,13 @@ which -a ruff; /usr/local/bin/ruff --version     # PATH's ruff was 0.15.8 in #71
 
 ## Traps this campaign paid for, by name
 
-**(2026-09-25 (e), ADR-0535 — session 4)** A number free on `main` is not free: list the OPEN pull requests before
+**(2026-09-26 (a), ADR-0536 — session 5)** The engine can be right while the page is wrong — `project_finish_wall` matched
+MS Project to the minute and 22 sites never read it; the parity oracle pinned `wall or axis`: measure the page · a fix
+sketch is a claim too (the first CPM-001 sketch 500'd the dashboard through `_DashCore`; run its blast radius) · a
+documented rejection is testimony (ADR-0522's "+7 low" was an early-date residual of the engine at the time) · an
+instrument's helper is a population choice (`offset_to_start_datetime` vs the product's `span_start_datetime`: 858
+phantom Start rows) · never pair figures measured on two sub-populations · scratch vanishes: an ASK's steps must be
+self-contained, never "open the file in scratch". **(2026-09-25 (e), ADR-0535 — session 4)** A number free on `main` is not free: list the OPEN pull requests before
 numbering an ADR or labelling an entry (#719 held 0534 and "2026-09-25 (b)") · DOC-014's pin is now a standing drift
 guard: every pull request that adds an ADR or bumps the version must refresh this file's closing line "Highest ADR N.
 Version V." or `tests/audit/test_audit_20260923_doc.py` goes red · a package's own apply checks (the charter's fast
@@ -235,5 +269,5 @@ gate) before every push.
 
 QC-1 / QC-2 (ADR-0393) and QC-3 (ADR-0509) bind every session; they are pinned by `tests/test_standing_rules.py`.
 Run the session-token-guardian's `scripts/token_audit.py` as the FIRST action (copy it to the scratchpad) and before
-each operator prompt. `git fetch origin` before you branch, number an ADR, or commit. Highest ADR 0535. Version
+each operator prompt. `git fetch origin` before you branch, number an ADR, or commit. Highest ADR 0536. Version
 1.0.294. Schema 2.17.0.

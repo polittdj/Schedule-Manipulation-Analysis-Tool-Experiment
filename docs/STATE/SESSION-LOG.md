@@ -20019,3 +20019,37 @@ commit, not a rebase. The resolution:
 - the kickoff's closing line reads "Highest ADR 0535. Version 1.0.294.";
 - #719's launcher-wart closure and its narrowed residual (the notice's visibility under `pythonw`) are carried into
   the kickoff.
+
+## 2026-09-26 (a) — AUDIT-2026-09-23 session 5: WP-CPM on the rebuilt 22,105-activity corpus — 13 candidates, 10 CONFIRMED-DEFERRED (T1 × 8, T2 × 2), 3 ARTIFACT-GATED, 0 refuted; the engine computes MS Project's finish and the pages print another (ADR-0536)
+
+- **Branch / base.** `claude/busy-noether-5oizoe` (the harness's designation) from `main` @ `19173728` (#720, ADR-0535,
+  v1.0.294, 819 commits). §0 agreed with the tree on every point; no open pull request, so this session's ADR is
+  ADR-0536. No `src/` change, no version bump, no rebuild (charter: AUDIT + PLAN ONLY).
+- **At the base.** The 46 reproducers read 1 passed · 45 xfailed (Python 3.11.15). No ask had been answered in the file
+  or the chat; every default stands.
+- **The instrument.** The 44-file corpus rebuilt from scratch (15 goldens, 11 gzipped + the 29 tracked intake `.mpp`,
+  all OLE2, MPXJ one output per input path under a JVM lock, 29 / 29 rc=0): 22,105 activities by two methods. The
+  differential census against MS Project's stored values (read with ElementTree): Start 19,914 · Finish 20,756 ·
+  LateStart 20,770 · LateFinish 20,464 · TotalSlack 10,572 + 801 within a minute of 12,680 · FreeSlack 3,041 + 102 of
+  3,315 · Critical 22,105 / 22,105 · FinishDate = the latest stored task Finish on 44 / 44 files.
+- **Orchestration.** Two workflows at most three agents in flight, results to disk first, 0 deaths. Wave A: two
+  fresh-context verifiers of the lead-found CPM-001 and four finders (residual classes, metamorphic relations, links /
+  lags / constraints, calendars / progress / special tasks). Wave B: five claim-only verifier packets, each followed by
+  an assembler (reproducer, teeth, Python 3.13, fix sketch, moving pins, exposure window). Then three drafters wrote the
+  ledger / coverage, the plan, and the report / asks from the lead's validated facts sheet.
+- **Findings.** CPM-001 (T1: 22 presentation sites render the axis and never read `project_finish_wall`; Hard_File_updated3
+  shows 12/11/2026 where MS Project, Acumen Fuse and SSI show Sat 2026-12-12; exposure afb8e729 → first visible on the
+  committed corpus at cacd769d by `git bisect run`) · CPM-002 (T1, placeholder split dropped) · CPM-003 (T1, FF need
+  ignores the successor's leveling delay; falsifies ADR-0522's premise) · CPM-004 (T2) · CPM-005/006/007/008 and
+  IMP-006 (T1 latent) · IMP-007 (T2). ARTIFACT-GATED: CPM-009, IMP-008, IMP-009 → ASK-12 / 13 / 14. Retained classes
+  46 → 56.
+- **Verified.** Every red re-run by the lead (12 / 12 fail) and every control (12 / 12 pass); teeth re-run by the lead on
+  all ten reproducers — pristine XFAIL on Python 3.11.15 and 3.13.12, each fix sketch re-applied to a fresh `src/` copy
+  flips exactly its own test, each marker removed fails by name. CPM-001's fix sketch moved 0 of 4,506 engine / AI / web
+  / parity tests once it threaded the wall through `_DashCore` (the first cut without it made 34 web tests red — a sketch
+  defect, recorded in U22). `ruff check` / `ruff format --check` clean with CI's 0.16.9 on the two modules.
+- **Delivered.** `tests/audit/test_audit_20260923_cpm.py` (8 tests, new) and 2 tests in `_imp.py` (56 reproducers: 1
+  passed · 55 xfailed); "Session 5" sections in the ledger, coverage, report, plan (U22–U31; merged queue 48 → 58) and
+  asks (ASK-12..14; three new disclosure lines on top); ADR-0536; the state-doc ritual.
+- **Not done.** WP-CPM is not saturated (the remaining CPM modules, CPM-005's backward mirror, lead L-CPM-a); WP-UI's
+  UI-001 reproducer; every lane session 1 left unprobed.

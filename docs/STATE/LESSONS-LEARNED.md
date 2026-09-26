@@ -435,6 +435,27 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-26 (a) — The engine can be right while the page is wrong: measure the page, and treat a fix sketch as a claim (ADR-0536)
+
+- **What happened.** On Hard_File_updated3 the engine's `project_finish_wall` reproduced MS Project's Saturday finish to
+  the minute. 22 presentation sites never read it, so every page printed Friday. The parity oracle pinned
+  `project_finish_wall or offset_to_datetime(...)`, and `PARITY-REPORT.md` called the finish "exact". The claim was
+  proven on a number no page prints.
+- **The lesson.** Where a figure exists in two representations, the oracle belongs on the one the analyst reads. Render
+  the page, which is QC-1's own rule; the engine value is an intermediate.
+- **A fix sketch is a claim too.** The first sketch for CPM-001 answered the reproducer and 500'd the dashboard through
+  a cached struct (`_DashCore`) that did not carry the field. A blast-radius run over tests/web caught it (34 red). A
+  sketch that passes its own reproducer has shown nothing about its neighbours.
+- **A documented rejection is testimony.** ADR-0522 rejected "the delay belongs on finish-type anchors" on a "+7 low"
+  measurement. Re-running its rejected variant at its own commit showed those rows were an early-date residual of the
+  engine at that time, not the rule. At HEAD the variant is exact (CPM-003).
+- **An instrument's helper is a population choice.** Rendering starts with `offset_to_start_datetime` instead of the
+  product's `span_start_datetime` added 858 phantom Start differences. Measure with the helper the product uses, or
+  say why not.
+- **Metamorphic relations earn their keep on latent defects.** A redundant SS0 link that CPM math says cannot matter
+  moved the project finish by two working days (CPM-005). No committed file carries the shape, so no stored-value
+  census could have found it.
+
 ### 2026-09-25 (e) — A number that is free on `main` is not free, and a package's own checklist is not the gate (ADR-0535)
 
 - **List the OPEN pull requests before you number anything.** The package checked "ADR-0534 must still be free" against
