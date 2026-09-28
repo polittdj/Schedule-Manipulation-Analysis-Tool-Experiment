@@ -20066,3 +20066,64 @@ commit, not a rebase. The resolution:
   163d1942" is the present mechanism; the reproducer is red at every decidable commit since afb8e729, v1.0.140) —
   corrected in all nine places; IMP-009's "389 task delays" is the finder's figure the verifier did not reproduce (276 +
   173 by its count) — left UNVERIFIED with the disagreement named.
+
+## 2026-09-28 (a) — AUDIT-2026-09-23 session 6: WP-CPM continued — 31 candidates, 28 claims, 27 REPRODUCED + 1 HELD, plus UI-001 → 28 CONFIRMED-DEFERRED (T1 × 16, T2 × 8, T3 × 2, T4 × 2); the served drag, the path counterfactual and the driving-slack trace disagree with their own definitions (ADR-0537)
+
+- **Branch / base.** `claude/gallant-newton-yh75tr` (the harness's designation) from `main` @ `13b13f38` (#721, ADR-0536,
+  v1.0.294, 820 commits); pull requests #722 (the reproducers; merged as 51e66728) and a follow-up draft for the documents. §0 agreed with the tree on every point (`src/schedule_forensics`
+  present, `app` absent, `ci.yml` + `installer-smoke.yml`, 1.0.294, ADR 0536); no open pull request, so this session's
+  ADR is ADR-0537. No `src/` change, no version bump, no rebuild (charter: AUDIT + PLAN ONLY). `src/` is identical to
+  session 5's base (`git diff --stat 19173728 13b13f38 -- src/` empty).
+- **At the base.** The 56 reproducers read 1 passed · 55 xfailed (Python 3.11.15). No ask had been answered in the file
+  or the chat; every default stands (ASK-11's "yes" brings UI-001's reproducer in).
+- **Environment (measured).** 4 CPUs, 15 GB, TZ UTC; Python 3.11.15 (`/usr/local/bin/python3` → `/usr/bin/python3.11`,
+  installed with `uv pip install --python /usr/bin/python3.11 --system -e '.[dev]' build playwright`); a Python 3.13.12
+  venv with the declared runtime dependencies + pytest + httpx only (the checkout's `src` on `PYTHONPATH`); ruff 0.16.9
+  via `python3 -m ruff`; OpenJDK 21.0.10; node 22.22.2; playwright chromium-1194; flock.
+- **The instrument, first.** The 44-file corpus rebuilt from scratch before the plan (15 goldens, 11 gzipped + the 29
+  tracked intake `.mpp`, 29 of 29 OLE2, rc=0 under the JVM lock, one output per input path): 22,105 activities by two
+  methods, all 44 files agreeing.
+- **The plan, attacked on the pristine tree before any finder ran.** Ten assumptions Q1–Q10: Q6 FELL as stated (the
+  project day is 480 minutes on 44 of 44 corpus files, so a 480-constant defect is at most latent on the project axis)
+  and was narrowed again after wave 7 (the corpus is a population choice: the intake's MSPDI `.xml` files include
+  `00_REFERENCE_INTAKE/references/TP2_Bridge_4x10_Calendar.xml`, a 600-minute day — the class is live in the tree);
+  Q10 FELL for LD-6 (DUPLICATE-OF A0923-CPM-001); Q4 held with a caveat, Q9 with a condition, the rest held.
+- **Orchestration.** Wave 7: one workflow of six fresh-context finders (F-PCF, F-DRAG, F-SSI, F-EDGE2, F-META2,
+  F-LEADS; two in flight on 4 CPUs) → 31 CANDIDATEs, 0 deaths. Lead triage: three merges (M-DRAGRULE, M-DAY480,
+  M-THANKS) → 28 claims; F-LEADS-005 ARTIFACT-GATED under ADR-0118, not sent. Wave 8: claim-only verifier packets P1–P7
+  plus P8 — a SECOND verifier for the four classes grown from the lead's own observations (CPM-010, CPM-016, CPM-018,
+  CPM-026) → 27 REPRODUCED, 1 REFUTED as an error and HELD (F-EDGE2-002, HELD-BY ADR-0322 §2); then one assembler per
+  claim. UI-001 assembled by a separate agent and lead-validated. 0 agent deaths from credits or rate limits.
+- **Incidents.** A container restart (~13:58 UTC) killed the verify / assemble workflow and the lead's teeth runner
+  (scratch survived; a stale worktree `assemble-F-SSI-002/wtfix` removed with `git worktree remove --force` and
+  `prune`). The workflow's resume missed its cache and re-ran F-PCF-001 / 002 / 003's finished assemblies until the
+  lead stopped it; the canonical evidence is the run the lead validated (fragments byte-compared with the lead-teeth
+  copies). The lead finished with three plain sub-agents. Orphans of the stopped agents kept running under the suite
+  and JVM locks; the lead's `pkill -f` twice matched its own shell (exit 144). While an orphaned existing test's
+  headless Chromium ran (`tests/web/test_ui_control_effect_census.py`), the agent proxy denied two CONNECTs to
+  www.google.com:443 — an UNVERIFIED observation for the CUI lane's egress census, not a finding.
+- **Findings.** Path counterfactual: CPM-010 (T1 — a started activity's duration restored without its remaining
+  duration; exposure 601be5d3, #706, v1.0.281, ADR-0517; lead ruling: latent on served pages, per P1 and P8) and
+  CPM-011..015 (T2). Drag and Path Analysis days: CPM-016 / 017 / 019 / 021 (T1, in the committed corpus; since 140aed3a,
+  #292, v1.0.4) and CPM-018 (T1, the fixed 480; live on TP2_Bridge_4x10_Calendar.xml). CPM-020 (T1 latent). Driving
+  slack: CPM-022 (T1 option-gated), CPM-023 / 024 (T2), CPM-025 (T4), CPM-026 (T3). The carried leads: CPM-027 (T2),
+  CPM-028 (T1 latent), CPM-029 (T1 — LTF2 UID 5307 530 working minutes early under ADR-0502's absorb rule), IMP-010 (T1 —
+  a ninth Thanksgiving on the LTF family's project calendar). Edge / metamorphic: CPM-030..033 (T1 latent), CPM-034 (T1;
+  24 late walls one hour early in the committed corpus). DOC-017 (T3). UI-001 (T4, 11 of 140 page-theme states at 1440
+  px). Retained classes 56 → 84 (T1 30 · T2 16 · T3 21 · T4 5 · T5 12).
+- **Verified.** Each claim reproduced by an independent fresh-context verifier (two for the four P8 classes). The lead's
+  own teeth on all 28: for the 27, pristine XFAIL on Python 3.11.15 and 3.13.12, the fix sketch on a fresh `src/` copy →
+  strict XPASS (DOC-017's on a real tests + docs copy), the marker removed → FAILED by AssertionError; for UI-001, "1
+  xfailed", "11 of 16 page states scroll sideways … 1 failed" unmarked, and "[XPASS(strict)]" with the four-file fix on a
+  fresh `src/` copy (Python 3.13 not runnable — no playwright there).
+- **Delivered.** 25 tests in `tests/audit/test_audit_20260923_cpm.py` (33), 1 in `_imp.py` (8), 1 in `_doc.py` (17) and
+  the new Chromium-gated `tests/audit/test_audit_20260923_ui.py` (1; browser census 56 → 57 modules) → 84 reproducers,
+  **1 passed · 83 xfailed**; "Session 6" sections in the ledger, coverage, report, plan (U32–U54) and asks (ASK-15);
+  ADR-0537; the state-doc ritual.
+- **Not done.** WP-CPM is still not saturated (every family produced candidates again): a third round is owed. The
+  UNVERIFIED leads of the ledger's "UNVERIFIED leads — session 6" list; SSI's successor-mode and near-path output
+  (ASK-15); the items in ADR-0537's "Deliberately NOT done".
+- **Measured by the lead at the reproducer commit `7d91926a`** (Python 3.11.15): the reproducers "1 passed, 83 xfailed,
+  1 warning in 217.32s (0:03:37)"; the charter's fast guard set "449 passed, 2 skipped, 83 xfailed" (the two skips are
+  `tests/guards/test_loopback_allowlist.py:309`'s pre-existing parametrised cases).
+- **The full gate** on the committed tree: not run to completion locally — the static gate is green on this tree (`python -m ruff check .`, `python -m ruff format --check .`, `python -m mypy src/` — no issues in 165 source files, `bandit -q -r src` exit 0, `node --check` on each of the 64 static files — 0 failures) and so are the document-sensitive guards (`tests/test_state_docs.py tests/test_standing_rules.py tests/web/test_docs.py tests/audit/test_audit_20260923_doc.py tests/guards`: 428 passed, 2 skipped, 16 xfailed); the full pytest suite reached 81 % with no failure before a container restart killed it, so the whole suite is CI's on the documents pull request (both Pythons, read to conclusion by its jobs). The reproducer commit's CI (#722 at `7d91926a`): 6 of 6 checks green.

@@ -1,4 +1,4 @@
-# AUDIT-2026-09-23 — coverage census (file + behavioural) — sessions 1–5 (sessions 1–3 READ-ONLY)
+# AUDIT-2026-09-23 — coverage census (file + behavioural) — sessions 1–6 (sessions 1–3 READ-ONLY)
 
 > **Committed in session 4 (2026-09-25).** The operator answered ASK-08 "yes", and this file was committed with the
 > campaign's package (ADR-0535). Its READ-ONLY statements describe sessions 1–3, which committed nothing; the
@@ -12,6 +12,74 @@
 > with the container.
 
 Companion to the live ledger `docs/STATE/AUDIT-2026-09-23.md` (charter §8, §11 item 3).
+
+## Session 6 (2026-09-28, WP-CPM continued, base 13b13f38) — what changed in this census and what did not
+
+- **Bases.** Session 6's findings and probes ran at `13b13f38` (`origin/main`, #721 = session 5, v1.0.294, 820 commits,
+  highest ADR 0536); `src/` is identical to session 5's base (`git diff --stat 19173728 13b13f38 -- src/` is empty).
+  **The file-census population is still `8c71c639`'s 2,226 files** (1,528 non-intake + 698 MANIFEST-COVERED); nothing
+  was re-scanned and no session-1 READ count moved. At `13b13f38` the tree lists 2,260 files
+  (`git ls-tree -r --name-only 13b13f38 | wc -l`); files added after `8c71c639` are outside §2.2 and are named below
+  only where session 6 touched them.
+- **New status `PROBED-S6(n: IDs)`** — method in §0: a file cited as `path:line` (or `ADR-NNNN:line`) in the claim /
+  authority / mechanism fields of the records of *n* of the 28 session-6 CONFIRMED-DEFERRED findings (each class's
+  assembled record — `final_claim`, `authority`; UI-001's `claim`, `authority`, `mechanisms` — and every claim-only
+  verifier verdict the lead's facts sheet lists for it — `narrowed_claim`). **Computed mechanically**:
+
+  ```text
+  python3 $S/audit/final/build_facts.py            # the lead's facts sheet: 28 classes, their records and verdict JSONs
+  python3 $S/audit/draft/rca/s6_cites.py           # -> s6_cites.json: 70 files in the 8c71c639 population
+  python3 $S/audit/draft/rca/gen_coverage.py       # writes the marks, the lane headings and the §1 column
+  ```
+
+  (`$S` = the session scratchpad, which vanishes with the container.) `s6_cites.py` scans the fields above with
+  `(?<![\w./-])((?:[\w.-]+/)*[\w.-]+\.(?:py|md|js|css|json|ya?ml|toml|txt|tsv|sh|xml|html|cfg|ini)):(\d+)` and
+  `ADR-(\d{4}):(\d+)`, and resolves each token against `git ls-tree -r -z --name-only 8c71c639` (the exact path, else a
+  unique `/`-suffix match, preferring the one under `src/schedule_forensics/`). HELD F-EDGE2-002, the ARTIFACT-GATED
+  F-LEADS-005 and finder items, and the UNVERIFIED leads contribute no mark. Not counted: `trend.py` (UI-001's record;
+  two tracked files end in `/trend.py` under `src/schedule_forensics/`, so the token is ambiguous) and a literal
+  `docs/adr/0168-...md` (DOC-017's; the same ADR is counted from its full citation). Outside the population and so not
+  marked in §2.2: `tests/audit/test_audit_20260923_cpm.py` (cited by CPM-028's record). No intake file is cited as
+  `path:line` (the intake stays MANIFEST-COVERED in any case).
+- **Result: 70 files marked** — 20 were session-1 PROBED, 2 PROBED-S2 and 10 PROBED-S5 (these 32 keep that status; the
+  S6 mark is written beside it), 13 were READ and 25 UNREAD (these 38 are now PROBED-S6). Totals move READ 327 →
+  **314**, UNREAD 970 → **945**, UNREAD share 43.6 % → **42.5 %**; PROBED (s1) 175, PROBED-S2 31 and PROBED-S5 25 are
+  unchanged. By lane (files now PROBED-S6): DOC(adr) 21, TST 7, CPM 3, FIXTURE(oracle) 3, MET 2, IMP 1, SEC/WEB/UI(page) 1.
+  **Recounted by a second method**: (a) an independent `grep -oE` of the same record fields for
+  `…\.(py|md|…):[0-9]+` gives 72 distinct basenames = the census's 69 distinct basenames (two files are `case.json`)
+  plus the three uncounted tokens above; (b) re-reading §2.2 after the edit gives 70 `PROBED-S6(` marks, 38 of them as
+  the status and 32 beside an earlier mark (by the highest earlier mark: 20 PROBED, 2 PROBED-S2, 10 PROBED-S5), and the lane headings sum
+  to 175 PROBED · 31 PROBED-S2 · 25 PROBED-S5 · 38 PROBED-S6 · 314 READ · 945 UNREAD = the 1,528 non-intake files,
+  cell for cell with §1's table (the generator asserts both before it writes).
+- **The six WP-CPM modules session 5 left** (status after session 6):
+  - `src/schedule_forensics/engine/drag.py` — UNREAD → `PROBED-S6(6: CPM-016,CPM-017,CPM-018,CPM-019,CPM-021,DOC-017)`.
+  - `src/schedule_forensics/engine/driving_path.py` — UNREAD → `PROBED-S6(1: CPM-026)`.
+  - `src/schedule_forensics/engine/path_trace.py` — UNREAD → `PROBED-S6(2: CPM-024,CPM-032)`.
+  - `src/schedule_forensics/engine/path_counterfactual.py` — `PROBED-S6(5: CPM-010,CPM-011,CPM-013,CPM-014,CPM-015)` beside session 5's
+    `PROBED-S5(1: CPM-001)` (which marked only CPM-001's call-site census at lines 179 / 266).
+  - `src/schedule_forensics/engine/float_analysis.py` — `PROBED-S6(1: CPM-020)` beside session 1's `PROBED(1: DOC-014)`.
+  - `src/schedule_forensics/engine/month_axis.py` — **no mark; stays UNREAD in this census.** Finder F-DRAG probed it
+    (25 / 25 checks pass — years 1 … 9999, month edges, date vs datetime, tz-aware; its consumers bucket STORED dates, not
+    CPM offsets) and found nothing; a negative gives no `path:line` citation to a confirmed record, and the READ scan
+    that would credit the probe was not re-run.
+  - Their shared base `src/schedule_forensics/engine/driving_slack.py` — `PROBED-S6(2: CPM-022,CPM-032)` beside
+    `PROBED-S5(1: CPM-006) PROBED(1: IMP-002)`.
+  - Cited by the most session-6 findings: `src/schedule_forensics/engine/cpm.py` — 11: CPM-010, CPM-011, CPM-014, CPM-020, CPM-027, CPM-028, CPM-029, CPM-030, CPM-031, CPM-033, CPM-034; `src/schedule_forensics/web/driving.py` — 9: CPM-016, CPM-017, CPM-018, CPM-019, CPM-021, CPM-022, CPM-023, CPM-024, DOC-017; `src/schedule_forensics/engine/drag.py` — 6: CPM-016, CPM-017, CPM-018, CPM-019, CPM-021, DOC-017; `src/schedule_forensics/engine/path_counterfactual.py` — 5: CPM-010, CPM-011, CPM-013, CPM-014, CPM-015; `src/schedule_forensics/web/evolution.py` — 5: CPM-010, CPM-011, CPM-012, CPM-013, CPM-015.
+- **Outside the `8c71c639` population** (not in §2.2): `tests/audit/test_audit_20260923_ui.py` — **new in session 6**,
+  UI-001's Chromium-gated reproducer (one test; in CI's browser census: `tools/browser_modules.py` lists it, 56 → 57
+  modules); `tests/audit/test_audit_20260923_cpm.py` gains CPM-010 … CPM-034 (33 reproducers in all);
+  `tests/audit/test_audit_20260923_imp.py` gains IMP-010 (8); `tests/audit/test_audit_20260923_doc.py` gains DOC-017
+  (17). Counted with `grep -c '^def test_a0923' tests/audit/test_audit_20260923_*.py` in the checkout's working tree
+  at drafting time (the lead's integrated modules).
+- **Not done in session 6:** the READ mention scan over session 6's own records (READ counts stay session 1's, so a
+  file a session-6 finder read or probed without a confirmed finding — `month_axis.py`, the `month_axis` consumers
+  `bow_wave.py`, `month_curves.py`, `s_curve.py`, `version_series.py`, or `web/state.py:1806`'s `analyze_floats` path —
+  is not credited here); the route census (§3) was not re-run; the intake's MSPDI `.xml` stay MANIFEST-COVERED although
+  CPM-018's witness (`TP2_Bridge_4x10_Calendar.xml`) has a byte-identical intake copy.
+- **Behavioural census:** a new §3b (the SSI Directional Path workbook census, the drag census, the counterfactual's
+  constructed ground truth, the second-round edge matrix, the relations R6–R14 with populations, and what session 6 did
+  not cover). **Gap map / lane order:** the CPM and UI rows of §4 and items 1 and 5 of §4.1 carry a "(session 6: …)"
+  clause — **WP-CPM continued, still NOT saturated**.
 
 ## Session 5 (2026-09-25/26, WP-CPM, base 19173728) — what changed in this census and what did not
 
@@ -131,9 +199,10 @@ table is identical to the 156 routes `create_app(SessionState())` registers at `
 | **UNREAD** | none of the above | not necessarily unexamined by earlier audits (see the gap map, §4) |
 | **PROBED-S2 (n)** | (session 2) the file is cited as `path:line` in the authority / mechanism / witness fields (A1, A3, A5, A6, A7, `narrowed_claim`, `current_main_evidence`) of the refuter verdict JSON of *n* of the 46 retained findings, and was READ or UNREAD in session 1 (a session-1 PROBED file keeps its session-1 mark) | not every line of the file was exercised; a session-1 READ count beside the mark is session 1's |
 | **PROBED-S5 (n)** | (session 5) the file is cited as `path:line` (or `ADR-NNNN:line`) in the authority / mechanism / witness fields of the records of *n* of the 10 session-5 CONFIRMED-DEFERRED findings — the claim-only packet's claim and authority; the verifier's claim, narrowed claim, census, reproduction and its A1 (oracle) / A4 (measures the stated thing) / A5 (alternative witness) attacks; for the lead-found CPM-001, both verifiers' claim, authority, census, control, siblings and attacks (a) / (c) / (e), plus the lead's CPM-001 authority and call-site census. A file already PROBED or PROBED-S2 keeps that status and carries the S5 mark beside it; a READ or UNREAD file becomes PROBED-S5 (its READ count kept beside the mark) | not every line of the file was exercised; an ARTIFACT-GATED claim (CPM-009, IMP-008, IMP-009) and an UNVERIFIED lead contribute no mark |
+| **PROBED-S6 (n)** | (session 6) the file is cited as `path:line` (or `ADR-NNNN:line`) in the claim / authority / mechanism fields of the records of *n* of the 28 session-6 CONFIRMED-DEFERRED findings — each class's assembled record (`final_claim`, `authority`; for UI-001 its record's `claim`, `authority` and `mechanisms`) and every claim-only verifier verdict the lead's facts sheet lists for it (`narrowed_claim`; two verdicts for CPM-010 / 016 / 018 / 026). Resolved against `git ls-tree -r -z --name-only 8c71c639`: the exact path, else a unique `/`-suffix match, preferring the one under `src/schedule_forensics/`; `ADR-NNNN` → its one `docs/adr/NNNN-*.md`. A file already PROBED, PROBED-S2 or PROBED-S5 keeps that status and carries the S6 mark beside it; a READ or UNREAD file becomes PROBED-S6 (its READ count kept beside the mark) | not every line of the file was exercised; the HELD F-EDGE2-002, the ARTIFACT-GATED F-LEADS-005 and finder items, the UNVERIFIED leads, and a probe that found nothing contribute no mark; a file added after `8c71c639` is outside the population |
 
 Every tracked file gets exactly one status, highest first: MANIFEST-COVERED > PROBED > PROBED-S2 > PROBED-S5 > READ > UNREAD
-(PROBED-S5 added in session 5; the five older statuses are ranked as sessions 1–2 ranked them).
+(PROBED-S5 added in session 5; the five older statuses are ranked as sessions 1–2 ranked them). (Session 6: … > PROBED-S5 > PROBED-S6 > READ > UNREAD — PROBED-S6 added in session 6, ranked below every earlier PROBED mark.)
 So 100 % of the population carries a status by construction; the informative figure is the UNREAD share.
 
 **Path resolution** (`$S/audit/wave4/common.py::Resolver`): a token counts only if it resolves to exactly one
@@ -169,37 +238,39 @@ Ambiguous bare names are not counted (43 distinct, e.g. `SKILL.md`, `ci.yml`, `H
 
 Population: `git ls-files` at the base = **2,226** files (`census/files.tsv`; lanes assigned by `census/classify.py`, the same lanes the per-file list below uses).
 
-| lane (classify.py) | files | MANIFEST-COVERED | PROBED (s1) | PROBED-S2 | PROBED-S5 | READ | UNREAD | with a status | UNREAD share |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| INTAKE(MANIFEST-COVERED) | 698 | 698 | 0 | 0 | 0 | 0 | 0 | 100 % | 0.0 % |
-| TST | 563 | 0 | 20 | 11 | 1 | 118 | 413 | 100 % | 73.4 % |
-| DOC(adr) | 527 | 0 | 34 | 5 | 7 | 62 | 419 | 100 % | 79.5 % |
-| UI | 70 | 0 | 17 | 5 | 0 | 30 | 18 | 100 % | 25.7 % |
-| FIXTURE(oracle) | 41 | 0 | 0 | 0 | 0 | 28 | 13 | 100 % | 31.7 % |
-| DOC | 36 | 0 | 18 | 1 | 0 | 7 | 10 | 100 % | 27.8 % |
-| MET | 36 | 0 | 8 | 1 | 0 | 12 | 15 | 100 % | 41.7 % |
-| SEC/WEB/UI(page) | 36 | 0 | 12 | 0 | 4 | 8 | 12 | 100 % | 33.3 % |
-| IMP(mpxj) | 28 | 0 | 0 | 0 | 0 | 3 | 25 | 100 % | 89.3 % |
-| PKG | 24 | 0 | 10 | 1 | 0 | 11 | 2 | 100 % | 8.3 % |
-| DOC(state) | 23 | 0 | 10 | 3 | 0 | 4 | 6 | 100 % | 26.1 % |
-| AI | 22 | 0 | 13 | 0 | 2 | 1 | 6 | 100 % | 27.3 % |
-| INH(audit) | 19 | 0 | 3 | 0 | 0 | 14 | 2 | 100 % | 10.5 % |
-| TST(ci/instr) | 19 | 0 | 10 | 0 | 0 | 9 | 0 | 100 % | 0.0 % |
-| IMP | 18 | 0 | 7 | 1 | 1 | 3 | 6 | 100 % | 33.3 % |
-| EXP | 14 | 0 | 3 | 1 | 0 | 4 | 6 | 100 % | 42.9 % |
-| FOR | 14 | 0 | 0 | 0 | 8 | 2 | 4 | 100 % | 28.6 % |
-| WEB | 14 | 0 | 4 | 1 | 0 | 3 | 6 | 100 % | 42.9 % |
-| CPM | 10 | 0 | 4 | 0 | 2 | 0 | 4 | 100 % | 40.0 % |
-| TST(tools) | 6 | 0 | 1 | 0 | 0 | 5 | 0 | 100 % | 0.0 % |
-| CUI | 5 | 0 | 1 | 1 | 0 | 2 | 1 | 100 % | 20.0 % |
-| PERF | 2 | 0 | 0 | 0 | 0 | 1 | 1 | 100 % | 50.0 % |
-| OTHER | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 100 % | 100.0 % |
-| **total** | **2,226** | **698** | **175** | **31** | **25** | **327** | **970** | **100 %** | **43.6 %** |
+| lane (classify.py) | files | MANIFEST-COVERED | PROBED (s1) | PROBED-S2 | PROBED-S5 | PROBED-S6 | READ | UNREAD | with a status | UNREAD share |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| INTAKE(MANIFEST-COVERED) | 698 | 698 | 0 | 0 | 0 | 0 | 0 | 0 | 100 % | 0.0 % |
+| TST | 563 | 0 | 20 | 11 | 1 | 7 | 115 | 409 | 100 % | 72.6 % |
+| DOC(adr) | 527 | 0 | 34 | 5 | 7 | 21 | 56 | 404 | 100 % | 76.7 % |
+| UI | 70 | 0 | 17 | 5 | 0 | 0 | 30 | 18 | 100 % | 25.7 % |
+| FIXTURE(oracle) | 41 | 0 | 0 | 0 | 0 | 3 | 26 | 12 | 100 % | 29.3 % |
+| DOC | 36 | 0 | 18 | 1 | 0 | 0 | 7 | 10 | 100 % | 27.8 % |
+| MET | 36 | 0 | 8 | 1 | 0 | 2 | 11 | 14 | 100 % | 38.9 % |
+| SEC/WEB/UI(page) | 36 | 0 | 12 | 0 | 4 | 1 | 7 | 12 | 100 % | 33.3 % |
+| IMP(mpxj) | 28 | 0 | 0 | 0 | 0 | 0 | 3 | 25 | 100 % | 89.3 % |
+| PKG | 24 | 0 | 10 | 1 | 0 | 0 | 11 | 2 | 100 % | 8.3 % |
+| DOC(state) | 23 | 0 | 10 | 3 | 0 | 0 | 4 | 6 | 100 % | 26.1 % |
+| AI | 22 | 0 | 13 | 0 | 2 | 0 | 1 | 6 | 100 % | 27.3 % |
+| INH(audit) | 19 | 0 | 3 | 0 | 0 | 0 | 14 | 2 | 100 % | 10.5 % |
+| TST(ci/instr) | 19 | 0 | 10 | 0 | 0 | 0 | 9 | 0 | 100 % | 0.0 % |
+| IMP | 18 | 0 | 7 | 1 | 1 | 1 | 3 | 5 | 100 % | 27.8 % |
+| EXP | 14 | 0 | 3 | 1 | 0 | 0 | 4 | 6 | 100 % | 42.9 % |
+| FOR | 14 | 0 | 0 | 0 | 8 | 0 | 2 | 4 | 100 % | 28.6 % |
+| WEB | 14 | 0 | 4 | 1 | 0 | 0 | 3 | 6 | 100 % | 42.9 % |
+| CPM | 10 | 0 | 4 | 0 | 2 | 3 | 0 | 1 | 100 % | 10.0 % |
+| TST(tools) | 6 | 0 | 1 | 0 | 0 | 0 | 5 | 0 | 100 % | 0.0 % |
+| CUI | 5 | 0 | 1 | 1 | 0 | 0 | 2 | 1 | 100 % | 20.0 % |
+| PERF | 2 | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 100 % | 50.0 % |
+| OTHER | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 100 % | 100.0 % |
+| **total** | **2,226** | **698** | **175** | **31** | **25** | **38** | **314** | **945** | **100 %** | **42.5 %** |
 
 Session 5: the PROBED-S5 column counts the 25 files whose status moved to PROBED-S5; 17 session-1 PROBED files also
 carry an S5 mark and stay counted under PROBED (s1). Cited by the most session-5 findings: `src/schedule_forensics/engine/cpm.py`
 — 9: CPM-001..008, IMP-007; `src/schedule_forensics/importers/mspdi.py` — 5: CPM-002, CPM-007, CPM-008, IMP-006, IMP-007;
 `tests/parity/test_hard_file_stored_dates_oracle.py` — 2: CPM-001, CPM-004; every other marked file — 1.
+
+Session 6: the PROBED-S6 column counts the 38 files whose status moved to PROBED-S6 (by lane: DOC(adr) 21, TST 7, CPM 3, FIXTURE(oracle) 3, MET 2, IMP 1, SEC/WEB/UI(page) 1); 32 files already carrying a higher mark (20 PROBED, 2 PROBED-S2, 10 PROBED-S5) also carry an S6 mark and stay counted under that mark. READ, UNREAD and the UNREAD share are the values after session 6 (before it: READ 327, UNREAD 970, 43.6 %). Cited by the most session-6 findings: `src/schedule_forensics/engine/cpm.py` — 11: CPM-010, CPM-011, CPM-014, CPM-020, CPM-027, CPM-028, CPM-029, CPM-030, CPM-031, CPM-033, CPM-034; `src/schedule_forensics/web/driving.py` — 9: CPM-016, CPM-017, CPM-018, CPM-019, CPM-021, CPM-022, CPM-023, CPM-024, DOC-017; `src/schedule_forensics/engine/drag.py` — 6: CPM-016, CPM-017, CPM-018, CPM-019, CPM-021, DOC-017; `src/schedule_forensics/engine/path_counterfactual.py` — 5: CPM-010, CPM-011, CPM-013, CPM-014, CPM-015; `src/schedule_forensics/web/evolution.py` — 5: CPM-010, CPM-011, CPM-012, CPM-013, CPM-015.
 
 Files cited by the most confirmed findings (PROBED, n ≥ 3 — session 1's list; the session-2 PROBED-S2 marks are in §2.2 and counted in the table above):
 
@@ -318,8 +389,12 @@ session-1 count is kept beside the mark.
 `PROBED-S5(n: IDs)` (session 5) marks a file the records of the ten session-5 CONFIRMED-DEFERRED findings cite as
 `path:line` (method in §0 and in the Session 5 note); it is written first on the line, before any earlier mark, so a
 session-1 PROBED file now reads `PROBED-S5(…) PROBED(…) path`. The population is still the 2,226 files of `8c71c639`.
+`PROBED-S6(n: IDs)` (session 6) marks a file the records of the 28 session-6 CONFIRMED-DEFERRED findings cite as
+`path:line` (method in §0 and in the Session 6 note); it is written first on the line, before every earlier mark, so
+a file probed in sessions 1 and 5 now reads `PROBED-S6(…) PROBED-S5(…) PROBED(…) path`. Each lane heading gains a
+PROBED-S6 count; its READ and UNREAD counts are the values after session 6.
 
-#### TST — 563 files (PROBED 20, PROBED-S2 11, PROBED-S5 1, READ 118, UNREAD 413)
+#### TST — 563 files (PROBED 20, PROBED-S2 11, PROBED-S5 1, PROBED-S6 7, READ 115, UNREAD 409)
 
 ```text
 UNREAD                   tests/README.md
@@ -336,7 +411,7 @@ UNREAD                   tests/ai/test_coverage_briefing.py
 READ(2)                  tests/ai/test_coverage_ollama_process.py
 UNREAD                   tests/ai/test_derivation.py
 UNREAD                   tests/ai/test_dpapi_marshaling.py
-UNREAD                   tests/ai/test_driving_facts.py
+PROBED-S6(1: CPM-023)    tests/ai/test_driving_facts.py
 UNREAD                   tests/ai/test_driving_path_series.py
 UNREAD                   tests/ai/test_driving_path_series_focus_finish.py
 UNREAD                   tests/ai/test_gateway.py
@@ -407,8 +482,8 @@ UNREAD                   tests/engine/test_day_boundary_spelling.py
 UNREAD                   tests/engine/test_dcma_audit.py
 UNREAD                   tests/engine/test_diff.py
 UNREAD                   tests/engine/test_disclosure_not_quantified.py
-UNREAD                   tests/engine/test_driving_path.py
-UNREAD                   tests/engine/test_driving_slack.py
+PROBED-S6(1: CPM-026)    tests/engine/test_driving_path.py
+PROBED-S6(1: DOC-017)    tests/engine/test_driving_slack.py
 UNREAD                   tests/engine/test_driving_slack_daygrid.py
 UNREAD                   tests/engine/test_driving_slack_undated_ruler.py
 UNREAD                   tests/engine/test_effective_critical_basis.py
@@ -545,7 +620,7 @@ READ(4)                  tests/parity/test_fuse_metric_history_oracle.py
 READ(5)                  tests/parity/test_fuse_total_float_field_oracle.py
 PROBED-S2(1: TST-006) READ(5) tests/parity/test_fuse_transcription_oracle.py
 PROBED-S5(2: CPM-001,CPM-004) READ(17) tests/parity/test_hard_file_stored_dates_oracle.py
-READ(4)                  tests/parity/test_parity_gate.py
+PROBED-S6(2: CPM-019,DOC-017) READ(4) tests/parity/test_parity_gate.py
 READ(3)                  tests/parity/test_r57_assignment_leveling_delay_oracle.py
 READ(3)                  tests/parity/test_r58_calendar_intersection_oracle.py
 READ(2)                  tests/parity/test_r61_fixed_duration_leg_oracle.py
@@ -555,7 +630,7 @@ READ(1)                  tests/parity/test_sem_parity.py
 READ(1)                  tests/parity/test_sra_ssi_oracle_uid152.py
 READ(1)                  tests/parity/test_sra_ssi_oracle_uid152_v2.py
 READ(2)                  tests/parity/test_ssi_hardfile_24h_uid155.py
-READ(1)                  tests/parity/test_ssi_hardfile_uid155.py
+PROBED-S6(1: DOC-017) READ(1) tests/parity/test_ssi_hardfile_uid155.py
 UNREAD                   tests/reports/test_exports.py
 READ(1)                  tests/reports/test_onepager.py
 UNREAD                   tests/reports/test_onepager_compare.py
@@ -746,7 +821,7 @@ READ(3)                  tests/web/test_monolith_split_contract.py
 UNREAD                   tests/web/test_multi_folder_drop_browser.py
 READ(1)                  tests/web/test_multi_folder_ingestion.py
 UNREAD                   tests/web/test_nasa_theme.py
-READ(4)                  tests/web/test_no_horizontal_overflow.py
+PROBED-S6(1: UI-001) READ(4) tests/web/test_no_horizontal_overflow.py
 UNREAD                   tests/web/test_no_inline_event_handlers.py
 UNREAD                   tests/web/test_offload.py
 UNREAD                   tests/web/test_onepager_browser.py
@@ -761,7 +836,7 @@ UNREAD                   tests/web/test_pair_scope_exposure_sweep.py
 READ(1)                  tests/web/test_path_click_highlight.py
 UNREAD                   tests/web/test_path_groupby_xss.py
 UNREAD                   tests/web/test_path_links.py
-UNREAD                   tests/web/test_path_options.py
+PROBED-S6(1: CPM-022)    tests/web/test_path_options.py
 UNREAD                   tests/web/test_path_row_windowing_browser.py
 UNREAD                   tests/web/test_path_version_agreement.py
 READ(1)                  tests/web/test_path_view.py
@@ -887,7 +962,7 @@ READ(1)                  tests/web/test_zero_margin_sra.py
 READ(3)                  tests/web/tip_probe.py
 ```
 
-#### DOC(adr) — 527 files (PROBED 34, PROBED-S2 5, PROBED-S5 7, READ 62, UNREAD 419)
+#### DOC(adr) — 527 files (PROBED 34, PROBED-S2 5, PROBED-S5 7, PROBED-S6 21, READ 56, UNREAD 404)
 
 ```text
 UNREAD                   docs/adr/0000-record-architecture-decisions.md
@@ -901,7 +976,7 @@ UNREAD                   docs/adr/0007-m2-domain-model-and-units.md
 PROBED-S5(1: IMP-006)    docs/adr/0008-m3-mspdi-xer-importers.md
 UNREAD                   docs/adr/0009-m4-native-mpp-mpxj-and-loader.md
 PROBED-S5(1: IMP-007) READ(1) docs/adr/0010-m5-cpm-and-float.md
-UNREAD                   docs/adr/0011-m6-driving-slack-ssi-parity.md
+PROBED-S6(1: CPM-023)    docs/adr/0011-m6-driving-slack-ssi-parity.md
 UNREAD                   docs/adr/0012-m7-acumen-dcma14-schedule-quality.md
 UNREAD                   docs/adr/0013-m8-evm-baseline-compliance-and-change-metrics.md
 UNREAD                   docs/adr/0014-m9-parity-acceptance-gate-and-residual-disposition.md
@@ -918,7 +993,7 @@ UNREAD                   docs/adr/0024-full-build-audit-remediation.md
 UNREAD                   docs/adr/0025-multi-version-trend-briefing-gantt.md
 READ(1)                  docs/adr/0026-second-audit-remediation-and-operator-features.md
 UNREAD                   docs/adr/0027-deferred-audit-items-calendar-days-cpunits-ai-figure-gate.md
-PROBED-S5(1: CPM-006) READ(3) docs/adr/0028-mspdi-xer-project-calendar-parsing.md
+PROBED-S6(1: IMP-010) PROBED-S5(1: CPM-006) READ(3) docs/adr/0028-mspdi-xer-project-calendar-parsing.md
 UNREAD                   docs/adr/0029-xer-cost-rollup-taskrsrc-projcost.md
 UNREAD                   docs/adr/0030-m15-pbix-informed-enrichment.md
 UNREAD                   docs/adr/0031-path-analysis-workspace-and-grounded-qa.md
@@ -933,12 +1008,12 @@ UNREAD                   docs/adr/0039-pbix-pages-4-5-cross-file-float-analysis.
 UNREAD                   docs/adr/0040-pbix-pages-6-7-12-finish-slippage-curves.md
 UNREAD                   docs/adr/0041-pbix-pages-8-9-wbs-completion-spi-es.md
 UNREAD                   docs/adr/0042-pbix-page-13-carnac-forecast-cards.md
-PROBED-S5(1: CPM-008)    docs/adr/0043-logic-on-summary-tasks.md
+PROBED-S6(1: CPM-032) PROBED-S5(1: CPM-008) docs/adr/0043-logic-on-summary-tasks.md
 UNREAD                   docs/adr/0044-critical-path-evolution-animation.md
 UNREAD                   docs/adr/0045-driving-slack-whole-day-span-grid.md
 UNREAD                   docs/adr/0046-forecast-explainer-trend-drilldown.md
 UNREAD                   docs/adr/0047-ask-ai-relevance-fix.md
-UNREAD                   docs/adr/0048-evolution-gantt-change-attribution.md
+PROBED-S6(1: CPM-011)    docs/adr/0048-evolution-gantt-change-attribution.md
 UNREAD                   docs/adr/0049-chart-legends-descriptions-legibility.md
 UNREAD                   docs/adr/0050-dashboard-health-cards.md
 UNREAD                   docs/adr/0051-hide-completed-robust-flag.md
@@ -952,7 +1027,7 @@ UNREAD                   docs/adr/0058-third-audit-remediation-loopback-scheme.m
 UNREAD                   docs/adr/0059-ask-ai-full-evidence-local-ollama.md
 UNREAD                   docs/adr/0060-chart-fullscreen-zoom-legible-labels.md
 UNREAD                   docs/adr/0061-target-uid-stays-on-page-and-reaches-card-wbs.md
-UNREAD                   docs/adr/0062-critical-path-removal-counterfactual.md
+PROBED-S6(2: CPM-011,CPM-012) docs/adr/0062-critical-path-removal-counterfactual.md
 UNREAD                   docs/adr/0063-diagnostic-brief-trends-risks-recovery.md
 UNREAD                   docs/adr/0064-dcma-definitions-on-analysis-page.md
 UNREAD                   docs/adr/0065-animated-s-curve.md
@@ -995,7 +1070,7 @@ UNREAD                   docs/adr/0101-cei-variants.md
 UNREAD                   docs/adr/0102-i18n-french-german.md
 UNREAD                   docs/adr/0103-float-ratio.md
 UNREAD                   docs/adr/0104-session-wide-filter.md
-UNREAD                   docs/adr/0105-target-endpoint-and-risk-matrix.md
+PROBED-S6(1: CPM-032)    docs/adr/0105-target-endpoint-and-risk-matrix.md
 UNREAD                   docs/adr/0106-schedule-risk-analysis-monte-carlo.md
 UNREAD                   docs/adr/0107-schedule-margin.md
 PROBED-S2(1: DOC-015) READ(1) docs/adr/0108-evm-acumen-reference-and-progress-scheduler-gap.md
@@ -1045,20 +1120,20 @@ UNREAD                   docs/adr/0151-fuse-export-parity.md
 PROBED(1: DOC-004)       docs/adr/0152-cui-guard-inherited-blobs.md
 UNREAD                   docs/adr/0153-threshold-citation-sweep.md
 UNREAD                   docs/adr/0154-gantt-fit-mission-hints-uid67-smh.md
-UNREAD                   docs/adr/0155-ssi-path-options-drag-ribbon.md
+PROBED-S6(1: DOC-017)    docs/adr/0155-ssi-path-options-drag-ribbon.md
 UNREAD                   docs/adr/0156-integrity-page-grouping-links-chrome.md
 UNREAD                   docs/adr/0157-timescale-dialog.md
-UNREAD                   docs/adr/0158-histogram-drill-vizhints-uid152.md
+PROBED-S6(2: CPM-019,DOC-017) docs/adr/0158-histogram-drill-vizhints-uid152.md
 UNREAD                   docs/adr/0159-fuse-hardfile-parity-d7.md
 UNREAD                   docs/adr/0160-timescale-size-shading-svt-start.md
 UNREAD                   docs/adr/0161-on-time-execution-thresholds.md
-PROBED(1: DOC-010)       docs/adr/0162-per-change-counterfactual-effect.md
+PROBED-S6(1: CPM-012) PROBED(1: DOC-010) docs/adr/0162-per-change-counterfactual-effect.md
 UNREAD                   docs/adr/0163-chart-reflow-briefing-duo.md
 UNREAD                   docs/adr/0164-integrity-multifile-robustness-two-file-picker.md
 UNREAD                   docs/adr/0165-ribbon-metric-drill-driving-path-file-selector.md
 UNREAD                   docs/adr/0166-integrity-review-hardening.md
 UNREAD                   docs/adr/0167-drill-tables-filter-columns-export.md
-UNREAD                   docs/adr/0168-ssi-hardfile-uid155-driving-path-golden.md
+PROBED-S6(1: DOC-017)    docs/adr/0168-ssi-hardfile-uid155-driving-path-golden.md
 UNREAD                   docs/adr/0169-driving-tiers-columns-filter-export-banner.md
 UNREAD                   docs/adr/0170-split-health-indices-trend-charts.md
 UNREAD                   docs/adr/0171-resources-bucketing-and-overallocation-drill.md
@@ -1110,7 +1185,7 @@ UNREAD                   docs/adr/0216-drill-on-per-activity-bar-charts.md
 UNREAD                   docs/adr/0217-drill-on-categorical-count-bars.md
 UNREAD                   docs/adr/0218-drill-on-performance-and-cei-monthly-bars.md
 UNREAD                   docs/adr/0219-presentation-bug-batch.md
-PROBED(1: MET-002)       docs/adr/0220-ch01-critical-basis.md
+PROBED-S6(1: CPM-020) PROBED(1: MET-002) docs/adr/0220-ch01-critical-basis.md
 UNREAD                   docs/adr/0221-sra-conclusions-calendar-daycounts.md
 UNREAD                   docs/adr/0222-executive-margin-dashboard.md
 UNREAD                   docs/adr/0223-float-ribbon-extras-na-on-empty-population.md
@@ -1141,7 +1216,7 @@ UNREAD                   docs/adr/0247-audit-remainder-driving-path-shading-xlsx
 UNREAD                   docs/adr/0248-pr-p1-perf-safe-increment.md
 UNREAD                   docs/adr/0249-audit-f-perf-regression-harness.md
 READ(1)                  docs/adr/0250-deep-audit-remediation.md
-UNREAD                   docs/adr/0251-ignore-toggles-copy-truth-and-page-family-alignment.md
+PROBED-S6(1: CPM-022)    docs/adr/0251-ignore-toggles-copy-truth-and-page-family-alignment.md
 UNREAD                   docs/adr/0252-base-cpm-single-calendar-disclosure.md
 UNREAD                   docs/adr/0253-user-parameterized-nasa-margin-rate.md
 UNREAD                   docs/adr/0254-expected-margin-panel-fig530-band-sra-spread.md
@@ -1196,11 +1271,11 @@ UNREAD                   docs/adr/0302-one-helper-gains-a-secondary-axis-caption
 UNREAD                   docs/adr/0303-a-caption-lives-inside-the-plot-so-the-data-label-yields.md
 UNREAD                   docs/adr/0304-a-toolbar-that-fires-is-not-a-toolbar-that-works.md
 READ(1)                  docs/adr/0305-the-block-layout-enlarge-is-an-overlay-not-a-column-span.md
-UNREAD                   docs/adr/0306-an-absent-figure-is-not-a-zero.md
+PROBED-S6(1: CPM-024)    docs/adr/0306-an-absent-figure-is-not-a-zero.md
 UNREAD                   docs/adr/0307-a-ranking-factor-that-does-not-change-uncertainty.md
 UNREAD                   docs/adr/0308-a-guard-that-one-code-path-can-walk-around.md
 PROBED-S2(1: DOC-015) READ(2) docs/adr/0309-ms-project-already-decided-where-remaining-work-goes.md
-UNREAD                   docs/adr/0310-two-time-axes-and-the-labels-that-confuse-them.md
+PROBED-S6(2: CPM-017,CPM-018) docs/adr/0310-two-time-axes-and-the-labels-that-confuse-them.md
 UNREAD                   docs/adr/0311-an-off-spine-page-still-needs-somewhere-to-say-what-it-is.md
 UNREAD                   docs/adr/0312-the-anchor-every-date-is-measured-from-has-to-be-schedulable.md
 UNREAD                   docs/adr/0313-a-number-the-operator-never-typed.md
@@ -1212,7 +1287,7 @@ UNREAD                   docs/adr/0318-data-noprint-gets-its-one-global-rule-in-
 UNREAD                   docs/adr/0319-the-resources-period-labels-yield-to-the-measured-caption.md
 UNREAD                   docs/adr/0320-the-evolution-exports-honor-the-page-state.md
 UNREAD                   docs/adr/0321-roll-up-titles-state-the-aggregation-rule.md
-PROBED-S5(1: CPM-001)    docs/adr/0322-the-base-cpm-honors-per-task-calendars.md
+PROBED-S6(1: CPM-031) PROBED-S5(1: CPM-001) docs/adr/0322-the-base-cpm-honors-per-task-calendars.md
 UNREAD                   docs/adr/0323-open-start-open-finish-dangling-checks.md
 UNREAD                   docs/adr/0324-a-launch-token-scopes-the-page-selection-memory.md
 UNREAD                   docs/adr/0325-the-margin-dashboard-joins-the-one-caption-convention.md
@@ -1238,7 +1313,7 @@ PROBED(1: TST-003)       docs/adr/0344-standing-rituals-become-invoked-skills.md
 UNREAD                   docs/adr/0345-a-test-that-configures-logging-must-not-configure-the-next-one.md
 UNREAD                   docs/adr/0346-a-support-range-nobody-runs-is-not-a-support-range.md
 PROBED(2: TST-002,TST-010) docs/adr/0347-the-intake-gets-a-manifest-and-the-guards-get-teeth.md
-UNREAD                   docs/adr/0348-one-instant-two-spellings-and-the-one-that-means-a-start.md
+PROBED-S6(1: CPM-027)    docs/adr/0348-one-instant-two-spellings-and-the-one-that-means-a-start.md
 UNREAD                   docs/adr/0349-monolith-split-phase-2-chrome.md
 PROBED(1: DOC-001)       docs/adr/0350-monolith-split-phase-3-the-shared-kernel-comes-out-first.md
 UNREAD                   docs/adr/0351-phase-3-slice-2-the-driving-path-family-and-the-oracle-that-proved-nothing.md
@@ -1256,7 +1331,7 @@ UNREAD                   docs/adr/0362-battery-phase-2-the-seven-queued-families
 UNREAD                   docs/adr/0363-phase-3-slice-5-the-margin-family-and-the-first-fully-covered-render-diff.md
 UNREAD                   docs/adr/0364-phase-3-slice-6-the-trend-family-and-the-sweep-that-found-a-real-candidate.md
 UNREAD                   docs/adr/0365-phase-3-slice-7-the-ssi-run-machinery-and-the-census-flagship-that-left-the-family.md
-UNREAD                   docs/adr/0366-subday-change-effects-exact-minutes.md
+PROBED-S6(1: CPM-013)    docs/adr/0366-subday-change-effects-exact-minutes.md
 UNREAD                   docs/adr/0367-parity-milestone-population-adjudicated.md
 UNREAD                   docs/adr/0368-briefing-memoised-per-epoch.md
 UNREAD                   docs/adr/0369-integrity-disclosure-hardening.md
@@ -1292,7 +1367,7 @@ UNREAD                   docs/adr/0398-the-installers-learn-to-fetch-from-a-priv
 UNREAD                   docs/adr/0399-the-cui-guard-learns-disguises-and-containers.md
 UNREAD                   docs/adr/0400-the-transcription-oracle-the-floor-guard-and-the-host-closure.md
 UNREAD                   docs/adr/0401-the-sandbox-wipe-and-the-first-jcl-battery.md
-PROBED(1: CUI-003)       docs/adr/0402-first-class-approved-gateway-backend.md
+PROBED-S6(1: UI-001) PROBED(1: CUI-003) docs/adr/0402-first-class-approved-gateway-backend.md
 UNREAD                   docs/adr/0403-gateway-bearer-authentication.md
 PROBED(1: WEB-002)       docs/adr/0404-persistent-ai-settings.md
 UNREAD                   docs/adr/0405-final-report-truthfulness.md
@@ -1352,26 +1427,26 @@ UNREAD                   docs/adr/0458-analysis-scroll-re-aim-is-incremental-and
 UNREAD                   docs/adr/0459-wp5-folder-gestures-named-and-a-parent-folder-is-asked-about.md
 UNREAD                   docs/adr/0460-trend-in-the-claude-design-layout-and-the-cd-cursor-alias.md
 READ(1)                  docs/adr/0461-chartframe-in-the-layout-head-closes-the-fetch-callback-race-behind-ci-03.md
-UNREAD                   docs/adr/0462-integrity-counterfactual-reports-working-days-and-names-the-finish-activity.md
-UNREAD                   docs/adr/0463-wp6-six-ledger-highs-verified-five-fixed-one-widened-to-the-whole-app.md
+PROBED-S6(1: CPM-013)    docs/adr/0462-integrity-counterfactual-reports-working-days-and-names-the-finish-activity.md
+PROBED-S6(1: CPM-024)    docs/adr/0463-wp6-six-ledger-highs-verified-five-fixed-one-widened-to-the-whole-app.md
 UNREAD                   docs/adr/0464-forecast-in-the-claude-design-layout-the-stepper-re-homed-into-the-strip.md
 READ(1)                  docs/adr/0465-one-pager-compare-two-lists-matched-on-the-only-key-they-carry-every-move-in-calendar-days.md
 UNREAD                   docs/adr/0466-the-trend-cursor-follows-the-data-frame-publication-never-a-click-proxy.md
-UNREAD                   docs/adr/0467-wp6b-the-ledger-tail-verified-by-execution-eleven-fixed-red-first-six-refuted.md
+PROBED-S6(1: CPM-025)    docs/adr/0467-wp6b-the-ledger-tail-verified-by-execution-eleven-fixed-red-first-six-refuted.md
 UNREAD                   docs/adr/0468-performance-in-the-claude-design-layout-five-bands-in-one-grid-the-stepper-re-homed.md
 PROBED(2: CUI-002,CUI-003) docs/adr/0469-wp7-the-transaction-log-under-law-1-and-the-twenty-one-never-adverse-routes-driven-adversely.md
 UNREAD                   docs/adr/0470-card-in-the-claude-design-layout-a-per-file-drill-whose-cursor-is-navigation.md
 UNREAD                   docs/adr/0471-wbs-in-the-claude-design-layout-a-single-card-artboard-maps-to-the-masthead-first-order.md
 READ(2)                  docs/adr/0472-wp8-the-consolidated-report-and-repair-roadmap-ordered-by-testimony-risk-pinned-to-the-tree.md
 READ(1)                  docs/adr/0473-the-multi-project-fuse-oracle-the-compliance-block-scores-the-bibles-current-finish-mspdi-currency-is-in-hundredths-bcws-is-time-phased-cpi-discloses-its-blank-actuals.md
-PROBED(1: IMP-003)       docs/adr/0474-resource-calendars-and-leveling-delay-in-the-base-cpm-ms-projects-stored-dates-as-the-oracle.md
+PROBED-S6(1: CPM-011) PROBED(1: IMP-003) docs/adr/0474-resource-calendars-and-leveling-delay-in-the-base-cpm-ms-projects-stored-dates-as-the-oracle.md
 PROBED(1: CUI-004)       docs/adr/0475-standards-in-the-claude-design-layout-a-selector-row-ported-as-navigation-that-hides-nothing.md
 READ(1)                  docs/adr/0476-a-completed-activity-occupies-exactly-its-recorded-window.md
-READ(3)                  docs/adr/0477-a-hidden-tooltip-must-not-widen-the-document.md
+PROBED-S6(1: UI-001) READ(3) docs/adr/0477-a-hidden-tooltip-must-not-widen-the-document.md
 READ(1)                  docs/adr/0478-ask-the-ai-names-why-there-is-no-answer.md
 READ(1)                  docs/adr/0479-the-driving-path-is-computed-for-every-version.md
 READ(1)                  docs/adr/0480-an-answer-the-model-only-partly-read-says-so.md
-READ(1)                  docs/adr/0481-the-operator-can-set-the-context-window-and-is-told-what-it-costs.md
+PROBED-S6(1: UI-001) READ(1) docs/adr/0481-the-operator-can-set-the-context-window-and-is-told-what-it-costs.md
 READ(1)                  docs/adr/0482-closing-the-browser-stops-the-tool-in-seconds.md
 READ(1)                  docs/adr/0483-the-tool-that-decides-to-stop-actually-exits.md
 READ(1)                  docs/adr/0484-scorecards-in-the-claude-design-layout-a-three-card-grid-whose-verbatim-tables-lay-out-fixed.md
@@ -1392,42 +1467,42 @@ READ(1)                  docs/adr/0498-the-exported-pptx-does-load-the-libreoffi
 READ(1)                  docs/adr/0499-the-libraries-same-named-metric-history-variants-are-exposed-as-their-own-metrics.md
 READ(1)                  docs/adr/0500-a-fixed-duration-leg-spans-the-duration-in-crew-minutes-the-window-rule-is-refuted.md
 READ(1)                  docs/adr/0501-the-mpp-corpus-settles-r-61-for-adr-0474-and-corrects-adr-0500s-witness.md
-READ(2)                  docs/adr/0502-a-bookings-own-leveling-delay-is-honoured-on-that-leg-alone-on-adr-0474s-type-axis.md
+PROBED-S6(1: CPM-029) READ(2) docs/adr/0502-a-bookings-own-leveling-delay-is-honoured-on-that-leg-alone-on-adr-0474s-type-axis.md
 READ(2)                  docs/adr/0503-a-task-calendar-meets-a-crew-calendar-on-their-intersection.md
 READ(1)                  docs/adr/0504-the-analysis-calendar-disclosure-names-every-calendar-the-base-pass-runs-on.md
-PROBED(1: TST-011)       docs/adr/0505-a-zero-duration-task-carries-its-driving-predecessors-wall-instant.md
+PROBED-S6(1: CPM-027) PROBED(1: TST-011) docs/adr/0505-a-zero-duration-task-carries-its-driving-predecessors-wall-instant.md
 READ(1)                  docs/adr/0506-a-resources-capacity-is-the-files-own-availability-table-at-the-status-date.md
 READ(1)                  docs/adr/0507-every-absent-total-slack-the-mpxj-writer-dropped-is-a-zero-completed-activities-included-and-float-erosion-scores-incomplete-work-only.md
 READ(1)                  docs/adr/0508-a-leveling-gap-is-measured-in-working-seconds-and-the-leg-honours-the-nearest-minute-of-the-cumulative-gap.md
 READ(4)                  docs/adr/0509-qc-3-the-plan-is-wrong-until-it-survives-its-authors-attempt-to-refute-it.md
-READ(1)                  docs/adr/0510-a-zero-duration-task-carries-its-late-instant-from-the-need-that-binds-it-the-backward-mirror.md
+PROBED-S6(2: CPM-027,CPM-028) READ(1) docs/adr/0510-a-zero-duration-task-carries-its-late-instant-from-the-need-that-binds-it-the-backward-mirror.md
 READ(1)                  docs/adr/0511-ev-bcwp-and-acwp-follow-the-bookings-time-phased-record-and-the-ribbons-bac-is-its-time-line.md
 READ(2)                  docs/adr/0512-the-backward-pass-stops-at-finished-work-a-completed-successor-presents-no-late-need-and-a-started-one-its-remaining-portion.md
 READ(1)                  docs/adr/0513-out-of-sequence-progress-resumes-its-remaining-work-at-its-recorded-start-and-a-start-need-binds-no-started-predecessor.md
 READ(1)                  docs/adr/0514-acumen-fuses-total-float-field-is-the-stored-slack-rounded-half-to-even-dcma14s-parity-roundings-are-the-references-own-rule.md
 READ(1)                  docs/adr/0515-fuses-own-rounding-is-half-to-even-wherever-its-code-rounds-r-04s-sweep-refuted-by-measurement-the-round-sites-classified-by-exposure.md
 READ(1)                  docs/adr/0516-fuses-total-float-field-divides-by-the-activitys-own-day-a-task-calendars-1440-raw-for-an-elapsed-duration-never-the-crews-r-75-closed.md
-READ(1)                  docs/adr/0517-every-started-activitys-remaining-work-is-scheduled-from-its-stored-resume-read-in-working-minutes-of-the-calendars-own-segments-r-73-closed.md
+PROBED-S6(1: CPM-010) READ(1) docs/adr/0517-every-started-activitys-remaining-work-is-scheduled-from-its-stored-resume-read-in-working-minutes-of-the-calendars-own-segments-r-73-closed.md
 READ(1)                  docs/adr/0518-fuses-duration-fields-divide-by-the-activitys-own-calendar-day-and-the-dcma-population-and-the-high-duration-tile-read-the-baseline-field-r-76-closed.md
 READ(2)                  docs/adr/0519-float-ratio-is-two-metrics-under-one-name-mean-of-ratios-na-on-a-zero-divisor-and-ratio-of-means-r-78-closed.md
 READ(1)                  docs/adr/0520-dcma-09-is-two-metrics-with-two-populations-and-a-field-numerator-r-79-closed.md
 READ(1)                  docs/adr/0521-a-draw-failure-is-not-a-load-failure-and-the-population-was-sixteen-not-thirteen-r-09-closed.md
 READ(1)                  docs/adr/0522-free-float-is-bounded-by-the-total-and-a-successors-leveling-delay-is-not-slack-r-74-closed.md
 PROBED-S5(1: CPM-007) PROBED(1: TST-011) docs/adr/0523-the-project-axis-is-working-minutes-in-both-directions-r-77-closed.md
-READ(2)                  docs/adr/0524-a-late-start-is-a-start-role-instant-on-the-wall-path-too-r-69-closed.md
+PROBED-S6(1: CPM-027) READ(2) docs/adr/0524-a-late-start-is-a-start-role-instant-on-the-wall-path-too-r-69-closed.md
 READ(1)                  docs/adr/0525-ten-of-eleven-terminal-catch-sentences-are-conflations-r-80-closed.md
 READ(4)                  docs/adr/0526-one-pager-compare-a-repeated-name-whose-date-did-not-move-is-one-unchanged-item-column-d-is-a-status-word.md
 ```
 
-#### UI — 70 files (PROBED 17, PROBED-S2 5, PROBED-S5 0, READ 30, UNREAD 18)
+#### UI — 70 files (PROBED 17, PROBED-S2 5, PROBED-S5 0, PROBED-S6 0, READ 30, UNREAD 18)
 
 ```text
-PROBED-S2(1: TST-001) READ(6) src/schedule_forensics/web/static/a11y.js
+PROBED-S6(1: UI-001) PROBED-S2(1: TST-001) READ(6) src/schedule_forensics/web/static/a11y.js
 PROBED(2: CUI-003,CUI-004) src/schedule_forensics/web/static/ai_polish.js
-PROBED-S2(1: TST-007) READ(3) src/schedule_forensics/web/static/app.css
+PROBED-S6(1: UI-001) PROBED-S2(1: TST-007) READ(3) src/schedule_forensics/web/static/app.css
 READ(8)                  src/schedule_forensics/web/static/app.js
 PROBED(3: AI-003,CUI-003,CUI-004) src/schedule_forensics/web/static/ask.js
-PROBED(1: TST-007)       src/schedule_forensics/web/static/base.css
+PROBED-S6(1: UI-001) PROBED(1: TST-007) src/schedule_forensics/web/static/base.css
 UNREAD                   src/schedule_forensics/web/static/cei.js
 READ(17)                 src/schedule_forensics/web/static/chartframe.js
 READ(1)                  src/schedule_forensics/web/static/checklist.js
@@ -1494,7 +1569,7 @@ UNREAD                   src/schedule_forensics/web/static/whatif.js
 READ(12)                 src/schedule_forensics/web/static/workbench.js
 ```
 
-#### FIXTURE(oracle) — 41 files (PROBED 0, PROBED-S2 0, PROBED-S5 0, READ 28, UNREAD 13)
+#### FIXTURE(oracle) — 41 files (PROBED 0, PROBED-S2 0, PROBED-S5 0, PROBED-S6 3, READ 26, UNREAD 12)
 
 ```text
 UNREAD                   tests/fixtures/.gitkeep
@@ -1519,17 +1594,17 @@ UNREAD                   tests/fixtures/golden/ssi_hardfile_24h_uid155/case.json
 UNREAD                   tests/fixtures/golden/ssi_hardfile_uid155/case.json
 READ(4)                  tests/fixtures/golden/ssi_uid145/case.json
 READ(10)                 tests/fixtures/golden/ssi_uid152/Large_Test_File.mspdi.xml.gz
-UNREAD                   tests/fixtures/golden/ssi_uid152/case.json
+PROBED-S6(1: CPM-019)    tests/fixtures/golden/ssi_uid152/case.json
 READ(11)                 tests/fixtures/golden/ssi_uid152_leveled/Large_Test_File_Leveled.mspdi.xml.gz
 UNREAD                   tests/fixtures/golden/ssi_uid152_leveled/case.json
-READ(3)                  tests/fixtures/golden/ssi_uid67/case.json
+PROBED-S6(1: CPM-019) READ(3) tests/fixtures/golden/ssi_uid67/case.json
 READ(4)                  tests/fixtures/mspdi/NEGFLOAT_SubDay_Probe.xml
 READ(1)                  tests/fixtures/mspdi/commercial_construction.xml
 UNREAD                   tests/fixtures/mspdi/jacked_up_schedule_1.xml
 READ(2)                  tests/fixtures/mspdi/jacked_up_schedule_2.xml
 UNREAD                   tests/fixtures/mspdi/jacked_up_schedule_2_with_deadline.xml
 READ(14)                 tests/fixtures/test_projects/TP1_Library_Progressed.xml
-READ(9)                  tests/fixtures/test_projects/TP2_Bridge_4x10_Calendar.xml
+PROBED-S6(1: CPM-018) READ(9) tests/fixtures/test_projects/TP2_Bridge_4x10_Calendar.xml
 UNREAD                   tests/fixtures/test_projects/TP3_Outage_DCMA_Seeded.xml
 UNREAD                   tests/fixtures/test_projects/TP4_DataCenter_v1.xml
 UNREAD                   tests/fixtures/test_projects/TP4_DataCenter_v2.xml
@@ -1540,18 +1615,18 @@ READ(4)                  tests/fixtures/test_projects/TP5_LongSpan_Synthetic.xml
 READ(4)                  tests/fixtures/xer/commercial_construction.xer
 ```
 
-#### DOC — 36 files (PROBED 18, PROBED-S2 1, PROBED-S5 0, READ 7, UNREAD 10)
+#### DOC — 36 files (PROBED 18, PROBED-S2 1, PROBED-S5 0, PROBED-S6 0, READ 7, UNREAD 10)
 
 ```text
 PROBED(1: DOC-004)       AUTONOMOUS-BUILD-PROMPT.md
 READ(4)                  AUTONOMOUS-BUILD-SETUP-CHECKLIST.md
-PROBED(16: AI-001,AI-002,AI-003,AI-004,AI-005,CUI-003,DOC-001,DOC-004,DOC-013,TST-001,TST-002,TST-003,TST-005,TST-006,TST-010,TST-013) CLAUDE.md
+PROBED-S6(1: CPM-024) PROBED(16: AI-001,AI-002,AI-003,AI-004,AI-005,CUI-003,DOC-001,DOC-004,DOC-013,TST-001,TST-002,TST-003,TST-005,TST-006,TST-010,TST-013) CLAUDE.md
 UNREAD                   LICENSE
 PROBED(11: CUI-001,CUI-003,DOC-002,DOC-003,DOC-004,IMP-001,IMP-002,IMP-003,IMP-004,TST-010,WEB-001) README.md
 PROBED(1: DOC-011)       docs/ACUMEN-PARITY-MODE.md
 PROBED(1: DOC-010)       docs/CONNECT-A-BIGGER-AI-MODEL.md
 PROBED(1: DOC-003)       docs/DESIGN-GAP-2026-08-17.md
-PROBED(6: DOC-003,DOC-004,DOC-016,TST-007,TST-008,TST-013) docs/DESIGN-SYSTEM.md
+PROBED-S6(1: UI-001) PROBED(6: DOC-003,DOC-004,DOC-016,TST-007,TST-008,TST-013) docs/DESIGN-SYSTEM.md
 PROBED-S5(1: IMP-007) PROBED(2: CUI-003,DOC-004) docs/FINAL-REPORT.md
 PROBED(5: DOC-004,DOC-008,DOC-009,DOC-012,DOC-015) docs/FUSE-VALIDATION.md
 UNREAD                   docs/HANDBOOK-EXTENSION-PLAN.md
@@ -1581,7 +1656,7 @@ READ(5)                  docs/automated-reporting.md
 PROBED(3: CUI-003,DOC-004,DOC-013) docs/risks.md
 ```
 
-#### MET — 36 files (PROBED 8, PROBED-S2 1, PROBED-S5 0, READ 12, UNREAD 15)
+#### MET — 36 files (PROBED 8, PROBED-S2 1, PROBED-S5 0, PROBED-S6 2, READ 11, UNREAD 14)
 
 ```text
 READ(6)                  src/schedule_forensics/engine/dcma_audit.py
@@ -1590,7 +1665,7 @@ PROBED(1: MET-001)       src/schedule_forensics/engine/margin_dashboard.py
 READ(3)                  src/schedule_forensics/engine/margin_guideline.py
 UNREAD                   src/schedule_forensics/engine/metric_catalog.py
 UNREAD                   src/schedule_forensics/engine/metrics/__init__.py
-READ(9)                  src/schedule_forensics/engine/metrics/_common.py
+PROBED-S6(1: CPM-020) READ(9) src/schedule_forensics/engine/metrics/_common.py
 READ(3)                  src/schedule_forensics/engine/metrics/cei.py
 PROBED-S5(1: CPM-001) PROBED(1: DOC-005) src/schedule_forensics/engine/metrics/change_metrics.py
 PROBED(1: AI-004)        src/schedule_forensics/engine/metrics/completion_performance.py
@@ -1606,7 +1681,7 @@ READ(11)                 src/schedule_forensics/engine/metrics/float_ratio.py
 UNREAD                   src/schedule_forensics/engine/metrics/health_extra.py
 READ(3)                  src/schedule_forensics/engine/metrics/hmi.py
 UNREAD                   src/schedule_forensics/engine/metrics/logic_integrity.py
-UNREAD                   src/schedule_forensics/engine/metrics/margin.py
+PROBED-S6(1: CPM-015)    src/schedule_forensics/engine/metrics/margin.py
 UNREAD                   src/schedule_forensics/engine/metrics/performance_summary.py
 PROBED(1: DOC-012)       src/schedule_forensics/engine/metrics/ribbon.py
 UNREAD                   src/schedule_forensics/engine/metrics/schedule_card.py
@@ -1622,31 +1697,31 @@ UNREAD                   src/schedule_forensics/engine/sra_conclusions.py
 READ(10)                 src/schedule_forensics/web/help.py
 ```
 
-#### SEC/WEB/UI(page) — 36 files (PROBED 12, PROBED-S2 0, PROBED-S5 4, READ 8, UNREAD 12)
+#### SEC/WEB/UI(page) — 36 files (PROBED 12, PROBED-S2 0, PROBED-S5 4, PROBED-S6 1, READ 7, UNREAD 12)
 
 ```text
 PROBED(1: DOC-002)       src/schedule_forensics/web/__init__.py
-PROBED-S5(1: CPM-001) PROBED(6: CUI-003,CUI-004,DOC-011,IMP-003,MET-002,TST-008) src/schedule_forensics/web/analysis.py
-PROBED-S5(1: CPM-001) PROBED(14: AI-002,AI-003,AI-005,CUI-001,CUI-003,CUI-004,DOC-001,DOC-002,IMP-001,IMP-004,IMP-005,MET-001,WEB-001,WEB-002) src/schedule_forensics/web/app.py
+PROBED-S6(1: CPM-020) PROBED-S5(1: CPM-001) PROBED(6: CUI-003,CUI-004,DOC-011,IMP-003,MET-002,TST-008) src/schedule_forensics/web/analysis.py
+PROBED-S6(1: CPM-025) PROBED-S5(1: CPM-001) PROBED(14: AI-002,AI-003,AI-005,CUI-001,CUI-003,CUI-004,DOC-001,DOC-002,IMP-001,IMP-004,IMP-005,MET-001,WEB-001,WEB-002) src/schedule_forensics/web/app.py
 UNREAD                   src/schedule_forensics/web/brief.py
 UNREAD                   src/schedule_forensics/web/briefing.py
 PROBED-S5(1: CPM-001) READ(10) src/schedule_forensics/web/card.py
 UNREAD                   src/schedule_forensics/web/cei.py
-PROBED(3: CUI-003,CUI-004,DOC-003) src/schedule_forensics/web/chrome.py
-PROBED-S5(1: CPM-001)    src/schedule_forensics/web/compare.py
+PROBED-S6(1: CPM-025) PROBED(3: CUI-003,CUI-004,DOC-003) src/schedule_forensics/web/chrome.py
+PROBED-S6(1: UI-001) PROBED-S5(1: CPM-001) src/schedule_forensics/web/compare.py
 PROBED-S5(1: CPM-001) PROBED(1: MET-001) src/schedule_forensics/web/components.py
 READ(3)                  src/schedule_forensics/web/curves.py
-READ(9)                  src/schedule_forensics/web/driving.py
+PROBED-S6(9: CPM-016,CPM-017,CPM-018,CPM-019,CPM-021,CPM-022,CPM-023,CPM-024,DOC-017) READ(9) src/schedule_forensics/web/driving.py
 UNREAD                   src/schedule_forensics/web/evm.py
-PROBED-S5(1: CPM-001) READ(7) src/schedule_forensics/web/evolution.py
+PROBED-S6(5: CPM-010,CPM-011,CPM-012,CPM-013,CPM-015) PROBED-S5(1: CPM-001) READ(7) src/schedule_forensics/web/evolution.py
 UNREAD                   src/schedule_forensics/web/forecast.py
 READ(5)                  src/schedule_forensics/web/i18n.py
-PROBED-S5(1: CPM-001)    src/schedule_forensics/web/integrity.py
+PROBED-S6(2: CPM-013,CPM-014) PROBED-S5(1: CPM-001) src/schedule_forensics/web/integrity.py
 PROBED(1: MET-001)       src/schedule_forensics/web/margin.py
 UNREAD                   src/schedule_forensics/web/mission.py
 PROBED(1: DOC-002)       src/schedule_forensics/web/onepager.py
 PROBED(1: DOC-002)       src/schedule_forensics/web/onepager_compare.py
-PROBED-S5(1: CPM-001) PROBED(1: DOC-014) src/schedule_forensics/web/path.py
+PROBED-S6(2: CPM-018,CPM-022) PROBED-S5(1: CPM-001) PROBED(1: DOC-014) src/schedule_forensics/web/path.py
 READ(6)                  src/schedule_forensics/web/performance.py
 UNREAD                   src/schedule_forensics/web/portfolio.py
 UNREAD                   src/schedule_forensics/web/resources.py
@@ -1663,7 +1738,7 @@ READ(3)                  src/schedule_forensics/web/wbs.py
 READ(3)                  src/schedule_forensics/web/workbench.py
 ```
 
-#### IMP(mpxj) — 28 files (PROBED 0, PROBED-S2 0, PROBED-S5 0, READ 3, UNREAD 25)
+#### IMP(mpxj) — 28 files (PROBED 0, PROBED-S2 0, PROBED-S5 0, PROBED-S6 0, READ 3, UNREAD 25)
 
 ```text
 UNREAD                   tools/mpxj/MpxjToMspdi.java
@@ -1696,7 +1771,7 @@ READ(1)                  tools/mpxj/setup.ps1
 READ(1)                  tools/mpxj/setup.sh
 ```
 
-#### PKG — 24 files (PROBED 10, PROBED-S2 1, PROBED-S5 0, READ 11, UNREAD 2)
+#### PKG — 24 files (PROBED 10, PROBED-S2 1, PROBED-S5 0, PROBED-S6 0, READ 11, UNREAD 2)
 
 ```text
 PROBED(2: CUI-003,DOC-010) installer/README-DISTRIBUTABLE.md
@@ -1725,7 +1800,7 @@ PROBED(1: CUI-003)       tools/installer/template.ps1
 PROBED(1: CUI-003)       tools/installer/template.sh
 ```
 
-#### DOC(state) — 23 files (PROBED 10, PROBED-S2 3, PROBED-S5 0, READ 4, UNREAD 6)
+#### DOC(state) — 23 files (PROBED 10, PROBED-S2 3, PROBED-S5 0, PROBED-S6 0, READ 4, UNREAD 6)
 
 ```text
 PROBED(2: DOC-004,TST-002) docs/STATE/AUDIT-2026-06-25.md
@@ -1737,7 +1812,7 @@ READ(8)                  docs/STATE/AUDIT-2026-08-16.md
 PROBED(2: DOC-015,TST-013) docs/STATE/AUDIT-2026-08-27-REPORT.md
 PROBED(1: DOC-003)       docs/STATE/AUDIT-2026-08-27.md
 UNREAD                   docs/STATE/DECISION-BRIEFS-20260730.md
-PROBED(1: TST-009)       docs/STATE/HANDOFF-ARCHIVE.md
+PROBED-S6(1: CPM-029) PROBED(1: TST-009) docs/STATE/HANDOFF-ARCHIVE.md
 PROBED-S2(2: DOC-014,TST-004) READ(16) docs/STATE/HANDOFF.md
 PROBED(4: CUI-004,DOC-001,DOC-005,TST-001) docs/STATE/LESSONS-LEARNED.md
 UNREAD                   docs/STATE/MSP-FILTERS-SPEC.md
@@ -1753,7 +1828,7 @@ READ(1)                  docs/STATE/msp-filters-research/04-test-matrix.md
 UNREAD                   docs/STATE/msp-views-leveled.json
 ```
 
-#### AI — 22 files (PROBED 13, PROBED-S2 0, PROBED-S5 2, READ 1, UNREAD 6)
+#### AI — 22 files (PROBED 13, PROBED-S2 0, PROBED-S5 2, PROBED-S6 0, READ 1, UNREAD 6)
 
 ```text
 UNREAD                   src/schedule_forensics/ai/__init__.py
@@ -1764,7 +1839,7 @@ PROBED(4: AI-001,AI-002,AI-003,AI-005) src/schedule_forensics/ai/citations.py
 UNREAD                   src/schedule_forensics/ai/completion.py
 PROBED(2: CUI-001,WEB-002) src/schedule_forensics/ai/config_store.py
 PROBED(1: AI-002)        src/schedule_forensics/ai/derivation.py
-PROBED-S5(1: CPM-001)    src/schedule_forensics/ai/driving_facts.py
+PROBED-S6(2: CPM-023,CPM-024) PROBED-S5(1: CPM-001) src/schedule_forensics/ai/driving_facts.py
 PROBED(1: CUI-001)       src/schedule_forensics/ai/factory.py
 PROBED(2: CUI-002,WEB-002) src/schedule_forensics/ai/gateway.py
 PROBED(1: AI-005)        src/schedule_forensics/ai/narrative.py
@@ -1773,14 +1848,14 @@ PROBED(2: CUI-002,WEB-002) src/schedule_forensics/ai/ollama.py
 PROBED(2: CUI-002,WEB-002) src/schedule_forensics/ai/ollama_process.py
 PROBED(1: WEB-002)       src/schedule_forensics/ai/openai_compat.py
 UNREAD                   src/schedule_forensics/ai/pair_facts.py
-PROBED-S5(1: CPM-001) PROBED(6: AI-001,AI-002,AI-003,AI-004,CUI-003,IMP-005) src/schedule_forensics/ai/qa.py
+PROBED-S6(2: CPM-012,CPM-014) PROBED-S5(1: CPM-001) PROBED(6: AI-001,AI-002,AI-003,AI-004,CUI-003,IMP-005) src/schedule_forensics/ai/qa.py
 UNREAD                   src/schedule_forensics/ai/refusal.py
 UNREAD                   src/schedule_forensics/ai/txlog.py
 UNREAD                   src/schedule_forensics/ai/version_facts.py
-PROBED(4: CUI-001,CUI-003,CUI-004,DOC-010) src/schedule_forensics/web/settings.py
+PROBED-S6(1: UI-001) PROBED(4: CUI-001,CUI-003,CUI-004,DOC-010) src/schedule_forensics/web/settings.py
 ```
 
-#### INH(audit) — 19 files (PROBED 3, PROBED-S2 0, PROBED-S5 0, READ 14, UNREAD 2)
+#### INH(audit) — 19 files (PROBED 3, PROBED-S2 0, PROBED-S5 0, PROBED-S6 0, READ 14, UNREAD 2)
 
 ```text
 PROBED(1: DOC-004)       audit/AUDIT-REPORT.md
@@ -1804,7 +1879,7 @@ READ(1)                  audit/operator-artifacts/README.md
 READ(1)                  audit/operator-artifacts/collect-ollama-artifacts.ps1
 ```
 
-#### TST(ci/instr) — 19 files (PROBED 10, PROBED-S2 0, PROBED-S5 0, READ 9, UNREAD 0)
+#### TST(ci/instr) — 19 files (PROBED 10, PROBED-S2 0, PROBED-S5 0, PROBED-S6 0, READ 9, UNREAD 0)
 
 ```text
 PROBED(2: TST-002,TST-003) .claude/agents/README.md
@@ -1828,7 +1903,7 @@ READ(10)                 constraints/floor.txt
 READ(7)                  constraints/known-good.txt
 ```
 
-#### IMP — 18 files (PROBED 7, PROBED-S2 1, PROBED-S5 1, READ 3, UNREAD 6)
+#### IMP — 18 files (PROBED 7, PROBED-S2 1, PROBED-S5 1, PROBED-S6 1, READ 3, UNREAD 5)
 
 ```text
 PROBED(1: DOC-002)       src/schedule_forensics/importers/__init__.py
@@ -1837,7 +1912,7 @@ PROBED(1: IMP-004)       src/schedule_forensics/importers/json_schedule.py
 PROBED(1: DOC-002)       src/schedule_forensics/importers/loader.py
 PROBED(1: IMP-004)       src/schedule_forensics/importers/mpp_mpxj.py
 UNREAD                   src/schedule_forensics/importers/msp_views.py
-PROBED-S5(5: CPM-002,CPM-007,CPM-008,IMP-006,IMP-007) PROBED(2: IMP-002,IMP-004) src/schedule_forensics/importers/mspdi.py
+PROBED-S6(1: IMP-010) PROBED-S5(5: CPM-002,CPM-007,CPM-008,IMP-006,IMP-007) PROBED(2: IMP-002,IMP-004) src/schedule_forensics/importers/mspdi.py
 PROBED-S5(1: IMP-007) PROBED(3: IMP-002,IMP-003,IMP-004) src/schedule_forensics/importers/xer.py
 READ(3)                  src/schedule_forensics/model/__init__.py
 READ(3)                  src/schedule_forensics/model/_base.py
@@ -1846,12 +1921,12 @@ UNREAD                   src/schedule_forensics/model/relationship.py
 UNREAD                   src/schedule_forensics/model/resource.py
 UNREAD                   src/schedule_forensics/model/saved_view.py
 PROBED-S2(2: IMP-003,IMP-004) READ(3) src/schedule_forensics/model/schedule.py
-PROBED-S5(1: CPM-008) READ(3) src/schedule_forensics/model/task.py
-UNREAD                   src/schedule_forensics/model/units.py
+PROBED-S6(1: CPM-015) PROBED-S5(1: CPM-008) READ(3) src/schedule_forensics/model/task.py
+PROBED-S6(1: CPM-018)    src/schedule_forensics/model/units.py
 READ(31)                 src/schedule_forensics/web/examples/house_build.json
 ```
 
-#### EXP — 14 files (PROBED 3, PROBED-S2 1, PROBED-S5 0, READ 4, UNREAD 6)
+#### EXP — 14 files (PROBED 3, PROBED-S2 1, PROBED-S5 0, PROBED-S6 0, READ 4, UNREAD 6)
 
 ```text
 UNREAD                   src/schedule_forensics/exhibits/__init__.py
@@ -1870,11 +1945,11 @@ READ(2)                  src/schedule_forensics/reports/xlsx.py
 PROBED(2: IMP-001,IMP-005) src/schedule_forensics/reports/xlsx_read.py
 ```
 
-#### FOR — 14 files (PROBED 0, PROBED-S2 0, PROBED-S5 8, READ 2, UNREAD 4)
+#### FOR — 14 files (PROBED 0, PROBED-S2 0, PROBED-S5 8, PROBED-S6 0, READ 2, UNREAD 4)
 
 ```text
 UNREAD                   src/schedule_forensics/engine/bow_wave.py
-PROBED-S5(1: CPM-001)    src/schedule_forensics/engine/change_effects.py
+PROBED-S6(1: CPM-010) PROBED-S5(1: CPM-001) src/schedule_forensics/engine/change_effects.py
 UNREAD                   src/schedule_forensics/engine/correlation.py
 UNREAD                   src/schedule_forensics/engine/diff.py
 PROBED-S5(1: CPM-001) READ(5) src/schedule_forensics/engine/forecast.py
@@ -1889,7 +1964,7 @@ READ(1)                  src/schedule_forensics/engine/trend.py
 PROBED-S5(1: CPM-001) READ(1) src/schedule_forensics/engine/version_series.py
 ```
 
-#### WEB — 14 files (PROBED 4, PROBED-S2 1, PROBED-S5 0, READ 3, UNREAD 6)
+#### WEB — 14 files (PROBED 4, PROBED-S2 1, PROBED-S5 0, PROBED-S6 0, READ 3, UNREAD 6)
 
 ```text
 PROBED(1: CUI-003)       src/schedule_forensics/__init__.py
@@ -1904,26 +1979,26 @@ UNREAD                   src/schedule_forensics/engine/saved_grouping.py
 PROBED(4: CUI-001,CUI-002,CUI-003,WEB-002) src/schedule_forensics/launcher.py
 PROBED(1: CUI-004)       src/schedule_forensics/web/launch.py
 UNREAD                   src/schedule_forensics/web/offload.py
-PROBED(2: DOC-011,MET-001) src/schedule_forensics/web/state.py
+PROBED-S6(1: CPM-020) PROBED(2: DOC-011,MET-001) src/schedule_forensics/web/state.py
 READ(5)                  src/schedule_forensics/web/system.py
 ```
 
-#### CPM — 10 files (PROBED 4, PROBED-S2 0, PROBED-S5 2, READ 0, UNREAD 4)
+#### CPM — 10 files (PROBED 4, PROBED-S2 0, PROBED-S5 2, PROBED-S6 3, READ 0, UNREAD 1)
 
 ```text
-PROBED-S5(9: CPM-001,CPM-002,CPM-003,CPM-004,CPM-005,CPM-006,CPM-007,CPM-008,IMP-007) PROBED(3: DOC-014,IMP-002,TST-011) src/schedule_forensics/engine/cpm.py
-UNREAD                   src/schedule_forensics/engine/drag.py
-UNREAD                   src/schedule_forensics/engine/driving_path.py
-PROBED-S5(1: CPM-006) PROBED(1: IMP-002) src/schedule_forensics/engine/driving_slack.py
-PROBED(1: DOC-014)       src/schedule_forensics/engine/float_analysis.py
+PROBED-S6(11: CPM-010,CPM-011,CPM-014,CPM-020,CPM-027,CPM-028,CPM-029,CPM-030,CPM-031,CPM-033,CPM-034) PROBED-S5(9: CPM-001,CPM-002,CPM-003,CPM-004,CPM-005,CPM-006,CPM-007,CPM-008,IMP-007) PROBED(3: DOC-014,IMP-002,TST-011) src/schedule_forensics/engine/cpm.py
+PROBED-S6(6: CPM-016,CPM-017,CPM-018,CPM-019,CPM-021,DOC-017) src/schedule_forensics/engine/drag.py
+PROBED-S6(1: CPM-026)    src/schedule_forensics/engine/driving_path.py
+PROBED-S6(2: CPM-022,CPM-032) PROBED-S5(1: CPM-006) PROBED(1: IMP-002) src/schedule_forensics/engine/driving_slack.py
+PROBED-S6(1: CPM-020) PROBED(1: DOC-014) src/schedule_forensics/engine/float_analysis.py
 UNREAD                   src/schedule_forensics/engine/month_axis.py
-PROBED-S5(1: CPM-001)    src/schedule_forensics/engine/path_counterfactual.py
-UNREAD                   src/schedule_forensics/engine/path_trace.py
+PROBED-S6(5: CPM-010,CPM-011,CPM-013,CPM-014,CPM-015) PROBED-S5(1: CPM-001) src/schedule_forensics/engine/path_counterfactual.py
+PROBED-S6(2: CPM-024,CPM-032) src/schedule_forensics/engine/path_trace.py
 PROBED-S5(1: CPM-001)    src/schedule_forensics/engine/resources.py
 PROBED-S5(1: CPM-006) PROBED(1: IMP-002) src/schedule_forensics/model/calendar.py
 ```
 
-#### TST(tools) — 6 files (PROBED 1, PROBED-S2 0, PROBED-S5 0, READ 5, UNREAD 0)
+#### TST(tools) — 6 files (PROBED 1, PROBED-S2 0, PROBED-S5 0, PROBED-S6 0, READ 5, UNREAD 0)
 
 ```text
 READ(15)                 tools/browser_modules.py
@@ -1934,7 +2009,7 @@ READ(3)                  tools/regenerate_timephased_goldens.py
 READ(3)                  tools/route_coverage.py
 ```
 
-#### CUI — 5 files (PROBED 1, PROBED-S2 1, PROBED-S5 0, READ 2, UNREAD 1)
+#### CUI — 5 files (PROBED 1, PROBED-S2 1, PROBED-S5 0, PROBED-S6 0, READ 2, UNREAD 1)
 
 ```text
 READ(14)                 .githooks/pre-commit
@@ -1944,14 +2019,14 @@ PROBED(2: CUI-003,WEB-002) src/schedule_forensics/net_guard.py
 PROBED-S2(1: DOC-004) READ(6) tools/ci_cui_guard.sh
 ```
 
-#### PERF — 2 files (PROBED 0, PROBED-S2 0, PROBED-S5 0, READ 1, UNREAD 1)
+#### PERF — 2 files (PROBED 0, PROBED-S2 0, PROBED-S5 0, PROBED-S6 0, READ 1, UNREAD 1)
 
 ```text
 READ(4)                  tests/perf/test_observer_storm.py
 UNREAD                   tests/perf/test_perf_regression.py
 ```
 
-#### OTHER — 1 files (PROBED 0, PROBED-S2 0, PROBED-S5 0, READ 0, UNREAD 1)
+#### OTHER — 1 files (PROBED 0, PROBED-S2 0, PROBED-S5 0, PROBED-S6 0, READ 0, UNREAD 1)
 
 ```text
 UNREAD                   .gitattributes
@@ -2240,6 +2315,187 @@ what the census and the TZ sweep touched; CPM-005's backward-pass mirror; a seco
 charter's saturation rule (two consecutive families with no new CANDIDATE) is **not met**: every family this session
 produced candidates.
 
+## 3b. Behavioural census — CPM (session 6, WP-CPM continued, at `13b13f38`)
+
+Session 6's additions to the behavioural census. Every figure is from the named finder or assembler record (session
+scratch `$S/audit/wave-7/finder-<ID>/` and `$S/audit/wave-8/`, which vanish with the container) or from the lead's
+validated facts; the durable forms are the committed reproducers and the commands quoted. A negative is a statement
+about the probe, not the tree.
+
+### 3b.1 The SSI Directional Path census (finder F-SSI; `CENSUS_TABLE.md`, `census_ssi.py` → `census_ssi.json`)
+
+- **Population.** `git ls-files | grep -i Directional_Path` → **25 tracked paths** (14 at the intake root, 11 under
+  `00_REFERENCE_INTAKE/ssi/`): **24 `.xlsx` workbooks** (ZIP magic `504b0304`) and **1 JPEG** screenshot
+  (`ssi/Large Test File Leveled UID_152_Directional_Path_Analysis_2026-7-14.jpg`, `ffd8ffe0`) — both counts re-run for
+  this census. Of the 24 workbooks, 2 are byte-identical (sha256) copies of root ones
+  (`ssi/Large_Test_File_UID_152_Directional_Path_Analysis_2026-7-8-8-45-50.xlsx`,
+  `ssi/Project5_TAMPERED_UID_67_Directional_Path_Analysis_2026-7-8-8-19-10.xlsx`) and 3
+  (`UID_4_Directional_Path_Analysis_2026-6-23-15-42-46.xlsx`, `…_Progress_2026-6-23-16-0-6.xlsx`,
+  `…_Split_2026-6-23-16-31-24.xlsx`, project "5 Task Test File") match no schedule in the corpus or the tracked tree (0 / 4
+  names, 0 / 4 dates; `5 Task Test File.mpp` is listed in `00_REFERENCE_INTAKE/references/reference_manifest.json` but
+  is not tracked). The other **19 workbooks give 20 comparisons** (the 2026-7-8 Large_Test_File workbook matches two
+  goldens). Plus the **six SSI goldens** (`tests/fixtures/golden/ssi_*/case.json`), re-derived from the tracked `.xlsx`.
+- **Method.** Each workbook matched to its schedule by UID + name + Start + Finish to the minute; read with
+  `reports/xlsx_read.py` (std-lib, column-sliding — every cell in these 24 workbooks carries `r=`, so the sliding was
+  not exercised); `compute_driving_slack` on the matched corpus file, default trace (no flags, PREDECESSORS — the /path
+  default), then with both Ignore options ON. Classes: exact (|Δ| < 1e-6 d), ±1 min (≤ 0.0105 d; every one exactly one
+  minute), sub-day, whole ±N d, multi-day fractional. Direction: every one of the 20 is a predecessor trace (the SSI set
+  equals, or is a subset of, the focus's ancestors).
+
+| # | workbook (`00_REFERENCE_INTAKE/…`) | schedule (corpus) | date match | focus | rows | exact | not exact, default trace | Ignore options ON | SSI zero set == engine zero set |
+| --- | --- | --- | --- | ---: | ---: | ---: | --- | --- | --- |
+| 1 | `Large Test File (OverAl Fixed) UID_152_Directional_Path_Analysis_2026-6-24-13-17-48.xlsx` | `g15_Large_Test_File_Leveled.mspdi.xml` | PARTIAL 753/783 start+finish | 152 | 783 | 742 | multi-day fractional 37, ±1 min 3, sub-day 1 | unchanged | yes (60) |
+| 2 | `Large_Test_File_UID_152_Directional_Path_Analysis_2026-7-8-8-45-50.xlsx` | `g14_Large_Test_File.mspdi.xml` | EXACT 76/76 (also g08 76/76) | 152 | 76 | 76 | — | unchanged | yes (76) |
+| 3 | `Large_Test_File_UID_152_Directional_Path_Analysis_2026-7-8-8-45-50.xlsx` | `g08_Large_Test_File.mspdi.xml` | EXACT 76/76 (alt schedule) | 152 | 76 | 76 | — | unchanged | yes (76) |
+| 4 | `Project5_TAMPERED_UID_67_Directional_Path_Analysis_2026-7-8-8-19-10.xlsx` | `g11_Project5.mspdi.xml` | EXACT 20/20 | 67 | 20 | 20 | — | unchanged | yes (20) |
+| 5 | `UID_145_Directional_Path_Analysis_2026-6-22-11-35-10.xlsx` | `g11_Project5.mspdi.xml` | EXACT 108/108 | 145 | 108 | 108 | — | unchanged | yes (2) |
+| 6 | `UID_145_Directional_Path_Analysis_2026-6-23-12-28-46.xlsx` | `g11_Project5.mspdi.xml` | EXACT 13/13 | 145 | 13 | 13 | — | unchanged | yes (2) |
+| 7 | `UID_145_Directional_Path_Analysis_All_Dependencies_2026-6-23-12-37-10.xlsx` | `g11_Project5.mspdi.xml` | EXACT 108/108 | 145 | 108 | 108 | — | unchanged | yes (2) |
+| 8 | `UID_152_Directional_Path_Analysis_2026-6-23-12-46-44.xlsx` | `g15_Large_Test_File_Leveled.mspdi.xml` | PARTIAL 753/783 | 152 | 783 | 742 | multi-day fractional 37, ±1 min 3, sub-day 1 | unchanged | yes (60) |
+| 9 | `UID_152_Directional_Path_Analysis_ALL_2026-6-23-15-5-21.xlsx` | `g15_Large_Test_File_Leveled.mspdi.xml` | PARTIAL 753/783 | 152 | 783 | 742 | multi-day fractional 37, ±1 min 3, sub-day 1 | unchanged | yes (60) |
+| 10 | `UID_152_Directional_Path_Analysis_All Dependents Not Leveled_2026-6-23-20-30-55.xlsx` | `g15_Large_Test_File_Leveled.mspdi.xml` | PARTIAL 753/783 | 152 | 783 | 742 | multi-day fractional 37, ±1 min 3, sub-day 1 | unchanged | yes (60) |
+| 11 | `UID_152_Directional_Path_Analysis_Leveled_All_Dependents_2026-6-23-20-28-26.xlsx` | `g15_Large_Test_File_Leveled.mspdi.xml` | PARTIAL 753/783 | 152 | 783 | 742 | multi-day fractional 37, ±1 min 3, sub-day 1 | unchanged | yes (60) |
+| 12 | `UID_152_Directional_Path_Analysis_Resource_Level_2026-6-23-17-8-43.xlsx` | `g15_Large_Test_File_Leveled.mspdi.xml` | PARTIAL 753/783 | 152 | 783 | 742 | multi-day fractional 37, ±1 min 3, sub-day 1 | unchanged | yes (60) |
+| 13 | `ssi/Hard File updated3_UID_155_Directional_Path_Analysis_2026-7-15.xlsx` | `g12_Hard_File_updated3.mspdi.xml` | EXACT 100/100 | 155 | 100 | 94 | ±1 min 6 | ±1 min 6, multi-day fractional 4 | yes (39) |
+| 14 | `ssi/Hard_File_Path_Trace_UID_155_Directional_Path_Analysis_2026-7-8-13-30-7.xlsx` | `g03_Hard_File.mspdi.xml` | EXACT 90/90 | 155 | 90 | 90 | — | sub-day 80 | yes (9) |
+| 15 | `ssi/Hard_File_Path_Updated_Trace_UID_155_Directional_Path_Analysis_2026-7-8-13-30-7.xlsx` | `g04_Hard_File_updated.mspdi.xml` | EXACT 86/86 | 155 | 86 | 86 | — | sub-day 76 | yes (9) |
+| 16 | `ssi/Hard_File_updated4 24 hour calendar_UID_155_Directional_Path_Analysis 2026-7-15.xlsx` | `g13_Hard_File_updated4_24h.mspdi.xml` | EXACT 100/100 | 155 | 100 | 94 | ±1 min 6 | ±1 min 6, multi-day fractional 4 | yes (42) |
+| 17 | `ssi/Large Test File Leveled 152_Directional_Path_Analysis_2026-7-14 (b).xlsx` | `g15_Large_Test_File_Leveled.mspdi.xml` | EXACT 122/122 | 152 | 122 | 120 | multi-day fractional 2 | unchanged | yes (60) |
+| 18 | `ssi/Large Test File Leveled UID_152_Directional_Path_Analysis_2026-7-14.xlsx` | `g15_Large_Test_File_Leveled.mspdi.xml` | NEAR 780/783 | 152 | 783 | 769 | ±1 min 14 | ±1 min 8, multi-day fractional 5, sub-day 1 | yes (60) |
+| 19 | `ssi/Large Test File UID_152_Directional_Path_Analysis_All_Dependicies_SSI_2026-7-15.xlsx` | `g08_Large_Test_File.mspdi.xml` | EXACT 783/783 | 152 | 783 | 783 | — | whole +1 d 5, whole −1 d 1 | yes (76) |
+| 20 | `ssi/Large Test File2 UID_152_Directional_Path_Analysis_All_Dependicies_SSI_2026-7-15.xlsx` | `g09_Large_Test_File2.mspdi.xml` | NEAR 782/783 | 152 | 783 | 781 | ±1 min 1, whole −1 d 1 | whole +1 d 5, whole −1 d 2, sub-day 1, ±1 min 1 | yes (60) |
+
+- **Driving slack, default trace, over the 20 comparisons: 7,946 rows, 7,670 exact**; not exact: ±1 min 45, multi-day
+  fractional 224, sub-day 6, whole −1 d 1. The six 2026-06-23/24 UID-152 workbooks (#1, #8–#12; no tracked source
+  snapshot — dates match the committed Leveled file on 753 of 783) carry 38 non-exact rows each (228 in all), every one
+  of which is, or precedes, a date-mismatched row: recorded, not forced. Without them: 14 comparisons, 3,248 rows,
+  3,218 exact, ±1 min 27, multi-day fractional 2, whole −1 d 1. (The finder's prose counts the ±1-minute rows as 26 —
+  "LTF-Leveled 14, HF_updated3 6, HF_updated4_24h 6, LTF2 1" — its own per-workbook classes, listed above, sum to 27.)
+- **Every non-exact class has a home:** ±1 minute → ADR-0116 "Residuals" (SSI's cosmetic −1-second boundary) /
+  ADR-0117; LTF2 UID 6123, −1 working day → **A0923-IMP-010** (was F-SSI-006); the (b) near-path run's UIDs 1248 / 5538
+  (SSI 472.60 / 270.46 d against 22.025 / 171.0 d in SSI's own all-dependencies run and the engine) → SSI near-path
+  semantics, ARTIFACT-GATED (ASK-15); the six untracked snapshots → recorded, not forced.
+- **Ignore options ON** (7,493 rows exact of 7,946): every fully-dated multi-calendar file moves, and every SSI oracle row the
+  options move reports the un-flagged value → **A0923-CPM-022**.
+- **Path membership:** SSI's zero set equals the engine's on **20 of 20** comparisons. **Tier:** where SSI assigns
+  bands, its Path 01 is exactly the zero set (6 of 6 band outputs); the engine's DRIVING tier holds 16 band-output rows
+  SSI puts on Path 02 (positive sub-day and negative values), and SSI displays 32 / 32 non-zero values as their value,
+  never "0 days" → **A0923-CPM-023**.
+- **The six goldens re-derived from the tracked `.xlsx`:** `ssi_uid145` 108 / 108; `ssi_uid67` 20 / 20 (+ drag 20 / 20);
+  `ssi_uid152` 76 / 76 (+ drag 76 / 76); `ssi_hardfile_uid155` 9 / 9 × 2 with row / path counts and the Path-01 order
+  equal; `ssi_uid152_leveled` 783 / 783 + 60 / 60 + Path 02 / Path 03 membership; `ssi_hardfile_24h_uid155` stores 12
+  values rounded to 4 dp (at most 2e-5 d, under its 0.01 d tolerance). Four stale SSI logs embedded in corpus files
+  were identified and excluded; the current logs reproduce to 2 dp with the un-flagged engine.
+- **Row order:** the /path grid does not reproduce SSI's waterfall order (0 of 6 workbooks) and does not claim to
+  (`web/driving.py:329`, the tool's own "earliest finish first"); ADR-0168 gates only the Path-01 order, which holds.
+
+### 3b.2 The drag census (finder F-DRAG; re-counted by CPM-016's assembler)
+
+- **Population.** 13 SSI exports carry a unit-bearing Drag column → **8 distinct schedule / focus pairs** matched by
+  (UniqueID, Start, Finish) to the corpus → **263 SSI Drag rows**.
+- **Method.** "Served" = `compute_drag` as `/api/driving?drag=1` serves it; "removal" = min(remaining, the focus's early
+  finish minus its early finish with the activity's duration set to 0) on `compute_cpm` — the definition
+  `engine/drag.py:3-4` itself states. Classes as the finder split the served misses.
+
+| schedule / focus | SSI Drag rows | served == SSI | removal == SSI | served ≠ SSI, by class |
+| --- | ---: | ---: | ---: | --- |
+| Large_Test_File_Leveled / 152 | 60 | 40 | 60 | CPM-016 20 (19 capped over, 1 same-chain) |
+| Large_Test_File / 152 | 76 | 43 | 76 | CPM-016 33 (capped over) |
+| Project5 / 67 | 20 | 20 | 20 | — |
+| Project5 / 145 | 2 | 2 | 2 | — |
+| Hard_File_updated3 / 155 | 39 | 16 | 38 | CPM-016 20 (19 over, 1 under); CPM-017 2; DISPUTED 1 (UID 385) |
+| Hard_File / 155 | 9 | 3 | 8 | CPM-016 4; CPM-017 1; DISPUTED 1 (UID 141) |
+| Hard_File_updated / 155 | 9 | 3 | 8 | CPM-016 4; CPM-017 1; DISPUTED 1 (UID 141) |
+| Hard_File_updated4_24h / 155 | 48 | 36 | 47 | CPM-016 8; CPM-017 3; DISPUTED 1 (UID 389) |
+| **total** | **263** | **163** | **259** | **CPM-016 89** (87 over, 1 same-chain, 1 under) · **CPM-017 7** · **DISPUTED 4** |
+
+- The 4 DISPUTED rows: SSI disagrees with both the engine and the removal definition (Hard_File / Hard_File_updated UID
+  141: SSI 3.5 d beside its own 1-day duration; Hard_File_updated3 UID 385: SSI 0, removal 6 d; the 24-hour save's UID
+  389: SSI 0, removal 1 d) — not counted against the engine, not re-chased.
+- **Whole corpus, one focus per file:** the Dependency Range filter at "≤ 0 d" inflates 124 of 1,013 displayed drag rows
+  on 13 of 44 files (LTF / 152: 10 of 76) → **A0923-CPM-019**; under Successors / Both the target's own descendants are
+  served a drag on 44 of 44 files — 2,095 of 3,816 targets, 22,569 descendant rows; on 216 of those rows the removal
+  oracle pulls the target in 0.0 d → **A0923-CPM-021**; drag's divisor on the project axis is (480, 480) on 44 / 44
+  files — the 480 constant is latent on the corpus and live on the committed TP2 4x10 file → **A0923-CPM-018**.
+- **Negatives:** LD-3 (pure-CPM concurrency windows) — the windows differ on 140 on-path activities but the drag changes
+  on 0 rows (163 / 263 either way); `float_analysis`'s day divisor HELD by ADR-0516 decision 3; `critical_incomplete_count`
+  / `is_complete` 0 and 0 disagreements on 44 files (no served consumer); `month_axis` 25 / 25 checks; 0 stored finishes
+  at 00:00 among 22,105 / 8,644 / 21,929 Finish / ActualFinish / baseline Finish values.
+
+### 3b.3 The counterfactual — constructed ground truth (finder F-PCF; `p07`, `p23`)
+
+Population: the 44-file corpus with the stored Critical / TotalSlack stripped on both sides; one known change applied
+to a recomputed-critical activity, kept only when the activity then LEFT the path; the oracle is revert(apply(X)) ==
+X (the counterfactual finish equals X's own finish, the delta exact).
+
+| constructed change | kept | revert(apply(X)) == X |
+| --- | ---: | --- |
+| unstarted duration cut (by max(1 d, half) on an activity longer than 1 d) | 214 | **214 / 214** |
+| deletion of one predecessor link of an incomplete activity | 92 | **92 / 92** |
+| a hard / date constraint set to ASAP | 29 | **29 / 29** |
+| a nonzero lag set to 0 on a critical activity's predecessor link | 0 | — (no committed case takes the activity off the path; a hand-built lag-only change gives the right figure) |
+| STARTED duration cut (Duration and RemainingDuration cut together, ActualDuration held — MS Project's record, 1,149 / 1,149 started tasks) | 5 | **1 / 5 — 4 wrong → A0923-CPM-010** |
+
+- **The 27 committed version pairs:** the leaver counterfactual returns None on 14 of 27, and on 5 of those the
+  engine's own per-change revert moves the finish (→ **A0923-CPM-012**); a leaver whose own leveling delay / task
+  calendar changed is labelled gained float in 112 (leaver, pair) instances over 74 of 268 ordered same-family pairs
+  (→ **A0923-CPM-011**); sub-day moves on committed pairs: 3 hits, all UID 385 (Hard_File_updated3 → 24hr), the axis
+  collapse of CPM-001 (DUPLICATE) — CPM-013 is latent; elapsed-duration changes: 0 (CPM-015 latent); `finish_uid` on
+  25 multi-candidate files: 0 misnamed (CPM-014 latent); honest progress is never reported as reverted (one exception
+  recorded under CPM-010: Project3 → Project4 UID 31, a duration raise forced by actuals).
+
+### 3b.4 The edge matrix, second round (finder F-EDGE2; `probes/matrix.py`, `p_pin_before_start.py`)
+
+Hand-built MSPDI on the Standard calendar (Mon–Fri 08-12 / 13-17, start Mon 2026-06-01 08:00, D = 480); hand
+arithmetic as the oracle, Microsoft's documentation quoted per cell, MPXJ 16.2.0's `MicrosoftScheduler` as an
+alternative witness only. **24 cells:**
+
+| outcome | cells |
+| --- | --- |
+| AGREE with the hand arithmetic and the cell's stated oracle (16) | C01 SF0 · C02 SF +1 d · C03 SF −1 d · C04 SS −2 d · C05 FF −2 d · C08 / C08b / C08c a lag longer than its predecessor (FS / SS / FF +10 d) · C09 a deadline earlier than the late finish · C11 an inactive task between two active ones · C12 out-of-sequence progress · C13 Resume > Stop · C14 a cycle (a loud `CPMError`) · C15 multiple starts / ends · C16 a zero-duration non-milestone and a flagged 2-day milestone · C18a an MSO violated by logic under HonorConstraints=1 |
+| AGREE only with an UNVERIFIED oracle (3) | C06 an FS −5 d lead before the project start · C07 an SF0 from a task at the start (the engine clamps at the start; MPXJ schedules before it) · C10 a Deadline on a summary |
+| DISAGREE (5) | C17 an SNET on a summary → **A0923-CPM-030** · C18b / C18c an MSO / MFO violated under HonorConstraints=0 → **HELD** (F-EDGE2-002, ADR-0322 §2) · C19 / C19b an MSO / MFO dated before the project start on a task with no predecessor → **A0923-CPM-031** |
+
+- **Corpus cross-check:** all 25 deadline rows of the 44 files — the engine's late finish and total float equal MS
+  Project's stored LateFinish / TotalSlack (to the tenth-minute storage resolution).
+- **Route sweep:** every GET route whose only path parameter is the schedule key — 68 per cell — 0 × 5xx (the cycle
+  cell: 45 × 200, 13 × 400, 5 × 422); a cycle beside a solvable version, 136 requests, 0 × 5xx.
+- **Shape census** (44 corpus files / 42 tracked MSPDI documents, content-sniffed, gzip-aware): SF links 0 / 3 (all
+  repo-authored synthetic); negative SS / FF / SF lags 0 / 0; summaries with a constraint, a deadline or logic 0 / 0 / 0
+  of 5,065 (0 / 0 of 1,942); HonorConstraints = 0 on 3 / 3; a stored Start before the project start 0 / 0; dated
+  constraints or deadlines before the start 0 (86 documents, 1,433 dated); Resume > Stop 1,119 corpus rows.
+
+### 3b.5 Metamorphic relations, second round (finder F-META2) — R6–R14, each quoted from an authority before it ran
+
+| relation | statement | authority (quoted before any run) | population / runs | result | reach — what it cannot see |
+| --- | --- | --- | --- | --- | --- |
+| R6 | TF_A = min over the cap-eligible tasks T in {A} ∪ desc(A) of DS_T(A) + (P − EF_T); single sink ⇒ DS = TF | `driving_slack.py:18-19` | clean corpus battery (44 files × {own calendar, 24x7} = 88 runs, 44,210 activity-runs), undated and dated; hand-built seeds | undated **0**; dated **523 on the Large Test File family** → DUPLICATE-OF A0923-CPM-006 (0 with the worked Sunday removed); its precondition fails on summary logic → **A0923-CPM-032** | not run on the natural corpus (precondition fails by design, ADR-0118) |
+| R7 | DS_B(A) == DS_A(B) under SUCCESSORS | `driving_slack.py:229-233` | 44 natural files, 12 seeded sources × ≤ 4 descendants × 2 leveling modes = **3,932 pairs** (seed `20260928\|<file>`); H3-multi 10,958 pairs | **0** (a forward-calendar mutant gives 138) | symmetric by construction — a defect common to both directions is invisible |
+| R8 | reverse every link, swap SS↔FF: TF invariant, ES′ = P − LF | textbook duality; `cpm.py:3141` | clean battery; wall-path battery on one continuous calendar (88 runs, seed 11); hand-built seeds | **0** | NOT run on a reflection-symmetric non-continuous week (designed; budget) |
+| R9 | an FS0 milestone after every sink moves nothing | the CPM definition; `cpm.py:3141` | clean battery; natural battery (22,105 activities, seed 5); hand-built seeds | **0** | — |
+| R10 | a disconnected undated task finishing before P changes nothing | `cpm.py:2859` | clean and natural batteries; hand-built seeds | **0** (the elapsed-island variant: 20 differences on 8 files, all representational) | — |
+| R11 | a positive FS lag L ≡ a project-calendar activity of L working minutes | `cpm.py:314-317`, `:18-20` | clean 114 lagged links (48 runs); natural 57; hand-built; `r11_leveled.py` 400 seeds | **0** on the corpus (5 LTF2-family files differ only in `critical_path` order); **fires on wall-path networks with leveling delays → A0923-CPM-033** | — |
+| R12 | a bijective calendar-UID renaming changes nothing | `model/calendar.py` `working_pattern_key` | 44 files × 2 bijections = **88 variants** | **0** (an inconsistent renaming gives 92 / 374 / 31) | UID 0 not tried |
+| R13 | durations and lags × k ⇒ every offset × k | linearity of the bounds | clean battery (k ∈ {2, 3, 7}); wall-path battery; hand-built seeds | **0** | — |
+| R14 (added) | on a 24x7 project calendar, marking tasks elapsed changes nothing | `cpm.py:12-13`, `:719-720` | wall-path battery (88 runs); H2-el 29,739 activity-runs | **0** | — |
+| TF ≥ 0 (added) | no constraint, deadline, pin or imposed finish ⇒ every TF ≥ 0 | `cpm.py:147-148` | `r11_decompose.py` / `negtf_min.py` 400 seeds; 44 corpus files | **fires with 24-hour task calendars and elapsed tasks → A0923-CPM-034** (corpus: 0 negative-TF-without-cap) | — |
+
+- **Hand-built seeded networks:** 4 families × 1,500 seeds (`<family>|<seed>`, 0..1499), **119,541 activity-runs**
+  (H1-24x7 29,208 · H1-std 30,032 · H2-el 29,739 · H3-multi 30,562): 0 on every relation; four engine mutants
+  (`m_lfcap`, `m_ss`, `m_wall_lag`, `m_ds_ff`) turn each relation red by name.
+
+### 3b.6 Not covered by session 6 (WP-CPM is still open)
+
+Every one of session 6's six families produced candidates, so the saturation rule (two consecutive families with no
+new CANDIDATE) is **still not met**; a third round of probe families is owed. Not probed or not run: R8 on a
+reflection-symmetric non-continuous week; the wall-path variants of CPM-030 and CPM-031 (read from the code only); the
+lagged-SF role spelling into a 24-hour task; the twin sites of CPM-034 (`cpm.py:2954`, `:3168`) and of CPM-032
+(`path_evolution._predecessors`); drag for any target but one focus per file; SSI's Successors-mode, near-path and
+parallel-path outputs (no tracked export — ASK-15); /driving-path family B; a hand-built LD-3 case on a progressed file
+(no oracle); MS Project's stored float for CPM-028's case B and CPM-033 / 034's shapes; an out-of-sequence started
+revert on the served pages (CPM-010's assembler found that branch bad at engine level from 85f0c6ce, unasserted); the F-EDGE2 cells with no sound oracle (C06 / C07 / C10, an SNET before the start, total slack under
+HonorConstraints=0); no Python 3.13 run by the finders (the assemblers and the lead ran the teeth on 3.13.12).
+
 ## 4. Prior-audit gap map, re-checked against this session
 
 Source: Scout A's gap map (wave 0, read-only; `$S/audit/wave-0/scoutA/gapmap.md`), built from
@@ -2252,7 +2508,7 @@ Depth key (Scout A): **deep** = executed probes across the lane · **medium** = 
 
 | lane | last audit that covered it (Scout A) | depth before this session (Scout A) | this session | confirmed classes | still owed / not done (LEAD-DECISIONS unless marked) |
 | --- | --- | --- | --- | --- | --- |
-| **CPM** | `AUDIT-2026-08-27.md` WP6/WP6b + REPORT R-44..R-80 (through 2026-09-22) | deep | finder F2: 4 hypotheses — EVM2 UID 25 → HELD-BY ADR-0505; LevelingDelay rounding → HELD-BY ADR-0502; negative sub-day floor → REFUTED; grid float basis → NOT-A-FINDING (narrowed to MET-002) | 0 in-lane (the EVM2 residual's docstring is TST-011; the single-block calendar is IMP-002) | WP-CPM: rebuild the 44-file stored-value corpus (22,105 activities at ADR-0523) → differential census vs stored values, metamorphic relations, edge matrix — **not done this session** (session 5: **WP-CPM opened, NOT closed** — corpus rebuilt at `19173728` (22,105 activities, two methods), differential census run and its residual partitioned, R1–R5 and a 50 + 34-cell edge matrix probed → 8 CPM classes (T1 7, T2 1) + IMP-006 / IMP-007 CONFIRMED-DEFERRED, 3 ARTIFACT-GATED, 5 UNVERIFIED leads; still owed: driving_path / path_trace / float_analysis / path_counterfactual / drag / month_axis, CPM-005's backward mirror, a second round of probe families — the saturation rule is not met) |
+| **CPM** | `AUDIT-2026-08-27.md` WP6/WP6b + REPORT R-44..R-80 (through 2026-09-22) | deep | finder F2: 4 hypotheses — EVM2 UID 25 → HELD-BY ADR-0505; LevelingDelay rounding → HELD-BY ADR-0502; negative sub-day floor → REFUTED; grid float basis → NOT-A-FINDING (narrowed to MET-002) | 0 in-lane (the EVM2 residual's docstring is TST-011; the single-block calendar is IMP-002) | WP-CPM: rebuild the 44-file stored-value corpus (22,105 activities at ADR-0523) → differential census vs stored values, metamorphic relations, edge matrix — **not done this session** (session 5: **WP-CPM opened, NOT closed** — corpus rebuilt at `19173728` (22,105 activities, two methods), differential census run and its residual partitioned, R1–R5 and a 50 + 34-cell edge matrix probed → 8 CPM classes (T1 7, T2 1) + IMP-006 / IMP-007 CONFIRMED-DEFERRED, 3 ARTIFACT-GATED, 5 UNVERIFIED leads; still owed: driving_path / path_trace / float_analysis / path_counterfactual / drag / month_axis, CPM-005's backward mirror, a second round of probe families — the saturation rule is not met) (session 6: **WP-CPM continued, still NOT saturated** — at `13b13f38` the corpus was rebuilt again (22,105 activities, two methods) and the six modules session 5 left were probed (`drag.py`, `driving_path.py`, `path_trace.py`, `path_counterfactual.py` and `float_analysis.py` now carry PROBED-S6 marks; `month_axis.py` was probed without a finding), every tracked SSI Directional Path workbook and the six SSI goldens were compared with the engine, 263 SSI Drag rows with the served drag and the removal definition, the counterfactual against constructed ground truth, a second-round edge matrix (24 cells) and relations R6–R14 (§3b) → 25 CPM classes (T1 15, T2 8, T3 1, T4 1) + IMP-010 and DOC-017 CONFIRMED-DEFERRED, 1 HELD (F-EDGE2-002), F-LEADS-005 ARTIFACT-GATED; every family produced candidates again, so a third round is owed) |
 | **MET** | `AUDIT-2026-08-27-REPORT.md` R-44..R-80 + WP6b MF rows | deep | finder F2: margin dashboard (the unregistered 07-14 NEW-2) and the /analysis float pair | MET-001 (T1), MET-002 (T2); DOC-011 (T2) came through the DOC sweep | WP-MET: four-way agreement table (**not built**), SRA determinism |
 | **FOR** | `AUDIT-2026-08-16.md` round 3 + 08-27 WP6/WP6b + I-01/CF-01 | medium | **not probed** | 0 | WP-FOR: detection matrix incl. honest-progress false positives |
 | **IMP** | 08-27 WP6b IMP-02..06 + R-49/R-62/R-63 | deep (MSPDI) / shallow (XER) | finder F1: 5 hypotheses (xlsx `r=`, single-block calendar, exception hours → HELD-BY ADR-0503, XER `TASK.clndr_id`, declared encoding); IMP-005 came from finder F3 | IMP-001 (T2), IMP-002 (T1), IMP-003 (T1), IMP-004 (T2), IMP-005 (T4) | WP-IMP: round trip, two-path MPXJ vs MSPDI, malformed-input fuzz, resource limits — **not run** |
@@ -2261,7 +2517,7 @@ Depth key (Scout A): **deep** = executed probes across the lane · **medium** = 
 | **CUI** | 08-27 WP4 HOOK-03 + WP7 txlog + 08-16 HOOK-02 | deep | finder F3 part A: validators, redirects, name resolution, Law-1 prose vs the armed gateway | CUI-001 (LAW-1), CUI-002 (LAW-1, transport), CUI-003, CUI-004 (T3) | hook bypass battery **not run** |
 | **SEC** | 08-27 WP7 RC-02 + ADR-0439 + ADR-0423 + ADR-0400 | medium | **not probed** | 0 | WP-SEC: hostile-fixture XSS census, CSRF / DNS rebinding, path traversal, uploads and permissions, subprocess sites |
 | **WEB** | 08-27 WP4 route instrument + WP6b/WP7 + OR-12/13 | deep | WEB-001 surfaced from a DOC verifier; WEB-002 from finder F3 | WEB-001, WEB-002 (T4) | WP-WEB: cache invalidation, two tabs, eviction — **not probed** |
-| **UI** | 08-27 WP1–WP3 + UI-03 + R-09/R-80 | deep (controls) / shallow (i18n, timezone) | one UNVERIFIED candidate (UI-001, one party only); timezone census **not run** | 0 | WP-UI: TZ census New York vs UTC, localStorage validation census, verify UI-001 |
+| **UI** | 08-27 WP1–WP3 + UI-03 + R-09/R-80 | deep (controls) / shallow (i18n, timezone) | one UNVERIFIED candidate (UI-001, one party only); timezone census **not run** | 0 | WP-UI: TZ census New York vs UTC, localStorage validation census, verify UI-001 (session 6: UI-001 CONFIRMED-DEFERRED — the committed Chromium-gated reproducer `tests/audit/test_audit_20260923_ui.py`, 11 of 140 page-states on 4 routes; the TZ and localStorage censuses are still not run) |
 | **TST** | 08-27 WP4 CI-01/02, WF-01 + WP8 report guard + 08-16 TST-01..03 | medium | skills / agents / CLAUDE.md process claims (finder DOC) + lead INH leads (d), (e) | TST-001..013 (T5) | no TST package listed; no record this session of sampled mutation testing or a vacuous-population census |
 | **PKG** | `audit/EXTERNAL-AUDIT-20260803.md` + ADR-0346 floor CI | **shallow** | **not probed** | 0 | WP-PKG (lead carried: MPXJ jars never CVE-audited) |
 | **DOC** | 08-27 REPORT R-17/R-18 + ADR-0405 + 08-16 partial + ADR-0240 | shallow | finder DOC checked 468 present-tense claims (364 TRUE / 82 FALSE / 22 not checkable here) | DOC-001..016 (DOC-011 T2, the rest T3) | — |
@@ -2292,6 +2548,10 @@ DOC → PERF.
    so the saturation rule is not met; WP-CPM stays first — the unprobed CPM modules, a second round of probe families,
    CPM-005's backward mirror and lead L-CPM-a are next. WP-UI still owes UI-001's committed Chromium-gated
    reproducer, ASK-11 default yes.)*
+   *(Session 6: continued at `13b13f38` — the six unprobed modules, a second round of probe families and the carried
+   leads were probed (§3b); 28 classes confirmed (25 CPM + IMP-010 and DOC-017, and UI-001 from WP-UI's debt).
+   **Still not closed**: every family produced candidates again, so WP-CPM stays first — a third round of probe
+   families and §3b.6's list are next.)*
 2. **WP-SEC** — medium; no dedicated path-traversal / upload / subprocess sweep since the 06-25 / 08-13
    importer refutations (Scout A); not probed this session.
 3. **WP-EXP** — medium; content fidelity checked per sheet only where a row forced it (Scout A); two leads
@@ -2299,6 +2559,8 @@ DOC → PERF.
 4. **WP-FOR** — medium; detectors proven unchanged across versions, never proven right on adversarial
    schedules; false-positive / false-negative rates never measured (Scout A).
 5. **WP-UI** — timezone last audited 2026-07-01 (ADR-0141, Scout A); UI-001 awaits a second party.
+   *(Session 6: UI-001 is CONFIRMED-DEFERRED with a committed Chromium-gated reproducer; the time-zone and
+   localStorage censuses remain.)*
 6. **WP-IMP** — XER shallow (no real P6 export in the tree); round trip and fuzz not run.
 7. **WP-MET** — four-way agreement table not built; CEI / bow-wave and HMI have no oracle and no register row.
 8. **WP-WEB** — deep; cache invalidation, two tabs and eviction not probed.

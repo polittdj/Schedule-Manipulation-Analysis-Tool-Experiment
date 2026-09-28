@@ -1,5 +1,12 @@
-# AUDIT-2026-09-23 — Operator asks (one batched list; every live ask has a default; re-issued after the session-2 falsification pass, re-based onto 6bc3138b in session 3, and extended in session 5 (WP-CPM, base 19173728) with ASK-12–ASK-14)
+# AUDIT-2026-09-23 — Operator asks (one batched list; every live ask has a default; re-issued after the session-2 falsification pass, re-based onto 6bc3138b in session 3, and extended in session 5 (WP-CPM, base 19173728) with ASK-12–ASK-14 and in session 6 (WP-CPM continued, base 13b13f38) with ASK-15)
 
+- **T1 — A0923-CPM-016 / 017 / 018 / 019 / 021 (drag and Path Analysis days; in committed corpus):** the Path Analysis "Drag (d)" figure (the /path grid after "Run Drag Analysis", /api/driving?drag=1, /export/{fmt}/path?drag=1) is not the target-finish pull-in of removing the activity's remaining work that `engine/drag.py:3-4` defines and that SSI's exports and a removal on the engine's own CPM give: it is capped by any overlapping traced activity's driving slack (CPM-016 — Large_Test_File focus 152: UID 6513 36.0 d for SSI's 0.5 d; an SS- or lead-linked activity 0.0 d for 10 d), counts an elapsed or 24-hour-calendar duration in its own unit (CPM-017 — Hard_File UID 146 6.0 d for SSI's 2 d, beside its own Duration 2.0), changes with the Dependency Range filter (CPM-019 — Large_Test_File focus 152 at SSI's own "≤ 0 d": 10 of 76 rows inflated, UIDs 7442 / 7443 1.0 → 15.0 d) and gives the target's own descendants a drag under Path Direction Successors / Both (CPM-021 — Project5 target 67: UID 82 25.0 d for 0); and on a schedule whose working day is not 480 minutes every Path Analysis day figure divides by a fixed 480 (CPM-018 — the committed TP2_Bridge_4x10_Calendar.xml, a 600-minute day: Drag 25.0 for 20 file-days, "longest single activity … at 56.25 working days" for 45, and with one added FNLT a path float of −2.5 d for −2). Since 140aed3a (#292, v1.0.4, 2026-07-08, ADR-0155), where drag and the range filter were born (CPM-018's /path header since 6d71f813, v1.0.9; CPM-017's 24-hour leg from afb8e729, v1.0.140). Until fixed, read drag from SSI's own Directional Path export, not from the tool, and on a file whose day is not 480 minutes read Path Analysis days as working minutes ÷ the file's MinutesPerDay.
+- **T1 — A0923-CPM-010:** the what-if counterfactual and the per-change effect (/integrity, /evolution, the Ask-the-AI counterfactual fact) restore a STARTED activity's duration but not its remaining duration — the field the CPM schedules a started activity from (ADR-0517) — so a duration cut on in-progress work reads as 0 working days of recovery (the hand pair: +0 for +2; Large_Test_File2 → Large_Test_File: the target line for UID 5539 reads 0 where its restored remaining alone moves it ≥ 623 working days). Since 601be5d3 (#706, v1.0.281, 2026-09-20, ADR-0517). Until fixed, do not cite a counterfactual or a per-change effect that restores the duration of an activity that had started; unstarted reverts are right (214 of 214 constructed cuts).
+- **T1 — A0923-CPM-022 (option-gated):** with either SSI-parity option ticked on /path ("Ignore constraints" / "Ignore leveling delay"; the same flags on /api/driving and /export/{fmt}/path) the driving-slack trace of a fully-dated multi-calendar schedule changes, although the page's tooltip says it is unchanged: Hard_File target 155 moves 13 of 96 served rows (12 activities 1 → 0 d join DRIVING, tier 10 → 22); on Large_Test_File_Leveled the options-ON trace matches SSI's options-ON export on 777 of 783 rows where the un-flagged trace matches 783 of 783. The mechanism since 140aed3a (v1.0.4, 2026-07-08); the tooltip's promise since d1980d31 (v1.0.60, 2026-07-17, ADR-0251). Until fixed, leave both options OFF on a fully-dated file — the un-flagged trace is the one that matches SSI.
+- **T1 — A0923-IMP-010:** on the Large Test File family the importer holds Thu 2019-11-28 as a holiday on the project calendar — a ninth Thanksgiving from a recurrence the file itself limits to eight occurrences — so stored durations spanning that day measure 480 working minutes short (UIDs 6102 / 7377), 56 total floats and 21 free floats carry the extra day (the fix moves the 56 from −960 to −480 minutes against MS Project), and driving slack for LTF2 UID 6123 is one day low (458,769 vs SSI's 459,249 min). Since e5a67518 (#70, v1.0.0, 2026-06-11; the current shape since e709862a, #72). Until fixed, treat float and driving-slack figures on Large Test File-family activities whose windows span 2019-11-28 as one working day low.
+- **T1 — A0923-CPM-029:** on Large_Test_File2 (the committed golden and its four intake conversions) UID 5307 — a fixed-work task whose crew 76 carries its own leveling delay, longer than the task's legs — finishes 2026-05-21 14:18 with total float −16,669 min where MS Project stores 2026-05-22 15:08:12 and −17,199.1 (530 working minutes early), and its float cone moves with it (UID 5306 −16,669 for −17,199.1; 162 activities per input). Wrong at every commit since c18dcd24 (#55, v0.0.0, 2026-06-09); codified as a documented decision at 2c549d8d (v1.0.268, ADR-0502). Until fixed, read UID 5307's cone from the file's own stored Finish / TotalSlack.
+- **T1 — A0923-CPM-034 (late walls in committed corpus; float latent):** on the Hard_File / Hard_File_updated saves the engine's late start / late finish instants for UIDs 264, 274 and 260 are one hour before MS Project's stored LateStart / LateFinish (24 values over the goldens and two conversions; no float moves, and no page prints these instants today); the same rule gives a 24-hour or elapsed predecessor of a successor that starts at the lunch boundary a late finish of 12:00 for 13:00 and total / free float −2 min, critical, for +58 (hand-built). Since e0daccc4 (#712, v1.0.287, 2026-09-22, ADR-0523). Until fixed, read late dates from the file's stored LateStart / LateFinish.
+- **T1 (latent — no committed file exercises them) — A0923-CPM-020 / 028 / 030 / 031 / 032 / 033:** CPM figures are wrong on an operator file that carries an activity with no stored Critical flag and 1–2 working minutes of total float, shown critical on /analysis (CPM-020 — XER, the tool's own .json, hand-authored files); a predecessor on the wall path (e.g. on a 24-hour task calendar) linked to a milestone, whose late finish and total float then depend on the link type (CPM-028); a date constraint on a summary task, which never reaches its subtasks (CPM-030); a Must Start / Finish On dated before the project start on a task with no predecessor, reported with negative float (CPM-031); logic on a summary task, which the driving path and the Target-UID scope do not follow (CPM-032); or a lagged link from a wall-path predecessor into a successor carrying a leveling delay, whose float is composed in the wrong order (CPM-033). Check an operator file for these shapes before citing its CPM figures.
 - **T1 — A0923-CPM-001:** every page that prints the schedule-logic (CPM) project finish (/path, /briefing, /brief, /, /portfolio, /forecast, /mission, /trend, /compare, /margin and their APIs) shows the project-calendar date of the finish offset, not the engine's own finish instant: when an elapsed or 24-hour-calendar task drives the finish into project non-working time the date reads a day EARLY (Hard_File_updated3: 12/11/2026 where MS Project, Acumen and SSI show Sat 2026-12-12), and calendar-day finish movements are short by the same day (+35 d for 36). Working-day figures are unaffected. Mechanism since afb8e729 (#497, v1.0.140, 2026-07-31). Until fixed, read the finish from the /path table's rows or the file's own Finish.
 - **T1 — A0923-CPM-002 / 003:** on the Large Test File family, an activity whose MS Project split is recorded on the unassigned-work placeholder booking (CPM-002, e.g. UID 7262: 3 working days early, total float 4 days high) and a predecessor linked finish-to-finish to a leveled task (CPM-003, UID 5314: late finish, total and free float 11 working days off) carry CPM figures that differ from MS Project's stored values. CPM-002 wrong at every decidable commit since afb8e729 (v1.0.140; no good commit exists), in its present form since 163d1942 (v1.0.259, ADR-0491); CPM-003 since 5f34c2a8 (v1.0.245, ADR-0474).
 - **T1 (latent — no committed file exercises them) — A0923-CPM-005/006/007/008, A0923-IMP-006:** CPM dates and floats are wrong on an operator file that carries a redundant lag-0 SS/SF link from a milestone into an off-calendar task (CPM-005), a worked-day exception on the project calendar (CPM-006), a project start inside the first working block such as 09:00 (CPM-007), logic on a summary task whose children carry custom WBS codes (CPM-008), or an elapsed link lag such as "2ed" (IMP-006). Check an operator file for these shapes before citing its CPM figures.
@@ -16,7 +23,8 @@
 ## What this file is
 
 Everything in the AUDIT-2026-09-23 campaign that only you, the operator, can do or decide — eleven asks after two
-sessions: ten live, one withdrawn (session 5: fourteen — thirteen live, one withdrawn). Each live ask states the
+sessions: ten live, one withdrawn (session 5: fourteen — thirteen live, one withdrawn; session 6: fifteen — fourteen
+live, one withdrawn). Each live ask states the
 exact steps, the artifact expected back, the findings it settles, and the **default** the campaign takes if you never
 answer, so no session ever waits on a reply (charter §12–§13). Findings are cited by id; their evidence is in
 `docs/STATE/AUDIT-2026-09-23-REPORT.md` and their repairs in `docs/STATE/AUDIT-2026-09-23-REPAIR-PLAN.md`.
@@ -28,7 +36,8 @@ they are not omit them and then give me the reports again"). Nothing was committ
 pull request; this file exists only in the delivered package until you decide ASK-08. Session 2 re-attacked every
 finding: none was refuted, three were narrowed, one was fixed upstream (DOC-014), one was withdrawn (TST-003, which
 takes ASK-04 with it). The five disclosure lines above stand unchanged and are still present at `f1b691f3` and at
-`6bc3138b` (session 5: and at `19173728`; they now sit below session 5's three).
+`6bc3138b` (session 5: and at `19173728`; they now sit below session 5's three) (session 6: and at `13b13f38`;
+session 6's seven lines now sit above session 5's three).
 
 **Session 3 (2026-09-25) re-based the package onto `6bc3138b`** (#718, v1.0.293, 817 commits). `main` had moved one
 commit further: it closed register rows R-48 and R-51 and took ADR numbers 0532 and 0533, so the campaign ADR is now
@@ -49,6 +58,20 @@ asks, **ASK-12, ASK-13 and ASK-14**, below. Each can be answered from a new, syn
 hand in MS Project; none needs a file from this session, and none needs a real schedule. Until you answer, the tool's
 current behaviour is kept, the three records stay ARTIFACT-GATED (not counted as findings), and no repair unit is
 built for them.
+
+**Session 6 (2026-09-28) continued WP-CPM** on `13b13f38` (#721, session 5's package, v1.0.294, 820 commits) and
+commits its own records on the branch `claude/gallant-newton-yh75tr` as one draft pull request (ADR-0537). **No
+answers were found** — none in this file and none in the session chat — so **every default stands**. **ASK-11 was
+acted on:** its default ("yes") was taken, and A0923-UI-001 is now CONFIRMED-DEFERRED with a committed Chromium-gated
+reproducer, `tests/audit/test_audit_20260923_ui.py`, in the browser census (11 of 140 page-states scroll sideways at
+1440 px, on /settings, /compare, /trend and /mission). The session confirmed 28 new defect classes (the sixteen at T1
+are the seven new disclosure lines at the top of this file), held one claim by a decision in force (F-EDGE2-002, by
+ADR-0322 §2) and recorded four observations about SSI's own Directional Path output as ARTIFACT-GATED; with the one
+record that stays ARTIFACT-GATED under ADR-0118 (F-LEADS-005, session 5's redundant-link lead) they make the one new
+ask, **ASK-15**, below — five exports from SSI's add-in on committed, non-CUI reference schedules and one small
+synthetic project; none needs a real schedule. Until you answer, the tool's current behaviour is kept, the five items
+stay ARTIFACT-GATED (not counted as findings), and A0923-CPM-022 keeps the T1 tier it was filed with. ASK-12, ASK-13
+and ASK-14 stand unchanged.
 
 ## How to answer — two channels (every session checks both)
 
@@ -240,6 +263,13 @@ An ask you skip takes its default. A second round of asks happens only if an ans
   other three pages, in the next audit session) or "no" (it stays a candidate in the report).
 - **Artifact expected:** the choice.
 - **Default if never answered:** yes, in the next audit session (WP-UI).
+- **Session 6 (the default acted on):** no answer was found, so the default was taken: UI-001 is CONFIRMED-DEFERRED
+  (T4, repair unit U54) with the committed Chromium-gated reproducer `tests/audit/test_audit_20260923_ui.py`
+  (`xfail(strict=True, raises=AssertionError)`, gated exactly like `tests/web/test_no_horizontal_overflow.py`; CI's
+  browser census 56 → 57 modules). Its session-6 assembler measured 140 page-states (35 served HTML routes × 4 themes
+  at 1440 × 900): 11 overflow on 4 routes from 4 mechanisms; the lead re-ran it (XFAIL; strict XPASS under the fix
+  sketch; FAILED by AssertionError with the marker removed). Answering "no" now would mean withdrawing a counted
+  class — say so here if that is your intent.
 - Answer: (none yet — the default applies)
 
 ## ASK-12 — Does MS Project hold a "No Later Than" date against logic? (A0923-CPM-009; new in session 5)
@@ -344,4 +374,91 @@ An ask you skip takes its default. A second round of asks happens only if an ans
   pairs, typed as text; or the synthetic `.xml` files. None of it is your schedule content.
 - **Default if never answered:** keep the engine's current behaviour; IMP-009 stays ARTIFACT-GATED, uncounted and
   without a reproducer; no repair unit is built.
+- Answer: (none yet — the default applies)
+
+## ASK-15 — Five SSI Directional Path exports only SSI on your machine can make (the F-SSI finder's four ARTIFACT-GATED items and F-LEADS-005; new in session 6)
+
+- **Settles:** five observations about SSI's own Directional Path output that no tracked export contains, so session 6
+  could not make them. They are recorded as ARTIFACT-GATED — not counted as findings, no reproducer, no repair unit
+  (the F-SSI finder's words for (A)–(D) are quoted in the ledger's "UNVERIFIED leads — session 6"; (E) is the finder
+  record `$S/audit/wave-7/finder-F-LEADS/F-LEADS-005.json`, session scratch):
+  - **(A) Path Direction = Successors.** Every tracked SSI export is a predecessor trace (the SSI set equals, or is a
+    subset of, the focus's ancestors — 20 of 20 comparisons). The engine's SUCCESSORS trace is proven only against its
+    own CPM forward pass (722 + 985 checks on seeded random networks, 0 failures), never against SSI.
+  - **(B) The SSI options behind the all-dependencies runs.** A0923-CPM-022 (T1, option-gated) says that with "Ignore
+    constraints" or "Ignore leveling delay" ticked on /path the tool's trace of a fully-dated multi-calendar file
+    changes (Hard_File, target 155: 13 of 96 served rows move, the DRIVING tier 10 → 22), although the page's tooltip
+    says the trace is unchanged, "matching SSI's own output with this option on". Which options were ON in the
+    committed all-dependencies runs is recorded only as testimony (a golden's note and a test docstring; the committed
+    screenshot shows a different run). In the finder's words, the answer "would decide whether F-SSI-001 is a T1
+    engine-vs-SSI-ON mismatch or a T2 mislabel" (F-SSI-001 is A0923-CPM-022).
+  - **(C) Near-path mode's multi-route rows.** In the committed near-path run of Large Test File Leveled (focus 152,
+    `00_REFERENCE_INTAKE/ssi/Large Test File Leveled 152_Directional_Path_Analysis_2026-7-14 (b).xlsx`) UIDs 1248 and
+    5538 read 472.60 and 270.46 days of Driving Slack, where SSI's own all-dependencies run of the same file state reads
+    22.025 and 171.0 — the engine's values. The engine implements no near paths (ADR-0011 D3).
+  - **(D) A driving slack strictly between −1 and 0 working days.** No tracked SSI export has such a cell (carried from
+    session 1's F2-H4), so how SSI displays one is unknown.
+  - **(E) F-LEADS-005 — a redundant link that moves driving slack** (session 5's lead L-R3 / F-META R3, still
+    ARTIFACT-GATED under ADR-0118). On the committed `tests/fixtures/golden/fuse_hardfile/Hard_File_updated.mspdi.xml.gz`,
+    adding ONE lag-0 link 95 → 157 — transitively redundant, because the file already chains 95 -FS0-> 94 -FS0-> 157 —
+    moves the engine's driving slack for UID 95 (focus 146) from 14,880 to 8,580 working minutes (FS0), or to 9,060
+    (FF0): 31.0 → 17.875 days at 480 minutes a day (18.875 with FF0). A redundant link should move nothing; the
+    documented cause is ADR-0118's rule, which measures each link's free float on its successor's calendar. No committed
+    SSI export covers the modified file (the committed exports of Hard_File_updated are of the unmodified schedule, focus
+    155), and the 11 naturally redundant lag-0 links with a wall-path endpoint in the SSI-covered schedules move nothing
+    when removed — so the committed exports cannot decide it.
+- **Exact steps** (in MS Project with SSI's Directional Path add-in; the `.mpp` files named are the committed reference
+  schedules under `00_REFERENCE_INTAKE/`, which are not CUI; step 4 builds a new synthetic project; nothing from a real
+  schedule). For every run, keep a screenshot of the options dialog and export the result to Excel the way the
+  committed exports were made:
+  1. **(A)** Open `00_REFERENCE_INTAKE/mpp/Project5_TAMPERED.mpp`. Run Directional Path on focus **UID 67** with **Path
+     Direction = Successors**, **Dependency Range = Get all dependencies**, both Ignore options OFF; export. Run it
+     again with **Path Direction = Both**; export.
+  2. **(B)** Open `00_REFERENCE_INTAKE/mpp/Hard_File.mpp`. Run Directional Path on focus **UID 155**, **Path Direction =
+     Predecessors**, **Dependency Range = Get all dependencies**, **Ignore constraints OFF, Ignore leveling delay
+     OFF**; export. Run it again with **both Ignore options ON**; export. Repeat the two runs on
+     `00_REFERENCE_INTAKE/mpp/Large Test File Leveled.mpp`, focus **UID 152**.
+  3. **(C)** On `Large Test File Leveled.mpp`, focus **UID 152**, repeat the committed (b) run exactly as its screenshot
+     `00_REFERENCE_INTAKE/ssi/Large Test File Leveled UID_152_Directional_Path_Analysis_2026-7-14.jpg` records it
+     (Predecessors, Driving Slack ≤ 0 d, near paths "2 @ +10d", both Ignore options ON); export; copy the Driving Slack
+     of **UIDs 1248 and 5538** and the Path each is listed on. If SSI's help says what a near-path row's Driving Slack
+     measures, copy that sentence too.
+  4. **(D)** File > New > Blank Project; Project Information: Start date **Mon 2026-06-01**, calendar **Standard**
+     (Mon–Fri 08:00–12:00 and 13:00–17:00), "Tasks will always honor their constraint dates" left ON (the default).
+     Enter **A 2d** and **B 1d**, link **A → B** finish-to-start with no lag, and give B the constraint **Must Start On
+     Tue 2026-06-02 13:00** (A finishes Tue 17:00; if the Planning Wizard warns, choose the option that keeps the
+     constraint). Run Directional Path on focus **B**, Predecessors, Get all dependencies; export; copy **A's Driving
+     Slack** exactly as SSI displays it.
+  5. **(E)** Open `00_REFERENCE_INTAKE/mpp/Hard_File_updated.mpp` (do not save over it — work on a copy, or close
+     without saving). Run Directional Path on focus **UID 146**, Predecessors, Get all dependencies, both Ignore options
+     OFF; export (the unmodified run). Add ONE link **95 → 157, finish-to-start, lag 0** (for example by typing `95`
+     into UID 157's **Unique ID Predecessors** column, which takes unique IDs; the ordinary Predecessors column takes
+     row IDs); run the same export. Undo it, add **95 → 157 finish-to-finish, lag 0** instead (`95FF`), and run the same
+     export. Copy **UID 95's Driving Slack** from each of the three exports.
+- **What the answer decides:**
+  - **(A)** A session compares SSI's Successors / Both exports with the tool's trace of Project5 target 67 under the same
+    direction: agreement confirms the SUCCESSORS semantics against the reference tool; a row that differs becomes a
+    CANDIDATE with SSI as its oracle. (The same export's Drag column is also a second witness for A0923-CPM-021, which
+    already stands on its own removal oracle.)
+  - **(B)** If SSI's options-ON export equals its options-OFF export on every fully-dated row, the tooltip's promise
+    describes SSI and CPM-022 stays a T1 engine defect; if SSI moves the same rows the tool moves, the tool matches SSI
+    and CPM-022 narrows to a T2 mislabel (the tooltip's "unchanged").
+  - **(C)** If SSI's near-path Driving Slack for a multi-route row is a different quantity from its all-dependencies
+    value, the two committed near-path rows are SSI semantics and stay out of the oracle set; nothing in the engine
+    changes either way (it implements no near paths).
+  - **(D)** By hand arithmetic B starts 240 working minutes — half of an 8-hour day — before A's finish, so the link's
+    gap is −0.5 day, the shape the item needs. SSI's display of A's Driving Slack (for example "-0.5 day", "0 days" or
+    "-1 day") tells a session how the reference tool shows a sub-day negative driving slack, against which the tool's
+    whole-day display can then be compared.
+  - **(E)** If SSI reports UID 95's Driving Slack UNCHANGED by the added link (FS0 and FF0 alike), the engine's
+    14,880 → 8,580 / 9,060 movement is a defect — the redundancy relation is then SSI's own — and F-LEADS-005 becomes a
+    CANDIDATE with SSI as its oracle (the finder's tier opinion: T1); if SSI moves UID 95 the same way, ADR-0118's
+    per-successor-calendar measurement is the reference tool's own behaviour and the item closes as documented.
+- **Artifact expected:** the exported `.xlsx` workbooks from steps 1–5 and the options screenshots — none of it is your
+  schedule content. Hand them to the next session, or upload them to `00_REFERENCE_INTAKE/ssi/` through the GitHub web
+  UI (the intake channel ADR-0152 and ADR-0455 sanction); a session cannot commit an `.xlsx` there itself — the
+  pre-commit guard refuses it.
+- **Default if never answered:** keep the engine's current behaviour; the five items stay ARTIFACT-GATED, uncounted
+  and without a reproducer — F-LEADS-005 unchanged under ADR-0118; A0923-CPM-022 keeps its T1 tier as filed; no repair
+  unit is built for them.
 - Answer: (none yet — the default applies)
