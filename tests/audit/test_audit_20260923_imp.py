@@ -1,7 +1,14 @@
-"""Executable reproducers for the AUDIT-2026-09-23 findings in the IMP lane (A0923-IMP-001..005).
+"""Executable reproducers for the AUDIT-2026-09-23 findings in the IMP lane
+(A0923-IMP-001..007 · session 6: A0923-IMP-010).
 
 Campaign: AUDIT-2026-09-23, a read-only audit of base 8c71c639 (v1.0.289). AUDIT + PLAN ONLY:
 the audit changed nothing under ``src/``; these tests are the evidence a fixing PR inherits.
+
+Session 6 (AUDIT-2026-09-23, base 13b13f38, v1.0.294; AUDIT + PLAN ONLY -- nothing under ``src/``
+changed) appended A0923-IMP-010 below, under the same conventions; its docstring names its finder id
+once, for provenance. Unlike the tests before it, A0923-IMP-010 reads an already-committed non-CUI
+golden and SSI export in place (``REPO``) instead of building its input inline; no fixture file is
+added.
 
 Every test asserts the CORRECT behaviour and is marked ``xfail(strict=True, raises=...)`` with the
 exception observed red-first on the audited tree, so the suite stays green while the defect exists:
@@ -23,11 +30,14 @@ Run: ``pytest tests/audit/test_audit_20260923_imp.py -rxX``.
 from __future__ import annotations
 
 import datetime as dt
+import gzip
 import io
 import logging
 import re
 import socket
+import xml.etree.ElementTree as ET
 import zipfile
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
@@ -41,11 +51,14 @@ from schedule_forensics.engine.cpm import (
     offset_to_start_datetime,
     working_minutes_between,
 )
+from schedule_forensics.engine.driving_slack import compute_driving_slack
 from schedule_forensics.importers._common import ImporterError
 from schedule_forensics.importers.mspdi import parse_mspdi, parse_mspdi_text
 from schedule_forensics.importers.xer import parse_xer_text
 from schedule_forensics.model import ConstraintType
 from schedule_forensics.web.app import SessionState, create_app
+
+REPO = Path(__file__).resolve().parents[2]
 
 _LOOPBACK = frozenset({"127.0.0.1", "::1", "localhost"})
 
@@ -828,4 +841,282 @@ def test_a0923_imp_007_an_alap_constraint_is_honored_or_its_collapse_is_disclose
                 f"(ALAP: {alap[0]:%a %m-%d %H:%M}..{alap[1]:%a %m-%d %H:%M}); no log record or "
                 f"import note names it (import_notes={sch.import_notes!r})"
             )
+    assert problems == [], "\n".join(problems)
+
+
+# --- A0923-IMP-010 fragment -------------------------------------------------------------------
+# Relies on the module header of tests/audit/test_audit_20260923_imp.py:
+#   imports    datetime as dt, re, pytest, working_minutes_between (schedule_forensics.engine.cpm),
+#              parse_mspdi_text (schedule_forensics.importers.mspdi), Path (pathlib)
+#   fixture    the module-level autouse _air_gapped
+# and on names the header does not carry today -- merge them into its import block:
+#   import gzip
+#   import xml.etree.ElementTree as ET
+#   import zipfile
+#   from decimal import Decimal
+#   from schedule_forensics.engine.driving_slack import compute_driving_slack
+#   REPO = Path(__file__).resolve().parents[2]
+# Inputs: the committed golden fuse_ltf/Large_Test_File2.mspdi.xml.gz and the committed SSI export
+# named below (git-tracked, pinned in docs/INTAKE-MANIFEST.md). No fixture file, no Java.
+
+_A0923_IMP_010_GOLDEN = (
+    REPO / "tests" / "fixtures" / "golden" / "fuse_ltf" / "Large_Test_File2.mspdi.xml.gz"
+)
+_A0923_IMP_010_SSI = (
+    REPO
+    / "00_REFERENCE_INTAKE"
+    / "ssi"
+    / "Large Test File2 UID_152_Directional_Path_Analysis_All_Dependicies_SSI_2026-7-15.xlsx"
+)
+_A0923_IMP_010_NS = "{http://schemas.microsoft.com/project}"
+_A0923_IMP_010_XL = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
+#: the ninth fourth-Thursday of November counted from 2011 -- one beyond Occurrences=8
+_A0923_IMP_010_DAY = dt.date(2019, 11, 28)
+#: calendar 3's Thanksgiving record, verbatim from the golden (Month 10 = November, MonthItem 7 =
+#: Thursday, MonthPosition 3 = fourth -- Microsoft Learn's MonthItem / MonthPosition / Month tables)
+_A0923_IMP_010_RECORD = {
+    "EnteredByOccurrences": "1",
+    "FromDate": "2011-11-24T00:00:00",
+    "ToDate": "2019-11-28T23:59:59",
+    "Occurrences": "8",
+    "Type": "3",
+    "MonthItem": "7",
+    "MonthPosition": "3",
+    "Month": "10",
+    "DayWorking": "0",
+}
+#: resource-free, calendar-3, 100%-complete activities whose stored window spans 2019-11-28 and
+#: not the worked Sunday 2018-08-26 (A0923-CPM-006's day): UID -> stored Duration (hours)
+_A0923_IMP_010_WITNESSES = {6102: "PT5680H0M0S", 7377: "PT11824H0M0S"}
+#: the control: a window spanning Thanksgiving 2017-11-23, an IN-COUNT occurrence (day off)
+_A0923_IMP_010_CONTROL = (4587, "PT185H39M0S")
+
+
+def _a0923_imp_010_fourth_thursdays(first_year: int, count: int) -> list[dt.date]:
+    """The fourth Thursday of November for ``count`` consecutive years -- hand arithmetic."""
+    out = []
+    for year in range(first_year, first_year + count):
+        first = dt.date(year, 11, 1)
+        out.append(first + dt.timedelta(days=(3 - first.weekday()) % 7 + 21))
+    return out
+
+
+def _a0923_imp_010_minutes(iso: str) -> int:
+    """``PT<h>H<m>M<s>S`` -> whole minutes."""
+    m = re.fullmatch(r"PT(\d+)H(\d+)M(\d+)S", iso)
+    if m is None:
+        pytest.fail(f"precondition: unreadable stored Duration {iso!r}")
+    return int(m[1]) * 60 + int(m[2])
+
+
+def _a0923_imp_010_ssi_driving_slack(path: Path) -> dict[int, Decimal]:
+    """SSI's 'Driving Slack' per 'Unique ID' (days), read with zipfile + ElementTree. Every cell of
+    this export carries ``r=``; a row not for focus 152 of 'Large Test File2' is a precondition
+    failure."""
+    if not path.is_file():
+        pytest.fail(f"precondition: the committed SSI export is missing: {path}")
+    with zipfile.ZipFile(path) as z:
+        shared = [
+            "".join(t.text or "" for t in si.iter(_A0923_IMP_010_XL + "t"))
+            for si in ET.fromstring(z.read("xl/sharedStrings.xml")).iter(_A0923_IMP_010_XL + "si")
+        ]
+        sheet = ET.fromstring(z.read("xl/worksheets/sheet1.xml"))
+    rows: list[dict[str, str]] = []
+    for row in sheet.iter(_A0923_IMP_010_XL + "row"):
+        cells: dict[str, str] = {}
+        for c in row.iter(_A0923_IMP_010_XL + "c"):
+            v = c.find(_A0923_IMP_010_XL + "v")
+            text = "" if v is None or v.text is None else v.text
+            cells[re.sub(r"\d+", "", c.get("r", ""))] = (
+                shared[int(text)] if c.get("t") == "s" and text else text
+            )
+        rows.append(cells)
+    header = {v: k for k, v in rows[0].items()}
+    col = {name: header.get(name, "") for name in ("Focus Task UID", "Unique ID", "Driving Slack")}
+    if not all(col.values()) or header.get("Project") is None:
+        pytest.fail(f"precondition: SSI export header moved: {rows[0]}")
+    out: dict[int, Decimal] = {}
+    for r in rows[1:]:
+        if r.get(col["Focus Task UID"]) != "152" or r.get(header["Project"]) != "Large Test File2":
+            pytest.fail(f"precondition: an SSI row is not focus 152 of Large Test File2: {r}")
+        slack = r.get(col["Driving Slack"], "")
+        if re.fullmatch(r"-?\d+(\.\d+)? days?", slack):
+            out[int(r[col["Unique ID"]])] = Decimal(slack.split()[0])
+        elif slack != "NA":
+            pytest.fail(f"precondition: unreadable SSI Driving Slack {slack!r}")
+    return out
+
+
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason="A0923-IMP-010: the MSPDI importer reads MPXJ's legacy WeekDay DayType=0 list, which "
+    "expands calendar 3's recurring Thanksgiving (EnteredByOccurrences=1, Occurrences=8 from "
+    "2011-11-24) to a NINTH date, and skips the modern record that carries the count, so the "
+    "Large Test File family holds Thu 2019-11-28 as a holiday: stored Durations spanning it "
+    "measure 480 min short and SSI's driving slack for LTF2 UID 6123 is one day low (458,769 vs "
+    "459,249 min)",
+)
+def test_a0923_imp_010_a_recurring_holiday_ends_at_its_occurrence_count() -> None:
+    """A0923-IMP-010 (finder id M-THANKS) · IMP · T1
+
+    Claim (verifier's narrowed claim): at 13b13f38 ``parse_mspdi_text`` makes Thu 2019-11-28 a
+    holiday on calendar 3 'Dynetics Standard' (the project calendar) of every Large Test File-family
+    input -- this test uses the committed golden ``fuse_ltf/Large_Test_File2.mspdi.xml.gz`` -- read
+    from the legacy ``WeekDay DayType=0`` list that MPXJ 16.2.0 over-expanded to NINE Thanksgivings,
+    while the modern ``<Exception>`` that carries the count (EnteredByOccurrences=1, Occurrences=8,
+    FromDate 2011-11-24; the eight occurrences end 2018-11-22) is skipped as a recurrence at
+    src/schedule_forensics/importers/mspdi.py:637-644. Consequences measured here: the stored
+    windows of the resource-free, complete UIDs 6102 and 7377 (Start 2019-04-01 / 2019-04-15,
+    both after the worked Sunday 2018-08-26) measure 340,320 / 708,960 working minutes on the
+    imported calendar where MS Project stores Duration 340,800 / 709,440; and
+    ``compute_driving_slack(sch, 152)`` gives UID 6123 458,769 min where SSI's export gives
+    956.76875 d = 459,249 min (every other of the 783 SSI rows agrees within a minute). The same
+    extra day is half of the 56 '-960' total-float rows (A0923-CPM-006's worked Sunday is the
+    other half) -- not asserted here, because those windows span both days.
+
+    Correct: 2019-11-28 is a working day on calendar 3 (a date the recurrence's own count excludes
+    is not an exception day); the in-count occurrences (2016-11-24, 2017-11-23, 2018-11-22), the
+    explicit non-recurring 'Day After TG' 2019-11-29, and calendar 68's explicit single-date
+    'Thanksgiving Day' 2019-11-28 stay holidays (preconditions: the importer is right on them today
+    and a fix must keep them).
+
+    Authority: Microsoft Learn, Project XML Data Interchange schema, 'EnteredByOccurrences Element',
+    https://learn.microsoft.com/office-project/xml-data-interchange/enteredbyoccurrences-element?view=project-client-2016
+    (retrieved 2026-09-28): "1 | True. The range of recurrence for the exception is defined by a
+    number of occurrences." and 'Occurrences Element',
+    https://learn.microsoft.com/office-project/xml-data-interchange/occurrences-element?view=project-client-2016
+    (retrieved 2026-09-28): "The number of occurrences for which the calendar exception is valid."
+    A1 -- MS Project's own stored ``<Duration>`` of UIDs 6102 / 7377 / 4587 in the golden, and SSI's
+    'Driving Slack' for UID 6123 ('956.76875 days') in the committed export. The repo premise
+    this falsifies, docs/adr/0028-mspdi-xer-project-calendar-parsing.md:41-42: "The ``.mpp``
+    path (MPXJ → MSPDI) gets all of this for free." (the legacy list MPXJ writes carries a date
+    its own recurrence record excludes).
+
+    Why the oracle is independent: the record, the stored Durations and the legacy list are read
+    with ElementTree; SSI's figure with zipfile; the occurrence dates by hand arithmetic. The
+    QUALIFICATION the verifier recorded holds: the Duration and SSI oracles each show exactly ONE
+    holiday too many in their window, not WHICH one (dropping any of 29 holidays closes UID 6123);
+    the day is identified by the file's own Occurrences=8 record (and MPXJ's RecurringData, occ 8,
+    finish 2019-11-22 -- verifier record), and this test ties the two together.
+
+    Tier: T1 (not LAW-1): total / free floats (56 / 21 rows on 11 committed LTF-family inputs) and
+    LTF2 UID 6123's SSI-parity driving slack one working day low; no early/late date moves on the
+    committed corpus.
+    """
+    raw = gzip.decompress(_A0923_IMP_010_GOLDEN.read_bytes())
+    root = ET.fromstring(raw)
+    ns = _A0923_IMP_010_NS
+    if (root.findtext(ns + "CalendarUID") or "").strip() != "3":
+        pytest.fail("precondition: the golden's project calendar is no longer UID 3")
+    calendars = {(c.findtext(ns + "UID") or "").strip(): c for c in root.iter(ns + "Calendar")}
+    cal3 = calendars.get("3")
+    if cal3 is None:
+        pytest.fail("precondition: the golden has no calendar UID 3")
+    exceptions = list(cal3.iter(ns + "Exception"))
+    record = [e for e in exceptions if (e.findtext(ns + "Name") or "").strip() == "Thanksgiving"]
+    if len(record) != 1:
+        pytest.fail(f"precondition: calendar 3 carries {len(record)} 'Thanksgiving' records")
+    fields = {
+        k: (record[0].findtext(ns + k) or record[0].findtext(f"{ns}TimePeriod/{ns}{k}") or "")
+        for k in _A0923_IMP_010_RECORD
+    }
+    if fields != _A0923_IMP_010_RECORD:
+        pytest.fail(f"precondition: the Thanksgiving record moved: {fields}")
+    nine = _a0923_imp_010_fourth_thursdays(2011, 9)
+    if nine[0] != dt.date(2011, 11, 24) or nine[-1] != _A0923_IMP_010_DAY:
+        pytest.fail(f"precondition: the fourth-Thursday arithmetic moved: {nine}")
+    counted, beyond = nine[:8], nine[8]  # Occurrences=8 from 2011-11-24 -> last 2018-11-22
+    legacy_off = {
+        dt.date.fromisoformat((wd.findtext(f"{ns}TimePeriod/{ns}FromDate") or "")[:10])
+        for wd in cal3.iter(ns + "WeekDay")
+        if (wd.findtext(ns + "DayType") or "").strip() == "0"
+        and (wd.findtext(ns + "DayWorking") or "").strip() == "0"
+    }
+    if not set(nine) <= legacy_off:
+        pytest.fail("precondition: the legacy DayType=0 list no longer carries all nine dates")
+    others = [
+        e.findtext(ns + "Name")
+        for e in exceptions
+        if e is not record[0]
+        and (e.findtext(ns + "DayWorking") or "").strip() == "0"
+        and dt.date.fromisoformat((e.findtext(f"{ns}TimePeriod/{ns}FromDate") or "")[:10])
+        <= beyond
+        <= dt.date.fromisoformat((e.findtext(f"{ns}TimePeriod/{ns}ToDate") or "")[:10])
+        and (e.findtext(ns + "Occurrences") or "").strip() == "1"
+    ]
+    if others:
+        pytest.fail(f"precondition: another single-date record declares {beyond} off: {others}")
+
+    sch = parse_mspdi_text(raw.decode("utf-8"))
+    cal = sch.calendar
+    if cal.uid != 3 or cal.working_minutes_per_day != 480:
+        pytest.fail(f"precondition: the project calendar imports as {cal.uid} / {cal!r}")
+    keep = [*counted[-3:], dt.date(2019, 11, 29)]
+    if lost := [d for d in keep if d not in cal.holidays]:
+        pytest.fail(f"precondition: in-count / explicit holidays lost from calendar 3: {lost}")
+    registry = {c.uid: c for c in sch.calendars}
+    if 68 not in registry or beyond not in registry[68].holidays:
+        pytest.fail("precondition: calendar 68's explicit 'Thanksgiving Day' 2019-11-28 is lost")
+
+    tasks = {(t.findtext(ns + "UID") or "").strip(): t for t in root.iter(ns + "Task")}
+    booked = {
+        (a.findtext(ns + "TaskUID") or "").strip()
+        for a in root.iter(ns + "Assignment")
+        if int((a.findtext(ns + "ResourceUID") or "0").strip()) >= 0
+    }
+
+    def stored_window(uid: int, duration: str) -> tuple[dt.datetime, dt.datetime]:
+        el = tasks.get(str(uid))
+        if el is None or str(uid) in booked:
+            pytest.fail(f"precondition: UID {uid} is missing or now carries a resource booking")
+        got = {k: (el.findtext(ns + k) or "").strip() for k in ("Duration", "CalendarUID")}
+        if got != {"Duration": duration, "CalendarUID": "3"}:
+            pytest.fail(f"precondition: UID {uid}'s stored fields moved: {got}")
+        start = dt.datetime.fromisoformat((el.findtext(ns + "Start") or "").strip())
+        return start, dt.datetime.fromisoformat((el.findtext(ns + "Finish") or "").strip())
+
+    uid, duration = _A0923_IMP_010_CONTROL
+    start, finish = stored_window(uid, duration)
+    if not start.date() < counted[6] < finish.date():
+        pytest.fail(f"precondition: control UID {uid} no longer spans {counted[6]}")
+    if working_minutes_between(cal, start, finish) != _a0923_imp_010_minutes(duration):
+        pytest.fail(f"precondition: control UID {uid} (in-count Thanksgiving) is not exact")
+
+    problems = []
+    if beyond in cal.holidays:
+        problems.append(
+            f"calendar 3 holds {beyond} (the 9th fourth-Thursday; Occurrences=8 ends at "
+            f"{counted[-1]}) as a holiday"
+        )
+    for uid, duration in _A0923_IMP_010_WITNESSES.items():
+        start, finish = stored_window(uid, duration)
+        if not (dt.date(2018, 8, 26) < start.date() < beyond < finish.date()):
+            pytest.fail(f"precondition: UID {uid}'s window no longer isolates {beyond}")
+        got = working_minutes_between(cal, start, finish)
+        if got != _a0923_imp_010_minutes(duration):
+            problems.append(
+                f"UID {uid}: {start:%Y-%m-%d %H:%M} -> {finish:%Y-%m-%d %H:%M} measures {got} "
+                f"working min on the imported calendar; MS Project stores {duration} = "
+                f"{_a0923_imp_010_minutes(duration)}"
+            )
+
+    ssi = _a0923_imp_010_ssi_driving_slack(_A0923_IMP_010_SSI)
+    if len(ssi) != 783 or ssi.get(6123) != Decimal("956.76875"):
+        pytest.fail(f"precondition: SSI export moved ({len(ssi)} rows, 6123 = {ssi.get(6123)})")
+    slack = compute_driving_slack(sch, 152)
+    disagree = {
+        u: (slack[u].driving_slack_minutes if u in slack else None, str(days * 480))
+        for u, days in ssi.items()
+        if u != 6123
+        and (u not in slack or abs(Decimal(slack[u].driving_slack_minutes) - days * 480) > 1)
+    }
+    if disagree:
+        pytest.fail(f"precondition: engine and SSI disagree beyond UID 6123: {disagree}")
+    want = int(ssi[6123] * 480)
+    if slack[6123].driving_slack_minutes != want:
+        problems.append(
+            f"UID 6123 driving slack to focus 152: engine {slack[6123].driving_slack_minutes} "
+            f"min; SSI {ssi[6123]} d = {want} min"
+        )
     assert problems == [], "\n".join(problems)

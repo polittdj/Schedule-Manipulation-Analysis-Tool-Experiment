@@ -1,11 +1,17 @@
-"""Executable red/green tests for the 2026-09-23 read-only audit: the DOCUMENTATION findings.
+"""Executable red/green tests for the 2026-09-23 read-only audit: the DOCUMENTATION findings
+(A0923-DOC-001..016 · session 6: A0923-DOC-017).
 
-One test per finding id (A0923-DOC-001 .. A0923-DOC-016). Every test here is a
+One test per finding id (A0923-DOC-001 .. A0923-DOC-017). Every test here is a
 VALIDATED-DEFECT test in the sense of ``test_audit_findings.py``: it asserts the CORRECT state
 and FAILS (red) against the audited commit 8c71c639 — that red is the proof the finding is real.
 Each is marked ``xfail(strict=True, raises=AssertionError)`` so the suite stays green today AND so
 a fix that makes it pass is flagged (XPASS under strict = failure => remove the marker in the
 fixing commit, and the test stands as the permanent pin).
+
+Session 6 (AUDIT-2026-09-23, base 13b13f38, v1.0.294; AUDIT + PLAN ONLY -- nothing under ``src/``
+changed) appended A0923-DOC-017 below, under the same conventions; its docstring names its finder id
+once, for provenance. This module has no autouse air gap, so A0923-DOC-017 carries its own copy of
+the ``_air_gapped`` fixture, applied to that test alone.
 
 Design rule for a documentation finding: the reproducer CHECKS THE CLAIM, it never freezes a
 number. Each test parses the document for the statement under audit and compares it with a value
@@ -23,6 +29,7 @@ Drop-in path: tests/audit/ .  Run: pytest tests/audit/test_audit_20260923_doc.py
 
 from __future__ import annotations
 
+import ast
 import dataclasses
 import gzip
 import importlib.util
@@ -30,6 +37,7 @@ import json
 import os
 import re
 import shutil
+import socket
 import subprocess
 import sys
 import tomllib
@@ -1136,3 +1144,257 @@ def test_a0923_doc_016_design_system_does_not_call_the_shipped_ui03_fix_unmade()
             ):
                 fixes.append(f"{css_file.name}: {selector.strip()}")
     assert not fixes, f"the rulebook says the resting-box fix is unmade; shipped: {fixes}"
+
+
+# --- A0923-DOC-017 fragment -------------------------------------------------------------------
+# Relies on the module header above and on nothing else:
+#   imports    ast, gzip, json, re, Path, pytest, TestClient, compute_driving_slack,
+#              parse_mspdi_text, SessionState / create_app
+#   constants  REPO (the repo root), GOLDEN (REPO / "tests" / "fixtures" / "golden")
+#   fixture    _a0923_doc_017_air_gapped, defined below (this module has no autouse one)
+# Inputs: committed, non-CUI goldens only (fuse_hardfile/Hard_File{,_updated}.mspdi.xml.gz,
+# ssi_hardfile_uid155/case.json, project2_5/Project5.mspdi.xml, ssi_uid67/case.json).
+
+_A0923_DOC_017_LOOPBACK = frozenset({"127.0.0.1", "::1", "localhost"})
+
+
+@pytest.fixture
+def _a0923_doc_017_air_gapped(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Per-test state dirs, and no way off the machine: a non-loopback connect or any name lookup
+    other than a loopback literal raises before a packet is sent."""
+    for var in ("SF_SETTINGS_DIR", "SF_AI_LOG_DIR", "SF_CACHE_DIR"):
+        monkeypatch.setenv(var, str(tmp_path / var))
+    real_getaddrinfo = socket.getaddrinfo
+    real_connect = socket.socket.connect
+
+    def getaddrinfo(host: Any, *args: Any, **kwargs: Any) -> Any:
+        name = host.decode() if isinstance(host, bytes) else host
+        if name is not None and str(name) not in _A0923_DOC_017_LOOPBACK:
+            raise OSError(f"air-gapped test: name lookup of {name!r} refused")
+        return real_getaddrinfo(host, *args, **kwargs)
+
+    def connect(self: socket.socket, address: Any) -> None:
+        if isinstance(address, tuple) and str(address[0]) not in _A0923_DOC_017_LOOPBACK:
+            raise OSError(f"air-gapped test: connect to {address!r} refused")
+        real_connect(self, address)
+
+    monkeypatch.setattr(socket, "getaddrinfo", getaddrinfo)
+    monkeypatch.setattr(socket.socket, "connect", connect)
+
+
+_A0923_DOC_017_NO_DRAG = re.compile(r"\bthe\s+engine\s+does\s+not\s+compute\s+drag\b", re.I)
+_A0923_DOC_017_UNGATED = re.compile(r"\bdrag\b[^.]*?\bprovenance[- ]only\b", re.I)
+_A0923_DOC_017_ERRATUM = re.compile(r"^\W*(?:erratum|errata|correction|corrected|amended)\b", re.I)
+
+
+def _a0923_doc_017_text(path: Path) -> str:
+    """A record's text; a deleted record carries no claim, so it reads as empty."""
+    return path.read_text(encoding="utf-8") if path.is_file() else ""
+
+
+def _a0923_doc_017_flat(text: str) -> str:
+    """Prose as a reader sees it: blockquote and emphasis markers dropped, hard wraps joined."""
+    text = re.sub(r"(?m)^[ \t]*>[ \t]?", "", text).replace("**", "")
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def _a0923_doc_017_docstrings(path: Path) -> list[tuple[str, str, str]]:
+    """(where, flattened docstring, source segment) for a module and every def/class in it, read
+    with ``ast`` (a docstring is what a reader of the test is told)."""
+    source = _a0923_doc_017_text(path)
+    if not source:
+        return []
+    tree = ast.parse(source)
+    out: list[tuple[str, str, str]] = []
+    doc = ast.get_docstring(tree)
+    if doc:
+        out.append(("<module>", _a0923_doc_017_flat(doc), source))
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            doc = ast.get_docstring(node)
+            if doc:
+                segment = ast.get_source_segment(source, node) or ""
+                out.append((node.name, _a0923_doc_017_flat(doc), segment))
+    return out
+
+
+def _a0923_doc_017_strings(value: Any) -> list[str]:
+    """Every string value in a parsed JSON document (its notes are what a golden tells a reader)."""
+    if isinstance(value, str):
+        return [_a0923_doc_017_flat(value)]
+    if isinstance(value, dict):
+        return [s for v in value.values() for s in _a0923_doc_017_strings(v)]
+    if isinstance(value, list):
+        return [s for v in value for s in _a0923_doc_017_strings(v)]
+    return []
+
+
+def _a0923_doc_017_days(cell: Any) -> float | None:
+    """SSI's Drag cell ('3.5 days', '0.5 day', '0 days') as a number of days."""
+    m = re.match(r"\s*(-?\d+(?:\.\d+)?)", str(cell))
+    return float(m.group(1)) if m else None
+
+
+@pytest.mark.usefixtures("_a0923_doc_017_air_gapped")
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason=(
+        "A0923-DOC-017: the ssi_hardfile_uid155 parity test, its golden's _note, ADR-0168 and the "
+        "ssi_uid67 test docstring say 'the engine does not compute drag' (the last also calls the "
+        "gated UID-67 Drag provenance-only), but engine/drag.py has computed and served drag since "
+        "ADR-0155 (#292) and gates the UID-67 Drag map"
+    ),
+)
+def test_a0923_doc_017_no_record_says_the_engine_does_not_compute_drag() -> None:
+    """A0923-DOC-017 (finder id F-DRAG-007) · CPM (a record: DOC mechanism) · T3.
+
+    Claim: at 13b13f38 four records say "the engine does not compute drag", and all four are
+    false. They are ``tests/parity/test_ssi_hardfile_uid155.py:12-13`` (module docstring),
+    ``tests/fixtures/golden/ssi_hardfile_uid155/case.json`` ``_note``,
+    ``tests/engine/test_driving_slack.py:234`` (the ssi_uid67 test's docstring, which also calls
+    the UID-67 Drag "provenance-only") and ``docs/adr/0168-ssi-hardfile-uid155-driving-path-
+    golden.md:37-38``, where the sentence is the stated reason for leaving the Hard_File SSI Drag
+    column ungated. ``engine/drag.py::compute_drag`` shipped in 140aed3a (#292, ADR-0155). On the
+    golden's own schedules (Hard_File and Hard_File_updated, focus 155), compute_drag and the
+    served ``/api/driving/{name}?target=155&drag=1`` return drag for every SSI Path-01 UID, and
+    the ssi_uid67 Drag map is gated: engine == SSI on all 20 values in ``test_ssi_drag_exact``.
+    The docstring at test_driving_slack.py:234 was true when it was written (69bf720d, #291,
+    ADR-0154) and went stale 43 minutes later at #292, which changed the ssi_uid67 ``_note`` to
+    "GATED" but left this docstring alone. The other three records were false on the day they were
+    written (afa91a94, #303).
+
+    Not contested: the DECISION to leave the Hard_File Drag column ungated. It still stands on a
+    true premise. The engine's drag differs from SSI's on 6 of 9 Path-01 UIDs per snapshot
+    (141: 1.0 vs 3.5 d; 146: 6.0 vs 2.0 d; 9/36/144/145: 1.0 vs 0.5 d). ADR-0158 decision 4 gives
+    the real reason, an unresolved SSI drag convention. Only the stated reason is false.
+
+    Authority: A2/A3, the tree as oracle, derived at test time. Quoted verbatim:
+    ``src/schedule_forensics/engine/drag.py:57`` "def compute_drag(";
+    ``src/schedule_forensics/web/driving.py:228-230`` "from schedule_forensics.engine.drag import
+    compute_drag" / "drag_by_uid = {uid: float(d.drag_days) for uid, d in compute_drag(sch,
+    results).items()}"; ``tests/parity/test_parity_gate.py:252-253`` "def test_ssi_drag_exact()" /
+    "Drag Analysis (Devaux DRAG) reproduces the SSI export exactly (focus UID 67, A-5)."; the
+    ssi_uid67 golden ``_note`` "SSI Drag per task is GATED: engine/drag.py reproduces all 20
+    values exactly (test_ssi_drag_exact)"; ``docs/adr/0155-ssi-path-options-drag-ribbon.md:16-17``
+    "upgraded from provenance-only to gated"; ``docs/adr/0158-histogram-drill-vizhints-uid152.md``
+    decision 4 "the uid67 drag gate (20/20) stays authoritative for the drag semantics we HAVE
+    validated".
+
+    What is checked: every docstring in ``tests/engine/*.py`` and ``tests/parity/*.py``, every
+    string in ``tests/fixtures/golden/*/case.json`` and ADR-0168's text must not say "the engine
+    does not compute drag". ADR-0168 also passes if it carries a dated erratum paragraph that
+    mentions drag, which is how this repo corrects an ADR (see ADR-0045). A docstring of a test
+    that reads the ``ssi_uid67`` golden, and that golden's strings, must not call its Drag
+    "provenance-only". What is NOT checked: ``docs/adr/0154...md:34-35``, a dated record that was
+    true when written (#291, before drag.py existed); the dated state logs; and the Hard_File
+    Drag column's "provenance-only / NOT gated" decision (see "Not contested" above). A fix that
+    corrects or deletes each false sentence makes the test pass.
+    """
+    try:
+        from schedule_forensics.engine.drag import compute_drag
+    except ImportError:
+        pytest.fail("precondition: engine/drag.py is gone -- the finding's premise moved")
+
+    # 1. The engine computes, and the app serves, drag on the uid155 golden's own schedules.
+    case = json.loads((GOLDEN / "ssi_hardfile_uid155" / "case.json").read_text(encoding="utf-8"))
+    focus = case.get("focus_task_uid")
+    disagree: dict[str, int] = {}
+    for snapshot in ("Hard_File", "Hard_File_updated"):
+        members = (case.get(snapshot) or {}).get("driving_path_uids_ordered") or []
+        ssi = (case.get(snapshot) or {}).get("ssi_drag_days_by_uid_provenance_only") or {}
+        if focus is None or not members:
+            pytest.fail(f"precondition: the uid155 golden names no {snapshot} Path-01 set")
+        raw = gzip.decompress((GOLDEN / "fuse_hardfile" / f"{snapshot}.mspdi.xml.gz").read_bytes())
+        sch = parse_mspdi_text(raw.decode("utf-8"), source_file=f"{snapshot}.mspdi.xml")
+        drag = compute_drag(sch, compute_driving_slack(sch, target_uid=focus))
+        missing = sorted(set(members) - set(drag))
+        if missing:
+            pytest.fail(
+                f"precondition: compute_drag on {snapshot} (focus {focus}) returns no drag for "
+                f"SSI Path-01 UIDs {missing} -- the finding's premise moved"
+            )
+        state = SessionState()
+        client = TestClient(create_app(state))
+        up = client.post("/upload", files={"files": (f"{snapshot}.mspdi.xml", raw, "text/xml")})
+        if up.status_code != 200 or len(state.schedules) != 1:
+            pytest.fail(f"precondition: uploading {snapshot} answered {up.status_code}")
+        name = next(iter(state.schedules))
+        got = client.get(f"/api/driving/{name}", params={"target": focus, "drag": 1})
+        if got.status_code != 200:
+            pytest.fail(f"precondition: /api/driving/{name} answered {got.status_code}")
+        served = {
+            r.get("unique_id") for r in got.json().get("rows", []) if r.get("drag_days") is not None
+        }
+        if not set(members) <= served:
+            pytest.fail(
+                f"precondition: /api/driving/{name}?target={focus}&drag=1 serves no drag for "
+                f"{sorted(set(members) - served)} -- the finding's premise moved"
+            )
+        ssi_days = {uid: _a0923_doc_017_days(ssi.get(str(uid))) for uid in members}
+        disagree[snapshot] = sum(
+            1
+            for uid, days in ssi_days.items()
+            if days is not None and abs(float(drag[uid].drag_days) - days) > 1e-9
+        )
+
+    # 2. The UID-67 Drag map is gated: the engine reproduces it and a parity test pins it.
+    case67 = json.loads((GOLDEN / "ssi_uid67" / "case.json").read_text(encoding="utf-8"))
+    expected = {int(u): float(d) for u, d in (case67.get("ssi_drag_days_by_uid") or {}).items()}
+    project5 = parse_mspdi_text(
+        (GOLDEN / "project2_5" / "Project5.mspdi.xml").read_text(encoding="utf-8"),
+        source_file="Project5.mspdi.xml",
+    )
+    results67 = compute_driving_slack(project5, target_uid=case67.get("focus_task_uid"))
+    got67 = {u: float(r.drag_days) for u, r in compute_drag(project5, results67).items()}
+    if not expected or got67 != expected:
+        pytest.fail("precondition: the engine no longer reproduces the ssi_uid67 Drag map")
+    gate = [
+        where
+        for where, _doc, segment in _a0923_doc_017_docstrings(
+            REPO / "tests" / "parity" / "test_parity_gate.py"
+        )
+        if where.startswith("test_")
+        and "ssi_drag_days_by_uid" in segment
+        and "compute_drag" in segment
+    ]
+    if not gate:
+        pytest.fail("precondition: no parity test gates the ssi_uid67 Drag map any more")
+
+    # 3. The records.
+    wrong: list[str] = []
+    for folder in ("engine", "parity"):
+        for path in sorted((REPO / "tests" / folder).glob("*.py")):
+            rel = path.relative_to(REPO).as_posix()
+            for where, doc, segment in _a0923_doc_017_docstrings(path):
+                if _A0923_DOC_017_NO_DRAG.search(doc):
+                    wrong.append(f"{rel}::{where} says 'the engine does not compute drag'")
+                reads67 = '"ssi_uid67"' in segment or "'ssi_uid67'" in segment
+                if where != "<module>" and reads67 and _A0923_DOC_017_UNGATED.search(doc):
+                    wrong.append(f"{rel}::{where} calls the gated ssi_uid67 Drag provenance-only")
+    for path in sorted(GOLDEN.glob("*/case.json")):
+        rel = path.relative_to(REPO).as_posix()
+        strings = _a0923_doc_017_strings(json.loads(path.read_text(encoding="utf-8")))
+        if any(_A0923_DOC_017_NO_DRAG.search(s) for s in strings):
+            wrong.append(f"{rel} says 'the engine does not compute drag'")
+        if path.parent.name == "ssi_uid67" and any(
+            _A0923_DOC_017_UNGATED.search(s) for s in strings
+        ):
+            wrong.append(f"{rel} calls its own gated Drag provenance-only")
+    for path in sorted((REPO / "docs" / "adr").glob("0168-*.md")):
+        paragraphs = [
+            _a0923_doc_017_flat(p) for p in re.split(r"\n[ \t>]*\n", _a0923_doc_017_text(path))
+        ]
+        corrected = any(
+            _A0923_DOC_017_ERRATUM.match(p) and re.search(r"\bdrag\b", p, re.I) for p in paragraphs
+        )
+        if not corrected and any(_A0923_DOC_017_NO_DRAG.search(p) for p in paragraphs):
+            wrong.append(
+                f"{path.relative_to(REPO).as_posix()} gives 'the engine does not compute drag' "
+                "as its reason, with no erratum"
+            )
+    assert not wrong, (
+        f"the engine computes and serves drag on the uid155 golden's schedules (differing from "
+        f"SSI's on {disagree} Path-01 UIDs) and gates the ssi_uid67 Drag map ({gate}); yet: "
+        + "; ".join(wrong)
+    )
