@@ -277,14 +277,17 @@ dashboard. Stop it with `Ctrl-C`.
     ADR-0465, ADR-0539) — drop a plain Excel list and get the one-slide swimlane timeline, and a
     PowerPoint of the same slide built from native, editable shapes. The list is one sheet: **A** the
     swimlane, **B** the task or milestone, **C** the **start** date, **D** the **finish** date, **E**
-    complete (a status word — Complete, Done, Finished, Closed, Yes, X, TRUE, a check mark or 100%
-    draws a check). A row whose start and finish are the same day, or that has only one of them, is a
-    milestone. A workbook in the older layout (C one date or a range, D the status) is still read, and
-    the page says which layout it read; the upload also lets you choose the layout outright.
+    complete (a status word — Complete, Completed, Done, Finished, Closed, Yes, X, TRUE, a check mark
+    ✓ ✔ ☑ ✅, or 100% stored as text — draws a check; a number is not read as complete, and Excel keeps
+    a typed 100% as the number 1, so the page names that cell). A row whose start and finish are the
+    same day, or that has only one date, is a milestone — except that a lone month such as Jan 2027 is
+    drawn across the whole month. A workbook in the older layout (C one date or a range, D the status)
+    is still read, and the page says which layout it read; the upload also lets you choose the layout
+    outright.
     **Logic links:** under the slide controls pick a **From** and a **To** — or click the two items
     on the slide, first the predecessor, then the successor — choose Finish-to-Start (default),
     Start-to-Start, Finish-to-Finish or Start-to-Finish, and **Add logic link**. Add as many pairs as
-    you need; only the links you add are drawn, on the page and in the PowerPoint, and a link whose
+    you need (up to 200); only the links you add are drawn, on the page and in the PowerPoint, and a link whose
     item is not on the slide is listed as not drawn, with the reason. A link that would close a logic
     loop is refused. **Compare** draws the links between the items' current positions.
     The same two pages ship on their own as **LODESTAR** (`lodestar/` in the repository) — see below.

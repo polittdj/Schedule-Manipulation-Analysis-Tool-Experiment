@@ -199,12 +199,14 @@ item is shown by a ring AND a text tag (FROM dashed, TO solid), hidden in print.
 pointer accelerator: the From/To selects are the form, the no-JS path and the keyboard path, and
 they carry `data-sf-nopersist` (persist.js would otherwise restore the pair just added). An
 action's result renders where the browser lands after it (the links block), not in the page banner
-scrolled off above the slide.
+scrolled off above the slide — and lands clear of a sticky page header (daylight's top bar is
+224-458 px tall; a fixed scroll margin left the result under it).
 
 **The LODESTAR frame** — the two One-Pager pages served as their own program — keeps the
 compliance chrome whole: the CUI bars top and bottom, the handling & export-control drawer from the
 ONE copy of the prose (`htmlkit._DRAWER_HTML`, its `{where}` slot naming the frame's own marking
-switch), and the marking defaulting to CUI and feeding every export. The frame is a banner `div`,
+switch), and the marking defaulting to CUI and feeding the page and every PowerPoint (the Excel
+exports keep the shared writer's fixed CUI print header — over-marking, never under). The frame is a banner `div`,
 never a `<header>` (base.css makes every `<header>` the dark views' fixed left rail). N/A in the
 frame, by design: the chapter kicker, the Continue segue and the nav rail/story spine — LODESTAR has
 two pages and no story; its tabs are `cd-chip` links with `aria-current=page`. Its author's credit

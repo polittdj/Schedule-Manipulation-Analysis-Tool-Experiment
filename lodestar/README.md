@@ -13,13 +13,13 @@ slide, built from native, editable shapes. It has two pages:
 
 On either page you can draw **logic links**: pick two items (or click them on the slide — first the
 predecessor, then the successor), choose the type (Finish-to-Start by default, or Start-to-Start,
-Finish-to-Finish, Start-to-Finish) and add the link. Add as many pairs as you need. Only the links
+Finish-to-Finish, Start-to-Finish) and add the link. Add as many pairs as you need (up to 200). Only the links
 you add are drawn — on the page and in the PowerPoint export.
 
 ## What you need
 
 **Python 3.10 or newer** — nothing else, and no internet. If the computer does not have it, install
-it from python.org; the per-user install needs no administrator rights.
+it from python.org (on Windows the per-user install needs no administrator rights).
 
 ## Start it
 
@@ -27,8 +27,9 @@ Keep all the files of this folder together.
 
 * **Windows** — double-click **`LODESTAR.bat`** (or double-click `LODESTAR.pyz` itself if Python is
   set up to open `.pyz` files).
-* **macOS** — double-click **`LODESTAR.command`** (the first time, you may need to right-click it,
-  choose *Open*, and confirm).
+* **macOS** — double-click **`LODESTAR.command`**. The first time, macOS may refuse to open a file
+  from another computer: right-click it and choose *Open*, or, where that is not offered, allow it
+  under System Settings → Privacy & Security.
 * **Linux** — run `sh lodestar.sh` (or `python3 LODESTAR.pyz`).
 
 A small window opens and your browser shows LODESTAR. **Leave that window open while you work.** To
@@ -44,10 +45,11 @@ One sheet, one row per item:
 | **B** | the task or milestone name |
 | **C** | the **start** date |
 | **D** | the **finish** date |
-| **E** | complete — a status word: Complete, Done, Finished, Closed, Yes, X, TRUE, a check mark or 100% draws a check |
+| **E** | complete — a status word: Complete, Completed, Done, Finished, Closed, Yes, X, TRUE, a check mark (✓ ✔ ☑ ✅) or 100% stored as text draws a check. A number is not read as complete (Excel keeps a typed 100% as the number 1); the page names that cell |
 
-A row whose start and finish are the same day — or that has only one of the two — is a
-**milestone**; any other row is an **activity**. Blank rows between swimlanes are fine. Each page
+A row whose start and finish are the same day — or that has only one date — is a **milestone**
+(except a lone month such as Jan 2027, drawn across the whole month); any other row is an
+**activity**. Blank rows between swimlanes are fine. Each page
 offers **Download the template**. Workbooks in the older layout (C one date or a range such as
 `04/20/2027 - 06/20/2027`, D the status) are still read, and the page says which layout it read.
 

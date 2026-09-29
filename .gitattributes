@@ -11,7 +11,8 @@
 *.docx -text
 00_REFERENCE_INTAKE/** -text
 installer/** -text
-# LODESTAR (ADR-0539): the .pyz is held byte-identical to a fresh build, and LODESTAR.bat must
-# keep its CRLF line ends on every checkout.
+# LODESTAR (ADR-0539): the .pyz is held byte-identical to a fresh build, LODESTAR.bat keeps its
+# CRLF line ends, and LODESTAR.command / lodestar.sh keep LF even on a Windows (autocrlf) checkout —
+# a CRLF shebang ("#!/bin/sh\r") cannot start the macOS / Linux launcher (measured: exit 127).
 lodestar/** -text
 tests/fixtures/** -text
