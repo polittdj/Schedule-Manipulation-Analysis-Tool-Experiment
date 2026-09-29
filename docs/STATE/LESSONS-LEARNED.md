@@ -435,6 +435,30 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-29 (b) — A fix is only as done as the mutant it kills, a targeted battery is not the suite, and the brief's own premises need attacking too (ADR-0539, resumed)
+
+- **What happened.** The resumed session finished the review the first one stopped: five lenses and three skeptics,
+  every finding re-reproduced RED by the lead on a clean worktree of the prior head, fixed, mutation-proven
+  (ADR-0539's third table).
+- **"Fixed and pinned" was half true, measurably.** The skeptics reverted each prior fix in a scratch copy: five
+  mutants (tag spot 2, rebind at the upload sites, the Compare note, gone_reason's text, scan-after-parse) and six
+  more claims (PATCH / OPTIONS, the 408 deadline, the stopped page, the member list, the CRLF build) left EVERY test
+  green. A pin that no mutant can turn red is decoration; "pinned" means "a named mutant goes red".
+- **The fix's own fuzz agreed with the fix; an independent one did not.** "0 of 600" held on the first session's
+  generator and failed 35 / 32 on a reviewer's; the router's invariant is now checked on a generator that shares no
+  code with it (QC-1: an oracle must be independent of the thing it judges).
+- **A targeted battery is not the suite.** 1,099 targeted tests were green; CI's first full run found a ledger
+  (`test_axis_titles`) that no targeted test read. Run the full suite before calling a feature done.
+- **Attack the brief, not only the code (QC-3).** The lead's own briefs carried three false premises the agents
+  refuted by measurement before building on them: base.css's CUI colours (hud.css renders), `sysconfig` inside
+  `_isolate` (not loaded at start; importing it searches the uncleaned path), 6 units for the pick tag (the dark
+  views' rail shrinks the slide: 7). And a reviewer's claimed consequence (a startup crash) was refuted — it happens
+  in the interpreter's runpy on either tree.
+- **Build shipped artifacts from a clean worktree of the commit.** With agents editing the tree, the .pyz and the
+  installers were built in `git worktree add <commit>` and copied back — never from the live tree.
+- **Every push cancels CI in flight** (`cancel-in-progress`): four quick pushes meant no head finished a full run.
+  Batch pushes; one validated push beats three.
+
 ### 2026-09-29 (a) — A header word that is also a data value is not header evidence, a track is judged by where it DRAWS, and a typed TRUE is not the text "TRUE" (ADR-0539)
 
 - **What happened.** One session built three operator asks: the One-Pager intake moved to C start · D finish · E

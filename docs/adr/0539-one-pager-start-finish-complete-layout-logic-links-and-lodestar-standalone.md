@@ -62,8 +62,10 @@ Firefox/WebKit rendering of the pick rings (Chromium only).
 Independent test writers (intake, links, pages, LODESTAR) and a four-lens review (intake, links,
 LODESTAR, UI + docs — every finding sent to a refuting skeptic) attacked the built tree; the lead
 re-reproduced every finding below on the built tree (RED) before fixing it in a sandbox copy
-(GREEN), and each is now pinned in `tests/reports/test_onepager_review_findings.py` (18 of its 20
-tests fail on the built tree; the other two are guards on behaviour that never broke).
+(GREEN), and each is now pinned in `tests/reports/test_onepager_review_findings.py` (20 tests; the
+figure "18 of the 20 were red on the built tree, the other two guards on behaviour that never
+broke" is the first session's own count, and it cannot be re-derived: the built tree was never
+committed — UNVERIFIED, the resumed review's DOC-LS-06).
 
 | Finding | Measured on the built tree | Replaced by |
 | --- | --- | --- |
@@ -82,13 +84,71 @@ tests fail on the built tree; the other two are guards on behaviour that never b
 | LINKS-5 / LINKS-6 | a hidden item in a refused loop printed "?"; the Excel table said "see the note below" with no note when the window left no slide | the label the link keeps; the one note |
 | A 120-character name with no spaces in the link message scrolled the page sideways | 1,611 px in a 1,440 px viewport | `overflow-wrap:anywhere` on the links block's notices and list |
 | LODESTAR LS-03 / LS-04: one client stalling its body froze every page; a body of many empty parts cost ~11 s of CPU per MB | the body was read and parsed under the state lock | the body is read and parsed BEFORE the lock, against a whole-body deadline; a multipart body is pre-scanned (at most 8 parts, 8 KB of headers each) before the email parser sees it |
-| LS-05: Quit could lose its own "has stopped" page (8 of 30 runs), and that page always rendered unstyled | shutdown began before the reply was written; the page asked the stopped server for its stylesheets | the server stops only after the page is written; the page is self-contained, in the SYSTEM colours (no hex, no request) |
+| LS-05: Quit could lose its own "has stopped" page (8 of 30 runs), and that page always rendered unstyled | shutdown began before the reply was written; the page asked the stopped server for its stylesheets | the server stops only after the page is written; the page is self-contained (no request), its body in the SYSTEM colours — since the resumed review (UILD-3) it also carries the marking bars top and bottom in the frame's own fixed marking colours (DESIGN-SYSTEM §0's one hex exception) |
 | LS-06: the standard library's own error pages (an unknown method, a long URI, too many headers) carried no CSP / nosniff / frame-deny | they bypass the one send path | every response's headers are completed before they end; PUT / DELETE / PATCH / OPTIONS are LODESTAR's own 405 |
 | LS-07: LODESTAR's Word exports were titled "POLARIS² — One-Pager" | the table sets' titles | LODESTAR serves no Word export (no page offered one); `docx.py` left the archive (34 members) |
 | LS-08: a CRLF checkout (Git for Windows' autocrlf) built a different archive | members packed as read | text members (.py / .js / .css) read as LF — a CRLF copy of the tree builds the IDENTICAL file |
 | LS-09: without Sec-Fetch-Site an Origin from ANY loopback port could flip the marking | Polaris²'s gate, reused | `_same_origin`: LODESTAR's origin is exact, as its Host gate is |
 | LS-10 – LS-13 | `--help` served and opened a browser; a 64 KB cap said "1 MB"; a folder named "… site-packages …" could not start it; the banner crashed an ASCII console | argparse (`--no-browser`, `--port`, `--version`; an unknown flag exits 2); the right unit; the archive is always kept on the path and ONLY the standard library's own directories join it (an editable install's `.pth` directory no longer does); the banner falls back to ASCII |
 | LS-01: the lockstep test the ADR named did not exist yet | — | `tests/lodestar/test_lodestar_pyz.py` (byte-identical to a fresh build, members exactly the allowlist). The pre-commit hook still cannot see into a shebang-prefixed ZIP — recorded as a follow-up; the lockstep test is the guard |
+
+## The resumed session attacked it a third time (2026-09-29, second session) — what fell
+
+The first session stopped with its UI + docs lens unfinished and the skeptic checks of LINKS-2..6
+and LS-01..13 never run. The resumed session ran five review lenses (both Polaris² pages rendered in
+chromium in all four views at 1440 and 390 px after an upload and links; the LODESTAR frame and
+DESIGN-SYSTEM; every One-Pager route driven against `0b45eb28` in a second process; two doc-claim
+lenses) and three skeptics (each prior fix reverted in a scratch copy to prove its pin, then
+attacked with fuzz). The lead re-reproduced every finding below on a clean worktree of the prior
+head (its pins RED there — 12 + 35 + 29 + 36 + 29 of them, by batch), then fixed it and proved the pin's
+teeth (red BY NAME with the fix reverted). CI's first full-suite run of the WIP commit found one
+more. Rows of the two tables above that this supersedes are LINKS-1, LINKS-2, LINKS-4, LINKS-5/6,
+the parallel-legs row's thresholds, LS-03/04, LS-05's colours, LS-06, LS-08 and LS-12.
+
+| Finding | Measured | Replaced by |
+| --- | --- | --- |
+| CI: `onepager_links.js` was in no axis-caption bucket | `test_every_module_is_classified_exactly_once` red on `floor` and `test (3.13)` | EXEMPT, with its reason: it paints into the slide SVG that `onepager.js` / `onepager_compare.js` build and caption |
+| UIP-1: in daylight an action's result landed UNDER the sticky page header | every point of the "Logic link added" notice was `header`'s, both pages, 1024 / 1440 px, after Add, Remove and Remove all (the top bar is 224–458 px) | `onepager_links.js` lands the block below a sticky / fixed top header (never the dark views' left rail); 16 of 16 page × view × width land visibly |
+| UIP-2: on Compare a vertical leg at a slipped item's finish erased ~60 % of its move-arrow head | 15 of 224 fuzzed drawn links | move-arrow heads are keep-outs for EVERY leg: 0 of 224 |
+| SKL-1 (LINKS-2 half-fixed): only horizontal legs were checked against another link's reserved tag / head | 22 % of a tag on a roomy slide; silent losses in 1,000 fuzzed slides per page: 11 / 10 (Timeline), 13 / 9 (Compare) | vertical legs are checked too and a tag moves to its second spot: 0 / 0 |
+| SKL-2 (LINKS-1 half-fixed): a 1–3 day bar's two ends sat closer than one slot | 45.5 % of the head into the bar lost | attachment points are spaced per SIDE, whichever end takes them |
+| DOC-LS-01 / DOC-LS-02: "0 of 600" and "the note fires at 60+ Compare / 144+ Timeline items" did not hold | a 3-item slide lost a head (100 %) and said "At this density … split the list"; an independent chain fuzz lost 35 heads / 32 tags of 600; the Timeline note fired from 36 items | every clean route is tried in one fixed order; a collision no route avoids is NOT drawn and is named with its cause (the .pptx carries no note, so a drawn collision would reach PowerPoint undisclosed); the crowding note means row density only — from 144 Timeline items and 65 Compare rows, measured. The reviewers' chain fuzz: 0 of 600. Property tests on an independent generator: a slide of ≤ 6 items and ≤ 3 links draws every link, erases nothing, carries no note. Cost on the reviewers' dense generator: 37 of 7,680 Timeline and 132 of 7,902 Compare links refused and named |
+| SKL-3 (LINKS-4 half-fixed): a link's stored identity was frozen at creation | after a slip, a name that started repeating lost the link, or re-bound it to ANOTHER month's copy | rebind refreshes each end's identity every upload; pinned through the upload actions, not `rebind()` alone |
+| SKL-4 / SKL-5 (LINKS-6 residual) | identical twin rows were named "none with its dates"; the Excel note blamed a date window that was never set when a re-upload had no usable rows | twins named as identical rows; the Excel note chosen by cause, on both pages (the Compare branch had no pin) |
+| SLA-1 (LS-04 incomplete): pre-scan and parser read the boundary differently | 7 of 13 shapes — and 4 more found while fixing (`message/rfc822` wrapping a multipart, `message/delivery-status`, an unclosed last part, an RFC 2047 encoded-word type) — walked 2,000+ parts | the parser is handed a Content-Type REBUILT from the one boundary the pre-scan split on; a second boundary parameter, a boundary outside RFC 2046 bchars, and any `multipart/*` or `message/*` part are refused (a `.eml` picked by mistake gets a JSON 400 — recorded) |
+| SLA-3 (LS-06 incomplete): before a version was read the standard library replied bare | HTTP/2.0, a malformed version, 1–2-word request lines: no status line, no CSP | `default_request_version = "HTTP/1.0"` (3.13 answers a 2-word GET 400 where 3.10–3.12 answer 200 — both with every header) |
+| Unpinned claims: SKL-6, SLA-2, SLA-4..7, LS-08, LS-12's `.pth` half | a mutant reverting each fix (tag spot 2, rebind at the upload sites, the Compare note, gone_reason's text, scan-after-parse, PATCH / OPTIONS / 414 / 431, the 408 deadline, "the stopped page requests nothing", "34 members, no docx", the CRLF build) left every test green | each pinned; each mutant red by name. The member list is an independent literal, not the builder's |
+| UILD-1: the frame's inactive tab read `--muted` on `--header-bg` | 3.27 : 1 in Console | header tokens: ≥ 4.9 : 1 in every view |
+| UILD-2 / DOC-LS-04: "the marking feeds every export" | the Excel exports carry the shared writer's FIXED CUI print header (pre-existing, Polaris²-wide) | §7c and the switch's title say "page and PowerPoint"; threading the marking into the Excel header is an operator question — not done |
+| UILD-3 / DOC-LS-08: the page after Quit had no marking bars, the credit once, and said "double-click" on every OS | — | bars top and bottom in the frame's RENDERED `hud.css` pair (premise that fell: base.css's pair — it is overridden in every view), the credit top and bottom, a per-OS restart sentence; still requests nothing (a `data:` icon). The POSIX launchers exit 1 when no Python is found |
+| UILD-4: an upload just over 20 MB never reached the page's named refusal; a larger one showed raw JSON with no frame, marking or way back | the BODY was capped at the file's 20 MB | the body cap carries a multipart framing allowance (64 KB; Chromium's framing measured 531–627 bytes); a 413 on an upload route answers the framed page |
+| UILD-6: the page-only FROM / TO pick tag | 7.1 px at 1440 (5.81 px in the dark views) — under §1's 8 px floor | 7 SVG units (premise that fell: 6 — the dark views' rail shrinks the slide): ≥ 8.14 px in every view. The slide's own link type tag keeps the slide's point size (7.8 px at 1440) — whether a scaled slide preview is exempt from §1's floor is an operator question |
+| DOC-LS-03 / LSB-3 (LS-12's wording): `_isolate` kept every directory under the install prefix | a PYTHONPATH `/usr/share/x` survived on a `/usr`-prefixed Python; a `/` prefix kept no std-lib at all | the archive plus the std-lib's own directories, computed from `sys` alone with CPython's getpath rule, by exact path — checked against `python -I -S` on 3.10–3.13 and two venvs (premise that fell: `sysconfig`, which is not loaded at start — importing it first searches the uncleaned path). The reviewer's "startup crash" consequence was REFUTED: it happens in the interpreter's own runpy, before `__main__` runs, on either tree |
+| LSB-1 / LSB-2 | `--help` crashed (exit 1) on an ASCII / cp437 console; the members test named 33 members on a CRLF checkout the lockstep passes | an ASCII description; the members test compares the committed form (git's own text rule) and a CRLF checkout is pinned to build the identical archive |
+| ROUTES-1: "behaviour unchanged" — the ASCII `filename=` fallback was not | 'Program Review (FY27)' → `Program_Review__FY27.pptx` (0b45eb28: `…FY27_.pptx`) | 0b45eb28's bytes for every title it could export (281 of 281 fuzzed); only a title with a letter or digit outside ASCII — exactly the ones 0b45eb28 answered with a 500 — is trimmed |
+| ROUTES-2 / ROUTES-4 | Polaris²'s Word template lost its "POLARIS² —" heading; a sheet with no task rows said "0 row(s) skipped; see the list below" with no list (pre-existing) | the heading restored (LODESTAR's Excel template never writes it); the message says the sheet has no task or milestone rows |
+| ROUTES-3 (accepted, recorded) | reading columns A–E only passes over a first sheet whose only content is right of E (a cover sheet) | pinned, so it cannot move silently |
+| DOCS-1: "100% draws a check" | a 100% TYPED in Excel is the number 1 in a percent format — not read as complete (pre-existing on the page; the docs copied it) | the pages, guide and README say "100% stored as text" and that a number is named; reading Excel's percent format is a follow-up |
+| DOCS-2..5, DOC-LS-05..07, UIP-4 / UILD-5 | the session-close member list (named `docx.py`), a lone month is no milestone, the 200-link cap, the `.gitattributes` reason, NPR 2210.1 after the operator ruled it out, "18 of 20", "`tests/lodestar/` holds the file", the pick-ring comment | corrected |
+
+**UNVERIFIED, stated.** INTAKE-4, INTAKE-8, LINKS-3 and LS-02 were numbered by the first session and
+are recorded nowhere — no text, test or commit names them; their content went with its container and
+cannot be re-reproduced. The first session's figures measured on its built tree (295 / 2,000 and
+1,386 rows, 911 → 995 of 1,000, 315 / 600, 7 pairs, 45 %, 8 of 30, ~11 s / MB, 1,611 px, 102 calls /
+49 row sets, 18 of 20) cannot be re-derived: that tree was never committed (the committed generator
+pins 300 of 300 current sheets). Still unverifiable here: PowerPoint (the .pptx move arrow is still a
+DrawingML line-end, sized by the renderer), Windows / macOS launching, a headed browser's favicon
+request after Quit, Firefox / WebKit.
+
+**The resume plan's own premises (QC-3).** Held: `main` had not moved; the WIP tree's static gate was
+green. Fell: "the targeted battery covers the change" (CI's full suite found the axis-caption ledger);
+"the stopped page's bars take base.css's colours"; "`_isolate` can use `sysconfig`"; "6 units clears
+the floor".
+
+**Follow-ups, out of scope and recorded.** UIP-3: the NEW / REMOVED badge's text is wider than its
+badge (pre-existing, font-dependent). ROUTES-5: a 500 on a Polaris² route carries no CSP / nosniff —
+the app-wide middleware (pre-existing). An empty workbook says "1 row(s) skipped" (pre-existing).
+Reading Excel's percent format. The pre-commit hook cannot see into a shebang-prefixed ZIP.
 
 ## Decision
 
@@ -137,7 +197,8 @@ headers, behind a shebang) — the only two renamed members are themselves files
 the path and refuses to start if anything non-std-lib was imported; `_pyz_web_init.py` → the web
 package's `__init__`). Exports from LODESTAR say LODESTAR (a `product` parameter), never POLARIS².
 `lodestar/` also holds `LODESTAR.bat` (CRLF), `LODESTAR.command`, `lodestar.sh` and a plain-English
-README. `tests/lodestar/` holds the file byte-identical to a fresh build.
+README. `tests/lodestar/test_lodestar_pyz.py` holds `lodestar/LODESTAR.pyz` byte-identical to a fresh
+build.
 
 ### What is N/A in the LODESTAR frame (DESIGN-SYSTEM §7c)
 
@@ -150,8 +211,8 @@ no story. Its tabs are `cd-chip` links with `aria-current=page`.
   red until `python tools/lodestar/build_lodestar.py` is run (named in CLAUDE.md, the full-gate and
   session-close skills, and the test's own failure message).
 * The shipped static asset count is 72 (+`onepager_links.js`, `lodestar.css`); LODESTAR.pyz carries 34 members.
-* Sharing LODESTAR outside the operator's organization may fall under that organization's software
-  release rules (for NASA, NPR 2210.1) — the operator's decision, flagged, not the build's.
+* How LODESTAR is released or shared is out of scope (the operator, 2026-09-29: "Don't concern
+  yourself with how the software is released at this time").
 * Follow-up, out of scope and recorded: a shebang-prefixed ZIP evades the pre-commit container
   detector even under a `.zip` name (its check keys on the first four bytes); the `.pyz` lockstep
   test is what guards this container instead.

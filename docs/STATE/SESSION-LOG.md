@@ -20143,3 +20143,29 @@ commit, not a rebase. The resolution:
   skipped, 24 xfailed (its 4 failures were the state-doc guards these documents answer); `build_lodestar.py --check`
   current. **Not run:** the full suite, `-m parity`, the wheel / installer rebuild; the UI + docs review lens (stopped).
 - **Next:** HANDOFF.md's "Next — resume THIS work".
+
+## 2026-09-29 (b) — ADR-0539 resumed and completed: the UI + docs review lens re-run, LINKS-2..6 / LS-01..13 re-verified by skeptics, every finding re-reproduced red, fixed and pinned — v1.0.295
+
+- **Branch** `claude/youthful-ritchie-fqsz9x` (draft PR #724) on `main` @ `0b45eb28` (unmoved). Resumed from the WIP
+  commits 299011a0 / 3119fcf7; the first container's scratch work was gone, so the branch was the only source of truth.
+- **CI on the WIP commit** (3119fcf7): `floor` and `test (3.13)` 5 failed / 5,915 passed — four the stale installers
+  (the planned last step) and one real: `onepager_links.js` in no axis-caption bucket (fixed in 67bb21e8).
+- **Review.** Five lenses (both Polaris² pages in chromium, four views, 1440 / 390 px; the LODESTAR frame + DESIGN-SYSTEM;
+  every One-Pager route against 0b45eb28; two doc-claim lenses) and three skeptics (prior fixes reverted to prove their
+  pins, then fuzzed). About 60 findings; the lead re-reproduced each RED on a clean worktree of the prior head (12 + 35
+  + 29 + 36 + 29 pins), fixed it and proved the pin's teeth — ADR-0539's third table. Four fix batches ran as agents on
+  disjoint files; every shipped artifact was built from a clean worktree of its commit.
+- **What mattered:** UIP-1 (daylight's sticky header hid every link action's result); LINKS-1/2/4/6 half-fixed (short
+  bars, vertical legs, a frozen identity re-binding a link to another month's copy, a note blaming a window never set);
+  "0 of 600" was 35 / 32 on an independent fuzz, now 0; LODESTAR's pre-scan walked past by 11 multipart shapes; bare
+  std-lib replies; raw JSON for an over-20 MB upload; an unmarked Quit page; `_isolate` keeping any directory under the
+  prefix; "behaviour unchanged" false for the .pptx file name and the Word template heading; "100% draws a check".
+- **Premises that fell (QC-3):** "the targeted battery covers it"; base.css's CUI colours (hud.css renders); `sysconfig`
+  in `_isolate`; 6 units for the pick tag (7). A reviewer's "startup crash" consequence was REFUTED.
+- **UNVERIFIED:** INTAKE-4 / INTAKE-8 / LINKS-3 / LS-02 (recorded nowhere); the first session's built-tree figures;
+  PowerPoint; Windows / macOS launching; Firefox / WebKit.
+- **Measured at push:** the static gate green (pinned ruff 0.16.9, mypy 177, bandit 0, node per file); LODESTAR current;
+  installers 68; One-Pager + LODESTAR 767 passed / 4 skipped. **The full suite and `-m parity`: recorded in the
+  follow-up commit.**
+- **Operator questions:** the Excel exports' fixed CUI header vs the marking switch; the slide link tag vs §1's 8 px
+  floor; refused-and-named collisions on dense slides. **Next:** HANDOFF.md.
