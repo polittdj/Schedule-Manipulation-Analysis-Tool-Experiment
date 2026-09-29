@@ -25,9 +25,12 @@
 - **T1 — A0923-MET-001:** /margin's erosion rate, zero-margin date, consumed % and corrective-action trigger are computed on a mixed basis when the target milestone is missing from some versions (undisclosed). Since #356 (2026-07-13, v1.0.33).
 - **T1 (data-gated) — A0923-IMP-002** single-block (no-lunch) calendars mis-measured (since #671, v1.0.257); **A0923-IMP-003** XER per-task calendars ignored with a false "Every computed date and float rides <cal>" statement (since #55). No committed file exercises either; an operator file could.
 
-STATUS (current) — **the ADR-0539 feature is COMPLETE on its branch; the draft pull request waits on the OPERATOR**
-(mark ready + squash-merge — a session never does). Branch **`claude/youthful-ritchie-fqsz9x`**, based on `main` @
-**`0b45eb28`** (#723, ADR-0537, v1.0.294); `main` had not moved at close. Highest ADR on disk **0539** (ADR-0538 is
+STATUS (current) — **the ADR-0539 feature is COMPLETE; its last four commits wait on the OPERATOR in draft PR #725.**
+PR #724 was squash-merged by the operator as **`dd8b4cbf`** (2026-09-29 19:10Z) at head `21e99c76` — `main`'s tree is
+byte-identical to it — about a minute BEFORE its last four commits were pushed (the LODESTAR hardening, the routing
+fixes, the installers for them, and these documents). The operator chose (2026-09-29) a follow-up: those four commits,
+replayed unchanged onto `main` (tree `cb2c542d`, identical to the verified head `dd7297de`), are **draft PR #725** on
+branch **`claude/youthful-ritchie-fqsz9x`** — the operator marks it ready and merges; a session never does. Highest ADR on disk **0539** (ADR-0538 is
 held by AUDIT session 7 on `claude/modest-cori-iit4zh`). Version **1.0.295**; the wheel, the nine installers (MPXJ ref
 `163d1942`, tree `ce261eff` verified) and `lodestar/LODESTAR.pyz` (34 members) are rebuilt from the final source.
 QC-1 / QC-2 / QC-3 bind every session.
@@ -76,8 +79,9 @@ after Quit.
 
 ## Next
 
-1. The operator reviews the draft PR (#724), marks it ready and squash-merges; then `git fetch --prune origin` and restart
-   the branch per CLAUDE.md. If AUDIT session 7 (ADR-0538) lands first, the second to merge merges `main`, keeps BOTH
+1. The operator reviews draft PR #725, marks it ready and squash-merges; then `git fetch --prune origin` and restart
+   the branch per CLAUDE.md. Until #725 merges, `main` carries #724's head: the review's LODESTAR and routing findings
+   are fixed on #725, not on `main`. If AUDIT session 7 (ADR-0538) lands first, the second to merge merges `main`, keeps BOTH
    state-doc sections (move, never delete) and REBUILDS the wheel, the nine installers and LODESTAR.
 2. The three operator questions above.
 3. Follow-ups (out of scope, recorded in ADR-0539): the NEW / REMOVED badge text is wider than its badge (UIP-3,

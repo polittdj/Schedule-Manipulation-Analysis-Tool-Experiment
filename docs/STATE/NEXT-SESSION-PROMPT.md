@@ -29,9 +29,9 @@ commits, ADR 0536): continue from that pull request's head (branch `claude/galla
 ## A feature pull request is open beside the campaign (2026-09-29, ADR-0539 — complete, awaiting the operator)
 
 The One-Pager C / D / E intake, operator-drawn logic links and LODESTAR (the two One-Pager pages as their own program)
-are complete on `claude/youthful-ritchie-fqsz9x` (draft PR #724) — reviewed three times, every finding re-reproduced,
-fixed and pinned (ADR-0539's three tables). It waits on the operator to mark it ready and merge; HANDOFF.md's top
-section lists the three questions it leaves for the operator. It does not change the audit's resume line below.
+are complete: PR #724 merged as `dd8b4cbf`; its last four commits (the LODESTAR hardening, the routing fixes, their
+installers and the ADR's third table) are draft PR #725 on `claude/youthful-ritchie-fqsz9x`, waiting on the operator.
+HANDOFF.md's top section lists the three questions it leaves for the operator. It does not change the audit's resume line below.
 
 ## The resume line (charter §16) — what the operator pastes to continue the audit
 

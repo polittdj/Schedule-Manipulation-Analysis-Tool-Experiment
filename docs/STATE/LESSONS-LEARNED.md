@@ -458,6 +458,10 @@ those fixed defects in earlier "closed" fixes:
   installers were built in `git worktree add <commit>` and copied back — never from the live tree.
 - **Every push cancels CI in flight** (`cancel-in-progress`): four quick pushes meant no head finished a full run.
   Batch pushes; one validated push beats three.
+- **An open PR can be merged between two of your pushes.** The operator merged #724 at a head one minute older than
+  the last push; the merge is the TREE at that head (compare `git rev-parse origin/main^{tree}` with each pushed head,
+  never the title). The unmerged commits were replayed onto `main` unchanged (tree-identical) and went out as a new
+  draft PR on the operator's word — never a reopen, never a force-push over merged history.
 
 ### 2026-09-29 (a) — A header word that is also a data value is not header evidence, a track is judged by where it DRAWS, and a typed TRUE is not the text "TRUE" (ADR-0539)
 

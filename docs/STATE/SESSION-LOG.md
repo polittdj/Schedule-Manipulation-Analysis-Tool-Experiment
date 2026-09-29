@@ -20146,7 +20146,9 @@ commit, not a rebase. The resolution:
 
 ## 2026-09-29 (b) — ADR-0539 resumed and completed: the UI + docs review lens re-run, LINKS-2..6 / LS-01..13 re-verified by skeptics, every finding re-reproduced red, fixed and pinned — v1.0.295
 
-- **Branch** `claude/youthful-ritchie-fqsz9x` (draft PR #724) on `main` @ `0b45eb28` (unmoved). Resumed from the WIP
+- **Branch** `claude/youthful-ritchie-fqsz9x` on `main` @ `0b45eb28` (unmoved). PR #724 was squash-merged by the
+  operator as `dd8b4cbf` at head `21e99c76` (tree-identical) about a minute before the last four commits were pushed;
+  on the operator's word they are draft PR #725, replayed unchanged onto `main` (tree `cb2c542d` = the verified head). Resumed from the WIP
   commits 299011a0 / 3119fcf7; the first container's scratch work was gone, so the branch was the only source of truth.
 - **CI on the WIP commit** (3119fcf7): `floor` and `test (3.13)` 5 failed / 5,915 passed — four the stale installers
   (the planned last step) and one real: `onepager_links.js` in no axis-caption bucket (fixed in 67bb21e8).
