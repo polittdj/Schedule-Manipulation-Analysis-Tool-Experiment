@@ -130,5 +130,24 @@
     mark();
   }
 
+  // ── 3. land clear of a sticky header ──
+  // An add / remove lands on #opLinks / #opcLinks, where its result renders. The stylesheet's
+  // scroll-margin clears no header; daylight's page header is a STICKY top bar whose height
+  // follows its wrapping nav (224-458 px measured), so the block — result and all — landed under
+  // it (review UIP-1). On landing, measure a sticky / fixed header spanning the top of the page
+  // (never the dark views' left rail) and land the block just below it.
+  function land() {
+    var id = (location.hash || "").slice(1);
+    if (id !== "opLinks" && id !== "opcLinks") return;
+    var block = document.getElementById(id), head = document.querySelector("header");
+    if (!block || !head) return;
+    var pos = getComputedStyle(head).position, r = head.getBoundingClientRect();
+    if ((pos !== "sticky" && pos !== "fixed") || r.width < window.innerWidth / 2) return;
+    block.style.scrollMarginTop = Math.ceil(r.height) + 12 + "px";
+    block.scrollIntoView({ block: "start" });
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", land);
+  else land();
+
   window.SFOnePagerLinks = { paint: paint, wire: wire };
 })();

@@ -581,3 +581,81 @@ def test_an_unbroken_120_character_name_never_scrolls_the_page_sideways(
     page, errors = _open(browser, base + "/onepager")
     assert _overflow_after_adding(page, errors, unbroken) == 0
     page.close()
+
+
+# ── landing: an action's result is never under a sticky page header ──────────────────────────
+
+#: Hit-test the links block's result notice where the action landed: its corners and centre must
+#: each be the notice itself (or inside it), not a header drawn over it.
+_LANDED = """(p) => {
+  const n = document.querySelector('#' + p + 'Links .notice');
+  if (!n) return {notice: null};
+  const r = n.getBoundingClientRect();
+  const pts = [[r.left + 4, r.top + 3], [r.left + r.width / 2, r.top + r.height / 2],
+               [r.right - 4, r.bottom - 3]];
+  return {
+    notice: n.textContent.trim().slice(0, 40),
+    hash: location.hash,
+    points: pts.map(([x, y]) => {
+      if (y < 0 || y > innerHeight) return 'off-screen';
+      const h = document.elementFromPoint(x, y);
+      return h && (h === n || n.contains(h)) ? 'visible' : (h ? h.tagName.toLowerCase() : null);
+    }),
+  };
+}"""
+
+
+def _landing_after(page: Any, prefix: str, action: str) -> dict[str, Any]:
+    """Add Design Review -> Build through the form; for ``remove`` / ``clear`` then press that
+    link's Remove / "Remove all links". What the notice reads where the browser landed."""
+    keys = _keys(page, prefix)
+    page.select_option(f"#{prefix}LinkFrom", keys[DR])
+    page.select_option(f"#{prefix}LinkTo", keys[BUILD])
+    _submit(page, prefix)
+    if action != "add":
+        button = ".op-link-remove button" if action == "remove" else ".op-link-clear button"
+        with page.expect_navigation():
+            page.click(f"#{prefix}LinkList {button}")
+        page.wait_for_selector(f"#{prefix}Links")
+    page.wait_for_timeout(200)  # the landing adjustment runs on load
+    return dict(page.evaluate(_LANDED, prefix))
+
+
+@PREFIXES
+@pytest.mark.parametrize("width", [1440, 1024])
+@pytest.mark.parametrize("action", ["add", "remove", "clear"])
+def test_an_actions_result_is_never_under_the_daylight_sticky_header(
+    browser: Any, ready: tuple[str, TestClient], prefix: str, width: int, action: str
+) -> None:
+    """ADR-0539 / DESIGN-SYSTEM §7c: an action's result renders where the browser lands (the
+    links block). In daylight the page header is a STICKY top bar 224-458 px tall (its nav wraps),
+    so a fixed ``scroll-margin-top`` landed the notice under it: review UIP-1 measured every
+    point of the "Logic link added" notice covered by ``header`` at 1024 and 1440 px, on both
+    pages, after Add, Remove and Remove all. The notice's corners and centre must be the notice."""
+    base, _api = ready
+    page, errors = _open(browser, base + PATHS[prefix], width=width, init=_themed("daylight"))
+    got = _landing_after(page, prefix, action)
+    assert got["notice"], got
+    assert got["hash"] == f"#{prefix}Links", got
+    assert got["points"] == ["visible"] * 3, got
+    assert errors == []
+    page.close()
+
+
+def test_mutation_a_fixed_scroll_margin_lands_the_notice_under_the_header(
+    browser: Any, ready: tuple[str, TestClient]
+) -> None:
+    """Mutation: with the landing adjustment neutralised (the block's scroll margin forced back
+    to the old fixed 84 px and the page re-landed on it), the same measure reads the notice as
+    covered by the header — so the check above can go red."""
+    base, _api = ready
+    page, errors = _open(browser, base + "/onepager", width=1440, init=_themed("daylight"))
+    _landing_after(page, "op", "add")
+    page.evaluate(
+        """() => { const b = document.getElementById('opLinks');
+                   b.style.scrollMarginTop = '84px'; b.scrollIntoView({block: 'start'}); }"""
+    )
+    got = page.evaluate(_LANDED, "op")
+    assert "header" in got["points"], got
+    assert errors == []
+    page.close()

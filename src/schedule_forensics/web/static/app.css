@@ -1268,7 +1268,7 @@ tr.row-found td.sf-frozen-col { background: #fff3b0; }
 /* ── the operator's LOGIC LINKS on both One-Pager slides (ADR-0539). Ink, never a status hue: a
    link is a statement the operator made, not a verdict. The halo is the canvas colour (.op-bg),
    so a leg crossing a bar or a label reads as crossing it. Picking an item outlines it in
-   --accent (interaction), From solid and To dashed — the difference is never colour alone. ── */
+   --focus, From dashed and To solid — the difference is never colour alone. ── */
 .op-link-halo{fill:none;stroke:var(--panel);stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 .op-link-line{fill:none;stroke:var(--ink);stroke-width:.7;stroke-linecap:round;stroke-linejoin:round}
 .op-link-head{fill:var(--ink)} .op-link-tag{fill:var(--ink);font-weight:700}
