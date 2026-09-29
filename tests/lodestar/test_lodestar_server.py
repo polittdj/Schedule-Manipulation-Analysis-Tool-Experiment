@@ -453,14 +453,46 @@ def test_responses_http_server_writes_itself_carry_the_security_headers(
     assert _stdlib_reply_problems(live.port, head, status) == []
 
 
+def _stdlib_writes_bare_replies() -> bool:
+    """Whether THIS interpreter's own ``http.server``, left at its default (``HTTP/0.9`` until a
+    version is read), answers a malformed request line with no status line at all — review
+    SLA-3's premise. Measured true on CPython 3.10-3.13.12; CI's ``test (3.13)`` (setup-python's
+    latest 3.13, 2026-09-29) answered with a status line, so the premise is the interpreter's,
+    and is probed here rather than assumed."""
+
+    class _Plain(http.server.BaseHTTPRequestHandler):
+        def log_message(self, format: str, *args: object) -> None:
+            return None
+
+    plain = http.server.HTTPServer(("127.0.0.1", 0), _Plain)
+    thread = threading.Thread(target=plain.serve_forever, kwargs={"poll_interval": 0.05})
+    thread.daemon = True
+    thread.start()
+    try:
+        raw = raw_exchange(int(plain.server_port), b"GARBAGE\r\n\r\n", timeout=5)
+    finally:
+        plain.shutdown()
+        plain.server_close()
+        thread.join(timeout=10)
+    return not (raw or b"").startswith(b"HTTP/")
+
+
 def test_mutation_before_a_version_is_read_the_stdlib_reply_is_bare(
     live: Live, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """MUTATION (review SLA-3): the standard library's default (``HTTP/0.9``) back — the same
-    check sees a reply with no status line for a malformed request line and an HTTP/2.0 one."""
+    """MUTATION (review SLA-3): the standard library's default (``HTTP/0.9``) back. Where this
+    interpreter's own ``http.server`` still writes a bare reply before a version is read, the same
+    check sees a reply with no status line for a malformed request line and an HTTP/2.0 one;
+    where it no longer does, reverting the fix changes nothing and the reply must still be
+    complete (both branches assert — neither is skipped)."""
+    bare = _stdlib_writes_bare_replies()
     monkeypatch.setattr(_H, "default_request_version", "HTTP/0.9")
     for head, status in (("GARBAGE", 400), ("GET /onepager HTTP/2.0", 505)):
-        assert _stdlib_reply_problems(live.port, head, status) != [], head
+        problems = _stdlib_reply_problems(live.port, head, status)
+        if bare:
+            assert problems != [], head
+        else:
+            assert problems == [], (head, problems)
 
 
 def test_mutation_without_patch_and_options_handlers_they_are_the_stdlib_501(

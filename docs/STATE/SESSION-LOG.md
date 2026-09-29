@@ -20167,7 +20167,13 @@ commit, not a rebase. The resolution:
 - **UNVERIFIED:** INTAKE-4 / INTAKE-8 / LINKS-3 / LS-02 (recorded nowhere); the first session's built-tree figures;
   PowerPoint; Windows / macOS launching; Firefox / WebKit.
 - **Measured at push:** the static gate green (pinned ruff 0.16.9, mypy 177, bandit 0, node per file); LODESTAR current;
-  installers 68; One-Pager + LODESTAR 767 passed / 4 skipped. **The full suite and `-m parity`: recorded in the
-  follow-up commit.**
+  installers 68; One-Pager + LODESTAR 767 passed / 4 skipped. **The full suite** (clean worktree of 7d3df6dc — the
+  final source — Python 3.11, playwright installed so the browser tests ran): **6,526 passed, 9 skipped, 83 xfailed,
+  exit 0** (60 min 35 s). `-m parity`: recorded in the next follow-up.
+- **CI on #725** (3707307c): `test (3.13)` 1 failed / 6,074 passed — the SLA-3 mutation twin assumed the interpreter's
+  own `http.server` writes a bare reply before a version is read; CPython 3.10–3.13.12 do (measured here), CI's
+  setup-python 3.13 did not (its exact patch release UNVERIFIED). The twin now probes that premise on a plain
+  `http.server` and asserts either way (the reverted fix caught where the std-lib is bare; a complete reply where it is
+  not) — never skipped. The fix itself (`default_request_version = "HTTP/1.0"`) is right on every version.
 - **Operator questions:** the Excel exports' fixed CUI header vs the marking switch; the slide link tag vs §1's 8 px
   floor; refused-and-named collisions on dense slides. **Next:** HANDOFF.md.
