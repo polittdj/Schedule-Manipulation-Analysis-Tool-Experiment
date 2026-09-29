@@ -1276,7 +1276,7 @@ tr.row-found td.sf-frozen-col { background: #fff3b0; }
 .op-pickable [data-key]{cursor:pointer}
 .op-pickable [data-key]:hover .op-bar,.op-pickable [data-key]:hover .op-diamond{stroke:var(--ink);stroke-width:.8}
 .op-pick-ring{fill:none;stroke:var(--focus);stroke-width:.9} .op-pick-from{stroke-dasharray:2 1.2}
-.op-pick-tag{fill:var(--ink);font-size:5px;font-weight:700;letter-spacing:.04em}
+.op-pick-tag{fill:var(--ink);font-size:7px;font-weight:700;letter-spacing:.04em}
 .op-links{margin:.6em 0;padding:.6em .8em;border:1px solid var(--line);border-radius:6px;scroll-margin-top:84px}
 .op-links-head{margin:0 0 .3em;font-size:12px;text-transform:uppercase;letter-spacing:.04em}
 /* an item name with no spaces (a 120-character code) wraps inside the block, never widening the page */
