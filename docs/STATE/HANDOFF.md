@@ -74,9 +74,11 @@ QC-1 / QC-2 / QC-3 bind every session.
    section rewritten with the final numbers, SESSION-LOG, NEXT-SESSION-PROMPT), mark the PR ready only if the operator says.
 5. Follow-up (out of scope, record it): the pre-commit hook cannot see into a shebang-prefixed ZIP (`.pyz`) — its
    container check keys on the first four bytes; the LODESTAR lockstep test is the guard until the hook learns EOCD lookup.
-6. Ask the operator: what column E holds in real lists (checkbox / TRUE-FALSE / "Complete" / a % cell — a 100 % cell is a
-   NUMBER 1 and is still NAMED as unread, deliberately); and note NASA software-release rules (NPR 2210.1) before sharing
-   LODESTAR outside the organization.
+6. **Answered by the operator (2026-09-29) — do not ask again:** column E of the real lists holds the WORD
+   "Complete" (blank when not complete) — read today as complete / not complete with nothing named (verified on
+   299011a0: "Complete", "complete", " Complete ", "COMPLETE", "Completed" → complete; blank → not). How
+   LODESTAR is released or shared is OUT of scope for now (operator: "Don't concern yourself with how the software
+   is released at this time") — do not raise NPR 2210.1 again.
 
 The AUDIT-2026-09-23 campaign's own Next is unchanged: session 6's (now the top section of `HANDOFF-ARCHIVE.md`) unless
 session 7's handoff has landed on `main`.
