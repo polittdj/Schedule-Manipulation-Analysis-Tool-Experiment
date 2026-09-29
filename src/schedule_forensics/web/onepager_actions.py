@@ -110,6 +110,15 @@ def read_list(
     )
 
 
+def _why_empty(doc: OnePagerDoc) -> str:
+    """Why a list drew nothing, TRUE either way: the rows it skipped are listed on the page below
+    the message; with none skipped, the sheet held no task or milestone row at all (a header
+    alone, or rows carrying only a status) — and there is no list to point at."""
+    if doc.problems:
+        return f"{len(doc.problems)} row(s) skipped; see the list below."
+    return "the sheet has no task or milestone rows."
+
+
 # ── /onepager ─────────────────────────────────────────────────────────────────────────────────
 
 
@@ -128,10 +137,7 @@ def load_list(
     # a link whose item's key changed form (its name started or stopped repeating) finds it again
     st.onepager_links = rebind(st.onepager_links, link_idents(st))
     if not parsed.items:
-        st.onepager_msg = (
-            f"No usable rows in {parsed.source} — {len(parsed.problems)} row(s) skipped; "
-            "see the list below."
-        )
+        st.onepager_msg = f"No usable rows in {parsed.source} — {_why_empty(parsed)}"
         st.onepager_is_error = True
         return
     skipped = f"; {len(parsed.problems)} row(s) skipped" if parsed.problems else ""
@@ -201,8 +207,7 @@ def load_compare(
     st.onepager_compare_title = ""
     if not parsed.items:
         st.onepager_compare_msg = (
-            f"No usable rows in {parsed.source} ({slot.upper()}) — {len(parsed.problems)} row(s) "
-            "skipped; see the list below."
+            f"No usable rows in {parsed.source} ({slot.upper()}) — {_why_empty(parsed)}"
         )
         st.onepager_compare_is_error = True
         return
@@ -324,11 +329,17 @@ class Download:
 def attachment(title: str, fallback: str, ext: str) -> str:
     """A ``Content-Disposition`` value that ALWAYS encodes: an ASCII-safe ``filename`` (a slide
     title of "Ωmega" or "日程" used to put a non-Latin-1 character in the header and 500 the
-    export) plus the real title as RFC 5987 ``filename*`` for the browsers that read it."""
+    export) plus the real title as RFC 5987 ``filename*`` for the browsers that read it.
+
+    The ``filename`` is the one Polaris² always sent — every character but an ASCII letter,
+    digit, ``.``, ``_`` or ``-`` becomes ``_``, nothing trimmed — for every title it could
+    export. A title with a letter or digit outside ASCII (exactly the titles it could not: a
+    500) has the underscores standing for them trimmed from the ends: "Ωmega" is ``mega``."""
     safe = "".join(ch if ch.isascii() and (ch.isalnum() or ch in "._-") else "_" for ch in title)
-    safe = safe.strip("_") or fallback
+    if any(ch.isalnum() and not ch.isascii() for ch in title):
+        safe = safe.strip("_")
     real = quote(f"{title}.{ext}", safe="")
-    return f"attachment; filename=\"{safe}.{ext}\"; filename*=UTF-8''{real}"
+    return f"attachment; filename=\"{safe or fallback}.{ext}\"; filename*=UTF-8''{real}"
 
 
 def onepager_pptx(

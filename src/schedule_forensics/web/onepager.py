@@ -41,6 +41,7 @@ from schedule_forensics.reports.onepager import (
 from schedule_forensics.reports.onepager_links import (
     LINK_NAMES,
     LINK_TYPES,
+    MAX_LINKS,
     Link,
     PlacedLink,
     gone_reason,
@@ -64,9 +65,10 @@ TEMPLATE_HEADER = ("Swimlane Name", "Task", "Start", "Finish", "Complete")
 
 def onepager_template() -> TableSet:
     """A fill-in workbook in the intake's shape: swimlane · task or milestone · start · finish ·
-    complete (ADR-0539)."""
+    complete (ADR-0539). The set's title heads Polaris²'s Word template; the Excel template —
+    the one LODESTAR serves — carries only the table's own title, so LODESTAR never shows it."""
     return TableSet(
-        "One-Pager list",
+        "POLARIS² — One-Pager list",
         (Table("One-Pager list", TEMPLATE_HEADER, TEMPLATE_ROWS),),
     )
 
@@ -210,7 +212,7 @@ def links_form(
 <h3 id={prefix}LinksHead class=op-links-head>Logic links</h3>
 <p class=muted>Show the logic between two items — and only that logic. Pick the <b>From</b> (the predecessor) and
 the <b>To</b> (the successor), or click them on the slide, first From then To; choose the type and add the link.
-Add as many pairs as you need: every link you add is drawn on the slide and exported to PowerPoint as an arrow.</p>
+Add as many pairs as you need (up to {MAX_LINKS}): every link you add is drawn on the slide and exported to PowerPoint as an arrow.</p>
 {shown}<form action="{action}" method=post class=op-link-form id={prefix}LinkForm data-sf-nopersist>
 <input type=hidden name=action value=add>
 <label>From <select name=pred id={prefix}LinkFrom required data-no-i18n data-sf-nopersist><option value="">— pick the predecessor —</option>{opts}</select></label>
@@ -335,12 +337,15 @@ def _data_table(doc: OnePagerDoc) -> str:
 #: The intake's columns, stated once for both pages (ADR-0539).
 COLUMNS_HELP = """<b>A</b> the swimlane name, <b>B</b> the task or milestone name, <b>C</b> the
       <b>start</b> date, <b>D</b> the <b>finish</b> date, <b>E</b> complete. A row whose start and
-      finish are the same day &mdash; or that has only one of them &mdash; is a <b>milestone</b> (a
-      diamond); otherwise it is an <b>activity</b> (a bar). Column <b>E</b> is a status word:
-      Complete, Completed, Done, Finished or Closed (or Yes, X, TRUE, a check mark, 100%) draws a
-      check beside the item. Workbooks in the older layout &mdash; <b>C</b> one date or a range such
-      as <code>04/20/2027 - 06/20/2027</code>, <b>D</b> the status &mdash; are still read, and the
-      page says which layout it read."""
+      finish are the same day &mdash; or that has only one date &mdash; is a <b>milestone</b> (a
+      diamond), except that a lone month such as <code>Jan 2027</code> is drawn across the whole
+      month; otherwise it is an <b>activity</b> (a bar). Column <b>E</b> is a status word:
+      Complete, Completed, Done, Finished, Closed, Yes, X, TRUE, a check mark (&#10003; &#10004;
+      &#9745; &#9989;) or 100% stored as text draws a check beside the item. A number is not read
+      as complete &mdash; Excel keeps a typed 100% as the number 1 &mdash; and the page names that
+      cell. Workbooks in the older layout &mdash; <b>C</b> one date or a range such as
+      <code>04/20/2027 - 06/20/2027</code>, <b>D</b> the status &mdash; are still read, and the page
+      says which layout it read."""
 
 
 def _dropzone(st: SessionState, *, loaded: bool) -> str:
