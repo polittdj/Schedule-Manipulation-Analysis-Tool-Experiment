@@ -103,9 +103,11 @@ def test_one_list_is_not_a_comparison(client: TestClient) -> None:
     page = _upload(client, twin_xlsx(TWIN_ROWS), "prior", "March_baseline.xlsx")
     assert "Loaded 16 item(s) from March_baseline.xlsx as the PRIOR list; 1 row(s) skipped." in page
     assert "One list loaded" in page and "opcData" not in page
-    # DELIBERATE re-baseline (ADR-0524): each slot also says what it read in column D
+    # DELIBERATE re-baseline (ADR-0524): each slot also says what it read in its status column
+    # — ADR-0539 names it by the column the sheet used, so a sheet with none says so
     assert (
-        "Loaded <b>March_baseline.xlsx</b> · 16 item(s) · no column D · 1 row(s) skipped." in page
+        "Loaded <b>March_baseline.xlsx</b> · 16 item(s) · no status column · 1 row(s) skipped."
+        in page
     )
     assert "Rows skipped in the PRIOR list" in page and "10/122/2026" in page
     assert client.get("/export/pptx/onepager-compare").status_code == 422
@@ -206,9 +208,11 @@ def test_the_powerpoint_export_is_the_same_slide_with_native_delta_shapes(
         r.headers["content-type"]
         == "application/vnd.openxmlformats-officedocument.presentationml.presentation"
     )
-    assert r.headers[
-        "content-disposition"
-    ] == 'attachment; filename="March_baseline_→_April_update.pptx"'.replace("→", "_")
+    # ADR-0539: the ASCII-safe filename is unchanged; the real title rides as filename*
+    assert r.headers["content-disposition"] == (
+        'attachment; filename="March_baseline___April_update.pptx"; '
+        "filename*=UTF-8''March%20baseline%20%E2%86%92%20April%20update.pptx"
+    )
     with zipfile.ZipFile(io.BytesIO(r.content)) as zf:
         slide = zf.read("ppt/slides/slide1.xml").decode()
     ET.fromstring(slide)
@@ -406,9 +410,10 @@ def test_column_d_is_counted_checked_flagged_and_its_unread_words_named(
     assert "Reopened): marked complete in the prior list, not complete in the current" in page
     assert "current_d.xlsx: column D “Waiting on vendor” (row 7)" in page
     assert "marked complete in the prior list are not in the current list: “Dropped”" in page
-    # each slot says what it read in column D
-    assert "Loaded <b>prior_d.xlsx</b> · 5 item(s) · column D: 3 complete." in page
-    assert "Loaded <b>current_d.xlsx</b> · 5 item(s) · column D: 2 complete." in page
+    # each slot says what it read in column D — and, since ADR-0539, that D-as-status is the
+    # OLDER layout (these sheets carry status words in D)
+    assert "Loaded <b>prior_d.xlsx</b> · 5 item(s) · column D: 3 complete · older layout." in page
+    assert "Loaded <b>current_d.xlsx</b> · 5 item(s) · column D: 2 complete · older layout." in page
 
 
 def test_every_row_the_page_cites_is_the_row_excel_shows(client: TestClient) -> None:
@@ -424,9 +429,10 @@ def test_every_row_the_page_cites_is_the_row_excel_shows(client: TestClient) -> 
 def test_a_three_column_list_says_it_has_no_column_d(client: TestClient) -> None:
     page = _both(client)
     assert (
-        "Loaded <b>March_baseline.xlsx</b> · 16 item(s) · no column D · 1 row(s) skipped." in page
+        "Loaded <b>March_baseline.xlsx</b> · 16 item(s) · no status column · 1 row(s) skipped."
+        in page
     )
-    assert "marked complete in column D" not in page
+    assert "marked complete in" not in page
     assert "done" not in [e["kind"] for e in _layout_block(page)["legend"]]
 
 
@@ -459,8 +465,10 @@ def test_the_words_on_the_page_describe_the_new_rules(client: TestClient) -> Non
     empty = client.get("/onepager-compare").text
     assert "an identical date in both lists" in empty and "drawn once" in empty
     assert "never paired by elimination" in empty
-    assert "<b>Column D.</b>" in empty and "Complete, Completed, Done, Finished" in empty
-    assert "optional <b>D</b>" in empty  # the intake text names the fourth column
+    # ADR-0539: the status now lives in column E (D in the older layout), and the intake text
+    # names all five columns
+    assert "<b>The status column.</b>" in empty and "Complete, Completed, Done, Finished" in empty
+    assert "<b>E</b> complete" in empty and "<b>D</b> the <b>finish</b> date" in empty
     _what, how, _why = _EXPLAINERS["One-Pager Compare"]
     assert "a solid shape with no ghost is NEW" not in how  # ADR-0465's sentence, now false
     assert "an unchanged item is drawn once" in how and "check" in how

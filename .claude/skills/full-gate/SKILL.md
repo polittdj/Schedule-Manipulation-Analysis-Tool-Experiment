@@ -133,6 +133,8 @@ that weakens a test to silence an environment.
     ```bash
     python -c "from schedule_forensics.web.help import render_dictionary_markdown as r; open('docs/METRIC-DICTIONARY.md','w',encoding='utf-8').write(r())"
     ```
+  - `tests/lodestar/test_lodestar_pyz.py` (the LODESTAR lockstep, ADR-0539) → a file LODESTAR
+    carries changed; rebuild it, never edit the test: `python tools/lodestar/build_lodestar.py`.
   - `tests/test_state_docs.py` → the highest ADR on disk must appear in **both**
     `docs/STATE/HANDOFF.md` and `docs/STATE/SESSION-LOG.md`; `HANDOFF.md` must carry
     `pyproject.toml`'s version in its **top** section, stay ≤64 KB, and hold exactly one

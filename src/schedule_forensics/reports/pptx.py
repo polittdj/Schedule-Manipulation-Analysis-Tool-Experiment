@@ -19,10 +19,12 @@ is the page's own marking, so a session asserted UNCLASSIFIED exports that wordi
 from __future__ import annotations
 
 import io
+import re
 import zipfile
 
 from schedule_forensics.reports.onepager import Layout
 from schedule_forensics.reports.onepager_compare import CompareLayout
+from schedule_forensics.reports.onepager_links import HALO_W, LINK_W, PlacedLink
 
 _EMU_PER_PT = 12700
 _SLIDE_W, _SLIDE_H = 12192000, 6858000  # 13.333 x 7.5 in — 16:9
@@ -200,19 +202,32 @@ _LAYOUT_PART = (
 )
 _LAYOUT_RELS = _rels([("slideMaster", "../slideMasters/slideMaster1.xml")])
 _SLIDE_RELS = _rels([("slideLayout", "../slideLayouts/slideLayout1.xml")])
-_CORE = (
-    _XML + "<cp:coreProperties "
-    'xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" '
-    'xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" '
-    'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">'
-    "<dc:title>One-Pager</dc:title><dc:creator>POLARIS²</dc:creator></cp:coreProperties>"
-)
-_APP = (
-    _XML + "<Properties "
-    'xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" '
-    'xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">'
-    "<Application>POLARIS²</Application><Slides>1</Slides></Properties>"
-)
+
+
+def _core(product: str) -> str:
+    """The package's core properties — the program that wrote it named as its creator."""
+    return (
+        _XML + "<cp:coreProperties "
+        'xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" '
+        'xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" '
+        'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">'
+        f"<dc:title>One-Pager</dc:title><dc:creator>{_esc(product)}</dc:creator>"
+        "</cp:coreProperties>"
+    )
+
+
+def _app(product: str) -> str:
+    return (
+        _XML + "<Properties "
+        'xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" '
+        'xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">'
+        f"<Application>{_esc(product)}</Application><Slides>1</Slides></Properties>"
+    )
+
+
+#: The program named in an export's properties unless the caller says otherwise; LODESTAR, the
+#: standalone One-Pager program built from these same modules, passes its own name (ADR-0539).
+PRODUCT = "POLARIS²"
 
 
 def _emu(pt: float) -> int:
@@ -236,6 +251,10 @@ def _run(text: str, size_pt: float, color: str, bold: bool) -> str:
         f'<a:r><a:rPr lang="en-US" sz="{round(size_pt * 100)}"{b} dirty="0">'
         f'{_fill(color)}<a:latin typeface="Calibri"/></a:rPr><a:t>{_esc(text)}</a:t></a:r>'
     )
+
+
+#: One shape's position and size as :meth:`_Slide.group` reads them back out of its XML.
+_XFRM_RE = re.compile(r'<a:off x="(-?\d+)" y="(-?\d+)"/><a:ext cx="(\d+)" cy="(\d+)"/>')
 
 
 class _Slide:
@@ -405,6 +424,74 @@ class _Slide:
             f'anchor="{anchor}"/><a:lstStyle/>{paras}</p:txBody></p:sp>'
         )
 
+    def freeform(
+        self,
+        points: list[tuple[float, float]],
+        *,
+        line: str | None,
+        line_pt: float,
+        fill: str | None = None,
+        closed: bool = False,
+        name: str,
+    ) -> None:
+        """One custom-geometry shape through ``points`` (slide points): an OPEN path is a line
+        (a logic link's shaft, round-joined), a CLOSED one a filled polygon (its arrowhead). The
+        path's own coordinates are the points less the shape's offset, in EMU, so the shape
+        lands exactly where the page draws it. A degenerate extent (a straight vertical or
+        horizontal leg) is widened to one EMU — a zero-size path box has no scale."""
+        xs = [x for x, _y in points]
+        ys = [y for _x, y in points]
+        x0, y0 = min(xs), min(ys)
+        w = max(_emu(max(xs) - x0), 1)
+        h = max(_emu(max(ys) - y0), 1)
+        path = "".join(
+            ("<a:moveTo>" if i == 0 else "<a:lnTo>")
+            + f'<a:pt x="{_emu(x - x0)}" y="{_emu(y - y0)}"/>'
+            + ("</a:moveTo>" if i == 0 else "</a:lnTo>")
+            for i, (x, y) in enumerate(points)
+        ) + ("<a:close/>" if closed else "")
+        ln = (
+            f'<a:ln w="{_emu(line_pt)}" cap="rnd">{_fill(line)}<a:round/></a:ln>'
+            if line
+            else "<a:ln><a:noFill/></a:ln>"
+        )
+        fill_mode = "" if closed else ' fill="none"'
+        self.parts.append(
+            f'<p:sp><p:nvSpPr><p:cNvPr id="{self._id()}" name="{_esc(name)}"/>'
+            "<p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr>"
+            f'<a:xfrm><a:off x="{_emu(x0)}" y="{_emu(y0)}"/><a:ext cx="{w}" cy="{h}"/></a:xfrm>'
+            "<a:custGeom><a:avLst/><a:gdLst/><a:ahLst/><a:cxnLst/>"
+            '<a:rect l="0" t="0" r="r" b="b"/>'
+            f'<a:pathLst><a:path w="{w}" h="{h}"{fill_mode}>{path}'
+            f"</a:path></a:pathLst></a:custGeom>{_fill(fill)}{ln}</p:spPr></p:sp>"
+        )
+
+    def group(self, start: int, name: str) -> None:
+        """Wrap every shape added since ``start`` (an index into :attr:`parts`) in ONE named
+        group, so an operator moves, recolours or deletes a whole logic link as one object. The
+        group's child space IS the slide's (``chOff``/``chExt`` equal ``off``/``ext``), so no
+        child moves by being grouped."""
+        inner = self.parts[start:]
+        boxes = [
+            (int(m[0]), int(m[1]), int(m[2]), int(m[3]))
+            for part in inner
+            for m in _XFRM_RE.findall(part)
+        ]
+        if not boxes:
+            return
+        x0 = min(b[0] for b in boxes)
+        y0 = min(b[1] for b in boxes)
+        cx = max(max(b[0] + b[2] for b in boxes) - x0, 1)
+        cy = max(max(b[1] + b[3] for b in boxes) - y0, 1)
+        box = f'<a:off x="{x0}" y="{y0}"/><a:ext cx="{cx}" cy="{cy}"/>'
+        del self.parts[start:]
+        self.parts.append(
+            f'<p:grpSp><p:nvGrpSpPr><p:cNvPr id="{self._id()}" name="{_esc(name)}"/>'
+            "<p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr>"
+            f'<a:xfrm>{box}<a:chOff x="{x0}" y="{y0}"/><a:chExt cx="{cx}" cy="{cy}"/></a:xfrm>'
+            f"</p:grpSpPr>{''.join(inner)}</p:grpSp>"
+        )
+
     def xml(self) -> str:
         return (
             _XML + f"<p:sld {_NS}><p:cSld><p:spTree>{_EMPTY_TREE}{''.join(self.parts)}"
@@ -412,12 +499,12 @@ class _Slide:
         )
 
 
-def _package(slide: _Slide) -> bytes:
+def _package(slide: _Slide, product: str = PRODUCT) -> bytes:
     parts = [
         ("[Content_Types].xml", _CONTENT_TYPES),
         ("_rels/.rels", _ROOT_RELS),
-        ("docProps/core.xml", _CORE),
-        ("docProps/app.xml", _APP),
+        ("docProps/core.xml", _core(product)),
+        ("docProps/app.xml", _app(product)),
         ("ppt/presentation.xml", _PRESENTATION),
         ("ppt/_rels/presentation.xml.rels", _PRESENTATION_RELS),
         ("ppt/theme/theme1.xml", _THEME),
@@ -440,7 +527,45 @@ def _package(slide: _Slide) -> bytes:
     return buf.getvalue()
 
 
-def render_onepager_pptx(layout: Layout, *, marking: str, source: str) -> bytes:
+#: The logic-link ink (the page's ``--ink``, in the slide's print palette) and its halo — the
+#: slide's own white, so a leg crossing a bar or a label reads as crossing it (ADR-0539).
+_LINK, _HALO = _INK, _WHITE
+
+
+def _logic_links(s: _Slide, links: list[PlacedLink]) -> None:
+    """Every drawn logic link as ONE group: a white halo under the shaft, the shaft, the
+    layout's own filled arrowhead (DrawingML's line-end heads are sized by the renderer, so the
+    head is a shape of the layout's points, exactly the page's), and the type tag beside the
+    head for anything but Finish-to-Start."""
+    for ln in links:
+        start = len(s.parts)
+        what = f"{ln.pred_name} → {ln.succ_name} ({ln.kind})"
+        s.freeform(ln.shaft, line=_HALO, line_pt=HALO_W, name=f"Logic link halo: {what}")
+        s.freeform(ln.shaft, line=_LINK, line_pt=LINK_W, name=f"Logic link line: {what}")
+        s.freeform(
+            ln.head, line=None, line_pt=0, fill=_LINK, closed=True, name=f"Logic link head: {what}"
+        )
+        if ln.tag:
+            w = len(ln.tag) * ln.tag_pt * 0.62 + 1
+            x = ln.tag_x if ln.tag_anchor == "start" else ln.tag_x - w
+            s.text(
+                x,
+                ln.tag_y - ln.tag_pt,
+                w,
+                ln.tag_pt * 1.3,
+                [ln.tag],
+                ln.tag_pt,
+                _LINK,
+                bold=True,
+                align="l" if ln.tag_anchor == "start" else "r",
+                name=f"Logic link type: {what}",
+            )
+        s.group(start, f"Logic link: {what}")
+
+
+def render_onepager_pptx(
+    layout: Layout, *, marking: str, source: str, product: str = PRODUCT
+) -> bytes:
     """The layout as one 16:9 slide of native shapes. ``marking`` is the session's CUI banner
     text (top and bottom strips); ``source`` is the provenance footer."""
     lay = layout
@@ -598,6 +723,7 @@ def render_onepager_pptx(layout: Layout, *, marking: str, source: str) -> bytes:
                 align="r",
                 name=f"Label: {p.name}",
             )
+    _logic_links(s, lay.links)
     if lay.today_x is not None:
         s.vline(lay.today_x, top, bot, _TODAY, 1.5, name="Today")
         if lay.today_label_anchor == "start":
@@ -640,6 +766,18 @@ def render_onepager_pptx(layout: Layout, *, marking: str, source: str) -> bytes:
             s.segment(vx, vy, e.x + 6.65, cy - 1.2, _WHITE, 0.6, name="Done tick: legend")
         elif e.kind == "today":
             s.vline(e.x + 5, cy - 4, cy + 4, _TODAY, 1.5, name="Legend: today")
+        elif e.kind == "link":
+            s.freeform(
+                [(e.x, cy), (e.x + 7.4, cy)], line=_LINK, line_pt=LINK_W, name="Legend: link"
+            )
+            s.freeform(
+                [(e.x + 10, cy), (e.x + 7.4, cy - 1.3), (e.x + 7.4, cy + 1.3)],
+                line=None,
+                line_pt=0,
+                fill=_LINK,
+                closed=True,
+                name="Legend: link head",
+            )
         else:
             hue = LANE_PALETTE[e.color % len(LANE_PALETTE)]
             s.shape(e.x, cy - 3, 10, 6, hue, prst="roundRect", name=f"Legend: {e.label}")
@@ -661,7 +799,7 @@ def render_onepager_pptx(layout: Layout, *, marking: str, source: str) -> bytes:
         align="r",
         name="Read-me",
     )
-    return _package(s)
+    return _package(s, product)
 
 
 # ── the One-Pager COMPARE slide (ADR-0465) ────────────────────────────────────────────────────
@@ -692,7 +830,9 @@ def _done_badge(s: _Slide, cx: float, cy: float, r: float, *, name: str) -> None
     s.segment(vx, vy, cx + 0.55 * r, cy - 0.4 * r, _WHITE, w, name=f"Done tick: {name}")
 
 
-def render_onepager_compare_pptx(layout: CompareLayout, *, marking: str, source: str) -> bytes:
+def render_onepager_compare_pptx(
+    layout: CompareLayout, *, marking: str, source: str, product: str = PRODUCT
+) -> bytes:
     """The compare layout as one 16:9 slide of native shapes: the ADR-0446 slide with the PRIOR
     position as a dashed ghost, the CURRENT one solid, an arrow per moved finish carrying its
     calendar-day delta, NEW / REMOVED / DUPLICATE NAME tags, and the per-swimlane summary
@@ -929,6 +1069,7 @@ def render_onepager_compare_pptx(layout: CompareLayout, *, marking: str, source:
                 align="ctr",
                 name=f"Tag text: {p.badge} — {p.name}",
             )
+    _logic_links(s, lay.links)
     if lay.today_x is not None:
         s.vline(lay.today_x, top, bot, _TODAY, 1.5, name="Today")
         if lay.today_label_anchor == "start":
@@ -988,6 +1129,18 @@ def render_onepager_compare_pptx(layout: CompareLayout, *, marking: str, source:
             s.segment(vx, vy, e.x + 6.65, cy - 1.2, _WHITE, 0.6, name="Done tick: legend")
         elif e.kind == "today":
             s.vline(e.x + 5, cy - 4, cy + 4, _TODAY, 1.5, name="Legend: today")
+        elif e.kind == "link":
+            s.freeform(
+                [(e.x, cy), (e.x + 7.4, cy)], line=_LINK, line_pt=LINK_W, name="Legend: link"
+            )
+            s.freeform(
+                [(e.x + 10, cy), (e.x + 7.4, cy - 1.3), (e.x + 7.4, cy + 1.3)],
+                line=None,
+                line_pt=0,
+                fill=_LINK,
+                closed=True,
+                name="Legend: link head",
+            )
         else:
             hue = LANE_PALETTE[e.color % len(LANE_PALETTE)]
             s.shape(e.x, cy - 3, 10, 6, hue, prst="roundRect", name=f"Legend: {e.label}")
@@ -1009,4 +1162,4 @@ def render_onepager_compare_pptx(layout: CompareLayout, *, marking: str, source:
         align="r",
         name="Read-me",
     )
-    return _package(s)
+    return _package(s, product)

@@ -15,7 +15,7 @@ import zipfile
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-from schedule_forensics.reports.tables import TableSet
+from schedule_forensics.reports.tableset import TableSet
 
 
 def _esc(value: str) -> str:

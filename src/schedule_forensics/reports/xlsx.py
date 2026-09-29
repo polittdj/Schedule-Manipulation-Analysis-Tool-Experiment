@@ -2,7 +2,7 @@
 
 An ``.xlsx`` file is a zip of XML parts; this emits the smallest valid subset Excel
 accepts: content types, the package/workbook relationships, one worksheet per
-:class:`~schedule_forensics.reports.tables.Table`, and a two-font style sheet (normal +
+:class:`~schedule_forensics.reports.tableset.Table`, and a two-font style sheet (normal +
 bold header row). Strings are inline (no shared-string table), numbers are native
 numeric cells. Output is byte-deterministic: fixed zip timestamps, fixed part order.
 """
@@ -13,7 +13,7 @@ import io
 import re
 import zipfile
 
-from schedule_forensics.reports.tables import Table, TableSet
+from schedule_forensics.reports.tableset import Table, TableSet
 
 
 def _esc(value: str) -> str:

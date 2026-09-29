@@ -193,6 +193,9 @@ node --check src/schedule_forensics/web/static/*.js    # vendored JS, no build s
 - Parity gate only: `python -m pytest -m parity`
 - Run the app: `schedule-forensics` (or `python -m schedule_forensics.launcher`) — binds 127.0.0.1 and opens the browser.
 - `.mpp` → MSPDI XML (needs Java 17+): `java -cp tools/mpxj/classes:tools/mpxj/lib/* MpxjToMspdi <in.mpp> <out.xml>`
+- Rebuild **LODESTAR** (the standalone One-Pager program, `lodestar/LODESTAR.pyz`, ADR-0539) after
+  editing any file it carries: `python tools/lodestar/build_lodestar.py` (`--check` to verify) —
+  `tests/lodestar/test_lodestar_pyz.py` holds it byte-identical to `src/` and names this command.
 
 `src/schedule_forensics/web/app.py` is **exempt from E501** (line-length) in `pyproject.toml` — don't
 fight long HTML f-strings there; everywhere else the limit is 100. **Every page module extracted

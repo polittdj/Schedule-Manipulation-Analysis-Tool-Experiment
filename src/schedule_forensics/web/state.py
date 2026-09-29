@@ -95,6 +95,7 @@ from schedule_forensics.model.saved_view import SavedFilter, SavedGroup
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
 from schedule_forensics.reports.onepager import OnePagerDoc
+from schedule_forensics.reports.onepager_links import Link
 
 
 @dataclass(frozen=True)
@@ -783,6 +784,17 @@ class SessionState:
     onepager_compare_is_error: bool = False
     #: The date window on /onepager-compare (ADR-0527), as :attr:`onepager_window`.
     onepager_compare_window: tuple[dt.date, dt.date] | None = None
+    #: The operator's logic links on each One-Pager page (ADR-0539), in the order made. Kept
+    #: across a replaced list (every link whose items the new list still holds is drawn again;
+    #: the rest are named, never dropped); cleared with the list, and by a session wipe.
+    onepager_links: tuple[Link, ...] = ()
+    onepager_compare_links: tuple[Link, ...] = ()
+    #: The one-shot result of the last logic-link action on each page, shown inside the links
+    #: block the browser lands on (ADR-0539) — never in the banner above the slide, scrolled away.
+    onepager_links_msg: str | None = None
+    onepager_links_is_error: bool = False
+    onepager_compare_links_msg: str | None = None
+    onepager_compare_links_is_error: bool = False
     # JCL joint cost-&-schedule confidence settings (ADR-0269). Blank targets (None) mean
     # "use the run's deterministic finish / EAC"; td_share is the time-dependent cost share
     # τ; the 1/1/1 multipliers mean cost-estimating uncertainty is OFF (duration-driven

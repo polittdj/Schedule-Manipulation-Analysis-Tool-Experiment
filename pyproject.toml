@@ -16,7 +16,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "schedule-forensics"
-version = "1.0.294"
+version = "1.0.295"
 description = "Polaris² — local, NASA-themed forensic schedule-analysis tool (CUI-safe, offline)."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -177,6 +177,10 @@ select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
 "src/schedule_forensics/web/onepager.py" = ["E501"]
 # `onepager_compare.py` is its sibling (ADR-0465), born outside the monolith for the same reason.
 "src/schedule_forensics/web/onepager_compare.py" = ["E501"]
+# ADR-0539: LODESTAR's page shell is HTML (the standalone One-Pager program's frame), and the
+# `htmlkit` leaf carries the panel-head / tool-strip markup moved verbatim out of components.py.
+"src/schedule_forensics/web/lodestar_shell.py" = ["E501"]
+"src/schedule_forensics/web/htmlkit.py" = ["E501"]
 # `components.py` is the shared presentation kernel, extracted verbatim from app.py (ADR-0350).
 # At extraction ONE line needed the exemption — a `_metric_help_cell` docstring line already
 # over-long inside app.py's exempt region; the module has since grown to 10 (measured 2026-08-25,

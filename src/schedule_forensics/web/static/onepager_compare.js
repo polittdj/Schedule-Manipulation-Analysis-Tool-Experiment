@@ -3,7 +3,7 @@
 // (960 x 540 points, 16:9). The ADR-0446 one-pager language plus the delta encoding: the CURRENT
 // position solid, the PRIOR as a dashed ghost where it moved (an unchanged item is drawn ONCE), an
 // arrow from the old finish to the new one with the move in calendar days, NEW / REMOVED /
-// DUPLICATE NAME tags, column D's check beside what is complete (ADR-0524), and a per-swimlane
+// DUPLICATE NAME tags, the status column's check beside what is complete (ADR-0524), and a per-swimlane
 // summary column. Geometry is never computed here — only painted — so the page is an honest
 // preview of the slide.
 //
@@ -50,10 +50,10 @@
     if (p.finish_delta_days) parts.push("finish " + (p.finish_delta_days >= 0 ? "+" : "−") + Math.abs(p.finish_delta_days) + " cal d");
     if (p.start_delta_days) parts.push("start " + (p.start_delta_days >= 0 ? "+" : "−") + Math.abs(p.start_delta_days) + " cal d");
     parts.push(p.status);
-    if (p.done) parts.push("complete (column D)");
+    if (p.done) parts.push("complete (" + (tip.label || "status column") + ")");
     return parts.join(" · ");
   }
-  // column D's check (ADR-0524): a --muted disc ("completed work") with a --bg check, BESIDE the
+  // the status column's check (ADR-0524): a --muted disc ("completed work") with a --bg check, BESIDE the
   // current shape — the same points reports/pptx.py's _done_badge draws
   function doneBadge(parent, cx, cy, r) {
     parent.appendChild(el("circle", { cx: cx, cy: cy, r: r, class: "opc-done" }));
@@ -106,7 +106,7 @@
     var barH = L.bar_h, ms = L.ms;
     L.items.forEach(function (p) {
       var fill = laneVar(L.lanes[p.lane].color), st = slug(p.status);
-      var g = el("g", { class: "opc-item opc-" + st + (p.milestone ? " op-ms" : " op-act"), "data-status": p.status, "data-lane": p.lane });
+      var g = el("g", { class: "opc-item opc-" + st + (p.milestone ? " op-ms" : " op-act"), "data-status": p.status, "data-lane": p.lane, "data-key": p.key || null });
       g.appendChild(el("title", {}, tip(p)));
       if (p.ghost_x0 !== null) {
         if (p.ghost_milestone) g.appendChild(el("polygon", { points: diamondPoints(p.ghost_x0, p.y, ms / 2), stroke: fill, class: "opc-ghost opc-ghost-ms" }));
@@ -143,7 +143,7 @@
       else if (e.kind === "new") g.appendChild(el("rect", { x: e.x, y: cy - 3, width: 10, height: 6, rx: 1, class: "opc-badge opc-badge-new" }));
       else if (e.kind === "done") doneBadge(g, e.x + 5, cy, 3);
       else if (e.kind === "today") g.appendChild(el("line", { x1: e.x + 5, y1: cy - 4, x2: e.x + 5, y2: cy + 4, class: "op-legend-today" }));
-      else g.appendChild(el("rect", { x: e.x, y: cy - 3, width: 10, height: 6, rx: 1, fill: laneVar(e.color), class: "op-legend-lane" }));
+      else if (e.kind !== "link") g.appendChild(el("rect", { x: e.x, y: cy - 3, width: 10, height: 6, rx: 1, fill: laneVar(e.color), class: "op-legend-lane" })); // "link": onepager_links.js
       g.appendChild(el("text", { x: e.x + 13, y: e.y, class: "op-legend-text", style: "font-size:" + L.legend_pt + "px" }, e.label));
       svg.appendChild(g);
     });
@@ -166,7 +166,10 @@
     var L;
     try { L = JSON.parse(data.textContent || "null"); } catch (e) { L = null; }
     if (!L) return;
-    paint(host, L);
+    tip.label = L.status_label; // the status column the lists used (ADR-0539), for the tooltip
+    var svg = paint(host, L);
+    // the operator's logic links (ADR-0539): painted over the items, and click-to-pick wired
+    if (window.SFOnePagerLinks) { SFOnePagerLinks.paint(svg, L); SFOnePagerLinks.wire(host, "opc"); }
   }
   // ── intake: two slots, each the home.js idiom (a dropped workbook is handed to the SAME form the
   // picker submits, so there is one upload path per slot and it works without fetch) ──
