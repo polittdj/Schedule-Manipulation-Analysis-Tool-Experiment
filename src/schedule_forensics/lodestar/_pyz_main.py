@@ -30,20 +30,45 @@ if sys.version_info < (3, 10):  # noqa: UP036
 _BEFORE = set(sys.modules)
 
 
+def _standard_dirs() -> set[str]:
+    """The standard library's own directories, spelled as CPython's start-up (``getpath``) puts
+    them on the path — its zip, its source directory and its extension-module directory
+    (``lib-dynload``; on Windows ``DLLs``, plus the install folder Windows also lists) — worked
+    out from ``sys`` alone. Nothing is imported to find them: an import here would still search
+    the path being cleaned (``sysconfig``, the obvious source of these names, is not loaded at
+    start-up, so a PYTHONPATH entry ahead of the std-lib would supply it)."""
+    major, minor = sys.version_info[:2]
+    base, plat, lib = sys.base_prefix, sys.base_exec_prefix, sys.platlibdir
+    dirs: list[str] = []
+    if os.name == "nt":
+        dirs += [os.path.join(base, "Lib"), os.path.join(plat, lib), os.path.join(plat, "DLLs")]
+        dirs += [base, plat]
+        for folder in (base, plat):
+            dirs += [os.path.join(folder, f"python{major}{minor}{d}.zip") for d in ("", "_d")]
+    else:
+        # a free-threaded build ("t" in abiflags) may name its std-lib python3.Nt
+        for t in ("", "t") if "t" in getattr(sys, "abiflags", "") else ("",):
+            dirs += [
+                os.path.join(base, lib, f"python{major}{minor}{t}.zip"),
+                os.path.join(base, lib, f"python{major}.{minor}{t}"),
+                os.path.join(plat, lib, f"python{major}.{minor}{t}", "lib-dynload"),
+            ]
+    stdlib_dir = getattr(sys, "_stdlib_dir", None)  # 3.11+: the one start-up itself computed
+    if stdlib_dir:
+        dirs.append(stdlib_dir)
+    return {os.path.normcase(os.path.abspath(d)) for d in dirs}
+
+
 def _isolate() -> None:
     """The import path becomes the archive (``sys.path[0]`` — kept whatever its folder is named)
-    plus the standard library: the entries under this interpreter's own install prefix that are
-    not a site-packages / dist-packages directory. Everything else goes."""
-    roots = {os.path.normcase(os.path.abspath(p)) for p in (sys.base_prefix, sys.base_exec_prefix)}
-
-    def standard(entry: str) -> bool:
-        full = os.path.normcase(os.path.abspath(entry))
-        inside = any(full == root or full.startswith(root + os.sep) for root in roots)
-        parts = set(full.replace("\\", "/").split("/"))
-        return inside and not parts & {"site-packages", "dist-packages"}
-
+    plus the standard library's OWN directories, each matched by its exact path — never "anything
+    under the install prefix" (on a distro Python the prefix is ``/usr``, so a PYTHONPATH entry
+    such as ``/usr/lib`` or ``/usr/share/…`` stayed on the path AHEAD of the std-lib; and with a
+    prefix of ``/`` no std-lib directory matched at all). Everything else goes: site-packages,
+    user site, a ``.pth`` file's directory (an editable install of another program), PYTHONPATH."""
+    keep = _standard_dirs()
     archive, rest = sys.path[:1], sys.path[1:]
-    sys.path[:] = archive + [p for p in rest if p and standard(p)]
+    sys.path[:] = archive + [p for p in rest if p and os.path.normcase(os.path.abspath(p)) in keep]
 
 
 def _foreign(before: set[str]) -> list[str]:

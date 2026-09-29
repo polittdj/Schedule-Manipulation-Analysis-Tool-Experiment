@@ -15,9 +15,16 @@ plus what a standard-library server needs on top — each item measured by ADR-0
 * **Size before bytes.** A POST's ``Content-Length`` is checked against the cap BEFORE anything
   is read (``rfile.read(n)`` allocates ``n`` up front), then the body is read in chunks, against
   a deadline for the WHOLE body — and read and parsed BEFORE the state lock is taken, so a client
-  that stalls or trickles its body holds up only itself. A multipart upload is pre-scanned: a few
-  parts, each with short headers, or it is refused before the email parser sees it (its cost
-  grows faster than the body with many parts or long encoded headers — ADR-0539's review).
+  that stalls or trickles its body holds up only itself. An upload's cap is the FILE cap plus
+  the multipart framing around the file, so a list just over the file cap reaches the route and
+  is refused by name on its page; a body past even that is refused unread, with the page's frame
+  (the credit and the marking), never a bare document (ADR-0539's review, UILD-4).
+* **A multipart upload is pre-scanned** — a few parts, each with short headers, none that is
+  itself split into parts (``multipart/*`` or ``message/*``, as the email parser reads the part's
+  own headers) — or it is refused before the email parser sees it: its cost grows faster than
+  the body on exactly those shapes. The boundary is ONE plain RFC 2046 parameter, and the parser
+  is handed that boundary in a header rebuilt from it, never the client's header, which it would
+  read its own way (review SLA-1: a duplicated, quoted or commented boundary split differently).
 * **Host is exactly this server** — ``127.0.0.1:<port>`` or ``localhost:<port>`` — a stricter
   form of the SEC-3 DNS-rebinding allowlist; **SEC-2's cross-site gate** on every POST.
 * **Static files come from a fixed allowlist loaded at start**, never from a path joined onto a
@@ -26,7 +33,9 @@ plus what a standard-library server needs on top — each item measured by ADR-0
   ``log_message`` / ``log_error`` / ``handle_error`` are silenced, and an unexpected error is a
   generic 500 page. With no console at all (``pythonw``) the server still answers.
 * **CSP, nosniff, no-referrer and frame-deny on every response**, including every refusal — the
-  standard library's own error pages too (an unknown method, a malformed request line) — and
+  standard library's own error pages too (an unknown method, a malformed request line, one
+  refused before its version was read: the handler's default version is HTTP/1.0, not the
+  standard library's HTTP/0.9, which writes no status line and no header) — and
   ``Cache-Control: no-store`` on every page and export.
 * **The cross-site gate is exact.** Without ``Sec-Fetch-Site`` an ``Origin`` must be THIS server
   (``127.0.0.1:<port>`` / ``localhost:<port>``), not any loopback port.
@@ -40,6 +49,7 @@ import datetime as dt
 import email.parser
 import email.policy
 import http.server
+import re
 import socketserver
 import threading
 import time
@@ -63,6 +73,14 @@ from schedule_forensics.web.security import _SECURITY_HEADERS, _csrf_safe
 #: many small parts — which costs it far more — is refused before it is parsed (``_prescan``;
 #: ADR-0539 and its review, measured).
 MAX_UPLOAD_BYTES = 20 * 1024 * 1024
+#: The multipart framing around the file in an upload's BODY — the delimiters, each part's short
+#: header block, the page's one or two small fields (Chromium's, measured through each page's own
+#: form with a 205-character file name: 531 and 627 bytes). The body cap carries it, so a file just
+#: over :data:`MAX_UPLOAD_BYTES` reaches the route and is refused BY NAME on its page
+#: (``read_list``), not by a raw 413 (review UILD-4).
+MULTIPART_FRAMING_BYTES = 64 * 1024
+#: The upload routes' cap on the whole body — checked, like every cap, before a byte is read.
+UPLOAD_BODY_CAP = MAX_UPLOAD_BYTES + MULTIPART_FRAMING_BYTES
 #: Every other POST is a small form (a title, two dates, a link's two keys).
 MAX_FORM_BYTES = 64 * 1024
 #: A connection that sends nothing for this long is dropped...
@@ -74,6 +92,19 @@ BODY_DEADLINE_S = 60
 #: part's header block is short — anything past these is refused before it is parsed.
 MAX_PARTS = 8
 MAX_PART_HEADER_BYTES = 8 * 1024
+#: RFC 2046's boundary: one to seventy of its ``bchars``, the last one not a space.
+_BOUNDARY = re.compile(r"[0-9A-Za-z'()+_,\-./:=? ]{0,69}[0-9A-Za-z'()+_,\-./:=?]")
+#: A ``boundary`` parameter as any MIME reader may take one — after ``;``, ``,`` or white space, in
+#: any case, RFC 2231's ``boundary*`` / ``boundary*0`` forms included — so no second one hides.
+_BOUNDARY_PARAM = re.compile(r"(?i)(?:^|[;,\s])boundary(\*\d*\*?)?\s*=\s*")
+#: The rest of a delimiter's own line (RFC 2046's padding, then the line end — the email parser
+#: also takes a bare CR or LF): the part's headers start after it.
+_DELIMITER_LINE = re.compile(rb"[ \t]*(?:\r\n|\r|\n)")
+#: The upload routes and the page each belongs to: ``route -> (page, its tab's name)``.
+_UPLOAD_PAGES: dict[str, tuple[str, str]] = {
+    "/onepager/upload": ("/onepager", "Timeline"),
+    "/onepager-compare/upload": ("/onepager-compare", "Compare"),
+}
 
 #: The ONLY static files LODESTAR serves — the two pages' painters, the panel toolkit, the theme
 #: switch, the data-date line and axis-caption helpers, the styles and the icon. Loaded once, at
@@ -204,6 +235,10 @@ class _Handler(http.server.BaseHTTPRequestHandler):
     """One request. HTTP/1.0 on purpose (see the module docstring) — never raise it."""
 
     protocol_version = "HTTP/1.0"
+    #: What a request line refused BEFORE its version is read is answered as (a malformed line,
+    #: ``HTTP/2.0``, an HTTP/0.9 ``GET /x``): the standard library's ``HTTP/0.9`` writes neither a
+    #: status line nor a header — so no CSP, nosniff or frame-deny (review SLA-3).
+    default_request_version = "HTTP/1.0"
     timeout = TIMEOUT_S
     server: LodestarServer
     server_version = NAME
@@ -267,7 +302,7 @@ class _Handler(http.server.BaseHTTPRequestHandler):
             reply = self._route(method)
         except _Refused as refused:
             self.close_connection = True
-            reply = _json_error(refused.reason, refused.status)
+            reply = self._refusal(refused)
         except Exception:
             self.close_connection = True
             reply = _Reply(500, b"LODESTAR hit an unexpected error.", "text/plain; charset=utf-8")
@@ -276,6 +311,24 @@ class _Handler(http.server.BaseHTTPRequestHandler):
             # only now, with the "stopped" page written and flushed, does the server stop
             self.close_connection = True
             threading.Thread(target=self.server.shutdown, daemon=True).start()
+
+    def _refusal(self, refused: _Refused) -> _Reply:
+        """A refusal's reply: its reason as JSON — except a body too large on an upload route. A
+        person meets that one by choosing too big a file in the page's own form, so it is that
+        page's FRAME (the credit, the CURRENT marking top and bottom) with the cap named and a
+        way back, still 413 and still unread (review UILD-4)."""
+        page = _UPLOAD_PAGES.get(urlsplit(self.path).path)
+        if refused.status != 413 or page is None:
+            return _json_error(refused.reason, refused.status)
+        back, name = page
+        body = (
+            '<div class="notice warn" role=alert>List not loaded — the upload is over the '
+            f"{MAX_UPLOAD_BYTES // (1024 * 1024)} MB cap.</div>"
+            f'<p><a href="{back}">Back to the {name}</a></p>'
+        )
+        unclassified = self.server.state.unclassified
+        page_html = lodestar_page(name, body, path=back, unclassified=unclassified)
+        return _Reply(413, page_html.encode("utf-8"), _HTML)
 
     def _gate(self, method: str) -> None:
         host = self.headers.get("Host", "").strip().lower()
@@ -324,10 +377,11 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         ctype = self.headers.get("Content-Type", "")
         if not ctype.lower().startswith("multipart/form-data"):
             raise _Refused(400, "an upload must be multipart/form-data")
-        body = self._body(MAX_UPLOAD_BYTES)
-        _prescan(ctype, body)
+        body = self._body(UPLOAD_BODY_CAP)
+        boundary = _prescan(ctype, body)
+        # the parser splits on the boundary the prescan split on — never the client's header
         msg = email.parser.BytesParser(policy=email.policy.HTTP).parsebytes(
-            b"Content-Type: " + ctype.encode("latin-1", "replace") + b"\r\n\r\n" + body
+            _multipart_head(boundary) + body
         )
         if not msg.is_multipart():
             raise _Refused(400, "the upload carried no parts")
@@ -439,7 +493,7 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         get = form.get
         if path == "/quit":
             self._quit = True  # the server stops once this page is written (``_dispatch``)
-            return _html(stopped_page())
+            return _html(stopped_page(unclassified=st.unclassified))
         if path == "/marking":
             st.unclassified = get("marking") == "unclassified"
             back = get("next", "")
@@ -516,24 +570,67 @@ def _same_origin(fetch_site: str | None, origin: str | None, hosts: frozenset[st
     return urlsplit(origin.strip()).netloc.lower() in hosts
 
 
-def _prescan(ctype: str, body: bytes) -> None:
-    """Refuse a multipart body the upload form never sends — more than :data:`MAX_PARTS` parts,
-    or a part whose header block runs past :data:`MAX_PART_HEADER_BYTES` — before the email
-    parser, whose cost grows faster than the body on exactly those shapes, ever sees it."""
-    boundary = ""
-    for param in ctype.split(";")[1:]:
-        key, _, value = param.strip().partition("=")
-        if key.strip().lower() == "boundary":
-            boundary = value.strip().strip('"')
-    if not boundary:
+def _multipart_head(boundary: str) -> bytes:
+    """The header the email parser is handed: ``multipart/form-data`` with THIS boundary, quoted
+    (a plain RFC 2046 boundary carries no quote or backslash)."""
+    return (
+        b'Content-Type: multipart/form-data; boundary="' + boundary.encode("ascii") + b'"\r\n\r\n'
+    )
+
+
+def _boundary(ctype: str) -> str:
+    """The ONE boundary ``ctype`` names — refused unless there is exactly one ``boundary``
+    parameter and it is plain: RFC 2046's characters, 1 to 70 of them, a space only inside quotes;
+    and unless the email parser reads the rebuilt header back as that same boundary."""
+    found = list(_BOUNDARY_PARAM.finditer(ctype))
+    if not found:
         raise _Refused(400, "the upload names no multipart boundary")
-    parts = body.split(b"--" + boundary.encode("latin-1", "replace"))[1:-1]
+    if len(found) > 1:
+        raise _Refused(400, "the upload names more than one multipart boundary")
+    param = found[0]
+    rest = ctype[param.end() :]
+    if rest.startswith('"'):
+        value, closed, _after = rest[1:].partition('"')
+        plain = bool(closed)
+    else:
+        value = rest.split(";", 1)[0].strip()
+        plain = " " not in value
+    if not (plain and param.group(1) is None and _BOUNDARY.fullmatch(value)):
+        raise _Refused(400, "the upload's multipart boundary is not a plain one")
+    head = email.parser.BytesParser(policy=email.policy.HTTP).parsebytes(
+        _multipart_head(value), headersonly=True
+    )
+    if head.get_boundary() != value:
+        raise _Refused(400, "the upload's multipart boundary is not a plain one")
+    return value
+
+
+def _prescan(ctype: str, body: bytes) -> str:
+    """Refuse a multipart body the upload form never sends, before the email parser — whose cost
+    grows faster than the body on exactly these shapes — ever sees it; return the boundary it
+    was split on, the one the parser must use.
+
+    Refused: a boundary that is not ONE plain parameter (:func:`_boundary`); more than
+    :data:`MAX_PARTS` parts; a part whose header block runs past :data:`MAX_PART_HEADER_BYTES` or
+    never ends; a part that is itself split into parts — ``multipart/*``, or ``message/*`` (the
+    parser reads a message part's body as a message, which may be multipart). A part's type is
+    taken as the email parser itself reads that part's header block, so an encoded word or a
+    folded line reads the same to both. Every delimiter but a closing one opens a part — the LAST
+    one too when no closing delimiter follows (the parser reads that part to the end)."""
+    boundary = _boundary(ctype)
+    parts = [p for p in body.split(b"--" + boundary.encode("ascii"))[1:] if not p.startswith(b"--")]
     if len(parts) > MAX_PARTS:
         raise _Refused(400, "the upload carried too many parts")
     for part in parts:
         end = part.find(b"\r\n\r\n")
         if end < 0 or end > MAX_PART_HEADER_BYTES:
             raise _Refused(400, "an upload part's headers are too long or unfinished")
+        line = _DELIMITER_LINE.match(part)
+        head = part[line.end() if line else 0 : end + 4]
+        kind = email.parser.BytesParser(policy=email.policy.HTTP).parsebytes(head, headersonly=True)
+        if kind.get_content_maintype() in ("multipart", "message"):
+            raise _Refused(400, "an upload part may not itself hold parts")
+    return boundary
 
 
 def serve(port: int = 0, state: LodestarState | None = None) -> LodestarServer:

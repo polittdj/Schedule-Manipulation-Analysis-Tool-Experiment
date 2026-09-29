@@ -7,3 +7,4 @@ if command -v python3 >/dev/null 2>&1; then
 fi
 echo "LODESTAR needs Python 3.10 or newer, and none was found. Install it from python.org, then double-click LODESTAR again."
 read -r _
+exit 1
