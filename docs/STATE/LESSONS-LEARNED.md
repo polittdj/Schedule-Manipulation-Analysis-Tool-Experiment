@@ -435,6 +435,35 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-28 (a) — The corpus is a population choice, a resume is a claim, and the lead's own hypothesis needs a second verifier (ADR-0537)
+
+- **What happened.** Session 6 continued WP-CPM: 31 candidates → 28 claims → 27 reproduced and 1 held, plus UI-001 —
+  28 classes confirmed, mostly in drag, the path counterfactual and the driving-slack trace. Mid-session the container
+  restarted, the workflow's resume redid finished work, and orphans kept running.
+- **The corpus is a population choice.** The plan's Q6 said the project day is 480 minutes on 44 of 44 files — true of
+  the 44-file corpus (goldens + intake `.mpp`), false of the committed tree: the intake's MSPDI `.xml` files include
+  `TP2_Bridge_4x10_Calendar.xml`, a 600-minute day, on which the Path Analysis's fixed 480 is live (CPM-018). **The
+  lesson:** when an instrument answers "is this shape in the repo?", census the tree the operator can load, not only the
+  population the instrument was built from.
+- **A workflow resume is a claim.** Resumed from its run id after the restart, the workflow missed its cache and re-ran
+  three finished assemblies over their own evidence. **The lesson:** read the journal (which runs finished, where their
+  records sit) before trusting a resume; name the canonical run explicitly (the one the lead validated).
+- **Assembling per claim, with every result written to disk first, survived a container restart.** Scratch outlived the
+  process; every finished record was intact and the lead finished the rest with plain sub-agents. The design that paid
+  off is "one agent, one claim, one directory", reconciled from disk rather than from agent replies.
+- **Lock contention on the one suite lock was the bottleneck,** not CPU or agents: blast-radius suites queued behind
+  each other (and behind orphans holding the lock after the restart). Budget a wave by lock-holding time.
+- **Lead-originated hypotheses need a second verifier.** Four classes grew from the lead's own observations (LD-1 / 2 /
+  4 / 7); the lead cannot independently verify its own lead, so each got a second claim-only verifier (P8). P1 and P8
+  agreed that CPM-010 is latent on served pages, and that reading was adopted over the finder's "live". The finders, for
+  their part, refuted two other lead starting points outright: LD-5 (half-to-even rounding is ADR-0515's rule) and LD-1's
+  cited line (`drag.py:177` does not exist). A lead's observation is testimony, like anyone's.
+- **Traps paid for.** `pkill -f <pattern>` matched the lead's own shell (exit 144, twice) — `pgrep`, then kill by PID. A
+  scratch tree with `src/` symlinked turns a patch's fallback into a write to the checkout — give any tree a patch may
+  touch a real copy of `src/`. A restart leaves orphan processes holding locks, and an orphaned test's headless Chromium
+  attempted two CONNECTs to www.google.com:443 despite `--disable-background-networking` (denied by the proxy) — list
+  and stop orphans after a restart, and read the proxy's log.
+
 ### 2026-09-26 (a) — The engine can be right while the page is wrong: measure the page, and treat a fix sketch as a claim (ADR-0536)
 
 - **What happened.** On Hard_File_updated3 the engine's `project_finish_wall` reproduced MS Project's Saturday finish to
