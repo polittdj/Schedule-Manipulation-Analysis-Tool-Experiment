@@ -97,7 +97,7 @@ def lodestar_page(title: str, body: str, *, path: str, unclassified: bool) -> st
 <nav class=ls-tabs aria-label="LODESTAR pages">{tabs}</nav>
 <div class=ls-tools>
 <label class=ls-theme>View <select id=themeSelect>{themes}</select></label>
-<form action="/marking" method=post class=ls-inline><input type=hidden name=marking value={flip}><input type=hidden name=next value="{_e(path)}"><button type=submit title="Switch the page and export marking">{flip_label}</button></form>
+<form action="/marking" method=post class=ls-inline><input type=hidden name=marking value={flip}><input type=hidden name=next value="{_e(path)}"><button type=submit title="Switch the page and PowerPoint marking">{flip_label}</button></form>
 <form action="/quit" method=post class=ls-inline><button type=submit class=ls-quit title="Stop LODESTAR">Quit</button></form>
 </div>
 </div>
@@ -113,19 +113,44 @@ and there is no AI in it.</p></footer>
 #: The stopped page's own styles — inline, because the server that would serve a stylesheet is
 #: the thing that just stopped (the CSP allows inline STYLES, never inline script) — in the
 #: SYSTEM colours (``Canvas`` / ``CanvasText`` / ``LinkText``), so it follows the computer's light
-#: or dark setting with no colour of its own (the design system's no-hex rule).
+#: or dark setting with no colour of its own (the design system's no-hex rule) — except the
+#: marking bars, below.
 _STOPPED_STYLE = (
-    ":root{color-scheme:light dark}body{margin:0;padding:48px 24px;background:Canvas;"
+    ":root{color-scheme:light dark}body{margin:0;background:Canvas;"
     "color:CanvasText;font:15px/1.5 system-ui,-apple-system,'Segoe UI',sans-serif}"
-    "main{max-width:40em;margin:0 auto}h1{font-size:22px;margin:0 0 .4em}a{color:LinkText}"
+    "main{max-width:40em;margin:0 auto;padding:40px 24px 24px}h1{font-size:22px;margin:0 0 .4em}"
+    "a{color:LinkText}.ls-credit{margin:.5em 24px 0;font-size:12px}"
+    "footer{max-width:40em;margin:0 auto 1em;padding:.8em 24px 0;border-top:1px solid;"
+    "font-size:12px}footer p{margin:.2em 0}"
+    ".cui-banner{text-align:center;font-weight:700;font-size:11px;letter-spacing:2px;"
+    "text-transform:uppercase;padding:3px 10px}"
 )
+#: The marking bars' FIXED colours — DESIGN-SYSTEM §0's one hex exception — as the frame's bars
+#: render them in the default view: ``hud.css``'s unscoped ``.cui-banner.cui`` /
+#: ``.cui-banner.unclassified`` rules (``base.css``'s older pair is overridden in every view).
+#: Inline, not linked: the stopped page asks nothing of the stopped server. A test reads
+#: ``hud.css`` so the two cannot drift.
+_MARKING_COLOURS = {"cui": ("#502b85", "#fff"), "unclassified": ("#007a33", "#fff")}
 
 
-def stopped_page() -> str:
+def stopped_page(unclassified: bool = False) -> str:
     """What the browser shows after Quit — the server has stopped, so this is the last page, and
-    it needs nothing from the server: no stylesheet, no script, no icon."""
+    it needs nothing from the server: no stylesheet, no script, and an EMPTY ``data:`` icon (so a
+    browser does not ask the stopped server for ``/favicon.ico``). It keeps the compliance chrome
+    of every LODESTAR page (DESIGN-SYSTEM §6 / §7c): the marking bars top and bottom with the
+    frame's own words (:func:`marking` — CUI unless the session was marked Unclassified), and the
+    credit at the top and in the footer."""
+    cls, text = marking(unclassified)
+    ground, ink = _MARKING_COLOURS[cls]
+    bar = f".cui-banner.{cls}{{background:{ground};color:{ink}}}"
     return f"""<!doctype html><html lang="en"><head><meta charset=utf-8>
 <meta name=viewport content="width=device-width,initial-scale=1"><title>{NAME} stopped</title>
-<style>{_STOPPED_STYLE}</style></head><body><main><h1>{NAME} has stopped.</h1>
-<p>Everything it held was in memory and is gone. You can close this tab; to start it
-again, double-click LODESTAR.</p><p>{credit_html()}</p></main></body></html>"""
+<link rel=icon href="data:,"><style>{_STOPPED_STYLE}{bar}</style></head><body>
+<div class="cui-banner {cls} top" data-no-i18n>{_e(text)}</div>
+<p class=ls-credit>{credit_html()}</p>
+<main><h1>{NAME} has stopped.</h1>
+<p>Everything it held was in memory and is gone. You can close this tab; start it again the way
+you started it (LODESTAR.bat, LODESTAR.command, or sh&nbsp;lodestar.sh).</p></main>
+<footer><p><b>{NAME} {VERSION}</b> — {TAGLINE}. {credit_html()}.</p></footer>
+<div class="cui-banner {cls} bottom" data-no-i18n>{_e(text)}</div>
+</body></html>"""

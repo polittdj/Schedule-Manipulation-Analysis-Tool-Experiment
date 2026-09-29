@@ -10,11 +10,18 @@ their own that I can share with others", citing "David Politte" and "david.j.pol
   names the rebuild command and the members that differ; ``build()`` is deterministic, and blind
   to where the sources sit and to their mtime and mode.
 * **Contents** — the member list is exactly ``members()`` (sorted, no directory entries, fixed
-  stored headers) and every member is its source file's bytes; every import in every member —
-  a lazy one inside a function included — is std-lib or another member; no member name (and no
-  file shipped beside it) is one the pre-commit hook's ``blocked_re`` refuses.
+  stored headers) AND exactly the 34 names typed here (an oracle the builder cannot move — no
+  ``docx.py``), and every member is its source file's bytes as committed (a CRLF checkout's
+  text read as LF); a CRLF copy of every member source builds the identical archive (LS-08);
+  every import in every member — a lazy one inside a function included — is std-lib or another
+  member; no member name (and no file shipped beside it) is one the pre-commit hook's
+  ``blocked_re`` refuses; with no python3 on the PATH each POSIX launcher says how it is started
+  again and exits non-zero.
 * **Runs on bare Python** — under ``python -I -S`` every module in the archive imports and brings
-  in nothing but the std-lib and the archive's own package.
+  in nothing but the std-lib and the archive's own package; started as the launchers start it,
+  the archive's import path is itself plus the interpreter's own std-lib directories and nothing
+  else (a PYTHONPATH entry under the install prefix included); ``--help`` prints on an ASCII
+  console.
 * **End to end** — the shipped file started as the operator starts it (``--no-browser``):
   the banner credits the author, the page's contact link is a bare ``mailto:``, a twin workbook in
   the C-start / D-finish / E-complete layout uploads, a logic link is added and exported to
@@ -31,6 +38,14 @@ load-bearing check has a ``test_mutation_*`` twin that breaks the thing and asse
 checker goes red by name: a flipped source byte, an mtime-dependent builder, a disguised CUI
 member name, a lazy third-party import, and a foreign module riding into the archive (which the
 archive's own ``__main__`` must refuse, exit 2, naming it).
+
+The ADR-0539 review pins (2026-09-29) were each observed RED on HEAD f40faa04 for the stated
+reason before the fix: the members test on a simulated CRLF checkout (33 members named, LSB-2);
+the launchers with no python3 (Linux told to double-click; both exited 0 after Enter); the
+import path (``/usr/lib``, ``/usr/include``, ``/usr/share`` kept ahead of the std-lib; a ``/``
+prefix kept no std-lib at all, LSB-3); ``--help`` on an ASCII / cp437 console (exit 1,
+UnicodeEncodeError, LSB-1). The LS-08 and 34-member pins cannot be red on a tree where the claim
+holds; their twins are the pre-LS-08 builder (raw bytes) and ``docx.py`` added to ``MODULES``.
 """
 
 from __future__ import annotations
@@ -42,12 +57,14 @@ import io
 import json
 import os
 import re
+import shutil
 import stat
 import subprocess
 import sys
 import time
 import xml.etree.ElementTree as ET
 import zipfile
+from collections.abc import Callable
 from pathlib import Path
 from types import ModuleType
 
@@ -398,21 +415,36 @@ def test_archive_starts_with_the_shebang() -> None:
     assert zipfile.is_zipfile(PYZ)
 
 
+def _git_text(data: bytes) -> bool:
+    """What git calls text (and ``* text=auto`` converts on a Windows checkout): no NUL byte in
+    the first 8000 — git's own test, independent of the builder's suffix list."""
+    return b"\0" not in data[:8000]
+
+
+def _as_committed(path: Path) -> bytes:
+    """A source file's bytes as the COMMIT holds them: a text file's CRLF (a Git-for-Windows
+    autocrlf checkout) read back as LF; a binary file as it is."""
+    data = path.read_bytes()
+    return data.replace(b"\r\n", b"\n") if _git_text(data) else data
+
+
 def test_members_are_exactly_the_allowlist_and_each_is_its_source_verbatim(
     tool: ModuleType,
 ) -> None:
     """The committed member list equals ``members()`` — same names, same (sorted) order, nothing
-    extra — every member's bytes are its source file's, the two renamed members come from the
-    two ``src`` files the tool documents, and every header is the fixed stored one."""
+    extra — every member's bytes are its source file's bytes AS COMMITTED (a text file's CRLF
+    read as LF, so a Git-for-Windows autocrlf checkout of the same commit passes too: LSB-2), the
+    two renamed members come from the two ``src`` files the tool documents, and every header is
+    the fixed stored one."""
     expected = tool.members()
     with zipfile.ZipFile(PYZ) as zf:
         infos = zf.infolist()
         names = [i.filename for i in infos]
         assert names == list(expected), sorted(set(names) ^ set(expected))
-        wrong = [n for n in names if zf.read(n) != Path(expected[n]).read_bytes()]
+        wrong = [n for n in names if zf.read(n) != _as_committed(Path(expected[n]))]
         assert not wrong, f"members that are not their source's bytes: {wrong}"
-        assert zf.read("__main__.py") == MAIN_SOURCE.read_bytes()
-        assert zf.read("schedule_forensics/web/__init__.py") == WEB_INIT_SOURCE.read_bytes()
+        assert zf.read("__main__.py") == _as_committed(MAIN_SOURCE)
+        assert zf.read("schedule_forensics/web/__init__.py") == _as_committed(WEB_INIT_SOURCE)
     odd = [
         i.filename
         for i in infos
@@ -423,6 +455,124 @@ def test_members_are_exactly_the_allowlist_and_each_is_its_source_verbatim(
         or i.external_attr >> 16 != 0o644
     ]
     assert not odd, f"members without the fixed stored header: {odd}"
+
+
+#: The archive's members, typed here from ADR-0539 (LS-07: 34 members, no ``docx.py`` — LODESTAR
+#: serves no Word export). An INDEPENDENT oracle: the lockstep and the test above both judge the
+#: archive against the builder's own list, so a module added to ``MODULES`` and rebuilt would
+#: pass them both (SLA-7). Changing what LODESTAR ships means changing this list, on purpose.
+MEMBERS = (
+    "__main__.py",
+    "schedule_forensics/__init__.py",
+    "schedule_forensics/lodestar/__init__.py",
+    "schedule_forensics/lodestar/__main__.py",
+    "schedule_forensics/lodestar/server.py",
+    "schedule_forensics/reports/__init__.py",
+    "schedule_forensics/reports/onepager.py",
+    "schedule_forensics/reports/onepager_compare.py",
+    "schedule_forensics/reports/onepager_links.py",
+    "schedule_forensics/reports/pptx.py",
+    "schedule_forensics/reports/tableset.py",
+    "schedule_forensics/reports/xlsx.py",
+    "schedule_forensics/reports/xlsx_read.py",
+    "schedule_forensics/web/__init__.py",
+    "schedule_forensics/web/htmlkit.py",
+    "schedule_forensics/web/lodestar_shell.py",
+    "schedule_forensics/web/onepager.py",
+    "schedule_forensics/web/onepager_actions.py",
+    "schedule_forensics/web/onepager_common.py",
+    "schedule_forensics/web/onepager_compare.py",
+    "schedule_forensics/web/security.py",
+    "schedule_forensics/web/static/app.css",
+    "schedule_forensics/web/static/base.css",
+    "schedule_forensics/web/static/chartframe.js",
+    "schedule_forensics/web/static/favicon.ico",
+    "schedule_forensics/web/static/gantt.js",
+    "schedule_forensics/web/static/hud.css",
+    "schedule_forensics/web/static/lodestar.css",
+    "schedule_forensics/web/static/onepager.js",
+    "schedule_forensics/web/static/onepager_compare.js",
+    "schedule_forensics/web/static/onepager_links.js",
+    "schedule_forensics/web/static/panelkit.js",
+    "schedule_forensics/web/static/sf-themes.css",
+    "schedule_forensics/web/static/theme.js",
+)
+
+
+def _member_list_problem(names: list[str]) -> str | None:
+    """``None`` when ``names`` are exactly :data:`MEMBERS`, in order, and none is a Word writer."""
+    docx = [n for n in names if "docx" in n.lower()]
+    if names == list(MEMBERS) and not docx:
+        return None
+    extra, missing = sorted(set(names) - set(MEMBERS)), sorted(set(MEMBERS) - set(names))
+    return f"archive members: extra {extra}, missing {missing}, a Word writer {docx}"
+
+
+def test_the_archive_holds_exactly_the_34_members_adr_0539_names(tool: ModuleType) -> None:
+    assert len(MEMBERS) == 34
+    with zipfile.ZipFile(PYZ) as zf:
+        problem = _member_list_problem(zf.namelist())
+    assert problem is None, problem
+    assert _member_list_problem(list(tool.members())) is None
+
+
+def test_mutation_a_module_added_to_the_builder_is_named(
+    tool: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """MUTATION (SLA-7): ``reports/docx.py`` added to ``MODULES`` and the archive rebuilt — the
+    lockstep's oracle moves with it, this one does not."""
+    monkeypatch.setattr(tool, "MODULES", (*tool.MODULES, "schedule_forensics/reports/docx.py"))
+    names = list(_contents(tool.build()))
+    problem = _member_list_problem(names)
+    assert problem is not None and "schedule_forensics/reports/docx.py" in problem, problem
+
+
+def _crlf_copy(tool: ModuleType, dst: Path) -> int:
+    """Every member's source copied under ``dst`` the way Git for Windows checks it out
+    (``* text=auto``, autocrlf): each git-text file with CRLF line ends. Returns how many."""
+    _copy_sources(tool, dst)
+    converted = 0
+    for path in dst.rglob("*"):
+        data = path.read_bytes() if path.is_file() else b""
+        if data and _git_text(data):
+            path.write_bytes(data.replace(b"\r\n", b"\n").replace(b"\n", b"\r\n"))
+            converted += 1
+    return converted
+
+
+def _crlf_problem(tool: ModuleType, lf: bytes, crlf: bytes) -> str | None:
+    if crlf == lf:
+        return None
+    return f"a CRLF checkout builds a different archive (members: {_differing(lf, crlf)})"
+
+
+def test_ls08_a_crlf_checkout_builds_the_identical_archive(
+    tool: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """LS-08: every member source a Windows (autocrlf) checkout would convert, converted to CRLF
+    — the build is byte-identical to the LF build. Every member git treats as text is covered,
+    whatever its suffix, so a future text asset the builder does not normalise goes red here."""
+    lf = tool.build()
+    src = tmp_path / "src"
+    converted = _crlf_copy(tool, src)
+    assert converted == len(MEMBERS) - 1, converted  # all but favicon.ico (binary)
+    monkeypatch.setattr(tool, "SRC", src)
+    problem = _crlf_problem(tool, lf, tool.build())
+    assert problem is None, problem
+
+
+def test_mutation_a_builder_that_packs_raw_bytes_fails_the_crlf_pin(
+    tool: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """MUTATION: the builder before LS-08 (members packed as read) — the CRLF build differs and
+    the same checker names the text members."""
+    lf = tool.build()
+    src = tmp_path / "src"
+    _crlf_copy(tool, src)
+    monkeypatch.setattr(tool, "SRC", src)
+    monkeypatch.setattr(tool, "_member_bytes", lambda path: path.read_bytes())
+    problem = _crlf_problem(tool, lf, tool.build())
+    assert problem is not None and "schedule_forensics/lodestar/server.py" in problem, problem
 
 
 def test_static_members_are_exactly_what_the_server_serves(tool: ModuleType) -> None:
@@ -503,6 +653,51 @@ def test_launchers_and_readme_credit_the_author_and_keep_their_line_ends() -> No
         assert re.search(rf"^\| \*\*{col}\*\* \|[^\n]*\b{word}\b", readme, re.M | re.I), col
 
 
+#: What each POSIX launcher tells a recipient with no Python, and how it is started again
+#: (DOC-LS-08: Linux runs ``sh lodestar.sh`` — README — and is never told to double-click).
+_NO_PYTHON = {
+    "lodestar.sh": "Install it from python.org, then run sh lodestar.sh again.",
+    "LODESTAR.command": "Install it from python.org, then double-click LODESTAR again.",
+}
+
+
+def _no_python_run(launcher: Path, tmp_path: Path) -> subprocess.CompletedProcess[str]:
+    """Run a POSIX launcher with a PATH that holds ``dirname`` and nothing else — no python3 —
+    and press Enter at its pause (at end-of-input ``read`` itself fails, and its status would
+    mask the launcher's own)."""
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir(exist_ok=True)
+    dirname = shutil.which("dirname")
+    assert dirname, "no dirname on this machine"
+    link = bin_dir / "dirname"
+    if not link.exists():
+        link.symlink_to(dirname)
+    return subprocess.run(
+        ["/bin/sh", str(launcher)],
+        env={"PATH": str(bin_dir)},
+        input="\n",
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+
+
+@pytest.mark.skipif(os.name == "nt", reason="the POSIX launchers run under /bin/sh")
+@pytest.mark.parametrize("name", sorted(_NO_PYTHON))
+def test_a_launcher_with_no_python_says_how_to_start_again_and_fails(
+    name: str, tmp_path: Path
+) -> None:
+    """No python3 on the PATH: the launcher says so in words that fit how it is started, and
+    exits NON-zero (a script that failed must not report success to whatever ran it)."""
+    proc = _no_python_run(SHIPPED / name, tmp_path)
+    said = " ".join(proc.stdout.split())
+    assert "none was found" in said and _NO_PYTHON[name] in said, said
+    if name == "lodestar.sh":
+        assert "double-click" not in said, said
+    assert proc.returncode != 0, (proc.returncode, said)
+
+
 # ── runs on bare Python ───────────────────────────────────────────────────────────────────────
 
 
@@ -552,6 +747,232 @@ def test_mutation_a_foreign_module_is_refused_at_start_and_seen_by_the_census(
     assert "evil_client" in proc.stderr
     assert "Running at" not in proc.stdout
     assert _census(bad, tmp_path)["non_std"] == ["evil_client", "schedule_forensics"]
+
+
+# ── the import path (LS-12 / DOC-LS-03 / LSB-3) ──────────────────────────────────────────────
+
+#: A ``sitecustomize`` that, the moment the program binds its socket (AFTER the archive's
+#: ``__main__`` has cleaned the path and imported LODESTAR), writes ``sys.path`` and exits.
+_PATH_HOOK = r"""
+import json, os, sys
+def _hook(event, args):
+    if event == "socket.bind":
+        with open(os.environ["LS_PATH_OUT"], "w", encoding="utf-8") as f:
+            json.dump(sys.path, f)
+        os._exit(0)
+sys.addaudithook(_hook)
+"""
+
+
+def _default_path(cwd: Path) -> list[str]:
+    """The oracle: THIS interpreter's own std-lib directories — its default module path, as
+    ``python -I -S`` computes it (no environment, no site, no user dirs), never the rule under
+    test."""
+    proc = subprocess.run(
+        [sys.executable, "-I", "-S", "-c", "import json, sys; print(json.dumps(sys.path))"],
+        capture_output=True,
+        text=True,
+        timeout=60,
+        cwd=cwd,
+        check=True,
+    )
+    return [p for p in json.loads(proc.stdout) if p and p != str(cwd)]
+
+
+def _foreign_under_prefix() -> list[str]:
+    """Existing directories under this interpreter's install prefix that are NOT the std-lib's
+    (the one the old rule kept: ``<prefix>/lib`` on a POSIX Python, e.g. ``/usr/lib``)."""
+    base = Path(sys.base_prefix)
+    cands = [base / sys.platlibdir, base / "include", base / "share", base / "Tools"]
+    return [str(p) for p in cands if p.is_dir()]
+
+
+def _path_inside(pyz: Path, extra: list[str], tmp_path: Path) -> list[str]:
+    """``sys.path`` inside the running archive, started as the launchers start it (no ``-I``),
+    with ``extra`` on PYTHONPATH."""
+    hook = tmp_path / "hook"
+    hook.mkdir(exist_ok=True)
+    (hook / "sitecustomize.py").write_text(_PATH_HOOK, encoding="utf-8")
+    out = tmp_path / "path.json"
+    out.unlink(missing_ok=True)
+    env = {
+        **_clean_env(),
+        "PYTHONPATH": os.pathsep.join([str(hook), *extra]),
+        "LS_PATH_OUT": str(out),
+    }
+    proc = subprocess.run(
+        [sys.executable, str(pyz), "--no-browser", "--port", "0"],
+        capture_output=True,
+        text=True,
+        timeout=60,
+        cwd=tmp_path,
+        env=env,
+        stdin=subprocess.DEVNULL,
+        check=False,
+    )
+    assert out.is_file(), f"the archive never bound its socket: {proc.returncode} {proc.stderr}"
+    return list(json.loads(out.read_text(encoding="utf-8")))
+
+
+def _path_problem(got: list[str], pyz: Path, oracle: list[str]) -> str | None:
+    want = [str(pyz), *oracle]
+    if got == want:
+        return None
+    extra = [p for p in got if p not in want]
+    return f"sys.path inside the archive is {got}, not {want} (not the std-lib's: {extra})"
+
+
+def test_ls12_only_the_archive_and_the_std_lib_are_on_the_path(tmp_path: Path) -> None:
+    """A PYTHONPATH naming a directory UNDER the interpreter's prefix that is not the std-lib's
+    (``/usr/lib`` on a distro Python — the old rule kept anything under the prefix that was not
+    ``*-packages``), and one outside it: inside the running archive neither is on the path; the
+    std-lib's own directories are, in the interpreter's own order."""
+    foreign = _foreign_under_prefix()
+    assert foreign, f"no non-std-lib directory under {sys.base_prefix} to put on PYTHONPATH"
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    got = _path_inside(PYZ, [*foreign, str(elsewhere)], tmp_path)
+    problem = _path_problem(got, PYZ, _default_path(tmp_path))
+    assert problem is None, problem
+
+
+#: The rule LS-12 first shipped: "under the prefix and no ``*-packages`` part" — typed here as
+#: the mutation.
+_OLD_ISOLATE = """def _isolate() -> None:
+    roots = {os.path.normcase(os.path.abspath(p)) for p in (sys.base_prefix, sys.base_exec_prefix)}
+
+    def standard(entry: str) -> bool:
+        full = os.path.normcase(os.path.abspath(entry))
+        inside = any(full == root or full.startswith(root + os.sep) for root in roots)
+        parts = set(full.replace("\\\\", "/").split("/"))
+        return inside and not parts & {"site-packages", "dist-packages"}
+
+    archive, rest = sys.path[:1], sys.path[1:]
+    sys.path[:] = archive + [p for p in rest if p and standard(p)]
+
+"""
+
+
+def _old_rule_main(tmp_path: Path) -> Path:
+    source = MAIN_SOURCE.read_text(encoding="utf-8")
+    anchor = r"def _isolate\(\) -> None:.*?(?=\ndef _foreign)"
+    mutated, n = re.subn(anchor, lambda _: _OLD_ISOLATE, source, flags=re.S)
+    assert n == 1, "the mutation's anchor (def _isolate … def _foreign) moved"
+    path = tmp_path / "old_main.py"
+    path.write_text(mutated, encoding="utf-8")
+    return path
+
+
+def test_mutation_the_old_prefix_rule_keeps_a_foreign_directory(
+    tool: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """MUTATION: the archive rebuilt with the old prefix rule — the same checker names the
+    directory under the prefix that stayed on the path."""
+    patched = {**tool.members(), "__main__.py": _old_rule_main(tmp_path)}
+    monkeypatch.setattr(tool, "members", lambda: dict(sorted(patched.items())))
+    old = tmp_path / "OLD.pyz"
+    old.write_bytes(tool.build())
+    foreign = _foreign_under_prefix()
+    problem = _path_problem(_path_inside(old, foreign, tmp_path), old, _default_path(tmp_path))
+    assert problem is not None and foreign[0] in problem.split("not the std-lib's")[1], problem
+
+
+def _pyz_main() -> ModuleType:
+    """The archive's ``__main__`` source (byte-identical to the member — the lockstep), as a
+    module whose ``_isolate`` can run on a crafted ``sys.path``."""
+    spec = importlib.util.spec_from_file_location("lodestar_pyz_main_under_test", MAIN_SOURCE)
+    assert spec is not None and spec.loader is not None
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _isolated(
+    isolate: Callable[[], None], monkeypatch: pytest.MonkeyPatch, prefix: str, path: list[str]
+) -> list[str]:
+    monkeypatch.setattr(sys, "base_prefix", prefix)
+    monkeypatch.setattr(sys, "base_exec_prefix", prefix)
+    monkeypatch.setattr(sys, "platlibdir", "lib")
+    crafted = list(path)
+    monkeypatch.setattr(sys, "path", crafted)
+    isolate()
+    return list(crafted)
+
+
+def _posix_layout(prefix: str) -> tuple[list[str], list[str]]:
+    """``(std-lib dirs, foreign dirs)`` for a POSIX Python installed at ``prefix`` — the std-lib
+    spelled as CPython's getpath spells it."""
+    major, minor = sys.version_info[:2]
+    lib = os.path.join(prefix, "lib")
+    std = [
+        os.path.join(lib, f"python{major}{minor}.zip"),
+        os.path.join(lib, f"python{major}.{minor}"),
+        os.path.join(lib, f"python{major}.{minor}", "lib-dynload"),
+    ]
+    foreign = [
+        lib,  # the std-lib's parent
+        os.path.join(prefix, "share", "doc"),
+        os.path.join(lib, f"python{major}.{minor + 1}"),  # ANOTHER Python's std-lib: a crash
+        os.path.join(lib, f"python{major}.{minor}", "idlelib"),  # inside the std-lib, not it
+        os.path.join(lib, f"python{major}.{minor}", "site-packages"),
+        "/opt/other",
+    ]
+    return std, foreign
+
+
+@pytest.mark.skipif(os.name == "nt", reason="a POSIX install layout")
+@pytest.mark.parametrize("prefix", ["/usr", "/"], ids=["usr-prefix", "root-prefix"])
+def test_ls12_isolate_keeps_exactly_the_std_lib_whatever_the_prefix(
+    prefix: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """In process, on a crafted path: an interpreter installed at ``/usr`` (a distro Python) keeps
+    its std-lib and drops every other directory under ``/usr``; one installed at ``/`` (where
+    the old ``root + os.sep`` became ``//``) still keeps its std-lib."""
+    std, foreign = _posix_layout(prefix)
+    archive = "/x/LODESTAR.pyz"
+    path = [archive, foreign[0], foreign[1], std[0], std[1], *foreign[2:], std[2]]
+    assert _isolated(_pyz_main()._isolate, monkeypatch, prefix, path) == [archive, *std]
+
+
+@pytest.mark.skipif(os.name == "nt", reason="a POSIX install layout")
+@pytest.mark.parametrize("prefix", ["/usr", "/"], ids=["usr-prefix", "root-prefix"])
+def test_mutation_the_old_prefix_rule_fails_both_prefixes(
+    prefix: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """MUTATION: the old rule keeps the foreign ``/usr`` directories, and at ``/`` drops the
+    std-lib itself — the same crafted path and assertion go red both ways."""
+    scope: dict[str, object] = {"os": os, "sys": sys}
+    exec(_OLD_ISOLATE, scope)  # the mutation: a literal typed in this file
+    std, foreign = _posix_layout(prefix)
+    archive = "/x/LODESTAR.pyz"
+    path = [archive, foreign[0], foreign[1], std[0], std[1], *foreign[2:], std[2]]
+    got = _isolated(scope["_isolate"], monkeypatch, prefix, path)  # type: ignore[arg-type]
+    assert got != [archive, *std]
+    if prefix == "/":
+        assert got == [archive], got
+    else:
+        assert foreign[0] in got and foreign[2] in got, got
+
+
+# ── the console (LSB-1) ──────────────────────────────────────────────────────────────────────
+
+
+@pytest.mark.parametrize("encoding", ["ascii", "cp437"])
+def test_help_prints_on_a_console_that_cannot_show_a_dash(encoding: str, tmp_path: Path) -> None:
+    """``--help`` run as the launchers run it (no ``-I``, so the console's encoding applies) on
+    an ASCII / cp437 console prints the usage and exits 0 — never a UnicodeEncodeError."""
+    proc = subprocess.run(
+        [sys.executable, str(PYZ), "--help"],
+        capture_output=True,
+        timeout=60,
+        cwd=tmp_path,
+        env={**_clean_env(), "PYTHONIOENCODING": encoding},
+        stdin=subprocess.DEVNULL,
+        check=False,
+    )
+    tail = proc.stderr.decode("utf-8", "replace")[-300:]
+    assert proc.returncode == 0, (proc.returncode, tail)
+    assert proc.stdout.decode(encoding).startswith("usage: LODESTAR"), proc.stdout[:80]
 
 
 # ── end to end ────────────────────────────────────────────────────────────────────────────────
@@ -641,9 +1062,12 @@ raise SystemExit(main(["--no-browser"]))
 
 def test_quit_reply_reaches_the_browser_before_the_process_exits(tmp_path: Path) -> None:
     """Pressing Quit shows the "has stopped" page (with the credit) — the process must not exit
-    before that reply is on the wire. A 3 s write makes the race deterministic; with the handler
-    thread joined (``daemon_threads = False``, ``block_on_close = True``) the same run delivers
-    the page 3 of 3 (measured 2026-09-29), so this is not an impossible test."""
+    before that reply is on the wire. A 3 s write makes the race deterministic. What delivers it
+    is the order in the server's ``_dispatch``: the Quit reply is written and flushed FIRST, and
+    only then does the server start its shutdown (the handler threads stay daemons,
+    ``daemon_threads = True``) — shutdown begun before the write lost the page (ADR-0539
+    review LS-05), and the same run with the write first delivers it every time, so this is not
+    an impossible test."""
     proc, port, _out, _err = _launch([sys.executable, "-c", _SLOW_QUIT, str(PYZ)], tmp_path)
     try:
         bye = form(port, "/quit", {}, timeout=20)

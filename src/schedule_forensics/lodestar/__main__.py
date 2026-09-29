@@ -44,9 +44,11 @@ def _say(text: str) -> None:
 
 
 def _parser() -> argparse.ArgumentParser:
+    # ASCII only: argparse writes --help straight to the console, and a console that cannot show
+    # an em dash (an ASCII or cp437 one) would crash the help with a UnicodeEncodeError
     parser = argparse.ArgumentParser(
         prog="LODESTAR",
-        description=f"{NAME} {VERSION} — {TAGLINE}. Created by {AUTHOR} ({CONTACT}).",
+        description=f"{NAME} {VERSION} - {TAGLINE}. Created by {AUTHOR} ({CONTACT}).",
     )
     parser.add_argument("--no-browser", action="store_true", help="do not open a browser tab")
     parser.add_argument("--port", type=int, default=PREFERRED_PORT, help="the port to try first")

@@ -83,6 +83,7 @@ from schedule_forensics.reports.onepager_compare import (
     window_compare,
 )
 from schedule_forensics.reports.onepager_links import (
+    HALO_W,
     LINK_W,
     MAX_LINKS,
     Anchor,
@@ -800,17 +801,164 @@ def test_a_compare_leg_clears_a_prior_ghost_that_is_the_only_glyph_under_it() ->
     assert _leg_hits(lay) == [] and lay.link_notes == []
 
 
+def _move_head_hits(lay: CompareLayout) -> list[str]:
+    """Every link segment — VERTICAL as well as horizontal — whose halo (``HALO_W`` wide, round
+    caps, painted ABOVE the items) reaches a move arrow's HEAD as the page paints it (its tip on
+    the new finish, ``ARROW_HEAD`` long back toward the old one and as tall), and every link
+    head over one. :func:`_leg_hits` skips vertical segments, so it could not see a leg rising
+    off a slipped finish through that head (review UIP-2)."""
+    out = []
+    for p in lay.items:
+        if p.arrow_x0 is None or p.arrow_x1 is None:
+            continue
+        d = 1.0 if p.arrow_x1 >= p.arrow_x0 else -1.0
+        tip, back = (p.arrow_x1, p.arrow_y), p.arrow_x1 - d * ARROW_HEAD
+        corners = [tip, (back, p.arrow_y - ARROW_HEAD / 2), (back, p.arrow_y + ARROW_HEAD / 2)]
+        (ax, ay), (bx, by), (cx, cy) = corners
+        n = 10
+        pts = [
+            ((ax * u + bx * v + cx * (n - u - v)) / n, (ay * u + by * v + cy * (n - u - v)) / n)
+            for u in range(n + 1)
+            for v in range(n + 1 - u)
+        ]
+        for ln in lay.links:
+            what = f"{ln.pred_name} → {ln.succ_name} ({ln.kind})"
+            for a, b in pairwise(ln.shaft):
+                hit = sum(_dist(x, y, a, b) < HALO_W / 2 for x, y in pts)
+                if hit:
+                    leg = "vertical" if abs(a[0] - b[0]) < 1e-9 else "horizontal"
+                    out.append(f"{what}: a {leg} leg covers {hit}/{len(pts)} of {p.name}'s head")
+            under = sum(_inside(x, y, ln.head) for x, y in pts)
+            if under:
+                out.append(f"{what}: its head covers {under}/{len(pts)} of {p.name}'s head")
+    return out
+
+
+def _dist(px: float, py: float, a: tuple[float, float], b: tuple[float, float]) -> float:
+    (x1, y1), (x2, y2) = a, b
+    dx, dy = x2 - x1, y2 - y1
+    span = dx * dx + dy * dy
+    t = 0.0 if span == 0 else max(0.0, min(1.0, ((px - x1) * dx + (py - y1) * dy) / span))
+    return float(((px - x1 - t * dx) ** 2 + (py - y1 - t * dy) ** 2) ** 0.5)
+
+
+def _inside(px: float, py: float, tri: Sequence[tuple[float, float]]) -> bool:
+    (x1, y1), (x2, y2), (x3, y3) = tri
+    d = [
+        (px - bx) * (ay - by) - (ax - bx) * (py - by)
+        for (ax, ay), (bx, by) in (((x1, y1), (x2, y2)), ((x2, y2), (x3, y3)), ((x3, y3), (x1, y1)))
+    ]
+    return not (any(v < 0 for v in d) and any(v > 0 for v in d))
+
+
+def _moved_compare(design_finish: D) -> CompareDoc:
+    """Review UIP-2's list: Design (9/1 → 10/20/26) moves its finish, and PDR — a milestone —
+    sits in the row ABOVE Design's bar, so a link between them runs vertically off (or into)
+    Design's finish, right where its move arrow's head is drawn."""
+
+    def doc(source: str, finish: D) -> OnePagerDoc:
+        return OnePagerDoc(
+            source,
+            "S",
+            tuple(
+                keyed(
+                    [
+                        OnePagerItem("Alpha", "Kickoff", D(2026, 8, 15), D(2026, 8, 15), 2),
+                        OnePagerItem("Alpha", "PDR", D(2026, 11, 30), D(2026, 11, 30), 3),
+                        OnePagerItem("Alpha", "Design", D(2026, 9, 1), finish, 4),
+                        OnePagerItem("Alpha", "Fabrication", D(2026, 12, 10), D(2027, 4, 30), 5),
+                    ]
+                )
+            ),
+            (),
+            (),
+        )
+
+    return compare_onepager_docs(doc("prior.xlsx", D(2026, 10, 20)), doc("cur.xlsx", design_finish))
+
+
+#: (predecessor, successor, type): off Design's finish (FS / FF) and INTO it (FF / SF).
+UIP2 = [
+    ("Design", "PDR", "FS"),
+    ("Design", "PDR", "FF"),
+    ("PDR", "Design", "FF"),
+    ("PDR", "Design", "SF"),
+]
+
+
+def _uip2_layout(finish: D, pred: str, succ: str, kind: str) -> CompareLayout:
+    doc = _moved_compare(finish)
+    k = {r.name: r.key for r in doc.rows}
+    return build_compare_layout(doc, TODAY, "T", links=[Link(k[pred], k[succ], kind)])
+
+
+@pytest.mark.parametrize(("pred", "succ", "kind"), UIP2)
+def test_a_link_at_a_slipped_finish_never_covers_its_move_arrow_head(
+    pred: str, succ: str, kind: str
+) -> None:
+    """Review UIP-2: FS / FF leave a bar 2 pt inside its finish and the slip arrow's head spans
+    the last 1.8 pt of it — the link's vertical leg and its halo, painted above the items,
+    wiped 60 % of the red head off in all four themes. The router now takes the head as ink no
+    link may cover (and the .pptx paints the same points)."""
+    lay = _uip2_layout(D(2026, 11, 15), pred, succ, kind)
+    design = next(p for p in lay.items if p.name == "Design")
+    pdr = next(p for p in lay.items if p.name == "PDR")
+    assert design.status == SLIPPED and design.arrow_x0 is not None and pdr.row < design.row
+    assert len(lay.links) == 1 and lay.link_notes == []
+    assert _move_head_hits(lay) == []
+
+
+@pytest.mark.parametrize(("pred", "succ", "kind"), UIP2)
+def test_a_link_at_a_pulled_in_finish_never_covered_its_move_arrow_head(
+    pred: str, succ: str, kind: str
+) -> None:
+    """The review's control (a guard, green on the built tree too): a pull-in's head sits PAST
+    the new finish, pointing back, clear of the link's point inside it."""
+    lay = _uip2_layout(D(2026, 9, 30), pred, succ, kind)
+    assert next(p for p in lay.items if p.name == "Design").arrow_x0 is not None
+    assert len(lay.links) == 1 and _move_head_hits(lay) == []
+
+
+def test_mutation_without_the_move_arrow_keep_outs_a_vertical_leg_is_caught(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Teeth for the oracle AND the fix: the Compare slide stops handing the router its move
+    arrows' heads — the same checker names the VERTICAL leg over Design's head."""
+    from schedule_forensics.reports import onepager_compare as compare_mod
+
+    monkeypatch.setattr(compare_mod, "_keep_outs", lambda *_a, **_k: ())
+    hits = _move_head_hits(_uip2_layout(D(2026, 11, 15), "Design", "PDR", "FS"))
+    assert hits and all("a vertical leg covers" in h for h in hits), hits
+
+
+def test_no_link_covers_a_move_arrow_head_on_any_compare_slide(
+    compare_sweep: list[CompareLayout],
+) -> None:
+    """Every density of the sweep, crowded or not: a move arrow's head says which way a finish
+    moved, and no link's halo or head is ever drawn over one."""
+    assert sum(p.arrow_x0 is not None for lay in compare_sweep for p in lay.items) > 50
+    for lay in compare_sweep:
+        assert _move_head_hits(lay) == [], f"row {lay.row_h:.2f}"
+
+
 def test_mutation_a_naive_row_boundary_channel_is_caught_striking_the_move_arrow(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Replace the MEASURED band with the naive one — the row boundary, half a row below the
-    centre — and the same checker reports the leg through the slipped item's move arrow."""
+    centre — and the same checker reports the leg through the slipped item's move arrow.
+
+    Since review UIP-2 the arrow's HEAD is also ink no link may cover (the Compare slide hands
+    the router its move-arrow heads, ``_keep_outs``), a second, independent defense: under the
+    naive band alone the router refuses the leg over the head and routes it round the top of
+    the slide. So the mutant switches both off to show THIS checker still sees the leg."""
+    from schedule_forensics.reports import onepager_compare as compare_mod
 
     def naive(grid: Grid, j: int, xa: float, xb: float) -> tuple[float, float]:
         c = grid.rows[j] + grid.row_h / 2 if j >= 0 else grid.rows[0] - grid.row_h / 2
         return c - 0.01, c + 0.01
 
     monkeypatch.setattr(links_mod, "_free", naive)
+    monkeypatch.setattr(compare_mod, "_keep_outs", lambda *_a, **_k: ())
     hits = _leg_hits(_slipped_layout(), own_ends=False)
     assert hits and all("crosses a move arrow" in h for h in hits), hits
 

@@ -26,11 +26,12 @@ tree agreed on every point — that is what a passing §0 looks like. AUDIT-2026
 its numbers. If session 6's documents pull request has not merged yet, `main` is `51e66728` (#722, the reproducers only; 821
 commits, ADR 0536): continue from that pull request's head (branch `claude/gallant-newton-yh75tr`), as the resume line says.
 
-## A feature session is open beside the campaign (2026-09-29, ADR-0539 — WORK IN PROGRESS)
+## A feature pull request is open beside the campaign (2026-09-29, ADR-0539 — complete, awaiting the operator)
 
 The One-Pager C / D / E intake, operator-drawn logic links and LODESTAR (the two One-Pager pages as their own program)
-are on `claude/youthful-ritchie-fqsz9x` as ONE WIP commit + a draft pull request, stopped on the operator's word. To
-resume THAT work, follow HANDOFF.md's "Next — resume THIS work"; it does not change the audit's resume line below.
+are complete: PR #724 merged as `dd8b4cbf`; its last four commits (the LODESTAR hardening, the routing fixes, their
+installers and the ADR's third table) are draft PR #725 on `claude/youthful-ritchie-fqsz9x`, waiting on the operator.
+HANDOFF.md's top section lists the three questions it leaves for the operator. It does not change the audit's resume line below.
 
 ## The resume line (charter §16) — what the operator pastes to continue the audit
 

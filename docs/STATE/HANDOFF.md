@@ -1,4 +1,4 @@
-# Handoff — 2026-09-29 (a) (WORK IN PROGRESS — One-Pager: the intake reads C start · D finish · E complete, the operator draws the logic links that go to PowerPoint, and the two One-Pager pages ship on their own as LODESTAR — ADR-0539 · **v1.0.295**)
+# Handoff — 2026-09-29 (b) (One-Pager: the intake reads C start · D finish · E complete, the operator draws the logic links that go to PowerPoint, and the two One-Pager pages ship on their own as LODESTAR — reviewed three times, every finding re-reproduced, fixed and pinned — ADR-0539 · **v1.0.295**)
 
 > **A feature session, outside the AUDIT-2026-09-23 campaign.** The campaign's session 7 runs in parallel on
 > `claude/modest-cori-iit4zh` and holds **ADR-0538**; this session took **ADR-0539**. Whichever pull request merges
@@ -25,73 +25,85 @@
 - **T1 — A0923-MET-001:** /margin's erosion rate, zero-margin date, consumed % and corrective-action trigger are computed on a mixed basis when the target milestone is missing from some versions (undisclosed). Since #356 (2026-07-13, v1.0.33).
 - **T1 (data-gated) — A0923-IMP-002** single-block (no-lunch) calendars mis-measured (since #671, v1.0.257); **A0923-IMP-003** XER per-task calendars ignored with a false "Every computed date and float rides <cal>" statement (since #55). No committed file exercises either; an operator file could.
 
-STATUS (current) — **WORK IN PROGRESS, stopped deliberately** (the operator asked the session to stop before its token
-budget ran out and hand over). Branch **`claude/youthful-ritchie-fqsz9x`**, based on `main` @ **`0b45eb28`** (#723,
-session 6's documents, ADR-0537, v1.0.294). One WIP commit carries everything; a DRAFT pull request is open for it. Highest
-ADR on disk **0539**. Version **1.0.295** (bumped; the wheel and the nine installers are NOT rebuilt yet — see Next).
+STATUS (current) — **the ADR-0539 feature is COMPLETE; its last four commits wait on the OPERATOR in draft PR #725.**
+PR #724 was squash-merged by the operator as **`dd8b4cbf`** (2026-09-29 19:10Z) at head `21e99c76` — `main`'s tree is
+byte-identical to it — about a minute BEFORE its last four commits were pushed (the LODESTAR hardening, the routing
+fixes, the installers for them, and these documents). The operator chose (2026-09-29) a follow-up: those four commits,
+replayed unchanged onto `main` (tree `cb2c542d`, identical to the verified head `dd7297de`), are **draft PR #725** on
+branch **`claude/youthful-ritchie-fqsz9x`** — the operator marks it ready and merges; a session never does. Highest ADR on disk **0539** (ADR-0538 is
+held by AUDIT session 7 on `claude/modest-cori-iit4zh`). Version **1.0.295**; the wheel, the nine installers (MPXJ ref
+`163d1942`, tree `ce261eff` verified) and `lodestar/LODESTAR.pyz` (34 members) are rebuilt from the final source.
 QC-1 / QC-2 / QC-3 bind every session.
 
-## What this session did — ADR-0539 (the operator's three asks, 2026-09-29)
+## What ADR-0539 did (the operator's three asks, 2026-09-29)
 
-- **Intake — C start · D finish · E complete** (`reports/onepager.py`): the older C date · D status layout auto-detected
-  (Auto / C-D-E / older on both upload forms); the template ships Swimlane · Task · Start · Finish · Complete; MS Project's
-  pasted date forms read (a weekday CHECKED, a time dropped, "Sept", "Nov."); a typed TRUE / a checkbox (a BOOLEAN cell)
-  reads as TRUE (`read_xlsx_numbered(..., booleans_as_text=True)`, One-Pager only).
-- **Logic links** (`reports/onepager_links.py`, both pages, both .pptx): pick two items (click or the From / To selects),
-  FS default + SS / FF / SF; refusals by name (self, duplicate, LOOP naming the chain, 200 cap); routed orthogonally in the
-  measured free gap between rows, parallel tracks by DRAWN height, per-end attachment points, heads and tags reserved, a
-  crowding note only on genuinely dense slides; each link one named group in PowerPoint; links survive a re-uploaded list
-  and re-bind by identity when a name starts / stops repeating (never to another month's copy).
-- **LODESTAR** (`lodestar/LODESTAR.pyz`, 34 members, std-lib only, Python 3.10+, no AI): the two pages as their own
-  program, "Created by David Politte · david.j.politte@nasa.gov" on every page; `tools/lodestar/build_lodestar.py`
-  (deterministic; `--check`); launchers `.bat` (CRLF) / `.command` / `.sh`; README. New leaf modules `reports/tableset.py`,
-  `web/htmlkit.py`, `web/security.py`, `web/onepager_common.py`, `web/onepager_actions.py` (route logic shared by both
-  servers), `web/lodestar_shell.py`.
-- **Attacked twice.** A five-lens red team refuted PLAN v1 before the first edit (ADR-0539's first table). After the build,
-  four test writers (≈ 290 new tests, each red on the pristine tree, mutation-proven) and a four-lens review attacked it:
-  every finding was re-reproduced by the lead (red), fixed in a sandbox (green) and pinned — ADR-0539's second table
-  (INTAKE-1..8, LINKS-1..6, LS-01..13, the boolean TRUE, a header-row regression, a 120-char name scrolling the page).
-- **Measured at the WIP commit** (Python 3.11): static gate green (`ruff check .` / `ruff format --check .` at the PINNED
-  ruff 0.16.9 — the container's own ruff is 0.15.8, do not trust it; `mypy src/` 177 files; `bandit` exit 0; `node --check`
-  per file); `build_lodestar.py --check` current; the targeted battery (every One-Pager / xlsx / export / LODESTAR / split
-  contract / guards / air-gap / CSP / state-doc / audit IMP+DOC test) **1099 passed, 2 skipped, 24 xfailed** before these
-  state documents were written (its only 4 failures were the state-doc drift guards these documents answer). Legacy-layout
-  fuzz 0 of 2,000 differ from the older reading; current-layout fuzz 995 of 1,000 read current, 0 rows lost; erased
-  heads / tags 0 of 600 fuzzed chains (was 315). **NOT run: the full suite, `-m parity`, the wheel/installer lockstep.**
+- **Intake — C start · D finish · E complete** (`reports/onepager.py`): the older C date · D status layout
+  auto-detected (Auto / C-D-E / older on both upload forms); MS Project's pasted date forms; a typed TRUE / a checkbox
+  reads as TRUE; the word "Complete" in E (the operator's real lists) reads complete.
+- **Logic links** (`reports/onepager_links.py`, both pages, both .pptx): FS default + SS / FF / SF, picked on the slide or
+  in the selects; refusals by name (self, duplicate, LOOP naming the chain, 200 cap); routed so that NO drawn link
+  erases another's head or tag or a Compare move arrow — a collision no route avoids is NOT drawn and is named with its
+  cause; each link one named group in PowerPoint; links survive a re-uploaded list (identity refreshed every upload,
+  never re-bound to another month's copy).
+- **LODESTAR** (`lodestar/LODESTAR.pyz`, std-lib only, Python 3.10+, no AI): the two pages as their own program, credited
+  "Created by David Politte · david.j.politte@nasa.gov" on every page (the Quit page too); hardened std-lib server.
 
-## Next — resume THIS work (in order)
+## What the resumed session did (this handoff's session)
 
-1. §0: `git fetch --prune origin`; if `main` moved (AUDIT session 7 on `claude/modest-cori-iit4zh` holds **ADR-0538**),
-   `git merge origin/main` (never rebase) and keep BOTH sessions' state-doc sections (move, never delete).
-2. **Re-run the UI + docs review lens** (it was stopped unfinished): the Polaris² pages in all four themes at 1440 / 390 px
-   after an upload + links, DESIGN-SYSTEM rules, route behaviour unchanged vs `0b45eb28`, and every doc claim (USER-GUIDE
-   12c + LODESTAR, README 12, DESIGN-SYSTEM §7c, CLAUDE.md, ADR-0539, lodestar/README.md). The intake / links / LODESTAR
-   lenses finished; their skeptic verifiers only partly ran (INTAKE-1..8, LINKS-1 verified; all were independently
-   re-reproduced by the lead anyway).
-3. After the LAST `src/` edit: `python tools/lodestar/build_lodestar.py`, then `pip install build && python -m build
-   --wheel --outdir dist/wheel && python tools/installer/build_installers.py dist/wheel/schedule_forensics-*.whl`.
-4. The full gate (`full-gate` skill) incl. the FULL suite and `-m parity`; then finish the session-close ritual (this
-   section rewritten with the final numbers, SESSION-LOG, NEXT-SESSION-PROMPT), mark the PR ready only if the operator says.
-5. Follow-up (out of scope, record it): the pre-commit hook cannot see into a shebang-prefixed ZIP (`.pyz`) — its
-   container check keys on the first four bytes; the LODESTAR lockstep test is the guard until the hook learns EOCD lookup.
-6. **Answered by the operator (2026-09-29) — do not ask again:** column E of the real lists holds the WORD
-   "Complete" (blank when not complete) — read today as complete / not complete with nothing named (verified on
-   299011a0: "Complete", "complete", " Complete ", "COMPLETE", "Completed" → complete; blank → not). How
-   LODESTAR is released or shared is OUT of scope for now (operator: "Don't concern yourself with how the software
-   is released at this time") — do not raise NPR 2210.1 again.
+The first session stopped with the UI + docs review lens unfinished and the skeptic checks of LINKS-2..6 / LS-01..13
+never run. The resumed session ran five review lenses (both Polaris² pages in chromium in all four views at 1440 / 390
+px; the LODESTAR frame + DESIGN-SYSTEM; every One-Pager route against `0b45eb28` in a second process; two doc-claim
+lenses) and three skeptics (each prior fix reverted to prove its pin, then fuzzed). **Every finding was re-reproduced
+by the lead RED on a clean worktree of the prior head, fixed, and mutation-proven** — ADR-0539's THIRD table. The ones
+that mattered: a daylight sticky header hid every link action's result (UIP-1); LINKS-1/2/4/6 were half-fixed (short
+bars, vertical legs, a frozen identity that re-bound a link to another month's copy, a note blaming a window never
+set); "0 of 600" was 35 heads / 32 tags lost on an independent fuzz, now 0; LODESTAR's pre-scan could be walked past by
+11 multipart shapes; its std-lib replied bare to malformed request lines; an over-20 MB upload showed raw JSON; the
+Quit page carried no marking; `_isolate` kept any directory under the install prefix; "behaviour unchanged" was false
+for the .pptx file name and the Word template heading; the docs said a typed 100% draws a check (it is the number 1).
+CI's first full-suite run of the WIP commit found one more: `onepager_links.js` was in no axis-caption bucket.
 
-The AUDIT-2026-09-23 campaign's own Next is unchanged: session 6's (now the top section of `HANDOFF-ARCHIVE.md`) unless
-session 7's handoff has landed on `main`.
+**Measured at close** (Python 3.11, clean worktree of the final commit): static gate green at the PINNED ruff 0.16.9 (`ruff check .`, `ruff format --check .` 1,382 files), `mypy src/` 177 files, `bandit` exit 0, `node --check` per file; `build_lodestar.py --check` current (653,788 bytes, 34 members); `tests/installer` 68 passed; the One-Pager + LODESTAR suites 767 passed / 4 skipped (LibreOffice Impress) on the committed tree; the doc / state / audit guards 18 passed / 36 xfailed (no XPASS — A0923-IMP-005 and A0923-DOC-003 still strict-xfail). The FULL suite on a clean worktree of the final source (Python 3.11, playwright installed): **6,526 passed, 9 skipped, 83 xfailed, exit 0**; **`-m parity` 271 passed, exit 0**. CI's first run of #725 found one version-dependent mutation twin (SLA-3's premise is the interpreter's std-lib — fixed to probe it, 4fa61813). `main` after #724 (`dd8b4cbf`, run #2014): green in every job that had finished.
+
+**Decisions recorded for the operator (ASK, do not assume):** (1) the Excel exports keep the shared writer's FIXED CUI
+print header whatever the marking switch says (pre-existing, Polaris²-wide; over-marking, never under) — thread the
+marking into the Excel header? (2) the slide's own SS / FF / SF tag renders 7.8 px at 1440 (the slide's point size) —
+is a scaled slide preview exempt from DESIGN-SYSTEM §1's 8 px floor? (3) a link collision no route can avoid is now
+refused and named rather than drawn (37 of 7,680 / 132 of 7,902 links on the reviewers' DENSE generator; none on a
+slide of ≤ 6 items and ≤ 3 links).
+
+**UNVERIFIED, stated:** INTAKE-4, INTAKE-8, LINKS-3, LS-02 — numbered by the first session, recorded nowhere, not
+re-reproducible; the first session's built-tree figures (never committed); PowerPoint itself; Windows / macOS
+launching (the README's macOS first-open wording included); Firefox / WebKit; a headed browser's favicon request
+after Quit.
+
+## Next
+
+1. The operator reviews draft PR #725, marks it ready and squash-merges; then `git fetch --prune origin` and restart
+   the branch per CLAUDE.md. Until #725 merges, `main` carries #724's head: the review's LODESTAR and routing findings
+   are fixed on #725, not on `main`. If AUDIT session 7 (ADR-0538) lands first, the second to merge merges `main`, keeps BOTH
+   state-doc sections (move, never delete) and REBUILDS the wheel, the nine installers and LODESTAR.
+2. The three operator questions above.
+3. Follow-ups (out of scope, recorded in ADR-0539): the NEW / REMOVED badge text is wider than its badge (UIP-3,
+   pre-existing); a 500 on a Polaris² route carries no CSP / nosniff (ROUTES-5, the app-wide middleware, pre-existing);
+   an empty workbook says "1 row(s) skipped" (pre-existing); reading Excel's percent format; the pre-commit hook cannot
+   see into a shebang-prefixed ZIP (`.pyz`) — the LODESTAR lockstep test is the guard until then.
+4. **Answered by the operator (2026-09-29) — do not ask again:** column E of the real lists holds the WORD "Complete";
+   how LODESTAR is released or shared is OUT of scope — do not raise NPR 2210.1.
+
+The AUDIT-2026-09-23 campaign's own Next is unchanged: session 6's (now the top section of `HANDOFF-ARCHIVE.md`)
+unless session 7's handoff has landed on `main`.
 
 ## Traps this session paid for, by name
 
-**An editable install shadows a worktree** — `python` imports the MAIN checkout's `src` unless `PYTHONPATH=src`; tell
-every agent. · **The container's ruff is not CI's** (0.15.8 vs the pinned 0.16.x). · **`pkill -f` / `pgrep -f` in a kill
-loop matches your own shell** (exit 144, again) — list PIDs, kill by PID. · **An unquoted heredoc runs backticks** — a
-Markdown table with `names` in backticks became commands; quote the delimiter (`<<'EOF'`). · **Editing a carried file after
-the build makes LODESTAR stale** — the lockstep caught a comment edit; rebuild last. · **A strict xfail that XPASSes is the
-fix working** — remove the marker in the same change. · **Bandit B608 reads an HTML `<select … id=…From ` as SQL** — the
-repo's `# nosec B608 (HTML, not SQL)` idiom on the closing line.
+**An editable install shadows a worktree** — `PYTHONPATH=<tree>/src`. · **The container's ruff is not CI's** (0.15.8 vs
+the pinned 0.16.x). · **A targeted battery is not the suite** — CI's first full run found a ledger the battery never
+read. · **A shallow clone refuses the installer build** — `SF_MPXJ_REF=163d1942…` (verified tree-identical); and a
+`--depth=1` fetch of that ref makes it a graft boundary, so fetch `--depth=2`. · **The container's git identity env
+overrides git config** — commit with `GIT_AUTHOR_*` / `GIT_COMMITTER_*` = Claude <noreply@anthropic.com> for the stop
+hook. · **Build the installers and the .pyz from a CLEAN worktree of the commit** while agents edit the tree, or they
+embed uncommitted bytes. · **Every push cancels CI's run in flight** (`cancel-in-progress`) — batch the pushes.
+· **A strict xfail that XPASSes is the fix working** — remove the marker in the same change.
 
 # (prior) handoffs — archived
 

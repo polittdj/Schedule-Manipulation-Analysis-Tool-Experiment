@@ -16,6 +16,8 @@ import random
 import zipfile
 from collections.abc import Sequence
 
+import pytest
+
 import schedule_forensics.reports.onepager as op
 from schedule_forensics.reports.onepager import OnePagerItem, build_layout, keyed
 from schedule_forensics.reports.onepager_links import (
@@ -297,22 +299,61 @@ def _head_points(head: list[tuple[float, float]]) -> list[tuple[float, float]]:
     ]
 
 
-def test_links_1_a_chain_through_a_milestone_keeps_the_head_into_the_milestone() -> None:
+@pytest.mark.parametrize(
+    ("wide", "gate_finish"),
+    [
+        (False, D(2026, 3, 1)),
+        (True, D(2026, 3, 1)),
+        (True, D(2026, 3, 2)),
+        (True, D(2026, 3, 3)),
+        (True, D(2026, 3, 4)),
+    ],
+    ids=["milestone", "milestone-18-months", "1-day-bar", "2-day-bar", "3-day-bar"],
+)
+def test_links_1_a_chain_through_a_milestone_keeps_the_head_into_the_milestone(
+    wide: bool, gate_finish: dt.date
+) -> None:
     """The review's repro: Alpha → Gate → Bravo, all FS in one lane. The link out of Gate used
     to start exactly where the head INTO Gate sat, and its halo erased the head — the slide read
-    as one line from Alpha to Bravo. Each end of an item now takes its own attachment point."""
-    lay = _layout(
-        [
-            ("Eng", "Alpha", D(2026, 1, 5), D(2026, 1, 31)),
-            ("Eng", "Gate", D(2026, 3, 1), D(2026, 3, 1)),
-            ("Eng", "Bravo", D(2026, 4, 1), D(2026, 5, 31)),
-        ],
-        [("Alpha", "Gate", "FS"), ("Gate", "Bravo", "FS")],
-    )
+    as one line from Alpha to Bravo. Each end of an item now takes its own attachment point.
+
+    Review SKL-2: the fix gave a milestone's start and finish ONE point list but a bar's two
+    ends two — and on an 18-month slide (a far item in another lane) a 1-3 day bar's two ends
+    sit closer than a slot, so the link out of its finish erased 46 % of the head into its start
+    on a slide that said nothing. The points on one side of an item are now one list, whichever
+    end takes them; a bar too short for two takes the second link on its other side."""
+    rows = [
+        ("Eng", "Alpha", D(2026, 1, 5), D(2026, 1, 31)),
+        ("Eng", "Gate", D(2026, 3, 1), gate_finish),
+        ("Eng", "Bravo", D(2026, 4, 1), D(2026, 5, 31)),
+    ]
+    if wide:
+        rows.append(("Ops", "Far end", D(2027, 6, 1), D(2027, 6, 1)))
+    lay = _layout(rows, [("Alpha", "Gate", "FS"), ("Gate", "Bravo", "FS")])
     into_gate, out_of_gate = lay.links
     assert _erased(_head_points(into_gate.head), [out_of_gate]) == 0.0
-    assert abs(into_gate.head[0][0] - out_of_gate.shaft[0][0]) >= 2.0  # two points, not one
+    gate_y = next(p.y for p in lay.items if p.name == "Gate")
+    (tip_x, tip_y), (out_x, out_y) = into_gate.head[0], out_of_gate.shaft[0]
+    same_side = (tip_y > gate_y) == (out_y > gate_y)
+    assert not same_side or abs(tip_x - out_x) >= 2.0  # two points, not one
     assert not lay.link_notes  # nothing undrawn, nothing crowded
+
+
+def test_links_1_a_three_item_chain_never_loses_the_head_into_its_middle_item() -> None:
+    """Review DOC-LS-02: A, B, C in one lane, C → B (SF) then B → A (FS). The FS link left B's
+    finish right where the SF head entered it — 100 % of that head under its halo, on a 3-item
+    slide whose only disclosure was "At this density … Split the list"."""
+    lay = _layout(
+        [
+            ("Eng", "A", D(2026, 8, 4), D(2026, 9, 19)),
+            ("Eng", "B", D(2026, 1, 27), D(2026, 3, 8)),
+            ("Eng", "C", D(2026, 8, 25), D(2026, 11, 18)),
+        ],
+        [("C", "B", "SF"), ("B", "A", "FS")],
+    )
+    first, second = lay.links
+    assert _erased(_head_points(first.head), [second]) == 0.0
+    assert lay.link_notes == []
 
 
 def test_links_1_a_bar_taking_fs_in_and_sending_ss_out_of_its_start_keeps_both() -> None:
@@ -344,6 +385,41 @@ def test_links_2_a_type_tag_is_never_erased_by_a_later_link_in_its_channel() -> 
         (x0 + width * i / 8, ss.tag_y - ss.tag_pt * 0.7 * j / 8) for i in range(9) for j in range(9)
     ]
     assert ss.tag == "SS" and _erased(ink, [ff]) == 0.0
+
+
+def test_links_2_a_later_links_vertical_leg_never_erases_a_type_tag() -> None:
+    """Review SKL-1: the LINKS-2 fix reserved a tag against later HORIZONTAL legs only. Through
+    the page's own actions — Item 28 → Item 37 (SS), then Item 30 (a milestone one day before
+    Item 37) → Item 9 (FS): the FS link's first leg rose straight through the SS tag and its
+    halo erased 22 % of it, on a roomy slide (row 13 pt) that said nothing."""
+    from schedule_forensics.web import onepager_actions as act
+    from schedule_forensics.web.onepager import linkable_items, onepager_layout
+    from schedule_forensics.web.state import SessionState
+
+    rows = (
+        ("Swimlane", "Task", "Start", "Finish", "Complete"),
+        ("Lane 4", "Item 9", "6/13/2027", "8/27/2027", ""),
+        ("Lane 1", "Item 26", "5/31/2026", "7/28/2026", ""),
+        ("Lane 3", "Item 28", "4/1/2027", "8/28/2027", ""),
+        ("Lane 0", "Item 30", "2/15/2027", "2/15/2027", ""),
+        ("Lane 1", "Item 37", "2/16/2027", "2/16/2027", ""),
+    )
+    st = SessionState()
+    act.load_list(st, "l.xlsx", twin_xlsx(rows), max_bytes=10 * 1024 * 1024)
+    key = {label.split(" · ")[1].split(" (")[0]: k for k, label, _r in linkable_items(st)}
+    for a, b, kind in (("Item 28", "Item 37", "SS"), ("Item 30", "Item 9", "FS")):
+        act.edit_links(st, "onepager", "add", key[a], key[b], kind)
+    lay = onepager_layout(st, D(2026, 6, 1))
+    assert lay is not None and lay.row_h == 13.0
+    ss, fs = lay.links
+    width = len(ss.tag) * ss.tag_pt * 0.62
+    x0 = ss.tag_x if ss.tag_anchor == "start" else ss.tag_x - width
+    ink = [
+        (x0 + width * i / 8, ss.tag_y - ss.tag_pt * 0.7 * j / 8) for i in range(9) for j in range(9)
+    ]
+    assert ss.tag == "SS" and _erased(ink, [fs]) == 0.0
+    assert _erased(_head_points(ss.head), [fs]) == 0.0
+    assert lay.link_notes == []
 
 
 def _idents(items: Sequence[OnePagerItem]) -> dict[str, tuple[str, ...]]:

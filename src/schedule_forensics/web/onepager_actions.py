@@ -26,12 +26,13 @@ from schedule_forensics.reports.onepager import (
     START_FINISH,
     OnePagerDoc,
     Window,
+    item_label,
     layout_notes,
     onepager_tableset,
     parse_date,
     parse_numbered_workbook,
 )
-from schedule_forensics.reports.onepager_compare import compare_tableset
+from schedule_forensics.reports.onepager_compare import compare_tableset, row_label
 from schedule_forensics.reports.onepager_links import (
     Link,
     PlacedLink,
@@ -134,8 +135,9 @@ def load_list(
         return
     st.onepager = parsed
     st.onepager_title = ""
-    # a link whose item's key changed form (its name started or stopped repeating) finds it again
-    st.onepager_links = rebind(st.onepager_links, link_idents(st))
+    # a link whose item's key changed form (its name started or stopped repeating) finds it
+    # again, and every link takes its items' identity and label as they are NOW
+    st.onepager_links = rebind(st.onepager_links, link_idents(st), _labels(st))
     if not parsed.items:
         st.onepager_msg = f"No usable rows in {parsed.source} — {_why_empty(parsed)}"
         st.onepager_is_error = True
@@ -143,6 +145,17 @@ def load_list(
     skipped = f"; {len(parsed.problems)} row(s) skipped" if parsed.problems else ""
     st.onepager_msg = f"Loaded {len(parsed.items)} item(s) from {parsed.source}{skipped}."
     st.onepager_is_error = bool(parsed.problems)
+
+
+def _labels(st: OnePagerSession) -> dict[str, str]:
+    """Every item of the list by key -> ``swimlane · item (date)``, as a link names it."""
+    return {it.key: item_label(it) for it in st.onepager.items} if st.onepager else {}
+
+
+def _compare_labels(st: OnePagerSession) -> dict[str, str]:
+    """Every compared row with a CURRENT side by key -> how a Compare link names it."""
+    doc = onepager_compare_doc(st)
+    return {r.key: row_label(r) for r in doc.rows if r.key} if doc is not None else {}
 
 
 def set_title(st: OnePagerSession, title: str) -> None:
@@ -203,7 +216,9 @@ def load_compare(
         st.onepager_prior = parsed
     else:
         st.onepager_current = parsed
-        st.onepager_compare_links = rebind(st.onepager_compare_links, compare_link_idents(st))
+        st.onepager_compare_links = rebind(
+            st.onepager_compare_links, compare_link_idents(st), _compare_labels(st)
+        )
     st.onepager_compare_title = ""
     if not parsed.items:
         st.onepager_compare_msg = (
@@ -221,7 +236,9 @@ def load_compare(
 
 def swap_compare(st: OnePagerSession) -> None:
     st.onepager_prior, st.onepager_current = st.onepager_current, st.onepager_prior
-    st.onepager_compare_links = rebind(st.onepager_compare_links, compare_link_idents(st))
+    st.onepager_compare_links = rebind(
+        st.onepager_compare_links, compare_link_idents(st), _compare_labels(st)
+    )
     st.onepager_compare_title = ""
     st.onepager_compare_msg = "Prior and current swapped."
     st.onepager_compare_is_error = False
@@ -394,8 +411,10 @@ def onepager_workbook(st: OnePagerSession, today: dt.date) -> TableSet | str:
         return "load a one-pager list first — there is nothing to export"
     lay = onepager_layout(st, today)
     ts = onepager_tableset(doc, st.onepager_window, omitted, extra_notes=layout_notes(doc))
+    # no slide at all: the window hid every item — or the list has none to show (review SKL-5)
+    why = _NO_SLIDE if st.onepager is not None and st.onepager.items else _NO_ITEMS
     return _with_links(
-        ts, st.onepager_links, lay.links if lay else [], lay.link_notes if lay else [_NO_SLIDE]
+        ts, st.onepager_links, lay.links if lay else [], lay.link_notes if lay else [why]
     )
 
 
@@ -406,16 +425,21 @@ def compare_workbook(st: OnePagerSession, today: dt.date) -> TableSet | str:
         return "load a PRIOR and a CURRENT one-pager list first — nothing to export"
     lay = onepager_compare_layout(st, today)
     ts = compare_tableset(doc, st.onepager_compare_window, omitted)
+    full = onepager_compare_doc(st)
+    why = _NO_SLIDE if full is not None and full.rows else _NO_ROWS
     return _with_links(
         ts,
         st.onepager_compare_links,
         lay.links if lay else [],
-        lay.link_notes if lay else [_NO_SLIDE],
+        lay.link_notes if lay else [why],
     )
 
 
-#: The one note when there is no slide at all to draw a link on.
+#: The one note when there is no slide at all to draw a link on, by its cause: a date window
+#: that leaves no item on it, or a list (both Compare lists) with no usable item at all.
 _NO_SLIDE = "No item of the list falls inside the date window, so no logic link is drawn."
+_NO_ITEMS = "The list has no usable item, so no logic link is drawn."
+_NO_ROWS = "Neither list has a usable item, so no logic link is drawn."
 
 
 def _with_links(

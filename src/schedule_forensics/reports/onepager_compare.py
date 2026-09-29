@@ -1248,8 +1248,11 @@ def _compare_logic(
             anchors[p.key] = Anchor(
                 p.x0, p.x1, p.y, p.milestone, g, row.current_start, row.current_finish
             )
-    grid = Grid(centres, bands, LANES_Y0, lanes_y1, LANES_Y1, row_h, bar_h, ms, label_pt, window)
     names = {r.key: row_label(r) for r in doc.rows if r.key}
+    keep = _keep_outs(placed, names)
+    grid = Grid(
+        centres, bands, LANES_Y0, lanes_y1, LANES_Y1, row_h, bar_h, ms, label_pt, window, keep
+    )
     missing = dict(absent or {})
     for r in doc.rows:
         if r.key and r.key not in anchors:
@@ -1258,6 +1261,30 @@ def _compare_logic(
     if crowded:
         notes.append(CROWDED_NOTE)
     return drawn, notes
+
+
+def _keep_outs(
+    placed: Sequence[PlacedCompare], names: Mapping[str, str]
+) -> tuple[tuple[Box, str], ...]:
+    """Every move arrow's HEAD — the glyph that says which way a finish moved — as ink no logic
+    link may cover, with the words a note names it by (review UIP-2: a link leaving a slipped
+    finish ran its vertical leg, painted above the items, through the head). The box is the head
+    as the page paints it and the .pptx places it — its tip on the new finish, ``ARROW_HEAD``
+    back toward the old one and as tall; the router keeps every halo out of it."""
+    out = []
+    for p in placed:
+        if p.arrow_x0 is None or p.arrow_x1 is None:
+            continue
+        back = p.arrow_x1 - (ARROW_HEAD if p.arrow_x1 >= p.arrow_x0 else -ARROW_HEAD)
+        box = Box(
+            min(p.arrow_x1, back),
+            max(p.arrow_x1, back),
+            p.arrow_y - ARROW_HEAD / 2,
+            p.arrow_y + ARROW_HEAD / 2,
+        )
+        word = "slip" if p.status == SLIPPED else "pull-in"
+        out.append((box, f"the {word} arrow of “{names.get(p.key) or p.name}”"))
+    return tuple(out)
 
 
 def _summary_box(s: LaneSummary, lane: int, y0: float, y1: float) -> SummaryBox:

@@ -392,30 +392,118 @@ def test_mutation_header_check_goes_red_when_a_header_is_dropped(
     assert _security_problems(refused) == ["content-security-policy"]
 
 
-@pytest.mark.parametrize(
+#: LODESTAR's own 405 body — what tells its refusal from the standard library's 501.
+_OWN_405 = b'{"error": "method not allowed"}'
+#: Every kind of reply the standard library writes by itself, and the methods LODESTAR refuses:
+#: ``(request head, the status or statuses it may answer)``. Review SLA-3 (2026-09-29) added the
+#: request lines refused BEFORE a version is read (a bare reply: no status line, no header);
+#: review SLA-4 added PATCH / OPTIONS (LODESTAR's own 405) and the 414 / 431 the ADR names.
+_STDLIB_REPLIES = pytest.mark.parametrize(
     ("head", "status"),
     [
-        ("PUT /onepager HTTP/1.1", 405),
-        ("DELETE /onepager HTTP/1.1", 405),
-        ("FOO /onepager HTTP/1.1", 501),
-        ("GET /onepager HTTP/1.1\r\nX-Long: " + "a" * 70_000, 431),
+        pytest.param("PUT /onepager HTTP/1.1", 405, id="PUT"),
+        pytest.param("DELETE /onepager HTTP/1.1", 405, id="DELETE"),
+        pytest.param("PATCH /onepager HTTP/1.1", 405, id="PATCH"),
+        pytest.param("OPTIONS /onepager HTTP/1.1", 405, id="OPTIONS"),
+        pytest.param("FOO /onepager HTTP/1.1", 501, id="unknown-method"),
+        pytest.param("GET /onepager HTTP/1.1\r\nX-Long: " + "a" * 70_000, 431, id="long-header"),
+        pytest.param(
+            "GET /onepager HTTP/1.1\r\n" + "\r\n".join(f"X-H{i}: v" for i in range(200)),
+            431,
+            id="200-headers",
+        ),
+        pytest.param("GET /" + "a" * 70_000 + " HTTP/1.1", 414, id="70KB-URI"),
+        pytest.param("GET /onepager HTTP/2.0", 505, id="HTTP/2.0"),
+        pytest.param("GET /onepager HTTP/1.x", 400, id="bad-version"),
+        pytest.param("GARBAGE", 400, id="one-word"),
+        pytest.param("POST /onepager", 400, id="two-word-POST"),
+        # an HTTP/0.9 GET: Python 3.10 to 3.12 still read its header lines (the Host is there: the
+        # page, 200); 3.13 reads none (no Host: LODESTAR's own 400) — either, never bare
+        pytest.param("GET /onepager", (200, 400), id="two-word-GET"),
     ],
-    ids=["PUT", "DELETE", "unknown-method", "long-header"],
 )
+
+
+def _stdlib_reply_problems(port: int, head: str, status: int | tuple[int, ...]) -> list[str]:
+    """What is wrong with the reply to ``head``: not ONE reply with the expected status, a 405
+    that is not LODESTAR's own, or a hardening header missing."""
+    raw = raw_exchange(port, f"{head}\r\nHost: 127.0.0.1:{port}\r\n\r\n".encode(), timeout=5)
+    if not raw:
+        return ["no reply"]
+    got = _replies(raw)
+    want = status if isinstance(status, tuple) else (status,)
+    if len(got) != 1 or got[0] not in want:
+        return [f"replies {got} (a bare reply has no status line), wanted one of {want}"]
+    fields, _sep, body = raw.partition(b"\r\n\r\n")
+    problems = _security_problems_in(fields.decode("latin-1").lower())
+    if got[0] == 405 and body != _OWN_405:
+        problems.append(f"not LODESTAR's own 405: {body[:60]!r}")
+    return problems
+
+
+@_STDLIB_REPLIES
 def test_responses_http_server_writes_itself_carry_the_security_headers(
-    live: Live, head: str, status: int
+    live: Live, head: str, status: int | tuple[int, ...]
 ) -> None:
     """Every refusal is hardened like every other response — the ones the standard library
-    writes by itself (an unknown method, an over-long header line) too (review LS-06: they
-    carried no CSP / nosniff / frame-deny); PUT and DELETE are LODESTAR's own 405."""
-    raw = raw_exchange(
-        live.port, f"{head}\r\nHost: 127.0.0.1:{live.port}\r\n\r\n".encode(), timeout=5
-    )
-    assert raw is not None
-    assert _replies(raw) == [status], "not the refusal this case is about"
-    fields = raw.split(b"\r\n\r\n", 1)[0].decode("latin-1").lower()
-    for name in ("content-security-policy", "x-content-type-options", "x-frame-options"):
-        assert f"\r\n{name}:" in fields, name
+    writes by itself (an unknown method, an over-long header line, too many header lines, a
+    70 KB URI) too (review LS-06: they carried no CSP / nosniff / frame-deny), and so is a request
+    line refused before its version is read (review SLA-3: a bare reply, no status line at all);
+    PUT, DELETE, PATCH and OPTIONS are LODESTAR's own 405 (review SLA-4)."""
+    assert _stdlib_reply_problems(live.port, head, status) == []
+
+
+def _stdlib_writes_bare_replies() -> bool:
+    """Whether THIS interpreter's own ``http.server``, left at its default (``HTTP/0.9`` until a
+    version is read), answers a malformed request line with no status line at all — review
+    SLA-3's premise. Measured true on CPython 3.10-3.13.12; CI's ``test (3.13)`` (setup-python's
+    latest 3.13, 2026-09-29) answered with a status line, so the premise is the interpreter's,
+    and is probed here rather than assumed."""
+
+    class _Plain(http.server.BaseHTTPRequestHandler):
+        def log_message(self, format: str, *args: object) -> None:
+            return None
+
+    plain = http.server.HTTPServer(("127.0.0.1", 0), _Plain)
+    thread = threading.Thread(target=plain.serve_forever, kwargs={"poll_interval": 0.05})
+    thread.daemon = True
+    thread.start()
+    try:
+        raw = raw_exchange(int(plain.server_port), b"GARBAGE\r\n\r\n", timeout=5)
+    finally:
+        plain.shutdown()
+        plain.server_close()
+        thread.join(timeout=10)
+    return not (raw or b"").startswith(b"HTTP/")
+
+
+def test_mutation_before_a_version_is_read_the_stdlib_reply_is_bare(
+    live: Live, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """MUTATION (review SLA-3): the standard library's default (``HTTP/0.9``) back. Where this
+    interpreter's own ``http.server`` still writes a bare reply before a version is read, the same
+    check sees a reply with no status line for a malformed request line and an HTTP/2.0 one;
+    where it no longer does, reverting the fix changes nothing and the reply must still be
+    complete (both branches assert — neither is skipped)."""
+    bare = _stdlib_writes_bare_replies()
+    monkeypatch.setattr(_H, "default_request_version", "HTTP/0.9")
+    for head, status in (("GARBAGE", 400), ("GET /onepager HTTP/2.0", 505)):
+        problems = _stdlib_reply_problems(live.port, head, status)
+        if bare:
+            assert problems != [], head
+        else:
+            assert problems == [], (head, problems)
+
+
+def test_mutation_without_patch_and_options_handlers_they_are_the_stdlib_501(
+    live: Live, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """MUTATION (review SLA-4): ``do_PATCH`` / ``do_OPTIONS`` deleted — the same check sees the
+    standard library's 501 where LODESTAR's own 405 belongs."""
+    monkeypatch.delattr(_H, "do_PATCH")
+    monkeypatch.delattr(_H, "do_OPTIONS")
+    for head in ("PATCH /onepager HTTP/1.1", "OPTIONS /onepager HTTP/1.1"):
+        assert _stdlib_reply_problems(live.port, head, 405) != [], head
 
 
 # ── the gates, in order: Host → Transfer-Encoding → cross-site ────────────────────────────────
@@ -584,11 +672,29 @@ def _declare_too_big(port: int, path: str, size: int, *, timeout: float) -> byte
     return raw_exchange(port, head.encode(), timeout=timeout)
 
 
+#: The upload routes' BODY cap, typed here (not read from the server): the 20 MB FILE cap plus a
+#: 64 KB allowance for the multipart framing around the file (review UILD-4, 2026-09-29).
+_UPLOAD_BODY_CAP = 20 * 1024 * 1024 + 64 * 1024
+#: Each upload route and the page it belongs to.
+_UPLOAD_ROUTES = pytest.mark.parametrize(
+    ("route", "page", "fields"),
+    [
+        ("/onepager/upload", "/onepager", {}),
+        ("/onepager-compare/upload", "/onepager-compare", {"slot": "current"}),
+    ],
+    ids=["timeline", "compare"],
+)
+
+
+# Re-derived 2026-09-29 (review UILD-4): the two upload routes' cap was the FILE cap, so the
+# multipart framing around a file just over 20 MB tripped it and ``load_list``'s named refusal
+# could never be reached; their cap is now the BODY cap (the file cap + 64 KB of framing). Size
+# before bytes is unchanged — a declared length past THAT cap is still refused unread.
 @pytest.mark.parametrize(
     ("path", "cap"),
     [
-        ("/onepager/upload", MAX_UPLOAD_BYTES),
-        ("/onepager-compare/upload", MAX_UPLOAD_BYTES),
+        ("/onepager/upload", _UPLOAD_BODY_CAP),
+        ("/onepager-compare/upload", _UPLOAD_BODY_CAP),
         ("/onepager/title", MAX_FORM_BYTES),
     ],
 )
@@ -598,9 +704,71 @@ def test_an_oversized_declared_body_is_refused_before_a_byte_is_read(
     """Size before bytes: a declared length over the cap is answered 413 at once — the body is
     never sent and the server does not wait for it (a 3 s socket timeout would catch a wait)."""
     assert MAX_UPLOAD_BYTES == 20 * 1024 * 1024
+    assert server_mod.UPLOAD_BODY_CAP == _UPLOAD_BODY_CAP
     got = _declare_too_big(live.port, path, cap + 1, timeout=3)
     assert got is not None, "the server waited for a body it should have refused unread"
     assert got.startswith(b"HTTP/1.0 413"), got[:60]
+
+
+@_UPLOAD_ROUTES
+def test_a_list_just_over_the_cap_is_refused_by_name_on_its_page(
+    live: Live, route: str, page: str, fields: dict[str, str]
+) -> None:
+    """Review UILD-4: a file of 20 MB + 1 byte, sent the way the page's own form sends it,
+    reaches the route and comes back to ITS page (303) with the page's own named refusal —
+    never a raw ``{"error": …}`` document outside the frame. Nothing is loaded."""
+    body, ctype = multipart(fields, "Big list.xlsx", b"\0" * (MAX_UPLOAD_BYTES + 1))
+    got = request(
+        live.port, "POST", route, body=body, headers=[("Content-Type", ctype)], timeout=60
+    )
+    assert (got.status, got.headers.get("location")) == (303, page), got.body[:120]
+    shown = request(live.port, "GET", page).text
+    assert "List not loaded — file exceeds the 20 MB cap." in shown
+    assert live.state.onepager is None and live.state.onepager_current is None
+
+
+def _too_large_page(live: Live, route: str) -> tuple[str, str]:
+    """``(status-and-headers, page)`` of an upload whose declared body is past the body cap."""
+    got = _declare_too_big(live.port, route, _UPLOAD_BODY_CAP + 1, timeout=3)
+    assert got is not None, "the server waited for a body it should have refused unread"
+    head, _sep, page = got.partition(b"\r\n\r\n")
+    return head.decode("latin-1").lower(), page.decode("utf-8", "replace")
+
+
+@_UPLOAD_ROUTES
+def test_an_upload_past_the_body_cap_answers_its_page_in_the_frame(
+    live: Live, route: str, page: str, fields: dict[str, str]
+) -> None:
+    """Review UILD-4: a body too large to read is still refused unread (413), but a person who
+    chose too big a file in the page's own form gets LODESTAR's frame — the credit top and
+    bottom, the CUI marking top and bottom (the CURRENT marking), the cap named, a way back —
+    never a bare JSON document. Every other refusal is unchanged (the form cap stays JSON)."""
+    head, text = _too_large_page(live, route)
+    assert head.startswith("http/1.0 413") and "content-type: text/html" in head, head[:200]
+    assert _security_problems_in(head) == []
+    top = _between(text, "<p class=ls-credit>", "</p>")
+    foot = _between(text, "<footer class=ls-footer>", "</footer>")
+    for where, block in (("top", top), ("footer", foot)):
+        assert AUTHOR in block and f'href="{MAILTO}"' in block, where
+    assert _Tags(text).banners == [("cui top", CUI_MARKING), ("cui bottom", CUI_MARKING)]
+    main = _between(text, "<main", "</main>")
+    assert "20 MB" in main and f'href="{page}"' in main, main
+
+    flip = form(live.port, "/marking", {"marking": "unclassified"})
+    assert flip.status == 303
+    _head, marked = _too_large_page(live, route)
+    assert _Tags(marked).banners == [
+        ("unclassified top", UNCLASSIFIED_MARKING),
+        ("unclassified bottom", UNCLASSIFIED_MARKING),
+    ]
+    form_cap = _declare_too_big(live.port, "/onepager/title", MAX_FORM_BYTES + 1, timeout=3)
+    assert form_cap is not None and b"content-type: application/json" in form_cap.lower()
+
+
+def _security_problems_in(head: str) -> list[str]:
+    """The hardening headers missing from a raw, lower-cased status-and-header block."""
+    names = ("content-security-policy", "x-content-type-options", "x-frame-options")
+    return [name for name in (*names, "referrer-policy") if f"\r\n{name}:" not in head]
 
 
 def test_mutation_a_read_first_body_makes_the_server_wait(
@@ -617,7 +785,8 @@ def test_mutation_a_read_first_body_makes_the_server_wait(
         return data
 
     monkeypatch.setattr(_H, "_body", greedy)
-    assert _declare_too_big(live.port, "/onepager/upload", MAX_UPLOAD_BYTES + 1, timeout=2) is None
+    # re-derived 2026-09-29 (review UILD-4): the same probe as above, past the upload BODY cap
+    assert _declare_too_big(live.port, "/onepager/upload", _UPLOAD_BODY_CAP + 1, timeout=2) is None
 
 
 # ── static files: the allowlist only ──────────────────────────────────────────────────────────
@@ -986,13 +1155,65 @@ def test_links_are_drawn_on_the_deck_through_the_lodestar_routes(live: Live) -> 
     assert links == [f"Logic link: {dr} → {test} (SS)"]
 
 
+def _requests_made_by(page: str) -> list[str]:
+    """Everything a page would ask a server for: any ``<script>``; any ``src`` / ``srcset`` /
+    ``href`` (a ``<link>``'s included) that is not a ``mailto:`` or an inline ``data:`` URL; and
+    a CSS ``url(`` or ``@import``."""
+    asks: list[str] = []
+    for tag, attrs in _Tags(page).tags:
+        if tag == "script":
+            asks.append("<script>")
+        for key in ("src", "srcset", "href"):
+            url = (attrs.get(key) or "").strip()
+            if key in attrs and not url.lower().startswith(("mailto:", "data:")):
+                asks.append(f"<{tag} {key}={url}>")
+    return [*asks, *re.findall(r"(?i)url\(|@import", page)]
+
+
 def test_quit_answers_then_stops_serve_forever(live: Live) -> None:
     """Quit answers with the "has stopped" page (credit included) and ``serve_forever``
-    returns."""
+    returns. The page AS SENT asks the stopped server for nothing — no stylesheet, script, icon
+    or link (review SLA-6, 2026-09-29: the server's half; the page function is pinned beside
+    ``lodestar_shell``)."""
     bye = form(live.port, "/quit", {})
     assert bye.status == 200 and "LODESTAR has stopped" in bye.text and AUTHOR in bye.text
+    assert _requests_made_by(bye.text) == []
     live.thread.join(timeout=10)
     assert not live.thread.is_alive()
+
+
+def test_mutation_a_stopped_page_that_links_a_stylesheet_is_caught(
+    live: Live, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """MUTATION (review SLA-6): a stopped page that links a stylesheet and an icon (the "always
+    unstyled" defect) — the same check names both requests."""
+    real = server_mod.stopped_page
+
+    def linked(*args: object, **kwargs: object) -> str:
+        page = real(*args, **kwargs)  # type: ignore[arg-type]
+        extra = '<link rel=stylesheet href="/static/base.css"><link rel=icon href="/favicon.ico">'
+        return page.replace("</head>", extra + "</head>")
+
+    monkeypatch.setattr(server_mod, "stopped_page", linked)
+    bye = form(live.port, "/quit", {})
+    assert bye.status == 200
+    assert _requests_made_by(bye.text) == [
+        "<link href=/static/base.css>",
+        "<link href=/favicon.ico>",
+    ]
+
+
+def test_quits_stopped_page_carries_the_marking_the_session_was_set_to(live: Live) -> None:
+    """The last page keeps the compliance chrome: the marking bars top and bottom say what the
+    session was marked — CUI by default, UNCLASSIFIED once the switch was flipped (the server
+    hands the page its marking)."""
+    assert form(live.port, "/marking", {"marking": "unclassified"}).status == 303
+    bye = form(live.port, "/quit", {})
+    assert bye.status == 200 and "LODESTAR has stopped" in bye.text
+    assert _Tags(bye.text).banners == [
+        ("unclassified top", UNCLASSIFIED_MARKING),
+        ("unclassified bottom", UNCLASSIFIED_MARKING),
+    ]
 
 
 def test_mutation_quit_without_shutdown_leaves_the_server_running(
