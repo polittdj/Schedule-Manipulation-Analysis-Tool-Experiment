@@ -11,4 +11,7 @@
 *.docx -text
 00_REFERENCE_INTAKE/** -text
 installer/** -text
+# LODESTAR (ADR-0539): the .pyz is held byte-identical to a fresh build, and LODESTAR.bat must
+# keep its CRLF line ends on every checkout.
+lodestar/** -text
 tests/fixtures/** -text

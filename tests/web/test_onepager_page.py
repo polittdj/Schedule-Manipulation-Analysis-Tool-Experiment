@@ -58,7 +58,12 @@ def test_the_empty_page_explains_the_three_columns_and_offers_the_template(
     t = client.get("/export/xlsx/onepager-template")
     assert t.status_code == 200 and t.headers["content-type"].endswith("spreadsheetml.sheet")
     rows = next(iter(read_xlsx(t.content).values()))
-    assert any(r[:3] == ["Swimlane Name", "Task", "Date"] for r in rows if len(r) >= 3)
+    # ADR-0539: the template ships the CURRENT layout — C start · D finish · E complete
+    assert any(
+        r[:5] == ["Swimlane Name", "Task", "Start", "Finish", "Complete"]
+        for r in rows
+        if len(r) >= 5
+    )
 
 
 def test_upload_draws_the_slide_and_names_every_decision(client: TestClient) -> None:
@@ -114,8 +119,11 @@ def test_the_powerpoint_export_is_the_same_slide(client: TestClient, state: Sess
         r.headers["content-type"]
         == "application/vnd.openxmlformats-officedocument.presentationml.presentation"
     )
-    assert (
-        r.headers["content-disposition"] == 'attachment; filename="Politte_PowerPoint_FINAL.pptx"'
+    # ADR-0539: an ASCII-safe filename PLUS the real title as RFC 5987 filename* (a non-Latin-1
+    # title used to 500 this export)
+    assert r.headers["content-disposition"] == (
+        'attachment; filename="Politte_PowerPoint_FINAL.pptx"; '
+        "filename*=UTF-8''Politte%20PowerPoint%20FINAL.pptx"
     )
     with zipfile.ZipFile(io.BytesIO(r.content)) as zf:
         slide = zf.read("ppt/slides/slide1.xml").decode()

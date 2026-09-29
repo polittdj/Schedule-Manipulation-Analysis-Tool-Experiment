@@ -17,7 +17,7 @@
     if (text !== null && text !== undefined) n.textContent = text;
     return n;
   }
-  // column D's check (ADR-0526): a --muted disc ("completed work") with a --bg check BESIDE the
+  // the status column's check (ADR-0526): a --muted disc ("completed work") with a --bg check BESIDE the
   // shape — the same mark and points as the compare painter and reports/pptx.py's _done_badge
   function doneBadge(parent, cx, cy, r) {
     parent.appendChild(el("circle", { cx: cx, cy: cy, r: r, class: "opc-done" }));
@@ -61,8 +61,8 @@
     });
     var barH = L.bar_h, ms = L.ms;
     L.items.forEach(function (p) {
-      var fill = laneVar(L.lanes[p.lane].color), g = el("g", { class: "op-item" + (p.milestone ? " op-ms" : " op-act") });
-      var title = el("title", {}, p.name + (p.milestone ? " — " + p.finish : " — " + p.start + " → " + p.finish) + (p.done ? " · complete (column D)" : ""));
+      var fill = laneVar(L.lanes[p.lane].color), g = el("g", { class: "op-item" + (p.milestone ? " op-ms" : " op-act"), "data-key": p.key || null });
+      var title = el("title", {}, p.name + (p.milestone ? " — " + p.finish : " — " + p.start + " → " + p.finish) + (p.done ? " · complete" + (L.status_label ? " (" + L.status_label + ")" : "") : ""));
       g.appendChild(title);
       if (p.milestone) {
         var h = ms / 2;
@@ -86,7 +86,7 @@
       else if (e.kind === "done") doneBadge(g, e.x + 5, cy, 3);
       else if (e.kind === "milestone") g.appendChild(el("polygon", { points: (e.x + 5) + "," + (cy - 3.5) + " " + (e.x + 8.5) + "," + cy + " " + (e.x + 5) + "," + (cy + 3.5) + " " + (e.x + 1.5) + "," + cy, class: "op-legend-ms" }));
       else if (e.kind === "today") g.appendChild(el("line", { x1: e.x + 5, y1: cy - 4, x2: e.x + 5, y2: cy + 4, class: "op-legend-today" }));
-      else g.appendChild(el("rect", { x: e.x, y: cy - 3, width: 10, height: 6, rx: 1, fill: laneVar(e.color), class: "op-legend-lane" }));
+      else if (e.kind !== "link") g.appendChild(el("rect", { x: e.x, y: cy - 3, width: 10, height: 6, rx: 1, fill: laneVar(e.color), class: "op-legend-lane" })); // "link": onepager_links.js
       g.appendChild(el("text", { x: e.x + 13, y: e.y, class: "op-legend-text", style: "font-size:" + L.legend_pt + "px" }, e.label));
       svg.appendChild(g);
     });
@@ -109,7 +109,9 @@
     var L;
     try { L = JSON.parse(data.textContent || "null"); } catch (e) { L = null; }
     if (!L) return;
-    paint(host, L);
+    var svg = paint(host, L);
+    // the operator's logic links (ADR-0539): painted over the items, and click-to-pick wired
+    if (window.SFOnePagerLinks) { SFOnePagerLinks.paint(svg, L); SFOnePagerLinks.wire(host, "op"); }
   }
   // ── intake: the file picker and window-wide drag-and-drop, the home.js idiom ──
   // A dropped workbook is handed to the SAME form the picker submits (the input's FileList is

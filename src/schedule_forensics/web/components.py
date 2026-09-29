@@ -36,6 +36,8 @@ from schedule_forensics.engine.sra import ScheduleRisk, SSIRiskStat
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.web.chrome import _e
 from schedule_forensics.web.help import field_or_metric_doc
+from schedule_forensics.web.htmlkit import _panel_head as _panel_head
+from schedule_forensics.web.htmlkit import _shell_tools as _shell_tools
 from schedule_forensics.web.state import SessionState, _Analysis
 
 
@@ -177,39 +179,6 @@ def _version_chips(
         f"version&rsquo;s {noun}; every figure on it is that file&rsquo;s own.</span>"
         "</div>"
     )
-
-
-def _shell_tools(*, export_title: str = "", big: bool = True) -> str:
-    """The three-glyph tool strip (panelkit.js wiring): ⤓ EXCEL renders ONLY when the panel
-    carries a ``data-export`` URL to an EXISTING endpoint (never a dead link — rank-3 law);
-    ⛶ ENLARGE by default. ▦ DATA is omitted on the analysis panels: each one's table IS the
-    data (the home-shell precedent). ``big=False`` omits the ⛶ for the ONE panel whose chart
-    script supplies the panel's single ⛶ itself (the /analysis scatter — the curves.js
-    pattern, ADR-0317): a second head glyph on that panel was the round-11 inert-duplicate
-    defect (it flipped its label while ``:has(.sf-tilebox)`` kept the panel static)."""
-    excel = (
-        f'<button type=button data-sf-excel title="{_e(export_title)}" '
-        'aria-label="Export this panel&#39;s data to Excel">⤓ EXCEL</button>'
-        if export_title
-        else ""
-    )
-    enlarge = (
-        "<button type=button data-sf-big aria-pressed=false "
-        'aria-label="Enlarge this panel">⛶ ENLARGE</button>'
-        if big
-        else ""
-    )
-    return f"<div class=sf-tools data-noprint=1>{excel}{enlarge}</div>"
-
-
-def _panel_head(title: str, *, tools: str = "", prov: str = "", h2_attrs: str = "") -> str:
-    """The panel-contract headline strip: h2 + tools + provenance chip. ``title`` is HTML —
-    callers escape their own dynamic parts (the heading TEXT is unchanged; the uppercase
-    treatment is CSS, so existing content assertions keep holding). ``h2_attrs`` carries a
-    pre-existing heading attribute through a conversion (leading space included, e.g.
-    ``" data-no-i18n"``) — the /margin headings were deliberately translation-pinned and
-    joining the contract must not silently unpin them."""
-    return f"<div class=panel-head><h2{h2_attrs}>{title}</h2>{tools}{prov}</div>"
 
 
 #: ⤓ EXCEL hover text for panels whose data ships inside the existing per-schedule analysis

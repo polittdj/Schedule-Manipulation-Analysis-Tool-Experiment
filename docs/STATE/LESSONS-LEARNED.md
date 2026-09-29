@@ -435,6 +435,45 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-29 (a) — A header word that is also a data value is not header evidence, a track is judged by where it DRAWS, and a typed TRUE is not the text "TRUE" (ADR-0539)
+
+- **What happened.** One session built three operator asks: the One-Pager intake moved to C start · D finish · E
+  complete (the older C date · D status layout auto-detected), operator-drawn logic links (FS / SS / FF / SF) on both
+  One-Pager pages and in their PowerPoint exports, and LODESTAR — the two pages as a single-file std-lib program
+  (`lodestar/LODESTAR.pyz`) carrying the SAME modules byte-for-byte. The plan was red-teamed on five lenses before the
+  first edit (ADR-0539's table); the build was then attacked again by independent test writers and reviewers.
+- **A word that can be a header AND a value is not evidence of a header.** To catch header rows whose only
+  recognisable words sit in D or E, the new `_is_header` accepted an exact header word there — and "Complete" / "Done"
+  are ALSO what a header-less sheet's first data row holds, so that row vanished without a word (the pristine parser
+  had named it). **The lesson:** when a classifier's evidence set overlaps the value set it classifies, the overlap
+  must count for neither side — and the failure direction to prefer is the one that NAMES (a row refused as data is
+  seen; a row mistaken for the header is not).
+- **A typed TRUE is not the text "TRUE".** The plan added "true" to the completion words and the ADR said so — but
+  Excel stores a typed TRUE (and a checkbox) as a boolean cell, `t="b"` `<v>1</v>`, which the shared reader returns
+  as `"1"`: the vocabulary change served only a formula or text-formatted TRUE. Found twice, independently (the
+  lead's own read of the reader and the intake test writer). **The lesson:** a claim about what a user TYPES must be
+  tested through the bytes the application WRITES for it, not through the string the author imagined.
+- **Judge a track by the height it draws at, not by its offset.** The router stacked parallel legs by comparing
+  offsets from each channel's centre — but each link's centre is measured over its own x-range, so two links at
+  "offset 0" landed 0.4 pt apart and read as one line (7 undisclosed pairs at 36–64 items). Comparing drawn heights,
+  and letting a link fall back to the next free gap between its two items before declaring "crowded", took the
+  undisclosed overlaps to 0 and the crowding note from "fires on a 6-item Compare" to "fires at 60+ / 144+ items".
+  **The lesson:** a warning that fires on a small input is noise, and noise gets the warning ignored — measure WHEN
+  a disclosure fires, not only THAT it fires.
+- **A std-lib HTTP server is not "http.server plus our gates".** On HTTP/1.1 a refused request's unread body is parsed
+  as the next request — past both gates; `rfile.read(n)` allocates `n` before reading; a joined static path serves
+  `../` from a filesystem package. Each was measured by the red team, not assumed; each is now a test.
+- **Verbatim packaging forces honest seams.** Carrying the One-Pager byte-identical into a `.pyz` meant cutting three
+  leaves out of the web monolith (`tableset`, `htmlkit`, `security`) and one out of the page modules
+  (`onepager_actions`) — the `X as X` re-export idiom made each cut free for every old import path, and the lockstep
+  test makes drift loud. The recurring cost is named where it bites: edit a carried file, rebuild the `.pyz`.
+- **A server built from the standard library owes every response the same headers — including the
+  ones the standard library writes itself.** `send_error` (an unknown method, a long URI) bypassed
+  the one send path; completing the headers in `end_headers` covers every writer at once. And a
+  shared state lock must never be held while a client's body arrives: one stalled client froze
+  every page until the body was read BEFORE the lock was taken.
+
+
 ### 2026-09-28 (a) — The corpus is a population choice, a resume is a claim, and the lead's own hypothesis needs a second verifier (ADR-0537)
 
 - **What happened.** Session 6 continued WP-CPM: 31 candidates → 28 claims → 27 reproduced and 1 held, plus UI-001 —

@@ -90,6 +90,13 @@ python -m build --wheel --outdir dist/wheel
 python tools/installer/build_installers.py dist/wheel/schedule_forensics-*.whl
 ```
 
+**And LODESTAR (ADR-0539), after the LAST `src/` edit:** `python tools/lodestar/build_lodestar.py`.
+`lodestar/LODESTAR.pyz` carries the One-Pager modules, page modules, server and static assets VERBATIM,
+and `tests/lodestar/test_lodestar_pyz.py` holds it byte-identical to a fresh build — any edit to a
+member (`reports/onepager*`, `pptx.py`, `xlsx*.py`, `docx.py`, `tableset.py`, `web/onepager*`,
+`htmlkit.py`, `security.py`, `lodestar_shell.py`, `lodestar/**`, or an allowlisted static file such
+as `app.css` / `gantt.js`) turns that test red until the file is rebuilt.
+
 `tests/installer/test_installers.py::test_embedded_wheel_is_in_lockstep_with_the_source_tree` compares
 **every** packaged `schedule_forensics/**` file inside the embedded wheel byte-for-byte against
 `src/`. **If you touch code after building, REBUILD** — a merged fix once never reached users because

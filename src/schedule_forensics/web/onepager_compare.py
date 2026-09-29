@@ -1,5 +1,6 @@
-"""The /onepager-compare page: two three-column Excel lists — a PRIOR and a CURRENT — as one
-swimlane slide that shows what moved, and a PowerPoint slide of the same (ADR-0465).
+"""The /onepager-compare page: two One-Pager Excel lists — a PRIOR and a CURRENT — as one
+swimlane slide that shows what moved, and a PowerPoint slide of the same (ADR-0465), with the
+operator's own LOGIC LINKS drawn between current positions (ADR-0539).
 
 The page is the SLIDE's preview: ``static/onepager_compare.js`` paints the layout the server
 computed (:mod:`schedule_forensics.reports.onepager_compare`) as one ``viewBox`` SVG, and
@@ -15,8 +16,9 @@ so copies left over in both lists are DUPLICATE NAME and compared with nothing (
 move is in CALENDAR days because the list carries no calendar; column D is read as a STATUS word
 and every word it could not read is named. Every one of those rules is on the page, in the open.
 
-Layering: ``app`` -> ``onepager_compare`` -> ``components`` -> ``chrome`` -> ``state`` -> reports.
-Nothing here imports ``web.app``.
+Layering: ``app`` -> ``onepager_compare`` -> ``htmlkit`` / ``onepager_common`` (std-lib leaves) -> reports.
+Nothing here imports ``web.app``, ``chrome``, ``components`` or ``state`` — so the engine never
+loads behind this page, which is what lets LODESTAR (ADR-0539) run it with the std-lib alone.
 """
 
 from __future__ import annotations
@@ -24,7 +26,7 @@ from __future__ import annotations
 import datetime as dt
 import json
 
-from schedule_forensics.reports.onepager import OnePagerDoc, window_text
+from schedule_forensics.reports.onepager import DATE_STATUS, OnePagerDoc, item_ident, window_text
 from schedule_forensics.reports.onepager_compare import (
     CompareDoc,
     CompareLayout,
@@ -34,15 +36,21 @@ from schedule_forensics.reports.onepager_compare import (
     compare_onepager_docs,
     compare_subtitle,
     delta_text,
+    row_label,
     window_compare,
 )
-from schedule_forensics.web.chrome import _EXPLAINERS, _e, _utility_takeaway
-from schedule_forensics.web.components import _panel_head, _shell_tools
-from schedule_forensics.web.onepager import window_form, window_notice
-from schedule_forensics.web.state import SessionState
-
-#: The page's title (the rail entry, the kicker and the explainer key).
-TITLE = "One-Pager Compare"
+from schedule_forensics.reports.onepager_links import gone_reason
+from schedule_forensics.web.htmlkit import _e, _panel_head, _shell_tools, _utility_takeaway
+from schedule_forensics.web.onepager import (
+    COLUMNS_HELP,
+    layout_select,
+    links_form,
+    links_list,
+    window_form,
+    window_notice,
+)
+from schedule_forensics.web.onepager_common import COMPARE_EXPLAINER
+from schedule_forensics.web.onepager_common import OnePagerSession as SessionState
 
 
 def _stem(source: str) -> str:
@@ -81,13 +89,57 @@ def onepager_compare_view(st: SessionState) -> tuple[CompareDoc | None, list[str
     return window_compare(doc, st.onepager_compare_window)
 
 
+def linkable_rows(st: SessionState) -> list[tuple[str, str, int | None]]:
+    """``(key, label, current sheet row)`` for every compared row with a CURRENT position on the
+    slide — what a logic link may join (a REMOVED row has no current position to join)."""
+    doc, _omitted = onepager_compare_view(st)
+    if doc is None:
+        return []
+    return [
+        (r.key, row_label(r), r.current_row)
+        for r in doc.rows
+        if r.key and r.current_start is not None
+    ]
+
+
+def compare_link_idents(st: SessionState) -> dict[str, tuple[str, ...]]:
+    """Every compared row with a CURRENT side by key -> its current identity (``item_ident``) —
+    what a Compare logic link stores, and re-binds by when a CURRENT list arrives."""
+    doc = onepager_compare_doc(st)
+    if doc is None:
+        return {}
+    return {
+        r.key: item_ident(r.lane, r.name, r.current_start, r.current_finish)
+        for r in doc.rows
+        if r.key and r.current_start is not None and r.current_finish is not None
+    }
+
+
 def onepager_compare_layout(st: SessionState, today: dt.date) -> CompareLayout | None:
     doc, _omitted = onepager_compare_view(st)
     if doc is None or not doc.rows:
         return None
     win = st.onepager_compare_window
+    full = onepager_compare_doc(st)
+    shown = {r.key for r in doc.rows}
+    absent = {
+        r.key: "is outside the date window"
+        for r in (full.rows if full is not None else ())
+        if r.key and r.key not in shown
+    }
+    idents = compare_link_idents(st)
+    for ln in st.onepager_compare_links:
+        for key, ident in ((ln.pred, ln.pred_ident), (ln.succ, ln.succ_ident)):
+            if key not in idents:
+                absent[key] = gone_reason(ident, idents)
     return build_compare_layout(
-        doc, today, onepager_compare_title(st), compare_subtitle(doc, today, win), window=win
+        doc,
+        today,
+        onepager_compare_title(st),
+        compare_subtitle(doc, today, win),
+        window=win,
+        links=st.onepager_compare_links,
+        absent=absent,
     )
 
 
@@ -127,7 +179,7 @@ def _data_table(doc: CompareDoc) -> str:
     return (
         '<div class=sf-drawer hidden><table class="op-table opc-table sf-datatable">'
         "<caption>Compared rows — swimlane, item, status, prior and current dates, start and finish "
-        "deltas in calendar days, sheet rows, and whether column D marks each side complete</caption>"
+        "deltas in calendar days, sheet rows, and whether the status column marks each side complete</caption>"
         "<thead><tr><th>Swimlane</th><th>Item</th><th>Status</th><th>Prior start</th>"
         "<th>Prior finish</th><th>Current start</th><th>Current finish</th>"
         "<th>Start Δ (cal d)</th><th>Finish Δ (cal d)</th><th>Prior row</th><th>Current row</th>"
@@ -156,8 +208,8 @@ def _summary_table(doc: CompareDoc) -> str:
     body = "".join(cells(s) for s in doc.lanes) + cells(doc.totals, bold=True)
     return (
         '<div class=opc-scroll><table class="op-table opc-summary-table sf-datatable">'
-        "<caption>Per-swimlane summary — counts by status, how many column D marks complete in the "
-        "current list, and the worst slip, in calendar days</caption>"
+        "<caption>Per-swimlane summary — counts by status, how many the status column marks complete "
+        "in the current list, and the worst slip, in calendar days</caption>"
         "<thead><tr><th>Swimlane</th><th>Slipped</th><th>Pulled in</th><th>Start moved</th>"
         "<th>Unchanged</th><th>New</th><th>Removed</th><th>Ambiguous</th><th>Complete</th>"
         "<th>Worst slip</th>"
@@ -175,8 +227,15 @@ def _slot(slot: str, doc: OnePagerDoc | None) -> str:
     else:
         skipped = f" · {len(doc.problems)} row(s) skipped" if doc.problems else ""
         done = sum(1 for it in doc.items if it.complete)
-        column_d = f"column D: {done} complete" if doc.completion else "no column D"
-        loaded = f"Loaded <b>{_e(doc.source)}</b> · {len(doc.items)} item(s) · {column_d}{skipped}."
+        column = (
+            f"column {doc.status_column}: {done} complete"
+            if doc.completion and doc.status_column
+            else "no status column"
+        )
+        # the older layout is SAID only when the sheet gave evidence of it (a status in D) —
+        # a sheet of column C alone reads the same either way
+        layout = " · older layout" if doc.layout == DATE_STATUS and doc.layout_note else ""
+        loaded = f"Loaded <b>{_e(doc.source)}</b> · {len(doc.items)} item(s) · {column}{layout}{skipped}."
         verb = f"Replace the {slot.upper()} list —"
     return f"""<section class="cd-block opc-slot" id=opcSlot{key}>
   <h2>{label}</h2>
@@ -187,6 +246,7 @@ def _slot(slot: str, doc: OnePagerDoc | None) -> str:
     <div class=dz-icon>&#8682;</div>
     <p class=dz-title>{verb}
       <button type=button class=linkbtn id=opcPick{key}>choose a file&hellip;</button></p>
+    <p class=op-layout-row>{layout_select(f"opcLayout{key}")}</p>
     <input type=file id=opcFile{key} name=file accept=".xlsx" hidden>
     <noscript><button type=submit>Upload</button></noscript>
   </div>
@@ -200,10 +260,7 @@ def _slots(st: SessionState) -> str:
 {_slot("current", st.onepager_current)}
 </div>
 <p class=opc-hint id=opcHint hidden></p>
-<p class=muted>Both lists take the One-Pager's shape — one sheet, three columns: <b>A</b> the swimlane
-  name, <b>B</b> the task or milestone name, <b>C</b> the date (a single date is a <b>milestone</b>, a
-  range such as <code>04/20/2027 - 06/20/2027</code> is an <b>activity</b>) — plus an optional <b>D</b>,
-  a status word saying whether the item is complete.
+<p class=muted>Both lists take the One-Pager's shape — one sheet: {COLUMNS_HELP}
   <a href="/export/xlsx/onepager-template" download>Download the template</a>.</p>"""
 
 
@@ -214,18 +271,20 @@ _RULES = """<section class="cd-block cd-read opc-rules"><h2>How the two lists ar
 <p><b>A rename or a swimlane move.</b> Reads as one <b>REMOVED</b> and one <b>NEW</b>, because the sheet has no id to follow. The page counts the names it sees on both sides under different swimlanes and says so; it never infers the move.</p>
 <p><b>The unit.</b> Calendar days, always — the list has no calendar, so a working-day figure would be invented. Any move of one day or more is a change; there is no threshold below which an item reads unchanged.</p>
 <p><b>Which list is prior.</b> Your choice at the two slots — never inferred from a file name. Swap them with one click if you dropped them the other way round.</p>
-<p><b>Column D.</b> A status word. Complete, Completed, Done, Finished or Closed — with anything after it, such as a date or (late) — or Yes, X, a check mark or 100% marks the item complete, and the slide draws a check beside its current shape. A blank, a negation such as Not Started, or an open status such as In Progress does not. A word this page does not know is listed under <b>How each list was read</b>, by value and row, so you can see it.</p>
+<p><b>The status column.</b> Column E (column D in the older layout) holds a status word. Complete, Completed, Done, Finished or Closed — with anything after it, such as a date or (late) — or Yes, X, TRUE, a check mark or 100% marks the item complete, and the slide draws a check beside its current shape. A blank, a negation such as Not Started, or an open status such as In Progress does not. A word this page does not know is listed under <b>How each list was read</b>, by value and row, so you can see it.</p>
+<p><b>Logic links.</b> Only the links you add are drawn, between the items' CURRENT positions; a REMOVED item has none to join. A link keeps its items by swimlane and name — so it survives a slip and next month's list — and a name that repeats under one swimlane only by its exact dates; a link whose item is not on the slide is listed as not drawn, with the reason.</p>
 </section>"""
 
 #: The panel toolkit (▦ / ⤓ / ⛶, a per-page include like every converted page) and the painter +
 #: two-slot intake, one static file each (strict CSP: never inline).
 _SCRIPT = (
-    '<script src="/static/panelkit.js"></script><script src="/static/onepager_compare.js"></script>'
+    '<script src="/static/panelkit.js"></script><script src="/static/onepager_links.js"></script>'
+    '<script src="/static/onepager_compare.js"></script>'
 )
 
 
 def _reading_block() -> str:
-    what, how, why = _EXPLAINERS[TITLE]
+    what, how, why = COMPARE_EXPLAINER
     return (
         '<section class="cd-block cd-read"><h2>How to read this</h2>'
         f"<p><b>What it shows.</b> {_e(what)}</p><p><b>How to read it.</b> {_e(how)}</p>"
@@ -279,7 +338,7 @@ def _onepager_compare_body(st: SessionState, today: dt.date) -> str:
         )
         take = _utility_takeaway(
             head,
-            "The same sheet the One-Pager takes, twice — with an optional status in column D. The "
+            "The same sheet the One-Pager takes, twice — with an optional status column. The "
             "slide draws the current position solid (an unchanged item once), the prior as a ghost "
             "where it moved, and every finish that moved as an arrow with its move in calendar "
             "days; NEW and REMOVED items are tagged by name, and a check marks what is complete.",
@@ -291,14 +350,18 @@ def _onepager_compare_body(st: SessionState, today: dt.date) -> str:
         if t.worst_slip_name and t.worst_slip_days
         else ""
     )
-    done = f" {t.complete} marked complete in column D." if cdoc.completion else ""
+    done = (
+        f" {t.complete} marked complete in {cdoc.status_label or 'the status column'}."
+        if cdoc.completion
+        else ""
+    )
     take = _utility_takeaway(
         f"{t.slipped} slipped, {t.pulled_in} pulled in, {t.unchanged} unchanged, {t.new} new, "
         f"{t.removed} removed — {_e(cdoc.prior_source)} → {_e(cdoc.current_source)}.{worst}{done}",
         f"Every move is in <b>calendar days</b> — a One-Pager list carries no calendar. Solid is the "
         f"current list and an unchanged item is drawn once; a ghost is where a moved item was, an "
-        f"arrow is the finish's move; NEW and REMOVED are tagged, and a check marks what column D "
-        f"says is complete. A rename or a swimlane move reads as one removed and one new: the sheet "
+        f"arrow is the finish's move; NEW and REMOVED are tagged, and a check marks what the status "
+        f"column says is complete. A rename or a swimlane move reads as one removed and one new: the sheet "
         f"has no id to follow. Today is {today.isoformat()}.",
     )
     blob = json.dumps(compare_layout_json(lay)).replace("<", "\\u003c")
@@ -326,6 +389,8 @@ def _onepager_compare_body(st: SessionState, today: dt.date) -> str:
 <form action="/onepager-compare/swap" method=post class=opc-swap-form><button type=submit>Swap prior and current</button></form>
 <form action="/onepager-compare/clear" method=post class=op-clear-form><button type=submit>Clear both lists</button></form>
 </div>"""
+    link_msg, link_error = st.onepager_compare_links_msg, st.onepager_compare_links_is_error
+    st.onepager_compare_links_msg, st.onepager_compare_links_is_error = None, False
     problems = _notice_list(
         "Duplicate names — compared with nothing", cdoc.problems, "warn", "alert"
     )
@@ -345,11 +410,14 @@ def _onepager_compare_body(st: SessionState, today: dt.date) -> str:
 <p class=muted>What you see is the slide: 16:9, one tinted band per swimlane, the current position solid
 (an unchanged item drawn once, at its one date) and the prior as a dashed ghost wherever it moved, an
 arrow from the old finish to the new one with its move in calendar days, NEW and REMOVED tags, a check
-beside what column D marks complete, a summary column per swimlane, the red line at today, and the
-legend along the bottom. Hover any item for its dates.</p>
+beside what the status column marks complete, the logic links you add as arrows between current
+positions, a summary column per swimlane, the red line at today, and the legend along the bottom.
+Hover any item for its dates; click two of them to link them.</p>
 {controls}
+{links_form("/onepager-compare/links", "opc", linkable_rows(st), link_msg, link_error)}
 <div id=opcHost class="op-host chart-host" role=img aria-label="{_e(lay.title)}"></div>
 <script id=opcData type="application/json">{blob}</script>
+{links_list("/onepager-compare/links", "opc", st.onepager_compare_links, lay.links, lay.link_notes)}
 {_data_table(cdoc)}
 </div>
 <div class="cd-grid cd-grid-12">

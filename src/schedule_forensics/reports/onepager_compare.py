@@ -41,11 +41,13 @@ the ADR-0446 slide in logical points, and the two painters (``static/onepager_co
 from __future__ import annotations
 
 import datetime as dt
-from dataclasses import asdict, dataclass, replace
+from collections.abc import Mapping, Sequence
+from dataclasses import asdict, dataclass, field, replace
 from typing import Any
 
 from schedule_forensics.reports.onepager import (
     BAR_F,
+    CROWDED_NOTE,
     EMERGENCY,
     FLOORS,
     LANE_COL_X0,
@@ -75,15 +77,30 @@ from schedule_forensics.reports.onepager import (
     Window,
     _lane_key,
     _window_notes,
+    complete_legend,
+    keyed,
+    layout_notes,
+    link_legend,
     mdy,
     overlaps,
     plot_window,
+    status_label,
     text_w,
     timescale,
     window_text,
     wrap,
 )
-from schedule_forensics.reports.tables import Cell, Table, TableSet
+from schedule_forensics.reports.onepager_links import (
+    Anchor,
+    Box,
+    Grid,
+    Link,
+    PlacedLink,
+    label_box,
+    route_links,
+    shape_box,
+)
+from schedule_forensics.reports.tableset import Cell, Table, TableSet
 
 # ── the statuses ──────────────────────────────────────────────────────────────────────────────
 
@@ -150,6 +167,9 @@ class CompareRow:
     current_milestone: bool | None
     prior_complete: bool | None
     current_complete: bool | None
+    #: the CURRENT item's link key (ADR-0539) — ``""`` for a row with no current side (REMOVED,
+    #: or the prior side of a collision), which a logic link cannot attach to
+    key: str = ""
 
     @property
     def type_changed(self) -> bool:
@@ -199,6 +219,14 @@ class CompareDoc:
     flags: tuple[str, ...] = ()
     sheet_notes: tuple[str, ...] = ()
     completion: bool = False
+    #: the letter of each list's status column (E, D in the older layout, ``""`` none) — every
+    #: sentence about completion names the column the lists actually used (ADR-0539)
+    prior_status_column: str = ""
+    current_status_column: str = ""
+
+    @property
+    def status_label(self) -> str:
+        return status_label([self.prior_status_column, self.current_status_column])
 
 
 def _status(start_delta: int, finish_delta: int) -> str:
@@ -259,7 +287,8 @@ def _collapse(doc: OnePagerDoc, notes: list[str]) -> list[OnePagerItem]:
             extra = ""
             if len(known) > 1:
                 it = replace(it, complete=False)
-                extra = " — column D disagrees between them, so it is not marked complete"
+                col = status_label([doc.status_column]) or "the status column"
+                extra = f" — {col} disagrees between them, so it is not marked complete"
             notes.append(
                 f"{_rows_of(doc.source, group)} ({it.lane} · {it.name} · {_when(it)}): the same "
                 f"swimlane, item and date {len(group)} times — drawn once{extra}"
@@ -284,6 +313,9 @@ def compare_onepager_docs(prior: OnePagerDoc, current: OnePagerDoc) -> CompareDo
     problems: list[str] = []
     notes: list[str] = []
     flags: list[str] = []
+    # every item keyed over its own WHOLE sheet (a parsed doc already is; a hand-built one is not)
+    prior = replace(prior, items=tuple(keyed(prior.items)))
+    current = replace(current, items=tuple(keyed(current.items)))
     prior_items = _collapse(prior, notes)
     current_items = _collapse(current, notes)
     by_prior: dict[tuple[str, str], list[OnePagerItem]] = {}
@@ -357,6 +389,7 @@ def compare_onepager_docs(prior: OnePagerDoc, current: OnePagerDoc) -> CompareDo
             it.milestone,
             None,
             it.complete,
+            it.key,
         )
 
     def from_prior(it: OnePagerItem, status: str) -> CompareRow:
@@ -403,6 +436,7 @@ def compare_onepager_docs(prior: OnePagerDoc, current: OnePagerDoc) -> CompareDo
                 cur.milestone,
                 pri.complete,
                 cur.complete,
+                cur.key,
             )
         )
         if (pri.lane, pri.name) != (cur.lane, cur.name):
@@ -464,7 +498,7 @@ def compare_onepager_docs(prior: OnePagerDoc, current: OnePagerDoc) -> CompareDo
     sheet_notes = tuple(
         f"{doc.source}: {n}"
         for doc in (prior, current)
-        for n in (*doc.notes, *doc.completion_notes)
+        for n in (*layout_notes(doc), *doc.notes, *doc.completion_notes)
     )
     return CompareDoc(
         prior.source,
@@ -477,6 +511,8 @@ def compare_onepager_docs(prior: OnePagerDoc, current: OnePagerDoc) -> CompareDo
         tuple(flags),
         sheet_notes,
         prior.completion or current.completion,
+        prior.status_column,
+        current.status_column,
     )
 
 
@@ -605,6 +641,8 @@ class PlacedCompare:
     done: bool
     done_x: float | None
     done_r: float
+    #: the current item's link key (``""``: no current side to link)
+    key: str = ""
 
 
 @dataclass(frozen=True)
@@ -666,6 +704,11 @@ class CompareLayout:
     prior_source: str
     current_source: str
     notes: list[str]
+    #: the operator's logic links as drawn between CURRENT positions (ADR-0539), every one not
+    #: drawn named in ``link_notes``, and the status column the legend's check names
+    links: list[PlacedLink] = field(default_factory=list)
+    link_notes: list[str] = field(default_factory=list)
+    status_label: str = ""
 
 
 def _first_of_month(d: dt.date) -> dt.date:
@@ -725,6 +768,8 @@ def build_compare_layout(
     title: str,
     subtitle: str = "",
     window: Window | None = None,
+    links: Sequence[Link] = (),
+    absent: Mapping[str, str] | None = None,
 ) -> CompareLayout:
     """Place every compared row on the slide. Raises ``ValueError`` with nothing to place.
 
@@ -1035,6 +1080,7 @@ def build_compare_layout(
                     pk.done_x is not None,
                     pk.done_x,
                     pk.done_r,
+                    r.key,
                 )
             )
         s = by_summary.get(lane_key(lane_names[li]))
@@ -1042,6 +1088,9 @@ def build_compare_layout(
             summaries.append(_summary_box(s, li, y, y + h))
         y += h + LANE_GAP
     lanes_y1 = y - LANE_GAP
+    drawn, link_notes = _compare_logic(
+        doc, placed, lanes, row_h, label_pt, lanes_y1, window, links, absent
+    )
     months, years, month_pt = timescale(t0, t1, X0, X1, window is not None)
     today_x = None if today_note else x_of(today)
     tl_anchor = "end" if today_x is not None and today_x > X1 - 110 else "start"
@@ -1057,8 +1106,9 @@ def build_compare_layout(
         ("pull", "Pulled in \u2190 \u2212N cal d", -1),
         ("new", "NEW", -1),
         ("removed", "REMOVED (ghost only)", -1),
-        *([("done", "Complete (column D)", -1)] if doc.completion else []),
+        *([("done", complete_legend(doc.status_label), -1)] if doc.completion else []),
         ("today", f"Today ({mdy(today)})", -1),
+        *([("link", link_legend(drawn), -1)] if drawn else []),
     ] + [("lane", ln.name, ln.color) for ln in lanes]
     for _ in range(3):
         legend = []
@@ -1120,7 +1170,94 @@ def build_compare_layout(
         doc.prior_source,
         doc.current_source,
         notes,
+        drawn,
+        link_notes,
+        doc.status_label,
     )
+
+
+def row_label(r: CompareRow) -> str:
+    """``swimlane · item (current dates)`` — how a logic link names a compared row."""
+    s, f = r.current_start, r.current_finish
+    if s is None or f is None:
+        return f"{r.lane} · {r.name}"
+    return f"{r.lane} · {r.name} ({mdy(f) if s == f else f'{mdy(s)} to {mdy(f)}'})"
+
+
+def _compare_logic(
+    doc: CompareDoc,
+    placed: Sequence[PlacedCompare],
+    lanes: Sequence[Lane],
+    row_h: float,
+    label_pt: float,
+    lanes_y1: float,
+    window: Window | None,
+    links: Sequence[Link],
+    absent: Mapping[str, str] | None,
+) -> tuple[list[PlacedLink], list[str]]:
+    """Route the operator's links between CURRENT positions over every glyph the compare slide
+    paints — the solid shape, the prior ghost, the move arrow ABOVE the bar, the label with its
+    delta, the NEW / REMOVED tag and the check — so a leg never runs through a move arrow."""
+    if not links:
+        return [], []
+    offsets: list[int] = []
+    centres: list[float] = []
+    for ln in lanes:
+        offsets.append(len(centres))
+        centres += [ln.y0 + LANE_PAD + k * row_h + row_h / 2 for k in range(ln.rows)]
+    bar_h, ms = row_h * BAR_F, row_h * MS_F
+    bands: list[list[Box]] = [[] for _ in centres]
+    anchors: dict[str, Anchor] = {}
+    rows_by_key = {r.key: r for r in doc.rows if r.key}
+    for p in placed:
+        g = offsets[p.lane] + p.row
+        band = bands[g]
+        if p.x0 is not None and p.x1 is not None:
+            band.append(shape_box(p.x0, p.x1, p.y, p.milestone, bar_h, ms))
+        if p.ghost_x0 is not None and p.ghost_x1 is not None:
+            gb = shape_box(p.ghost_x0, p.ghost_x1, p.y, bool(p.ghost_milestone), bar_h, ms)
+            band.append(Box(gb.x0 - 0.1, gb.x1 + 0.1, gb.y0 - 0.1, gb.y1 + 0.1))
+        if p.arrow_x0 is not None and p.arrow_x1 is not None:
+            half = ARROW_HEAD / 2 + 0.35
+            band.append(
+                Box(
+                    min(p.arrow_x0, p.arrow_x1) - 0.3,
+                    max(p.arrow_x0, p.arrow_x1) + 0.3,
+                    p.arrow_y - half,
+                    p.arrow_y + half,
+                )
+            )
+        pad = p.badge_w + 2 if (p.label_anchor == "end" and p.badge) else 0.0
+        band.append(label_box(p.label_x, p.label_anchor, p.label_w, p.y, label_pt, pad))
+        if p.badge:
+            band.append(
+                Box(p.badge_x, p.badge_x + p.badge_w, p.y - label_pt * 0.6, p.y + label_pt * 0.6)
+            )
+        if p.done_x is not None:
+            rad = p.done_r + 0.3
+            band.append(Box(p.done_x - rad, p.done_x + rad, p.y - rad, p.y + rad))
+        row = rows_by_key.get(p.key)
+        if (
+            row is not None
+            and p.key not in anchors
+            and p.x0 is not None
+            and p.x1 is not None
+            and row.current_start is not None
+            and row.current_finish is not None
+        ):
+            anchors[p.key] = Anchor(
+                p.x0, p.x1, p.y, p.milestone, g, row.current_start, row.current_finish
+            )
+    grid = Grid(centres, bands, LANES_Y0, lanes_y1, LANES_Y1, row_h, bar_h, ms, label_pt, window)
+    names = {r.key: row_label(r) for r in doc.rows if r.key}
+    missing = dict(absent or {})
+    for r in doc.rows:
+        if r.key and r.key not in anchors:
+            missing.setdefault(r.key, "has no current position on this slide")
+    drawn, notes, crowded = route_links(links, anchors, names, grid, missing)
+    if crowded:
+        notes.append(CROWDED_NOTE)
+    return drawn, notes
 
 
 def _summary_box(s: LaneSummary, lane: int, y0: float, y1: float) -> SummaryBox:
@@ -1178,7 +1315,11 @@ def compare_subtitle(doc: CompareDoc, today: dt.date, window: Window | None = No
         + (f"window {window_text(window)} · " if window is not None else "")
         + f"{t.slipped} slipped · {t.pulled_in} pulled in · {t.new} new · {t.removed} removed · "
         f"{t.unchanged} unchanged · "
-        + (f"{t.complete} complete (column D) · " if doc.completion else "")
+        + (
+            f"{t.complete} complete ({doc.status_label or 'status column'}) · "
+            if doc.completion
+            else ""
+        )
         + "moves in calendar days"
     )
 

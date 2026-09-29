@@ -50,6 +50,15 @@ class XlsxError(ValueError):
 #: (parity with the web layer's 500 MB compressed per-file upload cap); a real SRA round-trip
 #: template decompresses to well under a megabyte, so this never rejects a legitimate file.
 _MAX_XLSX_DECOMPRESSED_BYTES = 500 * 1024 * 1024
+#: Excel's own grid (XFD = column 16,384; row 1,048,576). A reference past it is not a real cell,
+#: and every row is padded out to its widest cell — so a 773-byte sheet whose one cell sat in
+#: column ``ZZZZZZZ`` asked this reader for a billions-wide row: a MemoryError from an upload the
+#: decompression budget never saw, because the XML is tiny (ADR-0539's red team, measured).
+_MAX_COLUMNS = 16_384
+_MAX_ROWS = 1_048_576
+#: ...and the padded grid as a whole: 30,000 Excel-valid rows each reaching column XFD is a 148 KB
+#: upload and ~490 million cells. Twenty million padded cells is far past any real workbook.
+_MAX_PADDED_CELLS = 20_000_000
 
 
 def _parse_xml(data: bytes) -> ET.Element:
@@ -70,9 +79,13 @@ def _col_index(ref: str) -> int:
     if not m:
         return 0
     letters = m.group(1)
+    if len(letters) > 3:
+        raise XlsxError(f"cell reference {ref!r} is past Excel's last column (XFD)")
     idx = 0
     for ch in letters:
         idx = idx * 26 + (ord(ch) - ord("A") + 1)
+    if idx > _MAX_COLUMNS:
+        raise XlsxError(f"cell reference {ref!r} is past Excel's last column (XFD)")
     return idx - 1
 
 
@@ -81,9 +94,15 @@ def _si_text(si: ET.Element) -> str:
     return "".join(t.text or "" for t in si.iter(f"{_MAIN}t"))
 
 
-def _cell_text(cell: ET.Element, shared: list[str]) -> str:
-    """One ``<c>`` cell as a string, honoring its ``t`` type."""
+def _cell_text(cell: ET.Element, shared: list[str], booleans_as_text: bool = False) -> str:
+    """One ``<c>`` cell as a string, honoring its ``t`` type. A boolean (``t="b"`` — a typed TRUE
+    or FALSE, or an Excel checkbox) is its stored ``1`` / ``0`` unless ``booleans_as_text`` asks
+    for the word Excel SHOWS in the cell (``TRUE`` / ``FALSE``)."""
     ctype = cell.get("t")
+    if booleans_as_text and ctype == "b":
+        v = cell.find(f"{_MAIN}v")
+        raw = ((v.text or "") if v is not None else "").strip()
+        return {"1": "TRUE", "0": "FALSE"}.get(raw, raw)
     if ctype == "inlineStr":
         is_el = cell.find(f"{_MAIN}is")
         return _si_text(is_el) if is_el is not None else ""
@@ -112,14 +131,25 @@ def read_xlsx(data: bytes) -> dict[str, list[list[str]]]:
     return _read_workbook(data, _read_sheet)
 
 
-def read_xlsx_numbered(data: bytes) -> dict[str, list[tuple[int, list[str]]]]:
+def read_xlsx_numbered(
+    data: bytes, max_columns: int | None = None, *, booleans_as_text: bool = False
+) -> dict[str, list[tuple[int, list[str]]]]:
     """Parse an ``.xlsx`` into ``{sheet_name: [(excel_row_number, cells), …]}`` — the cells
     :func:`read_xlsx` returns, each row with the number Excel shows for it (see the module doc).
+
+    ``max_columns`` keeps only the first N columns of every row (the One-Pager reads A to E, so
+    it asks for no more: a cell far to the right can then never widen a row).
+    ``booleans_as_text`` reads a boolean cell as the ``TRUE`` / ``FALSE`` Excel shows rather than
+    its stored ``1`` / ``0`` (the One-Pager's completion column: a typed TRUE is "done").
 
     Raises :class:`XlsxError` as :func:`read_xlsx` does, and also for a row or cell reference that
     cannot be read or rows that are not in ascending order.
     """
-    return _read_workbook(data, _read_sheet_numbered)
+
+    def read(root: ET.Element, shared: list[str]) -> list[tuple[int, list[str]]]:
+        return _read_sheet_numbered(root, shared, max_columns, booleans_as_text)
+
+    return _read_workbook(data, read)
 
 
 def _read_workbook(
@@ -191,24 +221,35 @@ def _read_sheet(root: ET.Element, shared: list[str]) -> list[list[str]]:
     data = root.find(f"{_MAIN}sheetData")
     if data is None:
         return rows
+    padded = 0
     for row in data.findall(f"{_MAIN}row"):
         cells: dict[int, str] = {}
         for c in row.findall(f"{_MAIN}c"):
             ref = c.get("r") or ""
             cells[_col_index(ref)] = _cell_text(c, shared)
         width = (max(cells) + 1) if cells else 0
+        padded += width
+        if padded > _MAX_PADDED_CELLS:
+            raise XlsxError("sheet is too large to read (cell budget exceeded)")
         rows.append([cells.get(i, "") for i in range(width)])
     return rows
 
 
-def _read_sheet_numbered(root: ET.Element, shared: list[str]) -> list[tuple[int, list[str]]]:
+def _read_sheet_numbered(
+    root: ET.Element,
+    shared: list[str],
+    max_columns: int | None = None,
+    booleans_as_text: bool = False,
+) -> list[tuple[int, list[str]]]:
     """Every ``<row>`` with its Excel row number; each cell in the column its ``r=`` names, or the
-    column after the previous cell's when ``r=`` is absent (ECMA-376 — never column A)."""
+    column after the previous cell's when ``r=`` is absent (ECMA-376 — never column A). With
+    ``max_columns`` a cell at or past that column is dropped before any row is padded."""
     rows: list[tuple[int, list[str]]] = []
     data = root.find(f"{_MAIN}sheetData")
     if data is None:
         return rows
     previous = 0
+    padded = 0
     for row in data.findall(f"{_MAIN}row"):
         number = _row_number(row.get("r"), previous)
         previous = number
@@ -217,8 +258,13 @@ def _read_sheet_numbered(root: ET.Element, shared: list[str]) -> list[tuple[int,
         for c in row.findall(f"{_MAIN}c"):
             ref = c.get("r")
             column = column + 1 if not ref else _ref_column(ref, number)
-            cells[column] = _cell_text(c, shared)
+            if max_columns is not None and column >= max_columns:
+                continue
+            cells[column] = _cell_text(c, shared, booleans_as_text)
         width = (max(cells) + 1) if cells else 0
+        padded += width
+        if padded > _MAX_PADDED_CELLS:
+            raise XlsxError("sheet is too large to read (cell budget exceeded)")
         rows.append((number, [cells.get(i, "") for i in range(width)]))
     return rows
 
@@ -229,6 +275,8 @@ def _row_number(ref: str | None, previous: int) -> int:
     if not ref.isdigit() or int(ref) < 1:
         raise XlsxError(f"unreadable row number r={ref!r} after row {previous}")
     number = int(ref)
+    if number > _MAX_ROWS:
+        raise XlsxError(f"row number r={ref!r} is past Excel's last row (1,048,576)")
     if number <= previous:
         raise XlsxError(f"rows out of order: row {number} follows row {previous}")
     return number

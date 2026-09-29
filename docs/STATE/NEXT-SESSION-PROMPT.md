@@ -14,7 +14,7 @@ happen again. **Run these before the first edit:**
 git fetch --unshallow origin; git fetch --prune origin && git remote set-head origin -a
 git log --oneline -1 origin/main && git rev-list --count origin/main   # expect 51e66728 (#722) or later, 821+
 ls -d src app 2>&1; ls .github/workflows; grep -n '^version' pyproject.toml
-ls docs/adr | sort | tail -1                                          # expect 0537 or higher
+ls docs/adr | sort | tail -1                                          # expect 0539 or higher
 ```
 
 **If a prompt's facts disagree with those outputs, the TREE wins and the prompt is suspect — report it
@@ -25,6 +25,12 @@ tree agreed on every point — that is what a passing §0 looks like. AUDIT-2026
 `main` past the package's base, which is what "main moved" looks like: each re-based the package instead of copying
 its numbers. If session 6's documents pull request has not merged yet, `main` is `51e66728` (#722, the reproducers only; 821
 commits, ADR 0536): continue from that pull request's head (branch `claude/gallant-newton-yh75tr`), as the resume line says.
+
+## A feature session is open beside the campaign (2026-09-29, ADR-0539 — WORK IN PROGRESS)
+
+The One-Pager C / D / E intake, operator-drawn logic links and LODESTAR (the two One-Pager pages as their own program)
+are on `claude/youthful-ritchie-fqsz9x` as ONE WIP commit + a draft pull request, stopped on the operator's word. To
+resume THAT work, follow HANDOFF.md's "Next — resume THIS work"; it does not change the audit's resume line below.
 
 ## The resume line (charter §16) — what the operator pastes to continue the audit
 
@@ -355,5 +361,5 @@ gate) before every push.
 
 QC-1 / QC-2 (ADR-0393) and QC-3 (ADR-0509) bind every session; they are pinned by `tests/test_standing_rules.py`.
 Run the session-token-guardian's `scripts/token_audit.py` as the FIRST action (copy it to the scratchpad) and before
-each operator prompt. `git fetch origin` before you branch, number an ADR, or commit. Highest ADR 0537. Version
-1.0.294. Schema 2.17.0.
+each operator prompt. `git fetch origin` before you branch, number an ADR, or commit. Highest ADR 0539. Version
+1.0.295. Schema 2.17.0.

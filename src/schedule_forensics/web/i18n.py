@@ -251,6 +251,24 @@ _TERMS: dict[str, dict[str, str]] = {
         "de": "Zusammenfassung je Bahn",
         "pt": "Resumo por faixa",
     },
+    "Logic links": {
+        "es": "Vínculos lógicos",
+        "fr": "Liens logiques",
+        "de": "Logische Verknüpfungen",
+        "pt": "Vínculos lógicos",
+    },
+    "Add logic link": {
+        "es": "Agregar vínculo lógico",
+        "fr": "Ajouter un lien logique",
+        "de": "Logische Verknüpfung hinzufügen",
+        "pt": "Adicionar vínculo lógico",
+    },
+    "Remove all links": {
+        "es": "Quitar todos los vínculos",
+        "fr": "Supprimer tous les liens",
+        "de": "Alle Verknüpfungen entfernen",
+        "pt": "Remover todos os vínculos",
+    },
     "Swap prior and current": {
         "es": "Intercambiar anterior y actual",
         "fr": "Permuter précédent et actuel",

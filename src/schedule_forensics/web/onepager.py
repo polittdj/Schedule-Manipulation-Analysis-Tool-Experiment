@@ -1,5 +1,7 @@
-"""The /onepager page: a three-column Excel list becomes a swimlane one-pager and a PowerPoint
-slide (ADR-0446).
+"""The /onepager page: an Excel list becomes a swimlane one-pager and a PowerPoint slide
+(ADR-0446) — columns A swimlane · B item · C start · D finish · E complete since ADR-0539, the
+older C date-or-range · D status layout still read and named — with the operator's own LOGIC
+LINKS drawn between the items they pick (ADR-0539).
 
 The page is the SLIDE's preview: ``static/onepager.js`` paints the layout the server computed
 (:mod:`schedule_forensics.reports.onepager`) as one ``viewBox`` SVG in the slide's own
@@ -11,8 +13,9 @@ swimlanes it merged, the swimlane a blank cell inherited — because a one-pager
 dropped a milestone is worse than one that refused the file. Strict CSP: the layout travels in
 a non-executable JSON block (the ``launch.py`` idiom), never an inline script.
 
-Layering: ``app`` -> ``onepager`` -> ``components`` -> ``chrome`` -> ``state`` -> reports.
-Nothing here imports ``web.app``.
+Layering: ``app`` -> ``onepager`` -> ``htmlkit`` / ``onepager_common`` (std-lib leaves) -> reports.
+Nothing here imports ``web.app``, ``chrome``, ``components`` or ``state`` — so the engine never
+loads behind this page, which is what lets LODESTAR (ADR-0539) run it with the std-lib alone.
 """
 
 from __future__ import annotations
@@ -21,36 +24,67 @@ import datetime as dt
 import json
 
 from schedule_forensics.reports.onepager import (
+    CROWDED_NOTE,
+    DATE_STATUS,
+    START_FINISH,
     Layout,
     OnePagerDoc,
     Window,
     build_layout,
+    item_ident,
+    item_label,
     layout_json,
     subtitle_for,
     window_text,
     windowed_doc,
 )
-from schedule_forensics.reports.tables import Cell, Table, TableSet
-from schedule_forensics.web.chrome import _e, _utility_takeaway
-from schedule_forensics.web.components import _panel_head, _shell_tools
-from schedule_forensics.web.state import SessionState
+from schedule_forensics.reports.onepager_links import (
+    LINK_NAMES,
+    LINK_TYPES,
+    Link,
+    PlacedLink,
+    gone_reason,
+)
+from schedule_forensics.reports.tableset import Cell, Table, TableSet
+from schedule_forensics.web.htmlkit import _e, _panel_head, _shell_tools, _utility_takeaway
+from schedule_forensics.web.onepager_common import OnePagerSession as SessionState
 
 #: The columns the intake expects — the page explains them, and the template export ships them.
 TEMPLATE_ROWS: tuple[tuple[Cell, ...], ...] = (
-    ("Flight Manifests", "Boots 1", "6/27/2027"),
-    ("Flight Manifests", "Boots 2", "3/28/2028"),
-    ("Dallas", "Uncrewed Lander Campaign", "04/20/2027 - 06/20/2027"),
-    ("Dallas", "CDR", "9/25/2027"),
-    ("Crew Life", "MET Testing", "12/2026 - 4/2027"),
-    ("Crew Life", "MET On-Dock", "10/15/2026"),
+    ("Flight Manifests", "Boots 1", "6/27/2027", "6/27/2027", ""),
+    ("Flight Manifests", "Boots 2", "3/28/2028", "3/28/2028", ""),
+    ("Dallas", "Uncrewed Lander Campaign", "4/20/2027", "6/20/2027", ""),
+    ("Dallas", "CDR", "9/25/2027", "9/25/2027", ""),
+    ("Crew Life", "MET Testing", "12/1/2026", "4/30/2027", "Complete"),
+    ("Crew Life", "MET On-Dock", "10/15/2026", "10/15/2026", "Complete"),
 )
+#: The header row the template ships — the one that settles the layout for the reader.
+TEMPLATE_HEADER = ("Swimlane Name", "Task", "Start", "Finish", "Complete")
 
 
 def onepager_template() -> TableSet:
-    """A fill-in workbook in the intake's shape: swimlane · task or milestone · date."""
+    """A fill-in workbook in the intake's shape: swimlane · task or milestone · start · finish ·
+    complete (ADR-0539)."""
     return TableSet(
-        "POLARIS² — One-Pager list",
-        (Table("One-Pager list", ("Swimlane Name", "Task", "Date"), TEMPLATE_ROWS),),
+        "One-Pager list",
+        (Table("One-Pager list", TEMPLATE_HEADER, TEMPLATE_ROWS),),
+    )
+
+
+#: The upload's layout choice (ADR-0539): detect it, or say which one the workbook uses.
+LAYOUT_OPTIONS = (
+    ("auto", "Detect the layout"),
+    (START_FINISH, "C start · D finish · E complete"),
+    (DATE_STATUS, "Older: C date or range · D status"),
+)
+
+
+def layout_select(select_id: str) -> str:
+    """The upload form's layout choice — a plain select the drop submits with the file."""
+    opts = "".join(f'<option value="{v}">{_e(label)}</option>' for v, label in LAYOUT_OPTIONS)
+    return (
+        f"<label class=op-layout-pick>Layout <select name=layout id={select_id}>{opts}"
+        "</select></label>"
     )
 
 
@@ -77,17 +111,166 @@ def onepager_view(st: SessionState) -> tuple[OnePagerDoc | None, list[str]]:
     return windowed_doc(st.onepager, st.onepager_window)
 
 
+def linkable_items(st: SessionState) -> list[tuple[str, str, int | None]]:
+    """``(key, label, sheet row)`` for every item ON THE SLIDE — what a logic link may join, in
+    sheet order."""
+    view, _omitted = onepager_view(st)
+    return [(it.key, item_label(it), it.row) for it in view.items] if view is not None else []
+
+
+def link_idents(st: SessionState) -> dict[str, tuple[str, ...]]:
+    """Every item of the list by key -> its identity (:func:`item_ident`) — what a logic link
+    stores, and re-binds by when the list is uploaded again."""
+    doc = st.onepager
+    if doc is None:
+        return {}
+    return {it.key: item_ident(it.lane, it.name, it.start, it.finish) for it in doc.items}
+
+
+def _link_context(st: SessionState) -> tuple[dict[str, str], dict[str, str]]:
+    """``(names, absent)`` for the router: every item of the list by key, and the TRUE reason
+    each link end not on the slide is missing — the date window hides it, its item is gone, or
+    its name now matches other copies (:func:`gone_reason`)."""
+    full, (view, _omitted) = st.onepager, onepager_view(st)
+    if full is None or view is None:
+        return {}, {}
+    names = {it.key: item_label(it) for it in full.items}
+    shown = {it.key for it in view.items}
+    absent = {k: "is outside the date window" for k in names if k not in shown}
+    idents = link_idents(st)
+    for ln in st.onepager_links:
+        for key, ident in ((ln.pred, ln.pred_ident), (ln.succ, ln.succ_ident)):
+            if key not in names:
+                absent[key] = gone_reason(ident, idents)
+    return names, absent
+
+
 def onepager_layout(st: SessionState, today: dt.date) -> Layout | None:
     """The laid-out slide for the session's list, or ``None`` with nothing (usable) loaded — or
-    nothing inside the date window."""
+    nothing inside the date window. The operator's logic links are routed on it (ADR-0539)."""
     doc, _omitted = onepager_view(st)
     if doc is None or not doc.items:
         return None
     win = st.onepager_window
+    names, absent = _link_context(st)
     lay = build_layout(doc.items, today, onepager_title(st), window=win)
     return build_layout(
-        doc.items, today, lay.title, subtitle_for(doc, len(lay.lanes), today, win), window=win
+        doc.items,
+        today,
+        lay.title,
+        subtitle_for(doc, len(lay.lanes), today, win),
+        window=win,
+        links=st.onepager_links,
+        names=names,
+        absent=absent,
+        status_column=doc.status_column,
     )
+
+
+#: A dropdown option names an item in at most this many characters of its name — a long task
+#: name made the whole page scroll sideways (ADR-0539's red team, measured at 1440 px).
+_OPTION_NAME = 56
+
+
+def option_label(label: str, row: int | None) -> str:
+    """``swimlane · item (date) — row N``, the item part cut with an ellipsis when long; the row
+    tells two same-named items apart, as every other sentence on these pages does."""
+    text = label if len(label) <= _OPTION_NAME else label[: _OPTION_NAME - 1] + "…"
+    return f"{text} — row {row}" if row else text
+
+
+def links_form(
+    action: str,
+    prefix: str,
+    linkable: list[tuple[str, str, int | None]],
+    message: str | None,
+    is_error: bool,
+) -> str:
+    """The Logic links control ABOVE the slide (ADR-0539), the same on both pages: pick a From
+    and a To — or click them on the slide, first From then To (``static/onepager_links.js``
+    fills these very selects) — choose the type, add. A plain POST form: it works with no
+    script at all, and the selects are the keyboard path. ``data-sf-nopersist`` keeps
+    ``persist.js`` from restoring the pair just added (it would be re-submitted as a duplicate).
+    The result of the last link action shows HERE, where the browser lands after it."""
+    if not linkable:
+        return ""
+    opts = "".join(
+        f'<option value="{_e(k)}" title="{_e(label)}">{_e(option_label(label, row))}</option>'
+        for k, label, row in linkable
+    )
+    kinds = "".join(
+        f'<option value="{k}"{" selected" if k == "FS" else ""}>{_e(LINK_NAMES[k])} ({k})</option>'
+        for k in LINK_TYPES
+    )
+    shown = ""
+    if message:
+        cls, role = ("notice warn", "alert") if is_error else ("notice ok", "status")
+        shown = f'<div class="{cls}" role={role}>{_e(message)}</div>'
+    return f"""<section class=op-links id={prefix}Links data-noprint=1 data-sf-nopersist aria-labelledby={prefix}LinksHead>
+<h3 id={prefix}LinksHead class=op-links-head>Logic links</h3>
+<p class=muted>Show the logic between two items — and only that logic. Pick the <b>From</b> (the predecessor) and
+the <b>To</b> (the successor), or click them on the slide, first From then To; choose the type and add the link.
+Add as many pairs as you need: every link you add is drawn on the slide and exported to PowerPoint as an arrow.</p>
+{shown}<form action="{action}" method=post class=op-link-form id={prefix}LinkForm data-sf-nopersist>
+<input type=hidden name=action value=add>
+<label>From <select name=pred id={prefix}LinkFrom required data-no-i18n data-sf-nopersist><option value="">— pick the predecessor —</option>{opts}</select></label>
+<label>To <select name=succ id={prefix}LinkTo required data-no-i18n data-sf-nopersist><option value="">— pick the successor —</option>{opts}</select></label>
+<label>Type <select name=kind id={prefix}LinkKind data-sf-nopersist>{kinds}</select></label>
+<button type=submit>Add logic link</button>
+<span class=op-link-hint id={prefix}LinkHint role=status aria-live=polite></span>
+</form>
+</section>"""  # nosec B608 (HTML, not SQL)
+
+
+def links_list(
+    action: str,
+    prefix: str,
+    links: tuple[Link, ...],
+    drawn: list[PlacedLink],
+    notes: list[str],
+) -> str:
+    """BELOW the slide: every link the operator made, each with its own Remove, and — in a block
+    of its own, because a link not drawn is an omission, not an assumption — every link the
+    slide does NOT draw, with the reason."""
+    if not links:
+        return ""
+    on_slide = {(d.pred, d.succ, d.kind) for d in drawn}
+    items = ""
+    for ln in links:
+        shown = (ln.pred, ln.succ, ln.kind) in on_slide
+        state = "" if shown else ' <span class="op-link-off">— not drawn (see below)</span>'
+        what = f"{ln.pred_label} → {ln.succ_label} ({ln.kind})"
+        items += (
+            f"<li><span data-no-i18n>{_e(ln.pred_label)} → {_e(ln.succ_label)}</span> · "
+            f"{_e(LINK_NAMES.get(ln.kind, ln.kind))}{state}"
+            f'<form action="{action}" method=post class=op-link-remove data-noprint=1 data-sf-nopersist>'
+            "<input type=hidden name=action value=remove>"
+            f'<input type=hidden name=pred value="{_e(ln.pred)}">'
+            f'<input type=hidden name=succ value="{_e(ln.succ)}">'
+            f'<input type=hidden name=kind value="{_e(ln.kind)}">'
+            f'<button type=submit class=linkbtn aria-label="Remove logic link {_e(what)}">Remove</button>'
+            "</form></li>"
+        )
+    undrawn = [n for n in notes if n != CROWDED_NOTE]
+    missing = (
+        f'<div class="notice warn" role=alert><b>Logic links not drawn — {len(undrawn)} of '
+        f"{len(links)}</b><ul class=op-notes>"
+        + "".join(f"<li>{_e(n)}</li>" for n in undrawn)
+        + "</ul></div>"
+        if undrawn
+        else ""
+    )
+    crowded = (
+        f'<div class="notice ok" role=status>{_e(CROWDED_NOTE)}</div>'
+        if CROWDED_NOTE in notes
+        else ""
+    )
+    return f"""<section class=op-link-listing id={prefix}LinkList aria-label="Logic links on this slide">
+<ul class=op-link-list>{items}</ul>
+<form action="{action}" method=post class=op-link-clear data-noprint=1 data-sf-nopersist><input type=hidden name=action value=clear>
+<button type=submit>Remove all links</button></form>
+{missing}{crowded}
+</section>"""
 
 
 def window_form(action: str, window: Window | None) -> str:
@@ -149,6 +332,17 @@ def _data_table(doc: OnePagerDoc) -> str:
     )
 
 
+#: The intake's columns, stated once for both pages (ADR-0539).
+COLUMNS_HELP = """<b>A</b> the swimlane name, <b>B</b> the task or milestone name, <b>C</b> the
+      <b>start</b> date, <b>D</b> the <b>finish</b> date, <b>E</b> complete. A row whose start and
+      finish are the same day &mdash; or that has only one of them &mdash; is a <b>milestone</b> (a
+      diamond); otherwise it is an <b>activity</b> (a bar). Column <b>E</b> is a status word:
+      Complete, Completed, Done, Finished or Closed (or Yes, X, TRUE, a check mark, 100%) draws a
+      check beside the item. Workbooks in the older layout &mdash; <b>C</b> one date or a range such
+      as <code>04/20/2027 - 06/20/2027</code>, <b>D</b> the status &mdash; are still read, and the
+      page says which layout it read."""
+
+
 def _dropzone(st: SessionState, *, loaded: bool) -> str:
     verb = "Replace the list" if loaded else "Drop the Excel list here, or"
     return f"""<div class=panel>
@@ -157,13 +351,9 @@ def _dropzone(st: SessionState, *, loaded: bool) -> str:
     <div class=dz-icon>&#8682;</div>
     <p class=dz-title>{verb}
       <button type=button class=linkbtn id=opPick>choose a file&hellip;</button></p>
-    <p class=muted>One sheet, three columns: <b>A</b> the swimlane name, <b>B</b> the task or milestone
-      name, <b>C</b> the date &mdash; a single date is a <b>milestone</b> (a diamond), a range such as
-      <code>04/20/2027 - 06/20/2027</code> or <code>05/2026 - 11/2026</code> is an <b>activity</b> (a
-      bar). An optional column <b>D</b> is a status word: Complete, Completed, Done, Finished or
-      Closed (or Yes, X, a check mark, 100%) draws a check beside the item. Any number of rows per
-      swimlane; blank rows between swimlanes are fine.
-      <a href="/export/xlsx/onepager-template" download>Download the template</a>.</p>
+    <p class=muted>One sheet: {COLUMNS_HELP} Any number of rows per swimlane; blank rows between
+      swimlanes are fine. <a href="/export/xlsx/onepager-template" download>Download the template</a>.</p>
+    <p class=op-layout-row>{layout_select("opLayout")}</p>
     <input type=file id=opFile name=file accept=".xlsx" hidden>
     <noscript><button type=submit>Upload</button></noscript>
   </div>
@@ -173,7 +363,10 @@ def _dropzone(st: SessionState, *, loaded: bool) -> str:
 
 #: The panel toolkit (▦ / ⤓ / ⛶, a per-page include like every converted page) and the painter +
 #: drop-zone intake, one static file each (strict CSP: never inline).
-_SCRIPT = '<script src="/static/panelkit.js"></script><script src="/static/onepager.js"></script>'
+_SCRIPT = (
+    '<script src="/static/panelkit.js"></script><script src="/static/onepager_links.js"></script>'
+    '<script src="/static/onepager.js"></script>'
+)
 
 
 def _onepager_body(st: SessionState, today: dt.date) -> str:
@@ -201,9 +394,9 @@ def _onepager_body(st: SessionState, today: dt.date) -> str:
         )
     if lay is None or doc is None or view is None:
         take = _utility_takeaway(
-            "No list loaded — drop a three-column Excel list to build the one-pager.",
-            "Swimlane · task or milestone · date. The page draws the slide and exports it to "
-            "PowerPoint as editable shapes.",
+            "No list loaded — drop an Excel list to build the one-pager.",
+            "Swimlane · task or milestone · start · finish · complete. The page draws the slide, "
+            "draws the logic links you pick, and exports it to PowerPoint as editable shapes.",
         )
         problems = _notice_list("Rows skipped", doc.problems, "warn", "alert") if doc else ""
         return f"{take}{banner}{problems}{_dropzone(st, loaded=False)}{_SCRIPT}"
@@ -239,9 +432,21 @@ def _onepager_body(st: SessionState, today: dt.date) -> str:
 <a class="btn op-pptx" id=opPptx href="/export/pptx/onepager" download>&#11015; POWERPOINT</a>
 <form action="/onepager/clear" method=post class=op-clear-form><button type=submit>Clear the list</button></form>
 </div>"""
-    notes = _notice_list("Read with an assumption", tuple(lay.notes) + doc.notes, "ok", "status")
-    # column D's words it could not read — shown now that this page draws completion (ADR-0526)
-    notes += _notice_list("Column D", doc.completion_notes, "ok", "status")
+    link_msg, link_error = st.onepager_links_msg, st.onepager_links_is_error
+    st.onepager_links_msg, st.onepager_links_is_error = None, False
+    notes = _notice_list(
+        "Read with an assumption",
+        tuple(lay.notes) + ((doc.layout_note,) if doc.layout_note else ()) + doc.notes,
+        "ok",
+        "status",
+    )
+    # the status column's words it could not read — named by the column the sheet used
+    notes += _notice_list(
+        f"Column {doc.status_column}" if doc.status_column else "Status column",
+        doc.completion_notes,
+        "ok",
+        "status",
+    )
     problems = _notice_list("Rows skipped", doc.problems, "warn", "alert")
     notes += window_notice(win, len(view.items), len(doc.items), omitted)
     if lay.today_note:
@@ -250,12 +455,14 @@ def _onepager_body(st: SessionState, today: dt.date) -> str:
 <div class=panel data-export="/export/xlsx/onepager">
 {_panel_head("One-Pager timeline", tools=tools, prov=prov)}
 <p class=muted>What you see is the slide: 16:9, one tinted band per swimlane, bars for activities and
-diamonds for milestones, a check beside what column D marks complete, dotted month lines under a
-month/year header, the red line at today, and the legend along the bottom. Hover any bar or diamond for
-its dates.</p>
+diamonds for milestones, a check beside what the status column marks complete, the logic links you add
+as arrows, dotted month lines under a month/year header, the red line at today, and the legend along the
+bottom. Hover any bar or diamond for its dates; click two of them to link them.</p>
 {controls}
+{links_form("/onepager/links", "op", linkable_items(st), link_msg, link_error)}
 <div id=opHost class="op-host chart-host" role=img aria-label="{_e(lay.title)}"></div>
 <script id=opData type="application/json">{blob}</script>
+{links_list("/onepager/links", "op", st.onepager_links, lay.links, lay.link_notes)}
 {_data_table(view)}
 </div>
 {_dropzone(st, loaded=True)}{_SCRIPT}"""

@@ -1,4 +1,13 @@
-# Handoff — 2026-09-28 (a) (AUDIT-2026-09-23 session 6 — WP-CPM continued: the served drag, the path counterfactual and the driving-slack trace disagree with their own definitions; 28 classes confirmed (T1 × 16, T2 × 8, T3 × 2, T4 × 2), 1 held, WP-CPM still not saturated — ADR-0537 · **v1.0.294** (this PR changes no `src/`))
+# Handoff — 2026-09-29 (a) (WORK IN PROGRESS — One-Pager: the intake reads C start · D finish · E complete, the operator draws the logic links that go to PowerPoint, and the two One-Pager pages ship on their own as LODESTAR — ADR-0539 · **v1.0.295**)
+
+> **A feature session, outside the AUDIT-2026-09-23 campaign.** The campaign's session 7 runs in parallel on
+> `claude/modest-cori-iit4zh` and holds **ADR-0538**; this session took **ADR-0539**. Whichever pull request merges
+> second merges `main` and keeps BOTH sessions' sections (move, never delete). The campaign's disclosures below are
+> carried VERBATIM from the 2026-09-28 (a) handoff — this session fixed none of them, and the two One-Pager
+> reproducers it was asked to watch are still open: **A0923-IMP-005** (a superscript `<row r>` 500s the One-Pager
+> uploads — LODESTAR shares the reader, so it answers that file with its generic HTTP 500 "LODESTAR hit an unexpected
+> error." page and keeps serving; measured) and **A0923-DOC-003**
+> (DESIGN-SYSTEM's Library omits One-Pager Compare) — both still strict-xfail, their paths untouched.
 
 - **T1 — A0923-CPM-016 / 017 / 018 / 019 / 021 (drag and Path Analysis days; in committed corpus):** the Path Analysis "Drag (d)" figure (the /path grid after "Run Drag Analysis", /api/driving?drag=1, /export/{fmt}/path?drag=1) is not the target-finish pull-in of removing the activity's remaining work that `engine/drag.py:3-4` defines and that SSI's exports and a removal on the engine's own CPM give: it is capped by any overlapping traced activity's driving slack (CPM-016 — Large_Test_File focus 152: UID 6513 36.0 d for SSI's 0.5 d; an SS- or lead-linked activity 0.0 d for 10 d), counts an elapsed or 24-hour-calendar duration in its own unit (CPM-017 — Hard_File UID 146 6.0 d for SSI's 2 d, beside its own Duration 2.0), changes with the Dependency Range filter (CPM-019 — Large_Test_File focus 152 at SSI's own "≤ 0 d": 10 of 76 rows inflated, UIDs 7442 / 7443 1.0 → 15.0 d) and gives the target's own descendants a drag under Path Direction Successors / Both (CPM-021 — Project5 target 67: UID 82 25.0 d for 0); and on a schedule whose working day is not 480 minutes every Path Analysis day figure divides by a fixed 480 (CPM-018 — the committed TP2_Bridge_4x10_Calendar.xml, a 600-minute day: Drag 25.0 for 20 file-days, "longest single activity … at 56.25 working days" for 45, and with one added FNLT a path float of −2.5 d for −2). Since 140aed3a (#292, v1.0.4, 2026-07-08, ADR-0155), where drag and the range filter were born (CPM-018's /path header since 6d71f813, v1.0.9; CPM-017's 24-hour leg from afb8e729, v1.0.140). Until fixed, read drag from SSI's own Directional Path export, not from the tool, and on a file whose day is not 480 minutes read Path Analysis days as working minutes ÷ the file's MinutesPerDay.
 - **T1 — A0923-CPM-010:** the what-if counterfactual and the per-change effect (/integrity, /evolution, the Ask-the-AI counterfactual fact) restore a STARTED activity's duration but not its remaining duration — the field the CPM schedules a started activity from (ADR-0517) — so a duration cut on in-progress work reads as 0 working days of recovery (the hand pair: +0 for +2; Large_Test_File2 → Large_Test_File: the target line for UID 5539 reads 0 where its restored remaining alone moves it ≥ 623 working days). Since 601be5d3 (#706, v1.0.281, 2026-09-20, ADR-0517). Until fixed, do not cite a counterfactual or a per-change effect that restores the duration of an activity that had started; unstarted reverts are right (214 of 214 constructed cuts).
@@ -16,91 +25,71 @@
 - **T1 — A0923-MET-001:** /margin's erosion rate, zero-margin date, consumed % and corrective-action trigger are computed on a mixed basis when the target milestone is missing from some versions (undisclosed). Since #356 (2026-07-13, v1.0.33).
 - **T1 (data-gated) — A0923-IMP-002** single-block (no-lunch) calendars mis-measured (since #671, v1.0.257); **A0923-IMP-003** XER per-task calendars ignored with a false "Every computed date and float rides <cal>" statement (since #55). No committed file exercises either; an operator file could.
 
-STATUS (current) — branch **`claude/gallant-newton-yh75tr`** (the harness's designation), two pull requests: **#722** (the 28 reproducers — merged by the operator as `51e66728`) and a follow-up draft
-pull request carrying these documents (branch restarted on `51e66728`), both opened by session 6 (the operator merges; never marked ready here), based on `main` @ **`13b13f38`** (#721, session 5's
-package, ADR-0536, v1.0.294, 820 commits; no open pull request at the check, so this session's ADR is **ADR-0537**). The
-§0 check agreed with the tree on every point; the 56 reproducers read 1 passed · 55 xfailed at the base; no ask was
-answered (every default stands — ASK-11's "yes" is what brought UI-001's reproducer in). With session 6's 28 added:
-**84 reproducers, 1 passed · 83 xfailed** (the lead's run at the reproducer commit `7d91926a`; the charter's fast guard
-set there: 449 passed, 2 skipped, 83 xfailed). Highest ADR on disk **0537**. Version **1.0.294** — this PR changes no
-`src/`. Schema 2.17.0. QC-1 / QC-2 / QC-3 bind every session.
+STATUS (current) — **WORK IN PROGRESS, stopped deliberately** (the operator asked the session to stop before its token
+budget ran out and hand over). Branch **`claude/youthful-ritchie-fqsz9x`**, based on `main` @ **`0b45eb28`** (#723,
+session 6's documents, ADR-0537, v1.0.294). One WIP commit carries everything; a DRAFT pull request is open for it. Highest
+ADR on disk **0539**. Version **1.0.295** (bumped; the wheel and the nine installers are NOT rebuilt yet — see Next).
+QC-1 / QC-2 / QC-3 bind every session.
 
-## What session 6 did — WP-CPM continued (not yet saturated)
+## What this session did — ADR-0539 (the operator's three asks, 2026-09-29)
 
-- **The instrument, first.** The 44-file corpus rebuilt from scratch BEFORE the plan (15 goldens, 11 gzipped + the 29
-  tracked intake `.mpp`, 29 of 29 OLE2, rc=0 under a JVM lock, one output per input path): **22,105** activities by two
-  methods, every file agreeing.
-- **The plan, attacked before any finder ran.** Ten assumptions on the pristine tree: **Q6 FELL and was narrowed
-  twice** (the project day is 480 minutes on 44 of 44 corpus files — but the corpus is a population choice, and the
-  committed `00_REFERENCE_INTAKE/references/TP2_Bridge_4x10_Calendar.xml` carries a 600-minute day, so the 480-constant
-  class is live in the tree); **Q10 FELL for LD-6** (a DUPLICATE of CPM-001). The finders also refuted three of the
-  lead's own starting points: LD-5 (half-to-even whole days are ADR-0515's tool-wide rule), LD-1's cited line
-  (`drag.py:177` does not exist; the constant is at `:65`), and session 5's "skipped Thanksgiving" mechanism for the
-  −960 second day (the real one is a NINTH Thanksgiving — IMP-010).
-- **Findings — 31 candidates → three lead merges → 28 claims → 27 REPRODUCED + 1 HELD; plus UI-001 → 28
-  CONFIRMED-DEFERRED** (T1 × 16, T2 × 8, T3 × 2, T4 × 2). The path counterfactual: CPM-010 (T1, started work) and
-  CPM-011..015 (T2) → U32–U36. Drag and Path Analysis days: CPM-016 / 017 / 019 / 021 (T1, one rule family → U37) and
-  CPM-018 (T1, the fixed 480 → U38). CPM-020 (T1 latent, U39). Driving slack against SSI: CPM-022 (T1, option-gated,
-  U40), CPM-023 / 024 (T2), CPM-025 (T4), CPM-026 (T3) → U41–U44. Session 5's leads settled: CPM-027 (T2, U45), CPM-028
-  (T1 latent, U46), CPM-029 (T1, LTF2 UID 5307, U47), IMP-010 (T1, U52). Second-round edge / metamorphic: CPM-030..034
-  (T1; CPM-034's late walls in the committed corpus) → U48–U51. DOC-017 (T3, U53). UI-001 (T4, U54). **HELD:**
-  F-EDGE2-002 (HonorConstraints=0 read as 1 — HELD-BY ADR-0322 §2). **ARTIFACT-GATED, not sent:** F-LEADS-005 (ADR-0118);
-  the F-SSI finder's four SSI-export items → **ASK-15**.
-- **Verified by:** an independent claim-only verifier per claim (P1–P7) and a SECOND one (P8) for the four classes that
-  grew from the lead's own observations (CPM-010, CPM-016, CPM-018, CPM-026); an assembler per claim; and the lead's
-  own teeth on all 28 — pristine XFAIL on Python 3.11.15 and 3.13.12, each fix sketch on a fresh `src/` copy → strict
-  XPASS, each marker removed → FAILED by AssertionError (UI-001: 3.11 with Chromium only; no playwright under 3.13).
-  **Lead ruling:** CPM-010's exposure is the verifiers' "latent on served pages" (engine-level witness on
-  Large_Test_File2 → Large_Test_File in reverse chronology), not the finder's "live".
-- **Delivered:** 25 reproducers in `tests/audit/test_audit_20260923_cpm.py` (33), 1 in `_imp.py` (8), 1 in `_doc.py`
-  (17) and the new Chromium-gated `tests/audit/test_audit_20260923_ui.py` (browser census 56 → 57 modules) → **84**;
-  the ledger, coverage, report, plan (U32–U54) and asks (ASK-15) each with a "Session 6" section; ADR-0537. Retained
-  classes **56 → 84** (T1 30 · T2 16 · T3 21 · T4 5 · T5 12; CPM 8 → 33, IMP 8, DOC 17, UI 1).
-- **Incidents:** a container restart (~13:58 UTC) killed the verify / assemble workflow; its resume missed its cache and
-  re-ran three finished assemblies until the lead stopped it (the lead-validated runs are canonical); orphaned processes
-  kept holding the suite and JVM locks; an orphaned existing test's headless Chromium made two CONNECTs to
-  www.google.com:443 that the egress proxy denied (UNVERIFIED observation for the CUI lane, not a finding). 0 agent
-  deaths from credits or rate limits.
-- **The full gate on the committed tree:** not run to completion locally — the static gate is green on this tree (`python -m ruff check .`, `python -m ruff format --check .`, `python -m mypy src/` — no issues in 165 source files, `bandit -q -r src` exit 0, `node --check` on each of the 64 static files — 0 failures) and so are the document-sensitive guards (`tests/test_state_docs.py tests/test_standing_rules.py tests/web/test_docs.py tests/audit/test_audit_20260923_doc.py tests/guards`: 428 passed, 2 skipped, 16 xfailed); the full pytest suite reached 81 % with no failure before a container restart killed it, so the whole suite is CI's on the documents pull request (both Pythons, read to conclusion by its jobs). The reproducer commit's CI (#722 at `7d91926a`): 6 of 6 checks green.
+- **Intake — C start · D finish · E complete** (`reports/onepager.py`): the older C date · D status layout auto-detected
+  (Auto / C-D-E / older on both upload forms); the template ships Swimlane · Task · Start · Finish · Complete; MS Project's
+  pasted date forms read (a weekday CHECKED, a time dropped, "Sept", "Nov."); a typed TRUE / a checkbox (a BOOLEAN cell)
+  reads as TRUE (`read_xlsx_numbered(..., booleans_as_text=True)`, One-Pager only).
+- **Logic links** (`reports/onepager_links.py`, both pages, both .pptx): pick two items (click or the From / To selects),
+  FS default + SS / FF / SF; refusals by name (self, duplicate, LOOP naming the chain, 200 cap); routed orthogonally in the
+  measured free gap between rows, parallel tracks by DRAWN height, per-end attachment points, heads and tags reserved, a
+  crowding note only on genuinely dense slides; each link one named group in PowerPoint; links survive a re-uploaded list
+  and re-bind by identity when a name starts / stops repeating (never to another month's copy).
+- **LODESTAR** (`lodestar/LODESTAR.pyz`, 34 members, std-lib only, Python 3.10+, no AI): the two pages as their own
+  program, "Created by David Politte · david.j.politte@nasa.gov" on every page; `tools/lodestar/build_lodestar.py`
+  (deterministic; `--check`); launchers `.bat` (CRLF) / `.command` / `.sh`; README. New leaf modules `reports/tableset.py`,
+  `web/htmlkit.py`, `web/security.py`, `web/onepager_common.py`, `web/onepager_actions.py` (route logic shared by both
+  servers), `web/lodestar_shell.py`.
+- **Attacked twice.** A five-lens red team refuted PLAN v1 before the first edit (ADR-0539's first table). After the build,
+  four test writers (≈ 290 new tests, each red on the pristine tree, mutation-proven) and a four-lens review attacked it:
+  every finding was re-reproduced by the lead (red), fixed in a sandbox (green) and pinned — ADR-0539's second table
+  (INTAKE-1..8, LINKS-1..6, LS-01..13, the boolean TRUE, a header-row regression, a 120-char name scrolling the page).
+- **Measured at the WIP commit** (Python 3.11): static gate green (`ruff check .` / `ruff format --check .` at the PINNED
+  ruff 0.16.9 — the container's own ruff is 0.15.8, do not trust it; `mypy src/` 177 files; `bandit` exit 0; `node --check`
+  per file); `build_lodestar.py --check` current; the targeted battery (every One-Pager / xlsx / export / LODESTAR / split
+  contract / guards / air-gap / CSP / state-doc / audit IMP+DOC test) **1099 passed, 2 skipped, 24 xfailed** before these
+  state documents were written (its only 4 failures were the state-doc drift guards these documents answer). Legacy-layout
+  fuzz 0 of 2,000 differ from the older reading; current-layout fuzz 995 of 1,000 read current, 0 rows lost; erased
+  heads / tags 0 of 600 fuzzed chains (was 315). **NOT run: the full suite, `-m parity`, the wheel/installer lockstep.**
 
-## Next
+## Next — resume THIS work (in order)
 
-- **Default:** the next AUDIT session resumes with the charter §16 line and **continues WP-CPM — round 3, aimed at
-  saturation** (two consecutive probe families with no new CANDIDATE): the ledger's "UNVERIFIED leads — session 6" (the
-  500 on an inactive `/api/driving` target, /evm's silent refusal, ADR-0505's tension in CPM-027's sketch, the
-  `test_ssi_leveled_uid152` tightening); the SSI Successors / near-path items through ASK-15's exports if answered; and
-  **at least two NEW probe families**. Then the charter's lane order.
-- **Repairs** run separately, one unit per session, in the merged-queue order, by pasting the unit's kickoff prompt;
-  U01 (LAW-1), U03 (T1) and U22 (T1, the displayed finish) still lead, and U37 / U38 / U40 / U47 / U52 now carry T1
-  exposure on committed inputs too. **U47 flips A0923-MET-002's reproducer** — re-witness MET-002 first (U09 depends).
-- **Asks:** ASK-15 is new (four SSI Directional Path exports; default: keep the engine as it is, the four stay
-  ARTIFACT-GATED, CPM-022 keeps its T1 tier); ASK-11's default was applied (UI-001); every other ask is carried with its
-  default. Never wait for a reply.
-- Carried unchanged from earlier handoffs: R-68 (operator question (f)); ADR-0531's raw-flag question; R-21; the HELD
-  and ORG rows — all in the merged queue.
+1. §0: `git fetch --prune origin`; if `main` moved (AUDIT session 7 on `claude/modest-cori-iit4zh` holds **ADR-0538**),
+   `git merge origin/main` (never rebase) and keep BOTH sessions' state-doc sections (move, never delete).
+2. **Re-run the UI + docs review lens** (it was stopped unfinished): the Polaris² pages in all four themes at 1440 / 390 px
+   after an upload + links, DESIGN-SYSTEM rules, route behaviour unchanged vs `0b45eb28`, and every doc claim (USER-GUIDE
+   12c + LODESTAR, README 12, DESIGN-SYSTEM §7c, CLAUDE.md, ADR-0539, lodestar/README.md). The intake / links / LODESTAR
+   lenses finished; their skeptic verifiers only partly ran (INTAKE-1..8, LINKS-1 verified; all were independently
+   re-reproduced by the lead anyway).
+3. After the LAST `src/` edit: `python tools/lodestar/build_lodestar.py`, then `pip install build && python -m build
+   --wheel --outdir dist/wheel && python tools/installer/build_installers.py dist/wheel/schedule_forensics-*.whl`.
+4. The full gate (`full-gate` skill) incl. the FULL suite and `-m parity`; then finish the session-close ritual (this
+   section rewritten with the final numbers, SESSION-LOG, NEXT-SESSION-PROMPT), mark the PR ready only if the operator says.
+5. Follow-up (out of scope, record it): the pre-commit hook cannot see into a shebang-prefixed ZIP (`.pyz`) — its
+   container check keys on the first four bytes; the LODESTAR lockstep test is the guard until the hook learns EOCD lookup.
+6. Ask the operator: what column E holds in real lists (checkbox / TRUE-FALSE / "Complete" / a % cell — a 100 % cell is a
+   NUMBER 1 and is still NAMED as unread, deliberately); and note NASA software-release rules (NPR 2210.1) before sharing
+   LODESTAR outside the organization.
 
-## Not done (measured, left) · carried forward
-
-WP-CPM's third round (above) · R8 duality on a reflection-symmetric non-continuous week (designed, not run) · the
-wall-path variants of CPM-030 / 031 and the twin sites of CPM-034 / 032 (identified, not separately reddened) · drag
-beyond one focus per file · SSI's successor-mode output and near-path semantics (no tracked export — ASK-15) · the
-parallel-path decomposition and /driving-path family B · MS Project's stored float for CPM-028's case B and CPM-033 /
-034's shapes · the four DISPUTED SSI drag rows (UID 141 ×2, 385, 389) · DCMA-12's started-target injection (a routed MET
-lead) · the test browser's egress attempt (CUI egress census) · every lane session 1 left unprobed (SEC, EXP, FOR, PKG,
-PERF; the UI time-zone census; the CUI hook-bypass battery, air-gap probes and canary run; IMP round trip and fuzz; the
-MET four-way table; WEB cache and concurrency). The 2026-08-27 register was not edited.
+The AUDIT-2026-09-23 campaign's own Next is unchanged: session 6's (now the top section of `HANDOFF-ARCHIVE.md`) unless
+session 7's handoff has landed on `main`.
 
 ## Traps this session paid for, by name
 
-**The corpus is a population choice** — "480 minutes on 44 of 44 files" was true of the corpus and false of the
-committed tree (TP2_Bridge_4x10_Calendar.xml, 600): census the tree, not only the instrument. · **A workflow resume can
-miss its cache and redo finished work** — check the journal (which runs finished, where their evidence sits) before
-trusting a resume; canonical evidence is the run the lead validated. · **`pkill -f` matches your own shell** (exit 144,
-twice) — `pgrep`, then kill by PID. · **A src-symlinked scratch tree turns a patch fallback into a write to the
-checkout** — any tree a patch may touch gets a real copy of `src/`, and `__file__` is printed. · **A restart leaves
-orphan processes holding locks, and a test browser that tries to reach the internet** — after a restart, list and stop
-the orphans before the next locked run, and read the proxy's log. · **A lead's own hypothesis needs a second verifier**
-(P8), and a lead's cited line is testimony (LD-1's `drag.py:177` does not exist).
+**An editable install shadows a worktree** — `python` imports the MAIN checkout's `src` unless `PYTHONPATH=src`; tell
+every agent. · **The container's ruff is not CI's** (0.15.8 vs the pinned 0.16.x). · **`pkill -f` / `pgrep -f` in a kill
+loop matches your own shell** (exit 144, again) — list PIDs, kill by PID. · **An unquoted heredoc runs backticks** — a
+Markdown table with `names` in backticks became commands; quote the delimiter (`<<'EOF'`). · **Editing a carried file after
+the build makes LODESTAR stale** — the lockstep caught a comment edit; rebuild last. · **A strict xfail that XPASSes is the
+fix working** — remove the marker in the same change. · **Bandit B608 reads an HTML `<select … id=…From ` as SQL** — the
+repo's `# nosec B608 (HTML, not SQL)` idiom on the closing line.
 
 # (prior) handoffs — archived
 
