@@ -20169,7 +20169,10 @@ commit, not a rebase. The resolution:
 - **Measured at push:** the static gate green (pinned ruff 0.16.9, mypy 177, bandit 0, node per file); LODESTAR current;
   installers 68; One-Pager + LODESTAR 767 passed / 4 skipped. **The full suite** (clean worktree of 7d3df6dc — the
   final source — Python 3.11, playwright installed so the browser tests ran): **6,526 passed, 9 skipped, 83 xfailed,
-  exit 0** (60 min 35 s). `-m parity`: recorded in the next follow-up.
+  exit 0** (60 min 35 s); **`-m parity` 271 passed, exit 0** (12 min 11 s).
+- **`main` after #724's squash** (`dd8b4cbf`, CI run #2014): `floor`, `test (3.13)` (tests, coverage gates, parity,
+  bandit, pip-audit), `browser` (the census and the LibreOffice .pptx gate) and `cui-guard` green; `test (3.11)` green
+  through its coverage gates, its parity step still running when this was written — read run #2014 first.
 - **CI on #725** (3707307c): `test (3.13)` 1 failed / 6,074 passed — the SLA-3 mutation twin assumed the interpreter's
   own `http.server` writes a bare reply before a version is read; CPython 3.10–3.13.12 do (measured here), CI's
   setup-python 3.13 did not (its exact patch release UNVERIFIED). The twin now probes that premise on a plain
