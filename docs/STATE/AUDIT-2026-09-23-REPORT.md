@@ -495,6 +495,53 @@ corpus battery (88 runs, 44,210 activity-runs) 0 on REF, R6 undated, R8, R9, R10
 premise holds for link-driven and FNET / MFO-bound milestones (the filed class is the SNET / MSO one, CPM-027); the
 session-5 mechanism for the −960 second day ("a skipped Thanksgiving") REFUTED — the real mechanism is IMP-010.
 
+## Session 7 (2026-09-29): WP-CPM round 3
+
+**Base `0b45eb28`** (#723, session 6's documents; v1.0.294; 822 commits; `src/` byte-identical to sessions 5–6's
+bases). AUDIT + PLAN ONLY; one draft pull request on `claude/modest-cori-iit4zh`; ADR-0538. The §0 check agreed with
+the tree on every point; the 84 reproducers read session 6's line on both Pythons before anything (1 passed · 83
+xfailed; 1 · 1 skipped · 82 on the 3.13 venv); the 44-file corpus was rebuilt to 22,105 activities by two methods and
+the committed tree censused beside it (43 MSPDI documents — 40 at 480 minutes a day, TP2 ×2 at 600, one without the
+field; 1 XER; 2 JSON schedules).
+
+**The round.** Five NEW probe families (none a repeat of rounds 1–2's ten), planned and attacked on the pristine tree
+before any finder ran (13 assumptions; R7 fell — a converter-default hunt was the wrong instrument, the day classes are
+rendered-surface defects; R13 left UNVERIFIED on purpose so the finder stayed independent): F-FAMB (ADR-0251's family
+B, the parallel-path decomposition, the two session-6 route leads) · F-DAY (the working day on every served surface:
+281 URLs × four day lengths, token-diffed against the 480 control) · F-CALG (a 14-property seeded battery over the
+calendar arithmetic) · F-TWIN (session 6's unrun designs: R8 duality, the wall-path variants and twin sites) · F-RT
+(the Save `.json` round trip on 76 files). **19 candidates → 1 DUPLICATE (an instance of CPM-006) → 18 claims → 18
+REPRODUCED** by fresh-context claim-only verifiers (a second verifier for the three grown from lead observations), 0
+refuted; the one "HELD — premises contested" verdict (F-DAY-003) became a PREMISE finding after the lead's deep dive.
+The lead re-ran all 19 recorded reds (19 exit 1), one assembler per class produced the reproducer, teeth, fix sketch,
+blast radius and exposure window, and the lead's own teeth on fresh trees are on record for all 18 (Python 3.11.15 and
+3.13.12; UI-002 on 3.11 + Chromium).
+
+**Yield: 18 new classes — T1 × 8 · T2 × 6 · T3 × 1 · T4 × 3; retained 84 → 102** (101 open + DOC-014 fixed
+upstream). The T1s: an elapsed activity's "Remaining duration" served at 3× on the committed Hard_File goldens against
+two Fuse exports (CPM-042); the family-B counterfactual pages drawing the STORED critical path under the re-solve
+banner and "Ignore constraints" alone a no-op on any fully-dated file (CPM-036 / 038, option-gated, in the corpus);
+four latent wall-path classes — the fast day-walkers' week jump from a non-working weekday (CPM-043) and three
+link-bound role spellings (CPM-044 / 046 / 047), which the F-TWIN R8 duality battery shows are the whole residual on its
+population once CPM-034's sketch is added (97 → 0, 15 → 0 violations); and the tool's own JSON format accepting a
+self-contradictory calendar silently (IMP-011). The T2s: the stability band un-optioned (CPM-037); "Separate parallel
+paths" splitting a serial chain (CPM-039); the tiers / path exports ignoring the session filter (CPM-040); every day
+figure on the derived, never the declared, day — a premise finding on ADR-0516 D3 / ADR-0355 (CPM-041); summary logic
+unseen by the evolution reasons and the focus path (CPM-045); the Task Information dialog's custom durations at a
+hard-coded 8 h (UI-002). T3: the exhibits' provenance footer flooring the float threshold (EXP-001). T4: an inactive
+trace target 500s (CPM-035); `/evm` hides a refused version (WEB-003); Save `.json` 500s on a non-Latin-1 file name
+(WEB-004). Two families are saturation evidence for their questions — the round trip is lossless on every committed
+schedule, and the calendar algebra passes its battery outside three reduced hand cases — but every family produced a
+candidate, so **WP-CPM is still not closed** (charter §8).
+
+**Incident.** Ten of the eighteen assemblers died on a provider weekly limit; the harness resumed the session on a
+different model; the operator directed "Try again" and the workflow was resumed (the eight finished assemblies
+replayed from cache, the ten re-ran). Charter §7.4 / §12 would have stopped spawning; the operator outranks the
+charter (§2), and the conflict is recorded in the ledger. Repairs: **U55–U68** (14 units). Asks: **ASK-16 / 17 / 18**
+(SSI's parallel-path output; MS Project's displayed day on a declared / derived mismatch; MS Project runs of the four
+wall-path shapes). The state documents, ADR-0538 and this section were written by the lead; the register's §3.1 count
+line and the yield table gain a session-7 row; nothing else in this report was edited.
+
 ## 0. How to read this
 
 **Status vocabulary (charter §5):** **CONFIRMED-DEFERRED** — this campaign's terminal state for a real defect:
@@ -741,7 +788,7 @@ downgraded (no haiku `worker`, no `qc-checker`).
 
 ## 3. The register — every row, its verdict, what it carries forward
 
-### 3.1 The 56 retained classes (tier order; session 6: 84)
+### 3.1 The 56 retained classes (tier order; session 6: 84; session 7: 102)
 
 Each row's full evidence — the verbatim authority, the red command and its output, the control, the class census,
 both session-1 verifications, every refutation attempt and the teeth proof — is the finding's block in the ledger
@@ -1254,4 +1301,4 @@ their home lanes (IMP 8, DOC 17 — §1) and named in the session-6 CPM row.
 | PKG | — | — | 0 | — | — | not probed; the installed version is ASK-10 (WP-PKG) |
 | DOC | 468 present-tense claims in 25 documents (the finder's claims table): 364 TRUE, 82 FALSE, 22 not checkable here | each claim checked by command or render and batched by document into classes; every document re-read by eye in session 2 | 16 (15 open; DOC-014 fixed upstream) | 15 NOT-REFUTED, DOC-004 NARROWED 6 → 5; DOC-014 NOT-REFUTED at the base, FIXED-UPSTREAM at `f1b691f3` (R05–R08) | 56 across the 16 classes (session 1's 57 less DOC-004's dropped `:17`); the verifiers narrowed DOC-004 to 6 and DOC-015 to 1, the refuter DOC-004 to 5 | in-app help text (`web/help.py`) and ADR decisions in force beyond the 55 ADRs Scout C read — budget; no listed work package owns them yet |
 | PERF | — | — | 0 | — | — | not probed — budget (WP-PERF) |
-
+| CPM (session 7, WP-CPM round 3) | ADR-0251's family B (`/driving-path`, `/evolution`, their exports and `_optioned_versions`), the "Separate parallel paths" decomposition and the two session-6 route leads; every served surface on 420 / 480 / 600 / 1440-minute days (281 URLs per day length, every GET route from `create_app`, exports parsed) plus the committed TP2 (600) and the Hard_File_updated3 golden; the calendar arithmetic (`cpm.py` converters and wall helpers, `model/calendar.py`) under a 14-property seeded battery on synthetic and real calendars; session 6's unrun designs (R8 duality on a reflection-symmetric week, the wall-path variants of CPM-030 / 031, the twin sites of CPM-032 / 034, the lagged SF into a 24-hour task); the Save `.json` round trip on 76 files / 22,992 activities by model, figure and served page | hand arithmetic written out, Microsoft Learn (MinutesPerDay, DurationFormat, PROJ_OPT_*, Total Slack; retrieved 2026-09-29), the files' own declared fields, two committed Fuse exports, the code's own contracts (docstrings, ADR-0251, banners, tooltips), an engine-independent brute-force oracle for the calendar battery, MPXJ 16.2.0 as an alternative witness only; claim-only verifiers P1–P6 (P6 a second verifier), the lead's re-run of every red, one assembler per class, the lead's teeth on 3.11.15 and 3.13.12 | 13 (CPM-035 … CPM-047); the same finders also found IMP-011 (IMP), UI-002 (UI), EXP-001 (EXP), WEB-003 / 004 (WEB) | — (session 7: 18 REPRODUCED by claim-only verifiers, 0 REFUTED; F-CALG-002 DUPLICATE-OF CPM-006; LD-A REFUTED as a lead) | CPM-042: 15 of 1,142,988 served corpus fields (two Fuse exports disagree); CPM-036: the drawn set moves on 0 / 44 files where the re-solved set differs on 24; CPM-038: inert on 44 / 44 (the constraints move 25 / 44); CPM-039: 23 of 49 traces over-split, 18 / 44 files at a finish target; CPM-040: Project5 target 67 under any reducing filter (32 vs 18 rows; 43 vs 29); CPM-041: 0 of 71 committed MSPDI mismatch (latent); CPM-035: one committed fixture (`commercial_construction.xml` UID 5), 0 corpus inactive tasks; CPM-043: 0 triggers in 12,566 walker calls; CPM-044 / 046 / 047: 1 / 11 / 11 corpus links of the shape, none binding (latent); CPM-045: 0 committed files with summary logic; IMP-011: 0 committed JSON; UI-002: 79,140 custom durations, all on 480-minute files; EXP-001: the only committed payload's threshold is 0; WEB-003: 0 refused corpus files; WEB-004: 0 of 106 tracked names outside Latin-1 | the CPM-034 start-role siblings at `cpm.py:2941` / `:3153` / `:2563`; a browser render of the parallel-path output, the band and the tooltips (P6 rendered the branch headers); SSI's own parallel-path semantics (ASK-16); MS Project's rendering of a declared / derived day mismatch (ASK-17) and of the four wall-path shapes (ASK-18); `/mission`'s discarded skipped list; POST routes under a non-480 day; a 7-day 24-hour project calendar; a non-8-hour XER; WEB-004's ~40 export siblings; a full-suite run (CI's); the saturation rule is still NOT met — every family produced a candidate |

@@ -464,6 +464,30 @@ those fixed defects in earlier "closed" fixes:
   the operator, and ask before capping" — the cap shipped as a NAMED provisional constant with the renders delivered,
   not as a silent choice and not as a blocking question.
 
+### 2026-09-29 (a) — A waiter that matches itself, a fragment that needs its module, and a recount that must reproduce the headings first (ADR-0538)
+
+* **`pgrep -f` matches the shell that runs it — again.** Session 6 wrote this trap down for `pkill -f`; session 7
+  walked into the `pgrep -f` form: three "wait until the previous run finishes" loops each contained the pattern they
+  polled for and waited on themselves for 40 minutes. Kill by PID; write the pattern so its own text cannot match it
+  (`run\.py A0923-CPM-04[0]` matches `run.py A0923-CPM-040` and not itself). A monitor that greps its own verdict
+  lines for "Error" has the same shape — it killed itself on `AssertionError=True`.
+* **A test fragment is not a test until it is in its module.** IMP-011's fragment NameErrored when appended alone
+  (its three imports lived in the assembler's tree module); the strict marker with `raises=AssertionError` reported
+  FAILED, not XFAIL — the guard working as designed, and the lead's own fresh-tree teeth caught it where the
+  assembler's tree could not. Integrate from the assembler's whole module, or make the fragment carry its imports.
+* **A recount is a claim about a convention.** The coverage census's per-lane heading counts keep a file in its
+  oldest PROBED bucket when a later S-mark is prepended; a naive first-token recount disagreed on three lanes. The
+  integration script's self-check — "recount the untouched file and reproduce its own headings, or abort" — is what
+  caught it before any write. Every generated statistic about a document needs that self-check.
+* **A dry-run tree is a population choice too.** Without `src/` beside the copied tests, ruff read the package as
+  third-party and flagged I001 on every module, including the pristine ones CI passes. Symlink `src/` first.
+* **A provider limit is a wave-killer with a memory.** Ten of eighteen assemblers died on a weekly limit; the resume
+  replayed the eight finished ones from cache only because they were backed up first and the journal was read to
+  confirm it. The charter's stop-spawning rule and the operator's "Try again" were in conflict; the operator wins
+  (§2) and the conflict is written down — a rule overridden in silence is a rule that no longer exists.
+* **The lead's independence has two edges.** A lead cannot verify its own hypothesis (P8 / P6 second verifiers), and
+  it also must not pre-test a lead it hands to a finder (R13 was left UNVERIFIED on purpose; both route leads became
+  classes without the lead's reading in the finder's context).
 ### 2026-09-29 (b) — A fix is only as done as the mutant it kills, a targeted battery is not the suite, and the brief's own premises need attacking too (ADR-0539, resumed)
 
 - **What happened.** The resumed session finished the review the first one stopped: five lenses and three skeptics,

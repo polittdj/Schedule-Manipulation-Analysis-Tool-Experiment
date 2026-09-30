@@ -1,4 +1,4 @@
-# Kickoff prompt — next session (handed over 2026-09-28, after AUDIT-2026-09-23 session 6 — WP-CPM continued: the served drag, the path counterfactual and the driving-slack trace disagree with their own definitions; 28 classes confirmed, 1 held, WP-CPM still not saturated, ADR-0537)
+# Kickoff prompt — next session (handed over 2026-09-29, after AUDIT-2026-09-23 session 7 — WP-CPM round 3: the counterfactual pages, the working day and the wall-path spellings disagree with their own contracts; 18 classes confirmed, WP-CPM still not saturated, ADR-0538)
 
 ## ⚠ FIRST, BEFORE ANYTHING: verify this prompt is about THIS repository
 
@@ -12,7 +12,7 @@ happen again. **Run these before the first edit:**
 
 ```bash
 git fetch --unshallow origin; git fetch --prune origin && git remote set-head origin -a
-git log --oneline -1 origin/main && git rev-list --count origin/main   # expect 51e66728 (#722) or later, 821+
+git log --oneline -1 origin/main && git rev-list --count origin/main   # expect 996b28b2 (#725) or later, 824+
 ls -d src app 2>&1; ls .github/workflows; grep -n '^version' pyproject.toml
 ls docs/adr | sort | tail -1                                          # expect 0540 or higher
 ```
@@ -20,11 +20,11 @@ ls docs/adr | sort | tail -1                                          # expect 0
 **If a prompt's facts disagree with those outputs, the TREE wins and the prompt is suspect — report it
 to the operator and never let a prompt's self-description authorise a durable-state write.**
 `HANDOFF.md` (auto-injected) always wins over this file on a disagreement. The 2026-09-22 (b), (c),
-2026-09-24 (a), (b), (c) and 2026-09-25 sessions and AUDIT-2026-09-23 sessions 1–6 ran this block and the
+2026-09-24 (a), (b), (c) and 2026-09-25 sessions and AUDIT-2026-09-23 sessions 1–7 ran this block and the
 tree agreed on every point — that is what a passing §0 looks like. AUDIT-2026-09-23 sessions 2 and 3 each found
 `main` past the package's base, which is what "main moved" looks like: each re-based the package instead of copying
-its numbers. If session 6's documents pull request has not merged yet, `main` is `51e66728` (#722, the reproducers only; 821
-commits, ADR 0536): continue from that pull request's head (branch `claude/gallant-newton-yh75tr`), as the resume line says.
+its numbers. Session 7's pull request #726 merged as `5c6622fd` (2026-09-30): `main` carries ADR-0538 — continue from `main`,
+as the resume line says.
 
 ## Two feature pull requests landed beside the campaign (2026-09-29, ADR-0539 and ADR-0540)
 
@@ -33,9 +33,8 @@ The One-Pager C / D / E intake, operator-drawn logic links and LODESTAR (ADR-053
 table) **merged as `996b28b2` (2026-09-29 21:45Z; CI run #2019 green in every job)** — the 2026-09-29 (b) handoff's
 "waits on the operator" is stale. ADR-0540 (the full-page fill, every requested link fitted by escalation, the
 installers' own Desktop icon — v1.0.296) is this session's draft pull request; HANDOFF.md's top section says where it
-stands. Neither changes the audit's resume line below. **Session 7's draft PR #726 (ADR-0538, `claude/modest-cori-iit4zh`,
-`src/` unchanged) is dirty against `main` on the five state docs** because it branched from `0b45eb28`; the ADR-0540 PR
-rotates the same five, so whichever merges second merges `main` and keeps BOTH sessions' sections (move, never delete).
+stands. Neither changes the audit's resume line below. Session 7's #726 (ADR-0538, `src/` unchanged) merged first as `5c6622fd`; the ADR-0540
+branch merged `main` and keeps BOTH sessions' state-doc sections (session 7's handoff at the top of the archive).
 
 ## The resume line (charter §16) — what the operator pastes to continue the audit
 
@@ -45,6 +44,10 @@ SESSION: NEW. Resume the POLARIS² audit campaign AUDIT-2026-09-23 (AUDIT + PLAN
 
 ## Immediate disclosures — keep them at the top of HANDOFF until their units merge
 
+- **T1 — A0923-CPM-042 (in committed corpus):** an ELAPSED activity's "Remaining duration" is served over the project's 480-minute working day, three times its own duration on an 8-hour day: on the committed Hard_File_updated3 / Hard_File_updated4_24h goldens UID 146 reads 6.0 d beside its Duration 2.0 (elapsed) — Acumen Fuse's Remaining Duration shows 2 — and Jacked_Up_Schedule_1's UID 20 reads 96.0 for 32; the figure reaches the Task Information dialog, the unrestricted Ask table and the activities exports that name the column (`web/state.py:1775`). Since 7eb8708a (#314, v1.0.4, 2026-07-10, ADR-0183). Until fixed, read an elapsed activity's remaining work from its Duration line, never from "Remaining duration".
+- **T1 (option-gated) — A0923-CPM-036 / 038 (family B — the counterfactual pages; in committed corpus):** with a trace option on ("Ignore constraints" / "Ignore leveling delay" on /driving-path, /evolution and their exports), the pages do not show the re-solve their banner promises: with no focus UID /evolution's critical path, its entered / left counts and its docx / xlsx exports are the source file's STORED Critical flags drawn at the re-solved dates (CPM-036 — the drawn set moves on 0 of 44 corpus files where the re-solved set differs on 24), and "Ignore constraints" ticked ALONE changes nothing on a fully-dated file — the tiers, driving slack and focus path are the stored schedule's (CPM-038 — inert on 44 of 44; Hard_File target 411's 88 rows unchanged). Since 140aed3a (#292, v1.0.4, 2026-07-08, ADR-0155). Until fixed, do not cite a family-B page's path, tiers or counts as a counterfactual; tick both options together and read the re-solved FINISH only.
+- **T1 (latent — no committed file exercises them) — A0923-CPM-043 / 044 / 046 / 047:** CPM dates and floats are wrong on an operator file that carries a task on a calendar with non-working weekdays (e.g. a 24-hour Monday–Friday crew calendar) whose late finish falls at its week's end — negative total float and a late start before the project start (CPM-043); a lagged FF or SF link from a 24-hour-calendar or elapsed activity — that activity shown with negative float, critical (CPM-044); a lagged SS or SF link into an activity on its own calendar — that activity and the project finish up to 15 hours later than the equivalent FS / FF link (CPM-046); or a lag-0 SS / SF link from a project-calendar task that starts after a mid-day break into a 24-hour or elapsed activity — scheduled up to an hour before its predecessor starts, float an hour high (CPM-047). Since afb8e729 (#497, v1.0.140, 2026-07-31). Check an operator file for these shapes before citing its CPM figures.
+- **T1 (data-gated) — A0923-IMP-011:** a hand-written or third-party `.json` schedule whose calendar repeats a holiday, lists its day blocks out of order, or declares blocks that contradict its day length is accepted with no error and no note and computed wrong (a repeated holiday costs one working day per extra listing: a 3-day task finishes 01/09/2026 for 01/08). Since e5a67518 (#70, v1.0.0, 2026-06-11). Only the tool's own JSON format reaches it (0 committed files); check such a calendar before citing the file's dates.
 - **T1 — A0923-CPM-016 / 017 / 018 / 019 / 021 (drag and Path Analysis days; in committed corpus):** the Path Analysis "Drag (d)" figure (the /path grid after "Run Drag Analysis", /api/driving?drag=1, /export/{fmt}/path?drag=1) is not the target-finish pull-in of removing the activity's remaining work that `engine/drag.py:3-4` defines and that SSI's exports and a removal on the engine's own CPM give: it is capped by any overlapping traced activity's driving slack (CPM-016 — Large_Test_File focus 152: UID 6513 36.0 d for SSI's 0.5 d; an SS- or lead-linked activity 0.0 d for 10 d), counts an elapsed or 24-hour-calendar duration in its own unit (CPM-017 — Hard_File UID 146 6.0 d for SSI's 2 d, beside its own Duration 2.0), changes with the Dependency Range filter (CPM-019 — Large_Test_File focus 152 at SSI's own "≤ 0 d": 10 of 76 rows inflated, UIDs 7442 / 7443 1.0 → 15.0 d) and gives the target's own descendants a drag under Path Direction Successors / Both (CPM-021 — Project5 target 67: UID 82 25.0 d for 0); and on a schedule whose working day is not 480 minutes every Path Analysis day figure divides by a fixed 480 (CPM-018 — the committed TP2_Bridge_4x10_Calendar.xml, a 600-minute day: Drag 25.0 for 20 file-days, "longest single activity … at 56.25 working days" for 45, and with one added FNLT a path float of −2.5 d for −2). Since 140aed3a (#292, v1.0.4, 2026-07-08, ADR-0155), where drag and the range filter were born (CPM-018's /path header since 6d71f813, v1.0.9; CPM-017's 24-hour leg from afb8e729, v1.0.140). Until fixed, read drag from SSI's own Directional Path export, not from the tool, and on a file whose day is not 480 minutes read Path Analysis days as working minutes ÷ the file's MinutesPerDay.
 - **T1 — A0923-CPM-010:** the what-if counterfactual and the per-change effect (/integrity, /evolution, the Ask-the-AI counterfactual fact) restore a STARTED activity's duration but not its remaining duration — the field the CPM schedules a started activity from (ADR-0517) — so a duration cut on in-progress work reads as 0 working days of recovery (the hand pair: +0 for +2; Large_Test_File2 → Large_Test_File: the target line for UID 5539 reads 0 where its restored remaining alone moves it ≥ 623 working days). Since 601be5d3 (#706, v1.0.281, 2026-09-20, ADR-0517). Until fixed, do not cite a counterfactual or a per-change effect that restores the duration of an activity that had started; unstarted reverts are right (214 of 214 constructed cuts).
 - **T1 — A0923-CPM-022 (option-gated):** with either SSI-parity option ticked on /path ("Ignore constraints" / "Ignore leveling delay"; the same flags on /api/driving and /export/{fmt}/path) the driving-slack trace of a fully-dated multi-calendar schedule changes, although the page's tooltip says it is unchanged: Hard_File target 155 moves 13 of 96 served rows (12 activities 1 → 0 d join DRIVING, tier 10 → 22); on Large_Test_File_Leveled the options-ON trace matches SSI's options-ON export on 777 of 783 rows where the un-flagged trace matches 783 of 783. The mechanism since 140aed3a (v1.0.4, 2026-07-08); the tooltip's promise since d1980d31 (v1.0.60, 2026-07-17, ADR-0251). Until fixed, leave both options OFF on a fully-dated file — the un-flagged trace is the one that matches SSI.
@@ -66,6 +69,18 @@ The last five were re-attacked in session 2 (the falsification pass) and NOT REF
 at `13b13f38` (session 6's branch, `src/` unchanged: 1 passed · 83 xfailed once its 28 were added).
 
 ## Where we are
+
+**`main` also took ADR-0539 (v1.0.295: the One-Pager C/D/E intake, operator-drawn logic links → PowerPoint, LODESTAR; #724 / #725) while session 7's PR was open — the next campaign session's base is that `main`; re-run the 102 reproducers there first (ADR-0539 changed `src/`).** **Session 7 (2026-09-29, ADR-0538) ran WP-CPM round 3 on base `0b45eb28`** (#723 — session 6's documents; v1.0.294; 822
+commits) and committed on `claude/modest-cori-iit4zh` as one draft pull request. It rebuilt the 44-file corpus first (22,105 by two
+methods), censused the committed tree beside it, wrote and attacked its plan (R1–R13; R7 fell) before any finder ran, then ran
+five NEW probe families (F-FAMB, F-DAY, F-CALG, F-TWIN, F-RT): 19 candidates → 1 DUPLICATE (an instance of CPM-006) → 18 claims →
+**18 REPRODUCED** by claim-only verifiers (a second, P6, for CPM-038 / 039 / EXP-001), 0 refuted; the lead's re-run of every red;
+an assembler each; the lead's teeth on all 18 → **18 CONFIRMED-DEFERRED** (T1 × 8, T2 × 6, T3 × 1, T4 × 3). Ten assemblers died on a
+provider weekly limit; the operator's "Try again" resumed the workflow (eight replayed from cache) — the charter conflict is
+recorded. Retained classes **84 → 102**; reproducers **1 passed · 101 xfailed** (3.11 + Playwright); repair units **U55–U68**;
+asks **ASK-16 / 17 / 18**. **WP-CPM is still not saturated** — every family produced a candidate; F-RT (the Save `.json` round
+trip is lossless on 76 / 76 files) and F-CALG (the calendar algebra passes its battery) are saturation evidence for their
+sub-questions. If you are reading this on `main`, session 7's pull request merged.
 
 **Session 6 (2026-09-28, ADR-0537) continued WP-CPM on base `13b13f38`** (#721 — session 5's package; v1.0.294; 820
 commits) and committed on `claude/gallant-newton-yh75tr` as two pull requests, **#722** (the reproducers; merged as `51e66728`) and a follow-up draft for the documents. It rebuilt the 44-file
@@ -119,8 +134,19 @@ carries the 24 rows of the 2026-08-27 register still open at `6bc3138b` unchange
    as it is); **ASK-15 (session 6)** — four SSI Directional Path exports (Path Direction = Successors; the two Ignore
    options OFF then ON on a fully-dated file; the near-path run of UIDs 1248 / 5538; a driving slack strictly between −1
    and 0 working days); default: keep the engine as it is, the four stay ARTIFACT-GATED, CPM-022 keeps its T1 tier.
-   Never wait for a reply.
-2. **Default next session: WP-CPM round 3, aimed at saturation** (the charter's rule: two consecutive probe families
+   **ASK-16 / 17 / 18 (session 7)** — an SSI "Separate parallel paths" export (settles CPM-039's rule and the labels), MS
+   Project's displayed day on a declared / derived mismatch (CPM-041, U63's oracle), MS Project runs of the four wall-path
+   shapes (CPM-043 / 044 / 046 / 047); defaults: keep the code's stated contracts, U63 corrects the ADRs' premise to the
+   derived day, the reproducers keep the hand values. Never wait for a reply.
+2. **Default next session: WP-CPM round 4, or close the lane on the evidence** (the rule: two consecutive probe families
+   with no new CANDIDATE — sessions 5, 6 and 7 each produced candidates from every family). Rebuild the corpus first
+   (22,105), census the tree beside it, re-run the 102 reproducers on your base (expect 1 passed · 101 xfailed with
+   Playwright; 2 skipped where it is absent). Then: (a) the ledger's **"UNVERIFIED leads — session 7"** — the CPM-034
+   start-role siblings at `cpm.py:2941` / `:3153` / `:2563`, `/mission`'s discarded skipped list, WEB-004's ~40 export
+   siblings, the parallel-path labels; (b) two NEW families (not a pass of the fifteen run so far), e.g. the exhibits
+   pack end to end (EXP-001 reached it first), POST routes and states under a non-480 day, a 7-day 24-hour project
+   calendar; (c) the charter's lane order from MET. (Superseded — session 6's item 2 follows, kept as the record:)
+   **Session 6's default: WP-CPM round 3, aimed at saturation** (the charter's rule: two consecutive probe families
    with no new CANDIDATE — sessions 5 and 6 each produced candidates from every family). Rebuild the 44-file corpus
    first (recipe below; it must reproduce 22,105 activities), and census the committed TREE beside it (the intake's
    MSPDI `.xml` files are not in the corpus). Then: (a) the ledger's **"UNVERIFIED leads — session 6"** — `GET
@@ -170,6 +196,13 @@ kickoff.
 
 ## What's done — do NOT re-open
 
+**Session 7 (ADR-0538):** the eighteen classes CPM-035..047, IMP-011, UI-002, EXP-001, WEB-003 and WEB-004 are
+CONFIRMED-DEFERRED — an independent claim-only verifier each (two for CPM-038, CPM-039 and EXP-001), the lead's re-run of
+every red, an assembler each, the lead's teeth on all 18 on fresh trees. Do not re-audit them; fix them through U55–U68.
+Rulings: F-CALG-002 is DUPLICATE-OF CPM-006 (its QC-3 note belongs to U26); F-DAY-003 is a PREMISE finding (CPM-041); the
+four "possible extension" flags were ruled NEW classes under the class-boundary rule. LD-A was REFUTED (a started task keeps
+its actual start under ignore_leveling — ADR-0391).
+
 **Session 6 (ADR-0537):** the twenty-eight classes CPM-010..034, IMP-010, DOC-017 and UI-001 are CONFIRMED-DEFERRED —
 an independent claim-only verifier each (two for CPM-010, CPM-016, CPM-018 and CPM-026, the classes grown from the
 lead's own observations; UI-001 by its session-6 assembler on top of sessions 1–2's two parties), an assembler each
@@ -207,6 +240,12 @@ flag half (ADR-0527), R-13 (ADR-0528).
 
 ## Measured-false / deliberately held — do NOT re-chase
 
+(Session 7, ADR-0538:) **LD-A** — a started task losing its actual start under ignore_leveling (REFUTED: kept, ADR-0391's
+floor; the finish leg HELD-BY ADR-0108 D2 / ADR-0391) · **F-CALG-002 as a class** (DUPLICATE-OF CPM-006 — the extras-blind
+ruler at a consumer site) · CPM-042's baseline leg (Fuse's Baseline Duration 6 vs DurationFormat 8's 2 ed — the authorities
+disagree; not claimed) · EXP-001's day-basis leg (unreachable: no payload builder for a non-480 file) · the constructed
+negatives: the Save `.json` round trip (76 / 76 model- and figure-equal, 47 / 47 served), the calendar battery's 11 clean
+properties, F-TWIN's R8 std battery (0 / 300), the corpus week-jump census (0 triggers in 12,566 calls).
 (Session 6, ADR-0537:) **F-EDGE2-002** — a declared `HonorConstraints=0` read as 1 — HELD-BY ADR-0322 §2
 (`docs/adr/0322-the-base-cpm-honors-per-task-calendars.md:79-80`; `engine/cpm.py:59-65`, on ADR-0010 Decision 2): every
 observation reproduces, no committed file falsifies the premise (3 corpus files and 3 tracked MSPDI documents declare 0;
@@ -256,7 +295,7 @@ wait lives in the test) · R-22's encodings (verbatim table) · a frozen pane ag
 (ADR-0529:) relabelling SPI / TCPI as banded (the 2-dp pin already existed) · widening R-39 to the eleven other
 400-answering exports. Plus every earlier ADR's held items (see previous kickoffs in git log).
 
-## Environment (re-measured 2026-09-28 — session 6's container; the bullets below the first two are carried)
+## Environment (re-measured 2026-09-29 — session 7's container: the same shape as session 6's — 4 CPUs, 15 GB, TZ UTC, Python 3.11.15 + a 3.13.12 venv, ruff 0.16.9 via `python3 -m ruff` with a stale 0.15.8 first on PATH, OpenJDK 21.0.10, node 22.22.2, playwright 1.63.0 / chromium-1194, `flock`, no `xxd`; the bullets below are carried)
 
 ```bash
 git fetch --unshallow origin                     # the clone arrives SHALLOW (50 commits)
@@ -306,7 +345,15 @@ which -a ruff; python3 -m ruff --version         # 0.16.9 via python3 -m ruff in
 
 ## Traps this campaign paid for, by name
 
-**(2026-09-28 (a), ADR-0537 — session 6)** The corpus is a population choice — "480 minutes on 44 of 44 files" held for
+**(2026-09-29 (a), ADR-0538 — session 7)** A `while pgrep -f <pattern>` waiter matches its own command line — three
+queued runs waited on themselves for 40 minutes; kill by PID and write the pattern so it cannot match itself
+(`run\.py A0923-CPM-04[0]`) · a fragment that needs a module-level import NameErrors when appended alone, and the strict
+marker reports FAILED, not XFAIL (the guard's job) — integrate such a module from the assembler's tree · a monitor that greps
+its own output for "Error" kills itself · a census recount must reproduce the untouched headings before it is applied (the
+coverage's per-lane convention: a file already PROBED keeps its oldest bucket) · a dry-run tree without `src/` makes ruff
+read the package as third-party (I001 everywhere) — symlink `src/` beside the copy · a provider limit can kill a wave
+mid-flight — back up what finished, resume, read the journal · the lead must not pre-test a lead it hands to a finder
+(R13), and cannot verify its own hypothesis (P6). **(2026-09-28 (a), ADR-0537 — session 6)** The corpus is a population choice — "480 minutes on 44 of 44 files" held for
 the corpus and failed for the committed tree (`TP2_Bridge_4x10_Calendar.xml`, a 600-minute day): census the tree the
 operator can load, not only the instrument · a workflow resume can miss its cache and redo finished work — check the
 journal (what finished, where its record sits) before trusting a resume, and name the canonical run · `pkill -f`
