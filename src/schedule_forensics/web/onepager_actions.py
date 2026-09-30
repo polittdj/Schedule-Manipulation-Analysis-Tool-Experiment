@@ -178,6 +178,34 @@ def set_window(st: OnePagerSession, start: str, end: str, action: str) -> None:
     st.onepager_is_error = False
 
 
+def set_today(st: OnePagerSession, page: str, value: str, action: str) -> None:
+    """Set or clear the operator's DATA DATE — the red line both One-Pager slides draw, its
+    caption and its legend entry (ADR-0541). ONE setting for both pages: ``page``
+    (``"onepager"`` or ``"compare"``) only says whose banner carries the one-shot message. A
+    date the One-Pager itself reads (ISO from the date input, ``3/1/27``, ``March 1, 2027``) is
+    taken; anything else is refused by name and the setting stays as it was. ``"clear"`` returns
+    the slides to the computer's date."""
+    if action == "clear":
+        st.onepager_today = None
+        msg, error = "Data date cleared — the red line is drawn at the computer's date.", False
+    else:
+        got = parse_date(value.strip()[:40])
+        if got is None:
+            msg = f"Data date not applied — “{value.strip()[:40] or 'blank'}” not read."
+            error = True
+        else:
+            st.onepager_today = got[0]
+            msg = (
+                f"Data date set: {got[0].isoformat()}. The red line, its caption and the legend "
+                "follow it on both One-Pager pages and in every PowerPoint."
+            )
+            error = False
+    if page == "compare":
+        st.onepager_compare_msg, st.onepager_compare_is_error = msg, error
+    else:
+        st.onepager_msg, st.onepager_is_error = msg, error
+
+
 def clear_list(st: OnePagerSession) -> None:
     """The list, its window, its title AND its logic links go — they described that list."""
     gone = len(st.onepager_links)
@@ -360,18 +388,25 @@ def attachment(title: str, fallback: str, ext: str) -> str:
 
 
 def onepager_pptx(
-    st: OnePagerSession, today: dt.date, marking: str, generator: str
+    st: OnePagerSession,
+    today: dt.date,
+    marking: str,
+    generator: str,
+    prepared: dt.date | None = None,
 ) -> Download | str:
     """The slide /onepager previews, as native PowerPoint shapes — or the refusal sentence
-    (never a blank deck) with nothing loaded or nothing inside the date window."""
-    lay = onepager_layout(st, today)
+    (never a blank deck) with nothing loaded or nothing inside the date window. ``today`` is
+    the slide's data date, ``prepared`` the computer's date the deck says it was generated on
+    (``today`` when not given — ADR-0541)."""
+    made = today if prepared is None else prepared
+    lay = onepager_layout(st, today, made)
     doc, _omitted = onepager_view(st)
     if lay is None or doc is None:
         if st.onepager is not None and st.onepager.items:
             return "no item falls inside the date window — there is no slide to export"
         return "load a one-pager list first — there is no slide to export"
     source = (
-        f"Source: {doc.source} · {len(doc.items)} items · generated {today.isoformat()} "
+        f"Source: {doc.source} · {len(doc.items)} items · generated {made.isoformat()} "
         f"by {generator}"
     )
     return Download(
@@ -382,10 +417,15 @@ def onepager_pptx(
 
 
 def compare_pptx(
-    st: OnePagerSession, today: dt.date, marking: str, generator: str
+    st: OnePagerSession,
+    today: dt.date,
+    marking: str,
+    generator: str,
+    prepared: dt.date | None = None,
 ) -> Download | str:
     """The compare slide, as native PowerPoint shapes — or the refusal sentence."""
-    lay = onepager_compare_layout(st, today)
+    made = today if prepared is None else prepared
+    lay = onepager_compare_layout(st, today, made)
     doc, _omitted = onepager_compare_view(st)
     if lay is None or doc is None:
         full = onepager_compare_doc(st)
@@ -394,7 +434,7 @@ def compare_pptx(
         return "load a PRIOR and a CURRENT one-pager list first — there is no slide"
     source = (
         f"Prior: {doc.prior_source} · Current: {doc.current_source} · {len(doc.rows)} rows · "
-        f"moves in calendar days · generated {today.isoformat()} by {generator}"
+        f"moves in calendar days · generated {made.isoformat()} by {generator}"
     )
     return Download(
         render_onepager_compare_pptx(lay, marking=marking, source=source, product=generator),
@@ -403,13 +443,15 @@ def compare_pptx(
     )
 
 
-def onepager_workbook(st: OnePagerSession, today: dt.date) -> TableSet | str:
+def onepager_workbook(
+    st: OnePagerSession, today: dt.date, prepared: dt.date | None = None
+) -> TableSet | str:
     """The parsed list (scoped to the window), every parser decision, the sheet's layout and the
     operator's logic links — or the refusal sentence with nothing loaded."""
     doc, omitted = onepager_view(st)
     if doc is None:
         return "load a one-pager list first — there is nothing to export"
-    lay = onepager_layout(st, today)
+    lay = onepager_layout(st, today, prepared)
     fitted = list(lay.fit_notes) if lay else []
     ts = onepager_tableset(
         doc, st.onepager_window, omitted, extra_notes=[*layout_notes(doc), *fitted]
@@ -421,12 +463,14 @@ def onepager_workbook(st: OnePagerSession, today: dt.date) -> TableSet | str:
     )
 
 
-def compare_workbook(st: OnePagerSession, today: dt.date) -> TableSet | str:
+def compare_workbook(
+    st: OnePagerSession, today: dt.date, prepared: dt.date | None = None
+) -> TableSet | str:
     """The compared rows, summary, decisions and the operator's logic links — or the refusal."""
     doc, omitted = onepager_compare_view(st)
     if doc is None:
         return "load a PRIOR and a CURRENT one-pager list first — nothing to export"
-    lay = onepager_compare_layout(st, today)
+    lay = onepager_compare_layout(st, today, prepared)
     ts = compare_tableset(
         doc, st.onepager_compare_window, omitted, extra_notes=list(lay.fit_notes) if lay else []
     )

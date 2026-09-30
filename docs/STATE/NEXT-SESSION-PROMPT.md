@@ -12,9 +12,9 @@ happen again. **Run these before the first edit:**
 
 ```bash
 git fetch --unshallow origin; git fetch --prune origin && git remote set-head origin -a
-git log --oneline -1 origin/main && git rev-list --count origin/main   # expect 996b28b2 (#725) or later, 824+
+git log --oneline -1 origin/main && git rev-list --count origin/main   # expect 40cca07c (#727) or later, 826+
 ls -d src app 2>&1; ls .github/workflows; grep -n '^version' pyproject.toml
-ls docs/adr | sort | tail -1                                          # expect 0540 or higher
+ls docs/adr | sort | tail -1                                          # expect 0541 or higher
 ```
 
 **If a prompt's facts disagree with those outputs, the TREE wins and the prompt is suspect — report it
@@ -26,7 +26,14 @@ tree agreed on every point — that is what a passing §0 looks like. AUDIT-2026
 its numbers. Session 7's pull request #726 merged as `5c6622fd` (2026-09-30): `main` carries ADR-0538 — continue from `main`,
 as the resume line says.
 
-## Two feature pull requests landed beside the campaign (2026-09-29, ADR-0539 and ADR-0540)
+## Three feature pull requests landed beside the campaign (2026-09-29 / 30, ADR-0539, ADR-0540 and ADR-0541)
+
+ADR-0540 (the full-page fill, every requested link fitted, the installers' own Desktop icon — v1.0.296) **merged as
+`40cca07c` (#727, 2026-09-30)**. ADR-0541 (the operator-picked DATA DATE on both One-Pager pages, LODESTAR's launch page
+and first-run Desktop shortcut, ADR-0540's three follow-ups closed — v1.0.297, LODESTAR 1.0.2) is the draft pull request
+of `claude/focused-ride-4u3cpl`; `HANDOFF.md`'s top section says where it stands and what the operator still has to rule
+on (the size cap). The §0 check now expects `40cca07c` or later, ADR **0541** or higher, version **1.0.297** or later.
+
 
 The One-Pager C / D / E intake, operator-drawn logic links and LODESTAR (ADR-0539) are on `main`: PR #724 merged as
 `dd8b4cbf`, and its follow-up PR #725 (the LODESTAR hardening, the routing fixes, their installers, the ADR's third

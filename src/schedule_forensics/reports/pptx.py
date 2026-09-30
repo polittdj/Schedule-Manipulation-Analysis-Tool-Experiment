@@ -764,7 +764,7 @@ def render_onepager_pptx(
             )
     _logic_links(s, lay.links)
     if lay.today_x is not None:
-        s.vline(lay.today_x, top, bot, _TODAY, 1.5, name="Today")
+        s.vline(lay.today_x, top, bot, _TODAY, 1.5, name="Data date")
         if lay.today_label_anchor == "start":
             s.text(
                 lay.today_label_x,
@@ -775,7 +775,7 @@ def render_onepager_pptx(
                 6,
                 _TODAY,
                 bold=True,
-                name="Today label",
+                name="Data date label",
             )
         else:
             s.text(
@@ -788,7 +788,7 @@ def render_onepager_pptx(
                 _TODAY,
                 bold=True,
                 align="r",
-                name="Today label",
+                name="Data date label",
             )
     _footnote(s, lay, _SLIDE_RIGHT)
     s.hline(lay.lane_col_x0, lay.x1, lay.legend_y0, _LINE, 0.7, name="Legend line")
@@ -805,7 +805,7 @@ def render_onepager_pptx(
             s.segment(e.x + 3.5, cy + 0.06, vx, vy, _WHITE, 0.6, name="Done tick: legend")
             s.segment(vx, vy, e.x + 6.65, cy - 1.2, _WHITE, 0.6, name="Done tick: legend")
         elif e.kind == "today":
-            s.vline(e.x + 5, cy - 4, cy + 4, _TODAY, 1.5, name="Legend: today")
+            s.vline(e.x + 5, cy - 4, cy + 4, _TODAY, 1.5, name="Legend: data date")
         elif e.kind == "link":
             s.freeform(
                 [(e.x, cy), (e.x + 7.4, cy)], line=_LINK, line_pt=LINK_W, name="Legend: link"
@@ -832,7 +832,7 @@ def render_onepager_pptx(
         8,
         [
             "Timeline: months and years · bars = activities · diamonds = milestones · "
-            "red line = today"
+            "red line = data date"
         ],
         5.5,
         _MUTED,
@@ -1113,7 +1113,7 @@ def render_onepager_compare_pptx(
             )
     _logic_links(s, lay.links)
     if lay.today_x is not None:
-        s.vline(lay.today_x, top, bot, _TODAY, 1.5, name="Today")
+        s.vline(lay.today_x, top, bot, _TODAY, 1.5, name="Data date")
         if lay.today_label_anchor == "start":
             s.text(
                 lay.today_label_x,
@@ -1124,7 +1124,7 @@ def render_onepager_compare_pptx(
                 6,
                 _TODAY,
                 bold=True,
-                name="Today label",
+                name="Data date label",
             )
         else:
             s.text(
@@ -1137,7 +1137,7 @@ def render_onepager_compare_pptx(
                 _TODAY,
                 bold=True,
                 align="r",
-                name="Today label",
+                name="Data date label",
             )
     _footnote(s, lay, lay.summary_x1)
     s.hline(lay.lane_col_x0, lay.summary_x1, lay.legend_y0, _LINE, 0.7, name="Legend line")
@@ -1171,7 +1171,7 @@ def render_onepager_compare_pptx(
             s.segment(e.x + 3.5, cy + 0.06, vx, vy, _WHITE, 0.6, name="Done tick: legend")
             s.segment(vx, vy, e.x + 6.65, cy - 1.2, _WHITE, 0.6, name="Done tick: legend")
         elif e.kind == "today":
-            s.vline(e.x + 5, cy - 4, cy + 4, _TODAY, 1.5, name="Legend: today")
+            s.vline(e.x + 5, cy - 4, cy + 4, _TODAY, 1.5, name="Legend: data date")
         elif e.kind == "link":
             s.freeform(
                 [(e.x, cy), (e.x + 7.4, cy)], line=_LINK, line_pt=LINK_W, name="Legend: link"
@@ -1198,7 +1198,7 @@ def render_onepager_compare_pptx(
         8,
         [
             "Solid = current (unchanged: once) · ghost = prior · arrow = finish moved "
-            "(\u00b1N cal d) · check = complete (col. D) · red line = today"
+            "(\u00b1N cal d) · check = complete (col. D) · red line = data date"
         ],
         5.5,
         _MUTED,

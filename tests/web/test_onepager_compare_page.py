@@ -148,7 +148,7 @@ def test_both_lists_draw_the_compare_slide_and_state_every_move(client: TestClie
     assert "data-sf-data" in page and "<div class=sf-drawer hidden>" in page
     drawer = re.search(r"<div class=sf-drawer hidden>(.*?)</div>", page, re.S)
     assert drawer and drawer.group(1).count("<tr><td>") == len(lay["items"]) == 17
-    assert "PRIOR: March_baseline.xlsx · CURRENT: April_update.xlsx · TODAY 2026-09-01" in page
+    assert "PRIOR: March_baseline.xlsx · CURRENT: April_update.xlsx · DATA DATE 2026-09-01" in page
     assert 'href="/export/pptx/onepager-compare"' in page
     # the type change and the intake's own decisions are on the page
     assert "a milestone in the prior sheet, an activity in the current" in page

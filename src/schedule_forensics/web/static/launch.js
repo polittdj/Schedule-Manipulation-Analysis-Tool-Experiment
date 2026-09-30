@@ -39,20 +39,32 @@
   function stored(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
   function persist(key, value) { try { localStorage.setItem(key, value); } catch (e) { /* in-page only */ } }
 
+  // ── the page's own tables (ADR-0541) ───────────────────────────────────────────────────────
+  // The boot JSON block may carry the program's own identity: `home` (where the skip, the
+  // Escape key and the opt-out land), `stages` (the transit's words) and `heroes` (the hero
+  // copy, each with the particle scene it composes). A page that gives none — Polaris²'s —
+  // gets the tables below, unchanged. LODESTAR's launch page is the other reader.
+  function bootData() {
+    try {
+      var el = document.getElementById("sfBootData");
+      return el ? JSON.parse(el.textContent || "{}") : null;
+    } catch (e) { return null; }
+  }
+  function bootHome(b) { return (b && typeof b.home === "string" && b.home) ? b.home : null; }
+
   // ── the opt-out, checked before anything is drawn ────────────────────────────────────────────
   // A boot screen the operator has dismissed must never flash. This runs at parse time (the
   // module is head-loaded), so the redirect happens before the canvas is laid out or painted.
   if (stored(SKIP_KEY) === "1" && !/[?&]replay=1/.test(location.search)) {
-    location.replace("/");
+    var home0 = bootHome(bootData());
+    if (home0) location.replace(home0); else location.replace("/");
     return;
   }
 
   var boot = null;
-  try {
-    var el = document.getElementById("sfBootData");
-    if (el) boot = JSON.parse(el.textContent || "{}");
-  } catch (e) { boot = null; }
+  boot = bootData();
   if (!boot) boot = { files: 0, activities: 0, dataDate: null, target: null, actions: [] };
+  var HOME = bootHome(boot) || "/";
 
   var reduced = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
 
@@ -63,26 +75,40 @@
 
   var HEROSCENES = [
     {
+      shape: 0,
       k: "01 — SYSTEM START · SCHEDULE INTELLIGENCE",
       h: "Every schedule, under one light.",
       s: "Twelve chapters walk from “I know nothing about this project” to a defensible view of its past, its present, and what has to happen next — every number solved on this machine, every claim carrying its citation."
     },
     {
+      shape: 1,
       k: "02 — MANY UPDATES · ONE SIGNAL",
       h: "Everything converges on the date.",
       s: "Thousands of activities, one centre of gravity. The deck turns a shelf of update files into one focused line of evidence about what actually moved, and what moved it."
     },
     {
+      shape: 2,
       k: "03 — THE PROGRAMME, IN MOTION",
       h: "A portfolio already in orbit.",
       s: "Every programme circles one standard of proof: every number cited, every path solved, nothing leaving this machine."
     },
     {
+      shape: 3,
       k: "04 — THE RECORD, BEFORE IT IS READ",
       h: "Evidence arrives as a cloud.",
       s: "Updates land as one undifferentiated field — dense where the record is thick, void where it was never kept. The deck lights the filaments and names what is missing."
     }
   ];
+
+  // the page's own words, when it gives them (each hero names the scene it composes, 0-3)
+  if (Array.isArray(boot.stages) && boot.stages.length >= 2) STAGES = boot.stages.map(String);
+  if (Array.isArray(boot.heroes) && boot.heroes.length) {
+    HEROSCENES = boot.heroes.map(function (h) {
+      var shape = Math.max(0, Math.min(3, (h && h.shape) | 0));
+      return { shape: shape, k: String((h && h.k) || ""), h: String((h && h.h) || ""), s: String((h && h.s) || "") };
+    });
+  }
+  function shapeOf(i) { var sc = HEROSCENES[i]; return sc ? sc.shape : 0; }
 
   var TAU = 6.28318, PI = 3.14159;
 
@@ -364,7 +390,8 @@
       ctx.globalCompositeOperation = "lighter";
 
       var m = smooth((now - sceneT0) / 2100);
-      var kA = scenePrev, kB = state.scene, morph = kA != null && m < 1;
+      var morph = scenePrev != null && m < 1;
+      var kA = morph ? shapeOf(scenePrev) : null, kB = shapeOf(state.scene);
       var wcx = w / 2, wcy = h * 0.5, exp = 1 + warpT * 0.85, alW = 1 - warpT * 0.35;
       var ns = 0;
       bCnt.fill(0);
@@ -487,9 +514,12 @@
     // has asked the platform for less movement.
     if (reduced) { showReady(); return; }
 
-    [1, 2, 3, 4].forEach(function (s, i) {
-      stageTimers.push(setTimeout(function () { setStage(s + 1); }, 900 + i * 1500));
-    });
+    // every stage between the first and the last, 1.5 s apart, then the destination
+    for (var s = 2; s < STAGES.length - 1; s++) {
+      (function (stage, i) {
+        stageTimers.push(setTimeout(function () { setStage(stage); }, 900 + i * 1500));
+      })(s, s - 2);
+    }
     stageTimers.push(setTimeout(showReady, 7000));
   }
 
@@ -512,16 +542,16 @@
     if (beginBtn) beginBtn.addEventListener("click", begin);
 
     var skip = document.getElementById("sfBootSkip");
-    if (skip) skip.addEventListener("click", function () { leave("/"); });
+    if (skip) skip.addEventListener("click", function () { leave(HOME); });
 
     var enter = document.getElementById("sfBootEnter");
-    if (enter) enter.addEventListener("click", function () { leave(enter.getAttribute("data-sf-boot-href") || "/"); });
+    if (enter) enter.addEventListener("click", function () { leave(enter.getAttribute("data-sf-boot-href") || HOME); });
 
     var actions = document.querySelectorAll("[data-sf-boot-href]");
     for (var i = 0; i < actions.length; i++) {
       if (actions[i].id === "sfBootEnter") continue;
       (function (el) {
-        el.addEventListener("click", function () { leave(el.getAttribute("data-sf-boot-href") || "/"); });
+        el.addEventListener("click", function () { leave(el.getAttribute("data-sf-boot-href") || HOME); });
       })(actions[i]);
     }
 
@@ -543,7 +573,7 @@
 
     // Escape is the universal "let me out" — it goes to the deck from any phase.
     document.addEventListener("keydown", function (ev) {
-      if (ev.key === "Escape") leave("/");
+      if (ev.key === "Escape") leave(HOME);
     });
   }
 
@@ -562,6 +592,7 @@
   window.SFBoot = {
     stages: STAGES,
     scenes: HEROSCENES,
+    home: HOME,
     phase: function () { return state.phase; },
     scene: function () { return state.scene; },
     begin: begin,

@@ -22,7 +22,7 @@ from schedule_forensics.web.htmlkit import _DRAWER_HTML, CUI_MARKING, UNCLASSIFI
 #: LODESTAR.pyz run on a machine with Polaris² installed must not report Polaris²'s).
 NAME = "LODESTAR"
 TAGLINE = "One-Pager Studio"
-VERSION = "1.0.1"
+VERSION = "1.0.2"
 #: The author's credit, shown on every page (operator request 2026-09-29): who created LODESTAR
 #: and where to send an issue or a question. A plain ``mailto:`` — never a web link (the air-gap
 #: scan flags any remote URL), and never pre-filled with anything from the page.
@@ -33,7 +33,7 @@ CONTACT = "david.j.politte@nasa.gov"
 #: the axis captions (``SFChartFrame.axisTitles``) the two painters use when present — without
 #: them the slide would silently lose its TODAY line and its axis titles — and the styles.
 _HEAD = (
-    '<link rel=icon href="/static/favicon.ico">'
+    '<link rel=icon href="/static/lodestar.ico">'
     '<script src="/static/theme.js"></script>'
     '<script src="/static/gantt.js"></script>'
     '<script src="/static/chartframe.js"></script>'

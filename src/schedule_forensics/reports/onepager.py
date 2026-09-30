@@ -802,6 +802,11 @@ LEGEND_H, BOTTOM = 26.0, 10.0
 LEGEND_Y0 = H - BOTTOM - LEGEND_H
 LANES_Y1 = LEGEND_Y0 - 6.0
 LANE_PAD, LANE_GAP = 2.5, 2.0
+#: The data-date caption's baseline below the last swimlane band (ADR-0541; was 4.5): at 4.5 the
+#: 6-pt caption's text box sat 0.66 pt INTO the last band on every render (measured in Chromium,
+#: ADR-0540's review), its ink 0.09 pt clear; at 5.5 the box clears the band by 0.34 pt and the
+#: ink by 1.09, the ink staying 0.5 pt above the legend rule (the box crosses that rule by 0.36).
+TODAY_CAPTION_DY = 5.5
 #: (row height, label size) floors, stepped down ONLY when the slide would otherwise overflow —
 #: and the layout says so in its notes when it had to.
 FLOORS = ((7.0, 5.0), (6.0, 4.6), (5.5, 4.2))
@@ -906,7 +911,15 @@ class Attempt:
 
 
 def _better(cand: Attempt, best: Attempt) -> bool:
-    return cand.fits and len(cand.report.collisions) < len(best.report.collisions)
+    """Fewer links no route clears — and never at the price of a clean leg on a glyph the best so
+    far kept clear (ADR-0541: a reorder with the footnote band reserved re-packed the densest
+    sweep slide 0.15 pt tighter, past the point where adjacent labels overlap, and traded one
+    undrawn link for six legs through labels)."""
+    return (
+        cand.fits
+        and len(cand.report.collisions) < len(best.report.collisions)
+        and cand.report.touches <= best.report.touches
+    )
 
 
 def _swap_ok(
@@ -999,10 +1012,12 @@ def fit_links(
     if not best.report.collisions:
         return best
     forced = attempt(replace(best.fit, foot=True, force=True))  # the last resort
-    if base.fits and not forced.fits:
-        # the reserve alone sank a list that fills the slide to its last row (review F2): the
-        # links are drawn and named on the page and in the Excel Notes, and the slide says why
-        # it carries no footnote — never "runs off the bottom" for a row that is on the slide
+    if base.fits and (not forced.fits or forced.report.touches > base.report.touches):
+        # the reserve alone sank a list that fills the slide to its last row (review F2), or
+        # re-packed it tight enough to lay a clean leg on a label the base kept clear
+        # (ADR-0541): the links are drawn and named on the page and in the Excel Notes, and the
+        # slide says why it carries no footnote band (the legend's spare row carries one line
+        # when it has one) — never "runs off the bottom" for a row that is on the slide
         return attempt(replace(best.fit, foot=False, force=True))
     need = min(lines_needed(forced), FOOT_LINES_MAX)
     if need > 1:  # the footnote wants more lines: reserve them and route once more (review F4)
@@ -1057,19 +1072,53 @@ def diamond_half(x: float, ms_w: float, x0: float, x1: float) -> float:
     return max(MS_OVERHANG, min(ms_w / 2, x - x0 + MS_OVERHANG, x1 - x + MS_OVERHANG))
 
 
-def disclose_fit(fit: Fit, entries: Sequence[str], fitted: list[str], notes: list[str]) -> None:
+def disclose_fit(
+    fit: Fit,
+    entries: Sequence[str],
+    fitted: list[str],
+    notes: list[str],
+    spare_row: bool = False,
+) -> None:
     """The two disclosures the last resort owes beyond its footnote (reviews F2, F3): a band
     reserved with nothing else to say is explained in the fitting notes, and a slide with no
-    room for its footnote says where the links drawn dashed ARE named."""
+    room for its footnote says where the links drawn dashed ARE named — and, since ADR-0541,
+    that the legend's spare row carries a one-line count on the slide when it has one
+    (``spare_row``, :func:`spare_row_footnote`)."""
     if fit.foot and not entries and not fitted:
         fitted.append(RESERVE_NOTE)
     if fit.force and not fit.foot and entries:
+        where = (
+            "the legend's spare row carries a one-line count on the slide and in the "
+            "PowerPoint, and they are named in full"
+            if spare_row
+            else "they are named"
+        )
         notes.append(
             f"The list fills the slide to its last row, leaving no room below the swimlanes "
-            f"for the footnote: the {len(entries)} logic link(s) drawn dashed over other ink "
-            "are named in the logic-link notes here and in the Excel Notes — not on the slide "
-            "or in the PowerPoint."
+            f"for the footnote: {len(entries)} logic link(s) are drawn dashed over other ink — "
+            f"{where} in the logic-link notes here and in the Excel Notes"
+            + ("." if spare_row else " — not on the slide or in the PowerPoint.")
         )
+
+
+def spare_row_footnote(
+    fit: Fit,
+    entries: Sequence[str],
+    reordered: Sequence[str],
+    labels: Mapping[str, str],
+    width: float,
+    legend_rows: int,
+    legend_pt: float,
+) -> tuple[str, float] | None:
+    """ADR-0540's recorded corner, closed (ADR-0541): a list that fills the slide to its last row
+    has no band for its footnote, so when the legend uses ONE of its two rows the spare row
+    carries ONE footnote line — the count of the links drawn dashed and the entries that fit —
+    at the second legend row's baseline, for both painters. ``(text, baseline)``, or ``None``
+    when the band was reserved after all, nothing is flagged, or the legend needs both rows."""
+    if fit.foot or not fit.force or not entries or legend_rows != 1:
+        return None
+    line = footnote_lines(entries, fit, reordered, labels, width, 1)
+    return line[0], LEGEND_Y0 + 6 + (legend_pt + 4.5)
 
 
 _DATES = re.compile(r" \(\d{1,2}/\d{1,2}/\d{2}(?: to \d{1,2}/\d{1,2}/\d{2})?\)$")
@@ -1514,21 +1563,24 @@ def plot_window(
     lo: dt.date, hi: dt.date, today: dt.date, window: Window | None
 ) -> tuple[dt.date, dt.date, str]:
     """``(t0, t1, today_note)`` — the plotted span ``[t0, t1)``. Without a window: whole months
-    around the data, widened to today when today is within ~6 months of it (ADR-0446). With one:
-    exactly the window, and today is drawn only when it falls inside it."""
+    around the data, widened to the data date when it is within ~6 months of it (ADR-0446).
+    With one: exactly the window, and the data date is drawn only when it falls inside it.
+
+    ``today`` is the slide's DATA DATE — the operator's own when one is set, else the
+    computer's date (ADR-0541) — and every sentence names it as such."""
     if window is not None:
         t0, t1 = window[0], window[1] + dt.timedelta(days=1)
         note = (
             ""
             if t0 <= today < t1
-            else f"Today ({mdy(today)}) lies outside the chosen date window and is not drawn."
+            else f"Data date ({mdy(today)}) lies outside the chosen date window and is not drawn."
         )
         return t0, t1, note
     today_note = ""
     if lo - dt.timedelta(days=183) <= today <= hi + dt.timedelta(days=183):
         lo, hi = min(lo, today), max(hi, today)
     else:
-        today_note = f"Today ({mdy(today)}) lies outside the plotted window and is not drawn."
+        today_note = f"Data date ({mdy(today)}) lies outside the plotted window and is not drawn."
     return _first_of_month(lo), _next_month(hi), today_note
 
 
@@ -1828,8 +1880,6 @@ def build_layout(
         link_notes.append(CROWDED_NOTE)
     reordered = reordered_names(best, labels)
     fitted = fit_notes(fit, reordered)
-    disclose_fit(fit, footnote_entries(drawn, labels), fitted, notes)
-    notes += fitted
     x1 = best.x1
     # the header: a dotted line per month, a letter or abbreviation as room allows, year bands
     months, years, month_pt = timescale(t0, t1, X0, x1, window is not None)
@@ -1852,7 +1902,7 @@ def build_layout(
             if any(i.complete is not None for i in items)
             else []
         ),
-        ("today", f"Today ({mdy(today)})", -1),
+        ("today", f"Data date ({mdy(today)})", -1),
         *([("link", link_legend(drawn), -1)] if drawn else []),
     ] + [("lane", ln.name, ln.color) for ln in lanes]
     for _ in range(3):
@@ -1872,6 +1922,15 @@ def build_layout(
             break
         legend_pt -= 0.75
     foot = footnote_text(drawn, fit, reordered, X1 - LANE_COL_X0, labels) if fit.foot else ""
+    foot_y = LEGEND_Y0 - 2.5
+    foot_entries = footnote_entries(drawn, labels)
+    spare = spare_row_footnote(
+        fit, foot_entries, reordered, labels, X1 - LANE_COL_X0, row + 1, legend_pt
+    )
+    if spare is not None:
+        foot, foot_y = spare
+    disclose_fit(fit, foot_entries, fitted, notes, spare is not None)
+    notes += fitted
     return Layout(
         W,
         H,
@@ -1901,9 +1960,9 @@ def build_layout(
         years,
         today.isoformat(),
         today_x,
-        f"TODAY {mdy(today)}",
+        f"DATA DATE {mdy(today)}",
         tl_x,
-        lanes_y1 + 4.5,
+        lanes_y1 + TODAY_CAPTION_DY,
         tl_anchor,
         today_note,
         legend,
@@ -1916,7 +1975,7 @@ def build_layout(
         fitted,
         foot,
         LANE_COL_X0,
-        LEGEND_Y0 - 2.5,
+        foot_y,
         FOOT_PT,
         (x1 + 0.5, X1 - 0.5) if fit.gutter else None,
     )
@@ -2005,11 +2064,21 @@ def layout_json(layout: Layout) -> dict[str, Any]:
 
 
 def subtitle_for(
-    doc: OnePagerDoc, layout_lanes: int, today: dt.date, window: Window | None = None
+    doc: OnePagerDoc,
+    layout_lanes: int,
+    today: dt.date,
+    window: Window | None = None,
+    prepared: dt.date | None = None,
 ) -> str:
+    """The slide's subtitle. ``today`` is the DATA DATE the slide draws; ``prepared`` the day the
+    slide was made (the computer's date — ``today`` itself when not given). When the two differ
+    (the operator set a data date, ADR-0541) the subtitle says both: "Prepared" on the data date
+    would be a false statement on the slide."""
     ms = sum(i.milestone for i in doc.items)
+    made = today if prepared is None else prepared
     return (
-        f"Prepared {today.isoformat()} · "
+        f"Prepared {made.isoformat()} · "
+        + (f"data date {today.isoformat()} · " if made != today else "")
         + (f"window {window_text(window)} · " if window is not None else "")
         + f"{len(doc.items)} items · {layout_lanes} swimlanes · "
         f"{ms} milestones · {len(doc.items) - ms} activities"

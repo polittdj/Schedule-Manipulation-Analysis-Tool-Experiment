@@ -458,15 +458,21 @@ def test_members_are_exactly_the_allowlist_and_each_is_its_source_verbatim(
 
 
 #: The archive's members, typed here from ADR-0539 (LS-07: 34 members, no ``docx.py`` — LODESTAR
-#: serves no Word export). An INDEPENDENT oracle: the lockstep and the test above both judge the
-#: archive against the builder's own list, so a module added to ``MODULES`` and rebuilt would
-#: pass them both (SLA-7). Changing what LODESTAR ships means changing this list, on purpose.
+#: serves no Word export) and ADR-0541 (42: the launch page — ``lodestar_launch.py``, the boot
+#: screen's ``launch.js`` / ``launch_audio.js`` / ``launch.css`` and LODESTAR's own
+#: ``lodestar_launch.css`` — the first-run Desktop shortcut ``shortcut.py`` with the icon writer
+#: ``desktop_icon.py`` and LODESTAR's own ``lodestar.ico``). An INDEPENDENT oracle: the lockstep
+#: and the test above both judge the archive against the builder's own list, so a module added to
+#: ``MODULES`` and rebuilt would pass them both (SLA-7). Changing what LODESTAR ships means
+#: changing this list, on purpose.
 MEMBERS = (
     "__main__.py",
     "schedule_forensics/__init__.py",
+    "schedule_forensics/desktop_icon.py",
     "schedule_forensics/lodestar/__init__.py",
     "schedule_forensics/lodestar/__main__.py",
     "schedule_forensics/lodestar/server.py",
+    "schedule_forensics/lodestar/shortcut.py",
     "schedule_forensics/reports/__init__.py",
     "schedule_forensics/reports/onepager.py",
     "schedule_forensics/reports/onepager_compare.py",
@@ -477,6 +483,7 @@ MEMBERS = (
     "schedule_forensics/reports/xlsx_read.py",
     "schedule_forensics/web/__init__.py",
     "schedule_forensics/web/htmlkit.py",
+    "schedule_forensics/web/lodestar_launch.py",
     "schedule_forensics/web/lodestar_shell.py",
     "schedule_forensics/web/onepager.py",
     "schedule_forensics/web/onepager_actions.py",
@@ -489,7 +496,12 @@ MEMBERS = (
     "schedule_forensics/web/static/favicon.ico",
     "schedule_forensics/web/static/gantt.js",
     "schedule_forensics/web/static/hud.css",
+    "schedule_forensics/web/static/launch.css",
+    "schedule_forensics/web/static/launch.js",
+    "schedule_forensics/web/static/launch_audio.js",
     "schedule_forensics/web/static/lodestar.css",
+    "schedule_forensics/web/static/lodestar.ico",
+    "schedule_forensics/web/static/lodestar_launch.css",
     "schedule_forensics/web/static/onepager.js",
     "schedule_forensics/web/static/onepager_compare.js",
     "schedule_forensics/web/static/onepager_links.js",
@@ -508,8 +520,8 @@ def _member_list_problem(names: list[str]) -> str | None:
     return f"archive members: extra {extra}, missing {missing}, a Word writer {docx}"
 
 
-def test_the_archive_holds_exactly_the_34_members_adr_0539_names(tool: ModuleType) -> None:
-    assert len(MEMBERS) == 34
+def test_the_archive_holds_exactly_the_42_members_adr_0539_and_0541_name(tool: ModuleType) -> None:
+    assert len(MEMBERS) == 42
     with zipfile.ZipFile(PYZ) as zf:
         problem = _member_list_problem(zf.namelist())
     assert problem is None, problem
@@ -555,7 +567,7 @@ def test_ls08_a_crlf_checkout_builds_the_identical_archive(
     lf = tool.build()
     src = tmp_path / "src"
     converted = _crlf_copy(tool, src)
-    assert converted == len(MEMBERS) - 1, converted  # all but favicon.ico (binary)
+    assert converted == len(MEMBERS) - 2, converted  # all but the two icons (binary; ADR-0541)
     monkeypatch.setattr(tool, "SRC", src)
     problem = _crlf_problem(tool, lf, tool.build())
     assert problem is None, problem
@@ -982,7 +994,9 @@ def test_end_to_end_the_shipped_file_serves_links_exports_and_quits(tmp_path: Pa
     """The committed file, started the way the launchers start it, does the operator's whole
     job and stops cleanly. The subprocess keeps its own clock, so a date window pins the
     slide's axis and nothing asserted depends on the day the test runs."""
-    proc, port, out, err = _launch([sys.executable, str(PYZ), "--no-browser"], tmp_path)
+    proc, port, out, err = _launch(
+        [sys.executable, str(PYZ), "--no-browser", "--no-shortcut"], tmp_path
+    )
     try:
         banner = out.read_text(encoding="utf-8")
         assert AUTHOR in banner and CONTACT in banner, banner
@@ -1028,7 +1042,9 @@ def test_end_to_end_the_shipped_file_serves_links_exports_and_quits(tmp_path: Pa
 def test_linux_launcher_starts_the_file_beside_it_and_quits_cleanly(tmp_path: Path) -> None:
     """``sh lodestar.sh`` — the README's Linux path — from ANOTHER directory finds the archive
     beside it, serves the page with the credit, and Quit ends it with status 0, stderr empty."""
-    proc, port, out, err = _launch(["sh", str(SHIPPED / "lodestar.sh"), "--no-browser"], tmp_path)
+    proc, port, out, err = _launch(
+        ["sh", str(SHIPPED / "lodestar.sh"), "--no-browser", "--no-shortcut"], tmp_path
+    )
     try:
         page = request(port, "GET", "/onepager")
         assert page.status == 200 and MAILTO in page.text
@@ -1056,7 +1072,7 @@ def slow_send(self, reply, *, head_only):
         time.sleep(3.0)
     _send(self, reply, head_only=head_only)
 server._Handler._send = slow_send
-raise SystemExit(main(["--no-browser"]))
+raise SystemExit(main(["--no-browser", "--no-shortcut"]))
 """
 
 

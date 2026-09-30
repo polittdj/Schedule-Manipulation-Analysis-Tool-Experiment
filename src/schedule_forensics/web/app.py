@@ -1481,6 +1481,14 @@ CLOSE_GRACE = 5.0
 SHUTDOWN_DRAIN_TIMEOUT = 5
 
 
+def _onepager_dates(st: SessionState) -> tuple[dt.date, dt.date]:
+    """``(data date, prepared)`` for the One-Pager pages (ADR-0541): the data date is the
+    operator's when the session holds one, else the computer's date; ``prepared`` is always the
+    computer's date — the day the slide, the deck or the workbook is made."""
+    clock = dt.date.today()
+    return st.onepager_today or clock, clock
+
+
 def create_app(
     state: SessionState | None = None,
     *,
@@ -4290,9 +4298,6 @@ def create_app(
     # does; these routes only move bytes and state. ──
     _PPTX_MEDIA = op_actions.PPTX_MEDIA
 
-    def _onepager_today(st: SessionState) -> dt.date:
-        return st.onepager_today or dt.date.today()
-
     def _download(got: op_actions.Download | str) -> Response:
         if isinstance(got, str):
             return JSONResponse({"error": got}, status_code=422)
@@ -4305,7 +4310,7 @@ def create_app(
     @app.get("/onepager", response_class=HTMLResponse)
     def onepager() -> HTMLResponse:
         st = session()
-        return _page(st, "One-Pager Timeline", _onepager_body(st, _onepager_today(st)))
+        return _page(st, "One-Pager Timeline", _onepager_body(st, *_onepager_dates(st)))
 
     @app.post("/onepager/upload")
     def onepager_upload(file: UploadFile, layout: str = Form("auto")) -> RedirectResponse:
@@ -4329,6 +4334,13 @@ def create_app(
         """Set or clear the slide's date window (ADR-0527) — a refusal is reported, never a
         silently half-applied window."""
         op_actions.set_window(session(), start, end, action)
+        return RedirectResponse(url="/onepager", status_code=303)
+
+    @app.post("/onepager/today")
+    def onepager_set_today(today: str = Form(""), action: str = Form("apply")) -> RedirectResponse:
+        """Set or clear the data date both One-Pager slides draw (ADR-0541) — a refusal is
+        reported by name, never a silently kept guess."""
+        op_actions.set_today(session(), "onepager", today, action)
         return RedirectResponse(url="/onepager", status_code=303)
 
     @app.post("/onepager/links")
@@ -4360,7 +4372,11 @@ def create_app(
         nothing loaded."""
         st = session()
         _cls, marking = _cui_marking(st)
-        return _download(op_actions.onepager_pptx(st, _onepager_today(st), marking, "POLARIS²"))
+        return _download(
+            op_actions.onepager_pptx(
+                st, *_onepager_dates(st)[:1], marking, "POLARIS²", _onepager_dates(st)[1]
+            )
+        )
 
     @app.get("/export/{fmt}/onepager")
     def export_onepager(fmt: str) -> Response:
@@ -4369,7 +4385,7 @@ def create_app(
         if (bad := _bad_format(fmt)) is not None:
             return bad
         st = session()
-        got = op_actions.onepager_workbook(st, _onepager_today(st))
+        got = op_actions.onepager_workbook(st, *_onepager_dates(st))
         if isinstance(got, str):
             return JSONResponse({"error": got}, status_code=422)
         return _export_response(fmt, got, "one-pager-list")
@@ -4381,7 +4397,7 @@ def create_app(
     @app.get("/onepager-compare", response_class=HTMLResponse)
     def onepager_compare() -> HTMLResponse:
         st = session()
-        return _page(st, "One-Pager Compare", _onepager_compare_body(st, _onepager_today(st)))
+        return _page(st, "One-Pager Compare", _onepager_compare_body(st, *_onepager_dates(st)))
 
     @app.post("/onepager-compare/upload")
     def onepager_compare_upload(
@@ -4413,6 +4429,15 @@ def create_app(
         op_actions.set_compare_window(session(), start, end, action)
         return RedirectResponse(url="/onepager-compare", status_code=303)
 
+    @app.post("/onepager-compare/today")
+    def onepager_compare_set_today(
+        today: str = Form(""), action: str = Form("apply")
+    ) -> RedirectResponse:
+        """The same data date as /onepager/today (one setting for both pages), the message on
+        this page."""
+        op_actions.set_today(session(), "compare", today, action)
+        return RedirectResponse(url="/onepager-compare", status_code=303)
+
     @app.post("/onepager-compare/links")
     def onepager_compare_links(
         action: str = Form("add"),
@@ -4435,7 +4460,11 @@ def create_app(
         until both lists are loaded."""
         st = session()
         _cls, marking = _cui_marking(st)
-        return _download(op_actions.compare_pptx(st, _onepager_today(st), marking, "POLARIS²"))
+        return _download(
+            op_actions.compare_pptx(
+                st, *_onepager_dates(st)[:1], marking, "POLARIS²", _onepager_dates(st)[1]
+            )
+        )
 
     @app.get("/export/{fmt}/onepager-compare")
     def export_onepager_compare(fmt: str) -> Response:
@@ -4444,7 +4473,7 @@ def create_app(
         if (bad := _bad_format(fmt)) is not None:
             return bad
         st = session()
-        got = op_actions.compare_workbook(st, _onepager_today(st))
+        got = op_actions.compare_workbook(st, *_onepager_dates(st))
         if isinstance(got, str):
             return JSONResponse({"error": got}, status_code=422)
         return _export_response(fmt, got, "one-pager-compare")

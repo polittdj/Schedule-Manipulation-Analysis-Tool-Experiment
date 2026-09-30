@@ -299,6 +299,14 @@ dashboard. Stop it with `Ctrl-C`.
     named under "Logic links drawn dashed over other ink" and in the slide's footnote (up to four
     lines; past them it counts the rest, which the page names), which the PowerPoint carries too.
     Never a second slide.
+    **The data date** (ADR-0541): the red line on both slides, its caption (`DATA DATE m/d/yy`) and
+    its legend entry are drawn at the computer's date unless you set one with the **Data date**
+    control above the slide — one setting for both One-Pager pages and every PowerPoint they export
+    (the Excel exports carry no date). The subtitle says "Prepared" on the day the slide is made and
+    names the data date beside it when the two differ. A list that fills the slide to its last row
+    has no band for the footnote that names the links drawn dashed: when the legend needs one row,
+    its spare row carries a one-line count on the slide and in the PowerPoint; the page names them
+    in full either way.
     The same two pages ship on their own as **LODESTAR** (`lodestar/` in the repository) — see below.
 13. **Wipe Session** — clears all loaded schedules and derivatives from memory (including the
     Target UID).
@@ -312,6 +320,11 @@ needs nothing but **Python 3.10 or newer** — no install, no internet, no AI. S
 run `sh lodestar.sh` (Linux) and read `lodestar/README.md`. It is built from the very modules
 Polaris² runs, so both programs draw the same slide from the same list; after changing any of
 them, rebuild it with `python tools/lodestar/build_lodestar.py` (a test fails until you do).
+LODESTAR opens on its own **launch page** (ADR-0541) — Polaris²'s boot screen made LODESTAR's:
+the ✦ lodestar mark and name, its own copy and stage words, the lodestar's gold accent in every
+view, the lists and items aboard and the data date as its tiles — and on its first run writes a
+Desktop shortcut with its own icon (once; `--shortcut` again, `--no-shortcut` never), as
+`lodestar/README.md` explains.
 
 ## 4. Verifying a number (forensic use)
 

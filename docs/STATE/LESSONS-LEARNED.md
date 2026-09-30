@@ -435,6 +435,31 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-30 — A recorded corner is a claim about a population, and the population disagreed (ADR-0541)
+
+- **What happened.** One session gave the One-Pager an operator-picked data date, LODESTAR a launch page of its own and a
+  first-run Desktop shortcut, and closed ADR-0540's three recorded loose ends.
+- **An unfilled field in a kickoff is a decision the operator did not make.** The size-cap ruling read
+  `[KEEP AS SHIPPED / RAISE TO … / LOWER TO …]`. The honest reading is the no-change one, said out loud, with the evidence
+  (the renders) delivered — never a guessed constant and never a blocking question in an autonomous session.
+- **"2 of 600" was the visible tip.** The review recorded a head on an earlier GUTTER leg on two slides; a triangle-exact
+  probe over 1,800 slides found none of those and dozens of the same mis-join on plain channel legs. A corner recorded from
+  one population is a hypothesis about the others — measure the class, not the case, before deciding whether to fix it.
+- **A box-based geometry probe lies at density.** Heads at adjacent attachment points sit within a box's reach of a
+  neighbour's leg without the leg entering the triangle: the first count was 300 of 484 seeds, the exact one 66 of 100.
+  When the router itself reasons in boxes, the oracle that judges it must not.
+- **Measure the fix on the population before choosing it.** The horizontal-leg check was monkeypatched in-process over 300
+  slides: the class vanished, dashed links rose by at most 1.4 %, time did not move. Without that number the fix would have
+  been a taste call.
+- **A test seam that becomes a feature changes the meaning of every test that used it.** `onepager_today` froze "today"
+  in 20 modules; as the data date, "Prepared" in those pages became the real clock. The pins were re-derived to the SHAPE
+  of a date, not re-frozen — a midnight race is a flake waiting to happen.
+- **A test that launches the shipped program does what the program does on first run.** The pyz e2e tests would have
+  planted a Desktop shortcut pointing at the repo on a developer's machine. Every launch passes `--no-shortcut`; the
+  shortcut tests own their HOME.
+- **Two writers that cannot run here are still held to the format.** The `.lnk`'s PowerShell words and the `.app`'s plist
+  and launcher are pinned by their own rules; the ADR says UNVERIFIED on the hosts. Silence would have been the failure.
+
 ### 2026-09-29 (c) — A fit loop needs a fixed point, a forced route judged as a copy reserves nothing, and a budget that counts one step is no budget (ADR-0540)
 
 - **What happened.** One session made the One-Pager slide fill the page at every list size and fit every logic link

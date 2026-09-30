@@ -26,6 +26,7 @@ import datetime as dt
 import io
 import itertools
 import json
+import math
 import random
 import zipfile
 from collections.abc import Sequence
@@ -33,6 +34,7 @@ from typing import Any
 
 import pytest
 
+from lodestar.lodestar_probe import deck_shapes
 from reports.test_onepager_links_resume import _erasures
 from schedule_forensics.reports import onepager as op
 from schedule_forensics.reports import onepager_links as links_mod
@@ -41,8 +43,10 @@ from schedule_forensics.reports.onepager import (
     BAR_F,
     CROWDED_NOTE,
     FOOT_H,
+    FOOT_LINES_MAX,
     GUTTER_W,
     LABEL_MAX,
+    LANE_COL_X0,
     LANES_Y1,
     LEGEND_Y0,
     MS_F,
@@ -61,6 +65,7 @@ from schedule_forensics.reports.onepager_compare import (
     compare_onepager_docs,
 )
 from schedule_forensics.reports.onepager_links import LINK_TYPES, Link
+from schedule_forensics.reports.pptx import render_onepager_pptx
 from schedule_forensics.web import onepager_actions as act
 from schedule_forensics.web import onepager_common
 from schedule_forensics.web.onepager import linkable_items, onepager_layout
@@ -816,10 +821,17 @@ def test_review_a_shortened_lane_area_is_always_explained() -> None:
         lay = build_layout(items, _REVIEW_TODAY, "T", links=links)
         if lay.lanes_y1 < LANES_Y1 - 0.01 and not lay.footnote:
             silent.append(seed)
-        if seed == 105:  # the review's case: forced, then clean — the reserve must say so
-            assert lay.lanes_y1 < LANES_Y1 - 1 and not _flagged(lay), (lay.lanes_y1, _flagged(lay))
-            assert "reserved" in lay.footnote and any("reserved" in n for n in lay.fit_notes)
     assert not silent, silent
+    # the review's case was seed 105 (forced, then clean — the reserve must say so); under
+    # ADR-0541's router (heads checked against every leg) that seed carries a flagged link, and
+    # no review seed in 100-699 shows the shape any more — so the MECHANISM is pinned directly:
+    # a reserved band with nothing else to say is explained, in the fitting notes and on the slide
+    fitted: list[str] = []
+    notes: list[str] = []
+    op.disclose_fit(Fit(foot=True, force=True), [], fitted, notes)
+    assert fitted == [op.RESERVE_NOTE] and notes == []
+    lines = op.footnote_lines([], Fit(foot=True), [], {}, X1 - LANE_COL_X0, FOOT_LINES_MAX)
+    assert lines and " ".join(lines) == op.RESERVE_NOTE
 
 
 def _entry_names(ln: Any) -> list[str]:
@@ -907,9 +919,11 @@ def test_review_a_gutter_route_records_the_predecessors_side_by_its_own_shaft(
     monkeypatch.setattr(op, "route_all", spy)
     gutter_links = opposite = 0
     # gutter routes are rare on the Timeline: three seeds of the two generators carry one each,
-    # two of them leaving the predecessor on the side OPPOSITE the successor's channel — the
-    # case the old ledger recorded wrong (a ledger keyed by ``route.y`` fails this test)
-    for gen, seed in ((_slide, 111), (_review_slide, 12), (_review_slide, 13)):
+    # each leaving the predecessor on the side OPPOSITE the successor's channel — the case the
+    # old ledger recorded wrong (a ledger keyed by ``route.y`` fails this test). Re-pinned under
+    # ADR-0541 (heads checked against every leg): review seeds 12 and 13 no longer reach the
+    # gutter; 103 and 110 do (a search over review seeds 100-259 and this module's 0-219)
+    for gen, seed in ((_slide, 111), (_review_slide, 103), (_review_slide, 110)):
         items, links = _slide(seed, *DENSE) if gen is _slide else _review_slide(seed)
         reports.clear()
         lay = build_layout(items, TODAY if gen is _slide else _REVIEW_TODAY, "T", links=links)
@@ -959,3 +973,143 @@ def test_review_the_pptx_footnote_is_the_caution_colour_not_the_duplicate_name_h
     foot = xml.split('name="Footnote"')[1].split("</p:sp>")[0]
     assert f'<a:srgbClr val="{warn}"/>' in foot and pptx._DUP not in foot
     assert foot.count("<a:p>") == lay.footnote.count("\n") + 1  # one paragraph per line
+
+
+# ── a head on an earlier link's leg (ADR-0541; ADR-0540's review recorded the gutter case) ────
+
+
+def _pt_seg(px: float, py: float, a: tuple[float, float], b: tuple[float, float]) -> float:
+    (x1, y1), (x2, y2) = a, b
+    dx, dy = x2 - x1, y2 - y1
+    if dx == 0 and dy == 0:
+        return math.hypot(px - x1, py - y1)
+    t = max(0.0, min(1.0, ((px - x1) * dx + (py - y1) * dy) / (dx * dx + dy * dy)))
+    return math.hypot(px - (x1 + t * dx), py - (y1 + t * dy))
+
+
+def _seg_seg(a: Any, b: Any, c: Any, d: Any) -> float:
+    def ccw(p: Any, q: Any, r: Any) -> bool:
+        return (r[1] - p[1]) * (q[0] - p[0]) > (q[1] - p[1]) * (r[0] - p[0])
+
+    if ccw(a, c, d) != ccw(b, c, d) and ccw(a, b, c) != ccw(a, b, d):
+        return 0.0
+    return min(_pt_seg(*a, c, d), _pt_seg(*b, c, d), _pt_seg(*c, a, b), _pt_seg(*d, a, b))
+
+
+def _inside(p: Any, tri: list[Any]) -> bool:
+    signs = 0
+    for i in range(3):
+        (x1, y1), (x2, y2) = tri[i], tri[(i + 1) % 3]
+        cross = (x2 - x1) * (p[1] - y1) - (y2 - y1) * (p[0] - x1)
+        signs |= 1 if cross > 0 else 2 if cross < 0 else 0
+    return signs in (1, 2)
+
+
+def _seg_tri(seg: Any, tri: list[Any]) -> float:
+    """The distance from a leg to a head's triangle — 0 when the leg enters it. An independent
+    oracle: written without the router's boxes or its ``_within``."""
+    a, b = seg
+    if _inside(a, tri) or _inside(b, tri):
+        return 0.0
+    return min(_seg_seg(a, b, tri[i], tri[(i + 1) % 3]) for i in range(3))
+
+
+def _heads_on_legs(lay: Layout | CompareLayout) -> list[str]:
+    """Every CLEAN-judged link whose head lies within a touch of an EARLIER link's horizontal
+    leg (a flagged link names its overlap; a clean one claims to cover nothing)."""
+    touch = links_mod._TOUCH
+    out = []
+    for i, ln in enumerate(lay.links):
+        if ln.flagged:
+            continue
+        tri = [tuple(p) for p in ln.head]
+        for e in lay.links[:i]:
+            for seg in zip(e.shaft, e.shaft[1:], strict=False):
+                if abs(seg[0][1] - seg[1][1]) > 1e-9:
+                    continue  # a vertical leg: the router checked those all along
+                if _seg_tri(seg, tri) < touch:
+                    out.append(f"{ln.pred_name} → {ln.succ_name} on {e.pred_name} → {e.succ_name}")
+    return out
+
+
+def test_review_a_clean_links_head_never_sits_on_an_earlier_links_leg(
+    dense_slides: list[tuple[str, Layout]],
+) -> None:
+    """ADR-0540 recorded "`_conflicts` checks new heads against vertical legs only (2 slides of
+    600 with a later head's base on an earlier gutter leg)". The premise fell when measured: no
+    gutter case in 1,800 slides of three generators, but a clean-judged head on an earlier PLAIN
+    horizontal leg on 66 of 100 review-generator slides and 22 of 100 of this module's — the
+    leg runs through the head's base, which reads as that link ending there. Every leg is
+    checked now; this property is red on the pristine tree (seeds 2, 12, 18, … of the fixture)."""
+    bad = [(what, hit) for what, lay in dense_slides for hit in _heads_on_legs(lay)]
+    assert bad == [], bad[:6]
+
+
+def test_review_the_review_generators_slide_that_carried_one_is_clean_now() -> None:
+    """Seed 1 of the review's generator: one clean-judged head on an earlier channel leg on the
+    pristine tree (its leg entered the head's triangle: distance 0)."""
+    items, links = _review_slide(1)
+    lay = build_layout(items, _REVIEW_TODAY, "T", links=links)
+    assert _heads_on_legs(lay) == []
+    assert len(lay.links) == len(links)  # nothing lost: re-routed or drawn dashed and named
+
+
+def test_mutation_checking_the_vertical_legs_only_puts_a_head_back_on_a_leg(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The oracle has teeth: ADR-0540's rule (vertical legs only) fails it by name on seed 1."""
+    monkeypatch.setattr(links_mod, "_head_legs", lambda e: [vb for _x, _lo, _hi, vb in e.verticals])
+    items, links = _review_slide(1)
+    lay = build_layout(items, _REVIEW_TODAY, "T", links=links)
+    assert _heads_on_legs(lay) != []
+
+
+# ── the legend's spare row carries the footnote of a list that fills the slide (ADR-0541) ────
+
+
+def _full_slide_with_collisions() -> tuple[list[OnePagerItem], list[Link]]:
+    """Review F2's list: 116 same-day milestones fill the slide to its last row, and links into
+    one of them collide — the reserve alone would sink a list that fits."""
+    rows = 116
+    its = keyed(
+        [OnePagerItem("Eng", f"M{k}", D(2026, 3, 15), D(2026, 3, 15), k + 2) for k in range(rows)]
+    )
+    keys = [i.key for i in its]
+    links = [Link(keys[k], keys[9], "FS") for k in range(1, 9)] + [
+        Link(keys[0], keys[rows - 1 - j], "FS") for j in range(3)
+    ]
+    return its, links
+
+
+def test_review_the_legends_spare_row_carries_the_footnote_of_a_list_that_fills_the_slide() -> None:
+    """ADR-0540 recorded the corner and left the .pptx without a footnote; ADR-0541 decides:
+    when the legend uses one of its two rows, the spare row carries ONE line — the count of
+    the links drawn dashed and the entries that fit — on the page AND in the PowerPoint, and the
+    note says so. RED on the pristine tree (footnote empty, the note said "not on the slide")."""
+    its, links = _full_slide_with_collisions()
+    lay = build_layout(its, _REVIEW_TODAY, "T", links=links)
+    assert _flagged(lay) and lay.lanes_y1 == pytest.approx(LANES_Y1)  # the corner: full, forced
+    assert len({e.y for e in lay.legend}) == 1  # one legend row: the second is spare
+    assert lay.footnote.startswith(f"Caution — {len(_flagged(lay))} logic link(s) drawn dashed")
+    assert "\n" not in lay.footnote  # one line
+    assert lay.footnote_y == pytest.approx(lay.legend_y0 + 6 + (lay.legend_pt + 4.5))
+    assert lay.today_label_y < lay.footnote_y - lay.footnote_pt
+    assert any("spare row carries a one-line count" in n for n in lay.notes), lay.notes
+    assert not any("not on the slide" in n for n in lay.notes)
+    deck = render_onepager_pptx(lay, marking="CUI", source="s", product="t")
+    assert deck_shapes(deck)["Footnote"] == lay.footnote
+
+
+def test_mutation_a_legend_that_needs_both_rows_leaves_the_slide_without_a_footnote_and_says_so(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A legend wrapped to two rows has no spare row: the footnote stays off the slide and the
+    note says where the links are named instead — the row condition, not the feature, is what
+    this checks (wide legend text forces the wrap)."""
+    real = op.text_w
+    monkeypatch.setattr(op, "text_w", lambda text, size: real(text, size) * 6)
+    its, links = _full_slide_with_collisions()
+    lay = build_layout(its, _REVIEW_TODAY, "T", links=links)
+    assert _flagged(lay) and len({e.y for e in lay.legend}) == 2
+    assert lay.footnote == ""
+    assert any("not on the slide or in the PowerPoint" in n for n in lay.notes), lay.notes

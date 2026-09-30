@@ -225,6 +225,29 @@ and the view's scale — is exempt from §1's 8 px floor; page-only chrome (the 
 refused. The page-only axis caption ("TIMELINE BY MONTH AND YEAR", `SFChartFrame.axisTitles`)
 sits in the SVG's empty strip under the legend: the lanes reach the legend on every slide now.
 
+**The red line is the DATA DATE, and says so (ADR-0541).** Both One-Pager slides draw their red
+line at the operator's data date when one is set (the **Data date** control, one setting for both
+pages) and at the computer's date otherwise; the caption reads `DATA DATE m/d/yy`, the legend
+`Data date (m/d/yy)`, the page's chip `DATA DATE yyyy-mm-dd` — never "today", which a chosen date
+would make false. The subtitle's "Prepared" stays the day the slide is made and names the data
+date beside it when the two differ (the deck's "generated" line likewise). The caption's baseline
+sits `TODAY_CAPTION_DY` (5.5 pt) below the last lane band: at 4.5 its box lay 0.66 pt into the
+band (measured in Chromium; the ink was 0.09 pt clear). A head of a logic link is judged
+against EVERY leg of an earlier link, not its vertical legs only (a leg through a head's base
+mis-joins the same way). A list that fills the slide to its last row has no band for its
+footnote; when the legend needs one row, its spare row carries a one-line count on the slide and
+in the PowerPoint (`spare_row_footnote`), and the page names the links in full.
+
+**LODESTAR's launch page (ADR-0541)** is Polaris²'s boot screen (§7a) served by LODESTAR outside
+its frame — the same `launch.js` / `launch.css` / hum, §7a's four rules unchanged — made
+LODESTAR's by what the PAGE supplies through the boot JSON block (`heroes`, `stages`, `home`):
+its ✦ mark, name and line, its own hero copy and stage words, quick actions naming its two
+pages, and real facts in the tiles (lists aboard, items, the data date; an em dash when empty).
+`lodestar_launch.css` re-points `--boot-accent` to the lodestar's gold in every view (the
+§7a-sanctioned boot palette, one more declaration on `:root`); `--boot-warm` keeps following each
+view. LODESTAR's favicon and its Desktop shortcut carry the same ✦ (`desktop_icon.lodestar_ico_bytes`),
+so the two programs are told apart on a Desktop and in a tab strip.
+
 **The LODESTAR frame** — the two One-Pager pages served as their own program — keeps the
 compliance chrome whole: the CUI bars top and bottom, the handling & export-control drawer from the
 ONE copy of the prose (`htmlkit._DRAWER_HTML`, its `{where}` slot naming the frame's own marking

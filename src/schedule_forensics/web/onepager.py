@@ -149,25 +149,33 @@ def _link_context(st: SessionState) -> tuple[dict[str, str], dict[str, str]]:
     return names, absent
 
 
-def onepager_layout(st: SessionState, today: dt.date) -> Layout | None:
+def onepager_layout(
+    st: SessionState, today: dt.date, prepared: dt.date | None = None
+) -> Layout | None:
     """The laid-out slide for the session's list, or ``None`` with nothing (usable) loaded — or
     nothing inside the date window. The operator's logic links are routed on it (ADR-0539).
-    Laid out once per state (ADR-0540, :func:`cached_layout`): the key is the whole list, the
-    window, the title, today and every field of the links — read from ONE snapshot of the
-    session, the same snapshot the layout reads (:func:`snapshot`), so a POST landing while the
-    slide is laid out can never leave its state's slide under this state's key."""
+    ``today`` is the slide's DATA DATE (the operator's, else the computer's — ADR-0541) and
+    ``prepared`` the day the slide is made (``today`` when not given): the subtitle says both
+    when they differ. Laid out once per state (ADR-0540, :func:`cached_layout`): the key is the
+    whole list, the window, the title, both dates and every field of the links — read from ONE
+    snapshot of the session, the same snapshot the layout reads (:func:`snapshot`), so a POST
+    landing while the slide is laid out can never leave its state's slide under this key."""
     snap = snapshot(st)
+    made = today if prepared is None else prepared
     key = (
         snap.onepager,
         snap.onepager_window,
         snap.onepager_title,
         today,
+        made,
         link_key(snap.onepager_links),
     )
-    return cached_layout(st, "onepager", key, lambda: _onepager_layout(snap, today))
+    return cached_layout(st, "onepager", key, lambda: _onepager_layout(snap, today, made))
 
 
-def _onepager_layout(st: SessionState, today: dt.date) -> Layout | None:
+def _onepager_layout(
+    st: SessionState, today: dt.date, prepared: dt.date | None = None
+) -> Layout | None:
     doc, _omitted = onepager_view(st)
     if doc is None or not doc.items:
         return None
@@ -178,7 +186,7 @@ def _onepager_layout(st: SessionState, today: dt.date) -> Layout | None:
         doc.items,
         today,
         lay.title,
-        subtitle_for(doc, len(lay.lanes), today, win),
+        subtitle_for(doc, len(lay.lanes), today, win, prepared),
         window=win,
         links=st.onepager_links,
         names=names,
@@ -336,6 +344,31 @@ def window_form(action: str, window: Window | None) -> str:
     )
 
 
+def today_form(action: str, today: dt.date, chosen: bool) -> str:
+    """The DATA DATE control (ADR-0541): the date the slide's red line, its caption and its
+    legend entry are drawn at — ONE setting for both One-Pager pages. ``today`` is the date in
+    force (the operator's when ``chosen``, else the computer's), shown in the input; "Use the
+    computer's date" appears once one is set. A plain POST form, as the window's."""
+    clear = (
+        "<button type=submit name=action value=clear>Use the computer's date</button>"
+        if chosen
+        else ""
+    )
+    return (
+        f'<form action="{action}" method=post class="op-title-form op-today-form" '
+        'title="The data date: the red line on both One-Pager slides, their caption and legend, and every PowerPoint">'
+        f'<label>Data date <input type=date name=today value="{today.isoformat()}" required></label>'
+        f"<button type=submit name=action value=apply>Apply data date</button>{clear}</form>"
+    )
+
+
+def today_words(today: dt.date, chosen: bool) -> str:
+    """How the takeaway names the data date in force: set by the operator, or the computer's."""
+    return f"the data date is {today.isoformat()}" + (
+        " (set with the Data date control)" if chosen else " (the computer's date)"
+    )
+
+
 def window_notice(window: Window | None, shown: int, total: int, omitted: list[str]) -> str:
     """The window, stated: how many items it shows and every item it left off, by name."""
     if window is None:
@@ -421,15 +454,18 @@ _SCRIPT = (
 )
 
 
-def _onepager_body(st: SessionState, today: dt.date) -> str:
+def _onepager_body(st: SessionState, today: dt.date, prepared: dt.date | None = None) -> str:
+    """The page body. ``today`` is the data date in force (the operator's when the session holds
+    one, else the computer's); ``prepared`` the computer's date (``today`` when not given)."""
     doc = st.onepager
+    chosen = st.onepager_today is not None
     banner = ""
     if st.onepager_msg:
         cls, role = ("notice warn", "alert") if st.onepager_is_error else ("notice ok", "status")
         banner = f'<div class="{cls}" role={role}>{_e(st.onepager_msg)}</div>'
         st.onepager_msg = None
         st.onepager_is_error = False
-    lay = onepager_layout(st, today)
+    lay = onepager_layout(st, today, prepared)
     win = st.onepager_window
     view, omitted = onepager_view(st)
     if lay is None and doc is not None and doc.items and win is not None:
@@ -461,13 +497,13 @@ def _onepager_body(st: SessionState, today: dt.date) -> str:
     take = _utility_takeaway(
         f"{len(lay.lanes)} swimlanes, {ms} milestones and {len(view.items) - ms} activities on one "
         f"slide — {span}.",
-        f"From <b>{_e(doc.source)}</b>; today is {today.isoformat()}. Every bar and diamond is "
+        f"From <b>{_e(doc.source)}</b>; {today_words(today, chosen)}. Every bar and diamond is "
         "labelled with its name and finish date; ⤓ POWERPOINT exports the same slide as native, "
         "editable shapes.",
     )
     blob = json.dumps(layout_json(lay)).replace("<", "\\u003c")
     wtag = f" · WINDOW {win[0].isoformat()} to {win[1].isoformat()}" if win is not None else ""
-    prov = f"<span class=prov-chip data-no-i18n>SOURCE: {_e(doc.source)} · TODAY {today.isoformat()}{wtag}</span>"
+    prov = f"<span class=prov-chip data-no-i18n>SOURCE: {_e(doc.source)} · DATA DATE {today.isoformat()}{wtag}</span>"
     tools = _shell_tools(export_title="Export the parsed list (swimlane · item · dates) to Excel")
     data_btn = (
         '<button type=button data-sf-data aria-pressed=false aria-label="Show the parsed rows">'
@@ -481,6 +517,7 @@ def _onepager_body(st: SessionState, today: dt.date) -> str:
 <label>Slide title <input type=text name=title value="{_e(onepager_title(st))}" maxlength=120 size=48></label>
 <button type=submit>Apply</button></form>
 {window_form("/onepager/window", win)}
+{today_form("/onepager/today", today, chosen)}
 <a class="btn op-pptx" id=opPptx href="/export/pptx/onepager" download>&#11015; POWERPOINT</a>
 <form action="/onepager/clear" method=post class=op-clear-form><button type=submit>Clear the list</button></form>
 </div>"""
@@ -508,8 +545,9 @@ def _onepager_body(st: SessionState, today: dt.date) -> str:
 {_panel_head("One-Pager timeline", tools=tools, prov=prov)}
 <p class=muted>What you see is the slide: 16:9, one tinted band per swimlane, bars for activities and
 diamonds for milestones, a check beside what the status column marks complete, the logic links you add
-as arrows, dotted month lines under a month/year header, the red line at today, and the legend along the
-bottom. Hover any bar or diamond for its dates; click two of them to link them.</p>
+as arrows, dotted month lines under a month/year header, the red line at the data date (the computer's
+date unless you set one), and the legend along the bottom. Hover any bar or diamond for its dates; click
+two of them to link them.</p>
 {controls}
 {links_form("/onepager/links", "op", linkable_items(st), link_msg, link_error)}
 <div id=opHost class="op-host chart-host" role=img aria-label="{_e(lay.title)}"></div>

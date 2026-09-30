@@ -55,9 +55,12 @@ MODULES: tuple[str, ...] = (
     "schedule_forensics/web/onepager_compare.py",
     "schedule_forensics/web/onepager_actions.py",
     "schedule_forensics/web/lodestar_shell.py",
+    "schedule_forensics/web/lodestar_launch.py",
+    "schedule_forensics/desktop_icon.py",
     "schedule_forensics/lodestar/__init__.py",
     "schedule_forensics/lodestar/__main__.py",
     "schedule_forensics/lodestar/server.py",
+    "schedule_forensics/lodestar/shortcut.py",
 )
 #: ``archive name -> src path`` for the two members that live under another name.
 RENAMED: dict[str, str] = {

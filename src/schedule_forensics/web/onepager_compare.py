@@ -46,6 +46,8 @@ from schedule_forensics.web.onepager import (
     layout_select,
     links_form,
     links_list,
+    today_form,
+    today_words,
     window_form,
     window_notice,
 )
@@ -120,24 +122,31 @@ def compare_link_idents(st: SessionState) -> dict[str, tuple[str, ...]]:
     }
 
 
-def onepager_compare_layout(st: SessionState, today: dt.date) -> CompareLayout | None:
+def onepager_compare_layout(
+    st: SessionState, today: dt.date, prepared: dt.date | None = None
+) -> CompareLayout | None:
     """The laid-out compare slide, laid out once per state (ADR-0540, :func:`cached_layout`):
-    the key is both lists, the window, the title, today and every field of the links — read from
-    ONE snapshot of the session, the same snapshot the layout reads (:func:`snapshot`), so a POST
+    the key is both lists, the window, the title, the data date ``today`` and the ``prepared``
+    date (ADR-0541; ``today`` when not given) and every field of the links — read from ONE
+    snapshot of the session, the same snapshot the layout reads (:func:`snapshot`), so a POST
     landing while the slide is laid out can never leave its state's slide under this key."""
     snap = snapshot(st)
+    made = today if prepared is None else prepared
     key = (
         snap.onepager_prior,
         snap.onepager_current,
         snap.onepager_compare_window,
         snap.onepager_compare_title,
         today,
+        made,
         link_key(snap.onepager_compare_links),
     )
-    return cached_layout(st, "compare", key, lambda: _onepager_compare_layout(snap, today))
+    return cached_layout(st, "compare", key, lambda: _onepager_compare_layout(snap, today, made))
 
 
-def _onepager_compare_layout(st: SessionState, today: dt.date) -> CompareLayout | None:
+def _onepager_compare_layout(
+    st: SessionState, today: dt.date, prepared: dt.date | None = None
+) -> CompareLayout | None:
     doc, _omitted = onepager_compare_view(st)
     if doc is None or not doc.rows:
         return None
@@ -158,7 +167,7 @@ def _onepager_compare_layout(st: SessionState, today: dt.date) -> CompareLayout 
         doc,
         today,
         onepager_compare_title(st),
-        compare_subtitle(doc, today, win),
+        compare_subtitle(doc, today, win, prepared),
         window=win,
         links=st.onepager_compare_links,
         absent=absent,
@@ -314,7 +323,12 @@ def _reading_block() -> str:
     )
 
 
-def _onepager_compare_body(st: SessionState, today: dt.date) -> str:
+def _onepager_compare_body(
+    st: SessionState, today: dt.date, prepared: dt.date | None = None
+) -> str:
+    """The page body. ``today`` is the data date in force (the operator's when the session holds
+    one, else the computer's); ``prepared`` the computer's date (``today`` when not given)."""
+    chosen = st.onepager_today is not None
     banner = ""
     if st.onepager_compare_msg:
         cls, role = (
@@ -332,7 +346,7 @@ def _onepager_compare_body(st: SessionState, today: dt.date) -> str:
             )
     full = onepager_compare_doc(st)
     cdoc, omitted = onepager_compare_view(st)
-    lay = onepager_compare_layout(st, today)
+    lay = onepager_compare_layout(st, today, prepared)
     win = st.onepager_compare_window
     if full is not None and full.rows and cdoc is not None and not cdoc.rows and win is not None:
         # the window holds nothing: say so, and keep the control that clears it on the page
@@ -384,13 +398,13 @@ def _onepager_compare_body(st: SessionState, today: dt.date) -> str:
         f"current list and an unchanged item is drawn once; a ghost is where a moved item was, an "
         f"arrow is the finish's move; NEW and REMOVED are tagged, and a check marks what the status "
         f"column says is complete. A rename or a swimlane move reads as one removed and one new: the sheet "
-        f"has no id to follow. Today is {today.isoformat()}.",
+        f"has no id to follow. On this slide {today_words(today, chosen)}.",
     )
     blob = json.dumps(compare_layout_json(lay)).replace("<", "\\u003c")
     wtag = f" · WINDOW {win[0].isoformat()} to {win[1].isoformat()}" if win is not None else ""
     prov = (
         f"<span class=prov-chip data-no-i18n>PRIOR: {_e(cdoc.prior_source)} · CURRENT: "
-        f"{_e(cdoc.current_source)} · TODAY {today.isoformat()}{wtag}</span>"
+        f"{_e(cdoc.current_source)} · DATA DATE {today.isoformat()}{wtag}</span>"
     )
     tools = _shell_tools(
         export_title="Export the compared rows (prior · current · delta in calendar days) to Excel"
@@ -407,6 +421,7 @@ def _onepager_compare_body(st: SessionState, today: dt.date) -> str:
 <label>Slide title <input type=text name=title value="{_e(onepager_compare_title(st))}" maxlength=120 size=48></label>
 <button type=submit>Apply</button></form>
 {window_form("/onepager-compare/window", win)}
+{today_form("/onepager-compare/today", today, chosen)}
 <a class="btn op-pptx" id=opcPptx href="/export/pptx/onepager-compare" download>&#11015; POWERPOINT</a>
 <form action="/onepager-compare/swap" method=post class=opc-swap-form><button type=submit>Swap prior and current</button></form>
 <form action="/onepager-compare/clear" method=post class=op-clear-form><button type=submit>Clear both lists</button></form>
@@ -433,8 +448,9 @@ def _onepager_compare_body(st: SessionState, today: dt.date) -> str:
 (an unchanged item drawn once, at its one date) and the prior as a dashed ghost wherever it moved, an
 arrow from the old finish to the new one with its move in calendar days, NEW and REMOVED tags, a check
 beside what the status column marks complete, the logic links you add as arrows between current
-positions, a summary column per swimlane, the red line at today, and the legend along the bottom.
-Hover any item for its dates; click two of them to link them.</p>
+positions, a summary column per swimlane, the red line at the data date (the computer's date unless
+you set one), and the legend along the bottom. Hover any item for its dates; click two of them to link
+them.</p>
 {controls}
 {links_form("/onepager-compare/links", "opc", linkable_rows(st), link_msg, link_error)}
 <div id=opcHost class="op-host chart-host" role=img aria-label="{_e(lay.title)}"></div>

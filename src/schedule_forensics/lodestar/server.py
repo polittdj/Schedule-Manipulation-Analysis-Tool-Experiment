@@ -64,6 +64,7 @@ from schedule_forensics.reports.onepager_links import Link
 from schedule_forensics.reports.tableset import TableSet
 from schedule_forensics.reports.xlsx import render_xlsx
 from schedule_forensics.web import onepager_actions as actions
+from schedule_forensics.web.lodestar_launch import lodestar_launch_html
 from schedule_forensics.web.lodestar_shell import NAME, lodestar_page, marking, stopped_page
 from schedule_forensics.web.onepager import _onepager_body, onepager_template
 from schedule_forensics.web.onepager_compare import _onepager_compare_body
@@ -124,6 +125,13 @@ STATIC_ASSETS: dict[str, str] = {
     "sf-themes.css": "text/css; charset=utf-8",
     "lodestar.css": "text/css; charset=utf-8",
     "favicon.ico": "image/x-icon",
+    # the launch page (ADR-0541): Polaris²'s boot screen's painter, hum and styles, LODESTAR's
+    # own identity sheet, and LODESTAR's own icon (the ✦ lodestar — its favicon too)
+    "launch.js": "text/javascript; charset=utf-8",
+    "launch_audio.js": "text/javascript; charset=utf-8",
+    "launch.css": "text/css; charset=utf-8",
+    "lodestar_launch.css": "text/css; charset=utf-8",
+    "lodestar.ico": "image/x-icon",
 }
 #: The ⤓ EXCEL exports (the list, the comparison, the template). No Word export: no LODESTAR page
 #: offers one, and a document titled by Polaris²'s table sets would say POLARIS² (ADR-0539).
@@ -404,9 +412,13 @@ class _Handler(http.server.BaseHTTPRequestHandler):
             raise _Refused(400, "the upload carried no file")
         return fields, name, data
 
-    def _today(self) -> dt.date:
+    def _dates(self) -> tuple[dt.date, dt.date]:
+        """``(data date, prepared)`` as Polaris²'s routes derive them (ADR-0541): the data date
+        is the operator's when set, else the clock; ``prepared`` is the clock — the server's
+        fixed one when a test gave it one, else the computer's date."""
         st = self.server.state
-        return st.onepager_today or self.server.today or dt.date.today()
+        clock = self.server.today or dt.date.today()
+        return st.onepager_today or clock, clock
 
     def _route(self, method: str) -> _Reply:
         path = urlsplit(self.path).path
@@ -421,7 +433,8 @@ class _Handler(http.server.BaseHTTPRequestHandler):
             if path == "/" or path == "":
                 return _redirect("/onepager")
             if path.startswith("/static/") or path == "/favicon.ico":
-                name = path.rsplit("/", 1)[-1]
+                # /favicon.ico is LODESTAR's own icon (ADR-0541), not Polaris²'s
+                name = "lodestar.ico" if path == "/favicon.ico" else path.rsplit("/", 1)[-1]
                 asset = self.server.assets.get(name)
                 if asset is None or path not in (f"/static/{name}", "/favicon.ico"):
                     return _Reply(404, b"not found", "text/plain; charset=utf-8")
@@ -432,18 +445,24 @@ class _Handler(http.server.BaseHTTPRequestHandler):
 
     def _get(self, path: str) -> _Reply:
         st = self.server.state
-        today = self._today()
+        today, made = self._dates()
         _cls, text = marking(st.unclassified)
+        if path == "/launch":
+            # the boot screen the program opens on (ADR-0541) — outside the frame, as Polaris²'s
+            chosen = st.onepager_today is not None
+            return _html(
+                lodestar_launch_html(st, unclassified=st.unclassified, today=today, chosen=chosen)
+            )
         if path == "/onepager":
-            body = _onepager_body(st, today)
+            body = _onepager_body(st, today, made)
             return _html(lodestar_page("Timeline", body, path=path, unclassified=st.unclassified))
         if path == "/onepager-compare":
-            body = _onepager_compare_body(st, today)
+            body = _onepager_compare_body(st, today, made)
             return _html(lodestar_page("Compare", body, path=path, unclassified=st.unclassified))
         if path == "/export/pptx/onepager":
-            return self._download(actions.onepager_pptx(st, today, text, NAME))
+            return self._download(actions.onepager_pptx(st, today, text, NAME, made))
         if path == "/export/pptx/onepager-compare":
-            return self._download(actions.compare_pptx(st, today, text, NAME))
+            return self._download(actions.compare_pptx(st, today, text, NAME, made))
         for stem, fname in (
             ("onepager-template", "one-pager-template"),
             ("onepager-compare", "one-pager-compare"),
@@ -455,9 +474,9 @@ class _Handler(http.server.BaseHTTPRequestHandler):
                 if stem == "onepager-template":
                     got: TableSet | str = onepager_template()
                 elif stem == "onepager":
-                    got = actions.onepager_workbook(st, today)
+                    got = actions.onepager_workbook(st, today, made)
                 else:
-                    got = actions.compare_workbook(st, today)
+                    got = actions.compare_workbook(st, today, made)
                 if isinstance(got, str):
                     return _json_error(got)
                 return _Reply(
@@ -504,6 +523,8 @@ class _Handler(http.server.BaseHTTPRequestHandler):
             actions.set_title(st, get("title", ""))
         elif path == "/onepager/window":
             actions.set_window(st, get("start", ""), get("end", ""), get("action", "apply"))
+        elif path == "/onepager/today":
+            actions.set_today(st, "onepager", get("today", ""), get("action", "apply"))
         elif path == "/onepager/clear":
             actions.clear_list(st)
         elif path == "/onepager/links":
@@ -522,6 +543,8 @@ class _Handler(http.server.BaseHTTPRequestHandler):
             actions.set_compare_title(st, get("title", ""))
         elif path == "/onepager-compare/window":
             actions.set_compare_window(st, get("start", ""), get("end", ""), get("action", "apply"))
+        elif path == "/onepager-compare/today":
+            actions.set_today(st, "compare", get("today", ""), get("action", "apply"))
         elif path == "/onepager-compare/clear":
             actions.clear_compare(st)
         elif path == "/onepager-compare/links":

@@ -322,6 +322,7 @@ def _hardening_matrix(live: Live) -> dict[str, tuple[int, Reply]]:
     ok_form = [("Content-Type", "application/x-www-form-urlencoded")]
     return {
         "page": (200, request(port, "GET", "/onepager")),
+        "launch": (200, request(port, "GET", "/launch")),
         "head": (200, request(port, "HEAD", "/onepager-compare")),
         "static": (200, request(port, "GET", "/static/app.css")),
         "redirect": (303, request(port, "GET", "/")),
@@ -794,6 +795,9 @@ def test_mutation_a_read_first_body_makes_the_server_wait(
 _STATIC_PROBES = {
     "/static/onepager.js": 200,
     "/favicon.ico": 200,
+    "/static/lodestar.ico": 200,
+    "/static/launch.js": 200,
+    "/static/lodestar_launch.css": 200,
     "/static/../server.py": 404,
     "/static/../onepager.py": 404,
     "/static/%2e%2e/x": 404,
