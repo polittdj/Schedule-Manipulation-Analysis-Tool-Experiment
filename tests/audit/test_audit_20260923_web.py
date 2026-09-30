@@ -34,6 +34,7 @@ from urllib.parse import unquote
 import pytest
 from fastapi.testclient import TestClient
 
+from schedule_forensics.importers._common import ImporterError
 from schedule_forensics.importers.json_schedule import parse_json_text
 from schedule_forensics.importers.mspdi import parse_mspdi_text
 from schedule_forensics.web.app import SessionState, create_app
@@ -313,8 +314,18 @@ def test_a0923_web_004_a_save_json_link_answers_for_a_file_name_outside_latin_1(
             )
         status, _disposition, body, raised = _web_004_raw_get(client.app, hrefs[0])
         if status == 200:
-            reopens = parse_json_text(body.decode("utf-8")).model_dump(exclude={"source_file"})
-            outcome = "" if reopens == reference else "200, but the body does not re-open equal"
+            # CI's floor job (the declared-minimum dependencies) answers 200 with a NON-JSON body
+            # for a non-Latin-1 name where the current dependencies answer 500: both are the
+            # defect, so a body the importer refuses is an outcome, never an escaping
+            # ImporterError (the strict marker names AssertionError)
+            try:
+                reopens = parse_json_text(body.decode("utf-8", errors="replace")).model_dump(
+                    exclude={"source_file"}
+                )
+            except ImporterError as exc:
+                outcome = f"200, but the body is not the saved schedule ({exc})"
+            else:
+                outcome = "" if reopens == reference else "200, but the body does not re-open equal"
         else:
             outcome = f"{status} {raised or body[:40]!r}"
         if name in _WEB_004_CONTROLS:
