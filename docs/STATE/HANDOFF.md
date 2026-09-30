@@ -30,7 +30,7 @@ STATUS (current) — **ADR-0539 is on `main`**: draft PR #725 was squash-merged 
 waited on the operator — it no longer does, and this section corrects that. **The ADR-0540 feature is COMPLETE on draft
 PR** on branch `claude/gracious-lovelace-8hwycm` (from `main` @ `996b28b2`; the PR number is in the branch's pull request) — the
 operator marks it ready and squash-merges; a session never does. Highest ADR on disk **0540**. Version **1.0.296**;
-the wheel, the nine installers (MPXJ ref `163d1942`, fetched `--depth=2`) and `lodestar/LODESTAR.pyz` ({{PYZ_BYTES}}
+the wheel, the nine installers (MPXJ ref `163d1942`, fetched `--depth=2`) and `lodestar/LODESTAR.pyz` (707,568
 bytes, 34 members) are rebuilt from a clean worktree of the final source. QC-1 / QC-2 / QC-3 bind every session.
 
 ## What ADR-0540 did (the operator's asks, 2026-09-29)
@@ -71,7 +71,7 @@ bytes, 34 members) are rebuilt from a clean worktree of the final source. QC-1 /
 
 ## Measured at close (Python 3.11, a clean worktree of the final commit)
 
-{{MEASURED}}
+Static gate green at the PINNED ruff 0.16.9 (`ruff check .`, `ruff format --check .` 1,387 files), `mypy src/` 178 files, `bandit` exit 0, `node --check` per file; `build_lodestar.py --check` current (707,568 bytes, 34 members). **The FULL suite on a clean worktree of the source commit `26128a81` with the rebuilt artifacts in it: 6,583 passed, 5 skipped, 83 xfailed, 1 failed, exit 1 in 58 min 20 s** — the one failure the axis-caption ledger (`test_r11_panel_contract`, both One-Pager painters' caption call sites moved on purpose to `L.h - 3`), re-derived in the second commit and its module re-run green on the final tree (25 passed); no XPASS (A0923-IMP-005 and A0923-DOC-003 still strict-xfail). **`-m parity` 271 passed, exit 0 (11 min 43 s).** On the final tree: `tests/installer` + the LODESTAR lockstep + `tests/test_state_docs.py` 113 passed. The browser census (Chromium, LibreOffice Impress) ran inside the full suite. PR #726's own reproducers run against this tree: 62 xfailed, 0 XPASS, 0 failed.
 
 ## Decision for the operator (ASK, do not assume)
 

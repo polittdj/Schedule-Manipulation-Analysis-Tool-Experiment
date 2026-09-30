@@ -20212,7 +20212,7 @@ commit, not a rebase. The resolution:
 - **Re-derived pins, each with its reason:** the 13-pt sweep, the W-tag dates, the naive-band filler (29), the pristine
   digest, `links_2`'s row height, the Compare move-head pin, the `_swap_ok` fixture; the round-site ledger (+2
   `whole_pct`) and the audit report's census.
-- **Measured at close (clean worktree of the final commit, Python 3.11):** {{MEASURED_SHORT}}
+- **Measured at close (clean worktree of the final commit, Python 3.11):** static gate green (pinned ruff 0.16.9, mypy 178, bandit 0, node per file); LODESTAR current (707,568 B, 34 members); **the FULL suite on a clean worktree of `26128a81` with the artifacts: 6,583 passed, 5 skipped, 83 xfailed, 1 failed (the axis-caption ledger — both painters' caption moved on purpose; re-derived in the second commit, its module 25 passed on the final tree), 58 min 20 s; `-m parity` 271 passed (11 min 43 s)**; no XPASS; on the final tree the installer / LODESTAR / state-doc guards 113 passed; #726's reproducers 62 xfailed, 0 XPASS.
 - **Delivered to the operator:** the 3 / 10 / 40 / 144-item renders before and after (both pages, four views), the
   forced case on the page and via LibreOffice from the .pptx — **the readable cap for tiny lists is the operator's
   ruling** (`LABEL_MAX` 14 pt provisional; rows uncapped).
