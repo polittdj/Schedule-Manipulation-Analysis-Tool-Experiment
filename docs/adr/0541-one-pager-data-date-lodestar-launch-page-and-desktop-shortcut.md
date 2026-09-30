@@ -103,7 +103,7 @@ archive. PowerPoint itself (LibreOffice Impress is the renderer here). Firefox /
   change (more collisions are found, so more slides escalate); the counts in the ADR-0540 text
   are that ADR's measurement, not this tree's.
 * The wheel and the nine installers are rebuilt at v1.0.297 from a clean worktree of the source
-  commit; `lodestar/LODESTAR.pyz` at 814,888 bytes, 42 members.
+  commit; `lodestar/LODESTAR.pyz` at 816,775 bytes, 42 members.
 * **Open for the operator:** the size cap ruling proper (the renders are delivered; the shipped
   provisional caps stand until ruled on); an icon for LODESTAR's launchers on the machine that
   cannot write a shortcut (out of scope).

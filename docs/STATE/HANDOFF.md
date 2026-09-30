@@ -8,7 +8,7 @@
 
 STATUS (current) — **ADR-0541 is on draft PR** of `claude/focused-ride-4u3cpl` (the operator marks it ready and
 squash-merges; a session never does). Highest ADR on disk **0541**. Version **1.0.297**; LODESTAR **1.0.2**
-(`lodestar/LODESTAR.pyz` 814,888 bytes, **42 members**); the wheel and the nine installers rebuilt from a clean worktree of
+(`lodestar/LODESTAR.pyz` 816,775 bytes, **42 members**); the wheel and the nine installers rebuilt from a clean worktree of
 the source commit. QC-1 / QC-2 / QC-3 bind every session.
 
 ## What ADR-0541 did (the operator's kickoff, 2026-09-30)
