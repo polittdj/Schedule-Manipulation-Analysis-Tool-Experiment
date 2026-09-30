@@ -27,6 +27,11 @@ from schedule_forensics.ai import Banner, Classification, banner_for, banner_for
 from schedule_forensics.model.saved_view import Criterion as SavedCriterion
 from schedule_forensics.model.saved_view import Operand as SavedOperand
 from schedule_forensics.web import i18n
+from schedule_forensics.web.htmlkit import _DRAWER_HTML as _DRAWER_HTML
+from schedule_forensics.web.htmlkit import CUI_MARKING, UNCLASSIFIED_MARKING
+from schedule_forensics.web.htmlkit import _e as _e
+from schedule_forensics.web.htmlkit import _utility_takeaway as _utility_takeaway
+from schedule_forensics.web.onepager_common import COMPARE_EXPLAINER
 from schedule_forensics.web.state import _ROLE_BY_ID, _ROLES, SessionState, _Flash
 
 try:  # the installed package version, used to cache-bust static asset URLs on upgrade
@@ -494,22 +499,7 @@ _EXPLAINERS: dict[str, tuple[str, str, str]] = {
         "Use the gap and its growth rate to justify (or refute) a recovery plan: a widening "
         "gap with a flat actual curve will not be closed by optimism.",
     ),
-    "One-Pager Compare": (
-        "Two One-Pager lists — a prior and a current — on one swimlane slide: the current position "
-        "drawn solid, the prior as a ghost wherever it moved, an arrow from the old finish to the "
-        "new one with the move in calendar days, NEW and REMOVED items tagged, a check beside what "
-        "column D marks complete, and a per-swimlane strip counting slips, pull-ins, unchanged "
-        "items, additions, removals and completions.",
-        "A right-pointing arrow with +N is a slip; left with \u2212N is a pull-in; a ghost with no "
-        "solid shape is REMOVED; a solid shape tagged NEW is new; an unchanged item is drawn once, "
-        "solid, at its one date, with no ghost. A check beside a shape means column D marks it "
-        "complete. Moves are calendar days because the list carries no calendar. A name repeated "
-        "under one swimlane pairs copy for copy on an identical date; copies left over in both "
-        "lists are DUPLICATE NAME and are compared with nothing.",
-        "Decide which swimlanes carry the movement, which single item slipped most, and whether the "
-        "new and removed rows are real scope changes or renames the two lists spell differently — "
-        "before the slide goes to the review board.",
-    ),
+    "One-Pager Compare": COMPARE_EXPLAINER,
     "Forecast": (
         "Multiple engine-computed finish forecasts side by side: schedule-logic CPM (with started "
         "work anchored to its recorded actual start), the stored as-scheduled finish, and "
@@ -1241,19 +1231,6 @@ def _render_nav(state: SessionState) -> str:
     return f"<nav><div class=nav-spine>{sections}</div>{controls}</nav>"
 
 
-def _utility_takeaway(headline: str, lede: str) -> str:
-    """The takeaway h1 + context line the DoD requires of any page (ADR-0311, rank 12).
-
-    Rank 12's pages are Setup utilities and per-file drills, not spine chapters, so they take the
-    kicker/no-segue treatment ADR-0311 settled — but the DoD's *takeaway h1 + context line* applies
-    to every page regardless of where it sits in the story. `DESIGN-SYSTEM.md` §5: a headline states
-    a FINDING, not a topic. Every figure passed in here must already be rendered further down the
-    same page, so the number the reader sees first is one they can verify below it, and a missing
-    value must arrive as an em dash rather than a fabricated zero.
-    """
-    return f'<h1 class="page-takeaway" data-no-i18n>{headline}</h1><p class="page-lede">{lede}</p>'
-
-
 def _chapter_kicker(title: str, chapter: _Chapter | None = None) -> str:
     """The slim chapter kicker above a page's content: ``CHAPTER NN · NAME`` (story position).
     ``chapter`` overrides title-based resolution for dynamic-title pages (e.g. /analysis)."""
@@ -1306,28 +1283,6 @@ def _story_footer(state: SessionState, title: str, chapter: _Chapter | None = No
 #: byte-identical notice instead of a second, drift-prone copy. Design system §6 says the drawer
 #: sits under the top bar on EVERY page; two copies of a regulatory notice is how one of them
 #: quietly stops matching the other.
-_DRAWER_HTML = """<details class=compliance-drawer id=complianceDrawer>
-<summary>Handling &amp; export-control notice — click to review (CUI / ITAR / EAR)</summary>
-<div class=compliance-body>
-<h3>Controlled Unclassified Information (CUI)</h3>
-<p>Treat every loaded schedule and every derived metric on these pages as CUI unless the project
-is explicitly marked UNCLASSIFIED in AI Settings. Handle per 32 CFR Part 2002 and your
-organization's CUI program: store on approved systems only, share only with a lawful government
-purpose, and destroy per records schedules. {locality}</p>
-<h3>Export control (ITAR / EAR)</h3>
-<p>WARNING — Schedules for defense or space programs may contain technical data subject to the
-International Traffic in Arms Regulations (ITAR, 22 CFR 120&ndash;130) or the Export
-Administration Regulations (EAR, 15 CFR 730&ndash;774). Do not export, release, or disclose such
-data to foreign persons, in the U.S. or abroad, without proper authorization. Violations carry
-severe criminal and civil penalties.</p>
-<h3>Your responsibility</h3>
-<p>The markings above reflect the session's declared classification &mdash; not a review of your
-data. You remain responsible for confirming the actual sensitivity, markings, and distribution
-statements of every file you load and every report you export.</p>
-</div>
-</details>"""
-
-
 def _compliance_drawer(state: SessionState) -> str:
     """The compliance drawer, locality sentence resolved for this session.
 
@@ -1346,7 +1301,7 @@ def _compliance_drawer(state: SessionState) -> str:
         f"for a non-local endpoint ({_e(ai_banner.endpoint or '')}) — schedule content sent to "
         "the AI leaves this machine. The engine's computations remain local."
     )
-    return _DRAWER_HTML.format(locality=locality)
+    return _DRAWER_HTML.format(locality=locality, where="in AI Settings")
 
 
 def _cui_marking(state: SessionState) -> tuple[str, str]:
@@ -1360,9 +1315,7 @@ def _cui_marking(state: SessionState) -> tuple[str, str]:
     classified = state.ai_config.classification is Classification.CLASSIFIED
     return (
         "cui" if classified else "unclassified",
-        "Controlled Unclassified Information • CUI"
-        if classified
-        else "Unclassified • no CUI controls asserted",
+        CUI_MARKING if classified else UNCLASSIFIED_MARKING,
     )
 
 
@@ -1425,10 +1378,6 @@ def _page(
         ),
         status_code=status_code,
     )
-
-
-def _e(text: object) -> str:
-    return html.escape(str(text))
 
 
 def _expandable_more(shown_html: str, hidden_items: list[str]) -> str:

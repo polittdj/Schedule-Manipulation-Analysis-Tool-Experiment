@@ -1,10 +1,14 @@
-"""The One-Pager: a three-column Excel list laid out as a swimlane timeline on ONE 16:9 slide.
+"""The One-Pager: an Excel list laid out as a swimlane timeline on ONE 16:9 slide.
 
 The operator keeps a plain workbook — column A the swimlane name, column B the task or milestone
-name, column C the date (a single date is a **milestone**, an ``A - B`` range is an **activity**)
-— and wants the PowerPoint one-pager that list implies: one tinted band per swimlane, a bar or
-diamond per row labelled with its name and finish date, a month/year header with dotted month
-lines, a red line at today, and a legend. This module is the whole of that computation:
+name, column C the **start** date, column D the **finish** date, column E **complete** (the layout
+since 2026-09-29, ADR-0539: a row whose start and finish are the same day, or that carries only
+one of them, is a **milestone**; otherwise it is an **activity**) — and wants the PowerPoint
+one-pager that list implies: one tinted band per swimlane, a bar or diamond per row labelled with
+its name and finish date, a month/year header with dotted month lines, a red line at today, and a
+legend. The OLDER layout (ADR-0446/0524: C the date — a single date or an ``A - B`` range — and D
+a status word) is still read, and a sheet in it is NAMED as such (:func:`detect_layout`). This
+module is the whole of that computation:
 
 * :func:`parse_rows` reads the rows :func:`schedule_forensics.reports.xlsx_read.read_xlsx` hands
   back (every cell a string) and classifies each one — or reports, by row number, why it could
@@ -21,22 +25,35 @@ Dates: the tool never invents one. A hand-typed ``05/2026`` (month only) spans t
 two-digit year is 20xx; an Excel date typed into a General-formatted cell arrives as its serial
 (``46310``) and is recognised by range. Anything else is a problem row, not a default.
 
-Column D (ADR-0524) is an optional STATUS word saying whether the item is complete —
-:func:`read_completion`. Only the One-Pager COMPARE draws it; its notes travel apart from the
-parser's (``OnePagerDoc.completion_notes``) so /onepager, which draws no completion, never shows a
-sentence about something it does not draw. Row numbers are the rows Excel shows:
-:func:`parse_numbered_workbook` takes them from ``read_xlsx_numbered``.
+The status column — E in the current layout, D in the older one (ADR-0524) — is an optional
+STATUS word saying whether the item is complete — :func:`read_completion`. Its notes travel apart
+from the parser's (``OnePagerDoc.completion_notes``) and name the column the sheet actually used.
+Row numbers are the rows Excel shows: :func:`parse_numbered_workbook` takes them from
+``read_xlsx_numbered``. Every item carries a stable KEY (:func:`item_keys`) the operator's logic
+links (:mod:`schedule_forensics.reports.onepager_links`) refer to.
 """
 
 from __future__ import annotations
 
 import calendar
 import datetime as dt
+import hashlib
 import re
-from dataclasses import asdict, dataclass, replace
+from collections.abc import Mapping, Sequence
+from dataclasses import asdict, dataclass, field, replace
 from typing import Any
 
-from schedule_forensics.reports.tables import Cell, Table, TableSet
+from schedule_forensics.reports.onepager_links import (
+    Anchor,
+    Box,
+    Grid,
+    Link,
+    PlacedLink,
+    label_box,
+    route_links,
+    shape_box,
+)
+from schedule_forensics.reports.tableset import Cell, Table, TableSet
 
 # ── intake ────────────────────────────────────────────────────────────────────────────────────
 
@@ -68,11 +85,56 @@ _SPLIT_RE = re.compile(
 )
 _HEADER_RE = re.compile(r"swim|lane|task|milestone|activity|date|name|finish|start", re.IGNORECASE)
 
+#: The two sheet layouts (ADR-0539). START_FINISH is the current one — A swimlane · B item ·
+#: C start · D finish · E complete; DATE_STATUS the older ADR-0446/0524 one — A · B · C a date or
+#: a range · D a status word.
+START_FINISH = "start-finish"
+DATE_STATUS = "date-status"
+#: The two layouts' names, as the page and the upload's layout choice say them.
+LAYOUT_NAMES = {
+    START_FINISH: "C start · D finish · E complete",
+    DATE_STATUS: "the older C date-or-range · D status",
+}
+#: Column D's HEADER is the only header cell that decides the layout (a C or E heading is too
+#: often a comment column or a "Start - Finish" range to be trusted alone): a finish word is the
+#: current layout, a status word the older one — whole words only ("Pending" is not "end"). A
+#: date word makes a header a finish too, so "Complete By" / "Complete Date" / "Planned Complete"
+#: say BOTH and decide nothing: column D's content decides them.
+_FINISH_HEAD_RE = re.compile(
+    r"\b(?:finish|end|due|by|date|target|forecast|planned|deadline|ecd|eta)\b", re.IGNORECASE
+)
+_STATUS_HEAD_RE = re.compile(r"\b(?:status|complete|completed|done|state)\b|%", re.IGNORECASE)
+#: Header words that mark a row as a header when they fill D or E EXACTLY (never as substrings:
+#: a first data row whose status reads "Complete" is not a header — its C or D holds a date).
+_HEADER_WORDS = frozenset(
+    {
+        "start",
+        "start date",
+        "begin",
+        "finish",
+        "finish date",
+        "end",
+        "end date",
+        "due",
+        "due date",
+        "status",
+        "complete",
+        "completed",
+        "complete?",
+        "% complete",
+        "percent complete",
+        "done",
+        "state",
+    }
+)
+#: Placeholders that say nothing about the layout — in either reading.
+_NEUTRAL = frozenset({"tbd", "tba", "n/a", "na", "none", "-", "\u2013", "\u2014", "?", "--"})
+
 #: Column D: a status that STARTS with one of these words is complete, whatever follows it
 #: ("Complete (late)", "Finished Late", "Completed 3/1/27") — the operator types status words.
 _DONE_LEAD = ("complete", "completed", "done", "finished", "closed", "closeout")
 _DONE_EXACT = frozenset(
-    {"yes", "y", "x", "\u2713", "\u2714", "\u2611", "\u2705", "\u221a"}
+    {"yes", "y", "x", "true", "\u2713", "\u2714", "\u2611", "\u2705", "\u221a"}
     | {"achieved", "met", "accomplished", "delivered"}
 )
 #: ...and a status that starts with one of these is known to be NOT complete (never named).
@@ -113,10 +175,11 @@ def _leads(text: str, words: tuple[str, ...]) -> bool:
 
 
 def read_completion(text: str) -> tuple[bool, bool]:
-    """Column D -> ``(complete, recognised)``. Blank, a negation, a percent below 100 or a known
-    open status is ``(False, True)``; a completion status ``(True, True)``; anything else —
-    an unknown word, a bare number, a date — is ``(False, False)``: drawn as not complete, and
-    NAMED by the caller so the operator can see the word this reader did not know."""
+    """The completion cell (column E; D in the older layout) -> ``(complete, recognised)``.
+    Blank, a negation, a percent below 100 or a known open status is ``(False, True)``; a
+    completion status ``(True, True)``; anything else — an unknown word, a bare number, a date —
+    is ``(False, False)``: drawn as not complete, and NAMED by the caller so the operator can see
+    the word this reader did not know."""
     t = " ".join(text.split()).casefold().strip(" .!;:,")
     if not t:
         return False, True
@@ -137,12 +200,44 @@ def _year(text: str) -> int:
     return n + 2000 if n < 100 else n
 
 
+#: MS Project's own text forms, as a paste from its grid arrives in Excel (ADR-0539): a leading
+#: weekday (``Mon 9/1/26``) — CHECKED against the date, never just dropped — a trailing time of
+#: day (``9/1/26 8:00 AM``), ``Sept`` for ``Sep``, and a period after a month abbreviation.
+_WEEKDAY_RE = re.compile(
+    r"^(mon|tue|tues|wed|thu|thur|thurs|fri|sat|sun)[a-z]*\.?,?\s+(?=\S)", re.IGNORECASE
+)
+_TIME_RE = re.compile(r"\s+\d{1,2}:\d{2}(?::\d{2})?\s*(?:[ap]\.?m\.?)?$", re.IGNORECASE)
+_SEPT_RE = re.compile(r"\bsept\b\.?", re.IGNORECASE)
+_ABBR_DOT_RE = re.compile(r"\b(jan|feb|mar|apr|jun|jul|aug|sep|oct|nov|dec)\.", re.IGNORECASE)
+_WEEKDAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
+
+
 def parse_date(text: str) -> tuple[dt.date, dt.date] | None:
     """One date token -> the ``(first, last)`` day it denotes, or ``None`` if it is not a date.
 
-    A day is ``(d, d)``; a month-only token (``05/2026``, ``Jan 2027``) is the whole month.
+    A day is ``(d, d)``; a month-only token (``05/2026``, ``Jan 2027``) is the whole month. MS
+    Project's pasted forms read too (:data:`_WEEKDAY_RE`): a weekday that does not match the date
+    it prefixes makes the token unreadable — a contradiction is never resolved by picking a side.
     """
     t = text.strip().rstrip(".")
+    if not t:
+        return None
+    weekday = _WEEKDAY_RE.match(t)
+    if weekday:
+        t = t[weekday.end() :]
+    t = _TIME_RE.sub("", t)
+    t = _ABBR_DOT_RE.sub(r"\1", _SEPT_RE.sub("Sep", t)).strip().rstrip(".")
+    span = _parse_date_core(t)
+    if (
+        weekday
+        and span is not None
+        and (span[0] != span[1] or _WEEKDAYS[span[0].weekday()] != weekday.group(1)[:3].lower())
+    ):
+        return None
+    return span
+
+
+def _parse_date_core(t: str) -> tuple[dt.date, dt.date] | None:
     if not t:
         return None
     if _SERIAL_RE.match(t):
@@ -168,8 +263,8 @@ def parse_date(text: str) -> tuple[dt.date, dt.date] | None:
     m = _MY_RE.match(t)
     if m:
         month, year = int(m.group(1)), int(m.group(2))
-        if not 1 <= month <= 12:
-            return None
+        if not 1 <= month <= 12 or year < dt.MINYEAR:
+            return None  # "1/0000" is not a date (and never a 500 — ADR-0539)
         return (dt.date(year, month, 1), dt.date(year, month, calendar.monthrange(year, month)[1]))
     for fmt in _TEXT_FORMATS:
         try:
@@ -183,14 +278,25 @@ def parse_date(text: str) -> tuple[dt.date, dt.date] | None:
     return None
 
 
-def parse_span(text: str) -> tuple[dt.date, dt.date] | None:
-    """Column C -> ``(start, finish)``: a single day is a milestone (``start == finish``); an
-    ``A - B`` range is an activity from A's first day to B's last day; a lone month-only token
-    spans that month. ``None`` when the cell is not a date at all."""
+def _span_parts(text: str) -> list[str]:
+    """The date tokens of one cell: one for a date, two for an ``A - B`` range."""
     t = text.strip()
     parts = [p for p in _SPLIT_RE.split(t) if p.strip()]
     if len(parts) == 1 and "-" in t and "/" in t and not re.search(r"[A-Za-z]", t):
         parts = [p for p in t.split("-") if p.strip()]  # ``1/1/27-2/2/27`` typed without spaces
+    return parts
+
+
+def is_range(text: str) -> bool:
+    """Whether a cell is typed as an ``A - B`` range (two date tokens) rather than one date."""
+    return len(_span_parts(text)) == 2
+
+
+def parse_span(text: str) -> tuple[dt.date, dt.date] | None:
+    """One date cell -> ``(start, finish)``: a single day is a milestone (``start == finish``); an
+    ``A - B`` range is an activity from A's first day to B's last day; a lone month-only token
+    spans that month. ``None`` when the cell is not a date at all."""
+    parts = _span_parts(text)
     if len(parts) == 1:
         return parse_date(parts[0])
     if len(parts) == 2:
@@ -205,8 +311,10 @@ def parse_span(text: str) -> tuple[dt.date, dt.date] | None:
 class OnePagerItem:
     """One row of the list: a milestone when ``start == finish``, otherwise an activity.
 
-    ``complete`` is column D read by :func:`read_completion`: ``None`` when the sheet has no
-    column D at all — which is not the same as ``False``, "the sheet says it is not complete"."""
+    ``complete`` is the status column read by :func:`read_completion`: ``None`` when the sheet
+    has no status column at all — which is not the same as ``False``, "the sheet says it is not
+    complete". ``key`` is the item's stable identity for logic links (:func:`item_keys`); empty
+    on an item built outside a parsed document, where the layout derives it on demand."""
 
     lane: str
     name: str
@@ -214,6 +322,7 @@ class OnePagerItem:
     finish: dt.date
     row: int
     complete: bool | None = None
+    key: str = ""
 
     @property
     def milestone(self) -> bool:
@@ -224,8 +333,12 @@ class OnePagerItem:
 class OnePagerDoc:
     """A parsed workbook: the items, plus every row-level decision the parser made, by name.
 
-    ``completion_notes`` are column D's (the words it could not read) — kept apart from
-    ``notes`` because only the COMPARE page draws completion."""
+    ``completion_notes`` are the status column's (the words it could not read) — kept apart from
+    ``notes``. ``layout`` is the sheet layout the parser read (:data:`START_FINISH` or
+    :data:`DATE_STATUS`) and ``status_column`` the letter of the column that carries the status
+    (E, or D in the older layout; ``""`` when the sheet has none) — every sentence about
+    completion names THAT column. ``layout_note`` states the layout when there is something to
+    state (the older layout read from real evidence, a majority decision, a choice at upload)."""
 
     source: str
     sheet: str
@@ -233,11 +346,93 @@ class OnePagerDoc:
     problems: tuple[str, ...]
     notes: tuple[str, ...]
     completion_notes: tuple[str, ...] = ()
+    layout: str = START_FINISH
+    status_column: str = ""
+    layout_note: str = ""
 
     @property
     def completion(self) -> bool:
-        """Whether the list carries a column D at all."""
+        """Whether the list carries a status column at all."""
         return any(it.complete is not None for it in self.items)
+
+
+#: The sentence every surface (both pages, both Excel exports) states for a sheet read in the
+#: older layout — so the operator sees WHICH reading a workbook got, never has to infer it.
+OLDER_LAYOUT_NOTE = (
+    "read as the OLDER layout — column C the date (one date, or a range such as "
+    "04/20/2027 - 06/20/2027) and column D the status; the current layout is C start · D finish "
+    "· E complete (download the template)"
+)
+
+
+def layout_notes(doc: OnePagerDoc) -> list[str]:
+    """The sentence stating how the sheet's layout was read, when there is one."""
+    return [doc.layout_note] if doc.layout_note else []
+
+
+def status_label(letters: Sequence[str]) -> str:
+    """``column E`` / ``column D`` when every list that carries a status uses the same column,
+    ``the status column`` when they differ, ``""`` when none says — so no sentence names a
+    column a list did not use."""
+    used = sorted({x for x in letters if x})
+    if not used:
+        return ""
+    return f"column {used[0]}" if len(used) == 1 else "the status column"
+
+
+def complete_legend(label: str) -> str:
+    """The legend's words for the check: ``Complete (column E)``, or ``Complete``."""
+    return f"Complete ({label})" if label else "Complete"
+
+
+def item_keys(items: Sequence[OnePagerItem]) -> list[str]:
+    """One stable key per item, in order — the identity the operator's logic links
+    (:mod:`~schedule_forensics.reports.onepager_links`) refer to (ADR-0539).
+
+    The COMPARE's identity rule (ADR-0524), applied to one list: a swimlane-and-name that occurs
+    ONCE is keyed by that pair alone — date-free, so a link survives the item slipping, and
+    survives next month's update of the same list; a swimlane-and-name that REPEATS is keyed with
+    its start and finish too, so a link resolves only to the copy with those exact dates and is
+    never re-attached by position (a monthly review whose window rolled forward a month is a
+    different review). Identical copies — same swimlane, name AND dates — are told apart only by
+    their order, the one thing left. The swimlane half is the layout's own merge key and the name
+    is compared with its whitespace collapsed and its case folded."""
+    pairs = [(_lane_key(it.lane), " ".join(it.name.split()).casefold()) for it in items]
+    counts: dict[tuple[str, str], int] = {}
+    for pair in pairs:
+        counts[pair] = counts.get(pair, 0) + 1
+    seen: dict[str, int] = {}
+    out: list[str] = []
+    for it, (lane, name) in zip(items, pairs, strict=True):
+        ident = f"{lane}\x1f{name}"
+        if counts[(lane, name)] > 1:
+            ident += f"\x1f{it.start.isoformat()}\x1f{it.finish.isoformat()}"
+        n = seen[ident] = seen.get(ident, 0) + 1
+        if n > 1:
+            ident += f"\x1f#{n}"
+        out.append(hashlib.sha256(ident.encode("utf-8")).hexdigest()[:16])
+    return out
+
+
+def item_ident(lane: str, name: str, start: dt.date, finish: dt.date) -> tuple[str, ...]:
+    """An item's full identity — swimlane (the layout's merge key), name (whitespace collapsed,
+    case folded), start and finish — what a logic link stores to find its item again when the
+    item's KEY changes form (:func:`item_keys`; :func:`~.onepager_links.rebind`)."""
+    return (
+        _lane_key(lane),
+        " ".join(name.split()).casefold(),
+        start.isoformat(),
+        finish.isoformat(),
+    )
+
+
+def keyed(items: Sequence[OnePagerItem]) -> list[OnePagerItem]:
+    """``items`` with every key set — their own where present, else derived over ``items``."""
+    if all(it.key for it in items):
+        return list(items)
+    return [
+        it if it.key else replace(it, key=k) for it, k in zip(items, item_keys(items), strict=True)
+    ]
 
 
 def parse_rows(rows: list[list[str]]) -> tuple[list[OnePagerItem], list[str], list[str]]:
@@ -251,35 +446,264 @@ def parse_rows(rows: list[list[str]]) -> tuple[list[OnePagerItem], list[str], li
 
 
 def _is_header(cells: list[str]) -> bool:
-    a, b, c = [*cells, "", "", ""][:3]
-    return parse_span(c) is None and bool(_HEADER_RE.search(f"{a} {b} {c}"))
+    """Whether the first row with content in A to C is a header (ADR-0539).
+
+    Never when C holds a date. When D holds one — a finish-only first DATA row (``Milestones ·
+    Program Start · · 9/1/2026``), or a status column headed by its status date (``Swimlane ·
+    Task · Date · 9/1/2026``) — only when C itself is a column title. Otherwise by the header
+    words over A to C, or by a header word filling D or E EXACTLY that is NOT also a status:
+    "Status" or "Finish" is a header, but "Complete" or "Done" is what a first data row may hold,
+    so it is never evidence alone — a row read as data and refused is NAMED, where a row mistaken
+    for the header would vanish without a word."""
+    a, b, c, d, e = [*cells, "", "", "", "", ""][:5]
+    if parse_span(c) is not None:
+        return False
+    if parse_span(d) is not None:
+        return bool(c) and bool(_HEADER_RE.search(c))
+    return bool(_HEADER_RE.search(f"{a} {b} {c}")) or any(
+        " ".join(x.split()).casefold() in _HEADER_WORDS and not read_completion(x)[1]
+        for x in (d, e)
+        if x
+    )
+
+
+@dataclass(frozen=True)
+class LayoutRead:
+    """How a sheet's layout was decided: the layout, and the sentence the page states about it
+    (``""`` when the sheet is plainly one layout) — for a sheet the parser could not decide, the
+    sentence that names the remedy. It is a note about the SHEET, never a skipped row."""
+
+    layout: str
+    note: str = ""
+
+
+def detect_layout(rows: list[list[str]], header: int | None) -> LayoutRead:
+    """The sheet's layout (ADR-0539), decided ONCE for the whole sheet — never raising.
+
+    Column D's CONTENT is the evidence: every non-blank D of a row with content in A to C is a
+    date, a status word, a placeholder (``TBD``, ``N/A``, a dash — no evidence either way) or
+    something else. In the current layout D must be a date, so a status word AND anything else
+    count against it — and so does a date that cannot be the row's finish (before C's date, or not
+    the end of a range typed in C): the current layout needs finishes to outnumber the rest; the
+    older one wins when the rest outnumber the finishes.
+
+    1. Column D's header, when it says a finish (:data:`START_FINISH`) or a status
+       (:data:`DATE_STATUS`) and not both, decides — unless the content POSITIVELY and unanimously
+       says the other (two or more dates and nothing else under "Complete By"; two or more
+       status words and nothing else under "Past Due"): then the content, and the page says so.
+       Words the reader cannot read never overrule a header.
+    2. Otherwise the content: unanimous → that layout; mixed → the majority, with a note (the
+       rows that do not fit are named row by row by the reading's own rules). Nothing in D reads
+       as the current layout when column E holds anything (else E would be dropped unsaid), else
+       as the older one — both draw C the same then.
+    3. A tie keeps the older reading, with a note carrying the remedy: the header row, or the
+       layout choice at upload."""
+    remedy = (
+        "add the header row Swimlane · Task · Start · Finish · Complete, or choose the layout "
+        "when you upload"
+    )
+    head, hint = "", None
+    if header is not None:
+        head = [*rows[header], "", "", "", ""][3]
+        new, old = bool(_FINISH_HEAD_RE.search(head)), bool(_STATUS_HEAD_RE.search(head))
+        if new != old:
+            hint = START_FINISH if new else DATE_STATUS
+    dates = misfits = statuses = others = 0
+    e_content = False
+    for k, cells in enumerate(rows):
+        if k == header or not any(cells[:3]):
+            continue
+        c, d, e = [*cells, "", "", "", "", ""][2:5]
+        if e and e.casefold() not in _NEUTRAL:
+            e_content = True
+        if not d or d.casefold() in _NEUTRAL:
+            continue
+        span = parse_span(d)
+        if span is not None:
+            dates += 1
+            at_c = parse_span(c)
+            # a D date that CANNOT be this row's finish — before C's date, or not the end of a
+            # range typed in C — is a note or a status date, evidence of the older layout
+            if at_c is not None and (span[1] < at_c[0] or (is_range(c) and span[1] != at_c[1])):
+                misfits += 1
+        elif read_completion(d)[1]:
+            statuses += 1
+        else:
+            others += 1
+    finishes = dates - misfits
+    against = misfits + statuses + others  # a D that cannot be a finish
+    if hint is not None:
+        if hint == DATE_STATUS and finishes >= 2 and not against:
+            flip, holds = START_FINISH, "only dates"
+        elif hint == START_FINISH and statuses >= 2 and not dates and not others:
+            flip, holds = DATE_STATUS, "only status words"
+        else:
+            return LayoutRead(hint)
+        return LayoutRead(
+            flip,
+            note=(
+                f"column D is headed “{head}” but holds {holds} — read as {LAYOUT_NAMES[flip]}; "
+                "if that is wrong, choose the layout when you upload"
+            ),
+        )
+    if not (finishes or against):
+        return LayoutRead(START_FINISH if e_content else DATE_STATUS)
+    if not against:
+        return LayoutRead(START_FINISH)
+    if not finishes:
+        return LayoutRead(DATE_STATUS)
+    misfit = (
+        f" ({misfits} of them before column C's date or not the end of its range)"
+        if misfits
+        else ""
+    )
+    counted = (
+        f"column D holds {dates} date(s){misfit}, {statuses} status word(s) and {others} other "
+        "value(s)"
+    )
+    if finishes == against:
+        return LayoutRead(
+            DATE_STATUS,
+            note=(
+                f"{counted} — the layout could not be decided, so the sheet was read in the older "
+                f"layout (C the date, D the status); if C is the start and D the finish, {remedy}"
+            ),
+        )
+    layout = START_FINISH if finishes > against else DATE_STATUS
+    return LayoutRead(
+        layout,
+        note=(
+            f"{counted} — read as {LAYOUT_NAMES[layout]} (the majority); every row that does not "
+            f"fit is named below. To be certain, {remedy}"
+        ),
+    )
+
+
+def _row_span(
+    c: str, d: str, where: str
+) -> tuple[tuple[dt.date, dt.date] | None, str | None, str | None]:
+    """The current layout's dates for one row: ``(span, note, None)`` or ``(None, None, problem)``.
+
+    C is the start and D the finish; either alone is the item's one date (a single day is a
+    milestone; a range typed in the one cell still reads; a month-only token spans its month and
+    SAYS so, because in this layout a lone date is a day). Both give start = C's first day and
+    finish = D's last day. A RANGE in one cell with a date in the other agrees only when the
+    range's own end matches the other cell — two different finishes (or starts) are refused,
+    never picked between. A status word in C or D is refused with where it belongs (column E)."""
+    fix = "put the start in C and the finish in D; skipped"
+
+    def bad(cell: str, col: str, role: str) -> str:
+        if read_completion(cell)[1] and cell.casefold() not in _NEUTRAL:
+            return (
+                f"{where}: column {col} holds “{cell}”, a status word — in this layout column "
+                f"{col} is the {role} date and the status belongs in column E; skipped"
+            )
+        return f"{where}: unreadable {role} date “{cell}” — skipped"
+
+    if not c and not d:
+        return None, None, f"{where}: no start or finish date — skipped"
+    cs = parse_span(c) if c else None
+    ds = parse_span(d) if d else None
+    if c and cs is None:
+        return None, None, bad(c, "C", "start")
+    if d and ds is None:
+        return None, None, bad(d, "D", "finish")
+    if cs is not None and ds is not None:
+        if is_range(c) and is_range(d):
+            return None, None, f"{where}: date ranges in both C and D — {fix}"
+        if is_range(c):
+            if cs[1] != ds[1]:
+                why = f"column C holds the range “{c}” but column D the finish “{d}”"
+                return None, None, f"{where}: {why} — two different finishes; {fix}"
+            return (cs[0], ds[1]), f"{where}: the range in C ends on D's finish — read as {c}", None
+        if is_range(d):
+            if ds[0] != cs[0]:
+                why = f"column D holds the range “{d}” but column C the start “{c}”"
+                return None, None, f"{where}: {why} — two different starts; {fix}"
+            return (
+                (cs[0], ds[1]),
+                f"{where}: the range in D starts on C's start — read as {d}",
+                None,
+            )
+        return (cs[0], ds[1]), None, None
+    one, cell = (cs, c) if cs is not None else (ds, d)
+    if one is None:  # unreachable: one of C/D parsed, or a return above fired
+        return None, None, f"{where}: no date — skipped"
+    if one[0] != one[1] and not is_range(cell):
+        month = f"{where}: “{cell}” names a month, not a day — drawn across the whole month"
+        return one, month, None
+    return one, None, None
 
 
 def parse_sheet(
     rows: list[list[str]], numbers: list[int] | None = None
 ) -> tuple[list[OnePagerItem], list[str], list[str], list[str]]:
-    """:func:`parse_rows` plus column D: ``(items, problems, notes, completion_notes)``.
+    """:func:`parse_rows` plus the status column: ``(items, problems, notes, completion_notes)``.
 
     ``numbers`` are the rows' Excel row numbers (``read_xlsx_numbered``); without them a row's
     number is its position, which is right only when no blank row was left out of the sheet.
     """
+    read = read_sheet(rows, numbers)
+    return read.items, read.problems, read.notes, read.completion_notes
+
+
+@dataclass(frozen=True)
+class SheetRead:
+    """Everything one sheet's reading produced (:func:`read_sheet`)."""
+
+    items: list[OnePagerItem]
+    problems: list[str]
+    notes: list[str]
+    completion_notes: list[str]
+    layout: str
+    status_column: str
+    layout_note: str
+
+
+def read_sheet(
+    rows: list[list[str]], numbers: list[int] | None = None, layout: str | None = None
+) -> SheetRead:
+    """:func:`parse_sheet` plus the layout it read (:func:`detect_layout`), the letter of the
+    status column it found (``""`` for none) and the sentence stating the layout when there is
+    one to state. ``layout`` forces a layout (the operator's choice at upload) over detection."""
     if numbers is not None and len(numbers) != len(rows):
         raise ValueError("one row number per row")
     stripped = [[c.strip() for c in row] for row in rows]
+    # the header is looked for on the first row with content in A to C — a note typed alone in
+    # D above the header ("As of 9/1/26") is never it
     content = [k for k, cells in enumerate(stripped) if any(cells[:3])]
     header = content[0] if content and _is_header(stripped[content[0]]) else None
-    # a column D exists when any row but the header carries something in it
-    has_d = any(len(cells) > 3 and cells[3] for k, cells in enumerate(stripped) if k != header)
-    items: list[OnePagerItem] = []
     problems: list[str] = []
+    if layout in (START_FINISH, DATE_STATUS):
+        chosen = LayoutRead(layout, note=f"read as {LAYOUT_NAMES[layout]} — chosen at upload")
+    else:
+        chosen = detect_layout(stripped, header)
+    new = chosen.layout == START_FINISH
+    status_at = 4 if new else 3
+    width = 4 if new else 3  # the columns that make a row content (the status alone does not)
+    # a status column exists when any row but the header carries something in it
+    has_status = any(
+        len(cells) > status_at and cells[status_at]
+        for k, cells in enumerate(stripped)
+        if k != header
+    )
+    letter = ("E" if new else "D") if has_status else ""
+    note = chosen.note
+    if (
+        not note
+        and not new
+        and any(len(cells) > 3 and cells[3] for k, cells in enumerate(stripped) if k != header)
+    ):
+        note = OLDER_LAYOUT_NOTE  # the older reading, with real evidence of it in column D
+    items: list[OnePagerItem] = []
     notes: list[str] = []
     unread: dict[str, list[int]] = {}
     lane = ""
     for k, row in enumerate(stripped):
         i = numbers[k] if numbers is not None else k + 1
-        cells = [*row, "", "", "", ""]
-        a, b, c, d = cells[0], cells[1], cells[2], cells[3]
-        if not (a or b or c):
+        cells = [*row, "", "", "", "", ""]
+        a, b, c, d, e = cells[0], cells[1], cells[2], cells[3], cells[4]
+        if not any(cells[:width]):
             continue  # a spacer row between swimlanes
         if k == header:
             continue  # the header row
@@ -293,38 +717,52 @@ def parse_sheet(
         if not b:
             problems.append(f"row {i} ({lane}): no task or milestone name — skipped")
             continue
-        span = parse_span(c)
-        if span is None:
-            problems.append(f"row {i} ({lane} · {b}): unreadable date “{c or '—'}” — skipped")
-            continue
+        where = f"row {i} ({lane} · {b})"
+        if new:
+            span, row_note, problem = _row_span(c, d, where)
+            if span is None:
+                problems.append(problem or f"{where}: no date — skipped")
+                continue
+            if row_note:
+                notes.append(row_note)
+        else:
+            span = parse_span(c)
+            if span is None:
+                problems.append(f"{where}: unreadable date “{c or '—'}” — skipped")
+                continue
         start, finish = span
         if finish < start:
-            notes.append(f"row {i} ({lane} · {b}): finish before start — dates swapped")
+            notes.append(f"{where}: finish before start — dates swapped")
             start, finish = finish, start
         complete: bool | None = None
-        if has_d:
-            complete, recognised = read_completion(d)
+        status = e if new else d
+        if has_status:
+            complete, recognised = read_completion(status)
             if not recognised:
-                unread.setdefault(d, []).append(i)
+                unread.setdefault(status, []).append(i)
         items.append(OnePagerItem(lane, b, start, finish, i, complete))
     completion_notes = [
-        f"column D “{value}” ({'rows' if len(at) > 1 else 'row'} "
+        f"column {letter} “{value}” ({'rows' if len(at) > 1 else 'row'} "
         f"{', '.join(str(n) for n in at)}): not a status read as complete — drawn as not complete"
         for value, at in unread.items()
     ]
-    return items, problems, notes, completion_notes
+    return SheetRead(
+        items, problems, notes, completion_notes, chosen.layout, letter, note if content else ""
+    )
 
 
-def parse_workbook(sheets: dict[str, list[list[str]]], source: str) -> OnePagerDoc:
+def parse_workbook(
+    sheets: dict[str, list[list[str]]], source: str, layout: str | None = None
+) -> OnePagerDoc:
     """The first sheet with any content becomes the document (a one-pager list is one sheet)."""
     for name, rows in sheets.items():
         if any(any(cell.strip() for cell in row) for row in rows):
-            return _doc(source, name, *parse_sheet(rows))
+            return _doc(source, name, read_sheet(rows, layout=layout))
     return OnePagerDoc(source, "", (), ("the workbook has no rows",), ())
 
 
 def parse_numbered_workbook(
-    sheets: dict[str, list[tuple[int, list[str]]]], source: str
+    sheets: dict[str, list[tuple[int, list[str]]]], source: str, layout: str | None = None
 ) -> OnePagerDoc:
     """:func:`parse_workbook` over ``read_xlsx_numbered``'s rows: every row number the document
     cites is the row Excel shows. The numbers travel WITH their rows, so they cannot fall out of
@@ -332,20 +770,22 @@ def parse_numbered_workbook(
     for name, numbered in sheets.items():
         if any(any(cell.strip() for cell in cells) for _n, cells in numbered):
             rows = [cells for _n, cells in numbered]
-            return _doc(source, name, *parse_sheet(rows, [n for n, _c in numbered]))
+            return _doc(source, name, read_sheet(rows, [n for n, _c in numbered], layout))
     return OnePagerDoc(source, "", (), ("the workbook has no rows",), ())
 
 
-def _doc(
-    source: str,
-    sheet: str,
-    items: list[OnePagerItem],
-    problems: list[str],
-    notes: list[str],
-    completion_notes: list[str],
-) -> OnePagerDoc:
+def _doc(source: str, sheet: str, read: SheetRead) -> OnePagerDoc:
+    """The document, every item keyed over the WHOLE sheet in sheet order (:func:`item_keys`)."""
     return OnePagerDoc(
-        source, sheet, tuple(items), tuple(problems), tuple(notes), tuple(completion_notes)
+        source,
+        sheet,
+        tuple(keyed(read.items)),
+        tuple(read.problems),
+        tuple(read.notes),
+        tuple(read.completion_notes),
+        read.layout,
+        read.status_column,
+        read.layout_note,
     )
 
 
@@ -426,6 +866,9 @@ class Placed:
     done: bool
     done_x: float | None
     done_r: float
+    #: the item's stable identity (:func:`item_keys`) — what a logic link and the page's
+    #: click-to-select name it by
+    key: str = ""
 
 
 @dataclass(frozen=True)
@@ -507,6 +950,11 @@ class Layout:
     legend_y0: float
     legend_pt: float
     notes: list[str]
+    #: the operator's logic links as drawn (ADR-0539), every one NOT drawn named in
+    #: ``link_notes``, and the letter of the status column the legend's check names
+    links: list[PlacedLink] = field(default_factory=list)
+    link_notes: list[str] = field(default_factory=list)
+    status_label: str = ""
 
 
 def _first_of_month(d: dt.date) -> dt.date:
@@ -631,14 +1079,25 @@ def build_layout(
     title: str,
     subtitle: str = "",
     window: Window | None = None,
+    links: Sequence[Link] = (),
+    names: Mapping[str, str] | None = None,
+    absent: Mapping[str, str] | None = None,
+    status_column: str = "",
 ) -> Layout:
     """Place every item on the slide. Raises ``ValueError`` with nothing to place.
 
     With a ``window`` (ADR-0527) the timescale is exactly that window; the caller has already left
     off the items wholly outside it (:func:`window_items`), and an item running past an edge is
-    drawn cut at that edge — its label keeps its true finish date and the notes name it."""
+    drawn cut at that edge — its label keeps its true finish date and the notes name it.
+
+    ``links`` are the operator's logic links (ADR-0539), routed over the placed items
+    (:func:`~schedule_forensics.reports.onepager_links.route_links`); ``names`` labels every
+    item key for them (defaults to the items' own) and ``absent`` gives the reason for a key that
+    is in the list but not on this slide. ``status_column`` is the letter the legend's check
+    names (E, D for a sheet in the older layout, ``""`` unsaid)."""
     if not items:
         raise ValueError("nothing to lay out")
+    items = keyed(items)
     if window is not None:
         outside = [i for i in items if not overlaps(i.start, i.finish, window)]
         if outside:
@@ -832,10 +1291,14 @@ def build_layout(
                     done_x is not None,
                     done_x,
                     done_r,
+                    it.key,
                 )
             )
         y += h + LANE_GAP
     lanes_y1 = y - LANE_GAP
+    drawn, link_notes = _logic(
+        items, placed, lanes, row_h, label_pt, lanes_y1, window, links, names, absent
+    )
     # the header: a dotted line per month, a letter or abbreviation as room allows, year bands
     months, years, month_pt = timescale(t0, t1, X0, X1, window is not None)
     # today: the DD line spans header + lanes; its dated caption sits in the gap below the lanes
@@ -849,11 +1312,12 @@ def build_layout(
         ("activity", "Activity (start \u2013 finish)", -1),
         ("milestone", "Milestone (date)", -1),
         *(
-            [("done", "Complete (column D)", -1)]
+            [("done", complete_legend(status_label([status_column])), -1)]
             if any(i.complete is not None for i in items)
             else []
         ),
         ("today", f"Today ({mdy(today)})", -1),
+        *([("link", link_legend(drawn), -1)] if drawn else []),
     ] + [("lane", ln.name, ln.color) for ln in lanes]
     for _ in range(3):
         legend = []
@@ -909,7 +1373,75 @@ def build_layout(
         LEGEND_Y0,
         legend_pt,
         notes,
+        drawn,
+        link_notes,
+        status_label([status_column]),
     )
+
+
+def item_label(it: OnePagerItem) -> str:
+    """``swimlane · item (date)`` — how a logic link and its dropdowns name an item."""
+    return f"{it.lane} · {it.name} ({item_when(it)})"
+
+
+def link_legend(drawn: Sequence[PlacedLink]) -> str:
+    """The legend's words for the drawn links: the default type, and the tags when any show."""
+    tags = sorted({ln.tag for ln in drawn if ln.tag})
+    return "Logic link (finish-to-start" + (f"; {'/'.join(tags)} tagged)" if tags else ")")
+
+
+#: The crowding sentence, once per slide, when the rows are too dense for logic to clear labels.
+CROWDED_NOTE = (
+    "At this density the logic links run through the gaps between rows with little room to "
+    "spare — their arrowheads are compressed and a leg may touch a label. Split the list, or "
+    "narrow the date window, for a cleaner slide."
+)
+
+
+def _logic(
+    items: Sequence[OnePagerItem],
+    placed: Sequence[Placed],
+    lanes: Sequence[Lane],
+    row_h: float,
+    label_pt: float,
+    lanes_y1: float,
+    window: Window | None,
+    links: Sequence[Link],
+    names: Mapping[str, str] | None,
+    absent: Mapping[str, str] | None,
+) -> tuple[list[PlacedLink], list[str]]:
+    """Route the operator's links over the placed items: the grid of rows (top to bottom through
+    every swimlane), every glyph each row paints — bar or diamond, label, check — and one anchor
+    per keyed item. Returns ``(drawn, notes)``."""
+    if not links:
+        return [], []
+    offsets: list[int] = []
+    centres: list[float] = []
+    for ln in lanes:
+        offsets.append(len(centres))
+        centres += [ln.y0 + LANE_PAD + k * row_h + row_h / 2 for k in range(ln.rows)]
+    bar_h, ms = row_h * BAR_F, row_h * MS_F
+    bands: list[list[Box]] = [[] for _ in centres]
+    anchors: dict[str, Anchor] = {}
+    by_key = {it.key: it for it in items}
+    for p in placed:
+        g = offsets[p.lane] + p.row
+        bands[g].append(shape_box(p.x0, p.x1, p.y, p.milestone, bar_h, ms))
+        bands[g].append(label_box(p.label_x, p.label_anchor, p.label_w, p.y, label_pt))
+        if p.done_x is not None:
+            r = p.done_r + 0.3
+            bands[g].append(Box(p.done_x - r, p.done_x + r, p.y - r, p.y + r))
+        it = by_key.get(p.key)
+        if it is not None and p.key not in anchors:
+            anchors[p.key] = Anchor(p.x0, p.x1, p.y, p.milestone, g, it.start, it.finish)
+    grid = Grid(centres, bands, LANES_Y0, lanes_y1, LANES_Y1, row_h, bar_h, ms, label_pt, window)
+    labels = dict(names) if names is not None else {}
+    for it in items:
+        labels.setdefault(it.key, item_label(it))
+    drawn, notes, crowded = route_links(links, anchors, labels, grid, absent)
+    if crowded:
+        notes.append(CROWDED_NOTE)
+    return drawn, notes
 
 
 def layout_json(layout: Layout) -> dict[str, Any]:
@@ -944,7 +1476,10 @@ def windowed_doc(doc: OnePagerDoc, window: Window | None) -> tuple[OnePagerDoc, 
 
 
 def onepager_tableset(
-    doc: OnePagerDoc, window: Window | None = None, omitted: list[str] | tuple[str, ...] = ()
+    doc: OnePagerDoc,
+    window: Window | None = None,
+    omitted: list[str] | tuple[str, ...] = (),
+    extra_notes: Sequence[str] = (),
 ) -> TableSet:
     """The list — scoped to the date window when one is set, with the window and every item it
     left off stated in the Notes table (ADR-0527)."""
@@ -969,7 +1504,8 @@ def onepager_tableset(
         Table(
             "Notes",
             ("Note",),
-            tuple((n,) for n in (*doc.notes, *_window_notes(window, omitted))) or (("none",),),
+            tuple((n,) for n in (*extra_notes, *doc.notes, *_window_notes(window, omitted)))
+            or (("none",),),
         ),
     ]
     return TableSet("POLARIS² — One-Pager", tuple(tables))

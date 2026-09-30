@@ -90,6 +90,15 @@ python -m build --wheel --outdir dist/wheel
 python tools/installer/build_installers.py dist/wheel/schedule_forensics-*.whl
 ```
 
+**And LODESTAR (ADR-0539), after the LAST `src/` edit:** `python tools/lodestar/build_lodestar.py`.
+`lodestar/LODESTAR.pyz` carries the One-Pager modules, page modules, server and static assets VERBATIM,
+and `tests/lodestar/test_lodestar_pyz.py` holds it byte-identical to a fresh build — any edit to a
+member turns that test red until the file is rebuilt. The members are exactly what
+`tools/lodestar/build_lodestar.py` names (`MODULES`, `RENAMED`, and `lodestar/server.py`'s
+`STATIC_ASSETS`) — never a hand-kept list (one named `docx.py` after it had left the archive, and
+missed the two package `__init__.py` files); `python tools/lodestar/build_lodestar.py --check` says
+whether the committed file is current.
+
 `tests/installer/test_installers.py::test_embedded_wheel_is_in_lockstep_with_the_source_tree` compares
 **every** packaged `schedule_forensics/**` file inside the embedded wheel byte-for-byte against
 `src/`. **If you touch code after building, REBUILD** — a merged fix once never reached users because

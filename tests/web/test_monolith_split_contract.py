@@ -44,6 +44,7 @@ import schedule_forensics.web.driving as driving_mod
 import schedule_forensics.web.evm as evm_mod
 import schedule_forensics.web.evolution as evolution_mod
 import schedule_forensics.web.forecast as forecast_mod
+import schedule_forensics.web.htmlkit as htmlkit_mod
 import schedule_forensics.web.integrity as integrity_mod
 import schedule_forensics.web.launch as launch_mod
 import schedule_forensics.web.margin as margin_mod
@@ -56,6 +57,7 @@ import schedule_forensics.web.ribbon as ribbon_mod
 import schedule_forensics.web.risks as risks_mod
 import schedule_forensics.web.scorecards as scorecards_mod
 import schedule_forensics.web.scurve as scurve_mod
+import schedule_forensics.web.security as security_mod
 import schedule_forensics.web.settings as settings_mod
 import schedule_forensics.web.sra as sra_mod
 import schedule_forensics.web.ssi as ssi_mod
@@ -102,6 +104,11 @@ EXTRACTED = {
     "workbench.py": workbench_mod,
     "volatility.py": volatility_mod,
     "settings.py": settings_mod,
+    # ADR-0539: two std-lib LEAVES cut out so LODESTAR (the standalone One-Pager program) can
+    # import the page kit and the server policy without the engine. `htmlkit` came out of
+    # chrome/components, `security` out of app.py; app.py re-exports both, as the same objects.
+    "htmlkit.py": htmlkit_mod,
+    "security.py": security_mod,
 }
 
 #: The view layer, lowest layer FIRST. A module may import only from those before it — that is
@@ -110,6 +117,18 @@ EXTRACTED = {
 #: reverse. That ordering is what forced `_task_name_across` / `_EVO_TIER_LABEL` DOWN into
 #: `components` in ADR-0351 — `driving` needs both, and reaching up into `app` would be a cycle.
 LAYER_ORDER = (
+    # ADR-0539's std-lib leaves: below EVERYTHING — they import no web module at all, which is
+    # what lets LODESTAR load them with no engine behind them.
+    "htmlkit.py",
+    "security.py",
+    # ADR-0539: the One-Pager web layer LODESTAR carries — the shared protocol/explainer leaf, the
+    # two page modules, the framework-neutral actions both servers call, and LODESTAR's frame.
+    # They sit below `state`: none of them may reach the engine-laden session or the chrome.
+    "onepager_common.py",
+    "onepager.py",
+    "onepager_compare.py",
+    "onepager_actions.py",
+    "lodestar_shell.py",
     "state.py",
     "chrome.py",
     "components.py",
@@ -167,8 +186,10 @@ VIEW_MODULES = (
     "evm.py",
     "evolution.py",
     "forecast.py",
+    "htmlkit.py",
     "integrity.py",
     "launch.py",
+    "lodestar_shell.py",
     "margin.py",
     "mission.py",
     "onepager.py",

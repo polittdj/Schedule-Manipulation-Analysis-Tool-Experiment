@@ -20150,3 +20150,55 @@ commit, not a rebase. The resolution:
   WEB-004's export siblings; the queue's Q renumbering; ADR-0538's "Deliberately NOT done".
 - **Measured by the lead on the campaign branch:** **1 passed · 101 xfailed** on Python 3.11.15 with Playwright (the lead's post-integration run of all ten modules: "1 failed, 101 xfailed, 1 warning in 178.46s" — the one failure was DOC-014's own pin, red because the ADR file existed before the state docs named it, exactly its purpose; re-run inside the fast guard set after the state docs were written: 101 xfailed with DOC-014 green) and **1 passed · 2 skipped · 99 xfailed** on the 3.13.12 venv ("1 failed, 2 skipped, 99 xfailed, 1 warning in 110.32s", the same pin); the charter's fast guard set "449 passed, 2 skipped, 101 xfailed, 1 warning in 239.73s (0:03:59)" (the two skips are `tests/guards/test_loopback_allowlist.py`'s pre-existing parametrised cases; DOC-014's pin passes once the state docs name ADR-0538); the allowlist
   gate clean; the static gate `python -m ruff check .` and `python -m ruff format --check .` clean, `python -m mypy src/` "Success: no issues found in 165 source files", `bandit -q -r src` exit 0, `node --check` on each of the 64 static files 0 failures.
+## 2026-09-29 (a) — WORK IN PROGRESS (stopped on the operator's word before the token budget ran out): the One-Pager reads C start · D finish · E complete, the operator draws logic links (FS / SS / FF / SF) that export to PowerPoint, and the two One-Pager pages ship on their own as LODESTAR (ADR-0539, v1.0.295)
+
+- **Branch** `claude/youthful-ritchie-fqsz9x` on `main` @ `0b45eb28`; one WIP commit and a DRAFT pull request. A feature
+  session outside the AUDIT-2026-09-23 campaign; the campaign's session 7 holds ADR-0538 in parallel.
+- **Asked** (2026-09-29): the C / D / E intake; operator-drawn logic arrows between picked pairs, exported to PowerPoint;
+  the two pages as a separate shareable program crediting David Politte (david.j.politte@nasa.gov). Rulings: a `.pyz`,
+  auto-detect both layouts, FS + SS / FF / SF, the name LODESTAR.
+- **Method.** PLAN v1 red-teamed on five lenses before the first edit (what fell: ADR-0539's first table). Built in a
+  worktree; then four test writers and a four-lens adversarial review; every finding re-reproduced by the lead (red),
+  fixed in a sandbox copy (green) and pinned (ADR-0539's second table; `tests/reports/test_onepager_review_findings.py`
+  18 of 20 red on the built tree, `tests/lodestar/test_lodestar_review_findings.py` 6 of 6).
+- **Measured at the WIP commit:** static gate green at the pinned ruff 0.16.9; the targeted battery 1099 passed, 2
+  skipped, 24 xfailed (its 4 failures were the state-doc guards these documents answer); `build_lodestar.py --check`
+  current. **Not run:** the full suite, `-m parity`, the wheel / installer rebuild; the UI + docs review lens (stopped).
+- **Next:** HANDOFF.md's "Next — resume THIS work".
+
+## 2026-09-29 (b) — ADR-0539 resumed and completed: the UI + docs review lens re-run, LINKS-2..6 / LS-01..13 re-verified by skeptics, every finding re-reproduced red, fixed and pinned — v1.0.295
+
+- **Branch** `claude/youthful-ritchie-fqsz9x` on `main` @ `0b45eb28` (unmoved). PR #724 was squash-merged by the
+  operator as `dd8b4cbf` at head `21e99c76` (tree-identical) about a minute before the last four commits were pushed;
+  on the operator's word they are draft PR #725, replayed unchanged onto `main` (tree `cb2c542d` = the verified head). Resumed from the WIP
+  commits 299011a0 / 3119fcf7; the first container's scratch work was gone, so the branch was the only source of truth.
+- **CI on the WIP commit** (3119fcf7): `floor` and `test (3.13)` 5 failed / 5,915 passed — four the stale installers
+  (the planned last step) and one real: `onepager_links.js` in no axis-caption bucket (fixed in 67bb21e8).
+- **Review.** Five lenses (both Polaris² pages in chromium, four views, 1440 / 390 px; the LODESTAR frame + DESIGN-SYSTEM;
+  every One-Pager route against 0b45eb28; two doc-claim lenses) and three skeptics (prior fixes reverted to prove their
+  pins, then fuzzed). About 60 findings; the lead re-reproduced each RED on a clean worktree of the prior head (12 + 35
+  + 29 + 36 + 29 pins), fixed it and proved the pin's teeth — ADR-0539's third table. Four fix batches ran as agents on
+  disjoint files; every shipped artifact was built from a clean worktree of its commit.
+- **What mattered:** UIP-1 (daylight's sticky header hid every link action's result); LINKS-1/2/4/6 half-fixed (short
+  bars, vertical legs, a frozen identity re-binding a link to another month's copy, a note blaming a window never set);
+  "0 of 600" was 35 / 32 on an independent fuzz, now 0; LODESTAR's pre-scan walked past by 11 multipart shapes; bare
+  std-lib replies; raw JSON for an over-20 MB upload; an unmarked Quit page; `_isolate` keeping any directory under the
+  prefix; "behaviour unchanged" false for the .pptx file name and the Word template heading; "100% draws a check".
+- **Premises that fell (QC-3):** "the targeted battery covers it"; base.css's CUI colours (hud.css renders); `sysconfig`
+  in `_isolate`; 6 units for the pick tag (7). A reviewer's "startup crash" consequence was REFUTED.
+- **UNVERIFIED:** INTAKE-4 / INTAKE-8 / LINKS-3 / LS-02 (recorded nowhere); the first session's built-tree figures;
+  PowerPoint; Windows / macOS launching; Firefox / WebKit.
+- **Measured at push:** the static gate green (pinned ruff 0.16.9, mypy 177, bandit 0, node per file); LODESTAR current;
+  installers 68; One-Pager + LODESTAR 767 passed / 4 skipped. **The full suite** (clean worktree of 7d3df6dc — the
+  final source — Python 3.11, playwright installed so the browser tests ran): **6,526 passed, 9 skipped, 83 xfailed,
+  exit 0** (60 min 35 s); **`-m parity` 271 passed, exit 0** (12 min 11 s).
+- **`main` after #724's squash** (`dd8b4cbf`, CI run #2014): `floor`, `test (3.13)` (tests, coverage gates, parity,
+  bandit, pip-audit), `browser` (the census and the LibreOffice .pptx gate) and `cui-guard` green; `test (3.11)` green
+  through its coverage gates, its parity step still running when this was written — read run #2014 first.
+- **CI on #725** (3707307c): `test (3.13)` 1 failed / 6,074 passed — the SLA-3 mutation twin assumed the interpreter's
+  own `http.server` writes a bare reply before a version is read; CPython 3.10–3.13.12 do (measured here), CI's
+  setup-python 3.13 did not (its exact patch release UNVERIFIED). The twin now probes that premise on a plain
+  `http.server` and asserts either way (the reverted fix caught where the std-lib is bare; a complete reply where it is
+  not) — never skipped. The fix itself (`default_request_version = "HTTP/1.0"`) is right on every version.
+- **Operator questions:** the Excel exports' fixed CUI header vs the marking switch; the slide link tag vs §1's 8 px
+  floor; refused-and-named collisions on dense slides. **Next:** HANDOFF.md.

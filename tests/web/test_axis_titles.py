@@ -64,6 +64,10 @@ EXEMPT = {
     # reported as a draw failure instead of a load failure; it plots nothing of its own.
     "loader.js",
     "mission.js",
+    # ADR-0539: the One-Pager's logic-link painter. It owns no chart: it paints the operator's
+    # links and the pick rings INTO the slide SVG that onepager.js / onepager_compare.js build —
+    # and those two draw that chart's axis captions through SFChartFrame.axisTitles.
+    "onepager_links.js",
     "panelkit.js",
     "persist.js",
     "settings.js",

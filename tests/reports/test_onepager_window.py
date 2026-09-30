@@ -117,6 +117,19 @@ def _digest(obj: object) -> str:
     return hashlib.sha256(json.dumps(obj, sort_keys=True).encode()).hexdigest()
 
 
+#: ADR-0539 ADDED fields — each item's link key, the drawn links, their notes and the status
+#: column's letter. Stripped before the pristine digest so the pin keeps proving what it always
+#: proved (every slide's GEOMETRY is byte-identical) instead of being re-pinned blind; the new
+#: fields have their own tests (tests/reports/test_onepager_links.py).
+_ADDED_LAYOUT_FIELDS = ("links", "link_notes", "status_label")
+
+
+def _pristine(layout: dict) -> dict:
+    out = {k: v for k, v in layout.items() if k not in _ADDED_LAYOUT_FIELDS}
+    out["items"] = [{k: v for k, v in it.items() if k != "key"} for it in layout["items"]]
+    return out
+
+
 def test_without_a_window_the_slides_are_the_pristine_slides() -> None:
     lay = op.build_layout(ITEMS, TODAY, "T", "S")
     prior = op.OnePagerDoc("p.xlsx", "S", tuple(ITEMS), (), ())
@@ -126,7 +139,7 @@ def test_without_a_window_the_slides_are_the_pristine_slides() -> None:
     )
     cd = oc.compare_onepager_docs(prior, op.OnePagerDoc("c.xlsx", "S", moved, (), ()))
     cl = oc.build_compare_layout(cd, TODAY, "T", "S")
-    got = _digest([op.layout_json(lay), oc.compare_layout_json(cl)])
+    got = _digest([_pristine(op.layout_json(lay)), _pristine(oc.compare_layout_json(cl))])
     assert got == _PRISTINE_DIGEST
 
 

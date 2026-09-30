@@ -101,6 +101,11 @@ the in-page **Quit** control stops it immediately.
     export.
 11. **Views/themes** — a header **View** dropdown switches between four themes — Console (dark
     default), Daylight (light), Apollo (CRT), Jarvis (HUD) — persisted locally, applied to every page.
+12. **One-Pager Timeline / Compare** (`/onepager`, `/onepager-compare`) — an Excel list (A swimlane,
+    B item, C start, D finish, E complete) as a one-slide swimlane timeline and an editable PowerPoint,
+    with the logic links you pick drawn as arrows. The same two pages ship on their own as
+    **LODESTAR** (`lodestar/LODESTAR.pyz` — created by David Politte, david.j.politte@nasa.gov): one
+    file that needs only Python 3.10+, no install, no AI; see [`lodestar/README.md`](./lodestar/README.md).
 
 The whole report is arranged as a **12-chapter Mission Ops story** (Import → Mission Control → Act I
 Situation → Act II Diagnosis → Act III Outlook), with a Setup rail (Workbench, Groups & Filters, AI

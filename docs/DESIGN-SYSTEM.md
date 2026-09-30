@@ -186,6 +186,33 @@ own takeaway**. A count with no scope beside it will be read against whatever th
 the page is about. When two surfaces share a dataset, assert they embed it **byte for
 byte** rather than that both "look right": one schedule must never yield two answers.
 
+## 7c. Operator-drawn annotations and the LODESTAR frame (ADR-0539)
+**An annotation the operator draws is a statement, not a verdict.** The One-Pager's logic links
+(both One-Pager pages) are drawn in `--ink` (the slide's print ink in the .pptx), never a status hue:
+`--bad`/`--ok`/`--warn` already mean slip / pull-in / caution on the same slide, and `--accent` and
+`--focus` each equal `--warn` in one view. A link is carried by SHAPE — an orthogonal route whose
+horizontal leg runs in the measured gap between two rows, a filled head that enters the successor's
+edge, a text tag for SS / FF / SF — over a halo in the canvas colour (`--panel`), so a leg that must
+cross a bar or a label reads as crossing it. The head is a polygon of the LAYOUT's points in both
+painters (a DrawingML line-end head is sized by the renderer, three times the page's). Picking an
+item is shown by a ring AND a text tag (FROM dashed, TO solid), hidden in print. The pick is a
+pointer accelerator: the From/To selects are the form, the no-JS path and the keyboard path, and
+they carry `data-sf-nopersist` (persist.js would otherwise restore the pair just added). An
+action's result renders where the browser lands after it (the links block), not in the page banner
+scrolled off above the slide — and lands clear of a sticky page header (daylight's top bar is
+224-458 px tall; a fixed scroll margin left the result under it).
+
+**The LODESTAR frame** — the two One-Pager pages served as their own program — keeps the
+compliance chrome whole: the CUI bars top and bottom, the handling & export-control drawer from the
+ONE copy of the prose (`htmlkit._DRAWER_HTML`, its `{where}` slot naming the frame's own marking
+switch), and the marking defaulting to CUI and feeding the page and every PowerPoint (the Excel
+exports keep the shared writer's fixed CUI print header — over-marking, never under). The frame is a banner `div`,
+never a `<header>` (base.css makes every `<header>` the dark views' fixed left rail). N/A in the
+frame, by design: the chapter kicker, the Continue segue and the nav rail/story spine — LODESTAR has
+two pages and no story; its tabs are `cd-chip` links with `aria-current=page`. Its author's credit
+(name and a bare `mailto:` — never a web link, never pre-filled) is in the frame's header and footer
+on every page, and never on the exported slide or in the deck's author field.
+
 ## 8. Audio (the Boot Audio Hum rule — ADR-0328)
 Sound in this tool is SYNTHESIZED WebAudio, never a shipped asset (the air-gap and the lean
 wheel/installers both stay trivially true). An `AudioContext` is created/resumed ONLY inside a

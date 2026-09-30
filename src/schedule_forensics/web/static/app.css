@@ -1257,7 +1257,7 @@ tr.row-found td.sf-frozen-col { background: #fff3b0; }
 .opc-badge-text{fill:var(--bg);font-weight:700}
 .opc-sum-bg{fill-opacity:.09} .opc-sum-text{fill:var(--ink)} .opc-sum-head{font-weight:700}
 .opc-legend-ghost{fill:none;stroke:var(--muted);stroke-width:.7;stroke-dasharray:1.6 1.1}
-/* column D's check (ADR-0524): --muted is 'completed work' (DESIGN-SYSTEM §1); it sits BESIDE the shape, never on the bar */
+/* the status column's check (ADR-0524): --muted is 'completed work' (DESIGN-SYSTEM §1); it sits BESIDE the shape, never on the bar */
 .opc-done{fill:var(--muted)} .opc-done-check{fill:none;stroke:var(--bg);stroke-linecap:round;stroke-linejoin:round}
 .opc-slots .dropzone{padding:18px 14px} .opc-slot-name{font-size:12px;color:var(--muted)} .opc-slot-name b{color:var(--ink)}
 .opc-status-slipped{color:var(--bad);font-weight:600} .opc-status-pulled-in{color:var(--ok);font-weight:600}
@@ -1265,6 +1265,31 @@ tr.row-found td.sf-frozen-col { background: #fff3b0; }
 .opc-hint{margin:.4em 0 0;font-size:12px;color:var(--warn)}
 .opc-swap-form{display:inline-flex;margin-right:1em}
 .opc-scroll{overflow-x:auto} .opc-summary-table{width:100%} .opc-summary-table th,.opc-summary-table td{white-space:nowrap}
+/* ── the operator's LOGIC LINKS on both One-Pager slides (ADR-0539). Ink, never a status hue: a
+   link is a statement the operator made, not a verdict. The halo is the canvas colour (.op-bg),
+   so a leg crossing a bar or a label reads as crossing it. Picking an item outlines it in
+   --focus, From dashed and To solid — the difference is never colour alone. ── */
+.op-link-halo{fill:none;stroke:var(--panel);stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.op-link-line{fill:none;stroke:var(--ink);stroke-width:.7;stroke-linecap:round;stroke-linejoin:round}
+.op-link-head{fill:var(--ink)} .op-link-tag{fill:var(--ink);font-weight:700}
+.op-link:hover .op-link-line{stroke-width:1.1}
+.op-pickable [data-key]{cursor:pointer}
+.op-pickable [data-key]:hover .op-bar,.op-pickable [data-key]:hover .op-diamond{stroke:var(--ink);stroke-width:.8}
+.op-pick-ring{fill:none;stroke:var(--focus);stroke-width:.9} .op-pick-from{stroke-dasharray:2 1.2}
+.op-pick-tag{fill:var(--ink);font-size:7px;font-weight:700;letter-spacing:.04em}
+.op-links{margin:.6em 0;padding:.6em .8em;border:1px solid var(--line);border-radius:6px;scroll-margin-top:84px}
+.op-links-head{margin:0 0 .3em;font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+/* an item name with no spaces (a 120-character code) wraps inside the block, never widening the page */
+.op-links .notice,.op-link-listing .notice,.op-link-list li{overflow-wrap:anywhere}
+.op-link-form{display:flex;flex-wrap:wrap;gap:.5em 1em;align-items:center;margin:.4em 0}
+.op-link-form select{max-width:22em}
+.op-link-hint{font-size:12px;color:var(--muted)}
+.op-link-list{margin:.4em 0 .2em 1.2em;padding:0} .op-link-list li{margin:.15em 0}
+.op-link-remove,.op-link-clear{display:inline-flex;margin-left:.6em}
+.op-link-off{color:var(--warn)}
+.op-layout-row{margin:.4em 0 0} .op-layout-pick{font-size:12px;color:var(--muted)}
+.op-link-listing{margin:.6em 0}
+@media print{.op-links,.op-layout-row,.op-pick,.op-link-remove,.op-link-clear{display:none}}
 
 /* /volatility — the Claude Design "How stable is the path" layout (operator 2026-09-02). Tokens only;
    the ten visuals keep their .tile shells inside the five numbered panels. */

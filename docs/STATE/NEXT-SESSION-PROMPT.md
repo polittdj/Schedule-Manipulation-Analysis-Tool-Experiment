@@ -12,9 +12,9 @@ happen again. **Run these before the first edit:**
 
 ```bash
 git fetch --unshallow origin; git fetch --prune origin && git remote set-head origin -a
-git log --oneline -1 origin/main && git rev-list --count origin/main   # expect 0b45eb28 (#723) or later, 822+
+git log --oneline -1 origin/main && git rev-list --count origin/main   # expect 996b28b2 (#725) or later, 824+
 ls -d src app 2>&1; ls .github/workflows; grep -n '^version' pyproject.toml
-ls docs/adr | sort | tail -1                                          # expect 0538 or higher
+ls docs/adr | sort | tail -1                                          # expect 0539 or higher
 ```
 
 **If a prompt's facts disagree with those outputs, the TREE wins and the prompt is suspect — report it
@@ -60,7 +60,7 @@ at `13b13f38` (session 6's branch, `src/` unchanged: 1 passed · 83 xfailed once
 
 ## Where we are
 
-**Session 7 (2026-09-29, ADR-0538) ran WP-CPM round 3 on base `0b45eb28`** (#723 — session 6's documents; v1.0.294; 822
+**`main` also took ADR-0539 (v1.0.295: the One-Pager C/D/E intake, operator-drawn logic links → PowerPoint, LODESTAR; #724 / #725) while session 7's PR was open — the next campaign session's base is that `main`; re-run the 102 reproducers there first (ADR-0539 changed `src/`).** **Session 7 (2026-09-29, ADR-0538) ran WP-CPM round 3 on base `0b45eb28`** (#723 — session 6's documents; v1.0.294; 822
 commits) and committed on `claude/modest-cori-iit4zh` as one draft pull request. It rebuilt the 44-file corpus first (22,105 by two
 methods), censused the committed tree beside it, wrote and attacked its plan (R1–R13; R7 fell) before any finder ran, then ran
 five NEW probe families (F-FAMB, F-DAY, F-CALG, F-TWIN, F-RT): 19 candidates → 1 DUPLICATE (an instance of CPM-006) → 18 claims →
@@ -403,5 +403,5 @@ gate) before every push.
 
 QC-1 / QC-2 (ADR-0393) and QC-3 (ADR-0509) bind every session; they are pinned by `tests/test_standing_rules.py`.
 Run the session-token-guardian's `scripts/token_audit.py` as the FIRST action (copy it to the scratchpad) and before
-each operator prompt. `git fetch origin` before you branch, number an ADR, or commit. Highest ADR 0538. Version
-1.0.294. Schema 2.17.0.
+each operator prompt. `git fetch origin` before you branch, number an ADR, or commit. Highest ADR 0539. Version
+1.0.295. Schema 2.17.0.

@@ -25,7 +25,7 @@ from collections.abc import AsyncIterator, Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, cast
-from urllib.parse import quote, urlparse, urlsplit
+from urllib.parse import quote, urlparse
 
 import uvicorn
 from fastapi import FastAPI, Form, Query, Request, UploadFile
@@ -242,14 +242,6 @@ from schedule_forensics.reports.docx import (
     render_document,
     render_docx,
 )
-from schedule_forensics.reports.onepager import (
-    OnePagerDoc,
-    onepager_tableset,
-    parse_date,
-    parse_numbered_workbook,
-)
-from schedule_forensics.reports.onepager_compare import compare_tableset
-from schedule_forensics.reports.pptx import render_onepager_compare_pptx, render_onepager_pptx
 from schedule_forensics.reports.tables import (
     Cell,
     Table,
@@ -269,8 +261,9 @@ from schedule_forensics.reports.tables import (
     wbs_breakdown_tables,
 )
 from schedule_forensics.reports.xlsx import render_xlsx
-from schedule_forensics.reports.xlsx_read import XlsxError, read_xlsx, read_xlsx_numbered
+from schedule_forensics.reports.xlsx_read import XlsxError, read_xlsx
 from schedule_forensics.web import i18n
+from schedule_forensics.web import onepager_actions as op_actions
 
 # ADR-0376 (phase 3, slice 12): the /analysis page family — the per-schedule report body,
 # the chapter-01 "Where we stand" header, the DCMA cell/card builders and the analysis-page
@@ -598,6 +591,8 @@ from schedule_forensics.web.help import (
     METRIC_DICTIONARY,
     reliability_dimension,
 )
+from schedule_forensics.web.htmlkit import CUI_MARKING as CUI_MARKING
+from schedule_forensics.web.htmlkit import UNCLASSIFIED_MARKING as UNCLASSIFIED_MARKING
 
 # ADR-0358 (phase 3, slice 4): the /integrity page family - the chapter header and the page body
 # (findings table + drill, per-change effects, counterfactual) - lives in ``web/integrity.py``
@@ -653,15 +648,10 @@ from schedule_forensics.web.offload import (
 )
 from schedule_forensics.web.onepager import (
     _onepager_body,
-    onepager_layout,
     onepager_template,
-    onepager_view,
 )
 from schedule_forensics.web.onepager_compare import (
     _onepager_compare_body,
-    onepager_compare_doc,
-    onepager_compare_layout,
-    onepager_compare_view,
 )
 from schedule_forensics.web.path import _path_body as _path_body
 from schedule_forensics.web.path import _what_drives_header as _what_drives_header
@@ -747,6 +737,13 @@ from schedule_forensics.web.scurve import _scurve_filter_fields as _scurve_filte
 from schedule_forensics.web.scurve import _scurve_header as _scurve_header
 from schedule_forensics.web.scurve import _scurve_interpretation as _scurve_interpretation
 from schedule_forensics.web.scurve import _scurve_status_point as _scurve_status_point
+from schedule_forensics.web.security import _ALLOWED_HOSTS as _ALLOWED_HOSTS
+from schedule_forensics.web.security import _CSP as _CSP
+from schedule_forensics.web.security import _SECURITY_HEADERS as _SECURITY_HEADERS
+from schedule_forensics.web.security import _UNSAFE_METHODS as _UNSAFE_METHODS
+from schedule_forensics.web.security import _csrf_safe as _csrf_safe
+from schedule_forensics.web.security import _host_allowed as _host_allowed
+from schedule_forensics.web.security import _origin_allowed as _origin_allowed
 
 # ADR-0390 (phase 4, slice 25): the /settings page family — the AI-settings page body, its
 # backend explainer, and the status/runtime notes it renders — lives in ``web/settings.py`` now,
@@ -1422,88 +1419,6 @@ def _clamp_float(
     parsed = _to_float(value, default / scale if scale else default)
     return max(lo, min(hi, parsed * scale))
 
-
-#: Content-Security-Policy that enforces the air-gap (Law 1) in EVERY browser at runtime, not
-#: just in the test: ``default-src``/``connect-src``/``img-src`` are ``'self'`` so the page can
-#: never pull or beacon to a remote host (no CDN, no font, no exfil fetch). ``script-src`` is
-#: STRICT ``'self'`` (ADR-0268, closing the long-tracked follow-up): every former inline
-#: handler is delegated in ``chrome.js`` via ``data-sf-*`` attributes, and every boot payload
-#: is a non-executable ``<script type="application/json">`` block its consumer parses — so an
-#: injected inline script or ``on*=`` handler cannot execute even if markup escaping ever
-#: failed (defense in depth: the tool renders opposing-party file content). ``style-src`` keeps
-#: ``'unsafe-inline'`` for the UI's legitimate inline ``style=`` (the Gantt's px widths) —
-#: inline styles cannot execute code and remote styles stay forbidden.
-_CSP = (
-    "default-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; "
-    "connect-src 'self'; img-src 'self' data:; form-action 'self'; "
-    "style-src 'self' 'unsafe-inline'; script-src 'self'"
-)
-#: Security headers added to every response (CSP enforces the air-gap; nosniff/Referrer/Frame
-#: are free hardening for the CUI threat model — the operator analyzes opposing-party files).
-_SECURITY_HEADERS: dict[str, str] = {
-    "Content-Security-Policy": _CSP,
-    "X-Content-Type-Options": "nosniff",
-    "Referrer-Policy": "no-referrer",
-    "X-Frame-Options": "DENY",
-}
-
-#: SEC-3 (ADR-0264): the Host allowlist. The tool binds loopback only, but a DNS-rebinding
-#: page (an attacker domain the victim's browser re-resolves to 127.0.0.1) reaches it with the
-#: ATTACKER'S name in the Host header — on a production machine that is a read path to real
-#: CUI. Only genuine loopback names are served. "testserver" is Starlette TestClient's default
-#: base host: a single-label name public DNS cannot resolve, so admitting it adds no rebinding
-#: surface (rebinding needs an attacker-controlled RESOLVABLE domain riding in Host).
-_ALLOWED_HOSTS = frozenset({"127.0.0.1", "localhost", "::1", "testserver"})
-
-
-def _host_allowed(host_header: str) -> bool:
-    """True when the Host header names a loopback (or test) host — port ignored, IPv6 brackets
-    handled. An absent/unparseable Host is rejected (HTTP/1.1 requires one)."""
-    try:
-        hostname = urlsplit("//" + host_header.strip()).hostname
-    except ValueError:
-        return False
-    return hostname is not None and hostname in _ALLOWED_HOSTS
-
-
-def _origin_allowed(origin_header: str | None) -> bool:
-    """The FALLBACK CSRF check (used only when ``Sec-Fetch-Site`` is absent): True when the
-    Origin is absent or loopback. An ABSENT Origin is a non-browser local client (curl,
-    tests, the launcher's probes), not the CSRF vector, so it passes; a foreign or ``null``
-    Origin is rejected."""
-    if origin_header is None:
-        return True
-    try:
-        parts = urlsplit(origin_header)
-    except ValueError:
-        return False
-    return parts.scheme in ("http", "https") and parts.hostname in _ALLOWED_HOSTS
-
-
-def _csrf_safe(sec_fetch_site: str | None, origin_header: str | None) -> bool:
-    """SEC-2 (ADR-0264, corrected ADR-0268): is a state-mutating request non-cross-site?
-
-    The PRIMARY signal is ``Sec-Fetch-Site`` — a browser-set forbidden header a cross-site
-    page cannot forge, and (unlike ``Origin``) NOT nulled by the app's ``Referrer-Policy:
-    no-referrer`` on same-origin **form** navigations. ``same-origin`` (the tool's own
-    forms/fetches) and ``none`` (a user-initiated top-level navigation — address bar,
-    bookmark; not a CSRF vector) pass; ``cross-site`` / ``same-site`` / ``cross-origin`` are
-    the CSRF signatures and are refused. When the header is ABSENT (a non-browser client, or
-    a browser too old to send Fetch Metadata) we fall back to the Origin check, which passes
-    absent-Origin non-browser clients and loopback origins while refusing foreign ones.
-
-    Why the correction: the Origin-only gate refused EVERY real-browser POST **form**
-    navigation — ``no-referrer`` makes Chromium send ``Origin: null`` on those, which the old
-    gate read as cross-site (surfaced by ADR-0268's browser verification; the ADR-0264 probe
-    had only exercised ``fetch`` POSTs, which do carry a real Origin)."""
-    if sec_fetch_site is not None:
-        return sec_fetch_site in ("same-origin", "none")
-    return _origin_allowed(origin_header)
-
-
-#: methods that can change session state — the only ones SEC-2 gates (Sec-Fetch-Site/Origin
-#: are not sent on same-origin GET navigations, so gating reads would break normal use)
-_UNSAFE_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
 
 #: ADR-0265: driving-tiers drill columns whose values are SOLVED (stored-network dates/float/
 #: criticality) — dropped from the drill and its Excel while the counterfactual trace options
@@ -4369,36 +4284,23 @@ def create_app(
             return JSONResponse({"error": "format must be xlsx or docx"}, status_code=404)
         return None
 
-    # ── /onepager: a three-column Excel list as a swimlane one-pager + a PowerPoint slide
-    # (ADR-0446). The page module lays the slide out; these routes only move bytes and state. ──
-    _PPTX_MEDIA = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+    # ── /onepager: an Excel list as a swimlane one-pager + a PowerPoint slide (ADR-0446), with
+    # the operator's logic links (ADR-0539). The page module lays the slide out and the SHARED
+    # actions (web/onepager_actions.py — LODESTAR runs the same ones) decide what each route
+    # does; these routes only move bytes and state. ──
+    _PPTX_MEDIA = op_actions.PPTX_MEDIA
 
     def _onepager_today(st: SessionState) -> dt.date:
         return st.onepager_today or dt.date.today()
 
-    def _onepager_source_name(name: str | None) -> str:
-        """The workbook's own name for the page and the exports: the path stripped, control
-        characters removed (the ADR-0263 rule), length-capped. Escaped at every render site."""
-        base = (name or "list.xlsx").replace("\\", "/").rsplit("/", 1)[-1]
-        clean = "".join(ch for ch in base if ch.isprintable() and ch not in "\x1f")
-        return clean.strip()[:120] or "list.xlsx"
-
-    def _onepager_window(start: str, end: str) -> tuple[dt.date, dt.date] | str:
-        """The two date inputs -> an inclusive ``(first, last)`` window, or the refusal sentence.
-        The date input sends ISO; a typed date the One-Pager itself reads (``5/1/27``, ``05/2027``
-        — a month-only first date is its first day, a month-only last date its last) is taken
-        too. Nothing is guessed: a blank or unreadable side, or a last date before the first,
-        is refused by name and the page keeps its current window."""
-        a, b = parse_date(start.strip()[:40]), parse_date(end.strip()[:40])
-        if a is None or b is None:
-            bad = [f"“{v.strip()[:40] or 'blank'}”" for v, p in ((start, a), (end, b)) if p is None]
-            return f"Date window not applied — enter both dates ({' and '.join(bad)} not read)."
-        if b[1] < a[0]:
-            return (
-                f"Date window not applied — the last date {b[1].isoformat()} is before the first "
-                f"{a[0].isoformat()}."
-            )
-        return (a[0], b[1])
+    def _download(got: op_actions.Download | str) -> Response:
+        if isinstance(got, str):
+            return JSONResponse({"error": got}, status_code=422)
+        return Response(
+            content=got.content,
+            media_type=got.media_type,
+            headers={"Content-Disposition": got.disposition},
+        )
 
     @app.get("/onepager", response_class=HTMLResponse)
     def onepager() -> HTMLResponse:
@@ -4406,42 +4308,18 @@ def create_app(
         return _page(st, "One-Pager Timeline", _onepager_body(st, _onepager_today(st)))
 
     @app.post("/onepager/upload")
-    def onepager_upload(file: UploadFile) -> RedirectResponse:
+    def onepager_upload(file: UploadFile, layout: str = Form("auto")) -> RedirectResponse:
         """Parse the list and redirect to the page with a one-shot summary. A bad workbook, an
         over-cap upload or a list with no usable rows is reported by name, never silently."""
-        st = session()
         data = file.file.read(_MAX_UPLOAD_BYTES + 1)
-        if len(data) > _MAX_UPLOAD_BYTES:
-            st.onepager_msg = (
-                f"List not loaded — file exceeds the {_MAX_UPLOAD_BYTES // (1024 * 1024)} MB cap."
-            )
-            st.onepager_is_error = True
-            return RedirectResponse(url="/onepager", status_code=303)
-        try:
-            # the numbered reader: every row the page cites is the row Excel shows (ADR-0524)
-            sheets = read_xlsx_numbered(data)
-        except XlsxError as exc:
-            st.onepager_msg = f"Could not read that file: {exc}"
-            st.onepager_is_error = True
-            return RedirectResponse(url="/onepager", status_code=303)
-        doc = parse_numbered_workbook(sheets, _onepager_source_name(file.filename))
-        st.onepager = doc
-        st.onepager_title = ""
-        if not doc.items:
-            st.onepager_msg = (
-                f"No usable rows in {doc.source} — {len(doc.problems)} row(s) skipped; "
-                "see the list below."
-            )
-            st.onepager_is_error = True
-        else:
-            skipped = f"; {len(doc.problems)} row(s) skipped" if doc.problems else ""
-            st.onepager_msg = f"Loaded {len(doc.items)} item(s) from {doc.source}{skipped}."
-            st.onepager_is_error = bool(doc.problems)
+        op_actions.load_list(
+            session(), file.filename, data, max_bytes=_MAX_UPLOAD_BYTES, layout=layout
+        )
         return RedirectResponse(url="/onepager", status_code=303)
 
     @app.post("/onepager/title")
     def onepager_set_title(title: str = Form("")) -> RedirectResponse:
-        session().onepager_title = title.strip()[:120]
+        op_actions.set_title(session(), title)
         return RedirectResponse(url="/onepager", status_code=303)
 
     @app.post("/onepager/window")
@@ -4450,33 +4328,28 @@ def create_app(
     ) -> RedirectResponse:
         """Set or clear the slide's date window (ADR-0527) — a refusal is reported, never a
         silently half-applied window."""
-        st = session()
-        if action == "clear":
-            st.onepager_window = None
-            st.onepager_msg, st.onepager_is_error = "Showing all dates.", False
-            return RedirectResponse(url="/onepager", status_code=303)
-        win = _onepager_window(start, end)
-        if isinstance(win, str):
-            st.onepager_msg, st.onepager_is_error = win, True
-        else:
-            st.onepager_window = win
-            st.onepager_msg = f"Date window set: {win[0].isoformat()} to {win[1].isoformat()}."
-            st.onepager_is_error = False
+        op_actions.set_window(session(), start, end, action)
         return RedirectResponse(url="/onepager", status_code=303)
+
+    @app.post("/onepager/links")
+    def onepager_links(
+        action: str = Form("add"),
+        pred: str = Form(""),
+        succ: str = Form(""),
+        kind: str = Form("FS"),
+    ) -> RedirectResponse:
+        """Add, remove or clear a logic link (ADR-0539) and return to the slide."""
+        op_actions.edit_links(session(), "onepager", action, pred, succ, kind)
+        return RedirectResponse(url="/onepager#opLinks", status_code=303)
 
     @app.post("/onepager/clear")
     def onepager_clear() -> RedirectResponse:
-        st = session()
-        st.onepager = None
-        st.onepager_window = None
-        st.onepager_title = ""
-        st.onepager_msg = "List cleared."
-        st.onepager_is_error = False
+        op_actions.clear_list(session())
         return RedirectResponse(url="/onepager", status_code=303)
 
     @app.get("/export/{fmt}/onepager-template")
     def export_onepager_template(fmt: str) -> Response:
-        """A fill-in workbook in the intake's shape (swimlane · task · date)."""
+        """A fill-in workbook in the intake's shape (swimlane · task · start · finish · complete)."""
         if (bad := _bad_format(fmt)) is not None:
             return bad
         return _export_response(fmt, onepager_template(), "one-pager-template")
@@ -4486,63 +4359,24 @@ def create_app(
         """The slide the page previews, as native PowerPoint shapes — refused, not blank, with
         nothing loaded."""
         st = session()
-        today = _onepager_today(st)
-        lay = onepager_layout(st, today)
-        doc, _omitted = onepager_view(st)
-        if lay is None or doc is None:
-            return JSONResponse(
-                {
-                    "error": "no item falls inside the date window — there is no slide to export"
-                    if st.onepager is not None and st.onepager.items
-                    else "load a one-pager list first — there is no slide to export"
-                },
-                status_code=422,
-            )
         _cls, marking = _cui_marking(st)
-        source = (
-            f"Source: {doc.source} · {len(doc.items)} items · generated {today.isoformat()} "
-            "by POLARIS²"
-        )
-        safe = (
-            "".join(ch if ch.isalnum() or ch in "._-" else "_" for ch in lay.title) or "one-pager"
-        )
-        return Response(
-            content=render_onepager_pptx(lay, marking=marking, source=source),
-            media_type=_PPTX_MEDIA,
-            headers={"Content-Disposition": f'attachment; filename="{safe}.pptx"'},
-        )
+        return _download(op_actions.onepager_pptx(st, _onepager_today(st), marking, "POLARIS²"))
 
     @app.get("/export/{fmt}/onepager")
     def export_onepager(fmt: str) -> Response:
-        """The parsed list — swimlane, item, type, dates, sheet row — plus every skipped row."""
+        """The parsed list — swimlane, item, type, dates, sheet row — plus every skipped row and
+        the operator's logic links."""
         if (bad := _bad_format(fmt)) is not None:
             return bad
         st = session()
-        doc, omitted = onepager_view(st)
-        if doc is None:
-            return JSONResponse(
-                {"error": "load a one-pager list first — there is nothing to export"},
-                status_code=422,
-            )
-        return _export_response(
-            fmt, onepager_tableset(doc, st.onepager_window, omitted), "one-pager-list"
-        )
+        got = op_actions.onepager_workbook(st, _onepager_today(st))
+        if isinstance(got, str):
+            return JSONResponse({"error": got}, status_code=422)
+        return _export_response(fmt, got, "one-pager-list")
 
     # ── /onepager-compare: two One-Pager lists — PRIOR and CURRENT — matched on the (swimlane,
-    # item) pair, every move in calendar days (ADR-0465). Same intake as /onepager; the page module
-    # compares and lays out; these routes only move bytes and state. ──
-    def _opc_parse(file: UploadFile) -> OnePagerDoc | str:
-        """The workbook parsed into a One-Pager document, or the failure sentence."""
-        data = file.file.read(_MAX_UPLOAD_BYTES + 1)
-        if len(data) > _MAX_UPLOAD_BYTES:
-            return (
-                f"List not loaded — file exceeds the {_MAX_UPLOAD_BYTES // (1024 * 1024)} MB cap."
-            )
-        try:
-            sheets = read_xlsx_numbered(data)  # true Excel row numbers (ADR-0524)
-        except XlsxError as exc:
-            return f"Could not read that file: {exc}"
-        return parse_numbered_workbook(sheets, _onepager_source_name(file.filename))
+    # item) pair, every move in calendar days (ADR-0465). Same intake and the same shared actions
+    # as /onepager; the page module compares and lays out. ──
 
     @app.get("/onepager-compare", response_class=HTMLResponse)
     def onepager_compare() -> HTMLResponse:
@@ -4550,54 +4384,25 @@ def create_app(
         return _page(st, "One-Pager Compare", _onepager_compare_body(st, _onepager_today(st)))
 
     @app.post("/onepager-compare/upload")
-    def onepager_compare_upload(file: UploadFile, slot: str = Form("current")) -> RedirectResponse:
+    def onepager_compare_upload(
+        file: UploadFile, slot: str = Form("current"), layout: str = Form("auto")
+    ) -> RedirectResponse:
         """Parse the list into the slot it was dropped on and redirect with a one-shot summary.
         The slot is the operator's statement of which list is PRIOR — never inferred."""
-        st = session()
-        slot = slot.strip().lower()
-        if slot not in ("prior", "current"):
-            st.onepager_compare_msg = (
-                f"Unknown slot “{slot}” — drop the list onto PRIOR or CURRENT."
-            )
-            st.onepager_compare_is_error = True
-            return RedirectResponse(url="/onepager-compare", status_code=303)
-        parsed = _opc_parse(file)
-        if isinstance(parsed, str):
-            st.onepager_compare_msg = parsed
-            st.onepager_compare_is_error = True
-            return RedirectResponse(url="/onepager-compare", status_code=303)
-        if slot == "prior":
-            st.onepager_prior = parsed
-        else:
-            st.onepager_current = parsed
-        st.onepager_compare_title = ""
-        if not parsed.items:
-            st.onepager_compare_msg = (
-                f"No usable rows in {parsed.source} ({slot.upper()}) — {len(parsed.problems)} row(s) "
-                "skipped; see the list below."
-            )
-            st.onepager_compare_is_error = True
-        else:
-            skipped = f"; {len(parsed.problems)} row(s) skipped" if parsed.problems else ""
-            st.onepager_compare_msg = (
-                f"Loaded {len(parsed.items)} item(s) from {parsed.source} as the {slot.upper()} "
-                f"list{skipped}."
-            )
-            st.onepager_compare_is_error = bool(parsed.problems)
+        data = file.file.read(_MAX_UPLOAD_BYTES + 1)
+        op_actions.load_compare(
+            session(), slot, file.filename, data, max_bytes=_MAX_UPLOAD_BYTES, layout=layout
+        )
         return RedirectResponse(url="/onepager-compare", status_code=303)
 
     @app.post("/onepager-compare/swap")
     def onepager_compare_swap() -> RedirectResponse:
-        st = session()
-        st.onepager_prior, st.onepager_current = st.onepager_current, st.onepager_prior
-        st.onepager_compare_title = ""
-        st.onepager_compare_msg = "Prior and current swapped."
-        st.onepager_compare_is_error = False
+        op_actions.swap_compare(session())
         return RedirectResponse(url="/onepager-compare", status_code=303)
 
     @app.post("/onepager-compare/title")
     def onepager_compare_set_title(title: str = Form("")) -> RedirectResponse:
-        session().onepager_compare_title = title.strip()[:120]
+        op_actions.set_compare_title(session(), title)
         return RedirectResponse(url="/onepager-compare", status_code=303)
 
     @app.post("/onepager-compare/window")
@@ -4605,31 +4410,23 @@ def create_app(
         start: str = Form(""), end: str = Form(""), action: str = Form("apply")
     ) -> RedirectResponse:
         """Set or clear the compare slide's date window (ADR-0527), as /onepager/window."""
-        st = session()
-        if action == "clear":
-            st.onepager_compare_window = None
-            st.onepager_compare_msg, st.onepager_compare_is_error = "Showing all dates.", False
-            return RedirectResponse(url="/onepager-compare", status_code=303)
-        win = _onepager_window(start, end)
-        if isinstance(win, str):
-            st.onepager_compare_msg, st.onepager_compare_is_error = win, True
-        else:
-            st.onepager_compare_window = win
-            st.onepager_compare_msg = (
-                f"Date window set: {win[0].isoformat()} to {win[1].isoformat()}."
-            )
-            st.onepager_compare_is_error = False
+        op_actions.set_compare_window(session(), start, end, action)
         return RedirectResponse(url="/onepager-compare", status_code=303)
+
+    @app.post("/onepager-compare/links")
+    def onepager_compare_links(
+        action: str = Form("add"),
+        pred: str = Form(""),
+        succ: str = Form(""),
+        kind: str = Form("FS"),
+    ) -> RedirectResponse:
+        """Add, remove or clear a logic link between current positions (ADR-0539)."""
+        op_actions.edit_links(session(), "compare", action, pred, succ, kind)
+        return RedirectResponse(url="/onepager-compare#opcLinks", status_code=303)
 
     @app.post("/onepager-compare/clear")
     def onepager_compare_clear() -> RedirectResponse:
-        st = session()
-        st.onepager_prior = None
-        st.onepager_current = None
-        st.onepager_compare_window = None
-        st.onepager_compare_title = ""
-        st.onepager_compare_msg = "Both lists cleared."
-        st.onepager_compare_is_error = False
+        op_actions.clear_compare(session())
         return RedirectResponse(url="/onepager-compare", status_code=303)
 
     @app.get("/export/pptx/onepager-compare")
@@ -4637,52 +4434,20 @@ def create_app(
         """The compare slide the page previews, as native PowerPoint shapes — refused, not blank,
         until both lists are loaded."""
         st = session()
-        today = _onepager_today(st)
-        lay = onepager_compare_layout(st, today)
-        doc, _omitted = onepager_compare_view(st)
-        if lay is None or doc is None:
-            full = onepager_compare_doc(st)
-            return JSONResponse(
-                {
-                    "error": "no compared item falls inside the date window — there is no slide"
-                    if full is not None and full.rows
-                    else "load a PRIOR and a CURRENT one-pager list first — there is no slide"
-                },
-                status_code=422,
-            )
         _cls, marking = _cui_marking(st)
-        source = (
-            f"Prior: {doc.prior_source} · Current: {doc.current_source} · {len(doc.rows)} rows · "
-            f"moves in calendar days · generated {today.isoformat()} by POLARIS²"
-        )
-        safe = (
-            "".join(ch if ch.isalnum() or ch in "._-" else "_" for ch in lay.title)
-            or "one-pager-compare"
-        )
-        return Response(
-            content=render_onepager_compare_pptx(lay, marking=marking, source=source),
-            media_type=_PPTX_MEDIA,
-            headers={"Content-Disposition": f'attachment; filename="{safe}.pptx"'},
-        )
+        return _download(op_actions.compare_pptx(st, _onepager_today(st), marking, "POLARIS²"))
 
     @app.get("/export/{fmt}/onepager-compare")
     def export_onepager_compare(fmt: str) -> Response:
         """The compared rows — prior, current and delta columns — plus the per-swimlane summary,
-        the collisions and the notes."""
+        the collisions, the notes and the operator's logic links."""
         if (bad := _bad_format(fmt)) is not None:
             return bad
         st = session()
-        doc, omitted = onepager_compare_view(st)
-        if doc is None:
-            return JSONResponse(
-                {"error": "load a PRIOR and a CURRENT one-pager list first — nothing to export"},
-                status_code=422,
-            )
-        return _export_response(
-            fmt,
-            compare_tableset(doc, st.onepager_compare_window, omitted),
-            "one-pager-compare",
-        )
+        got = op_actions.compare_workbook(st, _onepager_today(st))
+        if isinstance(got, str):
+            return JSONResponse({"error": got}, status_code=422)
+        return _export_response(fmt, got, "one-pager-compare")
 
     @app.get("/export/{fmt}/ask")
     def export_ask(fmt: str) -> Response:

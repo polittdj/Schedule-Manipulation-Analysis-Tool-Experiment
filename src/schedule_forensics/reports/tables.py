@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import datetime as dt
 from collections.abc import Iterable, Mapping, Sequence
-from dataclasses import dataclass
 
 from schedule_forensics.engine.bow_wave import BowWave
 from schedule_forensics.engine.dcma_audit import ScheduleAudit
@@ -24,25 +23,13 @@ from schedule_forensics.engine.path_evolution import PathEvolution
 from schedule_forensics.engine.recommendations import Finding
 from schedule_forensics.engine.trend import MetricTrend
 from schedule_forensics.model.schedule import Schedule
+from schedule_forensics.reports.tableset import Cell as Cell
+from schedule_forensics.reports.tableset import Table as Table
+from schedule_forensics.reports.tableset import TableSet as TableSet
 
-Cell = str | int | float | None
-
-
-@dataclass(frozen=True)
-class Table:
-    """One titled table: headers + uniform rows."""
-
-    title: str
-    headers: tuple[str, ...]
-    rows: tuple[tuple[Cell, ...], ...]
-
-
-@dataclass(frozen=True)
-class TableSet:
-    """An ordered, titled collection of tables (one export artifact)."""
-
-    title: str
-    tables: tuple[Table, ...]
+# ``Cell`` / ``Table`` / ``TableSet`` live in a std-lib-only leaf (ADR-0539) so the One-Pager — and
+# LODESTAR, the standalone program built from it — can use them without importing the engine. They
+# are re-exported above with the ``X as X`` idiom: every existing import of them from here holds.
 
 
 # --- single-schedule report ------------------------------------------------------------
