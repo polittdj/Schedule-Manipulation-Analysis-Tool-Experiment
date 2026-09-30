@@ -461,6 +461,18 @@ those fixed defects in earlier "closed" fixes:
   agents, one over the operator's cap, for half an hour. Nothing broke; the deviation is recorded because a cap that is
   exceeded in silence is not a cap.
 - **A provider limit killed a wave again, and the files on disk were the recovery.** Three assemblers died mid-work; because every deliverable was written to disk as it completed, a resumed agent could re-verify its predecessor's reproducer and fix sketch instead of starting over — and one resumed agent inherited a live defect (a reproducer that FAILED instead of XFAILing) that its predecessor had just noticed. Disk-first is not bookkeeping; it is the only thing that survives a death.
+- **The identity trap bit again, and the check before the push caught it.** The container's environment sets the operator's
+  name as the git author and committer, and the environment beats the repo's config; both local commits carried it. They
+  were re-authored before any push (a non-interactive rebase with the identity exported for author and committer, the tree
+  proven byte-identical). Read `git log --format='%an <%ae> | %cn <%ce>'` before every push, not the config.
+- **The lead's own teeth runner had three defects, and each one lied in a different direction.** Its marker strip matched
+  nothing on a two-deep reason string (it stopped, exit 2 — the honest failure); its verdicts accepted ANY failure that
+  named the test as "strict XPASS" and "failed by name" (a false pass); and a PYTHONPATH-only interpreter in a clean
+  worktree has no package metadata, so the app's Law-1 net guard refused to start and every test failed for that reason. The
+  tightened checks (exactly one FAILED, the named test, the marker's exception on an E line) were first proven to REJECT the
+  invalid logs and ACCEPT the valid ones, then every log on disk was re-judged. An instrument is a claim like any other.
+- **Editing the tree while a guard set reads it voids that run, even for one bullet.** The README gained a line mid-run;
+  the result was superseded by the full gate on a clean worktree of the committed head, not argued away.
 - **The authority channel is part of the plan.** Raw HTTPS to Microsoft is egress-blocked; the Learn connector serves
   the element definitions but not the support.microsoft.com rule pages. Every "MS Project does X" leg that only a rule
   page states is marked UNVERIFIED and routed to ASK-19, rather than asserted from memory.

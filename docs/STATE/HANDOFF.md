@@ -13,7 +13,7 @@ session 8 (the operator merges; never marked ready here), based on `main` @ **`7
 tree on every point (main's CI #2029 green on all six jobs, read from the jobs); the 102 reproducers read 1 passed ·
 101 xfailed at the base (3.11.15 + Playwright) and 1 · 2 skipped · 99 on the 3.13.12 venv — no XPASS after ADR-0539 /
 0540 / 0541's `src/` changes; no ask was answered (every default stands). With session 8's 5 added: **107 reproducers —
-REPRO-FINAL-PENDING**. Highest ADR on disk **0542**. Version **1.0.297** — this PR changes no `src/`. Schema 2.17.0.
+**1 passed · 106 xfailed** on Python 3.11.15 with Playwright (inside the fast guard set: 459 passed · 2 skipped · 106 xfailed, rc 0) and on the 3.13.12 venv 0 1 passed, 2 skipped, 104 xfailed, 1 warning in 177.00s (0:02:57)**. Highest ADR on disk **0542**. Version **1.0.297** — this PR changes no `src/`. Schema 2.17.0.
 QC-1 / QC-2 / QC-3 bind every session.
 
 ## What session 8 did — WP-CPM round 4, and the lane's closure
@@ -39,7 +39,7 @@ QC-1 / QC-2 / QC-3 bind every session.
   with a fix-shape warning for U55; IMP-007; CPM-018; MET-002). Units **U69–U71**; ask **ASK-19**.
 - **Verified by:** an independent claim-only verifier per claim (16 of 16 verdicts REPRODUCED incl. the instances and
   the four second verifications); the lead's re-run of every recorded red (8 of 8 exit 1 on 3.11.15 and 3.13.12); an
-  assembler per class; and the lead's own teeth on all 5 on FRESH trees — LEAD-TEETH-PENDING.
+  assembler per class; and the lead's own teeth on all 5 on FRESH trees — (i) XFAIL by name on the pristine tree, (ii) strict XPASS naming the test with exactly one FAILED on the fix sketch, (iii) exactly one FAILED, by name, with the marker's exception once the marker is removed — **30 of 30 legs** (five classes × three legs × Python 3.11.15 and 3.13.12), re-judged by script from the logs with the strict checks after the runner's own defects were found and fixed (below).
 - **WP-CPM CLOSED on the evidence:** F-ROLE (0 candidates: 22 wall-role sites censused, 17 covered, 2 instances, 1
   unreachable, 1 inert) and F-24X7 (the engine exact on 74 hand rows on three calendar shapes, 113 served surfaces per
   file identical to the control; its one candidate an instance of CPM-040) are two consecutive new families with no new
@@ -53,7 +53,7 @@ QC-1 / QC-2 / QC-3 bind every session.
 - **Deviations, recorded:** four sub-agents in flight for about half an hour (one over the cap; nothing affected); **three assemblers died on a provider credit limit** — the operator switched the session's model and directed "continue" with multi-agent orchestration on, so a workflow resumed them from their on-disk deliverables (charter §7.4 / §12 vs the operator: the operator wins, §2; recorded); the
   operator's mid-session README ask built as its own commit on this branch, outside the charter's allowlist, on the
   operator's word (the README rebuilt as a 564-line front page with a 15-step "How to use POLARIS² — step by step" guide, troubleshooting and a "Known issues before you cite a figure" pointer; drafted, attacked by two adversarial lenses (claims against the tree; guards and pins), 23 defects applied, every guard re-run on the final text; eight test-pinned sentences kept verbatim).
-- **The gate on the final tree:** the full gate on a clean worktree of the final commit — recorded in this session's gate commit (the last commit of the pull request).
+- **The gate on the final tree:** on a clean worktree of `04c49933` (the campaign commit + the README commit): `python -m ruff check .` rc 0; `python -m ruff format --check .` rc 0 1399 files already formatted; `python -m mypy src/` rc 0 Success: no issues found in 180 source files; `bandit -q -r src` rc 0; `node --check` per static file — files=65 failures=0; the FULL suite `python -u -m pytest -q` rc 0 6620 passed, 9 skipped, 106 xfailed, 1 warning in 5209.86s (1:26:49); `python -m pytest -m parity` rc 0 271 passed, 6464 deselected, 1 warning in 1061.00s (0:17:41); the 107 reproducers on the 3.13.12 venv rc 0 1 passed, 2 skipped, 104 xfailed, 1 warning in 177.00s (0:02:57); the charter's allowlist gate lists exactly one path, `README.md` (the operator's ask, recorded).
 
 ## Next
 
