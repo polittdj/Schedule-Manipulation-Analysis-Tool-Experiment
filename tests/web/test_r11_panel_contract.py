@@ -617,12 +617,15 @@ AXIS_CALL_SITES = [
     # ADR-0446: the One-Pager painter joins the caption convention — 28 -> 29, a DELIBERATE
     # re-baseline (one new call site; no existing caption moved).
     # line refreshed 83 -> 95 by ADR-0526 (column D's check); caption md5 re-derived, identical
-    ("onepager.js", 95, "53bfe6309e237fab7137cb9933db21c6"),
+    # ADR-0540 moved the caption ON PURPOSE (B: the SVG's empty strip under the legend, `L.h - 3`,
+    # since the lanes now reach the legend on every slide); digest re-derived, line unmoved
+    ("onepager.js", 95, "38799617d2a0e663141cc4e75b7f986a"),
     # ADR-0465: the One-Pager COMPARE painter joins the caption convention — 29 -> 30, a DELIBERATE
     # re-baseline (one new call site; no existing caption moved; onepager.js's bytes untouched).
     # Line refreshed 131 -> 152 by ADR-0524 (column D's check + the one-date tooltip grew above the
     # call site); the caption digest re-derived and matched, not retyped.
-    ("onepager_compare.js", 152, "ed5a829de52fa34fb468b30a41bdc3e4"),
+    # ADR-0540: the same caption move as onepager.js; digest re-derived, line unmoved
+    ("onepager_compare.js", 152, "3a6754c53369a65e8a4ced8f7ab4dbb0"),
     ("performance.js", 472, "db8ae0464072322438172fe30f85fb71"),
     ("resources.js", 243, "251b7d09fffcc7a9f8adaf5f88ab94eb"),
     # line refreshed by ADR-0317 (sfControls grew above the call site); caption bytes intact

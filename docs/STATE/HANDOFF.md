@@ -1,4 +1,13 @@
-# Handoff — 2026-09-29 (a) (AUDIT-2026-09-23 session 7 — WP-CPM round 3: the counterfactual pages, the working day and the wall-path spellings disagree with their own contracts; 18 classes confirmed (T1 × 8, T2 × 6, T3 × 1, T4 × 3), WP-CPM still not saturated — ADR-0538 · **v1.0.295** (this PR changes no `src/`; `main` took ADR-0539 / v1.0.295 — the One-Pager C/D/E intake and LODESTAR, #724 / #725 — while it was open; its handoff is the first archived section))
+# Handoff — 2026-09-29 (c) (One-Pager: the slide fills the page at every list size, every logic link is fitted — more space, a gutter lane, a reorder within the swimlane, then drawn dashed and NAMED — and the installers put the tool's own Desktop icon on the machine — ADR-0540 · **v1.0.296**)
+
+> **A feature session, outside the AUDIT-2026-09-23 campaign.** This session took **ADR-0540** after ADR-0539 landed;
+> **ADR-0538 is held by AUDIT session 7's draft PR #726** (`claude/modest-cori-iit4zh` @ `3a177864`, opened 2026-09-29
+> 23:09Z — the branch did not exist on the remote when this session started; base `996b28b2`, `src/` unchanged, no version
+> bump) — **squash-merged by the operator as `5c6622fd` (2026-09-30) while this PR was open**, so this branch merged
+> `main` (a merge commit; the state docs conflicted as predicted), moved session 7's handoff section to the top of
+> `HANDOFF-ARCHIVE.md` demoted and kept its LESSONS entry beside this one. The campaign's disclosures below are session
+> 7's four, VERBATIM; per session 7 the earlier ones now live in `docs/STATE/AUDIT-2026-09-23.md` (the three-way merge
+> took that move). This session fixed none of them, and **A0923-IMP-005** and **A0923-DOC-003** stay strict-xfail.
 
 - **T1 — A0923-CPM-042 (in committed corpus):** an ELAPSED activity's "Remaining duration" is served over the project's 480-minute working day, three times its own duration on an 8-hour day: on the committed Hard_File_updated3 / Hard_File_updated4_24h goldens UID 146 reads 6.0 d beside its Duration 2.0 (elapsed) — Acumen Fuse's Remaining Duration shows 2 — and Jacked_Up_Schedule_1's UID 20 reads 96.0 for 32; the figure reaches the Task Information dialog, the unrestricted Ask table and the activities exports that name the column (`web/state.py:1775`). Since 7eb8708a (#314, v1.0.4, 2026-07-10, ADR-0183). Until fixed, read an elapsed activity's remaining work from its Duration line, never from "Remaining duration".
 - **T1 (option-gated) — A0923-CPM-036 / 038 (family B — the counterfactual pages; in committed corpus):** with a trace option on ("Ignore constraints" / "Ignore leveling delay" on /driving-path, /evolution and their exports), the pages do not show the re-solve their banner promises: with no focus UID /evolution's critical path, its entered / left counts and its docx / xlsx exports are the source file's STORED Critical flags drawn at the re-solved dates (CPM-036 — the drawn set moves on 0 of 44 corpus files where the re-solved set differs on 24), and "Ignore constraints" ticked ALONE changes nothing on a fully-dated file — the tiers, driving slack and focus path are the stored schedule's (CPM-038 — inert on 44 of 44; Hard_File target 411's 88 rows unchanged). Since 140aed3a (#292, v1.0.4, 2026-07-08, ADR-0155). Until fixed, do not cite a family-B page's path, tiers or counts as a counterfactual; tick both options together and read the re-solved FINISH only.
@@ -7,93 +16,92 @@
 
 Session 6's seven lines and the eight earlier ones are carried unchanged in `docs/STATE/AUDIT-2026-09-23.md` (the session-6 and session-5 sections) and in the asks file; read them there.
 
-STATUS (current) — branch **`claude/modest-cori-iit4zh`** (the harness's designation), ONE draft pull request opened by
-session 7 (the operator merges; never marked ready here), based on `main` @ **`0b45eb28`** (#723, session 6's
-documents, ADR-0537, v1.0.294, 822 commits; no open pull request at the check, so this session's ADR is **ADR-0538**).
-The §0 check agreed with the tree on every point; the 84 reproducers read 1 passed · 83 xfailed at the base (3.11.15)
-and 1 · 1 skipped · 82 on the 3.13 venv; no ask was answered (every default stands; ASK-15's exports were not
-supplied). With session 7's 18 added: **102 reproducers — **1 passed · 101 xfailed** on Python 3.11.15 with Playwright (the lead's post-integration run of all ten modules: "1 failed, 101 xfailed, 1 warning in 178.46s" — the one failure was DOC-014's own pin, red because the ADR file existed before the state docs named it, exactly its purpose; re-run inside the fast guard set after the state docs were written: 101 xfailed with DOC-014 green) and **1 passed · 2 skipped · 99 xfailed** on the 3.13.12 venv ("1 failed, 2 skipped, 99 xfailed, 1 warning in 110.32s", the same pin)**. Highest ADR on disk **0539** (ADR-0539 is the operator's One-Pager / LODESTAR work, merged while this PR was open; the campaign's is 0538). Version
-**1.0.295** — this PR changes no `src/`. Schema 2.17.0. QC-1 / QC-2 / QC-3 bind every session.
+STATUS (current) — **ADR-0539 is on `main`**: draft PR #725 was squash-merged by the operator as **`996b28b2`**
+(2026-09-29 21:45Z; CI run #2019 green). The 2026-09-29 (b) handoff, SESSION-LOG entry and NEXT-SESSION-PROMPT said it
+waited on the operator — it no longer does, and this section corrects that. **The ADR-0540 feature is COMPLETE on draft
+PR** on branch `claude/gracious-lovelace-8hwycm` (from `main` @ `996b28b2`; the PR number is in the branch's pull request) — the
+operator marks it ready and squash-merges; a session never does. Highest ADR on disk **0540**. Version **1.0.296**;
+the wheel, the nine installers (MPXJ ref `163d1942`, fetched `--depth=2`) and `lodestar/LODESTAR.pyz` (707,568
+bytes, 34 members) are rebuilt from a clean worktree of the final source. QC-1 / QC-2 / QC-3 bind every session.
 
-## What session 7 did — WP-CPM round 3 (not yet saturated)
+## What ADR-0540 did (the operator's asks, 2026-09-29)
 
-- **The instrument, first.** The 44-file corpus rebuilt from scratch BEFORE the plan (15 goldens + the 29 tracked
-  intake `.mpp`, 29 of 29 OLE2, rc=0 under the JVM lock): **22,105** activities by two methods; the committed tree
-  censused beside it (43 MSPDI documents, 40 at 480 minutes a day, TP2 ×2 at 600; 1 XER; 2 JSON schedules).
-- **The plan, attacked before any finder ran.** Thirteen assumptions R1–R13 on the pristine tree: **R7 FELL** (a
-  converter-default hunt was the wrong instrument — all 5 converter calls pass the day; the day classes are
-  rendered-surface defects), R10 held with drift, R13 UNVERIFIED by design (the lead did not pre-test the two
-  session-6 route leads, so the finder stayed independent — both became classes). Two rules set before any verdict:
-  the class-boundary rule (same class only when the retained class's recorded fix sketch would fix it) and a second
-  claim-only verifier for every class grown from a lead observation.
-- **Findings — five NEW families (F-FAMB, F-DAY, F-CALG, F-TWIN, F-RT) → 19 CANDIDATEs → 1 DUPLICATE (F-CALG-002 →
-  CPM-006, with a QC-3 input for U26) → 18 claims → 18 REPRODUCED by claim-only verifiers (P6 a second verifier for
-  CPM-038 / 039 / EXP-001), 0 refuted → 18 CONFIRMED-DEFERRED** (T1 × 8: CPM-042 in the corpus, CPM-036 / 038
-  option-gated in the corpus, CPM-043 / 044 / 046 / 047 latent, IMP-011 data-gated · T2 × 6: CPM-037 / 039 / 040 /
-  041 / 045, UI-002 · T3: EXP-001 · T4: CPM-035, WEB-003, WEB-004). One "HELD — premises contested" verdict became a
-  PREMISE finding after the lead's deep dive (CPM-041 on ADR-0516 D3 / ADR-0355). Units **U55–U68**; asks **ASK-16 /
-  17 / 18**.
-- **Verified by:** an independent claim-only verifier per claim (22 of 22 verdicts REPRODUCED incl. the DUPLICATE
-  instance and the three second verifications); the lead's re-run of every recorded red (19 of 19 exit 1); an
-  assembler per class; and the lead's own teeth on all 18 on FRESH trees — pristine XFAIL, the fix sketch → strict
-  XPASS naming the test, the marker removed → FAILED by name with AssertionError — on Python 3.11.15 and 3.13.12
-  (UI-002 on 3.11 + Chromium only).
-- **Saturation evidence, not closure:** F-RT — the Save `.json` round trip is lossless on every committed schedule
-  (76 / 76 by model and by figure, 47 / 47 served, 0 differences over 4 multi-version families); F-CALG — the calendar
-  arithmetic passes a 14-property seeded battery outside three reduced hand cases; F-TWIN's R8 duality battery shows
-  the four wall-path spellings are the whole residual on its population (97 → 0, 15 → 0). Every family still produced
-  a candidate, so the rule is unmet.
-- **Delivered:** 13 reproducers in `tests/audit/test_audit_20260923_cpm.py` (46), 1 in `_imp.py` (9; its import block
-  gains three names), 2 in `_web.py` (4), 1 in `_ui.py` (2, Chromium-gated), the new `_exp.py` (1) → **102**; the
-  ledger, coverage (§3c; PROBED-S7 marks generated and recounted by script with a self-check), report, plan (U55–U68;
-  the merged queue continued, NOT renumbered — recorded deviation) and asks each with a "Session 7" section; ADR-0538.
-  Retained classes **84 → 102** (T1 38 · T2 22 · T3 22 · T4 8 · T5 12; CPM 33 → 46, IMP 9, WEB 4, UI 2, EXP 1).
-- **Incidents:** ten of eighteen assemblers died on a provider weekly limit; the harness resumed the session on a
-  different model; the operator directed "Try again" and the workflow was resumed (the eight finished assemblies
-  backed up first and replayed from cache — the journal confirmed it). Charter §7.4 / §12 vs the operator's directive:
-  the operator outranks the charter; recorded in the ledger. Three queued teeth runs waited on their own `pgrep -f`
-  pattern for 40 minutes (the repo's documented trap, walked into again — kill by PID; write patterns that cannot
-  match themselves).
-- **The gate on the committed tree:** the static gate green on this tree (`python -m ruff check .` and `python -m ruff format --check .` clean, `python -m mypy src/` "Success: no issues found in 165 source files", `bandit -q -r src` exit 0, `node --check` on each of the 64 static files 0 failures); the charter's fast guard set "449 passed, 2 skipped, 101 xfailed, 1 warning in 239.73s (0:03:59)" (the two skips are `tests/guards/test_loopback_allowlist.py`'s pre-existing parametrised cases; DOC-014's pin passes once the state docs name ADR-0538); the allowlist gate clean; the full pytest suite is CI's on the pull request (both Pythons, read to conclusion by its jobs)
+- **Full-page fill, always** (`reports/onepager.py::fit_rows`, both pages, both .pptx, LODESTAR): the rows, bars,
+  diamonds and labels scale to the whole lane area at every list size — a 3-item slide filled 13.7 % of it before
+  (rows capped at 13 pt, labels at 8 pt) and fills 100 % now, as do 10 / 40 / 144 items (measured both pages). The
+  ROWS are never capped; the TEXT is (`LABEL_MAX` 14 pt, swimlane names 12 pt) — **provisional until the operator
+  rules** (below). The row pitch and the glyph height are returned apart, so the fit has a fixed point (40 items
+  cycled 16 ↔ 17 rows and filled 94 % before that).
+- **Every logic link fitted** (`fit_links` / `Attempt` / `Fit`; the router's `route_all`): in the operator's order —
+  (1) the bars, diamonds and labels shrink (100 → 80 → 65 %) to open space between the rows; (2) a 12-pt gutter lane
+  at the slide's right edge carries the links no channel can; (3) items are reordered WITHIN their swimlane (never
+  across; `_swap_ok`, 12 trials) — never a second slide; every step is disclosed on the page ("How the logic links
+  were fitted") and in the Excel Notes. Bounded: `WORK_BUDGET` 24,000 judged routes over ALL attempts; deterministic
+  (two runs of 144 items × 200 links identical, 15.7 s, 200 of 200 drawn).
+- **The last resort draws** (ruling (c)): a link no route clears is drawn along the route with the LEAST overlap,
+  DASHED, flagged in its tooltip, listed on the page ("Logic links drawn dashed over other ink — N of M"), and named in
+  the slide's own footnote — one text box painted by the page's SVG AND the .pptx (`_footnote`; "Caution — N logic
+  link(s) drawn dashed over other ink, no clear route existing: …", `FOOT_CHAR_W` 0.66 so LibreOffice keeps it on the
+  slide). ADR-0539's "refuse and name" rule is superseded. Property pinned: every erasure by a flagged link names its
+  victim (independent generator; seed 15 caught the force path judging a COPY of the route).
+- **The router got faster with an identical answer** (`onepager_links.py`: axis-gap reject, per-leg strips,
+  precomputed vertical legs, a y-band index): 6.7 → 3.8 s on the stress slide, the output digest identical over 1,250
+  links of the review's generator. Two more tag spots (above / below the channel line) so a 3-item slide with three
+  links is no longer "crowded".
+- **Excel keeps the sheet's own order** (decided; the Notes table says the slide reordered); **one layout per state per
+  session** (`onepager_common.cached_layout` — GET, PowerPoint and Excel share it; keyed on the list, the window, the
+  title, today and the links).
+- **The Desktop icon is the tool's own** (`schedule_forensics.desktop_icon`: `.ico` / `.png` / `.icns` from the shipped
+  favicon's five PNG frames): Windows `.lnk` `IconLocation`; Linux `.desktop` `Icon=` plus a trusted Desktop copy; macOS
+  a `Polaris².app` bundle on the Desktop. Written by reading and by the generated-installer tests — **no Windows or
+  macOS host here (UNVERIFIED)**.
+- **The three rulings are recorded** in DESIGN-SYSTEM §7c and ADR-0540: (a) the marking switch does NOT reach the
+  Excel exports; (b) the slide's 7.8 px SS / FF / SF tag IS exempt from §1's 8 px floor; (c) unavoidable collisions are
+  drawn and disclosed, never refused.
+- **Three adversarial reviews, 17 findings, each re-reproduced red, fixed and pinned** (ADR-0540's third table): among them `GLYPH_MAX` 40 with a per-diamond clamp (a 2-item diamond had left the slide), the footnote's four compact lines with whole entries counted past them, the reserve guards (`fit_links`), the cache's one-instant snapshot (`OnePagerSnapshot`), the icon writer's CRC walk, the Linux Desktop entry's `Name=Polaris²`, the gutter ledger (`RouteReport.points`), `_WARN` in print, LODESTAR 1.0.1.
+
+## Measured at close (Python 3.11, a clean worktree of the final commit)
+
+Static gate green at the PINNED ruff 0.16.9 (`ruff check .`, `ruff format --check .` 1,387 files), `mypy src/` 178 files, `bandit` exit 0, `node --check` per file; `build_lodestar.py --check` current (707,568 bytes, 34 members). **The FULL suite on a clean worktree of the source commit `26128a81` with the rebuilt artifacts in it: 6,583 passed, 5 skipped, 83 xfailed, 1 failed, exit 1 in 58 min 20 s** — the one failure the axis-caption ledger (`test_r11_panel_contract`, both One-Pager painters' caption call sites moved on purpose to `L.h - 3`), re-derived in the second commit and its module re-run green on the final tree (25 passed); no XPASS (A0923-IMP-005 and A0923-DOC-003 still strict-xfail). **`-m parity` 271 passed, exit 0 (11 min 43 s).** On the final tree: `tests/installer` + the LODESTAR lockstep + `tests/test_state_docs.py` 113 passed. The browser census (Chromium, LibreOffice Impress) ran inside the full suite. PR #726's own reproducers run against this tree: 62 xfailed, 0 XPASS, 0 failed.
+
+## Decision for the operator (ASK, do not assume)
+
+**The readable size cap for tiny lists.** Shipped: rows uncapped (3 items: 134.7-pt rows, 91.6-pt bars), text capped at
+`LABEL_MAX` 14 pt / swimlane names 12 pt. The renders at 3 / 10 / 40 / 144 items (both pages, four views; the before
+and after) were delivered to the operator with this session — **rule on the cap before anyone changes the constant.**
+
+**UNVERIFIED, stated:** Windows / macOS launching and the icon on those hosts (the `.lnk`, the `.app` bundle,
+`gio set … trusted`); PowerPoint itself (LibreOffice Impress rendered the .pptx here); Firefox / WebKit; the
+2026-09-29 (b) session's UNVERIFIED items stand.
 
 ## Next
 
-- **Default:** the next AUDIT session resumes with the charter §16 line and **continues WP-CPM — round 4, or closes
-  the lane on the evidence** (two new families with no CANDIDATE); the ledger's "UNVERIFIED leads — session 7" first
-  (the CPM-034 start-role siblings at `cpm.py:2941` / `:3153` / `:2563`; `/mission`'s discarded skipped list; WEB-004's
-  ~40 export siblings; the parallel-path labels); then the charter's lane order (MET is next).
-- **Repairs** run separately, one unit per session, in the merged-queue order, by pasting the unit's kickoff prompt;
-  U01 (LAW-1), U03 (T1) and U22 (T1, the displayed finish) still lead, and **U61** (CPM-042, in the corpus, S) and
-  **U55** (the family-B basis, option-gated, in the corpus) now carry T1 exposure on committed inputs too. U67 follows
-  U51 (CPM-034's snap rule is its helper); U26's fix must also drop `_wall_minutes_between`'s extras sum.
-- **Asks:** ASK-16 / 17 / 18 are new (defaults: keep the code's stated contracts; CPM-041's unit corrects the ADRs'
-  premise to the derived day; the four wall-path reproducers keep the hand values); every earlier ask is carried with
-  its default. Never wait for a reply.
-- Carried unchanged: R-68 (operator question (f)); ADR-0531's raw-flag question; R-21; the HELD and ORG rows — all in
-  the merged queue.
+1. The operator reviews draft PR of `claude/gracious-lovelace-8hwycm`, marks it ready and squash-merges; then `git fetch --prune origin` and
+   restart the branch per CLAUDE.md. #726 (ADR-0538) merged first (`5c6622fd`); this PR merged `main` and keeps BOTH
+   sessions' state-doc sections (session 7's at the top of the archive) — nothing rebuilt (#726 changed no `src/`).
+2. The cap ruling above.
+3. Follow-ups (out of scope, recorded only — ADR-0539 / ADR-0540): the NEW / REMOVED badge text is wider than its badge
+   (UIP-3); a 500 on a Polaris² route carries no CSP / nosniff (ROUTES-5); an empty workbook says "1 row(s) skipped";
+   reading Excel's percent format; the pre-commit hook cannot see into a shebang-prefixed ZIP (`.pyz`) — the LODESTAR
+   lockstep test guards it until then.
+4. **Answered by the operator (2026-09-29) — do not ask again:** rulings (a) / (b) / (c) above; column E of the real
+   lists holds the WORD "Complete"; how LODESTAR is released or shared is OUT of scope — do not raise NPR 2210.1.
 
-## Not done (measured, left) · carried forward
-
-A fourth WP-CPM round or the lane's closure · the CPM-034 start-role siblings (identified, not reddened) · a browser
-render of the parallel-path output, the stability band and the tooltips beyond P6's · SSI's parallel-path semantics
-(ASK-16) · MS Project's rendering of a declared / derived day mismatch (ASK-17) and of the four wall-path shapes
-(ASK-18) · `/mission`'s discarded skipped list · POST routes under a non-480 day · a 7-day 24-hour project calendar ·
-a non-8-hour XER · the merged queue's renumbering · every lane session 1 left unprobed (SEC, EXP beyond EXP-001, FOR,
-PKG, PERF; the UI time-zone census; the CUI hook-bypass battery, air-gap probes and canary run; IMP fuzz; the MET
-four-way table; WEB cache and concurrency). The 2026-08-27 register was not edited.
+The AUDIT-2026-09-23 campaign's own Next is session 7's — the top `(prior)` section of `HANDOFF-ARCHIVE.md` — and
+its resume line in `NEXT-SESSION-PROMPT.md`.
 
 ## Traps this session paid for, by name
 
-**A `while pgrep -f <pattern>` waiter matches its own command line** — three queued runs waited on themselves; kill by
-PID, and write the pattern so it cannot match itself (`run\.py A0923-CPM-04[0]`). · **A fragment that needs a
-module-level import NameErrors when appended alone**, and the strict marker reports FAILED, not XFAIL — the guard
-doing its job; integrate such a module from the assembler's tree. · **A monitor that greps its own output for
-"Error" kills itself.** · **A census recount must reproduce the untouched headings before it is applied** — the
-coverage's per-lane counts follow a convention (a file already PROBED keeps its oldest bucket) a naive recount
-contradicts; the self-check caught it. · **A dry-run tree without `src/` makes ruff read the package as third-party**
-(I001 on every module) — symlink `src/` beside the copy. · **A provider limit can kill a wave mid-flight** — back up
-what finished before resuming, read the journal to confirm the replay. · **The lead cannot verify its own hypothesis
-and cannot pre-test a lead it hands to a finder** (R13 left UNVERIFIED on purpose; both leads became classes).
+**An editable install shadows a worktree** — `PYTHONPATH=<tree>/src`. · **The container's ruff is not CI's** (pin
+`ruff>=0.16.1,<0.17` in a venv). · **A shallow clone refuses the installer build** — `SF_MPXJ_REF=163d1942…`, fetched
+`--depth=2` (a `--depth=1` fetch makes the ref a graft boundary). · **The container's git identity env overrides git
+config** — set `GIT_AUTHOR_*` / `GIT_COMMITTER_*` = Claude <noreply@anthropic.com> on each commit. · **Build the .pyz,
+the wheel and the installers from a CLEAN worktree of the commit.** · **Every push cancels CI's run in flight** — one
+validated push. · **A fit loop needs a fixed point** — a glyph sized from the row count changes the row count; return the
+pitch and the glyph apart. · **A forced route judged as a COPY reserves nothing** — judge the route itself. · **A budget
+that counts only the last step is no budget** — count every attempt. · **Playwright's locator click is stricter than a
+pointer** — a label at the shape's centre (a sibling in the item's group) makes it refuse a click the operator's pointer
+delivers; click by coordinates. · **`rsync` is absent here and `2>/dev/null` hid it** — `cp -r`, and read stderr.
 
 # (prior) handoffs — archived
 

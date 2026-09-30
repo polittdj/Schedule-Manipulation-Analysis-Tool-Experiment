@@ -14,7 +14,7 @@ happen again. **Run these before the first edit:**
 git fetch --unshallow origin; git fetch --prune origin && git remote set-head origin -a
 git log --oneline -1 origin/main && git rev-list --count origin/main   # expect 996b28b2 (#725) or later, 824+
 ls -d src app 2>&1; ls .github/workflows; grep -n '^version' pyproject.toml
-ls docs/adr | sort | tail -1                                          # expect 0539 or higher
+ls docs/adr | sort | tail -1                                          # expect 0540 or higher
 ```
 
 **If a prompt's facts disagree with those outputs, the TREE wins and the prompt is suspect — report it
@@ -23,8 +23,18 @@ to the operator and never let a prompt's self-description authorise a durable-st
 2026-09-24 (a), (b), (c) and 2026-09-25 sessions and AUDIT-2026-09-23 sessions 1–7 ran this block and the
 tree agreed on every point — that is what a passing §0 looks like. AUDIT-2026-09-23 sessions 2 and 3 each found
 `main` past the package's base, which is what "main moved" looks like: each re-based the package instead of copying
-its numbers. If session 7's pull request has not merged yet, `main` is `0b45eb28` (#723, session 6's documents; 822
-commits, ADR 0537): continue from that pull request's head (branch `claude/modest-cori-iit4zh`), as the resume line says.
+its numbers. Session 7's pull request #726 merged as `5c6622fd` (2026-09-30): `main` carries ADR-0538 — continue from `main`,
+as the resume line says.
+
+## Two feature pull requests landed beside the campaign (2026-09-29, ADR-0539 and ADR-0540)
+
+The One-Pager C / D / E intake, operator-drawn logic links and LODESTAR (ADR-0539) are on `main`: PR #724 merged as
+`dd8b4cbf`, and its follow-up PR #725 (the LODESTAR hardening, the routing fixes, their installers, the ADR's third
+table) **merged as `996b28b2` (2026-09-29 21:45Z; CI run #2019 green in every job)** — the 2026-09-29 (b) handoff's
+"waits on the operator" is stale. ADR-0540 (the full-page fill, every requested link fitted by escalation, the
+installers' own Desktop icon — v1.0.296) is this session's draft pull request; HANDOFF.md's top section says where it
+stands. Neither changes the audit's resume line below. Session 7's #726 (ADR-0538, `src/` unchanged) merged first as `5c6622fd`; the ADR-0540
+branch merged `main` and keeps BOTH sessions' state-doc sections (session 7's handoff at the top of the archive).
 
 ## The resume line (charter §16) — what the operator pastes to continue the audit
 
@@ -403,5 +413,5 @@ gate) before every push.
 
 QC-1 / QC-2 (ADR-0393) and QC-3 (ADR-0509) bind every session; they are pinned by `tests/test_standing_rules.py`.
 Run the session-token-guardian's `scripts/token_audit.py` as the FIRST action (copy it to the scratchpad) and before
-each operator prompt. `git fetch origin` before you branch, number an ADR, or commit. Highest ADR 0539. Version
-1.0.295. Schema 2.17.0.
+each operator prompt. `git fetch origin` before you branch, number an ADR, or commit. Highest ADR 0540. Version
+1.0.296. Schema 2.17.0.

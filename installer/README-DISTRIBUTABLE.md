@@ -17,8 +17,10 @@ internet needed for the tool itself) → the MPXJ converter that native `.mpp` i
 from a repo checkout if you have one beside the file, otherwise downloaded, ~17 MB, and SHA-256
 verified against a manifest baked into the installer) → optional Java 17 (also native `.mpp` only)
 → optional Ollama + the tier's AI model. It finishes by creating the Desktop and Start-Menu
-shortcut — a single **Polaris²** icon on Windows (the app stops itself on Quit),
-**Start**/**Stop** launchers on Linux and macOS — an uninstaller, and a first-run README.
+shortcut — a single **Polaris²** icon carrying the tool's own picture (ADR-0540): a shortcut on
+Windows (the app stops itself on Quit), a **Polaris²** application on the macOS Desktop, an
+app-menu entry plus a **Polaris²** icon on the Linux Desktop (the Start/Stop launchers stay in the
+install folder as fallbacks) — an uninstaller, and a first-run README.
 Nothing optional can abort the install: a failed Java, converter, or model download is
 reported plainly and the rest still completes.
 

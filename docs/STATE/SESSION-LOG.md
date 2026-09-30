@@ -20202,3 +20202,46 @@ commit, not a rebase. The resolution:
   not) — never skipped. The fix itself (`default_request_version = "HTTP/1.0"`) is right on every version.
 - **Operator questions:** the Excel exports' fixed CUI header vs the marking switch; the slide link tag vs §1's 8 px
   floor; refused-and-named collisions on dense slides. **Next:** HANDOFF.md.
+
+## 2026-09-29 (c) — ADR-0540: the One-Pager slide fills the page at every list size, every logic link is fitted (space → gutter → reorder within the swimlane → drawn dashed and NAMED), and the installers put the tool's own Desktop icon on the machine — v1.0.296
+
+- **Branch** `claude/gracious-lovelace-8hwycm` from `main` @ `996b28b2` — **#725 squash-merged by the operator at
+  2026-09-29 21:45Z (CI run #2019 green)**; the 2026-09-29 (b) entry and handoff said it waited on the operator, which
+  it no longer does. This session took **ADR-0540**; ADR-0538 is held by AUDIT session 7's draft **PR #726**
+  (`claude/modest-cori-iit4zh` @ `3a177864`, opened 23:09Z after this session began, base `996b28b2`, `src/` unchanged),
+  dirty against `main` on the five state docs this session rotates too — the second to merge keeps BOTH sections. Two commits (the source, then the rebuilt artifacts with these numbers), one draft PR; the operator marks it ready and merges.
+- **The plan was attacked first (QC-3, ADR-0540's second table).** "The layout already scales" REFUTED on the pristine
+  tree (3 items filled 13.7 % of the lane area on both pages; only 144 reached 100 %). "The .pptx can already carry
+  speaker notes" REFUTED (no notes parts) — a slide FOOTNOTE was chosen, painted by the page and the .pptx alike.
+  "Routing is fast enough to re-run per step" measured at 6.7 s → the router was sped up FIRST to 3.8 s with an
+  identical digest over 1,250 links. "Nothing assumes the packed order" HELD. Windows' shortcut icon HELD by reading.
+- **Built.** `fit_rows` (pitch and glyph apart — the 40-item fit cycled 16 ↔ 17 rows and filled 94 % until they were);
+  `fit_links` / `Attempt` / `Fit` with the operator's escalation (glyphs 100 → 80 → 65 %, a 12-pt gutter lane, swaps
+  within a swimlane, 12 trials) under one `WORK_BUDGET` of 24,000 judged routes; the router's `force` path (least
+  overlap, `PlacedLink.flagged` / `overlap`, `RouteReport`), two more tag spots; the footnote (`_footnote`, `FOOT_CHAR_W`
+  0.66 after LibreOffice ran the review's footnote off the slide); dashed flagged links in `onepager_links.js` and
+  `pptx.py`; the page notices; Excel Notes carry the fit notes and the list keeps the sheet's order; a per-session
+  layout cache; `schedule_forensics.desktop_icon` and the three installer templates; DESIGN-SYSTEM §7c's rulings (a) /
+  (b) / (c); ADR-0540; USER-GUIDE 12c; the LODESTAR and installer READMEs; version 1.0.296.
+- **The build was attacked after it was written (QC-1, ADR-0540's third table)** — a 3-item slide "crowded" (seed
+  1034: the tag on its neighbour's leg at both spots); the 40-item 2-cycle; a forced link naming heads but not tags; a
+  clean link through a flagged link's tag (seed 15: the force path judged a COPY of the route — the property test's
+  catch); the escalation outside its budget (27.3 s → 15.7 s); the footnote off the .pptx edge; the page-only axis
+  caption on the bottom row (pre-existing at full density; moved under the legend on both pages); one layout per state
+  per session; the browser suite's click helper refusing a 70-pt bar whose label sits at its centre (Playwright's
+  hit-target check; the operator's pointer picks it — the helper now clicks by coordinates, and a mutant that disables
+  the pick handler turns it red by name). **Three adversarial reviews** (routing / escalation; page and .pptx rendering in four views at 1440 / 390 plus every doc claim; installers, the session cache and LODESTAR) returned 17 findings; the lead re-reproduced each RED (the reviewers' own probes on a clean copy, then a pin of its own), fixed and mutation-proved it: diamonds 107 pt off the slide at 2 items (`GLYPH_MAX` 40 and a per-diamond clamp to the chart's edges); a footnote reserve that sank a 116-row list that fit (not taken; the corner's .pptx carries no footnote — recorded); a 10-pt reserve with nothing said (`RESERVE_NOTE`); the one-line footnote naming no link in full (compact entries over up to four reserved lines, whole entries dropped and counted); a gutter route's predecessor point recorded by the successor's channel (`RouteReport.points`); the Polaris² cache serving a torn slide when a POST lands mid-layout (`OnePagerSnapshot`: key and layout read one instant) and a key blind to a link's identity fields; the Linux Desktop entry titled "Start Polaris²" and an `[ok]` claiming an icon that failed; the icon writer trusting the ICO directory and copying CRC-broken frames; the .pptx footnote in the DUPLICATE-NAME hue (`_WARN`); LODESTAR 1.0.0 vs its README's 1.0.1; the ADR's generator parameters and "under 2 s" (the module's generator: 46 / 1 / 13 over 60 seeds, 3 seeds over 2 s); "7.8 px" as one density (3.8–13.8 px measured). Four observations recorded, not changed.
+- **Re-derived pins, each with its reason:** the 13-pt sweep, the W-tag dates, the naive-band filler (29), the pristine
+  digest, `links_2`'s row height, the Compare move-head pin, the `_swap_ok` fixture; the round-site ledger (+2
+  `whole_pct`) and the audit report's census.
+- **Measured at close (clean worktree of the final commit, Python 3.11):** static gate green (pinned ruff 0.16.9, mypy 178, bandit 0, node per file); LODESTAR current (707,568 B, 34 members); **the FULL suite on a clean worktree of `26128a81` with the artifacts: 6,583 passed, 5 skipped, 83 xfailed, 1 failed (the axis-caption ledger — both painters' caption moved on purpose; re-derived in the second commit, its module 25 passed on the final tree), 58 min 20 s; `-m parity` 271 passed (11 min 43 s)**; no XPASS; on the final tree the installer / LODESTAR / state-doc guards 113 passed; #726's reproducers 62 xfailed, 0 XPASS.
+- **CI's first run of PR #727** (head `5305d940`): windows, linux, floor, cui-guard, browser green; `test (3.13)`
+  1 failed / 6,128 passed — the 96 × 120 determinism pin's 40-s wall-clock bound (83.6 s on that runner, 16 s
+  here). Re-derived to counts (attempts and routes judged vs `WORK_BUDGET`; a budget switched off fails it) and
+  pushed as a third commit.
+- **Delivered to the operator:** the 3 / 10 / 40 / 144-item renders before and after (both pages, four views), the
+  forced case on the page and via LibreOffice from the .pptx — **the readable cap for tiny lists is the operator's
+  ruling** (`LABEL_MAX` 14 pt provisional; rows uncapped).
+- **UNVERIFIED:** Windows / macOS hosts (the `.lnk`, the `.app`, `gio`); PowerPoint itself; Firefox / WebKit.
+- **Out of scope, recorded:** UIP-3, ROUTES-5, "1 row(s) skipped", Excel percent formats, the hook's blindness to a
+  shebang-prefixed ZIP. **Next:** the operator's review of the draft PR and the cap ruling.

@@ -16,6 +16,14 @@ predecessor, then the successor), choose the type (Finish-to-Start by default, o
 Finish-to-Finish, Start-to-Finish) and add the link. Add as many pairs as you need (up to 200). Only the links
 you add are drawn — on the page and in the PowerPoint export.
 
+The slide always fills the page: a short list gets large bars and text, a long one smaller. Every
+link you add is fitted — when the rows leave no clean route the slide makes more room between the
+rows, then adds a gutter lane at the right edge, then reorders items within their swimlane (never
+across), and says so under "How the logic links were fitted"; a link that still cannot be drawn
+clear of the others is drawn **dashed**, with what it covers named on the page and in the slide's
+footnote — up to four lines; past them the footnote counts the rest and the page names them (the
+PowerPoint carries the footnote too). It is never split onto a second slide.
+
 ## What you need
 
 **Python 3.10 or newer** — nothing else, and no internet. If the computer does not have it, install
@@ -64,4 +72,4 @@ list is not CUI.
 ---
 
 LODESTAR is built from the same modules as the One-Pager pages of POLARIS², so both draw the same
-slide from the same list. Version 1.0.0.
+slide from the same list. Version 1.0.1.

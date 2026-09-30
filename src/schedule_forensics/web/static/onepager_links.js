@@ -5,7 +5,10 @@
 //     canvas colour, the shaft, the layout's own arrowhead and, for SS / FF / SF, its type tag —
 //     ABOVE the items (so a leg that must cross a bar or a label reads as crossing it) and BELOW
 //     the red data-date line. Geometry is never computed here, only painted, exactly as the .pptx
-//     export paints the same points (reports/pptx.py _logic_links).
+//     export paints the same points (reports/pptx.py _logic_links). A link the layout FLAGGED
+//     (ADR-0540's last resort: no route clears every other link's ink, so it runs along the one
+//     that covers the least) is painted with a DASHED shaft, and the slide's footnote — the same
+//     text the .pptx carries — names what it covers.
 //  2. PICK two items by clicking them: the first click fills the page's "From" select, the second
 //     its "To" select, and both are ringed and tagged FROM / TO on the slide. The selects ARE the
 //     form — they work with no script at all, and they are the keyboard path — so this only saves
@@ -31,8 +34,8 @@
     var links = L.links || [];
     var layer = el("g", { class: "op-links-layer" });
     links.forEach(function (ln) {
-      var g = el("g", { class: "op-link", "data-pred": ln.pred, "data-succ": ln.succ, "data-kind": ln.kind });
-      g.appendChild(el("title", {}, ln.pred_name + " → " + ln.succ_name + " (" + ln.kind + ")"));
+      var g = el("g", { class: "op-link" + (ln.flagged ? " op-link-flagged" : ""), "data-pred": ln.pred, "data-succ": ln.succ, "data-kind": ln.kind, "data-flagged": ln.flagged ? "1" : null });
+      g.appendChild(el("title", {}, ln.pred_name + " → " + ln.succ_name + " (" + ln.kind + ")" + (ln.flagged ? " — drawn dashed over " + ln.overlap : "")));
       g.appendChild(el("polyline", { points: points(ln.shaft), class: "op-link-halo" }));
       g.appendChild(el("polyline", { points: points(ln.shaft), class: "op-link-line" }));
       g.appendChild(el("polygon", { points: points(ln.head), class: "op-link-head" }));
@@ -50,6 +53,20 @@
     while (before && before.parentNode !== svg) before = before.parentNode;
     if (before) svg.insertBefore(layer, before);
     else svg.appendChild(layer);
+    // the slide's footnote (ADR-0540): what the layout did to fit the links, and every link
+    // drawn dashed over other ink — painted where the .pptx paints it, so the page previews it
+    if (L.footnote) {
+      var warn = links.some(function (ln) { return ln.flagged; });
+      var lines = L.footnote.split("\n"), lh = L.footnote_lh || L.footnote_pt * 1.18;
+      var foot = el("text", {
+        x: L.footnote_x, y: L.footnote_y - (lines.length - 1) * lh, class: "op-footnote" + (warn ? " op-footnote-warn" : ""),
+        style: "font-size:" + L.footnote_pt + "px", "data-no-i18n": "1",
+      });
+      lines.forEach(function (line, i) { // one tspan per line, the last on L.footnote_y
+        foot.appendChild(el("tspan", { x: L.footnote_x, dy: i ? lh : 0 }, line));
+      });
+      svg.appendChild(foot);
+    }
     // the legend's "Logic link" symbol: its label is painted by the page's own legend loop
     (L.legend || []).forEach(function (e) {
       if (e.kind !== "link") return;

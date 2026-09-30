@@ -20,7 +20,7 @@ import threading
 from collections import OrderedDict
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field, fields
-from typing import TypeVar, cast
+from typing import Any, TypeVar, cast
 
 from schedule_forensics.ai import (
     AIBackend,
@@ -795,6 +795,9 @@ class SessionState:
     onepager_links_is_error: bool = False
     onepager_compare_links_msg: str | None = None
     onepager_compare_links_is_error: bool = False
+    #: each One-Pager page's last laid-out slide, keyed by everything it was computed from
+    #: (ADR-0540; ``web.onepager.cached_layout``)
+    onepager_cache: dict[str, tuple[Any, Any]] = field(default_factory=dict)
     # JCL joint cost-&-schedule confidence settings (ADR-0269). Blank targets (None) mean
     # "use the run's deterministic finish / EAC"; td_share is the time-dependent cost share
     # τ; the 1/1/1 multipliers mean cost-estimating uncertainty is OFF (duration-driven

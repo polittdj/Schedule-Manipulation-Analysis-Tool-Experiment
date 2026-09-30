@@ -58,6 +58,7 @@ from schedule_forensics.reports import onepager_links as links_mod
 from schedule_forensics.reports import pptx
 from schedule_forensics.reports.onepager import (
     CROWDED_NOTE,
+    LABEL_MAX,
     Layout,
     OnePagerDoc,
     OnePagerItem,
@@ -631,11 +632,16 @@ def compare_sweep() -> list[CompareLayout]:
     return out
 
 
-def test_the_sweep_spans_row_13_down_to_the_label_floors(onepager_sweep: list[Layout]) -> None:
+def test_the_sweep_spans_the_page_filling_slide_down_to_the_label_floors(
+    onepager_sweep: list[Layout],
+) -> None:
     """The clearance claim below is only as wide as this sweep: it must reach the roomy slide
-    AND both label floors (5.0 pt at row 7, 4.2 pt at row 5.5), with links drawn at each."""
-    assert onepager_sweep[0].row_h == 13.0 and onepager_sweep[-1].row_h < 6.0
-    assert {round(lay.label_pt, 2) for lay in onepager_sweep} >= {7.8, 5.0, 4.2}
+    AND both label floors (5.0 pt at row 7, 4.2 pt at row 5.5), with links drawn at each.
+    Since ADR-0540 the rows FILL the slide, so the roomy end is far above the old 13-pt cap
+    (six items in three swimlanes: 70 pt rows) and its labels stand at the LABEL_MAX cap."""
+    assert onepager_sweep[0].row_h > 13.0 and onepager_sweep[-1].row_h < 6.0
+    assert onepager_sweep[0].label_pt == LABEL_MAX
+    assert {round(lay.label_pt, 2) for lay in onepager_sweep} >= {LABEL_MAX, 5.0, 4.2}
     assert all(len(lay.links) >= 3 for lay in onepager_sweep)
 
 
@@ -665,32 +671,29 @@ def test_no_leg_crosses_a_glyph_on_an_uncrowded_compare_and_a_crowded_one_says_s
         assert is_crowded or hits == [], f"row {lay.row_h:.2f}: {hits[:3]}"
 
 
-def _slipped_compare() -> CompareDoc:
+def _slipped_compare(filler: int = 0) -> CompareDoc:
     """Frame (unchanged) and Inspect (a milestone) share the top row; Wiring slipped 60 days in
-    the row below, its move arrow reaching up toward the gap a Frame → Inspect leg must use."""
+    the row below, its move arrow reaching up toward the gap a Frame → Inspect leg must use.
+    ``filler`` unchanged items in a second swimlane, one row each, bring the page-filling rows
+    (ADR-0540: 209 pt for three rows) down to the 13-pt density the naive-band mutant needs."""
 
     def doc(source: str, wiring_finish: D) -> OnePagerDoc:
-        return OnePagerDoc(
-            source,
-            "S",
-            tuple(
-                keyed(
-                    [
-                        OnePagerItem("Build", "Frame", D(2027, 1, 4), D(2027, 3, 1), 2),
-                        OnePagerItem("Build", "Wiring", D(2027, 2, 1), wiring_finish, 3),
-                        OnePagerItem("Build", "Inspect", D(2027, 9, 1), D(2027, 9, 1), 4),
-                    ]
-                )
+        items = [
+            OnePagerItem("Build", "Frame", D(2027, 1, 4), D(2027, 3, 1), 2),
+            OnePagerItem("Build", "Wiring", D(2027, 2, 1), wiring_finish, 3),
+            OnePagerItem("Build", "Inspect", D(2027, 9, 1), D(2027, 9, 1), 4),
+            *(
+                OnePagerItem("Filler", f"Filler {n}", D(2027, 4, 1), D(2027, 8, 1), 10 + n)
+                for n in range(filler)
             ),
-            (),
-            (),
-        )
+        ]
+        return OnePagerDoc(source, "S", tuple(keyed(items)), (), ())
 
     return compare_onepager_docs(doc("prior.xlsx", D(2027, 5, 3)), doc("cur.xlsx", D(2027, 7, 2)))
 
 
-def _slipped_layout() -> CompareLayout:
-    doc = _slipped_compare()
+def _slipped_layout(filler: int = 0) -> CompareLayout:
+    doc = _slipped_compare(filler)
     k = {r.name: r.key for r in doc.rows}
     return build_compare_layout(doc, TODAY, "T", links=[Link(k["Frame"], k["Inspect"])])
 
@@ -713,10 +716,12 @@ def test_a_compare_leg_clears_the_label_and_the_new_tag_of_a_row_it_passes(
     its NEW TAG (a one-letter name) lies under the leg. Either must be measured and cleared."""
     base = [
         OnePagerItem("Build", "Prime", D(2027, 1, 4), D(2027, 3, 1), 2),
-        OnePagerItem("Build", "Successor", D(2027, 3, 8), D(2027, 6, 1), 4),
+        OnePagerItem("Build", "Successor", D(2027, 3, 4), D(2027, 6, 1), 4),
         OnePagerItem("Build", "Late add", D(2028, 1, 3), D(2028, 1, 3), 5),
     ]
-    new = OnePagerItem("Build", name, D(2027, 1, 18), D(2027, 1, 29), 3)
+    # a two-day bar (ADR-0540's page-filling 14-pt labels are wider than the old 7.8-pt ones,
+    # so the item is shorter and the successor starts sooner than the ADR-0539 fixture's)
+    new = OnePagerItem("Build", name, D(2027, 1, 6), D(2027, 1, 7), 3)
     doc = compare_onepager_docs(
         OnePagerDoc("prior.xlsx", "S", tuple(keyed(base)), (), ()),
         OnePagerDoc("cur.xlsx", "S", tuple(keyed([base[0], new, *base[1:]])), (), ()),
@@ -931,14 +936,29 @@ def test_mutation_without_the_move_arrow_keep_outs_a_vertical_leg_is_caught(
     assert hits and all("a vertical leg covers" in h for h in hits), hits
 
 
-def test_no_link_covers_a_move_arrow_head_on_any_compare_slide(
+def test_no_clean_link_covers_a_move_arrow_head_on_any_compare_slide(
     compare_sweep: list[CompareLayout],
 ) -> None:
     """Every density of the sweep, crowded or not: a move arrow's head says which way a finish
-    moved, and no link's halo or head is ever drawn over one."""
+    moved, and no link drawn CLEAN is ever over one. Since ADR-0540 the last resort draws a link
+    no route clears along the route that covers the least, FLAGGED (dashed) and naming what it
+    covers — so a covered head belongs to a flagged link whose ``overlap`` names that arrow, and
+    the densest slides of the sweep do carry some (else this clause is vacuous)."""
     assert sum(p.arrow_x0 is not None for lay in compare_sweep for p in lay.items) > 50
+    flagged_total = 0
     for lay in compare_sweep:
-        assert _move_head_hits(lay) == [], f"row {lay.row_h:.2f}"
+        flagged = {
+            f"{ln.pred_name} → {ln.succ_name} ({ln.kind})": ln.overlap
+            for ln in lay.links
+            if ln.flagged
+        }
+        flagged_total += len(flagged)
+        for hit in _move_head_hits(lay):
+            what, _sep, rest = hit.partition(": ")
+            assert what in flagged, f"row {lay.row_h:.2f}: a clean link covers a move head: {hit}"
+            victim = rest.split(" of ", 1)[1].rsplit("'s head", 1)[0]
+            assert "arrow of “" in flagged[what] and victim in flagged[what], (hit, flagged[what])
+    assert flagged_total > 0, "the sweep must exercise the flagged last resort"
 
 
 def test_mutation_a_naive_row_boundary_channel_is_caught_striking_the_move_arrow(
@@ -950,7 +970,10 @@ def test_mutation_a_naive_row_boundary_channel_is_caught_striking_the_move_arrow
     Since review UIP-2 the arrow's HEAD is also ink no link may cover (the Compare slide hands
     the router its move-arrow heads, ``_keep_outs``), a second, independent defense: under the
     naive band alone the router refuses the leg over the head and routes it round the top of
-    the slide. So the mutant switches both off to show THIS checker still sees the leg."""
+    the slide. So the mutant switches both off to show THIS checker still sees the leg — on a
+    slide dense enough that the naive boundary lands on the arrow (ADR-0540's page-filling
+    three-row slide puts the boundary 100 pt from it, and the real router clears it there too:
+    the un-mutated ``_slipped_layout()`` tests above)."""
     from schedule_forensics.reports import onepager_compare as compare_mod
 
     def naive(grid: Grid, j: int, xa: float, xb: float) -> tuple[float, float]:
@@ -959,7 +982,9 @@ def test_mutation_a_naive_row_boundary_channel_is_caught_striking_the_move_arrow
 
     monkeypatch.setattr(links_mod, "_free", naive)
     monkeypatch.setattr(compare_mod, "_keep_outs", lambda *_a, **_k: ())
-    hits = _leg_hits(_slipped_layout(), own_ends=False)
+    dense = _slipped_layout(filler=29)  # 13.3-pt rows: the boundary lands on the arrow
+    assert dense.row_h < 14.0
+    hits = _leg_hits(dense, own_ends=False)
     assert hits and all("crosses a move arrow" in h for h in hits), hits
 
 

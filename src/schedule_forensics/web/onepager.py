@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+from collections.abc import Sequence
 
 from schedule_forensics.reports.onepager import (
     CROWDED_NOTE,
@@ -49,6 +50,7 @@ from schedule_forensics.reports.onepager_links import (
 from schedule_forensics.reports.tableset import Cell, Table, TableSet
 from schedule_forensics.web.htmlkit import _e, _panel_head, _shell_tools, _utility_takeaway
 from schedule_forensics.web.onepager_common import OnePagerSession as SessionState
+from schedule_forensics.web.onepager_common import cached_layout, link_key, snapshot
 
 #: The columns the intake expects — the page explains them, and the template export ships them.
 TEMPLATE_ROWS: tuple[tuple[Cell, ...], ...] = (
@@ -149,7 +151,23 @@ def _link_context(st: SessionState) -> tuple[dict[str, str], dict[str, str]]:
 
 def onepager_layout(st: SessionState, today: dt.date) -> Layout | None:
     """The laid-out slide for the session's list, or ``None`` with nothing (usable) loaded — or
-    nothing inside the date window. The operator's logic links are routed on it (ADR-0539)."""
+    nothing inside the date window. The operator's logic links are routed on it (ADR-0539).
+    Laid out once per state (ADR-0540, :func:`cached_layout`): the key is the whole list, the
+    window, the title, today and every field of the links — read from ONE snapshot of the
+    session, the same snapshot the layout reads (:func:`snapshot`), so a POST landing while the
+    slide is laid out can never leave its state's slide under this state's key."""
+    snap = snapshot(st)
+    key = (
+        snap.onepager,
+        snap.onepager_window,
+        snap.onepager_title,
+        today,
+        link_key(snap.onepager_links),
+    )
+    return cached_layout(st, "onepager", key, lambda: _onepager_layout(snap, today))
+
+
+def _onepager_layout(st: SessionState, today: dt.date) -> Layout | None:
     doc, _omitted = onepager_view(st)
     if doc is None or not doc.items:
         return None
@@ -224,23 +242,35 @@ Add as many pairs as you need (up to {MAX_LINKS}): every link you add is drawn o
 </section>"""  # nosec B608 (HTML, not SQL)
 
 
+#: The words a flagged link's note carries (``onepager_links._flagged``), by which the page
+#: tells it from a link not drawn.
+_FLAGGED_MARK = " is drawn DASHED over "
+
+
 def links_list(
     action: str,
     prefix: str,
     links: tuple[Link, ...],
     drawn: list[PlacedLink],
     notes: list[str],
+    fit_notes: Sequence[str] = (),
 ) -> str:
     """BELOW the slide: every link the operator made, each with its own Remove, and — in a block
     of its own, because a link not drawn is an omission, not an assumption — every link the
-    slide does NOT draw, with the reason."""
+    slide does NOT draw, with the reason; every link drawn DASHED over other ink (ADR-0540's
+    last resort), with what it covers; and what the layout did to fit the links (``fit_notes``:
+    the room made, the gutter lane, the items reordered within their swimlane)."""
     if not links:
         return ""
     on_slide = {(d.pred, d.succ, d.kind) for d in drawn}
+    dashed = {(d.pred, d.succ, d.kind) for d in drawn if d.flagged}
     items = ""
     for ln in links:
         shown = (ln.pred, ln.succ, ln.kind) in on_slide
-        state = "" if shown else ' <span class="op-link-off">— not drawn (see below)</span>'
+        if (ln.pred, ln.succ, ln.kind) in dashed:
+            state = ' <span class="op-link-off">— drawn dashed over other ink (see below)</span>'
+        else:
+            state = "" if shown else ' <span class="op-link-off">— not drawn (see below)</span>'
         what = f"{ln.pred_label} → {ln.succ_label} ({ln.kind})"
         items += (
             f"<li><span data-no-i18n>{_e(ln.pred_label)} → {_e(ln.succ_label)}</span> · "
@@ -253,13 +283,30 @@ def links_list(
             f'<button type=submit class=linkbtn aria-label="Remove logic link {_e(what)}">Remove</button>'
             "</form></li>"
         )
-    undrawn = [n for n in notes if n != CROWDED_NOTE]
+    flagged = [n for n in notes if _FLAGGED_MARK in n]
+    undrawn = [n for n in notes if n != CROWDED_NOTE and n not in flagged]
     missing = (
         f'<div class="notice warn" role=alert><b>Logic links not drawn — {len(undrawn)} of '
         f"{len(links)}</b><ul class=op-notes>"
         + "".join(f"<li>{_e(n)}</li>" for n in undrawn)
         + "</ul></div>"
         if undrawn
+        else ""
+    )
+    over = (
+        f'<div class="notice warn" role=alert><b>Logic links drawn dashed over other ink — '
+        f"{len(flagged)} of {len(links)}</b> (no clear route exists; each is named in the "
+        "slide's footnote and in the PowerPoint)<ul class=op-notes>"
+        + "".join(f"<li>{_e(n)}</li>" for n in flagged)
+        + "</ul></div>"
+        if flagged
+        else ""
+    )
+    fitted = (
+        '<div class="notice ok" role=status><b>How the logic links were fitted</b><ul class=op-notes>'
+        + "".join(f"<li>{_e(n)}</li>" for n in fit_notes)
+        + "</ul></div>"
+        if fit_notes
         else ""
     )
     crowded = (
@@ -271,7 +318,7 @@ def links_list(
 <ul class=op-link-list>{items}</ul>
 <form action="{action}" method=post class=op-link-clear data-noprint=1 data-sf-nopersist><input type=hidden name=action value=clear>
 <button type=submit>Remove all links</button></form>
-{missing}{crowded}
+{missing}{over}{fitted}{crowded}
 </section>"""
 
 
@@ -467,7 +514,7 @@ bottom. Hover any bar or diamond for its dates; click two of them to link them.<
 {links_form("/onepager/links", "op", linkable_items(st), link_msg, link_error)}
 <div id=opHost class="op-host chart-host" role=img aria-label="{_e(lay.title)}"></div>
 <script id=opData type="application/json">{blob}</script>
-{links_list("/onepager/links", "op", st.onepager_links, lay.links, lay.link_notes)}
+{links_list("/onepager/links", "op", st.onepager_links, lay.links, lay.link_notes, lay.fit_notes)}
 {_data_table(view)}
 </div>
 {_dropzone(st, loaded=True)}{_SCRIPT}"""

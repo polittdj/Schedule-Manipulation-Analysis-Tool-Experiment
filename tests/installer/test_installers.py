@@ -755,3 +755,168 @@ def test_distributable_readme_explains_updating_an_existing_install() -> None:
     text = (ROOT / "installer" / "README-DISTRIBUTABLE.md").read_text(encoding="utf-8")
     assert "## Updating an install you already have" in text
     assert "embeds" in text and "re-download" in text.lower()
+
+
+# ── ADR-0540: the ONE Desktop icon carries the tool's own picture ──────────────────────────────
+
+
+def test_installers_put_the_tools_own_icon_on_the_desktop_shortcut() -> None:
+    """Operator 2026-09-29 (ADR-0540): the Desktop icon that opens the program is custom to the
+    tool. Windows: the .lnk's IconLocation is the .ico the installed package writes into the
+    install folder (never a path into site-packages). Linux: the app-menu entries carry
+    ``Icon=`` (a PNG the package writes) and the Start entry is copied to the Desktop as
+    "Polaris²". macOS: a minimal "Polaris²" application bundle with an .icns of the same frames,
+    copied to the Desktop; the Start/Stop pair leaves the Desktop (the uninstaller removes all
+    of it). Every family asks ONE module — ``schedule_forensics.desktop_icon`` — for the file,
+    so the pictures cannot drift between platforms. Real hosts are UNVERIFIED here (no Windows
+    or macOS runner); the writer itself is tested in tests/desktop/test_desktop_icon.py."""
+    ps1 = (ROOT / "tools" / "installer" / "template.ps1").read_text(encoding="utf-8")
+    assert "schedule_forensics.desktop_icon ico $iconPath" in ps1
+    assert '$lnk.IconLocation = "$iconPath,0"' in ps1
+    assert 'Join-Path $InstallRoot "Polaris2.ico"' in ps1  # in the install folder, not the venv
+    assert "site-packages" not in ps1.split("$iconPath = ")[1].split("$lnk.Save()")[0]
+    sh = (ROOT / "tools" / "installer" / "template.sh").read_text(encoding="utf-8")
+    assert 'schedule_forensics.desktop_icon png "$ICON_PNG"' in sh
+    assert sh.count("$ICON_LINE") >= 2  # both app-menu entries carry Icon=
+    assert '"$HOME/Desktop/Polaris².desktop"' in sh and "metadata::trusted true" in sh
+    assert '"\\$HOME/Desktop/Polaris².desktop"' in sh  # the uninstaller removes it
+    cmd = (ROOT / "tools" / "installer" / "template.command").read_text(encoding="utf-8")
+    assert 'schedule_forensics.desktop_icon icns "$APP/Contents/Resources/Polaris2.icns"' in cmd
+    assert "<key>CFBundleIconFile</key><string>Polaris2.icns</string>" in cmd
+    assert "<key>CFBundleExecutable</key><string>Polaris2</string>" in cmd
+    assert 'cp -R "$APP" "$HOME/Desktop/"' in cmd
+    assert 'rm -rf "\\$HOME/Desktop/Polaris².app"' in cmd  # the uninstaller removes it
+    assert (
+        'rm -f "$HOME/Desktop/Start Polaris².command" "$HOME/Desktop/Stop Polaris².command"' in cmd
+    )
+    assert 'double-click "Polaris²" on the Desktop' in cmd
+    for tier in TIERS:  # the generated installers carry all of it
+        assert '$lnk.IconLocation = "$iconPath,0"' in _read(tier, "ps1")
+        assert '"$HOME/Desktop/Polaris².desktop"' in _read(tier, "sh")
+        assert "<key>CFBundleIconFile</key><string>Polaris2.icns</string>" in _read(tier, "command")
+
+
+def test_the_icon_step_never_kills_an_install() -> None:
+    """A missing or failed icon is a warning, never a stop: the Windows call is wrapped in
+    try/catch and checked by exit code; the POSIX calls sit in an ``if !`` with a warning and
+    the entries fall back to the default icon (``ICON_LINE`` empties)."""
+    ps1 = (ROOT / "tools" / "installer" / "template.ps1").read_text(encoding="utf-8")
+    block = ps1.split("$iconPath = ")[1].split("foreach ($dir in")[0]
+    assert block.startswith('Join-Path $InstallRoot "Polaris2.ico"') and "try {" in block
+    assert "if ($LASTEXITCODE -ne 0) { Warn2" in block and "} catch { Warn2" in block
+    sh = (ROOT / "tools" / "installer" / "template.sh").read_text(encoding="utf-8")
+    assert 'if ! "$VENV_DIR/bin/python" -m schedule_forensics.desktop_icon png "$ICON_PNG"' in sh
+    assert 'ICON_PNG=""' in sh and '[ -n "$ICON_PNG" ] && ICON_LINE="Icon=$ICON_PNG"' in sh
+    cmd = (ROOT / "tools" / "installer" / "template.command").read_text(encoding="utf-8")
+    assert 'if ! "$VENV_DIR/bin/python" -m schedule_forensics.desktop_icon icns' in cmd
+    assert "the Desktop application keeps the generic icon" in cmd
+
+
+def test_the_macos_bundle_launches_exactly_what_the_start_launcher_launches() -> None:
+    """The bundle's executable is the Start launcher's own command line, so the ONE icon and
+    the fallback start the same server on the same port."""
+    cmd = (ROOT / "tools" / "installer" / "template.command").read_text(encoding="utf-8")
+    launch = (
+        'exec "$VENV_DIR/bin/python" -c "from schedule_forensics.launcher import main; '
+        'main(port=$APP_PORT)"'
+    )
+    assert cmd.count(launch) == 2  # the Start launcher and the bundle's executable
+    plist = cmd.split("<plist version")[1].split("</plist>")[0]
+    for key in ("CFBundleName", "CFBundleIdentifier", "CFBundleVersion", "CFBundlePackageType"):
+        assert f"<key>{key}</key>" in plist
+    assert "{{WHEEL_VERSION}}" in plist  # the build stamps the embedded wheel's version
+
+
+def _linux_desktop_block() -> str:
+    """The Linux template's launcher / app-menu / Desktop block, as shipped."""
+    text = (ROOT / "tools" / "installer" / "template.sh").read_text(encoding="utf-8")
+    start = text.index('if [ "$SMOKE" != "1" ]; then\n  mkdir -p "$HOME/.local/bin"')
+    end = text.index("\nfi\n", text.index("on the Desktop", start)) + len("\nfi\n")
+    return text[start:end]
+
+
+def _macos_desktop_block() -> str:
+    """The macOS template's Desktop block (the bundle copy and its report), as shipped."""
+    text = (ROOT / "tools" / "installer" / "template.command").read_text(encoding="utf-8")
+    start = text.index('if [ "$SMOKE" != "1" ]; then\n  # ADR-0436 rename')
+    end = text.index("\nfi\n", start) + len("\nfi\n")
+    return text[start:end]
+
+
+@pytest.mark.parametrize("icon", [True, False], ids=["icon", "no-icon"])
+def test_review_the_linux_desktop_entry_is_named_polaris2_and_a_lost_icon_is_said_so(
+    tmp_path: Path, icon: bool
+) -> None:
+    """Review of ADR-0540 (F3, F4): the Desktop entry was a byte copy of the app-menu Start
+    entry, so GNOME / KDE — which show ``Name=``, not the file name — titled it "Start
+    Polaris²"; and after a failed icon the step still reported "(the tool's own icon)"
+    (ADR-0192: never an ``[ok]`` for what did not happen). The REAL shipped block runs here."""
+    (tmp_path / "Desktop").mkdir()
+    root = tmp_path / "root"
+    icon_png = root / "polaris2.png"
+    harness = tmp_path / "desktop.sh"
+    harness.write_text(
+        "set -euo pipefail\n"
+        'ok(){ echo "[ok] $*"; }\nwarn(){ echo "[!!] $*"; }\n'
+        f'SMOKE=0\nINSTALL_ROOT="{root}"\nSTART_SH="$INSTALL_ROOT/start.sh"\n'
+        'STOP_SH="$INSTALL_ROOT/stop.sh"\n'
+        + (
+            f'ICON_PNG="{icon_png}"\nICON_LINE="Icon=$ICON_PNG"\n'
+            if icon
+            else 'ICON_PNG=""\nICON_LINE=""\n'
+        )
+        + _linux_desktop_block(),
+        encoding="utf-8",
+    )
+    proc = subprocess.run(
+        ["bash", str(harness)],
+        capture_output=True,
+        text=True,
+        timeout=60,
+        env={"PATH": "/usr/bin:/bin", "HOME": str(tmp_path)},
+    )
+    out = proc.stdout + proc.stderr
+    assert proc.returncode == 0, out
+    entry = (tmp_path / "Desktop" / "Polaris².desktop").read_text(encoding="utf-8")
+    assert "\nName=Polaris²\n" in entry and "Name=Start" not in entry, entry
+    assert f"\nExec={root}/start.sh\n" in entry, entry
+    assert (f"Icon={icon_png}" in entry) is icon, entry
+    menu = (tmp_path / ".local/share/applications/schedule-forensics-start.desktop").read_text(
+        encoding="utf-8"
+    )
+    assert "\nName=Start Polaris²\n" in menu  # the app-menu entry keeps its verb
+    ok_line = next(line for line in out.splitlines() if line.startswith("[ok] Launchers"))
+    assert ("the tool's own icon" in ok_line) is icon, ok_line
+    assert ("Desktop" in ok_line) and (icon or "icon" in ok_line.lower()), ok_line
+
+
+@pytest.mark.parametrize("icon", [True, False], ids=["icon", "no-icon"])
+def test_review_the_macos_desktop_report_names_a_lost_icon(tmp_path: Path, icon: bool) -> None:
+    """Review of ADR-0540 (F4): the bundle copy reported "(the tool's own icon)" whether or
+    not the .icns was written. The REAL shipped block runs here under bash."""
+    (tmp_path / "Desktop").mkdir()
+    root = tmp_path / "root"
+    app = root / "Polaris².app"
+    (app / "Contents" / "Resources").mkdir(parents=True)
+    (app / "Contents" / "MacOS").mkdir(parents=True)
+    if icon:
+        (app / "Contents" / "Resources" / "Polaris2.icns").write_bytes(b"icns\x00\x00\x00\x08")
+    harness = tmp_path / "desktop.sh"
+    harness.write_text(
+        "set -euo pipefail\n"
+        'ok(){ echo "[ok] $*"; }\nwarn(){ echo "[!!] $*"; }\n'
+        f'SMOKE=0\nINSTALL_ROOT="{root}"\nAPP="{app}"\n' + _macos_desktop_block(),
+        encoding="utf-8",
+    )
+    proc = subprocess.run(
+        ["bash", str(harness)],
+        capture_output=True,
+        text=True,
+        timeout=60,
+        env={"PATH": "/usr/bin:/bin", "HOME": str(tmp_path)},
+    )
+    out = proc.stdout + proc.stderr
+    assert proc.returncode == 0, out
+    assert (tmp_path / "Desktop" / "Polaris².app" / "Contents").is_dir()
+    ok_line = next(line for line in out.splitlines() if line.startswith("[ok] 'Polaris²'"))
+    assert ("the tool's own icon" in ok_line) is icon, ok_line

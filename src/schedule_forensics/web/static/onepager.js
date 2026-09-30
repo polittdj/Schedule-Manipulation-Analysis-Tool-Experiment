@@ -65,7 +65,7 @@
       var title = el("title", {}, p.name + (p.milestone ? " — " + p.finish : " — " + p.start + " → " + p.finish) + (p.done ? " · complete" + (L.status_label ? " (" + L.status_label + ")" : "") : ""));
       g.appendChild(title);
       if (p.milestone) {
-        var h = ms / 2;
+        var h = (p.ms || ms) / 2; // its own size at the chart's edge (ADR-0540)
         g.appendChild(el("polygon", { points: p.x0 + "," + (p.y - h) + " " + (p.x0 + h) + "," + p.y + " " + p.x0 + "," + (p.y + h) + " " + (p.x0 - h) + "," + p.y, fill: fill, class: "op-diamond" }));
       } else {
         g.appendChild(el("rect", { x: p.x0, y: p.y - barH / 2, width: p.x1 - p.x0, height: barH, rx: 1.2, fill: fill, class: "op-bar" }));
@@ -93,7 +93,9 @@
     svg.appendChild(el("line", { x1: L.lane_col_x0, y1: L.legend_y0, x2: L.x1, y2: L.legend_y0, class: "op-header-line" }));
     if (window.SFChartFrame && SFChartFrame.axisTitles) {
       SFChartFrame.axisTitles(svg, {
-        L: L.lane_col_x0 - 4, R: L.x1, T: L.lanes_y0 - 12, B: L.legend_y0 - 1,
+        // B: the SVG's empty strip under the legend (ADR-0540: the lanes reach the legend on
+        // every slide now, so a caption at their foot would lie on the bottom row)
+        L: L.lane_col_x0 - 4, R: L.x1, T: L.lanes_y0 - 12, B: L.h - 3,
       }, {
         xLabel: "Timeline by month and year", yLabel: "Swimlane",
       });

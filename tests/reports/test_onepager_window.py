@@ -108,9 +108,14 @@ def test_windowed_doc_names_every_omitted_item_and_the_excel_says_so() -> None:
     )
 
 
-#: The no-window layout of a fixed list, digested on the pristine tree (8c71c639) — the window
-#: work must leave every existing slide byte-identical.
-_PRISTINE_DIGEST = "b60a37dd0acf66403751b5a78a5d5233e3a66b6e6f6cd61b679859def84cfbac"
+#: The no-window layout of a fixed list, digested — first on the pristine tree (8c71c639), so
+#: the window work left every existing slide byte-identical; RE-PINNED under ADR-0540, whose
+#: full-page fill moved every row on purpose (a 13-pt cap became 100-pt rows on this list), so
+#: the pin now holds the ADR-0540 geometry: any later change to the no-window slide must be
+#: deliberate enough to re-pin this by hand. Re-pinned once more under ADR-0540's review: the
+#: glyph cap (`GLYPH_MAX` — this 8-item list's 67-pt rows drew 45-pt bars, now 27) and the
+#: per-diamond size and footnote line height the JSON now carries.
+_PRISTINE_DIGEST = "e622bbd35591bb3057e25a91967d7f5073910512532dd0ad2f5ab9891faa60ab"
 
 
 def _digest(obj: object) -> str:
@@ -121,7 +126,19 @@ def _digest(obj: object) -> str:
 #: column's letter. Stripped before the pristine digest so the pin keeps proving what it always
 #: proved (every slide's GEOMETRY is byte-identical) instead of being re-pinned blind; the new
 #: fields have their own tests (tests/reports/test_onepager_links.py).
-_ADDED_LAYOUT_FIELDS = ("links", "link_notes", "status_label")
+_ADDED_LAYOUT_FIELDS = (
+    "links",
+    "link_notes",
+    "status_label",
+    # ADR-0540: the fitting notes, the footnote and the gutter (each has its own tests in
+    # tests/reports/test_onepager_fill_and_fit.py)
+    "fit_notes",
+    "footnote",
+    "footnote_x",
+    "footnote_y",
+    "footnote_pt",
+    "gutter",
+)
 
 
 def _pristine(layout: dict) -> dict:

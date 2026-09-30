@@ -20,7 +20,12 @@ here is never inferred — it is a statement the operator makes by picking two i
   two rows draw over the leg's x-range, parallel legs on their own tracks; each end of an item
   hands out its own attachment points, and heads and type tags are reserved in their gap — and
   when the rows are too dense for that, the slide says so
-  (:data:`schedule_forensics.reports.onepager.CROWDED_NOTE`).
+  (:data:`schedule_forensics.reports.onepager.CROWDED_NOTE`). A link no route can draw clear of
+  every other link's head and tag is reported as a COLLISION (:class:`RouteReport`), and the
+  layout escalates (ADR-0540: more room between the rows, a gutter lane at the chart's edge —
+  :attr:`Grid.gutter` — then a reorder within a swimlane); as the last resort it asks for the
+  link ``force``d: drawn along the route that covers the LEAST, flagged (dashed) and named with
+  what it covers, on the page and on the slide — never silently, never on a second slide.
 
 Std-lib only: LODESTAR, the standalone One-Pager program, imports this module unchanged.
 """
@@ -278,6 +283,10 @@ class Grid:
     label_pt: float
     window: tuple[dt.date, dt.date] | None = None
     keep: tuple[tuple[Box, str], ...] = ()
+    #: a gutter lane ``(x0, x1)`` at the chart's right edge (ADR-0540, escalation step 2): a
+    #: link the gaps between its rows cannot carry runs out to the gutter, down or up it on a
+    #: track of its own, and back in beside its successor; ``None`` when the layout has none
+    gutter: tuple[float, float] | None = None
 
 
 @dataclass(frozen=True)
@@ -301,6 +310,11 @@ class PlacedLink:
     tag_y: float
     tag_anchor: str
     tag_pt: float
+    #: ADR-0540's last resort: no route clears every other link's ink, so this one is drawn along
+    #: the route that covers the least — DASHED on the page and in the .pptx — and ``overlap``
+    #: names what it covers (the words the page's note and the slide's footnote carry)
+    flagged: bool = False
+    overlap: str = ""
 
 
 def label_box(
@@ -399,12 +413,14 @@ def _tracks(
     own x-range, so equal offsets can land a fraction of a point apart and read as one line."""
     lo, hi = band
     mid = (lo + hi) / 2
+    # a box clear of the leg's x-range is clear of every track: drop it once, not per track
+    over = [b for b in used if not (b.x1 < xa - 1.0 or b.x0 > xb + 1.0)]
     out = []
     for k in range(0, 9):
         cand = _TRACK * ((k + 1) // 2) * (1 if k % 2 else -1) if k else 0.0
         if k and abs(cand) > (hi - lo) / 2 - LINK_W:
             continue
-        if _clear(used, xa, xb, mid + cand, hard_only):
+        if _clear(over, xa, xb, mid + cand, hard_only):
             out.append(mid + cand)
     return out
 
@@ -427,10 +443,26 @@ def _off_slide(a: Anchor, at_start: bool, grid: Grid) -> str | None:
 def _gap(seg: Seg, box: Box) -> float:
     """The distance from an axis-aligned segment (every leg of a route is one) to ``box`` —
     0 when they meet."""
-    (ax, ay), (bx, by) = seg
-    dx = max(box.x0 - max(ax, bx), 0.0, min(ax, bx) - box.x1)
-    dy = max(box.y0 - max(ay, by), 0.0, min(ay, by) - box.y1)
+    return _box_gap(_seg_box(seg), box)
+
+
+def _box_gap(sb: Box, box: Box) -> float:
+    """:func:`_gap` for a segment already boxed (:func:`_seg_box`)."""
+    dx = max(box.x0 - sb.x1, 0.0, sb.x0 - box.x1)
+    dy = max(box.y0 - sb.y1, 0.0, sb.y0 - box.y1)
     return float((dx * dx + dy * dy) ** 0.5)
+
+
+def _within(sb: Box, box: Box, reach: float) -> bool:
+    """Whether ``sb`` is within ``reach`` of ``box`` — :func:`_box_gap` ``< reach``. The two
+    axis gaps are tested first: the distance is at least each of them, so a segment further
+    than ``reach`` on either axis is rejected without the square root (the router's hot path:
+    3.7 million distance calls on a 144-item, 200-link slide, most of them far away)."""
+    if max(box.x0 - sb.x1, 0.0, sb.x0 - box.x1) >= reach:
+        return False
+    if max(box.y0 - sb.y1, 0.0, sb.y0 - box.y1) >= reach:
+        return False
+    return _box_gap(sb, box) < reach
 
 
 def _meet(a: Box, b: Box) -> bool:
@@ -451,10 +483,12 @@ def _seg_box(seg: Seg) -> Box:
 
 @dataclass(frozen=True)
 class _Spot:
-    """One place a type tag may stand: its ink box, and the x and anchor it is written at."""
+    """One place a type tag may stand: its ink box, and the x, baseline y and anchor it is
+    written at."""
 
     box: Box
     x: float
+    y: float
     anchor: str
 
 
@@ -463,20 +497,27 @@ def _tag_spots(
 ) -> list[_Spot]:
     """Where a link's type tag may stand, in preference order — on its channel line beside the
     leg into the head, then beside the leg out of its predecessor, each on the side AWAY from its
-    own horizontal leg (none for Finish-to-Start, which carries no tag)."""
+    own horizontal leg; then (ADR-0540) beside the leg into the head again but ABOVE the channel
+    line, then BELOW it — clear of the line by more than a touch, for a channel another leg
+    shares one track away: a page-filling slide's tag is taller than the track spacing, so a tag
+    centred on the line would lie on its neighbour and the slide would call itself crowded
+    (none for Finish-to-Start, which carries no tag)."""
     if not tag:
         return []
     tag_w = len(tag) * tag_pt * 0.62
-    tag_y = y + tag_pt * 0.35
     rightward = sx <= tx
+    lift = tag_pt * 0.45 + LINK_W + 0.3
     out = []
-    for to_left, at_x, gap in (
-        (not rightward, tx, half_w + 0.8),
-        (rightward, sx, LINK_W / 2 + 0.8),
+    for to_left, at_x, gap, dy in (
+        (not rightward, tx, half_w + 0.8, 0.0),
+        (rightward, sx, LINK_W / 2 + 0.8, 0.0),
+        (not rightward, tx, half_w + 0.8, -lift),
+        (not rightward, tx, half_w + 0.8, lift),
     ):
+        tag_y = y + tag_pt * 0.35 + dy
         x0, x1 = (at_x - gap - tag_w, at_x - gap) if to_left else (at_x + gap, at_x + gap + tag_w)
         box = Box(x0, x1, tag_y - tag_pt * 0.8, tag_y + tag_pt * 0.05, soft=True)
-        out.append(_Spot(box, x1 if to_left else x0, "end" if to_left else "start"))
+        out.append(_Spot(box, x1 if to_left else x0, tag_y, "end" if to_left else "start"))
     return out
 
 
@@ -495,11 +536,19 @@ class _Ink:
     spot: int
     #: everything it paints — every spot its tag may take included — as one box
     extent: Box = field(init=False)
+    #: each shaft segment as a box (:func:`_seg_box`), computed once
+    seg_boxes: list[Box] = field(init=False)
+    #: its VERTICAL legs — ``(x, low y, high y, box)`` — computed once
+    verticals: list[tuple[float, float, float, Box]] = field(init=False)
 
     def __post_init__(self) -> None:
-        self.extent = _bounds(
-            [self.head, *(_seg_box(s) for s in self.segs), *(t.box for t in self.spots)]
-        )
+        self.seg_boxes = [_seg_box(s) for s in self.segs]
+        self.extent = _bounds([self.head, *self.seg_boxes, *(t.box for t in self.spots)])
+        self.verticals = [
+            (seg[0][0], min(seg[0][1], seg[1][1]), max(seg[0][1], seg[1][1]), box)
+            for seg, box in zip(self.segs, self.seg_boxes, strict=True)
+            if _vertical(seg)
+        ]
 
     @property
     def tag(self) -> Box | None:
@@ -510,6 +559,35 @@ def _vertical(seg: Seg) -> bool:
     return abs(seg[0][0] - seg[1][0]) < 1e-9 and abs(seg[0][1] - seg[1][1]) > 1e-9
 
 
+#: The height of one band of :class:`_InkIndex` — a few rows at the densest slide.
+_BAND_H = 12.0
+
+
+class _InkIndex:
+    """Which links' ink lies in which horizontal band of the slide, so a candidate route is
+    judged against the links along its legs, not against every link drawn so far (200 links on
+    144 rows: most are nowhere near). Two extents that share no band cannot meet, so the answer
+    is exact; the indices come back in drawing order, as the erasure sentences are named."""
+
+    def __init__(self) -> None:
+        self._bands: dict[int, list[int]] = {}
+
+    @staticmethod
+    def _span(y0: float, y1: float) -> range:
+        return range(int(y0 // _BAND_H), int(y1 // _BAND_H) + 1)
+
+    def add(self, i: int, extent: Box) -> None:
+        for b in self._span(extent.y0, extent.y1):
+            self._bands.setdefault(b, []).append(i)
+
+    def near(self, boxes: Sequence[Box]) -> list[int]:
+        found: set[int] = set()
+        for box in boxes:
+            for b in self._span(box.y0, box.y1):
+                found.update(self._bands.get(b, ()))
+        return sorted(found)
+
+
 def _conflicts(
     segs: Sequence[Seg],
     head: Box | None,
@@ -517,9 +595,11 @@ def _conflicts(
     inks: Sequence[_Ink],
     keep: Sequence[tuple[Box, str]],
     skip: int = -1,
+    index: _InkIndex | None = None,
 ) -> tuple[list[str], list[int], bool]:
     """What new ink — a shaft's ``segs``, a ``head``, a ``tag`` — painted AFTER ``inks`` would
-    do to them: ``(erased, tags, soft)``.
+    do to them: ``(erased, tags, soft)``. ``index`` (the bands of ``inks``) narrows the links
+    looked at; without it every link is.
 
     ``erased`` names what it would cover or mis-join: each arrowhead (its halo within reach, or
     its head or tag on top), each ``keep`` ink (a move arrow's head), and each VERTICAL line its
@@ -530,41 +610,44 @@ def _conflicts(
     erased: list[str] = []
     tags: list[int] = []
     soft = False
-    mine = [*(_seg_box(s) for s in segs), *([head] if head else []), *([tag] if tag else [])]
+    sboxes = [_seg_box(s) for s in segs]
+    mine = [*sboxes, *([head] if head else []), *([tag] if tag else [])]
     if not mine:
         return erased, tags, soft
     near = _bounds(mine)
     near = Box(near.x0 - 2.0, near.x1 + 2.0, near.y0 - 2.0, near.y1 + 2.0)
-    verticals = [s for s in segs if _vertical(s)]
-    for i, e in enumerate(inks):
-        if i == skip or not _meet(near, e.extent):
+    # each leg's own strip, not their union: an L-shaped route's union box meets every ink in
+    # the rectangle it spans, while its legs come near only what lies along them
+    strips = [Box(b.x0 - 2.0, b.x1 + 2.0, b.y0 - 2.0, b.y1 + 2.0) for b in mine]
+    verticals = [
+        (s[0][0], min(s[0][1], s[1][1]), max(s[0][1], s[1][1])) for s in segs if _vertical(s)
+    ]
+    boxes = [b for b in (head, tag) if b is not None]
+    for i in index.near(strips) if index is not None else range(len(inks)):
+        e = inks[i]
+        if i == skip or not any(_meet(nb, e.extent) for nb in strips):
             continue
         e_tag = e.tag
-        if any(_gap(s, e.head) < _REACH for s in segs) or any(
-            b is not None and _meet(b, e.head) for b in (head, tag)
+        if any(_within(sb, e.head, _REACH) for sb in sboxes) or any(
+            _meet(b, e.head) for b in boxes
         ):
             erased.append(f"the arrowhead of {e.name}")
         if e_tag is not None and (
-            any(_gap(s, e_tag) < _REACH for s in segs)
-            or any(b is not None and _meet(b, e_tag) for b in (head, tag))
+            any(_within(sb, e_tag, _REACH) for sb in sboxes) or any(_meet(b, e_tag) for b in boxes)
         ):
             tags.append(i)
-        if head is not None and any(_vertical(es) and _gap(es, head) < _TOUCH for es in e.segs):
+        if head is not None and any(_within(vb, head, _TOUCH) for _x, _lo, _hi, vb in e.verticals):
             erased.append(f"the line of {e.name}")
-        if tag is not None and any(_gap(es, tag) < _TOUCH for es in e.segs):
+        if tag is not None and any(_within(eb, tag, _TOUCH) for eb in e.seg_boxes):
             soft = True
-        for es in e.segs:
-            if not _vertical(es):
-                continue
-            e_lo, e_hi = sorted((es[0][1], es[1][1]))
-            for s in verticals:
-                lo, hi = sorted((s[0][1], s[1][1]))
-                if abs(s[0][0] - es[0][0]) < _TRACK and min(hi, e_hi) - max(lo, e_lo) > 1e-6:
-                    soft = True
+        if not soft:
+            for ex, e_lo, e_hi, _vb in e.verticals:
+                for x, lo, hi in verticals:
+                    if abs(x - ex) < _TRACK and min(hi, e_hi) - max(lo, e_lo) > 1e-6:
+                        soft = True
     for box, name in keep:
         if _meet(near, box) and (
-            any(_gap(s, box) < _REACH for s in segs)
-            or any(b is not None and _meet(b, box) for b in (head, tag))
+            any(_within(sb, box, _REACH) for sb in sboxes) or any(_meet(b, box) for b in boxes)
         ):
             erased.append(name)
     return erased, tags, soft
@@ -586,14 +669,15 @@ def _respot(
         if any(_meet(box, k) for k, _name in keep):
             continue
         clash = False
+        wide = Box(box.x0 - _REACH, box.x1 + _REACH, box.y0 - _REACH, box.y1 + _REACH)
         for m, other in enumerate(inks):
-            if m == i:
-                continue
+            if m == i or not _meet(wide, other.extent):
+                continue  # nothing it paints is within the halo's reach of this spot
             other_tag = other.tag
             if (
                 _meet(box, other.head)
                 or (other_tag is not None and _meet(box, other_tag))
-                or any(_gap(s, box) < _REACH for s in other.segs)
+                or any(_within(sb, box, _REACH) for sb in other.seg_boxes)
             ):
                 clash = True
                 break
@@ -643,6 +727,25 @@ class _Route:
     erased: list[str] = field(default_factory=list)
 
 
+def _gutter_shape(
+    p: Anchor, s: Anchor, grid: Grid, sx: float, tx: float, yp: float, ys: float, gx: float
+) -> tuple[list[Point], list[Point], float]:
+    """The shaft of a route through the gutter: the predecessor's edge → its channel ``yp`` →
+    out to the gutter track ``gx`` → along the gutter to the successor's channel ``ys`` → in to
+    the successor → the head's base; and the head (tip on the successor's edge)."""
+    sy = p.y + _half(p, grid, sx) if yp > p.y else p.y - _half(p, grid, sx)
+    down = ys < s.y
+    tip_y = s.y - _half(s, grid, tx) if down else s.y + _half(s, grid, tx)
+    length = max(_HEAD_MIN, min(_HEAD_MAX, abs(tip_y - ys)))
+    base_y = tip_y - length if down else tip_y + length
+    clean = [(sx, sy)]
+    for pt in ((sx, yp), (gx, yp), (gx, ys), (tx, ys), (tx, base_y)):
+        if abs(pt[0] - clean[-1][0]) > 1e-6 or abs(pt[1] - clean[-1][1]) > 1e-6:
+            clean.append(pt)
+    half_w = length * 0.5
+    return clean, [(tx, tip_y), (tx - half_w, base_y), (tx + half_w, base_y)], length
+
+
 def _shape(
     p: Anchor, s: Anchor, grid: Grid, sx: float, tx: float, y: float
 ) -> tuple[list[Point], list[Point], float]:
@@ -671,27 +774,34 @@ def _head_box(head: Sequence[Point]) -> Box:
 
 
 def _judge(
-    route: _Route, inks: Sequence[_Ink], keep: Sequence[tuple[Box, str]], tags_hard: bool
+    route: _Route,
+    inks: Sequence[_Ink],
+    keep: Sequence[tuple[Box, str]],
+    tags_hard: bool,
+    index: _InkIndex | None = None,
+    force: bool = False,
 ) -> bool:
     """Whether ``route`` can be drawn without covering anything drawn before it (``True``),
     filling in the tags it moves, its own tag's spot and whether it only sits on another link's
-    line; on ``False`` its ``erased`` names what it would cover."""
+    line; on ``False`` its ``erased`` names what it would cover. With ``force`` (ADR-0540's last
+    resort) the route is still filled in — the tags it can move, a spot for its own tag — and
+    ``erased`` names the WHOLE of what it covers, a tag it cannot move included."""
     segs = list(zip(route.shaft, route.shaft[1:], strict=False))
     head = _head_box(route.head)
-    erased, hit, soft = _conflicts(segs, head, None, inks, keep)
-    if erased:
-        route.erased = erased
-        return False
+    erased, hit, soft = _conflicts(segs, head, None, inks, keep, index=index)
     for i in sorted(set(hit)):
         other = None if tags_hard else _respot(i, inks, keep, (segs, head))
         if other is None:
-            route.erased = [f"the {inks[i].kind} tag of {inks[i].name}"]
-            return False
-        route.moves[i] = other
+            erased.append(f"the {inks[i].kind} tag of {inks[i].name}")
+        else:
+            route.moves[i] = other
+    if erased and not force:
+        route.erased = erased
+        return False
     moved = [replace(e, spot=route.moves[i]) if i in route.moves else e for i, e in enumerate(inks)]
     route.spot, first_soft = -1, -1
     for n, spot in enumerate(route.spots):
-        t_erased, t_hit, t_soft = _conflicts([], None, spot.box, moved, keep)
+        t_erased, t_hit, t_soft = _conflicts([], None, spot.box, moved, keep, index=index)
         if t_erased or t_hit:
             continue
         if not t_soft:
@@ -701,10 +811,17 @@ def _judge(
             first_soft = n
     if route.spots and route.spot < 0:
         if first_soft < 0:
-            route.erased = ["another link's arrowhead or type tag with its own type tag"]
-            return False
-        route.spot, soft = first_soft, True
+            if not force:
+                route.erased = ["another link's arrowhead or type tag with its own type tag"]
+                return False
+            route.spot = 0  # forced: its tag stands at its first spot, over what it covers
+            erased.append("another link's ink with its own type tag")
+        else:
+            route.spot, soft = first_soft, True
     route.soft = soft
+    if erased:
+        route.erased = erased
+        return False
     return True
 
 
@@ -717,15 +834,23 @@ def _choose(
     grid: Grid,
     inks: Sequence[_Ink],
     points: Mapping[tuple[str, bool], list[float]],
+    index: _InkIndex | None = None,
+    gutter_used: Sequence[tuple[float, float, float]] = (),
+    force: bool = False,
+    counter: list[int] | None = None,
 ) -> tuple[_Route | None, bool, list[str]]:
     """The route a link takes: ``(route, soft, erased)``. The candidates come in ONE order —
     each end's first free attachment point through the gaps between the two rows (the one next
     to the successor first when it is wide enough, else the widest; parallel legs on their own
     tracks), then the ends' other points, then the gaps just outside the two rows (turning one
-    end to its other side); each first steering round every type tag, then moving a tag in its
-    way to the tag's other spot — and the first that covers no other link's head or tag, nor a
-    move arrow's head, and sits on no other link's line is taken; else the first that only sits
-    on a line (``soft``); else none, with what the first candidate would have covered."""
+    end to its other side), then — on a layout with a gutter lane — out to the gutter and back
+    (ADR-0540); each first steering round every type tag, then moving a tag in its way to the
+    tag's other spot — and the first that covers no other link's head or tag, nor a move arrow's
+    head, and sits on no other link's line is taken; else the first that only sits on a line
+    (``soft``); else none, with what the first candidate would have covered. With ``force`` the
+    last answer is instead the candidate that covers the LEAST (fewest heads, tags and move
+    arrows; the earliest on a tie), its ``erased`` naming them — the layout's last resort, drawn
+    flagged. ``counter`` (one cell) counts the routes judged, the escalation's work budget."""
     pred_start, succ_start = ends
     key_p, key_s = keys
     inner, pref, outer = _channels(p, s, len(grid.rows))
@@ -784,8 +909,48 @@ def _choose(
                     for y in _tracks(band, used, xa, xb, hard_only=not tags_hard):
                         yield j, sx, tx, tags_hard, y, band
 
+    def gutter_candidates() -> Iterator[_Route]:
+        """Routes out to the gutter lane and back, in one fixed order: the predecessor's own
+        gaps (below it, then above) by the successor's (above it, then below), each end's first
+        free point, on the first gutter track free over the route's vertical span."""
+        if grid.gutter is None:
+            return
+        gx0, gx1 = grid.gutter
+        n = len(grid.rows)
+        p_gaps = [j for j in (p.row, p.row - 1) if -1 <= j < n]
+        s_gaps = [j for j in (s.row - 1, s.row) if -1 <= j < n]
+        for jp in p_gaps:
+            for js in s_gaps:
+                ps = _points(p, pred_start, grid, points.get((key_p, jp >= p.row), []))
+                ss = _points(s, succ_start, grid, points.get((key_s, js >= s.row), []))
+                sx = (ps or [_end_x(p, pred_start)])[0]
+                tx = (ss or [_end_x(s, succ_start)])[0]
+                yps = _tracks(_free(grid, jp, sx - 1.0, gx1 + 1.0), used, sx - 1.0, gx1 + 1.0)
+                yss = _tracks(_free(grid, js, tx - 1.0, gx1 + 1.0), used, tx - 1.0, gx1 + 1.0)
+                for yp in yps[:2]:
+                    for ys in yss[:2]:
+                        lo, hi = min(yp, ys), max(yp, ys)
+                        gx = gx0 + LINK_W
+                        while gx <= gx1 - LINK_W:
+                            if all(
+                                ux < gx - _TRACK + 1e-6
+                                or ux > gx + _TRACK - 1e-6
+                                or uhi < lo
+                                or ulo > hi
+                                for ux, ulo, uhi in gutter_used
+                            ):
+                                break
+                            gx += _TRACK
+                        else:
+                            continue
+                        shaft, head, length = _gutter_shape(p, s, grid, sx, tx, yp, ys, gx)
+                        spots = _tag_spots(sx, tx, length * 0.5, ys, tag, tag_pt)
+                        yield _Route(js, sx, tx, ys, 2 * _NEED, shaft, head, length, spots)
+
     fallback: _Route | None = None
     first_erased: list[str] | None = None
+    least: _Route | None = None
+    judged = 0
     for tries, (j, sx, tx, tags_hard, y, band) in enumerate(candidates()):
         if tries >= _MAX_TRIES:
             break
@@ -797,14 +962,32 @@ def _choose(
                 continue
         spots = _tag_spots(sx, tx, length * 0.5, y, tag, tag_pt)
         route = _Route(j, sx, tx, y, band[1] - band[0], shaft, head, length, spots)
-        if not _judge(route, inks, grid.keep, tags_hard):
+        judged += 1
+        if not _judge(route, inks, grid.keep, tags_hard, index):
             if first_erased is None:
                 first_erased = route.erased
+            if force and (least is None or len(route.erased) < len(least.erased)):
+                least = route
             continue
         if not route.soft:
+            if counter is not None:
+                counter[0] += judged
             return route, False, []
         if fallback is None:
             fallback = route
+    if fallback is None:
+        for route in gutter_candidates():
+            judged += 1
+            if _judge(route, inks, grid.keep, False, index):
+                if counter is not None:
+                    counter[0] += judged
+                return route, route.soft, []
+            if first_erased is None:
+                first_erased = route.erased
+            if force and (least is None or len(route.erased) < len(least.erased)):
+                least = route
+    if counter is not None:
+        counter[0] += judged
     if fallback is not None:
         return fallback, True, []
     if first_erased is None:
@@ -816,9 +999,16 @@ def _choose(
         shaft, head, length = _shape(p, s, grid, sx, tx, y)
         spots = _tag_spots(sx, tx, length * 0.5, y, tag, tag_pt)
         route = _Route(j, sx, tx, y, band[1] - band[0], shaft, head, length, spots)
-        if _judge(route, inks, grid.keep, False):
+        if _judge(route, inks, grid.keep, False, index):
             return route, True, []
         first_erased = route.erased
+        least = route
+    if force and least is not None:
+        # the last resort: the route that covers the least, filled in (the tags it moves, its
+        # own tag's spot) and with the whole of what it covers named (ADR-0540)
+        least.erased, least.moves, least.spot = [], {}, -1
+        _judge(least, inks, grid.keep, False, index, force=True)
+        return least, True, list(least.erased)
     return None, False, first_erased
 
 
@@ -833,6 +1023,43 @@ def _collision(what: str, erased: Sequence[str]) -> str:
     return f"{what} is not drawn — every route it could take here would cover {victim}; {fix}."
 
 
+def _overlap(erased: Sequence[str]) -> str:
+    """What a flagged link covers, as a phrase: ``the arrowhead of X and the SS tag of Y``."""
+    names = list(dict.fromkeys(erased)) or ["another link's ink"]
+    if len(names) == 1:
+        return names[0]
+    return ", ".join(names[:-1]) + " and " + names[-1]
+
+
+def _flagged(what: str, overlap: str, steps: str) -> str:
+    """The note for a link drawn along the route that covers the least (ADR-0540): what it
+    covers, why it was drawn anyway, and how it is marked."""
+    tried = f" — even after {steps}" if steps else ""
+    return (
+        f"{what} is drawn DASHED over {overlap}: no route clear of every other link's ink "
+        f"exists on this slide{tried}. It is named here and in the slide's footnote; remove one "
+        "of the links, or narrow the date window, for a clean slide."
+    )
+
+
+@dataclass(frozen=True)
+class RouteReport:
+    """Everything one routing pass produced (:func:`route_all`): the links drawn (flagged ones
+    included), the notes for every link not drawn or drawn flagged, whether the rows are crowded,
+    the COLLISIONS — every link no route clears, as ``(link, what it would cover)`` — and how
+    many candidate routes were judged (the escalation's work budget)."""
+
+    drawn: list[PlacedLink]
+    notes: list[str]
+    crowded: bool
+    collisions: list[tuple[Link, list[str]]]
+    judged: int
+    #: the attachment ledger — ``(item key, leaves below the item)`` -> the x of every route
+    #: attached there, the side being the one the route's own first leg leaves on (ADR-0540
+    #: review F5: a gutter route was recorded by the SUCCESSOR's channel and could share a point)
+    points: dict[tuple[str, bool], list[float]] = field(default_factory=dict)
+
+
 def route_links(
     links: Sequence[Link],
     anchors: Mapping[str, Anchor],
@@ -840,7 +1067,8 @@ def route_links(
     grid: Grid,
     absent: Mapping[str, str] | None = None,
 ) -> tuple[list[PlacedLink], list[str], bool]:
-    """``(drawn, notes, crowded)``.
+    """``(drawn, notes, crowded)`` — :func:`route_all` for a caller that wants the picture only:
+    a link no route clears is NOT drawn here and its note names the collision.
 
     Each link whose two ends are on the slide is routed orthogonally: a vertical leg from the
     predecessor's edge (bottom or top) to a horizontal CHANNEL, the channel to the successor's
@@ -862,12 +1090,36 @@ def route_links(
     ``crowded`` is True when the ROWS are too dense: some drawn link runs through a channel
     narrower than it wants, carries a compressed head, or has no free track or spot and sits on
     another link's line — and the page says so."""
+    report = route_all(links, anchors, names, grid, absent)
+    return report.drawn, report.notes, report.crowded
+
+
+def route_all(
+    links: Sequence[Link],
+    anchors: Mapping[str, Anchor],
+    names: Mapping[str, str],
+    grid: Grid,
+    absent: Mapping[str, str] | None = None,
+    force: bool = False,
+    steps: str = "",
+) -> RouteReport:
+    """:func:`route_links`'s full report. Without ``force`` a link no route clears is not drawn
+    and is a collision in the report (its note names what it would cover); with ``force`` —
+    ADR-0540's last resort, once the layout has escalated through ``steps`` (the words the note
+    carries) — it is drawn along the route that covers the least, flagged, and its note and
+    ``overlap`` name what it covers. Either way the report's ``collisions`` list every link no
+    route clears."""
     drawn: list[PlacedLink] = []
     notes: list[str] = []
     crowded = False
+    collisions: list[tuple[Link, list[str]]] = []
+    counter = [0]
     #: the attachment points taken on each (item, its bottom side?) — by either end
     points: dict[tuple[str, bool], list[float]] = {}
+    #: the gutter tracks taken: ``(x, low y, high y)``
+    gutter_used: list[tuple[float, float, float]] = []
     inks: list[_Ink] = []
+    index = _InkIndex()
     absent = absent or {}
     for ln in links:
         pred_start, succ_start = _ENDS.get(ln.kind, (False, True))
@@ -892,16 +1144,38 @@ def route_links(
             continue
         tag = "" if ln.kind == "FS" else ln.kind
         route, soft, erased = _choose(
-            p, s, (pred_start, succ_start), (ln.pred, ln.succ), tag, grid, inks, points
+            p,
+            s,
+            (pred_start, succ_start),
+            (ln.pred, ln.succ),
+            tag,
+            grid,
+            inks,
+            points,
+            index,
+            gutter_used,
+            force,
+            counter,
         )
         if route is None:
             notes.append(_collision(what, erased))
+            collisions.append((ln, list(erased)))
             continue
+        flagged = bool(erased)
+        overlap = _overlap(erased) if flagged else ""
+        if flagged:
+            notes.append(_flagged(what, overlap, steps))
+            collisions.append((ln, list(erased)))
+        if grid.gutter is not None and len(route.shaft) >= 5:
+            gx, ya, yb = route.shaft[2][0], route.shaft[2][1], route.shaft[3][1]
+            gutter_used.append((gx, min(ya, yb), max(ya, yb)))
         for i, spot in route.moves.items():
             inks[i].spot = spot
             moved = inks[i].spots[spot]
-            drawn[i] = replace(drawn[i], tag_x=moved.x, tag_anchor=moved.anchor)
-        points.setdefault((ln.pred, route.y > p.y), []).append(route.sx)
+            drawn[i] = replace(drawn[i], tag_x=moved.x, tag_y=moved.y, tag_anchor=moved.anchor)
+        # the side each end is left on is the shaft's own: its first leg for the predecessor
+        # (a gutter route's ``route.y`` is the successor's channel), its last for the successor
+        points.setdefault((ln.pred, route.shaft[1][1] > p.y), []).append(route.sx)
         points.setdefault((ln.succ, route.y > s.y), []).append(route.tx)
         if soft or route.room < _NEED or route.length < 1.0:
             crowded = True
@@ -918,6 +1192,7 @@ def route_links(
                 route.spot,
             )
         )
+        index.add(len(inks) - 1, inks[-1].extent)
         stand = route.spots[route.spot] if route.spot >= 0 else None
         tag_pt = max(3.0, grid.label_pt * 0.7)
         drawn.append(
@@ -931,12 +1206,14 @@ def route_links(
                 route.head,
                 tag,
                 stand.x if stand else route.tx,
-                route.y + tag_pt * 0.35,
+                stand.y if stand else route.y + tag_pt * 0.35,
                 stand.anchor if stand else "start",
                 tag_pt,
+                flagged,
+                overlap,
             )
         )
-    return drawn, notes, crowded
+    return RouteReport(drawn, notes, crowded, collisions, counter[0], points)
 
 
 def links_table(links: Sequence[Link], drawn: Sequence[PlacedLink], notes: Sequence[str]) -> Table:

@@ -169,7 +169,18 @@ def _keys(page: Any, prefix: str) -> dict[str, str]:
 
 
 def _click_item(page: Any, prefix: str, key: str) -> None:
-    page.locator(f'#{prefix}Host g[data-key="{key}"]').locator(".op-bar, .op-diamond").click()
+    """Click the item the way the operator does: a pointer at the centre of its own shape.
+
+    Since ADR-0540 fills the page, a short list draws bars tall enough to carry their label at
+    that very point. The label is a sibling of the shape inside the item's group, so the
+    pointer hits the label and the pick still resolves through ``closest("[data-key]")`` —
+    but a locator click wants the shape itself under the pointer and refuses (its hit-target
+    check), which is Playwright's strictness, not the page's behaviour."""
+    shape = page.locator(f'#{prefix}Host g[data-key="{key}"]').locator(".op-bar, .op-diamond")
+    shape.scroll_into_view_if_needed()
+    box = shape.bounding_box()
+    assert box is not None, key
+    page.mouse.click(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
 
 
 _PICK = """(p) => {
