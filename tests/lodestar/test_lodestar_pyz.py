@@ -1076,3 +1076,12 @@ def test_quit_reply_reaches_the_browser_before_the_process_exits(tmp_path: Path)
         _stop(proc)
     assert bye.status == 200 and "LODESTAR has stopped" in bye.text
     assert AUTHOR in bye.text and code == 0
+
+
+def test_the_readme_states_the_version_the_program_reports() -> None:
+    """Rendering review of ADR-0540 (F4): the README said 1.0.1 while ``--version`` and every
+    page footer said 1.0.0. One number, held in lockstep."""
+    from schedule_forensics.web.lodestar_shell import VERSION
+
+    readme = (ROOT / "lodestar" / "README.md").read_text(encoding="utf-8")
+    assert f"Version {VERSION}." in readme, VERSION

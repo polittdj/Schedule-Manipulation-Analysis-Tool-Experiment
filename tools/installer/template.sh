@@ -16,7 +16,8 @@
 #      verified against the manifest baked into this installer.
 #   4. Optionally installs Ollama + this tier's local AI model (skippable — the tool
 #      runs fully without AI).
-#   5. Creates Start/Stop launchers (~/.local/bin + desktop entries), an uninstaller,
+#   5. Creates Start/Stop launchers (~/.local/bin + app-menu entries carrying the tool's own
+#      icon, and a "Polaris²" icon on the Desktop — ADR-0540), an uninstaller,
 #      and a first-run README.
 #
 # DATA SOVEREIGNTY: the installed tool binds 127.0.0.1 only — schedule data never
@@ -312,7 +313,8 @@ cat > "$UNINST" <<EOF
 "$STOP_SH" || true
 rm -f "\$HOME/.local/bin/schedule-forensics-start" "\$HOME/.local/bin/schedule-forensics-stop"
 rm -f "\$HOME/.local/share/applications/schedule-forensics-start.desktop" \\
-      "\$HOME/.local/share/applications/schedule-forensics-stop.desktop"
+      "\$HOME/.local/share/applications/schedule-forensics-stop.desktop" \\
+      "\$HOME/Desktop/Polaris².desktop"
 rm -rf "$INSTALL_ROOT"
 echo "Polaris² removed."
 EOF
@@ -329,6 +331,16 @@ AI:     enable it in AI Settings inside the app (model: $OLLAMA_MODEL).
 Remove: $UNINST
 EOF
 
+# ADR-0540: the launchers carry the tool's OWN icon — the insignia the app serves as its favicon,
+# written as a PNG by the installed package (std-lib only). Best-effort: without it the entries
+# show the desktop's default icon and still launch the tool.
+ICON_PNG="$INSTALL_ROOT/polaris2.png"
+if ! "$VENV_DIR/bin/python" -m schedule_forensics.desktop_icon png "$ICON_PNG" 2>/dev/null; then
+  warn "The tool's icon could not be written — the launchers keep the default icon"
+  ICON_PNG=""
+fi
+ICON_LINE=""
+[ -n "$ICON_PNG" ] && ICON_LINE="Icon=$ICON_PNG"
 if [ "$SMOKE" != "1" ]; then
   mkdir -p "$HOME/.local/bin" "$HOME/.local/share/applications"
   ln -sf "$START_SH" "$HOME/.local/bin/schedule-forensics-start"
@@ -337,7 +349,9 @@ if [ "$SMOKE" != "1" ]; then
 [Desktop Entry]
 Type=Application
 Name=Start Polaris²
+Comment=Polaris² (Schedule Forensics) — starts the tool; everything runs on this machine
 Exec=$START_SH
+$ICON_LINE
 Terminal=false
 Categories=Office;
 EOF
@@ -346,10 +360,21 @@ EOF
 Type=Application
 Name=Stop Polaris²
 Exec=$STOP_SH
+$ICON_LINE
 Terminal=false
 Categories=Office;
 EOF
-  ok "Launchers in ~/.local/bin + app-menu entries; uninstaller + README in $INSTALL_ROOT"
+  # ONE icon on the Desktop too (operator, ADR-0540): the Start entry, TITLED "Polaris²" — the
+  # desktop shows Name=, not the file name (review F3). A desktop that gates launchers behind a
+  # "trusted" mark (GNOME) is told so where gio exists.
+  if [ -d "$HOME/Desktop" ]; then
+    sed 's/^Name=.*/Name=Polaris²/' "$HOME/.local/share/applications/schedule-forensics-start.desktop" > "$HOME/Desktop/Polaris².desktop" \
+      && chmod +x "$HOME/Desktop/Polaris².desktop" \
+      && { command -v gio >/dev/null 2>&1 && gio set "$HOME/Desktop/Polaris².desktop" metadata::trusted true 2>/dev/null || true; }
+  fi
+  ICON_WORDS="(the tool's own icon)"
+  [ -n "$ICON_PNG" ] || ICON_WORDS="(NO icon — the warning above says why)"
+  ok "Launchers in ~/.local/bin + app-menu entries $ICON_WORDS + 'Polaris²' on the Desktop; uninstaller + README in $INSTALL_ROOT"
 else
   ok "Smoke mode: launchers written to $INSTALL_ROOT only (no menu entries)"
 fi

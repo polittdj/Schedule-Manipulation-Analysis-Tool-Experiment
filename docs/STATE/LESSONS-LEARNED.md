@@ -435,6 +435,35 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-09-29 (c) — A fit loop needs a fixed point, a forced route judged as a copy reserves nothing, and a budget that counts one step is no budget (ADR-0540)
+
+- **What happened.** One session made the One-Pager slide fill the page at every list size and fit every logic link
+  by the operator's escalation (more space, a gutter lane, a reorder within the swimlane, then drawn dashed and named)
+  — on both pages, in the .pptx and in LODESTAR — and gave the installers the tool's own Desktop icon.
+- **The premise "the layout already scales" was one probe away from being refuted, and nobody had run it.** A 3-item
+  slide used 13.7 % of its lane area; the row cap and the label cap dated from a slide that was always dense. Measure
+  the extremes of the input (3 and 144 items) before believing a layout scales — the middle of the range hides a cap.
+- **A fit loop that sizes the glyph from the row count, then the row count from the glyph, has no fixed point.** At
+  40 items it cycled 16 ↔ 17 rows and shipped 94 %. The fix was not a better loop but a better RETURN: the pitch (the
+  fill) and the glyph height apart, so the rows always reach the foot and the glyphs keep the size they were packed at.
+- **A forced route judged as a COPY reserves nothing.** The last-resort path judged `replace(least, …)` and threw the
+  judged copy away: the flagged link's tag spot was never reserved, and a later, clean-judged link ran through it —
+  27 of 81 samples at one seed, invisible to every targeted test and caught by a PROPERTY test on an independent
+  generator ("every erasure by a flagged link names its victim"). Judge the object you draw, and write the property,
+  not the case.
+- **A budget that counts only the last step is no budget.** `WORK_BUDGET` governed the reorder trials and nothing
+  else, so the glyph and gutter attempts ran unmetered: 27.3 s at 144 items × 200 links. Every attempt now counts.
+- **The renderer you did not test measures characters differently.** The footnote's cut assumed 0.52 em per character;
+  LibreOffice drew ~0.64 and ran it off the slide. A text budget is a claim about a renderer — render it, in the
+  renderer the operator will use, or in the nearest one you have, and say which.
+- **A test tool's strictness is not the page's behaviour, and the difference must be measured, not assumed.** Playwright
+  refused to click a bar whose label sat at its centre; the operator's pointer picks it (the label is inside the item's
+  group). The check was a coordinate click, the proof a mutant that disables the pick handler — red by name — and the
+  helper now performs the operator's gesture instead of the tool's.
+- **Show the renders before asking for the ruling.** The brief said "render 3 / 10 / 40 / 144 in all four themes, SHOW
+  the operator, and ask before capping" — the cap shipped as a NAMED provisional constant with the renders delivered,
+  not as a silent choice and not as a blocking question.
+
 ### 2026-09-29 (b) — A fix is only as done as the mutant it kills, a targeted battery is not the suite, and the brief's own premises need attacking too (ADR-0539, resumed)
 
 - **What happened.** The resumed session finished the review the first one stopped: five lenses and three skeptics,

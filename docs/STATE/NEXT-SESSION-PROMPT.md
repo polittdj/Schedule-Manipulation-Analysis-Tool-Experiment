@@ -14,7 +14,7 @@ happen again. **Run these before the first edit:**
 git fetch --unshallow origin; git fetch --prune origin && git remote set-head origin -a
 git log --oneline -1 origin/main && git rev-list --count origin/main   # expect 51e66728 (#722) or later, 821+
 ls -d src app 2>&1; ls .github/workflows; grep -n '^version' pyproject.toml
-ls docs/adr | sort | tail -1                                          # expect 0539 or higher
+ls docs/adr | sort | tail -1                                          # expect 0540 or higher
 ```
 
 **If a prompt's facts disagree with those outputs, the TREE wins and the prompt is suspect — report it
@@ -26,12 +26,16 @@ tree agreed on every point — that is what a passing §0 looks like. AUDIT-2026
 its numbers. If session 6's documents pull request has not merged yet, `main` is `51e66728` (#722, the reproducers only; 821
 commits, ADR 0536): continue from that pull request's head (branch `claude/gallant-newton-yh75tr`), as the resume line says.
 
-## A feature pull request is open beside the campaign (2026-09-29, ADR-0539 — complete, awaiting the operator)
+## Two feature pull requests landed beside the campaign (2026-09-29, ADR-0539 and ADR-0540)
 
-The One-Pager C / D / E intake, operator-drawn logic links and LODESTAR (the two One-Pager pages as their own program)
-are complete: PR #724 merged as `dd8b4cbf`; its last four commits (the LODESTAR hardening, the routing fixes, their
-installers and the ADR's third table) are draft PR #725 on `claude/youthful-ritchie-fqsz9x`, waiting on the operator.
-HANDOFF.md's top section lists the three questions it leaves for the operator. It does not change the audit's resume line below.
+The One-Pager C / D / E intake, operator-drawn logic links and LODESTAR (ADR-0539) are on `main`: PR #724 merged as
+`dd8b4cbf`, and its follow-up PR #725 (the LODESTAR hardening, the routing fixes, their installers, the ADR's third
+table) **merged as `996b28b2` (2026-09-29 21:45Z; CI run #2019 green in every job)** — the 2026-09-29 (b) handoff's
+"waits on the operator" is stale. ADR-0540 (the full-page fill, every requested link fitted by escalation, the
+installers' own Desktop icon — v1.0.296) is this session's draft pull request; HANDOFF.md's top section says where it
+stands. Neither changes the audit's resume line below. **Session 7's draft PR #726 (ADR-0538, `claude/modest-cori-iit4zh`,
+`src/` unchanged) is dirty against `main` on the five state docs** because it branched from `0b45eb28`; the ADR-0540 PR
+rotates the same five, so whichever merges second merges `main` and keeps BOTH sessions' sections (move, never delete).
 
 ## The resume line (charter §16) — what the operator pastes to continue the audit
 
@@ -362,5 +366,5 @@ gate) before every push.
 
 QC-1 / QC-2 (ADR-0393) and QC-3 (ADR-0509) bind every session; they are pinned by `tests/test_standing_rules.py`.
 Run the session-token-guardian's `scripts/token_audit.py` as the FIRST action (copy it to the scratchpad) and before
-each operator prompt. `git fetch origin` before you branch, number an ADR, or commit. Highest ADR 0539. Version
-1.0.295. Schema 2.17.0.
+each operator prompt. `git fetch origin` before you branch, number an ADR, or commit. Highest ADR 0540. Version
+1.0.296. Schema 2.17.0.

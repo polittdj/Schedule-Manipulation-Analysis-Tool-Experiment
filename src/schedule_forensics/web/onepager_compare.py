@@ -49,7 +49,12 @@ from schedule_forensics.web.onepager import (
     window_form,
     window_notice,
 )
-from schedule_forensics.web.onepager_common import COMPARE_EXPLAINER
+from schedule_forensics.web.onepager_common import (
+    COMPARE_EXPLAINER,
+    cached_layout,
+    link_key,
+    snapshot,
+)
 from schedule_forensics.web.onepager_common import OnePagerSession as SessionState
 
 
@@ -116,6 +121,23 @@ def compare_link_idents(st: SessionState) -> dict[str, tuple[str, ...]]:
 
 
 def onepager_compare_layout(st: SessionState, today: dt.date) -> CompareLayout | None:
+    """The laid-out compare slide, laid out once per state (ADR-0540, :func:`cached_layout`):
+    the key is both lists, the window, the title, today and every field of the links — read from
+    ONE snapshot of the session, the same snapshot the layout reads (:func:`snapshot`), so a POST
+    landing while the slide is laid out can never leave its state's slide under this key."""
+    snap = snapshot(st)
+    key = (
+        snap.onepager_prior,
+        snap.onepager_current,
+        snap.onepager_compare_window,
+        snap.onepager_compare_title,
+        today,
+        link_key(snap.onepager_compare_links),
+    )
+    return cached_layout(st, "compare", key, lambda: _onepager_compare_layout(snap, today))
+
+
+def _onepager_compare_layout(st: SessionState, today: dt.date) -> CompareLayout | None:
     doc, _omitted = onepager_compare_view(st)
     if doc is None or not doc.rows:
         return None
@@ -417,7 +439,7 @@ Hover any item for its dates; click two of them to link them.</p>
 {links_form("/onepager-compare/links", "opc", linkable_rows(st), link_msg, link_error)}
 <div id=opcHost class="op-host chart-host" role=img aria-label="{_e(lay.title)}"></div>
 <script id=opcData type="application/json">{blob}</script>
-{links_list("/onepager-compare/links", "opc", st.onepager_compare_links, lay.links, lay.link_notes)}
+{links_list("/onepager-compare/links", "opc", st.onepager_compare_links, lay.links, lay.link_notes, lay.fit_notes)}
 {_data_table(cdoc)}
 </div>
 <div class="cd-grid cd-grid-12">

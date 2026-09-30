@@ -391,7 +391,8 @@ def test_links_2_a_later_links_vertical_leg_never_erases_a_type_tag() -> None:
     """Review SKL-1: the LINKS-2 fix reserved a tag against later HORIZONTAL legs only. Through
     the page's own actions — Item 28 → Item 37 (SS), then Item 30 (a milestone one day before
     Item 37) → Item 9 (FS): the FS link's first leg rose straight through the SS tag and its
-    halo erased 22 % of it, on a roomy slide (row 13 pt) that said nothing."""
+    halo erased 22 % of it, on a roomy slide (row 13 pt then; page-filling since ADR-0540)
+    that said nothing."""
     from schedule_forensics.web import onepager_actions as act
     from schedule_forensics.web.onepager import linkable_items, onepager_layout
     from schedule_forensics.web.state import SessionState
@@ -410,7 +411,7 @@ def test_links_2_a_later_links_vertical_leg_never_erases_a_type_tag() -> None:
     for a, b, kind in (("Item 28", "Item 37", "SS"), ("Item 30", "Item 9", "FS")):
         act.edit_links(st, "onepager", "add", key[a], key[b], kind)
     lay = onepager_layout(st, D(2026, 6, 1))
-    assert lay is not None and lay.row_h == 13.0
+    assert lay is not None and lay.row_h > 13.0  # a roomy slide (ADR-0540: page-filling rows)
     ss, fs = lay.links
     width = len(ss.tag) * ss.tag_pt * 0.62
     x0 = ss.tag_x if ss.tag_anchor == "start" else ss.tag_x - width

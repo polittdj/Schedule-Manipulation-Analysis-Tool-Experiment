@@ -56,6 +56,7 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from importlib.resources import files
+from typing import Any
 from urllib.parse import parse_qs, urlsplit
 
 from schedule_forensics.reports.onepager import OnePagerDoc
@@ -162,6 +163,7 @@ class LodestarState:
     onepager_links_is_error: bool = False
     onepager_compare_links_msg: str | None = None
     onepager_compare_links_is_error: bool = False
+    onepager_cache: dict[str, tuple[Any, Any]] = field(default_factory=dict)
     unclassified: bool = False
     lock: threading.RLock = field(default_factory=threading.RLock, repr=False)
 

@@ -53,7 +53,13 @@ LANE_PALETTE = (
     "8C6D46",
 )
 _INK, _MUTED, _LINE, _GRID = "1C2330", "5B6675", "C9D1DC", "9AA5B5"
+#: the caution colour for print — the daylight view's ``--warn`` (the page paints the footnote
+#: in that token when a link is drawn dashed over other ink; ADR-0540 review F6: this is NOT the
+#: DUPLICATE-NAME badge's goldenrod)
+_WARN = "9A6B00"
 _TODAY, _WHITE, _CUI, _SYMBOL = "C00000", "FFFFFF", "4B2E83", "6B7280"
+#: The Timeline chart's right edge in points (the Compare slide's is its summary column's).
+_SLIDE_RIGHT = 944.0
 _YEAR_SHADE = ("F5F7FA", "EAEEF3")
 
 
@@ -432,13 +438,15 @@ class _Slide:
         line_pt: float,
         fill: str | None = None,
         closed: bool = False,
+        dash: str | None = None,
         name: str,
     ) -> None:
         """One custom-geometry shape through ``points`` (slide points): an OPEN path is a line
-        (a logic link's shaft, round-joined), a CLOSED one a filled polygon (its arrowhead). The
-        path's own coordinates are the points less the shape's offset, in EMU, so the shape
-        lands exactly where the page draws it. A degenerate extent (a straight vertical or
-        horizontal leg) is widened to one EMU — a zero-size path box has no scale."""
+        (a logic link's shaft, round-joined; ``dash`` a DrawingML preset dash for a flagged one),
+        a CLOSED one a filled polygon (its arrowhead). The path's own coordinates are the points
+        less the shape's offset, in EMU, so the shape lands exactly where the page draws it. A
+        degenerate extent (a straight vertical or horizontal leg) is widened to one EMU — a
+        zero-size path box has no scale."""
         xs = [x for x, _y in points]
         ys = [y for _x, y in points]
         x0, y0 = min(xs), min(ys)
@@ -450,8 +458,9 @@ class _Slide:
             + ("</a:moveTo>" if i == 0 else "</a:lnTo>")
             for i, (x, y) in enumerate(points)
         ) + ("<a:close/>" if closed else "")
+        dash_xml = f'<a:prstDash val="{dash}"/>' if dash else ""
         ln = (
-            f'<a:ln w="{_emu(line_pt)}" cap="rnd">{_fill(line)}<a:round/></a:ln>'
+            f'<a:ln w="{_emu(line_pt)}" cap="rnd">{_fill(line)}{dash_xml}<a:round/></a:ln>'
             if line
             else "<a:ln><a:noFill/></a:ln>"
         )
@@ -536,12 +545,19 @@ def _logic_links(s: _Slide, links: list[PlacedLink]) -> None:
     """Every drawn logic link as ONE group: a white halo under the shaft, the shaft, the
     layout's own filled arrowhead (DrawingML's line-end heads are sized by the renderer, so the
     head is a shape of the layout's points, exactly the page's), and the type tag beside the
-    head for anything but Finish-to-Start."""
+    head for anything but Finish-to-Start. A FLAGGED link (ADR-0540) has a dashed shaft, as the
+    page paints it; the slide's footnote names what it covers."""
     for ln in links:
         start = len(s.parts)
         what = f"{ln.pred_name} → {ln.succ_name} ({ln.kind})"
         s.freeform(ln.shaft, line=_HALO, line_pt=HALO_W, name=f"Logic link halo: {what}")
-        s.freeform(ln.shaft, line=_LINK, line_pt=LINK_W, name=f"Logic link line: {what}")
+        s.freeform(
+            ln.shaft,
+            line=_LINK,
+            line_pt=LINK_W,
+            dash="dash" if ln.flagged else None,
+            name=f"Logic link line{' (dashed, over other ink)' if ln.flagged else ''}: {what}",
+        )
         s.freeform(
             ln.head, line=None, line_pt=0, fill=_LINK, closed=True, name=f"Logic link head: {what}"
         )
@@ -561,6 +577,28 @@ def _logic_links(s: _Slide, links: list[PlacedLink]) -> None:
                 name=f"Logic link type: {what}",
             )
         s.group(start, f"Logic link: {what}")
+
+
+def _footnote(s: _Slide, lay: Layout | CompareLayout, right: float) -> None:
+    """The slide's footnote (ADR-0540) where the page paints it: the caution colour when a link
+    is drawn dashed over other ink, the muted one for the fitting notes alone."""
+    if not lay.footnote:
+        return
+    color = _WARN if any(ln.flagged for ln in lay.links) else _MUTED
+    lines = lay.footnote.split("\n")  # one paragraph per line, the last on ``footnote_y``
+    height = len(lines) * lay.footnote_lh
+    s.text(
+        lay.footnote_x,
+        lay.footnote_y - height - 1.5,
+        right - lay.footnote_x,
+        height + 3,
+        lines,
+        lay.footnote_pt,
+        color,
+        bold=True,
+        anchor="b",
+        name="Footnote",
+    )
 
 
 def render_onepager_pptx(
@@ -664,11 +702,12 @@ def render_onepager_pptx(
     for p in lay.items:
         hue = LANE_PALETTE[lay.lanes[p.lane].color % len(LANE_PALETTE)]
         if p.milestone:
+            ms = p.ms or lay.ms  # its own size at the chart's edge (ADR-0540 review F1)
             s.shape(
-                p.x0 - lay.ms / 2,
-                p.y - lay.ms / 2,
-                lay.ms,
-                lay.ms,
+                p.x0 - ms / 2,
+                p.y - ms / 2,
+                ms,
+                ms,
                 hue,
                 prst="diamond",
                 line=_WHITE,
@@ -751,6 +790,7 @@ def render_onepager_pptx(
                 align="r",
                 name="Today label",
             )
+    _footnote(s, lay, _SLIDE_RIGHT)
     s.hline(lay.lane_col_x0, lay.x1, lay.legend_y0, _LINE, 0.7, name="Legend line")
     lp = lay.legend_pt
     for e in lay.legend:
@@ -965,11 +1005,12 @@ def render_onepager_compare_pptx(
         hue = LANE_PALETTE[lay.lanes[p.lane].color % len(LANE_PALETTE)]
         if p.ghost_x0 is not None and p.ghost_x1 is not None:
             if p.ghost_milestone:
+                gms = p.ghost_ms or lay.ms
                 s.shape(
-                    p.ghost_x0 - lay.ms / 2,
-                    p.y - lay.ms / 2,
-                    lay.ms,
-                    lay.ms,
+                    p.ghost_x0 - gms / 2,
+                    p.y - gms / 2,
+                    gms,
+                    gms,
                     None,
                     prst="diamond",
                     line=hue,
@@ -1002,11 +1043,12 @@ def render_onepager_compare_pptx(
             )
         if p.x0 is not None and p.x1 is not None:
             if p.milestone:
+                ms = p.ms or lay.ms
                 s.shape(
-                    p.x0 - lay.ms / 2,
-                    p.y - lay.ms / 2,
-                    lay.ms,
-                    lay.ms,
+                    p.x0 - ms / 2,
+                    p.y - ms / 2,
+                    ms,
+                    ms,
                     hue,
                     prst="diamond",
                     line=_WHITE,
@@ -1097,6 +1139,7 @@ def render_onepager_compare_pptx(
                 align="r",
                 name="Today label",
             )
+    _footnote(s, lay, lay.summary_x1)
     s.hline(lay.lane_col_x0, lay.summary_x1, lay.legend_y0, _LINE, 0.7, name="Legend line")
     lp = lay.legend_pt
     for e in lay.legend:

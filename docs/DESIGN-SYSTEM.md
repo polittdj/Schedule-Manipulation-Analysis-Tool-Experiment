@@ -202,6 +202,29 @@ action's result renders where the browser lands after it (the links block), not 
 scrolled off above the slide — and lands clear of a sticky page header (daylight's top bar is
 224-458 px tall; a fixed scroll margin left the result under it).
 
+**The slide fills the page, and every requested link is fitted (ADR-0540; operator rulings
+2026-09-29).** The rows always fill the lane area — fewer items, larger bars and text; more items,
+smaller — the row pitch never capped, the text capped at `LABEL_MAX` (14 pt; a label larger than
+the 16-pt title would invert the slide's hierarchy — PROVISIONAL, the operator's ruling on the
+3 / 10 / 40 / 144-item renders pending). A link no route clears is never refused: the layout
+escalates in the operator's order — more room between the rows (bars, diamonds and labels at 80 %
+then 65 %), a 12-pt gutter lane at the chart's right edge, a reorder WITHIN a swimlane (never
+across) — and, as the last resort, draws the link along the route that covers the least, DASHED
+(the halo solid, so it still reads as crossing) and named with what it covers. Every step is
+disclosed: on the page ("How the logic links were fitted"; "Logic links drawn dashed over other
+ink"), in the Excel Notes (the list keeps the sheet's own order), and in the slide's FOOTNOTE — up
+to four 5.5-pt lines above the legend in `--warn` when a link is flagged, `--muted` otherwise,
+naming every flagged link compactly and counting any the four lines cannot hold — which both
+painters paint, so the .pptx carries it (the deck has no notes to hide it in). Bars and diamonds
+are sized from the row up to `GLYPH_MAX` (a 27-pt bar, a 25-pt diamond; PROVISIONAL with
+`LABEL_MAX`), and a diamond is clamped to the chart's edges. Never a second slide. Three rulings live here: the marking switch feeds the page and every PowerPoint, never the
+Excel exports (their fixed CUI header over-marks, never under); **slide content drawn at the
+slide's own point size — the SS / FF / SF tag, 3.8–13.8 px at 1440 depending on the slide's density
+and the view's scale — is exempt from §1's 8 px floor; page-only chrome (the FROM / TO pick tag,
+8.15–10 px) is not**; a collision is drawn and disclosed, not
+refused. The page-only axis caption ("TIMELINE BY MONTH AND YEAR", `SFChartFrame.axisTitles`)
+sits in the SVG's empty strip under the legend: the lanes reach the legend on every slide now.
+
 **The LODESTAR frame** — the two One-Pager pages served as their own program — keeps the
 compliance chrome whole: the CUI bars top and bottom, the handling & export-control drawer from the
 ONE copy of the prose (`htmlkit._DRAWER_HTML`, its `{where}` slot naming the frame's own marking

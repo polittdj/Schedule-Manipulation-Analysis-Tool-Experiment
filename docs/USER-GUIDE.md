@@ -290,6 +290,15 @@ dashboard. Stop it with `Ctrl-C`.
     you need (up to 200); only the links you add are drawn, on the page and in the PowerPoint, and a link whose
     item is not on the slide is listed as not drawn, with the reason. A link that would close a logic
     loop is refused. **Compare** draws the links between the items' current positions.
+    **The slide fills the page** (ADR-0540): fewer items, larger bars and text; more items, smaller.
+    **Every link you ask for is fitted:** when the rows leave no clean route, the slide first makes
+    more room between the rows, then adds a gutter lane at the right edge for the crowded links,
+    then reorders items within their swimlane (never across); each step is said under "How the
+    logic links were fitted", and the Excel list keeps the sheet's own order. A link that still
+    cannot be drawn clear of every other link is drawn anyway — **dashed** — with what it covers
+    named under "Logic links drawn dashed over other ink" and in the slide's footnote (up to four
+    lines; past them it counts the rest, which the page names), which the PowerPoint carries too.
+    Never a second slide.
     The same two pages ship on their own as **LODESTAR** (`lodestar/` in the repository) — see below.
 13. **Wipe Session** — clears all loaded schedules and derivatives from memory (including the
     Target UID).

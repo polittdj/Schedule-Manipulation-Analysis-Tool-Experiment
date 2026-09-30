@@ -39,7 +39,7 @@ import calendar
 import datetime as dt
 import hashlib
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import asdict, dataclass, field, replace
 from typing import Any
 
@@ -49,8 +49,9 @@ from schedule_forensics.reports.onepager_links import (
     Grid,
     Link,
     PlacedLink,
+    RouteReport,
     label_box,
-    route_links,
+    route_all,
     shape_box,
 )
 from schedule_forensics.reports.tableset import Cell, Table, TableSet
@@ -801,7 +802,6 @@ LEGEND_H, BOTTOM = 26.0, 10.0
 LEGEND_Y0 = H - BOTTOM - LEGEND_H
 LANES_Y1 = LEGEND_Y0 - 6.0
 LANE_PAD, LANE_GAP = 2.5, 2.0
-ROW_MAX = 13.0
 #: (row height, label size) floors, stepped down ONLY when the slide would otherwise overflow —
 #: and the layout says so in its notes when it had to.
 FLOORS = ((7.0, 5.0), (6.0, 4.6), (5.5, 4.2))
@@ -810,6 +810,377 @@ EMERGENCY = (3.6, 3.4)
 BAR_F, MS_F = 0.68, 0.62  # bar height / diamond size as fractions of the row
 CHAR_W = 0.52  # Calibri's average advance as a fraction of the font size (a safe over-estimate)
 LANE_COLORS = 10  # the size of the ``--lane-N`` token set / the .pptx print palette
+
+# ── the FULL-PAGE FILL and the fitting of the logic links (ADR-0540) ────────────────────────
+
+#: The rows always fill the slide (operator ruling 2026-09-29): a row is the lane area divided by
+#: the rows it holds, so fewer items give larger bars and diamonds, more items smaller ones —
+#: there is no upper cap on a row. The TEXT is capped: a label larger than the 16-pt title would
+#: invert the slide's hierarchy, and the operator has not yet ruled on a readable size for a
+#: tiny list (PROVISIONAL — the 3 / 10 / 40 / 144-item renders are delivered with ADR-0540).
+LABEL_MAX = 14.0
+#: The largest swimlane name, scaling with the labels (never below the pre-ADR-0540 sizes).
+LANE_NAME_MAX = 12.0
+#: The label's size as a fraction of its row, before the cap.
+LABEL_F = 0.6
+#: Escalation step 1 — more room between the rows: bars, diamonds and labels at these fractions
+#: of their size, the row pitch unchanged, so the gap a link runs through widens.
+GLYPH_STEPS = (0.8, 0.65)
+#: Escalation step 2 — a gutter lane this wide at the chart's right edge, taken off the timescale,
+#: carrying the links the gaps between their rows cannot (``Grid.gutter``).
+GUTTER_W = 12.0
+#: The band above the legend the slide's footnote takes; reserved from the first escalation step
+#: on, so a disclosure never changes the geometry it discloses.
+FOOT_H, FOOT_PT = 10.0, 5.5
+#: The footnote's average advance as a fraction of its size — wider than :data:`CHAR_W`, since
+#: the footnote is capitals, digits, parentheses and arrows: LibreOffice rendered the ADR-0540
+#: review's footnote at 0.64 em and ran it off the slide's edge at the 0.52-em budget.
+FOOT_CHAR_W = 0.66
+#: One footnote line's height, and the most lines the slide reserves for it (ADR-0540 review F4:
+#: one line held no entry in full; four hold every flagged link of any slide worth presenting —
+#: past them the footnote COUNTS the rest, named on the page)
+FOOT_LINE_H, FOOT_LINES_MAX = 6.5, 4
+#: The cap on the height the bars and diamonds are sized from — the 10-item slide's, where a bar
+#: is 27 pt and a diamond 25 — and the most a diamond may overhang the chart's edge (review F1:
+#: uncapped, a 2-item list drew a 259-pt diamond 107 pt off the slide). A milestone is a date,
+#: not a span; the rows still fill the slide (their pitch is uncapped).
+GLYPH_MAX, MS_OVERHANG = 40.0, 3.0
+#: What the slide says when the footnote's room, reserved for the last resort, was all it took
+#: (review F3: a lane area shorter than the slide's is always explained)
+RESERVE_NOTE = (
+    "Room below the swimlanes was reserved for this footnote; with it, every logic link found "
+    "a clear route."
+)
+
+
+def foot_height(lines: int) -> float:
+    """The band the footnote takes above the legend for ``lines`` lines."""
+    return FOOT_H + max(0, lines - 1) * FOOT_LINE_H
+
+
+#: The escalation's work budget — candidate routes judged over every attempt — and the most
+#: reorder trials; both counts, never seconds, so every run lays the same slide out the same way.
+WORK_BUDGET, REORDER_TRIALS = 24_000, 12
+
+
+@dataclass(frozen=True)
+class Fit:
+    """One layout attempt's knobs (ADR-0540): the glyph fraction (step 1), the gutter lane
+    (step 2), the row swaps within swimlanes (step 3 — ``(lane, position a, position b)`` in the
+    lane's packing order), whether the footnote band is reserved, and ``force`` (the last resort:
+    a link no route clears is drawn along the route that covers the least, flagged)."""
+
+    glyph: float = 1.0
+    gutter: bool = False
+    swaps: tuple[tuple[int, int, int], ...] = ()
+    foot: bool = False
+    force: bool = False
+    #: the lines the footnote band is reserved for when ``foot`` (:func:`foot_height`)
+    foot_lines: int = 1
+
+
+@dataclass
+class Attempt:
+    """What one attempt produced — enough for the driver to judge it and for the page to finish
+    it. ``placed`` is the slide's own item type; ``positions`` map every keyed item to its lane
+    and packing position, ``extents`` give each position's row and x-extent (what a swap must
+    respect), ``fits`` whether the rows fit the slide at all."""
+
+    fit: Fit
+    lanes: list[Lane]
+    placed: list[Any]
+    lanes_y1: float
+    row_h: float
+    label_pt: float
+    x1: float
+    report: RouteReport
+    positions: dict[str, tuple[int, int]]
+    extents: dict[int, list[tuple[int, float, float]]]
+    notes: list[str]
+    fits: bool
+    #: the Compare slide's per-swimlane summary boxes (empty on the Timeline)
+    summaries: list[Any] = field(default_factory=list)
+    #: the bar height and diamond size (``fit_rows``'s glyph height times the fit's glyph)
+    bar_h: float = 0.0
+    ms: float = 0.0
+
+
+def _better(cand: Attempt, best: Attempt) -> bool:
+    return cand.fits and len(cand.report.collisions) < len(best.report.collisions)
+
+
+def _swap_ok(
+    extents: Mapping[int, list[tuple[int, float, float]]], swap: tuple[int, int, int]
+) -> bool:
+    """Whether two items may trade rows: each must clear every other item of the row it moves
+    into (the packer's own 4-pt margin)."""
+    lane, a, b = swap
+    ext = extents.get(lane, [])
+    if not (0 <= a < len(ext) and 0 <= b < len(ext)) or ext[a][0] == ext[b][0]:
+        return False
+
+    def clear(pos: int, row: int, skip: int) -> bool:
+        _r, x0, x1 = ext[pos]
+        return all(
+            k in (pos, skip) or r != row or e1 + 4 <= x0 or x1 + 4 <= e0
+            for k, (r, e0, e1) in enumerate(ext)
+        )
+
+    return clear(a, ext[b][0], b) and clear(b, ext[a][0], a)
+
+
+def _proposals(best: Attempt) -> Iterator[tuple[int, int, int]]:
+    """Row swaps to try, in one fixed order: for each colliding link, each of its ends, each
+    other position in that end's swimlane — only swaps the packer can honour."""
+    seen: set[tuple[int, int, int]] = set(best.fit.swaps)
+    for ln, _erased in best.report.collisions:
+        for key in (ln.pred, ln.succ):
+            at = best.positions.get(key)
+            if at is None:
+                continue
+            lane, pos = at
+            for other in range(len(best.extents.get(lane, []))):
+                swap = (lane, min(pos, other), max(pos, other))
+                if other == pos or swap in seen:
+                    continue
+                seen.add(swap)
+                if _swap_ok(best.extents, swap):
+                    yield swap
+
+
+def fit_links(
+    attempt: Callable[[Fit], Attempt], lines_needed: Callable[[Attempt], int] = lambda _a: 1
+) -> Attempt:
+    """The escalation (operator order, 2026-09-29): lay the slide out; if a link no route
+    clears remains, (1) more room between the rows, (2) a gutter lane, (3) a reorder within a
+    swimlane — each kept only when it leaves fewer such links — and, as the last resort, draw
+    what is left along the route that covers the least, flagged and named. Never a second
+    slide. Bounded by counts (:data:`WORK_BUDGET`, :data:`REORDER_TRIALS`, and at most two
+    more attempts after the last resort), so it is deterministic. ``lines_needed`` says how
+    many footnote lines an attempt's disclosure wants; the last resort reserves them."""
+    base = attempt(Fit())
+    if not base.report.collisions:
+        return base
+    best, work = base, base.report.judged
+
+    def within(cand: Attempt) -> Attempt:
+        nonlocal work
+        work += cand.report.judged
+        return cand
+
+    fit = Fit(foot=True)
+    for g in GLYPH_STEPS:  # 1. more room between the rows
+        if work >= WORK_BUDGET:
+            break
+        cand = within(attempt(replace(fit, glyph=g)))
+        if _better(cand, best):
+            best = cand
+        if not best.report.collisions:
+            return best
+    if work < WORK_BUDGET:  # 2. the gutter lane
+        cand = within(attempt(replace(best.fit, foot=True, gutter=True)))
+        if _better(cand, best):
+            best = cand
+        if not best.report.collisions:
+            return best
+    trials = 0  # 3. a reorder within a swimlane
+    while trials < REORDER_TRIALS and work < WORK_BUDGET and best.report.collisions:
+        moved = False
+        for swap in _proposals(best):
+            if trials >= REORDER_TRIALS or work >= WORK_BUDGET:
+                break
+            cand = within(attempt(replace(best.fit, foot=True, swaps=(*best.fit.swaps, swap))))
+            trials += 1
+            if _better(cand, best):
+                best, moved = cand, True
+                break
+        if not moved:
+            break
+    if not best.report.collisions:
+        return best
+    forced = attempt(replace(best.fit, foot=True, force=True))  # the last resort
+    if base.fits and not forced.fits:
+        # the reserve alone sank a list that fills the slide to its last row (review F2): the
+        # links are drawn and named on the page and in the Excel Notes, and the slide says why
+        # it carries no footnote — never "runs off the bottom" for a row that is on the slide
+        return attempt(replace(best.fit, foot=False, force=True))
+    need = min(lines_needed(forced), FOOT_LINES_MAX)
+    if need > 1:  # the footnote wants more lines: reserve them and route once more (review F4)
+        taller = attempt(replace(forced.fit, foot_lines=need))
+        if taller.fits:
+            forced = taller
+    return forced
+
+
+def escalation_words(fit: Fit) -> str:
+    """The steps a flagged link's note says were tried: ``more room between the rows, a gutter
+    lane and a reorder within its swimlane``."""
+    parts = []
+    if fit.glyph < 1.0:
+        parts.append("more room between the rows")
+    if fit.gutter:
+        parts.append("a gutter lane")
+    if fit.swaps:
+        parts.append("a reorder within its swimlane")
+    if not parts:
+        return ""
+    return ", ".join(parts[:-1]) + (" and " if len(parts) > 1 else "") + parts[-1]
+
+
+def fit_notes(fit: Fit, reordered: Sequence[str]) -> list[str]:
+    """The disclosures of what the layout did to fit the links (the page's "How the logic links
+    were fitted", the Excel Notes) — each a sentence, in the escalation's order."""
+    out: list[str] = []
+    if fit.glyph < 1.0:
+        out.append(
+            f"Bars, diamonds and labels are drawn at {round(fit.glyph * 100)}% of their "
+            "page-filling size to make room between the rows for the logic links."
+        )
+    if fit.gutter:
+        out.append(
+            f"A gutter lane {GUTTER_W:.0f} pt wide at the right edge of the timeline carries the "
+            "logic links the gaps between their rows could not; the timescale is narrower by it."
+        )
+    if reordered:
+        names = "; ".join(reordered)
+        out.append(
+            f"{len(reordered)} item(s) are reordered within their swimlane to fit the logic "
+            f"links — {names}. The Excel list keeps the sheet's own order."
+        )
+    return out
+
+
+def diamond_half(x: float, ms_w: float, x0: float, x1: float) -> float:
+    """A diamond's half-width at ``x``: the slide's, clamped so it overhangs the chart's edges
+    ``x0..x1`` by at most :data:`MS_OVERHANG` — and never under that overhang, so a diamond on
+    the edge itself still shows (review F1)."""
+    return max(MS_OVERHANG, min(ms_w / 2, x - x0 + MS_OVERHANG, x1 - x + MS_OVERHANG))
+
+
+def disclose_fit(fit: Fit, entries: Sequence[str], fitted: list[str], notes: list[str]) -> None:
+    """The two disclosures the last resort owes beyond its footnote (reviews F2, F3): a band
+    reserved with nothing else to say is explained in the fitting notes, and a slide with no
+    room for its footnote says where the links drawn dashed ARE named."""
+    if fit.foot and not entries and not fitted:
+        fitted.append(RESERVE_NOTE)
+    if fit.force and not fit.foot and entries:
+        notes.append(
+            f"The list fills the slide to its last row, leaving no room below the swimlanes "
+            f"for the footnote: the {len(entries)} logic link(s) drawn dashed over other ink "
+            "are named in the logic-link notes here and in the Excel Notes — not on the slide "
+            "or in the PowerPoint."
+        )
+
+
+_DATES = re.compile(r" \(\d{1,2}/\d{1,2}/\d{2}(?: to \d{1,2}/\d{1,2}/\d{2})?\)$")
+
+
+def short_labels(labels: Mapping[str, str]) -> dict[str, str]:
+    """Each label (``Swimlane · Item (dates)``, :func:`item_label`) -> its compact form for the
+    footnote: the item's name alone, with its swimlane where that name repeats across the
+    list. The page's logic-link notes carry the full labels."""
+    parts: dict[str, tuple[str, str]] = {}
+    for label in labels.values():
+        lane, sep, rest = label.partition(" · ")
+        parts[label] = (lane if sep else "", _DATES.sub("", rest))
+    counts: dict[str, int] = {}
+    for _lane, name in parts.values():
+        counts[name] = counts.get(name, 0) + 1
+    return {
+        label: (f"{lane} · {name}" if counts[name] > 1 and lane else name)
+        for label, (lane, name) in parts.items()
+    }
+
+
+def compact(text: str, short: Mapping[str, str]) -> str:
+    """``text`` with every full label replaced by its compact form (longest first) and the
+    router's ``logic link`` words dropped — the footnote's register."""
+    for label in sorted(short, key=len, reverse=True):
+        text = text.replace(label, short[label])
+    return text.replace("logic link ", "")
+
+
+def footnote_entries(drawn: Sequence[PlacedLink], labels: Mapping[str, str]) -> list[str]:
+    """One compact entry per link drawn dashed: what it is, and what it covers."""
+    short = short_labels(labels)
+    return [
+        compact(f"{ln.pred_name} → {ln.succ_name} ({ln.kind}) over {ln.overlap}", short)
+        for ln in drawn
+        if ln.flagged
+    ]
+
+
+def _wrap(text: str, keep: int) -> list[str]:
+    """Greedy word-wrap at ``keep`` characters (a lone longer word takes its own line)."""
+    lines: list[str] = []
+    line = ""
+    for word in text.split(" "):
+        if line and len(line) + 1 + len(word) > keep:
+            lines.append(line)
+            line = word
+        else:
+            line = f"{line} {word}" if line else word
+    if line:
+        lines.append(line)
+    return lines
+
+
+def footnote_lines(
+    entries: Sequence[str],
+    fit: Fit,
+    reordered: Sequence[str],
+    labels: Mapping[str, str],
+    width: float,
+    max_lines: int,
+) -> list[str]:
+    """The slide's footnote as lines (page and .pptx alike — the deck has no notes to hide it
+    in): every link drawn dashed, named with what it covers; then the reorder; then the room
+    made. Wrapped to ``width`` at :data:`FOOT_PT` over at most ``max_lines`` lines: when they
+    cannot hold every entry, whole entries are dropped from the end and COUNTED — never a cut
+    mid-name. With nothing to say in a band that was reserved, the band says so."""
+    keep = max(8, int(width / (FOOT_PT * FOOT_CHAR_W)))
+    short = short_labels(labels)
+    tail: list[str] = []
+    if reordered:
+        names = compact("; ".join(reordered), short)
+        tail.append(
+            f"{len(reordered)} item(s) reordered within their swimlane to fit the logic links "
+            f"({names})"
+        )
+    if fit.glyph < 1.0:
+        tail.append(f"bars and labels at {round(fit.glyph * 100)}% to make room for the links")
+    if fit.gutter:
+        tail.append("a gutter lane at the right edge carries links the rows could not")
+    if not entries and not tail:
+        return _wrap(RESERVE_NOTE, keep)[:max_lines] if fit.foot else []
+    n = len(entries)
+    for k in range(n, -1, -1):
+        parts = []
+        if n:
+            rest = f" — and {n - k} more, named on the page and in the Excel Notes" if k < n else ""
+            parts.append(
+                f"Caution — {n} logic link(s) drawn dashed over other ink, no clear route "
+                f"existing: {'; '.join(entries[:k])}{rest}"
+            )
+        lines = _wrap(" · ".join(parts + tail), keep)
+        if len(lines) <= max_lines:
+            return lines
+    lines = lines[:max_lines]  # the floor: even the count alone overflows — cut, marked
+    lines[-1] = lines[-1][: keep - 1] + "…"
+    return lines
+
+
+def footnote_text(
+    drawn: Sequence[PlacedLink],
+    fit: Fit,
+    reordered: Sequence[str],
+    width: float,
+    labels: Mapping[str, str] | None = None,
+) -> str:
+    """The footnote as one string, its lines joined by newlines (:func:`footnote_lines`)."""
+    names = labels if labels is not None else {}
+    entries = footnote_entries(drawn, names)
+    return "\n".join(footnote_lines(entries, fit, reordered, names, width, fit.foot_lines))
 
 
 def mdy(d: dt.date) -> str:
@@ -846,6 +1217,89 @@ def wrap(text: str, size: float, width: float, max_lines: int = 2) -> list[str]:
     return lines
 
 
+def apply_swaps(rows: list[int], lane: int, swaps: Sequence[tuple[int, int, int]]) -> list[int]:
+    """The packer's row per position with the accepted swaps of ``lane`` applied, in order (a
+    swap that names a position the lane does not have is ignored)."""
+    out = list(rows)
+    for ln, a, b in swaps:
+        if ln == lane and 0 <= a < len(out) and 0 <= b < len(out):
+            out[a], out[b] = out[b], out[a]
+    return out
+
+
+def lane_name_pt(row_h: float, label_pt: float) -> float:
+    """The swimlane name's size: the pre-ADR-0540 size at least, growing with the labels."""
+    base = 7.5 if row_h >= 9 else 6.5
+    return min(LANE_NAME_MAX, max(base, label_pt * 0.95))
+
+
+def size_notes(
+    fits: bool,
+    row_h: float,
+    label_pt: float,
+    n_items: int,
+    total_rows: int,
+    n_lanes: int,
+    what: str,
+) -> list[str]:
+    """The density sentences (unchanged since ADR-0446): only when the floors had to step down."""
+    if not fits:
+        return [
+            f"This {what} does not fit one slide even at the smallest size ({total_rows} rows of "
+            f"items across {n_lanes} swimlanes) — the lowest swimlanes run off the page. Split "
+            f"the {'list' if what == 'list' else 'lists'} into two one-pagers."
+        ]
+    if row_h < FLOORS[-1][0]:
+        return [
+            f"Extremely dense {'one-pager' if what == 'list' else 'comparison'}: {n_items} items "
+            f"in {total_rows} rows — labels at {label_pt:.1f} pt are too small to read "
+            f"comfortably; consider splitting the {'list' if what == 'list' else 'lists'} into "
+            "two one-pagers."
+        ]
+    if row_h < FLOORS[0][0]:
+        return [
+            f"Dense {'one-pager' if what == 'list' else 'comparison'}: {n_items} items across "
+            f"{n_lanes} swimlanes — labels reduced to {label_pt:.1f} pt to fit one slide."
+        ]
+    return []
+
+
+def fit_rows(
+    pack: Callable[[float, float], dict[int, int]], avail: float, glyph: float
+) -> tuple[float, float, float, bool]:
+    """The sizes at which the rows fill ``avail`` (ADR-0540): ``pack(label_pt, row_h)`` returns
+    the rows each swimlane needs at those sizes. The label only ever shrinks from its cap, so
+    the iteration converges; the floors step down only when even the smallest label overflows
+    the slide, and past the last floor the emergency size keeps it one slide.
+
+    Returns ``(row_h, glyph_h, label_pt, fits)``: ``row_h`` is the row PITCH, always the lane
+    area over the rows it holds (the fill); ``glyph_h`` the height the bars, diamonds and labels
+    are sized from — the same, except where the packing has no fixed point (a larger diamond
+    needs one more row, a row more makes the diamond smaller again, a two-cycle measured at 40
+    items): then the glyphs keep the smaller size at which the rows were packed, at most a few
+    percent under the pitch, and the pitch still fills the slide."""
+    row_h = label_pt = 0.0
+    fits = False
+    for row_min, label_min in (*FLOORS, EMERGENCY):
+        label_pt = max(label_min, LABEL_MAX * glyph)
+        row_h = avail
+        for _ in range(12):
+            rows = pack(label_pt, row_h)
+            nr = max(row_min, avail / max(1, sum(rows.values())))
+            nl = max(label_min, min(label_pt, min(LABEL_MAX, nr * LABEL_F) * glyph))
+            if abs(nr - row_h) < 0.05 and abs(nl - label_pt) < 0.05:
+                break
+            row_h, label_pt = nr, nl
+        need = max(1, sum(pack(label_pt, row_h).values()))
+        if need * row_h > avail + 0.01:  # the last pack asked for a row more: size down to it
+            row_h = max(row_min, avail / need)
+            need = max(1, sum(pack(label_pt, row_h).values()))
+        fits = need * row_h <= avail + 0.01
+        if fits:
+            return max(row_h, avail / need), row_h, label_pt, True
+    return row_h, row_h, label_pt, fits
+
+
 @dataclass(frozen=True)
 class Placed:
     name: str
@@ -869,6 +1323,9 @@ class Placed:
     #: the item's stable identity (:func:`item_keys`) — what a logic link and the page's
     #: click-to-select name it by
     key: str = ""
+    #: a milestone's own diamond size — the slide's, clamped to the chart's edges (ADR-0540
+    #: review F1); ``0`` for a bar
+    ms: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -955,6 +1412,17 @@ class Layout:
     links: list[PlacedLink] = field(default_factory=list)
     link_notes: list[str] = field(default_factory=list)
     status_label: str = ""
+    #: ADR-0540: what the layout did to fit the links (``fit_notes``), the slide's footnote —
+    #: painted at ``(footnote_x, footnote_y)`` by both painters, ``""`` for none — and the
+    #: gutter lane ``(x0, x1)`` when one is drawn
+    fit_notes: list[str] = field(default_factory=list)
+    footnote: str = ""
+    footnote_x: float = 0.0
+    footnote_y: float = 0.0
+    footnote_pt: float = FOOT_PT
+    gutter: tuple[float, float] | None = None
+    #: the footnote's line height (its lines stack upward from ``footnote_y``)
+    footnote_lh: float = FOOT_LINE_H
 
 
 def _first_of_month(d: dt.date) -> dt.date:
@@ -1094,7 +1562,10 @@ def build_layout(
     (:func:`~schedule_forensics.reports.onepager_links.route_links`); ``names`` labels every
     item key for them (defaults to the items' own) and ``absent`` gives the reason for a key that
     is in the list but not on this slide. ``status_column`` is the letter the legend's check
-    names (E, D for a sheet in the older layout, ``""`` unsaid)."""
+    names (E, D for a sheet in the older layout, ``""`` unsaid).
+
+    The rows FILL the slide (ADR-0540), and every requested link is fitted by the escalation
+    :func:`fit_links` drives — the slide says what it did, on the page and in its footnote."""
     if not items:
         raise ValueError("nothing to lay out")
     items = keyed(items)
@@ -1125,10 +1596,6 @@ def build_layout(
     hi = max(i.finish for i in items)
     t0, t1, today_note = plot_window(lo, hi, today, window)
     total = (t1 - t0).days
-
-    def x_of(d: dt.date) -> float:
-        return X0 + (d - t0).days / total * (X1 - X0)
-
     if window is not None:
         cut = [i for i in items if i.start < window[0] or i.finish > window[1]]
         if cut:
@@ -1141,169 +1608,238 @@ def build_layout(
     for it in items:
         by_lane.setdefault(lane_of[_lane_key(it.lane)], []).append(it)
     n_lanes = len(lane_names)
+    labels = dict(names) if names is not None else {}
+    for it in items:
+        labels.setdefault(it.key, item_label(it))
 
-    def pack(lane_items: list[OnePagerItem], label_pt: float, row_h: float) -> list[_PackRow]:
-        """First-fit rows: an item takes the first row whose last extent ends before its own
-        (bar or diamond PLUS its label) begins. Labels sit right of the item, inside a bar wide
-        and tall enough to hold them, or left of it when the right edge has no room."""
-        out: list[_PackRow] = []
-        row_end: list[float] = []
-        ms_w, bar_h = row_h * MS_F, row_h * BAR_F
-        done_r = label_pt * DONE_F
-        for it in sorted(lane_items, key=lambda i: (i.start, i.finish, i.row)):
-            xs, xe = x_of(it.start), x_of(it.finish)
-            label = f"{it.name} ({mdy(it.finish)})"
-            lw = text_w(label, label_pt)
-            inside = clipped = False
-            done = it.complete is True
-            chk = 2 * done_r + DONE_GAP if done else 0.0
-            done_x: float | None = None
-            if it.milestone:
-                left, right = xs - ms_w / 2, xs + ms_w / 2
-            else:
-                xe = max(xe, xs + 3)
-                if window is not None:  # cut at the window's edges (a no-op for an inside bar)
-                    xs, xe = max(xs, X0), min(xe, X1)
-                    if xe - xs < 3:  # keep the 3-pt floor INSIDE the chart
-                        xs, xe = (xs, xs + 3) if xs + 3 <= X1 else (xe - 3, xe)
-                left, right = xs, xe
-                # a complete item's label stays outside: its check sits beside the bar, not on it
-                inside = not done and lw + 4 <= xe - xs and bar_h >= label_pt
-            if inside:
-                anchor, lx, ext0, ext1 = "start", xs + 2, left, right
-            else:
-                anchor, lx, ext0, ext1 = "start", right + 3 + chk, left, right + 3 + chk + lw
-                done_x = right + 3 + done_r if done else None
-                if ext1 > X1 + 1:
-                    anchor, lx, ext0, ext1 = "end", left - 3 - chk, left - 3 - chk - lw, right
-                    done_x = left - 3 - done_r if done else None
-                    if ext0 < X0 - 1:
-                        clipped = True
-                        ext0 = X0
-            row = next((r for r, end in enumerate(row_end) if end + 4 <= ext0), None)
-            if row is None:
-                row = len(row_end)
-                row_end.append(ext1)
-            else:
-                row_end[row] = ext1
-            out.append(
-                (
-                    it,
-                    row,
-                    xs,
-                    xs if it.milestone else xe,
-                    anchor,
-                    lx,
-                    inside,
-                    clipped,
-                    label,
-                    lw,
-                    done_x,
-                    done_r,
+    def attempt(fit: Fit) -> Attempt:
+        x1 = X1 - (GUTTER_W if fit.gutter else 0.0)
+        lanes_max = LANES_Y1 - (foot_height(fit.foot_lines) if fit.foot else 0.0)
+
+        def x_of(d: dt.date) -> float:
+            return X0 + (d - t0).days / total * (x1 - X0)
+
+        def pack(lane_items: list[OnePagerItem], label_pt: float, row_h: float) -> list[_PackRow]:
+            """First-fit rows: an item takes the first row whose last extent ends before its own
+            (bar or diamond PLUS its label) begins. Labels sit right of the item, inside a bar
+            wide and tall enough to hold them, or left of it when the right edge has no room."""
+            out: list[_PackRow] = []
+            row_end: list[float] = []
+            g = min(row_h, GLYPH_MAX)
+            ms_w, bar_h = g * MS_F * fit.glyph, g * BAR_F * fit.glyph
+            done_r = label_pt * DONE_F
+            for it in sorted(lane_items, key=lambda i: (i.start, i.finish, i.row)):
+                xs, xe = x_of(it.start), x_of(it.finish)
+                label = f"{it.name} ({mdy(it.finish)})"
+                lw = text_w(label, label_pt)
+                inside = clipped = False
+                done = it.complete is True
+                chk = 2 * done_r + DONE_GAP if done else 0.0
+                done_x: float | None = None
+                if it.milestone:
+                    left, right = xs - ms_w / 2, xs + ms_w / 2
+                else:
+                    xe = max(xe, xs + 3)
+                    if window is not None:  # cut at the window's edges (a no-op for an inside bar)
+                        xs, xe = max(xs, X0), min(xe, x1)
+                        if xe - xs < 3:  # keep the 3-pt floor INSIDE the chart
+                            xs, xe = (xs, xs + 3) if xs + 3 <= x1 else (xe - 3, xe)
+                    left, right = xs, xe
+                    # a complete item's label stays outside: its check sits beside the bar
+                    inside = not done and lw + 4 <= xe - xs and bar_h >= label_pt
+                if inside:
+                    anchor, lx, ext0, ext1 = "start", xs + 2, left, right
+                else:
+                    anchor, lx, ext0, ext1 = "start", right + 3 + chk, left, right + 3 + chk + lw
+                    done_x = right + 3 + done_r if done else None
+                    if ext1 > x1 + 1:
+                        anchor, lx, ext0, ext1 = "end", left - 3 - chk, left - 3 - chk - lw, right
+                        done_x = left - 3 - done_r if done else None
+                        if ext0 < X0 - 1:
+                            clipped = True
+                            ext0 = X0
+                row = next((r for r, end in enumerate(row_end) if end + 4 <= ext0), None)
+                if row is None:
+                    row = len(row_end)
+                    row_end.append(ext1)
+                else:
+                    row_end[row] = ext1
+                out.append(
+                    (
+                        it,
+                        row,
+                        xs,
+                        xs if it.milestone else xe,
+                        anchor,
+                        lx,
+                        inside,
+                        clipped,
+                        label,
+                        lw,
+                        done_x,
+                        done_r,
+                    )
                 )
-            )
-        return out
+            return out
 
-    # fit: the label size feeds the packing, which feeds the row height, which feeds the label
-    # size — iterate to a fixed point, stepping the floors down only if the slide would overflow;
-    # past the last floor an EMERGENCY size keeps it one slide and the notes say to split the list
-    avail = (LANES_Y1 - LANES_Y0) - n_lanes * 2 * LANE_PAD - (n_lanes - 1) * LANE_GAP
-    packed: dict[int, list[_PackRow]] = {}
-    rows: dict[int, int] = {}
-    row_h, label_pt = ROW_MAX, 8.0
-    fits = False
-    for row_min, label_min in (*FLOORS, EMERGENCY):
-        row_h, label_pt = ROW_MAX, 8.0
-        for _ in range(6):
-            packed = {li: pack(by_lane[li], label_pt, row_h) for li in range(n_lanes)}
-            rows = {li: 1 + max(p[1] for p in packed[li]) for li in range(n_lanes)}
-            nr = max(row_min, min(ROW_MAX, avail / sum(rows.values())))
-            nl = max(label_min, min(8.0, nr * 0.6))
-            if abs(nr - row_h) < 0.05 and abs(nl - label_pt) < 0.05:
-                break
-            row_h, label_pt = nr, nl
-        fits = sum(rows.values()) * row_h <= avail + 0.01
-        if fits:
-            break
-    total_rows = sum(rows.values())
-    if not fits:
-        notes.append(
-            f"This list does not fit one slide even at the smallest size ({total_rows} rows of "
-            f"items across {n_lanes} swimlanes) — the lowest swimlanes run off the page. Split "
-            "the list into two one-pagers."
-        )
-    elif row_h < FLOORS[-1][0]:
-        notes.append(
-            f"Extremely dense one-pager: {len(items)} items in {total_rows} rows — labels at "
-            f"{label_pt:.1f} pt are too small to read comfortably; consider splitting the list "
-            "into two one-pagers."
-        )
-    elif row_h < FLOORS[0][0]:
-        notes.append(
-            f"Dense one-pager: {len(items)} items across {n_lanes} swimlanes — labels reduced "
-            f"to {label_pt:.1f} pt to fit one slide."
-        )
-    # lanes top-down
-    lanes: list[Lane] = []
-    placed: list[Placed] = []
-    y = LANES_Y0
-    base_lane_pt = 7.5 if row_h >= 9 else 6.5
-    col_w = LANE_COL_X1 - LANE_COL_X0 - 10
-    for li in range(n_lanes):
-        h = rows[li] * row_h + 2 * LANE_PAD
-        pt = base_lane_pt
-        lines = wrap(lane_names[li], pt, col_w)
-        while len(lines) * pt * 1.2 > h - 1 and pt > 4.5:  # a one-row lane cannot hold two lines
-            pt -= 0.5
+        def rows_at(label_pt: float, row_h: float) -> dict[int, int]:
+            return {
+                li: 1 + max(p[1] for p in pack(by_lane[li], label_pt, row_h))
+                for li in range(n_lanes)
+            }
+
+        avail = (lanes_max - LANES_Y0) - n_lanes * 2 * LANE_PAD - (n_lanes - 1) * LANE_GAP
+        row_h, glyph_h, label_pt, fits = fit_rows(rows_at, avail, fit.glyph)
+        glyph_h = min(glyph_h, GLYPH_MAX)
+        bar_h, ms_w = glyph_h * BAR_F * fit.glyph, glyph_h * MS_F * fit.glyph
+        packed = {li: pack(by_lane[li], label_pt, glyph_h) for li in range(n_lanes)}
+        # the accepted row swaps (escalation step 3), and where every item sits for the driver
+        rows_of: dict[int, list[int]] = {}
+        extents: dict[int, list[tuple[int, float, float]]] = {}
+        positions: dict[str, tuple[int, int]] = {}
+        for li in range(n_lanes):
+            rows_of[li] = apply_swaps([p[1] for p in packed[li]], li, fit.swaps)
+            extents[li] = []
+            for pos, p in enumerate(packed[li]):
+                it, _row, xs, xe, anchor, lx, inside, _c, _label, lw, done_x, done_r = p
+                left = xs - ms_w / 2 if it.milestone else xs
+                right = xs + ms_w / 2 if it.milestone else xe
+                if inside:
+                    e0, e1 = left, right
+                elif anchor == "start":
+                    e0, e1 = left, lx + lw
+                else:
+                    e0, e1 = max(X0, lx - lw), right
+                extents[li].append((rows_of[li][pos], e0, e1))
+                positions[it.key] = (li, pos)
+        rows = {li: 1 + max(rows_of[li]) for li in range(n_lanes)}
+        total_rows = sum(rows.values())
+        size = size_notes(fits, row_h, label_pt, len(items), total_rows, n_lanes, "list")
+        # lanes top-down
+        lanes: list[Lane] = []
+        placed: list[Placed] = []
+        y = LANES_Y0
+        col_w = LANE_COL_X1 - LANE_COL_X0 - 10
+        for li in range(n_lanes):
+            h = rows[li] * row_h + 2 * LANE_PAD
+            pt = lane_name_pt(row_h, label_pt)
             lines = wrap(lane_names[li], pt, col_w)
-        lanes.append(
-            Lane(
-                lane_names[li],
-                lines,
-                pt,
-                li,
-                y,
-                y + h,
-                rows[li],
-                li % LANE_COLORS,
-                merged.get(li, []),
-            )
-        )
-        for it, row, xs, xe, anchor, lx, inside, clipped, label, lw, done_x, done_r in packed[li]:
-            cy = y + LANE_PAD + row * row_h + row_h / 2
-            placed.append(
-                Placed(
-                    it.name,
+            while len(lines) * pt * 1.2 > h - 1 and pt > 4.5:  # a one-row lane cannot hold two
+                pt -= 0.5
+                lines = wrap(lane_names[li], pt, col_w)
+            lanes.append(
+                Lane(
+                    lane_names[li],
+                    lines,
+                    pt,
                     li,
-                    row,
-                    it.milestone,
-                    it.start.isoformat(),
-                    it.finish.isoformat(),
-                    xs,
-                    xe,
-                    cy,
-                    label,
-                    lx,
-                    anchor,
-                    lw,
-                    inside,
-                    clipped,
-                    done_x is not None,
-                    done_x,
-                    done_r,
-                    it.key,
+                    y,
+                    y + h,
+                    rows[li],
+                    li % LANE_COLORS,
+                    merged.get(li, []),
                 )
             )
-        y += h + LANE_GAP
-    lanes_y1 = y - LANE_GAP
-    drawn, link_notes = _logic(
-        items, placed, lanes, row_h, label_pt, lanes_y1, window, links, names, absent
+            for pos, p in enumerate(packed[li]):
+                it, _row, xs, xe, anchor, lx, inside, clipped, label, lw, done_x, done_r = p
+                row = rows_of[li][pos]
+                cy = y + LANE_PAD + row * row_h + row_h / 2
+                placed.append(
+                    Placed(
+                        it.name,
+                        li,
+                        row,
+                        it.milestone,
+                        it.start.isoformat(),
+                        it.finish.isoformat(),
+                        xs,
+                        xe,
+                        cy,
+                        label,
+                        lx,
+                        anchor,
+                        lw,
+                        inside,
+                        clipped,
+                        done_x is not None,
+                        done_x,
+                        done_r,
+                        it.key,
+                        ms=2 * diamond_half(xs, ms_w, X0, x1) if it.milestone else 0.0,
+                    )
+                )
+            y += h + LANE_GAP
+        lanes_y1 = y - LANE_GAP
+        gutter = (x1 + 0.5, X1 - 0.5) if fit.gutter else None
+        report = _logic(
+            items,
+            placed,
+            lanes,
+            bar_h,
+            ms_w,
+            row_h,
+            label_pt,
+            lanes_y1,
+            lanes_max,
+            window,
+            links,
+            labels,
+            absent,
+            gutter,
+            fit,
+        )
+        return Attempt(
+            fit,
+            lanes,
+            placed,
+            lanes_y1,
+            row_h,
+            label_pt,
+            x1,
+            report,
+            positions,
+            extents,
+            size,
+            fits,
+            [],
+            bar_h,
+            ms_w,
+        )
+
+    def lines_needed(cand: Attempt) -> int:
+        entries = footnote_entries(cand.report.drawn, labels)
+        moved = reordered_names(cand, labels)
+        return len(
+            footnote_lines(entries, cand.fit, moved, labels, X1 - LANE_COL_X0, FOOT_LINES_MAX)
+        )
+
+    best = fit_links(attempt, lines_needed) if links else attempt(Fit())
+    fit, lanes, placed, lanes_y1, row_h, label_pt = (
+        best.fit,
+        best.lanes,
+        best.placed,
+        best.lanes_y1,
+        best.row_h,
+        best.label_pt,
     )
+    notes += best.notes
+    drawn, link_notes = best.report.drawn, list(best.report.notes)
+    if best.report.crowded:
+        link_notes.append(CROWDED_NOTE)
+    reordered = reordered_names(best, labels)
+    fitted = fit_notes(fit, reordered)
+    disclose_fit(fit, footnote_entries(drawn, labels), fitted, notes)
+    notes += fitted
+    x1 = best.x1
     # the header: a dotted line per month, a letter or abbreviation as room allows, year bands
-    months, years, month_pt = timescale(t0, t1, X0, X1, window is not None)
+    months, years, month_pt = timescale(t0, t1, X0, x1, window is not None)
+
+    def x_of(d: dt.date) -> float:
+        return X0 + (d - t0).days / total * (x1 - X0)
+
     # today: the DD line spans header + lanes; its dated caption sits in the gap below the lanes
     today_x = None if today_note else x_of(today)
-    tl_anchor = "end" if today_x is not None and today_x > X1 - 110 else "start"
+    tl_anchor = "end" if today_x is not None and today_x > x1 - 110 else "start"
     tl_x = (today_x or X0) + (-3 if tl_anchor == "end" else 3)
     # the legend: symbols first, then one chip per swimlane; two rows at most, shrinking to fit
     legend: list[LegendEntry] = []
@@ -1335,6 +1871,7 @@ def build_layout(
         if row <= 1:
             break
         legend_pt -= 0.75
+    foot = footnote_text(drawn, fit, reordered, X1 - LANE_COL_X0, labels) if fit.foot else ""
     return Layout(
         W,
         H,
@@ -1343,7 +1880,7 @@ def build_layout(
         TITLE_Y,
         SUB_Y,
         X0,
-        X1,
+        x1,
         YEAR_Y0,
         YEAR_Y1,
         MON_Y1,
@@ -1354,8 +1891,8 @@ def build_layout(
         t0.isoformat(),
         t1.isoformat(),
         row_h,
-        row_h * BAR_F,
-        row_h * MS_F,
+        best.bar_h,
+        best.ms,
         label_pt,
         month_pt,
         lanes,
@@ -1376,7 +1913,25 @@ def build_layout(
         drawn,
         link_notes,
         status_label([status_column]),
+        fitted,
+        foot,
+        LANE_COL_X0,
+        LEGEND_Y0 - 2.5,
+        FOOT_PT,
+        (x1 + 0.5, X1 - 0.5) if fit.gutter else None,
     )
+
+
+def reordered_names(best: Attempt, labels: Mapping[str, str]) -> list[str]:
+    """The items the accepted swaps moved, named as a link names them, in swap order."""
+    by_pos = {at: key for key, at in best.positions.items()}
+    out: list[str] = []
+    for lane, a, b in best.fit.swaps:
+        for pos in (a, b):
+            key = by_pos.get((lane, pos))
+            if key is not None and labels.get(key, key) not in out:
+                out.append(labels.get(key, key))
+    return out
 
 
 def item_label(it: OnePagerItem) -> str:
@@ -1402,25 +1957,29 @@ def _logic(
     items: Sequence[OnePagerItem],
     placed: Sequence[Placed],
     lanes: Sequence[Lane],
+    bar_h: float,
+    ms: float,
     row_h: float,
     label_pt: float,
     lanes_y1: float,
+    limit: float,
     window: Window | None,
     links: Sequence[Link],
-    names: Mapping[str, str] | None,
+    labels: Mapping[str, str],
     absent: Mapping[str, str] | None,
-) -> tuple[list[PlacedLink], list[str]]:
+    gutter: tuple[float, float] | None,
+    fit: Fit,
+) -> RouteReport:
     """Route the operator's links over the placed items: the grid of rows (top to bottom through
     every swimlane), every glyph each row paints — bar or diamond, label, check — and one anchor
-    per keyed item. Returns ``(drawn, notes)``."""
+    per keyed item."""
     if not links:
-        return [], []
+        return RouteReport([], [], False, [], 0)
     offsets: list[int] = []
     centres: list[float] = []
     for ln in lanes:
         offsets.append(len(centres))
         centres += [ln.y0 + LANE_PAD + k * row_h + row_h / 2 for k in range(ln.rows)]
-    bar_h, ms = row_h * BAR_F, row_h * MS_F
     bands: list[list[Box]] = [[] for _ in centres]
     anchors: dict[str, Anchor] = {}
     by_key = {it.key: it for it in items}
@@ -1434,14 +1993,10 @@ def _logic(
         it = by_key.get(p.key)
         if it is not None and p.key not in anchors:
             anchors[p.key] = Anchor(p.x0, p.x1, p.y, p.milestone, g, it.start, it.finish)
-    grid = Grid(centres, bands, LANES_Y0, lanes_y1, LANES_Y1, row_h, bar_h, ms, label_pt, window)
-    labels = dict(names) if names is not None else {}
-    for it in items:
-        labels.setdefault(it.key, item_label(it))
-    drawn, notes, crowded = route_links(links, anchors, labels, grid, absent)
-    if crowded:
-        notes.append(CROWDED_NOTE)
-    return drawn, notes
+    grid = Grid(
+        centres, bands, LANES_Y0, lanes_y1, limit, row_h, bar_h, ms, label_pt, window, (), gutter
+    )
+    return route_all(links, anchors, labels, grid, absent, fit.force, escalation_words(fit))
 
 
 def layout_json(layout: Layout) -> dict[str, Any]:

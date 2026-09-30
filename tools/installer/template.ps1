@@ -16,9 +16,10 @@
    4. Optionally ensures Java 17+ (also needed to open native .mpp files).
    5. Installs Ollama + this tier's local AI model (skippable — the tool runs fully
       without AI).
-   6. Creates the single Desktop + Start-Menu shortcut "Polaris²" (the app stops
-      itself and the local AI on Quit — ADR-0193 retired the separate Stop icon, and this
-      installer deletes any old Start/Stop pair), plus an uninstaller and a first-run README.
+   6. Creates the single Desktop + Start-Menu shortcut "Polaris²" — carrying the tool's OWN
+      icon (ADR-0540) — (the app stops itself and the local AI on Quit — ADR-0193 retired the
+      separate Stop icon, and this installer deletes any old Start/Stop pair), plus an
+      uninstaller and a first-run README.
 
  DATA SOVEREIGNTY: the installed tool is loopback-only (127.0.0.1) — no schedule
  data ever leaves the machine. Internet is used ONLY at install time, for public
@@ -444,6 +445,15 @@ if ($Smoke) {
 $shell = New-Object -ComObject WScript.Shell
 $desk  = [Environment]::GetFolderPath("Desktop")
 $menu  = Join-Path ([Environment]::GetFolderPath("StartMenu")) "Programs\Polaris²"
+# ADR-0540: the shortcut shows the tool's OWN icon — the insignia the app serves as its favicon —
+# written into the install folder by the installed package itself, so the .lnk never points into
+# site-packages (a pip upgrade could move it). Best-effort: a shortcut with the interpreter's
+# icon still launches the tool, and the log says the icon was not written.
+$iconPath = Join-Path $InstallRoot "Polaris2.ico"
+try {
+    & $venvPy -m schedule_forensics.desktop_icon ico $iconPath 2>$null
+    if ($LASTEXITCODE -ne 0) { Warn2 "The tool's icon could not be written — the shortcut keeps the default icon" }
+} catch { Warn2 "The tool's icon could not be written — the shortcut keeps the default icon" }
 # ADR-0436 rename: clear the pre-rename Start-Menu folder so an upgrade leaves ONE identity
 Remove-Item -Recurse -Force -ErrorAction SilentlyContinue (Join-Path ([Environment]::GetFolderPath("StartMenu")) "Programs\Schedule Forensics")
 New-Item -ItemType Directory -Force -Path $menu | Out-Null
@@ -461,13 +471,14 @@ foreach ($dir in @($desk, $menu)) {
     $lnk.Arguments  = "-c `"from schedule_forensics.launcher import main; main(port=$AppPort)`""
     $lnk.WorkingDirectory = $InstallRoot
     $lnk.Description = "Polaris² — starts the tool; closing the browser stops everything"
+    if (Test-Path -LiteralPath $iconPath) { $lnk.IconLocation = "$iconPath,0" }
     $lnk.Save()
 }
 $unlnk = $shell.CreateShortcut((Join-Path $menu "Uninstall Polaris².lnk"))
 $unlnk.TargetPath = "powershell.exe"
 $unlnk.Arguments  = "-ExecutionPolicy Bypass -File `"$uninst`""
 $unlnk.Save()
-Ok "ONE desktop icon: 'Polaris²' (self-stopping); uninstaller + README in $InstallRoot"
+Ok "ONE desktop icon: 'Polaris²' with the tool's own picture (self-stopping); uninstaller + README in $InstallRoot"
 
 Stop-Transcript | Out-Null
 Write-Host ""

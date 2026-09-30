@@ -10,7 +10,8 @@
 #   2. Python 3.11+ (offers Homebrew install if missing).
 #   3. The tool into its OWN venv from the wheel EMBEDDED in this file.
 #   4. Optional Ollama + this tier's AI model (skippable).
-#   5. Desktop "Start"/"Stop" .command launchers, uninstaller, first-run README.
+#   5. A "Polaris²" application on the Desktop carrying the tool's own icon (ADR-0540), the
+#      Start/Stop .command launchers as fallbacks, an uninstaller, a first-run README.
 #
 # DATA SOVEREIGNTY: the installed tool binds 127.0.0.1 only — schedule data never
 # leaves the machine. Internet is used ONLY at install time for public prerequisites.
@@ -280,12 +281,45 @@ sleep 2
 EOF
 chmod +x "$STOP_CMD"
 
+# ADR-0540: a real Desktop icon — a minimal application bundle whose picture is the tool's own
+# insignia (the favicon's PNG frames as an .icns, written by the installed package, std-lib only)
+# and whose executable starts the venv's Python exactly as the Start launcher does. Built by this
+# script on THIS machine, so it carries no quarantine mark. Best-effort: if the icon cannot be
+# written the bundle still launches, with the system's generic application icon.
+APP="$INSTALL_ROOT/Polaris².app"
+rm -rf "$APP"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+cat > "$APP/Contents/MacOS/Polaris2" <<EOF
+#!/usr/bin/env bash
+exec "$VENV_DIR/bin/python" -c "from schedule_forensics.launcher import main; main(port=$APP_PORT)"
+EOF
+chmod +x "$APP/Contents/MacOS/Polaris2"
+cat > "$APP/Contents/Info.plist" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>CFBundleName</key><string>Polaris²</string>
+<key>CFBundleDisplayName</key><string>Polaris²</string>
+<key>CFBundleIdentifier</key><string>local.polaris2.schedule-forensics</string>
+<key>CFBundleVersion</key><string>{{WHEEL_VERSION}}</string>
+<key>CFBundleShortVersionString</key><string>{{WHEEL_VERSION}}</string>
+<key>CFBundlePackageType</key><string>APPL</string>
+<key>CFBundleExecutable</key><string>Polaris2</string>
+<key>CFBundleIconFile</key><string>Polaris2.icns</string>
+<key>LSMinimumSystemVersion</key><string>11.0</string>
+</dict></plist>
+EOF
+if ! "$VENV_DIR/bin/python" -m schedule_forensics.desktop_icon icns "$APP/Contents/Resources/Polaris2.icns" 2>/dev/null; then
+  warn "The tool's icon could not be written — the Desktop application keeps the generic icon"
+fi
+
 UNINST="$INSTALL_ROOT/Uninstall Polaris².command"
 cat > "$UNINST" <<EOF
 #!/usr/bin/env bash
 # Removes the app folder + Desktop launchers. Leaves Python/Ollama (shared programs);
 # remove the AI model with:  ollama rm $OLLAMA_MODEL
 "$STOP_CMD" || true
+rm -rf "\$HOME/Desktop/Polaris².app"
 rm -f "\$HOME/Desktop/Start Polaris².command" "\$HOME/Desktop/Stop Polaris².command"
 rm -f "\$HOME/Desktop/Start Schedule Forensics.command" "\$HOME/Desktop/Stop Schedule Forensics.command"
 rm -rf "$INSTALL_ROOT"
@@ -296,26 +330,32 @@ chmod +x "$UNINST"
 cat > "$INSTALL_ROOT/FIRST-RUN-README.txt" <<EOF
 Polaris² (Schedule Forensics) — first run
 =========================================
-Start:  double-click "Start Polaris²" on the Desktop.
+Start:  double-click "Polaris²" on the Desktop (the ONE icon; "Start Polaris².command"
+        in $INSTALL_ROOT does the same from a Terminal).
         Your browser opens http://127.0.0.1:$APP_PORT — everything runs ON THIS MACHINE.
-Stop:   double-click "Stop Polaris²" (closing the browser also stops it).
+Stop:   click Quit in the app, or close the browser window (the app stops itself);
+        "Stop Polaris².command" in $INSTALL_ROOT is the troubleshooting fallback.
 Data:   your schedule files NEVER leave this computer (loopback-only by design).
 AI:     enable it in AI Settings inside the app (model: $OLLAMA_MODEL).
 Remove: "Uninstall Polaris².command" in $INSTALL_ROOT.
 EOF
 
 if [ "$SMOKE" != "1" ]; then
-  # ADR-0436 rename: clear the pre-rename Desktop launchers so an upgrade leaves ONE identity
+  # ADR-0436 rename: clear the pre-rename Desktop launchers so an upgrade leaves ONE identity —
+  # and, since ADR-0540, the Start/Stop pair too: the ONE Desktop icon is the application
   rm -f "$HOME/Desktop/Start Schedule Forensics.command" "$HOME/Desktop/Stop Schedule Forensics.command"
-  cp "$START_CMD" "$HOME/Desktop/" 2>/dev/null || true
-  cp "$STOP_CMD" "$HOME/Desktop/" 2>/dev/null || true
-  ok "Desktop launchers + uninstaller + README in $INSTALL_ROOT"
+  rm -f "$HOME/Desktop/Start Polaris².command" "$HOME/Desktop/Stop Polaris².command"
+  rm -rf "$HOME/Desktop/Polaris².app"
+  cp -R "$APP" "$HOME/Desktop/" 2>/dev/null || true
+  ICON_WORDS="(the tool's own icon)"
+  [ -f "$APP/Contents/Resources/Polaris2.icns" ] || ICON_WORDS="(NO icon — the warning above says why)"
+  ok "'Polaris²' on the Desktop $ICON_WORDS; launchers, uninstaller + README in $INSTALL_ROOT"
 else
   ok "Smoke mode: launchers written to $INSTALL_ROOT only"
 fi
 
 echo ""
-printf '\033[32mDONE — double-click "Start Polaris²" on the Desktop to begin.\033[0m\n'
+printf '\033[32mDONE — double-click "Polaris²" on the Desktop to begin.\033[0m\n'
 echo "(Everything runs locally at http://127.0.0.1:$APP_PORT — no data leaves this machine.)"
 exit 0
 

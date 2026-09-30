@@ -48,8 +48,11 @@ from typing import Any
 from schedule_forensics.reports.onepager import (
     BAR_F,
     CROWDED_NOTE,
-    EMERGENCY,
-    FLOORS,
+    FOOT_LINE_H,
+    FOOT_LINES_MAX,
+    FOOT_PT,
+    GLYPH_MAX,
+    GUTTER_W,
     LANE_COL_X0,
     LANE_COL_X1,
     LANE_COLORS,
@@ -60,13 +63,14 @@ from schedule_forensics.reports.onepager import (
     LEGEND_Y0,
     MON_Y1,
     MS_F,
-    ROW_MAX,
     SUB_Y,
     TITLE_Y,
     X0,
     YEAR_Y0,
     YEAR_Y1,
+    Attempt,
     Band,
+    Fit,
     H,
     Lane,
     LegendEntry,
@@ -77,27 +81,44 @@ from schedule_forensics.reports.onepager import (
     Window,
     _lane_key,
     _window_notes,
+    apply_swaps,
     complete_legend,
+    diamond_half,
+    disclose_fit,
+    escalation_words,
+    fit_links,
+    fit_notes,
+    fit_rows,
+    foot_height,
+    footnote_entries,
+    footnote_lines,
+    footnote_text,
     keyed,
+    lane_name_pt,
     layout_notes,
     link_legend,
     mdy,
     overlaps,
     plot_window,
+    reordered_names,
+    size_notes,
     status_label,
     text_w,
     timescale,
     window_text,
     wrap,
 )
+from schedule_forensics.reports.onepager import EMERGENCY as EMERGENCY
+from schedule_forensics.reports.onepager import FLOORS as FLOORS
 from schedule_forensics.reports.onepager_links import (
     Anchor,
     Box,
     Grid,
     Link,
     PlacedLink,
+    RouteReport,
     label_box,
-    route_links,
+    route_all,
     shape_box,
 )
 from schedule_forensics.reports.tableset import Cell, Table, TableSet
@@ -643,6 +664,10 @@ class PlacedCompare:
     done_r: float
     #: the current item's link key (``""``: no current side to link)
     key: str = ""
+    #: each diamond's own size — the slide's, clamped to the chart's edges (ADR-0540 review
+    #: F1); ``0`` for a bar or no such side
+    ms: float = 0.0
+    ghost_ms: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -709,6 +734,16 @@ class CompareLayout:
     links: list[PlacedLink] = field(default_factory=list)
     link_notes: list[str] = field(default_factory=list)
     status_label: str = ""
+    #: ADR-0540: what the layout did to fit the links, the slide's footnote (``""`` for none) at
+    #: ``(footnote_x, footnote_y)``, and the gutter lane when one is drawn — as on the Timeline
+    fit_notes: list[str] = field(default_factory=list)
+    footnote: str = ""
+    footnote_x: float = 0.0
+    footnote_y: float = 0.0
+    footnote_pt: float = FOOT_PT
+    gutter: tuple[float, float] | None = None
+    #: the footnote's line height (its lines stack upward from ``footnote_y``)
+    footnote_lh: float = FOOT_LINE_H
 
 
 def _first_of_month(d: dt.date) -> dt.date:
@@ -760,6 +795,9 @@ class _Packed:
     bw: float
     done_x: float | None
     done_r: float
+    #: the row's full x-extent (what a row swap must respect — ADR-0540)
+    ext0: float = 0.0
+    ext1: float = 0.0
 
 
 def build_compare_layout(
@@ -776,7 +814,10 @@ def build_compare_layout(
     With a ``window`` (ADR-0527) the timescale is exactly that window and the caller has already
     scoped the rows to it (:func:`window_compare`): a shape that runs past an edge is cut at it, a
     shape wholly outside is not drawn, and an arrow runs to the edge its move crosses — its label
-    and its move keep the true dates, and the notes name every such row."""
+    and its move keep the true dates, and the notes name every such row.
+
+    The rows FILL the slide and every requested logic link is fitted by the Timeline's own
+    escalation (ADR-0540, :func:`~schedule_forensics.reports.onepager.fit_links`)."""
     if not doc.rows:
         raise ValueError("nothing to lay out")
     if window is not None and not all(row_in_window(r, window) for r in doc.rows):
@@ -807,32 +848,6 @@ def build_compare_layout(
     lo, hi = min(dates), max(dates)
     t0, t1, today_note = plot_window(lo, hi, today, window)
     total = (t1 - t0).days
-
-    def x_of(d: dt.date) -> float:
-        return X0 + (d - t0).days / total * (X1 - X0)
-
-    def shape(
-        start: dt.date, finish: dt.date, milestone: bool | None
-    ) -> tuple[float, float] | None:
-        """One side's shape in x: a milestone ``(x, x)``, a bar at least 3 pt wide — with a
-        window, cut at its edges, and ``None`` when that side lies wholly outside it."""
-        xs, xe = x_of(start), x_of(finish)
-        if milestone:
-            if window is not None and not overlaps(start, finish, window):
-                return None
-            return (xs, xs)
-        xe = max(xe, xs + 3)
-        if window is not None:
-            if not overlaps(start, finish, window):
-                return None
-            xs, xe = max(xs, X0), min(xe, X1)
-            if xe - xs < 3:  # keep the 3-pt floor INSIDE the chart
-                xs, xe = (xs, xs + 3) if xs + 3 <= X1 else (xe - 3, xe)
-        return (xs, xe)
-
-    def edge(x: float) -> float:
-        return min(max(x, X0), X1) if window is not None else x
-
     if window is not None:
         cut = [r for r in doc.rows if any(a < window[0] or b > window[1] for a, b in _row_spans(r))]
         if cut:
@@ -845,6 +860,8 @@ def build_compare_layout(
     for r in doc.rows:
         by_lane.setdefault(lane_of[lane_key(r.lane)], []).append(r)
     n_lanes = len(lane_names)
+    n_items = len(doc.rows)
+    names = {r.key: row_label(r) for r in doc.rows if r.key}
 
     def sort_key(r: CompareRow) -> tuple[dt.date, dt.date, int, int]:
         # the tiebreak is sheet-aware: a current row's number and a prior-only row's number come
@@ -855,245 +872,337 @@ def build_compare_layout(
             return (s, f, 0, r.current_row)
         return (s, f, 1, r.prior_row or 0)
 
-    def pack(lane_rows: list[CompareRow], label_pt: float, row_h: float) -> list[_Packed]:
-        """First-fit rows over each item's FULL extent — ghost, solid shape, check, arrow, label
-        and tag."""
-        out: list[_Packed] = []
-        row_end: list[float] = []
-        ms_w, bar_h = row_h * MS_F, row_h * BAR_F
-        done_r = label_pt * DONE_F
-        for r in sorted(lane_rows, key=sort_key):
-            cur: tuple[float, float] | None = None
-            ghost: tuple[float, float] | None = None
-            if r.current_start and r.current_finish:
-                cur = shape(r.current_start, r.current_finish, r.current_milestone)
-            # an UNCHANGED row is drawn once: its ghost would sit exactly under its bar
-            if r.prior_start and r.prior_finish and r.status != UNCHANGED:
-                ghost = shape(r.prior_start, r.prior_finish, r.prior_milestone)
-            half = ms_w / 2
-            ext = [
-                (sh[0] - (half if sh[0] == sh[1] else 0), sh[1] + (half if sh[0] == sh[1] else 0))
-                for sh in (cur, ghost)
-                if sh is not None
-            ]
-            # a windowed arrow's cut end (its shape outside the window) is part of the extent
-            arrow_ends = _arrow(r)
-            if window is not None and arrow_ends is not None:
-                ext.append((min(arrow_ends), max(arrow_ends)))
-            left = min(e[0] for e in ext)
-            right = max(e[1] for e in ext)
-            label, delta, badge = _label_for(r)
-            text = " ".join(t for t in (label, delta) if t)
-            lw = text_w(text, label_pt)
-            bw = text_w(badge, label_pt) + 2 * BADGE_PAD if badge else 0.0
-            full = lw + (bw + 2 if badge else 0.0)
-            done = bool(r.current_complete) and cur is not None
-            chk = 2 * done_r + DONE_GAP if done else 0.0
-            inside = clipped = False
-            done_x: float | None = None
-            # only a row with NO prior side may carry its label inside its bar (as before), and
-            # never a complete one — its check must sit beside the bar, not on it
-            # with a date window, a row whose ghost and arrow are both off the slide — an unchanged
-            # bar spanning the window is the common case — may too: outside, its end-anchored label
-            # would run over the swimlane names (the row has no other shape its label could cover)
-            no_other = r.prior_start is None or (
-                window is not None and ghost is None and arrow_ends is None
-            )
-            if cur is not None and cur[0] != cur[1] and no_other and not done:
-                inside = full + 4 <= cur[1] - cur[0] and bar_h >= label_pt
-            if inside and cur is not None:
-                anchor, lx, ext0, ext1 = "start", cur[0] + 2, left, right
-            else:
-                anchor, lx = "start", right + 3 + chk
-                ext0, ext1 = left, lx + full
-                if done:
-                    done_x = right + 3 + done_r
-                if ext1 > X1 + 1:
-                    anchor, lx = "end", left - 3 - chk
-                    ext0, ext1 = lx - full, right
-                    if done:
-                        done_x = left - 3 - done_r
-                    if ext0 < X0 - 1:
-                        clipped = True
-                        ext0 = X0
-                # with a date window a moved row's shapes can fill the chart, leaving no room
-                # outside it on either side: its label then sits ON its solid bar when it fits
-                # there, rather than running over the swimlane names
-                if (
-                    clipped
-                    and window is not None
-                    and not done
-                    and cur is not None
-                    and full + 4 <= cur[1] - cur[0]
-                    and bar_h >= label_pt
-                ):
-                    inside, clipped = True, False
-                    anchor, lx, ext0, ext1 = "start", cur[0] + 2, left, right
-            row = next((i for i, end in enumerate(row_end) if end + 4 <= ext0), None)
-            if row is None:
-                row = len(row_end)
-                row_end.append(ext1)
-            else:
-                row_end[row] = ext1
-            # the tag box follows the text; with an end anchor the text runs left of lx
-            badge_x = (lx + lw + 2) if anchor == "start" else (lx - full + lw + 2)
-            out.append(
-                _Packed(
-                    r,
-                    row,
-                    cur,
-                    ghost,
-                    anchor,
-                    lx,
-                    lw,
-                    inside,
-                    clipped,
-                    label,
-                    delta,
-                    badge,
-                    badge_x,
-                    bw,
-                    done_x,
-                    done_r,
-                )
-            )
-        return out
+    def attempt(fit: Fit) -> Attempt:
+        x1 = X1 - (GUTTER_W if fit.gutter else 0.0)
+        lanes_max = LANES_Y1 - (foot_height(fit.foot_lines) if fit.foot else 0.0)
 
-    def _arrow(r: CompareRow) -> tuple[float, float] | None:
-        """The finish's move in x (``None`` when it did not move or a side is missing) — with a
-        window, each end held to the chart's edges."""
-        if not (r.matched and r.finish_delta_days and r.prior_finish and r.current_finish):
-            return None
-        a, b = edge(x_of(r.prior_finish)), edge(x_of(r.current_finish))
-        return None if window is not None and abs(b - a) < 0.5 else (a, b)
+        def x_of(d: dt.date) -> float:
+            return X0 + (d - t0).days / total * (x1 - X0)
 
-    avail = (LANES_Y1 - LANES_Y0) - n_lanes * 2 * LANE_PAD - (n_lanes - 1) * LANE_GAP
-    packed: dict[int, list[_Packed]] = {}
-    rows: dict[int, int] = {}
-    row_h, label_pt = ROW_MAX, 8.0
-    fits = False
-    for row_min, label_min in (*FLOORS, EMERGENCY):
-        row_h, label_pt = ROW_MAX, 8.0
-        for _ in range(6):
-            packed = {li: pack(by_lane[li], label_pt, row_h) for li in range(n_lanes)}
-            rows = {li: 1 + max(p.row for p in packed[li]) for li in range(n_lanes)}
-            nr = max(row_min, min(ROW_MAX, avail / sum(rows.values())))
-            nl = max(label_min, min(8.0, nr * 0.6))
-            if abs(nr - row_h) < 0.05 and abs(nl - label_pt) < 0.05:
-                break
-            row_h, label_pt = nr, nl
-        fits = sum(rows.values()) * row_h <= avail + 0.01
-        if fits:
-            break
-    total_rows = sum(rows.values())
-    n_items = len(doc.rows)
-    if not fits:
-        notes.append(
-            f"This comparison does not fit one slide even at the smallest size ({total_rows} rows "
-            f"of items across {n_lanes} swimlanes) — the lowest swimlanes run off the page. Split "
-            "the lists into two one-pagers."
-        )
-    elif row_h < FLOORS[-1][0]:
-        notes.append(
-            f"Extremely dense comparison: {n_items} items in {total_rows} rows — labels at "
-            f"{label_pt:.1f} pt are too small to read comfortably; consider splitting the lists."
-        )
-    elif row_h < FLOORS[0][0]:
-        notes.append(
-            f"Dense comparison: {n_items} items across {n_lanes} swimlanes — labels reduced to "
-            f"{label_pt:.1f} pt to fit one slide."
-        )
-    lanes: list[Lane] = []
-    placed: list[PlacedCompare] = []
-    summaries: list[SummaryBox] = []
-    by_summary = {lane_key(s.lane): s for s in doc.lanes}
-    y = LANES_Y0
-    bar_h, ms_w = row_h * BAR_F, row_h * MS_F
-    base_lane_pt = 7.5 if row_h >= 9 else 6.5
-    col_w = LANE_COL_X1 - LANE_COL_X0 - 10
-    for li in range(n_lanes):
-        h = rows[li] * row_h + 2 * LANE_PAD
-        pt = base_lane_pt
-        lines = wrap(lane_names[li], pt, col_w)
-        while len(lines) * pt * 1.2 > h - 1 and pt > 4.5:
-            pt -= 0.5
-            lines = wrap(lane_names[li], pt, col_w)
-        lanes.append(
-            Lane(
-                lane_names[li],
-                lines,
-                pt,
-                li,
-                y,
-                y + h,
-                rows[li],
-                li % LANE_COLORS,
-                merged.get(li, []),
-            )
-        )
-        for pk in packed[li]:
-            r = pk.r
-            cy = y + LANE_PAD + pk.row * row_h + row_h / 2
-            x0, x1 = pk.cur if pk.cur else (None, None)
-            gx0, gx1 = pk.ghost if pk.ghost else (None, None)
-            arrow: tuple[float, float] | None = None
+        def shape(
+            start: dt.date, finish: dt.date, milestone: bool | None
+        ) -> tuple[float, float] | None:
+            """One side's shape in x: a milestone ``(x, x)``, a bar at least 3 pt wide — with a
+            window, cut at its edges, and ``None`` when that side lies wholly outside it."""
+            xs, xe = x_of(start), x_of(finish)
+            if milestone:
+                if window is not None and not overlaps(start, finish, window):
+                    return None
+                return (xs, xs)
+            xe = max(xe, xs + 3)
             if window is not None:
-                arrow = _arrow(r)
-            elif r.matched and r.finish_delta_days and gx1 is not None and x1 is not None:
-                arrow = (gx1, x1)
-            placed.append(
-                PlacedCompare(
-                    r.name,
+                if not overlaps(start, finish, window):
+                    return None
+                xs, xe = max(xs, X0), min(xe, x1)
+                if xe - xs < 3:  # keep the 3-pt floor INSIDE the chart
+                    xs, xe = (xs, xs + 3) if xs + 3 <= x1 else (xe - 3, xe)
+            return (xs, xe)
+
+        def edge(x: float) -> float:
+            return min(max(x, X0), x1) if window is not None else x
+
+        def _arrow(r: CompareRow) -> tuple[float, float] | None:
+            """The finish's move in x (``None`` when it did not move or a side is missing) —
+            with a window, each end held to the chart's edges."""
+            if not (r.matched and r.finish_delta_days and r.prior_finish and r.current_finish):
+                return None
+            a, b = edge(x_of(r.prior_finish)), edge(x_of(r.current_finish))
+            return None if window is not None and abs(b - a) < 0.5 else (a, b)
+
+        def pack(lane_rows: list[CompareRow], label_pt: float, row_h: float) -> list[_Packed]:
+            """First-fit rows over each item's FULL extent — ghost, solid shape, check, arrow,
+            label and tag."""
+            out: list[_Packed] = []
+            row_end: list[float] = []
+            g = min(row_h, GLYPH_MAX)
+            ms_w, bar_h = g * MS_F * fit.glyph, g * BAR_F * fit.glyph
+            done_r = label_pt * DONE_F
+            for r in sorted(lane_rows, key=sort_key):
+                cur: tuple[float, float] | None = None
+                ghost: tuple[float, float] | None = None
+                if r.current_start and r.current_finish:
+                    cur = shape(r.current_start, r.current_finish, r.current_milestone)
+                # an UNCHANGED row is drawn once: its ghost would sit exactly under its bar
+                if r.prior_start and r.prior_finish and r.status != UNCHANGED:
+                    ghost = shape(r.prior_start, r.prior_finish, r.prior_milestone)
+                half = ms_w / 2
+                ext = [
+                    (
+                        sh[0] - (half if sh[0] == sh[1] else 0),
+                        sh[1] + (half if sh[0] == sh[1] else 0),
+                    )
+                    for sh in (cur, ghost)
+                    if sh is not None
+                ]
+                # a windowed arrow's cut end (its shape outside the window) is part of the extent
+                arrow_ends = _arrow(r)
+                if window is not None and arrow_ends is not None:
+                    ext.append((min(arrow_ends), max(arrow_ends)))
+                left = min(e[0] for e in ext)
+                right = max(e[1] for e in ext)
+                label, delta, badge = _label_for(r)
+                text = " ".join(t for t in (label, delta) if t)
+                lw = text_w(text, label_pt)
+                bw = text_w(badge, label_pt) + 2 * BADGE_PAD if badge else 0.0
+                full = lw + (bw + 2 if badge else 0.0)
+                done = bool(r.current_complete) and cur is not None
+                chk = 2 * done_r + DONE_GAP if done else 0.0
+                inside = clipped = False
+                done_x: float | None = None
+                # only a row with NO prior side may carry its label inside its bar (as before),
+                # and never a complete one — its check must sit beside the bar, not on it
+                # with a date window, a row whose ghost and arrow are both off the slide — an
+                # unchanged bar spanning the window is the common case — may too: outside, its
+                # end-anchored label would run over the swimlane names (the row has no other
+                # shape its label could cover)
+                no_other = r.prior_start is None or (
+                    window is not None and ghost is None and arrow_ends is None
+                )
+                if cur is not None and cur[0] != cur[1] and no_other and not done:
+                    inside = full + 4 <= cur[1] - cur[0] and bar_h >= label_pt
+                if inside and cur is not None:
+                    anchor, lx, ext0, ext1 = "start", cur[0] + 2, left, right
+                else:
+                    anchor, lx = "start", right + 3 + chk
+                    ext0, ext1 = left, lx + full
+                    if done:
+                        done_x = right + 3 + done_r
+                    if ext1 > x1 + 1:
+                        anchor, lx = "end", left - 3 - chk
+                        ext0, ext1 = lx - full, right
+                        if done:
+                            done_x = left - 3 - done_r
+                        if ext0 < X0 - 1:
+                            clipped = True
+                            ext0 = X0
+                    # with a date window a moved row's shapes can fill the chart, leaving no
+                    # room outside it on either side: its label then sits ON its solid bar when
+                    # it fits there, rather than running over the swimlane names
+                    if (
+                        clipped
+                        and window is not None
+                        and not done
+                        and cur is not None
+                        and full + 4 <= cur[1] - cur[0]
+                        and bar_h >= label_pt
+                    ):
+                        inside, clipped = True, False
+                        anchor, lx, ext0, ext1 = "start", cur[0] + 2, left, right
+                row = next((i for i, end in enumerate(row_end) if end + 4 <= ext0), None)
+                if row is None:
+                    row = len(row_end)
+                    row_end.append(ext1)
+                else:
+                    row_end[row] = ext1
+                # the tag box follows the text; with an end anchor the text runs left of lx
+                badge_x = (lx + lw + 2) if anchor == "start" else (lx - full + lw + 2)
+                out.append(
+                    _Packed(
+                        r,
+                        row,
+                        cur,
+                        ghost,
+                        anchor,
+                        lx,
+                        lw,
+                        inside,
+                        clipped,
+                        label,
+                        delta,
+                        badge,
+                        badge_x,
+                        bw,
+                        done_x,
+                        done_r,
+                        ext0,
+                        ext1,
+                    )
+                )
+            return out
+
+        def rows_at(label_pt: float, row_h: float) -> dict[int, int]:
+            return {
+                li: 1 + max(p.row for p in pack(by_lane[li], label_pt, row_h))
+                for li in range(n_lanes)
+            }
+
+        avail = (lanes_max - LANES_Y0) - n_lanes * 2 * LANE_PAD - (n_lanes - 1) * LANE_GAP
+        row_h, glyph_h, label_pt, fits = fit_rows(rows_at, avail, fit.glyph)
+        glyph_h = min(glyph_h, GLYPH_MAX)
+        packed = {li: pack(by_lane[li], label_pt, glyph_h) for li in range(n_lanes)}
+        rows_of: dict[int, list[int]] = {}
+        extents: dict[int, list[tuple[int, float, float]]] = {}
+        positions: dict[str, tuple[int, int]] = {}
+        for li in range(n_lanes):
+            rows_of[li] = apply_swaps([p.row for p in packed[li]], li, fit.swaps)
+            extents[li] = [
+                (rows_of[li][pos], pk.ext0, pk.ext1) for pos, pk in enumerate(packed[li])
+            ]
+            for pos, pk in enumerate(packed[li]):
+                if pk.r.key:
+                    positions[pk.r.key] = (li, pos)
+        rows = {li: 1 + max(rows_of[li]) for li in range(n_lanes)}
+        total_rows = sum(rows.values())
+        size = size_notes(fits, row_h, label_pt, n_items, total_rows, n_lanes, "comparison")
+        lanes: list[Lane] = []
+        placed: list[PlacedCompare] = []
+        summaries: list[SummaryBox] = []
+        by_summary = {lane_key(s.lane): s for s in doc.lanes}
+        y = LANES_Y0
+        bar_h, ms_w = glyph_h * BAR_F * fit.glyph, glyph_h * MS_F * fit.glyph
+        col_w = LANE_COL_X1 - LANE_COL_X0 - 10
+        for li in range(n_lanes):
+            h = rows[li] * row_h + 2 * LANE_PAD
+            pt = lane_name_pt(row_h, label_pt)
+            lines = wrap(lane_names[li], pt, col_w)
+            while len(lines) * pt * 1.2 > h - 1 and pt > 4.5:
+                pt -= 0.5
+                lines = wrap(lane_names[li], pt, col_w)
+            lanes.append(
+                Lane(
+                    lane_names[li],
+                    lines,
+                    pt,
                     li,
-                    pk.row,
-                    r.status,
-                    bool(
-                        r.current_milestone
-                        if r.current_milestone is not None
-                        else r.prior_milestone
-                    ),
-                    x0,
-                    x1,
-                    r.prior_milestone if gx0 is not None else None,
-                    gx0,
-                    gx1,
-                    arrow[0] if arrow else None,
-                    arrow[1] if arrow else None,
-                    cy - bar_h / 2 - ARROW_LIFT,
-                    cy,
-                    pk.label,
-                    pk.delta,
-                    pk.badge,
-                    pk.lx,
-                    pk.anchor,
-                    pk.lw,
-                    pk.badge_x,
-                    pk.bw,
-                    pk.inside,
-                    pk.clipped,
-                    r.prior_start.isoformat() if r.prior_start else None,
-                    r.prior_finish.isoformat() if r.prior_finish else None,
-                    r.current_start.isoformat() if r.current_start else None,
-                    r.current_finish.isoformat() if r.current_finish else None,
-                    r.start_delta_days,
-                    r.finish_delta_days,
-                    pk.done_x is not None,
-                    pk.done_x,
-                    pk.done_r,
-                    r.key,
+                    y,
+                    y + h,
+                    rows[li],
+                    li % LANE_COLORS,
+                    merged.get(li, []),
                 )
             )
-        s = by_summary.get(lane_key(lane_names[li]))
-        if s is not None:
-            summaries.append(_summary_box(s, li, y, y + h))
-        y += h + LANE_GAP
-    lanes_y1 = y - LANE_GAP
-    drawn, link_notes = _compare_logic(
-        doc, placed, lanes, row_h, label_pt, lanes_y1, window, links, absent
+            for pos, pk in enumerate(packed[li]):
+                r = pk.r
+                row = rows_of[li][pos]
+                cy = y + LANE_PAD + row * row_h + row_h / 2
+                x0, x1_ = pk.cur if pk.cur else (None, None)
+                gx0, gx1 = pk.ghost if pk.ghost else (None, None)
+                arrow: tuple[float, float] | None = None
+                if window is not None:
+                    arrow = _arrow(r)
+                elif r.matched and r.finish_delta_days and gx1 is not None and x1_ is not None:
+                    arrow = (gx1, x1_)
+                placed.append(
+                    PlacedCompare(
+                        r.name,
+                        li,
+                        row,
+                        r.status,
+                        bool(
+                            r.current_milestone
+                            if r.current_milestone is not None
+                            else r.prior_milestone
+                        ),
+                        x0,
+                        x1_,
+                        r.prior_milestone if gx0 is not None else None,
+                        gx0,
+                        gx1,
+                        arrow[0] if arrow else None,
+                        arrow[1] if arrow else None,
+                        cy - bar_h / 2 - ARROW_LIFT,
+                        cy,
+                        pk.label,
+                        pk.delta,
+                        pk.badge,
+                        pk.lx,
+                        pk.anchor,
+                        pk.lw,
+                        pk.badge_x,
+                        pk.bw,
+                        pk.inside,
+                        pk.clipped,
+                        r.prior_start.isoformat() if r.prior_start else None,
+                        r.prior_finish.isoformat() if r.prior_finish else None,
+                        r.current_start.isoformat() if r.current_start else None,
+                        r.current_finish.isoformat() if r.current_finish else None,
+                        r.start_delta_days,
+                        r.finish_delta_days,
+                        pk.done_x is not None,
+                        pk.done_x,
+                        pk.done_r,
+                        r.key,
+                        ms=2 * diamond_half(x0, ms_w, X0, x1) if x0 is not None else 0.0,
+                        ghost_ms=2 * diamond_half(gx0, ms_w, X0, x1) if gx0 is not None else 0.0,
+                    )
+                )
+            s_ = by_summary.get(lane_key(lane_names[li]))
+            if s_ is not None:
+                summaries.append(_summary_box(s_, li, y, y + h))
+            y += h + LANE_GAP
+        lanes_y1 = y - LANE_GAP
+        gutter = (x1 + 0.5, X1 - 0.5) if fit.gutter else None
+        report = _compare_logic(
+            doc,
+            placed,
+            lanes,
+            bar_h,
+            ms_w,
+            row_h,
+            label_pt,
+            lanes_y1,
+            lanes_max,
+            window,
+            links,
+            names,
+            absent,
+            gutter,
+            fit,
+        )
+        return Attempt(
+            fit,
+            lanes,
+            placed,
+            lanes_y1,
+            row_h,
+            label_pt,
+            x1,
+            report,
+            positions,
+            extents,
+            size,
+            fits,
+            summaries,
+            bar_h,
+            ms_w,
+        )
+
+    def lines_needed(cand: Attempt) -> int:
+        entries = footnote_entries(cand.report.drawn, names)
+        moved = reordered_names(cand, names)
+        return len(
+            footnote_lines(
+                entries, cand.fit, moved, names, SUMMARY_X1 - LANE_COL_X0, FOOT_LINES_MAX
+            )
+        )
+
+    best = fit_links(attempt, lines_needed) if links else attempt(Fit())
+    fit, lanes, placed, lanes_y1, row_h, label_pt, x1 = (
+        best.fit,
+        best.lanes,
+        best.placed,
+        best.lanes_y1,
+        best.row_h,
+        best.label_pt,
+        best.x1,
     )
-    months, years, month_pt = timescale(t0, t1, X0, X1, window is not None)
+    summaries = best.summaries
+    notes += best.notes
+    drawn, link_notes = best.report.drawn, list(best.report.notes)
+    if best.report.crowded:
+        link_notes.append(CROWDED_NOTE)
+    reordered = reordered_names(best, names)
+    fitted = fit_notes(fit, reordered)
+    disclose_fit(fit, footnote_entries(drawn, names), fitted, notes)
+    notes += fitted
+    bar_h, ms_w = best.bar_h, best.ms
+
+    def x_of(d: dt.date) -> float:
+        return X0 + (d - t0).days / total * (x1 - X0)
+
+    months, years, month_pt = timescale(t0, t1, X0, x1, window is not None)
     today_x = None if today_note else x_of(today)
-    tl_anchor = "end" if today_x is not None and today_x > X1 - 110 else "start"
+    tl_anchor = "end" if today_x is not None and today_x > x1 - 110 else "start"
     tl_x = (today_x or X0) + (-3 if tl_anchor == "end" else 3)
     legend: list[LegendEntry] = []
     legend_pt = 6.5
@@ -1126,6 +1235,7 @@ def build_compare_layout(
         if row <= 1:
             break
         legend_pt -= 0.75
+    foot = footnote_text(drawn, fit, reordered, SUMMARY_X1 - LANE_COL_X0, names) if fit.foot else ""
     return CompareLayout(
         W,
         H,
@@ -1134,7 +1244,7 @@ def build_compare_layout(
         TITLE_Y,
         SUB_Y,
         X0,
-        X1,
+        x1,
         YEAR_Y0,
         YEAR_Y1,
         MON_Y1,
@@ -1173,6 +1283,12 @@ def build_compare_layout(
         drawn,
         link_notes,
         doc.status_label,
+        fitted,
+        foot,
+        LANE_COL_X0,
+        LEGEND_Y0 - 2.5,
+        FOOT_PT,
+        (x1 + 0.5, X1 - 0.5) if fit.gutter else None,
     )
 
 
@@ -1188,24 +1304,29 @@ def _compare_logic(
     doc: CompareDoc,
     placed: Sequence[PlacedCompare],
     lanes: Sequence[Lane],
+    bar_h: float,
+    ms: float,
     row_h: float,
     label_pt: float,
     lanes_y1: float,
+    limit: float,
     window: Window | None,
     links: Sequence[Link],
+    names: Mapping[str, str],
     absent: Mapping[str, str] | None,
-) -> tuple[list[PlacedLink], list[str]]:
+    gutter: tuple[float, float] | None,
+    fit: Fit,
+) -> RouteReport:
     """Route the operator's links between CURRENT positions over every glyph the compare slide
     paints — the solid shape, the prior ghost, the move arrow ABOVE the bar, the label with its
     delta, the NEW / REMOVED tag and the check — so a leg never runs through a move arrow."""
     if not links:
-        return [], []
+        return RouteReport([], [], False, [], 0)
     offsets: list[int] = []
     centres: list[float] = []
     for ln in lanes:
         offsets.append(len(centres))
         centres += [ln.y0 + LANE_PAD + k * row_h + row_h / 2 for k in range(ln.rows)]
-    bar_h, ms = row_h * BAR_F, row_h * MS_F
     bands: list[list[Box]] = [[] for _ in centres]
     anchors: dict[str, Anchor] = {}
     rows_by_key = {r.key: r for r in doc.rows if r.key}
@@ -1248,19 +1369,15 @@ def _compare_logic(
             anchors[p.key] = Anchor(
                 p.x0, p.x1, p.y, p.milestone, g, row.current_start, row.current_finish
             )
-    names = {r.key: row_label(r) for r in doc.rows if r.key}
     keep = _keep_outs(placed, names)
     grid = Grid(
-        centres, bands, LANES_Y0, lanes_y1, LANES_Y1, row_h, bar_h, ms, label_pt, window, keep
+        centres, bands, LANES_Y0, lanes_y1, limit, row_h, bar_h, ms, label_pt, window, keep, gutter
     )
     missing = dict(absent or {})
     for r in doc.rows:
         if r.key and r.key not in anchors:
             missing.setdefault(r.key, "has no current position on this slide")
-    drawn, notes, crowded = route_links(links, anchors, names, grid, missing)
-    if crowded:
-        notes.append(CROWDED_NOTE)
-    return drawn, notes
+    return route_all(links, anchors, names, grid, missing, fit.force, escalation_words(fit))
 
 
 def _keep_outs(
@@ -1355,12 +1472,16 @@ def compare_subtitle(doc: CompareDoc, today: dt.date, window: Window | None = No
 
 
 def compare_tableset(
-    doc: CompareDoc, window: Window | None = None, omitted: list[str] | tuple[str, ...] = ()
+    doc: CompareDoc,
+    window: Window | None = None,
+    omitted: list[str] | tuple[str, ...] = (),
+    extra_notes: Sequence[str] = (),
 ) -> TableSet:
     """The compared rows with prior / current / delta columns, the per-swimlane summary, and
     every matcher decision — the same cells the page renders. With a date window (ADR-0527) the
     rows and summaries are the window's, and the Notes table states the window and names every
-    row it left off."""
+    row it left off. ``extra_notes`` lead the Notes table (what the slide did to fit the logic
+    links, ADR-0540 — the rows themselves keep the sheet's order)."""
 
     def d(value: dt.date | None) -> Cell:
         return value.isoformat() if value else None
@@ -1451,7 +1572,8 @@ def compare_tableset(
         Table(
             "Notes",
             ("Note",),
-            tuple((n,) for n in (*doc.notes, *_window_notes(window, omitted))) or (("none",),),
+            tuple((n,) for n in (*extra_notes, *doc.notes, *_window_notes(window, omitted)))
+            or (("none",),),
         ),
         Table(
             "How each list was read",

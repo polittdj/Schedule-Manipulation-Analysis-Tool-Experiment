@@ -109,12 +109,12 @@
       var g = el("g", { class: "opc-item opc-" + st + (p.milestone ? " op-ms" : " op-act"), "data-status": p.status, "data-lane": p.lane, "data-key": p.key || null });
       g.appendChild(el("title", {}, tip(p)));
       if (p.ghost_x0 !== null) {
-        if (p.ghost_milestone) g.appendChild(el("polygon", { points: diamondPoints(p.ghost_x0, p.y, ms / 2), stroke: fill, class: "opc-ghost opc-ghost-ms" }));
+        if (p.ghost_milestone) g.appendChild(el("polygon", { points: diamondPoints(p.ghost_x0, p.y, (p.ghost_ms || ms) / 2), stroke: fill, class: "opc-ghost opc-ghost-ms" }));
         else g.appendChild(el("rect", { x: p.ghost_x0, y: p.y - barH / 2, width: p.ghost_x1 - p.ghost_x0, height: barH, rx: 1.2, stroke: fill, class: "opc-ghost" }));
       }
       if (p.arrow_x0 !== null) arrow(g, p.arrow_x0, p.arrow_x1, p.arrow_y, L.arrow_head, p.status === "slipped" ? "opc-arrow-slip" : "opc-arrow-pull");
       if (p.x0 !== null) {
-        if (p.milestone) g.appendChild(el("polygon", { points: diamondPoints(p.x0, p.y, ms / 2), fill: fill, class: "op-diamond" }));
+        if (p.milestone) g.appendChild(el("polygon", { points: diamondPoints(p.x0, p.y, (p.ms || ms) / 2), fill: fill, class: "op-diamond" }));
         else g.appendChild(el("rect", { x: p.x0, y: p.y - barH / 2, width: p.x1 - p.x0, height: barH, rx: 1.2, fill: fill, class: "op-bar" }));
       }
       if (p.done && p.done_x !== null) doneBadge(g, p.done_x, p.y, p.done_r);
@@ -150,7 +150,9 @@
     svg.appendChild(el("line", { x1: L.lane_col_x0, y1: L.legend_y0, x2: L.summary_x1, y2: L.legend_y0, class: "op-header-line" }));
     if (window.SFChartFrame && SFChartFrame.axisTitles) {
       SFChartFrame.axisTitles(svg, {
-        L: L.lane_col_x0 - 4, R: L.x1, T: L.lanes_y0 - 12, B: L.legend_y0 - 1,
+        // B: the SVG's empty strip under the legend (ADR-0540: the lanes reach the legend on
+        // every slide now, so a caption at their foot would lie on the bottom row)
+        L: L.lane_col_x0 - 4, R: L.x1, T: L.lanes_y0 - 12, B: L.h - 3,
       }, {
         xLabel: "Timeline by month and year (prior as ghost, current solid)", yLabel: "Swimlane",
       });
