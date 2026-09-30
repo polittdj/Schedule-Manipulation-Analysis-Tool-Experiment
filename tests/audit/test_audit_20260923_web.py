@@ -23,13 +23,11 @@ Run: ``pytest tests/audit/test_audit_20260923_web.py -rxX``.
 
 from __future__ import annotations
 
-import asyncio
 import json
 import re
 import socket
 from pathlib import Path
 from typing import Any
-from urllib.parse import unquote
 
 import pytest
 from fastapi.testclient import TestClient
@@ -217,54 +215,10 @@ _WEB_004_NAMES = (
     "График.xml",  # Cyrillic 'Grafik'
     "计划.xml",  # CJK 'jihua' (plan)
 )
-# The boundary is ISO-8859-1, not ASCII: both of these answer 200 on the audited tree (verifier).
-_WEB_004_CONTROLS = ("Plain Plan.xml", "Café Plan.xml")
-
-
-def _web_004_raw_get(app: Any, href: str) -> tuple[int | None, bytes | None, bytes, str | None]:
-    """GET ``href`` by calling the ASGI app directly: the raw ``http.response.start`` status and
-    Content-Disposition bytes, the body, and the exception the app re-raised (or None).
-
-    The TestClient cannot measure the control: its httpx transport decodes response headers as
-    UTF-8, so the server's valid ISO-8859-1 ``filename="Caf\\xe9 Plan.json"`` surfaces as a 500 of
-    the client's own making (the finder's and the verifier's instrument note). This reads the
-    status Starlette actually sends, with no client decoding in the way.
-    """
-    sent: list[dict[str, Any]] = []
-    raw_path, _, query = href.partition("?")
-    scope = {
-        "type": "http",
-        "asgi": {"version": "3.0"},
-        "http_version": "1.1",
-        "method": "GET",
-        "scheme": "http",
-        "path": unquote(raw_path),
-        "raw_path": raw_path.encode("ascii"),
-        "query_string": query.encode("ascii"),
-        "root_path": "",
-        "headers": [(b"host", b"127.0.0.1")],
-        "client": ("127.0.0.1", 1),
-        "server": ("127.0.0.1", 80),
-    }
-
-    async def receive() -> dict[str, Any]:
-        return {"type": "http.request", "body": b"", "more_body": False}
-
-    async def send(message: dict[str, Any]) -> None:
-        sent.append(message)
-
-    async def call() -> str | None:
-        try:
-            await app(scope, receive, send)
-        except Exception as exc:  # ServerErrorMiddleware re-raises after it has sent its 500
-            return f"{type(exc).__name__}: {exc}"
-        return None
-
-    raised = asyncio.run(call())
-    start = next((m for m in sent if m["type"] == "http.response.start"), None)
-    body = b"".join(m.get("body", b"") for m in sent if m["type"] == "http.response.body")
-    disposition = dict(start["headers"]).get(b"content-disposition") if start else None
-    return (start["status"] if start else None), disposition, body, raised
+# The control: an ASCII name answers 200 and re-opens. (The boundary is ISO-8859-1, not ASCII --
+# 'Caf\u00e9 Plan.xml' also answers 200 on the audited tree, per the verifier -- but the TestClient
+# decodes that header as UTF-8 and reports its own 500, so it is not a precondition here.)
+_WEB_004_CONTROLS = ("Plain Plan.xml",)
 
 
 @pytest.mark.xfail(
@@ -312,7 +266,12 @@ def test_a0923_web_004_a_save_json_link_answers_for_a_file_name_outside_latin_1(
                 f"precondition: {name!r} loads and the dashboard renders one 'Save .json' link "
                 f"(upload {up.status_code}, {len(state.schedules)} loaded, hrefs {hrefs})"
             )
-        status, _disposition, body, raised = _web_004_raw_get(client.app, hrefs[0])
+        # the TestClient, the instrument every other reproducer uses (CI's floor Starlette hands
+        # a raw ASGI driver an empty 200 body even for a plain ASCII name, so the raw path is not
+        # a dependency-stable instrument); the control is the ASCII name — the Latin-1 boundary
+        # itself is the verifier's finding, not a precondition
+        resp = client.get(hrefs[0])
+        status, body, raised = resp.status_code, resp.content, None
         if status == 200:
             # CI's floor job (the declared-minimum dependencies) answers 200 with a NON-JSON body
             # for a non-Latin-1 name where the current dependencies answer 500: both are the
