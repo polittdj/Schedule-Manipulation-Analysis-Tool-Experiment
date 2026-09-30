@@ -27,7 +27,6 @@ import io
 import itertools
 import json
 import random
-import time
 import zipfile
 from collections.abc import Sequence
 from typing import Any
@@ -617,10 +616,23 @@ def test_the_cache_key_reads_every_field_of_a_link_not_only_its_identity() -> No
     assert onepager_layout(st, TODAY) is not first  # … but not the same layout
 
 
-def test_the_escalation_is_deterministic_and_bounded() -> None:
+def test_the_escalation_is_deterministic_and_bounded(monkeypatch: pytest.MonkeyPatch) -> None:
     """Counts, never seconds, pace the escalation, so two runs lay the same slide out the same
-    way; a 96-item, 120-link slide — past any real programme review — lays out within a
-    generous wall-clock bound on a CI runner (the 144 x 200 stress case: 15.7 s, measured)."""
+    way; on a 96-item, 120-link slide — past any real programme review — the routes judged over
+    every attempt stay within the work budget plus the attempts the budget cannot cut short (the
+    one that crosses it, the last resort and its taller pass), and the attempts are few. CI's
+    first run of this pin (2026-09-30) took 83.6 s on the 3.13 runner where this container took
+    16 s, so the earlier 40-s wall-clock bound was replaced by these counts — the bound the ADR
+    actually claims; a budget switched off runs every reorder trial and fails the count."""
+    reports: list[Any] = []
+    real = op.route_all
+
+    def spy(*a: Any, **k: Any) -> Any:
+        rep = real(*a, **k)
+        reports.append(rep)
+        return rep
+
+    monkeypatch.setattr(op, "route_all", spy)
     items, links = _slide(FORCE, *DENSE)
     a, b = (
         build_layout(items, TODAY, "T", links=links),
@@ -636,9 +648,11 @@ def test_the_escalation_is_deterministic_and_bounded() -> None:
         ln = Link(p, s, rnd.choice(LINK_TYPES))
         if ln not in many and not any(m.pred == s and m.succ == p for m in many):
             many.append(ln)
-    t = time.perf_counter()
+    reports.clear()
     lay = build_layout(big, TODAY, "T", links=many)
-    assert time.perf_counter() - t < 40.0
+    judged = [r.judged for r in reports]
+    assert 3 <= len(judged) <= 1 + len(op.GLYPH_STEPS) + 1 + 3, judged  # base, steps, force, taller
+    assert sum(judged) <= op.WORK_BUDGET + 3 * max(judged), (sum(judged), judged)
     assert len(lay.links) + sum(1 for n in lay.link_notes if " is not drawn — " in n) == 120
 
 

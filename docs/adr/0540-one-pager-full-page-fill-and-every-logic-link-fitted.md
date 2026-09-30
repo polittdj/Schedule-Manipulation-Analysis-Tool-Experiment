@@ -154,6 +154,10 @@ Windows or macOS runner here; the writer and the templates are pinned (`tests/de
 * `Placed.ms`, `PlacedCompare.ms` / `ghost_ms`, both layouts' `footnote_lh`, `RouteReport.points`,
   `OnePagerSnapshot` / `snapshot` / `link_key` (the cache reads one instant of the session) and
   LODESTAR 1.0.1 are the review's additions.
+* CI's first run of PR #727 (2026-09-30) failed one pin on the 3.13 runner: the 96-item, 120-link
+  determinism test's 40-s wall-clock bound (83.6 s there, 16 s here). The bound was replaced by the
+  counts the ADR claims — attempts and routes judged against `WORK_BUDGET` — and a budget switched
+  off fails it (18 attempts).
 * Recorded, not changed (the reviews' observations): the today caption's box sits 0.66 pt into the
   last lane band on every render, its ink 0.09 pt clear (pre-existing, `lanes_y1 + 4.5`); a gutter
   leg spans the chart and `_conflicts` checks new heads against vertical legs only (2 slides of
